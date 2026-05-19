@@ -11,7 +11,8 @@ import { OPTIMISTIC_CELL_SNAPSHOT_FLAG } from '../workbook-optimistic-cell-flags
 import { ProjectedTileSceneStore } from '../projected-tile-scene-store.js'
 import { ProjectedViewportStore } from '../projected-viewport-store.js'
 
-const LOCAL_CELL_VISUAL_DIRTY_MASK = DirtyMaskV3.Value | DirtyMaskV3.Style | DirtyMaskV3.Text | DirtyMaskV3.Rect | DirtyMaskV3.Border
+const LOCAL_OPTIMISTIC_CELL_VISUAL_DIRTY_MASK =
+  DirtyMaskV3.Value | DirtyMaskV3.Style | DirtyMaskV3.Text | DirtyMaskV3.Rect | DirtyMaskV3.Border
 
 function createTileReplace(tileId: number, valuesVersion: number, sheetOrdinal = 7, sheetId = 7): RenderTileReplaceMutation {
   return {
@@ -36,10 +37,12 @@ function createTileReplace(tileId: number, valuesVersion: number, sheetOrdinal =
     bounds: { rowStart: 0, rowEnd: 31, colStart: 0, colEnd: 63 },
     rectInstances: new Float32Array([1, 2, 3, 4]),
     rectCount: 1,
+    rectSignature: `rect:${sheetId}:${sheetOrdinal}:${tileId}:${valuesVersion}`,
     textMetrics: new Float32Array([5, 6]),
     glyphRefs: new Uint32Array([9]),
     textRuns: [],
     textCount: 0,
+    textSignature: `text:${sheetId}:${sheetOrdinal}:${tileId}:${valuesVersion}`,
     dirty: {
       rectSpans: [{ offset: 0, length: 1 }],
       textSpans: [],
@@ -54,7 +57,7 @@ function createTileReplace(tileId: number, valuesVersion: number, sheetOrdinal =
 function createBatch(batchId: number, mutations: RenderTileDeltaBatch['mutations']): RenderTileDeltaBatch {
   return {
     magic: 'bilig.render.tile.delta',
-    version: 3,
+    version: 4,
     sheetId: 7,
     sheetOrdinal: 7,
     batchId,
@@ -76,6 +79,8 @@ describe('ProjectedTileSceneStore', () => {
       structural: false,
     })
     expect(store.peekTile(101)).toMatchObject({ tileId: 101, rectCount: 1, lastBatchId: 2 })
+    expect(store.peekTile(101)?.rectSignature).toBe('rect:7:7:101:2')
+    expect(store.peekTile(101)?.textSignature).toBe('text:7:7:101:2')
     expect(store.peekTile(101)?.dirtyLocalRows).toEqual(new Uint32Array([0, 0]))
     expect(store.peekTile(101)?.dirtyLocalCols).toEqual(new Uint32Array([1, 1]))
     expect(store.peekTile(101)?.dirtyMasks).toEqual(new Uint32Array([5]))
@@ -94,6 +99,16 @@ describe('ProjectedTileSceneStore', () => {
 
     expect(staleCameraChange.changedTileIds).toEqual([])
     expect(store.peekTile(101)?.version.values).toBe(2)
+  })
+
+  it('accepts same-batch lower-camera replacements for unseen same-sheet tiles', () => {
+    const store = new ProjectedTileSceneStore()
+    store.applyDelta({ ...createBatch(2, [createTileReplace(101, 2)]), cameraSeq: 20 })
+
+    const lowerCameraChange = store.applyDelta({ ...createBatch(2, [createTileReplace(202, 2)]), cameraSeq: 19 })
+
+    expect(lowerCameraChange.changedTileIds).toEqual([202])
+    expect(store.peekTile(202)).toMatchObject({ tileId: 202, lastBatchId: 2, lastCameraSeq: 19 })
   })
 
   it('does not let one sheet camera sequence suppress another sheet current-batch delta', () => {
@@ -224,7 +239,7 @@ describe('ProjectedTileSceneStore', () => {
         listener(
           encodeRenderTileDeltaBatch({
             magic: 'bilig.render.tile.delta',
-            version: 3,
+            version: 4,
             sheetId: 99,
             sheetOrdinal: 2,
             batchId: 4,
@@ -260,7 +275,7 @@ describe('ProjectedTileSceneStore', () => {
         listener(
           encodeRenderTileDeltaBatch({
             magic: 'bilig.render.tile.delta',
-            version: 3,
+            version: 4,
             sheetId: 99,
             sheetOrdinal: 2,
             batchId: 4,
@@ -271,7 +286,7 @@ describe('ProjectedTileSceneStore', () => {
         listener(
           encodeRenderTileDeltaBatch({
             magic: 'bilig.render.tile.delta',
-            version: 3,
+            version: 4,
             sheetId: 7,
             sheetOrdinal: 2,
             batchId: 5,
@@ -335,7 +350,7 @@ describe('ProjectedViewportStore render delta source bridge', () => {
 
     expect(listener).toHaveBeenCalledWith(
       expect.objectContaining({
-        dirty: expect.objectContaining({ cellRanges: new Uint32Array([1, 1, 1, 1, LOCAL_CELL_VISUAL_DIRTY_MASK]) }),
+        dirty: expect.objectContaining({ cellRanges: new Uint32Array([1, 1, 1, 1, LOCAL_OPTIMISTIC_CELL_VISUAL_DIRTY_MASK]) }),
         seq: 1,
         sheetId: 7,
         sheetOrdinal: 3,
@@ -448,7 +463,7 @@ describe('ProjectedViewportStore render delta source bridge', () => {
 
     expect(listener).toHaveBeenCalledWith(
       expect.objectContaining({
-        dirty: expect.objectContaining({ cellRanges: new Uint32Array([52, 52, 3, 3, LOCAL_CELL_VISUAL_DIRTY_MASK]) }),
+        dirty: expect.objectContaining({ cellRanges: new Uint32Array([52, 52, 3, 3, LOCAL_OPTIMISTIC_CELL_VISUAL_DIRTY_MASK]) }),
         seq: 43,
         sheetId: 7,
         sheetOrdinal: 3,
@@ -502,7 +517,7 @@ describe('ProjectedViewportStore render delta source bridge', () => {
 
     expect(listener).toHaveBeenCalledWith(
       expect.objectContaining({
-        dirty: expect.objectContaining({ cellRanges: new Uint32Array([52, 52, 3, 3, LOCAL_CELL_VISUAL_DIRTY_MASK]) }),
+        dirty: expect.objectContaining({ cellRanges: new Uint32Array([52, 52, 3, 3, LOCAL_OPTIMISTIC_CELL_VISUAL_DIRTY_MASK]) }),
         sheetId: 7,
         sheetOrdinal: 3,
         source: 'localOptimistic',
@@ -544,7 +559,7 @@ describe('ProjectedViewportStore render delta source bridge', () => {
 
     expect(listener).toHaveBeenCalledWith(
       expect.objectContaining({
-        dirty: expect.objectContaining({ cellRanges: new Uint32Array([1, 1, 1, 1, LOCAL_CELL_VISUAL_DIRTY_MASK]) }),
+        dirty: expect.objectContaining({ cellRanges: new Uint32Array([1, 1, 1, 1, LOCAL_OPTIMISTIC_CELL_VISUAL_DIRTY_MASK]) }),
       }),
     )
 

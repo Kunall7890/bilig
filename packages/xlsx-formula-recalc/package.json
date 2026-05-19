@@ -1,0 +1,66 @@
+{
+  "name": "xlsx-formula-recalc",
+  "version": "0.31.0",
+  "description": "Recalculate XLSX formulas in Node.js without Excel, LibreOffice, or browser automation.",
+  "keywords": [
+    "excel",
+    "excel-formulas",
+    "exceljs",
+    "formula-engine",
+    "formula-recalculation",
+    "node",
+    "sheetjs",
+    "spreadsheet",
+    "spreadsheet-formulas",
+    "workbook",
+    "workpaper",
+    "xlsx",
+    "xlsx-calc",
+    "xlsx-formula",
+    "xlsx-formula-recalculation",
+    "xlsx-populate",
+    "xlsx-recalc",
+    "xlsx-recalculation"
+  ],
+  "homepage": "https://proompteng.github.io/bilig/xlsx-recalculation-proof.html",
+  "bugs": {
+    "url": "https://github.com/proompteng/bilig/issues"
+  },
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/proompteng/bilig.git",
+    "directory": "packages/xlsx-formula-recalc"
+  },
+  "bin": {
+    "xlsx-recalc": "./dist/cli.js"
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
+  "type": "module",
+  "sideEffects": false,
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "scripts": {
+    "build": "pnpm --dir ../.. --filter @bilig/headless build && rm -rf dist tsconfig.tsbuildinfo && tsc -p tsconfig.json",
+    "smoke": "node ./dist/cli.js --help"
+  },
+  "dependencies": {
+    "@bilig/headless": "workspace:*"
+  },
+  "engines": {
+    "node": ">=22.0.0"
+  }
+}

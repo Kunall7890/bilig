@@ -1,6 +1,6 @@
 import type { CellSnapshot } from '@bilig/protocol'
 import { snapshotToRenderCell } from '../gridCells.js'
-import { applyEditorOverlayBounds, resolveEditorOverlayScreenBounds } from '../gridEditorOverlayGeometry.js'
+import { applyEditorOverlayBounds, clearEditorOverlayBounds, resolveEditorOverlayScreenBounds } from '../gridEditorOverlayGeometry.js'
 import type { GridEngineLike } from '../grid-engine.js'
 import { getEditorPresentation, getEditorTextAlign, getOverlayStyle, type GridEditorPresentation } from '../gridPresentation.js'
 import type { Rectangle } from '../gridTypes.js'
@@ -32,9 +32,10 @@ export class GridEditorAnchorRuntime {
       hostElement: input.hostElement,
     })
     if (!next) {
+      clearEditorOverlayBounds(input.hostElement)
       return null
     }
-    applyEditorOverlayBounds(next)
+    applyEditorOverlayBounds(next, input.hostElement)
     return next
   }
 

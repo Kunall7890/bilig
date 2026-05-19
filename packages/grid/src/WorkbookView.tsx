@@ -23,6 +23,7 @@ interface WorkbookViewProps {
   selectedAddr: string
   selectedCellSnapshot: CellSnapshot
   selectionSnapshot: GridSelectionSnapshot
+  editorTargetSelection?: EditTargetSelection | null | undefined
   definedNames?: readonly WorkbookDefinedNameSnapshot[]
   editorValue: string
   editorSelectionBehavior: EditSelectionBehavior
@@ -196,6 +197,7 @@ export function WorkbookView({
   selectedAddr,
   selectedCellSnapshot,
   selectionSnapshot,
+  editorTargetSelection,
   definedNames,
   editorValue,
   editorSelectionBehavior,
@@ -373,6 +375,7 @@ export function WorkbookView({
           <Profiler id="workbook-grid" onRender={() => noteSurfaceCommit('grid')}>
             <WorkbookGridSurface
               editorValue={editorValue}
+              editorTargetSelection={editorTargetSelection}
               editorSelectionBehavior={editorSelectionBehavior}
               engine={engine}
               isEditingCell={isEditingCell}

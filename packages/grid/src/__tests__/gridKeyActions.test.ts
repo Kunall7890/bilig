@@ -114,6 +114,66 @@ describe('gridKeyActions', () => {
     ).toEqual({ kind: 'extend-selection', anchor: [1, 4], target: [3, 4] })
   })
 
+  test('cycles Enter and Tab through the active range without collapsing it', () => {
+    const range = { x: 1, y: 1, width: 2, height: 2 }
+
+    expect(
+      resolveGridKeyAction({
+        event: { key: 'Tab', ctrlKey: false, metaKey: false, altKey: false },
+        isEditingCell: false,
+        editorValue: '',
+        editorInputFocused: false,
+        pendingTypeSeed: null,
+        selectedCell: [1, 1],
+        currentSelectionCell: [1, 1],
+        currentRangeAnchor: [1, 1],
+        currentSelectionRange: range,
+      }),
+    ).toEqual({ kind: 'move-selection-in-range', cell: [2, 1], range })
+
+    expect(
+      resolveGridKeyAction({
+        event: { key: 'Tab', ctrlKey: false, metaKey: false, altKey: false, shiftKey: true },
+        isEditingCell: false,
+        editorValue: '',
+        editorInputFocused: false,
+        pendingTypeSeed: null,
+        selectedCell: [1, 1],
+        currentSelectionCell: [1, 1],
+        currentRangeAnchor: [1, 1],
+        currentSelectionRange: range,
+      }),
+    ).toEqual({ kind: 'move-selection-in-range', cell: [2, 2], range })
+
+    expect(
+      resolveGridKeyAction({
+        event: { key: 'Enter', ctrlKey: false, metaKey: false, altKey: false },
+        isEditingCell: false,
+        editorValue: '',
+        editorInputFocused: false,
+        pendingTypeSeed: null,
+        selectedCell: [1, 1],
+        currentSelectionCell: [1, 1],
+        currentRangeAnchor: [1, 1],
+        currentSelectionRange: range,
+      }),
+    ).toEqual({ kind: 'move-selection-in-range', cell: [1, 2], range })
+
+    expect(
+      resolveGridKeyAction({
+        event: { key: 'Enter', ctrlKey: false, metaKey: false, altKey: false },
+        isEditingCell: false,
+        editorValue: '',
+        editorInputFocused: false,
+        pendingTypeSeed: null,
+        selectedCell: [1, 1],
+        currentSelectionCell: [2, 2],
+        currentRangeAnchor: [1, 1],
+        currentSelectionRange: range,
+      }),
+    ).toEqual({ kind: 'move-selection-in-range', cell: [1, 1], range })
+  })
+
   test('supports sheet-style navigation keys and selection shortcuts', () => {
     expect(
       resolveGridKeyAction({
@@ -211,6 +271,164 @@ describe('gridKeyActions', () => {
         currentRangeAnchor: [1, 1],
       }),
     ).toEqual({ kind: 'select-all' })
+  })
+
+  test('uses data-aware navigation resolvers for spreadsheet table-stakes shortcuts', () => {
+    const navigation = {
+      resolveCurrentRegion: () => ({ x: 1, y: 2, width: 3, height: 4 }),
+      resolveDataEdge: (): [number, number] => [2, 9],
+    }
+
+    expect(
+      resolveGridKeyAction({
+        event: { key: 'ArrowDown', ctrlKey: true, metaKey: false, altKey: false },
+        isEditingCell: false,
+        editorValue: '',
+        editorInputFocused: false,
+        pendingTypeSeed: null,
+        selectedCell: [2, 4],
+        currentSelectionCell: [2, 4],
+        currentRangeAnchor: [2, 4],
+        navigation,
+      }),
+    ).toEqual({ kind: 'move-selection', cell: [2, 9] })
+
+    expect(
+      resolveGridKeyAction({
+        event: { key: 'ArrowDown', ctrlKey: true, metaKey: false, altKey: false, shiftKey: true },
+        isEditingCell: false,
+        editorValue: '',
+        editorInputFocused: false,
+        pendingTypeSeed: null,
+        selectedCell: [2, 4],
+        currentSelectionCell: [2, 4],
+        currentRangeAnchor: [1, 4],
+        navigation,
+      }),
+    ).toEqual({ kind: 'extend-selection', anchor: [1, 4], target: [2, 9] })
+
+    expect(
+      resolveGridKeyAction({
+        event: { key: '*', ctrlKey: true, metaKey: false, altKey: false, shiftKey: true },
+        isEditingCell: false,
+        editorValue: '',
+        editorInputFocused: false,
+        pendingTypeSeed: null,
+        selectedCell: [2, 4],
+        currentSelectionCell: [2, 4],
+        currentRangeAnchor: [2, 4],
+        navigation,
+      }),
+    ).toEqual({ kind: 'select-range', cell: [2, 4], range: { x: 1, y: 2, width: 3, height: 4 } })
+
+    expect(
+      resolveGridKeyAction({
+        event: { key: 'a', ctrlKey: true, metaKey: false, altKey: false },
+        isEditingCell: false,
+        editorValue: '',
+        editorInputFocused: false,
+        pendingTypeSeed: null,
+        selectedCell: [2, 4],
+        currentSelectionCell: [2, 4],
+        currentRangeAnchor: [2, 4],
+        navigation,
+      }),
+    ).toEqual({ kind: 'select-range', cell: [2, 4], range: { x: 1, y: 2, width: 3, height: 4 } })
+
+    expect(
+      resolveGridKeyAction({
+        event: { key: 'a', ctrlKey: true, metaKey: false, altKey: false },
+        isEditingCell: false,
+        editorValue: '',
+        editorInputFocused: false,
+        pendingTypeSeed: null,
+        selectedCell: [2, 4],
+        currentSelectionCell: [2, 4],
+        currentRangeAnchor: [2, 4],
+        currentSelectionRange: { x: 1, y: 2, width: 3, height: 4 },
+        navigation,
+      }),
+    ).toEqual({ kind: 'select-all' })
+  })
+
+  test('handles select-current-region without falling through to printable edit when no region exists', () => {
+    expect(
+      resolveGridKeyAction({
+        event: { key: '*', ctrlKey: true, metaKey: false, altKey: false, shiftKey: true },
+        isEditingCell: false,
+        editorValue: '',
+        editorInputFocused: false,
+        pendingTypeSeed: null,
+        selectedCell: [2, 4],
+        currentSelectionCell: [2, 4],
+        currentRangeAnchor: [2, 4],
+        navigation: {
+          resolveCurrentRegion: () => null,
+          resolveDataEdge: () => null,
+        },
+      }),
+    ).toEqual({ kind: 'handled' })
+  })
+
+  test('routes Google Sheets structural delete shortcut for selected rows and columns', () => {
+    expect(
+      resolveGridKeyAction({
+        event: { key: '-', ctrlKey: true, metaKey: false, altKey: true },
+        isEditingCell: false,
+        editorValue: '',
+        editorInputFocused: false,
+        pendingTypeSeed: null,
+        selectedCell: [1, 3],
+        currentSelectionCell: [1, 3],
+        currentRangeAnchor: [1, 3],
+        selectedRowRanges: [{ start: 3, count: 2 }],
+      }),
+    ).toEqual({ kind: 'delete-selected-rows', ranges: [{ start: 3, count: 2 }] })
+
+    expect(
+      resolveGridKeyAction({
+        event: { key: '-', ctrlKey: false, metaKey: true, altKey: true },
+        isEditingCell: false,
+        editorValue: '',
+        editorInputFocused: false,
+        pendingTypeSeed: null,
+        selectedCell: [2, 1],
+        currentSelectionCell: [2, 1],
+        currentRangeAnchor: [2, 1],
+        selectedColumnRanges: [{ start: 2, count: 3 }],
+      }),
+    ).toEqual({ kind: 'delete-selected-columns', ranges: [{ start: 2, count: 3 }] })
+
+    expect(
+      resolveGridKeyAction({
+        event: { key: '-', ctrlKey: true, metaKey: false, altKey: true },
+        isEditingCell: false,
+        editorValue: '',
+        editorInputFocused: false,
+        pendingTypeSeed: null,
+        selectedCell: [2, 1],
+        currentSelectionCell: [2, 1],
+        currentRangeAnchor: [2, 1],
+        selectedRowRanges: [{ start: 0, count: 10 }],
+        selectedColumnRanges: [{ start: 0, count: 10 }],
+      }),
+    ).toEqual({ kind: 'handled' })
+  })
+
+  test('moves PageUp and PageDown by the caller-provided visible viewport height', () => {
+    expect(
+      resolveGridKeyAction({
+        event: { key: 'PageDown', ctrlKey: false, metaKey: false, altKey: false },
+        isEditingCell: false,
+        editorValue: '',
+        editorInputFocused: false,
+        pendingTypeSeed: null,
+        selectedCell: [2, 4],
+        currentSelectionCell: [2, 4],
+        currentRangeAnchor: [2, 4],
+        pageJumpRows: 31,
+      }),
+    ).toEqual({ kind: 'move-selection', cell: [2, 35] })
   })
 
   test('extends an existing keyboard range from the active edge', () => {
@@ -376,8 +594,6 @@ describe('gridKeyActions', () => {
       { key: 'Delete', ctrlKey: false, metaKey: true, altKey: false },
       { key: 'Delete', ctrlKey: false, metaKey: false, altKey: true },
       { key: 'Delete', ctrlKey: false, metaKey: false, altKey: false, shiftKey: true },
-      { key: 'Backspace', ctrlKey: true, metaKey: false, altKey: false },
-      { key: 'Backspace', ctrlKey: false, metaKey: true, altKey: false },
       { key: 'Backspace', ctrlKey: false, metaKey: false, altKey: true },
       { key: 'Backspace', ctrlKey: false, metaKey: false, altKey: false, shiftKey: true },
     ] as const) {
@@ -393,6 +609,26 @@ describe('gridKeyActions', () => {
           currentRangeAnchor: [1, 1],
         }),
       ).toEqual({ kind: 'none' })
+    }
+  })
+
+  test('routes primary-modified Backspace to scroll the active cell into view without clearing it', () => {
+    for (const event of [
+      { key: 'Backspace', ctrlKey: true, metaKey: false, altKey: false },
+      { key: 'Backspace', ctrlKey: false, metaKey: true, altKey: false },
+    ] as const) {
+      expect(
+        resolveGridKeyAction({
+          event,
+          isEditingCell: false,
+          editorValue: '',
+          editorInputFocused: false,
+          pendingTypeSeed: null,
+          selectedCell: [1, 1],
+          currentSelectionCell: [1, 1],
+          currentRangeAnchor: [1, 1],
+        }),
+      ).toEqual({ kind: 'scroll-active-cell' })
     }
   })
 

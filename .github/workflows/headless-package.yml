@@ -14,6 +14,8 @@ on:
       - 'packages/wasm-kernel/**'
       - 'packages/excel-import/**'
       - 'packages/create-workpaper/**'
+      - 'packages/xlsx-formula-recalc/**'
+      - 'packages/exceljs-formula-recalc/**'
       - 'packages/benchmarks/**'
       - 'packages/headless/CHANGELOG.md'
       - 'docs/public-api.md'
@@ -89,7 +91,7 @@ jobs:
     timeout-minutes: 30
     steps:
       - name: Checkout repository
-        uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
 
       - name: Set up Node.js 24
         uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e
@@ -127,6 +129,8 @@ jobs:
           pnpm --filter @bilig/core build
           pnpm --filter @bilig/excel-import build
           pnpm --filter @bilig/headless build
+          pnpm --filter xlsx-formula-recalc build
+          pnpm --filter exceljs-formula-recalc build
 
       - name: Lint runtime package sources
         run: |
@@ -149,6 +153,7 @@ jobs:
             packages/headless/src/__tests__/persistence.test.ts \
             packages/headless/src/__tests__/persistence.fuzz.test.ts \
             packages/headless/src/__tests__/hyperformula-surface-parity.test.ts \
+            packages/exceljs-formula-recalc/src/__tests__/exceljs-formula-recalc.test.ts \
             scripts/__tests__/runtime-package-publish-validation.test.ts
 
       - name: Validate publishable runtime package set
@@ -206,6 +211,8 @@ jobs:
             packages/core
             packages/excel-import
             packages/headless
+            packages/xlsx-formula-recalc
+            packages/exceljs-formula-recalc
             packages/create-workpaper
           )
 
@@ -217,7 +224,7 @@ jobs:
           done
 
       - name: Upload packed runtime artifacts
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
         with:
           name: bilig-runtime-packages
           path: build/npm-packages-runtime/*.tgz
@@ -247,7 +254,7 @@ jobs:
       planner_args: ${{ steps.release_meta.outputs.planner_args }}
     steps:
       - name: Checkout repository
-        uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
         with:
           fetch-depth: 0
 
@@ -514,7 +521,7 @@ jobs:
       id-token: write
     steps:
       - name: Checkout repository
-        uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
         with:
           fetch-depth: 0
 
@@ -650,6 +657,8 @@ jobs:
             'packages/core/package.json',
             'packages/excel-import/package.json',
             'packages/headless/package.json',
+            'packages/xlsx-formula-recalc/package.json',
+            'packages/exceljs-formula-recalc/package.json',
             'packages/create-workpaper/package.json',
           ];
           const packages = packagePaths.map((packagePath) =>
@@ -696,9 +705,13 @@ jobs:
             packages/core/package.json
             packages/excel-import/package.json
             packages/headless/package.json
+            packages/xlsx-formula-recalc/package.json
+            packages/exceljs-formula-recalc/package.json
             packages/create-workpaper/package.json
             packages/headless/server.json
             packages/headless/README.md
+            packages/xlsx-formula-recalc/README.md
+            packages/exceljs-formula-recalc/README.md
             packages/headless/CHANGELOG.md
           )
 
@@ -721,6 +734,9 @@ jobs:
           pnpm --filter @bilig/wasm-kernel build
           pnpm --filter @bilig/formula build
           pnpm --filter @bilig/core build
+          pnpm --filter @bilig/headless build
+          pnpm --filter xlsx-formula-recalc build
+          pnpm --filter exceljs-formula-recalc build
 
           bun scripts/sync-headless-package-footprint.ts
 
@@ -784,6 +800,8 @@ jobs:
           pnpm --filter @bilig/core build
           pnpm --filter @bilig/excel-import build
           pnpm --filter @bilig/headless build
+          pnpm --filter xlsx-formula-recalc build
+          pnpm --filter exceljs-formula-recalc build
 
       - name: Validate publishable runtime package set
         run: |
@@ -904,3 +922,31 @@ jobs:
         run: |
           set -euo pipefail
           bun scripts/publish-runtime-package-set.ts
+
+      - name: Upload WorkPaper MCPB release asset
+        if: steps.npm_provisioning.outputs.publish_allowed == 'true' && needs.plan_release.outputs.dry_run != 'true'
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG_NAME: ${{ needs.plan_release.outputs.tag_name }}
+          TARGET_VERSION: ${{ needs.plan_release.outputs.target_version }}
+        run: |
+          set -euo pipefail
+
+          for attempt in $(seq 1 30); do
+            if npm view "@bilig/headless@${TARGET_VERSION}" version >/dev/null 2>&1; then
+              break
+            fi
+            if [[ "${attempt}" == "30" ]]; then
+              echo "@bilig/headless@${TARGET_VERSION} was not visible on npm after ${attempt} attempts." >&2
+              exit 1
+            fi
+            echo "Waiting for @bilig/headless@${TARGET_VERSION} to become visible on npm; attempt ${attempt}/30"
+            sleep 10
+          done
+
+          pnpm mcpb:workpaper:build -- --package-version "${TARGET_VERSION}"
+          (cd build/mcpb && shasum -a 256 bilig-workpaper.mcpb > bilig-workpaper.mcpb.sha256)
+          gh release upload "${TAG_NAME}" \
+            build/mcpb/bilig-workpaper.mcpb \
+            build/mcpb/bilig-workpaper.mcpb.sha256 \
+            --clobber

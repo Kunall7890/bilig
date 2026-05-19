@@ -102,9 +102,16 @@ export function inspectRuntimeSnapshotSheetDimensionsWithinLimits(args: {
     }
   } else {
     for (const cell of args.snapshotSheet.cells) {
-      const parsed = parseCellAddress(cell.address, args.sheetName)
-      materializedHeight = Math.max(materializedHeight, parsed.row + 1)
-      materializedWidth = Math.max(materializedWidth, parsed.col + 1)
+      const row = cell.row
+      const col = cell.col
+      if (typeof row === 'number' && typeof col === 'number' && Number.isInteger(row) && Number.isInteger(col) && row >= 0 && col >= 0) {
+        materializedHeight = Math.max(materializedHeight, row + 1)
+        materializedWidth = Math.max(materializedWidth, col + 1)
+      } else {
+        const parsed = parseCellAddress(cell.address, args.sheetName)
+        materializedHeight = Math.max(materializedHeight, parsed.row + 1)
+        materializedWidth = Math.max(materializedWidth, parsed.col + 1)
+      }
     }
   }
   if (materializedHeight > (args.config.maxRows ?? MAX_ROWS) || materializedWidth > (args.config.maxColumns ?? MAX_COLS)) {

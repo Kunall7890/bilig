@@ -252,9 +252,13 @@ export const WorkbookToolbar = memo(function WorkbookToolbar({
     }
     window.setTimeout(run, 0)
   }, [requestGridFocus])
-  const runToolbarButtonCommand = useCallback((command: () => void) => {
-    command()
-  }, [])
+  const runToolbarButtonCommand = useCallback(
+    (command: () => void) => {
+      command()
+      returnFocusToGridAfterCommand()
+    },
+    [returnFocusToGridAfterCommand],
+  )
   const runTransientGridCommand = useCallback(
     (command: () => void) => {
       command()

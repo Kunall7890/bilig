@@ -2108,6 +2108,28 @@ describe('public workbook corpus', () => {
               license_url: 'https://creativecommons.org/licenses/by/4.0/',
               resources: [{ id: 'old-resource', name: 'old-budget.xlsx', url: 'https://example.com/old-budget.xlsx' }],
             },
+            {
+              id: 'dataset-2026-opaque-resource',
+              name: 'state-workbook',
+              title: 'State Budget Workbook 2026',
+              metadata_modified: '2024-03-10T00:00:00',
+              license_id: 'CC-BY-4.0',
+              license_title: 'Creative Commons Attribution 4.0 International',
+              license_url: 'https://creativecommons.org/licenses/by/4.0/',
+              resources: [{ id: 'opaque-resource', name: 'workbook.xlsx', url: 'https://example.com/download?id=opaque-resource' }],
+            },
+            {
+              id: 'dataset-compact-date',
+              name: 'forecast-workbook',
+              title: 'Forecast Workbook',
+              metadata_modified: '2024-03-10T00:00:00',
+              license_id: 'CC-BY-4.0',
+              license_title: 'Creative Commons Attribution 4.0 International',
+              license_url: 'https://creativecommons.org/licenses/by/4.0/',
+              resources: [
+                { id: 'compact-date-resource', name: 'forecast_20251001.xlsx', url: 'https://example.com/forecast_20251001.xlsx' },
+              ],
+            },
           ],
         },
       }),
@@ -2124,8 +2146,10 @@ describe('public workbook corpus', () => {
       requiredTopic: 'recent-2025-2026-workbooks',
     })
 
-    expect(manifest.sources.map((source) => source.resourceId)).toEqual(['budget-resource'])
+    expect(manifest.sources.map((source) => source.resourceId)).toEqual(['budget-resource', 'opaque-resource', 'compact-date-resource'])
     expect(manifest.sources[0]?.topicEvidence).toEqual(expect.arrayContaining(['recent-2025:downloadUrl', 'recent-2025:fileName']))
+    expect(manifest.sources[1]?.topicEvidence).toEqual(expect.arrayContaining(['recent-2026:dataset.title']))
+    expect(manifest.sources[2]?.topicEvidence).toEqual(expect.arrayContaining(['recent-2025:downloadUrl', 'recent-2025:fileName']))
   })
 
   it('surfaces isolated verification subprocess failures with stderr evidence', async () => {

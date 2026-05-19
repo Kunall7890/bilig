@@ -425,6 +425,48 @@ describe('operation-service dense mutation fast paths', () => {
     }
   })
 
+  it('validates fresh physical dense numeric rectangles without logical visibility lookups', async () => {
+    const engine = new SpreadsheetEngine({ workbookName: 'fresh-physical-rectangular-fast-path' })
+    await engine.ready()
+    engine.createSheet('Sheet1')
+
+    const rowCount = 8
+    const inputCols = 4
+    const sheetId = engine.workbook.getSheet('Sheet1')!.id
+    const sheet = engine.workbook.getSheetById(sheetId)!
+    const refs: EngineCellMutationRef[] = []
+    for (let row = 0; row < rowCount; row += 1) {
+      for (let col = 0; col < inputCols; col += 1) {
+        refs.push({
+          sheetId,
+          mutation: { kind: 'setCellValue', row, col, value: (row + 1) * (col + 2) },
+        })
+      }
+    }
+
+    const getVisibleCell = vi.spyOn(sheet.logical, 'getVisibleCell').mockImplementation(() => {
+      throw new Error('fresh physical dense rectangle should validate emptiness from the physical grid')
+    })
+    engine.resetPerformanceCounters()
+    try {
+      const undoOps = engine.applyCellMutationsAt(refs, refs.length)
+
+      expect(undoOps).not.toBeNull()
+      expect(getVisibleCell).not.toHaveBeenCalled()
+      expect(engine.getLastMetrics()).toMatchObject({
+        changedInputCount: rowCount * inputCols,
+        dirtyFormulaCount: 0,
+        jsFormulaCount: 0,
+        wasmFormulaCount: 0,
+      })
+      expect(engine.getPerformanceCounters().kernelSyncOnlyRecalcSkips).toBe(1)
+    } finally {
+      getVisibleCell.mockRestore()
+    }
+    expect(engine.getCellValue('Sheet1', 'A1')).toEqual({ tag: ValueTag.Number, value: 2 })
+    expect(engine.getCellValue('Sheet1', 'D8')).toEqual({ tag: ValueTag.Number, value: 40 })
+  })
+
   it('stores fresh row aggregate formula results without aggregate scans', async () => {
     const engine = new SpreadsheetEngine({ workbookName: 'fresh-row-aggregate-formula-results' })
     await engine.ready()
@@ -485,7 +527,7 @@ describe('operation-service dense mutation fast paths', () => {
     engine.createSheet('Sheet1')
 
     const existingRows = 16
-    const appendRows = 40
+    const appendRows = 80
     const inputCols = 4
     for (let row = 1; row <= existingRows; row += 1) {
       for (let col = 0; col < inputCols; col += 1) {
@@ -674,7 +716,7 @@ describe('operation-service dense mutation fast paths', () => {
     engine.createSheet('Sheet1')
 
     const existingRows = 16
-    const appendRows = 40
+    const appendRows = 80
     const inputCols = 4
     for (let row = 1; row <= existingRows; row += 1) {
       for (let col = 0; col < inputCols; col += 1) {
@@ -734,6 +776,7 @@ describe('operation-service dense mutation fast paths', () => {
         directFormulaKernelSyncOnlyRecalcSkips: 1,
         formulasBound: 0,
         kernelSyncOnlyRecalcSkips: 1,
+        nativeDirectAggregatePrefixEvaluations: appendRows,
         topoRepairs: 0,
       })
       expect(formulaScan).not.toHaveBeenCalled()

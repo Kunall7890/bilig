@@ -10,6 +10,7 @@ const repoRoot = resolve(import.meta.dir, '..')
 const packageDir = join(repoRoot, 'packages', 'create-workpaper')
 const packageName = '@bilig/create-workpaper'
 const packDir = join(repoRoot, 'build', 'create-workpaper-package')
+const generatedDir = join(packDir, 'generated')
 const args = new Set(process.argv.slice(2))
 const requirePublished = args.has('--require-published')
 
@@ -80,7 +81,7 @@ function assertManifest(manifest: PackageManifest): string {
   assert(manifest.bin['create-workpaper'] === 'bin/create-bilig-workpaper.js', 'package bin must expose create-workpaper')
 
   const files = stringArray(manifest.files)
-  for (const included of ['bin', 'template', 'README.md']) {
+  for (const included of ['agent-overlay', 'bin', 'template', 'README.md']) {
     assert(files.includes(included), `package files must include ${included}`)
   }
 
@@ -108,6 +109,7 @@ function assertDocs(): void {
   ] as const) {
     assert(source.includes('npm create @bilig/workpaper@latest'), `${label} must document the scoped npm create path`)
     assert(source.includes('@bilig/create-workpaper'), `${label} must include the published package name`)
+    assert(source.includes('--agent'), `${label} must document the agent-ready starter path`)
   }
   assert(readme.includes('verified: true') || readme.includes('"verified": true'), 'starter README must show the verification output')
   assert(docs.includes('verified: true') || docs.includes('"verified": true'), 'starter docs must show the verification output')
@@ -121,6 +123,8 @@ function assertDocs(): void {
     'starter smoke output must include the GitHub star/bookmark link after verification',
   )
   assert(docs.includes('https://github.com/proompteng/bilig/stargazers'), 'starter docs must include the star/bookmark link')
+  assert(readme.includes('agent:verify'), 'starter README must document the agent verification script')
+  assert(docs.includes('agent:verify'), 'starter docs must document the agent verification script')
 }
 
 function assertPackedTarball(): void {
@@ -136,6 +140,13 @@ function assertPackedTarball(): void {
   for (const entry of [
     'package/package.json',
     'package/README.md',
+    'package/agent-overlay/.cursor/mcp.json',
+    'package/agent-overlay/.vscode/mcp.json',
+    'package/agent-overlay/AGENTS.md',
+    'package/agent-overlay/CLAUDE.md',
+    'package/agent-overlay/README.md',
+    'package/agent-overlay/mcp/bilig-workpaper.mcp.json',
+    'package/agent-overlay/package.json',
     'package/bin/create-bilig-workpaper.js',
     'package/template/package.json',
     'package/template/README.md',
@@ -148,6 +159,38 @@ function assertPackedTarball(): void {
   for (const entry of entries) {
     assert(!entry.includes('node_modules/'), `${basename(tarball)} must not include node_modules`)
     assert(!entry.includes('.cache/'), `${basename(tarball)} must not include .cache output`)
+  }
+}
+
+function assertGeneratedStarters(): void {
+  rmSync(generatedDir, { force: true, recursive: true })
+  mkdirSync(generatedDir, { recursive: true })
+
+  const cliPath = join(packageDir, 'bin', 'create-bilig-workpaper.js')
+  const serviceDir = join(generatedDir, 'service-demo')
+  const agentDir = join(generatedDir, 'agent-demo')
+
+  run('node', [cliPath, serviceDir])
+  run('node', [cliPath, agentDir, '--agent'])
+
+  const serviceManifest = readJson(join(serviceDir, 'package.json'))
+  assert(isRecord(serviceManifest.scripts), 'generated service package scripts must be an object')
+  assert(serviceManifest.scripts['smoke'] === 'tsx src/index.ts', 'generated service starter must keep the smoke script')
+  assert(serviceManifest.scripts['agent:verify'] === undefined, 'generated service starter must not include agent-only scripts')
+
+  const agentManifest = readJson(join(agentDir, 'package.json'))
+  assert(isRecord(agentManifest.scripts), 'generated agent package scripts must be an object')
+  assert(
+    agentManifest.scripts['agent:verify'] === 'npm run smoke && npm run mcp:challenge',
+    'generated agent starter must verify API and MCP paths',
+  )
+  assert(
+    agentManifest.scripts['mcp:server'] === 'bilig-workpaper-mcp --workpaper ./pricing.workpaper.json --init-demo-workpaper --writable',
+    'generated agent starter must include the file-backed MCP server script',
+  )
+
+  for (const expected of ['AGENTS.md', 'CLAUDE.md', '.cursor/mcp.json', '.vscode/mcp.json', 'mcp/bilig-workpaper.mcp.json']) {
+    assert(existsSync(join(agentDir, expected)), `generated agent starter is missing ${expected}`)
   }
 }
 
@@ -170,7 +213,9 @@ const version = assertManifest(manifest)
 
 assert(existsSync(join(packageDir, 'bin', 'create-bilig-workpaper.js')), 'CLI entrypoint must exist')
 assert(existsSync(join(packageDir, 'template', 'src', 'index.ts')), 'starter template source must exist')
+assert(existsSync(join(packageDir, 'agent-overlay', 'AGENTS.md')), 'agent starter overlay must exist')
 assertDocs()
+assertGeneratedStarters()
 assertPackedTarball()
 assertPublishedVersion(version)
 

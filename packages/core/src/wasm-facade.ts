@@ -27,6 +27,33 @@ export interface WasmSpillResult {
   values: CellValue[]
 }
 
+export interface WasmDirectScalarValueBatchLayout {
+  operators: Uint8Array
+  leftBatchRefs: Uint32Array
+  leftTags: Uint8Array
+  leftValues: Float64Array
+  leftErrors: Uint16Array
+  rightBatchRefs: Uint32Array
+  rightTags: Uint8Array
+  rightValues: Float64Array
+  rightErrors: Uint16Array
+  resultOffsets: Float64Array
+  outTags: Uint8Array
+  outNumbers: Float64Array
+  outErrors: Uint16Array
+}
+
+export interface WasmDenseNumericRowAggregateBatchLayout {
+  aggregateKind: number
+  values: Float64Array
+  rowCount: number
+  prefixColCount: number
+  startColOffset: number
+  aggregateColCount: number
+  resultOffset: number
+  outNumbers: Float64Array
+}
+
 const OUTPUT_STRING_BASE = 2147483648
 
 function decodeSpillValue(tag: number, rawValue: number, strings: StringPool, outputStrings: readonly string[]): CellValue {
@@ -216,6 +243,45 @@ export class WasmKernelFacade {
 
   evalBatch(cellIndices: Uint32Array): void {
     this.kernel?.evalBatch(cellIndices)
+  }
+
+  evalDirectScalarValueBatch(layout: WasmDirectScalarValueBatchLayout): boolean {
+    if (!this.kernel) {
+      return false
+    }
+    this.kernel.evalDirectScalarValueBatch(
+      layout.operators,
+      layout.leftBatchRefs,
+      layout.leftTags,
+      layout.leftValues,
+      layout.leftErrors,
+      layout.rightBatchRefs,
+      layout.rightTags,
+      layout.rightValues,
+      layout.rightErrors,
+      layout.resultOffsets,
+      layout.outTags,
+      layout.outNumbers,
+      layout.outErrors,
+    )
+    return true
+  }
+
+  evalDenseNumericRowAggregateBatch(layout: WasmDenseNumericRowAggregateBatchLayout): boolean {
+    if (!this.kernel) {
+      return false
+    }
+    this.kernel.evalDenseNumericRowAggregateBatch(
+      layout.aggregateKind,
+      layout.values,
+      layout.rowCount,
+      layout.prefixColCount,
+      layout.startColOffset,
+      layout.aggregateColCount,
+      layout.resultOffset,
+      layout.outNumbers,
+    )
+    return true
   }
 
   readSpill(cellIndex: number, strings: StringPool): WasmSpillResult | undefined {

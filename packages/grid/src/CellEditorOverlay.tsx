@@ -30,20 +30,64 @@ function normalizeNumpadKey(key: string, code: string): string | null {
   return key.length === 1 ? key : null
 }
 
-function moveCaretToBoundary(input: HTMLTextAreaElement, boundary: 'start' | 'end', extendSelection: boolean) {
-  const nextPosition = boundary === 'start' ? 0 : input.value.length
-  const anchor = boundary === 'start' ? input.selectionEnd : input.selectionStart
-  if (extendSelection) {
-    input.setSelectionRange(boundary === 'start' ? nextPosition : anchor, boundary === 'start' ? anchor : nextPosition)
-    return
-  }
-  input.setSelectionRange(nextPosition, nextPosition)
-}
-
 interface EditorTextSelection {
   readonly direction: 'backward' | 'forward' | 'none'
   readonly end: number
   readonly start: number
+}
+
+interface EditorHistoryEntry {
+  readonly selection: EditorTextSelection
+  readonly value: string
+}
+
+interface EditorHistoryState {
+  readonly current: EditorHistoryEntry
+  readonly redoStack: readonly EditorHistoryEntry[]
+  readonly undoStack: readonly EditorHistoryEntry[]
+}
+
+const MAX_EDITOR_HISTORY_ENTRIES = 100
+
+function createCaretEndSelection(value: string): EditorTextSelection {
+  return {
+    direction: 'none',
+    end: value.length,
+    start: value.length,
+  }
+}
+
+function sameTextSelection(left: EditorTextSelection, right: EditorTextSelection): boolean {
+  return left.start === right.start && left.end === right.end && left.direction === right.direction
+}
+
+function sameEditorHistoryEntry(left: EditorHistoryEntry, right: EditorHistoryEntry): boolean {
+  return left.value === right.value && sameTextSelection(left.selection, right.selection)
+}
+
+function trimEditorHistoryStack(entries: readonly EditorHistoryEntry[]): readonly EditorHistoryEntry[] {
+  return entries.length <= MAX_EDITOR_HISTORY_ENTRIES ? entries : entries.slice(entries.length - MAX_EDITOR_HISTORY_ENTRIES)
+}
+
+function resolveEditorHistoryShortcut(
+  event: Pick<KeyboardEvent, 'altKey' | 'ctrlKey' | 'key' | 'metaKey' | 'shiftKey'>,
+): 'redo' | 'undo' | null {
+  const isPrimaryModified = (event.ctrlKey || event.metaKey) && !event.altKey
+  if (!isPrimaryModified) {
+    return null
+  }
+  const lowerKey = event.key.toLowerCase()
+  if (lowerKey === 'z') {
+    return event.shiftKey ? 'redo' : 'undo'
+  }
+  if (!event.shiftKey && lowerKey === 'y') {
+    return 'redo'
+  }
+  return null
+}
+
+function isComposingEditorKey(event: Pick<KeyboardEvent, 'isComposing' | 'key' | 'keyCode'>): boolean {
+  return event.isComposing || event.key === 'Process' || event.keyCode === 229
 }
 
 function clampTextOffset(offset: number, textLength: number): number {
@@ -129,6 +173,12 @@ export function CellEditorOverlay({
   const caretWriteSequenceRef = useRef(0)
   const targetSelectionRef = useRef(targetSelection)
   const draftValueRef = useRef(value)
+  const editorHistoryRef = useRef<EditorHistoryState>({
+    current: { selection: createCaretEndSelection(value), value },
+    redoStack: [],
+    undoStack: [],
+  })
+  const applyEditorHistoryRef = useRef<(input: HTMLTextAreaElement, direction: 'redo' | 'undo') => boolean>(() => false)
   const [isCompleting, setIsCompleting] = useState(false)
   const [draftValue, setDraftValue] = useState(value)
   const MAX_EDITOR_HEIGHT = 220
@@ -203,15 +253,6 @@ export function CellEditorOverlay({
     })
   }
 
-  const preserveCaretSelection = (input: HTMLTextAreaElement) => {
-    const selection = {
-      direction: input.selectionDirection ?? 'none',
-      end: input.selectionEnd ?? input.value.length,
-      start: input.selectionStart ?? input.value.length,
-    }
-    scheduleSelectionRestore(input, selection)
-  }
-
   const beginCompletion = useCallback((nextState: 'commit' | 'cancel') => {
     completionRef.current = nextState
     setIsCompleting(true)
@@ -226,11 +267,97 @@ export function CellEditorOverlay({
     return pendingKeyboardSelectionRef.current ? draftValueRef.current : input.value
   }, [])
 
+  const readEditorHistoryEntry = (input: HTMLTextAreaElement): EditorHistoryEntry => {
+    const pendingSelection = pendingKeyboardSelectionRef.current
+    const currentValue = pendingSelection ? draftValueRef.current : input.value
+    const selection = pendingSelection ?? {
+      direction: input.selectionDirection ?? 'none',
+      end: input.selectionEnd ?? currentValue.length,
+      start: input.selectionStart ?? currentValue.length,
+    }
+    return {
+      selection: {
+        direction: selection.direction,
+        end: clampTextOffset(selection.end, currentValue.length),
+        start: clampTextOffset(selection.start, currentValue.length),
+      },
+      value: currentValue,
+    }
+  }
+
+  const rememberEditorHistoryCurrent = (entry: EditorHistoryEntry) => {
+    const history = editorHistoryRef.current
+    editorHistoryRef.current = {
+      ...history,
+      current: entry,
+    }
+  }
+
+  const recordEditorHistoryMutation = (previous: EditorHistoryEntry, next: EditorHistoryEntry) => {
+    const history = editorHistoryRef.current
+    if (sameEditorHistoryEntry(previous, next)) {
+      editorHistoryRef.current = {
+        ...history,
+        current: next,
+      }
+      return
+    }
+    editorHistoryRef.current = {
+      current: next,
+      redoStack: [],
+      undoStack: trimEditorHistoryStack([...history.undoStack, previous]),
+    }
+  }
+
+  const resetEditorHistory = useCallback((nextValue: string, selection: EditorTextSelection = createCaretEndSelection(nextValue)) => {
+    editorHistoryRef.current = {
+      current: { selection, value: nextValue },
+      redoStack: [],
+      undoStack: [],
+    }
+  }, [])
+
+  const applyEditorHistory = (input: HTMLTextAreaElement, direction: 'redo' | 'undo'): boolean => {
+    const history = editorHistoryRef.current
+    const sourceStack = direction === 'undo' ? history.undoStack : history.redoStack
+    const nextEntry = sourceStack[sourceStack.length - 1]
+    if (!nextEntry) {
+      rememberEditorHistoryCurrent(readEditorHistoryEntry(input))
+      return false
+    }
+    const currentEntry = readEditorHistoryEntry(input)
+    editorHistoryRef.current =
+      direction === 'undo'
+        ? {
+            current: nextEntry,
+            redoStack: trimEditorHistoryStack([...history.redoStack, currentEntry]),
+            undoStack: history.undoStack.slice(0, -1),
+          }
+        : {
+            current: nextEntry,
+            redoStack: history.redoStack.slice(0, -1),
+            undoStack: trimEditorHistoryStack([...history.undoStack, currentEntry]),
+          }
+    pendingKeyboardSelectionRef.current = nextEntry.selection
+    updateDraftValue(nextEntry.value, nextEntry.selection)
+    scheduleSelectionRestore(input, nextEntry.selection)
+    return true
+  }
+  applyEditorHistoryRef.current = applyEditorHistory
+
   const insertTextAtSelection = (input: HTMLTextAreaElement, text: string) => {
     const pendingSelection = pendingKeyboardSelectionRef.current
     const currentValue = pendingSelection ? draftValueRef.current : input.value
     const selectionStart = clampTextOffset(pendingSelection?.start ?? input.selectionStart ?? currentValue.length, currentValue.length)
     const selectionEnd = clampTextOffset(pendingSelection?.end ?? input.selectionEnd ?? currentValue.length, currentValue.length)
+    const previousEntry = {
+      selection: {
+        direction: pendingSelection?.direction ?? input.selectionDirection ?? 'none',
+        end: selectionEnd,
+        start: selectionStart,
+      },
+      value: currentValue,
+    }
     const nextValue = `${currentValue.slice(0, selectionStart)}${text}${currentValue.slice(selectionEnd)}`
     const caretPosition = selectionStart + text.length
     const nextSelection = {
@@ -238,6 +365,7 @@ export function CellEditorOverlay({
       end: caretPosition,
       start: caretPosition,
     } as const
+    recordEditorHistoryMutation(previousEntry, { selection: nextSelection, value: nextValue })
     pendingKeyboardSelectionRef.current = nextSelection
     updateDraftValue(nextValue, nextSelection)
     scheduleSelectionRestore(input, nextSelection)
@@ -250,6 +378,14 @@ export function CellEditorOverlay({
     const rawSelectionEnd = pendingSelection?.end ?? input.selectionEnd ?? currentValue.length
     const selectionStart = clampTextOffset(Math.min(rawSelectionStart, rawSelectionEnd), currentValue.length)
     const selectionEnd = clampTextOffset(Math.max(rawSelectionStart, rawSelectionEnd), currentValue.length)
+    const previousEntry = {
+      selection: {
+        direction: pendingSelection?.direction ?? input.selectionDirection ?? 'none',
+        end: selectionEnd,
+        start: selectionStart,
+      },
+      value: currentValue,
+    }
     const deleteStart =
       selectionStart === selectionEnd && direction === 'backward' ? previousTextBoundary(currentValue, selectionStart) : selectionStart
     const deleteEnd =
@@ -263,11 +399,13 @@ export function CellEditorOverlay({
 
     pendingKeyboardSelectionRef.current = nextSelection
     if (deleteStart === deleteEnd) {
+      rememberEditorHistoryCurrent({ selection: nextSelection, value: currentValue })
       scheduleSelectionRestore(input, nextSelection)
       return
     }
 
     const nextValue = `${currentValue.slice(0, deleteStart)}${currentValue.slice(deleteEnd)}`
+    recordEditorHistoryMutation(previousEntry, { selection: nextSelection, value: nextValue })
     updateDraftValue(nextValue, nextSelection)
     scheduleSelectionRestore(input, nextSelection)
   }
@@ -317,6 +455,46 @@ export function CellEditorOverlay({
 
     pendingKeyboardSelectionRef.current = nextSelection
     input.setSelectionRange(nextSelection.start, nextSelection.end, nextSelection.direction)
+    rememberEditorHistoryCurrent({ selection: nextSelection, value: currentValue })
+    scheduleSelectionRestore(input, nextSelection)
+  }
+
+  const moveCaretToBoundary = (input: HTMLTextAreaElement, boundary: 'start' | 'end', extendSelection: boolean) => {
+    const pendingSelection = pendingKeyboardSelectionRef.current
+    const currentValue = pendingSelection ? draftValueRef.current : input.value
+    const rawSelectionStart = pendingSelection?.start ?? input.selectionStart ?? currentValue.length
+    const rawSelectionEnd = pendingSelection?.end ?? input.selectionEnd ?? currentValue.length
+    const selectionStart = clampTextOffset(Math.min(rawSelectionStart, rawSelectionEnd), currentValue.length)
+    const selectionEnd = clampTextOffset(Math.max(rawSelectionStart, rawSelectionEnd), currentValue.length)
+    const selectionDirection = pendingSelection?.direction ?? input.selectionDirection ?? 'none'
+    const boundaryPosition = boundary === 'start' ? 0 : currentValue.length
+
+    let nextSelection: EditorTextSelection
+    if (extendSelection) {
+      const anchor =
+        selectionDirection === 'backward'
+          ? selectionEnd
+          : selectionDirection === 'forward'
+            ? selectionStart
+            : boundary === 'start'
+              ? selectionEnd
+              : selectionStart
+      nextSelection = {
+        direction: boundaryPosition < anchor ? 'backward' : boundaryPosition > anchor ? 'forward' : 'none',
+        end: Math.max(anchor, boundaryPosition),
+        start: Math.min(anchor, boundaryPosition),
+      }
+    } else {
+      nextSelection = {
+        direction: 'none',
+        end: boundaryPosition,
+        start: boundaryPosition,
+      }
+    }
+
+    pendingKeyboardSelectionRef.current = nextSelection
+    input.setSelectionRange(nextSelection.start, nextSelection.end, nextSelection.direction)
+    rememberEditorHistoryCurrent({ selection: nextSelection, value: currentValue })
     scheduleSelectionRestore(input, nextSelection)
   }
 
@@ -330,8 +508,32 @@ export function CellEditorOverlay({
 
     pendingKeyboardSelectionRef.current = nextSelection
     input.setSelectionRange(nextSelection.start, nextSelection.end, nextSelection.direction)
+    rememberEditorHistoryCurrent({ selection: nextSelection, value: currentValue })
     scheduleSelectionRestore(input, nextSelection)
   }
+
+  useLayoutEffect(() => {
+    const input = inputRef.current
+    if (!input) {
+      return
+    }
+    const handleNativeHistoryShortcut = (event: KeyboardEvent) => {
+      if (event.defaultPrevented || event.isComposing) {
+        return
+      }
+      const historyDirection = resolveEditorHistoryShortcut(event)
+      if (!historyDirection) {
+        return
+      }
+      event.preventDefault()
+      event.stopPropagation()
+      applyEditorHistoryRef.current(input, historyDirection)
+    }
+    input.addEventListener('keydown', handleNativeHistoryShortcut, { capture: true })
+    return () => {
+      input.removeEventListener('keydown', handleNativeHistoryShortcut, { capture: true })
+    }
+  }, [])
 
   const scheduleBlurCommit = useCallback(() => {
     if (completionRef.current !== 'idle' || pendingBlurCommitRef.current !== null) {
@@ -410,8 +612,18 @@ export function CellEditorOverlay({
       sheetName: targetSheetName,
     }
     const localValue = input?.value ?? draftValueRef.current
-    const editorHasFocusedDraft = input && document.activeElement === input && localValue !== value
-    if (!targetChanged && editorHasFocusedDraft) {
+    const editorFocused = input && document.activeElement === input
+    if (!targetChanged && editorFocused) {
+      if (localValue === value) {
+        const mirroredSelection = pendingKeyboardSelectionRef.current ?? {
+          direction: input.selectionDirection ?? 'none',
+          end: input.selectionEnd ?? value.length,
+          start: input.selectionStart ?? value.length,
+        }
+        draftValueRef.current = value
+        setDraftValue(value)
+        rememberEditorHistoryCurrent({ selection: mirroredSelection, value })
+      }
       return
     }
     if (input && document.activeElement === input) {
@@ -421,8 +633,10 @@ export function CellEditorOverlay({
         start: input.selectionStart ?? input.value.length,
       }
     }
+    draftValueRef.current = value
     setDraftValue(value)
-  }, [targetAddress, targetSheetName, value])
+    resetEditorHistory(value, pendingSelectionRestoreRef.current ?? createCaretEndSelection(value))
+  }, [resetEditorHistory, targetAddress, targetSheetName, value])
 
   useEffect(() => {
     const textarea = inputRef.current
@@ -500,28 +714,52 @@ export function CellEditorOverlay({
           textDecorationLine: underline ? 'underline' : undefined,
         }}
         value={draftValue}
+        onBeforeInput={(event) => {
+          const inputType = event.nativeEvent.inputType
+          if (inputType !== 'historyUndo' && inputType !== 'historyRedo') {
+            return
+          }
+          event.preventDefault()
+          applyEditorHistory(event.currentTarget, inputType === 'historyUndo' ? 'undo' : 'redo')
+        }}
         onBlur={commitAfterBlur}
-        onChange={(event) =>
-          updateDraftValue(event.target.value, {
+        onChange={(event) => {
+          const nextSelection = {
             direction: event.currentTarget.selectionDirection ?? 'none',
             end: event.currentTarget.selectionEnd ?? event.currentTarget.value.length,
             start: event.currentTarget.selectionStart ?? event.currentTarget.value.length,
+          } as const
+          recordEditorHistoryMutation(editorHistoryRef.current.current, {
+            selection: nextSelection,
+            value: event.target.value,
           })
-        }
+          updateDraftValue(event.target.value, nextSelection)
+        }}
         onKeyDown={(event) => {
+          if (event.defaultPrevented) {
+            return
+          }
+          if (isComposingEditorKey(event.nativeEvent)) {
+            return
+          }
+          const historyDirection = resolveEditorHistoryShortcut(event.nativeEvent)
+          if (historyDirection) {
+            event.preventDefault()
+            applyEditorHistory(event.currentTarget, historyDirection)
+            return
+          }
           const normalizedNumpadKey = normalizeNumpadKey(event.key, event.code)
-          if (normalizedNumpadKey !== null && event.key !== normalizedNumpadKey) {
+          if (normalizedNumpadKey !== null && event.key !== normalizedNumpadKey && !event.ctrlKey && !event.metaKey && !event.altKey) {
             event.preventDefault()
             insertTextAtSelection(event.currentTarget, normalizedNumpadKey)
             return
           }
-          if (!event.nativeEvent.isComposing && event.key.length === 1 && !event.ctrlKey && !event.metaKey && !event.altKey) {
+          if (event.key.length === 1 && !event.ctrlKey && !event.metaKey && !event.altKey) {
             event.preventDefault()
             insertTextAtSelection(event.currentTarget, event.key)
             return
           }
           if (
-            !event.nativeEvent.isComposing &&
             (event.key === 'Backspace' || event.key === 'Delete') &&
             !event.shiftKey &&
             !event.ctrlKey &&
@@ -532,13 +770,7 @@ export function CellEditorOverlay({
             deleteTextAtSelection(event.currentTarget, event.key === 'Backspace' ? 'backward' : 'forward')
             return
           }
-          if (
-            !event.nativeEvent.isComposing &&
-            (event.key === 'ArrowLeft' || event.key === 'ArrowRight') &&
-            !event.ctrlKey &&
-            !event.metaKey &&
-            !event.altKey
-          ) {
+          if ((event.key === 'ArrowLeft' || event.key === 'ArrowRight') && !event.ctrlKey && !event.metaKey && !event.altKey) {
             event.preventDefault()
             moveCaretHorizontally(event.currentTarget, event.key === 'ArrowLeft' ? 'left' : 'right', event.shiftKey)
             return
@@ -546,16 +778,15 @@ export function CellEditorOverlay({
           if ((event.key === 'Home' || event.key === 'End') && !event.ctrlKey && !event.metaKey && !event.altKey) {
             event.preventDefault()
             moveCaretToBoundary(event.currentTarget, event.key === 'Home' ? 'start' : 'end', event.shiftKey)
-            preserveCaretSelection(event.currentTarget)
             return
           }
-          if (!event.nativeEvent.isComposing && event.key.toLowerCase() === 'a' && (event.ctrlKey || event.metaKey) && !event.altKey) {
+          if (event.key.toLowerCase() === 'a' && (event.ctrlKey || event.metaKey) && !event.altKey) {
             event.preventDefault()
             selectAllText(event.currentTarget)
             return
           }
           if (event.key === 'Enter') {
-            if (event.altKey) {
+            if (event.altKey || event.ctrlKey || event.metaKey) {
               event.preventDefault()
               insertTextAtSelection(event.currentTarget, '\n')
               return

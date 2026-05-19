@@ -12,12 +12,14 @@ import {
   resolveWorkbookPanePresentedRevisionV3,
   resolveWorkbookPaneTileSceneCameraSeqV3,
   resolveWorkbookPaneTileSceneRevisionV3,
+  resolveWorkbookPaneTypeGpuCanvasOpacityV3,
   resolveTypeGpuV3DrawScrollSnapshot,
   shouldMountWorkbookCanvasProofLayerV3,
   shouldDeferTypeGpuV3PreloadSync,
 } from '../renderer-v3/WorkbookPaneRendererV3.js'
 import { WorkbookPaneCanvasFallbackV3 } from '../renderer-v3/WorkbookPaneCanvasFallbackV3.js'
 import { GridDrawSchedulerV3 } from '../renderer-v3/draw-scheduler.js'
+import type { DynamicGridOverlayBatchV3 } from '../renderer-v3/dynamic-overlay-batch.js'
 import { GridRenderLoop } from '../renderer-v3/gridRenderLoop.js'
 import type { GridRenderTile } from '../renderer-v3/render-tile-source.js'
 import type { WorkbookRenderTilePaneState } from '../renderer-v3/render-tile-pane-state.js'
@@ -93,6 +95,23 @@ function createTextTilePane(rowStart = 0): WorkbookRenderTilePaneState {
         },
       ],
     },
+  }
+}
+
+function createOverlayBatch(overrides: Partial<DynamicGridOverlayBatchV3> = {}): DynamicGridOverlayBatchV3 {
+  return {
+    borderRectCount: 1,
+    cameraSeq: 9,
+    fillRectCount: 1,
+    generatedAt: 1_000,
+    rectCount: 2,
+    rectInstances: new Float32Array(8),
+    rects: new Float32Array(8),
+    rectSignature: 'selection-a1',
+    seq: 9,
+    sheetName: 'Sheet1',
+    surfaceSize: { height: 360, width: 640 },
+    ...overrides,
   }
 }
 
@@ -235,6 +254,7 @@ describe('WorkbookPaneRendererV3', () => {
 
     const gridFloorCanvas = host.querySelector('[data-testid="grid-pane-renderer-floor"]')
     expect(gridFloorCanvas).toBeInstanceOf(HTMLCanvasElement)
+    expect(gridFloorCanvas?.className).toContain('z-[12]')
     expect(gridFloorCanvas?.getAttribute('data-renderer-mode')).toBe('canvas2d-v3-grid-floor')
     expect(gridFloorCanvas?.getAttribute('data-v3-draw-text')).toBe('false')
     expect(host.querySelector('[data-testid="grid-pane-renderer-fallback"]')).toBeNull()
@@ -252,7 +272,7 @@ describe('WorkbookPaneRendererV3', () => {
     expect(resolveWorkbookPanePresentedRevisionV3('idle', 14)).toBeNull()
   })
 
-  test('keeps the Canvas2D proof layer only until TypeGPU reports a visible frame', () => {
+  test('keeps the Canvas2D proof layer until the current TypeGPU frame presents', () => {
     expect(
       shouldMountWorkbookCanvasProofLayerV3({
         backendStatus: 'ready',
@@ -277,7 +297,16 @@ describe('WorkbookPaneRendererV3', () => {
         headerPaneCount: 1,
         tilePaneCount: 1,
       }),
-    ).toBe(false)
+    ).toBe(true)
+    expect(
+      shouldMountWorkbookCanvasProofLayerV3({
+        backendStatus: 'ready',
+        frameProofStatus: 'pending',
+        hasPresentedVisibleFrame: true,
+        headerPaneCount: 1,
+        tilePaneCount: 1,
+      }),
+    ).toBe(true)
     expect(
       shouldMountWorkbookCanvasProofLayerV3({
         backendStatus: 'ready',
@@ -289,10 +318,77 @@ describe('WorkbookPaneRendererV3', () => {
     expect(
       shouldMountWorkbookCanvasProofLayerV3({
         backendStatus: 'initializing',
+        hasPresentedFrame: true,
+        headerPaneCount: 1,
+        tilePaneCount: 1,
+      }),
+    ).toBe(true)
+    expect(
+      shouldMountWorkbookCanvasProofLayerV3({
+        backendStatus: 'unavailable',
+        hasPresentedFrame: true,
+        headerPaneCount: 1,
+        tilePaneCount: 1,
+      }),
+    ).toBe(true)
+    expect(
+      shouldMountWorkbookCanvasProofLayerV3({
+        backendStatus: 'initializing',
         headerPaneCount: 0,
         tilePaneCount: 0,
       }),
     ).toBe(true)
+  })
+
+  test('keeps the last presented TypeGPU frame visible while a replacement frame is pending', () => {
+    expect(
+      resolveWorkbookPaneTypeGpuCanvasOpacityV3({
+        frameProofStatus: 'pending',
+        hasPresentedVisibleFrame: true,
+        showCanvasFallback: true,
+      }),
+    ).toBe(1)
+    expect(
+      resolveWorkbookPaneTypeGpuCanvasOpacityV3({
+        frameProofStatus: 'pending',
+        hasPresentedVisibleFrame: false,
+        showCanvasFallback: true,
+      }),
+    ).toBe(0)
+    expect(
+      resolveWorkbookPaneTypeGpuCanvasOpacityV3({
+        frameProofStatus: 'presented',
+        hasPresentedVisibleFrame: true,
+        showCanvasFallback: false,
+      }),
+    ).toBe(1)
+  })
+
+  test('includes surface size and device scale in frame proof identity', () => {
+    const basePane = createTilePane()
+    const baseSignature = resolveWorkbookPaneFrameProofSignatureV3({
+      headerPanes: [],
+      overlay: null,
+      surface: { dpr: 2, height: 360, pixelHeight: 720, pixelWidth: 1280, width: 640 },
+      tilePanes: [basePane],
+    })
+
+    expect(baseSignature).not.toBe(
+      resolveWorkbookPaneFrameProofSignatureV3({
+        headerPanes: [],
+        overlay: null,
+        surface: { dpr: 2, height: 360, pixelHeight: 720, pixelWidth: 1440, width: 720 },
+        tilePanes: [basePane],
+      }),
+    )
+    expect(baseSignature).not.toBe(
+      resolveWorkbookPaneFrameProofSignatureV3({
+        headerPanes: [],
+        overlay: null,
+        surface: { dpr: 1, height: 360, pixelHeight: 360, pixelWidth: 640, width: 640 },
+        tilePanes: [basePane],
+      }),
+    )
   })
 
   test('resolves visible tile-scene revision counters from rendered panes', () => {
@@ -385,6 +481,39 @@ describe('WorkbookPaneRendererV3', () => {
           tileSceneCameraSeq: 1,
           tileSceneRevision: 1,
         },
+        tilePanes: [basePane],
+      }),
+    )
+  })
+
+  test('includes dynamic overlay payload signatures in frame proof identity', () => {
+    const basePane = createTilePane()
+    const baseOverlay = createOverlayBatch()
+    const movedSelectionSameCamera = createOverlayBatch({
+      rectInstances: new Float32Array([24, 48, 104, 22, 0, 0, 0, 0]),
+      rectSignature: 'selection-b2',
+    })
+    const resizedSurfaceSameRects = createOverlayBatch({
+      surfaceSize: { height: 720, width: 1280 },
+    })
+
+    const baseSignature = resolveWorkbookPaneFrameProofSignatureV3({
+      headerPanes: [],
+      overlay: baseOverlay,
+      tilePanes: [basePane],
+    })
+
+    expect(baseSignature).not.toBe(
+      resolveWorkbookPaneFrameProofSignatureV3({
+        headerPanes: [],
+        overlay: movedSelectionSameCamera,
+        tilePanes: [basePane],
+      }),
+    )
+    expect(baseSignature).not.toBe(
+      resolveWorkbookPaneFrameProofSignatureV3({
+        headerPanes: [],
+        overlay: resizedSurfaceSameRects,
         tilePanes: [basePane],
       }),
     )

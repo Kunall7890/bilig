@@ -28,6 +28,16 @@ function writeScalarMathNumber(
   return writeResult(base, STACK_KIND_SCALAR, <u8>ValueTag.Number, value, rangeIndexStack, valueStack, tagStack, kindStack)
 }
 
+function firstScalarMathError(base: i32, argc: i32, valueStack: Float64Array, tagStack: Uint8Array): ErrorCode {
+  for (let index = 0; index < argc; index += 1) {
+    const slot = base + index
+    if (tagStack[slot] == ValueTag.Error) {
+      return <ErrorCode>valueStack[slot]
+    }
+  }
+  return ErrorCode.None
+}
+
 export function tryApplyScalarMathBuiltin(
   builtinId: i32,
   argc: i32,
@@ -367,29 +377,56 @@ export function tryApplyScalarMathBuiltin(
     )
   }
   if (builtinId == BuiltinId.Ln && argc == 1) {
-    return writeScalarMathNumber(
-      base,
-      Math.log(toNumberOrZero(tagStack[base], valueStack[base])),
-      rangeIndexStack,
-      valueStack,
-      tagStack,
-      kindStack,
-    )
+    const error = firstScalarMathError(base, argc, valueStack, tagStack)
+    if (error != ErrorCode.None) {
+      return writeScalarMathError(base, error, rangeIndexStack, valueStack, tagStack, kindStack)
+    }
+    const numeric = toNumberExact(tagStack[base], valueStack[base])
+    if (isNaN(numeric)) {
+      return writeScalarMathError(base, ErrorCode.Value, rangeIndexStack, valueStack, tagStack, kindStack)
+    }
+    if (numeric <= 0.0) {
+      return writeScalarMathError(base, ErrorCode.Num, rangeIndexStack, valueStack, tagStack, kindStack)
+    }
+    const result = Math.log(numeric)
+    return isFinite(result)
+      ? writeScalarMathNumber(base, result, rangeIndexStack, valueStack, tagStack, kindStack)
+      : writeScalarMathError(base, ErrorCode.Num, rangeIndexStack, valueStack, tagStack, kindStack)
   }
   if (builtinId == BuiltinId.Log10 && argc == 1) {
-    return writeScalarMathNumber(
-      base,
-      Math.log10(toNumberOrZero(tagStack[base], valueStack[base])),
-      rangeIndexStack,
-      valueStack,
-      tagStack,
-      kindStack,
-    )
+    const error = firstScalarMathError(base, argc, valueStack, tagStack)
+    if (error != ErrorCode.None) {
+      return writeScalarMathError(base, error, rangeIndexStack, valueStack, tagStack, kindStack)
+    }
+    const numeric = toNumberExact(tagStack[base], valueStack[base])
+    if (isNaN(numeric)) {
+      return writeScalarMathError(base, ErrorCode.Value, rangeIndexStack, valueStack, tagStack, kindStack)
+    }
+    if (numeric <= 0.0) {
+      return writeScalarMathError(base, ErrorCode.Num, rangeIndexStack, valueStack, tagStack, kindStack)
+    }
+    const result = Math.log10(numeric)
+    return isFinite(result)
+      ? writeScalarMathNumber(base, result, rangeIndexStack, valueStack, tagStack, kindStack)
+      : writeScalarMathError(base, ErrorCode.Num, rangeIndexStack, valueStack, tagStack, kindStack)
   }
   if (builtinId == BuiltinId.Log && (argc == 1 || argc == 2)) {
-    const num = toNumberOrZero(tagStack[base], valueStack[base])
-    const baseVal = argc == 2 ? toNumberOrZero(tagStack[base + 1], valueStack[base + 1]) : 10.0
-    return writeScalarMathNumber(base, Math.log(num) / Math.log(baseVal), rangeIndexStack, valueStack, tagStack, kindStack)
+    const error = firstScalarMathError(base, argc, valueStack, tagStack)
+    if (error != ErrorCode.None) {
+      return writeScalarMathError(base, error, rangeIndexStack, valueStack, tagStack, kindStack)
+    }
+    const num = toNumberExact(tagStack[base], valueStack[base])
+    const baseVal = argc == 2 ? toNumberExact(tagStack[base + 1], valueStack[base + 1]) : 10.0
+    if (isNaN(num) || isNaN(baseVal)) {
+      return writeScalarMathError(base, ErrorCode.Value, rangeIndexStack, valueStack, tagStack, kindStack)
+    }
+    if (num <= 0.0 || baseVal <= 0.0 || baseVal == 1.0) {
+      return writeScalarMathError(base, ErrorCode.Num, rangeIndexStack, valueStack, tagStack, kindStack)
+    }
+    const result = Math.log(num) / Math.log(baseVal)
+    return isFinite(result)
+      ? writeScalarMathNumber(base, result, rangeIndexStack, valueStack, tagStack, kindStack)
+      : writeScalarMathError(base, ErrorCode.Num, rangeIndexStack, valueStack, tagStack, kindStack)
   }
   if (builtinId == BuiltinId.Power && argc == 2) {
     return writeScalarMathNumber(

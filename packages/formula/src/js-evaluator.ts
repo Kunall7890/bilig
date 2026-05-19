@@ -211,8 +211,12 @@ function coerceDirectNumericTextAggregateArgument(callee: string, value: CellVal
   return numeric === undefined ? error(ErrorCode.Value) : numberValue(numeric)
 }
 
-function scalarBuiltinRangeValues(callee: string, values: readonly CellValue[]): readonly CellValue[] {
+function scalarBuiltinRangeValues(callee: string, rawArg: StackValue): readonly CellValue[] {
+  const values = rawArg.kind === 'range' || rawArg.kind === 'array' ? rawArg.values : []
   if (callee !== 'MIN' && callee !== 'MAX') {
+    if (callee === 'COUNTA' && rawArg.kind === 'array') {
+      return values.map((value) => (value.tag === ValueTag.Empty ? stringValue('') : value))
+    }
     return values
   }
   return values.filter((value) => value.tag !== ValueTag.Empty && value.tag !== ValueTag.String)
@@ -594,7 +598,7 @@ function executePlan(
             args.push(error(ErrorCode.Value))
             continue
           }
-          args.push(...scalarBuiltinRangeValues(instruction.callee, rawArg.values))
+          args.push(...scalarBuiltinRangeValues(instruction.callee, rawArg))
         }
         const result = builtin(...args)
         stack.push(isArrayValue(result) ? result : { kind: 'scalar', value: result })

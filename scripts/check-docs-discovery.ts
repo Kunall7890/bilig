@@ -74,6 +74,8 @@ const {
   evaluateExcelFormulasInNodeTypescript,
 } = docsDiscoveryContext
 const headlessPackageSpec = `@bilig/headless@${headlessPackageVersion}`
+const mcpbReleaseAssetUrl = `https://github.com/proompteng/bilig/releases/download/libraries-v${headlessPackageVersion}/bilig-workpaper.mcpb`
+const mcpbReleaseChecksumUrl = `${mcpbReleaseAssetUrl}.sha256`
 
 const headlessSpreadsheetEngineNodeServicesAgents = await readFile(
   join(docsRoot, 'headless-spreadsheet-engine-node-services-agents.md'),
@@ -273,6 +275,7 @@ requireIncludes(headlessPackageJson, '"AGENTS.md"', 'packages/headless/package.j
 requireIncludes(headlessPackageJson, '"SKILL.md"', 'packages/headless/package.json')
 requireIncludes(headlessAgentNotes, '## Handoff prompt', 'packages/headless/AGENTS.md')
 requireIncludes(headlessAgentNotes, 'Do not claim success from a write call alone.', 'packages/headless/AGENTS.md')
+requireIncludes(headlessAgentNotes, `npm exec --package ${headlessPackageSpec} -- bilig-mcp-challenge`, 'packages/headless/AGENTS.md')
 requireIncludes(
   headlessAgentNotes,
   `npm exec --package ${headlessPackageSpec} -- bilig-workpaper-mcp --workpaper ./pricing.workpaper.json --init-demo-workpaper --writable`,
@@ -391,6 +394,20 @@ if (
 ) {
   throw new Error('docs/.well-known/agent.json must advertise the remote MCP demo capability')
 }
+if (
+  !agentJsonCapabilities.some(
+    (capability) =>
+      typeof capability === 'object' &&
+      capability !== null &&
+      Reflect.get(capability, 'name') === 'claude-desktop-mcpb' &&
+      Reflect.get(capability, 'type') === 'mcpb-desktop-extension' &&
+      Reflect.get(capability, 'package_version') === headlessPackageVersion &&
+      Reflect.get(capability, 'download_url') === mcpbReleaseAssetUrl &&
+      Reflect.get(capability, 'checksum_url') === mcpbReleaseChecksumUrl,
+  )
+) {
+  throw new Error('docs/.well-known/agent.json must advertise the Claude Desktop MCPB release asset')
+}
 requireIncludes(
   agentSkillsIndex,
   'https://proompteng.github.io/bilig/.well-known/agent-skills/bilig-workpaper/SKILL.txt',
@@ -403,6 +420,7 @@ requireIncludes(
 )
 requireIncludes(llmsFull, '## Generated Skill Manifest', 'docs/llms-full.txt')
 requireIncludes(llmsFull, '## Headless WorkPaper Agent Handbook', 'docs/llms-full.txt')
+requireIncludes(llmsFull, `npm exec --package ${headlessPackageSpec} -- bilig-mcp-challenge`, 'docs/llms-full.txt')
 requireIncludes(llmsFull, `npm exec --package ${headlessPackageSpec} -- bilig-workpaper-mcp`, 'docs/llms-full.txt')
 requireIncludes(headlessReadme, '## Stay Connected', 'packages/headless/README.md')
 requireIncludes(headlessReadme, '## More Guides', 'packages/headless/README.md')

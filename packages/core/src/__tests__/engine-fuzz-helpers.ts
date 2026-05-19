@@ -6,6 +6,7 @@ import { SpreadsheetEngine } from '../engine.js'
 import { EngineMutationError } from '../engine/errors.js'
 
 export const engineFuzzSheetName = 'Sheet1'
+const protectionBlockedMessagePrefix = 'Workbook protection blocks this change: '
 
 type ComparableRangeRef = {
   sheetName: string
@@ -58,6 +59,13 @@ export type EngineReplayCommand = CoreAction | { kind: 'undo' } | { kind: 'redo'
 
 function assertNever(value: never): never {
   throw new Error(`Unexpected replay command: ${String(value)}`)
+}
+
+export function isExpectedEngineMutationRejection(error: unknown): boolean {
+  if (error instanceof EngineMutationError) {
+    return true
+  }
+  return error instanceof Error && error.message.startsWith(protectionBlockedMessagePrefix)
 }
 
 function toRangeRef(targetSheetName: string, startRow: number, startCol: number, endRow: number, endCol: number): CellRangeRef {
@@ -847,13 +855,6 @@ export function applyCoreAction(engine: SpreadsheetEngine, action: CoreAction): 
   }
 }
 
-export function isExpectedRejectedMutationError(error: unknown): boolean {
-  if (error instanceof EngineMutationError) {
-    return true
-  }
-  return error instanceof Error && error.message.startsWith('Workbook protection blocks this change:')
-}
-
 export function applyActionAndCaptureResult(
   engine: SpreadsheetEngine,
   action: CoreAction,
@@ -868,7 +869,7 @@ export function applyActionAndCaptureResult(
       after,
     }
   } catch (error) {
-    if (!isExpectedRejectedMutationError(error)) {
+    if (!isExpectedEngineMutationRejection(error)) {
       throw error
     }
     const after = engine.exportSnapshot()

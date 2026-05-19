@@ -6,6 +6,7 @@ export interface RuntimeConfig {
   persistState: boolean
   currentUserId: string
   workbookAgentEnabled: boolean
+  serverUrl?: string
 }
 
 export function createLocalOnlyRuntimeConfig(currentUserId = 'local:user'): BiligRuntimeConfig {
@@ -53,11 +54,21 @@ function resolvePersistState(configuredPersistState: boolean, searchParams: URLS
   throw new Error(`persist query parameter must be "1", "true", "0", or "false" when set, got ${explicitPersistState}`)
 }
 
+function normalizeRuntimeServerUrl(value: string | null): string | undefined {
+  const trimmed = value?.trim()
+  if (!trimmed) {
+    return undefined
+  }
+  const base = typeof window === 'undefined' ? 'http://localhost' : window.location.origin
+  return new URL(trimmed, base).toString().replace(/\/$/u, '')
+}
+
 export function resolveRuntimeConfig(config: BiligRuntimeConfig): RuntimeConfig {
   const searchParams = typeof window === 'undefined' ? new URLSearchParams() : new URLSearchParams(window.location.search)
   const explicitDocumentId = searchParams.get('document')
   const explicitServerUrl = searchParams.get('server')?.trim()
   const persistState = resolvePersistState(config.persistState, searchParams)
+  const serverUrl = normalizeRuntimeServerUrl(searchParams.get('server'))
 
   if (explicitDocumentId) {
     return {
@@ -66,6 +77,7 @@ export function resolveRuntimeConfig(config: BiligRuntimeConfig): RuntimeConfig 
       persistState,
       currentUserId: config.currentUserId,
       workbookAgentEnabled: config.workbookAgentEnabled === true,
+      ...(serverUrl ? { serverUrl } : {}),
     }
   }
 
@@ -74,7 +86,20 @@ export function resolveRuntimeConfig(config: BiligRuntimeConfig): RuntimeConfig 
     persistState,
     currentUserId: config.currentUserId,
     workbookAgentEnabled: config.workbookAgentEnabled === true,
+    ...(serverUrl ? { serverUrl } : {}),
   }
+}
+
+export function createRuntimeFetch(serverUrl: string | undefined, fetchImpl: typeof fetch = globalThis.fetch): typeof fetch {
+  if (!serverUrl) {
+    return fetchImpl
+  }
+  return ((input: RequestInfo | URL, init?: RequestInit) => {
+    if (typeof input === 'string' && input.startsWith('/')) {
+      return fetchImpl(new URL(input, `${serverUrl}/`).toString(), init)
+    }
+    return fetchImpl(input, init)
+  }) as typeof fetch
 }
 
 export function resolveRemoteSyncEnabled(env: { readonly DEV?: boolean; readonly VITE_BILIG_REMOTE_SYNC?: string | undefined }): boolean {

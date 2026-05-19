@@ -14,7 +14,7 @@ import {
   type WorkbookSnapshot,
   type WorkbookTableSnapshot,
 } from '@bilig/protocol'
-import { SpreadsheetEngine } from '@bilig/core'
+import { readRuntimeImage, SpreadsheetEngine } from '@bilig/core'
 import {
   CSV_CONTENT_TYPE,
   EXCEL_WORKBOOK_IMPORT_CONTENT_TYPES,
@@ -552,7 +552,12 @@ describe('excel import', () => {
 
     const imported = importXlsx(XLSX.write(workbook, { bookType: 'xlsx', type: 'buffer' }), 'multiline.xlsx')
 
-    expect(imported.snapshot.sheets[0]?.cells).toContainEqual({ address: 'A1', value: 'Line 1\nLine 2\nLine 3' })
+    expect(imported.snapshot.sheets[0]?.cells).toContainEqual({
+      address: 'A1',
+      row: 0,
+      col: 0,
+      value: 'Line 1\nLine 2\nLine 3',
+    })
   })
 
   it('preserves external workbook defined names as formulas across export round trips', () => {
@@ -673,7 +678,7 @@ describe('excel import', () => {
 
     expect(stylesXml).toContain('formatCode="00"')
     expect(stylesXml).not.toContain('numFmtId="00"')
-    expect(roundTripped.snapshot.sheets[0]?.cells).toEqual([{ address: 'A1', value: 7, format: '00' }])
+    expect(roundTripped.snapshot.sheets[0]?.cells).toEqual([{ address: 'A1', row: 0, col: 0, value: 7, format: '00' }])
   })
 
   it('preserves macro payloads without executing them across macro-enabled workbook import and export', () => {
@@ -928,7 +933,7 @@ describe('excel import', () => {
     )
   })
 
-  it('imports csv files into a single-sheet workbook preview', () => {
+  it('imports csv files into a single-sheet workbook preview', async () => {
     const imported = importCsv('Name,Value\nalpha,12\nbeta,=A2', 'metrics.csv')
 
     expect(imported.workbookName).toBe('metrics')
@@ -944,6 +949,26 @@ describe('excel import', () => {
         { address: 'B3', formula: 'A2' },
       ],
     })
+    expect(readRuntimeImage(imported.snapshot)?.sheetCells).toEqual([
+      {
+        sheetName: 'metrics',
+        coords: [
+          { row: 0, col: 0 },
+          { row: 0, col: 1 },
+          { row: 1, col: 0 },
+          { row: 1, col: 1 },
+          { row: 2, col: 0 },
+          { row: 2, col: 1 },
+        ],
+        coordinateOrder: 'dense-row-major',
+        dimensions: { width: 2, height: 3 },
+        cellCount: 6,
+      },
+    ])
+    const engine = new SpreadsheetEngine({ workbookName: imported.workbookName, replicaId: 'csv-formula-runtime-image-restore' })
+    await engine.ready()
+    engine.importSnapshot(imported.snapshot)
+    expect(engine.getCellValue('metrics', 'B3')).toEqual({ tag: ValueTag.String, value: 'alpha', stringId: expect.any(Number) })
     expect(imported.preview).toMatchObject({
       workbookName: 'metrics',
       sheetCount: 1,
@@ -963,6 +988,28 @@ describe('excel import', () => {
     })
   })
 
+  it('attaches runtime coordinates for literal-only dense csv imports', () => {
+    const imported = importCsv('Name,Value\nalpha,12\nbeta,24', 'literal-metrics.csv')
+    const runtimeImage = readRuntimeImage(imported.snapshot)
+
+    expect(runtimeImage?.sheetCells).toEqual([
+      {
+        sheetName: 'literal-metrics',
+        coords: [
+          { row: 0, col: 0 },
+          { row: 0, col: 1 },
+          { row: 1, col: 0 },
+          { row: 1, col: 1 },
+          { row: 2, col: 0 },
+          { row: 2, col: 1 },
+        ],
+        coordinateOrder: 'dense-row-major',
+        dimensions: { width: 2, height: 3 },
+        cellCount: 6,
+      },
+    ])
+  })
+
   it('parses common accounting number formats from csv imports', () => {
     const imported = importCsv(
       'Account,Amount,Margin,Variance\nRevenue,"$1,234.56",12.5%,"$1,234.56"\nCOGS,"($987.65)",-3.25%,"(987.65)"',
@@ -972,12 +1019,12 @@ describe('excel import', () => {
     expect(imported.warnings).toEqual([])
     expect(imported.snapshot.sheets[0]?.cells).toEqual(
       expect.arrayContaining([
-        { address: 'B2', value: 1234.56 },
-        { address: 'C2', value: 0.125 },
-        { address: 'D2', value: 1234.56 },
-        { address: 'B3', value: -987.65 },
-        { address: 'C3', value: -0.0325 },
-        { address: 'D3', value: -987.65 },
+        expect.objectContaining({ address: 'B2', row: 1, col: 1, value: 1234.56 }),
+        expect.objectContaining({ address: 'C2', row: 1, col: 2, value: 0.125 }),
+        expect.objectContaining({ address: 'D2', row: 1, col: 3, value: 1234.56 }),
+        expect.objectContaining({ address: 'B3', row: 2, col: 1, value: -987.65 }),
+        expect.objectContaining({ address: 'C3', row: 2, col: 2, value: -0.0325 }),
+        expect.objectContaining({ address: 'D3', row: 2, col: 3, value: -987.65 }),
       ]),
     )
   })
@@ -993,15 +1040,15 @@ describe('excel import', () => {
     ])
     expect(imported.snapshot.sheets[0]?.cells).toEqual(
       expect.arrayContaining([
-        { address: 'A1', value: 'Account' },
-        { address: 'B1', value: 'Amount' },
-        { address: 'C1', value: 'Tax' },
-        { address: 'A2', value: '4000' },
-        { address: 'B2', value: 125.5 },
-        { address: 'C2', value: 20.08 },
-        { address: 'A3', value: '5000' },
-        { address: 'B3', value: -12.25 },
-        { address: 'C3', value: 0 },
+        expect.objectContaining({ address: 'A1', row: 0, col: 0, value: 'Account' }),
+        expect.objectContaining({ address: 'B1', row: 0, col: 1, value: 'Amount' }),
+        expect.objectContaining({ address: 'C1', row: 0, col: 2, value: 'Tax' }),
+        expect.objectContaining({ address: 'A2', row: 1, col: 0, value: '4000' }),
+        expect.objectContaining({ address: 'B2', row: 1, col: 1, value: 125.5 }),
+        expect.objectContaining({ address: 'C2', row: 1, col: 2, value: 20.08 }),
+        expect.objectContaining({ address: 'A3', row: 2, col: 0, value: '5000' }),
+        expect.objectContaining({ address: 'B3', row: 2, col: 1, value: -12.25 }),
+        expect.objectContaining({ address: 'C3', row: 2, col: 2, value: 0 }),
       ]),
     )
   })
@@ -1518,9 +1565,9 @@ describe('excel import', () => {
 
     expect(imported.snapshot.sheets[0]?.cells).toEqual(
       expect.arrayContaining([
-        { address: 'A1', value: 0, format: '00' },
-        { address: 'A2', format: '00' },
-        { address: 'B1', value: 12.34, format: '"$"#,##0.00' },
+        expect.objectContaining({ address: 'A1', row: 0, col: 0, value: 0, format: '00' }),
+        expect.objectContaining({ address: 'A2', row: 1, col: 0, format: '00' }),
+        expect.objectContaining({ address: 'B1', row: 0, col: 1, value: 12.34, format: '"$"#,##0.00' }),
       ]),
     )
   })
@@ -1638,8 +1685,8 @@ describe('excel import', () => {
 
     expect(imported.snapshot.sheets[0]?.cells).toEqual(
       expect.arrayContaining([
-        { address: 'B2', value: 7, format: '00000' },
-        { address: 'C3', format: '00000' },
+        expect.objectContaining({ address: 'B2', row: 1, col: 1, value: 7, format: '00000' }),
+        expect.objectContaining({ address: 'C3', row: 2, col: 2, format: '00000' }),
       ]),
     )
   })

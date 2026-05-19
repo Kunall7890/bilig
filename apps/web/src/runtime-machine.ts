@@ -88,6 +88,21 @@ function sameWorkerRuntimeSelection(left: WorkerRuntimeSelection, right: WorkerR
   return left.sheetName === right.sheetName && left.address === right.address
 }
 
+function shouldAcceptSessionSelection(input: {
+  readonly selection: WorkerRuntimeSelection
+  readonly pendingSelection: WorkerRuntimeSelection
+  readonly runtimeState: WorkbookWorkerStateSnapshot | null
+}): boolean {
+  if (sameWorkerRuntimeSelection(input.selection, input.pendingSelection)) {
+    return true
+  }
+  const sheetNames = input.runtimeState?.sheetNames ?? []
+  if (sheetNames.length === 0) {
+    return false
+  }
+  return !sheetNames.includes(input.pendingSelection.sheetName) && sheetNames.includes(input.selection.sheetName)
+}
+
 function resolveSessionReadySelection(input: {
   readonly context: WorkerRuntimeMachineContext
   readonly event: { readonly controller: WorkerRuntimeSessionController; readonly requestedSelection: WorkerRuntimeSelection }
@@ -233,6 +248,7 @@ export function createWorkerRuntimeMachine() {
       let disposed = false
       let pendingSelection = input.initialSelection
       let pendingConnectionStateName = initialConnectionStateName(input)
+      let latestRuntimeState: WorkbookWorkerStateSnapshot | null = null
 
       const applyExternalSyncState = async (): Promise<void> => {
         if (!controller) {
@@ -299,11 +315,18 @@ export function createWorkerRuntimeMachine() {
               onRuntimeState(runtimeState) {
                 const normalizedRuntimeState = normalizeWorkbookWorkerStateSnapshot(runtimeState)
                 if (normalizedRuntimeState) {
+                  latestRuntimeState = normalizedRuntimeState
                   sendBack({ type: 'session.runtime', runtimeState: normalizedRuntimeState })
                 }
               },
               onSelection(selection) {
-                if (!sameWorkerRuntimeSelection(selection, pendingSelection)) {
+                if (
+                  !shouldAcceptSessionSelection({
+                    selection,
+                    pendingSelection,
+                    runtimeState: latestRuntimeState,
+                  })
+                ) {
                   return
                 }
                 pendingSelection = selection

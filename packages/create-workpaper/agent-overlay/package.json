@@ -1,0 +1,21 @@
+{
+  "name": "__PROJECT_NAME__",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "tsx src/index.ts --serve",
+    "smoke": "tsx src/index.ts",
+    "typecheck": "tsc --noEmit",
+    "agent:verify": "npm run smoke && npm run mcp:challenge",
+    "mcp:challenge": "bilig-mcp-challenge --markdown",
+    "mcp:server": "bilig-workpaper-mcp --workpaper ./pricing.workpaper.json --init-demo-workpaper --writable"
+  },
+  "dependencies": {
+    "@bilig/headless": "latest"
+  },
+  "devDependencies": {
+    "@types/node": "latest",
+    "tsx": "latest",
+    "typescript": "latest"
+  }
+}

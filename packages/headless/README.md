@@ -63,8 +63,21 @@ around the same WorkPaper model.
 Reduced workbook already in hand?
 
 ```sh
-npm exec --package @bilig/headless@0.24.2 -- bilig-formula-clinic ./reduced.xlsx --cells "Summary!B7,Inputs!B2"
+npm exec --package @bilig/headless@0.31.0 -- bilig-formula-clinic ./reduced.xlsx --cells "Summary!B7,Inputs!B2"
 ```
+
+Handing a spreadsheet task to another coding agent?
+
+```sh
+npm exec --package @bilig/headless@0.31.0 -- bilig-agent-challenge
+npm exec --package @bilig/headless@0.31.0 -- bilig-mcp-challenge
+```
+
+The first command proves the direct WorkPaper API. The second command proves
+the file-backed MCP path by initializing JSON-RPC, listing
+tools/resources/prompts, editing `Inputs!B3`, reading recalculated `Summary!B3`,
+exporting WorkPaper JSON, restarting from disk, and returning `verified: true`.
+Both run without cloning the repository or downloading a TypeScript file.
 
 ## Install
 
@@ -87,16 +100,20 @@ For a generated starter project:
 
 ```sh
 npm create @bilig/workpaper@latest pricing-workpaper
+npm create @bilig/workpaper@latest pricing-agent -- --agent
 ```
 
 That command is published through `@bilig/create-workpaper`. The publish gate is documented at
 <https://proompteng.github.io/bilig/create-bilig-workpaper.html>.
+The `--agent` starter adds `AGENTS.md`, `CLAUDE.md`, Cursor and VS Code MCP
+configs, `mcp/bilig-workpaper.mcp.json`, `npm run agent:verify`, and
+`npm run mcp:server`.
 
 <!-- headless-package-footprint:start -->
 
-Current checked npm footprint for `@bilig/headless@0.24.2`:
+Current checked npm footprint for `@bilig/headless@0.31.0`:
 
-- Pack dry run: `457 kB` tarball, `2.72 MB` unpacked, `456` package entries.
+- Pack dry run: `497 kB` tarball, `2.98 MB` unpacked, `489` package entries.
 - Boundary: the main import is the WorkPaper formula/JSON runtime; XLSX
   import/export stays behind the `@bilig/headless/xlsx` subpath; MCP is the
   `bilig-workpaper-mcp` binary wrapper; reduced workbook reports use the
@@ -179,34 +196,43 @@ building a workbook, changing an input, saving the document, restoring it, and
 checking that the dependent formula still reads back correctly.
 
 ```sh
-mkdir bilig-headless-sanity
-cd bilig-headless-sanity
-npm init -y
-npm pkg set type=module
-npm install @bilig/headless
-npm install -D tsx typescript @types/node
-curl -fsSLo sanity.ts https://proompteng.github.io/bilig/npm-eval.ts
-npx tsx sanity.ts
+npm exec --package @bilig/headless@0.31.0 -- bilig-agent-challenge
+npm exec --package @bilig/headless@0.31.0 -- bilig-mcp-challenge
 ```
 
 Expected output:
 
 ```json
 {
+  "editedCell": "Inputs!B2",
+  "dependentCell": "Summary!B2",
   "before": 24000,
   "after": 38400,
   "afterRestore": 38400,
+  "persistedDocumentBytes": 999,
   "sheets": ["Inputs", "Summary"],
-  "bytes": 1000,
+  "checks": {
+    "formulaReadbackChanged": true,
+    "exportedWorkPaperDocument": true,
+    "restoredMatchesAfter": true
+  },
   "verified": true,
+  "limitations": [
+    "This challenge proves the WorkPaper write/read/persist loop, not full Excel desktop compatibility.",
+    "For XLSX-specific behavior, run bilig-formula-clinic or the XLSX recalculation example with a real workbook fixture."
+  ],
   "nextStep": "If this proof matches your service or agent workflow, star or bookmark Bilig: https://github.com/proompteng/bilig/stargazers"
 }
 ```
 
-The downloaded file is the maintained TypeScript example at
-[`examples/headless-workpaper/npm-eval.ts`](https://github.com/proompteng/bilig/blob/main/examples/headless-workpaper/npm-eval.ts).
-The exact byte count can change between package versions; `verified: true` and
-matching `after`/`afterRestore` values are the check.
+For teams that want to inspect the TypeScript source before running it, the
+older curl-based quickstart remains at
+<https://proompteng.github.io/bilig/try-bilig-headless-in-node.html> and uses
+the maintained file at <https://proompteng.github.io/bilig/npm-eval.ts>
+([`examples/headless-workpaper/npm-eval.ts`](https://github.com/proompteng/bilig/blob/main/examples/headless-workpaper/npm-eval.ts)). The
+exact byte count can change between package versions; `verified: true`,
+`checks.restoredMatchesAfter`, and matching `after`/`afterRestore` values are
+the check.
 
 Inside this monorepo:
 
@@ -337,6 +363,9 @@ Agent and tool-call examples:
   formula, saved JSON, restored workbook, and formula text.
 - `npm run agent:tool-call` exposes `readRange` and `setInputCell` style tool
   calls with computed before/after readback.
+- `npm run agent:openai-agents-sdk` creates real `@openai/agents` `Agent`
+  and `tool()` objects, then invokes them locally with WorkPaper readback:
+  <https://github.com/proompteng/bilig/blob/main/docs/openai-agents-sdk-workpaper-tool.md>.
 - `npm run agent:openai-responses` shows the
   [OpenAI Responses tool-call loop](https://github.com/proompteng/bilig/blob/main/docs/openai-responses-workpaper-tool-call.md).
 - `npm run agent:ai-sdk-generate-text` uses the real Vercel AI SDK
@@ -370,9 +399,9 @@ MCP examples:
 - The package ships npm-executable binaries:
 
 ```sh
-npm exec --package @bilig/headless@0.24.2 -- bilig-formula-clinic ./reduced.xlsx --cells "Summary!B7,Inputs!B2"
-npm exec --package @bilig/headless@0.24.2 -- bilig-workpaper-mcp
-npm exec --package @bilig/headless@0.24.2 -- bilig-workpaper-mcp --workpaper ./pricing.workpaper.json --init-demo-workpaper --writable
+npm exec --package @bilig/headless@0.31.0 -- bilig-formula-clinic ./reduced.xlsx --cells "Summary!B7,Inputs!B2"
+npm exec --package @bilig/headless@0.31.0 -- bilig-workpaper-mcp
+npm exec --package @bilig/headless@0.31.0 -- bilig-workpaper-mcp --workpaper ./pricing.workpaper.json --init-demo-workpaper --writable
 docker build --target bilig-workpaper-mcp -t bilig-workpaper-mcp:local .
 ```
 
@@ -423,6 +452,10 @@ For setup details, use the
 [MCP client setup](https://github.com/proompteng/bilig/blob/main/docs/mcp-client-setup.md),
 and
 [Claude Desktop MCPB guide](https://github.com/proompteng/bilig/blob/main/docs/claude-desktop-mcpb-workpaper.md).
+The released Claude Desktop bundle is published at
+<https://github.com/proompteng/bilig/releases/download/libraries-v0.31.0/bilig-workpaper.mcpb>.
+Smithery users can install the hosted demo with
+`npx -y smithery mcp add gkonushev/bilig-workpaper`.
 
 ## Service Routes
 
@@ -735,12 +768,14 @@ When the sanity check passes, these are the next useful pages.
 - Agent and MCP workflows:
   [headless WorkPaper agent handbook](https://github.com/proompteng/bilig/blob/main/docs/headless-workpaper-agent-handbook.md),
   [agent tool-calling recipe](https://github.com/proompteng/bilig/blob/main/docs/agent-workpaper-tool-calling-recipe.md),
+  [OpenAI Agents SDK guide](https://github.com/proompteng/bilig/blob/main/docs/openai-agents-sdk-workpaper-tool.md),
   [OpenAI Responses guide](https://github.com/proompteng/bilig/blob/main/docs/openai-responses-workpaper-tool-call.md),
   [AI SDK, LangChain, and agent framework guide](https://github.com/proompteng/bilig/blob/main/docs/vercel-ai-sdk-langchain-spreadsheet-tool.md),
   [MCP server guide](https://github.com/proompteng/bilig/blob/main/docs/mcp-workpaper-tool-server.md),
   [MCP directory page](https://github.com/proompteng/bilig/blob/main/docs/mcp-spreadsheet-server-directory.md),
   [MCP client setup](https://github.com/proompteng/bilig/blob/main/docs/mcp-client-setup.md),
-  and [Claude Desktop MCPB bundle](https://github.com/proompteng/bilig/blob/main/docs/claude-desktop-mcpb-workpaper.md).
+  and [Claude Desktop MCPB bundle](https://github.com/proompteng/bilig/blob/main/docs/claude-desktop-mcpb-workpaper.md)
+  ([download](https://github.com/proompteng/bilig/releases/download/libraries-v0.31.0/bilig-workpaper.mcpb)).
 - Choosing the stack:
   [screenshot automation boundary](https://github.com/proompteng/bilig/blob/main/docs/stop-driving-spreadsheets-with-screenshots.md),
   [Node spreadsheet formula engine](https://github.com/proompteng/bilig/blob/main/docs/node-spreadsheet-formula-engine.md),

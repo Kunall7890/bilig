@@ -43,6 +43,10 @@
     "packageDir": "packages/formula",
     "sourceEntry": "packages/formula/src/index.ts"
   },
+  "@bilig/formula/external-function-adapter": {
+    "packageDir": "packages/formula",
+    "sourceEntry": "packages/formula/src/external-function-adapter.ts"
+  },
   "@bilig/formula/program-arena": {
     "packageDir": "packages/formula",
     "sourceEntry": "packages/formula/src/program-arena.ts"
@@ -54,6 +58,14 @@
   "@bilig/headless": {
     "packageDir": "packages/headless",
     "sourceEntry": "packages/headless/src/index.ts"
+  },
+  "@bilig/headless/mcp": {
+    "packageDir": "packages/headless",
+    "sourceEntry": "packages/headless/src/mcp.ts"
+  },
+  "@bilig/headless/xlsx": {
+    "packageDir": "packages/headless",
+    "sourceEntry": "packages/excel-import/src/index.ts"
   },
   "@bilig/protocol": {
     "packageDir": "packages/protocol",
@@ -90,5 +102,13 @@
   "@bilig/zero-sync": {
     "packageDir": "packages/zero-sync",
     "sourceEntry": "packages/zero-sync/src/index.ts"
+  },
+  "exceljs-formula-recalc": {
+    "packageDir": "packages/exceljs-formula-recalc",
+    "sourceEntry": "packages/exceljs-formula-recalc/src/index.ts"
+  },
+  "xlsx-formula-recalc": {
+    "packageDir": "packages/xlsx-formula-recalc",
+    "sourceEntry": "packages/xlsx-formula-recalc/src/index.ts"
   }
 }

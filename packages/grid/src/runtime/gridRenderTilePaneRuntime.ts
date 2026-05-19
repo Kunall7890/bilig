@@ -812,11 +812,16 @@ export class GridRenderTilePaneRuntime {
         !hasPendingDirtyRenderTilePatch &&
         visibleTileKeys.has(tileKey) &&
         this.visibleTextRefreshCache.needsLocalRefresh(tileKey, tile, {
+          columnWidths: input.columnWidths,
           engine: input.engine,
           revisionSensitive: isDirty,
+          gridMetrics: input.gridMetrics,
+          rowHeights: input.rowHeights,
           sceneRevision: input.sceneRevision,
           sheetName: input.sheetName,
-          visibleViewport: input.visibleViewport,
+          sortedColumnWidthOverrides: input.sortedColumnWidthOverrides,
+          sortedRowHeightOverrides: input.sortedRowHeightOverrides,
+          visibleViewport: input.residentViewport,
         })
       const shouldLocalizeEditingCellText = editingCellTileKey === tileKey
       if (

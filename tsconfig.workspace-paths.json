@@ -13,9 +13,12 @@
       "@bilig/excel-fixtures": ["./packages/excel-fixtures/src/index.ts"],
       "@bilig/excel-import": ["./packages/excel-import/src/index.ts"],
       "@bilig/formula": ["./packages/formula/src/index.ts"],
+      "@bilig/formula/external-function-adapter": ["./packages/formula/src/external-function-adapter.ts"],
       "@bilig/formula/program-arena": ["./packages/formula/src/program-arena.ts"],
       "@bilig/grid": ["./packages/grid/src/index.ts"],
       "@bilig/headless": ["./packages/headless/src/index.ts"],
+      "@bilig/headless/mcp": ["./packages/headless/src/mcp.ts"],
+      "@bilig/headless/xlsx": ["./packages/excel-import/src/index.ts"],
       "@bilig/protocol": ["./packages/protocol/src/index.ts"],
       "@bilig/renderer": ["./packages/renderer/src/index.ts"],
       "@bilig/runtime-kernel": ["./packages/runtime-kernel/src/index.ts"],
@@ -24,7 +27,9 @@
       "@bilig/wasm-kernel": ["./packages/wasm-kernel/src/index.ts"],
       "@bilig/workbook-domain": ["./packages/workbook-domain/src/index.ts"],
       "@bilig/worker-transport": ["./packages/worker-transport/src/index.ts"],
-      "@bilig/zero-sync": ["./packages/zero-sync/src/index.ts"]
+      "@bilig/zero-sync": ["./packages/zero-sync/src/index.ts"],
+      "exceljs-formula-recalc": ["./packages/exceljs-formula-recalc/src/index.ts"],
+      "xlsx-formula-recalc": ["./packages/xlsx-formula-recalc/src/index.ts"]
     }
   }
 }

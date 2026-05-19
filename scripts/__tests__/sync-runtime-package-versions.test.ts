@@ -78,5 +78,11 @@ describe('syncRuntimePackageVersions', () => {
 })
 
 function packageNameForDir(packageDir: string): string {
+  if (packageDir === 'packages/xlsx-formula-recalc') {
+    return 'xlsx-formula-recalc'
+  }
+  if (packageDir === 'packages/exceljs-formula-recalc') {
+    return 'exceljs-formula-recalc'
+  }
   return `@bilig/${packageDir.split('/').at(-1) ?? packageDir}`
 }

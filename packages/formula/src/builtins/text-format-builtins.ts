@@ -45,7 +45,9 @@ function valueToTextResult(deps: TextFormatBuiltinDeps, value: CellValue, format
                       ? '#SPILL!'
                       : value.code === ErrorCode.Blocked
                         ? '#BLOCKED!'
-                        : '#ERROR!'
+                        : value.code === ErrorCode.Num
+                          ? '#NUM!'
+                          : '#ERROR!'
       return deps.stringResult(label)
     }
   }

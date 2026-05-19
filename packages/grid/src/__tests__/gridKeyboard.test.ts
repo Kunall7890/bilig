@@ -2,6 +2,7 @@ import { describe, expect, test } from 'vitest'
 import {
   isClearCellKey,
   isClipboardShortcut,
+  isCurrentRegionSelectionShortcut,
   isDeleteKey,
   isFillSelectionShortcut,
   isFillShortcut,
@@ -9,7 +10,9 @@ import {
   isNavigationKey,
   isNumericEditorSeed,
   isPrintableKey,
+  isScrollActiveCellShortcut,
   isSheetSelectionShortcut,
+  isStructuralDeleteShortcut,
   normalizeKeyboardKey,
 } from '../gridKeyboard.js'
 
@@ -35,10 +38,19 @@ describe('gridKeyboard', () => {
     expect(isFillSelectionShortcut({ altKey: false, ctrlKey: true, key: 'Enter', metaKey: false, shiftKey: false })).toBe(true)
     expect(isFillSelectionShortcut({ altKey: false, ctrlKey: false, key: 'Enter', metaKey: true, shiftKey: false })).toBe(true)
     expect(isFillSelectionShortcut({ altKey: false, ctrlKey: true, key: 'Enter', metaKey: false, shiftKey: true })).toBe(false)
+    expect(isScrollActiveCellShortcut({ altKey: false, ctrlKey: true, key: 'Backspace', metaKey: false })).toBe(true)
+    expect(isScrollActiveCellShortcut({ altKey: false, ctrlKey: false, key: 'Backspace', metaKey: true })).toBe(true)
+    expect(isScrollActiveCellShortcut({ altKey: false, ctrlKey: true, key: 'Delete', metaKey: false })).toBe(false)
+    expect(isStructuralDeleteShortcut({ altKey: true, ctrlKey: true, key: '-', metaKey: false })).toBe(true)
+    expect(isStructuralDeleteShortcut({ altKey: true, ctrlKey: false, key: '-', metaKey: true })).toBe(true)
+    expect(isStructuralDeleteShortcut({ altKey: false, ctrlKey: true, key: '-', metaKey: false })).toBe(false)
     expect(isSheetSelectionShortcut({ altKey: false, ctrlKey: false, key: ' ', metaKey: false, shiftKey: true })).toBe(true)
     expect(isSheetSelectionShortcut({ altKey: false, ctrlKey: true, key: ' ', metaKey: false, shiftKey: false })).toBe(true)
     expect(isSheetSelectionShortcut({ altKey: false, ctrlKey: true, key: ' ', metaKey: false, shiftKey: true })).toBe(true)
     expect(isSheetSelectionShortcut({ altKey: false, ctrlKey: false, key: ' ', metaKey: false, shiftKey: false })).toBe(false)
+    expect(isCurrentRegionSelectionShortcut({ altKey: false, ctrlKey: true, key: '*', metaKey: false, shiftKey: true })).toBe(true)
+    expect(isCurrentRegionSelectionShortcut({ altKey: false, ctrlKey: false, key: '*', metaKey: true, shiftKey: true })).toBe(true)
+    expect(isCurrentRegionSelectionShortcut({ altKey: false, ctrlKey: true, key: '8', metaKey: false, shiftKey: true })).toBe(false)
     expect(isHandledGridKey({ altKey: false, ctrlKey: false, key: 'F2', metaKey: false })).toBe(true)
     expect(isHandledGridKey({ altKey: false, ctrlKey: false, key: 'Escape', metaKey: false })).toBe(true)
     expect(isHandledGridKey({ altKey: false, ctrlKey: false, key: 'Delete', metaKey: false })).toBe(true)
@@ -73,7 +85,25 @@ describe('gridKeyboard', () => {
       isHandledGridKey({
         altKey: false,
         ctrlKey: true,
+        key: '*',
+        metaKey: false,
+        shiftKey: true,
+      }),
+    ).toBe(true)
+    expect(
+      isHandledGridKey({
+        altKey: false,
+        ctrlKey: true,
         key: 'Enter',
+        metaKey: false,
+        shiftKey: false,
+      }),
+    ).toBe(true)
+    expect(
+      isHandledGridKey({
+        altKey: true,
+        ctrlKey: true,
+        key: '-',
         metaKey: false,
         shiftKey: false,
       }),
@@ -100,7 +130,7 @@ describe('gridKeyboard', () => {
     expect(isClearCellKey({ altKey: false, ctrlKey: false, key: 'Backspace', metaKey: true })).toBe(false)
     expect(isClearCellKey({ altKey: false, ctrlKey: false, key: 'Delete', metaKey: false, shiftKey: true })).toBe(false)
     expect(isHandledGridKey({ altKey: false, ctrlKey: false, key: 'Delete', metaKey: true })).toBe(false)
-    expect(isHandledGridKey({ altKey: false, ctrlKey: false, key: 'Backspace', metaKey: true })).toBe(false)
+    expect(isHandledGridKey({ altKey: false, ctrlKey: false, key: 'Backspace', metaKey: true })).toBe(true)
   })
 
   test('detects numeric editor seeds', () => {

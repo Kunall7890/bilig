@@ -1,7 +1,7 @@
 import * as XLSX from 'xlsx'
 import { unzipSync, type Unzipped } from 'fflate'
 
-import { parseCsv, parseCsvCellInput, resolveCsvParseOptions, type CsvParseOptions } from '@bilig/core'
+import { attachRuntimeImage, parseCsv, parseCsvCellInput, resolveCsvParseOptions, type CsvParseOptions } from '@bilig/core'
 import type {
   CellStyleRecord,
   WorkbookCommentThreadSnapshot,
@@ -133,6 +133,78 @@ export type CsvImportOptions = CsvParseOptions
 
 export interface WorkbookImportFileOptions {
   csv?: CsvImportOptions
+}
+
+interface ImportedRuntimeCellCoordinate {
+  readonly row: number
+  readonly col: number
+}
+
+interface ImportedRuntimeSheetCells {
+  readonly sheetName: string
+  readonly coords: readonly ImportedRuntimeCellCoordinate[]
+  readonly coordinateOrder?: 'dense-row-major'
+  readonly dimensions: {
+    readonly width: number
+    readonly height: number
+  }
+  readonly cellCount: number
+}
+
+function importedRuntimeCoordinatesAreDenseRowMajor(
+  coords: readonly ImportedRuntimeCellCoordinate[],
+  width: number,
+  height: number,
+): boolean {
+  if (width <= 0 || height <= 0 || coords.length !== width * height) {
+    return false
+  }
+  for (let index = 0; index < coords.length; index += 1) {
+    const coord = coords[index]!
+    if (coord.row !== Math.floor(index / width) || coord.col !== index % width) {
+      return false
+    }
+  }
+  return true
+}
+
+function createImportedRuntimeSheetCells(args: {
+  readonly sheetName: string
+  readonly coords: readonly ImportedRuntimeCellCoordinate[]
+  readonly width: number
+  readonly height: number
+}): ImportedRuntimeSheetCells {
+  const coordinateOrder = importedRuntimeCoordinatesAreDenseRowMajor(args.coords, args.width, args.height) ? 'dense-row-major' : undefined
+  return {
+    sheetName: args.sheetName,
+    coords: args.coords,
+    ...(coordinateOrder ? { coordinateOrder } : {}),
+    dimensions: { width: args.width, height: args.height },
+    cellCount: args.coords.length,
+  }
+}
+
+function pushImportedSnapshotCell(
+  cells: WorkbookSnapshot['sheets'][number]['cells'],
+  coords: ImportedRuntimeCellCoordinate[],
+  cell: WorkbookSnapshot['sheets'][number]['cells'][number],
+  row: number,
+  col: number,
+): void {
+  cell.row = row
+  cell.col = col
+  cells.push(cell)
+  coords.push({ row, col })
+}
+
+function attachImportedRuntimeCoordinates(snapshot: WorkbookSnapshot, sheetCells: readonly ImportedRuntimeSheetCells[]): WorkbookSnapshot {
+  return attachRuntimeImage(snapshot, {
+    version: 1,
+    templateBank: [],
+    formulaInstances: [],
+    formulaValues: [],
+    sheetCells,
+  })
 }
 
 export class InvalidXlsxZipContainerError extends Error {
@@ -391,9 +463,11 @@ function importSheetJsWorkbook(
   const unsupportedFormulaDependencies: NonNullable<WorkbookMetadataSnapshot['unsupportedFormulaDependencies']> = []
   const importedArrayFormulaSpills: NonNullable<WorkbookMetadataSnapshot['spills']> = []
   const previewSheets: ImportedWorkbookSheetPreview[] = []
+  const runtimeSheetCells: ImportedRuntimeSheetCells[] = []
   const sheets = workbook.SheetNames.map((sheetName, order) => {
     const sheet = chartSheetNames.has(sheetName) ? undefined : workbook.Sheets[sheetName]
     if (!sheet) {
+      runtimeSheetCells.push(createImportedRuntimeSheetCells({ sheetName, coords: [], width: 0, height: 0 }))
       previewSheets.push(
         createSheetPreview({
           name: sheetName,
@@ -429,6 +503,7 @@ function importSheetJsWorkbook(
     }
     const range = sheet['!ref'] ? XLSX.utils.decode_range(sheet['!ref']) : null
     const cells: WorkbookSnapshot['sheets'][number]['cells'] = []
+    const runtimeCellCoords: ImportedRuntimeCellCoordinate[] = []
     const styleRuns: RectangularStyleRun[] = []
     let openStyleRunsByKey = new Map<string, RectangularStyleRun>()
     let activeStyleRow: number | null = null
@@ -546,7 +621,7 @@ function importSheetJsWorkbook(
         flushActiveStyleRun()
       }
       if (nextCell.value !== undefined || nextCell.formula !== undefined || nextCell.format !== undefined) {
-        cells.push(nextCell)
+        pushImportedSnapshotCell(cells, runtimeCellCoords, nextCell, row, column)
       }
     }
     const missingStyledAddresses = new Set([...(importedStylesByAddress?.keys() ?? []), ...(importedFormatsByAddress?.keys() ?? [])])
@@ -563,16 +638,25 @@ function importSheetJsWorkbook(
       }
       const importedFormat = importedFormatsByAddress?.get(missingAddress)
       if (importedFormat !== undefined) {
-        cells.push({ address: missingAddress, format: importedFormat })
+        pushImportedSnapshotCell(cells, runtimeCellCoords, { address: missingAddress, format: importedFormat }, decoded.r, decoded.c)
       }
     }
     for (const [address, value] of importedWorksheetTextValues ?? []) {
       if (!seenCellAddresses.has(address)) {
-        cells.push({ address, value })
+        const decoded = XLSX.utils.decode_cell(address)
+        pushImportedSnapshotCell(cells, runtimeCellCoords, { address, value }, decoded.r, decoded.c)
       }
     }
     flushActiveStyleRow()
     const styleRanges = styleRunsToRanges(sheetName, styleRuns)
+    runtimeSheetCells.push(
+      createImportedRuntimeSheetCells({
+        sheetName,
+        coords: runtimeCellCoords,
+        width: columnCount,
+        height: rowCount,
+      }),
+    )
 
     previewSheets.push(
       createSheetPreview({
@@ -726,15 +810,17 @@ function importSheetJsWorkbook(
     cellMetadata: importedCellMetadata?.workbookMetadata,
   })
 
-  return {
-    snapshot: {
-      version: 1,
-      workbook: {
-        name: workbookName,
-        ...(workbookMetadata ? { metadata: workbookMetadata } : {}),
-      },
-      sheets,
+  const snapshot: WorkbookSnapshot = {
+    version: 1,
+    workbook: {
+      name: workbookName,
+      ...(workbookMetadata ? { metadata: workbookMetadata } : {}),
     },
+    sheets,
+  }
+
+  return {
+    snapshot: attachImportedRuntimeCoordinates(snapshot, runtimeSheetCells),
     workbookName,
     sheetNames: workbook.SheetNames,
     warnings,
@@ -778,6 +864,7 @@ export function importCsv(text: string, fileName: string, options: CsvImportOpti
   const rows = parseCsv(text, csvOptions)
   const textColumnIndexes = inferCsvTextColumnIndexes(rows)
   const cells: WorkbookSnapshot['sheets'][number]['cells'] = []
+  const runtimeCellCoords: ImportedRuntimeCellCoordinate[] = []
   let nonEmptyCellCount = 0
   let hasRaggedRows = false
   const columnCount = rows.reduce((max, row) => Math.max(max, row.length), 0)
@@ -795,11 +882,11 @@ export function importCsv(text: string, fileName: string, options: CsvImportOpti
       nonEmptyCellCount += 1
       const address = XLSX.utils.encode_cell({ r: rowIndex, c: colIndex })
       if (parsed.formula !== undefined) {
-        cells.push({ address, formula: parsed.formula })
+        pushImportedSnapshotCell(cells, runtimeCellCoords, { address, formula: parsed.formula }, rowIndex, colIndex)
         return
       }
       if (parsed.value !== undefined) {
-        cells.push({ address, value: parsed.value })
+        pushImportedSnapshotCell(cells, runtimeCellCoords, { address, value: parsed.value }, rowIndex, colIndex)
       }
     })
   })
@@ -813,21 +900,31 @@ export function importCsv(text: string, fileName: string, options: CsvImportOpti
     readCellText: (row, col) => rows[row]?.[col] ?? '',
   })
 
-  return {
-    snapshot: {
-      version: 1,
-      workbook: {
-        name: workbookName,
-      },
-      sheets: [
-        {
-          id: 1,
-          name: sheetName,
-          order: 0,
-          cells,
-        },
-      ],
+  const snapshot: WorkbookSnapshot = {
+    version: 1,
+    workbook: {
+      name: workbookName,
     },
+    sheets: [
+      {
+        id: 1,
+        name: sheetName,
+        order: 0,
+        cells,
+      },
+    ],
+  }
+  const runtimeSheetCells = [
+    createImportedRuntimeSheetCells({
+      sheetName,
+      coords: runtimeCellCoords,
+      width: columnCount,
+      height: rows.length,
+    }),
+  ]
+
+  return {
+    snapshot: attachImportedRuntimeCoordinates(snapshot, runtimeSheetCells),
     workbookName,
     sheetNames: [sheetName],
     warnings,

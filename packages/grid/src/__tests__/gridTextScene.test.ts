@@ -4,7 +4,12 @@ import { buildGridTextScene } from '../gridTextScene.js'
 import { getResolvedCellFontFamily } from '../gridCells.js'
 import type { GridEngineLike } from '../grid-engine.js'
 import { getGridMetrics } from '../gridMetrics.js'
-import { WORKBOOK_DEFAULT_FONT_SIZE, workbookFontPointSizeToCssPx, workbookThemeColors } from '../workbookTheme.js'
+import {
+  WORKBOOK_DEFAULT_FONT_SIZE,
+  workbookFontPointSizeToCssPx,
+  workbookHeaderFontPointSizeToCssPx,
+  workbookThemeColors,
+} from '../workbookTheme.js'
 
 type TestCellValue =
   | { tag: ValueTag.Empty }
@@ -29,7 +34,8 @@ type TestCellSnapshot = ReturnType<typeof createCellSnapshot>
 const CELL_FONT_FAMILY = getResolvedCellFontFamily()
 const CELL_FONT_SIZE = workbookFontPointSizeToCssPx(WORKBOOK_DEFAULT_FONT_SIZE)
 const CELL_FONT = `400 ${CELL_FONT_SIZE}px ${CELL_FONT_FAMILY}`
-const HEADER_FONT = `600 11px ${CELL_FONT_FAMILY}`
+const HEADER_FONT_SIZE = workbookHeaderFontPointSizeToCssPx()
+const HEADER_FONT = `600 ${HEADER_FONT_SIZE}px ${CELL_FONT_FAMILY}`
 const HEADER_SELECTED_COLOR = workbookThemeColors.accent
 const HEADER_DRAG_COLOR = workbookThemeColors.accentDark
 const HEADER_HOVER_COLOR = workbookThemeColors.text
@@ -204,7 +210,7 @@ describe('gridTextScene', () => {
       wrap: false,
       color: HEADER_SELECTED_COLOR,
       font: HEADER_FONT,
-      fontSize: 11,
+      fontSize: HEADER_FONT_SIZE,
       underline: false,
       strike: false,
     })
@@ -222,7 +228,7 @@ describe('gridTextScene', () => {
       wrap: false,
       color: HEADER_SELECTED_COLOR,
       font: HEADER_FONT,
-      fontSize: 11,
+      fontSize: HEADER_FONT_SIZE,
       underline: false,
       strike: false,
     })
@@ -258,7 +264,7 @@ describe('gridTextScene', () => {
       wrap: false,
       color: HEADER_DRAG_COLOR,
       font: HEADER_FONT,
-      fontSize: 11,
+      fontSize: HEADER_FONT_SIZE,
       underline: false,
       strike: false,
     })
@@ -276,7 +282,7 @@ describe('gridTextScene', () => {
       wrap: false,
       color: HEADER_SELECTED_COLOR,
       font: HEADER_FONT,
-      fontSize: 11,
+      fontSize: HEADER_FONT_SIZE,
       underline: false,
       strike: false,
     })
@@ -294,7 +300,7 @@ describe('gridTextScene', () => {
       wrap: false,
       color: HEADER_HOVER_COLOR,
       font: HEADER_FONT,
-      fontSize: 11,
+      fontSize: HEADER_FONT_SIZE,
       underline: false,
       strike: false,
     })
@@ -344,7 +350,7 @@ describe('gridTextScene', () => {
       wrap: false,
       color: HEADER_SELECTED_COLOR,
       font: HEADER_FONT,
-      fontSize: 11,
+      fontSize: HEADER_FONT_SIZE,
       underline: false,
       strike: false,
     })
@@ -362,7 +368,7 @@ describe('gridTextScene', () => {
       wrap: false,
       color: workbookThemeColors.textMuted,
       font: HEADER_FONT,
-      fontSize: 11,
+      fontSize: HEADER_FONT_SIZE,
       underline: false,
       strike: false,
     })
@@ -380,7 +386,7 @@ describe('gridTextScene', () => {
       wrap: false,
       color: HEADER_SELECTED_COLOR,
       font: HEADER_FONT,
-      fontSize: 11,
+      fontSize: HEADER_FONT_SIZE,
       underline: false,
       strike: false,
     })
@@ -398,7 +404,7 @@ describe('gridTextScene', () => {
       wrap: false,
       color: workbookThemeColors.textMuted,
       font: HEADER_FONT,
-      fontSize: 11,
+      fontSize: HEADER_FONT_SIZE,
       underline: false,
       strike: false,
     })
@@ -432,7 +438,7 @@ describe('gridTextScene', () => {
       wrap: false,
       color: HEADER_DRAG_COLOR,
       font: HEADER_FONT,
-      fontSize: 11,
+      fontSize: HEADER_FONT_SIZE,
       underline: false,
       strike: false,
     })
@@ -467,7 +473,7 @@ describe('gridTextScene', () => {
       wrap: false,
       color: HEADER_SELECTED_COLOR,
       font: HEADER_FONT,
-      fontSize: 11,
+      fontSize: HEADER_FONT_SIZE,
       underline: false,
       strike: false,
     })
@@ -675,8 +681,8 @@ describe('gridTextScene', () => {
       align: 'center',
       wrap: false,
       color: HEADER_SELECTED_COLOR,
-      font: `600 20px ${CELL_FONT_FAMILY}`,
-      fontSize: 20,
+      font: `600 ${workbookFontPointSizeToCssPx(20)}px ${CELL_FONT_FAMILY}`,
+      fontSize: workbookFontPointSizeToCssPx(20),
       underline: false,
       strike: false,
     })
@@ -693,8 +699,8 @@ describe('gridTextScene', () => {
       align: 'right',
       wrap: false,
       color: HEADER_SELECTED_COLOR,
-      font: `600 20px ${CELL_FONT_FAMILY}`,
-      fontSize: 20,
+      font: `600 ${workbookFontPointSizeToCssPx(20)}px ${CELL_FONT_FAMILY}`,
+      fontSize: workbookFontPointSizeToCssPx(20),
       underline: false,
       strike: false,
     })

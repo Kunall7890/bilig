@@ -1,15 +1,20 @@
 import { mkdir, readFile, writeFile } from 'node:fs/promises'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
+import { mcpServerCardManifest } from './agent-discovery-mcp-card.ts'
 
 const repoRoot = join(dirname(fileURLToPath(import.meta.url)), '..')
 const siteRoot = 'https://proompteng.github.io/bilig'
 const remoteMcpEndpoint = 'https://bilig.proompteng.ai/mcp'
 const remoteMcpAliasEndpoint = 'https://bilig.proompteng.ai/mcp/workpaper'
+const remoteMcpServerCard = 'https://bilig.proompteng.ai/.well-known/mcp/server-card.json'
 const repositoryUrl = 'https://github.com/proompteng/bilig'
 const skillName = 'bilig-workpaper'
 const headlessPackageVersion = parsePackageVersion(await readFile(join(repoRoot, 'packages', 'headless', 'package.json'), 'utf8'))
 const headlessPackageSpec = `@bilig/headless@${headlessPackageVersion}`
+const mcpbReleaseTag = `libraries-v${headlessPackageVersion}`
+const mcpbReleaseAssetUrl = `${repositoryUrl}/releases/download/${mcpbReleaseTag}/bilig-workpaper.mcpb`
+const mcpbReleaseChecksumUrl = `${mcpbReleaseAssetUrl}.sha256`
 const skillTags = ['ai-agents', 'spreadsheet-automation', 'formulas', 'xlsx', 'mcp', 'typescript'] as const
 const mcpPromptNames = ['edit_and_verify_workpaper', 'debug_workpaper_formula'] as const
 const agentNotAFitBoundaries = [
@@ -44,8 +49,10 @@ Use this file when an AI coding agent, MCP client, or tool host needs workbook f
 4. Start the MCP server or import \`@bilig/headless\` directly.
 
 Remote MCP clients that support Streamable HTTP can smoke-test the stateless
-demo endpoint at \`${remoteMcpEndpoint}\`. Local agents that need writable
-project files should still prefer the file-backed stdio command below.
+demo endpoint at \`${remoteMcpEndpoint}\`. Directory scanners that inspect the
+hosted endpoint origin can read the same-origin server card at
+\`${remoteMcpServerCard}\`. Local agents that need writable project files should
+still prefer the file-backed stdio command below.
 
 ## Default Decision
 
@@ -70,9 +77,16 @@ Do not claim success from a write call alone. The proof is computed readback plu
 ## Fast Commands
 
 \`\`\`sh
+npm exec --package ${headlessPackageSpec} -- bilig-agent-challenge
+npm exec --package ${headlessPackageSpec} -- bilig-mcp-challenge
 npm exec --package ${headlessPackageSpec} -- bilig-workpaper-mcp --workpaper ./pricing.workpaper.json --init-demo-workpaper --writable
 npm exec --package ${headlessPackageSpec} -- bilig-formula-clinic ./reduced.xlsx --cells "Summary!B7,Inputs!B2"
 \`\`\`
+
+Claude Desktop users can install the released MCPB bundle from:
+
+- ${mcpbReleaseAssetUrl}
+- ${mcpbReleaseChecksumUrl}
 
 ## Direct TypeScript
 
@@ -111,6 +125,7 @@ logic that can run through @bilig/headless. If it is, use WorkPaper state as the
 source of truth.
 
 For MCP, start with:
+npm exec --package ${headlessPackageSpec} -- bilig-mcp-challenge
 npm exec --package ${headlessPackageSpec} -- bilig-workpaper-mcp --workpaper ./pricing.workpaper.json --init-demo-workpaper --writable
 
 For Node or TypeScript, import @bilig/headless directly. Prove the edit by
@@ -159,6 +174,12 @@ WorkPaper JSON only when the file is missing. Use \`--writable\` only when the
 task should persist \`set_cell_contents\` edits back to the same WorkPaper JSON
 file.
 
+Claude Desktop users can skip manual JSON config by installing the released
+MCPB bundle:
+
+- ${mcpbReleaseAssetUrl}
+- ${mcpbReleaseChecksumUrl}
+
 ## Direct TypeScript entrypoint
 
 Use the package API when the workbook logic belongs in a service, queue worker,
@@ -195,20 +216,16 @@ console.log({ revenue, savedBytes: saved.length })
 
 ## Verification shortcuts
 
-From a clean project, run the published package smoke:
+From a clean project, run the package-owned challenge:
 
 \`\`\`sh
-mkdir bilig-headless-agent-check
-cd bilig-headless-agent-check
-npm init -y
-npm pkg set type=module
-npm install @bilig/headless
-npm install -D tsx typescript @types/node
-curl -fsSLo quickstart.ts https://proompteng.github.io/bilig/npm-eval.ts
-npx tsx quickstart.ts
+npm exec --package ${headlessPackageSpec} -- bilig-agent-challenge
+npm exec --package ${headlessPackageSpec} -- bilig-mcp-challenge
 \`\`\`
 
-A good run prints \`verified: true\`.
+\`bilig-agent-challenge\` proves the direct WorkPaper API loop.
+\`bilig-mcp-challenge\` proves the file-backed MCP JSON-RPC loop. A good run
+prints \`verified: true\`.
 
 Deeper docs:
 
@@ -255,6 +272,24 @@ Do not build shell commands by concatenating user text. Treat the commands below
 
 Use MCP when the host can run a stdio server or call a Streamable HTTP server.
 Configure stdio as an argument array, not a shell-concatenated string:
+
+Before wiring a client, an agent can prove the direct WorkPaper loop with:
+
+\`\`\`json
+{
+  "command": "npm",
+  "args": ["exec", "--package", "${headlessPackageSpec}", "--", "bilig-agent-challenge"]
+}
+\`\`\`
+
+For the actual file-backed MCP path, run the package-owned challenge first:
+
+\`\`\`json
+{
+  "command": "npm",
+  "args": ["exec", "--package", "${headlessPackageSpec}", "--", "bilig-mcp-challenge"]
+}
+\`\`\`
 
 \`\`\`json
 {
@@ -360,6 +395,7 @@ If any proof step fails, report the blocker instead of claiming the workbook was
 - Compact docs map: ${siteRoot}/llms.txt
 - Full agent context: ${siteRoot}/llms-full.txt
 - Agent handbook: ${siteRoot}/headless-workpaper-agent-handbook.html
+- Agent workbook challenge: ${siteRoot}/agent-workbook-challenge.html
 - MCP server guide: ${siteRoot}/mcp-workpaper-tool-server.html
 - XLSX formula clinic: ${siteRoot}/formula-bug-clinic.html
 - Compatibility limits: ${siteRoot}/where-bilig-is-not-excel-compatible-yet.html
@@ -384,9 +420,19 @@ const llmsFullSources = [
     url: `${repositoryUrl}/blob/main/docs/headless-workpaper-agent-handbook.md`,
   },
   {
+    title: 'Agent Workbook Challenge',
+    relativePath: 'docs/agent-workbook-challenge.md',
+    url: `${repositoryUrl}/blob/main/docs/agent-workbook-challenge.md`,
+  },
+  {
     title: 'Agent WorkPaper Tool-Calling Recipe',
     relativePath: 'docs/agent-workpaper-tool-calling-recipe.md',
     url: `${repositoryUrl}/blob/main/docs/agent-workpaper-tool-calling-recipe.md`,
+  },
+  {
+    title: 'OpenAI Agents SDK WorkPaper Tool',
+    relativePath: 'docs/openai-agents-sdk-workpaper-tool.md',
+    url: `${repositoryUrl}/blob/main/docs/openai-agents-sdk-workpaper-tool.md`,
   },
   {
     title: 'MCP WorkPaper Tool Server',
@@ -475,6 +521,7 @@ function agentJsonManifest(): string {
       mcp: {
         server_name: 'io.github.proompteng/bilig-workpaper',
         server_card: `${siteRoot}/.well-known/mcp/server-card.json`,
+        remote_server_card: remoteMcpServerCard,
         manifest: `${siteRoot}/.well-known/mcp.json`,
         registry_search: 'https://registry.modelcontextprotocol.io/v0.1/servers?search=io.github.proompteng%2Fbilig-workpaper',
         remote_endpoint: remoteMcpEndpoint,
@@ -528,12 +575,22 @@ function agentJsonManifest(): string {
           type: 'mcp-stdio-server',
           docs: `${siteRoot}/mcp-workpaper-tool-server.html`,
           server_card: `${siteRoot}/.well-known/mcp/server-card.json`,
+          challenge_command: `npm exec --package ${headlessPackageSpec} -- bilig-mcp-challenge`,
+        },
+        {
+          name: 'claude-desktop-mcpb',
+          type: 'mcpb-desktop-extension',
+          package_version: headlessPackageVersion,
+          download_url: mcpbReleaseAssetUrl,
+          checksum_url: mcpbReleaseChecksumUrl,
+          docs: `${siteRoot}/claude-desktop-mcpb-workpaper.html`,
         },
         {
           name: 'remote-workpaper-mcp-demo',
           type: 'mcp-streamable-http-server',
           endpoint: remoteMcpEndpoint,
           alias_endpoint: remoteMcpAliasEndpoint,
+          server_card: remoteMcpServerCard,
           protocol_version: '2025-11-25',
           authentication_required: false,
           docs: `${siteRoot}/mcp-workpaper-tool-server.html#remote-stateless-endpoint`,
@@ -565,9 +622,12 @@ function agentJsonManifest(): string {
         `${siteRoot}/`,
         `${siteRoot}/why-use-bilig.html`,
         `${siteRoot}/headless-workpaper-agent-handbook.html`,
+        `${siteRoot}/agent-workbook-challenge.html`,
         `${siteRoot}/mcp-workpaper-tool-server.html`,
         remoteMcpEndpoint,
+        remoteMcpServerCard,
         `${siteRoot}/agent-workpaper-tool-calling-recipe.html`,
+        `${siteRoot}/openai-agents-sdk-workpaper-tool.html`,
         `${siteRoot}/node-framework-workpaper-adapters.html`,
         `${siteRoot}/npm-provenance-package-trust.html`,
       ],
@@ -577,255 +637,6 @@ function agentJsonManifest(): string {
   )
   const compactPrompts = compactStringArrayProperty(json, 'prompts', mcpPromptNames, '    ')
   return `${compactStringArrayProperty(compactPrompts, 'not_a_fit', agentNotAFitBoundaries, '    ')}\n`
-}
-
-function mcpServerCardManifest(): string {
-  const json = JSON.stringify(
-    {
-      $schema: 'https://modelcontextprotocol.io/schemas/server-card/v1.0',
-      version: '1.0',
-      protocolVersion: '2025-11-25',
-      serverInfo: {
-        name: 'Bilig WorkPaper',
-        version: headlessPackageVersion,
-        description:
-          'Formula-backed WorkPaper MCP tools for workbook reads, input edits, recalculation, formula validation, and JSON persistence.',
-      },
-      repository: {
-        type: 'git',
-        url: repositoryUrl,
-      },
-      homepage: `${siteRoot}/`,
-      license: 'MIT',
-      authentication: {
-        required: false,
-        schemes: [],
-      },
-      transport: {
-        type: 'stdio',
-        command: 'npm',
-        args: ['exec', '--package', headlessPackageSpec, '--', 'bilig-workpaper-mcp', '--demo-workpaper-tools'],
-      },
-      transports: [
-        {
-          type: 'streamable-http',
-          url: remoteMcpEndpoint,
-          protocolVersion: '2025-11-25',
-          stateless: true,
-        },
-        {
-          type: 'stdio',
-          command: 'npm',
-          args: ['exec', '--package', headlessPackageSpec, '--', 'bilig-workpaper-mcp', '--demo-workpaper-tools'],
-        },
-      ],
-      capabilities: {
-        tools: true,
-        resources: true,
-        prompts: true,
-      },
-      tools: [
-        {
-          name: 'list_sheets',
-          description: 'List sheets and their current used dimensions.',
-          inputSchema: {
-            type: 'object',
-            additionalProperties: false,
-          },
-        },
-        {
-          name: 'read_range',
-          description: 'Read evaluated values and serialized cell contents for a WorkPaper range.',
-          inputSchema: {
-            type: 'object',
-            required: ['range'],
-            properties: {
-              range: {
-                type: 'string',
-                description: 'A1 range. Include a sheet name or pass sheetName separately.',
-              },
-              sheetName: {
-                type: 'string',
-                description: 'Default sheet name when range omits a sheet name.',
-              },
-            },
-            additionalProperties: false,
-          },
-        },
-        {
-          name: 'read_cell',
-          description: 'Read one cell with evaluated value, display value, formula, and serialized content.',
-          inputSchema: {
-            type: 'object',
-            required: ['sheetName', 'address'],
-            properties: {
-              sheetName: {
-                type: 'string',
-              },
-              address: {
-                type: 'string',
-              },
-            },
-            additionalProperties: false,
-          },
-        },
-        {
-          name: 'set_cell_contents',
-          description: 'Set one WorkPaper cell. Start the server with --writable to persist the updated WorkPaper JSON file.',
-          inputSchema: {
-            type: 'object',
-            required: ['sheetName', 'address', 'value'],
-            properties: {
-              sheetName: {
-                type: 'string',
-              },
-              address: {
-                type: 'string',
-              },
-              value: {
-                type: ['string', 'number', 'boolean', 'null'],
-                description: 'Raw cell content. Formula strings must start with =.',
-              },
-            },
-            additionalProperties: false,
-          },
-        },
-        {
-          name: 'get_cell_display_value',
-          description: 'Return the formatted display value for one WorkPaper cell.',
-          inputSchema: {
-            type: 'object',
-            required: ['sheetName', 'address'],
-            properties: {
-              sheetName: {
-                type: 'string',
-              },
-              address: {
-                type: 'string',
-              },
-            },
-            additionalProperties: false,
-          },
-        },
-        {
-          name: 'export_workpaper_document',
-          description: 'Export the current WorkPaper JSON document.',
-          inputSchema: {
-            type: 'object',
-            properties: {
-              includeConfig: {
-                type: 'boolean',
-                default: true,
-              },
-            },
-            additionalProperties: false,
-          },
-        },
-        {
-          name: 'validate_formula',
-          description: 'Validate formula syntax using the WorkPaper formula parser.',
-          inputSchema: {
-            type: 'object',
-            required: ['formula'],
-            properties: {
-              formula: {
-                type: 'string',
-                description: 'Formula string, including the leading =.',
-              },
-            },
-            additionalProperties: false,
-          },
-        },
-      ],
-      resources: [
-        {
-          uri: 'bilig://workpaper/manifest',
-          name: 'workpaper_manifest',
-          title: 'WorkPaper MCP Manifest',
-          description: 'Live manifest of the current WorkPaper file, available tools, prompts, resources, and verification contract.',
-          mimeType: 'application/json',
-        },
-        {
-          uri: 'bilig://workpaper/agent-handoff',
-          name: 'workpaper_agent_handoff',
-          title: 'WorkPaper Agent Handoff',
-          description: 'Compact instructions for agents that need to edit workbook formulas without spreadsheet UI automation.',
-          mimeType: 'text/markdown',
-        },
-        {
-          uri: 'bilig://workpaper/sheets',
-          name: 'workpaper_sheets',
-          title: 'WorkPaper Sheets',
-          description: 'Current sheet names and used dimensions for the loaded WorkPaper document.',
-          mimeType: 'application/json',
-        },
-        {
-          uri: 'bilig://workpaper/current-document',
-          name: 'workpaper_current_document',
-          title: 'Current WorkPaper Document',
-          description: 'Current persisted WorkPaper JSON document as exported from the in-memory engine.',
-          mimeType: 'application/json',
-        },
-      ],
-      prompts: [
-        {
-          name: 'edit_and_verify_workpaper',
-          title: 'Edit And Verify WorkPaper',
-          description:
-            'Guide an agent through a safe WorkPaper edit: read before, validate target, write one cell, read computed output, export JSON, and report proof.',
-          arguments: [
-            {
-              name: 'task',
-              title: 'Task',
-              description: 'Human-readable workbook edit request.',
-            },
-            {
-              name: 'target_cell',
-              title: 'Target Cell',
-              description: 'Optional sheet-qualified A1 target such as Inputs!B3.',
-            },
-            {
-              name: 'output_range',
-              title: 'Output Range',
-              description: 'Optional dependent output range to read after recalculation, such as Summary!A1:B5.',
-            },
-          ],
-        },
-        {
-          name: 'debug_workpaper_formula',
-          title: 'Debug WorkPaper Formula',
-          description: 'Guide an agent through formula validation and readback when a WorkPaper formula or dependent output looks wrong.',
-          arguments: [
-            {
-              name: 'formula',
-              title: 'Formula',
-              description: 'Optional formula text, including the leading =.',
-            },
-            {
-              name: 'cell',
-              title: 'Cell',
-              description: 'Optional sheet-qualified A1 cell that contains or should contain the formula.',
-            },
-            {
-              name: 'symptom',
-              title: 'Symptom',
-              description: 'Optional description of the wrong value, parse failure, or behavior being debugged.',
-            },
-          ],
-        },
-      ],
-    },
-    null,
-    2,
-  )
-  return `${compactStringOnlyArrays(json)}\n`
-}
-
-function compactStringOnlyArrays(json: string): string {
-  return json.replace(/\[\n((?:\s+"(?:[^"\\]|\\.)+"(?:,\n)?)+)\s+\]/g, (match) => {
-    const values = [...match.matchAll(/"((?:[^"\\]|\\.)*)"/g)].map(([, value]) => `"${value}"`)
-    return `[${values.join(', ')}]`
-  })
 }
 
 function compactStringArrayProperty(json: string, propertyName: string, values: readonly string[], indent: string): string {
@@ -879,7 +690,13 @@ async function buildLlmsFull(): Promise<string> {
 async function generatedTargets(): Promise<ReadonlyArray<readonly [string, string]>> {
   const llmsFull = await buildLlmsFull()
   const agentJson = agentJsonManifest()
-  const mcpServerCard = mcpServerCardManifest()
+  const mcpServerCard = mcpServerCardManifest({
+    headlessPackageSpec,
+    headlessPackageVersion,
+    remoteMcpEndpoint,
+    repositoryUrl,
+    siteRoot,
+  })
   return [
     ['docs/AGENTS.md', docsAgentInstructions],
     ['docs/agent.json', agentJson],

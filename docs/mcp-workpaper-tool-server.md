@@ -123,7 +123,7 @@ printf '%s\n' \
 The npm package exposes the demo server as `bilig-workpaper-mcp` by default:
 
 ```sh
-npm exec --package @bilig/headless@0.24.2 -- bilig-workpaper-mcp
+npm exec --package @bilig/headless@0.31.0 -- bilig-workpaper-mcp
 ```
 
 ## Remote Stateless Endpoint
@@ -165,8 +165,14 @@ For a real agent workflow, point the same binary at a persisted WorkPaper JSON
 document:
 
 ```sh
-npm exec --package @bilig/headless@0.24.2 -- bilig-workpaper-mcp --workpaper ./pricing.workpaper.json --init-demo-workpaper --writable
+npm exec --package @bilig/headless@0.31.0 -- bilig-mcp-challenge
+npm exec --package @bilig/headless@0.31.0 -- bilig-workpaper-mcp --workpaper ./pricing.workpaper.json --init-demo-workpaper --writable
 ```
+
+`bilig-mcp-challenge` is the one-command evaluator path. It initializes the
+file-backed MCP server, lists tools/resources/prompts, edits `Inputs!B3`, reads
+recalculated `Summary!B3`, exports WorkPaper JSON, restarts from disk, and
+prints `verified: true`.
 
 File-backed mode loads `./pricing.workpaper.json`, exposes `list_sheets`,
 `read_range`, `read_cell`, `set_cell_contents`, `get_cell_display_value`,
@@ -243,6 +249,12 @@ lists the same `list_sheets`, `read_range`, `read_cell`, `set_cell_contents`,
 tools, plus the WorkPaper resources and prompts, without requiring account auth
 or a live server connection.
 
+The hosted endpoint origin serves the same crawler-friendly card at
+`https://bilig.proompteng.ai/.well-known/mcp/server-card.json`, with
+`streamable-http` transport metadata for `https://bilig.proompteng.ai/mcp`.
+That gives Smithery-style scanners a same-origin metadata path when they start
+from the remote MCP URL rather than the documentation site.
+
 The package carries `mcpName: io.github.proompteng/bilig-workpaper` and a
 matching `server.json`. It is published in the official MCP Registry as
 `io.github.proompteng/bilig-workpaper`:
@@ -285,7 +297,7 @@ import { generateText } from 'ai'
 const client = await createMCPClient({
   transport: new Experimental_StdioMCPTransport({
     command: 'npm',
-    args: ['exec', '--package', '@bilig/headless@0.24.2', '--', 'bilig-workpaper-mcp'],
+    args: ['exec', '--package', '@bilig/headless@0.31.0', '--', 'bilig-workpaper-mcp'],
   }),
 })
 

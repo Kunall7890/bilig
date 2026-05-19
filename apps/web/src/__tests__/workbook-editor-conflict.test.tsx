@@ -25,6 +25,7 @@ function ConflictHarness(props: {
   const [editorConflict, setEditorConflict] = useState<WorkbookEditorConflict | null>(null)
   const [editingMode, setEditingMode] = useState<EditingMode>('formula')
   const [editorSelectionBehavior, setEditorSelectionBehavior] = useState<EditSelectionBehavior>('caret-end')
+  const [, setEditorTargetSelection] = useState<WorkerRuntimeSelection | null>(props.selection)
   const [editorValue] = useState('local-draft')
   const editorValueRef = useRef(editorValue)
   const editorTargetRef = useRef(props.selection)
@@ -68,6 +69,7 @@ function ConflictHarness(props: {
     applyParsedInput: props.spies.applyParsedInput,
     reportRuntimeError: props.spies.reportRuntimeError,
     setEditorSelectionBehavior,
+    setEditorTargetSelection,
     setEditingMode,
   })
 

@@ -23,6 +23,21 @@ interface HandledGridKeyEvent {
   shiftKey: boolean
 }
 
+function isKeyboardContextMenuShortcut(event: KeyboardEventLike, normalizedKey: string): boolean {
+  if (normalizedKey === 'ContextMenu') {
+    return true
+  }
+  if (event.shiftKey && normalizedKey === 'F10' && !event.altKey && !event.ctrlKey && !event.metaKey) {
+    return true
+  }
+  return (
+    event.shiftKey &&
+    !event.altKey &&
+    (event.ctrlKey || event.metaKey) &&
+    (event.code === 'Backslash' || normalizedKey === '\\' || normalizedKey === '|')
+  )
+}
+
 export function handleWorkbookGridKeyDownCapture(input: {
   event: KeyboardEventLike
   handleGridKey: (event: HandledGridKeyEvent) => void
@@ -35,7 +50,7 @@ export function handleWorkbookGridKeyDownCapture(input: {
   }
 
   const normalizedKey = getNormalizedGridKeyboardKey(event.key, event.code)
-  if (normalizedKey === 'ContextMenu' || (event.shiftKey && normalizedKey === 'F10')) {
+  if (isKeyboardContextMenuShortcut(event, normalizedKey)) {
     resetPointerInteraction()
     if (openHeaderContextMenuFromKeyboard()) {
       event.preventDefault()

@@ -83,6 +83,10 @@ export function isSheetSelectionShortcut(event: GridKeyboardModifierState & { sh
   return event.key === ' ' && !event.altKey && (hasPrimaryModifier || event.shiftKey === true)
 }
 
+export function isCurrentRegionSelectionShortcut(event: GridKeyboardModifierState & { shiftKey?: boolean }): boolean {
+  return (event.ctrlKey || event.metaKey) && event.shiftKey === true && !event.altKey && event.key === '*'
+}
+
 export function isDeleteKey(key: string): boolean {
   return key === 'Backspace' || key === 'Delete'
 }
@@ -93,6 +97,22 @@ export function isClearCellKey(
   },
 ): boolean {
   return isDeleteKey(event.key) && !event.altKey && !event.ctrlKey && !event.metaKey && !event.shiftKey
+}
+
+export function isScrollActiveCellShortcut(
+  event: GridKeyboardModifierState & {
+    shiftKey?: boolean
+  },
+): boolean {
+  return event.key === 'Backspace' && (event.ctrlKey || event.metaKey) && !event.altKey && !event.shiftKey
+}
+
+export function isStructuralDeleteShortcut(
+  event: GridKeyboardModifierState & {
+    shiftKey?: boolean
+  },
+): boolean {
+  return event.key === '-' && (event.ctrlKey || event.metaKey) && event.altKey && !event.shiftKey
 }
 
 export function isHandledGridKey(
@@ -106,7 +126,10 @@ export function isHandledGridKey(
     isClipboardShortcut(event) ||
     isFillShortcut(event) ||
     isFillSelectionShortcut(event) ||
+    isScrollActiveCellShortcut(event) ||
+    isStructuralDeleteShortcut(event) ||
     isNavigationShortcut(event) ||
+    isCurrentRegionSelectionShortcut(event) ||
     (hasPrimaryModifier && !event.altKey && event.key.toLowerCase() === 'a') ||
     isSheetSelectionShortcut(event) ||
     (event.key === 'Enter' && !event.altKey && !hasPrimaryModifier) ||

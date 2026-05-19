@@ -382,6 +382,43 @@ export function translateSimpleDirectScalarFormula(
   return translatedCompiledFormula(compiled, source, symbolicRefs, parsedDeps, translatedRefs)
 }
 
+export function translateTrustedSimpleDirectScalarFormula(
+  compiled: CompiledFormula,
+  rowDelta: number,
+  colDelta: number,
+  source: string,
+): CompiledFormula | undefined {
+  if (
+    compiled.symbolicRanges.length !== 0 ||
+    compiled.symbolicNames.length !== 0 ||
+    compiled.symbolicTables.length !== 0 ||
+    compiled.symbolicSpills.length !== 0 ||
+    (!isSimpleDirectScalarAst(compiled.optimizedAst) &&
+      !isSimpleDirectScalarOffsetAst(compiled.optimizedAst) &&
+      !isSimpleDirectAbsAst(compiled.optimizedAst))
+  ) {
+    return undefined
+  }
+  const scalarAst = isSimpleDirectScalarOffsetAst(compiled.optimizedAst) ? compiled.optimizedAst.left : compiled.optimizedAst
+  const expectedRefCount = isSimpleDirectScalarAst(scalarAst) && scalarAst.right.kind === 'CellRef' ? 2 : 1
+  if (compiled.parsedSymbolicRefs === undefined || compiled.parsedSymbolicRefs.length !== expectedRefCount) {
+    return undefined
+  }
+  const translatedRefs: ParsedCellReferenceInfo[] = []
+  const symbolicRefs: ParsedCellReferenceInfo['address'][] = []
+  const parsedDeps: ParsedDependencyReference[] = []
+  for (let index = 0; index < compiled.parsedSymbolicRefs.length; index += 1) {
+    const translated = translateParsedLocalCellRef(compiled.parsedSymbolicRefs[index]!, rowDelta, colDelta)
+    if (!translated) {
+      return undefined
+    }
+    translatedRefs[index] = translated
+    symbolicRefs[index] = translated.address
+    parsedDeps[index] = parsedCellDependency(translated)
+  }
+  return translatedCompiledFormula(compiled, source, symbolicRefs, parsedDeps, translatedRefs)
+}
+
 export function tryCompileSimpleDirectScalarFormula(source: string): CompiledFormula | undefined {
   const trimmedSource = source.trim()
   const trimmed = trimmedSource.startsWith('=') ? trimmedSource.slice(1).trim() : trimmedSource

@@ -710,6 +710,7 @@ export function errorLabel(code: i32): string {
   if (code == ErrorCode.Cycle) return '#CYCLE!'
   if (code == ErrorCode.Spill) return '#SPILL!'
   if (code == ErrorCode.Blocked) return '#BLOCKED!'
+  if (code == ErrorCode.Num) return '#NUM!'
   return '#ERROR!'
 }
 

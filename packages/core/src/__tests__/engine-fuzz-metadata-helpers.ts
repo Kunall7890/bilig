@@ -18,7 +18,7 @@ import {
   clearStyleActionArbitrary,
   coreReplicaActionArbitrary,
   engineFuzzSheetName,
-  isExpectedRejectedMutationError,
+  isExpectedEngineMutationRejection,
   normalizeSnapshotForSemanticComparison,
   rangeArbitrary,
   styleActionArbitrary,
@@ -356,7 +356,7 @@ export function applyEngineSemanticActionAndCaptureResult(
       after,
     }
   } catch (error) {
-    if (!isExpectedRejectedMutationError(error)) {
+    if (!isExpectedEngineMutationRejection(error)) {
       throw error
     }
     const after = engine.exportSnapshot()

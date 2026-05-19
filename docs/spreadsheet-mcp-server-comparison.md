@@ -34,13 +34,13 @@ touch spreadsheet-shaped business logic.
 Use the existing spreadsheet MCP ecosystem when the source of truth is already
 somewhere else:
 
-| Server or path                                                          | Best fit                                                                                | Boundary to check before adopting                                                             |
-| ----------------------------------------------------------------------- | --------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------- |
-| [Google Sheets MCP](https://github.com/henilcalagiya/google-sheets-mcp) | Agents that need CRUD operations against live Google Sheets through a service account    | Requires Google Cloud, Sheets API, Drive API, and service-account setup                        |
+| Server or path                                                          | Best fit                                                                                 | Boundary to check before adopting                                                               |
+| ----------------------------------------------------------------------- | ---------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------- |
+| [Google Sheets MCP](https://github.com/henilcalagiya/google-sheets-mcp) | Agents that need CRUD operations against live Google Sheets through a service account    | Requires Google Cloud, Sheets API, Drive API, and service-account setup                         |
 | [Univer MCP](https://github.com/dream-num/univer-mcp)                   | Agents that operate a Univer spreadsheet runtime through an MCP session                  | Requires an API key and a running Univer instance; the repo labels plain-text mode experimental |
-| [GRID MCP](https://github.com/GRID-is/claude-mcp)                       | Claude Desktop workflows against spreadsheets uploaded to GRID                           | Requires a GRID account, uploaded workbook, and API key                                        |
-| Excel file or SheetJS-style tooling                                     | Creating, reading, or preserving `.xlsx` files                                           | A file library can preserve formulas without recalculating fresh results in Node               |
-| Bilig WorkPaper MCP                                                     | Local agent tools that own WorkPaper JSON and need write, recalculate, readback, restore | Not a full Excel editor; use it when formula readback is the product                           |
+| [GRID MCP](https://github.com/GRID-is/claude-mcp)                       | Claude Desktop workflows against spreadsheets uploaded to GRID                           | Requires a GRID account, uploaded workbook, and API key                                         |
+| Excel file or SheetJS-style tooling                                     | Creating, reading, or preserving `.xlsx` files                                           | A file library can preserve formulas without recalculating fresh results in Node                |
+| Bilig WorkPaper MCP                                                     | Local agent tools that own WorkPaper JSON and need write, recalculate, readback, restore | Not a full Excel editor; use it when formula readback is the product                            |
 
 That split is useful for outreach too. Do not pitch Bilig as "another Google
 Sheets MCP server" or "another Excel file editor." Pitch it where the agent
@@ -102,7 +102,7 @@ product. Use Bilig WorkPaper MCP when recalculated readback is the product.
 Install and list the packaged server:
 
 ```sh
-npm exec --package @bilig/headless@0.24.2 -- bilig-workpaper-mcp
+npm exec --package @bilig/headless@0.30.2 -- bilig-workpaper-mcp
 ```
 
 Run the maintained JSON-RPC transcript from a clone:
@@ -121,7 +121,7 @@ the post-edit values.
 For a persisted workbook file:
 
 ```sh
-npm exec --package @bilig/headless@0.24.2 -- \
+npm exec --package @bilig/headless@0.30.2 -- \
   bilig-workpaper-mcp --workpaper ./pricing.workpaper.json --init-demo-workpaper --writable
 ```
 

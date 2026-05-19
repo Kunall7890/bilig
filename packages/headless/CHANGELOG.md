@@ -4,6 +4,326 @@ All notable changes to `@bilig/headless` will be documented in this file.
 
 This package is released as part of the aligned bilig library package set.
 
+## 0.31.0
+
+- Release type: minor
+- Previous libraries tag: libraries-v0.30.2
+- Manual override: no
+
+## Features
+- feat(package): add exceljs formula recalc adapter (e24ca045)
+
+## Fixes
+- perf(headless): narrow custom function adapter import (5d04174c)
+- fix(agent): throttle passive context churn (0febed2b)
+
+## Internal runtime changes
+- docs(discovery): sync 0.30.2 agent surfaces (fc4a6030)
+
+## 0.30.2
+
+- Release type: patch
+- Previous libraries tag: libraries-v0.30.1
+- Manual override: no
+
+## Fixes
+- fix(grid): stabilize editor terminal shortcuts (68e0d32f)
+
+## 0.30.1
+
+- Release type: patch
+- Previous libraries tag: libraries-v0.30.0
+- Manual override: no
+
+## Fixes
+
+- fix(formula): match excel log error semantics (15d01a85)
+- fix(package): resolve xlsx recalc workspace imports (d0485880)
+
+## Internal runtime changes
+
+- docs(discovery): sync runtime package 0.30.0 (9de932db)
+
+## 0.30.0
+
+- Release type: minor
+- Previous libraries tag: libraries-v0.29.0
+- Manual override: no
+
+## Features
+
+- feat(package): add xlsx formula recalc npm entrypoint (08ac4689)
+- feat(formula): batch native direct scalar initialization (03df35e9)
+- feat(formula): add native aggregate matrix batches (b25d12ce)
+
+## Fixes
+
+- fix(grid): validate visible fill coverage by geometry (39f36931)
+- perf(core): streamline clean direct scalar deltas (016b2153)
+- fix(xlsx-formula-recalc): inherit workspace aliases (7876c92b)
+
+## Internal runtime changes
+
+- docs(discovery): sync runtime package 0.29.0 (17dabbe1)
+- chore(format): normalize xlsx formula readme (b02af111)
+
+## 0.29.0
+
+- Release type: minor
+- Previous libraries tag: libraries-v0.28.2
+- Manual override: yes
+
+## Features
+
+- feat(package): add unscoped bilig npm entrypoint (c43c5b69)
+
+## Internal runtime changes
+
+- docs(discovery): sync runtime package 0.28.2 (26662b3c)
+
+## 0.28.2
+
+- Release type: patch
+- Previous libraries tag: libraries-v0.28.1
+- Manual override: no
+
+## Fixes
+
+- perf(core): group exact criteria aggregates (6d6a2d0c)
+- perf(excel-import): speed style-only blank stripping (eb8b1f2d)
+
+## Internal runtime changes
+
+- docs(discovery): sync runtime package 0.28.1 (091ab9fd)
+
+## 0.28.1
+
+- Release type: patch
+- Previous libraries tag: libraries-v0.28.0
+- Manual override: no
+
+## Fixes
+
+- fix(corpus): expand recent workbook verification (8ae4d8dc)
+
+## 0.28.0
+
+- Release type: minor
+- Previous libraries tag: libraries-v0.27.0
+- Manual override: no
+
+## Features
+
+- feat(agent): add openai agents workpaper tools (cd9bb8d0)
+
+## Internal runtime changes
+
+- docs(discovery): sync runtime package 0.27.0 (37c6d76a)
+- docs(agent): harden mcp server card schemas (9e7c1c5d)
+
+## 0.27.0
+
+- Release type: minor
+- Previous libraries tag: libraries-v0.26.1
+- Manual override: no
+
+## Features
+
+- feat(create-workpaper): add agent starter (87fb5c74)
+
+## Internal runtime changes
+
+- docs(discovery): sync runtime package 0.26.1 (9c2eefa0)
+
+## 0.26.1
+
+- Release type: patch
+- Previous libraries tag: libraries-v0.26.0
+- Manual override: no
+
+## Fixes
+
+- perf(headless): split mcp exports from main entry (32a5dc8b)
+- fix(release): upload headless mcpb assets (40288dd4)
+
+## Internal runtime changes
+
+- docs(discovery): sync runtime package 0.26.0 (09ec7e80)
+
+## 0.26.0
+
+- Release type: minor
+- Previous libraries tag: libraries-v0.25.7
+- Manual override: no
+
+## Features
+
+- feat(headless): add mcp challenge cli (a0f3eba8)
+
+## Internal runtime changes
+
+- docs(discovery): sync headless 0.25.7 references (9cd5e8c4)
+- docs(mcp): refresh registry distribution proof (b2d6f700)
+
+## 0.25.7
+
+- Release type: patch
+- Previous libraries tag: libraries-v0.25.6
+- Manual override: no
+
+## Fixes
+
+- perf(core): trust scalar template translation (191bc3af)
+
+## Internal runtime changes
+
+- docs(discovery): sync headless 0.25.6 references (96a3cbe7)
+
+## 0.25.6
+
+- Release type: patch
+- Previous libraries tag: libraries-v0.25.5
+- Manual override: no
+
+## Fixes
+
+- fix(formula): preserve cached formula parity (0fd14b37)
+
+## Internal runtime changes
+
+- docs(mcp): add Smithery install surface (aeddfc39)
+
+## 0.25.5
+
+- Release type: patch
+- Previous libraries tag: libraries-v0.25.4
+- Manual override: no
+
+## Fixes
+
+- perf(core): skip redundant csv import recalcs (b1254e8a)
+
+## Internal runtime changes
+
+- docs(discovery): sync headless 0.25.4 references (a73453a9)
+
+## 0.25.4
+
+- Release type: patch
+- Previous libraries tag: libraries-v0.25.3
+- Manual override: no
+
+## Fixes
+
+- perf(excel-import): enable formula import restore sidecar (8313f2d7)
+
+## Internal runtime changes
+
+- docs(discovery): sync headless 0.25.3 references (ea015ad6)
+- docs(agent): publish Claude Desktop MCPB install path (6d25dad4)
+
+## 0.25.3
+
+- Release type: patch
+- Previous libraries tag: libraries-v0.25.2
+- Manual override: no
+
+## Fixes
+
+- perf(excel-import): add import restore coordinate fast path (0788025e)
+
+## Internal runtime changes
+
+- docs(discovery): sync headless 0.25.2 references (f3196fb4)
+- test(headless): stabilize guarded sumifs budget (e33507fc)
+
+## 0.25.2
+
+- Release type: patch
+- Previous libraries tag: libraries-v0.25.1
+- Manual override: no
+
+## Fixes
+
+- perf(core): precompile csv numeric parsing (9c4e5af1)
+
+## Internal runtime changes
+
+- docs(discovery): sync headless 0.25.1 surfaces (fa0ab38c)
+
+## 0.25.1
+
+- Release type: patch
+- Previous libraries tag: libraries-v0.25.0
+- Manual override: no
+
+## Fixes
+
+- fix(headless): harden recent workbook parity (df0b9d88)
+
+## Internal runtime changes
+
+- docs(discovery): sync headless 0.25.0 surfaces (6f372228)
+
+## 0.25.0
+
+- Release type: minor
+- Previous libraries tag: libraries-v0.24.5
+- Manual override: no
+
+## Features
+
+- feat(headless): add agent workbook challenge cli (bf7c2f81)
+
+## 0.24.5
+
+- Release type: patch
+- Previous libraries tag: libraries-v0.24.4
+- Manual override: no
+
+## Fixes
+
+- perf(headless): reduce physical range write lookups (2170ba56)
+
+## Internal runtime changes
+
+- docs(headless): sync discovery package version (a17e8163)
+
+## 0.24.4
+
+- Release type: patch
+- Previous libraries tag: libraries-v0.24.3
+- Manual override: no
+
+## Fixes
+
+- fix(workbook): stabilize grid typography and focus ownership (96abe1e7)
+
+## Internal runtime changes
+
+- chore(ci): update github action pins (b33db000)
+
+## 0.24.3
+
+- Release type: patch
+- Previous libraries tag: libraries-v0.24.2
+- Manual override: no
+
+## Fixes
+
+- perf(headless): expand workpaper fast paths (836ac431)
+- fix(core): preserve structural insert entries in sync batches (1ede985b)
+- fix(core): clean up rebased fast paths (aa86ac6f)
+- perf(core): speed trusted template restore (9740a6a2)
+
+## Internal runtime changes
+
+- refactor(headless): split oversized runtime files (01d09e16)
+- docs(headless): refresh published commands for 0.24.2 (7d1d5fb9)
+- docs(agent): add workbook challenge (7e7cd271)
+- test(core): handle protection rejections in fuzz (5996cfd6)
+- test(headless): include fast path surface parity (a7b493b6)
+
 ## 0.24.2
 
 - Release type: patch

@@ -6177,6 +6177,19 @@ describe('SpreadsheetEngine', () => {
     })
   })
 
+  it('settles formula CSV imports without redundant public recalculation passes', async () => {
+    const restored = new SpreadsheetEngine({ workbookName: 'csv-import-single-settle' })
+    await restored.ready()
+    const recalculateNowSpy = vi.spyOn(restored, 'recalculateNow')
+
+    restored.importSheetCsv('Sheet1', '=B1*2,3\n=B1+1,=A2+A1')
+
+    expect(recalculateNowSpy).not.toHaveBeenCalled()
+    expect(restored.getCellValue('Sheet1', 'A1')).toEqual({ tag: ValueTag.Number, value: 6 })
+    expect(restored.getCellValue('Sheet1', 'A2')).toEqual({ tag: ValueTag.Number, value: 4 })
+    expect(restored.getCellValue('Sheet1', 'B2')).toEqual({ tag: ValueTag.Number, value: 10 })
+  })
+
   it('recalculates transitive range dependents when a downstream formula becomes an error', async () => {
     const engine = new SpreadsheetEngine({ workbookName: 'transitive-range-recalc' })
     await engine.ready()

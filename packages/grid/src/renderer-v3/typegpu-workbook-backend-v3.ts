@@ -168,7 +168,8 @@ export function hasTransientEmptyTypeGpuBodyFrameV3(input: {
     if (!content) {
       continue
     }
-    if ((content.rectCount > 0 && pane.tile.rectCount === 0) || (content.textCount > 0 && pane.tile.textCount === 0)) {
+    // Only hide transient missing grid payloads; zero text is a valid authoritative clear.
+    if (content.rectCount > 0 && pane.tile.rectCount === 0) {
       return true
     }
   }

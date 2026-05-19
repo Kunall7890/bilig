@@ -55,8 +55,12 @@ export async function requireAgentPublicSurfaceDiscovery(input: {
   } = input.context
   const { headlessSpreadsheetEngineNodeServicesAgents, spreadsheetMcpServerComparison } = input
   const headlessPackageSpec = `@bilig/headless@${headlessPackageVersion}`
+  const mcpbReleaseAssetUrl = `https://github.com/proompteng/bilig/releases/download/libraries-v${headlessPackageVersion}/bilig-workpaper.mcpb`
+  const mcpbReleaseChecksumUrl = `${mcpbReleaseAssetUrl}.sha256`
+  const officialRegistryLatestMarkedVersion = '0.27.0'
 
   const jekyllConfig = await readFile(join(docsRoot, '_config.yml'), 'utf8')
+  const openAiAgentsSdkDoc = await readFile(join(docsRoot, 'openai-agents-sdk-workpaper-tool.md'), 'utf8')
   requireIncludes(jekyllConfig, 'include:', 'docs/_config.yml')
   requireIncludes(jekyllConfig, '  - .well-known', 'docs/_config.yml')
   if (mcpServerCardMcpJson !== mcpServerCard) {
@@ -110,6 +114,9 @@ export async function requireAgentPublicSurfaceDiscovery(input: {
     if (!mcpServerCardToolNames.has(requiredTool)) {
       throw new Error(`docs/.well-known/mcp/server-card.json is missing ${requiredTool}`)
     }
+  }
+  for (const tool of mcpServerCardTools) {
+    requireMcpToolDiscoveryContract(tool)
   }
   const mcpServerCardCapabilities = Reflect.get(parsedMcpServerCard, 'capabilities')
   if (
@@ -199,7 +206,36 @@ export async function requireAgentPublicSurfaceDiscovery(input: {
     'https://developers.openai.com/api/docs/guides/function-calling',
     'docs/agent-workpaper-tool-calling-recipe.md',
   )
+  requireIncludes(
+    agentToolCallingDoc,
+    'pnpm --dir examples/headless-workpaper run agent:openai-agents-sdk',
+    'docs/agent-workpaper-tool-calling-recipe.md',
+  )
+  requireIncludes(agentToolCallingDoc, 'openai-agents-sdk-workpaper-tool.md', 'docs/agent-workpaper-tool-calling-recipe.md')
   requireIncludes(agentToolCallingDoc, 'function_call_output', 'docs/agent-workpaper-tool-calling-recipe.md')
+  for (const [path, content] of [
+    ['README.md', readme],
+    ['packages/headless/README.md', headlessReadme],
+    ['docs/index.html', index],
+    ['docs/llms.txt', llms],
+    ['docs/agent-workpaper-tool-calling-recipe.md', agentToolCallingDoc],
+    ['examples/headless-workpaper/package.json', headlessExamplePackageJson],
+    ['examples/headless-workpaper/README.md', await readFile(join(repoRoot, 'examples', 'headless-workpaper', 'README.md'), 'utf8')],
+  ] as const) {
+    requireIncludes(content, 'agent:openai-agents-sdk', path)
+  }
+  for (const required of [
+    'title: OpenAI Agents SDK WorkPaper tools',
+    'description: Wrap @bilig/headless workbook reads and verified edits as OpenAI Agents SDK function tools.',
+    'image: /assets/github-social-preview.png',
+    'pnpm --dir examples/headless-workpaper run agent:openai-agents-sdk',
+    'examples/headless-workpaper/openai-agents-sdk-tool-smoke.ts',
+    'https://openai.github.io/openai-agents-js/guides/tools/',
+    'OpenAI Agents SDK Agent -> tool() -> invokeFunctionTool()',
+    'restoredMatchesAfter',
+  ] as const) {
+    requireIncludes(openAiAgentsSdkDoc, required, 'docs/openai-agents-sdk-workpaper-tool.md')
+  }
   requireIncludes(
     agentToolCallingDoc,
     'pnpm --dir examples/headless-workpaper run agent:framework-adapters',
@@ -259,6 +295,11 @@ export async function requireAgentPublicSurfaceDiscovery(input: {
   requireIncludes(rootPackageJson, '"workpaper:smoke:external": "bun scripts/workpaper-external-smoke.ts"', 'package.json')
   requireIncludes(
     mcpWorkPaperToolServerDoc,
+    `npm exec --package ${headlessPackageSpec} -- bilig-mcp-challenge`,
+    'docs/mcp-workpaper-tool-server.md',
+  )
+  requireIncludes(
+    mcpWorkPaperToolServerDoc,
     `npm exec --package ${headlessPackageSpec} -- bilig-workpaper-mcp`,
     'docs/mcp-workpaper-tool-server.md',
   )
@@ -283,6 +324,11 @@ export async function requireAgentPublicSurfaceDiscovery(input: {
   requireIncludes(
     mcpWorkPaperToolServerDoc,
     'https://proompteng.github.io/bilig/.well-known/mcp/server-card.json',
+    'docs/mcp-workpaper-tool-server.md',
+  )
+  requireIncludes(
+    mcpWorkPaperToolServerDoc,
+    'https://bilig.proompteng.ai/.well-known/mcp/server-card.json',
     'docs/mcp-workpaper-tool-server.md',
   )
   requireIncludes(
@@ -335,15 +381,28 @@ export async function requireAgentPublicSurfaceDiscovery(input: {
     'io.github.proompteng/bilig-workpaper',
     'https://registry.modelcontextprotocol.io/v0.1/servers?search=io.github.proompteng%2Fbilig-workpaper',
     'https://glama.ai/mcp/servers/proompteng/bilig',
+    'https://bilig.proompteng.ai/.well-known/mcp/server-card.json',
     'https://proompteng.github.io/bilig/.well-known/mcp/server-card.json',
     'https://proompteng.github.io/bilig/.well-known/mcp.json',
     'https://proompteng.github.io/bilig/.well-known/mcp-server-card.json',
+    'https://smithery.ai/servers/gkonushev/bilig-workpaper',
+    'npx -y smithery mcp add gkonushev/bilig-workpaper',
+    "npx -y smithery tool call bilig-workpaper list_sheets '{}'",
     'Static MCP server card',
     'https://github.com/chatmcp/mcpso/issues/2295',
     'https://github.com/cline/mcp-marketplace/issues/1557',
-    'mcp.so                          | Submitted for maintainer review; issue body refreshed on May 18',
-    'Cline MCP Marketplace           | Submitted for maintainer review; issue body refreshed on May 18',
-    'The mcp.so and Cline MCP Marketplace submissions were refreshed on May 18, 2026',
+    'https://github.com/docker/mcp-registry/pull/3606',
+    'https://github.com/aaif-goose/goose/pull/9315',
+    'Docker MCP Registry             | Submitted for maintainer review; source commit and readme refreshed on May 19',
+    'Goose MCP catalog               | Closed by maintainer while Goose pauses new MCP server additions',
+    'mcp.so                          | Submitted for maintainer review; issue body refreshed on May 19',
+    'Cline MCP Marketplace           | Submitted for maintainer review; issue body refreshed on May 19',
+    'The Docker MCP Registry pull request was refreshed on May 19, 2026',
+    '`a1ecdd52cda3d54e0254afce129a9012c5027826`',
+    `the PR body\nnow points reviewers at \`@bilig/headless@${headlessPackageVersion}\` and \`libraries-v${headlessPackageVersion}\``,
+    'The Goose MCP catalog pull request was closed on May 19, 2026',
+    'Do not resubmit there until maintainers reopen that path',
+    'The mcp.so and Cline MCP Marketplace submissions were refreshed on May 19, 2026',
     'by editing the existing issue bodies, not by adding more comments',
     'https://mcpserver.cc/en?q=bilig',
     'bcdce4e1-3b05-4be2-b611-2a2abb8baf79',
@@ -357,18 +416,23 @@ export async function requireAgentPublicSurfaceDiscovery(input: {
     'https://github.com/mctrinh/awesome-mcp-servers/pull/46',
     'https://mcprepository.com/proompteng/bilig',
     'MCPRepository search returns a live Bilig page',
-    `Live through \`${headlessPackageVersion}\` in public search when requesting enough results`,
+    'Live; `smithery mcp add` smoke connected and listed demo workbook sheets',
+    `Live but latest marker lags npm; \`${officialRegistryLatestMarkedVersion}\` is latest-marked while npm latest is \`${headlessPackageVersion}\``,
     'Live with `Try in Browser`; seven tools indexed with A-grade TDQS',
     'Live in PulseMCP-backed lookup as `Bilig WorkPaper`',
     'https://www.pulsemcp.com/servers?search=bilig&q=bilig',
     'https://github.com/proompteng/bilig/issues/384',
     'Live verification on May 19, 2026 found Bilig WorkPaper\nthrough a PulseMCP-backed lookup query',
+    'Smithery lists Bilig WorkPaper as `gkonushev/bilig-workpaper`',
+    'Live verification on May 19, 2026 returned a connected Smithery server',
     'Glama lists Bilig WorkPaper publicly with TypeScript, Developer Tools',
     'file-backed tools',
     'A-grade Tool Definition Quality',
     "Glama's source crawl, hosted smoke build, and JSON\nAPI can refresh on different cadences",
     `npm latest is \`@bilig/headless@${headlessPackageVersion}\``,
-    `Official Registry search returns Bilig WorkPaper version \`${headlessPackageVersion}\``,
+    `official Registry latest-marked entry is\n\`io.github.proompteng/bilig-workpaper@${officialRegistryLatestMarkedVersion}\``,
+    `does not yet match npm latest \`@bilig/headless@${headlessPackageVersion}\``,
+    'remote `https://bilig.proompteng.ai/mcp`',
     'limit=100',
     'read_workpaper_summary',
     'set_workpaper_input_cell',
@@ -387,7 +451,12 @@ export async function requireAgentPublicSurfaceDiscovery(input: {
   )
   for (const required of [
     '## Remote smoke in 30 seconds',
+    '## Smithery install',
+    'https://smithery.ai/servers/gkonushev/bilig-workpaper',
+    'npx -y smithery mcp add gkonushev/bilig-workpaper',
+    "npx -y smithery tool call bilig-workpaper list_sheets '{}'",
     'https://bilig.proompteng.ai/mcp',
+    'https://bilig.proompteng.ai/.well-known/mcp/server-card.json',
     'mcp-protocol-version: 2025-11-25',
     '## Persistent file-backed stdio server',
     `npm exec --package ${headlessPackageSpec} -- bilig-workpaper-mcp`,
@@ -395,6 +464,8 @@ export async function requireAgentPublicSurfaceDiscovery(input: {
     `"args": ["exec", "--package", "${headlessPackageSpec}", "--", "bilig-workpaper-mcp", "--workpaper", "./pricing.workpaper.json", "--init-demo-workpaper", "--writable"]`,
     `args = ["exec", "--package", "${headlessPackageSpec}", "--", "bilig-workpaper-mcp", "--workpaper", "./pricing.workpaper.json", "--init-demo-workpaper", "--writable"]`,
     'pnpm mcpb:workpaper:build',
+    mcpbReleaseAssetUrl,
+    mcpbReleaseChecksumUrl,
     'claude-desktop-mcpb-workpaper.md',
     'claude mcp add-json bilig-workpaper',
     '.cursor/mcp.json',
@@ -410,7 +481,10 @@ export async function requireAgentPublicSurfaceDiscovery(input: {
   }
   requireIncludes(rootPackageJson, '"mcpb:workpaper:build": "tsx scripts/build-workpaper-mcpb.ts"', 'package.json')
   for (const required of [
-    'description: Build a Claude Desktop MCPB bundle for the published @bilig/headless WorkPaper MCP server',
+    'description: Download or reproduce the Claude Desktop MCPB bundle for the published @bilig/headless WorkPaper MCP server',
+    mcpbReleaseAssetUrl,
+    mcpbReleaseChecksumUrl,
+    'Open the downloaded `.mcpb` file with Claude Desktop',
     'pnpm mcpb:workpaper:build',
     'BILIG_HEADLESS_VERSION=$(npm view @bilig/headless version)',
     'pnpm mcpb:workpaper:build -- --package-version "$BILIG_HEADLESS_VERSION"',
@@ -455,6 +529,7 @@ export async function requireAgentPublicSurfaceDiscovery(input: {
     ['docs/why-agents-need-workbook-apis.md', whyAgentsDoc],
     ['docs/headless-workpaper-agent-handbook.md', headlessWorkpaperAgentHandbook],
     ['docs/agent-workpaper-tool-calling-recipe.md', agentToolCallingDoc],
+    ['docs/openai-agents-sdk-workpaper-tool.md', openAiAgentsSdkDoc],
     ['docs/vercel-ai-sdk-langchain-spreadsheet-tool.md', aiSdkLangChainDoc],
     ['docs/mcp-workpaper-tool-server.md', mcpWorkPaperToolServerDoc],
     ['docs/mcp-spreadsheet-server-directory.md', mcpSpreadsheetServerDirectoryDoc],
@@ -594,4 +669,95 @@ export async function requireAgentPublicSurfaceDiscovery(input: {
     agentToolCallingDoc,
     aiSdkLangChainDoc,
   })
+}
+
+function requireMcpToolDiscoveryContract(tool: unknown): void {
+  if (typeof tool !== 'object' || tool === null || Array.isArray(tool)) {
+    throw new Error('docs/.well-known/mcp/server-card.json tools must be JSON objects')
+  }
+
+  const name = Reflect.get(tool, 'name')
+  if (typeof name !== 'string' || name.length === 0) {
+    throw new Error('docs/.well-known/mcp/server-card.json tools must have names')
+  }
+  if (typeof Reflect.get(tool, 'description') !== 'string' || Reflect.get(tool, 'description').length === 0) {
+    throw new Error(`docs/.well-known/mcp/server-card.json tool ${name} must have a description`)
+  }
+  if (typeof Reflect.get(tool, 'title') !== 'string' || Reflect.get(tool, 'title').length === 0) {
+    throw new Error(`docs/.well-known/mcp/server-card.json tool ${name} must have a title`)
+  }
+
+  const inputSchema = Reflect.get(tool, 'inputSchema')
+  if (typeof inputSchema !== 'object' || inputSchema === null || Array.isArray(inputSchema)) {
+    throw new Error(`docs/.well-known/mcp/server-card.json tool ${name} must have an inputSchema`)
+  }
+  requireSchemaPropertyDescriptions(name, 'inputSchema', inputSchema)
+
+  const outputSchema = Reflect.get(tool, 'outputSchema')
+  if (typeof outputSchema !== 'object' || outputSchema === null || Array.isArray(outputSchema)) {
+    throw new Error(`docs/.well-known/mcp/server-card.json tool ${name} must have an outputSchema`)
+  }
+  requireSchemaPropertyDescriptions(name, 'outputSchema', outputSchema)
+
+  const annotations = Reflect.get(tool, 'annotations')
+  if (typeof annotations !== 'object' || annotations === null || Array.isArray(annotations)) {
+    throw new Error(`docs/.well-known/mcp/server-card.json tool ${name} must have annotations`)
+  }
+  for (const requiredAnnotation of ['title', 'readOnlyHint', 'destructiveHint', 'idempotentHint', 'openWorldHint'] as const) {
+    if (!Reflect.has(annotations, requiredAnnotation)) {
+      throw new Error(`docs/.well-known/mcp/server-card.json tool ${name} annotations must include ${requiredAnnotation}`)
+    }
+  }
+  if (Reflect.get(annotations, 'title') !== Reflect.get(tool, 'title')) {
+    throw new Error(`docs/.well-known/mcp/server-card.json tool ${name} annotation title must match tool title`)
+  }
+}
+
+function requireSchemaPropertyDescriptions(toolName: string, schemaName: 'inputSchema' | 'outputSchema', schema: object): void {
+  const properties = Reflect.get(schema, 'properties')
+  if (properties === undefined) {
+    return
+  }
+  if (typeof properties !== 'object' || properties === null || Array.isArray(properties)) {
+    throw new Error(`docs/.well-known/mcp/server-card.json tool ${toolName} ${schemaName}.properties must be an object`)
+  }
+
+  for (const [propertyName, propertySchema] of Object.entries(properties)) {
+    requireSchemaPropertyDescription(toolName, `${schemaName}.${propertyName}`, propertySchema)
+  }
+}
+
+function requireSchemaPropertyDescription(toolName: string, propertyPath: string, propertySchema: unknown): void {
+  if (typeof propertySchema !== 'object' || propertySchema === null || Array.isArray(propertySchema)) {
+    throw new Error(`docs/.well-known/mcp/server-card.json tool ${toolName} ${propertyPath} must be a JSON schema object`)
+  }
+  if (typeof Reflect.get(propertySchema, 'description') !== 'string' || Reflect.get(propertySchema, 'description').length === 0) {
+    throw new Error(`docs/.well-known/mcp/server-card.json tool ${toolName} ${propertyPath} must have a description`)
+  }
+
+  const nestedProperties = Reflect.get(propertySchema, 'properties')
+  if (nestedProperties !== undefined) {
+    if (typeof nestedProperties !== 'object' || nestedProperties === null || Array.isArray(nestedProperties)) {
+      throw new Error(`docs/.well-known/mcp/server-card.json tool ${toolName} ${propertyPath}.properties must be an object`)
+    }
+    for (const [nestedName, nestedSchema] of Object.entries(nestedProperties)) {
+      requireSchemaPropertyDescription(toolName, `${propertyPath}.${nestedName}`, nestedSchema)
+    }
+  }
+
+  const items = Reflect.get(propertySchema, 'items')
+  if (items !== undefined) {
+    if (typeof items !== 'object' || items === null || Array.isArray(items)) {
+      throw new Error(`docs/.well-known/mcp/server-card.json tool ${toolName} ${propertyPath}.items must be a JSON schema object`)
+    }
+    const itemProperties = Reflect.get(items, 'properties')
+    if (itemProperties !== undefined) {
+      if (typeof itemProperties !== 'object' || itemProperties === null || Array.isArray(itemProperties)) {
+        throw new Error(`docs/.well-known/mcp/server-card.json tool ${toolName} ${propertyPath}.items.properties must be an object`)
+      }
+      for (const [itemPropertyName, itemPropertySchema] of Object.entries(itemProperties)) {
+        requireSchemaPropertyDescription(toolName, `${propertyPath}.items.${itemPropertyName}`, itemPropertySchema)
+      }
+    }
+  }
 }

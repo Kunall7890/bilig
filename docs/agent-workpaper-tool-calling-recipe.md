@@ -26,7 +26,10 @@ the [headless WorkPaper agent handbook](headless-workpaper-agent-handbook.md).
 
 For a runnable external example, use
 [`examples/headless-workpaper`](../examples/headless-workpaper) and run
-`npm run agent:tool-call`. If your app calls OpenAI Responses directly, run
+`npm run agent:tool-call`. If your app uses the OpenAI Agents SDK, run
+`npm run agent:openai-agents-sdk` and read the
+[OpenAI Agents SDK WorkPaper tool guide](openai-agents-sdk-workpaper-tool.md).
+If your app calls OpenAI Responses directly, run
 `npm run agent:openai-responses` and read the
 [OpenAI Responses WorkPaper tool-call guide](openai-responses-workpaper-tool-call.md).
 For a smaller writeback-only proof, run
@@ -44,6 +47,8 @@ calls `streamText()` from `ai`, streams tool-call chunks and final text, and
 keeps the WorkPaper read/write verification in ordinary TypeScript.
 
 If your app calls OpenAI directly, start with the
+[OpenAI Agents SDK tool guide](https://openai.github.io/openai-agents-js/guides/tools/)
+or the
 [Responses API function-calling guide](https://developers.openai.com/api/docs/guides/function-calling)
 and keep the WorkPaper functions below as your application-side tool handlers.
 If this is the path you are trying, use the
@@ -224,6 +229,45 @@ summary changed as expected:
 
 `serializedBytes` will vary as the document schema evolves. Treat it as a
 positive persistence check, not a stable snapshot value.
+
+## OpenAI Agents SDK Tool Wrapper
+
+Use this path when your app builds agents with `@openai/agents` and wants the
+WorkPaper functions attached to a real `Agent` as SDK function tools:
+
+```sh
+pnpm --dir examples/headless-workpaper run agent:openai-agents-sdk
+```
+
+The maintained example is
+[`examples/headless-workpaper/openai-agents-sdk-tool-smoke.ts`](../examples/headless-workpaper/openai-agents-sdk-tool-smoke.ts).
+It creates `tool()` definitions for `read_workpaper_summary` and
+`set_workpaper_input_cell`, attaches them to an `Agent`, and invokes them with
+`invokeFunctionTool()` so the smoke remains provider-free.
+
+The dedicated guide is
+[`docs/openai-agents-sdk-workpaper-tool.md`](openai-agents-sdk-workpaper-tool.md).
+It links back to the official OpenAI Agents SDK tool docs:
+<https://openai.github.io/openai-agents-js/guides/tools/>.
+
+Expected proof:
+
+```json
+{
+  "apiShape": "OpenAI Agents SDK Agent -> tool() -> invokeFunctionTool()",
+  "toolNames": ["read_workpaper_summary", "set_workpaper_input_cell"],
+  "writeResult": {
+    "editedCell": "Inputs!B3",
+    "before": { "expectedArr": 60000, "targetGap": -34000 },
+    "after": { "expectedArr": 96000, "targetGap": 5600 },
+    "checks": {
+      "formulasPersisted": true,
+      "restoredMatchesAfter": true,
+      "expectedArrChanged": true
+    }
+  }
+}
+```
 
 ## OpenAI Responses API Tool Wrapper
 

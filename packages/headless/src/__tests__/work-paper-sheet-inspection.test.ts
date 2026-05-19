@@ -149,6 +149,17 @@ describe('work paper sheet inspection', () => {
         config: {},
       }),
     ).toEqual({ width: 3, height: 4 })
+    expect(
+      inspectRuntimeSnapshotSheetDimensionsWithinLimits({
+        sheetName: 'Sheet1',
+        snapshotSheet: {
+          name: 'Sheet1',
+          order: 0,
+          cells: [{ address: 'not-a-cell-address', row: 4, col: 6, value: 1 }],
+        },
+        config: {},
+      }),
+    ).toEqual({ width: 7, height: 5 })
   })
 
   it('matches runtime snapshot sheets by unique names', () => {

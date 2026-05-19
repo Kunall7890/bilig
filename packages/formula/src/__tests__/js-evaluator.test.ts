@@ -259,6 +259,12 @@ describe('js evaluator', () => {
     })
   })
 
+  it('matches Excel log errors in compiled JS evaluation', () => {
+    expect(evaluatePlan(lowerToPlan(parseFormula('LN(-1)')), context)).toEqual(err(ErrorCode.Num))
+    expect(evaluatePlan(lowerToPlan(parseFormula('LOG(10,1)')), context)).toEqual(err(ErrorCode.Num))
+    expect(evaluatePlan(lowerToPlan(parseFormula('-LOG(P-value)')), context)).toEqual(err(ErrorCode.Name))
+  })
+
   it('supports LET scopes in lowered plans', () => {
     expect(evaluatePlan(lowerToPlan(parseFormula('LET(x,2,x+3)')), context)).toEqual({
       tag: ValueTag.Number,
@@ -1092,4 +1098,8 @@ function num(value: number): CellValue {
 
 function empty(): CellValue {
   return { tag: ValueTag.Empty }
+}
+
+function err(code: ErrorCode): CellValue {
+  return { tag: ValueTag.Error, code }
 }

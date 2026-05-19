@@ -130,6 +130,7 @@ describe('browser test phases', () => {
       {
         label: 'browser ci smoke tests',
         args: ['--workers=3', '--grep', '@browser-ci', '--grep-invert', '@browser-perf|@browser-deep|@browser-webgpu'],
+        env: { BILIG_BROWSER_WEBGPU: '1' },
       },
     ])
   })

@@ -10,6 +10,7 @@ import { resolveResizeGuideColumn, resolveResizeGuideRow } from './useGridResize
 import { useWorkbookGridInteractions } from './useWorkbookGridInteractions.js'
 import { useWorkbookGridRenderState } from './useWorkbookGridRenderState.js'
 import { WORKBOOK_DEFAULT_FONT_SIZE, WORKBOOK_FONT_SANS, workbookFontPointSizeToCssPx } from './workbookTheme.js'
+import type { GridSelection, Item } from './gridTypes.js'
 import type { WorkbookGridSurfaceProps } from './workbookGridSurfaceTypes.js'
 export { hasSelectionTargetChanged } from './workbookGridViewport.js'
 export type {
@@ -21,12 +22,43 @@ export type {
   WorkbookGridSurfaceProps,
 } from './workbookGridSurfaceTypes.js'
 
+export function resolveWorkbookGridSurfaceDisplaySelection(input: {
+  readonly activeHeaderDrag: unknown
+  readonly committedCellSelection: GridSelection
+  readonly isEditingCell: boolean
+  readonly isFillHandleDragging: boolean
+  readonly isRangeMoveDragging: boolean
+  readonly renderGridSelection: GridSelection
+  readonly renderSelectionRange?: { readonly width: number; readonly height: number } | null | undefined
+  readonly selectedCell: Item
+}): GridSelection {
+  if (input.isEditingCell) {
+    return input.committedCellSelection
+  }
+  if (input.isFillHandleDragging || input.isRangeMoveDragging || input.activeHeaderDrag) {
+    return input.renderGridSelection
+  }
+  const hasAxisSelection = input.renderGridSelection.columns.length > 0 || input.renderGridSelection.rows.length > 0
+  const currentCell = input.renderGridSelection.current?.cell ?? null
+  const currentCellMatchesSelected = currentCell?.[0] === input.selectedCell[0] && currentCell[1] === input.selectedCell[1]
+  if (!hasAxisSelection && !currentCellMatchesSelected) {
+    return input.committedCellSelection
+  }
+  const renderSelectionIsSingleCell =
+    input.renderGridSelection.columns.length === 0 &&
+    input.renderGridSelection.rows.length === 0 &&
+    input.renderSelectionRange?.width === 1 &&
+    input.renderSelectionRange.height === 1
+  return renderSelectionIsSingleCell ? input.committedCellSelection : input.renderGridSelection
+}
+
 export function WorkbookGridSurface(props: WorkbookGridSurfaceProps) {
   const renderState = useWorkbookGridRenderState({
     engine: props.engine,
     sheetName: props.sheetName,
     selectedAddr: props.selectedAddr,
     selectedCellSnapshot: props.selectedCellSnapshot,
+    editorTargetSelection: props.editorTargetSelection,
     editorValue: props.editorValue,
     isEditingCell: props.isEditingCell,
     sheetId: props.sheetId,
@@ -117,22 +149,22 @@ export function WorkbookGridSurface(props: WorkbookGridSurfaceProps) {
   }, [focusGrid, props.isEditingCell, props.selectedAddr, props.sheetName])
   const visibleRange = renderState.visibleRegion.range
   const getCellLocalBounds = renderState.getCellLocalBounds
-  const committedCellSelection = useMemo(() => {
-    const selectedCell = parseCellAddress(props.selectedAddr, props.sheetName)
-    return createGridSelection(selectedCell.col, selectedCell.row)
-  }, [props.selectedAddr, props.sheetName])
-  const renderSelectionIsSingleCell =
-    renderState.gridSelection.columns.length === 0 &&
-    renderState.gridSelection.rows.length === 0 &&
-    renderState.selectionRange?.width === 1 &&
-    renderState.selectionRange.height === 1
-  const displayGridSelection = props.isEditingCell
-    ? committedCellSelection
-    : renderState.isFillHandleDragging || renderState.isRangeMoveDragging || renderState.activeHeaderDrag
-      ? renderState.gridSelection
-      : renderSelectionIsSingleCell
-        ? committedCellSelection
-        : renderState.gridSelection
+  const displaySelectionCol = props.isEditingCell ? renderState.editorCell.col : renderState.selectedCell.col
+  const displaySelectionRow = props.isEditingCell ? renderState.editorCell.row : renderState.selectedCell.row
+  const committedCellSelection = useMemo(
+    () => createGridSelection(displaySelectionCol, displaySelectionRow),
+    [displaySelectionCol, displaySelectionRow],
+  )
+  const displayGridSelection = resolveWorkbookGridSurfaceDisplaySelection({
+    activeHeaderDrag: renderState.activeHeaderDrag,
+    committedCellSelection,
+    isEditingCell: props.isEditingCell,
+    isFillHandleDragging: renderState.isFillHandleDragging,
+    isRangeMoveDragging: renderState.isRangeMoveDragging,
+    renderGridSelection: renderState.gridSelection,
+    renderSelectionRange: renderState.selectionRange,
+    selectedCell: [displaySelectionCol, displaySelectionRow],
+  })
   const displaySelectionRange = displayGridSelection.current?.range ?? null
   const renderHostElement = renderState.hostElement
   const getLiveGeometrySnapshot = renderState.getLiveGeometrySnapshot
@@ -158,11 +190,11 @@ export function WorkbookGridSurface(props: WorkbookGridSurfaceProps) {
   })
   const resizeGuideColumnWidth = resizeGuideColumn === activeResizeColumn ? activePreviewColumnWidth : null
   const resizeGuideRowHeight = resizeGuideRow === activeResizeRow ? activePreviewRowHeight : null
-  const selectedCellCol = renderState.selectedCell.col
-  const selectedCellRow = renderState.selectedCell.row
+  const editorCellCol = renderState.editorCell.col
+  const editorCellRow = renderState.editorCell.row
   const suppressedEditorTextCell = useMemo(
-    () => (props.isEditingCell ? { col: selectedCellCol, row: selectedCellRow } : null),
-    [props.isEditingCell, selectedCellCol, selectedCellRow],
+    () => (props.isEditingCell ? { col: editorCellCol, row: editorCellRow } : null),
+    [editorCellCol, editorCellRow, props.isEditingCell],
   )
   const v2Geometry = useMemo(() => (renderHostElement ? getLiveGeometrySnapshot() : null), [getLiveGeometrySnapshot, renderHostElement])
   const previewRects = useMemo(() => {
@@ -205,7 +237,7 @@ export function WorkbookGridSurface(props: WorkbookGridSurfaceProps) {
         gridSelection: displayGridSelection,
         hoveredCell: hoverCell,
         previewRects,
-        selectedCell: [selectedCellCol, selectedCellRow],
+        selectedCell: [displaySelectionCol, displaySelectionRow],
         selectionRange: displaySelectionRange,
         showFillHandle:
           !props.isEditingCell &&
@@ -233,10 +265,14 @@ export function WorkbookGridSurface(props: WorkbookGridSurfaceProps) {
       resizeGuideColumnWidth,
       resizeGuideRow,
       resizeGuideRowHeight,
-      selectedCellCol,
-      selectedCellRow,
+      displaySelectionCol,
+      displaySelectionRow,
     ],
   )
+  const editorTargetAddress =
+    props.isEditingCell && props.editorTargetSelection?.sheetName === props.sheetName
+      ? props.editorTargetSelection.address
+      : props.selectedAddr
 
   return (
     <div className="relative flex min-h-0 flex-1 flex-col bg-[var(--wb-surface)]">
@@ -275,10 +311,14 @@ export function WorkbookGridSurface(props: WorkbookGridSurfaceProps) {
         onPointerUpCapture={interactions.handleHostPointerUpCapture}
         ref={renderState.handleHostRef}
       >
-        <div aria-rowindex={selectedCellRow + 1} className="pointer-events-none absolute h-px w-px overflow-hidden opacity-0" role="row">
+        <div
+          aria-rowindex={displaySelectionRow + 1}
+          className="pointer-events-none absolute h-px w-px overflow-hidden opacity-0"
+          role="row"
+        >
           <div
-            aria-colindex={selectedCellCol + 1}
-            aria-label={`${props.sheetName} ${props.selectedAddr}`}
+            aria-colindex={displaySelectionCol + 1}
+            aria-label={`${props.sheetName} ${editorTargetAddress}`}
             aria-selected="true"
             data-testid="sheet-grid-focus-target"
             ref={renderState.focusTargetRef}
@@ -366,8 +406,8 @@ export function WorkbookGridSurface(props: WorkbookGridSurfaceProps) {
       ) : null}
       {props.isEditingCell && renderState.overlayStyle ? (
         <CellEditorOverlay
-          label={`${props.sheetName}!${props.selectedAddr}`}
-          targetSelection={{ sheetName: props.sheetName, address: props.selectedAddr }}
+          label={`${props.sheetName}!${editorTargetAddress}`}
+          targetSelection={{ sheetName: props.sheetName, address: editorTargetAddress }}
           onCancel={props.onCancelEdit}
           onChange={props.onEditorChange}
           onCommit={props.onCommitEdit}

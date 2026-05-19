@@ -49,13 +49,25 @@ export const defaultRecentComplexGithubRepositoryQueries = [
   '3 statement model excel license:mit',
   'bond valuation excel license:mit',
   'corporate finance model excel license:mit',
+  'excel dashboard 2025 license:mit',
+  'excel dashboard 2026 license:mit',
+  'excel dashboard license:mit',
+  'financial analysis excel 2025 license:mit',
+  'financial analysis excel 2026 license:mit',
+  'financial analysis excel license:mit',
+  'financial model 2025 excel license:mit',
+  'financial model 2026 excel license:mit',
   'financial modeling course excel license:mit',
   'investment banking excel model license:mit',
   'm&a valuation excel license:mit',
+  'portfolio optimization excel license:mit',
   'real estate financial model excel license:mit',
   'saas financial model excel license:mit',
   'startup valuation excel license:mit',
+  'actuarial excel model license:mit',
   'excel financial modeling license:apache-2.0',
+  'excel dashboard license:apache-2.0',
+  'financial analysis excel license:apache-2.0',
   'financial model excel license:apache-2.0',
   'project finance excel license:apache-2.0',
   'dcf excel model license:apache-2.0',
@@ -91,6 +103,7 @@ interface DiscoverGithubWorkbookSourcesArgs {
   readonly limit: number
   readonly perPage: number
   readonly maxPagesPerQuery: number
+  readonly maxRepositoryPagesPerQuery?: number
   readonly maxRepositoriesPerQuery?: number
   readonly githubToken?: string | null
   readonly discoveredAt?: string
@@ -215,11 +228,17 @@ async function discoverGithubRepositoryWorkbookSources(
   const existingSourceIds = new Set(args.manifest.sources.map((source) => source.id))
   const sources: PublicWorkbookSource[] = [...args.manifest.sources]
   const licenseCache = new Map<string, PublicWorkbookLicenseEvidence | null>()
-  const repositories = await fetchGithubRepositorySearchPage({
-    query: args.query,
-    perPage: args.maxRepositoriesPerQuery ?? args.perPage,
-    githubToken: args.githubToken,
-  })
+  const repositoryPages = await Promise.all(
+    Array.from({ length: Math.max(1, args.maxRepositoryPagesPerQuery ?? 1) }, (_, index) =>
+      fetchGithubRepositorySearchPage({
+        query: args.query,
+        page: index + 1,
+        perPage: args.maxRepositoriesPerQuery ?? args.perPage,
+        githubToken: args.githubToken,
+      }),
+    ),
+  )
+  const repositories = repositoryPages.flat()
   const repositorySourceBatches = await mapWithConcurrency(repositories, 2, (repository) =>
     readGithubRepositoryWorkbookSources({
       repository,
@@ -286,11 +305,13 @@ async function fetchGithubCodeSearchPage(args: {
 
 async function fetchGithubRepositorySearchPage(args: {
   readonly query: string
+  readonly page: number
   readonly perPage: number
   readonly githubToken?: string | null
 }): Promise<Record<string, unknown>[]> {
   const url = new URL('https://api.github.com/search/repositories')
   url.searchParams.set('q', args.query)
+  url.searchParams.set('page', String(Math.max(1, args.page)))
   url.searchParams.set('per_page', String(Math.max(1, Math.min(100, args.perPage))))
   try {
     const response = await fetchGithubJson(url, args.githubToken)
@@ -326,7 +347,7 @@ async function readGithubWorkbookSource(args: {
   if (!sourceUrl || !contentsUrl) {
     return null
   }
-  const downloadUrl = await readGithubContentDownloadUrl(contentsUrl, args.githubToken)
+  const downloadUrl = await readGithubContentDownloadUrl(contentsUrl, fileName, args.githubToken)
   if (!downloadUrl) {
     return null
   }
@@ -376,6 +397,7 @@ async function readGithubRepositoryWorkbookSources(args: {
   if (!license || !hasUsableLicenseEvidence(license)) {
     return []
   }
+  const repositoryDateFields = githubRepositoryDateFields(args.repository)
   const treeEntries = await readGithubRepositoryTree(repositoryFullName, defaultBranch, args.githubToken)
   const candidates = treeEntries
     .flatMap((entry) => {
@@ -397,6 +419,7 @@ async function readGithubRepositoryWorkbookSources(args: {
       defaultBranch,
       license,
       candidate,
+      repositoryDateFields,
     }),
   )
   return sources.flatMap((source) => (source ? [source] : []))
@@ -411,6 +434,7 @@ async function readGithubRepositoryWorkbookSource(args: {
   readonly query: string
   readonly discoveredAt: string
   readonly githubToken?: string | null
+  readonly repositoryDateFields: readonly { readonly name: string; readonly value: string }[]
 }): Promise<PublicWorkbookSource | null> {
   const { path, fileName } = args.candidate
   const encodedPath = encodeGithubPath(path)
@@ -422,13 +446,17 @@ async function readGithubRepositoryWorkbookSource(args: {
     { name: 'downloadUrl', value: downloadUrl },
     { name: 'fileName', value: fileName },
   ]
-  const pathDateEvidence = recentWorkbookDateEvidenceForFields(dateFields)
+  const pathDateEvidence = recentWorkbookDateEvidenceForFields([...args.repositoryDateFields, ...dateFields])
   const commitDate =
     pathDateEvidence.length > 0
       ? null
       : await readGithubPathLatestCommitDate(args.repositoryFullName, args.defaultBranch, path, args.githubToken)
   const topicEvidence = [
-    ...recentWorkbookDateEvidenceForFields(commitDate ? [...dateFields, { name: 'github.commitDate', value: commitDate }] : dateFields),
+    ...recentWorkbookDateEvidenceForFields(
+      commitDate
+        ? [...args.repositoryDateFields, ...dateFields, { name: 'github.commitDate', value: commitDate }]
+        : [...args.repositoryDateFields, ...dateFields],
+    ),
     `github-repo-query:${stableId(args.query)}`,
   ]
   if (!topicEvidence.some((evidence) => evidence.startsWith('recent-2025:') || evidence.startsWith('recent-2026:'))) {
@@ -444,6 +472,15 @@ async function readGithubRepositoryWorkbookSource(args: {
     license: args.license,
     topicEvidence,
   }
+}
+
+function githubRepositoryDateFields(repository: Record<string, unknown>): { readonly name: string; readonly value: string }[] {
+  return [
+    { name: 'github.repositoryFullName', value: readString(repository, 'full_name') },
+    { name: 'github.repositoryName', value: readString(repository, 'name') },
+    { name: 'github.repositoryDescription', value: readString(repository, 'description') },
+    { name: 'github.repositoryUrl', value: readString(repository, 'html_url') },
+  ].flatMap((field) => (field.value ? [{ name: field.name, value: field.value }] : []))
 }
 
 async function readGithubRepositoryTree(
@@ -489,13 +526,35 @@ async function readGithubPathLatestCommitDate(
   }
 }
 
-async function readGithubContentDownloadUrl(contentsUrl: string, githubToken?: string | null): Promise<string | null> {
+async function readGithubContentDownloadUrl(contentsUrl: string, fileName: string, githubToken?: string | null): Promise<string | null> {
   try {
     const content = asRecord(await fetchGithubJson(new URL(contentsUrl), githubToken))
+    if (!githubInlineContentMatchesSpreadsheetContainer(fileName, content)) {
+      return null
+    }
     return readString(content, 'download_url')
   } catch {
     return null
   }
+}
+
+function githubInlineContentMatchesSpreadsheetContainer(fileName: string, content: Record<string, unknown>): boolean {
+  if (!requiresZipContainerMagic(fileName)) {
+    return true
+  }
+  if (readString(content, 'encoding') !== 'base64') {
+    return true
+  }
+  const encodedContent = readString(content, 'content')
+  if (!encodedContent) {
+    return true
+  }
+  const decoded = Buffer.from(encodedContent.replace(/\s+/gu, ''), 'base64')
+  return decoded.length < 2 || (decoded[0] === 0x50 && decoded[1] === 0x4b)
+}
+
+function requiresZipContainerMagic(fileName: string): boolean {
+  return /\.(?:xlsx|xlsm|xltx|xltm|ods)$/iu.test(fileName)
 }
 
 async function readGithubRepositoryLicense(

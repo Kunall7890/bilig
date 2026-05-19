@@ -3,13 +3,8 @@ import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { basename, join } from 'node:path'
 
-import {
-  buildDemoWorkPaper,
-  createWorkPaperFromDocument,
-  exportWorkPaperDocument,
-  parseWorkPaperDocument,
-  serializeWorkPaperDocument,
-} from '@bilig/headless'
+import { createWorkPaperFromDocument, exportWorkPaperDocument, parseWorkPaperDocument, serializeWorkPaperDocument } from '@bilig/headless'
+import { buildDemoWorkPaper } from '@bilig/headless/mcp'
 
 type JsonObject = Record<string, unknown>
 

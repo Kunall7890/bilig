@@ -76,6 +76,7 @@ export function resolveBrowserTestPhases(input: {
           '--grep-invert',
           [BROWSER_PERF_GREP, BROWSER_DEEP_GREP, BROWSER_WEBGPU_GREP].join('|'),
         ],
+        env: WEBGPU_BROWSER_ENV,
       },
     ]
   }

@@ -443,7 +443,7 @@ export async function createWorkerRuntimeSessionController(
   }
 
   const runAuthoritativeRefresh = async (): Promise<void> => {
-    if (disposed || !authoritativeEventSyncEnabled) {
+    if (disposed || !authoritativeSyncEnabled || !authoritativeEventSyncEnabled) {
       return
     }
     const eventBatch = await loadAuthoritativeEventBatch({
@@ -457,7 +457,7 @@ export async function createWorkerRuntimeSessionController(
   }
 
   const queueAuthoritativeRefresh = (): void => {
-    if (!liveSync) {
+    if (!liveSync || !authoritativeEventSyncEnabled) {
       return
     }
     const previousRebaseQueue = rebaseQueue
@@ -481,7 +481,7 @@ export async function createWorkerRuntimeSessionController(
   }
 
   const runAuthoritativeBackstopRefresh = async (): Promise<void> => {
-    if (disposed || !authoritativeSyncEnabled) {
+    if (disposed || !authoritativeSyncEnabled || !authoritativeEventSyncEnabled) {
       return
     }
     const previousRebaseQueue = rebaseQueue
@@ -512,12 +512,12 @@ export async function createWorkerRuntimeSessionController(
   }
 
   const scheduleAuthoritativeBackstop = (delayMs = resolveAuthoritativeBackstopIntervalMs()): void => {
-    if (!authoritativeEventSyncEnabled || disposed || authoritativeBackstopTimer) {
+    if (!authoritativeSyncEnabled || !authoritativeEventSyncEnabled || disposed || authoritativeBackstopTimer) {
       return
     }
     authoritativeBackstopTimer = setTimeout(() => {
       authoritativeBackstopTimer = null
-      if (disposed || !authoritativeSyncEnabled) {
+      if (disposed || !authoritativeSyncEnabled || !authoritativeEventSyncEnabled) {
         return
       }
       if (authoritativeBackstopInFlight) {
@@ -544,7 +544,12 @@ export async function createWorkerRuntimeSessionController(
   }
 
   const startAuthoritativeRefreshChannel = (): void => {
-    if (!authoritativeEventSyncEnabled || authoritativeRefreshChannel || typeof BroadcastChannel === 'undefined') {
+    if (
+      !authoritativeSyncEnabled ||
+      !authoritativeEventSyncEnabled ||
+      authoritativeRefreshChannel ||
+      typeof BroadcastChannel === 'undefined'
+    ) {
       return
     }
     const channel = new BroadcastChannel(`${AUTHORITATIVE_REFRESH_CHANNEL_PREFIX}${input.documentId}`)
@@ -571,7 +576,7 @@ export async function createWorkerRuntimeSessionController(
   }
 
   const refreshAuthoritativeEventsNow = async (targetRevision: number | null): Promise<void> => {
-    if (!authoritativeEventSyncEnabled) {
+    if (!authoritativeSyncEnabled || !authoritativeEventSyncEnabled) {
       return
     }
     if (targetRevision !== null) {
@@ -602,7 +607,7 @@ export async function createWorkerRuntimeSessionController(
   }
 
   const runAuthoritativeRebase = async (): Promise<void> => {
-    if (disposed || !authoritativeEventSyncEnabled) {
+    if (disposed || !authoritativeSyncEnabled || !authoritativeEventSyncEnabled) {
       return
     }
     const targetRevision = requestedAuthoritativeRevision

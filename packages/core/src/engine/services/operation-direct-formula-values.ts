@@ -1,5 +1,5 @@
 import { ErrorCode, ValueTag } from '@bilig/protocol'
-import { parseNumericText } from '@bilig/formula'
+import { parseArithmeticNumericText } from '@bilig/formula'
 import type { EngineCellMutationRef } from '../../cell-mutations-at.js'
 import { CellFlags } from '../../cell-store.js'
 import type { EngineRuntimeState, RuntimeDirectScalarDescriptor, RuntimeDirectScalarOperand } from '../runtime-state.js'
@@ -15,8 +15,7 @@ export function createOperationDirectFormulaValues(args: { readonly state: Pick<
 
   const readCellTextNumber = (cellIndex: number): number | undefined => {
     const stringId = args.state.workbook.cellStore.stringIds[cellIndex] ?? 0
-    const text = args.state.strings.get(stringId)
-    return text.trim() === '' ? 0 : parseNumericText(text)
+    return parseArithmeticNumericText(args.state.strings.get(stringId))
   }
 
   const directScalarCurrentResultMatchesCell = (cellIndex: number, result: DirectScalarCurrentOperand): boolean => {

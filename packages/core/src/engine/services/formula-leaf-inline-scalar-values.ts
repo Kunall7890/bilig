@@ -1,5 +1,5 @@
 import { ValueTag, formatErrorCode, formatGeneralNumberValue, type CellValue } from '@bilig/protocol'
-import { parseNumericText } from '@bilig/formula'
+import { parseArithmeticNumericText } from '@bilig/formula'
 
 export function inlineRequiredNumber(value: CellValue): number | undefined {
   return value.tag === ValueTag.Error ? undefined : inlineNumber(value)
@@ -46,8 +46,7 @@ export function inlineArithmeticNumber(value: CellValue): number | undefined {
   if (value.tag !== ValueTag.String) {
     return inlineNumber(value)
   }
-  const trimmed = value.value.trim()
-  return trimmed === '' ? 0 : parseNumericText(trimmed)
+  return parseArithmeticNumericText(value.value)
 }
 
 export function inlineTruthy(value: CellValue): boolean {

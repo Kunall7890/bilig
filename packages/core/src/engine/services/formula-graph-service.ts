@@ -2,7 +2,6 @@ import { Effect } from 'effect'
 import { ErrorCode, FormulaMode } from '@bilig/protocol'
 import { CellFlags } from '../../cell-store.js'
 import type { CycleDetector } from '../../cycle-detection.js'
-import { makeCellEntity } from '../../entity-ids.js'
 import { growUint32 } from '../../engine-buffer-utils.js'
 import { errorValue } from '../../engine-value-utils.js'
 import { DynamicTopo } from '../../scheduler/dynamic-topo.js'
@@ -122,13 +121,19 @@ export function createEngineFormulaGraphService(args: {
       args.getTopoIndegree()[cellIndex] = 0
       args.state.workbook.cellStore.topoRanks[cellIndex] = 0
     })
-    args.state.formulas.forEach((formula, cellIndex) => {
-      for (let index = 0; index < formula.dependencyIndices.length; index += 1) {
-        const dependency = formula.dependencyIndices[index]!
+    const dependentsByDependency = new Map<number, number[]>()
+    args.state.formulas.forEach((_formula, cellIndex) => {
+      args.forEachFormulaDependencyCell(cellIndex, (dependency) => {
         if ((args.state.workbook.cellStore.formulaIds[dependency] ?? 0) !== 0) {
           args.getTopoIndegree()[cellIndex] = (args.getTopoIndegree()[cellIndex] ?? 0) + 1
+          const dependents = dependentsByDependency.get(dependency)
+          if (dependents) {
+            dependents.push(cellIndex)
+          } else {
+            dependentsByDependency.set(dependency, [cellIndex])
+          }
         }
-      }
+      })
     })
     args.state.formulas.forEach((_formula, cellIndex) => {
       if ((args.getTopoIndegree()[cellIndex] ?? 0) === 0) {
@@ -141,12 +146,12 @@ export function createEngineFormulaGraphService(args: {
     for (let queueIndex = 0; queueIndex < queueLength; queueIndex += 1) {
       const cellIndex = args.getTopoQueue()[queueIndex]!
       args.state.workbook.cellStore.topoRanks[cellIndex] = rank++
-      const dependents = args.collectFormulaDependents(makeCellEntity(cellIndex))
+      const dependents = dependentsByDependency.get(cellIndex)
+      if (!dependents) {
+        continue
+      }
       for (let dependentIndex = 0; dependentIndex < dependents.length; dependentIndex += 1) {
         const dependent = dependents[dependentIndex]!
-        if ((args.state.workbook.cellStore.formulaIds[dependent] ?? 0) === 0) {
-          continue
-        }
         const next = (args.getTopoIndegree()[dependent] ?? 0) - 1
         args.getTopoIndegree()[dependent] = next
         if (next === 0) {

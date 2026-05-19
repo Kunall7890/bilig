@@ -169,7 +169,8 @@ function collectFinancialTopicFields(candidate: FinancialTopicSourceCandidate): 
 
 function collectRecentWorkbookDateFields(candidate: FinancialTopicSourceCandidate): { readonly name: string; readonly value: string }[] {
   return [
-    ...collectRecordFields('resource', candidate.resource, ['url', 'filename']),
+    ...collectRecordFields('dataset', candidate.dataset, ['title', 'name', 'url']),
+    ...collectRecordFields('resource', candidate.resource, ['name', 'description', 'url', 'filename']),
     { name: 'downloadUrl', value: candidate.downloadUrl },
     { name: 'fileName', value: candidate.fileName },
   ]
@@ -177,13 +178,17 @@ function collectRecentWorkbookDateFields(candidate: FinancialTopicSourceCandidat
 
 function recentYearsInText(value: string): readonly number[] {
   const years = new Set<number>()
-  if (/\b2025\b/u.test(value)) {
+  if (recentYearPattern(2025).test(value)) {
     years.add(2025)
   }
-  if (/\b2026\b/u.test(value)) {
+  if (recentYearPattern(2026).test(value)) {
     years.add(2026)
   }
   return [...years]
+}
+
+function recentYearPattern(year: 2025 | 2026): RegExp {
+  return new RegExp(`(?<!\\d)${String(year)}(?:\\b|(?=\\d{2}(?:\\d{2})?\\b))`, 'u')
 }
 
 function collectNamedCollectionFields(prefix: string, values: readonly unknown[]): { readonly name: string; readonly value: string }[] {

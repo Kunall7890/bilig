@@ -33,32 +33,46 @@ Project site: <https://proompteng.github.io/bilig/>
 
 ## Choose An Evaluation Path
 
-| If you are evaluating... | Start here                                                                                                                                          | What should be true before you star, watch, or adopt                                        |
-| ------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------- |
-| Basic fit                | [Why use Bilig?](docs/why-use-bilig.md)                                                                                                             | The problem is workbook-shaped business logic that needs API readback and persistence.      |
-| Published npm package    | [90-second Node quickstart](docs/try-bilig-headless-in-node.md)                                                                                     | It edits one input, recalculates, persists JSON, restores, and prints `verified: true`.     |
-| Backend service shape    | [Quote approval WorkPaper API](docs/quote-approval-workpaper-api.md)                                                                                | A realistic route-style workflow returns formula readback and `restoredMatchesAfter: true`. |
-| Agent or MCP tools       | [Headless WorkPaper agent handbook](docs/headless-workpaper-agent-handbook.md) and [MCP spreadsheet tool server](docs/mcp-workpaper-tool-server.md) | The agent gets a copy-paste handoff prompt, then proves write/readback/persist.             |
-| Agent-owned XLSX files   | [Agent XLSX recalculation without LibreOffice](docs/agent-xlsx-formula-recalculation-without-libreoffice.md)                                        | A tool can edit XLSX inputs, recalculate, export, reimport, and return `verified: true`.    |
-| Public technical review  | [Show HN maintainer note](docs/show-hn-formula-workbooks-node-services.md)                                                                          | One shareable page has the npm check, benchmark caveat, known limits, and feedback ask.     |
-| Trust and performance    | [npm provenance](docs/npm-provenance-package-trust.md) and [benchmark evidence](docs/what-workpaper-benchmark-proves.md)                            | npm shows SLSA provenance, and benchmark claims match the checked artifact.                 |
-| Almost a fit             | [adoption blocker form](https://github.com/proompteng/bilig/discussions/new?category=general)                                                       | Name the formula, import/export, persistence, framework, MCP, package, or benchmark gap.    |
-| Formula or XLSX bug      | [formula bug clinic](docs/formula-bug-clinic.md)                                                                                                    | Share a reduced public case that can become a test, example, corpus fixture, or docs proof. |
-| Real workbook blocked    | [submit a workbook fixture](docs/submit-workbook-fixture.md)                                                                                        | Use the structured form when a reduced workbook is ready.                                   |
+| If you are evaluating... | Start here                                                                                                                                                                                                                | What should be true before you star, watch, or adopt                                                  |
+| ------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------- |
+| Basic fit                | [Why use Bilig?](docs/why-use-bilig.md)                                                                                                                                                                                   | The problem is workbook-shaped business logic that needs API readback and persistence.                |
+| Published npm package    | [90-second Node quickstart](docs/try-bilig-headless-in-node.md)                                                                                                                                                           | It edits one input, recalculates, persists JSON, restores, and prints `verified: true`.               |
+| Backend service shape    | [Quote approval WorkPaper API](docs/quote-approval-workpaper-api.md)                                                                                                                                                      | A realistic route-style workflow returns formula readback and `restoredMatchesAfter: true`.           |
+| Agent or MCP tools       | [Headless WorkPaper agent handbook](docs/headless-workpaper-agent-handbook.md), [MCP spreadsheet tool server](docs/mcp-workpaper-tool-server.md), and [Claude Desktop MCPB bundle](docs/claude-desktop-mcpb-workpaper.md) | The agent installs a tool path, gets a copy-paste handoff prompt, then proves write/readback/persist. |
+| Agent-owned XLSX files   | [Agent XLSX recalculation without LibreOffice](docs/agent-xlsx-formula-recalculation-without-libreoffice.md)                                                                                                              | A tool can edit XLSX inputs, recalculate, export, reimport, and return `verified: true`.              |
+| Public technical review  | [Show HN maintainer note](docs/show-hn-formula-workbooks-node-services.md)                                                                                                                                                | One shareable page has the npm check, benchmark caveat, known limits, and feedback ask.               |
+| Trust and performance    | [npm provenance](docs/npm-provenance-package-trust.md) and [benchmark evidence](docs/what-workpaper-benchmark-proves.md)                                                                                                  | npm shows SLSA provenance, and benchmark claims match the checked artifact.                           |
+| Almost a fit             | [adoption blocker form](https://github.com/proompteng/bilig/discussions/new?category=general)                                                                                                                             | Name the formula, import/export, persistence, framework, MCP, package, or benchmark gap.              |
+| Formula or XLSX bug      | [formula bug clinic](docs/formula-bug-clinic.md)                                                                                                                                                                          | Share a reduced public case that can become a test, example, corpus fixture, or docs proof.           |
+| Real workbook blocked    | [submit a workbook fixture](docs/submit-workbook-fixture.md)                                                                                                                                                              | Use the structured form when a reduced workbook is ready.                                             |
 
 Reduced workbook already in hand? Generate the paste-ready fixture report in
 one command:
 
 ```sh
-npm exec --package @bilig/headless@0.24.2 -- bilig-formula-clinic ./reduced.xlsx --cells "Summary!B7,Inputs!B2"
+npm exec --package @bilig/headless@0.31.0 -- bilig-formula-clinic ./reduced.xlsx --cells "Summary!B7,Inputs!B2"
 ```
 
 Handing a spreadsheet task to another coding agent? Start with the
 [agent handoff prompt](docs/headless-workpaper-agent-handbook.md#copy-paste-prompt-for-another-agent)
 before opening Excel, LibreOffice, Google Sheets, or a screenshot UI.
+To prove the package-owned agent loop without cloning the repo or downloading a
+TypeScript file:
+
+```sh
+npm exec --package @bilig/headless@0.31.0 -- bilig-agent-challenge
+npm exec --package @bilig/headless@0.31.0 -- bilig-mcp-challenge
+```
+
 Agent tools that support skill manifests can start from
 [`skill.md`](docs/skill.md) or the well-known index at
 [`docs/.well-known/agent-skills/index.json`](docs/.well-known/agent-skills/index.json).
+Claude Desktop users can also install the released MCPB bundle directly:
+<https://github.com/proompteng/bilig/releases/download/libraries-v0.31.0/bilig-workpaper.mcpb>.
+If you need a copy-paste eval for another tool host, use the
+[agent workbook challenge](docs/agent-workbook-challenge.md): one input edit,
+one dependent formula readback, one serialized restore, and a `verified: true`
+proof object.
 
 <p align="center">
   <img src="docs/assets/github-social-preview.png" alt="bilig headless workbook runtime for formulas in TypeScript" />
@@ -114,6 +128,9 @@ For a generated project from a blank directory, run
 `@bilig/create-workpaper` package. The package source lives in
 [`packages/create-workpaper`](packages/create-workpaper), and the publish gate
 is documented in [create a Bilig WorkPaper starter](docs/create-bilig-workpaper.md).
+For an agent-ready project with `AGENTS.md`, MCP client configs, and an
+`agent:verify` script, run
+`npm create @bilig/workpaper@latest pricing-agent -- --agent`.
 
 If that proof matches a service or agent workflow you maintain, the useful next
 step is concrete feedback: [star or bookmark the repo](https://github.com/proompteng/bilig/stargazers),
@@ -175,9 +192,9 @@ matters.
 
 <!-- headless-package-footprint:start -->
 
-Current checked npm footprint for `@bilig/headless@0.24.2`:
+Current checked npm footprint for `@bilig/headless@0.31.0`:
 
-- Pack dry run: `457 kB` tarball, `2.72 MB` unpacked, `456` package entries.
+- Pack dry run: `497 kB` tarball, `2.98 MB` unpacked, `489` package entries.
 - Boundary: the main import is the WorkPaper formula/JSON runtime; XLSX
   import/export stays behind the `@bilig/headless/xlsx` subpath; MCP is the
   `bilig-workpaper-mcp` binary wrapper; reduced workbook reports use the
@@ -246,6 +263,7 @@ the [Node spreadsheet formula engine guide](docs/node-spreadsheet-formula-engine
 [framework adapters](docs/node-framework-workpaper-adapters.md),
 [formula bug clinic](docs/formula-bug-clinic.md),
 [workbook fixture submissions](docs/submit-workbook-fixture.md),
+[OpenAI Agents SDK tools](docs/openai-agents-sdk-workpaper-tool.md),
 [AI SDK and LangChain tools](docs/vercel-ai-sdk-langchain-spreadsheet-tool.md),
 [CrewAI adapter](docs/crewai-workpaper-spreadsheet-tool.md),
 the [headless WorkPaper agent handbook](docs/headless-workpaper-agent-handbook.md),
@@ -277,10 +295,11 @@ Useful deeper examples: [invoice totals](examples/headless-workpaper#invoice-tot
 [MCP tool server shape](examples/headless-workpaper#mcp-tool-server-shape),
 [XLSX formula recalculation in Node](examples/xlsx-recalculation-node),
 and [serverless quote approval](examples/serverless-workpaper-api). Run
-`npm run quote-approval-api`, `npm run agent:framework-adapters`,
+`npm run quote-approval-api`, `npm run agent:openai-agents-sdk`,
+`npm run agent:framework-adapters`,
 `npm run agent:mcp-tools`, `npm run agent:mcp-transcript`,
 `npm run agent:mcp-file-transcript`, `npm run agent:mcp-stdio`, or
-`npm exec --package @bilig/headless@0.24.2 -- bilig-workpaper-mcp` when that is the
+`npm exec --package @bilig/headless@0.31.0 -- bilig-workpaper-mcp` when that is the
 path you are evaluating.
 
 The serverless example also includes `npm run next-route-handler`,
@@ -330,6 +349,7 @@ For agent tools:
 ```sh
 pnpm --dir examples/headless-workpaper run agent:verify
 pnpm --dir examples/headless-workpaper run agent:tool-call
+pnpm --dir examples/headless-workpaper run agent:openai-agents-sdk
 pnpm --dir examples/headless-workpaper run agent:openai-responses
 pnpm --dir examples/headless-workpaper run agent:ai-sdk-generate-text
 pnpm --dir examples/headless-workpaper run agent:ai-sdk-stream-text
@@ -341,6 +361,8 @@ pnpm --dir examples/headless-workpaper run agent:mcp-stdio
 
 The AI SDK example uses
 [`ai-sdk-generate-text-tool-smoke.ts`](examples/headless-workpaper/ai-sdk-generate-text-tool-smoke.ts).
+The OpenAI Agents SDK guide is
+[`docs/openai-agents-sdk-workpaper-tool.md`](docs/openai-agents-sdk-workpaper-tool.md).
 The OpenAI Responses guide is
 [`docs/openai-responses-workpaper-tool-call.md`](docs/openai-responses-workpaper-tool-call.md).
 The agent framework guide is
@@ -349,11 +371,22 @@ The agent framework guide is
 The package also ships the MCP stdio binary:
 
 ```sh
-npm exec --package @bilig/headless@0.24.2 -- bilig-formula-clinic ./reduced.xlsx --cells "Summary!B7,Inputs!B2"
-npm exec --package @bilig/headless@0.24.2 -- bilig-workpaper-mcp
-npm exec --package @bilig/headless@0.24.2 -- bilig-workpaper-mcp --workpaper ./pricing.workpaper.json --init-demo-workpaper --writable
+npm exec --package @bilig/headless@0.31.0 -- bilig-agent-challenge
+npm exec --package @bilig/headless@0.31.0 -- bilig-formula-clinic ./reduced.xlsx --cells "Summary!B7,Inputs!B2"
+npm exec --package @bilig/headless@0.31.0 -- bilig-mcp-challenge
+npm exec --package @bilig/headless@0.31.0 -- bilig-workpaper-mcp
+npm exec --package @bilig/headless@0.31.0 -- bilig-workpaper-mcp --workpaper ./pricing.workpaper.json --init-demo-workpaper --writable
 docker build --target bilig-workpaper-mcp -t bilig-workpaper-mcp:local .
 ```
+
+`bilig-agent-challenge` prints the same edit, formula readback, WorkPaper JSON
+export, restore, and `verified: true` proof object used by the agent workbook
+challenge page.
+
+`bilig-mcp-challenge` proves the file-backed MCP path end to end: initialize
+JSON-RPC, list tools/resources/prompts, edit `Inputs!B3`, read recalculated
+`Summary!B3`, export the WorkPaper JSON, restart from disk, and return
+`verified: true`.
 
 `bilig-formula-clinic` imports a reduced XLSX locally, samples formulas, reads
 requested cells through WorkPaper, and prints a Markdown issue body. It does not

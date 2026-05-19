@@ -44,6 +44,7 @@ const ERROR_LITERAL_CODES: Record<string, ErrorCode> = {
   '#CYCLE!': ErrorCode.Cycle,
   '#SPILL!': ErrorCode.Spill,
   '#BLOCKED!': ErrorCode.Blocked,
+  '#NUM!': ErrorCode.Num,
 }
 
 const LAST_LEGACY_XLS_COLUMN_INDEX = columnToIndex('IV')

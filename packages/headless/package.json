@@ -1,6 +1,6 @@
 {
   "name": "@bilig/headless",
-  "version": "0.24.2",
+  "version": "0.31.0",
   "description": "Formula WorkPaper runtime for Node.js services and agent tools with JSON persistence and formula readback.",
   "keywords": [
     "agent-tools",
@@ -39,7 +39,9 @@
     "directory": "packages/headless"
   },
   "bin": {
+    "bilig-agent-challenge": "./dist/agent-workbook-challenge-bin.js",
     "bilig-formula-clinic": "./dist/formula-clinic-bin.js",
+    "bilig-mcp-challenge": "./dist/mcp-challenge-bin.js",
     "bilig-workpaper-mcp": "./dist/work-paper-mcp-stdio-bin.js"
   },
   "files": [
@@ -58,6 +60,10 @@
     ".": {
       "types": "./dist/index.d.ts",
       "import": "./dist/index.js"
+    },
+    "./mcp": {
+      "types": "./dist/mcp.d.ts",
+      "import": "./dist/mcp.js"
     },
     "./xlsx": {
       "types": "./dist/xlsx.d.ts",

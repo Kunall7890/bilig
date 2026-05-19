@@ -115,8 +115,20 @@
     <priority>0.82</priority>
   </url>
   <url>
+    <loc>https://proompteng.github.io/bilig/agent-workbook-challenge.html</loc>
+    <lastmod>2026-05-19</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.82</priority>
+  </url>
+  <url>
     <loc>https://proompteng.github.io/bilig/agent-workpaper-tool-calling-recipe.html</loc>
     <lastmod>2026-05-07</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://proompteng.github.io/bilig/openai-agents-sdk-workpaper-tool.html</loc>
+    <lastmod>2026-05-19</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>
   </url>

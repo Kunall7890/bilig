@@ -10,8 +10,10 @@ Use this file when an AI coding agent, MCP client, or tool host needs workbook f
 4. Start the MCP server or import `@bilig/headless` directly.
 
 Remote MCP clients that support Streamable HTTP can smoke-test the stateless
-demo endpoint at `https://bilig.proompteng.ai/mcp`. Local agents that need writable
-project files should still prefer the file-backed stdio command below.
+demo endpoint at `https://bilig.proompteng.ai/mcp`. Directory scanners that inspect the
+hosted endpoint origin can read the same-origin server card at
+`https://bilig.proompteng.ai/.well-known/mcp/server-card.json`. Local agents that need writable project files should
+still prefer the file-backed stdio command below.
 
 ## Default Decision
 
@@ -36,9 +38,16 @@ Do not claim success from a write call alone. The proof is computed readback plu
 ## Fast Commands
 
 ```sh
-npm exec --package @bilig/headless@0.24.2 -- bilig-workpaper-mcp --workpaper ./pricing.workpaper.json --init-demo-workpaper --writable
-npm exec --package @bilig/headless@0.24.2 -- bilig-formula-clinic ./reduced.xlsx --cells "Summary!B7,Inputs!B2"
+npm exec --package @bilig/headless@0.31.0 -- bilig-agent-challenge
+npm exec --package @bilig/headless@0.31.0 -- bilig-mcp-challenge
+npm exec --package @bilig/headless@0.31.0 -- bilig-workpaper-mcp --workpaper ./pricing.workpaper.json --init-demo-workpaper --writable
+npm exec --package @bilig/headless@0.31.0 -- bilig-formula-clinic ./reduced.xlsx --cells "Summary!B7,Inputs!B2"
 ```
+
+Claude Desktop users can install the released MCPB bundle from:
+
+- https://github.com/proompteng/bilig/releases/download/libraries-v0.31.0/bilig-workpaper.mcpb
+- https://github.com/proompteng/bilig/releases/download/libraries-v0.31.0/bilig-workpaper.mcpb.sha256
 
 ## Direct TypeScript
 

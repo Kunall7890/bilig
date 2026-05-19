@@ -12,6 +12,7 @@ export type WorkspaceResolutionMap = Record<string, WorkspaceResolutionEntry>
 export const workspaceRootDir = fileURLToPath(new URL('..', import.meta.url))
 export const workspaceResolutionJsonPath = join(workspaceRootDir, 'workspace-resolution.generated.json')
 export const workspaceResolutionTsconfigPath = join(workspaceRootDir, 'tsconfig.workspace-paths.json')
+const WORKSPACE_ALIAS_PACKAGE_NAMES = new Set(['xlsx-formula-recalc', 'exceljs-formula-recalc'])
 
 function normalizePath(value: string): string {
   return value.replaceAll('\\', '/')
@@ -118,7 +119,7 @@ export function scanWorkspaceResolution(rootDir = workspaceRootDir): WorkspaceRe
       continue
     }
     const packageName = Reflect.get(packageJsonValue, 'name')
-    if (typeof packageName !== 'string' || !packageName.startsWith('@bilig/')) {
+    if (typeof packageName !== 'string' || !isWorkspaceAliasPackageName(packageName)) {
       continue
     }
     const packageDirRelative = normalizePath(`packages/${directoryEntry.name}`)
@@ -130,6 +131,16 @@ export function scanWorkspaceResolution(rootDir = workspaceRootDir): WorkspaceRe
       },
     ])
     entries.push(...scanWorkspaceExportEntries(packageName, packageDir, packageDirRelative, packageJsonValue))
+  }
+  const bundledHeadlessXlsxSource = 'packages/excel-import/src/index.ts'
+  if (existsSync(join(rootDir, bundledHeadlessXlsxSource))) {
+    entries.push([
+      '@bilig/headless/xlsx',
+      {
+        packageDir: 'packages/headless',
+        sourceEntry: bundledHeadlessXlsxSource,
+      },
+    ])
   }
   return Object.fromEntries(sortedEntries(entries))
 }
@@ -145,7 +156,7 @@ function readWorkspaceResolution(rootDir = workspaceRootDir): WorkspaceResolutio
   }
   const entries: Array<readonly [string, WorkspaceResolutionEntry]> = []
   for (const [packageName, value] of Object.entries(parsed)) {
-    if (typeof packageName !== 'string' || !packageName.startsWith('@bilig/')) {
+    if (typeof packageName !== 'string' || !isWorkspaceAliasPackageName(packageName)) {
       continue
     }
     if (
@@ -165,6 +176,10 @@ function readWorkspaceResolution(rootDir = workspaceRootDir): WorkspaceResolutio
     ])
   }
   return Object.fromEntries(sortedEntries(entries))
+}
+
+function isWorkspaceAliasPackageName(packageName: string): boolean {
+  return packageName.startsWith('@bilig/') || WORKSPACE_ALIAS_PACKAGE_NAMES.has(packageName)
 }
 
 function createWorkspaceAliasMap(rootDir = workspaceRootDir, resolution = readWorkspaceResolution(rootDir)): Record<string, string> {

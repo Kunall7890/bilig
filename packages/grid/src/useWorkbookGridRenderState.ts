@@ -11,12 +11,14 @@ import { useWorkbookGridEditorRuntime } from './useWorkbookGridEditorRuntime.js'
 import { useWorkbookGridGeometryRuntime } from './useWorkbookGridGeometryRuntime.js'
 import { useWorkbookGridHostRuntime } from './useWorkbookGridHostRuntime.js'
 import { useWorkbookGridRenderPipelineRuntime } from './useWorkbookGridRenderPipelineRuntime.js'
+import type { EditTargetSelection } from './workbookGridSurfaceTypes.js'
 
 export function useWorkbookGridRenderState(input: {
   engine: GridEngineLike
   sheetName: string
   selectedAddr: string
   selectedCellSnapshot: CellSnapshot
+  editorTargetSelection?: EditTargetSelection | null | undefined
   editorValue: string
   isEditingCell: boolean
   sheetId?: number | undefined
@@ -44,6 +46,7 @@ export function useWorkbookGridRenderState(input: {
     sheetName,
     selectedAddr,
     selectedCellSnapshot,
+    editorTargetSelection,
     editorValue,
     isEditingCell,
     sheetId,
@@ -65,6 +68,15 @@ export function useWorkbookGridRenderState(input: {
   const freezeCols = Math.max(0, Math.min(MAX_COLS, requestedFreezeCols))
   const selectedCell = useMemo(() => parseCellAddress(selectedAddr, sheetName), [selectedAddr, sheetName])
   const selectedItem = useMemo(() => [selectedCell.col, selectedCell.row] as const, [selectedCell.col, selectedCell.row])
+  const editorTargetAddr = isEditingCell && editorTargetSelection?.sheetName === sheetName ? editorTargetSelection.address : selectedAddr
+  const editorCell = useMemo(() => parseCellAddress(editorTargetAddr, sheetName), [editorTargetAddr, sheetName])
+  const editorItem = useMemo(() => [editorCell.col, editorCell.row] as const, [editorCell.col, editorCell.row])
+  const editorCellSnapshot = useMemo(() => {
+    if (!isEditingCell || editorTargetAddr === selectedAddr) {
+      return selectedCellSnapshot
+    }
+    return engine.getCell(sheetName, editorTargetAddr)
+  }, [editorTargetAddr, engine, isEditingCell, selectedAddr, selectedCellSnapshot, sheetName])
   const gridMetrics = useMemo(() => getGridMetrics(), [])
   const gridTheme = useMemo(() => getGridTheme(), [])
   const {
@@ -179,7 +191,7 @@ export function useWorkbookGridRenderState(input: {
     hostClientHeight,
     hostClientWidth,
     hostElement,
-    editingCell: isEditingCell ? selectedItem : null,
+    editingCell: isEditingCell ? editorItem : null,
     isEditingCell,
     liveVisibleRegionRef,
     onVisibleViewportChange,
@@ -221,8 +233,8 @@ export function useWorkbookGridRenderState(input: {
     hostRef,
     isEditingCell,
     scrollTransformStore,
-    selectedCell,
-    selectedCellSnapshot,
+    selectedCell: editorCell,
+    selectedCellSnapshot: editorCellSnapshot,
     sheetName,
   })
 
@@ -270,6 +282,7 @@ export function useWorkbookGridRenderState(input: {
     rowHeightOverridesAttr,
     scrollTransformStore,
     scrollViewportRef,
+    editorCell,
     selectedCell,
     selectionRange,
     setActiveHeaderDrag,

@@ -399,10 +399,20 @@ function readNumber(cell: unknown): number {
                 <strong>Headless WorkPaper agent handbook</strong>
                 <em>Pick MCP, direct TypeScript, service routes, or XLSX import with a required write-read-persist loop.</em>
               </a>
+              <a class="path-link" href="./agent-workbook-challenge.html">
+                <span>challenge</span>
+                <strong>Agent workbook challenge</strong>
+                <em>Give another agent one input edit, one formula readback, one persisted restore, and a pass/fail proof object.</em>
+              </a>
               <a class="path-link" href="./openai-responses-workpaper-tool-call.html">
                 <span>openai</span>
                 <strong>OpenAI Responses WorkPaper tools</strong>
                 <em>Run npm run agent:openai-responses to dispatch function_call items and return computed readback.</em>
+              </a>
+              <a class="path-link" href="./openai-agents-sdk-workpaper-tool.html">
+                <span>openai</span>
+                <strong>OpenAI Agents SDK WorkPaper tools</strong>
+                <em>Run npm run agent:openai-agents-sdk to verify Agent, tool(), and WorkPaper readback locally.</em>
               </a>
               <a class="path-link" href="./vercel-ai-sdk-langchain-spreadsheet-tool.html">
                 <span>adapters</span>
@@ -439,7 +449,7 @@ function readNumber(cell: unknown): number {
                 <span>bilig-workpaper-mcp</span>
                 <span>stdio</span>
               </div>
-              <pre><code>$ npm exec --package @bilig/headless@0.24.2 -- bilig-workpaper-mcp --workpaper ./pricing.workpaper.json --init-demo-workpaper --writable
+              <pre><code>$ npm exec --package @bilig/headless@0.30.2 -- bilig-workpaper-mcp --workpaper ./pricing.workpaper.json --init-demo-workpaper --writable
 <span class="ok">ok</span> tools/list
 <span class="ok">ok</span> tools/call read_range
 <span class="ok">ok</span> tools/call set_cell_contents
@@ -555,6 +565,11 @@ $ curl https://bilig.proompteng.ai/mcp -H 'accept: application/json, text/event-
               <span>agent</span>
               <strong>Expose workbook reads and writes as tools.</strong>
               <em>Let the tool write the cell and return the value the workbook calculated.</em>
+            </a>
+            <a class="path-link" href="./agent-workbook-challenge.html">
+              <span>challenge</span>
+              <strong>Give another agent a no-screenshot workbook eval.</strong>
+              <em>Require editedCell, before, after, afterRestore, persistedDocumentBytes, verified, and limitations.</em>
             </a>
             <a class="path-link" href="./headless-spreadsheet-engine-comparison.html">
               <span>compare</span>
@@ -681,7 +696,9 @@ $ curl https://bilig.proompteng.ai/mcp -H 'accept: application/json, text/event-
                 <li><a href="./skill.txt">agent skill manifest</a></li>
                 <li><a href="./llms-full.txt">full LLM context pack</a></li>
                 <li><a href="./headless-workpaper-agent-handbook.html">headless WorkPaper agent handbook</a></li>
+                <li><a href="./agent-workbook-challenge.html">agent workbook challenge</a></li>
                 <li><a href="./agent-workpaper-tool-calling-recipe.html">agent tool-calling recipe</a></li>
+                <li><a href="./openai-agents-sdk-workpaper-tool.html">OpenAI Agents SDK tool calls</a></li>
                 <li><a href="./openai-responses-workpaper-tool-call.html">OpenAI Responses tool calls</a></li>
                 <li><a href="./agent-spreadsheet-tool-call-loop.html">agent spreadsheet tool-call loop</a></li>
                 <li>

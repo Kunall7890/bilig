@@ -37,13 +37,31 @@ Do not build shell commands by concatenating user text. Treat the commands below
 Use MCP when the host can run a stdio server or call a Streamable HTTP server.
 Configure stdio as an argument array, not a shell-concatenated string:
 
+Before wiring a client, an agent can prove the direct WorkPaper loop with:
+
+```json
+{
+  "command": "npm",
+  "args": ["exec", "--package", "@bilig/headless@0.31.0", "--", "bilig-agent-challenge"]
+}
+```
+
+For the actual file-backed MCP path, run the package-owned challenge first:
+
+```json
+{
+  "command": "npm",
+  "args": ["exec", "--package", "@bilig/headless@0.31.0", "--", "bilig-mcp-challenge"]
+}
+```
+
 ```json
 {
   "command": "npm",
   "args": [
     "exec",
     "--package",
-    "@bilig/headless@0.24.2",
+    "@bilig/headless@0.31.0",
     "--",
     "bilig-workpaper-mcp",
     "--workpaper",
@@ -117,7 +135,7 @@ When the user has a reduced XLSX formula/import bug, generate a local report thr
 ```json
 {
   "command": "npm",
-  "args": ["exec", "--package", "@bilig/headless@0.24.2", "--", "bilig-formula-clinic", "./reduced.xlsx", "--cells", "Summary!B7,Inputs!B2"]
+  "args": ["exec", "--package", "@bilig/headless@0.31.0", "--", "bilig-formula-clinic", "./reduced.xlsx", "--cells", "Summary!B7,Inputs!B2"]
 }
 ```
 
@@ -141,6 +159,7 @@ If any proof step fails, report the blocker instead of claiming the workbook was
 - Compact docs map: https://proompteng.github.io/bilig/llms.txt
 - Full agent context: https://proompteng.github.io/bilig/llms-full.txt
 - Agent handbook: https://proompteng.github.io/bilig/headless-workpaper-agent-handbook.html
+- Agent workbook challenge: https://proompteng.github.io/bilig/agent-workbook-challenge.html
 - MCP server guide: https://proompteng.github.io/bilig/mcp-workpaper-tool-server.html
 - XLSX formula clinic: https://proompteng.github.io/bilig/formula-bug-clinic.html
 - Compatibility limits: https://proompteng.github.io/bilig/where-bilig-is-not-excel-compatible-yet.html

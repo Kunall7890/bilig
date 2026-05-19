@@ -7,7 +7,7 @@ import type { HeaderSelection } from './gridPointer.js'
 import type { Item, Rectangle } from './gridTypes.js'
 import { resolveMergedCell, resolveMergedCellBounds } from './gridMergedRanges.js'
 import { collectVisibleColumnBounds, collectVisibleRowBounds } from './visibleGridAxes.js'
-import { workbookThemeColors } from './workbookTheme.js'
+import { WORKBOOK_HEADER_FONT_POINT_SIZE, workbookHeaderFontPointSizeToCssPx, workbookThemeColors } from './workbookTheme.js'
 
 export interface GridTextItem {
   readonly col?: number | undefined
@@ -66,11 +66,14 @@ const HEADER_HOVER_TEXT_COLOR = workbookThemeColors.text
 const HEADER_SELECTED_TEXT_COLOR = workbookThemeColors.accent
 const HEADER_DRAG_ANCHOR_TEXT_COLOR = workbookThemeColors.accentDark
 const HEADER_RESIZE_TEXT_COLOR = workbookThemeColors.accentDark
-const DEFAULT_HEADER_FONT_SIZE = 11
 const MERGED_DISPLAY_FALLBACK_SCAN_CELL_LIMIT = 2048
 
-function buildHeaderFont(fontSize: number): string {
-  return `600 ${fontSize}px ${getResolvedCellFontFamily()}`
+function buildHeaderFont(fontSizePx: number): string {
+  return `600 ${fontSizePx}px ${getResolvedCellFontFamily()}`
+}
+
+function resolveHeaderFontSizePx(pointSize: number | null | undefined): number {
+  return workbookHeaderFontPointSizeToCssPx(pointSize ?? WORKBOOK_HEADER_FONT_POINT_SIZE)
 }
 
 export function buildGridTextScene({
@@ -98,9 +101,9 @@ export function buildGridTextScene({
     selectionRange.y === 0 &&
     selectionRange.width === MAX_COLS &&
     selectionRange.height === MAX_ROWS
-  const headerFontSize = fullSheetSelected
-    ? (engine.getCellStyle(selectedCellSnapshot?.styleId)?.font?.size ?? DEFAULT_HEADER_FONT_SIZE)
-    : DEFAULT_HEADER_FONT_SIZE
+  const headerFontSize = resolveHeaderFontSizePx(
+    fullSheetSelected ? engine.getCellStyle(selectedCellSnapshot?.styleId)?.font?.size : WORKBOOK_HEADER_FONT_POINT_SIZE,
+  )
   const dataClipRect =
     contentMode === 'data'
       ? {

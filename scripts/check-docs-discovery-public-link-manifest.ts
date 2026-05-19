@@ -1,3 +1,23 @@
+import { readFileSync } from 'node:fs'
+import { dirname, join } from 'node:path'
+import { fileURLToPath } from 'node:url'
+
+const repoRoot = join(dirname(fileURLToPath(import.meta.url)), '..')
+const headlessPackageVersion = readHeadlessPackageVersion()
+const mcpbReleaseAssetUrl = `https://github.com/proompteng/bilig/releases/download/libraries-v${headlessPackageVersion}/bilig-workpaper.mcpb`
+
+function readHeadlessPackageVersion(): string {
+  const parsed: unknown = JSON.parse(readFileSync(join(repoRoot, 'packages', 'headless', 'package.json'), 'utf8'))
+  if (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed)) {
+    throw new Error('packages/headless/package.json must be an object')
+  }
+  const version = Reflect.get(parsed, 'version')
+  if (typeof version !== 'string') {
+    throw new Error('packages/headless/package.json must define a string version')
+  }
+  return version
+}
+
 export const homepageRequiredLinks = [
   './why-use-bilig.html',
   './why-agents-need-workbook-apis.html',
@@ -6,6 +26,7 @@ export const homepageRequiredLinks = [
   './formula-workbooks-node-services-agent-tools.html',
   './headless-workpaper-agent-handbook.html',
   './agent-workpaper-tool-calling-recipe.html',
+  './openai-agents-sdk-workpaper-tool.html',
   './xlsx-formula-recalculation-node.html',
   './xlsx-recalculation-proof.html',
   './xlsx-recalculation-proof.ts',
@@ -48,6 +69,7 @@ export const llmsRequiredLinks = [
   'repository: https://github.com/proompteng/bilig',
   'npm package: https://www.npmjs.com/package/@bilig/headless',
   'pnpm --dir bilig/examples/headless-workpaper run agent:tool-call',
+  'pnpm --dir bilig/examples/headless-workpaper run agent:openai-agents-sdk',
   'pnpm --dir bilig/examples/headless-workpaper run agent:framework-adapters',
   'pnpm --dir bilig/examples/headless-workpaper run agent:verify',
   'https://github.com/proompteng/bilig/tree/main/examples/headless-workpaper#json-records-input',
@@ -67,11 +89,15 @@ export const llmsRequiredLinks = [
   'https://proompteng.github.io/bilig/quote-approval-workpaper-api.html',
   'https://github.com/proompteng/bilig/blob/main/docs/quote-approval-workpaper-api.md',
   'https://proompteng.github.io/bilig/vercel-ai-sdk-langchain-spreadsheet-tool.html',
+  'https://proompteng.github.io/bilig/openai-agents-sdk-workpaper-tool.html',
   'https://proompteng.github.io/bilig/mcp-workpaper-tool-server.html',
   'https://proompteng.github.io/bilig/mcp-spreadsheet-server-directory.html',
   'https://proompteng.github.io/bilig/mcp-client-setup.html',
+  'https://smithery.ai/servers/gkonushev/bilig-workpaper',
   'https://proompteng.github.io/bilig/claude-desktop-mcpb-workpaper.html',
   'https://github.com/proompteng/bilig/blob/main/docs/claude-desktop-mcpb-workpaper.md',
+  mcpbReleaseAssetUrl,
+  `${mcpbReleaseAssetUrl}.sha256`,
   'https://proompteng.github.io/bilig/agent-workpaper-tool-calling-recipe.html',
   'https://proompteng.github.io/bilig/agent-spreadsheet-tool-call-loop.html',
   'https://github.com/proompteng/bilig/blob/main/docs/headless-workpaper-agent-handbook.md',

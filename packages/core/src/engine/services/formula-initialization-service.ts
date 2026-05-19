@@ -6,8 +6,11 @@ import { addEngineCounter } from '../../perf/engine-counters.js'
 import type { RuntimeFormula, U32 } from '../runtime-state.js'
 import { EngineMutationError } from '../errors.js'
 import { evaluateInitialDirectScalar, evaluateInitialDirectScalarNumber } from './formula-initialization-direct-scalar.js'
-import { materializeDeferredFormulaFamilyRunMembers, type DeferredInitialFormulaFamilyRun } from './formula-initialization-family-runs.js'
-import { initialFormulaFamilyShapeKey } from './formula-initialization-template-keys.js'
+import {
+  noteDeferredFormulaFamilyRunMember as noteDeferredFormulaFamilyRunMemberNow,
+  registerDeferredFormulaFamilyRunNow,
+  type DeferredInitialFormulaFamilyRun,
+} from './formula-initialization-family-runs.js'
 import { createInitialTemplateFormulaResolver } from './formula-initialization-template-resolver.js'
 import { createInitialFormulaValueWriter, type InitialFormulaValueWriter } from './formula-initialization-value-writer.js'
 import { noteDeferredFormulaInstance, readAlignedFreshFormulaInstancesFromRefs } from './formula-initialization-fresh-instances.js'
@@ -24,6 +27,11 @@ import {
   hasPendingFormulaDependency,
   mutationErrorMessage,
 } from './formula-initialization-predicates.js'
+import {
+  createInitialNativeDirectScalarBatch,
+  MAX_INITIAL_NATIVE_DIRECT_SCALAR_BATCH_SIZE,
+  MIN_INITIAL_NATIVE_DIRECT_SCALAR_BATCH_SIZE,
+} from './formula-initialization-native-direct-scalar.js'
 import { evaluateInitialPrefixAggregateGroups } from './formula-initialization-prefix-aggregates.js'
 import type {
   EngineFormulaInitializationService,
@@ -71,91 +79,15 @@ export function createEngineFormulaInitializationService(args: EngineFormulaInit
 
   const noteDeferredFormulaFamilyRunMember = (
     runs: Map<string, DeferredInitialFormulaFamilyRun> | undefined,
-    prepared: {
-      readonly cellIndex: number
-      readonly sheetId: number
-      readonly row: number
-      readonly col: number
-      readonly templateId?: number
-    },
-  ): void => {
-    if (!runs) {
-      return
-    }
-    const templateId = prepared.templateId
-    if (templateId === undefined) {
-      return
-    }
-    const familyKey = `${prepared.sheetId}\t${templateId}\t${prepared.col}`
-    let run = runs.get(familyKey)
-    if (!run) {
-      const runtimeFormula = args.state.formulas.get(prepared.cellIndex)
-      if (runtimeFormula === undefined) {
-        return
-      }
-      run = {
-        sheetId: prepared.sheetId,
-        templateId,
-        shapeKey: initialFormulaFamilyShapeKey(runtimeFormula),
-        axis: 'row',
-        fixedIndex: prepared.col,
-        start: prepared.row,
-        step: 0,
-        lastIndex: prepared.row,
-        ordered: true,
-        cellIndices: [],
-      }
-      runs.set(familyKey, run)
-    } else {
-      const nextStep = prepared.row - run.lastIndex
-      let breaksOrder = false
-      if (run.cellIndices.length === 1) {
-        run.step = nextStep
-      } else if (run.step !== nextStep) {
-        breaksOrder = true
-      }
-      if (prepared.row <= run.lastIndex || prepared.col !== run.fixedIndex) {
-        breaksOrder = true
-      }
-      if (breaksOrder) {
-        if (!run.rows) {
-          const priorStep = run.cellIndices.length <= 1 ? 1 : run.step
-          const start = run.start
-          run.rows = Array.from({ length: run.cellIndices.length }, (_value, index) => start + priorStep * index)
-        }
-        run.ordered = false
-      }
-      run.lastIndex = prepared.row
-    }
-    run.cellIndices.push(prepared.cellIndex)
-    run.rows?.push(prepared.row)
-  }
+    prepared: Parameters<typeof noteDeferredFormulaFamilyRunMemberNow>[0]['prepared'],
+  ): void => noteDeferredFormulaFamilyRunMemberNow({ runs, formulas: args.state.formulas, prepared })
 
-  const registerDeferredFormulaFamilyRun = (run: DeferredInitialFormulaFamilyRun): void => {
-    const step = run.cellIndices.length <= 1 ? 1 : run.step
-    if (
-      run.ordered &&
-      step > 0 &&
-      args.registerFreshFormulaFamilyRun({
-        sheetId: run.sheetId,
-        templateId: run.templateId,
-        shapeKey: run.shapeKey,
-        axis: run.axis,
-        fixedIndex: run.fixedIndex,
-        start: run.start,
-        step,
-        cellIndices: run.cellIndices,
-      })
-    ) {
-      return
-    }
-    args.upsertFormulaFamilyRun({
-      sheetId: run.sheetId,
-      templateId: run.templateId,
-      shapeKey: run.shapeKey,
-      members: materializeDeferredFormulaFamilyRunMembers(run),
+  const registerDeferredFormulaFamilyRun = (run: DeferredInitialFormulaFamilyRun): void =>
+    registerDeferredFormulaFamilyRunNow({
+      run,
+      registerFreshFormulaFamilyRun: args.registerFreshFormulaFamilyRun,
+      upsertFormulaFamilyRun: args.upsertFormulaFamilyRun,
     })
-  }
 
   const canEvaluateInitialDirectFormula = (cellIndex: number): boolean => {
     return canEvaluateInitialDirectRuntimeFormula(args.state.formulas.get(cellIndex))
@@ -331,6 +263,7 @@ export function createEngineFormulaInitializationService(args: EngineFormulaInit
         }
       }
       let canAssignTopoInBatch = !hadExistingFormulas
+      let needsFreshTopoRebuild = false
       let nextTopoRank = 0
       let orderedPreparedCellIndices: number[] | undefined = hadExistingFormulas ? [] : undefined
       let orderedPreparedCellCount = 0
@@ -342,6 +275,13 @@ export function createEngineFormulaInitializationService(args: EngineFormulaInit
         ? new Uint32Array(Math.max(refs.length, 1))
         : undefined
       let inlineInitialDirectScalarCellCount = 0
+      let nativeInitialDirectScalarBatch =
+        hadExistingFormulas ||
+        refs.length < MIN_INITIAL_NATIVE_DIRECT_SCALAR_BATCH_SIZE ||
+        refs.length > MAX_INITIAL_NATIVE_DIRECT_SCALAR_BATCH_SIZE
+          ? undefined
+          : createInitialNativeDirectScalarBatch({ state: args.state, capacity: refs.length })
+      let nativeInitialDirectScalarCellCount = 0
       const shouldDeferFormulaFamilyIndex = !hadExistingFormulas && args.deferFormulaFamilyIndexRebuild !== undefined
       const shouldDeferFormulaInstanceTable =
         !hadExistingFormulas && (args.hydrateFreshFormulaInstances !== undefined || args.deferFormulaInstanceTableRebuild !== undefined)
@@ -434,6 +374,14 @@ export function createEngineFormulaInitializationService(args: EngineFormulaInit
           return
         }
         if (runtimeFormula.directScalar !== undefined) {
+          if (nativeInitialDirectScalarBatch) {
+            if (nativeInitialDirectScalarBatch.add(prepared, runtimeFormula.directScalar)) {
+              nativeInitialDirectScalarCellCount += 1
+              return
+            }
+            nativeInitialDirectScalarBatch = undefined
+            nativeInitialDirectScalarCellCount = 0
+          }
           const numericValue = evaluateInitialDirectScalarNumber(args.state, runtimeFormula.directScalar)
           inlineInitialDirectScalarWriter ??= createInitialFormulaValueWriter(args)
           if (numericValue !== undefined) {
@@ -478,10 +426,11 @@ export function createEngineFormulaInitializationService(args: EngineFormulaInit
           if (runtimeFormula?.directAggregate !== undefined) {
             hasInitialPrefixAggregateCandidates = true
           }
-          if (
-            !runtimeFormula ||
+          const hasPendingDependency =
+            runtimeFormula !== undefined &&
             hasPendingFormulaDependency(runtimeFormula, pendingFormulaCells, (rangeIndex) => args.state.ranges.getMembersView(rangeIndex))
-          ) {
+          if (!runtimeFormula || hasPendingDependency) {
+            needsFreshTopoRebuild ||= hasPendingDependency
             canAssignTopoInBatch = false
           } else {
             args.state.workbook.cellStore.topoRanks[prepared.cellIndex] = nextTopoRank
@@ -576,7 +525,20 @@ export function createEngineFormulaInitializationService(args: EngineFormulaInit
         args.setBatchMutationDepth(args.getBatchMutationDepth() - 1)
       }
 
-      if (topologyChanged && !(canAssignTopoInBatch && !hadExistingFormulas)) {
+      if (needsFreshTopoRebuild) {
+        args.checkEvaluationBudget()
+        materializeFreshFormulaChangedBuffer()
+        args.prepareRegionQueryIndices()
+        args.rebuildTopoRanks()
+        args.detectCycles()
+        canAssignTopoInBatch = false
+        canUseInitialDirectEvaluation = false
+        args.state.formulas.forEach((_formula, cellIndex) => {
+          if (((args.state.workbook.cellStore.flags[cellIndex] ?? 0) & CellFlags.InCycle) !== 0) {
+            changedInputCount = args.markInputChanged(cellIndex, changedInputCount)
+          }
+        })
+      } else if (topologyChanged && !(canAssignTopoInBatch && !hadExistingFormulas)) {
         args.checkEvaluationBudget()
         materializeFreshFormulaChangedBuffer()
         const repaired =
@@ -605,6 +567,29 @@ export function createEngineFormulaInitializationService(args: EngineFormulaInit
       }
       let recalculated: U32
       if (
+        useInitialDirectEvaluation &&
+        nativeInitialDirectScalarCellCount === orderedPreparedCellCount &&
+        !hasInitialPrefixAggregateCandidates
+      ) {
+        const native = nativeInitialDirectScalarBatch?.evaluate()
+        if (native) {
+          recalculated = native
+          args.deferKernelSync(recalculated)
+          addEngineCounter(args.state.counters, 'directFormulaInitialEvaluations', orderedPreparedCellCount)
+        } else {
+          const direct = evaluateInitialDirectFormulas(orderedPreparedCellList(), {
+            alreadyValidated: true,
+            hasPrefixAggregateCandidates: hasInitialPrefixAggregateCandidates,
+          })
+          if (direct) {
+            recalculated = direct
+          } else {
+            const changedInputArray = args.getChangedInputBuffer().subarray(0, changedInputCount)
+            const changedRoots = args.composeMutationRoots(changedInputCount, formulaChangedCount)
+            recalculated = args.recalculate(changedRoots, changedInputArray)
+          }
+        }
+      } else if (
         useInitialDirectEvaluation &&
         inlineInitialDirectScalarCellCount === orderedPreparedCellCount &&
         !hasInitialPrefixAggregateCandidates
@@ -775,6 +760,7 @@ export function createEngineFormulaInitializationService(args: EngineFormulaInit
       }
     }
     let canAssignTopoInBatch = !hadExistingFormulas
+    let needsFreshTopoRebuild = false
     let nextTopoRank = 0
     const shouldDeferFormulaFamilyIndex = !hadExistingFormulas && args.deferFormulaFamilyIndexRebuild !== undefined
     const shouldDeferFormulaInstanceTable =
@@ -829,12 +815,13 @@ export function createEngineFormulaInitializationService(args: EngineFormulaInit
             valueWriter.writeValueAt(cellIndex, ref.sheetId, ref.col, ref.value)
             if (canAssignTopoInBatch && pendingFormulaCells) {
               const runtimeFormula = args.state.formulas.get(cellIndex)
-              if (
-                !runtimeFormula ||
+              const hasPendingDependency =
+                runtimeFormula !== undefined &&
                 hasPendingFormulaDependency(runtimeFormula, pendingFormulaCells, (rangeIndex) =>
                   args.state.ranges.getMembersView(rangeIndex),
                 )
-              ) {
+              if (!runtimeFormula || hasPendingDependency) {
+                needsFreshTopoRebuild ||= hasPendingDependency
                 canAssignTopoInBatch = false
               } else {
                 args.state.workbook.cellStore.topoRanks[cellIndex] = nextTopoRank
@@ -877,9 +864,10 @@ export function createEngineFormulaInitializationService(args: EngineFormulaInit
       args.setBatchMutationDepth(args.getBatchMutationDepth() - 1)
     }
 
-    if (topologyChanged && !(canAssignTopoInBatch && !hadExistingFormulas)) {
+    if ((topologyChanged || needsFreshTopoRebuild) && !(canAssignTopoInBatch && !hadExistingFormulas)) {
       args.checkEvaluationBudget()
       const repaired =
+        !needsFreshTopoRebuild &&
         !hadCycleMembersBeforeNow() &&
         refs.length > 0 &&
         args.repairTopoRanks(targetCellIndices.length > 0 ? targetCellIndices : pendingInitialFormulaCellIndices)

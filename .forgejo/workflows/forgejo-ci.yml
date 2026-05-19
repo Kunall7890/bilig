@@ -45,6 +45,13 @@ jobs:
           npm install -g bun
           bun --version
 
+      - name: Install generated asset renderer
+        run: |
+          set -eu
+          apt-get update
+          apt-get install -y --no-install-recommends librsvg2-bin
+          rsvg-convert --version
+
       - name: Install dependencies
         run: |
           set -eu
@@ -79,6 +86,7 @@ jobs:
       BILIG_BROWSER_INCLUDE_PERF: '0'
       BILIG_BROWSER_INCLUDE_FUZZ: '0'
       BILIG_BROWSER_STACK: 'local'
+      BILIG_BROWSER_WEBGPU: '1'
       BILIG_DEV_DISABLE_COMPOSE: '1'
       BILIG_E2E_REMOTE_SYNC: '0'
       BILIG_E2E_STARTUP_TIMEOUT_MS: '600000'
@@ -111,6 +119,13 @@ jobs:
           set -eu
           npm install -g bun
           bun --version
+
+      - name: Install browser GPU dependencies
+        run: |
+          set -eu
+          apt-get update
+          apt-get install -y --no-install-recommends libvulkan1 mesa-vulkan-drivers vulkan-tools
+          vulkaninfo --summary || true
 
       - name: Install dependencies
         run: |

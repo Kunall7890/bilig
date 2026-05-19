@@ -37,6 +37,7 @@ const oracleAggregateCounterKeys = [
   'directAggregateScanEvaluations',
   'directAggregateScanCells',
   'directAggregatePrefixEvaluations',
+  'nativeDirectAggregatePrefixEvaluations',
   'directAggregateDeltaApplications',
   'directAggregateDeltaOnlyRecalcSkips',
   'directScalarDeltaApplications',
@@ -44,6 +45,7 @@ const oracleAggregateCounterKeys = [
   'kernelSyncOnlyRecalcSkips',
   'directFormulaKernelSyncOnlyRecalcSkips',
   'directFormulaInitialEvaluations',
+  'nativeDirectScalarInitialEvaluations',
   'directCriteriaMatchCacheHits',
   'directCriteriaAggregateCacheHits',
 ] as const satisfies readonly EngineCounterKey[]

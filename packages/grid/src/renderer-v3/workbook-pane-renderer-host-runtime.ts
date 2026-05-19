@@ -6,7 +6,12 @@ import type { WorkbookGridScrollStore } from '../workbookGridScrollStore.js'
 import type { DynamicGridOverlayBatchV3 } from './dynamic-overlay-batch.js'
 import type { WorkbookRenderTilePaneState } from './render-tile-pane-state.js'
 import { resolveGridTextTileRevisionKeyV3 } from './typegpu-tile-resource-revisions.js'
-import { WorkbookPaneRendererRuntimeV3, type WorkbookPaneFrameResultV3 } from './workbook-pane-renderer-runtime.js'
+import {
+  WorkbookPaneRendererRuntimeV3,
+  type TypeGpuSurfaceSizeV3,
+  type WorkbookPaneFrameResultV3,
+  type WorkbookPanePresentedVisualFrameV3,
+} from './workbook-pane-renderer-runtime.js'
 import {
   EMPTY_WORKBOOK_PANE_SURFACE_SNAPSHOT_V3,
   WorkbookPaneSurfaceRuntimeV3,
@@ -59,6 +64,8 @@ export class WorkbookPaneRendererHostRuntimeV3 {
   private frameProofSignature = ''
   private frameProofStatus: WorkbookPaneFrameProofStatusV3 = 'idle'
   private hasPresentedFrame = false
+  private presentedFrameProofSignature = ''
+  private presentedVisualFrame: WorkbookPanePresentedVisualFrameV3 | null = null
   private props: WorkbookPaneRendererHostPropsV3 = EMPTY_HOST_PROPS
   private readonly rendererRuntime: WorkbookPaneRendererRuntimeV3
   private surfaceBackendStatus: WorkbookPaneSurfaceBackendStatusV3
@@ -68,11 +75,13 @@ export class WorkbookPaneRendererHostRuntimeV3 {
 
   constructor(options: WorkbookPaneRendererHostRuntimeOptionsV3 = {}) {
     this.rendererRuntime = options.rendererRuntime ?? new WorkbookPaneRendererRuntimeV3()
+    this.rendererRuntime.setInputSignalListener(() => this.handleInputSignal())
     this.rendererRuntime.setFrameResultListener((result) => this.handleFrameResult(result))
     this.surfaceRuntime = options.surfaceRuntime ?? new WorkbookPaneSurfaceRuntimeV3()
     this.surfaceBackendStatus = this.surfaceRuntime.getSnapshot().backendStatus
     this.unsubscribeSurface = this.surfaceRuntime.subscribe((snapshot) => {
       this.surfaceSnapshot = snapshot
+      this.syncFrameProofSignature(this.props)
       if (this.surfaceBackendStatus !== snapshot.backendStatus) {
         this.surfaceBackendStatus = snapshot.backendStatus
         this.emitBackendStatus()
@@ -87,8 +96,11 @@ export class WorkbookPaneRendererHostRuntimeV3 {
   }
 
   readonly getBackendStatusSnapshot = (): WorkbookPaneSurfaceBackendStatusV3 => this.surfaceBackendStatus
+  readonly getFrameProofSignatureSnapshot = (): string => this.frameProofSignature
   readonly getFrameProofStatusSnapshot = (): WorkbookPaneFrameProofStatusV3 => this.frameProofStatus
   readonly getHasPresentedFrameSnapshot = (): boolean => this.hasPresentedFrame
+  readonly getPresentedFrameProofSignatureSnapshot = (): string => this.presentedFrameProofSignature
+  readonly getPresentedVisualFrameSnapshot = (): WorkbookPanePresentedVisualFrameV3 | null => this.presentedVisualFrame
 
   readonly subscribeBackendStatus = (listener: () => void): (() => void) => {
     if (this.disposed) {
@@ -140,6 +152,7 @@ export class WorkbookPaneRendererHostRuntimeV3 {
     this.unsubscribeSurface()
     this.backendStatusListeners.clear()
     this.frameProofListeners.clear()
+    this.rendererRuntime.setInputSignalListener(null)
     this.rendererRuntime.setFrameResultListener(null)
     const canvas = this.canvas
     this.canvas = null
@@ -186,11 +199,22 @@ export class WorkbookPaneRendererHostRuntimeV3 {
   }
 
   private handleFrameResult(result: WorkbookPaneFrameResultV3): void {
-    if (!result.submitted || !this.frameProofSignature) {
+    const signature = this.frameProofSignature
+    if (!result.submitted || !signature || !result.visualFrame) {
       return
     }
+    this.setPresentedVisualFrame(result.visualFrame)
+    this.setPresentedFrameProofSignature(signature)
     this.setHasPresentedFrame(true)
     this.setFrameProofStatus('presented')
+  }
+
+  private handleInputSignal(): void {
+    if (this.disposed || !this.frameProofSignature || this.surfaceBackendStatus !== 'ready') {
+      return
+    }
+    this.setHasPresentedFrame(false)
+    this.setFrameProofStatus('pending')
   }
 
   private setFrameProofStatus(status: WorkbookPaneFrameProofStatusV3): void {
@@ -209,13 +233,41 @@ export class WorkbookPaneRendererHostRuntimeV3 {
     this.emitFrameProofStatus()
   }
 
+  private setPresentedFrameProofSignature(signature: string): void {
+    if (this.presentedFrameProofSignature === signature) {
+      return
+    }
+    this.presentedFrameProofSignature = signature
+    this.emitFrameProofStatus()
+  }
+
+  private setPresentedVisualFrame(frame: WorkbookPanePresentedVisualFrameV3 | null): void {
+    if (this.presentedVisualFrame === frame) {
+      return
+    }
+    this.presentedVisualFrame = frame
+    this.emitFrameProofStatus()
+  }
+
   private syncFrameProofSignature(props: WorkbookPaneRendererHostPropsV3): void {
-    const signature = resolveWorkbookPaneFrameProofSignatureV3(props)
+    const signature = resolveWorkbookPaneFrameProofSignatureV3({
+      ...props,
+      surface: this.surfaceSnapshot.surface,
+    })
     if (this.frameProofSignature === signature) {
       return
     }
     this.frameProofSignature = signature
-    this.setFrameProofStatus(signature ? 'pending' : 'idle')
+    if (!signature) {
+      this.setPresentedFrameProofSignature('')
+      this.setPresentedVisualFrame(null)
+      this.setHasPresentedFrame(false)
+      this.setFrameProofStatus('idle')
+      return
+    }
+    const hasPresentedCurrentSignature = this.presentedFrameProofSignature === signature
+    this.setHasPresentedFrame(hasPresentedCurrentSignature)
+    this.setFrameProofStatus(hasPresentedCurrentSignature ? 'presented' : 'pending')
   }
 
   private syncCanvasTarget(): void {
@@ -231,9 +283,15 @@ export function resolveWorkbookPaneFrameProofSignatureV3(props: {
   readonly headerPanes: readonly GridHeaderPaneState[]
   readonly overlay: DynamicGridOverlayBatchV3 | null
   readonly renderRevisionSnapshot?: GridRenderRevisionSnapshot | null | undefined
+  readonly surface?: TypeGpuSurfaceSizeV3 | null | undefined
   readonly tilePanes: readonly WorkbookRenderTilePaneState[]
 }): string {
   const textOwnershipSignature = `drawText:${props.drawText === false ? 'gpu-text-off' : 'gpu-text-on'}`
+  const surfaceSignature = props.surface
+    ? ['surface', props.surface.width, props.surface.height, props.surface.pixelWidth, props.surface.pixelHeight, props.surface.dpr].join(
+        ':',
+      )
+    : ''
   const renderRevisionSignature = props.renderRevisionSnapshot
     ? [
         props.renderRevisionSnapshot.authoritativeRevision ?? 'none',
@@ -266,6 +324,20 @@ export function resolveWorkbookPaneFrameProofSignatureV3(props: {
   const headerSignature = props.headerPanes
     .map((pane) => [pane.paneId, pane.rectSignature, pane.textSignature, pane.rectCount, pane.textCount].join(':'))
     .join('|')
-  const overlaySignature = props.overlay ? `${props.overlay.seq}:${props.overlay.rectCount}` : ''
-  return [textOwnershipSignature, tileSignature, headerSignature, overlaySignature, renderRevisionSignature].filter(Boolean).join('#')
+  const overlaySignature = props.overlay
+    ? [
+        props.overlay.sheetName,
+        props.overlay.seq,
+        props.overlay.cameraSeq,
+        props.overlay.surfaceSize.width,
+        props.overlay.surfaceSize.height,
+        props.overlay.rectCount,
+        props.overlay.fillRectCount,
+        props.overlay.borderRectCount,
+        props.overlay.rectSignature,
+      ].join(':')
+    : ''
+  return [textOwnershipSignature, surfaceSignature, tileSignature, headerSignature, overlaySignature, renderRevisionSignature]
+    .filter(Boolean)
+    .join('#')
 }

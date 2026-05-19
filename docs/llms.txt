@@ -27,13 +27,13 @@ workbook-shaped logic that can run through `@bilig/headless`. If it is, use
 WorkPaper state as the source of truth. For MCP, start with:
 
 ```sh
-npm exec --package @bilig/headless@0.24.2 -- bilig-workpaper-mcp --workpaper ./pricing.workpaper.json --init-demo-workpaper --writable
+npm exec --package @bilig/headless@0.31.0 -- bilig-workpaper-mcp --workpaper ./pricing.workpaper.json --init-demo-workpaper --writable
 ```
 
 For a reduced XLSX formula/import blocker, generate a local fixture report with:
 
 ```sh
-npm exec --package @bilig/headless@0.24.2 -- bilig-formula-clinic ./reduced.xlsx --cells "Summary!B7,Inputs!B2"
+npm exec --package @bilig/headless@0.31.0 -- bilig-formula-clinic ./reduced.xlsx --cells "Summary!B7,Inputs!B2"
 ```
 
 For Node or TypeScript, import `@bilig/headless` directly. Prove the edit by
@@ -85,6 +85,8 @@ restoring it, and confirming the restored value matches. Return `editedCell`,
 - https://proompteng.github.io/bilig/google-sheets-api-alternative-node-workpaper.html
 - https://proompteng.github.io/bilig/why-agents-need-workbook-apis.html
 - https://proompteng.github.io/bilig/headless-workpaper-agent-handbook.html
+- https://proompteng.github.io/bilig/agent-workbook-challenge.html
+- https://proompteng.github.io/bilig/openai-agents-sdk-workpaper-tool.html
 - https://proompteng.github.io/bilig/vercel-ai-sdk-langchain-spreadsheet-tool.html
 - https://proompteng.github.io/bilig/mastra-workpaper-spreadsheet-tool.html
 - https://proompteng.github.io/bilig/llamaindex-workpaper-spreadsheet-tool.html
@@ -139,7 +141,9 @@ restoring it, and confirming the restored value matches. Return `editedCell`,
 - https://github.com/proompteng/bilig/blob/main/docs/csv-shaped-workpaper-input-recipe.md
 - https://github.com/proompteng/bilig/blob/main/docs/unsupported-formula-troubleshooting-recipe.md
 - https://github.com/proompteng/bilig/blob/main/docs/headless-workpaper-agent-handbook.md
+- https://github.com/proompteng/bilig/blob/main/docs/agent-workbook-challenge.md
 - https://github.com/proompteng/bilig/blob/main/docs/agent-workpaper-tool-calling-recipe.md
+- https://github.com/proompteng/bilig/blob/main/docs/openai-agents-sdk-workpaper-tool.md
 - https://github.com/proompteng/bilig/blob/main/docs/openai-responses-workpaper-tool-call.md
 - https://github.com/proompteng/bilig/blob/main/docs/mcp-workpaper-tool-server.md
 - https://github.com/proompteng/bilig/blob/main/docs/agent-spreadsheet-tool-call-loop.md
@@ -184,6 +188,7 @@ git clone https://github.com/proompteng/bilig.git
 pnpm --dir bilig/examples/headless-workpaper install --ignore-workspace
 pnpm --dir bilig/examples/headless-workpaper run start
 pnpm --dir bilig/examples/headless-workpaper run agent:tool-call
+pnpm --dir bilig/examples/headless-workpaper run agent:openai-agents-sdk
 pnpm --dir bilig/examples/headless-workpaper run agent:openai-responses
 pnpm --dir bilig/examples/headless-workpaper run agent:ai-sdk-generate-text
 pnpm --dir bilig/examples/headless-workpaper run agent:ai-sdk-stream-text
@@ -211,7 +216,7 @@ screenshots only for human visual review, not as the source of formula truth.
 The shortest MCP shape is:
 
 ```sh
-npm exec --package @bilig/headless@0.24.2 -- bilig-workpaper-mcp --workpaper ./pricing.workpaper.json --init-demo-workpaper --writable
+npm exec --package @bilig/headless@0.31.0 -- bilig-workpaper-mcp --workpaper ./pricing.workpaper.json --init-demo-workpaper --writable
 ```
 
 ## proof and caveats
@@ -287,7 +292,7 @@ npm exec --package @bilig/headless@0.24.2 -- bilig-workpaper-mcp --workpaper ./p
 - formula clinic report command and script:
   https://proompteng.github.io/bilig/formula-clinic-report.ts
   https://github.com/proompteng/bilig/blob/main/docs/formula-clinic-report.ts
-  `npm exec --package @bilig/headless@0.24.2 -- bilig-formula-clinic ./reduced.xlsx
+  `npm exec --package @bilig/headless@0.31.0 -- bilig-formula-clinic ./reduced.xlsx
   --cells "Summary!B7,Inputs!B2"` runs locally against a reduced XLSX file,
   imports it with @bilig/headless, reads requested output cells, and prints a
   paste-ready Markdown report for the fixture issue form.
@@ -410,6 +415,11 @@ npm exec --package @bilig/headless@0.24.2 -- bilig-workpaper-mcp --workpaper ./p
 - workpaper tool-calling recipe for agents:
   https://proompteng.github.io/bilig/agent-workpaper-tool-calling-recipe.html
   https://github.com/proompteng/bilig/blob/main/docs/agent-workpaper-tool-calling-recipe.md
+- OpenAI Agents SDK WorkPaper tools:
+  pnpm --dir examples/headless-workpaper run agent:openai-agents-sdk
+  https://proompteng.github.io/bilig/openai-agents-sdk-workpaper-tool.html
+  https://github.com/proompteng/bilig/blob/main/docs/openai-agents-sdk-workpaper-tool.md
+  https://github.com/proompteng/bilig/blob/main/examples/headless-workpaper/openai-agents-sdk-tool-smoke.ts
 - OpenAI Responses WorkPaper tool-call recipe:
   pnpm --dir examples/headless-workpaper run agent:openai-responses
   https://proompteng.github.io/bilig/openai-responses-workpaper-tool-call.html
@@ -443,16 +453,22 @@ npm exec --package @bilig/headless@0.24.2 -- bilig-workpaper-mcp --workpaper ./p
 - MCP spreadsheet server directory status:
   https://proompteng.github.io/bilig/mcp-spreadsheet-server-directory.html
   https://github.com/proompteng/bilig/blob/main/docs/mcp-spreadsheet-server-directory.md
-  npm exec --package @bilig/headless@0.24.2 -- bilig-workpaper-mcp
+  npm exec --package @bilig/headless@0.31.0 -- bilig-workpaper-mcp
   Directory status currently includes Official MCP Registry, Glama, PulseMCP,
   MCPRepository, and pending maintainer-review submissions without duplicate
   resubmission.
 - MCP client setup for Claude, Cursor, VS Code, Cline, and Codex:
   https://proompteng.github.io/bilig/mcp-client-setup.html
   https://github.com/proompteng/bilig/blob/main/docs/mcp-client-setup.md
+- Smithery hosted MCP install:
+  https://smithery.ai/servers/gkonushev/bilig-workpaper
+  npx -y smithery mcp add gkonushev/bilig-workpaper
+  npx -y smithery tool call bilig-workpaper list_sheets '{}'
 - Claude Desktop MCPB bundle guide:
   https://proompteng.github.io/bilig/claude-desktop-mcpb-workpaper.html
   https://github.com/proompteng/bilig/blob/main/docs/claude-desktop-mcpb-workpaper.md
+  https://github.com/proompteng/bilig/releases/download/libraries-v0.31.0/bilig-workpaper.mcpb
+  https://github.com/proompteng/bilig/releases/download/libraries-v0.31.0/bilig-workpaper.mcpb.sha256
   pnpm mcpb:workpaper:build
 - MCP spreadsheet tool server feedback discussion:
   https://github.com/proompteng/bilig/discussions/230
@@ -463,7 +479,7 @@ npm exec --package @bilig/headless@0.24.2 -- bilig-workpaper-mcp --workpaper ./p
   pnpm --dir examples/headless-workpaper run agent:mcp-stdio
   https://github.com/proompteng/bilig/blob/main/examples/headless-workpaper/mcp-stdio-server.ts
 - packaged MCP stdio WorkPaper server:
-  npm exec --package @bilig/headless@0.24.2 -- bilig-workpaper-mcp
+  npm exec --package @bilig/headless@0.31.0 -- bilig-workpaper-mcp
   mcpName: io.github.proompteng/bilig-workpaper
   https://github.com/proompteng/bilig/blob/main/packages/headless/server.json
 - official MCP Registry entry:

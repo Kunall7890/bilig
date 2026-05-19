@@ -110,7 +110,7 @@ function blockedError(): CellValue {
 }
 
 function numError(): CellValue {
-  return { tag: ValueTag.Error, code: ErrorCode.Value }
+  return { tag: ValueTag.Error, code: ErrorCode.Num }
 }
 
 function numericResultOrError(value: number): CellValue {

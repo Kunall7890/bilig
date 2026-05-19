@@ -1,0 +1,20 @@
+{
+  "extends": "../../tsconfig.workspace-paths.json",
+  "compilerOptions": {
+    "rootDir": "src",
+    "outDir": "dist"
+  },
+  "references": [
+    {
+      "path": "../excel-import"
+    },
+    {
+      "path": "../headless"
+    },
+    {
+      "path": "../excel-import"
+    }
+  ],
+  "include": ["src/**/*"],
+  "exclude": ["src/**/__tests__/**"]
+}

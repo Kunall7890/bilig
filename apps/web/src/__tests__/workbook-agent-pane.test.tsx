@@ -3398,20 +3398,94 @@ describe('workbook agent pane', () => {
 
       await act(async () => {
         await Promise.resolve()
-        await new Promise((resolve) => setTimeout(resolve, 500))
+        await new Promise((resolve) => setTimeout(resolve, 1_000))
       })
 
-      expect(contextCalls()).toHaveLength(2)
-      expect(requestBody(contextCalls()[1]?.[1])).toMatchObject({
+      expect(contextCalls()).toHaveLength(1)
+      expect(requestBody(contextCalls()[0]?.[1])).toMatchObject({
         context: {
           rendered: {
-            capturedRevision: 23,
-            visibleRange: {
-              rows: [[expect.objectContaining({ input: 'rendered-3' })]],
-            },
+            capturedRevision: 20,
           },
         },
       })
+    } finally {
+      await act(async () => {
+        root.unmount()
+      })
+    }
+  })
+
+  it('throttles rendered range context churn while the assistant turn is active', async () => {
+    ;(globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true
+    window.sessionStorage.setItem(
+      agentStorageKey(),
+      JSON.stringify({
+        threadId: 'thr-1',
+      }),
+    )
+    const fetchSpy = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+      const url = requestUrl(input)
+      if (url.endsWith('/chat/threads/thr-1') && requestMethod(init) === 'GET') {
+        return new Response(
+          JSON.stringify(
+            createSnapshot({
+              activeTurnId: 'turn-1',
+              status: 'inProgress',
+              threadId: 'thr-1',
+            }),
+          ),
+          {
+            status: 200,
+            headers: { 'content-type': 'application/json' },
+          },
+        )
+      }
+      if (url.endsWith('/chat/threads/thr-1/context') && requestMethod(init) === 'POST') {
+        return new Response(JSON.stringify({ ok: true }), {
+          status: 200,
+          headers: { 'content-type': 'application/json' },
+        })
+      }
+      throw new Error(`Unexpected fetch to ${url}`)
+    })
+    vi.stubGlobal('fetch', fetchSpy)
+
+    const host = document.createElement('div')
+    document.body.appendChild(host)
+    const root = createRoot(host)
+    const contextCalls = () =>
+      fetchSpy.mock.calls.filter(
+        ([input, init]) => requestUrl(input).endsWith('/chat/threads/thr-1/context') && requestMethod(init) === 'POST',
+      )
+
+    try {
+      await act(async () => {
+        root.render(<RapidRenderedRangeContextHarness />)
+      })
+
+      await act(async () => {
+        await Promise.resolve()
+        await new Promise((resolve) => setTimeout(resolve, 220))
+      })
+
+      expect(contextCalls()).toHaveLength(1)
+
+      const advanceRenderedRange = async () => {
+        await act(async () => {
+          host.querySelector("[data-testid='advance-rendered-range']")?.dispatchEvent(new MouseEvent('click', { bubbles: true }))
+        })
+        await act(async () => {
+          await Promise.resolve()
+          await new Promise((resolve) => setTimeout(resolve, 800))
+        })
+      }
+
+      await advanceRenderedRange()
+      await advanceRenderedRange()
+      await advanceRenderedRange()
+
+      expect(contextCalls()).toHaveLength(1)
     } finally {
       await act(async () => {
         root.unmount()

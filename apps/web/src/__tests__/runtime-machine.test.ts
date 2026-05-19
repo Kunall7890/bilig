@@ -157,21 +157,22 @@ describe('worker runtime machine', () => {
     actor.stop()
   })
 
-  it('keeps a session-reconciled startup selection when the initial sheet no longer exists', async () => {
-    const controller = createController(
-      { sheetName: 'Imported', address: 'A1' },
-      {
-        sheets: [{ id: 1, name: 'Imported', order: 0 }],
-        sheetNames: ['Imported'],
-      },
-    )
+  it('accepts runtime-reconciled selections when startup sheet names replace the default sheet', async () => {
+    const reconciledSelection = { sheetName: 'Dashboard', address: 'A1' } as const
+    const controller = createController(reconciledSelection, {
+      sheets: [
+        { id: 1, name: 'Dashboard', order: 0 },
+        { id: 2, name: 'Ledger', order: 1 },
+      ],
+      sheetNames: ['Dashboard', 'Ledger'],
+    })
     const createSession = vi.fn(
       async (
         _input: CreateWorkerRuntimeSessionInput,
         callbacks: WorkerRuntimeSessionCallbacks,
       ): Promise<WorkerRuntimeSessionController> => {
-        callbacks.onPhase?.('syncing')
         callbacks.onRuntimeState(controller.runtimeState)
+        callbacks.onSelection(reconciledSelection)
         return controller
       },
     )
@@ -194,8 +195,7 @@ describe('worker runtime machine', () => {
       expect(actor.getSnapshot().matches({ active: 'localReady' })).toBe(true)
     })
 
-    expect(actor.getSnapshot().context.selection).toEqual({ sheetName: 'Imported', address: 'A1' })
-    expect(controller.setSelection).not.toHaveBeenCalledWith({ sheetName: 'Sheet1', address: 'A1' })
+    expect(actor.getSnapshot().context.selection).toEqual(reconciledSelection)
     actor.stop()
   })
 

@@ -30,6 +30,7 @@ export function useWorkbookEditorConflict(input: {
   applyParsedInput: (sheetName: string, address: string, parsed: ParsedEditorInput) => Promise<void>
   reportRuntimeError: (error: unknown) => void
   setEditorSelectionBehavior: Dispatch<SetStateAction<EditSelectionBehavior>>
+  setEditorTargetSelection: Dispatch<SetStateAction<WorkerRuntimeSelection | null>>
   setEditingMode: Dispatch<SetStateAction<EditingMode>>
 }) {
   const {
@@ -49,6 +50,7 @@ export function useWorkbookEditorConflict(input: {
     selectedCell,
     selection,
     setEditorConflict,
+    setEditorTargetSelection,
     setEditingMode,
     setEditorSelectionBehavior,
   } = input
@@ -124,6 +126,7 @@ export function useWorkbookEditorConflict(input: {
     const nextSelection = completeEditNavigation(targetSelection)
     setEditorSelectionBehavior('select-all')
     editingModeRef.current = 'idle'
+    setEditorTargetSelection(null)
     setEditingMode('idle')
     resetEditorConflictTracking(nextSelection)
     void (async () => {
@@ -141,6 +144,7 @@ export function useWorkbookEditorConflict(input: {
     editorValueRef,
     reportRuntimeError,
     resetEditorConflictTracking,
+    setEditorTargetSelection,
     setEditingMode,
     setEditorSelectionBehavior,
   ])

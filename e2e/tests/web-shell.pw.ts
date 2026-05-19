@@ -207,10 +207,12 @@ test('@browser-ci web app keeps in-cell caret movement stable during rapid typin
       if (!(element instanceof HTMLTextAreaElement)) {
         throw new Error('Expected in-cell editor textarea')
       }
+      const start = element.selectionStart
+      const end = element.selectionEnd
       return {
-        direction: element.selectionDirection,
-        end: element.selectionEnd,
-        start: element.selectionStart,
+        direction: start === end ? 'none' : element.selectionDirection,
+        end,
+        start,
       }
     })
 
@@ -231,6 +233,24 @@ test('@browser-ci web app keeps in-cell caret movement stable during rapid typin
     direction: 'backward',
     end: 3,
     start: 2,
+  })
+
+  await page.keyboard.press('Home')
+  await page.keyboard.press('z')
+  await expect(editor).toHaveValue('zabxc')
+  await expect.poll(readEditorSelection).toEqual({
+    direction: 'none',
+    end: 1,
+    start: 1,
+  })
+
+  await page.keyboard.press('End')
+  await page.keyboard.press('!')
+  await expect(editor).toHaveValue('zabxc!')
+  await expect.poll(readEditorSelection).toEqual({
+    direction: 'none',
+    end: 6,
+    start: 6,
   })
 })
 
@@ -391,8 +411,8 @@ test('@browser-ci web app gates unmerge on real merged-cell state', async ({ pag
   await expect(unmergeButton).toBeDisabled()
 })
 
-test('web app preserves Alt+Enter multiline edits across commit, formula bar, and reopen', async ({ page }) => {
-  const documentId = createTestDocumentId('playwright-alt-enter-multiline-edit')
+test('web app preserves editor multiline shortcuts across commit, formula bar, and reopen', async ({ page }) => {
+  const documentId = createTestDocumentId('playwright-multiline-edit-shortcuts')
   await page.goto(`/?document=${encodeURIComponent(documentId)}&sheet=Sheet1&cell=A1`)
   await waitForWorkbookReady(page)
 
@@ -408,15 +428,18 @@ test('web app preserves Alt+Enter multiline edits across commit, formula bar, an
   await cellEditor.press('Alt+Enter')
   await page.keyboard.type('beta')
   await expect(cellEditor).toHaveValue('alpha\nbeta')
+  await cellEditor.press(`${PRIMARY_MODIFIER}+Enter`)
+  await page.keyboard.type('gamma')
+  await expect(cellEditor).toHaveValue('alpha\nbeta\ngamma')
 
   await cellEditor.press('Enter')
   await expect(cellEditor).toBeHidden()
   await clickProductCell(page, 0, 0)
-  await expect(formulaInput).toHaveValue('alpha\nbeta')
+  await expect(formulaInput).toHaveValue('alpha\nbeta\ngamma')
 
   await page.getByTestId('sheet-grid').press('F2')
   await expect(cellEditor).toBeVisible()
-  await expect(cellEditor).toHaveValue('alpha\nbeta')
+  await expect(cellEditor).toHaveValue('alpha\nbeta\ngamma')
 })
 
 test('web app preserves multi-digit numeric type-to-replace input', async ({ page }) => {
@@ -1123,7 +1146,10 @@ test('web app supports Google Sheets-style shortcut help and sheet switching key
 
   await grid.press(`${PRIMARY_MODIFIER}+/`)
   await expect(page.getByTestId('workbook-shortcut-dialog')).toBeVisible()
-  await expect(page.getByTestId('workbook-shortcut-search')).toBeFocused()
+  const shortcutSearch = page.getByTestId('workbook-shortcut-search')
+  await expect(shortcutSearch).toBeFocused()
+  await shortcutSearch.fill('current region')
+  await expect(page.getByTestId('workbook-shortcut-entry')).toContainText('Select current region')
 })
 
 test('web app commits in-cell string edits when clicking away', async ({ page }) => {
@@ -1699,6 +1725,52 @@ test('web app supports row, column, and full-sheet selection shortcuts', async (
   await expect(page.getByTestId('status-selection')).toHaveText('Sheet1!All')
 })
 
+test('web app uses data-aware current-region and boundary navigation shortcuts', async ({ page }) => {
+  const documentId = createTestDocumentId('playwright-data-aware-shortcuts')
+  await page.goto(`/?document=${encodeURIComponent(documentId)}&persist=0&sheet=Sheet1&cell=B2`)
+  await waitForWorkbookReady(page)
+
+  const grid = page.getByTestId('sheet-grid')
+  const formulaInput = page.getByTestId('formula-input')
+  const cells = [
+    [1, 1, 'B2'],
+    [2, 1, 'C2'],
+    [3, 1, 'D2'],
+    [1, 2, 'B3'],
+    [3, 2, 'D3'],
+    [1, 3, 'B4'],
+    [2, 3, 'C4'],
+    [3, 3, 'D4'],
+  ] as const
+
+  await cells.reduce<Promise<void>>(async (previous, [col, row, value]) => {
+    await previous
+    await clickProductCell(page, col, row)
+    await formulaInput.fill(value)
+    await formulaInput.press('Enter')
+    await expect(formulaInput).toHaveValue(value)
+  }, Promise.resolve())
+
+  await clickProductCell(page, 2, 2)
+  await expect(page.getByTestId('status-selection')).toHaveText('Sheet1!C3')
+  await grid.press(`${PRIMARY_MODIFIER}+Shift+Digit8`)
+  await expect(page.getByTestId('status-selection')).toHaveText('Sheet1!B2:D4')
+
+  await clickProductCell(page, 2, 2)
+  await grid.press(`${PRIMARY_MODIFIER}+A`)
+  await expect(page.getByTestId('status-selection')).toHaveText('Sheet1!B2:D4')
+  await grid.press(`${PRIMARY_MODIFIER}+A`)
+  await expect(page.getByTestId('status-selection')).toHaveText('Sheet1!All')
+
+  await clickProductCell(page, 1, 1)
+  await grid.press(`${PRIMARY_MODIFIER}+ArrowRight`)
+  await expect(page.getByTestId('status-selection')).toHaveText('Sheet1!D2')
+
+  await clickProductCell(page, 1, 1)
+  await grid.press(`${PRIMARY_MODIFIER}+Shift+ArrowDown`)
+  await expect(page.getByTestId('status-selection')).toHaveText('Sheet1!B2:B4')
+})
+
 test('web app fills the selected range from the active cell with the fill range shortcut', async ({ page }) => {
   const documentId = createTestDocumentId('playwright-fill-selected-range-shortcut')
   await page.goto(`/?document=${encodeURIComponent(documentId)}&persist=0&sheet=Sheet1&cell=B2`)
@@ -1814,6 +1886,52 @@ test('web app expands the active range with shift-click', async ({ page }) => {
 
   await clickProductCell(page, 4, 5, { shift: true })
   await expect(page.getByTestId('status-selection')).toHaveText('Sheet1!B2:E6')
+})
+
+test('web app cycles the active cell inside a selected range with Enter and Tab', async ({ page, context }) => {
+  await context.grantPermissions(['clipboard-read', 'clipboard-write'])
+  const documentId = createTestDocumentId('playwright-range-active-cell-cycle')
+  await page.goto(`/?document=${encodeURIComponent(documentId)}&persist=0&sheet=Sheet1&cell=B2`)
+  await waitForWorkbookReady(page)
+
+  const grid = page.getByTestId('sheet-grid')
+  const nameBox = page.getByTestId('name-box')
+  const formulaInput = page.getByTestId('formula-input')
+
+  await clickProductCell(page, 1, 1)
+  await page.evaluate(() => navigator.clipboard.writeText('range-b2\trange-c2\nrange-b3\trange-c3'))
+  await grid.press(`${PRIMARY_MODIFIER}+V`)
+  await expect(formulaInput).toHaveValue('range-b2')
+
+  await dragProductBodySelection(page, 1, 1, 2, 2)
+  await expect(page.getByTestId('status-selection')).toHaveText('Sheet1!B2:C3')
+  await expect(nameBox).toHaveValue('B2:C3')
+  await expect(formulaInput).toHaveValue('range-b2')
+
+  await grid.press('Tab')
+  await expect(page.getByTestId('status-selection')).toHaveText('Sheet1!B2:C3')
+  await expect(nameBox).toHaveValue('B2:C3')
+  await expect(formulaInput).toHaveValue('range-c2')
+
+  await grid.press('Tab')
+  await expect(page.getByTestId('status-selection')).toHaveText('Sheet1!B2:C3')
+  await expect(nameBox).toHaveValue('B2:C3')
+  await expect(formulaInput).toHaveValue('range-b3')
+
+  await grid.press('Shift+Tab')
+  await expect(page.getByTestId('status-selection')).toHaveText('Sheet1!B2:C3')
+  await expect(nameBox).toHaveValue('B2:C3')
+  await expect(formulaInput).toHaveValue('range-c2')
+
+  await grid.press('Enter')
+  await expect(page.getByTestId('status-selection')).toHaveText('Sheet1!B2:C3')
+  await expect(nameBox).toHaveValue('B2:C3')
+  await expect(formulaInput).toHaveValue('range-c3')
+
+  await grid.press('Enter')
+  await expect(page.getByTestId('status-selection')).toHaveText('Sheet1!B2:C3')
+  await expect(nameBox).toHaveValue('B2:C3')
+  await expect(formulaInput).toHaveValue('range-b2')
 })
 
 for (const key of ['Delete', 'Backspace'] as const) {
@@ -1996,10 +2114,39 @@ test('web app ignores modified delete keys instead of clearing the grid selectio
     await expect(formulaInput).toHaveValue('keep-modified-delete')
   }
 
-  await assertModifiedDeleteIgnored(`${PRIMARY_MODIFIER}+Backspace`)
   await assertModifiedDeleteIgnored(`${PRIMARY_MODIFIER}+Delete`)
   await assertModifiedDeleteIgnored('Alt+Backspace')
   await assertModifiedDeleteIgnored('Shift+Delete')
+})
+
+test('web app scrolls to the active cell with primary Backspace without clearing it', async ({ page }) => {
+  const documentId = createTestDocumentId('playwright-primary-backspace-scroll-active')
+  await page.goto(`/?document=${encodeURIComponent(documentId)}`)
+  await waitForWorkbookReady(page)
+
+  const grid = page.getByTestId('sheet-grid')
+  const formulaInput = page.getByTestId('formula-input')
+  const scrollViewport = page.getByTestId('grid-scroll-viewport')
+
+  await clickProductCell(page, 2, 2)
+  await formulaInput.fill('scroll-active-keeps-content')
+  await formulaInput.press('Enter')
+  await clickProductCell(page, 2, 2)
+  await expect(page.getByTestId('status-selection')).toHaveText('Sheet1!C3')
+  await expect(formulaInput).toHaveValue('scroll-active-keeps-content')
+
+  await scrollViewport.evaluate((element) => {
+    element.scrollTop = 2_000
+    element.scrollLeft = 600
+    element.dispatchEvent(new Event('scroll', { bubbles: true }))
+  })
+  await expect.poll(async () => await scrollViewport.evaluate((element) => element.scrollTop)).toBeGreaterThan(1_000)
+
+  await grid.press(`${PRIMARY_MODIFIER}+Backspace`)
+
+  await expect(page.getByTestId('status-selection')).toHaveText('Sheet1!C3')
+  await expect(formulaInput).toHaveValue('scroll-active-keeps-content')
+  await expect.poll(async () => await scrollViewport.evaluate((element) => element.scrollTop)).toBeLessThan(200)
 })
 
 for (const key of ['Delete', 'Backspace'] as const) {

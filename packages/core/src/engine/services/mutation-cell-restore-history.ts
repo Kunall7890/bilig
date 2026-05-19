@@ -64,7 +64,10 @@ export function createMutationCellRestoreHistoryHelpers(args: MutationCellRestor
       throw new Error(`Unknown sheet id: ${ref.sheetId}`)
     }
     const address = formatAddress(ref.mutation.row, ref.mutation.col)
-    const existingCellIndex = sheet.grid.get(ref.mutation.row, ref.mutation.col)
+    const existingCellIndex =
+      sheet.structureVersion === 1
+        ? sheet.grid.getPhysical(ref.mutation.row, ref.mutation.col)
+        : sheet.grid.get(ref.mutation.row, ref.mutation.col)
     const cellIndex = existingCellIndex === -1 ? undefined : existingCellIndex
     if (cellIndex === undefined) {
       return { kind: 'clearCell', sheetName: sheet.name, address }
@@ -205,7 +208,9 @@ export function createMutationCellRestoreHistoryHelpers(args: MutationCellRestor
         cellStore.rows[candidate] === mutation.row &&
         cellStore.cols[candidate] === mutation.col
           ? candidate
-          : cachedSheet.grid.get(mutation.row, mutation.col)
+          : cachedSheet.structureVersion === 1
+            ? cachedSheet.grid.getPhysical(mutation.row, mutation.col)
+            : cachedSheet.grid.get(mutation.row, mutation.col)
       const cellIndex = existingCellIndex === -1 ? undefined : existingCellIndex
       if (cellIndex === undefined) {
         kinds[targetIndex] = CapturedCellMutationKind.Clear
@@ -368,7 +373,9 @@ export function createMutationCellRestoreHistoryHelpers(args: MutationCellRestor
         cellStore.rows[candidate] === mutation.row &&
         cellStore.cols[candidate] === mutation.col
           ? candidate
-          : cachedSheet.grid.get(mutation.row, mutation.col)
+          : cachedSheet.structureVersion === 1
+            ? cachedSheet.grid.getPhysical(mutation.row, mutation.col)
+            : cachedSheet.grid.get(mutation.row, mutation.col)
       if (
         existingCellIndex === -1 ||
         (cellStore.formulaIds[existingCellIndex] ?? 0) !== 0 ||

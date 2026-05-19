@@ -41,8 +41,8 @@ const WORKBOOK_SHORTCUTS: readonly WorkbookShortcutEntry[] = [
     id: 'insert-line-break',
     label: 'Insert line break',
     category: 'Editing',
-    mac: '⌥Enter',
-    windows: 'Alt+Enter',
+    mac: '⌥Enter / ⌘Enter',
+    windows: 'Alt+Enter / Ctrl+Enter',
     keywords: ['multiline', 'newline'],
   },
   {
@@ -193,6 +193,22 @@ const WORKBOOK_SHORTCUTS: readonly WorkbookShortcutEntry[] = [
     keywords: ['clear style'],
   },
   {
+    id: 'context-menu',
+    label: 'Open context menu',
+    category: 'Structure',
+    mac: '⇧⌘\\',
+    windows: 'Ctrl+Shift+\\',
+    keywords: ['right click', 'row menu', 'column menu'],
+  },
+  {
+    id: 'delete-selected-structure',
+    label: 'Delete selected rows or columns',
+    category: 'Structure',
+    mac: '⌘⌥-',
+    windows: 'Ctrl+Alt+-',
+    keywords: ['delete row', 'delete column', 'remove rows', 'remove columns'],
+  },
+  {
     id: 'move-selection',
     label: 'Move selection',
     category: 'Navigation',
@@ -259,6 +275,14 @@ const WORKBOOK_SHORTCUTS: readonly WorkbookShortcutEntry[] = [
     category: 'Selection',
     mac: '⌃Space',
     windows: 'Ctrl+Space',
+  },
+  {
+    id: 'select-current-region',
+    label: 'Select current region',
+    category: 'Selection',
+    mac: '⇧⌘*',
+    windows: 'Ctrl+Shift+*',
+    keywords: ['data region', 'table', 'range'],
   },
   {
     id: 'select-all',

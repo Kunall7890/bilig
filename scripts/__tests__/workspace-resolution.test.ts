@@ -13,6 +13,22 @@ describe('workspace resolution', () => {
       packageDir: 'packages/formula',
       sourceEntry: 'packages/formula/src/program-arena.ts',
     })
+    expect(resolution['@bilig/headless/xlsx']).toEqual({
+      packageDir: 'packages/headless',
+      sourceEntry: 'packages/excel-import/src/index.ts',
+    })
+    expect(resolution['@bilig/formula/external-function-adapter']).toEqual({
+      packageDir: 'packages/formula',
+      sourceEntry: 'packages/formula/src/external-function-adapter.ts',
+    })
+    expect(resolution['xlsx-formula-recalc']).toEqual({
+      packageDir: 'packages/xlsx-formula-recalc',
+      sourceEntry: 'packages/xlsx-formula-recalc/src/index.ts',
+    })
+    expect(resolution['exceljs-formula-recalc']).toEqual({
+      packageDir: 'packages/exceljs-formula-recalc',
+      sourceEntry: 'packages/exceljs-formula-recalc/src/index.ts',
+    })
   })
 
   it('orders Vitest aliases with package subpaths before package roots', async () => {

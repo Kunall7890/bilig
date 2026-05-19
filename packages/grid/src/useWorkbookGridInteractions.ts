@@ -297,12 +297,17 @@ export function useWorkbookGridInteractions(
     },
     [engine, getCellEditorSeed, getCurrentGridSelection, internalClipboardRef, sheetName],
   )
+  const scrollActiveCellIntoView = useCallback(() => {
+    gridRuntimeHost.viewportScroll.autoScrollSelectionIntoView({ cell: activeSelectionCell, force: true })
+    focusGrid({ force: true })
+  }, [activeSelectionCell, focusGrid, gridRuntimeHost])
   const { handleGridKey } = useWorkbookGridKeyboardHandler({
     applyClipboardValues,
     beginSelectedEdit,
     captureInternalClipboardSelection,
     editorValue,
     engine,
+    getVisibleRegion,
     gridSelection,
     getGridSelection: getCurrentGridSelection,
     hostRef,
@@ -311,9 +316,12 @@ export function useWorkbookGridInteractions(
     onCancelEdit,
     onClearCell,
     onCommitEdit,
+    onDeleteColumns,
+    onDeleteRows,
     onEditorChange,
     onFillRange,
     onSelectionChange: emitSelectionChange,
+    scrollActiveCellIntoView,
     pendingClipboardCopySequenceRef,
     pendingKeyboardPasteSequenceRef,
     pendingTypeSeedRef,

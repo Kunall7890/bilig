@@ -167,6 +167,7 @@ checked-in reduction corpus:
 ```sh
 pnpm public-workbook-corpus:recent-complex:plan
 pnpm public-workbook-corpus:discover-recent-complex-github
+pnpm public-workbook-corpus:discover-recent-complex-zenodo
 pnpm public-workbook-corpus:fetch-recent-complex
 pnpm public-workbook-corpus:verify-recent-complex
 pnpm public-workbook-corpus:headless-recent-complex
@@ -174,26 +175,28 @@ pnpm public-workbook-corpus:headless-recent-complex
 
 The default CKAN discovery set includes national and regional open-data portals
 that have produced qualifying recent workbook evidence, including Ontario,
-Alberta, British Columbia, and HDX, alongside the broader GitHub discovery lane.
+Alberta, British Columbia, and HDX, alongside the broader GitHub and Zenodo
+discovery lanes.
 
-Latest local evidence from May 18, 2026:
+Latest local evidence from May 19, 2026:
 
 ```json
 {
   "targetWorkbookCount": 500,
-  "manifestArtifactCount": 2068,
-  "publicScorecardCaseCount": 2068,
-  "publicPassingRecentComplexCount": 189,
-  "headlessFileCount": 189,
-  "headlessOkFileCount": 189,
-  "headlessComparableFormulaFileCount": 183,
-  "endToEndPassingWorkbookCount": 183,
-  "remainingToTarget": 317,
-  "formulaCells": 125010,
-  "comparableFormulaCells": 121875,
-  "matchingFormulaCells": 121875,
+  "manifestSourceCount": 4930,
+  "manifestArtifactCount": 3345,
+  "publicScorecardCaseCount": 3345,
+  "publicPassingRecentComplexCount": 351,
+  "headlessFileCount": 351,
+  "headlessOkFileCount": 351,
+  "headlessComparableFormulaFileCount": 351,
+  "endToEndPassingWorkbookCount": 351,
+  "remainingToTarget": 149,
+  "formulaCells": 311274,
+  "comparableFormulaCells": 310227,
+  "matchingFormulaCells": 310227,
   "mismatchedFormulaCells": 0,
-  "skippedFormulaCells": 3135
+  "skippedFormulaCells": 1047
 }
 ```
 

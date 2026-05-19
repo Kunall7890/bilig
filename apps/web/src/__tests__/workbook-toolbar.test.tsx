@@ -852,7 +852,7 @@ describe('WorkbookToolbar', () => {
     })
   })
 
-  it('keeps direct toolbar button focus and returns focus after transient palette commands', async () => {
+  it('returns grid focus after direct toolbar and transient palette commands', async () => {
     ;(globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true
 
     const requestGridFocus = vi.fn()
@@ -921,10 +921,9 @@ describe('WorkbookToolbar', () => {
       host.querySelector("[aria-label='Bold']")?.dispatchEvent(new MouseEvent('click', { bubbles: true }))
     })
     expect(onToggleBold).toHaveBeenCalledTimes(1)
-    expect(requestGridFocus).not.toHaveBeenCalled()
 
     await flushFocusReturn()
-    expect(requestGridFocus).not.toHaveBeenCalled()
+    expect(requestGridFocus).toHaveBeenCalledTimes(1)
 
     await act(async () => {
       host.querySelector("[aria-label='Fill color']")?.dispatchEvent(new MouseEvent('click', { bubbles: true }))
@@ -939,7 +938,7 @@ describe('WorkbookToolbar', () => {
     expect(onFillColorSelect).toHaveBeenCalledWith('#00ff00', 'preset')
 
     await flushFocusReturn()
-    expect(requestGridFocus).toHaveBeenCalledTimes(1)
+    expect(requestGridFocus).toHaveBeenCalledTimes(2)
 
     await act(async () => {
       root.unmount()

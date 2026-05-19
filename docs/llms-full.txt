@@ -22,8 +22,10 @@ Use this file when an AI coding agent, MCP client, or tool host needs workbook f
 4. Start the MCP server or import `@bilig/headless` directly.
 
 Remote MCP clients that support Streamable HTTP can smoke-test the stateless
-demo endpoint at `https://bilig.proompteng.ai/mcp`. Local agents that need writable
-project files should still prefer the file-backed stdio command below.
+demo endpoint at `https://bilig.proompteng.ai/mcp`. Directory scanners that inspect the
+hosted endpoint origin can read the same-origin server card at
+`https://bilig.proompteng.ai/.well-known/mcp/server-card.json`. Local agents that need writable project files should
+still prefer the file-backed stdio command below.
 
 ## Default Decision
 
@@ -48,9 +50,16 @@ Do not claim success from a write call alone. The proof is computed readback plu
 ## Fast Commands
 
 ```sh
-npm exec --package @bilig/headless@0.24.2 -- bilig-workpaper-mcp --workpaper ./pricing.workpaper.json --init-demo-workpaper --writable
-npm exec --package @bilig/headless@0.24.2 -- bilig-formula-clinic ./reduced.xlsx --cells "Summary!B7,Inputs!B2"
+npm exec --package @bilig/headless@0.31.0 -- bilig-agent-challenge
+npm exec --package @bilig/headless@0.31.0 -- bilig-mcp-challenge
+npm exec --package @bilig/headless@0.31.0 -- bilig-workpaper-mcp --workpaper ./pricing.workpaper.json --init-demo-workpaper --writable
+npm exec --package @bilig/headless@0.31.0 -- bilig-formula-clinic ./reduced.xlsx --cells "Summary!B7,Inputs!B2"
 ```
+
+Claude Desktop users can install the released MCPB bundle from:
+
+- https://github.com/proompteng/bilig/releases/download/libraries-v0.31.0/bilig-workpaper.mcpb
+- https://github.com/proompteng/bilig/releases/download/libraries-v0.31.0/bilig-workpaper.mcpb.sha256
 
 ## Direct TypeScript
 
@@ -100,13 +109,31 @@ Do not build shell commands by concatenating user text. Treat the commands below
 Use MCP when the host can run a stdio server or call a Streamable HTTP server.
 Configure stdio as an argument array, not a shell-concatenated string:
 
+Before wiring a client, an agent can prove the direct WorkPaper loop with:
+
+```json
+{
+  "command": "npm",
+  "args": ["exec", "--package", "@bilig/headless@0.31.0", "--", "bilig-agent-challenge"]
+}
+```
+
+For the actual file-backed MCP path, run the package-owned challenge first:
+
+```json
+{
+  "command": "npm",
+  "args": ["exec", "--package", "@bilig/headless@0.31.0", "--", "bilig-mcp-challenge"]
+}
+```
+
 ```json
 {
   "command": "npm",
   "args": [
     "exec",
     "--package",
-    "@bilig/headless@0.24.2",
+    "@bilig/headless@0.31.0",
     "--",
     "bilig-workpaper-mcp",
     "--workpaper",
@@ -180,7 +207,7 @@ When the user has a reduced XLSX formula/import bug, generate a local report thr
 ```json
 {
   "command": "npm",
-  "args": ["exec", "--package", "@bilig/headless@0.24.2", "--", "bilig-formula-clinic", "./reduced.xlsx", "--cells", "Summary!B7,Inputs!B2"]
+  "args": ["exec", "--package", "@bilig/headless@0.31.0", "--", "bilig-formula-clinic", "./reduced.xlsx", "--cells", "Summary!B7,Inputs!B2"]
 }
 ```
 
@@ -204,6 +231,7 @@ If any proof step fails, report the blocker instead of claiming the workbook was
 - Compact docs map: https://proompteng.github.io/bilig/llms.txt
 - Full agent context: https://proompteng.github.io/bilig/llms-full.txt
 - Agent handbook: https://proompteng.github.io/bilig/headless-workpaper-agent-handbook.html
+- Agent workbook challenge: https://proompteng.github.io/bilig/agent-workbook-challenge.html
 - MCP server guide: https://proompteng.github.io/bilig/mcp-workpaper-tool-server.html
 - XLSX formula clinic: https://proompteng.github.io/bilig/formula-bug-clinic.html
 - Compatibility limits: https://proompteng.github.io/bilig/where-bilig-is-not-excel-compatible-yet.html
@@ -250,32 +278,46 @@ Project site: <https://proompteng.github.io/bilig/>
 
 ## Choose An Evaluation Path
 
-| If you are evaluating... | Start here                                                                                                                                          | What should be true before you star, watch, or adopt                                        |
-| ------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------- |
-| Basic fit                | [Why use Bilig?](docs/why-use-bilig.md)                                                                                                             | The problem is workbook-shaped business logic that needs API readback and persistence.      |
-| Published npm package    | [90-second Node quickstart](docs/try-bilig-headless-in-node.md)                                                                                     | It edits one input, recalculates, persists JSON, restores, and prints `verified: true`.     |
-| Backend service shape    | [Quote approval WorkPaper API](docs/quote-approval-workpaper-api.md)                                                                                | A realistic route-style workflow returns formula readback and `restoredMatchesAfter: true`. |
-| Agent or MCP tools       | [Headless WorkPaper agent handbook](docs/headless-workpaper-agent-handbook.md) and [MCP spreadsheet tool server](docs/mcp-workpaper-tool-server.md) | The agent gets a copy-paste handoff prompt, then proves write/readback/persist.             |
-| Agent-owned XLSX files   | [Agent XLSX recalculation without LibreOffice](docs/agent-xlsx-formula-recalculation-without-libreoffice.md)                                        | A tool can edit XLSX inputs, recalculate, export, reimport, and return `verified: true`.    |
-| Public technical review  | [Show HN maintainer note](docs/show-hn-formula-workbooks-node-services.md)                                                                          | One shareable page has the npm check, benchmark caveat, known limits, and feedback ask.     |
-| Trust and performance    | [npm provenance](docs/npm-provenance-package-trust.md) and [benchmark evidence](docs/what-workpaper-benchmark-proves.md)                            | npm shows SLSA provenance, and benchmark claims match the checked artifact.                 |
-| Almost a fit             | [adoption blocker form](https://github.com/proompteng/bilig/discussions/new?category=general)                                                       | Name the formula, import/export, persistence, framework, MCP, package, or benchmark gap.    |
-| Formula or XLSX bug      | [formula bug clinic](docs/formula-bug-clinic.md)                                                                                                    | Share a reduced public case that can become a test, example, corpus fixture, or docs proof. |
-| Real workbook blocked    | [submit a workbook fixture](docs/submit-workbook-fixture.md)                                                                                        | Use the structured form when a reduced workbook is ready.                                   |
+| If you are evaluating... | Start here                                                                                                                                                                                                                | What should be true before you star, watch, or adopt                                                  |
+| ------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------- |
+| Basic fit                | [Why use Bilig?](docs/why-use-bilig.md)                                                                                                                                                                                   | The problem is workbook-shaped business logic that needs API readback and persistence.                |
+| Published npm package    | [90-second Node quickstart](docs/try-bilig-headless-in-node.md)                                                                                                                                                           | It edits one input, recalculates, persists JSON, restores, and prints `verified: true`.               |
+| Backend service shape    | [Quote approval WorkPaper API](docs/quote-approval-workpaper-api.md)                                                                                                                                                      | A realistic route-style workflow returns formula readback and `restoredMatchesAfter: true`.           |
+| Agent or MCP tools       | [Headless WorkPaper agent handbook](docs/headless-workpaper-agent-handbook.md), [MCP spreadsheet tool server](docs/mcp-workpaper-tool-server.md), and [Claude Desktop MCPB bundle](docs/claude-desktop-mcpb-workpaper.md) | The agent installs a tool path, gets a copy-paste handoff prompt, then proves write/readback/persist. |
+| Agent-owned XLSX files   | [Agent XLSX recalculation without LibreOffice](docs/agent-xlsx-formula-recalculation-without-libreoffice.md)                                                                                                              | A tool can edit XLSX inputs, recalculate, export, reimport, and return `verified: true`.              |
+| Public technical review  | [Show HN maintainer note](docs/show-hn-formula-workbooks-node-services.md)                                                                                                                                                | One shareable page has the npm check, benchmark caveat, known limits, and feedback ask.               |
+| Trust and performance    | [npm provenance](docs/npm-provenance-package-trust.md) and [benchmark evidence](docs/what-workpaper-benchmark-proves.md)                                                                                                  | npm shows SLSA provenance, and benchmark claims match the checked artifact.                           |
+| Almost a fit             | [adoption blocker form](https://github.com/proompteng/bilig/discussions/new?category=general)                                                                                                                             | Name the formula, import/export, persistence, framework, MCP, package, or benchmark gap.              |
+| Formula or XLSX bug      | [formula bug clinic](docs/formula-bug-clinic.md)                                                                                                                                                                          | Share a reduced public case that can become a test, example, corpus fixture, or docs proof.           |
+| Real workbook blocked    | [submit a workbook fixture](docs/submit-workbook-fixture.md)                                                                                                                                                              | Use the structured form when a reduced workbook is ready.                                             |
 
 Reduced workbook already in hand? Generate the paste-ready fixture report in
 one command:
 
 ```sh
-npm exec --package @bilig/headless@0.24.2 -- bilig-formula-clinic ./reduced.xlsx --cells "Summary!B7,Inputs!B2"
+npm exec --package @bilig/headless@0.31.0 -- bilig-formula-clinic ./reduced.xlsx --cells "Summary!B7,Inputs!B2"
 ```
 
 Handing a spreadsheet task to another coding agent? Start with the
 [agent handoff prompt](docs/headless-workpaper-agent-handbook.md#copy-paste-prompt-for-another-agent)
 before opening Excel, LibreOffice, Google Sheets, or a screenshot UI.
+To prove the package-owned agent loop without cloning the repo or downloading a
+TypeScript file:
+
+```sh
+npm exec --package @bilig/headless@0.31.0 -- bilig-agent-challenge
+npm exec --package @bilig/headless@0.31.0 -- bilig-mcp-challenge
+```
+
 Agent tools that support skill manifests can start from
 [`skill.md`](docs/skill.md) or the well-known index at
 [`docs/.well-known/agent-skills/index.json`](docs/.well-known/agent-skills/index.json).
+Claude Desktop users can also install the released MCPB bundle directly:
+<https://github.com/proompteng/bilig/releases/download/libraries-v0.31.0/bilig-workpaper.mcpb>.
+If you need a copy-paste eval for another tool host, use the
+[agent workbook challenge](docs/agent-workbook-challenge.md): one input edit,
+one dependent formula readback, one serialized restore, and a `verified: true`
+proof object.
 
 <p align="center">
   <img src="docs/assets/github-social-preview.png" alt="bilig headless workbook runtime for formulas in TypeScript" />
@@ -331,6 +373,9 @@ For a generated project from a blank directory, run
 `@bilig/create-workpaper` package. The package source lives in
 [`packages/create-workpaper`](packages/create-workpaper), and the publish gate
 is documented in [create a Bilig WorkPaper starter](docs/create-bilig-workpaper.md).
+For an agent-ready project with `AGENTS.md`, MCP client configs, and an
+`agent:verify` script, run
+`npm create @bilig/workpaper@latest pricing-agent -- --agent`.
 
 If that proof matches a service or agent workflow you maintain, the useful next
 step is concrete feedback: [star or bookmark the repo](https://github.com/proompteng/bilig/stargazers),
@@ -392,9 +437,9 @@ matters.
 
 <!-- headless-package-footprint:start -->
 
-Current checked npm footprint for `@bilig/headless@0.24.2`:
+Current checked npm footprint for `@bilig/headless@0.31.0`:
 
-- Pack dry run: `457 kB` tarball, `2.72 MB` unpacked, `456` package entries.
+- Pack dry run: `497 kB` tarball, `2.98 MB` unpacked, `489` package entries.
 - Boundary: the main import is the WorkPaper formula/JSON runtime; XLSX
   import/export stays behind the `@bilig/headless/xlsx` subpath; MCP is the
   `bilig-workpaper-mcp` binary wrapper; reduced workbook reports use the
@@ -463,6 +508,7 @@ the [Node spreadsheet formula engine guide](docs/node-spreadsheet-formula-engine
 [framework adapters](docs/node-framework-workpaper-adapters.md),
 [formula bug clinic](docs/formula-bug-clinic.md),
 [workbook fixture submissions](docs/submit-workbook-fixture.md),
+[OpenAI Agents SDK tools](docs/openai-agents-sdk-workpaper-tool.md),
 [AI SDK and LangChain tools](docs/vercel-ai-sdk-langchain-spreadsheet-tool.md),
 [CrewAI adapter](docs/crewai-workpaper-spreadsheet-tool.md),
 the [headless WorkPaper agent handbook](docs/headless-workpaper-agent-handbook.md),
@@ -494,10 +540,11 @@ Useful deeper examples: [invoice totals](examples/headless-workpaper#invoice-tot
 [MCP tool server shape](examples/headless-workpaper#mcp-tool-server-shape),
 [XLSX formula recalculation in Node](examples/xlsx-recalculation-node),
 and [serverless quote approval](examples/serverless-workpaper-api). Run
-`npm run quote-approval-api`, `npm run agent:framework-adapters`,
+`npm run quote-approval-api`, `npm run agent:openai-agents-sdk`,
+`npm run agent:framework-adapters`,
 `npm run agent:mcp-tools`, `npm run agent:mcp-transcript`,
 `npm run agent:mcp-file-transcript`, `npm run agent:mcp-stdio`, or
-`npm exec --package @bilig/headless@0.24.2 -- bilig-workpaper-mcp` when that is the
+`npm exec --package @bilig/headless@0.31.0 -- bilig-workpaper-mcp` when that is the
 path you are evaluating.
 
 The serverless example also includes `npm run next-route-handler`,
@@ -547,6 +594,7 @@ For agent tools:
 ```sh
 pnpm --dir examples/headless-workpaper run agent:verify
 pnpm --dir examples/headless-workpaper run agent:tool-call
+pnpm --dir examples/headless-workpaper run agent:openai-agents-sdk
 pnpm --dir examples/headless-workpaper run agent:openai-responses
 pnpm --dir examples/headless-workpaper run agent:ai-sdk-generate-text
 pnpm --dir examples/headless-workpaper run agent:ai-sdk-stream-text
@@ -558,6 +606,8 @@ pnpm --dir examples/headless-workpaper run agent:mcp-stdio
 
 The AI SDK example uses
 [`ai-sdk-generate-text-tool-smoke.ts`](examples/headless-workpaper/ai-sdk-generate-text-tool-smoke.ts).
+The OpenAI Agents SDK guide is
+[`docs/openai-agents-sdk-workpaper-tool.md`](docs/openai-agents-sdk-workpaper-tool.md).
 The OpenAI Responses guide is
 [`docs/openai-responses-workpaper-tool-call.md`](docs/openai-responses-workpaper-tool-call.md).
 The agent framework guide is
@@ -566,11 +616,22 @@ The agent framework guide is
 The package also ships the MCP stdio binary:
 
 ```sh
-npm exec --package @bilig/headless@0.24.2 -- bilig-formula-clinic ./reduced.xlsx --cells "Summary!B7,Inputs!B2"
-npm exec --package @bilig/headless@0.24.2 -- bilig-workpaper-mcp
-npm exec --package @bilig/headless@0.24.2 -- bilig-workpaper-mcp --workpaper ./pricing.workpaper.json --init-demo-workpaper --writable
+npm exec --package @bilig/headless@0.31.0 -- bilig-agent-challenge
+npm exec --package @bilig/headless@0.31.0 -- bilig-formula-clinic ./reduced.xlsx --cells "Summary!B7,Inputs!B2"
+npm exec --package @bilig/headless@0.31.0 -- bilig-mcp-challenge
+npm exec --package @bilig/headless@0.31.0 -- bilig-workpaper-mcp
+npm exec --package @bilig/headless@0.31.0 -- bilig-workpaper-mcp --workpaper ./pricing.workpaper.json --init-demo-workpaper --writable
 docker build --target bilig-workpaper-mcp -t bilig-workpaper-mcp:local .
 ```
+
+`bilig-agent-challenge` prints the same edit, formula readback, WorkPaper JSON
+export, restore, and `verified: true` proof object used by the agent workbook
+challenge page.
+
+`bilig-mcp-challenge` proves the file-backed MCP path end to end: initialize
+JSON-RPC, list tools/resources/prompts, edit `Inputs!B3`, read recalculated
+`Summary!B3`, export the WorkPaper JSON, restart from disk, and return
+`verified: true`.
 
 `bilig-formula-clinic` imports a reduced XLSX locally, samples formulas, reads
 requested cells through WorkPaper, and prints a Markdown issue body. It does not
@@ -870,8 +931,21 @@ around the same WorkPaper model.
 Reduced workbook already in hand?
 
 ```sh
-npm exec --package @bilig/headless@0.24.2 -- bilig-formula-clinic ./reduced.xlsx --cells "Summary!B7,Inputs!B2"
+npm exec --package @bilig/headless@0.31.0 -- bilig-formula-clinic ./reduced.xlsx --cells "Summary!B7,Inputs!B2"
 ```
+
+Handing a spreadsheet task to another coding agent?
+
+```sh
+npm exec --package @bilig/headless@0.31.0 -- bilig-agent-challenge
+npm exec --package @bilig/headless@0.31.0 -- bilig-mcp-challenge
+```
+
+The first command proves the direct WorkPaper API. The second command proves
+the file-backed MCP path by initializing JSON-RPC, listing
+tools/resources/prompts, editing `Inputs!B3`, reading recalculated `Summary!B3`,
+exporting WorkPaper JSON, restarting from disk, and returning `verified: true`.
+Both run without cloning the repository or downloading a TypeScript file.
 
 ## Install
 
@@ -894,16 +968,20 @@ For a generated starter project:
 
 ```sh
 npm create @bilig/workpaper@latest pricing-workpaper
+npm create @bilig/workpaper@latest pricing-agent -- --agent
 ```
 
 That command is published through `@bilig/create-workpaper`. The publish gate is documented at
 <https://proompteng.github.io/bilig/create-bilig-workpaper.html>.
+The `--agent` starter adds `AGENTS.md`, `CLAUDE.md`, Cursor and VS Code MCP
+configs, `mcp/bilig-workpaper.mcp.json`, `npm run agent:verify`, and
+`npm run mcp:server`.
 
 <!-- headless-package-footprint:start -->
 
-Current checked npm footprint for `@bilig/headless@0.24.2`:
+Current checked npm footprint for `@bilig/headless@0.31.0`:
 
-- Pack dry run: `457 kB` tarball, `2.72 MB` unpacked, `456` package entries.
+- Pack dry run: `497 kB` tarball, `2.98 MB` unpacked, `489` package entries.
 - Boundary: the main import is the WorkPaper formula/JSON runtime; XLSX
   import/export stays behind the `@bilig/headless/xlsx` subpath; MCP is the
   `bilig-workpaper-mcp` binary wrapper; reduced workbook reports use the
@@ -986,34 +1064,43 @@ building a workbook, changing an input, saving the document, restoring it, and
 checking that the dependent formula still reads back correctly.
 
 ```sh
-mkdir bilig-headless-sanity
-cd bilig-headless-sanity
-npm init -y
-npm pkg set type=module
-npm install @bilig/headless
-npm install -D tsx typescript @types/node
-curl -fsSLo sanity.ts https://proompteng.github.io/bilig/npm-eval.ts
-npx tsx sanity.ts
+npm exec --package @bilig/headless@0.31.0 -- bilig-agent-challenge
+npm exec --package @bilig/headless@0.31.0 -- bilig-mcp-challenge
 ```
 
 Expected output:
 
 ```json
 {
+  "editedCell": "Inputs!B2",
+  "dependentCell": "Summary!B2",
   "before": 24000,
   "after": 38400,
   "afterRestore": 38400,
+  "persistedDocumentBytes": 999,
   "sheets": ["Inputs", "Summary"],
-  "bytes": 1000,
+  "checks": {
+    "formulaReadbackChanged": true,
+    "exportedWorkPaperDocument": true,
+    "restoredMatchesAfter": true
+  },
   "verified": true,
+  "limitations": [
+    "This challenge proves the WorkPaper write/read/persist loop, not full Excel desktop compatibility.",
+    "For XLSX-specific behavior, run bilig-formula-clinic or the XLSX recalculation example with a real workbook fixture."
+  ],
   "nextStep": "If this proof matches your service or agent workflow, star or bookmark Bilig: https://github.com/proompteng/bilig/stargazers"
 }
 ```
 
-The downloaded file is the maintained TypeScript example at
-[`examples/headless-workpaper/npm-eval.ts`](https://github.com/proompteng/bilig/blob/main/examples/headless-workpaper/npm-eval.ts).
-The exact byte count can change between package versions; `verified: true` and
-matching `after`/`afterRestore` values are the check.
+For teams that want to inspect the TypeScript source before running it, the
+older curl-based quickstart remains at
+<https://proompteng.github.io/bilig/try-bilig-headless-in-node.html> and uses
+the maintained file at <https://proompteng.github.io/bilig/npm-eval.ts>
+([`examples/headless-workpaper/npm-eval.ts`](https://github.com/proompteng/bilig/blob/main/examples/headless-workpaper/npm-eval.ts)). The
+exact byte count can change between package versions; `verified: true`,
+`checks.restoredMatchesAfter`, and matching `after`/`afterRestore` values are
+the check.
 
 Inside this monorepo:
 
@@ -1144,6 +1231,9 @@ Agent and tool-call examples:
   formula, saved JSON, restored workbook, and formula text.
 - `npm run agent:tool-call` exposes `readRange` and `setInputCell` style tool
   calls with computed before/after readback.
+- `npm run agent:openai-agents-sdk` creates real `@openai/agents` `Agent`
+  and `tool()` objects, then invokes them locally with WorkPaper readback:
+  <https://github.com/proompteng/bilig/blob/main/docs/openai-agents-sdk-workpaper-tool.md>.
 - `npm run agent:openai-responses` shows the
   [OpenAI Responses tool-call loop](https://github.com/proompteng/bilig/blob/main/docs/openai-responses-workpaper-tool-call.md).
 - `npm run agent:ai-sdk-generate-text` uses the real Vercel AI SDK
@@ -1177,9 +1267,9 @@ MCP examples:
 - The package ships npm-executable binaries:
 
 ```sh
-npm exec --package @bilig/headless@0.24.2 -- bilig-formula-clinic ./reduced.xlsx --cells "Summary!B7,Inputs!B2"
-npm exec --package @bilig/headless@0.24.2 -- bilig-workpaper-mcp
-npm exec --package @bilig/headless@0.24.2 -- bilig-workpaper-mcp --workpaper ./pricing.workpaper.json --init-demo-workpaper --writable
+npm exec --package @bilig/headless@0.31.0 -- bilig-formula-clinic ./reduced.xlsx --cells "Summary!B7,Inputs!B2"
+npm exec --package @bilig/headless@0.31.0 -- bilig-workpaper-mcp
+npm exec --package @bilig/headless@0.31.0 -- bilig-workpaper-mcp --workpaper ./pricing.workpaper.json --init-demo-workpaper --writable
 docker build --target bilig-workpaper-mcp -t bilig-workpaper-mcp:local .
 ```
 
@@ -1230,6 +1320,10 @@ For setup details, use the
 [MCP client setup](https://github.com/proompteng/bilig/blob/main/docs/mcp-client-setup.md),
 and
 [Claude Desktop MCPB guide](https://github.com/proompteng/bilig/blob/main/docs/claude-desktop-mcpb-workpaper.md).
+The released Claude Desktop bundle is published at
+<https://github.com/proompteng/bilig/releases/download/libraries-v0.31.0/bilig-workpaper.mcpb>.
+Smithery users can install the hosted demo with
+`npx -y smithery mcp add gkonushev/bilig-workpaper`.
 
 ## Service Routes
 
@@ -1542,12 +1636,14 @@ When the sanity check passes, these are the next useful pages.
 - Agent and MCP workflows:
   [headless WorkPaper agent handbook](https://github.com/proompteng/bilig/blob/main/docs/headless-workpaper-agent-handbook.md),
   [agent tool-calling recipe](https://github.com/proompteng/bilig/blob/main/docs/agent-workpaper-tool-calling-recipe.md),
+  [OpenAI Agents SDK guide](https://github.com/proompteng/bilig/blob/main/docs/openai-agents-sdk-workpaper-tool.md),
   [OpenAI Responses guide](https://github.com/proompteng/bilig/blob/main/docs/openai-responses-workpaper-tool-call.md),
   [AI SDK, LangChain, and agent framework guide](https://github.com/proompteng/bilig/blob/main/docs/vercel-ai-sdk-langchain-spreadsheet-tool.md),
   [MCP server guide](https://github.com/proompteng/bilig/blob/main/docs/mcp-workpaper-tool-server.md),
   [MCP directory page](https://github.com/proompteng/bilig/blob/main/docs/mcp-spreadsheet-server-directory.md),
   [MCP client setup](https://github.com/proompteng/bilig/blob/main/docs/mcp-client-setup.md),
-  and [Claude Desktop MCPB bundle](https://github.com/proompteng/bilig/blob/main/docs/claude-desktop-mcpb-workpaper.md).
+  and [Claude Desktop MCPB bundle](https://github.com/proompteng/bilig/blob/main/docs/claude-desktop-mcpb-workpaper.md)
+  ([download](https://github.com/proompteng/bilig/releases/download/libraries-v0.31.0/bilig-workpaper.mcpb)).
 - Choosing the stack:
   [screenshot automation boundary](https://github.com/proompteng/bilig/blob/main/docs/stop-driving-spreadsheets-with-screenshots.md),
   [Node spreadsheet formula engine](https://github.com/proompteng/bilig/blob/main/docs/node-spreadsheet-formula-engine.md),
@@ -1639,7 +1735,8 @@ logic that can run through @bilig/headless. If it is, use WorkPaper state as the
 source of truth.
 
 For MCP, start with:
-npm exec --package @bilig/headless@0.24.2 -- bilig-workpaper-mcp --workpaper ./pricing.workpaper.json --init-demo-workpaper --writable
+npm exec --package @bilig/headless@0.31.0 -- bilig-mcp-challenge
+npm exec --package @bilig/headless@0.31.0 -- bilig-workpaper-mcp --workpaper ./pricing.workpaper.json --init-demo-workpaper --writable
 
 For Node or TypeScript, import @bilig/headless directly. Prove the edit by
 reading the relevant range, writing one small input or formula, reading the
@@ -1669,7 +1766,7 @@ Do not report success from a write call alone.
 For MCP clients, use the published stdio server:
 
 ```sh
-npm exec --package @bilig/headless@0.24.2 -- bilig-workpaper-mcp --workpaper ./pricing.workpaper.json --init-demo-workpaper --writable
+npm exec --package @bilig/headless@0.31.0 -- bilig-workpaper-mcp --workpaper ./pricing.workpaper.json --init-demo-workpaper --writable
 ```
 
 Expected file-backed tools:
@@ -1686,6 +1783,12 @@ Use `--init-demo-workpaper` when the path may not exist yet; it creates the demo
 WorkPaper JSON only when the file is missing. Use `--writable` only when the
 task should persist `set_cell_contents` edits back to the same WorkPaper JSON
 file.
+
+Claude Desktop users can skip manual JSON config by installing the released
+MCPB bundle:
+
+- https://github.com/proompteng/bilig/releases/download/libraries-v0.31.0/bilig-workpaper.mcpb
+- https://github.com/proompteng/bilig/releases/download/libraries-v0.31.0/bilig-workpaper.mcpb.sha256
 
 ## Direct TypeScript entrypoint
 
@@ -1723,20 +1826,16 @@ console.log({ revenue, savedBytes: saved.length })
 
 ## Verification shortcuts
 
-From a clean project, run the published package smoke:
+From a clean project, run the package-owned challenge:
 
 ```sh
-mkdir bilig-headless-agent-check
-cd bilig-headless-agent-check
-npm init -y
-npm pkg set type=module
-npm install @bilig/headless
-npm install -D tsx typescript @types/node
-curl -fsSLo quickstart.ts https://proompteng.github.io/bilig/npm-eval.ts
-npx tsx quickstart.ts
+npm exec --package @bilig/headless@0.31.0 -- bilig-agent-challenge
+npm exec --package @bilig/headless@0.31.0 -- bilig-mcp-challenge
 ```
 
-A good run prints `verified: true`.
+`bilig-agent-challenge` proves the direct WorkPaper API loop.
+`bilig-mcp-challenge` proves the file-backed MCP JSON-RPC loop. A good run
+prints `verified: true`.
 
 Deeper docs:
 
@@ -1769,7 +1868,7 @@ logic that can run through @bilig/headless. If it is, use WorkPaper state as the
 source of truth.
 
 If you have an MCP client, start with:
-npm exec --package @bilig/headless@0.24.2 -- bilig-workpaper-mcp --workpaper ./pricing.workpaper.json --init-demo-workpaper --writable
+npm exec --package @bilig/headless@0.31.0 -- bilig-workpaper-mcp --workpaper ./pricing.workpaper.json --init-demo-workpaper --writable
 
 If you are writing Node or TypeScript, import @bilig/headless directly. Your
 minimum proof is: read the relevant range, write one small input or formula,
@@ -1785,6 +1884,23 @@ write call alone.
 Screenshots are still useful for final human review. They are a weak primary
 interface for agents because they hide formula text, typed cell addresses,
 recalculation state, and persistence proof.
+
+## Blank Project Starter
+
+Use this when an agent needs a fresh project instead of a copied snippet:
+
+```sh
+npm create @bilig/workpaper@latest pricing-agent -- --agent
+cd pricing-agent
+npm install
+npm run agent:verify
+npm run mcp:server
+```
+
+The generated project includes `AGENTS.md`, `CLAUDE.md`, Cursor and VS Code MCP
+configs, `mcp/bilig-workpaper.mcp.json`, a quote approval service smoke test,
+and a file-backed MCP challenge. `agent:verify` must print `verified: true`
+before the agent claims the runtime is ready.
 
 ## The First Decision
 
@@ -1823,7 +1939,7 @@ File-backed mode is the useful production shape because it gives the agent real
 state instead of the built-in demo workbook:
 
 ```sh
-npm exec --package @bilig/headless@0.24.2 -- bilig-workpaper-mcp --workpaper ./pricing.workpaper.json --init-demo-workpaper --writable
+npm exec --package @bilig/headless@0.31.0 -- bilig-workpaper-mcp --workpaper ./pricing.workpaper.json --init-demo-workpaper --writable
 ```
 
 Expose the same command from an MCP client config:
@@ -1836,7 +1952,7 @@ Expose the same command from an MCP client config:
       "args": [
         "exec",
         "--package",
-        "@bilig/headless@0.24.2",
+        "@bilig/headless@0.31.0",
         "--",
         "bilig-workpaper-mcp",
         "--workpaper",
@@ -1897,18 +2013,11 @@ screenshots only for human visual review, not as the source of formula truth.
 
 ## Direct TypeScript Smoke
 
-Use the published package from a blank directory when the agent needs to prove
-the runtime before adopting it:
+Use the package-owned challenge when the agent needs to prove the runtime before
+adopting it:
 
 ```sh
-mkdir bilig-headless-agent-check
-cd bilig-headless-agent-check
-npm init -y
-npm pkg set type=module
-npm install @bilig/headless
-npm install -D tsx typescript @types/node
-curl -fsSLo quickstart.ts https://proompteng.github.io/bilig/npm-eval.ts
-npx tsx quickstart.ts
+npm exec --package @bilig/headless@0.31.0 -- bilig-agent-challenge
 ```
 
 A good run prints `verified: true`. That means one input changed, a dependent
@@ -2005,6 +2114,168 @@ mutating operations, clients should keep a human approval path available.
 
 ---
 
+## Agent Workbook Challenge
+
+Source: https://github.com/proompteng/bilig/blob/main/docs/agent-workbook-challenge.md
+
+# Agent Workbook Challenge
+
+Use this page when an agent, MCP client, or coding assistant is about to solve a
+spreadsheet task by clicking through Excel, LibreOffice, Google Sheets, or a
+screenshot grid.
+
+The challenge is simple: do the workbook edit through an API, not through a UI,
+and return proof that the calculated value changed and survived persistence.
+
+## The Task
+
+Paste this into an agent:
+
+```text
+You need to solve a workbook-shaped task without opening Excel, LibreOffice,
+Google Sheets, or a screenshot UI unless the user explicitly asks for a visual
+review.
+
+Use @bilig/headless or the Bilig WorkPaper MCP server. Build or load a workbook
+with these sheets:
+
+Inputs
+- A1: Metric
+- B1: Value
+- A2: Customers
+- B2: 20
+- A3: Average revenue
+- B3: 1200
+
+Summary
+- A1: Metric
+- B1: Value
+- A2: Revenue
+- B2: =Inputs!B2*Inputs!B3
+
+Then change Inputs!B2 from 20 to 32. Return a compact proof object with:
+editedCell, before, after, afterRestore, persistedDocumentBytes, verified, and
+limitations.
+
+Do not claim success from the write call alone. Success requires computed
+readback after the edit and restore proof from serialized WorkPaper JSON.
+```
+
+Expected outcome:
+
+```json
+{
+  "editedCell": "Inputs!B2",
+  "before": 24000,
+  "after": 38400,
+  "afterRestore": 38400,
+  "verified": true
+}
+```
+
+The exact byte count can change between package versions. The invariant is that
+the edited input changes the dependent formula result, and the restored document
+keeps the same result.
+
+## Fastest Path: Published Package
+
+This uses the package-owned challenge command. It does not clone the repo, curl
+a TypeScript file, or require a spreadsheet UI:
+
+```sh
+npm exec --package @bilig/headless@0.31.0 -- bilig-agent-challenge
+npm exec --package @bilig/headless@0.31.0 -- bilig-mcp-challenge
+```
+
+A passing run prints `verified: true`.
+Use `--markdown` when you want a paste-ready report for an issue, PR, or agent
+eval transcript.
+
+Use `bilig-agent-challenge` for the direct WorkPaper API loop. Use
+`bilig-mcp-challenge` when the evaluator cares about the actual MCP path:
+JSON-RPC initialize, tool/resource/prompt discovery, `set_cell_contents`,
+dependent formula readback, WorkPaper JSON export, and restart readback from the
+same persisted file.
+
+## MCP Path
+
+Use this when the host supports MCP servers:
+
+```sh
+npm exec --package @bilig/headless@0.31.0 -- bilig-workpaper-mcp --workpaper ./pricing.workpaper.json --init-demo-workpaper --writable
+```
+
+Required tool sequence:
+
+1. `list_sheets`
+2. `read_range` for the input and summary ranges
+3. `set_cell_contents` for `Inputs!B2`
+4. `get_cell_display_value` for the dependent summary cell
+5. `export_workpaper_document`
+
+That sequence is the point of the challenge. It keeps the agent honest about
+what changed, what recalculated, and what can be saved.
+
+## Why This Beats Screenshot Automation
+
+Screenshot automation can be useful for final human review, but it is a weak
+primary interface for agents:
+
+- screenshots hide formula text and typed cell addresses;
+- clicks can land on the wrong sheet, row, or browser state;
+- cached XLSX formula values can look valid while being stale;
+- a visual grid does not prove the workbook can be persisted and restored.
+
+WorkPaper state gives the agent a smaller contract: read cells, write cells,
+recalculate formulas, export JSON, and report the proof object.
+
+## Pass/Fail Rubric
+
+Pass:
+
+- the answer names the exact edited cell;
+- the answer includes the before and after calculated values;
+- the after value is read from the dependent formula cell;
+- the workbook document is serialized or exported;
+- restore or reimport gives the same calculated value;
+- limitations are named instead of hidden.
+
+Fail:
+
+- the answer only says that a cell was written;
+- the agent relies on a screenshot as formula truth;
+- the agent reports cached XLSX values as recalculated values;
+- the answer omits persistence proof;
+- unsupported formulas are silently skipped.
+
+## Shareable Prompt
+
+Use this shorter version in an issue, discussion, or agent-tool eval:
+
+```text
+Try the Bilig agent workbook challenge: update one input cell, read the
+dependent formula result, serialize the WorkPaper JSON, restore it, and return
+verified: true. Do it without spreadsheet UI automation unless visual review is
+explicitly required.
+
+Start here:
+https://proompteng.github.io/bilig/agent-workbook-challenge.html
+```
+
+## Where To Go Next
+
+- For a broader agent playbook, use the
+  [Headless WorkPaper agent handbook](headless-workpaper-agent-handbook.md).
+- For MCP client setup, use the
+  [MCP client setup guide](mcp-client-setup.md).
+- For direct tool wrappers, use the
+  [WorkPaper tool-calling recipe](agent-workpaper-tool-calling-recipe.md).
+- If the challenge almost works but a real workbook blocks adoption, use the
+  [formula bug clinic](formula-bug-clinic.md) or
+  [submit a workbook fixture](submit-workbook-fixture.md).
+
+---
+
 ## Agent WorkPaper Tool-Calling Recipe
 
 Source: https://github.com/proompteng/bilig/blob/main/docs/agent-workpaper-tool-calling-recipe.md
@@ -2027,7 +2298,10 @@ the [headless WorkPaper agent handbook](headless-workpaper-agent-handbook.md).
 
 For a runnable external example, use
 [`examples/headless-workpaper`](../examples/headless-workpaper) and run
-`npm run agent:tool-call`. If your app calls OpenAI Responses directly, run
+`npm run agent:tool-call`. If your app uses the OpenAI Agents SDK, run
+`npm run agent:openai-agents-sdk` and read the
+[OpenAI Agents SDK WorkPaper tool guide](openai-agents-sdk-workpaper-tool.md).
+If your app calls OpenAI Responses directly, run
 `npm run agent:openai-responses` and read the
 [OpenAI Responses WorkPaper tool-call guide](openai-responses-workpaper-tool-call.md).
 For a smaller writeback-only proof, run
@@ -2045,6 +2319,8 @@ calls `streamText()` from `ai`, streams tool-call chunks and final text, and
 keeps the WorkPaper read/write verification in ordinary TypeScript.
 
 If your app calls OpenAI directly, start with the
+[OpenAI Agents SDK tool guide](https://openai.github.io/openai-agents-js/guides/tools/)
+or the
 [Responses API function-calling guide](https://developers.openai.com/api/docs/guides/function-calling)
 and keep the WorkPaper functions below as your application-side tool handlers.
 If this is the path you are trying, use the
@@ -2225,6 +2501,45 @@ summary changed as expected:
 
 `serializedBytes` will vary as the document schema evolves. Treat it as a
 positive persistence check, not a stable snapshot value.
+
+## OpenAI Agents SDK Tool Wrapper
+
+Use this path when your app builds agents with `@openai/agents` and wants the
+WorkPaper functions attached to a real `Agent` as SDK function tools:
+
+```sh
+pnpm --dir examples/headless-workpaper run agent:openai-agents-sdk
+```
+
+The maintained example is
+[`examples/headless-workpaper/openai-agents-sdk-tool-smoke.ts`](../examples/headless-workpaper/openai-agents-sdk-tool-smoke.ts).
+It creates `tool()` definitions for `read_workpaper_summary` and
+`set_workpaper_input_cell`, attaches them to an `Agent`, and invokes them with
+`invokeFunctionTool()` so the smoke remains provider-free.
+
+The dedicated guide is
+[`docs/openai-agents-sdk-workpaper-tool.md`](openai-agents-sdk-workpaper-tool.md).
+It links back to the official OpenAI Agents SDK tool docs:
+<https://openai.github.io/openai-agents-js/guides/tools/>.
+
+Expected proof:
+
+```json
+{
+  "apiShape": "OpenAI Agents SDK Agent -> tool() -> invokeFunctionTool()",
+  "toolNames": ["read_workpaper_summary", "set_workpaper_input_cell"],
+  "writeResult": {
+    "editedCell": "Inputs!B3",
+    "before": { "expectedArr": 60000, "targetGap": -34000 },
+    "after": { "expectedArr": 96000, "targetGap": 5600 },
+    "checks": {
+      "formulasPersisted": true,
+      "restoredMatchesAfter": true,
+      "expectedArrChanged": true
+    }
+  }
+}
+```
 
 ## OpenAI Responses API Tool Wrapper
 
@@ -2574,6 +2889,143 @@ and enough context for the caller to explain what changed.
 
 ---
 
+## OpenAI Agents SDK WorkPaper Tool
+
+Source: https://github.com/proompteng/bilig/blob/main/docs/openai-agents-sdk-workpaper-tool.md
+
+# OpenAI Agents SDK WorkPaper Tools
+
+Use this path when an OpenAI Agents SDK app needs a workbook tool it can call
+from Node without opening Excel, LibreOffice, Google Sheets, or a screenshot UI.
+The agent gets two ordinary function tools:
+
+- `read_workpaper_summary` reads computed WorkPaper values and serialized cells.
+- `set_workpaper_input_cell` writes one validated input cell and returns
+  before/after readback, formula persistence checks, and restored JSON proof.
+
+The maintained smoke script is provider-free by default. It imports
+`Agent`, `tool()`, `RunContext`, and `invokeFunctionTool()` from
+`@openai/agents`, creates a real SDK agent and function tools, then invokes the
+tools locally so the read/write contract can run in CI without an API key:
+
+```sh
+pnpm --dir examples/headless-workpaper run agent:openai-agents-sdk
+```
+
+The OpenAI Agents SDK documents function tools as local functions wrapped with a
+schema through `tool()`, and the same tools can be attached to an `Agent`:
+<https://openai.github.io/openai-agents-js/guides/tools/>.
+
+## Minimal Tool Shape
+
+```ts
+import { Agent, RunContext, invokeFunctionTool, tool } from '@openai/agents'
+import { z } from 'zod'
+import { WorkPaper } from '@bilig/headless'
+
+const workbook = WorkPaper.buildFromSheets({
+  Inputs: [
+    ['Metric', 'Value'],
+    ['Qualified opportunities', 20],
+    ['Win rate', 0.25],
+    ['Average ARR', 12000],
+  ],
+  Summary: [
+    ['Metric', 'Value'],
+    ['Expected ARR', '=Inputs!B2*Inputs!B3*Inputs!B4'],
+  ],
+})
+
+const setWorkPaperInputCell = tool({
+  name: 'set_workpaper_input_cell',
+  description: 'Set one validated WorkPaper input cell and return formula readback.',
+  parameters: z.object({
+    sheetName: z.literal('Inputs'),
+    address: z.string().regex(/^[A-Z]+[1-9][0-9]*$/),
+    value: z.union([z.string(), z.number(), z.boolean(), z.null()]),
+  }),
+  execute: async ({ sheetName, address, value }) => {
+    const sheet = workbook.getSheetId(sheetName)
+    const summarySheet = workbook.getSheetId('Summary')
+    if (sheet === undefined) {
+      throw new Error(`Unknown sheet: ${sheetName}`)
+    }
+    if (summarySheet === undefined) {
+      throw new Error('Summary sheet is missing')
+    }
+    const cell = workbook.simpleCellAddressFromString(address, sheet)
+    const summaryRange = workbook.simpleCellRangeFromString('Summary!A1:B2', summarySheet)
+    if (cell === undefined) {
+      throw new Error(`Invalid cell: ${sheetName}!${address}`)
+    }
+    if (summaryRange === undefined) {
+      throw new Error('Summary range is invalid')
+    }
+
+    const before = workbook.getRangeValues(summaryRange)
+    workbook.setCellContents(cell, value)
+
+    return {
+      editedCell: `${sheetName}!${address}`,
+      before,
+      after: workbook.getRangeValues(summaryRange),
+    }
+  },
+})
+
+const agent = new Agent({
+  name: 'WorkPaper verification agent',
+  instructions: 'Use WorkPaper tools and answer only from computed readback.',
+  tools: [setWorkPaperInputCell],
+})
+
+const result = await invokeFunctionTool({
+  tool: setWorkPaperInputCell,
+  runContext: new RunContext(),
+  input: JSON.stringify({
+    sheetName: 'Inputs',
+    address: 'B3',
+    value: 0.4,
+  }),
+})
+
+console.log(agent.name, result)
+```
+
+For a production adapter, use the full example instead of this short snippet:
+[`examples/headless-workpaper/openai-agents-sdk-tool-smoke.ts`](../examples/headless-workpaper/openai-agents-sdk-tool-smoke.ts).
+It also verifies persisted formulas by exporting a WorkPaper document, restoring
+it, and comparing the computed readback after restore.
+
+## Expected Proof
+
+The smoke output includes this shape:
+
+```json
+{
+  "apiShape": "OpenAI Agents SDK Agent -> tool() -> invokeFunctionTool()",
+  "package": "@openai/agents",
+  "agentName": "WorkPaper verification agent",
+  "toolNames": ["read_workpaper_summary", "set_workpaper_input_cell"],
+  "writeResult": {
+    "editedCell": "Inputs!B3",
+    "before": { "expectedArr": 60000, "targetGap": -34000 },
+    "after": { "expectedArr": 96000, "targetGap": 5600 },
+    "checks": {
+      "formulasPersisted": true,
+      "restoredMatchesAfter": true,
+      "expectedArrChanged": true
+    }
+  }
+}
+```
+
+Keep the workbook mutation closed-world: validate sheet names and A1 addresses,
+write one input at a time, recalculate through WorkPaper, return computed
+readback, and persist only after the verification passes.
+
+---
+
 ## MCP WorkPaper Tool Server
 
 Source: https://github.com/proompteng/bilig/blob/main/docs/mcp-workpaper-tool-server.md
@@ -2693,7 +3145,7 @@ printf '%s\n' \
 The npm package exposes the demo server as `bilig-workpaper-mcp` by default:
 
 ```sh
-npm exec --package @bilig/headless@0.24.2 -- bilig-workpaper-mcp
+npm exec --package @bilig/headless@0.31.0 -- bilig-workpaper-mcp
 ```
 
 ## Remote Stateless Endpoint
@@ -2735,8 +3187,14 @@ For a real agent workflow, point the same binary at a persisted WorkPaper JSON
 document:
 
 ```sh
-npm exec --package @bilig/headless@0.24.2 -- bilig-workpaper-mcp --workpaper ./pricing.workpaper.json --init-demo-workpaper --writable
+npm exec --package @bilig/headless@0.31.0 -- bilig-mcp-challenge
+npm exec --package @bilig/headless@0.31.0 -- bilig-workpaper-mcp --workpaper ./pricing.workpaper.json --init-demo-workpaper --writable
 ```
+
+`bilig-mcp-challenge` is the one-command evaluator path. It initializes the
+file-backed MCP server, lists tools/resources/prompts, edits `Inputs!B3`, reads
+recalculated `Summary!B3`, exports WorkPaper JSON, restarts from disk, and
+prints `verified: true`.
 
 File-backed mode loads `./pricing.workpaper.json`, exposes `list_sheets`,
 `read_range`, `read_cell`, `set_cell_contents`, `get_cell_display_value`,
@@ -2813,6 +3271,12 @@ lists the same `list_sheets`, `read_range`, `read_cell`, `set_cell_contents`,
 tools, plus the WorkPaper resources and prompts, without requiring account auth
 or a live server connection.
 
+The hosted endpoint origin serves the same crawler-friendly card at
+`https://bilig.proompteng.ai/.well-known/mcp/server-card.json`, with
+`streamable-http` transport metadata for `https://bilig.proompteng.ai/mcp`.
+That gives Smithery-style scanners a same-origin metadata path when they start
+from the remote MCP URL rather than the documentation site.
+
 The package carries `mcpName: io.github.proompteng/bilig-workpaper` and a
 matching `server.json`. It is published in the official MCP Registry as
 `io.github.proompteng/bilig-workpaper`:
@@ -2855,7 +3319,7 @@ import { generateText } from 'ai'
 const client = await createMCPClient({
   transport: new Experimental_StdioMCPTransport({
     command: 'npm',
-    args: ['exec', '--package', '@bilig/headless@0.24.2', '--', 'bilig-workpaper-mcp'],
+    args: ['exec', '--package', '@bilig/headless@0.31.0', '--', 'bilig-workpaper-mcp'],
   }),
 })
 
@@ -3178,7 +3642,7 @@ the Markdown output into the fixture form. It reads the file on your machine and
 does not upload workbook contents.
 
 ```sh
-npm exec --package @bilig/headless@0.24.2 -- bilig-formula-clinic ./reduced.xlsx \
+npm exec --package @bilig/headless@0.31.0 -- bilig-formula-clinic ./reduced.xlsx \
   --cells "Summary!B7,Inputs!B2"
 ```
 

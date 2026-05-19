@@ -6,7 +6,7 @@ import { buildHeaderPaneStates, type GridHeaderPaneState } from '../gridHeaderPa
 import { CompactSelection, type GridSelection, type Item, type Rectangle } from '../gridTypes.js'
 import type { GridTextItem, GridTextScene } from '../gridTextScene.js'
 import { collectVisibleColumnBounds, collectVisibleRowBounds } from '../visibleGridAxes.js'
-import { workbookThemeColors } from '../workbookTheme.js'
+import { workbookHeaderFontPointSizeToCssPx, workbookThemeColors } from '../workbookTheme.js'
 import { parseGpuColor, type GridGpuScene } from '../gridGpuPrimitives.js'
 
 const STATIC_SELECTED_CELL: Item = Object.freeze([-1, -1] as const)
@@ -15,7 +15,6 @@ const STATIC_GRID_SELECTION: GridSelection = Object.freeze({
   current: undefined,
   rows: CompactSelection.empty(),
 })
-const DEFAULT_HEADER_FONT_SIZE = 11
 
 export interface WorkbookHeaderPaneInputV3 {
   readonly columnWidths: Readonly<Record<number, number>>
@@ -95,7 +94,7 @@ function buildWorkbookHeaderGpuSceneV3(input: WorkbookHeaderPaneInputV3): GridGp
 
 export function buildWorkbookHeaderTextSceneV3(input: WorkbookHeaderPaneInputV3): GridTextScene {
   const items: GridTextItem[] = []
-  const headerFontSize = DEFAULT_HEADER_FONT_SIZE
+  const headerFontSize = workbookHeaderFontPointSizeToCssPx()
   const headerFont = `600 ${headerFontSize}px ${getResolvedCellFontFamily()}`
   const hasFrozenAxes = input.freezeRows > 0 || input.freezeCols > 0
   const visibleColumns = hasFrozenAxes

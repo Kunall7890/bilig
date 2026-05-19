@@ -3,28 +3,33 @@ import { formatAddress } from '@bilig/formula'
 import {
   createColumnSelection,
   createGridSelection,
+  createRectangleSelectionFromRange,
   createRangeSelection,
   createRowSelection,
   createSheetSelection,
   selectionToSnapshot,
 } from './gridSelection.js'
-import type { GridSelection, GridSelectionSnapshot, Item } from './gridTypes.js'
+import { CompactSelection, type GridSelection, type GridSelectionSnapshot, type Item } from './gridTypes.js'
 import { parseClipboardContent, parseClipboardPlainText } from './gridClipboard.js'
 import { cellToEditorSeed, snapshotToRenderCell } from './gridCells.js'
 import {
   isClipboardShortcut,
   isClearCellKey,
+  isCurrentRegionSelectionShortcut,
   isFillSelectionShortcut,
   isHandledGridKey,
   isFillShortcut,
   isNavigationShortcut,
   isPrintableKey,
+  isScrollActiveCellShortcut,
   isSheetSelectionShortcut,
+  isStructuralDeleteShortcut,
   normalizeKeyboardKey,
 } from './gridKeyboard.js'
-import { resolveGridKeyAction } from './gridKeyActions.js'
+import { resolveGridKeyAction, type GridAxisDeleteRange } from './gridKeyActions.js'
 import { buildInternalClipboardRange, matchesInternalClipboardPaste, type InternalClipboardRange } from './gridInternalClipboard.js'
 import type { GridEngineLike } from './grid-engine.js'
+import type { GridKeyNavigationResolver } from './gridNavigation.js'
 import type { EditMovement, EditSelectionBehavior } from './SheetGridView.js'
 
 export interface GridKeyboardEventLike {
@@ -90,9 +95,14 @@ interface HandleGridKeyOptions {
   onCancelEdit(this: void): void
   onClearCell(this: void, selection?: GridSelectionSnapshot): void
   onCommitEdit(this: void, movement?: EditMovement, valueOverride?: string): void
+  onDeleteColumns?: ((startCol: number, count: number) => void | Promise<void>) | undefined
+  onDeleteRows?: ((startRow: number, count: number) => void | Promise<void>) | undefined
   onEditorChange(this: void, next: string): void
   onFillRange(this: void, sourceStartAddr: string, sourceEndAddr: string, targetStartAddr: string, targetEndAddr: string): void
   onSelectionChange(this: void, selection: GridSelection): void
+  navigation?: GridKeyNavigationResolver | null
+  pageJumpRows?: number | null
+  scrollActiveCellIntoView(this: void): void
   pendingClipboardCopySequenceRef: MutableRefObject<number>
   pendingKeyboardPasteSequenceRef: MutableRefObject<number>
   pendingTypeSeedRef: MutableRefObject<string | null>
@@ -149,6 +159,21 @@ function hasOpenModalDialog(): boolean {
   }
 
   return document.querySelector('[aria-modal="true"]') !== null
+}
+
+function selectionRangesToDeleteRanges(ranges: GridSelection['rows']['ranges']): readonly GridAxisDeleteRange[] {
+  return ranges.map(([start, endExclusive]) => ({ start, count: endExclusive - start })).filter((range) => range.count > 0)
+}
+
+function runStructuralDeleteRanges(
+  ranges: readonly GridAxisDeleteRange[],
+  onDeleteRange: ((start: number, count: number) => void | Promise<void>) | undefined,
+): void {
+  if (!onDeleteRange) {
+    return
+  }
+
+  void Promise.all(ranges.toSorted((left, right) => right.start - left.start).map((range) => onDeleteRange(range.start, range.count)))
 }
 
 export function applyGridClipboardValues({
@@ -276,9 +301,14 @@ export function handleGridKey({
   onCancelEdit,
   onClearCell,
   onCommitEdit,
+  onDeleteColumns,
+  onDeleteRows,
   onEditorChange,
   onFillRange,
   onSelectionChange,
+  navigation,
+  pageJumpRows,
+  scrollActiveCellIntoView,
   pendingClipboardCopySequenceRef,
   pendingKeyboardPasteSequenceRef,
   pendingTypeSeedRef,
@@ -315,6 +345,10 @@ export function handleGridKey({
     currentSelectionCell,
     currentRangeAnchor: currentSelectionCell,
     currentSelectionRange,
+    selectedColumnRanges: selectionRangesToDeleteRanges(gridSelection.columns.ranges),
+    selectedRowRanges: selectionRangesToDeleteRanges(gridSelection.rows.ranges),
+    navigation,
+    pageJumpRows,
   })
 
   if (action.kind === 'none') {
@@ -349,6 +383,21 @@ export function handleGridKey({
         onSelectionChange(nextSelection)
       }
       return
+    case 'move-selection-in-range':
+      {
+        const nextSelection: GridSelection = {
+          current: {
+            cell: action.cell,
+            range: { ...action.range },
+            rangeStack: gridSelection.current?.rangeStack ?? [],
+          },
+          columns: CompactSelection.empty(),
+          rows: CompactSelection.empty(),
+        }
+        setGridSelection(nextSelection)
+        onSelectionChange(nextSelection)
+      }
+      return
     case 'extend-selection':
       {
         const nextSelection = createRangeSelection(createGridSelection(action.anchor[0], action.anchor[1]), action.anchor, action.target)
@@ -359,6 +408,9 @@ export function handleGridKey({
     case 'clear-cell':
       pendingTypeSeedRef.current = action.pendingTypeSeed
       onClearCell(selectionToSnapshot(gridSelection, sheetName, formatAddress(selectedCell.row, selectedCell.col)))
+      return
+    case 'scroll-active-cell':
+      scrollActiveCellIntoView()
       return
     case 'clipboard-copy': {
       writeClipboardPlainTextFromKeyboard(captureInternalClipboardSelection('copy'), pendingClipboardCopySequenceRef)
@@ -410,6 +462,12 @@ export function handleGridKey({
         formatAddress(action.target.y + action.target.height - 1, action.target.x + action.target.width - 1),
       )
       return
+    case 'delete-selected-rows':
+      runStructuralDeleteRanges(action.ranges, onDeleteRows)
+      return
+    case 'delete-selected-columns':
+      runStructuralDeleteRanges(action.ranges, onDeleteColumns)
+      return
     case 'handled':
       return
     case 'select-row':
@@ -422,6 +480,20 @@ export function handleGridKey({
     case 'select-column':
       {
         const nextSelection = createColumnSelection(action.col, action.row)
+        setGridSelection(nextSelection)
+        onSelectionChange(nextSelection)
+      }
+      return
+    case 'select-range':
+      {
+        const nextSelection = {
+          ...createRectangleSelectionFromRange(action.range),
+          current: {
+            cell: action.cell,
+            range: { ...action.range },
+            rangeStack: [],
+          },
+        }
         setGridSelection(nextSelection)
         onSelectionChange(nextSelection)
       }
@@ -547,7 +619,10 @@ function isWorkbookChromeGridShortcut(event: Pick<GridKeyboardEventLike, 'altKey
     isClipboardShortcut(event) ||
     isFillShortcut(event) ||
     isFillSelectionShortcut(event) ||
+    isScrollActiveCellShortcut(event) ||
+    isStructuralDeleteShortcut(event) ||
     isNavigationShortcut(event) ||
+    isCurrentRegionSelectionShortcut(event) ||
     (hasPrimaryModifier && !event.altKey && normalizedKey === 'a') ||
     isSheetSelectionShortcut(event) ||
     (!event.altKey && !hasPrimaryModifier && !event.shiftKey && event.key === 'F2') ||
@@ -563,7 +638,10 @@ export function shouldHandleGridSurfaceKey(
     isClipboardShortcut(event) ||
     isFillShortcut(event) ||
     isFillSelectionShortcut(event) ||
+    isScrollActiveCellShortcut(event) ||
+    isStructuralDeleteShortcut(event) ||
     isNavigationShortcut(event) ||
+    isCurrentRegionSelectionShortcut(event) ||
     isSheetSelectionShortcut(event) ||
     ((event.ctrlKey || event.metaKey) && !event.altKey && event.key.toLowerCase() === 'a') ||
     (event.key === 'Enter' && !event.altKey && !event.ctrlKey && !event.metaKey) ||

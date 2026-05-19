@@ -197,6 +197,20 @@ describe('runtime release helpers', () => {
     expect(isRuntimePackageContentPath('packages/create-workpaper/bin/create-bilig-workpaper.js')).toBe(true)
   })
 
+  it('publishes the XLSX formula recalculation package through the common runtime workflow', () => {
+    expect(RUNTIME_PACKAGE_DIRS).toContain('packages/xlsx-formula-recalc')
+    expect(RUNTIME_NPM_PACKAGE_DIRS).toContain('packages/xlsx-formula-recalc')
+    expect(isRuntimeAffectingPath('packages/xlsx-formula-recalc/package.json')).toBe(true)
+    expect(isRuntimePackageContentPath('packages/xlsx-formula-recalc/src/index.ts')).toBe(true)
+  })
+
+  it('publishes the ExcelJS formula recalculation package through the common runtime workflow', () => {
+    expect(RUNTIME_PACKAGE_DIRS).toContain('packages/exceljs-formula-recalc')
+    expect(RUNTIME_NPM_PACKAGE_DIRS).toContain('packages/exceljs-formula-recalc')
+    expect(isRuntimeAffectingPath('packages/exceljs-formula-recalc/package.json')).toBe(true)
+    expect(isRuntimePackageContentPath('packages/exceljs-formula-recalc/src/index.ts')).toBe(true)
+  })
+
   it('publishes XLSX import/export through the headless package subpath', () => {
     const manifest = JSON.parse(readFileSync(resolve(repoRoot, 'packages/headless/package.json'), 'utf8'))
 
@@ -225,6 +239,8 @@ describe('runtime release helpers', () => {
   it('separates package content changes from release automation changes', () => {
     expect(isRuntimePackageContentPath('packages/core/src/index.ts')).toBe(true)
     expect(isRuntimePackageContentPath('packages/headless/package.json')).toBe(true)
+    expect(isRuntimePackageContentPath('packages/xlsx-formula-recalc/package.json')).toBe(true)
+    expect(isRuntimePackageContentPath('packages/exceljs-formula-recalc/package.json')).toBe(true)
     expect(isRuntimePackageContentPath('scripts/plan-runtime-release.ts')).toBe(false)
     expect(isRuntimePackageContentPath('.github/workflows/headless-package.yml')).toBe(false)
   })

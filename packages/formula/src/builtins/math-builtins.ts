@@ -39,13 +39,20 @@ function div0Error(): EvaluationResult {
   return { tag: ValueTag.Error, code: ErrorCode.Div0 }
 }
 
+function finiteNumberOrNumError(
+  value: number,
+  numberResult: (value: number) => EvaluationResult,
+  numError: () => EvaluationResult,
+): EvaluationResult {
+  return Number.isFinite(value) ? numberResult(value) : numError()
+}
+
 function toIntegerFunctionNumber(value: CellValue): number | undefined {
   if (value.tag === ValueTag.String) {
-    const trimmed = value.value.trim()
-    if (trimmed.length === 0) {
+    if (value.value === '') {
       return undefined
     }
-    return parseNumericText(trimmed)
+    return parseNumericText(value.value)
   }
   switch (value.tag) {
     case ValueTag.Number:
@@ -96,9 +103,33 @@ export function createMathBuiltins({
     DEGREES: (value) => unaryMath(value, (numeric) => (numeric * 180) / Math.PI),
     RADIANS: (value) => unaryMath(value, (numeric) => (numeric * Math.PI) / 180),
     EXP: (value) => unaryMath(value, Math.exp),
-    LN: (value) => unaryMath(value, Math.log),
-    LOG10: (value) => unaryMath(value, Math.log10),
+    LN: (value) => {
+      const error = firstError([value])
+      if (error) {
+        return error
+      }
+      const numeric = toNumber(value)
+      if (numeric === undefined) {
+        return valueError()
+      }
+      return numeric > 0 ? finiteNumberOrNumError(Math.log(numeric), numberResult, numError) : numError()
+    },
+    LOG10: (value) => {
+      const error = firstError([value])
+      if (error) {
+        return error
+      }
+      const numeric = toNumber(value)
+      if (numeric === undefined) {
+        return valueError()
+      }
+      return numeric > 0 ? finiteNumberOrNumError(Math.log10(numeric), numberResult, numError) : numError()
+    },
     LOG: (value, base) => {
+      const error = firstError([value, base])
+      if (error) {
+        return error
+      }
       const numeric = toNumber(value)
       if (numeric === undefined) {
         return valueError()
@@ -107,8 +138,11 @@ export function createMathBuiltins({
       if (baseValue === undefined) {
         return valueError()
       }
+      if (numeric <= 0 || baseValue <= 0 || baseValue === 1) {
+        return numError()
+      }
       const result = base === undefined ? Math.log10(numeric) : Math.log(numeric) / Math.log(baseValue)
-      return numericResultOrError(result)
+      return finiteNumberOrNumError(result, numberResult, numError)
     },
     POWER: (base, exponent) => binaryMath(base, exponent, excelPower),
     SQRT: (value) => unaryMath(value, Math.sqrt),

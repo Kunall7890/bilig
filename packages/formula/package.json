@@ -1,6 +1,6 @@
 {
   "name": "@bilig/formula",
-  "version": "0.24.2",
+  "version": "0.31.0",
   "description": "Excel-style formula parsing, binding, compilation, and evaluation for bilig.",
   "keywords": [
     "bilig",
@@ -32,6 +32,10 @@
     ".": {
       "types": "./dist/index.d.ts",
       "import": "./dist/index.js"
+    },
+    "./external-function-adapter": {
+      "types": "./dist/external-function-adapter.d.ts",
+      "import": "./dist/external-function-adapter.js"
     },
     "./program-arena": {
       "types": "./dist/program-arena.d.ts",

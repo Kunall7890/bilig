@@ -71,7 +71,11 @@ function MissingSheetState(props: {
 
 export function WorkerWorkbookApp(props: { config: BiligRuntimeConfig; connectionState: ZeroConnectionState; zero?: ZeroClient }) {
   const runtimeConfig = useMemo(() => resolveRuntimeConfig(props.config), [props.config])
-  const runtimeKey = [runtimeConfig.documentId, runtimeConfig.persistState ? 'persist' : 'memory'].join('|')
+  const runtimeKey = [
+    runtimeConfig.documentId,
+    runtimeConfig.persistState ? 'persist' : 'memory',
+    runtimeConfig.serverUrl ?? 'same-origin',
+  ].join('|')
 
   return (
     <WorkerWorkbookAppInner
@@ -290,6 +294,7 @@ function WorkerWorkbookAppInner({
               <WorkbookView
                 ribbon={app.ribbon}
                 editorValue={app.visibleEditorValue}
+                editorTargetSelection={app.editorTargetSelection}
                 editorSelectionBehavior={app.editorSelectionBehavior}
                 engine={app.workerHandle.viewportStore}
                 definedNames={app.definedNames}

@@ -133,6 +133,8 @@ export function formatErrorCode(code: ErrorCode): string {
       return '#SPILL!'
     case ErrorCode.Blocked:
       return '#BLOCKED!'
+    case ErrorCode.Num:
+      return '#NUM!'
     default:
       return '#ERROR!'
   }
