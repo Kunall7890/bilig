@@ -119,6 +119,40 @@ describe('bulk cell values', () => {
     })
   })
 
+  it('keeps public literal batches on the same scalar-delta bulk queue', () => {
+    const rowCount = 160
+    const workbook = WorkPaper.buildFromSheets({
+      Bench: Array.from({ length: rowCount }, (_, row) => [row + 1, `=A${row + 1}*2`]),
+    })
+    const sheetId = workbook.getSheetId('Bench')!
+    const captureVisibilitySnapshot = vi.spyOn(workbook, 'captureVisibilitySnapshot').mockImplementation(() => {
+      throw new Error('public literal batches should not rebuild visibility snapshots')
+    })
+
+    try {
+      workbook.resetPerformanceCounters()
+      const changes = workbook.batch(() => {
+        for (let row = 0; row < rowCount; row += 1) {
+          workbook.setCellContents(cell(sheetId, row, 0), row * 3)
+        }
+      })
+
+      expect(changes).toHaveLength(rowCount * 2)
+      expect(hasDeferredTrackedIndexChanges(changes)).toBe(true)
+      expect(workbook.getCellValue(cell(sheetId, rowCount - 1, 1))).toEqual({
+        tag: ValueTag.Number,
+        value: (rowCount - 1) * 6,
+      })
+      expect(workbook.getPerformanceCounters()).toMatchObject({
+        changedCellPayloadsBuilt: 0,
+        directScalarDeltaApplications: rowCount,
+        directScalarDeltaOnlyRecalcSkips: 1,
+      })
+    } finally {
+      captureVisibilitySnapshot.mockRestore()
+    }
+  })
+
   it('applies dense same-sheet range values without caller-allocated update objects', () => {
     const rowCount = 160
     const workbook = WorkPaper.buildFromSheets({ Bench: buildTwoInputFormulaRows(rowCount) })

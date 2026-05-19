@@ -23,7 +23,13 @@ import {
   type WorkPaperStructuralAxisFastPathRuntime,
 } from './work-paper-structural-axis-fast-path.js'
 import { getVisibleWorkPaperCellIndexInSheet, readWorkPaperCellValue } from './work-paper-cell-read.js'
-import { makeNamedExpressionKey } from './work-paper-runtime-helpers.js'
+import {
+  assertRowAndColumn,
+  isDeferredBatchLiteralContent,
+  isFormulaContent,
+  isWorkPaperSheetMatrix,
+  makeNamedExpressionKey,
+} from './work-paper-runtime-helpers.js'
 import { orderWorkPaperCellChanges } from './change-order.js'
 import type { InternalNamedExpression, WorkPaperNamedExpressionValueSnapshot } from './work-paper-named-expression-helpers.js'
 import type { WorkPaperEngineEventTracker } from './work-paper-engine-event-tracker.js'
@@ -355,12 +361,37 @@ export abstract class WorkPaperRuntimeFastPathBase extends WorkPaperRuntimeSurfa
     ]
   }
 
+  private tryEnqueueDeferredBatchLiteralCellContents(
+    address: WorkPaperCellAddress,
+    content: RawCellContent | WorkPaperSheet,
+  ): WorkPaperChange[] | null {
+    if (this.batchDepth === 0 || this.evaluationSuspended || isWorkPaperSheetMatrix(content)) {
+      return null
+    }
+    if (!isDeferredBatchLiteralContent(content) || isFormulaContent(content)) {
+      return null
+    }
+    this.assertNotDisposed()
+    const sheet = this.sheetRecord(address.sheet)
+    assertRowAndColumn(address.row, 'address.row')
+    assertRowAndColumn(address.col, 'address.col')
+    if (address.row >= (this.config.maxRows ?? MAX_ROWS) || address.col >= (this.config.maxColumns ?? MAX_COLS)) {
+      throw new WorkPaperOperationError('Cell contents cannot be set')
+    }
+    const visibleCellIndex = this.getVisibleCellIndexInSheet(sheet, address.row, address.col)
+    return this.enqueueDeferredBatchLiteral(address.sheet, address.row, address.col, content, visibleCellIndex) ? [] : null
+  }
+
   override getCellValue(address: WorkPaperCellAddress): CellValue {
     this.assertReadable()
     return readWorkPaperCellValue({ engine: this.engine, sheet: this.sheetRecord(address.sheet), address })
   }
 
   override setCellContents(address: WorkPaperCellAddress, content: RawCellContent | WorkPaperSheet): WorkPaperChange[] {
+    const deferredBatchChanges = this.tryEnqueueDeferredBatchLiteralCellContents(address, content)
+    if (deferredBatchChanges !== null) {
+      return deferredBatchChanges
+    }
     const inlineDirectChanges = this.trySetExistingNumericCellContentsInlineDirectFastPath(address, content)
     if (inlineDirectChanges !== null) {
       return inlineDirectChanges
