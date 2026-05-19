@@ -4,6 +4,8 @@ import { fileURLToPath } from 'node:url'
 
 const repoRoot = join(dirname(fileURLToPath(import.meta.url)), '..')
 const siteRoot = 'https://proompteng.github.io/bilig'
+const remoteMcpEndpoint = 'https://bilig.proompteng.ai/mcp'
+const remoteMcpAliasEndpoint = 'https://bilig.proompteng.ai/mcp/workpaper'
 const repositoryUrl = 'https://github.com/proompteng/bilig'
 const skillName = 'bilig-workpaper'
 const headlessPackageSpec = `@bilig/headless@${parsePackageVersion(
@@ -41,6 +43,10 @@ Use this file when an AI coding agent, MCP client, or tool host needs workbook f
 2. Read \`${siteRoot}/llms-full.txt\` when you need enough context to implement a workflow without searching the whole site.
 3. Read \`${siteRoot}/skill.txt\` when your agent supports skill manifests.
 4. Start the MCP server or import \`@bilig/headless\` directly.
+
+Remote MCP clients that support Streamable HTTP can smoke-test the stateless
+demo endpoint at \`${remoteMcpEndpoint}\`. Local agents that need writable
+project files should still prefer the file-backed stdio command below.
 
 ## Default Decision
 
@@ -81,7 +87,7 @@ Keep Excel, LibreOffice, Microsoft Graph, or an oracle harness in the loop when 
 const skillDocument = `---
 name: bilig-workpaper
 version: 0.1.0
-description: Use @bilig/headless WorkPaper state for workbook formulas, agent spreadsheet tools, MCP file-backed editing, and XLSX formula bug reports without driving spreadsheet UI.
+description: Use @bilig/headless WorkPaper state for workbook formulas, agent spreadsheet tools, MCP file-backed or remote demo editing, and XLSX formula bug reports without driving spreadsheet UI.
 tags:
   - ai-agents
   - spreadsheet-automation
@@ -103,7 +109,7 @@ Trigger this skill for tasks involving:
 - formula readback after writing cells;
 - quote, budget, payout, pricing, import-validation, or forecast models;
 - agent spreadsheet tools that need deterministic cell addresses;
-- MCP clients that can run a stdio server;
+- MCP clients that can run a stdio server or call a Streamable HTTP endpoint;
 - reduced XLSX formula bugs that need a paste-ready report.
 
 Do not trigger it for manual spreadsheet editing, Office macros, VBA, pivots, charts, COM automation, or exact Excel desktop behavior unless the user explicitly asks to compare Bilig against an Excel oracle.
@@ -114,7 +120,8 @@ Do not build shell commands by concatenating user text. Treat the commands below
 
 ## First Choice: MCP
 
-Use MCP when the host can run a stdio server. Configure it as an argument array, not a shell-concatenated string:
+Use MCP when the host can run a stdio server or call a Streamable HTTP server.
+Configure stdio as an argument array, not a shell-concatenated string:
 
 \`\`\`json
 {
@@ -144,6 +151,18 @@ The useful file-backed tools are:
 - \`validate_formula\`
 
 After a write, always read the dependent output cell and export the WorkPaper document.
+
+For remote MCP clients, use the stateless demo endpoint when the client supports
+Streamable HTTP:
+
+\`\`\`text
+${remoteMcpEndpoint}
+${remoteMcpAliasEndpoint}
+\`\`\`
+
+The remote endpoint is request-local and does not write user files. Use it for
+connector smoke tests, tool discovery, and agent onboarding; use the file-backed
+stdio command when the workflow must persist a project WorkPaper JSON file.
 
 ## Second Choice: Direct TypeScript
 
@@ -325,6 +344,14 @@ function agentJsonManifest(): string {
         server_card: `${siteRoot}/.well-known/mcp/server-card.json`,
         manifest: `${siteRoot}/.well-known/mcp.json`,
         registry_search: 'https://registry.modelcontextprotocol.io/v0.1/servers?search=io.github.proompteng%2Fbilig-workpaper',
+        remote_endpoint: remoteMcpEndpoint,
+        remote_alias_endpoint: remoteMcpAliasEndpoint,
+        remote_transport: {
+          type: 'streamable-http',
+          protocol_version: '2025-11-25',
+          stateless: true,
+          authentication_required: false,
+        },
         command: 'npm',
         args: [
           'exec',
@@ -370,6 +397,15 @@ function agentJsonManifest(): string {
           server_card: `${siteRoot}/.well-known/mcp/server-card.json`,
         },
         {
+          name: 'remote-workpaper-mcp-demo',
+          type: 'mcp-streamable-http-server',
+          endpoint: remoteMcpEndpoint,
+          alias_endpoint: remoteMcpAliasEndpoint,
+          protocol_version: '2025-11-25',
+          authentication_required: false,
+          docs: `${siteRoot}/mcp-workpaper-tool-server.html#remote-stateless-endpoint`,
+        },
+        {
           name: 'formula-clinic',
           type: 'local-cli',
           command: `npm exec --package ${headlessPackageSpec} -- bilig-formula-clinic ./reduced.xlsx --cells "Summary!B7,Inputs!B2"`,
@@ -397,6 +433,7 @@ function agentJsonManifest(): string {
         `${siteRoot}/why-use-bilig.html`,
         `${siteRoot}/headless-workpaper-agent-handbook.html`,
         `${siteRoot}/mcp-workpaper-tool-server.html`,
+        remoteMcpEndpoint,
         `${siteRoot}/agent-workpaper-tool-calling-recipe.html`,
         `${siteRoot}/node-framework-workpaper-adapters.html`,
         `${siteRoot}/npm-provenance-package-trust.html`,

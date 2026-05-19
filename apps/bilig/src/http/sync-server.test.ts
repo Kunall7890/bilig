@@ -44,6 +44,7 @@ const upstreamServers: TestServer[] = []
 afterEach(async () => {
   delete process.env['BILIG_ZERO_PROXY_UPSTREAM']
   delete process.env['BILIG_PERSIST_STATE']
+  delete process.env['BILIG_REMOTE_MCP_ALLOWED_ORIGINS']
   await Promise.all(upstreamServers.splice(0).map((server) => server.close()))
 })
 
@@ -269,6 +270,37 @@ function createReviewQueueItem(bundle: WorkbookAgentCommandBundle) {
   })
 }
 
+function readMcpToolNames(responseBody: unknown): string[] {
+  const tools = readMcpTools(responseBody)
+  return tools.map((tool) => {
+    if (!isRecord(tool) || typeof tool['name'] !== 'string') {
+      throw new Error(`Expected MCP tool definition, received ${JSON.stringify(tool)}`)
+    }
+    return tool['name']
+  })
+}
+
+function readMcpToolAnnotations(responseBody: unknown, toolName: string): Record<string, unknown> {
+  const tool = readMcpTools(responseBody).find((candidate) => isRecord(candidate) && candidate['name'] === toolName)
+  if (!isRecord(tool) || !isRecord(tool['annotations'])) {
+    throw new Error(`Expected MCP tool annotations for ${toolName}, received ${JSON.stringify(responseBody)}`)
+  }
+  return tool['annotations']
+}
+
+function readMcpTools(responseBody: unknown): unknown[] {
+  const result = isRecord(responseBody) ? responseBody['result'] : undefined
+  const tools = isRecord(result) ? result['tools'] : undefined
+  if (!Array.isArray(tools)) {
+    throw new Error(`Expected tools/list response, received ${JSON.stringify(responseBody)}`)
+  }
+  return tools
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value)
+}
+
 describe('sync-server zero keepalive', () => {
   it('proxies a healthy keepalive response without using the generic zero proxy route', async () => {
     const upstream = await startHttpServer((request, response) => {
@@ -342,6 +374,324 @@ describe('sync-server cross-origin isolation', () => {
       )
       expect(response.headers['content-security-policy']).toEqual(expect.stringContaining("script-src 'self' 'wasm-unsafe-eval'"))
       expect(response.headers['content-security-policy']).toEqual(expect.stringContaining("worker-src 'self' blob:"))
+    } finally {
+      await app.close()
+    }
+  })
+})
+
+describe('sync-server remote WorkPaper MCP', () => {
+  it('initializes a stateless Streamable HTTP MCP endpoint with WorkPaper tools', async () => {
+    const { app } = createSyncServer({ logger: false })
+
+    try {
+      const response = await app.inject({
+        method: 'POST',
+        url: '/mcp',
+        headers: {
+          accept: 'application/json, text/event-stream',
+          'content-type': 'application/json',
+          'mcp-protocol-version': '2025-11-25',
+          origin: 'https://claude.ai',
+        },
+        payload: JSON.stringify({
+          jsonrpc: '2.0',
+          id: 1,
+          method: 'initialize',
+          params: {
+            protocolVersion: '2025-11-25',
+            capabilities: {},
+            clientInfo: {
+              name: 'test-client',
+              version: '1.0.0',
+            },
+          },
+        }),
+      })
+
+      expect(response.statusCode).toBe(200)
+      expect(response.headers['content-type']).toContain('application/json')
+      expect(response.headers['cache-control']).toBe('no-store')
+      expect(response.headers['mcp-protocol-version']).toBe('2025-11-25')
+      expect(response.headers['access-control-allow-origin']).toBe('https://claude.ai')
+      expect(response.headers['mcp-session-id']).toBeUndefined()
+      expect(response.headers['set-cookie']).toBeUndefined()
+      expect(response.json()).toMatchObject({
+        jsonrpc: '2.0',
+        id: 1,
+        result: {
+          protocolVersion: '2025-11-25',
+          capabilities: {
+            tools: {
+              listChanged: false,
+            },
+            resources: {
+              listChanged: false,
+              subscribe: false,
+            },
+            prompts: {
+              listChanged: false,
+            },
+          },
+          serverInfo: {
+            name: 'bilig-workpaper-remote-demo',
+            title: 'Bilig WorkPaper Remote Demo',
+          },
+        },
+      })
+    } finally {
+      await app.close()
+    }
+  })
+
+  it('lists directory-friendly WorkPaper MCP tools over the HTTP alias', async () => {
+    const { app } = createSyncServer({ logger: false })
+
+    try {
+      const response = await app.inject({
+        method: 'POST',
+        url: '/mcp/workpaper',
+        headers: {
+          accept: 'application/json, text/event-stream',
+          'content-type': 'application/json',
+          'mcp-protocol-version': '2025-11-25',
+        },
+        payload: JSON.stringify({
+          jsonrpc: '2.0',
+          id: 'tools',
+          method: 'tools/list',
+        }),
+      })
+
+      expect(response.statusCode).toBe(200)
+      const body = response.json()
+      expect(readMcpToolNames(body)).toEqual([
+        'list_sheets',
+        'read_range',
+        'read_cell',
+        'set_cell_contents',
+        'get_cell_display_value',
+        'export_workpaper_document',
+        'validate_formula',
+      ])
+      expect(readMcpToolAnnotations(body, 'set_cell_contents')).toMatchObject({
+        readOnlyHint: false,
+        destructiveHint: false,
+        openWorldHint: false,
+      })
+    } finally {
+      await app.close()
+    }
+  })
+
+  it('edits the demo WorkPaper in request-local memory and returns readback proof', async () => {
+    const { app } = createSyncServer({ logger: false })
+
+    try {
+      const response = await app.inject({
+        method: 'POST',
+        url: '/mcp',
+        headers: {
+          accept: 'application/json, text/event-stream',
+          'content-type': 'application/json',
+          'mcp-protocol-version': '2025-11-25',
+        },
+        payload: JSON.stringify({
+          jsonrpc: '2.0',
+          id: 2,
+          method: 'tools/call',
+          params: {
+            name: 'set_cell_contents',
+            arguments: {
+              sheetName: 'Inputs',
+              address: 'B3',
+              value: 0.4,
+            },
+          },
+        }),
+      })
+
+      expect(response.statusCode).toBe(200)
+      expect(response.json()).toMatchObject({
+        jsonrpc: '2.0',
+        id: 2,
+        result: {
+          isError: false,
+          structuredContent: {
+            editedCell: 'Inputs!B3',
+            before: {
+              serialized: 0.25,
+            },
+            after: {
+              serialized: 0.4,
+            },
+            persistence: {
+              persisted: false,
+            },
+            checks: {
+              persisted: false,
+              restoredMatchesAfter: true,
+            },
+          },
+        },
+      })
+    } finally {
+      await app.close()
+    }
+  })
+
+  it('accepts notifications with HTTP 202 and no body', async () => {
+    const { app } = createSyncServer({ logger: false })
+
+    try {
+      const response = await app.inject({
+        method: 'POST',
+        url: '/mcp',
+        headers: {
+          accept: 'application/json, text/event-stream',
+          'content-type': 'application/json',
+          'mcp-protocol-version': '2025-11-25',
+        },
+        payload: JSON.stringify({
+          jsonrpc: '2.0',
+          method: 'notifications/initialized',
+        }),
+      })
+
+      expect(response.statusCode).toBe(202)
+      expect(response.body).toBe('')
+    } finally {
+      await app.close()
+    }
+  })
+
+  it('handles ping requests and JSON-RPC response messages over POST', async () => {
+    const { app } = createSyncServer({ logger: false })
+
+    try {
+      const ping = await app.inject({
+        method: 'POST',
+        url: '/mcp',
+        headers: {
+          accept: 'application/json, text/event-stream',
+          'content-type': 'application/json',
+          'mcp-protocol-version': '2025-11-25',
+        },
+        payload: JSON.stringify({
+          jsonrpc: '2.0',
+          id: 'ping-1',
+          method: 'ping',
+        }),
+      })
+
+      expect(ping.statusCode).toBe(200)
+      expect(ping.json()).toEqual({
+        jsonrpc: '2.0',
+        id: 'ping-1',
+        result: {},
+      })
+
+      const responseMessage = await app.inject({
+        method: 'POST',
+        url: '/mcp',
+        headers: {
+          accept: 'application/json, text/event-stream',
+          'content-type': 'application/json',
+          'mcp-protocol-version': '2025-11-25',
+        },
+        payload: JSON.stringify({
+          jsonrpc: '2.0',
+          id: 'client-response',
+          result: {},
+        }),
+      })
+
+      expect(responseMessage.statusCode).toBe(202)
+      expect(responseMessage.body).toBe('')
+    } finally {
+      await app.close()
+    }
+  })
+
+  it('rejects invalid Streamable HTTP headers without minting a session cookie', async () => {
+    const { app } = createSyncServer({ logger: false })
+
+    try {
+      const invalidOrigin = await app.inject({
+        method: 'POST',
+        url: '/mcp',
+        headers: {
+          accept: 'application/json, text/event-stream',
+          'content-type': 'application/json',
+          'mcp-protocol-version': '2025-11-25',
+          origin: 'https://attacker.example',
+        },
+        payload: JSON.stringify({
+          jsonrpc: '2.0',
+          id: 1,
+          method: 'tools/list',
+        }),
+      })
+
+      expect(invalidOrigin.statusCode).toBe(403)
+      expect(invalidOrigin.headers['set-cookie']).toBeUndefined()
+      expect(invalidOrigin.json()).toMatchObject({
+        jsonrpc: '2.0',
+        id: null,
+        error: {
+          message: 'Forbidden Origin header',
+        },
+      })
+
+      const invalidProtocol = await app.inject({
+        method: 'POST',
+        url: '/mcp',
+        headers: {
+          accept: 'application/json, text/event-stream',
+          'content-type': 'application/json',
+          'mcp-protocol-version': '2024-11-05',
+        },
+        payload: JSON.stringify({
+          jsonrpc: '2.0',
+          id: 1,
+          method: 'tools/list',
+        }),
+      })
+
+      expect(invalidProtocol.statusCode).toBe(400)
+      expect(invalidProtocol.json()).toMatchObject({
+        jsonrpc: '2.0',
+        id: null,
+        error: {
+          message: expect.stringContaining('Unsupported MCP-Protocol-Version'),
+        },
+      })
+    } finally {
+      await app.close()
+    }
+  })
+
+  it('returns 405 for GET because the stateless endpoint does not offer SSE', async () => {
+    const { app } = createSyncServer({ logger: false })
+
+    try {
+      const response = await app.inject({
+        method: 'GET',
+        url: '/mcp',
+        headers: {
+          accept: 'text/event-stream',
+        },
+      })
+
+      expect(response.statusCode).toBe(405)
+      expect(response.headers['allow']).toBe('POST, GET, DELETE, OPTIONS')
+      expect(response.json()).toMatchObject({
+        jsonrpc: '2.0',
+        id: null,
+        error: {
+          message: 'Method not allowed; this stateless endpoint returns JSON over POST',
+        },
+      })
     } finally {
       await app.close()
     }

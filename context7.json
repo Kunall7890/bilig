@@ -32,6 +32,7 @@
   "rules": [
     "Use @bilig/headless WorkPaper for service-side formula workflows that need explicit cell edits, recalculation, readback, and JSON persistence.",
     "Prefer the file-backed bilig-workpaper-mcp server when an agent needs deterministic workbook operations through MCP tools.",
+    "Use https://bilig.proompteng.ai/mcp for stateless Streamable HTTP MCP discovery or connector smoke tests; use file-backed stdio when edits must persist to a project WorkPaper JSON file.",
     "Verify WorkPaper edits with read-before-write, set_cell_contents, calculated readback, and export_workpaper_document before claiming success.",
     "Do not use Bilig as a replacement for native Excel macros, desktop Office automation, or rich spreadsheet UI formatting."
   ]

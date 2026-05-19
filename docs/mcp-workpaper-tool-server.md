@@ -123,14 +123,49 @@ printf '%s\n' \
 The npm package exposes the demo server as `bilig-workpaper-mcp` by default:
 
 ```sh
-npm exec --package @bilig/headless@0.23.3 -- bilig-workpaper-mcp
+npm exec --package @bilig/headless@0.23.4 -- bilig-workpaper-mcp
 ```
+
+## Remote Stateless Endpoint
+
+The hosted app runtime also exposes a JSON-only Streamable HTTP MCP endpoint for
+clients that cannot launch a local stdio process:
+
+```text
+https://bilig.proompteng.ai/mcp
+```
+
+There is also a compatibility alias:
+
+```text
+https://bilig.proompteng.ai/mcp/workpaper
+```
+
+The endpoint is stateless and request-local. It loads the packaged demo
+WorkPaper for each JSON-RPC request, exposes the same file-backed tool catalog,
+resources, and prompts, and returns write/readback proof without writing user
+files or issuing an MCP session id. Use it for Claude custom connector smoke
+tests, directory probes, and agent onboarding. Use local file-backed stdio when
+an agent needs to persist a real project WorkPaper JSON file.
+
+Protocol smoke:
+
+```sh
+curl -fsS https://bilig.proompteng.ai/mcp \
+  -H 'content-type: application/json' \
+  -H 'accept: application/json, text/event-stream' \
+  -H 'mcp-protocol-version: 2025-11-25' \
+  --data '{"jsonrpc":"2.0","id":1,"method":"tools/list"}' | jq '.result.tools[].name'
+```
+
+For server-to-server clients, omit `Origin`. Browser-based clients must send an
+allowed `Origin`; Claude origins are allowed by default.
 
 For a real agent workflow, point the same binary at a persisted WorkPaper JSON
 document:
 
 ```sh
-npm exec --package @bilig/headless@0.23.3 -- bilig-workpaper-mcp --workpaper ./pricing.workpaper.json --init-demo-workpaper --writable
+npm exec --package @bilig/headless@0.23.4 -- bilig-workpaper-mcp --workpaper ./pricing.workpaper.json --init-demo-workpaper --writable
 ```
 
 File-backed mode loads `./pricing.workpaper.json`, exposes `list_sheets`,
@@ -250,7 +285,7 @@ import { generateText } from 'ai'
 const client = await createMCPClient({
   transport: new Experimental_StdioMCPTransport({
     command: 'npm',
-    args: ['exec', '--package', '@bilig/headless@0.23.3', '--', 'bilig-workpaper-mcp'],
+    args: ['exec', '--package', '@bilig/headless@0.23.4', '--', 'bilig-workpaper-mcp'],
   }),
 })
 

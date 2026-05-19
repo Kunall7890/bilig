@@ -63,7 +63,7 @@ around the same WorkPaper model.
 Reduced workbook already in hand?
 
 ```sh
-npm exec --package @bilig/headless@0.23.3 -- bilig-formula-clinic ./reduced.xlsx --cells "Summary!B7,Inputs!B2"
+npm exec --package @bilig/headless@0.23.4 -- bilig-formula-clinic ./reduced.xlsx --cells "Summary!B7,Inputs!B2"
 ```
 
 ## Install
@@ -368,9 +368,9 @@ MCP examples:
 - The package ships npm-executable binaries:
 
 ```sh
-npm exec --package @bilig/headless@0.23.3 -- bilig-formula-clinic ./reduced.xlsx --cells "Summary!B7,Inputs!B2"
-npm exec --package @bilig/headless@0.23.3 -- bilig-workpaper-mcp
-npm exec --package @bilig/headless@0.23.3 -- bilig-workpaper-mcp --workpaper ./pricing.workpaper.json --init-demo-workpaper --writable
+npm exec --package @bilig/headless@0.23.4 -- bilig-formula-clinic ./reduced.xlsx --cells "Summary!B7,Inputs!B2"
+npm exec --package @bilig/headless@0.23.4 -- bilig-workpaper-mcp
+npm exec --package @bilig/headless@0.23.4 -- bilig-workpaper-mcp --workpaper ./pricing.workpaper.json --init-demo-workpaper --writable
 docker build --target bilig-workpaper-mcp -t bilig-workpaper-mcp:local .
 ```
 
@@ -401,6 +401,17 @@ official MCP Registry:
 It is also live on Glama with `Try in Browser`, A-grade tool pages, and all
 seven file-backed WorkPaper tools:
 <https://glama.ai/mcp/servers/proompteng/bilig>.
+
+Clients that support Streamable HTTP MCP can also use the hosted stateless demo
+endpoint:
+
+```text
+https://bilig.proompteng.ai/mcp
+```
+
+That endpoint is request-local and does not persist user files. Use it for
+connector smoke tests and tool discovery; use local file-backed stdio when a
+project needs to save a WorkPaper JSON file.
 
 For setup details, use the
 [headless WorkPaper agent handbook](https://github.com/proompteng/bilig/blob/main/docs/headless-workpaper-agent-handbook.md),

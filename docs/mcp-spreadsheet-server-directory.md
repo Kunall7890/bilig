@@ -22,7 +22,7 @@ Cursor, VS Code, Codex, or another stdio MCP client.
 ## Canonical Package
 
 ```sh
-npm exec --package @bilig/headless@0.23.3 -- bilig-workpaper-mcp
+npm exec --package @bilig/headless@0.23.4 -- bilig-workpaper-mcp
 ```
 
 Package metadata:
@@ -39,6 +39,18 @@ Package metadata:
 
 The server is local-first stdio. It does not need a hosted Bilig account or a
 network service to answer `tools/list` and `tools/call`.
+
+For directories and clients that prefer hosted MCP, the app runtime exposes a
+stateless Streamable HTTP endpoint:
+
+```text
+https://bilig.proompteng.ai/mcp
+```
+
+That endpoint is for discovery, connector smoke tests, and agent onboarding. It
+does not persist user workbooks or issue an MCP session id. The local stdio
+server remains the recommended path when an agent needs to own a project
+WorkPaper JSON file.
 
 For directory scanners that need a containerized start command, the root
 Dockerfile exposes a dedicated MCP target without changing the production app
@@ -74,7 +86,8 @@ crawlers that probe those well-known variants.
 
 | Directory                       | Status                                                                                | Link                                                                                                  |
 | ------------------------------- | ------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------- |
-| Official MCP Registry           | Live through `0.23.3` in public search when requesting enough results                 | <https://registry.modelcontextprotocol.io/v0.1/servers?search=io.github.proompteng%2Fbilig-workpaper&limit=100> |
+| Official MCP Registry           | Live through `0.23.4` in public search when requesting enough results                 | <https://registry.modelcontextprotocol.io/v0.1/servers?search=io.github.proompteng%2Fbilig-workpaper&limit=100> |
+| Hosted Streamable HTTP endpoint | App runtime endpoint for JSON-only stateless MCP smoke tests                          | <https://bilig.proompteng.ai/mcp>                                                                     |
 | Static MCP server card          | Live                                                                                  | <https://proompteng.github.io/bilig/.well-known/mcp/server-card.json>                                 |
 | Static MCP discovery aliases    | Live                                                                                  | <https://proompteng.github.io/bilig/.well-known/mcp.json>                                             |
 | Glama                           | Live with `Try in Browser`; seven tools indexed with A-grade TDQS                     | <https://glama.ai/mcp/servers/proompteng/bilig>                                                       |
@@ -172,8 +185,8 @@ A useful result includes:
 - `transport.type: stdio`
 - `repository.url: https://github.com/proompteng/bilig`
 
-Latest checked result on May 19, 2026: npm latest is `@bilig/headless@0.23.3`.
-Official Registry search returns Bilig WorkPaper version `0.23.3` when the
+Latest checked result on May 19, 2026: npm latest is `@bilig/headless@0.23.4`.
+Official Registry search returns Bilig WorkPaper version `0.23.4` when the
 query asks for enough results, for example with `limit=100`. The API also
 returns historical entries, so consumers should follow pagination, request a
 sufficient limit, select the latest-marked entry when available, or prefer the
@@ -217,7 +230,7 @@ printf '%s\n' \
   '{"jsonrpc":"2.0","id":1,"method":"initialize"}' \
   '{"jsonrpc":"2.0","method":"notifications/initialized"}' \
   '{"jsonrpc":"2.0","id":2,"method":"tools/list"}' |
-  npm exec --package @bilig/headless@0.23.3 -- \
+  npm exec --package @bilig/headless@0.23.4 -- \
     bilig-workpaper-mcp --workpaper ./pricing.workpaper.json --init-demo-workpaper --writable
 ```
 
@@ -225,13 +238,25 @@ That mode exposes `list_sheets`, `read_range`, `read_cell`,
 `set_cell_contents`, `get_cell_display_value`, `export_workpaper_document`, and
 `validate_formula`.
 
-## Short Listing Copy
-
-Bilig WorkPaper is a local stdio MCP server for formula-backed workbook
-automation. It lets agents and Node services read workbook summaries, edit input
-cells, recalculate formulas, verify readback, and persist WorkPaper JSON through
-the published `@bilig/headless` package.
+For remote Streamable HTTP smoke:
 
 ```sh
-npm exec --package @bilig/headless@0.23.3 -- bilig-workpaper-mcp
+curl -fsS https://bilig.proompteng.ai/mcp \
+  -H 'content-type: application/json' \
+  -H 'accept: application/json, text/event-stream' \
+  -H 'mcp-protocol-version: 2025-11-25' \
+  --data '{"jsonrpc":"2.0","id":1,"method":"tools/list"}' | jq '.result.tools[].name'
+```
+
+## Short Listing Copy
+
+Bilig WorkPaper is an MCP server for formula-backed workbook automation. It has
+a local file-backed stdio server for project WorkPaper JSON files and a hosted
+stateless Streamable HTTP endpoint for connector smoke tests. Agents and Node
+services can read workbook summaries, edit input cells, recalculate formulas,
+verify readback, and persist WorkPaper JSON through the published
+`@bilig/headless` package.
+
+```sh
+npm exec --package @bilig/headless@0.23.4 -- bilig-workpaper-mcp
 ```

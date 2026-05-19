@@ -69,6 +69,23 @@ export async function requireAgentPublicSurfaceDiscovery(input: {
   if (typeof parsedMcpServerCard !== 'object' || parsedMcpServerCard === null || Array.isArray(parsedMcpServerCard)) {
     throw new Error('docs/.well-known/mcp/server-card.json must be a JSON object')
   }
+  if (Reflect.get(parsedMcpServerCard, 'protocolVersion') !== '2025-11-25') {
+    throw new Error('docs/.well-known/mcp/server-card.json must advertise the latest MCP protocol version')
+  }
+  const mcpServerCardTransports = Reflect.get(parsedMcpServerCard, 'transports')
+  if (
+    !Array.isArray(mcpServerCardTransports) ||
+    !mcpServerCardTransports.some(
+      (transport) =>
+        typeof transport === 'object' &&
+        transport !== null &&
+        Reflect.get(transport, 'type') === 'streamable-http' &&
+        Reflect.get(transport, 'url') === 'https://bilig.proompteng.ai/mcp' &&
+        Reflect.get(transport, 'stateless') === true,
+    )
+  ) {
+    throw new Error('docs/.well-known/mcp/server-card.json must advertise the hosted stateless Streamable HTTP endpoint')
+  }
   const mcpServerCardTools = Reflect.get(parsedMcpServerCard, 'tools')
   if (
     !Array.isArray(mcpServerCardTools) ||

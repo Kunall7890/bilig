@@ -16,6 +16,7 @@
     "@bilig/core": "workspace:*",
     "@bilig/excel-import": "workspace:*",
     "@bilig/formula": "workspace:*",
+    "@bilig/headless": "workspace:*",
     "@bilig/protocol": "workspace:*",
     "@bilig/runtime-kernel": "workspace:*",
     "@bilig/storage-server": "workspace:*",

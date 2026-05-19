@@ -1,7 +1,7 @@
 ---
 name: bilig-workpaper
 version: 0.1.0
-description: Use @bilig/headless WorkPaper state for workbook formulas, agent spreadsheet tools, MCP file-backed editing, and XLSX formula bug reports without driving spreadsheet UI.
+description: Use @bilig/headless WorkPaper state for workbook formulas, agent spreadsheet tools, MCP file-backed or remote demo editing, and XLSX formula bug reports without driving spreadsheet UI.
 tags:
   - ai-agents
   - spreadsheet-automation
@@ -23,7 +23,7 @@ Trigger this skill for tasks involving:
 - formula readback after writing cells;
 - quote, budget, payout, pricing, import-validation, or forecast models;
 - agent spreadsheet tools that need deterministic cell addresses;
-- MCP clients that can run a stdio server;
+- MCP clients that can run a stdio server or call a Streamable HTTP endpoint;
 - reduced XLSX formula bugs that need a paste-ready report.
 
 Do not trigger it for manual spreadsheet editing, Office macros, VBA, pivots, charts, COM automation, or exact Excel desktop behavior unless the user explicitly asks to compare Bilig against an Excel oracle.
@@ -34,7 +34,8 @@ Do not build shell commands by concatenating user text. Treat the commands below
 
 ## First Choice: MCP
 
-Use MCP when the host can run a stdio server. Configure it as an argument array, not a shell-concatenated string:
+Use MCP when the host can run a stdio server or call a Streamable HTTP server.
+Configure stdio as an argument array, not a shell-concatenated string:
 
 ```json
 {
@@ -42,7 +43,7 @@ Use MCP when the host can run a stdio server. Configure it as an argument array,
   "args": [
     "exec",
     "--package",
-    "@bilig/headless@0.23.3",
+    "@bilig/headless@0.23.4",
     "--",
     "bilig-workpaper-mcp",
     "--workpaper",
@@ -64,6 +65,18 @@ The useful file-backed tools are:
 - `validate_formula`
 
 After a write, always read the dependent output cell and export the WorkPaper document.
+
+For remote MCP clients, use the stateless demo endpoint when the client supports
+Streamable HTTP:
+
+```text
+https://bilig.proompteng.ai/mcp
+https://bilig.proompteng.ai/mcp/workpaper
+```
+
+The remote endpoint is request-local and does not write user files. Use it for
+connector smoke tests, tool discovery, and agent onboarding; use the file-backed
+stdio command when the workflow must persist a project WorkPaper JSON file.
 
 ## Second Choice: Direct TypeScript
 
@@ -104,7 +117,7 @@ When the user has a reduced XLSX formula/import bug, generate a local report thr
 ```json
 {
   "command": "npm",
-  "args": ["exec", "--package", "@bilig/headless@0.23.3", "--", "bilig-formula-clinic", "./reduced.xlsx", "--cells", "Summary!B7,Inputs!B2"]
+  "args": ["exec", "--package", "@bilig/headless@0.23.4", "--", "bilig-formula-clinic", "./reduced.xlsx", "--cells", "Summary!B7,Inputs!B2"]
 }
 ```
 

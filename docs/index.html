@@ -417,10 +417,15 @@ function readNumber(cell: unknown): number {
                 <strong>MCP spreadsheet tool server</strong>
                 <em>WorkPaper reads and writes over tools/list and tools/call.</em>
               </a>
+              <a class="path-link" href="https://bilig.proompteng.ai/mcp">
+                <span>remote mcp</span>
+                <strong>Hosted MCP smoke endpoint</strong>
+                <em>Stateless Streamable HTTP endpoint for connector tests and tool discovery.</em>
+              </a>
               <a class="path-link" href="./mcp-client-setup.html">
                 <span>clients</span>
                 <strong>MCP client setup</strong>
-                <em>Claude, Cursor, VS Code, Cline, and Codex configs for the npm stdio server.</em>
+                <em>Remote MCP smoke plus Claude, Cursor, VS Code, Cline, and Codex configs for the npm stdio server.</em>
               </a>
               <a class="path-link" href="./claude-desktop-mcpb-workpaper.html">
                 <span>mcpb</span>
@@ -434,11 +439,14 @@ function readNumber(cell: unknown): number {
                 <span>bilig-workpaper-mcp</span>
                 <span>stdio</span>
               </div>
-              <pre><code>$ npm exec --package @bilig/headless@0.23.3 -- bilig-workpaper-mcp --workpaper ./pricing.workpaper.json --init-demo-workpaper --writable
+              <pre><code>$ npm exec --package @bilig/headless@0.23.4 -- bilig-workpaper-mcp --workpaper ./pricing.workpaper.json --init-demo-workpaper --writable
 <span class="ok">ok</span> tools/list
 <span class="ok">ok</span> tools/call read_range
 <span class="ok">ok</span> tools/call set_cell_contents
-<span class="ok">ok</span> WorkPaper JSON persisted to file</code></pre>
+<span class="ok">ok</span> WorkPaper JSON persisted to file
+
+$ curl https://bilig.proompteng.ai/mcp -H 'accept: application/json, text/event-stream' -H 'mcp-protocol-version: 2025-11-25' ...
+<span class="ok">ok</span> stateless Streamable HTTP tools/list</code></pre>
             </div>
           </div>
         </div>

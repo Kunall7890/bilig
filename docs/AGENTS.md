@@ -9,6 +9,10 @@ Use this file when an AI coding agent, MCP client, or tool host needs workbook f
 3. Read `https://proompteng.github.io/bilig/skill.txt` when your agent supports skill manifests.
 4. Start the MCP server or import `@bilig/headless` directly.
 
+Remote MCP clients that support Streamable HTTP can smoke-test the stateless
+demo endpoint at `https://bilig.proompteng.ai/mcp`. Local agents that need writable
+project files should still prefer the file-backed stdio command below.
+
 ## Default Decision
 
 Use Bilig when the task is workbook-shaped business logic: pricing, budget checks, payout models, import validation, forecasts, agent tools, or route handlers that need formula readback.
@@ -32,8 +36,8 @@ Do not claim success from a write call alone. The proof is computed readback plu
 ## Fast Commands
 
 ```sh
-npm exec --package @bilig/headless@0.23.3 -- bilig-workpaper-mcp --workpaper ./pricing.workpaper.json --init-demo-workpaper --writable
-npm exec --package @bilig/headless@0.23.3 -- bilig-formula-clinic ./reduced.xlsx --cells "Summary!B7,Inputs!B2"
+npm exec --package @bilig/headless@0.23.4 -- bilig-workpaper-mcp --workpaper ./pricing.workpaper.json --init-demo-workpaper --writable
+npm exec --package @bilig/headless@0.23.4 -- bilig-formula-clinic ./reduced.xlsx --cells "Summary!B7,Inputs!B2"
 ```
 
 ## Direct TypeScript

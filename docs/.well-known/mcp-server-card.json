@@ -1,7 +1,7 @@
 {
   "$schema": "https://modelcontextprotocol.io/schemas/server-card/v1.0",
   "version": "1.0",
-  "protocolVersion": "2025-06-18",
+  "protocolVersion": "2025-11-25",
   "serverInfo": {
     "name": "Bilig WorkPaper",
     "version": "latest",
@@ -22,6 +22,19 @@
     "command": "npm",
     "args": ["exec", "--package", "@bilig/headless", "--", "bilig-workpaper-mcp", "--demo-workpaper-tools"]
   },
+  "transports": [
+    {
+      "type": "streamable-http",
+      "url": "https://bilig.proompteng.ai/mcp",
+      "protocolVersion": "2025-11-25",
+      "stateless": true
+    },
+    {
+      "type": "stdio",
+      "command": "npm",
+      "args": ["exec", "--package", "@bilig/headless", "--", "bilig-workpaper-mcp", "--demo-workpaper-tools"]
+    }
+  ],
   "capabilities": {
     "tools": true,
     "resources": true,

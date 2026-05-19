@@ -1,5 +1,6 @@
 import { buildDemoWorkPaper, createWorkPaperMcpToolServer, type WorkPaperMcpToolServer } from './work-paper-mcp-server.js'
 import { WORKPAPER_VERSION } from './work-paper-version.js'
+import { createWorkPaperMcpJsonRpcError, dispatchWorkPaperMcpJsonRpc } from './work-paper-mcp-json-rpc.js'
 import type { WorkPaper } from './work-paper.js'
 import type { Readable, Writable } from 'node:stream'
 
@@ -53,88 +54,24 @@ function runDemoWorkPaperMcpStdioServer(options: WorkPaperMcpStdioOptions = {}):
     try {
       request = JSON.parse(line)
     } catch (error) {
-      writeJsonRpcError(null, -32700, `Parse error: ${errorMessage(error)}`)
+      writeJson(createWorkPaperMcpJsonRpcError(null, -32700, `Parse error: ${errorMessage(error)}`))
       return
     }
 
-    if (!isJsonRpcRequest(request)) {
-      const id = isRecord(request) ? request['id'] : null
-      writeJsonRpcError(isJsonRpcId(id) ? id : null, -32600, 'Invalid JSON-RPC 2.0 request')
-      return
-    }
-
-    try {
-      const response = dispatchJsonRpc(request)
-      if (response !== undefined) {
-        writeJson(response)
-      }
-    } catch (error) {
-      writeJsonRpcError(request.id ?? null, -32603, errorMessage(error))
-    }
-  }
-
-  function dispatchJsonRpc(request: JsonRpcRequest): unknown {
-    if (request.method === 'initialize') {
-      return {
-        jsonrpc: '2.0',
-        id: request.id,
-        result: {
-          protocolVersion: '2025-06-18',
-          capabilities: server.capabilities,
-          serverInfo: {
-            name: serverName,
-            version: serverVersion,
-          },
-        },
-      }
-    }
-
-    if (request.method === 'notifications/initialized' || request.id === undefined) {
-      return undefined
-    }
-
-    return server.handleJsonRpc(request)
-  }
-
-  function writeJsonRpcError(id: JsonRpcId, code: number, message: string): void {
-    writeJson({
-      jsonrpc: '2.0',
-      id,
-      error: {
-        code,
-        message,
-      },
+    const result = dispatchWorkPaperMcpJsonRpc(request, {
+      server,
+      protocolVersion: '2025-06-18',
+      serverName,
+      serverVersion,
     })
+    if (result.kind === 'response') {
+      writeJson(result.response)
+    }
   }
 
   function writeJson(value: unknown): void {
     output.write(`${JSON.stringify(value)}\n`)
   }
-}
-
-type JsonRpcId = string | number | null
-
-interface JsonRpcRequest {
-  jsonrpc: '2.0'
-  id: JsonRpcId | undefined
-  method: string
-  params?: Record<string, unknown>
-}
-
-function isJsonRpcRequest(value: unknown): value is JsonRpcRequest {
-  if (!isRecord(value) || value['jsonrpc'] !== '2.0' || typeof value['method'] !== 'string') {
-    return false
-  }
-
-  return value['id'] === undefined || isJsonRpcId(value['id'])
-}
-
-function isJsonRpcId(value: unknown): value is JsonRpcId {
-  return value === null || typeof value === 'string' || typeof value === 'number'
-}
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === 'object' && value !== null && !Array.isArray(value)
 }
 
 function errorMessage(error: unknown): string {

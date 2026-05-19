@@ -50,7 +50,7 @@ Reduced workbook already in hand? Generate the paste-ready fixture report in
 one command:
 
 ```sh
-npm exec --package @bilig/headless@0.23.3 -- bilig-formula-clinic ./reduced.xlsx --cells "Summary!B7,Inputs!B2"
+npm exec --package @bilig/headless@0.23.4 -- bilig-formula-clinic ./reduced.xlsx --cells "Summary!B7,Inputs!B2"
 ```
 
 Handing a spreadsheet task to another coding agent? Start with the
@@ -280,7 +280,7 @@ and [serverless quote approval](examples/serverless-workpaper-api). Run
 `npm run quote-approval-api`, `npm run agent:framework-adapters`,
 `npm run agent:mcp-tools`, `npm run agent:mcp-transcript`,
 `npm run agent:mcp-file-transcript`, `npm run agent:mcp-stdio`, or
-`npm exec --package @bilig/headless@0.23.3 -- bilig-workpaper-mcp` when that is the
+`npm exec --package @bilig/headless@0.23.4 -- bilig-workpaper-mcp` when that is the
 path you are evaluating.
 
 The serverless example also includes `npm run next-route-handler`,
@@ -290,6 +290,9 @@ framework-specific boundary checks.
 
 The MCP server is also listed in the official registry:
 <https://registry.modelcontextprotocol.io/v0.1/servers?search=io.github.proompteng%2Fbilig-workpaper>.
+Clients that support Streamable HTTP MCP can also smoke-test the stateless
+hosted endpoint at `https://bilig.proompteng.ai/mcp`; use the local stdio server
+when the agent needs to persist a project WorkPaper JSON file.
 
 ## Examples You Can Run
 
@@ -346,9 +349,9 @@ The agent framework guide is
 The package also ships the MCP stdio binary:
 
 ```sh
-npm exec --package @bilig/headless@0.23.3 -- bilig-formula-clinic ./reduced.xlsx --cells "Summary!B7,Inputs!B2"
-npm exec --package @bilig/headless@0.23.3 -- bilig-workpaper-mcp
-npm exec --package @bilig/headless@0.23.3 -- bilig-workpaper-mcp --workpaper ./pricing.workpaper.json --init-demo-workpaper --writable
+npm exec --package @bilig/headless@0.23.4 -- bilig-formula-clinic ./reduced.xlsx --cells "Summary!B7,Inputs!B2"
+npm exec --package @bilig/headless@0.23.4 -- bilig-workpaper-mcp
+npm exec --package @bilig/headless@0.23.4 -- bilig-workpaper-mcp --workpaper ./pricing.workpaper.json --init-demo-workpaper --writable
 docker build --target bilig-workpaper-mcp -t bilig-workpaper-mcp:local .
 ```
 
@@ -368,7 +371,9 @@ calling tools.
 The Docker target is for MCP directory scanners: it seeds a demo WorkPaper JSON
 inside the image and starts the file-backed `--writable` tool surface so
 `tools/list`, `resources/list`, and `prompts/list` return the general WorkPaper
-agent surface without cloning this monorepo.
+agent surface without cloning this monorepo. For remote MCP clients, the app
+runtime exposes `https://bilig.proompteng.ai/mcp` as a stateless JSON-only
+Streamable HTTP endpoint for tool discovery and write/readback smoke tests.
 
 It is published in the official MCP Registry as
 `io.github.proompteng/bilig-workpaper`:
@@ -419,7 +424,8 @@ seven file-backed WorkPaper tools:
   [official MCP Registry](https://registry.modelcontextprotocol.io/v0.1/servers?search=io.github.proompteng%2Fbilig-workpaper)
   and on [Glama](https://glama.ai/mcp/servers/proompteng/bilig). The
   [directory status page](docs/mcp-spreadsheet-server-directory.md) keeps the
-  npm command, static MCP server card, and directory evidence in one place.
+  npm command, remote endpoint, static MCP server card, and directory evidence
+  in one place.
 - Public feedback threads:
   [workflow questions](https://github.com/proompteng/bilig/discussions/157),
   [service examples](https://github.com/proompteng/bilig/discussions/213),

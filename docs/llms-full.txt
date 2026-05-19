@@ -21,6 +21,10 @@ Use this file when an AI coding agent, MCP client, or tool host needs workbook f
 3. Read `https://proompteng.github.io/bilig/skill.txt` when your agent supports skill manifests.
 4. Start the MCP server or import `@bilig/headless` directly.
 
+Remote MCP clients that support Streamable HTTP can smoke-test the stateless
+demo endpoint at `https://bilig.proompteng.ai/mcp`. Local agents that need writable
+project files should still prefer the file-backed stdio command below.
+
 ## Default Decision
 
 Use Bilig when the task is workbook-shaped business logic: pricing, budget checks, payout models, import validation, forecasts, agent tools, or route handlers that need formula readback.
@@ -44,8 +48,8 @@ Do not claim success from a write call alone. The proof is computed readback plu
 ## Fast Commands
 
 ```sh
-npm exec --package @bilig/headless@0.23.3 -- bilig-workpaper-mcp --workpaper ./pricing.workpaper.json --init-demo-workpaper --writable
-npm exec --package @bilig/headless@0.23.3 -- bilig-formula-clinic ./reduced.xlsx --cells "Summary!B7,Inputs!B2"
+npm exec --package @bilig/headless@0.23.4 -- bilig-workpaper-mcp --workpaper ./pricing.workpaper.json --init-demo-workpaper --writable
+npm exec --package @bilig/headless@0.23.4 -- bilig-formula-clinic ./reduced.xlsx --cells "Summary!B7,Inputs!B2"
 ```
 
 ## Direct TypeScript
@@ -60,7 +64,7 @@ Keep Excel, LibreOffice, Microsoft Graph, or an oracle harness in the loop when 
 ---
 name: bilig-workpaper
 version: 0.1.0
-description: Use @bilig/headless WorkPaper state for workbook formulas, agent spreadsheet tools, MCP file-backed editing, and XLSX formula bug reports without driving spreadsheet UI.
+description: Use @bilig/headless WorkPaper state for workbook formulas, agent spreadsheet tools, MCP file-backed or remote demo editing, and XLSX formula bug reports without driving spreadsheet UI.
 tags:
   - ai-agents
   - spreadsheet-automation
@@ -82,7 +86,7 @@ Trigger this skill for tasks involving:
 - formula readback after writing cells;
 - quote, budget, payout, pricing, import-validation, or forecast models;
 - agent spreadsheet tools that need deterministic cell addresses;
-- MCP clients that can run a stdio server;
+- MCP clients that can run a stdio server or call a Streamable HTTP endpoint;
 - reduced XLSX formula bugs that need a paste-ready report.
 
 Do not trigger it for manual spreadsheet editing, Office macros, VBA, pivots, charts, COM automation, or exact Excel desktop behavior unless the user explicitly asks to compare Bilig against an Excel oracle.
@@ -93,7 +97,8 @@ Do not build shell commands by concatenating user text. Treat the commands below
 
 ## First Choice: MCP
 
-Use MCP when the host can run a stdio server. Configure it as an argument array, not a shell-concatenated string:
+Use MCP when the host can run a stdio server or call a Streamable HTTP server.
+Configure stdio as an argument array, not a shell-concatenated string:
 
 ```json
 {
@@ -101,7 +106,7 @@ Use MCP when the host can run a stdio server. Configure it as an argument array,
   "args": [
     "exec",
     "--package",
-    "@bilig/headless@0.23.3",
+    "@bilig/headless@0.23.4",
     "--",
     "bilig-workpaper-mcp",
     "--workpaper",
@@ -123,6 +128,18 @@ The useful file-backed tools are:
 - `validate_formula`
 
 After a write, always read the dependent output cell and export the WorkPaper document.
+
+For remote MCP clients, use the stateless demo endpoint when the client supports
+Streamable HTTP:
+
+```text
+https://bilig.proompteng.ai/mcp
+https://bilig.proompteng.ai/mcp/workpaper
+```
+
+The remote endpoint is request-local and does not write user files. Use it for
+connector smoke tests, tool discovery, and agent onboarding; use the file-backed
+stdio command when the workflow must persist a project WorkPaper JSON file.
 
 ## Second Choice: Direct TypeScript
 
@@ -163,7 +180,7 @@ When the user has a reduced XLSX formula/import bug, generate a local report thr
 ```json
 {
   "command": "npm",
-  "args": ["exec", "--package", "@bilig/headless@0.23.3", "--", "bilig-formula-clinic", "./reduced.xlsx", "--cells", "Summary!B7,Inputs!B2"]
+  "args": ["exec", "--package", "@bilig/headless@0.23.4", "--", "bilig-formula-clinic", "./reduced.xlsx", "--cells", "Summary!B7,Inputs!B2"]
 }
 ```
 
@@ -250,7 +267,7 @@ Reduced workbook already in hand? Generate the paste-ready fixture report in
 one command:
 
 ```sh
-npm exec --package @bilig/headless@0.23.3 -- bilig-formula-clinic ./reduced.xlsx --cells "Summary!B7,Inputs!B2"
+npm exec --package @bilig/headless@0.23.4 -- bilig-formula-clinic ./reduced.xlsx --cells "Summary!B7,Inputs!B2"
 ```
 
 Handing a spreadsheet task to another coding agent? Start with the
@@ -375,7 +392,7 @@ matters.
 
 <!-- headless-package-footprint:start -->
 
-Current checked npm footprint for `@bilig/headless@0.23.3`:
+Current checked npm footprint for `@bilig/headless@0.23.4`:
 
 - Pack dry run: `455 kB` tarball, `2.71 MB` unpacked, `453` package entries.
 - Boundary: the main import is the WorkPaper formula/JSON runtime; XLSX
@@ -480,7 +497,7 @@ and [serverless quote approval](examples/serverless-workpaper-api). Run
 `npm run quote-approval-api`, `npm run agent:framework-adapters`,
 `npm run agent:mcp-tools`, `npm run agent:mcp-transcript`,
 `npm run agent:mcp-file-transcript`, `npm run agent:mcp-stdio`, or
-`npm exec --package @bilig/headless@0.23.3 -- bilig-workpaper-mcp` when that is the
+`npm exec --package @bilig/headless@0.23.4 -- bilig-workpaper-mcp` when that is the
 path you are evaluating.
 
 The serverless example also includes `npm run next-route-handler`,
@@ -490,6 +507,9 @@ framework-specific boundary checks.
 
 The MCP server is also listed in the official registry:
 <https://registry.modelcontextprotocol.io/v0.1/servers?search=io.github.proompteng%2Fbilig-workpaper>.
+Clients that support Streamable HTTP MCP can also smoke-test the stateless
+hosted endpoint at `https://bilig.proompteng.ai/mcp`; use the local stdio server
+when the agent needs to persist a project WorkPaper JSON file.
 
 ## Examples You Can Run
 
@@ -546,9 +566,9 @@ The agent framework guide is
 The package also ships the MCP stdio binary:
 
 ```sh
-npm exec --package @bilig/headless@0.23.3 -- bilig-formula-clinic ./reduced.xlsx --cells "Summary!B7,Inputs!B2"
-npm exec --package @bilig/headless@0.23.3 -- bilig-workpaper-mcp
-npm exec --package @bilig/headless@0.23.3 -- bilig-workpaper-mcp --workpaper ./pricing.workpaper.json --init-demo-workpaper --writable
+npm exec --package @bilig/headless@0.23.4 -- bilig-formula-clinic ./reduced.xlsx --cells "Summary!B7,Inputs!B2"
+npm exec --package @bilig/headless@0.23.4 -- bilig-workpaper-mcp
+npm exec --package @bilig/headless@0.23.4 -- bilig-workpaper-mcp --workpaper ./pricing.workpaper.json --init-demo-workpaper --writable
 docker build --target bilig-workpaper-mcp -t bilig-workpaper-mcp:local .
 ```
 
@@ -568,7 +588,9 @@ calling tools.
 The Docker target is for MCP directory scanners: it seeds a demo WorkPaper JSON
 inside the image and starts the file-backed `--writable` tool surface so
 `tools/list`, `resources/list`, and `prompts/list` return the general WorkPaper
-agent surface without cloning this monorepo.
+agent surface without cloning this monorepo. For remote MCP clients, the app
+runtime exposes `https://bilig.proompteng.ai/mcp` as a stateless JSON-only
+Streamable HTTP endpoint for tool discovery and write/readback smoke tests.
 
 It is published in the official MCP Registry as
 `io.github.proompteng/bilig-workpaper`:
@@ -619,7 +641,8 @@ seven file-backed WorkPaper tools:
   [official MCP Registry](https://registry.modelcontextprotocol.io/v0.1/servers?search=io.github.proompteng%2Fbilig-workpaper)
   and on [Glama](https://glama.ai/mcp/servers/proompteng/bilig). The
   [directory status page](docs/mcp-spreadsheet-server-directory.md) keeps the
-  npm command, static MCP server card, and directory evidence in one place.
+  npm command, remote endpoint, static MCP server card, and directory evidence
+  in one place.
 - Public feedback threads:
   [workflow questions](https://github.com/proompteng/bilig/discussions/157),
   [service examples](https://github.com/proompteng/bilig/discussions/213),
@@ -847,7 +870,7 @@ around the same WorkPaper model.
 Reduced workbook already in hand?
 
 ```sh
-npm exec --package @bilig/headless@0.23.3 -- bilig-formula-clinic ./reduced.xlsx --cells "Summary!B7,Inputs!B2"
+npm exec --package @bilig/headless@0.23.4 -- bilig-formula-clinic ./reduced.xlsx --cells "Summary!B7,Inputs!B2"
 ```
 
 ## Install
@@ -878,7 +901,7 @@ That command is published through `@bilig/create-workpaper`. The publish gate is
 
 <!-- headless-package-footprint:start -->
 
-Current checked npm footprint for `@bilig/headless@0.23.3`:
+Current checked npm footprint for `@bilig/headless@0.23.4`:
 
 - Pack dry run: `455 kB` tarball, `2.71 MB` unpacked, `453` package entries.
 - Boundary: the main import is the WorkPaper formula/JSON runtime; XLSX
@@ -1152,9 +1175,9 @@ MCP examples:
 - The package ships npm-executable binaries:
 
 ```sh
-npm exec --package @bilig/headless@0.23.3 -- bilig-formula-clinic ./reduced.xlsx --cells "Summary!B7,Inputs!B2"
-npm exec --package @bilig/headless@0.23.3 -- bilig-workpaper-mcp
-npm exec --package @bilig/headless@0.23.3 -- bilig-workpaper-mcp --workpaper ./pricing.workpaper.json --init-demo-workpaper --writable
+npm exec --package @bilig/headless@0.23.4 -- bilig-formula-clinic ./reduced.xlsx --cells "Summary!B7,Inputs!B2"
+npm exec --package @bilig/headless@0.23.4 -- bilig-workpaper-mcp
+npm exec --package @bilig/headless@0.23.4 -- bilig-workpaper-mcp --workpaper ./pricing.workpaper.json --init-demo-workpaper --writable
 docker build --target bilig-workpaper-mcp -t bilig-workpaper-mcp:local .
 ```
 
@@ -1185,6 +1208,17 @@ official MCP Registry:
 It is also live on Glama with `Try in Browser`, A-grade tool pages, and all
 seven file-backed WorkPaper tools:
 <https://glama.ai/mcp/servers/proompteng/bilig>.
+
+Clients that support Streamable HTTP MCP can also use the hosted stateless demo
+endpoint:
+
+```text
+https://bilig.proompteng.ai/mcp
+```
+
+That endpoint is request-local and does not persist user files. Use it for
+connector smoke tests and tool discovery; use local file-backed stdio when a
+project needs to save a WorkPaper JSON file.
 
 For setup details, use the
 [headless WorkPaper agent handbook](https://github.com/proompteng/bilig/blob/main/docs/headless-workpaper-agent-handbook.md),
@@ -1603,7 +1637,7 @@ logic that can run through @bilig/headless. If it is, use WorkPaper state as the
 source of truth.
 
 For MCP, start with:
-npm exec --package @bilig/headless@0.23.3 -- bilig-workpaper-mcp --workpaper ./pricing.workpaper.json --init-demo-workpaper --writable
+npm exec --package @bilig/headless@0.23.4 -- bilig-workpaper-mcp --workpaper ./pricing.workpaper.json --init-demo-workpaper --writable
 
 For Node or TypeScript, import @bilig/headless directly. Prove the edit by
 reading the relevant range, writing one small input or formula, reading the
@@ -1633,7 +1667,7 @@ Do not report success from a write call alone.
 For MCP clients, use the published stdio server:
 
 ```sh
-npm exec --package @bilig/headless@0.23.3 -- bilig-workpaper-mcp --workpaper ./pricing.workpaper.json --init-demo-workpaper --writable
+npm exec --package @bilig/headless@0.23.4 -- bilig-workpaper-mcp --workpaper ./pricing.workpaper.json --init-demo-workpaper --writable
 ```
 
 Expected file-backed tools:
@@ -1733,7 +1767,7 @@ logic that can run through @bilig/headless. If it is, use WorkPaper state as the
 source of truth.
 
 If you have an MCP client, start with:
-npm exec --package @bilig/headless@0.23.3 -- bilig-workpaper-mcp --workpaper ./pricing.workpaper.json --init-demo-workpaper --writable
+npm exec --package @bilig/headless@0.23.4 -- bilig-workpaper-mcp --workpaper ./pricing.workpaper.json --init-demo-workpaper --writable
 
 If you are writing Node or TypeScript, import @bilig/headless directly. Your
 minimum proof is: read the relevant range, write one small input or formula,
@@ -1787,7 +1821,7 @@ File-backed mode is the useful production shape because it gives the agent real
 state instead of the built-in demo workbook:
 
 ```sh
-npm exec --package @bilig/headless@0.23.3 -- bilig-workpaper-mcp --workpaper ./pricing.workpaper.json --init-demo-workpaper --writable
+npm exec --package @bilig/headless@0.23.4 -- bilig-workpaper-mcp --workpaper ./pricing.workpaper.json --init-demo-workpaper --writable
 ```
 
 Expose the same command from an MCP client config:
@@ -1800,7 +1834,7 @@ Expose the same command from an MCP client config:
       "args": [
         "exec",
         "--package",
-        "@bilig/headless@0.23.3",
+        "@bilig/headless@0.23.4",
         "--",
         "bilig-workpaper-mcp",
         "--workpaper",
@@ -2657,14 +2691,49 @@ printf '%s\n' \
 The npm package exposes the demo server as `bilig-workpaper-mcp` by default:
 
 ```sh
-npm exec --package @bilig/headless@0.23.3 -- bilig-workpaper-mcp
+npm exec --package @bilig/headless@0.23.4 -- bilig-workpaper-mcp
 ```
+
+## Remote Stateless Endpoint
+
+The hosted app runtime also exposes a JSON-only Streamable HTTP MCP endpoint for
+clients that cannot launch a local stdio process:
+
+```text
+https://bilig.proompteng.ai/mcp
+```
+
+There is also a compatibility alias:
+
+```text
+https://bilig.proompteng.ai/mcp/workpaper
+```
+
+The endpoint is stateless and request-local. It loads the packaged demo
+WorkPaper for each JSON-RPC request, exposes the same file-backed tool catalog,
+resources, and prompts, and returns write/readback proof without writing user
+files or issuing an MCP session id. Use it for Claude custom connector smoke
+tests, directory probes, and agent onboarding. Use local file-backed stdio when
+an agent needs to persist a real project WorkPaper JSON file.
+
+Protocol smoke:
+
+```sh
+curl -fsS https://bilig.proompteng.ai/mcp \
+  -H 'content-type: application/json' \
+  -H 'accept: application/json, text/event-stream' \
+  -H 'mcp-protocol-version: 2025-11-25' \
+  --data '{"jsonrpc":"2.0","id":1,"method":"tools/list"}' | jq '.result.tools[].name'
+```
+
+For server-to-server clients, omit `Origin`. Browser-based clients must send an
+allowed `Origin`; Claude origins are allowed by default.
 
 For a real agent workflow, point the same binary at a persisted WorkPaper JSON
 document:
 
 ```sh
-npm exec --package @bilig/headless@0.23.3 -- bilig-workpaper-mcp --workpaper ./pricing.workpaper.json --init-demo-workpaper --writable
+npm exec --package @bilig/headless@0.23.4 -- bilig-workpaper-mcp --workpaper ./pricing.workpaper.json --init-demo-workpaper --writable
 ```
 
 File-backed mode loads `./pricing.workpaper.json`, exposes `list_sheets`,
@@ -2784,7 +2853,7 @@ import { generateText } from 'ai'
 const client = await createMCPClient({
   transport: new Experimental_StdioMCPTransport({
     command: 'npm',
-    args: ['exec', '--package', '@bilig/headless@0.23.3', '--', 'bilig-workpaper-mcp'],
+    args: ['exec', '--package', '@bilig/headless@0.23.4', '--', 'bilig-workpaper-mcp'],
   }),
 })
 
@@ -3107,7 +3176,7 @@ the Markdown output into the fixture form. It reads the file on your machine and
 does not upload workbook contents.
 
 ```sh
-npm exec --package @bilig/headless@0.23.3 -- bilig-formula-clinic ./reduced.xlsx \
+npm exec --package @bilig/headless@0.23.4 -- bilig-formula-clinic ./reduced.xlsx \
   --cells "Summary!B7,Inputs!B2"
 ```
 

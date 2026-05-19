@@ -50,7 +50,7 @@ with an argument array, not a shell-concatenated string:
   "args": [
     "exec",
     "--package",
-    "@bilig/headless@0.23.3",
+    "@bilig/headless@0.23.4",
     "--",
     "bilig-workpaper-mcp",
     "--workpaper",

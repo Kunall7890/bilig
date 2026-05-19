@@ -322,6 +322,18 @@ if (typeof parsedAgentJsonMcp !== 'object' || parsedAgentJsonMcp === null || Arr
 if (Reflect.get(parsedAgentJsonMcp, 'server_card') !== 'https://proompteng.github.io/bilig/.well-known/mcp/server-card.json') {
   throw new Error('docs/.well-known/agent.json must point at the MCP server card')
 }
+if (Reflect.get(parsedAgentJsonMcp, 'remote_endpoint') !== 'https://bilig.proompteng.ai/mcp') {
+  throw new Error('docs/.well-known/agent.json must advertise the hosted MCP endpoint')
+}
+const agentJsonMcpRemoteTransport = Reflect.get(parsedAgentJsonMcp, 'remote_transport')
+if (
+  typeof agentJsonMcpRemoteTransport !== 'object' ||
+  agentJsonMcpRemoteTransport === null ||
+  Reflect.get(agentJsonMcpRemoteTransport, 'type') !== 'streamable-http' ||
+  Reflect.get(agentJsonMcpRemoteTransport, 'protocol_version') !== '2025-11-25'
+) {
+  throw new Error('docs/.well-known/agent.json must advertise the hosted Streamable HTTP MCP transport')
+}
 const agentJsonMcpTools = Reflect.get(parsedAgentJsonMcp, 'tools')
 if (!Array.isArray(agentJsonMcpTools) || !agentJsonMcpTools.every((tool) => typeof tool === 'string')) {
   throw new Error('docs/.well-known/agent.json mcp.tools must be a string array')
@@ -367,6 +379,17 @@ if (
   )
 ) {
   throw new Error('docs/.well-known/agent.json must advertise the file-backed MCP capability')
+}
+if (
+  !agentJsonCapabilities.some(
+    (capability) =>
+      typeof capability === 'object' &&
+      capability !== null &&
+      Reflect.get(capability, 'name') === 'remote-workpaper-mcp-demo' &&
+      Reflect.get(capability, 'endpoint') === 'https://bilig.proompteng.ai/mcp',
+  )
+) {
+  throw new Error('docs/.well-known/agent.json must advertise the remote MCP demo capability')
 }
 requireIncludes(
   agentSkillsIndex,

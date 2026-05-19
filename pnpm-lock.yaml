@@ -109,6 +109,9 @@ importers:
       '@bilig/formula':
         specifier: workspace:*
         version: link:../../packages/formula
+      '@bilig/headless':
+        specifier: workspace:*
+        version: link:../../packages/headless
       '@bilig/protocol':
         specifier: workspace:*
         version: link:../../packages/protocol

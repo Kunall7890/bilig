@@ -10,6 +10,7 @@ import { registerSyncServerRuntimeRoutes } from './sync-server-runtime-routes.js
 import { applySyncServerSecurityHeaders } from './sync-server-security-headers.js'
 import { resolveSyncServerWebDistRoot, registerSyncServerSpaRoutes } from './sync-server-spa.js'
 import { registerSyncServerZeroProxyRoutes, resolveZeroProxyUpstream } from './sync-server-zero-proxy.js'
+import { registerWorkPaperMcpRemoteRoutes } from './workpaper-mcp-remote-routes.js'
 import type { WorksheetExecutor } from '../workbook-runtime/worksheet-executor.js'
 import type { ZeroSyncService } from '../zero/service.js'
 import type { WorkbookAgentService } from '../codex-app/workbook-agent-service.js'
@@ -60,6 +61,8 @@ export function createSyncServer(options: SyncServerOptions = {}) {
     documentService,
     ...(zeroSyncService ? { zeroSyncService } : {}),
   })
+
+  registerWorkPaperMcpRemoteRoutes(app)
 
   registerSyncServerSpaRoutes(app, webDistRoot)
 
