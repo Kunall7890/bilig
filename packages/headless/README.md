@@ -106,7 +106,7 @@ That command is published through `@bilig/create-workpaper`. The publish gate is
 
 Current checked npm footprint for `@bilig/headless@0.25.7`:
 
-- Pack dry run: `490 kB` tarball, `2.95 MB` unpacked, `480` package entries.
+- Pack dry run: `491 kB` tarball, `2.96 MB` unpacked, `483` package entries.
 - Boundary: the main import is the WorkPaper formula/JSON runtime; XLSX
   import/export stays behind the `@bilig/headless/xlsx` subpath; MCP is the
   `bilig-workpaper-mcp` binary wrapper; reduced workbook reports use the
