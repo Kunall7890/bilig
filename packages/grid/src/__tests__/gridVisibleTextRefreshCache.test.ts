@@ -114,6 +114,41 @@ describe('GridVisibleTextRefreshCache', () => {
     ).toBe(true)
   })
 
+  it('rejects current-revision remote tiles that are missing the visible fill color', () => {
+    const cache = new GridVisibleTextRefreshCache()
+    const tile = createTile({
+      lastBatchId: 7,
+      textCount: 1,
+      textRuns: [createTextRun({ col: 0, row: 0, text: 'A1' })],
+      version: {
+        axisX: 7,
+        axisY: 7,
+        freeze: 7,
+        styles: 7,
+        text: 7,
+        values: 7,
+      },
+    })
+
+    expect(
+      cache.needsLocalRefresh(
+        tile.tileId,
+        tile,
+        createInput({
+          engine: createEngine(
+            {
+              A1: { styleId: 'style-green', value: 'A1' },
+            },
+            {
+              'style-green': { id: 'style-green', fill: { backgroundColor: '#00ff00' } },
+            },
+            7,
+          ),
+        }),
+      ),
+    ).toBe(true)
+  })
+
   it('rejects stale fill rects after visible cell fills are cleared', () => {
     const cache = new GridVisibleTextRefreshCache()
     const fillRects = new Float32Array(GRID_RECT_INSTANCE_FLOAT_COUNT_V3)

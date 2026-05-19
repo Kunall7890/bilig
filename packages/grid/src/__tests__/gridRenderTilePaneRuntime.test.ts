@@ -2492,6 +2492,84 @@ describe('GridRenderTilePaneRuntime', () => {
     expect(hasOpaqueGreenFillRect(refreshed.residentBodyPane?.tile)).toBe(true)
   })
 
+  it('rebuilds current-revision remote tiles that are missing visible fill rects', () => {
+    const runtime = new GridRenderTilePaneRuntime()
+    const host = createHost()
+    const tileId = host.viewportTileKeys({
+      dprBucket: 1,
+      sheetOrdinal: 7,
+      viewport: { colEnd: 127, colStart: 0, rowEnd: 31, rowStart: 0 },
+    })[0]
+    if (tileId === undefined) {
+      throw new Error('Expected a visible render tile key for the test viewport')
+    }
+    const remoteTile: GridRenderTile = {
+      ...createRenderTile(tileId),
+      lastBatchId: 7,
+      textCount: 1,
+      textRuns: [
+        {
+          align: 'left',
+          clipHeight: 20,
+          clipWidth: 100,
+          clipX: 0,
+          clipY: 0,
+          color: DEFAULT_TEST_TEXT_COLOR,
+          col: 0,
+          font: DEFAULT_TEST_FONT,
+          fontSize: DEFAULT_TEST_FONT_SIZE,
+          height: 20,
+          row: 0,
+          strike: false,
+          text: 'A1',
+          underline: false,
+          width: 100,
+          x: 0,
+          y: 0,
+        },
+      ],
+      version: {
+        axisX: 7,
+        axisY: 7,
+        freeze: 7,
+        styles: 7,
+        text: 7,
+        values: 7,
+      },
+    }
+    const styles: Record<string, CellStyleRecord> = {
+      'style-green': { id: 'style-green', fill: { backgroundColor: '#00ff00' } },
+    }
+    const engineWithFreshFill: GridEngineLike = {
+      getCell: (_sheetName, address) =>
+        address === 'A1' ? createStyledStringCellSnapshot('A1', 'A1', 'style-green') : createEmptyCellSnapshot(address),
+      getCellStyle: (styleId) => (styleId ? styles[styleId] : undefined),
+      getRenderRevisionSnapshot: () => ({
+        authoritativeRevision: 7,
+        localRevision: 7,
+        projectedRevision: 7,
+        tileSceneCameraSeq: 7,
+        tileSceneRevision: 7,
+      }),
+      subscribeCells: () => () => {},
+      workbook: {
+        getSheet: () => undefined,
+      },
+    }
+
+    const refreshed = runtime.resolve(
+      createInput({
+        engine: engineWithFreshFill,
+        gridRuntimeHost: host,
+        renderTileSource: createRenderTileSource([remoteTile]),
+        visibleViewport: { colEnd: 10, colStart: 0, rowEnd: 10, rowStart: 0 },
+      }),
+    )
+
+    expect(refreshed.residentBodyPane?.tile).not.toBe(remoteTile)
+    expect(hasOpaqueGreenFillRect(refreshed.residentBodyPane?.tile)).toBe(true)
+  })
+
   it('checks resident rendered rows for local text even when the logical visible window is shorter', () => {
     const runtime = new GridRenderTilePaneRuntime()
     const host = createHost()

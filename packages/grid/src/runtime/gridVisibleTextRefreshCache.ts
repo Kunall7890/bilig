@@ -3,6 +3,7 @@ import type { CellStyleRecord, Viewport } from '@bilig/protocol'
 
 import type { GridEngineLike } from '../grid-engine.js'
 import { snapshotToRenderCell } from '../gridCells.js'
+import { parseGpuColor, type GridGpuColor } from '../gridGpuPrimitives.js'
 import { GRID_RECT_INSTANCE_FLOAT_COUNT_V3 } from '../renderer-v3/rect-instance-buffer.js'
 import type { GridRenderTile } from '../renderer-v3/render-tile-source.js'
 
@@ -127,11 +128,15 @@ function tileVisibleTextNeedsLocalRefresh(
   const projectedRevision = resolveProjectedRevision(input.engine)
   const tileStyleRevisionIsBehind = projectedRevision !== null && tile.version.styles < projectedRevision
   let needsCurrentStyleProof = tileStyleRevisionIsBehind && tileHasAuthoredPaintRects(tile)
+  const expectedVisibleFillColorKeys = new Set<string>()
 
   for (let row = visibleBounds.visibleRowStart; row <= visibleBounds.visibleRowEnd; row += 1) {
     for (let col = visibleBounds.visibleColStart; col <= visibleBounds.visibleColEnd; col += 1) {
       const snapshot = input.engine.getCell(input.sheetName, formatAddress(row, col))
       const style = input.engine.getCellStyle(snapshot.styleId)
+      if (style?.fill?.backgroundColor) {
+        expectedVisibleFillColorKeys.add(gpuColorKey(parseGpuColor(style.fill.backgroundColor)))
+      }
       const renderCell = snapshotToRenderCell(snapshot, style)
       const visibleTileRun = textRunsByCell.get(`${row}:${col}`) ?? null
       if ((visibleTileRun?.text ?? '') !== renderCell.displayText) {
@@ -142,6 +147,9 @@ function tileVisibleTextNeedsLocalRefresh(
       }
       needsCurrentStyleProof = needsCurrentStyleProof || (tileStyleRevisionIsBehind && styleAffectsVisibleGridPaint(style))
     }
+  }
+  if (!tileContainsExpectedVisibleFillColors(tile, expectedVisibleFillColorKeys)) {
+    return true
   }
   return needsCurrentStyleProof
 }
@@ -180,6 +188,45 @@ function tileHasAuthoredPaintRects(tile: GridRenderTile): boolean {
     }
   }
   return tile.rectCount > expectedBaseGridLineRectCount(tile)
+}
+
+function tileContainsExpectedVisibleFillColors(tile: GridRenderTile, expectedFillColorKeys: ReadonlySet<string>): boolean {
+  if (expectedFillColorKeys.size === 0) {
+    return true
+  }
+  const tileFillColorKeys = collectTileFillColorKeys(tile)
+  for (const expectedKey of expectedFillColorKeys) {
+    if (!tileFillColorKeys.has(expectedKey)) {
+      return false
+    }
+  }
+  return true
+}
+
+function collectTileFillColorKeys(tile: GridRenderTile): Set<string> {
+  const readableRectCount = Math.min(tile.rectCount, Math.floor(tile.rectInstances.length / GRID_RECT_INSTANCE_FLOAT_COUNT_V3))
+  const keys = new Set<string>()
+  for (let index = 0; index < readableRectCount; index += 1) {
+    const offset = index * GRID_RECT_INSTANCE_FLOAT_COUNT_V3
+    const instanceKind = tile.rectInstances[offset + 13] ?? -1
+    const fillAlpha = tile.rectInstances[offset + 7] ?? 0
+    if (instanceKind !== 0 || fillAlpha <= 0.01) {
+      continue
+    }
+    keys.add(
+      gpuColorKey({
+        a: fillAlpha,
+        b: tile.rectInstances[offset + 6] ?? 0,
+        g: tile.rectInstances[offset + 5] ?? 0,
+        r: tile.rectInstances[offset + 4] ?? 0,
+      }),
+    )
+  }
+  return keys
+}
+
+function gpuColorKey(color: GridGpuColor): string {
+  return [color.r, color.g, color.b, color.a].map((channel) => String(Math.round(channel * 1000))).join(':')
 }
 
 function expectedBaseGridLineRectCount(tile: GridRenderTile): number {
