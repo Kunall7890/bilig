@@ -11,6 +11,13 @@ export function createOperationDirectFormulaDeltas(args: {
   readonly canSkipTerminalFormulaColumnVersion: (cellIndex: number) => boolean
   readonly canSkipDirectFormulaColumnVersion: (cellIndex: number) => boolean
 }) {
+  const hasActiveDirectFormula = (cellIndex: number): boolean => {
+    const formula = args.state.formulas.get(cellIndex)
+    return formula?.directAggregate !== undefined || formula?.directCriteria !== undefined || formula?.directScalar !== undefined
+  }
+
+  const hasActiveDirectScalarFormula = (cellIndex: number): boolean => args.state.formulas.get(cellIndex)?.directScalar !== undefined
+
   const applyDirectFormulaNumericDelta = (cellIndex: number, delta: number): boolean => {
     const cellStore = args.state.workbook.cellStore
     if (cellStore.tags[cellIndex] !== ValueTag.Number) {
@@ -141,7 +148,8 @@ export function createOperationDirectFormulaDeltas(args: {
       if (
         ((cellStore.flags[cellIndex] ?? 0) & CellFlags.InCycle) !== 0 ||
         cellStore.tags[cellIndex] !== ValueTag.Number ||
-        collection.getDeltaAt(index) === undefined
+        collection.getDeltaAt(index) === undefined ||
+        !hasActiveDirectFormula(cellIndex)
       ) {
         return undefined
       }
@@ -193,6 +201,11 @@ export function createOperationDirectFormulaDeltas(args: {
     const hasValidatedTerminalWrites = collection.hasValidatedScalarDeltaCells()
     if (collection.hasCleanScalarDeltaCells()) {
       const cellIndices = collection.getCellIndicesForRead()
+      for (let index = 0; index < cellIndices.length; index += 1) {
+        if (!hasActiveDirectScalarFormula(cellIndices[index]!)) {
+          return undefined
+        }
+      }
       const changed = captureChanged
         ? cellIndices instanceof Uint32Array
           ? cellIndices
@@ -210,6 +223,11 @@ export function createOperationDirectFormulaDeltas(args: {
     }
     if (constantDelta !== undefined && hasValidatedTerminalWrites) {
       const cellIndices = collection.getCellIndicesForRead()
+      for (let index = 0; index < cellIndices.length; index += 1) {
+        if (!hasActiveDirectScalarFormula(cellIndices[index]!)) {
+          return undefined
+        }
+      }
       const changed = captureChanged
         ? cellIndices instanceof Uint32Array
           ? cellIndices
@@ -246,7 +264,11 @@ export function createOperationDirectFormulaDeltas(args: {
       canUseTerminalFormulaWrites = true
       for (let index = 0; index < collection.size; index += 1) {
         const cellIndex = collection.getCellIndexAt(index)
-        if (((cellStore.flags[cellIndex] ?? 0) & CellFlags.InCycle) !== 0 || cellStore.tags[cellIndex] !== ValueTag.Number) {
+        if (
+          ((cellStore.flags[cellIndex] ?? 0) & CellFlags.InCycle) !== 0 ||
+          cellStore.tags[cellIndex] !== ValueTag.Number ||
+          !hasActiveDirectScalarFormula(cellIndex)
+        ) {
           return undefined
         }
         if (canUseTerminalFormulaWrites && !args.canSkipDirectFormulaColumnVersion(cellIndex)) {
