@@ -253,6 +253,7 @@ describe('WorkbookPaneRendererV3', () => {
 
     const gridFloorCanvas = host.querySelector('[data-testid="grid-pane-renderer-floor"]')
     expect(gridFloorCanvas).toBeInstanceOf(HTMLCanvasElement)
+    expect(gridFloorCanvas?.className).toContain('z-[12]')
     expect(gridFloorCanvas?.getAttribute('data-renderer-mode')).toBe('canvas2d-v3-grid-floor')
     expect(gridFloorCanvas?.getAttribute('data-v3-draw-text')).toBe('false')
     expect(host.querySelector('[data-testid="grid-pane-renderer-fallback"]')).toBeNull()
