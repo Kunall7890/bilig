@@ -128,6 +128,9 @@ For a generated project from a blank directory, run
 `@bilig/create-workpaper` package. The package source lives in
 [`packages/create-workpaper`](packages/create-workpaper), and the publish gate
 is documented in [create a Bilig WorkPaper starter](docs/create-bilig-workpaper.md).
+For an agent-ready project with `AGENTS.md`, MCP client configs, and an
+`agent:verify` script, run
+`npm create @bilig/workpaper@latest pricing-agent -- --agent`.
 
 If that proof matches a service or agent workflow you maintain, the useful next
 step is concrete feedback: [star or bookmark the repo](https://github.com/proompteng/bilig/stargazers),

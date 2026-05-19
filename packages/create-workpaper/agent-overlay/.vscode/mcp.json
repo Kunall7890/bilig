@@ -1,0 +1,10 @@
+{
+  "servers": {
+    "bilig-workpaper": {
+      "type": "stdio",
+      "command": "npm",
+      "args": ["run", "--silent", "mcp:server"],
+      "env": {}
+    }
+  }
+}

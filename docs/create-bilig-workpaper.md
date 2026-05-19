@@ -32,6 +32,16 @@ npm install
 npm run smoke
 ```
 
+Agent-ready MCP project:
+
+```sh
+npm create @bilig/workpaper@latest pricing-agent -- --agent
+cd pricing-agent
+npm install
+npm run agent:verify
+npm run mcp:server
+```
+
 Full-repo flagship example:
 
 ```sh
@@ -67,6 +77,9 @@ curl -X POST http://localhost:8788/api/quote/approval \
 - formula readback after mutation;
 - JSON persistence and restore;
 - a narrow API surface that an agent tool or backend route can own.
+- an optional agent starter with `AGENTS.md`, `CLAUDE.md`, Cursor and VS Code
+  MCP configs, a reusable MCP config file, and an `agent:verify` command that
+  proves both direct TypeScript and file-backed MCP paths.
 
 ## Source
 
@@ -74,6 +87,8 @@ curl -X POST http://localhost:8788/api/quote/approval \
   [`packages/create-workpaper`](https://github.com/proompteng/bilig/tree/main/packages/create-workpaper)
 - generated API source:
   [`packages/create-workpaper/template/src/index.ts`](https://github.com/proompteng/bilig/blob/main/packages/create-workpaper/template/src/index.ts)
+- generated agent overlay:
+  [`packages/create-workpaper/agent-overlay`](https://github.com/proompteng/bilig/tree/main/packages/create-workpaper/agent-overlay)
 - full flagship example:
   [quote approval WorkPaper API](quote-approval-workpaper-api.md)
 

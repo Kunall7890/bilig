@@ -18,3 +18,18 @@ repo: <https://github.com/proompteng/bilig/stargazers>.
 
 Use this when you want to evaluate `@bilig/headless` from a blank directory
 without cloning the full monorepo.
+
+For agent and MCP evaluation, generate the agent-ready starter:
+
+```sh
+npm create @bilig/workpaper@latest pricing-agent -- --agent
+cd pricing-agent
+npm install
+npm run agent:verify
+npm run mcp:server
+```
+
+The agent template adds `AGENTS.md`, `CLAUDE.md`, Cursor and VS Code MCP
+configs, a generic MCP config at `mcp/bilig-workpaper.mcp.json`, and an
+`agent:verify` script that proves both the service API path and the file-backed
+MCP path.

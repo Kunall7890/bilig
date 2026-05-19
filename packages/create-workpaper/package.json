@@ -35,6 +35,7 @@
     "create-workpaper": "bin/create-bilig-workpaper.js"
   },
   "files": [
+    "agent-overlay",
     "bin",
     "template",
     "README.md"

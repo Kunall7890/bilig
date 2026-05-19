@@ -44,6 +44,23 @@ Screenshots are still useful for final human review. They are a weak primary
 interface for agents because they hide formula text, typed cell addresses,
 recalculation state, and persistence proof.
 
+## Blank Project Starter
+
+Use this when an agent needs a fresh project instead of a copied snippet:
+
+```sh
+npm create @bilig/workpaper@latest pricing-agent -- --agent
+cd pricing-agent
+npm install
+npm run agent:verify
+npm run mcp:server
+```
+
+The generated project includes `AGENTS.md`, `CLAUDE.md`, Cursor and VS Code MCP
+configs, `mcp/bilig-workpaper.mcp.json`, a quote approval service smoke test,
+and a file-backed MCP challenge. `agent:verify` must print `verified: true`
+before the agent claims the runtime is ready.
+
 ## The First Decision
 
 | If the agent has...   | Use this path                                                                             | Verification target                                                                      |
