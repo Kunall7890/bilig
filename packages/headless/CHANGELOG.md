@@ -4,6 +4,25 @@ All notable changes to `@bilig/headless` will be documented in this file.
 
 This package is released as part of the aligned bilig library package set.
 
+## 0.24.3
+
+- Release type: patch
+- Previous libraries tag: libraries-v0.24.2
+- Manual override: no
+
+## Fixes
+- perf(headless): expand workpaper fast paths (836ac431)
+- fix(core): preserve structural insert entries in sync batches (1ede985b)
+- fix(core): clean up rebased fast paths (aa86ac6f)
+- perf(core): speed trusted template restore (9740a6a2)
+
+## Internal runtime changes
+- refactor(headless): split oversized runtime files (01d09e16)
+- docs(headless): refresh published commands for 0.24.2 (7d1d5fb9)
+- docs(agent): add workbook challenge (7e7cd271)
+- test(core): handle protection rejections in fuzz (5996cfd6)
+- test(headless): include fast path surface parity (a7b493b6)
+
 ## 0.24.2
 
 - Release type: patch
