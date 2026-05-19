@@ -4,6 +4,19 @@ All notable changes to `@bilig/headless` will be documented in this file.
 
 This package is released as part of the aligned bilig library package set.
 
+## 0.30.1
+
+- Release type: patch
+- Previous libraries tag: libraries-v0.30.0
+- Manual override: no
+
+## Fixes
+- fix(formula): match excel log error semantics (15d01a85)
+- fix(package): resolve xlsx recalc workspace imports (d0485880)
+
+## Internal runtime changes
+- docs(discovery): sync runtime package 0.30.0 (9de932db)
+
 ## 0.30.0
 
 - Release type: minor
