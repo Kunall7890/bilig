@@ -43,6 +43,18 @@ export interface RawKernelExports {
     resultOffset: number,
     outNumbers: number,
   ): void
+  evalDirectCriteriaMatchedAggregateBatch(
+    aggregateKinds: number,
+    matchStarts: number,
+    matchLengths: number,
+    matchedRows: number,
+    aggregateTags: number,
+    aggregateNumbers: number,
+    aggregateErrors: number,
+    outTags: number,
+    outNumbers: number,
+    outErrors: number,
+  ): void
   evalUniformNumericLookupBatch(
     kinds: number,
     matchModes: number,
@@ -129,6 +141,7 @@ export function isRawKernelExports(value: unknown): value is RawKernelExports {
     'writeCells',
     'evalDirectScalarValueBatch',
     'evalDenseNumericRowAggregateBatch',
+    'evalDirectCriteriaMatchedAggregateBatch',
     'evalUniformNumericLookupBatch',
     'evalBatch',
     'materializePivotTable',

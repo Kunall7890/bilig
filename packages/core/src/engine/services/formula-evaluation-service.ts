@@ -44,6 +44,7 @@ import {
   referenceReplacementKey,
 } from './formula-evaluation-helpers.js'
 import { tryEvaluateDirectAggregate } from './formula-evaluation-direct-aggregate.js'
+import { tryEvaluateNativeDirectCriteriaMatchedAggregate } from './formula-evaluation-direct-criteria-native.js'
 import { readRuntimeDirectCriteriaOperandValue } from './direct-criteria-operands.js'
 import type { EngineFormulaEvaluationService } from './formula-evaluation-service-types.js'
 export type { EngineFormulaEvaluationService } from './formula-evaluation-service-types.js'
@@ -52,7 +53,7 @@ const DIRECT_CRITERIA_MATCH_CACHE_LIMIT = 16_384
 const INDEXED_WHOLE_AXIS_BOUND_LIMIT = 4096
 
 export function createEngineFormulaEvaluationService(args: {
-  readonly state: Pick<EngineRuntimeState, 'workbook' | 'strings' | 'formulas' | 'counters' | 'getUseColumnIndex'>
+  readonly state: Pick<EngineRuntimeState, 'workbook' | 'strings' | 'formulas' | 'counters' | 'wasm' | 'getUseColumnIndex'>
   readonly runtimeColumnStore: EngineRuntimeColumnStoreService
   readonly criterionCache: CriterionRangeCacheService
   readonly aggregateCache: RangeAggregateCacheService
@@ -447,6 +448,25 @@ export function createEngineFormulaEvaluationService(args: {
         readCellValueByIndex,
         formula,
         rememberDirectCriteriaResult(directCriteriaAggregateCache, concreteAggregateCacheKey, result),
+      )
+    }
+
+    const nativeAggregateResult = tryEvaluateNativeDirectCriteriaMatchedAggregate(
+      {
+        state: args.state,
+        runtimeColumnStore: args.runtimeColumnStore,
+      },
+      {
+        aggregateKind: directCriteria.aggregateKind,
+        aggregateRange,
+        matches,
+      },
+    )
+    if (nativeAggregateResult !== undefined) {
+      return applyDirectCriteriaResultTransforms(
+        readCellValueByIndex,
+        formula,
+        rememberDirectCriteriaResult(directCriteriaAggregateCache, concreteAggregateCacheKey, nativeAggregateResult),
       )
     }
 

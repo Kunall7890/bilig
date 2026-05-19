@@ -54,6 +54,19 @@ export interface WasmDenseNumericRowAggregateBatchLayout {
   outNumbers: Float64Array
 }
 
+export interface WasmDirectCriteriaMatchedAggregateBatchLayout {
+  aggregateKinds: Uint8Array
+  matchStarts: Uint32Array
+  matchLengths: Uint32Array
+  matchedRows: Uint32Array
+  aggregateTags: Uint8Array
+  aggregateNumbers: Float64Array
+  aggregateErrors: Uint16Array
+  outTags: Uint8Array
+  outNumbers: Float64Array
+  outErrors: Uint16Array
+}
+
 export interface WasmUniformNumericLookupBatchLayout {
   kinds: Uint8Array
   matchModes: Uint8Array
@@ -294,6 +307,25 @@ export class WasmKernelFacade {
       layout.aggregateColCount,
       layout.resultOffset,
       layout.outNumbers,
+    )
+    return true
+  }
+
+  evalDirectCriteriaMatchedAggregateBatch(layout: WasmDirectCriteriaMatchedAggregateBatchLayout): boolean {
+    if (!this.kernel) {
+      return false
+    }
+    this.kernel.evalDirectCriteriaMatchedAggregateBatch(
+      layout.aggregateKinds,
+      layout.matchStarts,
+      layout.matchLengths,
+      layout.matchedRows,
+      layout.aggregateTags,
+      layout.aggregateNumbers,
+      layout.aggregateErrors,
+      layout.outTags,
+      layout.outNumbers,
+      layout.outErrors,
     )
     return true
   }

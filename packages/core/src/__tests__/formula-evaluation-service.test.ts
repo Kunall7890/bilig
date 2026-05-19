@@ -181,6 +181,39 @@ describe('EngineFormulaEvaluationService', () => {
     expect(engine.getPerformanceCounters().directCriteriaMatchCacheHits).toBeGreaterThanOrEqual(1)
   })
 
+  it('uses native matched-row reductions for large direct criteria aggregates', async () => {
+    const engine = new SpreadsheetEngine({ workbookName: 'evaluation-direct-criteria-native-aggregate' })
+    await engine.ready()
+    engine.createSheet('Sheet1')
+    engine.setCellValue('Sheet1', 'D1', 'A')
+    engine.setCellValue('Sheet1', 'E1', 0)
+    let expectedSum = 0
+    let expectedMin = Number.POSITIVE_INFINITY
+    let expectedMax = Number.NEGATIVE_INFINITY
+    for (let row = 2; row <= 129; row += 1) {
+      const value = row - 1
+      expectedSum += value
+      expectedMin = Math.min(expectedMin, value)
+      expectedMax = Math.max(expectedMax, value)
+      engine.setCellValue('Sheet1', `A${row}`, 'A')
+      engine.setCellValue('Sheet1', `B${row}`, value)
+      engine.setCellValue('Sheet1', `C${row}`, value)
+    }
+    engine.setCellFormula('Sheet1', 'F1', 'SUMIFS(C2:C129,A2:A129,D1,B2:B129,">="&E1)')
+    engine.setCellFormula('Sheet1', 'F2', 'AVERAGEIFS(C2:C129,A2:A129,D1,B2:B129,">="&E1)')
+    engine.setCellFormula('Sheet1', 'F3', 'MINIFS(C2:C129,A2:A129,D1,B2:B129,">="&E1)')
+    engine.setCellFormula('Sheet1', 'F4', 'MAXIFS(C2:C129,A2:A129,D1,B2:B129,">="&E1)')
+
+    engine.resetPerformanceCounters()
+    engine.setCellValue('Sheet1', 'E1', 1)
+
+    expect(engine.getCellValue('Sheet1', 'F1')).toEqual({ tag: ValueTag.Number, value: expectedSum })
+    expect(engine.getCellValue('Sheet1', 'F2')).toEqual({ tag: ValueTag.Number, value: expectedSum / 128 })
+    expect(engine.getCellValue('Sheet1', 'F3')).toEqual({ tag: ValueTag.Number, value: expectedMin })
+    expect(engine.getCellValue('Sheet1', 'F4')).toEqual({ tag: ValueTag.Number, value: expectedMax })
+    expect(engine.getPerformanceCounters().nativeDirectCriteriaAggregateEvaluations).toBeGreaterThanOrEqual(4)
+  })
+
   it('keeps direct scalar arithmetic aligned with text coercion errors', async () => {
     const engine = new SpreadsheetEngine({ workbookName: 'evaluation-direct-scalar-text-errors' })
     await engine.ready()

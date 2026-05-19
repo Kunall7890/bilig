@@ -1,6 +1,7 @@
 import type * as Fs from 'node:fs'
 import type * as FsPromises from 'node:fs/promises'
 import type * as NodeUrl from 'node:url'
+import { evalDirectCriteriaMatchedAggregateBatchRaw } from './raw-kernel-direct-criteria-aggregate-bridge.js'
 import { isRawKernelExports, type RawKernelExports } from './raw-kernel-exports.js'
 
 type TypedArrayValue = Uint8Array | Uint16Array | Uint32Array | Float64Array
@@ -73,6 +74,18 @@ export interface SpreadsheetKernel {
     aggregateColCount: number,
     resultOffset: number,
     outNumbers: Float64Array,
+  ): void
+  evalDirectCriteriaMatchedAggregateBatch(
+    aggregateKinds: Uint8Array,
+    matchStarts: Uint32Array,
+    matchLengths: Uint32Array,
+    matchedRows: Uint32Array,
+    aggregateTags: Uint8Array,
+    aggregateNumbers: Float64Array,
+    aggregateErrors: Uint16Array,
+    outTags: Uint8Array,
+    outNumbers: Float64Array,
+    outErrors: Uint16Array,
   ): void
   evalUniformNumericLookupBatch(
     kinds: Uint8Array,
@@ -380,6 +393,10 @@ class RawKernelBridge {
     }
   }
 
+  evalDirectCriteriaMatchedAggregateBatch(...args: Parameters<SpreadsheetKernel['evalDirectCriteriaMatchedAggregateBatch']>): void {
+    evalDirectCriteriaMatchedAggregateBatchRaw(this.raw, ...args)
+  }
+
   evalUniformNumericLookupBatch(
     kinds: Uint8Array,
     matchModes: Uint8Array,
@@ -661,6 +678,10 @@ class KernelHandle implements SpreadsheetKernel {
       resultOffset,
       outNumbers,
     )
+  }
+
+  evalDirectCriteriaMatchedAggregateBatch(...args: Parameters<SpreadsheetKernel['evalDirectCriteriaMatchedAggregateBatch']>): void {
+    this.bridge.evalDirectCriteriaMatchedAggregateBatch(...args)
   }
 
   evalUniformNumericLookupBatch(
