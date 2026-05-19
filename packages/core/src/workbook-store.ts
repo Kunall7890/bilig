@@ -612,6 +612,14 @@ export class WorkbookStore {
     return this.axisEntryStore.snapshotAxisEntriesInRange(this.getSheet(sheetName), 'column', start, count)
   }
 
+  createRowAxisEntries(start: number, count: number): WorkbookAxisEntrySnapshot[] {
+    return this.axisEntryStore.createAxisEntries('row', start, count)
+  }
+
+  createColumnAxisEntries(start: number, count: number): WorkbookAxisEntrySnapshot[] {
+    return this.axisEntryStore.createAxisEntries('column', start, count)
+  }
+
   materializeRowAxisEntries(sheetName: string, start: number, count: number): WorkbookAxisEntrySnapshot[] {
     return this.axisEntryStore.materializeAxisEntries(this.getOrCreateSheet(sheetName), 'row', start, count)
   }

@@ -35,6 +35,7 @@ interface ProjectedCellSnapshotWriteOptions {
   readonly force?: boolean
   readonly forceOptimistic?: boolean
   readonly allowOptimisticClearResurrection?: boolean
+  readonly localDeltaDirtyMask?: number | undefined
   readonly emitLocalDelta?: boolean
 }
 type CellItem = readonly [number, number]
@@ -228,7 +229,7 @@ export class ProjectedViewportStore implements GridEngineLike {
     const result = this.cellCache.writeCellSnapshot(snapshot, options)
     if (result.changed && result.acceptedSnapshot && options.emitLocalDelta !== false) {
       this.localRevision += 1
-      this.emitLocalCellSnapshotDelta(result.acceptedSnapshot)
+      this.emitLocalCellSnapshotDelta(result.acceptedSnapshot, options.localDeltaDirtyMask)
     }
   }
 
@@ -488,7 +489,7 @@ export class ProjectedViewportStore implements GridEngineLike {
     }
   }
 
-  private emitLocalCellSnapshotDelta(snapshot: CellSnapshot): void {
+  private emitLocalCellSnapshotDelta(snapshot: CellSnapshot, dirtyMask?: number): void {
     if (this.localWorkbookDeltaListeners.size === 0) {
       return
     }
@@ -498,7 +499,7 @@ export class ProjectedViewportStore implements GridEngineLike {
       return
     }
     const seq = this.nextLocalWorkbookDeltaSeq()
-    const batch = buildLocalCellSnapshotWorkbookDelta({ identity, seq, snapshot })
+    const batch = buildLocalCellSnapshotWorkbookDelta({ dirtyMask, identity, seq, snapshot })
     this.localWorkbookDeltaListeners.forEach((listener) => {
       listener(batch)
     })

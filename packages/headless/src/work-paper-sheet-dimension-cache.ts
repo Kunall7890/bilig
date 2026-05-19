@@ -1,14 +1,37 @@
-import type { EngineCellMutationRef } from '@bilig/core'
+import { CellFlags, type EngineCellMutationAt, type EngineCellMutationRef, type EngineExistingLiteralCellMutationRef } from '@bilig/core'
+import { ValueTag } from '@bilig/protocol'
 import { workPaperFormulaMayResizeDynamically } from './work-paper-sheet-inspection.js'
 import type { WorkPaperSheetDimensions } from './work-paper-types.js'
 import type { WorkPaperAxisIntervalEditMode, WorkPaperAxisKind } from './work-paper-axis-helpers.js'
 import type { MatrixMutationDimensionImpact } from './matrix-mutation-plan.js'
 
+type WorkPaperDimensionMutationRef = EngineCellMutationRef | EngineExistingLiteralCellMutationRef
+
+function dimensionMutationOf(ref: WorkPaperDimensionMutationRef): EngineCellMutationAt {
+  if ('mutation' in ref) {
+    return ref.mutation
+  }
+  return {
+    kind: 'setCellValue',
+    row: ref.row,
+    col: ref.col,
+    value: ref.value,
+  }
+}
+
 export interface WorkPaperSheetDimensionEngine {
   readonly workbook: {
+    readonly cellStore?: WorkPaperSheetDimensionCellStore
     listSpills(): readonly { readonly sheetName: string }[]
     getSheet(sheetName: string): { readonly id: number } | undefined
   }
+}
+
+export interface WorkPaperSheetDimensionCellStore {
+  readonly tags: Uint8Array
+  readonly flags: Uint32Array
+  readonly formulaIds: Uint32Array
+  readonly versions: Uint32Array
 }
 
 export interface WorkPaperSheetDimensionRecord {
@@ -51,6 +74,9 @@ export class WorkPaperSheetDimensionCache {
     let width = 0
     let height = 0
     sheet.grid.forEachCellEntry((_cellIndex: number, row: number, col: number) => {
+      if (!this.isCellCountedForDimensions(_cellIndex)) {
+        return
+      }
       height = Math.max(height, row + 1)
       width = Math.max(width, col + 1)
     })
@@ -66,13 +92,37 @@ export class WorkPaperSheetDimensionCache {
     this.spillSheetIds = null
   }
 
-  updateAfterCellMutationRefs(refs: readonly EngineCellMutationRef[]): void {
+  canSkipUpdateAfterLiteralMutationRefs(refs: readonly WorkPaperDimensionMutationRef[], potentialNewCells: number | undefined): boolean {
+    if (potentialNewCells !== 0 || refs.length === 0) {
+      return false
+    }
+    for (let index = 0; index < refs.length; index += 1) {
+      const ref = refs[index]
+      const mutation = ref === undefined ? undefined : dimensionMutationOf(ref)
+      if (ref?.cellIndex === undefined || mutation?.kind !== 'setCellValue' || mutation.value === null) {
+        return false
+      }
+      const cached = this.dimensions.get(ref.sheetId)
+      if (!cached) {
+        continue
+      }
+      if (this.sheetHasSpills(ref.sheetId)) {
+        return false
+      }
+      if (mutation.row + 1 > cached.height || mutation.col + 1 > cached.width) {
+        return false
+      }
+    }
+    return true
+  }
+
+  updateAfterCellMutationRefs(refs: readonly WorkPaperDimensionMutationRef[]): void {
     if (this.dimensions.size === 0) {
       return
     }
     if (refs.length === 1) {
       const ref = refs[0]
-      const mutation = ref?.mutation
+      const mutation = ref === undefined ? undefined : dimensionMutationOf(ref)
       if (ref && mutation) {
         const cached = this.dimensions.get(ref.sheetId)
         if (!cached) {
@@ -99,7 +149,7 @@ export class WorkPaperSheetDimensionCache {
       if (!ref) {
         continue
       }
-      const mutation = ref.mutation
+      const mutation = dimensionMutationOf(ref)
       if (mutation.kind === 'setCellFormula' && workPaperFormulaMayResizeDynamically(mutation.formula)) {
         this.spillSheetIds = null
         this.invalidate(ref.sheetId)
@@ -111,6 +161,9 @@ export class WorkPaperSheetDimensionCache {
       }
       if (mutation.kind === 'clearCell') {
         this.invalidateIfEdge(ref.sheetId, mutation.row, mutation.col)
+        continue
+      }
+      if (!this.isMutationCountedForDimensions(ref, mutation)) {
         continue
       }
       this.expand(ref.sheetId, mutation.row, mutation.col)
@@ -183,12 +236,12 @@ export class WorkPaperSheetDimensionCache {
     }
     const current = axis === 'row' ? cached.height : cached.width
     const sourceInsideBounds = start < current
-    const targetInsideOrAtBounds = target <= current
+    const targetEndsInsideBounds = target + count <= current
     const sourceEndsInsideBounds = start + count <= current
     if (!sourceInsideBounds && target >= current) {
       return
     }
-    if (sourceInsideBounds && sourceEndsInsideBounds && targetInsideOrAtBounds) {
+    if (sourceInsideBounds && sourceEndsInsideBounds && targetEndsInsideBounds) {
       return
     }
     this.invalidate(sheetId)
@@ -226,4 +279,30 @@ export class WorkPaperSheetDimensionCache {
     }
     return this.spillSheetIds.has(sheetId)
   }
+
+  private isCellCountedForDimensions(cellIndex: number): boolean {
+    const cellStore = this.engine.workbook.cellStore
+    return cellStore === undefined || isWorkPaperCellCountedForDimensions(cellStore, cellIndex)
+  }
+
+  private isMutationCountedForDimensions(ref: WorkPaperDimensionMutationRef, mutation: EngineCellMutationAt): boolean {
+    if (mutation.kind === 'setCellFormula') {
+      return true
+    }
+    if (mutation.kind === 'setCellValue' && mutation.value !== null) {
+      return true
+    }
+    return ref.cellIndex !== undefined && this.isCellCountedForDimensions(ref.cellIndex)
+  }
+}
+
+export function isWorkPaperCellCountedForDimensions(cellStore: WorkPaperSheetDimensionCellStore, cellIndex: number): boolean {
+  if ((cellStore.formulaIds[cellIndex] ?? 0) !== 0) {
+    return true
+  }
+  const tag = (cellStore.tags[cellIndex] ?? ValueTag.Empty) as ValueTag
+  if (tag !== ValueTag.Empty && tag !== ValueTag.Error) {
+    return true
+  }
+  return (cellStore.versions[cellIndex] ?? 0) !== 0 || ((cellStore.flags[cellIndex] ?? 0) & CellFlags.AuthoredBlank) !== 0
 }

@@ -3,7 +3,7 @@ import * as fc from 'fast-check'
 import type { AsyncCommand } from 'fast-check'
 import type { WorkbookSnapshot } from '@bilig/protocol'
 import { SpreadsheetEngine } from '../engine.js'
-import { runModelProperty } from '@bilig/test-fuzz'
+import { resolveReplaySelector, runModelProperty } from '@bilig/test-fuzz'
 import { createEngineSeedSnapshot, normalizeSnapshotForSemanticComparison } from './engine-fuzz-helpers.js'
 import {
   applyEngineSemanticActionAndCaptureResult,
@@ -94,9 +94,10 @@ const redoCommandArbitrary: fc.Arbitrary<AsyncCommand<EngineMetadataModel, Sprea
 describe('engine metadata fuzz', () => {
   for (const seedName of metadataSeedNames) {
     it(`keeps metadata semantics aligned for ${seedName} seeded workbooks`, async () => {
+      const suite = `core/metadata/${seedName}`
       const seedSnapshot = await createEngineSeedSnapshot(seedName, `fuzz-core-metadata-${seedName}`)
       const ran = await runModelProperty({
-        suite: `core/metadata/${seedName}`,
+        suite,
         commands: (replayPath) =>
           fc.commands([applySemanticCommandArbitrary(metadataSemanticActionArbitrary), undoCommandArbitrary, redoCommandArbitrary], {
             maxCommands: 18,
@@ -124,7 +125,12 @@ describe('engine metadata fuzz', () => {
           return engine
         },
       })
-      expect(ran).toBe(true)
+      expect(ran).toBe(shouldAssertFuzzSuiteRan(suite, 'model'))
     })
   }
 })
+
+function shouldAssertFuzzSuiteRan(suite: string, kind: string): boolean {
+  const selector = resolveReplaySelector()
+  return !selector.enabled || (selector.suite === suite && (selector.kind === null || selector.kind === kind))
+}

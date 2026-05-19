@@ -1,5 +1,6 @@
 import type { CompiledFormula, StructuralAxisTransform } from '@bilig/formula'
 import type { RuntimeFormula } from '../runtime-state.js'
+import { mapStructuralAxisInterval } from '../../engine-structural-utils.js'
 
 export function dependencyTouchesSheet(dependency: string, sheetName: string): boolean {
   if (!dependency.includes('!')) {
@@ -19,25 +20,27 @@ export function rangeDependencyAxisAffected(
   }
   const start = transform.axis === 'row' ? rangeDescriptor.row1 : rangeDescriptor.col1
   const end = transform.axis === 'row' ? rangeDescriptor.row2 : rangeDescriptor.col2
-  return !(end < transform.start || start >= transform.start + transform.count)
+  const next = mapStructuralAxisInterval(start, end, transform)
+  return next === undefined || next.start !== start || next.end !== end
 }
 
 export function runtimeDirectRangeAxisAffected(
   targetSheetId: number | undefined,
   targetSheetName: string,
   transform: StructuralAxisTransform,
-  range: { sheetName: string; rowStart: number; rowEnd: number; col: number } | undefined,
+  range: { sheetName: string; rowStart: number; rowEnd: number; col: number; colEnd?: number } | undefined,
 ): boolean {
   if (!range || targetSheetId === undefined || range.sheetName !== targetSheetName) {
     return false
   }
+  const colEnd = range.colEnd ?? range.col
   return rangeDependencyAxisAffected(
     {
       sheetId: targetSheetId,
       row1: range.rowStart,
       row2: range.rowEnd,
       col1: range.col,
-      col2: range.col,
+      col2: colEnd,
     },
     targetSheetId,
     transform,
@@ -161,9 +164,18 @@ export function structuralDirectAggregateRewritePreservesValue(
   rewritten: { compiled: CompiledFormula; reusedProgram: boolean },
   transform: StructuralAxisTransform,
 ): boolean {
+  const directAggregate = formula.directAggregate
+  const preservesMovedRowAggregateSpan =
+    transform.kind !== 'move' ||
+    directAggregate === undefined ||
+    (() => {
+      const nextRows = mapStructuralAxisInterval(directAggregate.rowStart, directAggregate.rowEnd, transform)
+      return nextRows !== undefined && nextRows.end - nextRows.start === directAggregate.rowEnd - directAggregate.rowStart
+    })()
   return (
-    (transform.kind === 'insert' || transform.kind === 'move') &&
-    formula.directAggregate !== undefined &&
+    (transform.kind === 'insert' || (transform.kind === 'move' && transform.axis === 'row')) &&
+    directAggregate !== undefined &&
+    preservesMovedRowAggregateSpan &&
     rewritten.reusedProgram &&
     !rewritten.compiled.volatile &&
     formula.compiled.symbolicNames.length === 0 &&

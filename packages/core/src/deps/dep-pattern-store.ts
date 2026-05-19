@@ -7,6 +7,7 @@ export interface DepPatternEntry {
 }
 
 export interface DepPatternStore {
+  readonly clear: () => void
   readonly getCriteriaPattern: (request: {
     readonly regionIds: readonly RegionId[]
     readonly criteriaKeys: readonly string[]
@@ -29,6 +30,9 @@ export function createDepPatternStore(): DepPatternStore {
   const criteriaPatterns = new Map<string, DepPatternEntry>()
 
   return {
+    clear() {
+      criteriaPatterns.clear()
+    },
     getCriteriaPattern({ regionIds, criteriaKeys, versionStamp }) {
       const existing = criteriaPatterns.get(patternKey(regionIds, criteriaKeys))
       return existing?.versionStamp === versionStamp ? existing : undefined

@@ -1,10 +1,19 @@
-import { mkdtempSync, readFileSync, rmSync } from 'node:fs'
+import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import * as fc from 'fast-check'
 import type { RunDetails } from 'fast-check'
 import { afterEach, describe, expect, it } from 'vitest'
-import { captureCounterexample, extractReplayPathForTest, resolveFuzzCaptureEnabled, runProperty } from '../index.js'
+import {
+  BYTE_FUZZ_DICTIONARY_PATH,
+  BYTE_FUZZ_TARGETS_DIR,
+  TEST_FUZZ_PACKAGE_ROOT,
+  captureCounterexample,
+  extractReplayPathForTest,
+  resolveFuzzCaptureEnabled,
+  runProperty,
+  shouldRunFuzzSuite,
+} from '../index.js'
 
 const tempDirs: string[] = []
 
@@ -84,6 +93,14 @@ function readReplayPath(artifactPath: string): string | null {
 }
 
 describe('test-fuzz replay-path extraction', () => {
+  it('owns byte-fuzz assets from the reusable test-fuzz package', () => {
+    expect(TEST_FUZZ_PACKAGE_ROOT.endsWith('packages/test-fuzz')).toBe(true)
+    expect(BYTE_FUZZ_TARGETS_DIR).toBe(join(TEST_FUZZ_PACKAGE_ROOT, 'byte-targets'))
+    expect(BYTE_FUZZ_DICTIONARY_PATH).toBe(join(TEST_FUZZ_PACKAGE_ROOT, 'dictionaries', 'workbook-byte.dict'))
+    expect(existsSync(BYTE_FUZZ_TARGETS_DIR)).toBe(true)
+    expect(existsSync(BYTE_FUZZ_DICTIONARY_PATH)).toBe(true)
+  })
+
   it('extracts replayPath from string counterexamples', () => {
     expect(extractReplayPathForTest(['cmd replayPath="0:1:2"'])).toBe('0:1:2')
   })
@@ -92,7 +109,7 @@ describe('test-fuzz replay-path extraction', () => {
     const artifactPath = withTempCwd(() =>
       captureCounterexample({
         suite: 'grid/replay-path',
-        kind: 'browser',
+        kind: 'byte',
         details: createRunDetails(123, '0:0', [[{ kind: 'replay', replayPath: '/tmp/replay.json' }]]),
       }),
     )
@@ -104,7 +121,7 @@ describe('test-fuzz replay-path extraction', () => {
     const artifactPath = withTempCwd(() =>
       captureCounterexample({
         suite: 'grid/replay-string',
-        kind: 'browser',
+        kind: 'byte',
         details: createRunDetails(456, '0:1', ['Command(replayPath="/tmp/from-string.json")']),
       }),
     )
@@ -116,7 +133,7 @@ describe('test-fuzz replay-path extraction', () => {
     const artifactPath = withTempCwd(() =>
       captureCounterexample({
         suite: 'grid/replay-command',
-        kind: 'browser',
+        kind: 'byte',
         details: createRunDetails(789, '0:1', ['Command(replayPath="/tmp/from-string.json")']),
       }),
     )
@@ -162,5 +179,36 @@ describe('test-fuzz replay-path extraction', () => {
         }),
       ),
     ).rejects.toThrow('BILIG_FUZZ_PROFILE must be "fuzz" or "replay" when set, got main')
+  })
+
+  it('fails selected suites that run zero generated cases', async () => {
+    await expect(
+      runProperty({
+        suite: 'zero-runs/guard',
+        arbitrary: fc.constant('value'),
+        predicate: () => {},
+        parameters: { numRuns: 0 },
+      }),
+    ).rejects.toThrow('Fuzz suite zero-runs/guard ran zero cases')
+  })
+
+  it('writes a replay hit marker only for the selected suite', async () => {
+    const tempDir = mkdtempSync(join(tmpdir(), 'bilig-test-fuzz-hit-'))
+    tempDirs.push(tempDir)
+    const replayFile = join(tempDir, 'replay.json')
+    const hitFile = join(tempDir, 'hit.json')
+    writeFileSync(replayFile, `${JSON.stringify({ suite: 'marker/suite', kind: 'property', seed: 123 })}\n`, 'utf8')
+    await withEnv(
+      {
+        BILIG_FUZZ_REPLAY: replayFile,
+        BILIG_FUZZ_REPLAY_HIT_FILE: hitFile,
+      },
+      async () => {
+        expect(shouldRunFuzzSuite('other/suite', 'property')).toBe(false)
+        expect(existsSync(hitFile)).toBe(false)
+        expect(shouldRunFuzzSuite('marker/suite', 'property')).toBe(true)
+        expect(existsSync(hitFile)).toBe(true)
+      },
+    )
   })
 })

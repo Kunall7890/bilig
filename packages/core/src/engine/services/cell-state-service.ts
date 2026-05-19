@@ -26,6 +26,7 @@ export interface EngineCellStateService {
     sourceAddress?: string,
     formatOverride?: string | null,
     styleIdOverride?: string,
+    options?: CellStateRestoreOptions,
   ) => Effect.Effect<EngineOp[], EngineCellStateError>
   readonly captureStoredCellOpsNow: (
     cellIndex: number,
@@ -44,7 +45,13 @@ export interface EngineCellStateService {
     sourceAddress?: string,
     formatOverride?: string | null,
     styleIdOverride?: string,
+    options?: CellStateRestoreOptions,
   ) => EngineOp[]
+}
+
+export interface CellStateRestoreOptions {
+  readonly clearExistingFormat?: boolean
+  readonly forceFormatWrite?: boolean
 }
 
 function cellStateErrorMessage(message: string, cause: unknown): string {
@@ -81,10 +88,7 @@ export function createEngineCellStateService(args: {
     sourceAddress?: string,
     formatOverride: string | null = snapshot.format ?? null,
     styleIdOverride = snapshot.styleId ?? WorkbookStore.defaultStyleId,
-    options: {
-      clearExistingFormat?: boolean
-      forceFormatWrite?: boolean
-    } = { clearExistingFormat: true },
+    options: CellStateRestoreOptions = { clearExistingFormat: true },
   ): EngineOp[] => {
     const ops: EngineOp[] = []
     const targetCellIndex = args.state.workbook.getCellIndex(sheetName, address)
@@ -190,17 +194,18 @@ export function createEngineCellStateService(args: {
     const snapshot = args.getCellByIndex(cellIndex)
     const explicitFormat = args.state.workbook.getCellFormat(cellIndex) ?? null
     const explicitStyleId = getStoredStyleId(sheetName, address)
+    const restoreOptions = { clearExistingFormat: false }
     if (snapshot.formula !== undefined) {
-      return toCellStateOpsNow(sheetName, address, snapshot, undefined, undefined, explicitFormat, explicitStyleId)
+      return toCellStateOpsNow(sheetName, address, snapshot, undefined, undefined, explicitFormat, explicitStyleId, restoreOptions)
     }
     switch (snapshot.value.tag) {
       case ValueTag.Empty:
       case ValueTag.Error:
-        return toCellStateOpsNow(sheetName, address, snapshot, undefined, undefined, explicitFormat, explicitStyleId)
+        return toCellStateOpsNow(sheetName, address, snapshot, undefined, undefined, explicitFormat, explicitStyleId, restoreOptions)
       case ValueTag.Number:
       case ValueTag.Boolean:
       case ValueTag.String:
-        return toCellStateOpsNow(sheetName, address, snapshot, undefined, undefined, explicitFormat, explicitStyleId)
+        return toCellStateOpsNow(sheetName, address, snapshot, undefined, undefined, explicitFormat, explicitStyleId, restoreOptions)
     }
   }
 
@@ -248,9 +253,10 @@ export function createEngineCellStateService(args: {
           }),
       })
     },
-    toCellStateOps(sheetName, address, snapshot, sourceSheetName, sourceAddress, formatOverride, styleIdOverride) {
+    toCellStateOps(sheetName, address, snapshot, sourceSheetName, sourceAddress, formatOverride, styleIdOverride, options) {
       return Effect.try({
-        try: () => toCellStateOpsNow(sheetName, address, snapshot, sourceSheetName, sourceAddress, formatOverride, styleIdOverride),
+        try: () =>
+          toCellStateOpsNow(sheetName, address, snapshot, sourceSheetName, sourceAddress, formatOverride, styleIdOverride, options),
         catch: (cause) =>
           new EngineCellStateError({
             message: cellStateErrorMessage(`Failed to materialize cell state ops for ${sheetName}!${address}`, cause),

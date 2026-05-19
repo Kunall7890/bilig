@@ -1,4 +1,10 @@
-import { CellFlags, type EngineExistingNumericCellMutationResult, type SheetRecord, type SpreadsheetEngine } from '@bilig/core'
+import {
+  CellFlags,
+  type EngineExistingLiteralCellMutationRef,
+  type EngineExistingNumericCellMutationResult,
+  type SheetRecord,
+  type SpreadsheetEngine,
+} from '@bilig/core'
 import { MAX_COLS, MAX_ROWS, ValueTag, type CellSnapshot, type CellValue, type WorkbookDefinedNameValueSnapshot } from '@bilig/protocol'
 import type { InternalFunctionBinding } from './work-paper-function-registry.js'
 import { createWorkPaperRuntimeAdapters, type WorkPaperRuntimeAdapters } from './work-paper-runtime-adapters.js'
@@ -144,6 +150,9 @@ export abstract class WorkPaperRuntimeFastPathBase extends WorkPaperRuntimeSurfa
       messageOf: (error, fallback) => this.messageOf(error, fallback),
       readSingleTrackedCellChange: (cellIndex) => this.readSingleTrackedCellChange(cellIndex),
       trackedA1: (row, col) => this.trackedA1(row, col),
+      canSkipSheetDimensionUpdateAfterLiteralMutationRefs: (refs, potentialNewCells) =>
+        this.sheetDimensionCache.canSkipUpdateAfterLiteralMutationRefs(refs, potentialNewCells),
+      updateSheetDimensionsAfterCellMutationRefs: (refs) => this.sheetDimensionCache.updateAfterCellMutationRefs(refs),
     }
     return this.existingLiteralDirectFastPathRuntimeCache
   }
@@ -161,6 +170,8 @@ export abstract class WorkPaperRuntimeFastPathBase extends WorkPaperRuntimeSurfa
         this.enqueueSuspendedLiteralMutation(sheetId, row, col, content, cellIndex),
       enqueueDeferredBatchLiteral: (sheetId, row, col, content, cellIndex) =>
         this.enqueueDeferredBatchLiteral(sheetId, row, col, content, cellIndex),
+      getCellSerialized: (address) =>
+        this.cellSnapshotToRawContent(this.engine.getCell(this.sheetName(address.sheet), this.a1(address)), address.sheet),
       trySetExistingNumericCellContentsWithTrackedFastPath: (request) =>
         trySetExistingNumericWorkPaperCellContentsWithTrackedFastPath(this.getExistingNumericFastPathRuntime(), request),
       trySetExistingLiteralCellContentsWithTrackedFastPath: (request) =>
@@ -260,6 +271,18 @@ export abstract class WorkPaperRuntimeFastPathBase extends WorkPaperRuntimeSurfa
     }
     if (!result) {
       return null
+    }
+    const dimensionRefs: EngineExistingLiteralCellMutationRef[] = [
+      {
+        sheetId: address.sheet,
+        cellIndex,
+        row: address.row,
+        col: address.col,
+        value: content,
+      },
+    ]
+    if (!this.sheetDimensionCache.canSkipUpdateAfterLiteralMutationRefs(dimensionRefs, 0)) {
+      this.sheetDimensionCache.updateAfterCellMutationRefs(dimensionRefs)
     }
     if (this.engineEvents.hasTrackedEvents) {
       this.engineEvents.clearEvents()
@@ -518,6 +541,9 @@ export abstract class WorkPaperRuntimeFastPathBase extends WorkPaperRuntimeSurfa
       emitValuesUpdated: (changes) => {
         this.emitter.emitDetailed({ eventName: 'valuesUpdated', payload: { changes } })
       },
+      canSkipSheetDimensionUpdateAfterLiteralMutationRefs: (refs, potentialNewCells) =>
+        this.sheetDimensionCache.canSkipUpdateAfterLiteralMutationRefs(refs, potentialNewCells),
+      updateSheetDimensionsAfterCellMutationRefs: (refs) => this.sheetDimensionCache.updateAfterCellMutationRefs(refs),
     }
     return this.existingNumericFastPathRuntimeCache
   }

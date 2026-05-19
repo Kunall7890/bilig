@@ -159,7 +159,7 @@ describe('createOperationDirectFormulaDeltas', () => {
 
   it('should apply validated direct scalar deltas through terminal writes', () => {
     // Arrange
-    const { counters, helpers, sheet, workbook } = createHarness({
+    const { counters, formulas, helpers, sheet, workbook } = createHarness({
       canSkipDirectFormulaColumnVersion: () => false,
     })
     const first = createCell(workbook, sheet.id, {
@@ -185,6 +185,8 @@ describe('createOperationDirectFormulaDeltas', () => {
     const directScalarCells = Uint32Array.of(first, second)
     collection.appendConstantDelta(directScalarCells, 4, 'scalar')
     collection.markScalarDeltaCellsValidated()
+    formulas.set(first, createRuntimeFormula(first, { directScalar: TEST_DIRECT_SCALAR }))
+    formulas.set(second, createRuntimeFormula(second, { directScalar: TEST_DIRECT_SCALAR }))
 
     // Act
     const changed = helpers.tryApplyDirectScalarDeltas(collection)
@@ -205,6 +207,32 @@ describe('createOperationDirectFormulaDeltas', () => {
     expect(sheet.columnVersions[0] ?? 0).toBe(0)
     expect(sheet.columnVersions[1] ?? 0).toBe(0)
     expect(counters.directScalarDeltaApplications).toBe(2)
+  })
+
+  it('should reject validated direct scalar deltas when the formula target is stale', () => {
+    // Arrange
+    const { counters, helpers, sheet, workbook } = createHarness({
+      canSkipDirectFormulaColumnVersion: () => false,
+    })
+    const cellIndex = createCell(workbook, sheet.id, {
+      row: 0,
+      col: 0,
+      value: 2,
+      version: 1,
+    })
+
+    const collection = new DirectFormulaIndexCollection()
+    collection.appendConstantDelta(Uint32Array.of(cellIndex), 4, 'scalar')
+    collection.markScalarDeltaCellsValidated()
+
+    // Act
+    const changed = helpers.tryApplyDirectScalarDeltas(collection)
+
+    // Assert
+    expect(changed).toBeUndefined()
+    expect(workbook.cellStore.numbers[cellIndex]).toBe(2)
+    expect(workbook.cellStore.versions[cellIndex]).toBe(1)
+    expect(counters.directScalarDeltaApplications).toBe(0)
   })
 
   it('should return undefined when a direct formula delta targets a cycle cell', () => {

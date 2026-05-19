@@ -139,6 +139,7 @@ export function createOperationDirectFormulaDeltas(args: {
     for (let index = 0; index < collection.size; index += 1) {
       const cellIndex = collection.getCellIndexAt(index)
       if (
+        !args.state.formulas.get(cellIndex) ||
         ((cellStore.flags[cellIndex] ?? 0) & CellFlags.InCycle) !== 0 ||
         cellStore.tags[cellIndex] !== ValueTag.Number ||
         collection.getDeltaAt(index) === undefined
@@ -193,6 +194,16 @@ export function createOperationDirectFormulaDeltas(args: {
     const hasValidatedTerminalWrites = collection.hasValidatedScalarDeltaCells()
     if (constantDelta !== undefined && hasValidatedTerminalWrites) {
       const cellIndices = collection.getCellIndicesForRead()
+      for (let index = 0; index < cellIndices.length; index += 1) {
+        const cellIndex = cellIndices[index]!
+        if (
+          !args.state.formulas.get(cellIndex) ||
+          ((cellStore.flags[cellIndex] ?? 0) & CellFlags.InCycle) !== 0 ||
+          cellStore.tags[cellIndex] !== ValueTag.Number
+        ) {
+          return undefined
+        }
+      }
       const changed = captureChanged
         ? cellIndices instanceof Uint32Array
           ? cellIndices
@@ -227,17 +238,21 @@ export function createOperationDirectFormulaDeltas(args: {
     let canUseTerminalFormulaWrites = hasValidatedTerminalWrites
     if (!hasValidatedTerminalWrites) {
       canUseTerminalFormulaWrites = true
-      for (let index = 0; index < collection.size; index += 1) {
-        const cellIndex = collection.getCellIndexAt(index)
-        if (((cellStore.flags[cellIndex] ?? 0) & CellFlags.InCycle) !== 0 || cellStore.tags[cellIndex] !== ValueTag.Number) {
-          return undefined
-        }
-        if (canUseTerminalFormulaWrites && !args.canSkipDirectFormulaColumnVersion(cellIndex)) {
-          canUseTerminalFormulaWrites = false
-        }
-        if (captureChanged) {
-          changed[index] = cellIndex
-        }
+    }
+    for (let index = 0; index < collection.size; index += 1) {
+      const cellIndex = collection.getCellIndexAt(index)
+      if (
+        !args.state.formulas.get(cellIndex) ||
+        ((cellStore.flags[cellIndex] ?? 0) & CellFlags.InCycle) !== 0 ||
+        cellStore.tags[cellIndex] !== ValueTag.Number
+      ) {
+        return undefined
+      }
+      if (canUseTerminalFormulaWrites && !args.canSkipDirectFormulaColumnVersion(cellIndex)) {
+        canUseTerminalFormulaWrites = false
+      }
+      if (captureChanged) {
+        changed[index] = cellIndex
       }
     }
     const applyDeltas = (): void => {

@@ -4,6 +4,7 @@ import type { FormulaNode } from '@bilig/formula'
 import type { EngineFormulaEvaluationError } from '../errors.js'
 
 export interface EngineFormulaEvaluationService {
+  readonly clearCachesNow: () => void
   readonly evaluateDirectLookupFormula: (cellIndex: number) => Effect.Effect<number[] | undefined, EngineFormulaEvaluationError>
   readonly evaluateDirectLookupFormulaNow: (cellIndex: number) => number[] | undefined
   readonly evaluateUnsupportedFormula: (cellIndex: number) => Effect.Effect<number[], EngineFormulaEvaluationError>

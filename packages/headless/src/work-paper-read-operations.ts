@@ -14,7 +14,7 @@ import {
   parseWorkPaperCellRangeText,
   resolveDefaultWorkPaperSheetName,
 } from './work-paper-address-format.js'
-import type { WorkPaperSheetDimensionCache } from './work-paper-sheet-dimension-cache.js'
+import { isWorkPaperCellCountedForDimensions, type WorkPaperSheetDimensionCache } from './work-paper-sheet-dimension-cache.js'
 import type {
   RawCellContent,
   WorkPaperAddressFormatOptions,
@@ -320,6 +320,9 @@ function scanSheetDimensionsAndDynamicFormula(
   let mayResize = false
   const formulaIds = engine.workbook.cellStore.formulaIds
   sheet.grid.forEachCellEntry((_cellIndex, row, col) => {
+    if (!isWorkPaperCellCountedForDimensions(engine.workbook.cellStore, _cellIndex)) {
+      return
+    }
     height = Math.max(height, row + 1)
     width = Math.max(width, col + 1)
     if (!mayResize && (formulaIds[_cellIndex] ?? 0) !== 0) {

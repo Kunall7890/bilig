@@ -3,6 +3,7 @@ import { cloneCellStyleRecord } from '../../engine-style-utils.js'
 import { restoreFormatRangeOps, restoreStyleRangeOps } from '../../engine-range-format-ops.js'
 import type { WorkbookStore } from '../../workbook-store.js'
 import { rangesIntersect } from '../../workbook-merge-records.js'
+import { normalizeStructuralAxisTransformForAxisLength } from '../../engine-structural-utils.js'
 
 export function buildMutationMetadataInverseOps(workbook: WorkbookStore, op: EngineOp): EngineOp[] | undefined {
   switch (op.kind) {
@@ -33,11 +34,21 @@ export function buildMutationMetadataInverseOps(workbook: WorkbookStore, op: Eng
     case 'insertRows':
       return [{ kind: 'deleteRows', sheetName: op.sheetName, start: op.start, count: op.count }]
     case 'moveRows':
-      return [{ kind: 'moveRows', sheetName: op.sheetName, start: op.target, count: op.count, target: op.start }]
+      return [
+        { kind: 'moveRows', sheetName: op.sheetName, start: normalizedMoveTarget(workbook, op, 'row'), count: op.count, target: op.start },
+      ]
     case 'insertColumns':
       return [{ kind: 'deleteColumns', sheetName: op.sheetName, start: op.start, count: op.count }]
     case 'moveColumns':
-      return [{ kind: 'moveColumns', sheetName: op.sheetName, start: op.target, count: op.count, target: op.start }]
+      return [
+        {
+          kind: 'moveColumns',
+          sheetName: op.sheetName,
+          start: normalizedMoveTarget(workbook, op, 'column'),
+          count: op.count,
+          target: op.start,
+        },
+      ]
     case 'updateRowMetadata': {
       const existing = workbook.getRowMetadata(op.sheetName, op.start, op.count)
       return [
@@ -402,4 +413,17 @@ export function buildMutationMetadataInverseOps(workbook: WorkbookStore, op: Eng
       throw new Error(`Unhandled metadata inverse operation: ${String((exhaustive as { kind?: unknown }).kind)}`)
     }
   }
+}
+
+function normalizedMoveTarget(
+  workbook: WorkbookStore,
+  op: Extract<EngineOp, { kind: 'moveRows' | 'moveColumns' }>,
+  axis: 'row' | 'column',
+): number {
+  const sheet = workbook.getSheet(op.sheetName)
+  const normalized = normalizeStructuralAxisTransformForAxisLength(
+    { kind: 'move', axis, start: op.start, count: op.count, target: op.target },
+    sheet?.logicalAxisMap.get(axis).length ?? op.start + op.count,
+  )
+  return normalized.kind === 'move' ? normalized.target : op.target
 }

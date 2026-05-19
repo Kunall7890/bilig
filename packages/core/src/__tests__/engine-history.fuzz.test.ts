@@ -3,7 +3,7 @@ import * as fc from 'fast-check'
 import type { AsyncCommand } from 'fast-check'
 import type { WorkbookSnapshot } from '@bilig/protocol'
 import { SpreadsheetEngine } from '../engine.js'
-import { runModelProperty } from '@bilig/test-fuzz'
+import { resolveReplaySelector, runModelProperty } from '@bilig/test-fuzz'
 import {
   applyActionAndCaptureResult,
   assertSnapshotInvariants,
@@ -124,9 +124,10 @@ const engineHistoryCommandArbitraries: Array<fc.Arbitrary<AsyncCommand<EngineHis
 describe('engine history fuzz', () => {
   for (const seedName of engineSeedNames) {
     it(`keeps model-based history semantics aligned for ${seedName} seeded workbooks`, async () => {
+      const suite = `core/history/${seedName}`
       const seedSnapshot = await createEngineSeedSnapshot(seedName, `fuzz-core-history-${seedName}`)
       const ran = await runModelProperty({
-        suite: `core/history/${seedName}`,
+        suite,
         commands: (replayPath) =>
           fc.commands(engineHistoryCommandArbitraries, {
             maxCommands: 18,
@@ -154,7 +155,12 @@ describe('engine history fuzz', () => {
           return engine
         },
       })
-      expect(ran).toBe(true)
+      expect(ran).toBe(shouldAssertFuzzSuiteRan(suite, 'model'))
     })
   }
 })
+
+function shouldAssertFuzzSuiteRan(suite: string, kind: string): boolean {
+  const selector = resolveReplaySelector()
+  return !selector.enabled || (selector.suite === suite && (selector.kind === null || selector.kind === kind))
+}

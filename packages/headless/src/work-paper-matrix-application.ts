@@ -2,7 +2,7 @@ import type { EngineCellMutationRef } from '@bilig/core'
 import { translateFormulaReferences } from '@bilig/formula'
 import { buildMatrixMutationPlan, type MatrixMutationDimensionImpact } from './matrix-mutation-plan.js'
 import { workPaperFormulaMayResizeDynamically } from './work-paper-sheet-inspection.js'
-import { stripLeadingEquals } from './work-paper-runtime-helpers.js'
+import { isParsableFormulaContent, stripLeadingEquals } from './work-paper-runtime-helpers.js'
 import type { RawCellContent, WorkPaperCellAddress, WorkPaperSheet } from './work-paper-types.js'
 
 export interface WorkPaperCellMutationApplyOptions {
@@ -180,10 +180,6 @@ export function applyWorkPaperMatrixContents(input: {
   }
 }
 
-function isFormulaContent(content: RawCellContent): content is string {
-  return typeof content === 'string' && content.trim().startsWith('=')
-}
-
 function tryBuildFreshNumericFormulaColumnMatrixPlan(args: MatrixMutationPlanInput):
   | {
       readonly refs: readonly EngineCellMutationRef[]
@@ -228,7 +224,7 @@ function tryBuildFreshNumericFormulaColumnMatrixPlan(args: MatrixMutationPlanInp
       valueCursor += 1
     }
     const rawFormula = row[inputColCount]!
-    if (!isFormulaContent(rawFormula)) {
+    if (!isParsableFormulaContent(rawFormula)) {
       return undefined
     }
     const destination: WorkPaperCellAddress = {

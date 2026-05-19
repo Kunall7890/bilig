@@ -47,6 +47,7 @@ const metrics: RecalcMetrics = {
 }
 
 const RANGE_VISUAL_DIRTY_MASK = DirtyMaskV3.Value | DirtyMaskV3.Style | DirtyMaskV3.Text | DirtyMaskV3.Rect | DirtyMaskV3.Border
+const CELL_TEXT_DIRTY_MASK = DirtyMaskV3.Value | DirtyMaskV3.Text
 
 function hasOpaqueGreenFillRect(rectInstances: Float32Array, rectCount: number): boolean {
   for (let index = 0; index < rectCount; index += 1) {
@@ -193,7 +194,7 @@ describe('worker-runtime-render-tile-delta', () => {
     )
   })
 
-  it('treats changed-cell render tile deltas as visual paint damage', () => {
+  it('keeps changed-cell render tile deltas text-only so scalar edits can reuse rect resources', () => {
     const changedEngine = {
       ...engine,
       workbook: {
@@ -225,7 +226,8 @@ describe('worker-runtime-render-tile-delta', () => {
 
     expect(replacement?.kind === 'tileReplace' ? replacement.dirtyLocalRows : null).toEqual(new Uint32Array([5, 5]))
     expect(replacement?.kind === 'tileReplace' ? replacement.dirtyLocalCols : null).toEqual(new Uint32Array([4, 4]))
-    expect(replacement?.kind === 'tileReplace' ? replacement.dirtyMasks : null).toEqual(new Uint32Array([RANGE_VISUAL_DIRTY_MASK]))
+    expect(replacement?.kind === 'tileReplace' ? replacement.dirtyMasks : null).toEqual(new Uint32Array([CELL_TEXT_DIRTY_MASK]))
+    expect(replacement?.kind === 'tileReplace' ? replacement.dirty.rectSpans : null).toEqual([])
   })
 
   it('materializes only dirty visible tiles for event-driven batches', () => {

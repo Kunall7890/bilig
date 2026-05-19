@@ -5,23 +5,24 @@ import * as fc from 'fast-check'
 import type { AsyncCommand, IAsyncProperty, IProperty, Parameters, RunDetails, Scheduler } from 'fast-check'
 
 export * from './workbook-arbitraries.js'
+export * from './paths.js'
 
 export type FuzzProfile = 'fuzz' | 'replay'
-export type FuzzSuiteKind = 'property' | 'model' | 'scheduled' | 'browser'
+export type FuzzSuiteKind = 'property' | 'model' | 'scheduled' | 'byte'
 
 interface BudgetProfile {
   property: { numRuns: number; maxMs: number }
   model: { numRuns: number; maxMs: number }
   scheduled: { numRuns: number; maxMs: number }
-  browser: { numRuns: number; maxMs: number }
+  byte: { numRuns: number; maxMs: number }
 }
 
 const BUDGETS: Record<Exclude<FuzzProfile, 'replay'>, BudgetProfile> = {
   fuzz: {
-    property: { numRuns: 200, maxMs: 30_000 },
-    model: { numRuns: 40, maxMs: 30_000 },
-    scheduled: { numRuns: 12, maxMs: 12_000 },
-    browser: { numRuns: 15, maxMs: 30_000 },
+    property: { numRuns: 1_000, maxMs: 300_000 },
+    model: { numRuns: 160, maxMs: 300_000 },
+    scheduled: { numRuns: 80, maxMs: 180_000 },
+    byte: { numRuns: 20_000, maxMs: 120_000 },
   },
 }
 
@@ -159,7 +160,7 @@ function resolveFuzzProfile(): FuzzProfile {
 function resolveBudget(kind: FuzzSuiteKind): { numRuns: number; maxMs: number } {
   const profile = resolveFuzzProfile()
   const baseProfile = profile === 'replay' ? 'fuzz' : profile
-  return BUDGETS[baseProfile][kind === 'browser' ? 'browser' : kind]
+  return BUDGETS[baseProfile][kind]
 }
 
 function resolveReplayFixturePath(): string | null {
@@ -257,7 +258,26 @@ export function shouldRunFuzzSuite(suite: string, kind?: string): boolean {
   if (kind && selector.kind && selector.kind !== kind) {
     return false
   }
+  markReplaySuiteHit(selector, suite, kind ?? null)
   return true
+}
+
+function markReplaySuiteHit(selector: ReplaySelector, suite: string, kind: string | null): void {
+  const hitFile = process.env['BILIG_FUZZ_REPLAY_HIT_FILE']
+  if (!selector.enabled || !hitFile) {
+    return
+  }
+  mkdirSync(dirname(resolve(hitFile)), { recursive: true })
+  writeFileSync(
+    resolve(hitFile),
+    `${JSON.stringify({
+      suite,
+      kind,
+      replayFilePath: selector.filePath,
+      matchedAt: new Date().toISOString(),
+    })}\n`,
+    'utf8',
+  )
 }
 
 function resolveParameters<Ts extends unknown[]>(suite: string, kind: FuzzSuiteKind, overrides?: FuzzParameters<Ts>): FuzzParameters<Ts> {
@@ -401,6 +421,10 @@ async function runChecked<Ts extends unknown[]>(
     throw new Error(
       `Fuzz suite ${suite} failed with seed=${details.seed} path=${details.counterexamplePath ?? 'n/a'}${artifactPath ? ` artifact=${artifactPath}` : ''}`,
     )
+  }
+
+  if (details.numRuns <= 0) {
+    throw new Error(`Fuzz suite ${suite} ran zero cases; check generators, replay selector, or fuzz parameters.`)
   }
 
   return true

@@ -552,6 +552,9 @@ export function createEngineServiceRuntime(args: {
       formulaTemplates.reset()
       formulaInstances.clear()
       formulaFamilies.clear()
+      aggregateStateStore.reset()
+      depPatternStore.clear()
+      evaluation.clearCachesNow()
       binding.clearFormulaBookkeepingNow()
       volatileFormulaCells.clear()
     },
@@ -776,8 +779,8 @@ export function createEngineServiceRuntime(args: {
       getFormulaFamilyStructuralSourceTransform: (cellIndex) => binding.getFormulaFamilyStructuralSourceTransformNow(cellIndex),
       hasFormulaFamilyStructuralSourceTransforms: () => binding.hasFormulaFamilyStructuralSourceTransformsNow(),
       readRangeCells: (range) => cellState.readRangeCellsNow(range),
-      toCellStateOps: (sheetName, address, snapshot, sourceSheetName, sourceAddress) =>
-        cellState.toCellStateOpsNow(sheetName, address, snapshot, sourceSheetName, sourceAddress),
+      toCellStateOps: (sheetName, address, snapshot, sourceSheetName, sourceAddress, options) =>
+        cellState.toCellStateOpsNow(sheetName, address, snapshot, sourceSheetName, sourceAddress, undefined, undefined, options),
       applyBatchNow: (batch, source, potentialNewCells, preparedCellAddressesByOpIndex) =>
         operations.applyBatchNow(batch, source, potentialNewCells, preparedCellAddressesByOpIndex),
       applyLocalSingleStructuralAxisOpWithoutBatchNow: (op, options) =>
@@ -848,25 +851,30 @@ export function createEngineServiceRuntime(args: {
           if (!sheetName) {
             return []
           }
+          const source = formula
+            ? getRuntimeFormulaSource(formula, formulaFamilies.getStructuralSourceTransform(record.cellIndex))
+            : record.source
+          const currentTemplateId = formula?.templateId ?? record.templateId
+          const templateResolution =
+            currentTemplateId === undefined
+              ? undefined
+              : formulaTemplates.resolveByTemplateId(currentTemplateId, source, position.row, position.col)
+          const templateId =
+            templateResolution?.templateId ??
+            (currentTemplateId === undefined ? undefined : formulaTemplates.resolveForCell(source, position.row, position.col).templateId)
           return [
             {
               ...record,
               sheetName,
               row: position.row,
               col: position.col,
-              source: formula
-                ? getRuntimeFormulaSource(formula, formulaFamilies.getStructuralSourceTransform(record.cellIndex))
-                : record.source,
-              ...(formula?.templateId !== undefined
-                ? { templateId: formula.templateId }
-                : record.templateId !== undefined
-                  ? { templateId: record.templateId }
-                  : {}),
+              source,
+              ...(templateId === undefined ? {} : { templateId }),
             },
           ]
         }),
       hydrateTemplateBank: (templates) => formulaTemplates.hydrateTemplates(templates),
-      resolveTemplateById: (templateId, source, row, col) => formulaTemplates.resolveTrustedByTemplateId(templateId, source, row, col),
+      resolveTemplateById: (templateId, source, row, col) => formulaTemplates.resolveByTemplateId(templateId, source, row, col),
       resolveTemplateForCell: (source, row, col) => formulaTemplates.resolveForCell(source, row, col),
       beginEvaluationBudget: (startedAtMs) => args.state.beginEvaluationBudget(startedAtMs),
       endEvaluationBudget: () => args.state.endEvaluationBudget(),

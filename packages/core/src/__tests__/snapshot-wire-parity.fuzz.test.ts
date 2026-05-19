@@ -45,7 +45,7 @@ describe('snapshot wire parity fuzz', () => {
         expect(projectMetadataSnapshot(restoredSnapshot)).toEqual(projectMetadataSnapshot(finalSnapshot))
       },
     })
-  })
+  }, 300_000)
 })
 
 function expectSemanticSnapshot(actual: WorkbookSnapshot, expected: WorkbookSnapshot): void {

@@ -5315,7 +5315,7 @@ describe('SpreadsheetEngine', () => {
     expect(engine.getCellValue('Sheet1', 'D1')).toEqual({ tag: ValueTag.Number, value: 10 })
   })
 
-  it('defers deleted-column ref errors without rebinding simple formulas', async () => {
+  it('rebinds deleted-column ref errors to keep compiled dependencies consistent', async () => {
     const engine = new SpreadsheetEngine({ workbookName: 'structural-column-ref-error-deferral' })
     await engine.ready()
     engine.createSheet('Sheet1')
@@ -5335,7 +5335,7 @@ describe('SpreadsheetEngine', () => {
     expect(engine.getCellValue('Sheet1', 'C1')).toEqual({ tag: ValueTag.Error, code: ErrorCode.Ref })
     expect(engine.getPerformanceCounters()).toMatchObject({
       structuralFormulaImpactCandidates: 0,
-      structuralFormulaRebindInputs: 0,
+      structuralFormulaRebindInputs: 1,
       structuralUndoCapturedCells: 0,
     })
 

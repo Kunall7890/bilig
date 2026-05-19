@@ -102,6 +102,10 @@ export function tryApplySinglePostRecalcDirectFormula(
     return undefined
   }
   const cellIndex = args.collection.getCellIndexAt(0)
+  const formula = args.state.formulas.get(cellIndex)
+  if (!formula) {
+    return undefined
+  }
   if (isCycleFormulaCell(args, cellIndex)) {
     return undefined
   }
@@ -121,7 +125,6 @@ export function tryApplySinglePostRecalcDirectFormula(
     countDirectDeltaApplication(args, args.state.formulas.get(cellIndex))
     return captureChanged ? Uint32Array.of(cellIndex) : EMPTY_CHANGED_CELLS
   }
-  const formula = args.state.formulas.get(cellIndex)
   if (
     formula?.directScalar !== undefined &&
     !formula.compiled.producesSpill &&
@@ -146,6 +149,9 @@ function applyDirectFormulaFallbacks(args: ApplyPostRecalcDirectFormulaChangesAr
         return
       }
       const formula = args.state.formulas.get(cellIndex)
+      if (!formula) {
+        return
+      }
       const currentResult = args.collection.getCurrentResultAt(directIndex)
       if (!args.didRunRecalc && currentResult !== undefined && args.applyDirectFormulaCurrentResult(cellIndex, currentResult)) {
         if (captureChanged) {

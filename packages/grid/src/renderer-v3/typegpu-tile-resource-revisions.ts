@@ -199,7 +199,25 @@ export function shouldSyncGridTextTileResourceV3(input: {
     return true
   }
   const dirtyMask = resolveGridTileDirtyContentMaskV3(input.tile)
+  if (dirtyMask === null && areGridTextTilePayloadsEqualV3(input.content.textRevisionKey, input.textRevisionKey)) {
+    return input.atlasGeometryVersion !== undefined && input.content.textAtlasGeometryVersion !== input.atlasGeometryVersion
+  }
   return dirtyMask === null || (dirtyMask & TEXT_DIRTY_MASK_V3) !== 0
+}
+
+function areGridTextTilePayloadsEqualV3(
+  left: TypeGpuTileTextRevisionKeyV3 | null | undefined,
+  right: TypeGpuTileTextRevisionKeyV3 | null | undefined,
+): boolean {
+  return (
+    left !== null &&
+    left !== undefined &&
+    right !== null &&
+    right !== undefined &&
+    left.tileId === right.tileId &&
+    left.textRunCount === right.textRunCount &&
+    left.textSignature === right.textSignature
+  )
 }
 
 export function resolveMissingTextGlyphRunSpansV3(input: {
@@ -280,7 +298,7 @@ export function shouldSyncGridRectTileResourceV3(input: {
   }
   const dirtyMask = resolveGridTileDirtyContentMaskV3(input.tile)
   if (dirtyMask === null) {
-    return true
+    return !areGridRectTilePayloadsEqualV3(input.content.rectRevisionKey, input.rectRevisionKey)
   }
   if ((dirtyMask & RECT_DIRTY_MASK_V3) !== 0) {
     return true
@@ -292,6 +310,22 @@ export function shouldSyncGridRectTileResourceV3(input: {
     previousDecorationCellKeys: input.content.decorationCellKeys,
     tile: input.tile,
   })
+}
+
+function areGridRectTilePayloadsEqualV3(
+  left: TypeGpuTileRectRevisionKeyV3 | null | undefined,
+  right: TypeGpuTileRectRevisionKeyV3 | null | undefined,
+): boolean {
+  return (
+    left !== null &&
+    left !== undefined &&
+    right !== null &&
+    right !== undefined &&
+    left.tileId === right.tileId &&
+    left.rectCount === right.rectCount &&
+    left.rectSignature === right.rectSignature &&
+    left.decorationRectCount === right.decorationRectCount
+  )
 }
 
 function hasDirtyTextDecorationResourceV3(input: {

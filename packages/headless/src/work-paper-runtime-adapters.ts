@@ -217,6 +217,8 @@ export function createWorkPaperRuntimeAdapters(args: CreateWorkPaperRuntimeAdapt
     applyCellMutationsAtWithOptions: (refs, options) => {
       args.getEngine().applyCellMutationsAtWithOptions(refs, options)
     },
+    canSkipSheetDimensionUpdateAfterLiteralMutationRefs: (refs, potentialNewCells) =>
+      args.getSheetDimensionCache().canSkipUpdateAfterLiteralMutationRefs(refs, potentialNewCells),
     updateSheetDimensionsAfterCellMutationRefs: (refs) => args.getSheetDimensionCache().updateAfterCellMutationRefs(refs),
   }
 
@@ -298,6 +300,9 @@ export function createWorkPaperRuntimeAdapters(args: CreateWorkPaperRuntimeAdapt
     emitValuesUpdated: (changes) => {
       args.emitter.emitDetailed({ eventName: 'valuesUpdated', payload: { changes } })
     },
+    canSkipSheetDimensionUpdateAfterLiteralMutationRefs: (refs, potentialNewCells) =>
+      args.getSheetDimensionCache().canSkipUpdateAfterLiteralMutationRefs(refs, potentialNewCells),
+    updateSheetDimensionsAfterCellMutationRefs: (refs) => args.getSheetDimensionCache().updateAfterCellMutationRefs(refs),
   }
 
   const setCellContentsRuntime: WorkPaperSetCellContentsRuntime = {

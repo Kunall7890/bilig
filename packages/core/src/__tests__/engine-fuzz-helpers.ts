@@ -847,6 +847,13 @@ export function applyCoreAction(engine: SpreadsheetEngine, action: CoreAction): 
   }
 }
 
+export function isExpectedRejectedMutationError(error: unknown): boolean {
+  if (error instanceof EngineMutationError) {
+    return true
+  }
+  return error instanceof Error && error.message.startsWith('Workbook protection blocks this change:')
+}
+
 export function applyActionAndCaptureResult(
   engine: SpreadsheetEngine,
   action: CoreAction,
@@ -861,7 +868,7 @@ export function applyActionAndCaptureResult(
       after,
     }
   } catch (error) {
-    if (!(error instanceof EngineMutationError)) {
+    if (!isExpectedRejectedMutationError(error)) {
       throw error
     }
     const after = engine.exportSnapshot()

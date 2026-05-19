@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from 'vitest'
 import { ValueTag } from '@bilig/protocol'
 
-import { WorkPaper, type WorkPaperCellAddress } from '../index.js'
+import { exportWorkPaperDocument, WorkPaper, type WorkPaperCellAddress } from '../index.js'
 
 function cell(sheet: number, row: number, col: number): WorkPaperCellAddress {
   return { sheet, row, col }
@@ -109,6 +109,31 @@ describe('WorkPaper sheet dimensions', () => {
       }),
     ).toEqual([[{ tag: ValueTag.Number, value: 2 }], [{ tag: ValueTag.Number, value: 3 }]])
     expect(workbook.getSheetDimensions(summarySheet)).toEqual({ width: 1, height: 2 })
+  })
+
+  it('expands cached dimensions when writing an existing dependency cell outside current used bounds', () => {
+    const workbook = WorkPaper.buildFromSheets({
+      Sheet1: [['=B1']],
+    })
+    const sheetId = workbook.getSheetId('Sheet1')!
+
+    expect(workbook.getSheetDimensions(sheetId)).toEqual({ width: 1, height: 1 })
+
+    workbook.setCellContents(cell(sheetId, 0, 1), false)
+
+    expect(workbook.getSheetDimensions(sheetId)).toEqual({ width: 2, height: 1 })
+    expect(exportWorkPaperDocument(workbook, { includeConfig: true }).sheets[0]?.content).toEqual([['=B1', false]])
+  })
+
+  it('ignores internal blank dependency cells when rescanning dimensions', () => {
+    const workbook = WorkPaper.buildFromSheets({
+      Sheet1: [['=SUM(A1:A3)']],
+    })
+    const sheetId = workbook.getSheetId('Sheet1')!
+    getDimensionCache(workbook).invalidate(sheetId)
+
+    expect(workbook.getSheetDimensions(sheetId)).toEqual({ width: 1, height: 1 })
+    expect(exportWorkPaperDocument(workbook, { includeConfig: true }).sheets[0]?.content).toEqual([['=SUM(A1:A3)']])
   })
 
   it('checks only formula cells for dynamic-resize risk while scanning dimensions', () => {

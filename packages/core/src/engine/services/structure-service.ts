@@ -1,7 +1,11 @@
 import { Effect } from 'effect'
-import type { StructuralAxisTransform } from '@bilig/formula'
+import type { CompiledFormula, ParsedDependencyReference, StructuralAxisTransform } from '@bilig/formula'
 import { CellFlags } from '../../cell-store.js'
-import { mapStructuralAxisIndex, structuralTransformForOp } from '../../engine-structural-utils.js'
+import {
+  mapStructuralAxisIndex,
+  normalizeStructuralAxisTransformForAxisLength,
+  structuralTransformForOp,
+} from '../../engine-structural-utils.js'
 import type { StructuralTransaction } from '../structural-transaction.js'
 import { EngineStructureError } from '../errors.js'
 import { normalizeDefinedName } from '../../workbook-store.js'
@@ -34,6 +38,7 @@ import { collectStructuralFormulaImpacts } from './structure-formula-impacts.js'
 import type {
   CreateEngineStructureServiceArgs,
   EngineStructureService,
+  StructuralAxisOp,
   StructuralAxisOpResult,
   StructuralFormulaRebindInput,
 } from './structure-service-types.js'
@@ -49,8 +54,51 @@ export type {
 
 const EMPTY_STRING_SET = new Set<string>()
 
+function dependencyIncludesOwnerCell(
+  dependency: ParsedDependencyReference,
+  ownerSheetName: string,
+  ownerRow: number,
+  ownerCol: number,
+): boolean {
+  const dependencySheetName = dependency.sheetName ?? ownerSheetName
+  if (dependencySheetName !== ownerSheetName) {
+    return false
+  }
+  if (dependency.kind === 'cell') {
+    return dependency.row === ownerRow && dependency.col === ownerCol
+  }
+  switch (dependency.refKind) {
+    case 'cells':
+      return (
+        ownerRow >= dependency.startRow && ownerRow <= dependency.endRow && ownerCol >= dependency.startCol && ownerCol <= dependency.endCol
+      )
+    case 'rows':
+      return ownerRow >= dependency.startRow && ownerRow <= dependency.endRow
+    case 'cols':
+      return ownerCol >= dependency.startCol && ownerCol <= dependency.endCol
+  }
+}
+
+function compiledFormulaIncludesOwnerCell(compiled: CompiledFormula, ownerSheetName: string, ownerRow: number, ownerCol: number): boolean {
+  const parsedDeps = compiled.parsedDeps
+  if (!parsedDeps || parsedDeps.length !== compiled.deps.length) {
+    return false
+  }
+  return parsedDeps.some((dependency) => dependencyIncludesOwnerCell(dependency, ownerSheetName, ownerRow, ownerCol))
+}
+
 export function createEngineStructureService(args: CreateEngineStructureServiceArgs): EngineStructureService {
   let hasDeferredStructuralFormulaSources = false
+
+  const structuralTransformForCurrentSheet = (op: StructuralAxisOp): StructuralAxisTransform => {
+    const transform = structuralTransformForOp(op)
+    if (transform.kind !== 'move') {
+      return transform
+    }
+    const sheet = args.state.workbook.getSheet(op.sheetName)
+    const axisLength = sheet?.logicalAxisMap.get(transform.axis).length ?? transform.start + transform.count
+    return normalizeStructuralAxisTransformForAxisLength(transform, axisLength)
+  }
 
   const resolveStructuralFormulaRebindInputs = (argsForResolve: {
     readonly formulaCellIndices: readonly number[]
@@ -179,17 +227,24 @@ export function createEngineStructureService(args: CreateEngineStructureServiceA
         })
         return
       }
+      const rewrittenIncludesOwnerCell = compiledFormulaIncludesOwnerCell(rewritten.compiled, ownerSheetName, ownerRow, ownerCol)
       const preservesDirectCellDependencies = structuralRewritePreservesDirectCellDependencies(args, formula, rewritten, ownerSheetName)
       const preservesBinding =
-        structuralRewritePreservesBinding(
+        !rewrittenIncludesOwnerCell &&
+        (structuralRewritePreservesBinding(
           formula,
           rewritten,
           formula.rangeDependencies.every((rangeIndex) => args.state.ranges.getFormulaMembersView(rangeIndex).length === 0),
-        ) || preservesDirectCellDependencies
+        ) ||
+          preservesDirectCellDependencies)
+      const structuralRewriteValuePreserved =
+        structuralRewritePreservesValue(formula, rewritten, argsForResolve.transform) &&
+        (formula.directScalar === undefined || preservesDirectCellDependencies)
       const preservesValue =
-        precomputedDirectAggregateValueCellIndices.has(cellIndex) ||
-        structuralRewritePreservesValue(formula, rewritten, argsForResolve.transform) ||
-        structuralDirectAggregateRewritePreservesValue(formula, rewritten, argsForResolve.transform)
+        !rewrittenIncludesOwnerCell &&
+        (precomputedDirectAggregateValueCellIndices.has(cellIndex) ||
+          structuralRewriteValuePreserved ||
+          structuralDirectAggregateRewritePreservesValue(formula, rewritten, argsForResolve.transform))
       const hasOnlyPlaceholderDirectDependencies =
         formula.dependencyIndices.length > 0 &&
         !formula.dependencyIndices.every((dependencyCellIndex) => shouldCaptureStoredCell(args, dependencyCellIndex))
@@ -261,7 +316,7 @@ export function createEngineStructureService(args: CreateEngineStructureServiceA
     },
     applyStructuralAxisOpNow(op): StructuralAxisOpResult {
       materializeDeferredStructuralFormulaSources()
-      const transform = structuralTransformForOp(op)
+      const transform = structuralTransformForCurrentSheet(op)
       const sheetName = op.sheetName
       const targetSheetId = args.state.workbook.getSheet(sheetName)?.id
       const hasStructuralMetadata = args.state.workbook.hasStructuralMetadataForSheet(sheetName)
@@ -343,28 +398,11 @@ export function createEngineStructureService(args: CreateEngineStructureServiceA
 
       const structuralRangeDependencies = collectStructuralRangeDependencies(args, impactedFormulas.formulaCellIndices)
 
-      let hadCycleFormulas: boolean | undefined
-      const hasCycleFormulas = (): boolean => {
-        if (hadCycleFormulas !== undefined) {
-          return hadCycleFormulas
-        }
-        if (args.state.counters) {
-          addEngineCounter(args.state.counters, 'cycleFormulaScans')
-        }
-        let found = false
-        args.state.formulas.forEach((_formula, cellIndex) => {
-          if (((args.state.workbook.cellStore.flags[cellIndex] ?? 0) & CellFlags.InCycle) !== 0) {
-            found = true
-          }
-        })
-        hadCycleFormulas = found
-        return found
-      }
+      const isCycleFormulaCell = (cellIndex: number): boolean =>
+        ((args.state.workbook.cellStore.flags[cellIndex] ?? 0) & CellFlags.InCycle) !== 0
       const removedFormulaCellIndices = transaction.removedCellIndices.filter((cellIndex) => args.state.formulas.has(cellIndex))
       const removedFormulaCellIndexSet = new Set<number>(removedFormulaCellIndices)
-      const removedCycleFormulaCount = removedFormulaCellIndices.filter(
-        (cellIndex) => ((args.state.workbook.cellStore.flags[cellIndex] ?? 0) & CellFlags.InCycle) !== 0,
-      ).length
+      const removedCycleFormulaCount = removedFormulaCellIndices.filter((cellIndex) => isCycleFormulaCell(cellIndex)).length
       transaction.removedCellIndices.forEach((cellIndex) => {
         clearRemovedCellRuntimeState(args, cellIndex)
       })
@@ -433,7 +471,8 @@ export function createEngineStructureService(args: CreateEngineStructureServiceA
       const formulaCellIndices = impactedFormulas.formulaCellIndices.filter((cellIndex) => isCellIndexMapped(args, cellIndex))
       const onlyDirectAggregateFormulaCells =
         formulaCellIndices.length > 0 &&
-        formulaCellIndices.every((cellIndex) => args.state.formulas.get(cellIndex)?.directAggregate !== undefined)
+        formulaCellIndices.every((cellIndex) => args.state.formulas.get(cellIndex)?.directAggregate !== undefined) &&
+        remainingRebindInputs.every((input) => input.preservesBinding === true)
       args.rebindFormulaCells(remainingRebindInputs)
       const reboundFormulaCellIndices = new Set([
         ...directRetargetedFormulaCellIndices,
@@ -455,7 +494,10 @@ export function createEngineStructureService(args: CreateEngineStructureServiceA
         changedDefinedNames.size === 0 &&
         changedTableNames.size === 0 &&
         (hasNonPreservedRebind || lostSurvivingFormulaCells)
-      const deleteOnlyAcyclicRebind = needsDeleteAcyclicRebindCheck && !hasCycleFormulas()
+      const hasImpactedCycleFormula =
+        remainingRebindInputs.some((input) => isCycleFormulaCell(input.cellIndex)) ||
+        formulaCellIndices.some((cellIndex) => isCycleFormulaCell(cellIndex))
+      const deleteOnlyAcyclicRebind = needsDeleteAcyclicRebindCheck && !hasImpactedCycleFormula
       const topologyChanged = removedFormulaCellIndices.length > 0 || hasNonPreservedRebind || lostSurvivingFormulaCells
       const graphRefreshRequired =
         ((hasNonPreservedRebind || lostSurvivingFormulaCells) && !onlyDirectAggregateFormulaCells && !deleteOnlyAcyclicRebind) ||

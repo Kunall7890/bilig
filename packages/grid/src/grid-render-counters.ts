@@ -25,6 +25,10 @@ export interface TypeGpuTextPayloadCounterInput {
   readonly axisOnlySyncAuthoritativeFullTile?: number | undefined
   readonly glyphDependencies: number
   readonly pageDependencies: number
+  readonly textBuildMs?: number | undefined
+  readonly textDecorationMs?: number | undefined
+  readonly textSyncMs?: number | undefined
+  readonly textWriteMs?: number | undefined
 }
 
 type ScrollPerfCounterSink = Partial<{

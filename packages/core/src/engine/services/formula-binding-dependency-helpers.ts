@@ -92,6 +92,9 @@ export function directRegionIdsForFormula(
     return []
   }
   const regionIds = new Set<number>()
+  if (value.directAggregate) {
+    regionIds.add(value.directAggregate.regionId)
+  }
   if (value.directCriteria) {
     if (value.directCriteria.aggregateRange) {
       regionIds.add(value.directCriteria.aggregateRange.regionId)

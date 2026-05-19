@@ -124,6 +124,7 @@ function buildSessionCreateInput(input: WorkerRuntimeMachineInput): CreateWorker
     replicaId: input.replicaId,
     persistState: input.persistState,
     ...(input.authoritativeSyncEnabled === undefined ? {} : { authoritativeSyncEnabled: input.authoritativeSyncEnabled }),
+    ...(input.authoritativeEventSyncEnabled === undefined ? {} : { authoritativeEventSyncEnabled: input.authoritativeEventSyncEnabled }),
     initialSelection: input.initialSelection,
     ...(input.perfSession ? { perfSession: input.perfSession } : {}),
     ...(input.zero ? { zero: input.zero } : {}),
@@ -170,6 +171,9 @@ function buildRuntimeSessionActorInput(context: WorkerRuntimeMachineContext): Wo
     replicaId: sessionInput.replicaId,
     persistState: context.persistState,
     ...(sessionInput.authoritativeSyncEnabled === undefined ? {} : { authoritativeSyncEnabled: sessionInput.authoritativeSyncEnabled }),
+    ...(sessionInput.authoritativeEventSyncEnabled === undefined
+      ? {}
+      : { authoritativeEventSyncEnabled: sessionInput.authoritativeEventSyncEnabled }),
     initialSelection: context.selection,
     connectionStateName: context.connectionStateName,
     ...(sessionInput.createSession ? { createSession: sessionInput.createSession } : {}),
@@ -326,6 +330,9 @@ export function createWorkerRuntimeMachine() {
             return
           }
           controller = createdController
+          if (sameWorkerRuntimeSelection(pendingSelection, input.initialSelection)) {
+            pendingSelection = createdController.selection
+          }
           sendBack({ type: 'session.ready', controller: createdController, requestedSelection: input.initialSelection })
           try {
             await applyExternalSyncState()

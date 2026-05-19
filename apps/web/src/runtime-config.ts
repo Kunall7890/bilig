@@ -2,6 +2,7 @@ import type { BiligRuntimeConfig, BiligZeroQueryContext } from '@bilig/zero-sync
 
 export interface RuntimeConfig {
   documentId: string
+  serverUrl?: string
   persistState: boolean
   currentUserId: string
   workbookAgentEnabled: boolean
@@ -55,11 +56,13 @@ function resolvePersistState(configuredPersistState: boolean, searchParams: URLS
 export function resolveRuntimeConfig(config: BiligRuntimeConfig): RuntimeConfig {
   const searchParams = typeof window === 'undefined' ? new URLSearchParams() : new URLSearchParams(window.location.search)
   const explicitDocumentId = searchParams.get('document')
+  const explicitServerUrl = searchParams.get('server')?.trim()
   const persistState = resolvePersistState(config.persistState, searchParams)
 
   if (explicitDocumentId) {
     return {
       documentId: explicitDocumentId,
+      ...(explicitServerUrl ? { serverUrl: explicitServerUrl } : {}),
       persistState,
       currentUserId: config.currentUserId,
       workbookAgentEnabled: config.workbookAgentEnabled === true,

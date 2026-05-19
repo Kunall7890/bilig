@@ -82,7 +82,12 @@ export function structuralFormulaUndoRecordToOp(record: StructuralFormulaUndoRec
 
 export function structuralDeletedCellUndoRecordToOps(
   record: StructuralDeletedCellUndoRecord,
-  toCellStateOps: (sheetName: string, address: string, snapshot: CellSnapshot) => EngineOp[],
+  toCellStateOps: (
+    sheetName: string,
+    address: string,
+    snapshot: CellSnapshot,
+    options?: { readonly clearExistingFormat?: boolean; readonly forceFormatWrite?: boolean },
+  ) => EngineOp[],
 ): EngineOp[] {
   const address = formatAddress(record.row, record.col)
   switch (record.kind) {
@@ -101,7 +106,7 @@ export function structuralDeletedCellUndoRecordToOps(
           : [{ kind: 'setCellFormat' as const, sheetName: record.sheetName, address, format: record.explicitFormat }]),
       ]
     case 'snapshot':
-      return toCellStateOps(record.sheetName, address, record.snapshot)
+      return toCellStateOps(record.sheetName, address, record.snapshot, { clearExistingFormat: false })
     case 'blank':
       return [
         record.restoreExplicitBlank

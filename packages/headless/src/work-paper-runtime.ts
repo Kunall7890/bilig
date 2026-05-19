@@ -72,7 +72,6 @@ import {
   initializeWorkPaperFromSnapshot,
 } from './work-paper-sheet-initialization.js'
 import { buildWorkPaperRawCellMutation } from './work-paper-literal-mutation-queue.js'
-import { WorkPaperMutationQueues } from './work-paper-mutation-queues.js'
 import { WorkPaperEngineEventTracker } from './work-paper-engine-event-tracker.js'
 import { WorkPaperRuntimeFastPathBase } from './work-paper-runtime-fast-path-base.js'
 import { cloneWorkPaperHistoryRecords } from './work-paper-history.js'
@@ -82,6 +81,7 @@ import {
   workPaperEvaluationTimeoutErrorFrom,
   type WorkPaperTransactionSnapshot,
 } from './work-paper-runtime-construction.js'
+import { createWorkPaperRuntimeMutationQueues } from './work-paper-runtime-mutation-queues.js'
 
 type NamedExpressionValueSnapshot = WorkPaperNamedExpressionValueSnapshot
 
@@ -123,10 +123,9 @@ export class WorkPaper extends WorkPaperRuntimeFastPathBase {
   protected readonly engineEvents = new WorkPaperEngineEventTracker()
   private engineEventsAttached = false
   protected disposed = false
-  protected readonly mutationQueues = new WorkPaperMutationQueues({
-    applyCellMutationsAtWithOptions: (refs, options) => {
-      this.engine.applyCellMutationsAtWithOptions(refs, options)
-    },
+  protected readonly mutationQueues = createWorkPaperRuntimeMutationQueues({
+    getEngine: () => this.engine,
+    getSheetDimensionCache: () => this.sheetDimensionCache,
     updateSheetDimensionsAfterCellMutationRefs: (refs) => this.updateSheetDimensionsAfterCellMutationRefs(refs),
   })
   private constructor(configInput: WorkPaperConfig = {}) {

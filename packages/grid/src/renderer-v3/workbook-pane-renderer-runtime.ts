@@ -149,17 +149,19 @@ export class WorkbookPaneRendererRuntimeV3 {
     private readonly scheduler = new GridDrawSchedulerV3(),
   ) {}
 
-  updateState(state: Partial<WorkbookPaneRendererRuntimeStateV3>): void {
+  updateState(state: Partial<WorkbookPaneRendererRuntimeStateV3>): boolean {
     const previousTilePanes = this.state.tilePanes
     const nextTilePanes = state.tilePanes ?? previousTilePanes
+    const hasDirtyTileUpdate = Boolean(state.tilePanes && state.tilePanes !== previousTilePanes && hasDirtyTilePaneResources(nextTilePanes))
     this.state = {
       ...this.state,
       ...state,
     }
-    if (state.tilePanes && state.tilePanes !== previousTilePanes && hasDirtyTilePaneResources(nextTilePanes)) {
-      this.scheduler.noteInputSignal()
+    if (hasDirtyTileUpdate) {
+      this.scheduler.noteTileMutationSignal()
     }
     this.syncStoreSubscriptions()
+    return hasDirtyTileUpdate
   }
 
   setFrameResultListener(listener: ((result: WorkbookPaneFrameResultV3) => void) | null): void {

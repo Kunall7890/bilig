@@ -8,6 +8,7 @@ import type { GridRenderTile } from '../renderer-v3/render-tile-source.js'
 
 interface VisibleTextRefreshCacheInput {
   readonly engine: GridEngineLike
+  readonly revisionSensitive?: boolean | undefined
   readonly sceneRevision: number
   readonly sheetName: string
   readonly visibleViewport: Viewport
@@ -47,8 +48,8 @@ export class GridVisibleTextRefreshCache {
       cached.tile === tile &&
       cached.engine === input.engine &&
       cached.sheetName === input.sheetName &&
-      cached.sceneRevision === input.sceneRevision &&
-      cached.renderRevisionKey === renderRevisionKey &&
+      (input.revisionSensitive === false ||
+        (cached.sceneRevision === input.sceneRevision && cached.renderRevisionKey === renderRevisionKey)) &&
       cached.visibleRowStart === visibleRowStart &&
       cached.visibleRowEnd === visibleRowEnd &&
       cached.visibleColStart === visibleColStart &&

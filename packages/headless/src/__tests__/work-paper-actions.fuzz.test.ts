@@ -105,6 +105,79 @@ describe('WorkPaper action fuzz', () => {
     expect(exportWorkPaperDocument(workbook, { includeConfig: true })).toEqual(clearedDocument)
   })
 
+  it('persists unparsable formula-shaped text as literal cell content', () => {
+    const workbook = WorkPaper.buildFromSheets(
+      {
+        Sheet1: [],
+      },
+      {
+        parseDateTime: () => undefined,
+        functionPlugins: [],
+      },
+    )
+    const sheetId = workbook.getSheetId('Sheet1')
+    if (sheetId === undefined) {
+      throw new Error('Expected generated WorkPaper sheet to exist')
+    }
+
+    const address = { sheet: sheetId, row: 0, col: 0 }
+    expect(workbook.setCellContents(address, '=')).toHaveLength(1)
+    expect(workbook.getCellSerialized(address)).toBe('=')
+
+    const document = exportWorkPaperDocument(workbook, { includeConfig: true })
+    expect(document.sheets[0]?.content).toEqual([['=']])
+    const restored = createWorkPaperFromDocument(parseWorkPaperDocument(serializeWorkPaperDocument(document)))
+    const restoredSheetId = restored.getSheetId('Sheet1')
+    if (restoredSheetId === undefined) {
+      throw new Error('Expected restored WorkPaper sheet to exist')
+    }
+    expect(restored.getCellSerialized({ sheet: restoredSheetId, row: 0, col: 0 })).toBe('=')
+
+    expect(workbook.undo()).toHaveLength(1)
+    expect(exportWorkPaperDocument(workbook, { includeConfig: true })).not.toEqual(document)
+    expect(workbook.redo()).toHaveLength(1)
+    expect(exportWorkPaperDocument(workbook, { includeConfig: true })).toEqual(document)
+  })
+
+  it('restores malformed formula-shaped text as literal cell content', () => {
+    const workbook = WorkPaper.buildFromSheets(
+      {
+        Sheet1: [[false, '=#']],
+      },
+      {
+        parseDateTime: () => undefined,
+        functionPlugins: [],
+      },
+    )
+    const document = exportWorkPaperDocument(workbook, { includeConfig: true })
+    expect(document.sheets[0]?.content).toEqual([[false, '=#']])
+
+    const restored = createWorkPaperFromDocument(parseWorkPaperDocument(serializeWorkPaperDocument(document)))
+    expect(exportWorkPaperDocument(restored, { includeConfig: true })).toEqual(document)
+  })
+
+  it('does not persist internal formula dependency blanks after redo', () => {
+    const workbook = WorkPaper.buildEmpty({
+      parseDateTime: () => undefined,
+      functionPlugins: [],
+    })
+    workbook.addSheet('Sheet1')
+    const sheetId = workbook.getSheetId('Sheet1')
+    if (sheetId === undefined) {
+      throw new Error('Expected generated WorkPaper sheet to exist')
+    }
+
+    expect(workbook.setCellContents({ sheet: sheetId, row: 0, col: 0 }, '=SUM(A1:A3)')).toHaveLength(1)
+    expect(workbook.setCellContents({ sheet: sheetId, row: 1, col: 0 }, null)).toEqual([])
+    const beforeUndo = exportWorkPaperDocument(workbook, { includeConfig: true })
+    expect(beforeUndo.sheets[0]?.content).toEqual([['=SUM(A1:A3)']])
+
+    expect(workbook.undo()).toHaveLength(1)
+    expect(exportWorkPaperDocument(workbook, { includeConfig: true }).sheets[0]?.content).toEqual([])
+    expect(workbook.redo()).toHaveLength(1)
+    expect(exportWorkPaperDocument(workbook, { includeConfig: true })).toEqual(beforeUndo)
+  })
+
   it('should preserve generated cell edits through save/load and undo/redo', async () => {
     await runProperty({
       suite: 'headless/work-paper/action-sequence-save-load',

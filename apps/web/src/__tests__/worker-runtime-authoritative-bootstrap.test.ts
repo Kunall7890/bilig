@@ -173,4 +173,38 @@ describe('worker runtime authoritative bootstrap', () => {
 
     expect(nextMutation.id).toBe('bootstrap-doc:browser:test:pending:12')
   })
+
+  it('emits targeted viewport patches for pending mutations without a duplicate full refresh', async () => {
+    const runtime = new WorkbookWorkerRuntime()
+    await runtime.bootstrap({
+      documentId: 'pending-targeted-viewport-doc',
+      replicaId: 'browser:test',
+      persistState: true,
+    })
+
+    const received = new Array<ReturnType<typeof decodeViewportPatch>>()
+    runtime.subscribeViewportPatches(
+      {
+        sheetName: 'Sheet1',
+        rowStart: 0,
+        rowEnd: 0,
+        colStart: 0,
+        colEnd: 0,
+        initialPatch: 'none',
+      },
+      (bytes) => {
+        received.push(decodeViewportPatch(bytes))
+      },
+    )
+
+    await runtime.enqueuePendingMutation({
+      method: 'setCellValue',
+      args: ['Sheet1', 'A1', 'local-draft'],
+    })
+
+    expect(received).toHaveLength(1)
+    expect(received[0]?.full).toBe(false)
+    expect(received[0]?.cells.map((cell) => cell.snapshot.address)).toEqual(['A1'])
+    expect(received[0]?.cells[0]?.displayText).toBe('local-draft')
+  })
 })

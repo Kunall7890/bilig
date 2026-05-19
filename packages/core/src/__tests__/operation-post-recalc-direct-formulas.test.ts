@@ -71,6 +71,7 @@ describe('operation post-recalc direct formula helpers', () => {
     collection.addCurrentResult(7, { kind: 'number', value: 42 })
     const applyCurrent = vi.fn(() => true)
     const args = makeArgs({
+      state: makeState(new Map([[7, formula({ directScalar })]])),
       collection,
       applyDirectFormulaCurrentResult: applyCurrent,
     })
@@ -79,6 +80,21 @@ describe('operation post-recalc direct formula helpers', () => {
 
     expect(Array.from(changed ?? [])).toEqual([])
     expect(applyCurrent).toHaveBeenCalledWith(7, { kind: 'number', value: 42 })
+  })
+
+  it('rejects a single current result when the formula target is stale', () => {
+    const collection = new DirectFormulaIndexCollection()
+    collection.addCurrentResult(7, { kind: 'number', value: 42 })
+    const applyCurrent = vi.fn(() => true)
+    const args = makeArgs({
+      collection,
+      applyDirectFormulaCurrentResult: applyCurrent,
+    })
+
+    const changed = tryApplySinglePostRecalcDirectFormula(args, false)
+
+    expect(changed).toBeUndefined()
+    expect(applyCurrent).not.toHaveBeenCalled()
   })
 
   it('uses complete delta application before falling back to per-formula evaluation', () => {

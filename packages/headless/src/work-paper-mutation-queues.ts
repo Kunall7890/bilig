@@ -5,6 +5,10 @@ import type { RawCellContent } from './work-paper-types.js'
 
 export interface WorkPaperMutationQueuesRuntime {
   readonly applyCellMutationsAtWithOptions: (refs: readonly EngineCellMutationRef[], options: WorkPaperCellMutationApplyOptions) => void
+  readonly canSkipSheetDimensionUpdateAfterLiteralMutationRefs: (
+    refs: readonly EngineCellMutationRef[],
+    potentialNewCells: number | undefined,
+  ) => boolean
   readonly updateSheetDimensionsAfterCellMutationRefs: (refs: readonly EngineCellMutationRef[]) => void
 }
 
@@ -48,6 +52,7 @@ export class WorkPaperMutationQueues {
       refs,
       potentialNewCells,
       applyCellMutationsAtWithOptions: this.runtime.applyCellMutationsAtWithOptions,
+      canSkipSheetDimensionUpdateAfterLiteralMutationRefs: this.runtime.canSkipSheetDimensionUpdateAfterLiteralMutationRefs,
       updateSheetDimensionsAfterCellMutationRefs: this.runtime.updateSheetDimensionsAfterCellMutationRefs,
     })
   }
@@ -64,6 +69,7 @@ export class WorkPaperMutationQueues {
       refs,
       potentialNewCells,
       applyCellMutationsAtWithOptions: this.runtime.applyCellMutationsAtWithOptions,
+      canSkipSheetDimensionUpdateAfterLiteralMutationRefs: this.runtime.canSkipSheetDimensionUpdateAfterLiteralMutationRefs,
       updateSheetDimensionsAfterCellMutationRefs: this.runtime.updateSheetDimensionsAfterCellMutationRefs,
     })
   }

@@ -8,6 +8,10 @@ export function hasCompleteRenderTileGrid(tile: GridRenderTile): boolean {
   return expectedBorderCount === 0 || countRenderTileGridBorderRects(tile) >= expectedBorderCount
 }
 
+export function hasReadableRenderTileRects(tile: GridRenderTile): boolean {
+  return tile.rectCount > 0 && tile.rectInstances.length >= tile.rectCount * GRID_RECT_INSTANCE_FLOAT_COUNT_V3
+}
+
 export function tileSelectedTextNeedsLocalRefresh(
   tile: GridRenderTile | null,
   selectedCell: Item | undefined,

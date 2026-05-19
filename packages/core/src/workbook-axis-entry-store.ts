@@ -84,6 +84,16 @@ export class WorkbookAxisEntryStore {
     return listAxisEntries(axis === 'row' ? sheet.rowAxis : sheet.columnAxis)
   }
 
+  createAxisEntries(axis: WorkbookAxis, start: number, count: number): WorkbookAxisEntrySnapshot[] {
+    if (count <= 0) {
+      return []
+    }
+    return Array.from({ length: count }, (_, offset) => ({
+      id: this.options.createAxisEntry(axis).id,
+      index: start + offset,
+    }))
+  }
+
   materializeAxisEntries(sheet: SheetRecord, axis: WorkbookAxis, start: number, count: number): WorkbookAxisEntrySnapshot[] {
     if (count === 1) {
       const entries = axis === 'row' ? sheet.rowAxis : sheet.columnAxis

@@ -151,6 +151,10 @@ function formulaValuesAreAligned(
   return true
 }
 
+function compiledFormulaRequiresMetadataRebind(compiled: CompiledFormula): boolean {
+  return compiled.symbolicNames.length > 0 || compiled.symbolicTables.length > 0 || compiled.symbolicSpills.length > 0
+}
+
 function compareFormulaInstanceToRowCol(record: FormulaInstanceSnapshot, row: number, col: number): number {
   return record.row - row || record.col - col
 }
@@ -767,8 +771,9 @@ export function restoreWorkbookFromRuntimeImage(args: RuntimeImageRestoreArgs): 
               restoredFormula.templateId !== undefined && args.resolveTemplateById
                 ? args.resolveTemplateById(restoredFormula.templateId, restoredFormula.source, row, col)
                 : undefined
+            const canReuseRuntimeTemplate = template !== undefined && !compiledFormulaRequiresMetadataRebind(template.compiled)
             if (args.initializeHydratedPreparedCellFormulasAt && cachedValue !== undefined) {
-              if (template && !template.compiled.volatile && !template.compiled.producesSpill) {
+              if (canReuseRuntimeTemplate && !template.compiled.volatile && !template.compiled.producesSpill) {
                 hydratedPreparedFormulaRefs.push(
                   sheetId,
                   cellIndex,
@@ -783,7 +788,7 @@ export function restoreWorkbookFromRuntimeImage(args: RuntimeImageRestoreArgs): 
                 return
               }
             }
-            if (template && args.initializePreparedCellFormulasAt) {
+            if (canReuseRuntimeTemplate && args.initializePreparedCellFormulasAt) {
               preparedFormulaRefs.push({
                 sheetId,
                 row,

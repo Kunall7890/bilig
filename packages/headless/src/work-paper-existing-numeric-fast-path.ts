@@ -58,6 +58,11 @@ export interface WorkPaperExistingNumericFastPathRuntime {
   readonly trackLazyChanges: (changes: WorkPaperCellChange[]) => void
   readonly hasValuesUpdatedListeners: () => boolean
   readonly emitValuesUpdated: (changes: WorkPaperChange[]) => void
+  readonly canSkipSheetDimensionUpdateAfterLiteralMutationRefs: (
+    refs: readonly EngineExistingLiteralCellMutationRef[],
+    potentialNewCells: number | undefined,
+  ) => boolean
+  readonly updateSheetDimensionsAfterCellMutationRefs: (refs: readonly EngineExistingLiteralCellMutationRef[]) => void
 }
 
 export interface ExistingNumericWorkPaperCellContentsRequest {
@@ -133,6 +138,7 @@ export function trySetExistingNumericWorkPaperCellContentsWithTrackedFastPath(
   if (!result) {
     return null
   }
+  updateSheetDimensionsAfterExistingLiteralFastPath(runtime, request)
 
   if (runtime.hasTrackedEngineEvents()) {
     runtime.clearTrackedEngineEvents()
@@ -339,6 +345,7 @@ export function trySetExistingLiteralWorkPaperCellContentsWithTrackedFastPath(
   if (!result) {
     return null
   }
+  updateSheetDimensionsAfterExistingLiteralFastPath(runtime, request)
 
   if (runtime.hasTrackedEngineEvents()) {
     runtime.clearTrackedEngineEvents()
@@ -389,6 +396,24 @@ export function trySetExistingLiteralWorkPaperCellContentsWithTrackedFastPath(
     runtime.emitValuesUpdated(changes)
   }
   return changes
+}
+
+function updateSheetDimensionsAfterExistingLiteralFastPath(
+  runtime: WorkPaperExistingNumericFastPathRuntime,
+  request: ExistingNumericWorkPaperCellContentsRequest | ExistingLiteralWorkPaperCellContentsRequest,
+): void {
+  const refs: EngineExistingLiteralCellMutationRef[] = [
+    {
+      sheetId: request.address.sheet,
+      cellIndex: request.cellIndex,
+      row: request.address.row,
+      col: request.address.col,
+      value: request.value,
+    },
+  ]
+  if (!runtime.canSkipSheetDimensionUpdateAfterLiteralMutationRefs(refs, 0)) {
+    runtime.updateSheetDimensionsAfterCellMutationRefs(refs)
+  }
 }
 
 function tryBuildLazyDirectExistingNumericTrackedChanges(

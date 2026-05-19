@@ -181,6 +181,23 @@ export function createOperationSingleExistingLiteralFastPath(args: OperationSing
     return singleFormulaCellIndex !== -1 ? singleFormulaCellIndex : indexedSingle === -2 ? -2 : -1
   }
 
+  const hasNonAggregateFormulaDependent = (existingIndex: number): boolean => {
+    if (args.state.formulas.size > FORMULA_LEAF_DEPENDENCY_SCAN_LIMIT) {
+      return true
+    }
+    for (const formula of args.state.formulas.values()) {
+      if (formula.directAggregate !== undefined) {
+        continue
+      }
+      for (let index = 0; index < formula.dependencyIndices.length; index += 1) {
+        if (formula.dependencyIndices[index] === existingIndex) {
+          return true
+        }
+      }
+    }
+    return false
+  }
+
   const tryApplySingleExistingDirectLiteralMutation = (
     refs: readonly EngineCellMutationRef[],
     batch: EngineOpBatch | null,
@@ -652,6 +669,9 @@ export function createOperationSingleExistingLiteralFastPath(args: OperationSing
     const hasAggregateDependents =
       isRangeEntity(singleExistingCellDependent) ||
       (hasTrackedColumnDependents && hasTrackedDirectRangeDependents(request.sheetId, request.col))
+    if (hasAggregateDependents && hasNonAggregateFormulaDependent(existingIndex)) {
+      return null
+    }
     if (trustedExistingNumericLiteral && request.emitTracked === false && isRangeEntity(singleExistingCellDependent)) {
       const trustedAggregateResult = tryApplyTrustedSingleRangeDirectAggregateExistingNumericMutation({
         existingIndex,

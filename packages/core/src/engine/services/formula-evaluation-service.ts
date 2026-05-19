@@ -880,6 +880,10 @@ export function createEngineFormulaEvaluationService(args: {
   }
 
   return {
+    clearCachesNow() {
+      directCriteriaAggregateCache.clear()
+      directCriteriaMatchCache.clear()
+    },
     evaluateDirectLookupFormulaNow: evaluateDirectLookupFormulaNow,
     evaluateDirectLookupFormula(cellIndex) {
       return Effect.try({

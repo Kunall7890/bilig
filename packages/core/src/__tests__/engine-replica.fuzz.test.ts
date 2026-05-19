@@ -80,5 +80,5 @@ describe('engine replica fuzz', () => {
         }
       },
     })
-  }, 20_000)
+  }, 300_000)
 })

@@ -9,7 +9,10 @@ import {
   vectorTagAt,
   vectorValueAt,
   writeLiteralTextToSpill,
+  writeScalarTextToSpill,
   writeVectorValueToSpill,
+  writeVectorTextToSpill,
+  writeVectorTextWithFallbackToSpill,
 } from './array-foundation-vector'
 
 const AXIS_AGG_SUM: i32 = 1
@@ -240,13 +243,14 @@ export function tryApplyArrayFoundationBuiltin(
     const outputRows = bucketTags.length + 2
     const outputCols = 2
     const arrayIndex = allocateSpillArrayResult(outputRows, outputCols)
-    writeVectorValueToSpill(
+    writeVectorTextWithFallbackToSpill(
       arrayIndex,
       0,
       rowSlot,
       rowRows,
       rowCols,
       0,
+      'Row Field 1',
       kindStack,
       valueStack,
       tagStack,
@@ -261,13 +265,14 @@ export function tryApplyArrayFoundationBuiltin(
       cellStringIds,
       cellErrors,
     )
-    writeVectorValueToSpill(
+    writeVectorTextWithFallbackToSpill(
       arrayIndex,
       1,
       valueSlot,
       valueRows,
       valueCols,
       0,
+      'Value 1',
       kindStack,
       valueStack,
       tagStack,
@@ -564,13 +569,14 @@ export function tryApplyArrayFoundationBuiltin(
     const outputRows = rowTags.length + 2
     const outputCols = colTags.length + 2
     const arrayIndex = allocateSpillArrayResult(outputRows, outputCols)
-    writeVectorValueToSpill(
+    writeVectorTextWithFallbackToSpill(
       arrayIndex,
       0,
       rowSlot,
       rowRows,
       rowCols,
       0,
+      'Row Field 1',
       kindStack,
       valueStack,
       tagStack,
@@ -586,7 +592,7 @@ export function tryApplyArrayFoundationBuiltin(
       cellErrors,
     )
     for (let colBucket = 0; colBucket < colTags.length; colBucket += 1) {
-      writeSpillArrayValue(arrayIndex, colBucket + 1, unchecked(colTags[colBucket]), unchecked(colValues[colBucket]))
+      writeScalarTextToSpill(arrayIndex, colBucket + 1, unchecked(colTags[colBucket]), unchecked(colValues[colBucket]))
     }
     writeLiteralTextToSpill(arrayIndex, outputCols - 1, 'Total')
 

@@ -65,4 +65,34 @@ describe('GridDrawSchedulerV3', () => {
     frames[0]?.(1_001)
     expect(draw).toHaveBeenCalledTimes(1)
   })
+
+  test('does not schedule immediate idle preload retries for dirty tile mutation frames', () => {
+    const scheduled: Array<() => void> = []
+    const frames: FrameRequestCallback[] = []
+    const renderLoop = new GridRenderLoop((callback) => {
+      frames.push(callback)
+      return frames.length
+    }, vi.fn())
+    const scheduler = new GridDrawSchedulerV3(
+      (callback) => {
+        scheduled.push(callback)
+        return scheduled.length
+      },
+      vi.fn(),
+      () => 1_000,
+      renderLoop,
+    )
+
+    scheduler.noteTileMutationSignal(1_000)
+    expect(
+      scheduler.resolveFrame({
+        camera: null,
+        requestIdlePreloadDraw: vi.fn(),
+      }),
+    ).toEqual({
+      deferPreloadSync: true,
+      syncPreloadPanes: false,
+    })
+    expect(scheduled).toHaveLength(0)
+  })
 })

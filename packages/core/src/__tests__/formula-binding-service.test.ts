@@ -1,6 +1,6 @@
 import { Effect } from 'effect'
 import { describe, expect, it, vi } from 'vitest'
-import { MAX_ROWS, ValueTag } from '@bilig/protocol'
+import { ErrorCode, MAX_ROWS, ValueTag } from '@bilig/protocol'
 import { compileFormula } from '@bilig/formula'
 import { SpreadsheetEngine } from '../engine.js'
 import { EngineFormulaBindingError } from '../engine/errors.js'
@@ -778,6 +778,29 @@ describe('EngineFormulaBindingService', () => {
       topoRepairs: 0,
       topoRepairAffectedFormulas: 0,
     })
+  })
+
+  it('rebinds direct scalar dependencies when a formula rewrite changes referenced cells', async () => {
+    const engine = new SpreadsheetEngine({ workbookName: 'binding-direct-scalar-rewrite-dependencies' })
+    await engine.ready()
+    engine.createSheet('Sheet1')
+
+    engine.setCellValue('Sheet1', 'A1', 4)
+    engine.setCellValue('Sheet1', 'B2', 7)
+    engine.setCellValue('Sheet1', 'D4', 10)
+    engine.setCellFormula('Sheet1', 'C1', 'A1+B2')
+    engine.setCellFormula('Sheet1', 'C1', 'A1+D4')
+
+    expect(engine.getCellValue('Sheet1', 'C1')).toEqual({ tag: ValueTag.Number, value: 14 })
+    engine.setCellValue('Sheet1', 'B2', 100)
+    expect(engine.getCellValue('Sheet1', 'C1')).toEqual({ tag: ValueTag.Number, value: 14 })
+    engine.setCellValue('Sheet1', 'D4', 1)
+    expect(engine.getCellValue('Sheet1', 'C1')).toEqual({ tag: ValueTag.Number, value: 5 })
+
+    engine.deleteRows('Sheet1', 3, 1)
+
+    expect(engine.getCell('Sheet1', 'C1').formula).toBe('A1+#REF!')
+    expect(engine.getCellValue('Sheet1', 'C1')).toEqual({ tag: ValueTag.Error, code: ErrorCode.Ref })
   })
 
   it('binds direct criteria descriptors for supported conditional aggregate families', async () => {

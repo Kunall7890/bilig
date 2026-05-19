@@ -1,5 +1,6 @@
 #!/usr/bin/env bun
 import { existsSync } from 'node:fs'
+import { readFile } from 'node:fs/promises'
 import { fileURLToPath, pathToFileURL } from 'node:url'
 import { resolve } from 'node:path'
 
@@ -13,10 +14,11 @@ const thresholds = [
 
 const ignoredSuffixes = ['/index.ts', '/snapshot.ts', '/ast.ts']
 
-function lineStatsForFile(fileCoverage: {
-  s?: Record<string, number>
-  statementMap?: Record<string, { start: { line: number }; end: { line: number } }>
-}) {
+type CoverageLocation = { start: { line: number }; end: { line: number } }
+type CoverageEntry = { s?: Record<string, number>; statementMap?: Record<string, CoverageLocation> }
+type CoverageData = Record<string, CoverageEntry>
+
+function lineStatsForFile(fileCoverage: CoverageEntry) {
   const totalLines = new Set<number>()
   const coveredLines = new Set<number>()
 
@@ -40,13 +42,7 @@ function lineStatsForFile(fileCoverage: {
   }
 }
 
-function aggregatePrefix(
-  prefix: string,
-  coverageData: Record<
-    string,
-    { s?: Record<string, number>; statementMap?: Record<string, { start: { line: number }; end: { line: number } }> }
-  >,
-) {
+function aggregatePrefix(prefix: string, coverageData: CoverageData) {
   let total = 0
   let covered = 0
 
@@ -95,13 +91,13 @@ export function resolveCoverageFilePath(): string {
   return defaultCoveragePath
 }
 
-export async function runCoverageContracts(path = resolveCoverageFilePath()): Promise<void> {
+export async function runCoverageContracts(path: string | URL = resolveCoverageFilePath()): Promise<void> {
   const resolvedPath = path instanceof URL ? fileURLToPath(path) : resolve(path)
   if (!existsSync(resolvedPath)) {
     throw new Error(`Coverage file not found at ${resolvedPath}`)
   }
 
-  const coverage = await Bun.file(resolvedPath).json()
+  const coverage = parseCoverageData(await readFile(resolvedPath, 'utf8'), resolvedPath)
 
   const results = thresholds.map((threshold) => ({
     label: threshold.label,
@@ -116,6 +112,48 @@ export async function runCoverageContracts(path = resolveCoverageFilePath()): Pr
   }
 
   console.log(JSON.stringify({ results }, null, 2))
+}
+
+function parseCoverageData(contents: string, path: string): CoverageData {
+  const parsed: unknown = JSON.parse(contents)
+  if (!isCoverageData(parsed)) {
+    throw new Error(`Invalid coverage data at ${path}`)
+  }
+  return parsed
+}
+
+function isCoverageData(value: unknown): value is CoverageData {
+  return isRecord(value) && Object.values(value).every(isCoverageEntry)
+}
+
+function isCoverageEntry(value: unknown): value is CoverageEntry {
+  if (!isRecord(value)) {
+    return false
+  }
+  const statements = value['s']
+  const statementMap = value['statementMap']
+  return (
+    (statements === undefined || isNumberRecord(statements)) &&
+    (statementMap === undefined || (isRecord(statementMap) && Object.values(statementMap).every(isCoverageLocation)))
+  )
+}
+
+function isCoverageLocation(value: unknown): value is CoverageLocation {
+  return (
+    isRecord(value) &&
+    isRecord(value['start']) &&
+    isRecord(value['end']) &&
+    typeof value['start']['line'] === 'number' &&
+    typeof value['end']['line'] === 'number'
+  )
+}
+
+function isNumberRecord(value: unknown): value is Record<string, number> {
+  return isRecord(value) && Object.values(value).every((entry) => typeof entry === 'number')
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null
 }
 
 if (isDirectInvocation()) {

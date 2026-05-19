@@ -69,7 +69,7 @@ export const EXCEL_SECONDS_PER_DAY: i32 = 86400
 
 export function excelSerialWhole(tag: u8, value: f64): i32 {
   const numeric = toNumberExact(tag, value)
-  return isNaN(numeric) ? i32.MIN_VALUE : <i32>Math.floor(numeric)
+  return isNaN(numeric) ? i32.MIN_VALUE : <i32>numeric
 }
 
 function daysInExcelMonth(year: i32, month: i32): i32 {

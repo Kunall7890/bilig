@@ -3,11 +3,12 @@ import type { EngineOp } from '@bilig/workbook-domain'
 import { CellFlags } from '../../cell-store.js'
 import type { OpOrder } from '../../replica-state.js'
 import type { PreparedCellAddress } from '../runtime-state.js'
-import type { DirectFormulaIndexCollection } from './direct-formula-index-collection.js'
+import type { DirectFormulaIndexCollection, DirectScalarCurrentOperand } from './direct-formula-index-collection.js'
 import type { DirectFormulaMetricCounts } from './operation-post-recalc-direct-formulas.js'
 import { cellTouchesOperationPivotSource } from './operation-pivot-source-helpers.js'
 import type { OperationDirectRangeDependentService } from './operation-direct-range-dependents.js'
 import type { CreateEngineOperationServiceArgs } from './operation-service-types.js'
+import { analyzeFreshDirectAggregateFormula } from './operation-fresh-direct-aggregate.js'
 
 type BatchSetCellFormulaOp = Extract<EngineOp, { kind: 'setCellFormula' }>
 
@@ -39,6 +40,7 @@ interface ApplyBatchSetCellFormulaOpArgs extends BatchCellFormulaMutationCounts 
   readonly hasTrackedSortedLookupDependents: (sheetId: number, col: number) => boolean
   readonly hasTrackedDirectRangeDependents: (sheetId: number, col: number) => boolean
   readonly readExactNumericValueForLookup: (cellIndex: number | undefined) => number | undefined
+  readonly applyDirectFormulaCurrentResult: (cellIndex: number, result: DirectScalarCurrentOperand) => boolean
   readonly tryApplyFormulaReplacementAsDirectScalarDeltaRoot: (request: {
     readonly cellIndex: number
     readonly oldNumber: number | undefined
@@ -127,7 +129,22 @@ export function applyBatchSetCellFormulaOp(request: ApplyBatchSetCellFormulaOpAr
         postRecalcDirectFormulaIndices: request.postRecalcDirectFormulaIndices,
         postRecalcDirectFormulaMetrics: request.postRecalcDirectFormulaMetrics,
       })
-    if (!handledFormulaReplacementAsDirectDelta) {
+    const replacementDirectAggregateResult =
+      !handledFormulaReplacementAsDirectDelta && priorHadFormula
+        ? analyzeFreshDirectAggregateFormula(args, {
+            priorHadFormula: false,
+            formulaCellIndex: cellIndex,
+            formula: args.state.formulas.get(cellIndex),
+          }).currentResult
+        : undefined
+    const evaluatedReplacementDirectAggregate =
+      replacementDirectAggregateResult !== undefined
+        ? (() => {
+            request.postRecalcDirectFormulaIndices.addCurrentResult(cellIndex, replacementDirectAggregateResult)
+            return request.applyDirectFormulaCurrentResult(cellIndex, replacementDirectAggregateResult)
+          })()
+        : false
+    if (!handledFormulaReplacementAsDirectDelta && !evaluatedReplacementDirectAggregate) {
       formulaChangedCount = args.markFormulaChanged(cellIndex, formulaChangedCount)
     }
     topologyChanged = topologyChanged || changedTopology

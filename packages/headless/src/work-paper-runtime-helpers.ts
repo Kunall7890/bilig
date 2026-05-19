@@ -1,5 +1,5 @@
 import { ValueTag, type CellValue, type ErrorCode, type LiteralInput } from '@bilig/protocol'
-import { isArrayValue, type EvaluationResult, type FormulaNode } from '@bilig/formula'
+import { isArrayValue, parseFormula, type EvaluationResult, type FormulaNode } from '@bilig/formula'
 import { WorkPaperInvalidArgumentsError } from './work-paper-errors.js'
 import type { RawCellContent, WorkPaperAddressLike, WorkPaperCellRange, WorkPaperSheet } from './work-paper-types.js'
 
@@ -150,6 +150,18 @@ export function isFormulaContent(content: RawCellContent): content is string {
   return typeof content === 'string' && content.trim().startsWith('=')
 }
 
+export function isParsableFormulaContent(content: RawCellContent): content is string {
+  if (!isFormulaContent(content)) {
+    return false
+  }
+  try {
+    parseFormula(stripLeadingEquals(content))
+    return true
+  } catch {
+    return false
+  }
+}
+
 export function isBlankRawCellContent(content: RawCellContent | undefined): content is null | undefined {
   return content === null || content === undefined
 }
@@ -159,7 +171,7 @@ export function isWorkPaperSheetMatrix(value: RawCellContent | WorkPaperSheet): 
 }
 
 export function matrixContainsFormulaContent(content: WorkPaperSheet): boolean {
-  return content.some((row) => row.some((cell) => isFormulaContent(cell)))
+  return content.some((row) => row.some((cell) => isParsableFormulaContent(cell)))
 }
 
 export function isDeferredBatchLiteralContent(content: RawCellContent): boolean {

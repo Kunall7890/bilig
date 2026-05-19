@@ -11,6 +11,8 @@ import { OPTIMISTIC_CELL_SNAPSHOT_FLAG } from '../workbook-optimistic-cell-flags
 import { ProjectedTileSceneStore } from '../projected-tile-scene-store.js'
 import { ProjectedViewportStore } from '../projected-viewport-store.js'
 
+const LOCAL_CELL_VISUAL_DIRTY_MASK = DirtyMaskV3.Value | DirtyMaskV3.Style | DirtyMaskV3.Text | DirtyMaskV3.Rect | DirtyMaskV3.Border
+
 function createTileReplace(tileId: number, valuesVersion: number, sheetOrdinal = 7, sheetId = 7): RenderTileReplaceMutation {
   return {
     kind: 'tileReplace',
@@ -333,7 +335,7 @@ describe('ProjectedViewportStore render delta source bridge', () => {
 
     expect(listener).toHaveBeenCalledWith(
       expect.objectContaining({
-        dirty: expect.objectContaining({ cellRanges: new Uint32Array([1, 1, 1, 1, 5]) }),
+        dirty: expect.objectContaining({ cellRanges: new Uint32Array([1, 1, 1, 1, LOCAL_CELL_VISUAL_DIRTY_MASK]) }),
         seq: 1,
         sheetId: 7,
         sheetOrdinal: 3,
@@ -446,7 +448,7 @@ describe('ProjectedViewportStore render delta source bridge', () => {
 
     expect(listener).toHaveBeenCalledWith(
       expect.objectContaining({
-        dirty: expect.objectContaining({ cellRanges: new Uint32Array([52, 52, 3, 3, 5]) }),
+        dirty: expect.objectContaining({ cellRanges: new Uint32Array([52, 52, 3, 3, LOCAL_CELL_VISUAL_DIRTY_MASK]) }),
         seq: 43,
         sheetId: 7,
         sheetOrdinal: 3,
@@ -500,7 +502,7 @@ describe('ProjectedViewportStore render delta source bridge', () => {
 
     expect(listener).toHaveBeenCalledWith(
       expect.objectContaining({
-        dirty: expect.objectContaining({ cellRanges: new Uint32Array([52, 52, 3, 3, 5]) }),
+        dirty: expect.objectContaining({ cellRanges: new Uint32Array([52, 52, 3, 3, LOCAL_CELL_VISUAL_DIRTY_MASK]) }),
         sheetId: 7,
         sheetOrdinal: 3,
         source: 'localOptimistic',
@@ -542,7 +544,7 @@ describe('ProjectedViewportStore render delta source bridge', () => {
 
     expect(listener).toHaveBeenCalledWith(
       expect.objectContaining({
-        dirty: expect.objectContaining({ cellRanges: new Uint32Array([1, 1, 1, 1, 15]) }),
+        dirty: expect.objectContaining({ cellRanges: new Uint32Array([1, 1, 1, 1, LOCAL_CELL_VISUAL_DIRTY_MASK]) }),
       }),
     )
 

@@ -123,4 +123,23 @@ describe('resolveRuntimeConfig', () => {
     window.history.replaceState({}, '', '/?document=visual-smoke&persist=1')
     expect(resolveRemoteSyncEnabled({ DEV: true, VITE_BILIG_REMOTE_SYNC: '1' })).toBe(true)
   })
+
+  it('preserves imported workbook server hints in resolved runtime config', () => {
+    window.history.replaceState({}, '', '/?document=xlsx%3Aimported&server=http%3A%2F%2F127.0.0.1%3A4321')
+
+    expect(
+      resolveRuntimeConfig({
+        zeroCacheUrl: '/zero',
+        defaultDocumentId: 'bilig-demo',
+        persistState: true,
+        currentUserId: 'guest:test',
+      }),
+    ).toEqual({
+      documentId: 'xlsx:imported',
+      serverUrl: 'http://127.0.0.1:4321',
+      persistState: true,
+      currentUserId: 'guest:test',
+      workbookAgentEnabled: false,
+    })
+  })
 })

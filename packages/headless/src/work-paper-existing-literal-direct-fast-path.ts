@@ -1,9 +1,15 @@
-import { CellFlags, type EngineExistingNumericCellMutationResult, type SheetRecord, type SpreadsheetEngine } from '@bilig/core'
+import {
+  CellFlags,
+  type EngineExistingLiteralCellMutationRef,
+  type EngineExistingNumericCellMutationResult,
+  type SheetRecord,
+  type SpreadsheetEngine,
+} from '@bilig/core'
 import { MAX_COLS, MAX_ROWS, ValueTag, type CellValue, type LiteralInput } from '@bilig/protocol'
 import { WORKPAPER_PUBLIC_ERROR_NAMES } from './work-paper-config.js'
 import { WorkPaperOperationError } from './work-paper-errors.js'
 import { readCompactSecondChangedValue, trackedEventFromExistingNumericMutationResult } from './work-paper-tracked-event-helpers.js'
-import { isFormulaContent, isWorkPaperSheetMatrix, scalarValueFromLiteral } from './work-paper-runtime-helpers.js'
+import { isParsableFormulaContent, isWorkPaperSheetMatrix, scalarValueFromLiteral } from './work-paper-runtime-helpers.js'
 import type { TrackedEngineEvent } from './tracked-engine-event-refs.js'
 import type { WorkPaperCellAddress, WorkPaperCellChange, WorkPaperChange, WorkPaperConfig, WorkPaperSheet } from './work-paper-types.js'
 
@@ -50,6 +56,11 @@ export interface WorkPaperExistingLiteralDirectFastPathRuntime {
   readonly messageOf: (error: unknown, fallback: string) => string
   readonly readSingleTrackedCellChange: (cellIndex: number) => WorkPaperCellChange | undefined
   readonly trackedA1: (row: number, col: number) => string
+  readonly canSkipSheetDimensionUpdateAfterLiteralMutationRefs: (
+    refs: readonly EngineExistingLiteralCellMutationRef[],
+    potentialNewCells: number | undefined,
+  ) => boolean
+  readonly updateSheetDimensionsAfterCellMutationRefs: (refs: readonly EngineExistingLiteralCellMutationRef[]) => void
 }
 
 export function trySetExistingLiteralWorkPaperCellContentsDirectFastPath(
@@ -62,7 +73,7 @@ export function trySetExistingLiteralWorkPaperCellContentsDirectFastPath(
     runtime.isDisposed() ||
     isWorkPaperSheetMatrix(content) ||
     content === null ||
-    isFormulaContent(content) ||
+    isParsableFormulaContent(content) ||
     !Number.isInteger(address.row) ||
     !Number.isInteger(address.col) ||
     address.row < 0 ||
@@ -142,6 +153,18 @@ export function trySetExistingLiteralWorkPaperCellContentsDirectFastPath(
   }
   if (!result) {
     return null
+  }
+  const dimensionRefs: EngineExistingLiteralCellMutationRef[] = [
+    {
+      sheetId: address.sheet,
+      cellIndex,
+      row: address.row,
+      col: address.col,
+      value: content,
+    },
+  ]
+  if (!runtime.canSkipSheetDimensionUpdateAfterLiteralMutationRefs(dimensionRefs, 0)) {
+    runtime.updateSheetDimensionsAfterCellMutationRefs(dimensionRefs)
   }
   if (runtime.hasTrackedEngineEvents()) {
     runtime.clearTrackedEngineEvents()

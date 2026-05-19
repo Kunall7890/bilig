@@ -173,6 +173,7 @@ describe('EngineOperationService', () => {
 
     const structuralNoValueMutation = {
       isRestore: false,
+      isHistoryReplay: false,
       topologyChanged: false,
       formulaChangedCount: 0,
       explicitChangedCount: 0,
@@ -185,6 +186,12 @@ describe('EngineOperationService', () => {
       hasActivePivots: false,
     }
     expect(operationServiceTestHooks.canFinalizeStructuralNoValueMutationWithoutRecalc(structuralNoValueMutation)).toBe(true)
+    expect(
+      operationServiceTestHooks.canFinalizeStructuralNoValueMutationWithoutRecalc({
+        ...structuralNoValueMutation,
+        isHistoryReplay: true,
+      }),
+    ).toBe(false)
     expect(
       operationServiceTestHooks.canFinalizeStructuralNoValueMutationWithoutRecalc({
         ...structuralNoValueMutation,

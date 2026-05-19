@@ -205,10 +205,6 @@ describe('WorkbookPaneRendererHostRuntimeV3', () => {
 
     runtime.updateProps({ ...props, tilePanes: [secondPane] })
 
-    expect(runtime.getFrameProofStatusSnapshot()).toBe('pending')
-    expect(runtime.getHasPresentedFrameSnapshot()).toBe(true)
-
-    animationFrames.flushNextFrame()
     expect(runtime.getFrameProofStatusSnapshot()).toBe('presented')
     expect(runtime.getHasPresentedFrameSnapshot()).toBe(true)
 

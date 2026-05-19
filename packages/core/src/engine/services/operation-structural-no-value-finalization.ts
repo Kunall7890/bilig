@@ -7,6 +7,7 @@ type StructuralAxisOp = Extract<
 
 export interface StructuralNoValueFinalizationEligibility {
   readonly isRestore: boolean
+  readonly isHistoryReplay: boolean
   readonly topologyChanged: boolean
   readonly formulaChangedCount: number
   readonly explicitChangedCount: number
@@ -33,6 +34,7 @@ export function isStructuralAxisOp(op: EngineOp): op is StructuralAxisOp {
 export function canFinalizeStructuralNoValueMutationWithoutRecalc(args: StructuralNoValueFinalizationEligibility): boolean {
   return (
     !args.isRestore &&
+    !args.isHistoryReplay &&
     !args.topologyChanged &&
     args.formulaChangedCount === 0 &&
     args.explicitChangedCount === 0 &&

@@ -81,6 +81,9 @@ export function coerceWeekendMask(
 }
 
 function isWeekendWithMask(serial: i32, weekendMask: i32): bool {
+  if (serial < 0) {
+    return true
+  }
   return (weekendMask & (1 << weekendSerialDay(serial))) != 0
 }
 

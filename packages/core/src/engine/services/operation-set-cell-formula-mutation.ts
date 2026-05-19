@@ -138,7 +138,22 @@ export function applySetCellFormulaMutation(request: ApplySetCellFormulaMutation
         changedTopology,
         postRecalcDirectFormulaIndices: request.postRecalcDirectFormulaIndices,
       })
-    if (!handledFormulaReplacementAsDirectDelta && !evaluatedFreshDirectFormula) {
+    const replacementDirectAggregateResult =
+      !handledFormulaReplacementAsDirectDelta && !evaluatedFreshDirectFormula && priorHadFormula
+        ? analyzeFreshDirectAggregateFormula(args, {
+            priorHadFormula: false,
+            formulaCellIndex: cellIndex,
+            formula: runtimeFormula,
+          }).currentResult
+        : undefined
+    const evaluatedReplacementDirectAggregate =
+      replacementDirectAggregateResult !== undefined
+        ? (() => {
+            request.postRecalcDirectFormulaIndices.addCurrentResult(cellIndex, replacementDirectAggregateResult)
+            return request.applyDirectFormulaCurrentResult(cellIndex, replacementDirectAggregateResult)
+          })()
+        : false
+    if (!handledFormulaReplacementAsDirectDelta && !evaluatedFreshDirectFormula && !evaluatedReplacementDirectAggregate) {
       formulaChangedCount = args.markFormulaChanged(cellIndex, formulaChangedCount)
     }
     topologyChanged = topologyChanged || (changedTopology && !canSkipTopoRepair)

@@ -192,6 +192,9 @@ export function spliceAxisEntries(
   if (insertCount === 0 && axisEntries.length <= start) {
     return []
   }
+  if (providedSnapshots === undefined && deleteCount === 0 && axisEntries.length === 0) {
+    return []
+  }
   if (axisEntries.length < start) {
     axisEntries.length = start
   }

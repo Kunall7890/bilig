@@ -37,6 +37,7 @@ import {
   type ZeroMutationObserverOutcome,
 } from './workbook-zero-mutation-observer.js'
 import { applyOptimisticClearRange } from './workbook-optimistic-range.js'
+import { LOCAL_CELL_TEXT_DIRTY_MASK } from './projected-workbook-local-delta.js'
 import {
   applyOptimisticCommitOps,
   applyOptimisticCopyRange,
@@ -127,7 +128,7 @@ function applyOptimisticCellMutation(
         getCell: (sheetName, address) => viewportStore.getCell(sheetName, address),
       }),
   })
-  viewportStore.setCellSnapshot(optimistic)
+  viewportStore.setCellSnapshot(optimistic, { localDeltaDirtyMask: LOCAL_CELL_TEXT_DIRTY_MASK })
   return () => {
     viewportStore.setCellSnapshot(createSupersedingCellSnapshot(previous, optimistic.version + 1))
   }

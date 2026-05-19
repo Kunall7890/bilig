@@ -106,7 +106,8 @@ export function syncAxisOnlyTileTextGeometryResource(input: {
 }
 
 interface PendingAxisOnlyTextWrite {
-  readonly floats: number[]
+  readonly chunks: Float32Array[]
+  readonly floatCount: number
   readonly quadEnd: number
   readonly quadOffset: number
 }
@@ -208,20 +209,20 @@ function queueAxisOnlyTextGeometryWrite(input: {
 
   const runQuadOffset = input.previousRunSpan.offset
   const runQuadEnd = runQuadOffset + input.previousRunSpan.length
-  const runFloats = Array.from(input.translatedPayload.floats.subarray(0, floatCount))
+  const runFloats = input.translatedPayload.floats.subarray(0, floatCount)
   if (!input.pendingWrite) {
     return {
-      floats: runFloats,
+      chunks: [runFloats],
+      floatCount,
       quadEnd: runQuadEnd,
       quadOffset: runQuadOffset,
     }
   }
   if (input.pendingWrite.quadEnd === runQuadOffset) {
-    for (const value of runFloats) {
-      input.pendingWrite.floats.push(value)
-    }
+    input.pendingWrite.chunks.push(runFloats)
     return {
-      floats: input.pendingWrite.floats,
+      chunks: input.pendingWrite.chunks,
+      floatCount: input.pendingWrite.floatCount + floatCount,
       quadEnd: runQuadEnd,
       quadOffset: input.pendingWrite.quadOffset,
     }
@@ -229,7 +230,8 @@ function queueAxisOnlyTextGeometryWrite(input: {
 
   flushAxisOnlyTextGeometryWrite(input.handle, input.label, input.pendingWrite)
   return {
-    floats: runFloats,
+    chunks: [runFloats],
+    floatCount,
     quadEnd: runQuadEnd,
     quadOffset: runQuadOffset,
   }
@@ -240,17 +242,31 @@ function flushAxisOnlyTextGeometryWrite(
   label: string,
   pendingWrite: PendingAxisOnlyTextWrite | null,
 ): void {
-  if (!pendingWrite || pendingWrite.floats.length === 0) {
+  if (!pendingWrite || pendingWrite.floatCount === 0) {
     return
   }
+  const floats = mergePendingAxisOnlyTextChunks(pendingWrite)
   writeTypeGpuVertexBufferSubrange({
     buffer: handle.buffer,
-    floatCount: pendingWrite.floats.length,
-    floats: Float32Array.from(pendingWrite.floats),
+    floatCount: pendingWrite.floatCount,
+    floats,
     label: `${label}:axis-span`,
     sourceStartFloat: 0,
     startFloat: pendingWrite.quadOffset * TEXT_INSTANCE_FLOAT_COUNT,
   })
+}
+
+function mergePendingAxisOnlyTextChunks(pendingWrite: PendingAxisOnlyTextWrite): Float32Array {
+  if (pendingWrite.chunks.length === 1 && pendingWrite.chunks[0]?.length === pendingWrite.floatCount) {
+    return pendingWrite.chunks[0]
+  }
+  const floats = new Float32Array(pendingWrite.floatCount)
+  let offset = 0
+  for (const chunk of pendingWrite.chunks) {
+    floats.set(chunk, offset)
+    offset += chunk.length
+  }
+  return floats
 }
 
 function areTextRunPayloadFloatsEqual(left: Float32Array, right: Float32Array, floatCount: number): boolean {

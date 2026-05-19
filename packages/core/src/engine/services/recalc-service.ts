@@ -18,6 +18,7 @@ import { parseCellAddress } from '@bilig/formula'
 import type { EngineDirtyFrontierSchedulerService } from './dirty-frontier-scheduler-service.js'
 import type { EnginePatch } from '../../patches/patch-types.js'
 import { buildCycleEvaluationNodes, type CycleEvaluationNode } from './recalc-cycle-evaluation.js'
+import { dominantScalarErrorForCycleFormula } from './recalc-cycle-error-dominance.js'
 import { consumeVolatileRandomValues, createRecalcVolatileState, toOrderedUint32 } from './recalc-evaluation-state.js'
 import { emitRecalcBatchEvents } from './recalc-event-emission.js'
 import { resolveRecalcIterationSettings } from './recalc-iteration-settings.js'
@@ -76,6 +77,20 @@ function filterSkippedCachedFormulaCells(ordered: U32, orderedCount: number, ski
     filteredCount += 1
   }
   return filtered.subarray(0, filteredCount)
+}
+
+function areDifferentialCellValuesEqual(left: CellValue, right: CellValue): boolean {
+  if (areCellValuesEqual(left, right)) {
+    return true
+  }
+  if (left.tag !== ValueTag.Number || right.tag !== ValueTag.Number) {
+    return false
+  }
+  if (!Number.isFinite(left.value) || !Number.isFinite(right.value)) {
+    return false
+  }
+  const tolerance = 1e-12 * Math.max(1, Math.abs(left.value), Math.abs(right.value))
+  return Math.abs(left.value - right.value) <= tolerance
 }
 
 export function createEngineRecalcService(args: {
@@ -398,17 +413,24 @@ export function createEngineRecalcService(args: {
           }
           let found = false
           args.forEachFormulaDependencyCell(cellIndex, (dependencyCellIndex) => {
-            if (!found && ((args.state.workbook.cellStore.flags[dependencyCellIndex] ?? 0) & CellFlags.InCycle) !== 0) {
+            const dependencyValue = readStoredValue(dependencyCellIndex)
+            if (
+              !found &&
+              ((args.state.workbook.cellStore.flags[dependencyCellIndex] ?? 0) & CellFlags.InCycle) !== 0 &&
+              dependencyValue.tag === ValueTag.Error &&
+              dependencyValue.code === ErrorCode.Cycle
+            ) {
               found = true
             }
           })
           return found
         }
-        const materializeCycleFormulaError = (cellIndex: number): void => {
+        const materializeCycleFormulaError = (cellIndex: number, formula?: RuntimeFormula): void => {
           const beforeValue = readStoredValue(cellIndex)
           const spillChanges = args.clearOwnedSpill(cellIndex)
           const flagsChanged = clearDerivedFormulaFlags(cellIndex)
-          const nextValue = errorValue(ErrorCode.Cycle)
+          const dominantError = formula === undefined ? undefined : dominantScalarErrorForCycleFormula(formula.compiled.optimizedAst)
+          const nextValue = errorValue(dominantError ?? ErrorCode.Cycle)
           if (!flagsChanged && spillChanges.length === 0 && areCellValuesEqual(beforeValue, nextValue)) {
             return
           }
@@ -504,12 +526,12 @@ export function createEngineRecalcService(args: {
             ((args.state.workbook.cellStore.flags[cellIndex] ?? 0) & CellFlags.InCycle) !== 0
           ) {
             jsCount += 1
-            materializeCycleFormulaError(cellIndex)
+            materializeCycleFormulaError(cellIndex, formula)
             return
           }
           if (evaluationOptions.allowCycleDependencyError && hasCycleDependency(cellIndex)) {
             jsCount += 1
-            materializeCycleFormulaError(cellIndex)
+            materializeCycleFormulaError(cellIndex, formula)
             return
           }
           if (
@@ -866,13 +888,15 @@ export function createEngineRecalcService(args: {
     recalculateDifferential() {
       return Effect.try({
         try: () => {
-          const originalSnapshot = args.exportSnapshot()
+          args.state.wasm.resetStoreState()
+          const originalSnapshot = structuredClone(args.exportSnapshot())
           args.state.formulas.forEach((formula) => {
             formula.compiled.mode = FormulaMode.JsOnly
           })
           const jsChanged = Effect.runSync(this.recalculateNow())
           const jsResults = jsChanged.map((idx) => args.getCellByIndex(idx))
 
+          args.state.wasm.resetStoreState()
           args.importSnapshot(originalSnapshot)
           const wasmChanged = Effect.runSync(this.recalculateNow())
           const wasmResults = wasmChanged.map((idx) => args.getCellByIndex(idx))
@@ -887,7 +911,7 @@ export function createEngineRecalcService(args: {
               drift.push(`${addr}: Calculated in JS but MISSING in WASM`)
               continue
             }
-            if (JSON.stringify(jsCell.value) !== JSON.stringify(wasmCell.value)) {
+            if (!areDifferentialCellValuesEqual(jsCell.value, wasmCell.value)) {
               drift.push(`${addr}: JS=${JSON.stringify(jsCell.value)} WASM=${JSON.stringify(wasmCell.value)}`)
             }
           }

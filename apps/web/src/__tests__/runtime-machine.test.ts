@@ -157,6 +157,48 @@ describe('worker runtime machine', () => {
     actor.stop()
   })
 
+  it('keeps a session-reconciled startup selection when the initial sheet no longer exists', async () => {
+    const controller = createController(
+      { sheetName: 'Imported', address: 'A1' },
+      {
+        sheets: [{ id: 1, name: 'Imported', order: 0 }],
+        sheetNames: ['Imported'],
+      },
+    )
+    const createSession = vi.fn(
+      async (
+        _input: CreateWorkerRuntimeSessionInput,
+        callbacks: WorkerRuntimeSessionCallbacks,
+      ): Promise<WorkerRuntimeSessionController> => {
+        callbacks.onPhase?.('syncing')
+        callbacks.onRuntimeState(controller.runtimeState)
+        return controller
+      },
+    )
+
+    const actor = createActor(createWorkerRuntimeMachine(), {
+      input: {
+        documentId: 'xlsx:imported',
+        replicaId: 'browser:test',
+        persistState: true,
+        authoritativeSyncEnabled: true,
+        authoritativeEventSyncEnabled: false,
+        connectionStateName: 'closed',
+        initialSelection: { sheetName: 'Sheet1', address: 'A1' },
+        createSession,
+      },
+    })
+
+    actor.start()
+    await vi.waitFor(() => {
+      expect(actor.getSnapshot().matches({ active: 'localReady' })).toBe(true)
+    })
+
+    expect(actor.getSnapshot().context.selection).toEqual({ sheetName: 'Imported', address: 'A1' })
+    expect(controller.setSelection).not.toHaveBeenCalledWith({ sheetName: 'Sheet1', address: 'A1' })
+    actor.stop()
+  })
+
   it('normalizes controller runtime state when the session becomes ready', async () => {
     const controller = {
       ...createController(

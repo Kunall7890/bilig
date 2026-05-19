@@ -159,7 +159,9 @@ describe('run-vitest wrapper arguments', () => {
     const runVitestSource = readFileSync(resolve(repoRoot, 'scripts/run-vitest.ts'), 'utf8')
 
     expect(packageJson).toContain('"test": "tsx scripts/run-vitest.ts --run"')
-    expect(packageJson).toContain('"coverage": "tsx scripts/run-vitest.ts --run --coverage')
+    expect(packageJson).toContain(
+      '"coverage": "BILIG_FUZZ_PROFILE=fuzz BILIG_VITEST_TEST_TIMEOUT_MS=300000 tsx scripts/run-vitest.ts --run --coverage',
+    )
     expect(packageJson).toContain('"test:watch": "tsx scripts/run-vitest.ts"')
     expect(packageJson).not.toContain('bun scripts/run-vitest.ts')
     expect(runVitestSource).toContain('process.stderr.write(`${error instanceof Error ? error.message : String(error)}\\n`)')

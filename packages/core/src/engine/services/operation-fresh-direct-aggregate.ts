@@ -219,8 +219,9 @@ function scanFreshDirectAggregateDependenciesForTopoSkip(
 ): boolean {
   for (let row = directAggregate.rowStart; row <= directAggregate.rowEnd; row += 1) {
     for (let col = directAggregate.col; col <= directAggregate.colEnd; col += 1) {
-      const dependencyCellIndex = aggregateSheet.grid.getPhysical(row, col)
-      if (dependencyCellIndex !== -1 && dependencyCellIndex !== formulaCellIndex && args.state.formulas.has(dependencyCellIndex)) {
+      const dependencyCellIndex =
+        aggregateSheet.structureVersion === 1 ? aggregateSheet.grid.getPhysical(row, col) : aggregateSheet.grid.get(row, col)
+      if (dependencyCellIndex === formulaCellIndex || (dependencyCellIndex !== -1 && args.state.formulas.has(dependencyCellIndex))) {
         return false
       }
     }
@@ -242,11 +243,11 @@ function analyzeFreshDirectAggregateDependencies(
   let maximum = Number.NEGATIVE_INFINITY
   for (let col = directAggregate.col; col <= directAggregate.colEnd; col += 1) {
     for (let row = directAggregate.rowStart; row <= directAggregate.rowEnd; row += 1) {
-      const dependencyCellIndex = aggregateSheet.grid.getPhysical(row, col)
-      if (dependencyCellIndex !== -1 && dependencyCellIndex !== formulaCellIndex && args.state.formulas.has(dependencyCellIndex)) {
+      const memberCellIndex =
+        aggregateSheet.structureVersion === 1 ? aggregateSheet.grid.getPhysical(row, col) : aggregateSheet.grid.get(row, col)
+      if (memberCellIndex === formulaCellIndex || (memberCellIndex !== -1 && args.state.formulas.has(memberCellIndex))) {
         return undefined
       }
-      const memberCellIndex = aggregateSheet.structureVersion === 1 ? dependencyCellIndex : aggregateSheet.grid.get(row, col)
       if (memberCellIndex === -1) {
         continue
       }

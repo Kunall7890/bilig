@@ -12,8 +12,8 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 }
 
 describe('run-ci', () => {
-  it('defaults to the fast CI profile and accepts explicit profiles', () => {
-    expect(resolveCiProfile({})).toBe('fast')
+  it('defaults to the full CI profile and accepts explicit profiles', () => {
+    expect(resolveCiProfile({})).toBe('full')
     expect(resolveCiProfile({ BILIG_CI_PROFILE: 'fast' })).toBe('fast')
     expect(resolveCiProfile({ BILIG_CI_PROFILE: 'full' })).toBe('full')
   })
@@ -64,7 +64,7 @@ describe('run-ci', () => {
   it('runs the CI orchestrator through tsx instead of bun', () => {
     const packageJson = readFileSync(resolve(repoRoot, 'package.json'), 'utf8')
 
-    expect(packageJson).toContain('"ci": "BILIG_CI_PROFILE=fast BILIG_CI_SKIP_BROWSER=1 tsx scripts/run-ci.ts"')
+    expect(packageJson).toContain('"ci": "BILIG_CI_PROFILE=full tsx scripts/run-ci.ts"')
     expect(packageJson).toContain('"ci:core": "BILIG_CI_PROFILE=fast BILIG_CI_SKIP_BROWSER=1 tsx scripts/run-ci.ts"')
     expect(packageJson).toContain('"ci:full": "BILIG_CI_PROFILE=full tsx scripts/run-ci.ts"')
   })
@@ -78,12 +78,13 @@ describe('run-ci', () => {
     ])
   })
 
-  it('keeps the unified fuzz lane in fast CI', () => {
+  it('keeps the unified fuzz lane in CI profiles', () => {
     const source = readFileSync(resolve(repoRoot, 'scripts/run-ci.ts'), 'utf8')
 
-    expect(source).toContain("const vitestFuzzLane = pnpm('vitest fuzz', 'test:fuzz')")
-    expect(source).toContain("await runSequential('fast fuzz checks', [vitestFuzzLane])")
-    expect(source).toContain('run pnpm run ci:full for coverage, full browser, and deep benchmark gates')
+    expect(source).toContain("const unifiedFuzzLane = pnpm('unified fuzz', 'test:fuzz')")
+    expect(source).toContain('steps: [coverageLane, unifiedFuzzLane]')
+    expect(source).toContain("await runSequential('unified fuzz checks', [unifiedFuzzLane])")
+    expect(source).toContain('pnpm run ci uses the full correctness profile')
   })
 
   it('guards broad pre-push lint through the same resource gate', () => {

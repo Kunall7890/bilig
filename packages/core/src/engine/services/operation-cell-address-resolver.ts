@@ -127,7 +127,8 @@ export function resolveOperationExistingMutationCellIndex(
       if (
         workbook.cellStore.rows[candidate] === mutation.row &&
         workbook.cellStore.cols[candidate] === mutation.col &&
-        sheet.logical?.cellIdentityMatchesVisiblePosition?.(candidate, mutation.row, mutation.col) === true
+        (sheet.logical?.cellIdentityMatchesVisiblePosition === undefined ||
+          sheet.logical.cellIdentityMatchesVisiblePosition(candidate, mutation.row, mutation.col))
       ) {
         return candidate
       }

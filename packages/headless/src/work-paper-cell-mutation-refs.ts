@@ -1,5 +1,5 @@
 import type { EngineCellMutationRef } from '@bilig/core'
-import { canSkipDimensionUpdateAfterLiteralMutation, countPotentialNewTrackedCellMutations } from './work-paper-tracked-event-helpers.js'
+import { countPotentialNewTrackedCellMutations } from './work-paper-tracked-event-helpers.js'
 
 export interface WorkPaperCellMutationApplyOptions {
   readonly captureUndo?: boolean
@@ -15,6 +15,10 @@ export interface WorkPaperCellMutationApplyRuntime {
   readonly appendSuspendedCellMutationRefs: (refs: readonly EngineCellMutationRef[]) => void
   readonly addSuspendedCellMutationPotentialNewCells: (amount: number) => void
   readonly applyCellMutationsAtWithOptions: (refs: readonly EngineCellMutationRef[], options: WorkPaperCellMutationApplyOptions) => void
+  readonly canSkipSheetDimensionUpdateAfterLiteralMutationRefs: (
+    refs: readonly EngineCellMutationRef[],
+    potentialNewCells: number | undefined,
+  ) => boolean
   readonly updateSheetDimensionsAfterCellMutationRefs: (refs: readonly EngineCellMutationRef[]) => void
 }
 
@@ -29,7 +33,10 @@ export function applyWorkPaperCellMutationRefs(
     return
   }
   runtime.applyCellMutationsAtWithOptions(refs, engineApplyOptions(options))
-  if (options.skipDimensionUpdate !== true && !canSkipDimensionUpdateAfterLiteralMutation(refs, options.potentialNewCells)) {
+  if (
+    options.skipDimensionUpdate !== true &&
+    !runtime.canSkipSheetDimensionUpdateAfterLiteralMutationRefs(refs, options.potentialNewCells)
+  ) {
     runtime.updateSheetDimensionsAfterCellMutationRefs(refs)
   }
 }
@@ -38,6 +45,10 @@ export function applyQueuedWorkPaperCellMutationRefs(args: {
   readonly refs: readonly EngineCellMutationRef[]
   readonly potentialNewCells: number
   readonly applyCellMutationsAtWithOptions: (refs: readonly EngineCellMutationRef[], options: WorkPaperCellMutationApplyOptions) => void
+  readonly canSkipSheetDimensionUpdateAfterLiteralMutationRefs: (
+    refs: readonly EngineCellMutationRef[],
+    potentialNewCells: number | undefined,
+  ) => boolean
   readonly updateSheetDimensionsAfterCellMutationRefs: (refs: readonly EngineCellMutationRef[]) => void
   readonly alwaysUpdateDimensions?: boolean
 }): void {
@@ -48,7 +59,7 @@ export function applyQueuedWorkPaperCellMutationRefs(args: {
     returnUndoOps: false,
     reuseRefs: true,
   })
-  if (args.alwaysUpdateDimensions || !canSkipDimensionUpdateAfterLiteralMutation(args.refs, args.potentialNewCells)) {
+  if (args.alwaysUpdateDimensions || !args.canSkipSheetDimensionUpdateAfterLiteralMutationRefs(args.refs, args.potentialNewCells)) {
     args.updateSheetDimensionsAfterCellMutationRefs(args.refs)
   }
 }

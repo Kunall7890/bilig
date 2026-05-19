@@ -90,6 +90,7 @@ export interface BuildTextQuadsFromRunsWithSpansOptionsV3 {
   readonly previousRunPayloads?: readonly TextQuadRunPayloadV3[] | null | undefined
   readonly dirtyRunSpans?: readonly TextQuadRunSpan[] | undefined
   readonly forceRebuildDirtyRunSpans?: boolean | undefined
+  readonly packFullPayload?: boolean | undefined
 }
 
 export interface TextQuadBuildDiagnosticsV3 {
@@ -265,11 +266,20 @@ function buildTextQuadsFromRunsWithSpansInternal(
   let reusedRunPayloads = 0
   let rebuiltRunPayloads = 0
   let quadCount = 0
+  const dirtyRunSpans = options.dirtyRunSpans
+  const hasAuthoritativeDirtyRunSpans = dirtyRunSpans !== undefined && dirtyRunSpans.length > 0
   for (let index = 0; index < runs.length; index += 1) {
     const run = runs[index]!
-    const signature = resolveTextQuadRunSignatureV3(run)
     const previousPayload = previousRunPayloads[index]
-    const runIsDirty = isTextRunDirty(index, options.dirtyRunSpans)
+    const runIsDirty = isTextRunDirty(index, dirtyRunSpans)
+    if (hasAuthoritativeDirtyRunSpans && !runIsDirty && previousPayload && previousPayload.atlasGeometryVersion === initialAtlasVersion) {
+      runPayloads.push(previousPayload)
+      reusedPreviousPayload = true
+      reusedRunPayloads += 1
+      quadCount += previousPayload.quadCount
+      continue
+    }
+    const signature = resolveTextQuadRunSignatureV3(run)
     const forceDirtyRunRebuild = runIsDirty && options.forceRebuildDirtyRunSpans === true
     if (
       previousPayload &&
@@ -329,6 +339,7 @@ function buildTextQuadsFromRunsWithSpansInternal(
       {
         dirtyRunSpans: options.dirtyRunSpans,
         forceRebuildDirtyRunSpans: options.forceRebuildDirtyRunSpans,
+        packFullPayload: options.packFullPayload,
         previousRunPayloads: reusedPreviousPayload ? [] : runPayloads,
       },
       false,
@@ -344,21 +355,25 @@ function buildTextQuadsFromRunsWithSpansInternal(
     }
   }
 
-  const floats =
-    targetBuffer && targetBuffer.length >= quadCount * TEXT_INSTANCE_FLOAT_COUNT
+  const shouldPackFullPayload = options.packFullPayload !== false
+  const floats = shouldPackFullPayload
+    ? targetBuffer && targetBuffer.length >= quadCount * TEXT_INSTANCE_FLOAT_COUNT
       ? targetBuffer
       : new Float32Array(Math.max(1, quadCount) * TEXT_INSTANCE_FLOAT_COUNT)
+    : new Float32Array(0)
   const glyphIds: number[] = []
   const pageIds: number[] = []
+  const glyphDependencyPages = new Map<number, number>()
   const runGlyphIds: number[][] = []
   const runSpans: TextQuadRunSpan[] = []
 
   let offset = 0
   for (const payload of runPayloads) {
     const floatCount = payload.quadCount * TEXT_INSTANCE_FLOAT_COUNT
-    floats.set(payload.floats.subarray(0, floatCount), offset * TEXT_INSTANCE_FLOAT_COUNT)
-    glyphIds.push(...payload.glyphIds)
-    pageIds.push(...payload.pageIds)
+    if (shouldPackFullPayload) {
+      floats.set(payload.floats.subarray(0, floatCount), offset * TEXT_INSTANCE_FLOAT_COUNT)
+    }
+    appendUniqueGlyphDependencies(glyphIds, pageIds, glyphDependencyPages, payload.glyphIds, payload.pageIds)
     runGlyphIds.push([...payload.glyphIds])
     runSpans.push({ offset, length: payload.quadCount })
     offset += payload.quadCount
@@ -476,6 +491,25 @@ function isTextRunDirty(index: number, dirtyRunSpans: readonly TextQuadRunSpan[]
     return false
   }
   return dirtyRunSpans.some((span) => index >= span.offset && index < span.offset + span.length)
+}
+
+function appendUniqueGlyphDependencies(
+  glyphIds: number[],
+  pageIds: number[],
+  glyphDependencyPages: Map<number, number>,
+  nextGlyphIds: readonly number[],
+  nextPageIds: readonly number[],
+): void {
+  for (let index = 0; index < nextGlyphIds.length; index += 1) {
+    const glyphId = nextGlyphIds[index]
+    const pageId = nextPageIds[index]
+    if (glyphId === undefined || pageId === undefined || glyphDependencyPages.has(glyphId)) {
+      continue
+    }
+    glyphDependencyPages.set(glyphId, pageId)
+    glyphIds.push(glyphId)
+    pageIds.push(pageId)
+  }
 }
 
 function resolveAtlasPayloadVersion(atlas: GlyphAtlasLike): number {

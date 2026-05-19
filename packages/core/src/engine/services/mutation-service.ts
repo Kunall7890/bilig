@@ -1,8 +1,10 @@
 import { Effect } from 'effect'
 import type { EngineOp, EngineOpBatch } from '@bilig/workbook-domain'
 import type { CellRangeRef, CellSnapshot } from '@bilig/protocol'
+import { formatAddress, parseCellAddress, rewriteFormulaForStructuralTransform } from '@bilig/formula'
 import { createBatch } from '../../replica-state.js'
 import type { WorkbookStore } from '../../workbook-store.js'
+import { mapStructuralAxisIndex, structuralTransformForOp } from '../../engine-structural-utils.js'
 import {
   cellMutationRefToEngineOp,
   cloneCellMutationRef,
@@ -32,9 +34,10 @@ import {
   transactionRecordOps,
 } from './mutation-transaction-records.js'
 import { normalizeRenderCommitOps } from './mutation-render-commit-normalizer.js'
-import { inverseMutationStructuralInsertOp, isMutationStructuralInsertOp } from './mutation-cell-content-helpers.js'
+import { isMutationStructuralInsertOp } from './mutation-cell-content-helpers.js'
 import { createMutationCellRestoreHistoryHelpers, tryMutationCellRefsFromOps } from './mutation-cell-restore-history.js'
 import { createMutationStructuralDeleteInverseHelpers } from './mutation-structural-delete-inverse.js'
+import type { CellStateRestoreOptions } from './cell-state-service.js'
 import type { EngineMutationService } from './mutation-service-types.js'
 import { tryExecuteMutationRenderCommitFastPath } from './mutation-render-commit-fast-path.js'
 import { createMutationRangeOperations } from './mutation-range-operations.js'
@@ -73,6 +76,7 @@ export function createEngineMutationService(args: {
     snapshot: CellSnapshot,
     sourceSheetName?: string,
     sourceAddress?: string,
+    options?: CellStateRestoreOptions,
   ) => EngineOp[]
   readonly applyBatchNow: (
     batch: EngineOpBatch,
@@ -126,23 +130,26 @@ export function createEngineMutationService(args: {
       ? { hasFormulaFamilyStructuralSourceTransforms: args.hasFormulaFamilyStructuralSourceTransforms }
       : {}),
   })
-  const { captureFormulaCellStateForStructuralUndo, buildStructuralDeleteInverseRecord } = createMutationStructuralDeleteInverseHelpers({
-    state: args.state,
-    getCellByIndex: args.getCellByIndex,
-    toCellStateOps: (sheetName, address, snapshot) => args.toCellStateOps(sheetName, address, snapshot),
-    ...(args.getFormulaFamilyStructuralSourceTransform
-      ? { getFormulaFamilyStructuralSourceTransform: args.getFormulaFamilyStructuralSourceTransform }
-      : {}),
-    ...(args.hasFormulaFamilyStructuralSourceTransforms
-      ? { hasFormulaFamilyStructuralSourceTransforms: args.hasFormulaFamilyStructuralSourceTransforms }
-      : {}),
-  })
+  const { captureFormulaCellStateForStructuralMoveUndo, captureFormulaCellStateForStructuralUndo, buildStructuralDeleteInverseRecord } =
+    createMutationStructuralDeleteInverseHelpers({
+      state: args.state,
+      getCellByIndex: args.getCellByIndex,
+      toCellStateOps: (sheetName, address, snapshot, options) =>
+        args.toCellStateOps(sheetName, address, snapshot, undefined, undefined, options),
+      ...(args.getFormulaFamilyStructuralSourceTransform
+        ? { getFormulaFamilyStructuralSourceTransform: args.getFormulaFamilyStructuralSourceTransform }
+        : {}),
+      ...(args.hasFormulaFamilyStructuralSourceTransforms
+        ? { hasFormulaFamilyStructuralSourceTransforms: args.hasFormulaFamilyStructuralSourceTransforms }
+        : {}),
+    })
   const { buildInverseOps } = createMutationCoreInverseOps({
     workbook: args.state.workbook,
     captureSheetCellState: args.captureSheetCellState,
     captureRowRangeCellState: args.captureRowRangeCellState,
     captureColumnRangeCellState: args.captureColumnRangeCellState,
     restoreCellOps: args.restoreCellOps,
+    captureFormulaCellStateForStructuralMoveUndo,
     captureFormulaCellStateForStructuralUndo,
   })
 
@@ -182,45 +189,61 @@ export function createEngineMutationService(args: {
   }
 
   const canonicalizeForwardOps = (ops: readonly EngineOp[]): EngineOp[] =>
-    ops.map((op) => {
+    ops.flatMap((op) => {
       if (op.kind === 'insertRows') {
-        return op.entries
-          ? { ...op, entries: op.entries.map((entry) => ({ ...entry })) }
-          : {
-              ...op,
-              entries: args.state.workbook.snapshotRowAxisEntries(op.sheetName, op.start, op.count),
-            }
+        const entries = op.entries?.map((entry) => ({ ...entry })) ?? args.state.workbook.createRowAxisEntries(op.start, op.count)
+        return [{ ...op, entries }]
       }
 
       if (op.kind === 'insertColumns') {
-        return op.entries
-          ? { ...op, entries: op.entries.map((entry) => ({ ...entry })) }
-          : {
-              ...op,
-              entries: args.state.workbook.snapshotColumnAxisEntries(op.sheetName, op.start, op.count),
-            }
+        const entries = op.entries?.map((entry) => ({ ...entry })) ?? args.state.workbook.createColumnAxisEntries(op.start, op.count)
+        return [{ ...op, entries }]
       }
 
-      return structuredClone(op)
+      if (op.kind === 'moveRows') {
+        return [structuredClone(op), ...captureFormulaCellStateForStructuralMoveUndo(op.sheetName, 'row', op.start, op.count, op.target)]
+      }
+
+      if (op.kind === 'moveColumns') {
+        return [structuredClone(op), ...captureFormulaCellStateForStructuralMoveUndo(op.sheetName, 'column', op.start, op.count, op.target)]
+      }
+
+      return [structuredClone(op)]
     })
 
-  const canonicalizeStructuralInsertForwardOp = (
+  const structuralFormulaForwardCorrections = (
     op: Extract<EngineOp, { kind: 'insertRows' | 'insertColumns' }>,
-  ): Extract<EngineOp, { kind: 'insertRows' | 'insertColumns' }> => {
-    if (op.kind === 'insertRows') {
-      const entries = args.state.workbook.snapshotRowAxisEntries(op.sheetName, op.start, op.count)
-      return {
-        ...op,
-        entries:
-          entries.length === 0 && op.count > 0 ? args.state.workbook.materializeRowAxisEntries(op.sheetName, op.start, op.count) : entries,
+    beforeFormulaOps: readonly EngineOp[],
+    afterFormulaOps: readonly EngineOp[],
+  ): EngineOp[] => {
+    if (beforeFormulaOps.length === 0 || afterFormulaOps.length === 0) {
+      return emptyBatchOps
+    }
+    const transform = structuralTransformForOp(op)
+    const expectedFormulaByCell = new Map<string, string>()
+    beforeFormulaOps.forEach((beforeOp) => {
+      if (beforeOp.kind !== 'setCellFormula') {
+        return
       }
-    }
-    const entries = args.state.workbook.snapshotColumnAxisEntries(op.sheetName, op.start, op.count)
-    return {
-      ...op,
-      entries:
-        entries.length === 0 && op.count > 0 ? args.state.workbook.materializeColumnAxisEntries(op.sheetName, op.start, op.count) : entries,
-    }
+      const owner = parseCellAddress(beforeOp.address, beforeOp.sheetName)
+      const ownerRow =
+        beforeOp.sheetName === op.sheetName && transform.axis === 'row' ? mapStructuralAxisIndex(owner.row, transform) : owner.row
+      const ownerCol =
+        beforeOp.sheetName === op.sheetName && transform.axis === 'column' ? mapStructuralAxisIndex(owner.col, transform) : owner.col
+      if (ownerRow === undefined || ownerCol === undefined) {
+        return
+      }
+      const address = formatAddress(ownerRow, ownerCol)
+      const formula = rewriteFormulaForStructuralTransform(beforeOp.formula, beforeOp.sheetName, op.sheetName, transform)
+      expectedFormulaByCell.set(`${beforeOp.sheetName}\0${address}`, formula)
+    })
+    return afterFormulaOps.flatMap((afterOp) => {
+      if (afterOp.kind !== 'setCellFormula') {
+        return emptyBatchOps
+      }
+      const expected = expectedFormulaByCell.get(`${afterOp.sheetName}\0${afterOp.address}`)
+      return expected === afterOp.formula ? emptyBatchOps : [afterOp]
+    })
   }
 
   const executeTransactionNow = (
@@ -300,11 +323,40 @@ export function createEngineMutationService(args: {
       isMutationStructuralInsertOp(ops[0]!)
     ) {
       const op = ops[0]
-      applyForward(potentialNewCells === undefined ? { kind: 'single-op', op } : { kind: 'single-op', op, potentialNewCells })
+      const appliedForwardOp = canonicalizeForwardOps([op])[0]!
+      const inverseOps = buildInverseOps([op])
+      const inverse =
+        inverseOps.length === 1
+          ? createLazySingleOpTransactionRecord(inverseOps[0]!, ops.length)
+          : createOpsTransactionRecord(inverseOps, ops.length)
+      const beforeFormulaForwardOps = captureFormulaCellStateForStructuralMoveUndo(
+        op.sheetName,
+        op.kind === 'insertRows' ? 'row' : 'column',
+        op.start,
+        op.count,
+        op.start,
+      )
+      applyForward(
+        potentialNewCells === undefined
+          ? { kind: 'single-op', op: appliedForwardOp }
+          : { kind: 'single-op', op: appliedForwardOp, potentialNewCells },
+      )
       if (args.state.getTransactionReplayDepth() === 0) {
+        const afterFormulaForwardOps = captureFormulaCellStateForStructuralMoveUndo(
+          op.sheetName,
+          op.kind === 'insertRows' ? 'row' : 'column',
+          op.start,
+          op.count,
+          op.start,
+        )
+        const structuralFormulaForwardOps = structuralFormulaForwardCorrections(op, beforeFormulaForwardOps, afterFormulaForwardOps)
+        const forwardOps = [appliedForwardOp, ...structuralFormulaForwardOps]
         args.state.undoStack.push({
-          forward: createLazySingleOpTransactionRecord(canonicalizeStructuralInsertForwardOp(op), potentialNewCells),
-          inverse: createLazySingleOpTransactionRecord(inverseMutationStructuralInsertOp(op)),
+          forward:
+            forwardOps.length === 1
+              ? createLazySingleOpTransactionRecord(forwardOps[0]!, potentialNewCells)
+              : createOpsTransactionRecord(forwardOps, potentialNewCells),
+          inverse,
         })
         args.state.redoStack.length = 0
       }

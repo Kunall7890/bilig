@@ -124,11 +124,31 @@ export function createMutationCoreInverseOps(args: {
     start: number,
     count: number,
   ) => EngineOp[]
+  readonly captureFormulaCellStateForStructuralMoveUndo: (
+    sheetName: string,
+    axis: StructuralUndoAxis,
+    start: number,
+    count: number,
+    target: number,
+  ) => EngineOp[]
 }): {
   readonly inverseOpsFor: (op: EngineOp) => EngineOp[]
   readonly buildInverseOps: (ops: readonly EngineOp[]) => EngineOp[]
 } {
   const inverseOpsFor = (op: EngineOp): EngineOp[] => {
+    if (op.kind === 'insertRows' || op.kind === 'insertColumns') {
+      const metadataInverseOps = buildMutationMetadataInverseOps(args.workbook, op) ?? []
+      const axis: StructuralUndoAxis = op.kind === 'insertRows' ? 'row' : 'column'
+      return [...metadataInverseOps, ...args.captureFormulaCellStateForStructuralMoveUndo(op.sheetName, axis, op.start, op.count, op.start)]
+    }
+    if (op.kind === 'moveRows' || op.kind === 'moveColumns') {
+      const metadataInverseOps = buildMutationMetadataInverseOps(args.workbook, op) ?? []
+      const axis: StructuralUndoAxis = op.kind === 'moveRows' ? 'row' : 'column'
+      return [
+        ...metadataInverseOps,
+        ...args.captureFormulaCellStateForStructuralMoveUndo(op.sheetName, axis, op.start, op.count, op.target),
+      ]
+    }
     const metadataInverseOps = buildMutationMetadataInverseOps(args.workbook, op)
     if (metadataInverseOps !== undefined) {
       return metadataInverseOps

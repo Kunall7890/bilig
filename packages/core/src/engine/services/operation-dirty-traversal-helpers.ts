@@ -128,9 +128,6 @@ export function canSkipOperationDirtyTraversalForChangedInputs(input: {
     ) {
       return false
     }
-    if (input.postRecalcDirectFormulaIndices.hasCoveredDirectRangeInput(cellIndex)) {
-      return true
-    }
     if (!input.access.hasTrackedDirectRangeDependents(sheetId, col)) {
       return !requireTrackedRangeDependents
     }
@@ -139,6 +136,9 @@ export function canSkipOperationDirtyTraversalForChangedInputs(input: {
       if (!input.postRecalcDirectFormulaIndices.has(regionDependents[dependentIndex]!)) {
         return false
       }
+    }
+    if (input.postRecalcDirectFormulaIndices.hasCoveredDirectRangeInput(cellIndex)) {
+      return true
     }
     const directRangeDependents = input.access.collectAffectedDirectRangeDependents({ sheetName, row, col })
     for (let dependentIndex = 0; dependentIndex < directRangeDependents.length; dependentIndex += 1) {

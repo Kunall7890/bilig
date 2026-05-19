@@ -167,13 +167,13 @@ describe('formula binding dependency helpers', () => {
     expect(hasQualifiedDependencies({ deps: ['Sheet2!A1'] })).toBe(true)
   })
 
-  it('collects only criteria region ids because direct aggregates use column reverse edges', () => {
+  it('collects direct aggregate and criteria region ids for structural retargeting', () => {
     expect(
       directRegionIdsForFormula({
         directAggregate: { regionId: 1, regionIds: [1, 2] },
         directCriteria: undefined,
       }),
-    ).toEqual([])
+    ).toEqual([1])
 
     expect(
       directRegionIdsForFormula({
@@ -183,7 +183,7 @@ describe('formula binding dependency helpers', () => {
           criteriaPairs: [{ range: { regionId: 2 } }, { range: { regionId: 5 } }],
         },
       }),
-    ).toEqual([3, 2, 5])
+    ).toEqual([1, 3, 2, 5])
   })
 
   it('appends sheet-rename source transforms', () => {

@@ -52,6 +52,7 @@ export interface CreateWorkerRuntimeSessionInput {
   readonly replicaId: string
   readonly persistState: boolean
   readonly authoritativeSyncEnabled?: boolean
+  readonly authoritativeEventSyncEnabled?: boolean
   readonly initialSelection: WorkerRuntimeSelection
   readonly perfSession?: WorkbookPerfSession
   readonly zero?: ZeroWorkbookSyncSource
@@ -255,6 +256,7 @@ export async function createWorkerRuntimeSessionController(
   const handle: WorkerHandle = { viewportStore }
   const fetchImpl = input.fetchImpl ?? defaultRuntimeSessionFetch
   const authoritativeSyncEnabled = input.authoritativeSyncEnabled ?? true
+  const authoritativeEventSyncEnabled = input.authoritativeEventSyncEnabled ?? authoritativeSyncEnabled
   const mutationJournalScope = {
     documentId: input.documentId,
     replicaId: input.replicaId,
@@ -441,7 +443,7 @@ export async function createWorkerRuntimeSessionController(
   }
 
   const runAuthoritativeRefresh = async (): Promise<void> => {
-    if (disposed || !authoritativeSyncEnabled) {
+    if (disposed || !authoritativeEventSyncEnabled) {
       return
     }
     const eventBatch = await loadAuthoritativeEventBatch({
@@ -510,7 +512,7 @@ export async function createWorkerRuntimeSessionController(
   }
 
   const scheduleAuthoritativeBackstop = (delayMs = resolveAuthoritativeBackstopIntervalMs()): void => {
-    if (!authoritativeSyncEnabled || disposed || authoritativeBackstopTimer) {
+    if (!authoritativeEventSyncEnabled || disposed || authoritativeBackstopTimer) {
       return
     }
     authoritativeBackstopTimer = setTimeout(() => {
@@ -542,7 +544,7 @@ export async function createWorkerRuntimeSessionController(
   }
 
   const startAuthoritativeRefreshChannel = (): void => {
-    if (!authoritativeSyncEnabled || authoritativeRefreshChannel || typeof BroadcastChannel === 'undefined') {
+    if (!authoritativeEventSyncEnabled || authoritativeRefreshChannel || typeof BroadcastChannel === 'undefined') {
       return
     }
     const channel = new BroadcastChannel(`${AUTHORITATIVE_REFRESH_CHANNEL_PREFIX}${input.documentId}`)
@@ -569,7 +571,7 @@ export async function createWorkerRuntimeSessionController(
   }
 
   const refreshAuthoritativeEventsNow = async (targetRevision: number | null): Promise<void> => {
-    if (!authoritativeSyncEnabled) {
+    if (!authoritativeEventSyncEnabled) {
       return
     }
     if (targetRevision !== null) {
@@ -600,7 +602,7 @@ export async function createWorkerRuntimeSessionController(
   }
 
   const runAuthoritativeRebase = async (): Promise<void> => {
-    if (disposed || !authoritativeSyncEnabled) {
+    if (disposed || !authoritativeEventSyncEnabled) {
       return
     }
     const targetRevision = requestedAuthoritativeRevision

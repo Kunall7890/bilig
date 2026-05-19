@@ -1,7 +1,11 @@
 import { describe, expect, it } from 'vitest'
 import { ValueTag } from '@bilig/protocol'
 import { DirtyMaskV3 } from '../../../../packages/grid/src/renderer-v3/tile-damage-index.js'
-import { buildLocalAxisWorkbookDelta, buildLocalCellSnapshotWorkbookDelta } from '../projected-workbook-local-delta.js'
+import {
+  LOCAL_CELL_TEXT_DIRTY_MASK,
+  buildLocalAxisWorkbookDelta,
+  buildLocalCellSnapshotWorkbookDelta,
+} from '../projected-workbook-local-delta.js'
 
 const identity = {
   sheetId: 7,
@@ -36,8 +40,9 @@ describe('projected workbook local delta builders', () => {
     expect(batch.dirty.cellRanges).toEqual(new Uint32Array([1, 1, 1, 1, LOCAL_CELL_VISUAL_DIRTY_MASK]))
   })
 
-  it('marks plain local cell writes as full visual damage so moved text cannot retain stale fills', () => {
+  it('can mark plain local cell writes as text-only damage for scalar editor commits', () => {
     const batch = buildLocalCellSnapshotWorkbookDelta({
+      dirtyMask: LOCAL_CELL_TEXT_DIRTY_MASK,
       identity,
       seq: 47,
       snapshot: {
@@ -49,7 +54,7 @@ describe('projected workbook local delta builders', () => {
       },
     })
 
-    expect(batch.dirty.cellRanges).toEqual(new Uint32Array([3, 3, 2, 2, LOCAL_CELL_VISUAL_DIRTY_MASK]))
+    expect(batch.dirty.cellRanges).toEqual(new Uint32Array([3, 3, 2, 2, LOCAL_CELL_TEXT_DIRTY_MASK]))
   })
 
   it('builds axis deltas with isolated axis damage and clamped indices', () => {

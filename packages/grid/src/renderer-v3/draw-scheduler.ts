@@ -17,19 +17,24 @@ export interface GridDrawSchedulerFrameDecisionV3 {
 export function shouldDeferTypeGpuV3PreloadSync(input: {
   readonly now: number
   readonly lastScrollSignalAt: number
+  readonly lastTileMutationSignalAt?: number | undefined
   readonly camera: GridDrawSchedulerCameraV3 | null
 }): boolean {
   const hasMovingCamera =
     input.camera !== null &&
     Math.abs(input.camera.velocityX) + Math.abs(input.camera.velocityY) > 0.01 &&
     input.now - input.camera.updatedAt < TYPEGPU_V3_ACTIVE_RESOURCE_DEFER_MS
-  return hasMovingCamera || input.now - input.lastScrollSignalAt < TYPEGPU_V3_ACTIVE_RESOURCE_DEFER_MS
+  const hasRecentScrollSignal = input.now - input.lastScrollSignalAt < TYPEGPU_V3_ACTIVE_RESOURCE_DEFER_MS
+  const hasRecentTileMutationSignal =
+    input.lastTileMutationSignalAt !== undefined && input.now - input.lastTileMutationSignalAt < TYPEGPU_V3_ACTIVE_RESOURCE_DEFER_MS
+  return hasMovingCamera || hasRecentScrollSignal || hasRecentTileMutationSignal
 }
 
 export class GridDrawSchedulerV3 {
   private readonly renderLoop: GridRenderLoop
   private idlePreloadRetry: number | null = null
   private lastScrollSignalAt = 0
+  private lastTileMutationSignalAt = Number.NEGATIVE_INFINITY
 
   constructor(
     private readonly scheduleIdle: (callback: () => void, delay: number) => number = window.setTimeout.bind(window),
@@ -44,6 +49,10 @@ export class GridDrawSchedulerV3 {
     this.lastScrollSignalAt = timestamp
   }
 
+  noteTileMutationSignal(timestamp = this.now()): void {
+    this.lastTileMutationSignalAt = timestamp
+  }
+
   requestDraw(draw: () => void): void {
     this.renderLoop.requestDraw(draw)
   }
@@ -52,12 +61,15 @@ export class GridDrawSchedulerV3 {
     readonly camera: GridDrawSchedulerCameraV3 | null
     readonly requestIdlePreloadDraw: () => void
   }): GridDrawSchedulerFrameDecisionV3 {
+    const now = this.now()
     const deferPreloadSync = shouldDeferTypeGpuV3PreloadSync({
       camera: input.camera,
       lastScrollSignalAt: this.lastScrollSignalAt,
-      now: this.now(),
+      lastTileMutationSignalAt: this.lastTileMutationSignalAt,
+      now,
     })
-    if (deferPreloadSync) {
+    const hasRecentTileMutationSignal = now - this.lastTileMutationSignalAt < TYPEGPU_V3_ACTIVE_RESOURCE_DEFER_MS
+    if (deferPreloadSync && !hasRecentTileMutationSignal) {
       this.scheduleIdlePreloadRetry(input.requestIdlePreloadDraw)
     }
     return {

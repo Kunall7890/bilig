@@ -4,8 +4,19 @@ import * as XLSX from 'xlsx'
 import { formatAddress } from '@bilig/formula'
 import type { WorkbookSnapshot } from '@bilig/protocol'
 import { runProperty } from '@bilig/test-fuzz'
-import { exportXlsx, importCsv, importXlsx } from '../index.js'
+import { exportXlsx, importCsv, importXlsx, InvalidXlsxZipContainerError } from '../index.js'
 import { decodeExcelEscapedText, encodeExcelEscapedText } from '../xlsx-escaped-text.js'
+import {
+  buildMalformedXlsxBytes,
+  buildSemanticXlsxWorkbookSnapshot,
+  csvEdgeWorkbookSpecArbitrary,
+  expectedCsvEdgeCells,
+  expectedCsvEdgePreviewRows,
+  malformedXlsxSpecArbitrary,
+  renderCsvEdgeWorkbook,
+  semanticXlsxWorkbookDigest,
+  semanticXlsxWorkbookSpecArbitrary,
+} from './excel-import-fuzz-helpers.js'
 
 type CsvCellSpec =
   | { kind: 'empty'; raw: '' }
@@ -93,6 +104,32 @@ describe('excel import fuzz', () => {
     })
   })
 
+  it('should preserve csv edge semantics for separators, quoting, unicode, sparse rows, and accounting values', async () => {
+    await runProperty({
+      suite: 'excel-import/csv/edge-semantics',
+      arbitrary: csvEdgeWorkbookSpecArbitrary,
+      predicate: async (spec) => {
+        const expectedPreviewRows = expectedCsvEdgePreviewRows(spec)
+        const expectedCells = expectedCsvEdgeCells(spec)
+        const imported = importCsv(renderCsvEdgeWorkbook(spec), `${spec.fileStem}.csv`)
+        const expectedColumnCount = expectedPreviewRows[0]?.length ?? 0
+        const hasRaggedRows = spec.rows.some((row) => row.length !== expectedColumnCount)
+
+        expect(imported.workbookName).toBe(spec.fileStem)
+        expect(imported.sheetNames).toEqual([spec.fileStem])
+        expect(imported.warnings).toEqual(
+          hasRaggedRows ? ['CSV rows had inconsistent column counts. Missing cells were treated as blanks.'] : [],
+        )
+        expect(imported.preview.sheets[0]?.rowCount).toBe(expectedPreviewRows.length)
+        expect(imported.preview.sheets[0]?.columnCount).toBe(expectedColumnCount)
+        expect(imported.preview.sheets[0]?.previewRows).toEqual(expectedPreviewRows)
+        expect(imported.preview.sheets[0]?.nonEmptyCellCount).toBe(expectedCells.length)
+        expect(imported.snapshot.sheets[0]?.cells).toEqual(expectedCells)
+      },
+      parameters: { numRuns: 120 },
+    })
+  })
+
   it('should preserve generated escaped text and axis entries across XLSX export/import cycles', async () => {
     await runProperty({
       suite: 'excel-import/xlsx/escaped-text-axis-roundtrip',
@@ -104,6 +141,50 @@ describe('excel import fuzz', () => {
 
         expect(escapedTextWorkbookDigest(imported)).toEqual(escapedTextWorkbookDigest(snapshot))
         expect(escapedTextWorkbookDigest(reimported)).toEqual(escapedTextWorkbookDigest(imported))
+      },
+      parameters: { numRuns: 80 },
+    })
+  })
+
+  it('should preserve semantic XLSX metadata digests across import-export-import cycles', async () => {
+    await runProperty({
+      suite: 'excel-import/xlsx/semantic-metadata-roundtrip',
+      arbitrary: semanticXlsxWorkbookSpecArbitrary,
+      predicate: async (spec) => {
+        const snapshot = buildSemanticXlsxWorkbookSnapshot(spec)
+        const imported = importXlsx(exportXlsx(snapshot), `${spec.workbookName}.xlsx`).snapshot
+        const reimported = importXlsx(exportXlsx(imported), `${spec.workbookName}-again.xlsx`).snapshot
+
+        expect(semanticXlsxWorkbookDigest(imported)).toEqual(semanticXlsxWorkbookDigest(snapshot))
+        expect(semanticXlsxWorkbookDigest(reimported)).toEqual(semanticXlsxWorkbookDigest(imported))
+      },
+      parameters: { numRuns: 80 },
+    })
+  })
+
+  it('should reject corrupt XLSX containers and avoid crashing on malformed OpenXML parts', async () => {
+    await runProperty({
+      suite: 'excel-import/xlsx/malformed-openxml',
+      arbitrary: malformedXlsxSpecArbitrary,
+      predicate: async (spec) => {
+        const bytes = buildMalformedXlsxBytes(spec)
+
+        if (spec.kind === 'corruptZip') {
+          expect(() => importXlsx(bytes, 'corrupt.xlsx')).toThrow(InvalidXlsxZipContainerError)
+          return
+        }
+
+        try {
+          const imported = importXlsx(bytes, 'malformed-openxml.xlsx')
+          expect(imported.snapshot.sheets).toHaveLength(imported.sheetNames.length)
+          expect(imported.preview.sheetCount).toBe(imported.sheetNames.length)
+          if (imported.snapshot.sheets.length > 0) {
+            expect(() => exportXlsx(imported.snapshot)).not.toThrow()
+          }
+        } catch (error) {
+          expect(error).toBeInstanceOf(Error)
+          expect(error instanceof Error ? error.message.length : 0).toBeGreaterThan(0)
+        }
       },
       parameters: { numRuns: 80 },
     })

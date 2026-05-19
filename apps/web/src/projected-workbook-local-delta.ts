@@ -10,10 +10,12 @@ export interface ProjectedWorkbookLocalDeltaSheetIdentity {
 
 const LOCAL_AXIS_X_DIRTY_MASK = DirtyMaskV3.AxisX | DirtyMaskV3.Text | DirtyMaskV3.Rect
 const LOCAL_AXIS_Y_DIRTY_MASK = DirtyMaskV3.AxisY | DirtyMaskV3.Text | DirtyMaskV3.Rect
-const LOCAL_CELL_VISUAL_DIRTY_MASK = DirtyMaskV3.Value | DirtyMaskV3.Style | DirtyMaskV3.Text | DirtyMaskV3.Rect | DirtyMaskV3.Border
+export const LOCAL_CELL_TEXT_DIRTY_MASK = DirtyMaskV3.Value | DirtyMaskV3.Text
+export const LOCAL_CELL_VISUAL_DIRTY_MASK = DirtyMaskV3.Value | DirtyMaskV3.Style | DirtyMaskV3.Text | DirtyMaskV3.Rect | DirtyMaskV3.Border
 
 export function buildLocalCellSnapshotWorkbookDelta(input: {
   readonly identity: ProjectedWorkbookLocalDeltaSheetIdentity
+  readonly dirtyMask?: number | undefined
   readonly seq: number
   readonly snapshot: CellSnapshot
 }): WorkbookDeltaBatchV3 {
@@ -26,7 +28,7 @@ export function buildLocalCellSnapshotWorkbookDelta(input: {
     dirty: {
       axisX: new Uint32Array(),
       axisY: new Uint32Array(),
-      cellRanges: new Uint32Array([parsed.row, parsed.row, parsed.col, parsed.col, resolveCellSnapshotDirtyMask()]),
+      cellRanges: new Uint32Array([parsed.row, parsed.row, parsed.col, parsed.col, input.dirtyMask ?? LOCAL_CELL_VISUAL_DIRTY_MASK]),
     },
     freezeSeq: 0,
     magic: 'bilig.workbook.delta.v3',
@@ -73,8 +75,4 @@ function clampAxisIndex(index: number, axisLength: number): number {
     return 0
   }
   return Math.max(0, Math.min(axisLength - 1, Math.trunc(index)))
-}
-
-function resolveCellSnapshotDirtyMask(): number {
-  return LOCAL_CELL_VISUAL_DIRTY_MASK
 }

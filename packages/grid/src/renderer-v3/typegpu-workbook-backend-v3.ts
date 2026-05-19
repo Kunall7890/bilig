@@ -84,11 +84,17 @@ export function drawWorkbookTypeGpuTileFrameV3(input: {
   readonly scrollSnapshot: WorkbookGridScrollSnapshot
   readonly surface: TypeGpuTileDrawSurface
 }): boolean {
+  const visibleTilePanes = input.tilePanes.filter(isTypeGpuTilePaneDrawVisibleV3)
   const retainPanes = input.preloadTilePanes?.length ? [...input.preloadTilePanes, ...input.tilePanes] : input.tilePanes
-  const resourcePanes = input.syncPreloadPanes === false ? input.tilePanes : retainPanes
+  const resourcePanes =
+    input.syncPreloadPanes === false
+      ? visibleTilePanes
+      : input.preloadTilePanes?.length
+        ? [...input.preloadTilePanes, ...visibleTilePanes]
+        : visibleTilePanes
   const headerPanes = input.headerPanes ?? []
   const preserveResidentBodyTiles = hasTransientEmptyTypeGpuBodyFrameV3({
-    tilePanes: input.tilePanes,
+    tilePanes: visibleTilePanes,
     tileResources: input.backend.tileResources,
   })
   if (preserveResidentBodyTiles) {
@@ -126,7 +132,7 @@ export function drawWorkbookTypeGpuTileFrameV3(input: {
   const drawPanes = resolveTypeGpuDrawTilePanesV3({
     drawText: input.drawText ?? true,
     onTileMiss: (tileKey) => noteTypeGpuTileMiss(String(tileKey)),
-    panes: input.tilePanes,
+    panes: visibleTilePanes,
     residency: input.backend.tileResidency,
     tileResources: input.backend.tileResources,
   })
@@ -141,6 +147,10 @@ export function drawWorkbookTypeGpuTileFrameV3(input: {
     tileResources: input.backend.tileResources,
     tilePanes: drawPanes,
   })
+}
+
+function isTypeGpuTilePaneDrawVisibleV3(pane: WorkbookRenderTilePaneState): boolean {
+  return pane.drawVisible !== false
 }
 
 export function hasTransientEmptyTypeGpuBodyFrameV3(input: {

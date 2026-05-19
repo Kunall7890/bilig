@@ -26,7 +26,17 @@ import { GpuBufferArenaV3, type GpuBufferHandleV3 } from './gpu-buffer-arena.js'
 import { GRID_RECT_INSTANCE_FLOAT_COUNT_V3 } from './rect-instance-buffer.js'
 import type { GridRenderTile } from './render-tile-source.js'
 import { isFullGridRenderTileDirtySpanV3 } from './render-tile-dirty-spans.js'
+import { DirtyMaskV3 } from './tile-damage-index.js'
 import { shouldAttemptAxisOnlyTileTextGeometryResourceSync, syncAxisOnlyTileTextGeometryResource } from './typegpu-axis-text-sync.js'
+import {
+  buildSmallDirtyTextPatchPayload,
+  buildTextRunCellKeys,
+  isCellKeyDirtyForTile,
+  mergeTextRunDirtySpans,
+  resolveTextPatchDirtySpans,
+  resolveVariableLengthTextPatchReserveCount,
+  writeTileTextPayload,
+} from './typegpu-tile-text-patch.js'
 import type { WorkbookRenderTilePaneState } from './render-tile-pane-state.js'
 import {
   areGridTextTileRevisionKeysEqualV3,
@@ -55,6 +65,9 @@ const TEXT_INSTANCE_FLOAT_COUNT = 16
 const RECT_INSTANCE_BYTE_COUNT = RECT_INSTANCE_FLOAT_COUNT * Float32Array.BYTES_PER_ELEMENT
 const TEXT_INSTANCE_BYTE_COUNT = TEXT_INSTANCE_FLOAT_COUNT * Float32Array.BYTES_PER_ELEMENT
 const MIN_TILE_TEXT_INSTANCE_COUNT = 32
+const TEXT_CELL_SKIP_FORBIDDEN_DIRTY_MASK = DirtyMaskV3.AxisX | DirtyMaskV3.AxisY | DirtyMaskV3.Freeze
+const EMPTY_DECORATION_CELL_KEYS: ReadonlySet<string> = new Set()
+const EMPTY_DECORATION_RECTS: readonly TextDecorationRect[] = Object.freeze([])
 
 export interface TypeGpuTileContentResourceEntryV3 {
   rectBaseCount: number
@@ -68,6 +81,7 @@ export interface TypeGpuTileContentResourceEntryV3 {
   textGlyphIds: readonly number[] | null
   textGlyphPageIds: readonly number[] | null
   textRunCount: number
+  textRunCellKeys: readonly string[] | null
   textRunGlyphIds: readonly (readonly number[])[] | null
   textRunPayloads: readonly TextQuadRunPayloadV3[] | null
   textRunQuadSpans: readonly TextQuadRunSpan[] | null
@@ -97,6 +111,7 @@ function createEmptyContentEntry(): TypeGpuTileContentResourceEntryV3 {
     textGlyphIds: null,
     textGlyphPageIds: null,
     textHandle: null,
+    textRunCellKeys: null,
     textRunGlyphIds: null,
     textRunCount: 0,
     textRunPayloads: null,
@@ -231,6 +246,7 @@ export class TypeGpuTileResourceCacheV3 {
     entry.textAtlasGeometryVersion = -1
     entry.textGlyphIds = null
     entry.textGlyphPageIds = null
+    entry.textRunCellKeys = null
     entry.textRunCount = 0
     entry.textRunGlyphIds = null
     entry.textRunPayloads = null
@@ -252,6 +268,7 @@ export class TypeGpuTileResourceCacheV3 {
     entry.textAtlasGeometryVersion = -1
     entry.textGlyphIds = null
     entry.textGlyphPageIds = null
+    entry.textRunCellKeys = null
     entry.textRunCount = 0
     entry.textRunGlyphIds = null
     entry.textRunPayloads = null
@@ -386,9 +403,33 @@ function syncTileTextResource(input: {
   readonly missingGlyphRunSpans: readonly TextQuadRunSpan[]
   readonly textRevisionKey: TypeGpuTileTextRevisionKeyV3
 }): void {
-  input.content.decorationRects = buildTextDecorationRectsFromRuns(input.pane.tile.textRuns, input.atlas)
-  input.content.decorationCellKeys = buildDecorationCellKeys(input.pane.tile.textRuns)
+  const syncStartedAt = performance.now()
+  const decorationStartedAt = syncStartedAt
+  const needsDecorationSync = shouldSyncTextDecorationRects({
+    previousDecorationCellKeys: input.content.decorationCellKeys,
+    textRuns: input.pane.tile.textRuns,
+  })
+  input.content.decorationRects = needsDecorationSync
+    ? buildTextDecorationRectsFromRuns(input.pane.tile.textRuns, input.atlas)
+    : EMPTY_DECORATION_RECTS
+  input.content.decorationCellKeys = needsDecorationSync ? buildDecorationCellKeys(input.pane.tile.textRuns) : EMPTY_DECORATION_CELL_KEYS
+  const textDecorationMs = Math.max(0, performance.now() - decorationStartedAt)
   const dirtyTextRunSpans = mergeTextRunDirtySpans(input.pane.tile.dirty?.textSpans, input.missingGlyphRunSpans)
+  const previousTextRunCellKeys = input.content.textRunCellKeys
+  const nextTextRunCellKeys = buildTextRunCellKeys(input.pane.tile.textRuns)
+  if (
+    shouldSkipTextResourceSyncForNonIntersectingDirtyCells({
+      content: input.content,
+      missingGlyphRunSpans: input.missingGlyphRunSpans,
+      nextTextRunCellKeys,
+      previousTextRunCellKeys,
+      textRevisionKey: input.textRevisionKey,
+      tile: input.pane.tile,
+    })
+  ) {
+    input.content.textRevisionKey = input.textRevisionKey
+    return
+  }
   const attemptedAxisOnlyTextSync = shouldAttemptAxisOnlyTileTextGeometryResourceSync({
     contentRevisionKey: input.content.textRevisionKey,
     dirtyTextRunSpans,
@@ -420,11 +461,53 @@ function syncTileTextResource(input: {
     input.content.textAtlasGeometryVersion = input.atlas.getGlyphGeometryVersion()
     return
   }
-  const textPayload = buildTextQuadsFromRunsWithSpans(input.pane.tile.textRuns, input.atlas, undefined, {
-    dirtyRunSpans: dirtyTextRunSpans,
-    forceRebuildDirtyRunSpans: input.missingGlyphRunSpans.length > 0,
-    previousRunPayloads: input.content.textRunPayloads,
-  })
+  const atlasGeometryVersion = input.atlas.getGlyphGeometryVersion()
+  if (
+    shouldReuseEquivalentTextResource({
+      atlasGeometryVersion,
+      content: input.content,
+      missingGlyphRunSpans: input.missingGlyphRunSpans,
+      textRevisionKey: input.textRevisionKey,
+      tile: input.pane.tile,
+    })
+  ) {
+    input.content.textAtlasDependencyVersion = input.atlasDependencyVersion
+    input.content.textAtlasGeometryVersion = atlasGeometryVersion
+    input.content.textRevisionKey = input.textRevisionKey
+    return
+  }
+  const previousTextHandle = input.content.textHandle
+  const previousTextCount = input.content.textCount
+  const previousRunPayloads = input.content.textRunPayloads
+  const previousRunSpans = input.content.textRunQuadSpans
+  const canAttemptPatchOnlyPayload =
+    input.content.textRevisionKey !== null &&
+    previousTextHandle !== null &&
+    previousRunPayloads !== null &&
+    previousRunSpans !== null &&
+    previousTextRunCellKeys !== null &&
+    nextTextRunCellKeys !== null
+  let textBuildStartedAt = performance.now()
+  let textPayload =
+    buildSmallDirtyTextPatchPayload({
+      atlas: input.atlas,
+      dirtyRunSpans: dirtyTextRunSpans,
+      forceRebuildDirtyRunSpans: input.missingGlyphRunSpans.length > 0,
+      previousGlyphIds: input.content.textGlyphIds,
+      previousPageIds: input.content.textGlyphPageIds,
+      previousRunGlyphIds: input.content.textRunGlyphIds,
+      previousRunPayloads,
+      previousRunSpans,
+      previousTextCount,
+      runs: input.pane.tile.textRuns,
+    }) ??
+    buildTextQuadsFromRunsWithSpans(input.pane.tile.textRuns, input.atlas, undefined, {
+      dirtyRunSpans: dirtyTextRunSpans,
+      forceRebuildDirtyRunSpans: input.missingGlyphRunSpans.length > 0,
+      packFullPayload: !canAttemptPatchOnlyPayload,
+      previousRunPayloads: input.content.textRunPayloads,
+    })
+  let textBuildMs = Math.max(0, performance.now() - textBuildStartedAt)
   noteTypeGpuTextPayload({
     atlasGeometryResyncs: input.atlasGeometryResync ? 1 : 0,
     atlasGeometryRetries: textPayload.diagnostics.atlasGeometryRetries,
@@ -433,6 +516,8 @@ function syncTileTextResource(input: {
     rebuiltRunPayloads: textPayload.diagnostics.rebuiltRunPayloads,
     reusedRunPayloads: textPayload.diagnostics.reusedRunPayloads,
     axisOnlySyncFallbackRebuilds: attemptedAxisOnlyTextSync ? 1 : 0,
+    textBuildMs,
+    textDecorationMs,
   })
   if (textPayload.quadCount === 0) {
     const handle = prepareTextBuffer(input.tileResources, input.content, 0)
@@ -444,21 +529,80 @@ function syncTileTextResource(input: {
     input.content.textGlyphIds = textPayload.glyphIds
     input.content.textGlyphPageIds = textPayload.pageIds
     input.content.textRunCount = input.pane.tile.textCount
+    input.content.textRunCellKeys = nextTextRunCellKeys
     input.content.textRunGlyphIds = textPayload.runGlyphIds
     input.content.textRunPayloads = textPayload.runPayloads
     input.content.textRunQuadSpans = textPayload.runSpans
     input.content.textRevisionKey = input.textRevisionKey
+    noteTypeGpuTextPayload({
+      atlasGeometryRetries: 0,
+      glyphDependencies: 0,
+      pageDependencies: 0,
+      rebuiltRunPayloads: 0,
+      reusedRunPayloads: 0,
+      textSyncMs: Math.max(0, performance.now() - syncStartedAt),
+    })
     return
   }
   const canWritePartialPayload =
-    input.content.textRevisionKey !== null &&
-    input.content.textHandle !== null &&
-    input.content.textCount === textPayload.quadCount &&
-    input.content.textRunCount === input.pane.tile.textCount &&
-    input.content.textRunQuadSpans !== null
-  const handle = prepareTextBuffer(input.tileResources, input.content, textPayload.quadCount)
+    input.content.textRevisionKey !== null && input.content.textHandle !== null && input.content.textRunQuadSpans !== null
+  const textPatchDirtySpanResolution = resolveTextPatchDirtySpans({
+    dirtySpans: dirtyTextRunSpans,
+    previousRunPayloads,
+    textPayload,
+    tileTextCount: input.pane.tile.textCount,
+  })
+  const dirtyPatchReserveCount = resolveVariableLengthTextPatchReserveCount({
+    dirtySpans: textPatchDirtySpanResolution.spans,
+    previousTextCount,
+    textPayload,
+    tile: input.pane.tile,
+  })
+  const handle = prepareTextBuffer(input.tileResources, input.content, Math.max(textPayload.quadCount, dirtyPatchReserveCount))
   input.content.textHandle = handle
-  input.content.textCount = textPayload.quadCount
+  let textWriteStartedAt = performance.now()
+  let writeResult = writeTileTextPayload({
+    canWritePartialPayload: canWritePartialPayload && handle === previousTextHandle,
+    content: input.content,
+    handle,
+    label: `tile-text:${resolveWorkbookTileContentBufferKeyV3(input.pane)}`,
+    nextTextRunCellKeys,
+    previousRunSpans,
+    previousTextRunCellKeys,
+    previousTextCount,
+    textPayload,
+    tile: input.pane.tile,
+    textDirtySpans: textPatchDirtySpanResolution.spans,
+    textDirtySpansAuthoritative: textPatchDirtySpanResolution.authoritative,
+  })
+  let textWriteMs = Math.max(0, performance.now() - textWriteStartedAt)
+  if (!writeResult) {
+    textBuildStartedAt = performance.now()
+    textPayload = buildTextQuadsFromRunsWithSpans(input.pane.tile.textRuns, input.atlas, undefined, {
+      dirtyRunSpans: dirtyTextRunSpans,
+      forceRebuildDirtyRunSpans: input.missingGlyphRunSpans.length > 0,
+      previousRunPayloads,
+    })
+    textBuildMs += Math.max(0, performance.now() - textBuildStartedAt)
+    textWriteStartedAt = performance.now()
+    writeResult = writeTileTextPayload({
+      canWritePartialPayload: false,
+      content: input.content,
+      handle,
+      label: `tile-text:${resolveWorkbookTileContentBufferKeyV3(input.pane)}`,
+      nextTextRunCellKeys,
+      previousRunSpans,
+      previousTextRunCellKeys,
+      previousTextCount,
+      textPayload,
+      tile: input.pane.tile,
+      textDirtySpans: dirtyTextRunSpans,
+    })
+    textWriteMs += Math.max(0, performance.now() - textWriteStartedAt)
+    if (!writeResult) {
+      throw new Error('Expected packed TypeGPU tile text payload fallback to be writable')
+    }
+  }
   input.content.textAtlasDependencyVersion = input.atlasDependencyVersion
   input.content.textAtlasGeometryVersion = input.atlas.getGlyphGeometryVersion()
   input.content.textGlyphIds = textPayload.glyphIds
@@ -466,102 +610,45 @@ function syncTileTextResource(input: {
   input.content.textRunCount = input.pane.tile.textCount
   input.content.textRunGlyphIds = textPayload.runGlyphIds
   input.content.textRunPayloads = textPayload.runPayloads
-  writeTileTextPayload({
-    canWritePartialPayload,
-    content: input.content,
-    handle,
-    label: `tile-text:${resolveWorkbookTileContentBufferKeyV3(input.pane)}`,
-    textPayload,
-    tile: input.pane.tile,
-    textDirtySpans: dirtyTextRunSpans,
-  })
-  input.content.textRunQuadSpans = textPayload.runSpans
+  input.content.textCount = writeResult.textCount
+  input.content.textRunCellKeys = nextTextRunCellKeys
+  input.content.textRunQuadSpans = writeResult.runSpans
+  handle.usedBytes = Math.max(1, writeResult.textCount) * TEXT_INSTANCE_BYTE_COUNT
   input.content.textRevisionKey = input.textRevisionKey
+  noteTypeGpuTextPayload({
+    atlasGeometryRetries: 0,
+    glyphDependencies: 0,
+    pageDependencies: 0,
+    rebuiltRunPayloads: 0,
+    reusedRunPayloads: 0,
+    textSyncMs: Math.max(0, performance.now() - syncStartedAt),
+    textWriteMs,
+  })
 }
 
-function writeTileTextPayload(input: {
-  readonly canWritePartialPayload: boolean
+function shouldReuseEquivalentTextResource(input: {
+  readonly atlasGeometryVersion: number
   readonly content: TypeGpuTileContentResourceEntryV3
-  readonly handle: GpuBufferHandleV3<TextInstanceVertexBuffer>
-  readonly label: string
-  readonly textPayload: { readonly floats: Float32Array; readonly quadCount: number; readonly runSpans: readonly TextQuadRunSpan[] }
+  readonly missingGlyphRunSpans: readonly TextQuadRunSpan[]
+  readonly textRevisionKey: TypeGpuTileTextRevisionKeyV3
   readonly tile: GridRenderTile
-  readonly textDirtySpans?: readonly TextQuadRunSpan[] | undefined
-}): void {
-  const dirtySpans = input.textDirtySpans ?? input.tile.dirty?.textSpans ?? []
+}): boolean {
+  const previousRevisionKey = input.content.textRevisionKey
   if (
-    !input.canWritePartialPayload ||
-    dirtySpans.length === 0 ||
-    input.content.textCount !== input.textPayload.quadCount ||
-    input.content.textRunCount !== input.tile.textCount ||
-    dirtySpans.some((span) => isFullGridRenderTileDirtySpanV3(span, input.tile.textCount))
+    previousRevisionKey === null ||
+    previousRevisionKey.tileId !== input.textRevisionKey.tileId ||
+    previousRevisionKey.textRunCount !== input.textRevisionKey.textRunCount ||
+    previousRevisionKey.textSignature !== input.textRevisionKey.textSignature
   ) {
-    writeTypeGpuVertexBuffer(input.handle.buffer, input.textPayload.floats, input.label)
-    return
+    return false
   }
-
-  const previousRunSpans = input.content.textRunQuadSpans
-  if (!previousRunSpans || previousRunSpans.length !== input.textPayload.runSpans.length) {
-    writeTypeGpuVertexBuffer(input.handle.buffer, input.textPayload.floats, input.label)
-    return
+  if (input.missingGlyphRunSpans.length > 0 || input.content.textAtlasGeometryVersion !== input.atlasGeometryVersion) {
+    return false
   }
-
-  for (const dirtySpan of dirtySpans) {
-    const quadSpan = resolveStableTextQuadSpan({
-      dirtySpan,
-      nextRunSpans: input.textPayload.runSpans,
-      previousRunSpans,
-    })
-    if (!quadSpan || quadSpan.length === 0) {
-      writeTypeGpuVertexBuffer(input.handle.buffer, input.textPayload.floats, input.label)
-      return
-    }
-    writeTypeGpuVertexBufferSubrange({
-      buffer: input.handle.buffer,
-      floatCount: quadSpan.length * TEXT_INSTANCE_FLOAT_COUNT,
-      floats: input.textPayload.floats,
-      label: `${input.label}:span`,
-      startFloat: quadSpan.offset * TEXT_INSTANCE_FLOAT_COUNT,
-    })
+  if (input.content.textRunCount !== input.tile.textCount) {
+    return false
   }
-}
-
-function resolveStableTextQuadSpan(input: {
-  readonly dirtySpan: { readonly offset: number; readonly length: number }
-  readonly nextRunSpans: readonly TextQuadRunSpan[]
-  readonly previousRunSpans: readonly TextQuadRunSpan[]
-}): TextQuadRunSpan | null {
-  const start = input.dirtySpan.offset
-  const endExclusive = start + input.dirtySpan.length
-  if (start < 0 || endExclusive > input.nextRunSpans.length || input.dirtySpan.length <= 0) {
-    return null
-  }
-
-  let offset = Number.MAX_SAFE_INTEGER
-  let end = 0
-  for (let index = start; index < endExclusive; index += 1) {
-    const next = input.nextRunSpans[index]
-    const previous = input.previousRunSpans[index]
-    if (!next || !previous || next.offset !== previous.offset || next.length !== previous.length) {
-      return null
-    }
-    offset = Math.min(offset, next.offset)
-    end = Math.max(end, next.offset + next.length)
-  }
-  return offset === Number.MAX_SAFE_INTEGER ? null : { offset, length: end - offset }
-}
-
-function mergeTextRunDirtySpans(
-  tileDirtySpans: readonly TextQuadRunSpan[] | undefined,
-  missingGlyphRunSpans: readonly TextQuadRunSpan[],
-): readonly TextQuadRunSpan[] | undefined {
-  if (!tileDirtySpans || tileDirtySpans.length === 0) {
-    return missingGlyphRunSpans.length === 0 ? undefined : missingGlyphRunSpans
-  }
-  if (missingGlyphRunSpans.length === 0) {
-    return tileDirtySpans
-  }
-  return [...tileDirtySpans, ...missingGlyphRunSpans]
+  return input.tile.textCount === 0 || (input.content.textHandle !== null && input.content.textRunPayloads !== null)
 }
 
 function syncTileRectResource(input: {
@@ -801,6 +888,62 @@ function buildDecorationCellKeys(textRuns: readonly GridRenderTile['textRuns'][n
     keys.add(formatDecorationCellKey(run.row, run.col))
   }
   return keys
+}
+
+function shouldSyncTextDecorationRects(input: {
+  readonly previousDecorationCellKeys: ReadonlySet<string> | null
+  readonly textRuns: readonly GridRenderTile['textRuns'][number][]
+}): boolean {
+  if ((input.previousDecorationCellKeys?.size ?? 0) > 0) {
+    return true
+  }
+  return input.textRuns.some((run) => run.underline || run.strike)
+}
+
+function shouldSkipTextResourceSyncForNonIntersectingDirtyCells(input: {
+  readonly content: TypeGpuTileContentResourceEntryV3
+  readonly missingGlyphRunSpans: readonly TextQuadRunSpan[]
+  readonly nextTextRunCellKeys: readonly string[] | null
+  readonly previousTextRunCellKeys: readonly string[] | null
+  readonly textRevisionKey: TypeGpuTileTextRevisionKeyV3
+  readonly tile: GridRenderTile
+}): boolean {
+  if (
+    input.missingGlyphRunSpans.length > 0 ||
+    input.content.textRevisionKey === null ||
+    input.content.textHandle === null ||
+    !input.previousTextRunCellKeys ||
+    !input.nextTextRunCellKeys
+  ) {
+    return false
+  }
+  if (!hasOnlyLocalTextCellDirtyMasks(input.tile)) {
+    return false
+  }
+  return (
+    !input.previousTextRunCellKeys.some((key) => isCellKeyDirtyForTile(key, input.tile)) &&
+    !input.nextTextRunCellKeys.some((key) => isCellKeyDirtyForTile(key, input.tile)) &&
+    input.content.textRunCount === input.previousTextRunCellKeys.length &&
+    input.textRevisionKey.textRunCount === input.nextTextRunCellKeys.length
+  )
+}
+
+function hasOnlyLocalTextCellDirtyMasks(tile: GridRenderTile): boolean {
+  const dirtyMasks = tile.dirtyMasks
+  const dirtyLocalRows = tile.dirtyLocalRows
+  const dirtyLocalCols = tile.dirtyLocalCols
+  if (!dirtyMasks || !dirtyLocalRows || !dirtyLocalCols || dirtyMasks.length === 0) {
+    return false
+  }
+  if (dirtyLocalRows.length !== dirtyMasks.length * 2 || dirtyLocalCols.length !== dirtyMasks.length * 2) {
+    return false
+  }
+  for (const mask of dirtyMasks) {
+    if ((mask & TEXT_CELL_SKIP_FORBIDDEN_DIRTY_MASK) !== 0) {
+      return false
+    }
+  }
+  return true
 }
 
 export function formatDecorationCellKey(row: number, col: number): string {

@@ -28,6 +28,24 @@ const EMPTY_INVALIDATED_ROWS: NonNullable<EngineEvent['invalidatedRows']> = []
 const EMPTY_INVALIDATED_COLUMNS: NonNullable<EngineEvent['invalidatedColumns']> = []
 const EMPTY_CELL_INDICES: number[] = []
 
+function isHistoryReplaySource(source: MutationSource): boolean {
+  return source === 'undo' || source === 'redo'
+}
+
+function shouldRefreshTopologyAfterHistoryStructuralReplay(args: {
+  readonly source: MutationSource
+  readonly activeFormulaCount: number
+  readonly invalidatedRangeCount: number
+  readonly invalidatedRowCount: number
+  readonly invalidatedColumnCount: number
+}): boolean {
+  return (
+    isHistoryReplaySource(args.source) &&
+    args.activeFormulaCount > 0 &&
+    (args.invalidatedRangeCount > 0 || args.invalidatedRowCount > 0 || args.invalidatedColumnCount > 0)
+  )
+}
+
 export function createOperationBatchApplier(input: CreateOperationBatchApplierArgs) {
   const {
     serviceArgs: args,
@@ -154,6 +172,8 @@ export function createOperationBatchApplier(input: CreateOperationBatchApplierAr
       const activeFormulaCount = args.state.formulas.size
       const canFinalizeNoValueWithoutEvents =
         !isRestore &&
+        source !== 'undo' &&
+        source !== 'redo' &&
         options?.emitTracked === false &&
         !hasGeneralEventListeners &&
         !hasTrackedEventListeners &&
@@ -253,9 +273,19 @@ export function createOperationBatchApplier(input: CreateOperationBatchApplierAr
       return true
     }
     const activeFormulaCount = args.state.formulas.size
+    const topologyChangedForRecalc =
+      topologyChanged ||
+      shouldRefreshTopologyAfterHistoryStructuralReplay({
+        source,
+        activeFormulaCount,
+        invalidatedRangeCount: 0,
+        invalidatedRowCount,
+        invalidatedColumnCount,
+      })
     const canFinalizeWithoutRecalc = canFinalizeStructuralNoValueMutationWithoutRecalc({
       isRestore,
-      topologyChanged,
+      isHistoryReplay: isHistoryReplaySource(source),
+      topologyChanged: topologyChangedForRecalc,
       formulaChangedCount,
       explicitChangedCount,
       precomputedKernelSyncCellCount,
@@ -333,7 +363,7 @@ export function createOperationBatchApplier(input: CreateOperationBatchApplierAr
     finalizeOperationRecalcAndEvents({
       serviceArgs: args,
       isRestore,
-      topologyChanged,
+      topologyChanged: topologyChangedForRecalc,
       sheetDeleted: false,
       structuralInvalidation: false,
       refreshAllPivots: true,
@@ -694,6 +724,7 @@ export function createOperationBatchApplier(input: CreateOperationBatchApplierAr
               hasTrackedSortedLookupDependents,
               hasTrackedDirectRangeDependents,
               readExactNumericValueForLookup,
+              applyDirectFormulaCurrentResult,
               tryApplyFormulaReplacementAsDirectScalarDeltaRoot,
               refreshDependentRangesAndRebindFormulaDependents,
               collectAffectedDirectRangeDependents,
@@ -864,10 +895,20 @@ export function createOperationBatchApplier(input: CreateOperationBatchApplierAr
       return
     }
 
+    const topologyChangedForRecalc =
+      topologyChanged ||
+      shouldRefreshTopologyAfterHistoryStructuralReplay({
+        source,
+        activeFormulaCount: args.state.formulas.size,
+        invalidatedRangeCount: invalidatedRanges.length,
+        invalidatedRowCount: invalidatedRows.length,
+        invalidatedColumnCount: invalidatedColumns.length,
+      })
+
     finalizeOperationRecalcAndEvents({
       serviceArgs: args,
       isRestore,
-      topologyChanged,
+      topologyChanged: topologyChangedForRecalc,
       sheetDeleted,
       structuralInvalidation,
       refreshAllPivots,
