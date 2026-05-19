@@ -253,6 +253,12 @@ function resolveTemplateCompiled(
   if (rowDelta === 0 && colDelta === 0) {
     return compileSourceFormula(source)
   }
+  if (template.templateKey.startsWith('cell:')) {
+    const translated = translateTrustedSimpleDirectScalarFormula(template.compiled, rowDelta, colDelta, source)
+    if (translated) {
+      return translated
+    }
+  }
   try {
     return translateTemplate(template.compiled, rowDelta, colDelta, source)
   } catch {
