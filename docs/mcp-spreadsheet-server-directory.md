@@ -93,7 +93,7 @@ same-origin static server-card discovery.
 
 | Directory                       | Status                                                                        | Link                                                                                                            |
 | ------------------------------- | ----------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------- |
-| Official MCP Registry           | Live but latest marker lags npm; `0.27.0` is latest-marked while npm latest is `0.29.0` | <https://registry.modelcontextprotocol.io/v0.1/servers?search=io.github.proompteng%2Fbilig-workpaper&limit=100> |
+| Official MCP Registry           | Live but latest marker lags npm; `0.27.0` is latest-marked while npm latest is `0.31.0` | <https://registry.modelcontextprotocol.io/v0.1/servers?search=io.github.proompteng%2Fbilig-workpaper&limit=100> |
 | Hosted Streamable HTTP endpoint | App runtime endpoint for JSON-only stateless MCP smoke tests                  | <https://bilig.proompteng.ai/mcp>                                                                               |
 | Hosted MCP server card          | Same-origin server card for Streamable HTTP scanners                          | <https://bilig.proompteng.ai/.well-known/mcp/server-card.json>                                                  |
 | Static MCP server card          | Live                                                                          | <https://proompteng.github.io/bilig/.well-known/mcp/server-card.json>                                           |
