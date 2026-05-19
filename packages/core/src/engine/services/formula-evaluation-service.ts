@@ -446,7 +446,7 @@ export function createEngineFormulaEvaluationService(args: {
       return applyDirectCriteriaResultTransforms(
         readCellValueByIndex,
         formula,
-        rememberDirectCriteriaResult(directCriteriaAggregateCache, aggregateCacheKey, matchedAggregateError),
+        rememberDirectCriteriaResult(directCriteriaAggregateCache, concreteAggregateCacheKey, matchedAggregateError),
       )
     }
 
