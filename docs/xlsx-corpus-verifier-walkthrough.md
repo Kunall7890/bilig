@@ -176,24 +176,25 @@ The default CKAN discovery set includes national and regional open-data portals
 that have produced qualifying recent workbook evidence, including Ontario,
 Alberta, British Columbia, and HDX, alongside the broader GitHub discovery lane.
 
-Latest local evidence from May 18, 2026:
+Latest local evidence from May 19, 2026:
 
 ```json
 {
   "targetWorkbookCount": 500,
-  "manifestArtifactCount": 2068,
-  "publicScorecardCaseCount": 2068,
-  "publicPassingRecentComplexCount": 189,
-  "headlessFileCount": 189,
-  "headlessOkFileCount": 189,
-  "headlessComparableFormulaFileCount": 183,
-  "endToEndPassingWorkbookCount": 183,
-  "remainingToTarget": 317,
-  "formulaCells": 125010,
-  "comparableFormulaCells": 121875,
-  "matchingFormulaCells": 121875,
+  "manifestSourceCount": 3777,
+  "manifestArtifactCount": 2771,
+  "publicScorecardCaseCount": 2771,
+  "publicPassingRecentComplexCount": 253,
+  "headlessFileCount": 253,
+  "headlessOkFileCount": 253,
+  "headlessComparableFormulaFileCount": 253,
+  "endToEndPassingWorkbookCount": 253,
+  "remainingToTarget": 247,
+  "formulaCells": 177593,
+  "comparableFormulaCells": 176594,
+  "matchingFormulaCells": 176594,
   "mismatchedFormulaCells": 0,
-  "skippedFormulaCells": 3135
+  "skippedFormulaCells": 999
 }
 ```
 
