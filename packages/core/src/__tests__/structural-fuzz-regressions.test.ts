@@ -40,6 +40,22 @@ describe('structural fuzz regressions', () => {
     expect(engine.getCellValue('Sheet1', 'C1')).toMatchObject({ tag: ValueTag.String, value: '9-8' })
   })
 
+  it('uses rewritten structural references on the JS fallback path before wasm is ready', () => {
+    const engine = new SpreadsheetEngine({ workbookName: 'deferred-structural-js-fallback-regression' })
+    engine.createSheet('Sheet1')
+    seedInitialGrid(engine)
+
+    engine.setCellFormula('Sheet1', 'B1', 'IF(A1>0,A1,0)')
+    engine.setCellFormula('Sheet1', 'C1', 'A1&"-"&B1')
+
+    expect(engine.wasm.ready).toBe(false)
+    engine.moveColumns('Sheet1', 0, 1, 2)
+
+    expect(engine.getCell('Sheet1', 'B1').formula).toBe('C1&"-"&A1')
+    expect(engine.getCellValue('Sheet1', 'B1')).toMatchObject({ tag: ValueTag.String, value: '1-1' })
+    expect(engine.wasm.ready).toBe(false)
+  })
+
   it('does not clear restored range formats while undoing structural deletes', async () => {
     const seedSnapshot = await createEngineSeedSnapshot('pivot-analytics', 'format-range-delete-column-undo-regression')
     const engine = new SpreadsheetEngine({
@@ -214,6 +230,11 @@ async function createSeededEngine(workbookName: string): Promise<SpreadsheetEngi
   const engine = new SpreadsheetEngine({ workbookName })
   await engine.ready()
   engine.createSheet('Sheet1')
+  seedInitialGrid(engine)
+  return engine
+}
+
+function seedInitialGrid(engine: SpreadsheetEngine): void {
   for (let row = 0; row < 5; row += 1) {
     for (let column = 0; column < 5; column += 1) {
       engine.setCellValue('Sheet1', formatAddress(row, column), row * 10 + column + 1)
@@ -221,7 +242,6 @@ async function createSeededEngine(workbookName: string): Promise<SpreadsheetEngi
   }
   engine.setCellFormula('Sheet1', 'A6', 'SUM(A1:A5)')
   engine.setCellFormula('Sheet1', 'B6', 'A1+B1')
-  return engine
 }
 
 function formatAddress(row: number, column: number): string {

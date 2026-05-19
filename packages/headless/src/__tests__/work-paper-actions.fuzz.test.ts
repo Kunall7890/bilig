@@ -178,6 +178,33 @@ describe('WorkPaper action fuzz', () => {
     expect(exportWorkPaperDocument(workbook, { includeConfig: true })).toEqual(beforeUndo)
   })
 
+  it('persists explicit zero writes over internal formula dependency blanks through undo/redo', () => {
+    const workbook = WorkPaper.buildEmpty({
+      parseDateTime: () => undefined,
+      functionPlugins: [],
+    })
+    workbook.addSheet('Sheet1')
+    const sheetId = workbook.getSheetId('Sheet1')
+    if (sheetId === undefined) {
+      throw new Error('Expected generated WorkPaper sheet to exist')
+    }
+
+    expect(workbook.setCellContents({ sheet: sheetId, row: 1, col: 0 }, '=IF(A1>0,1,0)')).toHaveLength(1)
+    const formulaOnlyDocument = exportWorkPaperDocument(workbook, { includeConfig: true })
+    expect(formulaOnlyDocument.sheets[0]?.content).toEqual([[null], ['=IF(A1>0,1,0)']])
+
+    expect(workbook.setCellContents({ sheet: sheetId, row: 0, col: 0 }, 0)).toHaveLength(2)
+    expect(workbook.getCellSerialized({ sheet: sheetId, row: 0, col: 0 })).toBe(0)
+    const beforeUndo = exportWorkPaperDocument(workbook, { includeConfig: true })
+    expect(beforeUndo.sheets[0]?.content).toEqual([[0], ['=IF(A1>0,1,0)']])
+
+    expect(workbook.undo()).toHaveLength(2)
+    expect(exportWorkPaperDocument(workbook, { includeConfig: true })).toEqual(formulaOnlyDocument)
+
+    expect(workbook.redo()).toHaveLength(2)
+    expect(exportWorkPaperDocument(workbook, { includeConfig: true })).toEqual(beforeUndo)
+  })
+
   it('should preserve generated cell edits through save/load and undo/redo', async () => {
     await runProperty({
       suite: 'headless/work-paper/action-sequence-save-load',

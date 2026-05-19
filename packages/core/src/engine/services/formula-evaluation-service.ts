@@ -18,6 +18,7 @@ import { definedNameValueToCellValue, definedNameValueToReferenceOperand } from 
 import { emptyValue, errorValue } from '../../engine-value-utils.js'
 import { addEngineCounter } from '../../perf/engine-counters.js'
 import type { EngineRuntimeState, RuntimeDirectCriteriaOperand, RuntimeFormula, SpillMaterialization } from '../runtime-state.js'
+import { getRuntimeFormulaSource, getRuntimeFormulaStructuralCompiled } from '../runtime-formula-source.js'
 import { EngineFormulaEvaluationError } from '../errors.js'
 import type { CriterionRangeCacheService, CriterionRangeMatch } from './criterion-range-cache-service.js'
 import type { ExactColumnIndexService } from './exact-column-index-service.js'
@@ -796,6 +797,7 @@ export function createEngineFormulaEvaluationService(args: {
     if (!formula || !sheetName) {
       return []
     }
+    const compiled = getRuntimeFormulaStructuralCompiled(formula) ?? formula.compiled
 
     const directResult =
       tryEvaluateDirectVectorLookup(directVectorLookupContext, formula) ??
@@ -834,7 +836,8 @@ export function createEngineFormulaEvaluationService(args: {
       },
       resolveFormula: (targetSheetName: string, address: string) => {
         const targetCellIndex = args.state.workbook.getCellIndex(targetSheetName, address)
-        return targetCellIndex === undefined ? undefined : args.state.formulas.get(targetCellIndex)?.source
+        const targetFormula = targetCellIndex === undefined ? undefined : args.state.formulas.get(targetCellIndex)
+        return targetFormula === undefined ? undefined : getRuntimeFormulaSource(targetFormula)
       },
       resolvePivotData: ({
         dataField,
@@ -887,10 +890,7 @@ export function createEngineFormulaEvaluationService(args: {
       },
       resolveLookupBuiltin: lookupBuiltinResolver,
     }
-    const result = evaluatePlanResult(
-      formula.compiled.jsPlan.length > 0 ? formula.compiled.jsPlan : lowerToPlan(formula.compiled.ast),
-      evaluationContext,
-    )
+    const result = evaluatePlanResult(compiled.jsPlan.length > 0 ? compiled.jsPlan : lowerToPlan(compiled.ast), evaluationContext)
     return storeFormulaResult(cellIndex, formula, result)
   }
 

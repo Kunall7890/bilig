@@ -1,5 +1,5 @@
 import type { EngineCellMutationRef, EngineExistingNumericCellMutationResult, SheetRecord, SpreadsheetEngine } from '@bilig/core'
-import { MAX_COLS, MAX_ROWS } from '@bilig/protocol'
+import { MAX_COLS, MAX_ROWS, ValueTag } from '@bilig/protocol'
 import { WorkPaperOperationError } from './work-paper-errors.js'
 import {
   assertRowAndColumn,
@@ -149,11 +149,13 @@ export function setWorkPaperCellContents(
     }
     const mutate = () => {
       runtime.flushPendingBatchOps()
-      const existingNumericMutationEngine = runtime.getEngine() as ExistingNumericMutationEngine
+      const engine = runtime.getEngine()
+      const existingNumericMutationEngine = engine as ExistingNumericMutationEngine
       if (
         typeof content === 'number' &&
         visibleCellIndex !== undefined &&
         sheet.structureVersion === 1 &&
+        engine.workbook.cellStore.tags[visibleCellIndex] === ValueTag.Number &&
         existingNumericMutationEngine.tryApplyExistingNumericCellMutationAt?.({
           sheetId: address.sheet,
           row: address.row,

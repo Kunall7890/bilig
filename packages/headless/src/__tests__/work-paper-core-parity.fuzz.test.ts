@@ -87,6 +87,19 @@ describe('WorkPaper/core parity fuzz', () => {
     assertCoreParity(harness)
   })
 
+  it('keeps column-move formula chains in parity before the WorkPaper engine is explicitly readied', async () => {
+    const harness = await createParityHarness()
+
+    applyParityAction(harness, { kind: 'set-cell', row: 0, col: 1, value: '=IF(A1>0,A1,0)' })
+    applyParityAction(harness, { kind: 'set-cell', row: 0, col: 2, value: '=A1&"-"&B1' })
+    applyParityAction(harness, { kind: 'move-columns', start: 0, count: 1, target: 2 })
+    applyParityAction(harness, { kind: 'move-rows', start: 0, count: 1, target: 0 })
+
+    assertCoreParity(harness)
+    assertRestoredWorkPaperParity(harness)
+    await assertRestoredEngineParity(harness)
+  })
+
   it('keeps headless WorkPaper edits, structural operations, undo/redo, and save/load in core parity', async () => {
     await runProperty({
       suite: 'headless/core-parity/work-paper-engine-action-sequence',
