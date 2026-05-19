@@ -4,6 +4,19 @@ All notable changes to `@bilig/headless` will be documented in this file.
 
 This package is released as part of the aligned bilig library package set.
 
+## 0.28.2
+
+- Release type: patch
+- Previous libraries tag: libraries-v0.28.1
+- Manual override: no
+
+## Fixes
+- perf(core): group exact criteria aggregates (6d6a2d0c)
+- perf(excel-import): speed style-only blank stripping (eb8b1f2d)
+
+## Internal runtime changes
+- docs(discovery): sync runtime package 0.28.1 (091ab9fd)
+
 ## 0.28.1
 
 - Release type: patch
