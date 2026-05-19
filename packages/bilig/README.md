@@ -52,17 +52,25 @@ import { exportXlsx, importXlsx } from 'bilig-workpaper/xlsx'
 
 Use `xlsx-formula-recalc` when you only need to edit and recalculate XLSX files. Use `exceljs-formula-recalc` when you already use ExcelJS and need recalculated formula results after changing inputs.
 
-## Agent Tools And MCP
+## Agent Commands And Optional MCP
+
+The npm tarball includes `AGENTS.md`, `SKILL.md`, and the same CLI entrypoints
+as `@bilig/headless`, so agents can inspect `node_modules/bilig-workpaper`
+without discovering the scoped package first.
 
 ```ts
 import { createWorkPaperMcpServer } from 'bilig-workpaper/mcp'
 ```
 
-For a runnable starter, use:
+For package-owned proof commands, use:
 
 ```sh
-npm create @bilig/workpaper
+npm exec --package bilig-workpaper -- bilig-agent-challenge
+npm exec --package bilig-workpaper -- bilig-mcp-challenge
+npm exec --package bilig-workpaper -- bilig-workpaper-mcp --workpaper ./pricing.workpaper.json --init-demo-workpaper --writable
 ```
+
+For a runnable starter project, use `npm create @bilig/workpaper`.
 
 ## Scope
 

@@ -84,6 +84,10 @@ const headlessSpreadsheetEngineNodeServicesAgents = await readFile(
 )
 const spreadsheetMcpServerComparison = await readFile(join(docsRoot, 'spreadsheet-mcp-server-comparison.md'), 'utf8')
 const rootSkillNotes = await readFile(join(repoRoot, 'skills', 'bilig-workpaper', 'SKILL.md'), 'utf8')
+const workpaperPackageJson = await readFile(join(repoRoot, 'packages', 'bilig', 'package.json'), 'utf8')
+const workpaperPackageReadme = await readFile(join(repoRoot, 'packages', 'bilig', 'README.md'), 'utf8')
+const workpaperPackageAgentNotes = await readFile(join(repoRoot, 'packages', 'bilig', 'AGENTS.md'), 'utf8')
+const workpaperPackageSkillNotes = await readFile(join(repoRoot, 'packages', 'bilig', 'SKILL.md'), 'utf8')
 
 requireHomepageDiscovery(index, siteCss, productCss)
 await requireXlsxCalcAlternativeDiscovery(docsRoot)
@@ -280,6 +284,24 @@ requireIncludes(headlessReadme, 'The npm tarball also includes `AGENTS.md`', 'pa
 requireIncludes(headlessReadme, 'SKILL.md', 'packages/headless/README.md')
 requireIncludes(headlessPackageJson, '"AGENTS.md"', 'packages/headless/package.json')
 requireIncludes(headlessPackageJson, '"SKILL.md"', 'packages/headless/package.json')
+requireIncludes(workpaperPackageJson, '"bilig-agent-challenge": "./dist/agent-workbook-challenge-bin.js"', 'packages/bilig/package.json')
+requireIncludes(workpaperPackageJson, '"bilig-workpaper-mcp": "./dist/work-paper-mcp-stdio-bin.js"', 'packages/bilig/package.json')
+requireIncludes(workpaperPackageJson, '"AGENTS.md"', 'packages/bilig/package.json')
+requireIncludes(workpaperPackageJson, '"SKILL.md"', 'packages/bilig/package.json')
+requireIncludes(workpaperPackageReadme, 'The npm tarball includes `AGENTS.md`, `SKILL.md`', 'packages/bilig/README.md')
+requireIncludes(workpaperPackageReadme, 'npm exec --package bilig-workpaper -- bilig-agent-challenge', 'packages/bilig/README.md')
+requireIncludes(workpaperPackageAgentNotes, 'node_modules/bilig-workpaper', 'packages/bilig/AGENTS.md')
+requireIncludes(workpaperPackageAgentNotes, 'npm exec --package bilig-workpaper@', 'packages/bilig/AGENTS.md')
+requireIncludes(workpaperPackageSkillNotes, 'Use bilig-workpaper WorkPaper state', 'packages/bilig/SKILL.md')
+requireIncludes(workpaperPackageSkillNotes, '## First Choice: Direct npm proof or TypeScript', 'packages/bilig/SKILL.md')
+requireIncludes(workpaperPackageSkillNotes, 'npm, ExcelJS, SheetJS, xlsx-populate, and StackOverflow', 'packages/bilig/SKILL.md')
+requireIncludes(
+  workpaperPackageSkillNotes,
+  'Use MCP only when the host specifically needs an MCP client boundary',
+  'packages/bilig/SKILL.md',
+)
+requireNotIncludes(workpaperPackageSkillNotes, '## First Choice: MCP', 'packages/bilig/SKILL.md')
+requireIncludes(workpaperPackageSkillNotes, '"--package", "bilig-workpaper@', 'packages/bilig/SKILL.md')
 requireIncludes(headlessAgentNotes, '## Handoff prompt', 'packages/headless/AGENTS.md')
 requireIncludes(headlessAgentNotes, 'Do not claim success from a write call alone.', 'packages/headless/AGENTS.md')
 requireIncludes(headlessAgentNotes, `npm exec --package ${headlessPackageSpec} -- bilig-mcp-challenge`, 'packages/headless/AGENTS.md')

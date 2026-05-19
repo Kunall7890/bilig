@@ -720,6 +720,8 @@ jobs:
             packages/headless/server.json
             packages/headless/SKILL.md
             packages/headless/README.md
+            packages/bilig/AGENTS.md
+            packages/bilig/SKILL.md
             packages/bilig/README.md
             packages/xlsx-formula-recalc/README.md
             packages/exceljs-formula-recalc/README.md

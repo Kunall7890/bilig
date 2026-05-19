@@ -40,8 +40,16 @@
     "url": "git+https://github.com/proompteng/bilig.git",
     "directory": "packages/bilig"
   },
+  "bin": {
+    "bilig-agent-challenge": "./dist/agent-workbook-challenge-bin.js",
+    "bilig-formula-clinic": "./dist/formula-clinic-bin.js",
+    "bilig-mcp-challenge": "./dist/mcp-challenge-bin.js",
+    "bilig-workpaper-mcp": "./dist/work-paper-mcp-stdio-bin.js"
+  },
   "files": [
     "dist",
+    "AGENTS.md",
+    "SKILL.md",
     "README.md",
     "LICENSE"
   ],

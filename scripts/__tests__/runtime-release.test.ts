@@ -202,6 +202,7 @@ describe('runtime release helpers', () => {
     expect(RUNTIME_NPM_PACKAGE_DIRS).toContain('packages/bilig')
     expect(isRuntimeAffectingPath('packages/bilig/package.json')).toBe(true)
     expect(isRuntimePackageContentPath('packages/bilig/src/index.ts')).toBe(true)
+    expect(isRuntimePackageContentPath('packages/bilig/AGENTS.md')).toBe(true)
   })
 
   it('publishes the XLSX formula recalculation package through the common runtime workflow', () => {

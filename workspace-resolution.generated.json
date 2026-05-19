@@ -63,6 +63,10 @@
     "packageDir": "packages/headless",
     "sourceEntry": "packages/headless/src/index.ts"
   },
+  "@bilig/headless/cli": {
+    "packageDir": "packages/headless",
+    "sourceEntry": "packages/headless/src/cli.ts"
+  },
   "@bilig/headless/mcp": {
     "packageDir": "packages/headless",
     "sourceEntry": "packages/headless/src/mcp.ts"
