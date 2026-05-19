@@ -6,6 +6,7 @@ import { createSupersedingCellSnapshot } from './workbook-optimistic-cell.js'
 export interface OptimisticViewportStore {
   forEachCachedOrVisibleCellSnapshotInRange?(range: CellRangeRef, listener: (snapshot: CellSnapshot) => void): void
   forEachCellSnapshotInRange?(range: CellRangeRef, listener: (snapshot: CellSnapshot) => void): void
+  peekCell?(sheetName: string, address: string): CellSnapshot | undefined
   getCell(sheetName: string, address: string): CellSnapshot
   setCellSnapshot(snapshot: CellSnapshot): void
 }

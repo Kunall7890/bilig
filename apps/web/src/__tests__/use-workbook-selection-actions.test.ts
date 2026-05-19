@@ -602,6 +602,52 @@ describe('use workbook selection action helpers', () => {
     expect(cells.get('Sheet1:D2')?.styleId).toBeUndefined()
   })
 
+  it('does not ghost empty source presentation into huge copy targets when the mapped source is offscreen', () => {
+    const cells = new Map<string, CellSnapshot>([
+      [
+        'Sheet1:D15000',
+        {
+          ...emptyCell('Sheet1', 'D15000'),
+          input: 'keep-visible-target',
+          styleId: 'style-visible-target',
+          value: { tag: ValueTag.String, value: 'keep-visible-target' },
+          version: 5,
+        },
+      ],
+    ])
+    const writes: CellSnapshot[] = []
+    const viewportStore = {
+      forEachCachedOrVisibleCellSnapshotInRange(range: CellRangeRef, listener: (snapshot: CellSnapshot) => void) {
+        expect(range).toMatchObject({ startAddress: 'D1', endAddress: 'D20000' })
+        listener(cells.get('Sheet1:D15000') ?? emptyCell('Sheet1', 'D15000'))
+      },
+      peekCell(sheetName: string, address: string) {
+        return cells.get(`${sheetName}:${address}`)
+      },
+      getCell(sheetName: string, address: string) {
+        return cells.get(`${sheetName}:${address}`) ?? emptyCell(sheetName, address)
+      },
+      setCellSnapshot(snapshot: CellSnapshot) {
+        writes.push(snapshot)
+        cells.set(`${snapshot.sheetName}:${snapshot.address}`, snapshot)
+      },
+    }
+
+    const rollback = applyOptimisticCopyRange(
+      viewportStore,
+      { sheetName: 'Sheet1', startAddress: 'B1', endAddress: 'B20000' },
+      { sheetName: 'Sheet1', startAddress: 'D1', endAddress: 'D20000' },
+    )
+
+    expect(rollback).toBeNull()
+    expect(writes).toEqual([])
+    expect(cells.get('Sheet1:D15000')).toMatchObject({
+      input: 'keep-visible-target',
+      styleId: 'style-visible-target',
+      value: { tag: ValueTag.String, value: 'keep-visible-target' },
+    })
+  })
+
   it('fills visible cells for huge ranges without materializing offscreen targets', () => {
     const cells = new Map<string, CellSnapshot>([
       [
@@ -661,6 +707,52 @@ describe('use workbook selection action helpers', () => {
       numberFormatId: 'fmt-source',
       styleId: 'style-source',
       value: { tag: ValueTag.Number, value: 7 },
+    })
+  })
+
+  it('does not ghost empty source presentation into huge fill targets when the mapped source is offscreen', () => {
+    const cells = new Map<string, CellSnapshot>([
+      [
+        'Sheet1:D15000',
+        {
+          ...emptyCell('Sheet1', 'D15000'),
+          input: 'keep-filled-target',
+          styleId: 'style-filled-target',
+          value: { tag: ValueTag.String, value: 'keep-filled-target' },
+          version: 6,
+        },
+      ],
+    ])
+    const writes: CellSnapshot[] = []
+    const viewportStore = {
+      forEachCachedOrVisibleCellSnapshotInRange(range: CellRangeRef, listener: (snapshot: CellSnapshot) => void) {
+        expect(range).toMatchObject({ startAddress: 'D1', endAddress: 'D20000' })
+        listener(cells.get('Sheet1:D15000') ?? emptyCell('Sheet1', 'D15000'))
+      },
+      peekCell(sheetName: string, address: string) {
+        return cells.get(`${sheetName}:${address}`)
+      },
+      getCell(sheetName: string, address: string) {
+        return cells.get(`${sheetName}:${address}`) ?? emptyCell(sheetName, address)
+      },
+      setCellSnapshot(snapshot: CellSnapshot) {
+        writes.push(snapshot)
+        cells.set(`${snapshot.sheetName}:${snapshot.address}`, snapshot)
+      },
+    }
+
+    const rollback = applyOptimisticFillRange(
+      viewportStore,
+      { sheetName: 'Sheet1', startAddress: 'B1', endAddress: 'B20000' },
+      { sheetName: 'Sheet1', startAddress: 'D1', endAddress: 'D20000' },
+    )
+
+    expect(rollback).toBeNull()
+    expect(writes).toEqual([])
+    expect(cells.get('Sheet1:D15000')).toMatchObject({
+      input: 'keep-filled-target',
+      styleId: 'style-filled-target',
+      value: { tag: ValueTag.String, value: 'keep-filled-target' },
     })
   })
 
@@ -725,6 +817,70 @@ describe('use workbook selection action helpers', () => {
       numberFormatId: 'fmt-source',
       styleId: 'style-source',
       value: { tag: ValueTag.String, value: 'move-source' },
+    })
+  })
+
+  it('does not ghost empty source presentation into huge move targets when the mapped source is offscreen', () => {
+    const cells = new Map<string, CellSnapshot>([
+      [
+        'Sheet1:B1',
+        {
+          ...emptyCell('Sheet1', 'B1'),
+          input: 'visible-source-clear',
+          styleId: 'style-source-clear',
+          value: { tag: ValueTag.String, value: 'visible-source-clear' },
+          version: 3,
+        },
+      ],
+      [
+        'Sheet1:D15000',
+        {
+          ...emptyCell('Sheet1', 'D15000'),
+          input: 'keep-move-target',
+          styleId: 'style-move-target',
+          value: { tag: ValueTag.String, value: 'keep-move-target' },
+          version: 7,
+        },
+      ],
+    ])
+    const writes: CellSnapshot[] = []
+    const viewportStore = {
+      forEachCachedOrVisibleCellSnapshotInRange(range: CellRangeRef, listener: (snapshot: CellSnapshot) => void) {
+        if (range.startAddress === 'B1') {
+          listener(cells.get('Sheet1:B1') ?? emptyCell('Sheet1', 'B1'))
+          return
+        }
+        expect(range).toMatchObject({ startAddress: 'D1', endAddress: 'D20000' })
+        listener(cells.get('Sheet1:D15000') ?? emptyCell('Sheet1', 'D15000'))
+      },
+      peekCell(sheetName: string, address: string) {
+        return cells.get(`${sheetName}:${address}`)
+      },
+      getCell(sheetName: string, address: string) {
+        return cells.get(`${sheetName}:${address}`) ?? emptyCell(sheetName, address)
+      },
+      setCellSnapshot(snapshot: CellSnapshot) {
+        writes.push(snapshot)
+        cells.set(`${snapshot.sheetName}:${snapshot.address}`, snapshot)
+      },
+    }
+
+    const rollback = applyOptimisticMoveRange(
+      viewportStore,
+      { sheetName: 'Sheet1', startAddress: 'B1', endAddress: 'B20000' },
+      { sheetName: 'Sheet1', startAddress: 'D1', endAddress: 'D20000' },
+    )
+
+    expect(rollback).toEqual(expect.any(Function))
+    expect(writes.map((snapshot) => snapshot.address)).toEqual(['B1'])
+    expect(cells.get('Sheet1:B1')).toMatchObject({
+      value: { tag: ValueTag.Empty },
+      flags: OPTIMISTIC_CELL_SNAPSHOT_FLAG,
+    })
+    expect(cells.get('Sheet1:D15000')).toMatchObject({
+      input: 'keep-move-target',
+      styleId: 'style-move-target',
+      value: { tag: ValueTag.String, value: 'keep-move-target' },
     })
   })
 })
