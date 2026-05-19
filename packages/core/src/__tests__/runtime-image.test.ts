@@ -437,6 +437,77 @@ describe('restoreWorkbookFromRuntimeImage', () => {
     ])
   })
 
+  it('shares restored string ids between runtime-image literals and cached formula values', () => {
+    const workbook = new WorkbookStore('runtime-image-shared-cached-formula-strings')
+    const strings = new StringPool()
+    const intern = vi.spyOn(strings, 'intern')
+    const hydratedCalls: HydratedPreparedRuntimeFormulaRef[] = []
+    const formula = '_FV(A1,"Industry")'
+    const repeatedValue = 'Transport Infrastructure'
+    const compiled = compileFormulaAst(formula, parseFormula(formula))
+    const snapshot: WorkbookSnapshot = {
+      version: 1,
+      workbook: { name: 'runtime-image-shared-cached-formula-strings' },
+      sheets: [
+        {
+          id: 1,
+          name: 'Sheet1',
+          order: 0,
+          cells: [
+            { address: 'A1', row: 0, col: 0, value: repeatedValue },
+            { address: 'B1', row: 0, col: 1, formula, value: repeatedValue },
+          ],
+        },
+      ],
+    }
+
+    restoreWorkbookFromRuntimeImage({
+      snapshot,
+      runtimeImage: {
+        version: 1,
+        templateBank: [],
+        formulaInstances: [],
+        formulaValues: [],
+        sheetCells: [
+          {
+            sheetName: 'Sheet1',
+            coords: [
+              { row: 0, col: 0 },
+              { row: 0, col: 1 },
+            ],
+          },
+        ],
+      },
+      workbook,
+      strings,
+      resetWorkbook: () => {},
+      hydrateTemplateBank: () => {},
+      resolveTemplateForCell: (source, row, col) => ({
+        templateId: 11,
+        templateKey: 'template:_FV',
+        baseSource: source,
+        compiled,
+        translated: false,
+        rowDelta: row,
+        colDelta: col,
+      }),
+      initializeHydratedPreparedCellFormulasAt: (refs) => {
+        hydratedCalls.push(...collectHydratedPreparedRefs(refs))
+      },
+      initializeCellFormulasAt: () => {},
+    })
+
+    const literalCellIndex = workbook.getCellIndex('Sheet1', 'A1')!
+    expect(intern).toHaveBeenCalledOnce()
+    expect(intern).toHaveBeenCalledWith(repeatedValue)
+    expect(hydratedCalls).toHaveLength(1)
+    expect(hydratedCalls[0].value).toEqual({
+      tag: ValueTag.String,
+      value: repeatedValue,
+      stringId: workbook.cellStore.stringIds[literalCellIndex],
+    })
+  })
+
   it('bulk-allocates dense row-major runtime-image sheets during restore', () => {
     const workbook = new WorkbookStore('runtime-image-dense-restore')
     const allocateDenseRowMajorAtReserved = vi.spyOn(workbook.cellStore, 'allocateDenseRowMajorAtReserved')
@@ -686,6 +757,77 @@ describe('restoreWorkbookFromRuntimeImage', () => {
       [0, 1, { tag: ValueTag.Number, value: 2 }],
       [1, 1, { tag: ValueTag.Number, value: 3 }],
     ])
+  })
+
+  it('reuses restored string ids for repeated runtime-image literal strings', () => {
+    const workbook = new WorkbookStore('runtime-image-repeated-strings')
+    const strings = new StringPool()
+    const intern = vi.spyOn(strings, 'intern')
+    const snapshot: WorkbookSnapshot = {
+      version: 1,
+      workbook: { name: 'runtime-image-repeated-strings' },
+      sheets: [
+        {
+          id: 1,
+          name: 'Sheet1',
+          order: 0,
+          cells: [
+            { address: 'A1', value: 'North' },
+            { address: 'B1', value: 'North' },
+            { address: 'C1', value: 'South' },
+            { address: 'A2', value: 'North' },
+            { address: 'B2', value: 'South' },
+            { address: 'C2' },
+          ],
+        },
+      ],
+    }
+
+    restoreWorkbookFromRuntimeImage({
+      snapshot,
+      runtimeImage: {
+        version: 1,
+        templateBank: [],
+        formulaInstances: [],
+        formulaValues: [],
+        sheetCells: [
+          {
+            sheetName: 'Sheet1',
+            cellCount: 6,
+            dimensions: { width: 3, height: 2 },
+            coords: [
+              { row: 0, col: 0 },
+              { row: 0, col: 1 },
+              { row: 0, col: 2 },
+              { row: 1, col: 0 },
+              { row: 1, col: 1 },
+              { row: 1, col: 2 },
+            ],
+          },
+        ],
+      },
+      workbook,
+      strings,
+      resetWorkbook: () => {},
+      hydrateTemplateBank: () => {},
+      initializeCellFormulasAt: () => {},
+    })
+
+    const sheet = workbook.getSheet('Sheet1')!
+    const northA1 = workbook.cellStore.stringIds[sheet.grid.get(0, 0)]
+    const northB1 = workbook.cellStore.stringIds[sheet.grid.get(0, 1)]
+    const southC1 = workbook.cellStore.stringIds[sheet.grid.get(0, 2)]
+    const northA2 = workbook.cellStore.stringIds[sheet.grid.get(1, 0)]
+    const southB2 = workbook.cellStore.stringIds[sheet.grid.get(1, 1)]
+    const blankC2 = sheet.grid.get(1, 2)
+
+    expect(intern).toHaveBeenCalledTimes(2)
+    expect(intern.mock.calls.map(([value]) => value)).toEqual(['North', 'South'])
+    expect(northA1).toBe(northB1)
+    expect(northA1).toBe(northA2)
+    expect(southC1).toBe(southB2)
+    expect(workbook.cellStore.tags[blankC2]).toBe(ValueTag.Empty)
+    expect(workbook.cellStore.flags[blankC2] & CellFlags.AuthoredBlank).toBe(0)
   })
 })
 

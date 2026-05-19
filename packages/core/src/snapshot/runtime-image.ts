@@ -8,7 +8,7 @@ import type {
   EngineFormulaSourceRefTable,
 } from '../cell-mutations-at.js'
 import { CellFlags } from '../cell-store.js'
-import { literalToValue, writeLiteralToCellStore } from '../engine-value-utils.js'
+import { writeLiteralToCellStore } from '../engine-value-utils.js'
 import type { InitialFormulaEntryRefSource } from '../engine/services/formula-initialization-refs.js'
 import type { FormulaInstanceSnapshot } from '../formula/formula-instance-table.js'
 import type { FormulaTemplateResolution, FormulaTemplateSnapshot } from '../formula/template-bank.js'
@@ -563,6 +563,18 @@ function restoreLiteralCell(
   cellStore.onSetValue?.(cellIndex)
 }
 
+function literalToRestoredValue(input: LiteralInput, stringPool: StringPool, stringIdCache: Map<string, number>): CellValue {
+  if (input === null) return { tag: ValueTag.Empty }
+  if (typeof input === 'number') return { tag: ValueTag.Number, value: input }
+  if (typeof input === 'boolean') return { tag: ValueTag.Boolean, value: input }
+  let stringId = stringIdCache.get(input)
+  if (stringId === undefined) {
+    stringId = stringPool.intern(input)
+    stringIdCache.set(input, stringId)
+  }
+  return { tag: ValueTag.String, value: input, stringId }
+}
+
 export function restoreWorkbookFromSnapshot(args: WorkbookSnapshotRestoreArgs): WorkbookRestoreResult {
   const orderedSheets = restoreWorkbookStructure(args)
   args.checkEvaluationBudget?.()
@@ -627,7 +639,7 @@ export function restoreWorkbookFromSnapshot(args: WorkbookSnapshotRestoreArgs): 
                     source: cell.formula,
                     compiled: template.compiled,
                     templateId: template.templateId,
-                    value: literalToValue(cell.value, args.strings),
+                    value: literalToRestoredValue(cell.value, args.strings, restoredStringIds),
                     ...(shouldPreserveCachedUnsupportedValue ? { preserveCachedValueOnFullRecalc: true } : {}),
                   })
                   hydratedCachedFormula = true
@@ -723,6 +735,7 @@ export function restoreWorkbookFromRuntimeImage(args: RuntimeImageRestoreArgs): 
   const canHydrateCachedSnapshotFormulaValues = args.initializeHydratedPreparedCellFormulasAt && args.resolveTemplateForCell
   const shouldHydrateIterativeFormulaValues = args.snapshot.workbook.metadata?.calculationSettings?.iterate === true
   const definedFormulaNames = shouldHydrateIterativeFormulaValues ? undefined : collectDefinedFormulaNames(args.snapshot)
+  const restoredStringIds = new Map<string, number>()
   const previousOnSetValue = args.workbook.cellStore.onSetValue
   args.workbook.cellStore.onSetValue = null
   args.workbook.withBatchedColumnVersionUpdates(() => {
@@ -763,7 +776,11 @@ export function restoreWorkbookFromRuntimeImage(args: RuntimeImageRestoreArgs): 
           const restoredFormula =
             candidateFormula && compareFormulaInstanceToRowCol(candidateFormula, row, col) === 0 ? candidateFormula : undefined
           if (cell.formula === undefined && restoredFormula === undefined) {
-            writeLiteralToCellStore(args.workbook.cellStore, cellIndex, cell.value ?? null, args.strings)
+            if (cell.value === undefined) {
+              writeLiteralToCellStore(args.workbook.cellStore, cellIndex, null, args.strings)
+            } else {
+              restoreLiteralCell(args.workbook, args.strings, cellIndex, cell.value, restoredStringIds)
+            }
             literalColumns ??= createWrittenColumnTracker()
             markWrittenColumn(literalColumns, col)
             if (cell.value === null) {
@@ -853,7 +870,7 @@ export function restoreWorkbookFromRuntimeImage(args: RuntimeImageRestoreArgs): 
                     cell.formula,
                     template.compiled,
                     template.templateId,
-                    literalToValue(cell.value, args.strings),
+                    literalToRestoredValue(cell.value, args.strings, restoredStringIds),
                     cellIndex,
                     shouldPreserveCachedUnsupportedValue,
                   )
