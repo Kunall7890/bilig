@@ -25,6 +25,10 @@ interface ExistingNumericMutationEngine {
   }) => EngineExistingNumericCellMutationResult | null
 }
 
+const PHYSICAL_RANGE_INDEX_RESOLVE_MIN_REFS = 32
+const ALL_PHYSICAL_RANGE_CELLS_FRESH = Symbol('allPhysicalRangeCellsFresh')
+type PhysicalRangeCellIndices = Int32Array | typeof ALL_PHYSICAL_RANGE_CELLS_FRESH
+
 export interface WorkPaperSetCellContentsRuntime {
   readonly assertNotDisposed: () => void
   readonly getConfig: () => Pick<WorkPaperConfig, 'maxRows' | 'maxColumns'>
@@ -305,6 +309,10 @@ export function setWorkPaperSheetRangeValues(
   const maxRows = config.maxRows ?? MAX_ROWS
   const maxColumns = config.maxColumns ?? MAX_COLS
   let refCount = 0
+  let maxRowLength = 0
+  const rowRefStarts = new Int32Array(values.length)
+  rowRefStarts.fill(-1)
+  const rowLengths = new Int32Array(values.length)
   for (let rowOffset = 0; rowOffset < values.length; rowOffset += 1) {
     const row = values[rowOffset]
     if (row === undefined || row.length === 0) {
@@ -314,6 +322,9 @@ export function setWorkPaperSheetRangeValues(
     if (destinationRow >= maxRows || startCol + row.length > maxColumns) {
       throw new WorkPaperOperationError('Cell contents cannot be set')
     }
+    rowRefStarts[rowOffset] = refCount
+    rowLengths[rowOffset] = row.length
+    maxRowLength = Math.max(maxRowLength, row.length)
     refCount += row.length
   }
   if (refCount === 0) {
@@ -321,6 +332,7 @@ export function setWorkPaperSheetRangeValues(
   }
 
   const sheet = runtime.sheetRecord(sheetId)
+  const physicalCellIndices = collectPhysicalRangeCellIndices(sheet, startRow, startCol, rowRefStarts, rowLengths, maxRowLength, refCount)
   const refs: EngineCellMutationRef[] = []
   refs.length = refCount
   let potentialNewCells = 0
@@ -337,7 +349,13 @@ export function setWorkPaperSheetRangeValues(
       if (Array.isArray(value) || isFormulaContent(value)) {
         throw new WorkPaperOperationError('Bulk cell value updates require literal values')
       }
-      const visibleCellIndex = runtime.getVisibleCellIndexInSheet(sheet, destinationRow, destinationCol)
+      const physicalCellIndex = physicalCellIndices === ALL_PHYSICAL_RANGE_CELLS_FRESH ? -1 : physicalCellIndices?.[refIndex]
+      const visibleCellIndex =
+        physicalCellIndex === undefined
+          ? runtime.getVisibleCellIndexInSheet(sheet, destinationRow, destinationCol)
+          : physicalCellIndex === -1
+            ? undefined
+            : physicalCellIndex
       refs[refIndex] = {
         sheetId,
         mutation: buildWorkPaperLiteralCellValueMutation({
@@ -354,6 +372,48 @@ export function setWorkPaperSheetRangeValues(
     }
   }
   return applyBulkWorkPaperCellValueRefs(runtime, refs, potentialNewCells)
+}
+
+function collectPhysicalRangeCellIndices(
+  sheet: SheetRecord,
+  startRow: number,
+  startCol: number,
+  rowRefStarts: Int32Array,
+  rowLengths: Int32Array,
+  maxRowLength: number,
+  refCount: number,
+): PhysicalRangeCellIndices | undefined {
+  if (sheet.structureVersion !== 1 || refCount < PHYSICAL_RANGE_INDEX_RESOLVE_MIN_REFS || maxRowLength === 0) {
+    return undefined
+  }
+  if (sheet.grid.blocks.size === 0) {
+    return ALL_PHYSICAL_RANGE_CELLS_FRESH
+  }
+  const cellIndices = new Int32Array(refCount)
+  cellIndices.fill(-1)
+  sheet.grid.forEachPhysicalRangeEntry(
+    startRow,
+    startCol,
+    startRow + rowLengths.length - 1,
+    startCol + maxRowLength - 1,
+    (cellIndex, row, col) => {
+      const rowOffset = row - startRow
+      const rowLength = rowLengths[rowOffset]
+      if (rowLength === undefined || rowLength === 0) {
+        return
+      }
+      const colOffset = col - startCol
+      if (colOffset < 0 || colOffset >= rowLength) {
+        return
+      }
+      const rowRefStart = rowRefStarts[rowOffset]
+      if (rowRefStart === undefined || rowRefStart === -1) {
+        return
+      }
+      cellIndices[rowRefStart + colOffset] = cellIndex
+    },
+  )
+  return cellIndices
 }
 
 function applyBulkWorkPaperCellValueRefs(

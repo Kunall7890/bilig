@@ -203,10 +203,7 @@ function collectFreshDenseNumericRectangle(
       currentWidth = 1
       rowOffset += 1
     }
-    if (
-      sheet.grid.getPhysical(mutation.row, mutation.col) !== -1 ||
-      sheet.logical.getVisibleCell(mutation.row, mutation.col) !== undefined
-    ) {
+    if (physicalSheetCellExists(sheet, mutation.row, mutation.col)) {
       return null
     }
     values[refIndex] = mutation.value
@@ -221,6 +218,13 @@ function collectFreshDenseNumericRectangle(
     return null
   }
   return { sheet, sheetId: firstRef.sheetId, firstRow, rowCount, firstCol, colCount, values }
+}
+
+function physicalSheetCellExists(sheet: SheetRecord, row: number, col: number): boolean {
+  if (sheet.structureVersion === 1) {
+    return sheet.grid.getPhysical(row, col) !== -1
+  }
+  return sheet.grid.getPhysical(row, col) !== -1 || sheet.logical.getVisibleCell(row, col) !== undefined
 }
 
 function materializeAxisIds(count: number, start: number, ensureAxisId: (index: number) => string): string[] {

@@ -1,4 +1,5 @@
 import { describe, expect, it, vi } from 'vitest'
+import type { SheetRecord, SpreadsheetEngine } from '@bilig/core'
 import { ValueTag } from '@bilig/protocol'
 import {
   WorkPaper,
@@ -51,6 +52,22 @@ function buildDenseNumericRange(rowCount: number, colCount: number, offset = 0):
   return Array.from({ length: rowCount }, (_rowValue, row) =>
     Array.from({ length: colCount }, (_colValue, col) => (row + 1) * (col + 2) + offset),
   )
+}
+
+function hasWorkbookStore(value: unknown): value is Pick<SpreadsheetEngine, 'workbook'> {
+  return typeof value === 'object' && value !== null && 'workbook' in value
+}
+
+function getWorkbookSheetRecord(workbook: WorkPaper, sheetId: number): SheetRecord {
+  const engine: unknown = Reflect.get(workbook, 'engine')
+  if (!hasWorkbookStore(engine)) {
+    throw new Error('Missing workbook engine')
+  }
+  const sheet = engine.workbook.getSheetById(sheetId)
+  if (sheet === undefined) {
+    throw new Error(`Missing sheet ${sheetId}`)
+  }
+  return sheet
 }
 
 describe('bulk cell values', () => {
@@ -132,16 +149,22 @@ describe('bulk cell values', () => {
     )
     const workbook = WorkPaper.buildFromSheets({ Bench: [] })
     const sheetId = workbook.getSheetId('Bench')!
+    const sheet = getWorkbookSheetRecord(workbook, sheetId)
     const captureVisibilitySnapshot = vi.spyOn(workbook, 'captureVisibilitySnapshot').mockImplementation(() => {
       throw new Error('fresh dense range values should not rebuild visibility snapshots')
     })
+    const getPhysical = vi.spyOn(sheet.grid, 'getPhysical')
+    const forEachPhysicalRangeEntry = vi.spyOn(sheet.grid, 'forEachPhysicalRangeEntry')
 
     try {
       workbook.resetPerformanceCounters()
       const changes = workbook.setSheetRangeValues(sheetId, 0, 0, values)
+      const physicalLookupsDuringWrite = getPhysical.mock.calls.length
 
       expect(changes).toHaveLength(rowCount * colCount)
       expect(hasDeferredTrackedIndexChanges(changes)).toBe(true)
+      expect(forEachPhysicalRangeEntry).not.toHaveBeenCalled()
+      expect(physicalLookupsDuringWrite).toBeLessThanOrEqual(rowCount * colCount * 2 + 1)
       expect(workbook.getCellValue(cell(sheetId, rowCount - 1, colCount - 1))).toEqual({
         tag: ValueTag.Number,
         value: rowCount * (colCount + 1),
@@ -153,6 +176,8 @@ describe('bulk cell values', () => {
         topoRebuilds: 0,
       })
     } finally {
+      forEachPhysicalRangeEntry.mockRestore()
+      getPhysical.mockRestore()
       captureVisibilitySnapshot.mockRestore()
     }
   })
@@ -162,16 +187,22 @@ describe('bulk cell values', () => {
     const colCount = 8
     const workbook = WorkPaper.buildFromSheets({ Bench: buildDenseNumericRange(rowCount, colCount) })
     const sheetId = workbook.getSheetId('Bench')!
+    const sheet = getWorkbookSheetRecord(workbook, sheetId)
     const captureVisibilitySnapshot = vi.spyOn(workbook, 'captureVisibilitySnapshot').mockImplementation(() => {
       throw new Error('existing dense range values should not rebuild visibility snapshots')
     })
+    const getPhysical = vi.spyOn(sheet.grid, 'getPhysical')
+    const forEachPhysicalRangeEntry = vi.spyOn(sheet.grid, 'forEachPhysicalRangeEntry')
 
     try {
       workbook.resetPerformanceCounters()
       const changes = workbook.setSheetRangeValues(sheetId, 0, 0, buildDenseNumericRange(rowCount, colCount, 10_000))
+      const physicalLookupsDuringWrite = getPhysical.mock.calls.length
 
       expect(changes).toHaveLength(rowCount * colCount)
       expect(hasDeferredTrackedIndexChanges(changes)).toBe(true)
+      expect(forEachPhysicalRangeEntry).toHaveBeenCalledTimes(1)
+      expect(physicalLookupsDuringWrite).toBe(0)
       expect(workbook.getCellValue(cell(sheetId, rowCount - 1, colCount - 1))).toEqual({
         tag: ValueTag.Number,
         value: rowCount * (colCount + 1) + 10_000,
@@ -183,6 +214,8 @@ describe('bulk cell values', () => {
         topoRebuilds: 0,
       })
 
+      getPhysical.mockClear()
+      forEachPhysicalRangeEntry.mockClear()
       const undoChanges = workbook.undo()
       expect(undoChanges).toHaveLength(rowCount * colCount)
       expect(workbook.getCellValue(cell(sheetId, rowCount - 1, colCount - 1))).toEqual({
@@ -190,7 +223,30 @@ describe('bulk cell values', () => {
         value: rowCount * (colCount + 1),
       })
     } finally {
+      forEachPhysicalRangeEntry.mockRestore()
+      getPhysical.mockRestore()
       captureVisibilitySnapshot.mockRestore()
+    }
+  })
+
+  it('pre-resolves physical range indexes across grid block boundaries', () => {
+    const workbook = WorkPaper.buildFromSheets({ Bench: buildDenseNumericRange(132, 40) })
+    const sheetId = workbook.getSheetId('Bench')!
+    const sheet = getWorkbookSheetRecord(workbook, sheetId)
+    const getPhysical = vi.spyOn(sheet.grid, 'getPhysical')
+    const forEachPhysicalRangeEntry = vi.spyOn(sheet.grid, 'forEachPhysicalRangeEntry')
+
+    try {
+      const changes = workbook.setSheetRangeValues(sheetId, 126, 30, buildDenseNumericRange(4, 8, 20_000))
+
+      expect(changes).toHaveLength(32)
+      expect(forEachPhysicalRangeEntry).toHaveBeenCalledTimes(1)
+      expect(getPhysical.mock.calls.length).toBe(0)
+      expect(workbook.getCellValue(cell(sheetId, 126, 30))).toEqual({ tag: ValueTag.Number, value: 20_002 })
+      expect(workbook.getCellValue(cell(sheetId, 129, 37))).toEqual({ tag: ValueTag.Number, value: 20_036 })
+    } finally {
+      forEachPhysicalRangeEntry.mockRestore()
+      getPhysical.mockRestore()
     }
   })
 
