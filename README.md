@@ -373,8 +373,8 @@ agent surface without cloning this monorepo.
 It is published in the official MCP Registry as
 `io.github.proompteng/bilig-workpaper`:
 <https://registry.modelcontextprotocol.io/v0.1/servers?search=io.github.proompteng%2Fbilig-workpaper>.
-It is also live on Glama with a `0.21.1` hosted release, `Try in Browser`, and
-tool pages for all seven file-backed WorkPaper tools:
+It is also live on Glama with `Try in Browser`, A-grade tool pages, and all
+seven file-backed WorkPaper tools:
 <https://glama.ai/mcp/servers/proompteng/bilig>.
 
 ## Proof You Can Reproduce

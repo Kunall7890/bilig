@@ -90,10 +90,12 @@ Expose the same command from an MCP client config:
 {
   "mcpServers": {
     "bilig-workpaper": {
-      "command": "npx",
+      "command": "npm",
       "args": [
-        "-y",
-        "@bilig/headless",
+        "exec",
+        "--package",
+        "@bilig/headless@0.23.3",
+        "--",
         "bilig-workpaper-mcp",
         "--workpaper",
         "./pricing.workpaper.json",
