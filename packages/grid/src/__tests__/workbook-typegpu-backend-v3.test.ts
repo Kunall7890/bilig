@@ -24,7 +24,11 @@ import {
   resolveWorkbookTileContentBufferKeyV3,
   resolveWorkbookTilePlacementBufferKeyV3,
 } from '../renderer-v3/typegpu-tile-buffer-pool.js'
-import { resolveTypeGpuDrawTilePanesV3, syncRenderTileResidencyFromPanesV3 } from '../renderer-v3/typegpu-workbook-backend-v3.js'
+import {
+  hasTransientEmptyTypeGpuBodyFrameV3,
+  resolveTypeGpuDrawTilePanesV3,
+  syncRenderTileResidencyFromPanesV3,
+} from '../renderer-v3/typegpu-workbook-backend-v3.js'
 import { TileResidencyV3 } from '../renderer-v3/tile-residency.js'
 
 function createRenderTile(valueVersion: number, tileId = 101): GridRenderTile {
@@ -319,6 +323,32 @@ describe('workbook typegpu backend v3 tile path', () => {
       })[0]?.tile,
     ).toBe(tile)
     expect(onTileMiss).toHaveBeenCalledWith(tile.tileId)
+  })
+
+  test('preserves resident body content only for missing grid payloads, not legitimate empty text updates', () => {
+    const tileResources = new TypeGpuTileResourceCacheV3()
+    const baseTile = createRenderTile(2)
+    const pane = createTilePane(baseTile)
+    const residentContent = tileResources.getContent(resolveWorkbookTileContentBufferKeyV3(pane))
+    residentContent.rectCount = 32
+    residentContent.textCount = 4
+
+    expect(hasTransientEmptyTypeGpuBodyFrameV3({ tilePanes: [pane], tileResources })).toBe(true)
+
+    const contentOnlyClearTile: GridRenderTile = {
+      ...baseTile,
+      rectCount: 32,
+      rectInstances: new Float32Array(32 * GRID_RECT_INSTANCE_FLOAT_COUNT_V3),
+      textCount: 0,
+      textRuns: [],
+    }
+
+    expect(
+      hasTransientEmptyTypeGpuBodyFrameV3({
+        tilePanes: [createTilePane(contentOnlyClearTile)],
+        tileResources,
+      }),
+    ).toBe(false)
   })
 
   test('uploads full V3 atlas refreshes into a COPY_DST WebGPU texture', () => {
