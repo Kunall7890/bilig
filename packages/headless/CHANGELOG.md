@@ -4,6 +4,15 @@ All notable changes to `@bilig/headless` will be documented in this file.
 
 This package is released as part of the aligned bilig library package set.
 
+## 0.32.9
+
+- Release type: patch
+- Previous libraries tag: libraries-v0.32.8
+- Manual override: no
+
+## Fixes
+- perf(core): avoid string keys in formula family init (028e5084)
+
 ## 0.32.8
 
 - Release type: patch
