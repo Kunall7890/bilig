@@ -6,6 +6,7 @@ import { addEngineCounter } from '../../perf/engine-counters.js'
 import type { RuntimeFormula, U32 } from '../runtime-state.js'
 import { EngineMutationError } from '../errors.js'
 import { evaluateInitialDirectScalar, evaluateInitialDirectScalarNumber } from './formula-initialization-direct-scalar.js'
+import { evaluateInitialDirectFormulas, INITIAL_DIRECT_FORMULA_EVALUATION_LIMIT } from './formula-initialization-direct-formulas.js'
 import {
   noteDeferredFormulaFamilyRunMember as noteDeferredFormulaFamilyRunMemberNow,
   registerDeferredFormulaFamilyRunNow,
@@ -33,11 +34,14 @@ import {
   MIN_INITIAL_NATIVE_DIRECT_SCALAR_BATCH_SIZE,
 } from './formula-initialization-native-direct-scalar.js'
 import {
+  createInitialNativeDirectScalarRowChainBatch,
+  MIN_INITIAL_NATIVE_DIRECT_SCALAR_ROW_CHAIN_BATCH_SIZE,
+} from './formula-initialization-native-direct-scalar-row-chain.js'
+import {
   createInitialNativeDirectLookupBatch,
   MAX_INITIAL_NATIVE_DIRECT_LOOKUP_BATCH_SIZE,
   MIN_INITIAL_NATIVE_DIRECT_LOOKUP_BATCH_SIZE,
 } from './formula-initialization-native-direct-lookup.js'
-import { evaluateInitialPrefixAggregateGroups } from './formula-initialization-prefix-aggregates.js'
 import type {
   EngineFormulaInitializationService,
   EngineFormulaInitializationServiceArgs,
@@ -53,7 +57,6 @@ export type {
   PreparedFormulaInitializationRef,
 } from './formula-initialization-service-types.js'
 
-const INITIAL_DIRECT_FORMULA_EVALUATION_LIMIT = 16_384
 const DEFERRED_FORMULA_FAMILY_RUN_CAPTURE_LIMIT = 16_384
 const EMPTY_U32 = new Uint32Array(0)
 
@@ -93,129 +96,6 @@ export function createEngineFormulaInitializationService(args: EngineFormulaInit
       registerFreshFormulaFamilyRun: args.registerFreshFormulaFamilyRun,
       upsertFormulaFamilyRun: args.upsertFormulaFamilyRun,
     })
-
-  const canEvaluateInitialDirectFormula = (cellIndex: number): boolean => {
-    return canEvaluateInitialDirectRuntimeFormula(args.state.formulas.get(cellIndex))
-  }
-
-  const evaluateInitialDirectFormulas = (
-    orderedCellIndices: InitialFormulaCellIndexList,
-    options?: {
-      readonly alreadyValidated?: boolean
-      readonly hasPrefixAggregateCandidates?: boolean
-      readonly preEvaluatedCellIndices?: InitialFormulaCellIndexList
-      readonly preEvaluatedCellCount?: number
-    },
-  ): U32 | undefined => {
-    if (
-      orderedCellIndices.length === 0 ||
-      orderedCellIndices.length > INITIAL_DIRECT_FORMULA_EVALUATION_LIMIT ||
-      (options?.alreadyValidated !== true && !orderedCellIndices.every(canEvaluateInitialDirectFormula))
-    ) {
-      return undefined
-    }
-    let changedCellBuffer = new Uint32Array(Math.max(orderedCellIndices.length, 1))
-    let changedCellCount = 0
-    const preEvaluatedCellIndices = options?.preEvaluatedCellIndices
-    const preEvaluatedCellCount = Math.min(
-      options?.preEvaluatedCellCount ?? preEvaluatedCellIndices?.length ?? 0,
-      preEvaluatedCellIndices?.length ?? 0,
-    )
-    let preEvaluatedCellIndex = 0
-    let preEvaluatedCells: Uint8Array | undefined
-    const pushChangedCellIndex = (cellIndex: number): void => {
-      if (changedCellCount === changedCellBuffer.length) {
-        const next = new Uint32Array(changedCellBuffer.length * 2)
-        next.set(changedCellBuffer)
-        changedCellBuffer = next
-      }
-      changedCellBuffer[changedCellCount] = cellIndex
-      changedCellCount += 1
-    }
-    const isPreEvaluatedCell = (cellIndex: number): boolean => {
-      if (!preEvaluatedCellIndices || preEvaluatedCellCount === 0) {
-        return false
-      }
-      if (!preEvaluatedCells) {
-        preEvaluatedCells = new Uint8Array(args.state.workbook.cellStore.size + 1)
-        for (let index = 0; index < preEvaluatedCellCount; index += 1) {
-          preEvaluatedCells[preEvaluatedCellIndices[index]!] = 1
-        }
-      }
-      return preEvaluatedCells[cellIndex] === 1
-    }
-    const canReusePreEvaluatedFormula = (cellIndex: number): boolean => {
-      const formula = args.state.formulas.get(cellIndex)
-      if (!formula) {
-        return false
-      }
-      for (let index = 0; index < formula.dependencyIndices.length; index += 1) {
-        const dependencyCellIndex = formula.dependencyIndices[index]!
-        if (
-          ((args.state.workbook.cellStore.flags[dependencyCellIndex] ?? 0) & CellFlags.HasFormula) !== 0 &&
-          !isPreEvaluatedCell(dependencyCellIndex)
-        ) {
-          return false
-        }
-      }
-      return true
-    }
-    const shouldReusePreEvaluatedCell = (cellIndex: number): boolean => {
-      if (!preEvaluatedCellIndices || preEvaluatedCellIndex >= preEvaluatedCellCount) {
-        return false
-      }
-      if (preEvaluatedCellIndices[preEvaluatedCellIndex] !== cellIndex) {
-        return false
-      }
-      preEvaluatedCellIndex += 1
-      return canReusePreEvaluatedFormula(cellIndex)
-    }
-    const valueWriter = createInitialFormulaValueWriter(args)
-    args.state.workbook.withBatchedColumnVersionUpdates(() => {
-      const prefixAggregateHandled =
-        options?.hasPrefixAggregateCandidates === true
-          ? evaluateInitialPrefixAggregateGroups(args, orderedCellIndices, pushChangedCellIndex, valueWriter.writeValue)
-          : undefined
-      for (let index = 0; index < orderedCellIndices.length; index += 1) {
-        args.checkEvaluationBudget()
-        const cellIndex = orderedCellIndices[index]!
-        if (prefixAggregateHandled?.has(cellIndex)) {
-          continue
-        }
-        if (shouldReusePreEvaluatedCell(cellIndex)) {
-          pushChangedCellIndex(cellIndex)
-          continue
-        }
-        const formula = args.state.formulas.get(cellIndex)
-        if (formula?.directScalar !== undefined) {
-          const numericValue = evaluateInitialDirectScalarNumber(args.state, formula.directScalar)
-          if (numericValue !== undefined) {
-            valueWriter.writeNumber(cellIndex, numericValue)
-            pushChangedCellIndex(cellIndex)
-            continue
-          }
-          const fallbackValue = evaluateInitialDirectScalar(args.state, formula.directScalar)
-          if (fallbackValue !== undefined) {
-            valueWriter.writeValue(cellIndex, fallbackValue)
-            pushChangedCellIndex(cellIndex)
-            continue
-          }
-        }
-        const changedSpillIndices = args.evaluateDirectFormula(cellIndex)
-        pushChangedCellIndex(cellIndex)
-        if (changedSpillIndices) {
-          for (let spillIndex = 0; spillIndex < changedSpillIndices.length; spillIndex += 1) {
-            pushChangedCellIndex(changedSpillIndices[spillIndex]!)
-          }
-        }
-      }
-      valueWriter.flush()
-    })
-    const changedCellIndices = changedCellBuffer.subarray(0, changedCellCount)
-    args.deferKernelSync(changedCellIndices)
-    addEngineCounter(args.state.counters, 'directFormulaInitialEvaluations', orderedCellIndices.length)
-    return changedCellIndices
-  }
 
   const initializeFormulaEntriesNow = <Entry>(
     refs: InitialFormulaEntryRefSource<Entry>,
@@ -286,6 +166,10 @@ export function createEngineFormulaInitializationService(args: EngineFormulaInit
         refs.length > MAX_INITIAL_NATIVE_DIRECT_SCALAR_BATCH_SIZE
           ? undefined
           : createInitialNativeDirectScalarBatch({ state: args.state, capacity: refs.length })
+      let nativeInitialDirectScalarRowChainBatch =
+        hadExistingFormulas || refs.length < MIN_INITIAL_NATIVE_DIRECT_SCALAR_ROW_CHAIN_BATCH_SIZE || refs.length % 2 !== 0
+          ? undefined
+          : createInitialNativeDirectScalarRowChainBatch({ state: args.state, capacity: refs.length })
       let nativeInitialDirectScalarCellCount = 0
       let nativeInitialDirectLookupBatch =
         hadExistingFormulas ||
@@ -373,7 +257,7 @@ export function createEngineFormulaInitializationService(args: EngineFormulaInit
       }
 
       const tryInlineInitialDirectScalarEvaluation = (
-        prepared: { cellIndex: number; sheetId: number; col: number },
+        prepared: { cellIndex: number; sheetId: number; row: number; col: number },
         runtimeFormula: RuntimeFormula | undefined,
       ): void => {
         if (
@@ -386,6 +270,14 @@ export function createEngineFormulaInitializationService(args: EngineFormulaInit
           return
         }
         if (runtimeFormula.directScalar !== undefined) {
+          let addedToNativeRowChain = false
+          if (nativeInitialDirectScalarRowChainBatch) {
+            if (nativeInitialDirectScalarRowChainBatch.add(prepared, runtimeFormula)) {
+              addedToNativeRowChain = true
+            } else {
+              nativeInitialDirectScalarRowChainBatch = undefined
+            }
+          }
           if (nativeInitialDirectScalarBatch) {
             if (nativeInitialDirectScalarBatch.add(prepared, runtimeFormula.directScalar)) {
               nativeInitialDirectScalarCellCount += 1
@@ -393,6 +285,9 @@ export function createEngineFormulaInitializationService(args: EngineFormulaInit
             }
             nativeInitialDirectScalarBatch = undefined
             nativeInitialDirectScalarCellCount = 0
+          }
+          if (addedToNativeRowChain) {
+            return
           }
           const numericValue = evaluateInitialDirectScalarNumber(args.state, runtimeFormula.directScalar)
           inlineInitialDirectScalarWriter ??= createInitialFormulaValueWriter(args)
@@ -432,7 +327,7 @@ export function createEngineFormulaInitializationService(args: EngineFormulaInit
           }
         }
       }
-      const noteBoundFormula = (prepared: { cellIndex: number; sheetId: number; col: number }): void => {
+      const noteBoundFormula = (prepared: { cellIndex: number; sheetId: number; row: number; col: number }): void => {
         if (hadExistingFormulas) {
           formulaChangedCount = args.markFormulaChanged(prepared.cellIndex, formulaChangedCount)
         }
@@ -533,12 +428,17 @@ export function createEngineFormulaInitializationService(args: EngineFormulaInit
           })
         }
         args.withInitialFormulaCells(pendingInitialFormulaCellIndices, bindFormulaEntries)
+        const canUseNativeInitialDirectScalarRowChain =
+          !hasInitialPrefixAggregateCandidates &&
+          nativeInitialDirectScalarRowChainBatch !== undefined &&
+          nativeInitialDirectScalarRowChainBatch.count === orderedPreparedCellCount &&
+          orderedPreparedCellCount >= MIN_INITIAL_NATIVE_DIRECT_SCALAR_ROW_CHAIN_BATCH_SIZE
         canUseInitialDirectEvaluation =
           canAssignTopoInBatch &&
           !hadExistingFormulas &&
           changedInputCount === 0 &&
           allPreparedFormulasCanUseInitialDirectEvaluation &&
-          orderedPreparedCellCount <= INITIAL_DIRECT_FORMULA_EVALUATION_LIMIT &&
+          (orderedPreparedCellCount <= INITIAL_DIRECT_FORMULA_EVALUATION_LIMIT || canUseNativeInitialDirectScalarRowChain) &&
           orderedPreparedCellCount === refs.length
         compileMs += performance.now() - compileStarted
       } finally {
@@ -588,6 +488,30 @@ export function createEngineFormulaInitializationService(args: EngineFormulaInit
       let recalculated: U32
       if (
         useInitialDirectEvaluation &&
+        nativeInitialDirectScalarRowChainBatch !== undefined &&
+        nativeInitialDirectScalarRowChainBatch.count === orderedPreparedCellCount &&
+        !hasInitialPrefixAggregateCandidates
+      ) {
+        const native = nativeInitialDirectScalarRowChainBatch.evaluate()
+        if (native) {
+          recalculated = native
+          args.deferKernelSync(recalculated)
+          addEngineCounter(args.state.counters, 'directFormulaInitialEvaluations', orderedPreparedCellCount)
+        } else {
+          const direct = evaluateInitialDirectFormulas(args, orderedPreparedCellList(), {
+            alreadyValidated: true,
+            hasPrefixAggregateCandidates: hasInitialPrefixAggregateCandidates,
+          })
+          if (direct) {
+            recalculated = direct
+          } else {
+            const changedInputArray = args.getChangedInputBuffer().subarray(0, changedInputCount)
+            const changedRoots = args.composeMutationRoots(changedInputCount, formulaChangedCount)
+            recalculated = args.recalculate(changedRoots, changedInputArray)
+          }
+        }
+      } else if (
+        useInitialDirectEvaluation &&
         nativeInitialDirectScalarCellCount === orderedPreparedCellCount &&
         !hasInitialPrefixAggregateCandidates
       ) {
@@ -597,7 +521,7 @@ export function createEngineFormulaInitializationService(args: EngineFormulaInit
           args.deferKernelSync(recalculated)
           addEngineCounter(args.state.counters, 'directFormulaInitialEvaluations', orderedPreparedCellCount)
         } else {
-          const direct = evaluateInitialDirectFormulas(orderedPreparedCellList(), {
+          const direct = evaluateInitialDirectFormulas(args, orderedPreparedCellList(), {
             alreadyValidated: true,
             hasPrefixAggregateCandidates: hasInitialPrefixAggregateCandidates,
           })
@@ -620,7 +544,7 @@ export function createEngineFormulaInitializationService(args: EngineFormulaInit
           args.deferKernelSync(recalculated)
           addEngineCounter(args.state.counters, 'directFormulaInitialEvaluations', orderedPreparedCellCount)
         } else {
-          const direct = evaluateInitialDirectFormulas(orderedPreparedCellList(), {
+          const direct = evaluateInitialDirectFormulas(args, orderedPreparedCellList(), {
             alreadyValidated: true,
             hasPrefixAggregateCandidates: hasInitialPrefixAggregateCandidates,
           })
@@ -643,7 +567,7 @@ export function createEngineFormulaInitializationService(args: EngineFormulaInit
         args.deferKernelSync(recalculated)
         addEngineCounter(args.state.counters, 'directFormulaInitialEvaluations', orderedPreparedCellCount)
       } else if (useInitialDirectEvaluation) {
-        const direct = evaluateInitialDirectFormulas(orderedPreparedCellList(), {
+        const direct = evaluateInitialDirectFormulas(args, orderedPreparedCellList(), {
           alreadyValidated: true,
           hasPrefixAggregateCandidates: hasInitialPrefixAggregateCandidates,
           ...(inlineInitialDirectScalarCellCount > 0

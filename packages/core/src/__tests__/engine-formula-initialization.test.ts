@@ -493,6 +493,33 @@ describe('SpreadsheetEngine formula initialization', () => {
     })
   })
 
+  it('uses native row-chain initialization for larger direct scalar formula chains', async () => {
+    const rowCount = 8193
+    const engine = new SpreadsheetEngine({ workbookName: 'engine-formula-initialize-native-row-chain' })
+    await engine.ready()
+    engine.createSheet('Sheet1')
+    const sheetId = engine.workbook.getSheet('Sheet1')!.id
+    const refs: EngineCellMutationRef[] = []
+    for (let row = 0; row < rowCount; row += 1) {
+      const rowNumber = row + 1
+      engine.setCellValue('Sheet1', `A${rowNumber}`, rowNumber)
+      engine.setCellValue('Sheet1', `B${rowNumber}`, rowNumber * 10)
+      refs.push({ sheetId, mutation: { kind: 'setCellFormula' as const, row, col: 2, formula: `A${rowNumber}+B${rowNumber}` } })
+      refs.push({ sheetId, mutation: { kind: 'setCellFormula' as const, row, col: 3, formula: `C${rowNumber}*2` } })
+    }
+
+    engine.initializeCellFormulasAt(refs, refs.length)
+
+    expect(engine.getCellValue('Sheet1', `D${rowCount}`)).toEqual({
+      tag: ValueTag.Number,
+      value: rowCount * 11 * 2,
+    })
+    expect(engine.getPerformanceCounters()).toMatchObject({
+      directFormulaInitialEvaluations: refs.length,
+      nativeDirectScalarInitialEvaluations: refs.length,
+    })
+  })
+
   it('bulk-materializes mixed parser-cache template sheets into strided family runs', async () => {
     const rowCount = 12
     const engine = new SpreadsheetEngine({ workbookName: 'engine-formula-initialize-mixed-template-families' })

@@ -59,4 +59,25 @@ describe('wasm kernel direct scalar batch', () => {
     expect(kernel.readErrors()[4]).toBe(ErrorCode.Value)
     expect(kernel.readStringIds()[4]).toBe(0)
   })
+
+  it('writes dense two-formula row chains into resident cell arrays', async () => {
+    const kernel = await createKernel()
+    kernel.init(8, 1, 1, 1, 1)
+
+    kernel.evalDenseDirectScalarRowChainStoreTargetBatch(
+      Float64Array.from([2, 5, 7]),
+      Float64Array.from([3, 4, 8]),
+      Uint32Array.from([0, 2, 4]),
+      Uint32Array.from([1, 3, 5]),
+      3,
+      1,
+      2,
+      1,
+    )
+
+    expect(Array.from(kernel.readTags().slice(0, 6))).toEqual(Array(6).fill(ValueTag.Number))
+    expect(Array.from(kernel.readNumbers().slice(0, 6))).toEqual([5, 11, 9, 19, 15, 31])
+    expect(Array.from(kernel.readStringIds().slice(0, 6))).toEqual(Array(6).fill(0))
+    expect(Array.from(kernel.readErrors().slice(0, 6))).toEqual(Array(6).fill(ErrorCode.None))
+  })
 })

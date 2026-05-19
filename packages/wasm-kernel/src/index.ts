@@ -2,7 +2,11 @@ import type * as Fs from 'node:fs'
 import type * as FsPromises from 'node:fs/promises'
 import type * as NodeUrl from 'node:url'
 import { evalDirectCriteriaMatchedAggregateBatchRaw } from './raw-kernel-direct-criteria-aggregate-bridge.js'
-import { evalDirectScalarStoreTargetBatchRaw, evalDirectScalarValueBatchRaw } from './raw-kernel-direct-scalar-bridge.js'
+import {
+  evalDenseDirectScalarRowChainStoreTargetBatchRaw,
+  evalDirectScalarStoreTargetBatchRaw,
+  evalDirectScalarValueBatchRaw,
+} from './raw-kernel-direct-scalar-bridge.js'
 import { isRawKernelExports, type RawKernelExports } from './raw-kernel-exports.js'
 
 type TypedArrayValue = Uint8Array | Uint16Array | Uint32Array | Float64Array
@@ -78,6 +82,16 @@ export interface SpreadsheetKernel {
     rightValues: Float64Array,
     rightErrors: Uint16Array,
     resultOffsets: Float64Array,
+  ): void
+  evalDenseDirectScalarRowChainStoreTargetBatch(
+    leftValues: Float64Array,
+    rightValues: Float64Array,
+    firstTargets: Uint32Array,
+    secondTargets: Uint32Array,
+    rowCount: number,
+    firstFormulaCode: number,
+    secondFormulaScale: number,
+    secondFormulaOffset: number,
   ): void
   evalDenseNumericRowAggregateBatch(
     aggregateKind: number,
@@ -636,6 +650,13 @@ class KernelHandle implements SpreadsheetKernel {
       rightErrors,
       resultOffsets,
     )
+    this.refreshViews()
+  }
+
+  evalDenseDirectScalarRowChainStoreTargetBatch(
+    ...args: Parameters<SpreadsheetKernel['evalDenseDirectScalarRowChainStoreTargetBatch']>
+  ): void {
+    evalDenseDirectScalarRowChainStoreTargetBatchRaw(this.raw, ...args)
     this.refreshViews()
   }
 

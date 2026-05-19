@@ -57,6 +57,17 @@ export interface WasmDirectScalarStoreTargetBatchLayout {
   resultOffsets: Float64Array
 }
 
+export interface WasmDenseDirectScalarRowChainStoreTargetBatchLayout {
+  leftValues: Float64Array
+  rightValues: Float64Array
+  firstTargets: Uint32Array
+  secondTargets: Uint32Array
+  rowCount: number
+  firstFormulaCode: number
+  secondFormulaScale: number
+  secondFormulaOffset: number
+}
+
 export interface WasmDenseNumericRowAggregateBatchLayout {
   aggregateKind: number
   values: Float64Array
@@ -331,6 +342,33 @@ export class WasmKernelFacade {
       layout.rightValues,
       layout.rightErrors,
       layout.resultOffsets,
+    )
+    return true
+  }
+
+  evalDenseDirectScalarRowChainStoreTargetBatch(
+    layout: WasmDenseDirectScalarRowChainStoreTargetBatchLayout,
+    cellCapacity: number,
+  ): boolean {
+    if (!this.kernel) {
+      return false
+    }
+    this.ensureCapacity(
+      cellCapacity,
+      this.kernel.getFormulaCapacity(),
+      this.kernel.getConstantCapacity(),
+      this.kernel.getRangeCapacity(),
+      this.kernel.getMemberCapacity(),
+    )
+    this.kernel.evalDenseDirectScalarRowChainStoreTargetBatch(
+      layout.leftValues,
+      layout.rightValues,
+      layout.firstTargets,
+      layout.secondTargets,
+      layout.rowCount,
+      layout.firstFormulaCode,
+      layout.secondFormulaScale,
+      layout.secondFormulaOffset,
     )
     return true
   }
