@@ -19,6 +19,13 @@ export interface ResolvedCsvParseOptions {
   decimalSeparator: CsvDecimalSeparator
 }
 
+const LEADING_ZERO_INTEGER_IDENTIFIER_RE = /^0\d+$/u
+const DECIMAL_COMMA_CELL_RE = /^-?\d+,\d+(%?)$/u
+const PLAIN_DOT_DECIMAL_NUMERIC_RE = /^\d+(?:\.\d+)?$/u
+const GROUPED_DOT_DECIMAL_NUMERIC_RE = /^\d{1,3}(?:,\d{3})+(?:\.\d+)?$/u
+const PLAIN_COMMA_DECIMAL_NUMERIC_RE = /^\d+(?:,\d+)?$/u
+const GROUPED_COMMA_DECIMAL_NUMERIC_RE = /^\d{1,3}(?:\.\d{3})+(?:,\d+)?$/u
+
 function escapeCsvValue(value: string): string {
   if (!/[",;\t\n\r]/.test(value)) {
     return value
@@ -145,7 +152,7 @@ export function parseCsvCellInput(raw: string, options: CsvParseOptions = {}): C
 }
 
 function isLeadingZeroIntegerIdentifier(normalized: string): boolean {
-  return /^0\d+$/u.test(normalized)
+  return LEADING_ZERO_INTEGER_IDENTIFIER_RE.test(normalized)
 }
 
 function detectCsvDelimiter(csv: string): CsvDelimiter {
@@ -191,7 +198,7 @@ function countDelimiterOutsideQuotes(csv: string, delimiter: CsvDelimiter): numb
 
 function hasDecimalCommaCell(csv: string, delimiter: CsvDelimiter): boolean {
   const rows = parseCsv(csv, { delimiter, decimalSeparator: '.' })
-  return rows.some((row) => row.some((value) => /^-?\d+,\d+(%?)$/u.test(value.trim())))
+  return rows.some((row) => row.some((value) => DECIMAL_COMMA_CELL_RE.test(value.trim())))
 }
 
 function parseAccountingNumberInput(normalized: string, decimalSeparator: CsvDecimalSeparator): number | null {
@@ -223,10 +230,8 @@ function parseAccountingNumberInput(normalized: string, decimalSeparator: CsvDec
   }
 
   const groupSeparator = decimalSeparator === ',' ? '.' : ','
-  const decimal = escapeRegExp(decimalSeparator)
-  const group = escapeRegExp(groupSeparator)
-  const plainPositiveNumericRe = new RegExp(`^\\d+(?:${decimal}\\d+)?$`, 'u')
-  const groupedNumericRe = new RegExp(`^\\d{1,3}(?:${group}\\d{3})+(?:${decimal}\\d+)?$`, 'u')
+  const plainPositiveNumericRe = decimalSeparator === ',' ? PLAIN_COMMA_DECIMAL_NUMERIC_RE : PLAIN_DOT_DECIMAL_NUMERIC_RE
+  const groupedNumericRe = decimalSeparator === ',' ? GROUPED_COMMA_DECIMAL_NUMERIC_RE : GROUPED_DOT_DECIMAL_NUMERIC_RE
   if (!plainPositiveNumericRe.test(text) && !groupedNumericRe.test(text)) {
     return null
   }
@@ -237,8 +242,4 @@ function parseAccountingNumberInput(normalized: string, decimalSeparator: CsvDec
   }
 
   return (sign * parsed) / (isPercent ? 100 : 1)
-}
-
-function escapeRegExp(value: string): string {
-  return value.replace(/[.*+?^${}()|[\]\\]/gu, '\\$&')
 }

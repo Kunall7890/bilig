@@ -76,6 +76,14 @@ describe('csv helpers', () => {
     expect(parseCsv('solo')).toEqual([['solo']])
   })
 
+  it('parses unquoted CSV rows with CRLFs and trailing empties', () => {
+    expect(parseCsv('A,B,\n1,2,\n')).toEqual([['A', 'B', ''], ['1', '2', ''], ['']])
+    expect(parseCsv('A;B\r\n1;2', { delimiter: ';' })).toEqual([
+      ['A', 'B'],
+      ['1', '2'],
+    ])
+  })
+
   it('auto-detects semicolon-delimited CSV rows', () => {
     expect(parseCsv('Account;Amount;Tax\n4000;125,50;20,08')).toEqual([
       ['Account', 'Amount', 'Tax'],
