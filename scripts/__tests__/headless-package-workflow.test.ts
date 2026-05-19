@@ -31,6 +31,8 @@ describe('headless package workflow', () => {
 
   it('keeps publish, benchmark, and clean consumer smoke gates in the package workflow', () => {
     const source = readFileSync(resolve(repoRoot, '.github/workflows/headless-package.yml'), 'utf8')
+    const agentDiscoverySource = readFileSync(resolve(repoRoot, 'scripts/sync-agent-discovery-docs.ts'), 'utf8')
+    const mcpDirectoryDoc = readFileSync(resolve(repoRoot, 'docs/mcp-spreadsheet-server-directory.md'), 'utf8')
 
     expect(source).toMatch(/['"]packages\/excel-import\/\*\*['"]/)
     expect(source).toMatch(/['"]packages\/bilig\/\*\*['"]/)
@@ -56,6 +58,9 @@ describe('headless package workflow', () => {
     expect(source).toContain('ALLOW_NEW_NPM_PACKAGES')
     expect(source).toContain('bun scripts/sync-runtime-release-metadata.ts')
     expect(source).toContain('bun scripts/sync-agent-discovery-docs.ts')
+    expect(agentDiscoverySource).toContain('syncVersionedStaticReferenceLine')
+    expect(agentDiscoverySource).not.toContain("replace(new RegExp(`@bilig/headless@${stableSemverPattern}`")
+    expect(mcpDirectoryDoc).toContain('`io.github.proompteng/bilig-workpaper@0.27.0` with package\n`@bilig/headless@0.27.0`')
     expect(source).toContain('.release-please-manifest.json')
     expect(source).toContain('skills/bilig-workpaper/SKILL.md')
     expect(source).toContain('runner needs runtime d.ts outputs rebuilt after the version sync')

@@ -397,6 +397,7 @@ const generatedSourceChecks: readonly CiTask[] = [
   bunScript('public evidence check', 'scripts/sync-public-evidence.ts', '--check'),
   bunScript('headless package footprint check', 'scripts/sync-headless-package-footprint.ts', '--check'),
   bunScript('create WorkPaper package check', 'scripts/check-create-workpaper-package.ts'),
+  bunScript('agent discovery docs check', 'scripts/sync-agent-discovery-docs.ts', '--check'),
   tsxScript('docs discovery check', 'scripts/check-docs-discovery.ts'),
 ]
 

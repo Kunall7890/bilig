@@ -48,6 +48,7 @@ describe('run-ci', () => {
     expect(source).toContain(
       "directPackageScript('financial public workbook corpus resume check', 'public-workbook-corpus:resume-financial:check')",
     )
+    expect(source).toContain("bunScript('agent discovery docs check', 'scripts/sync-agent-discovery-docs.ts', '--check')")
     expect(source).toContain("await runSequential('static direct checks'")
     expect(source).not.toContain("pnpm('protocol check'")
     expect(source).not.toContain("pnpm('wasm build'")
