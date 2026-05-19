@@ -88,7 +88,15 @@ export function createEngineCellStateService(args: {
   ): EngineOp[] => {
     const ops: EngineOp[] = []
     const targetCellIndex = args.state.workbook.getCellIndex(sheetName, address)
-    const currentFormat = targetCellIndex === undefined ? null : (args.state.workbook.getCellFormat(targetCellIndex) ?? null)
+    const explicitCurrentFormat = targetCellIndex === undefined ? undefined : args.state.workbook.getCellFormat(targetCellIndex)
+    const parsedTarget = parseCellAddress(address, sheetName)
+    const currentRangeFormatId = args.state.workbook.getRangeFormatId(sheetName, parsedTarget.row, parsedTarget.col)
+    const currentRangeFormat =
+      currentRangeFormatId === WorkbookStore.defaultFormatId
+        ? null
+        : (args.state.workbook.getCellNumberFormat(currentRangeFormatId)?.code ?? null)
+    const currentFormat = explicitCurrentFormat ?? currentRangeFormat
+    const currentStyleId = args.state.workbook.getStyleId(sheetName, parsedTarget.row, parsedTarget.col)
     const nextFormat = formatOverride === '' ? null : formatOverride
     const isAuthoredBlank = (snapshot.flags & CellFlags.AuthoredBlank) !== 0
     const explicitBlankOp = { kind: 'setCellValue' as const, sheetName, address, value: null }
@@ -121,15 +129,28 @@ export function createEngineCellStateService(args: {
         address,
         format: nextFormat,
       })
-    } else if (nextFormat === null && options.clearExistingFormat === true && currentFormat !== null) {
-      ops.push({
-        kind: 'setCellFormat',
-        sheetName,
-        address,
-        format: nextFormat,
-      })
+    } else if (nextFormat === null && options.clearExistingFormat === true) {
+      if (explicitCurrentFormat !== undefined) {
+        ops.push({
+          kind: 'setCellFormat',
+          sheetName,
+          address,
+          format: nextFormat,
+        })
+      }
+      if (currentRangeFormatId !== WorkbookStore.defaultFormatId) {
+        ops.push({
+          kind: 'setFormatRange',
+          range: {
+            sheetName,
+            startAddress: address,
+            endAddress: address,
+          },
+          formatId: WorkbookStore.defaultFormatId,
+        })
+      }
     }
-    if (styleIdOverride !== WorkbookStore.defaultStyleId) {
+    if (styleIdOverride !== currentStyleId) {
       ops.push({
         kind: 'setStyleRange',
         range: {

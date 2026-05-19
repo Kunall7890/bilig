@@ -1,10 +1,10 @@
 import { Effect } from 'effect'
 import { formatAddress } from '@bilig/formula'
-import type { CellRangeRef, CellSnapshot, LiteralInput } from '@bilig/protocol'
+import { ValueTag, type CellRangeRef, type CellSnapshot, type LiteralInput } from '@bilig/protocol'
 import type { EngineOp } from '@bilig/workbook-domain'
 import { parseCsv, parseCsvCellInput, resolveCsvParseOptions, type CsvParseOptions } from '../../csv.js'
 import { normalizeRange } from '../../engine-range-utils.js'
-import type { WorkbookStore } from '../../workbook-store.js'
+import { WorkbookStore } from '../../workbook-store.js'
 import { EngineMutationError } from '../errors.js'
 import { getMutationMatrixCell } from './mutation-cell-content-helpers.js'
 import {
@@ -48,15 +48,42 @@ function mutationRangeErrorMessage(message: string, cause: unknown): string {
   return cause instanceof Error && cause.message.length > 0 ? cause.message : message
 }
 
+function emptyCellSnapshot(sheetName: string, address: string): CellSnapshot {
+  return {
+    sheetName,
+    address,
+    value: { tag: ValueTag.Empty },
+    flags: 0,
+    version: 0,
+  }
+}
+
 export function createMutationRangeOperations(args: MutationRangeOperationsRuntime): MutationRangeOperations {
   const readStoredCellState = (sheetName: string, address: string): ComparableMutationCellState => {
+    const bounds = normalizeRange({ sheetName, startAddress: address, endAddress: address })
+    const styleId = args.workbook.getStyleId(sheetName, bounds.startRow, bounds.startCol)
     const cellIndex = args.workbook.getCellIndex(sheetName, address)
+    const format = readEffectiveFormat(sheetName, address, cellIndex)
     if (cellIndex === undefined) {
-      return { value: null, format: null, authoredBlank: false }
+      return { value: null, format, authoredBlank: false, styleId }
     }
     const snapshot = args.getCellByIndex(cellIndex)
-    const format = args.workbook.getCellFormat(cellIndex) ?? null
-    return readStoredMutationCellState(snapshot, format, args.workbook.cellStore.flags[cellIndex])
+    return readStoredMutationCellState(snapshot, format, args.workbook.cellStore.flags[cellIndex], styleId)
+  }
+
+  const readEffectiveFormat = (sheetName: string, address: string, cellIndex: number | undefined): string | null => {
+    if (cellIndex !== undefined) {
+      const explicitFormat = args.workbook.getCellFormat(cellIndex)
+      if (explicitFormat !== undefined) {
+        return explicitFormat
+      }
+    }
+    const bounds = normalizeRange({ sheetName, startAddress: address, endAddress: address })
+    const formatId = args.workbook.getRangeFormatId(sheetName, bounds.startRow, bounds.startCol)
+    if (formatId === WorkbookStore.defaultFormatId) {
+      return null
+    }
+    return args.workbook.getCellNumberFormat(formatId)?.code ?? null
   }
 
   const readDesiredCellState = (
@@ -66,6 +93,7 @@ export function createMutationRangeOperations(args: MutationRangeOperationsRunti
     sourceSheetName?: string,
     sourceAddress?: string,
     formatOverride: string | null = snapshot.format ?? null,
+    styleIdOverride = snapshot.styleId ?? WorkbookStore.defaultStyleId,
   ): ComparableMutationCellState =>
     readDesiredMutationCellState({
       targetSheetName,
@@ -74,17 +102,22 @@ export function createMutationRangeOperations(args: MutationRangeOperationsRunti
       ...(sourceSheetName !== undefined ? { sourceSheetName } : {}),
       ...(sourceAddress !== undefined ? { sourceAddress } : {}),
       formatOverride,
+      styleIdOverride,
     })
 
   const hasStoredCellState = (sheetName: string, address: string): boolean => {
+    const bounds = normalizeRange({ sheetName, startAddress: address, endAddress: address })
+    const styleId = args.workbook.getStyleId(sheetName, bounds.startRow, bounds.startCol)
     const cellIndex = args.workbook.getCellIndex(sheetName, address)
     if (cellIndex === undefined) {
-      return false
+      return styleId !== WorkbookStore.defaultStyleId
     }
-    return hasStoredMutationCellState(
-      args.getCellByIndex(cellIndex),
-      args.workbook.getCellFormat(cellIndex),
-      args.workbook.cellStore.flags[cellIndex],
+    return (
+      hasStoredMutationCellState(
+        args.getCellByIndex(cellIndex),
+        args.workbook.getCellFormat(cellIndex),
+        args.workbook.cellStore.flags[cellIndex],
+      ) || styleId !== WorkbookStore.defaultStyleId
     )
   }
 
@@ -313,11 +346,7 @@ export function createMutationRangeOperations(args: MutationRangeOperationsRunti
               if (!hasStoredCellState(source.sheetName, address)) {
                 continue
               }
-              ops.push({
-                kind: 'clearCell',
-                sheetName: source.sheetName,
-                address,
-              })
+              ops.push(...args.toCellStateOps(source.sheetName, address, emptyCellSnapshot(source.sheetName, address)))
             }
           }
           for (let rowOffset = 0; rowOffset < targetHeight; rowOffset += 1) {

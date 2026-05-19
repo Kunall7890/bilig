@@ -260,6 +260,86 @@ describe('use workbook selection action helpers', () => {
     })
   })
 
+  it('copies projected presentation and clears stale target formatting before worker patches arrive', () => {
+    const cells = new Map<string, CellSnapshot>([
+      [
+        'Sheet1:B2',
+        {
+          ...emptyCell('Sheet1', 'B2'),
+          input: 'styled-source',
+          format: '0.00',
+          numberFormatId: 'fmt-source',
+          styleId: 'style-source',
+          value: { tag: ValueTag.String, value: 'styled-source', stringId: 1 },
+          version: 3,
+        },
+      ],
+      [
+        'Sheet1:D2',
+        {
+          ...emptyCell('Sheet1', 'D2'),
+          input: 'styled-target',
+          format: '$0',
+          numberFormatId: 'fmt-target',
+          styleId: 'style-target',
+          value: { tag: ValueTag.String, value: 'styled-target', stringId: 2 },
+          version: 4,
+        },
+      ],
+      [
+        'Sheet1:B3',
+        {
+          ...emptyCell('Sheet1', 'B3'),
+          input: 'plain-source',
+          value: { tag: ValueTag.String, value: 'plain-source', stringId: 3 },
+          version: 5,
+        },
+      ],
+      [
+        'Sheet1:D3',
+        {
+          ...emptyCell('Sheet1', 'D3'),
+          input: 'stale-style-target',
+          format: '$0',
+          numberFormatId: 'fmt-stale',
+          styleId: 'style-stale',
+          value: { tag: ValueTag.String, value: 'stale-style-target', stringId: 4 },
+          version: 6,
+        },
+      ],
+    ])
+    const viewportStore = {
+      getCell(sheetName: string, address: string) {
+        return cells.get(`${sheetName}:${address}`) ?? emptyCell(sheetName, address)
+      },
+      setCellSnapshot(snapshot: CellSnapshot) {
+        cells.set(`${snapshot.sheetName}:${snapshot.address}`, snapshot)
+      },
+    }
+
+    const rollback = applyOptimisticCopyRange(
+      viewportStore,
+      { sheetName: 'Sheet1', startAddress: 'B2', endAddress: 'B3' },
+      { sheetName: 'Sheet1', startAddress: 'D2', endAddress: 'D3' },
+    )
+
+    expect(rollback).toEqual(expect.any(Function))
+    expect(cells.get('Sheet1:D2')).toMatchObject({
+      input: 'styled-source',
+      format: '0.00',
+      numberFormatId: 'fmt-source',
+      styleId: 'style-source',
+      value: { tag: ValueTag.String, value: 'styled-source' },
+    })
+    expect(cells.get('Sheet1:D3')).toMatchObject({
+      input: 'plain-source',
+      value: { tag: ValueTag.String, value: 'plain-source' },
+    })
+    expect(cells.get('Sheet1:D3')?.format).toBeUndefined()
+    expect(cells.get('Sheet1:D3')?.numberFormatId).toBeUndefined()
+    expect(cells.get('Sheet1:D3')?.styleId).toBeUndefined()
+  })
+
   it('fills projected ranges before worker patches arrive', () => {
     const cells = new Map<string, CellSnapshot>([
       ['Sheet1:F6', { ...emptyCell('Sheet1', 'F6'), input: 7, value: { tag: ValueTag.Number, value: 7 }, version: 3 }],
@@ -289,6 +369,65 @@ describe('use workbook selection action helpers', () => {
       input: 7,
       value: { tag: ValueTag.Number, value: 7 },
       version: 1,
+    })
+  })
+
+  it('fills projected presentation as part of the immediate visual update', () => {
+    const cells = new Map<string, CellSnapshot>([
+      [
+        'Sheet1:F6',
+        {
+          ...emptyCell('Sheet1', 'F6'),
+          input: 7,
+          format: '0.00',
+          numberFormatId: 'fmt-source',
+          styleId: 'style-source',
+          value: { tag: ValueTag.Number, value: 7 },
+          version: 3,
+        },
+      ],
+      [
+        'Sheet1:F7',
+        {
+          ...emptyCell('Sheet1', 'F7'),
+          input: 'target',
+          format: '$0',
+          numberFormatId: 'fmt-target',
+          styleId: 'style-target',
+          value: { tag: ValueTag.String, value: 'target' },
+          version: 4,
+        },
+      ],
+    ])
+    const viewportStore = {
+      getCell(sheetName: string, address: string) {
+        return cells.get(`${sheetName}:${address}`) ?? emptyCell(sheetName, address)
+      },
+      setCellSnapshot(snapshot: CellSnapshot) {
+        cells.set(`${snapshot.sheetName}:${snapshot.address}`, snapshot)
+      },
+    }
+
+    const rollback = applyOptimisticFillRange(
+      viewportStore,
+      { sheetName: 'Sheet1', startAddress: 'F6', endAddress: 'F6' },
+      { sheetName: 'Sheet1', startAddress: 'F7', endAddress: 'F8' },
+    )
+
+    expect(rollback).toEqual(expect.any(Function))
+    expect(cells.get('Sheet1:F7')).toMatchObject({
+      input: 7,
+      format: '0.00',
+      numberFormatId: 'fmt-source',
+      styleId: 'style-source',
+      value: { tag: ValueTag.Number, value: 7 },
+    })
+    expect(cells.get('Sheet1:F8')).toMatchObject({
+      input: 7,
+      format: '0.00',
+      numberFormatId: 'fmt-source',
+      styleId: 'style-source',
+      value: { tag: ValueTag.Number, value: 7 },
     })
   })
 })

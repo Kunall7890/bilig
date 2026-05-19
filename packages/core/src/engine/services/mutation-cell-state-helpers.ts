@@ -6,6 +6,7 @@ export interface ComparableMutationCellState {
   readonly formula?: string
   readonly value: LiteralInput | null
   readonly format: string | null
+  readonly styleId?: string
   readonly authoredBlank?: boolean
 }
 
@@ -13,19 +14,20 @@ export function readStoredMutationCellState(
   snapshot: CellSnapshot,
   format: string | null,
   cellFlags: number | undefined,
+  styleId?: string,
 ): ComparableMutationCellState {
   if (snapshot.formula !== undefined) {
-    return { formula: snapshot.formula, value: null, format }
+    return { formula: snapshot.formula, value: null, format, ...(styleId !== undefined ? { styleId } : {}) }
   }
   const authoredBlank = ((cellFlags ?? 0) & CellFlags.AuthoredBlank) !== 0
   switch (snapshot.value.tag) {
     case ValueTag.Number:
     case ValueTag.Boolean:
     case ValueTag.String:
-      return { value: snapshot.value.value, format }
+      return { value: snapshot.value.value, format, ...(styleId !== undefined ? { styleId } : {}) }
     case ValueTag.Empty:
     case ValueTag.Error:
-      return { value: null, format, authoredBlank }
+      return { value: null, format, authoredBlank, ...(styleId !== undefined ? { styleId } : {}) }
   }
 }
 
@@ -36,8 +38,10 @@ export function readDesiredMutationCellState(args: {
   readonly sourceSheetName?: string
   readonly sourceAddress?: string
   readonly formatOverride?: string | null
+  readonly styleIdOverride?: string
 }): ComparableMutationCellState {
   const format = args.formatOverride ?? args.snapshot.format ?? null
+  const styleId = args.styleIdOverride ?? args.snapshot.styleId
   if (args.snapshot.formula !== undefined) {
     return {
       formula:
@@ -52,19 +56,21 @@ export function readDesiredMutationCellState(args: {
           : args.snapshot.formula,
       value: null,
       format,
+      ...(styleId !== undefined ? { styleId } : {}),
     }
   }
   switch (args.snapshot.value.tag) {
     case ValueTag.Number:
     case ValueTag.Boolean:
     case ValueTag.String:
-      return { value: args.snapshot.value.value, format }
+      return { value: args.snapshot.value.value, format, ...(styleId !== undefined ? { styleId } : {}) }
     case ValueTag.Empty:
     case ValueTag.Error:
       return {
         value: null,
         format,
         authoredBlank: (args.snapshot.flags & CellFlags.AuthoredBlank) !== 0,
+        ...(styleId !== undefined ? { styleId } : {}),
       }
   }
 }
@@ -102,6 +108,7 @@ export function shouldApplyMutationCellState(current: ComparableMutationCellStat
     current.formula !== desired.formula ||
     current.value !== desired.value ||
     current.format !== desired.format ||
+    current.styleId !== desired.styleId ||
     (current.authoredBlank ?? false) !== (desired.authoredBlank ?? false)
   )
 }

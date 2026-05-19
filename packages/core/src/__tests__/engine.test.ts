@@ -454,6 +454,55 @@ describe('SpreadsheetEngine', () => {
     )
   })
 
+  it('copies, fills, and moves cell presentation without leaving stale target fills', async () => {
+    const engine = new SpreadsheetEngine({ workbookName: 'range-style-state' })
+    await engine.ready()
+    engine.createSheet('Sheet1')
+    engine.setCellValue('Sheet1', 'B2', 'styled')
+    engine.setCellValue('Sheet1', 'B3', 'plain')
+    engine.setCellValue('Sheet1', 'D2', 'target')
+    engine.setCellValue('Sheet1', 'D3', 'target')
+    engine.setRangeStyle({ sheetName: 'Sheet1', startAddress: 'B2', endAddress: 'B2' }, { fill: { backgroundColor: '#34a853' } })
+    engine.setRangeNumberFormat({ sheetName: 'Sheet1', startAddress: 'B2', endAddress: 'B2' }, '0.00')
+    engine.setRangeStyle({ sheetName: 'Sheet1', startAddress: 'D2', endAddress: 'D3' }, { fill: { backgroundColor: '#93c5fd' } })
+    engine.setRangeNumberFormat({ sheetName: 'Sheet1', startAddress: 'D2', endAddress: 'D3' }, '$0')
+
+    engine.copyRange(
+      { sheetName: 'Sheet1', startAddress: 'B2', endAddress: 'B3' },
+      { sheetName: 'Sheet1', startAddress: 'D2', endAddress: 'D3' },
+    )
+
+    expect(engine.getCellStyle(engine.getCell('Sheet1', 'D2').styleId)?.fill?.backgroundColor).toBe('#34a853')
+    expect(engine.getCell('Sheet1', 'D2').format).toBe('0.00')
+    expect(engine.getCell('Sheet1', 'D3').styleId).toBeUndefined()
+    expect(engine.getCell('Sheet1', 'D3').format).toBeUndefined()
+
+    engine.setCellValue('Sheet1', 'F2', 'fill-target')
+    engine.setRangeStyle({ sheetName: 'Sheet1', startAddress: 'F2', endAddress: 'F3' }, { fill: { backgroundColor: '#93c5fd' } })
+    engine.setRangeNumberFormat({ sheetName: 'Sheet1', startAddress: 'F2', endAddress: 'F3' }, '$0')
+    engine.fillRange(
+      { sheetName: 'Sheet1', startAddress: 'B2', endAddress: 'B2' },
+      { sheetName: 'Sheet1', startAddress: 'F2', endAddress: 'F3' },
+    )
+
+    expect(engine.getCellStyle(engine.getCell('Sheet1', 'F2').styleId)?.fill?.backgroundColor).toBe('#34a853')
+    expect(engine.getCellStyle(engine.getCell('Sheet1', 'F3').styleId)?.fill?.backgroundColor).toBe('#34a853')
+    expect(engine.getCell('Sheet1', 'F2').format).toBe('0.00')
+    expect(engine.getCell('Sheet1', 'F3').format).toBe('0.00')
+
+    engine.moveRange(
+      { sheetName: 'Sheet1', startAddress: 'F2', endAddress: 'F2' },
+      { sheetName: 'Sheet1', startAddress: 'H2', endAddress: 'H2' },
+    )
+
+    expect(engine.getCellValue('Sheet1', 'F2')).toEqual({ tag: ValueTag.Empty })
+    expect(engine.getCell('Sheet1', 'F2').styleId).toBeUndefined()
+    expect(engine.getCell('Sheet1', 'F2').format).toBeUndefined()
+    expect(engine.getCellValue('Sheet1', 'H2')).toMatchObject({ tag: ValueTag.String, value: 'styled' })
+    expect(engine.getCellStyle(engine.getCell('Sheet1', 'H2').styleId)?.fill?.backgroundColor).toBe('#34a853')
+    expect(engine.getCell('Sheet1', 'H2').format).toBe('0.00')
+  })
+
   it('treats copying empty cells into tracked empty dependencies as a history no-op', async () => {
     const seed = new SpreadsheetEngine({ workbookName: 'copy-undo-empty-targets-seed' })
     await seed.ready()

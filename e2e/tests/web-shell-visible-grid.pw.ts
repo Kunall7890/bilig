@@ -5,6 +5,7 @@ import {
   PRIMARY_MODIFIER,
   clickProductCell,
   createTestDocumentId,
+  dragProductBodySelection,
   getProductColumnLeft,
   getProductColumnWidth,
   getProductRowHeight,
@@ -368,6 +369,67 @@ test('@browser-ci web app repaints moved text cells when a background fill is ap
   await expect.poll(() => nativeTextRunTextAt(page, 3, 3)).toBe(movedText)
 })
 
+test('@browser-ci web app copies presentation and clears stale target fills in visible tiles', async ({ page, context }) => {
+  const documentId = createTestDocumentId('playwright-copy-presentation-repaint')
+  await context.grantPermissions(['clipboard-read', 'clipboard-write'])
+  await page.setViewportSize({ width: 1166, height: 820 })
+  await page.goto(`/?document=${encodeURIComponent(documentId)}&persist=0&sheet=Sheet1&cell=A1`)
+  await waitForWorkbookReady(page)
+
+  const grid = page.getByTestId('sheet-grid')
+  const formulaInput = page.getByTestId('formula-input')
+
+  await clickProductCell(page, 1, 1)
+  await formulaInput.fill('styled-source')
+  await formulaInput.press('Enter')
+  await pickToolbarPresetColor(page, 'Fill color', 'green')
+  await expect
+    .poll(() => countGreenFillPixelsInCell(page, 1, 1), {
+      message: 'styled source B2 should visibly paint the selected green fill',
+      timeout: 5_000,
+    })
+    .toBeGreaterThan(120)
+
+  await clickProductCell(page, 1, 2)
+  await formulaInput.fill('plain-source')
+  await formulaInput.press('Enter')
+
+  await clickProductCell(page, 3, 1)
+  await formulaInput.fill('stale-target-one')
+  await formulaInput.press('Enter')
+  await clickProductCell(page, 3, 2)
+  await formulaInput.fill('stale-target-two')
+  await formulaInput.press('Enter')
+  await dragProductBodySelection(page, 3, 1, 3, 2)
+  await pickToolbarPresetColor(page, 'Fill color', 'blue')
+  await expect
+    .poll(() => countBlueFillPixelsInCell(page, 3, 2), {
+      message: 'test setup should visibly paint stale blue fill before the copy clears it',
+      timeout: 5_000,
+    })
+    .toBeGreaterThan(120)
+
+  await dragProductBodySelection(page, 1, 1, 1, 2)
+  await grid.press(`${PRIMARY_MODIFIER}+C`)
+  await clickProductCell(page, 3, 1)
+  await grid.press(`${PRIMARY_MODIFIER}+V`)
+
+  await expect.poll(() => nativeTextRunTextAt(page, 3, 1)).toBe('styled-source')
+  await expect.poll(() => nativeTextRunTextAt(page, 3, 2)).toBe('plain-source')
+  await expect
+    .poll(() => countGreenFillPixelsInCell(page, 3, 1), {
+      message: 'copying B2 over D2 must repaint the target tile with source presentation',
+      timeout: 5_000,
+    })
+    .toBeGreaterThan(120)
+  await expect
+    .poll(() => countBlueFillPixelsInCell(page, 3, 2), {
+      message: 'copying plain B3 over D3 must clear the stale target fill from the visible tile',
+      timeout: 5_000,
+    })
+    .toBeLessThan(12)
+})
+
 function createDenseAccountingGridClipboardText(): string {
   return Array.from({ length: 48 }, (_, rowIndex) => {
     const rowNumber = rowIndex + 1
@@ -692,6 +754,14 @@ async function nativeTextRunTextAt(page: Page, columnIndex: number, rowIndex: nu
 }
 
 async function countGreenFillPixelsInCell(page: Page, columnIndex: number, rowIndex: number): Promise<number> {
+  return await countFillPixelsInCell(page, columnIndex, rowIndex, 'green')
+}
+
+async function countBlueFillPixelsInCell(page: Page, columnIndex: number, rowIndex: number): Promise<number> {
+  return await countFillPixelsInCell(page, columnIndex, rowIndex, 'blue')
+}
+
+async function countFillPixelsInCell(page: Page, columnIndex: number, rowIndex: number, color: 'blue' | 'green'): Promise<number> {
   const gridLocator = page.getByTestId('sheet-grid')
   await expect(gridLocator).toBeVisible()
   const grid = await gridLocator.boundingBox()
@@ -721,7 +791,7 @@ async function countGreenFillPixelsInCell(page: Page, columnIndex: number, rowIn
   })
 
   return await page.evaluate(
-    async ({ dataUrl }) => {
+    async ({ dataUrl, targetColor }) => {
       const image = await new Promise<HTMLImageElement>((resolve, reject) => {
         const element = new Image()
         element.addEventListener('load', () => resolve(element), { once: true })
@@ -737,19 +807,22 @@ async function countGreenFillPixelsInCell(page: Page, columnIndex: number, rowIn
       }
       context.drawImage(image, 0, 0)
       const pixels = context.getImageData(0, 0, canvas.width, canvas.height).data
-      let greenPixels = 0
+      let matchingPixels = 0
       for (let index = 0; index < pixels.length; index += 4) {
         const alpha = pixels[index + 3] ?? 0
         const red = pixels[index] ?? 255
         const green = pixels[index + 1] ?? 0
         const blue = pixels[index + 2] ?? 255
-        if (alpha > 220 && red < 110 && green > 135 && blue < 120) {
-          greenPixels += 1
+        if (targetColor === 'green' && alpha > 220 && red < 110 && green > 135 && blue < 120) {
+          matchingPixels += 1
+        }
+        if (targetColor === 'blue' && alpha > 220 && red < 120 && green < 120 && blue > 135) {
+          matchingPixels += 1
         }
       }
-      return greenPixels
+      return matchingPixels
     },
-    { dataUrl: `data:image/png;base64,${buffer.toString('base64')}` },
+    { dataUrl: `data:image/png;base64,${buffer.toString('base64')}`, targetColor: color },
   )
 }
 

@@ -163,6 +163,7 @@ export function applyOptimisticCopyRange(
               stagedSnapshots.get(optimisticSnapshotKey(sheetName, address)) ?? viewportStore.getCell(sheetName, address),
           }),
       })
+      applyCopiedSnapshotPresentation(next, sourceSnapshot)
       previousSnapshots.push(targetSnapshot)
       stagedSnapshots.set(optimisticSnapshotKey(target.sheetName, targetAddress), next)
       nextSnapshots.push(next)
@@ -238,6 +239,7 @@ export function applyOptimisticFillRange(
               stagedSnapshots.get(optimisticSnapshotKey(sheetName, address)) ?? viewportStore.getCell(sheetName, address),
           }),
       })
+      applyCopiedSnapshotPresentation(next, sourceSnapshot)
       previousSnapshots.push(targetSnapshot)
       stagedSnapshots.set(optimisticSnapshotKey(target.sheetName, targetAddress), next)
       nextSnapshots.push(next)
@@ -331,6 +333,24 @@ function parsedInputForCopiedSnapshot(
     }
   }
   return parsedEditorInputFromSnapshot(snapshot)
+}
+
+function applyCopiedSnapshotPresentation(target: CellSnapshot, source: CellSnapshot): void {
+  if (source.format === undefined) {
+    delete target.format
+  } else {
+    target.format = source.format
+  }
+  if (source.numberFormatId === undefined) {
+    delete target.numberFormatId
+  } else {
+    target.numberFormatId = source.numberFormatId
+  }
+  if (source.styleId === undefined) {
+    delete target.styleId
+  } else {
+    target.styleId = source.styleId
+  }
 }
 
 function optimisticSnapshotKey(sheetName: string, address: string): string {
