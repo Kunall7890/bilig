@@ -351,7 +351,7 @@ describe('public workbook recent complex headless corpus gate', () => {
     expect(summary.commands.discoverGithub).toContain('--skip-code-search')
     expect(summary.commands.discoverGithub).toContain('--max-repository-pages-per-query 3')
     expect(summary.commands.discoverZenodo).toContain('discover-recent-complex-zenodo')
-    expect(summary.commands.discoverZenodo).toContain('--max-pages-per-query 3')
+    expect(summary.commands.discoverZenodo).toContain('--max-pages-per-query 20')
     expect(validatePublicWorkbookCorpusRecentComplexSummary(summary)).toContain(
       'manifest target workbook count is below the recent complex target',
     )

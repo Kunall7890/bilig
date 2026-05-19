@@ -14,6 +14,10 @@ function encodePushString(stringId: number): number {
   return (Opcode.PushString << 24) | stringId
 }
 
+function encodePushError(code: ErrorCode): number {
+  return (Opcode.PushError << 24) | code
+}
+
 function encodeRet(): number {
   return Opcode.Ret << 24
 }
@@ -262,6 +266,43 @@ describe('wasm kernel scalar math dispatch', () => {
     expect(kernel.readNumbers()[cellIndex(1, 20, width)]).toBeCloseTo(1, 12)
     expect(kernel.readNumbers()[cellIndex(1, 21, width)]).toBe(-1)
     expect(kernel.readNumbers()[cellIndex(1, 22, width)]).toBeCloseTo(-2, 12)
+  })
+
+  it('returns Excel-compatible log errors through wasm dispatch', async () => {
+    const kernel = await createKernel()
+    const width = 16
+    kernel.init(32, 2, 8, 1, 1)
+    const strings = packStrings(['bad'])
+    kernel.uploadStrings(strings.offsets, strings.lengths, strings.data)
+    kernel.writeCells(new Uint8Array(32), new Float64Array(32), new Uint32Array(32), new Uint16Array(32))
+
+    const packed = packPrograms([
+      [encodePushNumber(0), encodeCall(BuiltinId.Ln, 1), encodeRet()],
+      [encodePushNumber(0), encodeCall(BuiltinId.Log10, 1), encodeRet()],
+      [encodePushNumber(0), encodePushNumber(1), encodeCall(BuiltinId.Log, 2), encodeRet()],
+      [encodePushError(ErrorCode.Name), encodeCall(BuiltinId.Log, 1), encodeRet()],
+      [encodePushString(0), encodeCall(BuiltinId.Log, 1), encodeRet()],
+    ])
+    kernel.uploadPrograms(
+      packed.programs,
+      packed.offsets,
+      packed.lengths,
+      Uint32Array.from(Array.from({ length: 5 }, (_, index) => cellIndex(1, index, width))),
+    )
+    const constants = packConstants([[-1], [0], [10, 1], [], []])
+    kernel.uploadConstants(constants.constants, constants.offsets, constants.lengths)
+    kernel.evalBatch(Uint32Array.from(Array.from({ length: 5 }, (_, index) => cellIndex(1, index, width))))
+
+    expect(kernel.readTags()[cellIndex(1, 0, width)]).toBe(ValueTag.Error)
+    expect(kernel.readErrors()[cellIndex(1, 0, width)]).toBe(ErrorCode.Num)
+    expect(kernel.readTags()[cellIndex(1, 1, width)]).toBe(ValueTag.Error)
+    expect(kernel.readErrors()[cellIndex(1, 1, width)]).toBe(ErrorCode.Num)
+    expect(kernel.readTags()[cellIndex(1, 2, width)]).toBe(ValueTag.Error)
+    expect(kernel.readErrors()[cellIndex(1, 2, width)]).toBe(ErrorCode.Num)
+    expect(kernel.readTags()[cellIndex(1, 3, width)]).toBe(ValueTag.Error)
+    expect(kernel.readErrors()[cellIndex(1, 3, width)]).toBe(ErrorCode.Name)
+    expect(kernel.readTags()[cellIndex(1, 4, width)]).toBe(ValueTag.Error)
+    expect(kernel.readErrors()[cellIndex(1, 4, width)]).toBe(ErrorCode.Value)
   })
 
   it('keeps bessel and combinatorics dispatch stable across refactors', async () => {

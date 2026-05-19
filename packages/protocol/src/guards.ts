@@ -29,7 +29,8 @@ function isErrorCode(value: unknown): value is ErrorCode {
     value === ErrorCode.NA ||
     value === ErrorCode.Cycle ||
     value === ErrorCode.Spill ||
-    value === ErrorCode.Blocked
+    value === ErrorCode.Blocked ||
+    value === ErrorCode.Num
   )
 }
 

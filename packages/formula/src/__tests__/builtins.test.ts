@@ -95,6 +95,21 @@ describe('formula builtins', () => {
     })
   })
 
+  it('matches Excel log error semantics', () => {
+    const LN = getBuiltin('LN')!
+    const LOG10 = getBuiltin('LOG10')!
+    const LOG = getBuiltin('LOG')!
+    const number = (value: number): CellValue => ({ tag: ValueTag.Number, value })
+    const error = (code: ErrorCode): CellValue => ({ tag: ValueTag.Error, code })
+
+    expect(LN(number(-1))).toEqual(error(ErrorCode.Num))
+    expect(LN(number(0))).toEqual(error(ErrorCode.Num))
+    expect(LOG10(number(0))).toEqual(error(ErrorCode.Num))
+    expect(LOG(number(-1))).toEqual(error(ErrorCode.Num))
+    expect(LOG(number(10), number(1))).toEqual(error(ErrorCode.Num))
+    expect(LOG(error(ErrorCode.Name))).toEqual(error(ErrorCode.Name))
+  })
+
   it('supports SEQUENCE spill generation and validation', () => {
     const SEQUENCE = getBuiltin('SEQUENCE')!
 
@@ -157,7 +172,7 @@ describe('formula builtins', () => {
     expectNumeric(bessely, 0.145918138)
     expect(BESSELK({ tag: ValueTag.Number, value: -1 }, { tag: ValueTag.Number, value: 1 })).toEqual({
       tag: ValueTag.Error,
-      code: ErrorCode.Value,
+      code: ErrorCode.Num,
     })
   })
 
@@ -895,7 +910,7 @@ describe('formula builtins', () => {
     })
     expect(getBuiltin('LN')?.({ tag: ValueTag.Number, value: 0 })).toEqual({
       tag: ValueTag.Error,
-      code: ErrorCode.Value,
+      code: ErrorCode.Num,
     })
     expect(getBuiltin('SQRT')?.({ tag: ValueTag.Number, value: -1 })).toEqual({
       tag: ValueTag.Error,
@@ -1724,7 +1739,7 @@ describe('formula builtins', () => {
     })
     expect(getBuiltin('LOG10')?.({ tag: ValueTag.Number, value: -1 })).toEqual({
       tag: ValueTag.Error,
-      code: ErrorCode.Value,
+      code: ErrorCode.Num,
     })
     expect(getBuiltin('LOG')?.({ tag: ValueTag.Number, value: 8 }, { tag: ValueTag.Number, value: 2 })).toEqual({
       tag: ValueTag.Number,

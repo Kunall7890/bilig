@@ -506,7 +506,7 @@ function recentComplexCommands(
       '--per-page',
       '100',
       '--max-pages-per-query',
-      '3',
+      '20',
     ]),
     fetch: formatShellCommand([
       'bun',

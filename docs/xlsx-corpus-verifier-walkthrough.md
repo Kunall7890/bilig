@@ -183,20 +183,20 @@ Latest local evidence from May 19, 2026:
 ```json
 {
   "targetWorkbookCount": 500,
-  "manifestSourceCount": 4051,
-  "manifestArtifactCount": 3001,
-  "publicScorecardCaseCount": 3001,
-  "publicPassingRecentComplexCount": 296,
-  "headlessFileCount": 296,
-  "headlessOkFileCount": 296,
-  "headlessComparableFormulaFileCount": 296,
-  "endToEndPassingWorkbookCount": 296,
-  "remainingToTarget": 204,
-  "formulaCells": 204243,
-  "comparableFormulaCells": 203244,
-  "matchingFormulaCells": 203244,
+  "manifestSourceCount": 4930,
+  "manifestArtifactCount": 3345,
+  "publicScorecardCaseCount": 3345,
+  "publicPassingRecentComplexCount": 351,
+  "headlessFileCount": 351,
+  "headlessOkFileCount": 351,
+  "headlessComparableFormulaFileCount": 351,
+  "endToEndPassingWorkbookCount": 351,
+  "remainingToTarget": 149,
+  "formulaCells": 311274,
+  "comparableFormulaCells": 310227,
+  "matchingFormulaCells": 310227,
   "mismatchedFormulaCells": 0,
-  "skippedFormulaCells": 999
+  "skippedFormulaCells": 1047
 }
 ```
 
