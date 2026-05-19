@@ -86,7 +86,7 @@ crawlers that probe those well-known variants.
 
 | Directory                       | Status                                                                | Link                                                                                                            |
 | ------------------------------- | --------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------- |
-| Official MCP Registry           | Live through `0.25.2` in public search when requesting enough results | <https://registry.modelcontextprotocol.io/v0.1/servers?search=io.github.proompteng%2Fbilig-workpaper&limit=100> |
+| Official MCP Registry           | Live; latest-marked registry entry may lag npm releases               | <https://registry.modelcontextprotocol.io/v0.1/servers?search=io.github.proompteng%2Fbilig-workpaper&limit=100> |
 | Hosted Streamable HTTP endpoint | App runtime endpoint for JSON-only stateless MCP smoke tests          | <https://bilig.proompteng.ai/mcp>                                                                               |
 | Static MCP server card          | Live                                                                  | <https://proompteng.github.io/bilig/.well-known/mcp/server-card.json>                                           |
 | Static MCP discovery aliases    | Live                                                                  | <https://proompteng.github.io/bilig/.well-known/mcp.json>                                                       |
@@ -186,11 +186,11 @@ A useful result includes:
 - `repository.url: https://github.com/proompteng/bilig`
 
 Latest checked result on May 19, 2026: npm latest is `@bilig/headless@0.25.2`.
-Official Registry search returns Bilig WorkPaper version `0.25.2` when the
-query asks for enough results, for example with `limit=100`. The API also
-returns historical entries, so consumers should follow pagination, request a
-sufficient limit, select the latest-marked entry when available, or prefer the
-npm package version when they need a single freshest install coordinate.
+Official Registry search returns Bilig WorkPaper entries, but the latest-marked entry can lag npm.
+The API also returns historical entries, so consumers should follow pagination,
+request a sufficient limit, select the latest-marked entry when available, or
+prefer the npm package version when they need a single freshest install
+coordinate.
 
 The package itself carries the matching `mcpName` field. That is the ownership
 signal the registry uses for npm package validation.
