@@ -59,6 +59,10 @@ before opening Excel, LibreOffice, Google Sheets, or a screenshot UI.
 Agent tools that support skill manifests can start from
 [`skill.md`](docs/skill.md) or the well-known index at
 [`docs/.well-known/agent-skills/index.json`](docs/.well-known/agent-skills/index.json).
+If you need a copy-paste eval for another tool host, use the
+[agent workbook challenge](docs/agent-workbook-challenge.md): one input edit,
+one dependent formula readback, one serialized restore, and a `verified: true`
+proof object.
 
 <p align="center">
   <img src="docs/assets/github-social-preview.png" alt="bilig headless workbook runtime for formulas in TypeScript" />

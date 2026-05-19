@@ -360,6 +360,7 @@ If any proof step fails, report the blocker instead of claiming the workbook was
 - Compact docs map: ${siteRoot}/llms.txt
 - Full agent context: ${siteRoot}/llms-full.txt
 - Agent handbook: ${siteRoot}/headless-workpaper-agent-handbook.html
+- Agent workbook challenge: ${siteRoot}/agent-workbook-challenge.html
 - MCP server guide: ${siteRoot}/mcp-workpaper-tool-server.html
 - XLSX formula clinic: ${siteRoot}/formula-bug-clinic.html
 - Compatibility limits: ${siteRoot}/where-bilig-is-not-excel-compatible-yet.html
@@ -382,6 +383,11 @@ const llmsFullSources = [
     title: 'Headless WorkPaper Agent Handbook',
     relativePath: 'docs/headless-workpaper-agent-handbook.md',
     url: `${repositoryUrl}/blob/main/docs/headless-workpaper-agent-handbook.md`,
+  },
+  {
+    title: 'Agent Workbook Challenge',
+    relativePath: 'docs/agent-workbook-challenge.md',
+    url: `${repositoryUrl}/blob/main/docs/agent-workbook-challenge.md`,
   },
   {
     title: 'Agent WorkPaper Tool-Calling Recipe',
@@ -565,6 +571,7 @@ function agentJsonManifest(): string {
         `${siteRoot}/`,
         `${siteRoot}/why-use-bilig.html`,
         `${siteRoot}/headless-workpaper-agent-handbook.html`,
+        `${siteRoot}/agent-workbook-challenge.html`,
         `${siteRoot}/mcp-workpaper-tool-server.html`,
         remoteMcpEndpoint,
         `${siteRoot}/agent-workpaper-tool-calling-recipe.html`,

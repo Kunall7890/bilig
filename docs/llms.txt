@@ -85,6 +85,7 @@ restoring it, and confirming the restored value matches. Return `editedCell`,
 - https://proompteng.github.io/bilig/google-sheets-api-alternative-node-workpaper.html
 - https://proompteng.github.io/bilig/why-agents-need-workbook-apis.html
 - https://proompteng.github.io/bilig/headless-workpaper-agent-handbook.html
+- https://proompteng.github.io/bilig/agent-workbook-challenge.html
 - https://proompteng.github.io/bilig/vercel-ai-sdk-langchain-spreadsheet-tool.html
 - https://proompteng.github.io/bilig/mastra-workpaper-spreadsheet-tool.html
 - https://proompteng.github.io/bilig/llamaindex-workpaper-spreadsheet-tool.html
@@ -139,6 +140,7 @@ restoring it, and confirming the restored value matches. Return `editedCell`,
 - https://github.com/proompteng/bilig/blob/main/docs/csv-shaped-workpaper-input-recipe.md
 - https://github.com/proompteng/bilig/blob/main/docs/unsupported-formula-troubleshooting-recipe.md
 - https://github.com/proompteng/bilig/blob/main/docs/headless-workpaper-agent-handbook.md
+- https://github.com/proompteng/bilig/blob/main/docs/agent-workbook-challenge.md
 - https://github.com/proompteng/bilig/blob/main/docs/agent-workpaper-tool-calling-recipe.md
 - https://github.com/proompteng/bilig/blob/main/docs/openai-responses-workpaper-tool-call.md
 - https://github.com/proompteng/bilig/blob/main/docs/mcp-workpaper-tool-server.md

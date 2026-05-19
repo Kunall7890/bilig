@@ -141,6 +141,7 @@ If any proof step fails, report the blocker instead of claiming the workbook was
 - Compact docs map: https://proompteng.github.io/bilig/llms.txt
 - Full agent context: https://proompteng.github.io/bilig/llms-full.txt
 - Agent handbook: https://proompteng.github.io/bilig/headless-workpaper-agent-handbook.html
+- Agent workbook challenge: https://proompteng.github.io/bilig/agent-workbook-challenge.html
 - MCP server guide: https://proompteng.github.io/bilig/mcp-workpaper-tool-server.html
 - XLSX formula clinic: https://proompteng.github.io/bilig/formula-bug-clinic.html
 - Compatibility limits: https://proompteng.github.io/bilig/where-bilig-is-not-excel-compatible-yet.html
