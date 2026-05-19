@@ -4,6 +4,19 @@ All notable changes to `@bilig/headless` will be documented in this file.
 
 This package is released as part of the aligned bilig library package set.
 
+## 0.26.1
+
+- Release type: patch
+- Previous libraries tag: libraries-v0.26.0
+- Manual override: no
+
+## Fixes
+- perf(headless): split mcp exports from main entry (32a5dc8b)
+- fix(release): upload headless mcpb assets (40288dd4)
+
+## Internal runtime changes
+- docs(discovery): sync runtime package 0.26.0 (09ec7e80)
+
 ## 0.26.0
 
 - Release type: minor
