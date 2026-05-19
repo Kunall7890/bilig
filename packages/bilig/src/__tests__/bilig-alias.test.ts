@@ -3,8 +3,8 @@ import { describe, expect, it } from 'vitest'
 import { WorkPaper } from '../index.js'
 import { exportXlsx, importXlsx } from '../xlsx.js'
 
-describe('bilig package alias', () => {
-  it('exposes the WorkPaper runtime and XLSX helpers through the short package name', () => {
+describe('bilig-workpaper package alias', () => {
+  it('exposes the WorkPaper runtime and XLSX helpers through the unscoped package name', () => {
     const workbook = WorkPaper.buildFromSheets({
       Inputs: [
         ['Metric', 'Value'],

@@ -21,11 +21,11 @@ describe('workspace resolution', () => {
       packageDir: 'packages/formula',
       sourceEntry: 'packages/formula/src/external-function-adapter.ts',
     })
-    expect(resolution['bilig']).toEqual({
+    expect(resolution['bilig-workpaper']).toEqual({
       packageDir: 'packages/bilig',
       sourceEntry: 'packages/bilig/src/index.ts',
     })
-    expect(resolution['bilig/xlsx']).toEqual({
+    expect(resolution['bilig-workpaper/xlsx']).toEqual({
       packageDir: 'packages/bilig',
       sourceEntry: 'packages/bilig/src/xlsx.ts',
     })

@@ -164,7 +164,7 @@ function runNodeSmoke(
     readback: number
     workbookMutated: boolean
   }
-  biligAlias: {
+  biligWorkpaper: {
     revenue: number
     sheetNames: string[]
     verified: boolean
@@ -415,12 +415,14 @@ function runNodeSmoke(
     ].join('\n'),
   )
   writeXlsxImportScript(projectDir)
-  writeBiligAliasScript(projectDir)
+  writeBiligWorkpaperScript(projectDir)
   writeExceljsFormulaRecalcScript(projectDir)
 
   installTarballs(projectDir, tarballPaths, ['exceljs@4.4.0'])
   const npmEval = parseNodeNpmEvalOutput(runTextCommand('npm', ['run', '--silent', 'npm-eval'], { cwd: projectDir }))
-  const biligAlias = parseNodeBiligAliasOutput(runTextCommand('npx', ['--no-install', 'tsx', 'bilig-alias.ts'], { cwd: projectDir }))
+  const biligWorkpaper = parseNodeBiligWorkpaperOutput(
+    runTextCommand('npx', ['--no-install', 'tsx', 'bilig-workpaper.ts'], { cwd: projectDir }),
+  )
   const exceljsFormulaRecalc = parseNodeExceljsFormulaRecalcOutput(
     runTextCommand('npx', ['--no-install', 'tsx', 'exceljs-formula-recalc.ts'], { cwd: projectDir }),
   )
@@ -517,7 +519,7 @@ function runNodeSmoke(
     packageMcpStdio,
     persistence,
     projectDir,
-    biligAlias,
+    biligWorkpaper,
     exceljsFormulaRecalc,
     npmEval,
     rangeReadback,
@@ -530,12 +532,12 @@ function runNodeSmoke(
   }
 }
 
-function writeBiligAliasScript(projectDir: string): void {
+function writeBiligWorkpaperScript(projectDir: string): void {
   writeFileSync(
-    join(projectDir, 'bilig-alias.ts'),
+    join(projectDir, 'bilig-workpaper.ts'),
     [
-      'import { WorkPaper } from "bilig";',
-      'import { exportXlsx, importXlsx } from "bilig/xlsx";',
+      'import { WorkPaper } from "bilig-workpaper";',
+      'import { exportXlsx, importXlsx } from "bilig-workpaper/xlsx";',
       '',
       'const workbook = WorkPaper.buildFromSheets({',
       '  Inputs: [[',
@@ -560,15 +562,15 @@ function writeBiligAliasScript(projectDir: string): void {
   )
 }
 
-function parseNodeBiligAliasOutput(output: string): { revenue: number; sheetNames: string[]; verified: boolean } {
-  const parsed = parseJsonRecord(output, 'bilig alias smoke output')
+function parseNodeBiligWorkpaperOutput(output: string): { revenue: number; sheetNames: string[]; verified: boolean } {
+  const parsed = parseJsonRecord(output, 'bilig-workpaper smoke output')
   if (
     typeof parsed.revenue !== 'number' ||
     !Array.isArray(parsed.sheetNames) ||
     !parsed.sheetNames.every((entry) => typeof entry === 'string') ||
     parsed.verified !== true
   ) {
-    throw new Error(`Unexpected bilig alias smoke output: ${output}`)
+    throw new Error(`Unexpected bilig-workpaper smoke output: ${output}`)
   }
   return {
     revenue: parsed.revenue,

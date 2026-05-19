@@ -79,7 +79,7 @@ describe('syncRuntimePackageVersions', () => {
 
 function packageNameForDir(packageDir: string): string {
   if (packageDir === 'packages/bilig') {
-    return 'bilig'
+    return 'bilig-workpaper'
   }
   if (packageDir === 'packages/xlsx-formula-recalc') {
     return 'xlsx-formula-recalc'

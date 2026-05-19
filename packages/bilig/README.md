@@ -1,19 +1,19 @@
-# bilig
+# bilig-workpaper
 
-Formula WorkPaper runtime for Node.js services, agent tools, and server-side spreadsheet formulas.
+Bilig WorkPaper runtime for Node.js services, agent tools, and server-side spreadsheet formulas.
 
-This is the short npm name for the Bilig headless runtime. Use it when business logic is easiest to review as workbook cells and formulas, but the calculation needs to run in a backend service, queue worker, serverless route, test, or coding-agent tool.
+This is the unscoped npm entrypoint for the Bilig headless runtime. Use it when business logic is easiest to review as workbook cells and formulas, but the calculation needs to run in a backend service, queue worker, serverless route, test, or coding-agent tool.
 
 ## Install
 
 ```sh
-npm install bilig
+npm install bilig-workpaper
 ```
 
 ## Use A WorkPaper In Node
 
 ```ts
-import { WorkPaper } from 'bilig'
+import { WorkPaper } from 'bilig-workpaper'
 
 const workbook = WorkPaper.buildFromSheets({
   Inputs: [
@@ -46,8 +46,8 @@ workbook.dispose()
 ## XLSX Import And Export
 
 ```ts
-import { WorkPaper } from 'bilig'
-import { exportXlsx, importXlsx } from 'bilig/xlsx'
+import { WorkPaper } from 'bilig-workpaper'
+import { exportXlsx, importXlsx } from 'bilig-workpaper/xlsx'
 ```
 
 Use `xlsx-formula-recalc` when you only need to edit and recalculate XLSX files. Use `exceljs-formula-recalc` when you already use ExcelJS and need recalculated formula results after changing inputs.
@@ -55,7 +55,7 @@ Use `xlsx-formula-recalc` when you only need to edit and recalculate XLSX files.
 ## Agent Tools And MCP
 
 ```ts
-import { createWorkPaperMcpServer } from 'bilig/mcp'
+import { createWorkPaperMcpServer } from 'bilig-workpaper/mcp'
 ```
 
 For a runnable starter, use:

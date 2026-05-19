@@ -38,7 +38,7 @@ describe('headless package workflow', () => {
     expect(source).toMatch(/['"]packages\/xlsx-formula-recalc\/\*\*['"]/)
     expect(source).toMatch(/['"]packages\/exceljs-formula-recalc\/\*\*['"]/)
     expect(source).toContain('pnpm --filter @bilig/excel-import build')
-    expect(source).toContain('pnpm --filter bilig build')
+    expect(source).toContain('pnpm --filter bilig-workpaper build')
     expect(source).toContain('pnpm --filter xlsx-formula-recalc build')
     expect(source).toContain('pnpm --filter exceljs-formula-recalc build')
     expect(source).toContain('packages/excel-import/package.json')

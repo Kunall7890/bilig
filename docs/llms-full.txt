@@ -256,11 +256,11 @@ Source: https://github.com/proompteng/bilig/blob/main/README.md
 
 **Formula workbooks for Node services and agent tools.**
 
-Use [`bilig`](https://www.npmjs.com/package/bilig) or
+Use [`bilig-workpaper`](https://www.npmjs.com/package/bilig-workpaper) or
 [`@bilig/headless`](https://www.npmjs.com/package/@bilig/headless) when a
 calculation is easiest to review as cells and formulas, but it has to run in a
 Node service, queue worker, serverless route, test, or coding-agent tool. The
-short `bilig` package re-exports the headless runtime for humans searching npm;
+unscoped `bilig-workpaper` package re-exports the headless runtime for humans searching npm;
 `@bilig/headless` remains the fully qualified runtime package with bundled
 agent metadata.
 

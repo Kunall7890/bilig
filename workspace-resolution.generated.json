@@ -107,15 +107,15 @@
     "packageDir": "packages/zero-sync",
     "sourceEntry": "packages/zero-sync/src/index.ts"
   },
-  "bilig": {
+  "bilig-workpaper": {
     "packageDir": "packages/bilig",
     "sourceEntry": "packages/bilig/src/index.ts"
   },
-  "bilig/mcp": {
+  "bilig-workpaper/mcp": {
     "packageDir": "packages/bilig",
     "sourceEntry": "packages/bilig/src/mcp.ts"
   },
-  "bilig/xlsx": {
+  "bilig-workpaper/xlsx": {
     "packageDir": "packages/bilig",
     "sourceEntry": "packages/bilig/src/xlsx.ts"
   },

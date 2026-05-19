@@ -11,12 +11,15 @@ This package is released as part of the aligned bilig library package set.
 - Manual override: no
 
 ## Features
+
 - feat(package): add unscoped bilig runtime package (e3fd2c02)
 
 ## Fixes
+
 - perf(formula): reduce matched criteria aggregates natively (95da4cf9)
 
 ## Internal runtime changes
+
 - docs(discovery): sync 0.31.1 agent surfaces (37df83a0)
 - docs(discovery): sync 0.31.1 agent surfaces (5ec4853e)
 

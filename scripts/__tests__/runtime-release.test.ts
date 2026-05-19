@@ -197,7 +197,7 @@ describe('runtime release helpers', () => {
     expect(isRuntimePackageContentPath('packages/create-workpaper/bin/create-bilig-workpaper.js')).toBe(true)
   })
 
-  it('publishes the short bilig package name through the common runtime workflow', () => {
+  it('publishes the unscoped bilig-workpaper package through the common runtime workflow', () => {
     expect(RUNTIME_PACKAGE_DIRS).toContain('packages/bilig')
     expect(RUNTIME_NPM_PACKAGE_DIRS).toContain('packages/bilig')
     expect(isRuntimeAffectingPath('packages/bilig/package.json')).toBe(true)

@@ -130,7 +130,7 @@ jobs:
           pnpm --filter @bilig/core build
           pnpm --filter @bilig/excel-import build
           pnpm --filter @bilig/headless build
-          pnpm --filter bilig build
+          pnpm --filter bilig-workpaper build
           pnpm --filter xlsx-formula-recalc build
           pnpm --filter exceljs-formula-recalc build
 
@@ -742,7 +742,7 @@ jobs:
           pnpm --filter @bilig/formula build
           pnpm --filter @bilig/core build
           pnpm --filter @bilig/headless build
-          pnpm --filter bilig build
+          pnpm --filter bilig-workpaper build
           pnpm --filter xlsx-formula-recalc build
           pnpm --filter exceljs-formula-recalc build
 
@@ -808,7 +808,7 @@ jobs:
           pnpm --filter @bilig/core build
           pnpm --filter @bilig/excel-import build
           pnpm --filter @bilig/headless build
-          pnpm --filter bilig build
+          pnpm --filter bilig-workpaper build
           pnpm --filter xlsx-formula-recalc build
           pnpm --filter exceljs-formula-recalc build
 
