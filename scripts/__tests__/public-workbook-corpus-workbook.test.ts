@@ -165,6 +165,18 @@ describe('public workbook corpus workbook helpers', () => {
     expect(footprint.largeSimpleXlsxImport).toEqual({ eligible: true, blockers: [] })
   })
 
+  it('marks value-only XLSX files with OLE object metadata eligible for the large simple import budget', () => {
+    const footprint = inspectWorkbookFootprint(buildWorkbookWithOleObjectMetadata(), 'ole-object.xlsx')
+
+    expect(footprint.featureCounts).toMatchObject({
+      sheetCount: 1,
+      cellCount: 1,
+      formulaCellCount: 0,
+      valueCellCount: 1,
+    })
+    expect(footprint.largeSimpleXlsxImport).toEqual({ eligible: true, blockers: [] })
+  })
+
   it('keeps unsupported data validations out of the large simple import budget', () => {
     const footprint = inspectWorkbookFootprint(buildWorkbookWithUnsupportedDataValidation(), 'unsupported-data-validation.xlsx')
 
@@ -675,6 +687,62 @@ function buildWorkbookWithChartPackage(): Uint8Array {
       ].join(''),
     },
     { path: 'xl/charts/chart1.xml', text: '<c:chartSpace xmlns:c="http://schemas.openxmlformats.org/drawingml/2006/chart"/>' },
+  ])
+}
+
+function buildWorkbookWithOleObjectMetadata(): Uint8Array {
+  return buildZip([
+    {
+      path: 'xl/workbook.xml',
+      text: [
+        '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>',
+        '<workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" ',
+        'xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">',
+        '<sheets><sheet name="Sheet1" sheetId="1" r:id="rId1"/></sheets></workbook>',
+      ].join(''),
+    },
+    {
+      path: 'xl/_rels/workbook.xml.rels',
+      text: [
+        '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>',
+        '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">',
+        '<Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" ',
+        'Target="worksheets/sheet1.xml"/></Relationships>',
+      ].join(''),
+    },
+    {
+      path: 'xl/worksheets/sheet1.xml',
+      text: [
+        '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>',
+        '<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" ',
+        'xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships" ',
+        'xmlns:xdr="http://schemas.openxmlformats.org/drawingml/2006/spreadsheetDrawing" ',
+        'xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006">',
+        '<sheetData><row r="1"><c r="A1"><v>7</v></c></row></sheetData>',
+        '<legacyDrawing r:id="rId2"/>',
+        '<oleObjects><mc:AlternateContent><mc:Choice Requires="x14">',
+        '<oleObject progId="Document" shapeId="1025" r:id="rId3">',
+        '<objectPr defaultSize="0" r:id="rId4"><anchor><xdr:from><xdr:col>1</xdr:col><xdr:row>1</xdr:row></xdr:from>',
+        '<xdr:to><xdr:col>2</xdr:col><xdr:row>2</xdr:row></xdr:to></anchor></objectPr>',
+        '</oleObject></mc:Choice></mc:AlternateContent></oleObjects></worksheet>',
+      ].join(''),
+    },
+    {
+      path: 'xl/worksheets/_rels/sheet1.xml.rels',
+      text: [
+        '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>',
+        '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">',
+        '<Relationship Id="rId2" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/vmlDrawing" ',
+        'Target="../drawings/vmlDrawing1.vml"/>',
+        '<Relationship Id="rId3" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/oleObject" ',
+        'Target="../embeddings/Microsoft_Word_97_-_2003_Document.doc"/>',
+        '<Relationship Id="rId4" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/image" ',
+        'Target="../media/image1.emf"/></Relationships>',
+      ].join(''),
+    },
+    { path: 'xl/drawings/vmlDrawing1.vml', text: '<xml xmlns:v="urn:schemas-microsoft-com:vml"/>' },
+    { path: 'xl/embeddings/Microsoft_Word_97_-_2003_Document.doc', text: 'embedded-doc-fixture' },
+    { path: 'xl/media/image1.emf', text: 'emf-image-fixture' },
   ])
 }
 

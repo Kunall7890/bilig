@@ -16,7 +16,8 @@ import {
   readImportedSheetConditionalFormatsFromWorksheetXml,
 } from './xlsx-conditional-formats.js'
 import { buildImportedCellMetadataReferenceSnapshots, readImportedWorkbookCellMetadataPart } from './xlsx-cell-metadata.js'
-import { legacyCommentThreadSignature, readImportedWorkbookLegacyCommentVml } from './xlsx-comment-vml.js'
+import { legacyCommentThreadSignature, readImportedWorkbookLegacyCommentVmlFromSheetSources } from './xlsx-comment-vml.js'
+import { readImportedWorkbookControlArtifactsFromSheetSources } from './xlsx-control-artifacts.js'
 import { readImportedWorkbookDataModelArtifacts } from './xlsx-data-model-artifacts.js'
 import { readImportedWorkbookDrawingArtifactsFromWorksheetRelationships } from './xlsx-drawing-artifacts.js'
 import { readImportedWorkbookExternalLinkArtifacts } from './xlsx-external-link-artifacts.js'
@@ -33,6 +34,11 @@ import { buildLargeSimpleStyleRanges } from './xlsx-large-simple-style-ranges.js
 import { readLargeSimpleWorkbookStylesFromChunks } from './xlsx-large-simple-styles.js'
 import { ImportedWorkbookStringPool } from './xlsx-large-simple-string-pool.js'
 import { ImportedWorkbookArena, ImportedWorksheetStyleIndexArena, type ImportedWorksheetCellScan } from './xlsx-large-simple-arena.js'
+import {
+  largeSimpleControlArtifactSheetSources,
+  largeSimpleLegacyCommentVmlSheetSources,
+  largeSimpleSlicerConnectionSheetSources,
+} from './xlsx-large-simple-package-artifact-sources.js'
 import {
   parseHeadlessLargeSimpleWorksheetFromChunks,
   type HeadlessLargeSimpleWorksheetScan,
@@ -53,10 +59,7 @@ import {
   type LargeSimpleWorksheetScannedMetadata,
 } from './xlsx-large-simple-worksheet-metadata.js'
 import { readImportedPivotArtifacts } from './xlsx-pivot-artifacts.js'
-import {
-  readImportedWorkbookSlicerConnectionArtifactsFromSheets,
-  type ImportedWorkbookSlicerConnectionSheetSource,
-} from './xlsx-slicer-connection-artifacts.js'
+import { readImportedWorkbookSlicerConnectionArtifactsFromSheets } from './xlsx-slicer-connection-artifacts.js'
 import { readImportedSheetTablesFromRelationshipIds, readImportedSheetTablesFromWorksheetXml } from './xlsx-tables.js'
 import {
   forEachInflatedXlsxZipEntryChunk,
@@ -158,6 +161,7 @@ type LargeSimpleSheetMetadataInput = Pick<
   SheetMetadataSnapshot,
   | 'conditionalFormatArtifacts'
   | 'conditionalFormats'
+  | 'controlArtifacts'
   | 'validations'
   | 'drawingArtifacts'
   | 'filters'
@@ -250,13 +254,6 @@ export function tryImportLargeSimpleXlsx(
   const importedChartDrawingArtifacts =
     materializeCells && hasChartParts
       ? readImportedWorkbookChartDrawingArtifacts(
-          zip,
-          workbookSheets.map((entry) => entry.name),
-        )
-      : null
-  const importedLegacyCommentVmlBySheet =
-    materializeCells && hasLegacyCommentParts
-      ? readImportedWorkbookLegacyCommentVml(
           zip,
           workbookSheets.map((entry) => entry.name),
         )
@@ -470,7 +467,7 @@ export function tryImportLargeSimpleXlsx(
       metadataInput = { ...metadataInput, filters: [...streamedMetadataScan.filters] }
     }
     worksheetBytes = undefined
-    if (materializeSheetsImmediately) {
+    if (materializeSheetsImmediately && !retainedMetadataScan?.controlArtifacts) {
       phaseRecorder.finish('metadata-parsing', metadataParsingStart)
       const snapshotMaterializationStart = phaseRecorder.start()
       appendParsedWorksheet(
@@ -550,11 +547,25 @@ export function tryImportLargeSimpleXlsx(
       : null
   const importedSlicerConnectionArtifacts =
     materializeCells && hasSlicerConnectionParts
-      ? readImportedWorkbookSlicerConnectionArtifactsFromSheets(zip, slicerConnectionSheetSources(scannedWorksheets, worksheetEntries), {
-          workbookXml,
-          workbookRelationshipsXml,
-        })
+      ? readImportedWorkbookSlicerConnectionArtifactsFromSheets(
+          zip,
+          largeSimpleSlicerConnectionSheetSources(scannedWorksheets, worksheetEntries),
+          {
+            workbookXml,
+            workbookRelationshipsXml,
+          },
+        )
       : undefined
+  const importedControlArtifacts = materializeCells
+    ? readImportedWorkbookControlArtifactsFromSheetSources(zip, largeSimpleControlArtifactSheetSources(scannedWorksheets, worksheetEntries))
+    : undefined
+  const importedLegacyCommentVmlBySheet =
+    materializeCells && hasLegacyCommentParts
+      ? readImportedWorkbookLegacyCommentVmlFromSheetSources(
+          zip,
+          largeSimpleLegacyCommentVmlSheetSources(scannedWorksheets, worksheetEntries),
+        )
+      : null
   if (options.releaseZipSource === true) {
     const zipSourceReleaseStart = phaseRecorder.start()
     const zipSourceBytesBeforeRelease = readLazyXlsxZipSourceByteLength(zip)
@@ -591,6 +602,7 @@ export function tryImportLargeSimpleXlsx(
     const drawingArtifacts =
       importedChartDrawingArtifacts?.drawingArtifacts.sheetArtifactsByName.get(scanned.name) ??
       importedDrawingArtifacts?.sheetArtifactsByName.get(scanned.name)
+    const controlArtifacts = importedControlArtifacts?.sheetArtifactsByName.get(scanned.name)
     const pivotArtifacts = importedPivotArtifacts?.sheetArtifactsByName.get(scanned.name)
     const legacyCommentVml = importedLegacyCommentVmlBySheet?.get(scanned.name)
     const parsed = buildParsedWorksheet(
@@ -602,6 +614,7 @@ export function tryImportLargeSimpleXlsx(
       {
         ...scanned.metadataInput,
         ...(drawingArtifacts ? { drawingArtifacts } : {}),
+        ...(controlArtifacts ? { controlArtifacts } : {}),
         ...(pivotArtifacts ? { pivotArtifacts } : {}),
         ...(legacyCommentVml
           ? {
@@ -636,6 +649,7 @@ export function tryImportLargeSimpleXlsx(
     importedChartDrawingArtifacts?.chartArtifacts.chartSheetArtifacts ||
     importedChartDrawingArtifacts?.charts ||
     importedPivotArtifacts?.artifacts ||
+    importedControlArtifacts?.artifacts ||
     sortedImportedTables ||
     styleCatalog.size > 0 ||
     importedDataModelArtifacts ||
@@ -658,6 +672,7 @@ export function tryImportLargeSimpleXlsx(
             : {}),
           ...(importedChartDrawingArtifacts?.charts ? { charts: importedChartDrawingArtifacts.charts } : {}),
           ...(importedPivotArtifacts?.artifacts ? { pivotArtifacts: importedPivotArtifacts.artifacts } : {}),
+          ...(importedControlArtifacts?.artifacts ? { controlArtifacts: importedControlArtifacts.artifacts } : {}),
           ...(sortedImportedTables ? { tables: sortedImportedTables } : {}),
           ...(styleCatalog.size > 0 ? { styles: [...styleCatalog.values()] } : {}),
           ...(importedDataModelArtifacts ? { dataModelArtifacts: importedDataModelArtifacts } : {}),
@@ -761,28 +776,6 @@ function withoutConditionalFormattingXml(
   return Object.keys(retained).length > 0 ? retained : undefined
 }
 
-function slicerConnectionSheetSources(
-  scannedWorksheets: readonly (ScannedWorksheet | undefined)[],
-  worksheetEntries: readonly { readonly path: string }[],
-): ImportedWorkbookSlicerConnectionSheetSource[] {
-  return scannedWorksheets.flatMap((scanned) => {
-    if (!scanned) {
-      return []
-    }
-    const sheetPath = worksheetEntries[scanned.order]?.path
-    if (!sheetPath) {
-      return []
-    }
-    return [
-      {
-        sheetName: scanned.name,
-        sheetPath,
-        ...(scanned.metadataScan?.sheetSlicerListExtXml ? { sheetSlicerListExtXml: scanned.metadataScan.sheetSlicerListExtXml } : {}),
-      },
-    ]
-  })
-}
-
 function appendConditionalFormats(
   input: LargeSimpleSheetMetadataInput,
   conditionalFormats: readonly WorkbookConditionalFormatSnapshot[] | undefined,
@@ -855,6 +848,7 @@ function buildParsedWorksheet(
     ...(styleRanges.length > 0 ? { styleRanges } : {}),
     ...(merges.length > 0 ? { merges } : {}),
     ...(input.drawingArtifacts ? { drawingArtifacts: input.drawingArtifacts } : {}),
+    ...(input.controlArtifacts ? { controlArtifacts: input.controlArtifacts } : {}),
     ...(input.pivotArtifacts ? { pivotArtifacts: input.pivotArtifacts } : {}),
     ...(input.legacyCommentVml ? { legacyCommentVml: input.legacyCommentVml } : {}),
     ...(input.sheetProtection ? { sheetProtection: input.sheetProtection } : {}),

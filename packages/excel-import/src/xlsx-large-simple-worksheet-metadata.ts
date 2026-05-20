@@ -28,13 +28,21 @@ export interface LargeSimpleWorksheetCellMetadataRef {
   readonly vm?: string
 }
 
+export interface LargeSimpleWorksheetControlArtifactsScan {
+  readonly controlsXml: string
+  readonly worksheetRootOpenTag: string
+  readonly legacyDrawingRelationshipId?: string
+}
+
 export interface LargeSimpleWorksheetScannedMetadata {
   readonly cellMetadataRefs?: readonly LargeSimpleWorksheetCellMetadataRef[]
   readonly columns?: LargeSimpleWorksheetAxisMetadata
   readonly conditionalFormats?: readonly WorkbookConditionalFormatSnapshot[]
   readonly conditionalFormattingXml?: readonly string[]
+  readonly controlArtifacts?: LargeSimpleWorksheetControlArtifactsScan
   readonly dataValidations?: readonly WorkbookDataValidationSnapshot[]
   readonly drawingRelationshipId?: string
+  readonly legacyDrawingRelationshipId?: string
   readonly filters?: readonly WorkbookAutoFilterSnapshot[]
   readonly hyperlinks?: readonly LargeSimpleHyperlinkRef[]
   readonly rows?: LargeSimpleWorksheetAxisMetadata

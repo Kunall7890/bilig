@@ -140,6 +140,7 @@ class LargeSimpleWorksheetChunkScanner {
   private conditionalFormatCount = 0
   private dataValidationCount = 0
   private tableCount = 0
+  private worksheetRootOpenTag: string | undefined
   private readonly sheetName: string | undefined
   private minRow = Number.POSITIVE_INFINITY
   private minColumn = Number.POSITIVE_INFINITY
@@ -151,6 +152,8 @@ class LargeSimpleWorksheetChunkScanner {
   private conditionalFormatIdCounter = 0
   private conditionalFormattingXml: string[] | undefined
   private dataValidations: WorkbookDataValidationSnapshot[] | undefined
+  private controlArtifactsXml: string[] | undefined
+  private legacyDrawingRelationshipId: string | undefined
   private cellMetadataRefs: LargeSimpleWorksheetCellMetadataRef[] | undefined
   private drawingRelationshipId: string | undefined
   private filters: LargeSimpleWorksheetScannedMetadata['filters']
@@ -303,8 +306,18 @@ class LargeSimpleWorksheetChunkScanner {
       ...(this.conditionalFormattingXml && this.conditionalFormattingXml.length > 0
         ? { conditionalFormattingXml: this.conditionalFormattingXml }
         : {}),
+      ...(this.controlArtifactsXml && this.controlArtifactsXml.length > 0 && this.worksheetRootOpenTag
+        ? {
+            controlArtifacts: {
+              controlsXml: this.controlArtifactsXml.join(''),
+              worksheetRootOpenTag: this.worksheetRootOpenTag,
+              ...(this.legacyDrawingRelationshipId ? { legacyDrawingRelationshipId: this.legacyDrawingRelationshipId } : {}),
+            },
+          }
+        : {}),
       ...(this.dataValidations && this.dataValidations.length > 0 ? { dataValidations: this.dataValidations } : {}),
       ...(this.drawingRelationshipId ? { drawingRelationshipId: this.drawingRelationshipId } : {}),
+      ...(this.legacyDrawingRelationshipId ? { legacyDrawingRelationshipId: this.legacyDrawingRelationshipId } : {}),
       ...(this.filters && this.filters.length > 0 ? { filters: this.filters } : {}),
       ...(this.hyperlinks && this.hyperlinks.length > 0 ? { hyperlinks: this.hyperlinks } : {}),
       ...(rows ? { rows } : {}),
@@ -347,6 +360,13 @@ class LargeSimpleWorksheetChunkScanner {
       if (unsupportedWorksheetTagNames.has(tag.localName)) {
         this.failed = true
         return
+      }
+      if (tag.localName === 'worksheet') {
+        if (this.retainMetadataXml) {
+          this.worksheetRootOpenTag = decodeBytes(this.buffer, this.index, tagEnd + 1)
+        }
+        this.index = tagEnd + 1
+        continue
       }
       if (tag.localName === 'dimension') {
         this.readDimension(tag.endIndex, tagEnd)
@@ -604,6 +624,17 @@ class LargeSimpleWorksheetChunkScanner {
       this.drawingRelationshipId = readLargeSimpleDrawingRelationshipIdTagFromBytes(this.buffer, startIndex, endIndex)
       return true
     }
+    if (localName === 'legacyDrawing') {
+      const tagXml = decodeBytes(this.buffer, startIndex, endIndex)
+      this.legacyDrawingRelationshipId =
+        readElementAttribute(tagXml, 'r:id') ?? readElementAttribute(tagXml, 'id') ?? this.legacyDrawingRelationshipId
+      return true
+    }
+    if (localName === 'oleObjects') {
+      this.controlArtifactsXml ??= []
+      this.controlArtifactsXml.push(decodeBytes(this.buffer, startIndex, endIndex))
+      return true
+    }
     if (localName === 'autoFilter') {
       if (!this.sheetName) {
         return false
@@ -771,6 +802,10 @@ class LargeSimpleWorksheetChunkScanner {
 function readSlicerListExtensionXml(xml: string): string | undefined {
   extensionElementPattern.lastIndex = 0
   return [...xml.matchAll(extensionElementPattern)].find((match) => slicerListElementPattern.test(match[0]))?.[0]
+}
+
+function readElementAttribute(xml: string, name: string): string | null {
+  return new RegExp(`\\s${name}=("|')([\\s\\S]*?)\\1`, 'u').exec(xml)?.[2] ?? null
 }
 
 function readInlineStringCellValue(bytes: Uint8Array, contentStart: number, contentEnd: number): string | undefined {

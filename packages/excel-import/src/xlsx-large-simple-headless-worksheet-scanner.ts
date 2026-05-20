@@ -10,7 +10,7 @@ const packedAddressColumnFactor = 16_384
 const cellContentHasValue = 1 << 0
 const cellContentHasFormula = 1 << 1
 const emptyBytes = new Uint8Array(0)
-const unsupportedWorksheetTagNames = new Set(['legacyDrawing', 'oleObjects', 'picture', 'sheetProtection'])
+const unsupportedWorksheetTagNames = new Set(['picture', 'sheetProtection'])
 const metadataWorksheetTagNames = new Set([
   'autoFilter',
   'colBreaks',
