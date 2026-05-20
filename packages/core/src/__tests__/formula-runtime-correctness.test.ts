@@ -16,10 +16,13 @@ const runtimeJsOnlyFixtureIds = new Set(['lookup-reference:match-exact', 'lookup
 const engineRuntimeSkipReasons = new Map<string, string>([
   ['aggregation:avg-range', 'AVERAGE range aggregation still binds through the JS aggregate path in the engine.'],
   ['lookup-reference:offset-basic', 'OFFSET is contextual and verified through dedicated engine tests.'],
-  ['names:defined-name-range', 'Defined-name range formulas require workbook metadata and are routed through JS.'],
-  ['names:defined-name-scalar', 'Defined-name scalar formulas require workbook metadata and are routed through JS.'],
-  ['structured-reference:table-column-ref', 'Structured references require workbook table metadata and are routed through JS.'],
-  ['tables:table-total-row-sum', 'Table formulas require workbook table metadata and are routed through JS.'],
+  ['names:defined-name-range', 'Defined-name range formulas require workbook metadata and are covered by dedicated binding tests.'],
+  ['names:defined-name-scalar', 'Defined-name scalar formulas require workbook metadata and are covered by dedicated binding tests.'],
+  [
+    'structured-reference:table-column-ref',
+    'Structured references require workbook table metadata and are covered by dedicated binding tests.',
+  ],
+  ['tables:table-total-row-sum', 'Table formulas require workbook table metadata and are covered by dedicated binding tests.'],
 ])
 const capturedVolatileFixtureIds = new Set(['date-time:today-volatile', 'date-time:now-volatile', 'volatile:rand-basic'])
 const capturedVolatileOracleTime = new Date('2026-03-19T15:45:30.000Z')
@@ -86,18 +89,10 @@ describe('formula runtime correctness', () => {
     }
   })
 
-  it('keeps workbook metadata fixtures semantic on the JS route', async () => {
+  it('keeps resolvable workbook metadata on the wasm route', async () => {
     await Promise.all(
-      ['tables:table-total-row-sum', 'structured-reference:table-column-ref'].map((fixtureId) =>
-        expectFixtureRuntimeResult(requiredCanonicalFixture(fixtureId), FormulaMode.JsOnly),
-      ),
-    )
-  })
-
-  it('keeps resolvable defined-name metadata on the wasm route', async () => {
-    await Promise.all(
-      ['names:defined-name-range', 'names:defined-name-scalar'].map((fixtureId) =>
-        expectFixtureRuntimeResult(requiredCanonicalFixture(fixtureId), FormulaMode.WasmFastPath),
+      ['names:defined-name-range', 'names:defined-name-scalar', 'tables:table-total-row-sum', 'structured-reference:table-column-ref'].map(
+        (fixtureId) => expectFixtureRuntimeResult(requiredCanonicalFixture(fixtureId), FormulaMode.WasmFastPath),
       ),
     )
   })

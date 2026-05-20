@@ -57,7 +57,7 @@ export function compileFormulaBindingForCell(args: {
     )
     args.resolvedCompiledCache.set(resolvedCacheKey, resolvedCompiled)
   }
-  if (compiled.symbolicTables.length > 0 || (compiled.ast.kind === 'NameRef' && resolved.node.kind === 'CellRef')) {
+  if (compiled.ast.kind === 'NameRef' && resolved.node.kind === 'CellRef') {
     resolvedCompiled = { ...resolvedCompiled, mode: FormulaMode.JsOnly }
   }
   return {

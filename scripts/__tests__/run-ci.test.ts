@@ -54,7 +54,9 @@ describe('run-ci', () => {
       "withEnv(directPackageScript('correctness formula', 'test:correctness:formula'), { BILIG_VITEST_FILE_CHUNK_SIZE: '3' })",
     )
     expect(source).toContain("BILIG_VITEST_FILE_CHUNK_SIZE: '10'")
-    expect(source).toContain("withEnv(pnpm('coverage', 'coverage'), { CI: process.env['CI'] ?? '1' })")
+    expect(source).toContain("withEnv(pnpm('coverage', 'coverage'), {")
+    expect(source).toContain("BILIG_BENCH_TOLERANCE: process.env['BILIG_BENCH_TOLERANCE'] ?? '2'")
+    expect(source).toContain("CI: process.env['CI'] ?? '1'")
     expect(source).toContain(
       "directPackageScript('financial public workbook corpus resume check', 'public-workbook-corpus:resume-financial:check')",
     )
