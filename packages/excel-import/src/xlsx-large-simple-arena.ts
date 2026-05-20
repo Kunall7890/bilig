@@ -32,6 +32,7 @@ const previewColumnCount = 6
 const previewCellCount = previewRowCount * previewColumnCount
 const lazyRichTextCellThreshold = 10_000
 const maxSpreadsheetColumnCount = 16_384
+const initialSparseIntegerCapacity = 16
 const minInt16 = -0x8000
 const maxInt16 = 0x7fff
 const minInt32 = -0x80000000
@@ -60,6 +61,8 @@ export interface ImportedWorkbookArenaSnapshot {
   readonly numberValues?: Float64Array
   readonly smallIntegerValues?: Int16Array
   readonly integerValues?: Int32Array
+  readonly sparseIntegerCellIndexes?: Uint32Array
+  readonly sparseIntegerValues?: Int32Array
   readonly stringIds?: Uint32Array
   readonly booleanValues?: Uint8Array
   readonly formulaIds?: Uint32Array
@@ -87,6 +90,9 @@ export class ImportedWorkbookArena {
   private numberValues: Float64Array<ArrayBuffer> | undefined
   private smallIntegerValues: Int16Array<ArrayBuffer> | undefined
   private integerValues: Int32Array<ArrayBuffer> | undefined
+  private sparseIntegerCellIndexes: Uint32Array<ArrayBuffer> | undefined
+  private sparseIntegerValues: Int32Array<ArrayBuffer> | undefined
+  private sparseIntegerCount = 0
   private stringIds: Uint32Array<ArrayBuffer> | undefined
   private sparseStringCellIndexes: Uint32Array<ArrayBuffer> | undefined
   private sparseStringIds: Uint32Array<ArrayBuffer> | undefined
@@ -136,6 +142,8 @@ export class ImportedWorkbookArena {
       (this.numberValues?.byteLength ?? 0) +
       (this.smallIntegerValues?.byteLength ?? 0) +
       (this.integerValues?.byteLength ?? 0) +
+      (this.sparseIntegerCellIndexes?.byteLength ?? 0) +
+      (this.sparseIntegerValues?.byteLength ?? 0) +
       (this.stringIds?.byteLength ?? 0) +
       (this.sparseStringCellIndexes?.byteLength ?? 0) +
       (this.sparseStringIds?.byteLength ?? 0) +
@@ -369,6 +377,12 @@ export class ImportedWorkbookArena {
       ...(this.numberValues ? { numberValues: this.numberValues.subarray(0, this.length) } : {}),
       ...(this.smallIntegerValues ? { smallIntegerValues: this.smallIntegerValues.subarray(0, this.length) } : {}),
       ...(this.integerValues ? { integerValues: this.integerValues.subarray(0, this.length) } : {}),
+      ...(this.sparseIntegerCount > 0 && this.sparseIntegerCellIndexes
+        ? { sparseIntegerCellIndexes: this.sparseIntegerCellIndexes.subarray(0, this.sparseIntegerCount) }
+        : {}),
+      ...(this.sparseIntegerCount > 0 && this.sparseIntegerValues
+        ? { sparseIntegerValues: this.sparseIntegerValues.subarray(0, this.sparseIntegerCount) }
+        : {}),
       ...(stringIds ? { stringIds } : {}),
       ...(this.booleanValues ? { booleanValues: this.booleanValues.subarray(0, this.length) } : {}),
       ...(this.formulaIds ? { formulaIds: this.formulaIds.subarray(0, this.length) } : {}),
@@ -386,6 +400,9 @@ export class ImportedWorkbookArena {
     this.numberValues = undefined
     this.smallIntegerValues = undefined
     this.integerValues = undefined
+    this.sparseIntegerCellIndexes = undefined
+    this.sparseIntegerValues = undefined
+    this.sparseIntegerCount = 0
     this.stringIds = undefined
     this.sparseStringCellIndexes = undefined
     this.sparseStringIds = undefined
@@ -490,7 +507,7 @@ export class ImportedWorkbookArena {
       }
       if (canStoreInt32Number(value)) {
         this.valueKinds[index] = valueKindInteger
-        this.ensureIntegerValueStorage()[index] = value
+        this.storeIntegerValue(index, value)
         return
       }
       this.valueKinds[index] = valueKindNumber
@@ -515,7 +532,7 @@ export class ImportedWorkbookArena {
       case valueKindSmallInteger:
         return this.smallIntegerValues?.[index]
       case valueKindInteger:
-        return this.integerValues?.[index]
+        return this.integerValueAt(index)
       case valueKindString: {
         const stringId = this.stringIdAt(index)
         return stringId === noPoolId ? undefined : this.strings[stringId]
@@ -680,12 +697,64 @@ export class ImportedWorkbookArena {
     return this.smallIntegerValues
   }
 
+  private storeIntegerValue(index: number, value: number): void {
+    if (this.integerValues) {
+      this.integerValues[index] = value
+      return
+    }
+    if (this.sparseIntegerCount >= this.sparseIntegerDenseThreshold()) {
+      this.ensureIntegerValueStorage()[index] = value
+      return
+    }
+    if (!this.sparseIntegerCellIndexes || !this.sparseIntegerValues) {
+      this.sparseIntegerCellIndexes = new Uint32Array(initialSparseIntegerCapacity)
+      this.sparseIntegerValues = new Int32Array(initialSparseIntegerCapacity)
+    } else if (this.sparseIntegerCount >= this.sparseIntegerCellIndexes.length) {
+      const nextCapacity = this.sparseIntegerCellIndexes.length * 2
+      this.sparseIntegerCellIndexes = growUint32Array(this.sparseIntegerCellIndexes, nextCapacity)
+      this.sparseIntegerValues = growInt32Array(this.sparseIntegerValues, nextCapacity)
+    }
+    this.sparseIntegerCellIndexes[this.sparseIntegerCount] = index
+    this.sparseIntegerValues[this.sparseIntegerCount] = value
+    this.sparseIntegerCount += 1
+  }
+
   private ensureIntegerValueStorage(): Int32Array<ArrayBuffer> {
     if (this.integerValues) {
       return this.integerValues
     }
     this.integerValues = new Int32Array(this.valueKinds.length)
+    const sparseIndexes = this.sparseIntegerCellIndexes
+    const sparseValues = this.sparseIntegerValues
+    if (sparseIndexes && sparseValues) {
+      for (let offset = 0; offset < this.sparseIntegerCount; offset += 1) {
+        const cellIndex = sparseIndexes[offset] ?? -1
+        if (cellIndex >= 0 && cellIndex < this.integerValues.length) {
+          this.integerValues[cellIndex] = sparseValues[offset] ?? 0
+        }
+      }
+    }
+    this.sparseIntegerCellIndexes = undefined
+    this.sparseIntegerValues = undefined
+    this.sparseIntegerCount = 0
     return this.integerValues
+  }
+
+  private integerValueAt(index: number): number | undefined {
+    if (this.integerValues) {
+      return this.integerValues[index]
+    }
+    const sparseIndexes = this.sparseIntegerCellIndexes
+    const sparseValues = this.sparseIntegerValues
+    if (!sparseIndexes || !sparseValues || this.sparseIntegerCount === 0) {
+      return undefined
+    }
+    const offset = binarySearchUint32Prefix(sparseIndexes, this.sparseIntegerCount, index)
+    return offset === -1 ? undefined : sparseValues[offset]
+  }
+
+  private sparseIntegerDenseThreshold(): number {
+    return Math.max(initialSparseIntegerCapacity, this.valueKinds.length >>> 2)
   }
 
   private ensureFormulaIdStorage(): Uint32Array<ArrayBuffer> {
@@ -1065,8 +1134,12 @@ function canStoreInt16Number(value: number): boolean {
 }
 
 function binarySearchUint32(values: Uint32Array, target: number): number {
+  return binarySearchUint32Prefix(values, values.length, target)
+}
+
+function binarySearchUint32Prefix(values: Uint32Array, length: number, target: number): number {
   let low = 0
-  let high = values.length - 1
+  let high = length - 1
   while (low <= high) {
     const mid = (low + high) >>> 1
     const value = values[mid] ?? 0

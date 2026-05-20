@@ -26,6 +26,8 @@ describe('large simple XLSX import arena', () => {
     expect(snapshot.columns).toBeInstanceOf(Uint16Array)
     expect(snapshot.numberValues).toBeUndefined()
     expect(snapshot.integerValues).toBeUndefined()
+    expect(snapshot.sparseIntegerCellIndexes).toBeUndefined()
+    expect(snapshot.sparseIntegerValues).toBeUndefined()
     expect(snapshot.booleanValues).toBeUndefined()
     expect(snapshot.strings).toHaveLength(0)
     expect(snapshot.formulas).toHaveLength(0)
@@ -378,6 +380,8 @@ describe('large simple XLSX import arena', () => {
     expect(stringOnlyArena.snapshot().numberValues).toBeUndefined()
     expect(stringOnlyArena.snapshot().smallIntegerValues).toBeUndefined()
     expect(stringOnlyArena.snapshot().integerValues).toBeUndefined()
+    expect(stringOnlyArena.snapshot().sparseIntegerCellIndexes).toBeUndefined()
+    expect(stringOnlyArena.snapshot().sparseIntegerValues).toBeUndefined()
     expect(stringOnlyArena.materializeSheetCells(0)).toEqual([{ address: 'A1', value: 'Only text' }])
 
     const arena = new ImportedWorkbookArena()
@@ -385,6 +389,8 @@ describe('large simple XLSX import arena', () => {
 
     expect(arena.snapshot().smallIntegerValues).toEqual(new Int16Array([42]))
     expect(arena.snapshot().integerValues).toBeUndefined()
+    expect(arena.snapshot().sparseIntegerCellIndexes).toBeUndefined()
+    expect(arena.snapshot().sparseIntegerValues).toBeUndefined()
     expect(arena.snapshot().numberValues).toBeUndefined()
     expect(arena.snapshot().stringIds).toBeUndefined()
     expect(arena.snapshot().booleanValues).toBeUndefined()
@@ -417,7 +423,9 @@ describe('large simple XLSX import arena', () => {
 
     expect(arena.snapshot().numberValues).toEqual(new Float64Array([-0, 2147483648, -2147483649, Number.NaN, Number.NaN, Number.NaN]))
     expect(arena.snapshot().smallIntegerValues).toEqual(new Int16Array([0, 0, 0, 0, 32767, 0]))
-    expect(arena.snapshot().integerValues).toEqual(new Int32Array([0, 0, 0, 2147483647, 0, 32768]))
+    expect(arena.snapshot().integerValues).toBeUndefined()
+    expect(arena.snapshot().sparseIntegerCellIndexes).toEqual(new Uint32Array([3, 5]))
+    expect(arena.snapshot().sparseIntegerValues).toEqual(new Int32Array([2147483647, 32768]))
     expect(arena.materializeSheetCells(0)).toEqual([
       { address: 'A1', value: -0 },
       { address: 'B1', value: 2147483648 },
@@ -427,6 +435,33 @@ describe('large simple XLSX import arena', () => {
       { address: 'F1', value: 32768 },
     ])
     expect(Object.is(arena.materializeSheetCells(0)[0]?.value, -0)).toBe(true)
+  })
+
+  it('keeps rare larger integers sparse and densifies common larger integers', () => {
+    const sparseArena = new ImportedWorkbookArena()
+    sparseArena.reserveDenseRowMajorCellCapacity(0, 1, 1024)
+    sparseArena.addCell({ sheetIndex: 0, row: 0, column: 0, value: 42 })
+    sparseArena.addCell({ sheetIndex: 0, row: 1, column: 0, value: 32768 })
+
+    expect(sparseArena.snapshot().smallIntegerValues).toEqual(new Int16Array([42, 0]))
+    expect(sparseArena.snapshot().integerValues).toBeUndefined()
+    expect(sparseArena.snapshot().sparseIntegerCellIndexes).toEqual(new Uint32Array([1]))
+    expect(sparseArena.snapshot().sparseIntegerValues).toEqual(new Int32Array([32768]))
+    expect(sparseArena.materializeSheetCells(0)).toEqual([
+      { address: 'A1', value: 42 },
+      { address: 'A2', value: 32768 },
+    ])
+
+    const denseArena = new ImportedWorkbookArena()
+    for (let row = 0; row < 257; row += 1) {
+      denseArena.addCell({ sheetIndex: 0, row, column: 0, value: 40000 + row })
+    }
+
+    expect(denseArena.snapshot().integerValues?.[0]).toBe(40000)
+    expect(denseArena.snapshot().integerValues?.[256]).toBe(40256)
+    expect(denseArena.snapshot().sparseIntegerCellIndexes).toBeUndefined()
+    expect(denseArena.snapshot().sparseIntegerValues).toBeUndefined()
+    expect(denseArena.materializeSheetCells(0)[256]).toEqual({ address: 'A257', value: 40256 })
   })
 
   it('keeps preview values in fixed slots without overriding values with formulas', () => {
