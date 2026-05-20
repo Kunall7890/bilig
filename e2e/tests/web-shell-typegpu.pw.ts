@@ -1624,16 +1624,23 @@ test('@browser-webgpu @browser-perf main workbook shell keeps typegpu text visib
     {
       points: [{ name: 'blankBody', x: PRODUCT_ROW_MARKER_WIDTH + 20, y: PRODUCT_HEADER_HEIGHT + 40 }],
       regions: [
-        { name: 'canvasDark', x0: 0, y0: 0, x1: 960, y1: 720, threshold: 220 },
+        { name: 'canvasContent', x0: 0, y0: 0, x1: 960, y1: 720, threshold: 220 },
         { name: 'columnHeaderText', x0: PRODUCT_ROW_MARKER_WIDTH, y0: 0, x1: 960, y1: PRODUCT_HEADER_HEIGHT },
         { name: 'rowHeaderText', x0: 0, y0: PRODUCT_HEADER_HEIGHT, x1: PRODUCT_ROW_MARKER_WIDTH, y1: 720 },
         { name: 'bodyText', x0: PRODUCT_ROW_MARKER_WIDTH, y0: PRODUCT_HEADER_HEIGHT, x1: 960, y1: 720 },
       ],
     },
-    (result) => result.darkPixelCounts.canvasDark > 200,
+    (result) =>
+      result.opaquePixelCounts.canvasContent > 200 &&
+      result.opaquePixelCounts.columnHeaderText > 100 &&
+      result.opaquePixelCounts.rowHeaderText > 100 &&
+      result.opaquePixelCounts.bodyText > 100,
   )
 
-  expect(readback.darkPixelCounts.canvasDark).toBeGreaterThan(200)
+  expect(readback.opaquePixelCounts.canvasContent).toBeGreaterThan(200)
+  expect(readback.opaquePixelCounts.columnHeaderText).toBeGreaterThan(100)
+  expect(readback.opaquePixelCounts.rowHeaderText).toBeGreaterThan(100)
+  expect(readback.opaquePixelCounts.bodyText).toBeGreaterThan(100)
   const tileBoundaryTextRuns = await waitForVisibleNativeTextRuns(page, [], (runs) => {
     return runs.rowHeaderRunCount > 5 && runs.visibleRunCount > 20
   })
