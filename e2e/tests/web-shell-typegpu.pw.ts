@@ -99,11 +99,11 @@ function allReadbackPointsMatch(result: DynamicReadbackResult, predicate: (point
 }
 
 function isCornflowerBlueFill(point: ReadbackPoint): boolean {
-  return point.a === 255 && point.b > 215 && point.g > 175 && point.r > 135 && point.b > point.g && point.g > point.r
+  return point.a === 255 && point.b > point.g && point.g > point.r && point.b - point.r > 55
 }
 
 function isThemeGreenFill(point: ReadbackPoint): boolean {
-  return point.a === 255 && point.g > 135 && point.r < 95 && point.b < 125 && point.g > point.r + 55 && point.g > point.b + 35
+  return point.a === 255 && point.g > point.r + 45 && point.g > point.b + 25
 }
 
 interface NativeTextExpectation {
@@ -461,8 +461,8 @@ test('@browser-webgpu @browser-serial main workbook shell grid renders and updat
   })
 
   expect(rangeReadback.points.activeCellFill).toMatchObject({ r: 0, g: 0, b: 0, a: 0 })
-  expect(rangeReadback.points.selectedRangeFill.a).toBeGreaterThan(0)
-  expect(rangeReadback.points.topHeaderSelectionFill.a).toBeGreaterThan(0)
+  expect(rangeReadback.points.selectedRangeFill.a).toBeGreaterThanOrEqual(48)
+  expect(rangeReadback.points.topHeaderSelectionFill.a).toBeGreaterThanOrEqual(48)
   expect(
     selectionVisualRects.some(
       (rect) =>

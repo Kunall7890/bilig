@@ -194,6 +194,7 @@ describe('dynamic overlay batch v3', () => {
 
     expect(overlay.fillRectCount).toBeGreaterThan(0)
     expect(overlay.borderRectCount).toBe(0)
+    expect(readOverlayRects(overlay).find((rect) => rect.x === 247 && rect.y === 45)?.color.a).toBeGreaterThanOrEqual(0.2)
     expect(readOverlayRects(overlay)).toEqual(
       expect.arrayContaining([
         expect.objectContaining({ x: 247, y: 45, width: 198, height: 18 }),
@@ -384,6 +385,12 @@ describe('dynamic overlay batch v3', () => {
 })
 
 function readOverlayRects(batch: ReturnType<typeof buildDynamicGridOverlayBatchV3>): Array<{
+  readonly color: {
+    readonly a: number
+    readonly b: number
+    readonly g: number
+    readonly r: number
+  }
   readonly x: number
   readonly y: number
   readonly width: number
@@ -397,6 +404,12 @@ function readOverlayRects(batch: ReturnType<typeof buildDynamicGridOverlayBatchV
       y: batch.rects[offset + 1] ?? Number.NaN,
       width: batch.rects[offset + 2] ?? Number.NaN,
       height: batch.rects[offset + 3] ?? Number.NaN,
+      color: {
+        r: batch.rects[offset + 4] ?? Number.NaN,
+        g: batch.rects[offset + 5] ?? Number.NaN,
+        b: batch.rects[offset + 6] ?? Number.NaN,
+        a: batch.rects[offset + 7] ?? Number.NaN,
+      },
     })
   }
   return rects

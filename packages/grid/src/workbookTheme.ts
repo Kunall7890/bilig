@@ -14,8 +14,8 @@ export function workbookHeaderFontPointSizeToCssPx(pointSize = WORKBOOK_HEADER_F
 export const workbookThemeColors = {
   accent: '#21563a',
   accentDark: '#163f29',
-  accentSoft: 'rgba(33, 86, 58, 0.12)',
-  selectionFill: 'rgba(33, 86, 58, 0.08)',
+  accentSoft: 'rgba(33, 86, 58, 0.2)',
+  selectionFill: 'rgba(33, 86, 58, 0.2)',
   border: '#ddd8cc',
   borderSubtle: '#e7e2d6',
   gridBorder: '#ddd8cc',
