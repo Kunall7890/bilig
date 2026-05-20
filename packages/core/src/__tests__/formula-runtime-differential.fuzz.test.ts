@@ -155,6 +155,14 @@ describe('formula runtime differential fuzz', () => {
       expectCellSemantics(engine.getCellValue(sheetName, 'H9'), { tag: ValueTag.Number, value: 3 })
       expectCellSemantics(engine.getCellValue(sheetName, 'H10'), { tag: ValueTag.Number, value: 4 })
       expectCellSemantics(engine.getCellValue(sheetName, 'H11'), stringValue(''))
+
+      engine.setCellValue(sheetName, 'A1', 'x')
+
+      expect(engine.recalculateDifferential().drift).toEqual([])
+      expectCellSemantics(engine.getCellValue(sheetName, 'H8'), { tag: ValueTag.Number, value: 2 })
+      expectCellSemantics(engine.getCellValue(sheetName, 'H9'), { tag: ValueTag.Number, value: 3 })
+      expectCellSemantics(engine.getCellValue(sheetName, 'H10'), { tag: ValueTag.Number, value: 4 })
+      expectCellSemantics(engine.getCellValue(sheetName, 'H11'), stringValue('x'))
     },
     FUZZ_TEST_TIMEOUT_MS,
   )
