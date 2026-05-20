@@ -180,6 +180,25 @@ export function isCellVectorNode(node: FormulaNode): boolean {
   }
 }
 
+function cellRangeShape(node: FormulaNode): { rows: number; cols: number } | undefined {
+  if (node.kind !== 'RangeRef' || node.sheetEndName !== undefined) {
+    return undefined
+  }
+  try {
+    const sheetPrefix = node.sheetName ? `${node.sheetName}!` : ''
+    const range = parseRangeAddress(`${sheetPrefix}${node.start}:${node.end}`)
+    if (range.kind !== 'cells') {
+      return undefined
+    }
+    return {
+      rows: range.end.row - range.start.row + 1,
+      cols: range.end.col - range.start.col + 1,
+    }
+  } catch {
+    return undefined
+  }
+}
+
 function isAxisRangeNode(node: FormulaNode): boolean {
   if (node.kind !== 'RangeRef' || node.sheetEndName !== undefined) {
     return false
@@ -295,6 +314,20 @@ export function isWasmSafeBuiltinArgs(callee: string, args: readonly FormulaNode
     return deps.isWasmSafe(arg, true) && producesSpillResult(arg)
   }
   const isCellVectorArg = (arg: FormulaNode): boolean => deps.isWasmSafe(arg, true) && isCellVectorNode(arg)
+  const isXlookupReturnArg = (lookupArg: FormulaNode, returnArg: FormulaNode): boolean => {
+    if (isCellVectorArg(returnArg)) {
+      return true
+    }
+    if (!isCellRangeArg(returnArg)) {
+      return false
+    }
+    const lookupShape = cellRangeShape(lookupArg)
+    const returnShape = cellRangeShape(returnArg)
+    if (!lookupShape || !returnShape || (lookupShape.rows !== 1 && lookupShape.cols !== 1)) {
+      return false
+    }
+    return lookupShape.cols === 1 ? returnShape.rows === lookupShape.rows : returnShape.cols === lookupShape.cols
+  }
   const isCellOrScalarArg = (arg: FormulaNode): boolean => isCellVectorArg(arg) || isScalarArg(arg)
   const isNativeSequenceArg = (arg: FormulaNode): boolean =>
     arg.kind === 'CallExpr' &&
@@ -469,7 +502,7 @@ export function isWasmSafeBuiltinArgs(callee: string, args: readonly FormulaNode
         args.length <= 6 &&
         isScalarArg(args[0]!) &&
         isCellVectorArg(args[1]!) &&
-        isCellVectorArg(args[2]!) &&
+        isXlookupReturnArg(args[1]!, args[2]!) &&
         (args.length < 4 || isOptionalScalarArg(args[3]!)) &&
         (args.length < 5 || args[4]?.kind === 'OmittedArgument' || isIntegerLiteralOneOf(args[4], [-1, 0, 1])) &&
         (args.length < 6 || isOptionalScalarArg(args[5]!))
