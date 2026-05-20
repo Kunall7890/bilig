@@ -4,6 +4,15 @@ All notable changes to `@bilig/headless` will be documented in this file.
 
 This package is released as part of the aligned bilig library package set.
 
+## 0.36.2
+
+- Release type: patch
+- Previous libraries tag: libraries-v0.36.1
+- Manual override: no
+
+## Fixes
+- fix(docs): route sheetjs users to live xlsx package (e8bfef83)
+
 ## 0.36.1
 
 - Release type: patch
