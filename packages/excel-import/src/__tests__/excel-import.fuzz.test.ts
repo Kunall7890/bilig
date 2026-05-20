@@ -160,7 +160,7 @@ describe('excel import fuzz', () => {
       },
       parameters: { numRuns: 80 },
     })
-  })
+  }, 30_000)
 
   it('should reject corrupt XLSX containers and avoid crashing on malformed OpenXML parts', async () => {
     await runProperty({

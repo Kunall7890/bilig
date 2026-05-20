@@ -360,11 +360,7 @@ function parseTableXml(sheetName: string, xml: string): WorkbookTableSnapshot | 
     columnNames: columns.map((column) => column.name),
     ...(columns.some((column) => column.totalsRowLabel !== undefined || column.totalsRowFunction !== undefined) ? { columns } : {}),
     headerRow: table['headerRowCount'] !== '0',
-    totalsRow:
-      table['totalsRowShown'] === '1' ||
-      table['totalsRowCount'] === '1' ||
-      hasTotalsRowFormula ||
-      columns.some((column) => column.totalsRowLabel !== undefined || column.totalsRowFunction !== undefined),
+    totalsRow: table['totalsRowShown'] === '1' || table['totalsRowCount'] === '1' || hasTotalsRowFormula,
     ...(style ? { style } : {}),
     ...(sortState ? { sortState } : {}),
   }

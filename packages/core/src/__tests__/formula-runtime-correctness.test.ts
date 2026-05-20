@@ -88,8 +88,16 @@ describe('formula runtime correctness', () => {
 
   it('keeps workbook metadata fixtures semantic on the JS route', async () => {
     await Promise.all(
-      ['names:defined-name-range', 'names:defined-name-scalar', 'tables:table-total-row-sum', 'structured-reference:table-column-ref'].map(
-        (fixtureId) => expectFixtureRuntimeResult(requiredCanonicalFixture(fixtureId), FormulaMode.JsOnly),
+      ['tables:table-total-row-sum', 'structured-reference:table-column-ref'].map((fixtureId) =>
+        expectFixtureRuntimeResult(requiredCanonicalFixture(fixtureId), FormulaMode.JsOnly),
+      ),
+    )
+  })
+
+  it('keeps resolvable defined-name metadata on the wasm route', async () => {
+    await Promise.all(
+      ['names:defined-name-range', 'names:defined-name-scalar'].map((fixtureId) =>
+        expectFixtureRuntimeResult(requiredCanonicalFixture(fixtureId), FormulaMode.WasmFastPath),
       ),
     )
   })

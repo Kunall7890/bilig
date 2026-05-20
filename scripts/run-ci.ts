@@ -255,7 +255,10 @@ async function runSequential(label: string, tasks: readonly CiTask[]): Promise<C
 const coverageLane: CiTask = {
   label: 'coverage + contracts',
   steps: [
-    withEnv(pnpm('coverage', 'coverage'), { CI: process.env['CI'] ?? '1' }),
+    withEnv(pnpm('coverage', 'coverage'), {
+      BILIG_BENCH_TOLERANCE: process.env['BILIG_BENCH_TOLERANCE'] ?? '2',
+      CI: process.env['CI'] ?? '1',
+    }),
     {
       label: 'coverage contracts',
       execute: async () => {

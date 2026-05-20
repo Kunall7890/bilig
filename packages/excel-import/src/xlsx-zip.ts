@@ -76,6 +76,9 @@ export function forEachInflatedXlsxZipEntryChunk(
   const metadata = (zip as XlsxZipEntriesWithCentralDirectorySource)[xlsxZipCentralDirectorySourceSymbol]
   const source = metadata?.source
   const entry = metadata?.entriesByPath.get(normalizeZipPath(path))
+  if (metadata && !source) {
+    return false
+  }
   if (!metadata || !source || !entry) {
     const inflated = zip[normalizeZipPath(path)]
     if (!inflated) {
