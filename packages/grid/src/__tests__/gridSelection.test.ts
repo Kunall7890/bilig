@@ -104,63 +104,52 @@ describe('gridSelection', () => {
   })
 
   test('reconstructs range, row, column, and sheet selections from authoritative snapshots', () => {
-    expect(
-      formatSelectionSummary(
-        snapshotToSelection({
-          sheetName: 'Sheet1',
-          address: 'B2',
-          kind: 'range',
-          range: {
-            startAddress: 'B2',
-            endAddress: 'D5',
-          },
-        }),
-        'A1',
-      ),
-    ).toBe('B2:D5')
+    const rangeSelection = snapshotToSelection({
+      sheetName: 'Sheet1',
+      address: 'D5',
+      kind: 'range',
+      range: {
+        startAddress: 'B2',
+        endAddress: 'D5',
+      },
+    })
+    expect(formatSelectionSummary(rangeSelection, 'A1')).toBe('B2:D5')
+    expect(rangeSelection.current?.cell).toEqual([3, 4])
 
-    expect(
-      formatSelectionSummary(
-        snapshotToSelection({
-          sheetName: 'Sheet1',
-          address: 'B1',
-          kind: 'column',
-          range: {
-            startAddress: 'B1',
-            endAddress: 'D1048576',
-          },
-        }),
-        'A1',
-      ),
-    ).toBe('B:D')
+    const columnSelection = snapshotToSelection({
+      sheetName: 'Sheet1',
+      address: 'C7',
+      kind: 'column',
+      range: {
+        startAddress: 'B1',
+        endAddress: 'D1048576',
+      },
+    })
+    expect(formatSelectionSummary(columnSelection, 'A1')).toBe('B:D')
+    expect(columnSelection.current?.cell).toEqual([2, 6])
 
-    expect(
-      formatSelectionSummary(
-        snapshotToSelection({
-          sheetName: 'Sheet1',
-          address: 'A2',
-          kind: 'row',
-          range: {
-            startAddress: 'A2',
-            endAddress: 'XFD5',
-          },
-        }),
-        'A1',
-      ),
-    ).toBe('2:5')
+    const rowSelection = snapshotToSelection({
+      sheetName: 'Sheet1',
+      address: 'F3',
+      kind: 'row',
+      range: {
+        startAddress: 'A2',
+        endAddress: 'XFD5',
+      },
+    })
+    expect(formatSelectionSummary(rowSelection, 'A1')).toBe('2:5')
+    expect(rowSelection.current?.cell).toEqual([5, 2])
 
-    expect(
-      isSheetSelection(
-        snapshotToSelection({
-          sheetName: 'Sheet1',
-          address: 'A1',
-          kind: 'sheet',
-          range: {
-            startAddress: 'A1',
-            endAddress: 'XFD1048576',
-          },
-        }),
-      ),
-    ).toBe(true)
+    const sheetSelection = snapshotToSelection({
+      sheetName: 'Sheet1',
+      address: 'F3',
+      kind: 'sheet',
+      range: {
+        startAddress: 'A1',
+        endAddress: 'XFD1048576',
+      },
+    })
+    expect(isSheetSelection(sheetSelection)).toBe(true)
+    expect(sheetSelection.current?.cell).toEqual([5, 2])
   })
 })

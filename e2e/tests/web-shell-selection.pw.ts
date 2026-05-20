@@ -239,6 +239,21 @@ test('web app supports rectangular drag selection', async ({ page }) => {
   await expect(page.getByTestId('status-selection')).toHaveText('Sheet1!B2:D4')
 })
 
+test('web app preserves the active cell inside a selected area and collapses on body click', async ({ page }) => {
+  await page.goto(`/?document=${encodeURIComponent(createTestDocumentId('playwright-range-active-collapse'))}`)
+  await waitForWorkbookReady(page)
+
+  await dragProductBodySelection(page, 3, 3, 1, 1)
+  await expect(page.getByTestId('status-selection')).toHaveText('Sheet1!B2:D4')
+  await expect(page.getByTestId('name-box')).toHaveValue('B2:D4')
+  await expect(page.getByTestId('sheet-grid-focus-target')).toHaveAttribute('aria-label', 'Sheet1 D4')
+
+  await clickProductCell(page, 2, 2)
+  await expect(page.getByTestId('status-selection')).toHaveText('Sheet1!C3')
+  await expect(page.getByTestId('name-box')).toHaveValue('C3')
+  await expect(page.getByTestId('sheet-grid-focus-target')).toHaveAttribute('aria-label', 'Sheet1 C3')
+})
+
 test('web app keeps moved range data visible when border drag reaches the grid edge', async ({ page }) => {
   await page.setViewportSize({ width: 960, height: 420 })
   await page.goto(`/?document=${encodeURIComponent(createTestDocumentId('range-border-edge-drag'))}`)

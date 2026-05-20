@@ -444,10 +444,15 @@ function resolveFillHandleScreenRect(input: {
   readonly rows: GridAxisWorldIndex
   readonly range: Pick<Rectangle, 'x' | 'y' | 'width' | 'height'>
 }): Rectangle | null {
-  const rects = resolveRangeScreenRects(input)
-  const anchor = rects.toSorted(
-    (left, right) => right.y + right.height - (left.y + left.height) || right.x + right.width - (left.x + left.width),
-  )[0]
+  const col = Math.max(0, Math.min(MAX_COLS - 1, input.range.x + input.range.width - 1))
+  const row = Math.max(0, Math.min(MAX_ROWS - 1, input.range.y + input.range.height - 1))
+  const anchor = resolveCellScreenRect({
+    camera: input.camera,
+    col,
+    columns: input.columns,
+    row,
+    rows: input.rows,
+  })
   if (!anchor) {
     return null
   }
