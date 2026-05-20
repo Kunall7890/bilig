@@ -95,7 +95,7 @@ export function tryApplySingleDirectAggregateLiteralMutationFastPath(
     const rangeDependent = resolveSingleRangeEntityAggregateCandidate(args, {
       rangeEntityDependent: request.singleRangeEntityDependent,
       sheetName: request.sheetName,
-      sheetId: request.sheetId,
+      ...(request.sheetId === undefined ? {} : { sheetId: request.sheetId }),
       row: request.row,
       col: request.col,
     })
