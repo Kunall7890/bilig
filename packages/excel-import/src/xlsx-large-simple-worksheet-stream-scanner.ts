@@ -98,6 +98,7 @@ export function parseLargeSimpleWorksheetCellsFromChunks(
     readonly allowUnsupportedFormulaText?: boolean
     readonly allowUnsupportedCellMetadata?: boolean
     readonly preserveBlankStyleCells?: boolean
+    readonly maxDimensionCellPreallocation?: number
     readonly onRetainedBufferLength?: (length: number) => void
   },
 ): LargeSimpleWorksheetStreamScan | null {
@@ -114,6 +115,7 @@ export function parseLargeSimpleWorksheetCellsFromChunks(
     allowUnsupportedFormulaText: options.allowUnsupportedFormulaText,
     allowUnsupportedCellMetadata: options.allowUnsupportedCellMetadata,
     preserveBlankStyleCells: options.preserveBlankStyleCells !== false,
+    maxDimensionCellPreallocation: options.maxDimensionCellPreallocation,
     onRetainedBufferLength: options.onRetainedBufferLength,
   })
   if (!readChunks((chunk) => scanner.push(chunk))) {
@@ -173,6 +175,8 @@ class LargeSimpleWorksheetChunkScanner {
   private readonly retainMetadataXml: boolean
   private readonly allowUnsupportedFormulaText: boolean
   private readonly preserveBlankStyleCells: boolean
+  private readonly maxDimensionCellPreallocation: number
+  private dimensionCellPreallocationApplied = false
   private activeMetadataElement: StreamedMetadataElement | null = null
 
   constructor(
@@ -190,11 +194,13 @@ class LargeSimpleWorksheetChunkScanner {
       readonly allowUnsupportedFormulaText: boolean | undefined
       readonly allowUnsupportedCellMetadata: boolean | undefined
       readonly preserveBlankStyleCells: boolean
+      readonly maxDimensionCellPreallocation: number | undefined
       readonly onRetainedBufferLength: ((length: number) => void) | undefined
     },
   ) {
     this.allowUnsupportedFormulaText = options.allowUnsupportedFormulaText === true
     this.preserveBlankStyleCells = options.preserveBlankStyleCells
+    this.maxDimensionCellPreallocation = Math.max(0, Math.trunc(options.maxDimensionCellPreallocation ?? 0))
     this.formulas = new LargeSimpleFormulaRecords(this.allowUnsupportedFormulaText)
     this.arena = new ImportedWorkbookArena(options.stringPool, {
       ...(options.deduplicateStrings === undefined ? {} : { deduplicateStrings: options.deduplicateStrings }),
@@ -409,6 +415,20 @@ class LargeSimpleWorksheetChunkScanner {
     }
     this.rowCount = Math.max(this.rowCount, start.row + 1, end.row + 1)
     this.columnCount = Math.max(this.columnCount, start.column + 1, end.column + 1)
+    this.reserveDimensionCellCapacity((end.row + 1) * (end.column + 1))
+  }
+
+  private reserveDimensionCellCapacity(cellCapacity: number): void {
+    if (
+      this.dimensionCellPreallocationApplied ||
+      !Number.isSafeInteger(cellCapacity) ||
+      cellCapacity <= 0 ||
+      cellCapacity > this.maxDimensionCellPreallocation
+    ) {
+      return
+    }
+    this.dimensionCellPreallocationApplied = true
+    this.arena.reserveCellCapacity(cellCapacity)
   }
 
   private collectRowMetadata(nameEnd: number, tagEnd: number): void {

@@ -143,6 +143,7 @@ export class ImportedWorkbookArena {
   private readonly stringIdsByValue = new Map<string, number>()
   private readonly formulas: string[] = []
   private readonly formulaIdsByValue = new Map<string, number>()
+  private sharedStrings: readonly LargeSimpleSharedStringEntry[] | undefined
   private readonly previewValues: (LiteralInput | undefined)[] = Array.from({ length: previewCellCount })
   private readonly previewValueSet = new Uint8Array(previewCellCount)
   private readonly stringDedupeMode: ImportedWorkbookArenaDedupeMode
@@ -164,6 +165,13 @@ export class ImportedWorkbookArena {
 
   get cellCount(): number {
     return this.length
+  }
+
+  reserveCellCapacity(capacity: number): void {
+    if (!Number.isSafeInteger(capacity) || capacity <= this.rows.length) {
+      return
+    }
+    this.resizeStorage(capacity)
   }
 
   addCell(input: ImportedWorksheetArenaCellInput): number {
@@ -219,15 +227,16 @@ export class ImportedWorkbookArena {
   }
 
   createLazySheetCells(sheetIndex: number): WorkbookSheetCells {
-    const arenaIndexes = this.materializedSheetCellIndexes(sheetIndex)
+    const arenaIndexes = this.lazySheetCellIndexes(sheetIndex)
+    const cellCount = typeof arenaIndexes === 'number' ? arenaIndexes : arenaIndexes.length
     const materialize = (index: number): WorkbookSheetCell | undefined => {
-      if (!Number.isInteger(index) || index < 0 || index >= arenaIndexes.length) {
+      if (!Number.isInteger(index) || index < 0 || index >= cellCount) {
         return undefined
       }
-      return this.materializeCellAtArenaIndex(arenaIndexes[index] ?? -1)
+      return this.materializeCellAtArenaIndex(typeof arenaIndexes === 'number' ? index : (arenaIndexes[index] ?? -1))
     }
     const iterate = function* (): IterableIterator<WorkbookSheetCell> {
-      for (let index = 0; index < arenaIndexes.length; index += 1) {
+      for (let index = 0; index < cellCount; index += 1) {
         const cell = materialize(index)
         if (cell) {
           yield cell
@@ -242,14 +251,14 @@ export class ImportedWorkbookArena {
           return true
         }
         if (property === 'length') {
-          return arenaIndexes.length
+          return cellCount
         }
         if (property === Symbol.iterator || property === 'values') {
           return iterate
         }
         if (property === 'entries') {
           return function* entries(): IterableIterator<[number, WorkbookSheetCell]> {
-            for (let index = 0; index < arenaIndexes.length; index += 1) {
+            for (let index = 0; index < cellCount; index += 1) {
               const cell = materialize(index)
               if (cell) {
                 yield [index, cell]
@@ -259,17 +268,17 @@ export class ImportedWorkbookArena {
         }
         if (property === 'keys') {
           return function* keys(): IterableIterator<number> {
-            for (let index = 0; index < arenaIndexes.length; index += 1) {
+            for (let index = 0; index < cellCount; index += 1) {
               yield index
             }
           }
         }
         if (property === 'at') {
-          return (index: number) => materialize(index < 0 ? arenaIndexes.length + index : index)
+          return (index: number) => materialize(index < 0 ? cellCount + index : index)
         }
         if (property === 'forEach') {
           return (callback: (cell: WorkbookSheetCell, index: number, cells: WorkbookSheetCells) => void, thisArg?: unknown) => {
-            for (let index = 0; index < arenaIndexes.length; index += 1) {
+            for (let index = 0; index < cellCount; index += 1) {
               const cell = materialize(index)
               if (cell) {
                 callback.call(thisArg, cell, index, proxy)
@@ -280,7 +289,7 @@ export class ImportedWorkbookArena {
         if (property === 'map') {
           return <T>(callback: (cell: WorkbookSheetCell, index: number, cells: WorkbookSheetCells) => T, thisArg?: unknown): T[] => {
             const output: T[] = []
-            for (let index = 0; index < arenaIndexes.length; index += 1) {
+            for (let index = 0; index < cellCount; index += 1) {
               const cell = materialize(index)
               if (cell) {
                 output.push(callback.call(thisArg, cell, index, proxy))
@@ -292,7 +301,7 @@ export class ImportedWorkbookArena {
         if (property === 'filter') {
           return (callback: (cell: WorkbookSheetCell, index: number, cells: WorkbookSheetCells) => boolean, thisArg?: unknown) => {
             const output: WorkbookSheetCell[] = []
-            for (let index = 0; index < arenaIndexes.length; index += 1) {
+            for (let index = 0; index < cellCount; index += 1) {
               const cell = materialize(index)
               if (cell && callback.call(thisArg, cell, index, proxy)) {
                 output.push(cell)
@@ -316,7 +325,7 @@ export class ImportedWorkbookArena {
               accumulator = first
               index = 1
             }
-            for (; index < arenaIndexes.length; index += 1) {
+            for (; index < cellCount; index += 1) {
               const cell = materialize(index)
               if (cell) {
                 accumulator = callback(accumulator, cell, index, proxy)
@@ -327,7 +336,7 @@ export class ImportedWorkbookArena {
         }
         if (property === 'some') {
           return (callback: (cell: WorkbookSheetCell, index: number, cells: WorkbookSheetCells) => boolean, thisArg?: unknown) => {
-            for (let index = 0; index < arenaIndexes.length; index += 1) {
+            for (let index = 0; index < cellCount; index += 1) {
               const cell = materialize(index)
               if (cell && callback.call(thisArg, cell, index, proxy)) {
                 return true
@@ -338,7 +347,7 @@ export class ImportedWorkbookArena {
         }
         if (property === 'every') {
           return (callback: (cell: WorkbookSheetCell, index: number, cells: WorkbookSheetCells) => boolean, thisArg?: unknown) => {
-            for (let index = 0; index < arenaIndexes.length; index += 1) {
+            for (let index = 0; index < cellCount; index += 1) {
               const cell = materialize(index)
               if (cell && !callback.call(thisArg, cell, index, proxy)) {
                 return false
@@ -349,7 +358,7 @@ export class ImportedWorkbookArena {
         }
         if (property === 'find') {
           return (callback: (cell: WorkbookSheetCell, index: number, cells: WorkbookSheetCells) => boolean, thisArg?: unknown) => {
-            for (let index = 0; index < arenaIndexes.length; index += 1) {
+            for (let index = 0; index < cellCount; index += 1) {
               const cell = materialize(index)
               if (cell && callback.call(thisArg, cell, index, proxy)) {
                 return cell
@@ -360,7 +369,7 @@ export class ImportedWorkbookArena {
         }
         if (property === 'slice') {
           return (start?: number, end?: number) => {
-            const length = arenaIndexes.length
+            const length = cellCount
             const from = normalizeSliceIndex(start ?? 0, length)
             const to = normalizeSliceIndex(end ?? length, length)
             const output: WorkbookSheetCell[] = []
@@ -384,7 +393,7 @@ export class ImportedWorkbookArena {
       has: (_target, property) => property === 'length' || (typeof property === 'string' && isArrayIndexProperty(property)),
       getOwnPropertyDescriptor: (_target, property) => {
         if (property === 'length') {
-          return { configurable: true, enumerable: false, value: arenaIndexes.length }
+          return { configurable: true, enumerable: false, value: cellCount }
         }
         if (typeof property === 'string' && isArrayIndexProperty(property)) {
           const value = materialize(Number(property))
@@ -444,6 +453,35 @@ export class ImportedWorkbookArena {
     return richTextCells
   }
 
+  retainSharedStringReferences(sharedStrings: readonly LargeSimpleSharedStringEntry[]): WorkbookRichTextCellSnapshot[] | null {
+    const richTextCells: WorkbookRichTextCellSnapshot[] = []
+    this.sharedStrings = sharedStrings
+    for (let index = 0; index < this.length; index += 1) {
+      if ((this.valueKinds[index] ?? valueKindEmpty) !== valueKindSharedStringRef) {
+        continue
+      }
+      const sharedStringIndex = this.stringIds?.[index] ?? noPoolId
+      const entry = sharedStringIndex === noPoolId ? undefined : sharedStrings[sharedStringIndex]
+      if (!entry) {
+        return null
+      }
+      const row = this.rows[index] ?? 0
+      const column = this.columns[index] ?? 0
+      if (isPreviewCell(row, column)) {
+        this.setPreviewValue(row, column, entry.text)
+      }
+      if (entry.rich) {
+        richTextCells.push({
+          address: encodeCellAddress(row, column),
+          text: entry.text,
+          storage: 'sharedString',
+          xml: entry.xml ?? '',
+        })
+      }
+    }
+    return richTextCells
+  }
+
   snapshot(): ImportedWorkbookArenaSnapshot {
     return {
       sheetIndex: this.sheetIndex,
@@ -479,6 +517,7 @@ export class ImportedWorkbookArena {
     this.formulaIdsByValue.clear()
     this.formulaDedupeKeys.length = 0
     this.formulaDedupeEvictionIndex = 0
+    this.sharedStrings = undefined
     this.previewValues.fill(undefined)
     this.previewValueSet.fill(0)
   }
@@ -553,6 +592,10 @@ export class ImportedWorkbookArena {
         const stringId = this.stringIds?.[index] ?? noPoolId
         return stringId === noPoolId ? undefined : this.strings[stringId]
       }
+      case valueKindSharedStringRef: {
+        const sharedStringIndex = this.stringIds?.[index] ?? noPoolId
+        return sharedStringIndex === noPoolId ? undefined : this.sharedStrings?.[sharedStringIndex]?.text
+      }
       case valueKindBoolean:
         return (this.booleanValues?.[index] ?? 0) === 1
       case valueKindNull:
@@ -604,8 +647,15 @@ export class ImportedWorkbookArena {
     return count
   }
 
-  private materializedSheetCellIndexes(sheetIndex: number): Uint32Array {
-    const output = new Uint32Array(this.countMaterializedSheetCells(sheetIndex))
+  private lazySheetCellIndexes(sheetIndex: number): Uint32Array | number {
+    const count = this.countMaterializedSheetCells(sheetIndex)
+    return this.sheetIndexes === undefined && this.sheetIndex === sheetIndex && count === this.length
+      ? count
+      : this.materializedSheetCellIndexesWithCount(sheetIndex, count)
+  }
+
+  private materializedSheetCellIndexesWithCount(sheetIndex: number, count: number): Uint32Array {
+    const output = new Uint32Array(count)
     let outputIndex = 0
     for (let index = 0; index < this.length; index += 1) {
       if (!this.cellBelongsToSheet(index, sheetIndex)) {
@@ -779,6 +829,10 @@ export class ImportedWorkbookArena {
     while (nextCapacity < nextLength) {
       nextCapacity *= 2
     }
+    this.resizeStorage(nextCapacity)
+  }
+
+  private resizeStorage(nextCapacity: number): void {
     if (this.sheetIndexes) {
       this.sheetIndexes = growUint32Array(this.sheetIndexes, nextCapacity)
     }

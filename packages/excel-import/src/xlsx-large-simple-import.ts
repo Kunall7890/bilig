@@ -66,6 +66,7 @@ import {
   getZipText,
   normalizeZipPath,
   readLazyXlsxZipSourceByteLength,
+  readXlsxZipEntryUncompressedSize,
   releaseLazyXlsxZipSource,
   type XlsxZipEntries,
 } from './xlsx-zip.js'
@@ -175,6 +176,8 @@ type LargeSimpleSheetMetadataInput = Pick<
 
 const defaultLargeSimpleXlsxByteThreshold = 1_000_000
 const lazySheetCellMaterializationThreshold = 100_000
+const maxDimensionCellPreallocation = 8_000_000
+const minXmlBytesPerPreallocatedCell = 16
 const workbookPath = 'xl/workbook.xml'
 const workbookRelationshipsPath = 'xl/_rels/workbook.xml.rels'
 const sharedStringsPath = 'xl/sharedStrings.xml'
@@ -323,6 +326,7 @@ export function tryImportLargeSimpleXlsx(
           ...(options.allowUnsupportedCellMetadata === undefined
             ? {}
             : { allowUnsupportedCellMetadata: options.allowUnsupportedCellMetadata }),
+          maxDimensionCellPreallocation: maxPreallocatedWorksheetCells(zip, entry.path),
         },
       )
       if (streamed && (hasSharedStrings || streamed.cellScan.valueCellCount > 0)) {
@@ -592,7 +596,14 @@ export function tryImportLargeSimpleXlsx(
       continue
     }
     const snapshotMaterializationStart = phaseRecorder.start()
-    const resolvedRichTextCells = materializeCells && hasSharedStrings ? scanned.cellScan.arena.resolveSharedStrings(sharedStrings) : []
+    const keepSharedStringRefsForLazyCells =
+      materializeCells && hasSharedStrings && scanned.cellScan.cellCount > lazySheetCellMaterializationThreshold
+    const resolvedRichTextCells =
+      materializeCells && hasSharedStrings
+        ? keepSharedStringRefsForLazyCells
+          ? scanned.cellScan.arena.retainSharedStringReferences(sharedStrings)
+          : scanned.cellScan.arena.resolveSharedStrings(sharedStrings)
+        : []
     if (resolvedRichTextCells === null) {
       return null
     }
@@ -774,6 +785,13 @@ function withoutConditionalFormattingXml(
   }
   const { conditionalFormattingXml: _released, ...retained } = metadata
   return Object.keys(retained).length > 0 ? retained : undefined
+}
+
+function maxPreallocatedWorksheetCells(zip: XlsxZipEntries, path: string): number {
+  const uncompressedSize = readXlsxZipEntryUncompressedSize(zip, path)
+  return uncompressedSize === undefined
+    ? 0
+    : Math.min(maxDimensionCellPreallocation, Math.floor(uncompressedSize / minXmlBytesPerPreallocatedCell))
 }
 
 function appendConditionalFormats(

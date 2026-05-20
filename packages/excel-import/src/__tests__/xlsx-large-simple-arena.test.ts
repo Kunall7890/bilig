@@ -102,6 +102,36 @@ describe('large simple XLSX import arena', () => {
     expect([...lazyCells]).toEqual([{ address: 'A1', value: 'Alpha', formula: 'B1' }])
   })
 
+  it('keeps lazy shared-string cells readable without duplicating shared strings into arena pools', () => {
+    const arena = new ImportedWorkbookArena()
+    const cell = arena.addSharedStringCell({ sheetIndex: 0, row: 0, column: 0, sharedStringIndex: 2 })
+    arena.setFormula(cell, 'A1&""')
+
+    const richTextCells = arena.retainSharedStringReferences([
+      { text: 'unused', rich: false },
+      { text: 'also unused', rich: false },
+      { text: 'Shared label', rich: true, xml: '<si><r><t>Shared label</t></r></si>' },
+    ])
+    const lazyCells = arena.createLazySheetCells(0)
+
+    expect(richTextCells).toEqual([
+      {
+        address: 'A1',
+        text: 'Shared label',
+        storage: 'sharedString',
+        xml: '<si><r><t>Shared label</t></r></si>',
+      },
+    ])
+    expect(arena.snapshot().strings).toEqual([])
+    expect(arena.readPreviewText(0, 0)).toBe('Shared label')
+
+    arena.releaseMaterializationScratch()
+
+    expect(lazyCells).toHaveLength(1)
+    expect(lazyCells[0]).toEqual({ address: 'A1', value: 'Shared label', formula: 'A1&""' })
+    expect([...lazyCells]).toEqual([{ address: 'A1', value: 'Shared label', formula: 'A1&""' }])
+  })
+
   it('uses scalar sheet ownership for single-sheet arenas and falls back only for mixed ownership', () => {
     const arena = new ImportedWorkbookArena()
     arena.addCell({ sheetIndex: 4, row: 0, column: 0, value: 1 })
