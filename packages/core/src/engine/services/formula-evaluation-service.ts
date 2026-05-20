@@ -391,6 +391,7 @@ export function createEngineFormulaEvaluationService(args: {
             criteriaPairs: resolvedPairs,
             ...(aggregateRange === undefined ? {} : { aggregateRange }),
             aggregateKind: directCriteria.aggregateKind,
+            useCompoundBucketIndex: directCriteriaSharing.shouldUseCompoundExactBucketIndex(resolvedPairs),
           })
         : undefined
     if (exactCriteriaAggregateResult !== undefined) {

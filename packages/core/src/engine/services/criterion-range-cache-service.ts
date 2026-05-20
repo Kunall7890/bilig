@@ -55,6 +55,7 @@ export interface CriterionCompoundExactAggregateRequest {
   readonly criteriaPairs: readonly CriterionRangePair[]
   readonly aggregateRange?: CriterionRangeDescriptor
   readonly aggregateKind: CriterionExactAggregateRequest['aggregateKind']
+  readonly useCompoundBucketIndex?: boolean
 }
 
 interface CriterionExactAggregateBucket {
@@ -69,6 +70,10 @@ interface CriterionExactAggregateBucket {
 interface CriterionExactAggregateIndex {
   readonly numbers: ReadonlyMap<number, CriterionExactAggregateBucket>
   readonly strings: ReadonlyMap<string, CriterionExactAggregateBucket>
+}
+
+interface CriterionCompoundExactAggregateIndex {
+  readonly buckets: ReadonlyMap<string, CriterionExactAggregateBucket>
 }
 
 interface CriterionEqualityRowIndex {
@@ -117,6 +122,7 @@ type SliceFastPredicate =
     }
 
 const equalityRowIndexes = new WeakMap<RuntimeColumnView['owner'], CriterionEqualityRowIndex>()
+const COMPOUND_EXACT_AGGREGATE_BUCKET_LIMIT = 16_384
 
 function errorValue(code: ErrorCode): CellValue {
   return { tag: ValueTag.Error, code }
@@ -505,6 +511,10 @@ function exactKeyCachePart(key: CriterionEqualityIndexKey): string {
   return key.kind === 'number' ? `n:${key.value}` : `s:${key.value}`
 }
 
+function compoundExactTupleKey(keys: readonly CriterionEqualityIndexKey[]): string {
+  return keys.map(exactKeyCachePart).join('\u0002')
+}
+
 function compoundExactAggregateCacheKey(request: {
   readonly aggregateKind: CriterionExactAggregateRequest['aggregateKind']
   readonly criteriaPairs: readonly {
@@ -520,6 +530,22 @@ function compoundExactAggregateCacheKey(request: {
     request.criteriaPairs
       .map(({ regionId, view, key }) => `${regionId}:${view.columnVersion}:${view.structureVersion}:${exactKeyCachePart(key)}`)
       .join('\u0002'),
+    request.aggregateRegionId ?? -1,
+    request.aggregateView?.columnVersion ?? -1,
+    request.aggregateView?.structureVersion ?? -1,
+  ].join('\u0001')
+}
+
+function compoundExactAggregateIndexCacheKey(request: {
+  readonly criteriaPairs: readonly {
+    readonly regionId: number
+    readonly view: RuntimeColumnView
+  }[]
+  readonly aggregateRegionId?: number
+  readonly aggregateView?: RuntimeColumnView
+}): string {
+  return [
+    request.criteriaPairs.map(({ regionId, view }) => `${regionId}:${view.columnVersion}:${view.structureVersion}`).join('\u0002'),
     request.aggregateRegionId ?? -1,
     request.aggregateView?.columnVersion ?? -1,
     request.aggregateView?.structureVersion ?? -1,
@@ -575,6 +601,7 @@ export function createCriterionRangeCacheService(args: {
 }): CriterionRangeCacheService {
   const exactAggregateIndexes = new Map<string, CriterionExactAggregateIndex>()
   const compoundExactAggregateResults = new Map<string, CellValue>()
+  const compoundExactAggregateIndexes = new Map<string, CriterionCompoundExactAggregateIndex>()
 
   const getColumnView = (request: { sheetName: string; rowStart: number; rowEnd: number; col: number }): RuntimeColumnView => {
     const direct = Reflect.get(args.runtimeColumnStore, 'getColumnView')
@@ -656,6 +683,49 @@ export function createCriterionRangeCacheService(args: {
     return buckets
   }
 
+  const equalityKeyAtOffset = (view: RuntimeColumnView, offset: number): CriterionEqualityIndexKey | undefined =>
+    equalityIndexKeyForStoredValue(
+      decodeValueTag(view.readTagAt(offset)),
+      view.readNumberAt(offset),
+      view.readStringIdAt(offset),
+      args.runtimeColumnStore,
+    )
+
+  const buildCompoundExactAggregateIndex = (
+    resolvedPairs: readonly {
+      readonly view: RuntimeColumnView
+    }[],
+    aggregateView: RuntimeColumnView | undefined,
+    length: number,
+  ): CriterionCompoundExactAggregateIndex | undefined => {
+    const buckets = new Map<string, CriterionExactAggregateBucket>()
+    for (let rowOffset = 0; rowOffset < length; rowOffset += 1) {
+      const rowKeys: CriterionEqualityIndexKey[] = []
+      for (const pair of resolvedPairs) {
+        const key = equalityKeyAtOffset(pair.view, rowOffset)
+        if (key === undefined) {
+          rowKeys.length = 0
+          break
+        }
+        rowKeys.push(key)
+      }
+      if (rowKeys.length === 0) {
+        continue
+      }
+      const tupleKey = compoundExactTupleKey(rowKeys)
+      let bucket = buckets.get(tupleKey)
+      if (bucket === undefined) {
+        if (buckets.size >= COMPOUND_EXACT_AGGREGATE_BUCKET_LIMIT) {
+          return undefined
+        }
+        bucket = createExactAggregateBucket()
+        buckets.set(tupleKey, bucket)
+      }
+      addExactAggregateMatch(bucket, aggregateView, rowOffset)
+    }
+    return { buckets }
+  }
+
   const getOrBuildExactAggregate = (request: CriterionExactAggregateRequest): CellValue | undefined => {
     const criteriaPredicate = buildSlicePredicate(compileCriteriaMatcher(request.criteriaPair.criteria))
     const criteriaKey = equalityIndexKeyForPredicate(criteriaPredicate)
@@ -703,9 +773,13 @@ export function createCriterionRangeCacheService(args: {
     }
 
     const predicates = criteriaPairs.map((pair) => buildSlicePredicate(compileCriteriaMatcher(pair.criteria)))
-    const keys = predicates.map(equalityIndexKeyForPredicate)
-    if (keys.some((key) => key === undefined)) {
-      return undefined
+    const keys: CriterionEqualityIndexKey[] = []
+    for (const predicate of predicates) {
+      const key = equalityIndexKeyForPredicate(predicate)
+      if (key === undefined) {
+        return undefined
+      }
+      keys.push(key)
     }
 
     const resolvedPairs = criteriaPairs.map((pair, index) => ({
@@ -725,6 +799,26 @@ export function createCriterionRangeCacheService(args: {
     const cached = compoundExactAggregateResults.get(cacheKey)
     if (cached !== undefined) {
       return cached
+    }
+
+    if (request.useCompoundBucketIndex) {
+      const indexCacheKey = compoundExactAggregateIndexCacheKey({
+        criteriaPairs: resolvedPairs,
+        ...(aggregateRegionId === undefined ? {} : { aggregateRegionId }),
+        ...(aggregateView === undefined ? {} : { aggregateView }),
+      })
+      let index = compoundExactAggregateIndexes.get(indexCacheKey)
+      if (index === undefined) {
+        index = buildCompoundExactAggregateIndex(resolvedPairs, aggregateView, expectedLength)
+        if (index !== undefined) {
+          compoundExactAggregateIndexes.set(indexCacheKey, index)
+        }
+      }
+      if (index !== undefined) {
+        const result = exactAggregateValueFromBucket(index.buckets.get(compoundExactTupleKey(keys)), request.aggregateKind)
+        compoundExactAggregateResults.set(cacheKey, result)
+        return result
+      }
     }
 
     const rowsets = resolvedPairs.map(({ view, predicate }) => readIndexedEqualityRows(view, predicate, args.runtimeColumnStore))
