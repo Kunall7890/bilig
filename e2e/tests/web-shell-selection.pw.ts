@@ -279,6 +279,7 @@ test('web app preserves the active cell inside a selected area and collapses on 
   await expect(page.locator('[data-grid-selection-visual-role="selection-border"]')).toHaveCount(1)
   await expect(page.locator('[data-grid-selection-visual-role="active-border"]')).toHaveCount(1)
   await expect(page.locator('[data-grid-selection-visual-role="fill-handle"]')).toHaveCount(1)
+  await expectSelectionVisualRoles(page, ['header-fill', 'selection-fill', 'selection-border', 'active-border', 'fill-handle'], 'visible')
 
   await clickProductCell(page, 2, 2)
   await expect(page.getByTestId('status-selection')).toHaveText('Sheet1!C3')
@@ -287,6 +288,7 @@ test('web app preserves the active cell inside a selected area and collapses on 
   await expect(page.locator('[data-grid-selection-visual-role="selection-fill"]')).toHaveCount(0)
   await expect(page.locator('[data-grid-selection-visual-role="active-border"]')).toHaveCount(1)
   await expect(page.locator('[data-grid-selection-visual-role="selection-border"]')).toHaveCount(0)
+  await expectSelectionVisualRoles(page, ['active-border', 'fill-handle', 'header-fill'], 'visible')
 })
 
 test('@browser-ci web app keeps reverse-drag range selection chrome geometrically aligned', async ({ page }) => {
@@ -954,6 +956,13 @@ async function expectVisualRectNear(
   expect(actual.y, `${label} y`).toBeCloseTo(expected.y, 0)
   expect(actual.width, `${label} width`).toBeCloseTo(expected.width, 0)
   expect(actual.height, `${label} height`).toBeCloseTo(expected.height, 0)
+}
+
+async function expectSelectionVisualRoles(page: Page, roles: readonly string[], expected: 'hidden' | 'visible'): Promise<void> {
+  const selector = roles.map((role) => `[data-grid-selection-visual-role="${role}"]`).join(',')
+  const opacities = await page.locator(selector).evaluateAll((nodes) => nodes.map((node) => window.getComputedStyle(node).opacity))
+  expect(opacities.length).toBeGreaterThan(0)
+  expect(opacities.every((opacity) => (expected === 'visible' ? opacity !== '0' : opacity === '0'))).toBe(true)
 }
 
 async function expectBorderStyle(
