@@ -1,6 +1,17 @@
 import type { LiteralInput, WorkbookRichTextCellSnapshot, WorkbookSnapshot } from '@bilig/protocol'
 import { toDisplayText } from './workbook-import-helpers.js'
 import {
+  binarySearchUint32,
+  canStoreInt32Number,
+  canStoreLinearCoordinate,
+  isPreviewCell,
+  maxSpreadsheetColumnCount,
+  noPoolId,
+  packArenaCellAddress,
+  previewCellCount,
+  previewIndex,
+} from './xlsx-large-simple-arena-helpers.js'
+import {
   filledUint32Array,
   growFloat64Array,
   growInt32Array,
@@ -12,12 +23,11 @@ import { createLazyWorkbookRichTextCells } from './xlsx-large-simple-lazy-rich-t
 import { createLazyWorkbookSheetCells } from './xlsx-large-simple-lazy-sheet-cells.js'
 import type { LargeSimpleSharedStrings } from './xlsx-large-simple-shared-strings.js'
 import type { ImportedWorkbookStringPool } from './xlsx-large-simple-string-pool.js'
-import type { ImportedWorksheetStyleIndexArena } from './xlsx-large-simple-style-index-arena.js'
-import { decodeCellAddress } from './xlsx-large-simple-xml-byte-utils.js'
+import { decodeCellAddress, encodeCellAddress } from './xlsx-large-simple-xml-byte-utils.js'
 export { ImportedWorksheetStyleIndexArena } from './xlsx-large-simple-style-index-arena.js'
+export type { ImportedWorksheetCellScan } from './xlsx-large-simple-cell-scan-types.js'
 
 const initialCellCapacity = 1024
-const noPoolId = 0xffffffff
 const valueKindEmpty = 0
 const valueKindNumber = 1
 const valueKindString = 2
@@ -25,13 +35,7 @@ const valueKindBoolean = 3
 const valueKindNull = 4
 const valueKindSharedStringRef = 5
 const valueKindInteger = 6
-const previewRowCount = 8
-const previewColumnCount = 6
-const previewCellCount = previewRowCount * previewColumnCount
 const lazyRichTextCellThreshold = 10_000
-const maxSpreadsheetColumnCount = 16_384
-const minInt32 = -0x80000000
-const maxInt32 = 0x7fffffff
 
 export interface ImportedWorksheetArenaCellInput {
   readonly sheetIndex: number
@@ -976,80 +980,4 @@ export class ImportedWorkbookArena {
     }
     return output
   }
-}
-
-export interface ImportedWorksheetCellScan {
-  readonly arena: ImportedWorkbookArena
-  readonly sheetIndex: number
-  readonly richTextCells: WorkbookRichTextCellSnapshot[]
-  readonly styleIndexes: ImportedWorksheetStyleIndexArena
-  readonly blankStyleCellCount: number
-  readonly cellCount: number
-  readonly valueCellCount: number
-  readonly formulaCellCount: number
-  readonly mergeCount?: number
-  readonly conditionalFormatCount?: number
-  readonly dataValidationCount?: number
-  readonly tableCount?: number
-  readonly rowCount: number
-  readonly columnCount: number
-  readonly usedRange: {
-    readonly startRow: number
-    readonly startColumn: number
-    readonly endRow: number
-    readonly endColumn: number
-  } | null
-}
-
-function isPreviewCell(row: number, column: number): boolean {
-  return row >= 0 && row < previewRowCount && column >= 0 && column < previewColumnCount
-}
-
-function previewIndex(row: number, column: number): number {
-  return isPreviewCell(row, column) ? row * previewColumnCount + column : -1
-}
-
-function encodeCellAddress(row: number, column: number): string {
-  let value = column + 1
-  let columnName = ''
-  while (value > 0) {
-    value -= 1
-    columnName = String.fromCharCode(65 + (value % 26)) + columnName
-    value = Math.floor(value / 26)
-  }
-  return `${columnName}${String(row + 1)}`
-}
-
-function packArenaCellAddress(row: number, column: number): number {
-  return row * maxSpreadsheetColumnCount + column
-}
-
-function canStoreLinearCoordinate(width: number, row: number, column: number): boolean {
-  if (!Number.isSafeInteger(width) || width <= 0 || row < 0 || column < 0 || column >= width) {
-    return false
-  }
-  const linearCellIndex = row * width + column
-  return Number.isSafeInteger(linearCellIndex) && linearCellIndex >= 0 && linearCellIndex <= 0xffffffff
-}
-
-function canStoreInt32Number(value: number): boolean {
-  return Number.isInteger(value) && value >= minInt32 && value <= maxInt32 && !Object.is(value, -0)
-}
-
-function binarySearchUint32(values: Uint32Array, target: number): number {
-  let low = 0
-  let high = values.length - 1
-  while (low <= high) {
-    const mid = (low + high) >>> 1
-    const value = values[mid] ?? 0
-    if (value === target) {
-      return mid
-    }
-    if (value < target) {
-      low = mid + 1
-    } else {
-      high = mid - 1
-    }
-  }
-  return -1
 }
