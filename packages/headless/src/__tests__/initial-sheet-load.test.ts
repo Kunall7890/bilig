@@ -484,6 +484,42 @@ describe('initial mixed sheet load', () => {
     })
   })
 
+  it('fast-binds hydrated direct aggregate formulas from runtime-image snapshots', () => {
+    const source = WorkPaper.buildFromSheets({
+      Bench: [
+        [1, '=SUM(A1:A1)'],
+        [2, '=SUM(A1:A2)'],
+        [3, '=SUM(A1:A3)'],
+      ],
+    })
+    const serialized = source.getAllSheetsSerialized()
+    source.dispose()
+
+    const rebuilt = WorkPaper.buildFromSheets(serialized)
+    const sheetId = rebuilt.getSheetId('Bench')!
+    const counters = rebuilt.getPerformanceCounters()
+
+    expect(counters.snapshotOpsReplayed).toBe(0)
+    expect(counters.topoRebuilds).toBe(0)
+    expect(counters.formulaFamilyRuntimeRunFallbacks).toBe(0)
+    expect(counters.runtimeHydratedDirectAggregateFastBindings).toBe(3)
+    expect(rebuilt.getCellValue({ sheet: sheetId, row: 2, col: 1 })).toEqual({
+      tag: ValueTag.Number,
+      value: 6,
+    })
+
+    rebuilt.setCellContents({ sheet: sheetId, row: 0, col: 0 }, 10)
+
+    expect(rebuilt.getCellValue({ sheet: sheetId, row: 0, col: 1 })).toEqual({
+      tag: ValueTag.Number,
+      value: 10,
+    })
+    expect(rebuilt.getCellValue({ sheet: sheetId, row: 2, col: 1 })).toEqual({
+      tag: ValueTag.Number,
+      value: 15,
+    })
+  })
+
   it('imports compatible runtime snapshots without reading serialized sheet matrix entries', () => {
     const source = WorkPaper.buildFromSheets({
       Bench: [
