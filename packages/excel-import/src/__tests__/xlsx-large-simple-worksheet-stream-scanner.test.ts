@@ -166,6 +166,58 @@ describe('large simple worksheet stream scanners', () => {
     expect(Math.max(...retainedBufferLengths)).toBeLessThan(1024)
   })
 
+  it('streams large split conditional formatting metadata without retaining the full parent body', () => {
+    const headlessRetainedBufferLengths: number[] = []
+    const headlessScan = parseHeadlessLargeSimpleWorksheetFromChunks(splitLargeConditionalFormattingWorksheetXml(), 0, {
+      hasSharedStrings: false,
+      onRetainedBufferLength: (length) => headlessRetainedBufferLengths.push(length),
+    })
+    const retainedBufferLengths: number[] = []
+    const scan = parseLargeSimpleWorksheetCellsFromChunks(splitLargeConditionalFormattingWorksheetXml(), 0, {
+      hasSharedStrings: false,
+      sheetName: 'Data',
+      onRetainedBufferLength: (length) => retainedBufferLengths.push(length),
+    })
+
+    expect(headlessScan?.conditionalFormatCount).toBe(4)
+    expect(scan?.cellScan.conditionalFormatCount).toBe(4)
+    expect(scan?.metadata?.conditionalFormats).toEqual([
+      {
+        id: 'xlsx-cf:Data:A1:A2:1',
+        range: { sheetName: 'Data', startAddress: 'A1', endAddress: 'A2' },
+        rule: { kind: 'cellIs', operator: 'greaterThan', values: [0] },
+        style: {},
+        priority: 1,
+      },
+      {
+        id: 'xlsx-cf:Data:C1:C2:2',
+        range: { sheetName: 'Data', startAddress: 'C1', endAddress: 'C2' },
+        rule: { kind: 'cellIs', operator: 'greaterThan', values: [0] },
+        style: {},
+        priority: 1,
+      },
+      {
+        id: 'xlsx-cf:Data:A1:A2:3',
+        range: { sheetName: 'Data', startAddress: 'A1', endAddress: 'A2' },
+        rule: { kind: 'cellIs', operator: 'lessThan', values: [9] },
+        style: {},
+        priority: 2,
+      },
+      {
+        id: 'xlsx-cf:Data:C1:C2:4',
+        range: { sheetName: 'Data', startAddress: 'C1', endAddress: 'C2' },
+        rule: { kind: 'cellIs', operator: 'lessThan', values: [9] },
+        style: {},
+        priority: 2,
+      },
+    ])
+    expect(scan?.metadata?.conditionalFormattingXml).toBeUndefined()
+    expect(headlessRetainedBufferLengths.length).toBeGreaterThan(0)
+    expect(retainedBufferLengths.length).toBeGreaterThan(0)
+    expect(Math.max(...headlessRetainedBufferLengths)).toBeLessThan(1024)
+    expect(Math.max(...retainedBufferLengths)).toBeLessThan(1024)
+  })
+
   it('rejects unterminated streamed metadata in headless and materialized scans', () => {
     expect(
       parseHeadlessLargeSimpleWorksheetFromChunks(splitUnterminatedMergeCellsWorksheetXml(), 0, { hasSharedStrings: false }),
@@ -493,6 +545,27 @@ function splitLargeDataValidationsWorksheetXml(): (onChunk: (chunk: Uint8Array) 
     ' '.repeat(20_000),
     '<dataValidation type="whole" operator="between" sqref="B1 B2"><formula1>1</formula1><formula2>10</formula2></dataValidation></',
     'dataValidations>',
+    '</worksheet>',
+  ]
+  return (onChunk) => {
+    for (const chunk of chunks) {
+      onChunk(encoder.encode(chunk))
+    }
+    return true
+  }
+}
+
+function splitLargeConditionalFormattingWorksheetXml(): (onChunk: (chunk: Uint8Array) => void) => boolean {
+  const chunks = [
+    '<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">',
+    '<dimension ref="A1"/>',
+    '<sheetData><row r="1"><c r="A1"><v>1</v></c></row></sheetData>',
+    '<conditionalFormatting sqref="A1:A2 C1:C2"><cfRule type="cellIs" priority="1" operator="greaterThan"><formula>0</formula></cfRule>',
+    ' '.repeat(40_000),
+    ' '.repeat(40_000),
+    ' '.repeat(20_000),
+    '<cfRule type="cellIs" priority="2" operator="lessThan"><formula>9</formula></cfRule></',
+    'conditionalFormatting>',
     '</worksheet>',
   ]
   return (onChunk) => {
