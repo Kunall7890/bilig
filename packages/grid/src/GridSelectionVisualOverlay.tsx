@@ -29,6 +29,7 @@ export interface GridSelectionVisualOverlayProps {
   readonly gridSelection: GridSelection
   readonly hoverCell?: Item | null | undefined
   readonly selectedCell: Item
+  readonly selectionChromeMode?: 'visible' | 'geometry-only' | undefined
   readonly selectionRange: Pick<Rectangle, 'x' | 'y' | 'width' | 'height'> | null
   readonly showFillHandle: boolean
   readonly scrollTransformStore?: WorkbookGridScrollStore | undefined
@@ -42,6 +43,7 @@ export function GridSelectionVisualOverlay(props: GridSelectionVisualOverlayProp
     hoverCell,
     scrollTransformStore,
     selectedCell,
+    selectionChromeMode = 'visible',
     selectionRange,
     showFillHandle,
   } = props
@@ -89,7 +91,7 @@ export function GridSelectionVisualOverlay(props: GridSelectionVisualOverlayProp
           data-grid-selection-visual-key={rect.key}
           data-grid-selection-visual-role={rect.role}
           key={keyForRect(rect)}
-          style={styleForRect(rect)}
+          style={styleForRect(rect, selectionChromeMode === 'geometry-only' && rect.role !== 'hover-fill')}
         />
       ))}
     </div>
@@ -475,10 +477,11 @@ function keyForRect(rect: GridSelectionVisualRect): string {
   return `${rect.role}:${rect.key}`
 }
 
-function styleForRect(rect: GridSelectionVisualRect): CSSProperties {
+function styleForRect(rect: GridSelectionVisualRect, geometryOnly = false): CSSProperties {
   const base = {
     height: rect.bounds.height,
     left: rect.bounds.x,
+    opacity: geometryOnly ? 0 : undefined,
     top: rect.bounds.y,
     width: rect.bounds.width,
   }

@@ -436,10 +436,34 @@ test('@browser-webgpu @browser-serial main workbook shell grid renders and updat
     return result.points.rangeBorder.a > 150 && result.darkPixelCounts.fillHandleRegion > 4 && result.points.topHeaderSelectionFill.a > 0
   })
 
-  expect(rangeReadback.points.rangeFill.a).toBeLessThanOrEqual(25)
+  expect(rangeReadback.points.rangeFill).toMatchObject({ r: 0, g: 0, b: 0, a: 0 })
   expect(rangeReadback.points.rangeBorder.a).toBeGreaterThan(150)
   expect(rangeReadback.darkPixelCounts.fillHandleRegion).toBeGreaterThan(4)
   expect(rangeReadback.points.topHeaderSelectionFill.a).toBeGreaterThan(0)
+  await expect(page.getByTestId('grid-pane-renderer')).toHaveAttribute('data-v3-presented-overlay-rect-count', /^[1-9]\d*$/)
+  await expect(page.getByTestId('grid-pane-renderer')).toHaveAttribute('data-v3-presented-overlay-rect-signature', /^[a-z0-9-]+$/)
+  const domSelectionChromeOpacity = await page
+    .locator(
+      [
+        '[data-grid-selection-visual-role="active-border"]',
+        '[data-grid-selection-visual-role="fill-handle"]',
+        '[data-grid-selection-visual-role="header-fill"]',
+        '[data-grid-selection-visual-role="selection-border"]',
+        '[data-grid-selection-visual-role="selection-fill"]',
+      ].join(','),
+    )
+    .evaluateAll((nodes) => nodes.map((node) => window.getComputedStyle(node).opacity))
+  expect(domSelectionChromeOpacity.length).toBeGreaterThan(0)
+  expect(domSelectionChromeOpacity.every((opacity) => opacity === '0')).toBe(true)
+  const rendererLayerOrder = await page.evaluate(() => {
+    const floor = document.querySelector('[data-testid="grid-pane-renderer-floor"]')
+    const typeGpu = document.querySelector('[data-testid="grid-pane-renderer"]')
+    return {
+      floorZ: floor ? Number(window.getComputedStyle(floor).zIndex) : Number.NaN,
+      typeGpuZ: typeGpu ? Number(window.getComputedStyle(typeGpu).zIndex) : Number.NaN,
+    }
+  })
+  expect(rendererLayerOrder.typeGpuZ).toBeGreaterThan(rendererLayerOrder.floorZ)
 
   await saveReadbackArtifact(page, testInfo, 'main-workbook-grid-readback.png', 'main-workbook-grid-readback')
 })

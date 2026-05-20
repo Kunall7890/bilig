@@ -32,6 +32,13 @@ export interface DynamicGridPreviewRectV3 {
   readonly bounds: Rectangle
 }
 
+interface BorderSides {
+  readonly bottom: boolean
+  readonly left: boolean
+  readonly right: boolean
+  readonly top: boolean
+}
+
 export function buildDynamicGridOverlayBatchV3(input: {
   readonly geometry: GridGeometrySnapshot
   readonly selectionRange: Pick<Rectangle, 'x' | 'y' | 'width' | 'height'> | null
@@ -205,31 +212,28 @@ function appendSelectionOverlay(input: {
   }
   const hasAxisSelection = (input.gridSelection?.columns.length ?? 0) > 0 || (input.gridSelection?.rows.length ?? 0) > 0
   const borderColor = parseGpuColor(workbookThemeColors.accent)
-  const selectionFillColor = parseGpuColor(workbookThemeColors.selectionFill)
   if (hasAxisSelection) {
     const activeCell = input.gridSelection?.current?.cell ?? [input.selectionRange.x, input.selectionRange.y]
     for (const activeRect of input.geometry.rangeScreenRects({ x: activeCell[0], y: activeCell[1], width: 1, height: 1 })) {
-      appendBorderRects(input.borderRects, activeRect, borderColor, 1)
+      appendBorderRects(input.borderRects, activeRect, borderColor, 2)
     }
     return
   }
   const isMultiCellSelection = input.selectionRange.width > 1 || input.selectionRange.height > 1
   const activeCell = input.gridSelection?.current?.cell ?? null
   if (isMultiCellSelection) {
-    appendSelectionFillRects({
-      activeCell,
-      color: selectionFillColor,
-      fillRects: input.fillRects,
-      geometry: input.geometry,
-      range: input.selectionRange,
-    })
-  }
-  for (const rect of input.geometry.rangeScreenRects(input.selectionRange)) {
-    appendBorderRects(input.borderRects, rect, borderColor, 1)
+    for (const rect of input.geometry.rangeScreenRects(input.selectionRange)) {
+      appendBorderRects(input.borderRects, rect, borderColor, 1)
+    }
+  } else {
+    for (const rect of input.geometry.rangeScreenRects(input.selectionRange)) {
+      appendBorderRects(input.borderRects, rect, borderColor, 2)
+    }
   }
   if (activeCell && isMultiCellSelection && cellInRange(activeCell, input.selectionRange)) {
+    const activeBorderSides = resolveActiveCellBorderSides(activeCell, input.selectionRange)
     for (const activeRect of input.geometry.rangeScreenRects({ x: activeCell[0], y: activeCell[1], width: 1, height: 1 })) {
-      appendBorderRects(input.borderRects, activeRect, borderColor, 1)
+      appendBorderRectsForSides(input.borderRects, activeRect, borderColor, 2, activeBorderSides)
     }
   }
   if (input.showFillHandle) {
@@ -627,11 +631,40 @@ function cellInRange(cell: Item, range: Pick<Rectangle, 'x' | 'y' | 'width' | 'h
   return cell[0] >= range.x && cell[0] < range.x + range.width && cell[1] >= range.y && cell[1] < range.y + range.height
 }
 
+function resolveActiveCellBorderSides(cell: Item, range: Pick<Rectangle, 'x' | 'y' | 'width' | 'height'>): BorderSides {
+  const right = range.x + range.width - 1
+  const bottom = range.y + range.height - 1
+  return {
+    bottom: cell[1] < bottom,
+    left: cell[0] > range.x,
+    right: cell[0] < right,
+    top: cell[1] > range.y,
+  }
+}
+
 function appendBorderRects(target: GridGpuRect[], rect: Rectangle, color: GridGpuRect['color'], thickness: number): void {
-  target.push(
-    { x: rect.x, y: rect.y, width: rect.width, height: thickness, color },
-    { x: rect.x, y: rect.y + rect.height - thickness, width: rect.width, height: thickness, color },
-    { x: rect.x, y: rect.y, width: thickness, height: rect.height, color },
-    { x: rect.x + rect.width - thickness, y: rect.y, width: thickness, height: rect.height, color },
-  )
+  appendBorderRectsForSides(target, rect, color, thickness, { bottom: true, left: true, right: true, top: true })
+}
+
+function appendBorderRectsForSides(
+  target: GridGpuRect[],
+  rect: Rectangle,
+  color: GridGpuRect['color'],
+  thickness: number,
+  sides: BorderSides,
+): void {
+  const nextRects: GridGpuRect[] = []
+  if (sides.top) {
+    nextRects.push({ x: rect.x, y: rect.y, width: rect.width, height: thickness, color })
+  }
+  if (sides.bottom) {
+    nextRects.push({ x: rect.x, y: rect.y + rect.height - thickness, width: rect.width, height: thickness, color })
+  }
+  if (sides.left) {
+    nextRects.push({ x: rect.x, y: rect.y, width: thickness, height: rect.height, color })
+  }
+  if (sides.right) {
+    nextRects.push({ x: rect.x + rect.width - thickness, y: rect.y, width: thickness, height: rect.height, color })
+  }
+  target.push(...nextRects.filter((candidate) => candidate.width > 0 && candidate.height > 0))
 }

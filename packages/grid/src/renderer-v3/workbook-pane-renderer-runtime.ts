@@ -46,6 +46,8 @@ export interface WorkbookPaneFrameInputV3 {
 export interface WorkbookPanePresentedVisualFrameV3 {
   readonly cameraSeq: number | null
   readonly overlayCameraSeq: number | null
+  readonly overlayRectCount: number
+  readonly overlayRectSignature: string | null
   readonly overlaySeq: number | null
   readonly scrollSnapshot: WorkbookGridScrollSnapshot
   readonly surface: TypeGpuSurfaceSizeV3
@@ -240,6 +242,8 @@ export class WorkbookPaneRendererRuntimeV3 {
         ? {
             cameraSeq: latestGeometry?.camera.seq ?? null,
             overlayCameraSeq: overlayBatch?.cameraSeq ?? null,
+            overlayRectCount: overlayBatch?.rectCount ?? 0,
+            overlayRectSignature: overlayBatch?.rectSignature ?? null,
             overlaySeq: overlayBatch?.seq ?? null,
             scrollSnapshot: { ...scrollSnapshot },
             surface: { ...state.surface },

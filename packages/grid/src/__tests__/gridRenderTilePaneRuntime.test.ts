@@ -1833,6 +1833,61 @@ describe('GridRenderTilePaneRuntime', () => {
     expect(hasOpaqueGreenFillRect(refreshed.residentBodyPane?.tile)).toBe(true)
   })
 
+  it('rebuilds resident tiles for pending local projections even when the remote batch id is ahead', () => {
+    const runtime = new GridRenderTilePaneRuntime()
+    const host = createHost()
+    const tileId = host.viewportTileKeys({
+      dprBucket: 1,
+      sheetOrdinal: 7,
+      viewport: { colEnd: 127, colStart: 0, rowEnd: 31, rowStart: 0 },
+    })[0]
+    if (tileId === undefined) {
+      throw new Error('Expected a visible render tile key for the test viewport')
+    }
+    const remoteTile: GridRenderTile = {
+      ...createRenderTile(tileId),
+      lastBatchId: 99,
+      version: {
+        axisX: 99,
+        axisY: 99,
+        freeze: 99,
+        styles: 99,
+        text: 99,
+        values: 99,
+      },
+    }
+    const engineWithPendingLocalFill: GridEngineLike = {
+      getCell: (_sheetName, address) => ({
+        ...(address === 'E6' ? { styleId: 'style-green' } : {}),
+        ...createEmptyCellSnapshot(address),
+      }),
+      getCellStyle: (styleId) => (styleId === 'style-green' ? { id: 'style-green', fill: { backgroundColor: '#00ff00' } } : undefined),
+      getRenderRevisionSnapshot: () => ({
+        authoritativeRevision: 0,
+        localRevision: 24,
+        projectedRevision: 2,
+        tileSceneCameraSeq: null,
+        tileSceneRevision: null,
+      }),
+      subscribeCells: () => () => {},
+      workbook: {
+        getSheet: () => undefined,
+      },
+    }
+
+    const refreshed = runtime.resolve(
+      createInput({
+        engine: engineWithPendingLocalFill,
+        gridRuntimeHost: host,
+        renderTileSource: createRenderTileSource([remoteTile]),
+        visibleViewport: { colEnd: 0, colStart: 0, rowEnd: 0, rowStart: 0 },
+      }),
+    )
+
+    expect(refreshed.residentBodyPane?.tile).not.toBe(remoteTile)
+    expect(hasOpaqueGreenFillRect(refreshed.residentBodyPane?.tile)).toBe(true)
+  })
+
   it('keeps local tiles through stale render tile deltas until the renderer batch catches up', () => {
     const runtime = new GridRenderTilePaneRuntime()
     const host = createHost()

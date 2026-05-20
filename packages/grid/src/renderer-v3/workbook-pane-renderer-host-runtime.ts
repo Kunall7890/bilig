@@ -8,6 +8,7 @@ import type { WorkbookRenderTilePaneState } from './render-tile-pane-state.js'
 import { resolveGridTextTileRevisionKeyV3 } from './typegpu-tile-resource-revisions.js'
 import {
   WorkbookPaneRendererRuntimeV3,
+  resolveWorkbookPaneRendererGeometryV3,
   type TypeGpuSurfaceSizeV3,
   type WorkbookPaneFrameResultV3,
   type WorkbookPanePresentedVisualFrameV3,
@@ -244,8 +245,10 @@ export class WorkbookPaneRendererHostRuntimeV3 {
   }
 
   private syncFrameProofSignature(props: WorkbookPaneRendererHostPropsV3): void {
+    const overlay = resolveWorkbookPaneHostOverlayProofV3(props)
     const signature = resolveWorkbookPaneFrameProofSignatureV3({
       ...props,
+      overlay,
       surface: this.surfaceSnapshot.surface,
     })
     if (this.frameProofSignature === signature) {
@@ -270,6 +273,20 @@ export class WorkbookPaneRendererHostRuntimeV3 {
     }
     this.surfaceRuntime.setCanvas(this.props.active && this.props.host ? this.canvas : null)
   }
+}
+
+function resolveWorkbookPaneHostOverlayProofV3(props: WorkbookPaneRendererHostPropsV3): DynamicGridOverlayBatchV3 | null {
+  if (!props.overlayBuilder) {
+    return props.overlay
+  }
+  const geometry = resolveWorkbookPaneRendererGeometryV3({
+    cameraStore: props.cameraStore,
+    geometry: props.geometry,
+  })
+  if (!geometry) {
+    return props.overlay
+  }
+  return props.overlayBuilder(geometry) ?? null
 }
 
 export function resolveWorkbookPaneFrameProofSignatureV3(props: {
