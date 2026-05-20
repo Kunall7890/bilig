@@ -10,7 +10,8 @@ import {
 } from './typegpu-primitives.js'
 import { noteGridDrawFrame, noteTypeGpuDrawCall, noteTypeGpuPaneDraw, noteTypeGpuSubmit } from '../grid-render-counters.js'
 import {
-  WORKBOOK_DYNAMIC_OVERLAY_LAYER_KEY_V3,
+  WORKBOOK_DYNAMIC_OVERLAY_CHROME_LAYER_KEY_V3,
+  WORKBOOK_DYNAMIC_OVERLAY_FILL_LAYER_KEY_V3,
   ensureLayerSurfaceBindingsV3,
   resolveWorkbookHeaderLayerKeyV3,
   type TypeGpuLayerResourceCacheV3,
@@ -100,51 +101,18 @@ export function drawTypeGpuTilePanesV3(input: {
   })
 
   input.tilePanes.forEach((pane) => {
-    if (!isPaneDrawVisible(pane)) {
-      return
-    }
-    const scissorRect = resolveClampedScissorRect(pane.frame, input.surface)
-    if (!scissorRect) {
-      return
-    }
-    const paneRenderOffset = resolvePaneRenderOffset(pane, input.scrollSnapshot)
-    const content = input.tileResources.peekContent(resolveWorkbookTileContentBufferKeyV3(pane))
-    const placement = input.tileResources.getPlacement(resolveWorkbookTilePlacementBufferKeyV3(pane))
-    if (!content) {
-      return
-    }
-
-    pass.setScissorRect(scissorRect.x, scissorRect.y, scissorRect.width, scissorRect.height)
-    const paneOrigin = resolvePaneOrigin(pane)
-
-    if (content.rectCount > 0 || content.textCount > 0) {
-      ensureTilePlacementSurfaceBindingsV3(input.artifacts, placement)
-      updateTypeGpuSurfaceUniform(placement.surfaceUniform!, input.surface, paneOrigin, paneRenderOffset)
-    }
-
-    if (content.rectCount > 0 && content.rectHandle && placement.surfaceBindGroup) {
-      const rectRenderer = input.artifacts.rectPipeline.with(pass).with(placement.surfaceBindGroup)
-      rectRenderer
-        .with(WORKBOOK_UNIT_QUAD_LAYOUT, input.artifacts.quadBuffer)
-        .with(WORKBOOK_RECT_INSTANCE_LAYOUT, content.rectHandle.buffer)
-        .draw(6, content.rectCount)
-      noteTypeGpuDrawCall(1)
-    }
-
-    if ((input.drawText ?? true) && content.textCount > 0 && content.textHandle && placement.textBindGroup) {
-      const textRenderer = input.artifacts.textPipeline.with(pass).with(placement.textBindGroup)
-      textRenderer
-        .with(WORKBOOK_UNIT_QUAD_LAYOUT, input.artifacts.quadBuffer)
-        .with(WORKBOOK_TEXT_INSTANCE_LAYOUT, content.textHandle.buffer)
-        .draw(6, content.textCount)
-      noteTypeGpuDrawCall(1)
-    }
-    noteTypeGpuPaneDraw(1)
+    drawTypeGpuTilePaneRects({
+      artifacts: input.artifacts,
+      pane,
+      pass,
+      scrollSnapshot: input.scrollSnapshot,
+      surface: input.surface,
+      tileResources: input.tileResources,
+    })
   })
 
-  drawTypeGpuHeaderPanes({
+  drawTypeGpuHeaderPaneRects({
     artifacts: input.artifacts,
-    drawText: input.drawText ?? true,
     headerPanes: input.headerPanes ?? [],
     layerResources: input.layerResources,
     pass,
@@ -152,10 +120,39 @@ export function drawTypeGpuTilePanesV3(input: {
     surface: input.surface,
   })
 
-  drawTypeGpuOverlay({
+  drawTypeGpuOverlayLayer({
     artifacts: input.artifacts,
+    layerKey: WORKBOOK_DYNAMIC_OVERLAY_FILL_LAYER_KEY_V3,
     layerResources: input.layerResources,
-    overlay: input.overlay ?? null,
+    pass,
+    surface: input.surface,
+  })
+
+  if (input.drawText ?? true) {
+    input.tilePanes.forEach((pane) => {
+      drawTypeGpuTilePaneText({
+        artifacts: input.artifacts,
+        pane,
+        pass,
+        scrollSnapshot: input.scrollSnapshot,
+        surface: input.surface,
+        tileResources: input.tileResources,
+      })
+    })
+    drawTypeGpuHeaderPaneText({
+      artifacts: input.artifacts,
+      headerPanes: input.headerPanes ?? [],
+      layerResources: input.layerResources,
+      pass,
+      scrollSnapshot: input.scrollSnapshot,
+      surface: input.surface,
+    })
+  }
+
+  drawTypeGpuOverlayLayer({
+    artifacts: input.artifacts,
+    layerKey: WORKBOOK_DYNAMIC_OVERLAY_CHROME_LAYER_KEY_V3,
+    layerResources: input.layerResources,
     pass,
     surface: input.surface,
   })
@@ -186,17 +183,94 @@ export function hasDrawableTypeGpuBodyPaneFramesV3(input: {
   return hasDrawableBodyPane
 }
 
-function drawTypeGpuOverlay(input: {
+function drawTypeGpuTilePaneRects(input: {
   readonly artifacts: TypeGpuRendererArtifacts
-  readonly layerResources: TypeGpuLayerResourceCacheV3
+  readonly pane: WorkbookRenderTilePaneState
   readonly pass: GPURenderPassEncoder
-  readonly overlay: DynamicGridOverlayBatchV3 | null
+  readonly scrollSnapshot: WorkbookGridScrollSnapshot
   readonly surface: TypeGpuTileDrawSurface
+  readonly tileResources: TypeGpuTileResourceCacheV3
 }): void {
-  if (!input.overlay || input.overlay.rectCount === 0) {
+  if (!isPaneDrawVisible(input.pane)) {
     return
   }
-  const overlayCache = input.layerResources.peek(WORKBOOK_DYNAMIC_OVERLAY_LAYER_KEY_V3)
+  const scissorRect = resolveClampedScissorRect(input.pane.frame, input.surface)
+  if (!scissorRect) {
+    return
+  }
+  const content = input.tileResources.peekContent(resolveWorkbookTileContentBufferKeyV3(input.pane))
+  const placement = input.tileResources.getPlacement(resolveWorkbookTilePlacementBufferKeyV3(input.pane))
+  if (!content || content.rectCount <= 0 || !content.rectHandle) {
+    return
+  }
+  ensureTilePlacementSurfaceBindingsV3(input.artifacts, placement)
+  updateTypeGpuSurfaceUniform(
+    placement.surfaceUniform!,
+    input.surface,
+    resolvePaneOrigin(input.pane),
+    resolvePaneRenderOffset(input.pane, input.scrollSnapshot),
+  )
+  if (!placement.surfaceBindGroup) {
+    return
+  }
+  input.pass.setScissorRect(scissorRect.x, scissorRect.y, scissorRect.width, scissorRect.height)
+  const rectRenderer = input.artifacts.rectPipeline.with(input.pass).with(placement.surfaceBindGroup)
+  rectRenderer
+    .with(WORKBOOK_UNIT_QUAD_LAYOUT, input.artifacts.quadBuffer)
+    .with(WORKBOOK_RECT_INSTANCE_LAYOUT, content.rectHandle.buffer)
+    .draw(6, content.rectCount)
+  noteTypeGpuDrawCall(1)
+  noteTypeGpuPaneDraw(1)
+}
+
+function drawTypeGpuTilePaneText(input: {
+  readonly artifacts: TypeGpuRendererArtifacts
+  readonly pane: WorkbookRenderTilePaneState
+  readonly pass: GPURenderPassEncoder
+  readonly scrollSnapshot: WorkbookGridScrollSnapshot
+  readonly surface: TypeGpuTileDrawSurface
+  readonly tileResources: TypeGpuTileResourceCacheV3
+}): void {
+  if (!isPaneDrawVisible(input.pane)) {
+    return
+  }
+  const scissorRect = resolveClampedScissorRect(input.pane.frame, input.surface)
+  if (!scissorRect) {
+    return
+  }
+  const content = input.tileResources.peekContent(resolveWorkbookTileContentBufferKeyV3(input.pane))
+  const placement = input.tileResources.getPlacement(resolveWorkbookTilePlacementBufferKeyV3(input.pane))
+  if (!content || content.textCount <= 0 || !content.textHandle) {
+    return
+  }
+  ensureTilePlacementSurfaceBindingsV3(input.artifacts, placement)
+  updateTypeGpuSurfaceUniform(
+    placement.surfaceUniform!,
+    input.surface,
+    resolvePaneOrigin(input.pane),
+    resolvePaneRenderOffset(input.pane, input.scrollSnapshot),
+  )
+  if (!placement.textBindGroup) {
+    return
+  }
+  input.pass.setScissorRect(scissorRect.x, scissorRect.y, scissorRect.width, scissorRect.height)
+  const textRenderer = input.artifacts.textPipeline.with(input.pass).with(placement.textBindGroup)
+  textRenderer
+    .with(WORKBOOK_UNIT_QUAD_LAYOUT, input.artifacts.quadBuffer)
+    .with(WORKBOOK_TEXT_INSTANCE_LAYOUT, content.textHandle.buffer)
+    .draw(6, content.textCount)
+  noteTypeGpuDrawCall(1)
+  noteTypeGpuPaneDraw(1)
+}
+
+function drawTypeGpuOverlayLayer(input: {
+  readonly artifacts: TypeGpuRendererArtifacts
+  readonly layerKey: string
+  readonly layerResources: TypeGpuLayerResourceCacheV3
+  readonly pass: GPURenderPassEncoder
+  readonly surface: TypeGpuTileDrawSurface
+}): void {
+  const overlayCache = input.layerResources.peek(input.layerKey)
   if (!overlayCache?.rectHandle || overlayCache.rectCount <= 0) {
     return
   }
@@ -216,9 +290,8 @@ function drawTypeGpuOverlay(input: {
   noteTypeGpuPaneDraw(1)
 }
 
-function drawTypeGpuHeaderPanes(input: {
+function drawTypeGpuHeaderPaneRects(input: {
   readonly artifacts: TypeGpuRendererArtifacts
-  readonly drawText: boolean
   readonly headerPanes: readonly GridHeaderPaneState[]
   readonly layerResources: TypeGpuLayerResourceCacheV3
   readonly pass: GPURenderPassEncoder
@@ -226,46 +299,83 @@ function drawTypeGpuHeaderPanes(input: {
   readonly surface: TypeGpuTileDrawSurface
 }): void {
   input.headerPanes.forEach((pane) => {
-    if (!isPaneDrawVisible(pane)) {
-      return
-    }
-    const scissorRect = resolveClampedScissorRect(pane.frame, input.surface)
-    if (!scissorRect) {
-      return
-    }
-    const paneRenderOffset = resolvePaneRenderOffset(pane, input.scrollSnapshot)
-    const paneCache = input.layerResources.peek(resolveWorkbookHeaderLayerKeyV3(pane))
-    if (!paneCache) {
-      return
-    }
-
-    input.pass.setScissorRect(scissorRect.x, scissorRect.y, scissorRect.width, scissorRect.height)
-    const paneOrigin = resolvePaneOrigin(pane)
-
-    if (paneCache.rectCount > 0 || paneCache.textCount > 0) {
-      ensureLayerSurfaceBindingsV3(input.artifacts, paneCache)
-      updateTypeGpuSurfaceUniform(paneCache.surfaceUniform!, input.surface, paneOrigin, paneRenderOffset)
-    }
-
-    if (paneCache.rectCount > 0 && paneCache.rectHandle && paneCache.surfaceBindGroup) {
-      const rectRenderer = input.artifacts.rectPipeline.with(input.pass).with(paneCache.surfaceBindGroup)
-      rectRenderer
-        .with(WORKBOOK_UNIT_QUAD_LAYOUT, input.artifacts.quadBuffer)
-        .with(WORKBOOK_RECT_INSTANCE_LAYOUT, paneCache.rectHandle.buffer)
-        .draw(6, paneCache.rectCount)
-      noteTypeGpuDrawCall(1)
-    }
-
-    if (input.drawText && paneCache.textCount > 0 && paneCache.textHandle && paneCache.textBindGroup) {
-      const textRenderer = input.artifacts.textPipeline.with(input.pass).with(paneCache.textBindGroup)
-      textRenderer
-        .with(WORKBOOK_UNIT_QUAD_LAYOUT, input.artifacts.quadBuffer)
-        .with(WORKBOOK_TEXT_INSTANCE_LAYOUT, paneCache.textHandle.buffer)
-        .draw(6, paneCache.textCount)
-      noteTypeGpuDrawCall(1)
-    }
-    noteTypeGpuPaneDraw(1)
+    drawTypeGpuHeaderPaneLayer({
+      ...input,
+      pane,
+      phase: 'rects',
+    })
   })
+}
+
+function drawTypeGpuHeaderPaneText(input: {
+  readonly artifacts: TypeGpuRendererArtifacts
+  readonly headerPanes: readonly GridHeaderPaneState[]
+  readonly layerResources: TypeGpuLayerResourceCacheV3
+  readonly pass: GPURenderPassEncoder
+  readonly scrollSnapshot: WorkbookGridScrollSnapshot
+  readonly surface: TypeGpuTileDrawSurface
+}): void {
+  input.headerPanes.forEach((pane) => {
+    drawTypeGpuHeaderPaneLayer({
+      ...input,
+      pane,
+      phase: 'text',
+    })
+  })
+}
+
+function drawTypeGpuHeaderPaneLayer(input: {
+  readonly artifacts: TypeGpuRendererArtifacts
+  readonly layerResources: TypeGpuLayerResourceCacheV3
+  readonly pane: GridHeaderPaneState
+  readonly pass: GPURenderPassEncoder
+  readonly phase: 'rects' | 'text'
+  readonly scrollSnapshot: WorkbookGridScrollSnapshot
+  readonly surface: TypeGpuTileDrawSurface
+}): void {
+  if (!isPaneDrawVisible(input.pane)) {
+    return
+  }
+  const scissorRect = resolveClampedScissorRect(input.pane.frame, input.surface)
+  if (!scissorRect) {
+    return
+  }
+  const paneCache = input.layerResources.peek(resolveWorkbookHeaderLayerKeyV3(input.pane))
+  if (!paneCache) {
+    return
+  }
+  const hasDrawableRects = input.phase === 'rects' && paneCache.rectCount > 0 && paneCache.rectHandle
+  const hasDrawableText = input.phase === 'text' && paneCache.textCount > 0 && paneCache.textHandle
+  if (!hasDrawableRects && !hasDrawableText) {
+    return
+  }
+  ensureLayerSurfaceBindingsV3(input.artifacts, paneCache)
+  updateTypeGpuSurfaceUniform(
+    paneCache.surfaceUniform!,
+    input.surface,
+    resolvePaneOrigin(input.pane),
+    resolvePaneRenderOffset(input.pane, input.scrollSnapshot),
+  )
+  input.pass.setScissorRect(scissorRect.x, scissorRect.y, scissorRect.width, scissorRect.height)
+  if (input.phase === 'rects' && paneCache.rectHandle && paneCache.surfaceBindGroup) {
+    const rectRenderer = input.artifacts.rectPipeline.with(input.pass).with(paneCache.surfaceBindGroup)
+    rectRenderer
+      .with(WORKBOOK_UNIT_QUAD_LAYOUT, input.artifacts.quadBuffer)
+      .with(WORKBOOK_RECT_INSTANCE_LAYOUT, paneCache.rectHandle.buffer)
+      .draw(6, paneCache.rectCount)
+    noteTypeGpuDrawCall(1)
+    noteTypeGpuPaneDraw(1)
+    return
+  }
+  if (input.phase === 'text' && paneCache.textHandle && paneCache.textBindGroup) {
+    const textRenderer = input.artifacts.textPipeline.with(input.pass).with(paneCache.textBindGroup)
+    textRenderer
+      .with(WORKBOOK_UNIT_QUAD_LAYOUT, input.artifacts.quadBuffer)
+      .with(WORKBOOK_TEXT_INSTANCE_LAYOUT, paneCache.textHandle.buffer)
+      .draw(6, paneCache.textCount)
+    noteTypeGpuDrawCall(1)
+    noteTypeGpuPaneDraw(1)
+  }
 }
 
 function resolveClampedScissorRect(

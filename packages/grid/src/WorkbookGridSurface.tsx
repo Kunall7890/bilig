@@ -420,7 +420,7 @@ export function WorkbookGridSurface(props: WorkbookGridSurfaceProps) {
           hoverCell={hoverCell}
           scrollTransformStore={renderState.scrollTransformStore}
           selectedCell={[displaySelectionCol, displaySelectionRow]}
-          selectionChromeMode="geometry-only"
+          selectionChromeMode="chrome-only"
           selectionRange={displaySelectionRange}
           showFillHandle={showSelectionFillHandle}
         />

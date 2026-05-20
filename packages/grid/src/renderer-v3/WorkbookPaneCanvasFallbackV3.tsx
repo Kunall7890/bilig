@@ -70,8 +70,8 @@ function colorFromFloats(r: number, g: number, b: number, a: number): string {
   return `rgba(${Math.round(r * 255)}, ${Math.round(g * 255)}, ${Math.round(b * 255)}, ${Math.max(0, Math.min(1, a))})`
 }
 
-function drawRectInstances(context: CanvasRenderingContext2D, rectInstances: Float32Array, rectCount: number): void {
-  for (let index = 0; index < rectCount; index += 1) {
+function drawRectInstances(context: CanvasRenderingContext2D, rectInstances: Float32Array, rectCount: number, startIndex = 0): void {
+  for (let index = startIndex; index < startIndex + rectCount; index += 1) {
     const offset = index * GRID_RECT_INSTANCE_FLOAT_COUNT_V3
     const x = rectInstances[offset + 0] ?? 0
     const y = rectInstances[offset + 1] ?? 0
@@ -135,7 +135,7 @@ function drawPane(
   context: CanvasRenderingContext2D,
   pane: FallbackPane,
   scrollSnapshot: WorkbookGridScrollSnapshot,
-  drawText: boolean,
+  phase: 'rects' | 'text',
 ): void {
   if (pane.frame.width <= 0 || pane.frame.height <= 0) {
     return
@@ -148,19 +148,25 @@ function drawPane(
   context.rect(pane.frame.x, pane.frame.y, pane.frame.width, pane.frame.height)
   context.clip()
   context.translate(pane.frame.x + offset.x, pane.frame.y + offset.y)
-  drawRectInstances(context, rectInstances, rectCount)
-  if (drawText) {
+  if (phase === 'rects') {
+    drawRectInstances(context, rectInstances, rectCount)
+  } else {
     drawTextRuns(context, 'tile' in pane ? pane.tile.textRuns : pane.textRuns)
   }
   context.restore()
 }
 
-function drawOverlay(context: CanvasRenderingContext2D, overlay: DynamicGridOverlayBatchV3 | null): void {
+function drawOverlay(context: CanvasRenderingContext2D, overlay: DynamicGridOverlayBatchV3 | null, phase: 'fills' | 'chrome'): void {
   if (!overlay || overlay.rectCount <= 0) {
     return
   }
+  const rectCount = phase === 'fills' ? overlay.fillRectCount : overlay.borderRectCount
+  if (rectCount <= 0) {
+    return
+  }
+  const startIndex = phase === 'fills' ? 0 : overlay.fillRectCount
   context.save()
-  drawRectInstances(context, overlay.rectInstances, overlay.rectCount)
+  drawRectInstances(context, overlay.rectInstances, rectCount, startIndex)
   context.restore()
 }
 
@@ -250,9 +256,14 @@ export const WorkbookPaneCanvasFallbackV3 = memo(function WorkbookPaneCanvasFall
       scrollTransformStore,
       tilePanes,
     })
-    tilePanes.forEach((pane) => drawPane(context, pane, frame.scrollSnapshot, drawText))
-    headerPanes.forEach((pane) => drawPane(context, pane, frame.scrollSnapshot, drawText))
-    drawOverlay(context, frame.overlay)
+    tilePanes.forEach((pane) => drawPane(context, pane, frame.scrollSnapshot, 'rects'))
+    headerPanes.forEach((pane) => drawPane(context, pane, frame.scrollSnapshot, 'rects'))
+    drawOverlay(context, frame.overlay, 'fills')
+    if (drawText) {
+      tilePanes.forEach((pane) => drawPane(context, pane, frame.scrollSnapshot, 'text'))
+      headerPanes.forEach((pane) => drawPane(context, pane, frame.scrollSnapshot, 'text'))
+    }
+    drawOverlay(context, frame.overlay, 'chrome')
   }, [active, cameraStore, drawText, geometry, headerPanes, host, layer, overlay, overlayBuilder, scrollTransformStore, tilePanes])
 
   useLayoutEffect(() => {
