@@ -1,9 +1,11 @@
 import { describe, expect, it, vi } from 'vitest'
 import { ErrorCode, ValueTag } from '@bilig/protocol'
 import { SpreadsheetEngine } from '../engine.js'
+import { EngineEvaluationTimeoutError, EngineMutationError } from '../engine/errors.js'
 import type { EngineCellMutationRef } from '../cell-mutations-at.js'
 import type { FormulaFamilyStore } from '../formula/formula-family-store.js'
 import { INITIAL_DIRECT_FORMULA_EVALUATION_LIMIT } from '../engine/services/formula-initialization-direct-formulas.js'
+import { findErrorByName, getFormulaBindingNowService } from './operation-service-test-helpers.js'
 
 const OVER_DIRECT_LIMIT_TEST_TIMEOUT_MS = 10_000
 
@@ -135,6 +137,35 @@ describe('SpreadsheetEngine formula initialization', () => {
       tag: ValueTag.Error,
       code: expect.any(Number),
     })
+  })
+
+  it('surfaces formula binding timeouts instead of storing fake invalid formulas during initialization', async () => {
+    const engine = new SpreadsheetEngine({ workbookName: 'engine-formula-initialize-timeout' })
+    await engine.ready()
+    engine.createSheet('Sheet1')
+    engine.setCellValue('Sheet1', 'A1', 1)
+    const sheetId = engine.workbook.getSheet('Sheet1')!.id
+    const timeout = new EngineEvaluationTimeoutError(50)
+    const binding = getFormulaBindingNowService(engine)
+    const bindInitialSpy = vi.spyOn(binding, 'bindInitialFormulaNow').mockImplementation(() => {
+      throw timeout
+    })
+    const bindPreparedSpy = vi.spyOn(binding, 'bindPreparedFormulaNow').mockImplementation(() => {
+      throw timeout
+    })
+
+    let thrown: unknown
+    try {
+      engine.initializeCellFormulasAt([{ sheetId, mutation: { kind: 'setCellFormula', row: 0, col: 1, formula: 'A1+1' } }], 1)
+    } catch (error) {
+      thrown = error
+    } finally {
+      bindInitialSpy.mockRestore()
+      bindPreparedSpy.mockRestore()
+    }
+
+    expect(thrown).toBeInstanceOf(EngineMutationError)
+    expect(findErrorByName(thrown, 'EngineEvaluationTimeoutError')).toBe(timeout)
   })
 
   it('shares template ownership across repeated initialized row families', async () => {

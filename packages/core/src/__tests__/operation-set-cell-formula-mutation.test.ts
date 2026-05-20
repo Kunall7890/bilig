@@ -4,9 +4,11 @@ import { ErrorCode, ValueTag } from '@bilig/protocol'
 import { indexToColumn } from '@bilig/formula'
 import { createBatch } from '../replica-state.js'
 import { SpreadsheetEngine } from '../engine.js'
+import { EngineEvaluationTimeoutError, EngineMutationError } from '../engine/errors.js'
+import { runEngineEffect } from '../engine/live.js'
 import { cellMutationRefToEngineOp, type EngineCellMutationRef } from '../cell-mutations-at.js'
 import { applySetCellFormulaMutation } from '../engine/services/operation-set-cell-formula-mutation.js'
-import { getOperationService, getReplicaState } from './operation-service-test-helpers.js'
+import { findErrorByName, getFormulaBindingNowService, getOperationService, getReplicaState } from './operation-service-test-helpers.js'
 
 describe('operation set-cell-formula mutations', () => {
   it('keeps set-cell-formula mutation application in a dedicated module', () => {
@@ -146,5 +148,46 @@ describe('operation set-cell-formula mutations', () => {
 
     expect(engine.getCellValue('Sheet1', 'B1')).toEqual({ tag: ValueTag.Number, value: 2 })
     expect(engine.getCellValue('Sheet1', 'C1')).toEqual({ tag: ValueTag.Error, code: ErrorCode.Value })
+  })
+
+  it('surfaces formula binding timeouts instead of storing fake invalid formulas for local cell refs', async () => {
+    const engine = new SpreadsheetEngine({ workbookName: 'operation-local-formula-timeout-ref', replicaId: 'a' })
+    await engine.ready()
+    engine.createSheet('Sheet1')
+    engine.setCellValue('Sheet1', 'A1', 1)
+    engine.setCellValue('Sheet1', 'B1', 9)
+    const sheetId = engine.workbook.getSheet('Sheet1')!.id
+    const refs: EngineCellMutationRef[] = [
+      {
+        sheetId,
+        cellIndex: engine.workbook.getCellIndex('Sheet1', 'B1'),
+        mutation: { kind: 'setCellFormula', row: 0, col: 1, formula: 'A1*2' },
+      },
+    ]
+    const batch = createBatch(
+      getReplicaState(engine),
+      refs.map((ref) => cellMutationRefToEngineOp(engine.workbook, ref)),
+    )
+    const timeout = new EngineEvaluationTimeoutError(50)
+    const binding = getFormulaBindingNowService(engine)
+    const bindFormulaSpy = vi.spyOn(binding, 'bindFormulaNow').mockImplementation(() => {
+      throw timeout
+    })
+    const bindPreparedSpy = vi.spyOn(binding, 'bindPreparedFormulaNow').mockImplementation(() => {
+      throw timeout
+    })
+
+    let thrown: unknown
+    try {
+      runEngineEffect(getOperationService(engine).applyCellMutationsAt(refs, batch, 'local', 1))
+    } catch (error) {
+      thrown = error
+    } finally {
+      bindFormulaSpy.mockRestore()
+      bindPreparedSpy.mockRestore()
+    }
+
+    expect(thrown).toBeInstanceOf(EngineMutationError)
+    expect(findErrorByName(thrown, 'EngineEvaluationTimeoutError')).toBe(timeout)
   })
 })

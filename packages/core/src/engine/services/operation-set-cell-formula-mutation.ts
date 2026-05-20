@@ -9,6 +9,7 @@ import {
   bindFreshTemplateFormula,
   markFreshDirectAggregateInputsCovered,
 } from './operation-fresh-direct-aggregate.js'
+import { rethrowFatalFormulaBindingError } from './formula-binding-error-policy.js'
 import type { CreateEngineOperationServiceArgs } from './operation-service-types.js'
 
 type SetCellFormulaMutation = Extract<EngineCellMutationRef['mutation'], { kind: 'setCellFormula' }>
@@ -160,7 +161,8 @@ export function applySetCellFormulaMutation(request: ApplySetCellFormulaMutation
       }
       topologyChanged = true
     }
-  } catch {
+  } catch (error) {
+    rethrowFatalFormulaBindingError(error)
     if (!isRestore) {
       compileMs += performance.now() - compileStarted
     }

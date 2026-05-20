@@ -26,6 +26,7 @@ import {
   type InitialFormulaEntryRefSource,
   type InitialResolvedFormulaEntry,
 } from './formula-initialization-refs.js'
+import { createInitialFormulaCellIndexPlan } from './formula-initialization-cell-index-plan.js'
 import { recalculateFreshVolatileFormulasAfterInitialMaterialization } from './formula-initialization-volatile-pass.js'
 import {
   canEvaluateInitialDirectRuntimeFormula,
@@ -33,6 +34,7 @@ import {
   hasPendingFormulaDependency,
   mutationErrorMessage,
 } from './formula-initialization-predicates.js'
+import { rethrowFatalFormulaBindingError } from './formula-binding-error-policy.js'
 import {
   createInitialNativeDirectScalarBatch,
   MAX_INITIAL_NATIVE_DIRECT_SCALAR_BATCH_SIZE,
@@ -65,7 +67,6 @@ export type {
 } from './formula-initialization-service-types.js'
 
 const DEFERRED_FORMULA_FAMILY_RUN_CAPTURE_LIMIT = 16_384
-const EMPTY_U32 = new Uint32Array(0)
 
 export function createEngineFormulaInitializationService(args: EngineFormulaInitializationServiceArgs): EngineFormulaInitializationService {
   const sheetNameById = new Map<number, string>()
@@ -133,28 +134,13 @@ export function createEngineFormulaInitializationService(args: EngineFormulaInit
       args.state.workbook.cellStore.ensureCapacity(args.state.workbook.cellStore.size + reservedNewCells)
       args.ensureRecalcScratchCapacity(args.state.workbook.cellStore.size + reservedNewCells + 1)
       args.resetMaterializedCellScratch(reservedNewCells)
-      const targetCellIndices = hadExistingFormulas ? EMPTY_U32 : new Uint32Array(refs.length)
-      const pendingInitialFormulaCellIndices = hadExistingFormulas ? new Uint32Array(refs.length) : targetCellIndices
-      let maxTargetCellIndex = 0
-      for (let index = 0; index < refs.length; index += 1) {
-        args.checkEvaluationBudget()
-        const cellIndex = resolveCellIndex(initialFormulaEntryRefAt(refs, index))
-        if (hadExistingFormulas) {
-          pendingInitialFormulaCellIndices[index] = cellIndex
-        } else {
-          targetCellIndices[index] = cellIndex
-          if (cellIndex > maxTargetCellIndex) {
-            maxTargetCellIndex = cellIndex
-          }
-        }
-      }
-      const pendingFormulaCells = hadExistingFormulas ? undefined : new Uint8Array(maxTargetCellIndex + 1)
-      if (pendingFormulaCells) {
-        for (let index = 0; index < targetCellIndices.length; index += 1) {
-          args.checkEvaluationBudget()
-          pendingFormulaCells[targetCellIndices[index]!] = 1
-        }
-      }
+      const { targetCellIndices, pendingInitialFormulaCellIndices, pendingFormulaCells, maxTargetCellIndex } =
+        createInitialFormulaCellIndexPlan({
+          refs,
+          hadExistingFormulas,
+          resolveCellIndex,
+          checkEvaluationBudget: args.checkEvaluationBudget,
+        })
       let canAssignTopoInBatch = !hadExistingFormulas
       let needsFreshTopoRebuild = false
       let nextTopoRank = 0
@@ -402,7 +388,8 @@ export function createEngineFormulaInitializationService(args: EngineFormulaInit
                 noteDeferredFormulaFamilyRunMember(deferredFormulaFamilyRuns, prepared, runtimeFormula)
                 noteDeferredFormulaInstance(deferredFormulaInstances, prepared, runtimeFormula)
                 noteBoundFormula(prepared, runtimeFormula)
-              } catch {
+              } catch (error) {
+                rethrowFatalFormulaBindingError(error)
                 noteSkippedOrderedPreparedCellIndex()
                 topologyChanged = args.removeFormula(cellIndex) || topologyChanged
                 args.setInvalidFormulaValue(cellIndex)
@@ -756,29 +743,12 @@ export function createEngineFormulaInitializationService(args: EngineFormulaInit
     args.state.workbook.cellStore.ensureCapacity(args.state.workbook.cellStore.size + reservedNewCells)
     args.ensureRecalcScratchCapacity(args.state.workbook.cellStore.size + reservedNewCells + 1)
     args.resetMaterializedCellScratch(reservedNewCells)
-    const targetCellIndices = hadExistingFormulas ? EMPTY_U32 : new Uint32Array(refs.length)
-    const pendingInitialFormulaCellIndices = hadExistingFormulas ? new Uint32Array(refs.length) : targetCellIndices
-    let maxTargetCellIndex = 0
-    for (let index = 0; index < refs.length; index += 1) {
-      args.checkEvaluationBudget()
-      const ref = initialFormulaEntryRefAt(refs, index)
-      const cellIndex = ref.cellIndex ?? args.ensureCellTrackedByCoords(ref.sheetId, ref.row, ref.col)
-      if (hadExistingFormulas) {
-        pendingInitialFormulaCellIndices[index] = cellIndex
-      } else {
-        targetCellIndices[index] = cellIndex
-        if (cellIndex > maxTargetCellIndex) {
-          maxTargetCellIndex = cellIndex
-        }
-      }
-    }
-    const pendingFormulaCells = hadExistingFormulas ? undefined : new Uint8Array(maxTargetCellIndex + 1)
-    if (pendingFormulaCells) {
-      for (let index = 0; index < targetCellIndices.length; index += 1) {
-        args.checkEvaluationBudget()
-        pendingFormulaCells[targetCellIndices[index]!] = 1
-      }
-    }
+    const { targetCellIndices, pendingInitialFormulaCellIndices, pendingFormulaCells } = createInitialFormulaCellIndexPlan({
+      refs,
+      hadExistingFormulas,
+      resolveCellIndex: (ref) => ref.cellIndex ?? args.ensureCellTrackedByCoords(ref.sheetId, ref.row, ref.col),
+      checkEvaluationBudget: args.checkEvaluationBudget,
+    })
     let canAssignTopoInBatch = !hadExistingFormulas
     let needsFreshTopoRebuild = false
     let nextTopoRank = 0

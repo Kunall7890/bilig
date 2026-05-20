@@ -1,11 +1,13 @@
 import { Effect } from 'effect'
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import { ErrorCode, ValueTag } from '@bilig/protocol'
 import { indexToColumn } from '@bilig/formula'
 import { createBatch } from '../replica-state.js'
 import { SpreadsheetEngine } from '../engine.js'
+import { EngineEvaluationTimeoutError, EngineMutationError } from '../engine/errors.js'
+import { runEngineEffect } from '../engine/live.js'
 import { applyBatchSetCellFormulaOp } from '../engine/services/operation-batch-cell-formula-mutations.js'
-import { getOperationService, getReplicaState } from './operation-service-test-helpers.js'
+import { findErrorByName, getFormulaBindingNowService, getOperationService, getReplicaState } from './operation-service-test-helpers.js'
 
 describe('operation batch cell formula mutations', () => {
   it('keeps batch set-formula application in a dedicated module', () => {
@@ -77,6 +79,36 @@ describe('operation batch cell formula mutations', () => {
 
     expect(engine.getCellValue('Sheet1', 'B1')).toEqual({ tag: ValueTag.Error, code: ErrorCode.Value })
     expect(engine.getCellValue('Sheet1', 'C1')).toEqual({ tag: ValueTag.Number, value: 10 })
+  })
+
+  it('surfaces formula binding timeouts instead of storing fake invalid formulas for generic batches', async () => {
+    const engine = new SpreadsheetEngine({ workbookName: 'operation-batch-formula-timeout' })
+    await engine.ready()
+    engine.createSheet('Sheet1')
+    engine.setCellValue('Sheet1', 'A1', 5)
+    engine.setCellValue('Sheet1', 'B1', 9)
+    const batch = createBatch(getReplicaState(engine), [{ kind: 'setCellFormula', sheetName: 'Sheet1', address: 'B1', formula: 'A1*2' }])
+    const timeout = new EngineEvaluationTimeoutError(50)
+    const binding = getFormulaBindingNowService(engine)
+    const bindFormulaSpy = vi.spyOn(binding, 'bindFormulaNow').mockImplementation(() => {
+      throw timeout
+    })
+    const bindPreparedSpy = vi.spyOn(binding, 'bindPreparedFormulaNow').mockImplementation(() => {
+      throw timeout
+    })
+
+    let thrown: unknown
+    try {
+      runEngineEffect(getOperationService(engine).applyBatch(batch, 'local'))
+    } catch (error) {
+      thrown = error
+    } finally {
+      bindFormulaSpy.mockRestore()
+      bindPreparedSpy.mockRestore()
+    }
+
+    expect(thrown).toBeInstanceOf(EngineMutationError)
+    expect(findErrorByName(thrown, 'EngineEvaluationTimeoutError')).toBe(timeout)
   })
 
   it('keeps aggregate dependents current when generic batch formulas enter their range', async () => {
