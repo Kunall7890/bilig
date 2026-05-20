@@ -4,6 +4,15 @@ All notable changes to `@bilig/headless` will be documented in this file.
 
 This package is released as part of the aligned bilig library package set.
 
+## 0.40.20
+
+- Release type: patch
+- Previous libraries tag: libraries-v0.40.19
+- Manual override: no
+
+## Fixes
+- perf(xlsx): avoid lazy metadata cell expansion (0c2d693b)
+
 ## 0.40.19
 
 - Release type: patch
