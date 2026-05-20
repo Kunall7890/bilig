@@ -5,7 +5,12 @@ import { tryInspectLargeSimpleXlsxHeadless } from '../packages/excel-import/src/
 import type { LargeSimpleXlsxImportStats } from '../packages/excel-import/src/xlsx-large-simple-import.js'
 import { readXlsxZipEntriesLazyFromByteSource } from '../packages/excel-import/src/xlsx-zip.js'
 import { startSelfRssGuard } from './public-workbook-corpus-process.ts'
-import { fingerprintWorkbookBytes, inspectWorkbookFootprintForWorker, type WorkbookFootprint } from './public-workbook-corpus-workbook.ts'
+import {
+  fingerprintLargeSimpleDataOnlyWorkbookSource,
+  fingerprintWorkbookBytes,
+  inspectWorkbookFootprintForWorker,
+  type WorkbookFootprint,
+} from './public-workbook-corpus-workbook.ts'
 import { FileBackedXlsxZipByteSource, isZipWorkbookSource } from './public-workbook-corpus-xlsx-byte-source.ts'
 
 export async function writeFingerprintArtifactResult(args: {
@@ -35,13 +40,24 @@ export function writeFingerprintArtifactWorkerResult(args: {
     if (!args.filePath) {
       throw new Error('Expected --file for fingerprint-artifact-worker')
     }
-    const workbookFingerprint = fingerprintWorkbookBytes(readFileSync(resolve(args.filePath)), args.fileName)
+    const filePath = resolve(args.filePath)
+    const workbookFingerprint =
+      tryFingerprintLargeSimpleWorkbookFromFile(filePath, args.fileName) ?? fingerprintWorkbookBytes(readFileSync(filePath), args.fileName)
     process.stdout.write(`${JSON.stringify({ workbookFingerprint })}\n`)
   } catch (error) {
     process.stderr.write(`${formatWorkerError(error)}\n`)
     process.exitCode = 1
   } finally {
     stopSelfRssGuard()
+  }
+}
+
+function tryFingerprintLargeSimpleWorkbookFromFile(filePath: string, fileName: string): string | null {
+  const source = new FileBackedXlsxZipByteSource(filePath)
+  try {
+    return isZipWorkbookSource(source) ? fingerprintLargeSimpleDataOnlyWorkbookSource(source, fileName) : null
+  } finally {
+    source.release()
   }
 }
 

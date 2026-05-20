@@ -4,7 +4,7 @@ import * as XLSX from 'xlsx'
 
 import { importXlsx, type ImportedWorkbook } from '../packages/excel-import/src/index.js'
 import { readImportedExternalWorkbookReferences } from '../packages/excel-import/src/xlsx-external-references.js'
-import { readXlsxZipEntries } from '../packages/excel-import/src/xlsx-zip.js'
+import { readXlsxZipEntries, readXlsxZipEntriesLazyFromByteSource, type XlsxZipByteSource } from '../packages/excel-import/src/xlsx-zip.js'
 import { ErrorCode, ValueTag } from '../packages/protocol/src/enums.js'
 import type { CellValue, WorkbookExternalWorkbookReferenceSnapshot, WorkbookSnapshot } from '../packages/protocol/src/types.js'
 import type { FormulaOracle, PublicWorkbookCorpusCase, PublicWorkbookFeatureCounts } from './public-workbook-corpus-types.ts'
@@ -13,6 +13,10 @@ import {
   inspectXlsxWorkbookFootprintLowMemoryAsync,
   isZipWorkbook,
 } from './public-workbook-corpus-xlsx-footprint.ts'
+import {
+  tryInspectLargeSimpleXlsxHeadless,
+  type LargeSimpleXlsxHeadlessInspectResult,
+} from '../packages/excel-import/src/xlsx-large-simple-headless-inspect.js'
 
 export interface WorkbookFootprint {
   readonly featureCounts: PublicWorkbookFeatureCounts
@@ -32,6 +36,8 @@ interface WorksheetCellEntry {
   readonly row: number
   readonly column: number
 }
+
+const largeSimpleHeadlessFingerprintCellThreshold = 100_000
 
 export function countWorkbookFeatures(snapshot: WorkbookSnapshot, warnings: readonly string[]): PublicWorkbookFeatureCounts {
   return {
@@ -213,6 +219,13 @@ function countRawPivotTableParts(bytes: Uint8Array): number {
 }
 
 export function fingerprintWorkbookBytes(bytes: Uint8Array, fileName: string): string {
+  const headlessFingerprint =
+    isOpenXmlWorkbookFileName(fileName) && isZipWorkbook(bytes)
+      ? fingerprintLargeSimpleDataOnlyWorkbookSource(byteSourceFromBytes(bytes), fileName)
+      : null
+  if (headlessFingerprint) {
+    return headlessFingerprint
+  }
   const imported = importXlsx(bytes, fileName)
   const footprint = inspectWorkbookFootprint(bytes, fileName)
   const importedCounts = countWorkbookFeatures(imported.snapshot, imported.warnings)
@@ -228,6 +241,56 @@ export function fingerprintWorkbookBytes(bytes: Uint8Array, fileName: string): s
       .toSorted(),
   )
   return sha256HexSync(Buffer.from(JSON.stringify({ counts, metadata, formulaShapes })))
+}
+
+export function fingerprintLargeSimpleDataOnlyWorkbookSource(source: XlsxZipByteSource, fileName: string): string | null {
+  if (!isOpenXmlWorkbookFileName(fileName)) {
+    return null
+  }
+  const zip = readXlsxZipEntriesLazyFromByteSource(source)
+  if (!zip) {
+    return null
+  }
+  const inspected = tryInspectLargeSimpleXlsxHeadless({ byteLength: source.byteLength }, fileName, zip, {
+    minByteLength: 0,
+    releaseZipSource: true,
+  })
+  if (!inspected || inspected.stats.cellCount <= largeSimpleHeadlessFingerprintCellThreshold || inspected.stats.formulaCellCount > 0) {
+    return null
+  }
+  const counts = countLargeSimpleHeadlessFingerprintFeatures(inspected)
+  const metadata: PublicWorkbookCorpusCase['workbookMetadata'] = {
+    workbookName: inspected.workbookName,
+    sheetNames: inspected.sheetNames,
+    dimensions: inspected.stats.dimensions,
+  }
+  return sha256HexSync(Buffer.from(JSON.stringify({ counts, metadata, formulaShapes: [] })))
+}
+
+function byteSourceFromBytes(bytes: Uint8Array): XlsxZipByteSource {
+  return {
+    byteLength: bytes.byteLength,
+    readRange: (start, end) => bytes.subarray(start, end),
+  }
+}
+
+function countLargeSimpleHeadlessFingerprintFeatures(inspected: LargeSimpleXlsxHeadlessInspectResult): PublicWorkbookFeatureCounts {
+  return {
+    sheetCount: inspected.stats.sheetCount,
+    cellCount: inspected.stats.cellCount,
+    formulaCellCount: inspected.stats.formulaCellCount,
+    valueCellCount: inspected.stats.valueCellCount,
+    definedNameCount: inspected.stats.definedNameCount,
+    tableCount: inspected.stats.tableCount,
+    chartCount: 0,
+    pivotCount: 0,
+    mergeCount: inspected.stats.mergeCount,
+    styleRangeCount: 0,
+    conditionalFormatCount: inspected.stats.conditionalFormatCount,
+    dataValidationCount: inspected.stats.dataValidationCount ?? 0,
+    macroPayloadCount: 0,
+    warningCount: inspected.warnings.length,
+  }
 }
 
 export function extractFormulaOracles(bytes: Uint8Array): FormulaOracle[] {
