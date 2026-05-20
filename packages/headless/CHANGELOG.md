@@ -4,6 +4,18 @@ All notable changes to `@bilig/headless` will be documented in this file.
 
 This package is released as part of the aligned bilig library package set.
 
+## 0.35.1
+
+- Release type: patch
+- Previous libraries tag: libraries-v0.35.0
+- Manual override: no
+
+## Fixes
+- perf(formula): native anchored prefix initialization (da6b943d)
+
+## Internal runtime changes
+- docs(growth): target sheetjs formula readback traffic (55faaa0b)
+
 ## 0.35.0
 
 - Release type: minor
