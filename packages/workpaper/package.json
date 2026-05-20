@@ -1,6 +1,6 @@
 {
   "name": "@bilig/workpaper",
-  "version": "0.40.14",
+  "version": "0.40.15",
   "description": "Scoped Bilig WorkPaper runtime for Node.js services, agent tools, and server-side spreadsheet formulas.",
   "keywords": [
     "agent-tools",
