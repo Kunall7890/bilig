@@ -31,7 +31,7 @@ export {
 
 export { evalDirectScalarStoreTargetBatch, evalDirectScalarValueBatch } from './direct-scalar-batch'
 export { evalDenseDirectScalarRowChainStoreTargetBatch } from './direct-scalar-row-chain-batch'
-export { evalDenseNumericRowAggregateBatch } from './direct-aggregate-batch'
+export { evalAnchoredPrefixAggregateBatch, evalDenseNumericRowAggregateBatch } from './direct-aggregate-batch'
 export { evalDirectCriteriaMatchedAggregateBatch } from './direct-criteria-aggregate-batch'
 export { evalUniformNumericLookupBatch } from './direct-lookup-batch'
 

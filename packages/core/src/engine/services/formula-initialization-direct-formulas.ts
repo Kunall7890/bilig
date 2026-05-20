@@ -12,6 +12,7 @@ export const INITIAL_DIRECT_FORMULA_EVALUATION_LIMIT = 16_384
 
 export interface InitialDirectFormulaEvaluationOptions {
   readonly alreadyValidated?: boolean
+  readonly allowOverLimit?: boolean
   readonly hasPrefixAggregateCandidates?: boolean
   readonly preEvaluatedCellIndices?: InitialFormulaCellIndexList
   readonly preEvaluatedCellCount?: number
@@ -25,7 +26,7 @@ export function evaluateInitialDirectFormulas(
 ): U32 | undefined {
   if (
     orderedCellIndices.length === 0 ||
-    orderedCellIndices.length > INITIAL_DIRECT_FORMULA_EVALUATION_LIMIT ||
+    (orderedCellIndices.length > INITIAL_DIRECT_FORMULA_EVALUATION_LIMIT && options?.allowOverLimit !== true) ||
     (options?.alreadyValidated !== true &&
       !orderedCellIndices.every((cellIndex) => canEvaluateInitialDirectRuntimeFormula(args.state.formulas.get(cellIndex))))
   ) {

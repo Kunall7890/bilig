@@ -271,6 +271,44 @@ describe('SpreadsheetEngine formula initialization', () => {
     expect(engine.getPerformanceCounters().regionQueryIndexBuilds).toBe(0)
   })
 
+  it('uses native anchored prefix aggregate initialization beyond the JS direct limit', async () => {
+    const rowCount = 20_000
+    const engine = new SpreadsheetEngine({ workbookName: 'engine-formula-initialize-native-prefix-aggregate-family' })
+    await engine.ready()
+    engine.createSheet('Sheet1')
+    const sheetId = engine.workbook.getSheet('Sheet1')!.id
+    for (let row = 1; row <= rowCount; row += 1) {
+      engine.setCellValue('Sheet1', `A${row}`, row)
+    }
+
+    engine.resetPerformanceCounters()
+    engine.initializeCellFormulasAt(
+      Array.from({ length: rowCount }, (_entry, row) => ({
+        sheetId,
+        mutation: {
+          kind: 'setCellFormula' as const,
+          row,
+          col: 1,
+          formula: `SUM(A1:A${row + 1})`,
+        },
+      })),
+      rowCount,
+    )
+
+    expect(engine.getCellValue('Sheet1', `B${rowCount}`)).toEqual({
+      tag: ValueTag.Number,
+      value: (rowCount * (rowCount + 1)) / 2,
+    })
+    expect(engine.getLastMetrics()).toMatchObject({ dirtyFormulaCount: 0, wasmFormulaCount: 0, jsFormulaCount: 0 })
+    expect(engine.getPerformanceCounters()).toMatchObject({
+      directFormulaInitialEvaluations: rowCount,
+      nativeDirectAggregatePrefixEvaluations: rowCount,
+      directAggregatePrefixEvaluations: 0,
+      directAggregateScanEvaluations: 0,
+      regionQueryIndexBuilds: 0,
+    })
+  })
+
   it('materializes out-of-order anchored prefix aggregates during initial direct evaluation', async () => {
     const engine = new SpreadsheetEngine({ workbookName: 'engine-formula-initialize-out-of-order-prefix-aggregate' })
     await engine.ready()

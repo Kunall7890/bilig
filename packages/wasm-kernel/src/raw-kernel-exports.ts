@@ -66,6 +66,19 @@ export interface RawKernelExports {
     resultOffset: number,
     outNumbers: number,
   ): void
+  evalAnchoredPrefixAggregateBatch(
+    aggregateKind: number,
+    tags: number,
+    numbers: number,
+    errors: number,
+    rowCount: number,
+    colCount: number,
+    formulaRowEnds: number,
+    resultOffsets: number,
+    outTags: number,
+    outNumbers: number,
+    outErrors: number,
+  ): void
   evalDirectCriteriaMatchedAggregateBatch(
     aggregateKinds: number,
     matchStarts: number,
@@ -166,6 +179,7 @@ export function isRawKernelExports(value: unknown): value is RawKernelExports {
     'evalDirectScalarStoreTargetBatch',
     'evalDenseDirectScalarRowChainStoreTargetBatch',
     'evalDenseNumericRowAggregateBatch',
+    'evalAnchoredPrefixAggregateBatch',
     'evalDirectCriteriaMatchedAggregateBatch',
     'evalUniformNumericLookupBatch',
     'evalBatch',

@@ -79,6 +79,20 @@ export interface WasmDenseNumericRowAggregateBatchLayout {
   outNumbers: Float64Array
 }
 
+export interface WasmAnchoredPrefixAggregateBatchLayout {
+  aggregateKind: number
+  tags: Uint8Array
+  numbers: Float64Array
+  errors: Uint16Array
+  rowCount: number
+  colCount: number
+  formulaRowEnds: Uint32Array
+  resultOffsets: Float64Array
+  outTags: Uint8Array
+  outNumbers: Float64Array
+  outErrors: Uint16Array
+}
+
 export interface WasmDirectCriteriaMatchedAggregateBatchLayout {
   aggregateKinds: Uint8Array
   matchStarts: Uint32Array
@@ -386,6 +400,26 @@ export class WasmKernelFacade {
       layout.aggregateColCount,
       layout.resultOffset,
       layout.outNumbers,
+    )
+    return true
+  }
+
+  evalAnchoredPrefixAggregateBatch(layout: WasmAnchoredPrefixAggregateBatchLayout): boolean {
+    if (!this.kernel) {
+      return false
+    }
+    this.kernel.evalAnchoredPrefixAggregateBatch(
+      layout.aggregateKind,
+      layout.tags,
+      layout.numbers,
+      layout.errors,
+      layout.rowCount,
+      layout.colCount,
+      layout.formulaRowEnds,
+      layout.resultOffsets,
+      layout.outTags,
+      layout.outNumbers,
+      layout.outErrors,
     )
     return true
   }

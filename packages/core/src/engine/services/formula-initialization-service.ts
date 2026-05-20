@@ -7,6 +7,7 @@ import type { RuntimeFormula, U32 } from '../runtime-state.js'
 import { EngineMutationError } from '../errors.js'
 import { evaluateInitialDirectScalar, evaluateInitialDirectScalarNumber } from './formula-initialization-direct-scalar.js'
 import { evaluateInitialDirectFormulas, INITIAL_DIRECT_FORMULA_EVALUATION_LIMIT } from './formula-initialization-direct-formulas.js'
+import { canEvaluateInitialPrefixAggregateGroupsNatively } from './formula-initialization-prefix-aggregates.js'
 import {
   createDeferredInitialFormulaFamilyRunMap,
   flushDeferredInitialFormulaFamilyRuns,
@@ -158,6 +159,7 @@ export function createEngineFormulaInitializationService(args: EngineFormulaInit
       let canUseInitialDirectEvaluation = false
       let allPreparedFormulasCanUseInitialDirectEvaluation = true
       let hasInitialPrefixAggregateCandidates = false
+      let canUseNativeInitialPrefixAggregateOverLimit = false
       let inlineInitialDirectScalarWriter: InitialFormulaValueWriter | undefined
       let inlineInitialDirectScalarCellBuffer: Uint32Array | undefined = hadExistingFormulas
         ? new Uint32Array(Math.max(refs.length, 1))
@@ -463,12 +465,18 @@ export function createEngineFormulaInitializationService(args: EngineFormulaInit
           nativeInitialDirectScalarRowChainBatch !== undefined &&
           nativeInitialDirectScalarRowChainBatch.count === orderedPreparedCellCount &&
           orderedPreparedCellCount >= MIN_INITIAL_NATIVE_DIRECT_SCALAR_ROW_CHAIN_BATCH_SIZE
+        canUseNativeInitialPrefixAggregateOverLimit =
+          hasInitialPrefixAggregateCandidates &&
+          orderedPreparedCellCount > INITIAL_DIRECT_FORMULA_EVALUATION_LIMIT &&
+          canEvaluateInitialPrefixAggregateGroupsNatively(args, orderedPreparedCellList(), { requireAllCells: true })
         canUseInitialDirectEvaluation =
           canAssignTopoInBatch &&
           !hadExistingFormulas &&
           changedInputCount === 0 &&
           allPreparedFormulasCanUseInitialDirectEvaluation &&
-          (orderedPreparedCellCount <= INITIAL_DIRECT_FORMULA_EVALUATION_LIMIT || canUseNativeInitialDirectScalarRowChain) &&
+          (orderedPreparedCellCount <= INITIAL_DIRECT_FORMULA_EVALUATION_LIMIT ||
+            canUseNativeInitialDirectScalarRowChain ||
+            canUseNativeInitialPrefixAggregateOverLimit) &&
           orderedPreparedCellCount === refs.length
         compileMs += performance.now() - compileStarted
       } finally {
@@ -531,6 +539,7 @@ export function createEngineFormulaInitializationService(args: EngineFormulaInit
           const direct = evaluateInitialDirectFormulas(args, orderedPreparedCellList(), {
             alreadyValidated: true,
             hasPrefixAggregateCandidates: hasInitialPrefixAggregateCandidates,
+            allowOverLimit: canUseNativeInitialPrefixAggregateOverLimit,
           })
           if (direct) {
             recalculated = direct
@@ -554,6 +563,7 @@ export function createEngineFormulaInitializationService(args: EngineFormulaInit
           const direct = evaluateInitialDirectFormulas(args, orderedPreparedCellList(), {
             alreadyValidated: true,
             hasPrefixAggregateCandidates: hasInitialPrefixAggregateCandidates,
+            allowOverLimit: canUseNativeInitialPrefixAggregateOverLimit,
           })
           if (direct) {
             recalculated = direct
@@ -577,6 +587,7 @@ export function createEngineFormulaInitializationService(args: EngineFormulaInit
           const direct = evaluateInitialDirectFormulas(args, orderedPreparedCellList(), {
             alreadyValidated: true,
             hasPrefixAggregateCandidates: hasInitialPrefixAggregateCandidates,
+            allowOverLimit: canUseNativeInitialPrefixAggregateOverLimit,
           })
           if (direct) {
             recalculated = direct
@@ -600,6 +611,7 @@ export function createEngineFormulaInitializationService(args: EngineFormulaInit
         const direct = evaluateInitialDirectFormulas(args, orderedPreparedCellList(), {
           alreadyValidated: true,
           hasPrefixAggregateCandidates: hasInitialPrefixAggregateCandidates,
+          allowOverLimit: canUseNativeInitialPrefixAggregateOverLimit,
           ...(inlineInitialDirectScalarCellCount > 0
             ? {
                 preEvaluatedCellIndices: inlineInitialDirectScalarCellBuffer ?? targetCellIndices,
