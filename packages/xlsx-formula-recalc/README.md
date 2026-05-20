@@ -45,6 +45,12 @@ ExcelJS, then verifies that Bilig refreshes the stale formula result.
 
 For the SheetJS-specific boundary, read
 [SheetJS formula result not updating in Node.js](../../docs/sheetjs-formula-result-not-updating-node.md).
+If your team wants package names and commands that match SheetJS support tickets
+directly, use the alias package:
+
+```sh
+npx --package sheetjs-formula-recalc sheetjs-recalc --demo --json
+```
 
 ## Install
 

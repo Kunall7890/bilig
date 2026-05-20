@@ -33,6 +33,14 @@ describe('workspace resolution', () => {
       packageDir: 'packages/xlsx-formula-recalc',
       sourceEntry: 'packages/xlsx-formula-recalc/src/index.ts',
     })
+    expect(resolution['xlsx-formula-recalc/cli-api']).toEqual({
+      packageDir: 'packages/xlsx-formula-recalc',
+      sourceEntry: 'packages/xlsx-formula-recalc/src/cli-api.ts',
+    })
+    expect(resolution['sheetjs-formula-recalc']).toEqual({
+      packageDir: 'packages/sheetjs-formula-recalc',
+      sourceEntry: 'packages/sheetjs-formula-recalc/src/index.ts',
+    })
     expect(resolution['exceljs-formula-recalc']).toEqual({
       packageDir: 'packages/exceljs-formula-recalc',
       sourceEntry: 'packages/exceljs-formula-recalc/src/index.ts',

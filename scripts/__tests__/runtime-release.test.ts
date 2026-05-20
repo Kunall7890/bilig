@@ -213,6 +213,14 @@ describe('runtime release helpers', () => {
     expect(isRuntimePackageContentPath('packages/xlsx-formula-recalc/AGENTS.md')).toBe(true)
   })
 
+  it('publishes the SheetJS formula recalculation package through the common runtime workflow', () => {
+    expect(RUNTIME_PACKAGE_DIRS).toContain('packages/sheetjs-formula-recalc')
+    expect(RUNTIME_NPM_PACKAGE_DIRS).toContain('packages/sheetjs-formula-recalc')
+    expect(isRuntimeAffectingPath('packages/sheetjs-formula-recalc/package.json')).toBe(true)
+    expect(isRuntimePackageContentPath('packages/sheetjs-formula-recalc/src/index.ts')).toBe(true)
+    expect(isRuntimePackageContentPath('packages/sheetjs-formula-recalc/AGENTS.md')).toBe(true)
+  })
+
   it('publishes the ExcelJS formula recalculation package through the common runtime workflow', () => {
     expect(RUNTIME_PACKAGE_DIRS).toContain('packages/exceljs-formula-recalc')
     expect(RUNTIME_NPM_PACKAGE_DIRS).toContain('packages/exceljs-formula-recalc')
@@ -251,6 +259,7 @@ describe('runtime release helpers', () => {
     expect(isRuntimePackageContentPath('packages/headless/package.json')).toBe(true)
     expect(isRuntimePackageContentPath('packages/bilig/package.json')).toBe(true)
     expect(isRuntimePackageContentPath('packages/xlsx-formula-recalc/package.json')).toBe(true)
+    expect(isRuntimePackageContentPath('packages/sheetjs-formula-recalc/package.json')).toBe(true)
     expect(isRuntimePackageContentPath('packages/exceljs-formula-recalc/package.json')).toBe(true)
     expect(isRuntimePackageContentPath('scripts/plan-runtime-release.ts')).toBe(false)
     expect(isRuntimePackageContentPath('.github/workflows/headless-package.yml')).toBe(false)

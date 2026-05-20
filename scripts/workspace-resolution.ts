@@ -12,7 +12,12 @@ export type WorkspaceResolutionMap = Record<string, WorkspaceResolutionEntry>
 export const workspaceRootDir = fileURLToPath(new URL('..', import.meta.url))
 export const workspaceResolutionJsonPath = join(workspaceRootDir, 'workspace-resolution.generated.json')
 export const workspaceResolutionTsconfigPath = join(workspaceRootDir, 'tsconfig.workspace-paths.json')
-const WORKSPACE_ALIAS_PACKAGE_NAMES = new Set(['bilig-workpaper', 'xlsx-formula-recalc', 'exceljs-formula-recalc'])
+const WORKSPACE_ALIAS_PACKAGE_NAMES = new Set([
+  'bilig-workpaper',
+  'xlsx-formula-recalc',
+  'sheetjs-formula-recalc',
+  'exceljs-formula-recalc',
+])
 
 function normalizePath(value: string): string {
   return value.replaceAll('\\', '/')
@@ -179,7 +184,15 @@ function readWorkspaceResolution(rootDir = workspaceRootDir): WorkspaceResolutio
 }
 
 function isWorkspaceAliasPackageName(packageName: string): boolean {
-  return packageName.startsWith('@bilig/') || WORKSPACE_ALIAS_PACKAGE_NAMES.has(packageName)
+  if (packageName.startsWith('@bilig/')) {
+    return true
+  }
+  for (const aliasPackageName of WORKSPACE_ALIAS_PACKAGE_NAMES) {
+    if (packageName === aliasPackageName || packageName.startsWith(`${aliasPackageName}/`)) {
+      return true
+    }
+  }
+  return false
 }
 
 function createWorkspaceAliasMap(rootDir = workspaceRootDir, resolution = readWorkspaceResolution(rootDir)): Record<string, string> {

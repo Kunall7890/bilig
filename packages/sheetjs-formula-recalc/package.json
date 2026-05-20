@@ -1,0 +1,68 @@
+{
+  "name": "sheetjs-formula-recalc",
+  "version": "0.35.1",
+  "description": "Recalculate SheetJS and xlsx workbook formulas in Node.js without Excel, LibreOffice, or browser automation.",
+  "keywords": [
+    "excel",
+    "excel-formulas",
+    "formula-engine",
+    "formula-recalculation",
+    "js-xlsx",
+    "node",
+    "sheetjs",
+    "sheetjs-formula",
+    "sheetjs-recalc",
+    "spreadsheet",
+    "spreadsheet-formulas",
+    "workbook",
+    "xlsx",
+    "xlsx-calc",
+    "xlsx-formula",
+    "xlsx-formula-recalculation",
+    "xlsx-recalc",
+    "xlsx-recalculation"
+  ],
+  "homepage": "https://proompteng.github.io/bilig/sheetjs-formula-result-not-updating-node.html",
+  "bugs": {
+    "url": "https://github.com/proompteng/bilig/issues"
+  },
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/proompteng/bilig.git",
+    "directory": "packages/sheetjs-formula-recalc"
+  },
+  "bin": {
+    "sheetjs-recalc": "./dist/cli.js"
+  },
+  "files": [
+    "dist",
+    "AGENTS.md",
+    "SKILL.md",
+    "README.md",
+    "LICENSE"
+  ],
+  "type": "module",
+  "sideEffects": false,
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "scripts": {
+    "build": "pnpm --dir ../.. --filter xlsx-formula-recalc build && rm -rf dist tsconfig.tsbuildinfo && tsc -p tsconfig.json",
+    "smoke": "node ./dist/cli.js --help"
+  },
+  "dependencies": {
+    "xlsx-formula-recalc": "workspace:*"
+  },
+  "engines": {
+    "node": ">=22.0.0"
+  }
+}

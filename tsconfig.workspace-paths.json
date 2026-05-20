@@ -34,6 +34,7 @@
       "bilig-workpaper/mcp": ["./packages/bilig/src/mcp.ts"],
       "bilig-workpaper/xlsx": ["./packages/bilig/src/xlsx.ts"],
       "exceljs-formula-recalc": ["./packages/exceljs-formula-recalc/src/index.ts"],
+      "sheetjs-formula-recalc": ["./packages/sheetjs-formula-recalc/src/index.ts"],
       "xlsx-formula-recalc": ["./packages/xlsx-formula-recalc/src/index.ts"],
       "xlsx-formula-recalc/cli-api": ["./packages/xlsx-formula-recalc/src/cli-api.ts"]
     }

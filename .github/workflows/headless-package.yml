@@ -16,6 +16,7 @@ on:
       - 'packages/bilig/**'
       - 'packages/create-workpaper/**'
       - 'packages/xlsx-formula-recalc/**'
+      - 'packages/sheetjs-formula-recalc/**'
       - 'packages/exceljs-formula-recalc/**'
       - 'packages/benchmarks/**'
       - 'packages/headless/CHANGELOG.md'
@@ -132,6 +133,7 @@ jobs:
           pnpm --filter @bilig/headless build
           pnpm --filter bilig-workpaper build
           pnpm --filter xlsx-formula-recalc build
+          pnpm --filter sheetjs-formula-recalc build
           pnpm --filter exceljs-formula-recalc build
 
       - name: Lint runtime package sources
@@ -216,6 +218,7 @@ jobs:
             packages/headless
             packages/bilig
             packages/xlsx-formula-recalc
+            packages/sheetjs-formula-recalc
             packages/exceljs-formula-recalc
             packages/create-workpaper
           )
@@ -663,6 +666,7 @@ jobs:
             'packages/headless/package.json',
             'packages/bilig/package.json',
             'packages/xlsx-formula-recalc/package.json',
+            'packages/sheetjs-formula-recalc/package.json',
             'packages/exceljs-formula-recalc/package.json',
             'packages/create-workpaper/package.json',
           ];
@@ -714,6 +718,7 @@ jobs:
             packages/headless/package.json
             packages/bilig/package.json
             packages/xlsx-formula-recalc/package.json
+            packages/sheetjs-formula-recalc/package.json
             packages/exceljs-formula-recalc/package.json
             packages/create-workpaper/package.json
             packages/headless/AGENTS.md
@@ -726,6 +731,9 @@ jobs:
             packages/xlsx-formula-recalc/AGENTS.md
             packages/xlsx-formula-recalc/SKILL.md
             packages/xlsx-formula-recalc/README.md
+            packages/sheetjs-formula-recalc/AGENTS.md
+            packages/sheetjs-formula-recalc/SKILL.md
+            packages/sheetjs-formula-recalc/README.md
             packages/exceljs-formula-recalc/AGENTS.md
             packages/exceljs-formula-recalc/SKILL.md
             packages/exceljs-formula-recalc/README.md
@@ -755,6 +763,7 @@ jobs:
           pnpm --filter @bilig/headless build
           pnpm --filter bilig-workpaper build
           pnpm --filter xlsx-formula-recalc build
+          pnpm --filter sheetjs-formula-recalc build
           pnpm --filter exceljs-formula-recalc build
 
           bun scripts/sync-headless-package-footprint.ts
@@ -821,6 +830,7 @@ jobs:
           pnpm --filter @bilig/headless build
           pnpm --filter bilig-workpaper build
           pnpm --filter xlsx-formula-recalc build
+          pnpm --filter sheetjs-formula-recalc build
           pnpm --filter exceljs-formula-recalc build
 
       - name: Validate publishable runtime package set

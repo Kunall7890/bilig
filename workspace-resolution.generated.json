@@ -127,6 +127,10 @@
     "packageDir": "packages/exceljs-formula-recalc",
     "sourceEntry": "packages/exceljs-formula-recalc/src/index.ts"
   },
+  "sheetjs-formula-recalc": {
+    "packageDir": "packages/sheetjs-formula-recalc",
+    "sourceEntry": "packages/sheetjs-formula-recalc/src/index.ts"
+  },
   "xlsx-formula-recalc": {
     "packageDir": "packages/xlsx-formula-recalc",
     "sourceEntry": "packages/xlsx-formula-recalc/src/index.ts"

@@ -84,6 +84,9 @@ function packageNameForDir(packageDir: string): string {
   if (packageDir === 'packages/xlsx-formula-recalc') {
     return 'xlsx-formula-recalc'
   }
+  if (packageDir === 'packages/sheetjs-formula-recalc') {
+    return 'sheetjs-formula-recalc'
+  }
   if (packageDir === 'packages/exceljs-formula-recalc') {
     return 'exceljs-formula-recalc'
   }
