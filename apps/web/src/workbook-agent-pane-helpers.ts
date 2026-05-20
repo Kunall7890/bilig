@@ -1,4 +1,8 @@
-import { stringifyWorkbookAgentUiContextSemanticKey, type WorkbookAgentUiContext } from '@bilig/contracts'
+import {
+  stringifyWorkbookAgentUiContextRenderedProofKey,
+  stringifyWorkbookAgentUiContextSemanticKey,
+  type WorkbookAgentUiContext,
+} from '@bilig/contracts'
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null
@@ -19,6 +23,10 @@ export function formatWorkbookAgentContextLabel(context: WorkbookAgentUiContext)
 
 export function stringifyWorkbookAgentContextSyncKey(context: WorkbookAgentUiContext): string {
   return stringifyWorkbookAgentUiContextSemanticKey(context)
+}
+
+export function stringifyWorkbookAgentRenderedProofSyncKey(context: WorkbookAgentUiContext): string {
+  return stringifyWorkbookAgentUiContextRenderedProofKey(context)
 }
 
 export function readAppliedRevision(record: unknown): number | null {

@@ -215,6 +215,52 @@ describe('ProjectedViewportPatchCoordinator', () => {
     vi.useRealTimers()
   })
 
+  it('notifies opted-in viewport subscribers for authoritative revision-only patches', async () => {
+    vi.useFakeTimers()
+    const patches: ((bytes: Uint8Array) => void)[] = []
+    const subscribeViewportPatches = vi.fn((_viewport, listener: (bytes: Uint8Array) => void) => {
+      patches.push(listener)
+      return () => undefined
+    })
+    const coordinator = new ProjectedViewportPatchCoordinator({
+      client: {
+        invoke: async () => undefined,
+        ready: async () => undefined,
+        subscribe: () => () => undefined,
+        subscribeBatches: () => () => undefined,
+        subscribeViewportPatches,
+        dispose: () => undefined,
+      },
+      cellCache: new ProjectedViewportCellCache(),
+      axisStore: new ProjectedViewportAxisStore(),
+      mergeRangesBySheet: new Map(),
+    })
+    const listener = vi.fn()
+
+    const unsubscribe = coordinator.subscribeViewport('Sheet1', { rowStart: 0, rowEnd: 2, colStart: 0, colEnd: 2 }, listener, {
+      initialPatch: 'none',
+      notifyOnProofRevision: true,
+    })
+
+    patches[0]?.(
+      encodeViewportPatch({
+        ...createPatch(),
+        version: 9,
+        authoritativeRevision: 9,
+        cells: [],
+        columns: [],
+        rows: [],
+      }),
+    )
+    await vi.runAllTimersAsync()
+
+    expect(listener).toHaveBeenCalledTimes(1)
+    expect(listener).toHaveBeenLastCalledWith(undefined)
+
+    unsubscribe()
+    vi.useRealTimers()
+  })
+
   it('coalesces repeated patch notifications into a single frame callback', async () => {
     vi.useFakeTimers()
     const patches: ((bytes: Uint8Array) => void)[] = []

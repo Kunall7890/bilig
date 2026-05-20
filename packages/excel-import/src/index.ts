@@ -1,6 +1,5 @@
 import * as XLSX from 'xlsx'
 import type { Unzipped } from 'fflate'
-
 import type { CsvParseOptions } from '@bilig/core'
 import type {
   CellStyleRecord,
@@ -85,7 +84,7 @@ import { compareCellAddresses, readImportedLiteralCellValue, readImportedNumberF
 import { tryInspectLargeSimpleXlsxHeadless, type LargeSimpleXlsxHeadlessInspectResult } from './xlsx-large-simple-headless-inspect.js'
 import { tryImportLargeSimpleXlsx } from './xlsx-large-simple-import.js'
 import { createPreservedVbaProjectPayload } from './xlsx-macros.js'
-import type { OwnedXlsxSourceBytes } from './xlsx-owned-source-release.js'
+import { releaseOwnedXlsxSourceBytes, type OwnedXlsxSourceBytes } from './xlsx-owned-source-release.js'
 import { attachImportedXlsxSourceBytes } from './xlsx-source-bytes.js'
 import { worksheetCellAt, worksheetCellEntries, worksheetCellEntriesAtAddresses } from './xlsx-worksheet-cells.js'
 import { readImportedWorksheetTextValues } from './xlsx-worksheet-text-values.js'
@@ -245,7 +244,9 @@ function buildImportedLegacyCommentVmlSnapshot(
 
 function readValidXlsxZipContainer(bytes: Uint8Array, mode: 'eager' | 'lazy' = 'eager'): Unzipped {
   try {
-    return mode === 'lazy' ? readXlsxZipEntriesLazy(bytes) : readXlsxZipEntries(bytes)
+    const zip = mode === 'lazy' ? readXlsxZipEntriesLazy(bytes) : readXlsxZipEntries(bytes)
+    void zip['xl/workbook.xml']
+    return zip
   } catch {
     throw new InvalidXlsxZipContainerError()
   }
@@ -912,9 +913,11 @@ export function importXlsx(bytes: Uint8Array | ArrayBuffer, fileName: string, op
         includeCellCoordinates: true,
         releaseArenaAfterMaterialization: true,
         releaseZipSource: true,
+        maxMaterializedLazyPackageArtifactBytes: 8 * 1024 * 1024,
+        releaseOwnedSourceBytes: () => releaseOwnedXlsxSourceBytes(ownedSource, (releasedBytes) => (bytes = releasedBytes)),
       })
   if (largeSimpleImport) {
-    attachImportedXlsxSourceBytes(largeSimpleImport.snapshot, ownedSource.bytes)
+    if (ownedSource.bytes.byteLength > 0) attachImportedXlsxSourceBytes(largeSimpleImport.snapshot, ownedSource.bytes)
     return largeSimpleImport
   }
   const fallbackData = ownedSource.bytes.byteLength > 0 ? ownedSource.bytes : readLazyXlsxZipSource(workbookZip)

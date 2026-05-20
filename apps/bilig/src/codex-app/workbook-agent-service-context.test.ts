@@ -241,7 +241,7 @@ describe('workbook agent service context helpers', () => {
     expect(sessionState.live.turnContextByTurn.get('turn-1')).toEqual(ownerContext)
   })
 
-  it('does not update durable context for rendered proof metadata churn', () => {
+  it('does not update idle durable or turn context for rendered proof metadata churn', () => {
     const durableContext = createRenderedContext('stable value')
     const sessionState = createThreadState(durableContext)
     sessionState.live.turnContextByTurn.set('turn-1', durableContext)
@@ -262,6 +262,30 @@ describe('workbook agent service context helpers', () => {
     ).toBe(false)
     expect(sessionState.durable.context).toBe(durableContext)
     expect(sessionState.live.turnContextByTurn.get('turn-1')).toBe(durableContext)
+  })
+
+  it('refreshes active in-progress turn rendered proof without durable context churn', () => {
+    const durableContext = createRenderedContext('stable value')
+    const sessionState = createThreadState(durableContext)
+    sessionState.live.status = 'inProgress'
+    sessionState.live.turnContextByTurn.set('turn-1', durableContext)
+    const nextContext = createRenderedContext('stable value', {
+      capturedAtUnixMs: 900,
+      capturedRevision: 12,
+      batchId: 45,
+      visibleRange: createRenderedRange('stable value', 99),
+    })
+
+    expect(areWorkbookAgentUiContextsSemanticallyEqual(durableContext, nextContext)).toBe(true)
+    expect(
+      updateWorkbookAgentDurableUiContextFromUser({
+        sessionState,
+        context: nextContext,
+        userId: 'alex@example.com',
+      }),
+    ).toBe(false)
+    expect(sessionState.durable.context).toBe(durableContext)
+    expect(sessionState.live.turnContextByTurn.get('turn-1')).toEqual(nextContext)
   })
 
   it('does not update durable context for rendered selection string-id churn', () => {

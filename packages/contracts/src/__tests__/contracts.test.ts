@@ -6,6 +6,7 @@ import {
   RuntimeSessionSchema,
   WorkbookAgentTimelineEntrySchema,
   WorkbookAgentThreadSummarySchema,
+  stringifyWorkbookAgentUiContextRenderedProofKey,
   stringifyWorkbookAgentUiContextSemanticKey,
   WorkbookAgentWorkflowRunSchema,
   type WorkbookAgentUiContext,
@@ -527,6 +528,38 @@ describe('@bilig/contracts', () => {
     })
 
     expect(stringifyWorkbookAgentUiContextSemanticKey(firstContext)).toBe(stringifyWorkbookAgentUiContextSemanticKey(nextContext))
+  })
+
+  it('tracks rendered proof freshness by captured revision without string-id churn', () => {
+    const firstContext = createRenderedWorkbookAgentContext({
+      value: 'stable value',
+      stringId: 1,
+      capturedAtUnixMs: 100,
+      capturedRevision: 3,
+      batchId: 1,
+    })
+    const nextRevisionContext = createRenderedWorkbookAgentContext({
+      value: 'stable value',
+      stringId: 99,
+      capturedAtUnixMs: 900,
+      capturedRevision: 12,
+      batchId: 45,
+    })
+    const stringIdOnlyContext = createRenderedWorkbookAgentContext({
+      value: 'stable value',
+      stringId: 123,
+      capturedAtUnixMs: 950,
+      capturedRevision: 3,
+      batchId: 99,
+    })
+
+    expect(stringifyWorkbookAgentUiContextSemanticKey(firstContext)).toBe(stringifyWorkbookAgentUiContextSemanticKey(nextRevisionContext))
+    expect(stringifyWorkbookAgentUiContextRenderedProofKey(firstContext)).not.toBe(
+      stringifyWorkbookAgentUiContextRenderedProofKey(nextRevisionContext),
+    )
+    expect(stringifyWorkbookAgentUiContextRenderedProofKey(firstContext)).toBe(
+      stringifyWorkbookAgentUiContextRenderedProofKey(stringIdOnlyContext),
+    )
   })
 
   it('changes workbook agent context keys when rendered visible cell content changes', () => {

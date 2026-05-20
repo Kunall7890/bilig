@@ -129,14 +129,19 @@ export function resolveFillHandleOverlayBounds(options: {
     height: size,
   }
 
-  if (
-    resolvedBounds.x + resolvedBounds.width <= minX ||
-    resolvedBounds.y + resolvedBounds.height <= minY ||
-    resolvedBounds.x >= hostBounds.width ||
-    resolvedBounds.y >= hostBounds.height
-  ) {
+  const clippedLeft = Math.max(minX, resolvedBounds.x)
+  const clippedTop = Math.max(minY, resolvedBounds.y)
+  const clippedRight = Math.min(hostBounds.width, resolvedBounds.x + resolvedBounds.width)
+  const clippedBottom = Math.min(hostBounds.height, resolvedBounds.y + resolvedBounds.height)
+
+  if (clippedRight <= clippedLeft || clippedBottom <= clippedTop) {
     return undefined
   }
 
-  return resolvedBounds
+  return {
+    x: clippedLeft,
+    y: clippedTop,
+    width: clippedRight - clippedLeft,
+    height: clippedBottom - clippedTop,
+  }
 }

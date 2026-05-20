@@ -105,4 +105,38 @@ describe('gridFillHandle', () => {
       }),
     ).toBeUndefined()
   })
+
+  test('clips overlay bounds to the visible grid body instead of intercepting headers', () => {
+    expect(
+      resolveFillHandleOverlayBounds({
+        sourceRange: { x: 0, y: 0, width: 1, height: 1 },
+        hostBounds: { left: 0, top: 0, width: 400, height: 300 },
+        minX: 46,
+        minY: 24,
+        getCellBounds: (col, row) => (col === 0 && row === 0 ? { x: 20, y: 10, width: 28, height: 18 } : undefined),
+      }),
+    ).toEqual({
+      x: 46,
+      y: 24,
+      width: 7,
+      height: 9,
+    })
+  })
+
+  test('clips overlay bounds at the viewport edge instead of covering footer chrome', () => {
+    expect(
+      resolveFillHandleOverlayBounds({
+        sourceRange: { x: 3, y: 20, width: 1, height: 1 },
+        hostBounds: { left: 0, top: 0, width: 320, height: 100 },
+        minX: 46,
+        minY: 24,
+        getCellBounds: (col, row) => (col === 3 && row === 20 ? { x: 250, y: 72, width: 66, height: 24 } : undefined),
+      }),
+    ).toEqual({
+      x: 311,
+      y: 91,
+      width: 9,
+      height: 9,
+    })
+  })
 })

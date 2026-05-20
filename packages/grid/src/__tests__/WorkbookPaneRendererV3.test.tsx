@@ -272,7 +272,7 @@ describe('WorkbookPaneRendererV3', () => {
     expect(resolveWorkbookPanePresentedRevisionV3('idle', 14)).toBeNull()
   })
 
-  test('keeps the Canvas2D proof layer until the current TypeGPU frame presents', () => {
+  test('uses the Canvas2D proof layer until the current visible TypeGPU frame has presented', () => {
     expect(
       shouldMountWorkbookCanvasProofLayerV3({
         backendStatus: 'ready',
@@ -340,14 +340,7 @@ describe('WorkbookPaneRendererV3', () => {
     ).toBe(true)
   })
 
-  test('keeps the last presented TypeGPU frame visible while a replacement frame is pending', () => {
-    expect(
-      resolveWorkbookPaneTypeGpuCanvasOpacityV3({
-        frameProofStatus: 'pending',
-        hasPresentedVisibleFrame: true,
-        showCanvasFallback: true,
-      }),
-    ).toBe(1)
+  test('lets the current Canvas2D proof layer cover stale TypeGPU pixels while a replacement frame is pending', () => {
     expect(
       resolveWorkbookPaneTypeGpuCanvasOpacityV3({
         frameProofStatus: 'pending',
@@ -355,6 +348,13 @@ describe('WorkbookPaneRendererV3', () => {
         showCanvasFallback: true,
       }),
     ).toBe(0)
+    expect(
+      resolveWorkbookPaneTypeGpuCanvasOpacityV3({
+        frameProofStatus: 'pending',
+        hasPresentedVisibleFrame: true,
+        showCanvasFallback: true,
+      }),
+    ).toBe(1)
     expect(
       resolveWorkbookPaneTypeGpuCanvasOpacityV3({
         frameProofStatus: 'presented',

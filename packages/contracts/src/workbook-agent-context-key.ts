@@ -49,3 +49,19 @@ export function stringifyWorkbookAgentUiContextSemanticKey(context: WorkbookAgen
           },
   })
 }
+
+export function stringifyWorkbookAgentUiContextRenderedProofKey(context: WorkbookAgentUiContext | null): string {
+  if (context === null) {
+    return 'null'
+  }
+  const rendered = context.rendered
+  return JSON.stringify({
+    semantic: stringifyWorkbookAgentUiContextSemanticKey(context),
+    rendered:
+      rendered === undefined
+        ? null
+        : {
+            capturedRevision: rendered.capturedRevision ?? null,
+          },
+  })
+}

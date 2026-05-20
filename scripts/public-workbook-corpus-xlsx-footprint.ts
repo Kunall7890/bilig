@@ -771,12 +771,7 @@ const closeCellElementBytes = asciiBytes('</c>')
 const closeFormulaElementBytes = asciiBytes('</f>')
 const mergeCellElementNameBytes = asciiBytes('mergeCell')
 const conditionalFormattingElementNameBytes = asciiBytes('conditionalFormatting')
-const unsupportedLargeSimpleElementNameBytes = [
-  asciiBytes('legacyDrawing'),
-  asciiBytes('oleObjects'),
-  asciiBytes('picture'),
-  asciiBytes('sheetProtection'),
-]
+const unsupportedLargeSimpleElementNameBytes = [asciiBytes('picture'), asciiBytes('sheetProtection')]
 const countedElementTailLength =
   Math.max(
     mergeCellElementNameBytes.length,

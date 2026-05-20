@@ -218,7 +218,7 @@ describe('workbook agent client', () => {
     await expect(client.syncThreadContext('thr-1', createContext())).rejects.toThrow('Context rejected by server')
   })
 
-  it('skips duplicate semantic context syncs after the context is already current', async () => {
+  it('skips duplicate semantic context syncs but keeps rendered proof revision freshness', async () => {
     const fetchSpy = vi.fn(
       async () =>
         new Response(JSON.stringify({ ok: true }), {
@@ -251,9 +251,19 @@ describe('workbook agent client', () => {
         visibleRange: null,
       },
     })
+    await client.syncThreadContext('thr-1', {
+      ...createContext('A1'),
+      rendered: {
+        capturedAtUnixMs: Date.now() + 900,
+        capturedRevision: 8,
+        batchId: 13,
+        selection: null,
+        visibleRange: null,
+      },
+    })
 
     const contextCalls = fetchSpy.mock.calls.filter(([input]) => requestUrl(input).endsWith('/chat/threads/thr-1/context'))
-    expect(contextCalls).toHaveLength(2)
+    expect(contextCalls).toHaveLength(3)
     expect(requestBody(contextCalls[0]?.[1])).toMatchObject({
       context: {
         selection: { sheetName: 'Sheet1', address: 'A1' },
@@ -267,6 +277,13 @@ describe('workbook agent client', () => {
       context: {
         rendered: {
           capturedRevision: 7,
+        },
+      },
+    })
+    expect(requestBody(contextCalls[2]?.[1])).toMatchObject({
+      context: {
+        rendered: {
+          capturedRevision: 8,
         },
       },
     })

@@ -1,4 +1,5 @@
 import { readKnownXmlLocalName } from './xlsx-large-simple-xml-name.js'
+import { readLargeSimpleDataValidationsFromBytes } from './xlsx-large-simple-data-validation-byte-scan.js'
 
 const lessThan = 60
 const slash = 47
@@ -9,12 +10,13 @@ const packedAddressColumnFactor = 16_384
 const cellContentHasValue = 1 << 0
 const cellContentHasFormula = 1 << 1
 const emptyBytes = new Uint8Array(0)
-const unsupportedWorksheetTagNames = new Set(['dataValidations', 'legacyDrawing', 'oleObjects', 'picture', 'sheetProtection'])
+const unsupportedWorksheetTagNames = new Set(['picture', 'sheetProtection'])
 const metadataWorksheetTagNames = new Set([
   'autoFilter',
   'colBreaks',
   'cols',
   'conditionalFormatting',
+  'dataValidations',
   'drawing',
   'headerFooter',
   'hyperlinks',
@@ -83,10 +85,14 @@ class HeadlessLargeSimpleWorksheetChunkScanner {
   private tableCount = 0
   private mergeCount = 0
   private conditionalFormatCount = 0
+  private dataValidationCount = 0
   private minRow = Number.POSITIVE_INFINITY
   private minColumn = Number.POSITIVE_INFINITY
   private maxRow = -1
   private maxColumn = -1
+  private currentRow = -1
+  private nextImplicitRow = 0
+  private nextImplicitColumn = 0
   private cellContentFlags = 0
   private cellContentNextIndex = 0
   private cellPackedAddress = -1
@@ -128,6 +134,7 @@ class HeadlessLargeSimpleWorksheetChunkScanner {
           tableCount: this.tableCount,
           mergeCount: this.mergeCount,
           conditionalFormatCount: this.conditionalFormatCount,
+          dataValidationCount: this.dataValidationCount,
           rowCount: this.rowCount,
           columnCount: this.columnCount,
           usedRange:
@@ -208,6 +215,11 @@ class HeadlessLargeSimpleWorksheetChunkScanner {
         this.index = tagEnd + 1
         continue
       }
+      if (tag.localName === 'row') {
+        this.readRow(tag.endIndex, tagEnd)
+        this.index = tagEnd + 1
+        continue
+      }
       if (tag.localName === 'c') {
         if (!this.readCell(tag.endIndex, tagEnd, final)) {
           return
@@ -215,6 +227,12 @@ class HeadlessLargeSimpleWorksheetChunkScanner {
         continue
       }
       if (metadataWorksheetTagNames.has(tag.localName)) {
+        if (tag.localName === 'dataValidations') {
+          if (!this.readDataValidations(tagEnd, final)) {
+            return
+          }
+          continue
+        }
         if (!this.countMetadataElement(tag.localName, tag.endIndex, tagEnd, final)) {
           return
         }
@@ -245,6 +263,13 @@ class HeadlessLargeSimpleWorksheetChunkScanner {
     this.columnCount = Math.max(this.columnCount, range.startColumn + 1, range.endColumn + 1)
   }
 
+  private readRow(nameEnd: number, tagEnd: number): void {
+    const row = readPositiveIntegerAttributeFromTag(this.buffer, nameEnd, tagEnd, 'r')
+    this.currentRow = row === null ? this.nextImplicitRow : row - 1
+    this.nextImplicitRow = this.currentRow + 1
+    this.nextImplicitColumn = 0
+  }
+
   private readCell(nameEnd: number, tagEnd: number, final: boolean): boolean {
     const selfClosing = isSelfClosingTag(this.buffer, tagEnd)
     const contentStart = tagEnd + 1
@@ -266,6 +291,8 @@ class HeadlessLargeSimpleWorksheetChunkScanner {
     }
     const row = packedAddressRow(this.cellPackedAddress)
     const column = packedAddressColumn(this.cellPackedAddress)
+    this.currentRow = row
+    this.nextImplicitColumn = column + 1
     const hasValue = (contentFlags & cellContentHasValue) !== 0
     const hasFormula = (contentFlags & cellContentHasFormula) !== 0
     if (hasValue || hasFormula) {
@@ -284,6 +311,29 @@ class HeadlessLargeSimpleWorksheetChunkScanner {
       }
     }
     this.index = contentNextIndex
+    return true
+  }
+
+  private readDataValidations(tagEnd: number, final: boolean): boolean {
+    const selfClosing = isSelfClosingTag(this.buffer, tagEnd)
+    const closing = selfClosing ? { end: tagEnd + 1 } : findClosingTag(this.buffer, tagEnd + 1, 'dataValidations')
+    if (!closing) {
+      if (final) {
+        this.failed = true
+      }
+      return false
+    }
+    const validations = readLargeSimpleDataValidationsFromBytes('Sheet1', this.buffer, this.index, closing.end)
+    if (validations === null) {
+      if (this.options.allowUnsupportedFeaturesForMetrics === true) {
+        this.index = closing.end
+        return true
+      }
+      this.failed = true
+      return true
+    }
+    this.dataValidationCount += validations.length
+    this.index = closing.end
     return true
   }
 
@@ -398,9 +448,15 @@ class HeadlessLargeSimpleWorksheetChunkScanner {
       }
       index += 1
     }
-    this.cellPackedAddress = packedAddress ?? -1
+    this.cellPackedAddress = packedAddress ?? this.readImplicitCellPackedAddress()
     this.cellHasSharedStringType = hasSharedStringType
-    return packedAddress !== null
+    return this.cellPackedAddress !== -1
+  }
+
+  private readImplicitCellPackedAddress(): number {
+    return this.currentRow < 0 || this.nextImplicitColumn >= packedAddressColumnFactor
+      ? -1
+      : packCellAddress(this.currentRow, this.nextImplicitColumn)
   }
 
   private countMetadataElement(localName: string, nameEnd: number, tagEnd: number, final: boolean): boolean {
@@ -529,6 +585,28 @@ function findTagEnd(bytes: Uint8Array, startIndex: number, endIndex: number = by
   return null
 }
 
+function findClosingTag(
+  bytes: Uint8Array,
+  startIndex: number,
+  localName: string,
+  endIndex: number = bytes.byteLength,
+): { readonly start: number; readonly end: number } | null {
+  let index = startIndex
+  while (index < endIndex) {
+    if (bytes[index] !== lessThan || bytes[index + 1] !== slash) {
+      index += 1
+      continue
+    }
+    const tag = readXmlTagName(bytes, index + 2)
+    if (tag?.localName === localName) {
+      const tagEnd = findTagEnd(bytes, tag.endIndex, endIndex)
+      return tagEnd === null ? null : { start: index, end: tagEnd + 1 }
+    }
+    index += 1
+  }
+  return null
+}
+
 function isSelfClosingTag(bytes: Uint8Array, tagEnd: number): boolean {
   let index = tagEnd - 1
   while (index >= 0 && isAsciiWhitespace(bytes[index] ?? 0)) {
@@ -578,6 +656,22 @@ function countSqrefRangesFromTag(bytes: Uint8Array, nameEnd: number, tagEnd: num
     }
   }
   return Math.max(1, count)
+}
+
+function readPositiveIntegerAttributeFromTag(bytes: Uint8Array, nameEnd: number, tagEnd: number, attributeName: string): number | null {
+  const range = readXmlAttributeRangeFromTag(bytes, nameEnd, tagEnd, attributeName)
+  if (!range || range.start === range.end) {
+    return null
+  }
+  let value = 0
+  for (let index = range.start; index < range.end; index += 1) {
+    const byte = bytes[index] ?? 0
+    if (byte < 48 || byte > 57) {
+      return null
+    }
+    value = value * 10 + byte - 48
+  }
+  return value > 0 && Number.isSafeInteger(value) ? value : null
 }
 
 function readXmlTagName(bytes: Uint8Array, startIndex: number): { readonly localName: string; readonly endIndex: number } | null {

@@ -129,6 +129,7 @@ export function useWorkbookAppPanels(input: {
   selectAddress: (sheetName: string, address: string) => void
   getAgentContext: WorkbookAgentContextGetter
   agentContextVersion?: number | string
+  agentContextProofVersion?: number | string
   applyAgentContext?: (context: ReturnType<WorkbookAgentContextGetter>) => void
   previewAgentCommandBundle: WorkbookAgentPreviewCommandBundle
   syncAgentAuthoritativeRevision?: (revision: number) => Promise<void> | void
@@ -138,6 +139,7 @@ export function useWorkbookAppPanels(input: {
     changesPanel,
     currentUserId,
     documentId,
+    agentContextProofVersion,
     agentContextVersion,
     applyAgentContext,
     getAgentContext,
@@ -185,6 +187,7 @@ export function useWorkbookAppPanels(input: {
     apiEnabled: runtimeReady && workbookAgentEnabled,
     getContext: getAgentContext,
     ...(agentContextVersion !== undefined ? { contextVersion: agentContextVersion } : {}),
+    ...(agentContextProofVersion !== undefined ? { contextProofVersion: agentContextProofVersion } : {}),
     activeContextLabel: formatWorkbookSelectionLabel(selection),
     ...(applyAgentContext ? { applyContext: applyAgentContext } : {}),
     previewCommandBundle: previewAgentCommandBundle,

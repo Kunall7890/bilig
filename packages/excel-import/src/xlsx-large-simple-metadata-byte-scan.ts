@@ -15,12 +15,14 @@ export function appendLargeSimpleRowMetadataTagFromBytes(
   bytes: Uint8Array,
   nameEnd: number,
   tagEnd: number,
+  fallbackRowIndex?: number,
 ): void {
   const row = readPositiveIntegerAttributeFromTag(bytes, nameEnd, tagEnd, 'r')
-  if (row === null) {
+  const rowIndex = row === null ? fallbackRowIndex : row - 1
+  if (rowIndex === undefined) {
     return
   }
-  appendRowMetadata(entries, metadata, row - 1, {
+  appendRowMetadata(entries, metadata, rowIndex, {
     height: readNumberAttributeFromTag(bytes, nameEnd, tagEnd, 'ht'),
     styleIndex: readNonNegativeIntegerAttributeFromTag(bytes, nameEnd, tagEnd, 's'),
     hidden: readOptionalBooleanAttributeFromTag(bytes, nameEnd, tagEnd, 'hidden'),

@@ -4,6 +4,70 @@ All notable changes to `@bilig/headless` will be documented in this file.
 
 This package is released as part of the aligned bilig library package set.
 
+## 0.40.10
+
+- Release type: patch
+- Previous libraries tag: libraries-v0.40.9
+- Manual override: no
+
+## Fixes
+- fix(xlsx): reduce dense arena overgrowth (06d3a15d)
+
+## 0.40.9
+
+- Release type: patch
+- Previous libraries tag: libraries-v0.40.8
+- Manual override: no
+
+## Fixes
+- fix(xlsx): defer large style coordinates (cdffc3ae)
+
+## 0.40.8
+
+- Release type: patch
+- Previous libraries tag: libraries-v0.40.7
+- Manual override: no
+
+## Fixes
+- fix(xlsx): stream implicit worksheet refs (935e2b33)
+
+## 0.40.7
+
+- Release type: patch
+- Previous libraries tag: libraries-v0.40.6
+- Manual override: no
+
+## Fixes
+- fix(xlsx): release dense import buffers (5d8bee40)
+
+## 0.40.6
+
+- Release type: patch
+- Previous libraries tag: libraries-v0.40.5
+- Manual override: no
+
+## Fixes
+- fix(xlsx): reduce lazy snapshot materialization memory (07ee4e89)
+
+## 0.40.5
+
+- Release type: patch
+- Previous libraries tag: libraries-v0.40.4
+- Manual override: no
+
+## Fixes
+- fix(xlsx): stream OLE control artifacts (44b46ee8)
+
+## 0.40.4
+
+- Release type: patch
+- Previous libraries tag: libraries-v0.40.3
+- Manual override: no
+
+## Fixes
+- fix(xlsx): fail fast on corrupt zip entries (3b9d58d4)
+- fix(xlsx): stream data validation metadata (917ac2e6)
+
 ## 0.40.3
 
 - Release type: patch

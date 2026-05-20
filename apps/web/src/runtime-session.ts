@@ -70,7 +70,7 @@ export interface WorkerRuntimeSessionController {
     sheetName: string,
     viewport: Viewport,
     listener: (damage?: readonly { cell: readonly [number, number] }[]) => void,
-    options?: { readonly initialPatch?: 'full' | 'none' },
+    options?: { readonly initialPatch?: 'full' | 'none'; readonly notifyOnProofRevision?: boolean },
     sheetViewId?: string,
   ) => () => void
   readonly dispose: () => void
@@ -338,7 +338,7 @@ export async function createWorkerRuntimeSessionController(
     sheetName: string,
     viewport: Viewport,
     listener: (damage?: readonly { cell: readonly [number, number] }[]) => void,
-    options?: { readonly initialPatch?: 'full' | 'none' },
+    options?: { readonly initialPatch?: 'full' | 'none'; readonly notifyOnProofRevision?: boolean },
   ): (() => void) => {
     return viewportStore.subscribeViewport(sheetName, viewport, listener, options)
   }

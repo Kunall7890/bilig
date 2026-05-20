@@ -23,16 +23,24 @@ import {
 } from './xlsx-pivot-artifacts.js'
 
 const binaryChunkSize = 0x8000
-const controlRelationshipType = 'http://schemas.openxmlformats.org/officeDocument/2006/relationships/ctrlProp'
 const vmlDrawingRelationshipType = 'http://schemas.openxmlformats.org/officeDocument/2006/relationships/vmlDrawing'
 const vmlDrawingContentType = 'application/vnd.openxmlformats-officedocument.vmlDrawing'
 const namespaceDeclarationPattern = /\s(xmlns(?::[A-Za-z_][\w.-]*)?)=("|')([\s\S]*?)\2/gu
+const controlArtifactElementNames = ['controls', 'oleObjects'] as const
 const controlsTailElements = ['webPublishItems', 'tableParts', 'extLst'] as const
 const legacyDrawingTailElements = ['drawing', 'legacyDrawingHF', 'picture', 'oleObjects', 'controls', ...controlsTailElements] as const
 
 interface ElementRange {
   readonly start: number
   readonly end: number
+}
+
+export interface ImportedWorkbookControlArtifactSheetSource {
+  readonly sheetName: string
+  readonly sheetPath: string
+  readonly controlsXml?: string
+  readonly worksheetRootOpenTag?: string
+  readonly legacyDrawingRelationshipId?: string
 }
 
 function encodeBinaryString(bytes: Uint8Array): string {
@@ -129,14 +137,16 @@ function elementRangesByLocalName(xml: string, localName: string): ElementRange[
   return ranges.toSorted((left, right) => left.start - right.start || left.end - right.end)
 }
 
-function controlsFragmentRanges(sheetXml: string): ElementRange[] {
+function controlArtifactFragmentRanges(sheetXml: string): ElementRange[] {
   const alternateContentRanges = elementRangesByLocalName(sheetXml, 'AlternateContent')
-  const ranges = elementRangesByLocalName(sheetXml, 'controls').map((controlsRange) => {
-    const enclosingAlternate = alternateContentRanges
-      .filter((range) => range.start <= controlsRange.start && range.end >= controlsRange.end)
-      .toSorted((left, right) => left.end - left.start - (right.end - right.start))[0]
-    return enclosingAlternate ?? controlsRange
-  })
+  const ranges = controlArtifactElementNames.flatMap((elementName) =>
+    elementRangesByLocalName(sheetXml, elementName).map((fragmentRange) => {
+      const enclosingAlternate = alternateContentRanges
+        .filter((range) => range.start <= fragmentRange.start && range.end >= fragmentRange.end)
+        .toSorted((left, right) => left.end - left.start - (right.end - right.start))[0]
+      return enclosingAlternate ?? fragmentRange
+    }),
+  )
   const deduped: ElementRange[] = []
   for (const range of ranges.toSorted((left, right) => left.start - right.start || left.end - right.end)) {
     if (deduped.some((entry) => entry.start === range.start && entry.end === range.end)) {
@@ -151,13 +161,13 @@ function readControlsXml(sheetXml: string | null): string | undefined {
   if (!sheetXml) {
     return undefined
   }
-  const ranges = controlsFragmentRanges(sheetXml)
+  const ranges = controlArtifactFragmentRanges(sheetXml)
   return ranges.length > 0 ? ranges.map((range) => sheetXml.slice(range.start, range.end)).join('') : undefined
 }
 
 function removeControlsXml(sheetXml: string): string {
   let output = sheetXml
-  for (const range of controlsFragmentRanges(sheetXml).toReversed()) {
+  for (const range of controlArtifactFragmentRanges(sheetXml).toReversed()) {
     output = `${output.slice(0, range.start)}${output.slice(range.end)}`
   }
   return output
@@ -349,6 +359,12 @@ function copyRelationshipPart(input: {
   return true
 }
 
+function relationshipPathForPart(path: string): string {
+  const normalized = normalizeZipPath(path)
+  const slashIndex = normalized.lastIndexOf('/')
+  return slashIndex >= 0 ? `${normalized.slice(0, slashIndex)}/_rels/${normalized.slice(slashIndex + 1)}.rels` : `_rels/${normalized}.rels`
+}
+
 export function readImportedWorkbookControlArtifacts(
   source: XlsxZipSource,
   sheetNames: readonly string[],
@@ -357,42 +373,54 @@ export function readImportedWorkbookControlArtifacts(
   readonly sheetArtifactsByName: Map<string, WorkbookSheetControlArtifactsSnapshot>
 } {
   const zip = readXlsxZipEntries(source)
+  return readImportedWorkbookControlArtifactsFromSheetSources(
+    zip,
+    sheetNames.map((sheetName, sheetIndex) => ({
+      sheetName,
+      sheetPath: `xl/worksheets/sheet${String(sheetIndex + 1)}.xml`,
+    })),
+  )
+}
+
+export function readImportedWorkbookControlArtifactsFromSheetSources(
+  source: XlsxZipSource,
+  sheets: readonly ImportedWorkbookControlArtifactSheetSource[],
+): {
+  readonly artifacts: WorkbookControlArtifactsSnapshot | undefined
+  readonly sheetArtifactsByName: Map<string, WorkbookSheetControlArtifactsSnapshot>
+} {
+  const zip = readXlsxZipEntries(source)
   const sheetArtifactsByName = new Map<string, WorkbookSheetControlArtifactsSnapshot>()
   const partPaths = new Set<string>()
 
-  sheetNames.forEach((sheetName, sheetIndex) => {
-    const sheetPath = `xl/worksheets/sheet${String(sheetIndex + 1)}.xml`
-    const sheetXml = getZipText(zip, sheetPath)
-    const controlsXml = readControlsXml(sheetXml)
-    const worksheetRootOpenTag = readWorksheetRootOpenTag(sheetXml)
+  sheets.forEach((sheet) => {
+    const sheetXml = sheet.controlsXml && sheet.worksheetRootOpenTag ? null : getZipText(zip, sheet.sheetPath)
+    const controlsXml = sheet.controlsXml ?? readControlsXml(sheetXml)
+    const worksheetRootOpenTag = sheet.worksheetRootOpenTag ?? readWorksheetRootOpenTag(sheetXml)
     if (!controlsXml || !worksheetRootOpenTag) {
       return
     }
 
-    const sheetRelationships = parseRelationships(getZipText(zip, `xl/worksheets/_rels/sheet${String(sheetIndex + 1)}.xml.rels`))
+    const sheetRelationships = parseRelationships(getZipText(zip, relationshipPathForPart(sheet.sheetPath)))
     const relationshipIds = new Set(
       [...controlsXml.matchAll(/\br:id=(["'])([\s\S]*?)\1/gu)].map((match) => match[2]).filter((id): id is string => Boolean(id)),
     )
-    const legacyDrawingRelationshipId = readLegacyDrawingRelationshipId(sheetXml)
+    const legacyDrawingRelationshipId = sheet.legacyDrawingRelationshipId ?? readLegacyDrawingRelationshipId(sheetXml)
     if (legacyDrawingRelationshipId) {
       relationshipIds.add(legacyDrawingRelationshipId)
     }
-    const relationships = sheetRelationships.filter(
-      (relationship) =>
-        relationshipIds.has(relationship.id) &&
-        (relationship.type === controlRelationshipType || relationship.type === vmlDrawingRelationshipType),
-    )
+    const relationships = sheetRelationships.filter((relationship) => relationshipIds.has(relationship.id))
     if (relationships.length === 0) {
       return
     }
 
-    sheetArtifactsByName.set(sheetName, {
+    sheetArtifactsByName.set(sheet.sheetName, {
       controlsXml,
       worksheetRootOpenTag,
       relationships: relationships.map(relationshipSnapshot),
     })
     relationships.forEach((relationship) => {
-      const path = normalizeZipPath(resolveTargetPath(sheetPath, relationship.target))
+      const path = normalizeZipPath(resolveTargetPath(sheet.sheetPath, relationship.target))
       if (zip[path]) {
         partPaths.add(path)
       }

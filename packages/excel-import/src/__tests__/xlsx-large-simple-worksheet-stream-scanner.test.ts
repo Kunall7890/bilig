@@ -28,6 +28,7 @@ describe('large simple worksheet stream scanners', () => {
       mergeCount: 2,
       tableCount: 2,
       conditionalFormatCount: 4,
+      dataValidationCount: 3,
       usedRange: { startRow: 0, startColumn: 0, endRow: 11, endColumn: 2 },
     })
   })
@@ -57,6 +58,45 @@ describe('large simple worksheet stream scanners', () => {
     expect(scan?.cellScan.arena.materializeSheetCells(0)).toEqual([
       { address: 'A1', value: 1 },
       { address: 'B1', value: 2 },
+    ])
+  })
+
+  it('can defer style coordinates while retaining required style indexes', () => {
+    const scan = parseLargeSimpleWorksheetCellsFromChunks(splitAfterTagOpen(styledWorksheetXml()), 0, {
+      hasSharedStrings: false,
+      retainStyleCoordinates: false,
+    })
+    const requiredStyleIndexes = new Set<number>()
+    const coordinates: Array<{ row: number; column: number; styleIndex: number }> = []
+
+    scan?.cellScan.styleIndexes.collectRequiredStyleIndexes(requiredStyleIndexes)
+    scan?.cellScan.styleIndexes.forEach((row, column, styleIndex) => coordinates.push({ row, column, styleIndex }))
+
+    expect(scan?.cellScan.cellCount).toBe(1)
+    expect(scan?.cellScan.blankStyleCellCount).toBe(1)
+    expect(scan?.cellScan.styleIndexes.hasCoordinateStorage).toBe(false)
+    expect([...requiredStyleIndexes].toSorted((left, right) => left - right)).toEqual([3, 4])
+    expect(coordinates).toEqual([])
+  })
+
+  it('rescans style coordinates without materializing cell values', () => {
+    const scan = parseLargeSimpleWorksheetCellsFromChunks(splitAfterTagOpen(styledInlineWorksheetXml()), 0, {
+      hasSharedStrings: false,
+      retainCells: false,
+      retainStyleIndexes: true,
+      retainStyleCoordinates: true,
+    })
+    const coordinates: Array<{ row: number; column: number; styleIndex: number }> = []
+
+    scan?.cellScan.styleIndexes.forEach((row, column, styleIndex) => coordinates.push({ row, column, styleIndex }))
+
+    expect(scan?.cellScan.cellCount).toBe(2)
+    expect(scan?.cellScan.blankStyleCellCount).toBe(1)
+    expect(scan?.cellScan.arena.materializeSheetCells(0)).toEqual([])
+    expect(coordinates).toEqual([
+      { row: 0, column: 0, styleIndex: 3 },
+      { row: 0, column: 1, styleIndex: 4 },
+      { row: 1, column: 0, styleIndex: 5 },
     ])
   })
 
@@ -116,6 +156,32 @@ describe('large simple worksheet stream scanners', () => {
     ])
   })
 
+  it('infers omitted row and cell refs from stream order', () => {
+    const headless = parseHeadlessLargeSimpleWorksheetFromChunks(splitAfterTagOpen(implicitAddressWorksheetXml()), 0, {
+      hasSharedStrings: true,
+    })
+    const scan = parseLargeSimpleWorksheetCellsFromChunks(splitAfterTagOpen(implicitAddressWorksheetXml()), 0, {
+      hasSharedStrings: true,
+      sharedStrings: [{ text: 'Shared label', rich: false }],
+    })
+
+    expect(headless).toMatchObject({
+      cellCount: 4,
+      valueCellCount: 4,
+      formulaCellCount: 1,
+      rowCount: 2,
+      columnCount: 2,
+      usedRange: { startRow: 0, startColumn: 0, endRow: 1, endColumn: 1 },
+    })
+    expect(scan?.cellScan.arena.materializeSheetCells(0)).toEqual([
+      { address: 'A1', value: 1 },
+      { address: 'B1', value: 2 },
+      { address: 'A2', value: 'Shared label' },
+      { address: 'B2', value: 3, formula: 'A1+B1' },
+    ])
+    expect(scan?.metadata?.rows?.entries).toEqual([{ id: 'row:0', index: 0, size: 16 }])
+  })
+
   it('collects exact worksheet metadata records without retaining metadata XML', () => {
     const scan = parseLargeSimpleWorksheetCellsFromChunks(splitAfterTagOpen(metadataWorksheetXml()), 0, {
       hasSharedStrings: false,
@@ -168,6 +234,21 @@ describe('large simple worksheet stream scanners', () => {
         },
       ],
       hyperlinks: [{ ref: 'A1:B1', location: 'Summary!A1', tooltip: 'Jump', display: 'Summary' }],
+      dataValidations: [
+        {
+          range: { sheetName: 'Data', startAddress: 'A1', endAddress: 'A1' },
+          rule: { kind: 'list', values: ['Open', 'Closed'] },
+          allowBlank: true,
+        },
+        {
+          range: { sheetName: 'Data', startAddress: 'B1', endAddress: 'B1' },
+          rule: { kind: 'whole', operator: 'between', values: [1, 10] },
+        },
+        {
+          range: { sheetName: 'Data', startAddress: 'B2', endAddress: 'B2' },
+          rule: { kind: 'whole', operator: 'between', values: [1, 10] },
+        },
+      ],
       rows: {
         entries: [{ id: 'row:1', index: 1, size: 24, hidden: true }],
         metadata: [
@@ -242,6 +323,20 @@ describe('large simple worksheet stream scanners', () => {
     expect(scan?.metadata?.hyperlinks).toBeUndefined()
     expect(scan?.metadataXml).toContain('<hyperlinks>')
   })
+
+  it('rejects unsupported data validation rules instead of dropping them from streamed metadata', () => {
+    expect(
+      parseHeadlessLargeSimpleWorksheetFromChunks(splitAfterTagOpen(unsupportedDataValidationWorksheetXml()), 0, {
+        hasSharedStrings: false,
+      }),
+    ).toBeNull()
+    expect(
+      parseLargeSimpleWorksheetCellsFromChunks(splitAfterTagOpen(unsupportedDataValidationWorksheetXml()), 0, {
+        hasSharedStrings: false,
+        sheetName: 'Data',
+      }),
+    ).toBeNull()
+  })
 })
 
 function splitAfterTagOpen(xml: string): (onChunk: (chunk: Uint8Array) => void) => boolean {
@@ -271,6 +366,27 @@ function worksheetXml(): string {
   ].join('')
 }
 
+function styledWorksheetXml(): string {
+  return [
+    '<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">',
+    '<dimension ref="A1:B1"/>',
+    '<sheetData><row r="1"><c r="A1" s="3"><v>1</v></c><c r="B1" s="4"/></row></sheetData>',
+    '</worksheet>',
+  ].join('')
+}
+
+function styledInlineWorksheetXml(): string {
+  return [
+    '<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">',
+    '<dimension ref="A1:B2"/>',
+    '<sheetData>',
+    '<row r="1"><c r="A1" t="inlineStr" s="3"><is><t>Label</t></is></c><c r="B1" s="4"><v>2</v></c></row>',
+    '<row r="2"><c r="A2" s="5"/></row>',
+    '</sheetData>',
+    '</worksheet>',
+  ].join('')
+}
+
 function headlessMetadataWorksheetXml(): string {
   return [
     '<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">',
@@ -280,6 +396,10 @@ function headlessMetadataWorksheetXml(): string {
     '<cfRule type="cellIs" priority="1" operator="greaterThan"><formula>0</formula></cfRule>',
     '<cfRule type="cellIs" priority="2" operator="lessThan"><formula>9</formula></cfRule>',
     '</conditionalFormatting>',
+    '<dataValidations count="2">',
+    '<dataValidation type="list" sqref="A1"><formula1>"Open,Closed"</formula1></dataValidation>',
+    '<dataValidation type="whole" operator="between" sqref="B1 B2"><formula1>1</formula1><formula2>10</formula2></dataValidation>',
+    '</dataValidations>',
     '<mergeCells count="2"><mergeCell ref="A1:B1"/><mergeCell ref="A2:B2"/></mergeCells>',
     '<tableParts count="2"><tablePart r:id="rIdTable1"/><tablePart r:id="rIdTable2"/></tableParts>',
     '</worksheet>',
@@ -361,6 +481,18 @@ function scalarWorksheetXml(): string {
   ].join('')
 }
 
+function implicitAddressWorksheetXml(): string {
+  return [
+    '<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">',
+    '<dimension ref="A1:B2"/>',
+    '<sheetData>',
+    '<row ht="12" customHeight="1"><c><v>1</v></c><c><v>2</v></c></row>',
+    '<row><c t="s"><v>0</v></c><c><f>A1+B1</f><v>3</v></c></row>',
+    '</sheetData>',
+    '</worksheet>',
+  ].join('')
+}
+
 function metadataWorksheetXml(): string {
   return [
     '<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">',
@@ -377,6 +509,10 @@ function metadataWorksheetXml(): string {
     '<conditionalFormatting sqref="A1:B2"><cfRule type="cellIs" priority="1" operator="greaterThan"><formula>0</formula></cfRule></conditionalFormatting>',
     '<mergeCells count="1"><mergeCell ref="A1:B1"/></mergeCells>',
     '<hyperlinks><hyperlink ref="A1:B1" location="Summary!A1" tooltip="Jump" display="Summary"/></hyperlinks>',
+    '<dataValidations count="2">',
+    '<dataValidation type="list" allowBlank="1" sqref="A1"><formula1>"Open,Closed"</formula1></dataValidation>',
+    '<dataValidation type="whole" operator="between" sqref="B1 B2"><formula1>1</formula1><formula2>10</formula2></dataValidation>',
+    '</dataValidations>',
     '<printOptions horizontalCentered="1"/>',
     '<pageMargins left="0.7" right="0.7" top="0.75" bottom="0.75"/>',
     '<pageSetup orientation="landscape" r:id="rIdPrinterSettings1"/>',
@@ -417,6 +553,16 @@ function oversizedHyperlinkWorksheetXml(): string {
     '<dimension ref="A1:A2000"/>',
     '<sheetData><row r="1"><c r="A1"><v>1</v></c></row></sheetData>',
     '<hyperlinks><hyperlink ref="A1:A2000" location="Summary!A1"/></hyperlinks>',
+    '</worksheet>',
+  ].join('')
+}
+
+function unsupportedDataValidationWorksheetXml(): string {
+  return [
+    '<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">',
+    '<dimension ref="A1"/>',
+    '<sheetData><row r="1"><c r="A1"><v>1</v></c></row></sheetData>',
+    '<dataValidations count="1"><dataValidation type="custom" sqref="A1"><formula1>A1&gt;0</formula1></dataValidation></dataValidations>',
     '</worksheet>',
   ].join('')
 }
