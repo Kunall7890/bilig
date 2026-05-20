@@ -4,6 +4,7 @@ import { createRoot } from 'react-dom/client'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import type { WorkbookAgentTimelineEntry } from '@bilig/contracts'
 import { StructuredToolOutput, summarizeToolEntry } from '../workbook-agent-tool-output.js'
+import { formatScalarValue, renderedProofLabel, renderToolDisplayName, safeParseToolOutput } from '../workbook-agent-tool-output-model.js'
 
 beforeEach(() => {
   ;(globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true
@@ -30,6 +31,20 @@ function toolEntry(output: unknown, toolName = 'write_range'): WorkbookAgentTime
 }
 
 describe('workbook agent tool output trust summaries', () => {
+  it('keeps pure parsing and label helpers outside the renderer', () => {
+    expect(safeParseToolOutput('{"ok":true}')).toEqual({ ok: true })
+    expect(safeParseToolOutput('{not json')).toBeNull()
+    expect(renderToolDisplayName('command_execution')).toBe('Command')
+    expect(formatScalarValue(1.234)).toBe('1.23')
+    expect(
+      renderedProofLabel([
+        {
+          matched: true,
+        },
+      ]),
+    ).toBe('Matched')
+  })
+
   it('summarizes verification-incomplete mutation receipts before applied wording', () => {
     const summary = summarizeToolEntry(
       toolEntry({
