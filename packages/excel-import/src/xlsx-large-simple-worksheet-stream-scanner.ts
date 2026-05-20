@@ -2,6 +2,7 @@ import type {
   WorkbookAxisEntrySnapshot,
   WorkbookAxisMetadataSnapshot,
   WorkbookConditionalFormatSnapshot,
+  WorkbookDataValidationSnapshot,
   WorkbookRichTextCellSnapshot,
 } from '@bilig/protocol'
 import { readLargeSimpleAutoFiltersFromBytes } from './xlsx-large-simple-autofilter-byte-scan.js'
@@ -10,6 +11,7 @@ import {
   readLargeSimpleSharedStringIndexFromTextRange,
 } from './xlsx-large-simple-cell-value-scan.js'
 import { readLargeSimpleConditionalFormattingFromBytes } from './xlsx-large-simple-conditional-format-byte-scan.js'
+import { readLargeSimpleDataValidationsFromBytes } from './xlsx-large-simple-data-validation-byte-scan.js'
 import {
   LargeSimpleFormulaRecords,
   parseLargeSimpleSharedFormulaIndex,
@@ -136,6 +138,7 @@ class LargeSimpleWorksheetChunkScanner {
   private blankStyleCellCount = 0
   private mergeCount = 0
   private conditionalFormatCount = 0
+  private dataValidationCount = 0
   private tableCount = 0
   private readonly sheetName: string | undefined
   private minRow = Number.POSITIVE_INFINITY
@@ -147,6 +150,7 @@ class LargeSimpleWorksheetChunkScanner {
   private conditionalFormats: WorkbookConditionalFormatSnapshot[] | undefined
   private conditionalFormatIdCounter = 0
   private conditionalFormattingXml: string[] | undefined
+  private dataValidations: WorkbookDataValidationSnapshot[] | undefined
   private cellMetadataRefs: LargeSimpleWorksheetCellMetadataRef[] | undefined
   private drawingRelationshipId: string | undefined
   private filters: LargeSimpleWorksheetScannedMetadata['filters']
@@ -237,6 +241,7 @@ class LargeSimpleWorksheetChunkScanner {
         formulaCellCount: this.formulaCellCount,
         mergeCount: this.mergeCount,
         conditionalFormatCount: this.conditionalFormatCount,
+        dataValidationCount: this.dataValidationCount,
         tableCount: this.tableCount,
         rowCount: this.rowCount,
         columnCount: this.columnCount,
@@ -298,6 +303,7 @@ class LargeSimpleWorksheetChunkScanner {
       ...(this.conditionalFormattingXml && this.conditionalFormattingXml.length > 0
         ? { conditionalFormattingXml: this.conditionalFormattingXml }
         : {}),
+      ...(this.dataValidations && this.dataValidations.length > 0 ? { dataValidations: this.dataValidations } : {}),
       ...(this.drawingRelationshipId ? { drawingRelationshipId: this.drawingRelationshipId } : {}),
       ...(this.filters && this.filters.length > 0 ? { filters: this.filters } : {}),
       ...(this.hyperlinks && this.hyperlinks.length > 0 ? { hyperlinks: this.hyperlinks } : {}),
@@ -520,6 +526,10 @@ class LargeSimpleWorksheetChunkScanner {
   private collectMetadataElement(localName: string, tagEnd: number, final: boolean): boolean {
     if (isSelfClosingTag(this.buffer, tagEnd)) {
       const handled = this.retainMetadataXml && this.collectTypedMetadataElement(localName, this.index, tagEnd + 1)
+      if (!handled && this.retainMetadataXml && localName === 'dataValidations') {
+        this.failed = true
+        return true
+      }
       if (!handled) {
         this.countMetadataElement(localName, tagEnd + 1, tagEnd + 1)
       }
@@ -548,6 +558,10 @@ class LargeSimpleWorksheetChunkScanner {
       return false
     }
     const handled = this.retainMetadataXml && this.collectTypedMetadataElement(localName, this.index, closing.end)
+    if (!handled && this.retainMetadataXml && localName === 'dataValidations') {
+      this.failed = true
+      return true
+    }
     if (!handled) {
       this.countMetadataElement(localName, tagEnd + 1, closing.start)
     }
@@ -643,6 +657,21 @@ class LargeSimpleWorksheetChunkScanner {
       }
       return true
     }
+    if (localName === 'dataValidations') {
+      if (!this.sheetName) {
+        return false
+      }
+      const validations = readLargeSimpleDataValidationsFromBytes(this.sheetName, this.buffer, startIndex, endIndex)
+      if (validations === null) {
+        return false
+      }
+      this.dataValidationCount += validations.length
+      if (validations.length > 0) {
+        this.dataValidations ??= []
+        this.dataValidations.push(...validations)
+      }
+      return true
+    }
     return false
   }
 
@@ -655,6 +684,8 @@ class LargeSimpleWorksheetChunkScanner {
       this.mergeCount += countOpeningTags(this.buffer, contentStart, contentEnd, 'mergeCell')
     } else if (localName === 'tableParts') {
       this.tableCount += countOpeningTags(this.buffer, contentStart, contentEnd, 'tablePart')
+    } else if (localName === 'dataValidations') {
+      this.dataValidationCount += countOpeningTags(this.buffer, contentStart, contentEnd, 'dataValidation')
     }
   }
 

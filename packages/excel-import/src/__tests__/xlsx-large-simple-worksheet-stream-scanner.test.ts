@@ -28,6 +28,7 @@ describe('large simple worksheet stream scanners', () => {
       mergeCount: 2,
       tableCount: 2,
       conditionalFormatCount: 4,
+      dataValidationCount: 3,
       usedRange: { startRow: 0, startColumn: 0, endRow: 11, endColumn: 2 },
     })
   })
@@ -168,6 +169,21 @@ describe('large simple worksheet stream scanners', () => {
         },
       ],
       hyperlinks: [{ ref: 'A1:B1', location: 'Summary!A1', tooltip: 'Jump', display: 'Summary' }],
+      dataValidations: [
+        {
+          range: { sheetName: 'Data', startAddress: 'A1', endAddress: 'A1' },
+          rule: { kind: 'list', values: ['Open', 'Closed'] },
+          allowBlank: true,
+        },
+        {
+          range: { sheetName: 'Data', startAddress: 'B1', endAddress: 'B1' },
+          rule: { kind: 'whole', operator: 'between', values: [1, 10] },
+        },
+        {
+          range: { sheetName: 'Data', startAddress: 'B2', endAddress: 'B2' },
+          rule: { kind: 'whole', operator: 'between', values: [1, 10] },
+        },
+      ],
       rows: {
         entries: [{ id: 'row:1', index: 1, size: 24, hidden: true }],
         metadata: [
@@ -242,6 +258,20 @@ describe('large simple worksheet stream scanners', () => {
     expect(scan?.metadata?.hyperlinks).toBeUndefined()
     expect(scan?.metadataXml).toContain('<hyperlinks>')
   })
+
+  it('rejects unsupported data validation rules instead of dropping them from streamed metadata', () => {
+    expect(
+      parseHeadlessLargeSimpleWorksheetFromChunks(splitAfterTagOpen(unsupportedDataValidationWorksheetXml()), 0, {
+        hasSharedStrings: false,
+      }),
+    ).toBeNull()
+    expect(
+      parseLargeSimpleWorksheetCellsFromChunks(splitAfterTagOpen(unsupportedDataValidationWorksheetXml()), 0, {
+        hasSharedStrings: false,
+        sheetName: 'Data',
+      }),
+    ).toBeNull()
+  })
 })
 
 function splitAfterTagOpen(xml: string): (onChunk: (chunk: Uint8Array) => void) => boolean {
@@ -280,6 +310,10 @@ function headlessMetadataWorksheetXml(): string {
     '<cfRule type="cellIs" priority="1" operator="greaterThan"><formula>0</formula></cfRule>',
     '<cfRule type="cellIs" priority="2" operator="lessThan"><formula>9</formula></cfRule>',
     '</conditionalFormatting>',
+    '<dataValidations count="2">',
+    '<dataValidation type="list" sqref="A1"><formula1>"Open,Closed"</formula1></dataValidation>',
+    '<dataValidation type="whole" operator="between" sqref="B1 B2"><formula1>1</formula1><formula2>10</formula2></dataValidation>',
+    '</dataValidations>',
     '<mergeCells count="2"><mergeCell ref="A1:B1"/><mergeCell ref="A2:B2"/></mergeCells>',
     '<tableParts count="2"><tablePart r:id="rIdTable1"/><tablePart r:id="rIdTable2"/></tableParts>',
     '</worksheet>',
@@ -377,6 +411,10 @@ function metadataWorksheetXml(): string {
     '<conditionalFormatting sqref="A1:B2"><cfRule type="cellIs" priority="1" operator="greaterThan"><formula>0</formula></cfRule></conditionalFormatting>',
     '<mergeCells count="1"><mergeCell ref="A1:B1"/></mergeCells>',
     '<hyperlinks><hyperlink ref="A1:B1" location="Summary!A1" tooltip="Jump" display="Summary"/></hyperlinks>',
+    '<dataValidations count="2">',
+    '<dataValidation type="list" allowBlank="1" sqref="A1"><formula1>"Open,Closed"</formula1></dataValidation>',
+    '<dataValidation type="whole" operator="between" sqref="B1 B2"><formula1>1</formula1><formula2>10</formula2></dataValidation>',
+    '</dataValidations>',
     '<printOptions horizontalCentered="1"/>',
     '<pageMargins left="0.7" right="0.7" top="0.75" bottom="0.75"/>',
     '<pageSetup orientation="landscape" r:id="rIdPrinterSettings1"/>',
@@ -417,6 +455,16 @@ function oversizedHyperlinkWorksheetXml(): string {
     '<dimension ref="A1:A2000"/>',
     '<sheetData><row r="1"><c r="A1"><v>1</v></c></row></sheetData>',
     '<hyperlinks><hyperlink ref="A1:A2000" location="Summary!A1"/></hyperlinks>',
+    '</worksheet>',
+  ].join('')
+}
+
+function unsupportedDataValidationWorksheetXml(): string {
+  return [
+    '<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">',
+    '<dimension ref="A1"/>',
+    '<sheetData><row r="1"><c r="A1"><v>1</v></c></row></sheetData>',
+    '<dataValidations count="1"><dataValidation type="custom" sqref="A1"><formula1>A1&gt;0</formula1></dataValidation></dataValidations>',
     '</worksheet>',
   ].join('')
 }

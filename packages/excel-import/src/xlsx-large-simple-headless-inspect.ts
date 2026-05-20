@@ -101,6 +101,7 @@ export function tryInspectLargeSimpleXlsxHeadless(
   let tableCount = 0
   let mergeCount = 0
   let conditionalFormatCount = 0
+  let dataValidationCount = 0
   for (const [order, entry] of worksheetEntries.entries()) {
     const worksheetScanStart = phaseRecorder.start()
     const scan = parseHeadlessLargeSimpleWorksheetFromChunks(
@@ -121,6 +122,7 @@ export function tryInspectLargeSimpleXlsxHeadless(
     tableCount += scan.tableCount ?? 0
     mergeCount += scan.mergeCount ?? 0
     conditionalFormatCount += scan.conditionalFormatCount ?? 0
+    dataValidationCount += scan.dataValidationCount ?? 0
     dimensions.push({
       sheetName: entry.name,
       rowCount: scan.rowCount,
@@ -156,6 +158,7 @@ export function tryInspectLargeSimpleXlsxHeadless(
       tableCount,
       mergeCount,
       conditionalFormatCount,
+      dataValidationCount,
       warningCount: definedNames.ignoredCount > 0 ? 1 : 0,
       dimensions,
       phaseTelemetry: phaseRecorder.entries(),

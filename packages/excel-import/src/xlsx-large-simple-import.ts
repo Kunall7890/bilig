@@ -105,6 +105,7 @@ export interface LargeSimpleXlsxImportStats {
   readonly tableCount: number
   readonly mergeCount: number
   readonly conditionalFormatCount: number
+  readonly dataValidationCount: number
   readonly warningCount: number
   readonly dimensions: readonly LargeSimpleXlsxSheetDimension[]
   readonly phaseTelemetry: readonly LargeSimpleXlsxImportPhaseTelemetry[]
@@ -139,6 +140,7 @@ interface ParsedWorksheet {
     readonly tableCount: number
     readonly mergeCount: number
     readonly conditionalFormatCount: number
+    readonly dataValidationCount: number
     readonly dimension: LargeSimpleXlsxSheetDimension
   }
 }
@@ -156,6 +158,7 @@ type LargeSimpleSheetMetadataInput = Pick<
   SheetMetadataSnapshot,
   | 'conditionalFormatArtifacts'
   | 'conditionalFormats'
+  | 'validations'
   | 'drawingArtifacts'
   | 'filters'
   | 'hyperlinks'
@@ -431,6 +434,12 @@ export function tryImportLargeSimpleXlsx(
         conditionalFormats,
       )
       retainedMetadataScan = withoutConditionalFormattingXml(streamedMetadataScan)
+    }
+    if (materializeMetadata && streamedMetadataScan?.dataValidations && streamedMetadataScan.dataValidations.length > 0) {
+      metadataInput = {
+        ...metadataInput,
+        validations: [...(metadataInput.validations ?? []), ...streamedMetadataScan.dataValidations],
+      }
     }
     if (materializeMetadata && streamedMetadataScan?.tableRelationshipIds && streamedMetadataScan.tableRelationshipIds.length > 0) {
       const sheetTables = readImportedSheetTablesFromRelationshipIds(zip, entry.name, entry.path, streamedMetadataScan.tableRelationshipIds)
@@ -710,6 +719,7 @@ export function tryImportLargeSimpleXlsx(
     tableCount: sortedImportedTables?.length ?? sheetStats.reduce((sum, entry) => sum + entry.tableCount, 0),
     mergeCount: sheetStats.reduce((sum, entry) => sum + entry.mergeCount, 0),
     conditionalFormatCount: sheetStats.reduce((sum, entry) => sum + entry.conditionalFormatCount, 0),
+    dataValidationCount: sheetStats.reduce((sum, entry) => sum + entry.dataValidationCount, 0),
     warningCount: warnings.length,
     dimensions: sheetStats.map((entry) => entry.dimension),
     phaseTelemetry: phaseRecorder.entries(),
@@ -824,6 +834,7 @@ function buildParsedWorksheet(
     input.conditionalFormats?.length ??
     (worksheetXml ? readConditionalFormattingBlockCount(worksheetXml) : (cellScan.conditionalFormatCount ?? 0))
   const conditionalFormats = normalizeConditionalFormatIds(sheetName, input.conditionalFormats)
+  const dataValidationCount = input.validations?.length ?? cellScan.dataValidationCount ?? 0
   const styleRanges =
     options.materializeCells && options.styleCatalog && options.stylesByIndex
       ? buildLargeSimpleStyleRanges(sheetName, cellScan, options.stylesByIndex, options.styleCatalog)
@@ -849,6 +860,7 @@ function buildParsedWorksheet(
     ...(input.sheetProtection ? { sheetProtection: input.sheetProtection } : {}),
     ...(input.filters ? { filters: input.filters } : {}),
     ...(input.hyperlinks ? { hyperlinks: input.hyperlinks } : {}),
+    ...(input.validations ? { validations: input.validations } : {}),
     ...(conditionalFormats ? { conditionalFormats } : {}),
     ...(input.conditionalFormatArtifacts ? { conditionalFormatArtifacts: input.conditionalFormatArtifacts } : {}),
     ...(cellMetadataRefs ? { cellMetadataRefs } : {}),
@@ -879,6 +891,7 @@ function buildParsedWorksheet(
       tableCount: cellScan.tableCount ?? 0,
       mergeCount,
       conditionalFormatCount,
+      dataValidationCount,
       dimension: {
         sheetName,
         rowCount: cellScan.rowCount,
@@ -921,6 +934,7 @@ function importedWorksheetCellScanFromHeadless(scan: HeadlessLargeSimpleWorkshee
     formulaCellCount: scan.formulaCellCount,
     mergeCount: scan.mergeCount,
     conditionalFormatCount: scan.conditionalFormatCount,
+    dataValidationCount: scan.dataValidationCount ?? 0,
     tableCount: scan.tableCount,
     rowCount: scan.rowCount,
     columnCount: scan.columnCount,

@@ -1,4 +1,5 @@
 import { readKnownXmlLocalName } from './xlsx-large-simple-xml-name.js'
+import { readLargeSimpleDataValidationsFromBytes } from './xlsx-large-simple-data-validation-byte-scan.js'
 
 const lessThan = 60
 const slash = 47
@@ -9,12 +10,13 @@ const packedAddressColumnFactor = 16_384
 const cellContentHasValue = 1 << 0
 const cellContentHasFormula = 1 << 1
 const emptyBytes = new Uint8Array(0)
-const unsupportedWorksheetTagNames = new Set(['dataValidations', 'legacyDrawing', 'oleObjects', 'picture', 'sheetProtection'])
+const unsupportedWorksheetTagNames = new Set(['legacyDrawing', 'oleObjects', 'picture', 'sheetProtection'])
 const metadataWorksheetTagNames = new Set([
   'autoFilter',
   'colBreaks',
   'cols',
   'conditionalFormatting',
+  'dataValidations',
   'drawing',
   'headerFooter',
   'hyperlinks',
@@ -83,6 +85,7 @@ class HeadlessLargeSimpleWorksheetChunkScanner {
   private tableCount = 0
   private mergeCount = 0
   private conditionalFormatCount = 0
+  private dataValidationCount = 0
   private minRow = Number.POSITIVE_INFINITY
   private minColumn = Number.POSITIVE_INFINITY
   private maxRow = -1
@@ -128,6 +131,7 @@ class HeadlessLargeSimpleWorksheetChunkScanner {
           tableCount: this.tableCount,
           mergeCount: this.mergeCount,
           conditionalFormatCount: this.conditionalFormatCount,
+          dataValidationCount: this.dataValidationCount,
           rowCount: this.rowCount,
           columnCount: this.columnCount,
           usedRange:
@@ -215,6 +219,12 @@ class HeadlessLargeSimpleWorksheetChunkScanner {
         continue
       }
       if (metadataWorksheetTagNames.has(tag.localName)) {
+        if (tag.localName === 'dataValidations') {
+          if (!this.readDataValidations(tagEnd, final)) {
+            return
+          }
+          continue
+        }
         if (!this.countMetadataElement(tag.localName, tag.endIndex, tagEnd, final)) {
           return
         }
@@ -284,6 +294,29 @@ class HeadlessLargeSimpleWorksheetChunkScanner {
       }
     }
     this.index = contentNextIndex
+    return true
+  }
+
+  private readDataValidations(tagEnd: number, final: boolean): boolean {
+    const selfClosing = isSelfClosingTag(this.buffer, tagEnd)
+    const closing = selfClosing ? { end: tagEnd + 1 } : findClosingTag(this.buffer, tagEnd + 1, 'dataValidations')
+    if (!closing) {
+      if (final) {
+        this.failed = true
+      }
+      return false
+    }
+    const validations = readLargeSimpleDataValidationsFromBytes('Sheet1', this.buffer, this.index, closing.end)
+    if (validations === null) {
+      if (this.options.allowUnsupportedFeaturesForMetrics === true) {
+        this.index = closing.end
+        return true
+      }
+      this.failed = true
+      return true
+    }
+    this.dataValidationCount += validations.length
+    this.index = closing.end
     return true
   }
 
@@ -525,6 +558,28 @@ function findTagEnd(bytes: Uint8Array, startIndex: number, endIndex: number = by
     if (byte === greaterThan) {
       return index
     }
+  }
+  return null
+}
+
+function findClosingTag(
+  bytes: Uint8Array,
+  startIndex: number,
+  localName: string,
+  endIndex: number = bytes.byteLength,
+): { readonly start: number; readonly end: number } | null {
+  let index = startIndex
+  while (index < endIndex) {
+    if (bytes[index] !== lessThan || bytes[index + 1] !== slash) {
+      index += 1
+      continue
+    }
+    const tag = readXmlTagName(bytes, index + 2)
+    if (tag?.localName === localName) {
+      const tagEnd = findTagEnd(bytes, tag.endIndex, endIndex)
+      return tagEnd === null ? null : { start: index, end: tagEnd + 1 }
+    }
+    index += 1
   }
   return null
 }
