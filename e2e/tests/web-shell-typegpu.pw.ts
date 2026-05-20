@@ -340,6 +340,10 @@ test('@browser-webgpu @browser-serial main workbook shell grid renders and updat
     x: PRODUCT_ROW_MARKER_WIDTH + PRODUCT_COLUMN_WIDTH + 50,
     y: PRODUCT_HEADER_HEIGHT + PRODUCT_ROW_HEIGHT + Math.floor(PRODUCT_ROW_HEIGHT / 2),
   }
+  const rangeBorderPoint = {
+    x: PRODUCT_ROW_MARKER_WIDTH + PRODUCT_COLUMN_WIDTH + 50,
+    y: PRODUCT_HEADER_HEIGHT + PRODUCT_ROW_HEIGHT,
+  }
   const topHeaderSelectionFillPoint = {
     x: PRODUCT_ROW_MARKER_WIDTH + PRODUCT_COLUMN_WIDTH + 20,
     y: Math.floor(PRODUCT_HEADER_HEIGHT / 2),
