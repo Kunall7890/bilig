@@ -2,6 +2,7 @@ import { MAX_COLS, MAX_ROWS } from '@bilig/protocol'
 import type { GridGeometrySnapshot, GridPaneKind } from '../gridGeometry.js'
 import { parseGpuColor, type GridGpuRect } from '../gridGpuPrimitives.js'
 import type { HeaderSelection } from '../gridPointer.js'
+import { splitSelectionFillRangeAroundActiveCell } from '../gridSelectionFillRanges.js'
 import type { CompactSelectionState, GridSelection, Item, Rectangle } from '../gridTypes.js'
 import { workbookThemeColors } from '../workbookTheme.js'
 import { GRID_RECT_FLOAT_COUNT_V3, GRID_RECT_INSTANCE_FLOAT_COUNT_V3, packGridRectBufferV3 } from './rect-instance-buffer.js'
@@ -213,8 +214,10 @@ function appendSelectionOverlay(input: {
     return
   }
   const isMultiCellSelection = input.selectionRange.width > 1 || input.selectionRange.height > 1
+  const activeCell = input.gridSelection?.current?.cell ?? null
   if (isMultiCellSelection) {
     appendSelectionFillRects({
+      activeCell,
       color: selectionFillColor,
       fillRects: input.fillRects,
       geometry: input.geometry,
@@ -224,7 +227,6 @@ function appendSelectionOverlay(input: {
   for (const rect of input.geometry.rangeScreenRects(input.selectionRange)) {
     appendBorderRects(input.borderRects, rect, borderColor, 1)
   }
-  const activeCell = input.gridSelection?.current?.cell ?? null
   if (activeCell && isMultiCellSelection && cellInRange(activeCell, input.selectionRange)) {
     for (const activeRect of input.geometry.rangeScreenRects({ x: activeCell[0], y: activeCell[1], width: 1, height: 1 })) {
       appendBorderRects(input.borderRects, activeRect, borderColor, 1)
@@ -290,13 +292,16 @@ function appendAxisSelectionOverlay(input: {
 function appendSelectionFillRects(input: {
   readonly geometry: GridGeometrySnapshot
   readonly range: Pick<Rectangle, 'x' | 'y' | 'width' | 'height'>
+  readonly activeCell?: Item | null | undefined
   readonly color: GridGpuRect['color']
   readonly fillRects: GridGpuRect[]
 }): void {
-  for (const rect of input.geometry.rangeScreenRects(input.range)) {
-    const fill = insetRect(rect, 1, 1)
-    if (fill.width > 0 && fill.height > 0) {
-      input.fillRects.push({ ...fill, color: input.color })
+  for (const fillRange of splitSelectionFillRangeAroundActiveCell(input.range, input.activeCell)) {
+    for (const rect of input.geometry.rangeScreenRects(fillRange)) {
+      const fill = insetRect(rect, 1, 1)
+      if (fill.width > 0 && fill.height > 0) {
+        input.fillRects.push({ ...fill, color: input.color })
+      }
     }
   }
 }

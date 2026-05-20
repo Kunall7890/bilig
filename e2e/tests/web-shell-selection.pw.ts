@@ -275,7 +275,7 @@ test('web app preserves the active cell inside a selected area and collapses on 
   await expect(page.getByTestId('status-selection')).toHaveText('Sheet1!B2:D4')
   await expect(page.getByTestId('name-box')).toHaveValue('B2:D4')
   await expect(page.getByTestId('sheet-grid-focus-target')).toHaveAttribute('aria-label', 'Sheet1 D4')
-  await expect(page.locator('[data-grid-selection-visual-role="selection-fill"]')).toHaveCount(1)
+  await expect(page.locator('[data-grid-selection-visual-role="selection-fill"]')).toHaveCount(2)
   await expect(page.locator('[data-grid-selection-visual-role="selection-border"]')).toHaveCount(1)
   await expect(page.locator('[data-grid-selection-visual-role="active-border"]')).toHaveCount(1)
   await expect(page.locator('[data-grid-selection-visual-role="fill-handle"]')).toHaveCount(1)
