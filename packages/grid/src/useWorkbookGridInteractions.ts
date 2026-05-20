@@ -170,19 +170,25 @@ export function useWorkbookGridInteractions(
     })
   }, [focusGrid, inputController, isEditingCell])
   const commitActiveEdit = useCallback(
-    (movement?: EditMovement) => {
-      const valueOverride = inputController.syncMountedEditorValue({
-        editorValue,
-        flushSync,
-        onEditorChange,
-      })
+    (movement?: EditMovement, explicitValueOverride?: string) => {
+      const mountedEditorValue = isEditingCell
+        ? inputController.syncMountedEditorValue({
+            editorValue,
+            flushSync,
+            onEditorChange,
+          })
+        : null
+      const valueOverride = explicitValueOverride ?? mountedEditorValue
       if (valueOverride === null && !isEditingCell) {
         return
       }
-      onCommitEdit(movement, valueOverride ?? undefined, {
-        sheetName,
-        address: formatAddress(activeSelectionCell[1], activeSelectionCell[0]),
-      })
+      const targetSelectionOverride = isEditingCell
+        ? undefined
+        : {
+            sheetName,
+            address: formatAddress(activeSelectionCell[1], activeSelectionCell[0]),
+          }
+      onCommitEdit(movement, valueOverride ?? undefined, targetSelectionOverride)
     },
     [activeSelectionCell, editorValue, inputController, isEditingCell, onCommitEdit, onEditorChange, sheetName],
   )

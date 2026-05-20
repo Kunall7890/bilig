@@ -2037,7 +2037,7 @@ describe('GridRenderTilePaneRuntime', () => {
     expect(fallback.renderTilePanes[1]?.tile.textRuns[0]?.text).toBe('clean remote text')
   })
 
-  it('promotes an offscreen dirty warm tile to local geometry before it first becomes visible', () => {
+  it('rebuilds dirty resident remote tiles before they first become visible', () => {
     const runtime = new GridRenderTilePaneRuntime()
     const host = createHost()
     const [visibleTileId, warmTileId] = host.viewportTileKeys({
@@ -2098,7 +2098,6 @@ describe('GridRenderTilePaneRuntime', () => {
     const offscreen = runtime.resolve(
       createInput({
         engine: LOCAL_EMPTY_ENGINE,
-        forceLocalTiles: true,
         gridRuntimeHost: host,
         renderTileSource,
         renderTileViewport: { colEnd: 255, colStart: 0, rowEnd: 31, rowStart: 0 },
@@ -2108,13 +2107,14 @@ describe('GridRenderTilePaneRuntime', () => {
     )
 
     const offscreenWarmPane = offscreen.renderTilePanes.find((pane) => pane.tile.tileId === warmTileId)
-    expect(offscreenWarmPane?.tile.textRuns[0]?.text).toBe('stale warm remote text')
+    expect(offscreenWarmPane?.tile).not.toBe(staleWarmTile)
+    expect(offscreenWarmPane?.tile.textRuns.some((run) => run.text === 'stale warm remote text')).toBe(false)
+    expect(offscreenWarmPane?.tile.dirtyLocalCols).toEqual(new Uint32Array([0, 127]))
     expect(host.tiles.dirtyTiles.getUnconsumedMask(warmTileId)).not.toBe(0)
 
     const visible = runtime.resolve(
       createInput({
         engine: LOCAL_EMPTY_ENGINE,
-        forceLocalTiles: true,
         gridRuntimeHost: host,
         renderTileSource,
         renderTileViewport: { colEnd: 255, colStart: 0, rowEnd: 31, rowStart: 0 },
