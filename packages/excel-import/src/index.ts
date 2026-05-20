@@ -14,8 +14,7 @@ import { buildColumnEntries, buildRowEntries } from './xlsx-axis-entries.js'
 import { readImportedWorkbookCalculationSettings, readImportedWorkbookCalculationWarnings } from './xlsx-calculation-settings.js'
 import { shouldUseCachedFormulaOpenMode } from './xlsx-cached-formula-open-mode.js'
 import { buildImportedCellMetadataReferenceSnapshots, readImportedWorkbookCellMetadata } from './xlsx-cell-metadata.js'
-import { readImportedWorkbookChartArtifacts } from './xlsx-chart-artifacts.js'
-import { readImportedWorkbookCharts } from './xlsx-charts.js'
+import { readImportedWorkbookChartDrawingArtifacts } from './xlsx-import-chart-drawing-artifacts.js'
 import { legacyCommentThreadSignature, readImportedWorkbookLegacyCommentVml, type ImportedLegacyCommentVml } from './xlsx-comment-vml.js'
 import { readImportedSheetComments } from './xlsx-comments.js'
 import { readImportedWorkbookConditionalFormatArtifacts, readImportedWorkbookConditionalFormats } from './xlsx-conditional-formats.js'
@@ -23,7 +22,6 @@ import { readImportedWorkbookControlArtifacts } from './xlsx-control-artifacts.j
 import { readImportedWorkbookDataModelArtifacts } from './xlsx-data-model-artifacts.js'
 import { readImportedWorkbookDataTableFormulas } from './xlsx-data-table-formulas.js'
 import { readImportedDefinedNames } from './xlsx-defined-names.js'
-import { readImportedWorkbookDrawingArtifacts } from './xlsx-drawing-artifacts.js'
 import { readImportedWorkbookExternalLinkArtifacts } from './xlsx-external-link-artifacts.js'
 import { readImportedWorkbookExternalConnections } from './xlsx-external-connections.js'
 import { readImportedWorkbookFilters } from './xlsx-filters.js'
@@ -429,10 +427,11 @@ function importSheetJsWorkbook(
   const importedMacroPayload = toUint8Array(workbook.vbaraw)
   const importedMacroCodeNames = importedMacroPayload ? readImportedMacroCodeNames(workbook) : undefined
   const importedCellMetadata = workbookZip ? readImportedWorkbookCellMetadata(workbookZip, workbook.SheetNames) : undefined
-  const importedChartArtifacts = workbookZip ? readImportedWorkbookChartArtifacts(workbookZip) : undefined
-  const importedCharts = workbookZip ? readImportedWorkbookCharts(workbookZip, workbook.SheetNames) : undefined
+  const importedChartDrawingArtifacts = workbookZip
+    ? readImportedWorkbookChartDrawingArtifacts(workbookZip, workbook.SheetNames)
+    : undefined
+  const importedCharts = importedChartDrawingArtifacts?.charts
   const importedTables = workbookZip ? readImportedWorkbookTables(workbookZip, workbook.SheetNames) : undefined
-  const importedDrawingArtifacts = workbookZip ? readImportedWorkbookDrawingArtifacts(workbookZip, workbook.SheetNames) : undefined
   const importedControlArtifacts = workbookZip ? readImportedWorkbookControlArtifacts(workbookZip, workbook.SheetNames) : undefined
   const importedDataModelArtifacts = workbookZip ? readImportedWorkbookDataModelArtifacts(workbookZip) : undefined
   const importedExternalLinkArtifacts = workbookZip ? readImportedWorkbookExternalLinkArtifacts(workbookZip) : undefined
@@ -482,7 +481,9 @@ function importSheetJsWorkbook(
     ? readImportedWorkbookThreadedCommentArtifacts(workbookZip, workbook.SheetNames)
     : undefined
   const importedViewState = workbookZip ? readImportedWorkbookViewState(workbookZip, workbook.SheetNames) : undefined
-  const chartSheetNames = new Set((importedChartArtifacts?.chartSheetArtifacts ?? []).map((artifact) => artifact.name))
+  const chartSheetNames = new Set(
+    (importedChartDrawingArtifacts?.chartArtifacts.chartSheetArtifacts ?? []).map((artifact) => artifact.name),
+  )
 
   let ignoredCommentsSeen = false
   let externalWorkbookReferenceWarningSeen = warnings.includes(externalWorkbookReferencesWarning)
@@ -743,7 +744,7 @@ function importSheetJsWorkbook(
     const importedSparklines = importedSparklinesBySheet.get(sheetName)
     const importedStyleArtifactsForSheet = importedStyleArtifacts.sheetArtifactsByName.get(sheetName)
     const importedPivotArtifacts = importedPivots?.sheetArtifactsByName.get(sheetName)
-    const importedDrawingArtifactsForSheet = importedDrawingArtifacts?.sheetArtifactsByName.get(sheetName)
+    const importedDrawingArtifactsForSheet = importedChartDrawingArtifacts?.drawingArtifacts.sheetArtifactsByName.get(sheetName)
     const importedControlArtifactsForSheet = importedControlArtifacts?.sheetArtifactsByName.get(sheetName)
     const importedArrayFormulasForSheet = importedArrayFormulasBySheet.get(sheetName)
     const importedDataTableFormulasForSheet = importedDataTableFormulasBySheet.get(sheetName)
@@ -863,9 +864,9 @@ function importSheetJsWorkbook(
     formulaAudit: importedFormulaAudit,
     externalConnections: importedExternalConnections,
     pivotArtifacts: importedPivots?.artifacts,
-    drawingArtifacts: importedDrawingArtifacts?.artifacts,
-    chartArtifacts: importedChartArtifacts?.artifacts,
-    chartSheetArtifacts: importedChartArtifacts?.chartSheetArtifacts,
+    drawingArtifacts: importedChartDrawingArtifacts?.drawingArtifacts.artifacts,
+    chartArtifacts: importedChartDrawingArtifacts?.chartArtifacts.artifacts,
+    chartSheetArtifacts: importedChartDrawingArtifacts?.chartArtifacts.chartSheetArtifacts,
     controlArtifacts: importedControlArtifacts?.artifacts,
     dataModelArtifacts: importedDataModelArtifacts,
     externalLinkArtifacts: importedExternalLinkArtifacts,

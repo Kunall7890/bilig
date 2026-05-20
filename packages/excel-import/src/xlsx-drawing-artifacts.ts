@@ -109,6 +109,11 @@ function anchorContainsChart(anchorXml: string): boolean {
   return /<(?:[A-Za-z_][\w.-]*:)?chart\b/u.test(anchorXml)
 }
 
+function anchorChartRelationshipId(anchorXml: string): string | null {
+  const chartTag = /<(?:[A-Za-z_][\w.-]*:)?chart\b[^>]*>/u.exec(anchorXml)?.[0]
+  return chartTag ? (readAttribute(chartTag, 'r:id') ?? readAttribute(chartTag, 'id')) : null
+}
+
 function mergeNamespaceDeclarations(targetRootOpenTag: string, sourceRootOpenTag: string | null): string {
   if (!sourceRootOpenTag) {
     return targetRootOpenTag
@@ -215,10 +220,15 @@ function collectDrawingDependencyPaths(input: {
   readonly zip: XlsxZipEntries
   readonly drawingPath: string
   readonly drawingRelationships: readonly ParsedRelationship[]
+  readonly preservedChartRelationshipIds?: ReadonlySet<string>
 }): Set<string> {
   const collectedPaths = new Set<string>()
   const pending = input.drawingRelationships
-    .filter((relationship) => relationship.type !== chartRelationshipType && relationship.targetMode !== 'External')
+    .filter(
+      (relationship) =>
+        (relationship.type !== chartRelationshipType || input.preservedChartRelationshipIds?.has(relationship.id) === true) &&
+        relationship.targetMode !== 'External',
+    )
     .map((relationship) => normalizeZipPath(resolveTargetPath(input.drawingPath, relationship.target)))
 
   collectedPaths.add(normalizeZipPath(input.drawingPath))
@@ -333,13 +343,21 @@ function mergedDrawingResult(input: {
   readonly preservedDrawingXml: string
   readonly currentRelationships: readonly ParsedRelationship[]
   readonly preservedRelationships: readonly ParsedRelationship[]
+  readonly preservedChartRelationshipIds?: ReadonlySet<string>
 }): {
   readonly drawingXml: string
   readonly relationships: readonly ParsedRelationship[]
 } {
   const currentAnchors = input.currentDrawingXml ? drawingAnchors(input.currentDrawingXml) : []
-  const preservedNonChartRelationships = input.preservedRelationships.filter((relationship) => relationship.type !== chartRelationshipType)
-  const preservedNonChartAnchors = drawingAnchors(input.preservedDrawingXml).filter((anchor) => !anchorContainsChart(anchor))
+  const shouldPreserveChartRelationship = (relationshipId: string): boolean =>
+    input.preservedChartRelationshipIds?.has(relationshipId) === true
+  const preservedNonChartRelationships = input.preservedRelationships.filter(
+    (relationship) => relationship.type !== chartRelationshipType || shouldPreserveChartRelationship(relationship.id),
+  )
+  const preservedNonChartAnchors = drawingAnchors(input.preservedDrawingXml).filter((anchor) => {
+    const chartRelationshipId = anchorChartRelationshipId(anchor)
+    return !anchorContainsChart(anchor) || (chartRelationshipId !== null && shouldPreserveChartRelationship(chartRelationshipId))
+  })
 
   const relationships = [...input.currentRelationships]
   const relationshipIds = new Map<string, string>()
@@ -380,6 +398,9 @@ function mergedDrawingResult(input: {
 export function readImportedWorkbookDrawingArtifacts(
   source: XlsxZipSource,
   sheetNames: readonly string[],
+  options: {
+    readonly supportedChartRelationshipIdsBySheet?: ReadonlyMap<string, ReadonlySet<string>> | undefined
+  } = {},
 ): {
   readonly artifacts: WorkbookDrawingArtifactsSnapshot | undefined
   readonly sheetArtifactsByName: Map<string, WorkbookSheetDrawingArtifactsSnapshot>
@@ -395,6 +416,7 @@ export function readImportedWorkbookDrawingArtifacts(
         drawingRelationshipId: readWorksheetDrawingRelationshipId(getZipText(zip, sheetPath)),
       }
     }),
+    options,
   )
 }
 
@@ -405,6 +427,9 @@ export function readImportedWorkbookDrawingArtifactsFromWorksheetRelationships(
     readonly path: string
     readonly drawingRelationshipId?: string | null
   }[],
+  options: {
+    readonly supportedChartRelationshipIdsBySheet?: ReadonlyMap<string, ReadonlySet<string>> | undefined
+  } = {},
 ): {
   readonly artifacts: WorkbookDrawingArtifactsSnapshot | undefined
   readonly sheetArtifactsByName: Map<string, WorkbookSheetDrawingArtifactsSnapshot>
@@ -430,15 +455,28 @@ export function readImportedWorkbookDrawingArtifactsFromWorksheetRelationships(
       return
     }
     const drawingRelationships = parseRelationships(getZipText(zip, drawingRelationshipsPath(drawingPath)))
-    const hasNonChartAnchors = drawingAnchors(drawingXml).some((anchor) => !anchorContainsChart(anchor))
-    const hasNonChartRelationships = drawingRelationships.some((relationship) => relationship.type !== chartRelationshipType)
-    if (!hasNonChartAnchors && !hasNonChartRelationships) {
+    const supportedChartRelationshipIds = options.supportedChartRelationshipIdsBySheet?.get(sheetName) ?? new Set<string>()
+    const preservedChartRelationshipIds = new Set(
+      drawingAnchors(drawingXml).flatMap((anchor) => {
+        const chartRelationshipId = anchorChartRelationshipId(anchor)
+        return chartRelationshipId && !supportedChartRelationshipIds.has(chartRelationshipId) ? [chartRelationshipId] : []
+      }),
+    )
+    const hasPreservedAnchors = drawingAnchors(drawingXml).some((anchor) => {
+      const chartRelationshipId = anchorChartRelationshipId(anchor)
+      return !anchorContainsChart(anchor) || (chartRelationshipId !== null && preservedChartRelationshipIds.has(chartRelationshipId))
+    })
+    const hasPreservedRelationships = drawingRelationships.some(
+      (relationship) => relationship.type !== chartRelationshipType || preservedChartRelationshipIds.has(relationship.id),
+    )
+    if (!hasPreservedAnchors && !hasPreservedRelationships) {
       return
     }
     sheetArtifactsByName.set(sheetName, {
       relationshipTarget: drawingRelationship.target,
+      ...(preservedChartRelationshipIds.size > 0 ? { preservedChartRelationshipIds: [...preservedChartRelationshipIds].toSorted() } : {}),
     })
-    collectDrawingDependencyPaths({ zip, drawingPath, drawingRelationships }).forEach((path) => {
+    collectDrawingDependencyPaths({ zip, drawingPath, drawingRelationships, preservedChartRelationshipIds }).forEach((path) => {
       partPaths.add(path)
     })
   })
@@ -551,6 +589,7 @@ export function addExportDrawingArtifactsToXlsxBytes(bytes: Uint8Array, snapshot
         preservedDrawingXml,
         currentRelationships: currentDrawingRelationships,
         preservedRelationships: preservedDrawingRelationships,
+        preservedChartRelationshipIds: new Set(sheetDrawingArtifacts.preservedChartRelationshipIds ?? []),
       })
 
       setZipText(zip, drawingPath, mergedDrawing.drawingXml)

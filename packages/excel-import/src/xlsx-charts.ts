@@ -743,9 +743,15 @@ function readAnchorNumber(anchor: unknown, key: 'from' | 'to', field: 'col' | 'r
   return Number.isFinite(number) ? number : null
 }
 
-export function readImportedWorkbookCharts(source: XlsxZipSource, sheetNames: readonly string[]): WorkbookChartSnapshot[] | undefined {
+export interface ImportedWorkbookChartReadResult {
+  readonly charts: WorkbookChartSnapshot[] | undefined
+  readonly supportedChartRelationshipIdsBySheet: ReadonlyMap<string, ReadonlySet<string>>
+}
+
+export function readImportedWorkbookChartReadResult(source: XlsxZipSource, sheetNames: readonly string[]): ImportedWorkbookChartReadResult {
   const zip = readXlsxZipEntries(source)
   const charts: WorkbookChartSnapshot[] = []
+  const supportedChartRelationshipIdsBySheet = new Map<string, Set<string>>()
 
   sheetNames.forEach((sheetName, sheetIndex) => {
     const sheetPath = `xl/worksheets/sheet${String(sheetIndex + 1)}.xml`
@@ -794,6 +800,9 @@ export function readImportedWorkbookCharts(source: XlsxZipSource, sheetNames: re
       if (!chartMetadata) {
         return
       }
+      const supportedIds = supportedChartRelationshipIdsBySheet.get(sheetName) ?? new Set<string>()
+      supportedIds.add(chartRelationshipId)
+      supportedChartRelationshipIdsBySheet.set(sheetName, supportedIds)
       charts.push({
         id: readAnchorChartId(anchor, `xlsx-chart:${sheetName}:${String(anchorIndex + 1)}`),
         sheetName,
@@ -805,5 +814,12 @@ export function readImportedWorkbookCharts(source: XlsxZipSource, sheetNames: re
     })
   })
 
-  return charts.length > 0 ? charts.toSorted((left, right) => left.id.localeCompare(right.id)) : undefined
+  return {
+    charts: charts.length > 0 ? charts.toSorted((left, right) => left.id.localeCompare(right.id)) : undefined,
+    supportedChartRelationshipIdsBySheet,
+  }
+}
+
+export function readImportedWorkbookCharts(source: XlsxZipSource, sheetNames: readonly string[]): WorkbookChartSnapshot[] | undefined {
+  return readImportedWorkbookChartReadResult(source, sheetNames).charts
 }

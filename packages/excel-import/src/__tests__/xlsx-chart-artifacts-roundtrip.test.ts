@@ -37,6 +37,25 @@ describe('xlsx chart artifacts roundtrip', () => {
     expect(readZipText(exported, 'xl/charts/chart1.xml')).toBe(chartXml)
   })
 
+  it('preserves unsupported worksheet chart drawings as package artifacts', () => {
+    const source = buildWorkbookWithUnsupportedWorksheetChart()
+
+    const imported = importXlsx(source, 'unsupported-worksheet-chart.xlsx')
+    const exported = exportXlsx(imported.snapshot)
+
+    expect(imported.snapshot.workbook.metadata?.charts).toBeUndefined()
+    expect(imported.snapshot.sheets[0]?.metadata?.drawingArtifacts).toEqual({
+      relationshipTarget: '../drawings/drawing1.xml',
+      preservedChartRelationshipIds: ['rId1'],
+    })
+    expect(chartPackageMetrics(exported)).toMatchObject({
+      chartRelationships: 1,
+      charts: 1,
+    })
+    expect(readZipText(exported, 'xl/drawings/drawing1.xml')).toBe(worksheetDrawingXml)
+    expect(readZipText(exported, 'xl/charts/chart1.xml')).toBe(unsupportedChartXml)
+  })
+
   it('does not add a default legend to charts without one', () => {
     const snapshot: WorkbookSnapshot = {
       version: 1,
@@ -252,6 +271,40 @@ function buildWorkbookWithChartSheet(): Uint8Array {
   return zipSync(zip)
 }
 
+function buildWorkbookWithUnsupportedWorksheetChart(): Uint8Array {
+  const workbook = XLSX.utils.book_new()
+  XLSX.utils.book_append_sheet(
+    workbook,
+    XLSX.utils.aoa_to_sheet([
+      ['Quarter', 'Revenue'],
+      ['Q1', 10],
+      ['Q2', 14],
+    ]),
+    'Data',
+  )
+
+  const zip = unzipSync(XLSX.write(workbook, { bookType: 'xlsx', type: 'buffer' }))
+  zip['xl/worksheets/sheet1.xml'] = strToU8(addWorksheetDrawing(readZipTextFromZip(zip, 'xl/worksheets/sheet1.xml'), 'rId1'))
+  zip['xl/worksheets/_rels/sheet1.xml.rels'] = strToU8(
+    relationshipsXml([{ id: 'rId1', type: drawingRelationshipType, target: '../drawings/drawing1.xml' }]),
+  )
+  zip['xl/drawings/drawing1.xml'] = strToU8(worksheetDrawingXml)
+  zip['xl/drawings/_rels/drawing1.xml.rels'] = strToU8(
+    relationshipsXml([{ id: 'rId1', type: chartRelationshipType, target: '../charts/chart1.xml' }]),
+  )
+  zip['xl/charts/chart1.xml'] = strToU8(unsupportedChartXml)
+  zip['[Content_Types].xml'] = strToU8(
+    upsertContentTypeOverride(
+      upsertContentTypeOverride(readZipTextFromZip(zip, '[Content_Types].xml'), {
+        partName: '/xl/drawings/drawing1.xml',
+        contentType: drawingContentType,
+      }),
+      { partName: '/xl/charts/chart1.xml', contentType: chartContentType },
+    ),
+  )
+  return zipSync(zip)
+}
+
 function chartPackageMetrics(bytes: Uint8Array): {
   chartRelationships: number
   chartSeries: number
@@ -281,6 +334,16 @@ function chartPackageMetrics(bytes: Uint8Array): {
     charts: chartXmlParts.length,
     workbookChartSheetRelationships: relationshipsWithType(workbookRelationshipsXml, chartSheetRelationshipType).length,
   }
+}
+
+function addWorksheetDrawing(sheetXml: string, relationshipId: string): string {
+  const withRelationshipNamespace = /xmlns:r=/u.test(sheetXml)
+    ? sheetXml
+    : sheetXml.replace(
+        /<worksheet\b([^>]*)>/u,
+        `<worksheet$1 xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">`,
+      )
+  return withRelationshipNamespace.replace('</worksheet>', `<drawing r:id="${relationshipId}"/></worksheet>`)
 }
 
 function relationshipsXml(relationships: readonly { id: string; type: string; target: string }[]): string {
@@ -359,6 +422,24 @@ const drawingXml = [
   '</xdr:wsDr>',
 ].join('')
 
+const worksheetDrawingXml = [
+  '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>',
+  '<xdr:wsDr xmlns:xdr="http://schemas.openxmlformats.org/drawingml/2006/spreadsheetDrawing" ',
+  'xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main">',
+  '<xdr:twoCellAnchor>',
+  '<xdr:from><xdr:col>3</xdr:col><xdr:colOff>0</xdr:colOff><xdr:row>0</xdr:row><xdr:rowOff>0</xdr:rowOff></xdr:from>',
+  '<xdr:to><xdr:col>8</xdr:col><xdr:colOff>0</xdr:colOff><xdr:row>12</xdr:row><xdr:rowOff>0</xdr:rowOff></xdr:to>',
+  '<xdr:graphicFrame macro="">',
+  '<xdr:nvGraphicFramePr><xdr:cNvPr id="2" name="Unsupported Chart"/><xdr:cNvGraphicFramePr/></xdr:nvGraphicFramePr>',
+  '<xdr:xfrm><a:off x="0" y="0"/><a:ext cx="0" cy="0"/></xdr:xfrm>',
+  '<a:graphic><a:graphicData uri="http://schemas.openxmlformats.org/drawingml/2006/chart">',
+  `<c:chart xmlns:c="http://schemas.openxmlformats.org/drawingml/2006/chart" xmlns:r="${officeRelationshipNamespace}" r:id="rId1"/>`,
+  '</a:graphicData></a:graphic>',
+  '</xdr:graphicFrame><xdr:clientData/>',
+  '</xdr:twoCellAnchor>',
+  '</xdr:wsDr>',
+].join('')
+
 const chartXml = [
   '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>',
   `<c:chartSpace xmlns:c="http://schemas.openxmlformats.org/drawingml/2006/chart" xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" xmlns:r="${officeRelationshipNamespace}">`,
@@ -374,5 +455,16 @@ const chartXml = [
   '<c:catAx><c:axId val="1"/><c:crossAx val="2"/></c:catAx>',
   '<c:valAx><c:axId val="2"/><c:crossAx val="1"/></c:valAx>',
   '</c:plotArea></c:chart>',
+  '</c:chartSpace>',
+].join('')
+
+const unsupportedChartXml = [
+  '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>',
+  `<c:chartSpace xmlns:c="http://schemas.openxmlformats.org/drawingml/2006/chart" xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" xmlns:r="${officeRelationshipNamespace}">`,
+  '<c:chart><c:plotArea><c:layout/><c:stockChart>',
+  '<c:ser><c:idx val="0"/><c:order val="0"/>',
+  '<c:val><c:numRef><c:f>Data!$B$2:$B$3</c:f></c:numRef></c:val>',
+  '</c:ser>',
+  '</c:stockChart></c:plotArea></c:chart>',
   '</c:chartSpace>',
 ].join('')
