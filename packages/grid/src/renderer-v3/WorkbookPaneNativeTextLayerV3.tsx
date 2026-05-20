@@ -1,6 +1,7 @@
 import { memo, useMemo, useSyncExternalStore, type CSSProperties } from 'react'
 import type { GridGeometrySnapshot } from '../gridGeometry.js'
 import type { GridHeaderPaneState } from '../gridHeaderPanes.js'
+import type { Rectangle } from '../gridTypes.js'
 import type { GridCameraStore } from '../runtime/gridCameraStore.js'
 import { CELL_TEXT_PADDING_X } from '../text/gridTextPacket.js'
 import type { WorkbookGridScrollSnapshot, WorkbookGridScrollStore } from '../workbookGridScrollStore.js'
@@ -42,6 +43,7 @@ export interface WorkbookPaneNativeTextLayerV3Props {
   readonly headerPanes: readonly GridHeaderPaneState[]
   readonly presentedScrollSnapshot?: WorkbookGridScrollSnapshot | null | undefined
   readonly scrollTransformStore: WorkbookGridScrollStore | null
+  readonly selectionOcclusionRanges?: readonly Pick<Rectangle, 'x' | 'y' | 'width' | 'height'>[] | null | undefined
   readonly suppressedTextCell?: SuppressedNativeTextCellV3 | null | undefined
   readonly tilePanes: readonly WorkbookRenderTilePaneState[]
 }
@@ -253,19 +255,31 @@ function resolveNativeTextLineBoxV3(input: { readonly run: TextQuadRun; readonly
 }
 
 export function resolveNativeTextRunVisibleClipV3(input: {
+  readonly geometry?: GridGeometrySnapshot | null | undefined
   readonly pane: TextLayerPane
   readonly run: TextQuadRun
   readonly scrollSnapshot: WorkbookGridScrollSnapshot
+  readonly selectionOcclusionRanges?: readonly Pick<Rectangle, 'x' | 'y' | 'width' | 'height'>[] | null | undefined
   readonly dpr?: number | undefined
 }): NativeTextRunVisibleClipV3 | null {
   const dpr = input.dpr ?? getDevicePixelRatio()
   const offset = resolvePaneRenderOffset(input.pane, input.scrollSnapshot)
   const width = input.run.width ?? 0
   const height = input.run.height ?? 0
-  const clipX = input.run.clipX ?? input.run.x
-  const clipY = input.run.clipY ?? input.run.y
-  const clipWidth = input.run.clipWidth ?? width
-  const clipHeight = input.run.clipHeight ?? height
+  const clip = resolveNativeTextRunSelectionOccludedClipV3({
+    clipHeight: input.run.clipHeight ?? height,
+    clipWidth: input.run.clipWidth ?? width,
+    clipX: input.run.clipX ?? input.run.x,
+    clipY: input.run.clipY ?? input.run.y,
+    geometry: input.geometry,
+    pane: input.pane,
+    run: input.run,
+    selectionOcclusionRanges: input.selectionOcclusionRanges,
+  })
+  if (!clip) {
+    return null
+  }
+  const { clipX, clipY, clipWidth, clipHeight } = clip
   const clipLeft = input.pane.frame.x + offset.x + clipX
   const clipTop = input.pane.frame.y + offset.y + clipY
   const clipRight = clipLeft + clipWidth
@@ -301,6 +315,110 @@ export function resolveNativeTextRunVisibleClipV3(input: {
     outerTop,
     outerWidth: Math.max(0, outerRight - outerLeft),
   }
+}
+
+export function resolveNativeTextRunSelectionOccludedClipV3(input: {
+  readonly clipHeight: number
+  readonly clipWidth: number
+  readonly clipX: number
+  readonly clipY: number
+  readonly geometry?: GridGeometrySnapshot | null | undefined
+  readonly pane?: TextLayerPane | null | undefined
+  readonly run: TextQuadRun
+  readonly selectionOcclusionRanges?: readonly Pick<Rectangle, 'x' | 'y' | 'width' | 'height'>[] | null | undefined
+}): { readonly clipX: number; readonly clipY: number; readonly clipWidth: number; readonly clipHeight: number } | null {
+  let resolvedClip: { readonly clipX: number; readonly clipY: number; readonly clipWidth: number; readonly clipHeight: number } = {
+    clipHeight: input.clipHeight,
+    clipWidth: input.clipWidth,
+    clipX: input.clipX,
+    clipY: input.clipY,
+  }
+  const ranges = input.selectionOcclusionRanges ?? []
+  const geometry = input.geometry
+  const pane = input.pane
+  const row = input.run.row
+  const col = input.run.col
+  if (!geometry || ranges.length === 0 || row === undefined || col === undefined || input.clipWidth <= 0 || input.clipHeight <= 0) {
+    return resolvedClip
+  }
+  if (!pane || !('tile' in pane)) {
+    return resolvedClip
+  }
+
+  const tileBaseX = geometry.columns.offsetOf(pane.tile.bounds.colStart)
+  const tileBaseY = geometry.rows.offsetOf(pane.tile.bounds.rowStart)
+  for (const range of ranges) {
+    const nextClip = resolveNativeTextRunClipAgainstSelectionRangeV3({
+      clip: resolvedClip,
+      col,
+      geometry,
+      range,
+      row,
+      tileBaseX,
+      tileBaseY,
+    })
+    if (!nextClip) {
+      return null
+    }
+    resolvedClip = nextClip
+  }
+
+  return resolvedClip
+}
+
+function resolveNativeTextRunClipAgainstSelectionRangeV3(input: {
+  readonly clip: { readonly clipX: number; readonly clipY: number; readonly clipWidth: number; readonly clipHeight: number }
+  readonly col: number
+  readonly geometry: GridGeometrySnapshot
+  readonly range: Pick<Rectangle, 'x' | 'y' | 'width' | 'height'>
+  readonly row: number
+  readonly tileBaseX: number
+  readonly tileBaseY: number
+}): { readonly clipX: number; readonly clipY: number; readonly clipWidth: number; readonly clipHeight: number } | null {
+  const rangeEndColExclusive = input.range.x + input.range.width
+  const rangeEndRowExclusive = input.range.y + input.range.height
+  const sourceInsideSelection =
+    input.col >= input.range.x && input.col < rangeEndColExclusive && input.row >= input.range.y && input.row < rangeEndRowExclusive
+  if (sourceInsideSelection) {
+    return input.clip
+  }
+
+  const selectionTop = input.geometry.rows.offsetOf(input.range.y) - input.tileBaseY
+  const selectionBottom = selectionTop + input.geometry.rows.span(input.range.y, rangeEndRowExclusive)
+  const clipTop = input.clip.clipY
+  const clipBottom = input.clip.clipY + input.clip.clipHeight
+  if (clipBottom <= selectionTop || clipTop >= selectionBottom) {
+    return input.clip
+  }
+
+  const selectionLeft = input.geometry.columns.offsetOf(input.range.x) - input.tileBaseX
+  const selectionRight = selectionLeft + input.geometry.columns.span(input.range.x, rangeEndColExclusive)
+  const clipLeft = input.clip.clipX
+  const clipRight = input.clip.clipX + input.clip.clipWidth
+  if (input.col < input.range.x && clipRight > selectionLeft) {
+    const nextRight = Math.min(clipRight, selectionLeft)
+    if (nextRight <= clipLeft) {
+      return null
+    }
+    return {
+      ...input.clip,
+      clipWidth: nextRight - clipLeft,
+    }
+  }
+
+  if (input.col >= rangeEndColExclusive && clipLeft < selectionRight) {
+    const nextLeft = Math.max(clipLeft, selectionRight)
+    if (clipRight <= nextLeft) {
+      return null
+    }
+    return {
+      ...input.clip,
+      clipWidth: clipRight - nextLeft,
+      clipX: nextLeft,
+    }
+  }
+
+  return input.clip
 }
 
 export function resolveNativeTextRunOuterStyleV3(input: {
@@ -373,6 +491,7 @@ export const WorkbookPaneNativeTextLayerV3 = memo(function WorkbookPaneNativeTex
   headerPanes,
   presentedScrollSnapshot = null,
   scrollTransformStore,
+  selectionOcclusionRanges = null,
   suppressedTextCell = null,
   tilePanes,
 }: WorkbookPaneNativeTextLayerV3Props) {
@@ -417,12 +536,19 @@ export const WorkbookPaneNativeTextLayerV3 = memo(function WorkbookPaneNativeTex
               if (!run.text || clipWidth <= 0 || clipHeight <= 0) {
                 return []
               }
-              const visibleClip = resolveNativeTextRunVisibleClipV3({ dpr, pane, run, scrollSnapshot: drawScrollSnapshot })
+              const visibleClip = resolveNativeTextRunVisibleClipV3({
+                dpr,
+                geometry: resolvedGeometry,
+                pane,
+                run,
+                scrollSnapshot: drawScrollSnapshot,
+                selectionOcclusionRanges,
+              })
               return visibleClip ? [{ pane, run, visibleClip }] : []
             })
           })
         : [],
-    [active, dpr, drawScrollSnapshot, panes, suppressedTextCell],
+    [active, dpr, drawScrollSnapshot, panes, resolvedGeometry, selectionOcclusionRanges, suppressedTextCell],
   )
   const textRunCount = renderedRuns.length
 

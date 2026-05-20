@@ -1,7 +1,12 @@
 import { describe, expect, test } from 'vitest'
-import { hasSelectionTargetChanged, resolveWorkbookGridSurfaceDisplaySelection } from '../WorkbookGridSurface.js'
+import { MAX_COLS, MAX_ROWS } from '@bilig/protocol'
+import {
+  hasSelectionTargetChanged,
+  resolveWorkbookGridSurfaceDisplaySelection,
+  resolveWorkbookGridSurfaceTextOcclusionRanges,
+} from '../WorkbookGridSurface.js'
 import { getGridMetrics } from '../gridMetrics.js'
-import { createGridSelection } from '../gridSelection.js'
+import { createColumnSliceSelection, createGridSelection, createRangeSelection, createRowSliceSelection } from '../gridSelection.js'
 import { resolveViewportScrollPosition } from '../workbookGridViewport.js'
 
 describe('WorkbookGridSurface selection autoscroll', () => {
@@ -149,5 +154,57 @@ describe('WorkbookGridSurface selection autoscroll', () => {
         selectedCell: [3, 4],
       }),
     ).toBe(restoredRangeSelection)
+  })
+
+  test('rejects stale render ranges that no longer contain the committed active cell', () => {
+    const committedSelection = createGridSelection(6, 7)
+    const staleRangeSelection = {
+      ...createGridSelection(6, 7),
+      current: {
+        cell: [6, 7] as const,
+        range: { x: 1, y: 1, width: 3, height: 4 },
+        rangeStack: [],
+      },
+    }
+
+    expect(
+      resolveWorkbookGridSurfaceDisplaySelection({
+        activeHeaderDrag: null,
+        committedCellSelection: committedSelection,
+        isEditingCell: false,
+        isFillHandleDragging: false,
+        isRangeMoveDragging: false,
+        renderGridSelection: staleRangeSelection,
+        renderSelectionRange: staleRangeSelection.current?.range,
+        selectedCell: [6, 7],
+      }),
+    ).toBe(committedSelection)
+  })
+
+  test('passes the visible range to native text occlusion for regular range selections', () => {
+    const selection = createRangeSelection(createGridSelection(1, 1), [1, 1], [3, 4])
+
+    expect(
+      resolveWorkbookGridSurfaceTextOcclusionRanges({
+        gridSelection: selection,
+        selectionRange: selection.current?.range ?? null,
+      }),
+    ).toEqual([{ x: 1, y: 1, width: 3, height: 4 }])
+  })
+
+  test('expands column and row selections for native text occlusion instead of only clipping the active cell slice', () => {
+    expect(
+      resolveWorkbookGridSurfaceTextOcclusionRanges({
+        gridSelection: createColumnSliceSelection(2, 4, 1),
+        selectionRange: { x: 2, y: 1, width: 3, height: 1 },
+      }),
+    ).toEqual([{ x: 2, y: 0, width: 3, height: MAX_ROWS }])
+
+    expect(
+      resolveWorkbookGridSurfaceTextOcclusionRanges({
+        gridSelection: createRowSliceSelection(1, 4, 6),
+        selectionRange: { x: 1, y: 4, width: 1, height: 3 },
+      }),
+    ).toEqual([{ x: 0, y: 4, width: MAX_COLS, height: 3 }])
   })
 })

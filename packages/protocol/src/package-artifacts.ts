@@ -55,6 +55,7 @@ export interface WorkbookDrawingArtifactsSnapshot {
 
 export interface WorkbookSheetDrawingArtifactsSnapshot {
   relationshipTarget: string
+  preservedChartRelationshipIds?: string[]
 }
 
 export interface WorkbookControlArtifactsSnapshot {

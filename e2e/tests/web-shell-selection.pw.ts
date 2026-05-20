@@ -247,11 +247,83 @@ test('web app preserves the active cell inside a selected area and collapses on 
   await expect(page.getByTestId('status-selection')).toHaveText('Sheet1!B2:D4')
   await expect(page.getByTestId('name-box')).toHaveValue('B2:D4')
   await expect(page.getByTestId('sheet-grid-focus-target')).toHaveAttribute('aria-label', 'Sheet1 D4')
+  await expect(page.locator('[data-grid-selection-visual-role="selection-fill"]')).toHaveCount(1)
+  await expect(page.locator('[data-grid-selection-visual-role="selection-border"]')).toHaveCount(1)
+  await expect(page.locator('[data-grid-selection-visual-role="active-border"]')).toHaveCount(1)
+  await expect(page.locator('[data-grid-selection-visual-role="fill-handle"]')).toHaveCount(1)
 
   await clickProductCell(page, 2, 2)
   await expect(page.getByTestId('status-selection')).toHaveText('Sheet1!C3')
   await expect(page.getByTestId('name-box')).toHaveValue('C3')
   await expect(page.getByTestId('sheet-grid-focus-target')).toHaveAttribute('aria-label', 'Sheet1 C3')
+  await expect(page.locator('[data-grid-selection-visual-role="selection-fill"]')).toHaveCount(0)
+  await expect(page.locator('[data-grid-selection-visual-role="active-border"]')).toHaveCount(0)
+  await expect(page.locator('[data-grid-selection-visual-role="selection-border"]')).toHaveCount(1)
+})
+
+test('web app clips spilled text before the active selected cell', async ({ page }) => {
+  await page.goto(`/?document=${encodeURIComponent(createTestDocumentId('playwright-selection-spill-clip'))}&persist=0`)
+  await waitForWorkbookReady(page)
+
+  await writeCellValue(page, 'A5', 'sfasf sfasf sfasf sfasf sfasf sfasf')
+  await selectAddress(page, 'C5')
+  await expect(page.getByTestId('name-box')).toHaveValue('C5')
+
+  const runBox = await page.locator('[data-native-text-run-row="4"][data-native-text-run-col="0"]').boundingBox()
+  const gridBox = await page.getByTestId('sheet-grid').boundingBox()
+  if (!runBox || !gridBox) {
+    throw new Error('grid text run is not visible')
+  }
+  const selectedColumnLeft = gridBox.x + (await getProductColumnLeft(page, 2))
+
+  expect(runBox.x + runBox.width).toBeLessThanOrEqual(selectedColumnLeft + 0.5)
+})
+
+test('web app clips spilled text before far horizontally scrolled selections', async ({ page }) => {
+  await page.setViewportSize({ width: 1166, height: 820 })
+  await page.goto(`/?document=${encodeURIComponent(createTestDocumentId('playwright-far-selection-spill-clip'))}&persist=0`)
+  await waitForWorkbookReady(page)
+
+  const rowIndex = 4
+  const sourceColumnIndex = 128
+  const selectedColumnIndex = 130
+  await writeCellValue(page, formatGridAddress(rowIndex, sourceColumnIndex), 'far spill text far spill text far spill text')
+  await selectAddress(page, formatGridAddress(rowIndex, selectedColumnIndex))
+
+  const runBox = await page
+    .locator(`[data-native-text-run-row="${String(rowIndex)}"][data-native-text-run-col="${String(sourceColumnIndex)}"]`)
+    .boundingBox()
+  const selectionBorderBox = await page.locator('[data-grid-selection-visual-role="selection-border"]').boundingBox()
+  if (!runBox || !selectionBorderBox) {
+    throw new Error('far grid text run or selection border is not visible')
+  }
+
+  expect(runBox.x + runBox.width).toBeLessThanOrEqual(selectionBorderBox.x + 0.5)
+})
+
+test('web app clips spilled text before selected whole columns on non-active rows', async ({ page }) => {
+  await page.goto(`/?document=${encodeURIComponent(createTestDocumentId('playwright-column-selection-spill-clip'))}&persist=0`)
+  await waitForWorkbookReady(page)
+
+  await writeCellValue(page, 'A5', 'column spill text column spill text column spill text')
+  await selectAddress(page, 'B1')
+  const grid = page.getByTestId('sheet-grid')
+  await grid.click({
+    position: {
+      x: PRODUCT_ROW_MARKER_WIDTH + PRODUCT_COLUMN_WIDTH * 2 + Math.floor(PRODUCT_COLUMN_WIDTH / 2),
+      y: Math.floor(PRODUCT_HEADER_HEIGHT / 2),
+    },
+  })
+  await expect(page.getByTestId('status-selection')).toHaveText('Sheet1!C:C')
+
+  const runBox = await page.locator('[data-native-text-run-row="4"][data-native-text-run-col="0"]').boundingBox()
+  const gridBox = await grid.boundingBox()
+  if (!runBox || !gridBox) {
+    throw new Error('column-selection spill proof target is not visible')
+  }
+  const selectedColumnLeft = gridBox.x + (await getProductColumnLeft(page, 2))
+
+  expect(runBox.x + runBox.width).toBeLessThanOrEqual(selectedColumnLeft + 0.5)
 })
 
 test('web app keeps moved range data visible when border drag reaches the grid edge', async ({ page }) => {

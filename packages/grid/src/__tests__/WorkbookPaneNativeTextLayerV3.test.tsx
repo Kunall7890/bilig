@@ -2,14 +2,19 @@
 import { act } from 'react'
 import { createRoot } from 'react-dom/client'
 import { describe, expect, test } from 'vitest'
+import { MAX_ROWS } from '@bilig/protocol'
 import {
   WorkbookPaneNativeTextLayerV3,
   resolveNativeTextLayerDrawScrollSnapshotV3,
   resolveNativeTextRunFontStyleV3,
   resolveNativeTextRunInnerStyleV3,
+  resolveNativeTextRunSelectionOccludedClipV3,
   resolveNativeTextRunOuterStyleV3,
   resolveNativeTextRunVisibleClipV3,
 } from '../renderer-v3/WorkbookPaneNativeTextLayerV3.js'
+import { createGridGeometrySnapshot } from '../gridGeometry.js'
+import { getGridMetrics } from '../gridMetrics.js'
+import { resolveColumnOffset } from '../workbookGridViewport.js'
 import type { TextQuadRun } from '../renderer-v3/line-text-quad-buffer.js'
 import type { WorkbookRenderTilePaneState } from '../renderer-v3/render-tile-pane-state.js'
 import { WorkbookGridScrollStore } from '../workbookGridScrollStore.js'
@@ -41,10 +46,18 @@ function createPane(
   overrides: {
     readonly lastBatchId?: number | undefined
     readonly lastCameraSeq?: number | undefined
+    readonly viewport?: Partial<WorkbookRenderTilePaneState['viewport']> | undefined
     readonly version?: Partial<WorkbookRenderTilePaneState['tile']['version']> | undefined
   } = {},
 ): WorkbookRenderTilePaneState {
   const textRuns = Array.isArray(run) ? run : [run]
+  const viewport = {
+    colEnd: 127,
+    colStart: 0,
+    rowEnd: 31,
+    rowStart: 0,
+    ...overrides.viewport,
+  }
   return {
     contentOffset: { x: 0, y: 0 },
     frame: { height: 240, width: 320, x: 46, y: 24 },
@@ -53,7 +66,7 @@ function createPane(
     scrollAxes: { x: true, y: true },
     surfaceSize: { height: 240, width: 320 },
     tile: {
-      bounds: { colEnd: 127, colStart: 0, rowEnd: 31, rowStart: 0 },
+      bounds: viewport,
       coord: { colTile: 0, dprBucket: 2, paneKind: 'body', rowTile: 0, sheetId: 1, sheetOrdinal: 1 },
       lastBatchId: overrides.lastBatchId ?? 1,
       lastCameraSeq: overrides.lastCameraSeq ?? 1,
@@ -65,7 +78,7 @@ function createPane(
       tileId: 1,
       version: { axisX: 1, axisY: 1, freeze: 0, styles: 1, text: 1, values: 1, ...overrides.version },
     },
-    viewport: { colEnd: 127, colStart: 0, rowEnd: 31, rowStart: 0 },
+    viewport,
   }
 }
 
@@ -190,6 +203,202 @@ describe('WorkbookPaneNativeTextLayerV3', () => {
         scrollSnapshot: { tx: 0, ty: 0 },
       }),
     ).toBeNull()
+  })
+
+  test('clips spill text before the selected range so active cells stay visually isolated', () => {
+    const geometry = createGridGeometrySnapshot({
+      dpr: 1,
+      gridMetrics: getGridMetrics(),
+      hostHeight: 240,
+      hostWidth: 560,
+      scrollLeft: 0,
+      scrollTop: 0,
+      sheetName: 'Sheet1',
+    })
+    const run = createRun({
+      clipWidth: 520,
+      clipX: 0,
+      col: 0,
+      row: 4,
+      width: 520,
+      x: 0,
+    })
+    const pane = createPane(run)
+
+    expect(
+      resolveNativeTextRunSelectionOccludedClipV3({
+        clipHeight: 22,
+        clipWidth: 520,
+        clipX: 0,
+        clipY: 88,
+        geometry,
+        pane,
+        run,
+        selectionOcclusionRanges: [{ x: 2, y: 4, width: 1, height: 1 }],
+      }),
+    ).toEqual({
+      clipHeight: 22,
+      clipWidth: getGridMetrics().columnWidth * 2,
+      clipX: 0,
+      clipY: 88,
+    })
+  })
+
+  test('clips spill text in non-origin tiles using the tile-local coordinate space', () => {
+    const metrics = getGridMetrics()
+    const geometry = createGridGeometrySnapshot({
+      dpr: 1,
+      gridMetrics: metrics,
+      hostHeight: 240,
+      hostWidth: 560,
+      scrollLeft: resolveColumnOffset(128, [], metrics.columnWidth),
+      scrollTop: 0,
+      sheetName: 'Sheet1',
+    })
+    const run = createRun({
+      clipWidth: 520,
+      clipX: 0,
+      col: 128,
+      row: 4,
+      width: 520,
+      x: 0,
+    })
+    const pane = createPane(run, {
+      viewport: { colEnd: 255, colStart: 128 },
+    })
+
+    expect(
+      resolveNativeTextRunSelectionOccludedClipV3({
+        clipHeight: 22,
+        clipWidth: 520,
+        clipX: 0,
+        clipY: 88,
+        geometry,
+        pane,
+        run,
+        selectionOcclusionRanges: [{ x: 130, y: 4, width: 1, height: 1 }],
+      }),
+    ).toEqual({
+      clipHeight: 22,
+      clipWidth: metrics.columnWidth * 2,
+      clipX: 0,
+      clipY: 88,
+    })
+  })
+
+  test('clips spills into full-column selections beyond the active row slice', () => {
+    const metrics = getGridMetrics()
+    const geometry = createGridGeometrySnapshot({
+      dpr: 1,
+      gridMetrics: metrics,
+      hostHeight: 240,
+      hostWidth: 560,
+      scrollLeft: 0,
+      scrollTop: 0,
+      sheetName: 'Sheet1',
+    })
+    const run = createRun({
+      clipWidth: 520,
+      clipX: 0,
+      col: 0,
+      row: 4,
+      width: 520,
+      x: 0,
+    })
+    const pane = createPane(run)
+
+    expect(
+      resolveNativeTextRunSelectionOccludedClipV3({
+        clipHeight: 22,
+        clipWidth: 520,
+        clipX: 0,
+        clipY: 88,
+        geometry,
+        pane,
+        run,
+        selectionOcclusionRanges: [{ x: 2, y: 0, width: 1, height: MAX_ROWS }],
+      }),
+    ).toEqual({
+      clipHeight: 22,
+      clipWidth: metrics.columnWidth * 2,
+      clipX: 0,
+      clipY: 88,
+    })
+  })
+
+  test('clips tall or merged-style spills that geometrically intersect a selected row', () => {
+    const metrics = getGridMetrics()
+    const geometry = createGridGeometrySnapshot({
+      dpr: 1,
+      gridMetrics: metrics,
+      hostHeight: 240,
+      hostWidth: 560,
+      scrollLeft: 0,
+      scrollTop: 0,
+      sheetName: 'Sheet1',
+    })
+    const run = createRun({
+      clipHeight: metrics.rowHeight * 4,
+      clipWidth: 520,
+      clipX: 0,
+      clipY: metrics.rowHeight * 2,
+      col: 0,
+      height: metrics.rowHeight * 4,
+      row: 2,
+      width: 520,
+      x: 0,
+      y: metrics.rowHeight * 2,
+    })
+    const pane = createPane(run)
+
+    expect(
+      resolveNativeTextRunSelectionOccludedClipV3({
+        clipHeight: metrics.rowHeight * 4,
+        clipWidth: 520,
+        clipX: 0,
+        clipY: metrics.rowHeight * 2,
+        geometry,
+        pane,
+        run,
+        selectionOcclusionRanges: [{ x: 2, y: 4, width: 1, height: 1 }],
+      }),
+    ).toEqual({
+      clipHeight: metrics.rowHeight * 4,
+      clipWidth: metrics.columnWidth * 2,
+      clipX: 0,
+      clipY: metrics.rowHeight * 2,
+    })
+  })
+
+  test('does not clip text from the selected source cell itself', () => {
+    const geometry = createGridGeometrySnapshot({
+      dpr: 1,
+      gridMetrics: getGridMetrics(),
+      hostHeight: 240,
+      hostWidth: 560,
+      scrollLeft: 0,
+      scrollTop: 0,
+      sheetName: 'Sheet1',
+    })
+    const run = createRun({ col: 2, row: 4 })
+
+    expect(
+      resolveNativeTextRunSelectionOccludedClipV3({
+        clipHeight: 22,
+        clipWidth: 520,
+        clipX: 0,
+        clipY: 88,
+        geometry,
+        pane: createPane(run),
+        run,
+        selectionOcclusionRanges: [{ x: 2, y: 4, width: 1, height: 1 }],
+      }),
+    ).toEqual({
+      clipHeight: 22,
+      clipWidth: 520,
+      clipX: 0,
+      clipY: 88,
+    })
   })
 
   test('uses the presented renderer scroll frame instead of racing ahead on live scroll', async () => {

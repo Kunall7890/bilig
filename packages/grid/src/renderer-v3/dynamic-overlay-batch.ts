@@ -41,6 +41,7 @@ export function buildDynamicGridOverlayBatchV3(input: {
   readonly hoveredCell?: readonly [number, number] | null | undefined
   readonly showFillHandle: boolean
   readonly activeHeaderDrag?: HeaderSelection | null | undefined
+  readonly showSelectionOverlay?: boolean | undefined
   readonly resizeGuideColumn?: number | null | undefined
   readonly resizeGuideColumnWidth?: number | null | undefined
   readonly resizeGuideRow?: number | null | undefined
@@ -48,22 +49,24 @@ export function buildDynamicGridOverlayBatchV3(input: {
 }): DynamicGridOverlayBatchV3 {
   const fillRects: GridGpuRect[] = []
   const borderRects: GridGpuRect[] = []
-  appendAxisSelectionOverlay({
-    borderRects,
-    fillRects,
-    geometry: input.geometry,
-    gridSelection: input.gridSelection ?? null,
-    selectedCell: input.selectedCell ?? null,
-    selectionRange: input.selectionRange,
-  })
-  appendSelectionOverlay({
-    borderRects,
-    fillRects,
-    geometry: input.geometry,
-    gridSelection: input.gridSelection ?? null,
-    selectionRange: input.selectionRange,
-    showFillHandle: input.showFillHandle,
-  })
+  if (input.showSelectionOverlay !== false) {
+    appendAxisSelectionOverlay({
+      borderRects,
+      fillRects,
+      geometry: input.geometry,
+      gridSelection: input.gridSelection ?? null,
+      selectedCell: input.selectedCell ?? null,
+      selectionRange: input.selectionRange,
+    })
+    appendSelectionOverlay({
+      borderRects,
+      fillRects,
+      geometry: input.geometry,
+      gridSelection: input.gridSelection ?? null,
+      selectionRange: input.selectionRange,
+      showFillHandle: input.showFillHandle,
+    })
+  }
   appendFillPreviewOverlay({
     borderRects,
     fillPreviewRange: input.fillPreviewRange ?? null,

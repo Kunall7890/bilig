@@ -18,7 +18,7 @@ describe('XLSX sparse ranges', () => {
     })
   }, 15_000)
 
-  it('skips styled blank XML cells when importing a broad styled template range', () => {
+  it('compacts styled blank XML cells when importing a broad styled template range', () => {
     const sparseBytes = buildStyledBlankWorkbookBytes({ includeBlankCells: false })
     const denseBytes = buildStyledBlankWorkbookBytes({ includeBlankCells: true })
     const sparseMs = measureImport(sparseBytes, 'styled-sparse-control.xlsx').durationMs
@@ -41,7 +41,7 @@ describe('XLSX sparse ranges', () => {
     expect(sheet?.metadata?.styleRanges?.[0]?.range).toEqual({
       sheetName: 'StyledBlanks',
       startAddress: 'A1',
-      endAddress: 'A1',
+      endAddress: 'Z20000',
     })
     expect(imported.snapshot.workbook.metadata?.styles?.[0]).toMatchObject({
       fill: { backgroundColor: '#ffcc00' },
