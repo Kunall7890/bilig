@@ -13,6 +13,7 @@ import {
   type BiligRenderedCanvasState,
   type BiligRenderedSurfaceState,
 } from './ui-responsiveness-same-corpus-surface.ts'
+import type { BiligScrollPerfBenchmarkState } from './ui-responsiveness-bilig-scroll-perf-window.ts'
 
 export async function verifyProductCorpus(
   page: Page,
@@ -30,18 +31,8 @@ export async function verifyProductCorpus(
 }
 
 async function verifyBiligBenchmarkState(page: Page, corpus: WorkbookBenchmarkCorpusCase): Promise<SameCorpusCaptureCorpusVerification> {
-  const state = await page.evaluate(() => {
-    const collector = (
-      window as Window & {
-        __biligScrollPerf?: {
-          getBenchmarkState?: () => {
-            state: string
-            error: string | null
-            fixture: { id: string; materializedCellCount: number; sheetName: string } | null
-          }
-        }
-      }
-    ).__biligScrollPerf
+  const state = await page.evaluate((): BiligScrollPerfBenchmarkState | null => {
+    const collector = window.__biligScrollPerf
     return collector?.getBenchmarkState?.() ?? null
   })
   if (state?.state !== 'ready' || state.fixture?.id !== corpus.id) {

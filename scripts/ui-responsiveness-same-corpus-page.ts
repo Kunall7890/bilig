@@ -5,6 +5,7 @@ import { performance } from 'node:perf_hooks'
 import { chromium, type Browser, type BrowserContextOptions, type Page } from '@playwright/test'
 
 import { buildWorkbookBenchmarkCorpus, type WorkbookBenchmarkCorpusCase } from '../packages/benchmarks/src/workbook-corpus.js'
+import type { BiligScrollPerfBenchmarkState } from './ui-responsiveness-bilig-scroll-perf-window.ts'
 import type {
   SameCorpusCapture,
   SameCorpusCaptureCase,
@@ -488,19 +489,9 @@ async function waitForProductReady(page: Page, product: UiResponsivenessSameCorp
   if (product === 'bilig') {
     await page.waitForSelector('[data-testid="sheet-grid"]', { state: 'visible', timeout: args.readyTimeoutMs })
     await page.waitForFunction(
-      (expectedCorpusId) => {
-        const collector = (
-          window as Window & {
-            __biligScrollPerf?: {
-              getBenchmarkState?: () => {
-                state: string
-                error: string | null
-                fixture: { id: string; materializedCellCount: number; sheetName: string } | null
-              }
-            }
-          }
-        ).__biligScrollPerf
-        const state = collector?.getBenchmarkState?.()
+      (expectedCorpusId): boolean => {
+        const collector = window.__biligScrollPerf
+        const state: BiligScrollPerfBenchmarkState | undefined = collector?.getBenchmarkState?.()
         return state?.state === 'ready' && state.fixture?.id === expectedCorpusId
       },
       args.corpusId,
