@@ -15,6 +15,7 @@ export interface InitialDirectFormulaEvaluationOptions {
   readonly hasPrefixAggregateCandidates?: boolean
   readonly preEvaluatedCellIndices?: InitialFormulaCellIndexList
   readonly preEvaluatedCellCount?: number
+  readonly preEvaluatedCellsAreReusable?: boolean
 }
 
 export function evaluateInitialDirectFormulas(
@@ -37,6 +38,7 @@ export function evaluateInitialDirectFormulas(
     options?.preEvaluatedCellCount ?? preEvaluatedCellIndices?.length ?? 0,
     preEvaluatedCellIndices?.length ?? 0,
   )
+  const preEvaluatedCellsAreReusable = options?.preEvaluatedCellsAreReusable === true
   let preEvaluatedCellIndex = 0
   let preEvaluatedCells: Uint8Array | undefined
   const pushChangedCellIndex = (cellIndex: number): void => {
@@ -84,6 +86,9 @@ export function evaluateInitialDirectFormulas(
       return false
     }
     preEvaluatedCellIndex += 1
+    if (preEvaluatedCellsAreReusable) {
+      return true
+    }
     return canReusePreEvaluatedFormula(cellIndex)
   }
   const valueWriter = createInitialFormulaValueWriter(args)

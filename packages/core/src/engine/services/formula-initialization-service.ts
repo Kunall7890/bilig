@@ -163,6 +163,8 @@ export function createEngineFormulaInitializationService(args: EngineFormulaInit
         ? new Uint32Array(Math.max(refs.length, 1))
         : undefined
       let inlineInitialDirectScalarCellCount = 0
+      let inlineInitialDirectScalarReusableCells: Uint8Array | undefined
+      let allInlineInitialDirectScalarCellsReusable = true
       let nativeInitialDirectScalarBatch =
         hadExistingFormulas ||
         refs.length < MIN_INITIAL_NATIVE_DIRECT_SCALAR_BATCH_SIZE ||
@@ -258,6 +260,33 @@ export function createEngineFormulaInitializationService(args: EngineFormulaInit
         buffer[inlineInitialDirectScalarCellCount] = cellIndex
         inlineInitialDirectScalarCellCount += 1
       }
+      const materializeInlineInitialDirectScalarReusableCells = (): Uint8Array => {
+        if (inlineInitialDirectScalarReusableCells) {
+          return inlineInitialDirectScalarReusableCells
+        }
+        inlineInitialDirectScalarReusableCells = new Uint8Array(maxTargetCellIndex + 1)
+        return inlineInitialDirectScalarReusableCells
+      }
+      const noteInlineInitialDirectScalarCell = (prepared: { cellIndex: number }, runtimeFormula: RuntimeFormula): void => {
+        pushInlineInitialDirectScalarCell(prepared.cellIndex)
+        const reusableCells = materializeInlineInitialDirectScalarReusableCells()
+        let canReuse = true
+        for (let index = 0; index < runtimeFormula.dependencyIndices.length; index += 1) {
+          const dependencyCellIndex = runtimeFormula.dependencyIndices[index]!
+          if (
+            ((args.state.workbook.cellStore.flags[dependencyCellIndex] ?? 0) & CellFlags.HasFormula) !== 0 &&
+            reusableCells[dependencyCellIndex] !== 1
+          ) {
+            canReuse = false
+            break
+          }
+        }
+        if (canReuse) {
+          reusableCells[prepared.cellIndex] = 1
+        } else {
+          allInlineInitialDirectScalarCellsReusable = false
+        }
+      }
 
       const tryInlineInitialDirectScalarEvaluation = (
         prepared: { cellIndex: number; sheetId: number; row: number; col: number },
@@ -296,13 +325,13 @@ export function createEngineFormulaInitializationService(args: EngineFormulaInit
           inlineInitialDirectScalarWriter ??= createInitialFormulaValueWriter(args)
           if (numericValue !== undefined) {
             inlineInitialDirectScalarWriter.writeNumberAt(prepared.cellIndex, prepared.sheetId, prepared.col, numericValue)
-            pushInlineInitialDirectScalarCell(prepared.cellIndex)
+            noteInlineInitialDirectScalarCell(prepared, runtimeFormula)
             return
           }
           const fallbackValue = evaluateInitialDirectScalar(args.state, runtimeFormula.directScalar)
           if (fallbackValue !== undefined) {
             inlineInitialDirectScalarWriter.writeValueAt(prepared.cellIndex, prepared.sheetId, prepared.col, fallbackValue)
-            pushInlineInitialDirectScalarCell(prepared.cellIndex)
+            noteInlineInitialDirectScalarCell(prepared, runtimeFormula)
             return
           }
         }
@@ -326,7 +355,7 @@ export function createEngineFormulaInitializationService(args: EngineFormulaInit
             } else {
               inlineInitialDirectScalarWriter.writeValueAt(prepared.cellIndex, prepared.sheetId, prepared.col, inlineValue)
             }
-            pushInlineInitialDirectScalarCell(prepared.cellIndex)
+            noteInlineInitialDirectScalarCell(prepared, runtimeFormula)
           }
         }
       }
@@ -575,6 +604,7 @@ export function createEngineFormulaInitializationService(args: EngineFormulaInit
             ? {
                 preEvaluatedCellIndices: inlineInitialDirectScalarCellBuffer ?? targetCellIndices,
                 preEvaluatedCellCount: inlineInitialDirectScalarCellCount,
+                preEvaluatedCellsAreReusable: allInlineInitialDirectScalarCellsReusable,
               }
             : {}),
         })
