@@ -171,18 +171,27 @@
     <section class="hero" aria-labelledby="hero-title">
       <div class="wrap hero-inner">
         <div class="hero-copy">
-          <p class="eyebrow">Workbook runtime</p>
-          <h1 id="hero-title" class="hero-title">Formula workbooks for Node services and agent tools.</h1>
-          <p class="hero-subtitle">Edit cells. Recalculate. Verify readback. Save JSON.</p>
-          <div class="install-command" aria-label="Install command">
-            <span class="mono">$</span>
-            <code>npm i @bilig/workpaper</code>
+          <p class="eyebrow">Formula proof paths</p>
+          <h1 id="hero-title" class="hero-title">Recalculate XLSX formulas or give agents a workbook API.</h1>
+          <p class="hero-subtitle">Pick the narrow command for the job. Both paths prove fresh formula readback before adoption.</p>
+          <div class="hero-proof-grid" aria-label="First commands">
+            <a class="hero-proof-card" href="./xlsx-formula-recalculation-node.html">
+              <span>XLSX formulas stale?</span>
+              <strong>Recalculate in Node</strong>
+              <code>npx --package @bilig/xlsx-formula-recalc xlsx-recalc --demo --json</code>
+              <em>Fresh cached values without Excel, LibreOffice, or browser automation.</em>
+            </a>
+            <a class="hero-proof-card" href="./ai-agent-spreadsheet-tool-node.html">
+              <span>Agent needs spreadsheet tools?</span>
+              <strong>Create a WorkPaper tool loop</strong>
+              <code>npm create @bilig/workpaper@latest pricing-agent -- --agent</code>
+              <em>Write inputs, recalculate, verify readback, and persist workbook JSON.</em>
+            </a>
           </div>
           <div class="hero-actions">
-            <a class="button primary" href="https://www.npmjs.com/package/@bilig/workpaper">Install from npm</a>
-            <a class="button" href="#install">Open the quickstart</a>
-            <a class="button" href="./xlsx-formula-recalculation-node.html">XLSX recalc</a>
-            <a class="button" href="./exceljs-formula-recalculation-node.html">ExcelJS recalc</a>
+            <a class="button primary" href="#packages">Choose a package</a>
+            <a class="button" href="https://www.npmjs.com/package/@bilig/xlsx-formula-recalc">XLSX npm</a>
+            <a class="button" href="https://www.npmjs.com/package/@bilig/workpaper">WorkPaper npm</a>
             <a class="button dark" href="https://github.com/proompteng/bilig">View GitHub</a>
           </div>
         </div>
