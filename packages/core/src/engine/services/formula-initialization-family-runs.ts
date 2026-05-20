@@ -18,12 +18,18 @@ export type DeferredInitialFormulaFamilyRun = Omit<FormulaFamilyRunUpsertArgs, '
   step: number
   lastIndex: number
   ordered: boolean
+  cellIndices: readonly number[]
+  rows?: readonly number[]
+  cols?: readonly number[]
+}
+
+type MutableDeferredInitialFormulaFamilyRun = Omit<DeferredInitialFormulaFamilyRun, 'cellIndices' | 'rows' | 'cols'> & {
   cellIndices: number[]
   rows?: number[]
   cols?: number[]
 }
 
-export type DeferredInitialFormulaFamilyRunMap = Map<number, Map<number, Map<number, DeferredInitialFormulaFamilyRun>>>
+export type DeferredInitialFormulaFamilyRunMap = Map<number, Map<number, Map<number, MutableDeferredInitialFormulaFamilyRun>>>
 
 export function createDeferredInitialFormulaFamilyRunMap(): DeferredInitialFormulaFamilyRunMap {
   return new Map()
@@ -34,7 +40,7 @@ function getDeferredFormulaFamilyRun(
   sheetId: number,
   templateId: number,
   col: number,
-): DeferredInitialFormulaFamilyRun | undefined {
+): MutableDeferredInitialFormulaFamilyRun | undefined {
   return runs.get(sheetId)?.get(templateId)?.get(col)
 }
 
@@ -43,7 +49,7 @@ function setDeferredFormulaFamilyRun(
   sheetId: number,
   templateId: number,
   col: number,
-  run: DeferredInitialFormulaFamilyRun,
+  run: MutableDeferredInitialFormulaFamilyRun,
 ): void {
   let templateRuns = runs.get(sheetId)
   if (!templateRuns) {

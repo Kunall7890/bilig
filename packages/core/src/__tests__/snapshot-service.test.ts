@@ -1,5 +1,5 @@
 import { Effect, Exit } from 'effect'
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import { ErrorCode, ValueTag } from '@bilig/protocol'
 import { FormulaTable } from '../formula-table.js'
 import { createReplicaState } from '../replica-state.js'
@@ -8,7 +8,7 @@ import { StringPool } from '../string-pool.js'
 import { WorkbookStore } from '../workbook-store.js'
 import { SpreadsheetEngine } from '../engine.js'
 import { createEngineCounters } from '../perf/engine-counters.js'
-import { readRuntimeImage, readRuntimeSnapshot } from '../snapshot/runtime-image-codec.js'
+import { attachRuntimeImage, readRuntimeImage, readRuntimeSnapshot } from '../snapshot/runtime-image-codec.js'
 import { CellFlags } from '../cell-store.js'
 import type { FormulaFamilyStore } from '../formula/formula-family-store.js'
 
@@ -37,6 +37,22 @@ function getFormulaFamilyStore(engine: SpreadsheetEngine): FormulaFamilyStore {
     throw new TypeError('Expected formula family store')
   }
   return formulaFamilies
+}
+
+interface RuntimeFormulaStoreForTest {
+  readonly forEach: (fn: (value: unknown, key: number) => void) => void
+}
+
+function isRuntimeFormulaStoreForTest(value: unknown): value is RuntimeFormulaStoreForTest {
+  return typeof value === 'object' && value !== null && typeof Reflect.get(value, 'forEach') === 'function'
+}
+
+function getRuntimeFormulaStore(engine: SpreadsheetEngine): RuntimeFormulaStoreForTest {
+  const formulas = Reflect.get(engine, 'formulas')
+  if (!isRuntimeFormulaStoreForTest(formulas)) {
+    throw new TypeError('Expected internal formula store')
+  }
+  return formulas
 }
 
 describe('EngineSnapshotService', () => {
@@ -412,5 +428,46 @@ describe('EngineSnapshotService', () => {
     expect(restored.getPerformanceCounters().formulaFamilyRuntimeRunsRestored).toBe(runtimeImage?.formulaFamilyRuns?.length)
     expect(restored.getPerformanceCounters().formulaFamilyRuntimeRunMembersRestored).toBe(sourceFamilyStats.memberCount)
     expect(restored.getPerformanceCounters().formulaFamilyRuntimeRunFallbacks).toBe(0)
+  })
+
+  it('restores runtime formula-family runs for prepared formulas without cached values', async () => {
+    const source = new SpreadsheetEngine({
+      workbookName: 'snapshot-runtime-family-runs-prepared-source',
+      replicaId: 'snapshot-runtime-family-runs-prepared-source',
+    })
+    await source.ready()
+    source.createSheet('Sheet1')
+    for (let row = 1; row <= 48; row += 1) {
+      source.setCellValue('Sheet1', `A${row}`, row)
+      source.setCellValue('Sheet1', `B${row}`, row * 2)
+      source.setCellFormula('Sheet1', `C${row}`, `A${row}+B${row}`)
+      source.setCellFormula('Sheet1', `D${row}`, `C${row}*2`)
+    }
+    const sourceFamilyStats = getFormulaFamilyStore(source).getStats()
+    const snapshot = source.exportSnapshot()
+    const runtimeImage = readRuntimeImage(snapshot)
+    expect(runtimeImage?.formulaFamilyRuns?.length).toBeGreaterThan(0)
+    expect(runtimeImage?.formulaValues.length).toBeGreaterThan(0)
+    attachRuntimeImage(snapshot, { ...runtimeImage!, formulaValues: [] })
+
+    const restored = new SpreadsheetEngine({
+      workbookName: 'snapshot-runtime-family-runs-prepared-restored',
+      replicaId: 'snapshot-runtime-family-runs-prepared-restored',
+    })
+    await restored.ready()
+    restored.resetPerformanceCounters()
+    restored.importSnapshot(snapshot)
+
+    expect(restored.getCellValue('Sheet1', 'D48')).toEqual({ tag: ValueTag.Number, value: 288 })
+    const formulaForEach = vi.spyOn(getRuntimeFormulaStore(restored), 'forEach')
+    try {
+      expect(getFormulaFamilyStore(restored).getStats()).toEqual(sourceFamilyStats)
+      expect(formulaForEach).not.toHaveBeenCalled()
+      expect(restored.getPerformanceCounters().formulaFamilyRuntimeRunsRestored).toBe(runtimeImage?.formulaFamilyRuns?.length)
+      expect(restored.getPerformanceCounters().formulaFamilyRuntimeRunMembersRestored).toBe(sourceFamilyStats.memberCount)
+      expect(restored.getPerformanceCounters().formulaFamilyRuntimeRunFallbacks).toBe(0)
+    } finally {
+      formulaForEach.mockRestore()
+    }
   })
 })

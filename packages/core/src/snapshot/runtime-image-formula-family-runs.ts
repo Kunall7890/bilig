@@ -52,7 +52,7 @@ export function restoreAlignedRuntimeFormulaFamilyRuns(args: {
       step: run.step,
       lastIndex: run.start + run.step * (run.cellIndices.length - 1),
       ordered: true,
-      cellIndices: [...run.cellIndices],
+      cellIndices: run.cellIndices,
     })
   }
   return { runs: restoredRuns, fallbackCount }
