@@ -272,7 +272,7 @@ describe('WorkbookPaneRendererV3', () => {
     expect(resolveWorkbookPanePresentedRevisionV3('idle', 14)).toBeNull()
   })
 
-  test('uses the Canvas2D proof layer until the current visible TypeGPU frame has presented', () => {
+  test('uses the Canvas2D proof layer only before the first visible TypeGPU frame presents', () => {
     expect(
       shouldMountWorkbookCanvasProofLayerV3({
         backendStatus: 'ready',
@@ -293,11 +293,11 @@ describe('WorkbookPaneRendererV3', () => {
       shouldMountWorkbookCanvasProofLayerV3({
         backendStatus: 'ready',
         frameProofStatus: 'pending',
-        hasPresentedFrame: true,
+        hasPresentedAnyVisibleFrame: true,
         headerPaneCount: 1,
         tilePaneCount: 1,
       }),
-    ).toBe(true)
+    ).toBe(false)
     expect(
       shouldMountWorkbookCanvasProofLayerV3({
         backendStatus: 'ready',
@@ -306,7 +306,15 @@ describe('WorkbookPaneRendererV3', () => {
         headerPaneCount: 1,
         tilePaneCount: 1,
       }),
-    ).toBe(true)
+    ).toBe(false)
+    expect(
+      shouldMountWorkbookCanvasProofLayerV3({
+        backendStatus: 'initializing',
+        hasPresentedAnyVisibleFrame: true,
+        headerPaneCount: 1,
+        tilePaneCount: 1,
+      }),
+    ).toBe(false)
     expect(
       shouldMountWorkbookCanvasProofLayerV3({
         backendStatus: 'ready',
@@ -322,7 +330,7 @@ describe('WorkbookPaneRendererV3', () => {
         headerPaneCount: 1,
         tilePaneCount: 1,
       }),
-    ).toBe(true)
+    ).toBe(false)
     expect(
       shouldMountWorkbookCanvasProofLayerV3({
         backendStatus: 'unavailable',

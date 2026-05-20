@@ -1542,7 +1542,7 @@ test('@browser-webgpu @browser-perf main workbook shell keeps typegpu content vi
   await saveReadbackArtifact(page, testInfo, 'main-workbook-grid-hover-scroll-readback.png', 'main-workbook-grid-hover-scroll-readback')
 })
 
-test('@browser-webgpu @browser-perf main workbook shell keeps typegpu text visible across tile boundary scroll and resize', async ({
+test('@browser-webgpu @browser-perf main workbook shell keeps grid content and native text visible across tile boundary scroll and resize', async ({
   page,
 }, testInfo) => {
   test.slow()
@@ -1596,10 +1596,10 @@ test('@browser-webgpu @browser-perf main workbook shell keeps typegpu text visib
         { name: 'bodyText', x0: PRODUCT_ROW_MARKER_WIDTH, y0: PRODUCT_HEADER_HEIGHT, x1: 960, y1: 720 },
       ],
     },
-    (result) => result.darkPixelCounts.canvasDark > 200,
+    (result) => result.opaquePixelCounts.canvasDark > 200,
   )
 
-  expect(readback.darkPixelCounts.canvasDark).toBeGreaterThan(200)
+  expect(readback.opaquePixelCounts.canvasDark).toBeGreaterThan(200)
   const tileBoundaryTextRuns = await waitForVisibleNativeTextRuns(page, [], (runs) => {
     return runs.rowHeaderRunCount > 5 && runs.visibleRunCount > 20
   })

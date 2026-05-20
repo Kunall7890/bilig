@@ -90,6 +90,31 @@ describe('GridSelectionVisualOverlay', () => {
     )
   })
 
+  test('keeps semantic visual rect keys stable while clipped header bounds move', () => {
+    const selection = createColumnSliceSelection(1, 3, 2)
+    const firstRects = buildGridSelectionVisualRects({
+      geometry: createFrozenScrolledGeometry(50),
+      gridSelection: selection,
+      selectedCell: [1, 2],
+      selectionRange: selection.current?.range ?? null,
+      showFillHandle: false,
+    })
+    const nextRects = buildGridSelectionVisualRects({
+      geometry: createFrozenScrolledGeometry(51),
+      gridSelection: selection,
+      selectedCell: [1, 2],
+      selectionRange: selection.current?.range ?? null,
+      showFillHandle: false,
+    })
+
+    const firstHeader = firstRects.find((rect) => rect.role === 'header-fill' && rect.key === 'header-fill:column:1')
+    const nextHeader = nextRects.find((rect) => rect.role === 'header-fill' && rect.key === 'header-fill:column:1')
+
+    expect(firstHeader?.key).toBe(nextHeader?.key)
+    expect(firstHeader?.bounds).not.toEqual(nextHeader?.bounds)
+    expect(firstHeader?.bounds.width).not.toBe(nextHeader?.bounds.width)
+  })
+
   test('draws a single selected cell with active-cell chrome', () => {
     const geometry = createGeometry()
     const selection = createGridSelection(2, 4)
@@ -162,7 +187,7 @@ function createGeometry() {
   })
 }
 
-function createFrozenScrolledGeometry() {
+function createFrozenScrolledGeometry(scrollLeft = 50) {
   const metrics = getGridMetrics()
   return createGridGeometrySnapshotFromAxes({
     columns: createGridAxisWorldIndex({ axisLength: 20, defaultSize: 100 }),
@@ -173,7 +198,7 @@ function createFrozenScrolledGeometry() {
     hostHeight: 220,
     hostWidth: 520,
     rows: createGridAxisWorldIndex({ axisLength: 20, defaultSize: 20 }),
-    scrollLeft: 50,
+    scrollLeft,
     scrollTop: 10,
     sheetName: 'Sheet1',
     updatedAt: 100,

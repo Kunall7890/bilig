@@ -10,6 +10,7 @@ type VisualRectRole = 'selection-fill' | 'selection-border' | 'active-border' | 
 
 export interface GridSelectionVisualRect {
   readonly role: VisualRectRole
+  readonly key: string
   readonly bounds: Rectangle
 }
 
@@ -76,6 +77,7 @@ export function GridSelectionVisualOverlay(props: GridSelectionVisualOverlayProp
       {rects.map((rect) => (
         <div
           className={classNameForRole(rect.role)}
+          data-grid-selection-visual-key={rect.key}
           data-grid-selection-visual-role={rect.role}
           key={keyForRect(rect)}
           style={styleForRect(rect)}
@@ -115,8 +117,10 @@ function appendHoverVisualRects(
   if (input.selectionRange && cellInRange(hoverCell, input.selectionRange)) {
     return
   }
+  let segmentIndex = 0
   for (const bounds of input.geometry.rangeScreenRects({ x: hoverCell[0], y: hoverCell[1], width: 1, height: 1 })) {
-    appendInsetRect(rects, 'hover-fill', bounds, 1, 1)
+    appendInsetRect(rects, 'hover-fill', `hover-fill:cell:${hoverCell[0]}:${hoverCell[1]}:${segmentIndex}`, bounds, 1, 1)
+    segmentIndex += 1
   }
 }
 
@@ -136,36 +140,52 @@ function appendBodySelectionVisualRects(
   const hasAxisSelection = input.gridSelection.columns.length > 0 || input.gridSelection.rows.length > 0
   if (hasAxisSelection) {
     const activeCell = input.gridSelection.current?.cell ?? [input.selectionRange.x, input.selectionRange.y]
-    appendCellBorderRects(rects, input.geometry, activeCell, 'active-border')
+    appendCellBorderRects(rects, input.geometry, activeCell, 'active-border', `active-border:cell:${activeCell[0]}:${activeCell[1]}`)
     return
   }
 
   const isMultiCellSelection = input.selectionRange.width > 1 || input.selectionRange.height > 1
   const activeCell = input.gridSelection.current?.cell ?? null
   if (isMultiCellSelection) {
+    let fillIndex = 0
     for (const fillRange of splitSelectionFillRangeAroundActiveCell(input.selectionRange, activeCell)) {
+      let segmentIndex = 0
       for (const bounds of input.geometry.rangeScreenRects(fillRange)) {
-        appendInsetRect(rects, 'selection-fill', bounds, 1, 1)
+        appendInsetRect(rects, 'selection-fill', stableRangeKey('selection-fill:range', fillRange, fillIndex, segmentIndex), bounds, 1, 1)
+        segmentIndex += 1
       }
+      fillIndex += 1
     }
   }
 
   if (isMultiCellSelection) {
+    let segmentIndex = 0
     for (const bounds of input.geometry.rangeScreenRects(input.selectionRange)) {
-      rects.push({ role: 'selection-border', bounds })
+      rects.push({
+        role: 'selection-border',
+        key: stableRangeKey('selection-border:range', input.selectionRange, 0, segmentIndex),
+        bounds,
+      })
+      segmentIndex += 1
     }
   } else {
-    appendCellBorderRects(rects, input.geometry, [input.selectionRange.x, input.selectionRange.y], 'active-border')
+    appendCellBorderRects(
+      rects,
+      input.geometry,
+      [input.selectionRange.x, input.selectionRange.y],
+      'active-border',
+      `active-border:cell:${input.selectionRange.x}:${input.selectionRange.y}`,
+    )
   }
 
   if (activeCell && isMultiCellSelection && cellInRange(activeCell, input.selectionRange)) {
-    appendCellBorderRects(rects, input.geometry, activeCell, 'active-border')
+    appendCellBorderRects(rects, input.geometry, activeCell, 'active-border', `active-border:cell:${activeCell[0]}:${activeCell[1]}`)
   }
 
   if (input.showFillHandle) {
     const handle = input.geometry.fillHandleScreenRect(input.selectionRange)
     if (handle) {
-      rects.push({ role: 'fill-handle', bounds: handle })
+      rects.push({ role: 'fill-handle', key: stableRangeKey('fill-handle:range', input.selectionRange, 0, 0), bounds: handle })
     }
   }
 }
@@ -205,7 +225,7 @@ function appendAxisSelectionVisualRects(
         : paneFrame(input.geometry, 'column-header-body')
     const clipped = bounds && clip ? clipRect(bounds, clip) : null
     if (clipped) {
-      appendInsetRect(rects, 'header-fill', clipped, 1, 1)
+      appendInsetRect(rects, 'header-fill', `header-fill:column:${index}`, clipped, 1, 1)
     }
   }
   for (const index of visibleRowIndexes(input.geometry)) {
@@ -219,7 +239,7 @@ function appendAxisSelectionVisualRects(
         : paneFrame(input.geometry, 'row-header-body')
     const clipped = bounds && clip ? clipRect(bounds, clip) : null
     if (clipped) {
-      appendInsetRect(rects, 'header-fill', clipped, 1, 1)
+      appendInsetRect(rects, 'header-fill', `header-fill:row:${index}`, clipped, 1, 1)
     }
   }
 
@@ -228,13 +248,24 @@ function appendAxisSelectionVisualRects(
     for (const range of columnRanges) {
       const start = Math.max(0, range.start)
       const endExclusive = Math.max(start + 1, Math.min(MAX_COLS, range.endExclusive))
+      let fillIndex = 0
       for (const fillRange of splitSelectionFillRangeAroundActiveCell(
         { x: start, y: 0, width: endExclusive - start, height: MAX_ROWS },
         activeCell,
       )) {
+        let segmentIndex = 0
         for (const bounds of input.geometry.rangeScreenRects(fillRange)) {
-          appendInsetRect(rects, 'selection-fill', bounds, 1, 1)
+          appendInsetRect(
+            rects,
+            'selection-fill',
+            stableRangeKey(`selection-fill:columns:${start}:${endExclusive}`, fillRange, fillIndex, segmentIndex),
+            bounds,
+            1,
+            1,
+          )
+          segmentIndex += 1
         }
+        fillIndex += 1
       }
     }
   }
@@ -242,13 +273,24 @@ function appendAxisSelectionVisualRects(
     for (const range of rowRanges) {
       const start = Math.max(0, range.start)
       const endExclusive = Math.max(start + 1, Math.min(MAX_ROWS, range.endExclusive))
+      let fillIndex = 0
       for (const fillRange of splitSelectionFillRangeAroundActiveCell(
         { x: 0, y: start, width: MAX_COLS, height: endExclusive - start },
         activeCell,
       )) {
+        let segmentIndex = 0
         for (const bounds of input.geometry.rangeScreenRects(fillRange)) {
-          appendInsetRect(rects, 'selection-fill', bounds, 1, 1)
+          appendInsetRect(
+            rects,
+            'selection-fill',
+            stableRangeKey(`selection-fill:rows:${start}:${endExclusive}`, fillRange, fillIndex, segmentIndex),
+            bounds,
+            1,
+            1,
+          )
+          segmentIndex += 1
         }
+        fillIndex += 1
       }
     }
   }
@@ -259,13 +301,23 @@ function appendCellBorderRects(
   geometry: GridGeometrySnapshot,
   cell: readonly [number, number],
   role: VisualRectRole,
+  keyPrefix: string,
 ): void {
+  let segmentIndex = 0
   for (const bounds of geometry.rangeScreenRects({ x: cell[0], y: cell[1], width: 1, height: 1 })) {
-    rects.push({ role, bounds })
+    rects.push({ role, key: `${keyPrefix}:${segmentIndex}`, bounds })
+    segmentIndex += 1
   }
 }
 
-function appendInsetRect(rects: GridSelectionVisualRect[], role: VisualRectRole, bounds: Rectangle, insetX: number, insetY: number): void {
+function appendInsetRect(
+  rects: GridSelectionVisualRect[],
+  role: VisualRectRole,
+  key: string,
+  bounds: Rectangle,
+  insetX: number,
+  insetY: number,
+): void {
   const insetBounds = {
     x: bounds.x + insetX,
     y: bounds.y + insetY,
@@ -273,8 +325,17 @@ function appendInsetRect(rects: GridSelectionVisualRect[], role: VisualRectRole,
     height: Math.max(0, bounds.height - insetY * 2),
   }
   if (insetBounds.width > 0 && insetBounds.height > 0) {
-    rects.push({ role, bounds: insetBounds })
+    rects.push({ role, key, bounds: insetBounds })
   }
+}
+
+function stableRangeKey(
+  prefix: string,
+  range: Pick<Rectangle, 'x' | 'y' | 'width' | 'height'>,
+  fillIndex: number,
+  segmentIndex: number,
+): string {
+  return `${prefix}:${range.x}:${range.y}:${range.width}:${range.height}:${fillIndex}:${segmentIndex}`
 }
 
 interface AxisSelectionRange {
@@ -375,7 +436,7 @@ function classNameForRole(role: VisualRectRole): string {
 }
 
 function keyForRect(rect: GridSelectionVisualRect): string {
-  return `${rect.role}:${rect.bounds.x}:${rect.bounds.y}:${rect.bounds.width}:${rect.bounds.height}`
+  return `${rect.role}:${rect.key}`
 }
 
 function styleForRect(rect: GridSelectionVisualRect): CSSProperties {
