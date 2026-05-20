@@ -17,8 +17,25 @@ export function buildLocalCellSnapshotWorkbookDelta(input: {
   readonly seq: number
   readonly snapshot: CellSnapshot
 }): WorkbookDeltaBatchV3 {
-  const parsed = parseCellAddress(input.snapshot.address, input.snapshot.sheetName)
-  const valueSeq = Math.max(0, input.snapshot.version)
+  return buildLocalCellSnapshotsWorkbookDelta({
+    identity: input.identity,
+    seq: input.seq,
+    snapshots: [input.snapshot],
+  })
+}
+
+export function buildLocalCellSnapshotsWorkbookDelta(input: {
+  readonly identity: ProjectedWorkbookLocalDeltaSheetIdentity
+  readonly seq: number
+  readonly snapshots: readonly CellSnapshot[]
+}): WorkbookDeltaBatchV3 {
+  const cellRanges: number[] = []
+  let valueSeq = 0
+  input.snapshots.forEach((snapshot) => {
+    const parsed = parseCellAddress(snapshot.address, snapshot.sheetName)
+    valueSeq = Math.max(valueSeq, snapshot.version, 0)
+    cellRanges.push(parsed.row, parsed.row, parsed.col, parsed.col, resolveCellSnapshotDirtyMask())
+  })
   return {
     axisSeqX: 0,
     axisSeqY: 0,
@@ -26,7 +43,7 @@ export function buildLocalCellSnapshotWorkbookDelta(input: {
     dirty: {
       axisX: new Uint32Array(),
       axisY: new Uint32Array(),
-      cellRanges: new Uint32Array([parsed.row, parsed.row, parsed.col, parsed.col, resolveCellSnapshotDirtyMask()]),
+      cellRanges: Uint32Array.from(cellRanges),
     },
     freezeSeq: 0,
     magic: 'bilig.workbook.delta.v3',

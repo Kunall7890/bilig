@@ -62,6 +62,55 @@ describe('GridVisibleTextRefreshCache', () => {
     expect(cache.needsLocalRefresh(tile.tileId, tile, createInput({ engine: createEngine({ A1: 'fresh A1' }) }))).toBe(true)
   })
 
+  it('caches visible proof across value-equivalent layout objects', () => {
+    const cache = new GridVisibleTextRefreshCache()
+    const tile = createTile({
+      textCount: 1,
+      textRuns: [createTextRun({ col: 0, row: 0, text: 'A1' })],
+    })
+    let getCellCount = 0
+    const engine: GridEngineLike = {
+      ...createEngine({ A1: 'A1' }),
+      getCell: (_sheetName, address) => {
+        getCellCount += 1
+        return createCellSnapshot(address, address === 'A1' ? 'A1' : '')
+      },
+    }
+
+    expect(
+      cache.needsLocalRefresh(
+        tile.tileId,
+        tile,
+        createInput({
+          columnWidths: { 0: 100 },
+          engine,
+          gridMetrics: { ...TEST_GRID_METRICS },
+          rowHeights: { 0: 20 },
+          sortedColumnWidthOverrides: [[0, 100]],
+          sortedRowHeightOverrides: [[0, 20]],
+        }),
+      ),
+    ).toBe(false)
+    const callsAfterFirstProof = getCellCount
+    expect(callsAfterFirstProof).toBeGreaterThan(0)
+
+    expect(
+      cache.needsLocalRefresh(
+        tile.tileId,
+        tile,
+        createInput({
+          columnWidths: { 0: 100 },
+          engine,
+          gridMetrics: { ...TEST_GRID_METRICS },
+          rowHeights: { 0: 20 },
+          sortedColumnWidthOverrides: [[0, 100]],
+          sortedRowHeightOverrides: [[0, 20]],
+        }),
+      ),
+    ).toBe(false)
+    expect(getCellCount).toBe(callsAfterFirstProof)
+  })
+
   it('rejects matching remote text when the visible font styling is stale', () => {
     const cache = new GridVisibleTextRefreshCache()
     const tile = createTile({

@@ -208,15 +208,22 @@ describe('ProjectedViewportCellCache', () => {
     sheet2Listener.mockClear()
     globalListener.mockClear()
 
-    expect(cache.clearOptimisticCellFlagsForSheet('Sheet1')).toBe(true)
+    const changedSnapshots = cache.clearOptimisticCellFlagsForSheet('Sheet1')
 
+    expect(changedSnapshots).toHaveLength(1)
+    expect(changedSnapshots[0]).toMatchObject({
+      address: 'B2',
+      flags: 0,
+      sheetName: 'Sheet1',
+      value: { tag: ValueTag.String, value: 'pending' },
+    })
     expect(cache.getCell('Sheet1', 'B2').flags).toBe(0)
     expect(cache.getCell('Sheet1', 'C2').flags).toBe(0)
     expect(cache.getCell('Sheet2', 'B2').flags).toBe(OPTIMISTIC_CELL_SNAPSHOT_FLAG)
     expect(sheet1Listener).toHaveBeenCalledTimes(1)
     expect(sheet2Listener).not.toHaveBeenCalled()
     expect(globalListener).toHaveBeenCalledTimes(1)
-    expect(cache.clearOptimisticCellFlagsForSheet('Sheet1')).toBe(false)
+    expect(cache.clearOptimisticCellFlagsForSheet('Sheet1')).toEqual([])
   })
 
   it('keeps optimistic clears when lagging non-empty snapshots arrive', () => {

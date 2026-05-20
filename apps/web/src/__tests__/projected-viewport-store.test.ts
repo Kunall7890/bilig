@@ -650,6 +650,76 @@ describe('ProjectedViewportStore', () => {
     expect(cache.getRenderRevisionSnapshot().localRevision).toBe(1)
   })
 
+  it('publishes local dirty ranges when optimistic trust flags are cleared', () => {
+    const cache = new ProjectedViewportStore(createNoopWorkerEngineClient())
+    const listener = vi.fn()
+    cache.setSheetIdentities([{ id: 7, name: 'Sheet1', order: 3 }])
+    cache.setCellSnapshot(
+      {
+        sheetName: 'Sheet1',
+        address: 'B2',
+        flags: OPTIMISTIC_CELL_SNAPSHOT_FLAG,
+        value: { tag: ValueTag.Number, value: 17 },
+        version: 12,
+      },
+      { emitLocalDelta: false },
+    )
+    cache.setCellSnapshot(
+      {
+        sheetName: 'Sheet1',
+        address: 'D4',
+        flags: OPTIMISTIC_CELL_SNAPSHOT_FLAG,
+        value: { tag: ValueTag.String, value: 'trusted', stringId: 9 },
+        version: 15,
+      },
+      { emitLocalDelta: false },
+    )
+    cache.setCellSnapshot(
+      {
+        sheetName: 'Sheet1',
+        address: 'E4',
+        flags: 0,
+        value: { tag: ValueTag.String, value: 'stable', stringId: 10 },
+        version: 16,
+      },
+      { emitLocalDelta: false },
+    )
+    const unsubscribeDeltas = cache.subscribeWorkbookDeltas(listener)
+
+    expect(cache.getRenderRevisionSnapshot().localRevision).toBe(0)
+
+    cache.clearOptimisticCellFlagsForSheet('Sheet1')
+
+    expect(cache.getRenderRevisionSnapshot().localRevision).toBe(1)
+    expect(cache.getCell('Sheet1', 'B2').flags).toBe(0)
+    expect(cache.getCell('Sheet1', 'D4').flags).toBe(0)
+    expect(cache.getCell('Sheet1', 'E4').flags).toBe(0)
+    expect(listener).toHaveBeenCalledTimes(1)
+    const batch = listener.mock.calls[0]?.[0]
+    expect(batch).toMatchObject({
+      calcSeq: 15,
+      seq: 1,
+      sheetId: 7,
+      sheetOrdinal: 3,
+      source: 'localOptimistic',
+      styleSeq: 15,
+      valueSeq: 15,
+    })
+    expect(batch?.dirty.axisX).toEqual(new Uint32Array())
+    expect(batch?.dirty.axisY).toEqual(new Uint32Array())
+    expect(batch?.dirty.cellRanges).toEqual(
+      new Uint32Array([1, 1, 1, 1, LOCAL_CELL_VISUAL_DIRTY_MASK, 3, 3, 3, 3, LOCAL_CELL_VISUAL_DIRTY_MASK]),
+    )
+
+    listener.mockClear()
+    cache.clearOptimisticCellFlagsForSheet('Sheet1')
+
+    expect(cache.getRenderRevisionSnapshot().localRevision).toBe(1)
+    expect(listener).not.toHaveBeenCalled()
+
+    unsubscribeDeltas()
+  })
+
   it('hydrates selected-cell cache without publishing render tile deltas', () => {
     const cache = new ProjectedViewportStore(createNoopWorkerEngineClient())
     const listener = vi.fn()

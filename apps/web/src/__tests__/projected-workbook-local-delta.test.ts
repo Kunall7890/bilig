@@ -1,7 +1,11 @@
 import { describe, expect, it } from 'vitest'
 import { ValueTag } from '@bilig/protocol'
 import { DirtyMaskV3 } from '../../../../packages/grid/src/renderer-v3/tile-damage-index.js'
-import { buildLocalAxisWorkbookDelta, buildLocalCellSnapshotWorkbookDelta } from '../projected-workbook-local-delta.js'
+import {
+  buildLocalAxisWorkbookDelta,
+  buildLocalCellSnapshotWorkbookDelta,
+  buildLocalCellSnapshotsWorkbookDelta,
+} from '../projected-workbook-local-delta.js'
 
 const identity = {
   sheetId: 7,
@@ -50,6 +54,42 @@ describe('projected workbook local delta builders', () => {
     })
 
     expect(batch.dirty.cellRanges).toEqual(new Uint32Array([3, 3, 2, 2, LOCAL_CELL_VISUAL_DIRTY_MASK]))
+  })
+
+  it('builds multi-cell deltas for optimistic trust flag clears', () => {
+    const batch = buildLocalCellSnapshotsWorkbookDelta({
+      identity,
+      seq: 48,
+      snapshots: [
+        {
+          address: 'B2',
+          flags: 0,
+          sheetName: 'Sheet1',
+          value: { tag: ValueTag.Number, value: 17 },
+          version: 12,
+        },
+        {
+          address: 'D4',
+          flags: 0,
+          sheetName: 'Sheet1',
+          value: { tag: ValueTag.String, stringId: 9, value: 'trusted' },
+          version: 15,
+        },
+      ],
+    })
+
+    expect(batch).toMatchObject({
+      calcSeq: 15,
+      seq: 48,
+      sheetId: 7,
+      sheetOrdinal: 3,
+      source: 'localOptimistic',
+      styleSeq: 15,
+      valueSeq: 15,
+    })
+    expect(batch.dirty.cellRanges).toEqual(
+      new Uint32Array([1, 1, 1, 1, LOCAL_CELL_VISUAL_DIRTY_MASK, 3, 3, 3, 3, LOCAL_CELL_VISUAL_DIRTY_MASK]),
+    )
   })
 
   it('builds axis deltas with isolated axis damage and clamped indices', () => {

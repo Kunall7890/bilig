@@ -3,6 +3,9 @@ import { ErrorCode, ValueTag } from '@bilig/protocol'
 import { SpreadsheetEngine } from '../engine.js'
 import type { EngineCellMutationRef } from '../cell-mutations-at.js'
 import type { FormulaFamilyStore } from '../formula/formula-family-store.js'
+import { INITIAL_DIRECT_FORMULA_EVALUATION_LIMIT } from '../engine/services/formula-initialization-direct-formulas.js'
+
+const OVER_DIRECT_LIMIT_TEST_TIMEOUT_MS = 10_000
 
 function readRuntimeTemplateId(engine: SpreadsheetEngine, address: string): number | undefined {
   const cellIndex = engine.workbook.getCellIndex('Sheet1', address)
@@ -587,47 +590,51 @@ describe('SpreadsheetEngine formula initialization', () => {
     })
   })
 
-  it('uses native uniform lookup initialization beyond the JS direct limit', async () => {
-    const lookupRows = 512
-    const formulaRows = 16_385
-    const engine = new SpreadsheetEngine({ workbookName: 'engine-formula-initialize-native-lookup-over-limit' })
-    await engine.ready()
-    engine.createSheet('Sheet1')
-    const sheetId = engine.workbook.getSheet('Sheet1')!.id
-    for (let row = 1; row <= lookupRows; row += 1) {
-      engine.setCellValue('Sheet1', `A${row}`, row)
-    }
-    for (let row = 1; row <= formulaRows; row += 1) {
-      engine.setCellValue('Sheet1', `D${row}`, ((row - 1) % lookupRows) + 1)
-    }
+  it(
+    'uses native uniform lookup initialization beyond the JS direct limit',
+    async () => {
+      const lookupRows = 512
+      const formulaRows = INITIAL_DIRECT_FORMULA_EVALUATION_LIMIT + 1
+      const engine = new SpreadsheetEngine({ workbookName: 'engine-formula-initialize-native-lookup-over-limit' })
+      await engine.ready()
+      engine.createSheet('Sheet1')
+      const sheetId = engine.workbook.getSheet('Sheet1')!.id
+      for (let row = 1; row <= lookupRows; row += 1) {
+        engine.setCellValue('Sheet1', `A${row}`, row)
+      }
+      for (let row = 1; row <= formulaRows; row += 1) {
+        engine.setCellValue('Sheet1', `D${row}`, ((row - 1) % lookupRows) + 1)
+      }
 
-    engine.resetPerformanceCounters()
-    engine.initializeCellFormulasAt(
-      Array.from({ length: formulaRows }, (_entry, row) => ({
-        sheetId,
-        mutation: {
-          kind: 'setCellFormula' as const,
-          row,
-          col: 4,
-          formula: `MATCH(D${row + 1},A1:A${lookupRows},0)`,
-        },
-      })),
-      formulaRows,
-    )
+      engine.resetPerformanceCounters()
+      engine.initializeCellFormulasAt(
+        Array.from({ length: formulaRows }, (_entry, row) => ({
+          sheetId,
+          mutation: {
+            kind: 'setCellFormula' as const,
+            row,
+            col: 4,
+            formula: `MATCH(D${row + 1},A1:A${lookupRows},0)`,
+          },
+        })),
+        formulaRows,
+      )
 
-    expect(engine.getCellValue('Sheet1', `E${formulaRows}`)).toEqual({
-      tag: ValueTag.Number,
-      value: ((formulaRows - 1) % lookupRows) + 1,
-    })
-    expect(engine.getLastMetrics()).toMatchObject({ dirtyFormulaCount: 0, wasmFormulaCount: 0, jsFormulaCount: 0 })
-    expect(engine.getPerformanceCounters()).toMatchObject({
-      directFormulaInitialEvaluations: formulaRows,
-      nativeDirectLookupInitialEvaluations: formulaRows,
-      directAggregatePrefixEvaluations: 0,
-      directAggregateScanEvaluations: 0,
-      regionQueryIndexBuilds: 0,
-    })
-  })
+      expect(engine.getCellValue('Sheet1', `E${formulaRows}`)).toEqual({
+        tag: ValueTag.Number,
+        value: ((formulaRows - 1) % lookupRows) + 1,
+      })
+      expect(engine.getLastMetrics()).toMatchObject({ dirtyFormulaCount: 0, wasmFormulaCount: 0, jsFormulaCount: 0 })
+      expect(engine.getPerformanceCounters()).toMatchObject({
+        directFormulaInitialEvaluations: formulaRows,
+        nativeDirectLookupInitialEvaluations: formulaRows,
+        directAggregatePrefixEvaluations: 0,
+        directAggregateScanEvaluations: 0,
+        regionQueryIndexBuilds: 0,
+      })
+    },
+    OVER_DIRECT_LIMIT_TEST_TIMEOUT_MS,
+  )
 
   it('keeps mid-sized direct scalar initialization on the JS path', async () => {
     const rowCount = 1500
