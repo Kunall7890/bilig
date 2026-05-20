@@ -204,6 +204,7 @@ function summarizeEngineCounters(samples: readonly BenchmarkSample[]): EngineCou
     formulaFamilyRuntimeRunsRestored: zeroSummary,
     formulaFamilyRuntimeRunMembersRestored: zeroSummary,
     formulaFamilyRuntimeRunFallbacks: zeroSummary,
+    runtimeHydratedDirectAggregateFastBindings: zeroSummary,
     runtimeHydratedDirectScalarFastBindings: zeroSummary,
     structuralTransactions: zeroSummary,
     structuralPlannedCells: zeroSummary,

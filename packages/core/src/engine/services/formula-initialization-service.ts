@@ -60,7 +60,7 @@ import type {
   HydratedPreparedFormulaInitializationRef,
   PreparedFormulaInitializationRef,
 } from './formula-initialization-service-types.js'
-import { tryBindHydratedFreshDirectScalarFormula } from './formula-initialization-hydrated-direct-scalar.js'
+import { tryBindHydratedFreshDirectFormula } from './formula-initialization-hydrated-direct-scalar.js'
 import { tryEvaluateFormulaLeafInlineScalar } from './formula-leaf-inline-scalar-evaluator.js'
 import { initializeCachedFormulaSourcesAtNow as initializeCachedFormulaSourcesAtNowUnchecked } from './formula-initialization-cached-formulas.js'
 
@@ -808,14 +808,14 @@ export function createEngineFormulaInitializationService(args: EngineFormulaInit
             const ref = initialFormulaEntryRefAt(refs, refIndex)
             const cellIndex = hadExistingFormulas ? pendingInitialFormulaCellIndices[refIndex]! : targetCellIndices[refIndex]!
             const ownerSheetName = resolveSheetName(ref.sheetId)
-            const usedHydratedDirectScalarFastBinding = tryBindHydratedFreshDirectScalarFormula(
+            const usedHydratedDirectFastBinding = tryBindHydratedFreshDirectFormula(
               args,
               hadExistingFormulas,
               cellIndex,
               ownerSheetName,
               ref,
             )
-            if (usedHydratedDirectScalarFastBinding) {
+            if (usedHydratedDirectFastBinding) {
               topologyChanged = true
             } else {
               topologyChanged =

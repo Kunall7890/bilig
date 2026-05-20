@@ -616,6 +616,7 @@ export function createEngineServiceRuntime(args: {
     withInitialFormulaCells: (cellIndices, callback) => binding.withInitialFormulaCellsNow(cellIndices, callback),
     bindPreparedFormula: (cellIndex, ownerSheetName, source, compiled, templateId, options) =>
       binding.bindPreparedFormulaNow(cellIndex, ownerSheetName, source, compiled, templateId, options),
+    bindFreshDirectAggregateFormulaRun: (run) => binding.bindFreshDirectAggregateFormulaRunNow(run),
     bindFreshDirectScalarFormulaRun: (run) => binding.bindFreshDirectScalarFormulaRunNow(run),
     upsertFormulaFamilyRun: (run) => {
       formulaFamilies.registerFormulaRun(run)
