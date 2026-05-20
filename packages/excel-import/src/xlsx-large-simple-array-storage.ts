@@ -31,6 +31,12 @@ export function growInt32Array(source: Int32Array<ArrayBuffer>, nextCapacity: nu
   return output
 }
 
+export function growInt16Array(source: Int16Array<ArrayBuffer>, nextCapacity: number): Int16Array<ArrayBuffer> {
+  const output = new Int16Array(nextCapacity)
+  output.set(source)
+  return output
+}
+
 export function growFloat64Array(source: Float64Array<ArrayBuffer>, nextCapacity: number): Float64Array<ArrayBuffer> {
   const output = new Float64Array(nextCapacity)
   output.set(source)

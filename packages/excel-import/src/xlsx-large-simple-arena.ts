@@ -3,6 +3,7 @@ import { toDisplayText } from './workbook-import-helpers.js'
 import {
   filledUint32Array,
   growFloat64Array,
+  growInt16Array,
   growInt32Array,
   growUint8Array,
   growUint16Array,
@@ -25,11 +26,14 @@ const valueKindBoolean = 3
 const valueKindNull = 4
 const valueKindSharedStringRef = 5
 const valueKindInteger = 6
+const valueKindSmallInteger = 7
 const previewRowCount = 8
 const previewColumnCount = 6
 const previewCellCount = previewRowCount * previewColumnCount
 const lazyRichTextCellThreshold = 10_000
 const maxSpreadsheetColumnCount = 16_384
+const minInt16 = -0x8000
+const maxInt16 = 0x7fff
 const minInt32 = -0x80000000
 const maxInt32 = 0x7fffffff
 
@@ -54,6 +58,7 @@ export interface ImportedWorkbookArenaSnapshot {
   readonly columns: Uint16Array
   readonly valueKinds: Uint8Array
   readonly numberValues?: Float64Array
+  readonly smallIntegerValues?: Int16Array
   readonly integerValues?: Int32Array
   readonly stringIds?: Uint32Array
   readonly booleanValues?: Uint8Array
@@ -80,6 +85,7 @@ export class ImportedWorkbookArena {
   private columns: Uint16Array<ArrayBuffer> = new Uint16Array(initialCellCapacity)
   private valueKinds: Uint8Array<ArrayBuffer> = new Uint8Array(initialCellCapacity)
   private numberValues: Float64Array<ArrayBuffer> | undefined
+  private smallIntegerValues: Int16Array<ArrayBuffer> | undefined
   private integerValues: Int32Array<ArrayBuffer> | undefined
   private stringIds: Uint32Array<ArrayBuffer> | undefined
   private sparseStringCellIndexes: Uint32Array<ArrayBuffer> | undefined
@@ -128,6 +134,7 @@ export class ImportedWorkbookArena {
       this.columns.byteLength +
       this.valueKinds.byteLength +
       (this.numberValues?.byteLength ?? 0) +
+      (this.smallIntegerValues?.byteLength ?? 0) +
       (this.integerValues?.byteLength ?? 0) +
       (this.stringIds?.byteLength ?? 0) +
       (this.sparseStringCellIndexes?.byteLength ?? 0) +
@@ -360,6 +367,7 @@ export class ImportedWorkbookArena {
       columns: this.columns.subarray(0, this.length),
       valueKinds: this.valueKinds.subarray(0, this.length),
       ...(this.numberValues ? { numberValues: this.numberValues.subarray(0, this.length) } : {}),
+      ...(this.smallIntegerValues ? { smallIntegerValues: this.smallIntegerValues.subarray(0, this.length) } : {}),
       ...(this.integerValues ? { integerValues: this.integerValues.subarray(0, this.length) } : {}),
       ...(stringIds ? { stringIds } : {}),
       ...(this.booleanValues ? { booleanValues: this.booleanValues.subarray(0, this.length) } : {}),
@@ -376,6 +384,7 @@ export class ImportedWorkbookArena {
     this.columns = new Uint16Array(0)
     this.valueKinds = new Uint8Array(0)
     this.numberValues = undefined
+    this.smallIntegerValues = undefined
     this.integerValues = undefined
     this.stringIds = undefined
     this.sparseStringCellIndexes = undefined
@@ -474,6 +483,11 @@ export class ImportedWorkbookArena {
       return
     }
     if (typeof value === 'number') {
+      if (canStoreInt16Number(value)) {
+        this.valueKinds[index] = valueKindSmallInteger
+        this.ensureSmallIntegerValueStorage()[index] = value
+        return
+      }
       if (canStoreInt32Number(value)) {
         this.valueKinds[index] = valueKindInteger
         this.ensureIntegerValueStorage()[index] = value
@@ -498,6 +512,8 @@ export class ImportedWorkbookArena {
     switch (valueKind) {
       case valueKindNumber:
         return this.numberValues?.[index]
+      case valueKindSmallInteger:
+        return this.smallIntegerValues?.[index]
       case valueKindInteger:
         return this.integerValues?.[index]
       case valueKindString: {
@@ -654,6 +670,14 @@ export class ImportedWorkbookArena {
     this.numberValues.fill(Number.NaN)
     this.moveSharedStringIndexesToNumberValues()
     return this.numberValues
+  }
+
+  private ensureSmallIntegerValueStorage(): Int16Array<ArrayBuffer> {
+    if (this.smallIntegerValues) {
+      return this.smallIntegerValues
+    }
+    this.smallIntegerValues = new Int16Array(this.valueKinds.length)
+    return this.smallIntegerValues
   }
 
   private ensureIntegerValueStorage(): Int32Array<ArrayBuffer> {
@@ -904,6 +928,9 @@ export class ImportedWorkbookArena {
     if (this.numberValues) {
       this.numberValues = growFloat64Array(this.numberValues, nextCapacity)
     }
+    if (this.smallIntegerValues) {
+      this.smallIntegerValues = growInt16Array(this.smallIntegerValues, nextCapacity)
+    }
     if (this.integerValues) {
       this.integerValues = growInt32Array(this.integerValues, nextCapacity)
     }
@@ -1031,6 +1058,10 @@ function canStoreLinearCoordinate(width: number, row: number, column: number): b
 
 function canStoreInt32Number(value: number): boolean {
   return Number.isInteger(value) && value >= minInt32 && value <= maxInt32 && !Object.is(value, -0)
+}
+
+function canStoreInt16Number(value: number): boolean {
+  return Number.isInteger(value) && value >= minInt16 && value <= maxInt16 && !Object.is(value, -0)
 }
 
 function binarySearchUint32(values: Uint32Array, target: number): number {
