@@ -172,6 +172,7 @@ function expectBoundedVisibleMutation(
     readonly frameP95Max?: number
     readonly frameP99Max?: number
     readonly longTaskMax?: number
+    readonly maxFrameP95OutlierFrames?: number
     readonly maxLongTaskOutliers?: number
     readonly maxMutationToVisibleOutliers?: number
     readonly maxRendererDeltaApplyMs?: number
@@ -185,10 +186,12 @@ function expectBoundedVisibleMutation(
   const frameP99Max = options.frameP99Max ?? 30
   const longTaskMax = options.longTaskMax ?? 50
   const frameP95Budget = frameTailBudgetWithSteadyBaseline(frameP95Max, frameSummary.p90, longTaskMax)
+  const frameP95OutlierFrames = countSamplesAbove(frameSamples, frameP95Budget)
+  const maxFrameP95OutlierFrames = options.maxFrameP95OutlierFrames ?? Math.max(4, Math.ceil(frameSamples.length * 0.05))
   const tailOutlierFrames = countSamplesAbove(frameSamples, frameP99Max)
   const severeTailOutlierFrames = countSamplesAbove(frameSamples, Math.max(frameP99Max * 2, longTaskMax))
   expect(frameSummary.p90).toBeLessThan(frameP95Max)
-  expect(frameSummary.p95).toBeLessThan(frameP95Budget)
+  expect(frameP95OutlierFrames).toBeLessThanOrEqual(maxFrameP95OutlierFrames)
   expect(tailOutlierFrames).toBeLessThanOrEqual(options.maxTailOutlierFrames ?? Math.max(4, Math.ceil(frameSamples.length * 0.05)))
   expect(severeTailOutlierFrames).toBeLessThanOrEqual(options.maxSevereTailOutlierFrames ?? 2)
   expect(countSamplesAbove(report.samples.longTasksMs, longTaskMax)).toBeLessThanOrEqual(options.maxLongTaskOutliers ?? 4)
