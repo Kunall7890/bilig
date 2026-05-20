@@ -23,6 +23,12 @@ function resolveTestTimeoutMs(): number | undefined {
   return 120_000
 }
 
+function shouldIncludeFuzzTests(): boolean {
+  return Boolean(process.env['BILIG_FUZZ_PROFILE'] || process.env['BILIG_FUZZ_REPLAY'])
+}
+
+const fuzzTestExcludes = shouldIncludeFuzzTests() ? [] : ['**/*.fuzz.test.ts', '**/*.fuzz.test.tsx']
+
 export default defineConfig({
   resolve: {
     alias: workspacePackageAliases,
@@ -38,7 +44,7 @@ export default defineConfig({
       'apps/*/src/**/*.test.tsx',
       'scripts/**/*.test.ts',
     ],
-    exclude: ['**/dist/**', '**/build/**'],
+    exclude: ['**/dist/**', '**/build/**', ...fuzzTestExcludes],
     coverage: {
       provider: 'v8',
       reportsDirectory: process.env['BILIG_COVERAGE_DIR'] ?? './coverage',
@@ -47,7 +53,11 @@ export default defineConfig({
       exclude: [
         '**/__tests__/**',
         '**/*.d.ts',
+        '**/generated/**',
+        '**/*-types.ts',
         'packages/core/src/index.ts',
+        'packages/core/src/headless-runtime.ts',
+        'packages/core/src/semantics/index.ts',
         'packages/core/src/snapshot.ts',
         'packages/formula/src/index.ts',
         'packages/formula/src/ast.ts',

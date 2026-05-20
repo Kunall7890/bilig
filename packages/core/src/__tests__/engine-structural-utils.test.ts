@@ -102,6 +102,8 @@ describe('engine structural utils', () => {
   })
 
   it('normalizes moves from outside materialized axes to no-ops', () => {
+    const insert = { kind: 'insert' as const, axis: 'column' as const, start: 2, count: 1 }
+    expect(normalizeStructuralAxisTransformForAxisLength(insert, 5)).toBe(insert)
     expect(normalizeStructuralAxisTransformForAxisLength({ kind: 'move', axis: 'column', start: 5, count: 1, target: 0 }, 5)).toEqual({
       kind: 'move',
       axis: 'column',

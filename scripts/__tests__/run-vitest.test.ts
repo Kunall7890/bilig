@@ -165,7 +165,7 @@ describe('run-vitest wrapper arguments', () => {
 
     expect(packageJson).toContain('"test": "tsx scripts/run-vitest.ts --run"')
     expect(packageJson).toContain(
-      '"coverage": "BILIG_FUZZ_PROFILE=fuzz BILIG_VITEST_TEST_TIMEOUT_MS=300000 tsx scripts/run-vitest.ts --run --coverage',
+      '"coverage": "BILIG_FUZZ_PROFILE=fuzz BILIG_FUZZ_NUM_RUNS=20 BILIG_FUZZ_MAX_MS=60000 BILIG_VITEST_TEST_TIMEOUT_MS=300000 tsx scripts/run-vitest.ts --run packages/core/src packages/formula/src packages/renderer/src packages/headless/src --coverage',
     )
     expect(packageJson).toContain('"test:watch": "tsx scripts/run-vitest.ts"')
     expect(packageJson).not.toContain('bun scripts/run-vitest.ts')
