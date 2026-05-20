@@ -3,8 +3,18 @@ import type * as XLSX from 'xlsx'
 export const externalWorkbookReferencesWarning = 'External workbook links were preserved but not recalculated during XLSX import.'
 export const externalPivotCachesWarning = 'External pivot caches were detected but not semantically imported during XLSX import.'
 export const macroExecutionDeclinedWarning = 'Macros were preserved but not executed during XLSX import.'
+export const dataTableFormulasWarning = 'Excel data table formulas were preserved but not recalculated during XLSX import.'
 export const volatileFormulasWarning =
   'Volatile formulas were preserved during XLSX import; cached formula values may depend on workbook calculation time.'
+
+export function addWorkbookWarnings(workbook: XLSX.WorkBook, warnings: string[], ignoredDefinedNameCount: number): void {
+  if (workbook.vbaraw) {
+    warnings.push(macroExecutionDeclinedWarning)
+  }
+  if (ignoredDefinedNameCount > 0) {
+    warnings.push('Some defined names were ignored during XLSX import.')
+  }
+}
 
 function formulaWithoutDoubleQuotedStrings(formula: string): string {
   let stripped = ''

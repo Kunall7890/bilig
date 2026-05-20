@@ -2,7 +2,7 @@ import { strFromU8, strToU8, unzipSync, zipSync } from 'fflate'
 import { describe, expect, it } from 'vitest'
 
 import type { WorkbookSnapshot } from '@bilig/protocol'
-import { exportXlsx, importXlsx } from '../index.js'
+import { dataTableFormulasWarning, exportXlsx, importXlsx } from '../index.js'
 
 describe('xlsx data table formulas roundtrip', () => {
   it('preserves what-if data-table formula metadata in worksheet cells', () => {
@@ -11,6 +11,7 @@ describe('xlsx data table formulas roundtrip', () => {
     const imported = importXlsx(source, 'what-if-data-table.xlsx')
     const exported = exportXlsx(imported.snapshot)
 
+    expect(imported.warnings).toEqual([dataTableFormulasWarning])
     expect(imported.snapshot.sheets[0]?.metadata?.dataTableFormulas).toEqual({
       formulas: [
         {
