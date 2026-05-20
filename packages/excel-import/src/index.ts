@@ -70,6 +70,7 @@ import { normalizeImportedFormulaSource } from './xlsx-formula-translation.js'
 import { readImportedSheetHyperlinks } from './xlsx-hyperlinks.js'
 import { collectStyleCandidateAddresses, internImportedStyle, readImportedXlsxCellStyle } from './xlsx-import-cell-styles.js'
 import { buildImportedFormulaSnapshotCell } from './xlsx-import-formula-cells.js'
+import { readImportedMacroCodeNames } from './xlsx-import-macro-code-names.js'
 import { buildImportedSheetMetadata } from './xlsx-import-sheet-metadata.js'
 import { buildImportedWorkbookMetadata } from './xlsx-import-workbook-metadata.js'
 import {
@@ -83,7 +84,7 @@ import {
 import { compareCellAddresses, readImportedLiteralCellValue, readImportedNumberFormat } from './xlsx-import-cell-values.js'
 import { tryInspectLargeSimpleXlsxHeadless, type LargeSimpleXlsxHeadlessInspectResult } from './xlsx-large-simple-headless-inspect.js'
 import { tryImportLargeSimpleXlsx } from './xlsx-large-simple-import.js'
-import { createPreservedVbaProjectPayload, type PreservedVbaProjectCodeNames } from './xlsx-macros.js'
+import { createPreservedVbaProjectPayload } from './xlsx-macros.js'
 import type { OwnedXlsxSourceBytes } from './xlsx-owned-source-release.js'
 import { attachImportedXlsxSourceBytes } from './xlsx-source-bytes.js'
 import { worksheetCellAt, worksheetCellEntries, worksheetCellEntriesAtAddresses } from './xlsx-worksheet-cells.js'
@@ -180,10 +181,6 @@ export class InvalidXlsxZipContainerError extends Error {
   }
 }
 
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === 'object' && value !== null
-}
-
 function toUint8Array(value: unknown): Uint8Array | null {
   if (value instanceof Uint8Array) {
     return new Uint8Array(value)
@@ -192,14 +189,6 @@ function toUint8Array(value: unknown): Uint8Array | null {
     return new Uint8Array(value)
   }
   return null
-}
-
-function readNonEmptyString(value: unknown): string | undefined {
-  if (typeof value !== 'string') {
-    return undefined
-  }
-  const trimmed = value.trim()
-  return trimmed.length > 0 ? trimmed : undefined
 }
 
 function addCandidateAddress(addressesBySheet: Map<string, Set<string>>, sheetName: string, address: string): boolean {
@@ -239,27 +228,6 @@ function addStyleArtifactCandidateAddresses(
     }
   }
   return { addressesBySheet, count }
-}
-
-function readImportedMacroCodeNames(workbook: XLSX.WorkBook): PreservedVbaProjectCodeNames {
-  const workbookMetadata = isRecord(workbook.Workbook) ? workbook.Workbook : undefined
-  const workbookProperties = isRecord(workbookMetadata?.['WBProps']) ? workbookMetadata['WBProps'] : undefined
-  const workbookCodeName = readNonEmptyString(workbookProperties?.['CodeName'])
-  const workbookSheets = workbookMetadata?.['Sheets']
-  const sheetCodeNames = Array.isArray(workbookSheets)
-    ? workbookSheets.flatMap((entry) => {
-        if (!isRecord(entry)) {
-          return []
-        }
-        const sheetName = readNonEmptyString(entry['name'])
-        const codeName = readNonEmptyString(entry['CodeName'])
-        return sheetName && codeName ? [{ sheetName, codeName }] : []
-      })
-    : []
-  return {
-    ...(workbookCodeName ? { workbookCodeName } : {}),
-    ...(sheetCodeNames.length > 0 ? { sheetCodeNames } : {}),
-  }
 }
 
 function buildImportedLegacyCommentVmlSnapshot(
