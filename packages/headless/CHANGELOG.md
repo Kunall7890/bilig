@@ -4,6 +4,16 @@ All notable changes to `@bilig/headless` will be documented in this file.
 
 This package is released as part of the aligned bilig library package set.
 
+## 0.40.4
+
+- Release type: patch
+- Previous libraries tag: libraries-v0.40.3
+- Manual override: no
+
+## Fixes
+- fix(xlsx): fail fast on corrupt zip entries (3b9d58d4)
+- fix(xlsx): stream data validation metadata (917ac2e6)
+
 ## 0.40.3
 
 - Release type: patch
