@@ -293,13 +293,14 @@ export class TypeGpuTileResourceCacheV3 {
 }
 
 export function syncTypeGpuTilePaneResourcesV3(input: {
-  readonly artifacts: TypeGpuRendererArtifacts
-  readonly atlas: ReturnType<typeof createGlyphAtlas>
+  readonly atlas?: ReturnType<typeof createGlyphAtlas> | undefined
   readonly tileResources: TypeGpuTileResourceCacheV3
   readonly panes: readonly WorkbookRenderTilePaneState[]
   readonly retainPanes?: readonly WorkbookRenderTilePaneState[] | undefined
+  readonly syncText?: boolean | undefined
 }): void {
   const retainPanes = input.retainPanes ?? input.panes
+  const syncText = input.syncText ?? true
   input.tileResources.pruneExcept({
     contentKeys: new Set(retainPanes.map(resolveWorkbookTileContentBufferKeyV3)),
     placementKeys: new Set(retainPanes.map(resolveWorkbookTilePlacementBufferKeyV3)),
@@ -308,41 +309,50 @@ export function syncTypeGpuTilePaneResourcesV3(input: {
   input.panes.forEach((pane) => {
     const content = input.tileResources.getContent(resolveWorkbookTileContentBufferKeyV3(pane))
     const textRevisionKey = resolveGridTextTileRevisionKeyV3(pane.tile)
-    const atlasGeometryVersion = input.atlas.getGlyphGeometryVersion()
-    const atlasDependencyVersion = input.atlas.getTextAtlasPagesSeq()
-    const shouldValidateGlyphDependencies =
-      content.textAtlasDependencyVersion >= 0 && content.textAtlasDependencyVersion !== atlasDependencyVersion
-    const missingGlyphRunSpans = shouldValidateGlyphDependencies
-      ? resolveMissingTextGlyphRunSpansV3({
-          atlas: input.atlas,
+    if (syncText) {
+      const atlas = input.atlas
+      if (!atlas) {
+        throw new Error('syncTypeGpuTilePaneResourcesV3 requires an atlas when text syncing is enabled')
+      }
+      const atlasGeometryVersion = atlas.getGlyphGeometryVersion()
+      const atlasDependencyVersion = atlas.getTextAtlasPagesSeq()
+      const shouldValidateGlyphDependencies =
+        content.textAtlasDependencyVersion >= 0 && content.textAtlasDependencyVersion !== atlasDependencyVersion
+      const missingGlyphRunSpans = shouldValidateGlyphDependencies
+        ? resolveMissingTextGlyphRunSpansV3({
+            atlas,
+            content,
+          })
+        : []
+      const atlasGeometryResync =
+        areGridTextTileRevisionKeysEqualV3(content.textRevisionKey, textRevisionKey) &&
+        content.textAtlasGeometryVersion >= 0 &&
+        content.textAtlasGeometryVersion !== atlasGeometryVersion
+      if (
+        shouldSyncGridTextTileResourceV3({
+          atlasGeometryVersion,
           content,
+          missingGlyphDependencies: missingGlyphRunSpans.length > 0,
+          textRevisionKey,
+          tile: pane.tile,
         })
-      : []
-    const atlasGeometryResync =
-      areGridTextTileRevisionKeysEqualV3(content.textRevisionKey, textRevisionKey) &&
-      content.textAtlasGeometryVersion >= 0 &&
-      content.textAtlasGeometryVersion !== atlasGeometryVersion
-    if (
-      shouldSyncGridTextTileResourceV3({
-        atlasGeometryVersion,
-        content,
-        missingGlyphDependencies: missingGlyphRunSpans.length > 0,
-        textRevisionKey,
-        tile: pane.tile,
-      })
-    ) {
-      syncTileTextResource({
-        atlas: input.atlas,
-        atlasDependencyVersion,
-        atlasGeometryResync,
-        content,
-        missingGlyphRunSpans,
-        pane,
-        textRevisionKey,
-        tileResources: input.tileResources,
-      })
+      ) {
+        syncTileTextResource({
+          atlas,
+          atlasDependencyVersion,
+          atlasGeometryResync,
+          content,
+          missingGlyphRunSpans,
+          pane,
+          textRevisionKey,
+          tileResources: input.tileResources,
+        })
+      } else {
+        content.textRevisionKey = textRevisionKey
+      }
     } else {
-      content.textRevisionKey = textRevisionKey
+      content.decorationRects = EMPTY_DECORATION_RECTS
+      content.decorationCellKeys = EMPTY_DECORATION_CELL_KEYS
     }
     const rectRevisionKey = resolveGridRectTileRevisionKeyV3({
       decorationRects: content.decorationRects ?? [],

@@ -312,11 +312,18 @@ async function hoverProductColumnResizeHandle(page: Page, columnIndex: number): 
 }
 
 export async function dragProductColumnResize(page: Page, columnIndex: number, deltaX: number) {
+  const release = await beginProductColumnResizeDrag(page, columnIndex, deltaX)
+  await release()
+}
+
+export async function beginProductColumnResizeDrag(page: Page, columnIndex: number, deltaX: number) {
   const { x: edgeX, y: edgeY } = await hoverProductColumnResizeHandle(page, columnIndex)
 
   await page.mouse.down()
   await page.mouse.move(edgeX + deltaX, edgeY, { steps: 10 })
-  await page.mouse.up()
+  return async () => {
+    await page.mouse.up()
+  }
 }
 
 export async function hoverProductRowResizeHandle(page: Page, rowIndex: number): Promise<{ readonly x: number; readonly y: number }> {
@@ -332,11 +339,18 @@ export async function hoverProductRowResizeHandle(page: Page, rowIndex: number):
 }
 
 export async function dragProductRowResize(page: Page, rowIndex: number, deltaY: number) {
+  const release = await beginProductRowResizeDrag(page, rowIndex, deltaY)
+  await release()
+}
+
+export async function beginProductRowResizeDrag(page: Page, rowIndex: number, deltaY: number) {
   const { x: edgeX, y: edgeY } = await hoverProductRowResizeHandle(page, rowIndex)
 
   await page.mouse.down()
   await page.mouse.move(edgeX, edgeY + deltaY, { steps: 10 })
-  await page.mouse.up()
+  return async () => {
+    await page.mouse.up()
+  }
 }
 
 export async function getProductFillHandleDragPoints(

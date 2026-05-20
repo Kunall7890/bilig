@@ -106,10 +106,10 @@ export function drawWorkbookTypeGpuTileFrameV3(input: {
       visiblePanes: input.tilePanes,
     })
     syncTypeGpuTilePaneResourcesV3({
-      artifacts: input.backend.artifacts,
       atlas: input.backend.atlas,
       panes: resourcePanes,
       retainPanes,
+      syncText: input.drawText ?? true,
       tileResources: input.backend.tileResources,
     })
   }
@@ -119,10 +119,10 @@ export function drawWorkbookTypeGpuTileFrameV3(input: {
     overlay: input.overlay ?? null,
   })
   syncTypeGpuHeaderResourcesV3({
-    artifacts: input.backend.artifacts,
     atlas: input.backend.atlas,
     headerPanes,
     layerResources: input.backend.layerResources,
+    syncText: input.drawText ?? true,
   })
   syncTypeGpuOverlayResourcesV3({
     layerResources: input.backend.layerResources,

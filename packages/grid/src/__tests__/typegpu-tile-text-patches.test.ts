@@ -27,7 +27,6 @@ describe('typegpu v3 tile text patches', () => {
     })
 
     syncTypeGpuTilePaneResourcesV3({
-      artifacts,
       atlas,
       panes: [createPane(baseTile)],
       tileResources,
@@ -52,7 +51,6 @@ describe('typegpu v3 tile text patches', () => {
     })
 
     syncTypeGpuTilePaneResourcesV3({
-      artifacts,
       atlas,
       panes: [createPane(unchangedTile)],
       tileResources,
@@ -73,7 +71,6 @@ describe('typegpu v3 tile text patches', () => {
     })
 
     syncTypeGpuTilePaneResourcesV3({
-      artifacts,
       atlas,
       panes: [createPane(baseTile)],
       tileResources,
@@ -100,7 +97,6 @@ describe('typegpu v3 tile text patches', () => {
     })
 
     syncTypeGpuTilePaneResourcesV3({
-      artifacts,
       atlas,
       panes: [createPane(changedTile)],
       tileResources,

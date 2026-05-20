@@ -14,6 +14,7 @@ import {
   TypeGpuLayerResourceCacheV3,
   WORKBOOK_DYNAMIC_OVERLAY_LAYER_KEY_V3,
   resolveWorkbookHeaderLayerKeyV3,
+  syncTypeGpuHeaderResourcesV3,
   syncTypeGpuOverlayResourcesV3,
 } from '../renderer-v3/typegpu-layer-buffer-pool.js'
 import { syncTypeGpuAtlasResources, type TypeGpuAtlasResourceArtifacts } from '../renderer-v3/typegpu-primitives.js'
@@ -23,6 +24,7 @@ import {
   resolveGridTextTileRevisionKeyV3,
   resolveWorkbookTileContentBufferKeyV3,
   resolveWorkbookTilePlacementBufferKeyV3,
+  syncTypeGpuTilePaneResourcesV3,
 } from '../renderer-v3/typegpu-tile-buffer-pool.js'
 import {
   hasTransientEmptyTypeGpuBodyFrameV3,
@@ -58,6 +60,32 @@ function createRenderTile(valueVersion: number, tileId = 101): GridRenderTile {
       text: valueVersion,
       values: valueVersion,
     },
+  }
+}
+
+function createTextRenderTile(valueVersion: number, tileId = 101): GridRenderTile {
+  return {
+    ...createRenderTile(valueVersion, tileId),
+    textCount: 1,
+    textMetrics: new Float32Array(GRID_TEXT_METRIC_FLOAT_COUNT_V3),
+    textRuns: [
+      {
+        clipHeight: 18,
+        clipWidth: 92,
+        clipX: 0,
+        clipY: 0,
+        color: '#111111',
+        font: 'Inter',
+        fontSize: 12,
+        height: 18,
+        strike: false,
+        text: 'metric-1',
+        underline: false,
+        width: 92,
+        x: 4,
+        y: 3,
+      },
+    ],
   }
 }
 
@@ -200,6 +228,25 @@ describe('workbook typegpu backend v3 tile path', () => {
     expect(preloadEntry && residency.isVisible(preloadEntry)).toBe(false)
   })
 
+  test('skips tile text GPU resource sync when text is rendered natively', () => {
+    const tile = createTextRenderTile(2)
+    const pane = createTilePane(tile)
+    const tileResources = new TypeGpuTileResourceCacheV3()
+
+    expect(() =>
+      syncTypeGpuTilePaneResourcesV3({
+        panes: [pane],
+        syncText: false,
+        tileResources,
+      }),
+    ).not.toThrow()
+
+    const content = tileResources.getContent(resolveWorkbookTileContentBufferKeyV3(pane))
+    expect(content.textRevisionKey).toBeNull()
+    expect(content.textHandle).toBeNull()
+    expect(content.rectRevisionKey).toEqual(resolveGridRectTileRevisionKeyV3({ decorationRects: [], tile }))
+  })
+
   test('reports V3 tile residency cache marks and byte-budget evictions', () => {
     const scrollPerf = {
       evicted: 0,
@@ -307,6 +354,35 @@ describe('workbook typegpu backend v3 tile path', () => {
     } finally {
       Reflect.deleteProperty(window, '__biligScrollPerf')
     }
+  })
+
+  test('skips V3 header text GPU resource sync when text is rendered natively', () => {
+    const createBuffer = vi.fn(() => createBufferStub())
+    const cache = new TypeGpuLayerResourceCacheV3({
+      root: {
+        createBuffer,
+      },
+    })
+    const pane: GridHeaderPaneState = {
+      ...createHeaderPane('top-body'),
+      rectCount: 1,
+      rectInstances: new Float32Array(GRID_RECT_INSTANCE_FLOAT_COUNT_V3),
+      textCount: 1,
+      textSignature: 'native-header-text',
+    }
+
+    syncTypeGpuHeaderResourcesV3({
+      headerPanes: [pane],
+      layerResources: cache,
+      syncText: false,
+    })
+
+    const entry = cache.peek(resolveWorkbookHeaderLayerKeyV3(pane))
+    expect(entry?.rectHandle).not.toBeNull()
+    expect(entry?.rectCount).toBe(1)
+    expect(entry?.textHandle).toBeNull()
+    expect(entry?.textCount).toBe(0)
+    expect(createBuffer).toHaveBeenCalledTimes(1)
   })
 
   test('reports a V3 tile miss when tile resources are not draw-ready', () => {

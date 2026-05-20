@@ -1,10 +1,87 @@
 import type { Page } from '@playwright/test'
 
+type WorkbookScrollPerfFixture = {
+  readonly id: string
+  readonly materializedCellCount: number
+  readonly sheetName: string
+}
+
+type WorkbookScrollPerfStats = {
+  readonly max: number
+  readonly median: number
+  readonly min: number
+  readonly p95: number
+  readonly p99: number
+}
+
+type WorkbookScrollPerfReport = {
+  readonly counters: {
+    readonly canvasPaints: Record<string, number>
+    readonly canvasSurfaceMounts: number
+    readonly damageCells: number
+    readonly damagePatches: number
+    readonly domSurfaceMounts: number
+    readonly fullPatches: number
+    readonly headerPaneBuilds: number
+    readonly reactCommits: number
+    readonly rendererTileExactHits: number
+    readonly rendererTileInterestBatches: number
+    readonly rendererTileMisses: number
+    readonly rendererTileStaleHits: number
+    readonly rendererVisibleDirtyTiles: number
+    readonly rendererWarmDirtyTiles: number
+    readonly surfaceCommits: Record<string, number>
+    readonly typeGpuAtlasDirtyPages: number
+    readonly typeGpuAtlasDirtyPageUploadBytes: number
+    readonly typeGpuAtlasUploadBytes: number
+    readonly typeGpuBufferAllocationBytes: number
+    readonly typeGpuBufferAllocations: number
+    readonly typeGpuConfigures: number
+    readonly typeGpuDrawCalls: number
+    readonly typeGpuPaneDraws: number
+    readonly typeGpuSubmits: number
+    readonly typeGpuSurfaceResizes: number
+    readonly typeGpuTileMisses: number
+    readonly typeGpuUniformWriteBytes: number
+    readonly typeGpuVertexUploadBytes: number
+    readonly viewportSubscriptions: number
+    readonly visibleWindowChanges: number
+  }
+  readonly fixture: WorkbookScrollPerfFixture | null
+  readonly longTasks: ReadonlyArray<{ readonly durationMs: number; readonly name: string; readonly startTimeMs: number }>
+  readonly samples: {
+    readonly frameMs: readonly number[]
+    readonly inputToDrawMs: readonly number[]
+    readonly longTasksMs: readonly number[]
+  }
+  readonly summary: {
+    readonly frameMs: WorkbookScrollPerfStats
+    readonly inputToDrawMs: WorkbookScrollPerfStats
+    readonly longTasksMs: WorkbookScrollPerfStats
+  }
+  readonly workload: string
+}
+
+type WorkbookScrollPerfHarness = {
+  readonly getBenchmarkState?: () => {
+    readonly error: string | null
+    readonly fixture?: WorkbookScrollPerfFixture | null
+    readonly state: string
+  }
+  readonly startSampling?: (workload: string) => void
+  readonly stopSampling?: () => WorkbookScrollPerfReport | null
+}
+
+declare global {
+  interface Window {
+    __biligScrollPerf?: WorkbookScrollPerfHarness
+  }
+}
+
 export async function waitForBenchmarkCorpus(page: Page, timeoutMs = 60_000) {
   await page.waitForFunction(
     () => {
-      const collector = (window as Window & { __biligScrollPerf?: { getBenchmarkState?: () => { state: string; error: string | null } } })
-        .__biligScrollPerf
+      const collector = window.__biligScrollPerf
       const state = collector?.getBenchmarkState?.()
       return state?.state === 'ready' || state?.state === 'error'
     },
@@ -13,17 +90,7 @@ export async function waitForBenchmarkCorpus(page: Page, timeoutMs = 60_000) {
   )
 
   const benchmarkState = await page.evaluate(() => {
-    const collector = (
-      window as Window & {
-        __biligScrollPerf?: {
-          getBenchmarkState?: () => {
-            state: string
-            error: string | null
-            fixture: { id: string; materializedCellCount: number; sheetName: string } | null
-          }
-        }
-      }
-    ).__biligScrollPerf
+    const collector = window.__biligScrollPerf
     return collector?.getBenchmarkState?.() ?? null
   })
 
@@ -49,9 +116,7 @@ export async function startWorkbookScrollPerf(
     await primeWorkbookGridScrollRenderer(page)
   }
   await page.evaluate((nextWorkload) => {
-    ;(window as Window & { __biligScrollPerf?: { startSampling?: (workload: string) => void } }).__biligScrollPerf?.startSampling?.(
-      nextWorkload,
-    )
+    window.__biligScrollPerf?.startSampling?.(nextWorkload)
   }, workload)
 }
 
@@ -134,56 +199,7 @@ export async function settleWorkbookScrollPerf(page: Page, frames = 4) {
 
 export async function stopWorkbookScrollPerf(page: Page) {
   return await page.evaluate(() => {
-    return (
-      (
-        window as Window & {
-          __biligScrollPerf?: {
-            stopSampling?: () => {
-              workload: string
-              fixture: { id: string; materializedCellCount: number; sheetName: string } | null
-              samples: { frameMs: number[]; inputToDrawMs: number[]; longTasksMs: number[] }
-              summary: {
-                frameMs: { min: number; median: number; p95: number; p99: number; max: number }
-                inputToDrawMs: { min: number; median: number; p95: number; p99: number; max: number }
-                longTasksMs: { min: number; median: number; p95: number; p99: number; max: number }
-              }
-              counters: {
-                viewportSubscriptions: number
-                fullPatches: number
-                damagePatches: number
-                damageCells: number
-                rendererTileInterestBatches: number
-                rendererTileExactHits: number
-                rendererTileStaleHits: number
-                rendererTileMisses: number
-                rendererVisibleDirtyTiles: number
-                rendererWarmDirtyTiles: number
-                visibleWindowChanges: number
-                headerPaneBuilds: number
-                reactCommits: number
-                canvasSurfaceMounts: number
-                domSurfaceMounts: number
-                canvasPaints: Record<string, number>
-                surfaceCommits: Record<string, number>
-                typeGpuAtlasUploadBytes: number
-                typeGpuAtlasDirtyPages: number
-                typeGpuAtlasDirtyPageUploadBytes: number
-                typeGpuBufferAllocationBytes: number
-                typeGpuBufferAllocations: number
-                typeGpuConfigures: number
-                typeGpuDrawCalls: number
-                typeGpuPaneDraws: number
-                typeGpuSubmits: number
-                typeGpuSurfaceResizes: number
-                typeGpuTileMisses: number
-                typeGpuUniformWriteBytes: number
-                typeGpuVertexUploadBytes: number
-              }
-            } | null
-          }
-        }
-      ).__biligScrollPerf?.stopSampling?.() ?? null
-    )
+    return window.__biligScrollPerf?.stopSampling?.() ?? null
   })
 }
 

@@ -74,6 +74,12 @@ interface WorkbookScrollPerfSamples {
   readonly mutationToVisibleMs: number[]
 }
 
+interface WorkbookLongTaskSample {
+  readonly durationMs: number
+  readonly name: string
+  readonly startTimeMs: number
+}
+
 interface WorkbookScrollPerfSummary {
   readonly min: number
   readonly median: number
@@ -85,6 +91,7 @@ interface WorkbookScrollPerfSummary {
 export interface WorkbookScrollPerfReport {
   readonly workload: string
   readonly fixture: WorkbookScrollPerfFixture | null
+  readonly longTasks: readonly WorkbookLongTaskSample[]
   readonly samples: WorkbookScrollPerfSamples
   readonly summary: {
     readonly frameMs: WorkbookScrollPerfSummary
@@ -164,6 +171,7 @@ class WorkbookScrollPerfCollector {
   private baselineCounters: WorkbookScrollPerfCounters | null = null
   private frameSamples: number[] = []
   private longTaskSamples: number[] = []
+  private longTasks: WorkbookLongTaskSample[] = []
   private inputToDrawSamples: number[] = []
   private mutationToVisibleSamples: number[] = []
   private workload = 'idle'
@@ -416,6 +424,7 @@ class WorkbookScrollPerfCollector {
     const report: WorkbookScrollPerfReport = {
       workload: this.workload,
       fixture: this.fixture,
+      longTasks: [...this.longTasks],
       samples: {
         frameMs: [...this.frameSamples],
         inputToDrawMs: [...this.inputToDrawSamples],
@@ -433,6 +442,7 @@ class WorkbookScrollPerfCollector {
     this.baselineCounters = null
     this.frameSamples = []
     this.longTaskSamples = []
+    this.longTasks = []
     this.inputToDrawSamples = []
     this.mutationToVisibleSamples = []
     this.lastFrameAt = null
@@ -451,6 +461,7 @@ class WorkbookScrollPerfCollector {
             this.baselineCounters = cloneCounters(this.totalCounters)
             this.frameSamples = []
             this.longTaskSamples = []
+            this.longTasks = []
             this.inputToDrawSamples = []
             this.mutationToVisibleSamples = []
             this.lastScrollInputAt = null
@@ -476,6 +487,11 @@ class WorkbookScrollPerfCollector {
         }
         for (const entry of list.getEntries()) {
           this.longTaskSamples.push(entry.duration)
+          this.longTasks.push({
+            durationMs: entry.duration,
+            name: entry.name,
+            startTimeMs: entry.startTime,
+          })
         }
       })
       this.observer.observe({ entryTypes: ['longtask'] })

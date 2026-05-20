@@ -284,7 +284,7 @@ const wasmBuildTask: CiTask = {
   ],
 }
 const browserLane: CiTask = {
-  label: runFullGates ? 'browser tests + perf + fuzz' : 'browser ci smoke tests',
+  label: runFullGates ? 'browser tests + perf + deep coverage' : 'browser ci smoke tests',
   steps: [
     withEnv(pnpm('browser tests', 'test:browser'), {
       BILIG_BROWSER_CI_SMOKE: runFullGates ? '0' : '1',

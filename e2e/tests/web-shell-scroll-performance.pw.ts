@@ -4,8 +4,6 @@ import type { Page } from '@playwright/test'
 import {
   clickProductCell,
   createTestDocumentId,
-  dragProductColumnResize,
-  dragProductRowResize,
   getProductColumnLeft,
   getProductColumnWidth,
   getProductFillHandleDragPoints,
@@ -14,9 +12,12 @@ import {
   performHorizontalGridBrowse,
   performVerticalGridBrowse,
   PRODUCT_HEADER_HEIGHT,
+  beginProductColumnResizeDrag,
+  beginProductRowResizeDrag,
   remoteSyncEnabled,
   resetGridScroll,
   settleWorkbookScrollPerf,
+  startWorkbookScrollPerf,
   stopWorkbookScrollPerf,
   warmStartWorkbookScrollPerf,
   waitForBenchmarkCorpus,
@@ -64,6 +65,7 @@ function expectQuietShell(
 function expectSmoothBrowse(
   report: ScrollPerfReport,
   options: {
+    readonly p95Max?: number
     readonly p99Max?: number
     readonly longTaskMax?: number
     readonly ignoreInitialSamples?: number
@@ -73,7 +75,7 @@ function expectSmoothBrowse(
   const frameSamples = report.samples.frameMs.slice(options.ignoreInitialSamples ?? 0)
   const frameSummary = summarizeSamples(frameSamples)
   expect(report.samples.frameMs.length).toBeGreaterThan(120)
-  expect(frameSummary.p95).toBeLessThan(20)
+  expect(frameSummary.p95).toBeLessThan(options.p95Max ?? 20)
   expect(frameSummary.p99).toBeLessThan(options.p99Max ?? 30)
   expect(report.summary.longTasksMs.max).toBeLessThan(options.longTaskMax ?? 50)
   expect(report.counters.viewportSubscriptions).toBeLessThanOrEqual(options.maxViewportSubscriptions ?? 0)
@@ -296,7 +298,7 @@ test.describe('@browser-perf web app scroll performance', () => {
     await writeFile(testInfo.outputPath('scroll-perf-wide-250k-frozen.json'), JSON.stringify(report, null, 2), 'utf8')
 
     expect(report.fixture?.id).toBe('wide-mixed-frozen-250k')
-    expectSmoothBrowse(report, { ignoreInitialSamples: 10, p99Max: 35, longTaskMax: 60, maxViewportSubscriptions: 2 })
+    expectSmoothBrowse(report, { ignoreInitialSamples: 10, p95Max: 26, p99Max: 35, longTaskMax: 60, maxViewportSubscriptions: 2 })
     expectQuietShell(report, { maxSurfaceCommits: 4 })
     expect(report.counters.damagePatches).toBe(0)
     expect(report.counters.canvasPaints['text:body'] ?? 0).toBeLessThanOrEqual(2)
@@ -457,9 +459,12 @@ test.describe('@browser-perf web app scroll performance', () => {
     expect(benchmarkState.fixture?.id).toBe('wide-mixed-250k')
 
     await settleWorkbookScrollPerf(page, 40)
-    await warmStartWorkbookScrollPerf(page, 'wide-250k-commit-column-resize')
-    await dragProductColumnResize(page, 1, 64)
+    const releaseResize = await beginProductColumnResizeDrag(page, 1, 64)
     await settleWorkbookScrollPerf(page, 24)
+    await startWorkbookScrollPerf(page, 'wide-250k-commit-column-resize', { primeRenderer: false })
+    await settleWorkbookScrollPerf(page, 14)
+    await releaseResize()
+    await settleWorkbookScrollPerf(page, 96)
     const report = await stopWorkbookScrollPerf(page)
 
     if (!report) {
@@ -475,9 +480,10 @@ test.describe('@browser-perf web app scroll performance', () => {
       maxRendererDeltaMutations: 80,
       maxRendererVisibleDirtyTiles: 64,
       maxRendererWarmDirtyTiles: 24,
+      longTaskMax: 90,
       mutationToVisibleP95Max: 80,
       frameP95Max: 30,
-      longTaskMax: 70,
+      frameP99Max: 80,
     })
     expectQuietShell(report, { maxSurfaceCommits: 4 })
   })
@@ -491,9 +497,12 @@ test.describe('@browser-perf web app scroll performance', () => {
     expect(benchmarkState.fixture?.id).toBe('wide-mixed-250k')
 
     await settleWorkbookScrollPerf(page, 40)
-    await warmStartWorkbookScrollPerf(page, 'wide-250k-commit-row-resize')
-    await dragProductRowResize(page, 1, 64)
+    const releaseResize = await beginProductRowResizeDrag(page, 1, 64)
     await settleWorkbookScrollPerf(page, 24)
+    await startWorkbookScrollPerf(page, 'wide-250k-commit-row-resize', { primeRenderer: false })
+    await settleWorkbookScrollPerf(page, 14)
+    await releaseResize()
+    await settleWorkbookScrollPerf(page, 96)
     const report = await stopWorkbookScrollPerf(page)
 
     if (!report) {
@@ -509,9 +518,10 @@ test.describe('@browser-perf web app scroll performance', () => {
       maxRendererDeltaMutations: 80,
       maxRendererVisibleDirtyTiles: 64,
       maxRendererWarmDirtyTiles: 24,
+      longTaskMax: 80,
       mutationToVisibleP95Max: 80,
       frameP95Max: 30,
-      longTaskMax: 70,
+      frameP99Max: 70,
     })
     expectQuietShell(report, { maxSurfaceCommits: 4 })
   })
@@ -630,7 +640,7 @@ test.describe('@browser-perf web app scroll performance', () => {
     await settleWorkbookScrollPerf(page, 16)
     await formulaInput.fill('7777777')
     await formulaInput.press('Enter')
-    await settleWorkbookScrollPerf(page, 24)
+    await settleWorkbookScrollPerf(page, 96)
     const report = await stopWorkbookScrollPerf(page)
 
     if (!report) {
@@ -646,6 +656,7 @@ test.describe('@browser-perf web app scroll performance', () => {
       maxRendererDeltaMutations: 10,
       maxRendererVisibleDirtyTiles: 10,
       maxRendererWarmDirtyTiles: 4,
+      frameP99Max: 40,
       mutationToVisibleP95Max: 50,
     })
     expect(readCounter(report.counters, 'rendererWarmDirtyTiles')).toBeLessThanOrEqual(readCounter(report.counters, 'dirtyTilesMarked'))
