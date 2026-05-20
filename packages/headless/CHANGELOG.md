@@ -4,6 +4,22 @@ All notable changes to `@bilig/headless` will be documented in this file.
 
 This package is released as part of the aligned bilig library package set.
 
+## 0.37.1
+
+- Release type: patch
+- Previous libraries tag: libraries-v0.37.0
+- Manual override: no
+
+## Fixes
+- perf(core): share written column tracking (4a22f9fb)
+- perf(formula): route large ifs aggregates through native predicate (30cf1116)
+- perf(core): skip supported formula cache parses (2e44b5a5)
+- perf(formula): trust direct scalar closure deltas (3b6bbe25)
+- perf(formula): tighten scalar column batch writes (51b72473)
+
+## Internal runtime changes
+- docs(growth): route sheetjs users to named package (bd0987f8)
+
 ## 0.37.0
 
 - Release type: minor
