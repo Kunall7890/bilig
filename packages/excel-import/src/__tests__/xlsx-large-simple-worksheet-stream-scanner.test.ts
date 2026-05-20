@@ -1,0 +1,556 @@
+import { describe, expect, it } from 'vitest'
+
+import { parseHeadlessLargeSimpleWorksheetFromChunks } from '../xlsx-large-simple-headless-worksheet-scanner.js'
+import { ImportedWorkbookStringPool } from '../xlsx-large-simple-string-pool.js'
+import { parseLargeSimpleWorksheetCellsFromChunks } from '../xlsx-large-simple-worksheet-stream-scanner.js'
+
+const encoder = new TextEncoder()
+
+function cellWithRuntimeCoordinates<T extends { readonly address: string }>(cell: T): T & { row: number; col: number } {
+  return { ...cell, ...decodeCellAddress(cell.address) }
+}
+
+function cellsWithRuntimeCoordinates<T extends { readonly address: string }>(cells: readonly T[]): Array<T & { row: number; col: number }> {
+  return cells.map(cellWithRuntimeCoordinates)
+}
+
+function decodeCellAddress(address: string): { row: number; col: number } {
+  const match = /^([A-Z]+)(\d+)$/u.exec(address)
+  if (!match) {
+    throw new Error(`Invalid test cell address: ${address}`)
+  }
+  let col = 0
+  for (const letter of match[1]) {
+    col = col * 26 + letter.charCodeAt(0) - 64
+  }
+  return { row: Number(match[2]) - 1, col: col - 1 }
+}
+
+describe('large simple worksheet stream scanners', () => {
+  it('retains tag-open boundaries across chunks in headless scans', () => {
+    const scan = parseHeadlessLargeSimpleWorksheetFromChunks(splitAfterTagOpen(worksheetXml()), 0, { hasSharedStrings: false })
+
+    expect(scan?.cellCount).toBe(2)
+    expect(scan?.valueCellCount).toBe(2)
+    expect(scan?.usedRange).toEqual({ startRow: 0, startColumn: 0, endRow: 0, endColumn: 1 })
+  })
+
+  it('counts headless dimensions and conditional format ranges from attribute bytes', () => {
+    const scan = parseHeadlessLargeSimpleWorksheetFromChunks(splitAfterTagOpen(headlessMetadataWorksheetXml()), 0, {
+      hasSharedStrings: false,
+    })
+
+    expect(scan).toMatchObject({
+      cellCount: 2,
+      valueCellCount: 2,
+      rowCount: 12,
+      columnCount: 3,
+      mergeCount: 2,
+      tableCount: 2,
+      conditionalFormatCount: 4,
+      usedRange: { startRow: 0, startColumn: 0, endRow: 11, endColumn: 2 },
+    })
+  })
+
+  it('counts large split metadata in headless scans without retaining metadata bodies', () => {
+    const retainedBufferLengths: number[] = []
+    const scan = parseHeadlessLargeSimpleWorksheetFromChunks(splitLargeMergeCellsWorksheetXml(), 0, {
+      hasSharedStrings: false,
+      onRetainedBufferLength: (length) => retainedBufferLengths.push(length),
+    })
+
+    expect(scan).toMatchObject({
+      cellCount: 1,
+      valueCellCount: 1,
+      mergeCount: 2,
+      rowCount: 1,
+      columnCount: 1,
+    })
+    expect(retainedBufferLengths.length).toBeGreaterThan(0)
+    expect(Math.max(...retainedBufferLengths)).toBeLessThan(1024)
+  })
+
+  it('counts supported data validations in headless scans without retaining validation bodies', () => {
+    const retainedBufferLengths: number[] = []
+    const scan = parseHeadlessLargeSimpleWorksheetFromChunks(splitLargeDataValidationsWorksheetXml(), 0, {
+      hasSharedStrings: false,
+      sheetName: 'Data',
+      onRetainedBufferLength: (length) => retainedBufferLengths.push(length),
+    })
+
+    expect(scan).toMatchObject({
+      cellCount: 1,
+      valueCellCount: 1,
+      dataValidationCount: 3,
+      rowCount: 2,
+      columnCount: 2,
+    })
+    expect(retainedBufferLengths.length).toBeGreaterThan(0)
+    expect(Math.max(...retainedBufferLengths)).toBeLessThan(1024)
+  })
+
+  it('rejects unsupported data validations in headless scans', () => {
+    expect(
+      parseHeadlessLargeSimpleWorksheetFromChunks(splitAfterTagOpen(unsupportedDataValidationWorksheetXml()), 0, {
+        hasSharedStrings: false,
+        sheetName: 'Data',
+      }),
+    ).toBeNull()
+  })
+
+  it('retains tag-open boundaries across chunks in materialized scans', () => {
+    const scan = parseLargeSimpleWorksheetCellsFromChunks(splitAfterTagOpen(worksheetXml()), 0, { hasSharedStrings: false })
+
+    expect(scan?.cellScan.cellCount).toBe(2)
+    expect(scan?.cellScan.arena.materializeSheetCells(0)).toEqual(
+      cellsWithRuntimeCoordinates([
+        { address: 'A1', value: 1 },
+        { address: 'B1', value: 2 },
+      ]),
+    )
+  })
+
+  it('reserves materialized arena capacity from bounded dense worksheet dimensions', () => {
+    const scan = parseLargeSimpleWorksheetCellsFromChunks(splitAfterTagOpen(denseDimensionWorksheetXml()), 0, {
+      hasSharedStrings: false,
+    })
+
+    expect(scan?.cellScan.cellCount).toBe(10_000)
+    expect(scan?.cellScan.arena.allocatedCellCapacity).toBe(10_000)
+    expect(scan?.cellScan.arena.materializeSheetCells(0).at(-1)).toEqual(cellWithRuntimeCoordinates({ address: 'J1000', value: 10_000 }))
+  })
+
+  it('streams large split merge metadata in materialized scans without retaining metadata bodies', () => {
+    const retainedBufferLengths: number[] = []
+    const scan = parseLargeSimpleWorksheetCellsFromChunks(splitLargeMergeCellsWorksheetXml(), 0, {
+      hasSharedStrings: false,
+      onRetainedBufferLength: (length) => retainedBufferLengths.push(length),
+    })
+
+    expect(scan?.cellScan.cellCount).toBe(1)
+    expect(scan?.cellScan.mergeCount).toBe(2)
+    expect(scan?.metadata?.merges).toEqual([
+      { startAddress: 'A1', endAddress: 'B1' },
+      { startAddress: 'A2', endAddress: 'B2' },
+    ])
+    expect(retainedBufferLengths.length).toBeGreaterThan(0)
+    expect(Math.max(...retainedBufferLengths)).toBeLessThan(1024)
+  })
+
+  it('streams large split table metadata in materialized scans without retaining metadata bodies', () => {
+    const retainedBufferLengths: number[] = []
+    const scan = parseLargeSimpleWorksheetCellsFromChunks(splitLargeTablePartsWorksheetXml(), 0, {
+      hasSharedStrings: false,
+      onRetainedBufferLength: (length) => retainedBufferLengths.push(length),
+    })
+
+    expect(scan?.cellScan.cellCount).toBe(1)
+    expect(scan?.cellScan.tableCount).toBe(2)
+    expect(scan?.metadata?.tableRelationshipIds).toEqual(['rIdTable1', 'rIdTable2'])
+    expect(retainedBufferLengths.length).toBeGreaterThan(0)
+    expect(Math.max(...retainedBufferLengths)).toBeLessThan(1024)
+  })
+
+  it('rejects unterminated streamed metadata in headless and materialized scans', () => {
+    expect(
+      parseHeadlessLargeSimpleWorksheetFromChunks(splitUnterminatedMergeCellsWorksheetXml(), 0, { hasSharedStrings: false }),
+    ).toBeNull()
+    expect(parseLargeSimpleWorksheetCellsFromChunks(splitUnterminatedMergeCellsWorksheetXml(), 0, { hasSharedStrings: false })).toBeNull()
+  })
+
+  it('preserves streamed scalar and shared-string values when parsing value byte ranges', () => {
+    const scan = parseLargeSimpleWorksheetCellsFromChunks(splitAfterTagOpen(scalarWorksheetXml()), 0, {
+      hasSharedStrings: true,
+      sharedStrings: [{ text: 'Shared label', rich: false }],
+    })
+
+    expect(scan?.cellScan.arena.materializeSheetCells(0)).toEqual(
+      cellsWithRuntimeCoordinates([
+        { address: 'A1', value: 42 },
+        { address: 'B1', value: -7 },
+        { address: 'C1', value: Number('0.12345678901234568') },
+        { address: 'D1', value: Number('1.25E-7') },
+        { address: 'E1', value: true },
+        { address: 'F1', value: false },
+        { address: 'G1', value: '#DIV/0!' },
+        { address: 'H1', value: 'Shared label' },
+      ]),
+    )
+  })
+
+  it('collects exact worksheet metadata records without retaining metadata XML', () => {
+    const scan = parseLargeSimpleWorksheetCellsFromChunks(splitAfterTagOpen(metadataWorksheetXml()), 0, {
+      hasSharedStrings: false,
+      sheetName: 'Data',
+    })
+
+    expect(scan?.metadataXml).toBeUndefined()
+    expect(scan?.cellScan.mergeCount).toBe(1)
+    expect(scan?.metadata).toEqual({
+      columns: {
+        entries: [
+          { id: 'col:0', index: 0, size: 75, hidden: true },
+          { id: 'col:1', index: 1, size: 75, hidden: true },
+        ],
+        metadata: [
+          {
+            start: 0,
+            count: 2,
+            size: 75,
+            xlsxWidth: 12.5,
+            styleIndex: 3,
+            hidden: true,
+            customWidth: true,
+            bestFit: false,
+            outlineLevel: 1,
+          },
+        ],
+      },
+      conditionalFormats: [
+        {
+          id: 'xlsx-cf:Data:A1:B2:1',
+          range: { sheetName: 'Data', startAddress: 'A1', endAddress: 'B2' },
+          rule: { kind: 'cellIs', operator: 'greaterThan', values: [0] },
+          style: {},
+          priority: 1,
+        },
+      ],
+      drawingRelationshipId: 'rIdDrawing1',
+      filters: [
+        {
+          sheetName: 'Data',
+          startAddress: 'A1',
+          endAddress: 'B2',
+          criteria: [
+            {
+              colId: 0,
+              filters: { values: ['Open'] },
+            },
+          ],
+        },
+      ],
+      hyperlinks: [{ ref: 'A1:B1', location: 'Summary!A1', tooltip: 'Jump', display: 'Summary' }],
+      rows: {
+        entries: [{ id: 'row:1', index: 1, size: 24, hidden: true }],
+        metadata: [
+          {
+            start: 1,
+            count: 1,
+            size: 24,
+            xlsxHeight: 18,
+            styleIndex: 4,
+            hidden: true,
+            customFormat: true,
+            customHeight: true,
+            collapsed: false,
+            thickTop: true,
+          },
+        ],
+      },
+      merges: [{ startAddress: 'A1', endAddress: 'B1' }],
+      printPageSetup: {
+        printOptionsXml: '<printOptions horizontalCentered="1"/>',
+        pageMarginsXml: '<pageMargins left="0.7" right="0.7" top="0.75" bottom="0.75"/>',
+        pageSetupXml: '<pageSetup orientation="landscape" r:id="rIdPrinterSettings1"/>',
+        headerFooterXml: '<headerFooter><oddFooter>Page &amp;P</oddFooter></headerFooter>',
+        rowBreaksXml: '<rowBreaks count="1"><brk id="10" max="16383" man="1"/></rowBreaks>',
+        colBreaksXml: '<colBreaks count="1"><brk id="2" max="1048575" man="1"/></colBreaks>',
+      },
+      sheetFormatPr: { defaultRowHeight: 15, outlineLevelRow: 1 },
+      tableRelationshipIds: ['rIdTable1'],
+    })
+  })
+
+  it('interns repeated typed metadata strings through the import string pool', () => {
+    const pool = new ImportedWorkbookStringPool()
+    const first = parseLargeSimpleWorksheetCellsFromChunks(splitAfterTagOpen(metadataWorksheetXml()), 0, {
+      hasSharedStrings: false,
+      sheetName: 'Data',
+      stringPool: pool,
+    })
+    const pooledCountAfterFirstScan = pool.count
+    const second = parseLargeSimpleWorksheetCellsFromChunks(splitAfterTagOpen(metadataWorksheetXml()), 1, {
+      hasSharedStrings: false,
+      sheetName: 'Data',
+      stringPool: pool,
+    })
+
+    expect(pooledCountAfterFirstScan).toBeGreaterThan(0)
+    expect(pool.count).toBe(pooledCountAfterFirstScan)
+    expect(second?.metadata).toEqual(first?.metadata)
+  })
+
+  it('keeps raw conditional-format XML only when style artifacts are required', () => {
+    const scan = parseLargeSimpleWorksheetCellsFromChunks(splitAfterTagOpen(styledConditionalFormatWorksheetXml()), 0, {
+      hasSharedStrings: false,
+      sheetName: 'Data',
+    })
+
+    expect(scan?.metadataXml).toBeUndefined()
+    expect(scan?.metadata?.conditionalFormats).toBeUndefined()
+    expect(scan?.metadata?.conditionalFormattingXml).toEqual([
+      '<conditionalFormatting sqref="A1"><cfRule type="cellIs" dxfId="0" priority="1" operator="greaterThan"><formula>0</formula></cfRule></conditionalFormatting>',
+    ])
+  })
+
+  it('shares repeated inline strings and formulas through the import string pool', () => {
+    const pool = new ImportedWorkbookStringPool()
+    const first = parseLargeSimpleWorksheetCellsFromChunks(splitAfterTagOpen(repeatedStringFormulaWorksheetXml()), 0, {
+      hasSharedStrings: false,
+      stringPool: pool,
+    })
+    const second = parseLargeSimpleWorksheetCellsFromChunks(splitAfterTagOpen(repeatedStringFormulaWorksheetXml()), 1, {
+      hasSharedStrings: false,
+      stringPool: pool,
+    })
+
+    expect(first?.cellScan.arena.materializeSheetCells(0)).toEqual(
+      cellsWithRuntimeCoordinates([
+        { address: 'A1', value: 'Repeated label' },
+        { address: 'B1', value: 1, formula: 'A1&"!"' },
+      ]),
+    )
+    expect(second?.cellScan.arena.materializeSheetCells(1)).toEqual(
+      cellsWithRuntimeCoordinates([
+        { address: 'A1', value: 'Repeated label' },
+        { address: 'B1', value: 1, formula: 'A1&"!"' },
+      ]),
+    )
+    expect(pool.count).toBe(2)
+  })
+
+  it('retains hyperlink XML when range expansion would lose fidelity', () => {
+    const scan = parseLargeSimpleWorksheetCellsFromChunks(splitAfterTagOpen(oversizedHyperlinkWorksheetXml()), 0, {
+      hasSharedStrings: false,
+    })
+
+    expect(scan?.metadata?.hyperlinks).toBeUndefined()
+    expect(scan?.metadataXml).toContain('<hyperlinks>')
+  })
+})
+
+function splitAfterTagOpen(xml: string): (onChunk: (chunk: Uint8Array) => void) => boolean {
+  const bytes = encoder.encode(xml)
+  return (onChunk) => {
+    let start = 0
+    for (let index = 0; index < bytes.byteLength; index += 1) {
+      if (bytes[index] !== 60) {
+        continue
+      }
+      onChunk(bytes.subarray(start, index + 1))
+      start = index + 1
+    }
+    if (start < bytes.byteLength) {
+      onChunk(bytes.subarray(start))
+    }
+    return true
+  }
+}
+
+function worksheetXml(): string {
+  return [
+    '<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">',
+    '<dimension ref="A1:B1"/>',
+    '<sheetData><row r="1"><c r="A1"><v>1</v></c><c r="B1"><v>2</v></c></row></sheetData>',
+    '</worksheet>',
+  ].join('')
+}
+
+function headlessMetadataWorksheetXml(): string {
+  return [
+    '<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">',
+    '<dimension ref=" $A$1:$C$12 "/>',
+    '<sheetData><row r="1"><c r="A1"><v>1</v></c></row><row r="12"><c r="C12"><v>2</v></c></row></sheetData>',
+    '<conditionalFormatting sqref="A1:A2 C1:C2">',
+    '<cfRule type="cellIs" priority="1" operator="greaterThan"><formula>0</formula></cfRule>',
+    '<cfRule type="cellIs" priority="2" operator="lessThan"><formula>9</formula></cfRule>',
+    '</conditionalFormatting>',
+    '<mergeCells count="2"><mergeCell ref="A1:B1"/><mergeCell ref="A2:B2"/></mergeCells>',
+    '<tableParts count="2"><tablePart r:id="rIdTable1"/><tablePart r:id="rIdTable2"/></tableParts>',
+    '</worksheet>',
+  ].join('')
+}
+
+function denseDimensionWorksheetXml(): string {
+  const rows: string[] = []
+  for (let row = 1; row <= 1_000; row += 1) {
+    const cells: string[] = []
+    for (let column = 0; column < 10; column += 1) {
+      const address = `${String.fromCharCode(65 + column)}${String(row)}`
+      cells.push(`<c r="${address}"><v>${String((row - 1) * 10 + column + 1)}</v></c>`)
+    }
+    rows.push(`<row r="${String(row)}">${cells.join('')}</row>`)
+  }
+  return [
+    '<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">',
+    '<dimension ref="A1:J1000"/>',
+    `<sheetData>${rows.join('')}</sheetData>`,
+    '</worksheet>',
+  ].join('')
+}
+
+function splitLargeMergeCellsWorksheetXml(): (onChunk: (chunk: Uint8Array) => void) => boolean {
+  const chunks = [
+    '<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">',
+    '<dimension ref="A1"/>',
+    '<sheetData><row r="1"><c r="A1"><v>1</v></c></row></sheetData>',
+    '<mergeCells count="2"><mergeCell ref="A1:B1"/>',
+    ' '.repeat(40_000),
+    ' '.repeat(40_000),
+    ' '.repeat(20_000),
+    '<mergeCell ref="A2:B2"/></',
+    'mergeCells>',
+    '</worksheet>',
+  ]
+  return (onChunk) => {
+    for (const chunk of chunks) {
+      onChunk(encoder.encode(chunk))
+    }
+    return true
+  }
+}
+
+function splitLargeTablePartsWorksheetXml(): (onChunk: (chunk: Uint8Array) => void) => boolean {
+  const chunks = [
+    '<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">',
+    '<dimension ref="A1"/>',
+    '<sheetData><row r="1"><c r="A1"><v>1</v></c></row></sheetData>',
+    '<tableParts count="2"><tablePart r:id="rIdTable1"/>',
+    ' '.repeat(40_000),
+    ' '.repeat(40_000),
+    ' '.repeat(20_000),
+    '<tablePart r:id="rIdTable2"/></',
+    'tableParts>',
+    '</worksheet>',
+  ]
+  return (onChunk) => {
+    for (const chunk of chunks) {
+      onChunk(encoder.encode(chunk))
+    }
+    return true
+  }
+}
+
+function splitLargeDataValidationsWorksheetXml(): (onChunk: (chunk: Uint8Array) => void) => boolean {
+  const chunks = [
+    '<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">',
+    '<dimension ref="A1:B2"/>',
+    '<sheetData><row r="1"><c r="A1"><v>1</v></c></row></sheetData>',
+    '<dataValidations count="2"><dataValidation type="list" sqref="A1"><formula1>"Open,Closed"</formula1></dataValidation>',
+    ' '.repeat(40_000),
+    ' '.repeat(40_000),
+    ' '.repeat(20_000),
+    '<dataValidation type="whole" operator="between" sqref="B1 B2"><formula1>1</formula1><formula2>10</formula2></dataValidation></',
+    'dataValidations>',
+    '</worksheet>',
+  ]
+  return (onChunk) => {
+    for (const chunk of chunks) {
+      onChunk(encoder.encode(chunk))
+    }
+    return true
+  }
+}
+
+function splitUnterminatedMergeCellsWorksheetXml(): (onChunk: (chunk: Uint8Array) => void) => boolean {
+  const chunks = [
+    '<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">',
+    '<dimension ref="A1"/>',
+    '<sheetData><row r="1"><c r="A1"><v>1</v></c></row></sheetData>',
+    '<mergeCells count="1"><mergeCell ref="A1:B1"/>',
+  ]
+  return (onChunk) => {
+    for (const chunk of chunks) {
+      onChunk(encoder.encode(chunk))
+    }
+    return true
+  }
+}
+
+function unsupportedDataValidationWorksheetXml(): string {
+  return [
+    '<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">',
+    '<dimension ref="A1"/>',
+    '<sheetData><row r="1"><c r="A1"><v>1</v></c></row></sheetData>',
+    '<dataValidations count="1"><dataValidation type="custom" sqref="A1"><formula1>A1&gt;0</formula1></dataValidation></dataValidations>',
+    '</worksheet>',
+  ].join('')
+}
+
+function scalarWorksheetXml(): string {
+  return [
+    '<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">',
+    '<dimension ref="A1:H1"/>',
+    '<sheetData><row r="1">',
+    '<c r="A1"><v>42</v></c>',
+    '<c r="B1"><v> -7 </v></c>',
+    '<c r="C1"><v>0.12345678901234568</v></c>',
+    '<c r="D1"><v>1.25E-7</v></c>',
+    '<c r="E1" t="b"><v>true</v></c>',
+    '<c r="F1" t="b"><v>0</v></c>',
+    '<c r="G1" t="e"><v>#DIV/0!</v></c>',
+    '<c r="H1" t="s"><v>0</v></c>',
+    '</row></sheetData>',
+    '</worksheet>',
+  ].join('')
+}
+
+function metadataWorksheetXml(): string {
+  return [
+    '<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">',
+    '<dimension ref="A1:B2"/>',
+    '<sheetFormatPr defaultRowHeight="15" outlineLevelRow="1"/>',
+    '<cols><col min="1" max="2" width="12.5" style="3" hidden="1" customWidth="1" bestFit="0" outlineLevel="1"/></cols>',
+    '<sheetData>',
+    '<row r="1"><c r="A1"><v>1</v></c><c r="B1"><v>2</v></c></row>',
+    '<row r="2" ht="18" s="4" hidden="true" customFormat="1" customHeight="1" collapsed="0" thickTop="1">',
+    '<c r="A2"><v>3</v></c>',
+    '</row>',
+    '</sheetData>',
+    '<autoFilter ref="A1:B2"><filterColumn colId="0"><filters><filter val="Open"/></filters></filterColumn></autoFilter>',
+    '<conditionalFormatting sqref="A1:B2"><cfRule type="cellIs" priority="1" operator="greaterThan"><formula>0</formula></cfRule></conditionalFormatting>',
+    '<mergeCells count="1"><mergeCell ref="A1:B1"/></mergeCells>',
+    '<hyperlinks><hyperlink ref="A1:B1" location="Summary!A1" tooltip="Jump" display="Summary"/></hyperlinks>',
+    '<printOptions horizontalCentered="1"/>',
+    '<pageMargins left="0.7" right="0.7" top="0.75" bottom="0.75"/>',
+    '<pageSetup orientation="landscape" r:id="rIdPrinterSettings1"/>',
+    '<headerFooter><oddFooter>Page &amp;P</oddFooter></headerFooter>',
+    '<rowBreaks count="1"><brk id="10" max="16383" man="1"/></rowBreaks>',
+    '<colBreaks count="1"><brk id="2" max="1048575" man="1"/></colBreaks>',
+    '<drawing r:id="rIdDrawing1"/>',
+    '<tableParts count="1"><tablePart r:id="rIdTable1"/></tableParts>',
+    '</worksheet>',
+  ].join('')
+}
+
+function styledConditionalFormatWorksheetXml(): string {
+  return [
+    '<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">',
+    '<dimension ref="A1"/>',
+    '<sheetData><row r="1"><c r="A1"><v>1</v></c></row></sheetData>',
+    '<conditionalFormatting sqref="A1"><cfRule type="cellIs" dxfId="0" priority="1" operator="greaterThan"><formula>0</formula></cfRule></conditionalFormatting>',
+    '</worksheet>',
+  ].join('')
+}
+
+function repeatedStringFormulaWorksheetXml(): string {
+  return [
+    '<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">',
+    '<dimension ref="A1:B1"/>',
+    '<sheetData><row r="1">',
+    '<c r="A1" t="inlineStr"><is><t>Repeated label</t></is></c>',
+    '<c r="B1"><f>A1&amp;&quot;!&quot;</f><v>1</v></c>',
+    '</row></sheetData>',
+    '</worksheet>',
+  ].join('')
+}
+
+function oversizedHyperlinkWorksheetXml(): string {
+  return [
+    '<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">',
+    '<dimension ref="A1:A2000"/>',
+    '<sheetData><row r="1"><c r="A1"><v>1</v></c></row></sheetData>',
+    '<hyperlinks><hyperlink ref="A1:A2000" location="Summary!A1"/></hyperlinks>',
+    '</worksheet>',
+  ].join('')
+}

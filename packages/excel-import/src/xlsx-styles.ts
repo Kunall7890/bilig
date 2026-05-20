@@ -54,6 +54,10 @@ interface ImportedWorkbookStyleArtifacts {
   sheetArtifactsByName: Map<string, WorkbookSheetStyleArtifactsSnapshot>
 }
 
+interface ImportedWorkbookStyleArtifactsOptions {
+  maxSheetCellStyleArtifactCount?: number
+}
+
 const xmlParser = new XMLParser({
   ignoreAttributes: false,
   attributeNamePrefix: '',
@@ -423,10 +427,31 @@ function isBlankCellXml(cellXml: string, openingTag: string): boolean {
   return !/<(?:v|f|is)\b/u.test(cellXml.slice(openingTag.length, -'</c>'.length))
 }
 
-function parseSheetCellStyleIndexArtifacts(sheetXml: string): WorkbookSheetStyleArtifactsSnapshot | undefined {
+function hasMoreCellStyleIndexesThan(sheetXml: string, maxArtifactCount: number): boolean {
+  if (!Number.isFinite(maxArtifactCount)) {
+    return false
+  }
+  let count = 0
+  for (const _match of sheetXml.matchAll(/<c\b(?:[^>"']|"[^"]*"|'[^']*')*\bs=/gu)) {
+    count += 1
+    if (count > maxArtifactCount) {
+      return true
+    }
+  }
+  return false
+}
+
+function parseSheetCellStyleIndexArtifacts(
+  sheetXml: string,
+  maxArtifactCount = Number.POSITIVE_INFINITY,
+): WorkbookSheetStyleArtifactsSnapshot | undefined {
+  if (hasMoreCellStyleIndexesThan(sheetXml, maxArtifactCount)) {
+    return undefined
+  }
   const cellStyleIndexes: WorkbookSheetStyleArtifactsSnapshot['cellStyleIndexes'] = []
   const blankCellAddresses: string[] = []
   const columnStyleRanges = parseColumnStyleRanges(sheetXml)
+  const shouldSkipArtifact = () => cellStyleIndexes.length + blankCellAddresses.length > maxArtifactCount
   for (const rowMatch of sheetXml.matchAll(/<row\b[^>]*(?:\/>|>[\s\S]*?<\/row>)/gu)) {
     const rowXml = rowMatch[0]
     const rowTag = /^<row\b[^>]*(?:\/>|>)/u.exec(rowXml)?.[0]
@@ -447,6 +472,9 @@ function parseSheetCellStyleIndexArtifacts(sheetXml: string): WorkbookSheetStyle
       const styleIndex = readXmlNonNegativeIntegerAttribute(cellTag, 's')
       if (styleIndex !== null) {
         cellStyleIndexes.push({ address, styleIndex })
+        if (shouldSkipArtifact()) {
+          return undefined
+        }
         continue
       }
       if (!isBlankCellXml(cellXml, cellTag)) {
@@ -455,6 +483,9 @@ function parseSheetCellStyleIndexArtifacts(sheetXml: string): WorkbookSheetStyle
       const columnIndex = XLSX.utils.decode_cell(address).c
       if (rowHasStyle || columnHasStyle(columnStyleRanges, columnIndex)) {
         blankCellAddresses.push(address)
+        if (shouldSkipArtifact()) {
+          return undefined
+        }
       }
     }
   }
@@ -668,11 +699,13 @@ function parseSheetRowEntries(sheetXml: string): { entries?: WorkbookAxisEntrySn
 export function readImportedWorkbookSheetDimensions(
   workbook: XLSX.WorkBook,
   sheetNames: readonly string[],
+  source?: XlsxZipSource,
 ): Map<string, ImportedSheetDimensions> {
   const files = workbookFiles(workbook)
+  const sourceZip = source ? readXlsxZipEntries(source) : null
   const output = new Map<string, ImportedSheetDimensions>()
-  for (const { name: sheetName, path: sheetPath } of workbookSheetPathEntries(workbook, sheetNames)) {
-    const sheetXml = getFileText(files, sheetPath)
+  for (const { name: sheetName, path: sheetPath } of workbookSheetPathEntries(workbook, sheetNames, sourceZip ?? undefined)) {
+    const sheetXml = getPackageText(files, sourceZip, sheetPath)
     if (!sheetXml) {
       continue
     }
@@ -709,7 +742,7 @@ export function readImportedWorkbookFileStyles(
 ): Map<string, Map<string, ImportedCellStyle>> {
   const files = workbookFiles(workbook)
   const sourceZip = source ? readXlsxZipEntries(source) : null
-  const stylePath = workbookStylePath(workbook)
+  const stylePath = workbookStylePath(workbook) ?? (sourceZip?.['xl/styles.xml'] ? 'xl/styles.xml' : null)
   const styleXml = stylePath ? getPackageText(files, sourceZip, stylePath) : null
   if (!styleXml) {
     return new Map()
@@ -720,7 +753,7 @@ export function readImportedWorkbookFileStyles(
   }
 
   const output = new Map<string, Map<string, ImportedCellStyle>>()
-  for (const { name: sheetName, path: sheetPath } of workbookSheetPathEntries(workbook, sheetNames)) {
+  for (const { name: sheetName, path: sheetPath } of workbookSheetPathEntries(workbook, sheetNames, sourceZip ?? undefined)) {
     const candidateAddresses = options.styleCandidateAddressesBySheet?.get(sheetName)
     if (candidateAddresses?.size === 0) {
       continue
@@ -749,10 +782,11 @@ export function readImportedWorkbookStyleArtifacts(
   workbook: XLSX.WorkBook,
   sheetNames: readonly string[],
   source?: XlsxZipSource,
+  options: ImportedWorkbookStyleArtifactsOptions = {},
 ): ImportedWorkbookStyleArtifacts {
   const zip = source ? readXlsxZipEntries(source) : null
   const files = workbookFiles(workbook)
-  const stylePath = workbookStylePath(workbook)
+  const stylePath = workbookStylePath(workbook) ?? (zip?.['xl/styles.xml'] ? 'xl/styles.xml' : null)
   const readPartText = (path: string | null | undefined): string | null => {
     if (!path) {
       return null
@@ -763,12 +797,12 @@ export function readImportedWorkbookStyleArtifacts(
   const theme = readImportedWorkbookThemeArtifact(zip ?? undefined)
   const sheetArtifactsByName = new Map<string, WorkbookSheetStyleArtifactsSnapshot>()
 
-  for (const { name: sheetName, path: sheetPath } of workbookSheetPathEntries(workbook, sheetNames)) {
+  for (const { name: sheetName, path: sheetPath } of workbookSheetPathEntries(workbook, sheetNames, zip ?? undefined)) {
     const sheetXml = readPartText(sheetPath)
     if (!sheetXml) {
       continue
     }
-    const sheetArtifacts = parseSheetCellStyleIndexArtifacts(sheetXml)
+    const sheetArtifacts = parseSheetCellStyleIndexArtifacts(sheetXml, options.maxSheetCellStyleArtifactCount)
     if (sheetArtifacts) {
       sheetArtifactsByName.set(sheetName, sheetArtifacts)
     }
