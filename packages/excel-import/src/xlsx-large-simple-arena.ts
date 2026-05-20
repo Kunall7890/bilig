@@ -13,6 +13,7 @@ import { createLazyWorkbookSheetCells } from './xlsx-large-simple-lazy-sheet-cel
 import type { LargeSimpleSharedStrings } from './xlsx-large-simple-shared-strings.js'
 import type { ImportedWorkbookStringPool } from './xlsx-large-simple-string-pool.js'
 import type { ImportedWorksheetStyleIndexArena } from './xlsx-large-simple-style-index-arena.js'
+import { decodeCellAddress } from './xlsx-large-simple-xml-byte-utils.js'
 export { ImportedWorksheetStyleIndexArena } from './xlsx-large-simple-style-index-arena.js'
 
 const initialCellCapacity = 1024
@@ -28,6 +29,7 @@ const previewRowCount = 8
 const previewColumnCount = 6
 const previewCellCount = previewRowCount * previewColumnCount
 const lazyRichTextCellThreshold = 10_000
+const maxSpreadsheetColumnCount = 16_384
 const minInt32 = -0x80000000
 const maxInt32 = 0x7fffffff
 
@@ -190,6 +192,38 @@ export class ImportedWorkbookArena {
       outputIndex += 1
     }
     return cells
+  }
+
+  materializeSheetCellsByAddress(sheetIndex: number, addresses: ReadonlySet<string>): ReadonlyMap<string, WorkbookSheetCell> {
+    const requested = new Map<number, string>()
+    for (const address of addresses) {
+      const decoded = decodeCellAddress(address)
+      if (!decoded || decoded.column >= maxSpreadsheetColumnCount) {
+        continue
+      }
+      requested.set(packArenaCellAddress(decoded.row, decoded.column), encodeCellAddress(decoded.row, decoded.column))
+    }
+    const cellsByAddress = new Map<string, WorkbookSheetCell>()
+    if (requested.size === 0 || !this.hasCellsForSheet(sheetIndex)) {
+      return cellsByAddress
+    }
+    for (let index = 0; index < this.length; index += 1) {
+      if (!this.cellBelongsToSheet(index, sheetIndex)) {
+        continue
+      }
+      const address = requested.get(packArenaCellAddress(this.rowAt(index), this.columnAt(index)))
+      if (!address || cellsByAddress.has(address)) {
+        continue
+      }
+      const cell = this.materializeCellAtArenaIndex(index)
+      if (cell) {
+        cellsByAddress.set(address, cell)
+      }
+      if (cellsByAddress.size >= requested.size) {
+        break
+      }
+    }
+    return cellsByAddress
   }
 
   createLazySheetCells(sheetIndex: number): WorkbookSheetCells {
@@ -873,6 +907,10 @@ function encodeCellAddress(row: number, column: number): string {
     value = Math.floor(value / 26)
   }
   return `${columnName}${String(row + 1)}`
+}
+
+function packArenaCellAddress(row: number, column: number): number {
+  return row * maxSpreadsheetColumnCount + column
 }
 
 function canStoreLinearCoordinate(width: number, row: number, column: number): boolean {

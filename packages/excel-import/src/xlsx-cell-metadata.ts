@@ -10,7 +10,7 @@ interface ParsedRelationship {
   readonly type: string
 }
 
-interface ImportedCellMetadataReference {
+export interface ImportedCellMetadataReference {
   readonly address: string
   readonly cm?: string
   readonly vm?: string
@@ -165,7 +165,9 @@ export function readImportedWorkbookCellMetadata(source: XlsxZipSource, sheetNam
   }
 }
 
-function cellMetadataReferenceSignature(cell: WorkbookSnapshot['sheets'][number]['cells'][number] | undefined): string {
+type WorkbookSheetCell = WorkbookSnapshot['sheets'][number]['cells'][number]
+
+function cellMetadataReferenceSignature(cell: WorkbookSheetCell | undefined): string {
   if (!cell) {
     return 'null'
   }
@@ -176,18 +178,28 @@ function cellMetadataReferenceSignature(cell: WorkbookSnapshot['sheets'][number]
   })
 }
 
+export function buildImportedCellMetadataReferenceSnapshotsFromCellMap(
+  refs: readonly ImportedCellMetadataReference[] | undefined,
+  cellsByAddress: ReadonlyMap<string, WorkbookSheetCell>,
+): WorkbookCellMetadataReferenceSnapshot[] | undefined {
+  if (!refs || refs.length === 0) {
+    return undefined
+  }
+  return refs.map((ref) => ({
+    ...ref,
+    cellSignature: cellMetadataReferenceSignature(cellsByAddress.get(normalizeCellAddress(ref.address))),
+  }))
+}
+
 export function buildImportedCellMetadataReferenceSnapshots(
   refs: readonly ImportedCellMetadataReference[] | undefined,
-  cells: readonly WorkbookSnapshot['sheets'][number]['cells'][number][],
+  cells: readonly WorkbookSheetCell[],
 ): WorkbookCellMetadataReferenceSnapshot[] | undefined {
   if (!refs || refs.length === 0) {
     return undefined
   }
   const cellsByAddress = new Map(cells.map((cell) => [normalizeCellAddress(cell.address), cell]))
-  return refs.map((ref) => ({
-    ...ref,
-    cellSignature: cellMetadataReferenceSignature(cellsByAddress.get(normalizeCellAddress(ref.address))),
-  }))
+  return buildImportedCellMetadataReferenceSnapshotsFromCellMap(refs, cellsByAddress)
 }
 
 function safeMetadataTarget(target: string): { readonly target: string; readonly partPath: string } {

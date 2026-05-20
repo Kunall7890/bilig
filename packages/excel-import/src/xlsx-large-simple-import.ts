@@ -15,7 +15,7 @@ import {
   readImportedSheetConditionalFormatsFromElementXml,
   readImportedSheetConditionalFormatsFromWorksheetXml,
 } from './xlsx-conditional-formats.js'
-import { buildImportedCellMetadataReferenceSnapshots, readImportedWorkbookCellMetadataPart } from './xlsx-cell-metadata.js'
+import { readImportedWorkbookCellMetadataPart } from './xlsx-cell-metadata.js'
 import { legacyCommentThreadSignature, readImportedWorkbookLegacyCommentVmlFromSheetSources } from './xlsx-comment-vml.js'
 import { readImportedWorkbookControlArtifactsFromSheetSources } from './xlsx-control-artifacts.js'
 import { readImportedWorkbookDataModelArtifacts } from './xlsx-data-model-artifacts.js'
@@ -23,6 +23,7 @@ import { readImportedWorkbookDrawingArtifactsFromWorksheetRelationships } from '
 import { readImportedWorkbookExternalLinkArtifacts } from './xlsx-external-link-artifacts.js'
 import { readImportedSheetAutoFilters } from './xlsx-filters.js'
 import { readImportedWorkbookChartDrawingArtifacts } from './xlsx-import-chart-drawing-artifacts.js'
+import { buildLargeSimpleCellMetadataReferenceSnapshots } from './xlsx-large-simple-cell-metadata.js'
 import { readWorkbookDefinedNames } from './xlsx-large-simple-defined-names.js'
 import { readLargeSimpleSheetHyperlinks, resolveLargeSimpleSheetHyperlinks } from './xlsx-large-simple-hyperlinks.js'
 import { LargeSimpleXlsxImportPhaseRecorder, type LargeSimpleXlsxImportPhaseTelemetry } from './xlsx-large-simple-import-telemetry.js'
@@ -875,13 +876,20 @@ function buildParsedWorksheet(
     options.materializeCells && options.styleCatalog && options.stylesByIndex
       ? buildLargeSimpleStyleRanges(sheetName, cellScan, options.stylesByIndex, options.styleCatalog)
       : []
+  const preview = createSheetPreview({
+    name: sheetName,
+    rowCount: cellScan.rowCount,
+    columnCount: cellScan.columnCount,
+    nonEmptyCellCount: cellScan.cellCount,
+    readCellText: (row, column) => cellScan.arena.readPreviewText(row, column),
+  })
   const useLazyCells = options.materializeCells && cellScan.cellCount > lazySheetCellMaterializationThreshold
   const cells = options.materializeCells
     ? useLazyCells
       ? cellScan.arena.createLazySheetCells(cellScan.sheetIndex)
       : cellScan.arena.materializeSheetCells(cellScan.sheetIndex)
     : []
-  const cellMetadataRefs = buildImportedCellMetadataReferenceSnapshots(metadataScan?.cellMetadataRefs, cells)
+  const cellMetadataRefs = buildLargeSimpleCellMetadataReferenceSnapshots(metadataScan?.cellMetadataRefs, cells, cellScan, useLazyCells)
   const metadata: SheetMetadataSnapshot = {
     ...(columns.entries.length > 0 ? { columns: columns.entries } : {}),
     ...(rows.entries.length > 0 ? { rows: rows.entries } : {}),
@@ -914,13 +922,7 @@ function buildParsedWorksheet(
   }
   const parsed: ParsedWorksheet = {
     sheet,
-    preview: createSheetPreview({
-      name: sheetName,
-      rowCount: cellScan.rowCount,
-      columnCount: cellScan.columnCount,
-      nonEmptyCellCount: cellScan.cellCount,
-      readCellText: (row, column) => cellScan.arena.readPreviewText(row, column),
-    }),
+    preview,
     stats: {
       cellCount: cellScan.cellCount,
       formulaCellCount: cellScan.formulaCellCount,
