@@ -11,7 +11,10 @@ import {
   readLargeSimpleSharedStringIndexFromTextRange,
 } from './xlsx-large-simple-cell-value-scan.js'
 import { readLargeSimpleConditionalFormattingFromBytes } from './xlsx-large-simple-conditional-format-byte-scan.js'
-import { readLargeSimpleDataValidationsFromBytes } from './xlsx-large-simple-data-validation-byte-scan.js'
+import {
+  countLargeSimpleDataValidationsFromBytes,
+  readLargeSimpleDataValidationsFromBytes,
+} from './xlsx-large-simple-data-validation-byte-scan.js'
 import {
   LargeSimpleFormulaRecords,
   parseLargeSimpleSharedFormulaIndex,
@@ -73,10 +76,18 @@ import type {
 const lessThan = 60
 const slash = 47
 const emptyBytes = new Uint8Array(0)
+const conditionalFormattingCloseBytes = new Uint8Array([
+  60, 47, 99, 111, 110, 100, 105, 116, 105, 111, 110, 97, 108, 70, 111, 114, 109, 97, 116, 116, 105, 110, 103, 62,
+])
 const packedAddressColumnFactor = 16_384
 const extensionElementPattern = /<(?:[A-Za-z_][\w.-]*:)?ext\b[^>]*(?:\/>|>[\s\S]*?<\/(?:[A-Za-z_][\w.-]*:)?ext>)/gu
 const slicerListElementPattern = /<(?:[A-Za-z_][\w.-]*:)?slicerList\b/u
 type StreamedMetadataElement = 'mergeCells' | 'tableParts'
+
+interface ActiveConditionalFormatting {
+  readonly rootTag: Uint8Array
+  ruleSeen: boolean
+}
 
 export interface LargeSimpleWorksheetStreamScan {
   readonly cellScan: ImportedWorksheetCellScan
@@ -190,6 +201,8 @@ class LargeSimpleWorksheetChunkScanner {
   private readonly maxDimensionCellPreallocation: number
   private dimensionCellPreallocationApplied = false
   private activeMetadataElement: StreamedMetadataElement | null = null
+  private activeConditionalFormatting: ActiveConditionalFormatting | null = null
+  private activeDataValidations = false
 
   constructor(
     private readonly sheetIndex: number,
@@ -246,7 +259,7 @@ class LargeSimpleWorksheetChunkScanner {
       return null
     }
     this.process(true)
-    if (this.activeMetadataElement !== null) {
+    if (this.activeMetadataElement !== null || this.activeConditionalFormatting !== null) {
       this.failed = true
     }
     this.compact()
@@ -356,6 +369,18 @@ class LargeSimpleWorksheetChunkScanner {
     while (!this.failed && this.index < this.buffer.byteLength) {
       if (this.activeMetadataElement !== null) {
         if (!this.processActiveMetadataElement(final)) {
+          return
+        }
+        continue
+      }
+      if (this.activeConditionalFormatting !== null) {
+        if (!this.processActiveConditionalFormatting(final)) {
+          return
+        }
+        continue
+      }
+      if (this.activeDataValidations) {
+        if (!this.processActiveDataValidations(final)) {
           return
         }
         continue
@@ -612,6 +637,10 @@ class LargeSimpleWorksheetChunkScanner {
   }
 
   private collectMetadataElement(localName: string, tagEnd: number, final: boolean): boolean {
+    if (localName === 'dataValidations' && isSelfClosingTag(this.buffer, tagEnd)) {
+      this.index = tagEnd + 1
+      return true
+    }
     if (isSelfClosingTag(this.buffer, tagEnd)) {
       const handled = this.retainMetadataXml && this.collectTypedMetadataElement(localName, this.index, tagEnd + 1)
       if (!handled) {
@@ -623,10 +652,35 @@ class LargeSimpleWorksheetChunkScanner {
       this.index = tagEnd + 1
       return true
     }
+    if (localName === 'conditionalFormatting') {
+      this.activeConditionalFormatting = {
+        rootTag: this.buffer.slice(this.index, tagEnd + 1),
+        ruleSeen: false,
+      }
+      this.index = tagEnd + 1
+      if (!this.processActiveConditionalFormatting(final)) {
+        if (final) {
+          this.failed = true
+        }
+        return false
+      }
+      return true
+    }
     if (localName === 'mergeCells' || localName === 'tableParts') {
       this.activeMetadataElement = localName
       this.index = tagEnd + 1
       if (!this.processActiveMetadataElement(final)) {
+        if (final) {
+          this.failed = true
+        }
+        return false
+      }
+      return true
+    }
+    if (localName === 'dataValidations') {
+      this.activeDataValidations = true
+      this.index = tagEnd + 1
+      if (!this.processActiveDataValidations(final)) {
         if (final) {
           this.failed = true
         }
@@ -748,21 +802,6 @@ class LargeSimpleWorksheetChunkScanner {
       }
       return true
     }
-    if (localName === 'dataValidations') {
-      if (!this.sheetName) {
-        return false
-      }
-      const validations = readLargeSimpleDataValidationsFromBytes(this.sheetName, this.buffer, startIndex, endIndex)
-      if (validations === null) {
-        return false
-      }
-      this.dataValidationCount += validations.length
-      if (validations.length > 0) {
-        this.dataValidations ??= []
-        this.dataValidations.push(...validations)
-      }
-      return true
-    }
     return false
   }
 
@@ -825,6 +864,190 @@ class LargeSimpleWorksheetChunkScanner {
     return false
   }
 
+  private processActiveConditionalFormatting(final: boolean): boolean {
+    const active = this.activeConditionalFormatting
+    if (active === null) {
+      return true
+    }
+    while (!this.failed && this.index < this.buffer.byteLength) {
+      if (this.buffer[this.index] !== lessThan) {
+        this.index += 1
+        continue
+      }
+      const closing = this.buffer[this.index + 1] === slash
+      const tagNameStart = this.index + (closing ? 2 : 1)
+      const tag = readXmlTagName(this.buffer, tagNameStart)
+      if (!tag) {
+        if (!final && tagNameStart >= this.buffer.byteLength) {
+          return false
+        }
+        this.index += 1
+        continue
+      }
+      const tagEnd = findTagEnd(this.buffer, tag.endIndex)
+      if (tagEnd === null) {
+        if (final) {
+          this.failed = true
+        }
+        return false
+      }
+      if (closing && tag.localName === 'conditionalFormatting') {
+        if (!active.ruleSeen) {
+          this.conditionalFormatCount += 1
+        }
+        this.activeConditionalFormatting = null
+        this.index = tagEnd + 1
+        return true
+      }
+      if (!closing && tag.localName === 'cfRule') {
+        if (!this.processActiveConditionalFormatRule(active, tagEnd, final)) {
+          return false
+        }
+        continue
+      }
+      if (!closing && this.retainMetadataXml) {
+        this.failed = true
+        return true
+      }
+      this.index = tagEnd + 1
+    }
+    if (final) {
+      this.failed = true
+    } else {
+      this.index = this.buffer.byteLength
+    }
+    return false
+  }
+
+  private processActiveConditionalFormatRule(active: ActiveConditionalFormatting, tagEnd: number, final: boolean): boolean {
+    const startIndex = this.index
+    const selfClosing = isSelfClosingTag(this.buffer, tagEnd)
+    const contentStart = tagEnd + 1
+    const closing = selfClosing ? { start: contentStart, end: contentStart } : findClosingTag(this.buffer, contentStart, 'cfRule')
+    if (!closing) {
+      if (final) {
+        this.failed = true
+      }
+      this.index = startIndex
+      return false
+    }
+    active.ruleSeen = true
+    const endIndex = selfClosing ? tagEnd + 1 : closing.end
+    if (!this.retainMetadataXml) {
+      this.conditionalFormatCount += activeConditionalFormattingRangeCount(active)
+      this.index = endIndex
+      return true
+    }
+    if (!this.sheetName) {
+      this.failed = true
+      return true
+    }
+    const scanBytes = wrapConditionalFormatRule(active.rootTag, this.buffer, startIndex, endIndex)
+    const scan = readLargeSimpleConditionalFormattingFromBytes(
+      this.sheetName,
+      scanBytes,
+      0,
+      scanBytes.byteLength,
+      this.conditionalFormatIdCounter + 1,
+    )
+    this.conditionalFormatCount += scan.ruleCount
+    if (scan.conditionalFormats && scan.conditionalFormats.length > 0) {
+      this.conditionalFormats ??= []
+      this.conditionalFormats.push(...scan.conditionalFormats)
+      this.conditionalFormatIdCounter += scan.conditionalFormats.length
+    }
+    if (scan.artifactXml) {
+      this.conditionalFormattingXml ??= []
+      this.conditionalFormattingXml.push(scan.artifactXml)
+    }
+    this.index = endIndex
+    return true
+  }
+
+  private processActiveDataValidations(final: boolean): boolean {
+    while (!this.failed && this.index < this.buffer.byteLength) {
+      if (this.buffer[this.index] !== lessThan) {
+        this.index += 1
+        continue
+      }
+      const closing = this.buffer[this.index + 1] === slash
+      const tagNameStart = this.index + (closing ? 2 : 1)
+      const tag = readXmlTagName(this.buffer, tagNameStart)
+      if (!tag) {
+        if (!final && tagNameStart >= this.buffer.byteLength) {
+          return false
+        }
+        this.index += 1
+        continue
+      }
+      const tagEnd = findTagEnd(this.buffer, tag.endIndex)
+      if (tagEnd === null) {
+        if (final) {
+          this.failed = true
+        }
+        return false
+      }
+      if (closing && tag.localName === 'dataValidations') {
+        this.activeDataValidations = false
+        this.index = tagEnd + 1
+        return true
+      }
+      if (!closing && tag.localName === 'dataValidation') {
+        if (!this.processActiveDataValidationElement(tagEnd, final)) {
+          return false
+        }
+        continue
+      }
+      this.index = tagEnd + 1
+    }
+    if (final) {
+      this.failed = true
+    } else {
+      this.index = this.buffer.byteLength
+    }
+    return false
+  }
+
+  private processActiveDataValidationElement(tagEnd: number, final: boolean): boolean {
+    const startIndex = this.index
+    const selfClosing = isSelfClosingTag(this.buffer, tagEnd)
+    const contentStart = tagEnd + 1
+    const closing = selfClosing ? { start: contentStart, end: contentStart } : findClosingTag(this.buffer, contentStart, 'dataValidation')
+    if (!closing) {
+      if (final) {
+        this.failed = true
+      }
+      this.index = startIndex
+      return false
+    }
+    const endIndex = selfClosing ? tagEnd + 1 : closing.end
+    if (this.retainMetadataXml) {
+      if (!this.sheetName) {
+        this.failed = true
+        return true
+      }
+      const validations = readLargeSimpleDataValidationsFromBytes(this.sheetName, this.buffer, startIndex, endIndex)
+      if (validations === null) {
+        this.failed = true
+        return true
+      }
+      this.dataValidationCount += validations.length
+      if (validations.length > 0) {
+        this.dataValidations ??= []
+        this.dataValidations.push(...validations)
+      }
+    } else {
+      const count = countLargeSimpleDataValidationsFromBytes(this.sheetName ?? 'Sheet1', this.buffer, startIndex, endIndex)
+      if (count === null) {
+        this.failed = true
+        return true
+      }
+      this.dataValidationCount += count
+    }
+    this.index = endIndex
+    return true
+  }
+
   private collectActiveMetadataTag(activeElement: StreamedMetadataElement, localName: string, nameEnd: number, tagEnd: number): void {
     if (activeElement === 'mergeCells' && localName === 'mergeCell') {
       this.collectMergeCellTag(nameEnd, tagEnd)
@@ -859,6 +1082,20 @@ class LargeSimpleWorksheetChunkScanner {
   private reportRetainedBufferLength: () => void = () => {}
 }
 
+function wrapConditionalFormatRule(rootTag: Uint8Array, bytes: Uint8Array, startIndex: number, endIndex: number): Uint8Array {
+  const ruleBytes = bytes.subarray(startIndex, endIndex)
+  const output = new Uint8Array(rootTag.byteLength + ruleBytes.byteLength + conditionalFormattingCloseBytes.byteLength)
+  output.set(rootTag)
+  output.set(ruleBytes, rootTag.byteLength)
+  output.set(conditionalFormattingCloseBytes, rootTag.byteLength + ruleBytes.byteLength)
+  return output
+}
+
+function activeConditionalFormattingRangeCount(active: ActiveConditionalFormatting): number {
+  const tag = readXmlTagName(active.rootTag, 1)
+  return tag ? countSqrefRangesFromTag(active.rootTag, tag.endIndex, active.rootTag.byteLength - 1) : 1
+}
+
 function readSlicerListExtensionXml(xml: string): string | undefined {
   extensionElementPattern.lastIndex = 0
   return [...xml.matchAll(extensionElementPattern)].find((match) => slicerListElementPattern.test(match[0]))?.[0]
@@ -866,6 +1103,30 @@ function readSlicerListExtensionXml(xml: string): string | undefined {
 
 function readElementAttribute(xml: string, name: string): string | null {
   return new RegExp(`\\s${name}=("|')([\\s\\S]*?)\\1`, 'u').exec(xml)?.[2] ?? null
+}
+
+function countSqrefRangesFromTag(bytes: Uint8Array, nameEnd: number, tagEnd: number): number {
+  const sqref = readXmlAttributeRangeFromTag(bytes, nameEnd, tagEnd, 'sqref')
+  if (!sqref) {
+    return 1
+  }
+  let count = 0
+  let inToken = false
+  for (let index = sqref.start; index < sqref.end; index += 1) {
+    if (isWhitespaceByte(bytes[index] ?? 0)) {
+      inToken = false
+      continue
+    }
+    if (!inToken) {
+      count += 1
+      inToken = true
+    }
+  }
+  return Math.max(1, count)
+}
+
+function isWhitespaceByte(byte: number): boolean {
+  return byte === 9 || byte === 10 || byte === 12 || byte === 13 || byte === 32
 }
 
 function readPositiveIntegerAttributeFromTag(bytes: Uint8Array, nameEnd: number, tagEnd: number, attributeName: string): number | null {

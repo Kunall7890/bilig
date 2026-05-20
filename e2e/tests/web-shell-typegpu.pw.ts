@@ -106,6 +106,14 @@ function isThemeGreenFill(point: ReadbackPoint): boolean {
   return point.a === 255 && point.g > point.r + 45 && point.g > point.b + 25
 }
 
+function isSelectionOverlayFill(point: ReadbackPoint): boolean {
+  return point.a >= 48 && point.g > point.b && point.b > point.r
+}
+
+function isSelectedHeaderTint(selected: ReadbackPoint, unselected: ReadbackPoint): boolean {
+  return selected.a === 255 && unselected.a === 255 && selected.r < unselected.r - 15 && selected.b < unselected.b - 15
+}
+
 interface NativeTextExpectation {
   readonly name: string
   readonly text: string
@@ -1289,6 +1297,108 @@ test('@browser-webgpu @browser-deep moved content delete preserves selected fill
     'main-workbook-grid-move-fill-delete-no-flash-readback.png',
     'main-workbook-grid-move-fill-delete-no-flash-readback',
   )
+})
+
+test('@browser-webgpu @browser-deep axis selections paint visible typegpu fills without hiding active cells', async ({
+  page,
+}, testInfo) => {
+  await page.setViewportSize({ width: 960, height: 720 })
+  await installTypeGpuReadbackHarness(page)
+  await gotoWorkbookShell(page, `/?document=${encodeURIComponent(createTestDocumentId('typegpu-axis-selection-proof'))}&persist=0`)
+  await waitForWorkbookReady(page)
+  await waitForTypeGpuRenderer(page)
+  await page.waitForFunction(
+    () =>
+      Boolean(
+        (window as Window & { __biligGpuReadbackInspector?: { readonly isReady: () => boolean } }).__biligGpuReadbackInspector?.isReady(),
+      ),
+    undefined,
+    { timeout: 15_000 },
+  )
+
+  const grid = page.getByTestId('sheet-grid')
+  await grid.click({
+    position: {
+      x: PRODUCT_ROW_MARKER_WIDTH + PRODUCT_COLUMN_WIDTH * 2 + Math.floor(PRODUCT_COLUMN_WIDTH / 2),
+      y: Math.floor(PRODUCT_HEADER_HEIGHT / 2),
+    },
+  })
+  await expect(page.getByTestId('status-selection')).toHaveText('Sheet1!C:C')
+
+  const columnReadback = await waitForReadback(
+    page,
+    {
+      points: [
+        {
+          name: 'selectedColumnHeader',
+          x: PRODUCT_ROW_MARKER_WIDTH + PRODUCT_COLUMN_WIDTH * 2 + Math.floor(PRODUCT_COLUMN_WIDTH / 2),
+          y: Math.floor(PRODUCT_HEADER_HEIGHT / 2),
+        },
+        {
+          name: 'unselectedColumnHeader',
+          x: PRODUCT_ROW_MARKER_WIDTH + PRODUCT_COLUMN_WIDTH * 3 + Math.floor(PRODUCT_COLUMN_WIDTH / 2),
+          y: Math.floor(PRODUCT_HEADER_HEIGHT / 2),
+        },
+        { ...selectedRangeFillProbe(2, 3), name: 'selectedColumnBody' },
+        { ...selectedRangeFillProbe(2, 0), name: 'activeColumnCell' },
+        { ...selectedRangeFillProbe(3, 3), name: 'unselectedColumnBody' },
+      ],
+      regions: [],
+    },
+    (result) =>
+      isSelectedHeaderTint(result.points.selectedColumnHeader, result.points.unselectedColumnHeader) &&
+      isSelectionOverlayFill(result.points.selectedColumnBody) &&
+      result.points.activeColumnCell.a === 0 &&
+      result.points.unselectedColumnBody.a === 0,
+  )
+
+  expect(isSelectedHeaderTint(columnReadback.points.selectedColumnHeader, columnReadback.points.unselectedColumnHeader)).toBe(true)
+  expect(isSelectionOverlayFill(columnReadback.points.selectedColumnBody)).toBe(true)
+  expect(columnReadback.points.activeColumnCell).toMatchObject({ r: 0, g: 0, b: 0, a: 0 })
+  expect(columnReadback.points.unselectedColumnBody).toMatchObject({ r: 0, g: 0, b: 0, a: 0 })
+
+  await clickProductCell(page, 1, 1)
+  await grid.click({
+    position: {
+      x: Math.floor(PRODUCT_ROW_MARKER_WIDTH / 2),
+      y: PRODUCT_HEADER_HEIGHT + PRODUCT_ROW_HEIGHT * 5 + Math.floor(PRODUCT_ROW_HEIGHT / 2),
+    },
+  })
+  await expect(page.getByTestId('status-selection')).toHaveText('Sheet1!6:6')
+
+  const rowReadback = await waitForReadback(
+    page,
+    {
+      points: [
+        {
+          name: 'selectedRowHeader',
+          x: Math.floor(PRODUCT_ROW_MARKER_WIDTH / 2),
+          y: PRODUCT_HEADER_HEIGHT + PRODUCT_ROW_HEIGHT * 5 + Math.floor(PRODUCT_ROW_HEIGHT / 2),
+        },
+        {
+          name: 'unselectedRowHeader',
+          x: Math.floor(PRODUCT_ROW_MARKER_WIDTH / 2),
+          y: PRODUCT_HEADER_HEIGHT + PRODUCT_ROW_HEIGHT * 6 + Math.floor(PRODUCT_ROW_HEIGHT / 2),
+        },
+        { ...selectedRangeFillProbe(2, 5), name: 'selectedRowBody' },
+        { ...selectedRangeFillProbe(1, 5), name: 'activeRowCell' },
+        { ...selectedRangeFillProbe(2, 6), name: 'unselectedRowBody' },
+      ],
+      regions: [],
+    },
+    (result) =>
+      isSelectedHeaderTint(result.points.selectedRowHeader, result.points.unselectedRowHeader) &&
+      isSelectionOverlayFill(result.points.selectedRowBody) &&
+      result.points.activeRowCell.a === 0 &&
+      result.points.unselectedRowBody.a === 0,
+  )
+
+  expect(isSelectedHeaderTint(rowReadback.points.selectedRowHeader, rowReadback.points.unselectedRowHeader)).toBe(true)
+  expect(isSelectionOverlayFill(rowReadback.points.selectedRowBody)).toBe(true)
+  expect(rowReadback.points.activeRowCell).toMatchObject({ r: 0, g: 0, b: 0, a: 0 })
+  expect(rowReadback.points.unselectedRowBody).toMatchObject({ r: 0, g: 0, b: 0, a: 0 })
+
+  await saveReadbackArtifact(page, testInfo, 'main-workbook-grid-axis-selection-readback.png', 'main-workbook-grid-axis-selection-readback')
 })
 
 test('@browser-webgpu @browser-deep name-box range fill presents the current frame before success', async ({ page }, testInfo) => {
