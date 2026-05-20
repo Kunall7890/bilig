@@ -3486,12 +3486,27 @@ describe('workbook agent pane', () => {
       await advanceRenderedRange()
 
       expect(contextCalls()).toHaveLength(1)
+
+      await act(async () => {
+        await Promise.resolve()
+        await new Promise((resolve) => setTimeout(resolve, 3_000))
+      })
+
+      expect(contextCalls()).toHaveLength(2)
+      expect(requestBody(contextCalls()[1]?.[1])).toMatchObject({
+        context: {
+          rendered: {
+            capturedRevision: 23,
+            batchId: 23,
+          },
+        },
+      })
     } finally {
       await act(async () => {
         root.unmount()
       })
     }
-  })
+  }, 10_000)
 
   it('does not resync workbook context only because rendered string intern ids change', async () => {
     ;(globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true
