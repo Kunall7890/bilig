@@ -188,6 +188,7 @@ export const WorkbookPaneRendererV3 = memo(function WorkbookPaneRendererV3({
           layer="grid-floor"
           overlay={overlay ?? null}
           overlayBuilder={overlayBuilder ?? null}
+          renderRevisionSnapshot={renderRevisionSnapshot}
           scrollTransformStore={scrollTransformStore}
           tilePanes={tilePanes}
         />
@@ -202,6 +203,7 @@ export const WorkbookPaneRendererV3 = memo(function WorkbookPaneRendererV3({
           host={host}
           overlay={overlay ?? null}
           overlayBuilder={overlayBuilder ?? null}
+          renderRevisionSnapshot={renderRevisionSnapshot}
           scrollTransformStore={scrollTransformStore}
           tilePanes={tilePanes}
         />

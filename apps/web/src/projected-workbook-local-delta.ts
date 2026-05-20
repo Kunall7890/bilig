@@ -14,8 +14,8 @@ export const LOCAL_CELL_TEXT_DIRTY_MASK = DirtyMaskV3.Value | DirtyMaskV3.Text
 export const LOCAL_CELL_VISUAL_DIRTY_MASK = DirtyMaskV3.Value | DirtyMaskV3.Style | DirtyMaskV3.Text | DirtyMaskV3.Rect | DirtyMaskV3.Border
 
 export function buildLocalCellSnapshotWorkbookDelta(input: {
-  readonly identity: ProjectedWorkbookLocalDeltaSheetIdentity
   readonly dirtyMask?: number | undefined
+  readonly identity: ProjectedWorkbookLocalDeltaSheetIdentity
   readonly seq: number
   readonly snapshot: CellSnapshot
 }): WorkbookDeltaBatchV3 {
@@ -28,7 +28,7 @@ export function buildLocalCellSnapshotWorkbookDelta(input: {
     dirty: {
       axisX: new Uint32Array(),
       axisY: new Uint32Array(),
-      cellRanges: new Uint32Array([parsed.row, parsed.row, parsed.col, parsed.col, input.dirtyMask ?? LOCAL_CELL_VISUAL_DIRTY_MASK]),
+      cellRanges: new Uint32Array([parsed.row, parsed.row, parsed.col, parsed.col, input.dirtyMask ?? LOCAL_CELL_TEXT_DIRTY_MASK]),
     },
     freezeSeq: 0,
     magic: 'bilig.workbook.delta.v3',

@@ -496,4 +496,98 @@ describe('WorkbookPaneCanvasFallbackV3', () => {
       root.unmount()
     })
   })
+
+  test('redraws the fallback canvas when render revision advances without new pane identity', async () => {
+    ;(globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true
+    const host = document.createElement('div')
+    Object.defineProperty(host, 'clientWidth', { configurable: true, value: 480 })
+    Object.defineProperty(host, 'clientHeight', { configurable: true, value: 240 })
+    document.body.appendChild(host)
+
+    const clearRect = vi.fn()
+    const context = {
+      beginPath: vi.fn(),
+      clearRect,
+      clip: vi.fn(),
+      fillRect: vi.fn(),
+      fillStyle: '',
+      fillText: vi.fn(),
+      font: '',
+      lineTo: vi.fn(),
+      lineWidth: 1,
+      measureText: vi.fn(() => ({ width: 120 })),
+      moveTo: vi.fn(),
+      rect: vi.fn(),
+      restore: vi.fn(),
+      save: vi.fn(),
+      setTransform: vi.fn(),
+      stroke: vi.fn(),
+      strokeStyle: '',
+      textAlign: 'left' as CanvasTextAlign,
+      textBaseline: 'middle' as CanvasTextBaseline,
+      translate: vi.fn(),
+    }
+    Object.defineProperty(HTMLCanvasElement.prototype, 'getContext', {
+      configurable: true,
+      value: vi.fn(() => context),
+    })
+    vi.spyOn(window, 'requestAnimationFrame').mockReturnValue(1)
+    vi.spyOn(window, 'cancelAnimationFrame').mockImplementation(() => undefined)
+
+    const root = createRoot(host)
+    const pane = createBodyPane()
+    await act(async () => {
+      root.render(
+        createElement(WorkbookPaneCanvasFallbackV3, {
+          active: true,
+          drawText: false,
+          geometry: null,
+          headerPanes: [],
+          host,
+          layer: 'grid-floor',
+          overlay: null,
+          renderRevisionSnapshot: {
+            authoritativeRevision: 1,
+            localRevision: 1,
+            projectedRevision: 1,
+            tileSceneCameraSeq: 1,
+            tileSceneRevision: 1,
+          },
+          scrollTransformStore: null,
+          tilePanes: [pane],
+        }),
+      )
+    })
+    expect(clearRect).toHaveBeenCalled()
+    clearRect.mockClear()
+
+    await act(async () => {
+      root.render(
+        createElement(WorkbookPaneCanvasFallbackV3, {
+          active: true,
+          drawText: false,
+          geometry: null,
+          headerPanes: [],
+          host,
+          layer: 'grid-floor',
+          overlay: null,
+          renderRevisionSnapshot: {
+            authoritativeRevision: 1,
+            localRevision: 2,
+            projectedRevision: 2,
+            tileSceneCameraSeq: 1,
+            tileSceneRevision: 1,
+          },
+          scrollTransformStore: null,
+          tilePanes: [pane],
+        }),
+      )
+    })
+
+    expect(clearRect).toHaveBeenCalled()
+
+    await act(async () => {
+      root.unmount()
+    })
+  })
 })

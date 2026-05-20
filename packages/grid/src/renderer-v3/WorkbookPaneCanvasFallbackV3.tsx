@@ -1,4 +1,5 @@
 import { memo, useCallback, useEffect, useLayoutEffect, useRef } from 'react'
+import type { GridRenderRevisionSnapshot } from '../grid-engine.js'
 import type { GridGeometrySnapshot } from '../gridGeometry.js'
 import type { GridHeaderPaneState } from '../gridHeaderPanes.js'
 import type { GridCameraStore } from '../runtime/gridCameraStore.js'
@@ -41,6 +42,7 @@ export interface WorkbookPaneCanvasFallbackV3Props {
   readonly layer?: 'fallback' | 'grid-floor' | undefined
   readonly overlay: DynamicGridOverlayBatchV3 | null
   readonly overlayBuilder?: ((geometry: GridGeometrySnapshot) => DynamicGridOverlayBatchV3 | null | undefined) | null | undefined
+  readonly renderRevisionSnapshot?: GridRenderRevisionSnapshot | null | undefined
   readonly scrollTransformStore: WorkbookGridScrollStore | null
   readonly tilePanes: readonly WorkbookRenderTilePaneState[]
 }
@@ -201,10 +203,12 @@ export const WorkbookPaneCanvasFallbackV3 = memo(function WorkbookPaneCanvasFall
   layer = 'fallback',
   overlay,
   overlayBuilder,
+  renderRevisionSnapshot = null,
   scrollTransformStore,
   tilePanes,
 }: WorkbookPaneCanvasFallbackV3Props) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null)
+  const renderRevisionSignature = resolveCanvasFallbackRenderRevisionSignature(renderRevisionSnapshot)
 
   const draw = useCallback(() => {
     const canvas = canvasRef.current
@@ -250,7 +254,7 @@ export const WorkbookPaneCanvasFallbackV3 = memo(function WorkbookPaneCanvasFall
       return
     }
     draw()
-  }, [active, draw, host])
+  }, [active, draw, host, renderRevisionSignature])
 
   useEffect(() => {
     if (!active || !host) {
@@ -305,3 +309,10 @@ export const WorkbookPaneCanvasFallbackV3 = memo(function WorkbookPaneCanvasFall
     />
   )
 })
+
+function resolveCanvasFallbackRenderRevisionSignature(snapshot: GridRenderRevisionSnapshot | null | undefined): string {
+  if (!snapshot) {
+    return ''
+  }
+  return [snapshot.authoritativeRevision ?? 'none', snapshot.localRevision ?? 'none', snapshot.projectedRevision].join(':')
+}

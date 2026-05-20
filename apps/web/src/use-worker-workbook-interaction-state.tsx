@@ -8,7 +8,6 @@ import type { WorkerHandle, WorkerRuntimeSelection } from './runtime-session.js'
 import { useWorkbookEditorConflict } from './use-workbook-editor-conflict.js'
 import { useWorkbookSelectionActions } from './use-workbook-selection-actions.js'
 import { createSingleCellSelectionSnapshot } from './workbook-agent-context.js'
-import { LOCAL_CELL_TEXT_DIRTY_MASK } from './projected-workbook-local-delta.js'
 import {
   createOptimisticCellSnapshot,
   createSupersedingCellSnapshot,
@@ -356,7 +355,7 @@ export function useWorkerWorkbookInteractionState(input: {
           }),
       })
       optimisticCellSnapshotsRef.current.set(targetKey, optimistic)
-      viewportStore?.setCellSnapshot(optimistic, { localDeltaDirtyMask: LOCAL_CELL_TEXT_DIRTY_MASK })
+      viewportStore?.setCellSnapshot(optimistic)
       return {
         editorSeed: toEditorValue(optimistic),
         resolvedValue: toResolvedValue(optimistic),

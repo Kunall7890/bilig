@@ -3,7 +3,7 @@ import { dirname, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { describe, expect, it } from 'vitest'
 
-import { buildVitestArgBatches, buildVitestArgs, isBroadCorpusVitestRun, readVitestBatchCooldownMs } from '../run-vitest.ts'
+import { buildVitestArgBatches, buildVitestArgs, buildVitestEnv, isBroadCorpusVitestRun, readVitestBatchCooldownMs } from '../run-vitest.ts'
 
 const repoRoot = resolve(dirname(fileURLToPath(import.meta.url)), '../..')
 
@@ -126,6 +126,11 @@ describe('run-vitest wrapper arguments', () => {
     expect(readVitestBatchCooldownMs({ BILIG_CI_PROFILE: 'fast', BILIG_VITEST_BATCH_COOLDOWN_MS: '0' })).toBe(0)
     expect(readVitestBatchCooldownMs({ BILIG_CI_PROFILE: 'fast', BILIG_VITEST_BATCH_COOLDOWN_MS: '2500' })).toBe(2500)
     expect(readVitestBatchCooldownMs({ BILIG_CI_PROFILE: 'fast', BILIG_VITEST_BATCH_COOLDOWN_MS: '2500ms' })).toBe(1000)
+  })
+
+  it('marks coverage runs for tests that must avoid instrumented stopwatch assertions', () => {
+    expect(buildVitestEnv(['--run', '--coverage'], { BILIG_CI_PROFILE: 'full' })['BILIG_VITEST_COVERAGE']).toBe('1')
+    expect(buildVitestEnv(['--run'], { BILIG_CI_PROFILE: 'full' })['BILIG_VITEST_COVERAGE']).toBeUndefined()
   })
 
   it('classifies the public workbook corpus correctness lane as broad', () => {

@@ -24,7 +24,6 @@ const metrics: RecalcMetrics = {
 }
 
 const RANGE_VISUAL_DIRTY_MASK = DirtyMaskV3.Value | DirtyMaskV3.Style | DirtyMaskV3.Text | DirtyMaskV3.Rect | DirtyMaskV3.Border
-const CELL_TEXT_DIRTY_MASK = DirtyMaskV3.Value | DirtyMaskV3.Text
 
 function createEngine(input: { readonly sheet1Id?: number } = {}): WorkerEngine {
   const sheets = new Map<string, TestSheet>([
@@ -133,7 +132,7 @@ describe('WorkerRuntimeDeltaPublisher', () => {
       valueSeq: 17,
       calcSeq: 17,
     })
-    expect([...sheet1.dirty.cellRanges]).toEqual([3, 3, 4, 4, CELL_TEXT_DIRTY_MASK, 1, 2, 1, 2, RANGE_VISUAL_DIRTY_MASK])
+    expect([...sheet1.dirty.cellRanges]).toEqual([3, 3, 4, 4, RANGE_VISUAL_DIRTY_MASK, 1, 2, 1, 2, RANGE_VISUAL_DIRTY_MASK])
     expect([...sheet1.dirty.axisX]).toEqual([128, 130, DirtyMaskV3.AxisX | DirtyMaskV3.Text | DirtyMaskV3.Rect])
     expect([...later.dirty.axisY]).toEqual([32, 33, DirtyMaskV3.AxisY | DirtyMaskV3.Text | DirtyMaskV3.Rect])
   })

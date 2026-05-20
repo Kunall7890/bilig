@@ -4,7 +4,6 @@ import { createRoot, type Root } from 'react-dom/client'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { ErrorCode, ValueTag, type CellSnapshot } from '@bilig/protocol'
 import type { GridSelectionSnapshot } from '@bilig/grid'
-import { LOCAL_CELL_TEXT_DIRTY_MASK } from '../projected-workbook-local-delta.js'
 import type { WorkerHandle, WorkerRuntimeSelection } from '../runtime-session.js'
 import { flushScheduledSelectionPersistence, loadPersistedSelection } from '../selection-persistence.js'
 import { useWorkerWorkbookInteractionState } from '../use-worker-workbook-interaction-state.js'
@@ -310,7 +309,6 @@ describe('useWorkerWorkbookInteractionState', () => {
         input: '=1+',
         value: { tag: ValueTag.Error, code: ErrorCode.Value },
       }),
-      { localDeltaDirtyMask: LOCAL_CELL_TEXT_DIRTY_MASK },
     )
     expect(captured?.visibleEditorValue).toBe('#VALUE!')
     expect(invokeMutation).toHaveBeenCalledWith('setCellFormula', 'Sheet1', 'A1', '1+')

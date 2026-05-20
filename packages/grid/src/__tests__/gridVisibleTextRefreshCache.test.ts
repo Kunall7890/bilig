@@ -207,6 +207,31 @@ describe('GridVisibleTextRefreshCache', () => {
     expect(cache.needsLocalRefresh(tile.tileId, tile, createInput({ engine: createEngine({}, {}, 7) }))).toBe(true)
   })
 
+  it('does not reuse a clean verdict for authored fill tiles when same-revision engine state changes', () => {
+    const cache = new GridVisibleTextRefreshCache()
+    let hasFill = true
+    const engine: GridEngineLike = {
+      getCell: (_sheetName, address) => createCellSnapshot(address, hasFill ? { styleId: 'style-green', value: 'A1' } : { value: 'A1' }),
+      getCellStyle: (styleId) => (styleId === 'style-green' ? { id: 'style-green', fill: { backgroundColor: '#00ff00' } } : undefined),
+      getRenderRevisionSnapshot: () => ({
+        authoritativeRevision: 7,
+        localRevision: 7,
+        projectedRevision: 7,
+        tileSceneCameraSeq: 7,
+        tileSceneRevision: 7,
+      }),
+      subscribeCells: () => () => {},
+      workbook: {
+        getSheet: () => undefined,
+      },
+    }
+    const tile = createMaterializedTile(engine, 7)
+
+    expect(cache.needsLocalRefresh(tile.tileId, tile, createInput({ engine }))).toBe(false)
+    hasFill = false
+    expect(cache.needsLocalRefresh(tile.tileId, tile, createInput({ engine }))).toBe(true)
+  })
+
   it('rejects current-revision partial stale fill slivers when projected tiles have no rect signature', () => {
     const cache = new GridVisibleTextRefreshCache()
     const tile = createTile({

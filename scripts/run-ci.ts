@@ -255,7 +255,7 @@ async function runSequential(label: string, tasks: readonly CiTask[]): Promise<C
 const coverageLane: CiTask = {
   label: 'coverage + contracts',
   steps: [
-    pnpm('coverage', 'coverage'),
+    withEnv(pnpm('coverage', 'coverage'), { CI: process.env['CI'] ?? '1' }),
     {
       label: 'coverage contracts',
       execute: async () => {
@@ -264,6 +264,13 @@ const coverageLane: CiTask = {
     },
   ],
 }
+const headlessGuardedSumifsPerformanceLane = direct(
+  'headless guarded SUMIFS performance',
+  workspaceBin('tsx'),
+  'scripts/run-vitest.ts',
+  '--run',
+  'packages/headless/src/__tests__/guarded-sumifs-workpaper-performance.test.ts',
+)
 const unifiedFuzzLane = pnpm('unified fuzz', 'test:fuzz')
 const browserWebBundleBuild = withEnv(pnpm('browser web bundle build', '--filter', '@bilig/web', 'build:bundle'), {
   VITE_BILIG_REMOTE_SYNC: '0',
@@ -441,7 +448,7 @@ try {
       ...(await runStage('functional heavy checks', [
         {
           label: 'vitest heavy checks',
-          steps: [coverageLane, unifiedFuzzLane],
+          steps: [headlessGuardedSumifsPerformanceLane, coverageLane, unifiedFuzzLane],
         },
         ...(skipBrowserGates ? [] : [browserWebBundleBuild]),
       ])),

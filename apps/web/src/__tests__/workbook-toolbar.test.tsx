@@ -917,8 +917,10 @@ describe('WorkbookToolbar', () => {
       )
     })
 
+    const boldButton = host.querySelector("[aria-label='Bold']")
     await act(async () => {
-      host.querySelector("[aria-label='Bold']")?.dispatchEvent(new MouseEvent('click', { bubbles: true }))
+      boldButton?.dispatchEvent(new MouseEvent('pointerdown', { bubbles: true }))
+      boldButton?.dispatchEvent(new MouseEvent('click', { bubbles: true }))
     })
     expect(onToggleBold).toHaveBeenCalledTimes(1)
 

@@ -241,6 +241,7 @@ export const WorkbookToolbar = memo(function WorkbookToolbar({
 }: WorkbookToolbarProps) {
   const { scrollContainerRef, showBackwardCue, showForwardCue } = useToolbarScrollCue()
   const requestGridFocus = useWorkbookGridFocusReturn()
+  const toolbarButtonPointerActivationRef = useRef(false)
   const returnFocusToGridAfterCommand = useCallback(() => {
     if (!requestGridFocus) {
       return
@@ -252,10 +253,17 @@ export const WorkbookToolbar = memo(function WorkbookToolbar({
     }
     window.setTimeout(run, 0)
   }, [requestGridFocus])
+  const markToolbarButtonPointerActivation = useCallback(() => {
+    toolbarButtonPointerActivationRef.current = true
+  }, [])
   const runToolbarButtonCommand = useCallback(
     (command: () => void) => {
+      const shouldReturnFocusToGrid = toolbarButtonPointerActivationRef.current
+      toolbarButtonPointerActivationRef.current = false
       command()
-      returnFocusToGridAfterCommand()
+      if (shouldReturnFocusToGrid) {
+        returnFocusToGridAfterCommand()
+      }
     },
     [returnFocusToGridAfterCommand],
   )
@@ -358,6 +366,7 @@ export const WorkbookToolbar = memo(function WorkbookToolbar({
                   disabled={!writesAllowed || !canUndo}
                   title={`Undo (${getWorkbookShortcutLabel('undo')})`}
                   onClick={() => runToolbarButtonCommand(onUndo)}
+                  onPointerDown={markToolbarButtonPointerActivation}
                 >
                   <Undo2 className={toolbarIconClass()} />
                 </Toolbar.Button>
@@ -367,6 +376,7 @@ export const WorkbookToolbar = memo(function WorkbookToolbar({
                   disabled={!writesAllowed || !canRedo}
                   title={`Redo (${getWorkbookShortcutLabel('redo')})`}
                   onClick={() => runToolbarButtonCommand(onRedo)}
+                  onPointerDown={markToolbarButtonPointerActivation}
                 >
                   <Redo2 className={toolbarIconClass()} />
                 </Toolbar.Button>
@@ -477,6 +487,7 @@ export const WorkbookToolbar = memo(function WorkbookToolbar({
                   className={toolbarButtonClass({ active: isBoldActive, embedded: true })}
                   title={`Bold (${getWorkbookShortcutLabel('bold')})`}
                   onClick={() => runToolbarButtonCommand(onToggleBold)}
+                  onPointerDown={markToolbarButtonPointerActivation}
                 >
                   <Bold className={toolbarIconClass()} />
                 </Toolbar.Button>
@@ -486,6 +497,7 @@ export const WorkbookToolbar = memo(function WorkbookToolbar({
                   className={toolbarButtonClass({ active: isItalicActive, embedded: true })}
                   title={`Italic (${getWorkbookShortcutLabel('italic')})`}
                   onClick={() => runToolbarButtonCommand(onToggleItalic)}
+                  onPointerDown={markToolbarButtonPointerActivation}
                 >
                   <Italic className={toolbarIconClass()} />
                 </Toolbar.Button>
@@ -495,6 +507,7 @@ export const WorkbookToolbar = memo(function WorkbookToolbar({
                   className={toolbarButtonClass({ active: isUnderlineActive, embedded: true })}
                   title={`Underline (${getWorkbookShortcutLabel('underline')})`}
                   onClick={() => runToolbarButtonCommand(onToggleUnderline)}
+                  onPointerDown={markToolbarButtonPointerActivation}
                 >
                   <Underline className={toolbarIconClass()} />
                 </Toolbar.Button>
@@ -536,6 +549,7 @@ export const WorkbookToolbar = memo(function WorkbookToolbar({
                   })}
                   title={`Align left (${getWorkbookShortcutLabel('align-left')})`}
                   onClick={() => runToolbarButtonCommand(() => onHorizontalAlignmentChange('left'))}
+                  onPointerDown={markToolbarButtonPointerActivation}
                 >
                   <AlignLeft className={toolbarIconClass()} />
                 </Toolbar.Button>
@@ -548,6 +562,7 @@ export const WorkbookToolbar = memo(function WorkbookToolbar({
                   })}
                   title={`Align center (${getWorkbookShortcutLabel('align-center')})`}
                   onClick={() => runToolbarButtonCommand(() => onHorizontalAlignmentChange('center'))}
+                  onPointerDown={markToolbarButtonPointerActivation}
                 >
                   <AlignCenter className={toolbarIconClass()} />
                 </Toolbar.Button>
@@ -560,6 +575,7 @@ export const WorkbookToolbar = memo(function WorkbookToolbar({
                   })}
                   title={`Align right (${getWorkbookShortcutLabel('align-right')})`}
                   onClick={() => runToolbarButtonCommand(() => onHorizontalAlignmentChange('right'))}
+                  onPointerDown={markToolbarButtonPointerActivation}
                 >
                   <AlignRight className={toolbarIconClass()} />
                 </Toolbar.Button>
@@ -675,6 +691,7 @@ export const WorkbookToolbar = memo(function WorkbookToolbar({
                 className={toolbarButtonClass({ active: isWrapActive })}
                 type="button"
                 onClick={() => runToolbarButtonCommand(onToggleWrap)}
+                onPointerDown={markToolbarButtonPointerActivation}
               >
                 <WrapText className={toolbarIconClass()} />
                 <span className="sr-only">Wrap</span>
@@ -684,6 +701,7 @@ export const WorkbookToolbar = memo(function WorkbookToolbar({
                 className={toolbarButtonClass()}
                 type="button"
                 onClick={() => runToolbarButtonCommand(onClearStyle)}
+                onPointerDown={markToolbarButtonPointerActivation}
               >
                 <RemoveFormatting className={toolbarIconClass()} />
                 <span className="sr-only">Clear style</span>

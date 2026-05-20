@@ -77,6 +77,7 @@ export class GridVisibleTextRefreshCache {
 
     const renderRevisionKey = resolveRenderRevisionKey(input.engine)
     const geometryKey = resolveGeometryKey(input)
+    const hasAuthoredPaintRects = tileHasAuthoredPaintRects(tile)
     const cached = this.entries.get(tileKey)
     if (
       cached &&
@@ -84,6 +85,7 @@ export class GridVisibleTextRefreshCache {
       cached.engine === input.engine &&
       cached.geometryKey === geometryKey &&
       cached.sheetName === input.sheetName &&
+      !hasAuthoredPaintRects &&
       (input.revisionSensitive === false ||
         (cached.sceneRevision === input.sceneRevision && cached.renderRevisionKey === renderRevisionKey)) &&
       cached.visibleRowStart === visibleRowStart &&

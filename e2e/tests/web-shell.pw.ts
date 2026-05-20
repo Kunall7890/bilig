@@ -1641,8 +1641,9 @@ test('web app keeps formatting shortcuts active after toolbar focus without lett
   await expect(formulaInput).toHaveValue('clear-after-toolbar-focus')
 
   await boldButton.click()
-  await expect(boldButton).toBeFocused()
   await expect(page.getByLabel('Bold')).toHaveClass(/bg-\[var\(--wb-accent-soft\)\]/)
+  await boldButton.focus()
+  await expect(boldButton).toBeFocused()
   await page.keyboard.press('Delete')
   await expect(formulaInput).toHaveValue('clear-after-toolbar-focus')
   await expect(boldButton).toBeFocused()
@@ -1659,7 +1660,7 @@ test('web app keeps formatting shortcuts active after toolbar focus without lett
   await page.keyboard.press('Delete')
   await expect(formulaInput).toHaveValue('')
 
-  await boldButton.click()
+  await boldButton.focus()
   await expect(boldButton).toBeFocused()
   await page.keyboard.press('Enter')
   await expect(formulaInput).toHaveValue('')
@@ -1676,8 +1677,9 @@ test('web app routes row, column, and full-sheet selection shortcuts from toolba
   await expect(page.getByTestId('status-selection')).toHaveText('Sheet1!C3')
 
   await boldButton.click()
-  await expect(boldButton).toBeFocused()
   await expect(boldButton).toHaveClass(/bg-\[var\(--wb-accent-soft\)\]/)
+  await boldButton.focus()
+  await expect(boldButton).toBeFocused()
   await boldButton.evaluate((button) => {
     ;(window as Window & { __biligToolbarShortcutClickCount?: number }).__biligToolbarShortcutClickCount = 0
     button.addEventListener('click', () => {

@@ -49,6 +49,7 @@ describe('run-ci', () => {
       "withEnv(directPackageScript('correctness core', 'test:correctness:core'), { BILIG_VITEST_FILE_CHUNK_SIZE: '10' })",
     )
     expect(source).toContain("BILIG_VITEST_FILE_CHUNK_SIZE: '10'")
+    expect(source).toContain("withEnv(pnpm('coverage', 'coverage'), { CI: process.env['CI'] ?? '1' })")
     expect(source).toContain(
       "directPackageScript('financial public workbook corpus resume check', 'public-workbook-corpus:resume-financial:check')",
     )
@@ -82,7 +83,8 @@ describe('run-ci', () => {
     const source = readFileSync(resolve(repoRoot, 'scripts/run-ci.ts'), 'utf8')
 
     expect(source).toContain("const unifiedFuzzLane = pnpm('unified fuzz', 'test:fuzz')")
-    expect(source).toContain('steps: [coverageLane, unifiedFuzzLane]')
+    expect(source).toContain('const headlessGuardedSumifsPerformanceLane = direct(')
+    expect(source).toContain('steps: [headlessGuardedSumifsPerformanceLane, coverageLane, unifiedFuzzLane]')
     expect(source).toContain("await runSequential('unified fuzz checks', [unifiedFuzzLane])")
     expect(source).toContain('pnpm run ci uses the full correctness profile')
   })

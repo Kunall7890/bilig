@@ -25,7 +25,11 @@ import { ProjectedViewportPatchCoordinator, type ProjectedViewportPatchApplied }
 import type { ProjectedRenderTile, ProjectedTileSceneChange, ProjectedTileSceneStore } from './projected-tile-scene-store.js'
 import { getWorkbookScrollPerfCollector } from './perf/workbook-scroll-perf.js'
 import { normalizeWorkbookMergeRange } from './worker-runtime-support.js'
-import { buildLocalAxisWorkbookDelta, buildLocalCellSnapshotWorkbookDelta } from './projected-workbook-local-delta.js'
+import {
+  LOCAL_CELL_VISUAL_DIRTY_MASK,
+  buildLocalAxisWorkbookDelta,
+  buildLocalCellSnapshotWorkbookDelta,
+} from './projected-workbook-local-delta.js'
 import { ProjectedViewportPatchRevisionGate } from './projected-viewport-patch-revision-gate.js'
 
 export interface ProjectedViewportStoreOptions {
@@ -35,8 +39,8 @@ interface ProjectedCellSnapshotWriteOptions {
   readonly force?: boolean
   readonly forceOptimistic?: boolean
   readonly allowOptimisticClearResurrection?: boolean
-  readonly localDeltaDirtyMask?: number | undefined
   readonly emitLocalDelta?: boolean
+  readonly localDeltaDirtyMask?: number
 }
 type CellItem = readonly [number, number]
 type SheetViewportChannel = 'columnWidths' | 'rowHeights' | 'hiddenColumns' | 'hiddenRows' | 'freeze' | 'merges'
@@ -489,7 +493,7 @@ export class ProjectedViewportStore implements GridEngineLike {
     }
   }
 
-  private emitLocalCellSnapshotDelta(snapshot: CellSnapshot, dirtyMask?: number): void {
+  private emitLocalCellSnapshotDelta(snapshot: CellSnapshot, dirtyMask: number | undefined): void {
     if (this.localWorkbookDeltaListeners.size === 0) {
       return
     }
@@ -564,14 +568,14 @@ export class ProjectedViewportStore implements GridEngineLike {
         existed: this.cellCache.hasCellSnapshot(snapshot.sheetName, snapshot.address),
         snapshot: structuredClone(snapshot),
       })
-      this.setCellSnapshot(nextSnapshot, { force: true, forceOptimistic: true })
+      this.setCellSnapshot(nextSnapshot, { force: true, forceOptimistic: true, localDeltaDirtyMask: LOCAL_CELL_VISUAL_DIRTY_MASK })
     })
     if (previousSnapshots.length === 0) {
       return null
     }
     return () => {
       previousSnapshots.forEach(({ existed, snapshot }) => {
-        this.setCellSnapshot(snapshot, { force: true, forceOptimistic: true })
+        this.setCellSnapshot(snapshot, { force: true, forceOptimistic: true, localDeltaDirtyMask: LOCAL_CELL_VISUAL_DIRTY_MASK })
         if (!existed) {
           this.cellCache.deleteCellSnapshot(snapshot.sheetName, snapshot.address)
         }
