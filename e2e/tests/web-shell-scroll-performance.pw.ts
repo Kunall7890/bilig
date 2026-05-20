@@ -748,6 +748,7 @@ test.describe('@browser-perf web app scroll performance', () => {
       maxRendererVisibleDirtyTiles: 10,
       maxRendererWarmDirtyTiles: 4,
       maxRendererDeltaApplyMs: 4,
+      maxSevereTailOutlierFrames: 4,
       frameP99Max: 40,
       mutationToVisibleP95Max: 50,
     })
