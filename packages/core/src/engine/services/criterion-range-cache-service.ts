@@ -45,12 +45,15 @@ interface CriterionCacheEntry {
 export interface CriterionExactAggregateRequest {
   readonly criteriaPair: CriterionRangePair
   readonly aggregateRange?: CriterionRangeDescriptor
-  readonly aggregateKind: 'count' | 'sum'
+  readonly aggregateKind: 'count' | 'sum' | 'average' | 'min' | 'max'
 }
 
 interface CriterionExactAggregateBucket {
   count: number
   sum: number
+  numericCount: number
+  minimum: number
+  maximum: number
   firstError?: CellValue
 }
 
@@ -420,7 +423,13 @@ function addExactAggregateBucket(
 ): void {
   let bucket = key.kind === 'number' ? index.numbers.get(key.value) : index.strings.get(key.value)
   if (bucket === undefined) {
-    bucket = { count: 0, sum: 0 }
+    bucket = {
+      count: 0,
+      sum: 0,
+      numericCount: 0,
+      minimum: Number.POSITIVE_INFINITY,
+      maximum: Number.NEGATIVE_INFINITY,
+    }
     if (key.kind === 'number') {
       index.numbers.set(key.value, bucket)
     } else {
@@ -428,7 +437,7 @@ function addExactAggregateBucket(
     }
   }
   bucket.count += 1
-  if (aggregateKind !== 'sum' || aggregateView === undefined) {
+  if (aggregateKind === 'count' || aggregateView === undefined) {
     return
   }
   const tag = decodeValueTag(aggregateView.readTagAt(offset))
@@ -437,11 +446,20 @@ function addExactAggregateBucket(
     return
   }
   if (tag === ValueTag.Number) {
-    bucket.sum += aggregateView.readNumberAt(offset)
+    const numeric = aggregateView.readNumberAt(offset)
+    bucket.sum += numeric
+    bucket.numericCount += 1
+    bucket.minimum = Math.min(bucket.minimum, numeric)
+    bucket.maximum = Math.max(bucket.maximum, numeric)
     return
   }
   if (tag === ValueTag.Boolean) {
     bucket.sum += aggregateView.readNumberAt(offset) !== 0 ? 1 : 0
+    bucket.numericCount += 1
+    return
+  }
+  if (tag === ValueTag.Empty) {
+    bucket.numericCount += 1
   }
 }
 
@@ -457,18 +475,28 @@ function exactAggregateBucketValue(
   if (aggregateKind === 'count') {
     return numberValue(bucket.count)
   }
-  return bucket.firstError ?? numberValue(bucket.sum)
+  if (bucket.firstError) {
+    return bucket.firstError
+  }
+  if (aggregateKind === 'sum') {
+    return numberValue(bucket.sum)
+  }
+  if (aggregateKind === 'average') {
+    return bucket.numericCount === 0 ? errorValue(ErrorCode.Div0) : numberValue(bucket.sum / bucket.numericCount)
+  }
+  if (aggregateKind === 'min') {
+    return numberValue(bucket.minimum === Number.POSITIVE_INFINITY ? 0 : bucket.minimum)
+  }
+  return numberValue(bucket.maximum === Number.NEGATIVE_INFINITY ? 0 : bucket.maximum)
 }
 
 function exactAggregateIndexCacheKey(request: {
-  readonly aggregateKind: CriterionExactAggregateRequest['aggregateKind']
   readonly criteriaRegionId: number
   readonly criteriaView: RuntimeColumnView
   readonly aggregateRegionId?: number
   readonly aggregateView?: RuntimeColumnView
 }): string {
   return [
-    request.aggregateKind,
     request.criteriaRegionId,
     request.criteriaView.columnVersion,
     request.criteriaView.structureVersion,
@@ -614,7 +642,7 @@ export function createCriterionRangeCacheService(args: {
     if (criteriaKey === undefined) {
       return undefined
     }
-    if (request.aggregateKind === 'sum' && request.aggregateRange === undefined) {
+    if (request.aggregateKind !== 'count' && request.aggregateRange === undefined) {
       return undefined
     }
     if (request.aggregateRange !== undefined && request.aggregateRange.length !== request.criteriaPair.range.length) {
@@ -625,7 +653,6 @@ export function createCriterionRangeCacheService(args: {
     const aggregateRegionId = request.aggregateRange === undefined ? undefined : rangeRegionId(request.aggregateRange)
     const aggregateView = request.aggregateRange === undefined ? undefined : getColumnView(request.aggregateRange)
     const cacheKey = exactAggregateIndexCacheKey({
-      aggregateKind: request.aggregateKind,
       criteriaRegionId,
       criteriaView,
       ...(aggregateRegionId === undefined ? {} : { aggregateRegionId }),

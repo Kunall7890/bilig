@@ -276,6 +276,27 @@ describe('createCriterionRangeCacheService', () => {
         aggregateKind: 'sum',
       }),
     ).toEqual({ tag: ValueTag.Number, value: 12 })
+    expect(
+      criterionCache.getOrBuildExactAggregate({
+        criteriaPair,
+        aggregateRange: { sheetName: 'Sheet1', rowStart: 0, rowEnd: 5, col: 1, length: 6 },
+        aggregateKind: 'average',
+      }),
+    ).toEqual({ tag: ValueTag.Number, value: 4 })
+    expect(
+      criterionCache.getOrBuildExactAggregate({
+        criteriaPair,
+        aggregateRange: { sheetName: 'Sheet1', rowStart: 0, rowEnd: 5, col: 1, length: 6 },
+        aggregateKind: 'min',
+      }),
+    ).toEqual({ tag: ValueTag.Number, value: 2 })
+    expect(
+      criterionCache.getOrBuildExactAggregate({
+        criteriaPair,
+        aggregateRange: { sheetName: 'Sheet1', rowStart: 0, rowEnd: 5, col: 1, length: 6 },
+        aggregateKind: 'max',
+      }),
+    ).toEqual({ tag: ValueTag.Number, value: 6 })
 
     setStoredCellValue(workbook, strings, 'Sheet1', 'A2', {
       tag: ValueTag.String,
@@ -289,6 +310,20 @@ describe('createCriterionRangeCacheService', () => {
         aggregateKind: 'sum',
       }),
     ).toEqual({ tag: ValueTag.Number, value: 10 })
+    expect(
+      criterionCache.getOrBuildExactAggregate({
+        criteriaPair,
+        aggregateRange: { sheetName: 'Sheet1', rowStart: 0, rowEnd: 5, col: 1, length: 6 },
+        aggregateKind: 'average',
+      }),
+    ).toEqual({ tag: ValueTag.Number, value: 5 })
+    expect(
+      criterionCache.getOrBuildExactAggregate({
+        criteriaPair,
+        aggregateRange: { sheetName: 'Sheet1', rowStart: 0, rowEnd: 5, col: 1, length: 6 },
+        aggregateKind: 'min',
+      }),
+    ).toEqual({ tag: ValueTag.Number, value: 4 })
   })
 
   it('supports compiled operator criteria and validates matching range lengths', () => {

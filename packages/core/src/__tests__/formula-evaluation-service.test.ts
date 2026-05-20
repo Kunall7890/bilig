@@ -152,6 +152,28 @@ describe('EngineFormulaEvaluationService', () => {
     expect(engine.getPerformanceCounters().directCriteriaAggregateCacheHits).toBeGreaterThanOrEqual(1)
   })
 
+  it('uses exact aggregate buckets for single-criteria average min and max formulas', async () => {
+    const engine = new SpreadsheetEngine({ workbookName: 'evaluation-direct-criteria-exact-stat-buckets' })
+    await engine.ready()
+    engine.createSheet('Sheet1')
+    engine.setCellValue('Sheet1', 'D1', 'B')
+    for (let row = 2; row <= 9; row += 1) {
+      engine.setCellValue('Sheet1', `A${row}`, row % 2 === 0 ? 'A' : 'B')
+      engine.setCellValue('Sheet1', `B${row}`, row)
+    }
+    engine.setCellFormula('Sheet1', 'F1', 'AVERAGEIF(A2:A9,D1,B2:B9)')
+    engine.setCellFormula('Sheet1', 'F2', 'MINIFS(B2:B9,A2:A9,D1)')
+    engine.setCellFormula('Sheet1', 'F3', 'MAXIFS(B2:B9,A2:A9,D1)')
+
+    engine.resetPerformanceCounters()
+    engine.setCellValue('Sheet1', 'D1', 'A')
+
+    expect(engine.getCellValue('Sheet1', 'F1')).toEqual({ tag: ValueTag.Number, value: 5 })
+    expect(engine.getCellValue('Sheet1', 'F2')).toEqual({ tag: ValueTag.Number, value: 2 })
+    expect(engine.getCellValue('Sheet1', 'F3')).toEqual({ tag: ValueTag.Number, value: 8 })
+    expect(engine.getPerformanceCounters().directCriteriaMatchCacheHits).toBe(0)
+  })
+
   it('shares direct criteria matches across mixed criteria count and sum formulas', async () => {
     const engine = new SpreadsheetEngine({ workbookName: 'evaluation-direct-criteria-repeated-count-cache' })
     await engine.ready()

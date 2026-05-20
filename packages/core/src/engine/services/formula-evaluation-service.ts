@@ -367,6 +367,12 @@ export function createEngineFormulaEvaluationService(args: {
       addEngineCounter(args.state.counters, 'directCriteriaAggregateCacheHits')
       return applyDirectCriteriaResultTransforms(readCellValueByIndex, formula, cachedAggregate)
     }
+    const applyCachedAggregateResult = (value: CellValue): CellValue =>
+      applyDirectCriteriaResultTransforms(
+        readCellValueByIndex,
+        formula,
+        aggregateCacheKey === undefined ? value : rememberDirectCriteriaResult(directCriteriaAggregateCache, aggregateCacheKey, value),
+      )
     const directIndexExactMatchResult =
       resolvedPairs.length === 1
         ? tryEvaluateDirectIndexExactMatch({
@@ -380,7 +386,7 @@ export function createEngineFormulaEvaluationService(args: {
       return applyDirectCriteriaResultTransforms(readCellValueByIndex, formula, directIndexExactMatchResult)
     }
     const exactAggregateResult =
-      resolvedPairs.length === 1 && (directCriteria.aggregateKind === 'count' || directCriteria.aggregateKind === 'sum')
+      resolvedPairs.length === 1 && directCriteria.aggregateKind !== 'first'
         ? args.criterionCache.getOrBuildExactAggregate({
             criteriaPair: resolvedPairs[0]!,
             ...(aggregateRange === undefined ? {} : { aggregateRange }),
@@ -388,11 +394,7 @@ export function createEngineFormulaEvaluationService(args: {
           })
         : undefined
     if (exactAggregateResult !== undefined) {
-      const cachedResult =
-        aggregateCacheKey === undefined
-          ? exactAggregateResult
-          : rememberDirectCriteriaResult(directCriteriaAggregateCache, aggregateCacheKey, exactAggregateResult)
-      return applyDirectCriteriaResultTransforms(readCellValueByIndex, formula, cachedResult)
+      return applyCachedAggregateResult(exactAggregateResult)
     }
 
     const nativePredicateAggregateResult = tryEvaluateNativeDirectCriteriaPredicateAggregate(
@@ -410,11 +412,7 @@ export function createEngineFormulaEvaluationService(args: {
       },
     )
     if (nativePredicateAggregateResult !== undefined) {
-      const cachedResult =
-        aggregateCacheKey === undefined
-          ? nativePredicateAggregateResult
-          : rememberDirectCriteriaResult(directCriteriaAggregateCache, aggregateCacheKey, nativePredicateAggregateResult)
-      return applyDirectCriteriaResultTransforms(readCellValueByIndex, formula, cachedResult)
+      return applyCachedAggregateResult(nativePredicateAggregateResult)
     }
 
     const cachedMatches = directCriteriaMatchCache.get(criteriaVersionKey)
