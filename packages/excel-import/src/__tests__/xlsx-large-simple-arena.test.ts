@@ -306,6 +306,22 @@ describe('large simple XLSX import arena', () => {
     expect(snapshot.columns).toEqual(new Uint16Array([0, 1, 3, 0]))
   })
 
+  it('materializes requested cells by address without expanding the full sheet', () => {
+    const arena = new ImportedWorkbookArena()
+    arena.reserveDenseRowMajorCellCapacity(0, 4, 3)
+    arena.addCell({ sheetIndex: 0, row: 0, column: 0, value: 'A1' })
+    arena.addCell({ sheetIndex: 0, row: 0, column: 1, value: 'B1' })
+    arena.addCell({ sheetIndex: 0, row: 1, column: 1, value: 'B2' })
+    arena.addCell({ sheetIndex: 1, row: 1, column: 1, value: 'other sheet' })
+
+    const cells = arena.materializeSheetCellsByAddress(0, new Set(['$B$2', 'A1', 'Z99']))
+
+    expect(cells.get('A1')).toEqual({ address: 'A1', value: 'A1' })
+    expect(cells.get('B2')).toEqual({ address: 'B2', value: 'B2' })
+    expect(cells.has('Z99')).toBe(false)
+    expect([...cells.keys()]).toEqual(['A1', 'B2'])
+  })
+
   it('allocates number, string, boolean, and formula storage only when cells need those pools', () => {
     const stringOnlyArena = new ImportedWorkbookArena()
     stringOnlyArena.addCell({ sheetIndex: 0, row: 0, column: 0, value: 'Only text' })
