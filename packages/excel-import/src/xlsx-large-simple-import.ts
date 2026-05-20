@@ -21,6 +21,7 @@ import { buildLargeSimpleCellMetadataReferenceSnapshots } from './xlsx-large-sim
 import { readWorkbookDefinedNames } from './xlsx-large-simple-defined-names.js'
 import { readLargeSimpleSheetHyperlinks, resolveLargeSimpleSheetHyperlinks } from './xlsx-large-simple-hyperlinks.js'
 import { LargeSimpleXlsxImportPhaseRecorder, type LargeSimpleXlsxImportPhaseTelemetry } from './xlsx-large-simple-import-telemetry.js'
+import { internLargeSimpleWorksheetMetadata } from './xlsx-large-simple-metadata-interning.js'
 import { prepareLargeSimplePackageArtifactsForZipRelease } from './xlsx-large-simple-package-artifact-release.js'
 import { readLargeSimpleSheetPrintMetadata, readLargeSimpleSheetPrintPageSetup } from './xlsx-large-simple-printer-settings.js'
 import { readAllLargeSimpleSharedStrings, readReferencedLargeSimpleSharedStrings } from './xlsx-large-simple-referenced-shared-strings.js'
@@ -326,7 +327,7 @@ export function tryImportLargeSimpleXlsx(
       if (hasSharedStrings || streamed.cellScan.valueCellCount > 0) {
         cellScan = streamed.cellScan
         streamedWorksheetXml = streamed.metadataXml
-        streamedMetadataScan = streamed.metadata
+        streamedMetadataScan = internLargeSimpleWorksheetMetadata(streamed.metadata, stringPool)
         if (
           materializeCells &&
           options.allowUnsupportedCellMetadata !== true &&

@@ -951,13 +951,19 @@ function tileProjectionRevisionIsBehind(tile: GridRenderTile | null, engine: Gri
   if (!tile) {
     return false
   }
-  const revision = engine.getRenderRevisionSnapshot?.()
-  const authoritativeRevision = normalizeNonNegativeInteger(revision?.authoritativeRevision)
-  const projectedRevision = normalizeNonNegativeInteger(revision?.projectedRevision)
-  if (authoritativeRevision === null || projectedRevision === null || projectedRevision <= authoritativeRevision) {
+  const renderRevision = engine.getRenderRevisionSnapshot?.()
+  const projectedRevision = normalizeNonNegativeInteger(renderRevision?.projectedRevision)
+  if (projectedRevision === null) {
     return false
   }
-  return tile.lastBatchId < projectedRevision
+  const authoritativeRevision = normalizeNonNegativeInteger(renderRevision?.authoritativeRevision)
+  const localRevision = normalizeNonNegativeInteger(renderRevision?.localRevision)
+  const hasPendingLocalProjection =
+    localRevision !== null && localRevision > 0 && (authoritativeRevision === null || projectedRevision > authoritativeRevision)
+  if (!hasPendingLocalProjection && (authoritativeRevision === null || projectedRevision <= authoritativeRevision)) {
+    return false
+  }
+  return tile.lastBatchId < projectedRevision || hasPendingLocalProjection
 }
 
 export function getGridRenderTilePaneRuntime(current: unknown): GridRenderTilePaneRuntime {

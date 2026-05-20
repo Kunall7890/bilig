@@ -291,6 +291,13 @@ export function WorkbookGridSurface(props: WorkbookGridSurfaceProps) {
         ]
       })
   }, [props.previewRanges, props.sheetName, getCellLocalBounds, visibleRange.height, visibleRange.width, visibleRange.x, visibleRange.y])
+  const showSelectionFillHandle =
+    !props.isEditingCell &&
+    displaySelectionRange !== null &&
+    displayGridSelection.columns.length === 0 &&
+    displayGridSelection.rows.length === 0 &&
+    fillPreviewRange === null &&
+    !isRangeMoveDragging
   const dynamicOverlayBuilder = useCallback(
     (geometry: NonNullable<typeof v2Geometry>) => {
       return buildDynamicGridOverlayBatchV3({
@@ -302,9 +309,9 @@ export function WorkbookGridSurface(props: WorkbookGridSurfaceProps) {
         previewRects,
         selectedCell: [displaySelectionCol, displaySelectionRow],
         selectionRange: displaySelectionRange,
-        showFillHandle: false,
+        showFillHandle: showSelectionFillHandle,
         showHoverOverlay: false,
-        showSelectionOverlay: false,
+        showSelectionOverlay: true,
         resizeGuideColumn,
         resizeGuideColumnWidth,
         resizeGuideRow,
@@ -317,6 +324,7 @@ export function WorkbookGridSurface(props: WorkbookGridSurfaceProps) {
       displaySelectionRange,
       fillPreviewRange,
       hoverCell,
+      showSelectionFillHandle,
       previewRects,
       resizeGuideColumn,
       resizeGuideColumnWidth,
@@ -413,15 +421,9 @@ export function WorkbookGridSurface(props: WorkbookGridSurfaceProps) {
           hoverCell={hoverCell}
           scrollTransformStore={renderState.scrollTransformStore}
           selectedCell={[displaySelectionCol, displaySelectionRow]}
+          selectionChromeMode="geometry-only"
           selectionRange={displaySelectionRange}
-          showFillHandle={
-            !props.isEditingCell &&
-            displaySelectionRange !== null &&
-            displayGridSelection.columns.length === 0 &&
-            displayGridSelection.rows.length === 0 &&
-            fillPreviewRange === null &&
-            !isRangeMoveDragging
-          }
+          showFillHandle={showSelectionFillHandle}
         />
         <button
           aria-label="Select entire sheet"

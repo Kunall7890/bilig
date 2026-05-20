@@ -6,6 +6,10 @@ import {
   type WorkbookPaneFrameDrawerV3,
   type WorkbookPaneRendererRuntimeStateV3,
 } from '../renderer-v3/workbook-pane-renderer-runtime.js'
+import { createGridAxisWorldIndex } from '../gridAxisWorldIndex.js'
+import { createGridGeometrySnapshotFromAxes } from '../gridGeometry.js'
+import { getGridMetrics } from '../gridMetrics.js'
+import type { DynamicGridOverlayBatchV3 } from '../renderer-v3/dynamic-overlay-batch.js'
 import { WorkbookPaneSurfaceRuntimeV3 } from '../renderer-v3/workbook-pane-surface-runtime.js'
 import { DirtyMaskV3 } from '../renderer-v3/tile-damage-index.js'
 import { WorkbookGridScrollStore } from '../workbookGridScrollStore.js'
@@ -83,6 +87,41 @@ function createDirtyTilePane(): WorkbookPaneRendererRuntimeStateV3['tilePanes'][
       },
     },
     viewport: { colEnd: 127, colStart: 0, rowEnd: 31, rowStart: 0 },
+  }
+}
+
+function createGeometry() {
+  const metrics = getGridMetrics()
+  return createGridGeometrySnapshotFromAxes({
+    columns: createGridAxisWorldIndex({ axisLength: 20, defaultSize: 100 }),
+    dpr: 1,
+    freezeCols: 0,
+    freezeRows: 0,
+    gridMetrics: metrics,
+    hostHeight: 360,
+    hostWidth: 640,
+    rows: createGridAxisWorldIndex({ axisLength: 20, defaultSize: 20 }),
+    scrollLeft: 0,
+    scrollTop: 0,
+    sheetName: 'Sheet1',
+    updatedAt: 100,
+  })
+}
+
+function createOverlayBatch(overrides: Partial<DynamicGridOverlayBatchV3> = {}): DynamicGridOverlayBatchV3 {
+  return {
+    borderRectCount: 1,
+    cameraSeq: 1,
+    fillRectCount: 1,
+    generatedAt: 100,
+    rectCount: 2,
+    rectInstances: new Float32Array(8),
+    rects: new Float32Array(8),
+    rectSignature: 'selection-a1',
+    seq: 1,
+    sheetName: 'Sheet1',
+    surfaceSize: { height: 360, width: 640 },
+    ...overrides,
   }
 }
 
@@ -214,6 +253,44 @@ describe('WorkbookPaneRendererHostRuntimeV3', () => {
 
     runtime.dispose()
     animationFrames.restore()
+  })
+
+  test('invalidates the presented-frame proof when a dynamic overlay builder moves selection without moving the camera', async () => {
+    const runtime = new WorkbookPaneRendererHostRuntimeV3({
+      rendererRuntime: new WorkbookPaneRendererRuntimeV3(vi.fn<WorkbookPaneFrameDrawerV3>()),
+      surfaceRuntime: new WorkbookPaneSurfaceRuntimeV3({
+        createResizeObserver: () => null,
+        syncSurface: vi.fn(),
+      }),
+    })
+    const geometry = createGeometry()
+    const props = {
+      active: true,
+      cameraStore: null,
+      geometry,
+      headerPanes: [],
+      host: createHost(640, 360),
+      overlay: null,
+      overlayBuilder: () => createOverlayBatch({ rectSignature: 'selection-b2', seq: geometry.camera.seq }),
+      preloadTilePanes: [],
+      renderRevisionSnapshot: null,
+      scrollTransformStore: null,
+      tilePanes: [createDirtyTilePane()],
+    }
+
+    runtime.updateProps(props)
+    const firstSignature = runtime.getFrameProofSignatureSnapshot()
+
+    runtime.updateProps({
+      ...props,
+      overlayBuilder: () => createOverlayBatch({ rectSignature: 'selection-c3', seq: geometry.camera.seq }),
+    })
+
+    expect(runtime.getFrameProofSignatureSnapshot()).not.toBe(firstSignature)
+    expect(runtime.getFrameProofSignatureSnapshot()).toContain('selection-c3')
+    expect(runtime.getFrameProofStatusSnapshot()).toBe('pending')
+
+    runtime.dispose()
   })
 
   test('invalidates the presented-frame proof when text ownership changes', async () => {

@@ -303,7 +303,7 @@ export const WorkbookPaneCanvasFallbackV3 = memo(function WorkbookPaneCanvasFall
   return (
     <canvas
       aria-hidden="true"
-      className={isGridFloor ? 'pointer-events-none absolute inset-0 z-[12]' : 'pointer-events-none absolute inset-0 z-[5]'}
+      className={isGridFloor ? 'pointer-events-none absolute inset-0 z-[4]' : 'pointer-events-none absolute inset-0 z-[5]'}
       data-pane-renderer={isGridFloor ? 'workbook-pane-renderer-v3-grid-floor' : 'workbook-pane-renderer-v3-fallback'}
       data-renderer-mode={isGridFloor ? 'canvas2d-v3-grid-floor' : 'canvas2d-v3-fallback'}
       data-testid={isGridFloor ? 'grid-pane-renderer-floor' : 'grid-pane-renderer-fallback'}
