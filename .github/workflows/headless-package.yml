@@ -579,7 +579,7 @@ jobs:
       - name: Ensure npm supports trusted publishing
         run: |
           set -euo pipefail
-          required_npm_version="11.5.1"
+          required_npm_version="11.9.0"
           current_npm_version="$(npm --version)"
 
           if node - "$current_npm_version" "$required_npm_version" <<'NODE'
