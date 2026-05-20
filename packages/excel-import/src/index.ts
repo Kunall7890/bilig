@@ -73,9 +73,10 @@ import { buildImportedFormulaSnapshotCell } from './xlsx-import-formula-cells.js
 import { buildImportedSheetMetadata } from './xlsx-import-sheet-metadata.js'
 import { buildImportedWorkbookMetadata } from './xlsx-import-workbook-metadata.js'
 import {
+  addWorkbookWarnings,
+  dataTableFormulasWarning,
   externalPivotCachesWarning,
   externalWorkbookReferencesWarning,
-  macroExecutionDeclinedWarning,
   volatileFormulasWarning,
   workbookDefinedNamesReferenceExternalWorkbook,
 } from './xlsx-import-warnings.js'
@@ -101,6 +102,7 @@ export { exportXlsx } from './xlsx-export.js'
 export { importCsv } from './csv-import.js'
 export { manualCalculationModeWarning, precisionAsDisplayedCalculationWarning } from './xlsx-calculation-settings.js'
 export {
+  dataTableFormulasWarning,
   externalPivotCachesWarning,
   externalWorkbookReferencesWarning,
   macroExecutionDeclinedWarning,
@@ -272,15 +274,6 @@ function buildImportedLegacyCommentVmlSnapshot(
   }
 }
 
-function addWorkbookWarnings(workbook: XLSX.WorkBook, warnings: string[], ignoredDefinedNameCount: number): void {
-  if (workbook.vbaraw) {
-    warnings.push(macroExecutionDeclinedWarning)
-  }
-  if (ignoredDefinedNameCount > 0) {
-    warnings.push('Some defined names were ignored during XLSX import.')
-  }
-}
-
 function readValidXlsxZipContainer(bytes: Uint8Array, mode: 'eager' | 'lazy' = 'eager'): Unzipped {
   try {
     return mode === 'lazy' ? readXlsxZipEntriesLazy(bytes) : readXlsxZipEntries(bytes)
@@ -435,6 +428,9 @@ function importSheetJsWorkbook(
     : undefined
   const importedArrayFormulasBySheet = workbookZip ? readImportedWorkbookArrayFormulas(workbookZip, workbook.SheetNames) : new Map()
   const importedDataTableFormulasBySheet = workbookZip ? readImportedWorkbookDataTableFormulas(workbookZip, workbook.SheetNames) : new Map()
+  if (importedDataTableFormulasBySheet.size > 0) {
+    warnings.push(dataTableFormulasWarning)
+  }
   const importedPivots = workbookZip
     ? readImportedWorkbookPivots(workbookZip, workbook.SheetNames, importedTables, importedDefinedNames.definedNames)
     : undefined
