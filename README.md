@@ -16,9 +16,8 @@ calculation is easiest to review as cells and formulas, but it has to run in a
 Node service, queue worker, serverless route, test, or coding-agent tool. Use
 [`xlsx-formula-recalc`](https://www.npmjs.com/package/xlsx-formula-recalc) when
 the immediate problem is "I changed XLSX inputs in Node and need the formula
-results now." Use
-[`sheetjs-formula-recalc`](https://www.npmjs.com/package/sheetjs-formula-recalc)
-when the same bug is showing up in a SheetJS / `xlsx` pipeline. Use
+results now," including SheetJS / `xlsx` pipelines that already produce XLSX
+bytes. Use
 [`exceljs-formula-recalc`](https://www.npmjs.com/package/exceljs-formula-recalc)
 when the workbook is already moving through ExcelJS.
 
@@ -51,7 +50,7 @@ Project site: <https://proompteng.github.io/bilig/>
 | ----------------------------------------------------------------------------------------------- | -------------------------------------------- | -------------------------------------------------------------------------------------------- |
 | Formula workbook state inside a Node service or agent tool                                      | `npm install bilig-workpaper`                | [90-second Node quickstart](docs/try-bilig-headless-in-node.md)                              |
 | AI agent needs to edit workbook inputs and verify formula readback                              | `npm create @bilig/workpaper@latest pricing-agent -- --agent` | [AI spreadsheet agent tool](docs/ai-agent-spreadsheet-tool-node.md)          |
-| SheetJS / `xlsx` pipeline returns stale formula values after input edits                        | `npm install sheetjs-formula-recalc`         | [SheetJS formula result not updating](docs/sheetjs-formula-result-not-updating-node.md)       |
+| SheetJS / `xlsx` pipeline returns stale formula values after input edits                        | `npm install xlsx-formula-recalc`            | [SheetJS formula result not updating](docs/sheetjs-formula-result-not-updating-node.md)       |
 | Generic XLSX bytes changed in Node; formula outputs must refresh before returning               | `npm install xlsx-formula-recalc`            | [XLSX formula recalculation in Node.js](docs/xlsx-formula-recalculation-node.md)             |
 | Existing ExcelJS workflow needs recalculated values, not stale cached results                   | `npm install exceljs exceljs-formula-recalc` | [ExcelJS formula recalculation in Node.js](docs/exceljs-formula-recalculation-node.md)       |
 | Full runtime package with agent metadata, MCP binary, provenance docs, and lower-level subpaths | `npm install @bilig/headless`                | [npm provenance and package trust](docs/npm-provenance-package-trust.md)                     |
@@ -63,8 +62,6 @@ before returning, use the file-level recalculation package before evaluating
 the broader WorkPaper runtime:
 
 ```sh
-npx --package sheetjs-formula-recalc sheetjs-recalc --demo --json
-
 npx --package xlsx-formula-recalc xlsx-recalc --demo --json
 
 npx --package xlsx-formula-recalc xlsx-recalc quote.xlsx \

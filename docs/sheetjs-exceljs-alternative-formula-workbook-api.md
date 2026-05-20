@@ -113,7 +113,7 @@ formula result is stale."
 | Parse many spreadsheet file formats into JavaScript data | SheetJS | It is built around file-format import/export and a common spreadsheet object model. |
 | Generate XLSX reports with workbook structure and styling | ExcelJS | It focuses on reading, manipulating, and writing XLSX workbook files. |
 | Store formulas in a workbook file and let Excel calculate later | SheetJS or ExcelJS | Both can represent formula text and cached or supplied values in workbook data. |
-| Recalculate a SheetJS / `xlsx` pipeline after changing inputs | `sheetjs-formula-recalc` | It uses SheetJS-language package names and CLI commands for the exact stale-cache support ticket. |
+| Recalculate a SheetJS / `xlsx` pipeline after changing inputs | `xlsx-formula-recalc` | It accepts the XLSX bytes already produced by SheetJS and returns fresh formula readback plus exported bytes. |
 | Recalculate raw XLSX bytes after changing inputs | `xlsx-formula-recalc` | It accepts the XLSX bytes already produced by SheetJS, `xlsx-populate`, or template tools and returns fresh readback plus exported bytes. |
 | Recalculate an existing ExcelJS workbook after changing inputs | `exceljs-formula-recalc` | It preserves the ExcelJS authoring boundary and patches requested formula cells with fresh results. |
 | Recalculate formulas inside a Node service after changing inputs | `@bilig/headless` or `bilig-workpaper` | It exposes a WorkPaper runtime with formula readback, JSON persistence, and restore verification after edits. |
@@ -124,14 +124,6 @@ formula result is stale."
 If the `.xlsx` file already exists, start here:
 
 ```sh
-npm install sheetjs-formula-recalc
-npx --package sheetjs-formula-recalc sheetjs-recalc pricing.xlsx \
-  --set Inputs!B2=48 \
-  --set Inputs!B3=1500 \
-  --read Summary!B7 \
-  --out pricing.recalculated.xlsx \
-  --json
-
 npm install xlsx-formula-recalc
 npx --package xlsx-formula-recalc xlsx-recalc pricing.xlsx \
   --set Inputs!B2=48 \
