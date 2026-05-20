@@ -4,6 +4,21 @@ All notable changes to `@bilig/headless` will be documented in this file.
 
 This package is released as part of the aligned bilig library package set.
 
+## 0.40.23
+
+- Release type: patch
+- Previous libraries tag: libraries-v0.40.22
+- Manual override: no
+
+## Fixes
+- perf(xlsx): pool cached formula records (dbf6365c)
+- perf(xlsx): release plain shared string tables (820fde93)
+- fix(xlsx): restore large workbook export path (b5232805)
+- perf(xlsx): resolve shared strings before materialization (04e4e70a)
+- perf(headless): skip duplicate batch literal classification (73d49f21)
+- perf(xlsx): stream highly compressed zip entries (15caba30)
+- perf(xlsx): count headless data validations (514431f1)
+
 ## 0.40.22
 
 - Release type: patch
