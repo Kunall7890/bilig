@@ -84,6 +84,7 @@ const headlessSpreadsheetEngineNodeServicesAgents = await readFile(
   'utf8',
 )
 const spreadsheetMcpServerComparison = await readFile(join(docsRoot, 'spreadsheet-mcp-server-comparison.md'), 'utf8')
+const sheetjsFormulaResultNotUpdatingNode = await readFile(join(docsRoot, 'sheetjs-formula-result-not-updating-node.md'), 'utf8')
 const rootSkillNotes = await readFile(join(repoRoot, 'skills', 'bilig-workpaper', 'SKILL.md'), 'utf8')
 const workpaperPackageJson = await readFile(join(repoRoot, 'packages', 'bilig', 'package.json'), 'utf8')
 const workpaperPackageReadme = await readFile(join(repoRoot, 'packages', 'bilig', 'README.md'), 'utf8')
@@ -235,6 +236,22 @@ requireIncludes(readme, 'docs/stale-xlsx-formula-cache-node.md', 'README.md')
 requireIncludes(headlessReadme, 'docs/stale-xlsx-formula-cache-node.md', 'packages/headless/README.md')
 requireIncludes(llms, 'https://proompteng.github.io/bilig/stale-xlsx-formula-cache-node.html', 'docs/llms.txt')
 requireIncludes(llms, 'https://github.com/proompteng/bilig/blob/main/docs/stale-xlsx-formula-cache-node.md', 'docs/llms.txt')
+
+for (const required of [
+  'title: SheetJS formula result not updating in Node.js',
+  'keep SheetJS for file I/O, but add a recalculation step',
+  xlsxRecalcCli,
+  'npm --prefix examples/recalc-bridge-workflows run smoke',
+  '`xlsx-formula-recalc`',
+  'https://github.com/proompteng/bilig/stargazers',
+] as const) {
+  requireIncludes(sheetjsFormulaResultNotUpdatingNode, required, 'docs/sheetjs-formula-result-not-updating-node.md')
+}
+requireIncludes(index, './sheetjs-formula-result-not-updating-node.html', 'docs/index.html')
+requireIncludes(readme, 'docs/sheetjs-formula-result-not-updating-node.md', 'README.md')
+requireIncludes(headlessReadme, 'docs/sheetjs-formula-result-not-updating-node.md', 'packages/headless/README.md')
+requireIncludes(llms, 'https://proompteng.github.io/bilig/sheetjs-formula-result-not-updating-node.html', 'docs/llms.txt')
+requireIncludes(llms, 'https://github.com/proompteng/bilig/blob/main/docs/sheetjs-formula-result-not-updating-node.md', 'docs/llms.txt')
 
 for (const required of [
   'title: Microsoft Graph Excel recalculation vs local Node WorkPaper',

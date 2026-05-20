@@ -43,6 +43,9 @@ For a cross-library proof, run
 It edits the same workbook through SheetJS/`xlsx`, `xlsx-populate`, and
 ExcelJS, then verifies that Bilig refreshes the stale formula result.
 
+For the SheetJS-specific boundary, read
+[SheetJS formula result not updating in Node.js](../../docs/sheetjs-formula-result-not-updating-node.md).
+
 ## Install
 
 ```sh

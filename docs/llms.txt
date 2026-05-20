@@ -77,6 +77,7 @@ restoring it, and confirming the restored value matches. Return `editedCell`,
 - https://proompteng.github.io/bilig/formula-workbooks-node-services-agent-tools.html
 - https://proompteng.github.io/bilig/headless-spreadsheet-engine-node-services-agents.html
 - https://proompteng.github.io/bilig/xlsx-formula-recalculation-node.html
+- https://proompteng.github.io/bilig/sheetjs-formula-result-not-updating-node.html
 - https://proompteng.github.io/bilig/excel-file-calculation-engine-node.html
 - https://proompteng.github.io/bilig/xlsx-calc-alternative-node-workbook-recalculation.html
 - https://proompteng.github.io/bilig/exceljs-formula-recalculation-node.html
@@ -288,8 +289,13 @@ npm exec --package @bilig/headless@0.35.0 -- bilig-workpaper-mcp --workpaper ./p
 - SheetJS and ExcelJS comparison:
   https://proompteng.github.io/bilig/sheetjs-exceljs-alternative-formula-workbook-api.html
   https://github.com/proompteng/bilig/blob/main/docs/sheetjs-exceljs-alternative-formula-workbook-api.md
-  includes a TypeScript WorkPaper runtime check for edit, readback, serialize,
-  restore, and verified recalculation.
+  routes high-traffic SheetJS, xlsx-populate, ExcelJS, xlsx-calc, FormulaJS,
+  and HyperFormula users to the narrowest recalculation or WorkPaper path.
+- SheetJS formula result not updating in Node.js:
+  https://proompteng.github.io/bilig/sheetjs-formula-result-not-updating-node.html
+  https://github.com/proompteng/bilig/blob/main/docs/sheetjs-formula-result-not-updating-node.md
+  covers the exact SheetJS / xlsx stale cached formula result failure and
+  points to `xlsx-formula-recalc` plus the cross-library bridge proof.
 - ExcelJS formula recalculation in Node.js:
   https://proompteng.github.io/bilig/exceljs-formula-recalculation-node.html
   https://github.com/proompteng/bilig/blob/main/docs/exceljs-formula-recalculation-node.md
@@ -364,6 +370,9 @@ npm exec --package @bilig/headless@0.35.0 -- bilig-workpaper-mcp --workpaper ./p
 - XLSX formula recalculation in Node:
   https://proompteng.github.io/bilig/xlsx-formula-recalculation-node.html
   https://github.com/proompteng/bilig/blob/main/docs/xlsx-formula-recalculation-node.md
+- SheetJS stale formula readback fix:
+  https://proompteng.github.io/bilig/sheetjs-formula-result-not-updating-node.html
+  https://github.com/proompteng/bilig/blob/main/docs/sheetjs-formula-result-not-updating-node.md
 - curlable XLSX recalculation proof:
   https://proompteng.github.io/bilig/xlsx-recalculation-proof.html
   https://proompteng.github.io/bilig/xlsx-recalculation-proof.ts

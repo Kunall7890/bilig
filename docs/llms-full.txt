@@ -492,7 +492,7 @@ matters.
 
 Current checked npm footprint for `@bilig/headless@0.35.0`:
 
-- Pack dry run: `497 kB` tarball, `2.99 MB` unpacked, `492` package entries.
+- Pack dry run: `499 kB` tarball, `3.00 MB` unpacked, `495` package entries.
 - Boundary: the main import is the WorkPaper formula/JSON runtime; XLSX
   import/export stays behind the `@bilig/headless/xlsx` subpath; MCP is the
   `bilig-workpaper-mcp` binary wrapper; reduced workbook reports use the
@@ -577,6 +577,7 @@ the [MCP server guide](docs/mcp-workpaper-tool-server.md),
 [agent XLSX formula recalculation without LibreOffice](docs/agent-xlsx-formula-recalculation-without-libreoffice.md),
 [Excel file as a Node calculation engine](docs/excel-file-calculation-engine-node.md),
 [stale XLSX formula cache in Node.js](docs/stale-xlsx-formula-cache-node.md),
+[SheetJS formula result not updating in Node.js](docs/sheetjs-formula-result-not-updating-node.md),
 [Microsoft Graph Excel recalculation in Node.js](docs/microsoft-graph-excel-recalculation-node.md),
 [xlsx-calc alternative for Node workbook recalculation](docs/xlsx-calc-alternative-node-workbook-recalculation.md),
 [ExcelJS formula recalculation in Node.js](docs/exceljs-formula-recalculation-node.md),
@@ -1035,7 +1036,7 @@ configs, `mcp/bilig-workpaper.mcp.json`, `npm run agent:verify`, and
 
 Current checked npm footprint for `@bilig/headless@0.35.0`:
 
-- Pack dry run: `497 kB` tarball, `2.99 MB` unpacked, `492` package entries.
+- Pack dry run: `499 kB` tarball, `3.00 MB` unpacked, `495` package entries.
 - Boundary: the main import is the WorkPaper formula/JSON runtime; XLSX
   import/export stays behind the `@bilig/headless/xlsx` subpath; MCP is the
   `bilig-workpaper-mcp` binary wrapper; reduced workbook reports use the
@@ -1708,6 +1709,7 @@ When the sanity check passes, these are the next useful pages.
   [XLSX formula recalculation in Node.js](https://github.com/proompteng/bilig/blob/main/docs/xlsx-formula-recalculation-node.md),
   [Excel file as a Node calculation engine](https://github.com/proompteng/bilig/blob/main/docs/excel-file-calculation-engine-node.md),
   [stale XLSX formula cache in Node.js](https://github.com/proompteng/bilig/blob/main/docs/stale-xlsx-formula-cache-node.md),
+  [SheetJS formula result not updating in Node.js](https://github.com/proompteng/bilig/blob/main/docs/sheetjs-formula-result-not-updating-node.md),
   [Microsoft Graph Excel recalculation in Node.js](https://github.com/proompteng/bilig/blob/main/docs/microsoft-graph-excel-recalculation-node.md),
   [xlsx-calc alternative for Node workbook recalculation](https://github.com/proompteng/bilig/blob/main/docs/xlsx-calc-alternative-node-workbook-recalculation.md),
   [ExcelJS formula recalculation in Node.js](https://github.com/proompteng/bilig/blob/main/docs/exceljs-formula-recalculation-node.md),
