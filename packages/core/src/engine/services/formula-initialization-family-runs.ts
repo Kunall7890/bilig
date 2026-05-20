@@ -100,7 +100,7 @@ export function materializeDeferredFormulaFamilyRunMembers(run: DeferredInitialF
 
 export function noteDeferredFormulaFamilyRunMember(args: {
   readonly runs: DeferredInitialFormulaFamilyRunMap | undefined
-  readonly formulas: { readonly get: (cellIndex: number) => RuntimeFormula | undefined }
+  readonly runtimeFormula: RuntimeFormula | undefined
   readonly prepared: {
     readonly cellIndex: number
     readonly sheetId: number
@@ -116,14 +116,13 @@ export function noteDeferredFormulaFamilyRunMember(args: {
   }
   let run = getDeferredFormulaFamilyRun(runs, prepared.sheetId, templateId, prepared.col)
   if (!run) {
-    const runtimeFormula = args.formulas.get(prepared.cellIndex)
-    if (runtimeFormula === undefined) {
+    if (args.runtimeFormula === undefined) {
       return
     }
     run = {
       sheetId: prepared.sheetId,
       templateId,
-      shapeKey: initialFormulaFamilyShapeKey(runtimeFormula),
+      shapeKey: initialFormulaFamilyShapeKey(args.runtimeFormula),
       axis: 'row',
       fixedIndex: prepared.col,
       start: prepared.row,

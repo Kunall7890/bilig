@@ -415,11 +415,12 @@ function markWrittenColumn(tracker: WrittenColumnTracker, col: number): void {
 function materializeWrittenColumns(tracker: WrittenColumnTracker): Uint32Array {
   const columns = new Uint32Array(tracker.count)
   let writeIndex = 0
-  for (let col = 0; col < 30; col += 1) {
-    if ((tracker.smallColumns & (1 << col)) !== 0) {
-      columns[writeIndex] = col
-      writeIndex += 1
-    }
+  let smallColumns = tracker.smallColumns
+  while (smallColumns !== 0) {
+    const bit = smallColumns & -smallColumns
+    columns[writeIndex] = 31 - Math.clz32(bit)
+    writeIndex += 1
+    smallColumns &= smallColumns - 1
   }
   const largeColumns = tracker.columns
   if (largeColumns) {

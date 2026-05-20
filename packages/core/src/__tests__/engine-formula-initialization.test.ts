@@ -418,6 +418,7 @@ describe('SpreadsheetEngine formula initialization', () => {
       engine.setCellValue('Sheet1', `B${rowNumber}`, rowNumber * 10)
       refs.push({ sheetId, mutation: { kind: 'setCellFormula' as const, row, col: 2, formula: `A${rowNumber}+B${rowNumber}` } })
       refs.push({ sheetId, mutation: { kind: 'setCellFormula' as const, row, col: 3, formula: `C${rowNumber}*2` } })
+      refs.push({ sheetId, mutation: { kind: 'setCellFormula' as const, row, col: 35, formula: `A${rowNumber}+B${rowNumber}` } })
     }
     const notifyCellValueWritten = vi.spyOn(engine.workbook, 'notifyCellValueWritten')
     const notifyColumnsWritten = vi.spyOn(engine.workbook, 'notifyColumnsWritten')
@@ -428,8 +429,12 @@ describe('SpreadsheetEngine formula initialization', () => {
       tag: ValueTag.Number,
       value: rowCount * 11 * 2,
     })
+    expect(engine.getCellValue('Sheet1', `AJ${rowCount}`)).toEqual({
+      tag: ValueTag.Number,
+      value: rowCount * 11,
+    })
     expect(notifyCellValueWritten).not.toHaveBeenCalled()
-    expect(notifyColumnsWritten).toHaveBeenCalledWith(sheetId, Uint32Array.from([2, 3]))
+    expect(notifyColumnsWritten).toHaveBeenCalledWith(sheetId, Uint32Array.from([2, 3, 35]))
     expect(engine.getPerformanceCounters().directFormulaInitialEvaluations).toBe(refs.length)
     expect(engine.getPerformanceCounters()).toMatchObject({ nativeDirectScalarInitialEvaluations: 0 })
     notifyCellValueWritten.mockRestore()

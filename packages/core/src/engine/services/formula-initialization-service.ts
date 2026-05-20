@@ -92,7 +92,8 @@ export function createEngineFormulaInitializationService(args: EngineFormulaInit
   const noteDeferredFormulaFamilyRunMember = (
     runs: DeferredInitialFormulaFamilyRunMap | undefined,
     prepared: Parameters<typeof noteDeferredFormulaFamilyRunMemberNow>[0]['prepared'],
-  ): void => noteDeferredFormulaFamilyRunMemberNow({ runs, formulas: args.state.formulas, prepared })
+    runtimeFormula: RuntimeFormula | undefined,
+  ): void => noteDeferredFormulaFamilyRunMemberNow({ runs, prepared, runtimeFormula })
 
   const registerDeferredFormulaFamilyRun = (run: DeferredInitialFormulaFamilyRun): void =>
     registerDeferredFormulaFamilyRunNow({
@@ -361,14 +362,16 @@ export function createEngineFormulaInitializationService(args: EngineFormulaInit
           }
         }
       }
-      const noteBoundFormula = (prepared: { cellIndex: number; sheetId: number; row: number; col: number }): void => {
+      const noteBoundFormula = (
+        prepared: { cellIndex: number; sheetId: number; row: number; col: number },
+        runtimeFormula: RuntimeFormula | undefined,
+      ): void => {
         if (hadExistingFormulas) {
           formulaChangedCount = args.markFormulaChanged(prepared.cellIndex, formulaChangedCount)
         }
         topologyChanged = true
         pushOrderedPreparedCellIndex(prepared.cellIndex)
         if (canAssignTopoInBatch && pendingFormulaCells) {
-          const runtimeFormula = args.state.formulas.get(prepared.cellIndex)
           if (!canEvaluateInitialDirectRuntimeFormula(runtimeFormula)) {
             allPreparedFormulasCanUseInitialDirectEvaluation = false
           }
@@ -423,10 +426,11 @@ export function createEngineFormulaInitializationService(args: EngineFormulaInit
                       },
                     },
                   )
-                  noteDeferredFormulaFamilyRunMember(deferredFormulaFamilyRuns, prepared)
                 }
-                noteDeferredFormulaInstance(deferredFormulaInstances, prepared, args.state.formulas.get(prepared.cellIndex))
-                noteBoundFormula(prepared)
+                const runtimeFormula = args.state.formulas.get(prepared.cellIndex)
+                noteDeferredFormulaFamilyRunMember(deferredFormulaFamilyRuns, prepared, runtimeFormula)
+                noteDeferredFormulaInstance(deferredFormulaInstances, prepared, runtimeFormula)
+                noteBoundFormula(prepared, runtimeFormula)
               } catch {
                 noteSkippedOrderedPreparedCellIndex()
                 topologyChanged = args.removeFormula(cellIndex) || topologyChanged
@@ -810,21 +814,21 @@ export function createEngineFormulaInitializationService(args: EngineFormulaInit
                 },
                 resolveWorkbookDateSystem,
               }) || topologyChanged
-            noteDeferredFormulaInstance(
-              deferredFormulaInstances,
-              { cellIndex, row: ref.row, col: ref.col, ownerSheetName },
-              args.state.formulas.get(cellIndex),
+            const runtimeFormula = args.state.formulas.get(cellIndex)
+            noteDeferredFormulaInstance(deferredFormulaInstances, { cellIndex, row: ref.row, col: ref.col, ownerSheetName }, runtimeFormula)
+            noteDeferredFormulaFamilyRunMember(
+              deferredFormulaFamilyRuns,
+              {
+                cellIndex,
+                sheetId: ref.sheetId,
+                row: ref.row,
+                col: ref.col,
+                ...(ref.templateId !== undefined ? { templateId: ref.templateId } : {}),
+              },
+              runtimeFormula,
             )
-            noteDeferredFormulaFamilyRunMember(deferredFormulaFamilyRuns, {
-              cellIndex,
-              sheetId: ref.sheetId,
-              row: ref.row,
-              col: ref.col,
-              ...(ref.templateId !== undefined ? { templateId: ref.templateId } : {}),
-            })
             valueWriter.writeValueAt(cellIndex, ref.sheetId, ref.col, ref.value)
             if (canAssignTopoInBatch && pendingFormulaCells) {
-              const runtimeFormula = args.state.formulas.get(cellIndex)
               const hasPendingDependency =
                 runtimeFormula !== undefined &&
                 hasPendingFormulaDependency(runtimeFormula, pendingFormulaCells, (rangeIndex) =>

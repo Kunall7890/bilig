@@ -3,7 +3,8 @@ import { CellFlags } from '../../cell-store.js'
 import type { EngineRuntimeState } from '../runtime-state.js'
 
 interface InitialWrittenColumnTracker {
-  columns: Uint8Array
+  smallColumns: number
+  columns?: Uint8Array
   count: number
 }
 
@@ -15,35 +16,60 @@ export interface InitialFormulaValueWriter {
   readonly flush: () => void
 }
 
-function createInitialWrittenColumnTracker(initialCapacity = 8): InitialWrittenColumnTracker {
+function createInitialWrittenColumnTracker(): InitialWrittenColumnTracker {
   return {
-    columns: new Uint8Array(initialCapacity),
+    smallColumns: 0,
     count: 0,
   }
 }
 
 function markInitialWrittenColumn(tracker: InitialWrittenColumnTracker, col: number): void {
-  if (col >= tracker.columns.length) {
-    let nextLength = tracker.columns.length
+  if (col < 30) {
+    const bit = 1 << col
+    if ((tracker.smallColumns & bit) !== 0) {
+      return
+    }
+    tracker.smallColumns |= bit
+    tracker.count += 1
+    return
+  }
+  let columns = tracker.columns
+  if (!columns) {
+    columns = new Uint8Array(Math.max(32, col + 1))
+    tracker.columns = columns
+  } else if (col >= columns.length) {
+    let nextLength = columns.length
     while (nextLength <= col) {
       nextLength *= 2
     }
     const nextColumns = new Uint8Array(nextLength)
-    nextColumns.set(tracker.columns)
-    tracker.columns = nextColumns
+    nextColumns.set(columns)
+    columns = nextColumns
+    tracker.columns = columns
   }
-  if (tracker.columns[col] !== 0) {
+  if (columns[col] !== 0) {
     return
   }
-  tracker.columns[col] = 1
+  columns[col] = 1
   tracker.count += 1
 }
 
 function materializeInitialWrittenColumns(tracker: InitialWrittenColumnTracker): Uint32Array {
   const columns = new Uint32Array(tracker.count)
   let writeIndex = 0
-  for (let col = 0; col < tracker.columns.length; col += 1) {
-    if (tracker.columns[col] !== 0) {
+  let smallColumns = tracker.smallColumns
+  while (smallColumns !== 0) {
+    const bit = smallColumns & -smallColumns
+    columns[writeIndex] = 31 - Math.clz32(bit)
+    writeIndex += 1
+    smallColumns &= smallColumns - 1
+  }
+  const largeColumns = tracker.columns
+  if (largeColumns) {
+    for (let col = 30; col < largeColumns.length; col += 1) {
+      if (largeColumns[col] === 0) {
+        continue
+      }
       columns[writeIndex] = col
       writeIndex += 1
     }
