@@ -115,6 +115,9 @@ export function tryApplySingleDirectAggregateLiteralMutationFastPath(
       col: request.col,
     })
   }
+  if (singleAffected >= 0 && !args.canApplyDirectAggregateLiteralDeltaForRequest(singleAffected, request)) {
+    return null
+  }
   if (singleAffected === -1) {
     args.writeFastPathLiteralToExistingCell(request.existingIndex, request.value)
     args.deferSingleCellKernelSync(request.existingIndex)
