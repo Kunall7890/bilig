@@ -182,6 +182,26 @@ describe('formula runtime differential fuzz', () => {
     expectCellSemantics(engine.getCellValue(sheetName, 'H8'), { tag: ValueTag.Number, value: 0 })
   })
 
+  it('keeps XLOOKUP approximate lookup parity when string and numeric keys differ', async () => {
+    const engine = new SpreadsheetEngine({
+      workbookName: 'xlookup-approximate-string-number-mismatch-parity',
+      replicaId: 'xlookup-approximate-string-number-mismatch-parity',
+    })
+    await engine.ready()
+    seedInventoryDifferentialWorkbook(engine)
+
+    engine.setCellFormula(sheetName, 'H8', '=XLOOKUP(A1,A2:A5,B2:D5,,-1)')
+    expect(engine.explainCell(sheetName, 'H8').mode).toBe(FormulaMode.WasmFastPath)
+    expect(engine.recalculateDifferential().drift).toEqual([])
+
+    engine.setCellValue(sheetName, 'A1', '')
+
+    expect(engine.recalculateDifferential().drift).toEqual([])
+    expectCellSemantics(engine.getCellValue(sheetName, 'H8'), { tag: ValueTag.Error, code: ErrorCode.NA })
+    expectCellSemantics(engine.getCellValue(sheetName, 'I8'), { tag: ValueTag.Empty })
+    expectCellSemantics(engine.getCellValue(sheetName, 'J8'), { tag: ValueTag.Empty })
+  })
+
   it(
     'keeps generated fast-path formulas in JS and wasm parity',
     async () => {

@@ -65,6 +65,26 @@ describe('WorkPaper/core parity regressions', () => {
     expect(workbook.getCellValue({ sheet: sheetId, row: 5, col: 2 })).toEqual({ tag: ValueTag.Number, value: 2 })
   })
 
+  it('recalculates scalar formulas when a shared aggregate input changes from number to boolean', () => {
+    const { workbook, sheetId } = createSeededWorkbook()
+
+    setCell(workbook, sheetId, 0, 2, '=SUM(A1:B2)')
+    setCell(workbook, sheetId, 0, 0, false)
+
+    expect(workbook.getCellValue({ sheet: sheetId, row: 0, col: 2 })).toEqual({ tag: ValueTag.Number, value: 25 })
+    expect(workbook.getCellValue({ sheet: sheetId, row: 5, col: 0 })).toEqual({ tag: ValueTag.Number, value: 104 })
+    expect(workbook.getCellSerialized({ sheet: sheetId, row: 5, col: 1 })).toBe('=A1+B1')
+    expect(workbook.getCellValue({ sheet: sheetId, row: 5, col: 1 })).toEqual({ tag: ValueTag.Number, value: 2 })
+
+    const restored = createWorkPaperFromDocument(
+      parseWorkPaperDocument(serializeWorkPaperDocument(exportWorkPaperDocument(workbook, { includeConfig: true }))),
+    )
+    const restoredSheetId = restored.getSheetId(sheetName)
+    expect(restoredSheetId).not.toBeUndefined()
+    expect(restored.getCellSerialized({ sheet: restoredSheetId!, row: 5, col: 1 })).toBe('=A1+B1')
+    expect(restored.getCellValue({ sheet: restoredSheetId!, row: 5, col: 1 })).toEqual({ tag: ValueTag.Number, value: 2 })
+  })
+
   it('preserves structural reference errors over induced cycles across save and load', () => {
     const { workbook, sheetId } = createSeededWorkbook()
 

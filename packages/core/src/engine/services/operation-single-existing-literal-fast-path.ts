@@ -26,6 +26,7 @@ import {
 } from './operation-change-helpers.js'
 import { recordKernelSyncOnlyLiteralChange } from './operation-kernel-sync-only-literal-change.js'
 import { applyOperationLookupNumericWriteTailPatches, planOperationLookupNumericWrites } from './operation-lookup-write-plans.js'
+import { hasNonAggregateFormulaDependentForCell } from './operation-non-aggregate-formula-dependent.js'
 import { tryApplySinglePostRecalcDirectFormula, type DirectFormulaMetricCounts } from './operation-post-recalc-direct-formulas.js'
 import type { MutationSource, OperationSingleExistingLiteralFastPathArgs } from './operation-single-existing-literal-fast-path-types.js'
 
@@ -182,20 +183,7 @@ export function createOperationSingleExistingLiteralFastPath(args: OperationSing
   }
 
   const hasNonAggregateFormulaDependent = (existingIndex: number): boolean => {
-    if (args.state.formulas.size > FORMULA_LEAF_DEPENDENCY_SCAN_LIMIT) {
-      return true
-    }
-    for (const formula of args.state.formulas.values()) {
-      if (formula.directAggregate !== undefined) {
-        continue
-      }
-      for (let index = 0; index < formula.dependencyIndices.length; index += 1) {
-        if (formula.dependencyIndices[index] === existingIndex) {
-          return true
-        }
-      }
-    }
-    return false
+    return hasNonAggregateFormulaDependentForCell(args.state.formulas, existingIndex, FORMULA_LEAF_DEPENDENCY_SCAN_LIMIT)
   }
 
   const tryApplySingleExistingDirectLiteralMutation = (
@@ -297,8 +285,13 @@ export function createOperationSingleExistingLiteralFastPath(args: OperationSing
       return formulaLeafResult !== null
     }
 
+    if (hasAggregateDependents && typeof mutation.value !== 'number') {
+      return false
+    }
+
     if (
       hasAggregateDependents &&
+      !hasNonAggregateFormulaDependent(existingIndex) &&
       !hasExactLookupDependents &&
       !hasSortedLookupDependents &&
       (singleExistingCellDependent === -1 || isRangeEntity(singleExistingCellDependent)) &&
@@ -315,6 +308,9 @@ export function createOperationSingleExistingLiteralFastPath(args: OperationSing
       })
     ) {
       return true
+    }
+    if (hasAggregateDependents && isRangeEntity(singleExistingCellDependent) && hasNonAggregateFormulaDependent(existingIndex)) {
+      return false
     }
     const existingTag = (args.state.workbook.cellStore.tags[existingIndex] as ValueTag | undefined) ?? ValueTag.Empty
     const mutationIsNumber = typeof mutation.value === 'number'

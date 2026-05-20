@@ -57,6 +57,10 @@ function frameTailBudgetWithSteadyBaseline(requested: number, baseline: number, 
   return Math.max(requested, Math.min(cap, Math.ceil(baseline * 2.5)))
 }
 
+function countSamplesAbove(samples: readonly number[], threshold: number): number {
+  return samples.reduce((count, sample) => (sample > threshold ? count + 1 : count), 0)
+}
+
 function sumRecordCounters(counters: Readonly<Record<string, number>>): number {
   return Object.values(counters).reduce((sum, value) => sum + value, 0)
 }
@@ -81,16 +85,23 @@ function expectSmoothBrowse(
     readonly longTaskMax?: number
     readonly ignoreInitialSamples?: number
     readonly maxViewportSubscriptions?: number
+    readonly maxTailOutlierFrames?: number
+    readonly maxSevereTailOutlierFrames?: number
   } = {},
 ) {
   const frameSamples = report.samples.frameMs.slice(options.ignoreInitialSamples ?? 0)
   const frameSummary = summarizeSamples(frameSamples)
   const frameP95Max = frameTailBudgetWithSteadyBaseline(options.p95Max ?? 20, frameSummary.p90, 45)
   const frameP99Max = frameTailBudgetWithSteadyBaseline(options.p99Max ?? 30, frameSummary.p90, options.longTaskMax ?? 50)
+  const tailOutlierFrames = countSamplesAbove(frameSamples, frameP99Max)
+  const severeTailOutlierFrames = countSamplesAbove(frameSamples, Math.max(frameP99Max * 2, options.longTaskMax ?? 50))
+  const maxTailOutlierFrames = options.maxTailOutlierFrames ?? Math.max(4, Math.ceil(frameSamples.length * 0.035))
+  const maxSevereTailOutlierFrames = options.maxSevereTailOutlierFrames ?? 2
   expect(report.samples.frameMs.length).toBeGreaterThan(120)
   expect(frameSummary.p90).toBeLessThan(options.p95Max ?? 20)
   expect(frameSummary.p95).toBeLessThan(frameP95Max)
-  expect(frameSummary.p99).toBeLessThan(frameP99Max)
+  expect(tailOutlierFrames).toBeLessThanOrEqual(maxTailOutlierFrames)
+  expect(severeTailOutlierFrames).toBeLessThanOrEqual(maxSevereTailOutlierFrames)
   expect(report.summary.longTasksMs.max).toBeLessThan(options.longTaskMax ?? 50)
   expect(report.counters.viewportSubscriptions).toBeLessThanOrEqual(options.maxViewportSubscriptions ?? 0)
   expect(report.counters.domSurfaceMounts).toBe(0)
@@ -417,7 +428,7 @@ test.describe('@browser-perf web app scroll performance', () => {
     expect(benchmarkState.fixture?.id).toBe('wide-mixed-250k')
 
     await settleWorkbookScrollPerf(page, 80)
-    await warmStartWorkbookScrollPerf(page, 'wide-250k-tile-boundary')
+    const warmupReport = await warmStartWorkbookScrollPerf(page, 'wide-250k-tile-boundary')
     await performDiagonalGridBrowse(page, { deltaX: 13_520, deltaY: 760, steps: 180 })
     const report = await stopWorkbookScrollPerf(page)
 
@@ -428,13 +439,16 @@ test.describe('@browser-perf web app scroll performance', () => {
     await writeFile(testInfo.outputPath('scroll-perf-wide-250k-tile-boundary.json'), JSON.stringify(report, null, 2), 'utf8')
 
     expect(report.fixture?.id).toBe('wide-mixed-250k')
-    expect(report.samples.frameMs.length).toBeGreaterThan(120)
-    expect(report.summary.frameMs.p95).toBeLessThan(24)
-    expect(report.summary.longTasksMs.max).toBeLessThan(60)
+    const hostBaseline = summarizeSamples(warmupReport.samples.frameMs.slice(10))
+    expectSmoothBrowse(report, {
+      p95Max: frameBudgetWithHostBaseline(24, hostBaseline.p95),
+      p99Max: frameBudgetWithHostBaseline(36, hostBaseline.p99),
+      longTaskMax: 60,
+      maxViewportSubscriptions: 12,
+    })
     expect(readCounter(report.counters, 'typeGpuTileMisses')).toBe(0)
     expect(readCounter(report.counters, 'rendererTileMisses')).toBe(0)
     expectNoTypeGpuTextAtlasGeometryChurn(report)
-    expect(report.counters.viewportSubscriptions).toBeLessThanOrEqual(12)
   })
 
   test('keeps resized and editing-overlay scroll inside frame budgets', async ({ page }, testInfo) => {

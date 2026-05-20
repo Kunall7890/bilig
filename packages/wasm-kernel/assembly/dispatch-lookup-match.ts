@@ -1,5 +1,4 @@
 import { BuiltinId, ErrorCode, ValueTag } from './protocol'
-import { compareScalarValues } from './comparison'
 import { inputCellScalarValue, inputCellTag, inputColsFromSlot, inputRowsFromSlot } from './operands'
 import {
   lookupVectorSlotLength,
@@ -9,7 +8,7 @@ import {
   writeLookupInputCellResult,
   writeLookupInputCellToSpill,
 } from './lookup-slot'
-import { compareLookupCell, compareLookupVectorCandidate } from './lookup-candidate-comparison'
+import { compareLookupCell, compareLookupScalars, compareLookupVectorCandidate } from './lookup-candidate-comparison'
 import { truncToInt } from './numeric-core'
 import { STACK_KIND_ARRAY, STACK_KIND_RANGE, STACK_KIND_SCALAR, writeArrayResult, writeResult } from './result-io'
 import { allocateSpillArrayResult } from './vm'
@@ -515,12 +514,11 @@ export function tryApplyLookupMatchBuiltin(
           continue
         }
 
-        const bestComparison = compareScalarValues(
+        const bestComparison = compareLookupScalars(
           candidateTag,
           candidateValue,
           bestTag,
           bestValue,
-          null,
           stringOffsets,
           stringLengths,
           stringData,
