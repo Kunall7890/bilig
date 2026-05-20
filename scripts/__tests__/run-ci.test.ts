@@ -38,6 +38,8 @@ describe('run-ci', () => {
 
     expect(source).toContain('const generatedSourceChecks: readonly CiTask[] = [')
     expect(source).toContain("await runSequential('generated-source checks', generatedSourceChecks)")
+    expect(source).toContain("const semanticFastGate = pnpm('semantic correctness fast gate', 'test:semantic:fast')")
+    expect(source).toContain("await runSequential('semantic correctness checks', [semanticFastGate])")
     expect(source).toContain("await runSequential('static package build prerequisites'")
     expect(source).toContain("bunScript('protocol check', 'scripts/gen-protocol.ts', '--check')")
     expect(source).toContain(
@@ -48,10 +50,16 @@ describe('run-ci', () => {
     expect(source).toContain(
       "withEnv(directPackageScript('correctness core', 'test:correctness:core'), { BILIG_VITEST_FILE_CHUNK_SIZE: '10' })",
     )
+    expect(source).toContain(
+      "withEnv(directPackageScript('correctness formula', 'test:correctness:formula'), { BILIG_VITEST_FILE_CHUNK_SIZE: '3' })",
+    )
     expect(source).toContain("BILIG_VITEST_FILE_CHUNK_SIZE: '10'")
     expect(source).toContain("withEnv(pnpm('coverage', 'coverage'), { CI: process.env['CI'] ?? '1' })")
     expect(source).toContain(
       "directPackageScript('financial public workbook corpus resume check', 'public-workbook-corpus:resume-financial:check')",
+    )
+    expect(source).toContain(
+      "directPackageScript('public workbook corpus synthetic memory gate', 'public-workbook-corpus:memory-gate:synthetic')",
     )
     expect(source).toContain("bunScript('agent discovery docs check', 'scripts/sync-agent-discovery-docs.ts', '--check')")
     expect(source).toContain("await runSequential('static direct checks'")
@@ -69,6 +77,12 @@ describe('run-ci', () => {
     expect(packageJson).toContain('"ci": "BILIG_CI_PROFILE=full tsx scripts/run-ci.ts"')
     expect(packageJson).toContain('"ci:core": "BILIG_CI_PROFILE=fast BILIG_CI_SKIP_BROWSER=1 tsx scripts/run-ci.ts"')
     expect(packageJson).toContain('"ci:full": "BILIG_CI_PROFILE=full tsx scripts/run-ci.ts"')
+    expect(packageJson).toContain(
+      '"public-workbook-corpus:memory-gate": "bun scripts/public-workbook-corpus-memory-gate.ts --require-public"',
+    )
+    expect(packageJson).toContain(
+      '"public-workbook-corpus:memory-gate:synthetic": "bun scripts/public-workbook-corpus-memory-gate.ts --synthetic-only"',
+    )
   })
 
   it('exposes one fuzz test entrypoint', () => {

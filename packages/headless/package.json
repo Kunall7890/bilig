@@ -1,6 +1,6 @@
 {
   "name": "@bilig/headless",
-  "version": "0.35.1",
+  "version": "0.39.0",
   "description": "Formula WorkPaper runtime for Node.js services and agent tools with JSON persistence and formula readback.",
   "keywords": [
     "agent-tools",
@@ -86,6 +86,7 @@
     "@bilig/protocol": "workspace:*",
     "fast-xml-parser": "5.7.3",
     "fflate": "0.3.11",
+    "fflate-stream": "npm:fflate@0.8.3",
     "xlsx": "https://cdn.sheetjs.com/xlsx-0.20.3/xlsx-0.20.3.tgz",
     "xlsx-js-style": "1.2.0"
   },

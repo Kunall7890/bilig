@@ -23,12 +23,12 @@ another spreadsheet application will open and calculate later.
 
 Use a formula runtime when the service needs to write inputs and read the
 recalculated values before returning a response.
-[`exceljs-formula-recalc`](https://www.npmjs.com/package/exceljs-formula-recalc)
+[`@bilig/exceljs-formula-recalc`](https://www.npmjs.com/package/@bilig/exceljs-formula-recalc)
 is the narrow package for existing ExcelJS workflows. It writes the workbook to
 bytes, recalculates through Bilig WorkPaper, reloads the workbook, and patches
 the read cells with fresh formula results.
 
-Use `@bilig/headless` or `bilig-workpaper` directly when the workbook can live
+Use `@bilig/workpaper` or `@bilig/workpaper` directly when the workbook can live
 as a TypeScript WorkPaper document with JSON persistence and verified readback.
 
 ## The Exact ExcelJS Failure
@@ -43,7 +43,7 @@ same boundary:
    an input cell.
 
 If the service needs the computed value in the same request or job, bridge the
-ExcelJS workbook through `exceljs-formula-recalc` and read the returned proof
+ExcelJS workbook through `@bilig/exceljs-formula-recalc` and read the returned proof
 values before sending the response.
 
 ## Why cached values are not enough
@@ -84,22 +84,36 @@ If step 3 happens later in Excel, the backend never owned the decision.
 | Generate an XLSX report with styles, sheets, tables, and formula strings   | ExcelJS                                     |
 | Open a file later in Excel and let Excel calculate formulas                | ExcelJS                                     |
 | Preserve formula records and cached values from an existing workbook       | ExcelJS or SheetJS-style tooling            |
-| Existing ExcelJS workbook needs recalculated values inside Node            | `exceljs-formula-recalc`                    |
-| Raw XLSX bytes need recalculated values inside Node                        | `xlsx-formula-recalc`                       |
-| Recalculate workbook formulas inside a Node.js request, job, or agent tool | A formula runtime such as `bilig-workpaper` |
-| Persist formula-backed state as JSON and verify it after restore           | `@bilig/headless` WorkPaper                 |
+| Existing ExcelJS workbook needs recalculated values inside Node            | `@bilig/exceljs-formula-recalc`                    |
+| Raw XLSX bytes need recalculated values inside Node                        | `@bilig/xlsx-formula-recalc`                       |
+| Recalculate workbook formulas inside a Node.js request, job, or agent tool | A formula runtime such as `@bilig/workpaper` |
+| Persist formula-backed state as JSON and verify it after restore           | `@bilig/workpaper` WorkPaper                 |
 
 ## One-command proof
 
 Run this before wiring it into an app:
 
 ```sh
-npx --package exceljs-formula-recalc exceljs-recalc --demo --json
+npx --package @bilig/exceljs-formula-recalc exceljs-recalc --demo --json
 ```
 
 The demo creates a small workbook, changes `Inputs!B2` and `Inputs!B3`,
 recalculates `Summary!B2`, writes `bilig-formula-recalc-demo.xlsx`, and prints
 `verified: true`.
+
+Exact reproduction for the high-view Stack Overflow question:
+
+```sh
+git clone https://github.com/proompteng/bilig.git
+cd bilig
+npm --prefix examples/recalc-bridge-workflows install
+npm --prefix examples/recalc-bridge-workflows run so:exceljs-44199441
+```
+
+That script mirrors
+[Get computed value of Excel sheet cell in Node.js](https://stackoverflow.com/questions/44199441/get-computed-value-of-excel-sheet-cell-in-node-js):
+`A1` changes from `1` to `3`, ExcelJS still has the stale formula `result = 3`,
+then `@bilig/exceljs-formula-recalc` verifies and patches the formula result to `5`.
 
 ## Minimal ExcelJS bridge
 
@@ -110,7 +124,7 @@ mkdir exceljs-recalc-eval
 cd exceljs-recalc-eval
 npm init -y
 npm pkg set type=module
-npm install exceljs exceljs-formula-recalc
+npm install exceljs @bilig/exceljs-formula-recalc
 npm install -D tsx typescript @types/node
 ```
 
@@ -118,7 +132,7 @@ Create `recalculate.ts`:
 
 ```ts
 import ExcelJS from 'exceljs'
-import { recalculateExceljsWorkbook } from 'exceljs-formula-recalc'
+import { recalculateExceljsWorkbook } from '@bilig/exceljs-formula-recalc'
 
 const workbook = new ExcelJS.Workbook()
 const inputs = workbook.addWorksheet('Inputs')
@@ -182,9 +196,9 @@ dependent formula recalculated in the same Node.js process.
 The honest architecture is to keep file generation and formula runtime separate:
 
 1. Use ExcelJS for `.xlsx` files, styling, worksheets, and reports.
-2. Use `exceljs-formula-recalc` for an ExcelJS workbook that needs fresh formula
+2. Use `@bilig/exceljs-formula-recalc` for an ExcelJS workbook that needs fresh formula
    results before the process returns.
-3. Use `bilig-workpaper` for formula-backed business state your service
+3. Use `@bilig/workpaper` for formula-backed business state your service
    must trust immediately.
 4. Add compatibility tests at the boundary if you import or export XLSX files.
 
@@ -193,7 +207,7 @@ same as recalculated business state.
 
 ## When not to use Bilig
 
-Do not choose `@bilig/headless` only to generate styled XLSX files.
+Do not choose `@bilig/workpaper` only to generate styled XLSX files.
 
 Do not choose it if a human can open the workbook in Excel before any business
 decision depends on the calculated value.

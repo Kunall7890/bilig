@@ -1,19 +1,21 @@
 import { isEngineReplicaSnapshot, type EngineReplicaSnapshot } from '@bilig/core'
-import { parseCellAddress } from '@bilig/formula'
 import {
-  ErrorCode,
+  isCellValue,
   isWorkbookSnapshot,
+  sanitizeCellStyleRecord,
   ValueTag,
-  type CellBorderStyle,
-  type CellBorderWeight,
-  type CellHorizontalAlignment,
   type CellRangeRef,
   type CellStyleRecord,
   type CellValue,
-  type CellVerticalAlignment,
   type WorkbookSnapshot,
 } from '@bilig/protocol'
-import type { DirtyRegion, WorkbookEventPayload } from '@bilig/zero-sync'
+import {
+  cellCoordinatesWithinBounds,
+  createEmptyWorkbookSnapshot as createSharedEmptyWorkbookSnapshot,
+  normalizeRangeBounds,
+  type DirtyRegion,
+  type WorkbookEventPayload,
+} from '@bilig/zero-sync'
 import type {
   AxisMetadataSourceRow,
   CellEvalRow,
@@ -25,6 +27,8 @@ import type {
   WorkbookMetadataSourceRow,
 } from './projection.js'
 
+export { normalizeRangeBounds } from '@bilig/zero-sync'
+
 export type FocusedCellEventPayload = Extract<WorkbookEventPayload, { kind: 'setCellValue' | 'setCellFormula' | 'clearCell' }>
 
 export type StyleRangeEventPayload = Extract<WorkbookEventPayload, { kind: 'setRangeStyle' | 'clearRangeStyle' }>
@@ -35,22 +39,7 @@ export type ColumnMetadataEventPayload = Extract<WorkbookEventPayload, { kind: '
 
 export type RowMetadataEventPayload = Extract<WorkbookEventPayload, { kind: 'updateRowMetadata' }>
 
-export function createEmptyWorkbookSnapshot(documentId: string): WorkbookSnapshot {
-  return {
-    version: 1,
-    workbook: {
-      name: documentId,
-    },
-    sheets: [
-      {
-        id: 1,
-        name: 'Sheet1',
-        order: 0,
-        cells: [],
-      },
-    ],
-  }
-}
+export const createEmptyWorkbookSnapshot = createSharedEmptyWorkbookSnapshot
 
 export function nowIso(): string {
   return new Date().toISOString()
@@ -88,20 +77,6 @@ function isSafeNonNegativeInteger(value: unknown): value is number {
   return typeof value === 'number' && Number.isSafeInteger(value) && value >= 0
 }
 
-function isFiniteNumber(value: unknown): value is number {
-  return typeof value === 'number' && Number.isFinite(value)
-}
-
-function isCellValueTag(value: unknown): value is ValueTag {
-  return (
-    value === ValueTag.Empty ||
-    value === ValueTag.Number ||
-    value === ValueTag.Boolean ||
-    value === ValueTag.String ||
-    value === ValueTag.Error
-  )
-}
-
 export function isDirtyRegion(value: unknown): value is DirtyRegion {
   return (
     isRecord(value) &&
@@ -113,31 +88,6 @@ export function isDirtyRegion(value: unknown): value is DirtyRegion {
     value['rowEnd'] >= value['rowStart'] &&
     value['colEnd'] >= value['colStart']
   )
-}
-
-function isCellHorizontalAlignment(value: unknown): value is CellHorizontalAlignment {
-  return (
-    value === 'general' ||
-    value === 'left' ||
-    value === 'center' ||
-    value === 'right' ||
-    value === 'fill' ||
-    value === 'justify' ||
-    value === 'centerContinuous' ||
-    value === 'distributed'
-  )
-}
-
-function isCellVerticalAlignment(value: unknown): value is CellVerticalAlignment {
-  return value === 'top' || value === 'middle' || value === 'bottom' || value === 'justify' || value === 'distributed'
-}
-
-function isCellBorderStyle(value: unknown): value is CellBorderStyle {
-  return value === 'solid' || value === 'dashed' || value === 'dotted' || value === 'double'
-}
-
-function isCellBorderWeight(value: unknown): value is CellBorderWeight {
-  return value === 'thin' || value === 'medium' || value === 'thick'
 }
 
 export function parseCheckpointPayload(value: unknown, documentId: string): WorkbookSnapshot {
@@ -249,39 +199,6 @@ export function parseJsonKey(key: string): unknown[] {
   return parsed
 }
 
-function isCellValue(value: unknown): value is CellValue {
-  if (!isRecord(value) || !isCellValueTag(value['tag'])) {
-    return false
-  }
-  const tag = value['tag']
-  if (tag === ValueTag.Empty) {
-    return true
-  }
-  if (tag === ValueTag.Number) {
-    return typeof value['value'] === 'number' && Number.isFinite(value['value'])
-  }
-  if (tag === ValueTag.Boolean) {
-    return typeof value['value'] === 'boolean'
-  }
-  if (tag === ValueTag.String) {
-    return typeof value['value'] === 'string' && isSafeNonNegativeInteger(value['stringId'])
-  }
-  if (tag === ValueTag.Error) {
-    return (
-      value['code'] === ErrorCode.None ||
-      value['code'] === ErrorCode.Div0 ||
-      value['code'] === ErrorCode.Ref ||
-      value['code'] === ErrorCode.Value ||
-      value['code'] === ErrorCode.Name ||
-      value['code'] === ErrorCode.NA ||
-      value['code'] === ErrorCode.Cycle ||
-      value['code'] === ErrorCode.Spill ||
-      value['code'] === ErrorCode.Blocked
-    )
-  }
-  return false
-}
-
 export function parseCellEvalValue(value: unknown): CellValue {
   return isCellValue(value) ? value : { tag: ValueTag.Empty }
 }
@@ -290,112 +207,15 @@ export function parseCellStyleRecord(value: unknown): CellStyleRecord | null {
   if (!isRecord(value) || typeof value['id'] !== 'string') {
     return null
   }
-  const record: CellStyleRecord = { id: value['id'] }
-  if (isRecord(value['fill'])) {
-    const fill = value['fill']
-    if (typeof fill['backgroundColor'] === 'string') {
-      record.fill = { backgroundColor: fill['backgroundColor'] }
-    }
-  }
-  if (isRecord(value['font'])) {
-    const font = value['font']
-    record.font = {
-      ...(typeof font['family'] === 'string' ? { family: font['family'] } : {}),
-      ...(isFiniteNumber(font['size']) ? { size: font['size'] } : {}),
-      ...(typeof font['bold'] === 'boolean' ? { bold: font['bold'] } : {}),
-      ...(typeof font['italic'] === 'boolean' ? { italic: font['italic'] } : {}),
-      ...(typeof font['underline'] === 'boolean' ? { underline: font['underline'] } : {}),
-      ...(typeof font['color'] === 'string' ? { color: font['color'] } : {}),
-    }
-    if (Object.keys(record.font).length === 0) {
-      delete record.font
-    }
-  }
-  if (isRecord(value['alignment'])) {
-    const alignment = value['alignment']
-    const nextAlignment = {
-      ...(isCellHorizontalAlignment(alignment['horizontal']) ? { horizontal: alignment['horizontal'] } : {}),
-      ...(isCellVerticalAlignment(alignment['vertical']) ? { vertical: alignment['vertical'] } : {}),
-      ...(typeof alignment['wrap'] === 'boolean' ? { wrap: alignment['wrap'] } : {}),
-      ...(isFiniteNumber(alignment['indent']) ? { indent: alignment['indent'] } : {}),
-      ...(typeof alignment['shrinkToFit'] === 'boolean' ? { shrinkToFit: alignment['shrinkToFit'] } : {}),
-      ...(isFiniteNumber(alignment['readingOrder']) ? { readingOrder: alignment['readingOrder'] } : {}),
-      ...(isFiniteNumber(alignment['textRotation']) ? { textRotation: alignment['textRotation'] } : {}),
-      ...(typeof alignment['justifyLastLine'] === 'boolean' ? { justifyLastLine: alignment['justifyLastLine'] } : {}),
-    }
-    if (Object.keys(nextAlignment).length > 0) {
-      record.alignment = nextAlignment
-    }
-  }
-  if (isRecord(value['borders'])) {
-    const borders = value['borders']
-    const nextBorders: NonNullable<CellStyleRecord['borders']> = {}
-    for (const side of ['top', 'right', 'bottom', 'left'] as const) {
-      const border = borders[side]
-      if (!isRecord(border)) {
-        continue
-      }
-      if (isCellBorderStyle(border['style']) && isCellBorderWeight(border['weight']) && typeof border['color'] === 'string') {
-        nextBorders[side] = {
-          style: border['style'],
-          weight: border['weight'],
-          color: border['color'],
-        }
-      }
-    }
-    if (Object.keys(nextBorders).length > 0) {
-      record.borders = nextBorders
-    }
-  }
-  if (isRecord(value['protection'])) {
-    const protection = value['protection']
-    const nextProtection = {
-      ...(typeof protection['locked'] === 'boolean' ? { locked: protection['locked'] } : {}),
-      ...(typeof protection['hidden'] === 'boolean' ? { hidden: protection['hidden'] } : {}),
-    }
-    if (Object.keys(nextProtection).length > 0) {
-      record.protection = nextProtection
-    }
-  }
-  return record
-}
-
-export function normalizeRangeBounds(range: CellRangeRef): {
-  sheetName: string
-  rowStart: number
-  rowEnd: number
-  colStart: number
-  colEnd: number
-} {
-  const start = parseCellAddress(range.startAddress, range.sheetName)
-  const end = parseCellAddress(range.endAddress, range.sheetName)
-  return {
-    sheetName: range.sheetName,
-    rowStart: Math.min(start.row, end.row),
-    rowEnd: Math.max(start.row, end.row),
-    colStart: Math.min(start.col, end.col),
-    colEnd: Math.max(start.col, end.col),
-  }
+  return sanitizeCellStyleRecord(value['id'], value)
 }
 
 export function cellEvalRowInRange(row: Pick<CellEvalRow, 'sheetName' | 'rowNum' | 'colNum'>, range: CellRangeRef): boolean {
   const bounds = normalizeRangeBounds(range)
-  return (
-    row.sheetName === bounds.sheetName &&
-    row.rowNum >= bounds.rowStart &&
-    row.rowNum <= bounds.rowEnd &&
-    row.colNum >= bounds.colStart &&
-    row.colNum <= bounds.colEnd
-  )
+  return row.sheetName === bounds.sheetName && cellCoordinatesWithinBounds(row.rowNum, row.colNum, bounds)
 }
 
 export function cellSourceRowInRange(row: Pick<CellSourceRow, 'sheetName' | 'rowNum' | 'colNum'>, range: CellRangeRef): boolean {
   const bounds = normalizeRangeBounds(range)
-  return (
-    row.sheetName === bounds.sheetName &&
-    row.rowNum >= bounds.rowStart &&
-    row.rowNum <= bounds.rowEnd &&
-    row.colNum >= bounds.colStart &&
-    row.colNum <= bounds.colEnd
-  )
+  return row.sheetName === bounds.sheetName && cellCoordinatesWithinBounds(row.rowNum, row.colNum, bounds)
 }

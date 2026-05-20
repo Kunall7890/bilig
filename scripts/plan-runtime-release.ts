@@ -73,6 +73,7 @@ const requestedNotesFile = readOptionalStringArg('notes-file')
 const requestedGithubOutput = readOptionalStringArg('github-output')
 const allowManualBootstrap = cliArgs.has('allow-untagged-baseline')
 const allowNewNpmPackages = cliArgs.has('allow-new-npm-packages')
+const skipUnprovisionedNpmPackages = cliArgs.has('skip-unprovisioned-packages')
 const dryRun = cliArgs.has('dry-run')
 
 const runtimePackages = loadRuntimePackages(rootDir)
@@ -83,11 +84,12 @@ const publishedRuntimeVersions = readPublishedRuntimePackageVersions(runtimeNpmP
 const provisioningPlan = planRuntimePackagePublishProvisioning({
   publishedVersions: publishedRuntimeVersions,
   allowNewNpmPackages,
+  skipUnprovisionedNpmPackages,
   dryRun,
 })
 const latestPublishedVersion = provisioningPlan.publishAllowed
   ? resolvePublishedRuntimePackageBaseline(publishedRuntimeVersions, {
-      allowPartialPublishedSet: dryRun || allowNewNpmPackages || latestReachableTag !== null,
+      allowPartialPublishedSet: dryRun || allowNewNpmPackages || skipUnprovisionedNpmPackages || latestReachableTag !== null,
     })
   : highestPublishedStableSemver(publishedRuntimeVersions.map((entry) => entry.version))
 

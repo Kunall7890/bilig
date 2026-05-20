@@ -6,6 +6,7 @@ import type * as ReactDom from 'react-dom'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { CellEditorOverlay } from '../CellEditorOverlay.js'
 import { WORKBOOK_DEFAULT_FONT_SIZE, workbookFontPointSizeToCssPx } from '../workbookTheme.js'
+import { workbookNativeTextQualityStyle } from '../workbookTextQuality.js'
 
 vi.mock('react-dom', async (importOriginal) => {
   const actual = await importOriginal<typeof ReactDom>()
@@ -111,11 +112,11 @@ describe('CellEditorOverlay', () => {
     expect(textarea?.style.letterSpacing).toBe('0px')
     expect(textarea?.style.fontOpticalSizing).toBe('auto')
     expect(textarea?.style.fontSynthesis).toBe('none')
-    expect(textarea?.style.textRendering).toBe('optimizelegibility')
-    expect(textarea?.style.WebkitFontSmoothing).toBe('antialiased')
-    expect(textarea?.style.MozOsxFontSmoothing).toBe('grayscale')
     expect(textarea?.getAttribute('class')).toContain('py-[3px]')
     expect(textarea?.getAttribute('class')).toContain('leading-[1.2]')
+    expect(workbookNativeTextQualityStyle).not.toHaveProperty('textRendering')
+    expect(workbookNativeTextQualityStyle).not.toHaveProperty('WebkitFontSmoothing')
+    expect(workbookNativeTextQualityStyle).not.toHaveProperty('MozOsxFontSmoothing')
 
     await act(async () => {
       root.unmount()

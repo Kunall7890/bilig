@@ -1,4 +1,5 @@
 import type { CreateEngineFormulaBindingServiceArgs } from './formula-binding-service-types.js'
+import { rethrowFatalFormulaBindingError } from './formula-binding-error-policy.js'
 
 export function rebuildAllFormulaBindingsNow(args: {
   readonly serviceArgs: CreateEngineFormulaBindingServiceArgs
@@ -47,7 +48,8 @@ export function rebuildAllFormulaBindingsNow(args: {
     }
     try {
       args.bindFormulaNow(cellIndex, ownerSheetName, source)
-    } catch {
+    } catch (error) {
+      rethrowFatalFormulaBindingError(error)
       args.invalidateFormulaNow(cellIndex)
     }
     activeCellIndices.push(cellIndex)

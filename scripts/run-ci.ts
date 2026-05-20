@@ -297,7 +297,7 @@ const browserLane: CiTask = {
 }
 const parallelFocusedCorrectnessLanes: readonly CiTask[] = [
   withEnv(directPackageScript('correctness core', 'test:correctness:core'), { BILIG_VITEST_FILE_CHUNK_SIZE: '10' }),
-  withEnv(directPackageScript('correctness formula', 'test:correctness:formula'), { BILIG_VITEST_FILE_CHUNK_SIZE: '1' }),
+  withEnv(directPackageScript('correctness formula', 'test:correctness:formula'), { BILIG_VITEST_FILE_CHUNK_SIZE: '3' }),
   directPackageScript('correctness server', 'test:correctness:server'),
   directPackageScript('correctness browser runtime', 'test:correctness:browser'),
 ]
@@ -401,6 +401,7 @@ const generatedSourceChecks: readonly CiTask[] = [
   bunScript('agent discovery docs check', 'scripts/sync-agent-discovery-docs.ts', '--check'),
   tsxScript('docs discovery check', 'scripts/check-docs-discovery.ts'),
 ]
+const semanticFastGate = pnpm('semantic correctness fast gate', 'test:semantic:fast')
 
 try {
   assertLocalCiResourceGuardAllowsRun(rootDir)
@@ -424,6 +425,7 @@ try {
 
   // Keep generated-source checks serialized; later checks read artifacts validated by earlier ones.
   allCompleted.push(...(await runSequential('generated-source checks', generatedSourceChecks)))
+  allCompleted.push(...(await runSequential('semantic correctness checks', [semanticFastGate])))
 
   allCompleted.push(
     ...(await runSequential('static direct checks', [
@@ -479,6 +481,7 @@ try {
   allCompleted.push(
     ...(await runSequential('performance and clean-diff gates', [
       pnpm('perf smoke', 'bench:smoke'),
+      directPackageScript('public workbook corpus synthetic memory gate', 'public-workbook-corpus:memory-gate:synthetic'),
       ...(runDeepGates ? [withEnv(pnpm('benchmark contracts', 'bench:contracts'), { CI: '1' })] : []),
       git('working tree clean', 'diff', '--exit-code'),
       git('index clean', 'diff', '--cached', '--exit-code'),

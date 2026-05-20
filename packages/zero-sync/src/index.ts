@@ -39,6 +39,14 @@ export {
 export { executeZeroQueryTransform, zeroQueryTransformNames } from './query-transforms.js'
 export { loadRuntimeConfig, parseRuntimeConfig, type BiligRuntimeConfig } from './runtime-config.js'
 export {
+  cellCoordinatesWithinBounds,
+  intersectRangeBounds,
+  normalizeAddressBounds,
+  normalizeRangeBounds,
+  rangeBoundsForSheet,
+  type RangeBounds,
+} from './range-bounds.js'
+export {
   type BiligZeroQueryContext,
   schema,
   sheetIdDependentTableNames,
@@ -49,9 +57,13 @@ export {
 export { zql } from './zql.js'
 export { createEmptyWorkbookSnapshot, projectWorkbookToSnapshot } from './snapshot.js'
 export {
+  canonicalizeWorkbookChangeRange,
   isWorkbookChangeRange,
   isWorkbookChangeRangeScope,
   normalizeWorkbookChangeRange,
+  normalizeWorkbookChangeRangeBounds,
+  workbookChangeRangeFromAddresses,
+  type WorkbookChangeRangeBounds,
   type WorkbookChangeRange,
   type WorkbookChangeRangeScope,
 } from './workbook-change-range.js'

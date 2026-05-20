@@ -14,49 +14,24 @@ import { areCellValuesEqual, emptyValue, errorValue } from '../../engine-value-u
 import type { EngineRuntimeState, RuntimeFormula, SpillMaterialization, U32 } from '../runtime-state.js'
 import { EngineRecalcError } from '../errors.js'
 import type { WorkbookPivotRecord } from '../../workbook-store.js'
-import { parseCellAddress } from '@bilig/formula'
 import type { EngineDirtyFrontierSchedulerService } from './dirty-frontier-scheduler-service.js'
 import type { EnginePatch } from '../../patches/patch-types.js'
 import { buildCycleEvaluationNodes, type CycleEvaluationNode } from './recalc-cycle-evaluation.js'
 import { dominantScalarErrorForCycleFormula } from './recalc-cycle-error-dominance.js'
 import { consumeVolatileRandomValues, createRecalcVolatileState, toOrderedUint32 } from './recalc-evaluation-state.js'
 import { emitRecalcBatchEvents } from './recalc-event-emission.js'
+import { hasQueuedFormulaDependency } from './recalc-formula-dependency-helpers.js'
 import { resolveRecalcIterationSettings } from './recalc-iteration-settings.js'
 import { createRecalcNativeDirectScalarBatch, MAX_RECALC_NATIVE_DIRECT_SCALAR_BATCH_SIZE } from './formula-recalc-native-direct-scalar.js'
-import { areDifferentialCellValuesEqual, filterSkippedCachedFormulaCells } from './recalc-service-helpers.js'
-
-export interface DirtyRegion {
-  readonly sheetName: string
-  readonly rowStart: number
-  readonly rowEnd: number
-  readonly colStart: number
-  readonly colEnd: number
-}
-
-export interface EngineRecalcService {
-  readonly recalculateNow: () => Effect.Effect<number[], EngineRecalcError>
-  readonly recalculateDirty: (dirtyRegions: ReadonlyArray<DirtyRegion>) => Effect.Effect<number[], EngineRecalcError>
-  readonly recalculateDifferential: () => Effect.Effect<{ js: CellSnapshot[]; wasm: CellSnapshot[]; drift: string[] }, EngineRecalcError>
-  readonly recalculatePreordered: (
-    changedRoots: readonly number[] | U32,
-    orderedFormulaCellIndices: readonly number[] | U32,
-    orderedFormulaCount: number,
-    kernelSyncRoots?: readonly number[] | U32,
-  ) => Effect.Effect<U32, EngineRecalcError>
-  readonly recalculate: (
-    changedRoots: readonly number[] | U32,
-    kernelSyncRoots?: readonly number[] | U32,
-  ) => Effect.Effect<U32, EngineRecalcError>
-  readonly reconcilePivotOutputs: (baseChanged: U32, forceAllPivots?: boolean) => Effect.Effect<U32, EngineRecalcError>
-  readonly recalculatePreorderedNowSync: (
-    changedRoots: readonly number[] | U32,
-    orderedFormulaCellIndices: readonly number[] | U32,
-    orderedFormulaCount: number,
-    kernelSyncRoots?: readonly number[] | U32,
-  ) => U32
-  readonly recalculateNowSync: (changedRoots: readonly number[] | U32, kernelSyncRoots?: readonly number[] | U32) => U32
-  readonly reconcilePivotOutputsNow: (baseChanged: U32, forceAllPivots?: boolean) => U32
-}
+import { areDifferentialCellValuesEqual } from './recalc-service-helpers.js'
+import {
+  createRecalcNativeDirectLookupBatch,
+  MAX_RECALC_NATIVE_DIRECT_LOOKUP_BATCH_SIZE,
+} from './formula-initialization-native-direct-lookup.js'
+import { refreshPivotOutputsForChangedCells } from './recalc-pivot-refresh.js'
+import { filterSkippedCachedFormulaCells } from './recalc-skipped-cached-formula-cells.js'
+import type { EngineRecalcService } from './recalc-service-types.js'
+export type { DirtyRegion, EngineRecalcService } from './recalc-service-types.js'
 
 interface RecalculateInternalOptions {
   readonly orderedFormulaCellIndices?: readonly number[] | U32
@@ -119,58 +94,14 @@ export function createEngineRecalcService(args: {
   readonly materializePivot: (pivot: WorkbookPivotRecord) => number[]
   readonly forEachFormulaDependencyCell: (cellIndex: number, fn: (dependencyCellIndex: number) => void) => void
 }): EngineRecalcService {
-  const shouldRefreshPivot = (pivot: WorkbookPivotRecord, changed: readonly number[] | U32): boolean => {
-    if (!pivot.source || pivot.cacheOnly) {
-      return false
-    }
-    const ownerSheet = args.state.workbook.getSheet(pivot.source.sheetName)
-    if (!ownerSheet) {
-      return true
-    }
-    const ownerStart = parseCellAddress(pivot.source.startAddress, pivot.source.sheetName)
-    const ownerEnd = parseCellAddress(pivot.source.endAddress, pivot.source.sheetName)
-    for (let index = 0; index < changed.length; index += 1) {
-      const cellIndex = changed[index]!
-      const sheetId = args.state.workbook.cellStore.sheetIds[cellIndex]
-      if (sheetId === undefined || sheetId !== ownerSheet.id) {
-        continue
-      }
-      const position = args.state.workbook.getCellPosition(cellIndex)
-      const row = position?.row ?? args.state.workbook.cellStore.rows[cellIndex] ?? -1
-      const col = position?.col ?? args.state.workbook.cellStore.cols[cellIndex] ?? -1
-      if (row >= ownerStart.row && row <= ownerEnd.row && col >= ownerStart.col && col <= ownerEnd.col) {
-        return true
-      }
-    }
-    return false
-  }
-
-  const refreshPivotOutputs = (changed: readonly number[] | U32, forceAll: boolean): U32 => {
-    const pivots = args.state.workbook.listPivots()
-    if (pivots.length === 0 || (!forceAll && changed.length === 0)) {
-      return args.emptyChangedSet()
-    }
-
-    const changedCellIndices: number[] = []
-    const changedSeen = new Set<number>()
-    for (let index = 0; index < pivots.length; index += 1) {
-      const pivot = pivots[index]!
-      if (!forceAll && !shouldRefreshPivot(pivot, changed)) {
-        continue
-      }
-      const pivotChanges = args.materializePivot(pivot)
-      for (let changeIndex = 0; changeIndex < pivotChanges.length; changeIndex += 1) {
-        const cellIndex = pivotChanges[changeIndex]!
-        if (changedSeen.has(cellIndex)) {
-          continue
-        }
-        changedSeen.add(cellIndex)
-        changedCellIndices.push(cellIndex)
-      }
-    }
-
-    return changedCellIndices.length === 0 ? args.emptyChangedSet() : Uint32Array.from(changedCellIndices)
-  }
+  const refreshPivotOutputs = (changed: readonly number[] | U32, forceAll: boolean): U32 =>
+    refreshPivotOutputsForChangedCells({
+      changed,
+      forceAll,
+      workbook: args.state.workbook,
+      materializePivot: args.materializePivot,
+      emptyChangedSet: args.emptyChangedSet,
+    })
 
   const recalculateInternal = (
     changedRoots: readonly number[] | U32,
@@ -368,6 +299,12 @@ export function createEngineRecalcService(args: {
           capacity: Math.min(Math.max(orderedCount, 1), MAX_RECALC_NATIVE_DIRECT_SCALAR_BATCH_SIZE),
         })
         const nativeDirectScalarCells: number[] = []
+        const nativeDirectLookupBatch = createRecalcNativeDirectLookupBatch({
+          state: args.state,
+          capacity: Math.min(Math.max(orderedCount, 1), MAX_RECALC_NATIVE_DIRECT_LOOKUP_BATCH_SIZE),
+        })
+        const nativeDirectLookupCells: number[] = []
+        const nativeDirectLookupQueued = new Set<number>()
         const readStoredValue = (cellIndex: number): CellValue =>
           args.state.workbook.cellStore.getValue(cellIndex, (id) => (id === 0 ? '' : args.state.strings.get(id)))
         const clearDerivedFormulaFlags = (cellIndex: number): boolean => {
@@ -506,6 +443,33 @@ export function createEngineRecalcService(args: {
           return true
         }
 
+        const flushNativeDirectLookupBatch = (): void => {
+          if (nativeDirectLookupBatch.count === 0) {
+            return
+          }
+          const evaluated = nativeDirectLookupBatch.evaluate()
+          if (evaluated !== undefined) {
+            wasmCount += evaluated.length
+            for (let index = 0; index < evaluated.length; index += 1) {
+              queueKernelSync(evaluated[index]!)
+            }
+          } else {
+            for (let index = 0; index < nativeDirectLookupCells.length; index += 1) {
+              const cellIndex = nativeDirectLookupCells[index]!
+              const formula = args.state.formulas.get(cellIndex)
+              if (formula && !evaluateDirectFormulaImmediately(cellIndex, formula)) {
+                jsCount += 1
+                const spillChanges = args.evaluateUnsupportedFormula(cellIndex)
+                noteQueuedSpillChanges(spillChanges)
+                queueKernelSync(cellIndex)
+              }
+            }
+          }
+          nativeDirectLookupCells.length = 0
+          nativeDirectLookupQueued.clear()
+          nativeDirectLookupBatch.reset()
+        }
+
         const flushNativeDirectScalarBatch = (): void => {
           if (nativeDirectScalarBatch.count === 0) {
             return
@@ -541,6 +505,9 @@ export function createEngineRecalcService(args: {
             readonly forceJs: boolean
           },
         ): void => {
+          if (hasQueuedFormulaDependency(cellIndex, nativeDirectLookupQueued, args.forEachFormulaDependencyCell)) {
+            flushNativeDirectLookupBatch()
+          }
           if (skippedCachedFormulaCells && formula.preserveCachedValueOnFullRecalc === true) {
             skippedCachedFormulaCells.add(cellIndex)
             queueKernelSync(cellIndex)
@@ -570,6 +537,30 @@ export function createEngineRecalcService(args: {
             formula.directCriteria !== undefined
           ) {
             flushPendingWasmBatch()
+            if (
+              !evaluationOptions.forceJs &&
+              formula.directLookup !== undefined &&
+              formula.directScalar === undefined &&
+              formula.directAggregate === undefined &&
+              formula.directCriteria === undefined &&
+              !formula.compiled.producesSpill
+            ) {
+              if (nativeDirectLookupBatch.count >= MAX_RECALC_NATIVE_DIRECT_LOOKUP_BATCH_SIZE) {
+                flushNativeDirectLookupBatch()
+              }
+              const sheetId = args.state.workbook.cellStore.sheetIds[cellIndex]
+              const col = args.state.workbook.cellStore.cols[cellIndex]
+              if (
+                sheetId !== undefined &&
+                col !== undefined &&
+                nativeDirectLookupBatch.add({ cellIndex, sheetId, col }, formula.directLookup)
+              ) {
+                nativeDirectLookupCells.push(cellIndex)
+                nativeDirectLookupQueued.add(cellIndex)
+                return
+              }
+              flushNativeDirectLookupBatch()
+            }
             if (
               !evaluationOptions.forceJs &&
               formula.directScalar !== undefined &&
@@ -608,6 +599,7 @@ export function createEngineRecalcService(args: {
             return
           }
           flushPendingWasmBatch()
+          flushNativeDirectLookupBatch()
           flushNativeDirectScalarBatch()
           jsCount += 1
           args.checkEvaluationBudget()
@@ -666,6 +658,7 @@ export function createEngineRecalcService(args: {
             const node = cycleEvaluationNodes[nodeIndex]!
             if (node.kind === 'cycle') {
               flushPendingWasmBatch()
+              flushNativeDirectLookupBatch()
               flushNativeDirectScalarBatch()
               evaluateCycleNode(node)
               continue
@@ -699,6 +692,7 @@ export function createEngineRecalcService(args: {
           }
         }
 
+        flushNativeDirectLookupBatch()
         flushNativeDirectScalarBatch()
         flushPendingWasmBatch()
         args.setDeferredKernelSyncCount(pendingKernelSyncCount)

@@ -27,6 +27,25 @@ function dimensionCacheEngine(workbook: WorkPaper): object {
 }
 
 describe('WorkPaper engine rebuilds', () => {
+  it('keeps the active workbook usable when a config rebuild fails during reinitialization', () => {
+    const workbook = WorkPaper.buildFromArray([[1, '=A1+1']], { language: 'enGB' })
+    const originalEngine = runtimeEngine(workbook)
+    const sheetId = workbook.getSheetId('Sheet1')!
+
+    expect(() => {
+      workbook.updateConfig({ language: 'timeout-rebuild-language', evaluationTimeoutMs: 0 })
+    }).toThrow('Workbook evaluation timed out after 0ms')
+
+    expect(workbook.getConfig().language).toBe('enGB')
+    expect(workbook.getConfig().evaluationTimeoutMs).toBeUndefined()
+    const restoredEngine = runtimeEngine(workbook)
+    expect(restoredEngine).not.toBe(originalEngine)
+    expect(dimensionCacheEngine(workbook)).toBe(restoredEngine)
+    expect(workbook.getSheetNames()).toEqual(['Sheet1'])
+    expect(workbook.getRangeSerialized({ start: cell(sheetId, 0, 0), end: cell(sheetId, 0, 1) })).toEqual([[1, '=A1+1']])
+    expect(workbook.getSheetDimensions(sheetId)).toEqual({ width: 2, height: 1 })
+  })
+
   it('rebinds the sheet dimension cache after config rebuilds replace the engine', () => {
     const workbook = WorkPaper.buildFromArray([[1]], { language: 'enGB' })
     const originalEngine = runtimeEngine(workbook)

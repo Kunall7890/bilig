@@ -36,7 +36,6 @@ export function createOperationDirectScalarSingleColumnBatchFastPaths(args: Oper
     canFastPathLiteralOverwrite,
     canUseDirectFormulaPostRecalc,
     canSkipFormulaColumnVersion,
-    writeNumericLiteralToCellStore,
     applyTerminalDirectFormulaNumericResults,
   } = args
 
@@ -133,11 +132,27 @@ export function createOperationDirectScalarSingleColumnBatchFastPaths(args: Oper
     const requiresChangedSet = hasGeneralEventListeners || hasTrackedEventListeners || hasWatchedCellListeners
     const changedInputCount = inputCellIndices.length
     const explicitChangedCount = requiresChangedSet ? inputCellIndices.length : 0
+    const flags = cellStore.flags
+    const versions = cellStore.versions
+    const stringIds = cellStore.stringIds
+    const tags = cellStore.tags
+    const numbers = cellStore.numbers
+    const errors = cellStore.errors
+    const formulaOutputFlags = CellFlags.SpillChild | CellFlags.PivotOutput
+    const clearFormulaOutputFlags = ~formulaOutputFlags
     args.setBatchMutationDepth(args.getBatchMutationDepth() + 1)
     try {
       for (let index = 0; index < refs.length; index += 1) {
         const cellIndex = inputCellIndices[index]!
-        writeNumericLiteralToCellStore(cellIndex, inputNumericValues[index]!)
+        const currentFlags = flags[cellIndex] ?? 0
+        if ((currentFlags & formulaOutputFlags) !== 0) {
+          flags[cellIndex] = currentFlags & clearFormulaOutputFlags
+        }
+        versions[cellIndex] = (versions[cellIndex] ?? 0) + 1
+        stringIds[cellIndex] = 0
+        tags[cellIndex] = ValueTag.Number
+        numbers[cellIndex] = inputNumericValues[index]!
+        errors[cellIndex] = ErrorCode.None
       }
       args.state.workbook.notifyColumnsWritten(firstRef.sheetId, Uint32Array.of(firstMutation.col))
     } finally {
@@ -308,7 +323,16 @@ export function createOperationDirectScalarSingleColumnBatchFastPaths(args: Oper
       for (let index = 0; index < refs.length; index += 1) {
         const cellIndex = inputCellIndices[index]!
         const value = inputNumericValues === undefined ? readValidatedNumericMutationValue(refs[index]!) : inputNumericValues[index]!
-        writeNumericLiteralToCellStore(cellIndex, value)
+        const inputFlags = flags[cellIndex] ?? 0
+        if ((inputFlags & formulaOutputFlags) !== 0) {
+          flags[cellIndex] = inputFlags & clearFormulaOutputFlags
+        }
+        versions[cellIndex] = (versions[cellIndex] ?? 0) + 1
+        stringIds[cellIndex] = 0
+        tags[cellIndex] = ValueTag.Number
+        numbers[cellIndex] = value
+        errors[cellIndex] = ErrorCode.None
+
         const formulaCellIndex = formulaCellIndices[index]!
         const currentFlags = flags[formulaCellIndex] ?? 0
         if ((currentFlags & formulaOutputFlags) !== 0) {

@@ -152,6 +152,70 @@ describe('EngineFormulaEvaluationService', () => {
     expect(engine.getPerformanceCounters().directCriteriaAggregateCacheHits).toBeGreaterThanOrEqual(1)
   })
 
+  it('uses exact aggregate buckets for single-criteria average min and max formulas', async () => {
+    const engine = new SpreadsheetEngine({ workbookName: 'evaluation-direct-criteria-exact-stat-buckets' })
+    await engine.ready()
+    engine.createSheet('Sheet1')
+    engine.setCellValue('Sheet1', 'D1', 'B')
+    for (let row = 2; row <= 9; row += 1) {
+      engine.setCellValue('Sheet1', `A${row}`, row % 2 === 0 ? 'A' : 'B')
+      engine.setCellValue('Sheet1', `B${row}`, row)
+    }
+    engine.setCellFormula('Sheet1', 'F1', 'AVERAGEIF(A2:A9,D1,B2:B9)')
+    engine.setCellFormula('Sheet1', 'F2', 'MINIFS(B2:B9,A2:A9,D1)')
+    engine.setCellFormula('Sheet1', 'F3', 'MAXIFS(B2:B9,A2:A9,D1)')
+
+    engine.resetPerformanceCounters()
+    engine.setCellValue('Sheet1', 'D1', 'A')
+
+    expect(engine.getCellValue('Sheet1', 'F1')).toEqual({ tag: ValueTag.Number, value: 5 })
+    expect(engine.getCellValue('Sheet1', 'F2')).toEqual({ tag: ValueTag.Number, value: 2 })
+    expect(engine.getCellValue('Sheet1', 'F3')).toEqual({ tag: ValueTag.Number, value: 8 })
+    expect(engine.getPerformanceCounters().directCriteriaMatchCacheHits).toBe(0)
+  })
+
+  it('uses compound exact aggregate buckets for multi-criteria formulas', async () => {
+    const engine = new SpreadsheetEngine({ workbookName: 'evaluation-direct-criteria-compound-exact-buckets' })
+    await engine.ready()
+    engine.createSheet('Sheet1')
+    engine.setCellValue('Sheet1', 'E1', 'B')
+    engine.setCellValue('Sheet1', 'F1', 'target')
+    let expectedCount = 0
+    let expectedSum = 0
+    let expectedMin = Number.POSITIVE_INFINITY
+    let expectedMax = Number.NEGATIVE_INFINITY
+    for (let row = 2; row <= 257; row += 1) {
+      const value = row - 1
+      const group = value % 2 === 0 ? 'A' : 'B'
+      const flag = value % 16 === 0 ? 'target' : 'other'
+      engine.setCellValue('Sheet1', `A${row}`, group)
+      engine.setCellValue('Sheet1', `B${row}`, flag)
+      engine.setCellValue('Sheet1', `C${row}`, value)
+      if (group === 'A' && flag === 'target') {
+        expectedCount += 1
+        expectedSum += value
+        expectedMin = Math.min(expectedMin, value)
+        expectedMax = Math.max(expectedMax, value)
+      }
+    }
+    engine.setCellFormula('Sheet1', 'G1', 'COUNTIFS(A2:A257,E1,B2:B257,F1)')
+    engine.setCellFormula('Sheet1', 'G2', 'SUMIFS(C2:C257,A2:A257,E1,B2:B257,F1)')
+    engine.setCellFormula('Sheet1', 'G3', 'AVERAGEIFS(C2:C257,A2:A257,E1,B2:B257,F1)')
+    engine.setCellFormula('Sheet1', 'G4', 'MINIFS(C2:C257,A2:A257,E1,B2:B257,F1)')
+    engine.setCellFormula('Sheet1', 'G5', 'MAXIFS(C2:C257,A2:A257,E1,B2:B257,F1)')
+
+    engine.resetPerformanceCounters()
+    engine.setCellValue('Sheet1', 'E1', 'A')
+
+    expect(engine.getCellValue('Sheet1', 'G1')).toEqual({ tag: ValueTag.Number, value: expectedCount })
+    expect(engine.getCellValue('Sheet1', 'G2')).toEqual({ tag: ValueTag.Number, value: expectedSum })
+    expect(engine.getCellValue('Sheet1', 'G3')).toEqual({ tag: ValueTag.Number, value: expectedSum / expectedCount })
+    expect(engine.getCellValue('Sheet1', 'G4')).toEqual({ tag: ValueTag.Number, value: expectedMin })
+    expect(engine.getCellValue('Sheet1', 'G5')).toEqual({ tag: ValueTag.Number, value: expectedMax })
+    expect(engine.getPerformanceCounters().nativeDirectCriteriaPredicateAggregateEvaluations).toBe(0)
+    expect(engine.getPerformanceCounters().directCriteriaMatchCacheHits).toBe(0)
+  })
+
   it('shares direct criteria matches across mixed criteria count and sum formulas', async () => {
     const engine = new SpreadsheetEngine({ workbookName: 'evaluation-direct-criteria-repeated-count-cache' })
     await engine.ready()
@@ -179,6 +243,44 @@ describe('EngineFormulaEvaluationService', () => {
     expect(engine.getCellValue('Sheet1', 'F1')).toEqual({ tag: ValueTag.Number, value: 3 })
     expect(engine.getCellValue('Sheet1', 'J1')).toEqual({ tag: ValueTag.Number, value: 36 })
     expect(engine.getPerformanceCounters().directCriteriaMatchCacheHits).toBeGreaterThanOrEqual(1)
+  })
+
+  it('uses native predicate aggregation for safe mixed string and numeric criteria', async () => {
+    const engine = new SpreadsheetEngine({ workbookName: 'evaluation-direct-criteria-native-mixed-predicate' })
+    await engine.ready()
+    engine.createSheet('Sheet1')
+    const rowCount = 512
+    engine.setCellValue('Sheet1', 'A1', 'Group')
+    engine.setCellValue('Sheet1', 'B1', 'Amount')
+    engine.setCellValue('Sheet1', 'C1', 'Flag')
+    engine.setCellValue('Sheet1', 'D1', 'A')
+    engine.setCellValue('Sheet1', 'E1', 10)
+    let expectedCount = 0
+    let expectedSum = 0
+    for (let row = 2; row <= rowCount + 1; row += 1) {
+      const value = row - 1
+      engine.setCellValue('Sheet1', `A${row}`, value % 2 === 0 ? 'A' : 'B')
+      engine.setCellValue('Sheet1', `B${row}`, value)
+      engine.setCellValue('Sheet1', `C${row}`, value % 3 === 0 ? 'x' : 'y')
+      if (value % 2 === 0 && value >= 20 && value % 3 === 0) {
+        expectedCount += 1
+        expectedSum += value
+      }
+    }
+    engine.setCellFormula('Sheet1', 'F1', `COUNTIFS(A2:A${rowCount + 1},D1,B2:B${rowCount + 1},">="&E1,C2:C${rowCount + 1},"x")`)
+    engine.setCellFormula(
+      'Sheet1',
+      'G1',
+      `SUMIFS(B2:B${rowCount + 1},A2:A${rowCount + 1},D1,B2:B${rowCount + 1},">="&E1,C2:C${rowCount + 1},"x")`,
+    )
+
+    engine.resetPerformanceCounters()
+    engine.setCellValue('Sheet1', 'E1', 20)
+
+    expect(engine.getCellValue('Sheet1', 'F1')).toEqual({ tag: ValueTag.Number, value: expectedCount })
+    expect(engine.getCellValue('Sheet1', 'G1')).toEqual({ tag: ValueTag.Number, value: expectedSum })
+    expect(engine.getPerformanceCounters().nativeDirectCriteriaPredicateAggregateEvaluations).toBe(2)
+    expect(engine.getPerformanceCounters().directCriteriaMatchCacheHits).toBe(0)
   })
 
   it('uses native matched-row reductions for large direct criteria aggregates', async () => {
@@ -212,6 +314,134 @@ describe('EngineFormulaEvaluationService', () => {
     expect(engine.getCellValue('Sheet1', 'F3')).toEqual({ tag: ValueTag.Number, value: expectedMin })
     expect(engine.getCellValue('Sheet1', 'F4')).toEqual({ tag: ValueTag.Number, value: expectedMax })
     expect(engine.getPerformanceCounters().nativeDirectCriteriaAggregateEvaluations).toBeGreaterThanOrEqual(4)
+  })
+
+  it('uses native predicate criteria aggregation for large numeric COUNTIF formulas', async () => {
+    const engine = new SpreadsheetEngine({ workbookName: 'evaluation-direct-criteria-native-predicate-aggregate' })
+    await engine.ready()
+    engine.createSheet('Sheet1')
+    const rowCount = 65_536
+    engine.setCellValue('Sheet1', 'E1', 1)
+    let expectedCount = 0
+    for (let row = 1; row <= rowCount; row += 1) {
+      engine.setCellValue('Sheet1', `A${row}`, row)
+      if (row >= 2048) {
+        expectedCount += 1
+      }
+    }
+    engine.setCellFormula('Sheet1', 'F1', 'COUNTIF(A1:A65536,">="&E1)')
+
+    engine.resetPerformanceCounters()
+    engine.setCellValue('Sheet1', 'E1', 2048)
+
+    expect(engine.getCellValue('Sheet1', 'F1')).toEqual({ tag: ValueTag.Number, value: expectedCount })
+    expect(engine.getPerformanceCounters().nativeDirectCriteriaPredicateAggregateEvaluations).toBe(1)
+    expect(engine.getPerformanceCounters().directCriteriaMatchCacheHits).toBe(0)
+  })
+
+  it('uses native predicate criteria aggregation for unshared large numeric IFS aggregate formulas', async () => {
+    const engine = new SpreadsheetEngine({ workbookName: 'evaluation-direct-criteria-native-predicate-ifs-aggregate' })
+    await engine.ready()
+    engine.createSheet('Sheet1')
+    const rowCount = 65_536
+    engine.setCellValue('Sheet1', 'E1', 4096)
+    engine.setCellValue('Sheet1', 'E2', 4096)
+    engine.setCellValue('Sheet1', 'E3', 4096)
+    engine.setCellValue('Sheet1', 'E4', 4096)
+    let expectedSum = 0
+    let expectedCount = 0
+    let expectedMin = Number.POSITIVE_INFINITY
+    let expectedMax = Number.NEGATIVE_INFINITY
+    for (let row = 1; row <= rowCount; row += 1) {
+      const amount = row % 10 === 0 ? '' : row % 7 === 0 ? row % 14 === 0 : row
+      engine.setCellValue('Sheet1', `A${row}`, row)
+      engine.setCellValue('Sheet1', `B${row}`, amount)
+      if (row >= 8192) {
+        const numericAmount = typeof amount === 'number' ? amount : typeof amount === 'boolean' ? (amount ? 1 : 0) : 0
+        expectedSum += numericAmount
+        if (typeof amount === 'number' || typeof amount === 'boolean') {
+          expectedCount += 1
+        }
+        if (typeof amount === 'number') {
+          expectedMin = Math.min(expectedMin, amount)
+          expectedMax = Math.max(expectedMax, amount)
+        }
+      }
+    }
+    engine.setCellFormula('Sheet1', 'F1', 'SUMIFS(B1:B65536,A1:A65536,">="&E1)')
+    engine.setCellFormula('Sheet1', 'F2', 'AVERAGEIFS(B1:B65536,A1:A65536,">="&E2)')
+    engine.setCellFormula('Sheet1', 'F3', 'MINIFS(B1:B65536,A1:A65536,">="&E3)')
+    engine.setCellFormula('Sheet1', 'F4', 'MAXIFS(B1:B65536,A1:A65536,">="&E4)')
+
+    engine.resetPerformanceCounters()
+    engine.setCellValue('Sheet1', 'E1', 8192)
+    engine.setCellValue('Sheet1', 'E2', 8192)
+    engine.setCellValue('Sheet1', 'E3', 8192)
+    engine.setCellValue('Sheet1', 'E4', 8192)
+
+    expect(engine.getCellValue('Sheet1', 'F1')).toEqual({ tag: ValueTag.Number, value: expectedSum })
+    expect(engine.getCellValue('Sheet1', 'F2')).toEqual({ tag: ValueTag.Number, value: expectedSum / expectedCount })
+    expect(engine.getCellValue('Sheet1', 'F3')).toEqual({ tag: ValueTag.Number, value: expectedMin })
+    expect(engine.getCellValue('Sheet1', 'F4')).toEqual({ tag: ValueTag.Number, value: expectedMax })
+    expect(engine.getPerformanceCounters().nativeDirectCriteriaPredicateAggregateEvaluations).toBe(4)
+    expect(engine.getPerformanceCounters().directCriteriaMatchCacheHits).toBe(0)
+  })
+
+  it('keeps shared large numeric IFS aggregate formulas on the matched-row cache path', async () => {
+    const engine = new SpreadsheetEngine({ workbookName: 'evaluation-direct-criteria-shared-large-ifs-aggregate' })
+    await engine.ready()
+    engine.createSheet('Sheet1')
+    const rowCount = 65_536
+    engine.setCellValue('Sheet1', 'E1', 4096)
+    let expectedSum = 0
+    let expectedCount = 0
+    let expectedMin = Number.POSITIVE_INFINITY
+    let expectedMax = Number.NEGATIVE_INFINITY
+    for (let row = 1; row <= rowCount; row += 1) {
+      const amount = row % 10 === 0 ? '' : row % 7 === 0 ? row % 14 === 0 : row
+      engine.setCellValue('Sheet1', `A${row}`, row)
+      engine.setCellValue('Sheet1', `B${row}`, amount)
+      if (row >= 8192) {
+        const numericAmount = typeof amount === 'number' ? amount : typeof amount === 'boolean' ? (amount ? 1 : 0) : 0
+        expectedSum += numericAmount
+        if (typeof amount === 'number' || typeof amount === 'boolean') {
+          expectedCount += 1
+        }
+        if (typeof amount === 'number') {
+          expectedMin = Math.min(expectedMin, amount)
+          expectedMax = Math.max(expectedMax, amount)
+        }
+      }
+    }
+    engine.setCellFormula('Sheet1', 'F1', 'SUMIFS(B1:B65536,A1:A65536,">="&E1)')
+    engine.setCellFormula('Sheet1', 'F2', 'AVERAGEIFS(B1:B65536,A1:A65536,">="&E1)')
+    engine.setCellFormula('Sheet1', 'F3', 'MINIFS(B1:B65536,A1:A65536,">="&E1)')
+    engine.setCellFormula('Sheet1', 'F4', 'MAXIFS(B1:B65536,A1:A65536,">="&E1)')
+
+    engine.resetPerformanceCounters()
+    engine.setCellValue('Sheet1', 'E1', 8192)
+
+    expect(engine.getCellValue('Sheet1', 'F1')).toEqual({ tag: ValueTag.Number, value: expectedSum })
+    expect(engine.getCellValue('Sheet1', 'F2')).toEqual({ tag: ValueTag.Number, value: expectedSum / expectedCount })
+    expect(engine.getCellValue('Sheet1', 'F3')).toEqual({ tag: ValueTag.Number, value: expectedMin })
+    expect(engine.getCellValue('Sheet1', 'F4')).toEqual({ tag: ValueTag.Number, value: expectedMax })
+    expect(engine.getPerformanceCounters().nativeDirectCriteriaPredicateAggregateEvaluations).toBe(0)
+    expect(engine.getPerformanceCounters().directCriteriaMatchCacheHits).toBeGreaterThanOrEqual(1)
+  })
+
+  it('keeps decimal COUNTIF criteria on the JS oracle path when exact-lookup normalization matters', async () => {
+    const engine = new SpreadsheetEngine({ workbookName: 'evaluation-direct-criteria-decimal-oracle-fallback' })
+    await engine.ready()
+    engine.createSheet('Sheet1')
+    engine.setCellValue('Sheet1', 'A1', 1.234567890123456)
+    engine.setCellValue('Sheet1', 'E1', 1.23456789012346)
+    engine.setCellFormula('Sheet1', 'F1', '=COUNTIF(A1:A65536,E1)')
+
+    engine.resetPerformanceCounters()
+    engine.setCellValue('Sheet1', 'E1', 1.23456789012346)
+
+    expect(engine.getCellValue('Sheet1', 'F1')).toEqual({ tag: ValueTag.Number, value: 1 })
+    expect(engine.getPerformanceCounters().nativeDirectCriteriaPredicateAggregateEvaluations).toBe(0)
   })
 
   it('keeps direct scalar arithmetic aligned with text coercion errors', async () => {

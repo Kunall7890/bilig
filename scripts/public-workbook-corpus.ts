@@ -717,7 +717,8 @@ async function main(): Promise<void> {
     return
   }
   if (command === 'footprint-worker') {
-    writeFootprintWorkerResult({
+    await writeFootprintWorkerResult({
+      filePath: readStringArg('--file', ''),
       fileName: readStringArg('--file-name', 'workbook.xlsx'),
       verifyMaxRssBytes: capVerifyMaxRssBytes(readMegabytesArg('--verify-max-rss-mb', defaultVerifyMaxRssBytes)),
     })

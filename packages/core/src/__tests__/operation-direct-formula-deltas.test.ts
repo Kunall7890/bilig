@@ -1,6 +1,6 @@
 import { compileFormula } from '@bilig/formula'
 import { ErrorCode, ValueTag } from '@bilig/protocol'
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import { CellFlags } from '../cell-store.js'
 import type { RuntimeDirectAggregateDescriptor, RuntimeDirectScalarDescriptor, RuntimeFormula } from '../engine/runtime-state.js'
 import { createEngineCounters } from '../perf/engine-counters.js'
@@ -180,6 +180,8 @@ describe('createOperationDirectFormulaDeltas', () => {
       flags: CellFlags.Materialized | CellFlags.PivotOutput,
       version: 6,
     })
+    formulas.set(first, createRuntimeFormula(first, { directScalar: TEST_DIRECT_SCALAR }))
+    formulas.set(second, createRuntimeFormula(second, { directScalar: TEST_DIRECT_SCALAR }))
 
     const collection = new DirectFormulaIndexCollection()
     const directScalarCells = Uint32Array.of(first, second)
@@ -252,6 +254,8 @@ describe('createOperationDirectFormulaDeltas', () => {
       value: 8,
       version: 6,
     })
+    formulas.set(first, createRuntimeFormula(first, { directScalar: TEST_DIRECT_SCALAR }))
+    formulas.set(second, createRuntimeFormula(second, { directScalar: TEST_DIRECT_SCALAR }))
 
     const collection = new DirectFormulaIndexCollection()
     const directScalarCells = Uint32Array.of(first, second)
@@ -278,6 +282,41 @@ describe('createOperationDirectFormulaDeltas', () => {
     expect(workbook.cellStore.versions[second]).toBe(7)
     expect(sheet.columnVersions[0] ?? 0).toBe(0)
     expect(sheet.columnVersions[1] ?? 0).toBe(0)
+    expect(counters.directScalarDeltaApplications).toBe(2)
+  })
+
+  it('should trust linear direct scalar closures without revalidating formula table entries', () => {
+    // Arrange
+    const { counters, formulas, sheet, workbook, helpers } = createHarness()
+    const first = createCell(workbook, sheet.id, {
+      row: 0,
+      col: 0,
+      value: 2,
+      version: 1,
+    })
+    const second = createCell(workbook, sheet.id, {
+      row: 1,
+      col: 0,
+      value: 8,
+      version: 6,
+    })
+    const getFormula = vi.spyOn(formulas, 'get')
+
+    const collection = new DirectFormulaIndexCollection()
+    const directScalarCells = Uint32Array.of(first, second)
+    collection.appendConstantDelta(directScalarCells, 4, 'scalar')
+    collection.markScalarDeltaCellsValidated()
+    collection.markScalarDeltaCellsCleanNumber()
+    collection.markScalarDeltaCellsTrustedDirectScalarFormulas()
+
+    // Act
+    const changed = helpers.tryApplyDirectScalarDeltas(collection)
+
+    // Assert
+    expect(changed).toBe(directScalarCells)
+    expect(getFormula).not.toHaveBeenCalled()
+    expect(workbook.cellStore.numbers[first]).toBe(6)
+    expect(workbook.cellStore.numbers[second]).toBe(12)
     expect(counters.directScalarDeltaApplications).toBe(2)
   })
 

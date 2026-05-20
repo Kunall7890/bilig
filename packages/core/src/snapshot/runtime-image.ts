@@ -1,6 +1,5 @@
 import { parseCellAddress, type CompiledFormula } from '@bilig/formula'
-import type { CellValue, LiteralInput, WorkbookSnapshot } from '@bilig/protocol'
-import { ErrorCode, ValueTag } from '@bilig/protocol'
+import type { CellValue, WorkbookSnapshot } from '@bilig/protocol'
 import type {
   EngineCellMutationRef,
   EngineFormulaSourceRef,
@@ -9,12 +8,21 @@ import type {
 } from '../cell-mutations-at.js'
 import { CellFlags } from '../cell-store.js'
 import { writeLiteralToCellStore } from '../engine-value-utils.js'
+import type { DeferredInitialFormulaFamilyRun } from '../engine/services/formula-initialization-family-runs.js'
 import type { InitialFormulaEntryRefSource } from '../engine/services/formula-initialization-refs.js'
 import type { FormulaInstanceSnapshot } from '../formula/formula-instance-table.js'
 import type { FormulaTemplateResolution, FormulaTemplateSnapshot } from '../formula/template-bank.js'
 import { collectDefinedFormulaNames, formulaShouldPreserveCachedUnsupportedFunctionValueOnFullRecalc } from './unsupported-formula-cache.js'
 import type { StringPool } from '../string-pool.js'
 import type { SheetRecord, WorkbookStore } from '../workbook-store.js'
+import {
+  createWrittenColumnTracker,
+  markWrittenColumn,
+  materializeWrittenColumns,
+  type WrittenColumnTracker,
+} from '../written-column-tracker.js'
+import { restoreAlignedRuntimeFormulaFamilyRuns, type RuntimeImageFormulaFamilyRunSnapshot } from './runtime-image-formula-family-runs.js'
+import { formulaCachedLiteralToRestoredValue, restoreLiteralCell } from './runtime-image-literal-restore.js'
 import { restoreVisualMetadata, restoreWorkbookStructure } from './runtime-image-metadata-restore.js'
 
 type WorkbookSnapshotCell = WorkbookSnapshot['sheets'][number]['cells'][number]
@@ -24,6 +32,7 @@ export interface RuntimeImage {
   readonly templateBank: readonly FormulaTemplateSnapshot[]
   readonly formulaInstances: readonly FormulaInstanceSnapshot[]
   readonly formulaValues: readonly RuntimeImageFormulaValueSnapshot[]
+  readonly formulaFamilyRuns?: readonly RuntimeImageFormulaFamilyRunSnapshot[]
   readonly sheetCells?: readonly RuntimeImageSheetCellsSnapshot[]
 }
 
@@ -69,6 +78,7 @@ export interface RuntimeImageRestoreArgs {
     refs: InitialFormulaEntryRefSource<HydratedPreparedRuntimeFormulaRef>,
     potentialNewCells?: number,
   ) => void
+  readonly initializeCachedFormulaSourcesAt?: (refs: readonly CachedRuntimeFormulaRef[], potentialNewCells?: number) => void
 }
 
 export interface WorkbookRestoreResult {
@@ -88,6 +98,7 @@ export interface WorkbookSnapshotRestoreArgs {
     refs: InitialFormulaEntryRefSource<HydratedPreparedRuntimeFormulaRef>,
     potentialNewCells?: number,
   ) => void
+  readonly initializeCachedFormulaSourcesAt?: (refs: readonly CachedRuntimeFormulaRef[], potentialNewCells?: number) => void
 }
 
 export interface PreparedRuntimeFormulaRef {
@@ -103,6 +114,15 @@ export interface PreparedRuntimeFormulaRef {
 export interface HydratedPreparedRuntimeFormulaRef extends PreparedRuntimeFormulaRef {
   readonly value: CellValue
   readonly preserveCachedValueOnFullRecalc?: boolean
+}
+
+export interface CachedRuntimeFormulaRef {
+  readonly sheetId: number
+  readonly row: number
+  readonly col: number
+  readonly source: string
+  readonly value: CellValue
+  readonly cellIndex?: number
 }
 
 const RUNTIME_IMAGE_COORD_STRIDE = 1_048_576
@@ -201,12 +221,6 @@ function readRestoredCellCoordinates(sheetName: string, cell: WorkbookSnapshotCe
   }
 }
 
-interface WrittenColumnTracker {
-  smallColumns: number
-  columns?: Uint8Array
-  count: number
-}
-
 interface FreshRuntimeLogicalSheetInternals {
   readonly deferVisibleCellPageRebuild?: () => void
   readonly setFreshVisibleCellIdentityWithAxisIdsDeferred?: (cellIndex: number, rowId: string, colId: string) => void
@@ -279,6 +293,8 @@ class RestoredHydratedPreparedFormulaRefTable implements Iterable<HydratedPrepar
   readonly values: CellValue[]
   readonly preserveCachedValueOnFullRecalc: Uint8Array
   freshFormulaInstances: readonly FormulaInstanceSnapshot[] | undefined
+  freshFormulaFamilyRuns: readonly DeferredInitialFormulaFamilyRun[] | undefined
+  freshFormulaFamilyRunFallbackCount = 0
   private reusable: MutableHydratedPreparedRuntimeFormulaRef | undefined
   length = 0
 
@@ -378,67 +394,6 @@ function isFreshRuntimeLogicalSheetInternals(value: unknown): value is FreshRunt
   return typeof value === 'object' && value !== null
 }
 
-function createWrittenColumnTracker(): WrittenColumnTracker {
-  return {
-    smallColumns: 0,
-    count: 0,
-  }
-}
-
-function markWrittenColumn(tracker: WrittenColumnTracker, col: number): void {
-  if (col < 30) {
-    const bit = 1 << col
-    if ((tracker.smallColumns & bit) !== 0) {
-      return
-    }
-    tracker.smallColumns |= bit
-    tracker.count += 1
-    return
-  }
-  let columns = tracker.columns
-  if (!columns) {
-    columns = new Uint8Array(Math.max(32, col + 1))
-    tracker.columns = columns
-  } else if (col >= columns.length) {
-    let nextLength = columns.length
-    while (nextLength <= col) {
-      nextLength *= 2
-    }
-    const nextColumns = new Uint8Array(nextLength)
-    nextColumns.set(columns)
-    columns = nextColumns
-    tracker.columns = columns
-  }
-  if (columns[col] !== 0) {
-    return
-  }
-  columns[col] = 1
-  tracker.count += 1
-}
-
-function materializeWrittenColumns(tracker: WrittenColumnTracker): Uint32Array {
-  const columns = new Uint32Array(tracker.count)
-  let writeIndex = 0
-  let smallColumns = tracker.smallColumns
-  while (smallColumns !== 0) {
-    const bit = smallColumns & -smallColumns
-    columns[writeIndex] = 31 - Math.clz32(bit)
-    writeIndex += 1
-    smallColumns &= smallColumns - 1
-  }
-  const largeColumns = tracker.columns
-  if (largeColumns) {
-    for (let col = 30; col < largeColumns.length; col += 1) {
-      if (largeColumns[col] === 0) {
-        continue
-      }
-      columns[writeIndex] = col
-      writeIndex += 1
-    }
-  }
-  return columns
-}
-
 function createFreshRuntimeCellAttacher(workbook: WorkbookStore, sheet: SheetRecord): FreshRuntimeCellAttacher {
   const logicalCandidate: unknown = sheet.logical
   const logical = isFreshRuntimeLogicalSheetInternals(logicalCandidate) ? logicalCandidate : undefined
@@ -502,13 +457,15 @@ function getDenseRuntimeSheetRestorePlan(
     width <= 0 ||
     height <= 0 ||
     cellCount !== sheet.cells.length ||
-    sheetCells.coords.length !== sheet.cells.length ||
     width * height !== sheet.cells.length
   ) {
     return undefined
   }
   if (sheetCells.coordinateOrder === 'dense-row-major') {
     return { width, height }
+  }
+  if (sheetCells.coords.length !== sheet.cells.length) {
+    return undefined
   }
   for (let index = 0; index < sheetCells.coords.length; index += 1) {
     const coords = sheetCells.coords[index]!
@@ -519,67 +476,6 @@ function getDenseRuntimeSheetRestorePlan(
   return { width, height }
 }
 
-function restoreLiteralCell(
-  workbook: WorkbookStore,
-  strings: StringPool,
-  cellIndex: number,
-  value: LiteralInput,
-  stringIdCache?: Map<string, number>,
-): void {
-  const cellStore = workbook.cellStore
-  const flags = cellStore.flags[cellIndex] ?? 0
-  if (value === null) {
-    cellStore.tags[cellIndex] = ValueTag.Empty
-    cellStore.errors[cellIndex] = ErrorCode.None
-    cellStore.stringIds[cellIndex] = 0
-    cellStore.numbers[cellIndex] = 0
-    cellStore.flags[cellIndex] = flags | CellFlags.AuthoredBlank
-  } else if (typeof value === 'number') {
-    cellStore.tags[cellIndex] = ValueTag.Number
-    cellStore.errors[cellIndex] = ErrorCode.None
-    cellStore.stringIds[cellIndex] = 0
-    cellStore.numbers[cellIndex] = value
-    if ((flags & CellFlags.AuthoredBlank) !== 0) {
-      cellStore.flags[cellIndex] = flags & ~CellFlags.AuthoredBlank
-    }
-  } else if (typeof value === 'boolean') {
-    cellStore.tags[cellIndex] = ValueTag.Boolean
-    cellStore.errors[cellIndex] = ErrorCode.None
-    cellStore.stringIds[cellIndex] = 0
-    cellStore.numbers[cellIndex] = value ? 1 : 0
-    if ((flags & CellFlags.AuthoredBlank) !== 0) {
-      cellStore.flags[cellIndex] = flags & ~CellFlags.AuthoredBlank
-    }
-  } else {
-    let stringId = stringIdCache?.get(value)
-    if (stringId === undefined) {
-      stringId = strings.intern(value)
-      stringIdCache?.set(value, stringId)
-    }
-    cellStore.tags[cellIndex] = ValueTag.String
-    cellStore.errors[cellIndex] = ErrorCode.None
-    cellStore.stringIds[cellIndex] = stringId
-    cellStore.numbers[cellIndex] = 0
-    if ((flags & CellFlags.AuthoredBlank) !== 0) {
-      cellStore.flags[cellIndex] = flags & ~CellFlags.AuthoredBlank
-    }
-  }
-  cellStore.versions[cellIndex] = (cellStore.versions[cellIndex] ?? 0) + 1
-  cellStore.onSetValue?.(cellIndex)
-}
-
-function literalToRestoredValue(input: LiteralInput, stringPool: StringPool, stringIdCache: Map<string, number>): CellValue {
-  if (input === null) return { tag: ValueTag.Empty }
-  if (typeof input === 'number') return { tag: ValueTag.Number, value: input }
-  if (typeof input === 'boolean') return { tag: ValueTag.Boolean, value: input }
-  let stringId = stringIdCache.get(input)
-  if (stringId === undefined) {
-    stringId = stringPool.intern(input)
-    stringIdCache.set(input, stringId)
-  }
-  return { tag: ValueTag.String, value: input, stringId }
-}
-
 export function restoreWorkbookFromSnapshot(args: WorkbookSnapshotRestoreArgs): WorkbookRestoreResult {
   const orderedSheets = restoreWorkbookStructure(args)
   args.checkEvaluationBudget?.()
@@ -587,10 +483,15 @@ export function restoreWorkbookFromSnapshot(args: WorkbookSnapshotRestoreArgs): 
   const formulaRefs: EngineCellMutationRef[] = []
   const formulaSourceRefs = args.initializeFormulaSourcesAt ? new RestoredFormulaSourceRefTable(potentialNewCells) : undefined
   const hydratedPreparedFormulaRefs: HydratedPreparedRuntimeFormulaRef[] = []
-  const canHydrateCachedFormulaValues = args.initializeHydratedPreparedCellFormulasAt && args.resolveTemplateForCell
+  const cachedFormulaRefs: CachedRuntimeFormulaRef[] = []
+  const canHydratePreparedCachedFormulaValues = args.initializeHydratedPreparedCellFormulasAt && args.resolveTemplateForCell
+  const canHydrateImportedCachedFormulaValues = args.initializeCachedFormulaSourcesAt !== undefined
   const shouldHydrateIterativeFormulaValues = args.snapshot.workbook.metadata?.calculationSettings?.iterate === true
+  const shouldHydrateImportedCachedFormulaValues =
+    args.snapshot.workbook.metadata?.calculationSettings?.fullCalcOnLoad === false ||
+    args.snapshot.workbook.metadata?.calculationSettings?.mode === 'manual'
   const definedFormulaNames =
-    shouldHydrateIterativeFormulaValues || !canHydrateCachedFormulaValues ? undefined : collectDefinedFormulaNames(args.snapshot)
+    shouldHydrateIterativeFormulaValues || !canHydratePreparedCachedFormulaValues ? undefined : collectDefinedFormulaNames(args.snapshot)
   const restoredStringIds = new Map<string, number>()
 
   args.checkEvaluationBudget?.()
@@ -624,12 +525,22 @@ export function restoreWorkbookFromSnapshot(args: WorkbookSnapshotRestoreArgs): 
           if (cell.formula !== undefined) {
             let hydratedCachedFormula = false
             const shouldPreserveCachedUnsupportedValue =
-              canHydrateCachedFormulaValues &&
+              canHydratePreparedCachedFormulaValues &&
               cell.value !== undefined &&
               !shouldHydrateIterativeFormulaValues &&
               formulaShouldPreserveCachedUnsupportedFunctionValueOnFullRecalc(cell.formula, definedFormulaNames!)
-            if (
-              canHydrateCachedFormulaValues &&
+            if (canHydrateImportedCachedFormulaValues && shouldHydrateImportedCachedFormulaValues && cell.value !== undefined) {
+              cachedFormulaRefs.push({
+                sheetId,
+                row: coords.row,
+                col: coords.col,
+                cellIndex: restoredCellIndex,
+                source: cell.formula,
+                value: formulaCachedLiteralToRestoredValue(cell.value, args.strings, restoredStringIds),
+              })
+              hydratedCachedFormula = true
+            } else if (
+              canHydratePreparedCachedFormulaValues &&
               cell.value !== undefined &&
               (shouldHydrateIterativeFormulaValues || shouldPreserveCachedUnsupportedValue)
             ) {
@@ -644,7 +555,7 @@ export function restoreWorkbookFromSnapshot(args: WorkbookSnapshotRestoreArgs): 
                     source: cell.formula,
                     compiled: template.compiled,
                     templateId: template.templateId,
-                    value: literalToRestoredValue(cell.value, args.strings, restoredStringIds),
+                    value: formulaCachedLiteralToRestoredValue(cell.value, args.strings, restoredStringIds),
                     ...(shouldPreserveCachedUnsupportedValue ? { preserveCachedValueOnFullRecalc: true } : {}),
                   })
                   hydratedCachedFormula = true
@@ -691,6 +602,10 @@ export function restoreWorkbookFromSnapshot(args: WorkbookSnapshotRestoreArgs): 
     args.checkEvaluationBudget?.()
     args.initializeHydratedPreparedCellFormulasAt(hydratedPreparedFormulaRefs, hydratedPreparedFormulaRefs.length)
   }
+  if (cachedFormulaRefs.length > 0 && args.initializeCachedFormulaSourcesAt) {
+    args.checkEvaluationBudget?.()
+    args.initializeCachedFormulaSourcesAt(cachedFormulaRefs, cachedFormulaRefs.length)
+  }
   if (formulaSourceRefs && formulaSourceRefs.length > 0) {
     args.checkEvaluationBudget?.()
     args.initializeFormulaSourcesAt!(formulaSourceRefs, potentialNewCells)
@@ -709,6 +624,7 @@ export function restoreWorkbookFromSnapshot(args: WorkbookSnapshotRestoreArgs): 
 
 export function restoreWorkbookFromRuntimeImage(args: RuntimeImageRestoreArgs): WorkbookRestoreResult {
   const orderedSheets = restoreWorkbookStructure(args)
+  const sheetIdsByName = new Map<string, number>()
 
   args.checkEvaluationBudget?.()
   args.hydrateTemplateBank(args.runtimeImage.templateBank)
@@ -737,8 +653,13 @@ export function restoreWorkbookFromRuntimeImage(args: RuntimeImageRestoreArgs): 
   const formulaSourceRefs = args.initializeFormulaSourcesAt ? new RestoredFormulaSourceRefTable(totalCellCount) : undefined
   const preparedFormulaRefs: PreparedRuntimeFormulaRef[] = []
   const hydratedPreparedFormulaRefs = new RestoredHydratedPreparedFormulaRefTable(totalCellCount, args.runtimeImage.formulaInstances)
-  const canHydrateCachedSnapshotFormulaValues = args.initializeHydratedPreparedCellFormulasAt && args.resolveTemplateForCell
+  const cachedFormulaRefs: CachedRuntimeFormulaRef[] = []
+  const canHydratePreparedSnapshotFormulaValues = args.initializeHydratedPreparedCellFormulasAt && args.resolveTemplateForCell
+  const canHydrateImportedCachedSnapshotFormulaValues = args.initializeCachedFormulaSourcesAt !== undefined
   const shouldHydrateIterativeFormulaValues = args.snapshot.workbook.metadata?.calculationSettings?.iterate === true
+  const shouldHydrateImportedCachedFormulaValues =
+    args.snapshot.workbook.metadata?.calculationSettings?.fullCalcOnLoad === false ||
+    args.snapshot.workbook.metadata?.calculationSettings?.mode === 'manual'
   const definedFormulaNames = shouldHydrateIterativeFormulaValues ? undefined : collectDefinedFormulaNames(args.snapshot)
   const restoredStringIds = new Map<string, number>()
   const previousOnSetValue = args.workbook.cellStore.onSetValue
@@ -752,6 +673,7 @@ export function restoreWorkbookFromRuntimeImage(args: RuntimeImageRestoreArgs): 
           throw new Error(`Missing runtime restore sheet: ${sheet.name}`)
         }
         const sheetId = sheetRecord.id
+        sheetIdsByName.set(sheet.name, sheetId)
         const sheetCellSnapshot = sheetCellsByName.get(sheet.name)
         const sheetCoords = sheetCellSnapshot?.coords
         const rowIds: string[] = []
@@ -855,13 +777,23 @@ export function restoreWorkbookFromRuntimeImage(args: RuntimeImageRestoreArgs): 
           } else if (cell.formula !== undefined) {
             let hydratedCachedFormula = false
             const shouldPreserveCachedUnsupportedValue =
-              canHydrateCachedSnapshotFormulaValues &&
+              canHydratePreparedSnapshotFormulaValues &&
               cell.value !== undefined &&
               !shouldHydrateIterativeFormulaValues &&
               definedFormulaNames !== undefined &&
               formulaShouldPreserveCachedUnsupportedFunctionValueOnFullRecalc(cell.formula, definedFormulaNames)
-            if (
-              canHydrateCachedSnapshotFormulaValues &&
+            if (canHydrateImportedCachedSnapshotFormulaValues && shouldHydrateImportedCachedFormulaValues && cell.value !== undefined) {
+              cachedFormulaRefs.push({
+                sheetId,
+                row,
+                col,
+                cellIndex,
+                source: cell.formula,
+                value: formulaCachedLiteralToRestoredValue(cell.value, args.strings, restoredStringIds),
+              })
+              hydratedCachedFormula = true
+            } else if (
+              canHydratePreparedSnapshotFormulaValues &&
               cell.value !== undefined &&
               (shouldHydrateIterativeFormulaValues || shouldPreserveCachedUnsupportedValue)
             ) {
@@ -876,7 +808,7 @@ export function restoreWorkbookFromRuntimeImage(args: RuntimeImageRestoreArgs): 
                     cell.formula,
                     template.compiled,
                     template.templateId,
-                    literalToRestoredValue(cell.value, args.strings, restoredStringIds),
+                    formulaCachedLiteralToRestoredValue(cell.value, args.strings, restoredStringIds),
                     cellIndex,
                     shouldPreserveCachedUnsupportedValue,
                   )
@@ -967,7 +899,26 @@ export function restoreWorkbookFromRuntimeImage(args: RuntimeImageRestoreArgs): 
 
   if (hydratedPreparedFormulaRefs.length > 0 && args.initializeHydratedPreparedCellFormulasAt) {
     args.checkEvaluationBudget?.()
+    const restoredFormulaFamilyRuns =
+      hydratedPreparedFormulaRefs.freshFormulaInstances === undefined
+        ? undefined
+        : restoreAlignedRuntimeFormulaFamilyRuns({
+            runs: args.runtimeImage.formulaFamilyRuns,
+            sheetIdsByName,
+          })
+    if (restoredFormulaFamilyRuns !== undefined) {
+      if (restoredFormulaFamilyRuns.fallbackCount === 0 && restoredFormulaFamilyRuns.runs.length > 0) {
+        hydratedPreparedFormulaRefs.freshFormulaFamilyRuns = restoredFormulaFamilyRuns.runs
+      }
+      hydratedPreparedFormulaRefs.freshFormulaFamilyRunFallbackCount = restoredFormulaFamilyRuns.fallbackCount
+    } else if ((args.runtimeImage.formulaFamilyRuns?.length ?? 0) > 0) {
+      hydratedPreparedFormulaRefs.freshFormulaFamilyRunFallbackCount = args.runtimeImage.formulaFamilyRuns!.length
+    }
     args.initializeHydratedPreparedCellFormulasAt(hydratedPreparedFormulaRefs, hydratedPreparedFormulaRefs.length)
+  }
+  if (cachedFormulaRefs.length > 0 && args.initializeCachedFormulaSourcesAt) {
+    args.checkEvaluationBudget?.()
+    args.initializeCachedFormulaSourcesAt(cachedFormulaRefs, cachedFormulaRefs.length)
   }
   if (preparedFormulaRefs.length > 0 && args.initializePreparedCellFormulasAt) {
     args.checkEvaluationBudget?.()

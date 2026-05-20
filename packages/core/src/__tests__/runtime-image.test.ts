@@ -1,11 +1,12 @@
 import { compileFormulaAst, parseFormula } from '@bilig/formula'
-import { ValueTag, type WorkbookSnapshot } from '@bilig/protocol'
+import { ErrorCode, ValueTag, type WorkbookSnapshot } from '@bilig/protocol'
 import { describe, expect, it, vi } from 'vitest'
 import type { EngineFormulaSourceRefs } from '../cell-mutations-at.js'
 import { CellFlags } from '../cell-store.js'
 import {
   restoreWorkbookFromRuntimeImage,
   restoreWorkbookFromSnapshot,
+  type CachedRuntimeFormulaRef,
   type HydratedPreparedRuntimeFormulaRef,
 } from '../snapshot/runtime-image.js'
 import { StringPool } from '../string-pool.js'
@@ -832,6 +833,52 @@ describe('restoreWorkbookFromRuntimeImage', () => {
 })
 
 describe('restoreWorkbookFromSnapshot', () => {
+  it('restores cached formula error literals as error values for no-recalc imports', () => {
+    const workbook = new WorkbookStore('snapshot-cached-formula-error')
+    const cachedCalls: CachedRuntimeFormulaRef[] = []
+    const snapshot: WorkbookSnapshot = {
+      version: 1,
+      workbook: {
+        name: 'snapshot-cached-formula-error',
+        metadata: {
+          calculationSettings: {
+            mode: 'automatic',
+            compatibilityMode: 'excel-modern',
+            fullCalcOnLoad: false,
+          },
+        },
+      },
+      sheets: [
+        {
+          id: 1,
+          name: 'Sheet1',
+          order: 0,
+          cells: [
+            { address: 'A1', row: 0, col: 0, value: '#DIV/0!' },
+            { address: 'B1', row: 0, col: 1, formula: '1/0', value: '#DIV/0!' },
+          ],
+        },
+      ],
+    }
+
+    restoreWorkbookFromSnapshot({
+      snapshot,
+      workbook,
+      strings: new StringPool(),
+      resetWorkbook: () => {},
+      initializeCellFormulasAt: () => {},
+      initializeCachedFormulaSourcesAt: (refs) => {
+        cachedCalls.push(...refs)
+      },
+    })
+
+    expect(cachedCalls).toHaveLength(1)
+    expect(cachedCalls[0]?.value).toEqual({ tag: ValueTag.Error, code: ErrorCode.Div0 })
+    const literalCellIndex = workbook.getCellIndex('Sheet1', 'A1')
+    expect(literalCellIndex).toBeDefined()
+    expect(workbook.cellStore.tags[literalCellIndex!]).toBe(ValueTag.String)
+  })
+
   it('preserves imported freeze pane scroll metadata during snapshot restore', () => {
     const workbook = new WorkbookStore('snapshot-freeze-pane-metadata')
     const snapshot: WorkbookSnapshot = {

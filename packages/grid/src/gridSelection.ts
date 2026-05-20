@@ -123,27 +123,76 @@ export function selectionToSnapshot(selection: GridSelection, sheetName: string,
 
 export function snapshotToSelection(selection: GridSelectionSnapshot): GridSelection {
   switch (selection.kind) {
-    case 'sheet':
-      return createSheetSelection()
+    case 'sheet': {
+      const active = parseCellAddress(selection.address, selection.sheetName)
+      return {
+        ...createSheetSelection(),
+        current: {
+          cell: [active.col, active.row],
+          range: { x: 0, y: 0, width: MAX_COLS, height: MAX_ROWS },
+          rangeStack: [],
+        },
+      }
+    }
     case 'column': {
       const start = parseCellAddress(selection.range.startAddress, selection.sheetName)
       const end = parseCellAddress(selection.range.endAddress, selection.sheetName)
-      return createColumnSliceSelection(start.col, end.col, start.row)
+      const active = parseCellAddress(selection.address, selection.sheetName)
+      const left = Math.min(start.col, end.col)
+      const right = Math.max(start.col, end.col)
+      if (active.col < left || active.col > right) {
+        return createColumnSliceSelection(start.col, end.col, start.row)
+      }
+      return {
+        ...createColumnSliceSelection(start.col, end.col, active.row),
+        current: {
+          cell: [active.col, active.row],
+          range: { x: left, y: active.row, width: right - left + 1, height: 1 },
+          rangeStack: [],
+        },
+      }
     }
     case 'row': {
       const start = parseCellAddress(selection.range.startAddress, selection.sheetName)
       const end = parseCellAddress(selection.range.endAddress, selection.sheetName)
-      return createRowSliceSelection(start.col, start.row, end.row)
+      const active = parseCellAddress(selection.address, selection.sheetName)
+      const top = Math.min(start.row, end.row)
+      const bottom = Math.max(start.row, end.row)
+      if (active.row < top || active.row > bottom) {
+        return createRowSliceSelection(start.col, start.row, end.row)
+      }
+      return {
+        ...createRowSliceSelection(active.col, start.row, end.row),
+        current: {
+          cell: [active.col, active.row],
+          range: { x: active.col, y: top, width: 1, height: bottom - top + 1 },
+          rangeStack: [],
+        },
+      }
     }
     case 'range': {
       const start = parseCellAddress(selection.range.startAddress, selection.sheetName)
       const end = parseCellAddress(selection.range.endAddress, selection.sheetName)
-      return createRectangleSelectionFromRange({
+      const active = parseCellAddress(selection.address, selection.sheetName)
+      const range = {
         x: Math.min(start.col, end.col),
         y: Math.min(start.row, end.row),
         width: Math.abs(end.col - start.col) + 1,
         height: Math.abs(end.row - start.row) + 1,
-      })
+      }
+      const activeInsideRange =
+        active.col >= range.x && active.col < range.x + range.width && active.row >= range.y && active.row < range.y + range.height
+      if (!activeInsideRange) {
+        return createRectangleSelectionFromRange(range)
+      }
+      return {
+        ...createRectangleSelectionFromRange(range),
+        current: {
+          cell: [active.col, active.row],
+          range,
+          rangeStack: [],
+        },
+      }
     }
     case 'cell': {
       const parsed = parseCellAddress(selection.address, selection.sheetName)

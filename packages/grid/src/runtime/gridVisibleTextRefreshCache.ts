@@ -48,7 +48,7 @@ const STATIC_TILE_GRID_SELECTION: GridSelection = Object.freeze({
 })
 
 interface VisibleTextRefreshCacheEntry extends VisibleTextRefreshCacheInput {
-  readonly geometryKey: string
+  readonly layoutKey: string
   readonly needsLocalRefresh: boolean
   readonly renderRevisionKey: string
   readonly tile: GridRenderTile
@@ -76,14 +76,14 @@ export class GridVisibleTextRefreshCache {
     }
 
     const renderRevisionKey = resolveRenderRevisionKey(input.engine)
-    const geometryKey = resolveGeometryKey(input)
+    const layoutKey = resolveVisibleTextLayoutKey(input)
     const hasAuthoredPaintRects = tileHasAuthoredPaintRects(tile)
     const cached = this.entries.get(tileKey)
     if (
       cached &&
       cached.tile === tile &&
       cached.engine === input.engine &&
-      cached.geometryKey === geometryKey &&
+      cached.layoutKey === layoutKey &&
       cached.sheetName === input.sheetName &&
       !hasAuthoredPaintRects &&
       (input.revisionSensitive === false ||
@@ -104,7 +104,7 @@ export class GridVisibleTextRefreshCache {
     })
     this.entries.set(tileKey, {
       ...input,
-      geometryKey,
+      layoutKey,
       needsLocalRefresh,
       renderRevisionKey,
       tile,
@@ -115,43 +115,6 @@ export class GridVisibleTextRefreshCache {
     })
     return needsLocalRefresh
   }
-}
-
-function resolveGeometryKey(
-  input: Pick<
-    VisibleTextRefreshCacheInput,
-    'columnWidths' | 'gridMetrics' | 'rowHeights' | 'sortedColumnWidthOverrides' | 'sortedRowHeightOverrides'
-  >,
-): string {
-  return [
-    input.gridMetrics.columnWidth,
-    input.gridMetrics.rowHeight,
-    input.gridMetrics.headerHeight,
-    input.gridMetrics.rowMarkerWidth,
-    recordSignature(input.columnWidths),
-    recordSignature(input.rowHeights),
-    axisOverridesSignature(input.sortedColumnWidthOverrides),
-    axisOverridesSignature(input.sortedRowHeightOverrides),
-  ].join('|')
-}
-
-function recordSignature(record: Readonly<Record<number, number>>): string {
-  const keys = Object.keys(record)
-  if (keys.length === 0) {
-    return ''
-  }
-  return keys
-    .map(Number)
-    .toSorted((a, b) => a - b)
-    .map((key) => `${key}:${record[key]}`)
-    .join(',')
-}
-
-function axisOverridesSignature(overrides: readonly (readonly [number, number])[]): string {
-  if (overrides.length === 0) {
-    return ''
-  }
-  return overrides.map(([index, value]) => `${index}:${value}`).join(',')
 }
 
 function tileVisibleTextNeedsLocalRefresh(
@@ -259,6 +222,39 @@ function resolveRenderRevisionKey(engine: GridEngineLike): string {
     revision.tileSceneRevision ?? 'none',
     revision.tileSceneCameraSeq ?? 'none',
   ].join(':')
+}
+
+function resolveVisibleTextLayoutKey(
+  input: Pick<
+    VisibleTextRefreshCacheInput,
+    'columnWidths' | 'gridMetrics' | 'rowHeights' | 'sortedColumnWidthOverrides' | 'sortedRowHeightOverrides'
+  >,
+): string {
+  return [
+    input.gridMetrics.columnWidth,
+    input.gridMetrics.rowHeight,
+    input.gridMetrics.headerHeight,
+    input.gridMetrics.rowMarkerWidth,
+    numericRecordKey(input.columnWidths),
+    numericRecordKey(input.rowHeights),
+    numericTupleKey(input.sortedColumnWidthOverrides),
+    numericTupleKey(input.sortedRowHeightOverrides),
+  ].join('|')
+}
+
+function numericRecordKey(record: Readonly<Record<number, number>>): string {
+  return Object.entries(record)
+    .toSorted(([leftKey], [rightKey]) => {
+      const left = Number(leftKey)
+      const right = Number(rightKey)
+      return left - right || leftKey.localeCompare(rightKey)
+    })
+    .map(([key, value]) => `${key}:${value}`)
+    .join(',')
+}
+
+function numericTupleKey(values: readonly (readonly [number, number])[]): string {
+  return values.map(([index, value]) => `${index}:${value}`).join(',')
 }
 
 function resolveProjectedRevision(engine: GridEngineLike): number | null {

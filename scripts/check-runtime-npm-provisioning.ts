@@ -14,6 +14,7 @@ import {
 const rootDir = resolve(new URL('..', import.meta.url).pathname)
 const textDecoder = new TextDecoder()
 const allowNewNpmPackages = parseBooleanEnv(process.env.ALLOW_NEW_NPM_PACKAGES)
+const skipUnprovisionedNpmPackages = parseBooleanEnv(process.env.SKIP_UNPROVISIONED_NPM_PACKAGES)
 const dryRun = parseBooleanEnv(process.env.DRY_RUN)
 
 const runtimePackages = loadRuntimeNpmPackages(rootDir)
@@ -21,6 +22,7 @@ const publishedVersions = readPublishedRuntimePackageVersions(runtimePackages.ma
 const provisioningPlan = planRuntimePackagePublishProvisioning({
   publishedVersions,
   allowNewNpmPackages,
+  skipUnprovisionedNpmPackages,
   dryRun,
 })
 

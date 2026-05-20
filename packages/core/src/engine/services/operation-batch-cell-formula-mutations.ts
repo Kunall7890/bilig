@@ -7,6 +7,7 @@ import type { DirectFormulaIndexCollection, DirectScalarCurrentOperand } from '.
 import type { DirectFormulaMetricCounts } from './operation-post-recalc-direct-formulas.js'
 import { cellTouchesOperationPivotSource } from './operation-pivot-source-helpers.js'
 import type { OperationDirectRangeDependentService } from './operation-direct-range-dependents.js'
+import { rethrowFatalFormulaBindingError } from './formula-binding-error-policy.js'
 import type { CreateEngineOperationServiceArgs } from './operation-service-types.js'
 import { analyzeFreshDirectAggregateFormula } from './operation-fresh-direct-aggregate.js'
 
@@ -170,7 +171,8 @@ export function applyBatchSetCellFormulaOp(request: ApplyBatchSetCellFormulaOpAr
       }
       topologyChanged = true
     }
-  } catch {
+  } catch (error) {
+    rethrowFatalFormulaBindingError(error)
     if (!request.isRestore) {
       compileMs += performance.now() - compileStarted
     }

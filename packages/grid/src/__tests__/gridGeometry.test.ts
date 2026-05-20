@@ -157,10 +157,59 @@ describe('gridGeometry', () => {
     ])
     expect(geometry.rangeWorldRects({ x: 0, y: 0, width: 3, height: 3 })).toEqual([{ height: 60, width: 300, x: 0, y: 0 }])
     expect(geometry.fillHandleScreenRect({ x: 0, y: 0, width: 3, height: 3 })).toEqual({
-      height: 12,
-      width: 12,
-      x: 290,
-      y: 68,
+      height: 7,
+      width: 7,
+      x: 292.5,
+      y: 70.5,
+    })
+  })
+
+  test('anchors fill-handle geometry to the actual trailing cell instead of clipped visible range', () => {
+    const metrics = getGridMetrics()
+    const columns = createGridAxisWorldIndex({ axisLength: 20, defaultSize: 100 })
+    const rows = createGridAxisWorldIndex({ axisLength: 20, defaultSize: 20 })
+    const geometry = createGridGeometrySnapshotFromAxes({
+      columns,
+      dpr: 1,
+      freezeCols: 0,
+      freezeRows: 0,
+      gridMetrics: metrics,
+      hostHeight: 100,
+      hostWidth: 320,
+      rows,
+      scrollLeft: 0,
+      scrollTop: 0,
+      sheetName: 'Sheet1',
+      updatedAt: 100,
+    })
+
+    expect(geometry.fillHandleScreenRect({ x: 1, y: 1, width: 1, height: 12 })).toBeNull()
+  })
+
+  test('clips fill-handle geometry only when the trailing cell itself is partially visible', () => {
+    const metrics = getGridMetrics()
+    const columns = createGridAxisWorldIndex({ axisLength: 20, defaultSize: 100 })
+    const rows = createGridAxisWorldIndex({ axisLength: 20, defaultSize: 20 })
+    const geometry = createGridGeometrySnapshotFromAxes({
+      columns,
+      dpr: 1,
+      freezeCols: 0,
+      freezeRows: 0,
+      gridMetrics: metrics,
+      hostHeight: 100,
+      hostWidth: 320,
+      rows,
+      scrollLeft: 0,
+      scrollTop: 4,
+      sheetName: 'Sheet1',
+      updatedAt: 100,
+    })
+
+    expect(geometry.fillHandleScreenRect({ x: 1, y: 3, width: 1, height: 1 })).toEqual({
+      height: 3.5,
+      width: 7,
+      x: 242.5,
+      y: 96.5,
     })
   })
 })

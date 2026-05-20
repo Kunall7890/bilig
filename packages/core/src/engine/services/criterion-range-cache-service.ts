@@ -1,6 +1,13 @@
 import { ErrorCode, ValueTag, type CellValue } from '@bilig/protocol'
-import { compileCriteriaMatcher, matchesCompiledCriteria, type CompiledCriteriaMatcher, type CriteriaOperator } from '@bilig/formula'
+import {
+  compileCriteriaMatcher,
+  matchesCompiledCriteria,
+  normalizeExactLookupNumber,
+  type CompiledCriteriaMatcher,
+  type CriteriaOperator,
+} from '@bilig/formula'
 import type { EngineRuntimeColumnStoreService, RuntimeColumnView } from './runtime-column-store-service.js'
+import { sliceAbsoluteRowsToRangeView, type CriterionRowSetView } from './criterion-rowset-view.js'
 import type { DepPatternStore } from '../../deps/dep-pattern-store.js'
 import type { RegionGraph } from '../../deps/region-graph.js'
 
@@ -24,7 +31,9 @@ export interface CriterionRangeMatch {
 
 export interface CriterionRangeCacheService {
   readonly getOrBuildMatchingRows: (request: { criteriaPairs: readonly CriterionRangePair[] }) => CriterionRangeMatch | CellValue
+  readonly getOrBuildExactCriteriaAggregate: (request: CriterionCompoundExactAggregateRequest) => CellValue | undefined
   readonly getOrBuildExactAggregate: (request: CriterionExactAggregateRequest) => CellValue | undefined
+  readonly getOrBuildCompoundExactAggregate: (request: CriterionCompoundExactAggregateRequest) => CellValue | undefined
 }
 
 interface CriterionCacheEntry {
@@ -39,12 +48,21 @@ interface CriterionCacheEntry {
 export interface CriterionExactAggregateRequest {
   readonly criteriaPair: CriterionRangePair
   readonly aggregateRange?: CriterionRangeDescriptor
-  readonly aggregateKind: 'count' | 'sum'
+  readonly aggregateKind: 'count' | 'sum' | 'average' | 'min' | 'max'
+}
+
+export interface CriterionCompoundExactAggregateRequest {
+  readonly criteriaPairs: readonly CriterionRangePair[]
+  readonly aggregateRange?: CriterionRangeDescriptor
+  readonly aggregateKind: CriterionExactAggregateRequest['aggregateKind']
 }
 
 interface CriterionExactAggregateBucket {
   count: number
   sum: number
+  numericCount: number
+  minimum: number
+  maximum: number
   firstError?: CellValue
 }
 
@@ -113,7 +131,7 @@ function criteriaCacheKey(value: CellValue): string {
     case ValueTag.Empty:
       return 'e:'
     case ValueTag.Number:
-      return `n:${Object.is(value.value, -0) ? 0 : value.value}`
+      return `n:${normalizeExactLookupNumber(value.value)}`
     case ValueTag.Boolean:
       return value.value ? 'b:1' : 'b:0'
     case ValueTag.String:
@@ -184,7 +202,7 @@ function buildSlicePredicate(compiled: CompiledCriteriaMatcher): SliceFastPredic
         return {
           kind: 'eq-number',
           negate,
-          value: Object.is(operand.value, -0) ? 0 : operand.value,
+          value: normalizeExactLookupNumber(operand.value),
         }
       case ValueTag.String:
         return { kind: 'eq-string', negate, value: operand.value.toUpperCase() }
@@ -196,7 +214,7 @@ function buildSlicePredicate(compiled: CompiledCriteriaMatcher): SliceFastPredic
     return {
       kind: 'cmp-number',
       operator,
-      value: Object.is(operand.value, -0) ? 0 : operand.value,
+      value: normalizeExactLookupNumber(operand.value),
     }
   }
   return { kind: 'generic', compiled }
@@ -223,7 +241,7 @@ function slicePredicateMatches(
     }
     case 'eq-number': {
       const tag = decodeValueTag(view.readTagAt(offset))
-      const numeric = Object.is(view.readNumberAt(offset), -0) ? 0 : view.readNumberAt(offset)
+      const numeric = normalizeExactLookupNumber(view.readNumberAt(offset))
       const matches = (tag === ValueTag.Number || tag === ValueTag.Boolean || tag === ValueTag.Empty) && numeric === predicate.value
       return predicate.negate ? !matches : matches
     }
@@ -239,7 +257,7 @@ function slicePredicateMatches(
       if (tag !== ValueTag.Number && tag !== ValueTag.Boolean) {
         return false
       }
-      const numeric = Object.is(view.readNumberAt(offset), -0) ? 0 : view.readNumberAt(offset)
+      const numeric = normalizeExactLookupNumber(view.readNumberAt(offset))
       switch (predicate.operator) {
         case '>':
           return numeric > predicate.value
@@ -295,7 +313,7 @@ function equalityIndexKeyForStoredValue(
   runtimeColumnStore: EngineRuntimeColumnStoreService,
 ): CriterionEqualityIndexKey | undefined {
   if (tag === ValueTag.Number) {
-    const value = Object.is(number, -0) ? 0 : number
+    const value = normalizeExactLookupNumber(number)
     return value === 0 ? undefined : { kind: 'number', value }
   }
   if (tag === ValueTag.Boolean) {
@@ -364,65 +382,33 @@ function getOrBuildEqualityRowIndex(
   return index
 }
 
-function lowerBound(rows: Uint32Array, value: number): number {
-  let low = 0
-  let high = rows.length
-  while (low < high) {
-    const mid = (low + high) >>> 1
-    if (rows[mid]! < value) {
-      low = mid + 1
-    } else {
-      high = mid
-    }
-  }
-  return low
-}
-
-function sliceAbsoluteRowsToRangeOffsets(rows: Uint32Array, rowStart: number, rowEnd: number): Uint32Array {
-  const startIndex = lowerBound(rows, rowStart)
-  const endIndex = lowerBound(rows, rowEnd + 1)
-  if (startIndex >= endIndex) {
-    return new Uint32Array(0)
-  }
-  const offsets = new Uint32Array(endIndex - startIndex)
-  for (let index = startIndex; index < endIndex; index += 1) {
-    offsets[index - startIndex] = rows[index]! - rowStart
-  }
-  return offsets
-}
-
 function readIndexedEqualityRows(
   view: RuntimeColumnView,
   predicate: SliceFastPredicate,
   runtimeColumnStore: EngineRuntimeColumnStoreService,
-): Uint32Array | undefined {
+): CriterionRowSetView | undefined {
   const key = equalityIndexKeyForPredicate(predicate)
   if (key === undefined) {
     return undefined
   }
   const index = getOrBuildEqualityRowIndex(view, runtimeColumnStore)
   const rows = key.kind === 'number' ? index.numbers.get(key.value) : index.strings.get(key.value)
-  return rows === undefined ? new Uint32Array(0) : sliceAbsoluteRowsToRangeOffsets(rows, view.rowStart, view.rowEnd)
+  return sliceAbsoluteRowsToRangeView(rows ?? new Uint32Array(0), view.rowStart, view.rowEnd)
 }
 
-function addExactAggregateBucket(
-  index: { numbers: Map<number, CriterionExactAggregateBucket>; strings: Map<string, CriterionExactAggregateBucket> },
-  key: CriterionEqualityIndexKey,
-  aggregateKind: CriterionExactAggregateRequest['aggregateKind'],
-  aggregateView: RuntimeColumnView | undefined,
-  offset: number,
-): void {
-  let bucket = key.kind === 'number' ? index.numbers.get(key.value) : index.strings.get(key.value)
-  if (bucket === undefined) {
-    bucket = { count: 0, sum: 0 }
-    if (key.kind === 'number') {
-      index.numbers.set(key.value, bucket)
-    } else {
-      index.strings.set(key.value, bucket)
-    }
+function createExactAggregateBucket(): CriterionExactAggregateBucket {
+  return {
+    count: 0,
+    sum: 0,
+    numericCount: 0,
+    minimum: Number.POSITIVE_INFINITY,
+    maximum: Number.NEGATIVE_INFINITY,
   }
+}
+
+function addExactAggregateMatch(bucket: CriterionExactAggregateBucket, aggregateView: RuntimeColumnView | undefined, offset: number): void {
   bucket.count += 1
-  if (aggregateKind !== 'sum' || aggregateView === undefined) {
+  if (aggregateView === undefined) {
     return
   }
   const tag = decodeValueTag(aggregateView.readTagAt(offset))
@@ -431,12 +417,64 @@ function addExactAggregateBucket(
     return
   }
   if (tag === ValueTag.Number) {
-    bucket.sum += aggregateView.readNumberAt(offset)
+    const numeric = aggregateView.readNumberAt(offset)
+    bucket.sum += numeric
+    bucket.numericCount += 1
+    bucket.minimum = Math.min(bucket.minimum, numeric)
+    bucket.maximum = Math.max(bucket.maximum, numeric)
     return
   }
   if (tag === ValueTag.Boolean) {
     bucket.sum += aggregateView.readNumberAt(offset) !== 0 ? 1 : 0
+    bucket.numericCount += 1
+    return
   }
+  if (tag === ValueTag.Empty) {
+    bucket.numericCount += 1
+  }
+}
+
+function addExactAggregateBucket(
+  index: { numbers: Map<number, CriterionExactAggregateBucket>; strings: Map<string, CriterionExactAggregateBucket> },
+  key: CriterionEqualityIndexKey,
+  aggregateView: RuntimeColumnView | undefined,
+  offset: number,
+): void {
+  let bucket = key.kind === 'number' ? index.numbers.get(key.value) : index.strings.get(key.value)
+  if (bucket === undefined) {
+    bucket = createExactAggregateBucket()
+    if (key.kind === 'number') {
+      index.numbers.set(key.value, bucket)
+    } else {
+      index.strings.set(key.value, bucket)
+    }
+  }
+  addExactAggregateMatch(bucket, aggregateView, offset)
+}
+
+function exactAggregateValueFromBucket(
+  bucket: CriterionExactAggregateBucket | undefined,
+  aggregateKind: CriterionExactAggregateRequest['aggregateKind'],
+): CellValue {
+  if (bucket === undefined) {
+    return aggregateKind === 'average' ? errorValue(ErrorCode.Div0) : numberValue(0)
+  }
+  if (aggregateKind === 'count') {
+    return numberValue(bucket.count)
+  }
+  if (bucket.firstError) {
+    return bucket.firstError
+  }
+  if (aggregateKind === 'sum') {
+    return numberValue(bucket.sum)
+  }
+  if (aggregateKind === 'average') {
+    return bucket.numericCount === 0 ? errorValue(ErrorCode.Div0) : numberValue(bucket.sum / bucket.numericCount)
+  }
+  if (aggregateKind === 'min') {
+    return numberValue(bucket.minimum === Number.POSITIVE_INFINITY ? 0 : bucket.minimum)
+  }
+  return numberValue(bucket.maximum === Number.NEGATIVE_INFINITY ? 0 : bucket.maximum)
 }
 
 function exactAggregateBucketValue(
@@ -444,28 +482,44 @@ function exactAggregateBucketValue(
   key: CriterionEqualityIndexKey,
   aggregateKind: CriterionExactAggregateRequest['aggregateKind'],
 ): CellValue {
-  const bucket = key.kind === 'number' ? index.numbers.get(key.value) : index.strings.get(key.value)
-  if (bucket === undefined) {
-    return numberValue(0)
-  }
-  if (aggregateKind === 'count') {
-    return numberValue(bucket.count)
-  }
-  return bucket.firstError ?? numberValue(bucket.sum)
+  return exactAggregateValueFromBucket(key.kind === 'number' ? index.numbers.get(key.value) : index.strings.get(key.value), aggregateKind)
 }
 
 function exactAggregateIndexCacheKey(request: {
-  readonly aggregateKind: CriterionExactAggregateRequest['aggregateKind']
   readonly criteriaRegionId: number
   readonly criteriaView: RuntimeColumnView
   readonly aggregateRegionId?: number
   readonly aggregateView?: RuntimeColumnView
 }): string {
   return [
-    request.aggregateKind,
     request.criteriaRegionId,
     request.criteriaView.columnVersion,
     request.criteriaView.structureVersion,
+    request.aggregateRegionId ?? -1,
+    request.aggregateView?.columnVersion ?? -1,
+    request.aggregateView?.structureVersion ?? -1,
+  ].join('\u0001')
+}
+
+function exactKeyCachePart(key: CriterionEqualityIndexKey): string {
+  return key.kind === 'number' ? `n:${key.value}` : `s:${key.value}`
+}
+
+function compoundExactAggregateCacheKey(request: {
+  readonly aggregateKind: CriterionExactAggregateRequest['aggregateKind']
+  readonly criteriaPairs: readonly {
+    readonly regionId: number
+    readonly view: RuntimeColumnView
+    readonly key: CriterionEqualityIndexKey
+  }[]
+  readonly aggregateRegionId?: number
+  readonly aggregateView?: RuntimeColumnView
+}): string {
+  return [
+    request.aggregateKind,
+    request.criteriaPairs
+      .map(({ regionId, view, key }) => `${regionId}:${view.columnVersion}:${view.structureVersion}:${exactKeyCachePart(key)}`)
+      .join('\u0002'),
     request.aggregateRegionId ?? -1,
     request.aggregateView?.columnVersion ?? -1,
     request.aggregateView?.structureVersion ?? -1,
@@ -520,6 +574,7 @@ export function createCriterionRangeCacheService(args: {
   readonly depPatternStore: DepPatternStore
 }): CriterionRangeCacheService {
   const exactAggregateIndexes = new Map<string, CriterionExactAggregateIndex>()
+  const compoundExactAggregateResults = new Map<string, CellValue>()
 
   const getColumnView = (request: { sheetName: string; rowStart: number; rowEnd: number; col: number }): RuntimeColumnView => {
     const direct = Reflect.get(args.runtimeColumnStore, 'getColumnView')
@@ -571,7 +626,6 @@ export function createCriterionRangeCacheService(args: {
     })
 
   const buildExactAggregateIndex = (
-    request: CriterionExactAggregateRequest,
     criteriaView: RuntimeColumnView,
     aggregateView: RuntimeColumnView | undefined,
   ): CriterionExactAggregateIndex => {
@@ -596,7 +650,7 @@ export function createCriterionRangeCacheService(args: {
         if (key === undefined) {
           continue
         }
-        addExactAggregateBucket(buckets, key, request.aggregateKind, aggregateView, row - criteriaView.rowStart)
+        addExactAggregateBucket(buckets, key, aggregateView, row - criteriaView.rowStart)
       }
     })
     return buckets
@@ -608,7 +662,7 @@ export function createCriterionRangeCacheService(args: {
     if (criteriaKey === undefined) {
       return undefined
     }
-    if (request.aggregateKind === 'sum' && request.aggregateRange === undefined) {
+    if (request.aggregateKind !== 'count' && request.aggregateRange === undefined) {
       return undefined
     }
     if (request.aggregateRange !== undefined && request.aggregateRange.length !== request.criteriaPair.range.length) {
@@ -619,7 +673,6 @@ export function createCriterionRangeCacheService(args: {
     const aggregateRegionId = request.aggregateRange === undefined ? undefined : rangeRegionId(request.aggregateRange)
     const aggregateView = request.aggregateRange === undefined ? undefined : getColumnView(request.aggregateRange)
     const cacheKey = exactAggregateIndexCacheKey({
-      aggregateKind: request.aggregateKind,
       criteriaRegionId,
       criteriaView,
       ...(aggregateRegionId === undefined ? {} : { aggregateRegionId }),
@@ -627,10 +680,95 @@ export function createCriterionRangeCacheService(args: {
     })
     let index = exactAggregateIndexes.get(cacheKey)
     if (index === undefined) {
-      index = buildExactAggregateIndex(request, criteriaView, aggregateView)
+      index = buildExactAggregateIndex(criteriaView, aggregateView)
       exactAggregateIndexes.set(cacheKey, index)
     }
     return exactAggregateBucketValue(index, criteriaKey, request.aggregateKind)
+  }
+
+  const getOrBuildCompoundExactAggregate = (request: CriterionCompoundExactAggregateRequest): CellValue | undefined => {
+    const { criteriaPairs } = request
+    if (criteriaPairs.length < 2) {
+      return undefined
+    }
+    const expectedLength = criteriaPairs[0]!.range.length
+    if (criteriaPairs.some((pair) => pair.range.length !== expectedLength)) {
+      return undefined
+    }
+    if (request.aggregateKind !== 'count' && request.aggregateRange === undefined) {
+      return undefined
+    }
+    if (request.aggregateRange !== undefined && request.aggregateRange.length !== expectedLength) {
+      return undefined
+    }
+
+    const predicates = criteriaPairs.map((pair) => buildSlicePredicate(compileCriteriaMatcher(pair.criteria)))
+    const keys = predicates.map(equalityIndexKeyForPredicate)
+    if (keys.some((key) => key === undefined)) {
+      return undefined
+    }
+
+    const resolvedPairs = criteriaPairs.map((pair, index) => ({
+      regionId: rangeRegionId(pair.range),
+      view: getColumnView(pair.range),
+      predicate: predicates[index]!,
+      key: keys[index]!,
+    }))
+    const aggregateRegionId = request.aggregateRange === undefined ? undefined : rangeRegionId(request.aggregateRange)
+    const aggregateView = request.aggregateRange === undefined ? undefined : getColumnView(request.aggregateRange)
+    const cacheKey = compoundExactAggregateCacheKey({
+      aggregateKind: request.aggregateKind,
+      criteriaPairs: resolvedPairs,
+      ...(aggregateRegionId === undefined ? {} : { aggregateRegionId }),
+      ...(aggregateView === undefined ? {} : { aggregateView }),
+    })
+    const cached = compoundExactAggregateResults.get(cacheKey)
+    if (cached !== undefined) {
+      return cached
+    }
+
+    const rowsets = resolvedPairs.map(({ view, predicate }) => readIndexedEqualityRows(view, predicate, args.runtimeColumnStore))
+    if (rowsets.some((rowset) => rowset === undefined)) {
+      return undefined
+    }
+
+    let limitingPairIndex = 0
+    let limitingRows = rowsets[0]!
+    for (let index = 1; index < rowsets.length; index += 1) {
+      const rowset = rowsets[index]!
+      if (rowset.cardinality < limitingRows.cardinality) {
+        limitingPairIndex = index
+        limitingRows = rowset
+      }
+    }
+
+    const bucket = createExactAggregateBucket()
+    limitingRows.forEachOffset((rowOffset) => {
+      for (let pairIndex = 0; pairIndex < resolvedPairs.length; pairIndex += 1) {
+        if (pairIndex === limitingPairIndex) {
+          continue
+        }
+        const pair = resolvedPairs[pairIndex]!
+        if (!slicePredicateMatches(pair.predicate, pair.view, rowOffset, args.runtimeColumnStore)) {
+          return
+        }
+      }
+      addExactAggregateMatch(bucket, aggregateView, rowOffset)
+    })
+
+    const result = exactAggregateValueFromBucket(bucket.count === 0 ? undefined : bucket, request.aggregateKind)
+    compoundExactAggregateResults.set(cacheKey, result)
+    return result
+  }
+
+  const getOrBuildExactCriteriaAggregate = (request: CriterionCompoundExactAggregateRequest): CellValue | undefined => {
+    return request.criteriaPairs.length === 1
+      ? getOrBuildExactAggregate({
+          criteriaPair: request.criteriaPairs[0]!,
+          ...(request.aggregateRange === undefined ? {} : { aggregateRange: request.aggregateRange }),
+          aggregateKind: request.aggregateKind,
+        })
+      : getOrBuildCompoundExactAggregate(request)
   }
 
   const getOrBuildMatchingRows = (request: { criteriaPairs: readonly CriterionRangePair[] }): CriterionRangeMatch | CellValue => {
@@ -673,15 +811,15 @@ export function createCriterionRangeCacheService(args: {
     const predicates = criteriaPairs.map((pair) => buildSlicePredicate(compileCriteriaMatcher(pair.criteria)))
     const matchingRows: number[] = []
     let limitingPairIndex: number | undefined
-    let limitingIndexedRows: Uint32Array | undefined
+    let limitingIndexedRows: CriterionRowSetView | undefined
     let limitingPairNonEmptyRows = Number.POSITIVE_INFINITY
     for (let pairIndex = 0; pairIndex < predicates.length; pairIndex += 1) {
       const indexedRows = readIndexedEqualityRows(resolvedPairs[pairIndex]!.view, predicates[pairIndex]!, args.runtimeColumnStore)
       if (indexedRows !== undefined) {
-        if (indexedRows.length < limitingPairNonEmptyRows) {
+        if (indexedRows.cardinality < limitingPairNonEmptyRows) {
           limitingPairIndex = undefined
           limitingIndexedRows = indexedRows
-          limitingPairNonEmptyRows = indexedRows.length
+          limitingPairNonEmptyRows = indexedRows.cardinality
         }
         continue
       }
@@ -712,9 +850,7 @@ export function createCriterionRangeCacheService(args: {
       }
     }
     if (limitingIndexedRows !== undefined) {
-      for (let index = 0; index < limitingIndexedRows.length; index += 1) {
-        visitCandidate(limitingIndexedRows[index]!)
-      }
+      limitingIndexedRows.forEachOffset(visitCandidate)
     } else if (limitingPairIndex === undefined) {
       for (let rowOffset = 0; rowOffset < expectedLength; rowOffset += 1) {
         visitCandidate(rowOffset)
@@ -741,6 +877,8 @@ export function createCriterionRangeCacheService(args: {
   }
 
   return {
+    getOrBuildCompoundExactAggregate,
+    getOrBuildExactCriteriaAggregate,
     getOrBuildExactAggregate,
     getOrBuildMatchingRows,
   }

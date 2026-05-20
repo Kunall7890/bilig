@@ -1,9 +1,15 @@
 import { ErrorCode, ValueTag } from '@bilig/protocol'
 import { normalizeExactLookupNumber } from '@bilig/formula'
 import { CellFlags } from '../../cell-store.js'
-import { addEngineCounter } from '../../perf/engine-counters.js'
+import { addEngineCounter, type EngineCounterKey } from '../../perf/engine-counters.js'
 import type { EngineRuntimeState, RuntimeDirectLookupDescriptor, U32 } from '../runtime-state.js'
 import { directLookupVersionMatches } from './direct-lookup-helpers.js'
+import {
+  createWrittenColumnTracker,
+  markWrittenColumn,
+  materializeWrittenColumns,
+  type WrittenColumnTracker,
+} from '../../written-column-tracker.js'
 
 const LOOKUP_KIND_EXACT_UNIFORM_NUMERIC = 1
 const LOOKUP_KIND_APPROXIMATE_UNIFORM_NUMERIC = 2
@@ -11,7 +17,9 @@ const MATCH_MODE_ASCENDING = 1
 const MATCH_MODE_DESCENDING = 2
 
 export const MIN_INITIAL_NATIVE_DIRECT_LOOKUP_BATCH_SIZE = 256
-export const MAX_INITIAL_NATIVE_DIRECT_LOOKUP_BATCH_SIZE = 5000
+export const MAX_INITIAL_NATIVE_DIRECT_LOOKUP_BATCH_SIZE = 65_536
+export const MIN_RECALC_NATIVE_DIRECT_LOOKUP_BATCH_SIZE = 64
+export const MAX_RECALC_NATIVE_DIRECT_LOOKUP_BATCH_SIZE = 4096
 
 interface InitialNativeDirectLookupBatchState {
   readonly workbook: EngineRuntimeState['workbook']
@@ -21,19 +29,44 @@ interface InitialNativeDirectLookupBatchState {
 
 type NativeDirectLookup = Extract<RuntimeDirectLookupDescriptor, { kind: 'exact-uniform-numeric' | 'approximate-uniform-numeric' }>
 
-export interface InitialNativeDirectLookupBatch {
+export interface NativeDirectLookupBatch {
   readonly count: number
   readonly add: (
     prepared: { readonly cellIndex: number; readonly sheetId: number; readonly col: number },
     directLookup: RuntimeDirectLookupDescriptor,
   ) => boolean
   readonly evaluate: () => U32 | undefined
+  readonly reset: () => void
 }
 
 export function createInitialNativeDirectLookupBatch(args: {
   readonly state: InitialNativeDirectLookupBatchState
   readonly capacity: number
-}): InitialNativeDirectLookupBatch {
+}): NativeDirectLookupBatch {
+  return createNativeDirectLookupBatch({
+    ...args,
+    counterName: 'nativeDirectLookupInitialEvaluations',
+    minBatchSize: 1,
+  })
+}
+
+export function createRecalcNativeDirectLookupBatch(args: {
+  readonly state: InitialNativeDirectLookupBatchState
+  readonly capacity: number
+}): NativeDirectLookupBatch {
+  return createNativeDirectLookupBatch({
+    ...args,
+    counterName: 'nativeDirectLookupRecalcEvaluations',
+    minBatchSize: MIN_RECALC_NATIVE_DIRECT_LOOKUP_BATCH_SIZE,
+  })
+}
+
+function createNativeDirectLookupBatch(args: {
+  readonly state: InitialNativeDirectLookupBatchState
+  readonly capacity: number
+  readonly counterName: Extract<EngineCounterKey, 'nativeDirectLookupInitialEvaluations' | 'nativeDirectLookupRecalcEvaluations'>
+  readonly minBatchSize: number
+}): NativeDirectLookupBatch {
   const targets = new Uint32Array(args.capacity)
   const kinds = new Uint8Array(args.capacity)
   const matchModes = new Uint8Array(args.capacity)
@@ -46,16 +79,16 @@ export function createInitialNativeDirectLookupBatch(args: {
   const outTags = new Uint8Array(args.capacity)
   const outNumbers = new Float64Array(args.capacity)
   const outErrors = new Uint16Array(args.capacity)
-  const columnsBySheetId = new Map<number, Set<number>>()
+  const columnsBySheetId = new Map<number, WrittenColumnTracker>()
   let count = 0
 
   const noteColumn = (sheetId: number, col: number): void => {
-    let columns = columnsBySheetId.get(sheetId)
-    if (!columns) {
-      columns = new Set()
-      columnsBySheetId.set(sheetId, columns)
+    let tracker = columnsBySheetId.get(sheetId)
+    if (!tracker) {
+      tracker = createWrittenColumnTracker()
+      columnsBySheetId.set(sheetId, tracker)
     }
-    columns.add(col)
+    markWrittenColumn(tracker, col)
   }
 
   const writeLookupValue = (index: number, directLookup: NativeDirectLookup): boolean => {
@@ -143,7 +176,7 @@ export function createInitialNativeDirectLookupBatch(args: {
       return true
     },
     evaluate() {
-      if (count === 0 || !args.state.wasm.initSyncIfPossible()) {
+      if (count < args.minBatchSize || !args.state.wasm.initSyncIfPossible()) {
         return undefined
       }
       const targetView = targets.subarray(0, count)
@@ -176,11 +209,15 @@ export function createInitialNativeDirectLookupBatch(args: {
         cellStore.numbers[cellIndex] = tag === ValueTag.Number || tag === ValueTag.Boolean ? (outNumbers[index] ?? 0) : 0
         cellStore.versions[cellIndex] = (cellStore.versions[cellIndex] ?? 0) + 1
       }
-      columnsBySheetId.forEach((columns, sheetId) => {
-        args.state.workbook.notifyColumnsWritten(sheetId, Uint32Array.from([...columns].toSorted((left, right) => left - right)))
+      columnsBySheetId.forEach((tracker, sheetId) => {
+        args.state.workbook.notifyColumnsWritten(sheetId, materializeWrittenColumns(tracker))
       })
-      addEngineCounter(args.state.counters, 'nativeDirectLookupInitialEvaluations', count)
+      addEngineCounter(args.state.counters, args.counterName, count)
       return targetView
+    },
+    reset() {
+      count = 0
+      columnsBySheetId.clear()
     },
   }
 }

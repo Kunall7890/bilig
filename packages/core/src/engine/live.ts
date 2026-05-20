@@ -221,6 +221,9 @@ type EngineOperationRuntimeConfig = Omit<
   | 'removeFormula'
   | 'bindFormula'
   | 'setInvalidFormulaValue'
+  | 'beginEvaluationBudget'
+  | 'endEvaluationBudget'
+  | 'checkEvaluationBudget'
   | 'beginMutationCollection'
   | 'markInputChanged'
   | 'markFormulaChanged'
@@ -719,6 +722,9 @@ export function createEngineServiceRuntime(args: {
     upsertFreshFormulaInstances: (records) => binding.upsertFreshFormulaInstancesNow(records),
     compileTemplateFormula: (source, row, col) => formulaTemplates.resolveForCell(source, row, col),
     setInvalidFormulaValue: (cellIndex) => binding.invalidateFormulaNow(cellIndex),
+    beginEvaluationBudget: (startedAtMs) => args.state.beginEvaluationBudget(startedAtMs),
+    endEvaluationBudget: () => args.state.endEvaluationBudget(),
+    checkEvaluationBudget: (stepCost) => args.state.checkEvaluationBudget(stepCost),
     beginMutationCollection: (options) => support.beginMutationCollectionNow(options),
     markInputChanged: (cellIndex, count) => support.markInputChangedNow(cellIndex, count),
     markFormulaChanged: (cellIndex, count) => support.markFormulaChangedNow(cellIndex, count),
@@ -876,6 +882,25 @@ export function createEngineServiceRuntime(args: {
             },
           ]
         }),
+      exportFormulaFamilyRuns: () => {
+        binding.getFormulaFamilyStatsNow()
+        return formulaFamilies.listFamilies().flatMap((family) => {
+          const sheetName = args.state.workbook.getSheetNameById(family.sheetId)
+          if (!sheetName) {
+            return []
+          }
+          return family.runs.map((run) => ({
+            sheetName,
+            templateId: family.templateId,
+            shapeKey: family.shapeKey,
+            axis: run.axis,
+            fixedIndex: run.fixedIndex,
+            start: run.start,
+            step: run.step,
+            cellIndices: run.cellIndices,
+          }))
+        })
+      },
       hydrateTemplateBank: (templates) => formulaTemplates.hydrateTemplates(templates),
       resolveTemplateById: (templateId, source, row, col) => formulaTemplates.resolveByTemplateId(templateId, source, row, col),
       resolveTemplateForCell: (source, row, col) => formulaTemplates.resolveForCell(source, row, col),
@@ -890,6 +915,8 @@ export function createEngineServiceRuntime(args: {
         requireService(formulaInitialization, 'formulaInitialization').initializePreparedCellFormulasAtNow(refs, potentialNewCells),
       initializeHydratedPreparedCellFormulasAt: (refs, potentialNewCells) =>
         requireService(formulaInitialization, 'formulaInitialization').initializeHydratedPreparedCellFormulasAtNow(refs, potentialNewCells),
+      initializeCachedFormulaSourcesAt: (refs, potentialNewCells) =>
+        requireService(formulaInitialization, 'formulaInitialization').initializeCachedFormulaSourcesAtNow(refs, potentialNewCells),
       materializePivot: (pivotRecord) => getPivot().materializePivotNow(pivotRecord),
       emitFullInvalidation: fullInvalidation.emitFullSnapshotInvalidation,
     })

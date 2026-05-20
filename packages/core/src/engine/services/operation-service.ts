@@ -807,12 +807,23 @@ export function createEngineOperationService(args: CreateEngineOperationServiceA
     applyPivotUpsertOp,
     applyPivotDeleteOp,
   })
-  const applyBatchNow = (...input: Parameters<typeof batchApplier.applyBatchNow>) => batchApplier.applyBatchNow(...input)
+  const withOperationEvaluationBudget = <Result>(run: () => Result): Result => {
+    args.beginEvaluationBudget(performance.now())
+    try {
+      args.checkEvaluationBudget()
+      return run()
+    } finally {
+      args.endEvaluationBudget()
+    }
+  }
+
+  const applyBatchNow = (...input: Parameters<typeof batchApplier.applyBatchNow>) =>
+    withOperationEvaluationBudget(() => batchApplier.applyBatchNow(...input))
   const applyLocalSingleStructuralAxisOpWithoutBatchNow = (
     ...input: Parameters<typeof batchApplier.applyLocalSingleStructuralAxisOpWithoutBatchNow>
-  ) => batchApplier.applyLocalSingleStructuralAxisOpWithoutBatchNow(...input)
+  ) => withOperationEvaluationBudget(() => batchApplier.applyLocalSingleStructuralAxisOpWithoutBatchNow(...input))
 
-  const applyCellMutationsAtNow = createOperationCellMutationApplier({
+  const applyCellMutationsAtNowCore = createOperationCellMutationApplier({
     serviceArgs: args,
     emitBatch,
     setCellEntityVersion,
@@ -856,6 +867,8 @@ export function createEngineOperationService(args: CreateEngineOperationServiceA
     pruneCellIfOrphaned,
     normalizeHistoryDependencyPlaceholder,
   })
+  const applyCellMutationsAtNow = (...input: Parameters<typeof applyCellMutationsAtNowCore>) =>
+    withOperationEvaluationBudget(() => applyCellMutationsAtNowCore(...input))
 
   const __testHooks: Record<string, unknown> = ENGINE_OPERATION_TEST_HOOKS_ENABLED
     ? {

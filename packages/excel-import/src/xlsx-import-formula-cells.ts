@@ -17,6 +17,7 @@ export interface ImportedFormulaSnapshotCellResult {
   readonly formulaCell: ImportedFormulaCellSnapshot
   readonly hasExternalWorkbookDependency: boolean
   readonly hasVolatileFormula: boolean
+  readonly hasCachedLiteral: boolean
   readonly unsupportedFormulaDependency?: WorkbookUnsupportedFormulaDependencySnapshot
 }
 
@@ -77,6 +78,7 @@ export function buildImportedFormulaSnapshotCell(
 
   return {
     formulaCell,
+    hasCachedLiteral: cachedLiteral !== undefined,
     hasExternalWorkbookDependency,
     hasVolatileFormula: formulaReferencesVolatileFunction(normalizedFormula),
     ...(unsupportedFormulaDependency ? { unsupportedFormulaDependency } : {}),

@@ -125,4 +125,29 @@ describe('WorkbookGridSurface selection autoscroll', () => {
       }),
     ).toBe(rangeSelection)
   })
+
+  test('keeps restored range selections when the active cell is not the top-left cell', () => {
+    const committedSelection = createGridSelection(3, 4)
+    const restoredRangeSelection = {
+      ...createGridSelection(1, 1),
+      current: {
+        cell: [3, 4] as const,
+        range: { x: 1, y: 1, width: 3, height: 4 },
+        rangeStack: [],
+      },
+    }
+
+    expect(
+      resolveWorkbookGridSurfaceDisplaySelection({
+        activeHeaderDrag: null,
+        committedCellSelection: committedSelection,
+        isEditingCell: false,
+        isFillHandleDragging: false,
+        isRangeMoveDragging: false,
+        renderGridSelection: restoredRangeSelection,
+        renderSelectionRange: restoredRangeSelection.current?.range,
+        selectedCell: [3, 4],
+      }),
+    ).toBe(restoredRangeSelection)
+  })
 })

@@ -24,13 +24,9 @@ import { ProjectedViewportAxisStore } from './projected-viewport-axis-store.js'
 import { DEFAULT_MAX_CACHED_CELLS_PER_SHEET, ProjectedViewportCellCache } from './projected-viewport-cell-cache.js'
 import { ProjectedViewportPatchCoordinator, type ProjectedViewportPatchApplied } from './projected-viewport-patch-coordinator.js'
 import type { ProjectedRenderTile, ProjectedTileSceneChange, ProjectedTileSceneStore } from './projected-tile-scene-store.js'
-import { getWorkbookScrollPerfCollector } from './perf/workbook-scroll-perf.js'
 import { normalizeWorkbookMergeRange } from './worker-runtime-support.js'
-import {
-  LOCAL_CELL_VISUAL_DIRTY_MASK,
-  buildLocalAxisWorkbookDelta,
-  buildLocalCellSnapshotWorkbookDelta,
-} from './projected-workbook-local-delta.js'
+import { LOCAL_CELL_VISUAL_DIRTY_MASK } from './projected-workbook-local-delta.js'
+import { ProjectedWorkbookLocalDeltaPublisher } from './projected-workbook-local-delta-publisher.js'
 import { ProjectedViewportPatchRevisionGate } from './projected-viewport-patch-revision-gate.js'
 import { normalizeViewportRange, ProjectedViewportRangeOverlayStore, viewportRangeCellCount } from './projected-viewport-range-overlay.js'
 import { createContentClearedOptimisticSnapshot } from './workbook-optimistic-range.js'
@@ -60,13 +56,12 @@ export class ProjectedViewportStore implements GridEngineLike {
   private readonly patchCoordinator: ProjectedViewportPatchCoordinator
   private readonly rangeOverlayStore: ProjectedViewportRangeOverlayStore
   private readonly patchRevisionGate = new ProjectedViewportPatchRevisionGate()
+  private readonly localDeltaPublisher: ProjectedWorkbookLocalDeltaPublisher
   private tileSceneStore: ProjectedTileSceneStore | null = null
-  private readonly localWorkbookDeltaListeners = new Set<(batch: WorkbookDeltaBatchV3) => void>()
   private readonly sheetIdentitiesByName = new Map<string, SheetIdentity>()
   private readonly sheetChannelListeners = new Map<string, Map<SheetViewportChannel, Set<() => void>>>()
   private readonly mergeRangesBySheet = new Map<string, Map<string, WorkbookMergeRangeSnapshot>>()
   private localRevision = 0
-  private localWorkbookDeltaSeq = 0
 
   readonly workbook = {
     getSheet: (sheetName: string) => this.cellCache.getSheet(sheetName),
@@ -105,6 +100,11 @@ export class ProjectedViewportStore implements GridEngineLike {
       shouldApplyViewportPatch: (patch) => this.patchRevisionGate.shouldApplyViewportPatch(patch),
       onViewportPatchApplied: (patch, result) => this.handleViewportPatchApplied(patch, result),
     })
+    this.localDeltaPublisher = new ProjectedWorkbookLocalDeltaPublisher({
+      getLastAuthoritativeRevision: () => this.patchRevisionGate.getLastAuthoritativeRevision(),
+      getLastBatchId: () => this.patchRevisionGate.getLastBatchId(),
+      resolveSheetIdentity: (sheetName) => this.resolveSheetIdentity(sheetName),
+    })
   }
 
   subscribe(listener: () => void): () => void {
@@ -140,6 +140,10 @@ export class ProjectedViewportStore implements GridEngineLike {
     return this.rangeOverlayStore.hasOverlayForCell(sheetName, address)
       ? this.rangeOverlayStore.apply(sheetName, address, this.cellCache.getCell(sheetName, address))
       : undefined
+  }
+
+  peekBaseCell(sheetName: string, address: string): CellSnapshot | undefined {
+    return this.cellCache.peekCell(sheetName, address)
   }
 
   getColumnWidths(sheetName: string): Readonly<Record<number, number>> {
@@ -262,14 +266,16 @@ export class ProjectedViewportStore implements GridEngineLike {
     const result = this.cellCache.writeCellSnapshot(snapshot, options)
     if (result.changed && result.acceptedSnapshot && options.emitLocalDelta !== false) {
       this.localRevision += 1
-      this.emitLocalCellSnapshotDelta(result.acceptedSnapshot, options.localDeltaDirtyMask)
+      this.localDeltaPublisher.emitCellSnapshot(result.acceptedSnapshot, options.localDeltaDirtyMask)
     }
   }
 
   clearOptimisticCellFlagsForSheet(sheetName: string): void {
     this.rangeOverlayStore.dropSheets([sheetName])
-    if (this.cellCache.clearOptimisticCellFlagsForSheet(sheetName)) {
+    const changedSnapshots = this.cellCache.clearOptimisticCellFlagsForSheet(sheetName)
+    if (changedSnapshots.length > 0) {
       this.localRevision += 1
+      this.localDeltaPublisher.emitCellSnapshots(sheetName, changedSnapshots, LOCAL_CELL_VISUAL_DIRTY_MASK)
     }
   }
 
@@ -287,7 +293,7 @@ export class ProjectedViewportStore implements GridEngineLike {
     this.axisStore.setColumnWidth(sheetName, columnIndex, width)
     this.notifySheetChannels(sheetName, ['columnWidths'])
     if (this.axisStore.getColumnWidths(sheetName)[columnIndex] !== previousWidth) {
-      this.emitLocalAxisDelta(sheetName, 'column', columnIndex)
+      this.localDeltaPublisher.emitAxis(sheetName, 'column', columnIndex)
     }
   }
 
@@ -303,7 +309,7 @@ export class ProjectedViewportStore implements GridEngineLike {
     this.axisStore.rollbackColumnWidth(sheetName, columnIndex, width)
     this.notifySheetChannels(sheetName, ['columnWidths'])
     if (this.axisStore.getColumnWidths(sheetName)[columnIndex] !== previousWidth) {
-      this.emitLocalAxisDelta(sheetName, 'column', columnIndex)
+      this.localDeltaPublisher.emitAxis(sheetName, 'column', columnIndex)
     }
   }
 
@@ -313,7 +319,7 @@ export class ProjectedViewportStore implements GridEngineLike {
     this.axisStore.setColumnHidden(sheetName, columnIndex, hidden, size)
     this.notifySheetChannels(sheetName, ['columnWidths', 'hiddenColumns'])
     if (this.axisStore.getColumnWidths(sheetName)[columnIndex] !== previousWidth) {
-      this.emitLocalAxisDelta(sheetName, 'column', columnIndex)
+      this.localDeltaPublisher.emitAxis(sheetName, 'column', columnIndex)
     }
   }
 
@@ -323,7 +329,7 @@ export class ProjectedViewportStore implements GridEngineLike {
     this.axisStore.rollbackColumnHidden(sheetName, columnIndex, previous)
     this.notifySheetChannels(sheetName, ['columnWidths', 'hiddenColumns'])
     if (this.axisStore.getColumnWidths(sheetName)[columnIndex] !== previousWidth) {
-      this.emitLocalAxisDelta(sheetName, 'column', columnIndex)
+      this.localDeltaPublisher.emitAxis(sheetName, 'column', columnIndex)
     }
   }
 
@@ -333,7 +339,7 @@ export class ProjectedViewportStore implements GridEngineLike {
     this.axisStore.setRowHeight(sheetName, rowIndex, height)
     this.notifySheetChannels(sheetName, ['rowHeights'])
     if (this.axisStore.getRowHeights(sheetName)[rowIndex] !== previousHeight) {
-      this.emitLocalAxisDelta(sheetName, 'row', rowIndex)
+      this.localDeltaPublisher.emitAxis(sheetName, 'row', rowIndex)
     }
   }
 
@@ -349,7 +355,7 @@ export class ProjectedViewportStore implements GridEngineLike {
     this.axisStore.rollbackRowHeight(sheetName, rowIndex, height)
     this.notifySheetChannels(sheetName, ['rowHeights'])
     if (this.axisStore.getRowHeights(sheetName)[rowIndex] !== previousHeight) {
-      this.emitLocalAxisDelta(sheetName, 'row', rowIndex)
+      this.localDeltaPublisher.emitAxis(sheetName, 'row', rowIndex)
     }
   }
 
@@ -359,7 +365,7 @@ export class ProjectedViewportStore implements GridEngineLike {
     this.axisStore.setRowHidden(sheetName, rowIndex, hidden, size)
     this.notifySheetChannels(sheetName, ['rowHeights', 'hiddenRows'])
     if (this.axisStore.getRowHeights(sheetName)[rowIndex] !== previousHeight) {
-      this.emitLocalAxisDelta(sheetName, 'row', rowIndex)
+      this.localDeltaPublisher.emitAxis(sheetName, 'row', rowIndex)
     }
   }
 
@@ -369,7 +375,7 @@ export class ProjectedViewportStore implements GridEngineLike {
     this.axisStore.rollbackRowHidden(sheetName, rowIndex, previous)
     this.notifySheetChannels(sheetName, ['rowHeights', 'hiddenRows'])
     if (this.axisStore.getRowHeights(sheetName)[rowIndex] !== previousHeight) {
-      this.emitLocalAxisDelta(sheetName, 'row', rowIndex)
+      this.localDeltaPublisher.emitAxis(sheetName, 'row', rowIndex)
     }
   }
 
@@ -465,12 +471,12 @@ export class ProjectedViewportStore implements GridEngineLike {
     if (!this.client) {
       throw new Error('Workbook delta subscriptions require a worker engine client')
     }
-    this.localWorkbookDeltaListeners.add(listener)
+    const unsubscribeLocal = this.localDeltaPublisher.subscribe(listener)
     const unsubscribeClient = this.client.subscribeWorkbookDeltas((bytes) => {
       listener(decodeWorkbookDeltaBatchV3(bytes))
     })
     return () => {
-      this.localWorkbookDeltaListeners.delete(listener)
+      unsubscribeLocal()
       unsubscribeClient()
     }
   }
@@ -535,59 +541,8 @@ export class ProjectedViewportStore implements GridEngineLike {
     }
   }
 
-  private emitLocalCellSnapshotDelta(snapshot: CellSnapshot, dirtyMask: number | undefined): void {
-    if (this.localWorkbookDeltaListeners.size === 0) {
-      return
-    }
-    const startedAt = nowMs()
-    const identity = this.resolveSheetIdentity(snapshot.sheetName)
-    if (!identity) {
-      return
-    }
-    const seq = this.nextLocalWorkbookDeltaSeq()
-    const batch = buildLocalCellSnapshotWorkbookDelta({ dirtyMask, identity, seq, snapshot })
-    this.localWorkbookDeltaListeners.forEach((listener) => {
-      listener(batch)
-    })
-    getWorkbookScrollPerfCollector()?.noteRendererDeltaApply({
-      dirtyTileCount: 1,
-      durationMs: Math.max(0, nowMs() - startedAt),
-      mutationCount: 1,
-    })
-  }
-
   private resolveSheetIdentity(sheetName: string): SheetIdentity | null {
     return this.sheetIdentitiesByName.get(sheetName) ?? null
-  }
-
-  private emitLocalAxisDelta(sheetName: string, axis: 'column' | 'row', index: number): void {
-    if (this.localWorkbookDeltaListeners.size === 0) {
-      return
-    }
-    const startedAt = nowMs()
-    const identity = this.resolveSheetIdentity(sheetName)
-    if (!identity) {
-      return
-    }
-    const seq = this.nextLocalWorkbookDeltaSeq()
-    const batch = buildLocalAxisWorkbookDelta({ axis, identity, index, seq })
-    this.localWorkbookDeltaListeners.forEach((listener) => {
-      listener(batch)
-    })
-    getWorkbookScrollPerfCollector()?.noteRendererDeltaApply({
-      dirtyTileCount: 1,
-      durationMs: Math.max(0, nowMs() - startedAt),
-      mutationCount: 1,
-    })
-  }
-
-  private nextLocalWorkbookDeltaSeq(): number {
-    this.localWorkbookDeltaSeq = Math.max(
-      this.localWorkbookDeltaSeq,
-      this.patchRevisionGate.getLastBatchId(),
-      this.patchRevisionGate.getLastAuthoritativeRevision() ?? 0,
-    )
-    return ++this.localWorkbookDeltaSeq
   }
 
   private noteObservedBatchId(batchId: number): void {
@@ -907,10 +862,6 @@ function applyOptionalProjectedField<T extends object, K extends keyof T>(target
     return
   }
   target[key] = value
-}
-
-function nowMs(): number {
-  return typeof performance === 'undefined' ? Date.now() : performance.now()
 }
 
 function assertValidProjectedAxisMutation(axis: 'column' | 'row', index: number, size: number | undefined): void {

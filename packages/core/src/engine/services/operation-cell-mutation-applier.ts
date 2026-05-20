@@ -174,6 +174,7 @@ export function createOperationCellMutationApplier(input: CreateOperationCellMut
           upsertFreshFormulaInstances: args.upsertFreshFormulaInstances,
           compileTemplateFormula: args.compileTemplateFormula,
           materializeDeferredStructuralFormulaSources: args.materializeDeferredStructuralFormulaSources,
+          checkEvaluationBudget: args.checkEvaluationBudget,
           beginMutationCollection: args.beginMutationCollection,
           ensureRecalcScratchCapacity: args.ensureRecalcScratchCapacity,
           resetMaterializedCellScratch: args.resetMaterializedCellScratch,
@@ -280,6 +281,7 @@ export function createOperationCellMutationApplier(input: CreateOperationCellMut
     try {
       args.state.workbook.withBatchedColumnVersionUpdates(() => {
         refs.forEach((ref, refIndex) => {
+          args.checkEvaluationBudget()
           const { sheetId, mutation } = ref
           const order = args.state.trackReplicaVersions && batch ? batchOpOrder(batch, refIndex) : undefined
           const existingIndex = resolveOperationExistingMutationCellIndex(args.state.workbook, ref)

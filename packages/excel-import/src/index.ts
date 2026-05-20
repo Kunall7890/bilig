@@ -1,7 +1,7 @@
 import * as XLSX from 'xlsx'
-import { unzipSync, type Unzipped } from 'fflate'
+import type { Unzipped } from 'fflate'
 
-import { attachRuntimeImage, parseCsv, parseCsvCellInput, resolveCsvParseOptions, type CsvParseOptions } from '@bilig/core'
+import type { CsvParseOptions } from '@bilig/core'
 import type {
   CellStyleRecord,
   WorkbookCommentThreadSnapshot,
@@ -12,6 +12,7 @@ import type {
 import { readImportedArrayFormulaSpills, readImportedWorkbookArrayFormulas } from './xlsx-array-formulas.js'
 import { buildColumnEntries, buildRowEntries } from './xlsx-axis-entries.js'
 import { readImportedWorkbookCalculationSettings, readImportedWorkbookCalculationWarnings } from './xlsx-calculation-settings.js'
+import { shouldUseCachedFormulaOpenMode } from './xlsx-cached-formula-open-mode.js'
 import { buildImportedCellMetadataReferenceSnapshots, readImportedWorkbookCellMetadata } from './xlsx-cell-metadata.js'
 import { readImportedWorkbookChartArtifacts } from './xlsx-chart-artifacts.js'
 import { readImportedWorkbookCharts } from './xlsx-charts.js'
@@ -54,13 +55,7 @@ import { readImportedWorkbookViewState } from './xlsx-view-state.js'
 import { readImportedWorkbookProtection } from './xlsx-workbook-protection.js'
 import { workbookDirectorySheetPaths, workbookSheetPathsByName } from './xlsx-workbook-sheet-paths.js'
 import { readImportedWorkbookDocumentPropertiesArtifacts, readImportedWorkbookProperties } from './xlsx-workbook-properties.js'
-import {
-  createSheetPreview,
-  normalizeCsvSheetName,
-  normalizeWorkbookName,
-  toDisplayText,
-  type ImportedWorkbookSheetPreview,
-} from './workbook-import-helpers.js'
+import { createSheetPreview, normalizeWorkbookName, toDisplayText, type ImportedWorkbookSheetPreview } from './workbook-import-helpers.js'
 import {
   CSV_CONTENT_TYPE,
   LEGACY_XLS_CONTENT_TYPE,
@@ -86,11 +81,25 @@ import {
   workbookDefinedNamesReferenceExternalWorkbook,
 } from './xlsx-import-warnings.js'
 import { compareCellAddresses, readImportedLiteralCellValue, readImportedNumberFormat } from './xlsx-import-cell-values.js'
+import { tryInspectLargeSimpleXlsxHeadless, type LargeSimpleXlsxHeadlessInspectResult } from './xlsx-large-simple-headless-inspect.js'
+import { tryImportLargeSimpleXlsx } from './xlsx-large-simple-import.js'
 import { createPreservedVbaProjectPayload, type PreservedVbaProjectCodeNames } from './xlsx-macros.js'
+import type { OwnedXlsxSourceBytes } from './xlsx-owned-source-release.js'
+import { attachImportedXlsxSourceBytes } from './xlsx-source-bytes.js'
 import { worksheetCellAt, worksheetCellEntries, worksheetCellEntriesAtAddresses } from './xlsx-worksheet-cells.js'
 import { readImportedWorksheetTextValues } from './xlsx-worksheet-text-values.js'
+import { readLazyXlsxZipSource, readXlsxZipEntries, readXlsxZipEntriesLazy } from './xlsx-zip.js'
+import { importCsv } from './csv-import.js'
+import {
+  attachImportedRuntimeCoordinates,
+  createImportedRuntimeSheetCells,
+  pushImportedSnapshotCell,
+  type ImportedRuntimeCellCoordinate,
+  type ImportedRuntimeSheetCells,
+} from './imported-runtime-coordinates.js'
 
 export { exportXlsx } from './xlsx-export.js'
+export { importCsv } from './csv-import.js'
 export { manualCalculationModeWarning, precisionAsDisplayedCalculationWarning } from './xlsx-calculation-settings.js'
 export {
   externalPivotCachesWarning,
@@ -114,6 +123,10 @@ export {
 export type { ExcelWorkbookImportContentType, WorkbookImportContentType } from './workbook-import-content-types.js'
 
 const largeWorkbookStyleCandidateThreshold = 100_000
+const denseSheetJsByteThreshold = 1_000_000
+const largeCalcChainStreamingByteThreshold = 5_000_000
+const denseSheetJsMaxColumnCount = 128
+const textDecoder = new TextDecoder()
 
 export interface ImportedWorkbook {
   snapshot: WorkbookSnapshot
@@ -124,81 +137,44 @@ export interface ImportedWorkbook {
 }
 
 export type CsvImportOptions = CsvParseOptions
+export type XlsxHeadlessInspectResult = LargeSimpleXlsxHeadlessInspectResult
+
+export interface XlsxImportLimits {
+  maxMaterializedCells?: number
+  maxMaterializedFormulaCells?: number
+}
+
+export interface XlsxImportOptions {
+  limits?: XlsxImportLimits | false
+}
 
 export interface WorkbookImportFileOptions {
   csv?: CsvImportOptions
+  xlsx?: XlsxImportOptions
 }
 
-interface ImportedRuntimeCellCoordinate {
-  readonly row: number
-  readonly col: number
-}
+export class XlsxImportSizeLimitExceededError extends Error {
+  readonly limits: Required<XlsxImportLimits>
+  readonly stats: LargeSimpleXlsxHeadlessInspectResult['stats']
+  readonly reason: 'cell-count' | 'formula-cell-count'
 
-interface ImportedRuntimeSheetCells {
-  readonly sheetName: string
-  readonly coords: readonly ImportedRuntimeCellCoordinate[]
-  readonly coordinateOrder?: 'dense-row-major'
-  readonly dimensions: {
-    readonly width: number
-    readonly height: number
+  constructor(args: {
+    reason: 'cell-count' | 'formula-cell-count'
+    limits: Required<XlsxImportLimits>
+    stats: LargeSimpleXlsxHeadlessInspectResult['stats']
+  }) {
+    const observed = args.reason === 'cell-count' ? args.stats.cellCount : args.stats.formulaCellCount
+    const limit = args.reason === 'cell-count' ? args.limits.maxMaterializedCells : args.limits.maxMaterializedFormulaCells
+    super(
+      `XLSX import exceeds the materialized ${args.reason === 'cell-count' ? 'cell' : 'formula cell'} limit ` +
+        `(${observed.toLocaleString('en-US')} > ${limit.toLocaleString('en-US')}). ` +
+        'Use inspectXlsx() for bounded metadata, raise importXlsx limits explicitly, or split the workbook before materializing it.',
+    )
+    this.name = 'XlsxImportSizeLimitExceededError'
+    this.reason = args.reason
+    this.limits = args.limits
+    this.stats = args.stats
   }
-  readonly cellCount: number
-}
-
-function importedRuntimeCoordinatesAreDenseRowMajor(
-  coords: readonly ImportedRuntimeCellCoordinate[],
-  width: number,
-  height: number,
-): boolean {
-  if (width <= 0 || height <= 0 || coords.length !== width * height) {
-    return false
-  }
-  for (let index = 0; index < coords.length; index += 1) {
-    const coord = coords[index]!
-    if (coord.row !== Math.floor(index / width) || coord.col !== index % width) {
-      return false
-    }
-  }
-  return true
-}
-
-function createImportedRuntimeSheetCells(args: {
-  readonly sheetName: string
-  readonly coords: readonly ImportedRuntimeCellCoordinate[]
-  readonly width: number
-  readonly height: number
-}): ImportedRuntimeSheetCells {
-  const coordinateOrder = importedRuntimeCoordinatesAreDenseRowMajor(args.coords, args.width, args.height) ? 'dense-row-major' : undefined
-  return {
-    sheetName: args.sheetName,
-    coords: args.coords,
-    ...(coordinateOrder ? { coordinateOrder } : {}),
-    dimensions: { width: args.width, height: args.height },
-    cellCount: args.coords.length,
-  }
-}
-
-function pushImportedSnapshotCell(
-  cells: WorkbookSnapshot['sheets'][number]['cells'],
-  coords: ImportedRuntimeCellCoordinate[],
-  cell: WorkbookSnapshot['sheets'][number]['cells'][number],
-  row: number,
-  col: number,
-): void {
-  cell.row = row
-  cell.col = col
-  cells.push(cell)
-  coords.push({ row, col })
-}
-
-function attachImportedRuntimeCoordinates(snapshot: WorkbookSnapshot, sheetCells: readonly ImportedRuntimeSheetCells[]): WorkbookSnapshot {
-  return attachRuntimeImage(snapshot, {
-    version: 1,
-    templateBank: [],
-    formulaInstances: [],
-    formulaValues: [],
-    sheetCells,
-  })
 }
 
 export class InvalidXlsxZipContainerError extends Error {
@@ -312,12 +288,77 @@ function addWorkbookWarnings(workbook: XLSX.WorkBook, warnings: string[], ignore
   }
 }
 
-function readValidXlsxZipContainer(bytes: Uint8Array): Unzipped {
+function readValidXlsxZipContainer(bytes: Uint8Array, mode: 'eager' | 'lazy' = 'eager'): Unzipped {
   try {
-    return unzipSync(bytes)
+    return mode === 'lazy' ? readXlsxZipEntriesLazy(bytes) : readXlsxZipEntries(bytes)
   } catch {
     throw new InvalidXlsxZipContainerError()
   }
+}
+
+function resolveXlsxImportLimits(options: XlsxImportOptions): Required<XlsxImportLimits> | null {
+  if (options.limits === false || options.limits === undefined) {
+    return null
+  }
+  return {
+    maxMaterializedCells: options.limits.maxMaterializedCells ?? Number.POSITIVE_INFINITY,
+    maxMaterializedFormulaCells: options.limits.maxMaterializedFormulaCells ?? Number.POSITIVE_INFINITY,
+  }
+}
+
+function assertXlsxInspectionWithinMaterializationLimits(
+  inspection: LargeSimpleXlsxHeadlessInspectResult | null,
+  limits: Required<XlsxImportLimits> | null,
+): void {
+  if (!inspection || !limits) {
+    return
+  }
+  if (inspection.stats.cellCount > limits.maxMaterializedCells) {
+    throw new XlsxImportSizeLimitExceededError({ reason: 'cell-count', limits, stats: inspection.stats })
+  }
+  if (inspection.stats.formulaCellCount > limits.maxMaterializedFormulaCells) {
+    throw new XlsxImportSizeLimitExceededError({ reason: 'formula-cell-count', limits, stats: inspection.stats })
+  }
+}
+
+function inspectLargeSimpleXlsxSource(
+  data: Uint8Array,
+  fileName: string,
+  options: { readonly minByteLength?: number } = {},
+): LargeSimpleXlsxHeadlessInspectResult | null {
+  const inspectionZip = readValidXlsxZipContainer(data, 'lazy')
+  return tryInspectLargeSimpleXlsxHeadless({ byteLength: data.byteLength }, fileName, inspectionZip, {
+    allowUnsupportedWorksheetFeaturesForMetrics: true,
+    ...(options.minByteLength !== undefined ? { minByteLength: options.minByteLength } : {}),
+    releaseZipSource: true,
+  })
+}
+
+function shouldUseDenseSheetJsParse(data: Uint8Array, workbookZip: Unzipped | null): boolean {
+  if (!workbookZip || data.byteLength < denseSheetJsByteThreshold) {
+    return false
+  }
+  let sawWorksheetDimension = false
+  for (const [path, bytes] of Object.entries(workbookZip)) {
+    if (!/^xl\/worksheets\/[^/]+\.xml$/u.test(path)) {
+      continue
+    }
+    const dimensionRef = readWorksheetDimensionRef(bytes)
+    if (!dimensionRef) {
+      continue
+    }
+    sawWorksheetDimension = true
+    const range = XLSX.utils.decode_range(dimensionRef.includes(':') ? dimensionRef : `${dimensionRef}:${dimensionRef}`)
+    if (range.e.c + 1 > denseSheetJsMaxColumnCount) {
+      return false
+    }
+  }
+  return sawWorksheetDimension
+}
+
+function readWorksheetDimensionRef(bytes: Uint8Array): string | null {
+  const headerXml = textDecoder.decode(bytes.subarray(0, Math.min(bytes.byteLength, 4096)))
+  return /<dimension\b[^>]*\bref="([^"]+)"/u.exec(headerXml)?.[1] ?? null
 }
 
 function importSheetJsWorkbook(
@@ -325,7 +366,9 @@ function importSheetJsWorkbook(
   fileName: string,
   contentType: ExcelWorkbookImportContentType,
   workbookZip: Unzipped | null,
+  sourceBytesForUntouchedExport?: Uint8Array,
 ): ImportedWorkbook {
+  const denseSheetJsParse = shouldUseDenseSheetJsParse(data, workbookZip)
   const styleArtifactData = workbookZip ? stripNoOpEmptyRowsFromXlsx(data, workbookZip) : data
   const parserData = workbookZip ? stripStyleOnlyBlankCellsForSheetJs(styleArtifactData, workbookZip) : data
   const workbook = XLSX.read(parserData, {
@@ -337,7 +380,7 @@ function importSheetJsWorkbook(
     cellDates: false,
     bookFiles: true,
     bookVBA: true,
-    dense: false,
+    dense: denseSheetJsParse,
   })
   const workbookName = normalizeWorkbookName(fileName)
   const sheetPathsByName = workbookSheetPathsByName(workbook)
@@ -444,7 +487,8 @@ function importSheetJsWorkbook(
   let ignoredCommentsSeen = false
   let externalWorkbookReferenceWarningSeen = warnings.includes(externalWorkbookReferencesWarning)
   let volatileFormulaWarningSeen = false
-  let formulaCellSeen = false
+  let formulaCellCount = 0
+  let cachedFormulaValueCount = 0
   const styleCatalog = new Map<string, CellStyleRecord>()
   const unsupportedFormulaDependencies: NonNullable<WorkbookMetadataSnapshot['unsupportedFormulaDependencies']> = []
   const importedArrayFormulaSpills: NonNullable<WorkbookMetadataSnapshot['spills']> = []
@@ -530,7 +574,10 @@ function importSheetJsWorkbook(
       }
     }
     const recordImportedFormulaDiagnostics = (result: NonNullable<ReturnType<typeof buildImportedFormulaSnapshotCell>>) => {
-      formulaCellSeen = true
+      formulaCellCount += 1
+      if (result.hasCachedLiteral) {
+        cachedFormulaValueCount += 1
+      }
       if (!externalWorkbookReferenceWarningSeen && result.hasExternalWorkbookDependency) {
         externalWorkbookReferenceWarningSeen = true
         warnings.push(externalWorkbookReferencesWarning)
@@ -763,7 +810,7 @@ function importSheetJsWorkbook(
   })
 
   if (workbookZip) {
-    warnings.push(...readImportedWorkbookCalculationWarnings(workbookZip, { hasFormulaCells: formulaCellSeen }))
+    warnings.push(...readImportedWorkbookCalculationWarnings(workbookZip, { hasFormulaCells: formulaCellCount > 0 }))
   }
 
   const importedFormulaAudit = workbookZip
@@ -778,11 +825,27 @@ function importSheetJsWorkbook(
       })
     : undefined
 
+  const shouldUseCachedFormulaOpenModeForImportedWorkbook = shouldUseCachedFormulaOpenMode({
+    cachedFormulaValueCount,
+    formulaCellCount,
+    calculationSettings: importedCalculationSettings,
+    formulaAudit: importedFormulaAudit,
+  })
+  const restoredCalculationSettings =
+    shouldUseCachedFormulaOpenModeForImportedWorkbook && importedCalculationSettings !== undefined
+      ? {
+          ...importedCalculationSettings,
+          mode: importedCalculationSettings.mode,
+          fullCalcOnLoad: false,
+          forceFullCalc: false,
+        }
+      : importedCalculationSettings
+
   const workbookMetadata = buildImportedWorkbookMetadata({
     properties: importedWorkbookProperties,
     documentPropertyArtifacts: importedWorkbookDocumentProperties,
     workbookProtection: importedWorkbookProtection,
-    calculationSettings: importedCalculationSettings,
+    calculationSettings: restoredCalculationSettings,
     macroPayloads: importedMacroPayload ? [createPreservedVbaProjectPayload(importedMacroPayload, importedMacroCodeNames)] : undefined,
     styles: styleCatalog.size > 0 ? [...styleCatalog.values()] : undefined,
     definedNames: importedDefinedNames.definedNames,
@@ -823,8 +886,17 @@ function importSheetJsWorkbook(
     sheets,
   }
 
+  const restoredSnapshot = attachImportedRuntimeCoordinates(snapshot, runtimeSheetCells)
+  if (
+    shouldUseCachedFormulaOpenModeForImportedWorkbook &&
+    sourceBytesForUntouchedExport !== undefined &&
+    (contentType === XLSX_CONTENT_TYPE || contentType === XLSM_CONTENT_TYPE)
+  ) {
+    attachImportedXlsxSourceBytes(restoredSnapshot, sourceBytesForUntouchedExport)
+  }
+
   return {
-    snapshot: attachImportedRuntimeCoordinates(snapshot, runtimeSheetCells),
+    snapshot: restoredSnapshot,
     workbookName,
     sheetNames: workbook.SheetNames,
     warnings,
@@ -839,16 +911,53 @@ function importSheetJsWorkbook(
   }
 }
 
-export function importXlsx(bytes: Uint8Array | ArrayBuffer, fileName: string): ImportedWorkbook {
+export function inspectXlsx(bytes: Uint8Array | ArrayBuffer, fileName: string): XlsxHeadlessInspectResult | null {
   const data = bytes instanceof Uint8Array ? bytes : new Uint8Array(bytes)
-  const workbookZip = readValidXlsxZipContainer(data)
-  return importSheetJsWorkbook(data, fileName, XLSX_CONTENT_TYPE, workbookZip)
+  return inspectLargeSimpleXlsxSource(data, fileName, { minByteLength: 0 })
+}
+
+export function importXlsx(bytes: Uint8Array | ArrayBuffer, fileName: string, options: XlsxImportOptions = {}): ImportedWorkbook {
+  const ownedSource: OwnedXlsxSourceBytes = { bytes: bytes instanceof Uint8Array ? bytes : new Uint8Array(bytes) }
+  const sourceByteLength = ownedSource.bytes.byteLength
+  const limits = resolveXlsxImportLimits(options)
+  const inspectionOptions = options.limits ? { minByteLength: 0 } : undefined
+  const inspection = limits ? inspectLargeSimpleXlsxSource(ownedSource.bytes, fileName, inspectionOptions) : null
+  assertXlsxInspectionWithinMaterializationLimits(inspection, limits)
+  const workbookZip = readValidXlsxZipContainer(ownedSource.bytes, 'lazy')
+  const hasCalcChain = Object.hasOwn(workbookZip, 'xl/calcChain.xml')
+  const allowCachedUnsupportedFormulaText = hasCalcChain && sourceByteLength >= largeCalcChainStreamingByteThreshold
+  const largeSimpleImport =
+    hasCalcChain && sourceByteLength < largeCalcChainStreamingByteThreshold
+      ? null
+      : tryImportLargeSimpleXlsx({ byteLength: sourceByteLength }, fileName, workbookZip, {
+          ...(options.limits ? { minByteLength: 0 } : {}),
+          allowUnsupportedFormulaText: allowCachedUnsupportedFormulaText,
+          allowUnsupportedCellMetadata: allowCachedUnsupportedFormulaText,
+          releaseArenaAfterMaterialization: true,
+          releaseZipSource: true,
+        })
+  if (largeSimpleImport) {
+    attachImportedXlsxSourceBytes(largeSimpleImport.snapshot, ownedSource.bytes)
+    return largeSimpleImport
+  }
+  const fallbackData = ownedSource.bytes.byteLength > 0 ? ownedSource.bytes : readLazyXlsxZipSource(workbookZip)
+  if (!fallbackData) {
+    throw new InvalidXlsxZipContainerError()
+  }
+  const imported = importSheetJsWorkbook(
+    fallbackData,
+    fileName,
+    XLSX_CONTENT_TYPE,
+    readValidXlsxZipContainer(fallbackData),
+    ownedSource.bytes,
+  )
+  return imported
 }
 
 export function importXlsm(bytes: Uint8Array | ArrayBuffer, fileName: string): ImportedWorkbook {
   const data = bytes instanceof Uint8Array ? bytes : new Uint8Array(bytes)
   const workbookZip = readValidXlsxZipContainer(data)
-  return importSheetJsWorkbook(data, fileName, XLSM_CONTENT_TYPE, workbookZip)
+  return importSheetJsWorkbook(data, fileName, XLSM_CONTENT_TYPE, workbookZip, data)
 }
 
 export function importXlsb(bytes: Uint8Array | ArrayBuffer, fileName: string): ImportedWorkbook {
@@ -861,88 +970,6 @@ export function importXls(bytes: Uint8Array | ArrayBuffer, fileName: string): Im
   return importSheetJsWorkbook(data, fileName, LEGACY_XLS_CONTENT_TYPE, null)
 }
 
-export function importCsv(text: string, fileName: string, options: CsvImportOptions = {}): ImportedWorkbook {
-  const workbookName = normalizeWorkbookName(fileName)
-  const sheetName = normalizeCsvSheetName(workbookName)
-  const csvOptions = resolveCsvParseOptions(text, options)
-  const rows = parseCsv(text, csvOptions)
-  const textColumnIndexes = inferCsvTextColumnIndexes(rows)
-  const cells: WorkbookSnapshot['sheets'][number]['cells'] = []
-  const runtimeCellCoords: ImportedRuntimeCellCoordinate[] = []
-  let nonEmptyCellCount = 0
-  let hasRaggedRows = false
-  const columnCount = rows.reduce((max, row) => Math.max(max, row.length), 0)
-
-  rows.forEach((row, rowIndex) => {
-    if (row.length !== columnCount) {
-      hasRaggedRows = true
-    }
-    row.forEach((raw, colIndex) => {
-      const parsed =
-        textColumnIndexes.has(colIndex) && rowIndex > 0 && raw.trim() !== '' ? { value: raw } : parseCsvCellInput(raw, csvOptions)
-      if (!parsed) {
-        return
-      }
-      nonEmptyCellCount += 1
-      const address = XLSX.utils.encode_cell({ r: rowIndex, c: colIndex })
-      if (parsed.formula !== undefined) {
-        pushImportedSnapshotCell(cells, runtimeCellCoords, { address, formula: parsed.formula }, rowIndex, colIndex)
-        return
-      }
-      if (parsed.value !== undefined) {
-        pushImportedSnapshotCell(cells, runtimeCellCoords, { address, value: parsed.value }, rowIndex, colIndex)
-      }
-    })
-  })
-
-  const warnings = hasRaggedRows ? ['CSV rows had inconsistent column counts. Missing cells were treated as blanks.'] : []
-  const previewSheet = createSheetPreview({
-    name: sheetName,
-    rowCount: rows.length,
-    columnCount,
-    nonEmptyCellCount,
-    readCellText: (row, col) => rows[row]?.[col] ?? '',
-  })
-
-  const snapshot: WorkbookSnapshot = {
-    version: 1,
-    workbook: {
-      name: workbookName,
-    },
-    sheets: [
-      {
-        id: 1,
-        name: sheetName,
-        order: 0,
-        cells,
-      },
-    ],
-  }
-  const runtimeSheetCells = [
-    createImportedRuntimeSheetCells({
-      sheetName,
-      coords: runtimeCellCoords,
-      width: columnCount,
-      height: rows.length,
-    }),
-  ]
-
-  return {
-    snapshot: attachImportedRuntimeCoordinates(snapshot, runtimeSheetCells),
-    workbookName,
-    sheetNames: [sheetName],
-    warnings,
-    preview: createWorkbookPreview({
-      contentType: CSV_CONTENT_TYPE,
-      fileName,
-      fileSizeBytes: new TextEncoder().encode(text).byteLength,
-      workbookName,
-      sheets: [previewSheet],
-      warnings,
-    }),
-  }
-}
-
 export function importWorkbookFile(
   bytes: Uint8Array | ArrayBuffer,
   fileName: string,
@@ -951,7 +978,7 @@ export function importWorkbookFile(
 ): ImportedWorkbook {
   const normalizedContentType = normalizeWorkbookImportContentType(contentType)
   if (normalizedContentType === XLSX_CONTENT_TYPE) {
-    return importXlsx(bytes, fileName)
+    return importXlsx(bytes, fileName, options.xlsx)
   }
   if (normalizedContentType === XLSM_CONTENT_TYPE) {
     return importXlsm(bytes, fileName)
@@ -967,24 +994,4 @@ export function importWorkbookFile(
     return importCsv(new TextDecoder().decode(data), fileName, options.csv)
   }
   throw new Error('Unsupported workbook import content type')
-}
-
-function inferCsvTextColumnIndexes(rows: readonly (readonly string[])[]): Set<number> {
-  const header = rows[0]
-  const textColumnIndexes = new Set<number>()
-  if (!header) {
-    return textColumnIndexes
-  }
-
-  header.forEach((rawHeader, colIndex) => {
-    const headerText = rawHeader.trim().toLowerCase().replaceAll('_', ' ').replaceAll('-', ' ')
-    if (isIdentifierLikeCsvHeader(headerText)) {
-      textColumnIndexes.add(colIndex)
-    }
-  })
-  return textColumnIndexes
-}
-
-function isIdentifierLikeCsvHeader(headerText: string): boolean {
-  return /^(?:account|acct|id|code|sku)(?: (?:id|number|no|code))?$/u.test(headerText)
 }

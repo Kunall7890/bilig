@@ -146,10 +146,29 @@ function addFreezePaneToSheetView(sheetViewXml: string, freezePane: WorkbookFree
   return `<sheetView${expandedMatch[1] ?? ''}>${buildFreezePaneXml(freezePane)}${removeExistingPaneMarkup(expandedMatch[2] ?? '')}</sheetView>`
 }
 
+function findXmlElement(xml: string, localName: string): { readonly start: number; readonly end: number } | null {
+  const openMatch = new RegExp(`<${localName}(?=[\\s>/])`, 'u').exec(xml)
+  if (!openMatch) {
+    return null
+  }
+  const start = openMatch.index
+  const tagEnd = xml.indexOf('>', start + openMatch[0].length)
+  if (tagEnd === -1) {
+    return null
+  }
+  if (xml[tagEnd - 1] === '/') {
+    return { start, end: tagEnd + 1 }
+  }
+  const closePattern = `</${localName}>`
+  const closeStart = xml.indexOf(closePattern, tagEnd + 1)
+  return closeStart === -1 ? null : { start, end: closeStart + closePattern.length }
+}
+
 function insertFreezePaneIntoWorksheet(sheetXml: string, freezePane: WorkbookFreezePaneSnapshot): string {
-  const sheetViewMatch = /<sheetView\b[^>]*(?:\/>|>[\s\S]*?<\/sheetView>)/u.exec(sheetXml)
-  if (sheetViewMatch) {
-    return sheetXml.replace(sheetViewMatch[0], addFreezePaneToSheetView(sheetViewMatch[0], freezePane))
+  const sheetViewRange = findXmlElement(sheetXml, 'sheetView')
+  if (sheetViewRange) {
+    const sheetViewXml = sheetXml.slice(sheetViewRange.start, sheetViewRange.end)
+    return `${sheetXml.slice(0, sheetViewRange.start)}${addFreezePaneToSheetView(sheetViewXml, freezePane)}${sheetXml.slice(sheetViewRange.end)}`
   }
 
   const sheetViews = `<sheetViews><sheetView workbookViewId="0">${buildFreezePaneXml(freezePane)}</sheetView></sheetViews>`

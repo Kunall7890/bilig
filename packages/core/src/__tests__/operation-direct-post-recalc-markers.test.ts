@@ -2,7 +2,10 @@ import { describe, expect, it } from 'vitest'
 import { ValueTag, type CellValue } from '@bilig/protocol'
 import { makeCellEntity } from '../entity-ids.js'
 import { DirectFormulaIndexCollection } from '../engine/services/direct-formula-index-collection.js'
-import { createOperationDirectPostRecalcMarkers } from '../engine/services/operation-direct-post-recalc-markers.js'
+import {
+  createOperationDirectPostRecalcMarkers,
+  initialDirectScalarLinearDeltaClosureCapacity,
+} from '../engine/services/operation-direct-post-recalc-markers.js'
 import type { RuntimeDirectScalarDescriptor } from '../engine/runtime-state.js'
 
 type MarkerArgs = Parameters<typeof createOperationDirectPostRecalcMarkers>[0]
@@ -95,6 +98,12 @@ function createMarkers(input: {
 }
 
 describe('operation direct post-recalc markers', () => {
+  it('preallocates linear scalar closure buffers to the configured large-chain limit', () => {
+    expect(initialDirectScalarLinearDeltaClosureCapacity(4096)).toBe(4097)
+    expect(initialDirectScalarLinearDeltaClosureCapacity(32)).toBe(33)
+    expect(initialDirectScalarLinearDeltaClosureCapacity(0)).toBe(1)
+  })
+
   it('marks a linear scalar closure as validated constant deltas', () => {
     const formulas = new Map([
       [20, formula(binaryScalar('+', 10, { kind: 'literal-number', value: 1 }))],
@@ -122,6 +131,7 @@ describe('operation direct post-recalc markers', () => {
     expect(collection.getDelta(30)).toBe(3)
     expect(collection.hasCompleteScalarDeltas()).toBe(true)
     expect(collection.hasValidatedScalarDeltaCells()).toBe(true)
+    expect(collection.hasTrustedDirectScalarDeltaCells()).toBe(true)
   })
 
   it('uses the all-column-version skip gate for linear scalar closures', () => {
@@ -161,6 +171,7 @@ describe('operation direct post-recalc markers', () => {
     expect(allSkipCalls).toBe(1)
     expect(perCellSkipCalls).toBe(0)
     expect(collection.hasValidatedScalarDeltaCells()).toBe(true)
+    expect(collection.hasTrustedDirectScalarDeltaCells()).toBe(true)
   })
 
   it('marks right-input affine scalar closures without falling back to graph traversal', () => {
@@ -189,6 +200,7 @@ describe('operation direct post-recalc markers', () => {
     expect(collection.getDelta(30)).toBe(-6)
     expect(collection.hasCompleteScalarDeltas()).toBe(true)
     expect(collection.hasValidatedScalarDeltaCells()).toBe(true)
+    expect(collection.hasTrustedDirectScalarDeltaCells()).toBe(true)
   })
 
   it('falls back to graph scalar closure when the dependent path branches', () => {

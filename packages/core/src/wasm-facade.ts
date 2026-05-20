@@ -106,6 +106,24 @@ export interface WasmDirectCriteriaMatchedAggregateBatchLayout {
   outErrors: Uint16Array
 }
 
+export interface WasmDirectCriteriaPredicateAggregateBatchLayout {
+  aggregateKind: number
+  rowCount: number
+  criteriaOps: Uint8Array
+  criteriaKinds: Uint8Array
+  criteriaValues: Float64Array
+  criteriaStringIds: Uint32Array
+  criteriaTags: Uint8Array
+  criteriaNumbers: Float64Array
+  criteriaStringIdsByRow: Uint32Array
+  aggregateTags: Uint8Array
+  aggregateNumbers: Float64Array
+  aggregateErrors: Uint16Array
+  outTags: Uint8Array
+  outNumbers: Float64Array
+  outErrors: Uint16Array
+}
+
 export interface WasmUniformNumericLookupBatchLayout {
   kinds: Uint8Array
   matchModes: Uint8Array
@@ -433,6 +451,30 @@ export class WasmKernelFacade {
       layout.matchStarts,
       layout.matchLengths,
       layout.matchedRows,
+      layout.aggregateTags,
+      layout.aggregateNumbers,
+      layout.aggregateErrors,
+      layout.outTags,
+      layout.outNumbers,
+      layout.outErrors,
+    )
+    return true
+  }
+
+  evalDirectCriteriaPredicateAggregateBatch(layout: WasmDirectCriteriaPredicateAggregateBatchLayout): boolean {
+    if (!this.kernel) {
+      return false
+    }
+    this.kernel.evalDirectCriteriaPredicateAggregateBatch(
+      layout.aggregateKind,
+      layout.rowCount,
+      layout.criteriaOps,
+      layout.criteriaKinds,
+      layout.criteriaValues,
+      layout.criteriaStringIds,
+      layout.criteriaTags,
+      layout.criteriaNumbers,
+      layout.criteriaStringIdsByRow,
       layout.aggregateTags,
       layout.aggregateNumbers,
       layout.aggregateErrors,

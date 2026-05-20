@@ -363,18 +363,45 @@ function buildSheetFormatPrXml(sheetFormatPr: WorkbookSheetFormatPrSnapshot | un
   return attributes.length > 0 ? `<sheetFormatPr${attributes}/>` : null
 }
 
+function findXmlElement(xml: string, localName: string): { readonly start: number; readonly end: number; readonly xml: string } | null {
+  const start = xml.indexOf(`<${localName}`)
+  if (start === -1) {
+    return null
+  }
+  const tagEnd = xml.indexOf('>', start + localName.length + 1)
+  if (tagEnd === -1) {
+    return null
+  }
+  if (xml[tagEnd - 1] === '/') {
+    return { start, end: tagEnd + 1, xml: xml.slice(start, tagEnd + 1) }
+  }
+  const closeTag = `</${localName}>`
+  const closeStart = xml.indexOf(closeTag, tagEnd + 1)
+  return closeStart === -1 ? null : { start, end: closeStart + closeTag.length, xml: xml.slice(start, closeStart + closeTag.length) }
+}
+
+function firstElementIndex(xml: string, names: readonly string[]): number {
+  let first = -1
+  for (const name of names) {
+    const index = xml.indexOf(name)
+    if (index !== -1 && (first === -1 || index < first)) {
+      first = index
+    }
+  }
+  return first
+}
+
 function applySheetFormatPr(sheetXml: string, sheetFormatPr: WorkbookSheetFormatPrSnapshot | undefined): string {
   const sheetFormatPrXml = buildSheetFormatPrXml(sheetFormatPr)
   if (!sheetFormatPrXml) {
     return sheetXml
   }
-  const existingPattern = /<sheetFormatPr\b[^>]*(?:\/>|>[\s\S]*?<\/sheetFormatPr>)/u
-  if (existingPattern.test(sheetXml)) {
-    return sheetXml.replace(existingPattern, sheetFormatPrXml)
+  const existing = findXmlElement(sheetXml, 'sheetFormatPr')
+  if (existing) {
+    return `${sheetXml.slice(0, existing.start)}${sheetFormatPrXml}${sheetXml.slice(existing.end)}`
   }
-  const insertPattern = /<cols\b|<sheetData\b|<\/worksheet>/u
-  const match = insertPattern.exec(sheetXml)
-  return match ? `${sheetXml.slice(0, match.index)}${sheetFormatPrXml}${sheetXml.slice(match.index)}` : sheetXml
+  const insertIndex = firstElementIndex(sheetXml, ['<cols', '<sheetData', '</worksheet>'])
+  return insertIndex === -1 ? sheetXml : `${sheetXml.slice(0, insertIndex)}${sheetFormatPrXml}${sheetXml.slice(insertIndex)}`
 }
 
 function buildColumnsXml(columns: readonly ExportColumnMetadata[]): string {
@@ -409,12 +436,12 @@ function applyColumnMetadata(sheetXml: string, columns: readonly ExportColumnMet
   const columnsXml = buildColumnsXml(
     [...columns, ...existingColumns].toSorted((left, right) => left.start - right.start || left.count - right.count),
   )
-  const existingPattern = /<cols\b[^>]*(?:\/>|>[\s\S]*?<\/cols>)/u
-  if (existingPattern.test(sheetXml)) {
-    return sheetXml.replace(existingPattern, columnsXml)
+  const existingColumnsElement = findXmlElement(sheetXml, 'cols')
+  if (existingColumnsElement) {
+    return `${sheetXml.slice(0, existingColumnsElement.start)}${columnsXml}${sheetXml.slice(existingColumnsElement.end)}`
   }
-  const match = /<sheetData\b|<\/worksheet>/u.exec(sheetXml)
-  return match ? `${sheetXml.slice(0, match.index)}${columnsXml}${sheetXml.slice(match.index)}` : sheetXml
+  const insertIndex = firstElementIndex(sheetXml, ['<sheetData', '</worksheet>'])
+  return insertIndex === -1 ? sheetXml : `${sheetXml.slice(0, insertIndex)}${columnsXml}${sheetXml.slice(insertIndex)}`
 }
 
 function readRowNumber(rowTag: string): number | null {
@@ -489,18 +516,19 @@ function updateExistingRowXml(rowXml: string, row: ExportRowMetadata): string {
 function upsertWorksheetRowMetadata(sheetXml: string, rows: readonly ExportRowMetadata[]): string {
   const rowsByNumber = new Map(rows.map((row) => [row.rowNumber, row]))
   const sortedMissingRows = [...rowsByNumber.values()].toSorted((left, right) => left.rowNumber - right.rowNumber)
-  const selfClosingSheetDataMatch = /<sheetData\b([^>]*)\/>/u.exec(sheetXml)
-  if (selfClosingSheetDataMatch) {
-    const rowXml = sortedMissingRows.map(buildEmptyRowXml).join('')
-    return sheetXml.replace(/<sheetData\b([^>]*)\/>/u, (_match, attributes: string) => `<sheetData${attributes}>${rowXml}</sheetData>`)
-  }
-
-  const sheetDataMatch = /<sheetData\b[^>]*>[\s\S]*?<\/sheetData>/u.exec(sheetXml)
-  if (!sheetDataMatch) {
+  const sheetDataRange = findXmlElement(sheetXml, 'sheetData')
+  if (!sheetDataRange) {
     return sheetXml
   }
 
-  const sheetDataXml = sheetDataMatch[0]
+  const selfClosingSheetDataMatch = /^<sheetData\b([^>]*)\/>$/u.exec(sheetDataRange.xml)
+  if (selfClosingSheetDataMatch) {
+    const rowXml = sortedMissingRows.map(buildEmptyRowXml).join('')
+    const updated = `<sheetData${selfClosingSheetDataMatch[1] ?? ''}>${rowXml}</sheetData>`
+    return `${sheetXml.slice(0, sheetDataRange.start)}${updated}${sheetXml.slice(sheetDataRange.end)}`
+  }
+
+  const sheetDataXml = sheetDataRange.xml
   const sheetDataOpeningTag = /^<sheetData\b[^>]*>/u.exec(sheetDataXml)?.[0]
   if (!sheetDataOpeningTag || !sheetDataXml.endsWith('</sheetData>')) {
     return sheetXml
@@ -539,7 +567,7 @@ function upsertWorksheetRowMetadata(sheetXml: string, rows: readonly ExportRowMe
     missingIndex += 1
   }
   const updatedSheetDataXml = `${sheetDataOpeningTag}${outputBody}</sheetData>`
-  return `${sheetXml.slice(0, sheetDataMatch.index)}${updatedSheetDataXml}${sheetXml.slice(sheetDataMatch.index + sheetDataXml.length)}`
+  return `${sheetXml.slice(0, sheetDataRange.start)}${updatedSheetDataXml}${sheetXml.slice(sheetDataRange.end)}`
 }
 
 export function hasExportWorksheetDimensions(snapshot: WorkbookSnapshot): boolean {

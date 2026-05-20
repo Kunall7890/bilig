@@ -1,5 +1,5 @@
 import { MAX_COLS, MAX_ROWS } from '@bilig/protocol'
-import { GRID_FILL_HANDLE_SIZE } from './gridFillHandle.js'
+import { GRID_FILL_HANDLE_VISUAL_SIZE } from './gridFillHandle.js'
 import { COLUMN_RESIZE_HANDLE_THRESHOLD, type GridMetrics } from './gridMetrics.js'
 import type { Rectangle } from './gridTypes.js'
 import { createGridAxisWorldIndexFromRecords, type GridAxisAnchor, type GridAxisWorldIndex } from './gridAxisWorldIndex.js'
@@ -444,14 +444,19 @@ function resolveFillHandleScreenRect(input: {
   readonly rows: GridAxisWorldIndex
   readonly range: Pick<Rectangle, 'x' | 'y' | 'width' | 'height'>
 }): Rectangle | null {
-  const rects = resolveRangeScreenRects(input)
-  const anchor = rects.toSorted(
-    (left, right) => right.y + right.height - (left.y + left.height) || right.x + right.width - (left.x + left.width),
-  )[0]
+  const col = Math.max(0, Math.min(MAX_COLS - 1, input.range.x + input.range.width - 1))
+  const row = Math.max(0, Math.min(MAX_ROWS - 1, input.range.y + input.range.height - 1))
+  const anchor = resolveCellScreenRect({
+    camera: input.camera,
+    col,
+    columns: input.columns,
+    row,
+    rows: input.rows,
+  })
   if (!anchor) {
     return null
   }
-  const size = GRID_FILL_HANDLE_SIZE
+  const size = GRID_FILL_HANDLE_VISUAL_SIZE
   const handle = rect(anchor.x + anchor.width - size / 2, anchor.y + anchor.height - size / 2, size, size)
   return clipRect(handle, rect(0, 0, getHostWidth(input.camera), getHostHeight(input.camera)))
 }

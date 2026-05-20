@@ -17,6 +17,7 @@ import {
   resolveWorkbookMutationUndoStatus,
   type WorkbookAuthoritativeReadbackProof,
   type WorkbookMutationUndoProof,
+  type WorkbookSemanticReadbackProof,
 } from './workbook-agent-mutation-proof.js'
 import { stringifyJson, textToolResult, type WorkbookAgentStageCommandResult } from './workbook-agent-tool-shared.js'
 
@@ -42,6 +43,7 @@ export interface WorkbookToolMutationReceipt {
   readonly affectedRanges: readonly WorkbookAgentMutationReceiptRange[]
   readonly authoritativeReadback: WorkbookAuthoritativeReadbackProof
   readonly renderedReadback: WorkbookRenderedReadbackProof
+  readonly semanticReadback: WorkbookSemanticReadbackProof
   readonly undo: WorkbookMutationUndoProof
   readonly warnings: readonly string[]
 }
@@ -143,6 +145,32 @@ function buildAppliedMutationSummary(input: {
   return `Verification incomplete for workbook change set at revision r${String(input.appliedRevision)}: ${primaryWarning}`
 }
 
+function buildWorkbookSemanticReadbackProof(input: {
+  readonly authoritativeReadback: WorkbookAuthoritativeReadbackProof
+  readonly renderedReadback: WorkbookRenderedReadbackProof
+}): WorkbookSemanticReadbackProof {
+  const requested = input.authoritativeReadback.requested || input.renderedReadback.requested
+  if (!requested) {
+    return {
+      requested: false,
+      matched: null,
+      incompleteReason: input.authoritativeReadback.incompleteReason ?? input.renderedReadback.incompleteReason,
+    }
+  }
+  const matched =
+    input.authoritativeReadback.matched === true && (!input.renderedReadback.requested || input.renderedReadback.matched === true)
+  return {
+    requested,
+    matched,
+    incompleteReason:
+      input.authoritativeReadback.matched !== true
+        ? (input.authoritativeReadback.incompleteReason ?? 'Authoritative semantic readback did not match.')
+        : input.renderedReadback.requested && input.renderedReadback.matched !== true
+          ? (input.renderedReadback.incompleteReason ?? 'Rendered semantic readback did not match.')
+          : null,
+  }
+}
+
 async function buildMutationReceipt(input: {
   readonly context: WorkbookAgentToolStageContext
   readonly toolName: string
@@ -175,6 +203,10 @@ async function buildMutationReceipt(input: {
         requested: false,
         reason: 'Workbook mutation is not applied, so rendered readback is not yet meaningful.',
       })
+  const semanticReadback = buildWorkbookSemanticReadbackProof({
+    authoritativeReadback,
+    renderedReadback,
+  })
   const undo = await resolveWorkbookMutationUndoStatus({
     context: input.context,
     appliedRevision: executionRecord?.appliedRevision ?? null,
@@ -203,6 +235,8 @@ async function buildMutationReceipt(input: {
     authoritativeReadback.matched === true &&
     renderedReadback.requested &&
     renderedReadback.matched === true &&
+    semanticReadback.requested &&
+    semanticReadback.matched === true &&
     undo.available
   return {
     toolName: input.toolName,
@@ -220,6 +254,7 @@ async function buildMutationReceipt(input: {
     affectedRanges: receiptRanges(bundle),
     authoritativeReadback,
     renderedReadback,
+    semanticReadback,
     undo,
     warnings,
   }

@@ -1,4 +1,6 @@
 import { spawn } from 'node:child_process'
+import { existsSync } from 'node:fs'
+import { fileURLToPath } from 'node:url'
 
 import { asRecord } from './public-workbook-corpus-json.ts'
 import { startChildRssWatchdog, terminateChildProcess } from './public-workbook-corpus-process.ts'
@@ -6,6 +8,7 @@ import type { WorkbookFootprint } from './public-workbook-corpus-workbook.ts'
 import type { WorkbookExternalWorkbookReferenceSnapshot } from '../packages/protocol/src/types.js'
 
 const noop = (): void => undefined
+const tsxExecutablePath = fileURLToPath(new URL('../node_modules/.bin/tsx', import.meta.url))
 
 export interface PublicWorkbookCorpusWorkerOptions {
   readonly timeoutMs: number
@@ -16,6 +19,7 @@ export interface PublicWorkbookCorpusWorkerOptions {
 
 export function inspectWorkbookFootprintIsolated(args: {
   readonly bytes: Uint8Array
+  readonly filePath?: string
   readonly fileName: string
   readonly scriptPath: string
   readonly options: PublicWorkbookCorpusWorkerOptions
@@ -28,9 +32,10 @@ export function inspectWorkbookFootprintIsolated(args: {
       args.fileName,
       '--verify-max-rss-mb',
       String(Math.ceil(args.options.maxRssBytes / 1024 / 1024)),
+      ...(args.filePath ? ['--file', args.filePath] : []),
     ]
-    const child = spawn(process.execPath, childArgs, {
-      stdio: ['pipe', 'pipe', 'pipe'],
+    const child = spawn(existsSync(tsxExecutablePath) ? tsxExecutablePath : process.execPath, childArgs, {
+      stdio: [args.filePath ? 'ignore' : 'pipe', 'pipe', 'pipe'],
     })
     let stdout = ''
     let stopRssWatchdog = noop
@@ -62,8 +67,10 @@ export function inspectWorkbookFootprintIsolated(args: {
     child.stdout.on('data', (chunk: string) => {
       stdout += chunk
     })
-    child.stdin.on('error', () => undefined)
-    child.stdin.end(Buffer.from(args.bytes))
+    if (!args.filePath && child.stdin) {
+      child.stdin.on('error', () => undefined)
+      child.stdin.end(Buffer.from(args.bytes))
+    }
     child.on('error', () => {
       finish(null)
     })
@@ -86,6 +93,7 @@ export function readFootprintWorkerResult(value: unknown): WorkbookFootprint | n
   const record = asRecord(value)
   const footprint = asRecord(record['footprint'])
   const featureCounts = asRecord(footprint['featureCounts'])
+  const largeSimpleXlsxImport = readLargeSimpleXlsxImport(footprint['largeSimpleXlsxImport'])
   return {
     featureCounts: {
       sheetCount: readInteger(featureCounts, 'sheetCount'),
@@ -105,6 +113,28 @@ export function readFootprintWorkerResult(value: unknown): WorkbookFootprint | n
     },
     workbookMetadata: readWorkbookMetadata(asRecord(footprint['workbookMetadata'])),
     externalWorkbookReferences: readExternalWorkbookReferences(footprint['externalWorkbookReferences']),
+    ...(largeSimpleXlsxImport ? { largeSimpleXlsxImport } : {}),
+  }
+}
+
+function readLargeSimpleXlsxImport(value: unknown): WorkbookFootprint['largeSimpleXlsxImport'] | undefined {
+  if (value === undefined) {
+    return undefined
+  }
+  const record = asRecord(value)
+  const eligible = record['eligible']
+  const blockers = record['blockers']
+  if (typeof eligible !== 'boolean' || !Array.isArray(blockers)) {
+    throw new Error('Expected largeSimpleXlsxImport eligibility record')
+  }
+  return {
+    eligible,
+    blockers: blockers.map((entry) => {
+      if (typeof entry !== 'string') {
+        throw new Error('Expected string largeSimpleXlsxImport blocker')
+      }
+      return entry
+    }),
   }
 }
 

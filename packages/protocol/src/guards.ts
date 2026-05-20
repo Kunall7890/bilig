@@ -1,5 +1,5 @@
 import { ErrorCode, ValueTag } from './enums.js'
-import type { CellRangeRef, CellSnapshot, LiteralInput, WorkbookSnapshot } from './types.js'
+import type { CellRangeRef, CellSnapshot, CellValue, LiteralInput, WorkbookSnapshot } from './types.js'
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null
@@ -34,7 +34,7 @@ function isErrorCode(value: unknown): value is ErrorCode {
   )
 }
 
-function isCellValue(value: unknown): boolean {
+export function isCellValue(value: unknown): value is CellValue {
   if (!isRecord(value) || !isCellValueTag(value['tag'])) {
     return false
   }

@@ -77,8 +77,9 @@ const {
 const headlessPackageSpec = `@bilig/headless@${headlessPackageVersion}`
 const mcpbReleaseAssetUrl = `https://github.com/proompteng/bilig/releases/download/libraries-v${headlessPackageVersion}/bilig-workpaper.mcpb`
 const mcpbReleaseChecksumUrl = `${mcpbReleaseAssetUrl}.sha256`
-const xlsxRecalcCli = 'npx --package xlsx-formula-recalc xlsx-recalc'
-const sheetjsRecalcCli = 'npx --package sheetjs-formula-recalc sheetjs-recalc'
+const xlsxRecalcCli = 'npx --package @bilig/xlsx-formula-recalc xlsx-recalc'
+const liveSheetjsRecalcCli = 'npx --package @bilig/sheetjs-formula-recalc sheetjs-recalc'
+const liveSheetjsRecalcPackage = '@bilig/sheetjs-formula-recalc'
 
 const headlessSpreadsheetEngineNodeServicesAgents = await readFile(
   join(docsRoot, 'headless-spreadsheet-engine-node-services-agents.md'),
@@ -95,6 +96,7 @@ const xlsxRecalcPackageJson = await readFile(join(repoRoot, 'packages', 'xlsx-fo
 const xlsxRecalcPackageReadme = await readFile(join(repoRoot, 'packages', 'xlsx-formula-recalc', 'README.md'), 'utf8')
 const xlsxRecalcPackageAgentNotes = await readFile(join(repoRoot, 'packages', 'xlsx-formula-recalc', 'AGENTS.md'), 'utf8')
 const xlsxRecalcPackageSkillNotes = await readFile(join(repoRoot, 'packages', 'xlsx-formula-recalc', 'SKILL.md'), 'utf8')
+const recalcBridgeReadme = await readFile(join(repoRoot, 'examples', 'recalc-bridge-workflows', 'README.md'), 'utf8')
 const sheetjsRecalcPackageJson = await readFile(join(repoRoot, 'packages', 'sheetjs-formula-recalc', 'package.json'), 'utf8')
 const sheetjsRecalcPackageReadme = await readFile(join(repoRoot, 'packages', 'sheetjs-formula-recalc', 'README.md'), 'utf8')
 const sheetjsRecalcPackageAgentNotes = await readFile(join(repoRoot, 'packages', 'sheetjs-formula-recalc', 'AGENTS.md'), 'utf8')
@@ -138,9 +140,9 @@ requirePackageKeywords(
   ],
   'packages/headless/package.json',
 )
-requireIncludes(index, '"downloadUrl": "https://www.npmjs.com/package/bilig-workpaper"', 'docs/index.html')
-requireIncludes(index, '"https://www.npmjs.com/package/xlsx-formula-recalc"', 'docs/index.html')
-requireIncludes(index, '"https://www.npmjs.com/package/exceljs-formula-recalc"', 'docs/index.html')
+requireIncludes(index, '"downloadUrl": "https://www.npmjs.com/package/@bilig/workpaper"', 'docs/index.html')
+requireIncludes(index, '"https://www.npmjs.com/package/@bilig/xlsx-formula-recalc"', 'docs/index.html')
+requireIncludes(index, '"https://www.npmjs.com/package/@bilig/exceljs-formula-recalc"', 'docs/index.html')
 requireIncludes(index, '<h2 id="packages-title">Install the package that matches the job.</h2>', 'docs/index.html')
 requireIncludes(index, 'highest-traffic entry', 'docs/index.html')
 requireIncludes(index, xlsxRecalcCli, 'docs/index.html')
@@ -173,9 +175,21 @@ await Promise.all(
   ),
 )
 await Promise.all(
-  ['README.md', 'package.json', 'smoke.mjs'].map((sourceFile) =>
+  ['README.md', 'package.json', 'smoke.mjs', 'stackoverflow-exceljs-44199441.mjs', 'stackoverflow-sheetjs-63085785.mjs'].map((sourceFile) =>
     requireFile(join(repoRoot, 'examples', 'recalc-bridge-workflows', sourceFile)),
   ),
+)
+requireIncludes(recalcBridgeReadme, 'so:sheetjs-63085785', 'examples/recalc-bridge-workflows/README.md')
+requireIncludes(recalcBridgeReadme, 'so:exceljs-44199441', 'examples/recalc-bridge-workflows/README.md')
+requireIncludes(
+  recalcBridgeReadme,
+  'https://stackoverflow.com/questions/63085785/how-to-recalculate-all-formulas-in-excel-file-through-javascript',
+  'examples/recalc-bridge-workflows/README.md',
+)
+requireIncludes(
+  recalcBridgeReadme,
+  'https://stackoverflow.com/questions/44199441/get-computed-value-of-excel-sheet-cell-in-node-js',
+  'examples/recalc-bridge-workflows/README.md',
 )
 await requireFile(join(repoRoot, 'scripts', 'build-workpaper-mcpb.ts'))
 await Promise.all(
@@ -231,7 +245,7 @@ for (const required of [
   'An `.xlsx` can store both the formula text',
   'Run a formula runtime before reading',
   xlsxRecalcCli,
-  '`@bilig/headless` when the service can own the workbook state locally',
+  '`@bilig/workpaper` when the service can own the workbook state locally',
   'https://github.com/proompteng/bilig/stargazers',
 ] as const) {
   requireIncludes(staleXlsxFormulaCacheNode, required, 'docs/stale-xlsx-formula-cache-node.md')
@@ -245,9 +259,11 @@ requireIncludes(llms, 'https://github.com/proompteng/bilig/blob/main/docs/stale-
 for (const required of [
   'title: SheetJS formula result not updating in Node.js',
   'keep SheetJS for file I/O, but add a recalculation step',
-  sheetjsRecalcCli,
+  liveSheetjsRecalcCli,
+  'so:sheetjs-63085785',
+  'https://stackoverflow.com/questions/63085785/how-to-recalculate-all-formulas-in-excel-file-through-javascript',
   'npm --prefix examples/recalc-bridge-workflows run smoke',
-  '`sheetjs-formula-recalc`',
+  `\`${liveSheetjsRecalcPackage}\``,
   'https://github.com/proompteng/bilig/stargazers',
 ] as const) {
   requireIncludes(sheetjsFormulaResultNotUpdatingNode, required, 'docs/sheetjs-formula-result-not-updating-node.md')
@@ -263,7 +279,7 @@ for (const required of [
   'POST /me/drive/items/{id}/workbook/application/calculate',
   'Files.ReadWrite',
   'application permissions are not supported for that API',
-  'Use `@bilig/headless` when the workbook is service-owned state',
+  'Use `@bilig/workpaper` when the workbook is service-owned state',
   'https://learn.microsoft.com/en-us/graph/api/workbookapplication-calculate',
   'https://github.com/proompteng/bilig/stargazers',
 ] as const) {
@@ -615,15 +631,19 @@ requireIncludes(readme, 'examples/xlsx-recalculation-node', 'README.md')
 requireIncludes(readme, 'examples/recalc-bridge-workflows', 'README.md')
 requireIncludes(readme, 'docs/xlsx-formula-recalculation-node.md', 'README.md')
 requireIncludes(readme, xlsxRecalcCli, 'README.md')
-requireIncludes(readme, sheetjsRecalcCli, 'README.md')
+requireIncludes(readme, liveSheetjsRecalcCli, 'README.md')
 requireIncludes(xlsxRecalcPackageJson, '"xlsx-recalc": "./dist/cli.js"', 'packages/xlsx-formula-recalc/package.json')
+requireIncludes(xlsxRecalcPackageJson, '"sheetjs-recalc": "./dist/sheetjs-cli.js"', 'packages/xlsx-formula-recalc/package.json')
 requireIncludes(xlsxRecalcPackageJson, '"./cli-api"', 'packages/xlsx-formula-recalc/package.json')
 requireIncludes(xlsxRecalcPackageReadme, 'xlsx-recalc --demo --json', 'packages/xlsx-formula-recalc/README.md')
+requireIncludes(xlsxRecalcPackageReadme, 'sheetjs-recalc --demo --json', 'packages/xlsx-formula-recalc/README.md')
 requireIncludes(xlsxRecalcPackageReadme, 'If You Arrived From SheetJS or xlsx-populate', 'packages/xlsx-formula-recalc/README.md')
 requireIncludes(xlsxRecalcPackageReadme, 'SheetJS formula result not updating', 'packages/xlsx-formula-recalc/README.md')
 requireIncludes(xlsxRecalcPackageReadme, 'examples/recalc-bridge-workflows', 'packages/xlsx-formula-recalc/README.md')
 requireIncludes(xlsxRecalcPackageAgentNotes, 'xlsx-recalc --demo --json', 'packages/xlsx-formula-recalc/AGENTS.md')
+requireIncludes(xlsxRecalcPackageAgentNotes, 'sheetjs-recalc --demo --json', 'packages/xlsx-formula-recalc/AGENTS.md')
 requireIncludes(xlsxRecalcPackageSkillNotes, 'Summary!B2', 'packages/xlsx-formula-recalc/SKILL.md')
+requireIncludes(xlsxRecalcPackageSkillNotes, 'sheetjs-recalc --demo --json', 'packages/xlsx-formula-recalc/SKILL.md')
 requireIncludes(sheetjsRecalcPackageJson, '"sheetjs-recalc": "./dist/cli.js"', 'packages/sheetjs-formula-recalc/package.json')
 requireIncludes(sheetjsRecalcPackageReadme, 'sheetjs-recalc --demo --json', 'packages/sheetjs-formula-recalc/README.md')
 requireIncludes(sheetjsRecalcPackageReadme, 'If You Arrived From a SheetJS Formula Issue', 'packages/sheetjs-formula-recalc/README.md')
@@ -639,12 +659,19 @@ requireIncludes(exceljsRecalcPackageReadme, 'examples/recalc-bridge-workflows', 
 requireIncludes(exceljsRecalcPackageAgentNotes, 'recalculateExceljsWorkbook', 'packages/exceljs-formula-recalc/AGENTS.md')
 requireIncludes(exceljsRecalcPackageSkillNotes, 'exceljs-recalc --demo --json', 'packages/exceljs-formula-recalc/SKILL.md')
 requireIncludes(exceljsFormulaRecalculationNode, 'exceljs-recalc --demo --json', 'docs/exceljs-formula-recalculation-node.md')
+requireIncludes(exceljsFormulaRecalculationNode, 'so:exceljs-44199441', 'docs/exceljs-formula-recalculation-node.md')
+requireIncludes(
+  exceljsFormulaRecalculationNode,
+  'https://stackoverflow.com/questions/44199441/get-computed-value-of-excel-sheet-cell-in-node-js',
+  'docs/exceljs-formula-recalculation-node.md',
+)
 requireIncludes(readme, 'docs/agent-xlsx-formula-recalculation-without-libreoffice.md', 'README.md')
 requireIncludes(readme, 'docs/excel-file-calculation-engine-node.md', 'README.md')
 requireIncludes(readme, 'docs/exceljs-shared-formula-recalculation-node.md', 'README.md')
 requireIncludes(headlessReadme, 'examples/xlsx-recalculation-node', 'packages/headless/README.md')
 requireIncludes(headlessReadme, 'docs/xlsx-formula-recalculation-node.md', 'packages/headless/README.md')
-requireIncludes(headlessReadme, sheetjsRecalcCli, 'packages/headless/README.md')
+requireIncludes(headlessReadme, xlsxRecalcCli, 'packages/headless/README.md')
+requireIncludes(headlessReadme, liveSheetjsRecalcCli, 'packages/headless/README.md')
 requireIncludes(
   headlessReadme,
   'https://proompteng.github.io/bilig/agent-xlsx-formula-recalculation-without-libreoffice.html',
@@ -653,7 +680,7 @@ requireIncludes(
 requireIncludes(headlessReadme, 'docs/excel-file-calculation-engine-node.md', 'packages/headless/README.md')
 requireIncludes(headlessReadme, 'docs/exceljs-shared-formula-recalculation-node.md', 'packages/headless/README.md')
 requireIncludes(index, 'examples/xlsx-recalculation-node', 'docs/index.html')
-requireIncludes(index, 'SheetJS-named recalculation command', 'docs/index.html')
+requireIncludes(index, 'SheetJS-named package before moving to a full workbook runtime', 'docs/index.html')
 requireIncludes(index, 'xlsx-populate, and ExcelJS with one workbook', 'docs/index.html')
 requireIncludes(index, './xlsx-formula-recalculation-node.html', 'docs/index.html')
 requireIncludes(index, './xlsx-recalculation-proof.html', 'docs/index.html')
@@ -662,14 +689,27 @@ requireIncludes(index, './excel-file-calculation-engine-node.html', 'docs/index.
 requireIncludes(index, './exceljs-shared-formula-recalculation-node.html', 'docs/index.html')
 requireIncludes(index, './xlsx-template-formula-recalculation-node.html', 'docs/index.html')
 requireIncludes(index, './xlsx-populate-formula-result-node.html', 'docs/index.html')
-requireIncludes(index, 'https://www.npmjs.com/package/sheetjs-formula-recalc', 'docs/index.html')
+requireIncludes(index, './sheetjs-formula-result-not-updating-node.html', 'docs/index.html')
 requireIncludes(llms, 'https://github.com/proompteng/bilig/tree/main/examples/xlsx-recalculation-node', 'docs/llms.txt')
 requireIncludes(llms, 'https://proompteng.github.io/bilig/xlsx-formula-recalculation-node.html', 'docs/llms.txt')
 requireIncludes(llms, 'https://github.com/proompteng/bilig/blob/main/docs/xlsx-formula-recalculation-node.md', 'docs/llms.txt')
+requireIncludes(
+  llms,
+  'https://github.com/proompteng/bilig/blob/main/examples/recalc-bridge-workflows/stackoverflow-sheetjs-63085785.mjs',
+  'docs/llms.txt',
+)
+requireIncludes(
+  llms,
+  'https://github.com/proompteng/bilig/blob/main/examples/recalc-bridge-workflows/stackoverflow-exceljs-44199441.mjs',
+  'docs/llms.txt',
+)
 requireIncludes(llms, xlsxRecalcCli, 'docs/llms.txt')
-requireIncludes(llms, 'https://www.npmjs.com/package/sheetjs-formula-recalc', 'docs/llms.txt')
+requireIncludes(llms, liveSheetjsRecalcCli, 'docs/llms.txt')
+requireIncludes(llms, 'https://www.npmjs.com/package/@bilig/xlsx-formula-recalc', 'docs/llms.txt')
+requireIncludes(llms, 'https://www.npmjs.com/package/@bilig/sheetjs-formula-recalc', 'docs/llms.txt')
 requireIncludes(index, 'xlsx-recalc --demo --json', 'docs/index.html')
 requireIncludes(index, 'sheetjs-recalc --demo --json', 'docs/index.html')
+requireIncludes(index, 'sheetjs-formula-result-not-updating-node.html', 'docs/index.html')
 requireIncludes(xlsxFormulaRecalculationNode, 'xlsx-recalc --demo --json', 'docs/xlsx-formula-recalculation-node.md')
 requireIncludes(llms, 'https://proompteng.github.io/bilig/xlsx-recalculation-proof.html', 'docs/llms.txt')
 requireIncludes(llms, 'https://proompteng.github.io/bilig/xlsx-recalculation-proof.ts', 'docs/llms.txt')

@@ -84,6 +84,10 @@ describe('store support helpers', () => {
       tag: ValueTag.Error,
       code: ErrorCode.Value,
     })
+    expect(parseCellEvalValue({ tag: ValueTag.Error, code: ErrorCode.Num })).toEqual({
+      tag: ValueTag.Error,
+      code: ErrorCode.Num,
+    })
 
     expect(parseCellEvalValue({ tag: ValueTag.Number, value: Number.NaN })).toEqual({ tag: ValueTag.Empty })
     expect(parseCellEvalValue({ tag: ValueTag.Number, value: Number.POSITIVE_INFINITY })).toEqual({ tag: ValueTag.Empty })

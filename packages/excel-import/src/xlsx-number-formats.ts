@@ -214,7 +214,7 @@ export function readImportedWorkbookFileNumberFormats(
 ): Map<string, Map<string, string>> {
   const files = workbookFiles(workbook)
   const sourceZip = source ? readXlsxZipEntries(source) : null
-  const stylePath = workbookStylePath(workbook)
+  const stylePath = workbookStylePath(workbook) ?? (sourceZip?.['xl/styles.xml'] ? 'xl/styles.xml' : null)
   const styleXml = stylePath ? getPackageText(files, sourceZip, stylePath) : null
   if (!styleXml) {
     return new Map()
@@ -224,8 +224,8 @@ export function readImportedWorkbookFileNumberFormats(
     return new Map()
   }
 
-  const sheetPathsByName = workbookSheetPathsByName(workbook)
-  const fallbackSheetPaths = workbookDirectorySheetPaths(workbook)
+  const sheetPathsByName = workbookSheetPathsByName(workbook, sourceZip ?? undefined)
+  const fallbackSheetPaths = workbookDirectorySheetPaths(workbook, sourceZip ?? undefined)
   const output = new Map<string, Map<string, string>>()
   sheetNames.forEach((sheetName, index) => {
     const candidateAddresses = options.formatCandidateAddressesBySheet?.get(sheetName)

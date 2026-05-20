@@ -1,6 +1,6 @@
 #!/usr/bin/env bun
 
-import { mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync, cpSync } from 'node:fs'
+import { mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, statSync, writeFileSync, cpSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { basename, join, resolve } from 'node:path'
 
@@ -12,7 +12,9 @@ import {
   parseStableSemver,
   planRuntimePackagePublishProvisioning,
   parseBooleanEnv,
+  missingPublishedRuntimePackageNames,
   type RuntimePackagePublishedVersion,
+  type RuntimePackageManifest,
 } from './runtime-package-set.ts'
 import { syncStagedMcpServerMetadata } from './runtime-package-mcp-metadata.ts'
 import { validateStagedRuntimePackageVersion } from './runtime-package-publish-validation.ts'
@@ -23,6 +25,7 @@ const textDecoder = new TextDecoder()
 const distTag = process.env.NPM_DIST_TAG ?? 'latest'
 const dryRun = parseBooleanEnv(process.env.DRY_RUN)
 const allowNewNpmPackages = parseBooleanEnv(process.env.ALLOW_NEW_NPM_PACKAGES)
+const skipUnprovisionedNpmPackages = parseBooleanEnv(process.env.SKIP_UNPROVISIONED_NPM_PACKAGES)
 const targetVersion = process.env.TARGET_VERSION?.trim()
 
 if (!targetVersion) {
@@ -41,6 +44,10 @@ const runtimePackages = loadRuntimeNpmPackages(rootDir)
 
 const currentPublishedRuntimeVersions = readPublishedRuntimePackageVersions(runtimePackages.map((runtimePackage) => runtimePackage.name))
 assertKnownNpmPackagesBeforePublishing(currentPublishedRuntimeVersions)
+const missingPackageNames = new Set(missingPublishedRuntimePackageNames(currentPublishedRuntimeVersions))
+if (skipUnprovisionedNpmPackages && missingPackageNames.size > 0) {
+  assertSkippedRuntimePackagesAreLeaves(runtimePackages, missingPackageNames)
+}
 
 const stageDir = mkdtempSync(join(tmpdir(), 'bilig-runtime-package-set-'))
 const packDir = resolve(process.env.PACK_DIR ?? defaultPackDir)
@@ -68,7 +75,10 @@ try {
     syncStagedMcpServerMetadata(runtimePackage.name, stagedPackageDir, targetVersion)
     validateStagedRuntimePackageVersion(runtimePackage.name, stagedPackageDir, targetVersion)
 
-    runCommand('npm', ['pack', '--pack-destination', packDir], {
+    const packagePackDir = join(packDir, encodeURIComponent(runtimePackage.name))
+    mkdirSync(packagePackDir, { recursive: true })
+
+    runCommand('npm', ['pack', '--pack-destination', packagePackDir], {
       cwd: stagedPackageDir,
     })
   }
@@ -77,6 +87,16 @@ try {
   const results = []
 
   for (const runtimePackage of runtimePackages) {
+    if (skipUnprovisionedNpmPackages && missingPackageNames.has(runtimePackage.name)) {
+      results.push({
+        package: runtimePackage.name,
+        version: targetVersion,
+        status: 'skipped',
+        reason: 'npm package name is not provisioned yet',
+      })
+      continue
+    }
+
     const tarballPath = tarballsByPackage.get(`${runtimePackage.name}@${targetVersion}`)
     if (!tarballPath) {
       throw new Error(`Packed tarball missing for ${runtimePackage.name}@${targetVersion}`)
@@ -161,11 +181,10 @@ function rewriteInternalDependencyRanges(manifest: Record<string, unknown>, inte
 }
 
 function indexTarballs(targetDir: string) {
-  const tarballs = readdirSync(targetDir).filter((entry) => entry.endsWith('.tgz'))
-  const entriesByPackage = new Map()
+  const tarballs = listTarballsRecursive(targetDir)
+  const entriesByPackage = new Map<string, string>()
 
-  for (const tarballName of tarballs) {
-    const tarballPath = join(targetDir, tarballName)
+  for (const tarballPath of tarballs) {
     const packedManifest = JSON.parse(runTextCommand('tar', ['-xOf', tarballPath, 'package/package.json']))
     if (typeof packedManifest.name !== 'string' || typeof packedManifest.version !== 'string') {
       throw new Error(`Packed manifest is missing name/version in ${tarballPath}`)
@@ -174,6 +193,22 @@ function indexTarballs(targetDir: string) {
   }
 
   return entriesByPackage
+}
+
+function listTarballsRecursive(targetDir: string): string[] {
+  const tarballs: string[] = []
+  for (const entry of readdirSync(targetDir)) {
+    const entryPath = join(targetDir, entry)
+    const entryStat = statSync(entryPath)
+    if (entryStat.isDirectory()) {
+      tarballs.push(...listTarballsRecursive(entryPath))
+      continue
+    }
+    if (entry.endsWith('.tgz')) {
+      tarballs.push(entryPath)
+    }
+  }
+  return tarballs
 }
 
 function isVersionPublished(packageName: string, version: string) {
@@ -216,6 +251,7 @@ function assertKnownNpmPackagesBeforePublishing(publishedVersions: readonly Runt
   const provisioningPlan = planRuntimePackagePublishProvisioning({
     publishedVersions,
     allowNewNpmPackages,
+    skipUnprovisionedNpmPackages,
     dryRun,
   })
   if (provisioningPlan.publishAllowed) {
@@ -226,9 +262,42 @@ function assertKnownNpmPackagesBeforePublishing(publishedVersions: readonly Runt
       `Refusing to publish a partial runtime package set because npm does not know every runtime package yet (${formatRuntimePackagePublishedVersions(
         publishedVersions,
       )}).`,
-      'Create the missing npm package(s) and configure trusted publishing first, or explicitly set ALLOW_NEW_NPM_PACKAGES=true when using credentials that can create new public packages.',
+      'Create the missing npm package(s) and configure trusted publishing first, explicitly set ALLOW_NEW_NPM_PACKAGES=true when using credentials that can create new public packages, or set SKIP_UNPROVISIONED_NPM_PACKAGES=true to publish only provisioned leaf packages.',
     ].join(' '),
   )
+}
+
+function assertSkippedRuntimePackagesAreLeaves(
+  packageManifests: readonly RuntimePackageManifest[],
+  missingNames: ReadonlySet<string>,
+): void {
+  for (const runtimePackage of packageManifests) {
+    if (missingNames.has(runtimePackage.name)) {
+      continue
+    }
+    const manifest = JSON.parse(readFileSync(join(rootDir, runtimePackage.dir, 'package.json'), 'utf8'))
+    for (const [dependencyField, dependencyName] of readManifestDependencyNames(manifest)) {
+      if (missingNames.has(dependencyName)) {
+        throw new Error(
+          `Cannot skip unprovisioned package ${dependencyName}: provisioned package ${runtimePackage.name} declares it in ${dependencyField}.`,
+        )
+      }
+    }
+  }
+}
+
+function readManifestDependencyNames(manifest: Record<string, unknown>): Array<readonly [string, string]> {
+  const entries: Array<readonly [string, string]> = []
+  for (const dependencyField of ['dependencies', 'optionalDependencies', 'peerDependencies'] as const) {
+    const dependencies = manifest[dependencyField]
+    if (!dependencies || typeof dependencies !== 'object' || Array.isArray(dependencies)) {
+      continue
+    }
+    for (const dependencyName of Object.keys(dependencies)) {
+      entries.push([dependencyField, dependencyName])
+    }
+  }
+  return entries
 }
 
 function getDistTags(packageName: string): Record<string, string> {

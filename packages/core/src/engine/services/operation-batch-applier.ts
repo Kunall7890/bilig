@@ -457,10 +457,12 @@ export function createOperationBatchApplier(input: CreateOperationBatchApplierAr
     try {
       if (!isRestore && source !== 'undo' && source !== 'redo') {
         batch.ops.forEach((op) => {
+          args.checkEvaluationBudget()
           assertProtectionAllowsProtectedOp(args.state.workbook, op)
         })
       }
       batch.ops.forEach((op, opIndex) => {
+        args.checkEvaluationBudget()
         const order = batchOpOrder(batch, opIndex)
         const preparedCellAddress = preparedCellAddressesByOpIndex?.[opIndex] ?? null
         if (!canSkipOrderChecks && !shouldApplyReplicaOp(op, order, replicaStores)) {

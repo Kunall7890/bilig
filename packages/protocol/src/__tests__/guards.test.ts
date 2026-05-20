@@ -81,6 +81,15 @@ describe('protocol guards', () => {
         version: 1,
       }),
     ).toBe(true)
+    expect(
+      isCellSnapshot({
+        sheetName: 'Sheet1',
+        address: 'D4',
+        value: { tag: ValueTag.Error, code: ErrorCode.Num },
+        flags: 0,
+        version: 1,
+      }),
+    ).toBe(true)
   })
 
   it('rejects cell snapshots with malformed values', () => {

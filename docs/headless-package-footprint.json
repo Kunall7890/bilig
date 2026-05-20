@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "package": {
     "name": "@bilig/headless",
-    "version": "0.35.1",
+    "version": "0.39.0",
     "description": "Formula WorkPaper runtime for Node.js services and agent tools with JSON persistence and formula readback.",
     "nodeEngine": ">=22.0.0",
     "keywordCount": 24,
@@ -32,17 +32,26 @@
       "xlsx",
       "xlsx-calc"
     ],
-    "dependencyNames": ["@bilig/core", "@bilig/formula", "@bilig/protocol", "fast-xml-parser", "fflate", "xlsx", "xlsx-js-style"],
+    "dependencyNames": [
+      "@bilig/core",
+      "@bilig/formula",
+      "@bilig/protocol",
+      "fast-xml-parser",
+      "fflate",
+      "fflate-stream",
+      "xlsx",
+      "xlsx-js-style"
+    ],
     "hasFormulaClinicBinary": true,
     "hasXlsxSubpath": true,
     "hasMcpBinary": true
   },
   "npmPackDryRun": {
-    "tarballBytes": 498697,
-    "unpackedBytes": 2995231,
-    "entryCount": 495,
-    "readmeBytes": 45595,
-    "packageJsonBytes": 2455
+    "tarballBytes": 608905,
+    "unpackedBytes": 3718179,
+    "entryCount": 600,
+    "readmeBytes": 47634,
+    "packageJsonBytes": 2496
   },
   "coldStartProbe": {
     "runtime": "node",

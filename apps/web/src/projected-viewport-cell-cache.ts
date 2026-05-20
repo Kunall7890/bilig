@@ -264,29 +264,32 @@ export class ProjectedViewportCellCache {
     return { acceptedSnapshot: incoming, changed: true }
   }
 
-  clearOptimisticCellFlagsForSheet(sheetName: string): boolean {
+  clearOptimisticCellFlagsForSheet(sheetName: string): CellSnapshot[] {
     const sheetCellKeys = this.cellKeysBySheet.get(sheetName)
     if (!sheetCellKeys) {
-      return false
+      return []
     }
     const changedKeys = new Set<string>()
+    const changedSnapshots: CellSnapshot[] = []
     sheetCellKeys.forEach((key) => {
       const snapshot = this.cellSnapshots.get(key)
       if (!snapshot || (snapshot.flags & OPTIMISTIC_CELL_SNAPSHOT_FLAG) === 0) {
         return
       }
-      this.cellSnapshots.set(key, {
+      const nextSnapshot = {
         ...snapshot,
         flags: snapshot.flags & ~OPTIMISTIC_CELL_SNAPSHOT_FLAG,
-      })
+      }
+      this.cellSnapshots.set(key, nextSnapshot)
+      changedSnapshots.push(nextSnapshot)
       changedKeys.add(key)
     })
     if (changedKeys.size === 0) {
-      return false
+      return []
     }
     this.notifyCellSubscriptions(changedKeys)
     this.emitChange()
-    return true
+    return changedSnapshots
   }
 
   markSheetKnown(sheetName: string): void {

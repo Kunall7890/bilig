@@ -6,6 +6,7 @@ import type {
   EngineExistingNumericCellMutationResult,
 } from '../cell-mutations-at.js'
 import { SpreadsheetEngine } from '../engine.js'
+import { EngineEvaluationTimeoutError } from '../engine/errors.js'
 import { DirectFormulaIndexCollection } from '../engine/services/direct-formula-index-collection.js'
 
 function existingNumericMutationFastPath(
@@ -793,6 +794,71 @@ describe('operation-service dense mutation fast paths', () => {
     expect(engine.getCellValue('Sheet1', 'E17')).toEqual({ tag: ValueTag.Number, value: 170 })
     engine.undo()
     expect(engine.getCellValue('Sheet1', 'E17')).toEqual({ tag: ValueTag.Empty })
+  })
+
+  it('applies the operation timeout budget before formula-only fresh aggregate batches mutate cells', async () => {
+    const engine = new SpreadsheetEngine({ workbookName: 'formula-only-fresh-row-aggregate-timeout' })
+    await engine.ready()
+    engine.createSheet('Sheet1')
+
+    const rowCount = 40
+    const inputCols = 4
+    for (let row = 1; row <= rowCount; row += 1) {
+      for (let col = 0; col < inputCols; col += 1) {
+        engine.setCellValue('Sheet1', `${String.fromCharCode(65 + col)}${row}`, row * (col + 1))
+      }
+    }
+
+    const sheetId = engine.workbook.getSheet('Sheet1')!.id
+    const refs: EngineCellMutationRef[] = []
+    for (let row = 0; row < rowCount; row += 1) {
+      const rowNumber = row + 1
+      refs.push({
+        sheetId,
+        mutation: { kind: 'setCellFormula', row, col: inputCols, formula: `SUM(A${rowNumber}:D${rowNumber})` },
+      })
+    }
+
+    engine.setEvaluationTimeoutMs(0)
+
+    expect(() => engine.applyCellMutationsAt(refs, refs.length)).toThrow(EngineEvaluationTimeoutError)
+    expect(engine.getCellValue('Sheet1', 'E1')).toEqual({ tag: ValueTag.Empty })
+    expect(engine.getCellValue('Sheet1', `E${rowCount}`)).toEqual({ tag: ValueTag.Empty })
+    expect(engine.getPerformanceCounters().directFormulaKernelSyncOnlyRecalcSkips).toBe(0)
+  })
+
+  it('applies the operation timeout budget before matrix fresh aggregate batches mutate cells', async () => {
+    const engine = new SpreadsheetEngine({ workbookName: 'matrix-fresh-row-aggregate-timeout' })
+    await engine.ready()
+    engine.createSheet('Sheet1')
+
+    const rowCount = 40
+    const inputCols = 4
+    const sheetId = engine.workbook.getSheet('Sheet1')!.id
+    const refs: EngineCellMutationRef[] = []
+    for (let row = 0; row < rowCount; row += 1) {
+      const rowNumber = row + 1
+      for (let col = 0; col < inputCols; col += 1) {
+        refs.push({
+          sheetId,
+          mutation: { kind: 'setCellValue', row, col, value: rowNumber * (col + 1) },
+        })
+      }
+    }
+    for (let row = 0; row < rowCount; row += 1) {
+      const rowNumber = row + 1
+      refs.push({
+        sheetId,
+        mutation: { kind: 'setCellFormula', row, col: inputCols, formula: `SUM(A${rowNumber}:D${rowNumber})` },
+      })
+    }
+
+    engine.setEvaluationTimeoutMs(0)
+
+    expect(() => engine.applyCellMutationsAt(refs, refs.length)).toThrow(EngineEvaluationTimeoutError)
+    expect(engine.getCellValue('Sheet1', 'A1')).toEqual({ tag: ValueTag.Empty })
+    expect(engine.getCellValue('Sheet1', 'E1')).toEqual({ tag: ValueTag.Empty })
+    expect(engine.getPerformanceCounters().kernelSyncOnlyRecalcSkips).toBe(0)
   })
 
   it('replaces same-dependency direct scalar formulas without graph rebuilds', async () => {

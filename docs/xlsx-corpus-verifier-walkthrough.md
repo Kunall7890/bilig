@@ -181,11 +181,14 @@ discovery lanes. The Figshare lane uses public article search and article file
 metadata, requires usable license evidence, and prioritizes result/analysis/model
 queries before broad `.xlsx` searches.
 
-Latest local evidence from May 19, 2026:
+Latest local evidence from May 20, 2026 UTC, using local source
+`@bilig/headless` 0.37.2 rebased on `origin/main` commit `969ecd119`:
 
 ```json
 {
   "targetWorkbookCount": 500,
+  "headlessPackageVersion": "0.37.2",
+  "sourceCommit": "969ecd119",
   "manifestSourceCount": 6210,
   "manifestArtifactCount": 4531,
   "publicScorecardCaseCount": 4531,
@@ -195,11 +198,14 @@ Latest local evidence from May 19, 2026:
   "headlessComparableFormulaFileCount": 500,
   "endToEndPassingWorkbookCount": 500,
   "remainingToTarget": 0,
+  "failedErrors": 0,
+  "failedTimeouts": 0,
   "formulaCells": 428311,
   "comparableFormulaCells": 427264,
   "matchingFormulaCells": 427264,
   "mismatchedFormulaCells": 0,
-  "skippedFormulaCells": 1047
+  "skippedFormulaCells": 1047,
+  "elapsedMs": 439179.77
 }
 ```
 

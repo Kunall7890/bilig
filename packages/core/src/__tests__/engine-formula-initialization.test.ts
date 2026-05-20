@@ -1,8 +1,13 @@
 import { describe, expect, it, vi } from 'vitest'
 import { ErrorCode, ValueTag } from '@bilig/protocol'
 import { SpreadsheetEngine } from '../engine.js'
+import { EngineEvaluationTimeoutError, EngineMutationError } from '../engine/errors.js'
 import type { EngineCellMutationRef } from '../cell-mutations-at.js'
 import type { FormulaFamilyStore } from '../formula/formula-family-store.js'
+import { INITIAL_DIRECT_FORMULA_EVALUATION_LIMIT } from '../engine/services/formula-initialization-direct-formulas.js'
+import { findErrorByName, getFormulaBindingNowService } from './operation-service-test-helpers.js'
+
+const OVER_DIRECT_LIMIT_TEST_TIMEOUT_MS = 10_000
 
 function readRuntimeTemplateId(engine: SpreadsheetEngine, address: string): number | undefined {
   const cellIndex = engine.workbook.getCellIndex('Sheet1', address)
@@ -132,6 +137,35 @@ describe('SpreadsheetEngine formula initialization', () => {
       tag: ValueTag.Error,
       code: expect.any(Number),
     })
+  })
+
+  it('surfaces formula binding timeouts instead of storing fake invalid formulas during initialization', async () => {
+    const engine = new SpreadsheetEngine({ workbookName: 'engine-formula-initialize-timeout' })
+    await engine.ready()
+    engine.createSheet('Sheet1')
+    engine.setCellValue('Sheet1', 'A1', 1)
+    const sheetId = engine.workbook.getSheet('Sheet1')!.id
+    const timeout = new EngineEvaluationTimeoutError(50)
+    const binding = getFormulaBindingNowService(engine)
+    const bindInitialSpy = vi.spyOn(binding, 'bindInitialFormulaNow').mockImplementation(() => {
+      throw timeout
+    })
+    const bindPreparedSpy = vi.spyOn(binding, 'bindPreparedFormulaNow').mockImplementation(() => {
+      throw timeout
+    })
+
+    let thrown: unknown
+    try {
+      engine.initializeCellFormulasAt([{ sheetId, mutation: { kind: 'setCellFormula', row: 0, col: 1, formula: 'A1+1' } }], 1)
+    } catch (error) {
+      thrown = error
+    } finally {
+      bindInitialSpy.mockRestore()
+      bindPreparedSpy.mockRestore()
+    }
+
+    expect(thrown).toBeInstanceOf(EngineMutationError)
+    expect(findErrorByName(thrown, 'EngineEvaluationTimeoutError')).toBe(timeout)
   })
 
   it('shares template ownership across repeated initialized row families', async () => {
@@ -309,6 +343,45 @@ describe('SpreadsheetEngine formula initialization', () => {
     })
   })
 
+  it('uses native direct-scalar initialization beyond the JS direct limit', async () => {
+    const rowCount = 20_000
+    const engine = new SpreadsheetEngine({ workbookName: 'engine-formula-initialize-native-direct-scalar-family' })
+    await engine.ready()
+    engine.createSheet('Sheet1')
+    const sheetId = engine.workbook.getSheet('Sheet1')!.id
+    for (let row = 1; row <= rowCount; row += 1) {
+      engine.setCellValue('Sheet1', `A${row}`, row)
+    }
+
+    engine.resetPerformanceCounters()
+    engine.initializeCellFormulasAt(
+      Array.from({ length: rowCount }, (_entry, row) => ({
+        sheetId,
+        mutation: {
+          kind: 'setCellFormula' as const,
+          row,
+          col: 1,
+          formula: `A${row + 1}*2+1`,
+        },
+      })),
+      rowCount,
+    )
+
+    expect(engine.getCellValue('Sheet1', `B${rowCount}`)).toEqual({
+      tag: ValueTag.Number,
+      value: rowCount * 2 + 1,
+    })
+    expect(engine.getLastMetrics()).toMatchObject({ dirtyFormulaCount: 0, wasmFormulaCount: 0, jsFormulaCount: 0 })
+    expect(engine.getPerformanceCounters()).toMatchObject({
+      directFormulaInitialEvaluations: rowCount,
+      nativeDirectScalarInitialEvaluations: rowCount,
+      nativeDirectAggregatePrefixEvaluations: 0,
+      directAggregatePrefixEvaluations: 0,
+      directAggregateScanEvaluations: 0,
+      regionQueryIndexBuilds: 0,
+    })
+  })
+
   it('materializes out-of-order anchored prefix aggregates during initial direct evaluation', async () => {
     const engine = new SpreadsheetEngine({ workbookName: 'engine-formula-initialize-out-of-order-prefix-aggregate' })
     await engine.ready()
@@ -468,6 +541,45 @@ describe('SpreadsheetEngine formula initialization', () => {
     })
   })
 
+  it('chunks native direct scalar runs inside large mixed fresh formula initialization', async () => {
+    const rowCount = 5500
+    const engine = new SpreadsheetEngine({ workbookName: 'engine-formula-initialize-native-mixed-runs' })
+    await engine.ready()
+    engine.createSheet('Sheet1')
+    const sheetId = engine.workbook.getSheet('Sheet1')!.id
+    const refs: EngineCellMutationRef[] = []
+    for (let row = 0; row < rowCount; row += 1) {
+      const rowNumber = row + 1
+      engine.setCellValue('Sheet1', `A${rowNumber}`, rowNumber)
+      engine.setCellValue('Sheet1', `B${rowNumber}`, rowNumber * 10)
+      refs.push({ sheetId, mutation: { kind: 'setCellFormula' as const, row, col: 2, formula: `A${rowNumber}+B${rowNumber}` } })
+      refs.push({ sheetId, mutation: { kind: 'setCellFormula' as const, row, col: 3, formula: `C${rowNumber}*2` } })
+      refs.push({ sheetId, mutation: { kind: 'setCellFormula' as const, row, col: 4, formula: `SUM(A1:A${rowNumber})` } })
+    }
+
+    engine.initializeCellFormulasAt(refs, refs.length)
+
+    expect(engine.getCellValue('Sheet1', `D${rowCount}`)).toEqual({
+      tag: ValueTag.Number,
+      value: rowCount * 11 * 2,
+    })
+    expect(engine.getCellValue('Sheet1', `E${rowCount}`)).toEqual({
+      tag: ValueTag.Number,
+      value: (rowCount * (rowCount + 1)) / 2,
+    })
+    expect(getFormulaFamilyStore(engine).getStats()).toEqual({
+      familyCount: 3,
+      runCount: 3,
+      memberCount: refs.length,
+    })
+    expect(engine.getPerformanceCounters()).toMatchObject({
+      directFormulaInitialEvaluations: refs.length,
+      nativeDirectScalarInitialEvaluations: rowCount * 2,
+      nativeDirectAggregatePrefixEvaluations: 0,
+      regionQueryIndexBuilds: 0,
+    })
+  })
+
   it('uses native uniform lookup batches for large fresh formula initialization', async () => {
     const lookupRows = 2000
     const formulaRows = 150
@@ -508,6 +620,52 @@ describe('SpreadsheetEngine formula initialization', () => {
       nativeDirectLookupInitialEvaluations: refs.length,
     })
   })
+
+  it(
+    'uses native uniform lookup initialization beyond the JS direct limit',
+    async () => {
+      const lookupRows = 512
+      const formulaRows = INITIAL_DIRECT_FORMULA_EVALUATION_LIMIT + 1
+      const engine = new SpreadsheetEngine({ workbookName: 'engine-formula-initialize-native-lookup-over-limit' })
+      await engine.ready()
+      engine.createSheet('Sheet1')
+      const sheetId = engine.workbook.getSheet('Sheet1')!.id
+      for (let row = 1; row <= lookupRows; row += 1) {
+        engine.setCellValue('Sheet1', `A${row}`, row)
+      }
+      for (let row = 1; row <= formulaRows; row += 1) {
+        engine.setCellValue('Sheet1', `D${row}`, ((row - 1) % lookupRows) + 1)
+      }
+
+      engine.resetPerformanceCounters()
+      engine.initializeCellFormulasAt(
+        Array.from({ length: formulaRows }, (_entry, row) => ({
+          sheetId,
+          mutation: {
+            kind: 'setCellFormula' as const,
+            row,
+            col: 4,
+            formula: `MATCH(D${row + 1},A1:A${lookupRows},0)`,
+          },
+        })),
+        formulaRows,
+      )
+
+      expect(engine.getCellValue('Sheet1', `E${formulaRows}`)).toEqual({
+        tag: ValueTag.Number,
+        value: ((formulaRows - 1) % lookupRows) + 1,
+      })
+      expect(engine.getLastMetrics()).toMatchObject({ dirtyFormulaCount: 0, wasmFormulaCount: 0, jsFormulaCount: 0 })
+      expect(engine.getPerformanceCounters()).toMatchObject({
+        directFormulaInitialEvaluations: formulaRows,
+        nativeDirectLookupInitialEvaluations: formulaRows,
+        directAggregatePrefixEvaluations: 0,
+        directAggregateScanEvaluations: 0,
+        regionQueryIndexBuilds: 0,
+      })
+    },
+    OVER_DIRECT_LIMIT_TEST_TIMEOUT_MS,
+  )
 
   it('keeps mid-sized direct scalar initialization on the JS path', async () => {
     const rowCount = 1500

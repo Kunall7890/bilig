@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest'
-import { SpreadsheetEngine } from '@bilig/core'
+import { projectWorkbookSemanticSnapshot, SpreadsheetEngine } from '@bilig/core'
 import { ValueTag, type WorkbookSnapshot } from '@bilig/protocol'
 import { decodeViewportPatch } from '@bilig/worker-transport'
 import type { PendingWorkbookMutation } from '../workbook-sync.js'
@@ -126,6 +126,54 @@ describe('worker runtime authoritative bootstrap', () => {
       tag: ValueTag.Number,
       value: 84,
     })
+  })
+
+  it('keeps authoritative snapshots, exported state, and rendered patches semantically consistent', async () => {
+    const runtime = new WorkbookWorkerRuntime()
+    const snapshot = snapshotWithCell('B2', 'semantic browser proof')
+    const received = new Array<ReturnType<typeof decodeViewportPatch>>()
+
+    await runtime.bootstrap({
+      documentId: 'semantic-browser-proof-doc',
+      replicaId: 'browser:test',
+      persistState: true,
+    })
+
+    runtime.subscribeViewportPatches(
+      {
+        sheetName: 'Sheet1',
+        rowStart: 1,
+        rowEnd: 1,
+        colStart: 1,
+        colEnd: 1,
+        initialPatch: 'none',
+      },
+      (bytes) => {
+        received.push(decodeViewportPatch(bytes))
+      },
+    )
+
+    await runtime.installAuthoritativeSnapshot({
+      snapshot,
+      authoritativeRevision: 5,
+      mode: 'bootstrap',
+    })
+
+    expect(projectWorkbookSemanticSnapshot(runtime.exportSnapshot())).toEqual(projectWorkbookSemanticSnapshot(snapshot))
+    expect(runtime.getCell('Sheet1', 'B2').value).toEqual(
+      expect.objectContaining({
+        tag: ValueTag.String,
+        value: 'semantic browser proof',
+      }),
+    )
+    const renderedCell = received.at(-1)?.cells.find((cell) => cell.snapshot.address === 'B2')
+    expect(renderedCell?.snapshot.value).toEqual(
+      expect.objectContaining({
+        tag: ValueTag.String,
+        value: 'semantic browser proof',
+      }),
+    )
+    expect(renderedCell?.displayText).toBe('semantic browser proof')
   })
 
   it('replays restored pending clears over stale authoritative bootstrap snapshots', async () => {

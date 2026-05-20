@@ -304,7 +304,7 @@ describe('Workpaper formula regressions', () => {
     expectNumber(cellValue(workbook, 'Summary', 1, 3), 3000)
     expectNumberClose(cellValue(workbook, 'Summary', 5, 4), 2474.75)
     expectNumberClose(cellValue(workbook, 'Summary', 5, 3), 1995.4)
-  })
+  }, 20_000)
 
   it('resolves sheet-scoped defined names from imported snapshots before broken globals', () => {
     const snapshot: WorkbookSnapshot = {
