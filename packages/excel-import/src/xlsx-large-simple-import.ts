@@ -551,7 +551,12 @@ export function tryImportLargeSimpleXlsx(
     const zipSourceBytesBeforeRelease = readLazyXlsxZipSourceByteLength(zip)
     const retainZipSourceForLazyPackageArtifacts =
       zipSourceBytesBeforeRelease !== undefined &&
-      ((importedDataModelArtifacts?.parts.length ?? 0) > 0 || (importedSlicerConnectionArtifacts?.parts.length ?? 0) > 0)
+      ((importedDataModelArtifacts?.parts.length ?? 0) > 0 ||
+        (importedSlicerConnectionArtifacts?.parts.length ?? 0) > 0 ||
+        (importedPivotArtifacts?.artifacts?.parts.length ?? 0) > 0 ||
+        (importedDrawingArtifacts?.artifacts?.parts.length ?? 0) > 0 ||
+        (importedChartDrawingArtifacts?.drawingArtifacts.artifacts?.parts.length ?? 0) > 0 ||
+        (importedChartDrawingArtifacts?.chartArtifacts.artifacts?.parts.length ?? 0) > 0)
     if (!retainZipSourceForLazyPackageArtifacts) {
       releaseLazyXlsxZipSource(zip)
     }

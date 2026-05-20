@@ -25,6 +25,7 @@ import {
   setZipText,
   type ParsedRelationship,
 } from './xlsx-pivot-artifacts.js'
+import { decodedPartBytes, encodedPartSnapshot, lazyEncodedPartSnapshot } from './xlsx-preserved-package-parts.js'
 
 const workbookPath = 'xl/workbook.xml'
 const workbookRelationshipsPath = 'xl/_rels/workbook.xml.rels'
@@ -35,62 +36,6 @@ const customDataPropertiesRelationshipType = 'http://schemas.microsoft.com/offic
 const dataModelPackagePartPattern = /^xl\/model\//u
 const customDataPackagePartPattern = /^xl\/customData\//u
 const customXmlPackagePartPattern = /^customXml\//u
-
-function encodeBase64(bytes: Uint8Array): string {
-  return Buffer.from(bytes).toString('base64')
-}
-
-function decodeBase64(dataBase64: string): Uint8Array {
-  return new Uint8Array(Buffer.from(dataBase64, 'base64'))
-}
-
-function encodedPartSnapshot(path: string, bytes: Uint8Array): WorkbookPreservedPackagePartSnapshot {
-  return {
-    path,
-    storage: 'base64',
-    dataBase64: encodeBase64(bytes),
-    byteLength: bytes.byteLength,
-  }
-}
-
-class LazyEncodedPartSnapshot implements WorkbookPreservedPackagePartSnapshot {
-  readonly storage = 'base64' as const
-  declare readonly dataBase64: string
-  private dataBase64Cache: string | undefined
-
-  constructor(
-    readonly path: string,
-    readonly byteLength: number,
-    private readonly readBytes: () => Uint8Array | undefined,
-  ) {
-    Object.defineProperty(this, 'dataBase64', {
-      configurable: true,
-      enumerable: true,
-      get: () => this.getDataBase64(),
-    })
-  }
-
-  private getDataBase64(): string {
-    this.dataBase64Cache ??= encodeBase64(this.readBytes() ?? new Uint8Array())
-    return this.dataBase64Cache
-  }
-}
-
-function lazyEncodedPartSnapshot(
-  path: string,
-  byteLength: number,
-  readBytes: () => Uint8Array | undefined,
-): WorkbookPreservedPackagePartSnapshot {
-  return new LazyEncodedPartSnapshot(path, byteLength, readBytes)
-}
-
-function decodedPartBytes(part: WorkbookPreservedPackagePartSnapshot): Uint8Array | undefined {
-  if (part.storage !== 'base64') {
-    return undefined
-  }
-  const bytes = decodeBase64(part.dataBase64)
-  return bytes.byteLength === part.byteLength ? bytes : undefined
-}
 
 function readAttribute(xml: string, attributeName: string): string | null {
   const match = new RegExp(`\\s${attributeName}=("|')([\\s\\S]*?)\\1`, 'u').exec(xml)
