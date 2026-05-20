@@ -31,6 +31,7 @@ export interface EngineFormulaInitializationService {
     refs: InitialFormulaEntryRefSource<HydratedPreparedFormulaInitializationRef>,
     potentialNewCells?: number,
   ) => void
+  readonly initializeCachedFormulaSourcesAtNow: (refs: readonly CachedFormulaInitializationRef[], potentialNewCells?: number) => void
 }
 
 export interface PreparedFormulaInitializationRef {
@@ -46,6 +47,15 @@ export interface PreparedFormulaInitializationRef {
 export interface HydratedPreparedFormulaInitializationRef extends PreparedFormulaInitializationRef {
   readonly value: CellValue
   readonly preserveCachedValueOnFullRecalc?: boolean
+}
+
+export interface CachedFormulaInitializationRef {
+  readonly sheetId: number
+  readonly row: number
+  readonly col: number
+  readonly source: string
+  readonly value: CellValue
+  readonly cellIndex?: number
 }
 
 export interface EngineFormulaInitializationServiceArgs {

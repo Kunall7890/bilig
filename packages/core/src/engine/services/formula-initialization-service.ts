@@ -58,6 +58,7 @@ import type {
   PreparedFormulaInitializationRef,
 } from './formula-initialization-service-types.js'
 import { tryEvaluateFormulaLeafInlineScalar } from './formula-leaf-inline-scalar-evaluator.js'
+import { initializeCachedFormulaSourcesAtNow as initializeCachedFormulaSourcesAtNowUnchecked } from './formula-initialization-cached-formulas.js'
 
 export type {
   EngineFormulaInitializationService,
@@ -961,5 +962,12 @@ export function createEngineFormulaInitializationService(args: EngineFormulaInit
     initializeFormulaSourcesAtNow,
     initializePreparedCellFormulasAtNow,
     initializeHydratedPreparedCellFormulasAtNow,
+    initializeCachedFormulaSourcesAtNow: (refs, potentialNewCells) =>
+      initializeCachedFormulaSourcesAtNowUnchecked({
+        serviceArgs: args,
+        refs,
+        ...(potentialNewCells === undefined ? {} : { potentialNewCells }),
+        resolveSheetName,
+      }),
   }
 }

@@ -2,35 +2,33 @@ import type { CellStyleRecord, SheetStyleRangeSnapshot } from '@bilig/protocol'
 import { internImportedStyle } from './xlsx-import-cell-styles.js'
 import type { ImportedWorksheetCellScan } from './xlsx-large-simple-arena.js'
 
-type StyleRun = { row: number; startColumn: number; endColumn: number; styleId: string }
-type StyledCell = { readonly row: number; readonly column: number; readonly styleId: string }
-
 export function buildLargeSimpleStyleRanges(
   sheetName: string,
   cellScan: ImportedWorksheetCellScan,
   stylesByIndex: ReadonlyMap<number, Omit<CellStyleRecord, 'id'>>,
   styleCatalog: Map<string, CellStyleRecord>,
 ): SheetStyleRangeSnapshot[] {
-  return styleEntriesAreRowMajor(cellScan, stylesByIndex)
-    ? buildRowMajorStyleRanges(sheetName, cellScan, stylesByIndex, styleCatalog)
-    : buildSortedStyleRanges(sheetName, cellScan, stylesByIndex, styleCatalog)
-}
-
-function buildRowMajorStyleRanges(
-  sheetName: string,
-  cellScan: ImportedWorksheetCellScan,
-  stylesByIndex: ReadonlyMap<number, Omit<CellStyleRecord, 'id'>>,
-  styleCatalog: Map<string, CellStyleRecord>,
-): SheetStyleRangeSnapshot[] {
   const ranges: SheetStyleRangeSnapshot[] = []
-  let active: StyleRun | undefined
+  let active: { row: number; startColumn: number; endColumn: number; styleId: string } | undefined
+  const styleIdsByIndex = new Map<number, string>()
   cellScan.styleIndexes.forEach((row, column, styleIndex) => {
-    const style = stylesByIndex.get(styleIndex)
-    if (!style) {
+    let styleId = styleIdsByIndex.get(styleIndex)
+    if (!styleId) {
+      const style = stylesByIndex.get(styleIndex)
+      if (!style) {
+        return
+      }
+      styleId = internImportedStyle(style, styleCatalog)
+      styleIdsByIndex.set(styleIndex, styleId)
+    }
+    if (active && active.row === row && active.endColumn + 1 === column && active.styleId === styleId) {
+      active.endColumn = column
       return
     }
-    const styleId = internImportedStyle(style, styleCatalog)
-    active = appendStyleRun(ranges, sheetName, active, row, column, styleId)
+    if (active) {
+      ranges.push(styleRunToRange(sheetName, active))
+    }
+    active = { row, startColumn: column, endColumn: column, styleId }
   })
   if (active) {
     ranges.push(styleRunToRange(sheetName, active))
@@ -38,73 +36,26 @@ function buildRowMajorStyleRanges(
   return ranges
 }
 
-function buildSortedStyleRanges(
+export function buildLargeSimpleStyleRangesForCells(
   sheetName: string,
-  cellScan: ImportedWorksheetCellScan,
-  stylesByIndex: ReadonlyMap<number, Omit<CellStyleRecord, 'id'>>,
-  styleCatalog: Map<string, CellStyleRecord>,
+  cells: readonly { readonly row: number; readonly column: number; readonly styleId: string }[],
 ): SheetStyleRangeSnapshot[] {
-  const styledCells: StyledCell[] = []
-  cellScan.styleIndexes.forEach((row, column, styleIndex) => {
-    const style = stylesByIndex.get(styleIndex)
-    if (!style) {
-      return
-    }
-    styledCells.push({
-      row,
-      column,
-      styleId: internImportedStyle(style, styleCatalog),
-    })
-  })
-  styledCells.sort((left, right) => left.row - right.row || left.column - right.column || left.styleId.localeCompare(right.styleId))
   const ranges: SheetStyleRangeSnapshot[] = []
-  let active: StyleRun | undefined
-  for (const cell of styledCells) {
-    active = appendStyleRun(ranges, sheetName, active, cell.row, cell.column, cell.styleId)
+  let active: { row: number; startColumn: number; endColumn: number; styleId: string } | undefined
+  for (const cell of cells) {
+    if (active && active.row === cell.row && active.endColumn + 1 === cell.column && active.styleId === cell.styleId) {
+      active.endColumn = cell.column
+      continue
+    }
+    if (active) {
+      ranges.push(styleRunToRange(sheetName, active))
+    }
+    active = { row: cell.row, startColumn: cell.column, endColumn: cell.column, styleId: cell.styleId }
   }
   if (active) {
     ranges.push(styleRunToRange(sheetName, active))
   }
   return ranges
-}
-
-function styleEntriesAreRowMajor(
-  cellScan: ImportedWorksheetCellScan,
-  stylesByIndex: ReadonlyMap<number, Omit<CellStyleRecord, 'id'>>,
-): boolean {
-  let ordered = true
-  let lastRow = -1
-  let lastColumn = -1
-  cellScan.styleIndexes.forEach((row, column, styleIndex) => {
-    if (!ordered || !stylesByIndex.has(styleIndex)) {
-      return
-    }
-    if (row < lastRow || (row === lastRow && column <= lastColumn)) {
-      ordered = false
-      return
-    }
-    lastRow = row
-    lastColumn = column
-  })
-  return ordered
-}
-
-function appendStyleRun(
-  ranges: SheetStyleRangeSnapshot[],
-  sheetName: string,
-  active: StyleRun | undefined,
-  row: number,
-  column: number,
-  styleId: string,
-): StyleRun {
-  if (active && active.row === row && active.endColumn + 1 === column && active.styleId === styleId) {
-    active.endColumn = column
-    return active
-  }
-  if (active) {
-    ranges.push(styleRunToRange(sheetName, active))
-  }
-  return { row, startColumn: column, endColumn: column, styleId }
 }
 
 function styleRunToRange(

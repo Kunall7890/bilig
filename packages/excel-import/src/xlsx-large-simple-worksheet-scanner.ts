@@ -40,13 +40,24 @@ export function parseLargeSimpleWorksheetCells(
   bytes: Uint8Array,
   sharedStrings: readonly LargeSimpleSharedStringEntry[],
   sheetIndex: number,
-  options: { readonly retainCells?: boolean; readonly stringPool?: ImportedWorkbookStringPool } = {},
+  options: {
+    readonly retainCells?: boolean
+    readonly stringPool?: ImportedWorkbookStringPool
+    readonly deduplicateStrings?: boolean
+    readonly allowUnsupportedFormulaText?: boolean
+    readonly preserveBlankStyleCells?: boolean
+  } = {},
 ): ImportedWorksheetCellScan | null {
-  const arena = new ImportedWorkbookArena(options.stringPool)
+  const arena = new ImportedWorkbookArena(
+    options.stringPool,
+    options.deduplicateStrings === undefined ? {} : { deduplicateStrings: options.deduplicateStrings },
+  )
   const richTextCells: WorkbookRichTextCellSnapshot[] = []
   const styleIndexes = new ImportedWorksheetStyleIndexArena()
-  const formulas = new LargeSimpleFormulaRecords()
+  const allowUnsupportedFormulaText = options.allowUnsupportedFormulaText === true
+  const formulas = new LargeSimpleFormulaRecords(allowUnsupportedFormulaText)
   const retainCells = options.retainCells !== false
+  const preserveBlankStyleCells = options.preserveBlankStyleCells !== false
   const dimension = readWorksheetDimensionFromBytes(bytes)
   let rowCount = dimension?.rowCount ?? 0
   let columnCount = dimension?.columnCount ?? 0
@@ -94,7 +105,7 @@ export function parseLargeSimpleWorksheetCells(
         ? null
         : undefined
     const formula = retainCells
-      ? readFormulaSpec(bytes, contentStart, closing.start)
+      ? readFormulaSpec(bytes, contentStart, closing.start, allowUnsupportedFormulaText)
       : readCompactFormulaSpec(bytes, contentStart, closing.start)
     if (formula === null) {
       return null
@@ -136,6 +147,9 @@ export function parseLargeSimpleWorksheetCells(
       }
     } else if (styleIndex !== null) {
       blankStyleCellCount += 1
+      if (retainCells && preserveBlankStyleCells) {
+        styleIndexes.add(decodedAddress.row, decodedAddress.column, styleIndex)
+      }
     }
     index = selfClosing ? tagEnd + 1 : closing.end
   }
@@ -261,6 +275,7 @@ function readFormulaSpec(
   bytes: Uint8Array,
   contentStart: number,
   contentEnd: number,
+  allowUnsupportedFormulaText: boolean,
 ): { readonly typeCode: number; readonly sharedIndex: number | null; readonly rawFormula: string } | null | undefined {
   const tag = findNextOpeningTag(bytes, contentStart, 'f', contentEnd)
   if (!tag) {
@@ -271,7 +286,7 @@ function readFormulaSpec(
     return null
   }
   const type = readXmlAttributeFromTag(bytes, tag.nameEnd, tagEnd, 't')
-  if (type === 'array' || type === 'dataTable') {
+  if (!allowUnsupportedFormulaText && (type === 'array' || type === 'dataTable')) {
     return null
   }
   const selfClosing = isSelfClosingTag(bytes, tagEnd)

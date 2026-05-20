@@ -9,7 +9,12 @@ import type { FormulaInstanceSnapshot } from '../../formula/formula-instance-tab
 import type { FormulaTemplateResolution, FormulaTemplateSnapshot } from '../../formula/template-bank.js'
 import { exportReplicaSnapshot as exportReplicaStateSnapshot, hydrateReplicaState } from '../../replica-state.js'
 import { attachRuntimeImage, readRuntimeImage } from '../../snapshot/runtime-image-codec.js'
-import { restoreWorkbookFromRuntimeImage, restoreWorkbookFromSnapshot, type RuntimeImage } from '../../snapshot/runtime-image.js'
+import {
+  restoreWorkbookFromRuntimeImage,
+  restoreWorkbookFromSnapshot,
+  type CachedRuntimeFormulaRef,
+  type RuntimeImage,
+} from '../../snapshot/runtime-image.js'
 import type { RuntimeImageFormulaFamilyRunSnapshot } from '../../snapshot/runtime-image-formula-family-runs.js'
 import type { EngineRuntimeState, EngineReplicaSnapshot } from '../runtime-state.js'
 import { EngineSnapshotError } from '../errors.js'
@@ -77,6 +82,7 @@ export function createEngineSnapshotService(args: {
     refs: InitialFormulaEntryRefSource<HydratedPreparedFormulaInitializationRef>,
     potentialNewCells?: number,
   ) => void
+  readonly initializeCachedFormulaSourcesAt?: (refs: readonly CachedRuntimeFormulaRef[], potentialNewCells?: number) => void
   readonly materializePivot?: (pivot: WorkbookPivotRecord) => number[]
   readonly emitFullInvalidation?: (options: { readonly incrementMetrics: boolean }) => void
 }): EngineSnapshotService {
@@ -323,6 +329,9 @@ export function createEngineSnapshotService(args: {
                 ...(args.initializeHydratedPreparedCellFormulasAt
                   ? { initializeHydratedPreparedCellFormulasAt: args.initializeHydratedPreparedCellFormulasAt }
                   : {}),
+                ...(args.initializeCachedFormulaSourcesAt
+                  ? { initializeCachedFormulaSourcesAt: args.initializeCachedFormulaSourcesAt }
+                  : {}),
               })
               args.checkEvaluationBudget?.()
               materializeImportedPivots()
@@ -341,6 +350,7 @@ export function createEngineSnapshotService(args: {
               ...(args.initializeHydratedPreparedCellFormulasAt
                 ? { initializeHydratedPreparedCellFormulasAt: args.initializeHydratedPreparedCellFormulasAt }
                 : {}),
+              ...(args.initializeCachedFormulaSourcesAt ? { initializeCachedFormulaSourcesAt: args.initializeCachedFormulaSourcesAt } : {}),
             })
             args.checkEvaluationBudget?.()
             materializeImportedPivots()

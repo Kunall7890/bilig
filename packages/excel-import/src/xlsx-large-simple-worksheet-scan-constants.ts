@@ -5,7 +5,6 @@ export const metadataWorksheetTagNames = new Set([
   'colBreaks',
   'cols',
   'conditionalFormatting',
-  'dataValidations',
   'drawing',
   'headerFooter',
   'hyperlinks',

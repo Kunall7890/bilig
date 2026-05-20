@@ -6,26 +6,6 @@ import { parseLargeSimpleWorksheetCellsFromChunks } from '../xlsx-large-simple-w
 
 const encoder = new TextEncoder()
 
-function cellWithRuntimeCoordinates<T extends { readonly address: string }>(cell: T): T & { row: number; col: number } {
-  return { ...cell, ...decodeCellAddress(cell.address) }
-}
-
-function cellsWithRuntimeCoordinates<T extends { readonly address: string }>(cells: readonly T[]): Array<T & { row: number; col: number }> {
-  return cells.map(cellWithRuntimeCoordinates)
-}
-
-function decodeCellAddress(address: string): { row: number; col: number } {
-  const match = /^([A-Z]+)(\d+)$/u.exec(address)
-  if (!match) {
-    throw new Error(`Invalid test cell address: ${address}`)
-  }
-  let col = 0
-  for (const letter of match[1]) {
-    col = col * 26 + letter.charCodeAt(0) - 64
-  }
-  return { row: Number(match[2]) - 1, col: col - 1 }
-}
-
 describe('large simple worksheet stream scanners', () => {
   it('retains tag-open boundaries across chunks in headless scans', () => {
     const scan = parseHeadlessLargeSimpleWorksheetFromChunks(splitAfterTagOpen(worksheetXml()), 0, { hasSharedStrings: false })
@@ -70,54 +50,14 @@ describe('large simple worksheet stream scanners', () => {
     expect(Math.max(...retainedBufferLengths)).toBeLessThan(1024)
   })
 
-  it('counts supported data validations in headless scans without retaining validation bodies', () => {
-    const retainedBufferLengths: number[] = []
-    const scan = parseHeadlessLargeSimpleWorksheetFromChunks(splitLargeDataValidationsWorksheetXml(), 0, {
-      hasSharedStrings: false,
-      sheetName: 'Data',
-      onRetainedBufferLength: (length) => retainedBufferLengths.push(length),
-    })
-
-    expect(scan).toMatchObject({
-      cellCount: 1,
-      valueCellCount: 1,
-      dataValidationCount: 3,
-      rowCount: 2,
-      columnCount: 2,
-    })
-    expect(retainedBufferLengths.length).toBeGreaterThan(0)
-    expect(Math.max(...retainedBufferLengths)).toBeLessThan(1024)
-  })
-
-  it('rejects unsupported data validations in headless scans', () => {
-    expect(
-      parseHeadlessLargeSimpleWorksheetFromChunks(splitAfterTagOpen(unsupportedDataValidationWorksheetXml()), 0, {
-        hasSharedStrings: false,
-        sheetName: 'Data',
-      }),
-    ).toBeNull()
-  })
-
   it('retains tag-open boundaries across chunks in materialized scans', () => {
     const scan = parseLargeSimpleWorksheetCellsFromChunks(splitAfterTagOpen(worksheetXml()), 0, { hasSharedStrings: false })
 
     expect(scan?.cellScan.cellCount).toBe(2)
-    expect(scan?.cellScan.arena.materializeSheetCells(0)).toEqual(
-      cellsWithRuntimeCoordinates([
-        { address: 'A1', value: 1 },
-        { address: 'B1', value: 2 },
-      ]),
-    )
-  })
-
-  it('reserves materialized arena capacity from bounded dense worksheet dimensions', () => {
-    const scan = parseLargeSimpleWorksheetCellsFromChunks(splitAfterTagOpen(denseDimensionWorksheetXml()), 0, {
-      hasSharedStrings: false,
-    })
-
-    expect(scan?.cellScan.cellCount).toBe(10_000)
-    expect(scan?.cellScan.arena.allocatedCellCapacity).toBe(10_000)
-    expect(scan?.cellScan.arena.materializeSheetCells(0).at(-1)).toEqual(cellWithRuntimeCoordinates({ address: 'J1000', value: 10_000 }))
+    expect(scan?.cellScan.arena.materializeSheetCells(0)).toEqual([
+      { address: 'A1', value: 1 },
+      { address: 'B1', value: 2 },
+    ])
   })
 
   it('streams large split merge metadata in materialized scans without retaining metadata bodies', () => {
@@ -164,18 +104,16 @@ describe('large simple worksheet stream scanners', () => {
       sharedStrings: [{ text: 'Shared label', rich: false }],
     })
 
-    expect(scan?.cellScan.arena.materializeSheetCells(0)).toEqual(
-      cellsWithRuntimeCoordinates([
-        { address: 'A1', value: 42 },
-        { address: 'B1', value: -7 },
-        { address: 'C1', value: Number('0.12345678901234568') },
-        { address: 'D1', value: Number('1.25E-7') },
-        { address: 'E1', value: true },
-        { address: 'F1', value: false },
-        { address: 'G1', value: '#DIV/0!' },
-        { address: 'H1', value: 'Shared label' },
-      ]),
-    )
+    expect(scan?.cellScan.arena.materializeSheetCells(0)).toEqual([
+      { address: 'A1', value: 42 },
+      { address: 'B1', value: -7 },
+      { address: 'C1', value: Number('0.12345678901234568') },
+      { address: 'D1', value: Number('1.25E-7') },
+      { address: 'E1', value: true },
+      { address: 'F1', value: false },
+      { address: 'G1', value: '#DIV/0!' },
+      { address: 'H1', value: 'Shared label' },
+    ])
   })
 
   it('collects exact worksheet metadata records without retaining metadata XML', () => {
@@ -261,25 +199,6 @@ describe('large simple worksheet stream scanners', () => {
     })
   })
 
-  it('interns repeated typed metadata strings through the import string pool', () => {
-    const pool = new ImportedWorkbookStringPool()
-    const first = parseLargeSimpleWorksheetCellsFromChunks(splitAfterTagOpen(metadataWorksheetXml()), 0, {
-      hasSharedStrings: false,
-      sheetName: 'Data',
-      stringPool: pool,
-    })
-    const pooledCountAfterFirstScan = pool.count
-    const second = parseLargeSimpleWorksheetCellsFromChunks(splitAfterTagOpen(metadataWorksheetXml()), 1, {
-      hasSharedStrings: false,
-      sheetName: 'Data',
-      stringPool: pool,
-    })
-
-    expect(pooledCountAfterFirstScan).toBeGreaterThan(0)
-    expect(pool.count).toBe(pooledCountAfterFirstScan)
-    expect(second?.metadata).toEqual(first?.metadata)
-  })
-
   it('keeps raw conditional-format XML only when style artifacts are required', () => {
     const scan = parseLargeSimpleWorksheetCellsFromChunks(splitAfterTagOpen(styledConditionalFormatWorksheetXml()), 0, {
       hasSharedStrings: false,
@@ -304,18 +223,14 @@ describe('large simple worksheet stream scanners', () => {
       stringPool: pool,
     })
 
-    expect(first?.cellScan.arena.materializeSheetCells(0)).toEqual(
-      cellsWithRuntimeCoordinates([
-        { address: 'A1', value: 'Repeated label' },
-        { address: 'B1', value: 1, formula: 'A1&"!"' },
-      ]),
-    )
-    expect(second?.cellScan.arena.materializeSheetCells(1)).toEqual(
-      cellsWithRuntimeCoordinates([
-        { address: 'A1', value: 'Repeated label' },
-        { address: 'B1', value: 1, formula: 'A1&"!"' },
-      ]),
-    )
+    expect(first?.cellScan.arena.materializeSheetCells(0)).toEqual([
+      { address: 'A1', value: 'Repeated label' },
+      { address: 'B1', value: 1, formula: 'A1&"!"' },
+    ])
+    expect(second?.cellScan.arena.materializeSheetCells(1)).toEqual([
+      { address: 'A1', value: 'Repeated label' },
+      { address: 'B1', value: 1, formula: 'A1&"!"' },
+    ])
     expect(pool.count).toBe(2)
   })
 
@@ -371,24 +286,6 @@ function headlessMetadataWorksheetXml(): string {
   ].join('')
 }
 
-function denseDimensionWorksheetXml(): string {
-  const rows: string[] = []
-  for (let row = 1; row <= 1_000; row += 1) {
-    const cells: string[] = []
-    for (let column = 0; column < 10; column += 1) {
-      const address = `${String.fromCharCode(65 + column)}${String(row)}`
-      cells.push(`<c r="${address}"><v>${String((row - 1) * 10 + column + 1)}</v></c>`)
-    }
-    rows.push(`<row r="${String(row)}">${cells.join('')}</row>`)
-  }
-  return [
-    '<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">',
-    '<dimension ref="A1:J1000"/>',
-    `<sheetData>${rows.join('')}</sheetData>`,
-    '</worksheet>',
-  ].join('')
-}
-
 function splitLargeMergeCellsWorksheetXml(): (onChunk: (chunk: Uint8Array) => void) => boolean {
   const chunks = [
     '<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">',
@@ -431,27 +328,6 @@ function splitLargeTablePartsWorksheetXml(): (onChunk: (chunk: Uint8Array) => vo
   }
 }
 
-function splitLargeDataValidationsWorksheetXml(): (onChunk: (chunk: Uint8Array) => void) => boolean {
-  const chunks = [
-    '<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">',
-    '<dimension ref="A1:B2"/>',
-    '<sheetData><row r="1"><c r="A1"><v>1</v></c></row></sheetData>',
-    '<dataValidations count="2"><dataValidation type="list" sqref="A1"><formula1>"Open,Closed"</formula1></dataValidation>',
-    ' '.repeat(40_000),
-    ' '.repeat(40_000),
-    ' '.repeat(20_000),
-    '<dataValidation type="whole" operator="between" sqref="B1 B2"><formula1>1</formula1><formula2>10</formula2></dataValidation></',
-    'dataValidations>',
-    '</worksheet>',
-  ]
-  return (onChunk) => {
-    for (const chunk of chunks) {
-      onChunk(encoder.encode(chunk))
-    }
-    return true
-  }
-}
-
 function splitUnterminatedMergeCellsWorksheetXml(): (onChunk: (chunk: Uint8Array) => void) => boolean {
   const chunks = [
     '<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">',
@@ -465,16 +341,6 @@ function splitUnterminatedMergeCellsWorksheetXml(): (onChunk: (chunk: Uint8Array
     }
     return true
   }
-}
-
-function unsupportedDataValidationWorksheetXml(): string {
-  return [
-    '<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">',
-    '<dimension ref="A1"/>',
-    '<sheetData><row r="1"><c r="A1"><v>1</v></c></row></sheetData>',
-    '<dataValidations count="1"><dataValidation type="custom" sqref="A1"><formula1>A1&gt;0</formula1></dataValidation></dataValidations>',
-    '</worksheet>',
-  ].join('')
 }
 
 function scalarWorksheetXml(): string {

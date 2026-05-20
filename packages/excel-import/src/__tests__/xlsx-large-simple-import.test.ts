@@ -1,25 +1,9 @@
 import { describe, expect, it } from 'vitest'
 import { strToU8, unzipSync, zipSync } from 'fflate'
 
-import { tryInspectLargeSimpleXlsxHeadless } from '../xlsx-large-simple-headless-inspect.js'
+import { importXlsx, inspectXlsx, XlsxImportSizeLimitExceededError } from '../index.js'
 import { tryImportLargeSimpleXlsx } from '../xlsx-large-simple-import.js'
 import { forEachInflatedXlsxZipEntryChunk, readXlsxZipEntriesLazy } from '../xlsx-zip.js'
-
-function cellsWithRuntimeCoordinates<T extends { readonly address: string }>(cells: readonly T[]): Array<T & { row: number; col: number }> {
-  return cells.map((cell) => ({ ...cell, ...decodeCellAddress(cell.address) }))
-}
-
-function decodeCellAddress(address: string): { row: number; col: number } {
-  const match = /^([A-Z]+)(\d+)$/u.exec(address)
-  if (!match) {
-    throw new Error(`Invalid test cell address: ${address}`)
-  }
-  let col = 0
-  for (const letter of match[1]) {
-    col = col * 26 + letter.charCodeAt(0) - 64
-  }
-  return { row: Number(match[2]) - 1, col: col - 1 }
-}
 
 describe('large simple XLSX import fast path', () => {
   it('imports simple OpenXML worksheets without SheetJS workbook materialization', () => {
@@ -44,16 +28,14 @@ describe('large simple XLSX import fast path', () => {
 
     const imported = tryImportLargeSimpleXlsx(bytes, 'large-simple.xlsx', unzipSync(bytes), { minByteLength: 0 })
 
-    expect(imported?.snapshot.sheets[0]?.cells).toEqual(
-      cellsWithRuntimeCoordinates([
-        { address: 'A1', value: 'Alpha &#8211;' },
-        { address: 'B1', value: 42.5 },
-        { address: 'C2', value: true },
-        { address: 'D3', value: 'Inline text' },
-        { address: 'E4', value: '#N/A' },
-        { address: 'A5', value: 'Line\nBreak' },
-      ]),
-    )
+    expect(imported?.snapshot.sheets[0]?.cells).toEqual([
+      { address: 'A1', value: 'Alpha &#8211;' },
+      { address: 'B1', value: 42.5 },
+      { address: 'C2', value: true },
+      { address: 'D3', value: 'Inline text' },
+      { address: 'E4', value: '#N/A' },
+      { address: 'A5', value: 'Line\nBreak' },
+    ])
     expect(imported?.snapshot.sheets[0]?.metadata?.merges).toEqual([{ sheetName: 'Data', startAddress: 'A1', endAddress: 'B1' }])
     expect(imported?.snapshot.sheets[0]?.metadata).toMatchObject({
       columns: [
@@ -106,21 +88,90 @@ describe('large simple XLSX import fast path', () => {
     const imported = tryImportLargeSimpleXlsx(bytes, 'numeric-only.xlsx', unzipSync(bytes), { minByteLength: 0 })
 
     expect(imported?.snapshot.sheets[0]?.cells).toHaveLength(6_000)
-    expect(imported?.snapshot.sheets[0]?.cells.slice(0, 6)).toEqual(
-      cellsWithRuntimeCoordinates([
-        { address: 'A1', value: 1 },
-        { address: 'B1', value: 'Row 1' },
-        { address: 'C1', value: false },
-        { address: 'A2', value: 2 },
-        { address: 'B2', value: 'Row 2' },
-        { address: 'C2', value: true },
-      ]),
-    )
+    expect(imported?.snapshot.sheets[0]?.cells.slice(0, 6)).toEqual([
+      { address: 'A1', value: 1 },
+      { address: 'B1', value: 'Row 1' },
+      { address: 'C1', value: false },
+      { address: 'A2', value: 2 },
+      { address: 'B2', value: 'Row 2' },
+      { address: 'C2', value: true },
+    ])
     expect(imported?.preview.sheets[0]).toMatchObject({
       rowCount: 2_000,
       columnCount: 3,
       nonEmptyCellCount: 6_000,
     })
+  })
+
+  it('preflights public import materialization limits before building snapshot cell objects', () => {
+    const rows: string[] = []
+    for (let row = 1; row <= 4; row += 1) {
+      rows.push(`<row r="${String(row)}"><c r="A${String(row)}"><v>${String(row)}</v></c></row>`)
+    }
+    const bytes = buildLargeSimpleWorkbook({
+      includeSharedStrings: false,
+      worksheetXml: [
+        '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>',
+        '<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">',
+        '<dimension ref="A1:A4"/>',
+        `<sheetData>${rows.join('')}</sheetData>`,
+        '</worksheet>',
+      ].join(''),
+    })
+
+    const inspection = inspectXlsx(bytes, 'limit-preflight.xlsx')
+    expect(inspection?.stats.cellCount).toBe(4)
+    expect(() =>
+      importXlsx(bytes, 'limit-preflight.xlsx', {
+        limits: { maxMaterializedCells: 3 },
+      }),
+    ).toThrow(XlsxImportSizeLimitExceededError)
+
+    const imported = importXlsx(bytes, 'limit-preflight.xlsx', { limits: { maxMaterializedCells: 4 } })
+    expect(imported.snapshot.sheets[0]?.cells).toHaveLength(4)
+  })
+
+  it('preflights formula-heavy imports before WorkPaper build can hit evaluation timeout', () => {
+    const bytes = buildLargeSimpleWorkbook({
+      includeSharedStrings: false,
+      worksheetXml: [
+        '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>',
+        '<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">',
+        '<dimension ref="A1:B1"/>',
+        '<sheetData><row r="1"><c r="A1"><v>1</v></c><c r="B1"><f>A1+1</f><v>2</v></c></row></sheetData>',
+        '</worksheet>',
+      ].join(''),
+    })
+
+    expect(() =>
+      importXlsx(bytes, 'formula-limit-preflight.xlsx', {
+        limits: { maxMaterializedFormulaCells: 0 },
+      }),
+    ).toThrow(XlsxImportSizeLimitExceededError)
+  })
+
+  it('preflights formula-heavy sheets even when workbook features require SheetJS fallback', () => {
+    const bytes = buildLargeSimpleWorkbook({
+      includeSharedStrings: false,
+      worksheetXml: [
+        '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>',
+        '<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">',
+        '<dimension ref="A1:B1"/>',
+        '<sheetData><row r="1"><c r="A1" cm="1"><v>1</v></c><c r="B1"><f>A1+1</f><v>2</v></c></row></sheetData>',
+        '<dataValidations count="1"><dataValidation type="whole" sqref="A1"><formula1>0</formula1></dataValidation></dataValidations>',
+        '</worksheet>',
+      ].join(''),
+    })
+
+    expect(inspectXlsx(bytes, 'fallback-preflight.xlsx')?.stats).toMatchObject({
+      cellCount: 2,
+      formulaCellCount: 1,
+    })
+    expect(() =>
+      importXlsx(bytes, 'fallback-preflight.xlsx', {
+        limits: { maxMaterializedFormulaCells: 0 },
+      }),
+    ).toThrow(XlsxImportSizeLimitExceededError)
   })
 
   it('falls back when shared string cells reference a missing sharedStrings part', () => {
@@ -206,7 +257,6 @@ describe('large simple XLSX import fast path', () => {
         '<sheetData><row r="1"><c r="A1" t="s"><v>0</v></c><c r="B1"><v>1</v></c></row></sheetData>',
         '<mergeCells count="1"><mergeCell ref="A1:B1"/></mergeCells>',
         '<conditionalFormatting sqref="B1:B2"><cfRule type="cellIs" priority="1" operator="greaterThan"><formula>0</formula></cfRule></conditionalFormatting>',
-        '<dataValidations count="2"><dataValidation type="list" sqref="A1"><formula1>"Open,Closed"</formula1></dataValidation><dataValidation type="whole" operator="between" sqref="B1 B2"><formula1>1</formula1><formula2>10</formula2></dataValidation></dataValidations>',
         '<tableParts count="1"><tablePart r:id="rIdTable1"/></tableParts>',
         '</worksheet>',
       ].join(''),
@@ -237,14 +287,6 @@ describe('large simple XLSX import fast path', () => {
     expect(imported?.stats.tableCount).toBe(1)
     expect(imported?.stats.mergeCount).toBe(1)
     expect(imported?.stats.conditionalFormatCount).toBe(1)
-    expect(imported?.stats.dataValidationCount).toBe(3)
-    const inspected = tryInspectLargeSimpleXlsxHeadless(
-      { byteLength: bytes.byteLength },
-      'headless-verifier.xlsx',
-      readXlsxZipEntriesLazy(bytes),
-      { minByteLength: 0 },
-    )
-    expect(inspected?.stats.dataValidationCount).toBe(3)
   })
 
   it('streams compressed worksheet zip entries across multiple compressed chunks', () => {
@@ -299,13 +341,11 @@ describe('large simple XLSX import fast path', () => {
 
     const imported = tryImportLargeSimpleXlsx(bytes, 'streamed-materialized.xlsx', zip, { minByteLength: 0 })
 
-    expect(imported?.snapshot.sheets[0]?.cells).toEqual(
-      cellsWithRuntimeCoordinates([
-        { address: 'A1', value: 'Alpha &#8211;' },
-        { address: 'B1', value: 2, formula: '1+1' },
-        { address: 'C2', value: 'Inline' },
-      ]),
-    )
+    expect(imported?.snapshot.sheets[0]?.cells).toEqual([
+      { address: 'A1', value: 'Alpha &#8211;' },
+      { address: 'B1', value: 2, formula: '1+1' },
+      { address: 'C2', value: 'Inline' },
+    ])
     expect(imported?.snapshot.sheets[0]?.metadata?.merges).toEqual([{ sheetName: 'Data', startAddress: 'A1', endAddress: 'B1' }])
   })
 
@@ -346,12 +386,10 @@ describe('large simple XLSX import fast path', () => {
 
     const imported = tryImportLargeSimpleXlsx(bytes, 'streamed-shared-strings.xlsx', zip, { minByteLength: 0 })
 
-    expect(imported?.snapshot.sheets[0]?.cells).toEqual(
-      cellsWithRuntimeCoordinates([
-        { address: 'A1', value: 'Alpha' },
-        { address: 'B1', value: 'Rich Value' },
-      ]),
-    )
+    expect(imported?.snapshot.sheets[0]?.cells).toEqual([
+      { address: 'A1', value: 'Alpha' },
+      { address: 'B1', value: 'Rich Value' },
+    ])
     expect(imported?.snapshot.sheets[0]?.metadata?.richTextArtifacts).toEqual({
       cells: [
         {
@@ -402,12 +440,10 @@ describe('large simple XLSX import fast path', () => {
       releaseZipSource: true,
     })
 
-    expect(imported?.snapshot.sheets[0]?.cells).toEqual(
-      cellsWithRuntimeCoordinates([
-        { address: 'A1', value: 'Alpha' },
-        { address: 'B1', value: 'Beta' },
-      ]),
-    )
+    expect(imported?.snapshot.sheets[0]?.cells).toEqual([
+      { address: 'A1', value: 'Alpha' },
+      { address: 'B1', value: 'Beta' },
+    ])
     expect(worksheetStreamCount()).toBe(1)
     expect(imported?.stats.phaseTelemetry.map((entry) => entry.phase)).toEqual([
       'zip-setup',
@@ -442,7 +478,7 @@ describe('large simple XLSX import fast path', () => {
       { name: 'BrokenReference', value: { kind: 'formula', formula: '=#REF!' } },
       { name: 'ScalarLimit', value: { kind: 'scalar', value: 42 } },
     ])
-    expect(imported?.snapshot.sheets[0]?.cells).toEqual(cellsWithRuntimeCoordinates([{ address: 'A1', value: 123 }]))
+    expect(imported?.snapshot.sheets[0]?.cells).toEqual([{ address: 'A1', value: 123 }])
   })
 
   it('imports rich shared strings and preserves their cell artifacts without falling back to SheetJS', () => {
@@ -461,7 +497,7 @@ describe('large simple XLSX import fast path', () => {
 
     const imported = tryImportLargeSimpleXlsx(bytes, 'rich-shared-string.xlsx', unzipSync(bytes), { minByteLength: 0 })
 
-    expect(imported?.snapshot.sheets[0]?.cells).toEqual(cellsWithRuntimeCoordinates([{ address: 'A1', value: 'Rich Text' }]))
+    expect(imported?.snapshot.sheets[0]?.cells).toEqual([{ address: 'A1', value: 'Rich Text' }])
     expect(imported?.snapshot.sheets[0]?.metadata?.richTextArtifacts).toEqual({
       cells: [
         {
@@ -576,7 +612,7 @@ describe('large simple XLSX import fast path', () => {
     const imported = tryImportLargeSimpleXlsx(bytes, 'printer-settings.xlsx', zip, { minByteLength: 0 })
     const metadata = imported?.snapshot.sheets[0]?.metadata
 
-    expect(imported?.snapshot.sheets[0]?.cells).toEqual(cellsWithRuntimeCoordinates([{ address: 'A1', value: 7 }]))
+    expect(imported?.snapshot.sheets[0]?.cells).toEqual([{ address: 'A1', value: 7 }])
     expect(metadata?.printPageSetup).toEqual({
       pageMarginsXml: '<pageMargins left="0.7" right="0.7" top="0.75" bottom="0.75"/>',
       pageSetupXml: '<pageSetup orientation="landscape" r:id="rIdPrinterSettings1"/>',
@@ -625,79 +661,6 @@ describe('large simple XLSX import fast path', () => {
         criteria: [{ colId: 0, filters: { values: ['Open'] } }],
       },
     ])
-  })
-
-  it('imports worksheet data validations as streamed typed metadata', () => {
-    const bytes = buildLargeSimpleWorkbook({
-      includeSharedStrings: false,
-      worksheetXml: [
-        '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>',
-        '<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">',
-        '<dimension ref="A1:D4"/>',
-        '<sheetData>',
-        '<row r="1"><c r="A1" t="inlineStr"><is><t>Input</t></is></c><c r="D1" t="inlineStr"><is><t>Choices</t></is></c></row>',
-        '<row r="2"><c r="D2" t="inlineStr"><is><t>Base</t></is></c></row>',
-        '<row r="3"><c r="D3" t="inlineStr"><is><t>Downside</t></is></c></row>',
-        '<row r="4"><c r="D4" t="inlineStr"><is><t>Upside</t></is></c></row>',
-        '</sheetData>',
-        '<dataValidations count="3">',
-        '<dataValidation type="list" allowBlank="1" showInputMessage="1" showErrorMessage="1" sqref="B2"><formula1>$D$2:$D$4</formula1></dataValidation>',
-        '<dataValidation allowBlank="1" showInputMessage="1" promptTitle="Use model choices" prompt="Pick a case from the list." sqref="B3"/>',
-        '<dataValidation type="decimal" operator="between" allowBlank="1" promptTitle="Debt ratio" prompt="Enter a ratio from 0 to 1." sqref="B4"><formula1>0</formula1><formula2>1</formula2></dataValidation>',
-        '</dataValidations>',
-        '</worksheet>',
-      ].join(''),
-    })
-
-    const zip = readXlsxZipEntriesLazy(bytes)
-    Object.defineProperty(zip, 'xl/worksheets/sheet1.xml', {
-      configurable: true,
-      enumerable: true,
-      get() {
-        throw new Error('data validation metadata should use streamed typed records instead of inflating worksheet XML')
-      },
-    })
-
-    const imported = tryImportLargeSimpleXlsx(bytes, 'validations.xlsx', zip, { minByteLength: 0 })
-
-    expect(imported?.snapshot.sheets[0]?.metadata?.validations).toEqual([
-      {
-        range: { sheetName: 'Data', startAddress: 'B2', endAddress: 'B2' },
-        rule: { kind: 'list', source: { kind: 'range-ref', sheetName: 'Data', startAddress: 'D2', endAddress: 'D4' } },
-        allowBlank: true,
-      },
-      {
-        range: { sheetName: 'Data', startAddress: 'B3', endAddress: 'B3' },
-        rule: { kind: 'any' },
-        allowBlank: true,
-        promptTitle: 'Use model choices',
-        promptMessage: 'Pick a case from the list.',
-      },
-      {
-        range: { sheetName: 'Data', startAddress: 'B4', endAddress: 'B4' },
-        rule: { kind: 'decimal', operator: 'between', values: [0, 1] },
-        allowBlank: true,
-        promptTitle: 'Debt ratio',
-        promptMessage: 'Enter a ratio from 0 to 1.',
-      },
-    ])
-    expect(imported?.stats.dataValidationCount).toBe(3)
-  })
-
-  it('falls back when worksheet data validations use unsupported rules', () => {
-    const bytes = buildLargeSimpleWorkbook({
-      includeSharedStrings: false,
-      worksheetXml: [
-        '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>',
-        '<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">',
-        '<dimension ref="A1"/>',
-        '<sheetData><row r="1"><c r="A1"><v>7</v></c></row></sheetData>',
-        '<dataValidations count="1"><dataValidation type="custom" sqref="A1"><formula1>A1&gt;0</formula1></dataValidation></dataValidations>',
-        '</worksheet>',
-      ].join(''),
-    })
-
-    expect(tryImportLargeSimpleXlsx(bytes, 'unsupported-validation.xlsx', unzipSync(bytes), { minByteLength: 0 })).toBeNull()
   })
 
   it('imports table metadata without falling back to SheetJS', () => {
@@ -792,12 +755,10 @@ describe('large simple XLSX import fast path', () => {
     const imported = tryImportLargeSimpleXlsx(bytes, 'conditional-format.xlsx', zip, { minByteLength: 0 })
     const metadata = imported?.snapshot.sheets[0]?.metadata
 
-    expect(imported?.snapshot.sheets[0]?.cells).toEqual(
-      cellsWithRuntimeCoordinates([
-        { address: 'A1', value: 7 },
-        { address: 'A2', value: 1 },
-      ]),
-    )
+    expect(imported?.snapshot.sheets[0]?.cells).toEqual([
+      { address: 'A1', value: 7 },
+      { address: 'A2', value: 1 },
+    ])
     expect(metadata?.conditionalFormats).toEqual([
       {
         id: 'xlsx-cf:Data:A1:A2:1',
@@ -835,12 +796,10 @@ describe('large simple XLSX import fast path', () => {
     const imported = tryImportLargeSimpleXlsx(bytes, 'duplicate-format.xlsx', zip, { minByteLength: 0 })
     const metadata = imported?.snapshot.sheets[0]?.metadata
 
-    expect(imported?.snapshot.sheets[0]?.cells).toEqual(
-      cellsWithRuntimeCoordinates([
-        { address: 'A1', value: 7 },
-        { address: 'A2', value: 7 },
-      ]),
-    )
+    expect(imported?.snapshot.sheets[0]?.cells).toEqual([
+      { address: 'A1', value: 7 },
+      { address: 'A2', value: 7 },
+    ])
     expect(metadata?.conditionalFormats).toBeUndefined()
     expect(metadata?.conditionalFormatArtifacts?.xml).toContain('type="duplicateValues"')
   })
@@ -918,9 +877,9 @@ describe('large simple XLSX import fast path', () => {
       ].join(''),
     })
 
-    expect(tryImportLargeSimpleXlsx(bytes, 'formula.xlsx', unzipSync(bytes), { minByteLength: 0 })?.snapshot.sheets[0]?.cells).toEqual(
-      cellsWithRuntimeCoordinates([{ address: 'A1', value: 2, formula: '1+1' }]),
-    )
+    expect(tryImportLargeSimpleXlsx(bytes, 'formula.xlsx', unzipSync(bytes), { minByteLength: 0 })?.snapshot.sheets[0]?.cells).toEqual([
+      { address: 'A1', value: 2, formula: '1+1' },
+    ])
   })
 
   it('imports formula-only cells from the compact scanner and previews the formula text', () => {
@@ -936,7 +895,7 @@ describe('large simple XLSX import fast path', () => {
 
     const imported = tryImportLargeSimpleXlsx(bytes, 'formula-only.xlsx', unzipSync(bytes), { minByteLength: 0 })
 
-    expect(imported?.snapshot.sheets[0]?.cells).toEqual(cellsWithRuntimeCoordinates([{ address: 'A1', formula: 'SUM(B1:C1)' }]))
+    expect(imported?.snapshot.sheets[0]?.cells).toEqual([{ address: 'A1', formula: 'SUM(B1:C1)' }])
     expect(imported?.preview.sheets[0]?.previewRows[0]?.[0]).toBe('=SUM(B1:C1)')
   })
 
@@ -951,12 +910,10 @@ describe('large simple XLSX import fast path', () => {
       ].join(''),
     })
 
-    expect(tryImportLargeSimpleXlsx(bytes, 'namespaced.xlsx', unzipSync(bytes), { minByteLength: 0 })?.snapshot.sheets[0]?.cells).toEqual(
-      cellsWithRuntimeCoordinates([
-        { address: 'A1', value: 3 },
-        { address: 'B1', value: 'Namespaced' },
-      ]),
-    )
+    expect(tryImportLargeSimpleXlsx(bytes, 'namespaced.xlsx', unzipSync(bytes), { minByteLength: 0 })?.snapshot.sheets[0]?.cells).toEqual([
+      { address: 'A1', value: 3 },
+      { address: 'B1', value: 'Namespaced' },
+    ])
   })
 
   it('expands shared formulas without falling back to SheetJS', () => {
@@ -973,13 +930,11 @@ describe('large simple XLSX import fast path', () => {
 
     expect(
       tryImportLargeSimpleXlsx(bytes, 'shared-formula.xlsx', unzipSync(bytes), { minByteLength: 0 })?.snapshot.sheets[0]?.cells,
-    ).toEqual(
-      cellsWithRuntimeCoordinates([
-        { address: 'A1', value: 2, formula: 'B1+1' },
-        { address: 'A2', value: 3, formula: 'B2+1' },
-        { address: 'B2', value: 2 },
-      ]),
-    )
+    ).toEqual([
+      { address: 'A1', value: 2, formula: 'B1+1' },
+      { address: 'A2', value: 3, formula: 'B2+1' },
+      { address: 'B2', value: 2 },
+    ])
   })
 
   it('falls back when array formulas require full formula artifact preservation', () => {
@@ -1026,6 +981,7 @@ describe('large simple XLSX import fast path', () => {
     })
 
     expect(tryImportLargeSimpleXlsx(bytes, 'chart.xlsx', unzipSync(bytes), { minByteLength: 0 })).toBeNull()
+    expect(inspectXlsx(bytes, 'chart.xlsx')?.stats.cellCount).toBe(1)
   })
 })
 
@@ -1096,20 +1052,19 @@ function countLazyZipEntryStreams(zip: Record<string, Uint8Array>, path: string)
     throw new Error(`Missing lazy ZIP metadata for ${path}`)
   }
   const source = metadata.source
-  const localHeader = source.readRange(entry.localHeaderOffset, entry.localHeaderOffset + 30)
-  const fileNameLength = readLittleEndianUint16(localHeader, 26)
-  const extraFieldLength = readLittleEndianUint16(localHeader, 28)
+  const fileNameLength = readLittleEndianUint16(source, entry.localHeaderOffset + 26)
+  const extraFieldLength = readLittleEndianUint16(source, entry.localHeaderOffset + 28)
   const dataStart = entry.localHeaderOffset + 30 + fileNameLength + extraFieldLength
   const dataEnd = dataStart + entry.compressedSize
   let streamCount = 0
   metadata.source = new Proxy(source, {
     get(target, property) {
-      if (property === 'readRange') {
+      if (property === 'subarray') {
         return (start?: number, end?: number) => {
           if (start === dataStart && end === dataEnd) {
             streamCount += 1
           }
-          return target.readRange(start ?? 0, end ?? target.byteLength)
+          return target.subarray(start, end)
         }
       }
       const value = Reflect.get(target, property, target)
@@ -1121,7 +1076,7 @@ function countLazyZipEntryStreams(zip: Record<string, Uint8Array>, path: string)
 
 function readLazyZipMetadata(zip: Record<string, Uint8Array>):
   | {
-      source: LazyZipByteSource
+      source: Uint8Array
       readonly entriesByPath: ReadonlyMap<
         string,
         {
@@ -1141,7 +1096,7 @@ function readLazyZipMetadata(zip: Record<string, Uint8Array>):
 }
 
 function isLazyZipMetadata(value: unknown): value is {
-  source: LazyZipByteSource
+  source: Uint8Array
   readonly entriesByPath: ReadonlyMap<
     string,
     {
@@ -1154,22 +1109,10 @@ function isLazyZipMetadata(value: unknown): value is {
     typeof value === 'object' &&
     value !== null &&
     'source' in value &&
-    isLazyZipByteSource(value.source) &&
+    value.source instanceof Uint8Array &&
     'entriesByPath' in value &&
     value.entriesByPath instanceof Map
   )
-}
-
-interface LazyZipByteSource {
-  readonly byteLength: number
-  readRange(start: number, end: number): Uint8Array
-}
-
-function isLazyZipByteSource(value: unknown): value is LazyZipByteSource {
-  if (typeof value !== 'object' || value === null) {
-    return false
-  }
-  return typeof Reflect.get(value, 'byteLength') === 'number' && typeof Reflect.get(value, 'readRange') === 'function'
 }
 
 function readLittleEndianUint16(source: Uint8Array, offset: number): number {

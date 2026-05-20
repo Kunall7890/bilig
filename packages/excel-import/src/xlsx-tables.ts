@@ -348,12 +348,8 @@ function parseTableXml(sheetName: string, xml: string): WorkbookTableSnapshot | 
     }
     return [column]
   })
-  const hasTotalsRowFormula = asArray(recordChild(table, 'tableColumns')?.['tableColumn']).some(
-    (entry) => isRecord(entry) && (typeof entry['totalsRowFormula'] === 'string' || isRecord(entry['totalsRowFormula'])),
-  )
   const style = parseTableStyle(recordChild(table, 'tableStyleInfo'))
   const sortState = readSortStateXml(xml)
-  const explicitTotalsRow = parseBooleanAttribute(table['totalsRowShown']) ?? parseBooleanAttribute(table['totalsRowCount'])
   return {
     name,
     sheetName,
@@ -362,7 +358,7 @@ function parseTableXml(sheetName: string, xml: string): WorkbookTableSnapshot | 
     columnNames: columns.map((column) => column.name),
     ...(columns.some((column) => column.totalsRowLabel !== undefined || column.totalsRowFunction !== undefined) ? { columns } : {}),
     headerRow: table['headerRowCount'] !== '0',
-    totalsRow: explicitTotalsRow ?? hasTotalsRowFormula,
+    totalsRow: table['totalsRowShown'] === '1' || table['totalsRowCount'] === '1',
     ...(style ? { style } : {}),
     ...(sortState ? { sortState } : {}),
   }

@@ -5,6 +5,7 @@ import type {
   WorkbookSnapshot,
   WorkbookTableSnapshot,
 } from '@bilig/protocol'
+import { attachRuntimeImage } from '@bilig/core'
 import { createSheetPreview, normalizeWorkbookName } from './workbook-import-helpers.js'
 import { XLSX_CONTENT_TYPE } from './workbook-import-content-types.js'
 import { createWorkbookPreview, type ImportedWorkbookPreview } from './workbook-import-preview.js'
@@ -16,6 +17,7 @@ import {
 } from './xlsx-conditional-formats.js'
 import { readImportedWorkbookDrawingArtifactsFromWorksheetRelationships } from './xlsx-drawing-artifacts.js'
 import { readImportedSheetAutoFilters } from './xlsx-filters.js'
+import { decodeXmlText, readWorkbookDefinedNames, readXmlAttribute, resolveTargetPath } from './xlsx-large-simple-defined-names.js'
 import { readLargeSimpleSheetHyperlinks, resolveLargeSimpleSheetHyperlinks } from './xlsx-large-simple-hyperlinks.js'
 import { LargeSimpleXlsxImportPhaseRecorder, type LargeSimpleXlsxImportPhaseTelemetry } from './xlsx-large-simple-import-telemetry.js'
 import { readLargeSimpleSheetPrintMetadata, readLargeSimpleSheetPrintPageSetup } from './xlsx-large-simple-printer-settings.js'
@@ -25,15 +27,11 @@ import { shouldUseSharedStringlessFastPathBytes } from './xlsx-large-simple-shar
 import { buildLargeSimpleStyleRanges } from './xlsx-large-simple-style-ranges.js'
 import { readLargeSimpleWorkbookStylesFromChunks } from './xlsx-large-simple-styles.js'
 import { ImportedWorkbookStringPool } from './xlsx-large-simple-string-pool.js'
-import { readWorkbookDefinedNames, readWorkbookSheets, readWorksheetPathsByRelationshipId } from './xlsx-large-simple-workbook-metadata.js'
+import { ImportedWorkbookArena, ImportedWorksheetStyleIndexArena, type ImportedWorksheetCellScan } from './xlsx-large-simple-arena.js'
 import {
-  attachImportedRuntimeCoordinates,
-  createImportedRuntimeSheetCells,
-  type ImportedRuntimeSheetCells,
-} from './xlsx-import-runtime-coordinates.js'
-import type { ImportedWorksheetCellScan } from './xlsx-large-simple-arena.js'
-import { importedWorksheetCellScanFromHeadless } from './xlsx-large-simple-headless-cell-scan.js'
-import { parseHeadlessLargeSimpleWorksheetFromChunks } from './xlsx-large-simple-headless-worksheet-scanner.js'
+  parseHeadlessLargeSimpleWorksheetFromChunks,
+  type HeadlessLargeSimpleWorksheetScan,
+} from './xlsx-large-simple-headless-worksheet-scanner.js'
 import {
   hasUnsupportedLargeSimpleWorksheetTags,
   needsLargeSimpleWorksheetMetadataXml,
@@ -74,6 +72,8 @@ export interface LargeSimpleXlsxImportOptions {
   materializeMetadata?: boolean
   releaseArenaAfterMaterialization?: boolean
   releaseZipSource?: boolean
+  allowUnsupportedFormulaText?: boolean
+  allowUnsupportedCellMetadata?: boolean
   releaseOwnedSourceBytes?: () => LargeSimpleXlsxOwnedSourceReleaseEvidence | undefined
 }
 
@@ -95,7 +95,6 @@ export interface LargeSimpleXlsxImportStats {
   readonly tableCount: number
   readonly mergeCount: number
   readonly conditionalFormatCount: number
-  readonly dataValidationCount?: number
   readonly warningCount: number
   readonly dimensions: readonly LargeSimpleXlsxSheetDimension[]
   readonly phaseTelemetry: readonly LargeSimpleXlsxImportPhaseTelemetry[]
@@ -109,9 +108,19 @@ export interface LargeSimpleXlsxSheetDimension {
   readonly usedRange: ImportedWorksheetCellScan['usedRange']
 }
 
+interface WorkbookSheetEntry {
+  readonly name: string
+  readonly relationshipId: string
+}
+
+interface WorkbookRelationship {
+  readonly id: string
+  readonly type: string
+  readonly target: string
+}
+
 interface ParsedWorksheet {
   readonly sheet: WorkbookSnapshot['sheets'][number]
-  readonly runtimeSheetCells: ImportedRuntimeSheetCells
   readonly preview: ReturnType<typeof createSheetPreview>
   readonly stats: {
     readonly cellCount: number
@@ -120,7 +129,6 @@ interface ParsedWorksheet {
     readonly tableCount: number
     readonly mergeCount: number
     readonly conditionalFormatCount: number
-    readonly dataValidationCount: number
     readonly dimension: LargeSimpleXlsxSheetDimension
   }
 }
@@ -137,17 +145,18 @@ interface ScannedWorksheet {
 type LargeSimpleSheetMetadataInput = Pick<
   SheetMetadataSnapshot,
   'conditionalFormatArtifacts' | 'conditionalFormats' | 'drawingArtifacts' | 'filters' | 'hyperlinks' | 'printerSettings' | 'printPageSetup'
-> &
-  Pick<SheetMetadataSnapshot, 'validations'>
+>
 
 const defaultLargeSimpleXlsxByteThreshold = 1_000_000
+const lazySheetCellMaterializationThreshold = 100_000
 const workbookPath = 'xl/workbook.xml'
 const workbookRelationshipsPath = 'xl/_rels/workbook.xml.rels'
 const sharedStringsPath = 'xl/sharedStrings.xml'
 const stylesPath = 'xl/styles.xml'
+const worksheetRelationshipType = 'http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet'
 const unsupportedPackagePathPattern =
   /^xl\/(?:charts|chartSheets|comments|ctrlProps|externalLinks|model|pivotCache|pivotTables|threadedComments|vbaProject\.bin)/u
-const maxPreservedBlankStyleCellCount = 100_000
+const maxPreservedBlankStyleCellCount = 10_000
 
 export function tryImportLargeSimpleXlsx(
   source: LargeSimpleXlsxImportSource,
@@ -196,6 +205,7 @@ export function tryImportLargeSimpleXlsx(
   const materializeMetadata = options.materializeMetadata !== false
   const hasSharedStrings = packagePaths.includes(sharedStringsPath)
   const hasStyles = packagePaths.includes(stylesPath)
+  const deduplicateInlineStrings = hasSharedStrings
   let fallbackSharedStrings: readonly LargeSimpleSharedStringEntry[] | null | undefined = hasSharedStrings ? undefined : []
   delete zip[workbookPath]
   delete zip[workbookRelationshipsPath]
@@ -205,7 +215,6 @@ export function tryImportLargeSimpleXlsx(
   phaseRecorder.finish('zip-setup', zipSetupStart)
   const importedTables: WorkbookTableSnapshot[] = []
   const sheets: WorkbookSnapshot['sheets'] = []
-  const runtimeSheetCells: ImportedRuntimeSheetCells[] = []
   const previewSheets: ParsedWorksheet['preview'][] = []
   const sheetStats: ParsedWorksheet['stats'][] = []
   const styleCatalog = new Map<string, CellStyleRecord>()
@@ -216,7 +225,6 @@ export function tryImportLargeSimpleXlsx(
   const emptyStylesByIndex = new Map<number, Omit<CellStyleRecord, 'id'>>()
   const appendParsedWorksheet = (parsed: ParsedWorksheet): void => {
     sheets.push(parsed.sheet)
-    runtimeSheetCells.push(parsed.runtimeSheetCells)
     previewSheets.push(parsed.preview)
     sheetStats.push(parsed.stats)
   }
@@ -231,7 +239,7 @@ export function tryImportLargeSimpleXlsx(
       const headless = parseHeadlessLargeSimpleWorksheetFromChunks(
         (onChunk) => forEachInflatedXlsxZipEntryChunk(zip, entry.path, onChunk),
         order,
-        { hasSharedStrings, sheetName: entry.name },
+        { hasSharedStrings },
       )
       if (headless && (hasSharedStrings || headless.valueCellCount > 0)) {
         cellScan = importedWorksheetCellScanFromHeadless(headless)
@@ -249,12 +257,52 @@ export function tryImportLargeSimpleXlsx(
           retainMetadataXml: materializeMetadata,
           sheetName: entry.name,
           stringPool,
+          deduplicateStrings: deduplicateInlineStrings,
+          ...(options.allowUnsupportedFormulaText === undefined
+            ? {}
+            : { allowUnsupportedFormulaText: options.allowUnsupportedFormulaText }),
+          ...(options.allowUnsupportedCellMetadata === undefined
+            ? {}
+            : { allowUnsupportedCellMetadata: options.allowUnsupportedCellMetadata }),
         },
       )
       if (streamed && (hasSharedStrings || streamed.cellScan.valueCellCount > 0)) {
         cellScan = streamed.cellScan
         streamedWorksheetXml = streamed.metadataXml
         streamedMetadataScan = streamed.metadata
+        if (
+          materializeCells &&
+          options.allowUnsupportedCellMetadata !== true &&
+          cellScan.blankStyleCellCount > maxPreservedBlankStyleCellCount
+        ) {
+          const compactStreamed = parseLargeSimpleWorksheetCellsFromChunks(
+            (onChunk) => forEachInflatedXlsxZipEntryChunk(zip, entry.path, onChunk),
+            order,
+            {
+              hasSharedStrings,
+              retainCells: materializeCells,
+              sharedStrings: fallbackSharedStrings ?? [],
+              deferSharedStrings: materializeCells && hasSharedStrings,
+              retainMetadataXml: materializeMetadata,
+              sheetName: entry.name,
+              stringPool,
+              deduplicateStrings: deduplicateInlineStrings,
+              preserveBlankStyleCells: false,
+              ...(options.allowUnsupportedFormulaText === undefined
+                ? {}
+                : { allowUnsupportedFormulaText: options.allowUnsupportedFormulaText }),
+              ...(options.allowUnsupportedCellMetadata === undefined
+                ? {}
+                : { allowUnsupportedCellMetadata: options.allowUnsupportedCellMetadata }),
+            },
+          )
+          if (!compactStreamed) {
+            return null
+          }
+          cellScan = compactStreamed.cellScan
+          streamedWorksheetXml = compactStreamed.metadataXml
+          streamedMetadataScan = compactStreamed.metadata
+        }
         delete zip[entry.path]
       }
     }
@@ -280,15 +328,30 @@ export function tryImportLargeSimpleXlsx(
       cellScan = parseLargeSimpleWorksheetCells(worksheetBytes, fallbackSharedStrings ?? [], order, {
         retainCells: materializeCells,
         stringPool,
+        deduplicateStrings: deduplicateInlineStrings,
+        ...(options.allowUnsupportedFormulaText === undefined ? {} : { allowUnsupportedFormulaText: options.allowUnsupportedFormulaText }),
       })
+      if (
+        cellScan &&
+        materializeCells &&
+        options.allowUnsupportedCellMetadata !== true &&
+        cellScan.blankStyleCellCount > maxPreservedBlankStyleCellCount
+      ) {
+        cellScan = parseLargeSimpleWorksheetCells(worksheetBytes, fallbackSharedStrings ?? [], order, {
+          retainCells: materializeCells,
+          stringPool,
+          deduplicateStrings: deduplicateInlineStrings,
+          preserveBlankStyleCells: false,
+          ...(options.allowUnsupportedFormulaText === undefined
+            ? {}
+            : { allowUnsupportedFormulaText: options.allowUnsupportedFormulaText }),
+        })
+      }
     }
     if (!cellScan) {
       return null
     }
     retainedMetadataScan = streamedMetadataScan
-    if (materializeCells && cellScan.blankStyleCellCount > 0 && cellScan.blankStyleCellCount <= maxPreservedBlankStyleCellCount) {
-      return null
-    }
     cellScan.arena.collectSharedStringIndexes(referencedSharedStringIndexes)
     phaseRecorder.finish('worksheet-scan', worksheetScanStart)
     const metadataParsingStart = phaseRecorder.start()
@@ -364,9 +427,6 @@ export function tryImportLargeSimpleXlsx(
         importedTables.push(...sheetTables)
       }
     }
-    if (materializeCells && streamedMetadataScan?.dataValidations && streamedMetadataScan.dataValidations.length > 0) {
-      metadataInput = { ...metadataInput, validations: [...streamedMetadataScan.dataValidations] }
-    }
     if (materializeCells) {
       const printPageSetup =
         streamedMetadataScan?.printPageSetup ?? (worksheetXml ? readLargeSimpleSheetPrintPageSetup(worksheetXml) : undefined)
@@ -435,15 +495,16 @@ export function tryImportLargeSimpleXlsx(
     }
     scanned.cellScan.styleIndexes.collectRequiredStyleIndexes(requiredStyleIndexes)
   }
-  const stylesByIndex =
+  const parsedStylesByIndex =
     materializeCells && hasStyles
       ? readLargeSimpleWorkbookStylesFromChunks(
           (onChunk) => forEachInflatedXlsxZipEntryChunk(zip, stylesPath, onChunk),
           requiredStyleIndexes,
         )
       : new Map()
-  if (stylesByIndex === null) {
-    return null
+  const stylesByIndex = parsedStylesByIndex ?? new Map()
+  if (parsedStylesByIndex === null) {
+    warnings.push('Some cell styles were ignored during XLSX import.')
   }
   requiredStyleIndexes.clear()
   delete zip[stylesPath]
@@ -478,28 +539,17 @@ export function tryImportLargeSimpleXlsx(
       ...ownedSourceReleaseEvidence,
     })
   }
-  let remainingSharedStringSheets =
-    materializeCells && hasSharedStrings
-      ? scannedWorksheets.reduce((sum, scanned) => sum + ((scanned?.cellScan.arena.sharedStringRefCount ?? 0) > 0 ? 1 : 0), 0)
-      : 0
   for (const [index, scanned] of scannedWorksheets.entries()) {
     if (!scanned) {
       continue
     }
     const snapshotMaterializationStart = phaseRecorder.start()
-    const sheetHasSharedStrings = materializeCells && hasSharedStrings && scanned.cellScan.arena.sharedStringRefCount > 0
-    const resolvedRichTextCells = sheetHasSharedStrings ? scanned.cellScan.arena.resolveSharedStrings(sharedStrings) : []
+    const resolvedRichTextCells = materializeCells && hasSharedStrings ? scanned.cellScan.arena.resolveSharedStrings(sharedStrings) : []
     if (resolvedRichTextCells === null) {
       return null
     }
     if (resolvedRichTextCells.length > 0) {
       scanned.cellScan.richTextCells.push(...resolvedRichTextCells)
-    }
-    if (sheetHasSharedStrings) {
-      remainingSharedStringSheets -= 1
-      if (remainingSharedStringSheets === 0) {
-        sharedStrings = []
-      }
     }
     const drawingArtifacts = importedDrawingArtifacts?.sheetArtifactsByName.get(scanned.name)
     const parsed = buildParsedWorksheet(
@@ -527,6 +577,64 @@ export function tryImportLargeSimpleXlsx(
   stringPool.release()
   const sortedImportedTables =
     importedTables.length > 0 ? importedTables.toSorted((left, right) => left.name.localeCompare(right.name)) : undefined
+  const hasFormulaCells = sheetStats.some((entry) => entry.formulaCellCount > 0)
+  const workbookMetadata =
+    workbookDefinedNames.definedNames ||
+    importedDrawingArtifacts?.artifacts ||
+    sortedImportedTables ||
+    styleCatalog.size > 0 ||
+    hasFormulaCells
+      ? {
+          ...(workbookDefinedNames.definedNames ? { definedNames: workbookDefinedNames.definedNames } : {}),
+          ...(importedDrawingArtifacts?.artifacts ? { drawingArtifacts: importedDrawingArtifacts.artifacts } : {}),
+          ...(sortedImportedTables ? { tables: sortedImportedTables } : {}),
+          ...(styleCatalog.size > 0 ? { styles: [...styleCatalog.values()] } : {}),
+          ...(hasFormulaCells
+            ? {
+                calculationSettings: {
+                  mode: 'automatic' as const,
+                  compatibilityMode: 'excel-modern' as const,
+                  fullCalcOnLoad: false,
+                  forceFullCalc: false,
+                },
+              }
+            : {}),
+        }
+      : undefined
+  const runtimeSheetCells = sheetStats.flatMap((entry, index) => {
+    const sheet = sheets[index]
+    const usedRange = entry.dimension.usedRange
+    if (
+      !sheet ||
+      usedRange === null ||
+      usedRange.startRow !== 0 ||
+      usedRange.startColumn !== 0 ||
+      entry.cellCount !== sheet.cells.length ||
+      entry.cellCount !== entry.dimension.rowCount * entry.dimension.columnCount
+    ) {
+      return []
+    }
+    return [
+      {
+        sheetName: sheet.name,
+        coords: [],
+        coordinateOrder: 'dense-row-major' as const,
+        dimensions: {
+          width: entry.dimension.columnCount,
+          height: entry.dimension.rowCount,
+        },
+        cellCount: entry.cellCount,
+      },
+    ]
+  })
+  const snapshot: WorkbookSnapshot = {
+    version: 1,
+    workbook: {
+      name: workbookName,
+      ...(workbookMetadata ? { metadata: workbookMetadata } : {}),
+    },
+    sheets,
+  }
   const stats: LargeSimpleXlsxImportStats = {
     sheetCount: sheets.length,
     cellCount: sheetStats.reduce((sum, entry) => sum + entry.cellCount, 0),
@@ -536,33 +644,22 @@ export function tryImportLargeSimpleXlsx(
     tableCount: sortedImportedTables?.length ?? sheetStats.reduce((sum, entry) => sum + entry.tableCount, 0),
     mergeCount: sheetStats.reduce((sum, entry) => sum + entry.mergeCount, 0),
     conditionalFormatCount: sheetStats.reduce((sum, entry) => sum + entry.conditionalFormatCount, 0),
-    dataValidationCount: sheetStats.reduce((sum, entry) => sum + entry.dataValidationCount, 0),
     warningCount: warnings.length,
     dimensions: sheetStats.map((entry) => entry.dimension),
     phaseTelemetry: phaseRecorder.entries(),
   }
 
   return {
-    snapshot: attachImportedRuntimeCoordinates(
-      {
-        version: 1,
-        workbook: {
-          name: workbookName,
-          ...(workbookDefinedNames.definedNames || importedDrawingArtifacts?.artifacts || sortedImportedTables || styleCatalog.size > 0
-            ? {
-                metadata: {
-                  ...(workbookDefinedNames.definedNames ? { definedNames: workbookDefinedNames.definedNames } : {}),
-                  ...(importedDrawingArtifacts?.artifacts ? { drawingArtifacts: importedDrawingArtifacts.artifacts } : {}),
-                  ...(sortedImportedTables ? { tables: sortedImportedTables } : {}),
-                  ...(styleCatalog.size > 0 ? { styles: [...styleCatalog.values()] } : {}),
-                },
-              }
-            : {}),
-        },
-        sheets,
-      },
-      runtimeSheetCells,
-    ),
+    snapshot:
+      runtimeSheetCells.length > 0
+        ? attachRuntimeImage(snapshot, {
+            version: 1,
+            templateBank: [],
+            formulaInstances: [],
+            formulaValues: [],
+            sheetCells: runtimeSheetCells,
+          })
+        : snapshot,
     workbookName,
     sheetNames: workbookSheets.map((entry) => entry.name),
     warnings,
@@ -654,33 +751,18 @@ function buildParsedWorksheet(
     ...(input.drawingArtifacts ? { drawingArtifacts: input.drawingArtifacts } : {}),
     ...(input.filters ? { filters: input.filters } : {}),
     ...(input.hyperlinks ? { hyperlinks: input.hyperlinks } : {}),
-    ...(input.validations ? { validations: input.validations } : {}),
     ...(conditionalFormats ? { conditionalFormats } : {}),
     ...(input.conditionalFormatArtifacts ? { conditionalFormatArtifacts: input.conditionalFormatArtifacts } : {}),
     ...(input.printerSettings ? { printerSettings: input.printerSettings } : {}),
     ...(input.printPageSetup ? { printPageSetup: input.printPageSetup } : {}),
     ...(cellScan.richTextCells.length > 0 ? { richTextArtifacts: { cells: cellScan.richTextCells } } : {}),
   }
-  const preview = createSheetPreview({
-    name: sheetName,
-    rowCount: cellScan.rowCount,
-    columnCount: cellScan.columnCount,
-    nonEmptyCellCount: cellScan.cellCount,
-    readCellText: (row, column) => cellScan.arena.readPreviewText(row, column),
-  })
-  const cells = options.materializeCells ? cellScan.arena.materializeSheetCells(cellScan.sheetIndex) : []
-  const runtimeSheetCells = createImportedRuntimeSheetCells({
-    sheetName,
-    coords: cells.flatMap((cell) =>
-      typeof cell.row === 'number' && typeof cell.col === 'number' ? [{ row: cell.row, col: cell.col }] : [],
-    ),
-    width: cellScan.columnCount,
-    height: cellScan.rowCount,
-  })
-  if (options.releaseArenaAfterMaterialization === true) {
-    cellScan.arena.release()
-    cellScan.styleIndexes.release()
-  }
+  const useLazyCells = options.materializeCells && cellScan.cellCount > lazySheetCellMaterializationThreshold
+  const cells = options.materializeCells
+    ? useLazyCells
+      ? cellScan.arena.createLazySheetCells(cellScan.sheetIndex)
+      : cellScan.arena.materializeSheetCells(cellScan.sheetIndex)
+    : []
   const sheet: WorkbookSnapshot['sheets'][number] = {
     id: order + 1,
     name: sheetName,
@@ -688,10 +770,15 @@ function buildParsedWorksheet(
     ...(Object.keys(metadata).length > 0 ? { metadata } : {}),
     cells,
   }
-  return {
+  const parsed: ParsedWorksheet = {
     sheet,
-    runtimeSheetCells,
-    preview,
+    preview: createSheetPreview({
+      name: sheetName,
+      rowCount: cellScan.rowCount,
+      columnCount: cellScan.columnCount,
+      nonEmptyCellCount: cellScan.cellCount,
+      readCellText: (row, column) => cellScan.arena.readPreviewText(row, column),
+    }),
     stats: {
       cellCount: cellScan.cellCount,
       formulaCellCount: cellScan.formulaCellCount,
@@ -699,7 +786,6 @@ function buildParsedWorksheet(
       tableCount: cellScan.tableCount ?? 0,
       mergeCount,
       conditionalFormatCount,
-      dataValidationCount: input.validations?.length ?? cellScan.dataValidationCount ?? 0,
       dimension: {
         sheetName,
         rowCount: cellScan.rowCount,
@@ -709,6 +795,11 @@ function buildParsedWorksheet(
       },
     },
   }
+  if (options.releaseArenaAfterMaterialization === true && !useLazyCells) {
+    cellScan.arena.release()
+    cellScan.styleIndexes.release()
+  }
+  return parsed
 }
 
 function drawingRelationshipIdForScannedWorksheet(scanned: ScannedWorksheet): string | undefined {
@@ -720,4 +811,57 @@ function drawingRelationshipIdForScannedWorksheet(scanned: ScannedWorksheet): st
 
 function readConditionalFormattingBlockCount(worksheetXml: string): number {
   return [...worksheetXml.matchAll(/<(?:[A-Za-z_][\w.-]*:)?conditionalFormatting\b/gu)].length
+}
+
+function importedWorksheetCellScanFromHeadless(scan: HeadlessLargeSimpleWorksheetScan): ImportedWorksheetCellScan {
+  return {
+    arena: new ImportedWorkbookArena(),
+    sheetIndex: scan.sheetIndex,
+    richTextCells: [],
+    styleIndexes: new ImportedWorksheetStyleIndexArena(),
+    blankStyleCellCount: 0,
+    cellCount: scan.cellCount,
+    valueCellCount: scan.valueCellCount,
+    formulaCellCount: scan.formulaCellCount,
+    mergeCount: scan.mergeCount,
+    conditionalFormatCount: scan.conditionalFormatCount,
+    tableCount: scan.tableCount,
+    rowCount: scan.rowCount,
+    columnCount: scan.columnCount,
+    usedRange: scan.usedRange,
+  }
+}
+
+function readWorkbookSheets(workbookXml: string, stringPool?: ImportedWorkbookStringPool): WorkbookSheetEntry[] {
+  return [...workbookXml.matchAll(/<(?:[A-Za-z_][\w.-]*:)?sheet\b(?:[^>"']|"[^"]*"|'[^']*')*\/?>/gu)].flatMap((match) => {
+    const tag = match[0]
+    const name = readXmlAttribute(tag, 'name')
+    const relationshipId = readXmlAttribute(tag, 'r:id') ?? readXmlAttribute(tag, 'id')
+    if (!name || !relationshipId) {
+      return []
+    }
+    const decodedName = decodeXmlText(name)
+    return [{ name: stringPool?.intern(decodedName) ?? decodedName, relationshipId }]
+  })
+}
+
+function readWorksheetPathsByRelationshipId(workbookRelationshipsXml: string): Map<string, string> {
+  return new Map(
+    readRelationships(workbookRelationshipsXml).flatMap((relationship) => {
+      if (relationship.type !== worksheetRelationshipType && !relationship.target.includes('worksheets/')) {
+        return []
+      }
+      return [[relationship.id, normalizeZipPath(resolveTargetPath(workbookPath, relationship.target))]]
+    }),
+  )
+}
+
+function readRelationships(relationshipsXml: string): WorkbookRelationship[] {
+  return [...relationshipsXml.matchAll(/<(?:[A-Za-z_][\w.-]*:)?Relationship\b(?:[^>"']|"[^"]*"|'[^']*')*\/?>/gu)].flatMap((match) => {
+    const tag = match[0]
+    const id = readXmlAttribute(tag, 'Id')
+    const type = readXmlAttribute(tag, 'Type')
+    const target = readXmlAttribute(tag, 'Target')
+    return id && type && target ? [{ id, type, target }] : []
+  })
 }

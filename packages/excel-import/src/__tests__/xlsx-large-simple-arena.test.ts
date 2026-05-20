@@ -47,6 +47,21 @@ describe('large simple XLSX import arena', () => {
     expect(pool.count).toBe(2)
   })
 
+  it('can retain repeated strings without building de-duplication maps', () => {
+    const pool = new ImportedWorkbookStringPool()
+    const arena = new ImportedWorkbookArena(pool, { deduplicateStrings: false })
+
+    arena.addCell({ sheetIndex: 0, row: 0, column: 0, value: 'Repeated label' })
+    arena.addCell({ sheetIndex: 0, row: 1, column: 0, value: 'Repeated label' })
+
+    expect(arena.snapshot().strings).toEqual(['Repeated label', 'Repeated label'])
+    expect(arena.materializeSheetCells(0)).toEqual([
+      { address: 'A1', value: 'Repeated label' },
+      { address: 'A2', value: 'Repeated label' },
+    ])
+    expect(pool.count).toBe(0)
+  })
+
   it('uses scalar sheet ownership for single-sheet arenas and falls back only for mixed ownership', () => {
     const arena = new ImportedWorkbookArena()
     arena.addCell({ sheetIndex: 4, row: 0, column: 0, value: 1 })
@@ -92,69 +107,6 @@ describe('large simple XLSX import arena', () => {
 
     arena.setFormula(numericCell, '1+1')
     expect(arena.snapshot().formulaIds).toEqual(new Uint32Array([0, 0xffffffff, 0xffffffff]))
-  })
-
-  it('keeps large arena typed-array capacity close to live cell count', () => {
-    const arena = new ImportedWorkbookArena()
-    const styleIndexes = new ImportedWorksheetStyleIndexArena()
-    const cellCount = 100_000
-
-    for (let row = 0; row < cellCount; row += 1) {
-      arena.addCell({ sheetIndex: 0, row, column: 0, value: row })
-      styleIndexes.add(row, 0, 1)
-    }
-
-    expect(arena.cellCount).toBe(cellCount)
-    expect(styleIndexes.count).toBe(cellCount)
-    expect(arena.allocatedCellCapacity).toBeLessThanOrEqual(Math.ceil(cellCount * 1.25))
-    expect(styleIndexes.allocatedCapacity).toBeLessThanOrEqual(Math.ceil(cellCount * 1.25))
-    expect(arena.allocatedCellCapacity).toBeLessThan(131_072)
-    expect(styleIndexes.allocatedCapacity).toBeLessThan(131_072)
-  })
-
-  it('tracks shared-string references so non-shared sheets skip resolution work', () => {
-    const numericOnlyArena = new ImportedWorkbookArena()
-    numericOnlyArena.addCell({ sheetIndex: 0, row: 0, column: 0, value: 42 })
-    const referencedIndexes = new Set<number>()
-
-    numericOnlyArena.collectSharedStringIndexes(referencedIndexes)
-
-    expect(numericOnlyArena.sharedStringRefCount).toBe(0)
-    expect(referencedIndexes.size).toBe(0)
-    expect(numericOnlyArena.resolveSharedStrings([])).toEqual([])
-    expect(numericOnlyArena.materializeSheetCells(0)).toEqual([{ address: 'A1', value: 42 }])
-
-    const sharedArena = new ImportedWorkbookArena()
-    sharedArena.addSharedStringCell({ sheetIndex: 1, row: 0, column: 0, sharedStringIndex: 3 })
-    sharedArena.addSharedStringCell({ sheetIndex: 1, row: 0, column: 1, sharedStringIndex: 5 })
-    const sharedIndexes = new Set<number>()
-
-    sharedArena.collectSharedStringIndexes(sharedIndexes)
-
-    expect(sharedArena.sharedStringRefCount).toBe(2)
-    expect([...sharedIndexes].toSorted((left, right) => left - right)).toEqual([3, 5])
-    expect(
-      sharedArena.resolveSharedStrings([
-        { text: 'unused 0', rich: false },
-        { text: 'unused 1', rich: false },
-        { text: 'unused 2', rich: false },
-        { text: 'Alpha', rich: false },
-        { text: 'unused 4', rich: false },
-        { text: 'Rich Beta', rich: true, xml: '<si><r><t>Rich Beta</t></r></si>' },
-      ]),
-    ).toEqual([
-      {
-        address: 'B1',
-        text: 'Rich Beta',
-        storage: 'sharedString',
-        xml: '<si><r><t>Rich Beta</t></r></si>',
-      },
-    ])
-    expect(sharedArena.sharedStringRefCount).toBe(0)
-    expect(sharedArena.materializeSheetCells(1)).toEqual([
-      { address: 'A1', value: 'Alpha' },
-      { address: 'B1', value: 'Rich Beta' },
-    ])
   })
 
   it('keeps preview values in fixed slots without overriding values with formulas', () => {

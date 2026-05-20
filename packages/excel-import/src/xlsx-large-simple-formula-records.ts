@@ -19,6 +19,8 @@ export class LargeSimpleFormulaRecords {
   private readonly rawFormulaIdsByValue = new Map<string, number>()
   private length = 0
 
+  constructor(private readonly allowUnsupportedFormulaText = false) {}
+
   get count(): number {
     return this.length
   }
@@ -41,7 +43,7 @@ export class LargeSimpleFormulaRecords {
       if (this.typeCodes[index] !== formulaTypeShared || !this.hasRawFormulaText(index)) {
         continue
       }
-      const normalized = normalizeLargeSimpleFormula(this.rawFormulaText(index))
+      const normalized = normalizeLargeSimpleFormula(this.rawFormulaText(index), this.allowUnsupportedFormulaText)
       const sharedIndex = this.sharedIndexes[index] ?? noPoolId
       if (normalized === null || sharedIndex === noPoolId) {
         return false
@@ -74,7 +76,7 @@ export class LargeSimpleFormulaRecords {
         }
         continue
       }
-      const normalized = normalizeLargeSimpleFormula(this.rawFormulaText(index))
+      const normalized = normalizeLargeSimpleFormula(this.rawFormulaText(index), this.allowUnsupportedFormulaText)
       if (normalized === null) {
         return false
       }
@@ -93,6 +95,11 @@ export class LargeSimpleFormulaRecords {
   }
 
   private internRawFormula(value: string): number {
+    if (this.allowUnsupportedFormulaText) {
+      const next = this.rawFormulas.length
+      this.rawFormulas.push(value)
+      return next
+    }
     const existing = this.rawFormulaIdsByValue.get(value)
     if (existing !== undefined) {
       return existing
@@ -138,15 +145,14 @@ interface SharedFormulaBase {
   readonly formula: string
 }
 
-function normalizeLargeSimpleFormula(rawFormulaText: string | undefined): string | null {
+function normalizeLargeSimpleFormula(rawFormulaText: string | undefined, allowUnsupportedFormulaText: boolean): string | null {
   const decoded = rawFormulaText === undefined ? undefined : decodeXmlText(rawFormulaText).trim()
   if (decoded === undefined || decoded.length === 0) {
     return null
   }
   const formula = normalizeImportedFormulaSource(decoded)
-  return formulaReferencesExternalWorkbook(formula) ||
-    formulaReferencesVolatileFunction(formula) ||
-    formulaReferencesStructuredTable(formula)
+  return !allowUnsupportedFormulaText &&
+    (formulaReferencesExternalWorkbook(formula) || formulaReferencesVolatileFunction(formula) || formulaReferencesStructuredTable(formula))
     ? null
     : formula
 }

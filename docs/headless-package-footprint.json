@@ -32,17 +32,26 @@
       "xlsx",
       "xlsx-calc"
     ],
-    "dependencyNames": ["@bilig/core", "@bilig/formula", "@bilig/protocol", "fast-xml-parser", "fflate", "xlsx", "xlsx-js-style"],
+    "dependencyNames": [
+      "@bilig/core",
+      "@bilig/formula",
+      "@bilig/protocol",
+      "fast-xml-parser",
+      "fflate",
+      "fflate-stream",
+      "xlsx",
+      "xlsx-js-style"
+    ],
     "hasFormulaClinicBinary": true,
     "hasXlsxSubpath": true,
     "hasMcpBinary": true
   },
   "npmPackDryRun": {
-    "tarballBytes": 499305,
-    "unpackedBytes": 2999814,
-    "entryCount": 498,
+    "tarballBytes": 608905,
+    "unpackedBytes": 3718179,
+    "entryCount": 600,
     "readmeBytes": 47634,
-    "packageJsonBytes": 2455
+    "packageJsonBytes": 2496
   },
   "coldStartProbe": {
     "runtime": "node",

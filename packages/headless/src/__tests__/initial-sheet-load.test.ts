@@ -32,6 +32,40 @@ describe('initial mixed sheet load', () => {
     }
   })
 
+  it('hydrates imported cached formula values when full calculation on load is disabled', () => {
+    const snapshot: WorkbookSnapshot = {
+      version: 1,
+      workbook: {
+        name: 'Imported',
+        metadata: {
+          calculationSettings: {
+            mode: 'automatic',
+            compatibilityMode: 'excel-modern',
+            fullCalcOnLoad: false,
+          },
+        },
+      },
+      sheets: [
+        {
+          id: 1,
+          name: 'Sheet1',
+          order: 0,
+          cells: [
+            { address: 'A1', value: 1 },
+            { address: 'B1', formula: 'A1+1', value: 999 },
+          ],
+        },
+      ],
+    }
+
+    const workbook = WorkPaper.buildFromSnapshot(snapshot)
+
+    expect(workbook.getCellValue({ sheet: 1, row: 0, col: 1 })).toEqual({
+      tag: ValueTag.Number,
+      value: 999,
+    })
+  })
+
   it('normalizes repeated row-template formulas during mixed-sheet initialization', () => {
     const compileSpy = vi.spyOn(formula, 'compileFormulaAst')
     const parseSpy = vi.spyOn(formula, 'parseFormula')

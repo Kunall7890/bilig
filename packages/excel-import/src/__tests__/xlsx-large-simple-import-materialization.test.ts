@@ -4,22 +4,6 @@ import { describe, expect, it } from 'vitest'
 import { tryImportLargeSimpleXlsx } from '../xlsx-large-simple-import.js'
 import { readLazyXlsxZipSourceByteLength, readXlsxZipEntriesLazy } from '../xlsx-zip.js'
 
-function cellsWithRuntimeCoordinates<T extends { readonly address: string }>(cells: readonly T[]): Array<T & { row: number; col: number }> {
-  return cells.map((cell) => ({ ...cell, ...decodeCellAddress(cell.address) }))
-}
-
-function decodeCellAddress(address: string): { row: number; col: number } {
-  const match = /^([A-Z]+)(\d+)$/u.exec(address)
-  if (!match) {
-    throw new Error(`Invalid test cell address: ${address}`)
-  }
-  let col = 0
-  for (const letter of match[1]) {
-    col = col * 26 + letter.charCodeAt(0) - 64
-  }
-  return { row: Number(match[2]) - 1, col: col - 1 }
-}
-
 describe('large simple XLSX import materialization lifetime', () => {
   it('releases ZIP source bytes before materializing independent sheets when ownership release is enabled', () => {
     const bytes = buildIndependentWorkbook([
@@ -56,14 +40,14 @@ describe('large simple XLSX import materialization lifetime', () => {
     })
 
     expect(imported?.snapshot.sheets.map((sheet) => sheet.cells)).toEqual([
-      cellsWithRuntimeCoordinates([
+      [
         { address: 'A1', value: 7 },
         { address: 'B1', value: 'A inline' },
-      ]),
-      cellsWithRuntimeCoordinates([
+      ],
+      [
         { address: 'A1', value: 11 },
         { address: 'B1', value: 'B inline' },
-      ]),
+      ],
     ])
     const phases = imported?.stats.phaseTelemetry.map((entry) => entry.phase) ?? []
     expect(phases).toEqual([
@@ -130,14 +114,14 @@ describe('large simple XLSX import materialization lifetime', () => {
     })
 
     expect(imported?.snapshot.sheets.map((sheet) => sheet.cells)).toEqual([
-      cellsWithRuntimeCoordinates([
+      [
         { address: 'A1', value: 'Alpha' },
         { address: 'B1', value: 'Beta' },
-      ]),
-      cellsWithRuntimeCoordinates([
+      ],
+      [
         { address: 'A1', value: 'Gamma' },
         { address: 'B1', value: 'Rich Value' },
-      ]),
+      ],
     ])
     expect(imported?.snapshot.sheets[1]?.metadata?.richTextArtifacts).toEqual({
       cells: [

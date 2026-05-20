@@ -67,6 +67,10 @@ import { createWorkPaperEngine, workPaperEvaluationTimeoutErrorFrom } from './wo
 type NamedExpressionValueSnapshot = WorkPaperNamedExpressionValueSnapshot
 
 let nextWorkbookId = 1
+const importedXlsxSourceBytes = Symbol.for('bilig.importedXlsxSourceBytes')
+type SnapshotWithImportedXlsxSource = WorkbookSnapshot & {
+  readonly [importedXlsxSourceBytes]?: Uint8Array
+}
 type MetadataRenameEngine = SpreadsheetEngine & {
   readonly renameSheetMetadataOnlyById?: (sheetId: number, newName: string) => boolean
 }
@@ -74,6 +78,27 @@ type MetadataRenameEngine = SpreadsheetEngine & {
 type WorkPaperStructuralInsertEngine = SpreadsheetEngine & {
   insertRows(sheetName: string, start: number, count: number, options?: { readonly emitTracked?: boolean }): void
   insertColumns(sheetName: string, start: number, count: number, options?: { readonly emitTracked?: boolean }): void
+}
+
+function clonePreservedImportedSnapshot(snapshot: WorkbookSnapshot): WorkbookSnapshot {
+  const cloned: WorkbookSnapshot = {
+    version: snapshot.version,
+    workbook: structuredClone(snapshot.workbook),
+    sheets: snapshot.sheets.map((sheet) => ({
+      ...sheet,
+      ...(sheet.metadata === undefined ? {} : { metadata: structuredClone(sheet.metadata) }),
+      cells: sheet.cells,
+    })),
+  }
+  const sourceBytes = (snapshot as SnapshotWithImportedXlsxSource)[importedXlsxSourceBytes]
+  if (sourceBytes !== undefined) {
+    Object.defineProperty(cloned, importedXlsxSourceBytes, {
+      configurable: true,
+      enumerable: false,
+      value: sourceBytes,
+    })
+  }
+  return cloned
 }
 
 export class WorkPaper extends WorkPaperRuntimeLifecycleBase {
@@ -104,6 +129,7 @@ export class WorkPaper extends WorkPaperRuntimeLifecycleBase {
   protected readonly engineEvents = new WorkPaperEngineEventTracker()
   protected engineEventsAttached = false
   protected disposed = false
+  private preservedImportedSnapshot: WorkbookSnapshot | undefined
   protected readonly mutationQueues = new WorkPaperMutationQueues({
     applyCellMutationsAtWithOptions: (refs, options) => {
       this.engine.applyCellMutationsAtWithOptions(refs, options)
@@ -157,6 +183,24 @@ export class WorkPaper extends WorkPaperRuntimeLifecycleBase {
       getNamedExpressionsFromFormula: (formula) => this.getNamedExpressionsFromFormula(formula),
     })
     return this.workPaperInternalsCache
+  }
+
+  override exportSnapshot(): WorkbookSnapshot {
+    this.assertNotDisposed()
+    this.engineEvents.materializePendingLazyChanges()
+    if (this.preservedImportedSnapshot !== undefined) {
+      return clonePreservedImportedSnapshot(this.preservedImportedSnapshot)
+    }
+    return structuredClone(this.engine.exportSnapshot())
+  }
+
+  protected override captureChanges(
+    semanticEvent: QueuedEvent | undefined,
+    mutate: () => void,
+    options: { readonly preservePendingTrackedPositions?: boolean } = {},
+  ): WorkPaperChange[] {
+    this.preservedImportedSnapshot = undefined
+    return super.captureChanges(semanticEvent, mutate, options)
   }
 
   override renameSheet(sheetId: number, nextName: string): WorkPaperChange[] {
@@ -486,6 +530,7 @@ export class WorkPaper extends WorkPaperRuntimeLifecycleBase {
       }
       throw error
     }
+    workbook.preservedImportedSnapshot = snapshot
     return workbook
   }
 

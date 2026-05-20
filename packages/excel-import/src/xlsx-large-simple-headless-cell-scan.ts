@@ -13,7 +13,7 @@ export function importedWorksheetCellScanFromHeadless(scan: HeadlessLargeSimpleW
     formulaCellCount: scan.formulaCellCount,
     mergeCount: scan.mergeCount,
     conditionalFormatCount: scan.conditionalFormatCount,
-    dataValidationCount: scan.dataValidationCount,
+    dataValidationCount: scan.dataValidationCount ?? 0,
     tableCount: scan.tableCount,
     rowCount: scan.rowCount,
     columnCount: scan.columnCount,

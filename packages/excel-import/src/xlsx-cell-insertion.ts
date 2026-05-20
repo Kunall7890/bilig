@@ -42,7 +42,8 @@ function updateRangeWithAddress(range: XLSX.Range | null, address: string): XLSX
 }
 
 function existingWorksheetDimensionRange(sheetXml: string): XLSX.Range | null {
-  const ref = /<dimension\b[^>]*\bref="([^"]+)"[^>]*(?:\/>|>[\s\S]*?<\/dimension>)/u.exec(sheetXml)?.[1]
+  const dimensionXml = findXmlElement(sheetXml, 'dimension')?.xml
+  const ref = dimensionXml ? /\bref="([^"]+)"/u.exec(dimensionXml)?.[1] : undefined
   if (!ref) {
     return null
   }
@@ -55,14 +56,12 @@ function existingWorksheetDimensionRange(sheetXml: string): XLSX.Range | null {
 
 function setWorksheetDimensionRef(sheetXml: string, range: XLSX.Range): string {
   const ref = escapeXmlAttribute(XLSX.utils.encode_range(range))
-  const dimensionPattern = /<dimension\b[^>]*(?:\/>|>[\s\S]*?<\/dimension>)/u
-  if (dimensionPattern.test(sheetXml)) {
-    return sheetXml.replace(dimensionPattern, (dimensionXml) => {
-      if (/\bref="[^"]*"/u.test(dimensionXml)) {
-        return dimensionXml.replace(/\bref="[^"]*"/u, `ref="${ref}"`)
-      }
-      return `<dimension ref="${ref}"/>`
-    })
+  const dimensionElement = findXmlElement(sheetXml, 'dimension')
+  if (dimensionElement) {
+    const dimensionXml = /\bref="[^"]*"/u.test(dimensionElement.xml)
+      ? dimensionElement.xml.replace(/\bref="[^"]*"/u, `ref="${ref}"`)
+      : `<dimension ref="${ref}"/>`
+    return `${sheetXml.slice(0, dimensionElement.start)}${dimensionXml}${sheetXml.slice(dimensionElement.end)}`
   }
   return sheetXml.replace(/<worksheet\b[^>]*>/u, (openingTag) => `${openingTag}<dimension ref="${ref}"/>`)
 }
@@ -98,6 +97,23 @@ function rowNumberForRowXml(rowXml: string): number | null {
 function appendCellsToRowXml(rowXml: string, cells: readonly MissingCellXml[]): string {
   const cellsXml = rowCellXml(cells).join('')
   return rowXml.endsWith('/>') ? rowXml.replace(/\/>$/u, `>${cellsXml}</row>`) : rowXml.replace('</row>', `${cellsXml}</row>`)
+}
+
+function findXmlElement(xml: string, localName: string): { readonly start: number; readonly end: number; readonly xml: string } | null {
+  const start = xml.indexOf(`<${localName}`)
+  if (start === -1) {
+    return null
+  }
+  const tagEnd = xml.indexOf('>', start + localName.length + 1)
+  if (tagEnd === -1) {
+    return null
+  }
+  if (xml[tagEnd - 1] === '/') {
+    return { start, end: tagEnd + 1, xml: xml.slice(start, tagEnd + 1) }
+  }
+  const closeTag = `</${localName}>`
+  const closeStart = xml.indexOf(closeTag, tagEnd + 1)
+  return closeStart === -1 ? null : { start, end: closeStart + closeTag.length, xml: xml.slice(start, closeStart + closeTag.length) }
 }
 
 function addMissingCellsToSheetDataXml(sheetDataXml: string, rowEntries: readonly [number, MissingCellXml[]][]): string {
@@ -154,20 +170,19 @@ export function addMissingCellsToSheetXml(sheetXml: string, cells: readonly Miss
     byRow.set(rowNumber, [...(byRow.get(rowNumber) ?? []), cell])
   }
   const rowEntries = [...byRow.entries()].toSorted(([left], [right]) => left - right)
-  const selfClosingSheetData = /<sheetData\b([^>]*)\/>/u
-  if (selfClosingSheetData.test(sheetXml)) {
-    const updatedSheetXml = sheetXml.replace(
-      selfClosingSheetData,
-      (_match, attributes: string) => `<sheetData${attributes}>${buildRowsXml(rowEntries)}</sheetData>`,
-    )
+  const sheetDataElement = findXmlElement(sheetXml, 'sheetData')
+  const selfClosingSheetData = sheetDataElement ? /^<sheetData\b([^>]*)\/>$/u.exec(sheetDataElement.xml) : null
+  if (sheetDataElement && selfClosingSheetData) {
+    const updatedSheetDataXml = `<sheetData${selfClosingSheetData[1] ?? ''}>${buildRowsXml(rowEntries)}</sheetData>`
+    const updatedSheetXml = `${sheetXml.slice(0, sheetDataElement.start)}${updatedSheetDataXml}${sheetXml.slice(sheetDataElement.end)}`
     return expandWorksheetDimensionForMissingCells(updatedSheetXml, cells)
   }
 
-  const sheetDataMatch = /<sheetData\b[^>]*>[\s\S]*?<\/sheetData>/u.exec(sheetXml)
-  if (sheetDataMatch) {
-    const updatedSheetXml = `${sheetXml.slice(0, sheetDataMatch.index)}${addMissingCellsToSheetDataXml(sheetDataMatch[0], rowEntries)}${sheetXml.slice(
-      sheetDataMatch.index + sheetDataMatch[0].length,
-    )}`
+  if (sheetDataElement) {
+    const updatedSheetXml = `${sheetXml.slice(0, sheetDataElement.start)}${addMissingCellsToSheetDataXml(
+      sheetDataElement.xml,
+      rowEntries,
+    )}${sheetXml.slice(sheetDataElement.end)}`
     return expandWorksheetDimensionForMissingCells(updatedSheetXml, cells)
   }
 

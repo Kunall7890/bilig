@@ -904,6 +904,8 @@ export function createEngineServiceRuntime(args: {
         requireService(formulaInitialization, 'formulaInitialization').initializePreparedCellFormulasAtNow(refs, potentialNewCells),
       initializeHydratedPreparedCellFormulasAt: (refs, potentialNewCells) =>
         requireService(formulaInitialization, 'formulaInitialization').initializeHydratedPreparedCellFormulasAtNow(refs, potentialNewCells),
+      initializeCachedFormulaSourcesAt: (refs, potentialNewCells) =>
+        requireService(formulaInitialization, 'formulaInitialization').initializeCachedFormulaSourcesAtNow(refs, potentialNewCells),
       materializePivot: (pivotRecord) => getPivot().materializePivotNow(pivotRecord),
       emitFullInvalidation: fullInvalidation.emitFullSnapshotInvalidation,
     })

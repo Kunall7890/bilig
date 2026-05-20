@@ -466,6 +466,9 @@ importers:
       fflate:
         specifier: 0.3.11
         version: 0.3.11
+      fflate-stream:
+        specifier: npm:fflate@0.8.3
+        version: fflate@0.8.3
       xlsx:
         specifier: https://cdn.sheetjs.com/xlsx-0.20.3/xlsx-0.20.3.tgz
         version: https://cdn.sheetjs.com/xlsx-0.20.3/xlsx-0.20.3.tgz

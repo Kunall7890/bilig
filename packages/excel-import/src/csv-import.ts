@@ -1,17 +1,16 @@
 import * as XLSX from 'xlsx'
-
 import { parseCsv, parseCsvCellInput, resolveCsvParseOptions, type CsvParseOptions } from '@bilig/core'
 import type { WorkbookSnapshot } from '@bilig/protocol'
 import { CSV_CONTENT_TYPE } from './workbook-import-content-types.js'
 import { createSheetPreview, normalizeCsvSheetName, normalizeWorkbookName } from './workbook-import-helpers.js'
 import { createWorkbookPreview } from './workbook-import-preview.js'
-import type { ImportedWorkbook } from './workbook-import-result.js'
 import {
   attachImportedRuntimeCoordinates,
   createImportedRuntimeSheetCells,
   pushImportedSnapshotCell,
   type ImportedRuntimeCellCoordinate,
-} from './xlsx-import-runtime-coordinates.js'
+} from './imported-runtime-coordinates.js'
+import type { ImportedWorkbook } from './index.js'
 
 export type CsvImportOptions = CsvParseOptions
 
