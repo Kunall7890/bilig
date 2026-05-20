@@ -4,6 +4,19 @@ All notable changes to `@bilig/headless` will be documented in this file.
 
 This package is released as part of the aligned bilig library package set.
 
+## 0.40.26
+
+- Release type: patch
+- Previous libraries tag: libraries-v0.40.25
+- Manual override: no
+
+## Fixes
+- perf(xlsx): stream auto-filter metadata (bfdc18e2)
+- perf(headless): avoid singleton hydrated formula bindings (18b998f3)
+
+## Internal runtime changes
+- refactor(excel-import): split worksheet stream cell readers (9a2588b9)
+
 ## 0.40.25
 
 - Release type: patch
