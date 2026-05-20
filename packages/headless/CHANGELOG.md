@@ -4,6 +4,16 @@ All notable changes to `@bilig/headless` will be documented in this file.
 
 This package is released as part of the aligned bilig library package set.
 
+## 0.40.13
+
+- Release type: patch
+- Previous libraries tag: libraries-v0.40.12
+- Manual override: no
+
+## Fixes
+- fix(xlsx): compact near-dense import coordinates (d15533c7)
+- perf(core): restore prepared runtime family runs (4312390b)
+
 ## 0.40.12
 
 - Release type: patch
