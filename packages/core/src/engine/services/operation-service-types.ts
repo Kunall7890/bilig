@@ -154,6 +154,9 @@ export interface CreateEngineOperationServiceArgs {
   readonly upsertFreshFormulaInstances?: (records: readonly FormulaInstanceSnapshot[]) => void
   readonly compileTemplateFormula?: (source: string, row: number, col: number) => FormulaTemplateResolution
   readonly setInvalidFormulaValue: (cellIndex: number) => void
+  readonly beginEvaluationBudget: (startedAtMs: number) => void
+  readonly endEvaluationBudget: () => void
+  readonly checkEvaluationBudget: (stepCost?: number) => void
   readonly beginMutationCollection: (options?: { readonly ensureScratch?: boolean }) => void
   readonly markInputChanged: (cellIndex: number, count: number) => number
   readonly markFormulaChanged: (cellIndex: number, count: number) => number

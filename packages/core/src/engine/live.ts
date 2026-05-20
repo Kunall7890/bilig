@@ -221,6 +221,9 @@ type EngineOperationRuntimeConfig = Omit<
   | 'removeFormula'
   | 'bindFormula'
   | 'setInvalidFormulaValue'
+  | 'beginEvaluationBudget'
+  | 'endEvaluationBudget'
+  | 'checkEvaluationBudget'
   | 'beginMutationCollection'
   | 'markInputChanged'
   | 'markFormulaChanged'
@@ -716,6 +719,9 @@ export function createEngineServiceRuntime(args: {
     upsertFreshFormulaInstances: (records) => binding.upsertFreshFormulaInstancesNow(records),
     compileTemplateFormula: (source, row, col) => formulaTemplates.resolveForCell(source, row, col),
     setInvalidFormulaValue: (cellIndex) => binding.invalidateFormulaNow(cellIndex),
+    beginEvaluationBudget: (startedAtMs) => args.state.beginEvaluationBudget(startedAtMs),
+    endEvaluationBudget: () => args.state.endEvaluationBudget(),
+    checkEvaluationBudget: (stepCost) => args.state.checkEvaluationBudget(stepCost),
     beginMutationCollection: (options) => support.beginMutationCollectionNow(options),
     markInputChanged: (cellIndex, count) => support.markInputChangedNow(cellIndex, count),
     markFormulaChanged: (cellIndex, count) => support.markFormulaChangedNow(cellIndex, count),
