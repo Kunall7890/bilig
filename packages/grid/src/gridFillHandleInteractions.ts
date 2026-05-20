@@ -1,4 +1,12 @@
 import { createRectangleSelectionFromRange, rectangleToAddresses } from './gridSelection.js'
+import {
+  applyGridDragAutoScroll,
+  resolveDefaultCancelAnimationFrame,
+  resolveDefaultRequestAnimationFrame,
+  type CancelGridDragFrame,
+  type GridDragScrollViewport,
+  type RequestGridDragFrame,
+} from './gridDragAutoScroll.js'
 import { resolveFillHandlePreviewRange, resolveFillHandleSelectionRange } from './gridFillHandle.js'
 import type { GridSelection, Item, Rectangle } from './gridTypes.js'
 
@@ -35,16 +43,22 @@ export function beginWorkbookGridFillHandleDrag(input: {
   setFillPreviewRangeRef: (range: Rectangle | null) => void
   setIsFillHandleDragging: (isDragging: boolean) => void
   resetHoverState: () => void
+  scrollViewport?: GridDragScrollViewport | null | undefined
+  requestAnimationFrame?: RequestGridDragFrame | undefined
+  cancelAnimationFrame?: CancelGridDragFrame | undefined
 }): void {
   const {
+    cancelAnimationFrame = resolveDefaultCancelAnimationFrame(),
     cleanupRef,
     gridSelection,
     listenerTarget,
     onFillRange,
     onSelectionChange,
     pointerId,
+    requestAnimationFrame = resolveDefaultRequestAnimationFrame(),
     resolvePointerCell,
     resetHoverState,
+    scrollViewport = null,
     setFillPreviewRange,
     setFillPreviewRangeRef,
     setGridSelection,
@@ -52,6 +66,8 @@ export function beginWorkbookGridFillHandleDrag(input: {
     sourceRange,
   } = input
   let activePreviewRange: Rectangle | null = null
+  let lastPointerEvent: FillHandlePointerEventLike | null = null
+  let autoScrollFrame: number | null = null
 
   cleanupRef.current?.()
   setFillPreviewRangeRef(null)
@@ -69,12 +85,44 @@ export function beginWorkbookGridFillHandleDrag(input: {
     setFillPreviewRange(activePreviewRange)
   }
 
+  const cancelAutoScroll = () => {
+    if (autoScrollFrame === null) {
+      return
+    }
+    cancelAnimationFrame?.(autoScrollFrame)
+    autoScrollFrame = null
+  }
+
+  const scheduleAutoScroll = () => {
+    if (!scrollViewport || !requestAnimationFrame || autoScrollFrame !== null) {
+      return
+    }
+    autoScrollFrame = requestAnimationFrame(() => {
+      autoScrollFrame = null
+      if (!lastPointerEvent || !applyGridDragAutoScroll(scrollViewport, lastPointerEvent)) {
+        return
+      }
+      updatePreview(lastPointerEvent)
+      scheduleAutoScroll()
+    })
+  }
+
+  const move = (nativeEvent: FillHandlePointerEventLike) => {
+    if (nativeEvent.pointerId !== pointerId) {
+      return
+    }
+    lastPointerEvent = nativeEvent
+    updatePreview(nativeEvent)
+    scheduleAutoScroll()
+  }
+
   const cleanup = () => {
     if (cleanupRef.current !== cleanup) {
       return
     }
+    cancelAutoScroll()
     cleanupRef.current = null
-    listenerTarget.removeEventListener('pointermove', updatePreview, true)
+    listenerTarget.removeEventListener('pointermove', move, true)
     listenerTarget.removeEventListener('pointerup', handlePointerUp, true)
     listenerTarget.removeEventListener('pointercancel', handlePointerCancel, true)
     setIsFillHandleDragging(false)
@@ -110,6 +158,8 @@ export function beginWorkbookGridFillHandleDrag(input: {
     if (nativeEvent.pointerId !== pointerId) {
       return
     }
+    lastPointerEvent = nativeEvent
+    updatePreview(nativeEvent)
     finish()
   }
 
@@ -124,7 +174,7 @@ export function beginWorkbookGridFillHandleDrag(input: {
   }
 
   cleanupRef.current = cleanup
-  listenerTarget.addEventListener('pointermove', updatePreview, true)
+  listenerTarget.addEventListener('pointermove', move, true)
   listenerTarget.addEventListener('pointerup', handlePointerUp, true)
   listenerTarget.addEventListener('pointercancel', handlePointerCancel, true)
 }

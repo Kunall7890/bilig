@@ -355,6 +355,29 @@ test('@browser-ci web app keeps fill-handle hit target aligned and pointer-only'
   await expect(page.locator('[data-grid-fill-handle="true"]')).toHaveJSProperty('tabIndex', -1)
 })
 
+test('@browser-ci web app keeps old fill-handle hit targets from intercepting cell clicks', async ({ page }) => {
+  await page.goto(`/?document=${encodeURIComponent(createTestDocumentId('playwright-fill-handle-stale-click-through'))}&persist=0`)
+  await waitForWorkbookReady(page)
+
+  await dragProductBodySelection(page, 1, 1, 3, 3)
+  await expect(page.getByTestId('status-selection')).toHaveText('Sheet1!B2:D4')
+
+  const oldHitTarget = await page.locator('[data-grid-fill-handle="true"]').boundingBox()
+  if (!oldHitTarget) {
+    throw new Error('fill handle hit target is not visible')
+  }
+  const oldCellInteriorPoint = {
+    x: oldHitTarget.x + 1,
+    y: oldHitTarget.y + 1,
+  }
+
+  await clickProductCell(page, 0, 0)
+  await expect(page.getByTestId('status-selection')).toHaveText('Sheet1!A1')
+  await page.mouse.click(oldCellInteriorPoint.x, oldCellInteriorPoint.y)
+
+  await expect(page.getByTestId('status-selection')).toHaveText('Sheet1!D4')
+})
+
 test('@browser-ci web app keeps active cell chrome synchronized inside a keyboard-cycled range', async ({ page }) => {
   await page.goto(`/?document=${encodeURIComponent(createTestDocumentId('playwright-range-keyboard-visual-geometry'))}&persist=0`)
   await waitForWorkbookReady(page)
