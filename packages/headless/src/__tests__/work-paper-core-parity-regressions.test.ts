@@ -12,6 +12,32 @@ import {
 const sheetName = 'Sheet1'
 
 describe('WorkPaper/core parity regressions', () => {
+  it('recalculates overlapping direct aggregates after column insert and text replacement across save/load', () => {
+    const { workbook, sheetId } = createSeededWorkbook()
+
+    workbook.addColumns(sheetId, 0, 1)
+    setCell(workbook, sheetId, 0, 2, '=SUM(A1:B2)')
+
+    expect(workbook.getCellValue({ sheet: sheetId, row: 5, col: 1 })).toEqual({ tag: ValueTag.Number, value: 105 })
+    expect(workbook.getCellValue({ sheet: sheetId, row: 0, col: 2 })).toEqual({ tag: ValueTag.Number, value: 12 })
+    expect(workbook.getCellValue({ sheet: sheetId, row: 5, col: 2 })).toEqual({ tag: ValueTag.Number, value: 13 })
+
+    setCell(workbook, sheetId, 1, 1, 'north')
+
+    expect(workbook.getCellValue({ sheet: sheetId, row: 5, col: 1 })).toEqual({ tag: ValueTag.Number, value: 94 })
+    expect(workbook.getCellValue({ sheet: sheetId, row: 0, col: 2 })).toEqual({ tag: ValueTag.Number, value: 1 })
+    expect(workbook.getCellValue({ sheet: sheetId, row: 5, col: 2 })).toEqual({ tag: ValueTag.Number, value: 2 })
+
+    const restored = createWorkPaperFromDocument(
+      parseWorkPaperDocument(serializeWorkPaperDocument(exportWorkPaperDocument(workbook, { includeConfig: true }))),
+    )
+    const restoredSheetId = restored.getSheetId(sheetName)
+    expect(restoredSheetId).not.toBeUndefined()
+    expect(restored.getCellValue({ sheet: restoredSheetId!, row: 5, col: 1 })).toEqual({ tag: ValueTag.Number, value: 94 })
+    expect(restored.getCellValue({ sheet: restoredSheetId!, row: 0, col: 2 })).toEqual({ tag: ValueTag.Number, value: 1 })
+    expect(restored.getCellValue({ sheet: restoredSheetId!, row: 5, col: 2 })).toEqual({ tag: ValueTag.Number, value: 2 })
+  })
+
   it('recalculates expanded direct aggregates after row moves', () => {
     const { workbook, sheetId } = createSeededWorkbook()
 

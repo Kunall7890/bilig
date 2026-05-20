@@ -674,6 +674,8 @@ export function createOperationSingleExistingLiteralFastPath(args: OperationSing
         rangeEntityDependent: singleExistingCellDependent,
         sheet,
         sheetId: request.sheetId,
+        sheetName,
+        row: request.row,
         col: request.col,
         value: request.value,
         delta: request.value - oldNumber,

@@ -357,6 +357,7 @@ export function createEngineOperationService(args: CreateEngineOperationServiceA
         state: args.state,
         directRangePostRecalcLimit: DIRECT_RANGE_POST_RECALC_LIMIT,
         getSingleEntityDependent: args.getSingleEntityDependent,
+        collectSingleAffectedDirectRangeDependent,
         collectAffectedDirectRangeDependents,
         collectSingleApplicableDirectAggregateDependent,
         canApplyDirectAggregateLiteralDeltaForRequest,
@@ -379,6 +380,8 @@ export function createEngineOperationService(args: CreateEngineOperationServiceA
     rangeEntityDependent: number
     sheet: SheetRecord
     sheetId: number
+    sheetName: string
+    row: number
     col: number
     value: number
     delta: number
@@ -390,6 +393,7 @@ export function createEngineOperationService(args: CreateEngineOperationServiceA
         state: args.state,
         directRangePostRecalcLimit: DIRECT_RANGE_POST_RECALC_LIMIT,
         getSingleEntityDependent: args.getSingleEntityDependent,
+        collectSingleAffectedDirectRangeDependent,
         collectAffectedDirectRangeDependents,
         collectSingleApplicableDirectAggregateDependent,
         canApplyDirectAggregateLiteralDeltaForRequest,
@@ -424,6 +428,7 @@ export function createEngineOperationService(args: CreateEngineOperationServiceA
         state: args.state,
         directRangePostRecalcLimit: DIRECT_RANGE_POST_RECALC_LIMIT,
         getSingleEntityDependent: args.getSingleEntityDependent,
+        collectSingleAffectedDirectRangeDependent,
         collectAffectedDirectRangeDependents,
         collectSingleApplicableDirectAggregateDependent,
         canApplyDirectAggregateLiteralDeltaForRequest,

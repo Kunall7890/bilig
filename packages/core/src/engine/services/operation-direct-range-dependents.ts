@@ -51,6 +51,16 @@ function formulaTouchesDirectRange(formula: DirectRangeFormulaRecord | undefined
   return directCriteria !== undefined && directCriteriaTouchesPoint(directCriteria, request)
 }
 
+function mergeSingleDirectRangeDependent(current: number, candidate: number): number {
+  if (candidate < 0) {
+    return candidate === -2 ? -2 : current
+  }
+  if (current === -1) {
+    return candidate
+  }
+  return current === candidate ? current : -2
+}
+
 export interface OperationDirectRangeDependentService {
   readonly collectAffectedDirectRangeDependents: (request: OperationDirectRangePoint) => number[]
   readonly collectSingleAffectedDirectRangeDependent: (request: OperationDirectRangePoint) => number
@@ -106,35 +116,35 @@ export function createOperationDirectRangeDependentService(args: {
   }
 
   const collectSingleAffectedDirectRangeDependent = (request: OperationDirectRangePoint): number => {
-    const formulaCellIndex =
+    const regionDependent =
       request.sheetId !== undefined && args.collectSingleRegionFormulaDependentForCellAt
         ? args.collectSingleRegionFormulaDependentForCellAt(request.sheetId, request.row, request.col)
         : args.collectSingleRegionFormulaDependentForCell(request.sheetName, request.row, request.col)
-    if (formulaCellIndex === -2) {
-      return formulaCellIndex
+    if (regionDependent === -2) {
+      return regionDependent
     }
-    if (formulaCellIndex >= 0 && formulaTouchesDirectRange(args.formulas.get(formulaCellIndex), request)) {
-      return formulaCellIndex
+    let singleDependent = -1
+    if (regionDependent >= 0 && formulaTouchesDirectRange(args.formulas.get(regionDependent), request)) {
+      singleDependent = regionDependent
     }
     const sheetId = request.sheetId ?? args.workbook.getSheet(request.sheetName)?.id
     if (sheetId === undefined) {
-      return -1
+      return singleDependent
     }
     const aggregateDependents = args.reverseAggregateColumnEdges.get(aggregateColumnDependencyKey(sheetId, request.col))
     if (!aggregateDependents || aggregateDependents.size === 0) {
-      return -1
+      return singleDependent
     }
-    let singleAggregateDependent = -1
     for (const candidate of aggregateDependents) {
       if (!formulaTouchesDirectRange(args.formulas.get(candidate), request)) {
         continue
       }
-      if (singleAggregateDependent !== -1 && singleAggregateDependent !== candidate) {
+      singleDependent = mergeSingleDirectRangeDependent(singleDependent, candidate)
+      if (singleDependent === -2) {
         return -2
       }
-      singleAggregateDependent = candidate
     }
-    return singleAggregateDependent
+    return singleDependent
   }
 
   const canApplyDirectAggregateLiteralDelta = (formulaCellIndex: number): boolean => {
@@ -158,47 +168,55 @@ export function createOperationDirectRangeDependentService(args: {
   }
 
   const collectSingleApplicableDirectAggregateDependent = (request: OperationDirectRangePoint): number => {
-    const formulaCellIndex =
+    const regionDependent =
       request.sheetId !== undefined && args.collectSingleRegionFormulaDependentForCellAt
         ? args.collectSingleRegionFormulaDependentForCellAt(request.sheetId, request.row, request.col)
         : args.collectSingleRegionFormulaDependentForCell(request.sheetName, request.row, request.col)
-    if (formulaCellIndex === -2) {
-      return formulaCellIndex
+    if (regionDependent === -2) {
+      return regionDependent
     }
-    if (formulaCellIndex >= 0) {
-      return canApplyDirectAggregateLiteralDeltaForRequest(formulaCellIndex, request) ? formulaCellIndex : -2
+    let singleAggregateDependent = -1
+    if (regionDependent >= 0 && formulaTouchesDirectRange(args.formulas.get(regionDependent), request)) {
+      if (!canApplyDirectAggregateLiteralDeltaForRequest(regionDependent, request)) {
+        return -2
+      }
+      singleAggregateDependent = regionDependent
     }
     const sheetId = request.sheetId ?? args.workbook.getSheet(request.sheetName)?.id
     if (sheetId === undefined) {
-      return -1
+      return singleAggregateDependent
     }
     const aggregateDependents = args.reverseAggregateColumnEdges.get(aggregateColumnDependencyKey(sheetId, request.col))
     if (!aggregateDependents || aggregateDependents.size === 0) {
-      return -1
+      return singleAggregateDependent
     }
-    let singleAggregateDependent = -1
     const usedIndexedDependents = visitIndexedDirectAggregateColumnDependentsForRow(aggregateDependents, request.row, (candidate) => {
-      if (!canApplyDirectAggregateLiteralDeltaForRequest(candidate, request)) {
+      const formula = args.formulas.get(candidate)
+      if (!formulaTouchesDirectRange(formula, request)) {
         return true
       }
-      if (singleAggregateDependent !== -1 && singleAggregateDependent !== candidate) {
+      if (!canApplyDirectAggregateLiteralDeltaForRequest(candidate, request)) {
         singleAggregateDependent = -2
         return false
       }
-      singleAggregateDependent = candidate
-      return true
+      singleAggregateDependent = mergeSingleDirectRangeDependent(singleAggregateDependent, candidate)
+      return singleAggregateDependent !== -2
     })
     if (usedIndexedDependents) {
       return singleAggregateDependent
     }
     for (const candidate of aggregateDependents) {
-      if (!canApplyDirectAggregateLiteralDeltaForRequest(candidate, request)) {
+      const formula = args.formulas.get(candidate)
+      if (!formulaTouchesDirectRange(formula, request)) {
         continue
       }
-      if (singleAggregateDependent !== -1 && singleAggregateDependent !== candidate) {
+      if (!canApplyDirectAggregateLiteralDeltaForRequest(candidate, request)) {
         return -2
       }
-      singleAggregateDependent = candidate
+      singleAggregateDependent = mergeSingleDirectRangeDependent(singleAggregateDependent, candidate)
+      if (singleAggregateDependent === -2) {
+        return -2
+      }
     }
     return singleAggregateDependent
   }
