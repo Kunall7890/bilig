@@ -53,4 +53,43 @@ describe('wasm kernel direct criteria aggregate batch', () => {
     expect(outErrors[5]).toBe(ErrorCode.Ref)
     expect(outErrors[6]).toBe(ErrorCode.Div0)
   })
+
+  it('scans numeric criteria predicates and aggregates in one native pass', async () => {
+    const kernel = await createKernel()
+    const outTags = new Uint8Array(1)
+    const outNumbers = new Float64Array(1)
+    const outErrors = new Uint16Array(1)
+
+    kernel.evalDirectCriteriaPredicateAggregateBatch(
+      DIRECT_AGGREGATE_OP_SUM,
+      6,
+      Uint8Array.from([3, 0]),
+      Float64Array.from([3, 1]),
+      Uint8Array.from([
+        ValueTag.Number,
+        ValueTag.Number,
+        ValueTag.Number,
+        ValueTag.Number,
+        ValueTag.Number,
+        ValueTag.Number,
+        ValueTag.Boolean,
+        ValueTag.Boolean,
+        ValueTag.Boolean,
+        ValueTag.Boolean,
+        ValueTag.Boolean,
+        ValueTag.Boolean,
+      ]),
+      Float64Array.from([1, 2, 3, 4, 5, 6, 1, 0, 1, 1, 0, 1]),
+      Uint8Array.from([ValueTag.Number, ValueTag.Number, ValueTag.Number, ValueTag.Number, ValueTag.Number, ValueTag.Number]),
+      Float64Array.from([10, 20, 30, 40, 50, 60]),
+      Uint16Array.from([ErrorCode.None, ErrorCode.None, ErrorCode.None, ErrorCode.None, ErrorCode.None, ErrorCode.None]),
+      outTags,
+      outNumbers,
+      outErrors,
+    )
+
+    expect(outTags[0]).toBe(ValueTag.Number)
+    expect(outNumbers[0]).toBe(130)
+    expect(outErrors[0]).toBe(ErrorCode.None)
+  })
 })

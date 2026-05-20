@@ -214,6 +214,44 @@ describe('EngineFormulaEvaluationService', () => {
     expect(engine.getPerformanceCounters().nativeDirectCriteriaAggregateEvaluations).toBeGreaterThanOrEqual(4)
   })
 
+  it('uses native predicate criteria aggregation for large numeric COUNTIF formulas', async () => {
+    const engine = new SpreadsheetEngine({ workbookName: 'evaluation-direct-criteria-native-predicate-aggregate' })
+    await engine.ready()
+    engine.createSheet('Sheet1')
+    const rowCount = 65_536
+    engine.setCellValue('Sheet1', 'E1', 1)
+    let expectedCount = 0
+    for (let row = 1; row <= rowCount; row += 1) {
+      engine.setCellValue('Sheet1', `A${row}`, row)
+      if (row >= 2048) {
+        expectedCount += 1
+      }
+    }
+    engine.setCellFormula('Sheet1', 'F1', 'COUNTIF(A1:A65536,">="&E1)')
+
+    engine.resetPerformanceCounters()
+    engine.setCellValue('Sheet1', 'E1', 2048)
+
+    expect(engine.getCellValue('Sheet1', 'F1')).toEqual({ tag: ValueTag.Number, value: expectedCount })
+    expect(engine.getPerformanceCounters().nativeDirectCriteriaPredicateAggregateEvaluations).toBe(1)
+    expect(engine.getPerformanceCounters().directCriteriaMatchCacheHits).toBe(0)
+  })
+
+  it('keeps decimal COUNTIF criteria on the JS oracle path when exact-lookup normalization matters', async () => {
+    const engine = new SpreadsheetEngine({ workbookName: 'evaluation-direct-criteria-decimal-oracle-fallback' })
+    await engine.ready()
+    engine.createSheet('Sheet1')
+    engine.setCellValue('Sheet1', 'A1', 1.234567890123456)
+    engine.setCellValue('Sheet1', 'E1', 1.23456789012346)
+    engine.setCellFormula('Sheet1', 'F1', '=COUNTIF(A1:A65536,E1)')
+
+    engine.resetPerformanceCounters()
+    engine.setCellValue('Sheet1', 'E1', 1.23456789012346)
+
+    expect(engine.getCellValue('Sheet1', 'F1')).toEqual({ tag: ValueTag.Number, value: 1 })
+    expect(engine.getPerformanceCounters().nativeDirectCriteriaPredicateAggregateEvaluations).toBe(0)
+  })
+
   it('keeps direct scalar arithmetic aligned with text coercion errors', async () => {
     const engine = new SpreadsheetEngine({ workbookName: 'evaluation-direct-scalar-text-errors' })
     await engine.ready()

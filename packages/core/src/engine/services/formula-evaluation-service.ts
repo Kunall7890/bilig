@@ -44,7 +44,10 @@ import {
   referenceReplacementKey,
 } from './formula-evaluation-helpers.js'
 import { tryEvaluateDirectAggregate } from './formula-evaluation-direct-aggregate.js'
-import { tryEvaluateNativeDirectCriteriaMatchedAggregate } from './formula-evaluation-direct-criteria-native.js'
+import {
+  tryEvaluateNativeDirectCriteriaMatchedAggregate,
+  tryEvaluateNativeDirectCriteriaPredicateAggregate,
+} from './formula-evaluation-direct-criteria-native.js'
 import { readRuntimeDirectCriteriaOperandValue } from './direct-criteria-operands.js'
 import type { EngineFormulaEvaluationService } from './formula-evaluation-service-types.js'
 export type { EngineFormulaEvaluationService } from './formula-evaluation-service-types.js'
@@ -400,6 +403,25 @@ export function createEngineFormulaEvaluationService(args: {
         aggregateCacheKey === undefined
           ? exactAggregateResult
           : rememberDirectCriteriaResult(directCriteriaAggregateCache, aggregateCacheKey, exactAggregateResult)
+      return applyDirectCriteriaResultTransforms(readCellValueByIndex, formula, cachedResult)
+    }
+
+    const nativePredicateAggregateResult = tryEvaluateNativeDirectCriteriaPredicateAggregate(
+      {
+        state: args.state,
+        runtimeColumnStore: args.runtimeColumnStore,
+      },
+      {
+        aggregateKind: directCriteria.aggregateKind,
+        aggregateRange,
+        criteriaPairs: resolvedPairs,
+      },
+    )
+    if (nativePredicateAggregateResult !== undefined) {
+      const cachedResult =
+        aggregateCacheKey === undefined
+          ? nativePredicateAggregateResult
+          : rememberDirectCriteriaResult(directCriteriaAggregateCache, aggregateCacheKey, nativePredicateAggregateResult)
       return applyDirectCriteriaResultTransforms(readCellValueByIndex, formula, cachedResult)
     }
 

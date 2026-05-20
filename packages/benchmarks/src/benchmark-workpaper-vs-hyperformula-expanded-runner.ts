@@ -194,6 +194,7 @@ function summarizeEngineCounters(samples: readonly BenchmarkSample[]): EngineCou
     nativeDirectScalarRecalcEvaluations: zeroSummary,
     nativeDirectLookupInitialEvaluations: zeroSummary,
     nativeDirectCriteriaAggregateEvaluations: zeroSummary,
+    nativeDirectCriteriaPredicateAggregateEvaluations: zeroSummary,
     directCriteriaMatchCacheHits: zeroSummary,
     directCriteriaAggregateCacheHits: zeroSummary,
     structuralTransactions: zeroSummary,

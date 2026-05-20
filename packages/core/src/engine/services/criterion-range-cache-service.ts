@@ -1,5 +1,11 @@
 import { ErrorCode, ValueTag, type CellValue } from '@bilig/protocol'
-import { compileCriteriaMatcher, matchesCompiledCriteria, type CompiledCriteriaMatcher, type CriteriaOperator } from '@bilig/formula'
+import {
+  compileCriteriaMatcher,
+  matchesCompiledCriteria,
+  normalizeExactLookupNumber,
+  type CompiledCriteriaMatcher,
+  type CriteriaOperator,
+} from '@bilig/formula'
 import type { EngineRuntimeColumnStoreService, RuntimeColumnView } from './runtime-column-store-service.js'
 import type { DepPatternStore } from '../../deps/dep-pattern-store.js'
 import type { RegionGraph } from '../../deps/region-graph.js'
@@ -113,7 +119,7 @@ function criteriaCacheKey(value: CellValue): string {
     case ValueTag.Empty:
       return 'e:'
     case ValueTag.Number:
-      return `n:${Object.is(value.value, -0) ? 0 : value.value}`
+      return `n:${normalizeExactLookupNumber(value.value)}`
     case ValueTag.Boolean:
       return value.value ? 'b:1' : 'b:0'
     case ValueTag.String:
@@ -184,7 +190,7 @@ function buildSlicePredicate(compiled: CompiledCriteriaMatcher): SliceFastPredic
         return {
           kind: 'eq-number',
           negate,
-          value: Object.is(operand.value, -0) ? 0 : operand.value,
+          value: normalizeExactLookupNumber(operand.value),
         }
       case ValueTag.String:
         return { kind: 'eq-string', negate, value: operand.value.toUpperCase() }
@@ -196,7 +202,7 @@ function buildSlicePredicate(compiled: CompiledCriteriaMatcher): SliceFastPredic
     return {
       kind: 'cmp-number',
       operator,
-      value: Object.is(operand.value, -0) ? 0 : operand.value,
+      value: normalizeExactLookupNumber(operand.value),
     }
   }
   return { kind: 'generic', compiled }
@@ -223,7 +229,7 @@ function slicePredicateMatches(
     }
     case 'eq-number': {
       const tag = decodeValueTag(view.readTagAt(offset))
-      const numeric = Object.is(view.readNumberAt(offset), -0) ? 0 : view.readNumberAt(offset)
+      const numeric = normalizeExactLookupNumber(view.readNumberAt(offset))
       const matches = (tag === ValueTag.Number || tag === ValueTag.Boolean || tag === ValueTag.Empty) && numeric === predicate.value
       return predicate.negate ? !matches : matches
     }
@@ -239,7 +245,7 @@ function slicePredicateMatches(
       if (tag !== ValueTag.Number && tag !== ValueTag.Boolean) {
         return false
       }
-      const numeric = Object.is(view.readNumberAt(offset), -0) ? 0 : view.readNumberAt(offset)
+      const numeric = normalizeExactLookupNumber(view.readNumberAt(offset))
       switch (predicate.operator) {
         case '>':
           return numeric > predicate.value
@@ -295,7 +301,7 @@ function equalityIndexKeyForStoredValue(
   runtimeColumnStore: EngineRuntimeColumnStoreService,
 ): CriterionEqualityIndexKey | undefined {
   if (tag === ValueTag.Number) {
-    const value = Object.is(number, -0) ? 0 : number
+    const value = normalizeExactLookupNumber(number)
     return value === 0 ? undefined : { kind: 'number', value }
   }
   if (tag === ValueTag.Boolean) {
