@@ -1,5 +1,5 @@
 import type { CellSnapshot, RecalcMetrics, SelectionState, SyncState, WorkbookSnapshot } from '@bilig/protocol'
-import { Float64Arena, Uint32Arena } from '@bilig/formula'
+import { Float64Arena, Uint32Arena } from '@bilig/formula/program-arena'
 import type { EngineOp, EngineOpBatch } from '@bilig/workbook-domain'
 import { cellToCsvValue, serializeCsv } from '../csv.js'
 import { CycleDetector } from '../cycle-detection.js'
