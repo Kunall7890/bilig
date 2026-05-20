@@ -4,6 +4,19 @@ All notable changes to `@bilig/headless` will be documented in this file.
 
 This package is released as part of the aligned bilig library package set.
 
+## 0.39.0
+
+- Release type: minor
+- Previous libraries tag: libraries-v0.38.3
+- Manual override: no
+
+## Features
+- feat(core): centralize workbook semantic projection (e7d9434d)
+
+## Internal runtime changes
+- ci(release): use current npm for runtime assets (7e0a788d)
+- docs(agent): sync workpaper discovery release docs (2c1d76a8)
+
 ## 0.38.3
 
 - Release type: patch
