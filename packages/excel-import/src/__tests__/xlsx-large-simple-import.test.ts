@@ -1045,6 +1045,13 @@ function buildLargeSimpleWorkbook(input: {
   })
 }
 
+type LazyZipTestSource =
+  | Uint8Array
+  | {
+      readonly byteLength: number
+      readRange(start: number, end: number): Uint8Array
+    }
+
 function countLazyZipEntryStreams(zip: Record<string, Uint8Array>, path: string): () => number {
   const metadata = readLazyZipMetadata(zip)
   const entry = metadata?.entriesByPath.get(path)
@@ -1059,6 +1066,14 @@ function countLazyZipEntryStreams(zip: Record<string, Uint8Array>, path: string)
   let streamCount = 0
   metadata.source = new Proxy(source, {
     get(target, property) {
+      if (property === 'readRange' && hasReadRange(target)) {
+        return (start: number, end: number) => {
+          if (start === dataStart && end === dataEnd) {
+            streamCount += 1
+          }
+          return target.readRange(start, end)
+        }
+      }
       if (property === 'subarray') {
         return (start?: number, end?: number) => {
           if (start === dataStart && end === dataEnd) {
@@ -1076,7 +1091,7 @@ function countLazyZipEntryStreams(zip: Record<string, Uint8Array>, path: string)
 
 function readLazyZipMetadata(zip: Record<string, Uint8Array>):
   | {
-      source: Uint8Array
+      source: LazyZipTestSource
       readonly entriesByPath: ReadonlyMap<
         string,
         {
@@ -1096,7 +1111,7 @@ function readLazyZipMetadata(zip: Record<string, Uint8Array>):
 }
 
 function isLazyZipMetadata(value: unknown): value is {
-  source: Uint8Array
+  source: LazyZipTestSource
   readonly entriesByPath: ReadonlyMap<
     string,
     {
@@ -1109,14 +1124,27 @@ function isLazyZipMetadata(value: unknown): value is {
     typeof value === 'object' &&
     value !== null &&
     'source' in value &&
-    value.source instanceof Uint8Array &&
+    isLazyZipTestSource(value.source) &&
     'entriesByPath' in value &&
     value.entriesByPath instanceof Map
   )
 }
 
-function readLittleEndianUint16(source: Uint8Array, offset: number): number {
-  return source[offset] | (source[offset + 1] << 8)
+function isLazyZipTestSource(value: unknown): value is LazyZipTestSource {
+  return value instanceof Uint8Array || (typeof value === 'object' && value !== null && hasReadRange(value))
+}
+
+function hasReadRange(value: unknown): value is { readRange(start: number, end: number): Uint8Array } {
+  return typeof value === 'object' && value !== null && typeof Reflect.get(value, 'readRange') === 'function'
+}
+
+function readLazySourceRange(source: LazyZipTestSource, start: number, end: number): Uint8Array {
+  return hasReadRange(source) ? source.readRange(start, end) : source.subarray(start, end)
+}
+
+function readLittleEndianUint16(source: LazyZipTestSource, offset: number): number {
+  const bytes = readLazySourceRange(source, offset, offset + 2)
+  return (bytes[0] ?? 0) | ((bytes[1] ?? 0) << 8)
 }
 
 function encodeColumnName(index: number): string {

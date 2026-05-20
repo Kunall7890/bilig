@@ -333,6 +333,7 @@ function parseTableXml(sheetName: string, xml: string): WorkbookTableSnapshot | 
       : typeof table['name'] === 'string' && table['name'].trim().length > 0
         ? table['name'].trim()
         : `Table_${ref.startAddress}`
+  let hasTotalsRowFormula = false
   const columns = asArray(recordChild(table, 'tableColumns')?.['tableColumn']).flatMap((entry) => {
     if (!isRecord(entry) || typeof entry['name'] !== 'string') {
       return []
@@ -346,6 +347,7 @@ function parseTableXml(sheetName: string, xml: string): WorkbookTableSnapshot | 
       ...(typeof entry['totalsRowLabel'] === 'string' ? { totalsRowLabel: decodeExcelEscapedText(entry['totalsRowLabel']) } : {}),
       ...(typeof entry['totalsRowFunction'] === 'string' ? { totalsRowFunction: entry['totalsRowFunction'] } : {}),
     }
+    hasTotalsRowFormula = hasTotalsRowFormula || typeof entry['totalsRowFormula'] === 'string' || isRecord(entry['totalsRowFormula'])
     return [column]
   })
   const style = parseTableStyle(recordChild(table, 'tableStyleInfo'))
@@ -358,7 +360,11 @@ function parseTableXml(sheetName: string, xml: string): WorkbookTableSnapshot | 
     columnNames: columns.map((column) => column.name),
     ...(columns.some((column) => column.totalsRowLabel !== undefined || column.totalsRowFunction !== undefined) ? { columns } : {}),
     headerRow: table['headerRowCount'] !== '0',
-    totalsRow: table['totalsRowShown'] === '1' || table['totalsRowCount'] === '1',
+    totalsRow:
+      table['totalsRowShown'] === '1' ||
+      table['totalsRowCount'] === '1' ||
+      hasTotalsRowFormula ||
+      columns.some((column) => column.totalsRowLabel !== undefined || column.totalsRowFunction !== undefined),
     ...(style ? { style } : {}),
     ...(sortState ? { sortState } : {}),
   }

@@ -173,7 +173,7 @@
     "test:correctness:server": "tsx scripts/run-vitest.ts --run apps/bilig/src/zero/__tests__/projection.test.ts apps/bilig/src/zero/__tests__/projection-parity.test.ts apps/bilig/src/zero/__tests__/sync-relay.test.ts apps/bilig/src/http/sync-server.test.ts apps/bilig/src/workbook-runtime/browser-sync-replay.test.ts apps/bilig/src/workbook-runtime/document-snapshot-store.test.ts apps/bilig/src/workbook-runtime/local-session-snapshot-store.test.ts apps/bilig/src/workbook-runtime/session-shared.test.ts apps/bilig/src/workbook-runtime/sync-frame-shared.test.ts apps/bilig/src/workbook-runtime/sync-frame-router.test.ts apps/bilig/src/workbook-runtime/workbook-sync-session-host.test.ts",
     "test:semantic:fast": "pnpm source-size:check && pnpm calculation:semantics:check && pnpm import-export:fidelity:check && tsx scripts/run-vitest.ts --run packages/core/src/__tests__/workbook-semantic-projection.test.ts packages/core/src/__tests__/engine-semantic-invariants.test.ts",
     "test:semantic:medium": "pnpm test:semantic:fast && pnpm test:correctness:formula && pnpm test:correctness:core",
-    "test:semantic:deep": "pnpm test:semantic:medium && pnpm test:correctness:corpus && pnpm test:fuzz:main",
+    "test:semantic:deep": "pnpm test:semantic:medium && pnpm test:correctness:corpus && pnpm test:fuzz",
     "test:correctness:fast": "pnpm analyze:quality && pnpm test:correctness:core && pnpm test:correctness:formula && pnpm test:correctness:corpus && pnpm test:correctness:server",
     "test:correctness:medium": "pnpm test:correctness:fast && pnpm test:correctness:browser",
     "test:correctness:deep": "bun scripts/clean-package-builds.ts && pnpm build && pnpm test:correctness:medium && pnpm test:fuzz && pnpm bench:smoke && CI=1 pnpm bench:contracts",

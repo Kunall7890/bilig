@@ -193,6 +193,11 @@ export class WorkPaper extends WorkPaperRuntimeLifecycleBase {
     return structuredClone(this.engine.exportSnapshot())
   }
 
+  override setCellContents(address: WorkPaperCellAddress, content: RawCellContent | WorkPaperSheet): WorkPaperChange[] {
+    this.preservedImportedSnapshot = undefined
+    return super.setCellContents(address, content)
+  }
+
   protected override captureChanges(
     semanticEvent: QueuedEvent | undefined,
     mutate: () => void,

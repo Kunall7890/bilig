@@ -8,9 +8,13 @@ export function buildLargeSimpleStyleRanges(
   stylesByIndex: ReadonlyMap<number, Omit<CellStyleRecord, 'id'>>,
   styleCatalog: Map<string, CellStyleRecord>,
 ): SheetStyleRangeSnapshot[] {
+  const cells: { row: number; column: number; styleId: string }[] = []
   const ranges: SheetStyleRangeSnapshot[] = []
   let active: { row: number; startColumn: number; endColumn: number; styleId: string } | undefined
   const styleIdsByIndex = new Map<number, string>()
+  let previousRow = -1
+  let previousColumn = -1
+  let rowMajor = true
   cellScan.styleIndexes.forEach((row, column, styleIndex) => {
     let styleId = styleIdsByIndex.get(styleIndex)
     if (!styleId) {
@@ -21,15 +25,25 @@ export function buildLargeSimpleStyleRanges(
       styleId = internImportedStyle(style, styleCatalog)
       styleIdsByIndex.set(styleIndex, styleId)
     }
+    rowMajor = rowMajor && (row > previousRow || (row === previousRow && column >= previousColumn))
+    previousRow = row
+    previousColumn = column
+    cells.push({ row, column, styleId })
+  })
+  if (!rowMajor) {
+    cells.sort((left, right) => left.row - right.row || left.column - right.column || left.styleId.localeCompare(right.styleId))
+  }
+  for (const cell of cells) {
+    const { row, column, styleId } = cell
     if (active && active.row === row && active.endColumn + 1 === column && active.styleId === styleId) {
       active.endColumn = column
-      return
+      continue
     }
     if (active) {
       ranges.push(styleRunToRange(sheetName, active))
     }
     active = { row, startColumn: column, endColumn: column, styleId }
-  })
+  }
   if (active) {
     ranges.push(styleRunToRange(sheetName, active))
   }

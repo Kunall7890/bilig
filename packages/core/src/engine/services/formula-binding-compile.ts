@@ -1,4 +1,5 @@
 import { compileFormulaAst, serializeFormula } from '@bilig/formula'
+import { FormulaMode } from '@bilig/protocol'
 import { resolveMetadataReferencesInAst, type MetadataFormulaValueContext } from '../../engine-metadata-utils.js'
 import type { FormulaTemplateResolution } from '../../formula/template-bank.js'
 import type { ParsedCompiledFormula } from './formula-binding-direct-descriptors.js'
@@ -55,6 +56,9 @@ export function compileFormulaBindingForCell(args: {
       }) as ParsedCompiledFormula,
     )
     args.resolvedCompiledCache.set(resolvedCacheKey, resolvedCompiled)
+  }
+  if (compiled.ast.kind === 'NameRef' && resolved.node.kind === 'CellRef') {
+    resolvedCompiled = { ...resolvedCompiled, mode: FormulaMode.JsOnly }
   }
   return {
     compiled: resolvedCompiled,

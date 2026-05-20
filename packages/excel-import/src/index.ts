@@ -836,8 +836,6 @@ function importSheetJsWorkbook(
       ? {
           ...importedCalculationSettings,
           mode: importedCalculationSettings.mode,
-          fullCalcOnLoad: false,
-          forceFullCalc: false,
         }
       : importedCalculationSettings
 
@@ -933,6 +931,8 @@ export function importXlsx(bytes: Uint8Array | ArrayBuffer, fileName: string, op
           ...(options.limits ? { minByteLength: 0 } : {}),
           allowUnsupportedFormulaText: allowCachedUnsupportedFormulaText,
           allowUnsupportedCellMetadata: allowCachedUnsupportedFormulaText,
+          skipBroadBlankStyleCells: true,
+          includeCellCoordinates: true,
           releaseArenaAfterMaterialization: true,
           releaseZipSource: true,
         })

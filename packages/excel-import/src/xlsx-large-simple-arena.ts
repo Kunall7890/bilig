@@ -170,7 +170,10 @@ export class ImportedWorkbookArena {
     }
   }
 
-  materializeSheetCells(sheetIndex: number): WorkbookSnapshot['sheets'][number]['cells'] {
+  materializeSheetCells(
+    sheetIndex: number,
+    options: { readonly includeCoordinates?: boolean } = {},
+  ): WorkbookSnapshot['sheets'][number]['cells'] {
     if (!this.hasCellsForSheet(sheetIndex)) {
       return []
     }
@@ -181,7 +184,7 @@ export class ImportedWorkbookArena {
       if (!this.cellBelongsToSheet(index, sheetIndex)) {
         continue
       }
-      const cell = this.materializeCellAtArenaIndex(index, { includeCoordinates: true })
+      const cell = this.materializeCellAtArenaIndex(index, options)
       if (!cell) {
         continue
       }
@@ -191,13 +194,13 @@ export class ImportedWorkbookArena {
     return cells
   }
 
-  createLazySheetCells(sheetIndex: number): WorkbookSheetCells {
+  createLazySheetCells(sheetIndex: number, options: { readonly includeCoordinates?: boolean } = {}): WorkbookSheetCells {
     const arenaIndexes = this.materializedSheetCellIndexes(sheetIndex)
     const materialize = (index: number): WorkbookSheetCell | undefined => {
       if (!Number.isInteger(index) || index < 0 || index >= arenaIndexes.length) {
         return undefined
       }
-      return this.materializeCellAtArenaIndex(arenaIndexes[index] ?? -1, { includeCoordinates: true })
+      return this.materializeCellAtArenaIndex(arenaIndexes[index] ?? -1, options)
     }
     const iterate = function* (): IterableIterator<WorkbookSheetCell> {
       for (let index = 0; index < arenaIndexes.length; index += 1) {

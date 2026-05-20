@@ -74,6 +74,8 @@ export interface LargeSimpleXlsxImportOptions {
   releaseZipSource?: boolean
   allowUnsupportedFormulaText?: boolean
   allowUnsupportedCellMetadata?: boolean
+  skipBroadBlankStyleCells?: boolean
+  includeCellCoordinates?: boolean
   releaseOwnedSourceBytes?: () => LargeSimpleXlsxOwnedSourceReleaseEvidence | undefined
 }
 
@@ -275,6 +277,9 @@ export function tryImportLargeSimpleXlsx(
           options.allowUnsupportedCellMetadata !== true &&
           cellScan.blankStyleCellCount > maxPreservedBlankStyleCellCount
         ) {
+          if (options.skipBroadBlankStyleCells !== true) {
+            return null
+          }
           const compactStreamed = parseLargeSimpleWorksheetCellsFromChunks(
             (onChunk) => forEachInflatedXlsxZipEntryChunk(zip, entry.path, onChunk),
             order,
@@ -337,6 +342,9 @@ export function tryImportLargeSimpleXlsx(
         options.allowUnsupportedCellMetadata !== true &&
         cellScan.blankStyleCellCount > maxPreservedBlankStyleCellCount
       ) {
+        if (options.skipBroadBlankStyleCells !== true) {
+          return null
+        }
         cellScan = parseLargeSimpleWorksheetCells(worksheetBytes, fallbackSharedStrings ?? [], order, {
           retainCells: materializeCells,
           stringPool,
@@ -457,6 +465,7 @@ export function tryImportLargeSimpleXlsx(
         buildParsedWorksheet(entry.name, order, cellScan, worksheetXml, retainedMetadataScan, metadataInput, {
           materializeCells,
           releaseArenaAfterMaterialization: options.releaseArenaAfterMaterialization !== false,
+          ...(options.includeCellCoordinates === undefined ? {} : { includeCellCoordinates: options.includeCellCoordinates }),
           styleCatalog,
           stylesByIndex: emptyStylesByIndex,
         }),
@@ -565,6 +574,7 @@ export function tryImportLargeSimpleXlsx(
       {
         materializeCells,
         releaseArenaAfterMaterialization: options.releaseArenaAfterMaterialization !== false,
+        ...(options.includeCellCoordinates === undefined ? {} : { includeCellCoordinates: options.includeCellCoordinates }),
         styleCatalog,
         stylesByIndex,
       },
@@ -721,6 +731,7 @@ function buildParsedWorksheet(
   options: {
     readonly materializeCells: boolean
     readonly releaseArenaAfterMaterialization?: boolean
+    readonly includeCellCoordinates?: boolean
     readonly styleCatalog?: Map<string, CellStyleRecord>
     readonly stylesByIndex?: ReadonlyMap<number, Omit<CellStyleRecord, 'id'>>
   } = { materializeCells: true },
@@ -758,10 +769,12 @@ function buildParsedWorksheet(
     ...(cellScan.richTextCells.length > 0 ? { richTextArtifacts: { cells: cellScan.richTextCells } } : {}),
   }
   const useLazyCells = options.materializeCells && cellScan.cellCount > lazySheetCellMaterializationThreshold
+  const cellMaterializationOptions =
+    options.includeCellCoordinates === undefined ? {} : { includeCoordinates: options.includeCellCoordinates }
   const cells = options.materializeCells
     ? useLazyCells
-      ? cellScan.arena.createLazySheetCells(cellScan.sheetIndex)
-      : cellScan.arena.materializeSheetCells(cellScan.sheetIndex)
+      ? cellScan.arena.createLazySheetCells(cellScan.sheetIndex, cellMaterializationOptions)
+      : cellScan.arena.materializeSheetCells(cellScan.sheetIndex, cellMaterializationOptions)
     : []
   const sheet: WorkbookSnapshot['sheets'][number] = {
     id: order + 1,

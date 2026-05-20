@@ -31,18 +31,8 @@ const PUSH_STRING_OPCODE = Number(Opcode.PushString)
 const EMPTY_RUNTIME_PROGRAM = new Uint32Array(0)
 const INVALID_INLINE_STRING_ID = 0xffffffff
 
-function shouldEvaluateMetadataNameFormulaInJs(compiled: ParsedCompiledFormula): boolean {
-  return compiled.symbolicNames.length > 0
-}
-
-function shouldEvaluateMetadataTableFormulaInJs(compiled: ParsedCompiledFormula): boolean {
-  return compiled.symbolicTables.length > 0
-}
-
 function normalizeWorkbookMetadataMode(compiled: ParsedCompiledFormula): ParsedCompiledFormula {
-  return shouldEvaluateMetadataNameFormulaInJs(compiled) || shouldEvaluateMetadataTableFormulaInJs(compiled)
-    ? { ...compiled, mode: FormulaMode.JsOnly }
-    : compiled
+  return compiled
 }
 
 function buildInlineScalarFastPlanStringIds(args: {
