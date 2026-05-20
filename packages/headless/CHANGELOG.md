@@ -4,6 +4,15 @@ All notable changes to `@bilig/headless` will be documented in this file.
 
 This package is released as part of the aligned bilig library package set.
 
+## 0.33.1
+
+- Release type: patch
+- Previous libraries tag: libraries-v0.33.0
+- Manual override: no
+
+## Fixes
+- perf(formula): promote xlookup approximate matching (25bd729f)
+
 ## 0.33.0
 
 - Release type: minor
