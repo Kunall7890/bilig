@@ -491,19 +491,28 @@ test('@browser-webgpu @browser-serial main workbook shell grid renders and updat
   expect(selectionVisualRects.some((rect) => rect.role === 'fill-handle' && rect.width > 0 && rect.height > 0)).toBe(true)
   await expect(page.getByTestId('grid-pane-renderer')).toHaveAttribute('data-v3-presented-overlay-rect-count', /^[1-9]\d*$/)
   await expect(page.getByTestId('grid-pane-renderer')).toHaveAttribute('data-v3-presented-overlay-rect-signature', /^[a-z0-9-]+$/)
+  const domSelectionFillOpacity = await page
+    .locator(
+      [
+        '[data-grid-selection-visual-role="header-fill"]',
+        '[data-grid-selection-visual-role="hover-fill"]',
+        '[data-grid-selection-visual-role="selection-fill"]',
+      ].join(','),
+    )
+    .evaluateAll((nodes) => nodes.map((node) => window.getComputedStyle(node).opacity))
+  expect(domSelectionFillOpacity.length).toBeGreaterThan(0)
+  expect(domSelectionFillOpacity.every((opacity) => opacity === '0')).toBe(true)
   const domSelectionChromeOpacity = await page
     .locator(
       [
         '[data-grid-selection-visual-role="active-border"]',
         '[data-grid-selection-visual-role="fill-handle"]',
-        '[data-grid-selection-visual-role="header-fill"]',
         '[data-grid-selection-visual-role="selection-border"]',
-        '[data-grid-selection-visual-role="selection-fill"]',
       ].join(','),
     )
     .evaluateAll((nodes) => nodes.map((node) => window.getComputedStyle(node).opacity))
   expect(domSelectionChromeOpacity.length).toBeGreaterThan(0)
-  expect(domSelectionChromeOpacity.every((opacity) => opacity === '0')).toBe(true)
+  expect(domSelectionChromeOpacity.every((opacity) => opacity !== '0')).toBe(true)
   const rendererLayerOrder = await page.evaluate(() => {
     const floor = document.querySelector('[data-testid="grid-pane-renderer-floor"]')
     const typeGpu = document.querySelector('[data-testid="grid-pane-renderer"]')

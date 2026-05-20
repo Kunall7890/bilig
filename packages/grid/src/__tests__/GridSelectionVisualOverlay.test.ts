@@ -1,11 +1,18 @@
-import { describe, expect, test } from 'vitest'
+// @vitest-environment jsdom
+import { act, createElement } from 'react'
+import { createRoot } from 'react-dom/client'
+import { afterEach, describe, expect, test } from 'vitest'
 import { createGridAxisWorldIndex } from '../gridAxisWorldIndex.js'
 import { createGridGeometrySnapshotFromAxes } from '../gridGeometry.js'
 import { getGridMetrics } from '../gridMetrics.js'
 import { createColumnSliceSelection, createRangeSelection, createGridSelection } from '../gridSelection.js'
-import { buildGridSelectionVisualRects } from '../GridSelectionVisualOverlay.js'
+import { buildGridSelectionVisualRects, GridSelectionVisualOverlay } from '../GridSelectionVisualOverlay.js'
 
 describe('GridSelectionVisualOverlay', () => {
+  afterEach(() => {
+    document.body.innerHTML = ''
+  })
+
   test('builds crisp DOM visual rects for range selections', () => {
     const geometry = createGeometry()
     const selection = createRangeSelection(createGridSelection(1, 1), [1, 1], [3, 3])
@@ -193,6 +200,50 @@ describe('GridSelectionVisualOverlay', () => {
       }).some((rect) => rect.role === 'hover-fill'),
     ).toBe(false)
   })
+
+  test('chrome-only mode keeps fill geometry mounted but only paints crisp selection chrome', async () => {
+    ;(globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true
+    const geometry = createGeometry()
+    const selection = createRangeSelection(createGridSelection(1, 1), [1, 1], [3, 3])
+    const host = document.createElement('div')
+    document.body.appendChild(host)
+    const root = createRoot(host)
+
+    await act(async () => {
+      root.render(
+        createElement(GridSelectionVisualOverlay, {
+          geometry,
+          gridSelection: selection,
+          hoverCell: [4, 5],
+          selectedCell: [1, 1],
+          selectionChromeMode: 'chrome-only',
+          selectionRange: selection.current?.range ?? null,
+          showFillHandle: true,
+        }),
+      )
+    })
+
+    const selectionFill = queryVisualElement(host, 'selection-fill')
+    const hoverFill = queryVisualElement(host, 'hover-fill')
+    const selectionBorder = queryVisualElement(host, 'selection-border')
+    const activeBorder = queryVisualElement(host, 'active-border')
+    const fillHandle = queryVisualElement(host, 'fill-handle')
+
+    expect(selectionFill).toBeInstanceOf(HTMLElement)
+    expect(hoverFill).toBeInstanceOf(HTMLElement)
+    expect(selectionBorder).toBeInstanceOf(HTMLElement)
+    expect(activeBorder).toBeInstanceOf(HTMLElement)
+    expect(fillHandle).toBeInstanceOf(HTMLElement)
+    expect(selectionFill?.style.opacity).toBe('0')
+    expect(hoverFill?.style.opacity).toBe('0')
+    expect(selectionBorder?.style.opacity).toBe('')
+    expect(activeBorder?.style.opacity).toBe('')
+    expect(fillHandle?.style.opacity).toBe('')
+
+    await act(async () => {
+      root.unmount()
+    })
+  })
 })
 
 function createGeometry() {
@@ -211,6 +262,11 @@ function createGeometry() {
     sheetName: 'Sheet1',
     updatedAt: 100,
   })
+}
+
+function queryVisualElement(host: ParentNode, role: string): HTMLElement | null {
+  const node = host.querySelector(`[data-grid-selection-visual-role="${role}"]`)
+  return node instanceof HTMLElement ? node : null
 }
 
 function createFrozenScrolledGeometry(scrollLeft = 50) {

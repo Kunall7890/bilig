@@ -12,6 +12,8 @@ import {
 } from '../renderer-v3/dynamic-overlay-batch.js'
 import {
   TypeGpuLayerResourceCacheV3,
+  WORKBOOK_DYNAMIC_OVERLAY_CHROME_LAYER_KEY_V3,
+  WORKBOOK_DYNAMIC_OVERLAY_FILL_LAYER_KEY_V3,
   WORKBOOK_DYNAMIC_OVERLAY_LAYER_KEY_V3,
   resolveWorkbookHeaderLayerKeyV3,
   syncTypeGpuHeaderResourcesV3,
@@ -131,6 +133,28 @@ function createOverlayBatch(rectCount: number): DynamicGridOverlayBatchV3 {
     rectInstances: new Float32Array(Math.max(1, rectCount) * DYNAMIC_OVERLAY_RECT_INSTANCE_FLOAT_COUNT_V3),
     rects: new Float32Array(Math.max(1, rectCount) * DYNAMIC_OVERLAY_RECT_FLOAT_COUNT_V3),
     rectSignature: `selection:${rectCount}`,
+    seq: rectCount,
+    sheetName: 'Sheet1',
+    surfaceSize: { height: 320, width: 640 },
+  }
+}
+
+function createSplitOverlayBatch(fillRectCount: number, borderRectCount: number): DynamicGridOverlayBatchV3 {
+  const rectCount = fillRectCount + borderRectCount
+  const rectInstances = new Float32Array(Math.max(1, rectCount) * DYNAMIC_OVERLAY_RECT_INSTANCE_FLOAT_COUNT_V3)
+  for (let index = 0; index < rectCount; index += 1) {
+    const offset = index * DYNAMIC_OVERLAY_RECT_INSTANCE_FLOAT_COUNT_V3
+    rectInstances[offset] = index + 1
+  }
+  return {
+    borderRectCount,
+    cameraSeq: rectCount,
+    fillRectCount,
+    generatedAt: rectCount,
+    rectCount,
+    rectInstances,
+    rects: new Float32Array(Math.max(1, rectCount) * DYNAMIC_OVERLAY_RECT_FLOAT_COUNT_V3),
+    rectSignature: `selection:${fillRectCount}:${borderRectCount}`,
     seq: rectCount,
     sheetName: 'Sheet1',
     surfaceSize: { height: 320, width: 640 },
@@ -383,6 +407,27 @@ describe('workbook typegpu backend v3 tile path', () => {
     expect(entry?.textHandle).toBeNull()
     expect(entry?.textCount).toBe(0)
     expect(createBuffer).toHaveBeenCalledTimes(1)
+  })
+
+  test('splits dynamic overlay fill and chrome buffers for layered drawing', () => {
+    const cache = new TypeGpuLayerResourceCacheV3({
+      root: {
+        createBuffer: vi.fn(() => createBufferStub()),
+      },
+    })
+
+    syncTypeGpuOverlayResourcesV3({
+      layerResources: cache,
+      overlay: createSplitOverlayBatch(2, 3),
+    })
+
+    const fillEntry = cache.peek(WORKBOOK_DYNAMIC_OVERLAY_FILL_LAYER_KEY_V3)
+    const chromeEntry = cache.peek(WORKBOOK_DYNAMIC_OVERLAY_CHROME_LAYER_KEY_V3)
+    expect(fillEntry?.rectCount).toBe(2)
+    expect(chromeEntry?.rectCount).toBe(3)
+    expect(fillEntry?.rectHandle).not.toBeNull()
+    expect(chromeEntry?.rectHandle).not.toBeNull()
+    expect(fillEntry?.rectHandle).not.toBe(chromeEntry?.rectHandle)
   })
 
   test('reports a V3 tile miss when tile resources are not draw-ready', () => {

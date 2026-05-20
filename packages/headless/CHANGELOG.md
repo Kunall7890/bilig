@@ -4,6 +4,16 @@ All notable changes to `@bilig/headless` will be documented in this file.
 
 This package is released as part of the aligned bilig library package set.
 
+## 0.40.22
+
+- Release type: patch
+- Previous libraries tag: libraries-v0.40.21
+- Manual override: no
+
+## Fixes
+- perf(core): fast-bind hydrated aggregate formulas (f6ead970)
+- perf(xlsx): stream small PowerPivot packages (baf6dc71)
+
 ## 0.40.21
 
 - Release type: patch

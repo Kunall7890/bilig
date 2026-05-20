@@ -20,7 +20,9 @@ import type { DynamicGridOverlayBatchV3 } from './dynamic-overlay-batch.js'
 import { GpuBufferArenaV3, type GpuBufferHandleV3 } from './gpu-buffer-arena.js'
 import { GRID_RECT_INSTANCE_FLOAT_COUNT_V3 } from './rect-instance-buffer.js'
 
-export const WORKBOOK_DYNAMIC_OVERLAY_LAYER_KEY_V3 = 'overlay:v3'
+export const WORKBOOK_DYNAMIC_OVERLAY_FILL_LAYER_KEY_V3 = 'overlay-fill:v3'
+export const WORKBOOK_DYNAMIC_OVERLAY_CHROME_LAYER_KEY_V3 = 'overlay-chrome:v3'
+export const WORKBOOK_DYNAMIC_OVERLAY_LAYER_KEY_V3 = WORKBOOK_DYNAMIC_OVERLAY_CHROME_LAYER_KEY_V3
 
 const WORKBOOK_HEADER_LAYER_PREFIX_V3 = 'header:v3'
 const WORKBOOK_OVERLAY_RECT_INSTANCE_BUFFER_MIN_COUNT_V3 = 64
@@ -222,31 +224,49 @@ export function syncTypeGpuOverlayResourcesV3(input: {
   readonly layerResources: TypeGpuLayerResourceCacheV3
   readonly overlay: DynamicGridOverlayBatchV3 | null | undefined
 }): void {
+  syncTypeGpuOverlayLayerResourcesV3({
+    layerResources: input.layerResources,
+    layer: 'fill',
+    overlay: input.overlay,
+  })
+  syncTypeGpuOverlayLayerResourcesV3({
+    layerResources: input.layerResources,
+    layer: 'chrome',
+    overlay: input.overlay,
+  })
+}
+
+function syncTypeGpuOverlayLayerResourcesV3(input: {
+  readonly layerResources: TypeGpuLayerResourceCacheV3
+  readonly layer: 'fill' | 'chrome'
+  readonly overlay: DynamicGridOverlayBatchV3 | null | undefined
+}): void {
   if (!input.overlay) {
     return
   }
-  const entry = input.layerResources.get(WORKBOOK_DYNAMIC_OVERLAY_LAYER_KEY_V3)
+  const entry = input.layerResources.get(resolveWorkbookDynamicOverlayLayerKeyV3(input.layer))
   entry.textCount = 0
   entry.textSignature = null
   releaseTextBuffer(input.layerResources, entry)
-  if (input.overlay.rectCount === 0) {
+  const rectCount = resolveWorkbookDynamicOverlayLayerRectCountV3(input.overlay, input.layer)
+  if (rectCount === 0) {
     releaseRectBuffer(input.layerResources, entry)
     entry.rectCount = 0
-    entry.rectSignature = input.overlay.rectSignature
+    entry.rectSignature = resolveWorkbookDynamicOverlayLayerSignatureV3(input.overlay, input.layer)
     return
   }
-  const rectSignature = resolveOverlayRectSignatureV3(input.overlay)
+  const rectSignature = resolveWorkbookDynamicOverlayLayerSignatureV3(input.overlay, input.layer)
   if (entry.rectSignature === rectSignature) {
     return
   }
-  const handle = prepareRectBuffer(
-    input.layerResources,
-    entry,
-    Math.max(input.overlay.rectCount, WORKBOOK_OVERLAY_RECT_INSTANCE_BUFFER_MIN_COUNT_V3),
-  )
+  const handle = prepareRectBuffer(input.layerResources, entry, Math.max(rectCount, WORKBOOK_OVERLAY_RECT_INSTANCE_BUFFER_MIN_COUNT_V3))
   entry.rectHandle = handle
-  entry.rectCount = input.overlay.rectCount
-  writeTypeGpuVertexBuffer(handle.buffer, input.overlay.rectInstances, `overlay:${input.overlay.seq}`)
+  entry.rectCount = rectCount
+  writeTypeGpuVertexBuffer(
+    handle.buffer,
+    resolveWorkbookDynamicOverlayLayerInstancesV3(input.overlay, input.layer),
+    `overlay:${input.layer}:${input.overlay.seq}`,
+  )
   entry.rectSignature = rectSignature
 }
 
@@ -257,7 +277,8 @@ export function pruneTypeGpuLayerResourcesV3(input: {
 }): void {
   const keys = new Set(input.headerPanes.map(resolveWorkbookHeaderLayerKeyV3))
   if (input.overlay) {
-    keys.add(WORKBOOK_DYNAMIC_OVERLAY_LAYER_KEY_V3)
+    keys.add(WORKBOOK_DYNAMIC_OVERLAY_FILL_LAYER_KEY_V3)
+    keys.add(WORKBOOK_DYNAMIC_OVERLAY_CHROME_LAYER_KEY_V3)
   }
   input.layerResources.pruneExcept(keys)
 }
@@ -424,6 +445,27 @@ function resolveOverlayRectSignatureV3(overlay: DynamicGridOverlayBatchV3): stri
     overlay.surfaceSize.height,
     overlay.rectSignature,
   ].join(':')
+}
+
+function resolveWorkbookDynamicOverlayLayerKeyV3(layer: 'fill' | 'chrome'): string {
+  return layer === 'fill' ? WORKBOOK_DYNAMIC_OVERLAY_FILL_LAYER_KEY_V3 : WORKBOOK_DYNAMIC_OVERLAY_CHROME_LAYER_KEY_V3
+}
+
+function resolveWorkbookDynamicOverlayLayerRectCountV3(overlay: DynamicGridOverlayBatchV3, layer: 'fill' | 'chrome'): number {
+  return layer === 'fill' ? overlay.fillRectCount : overlay.borderRectCount
+}
+
+function resolveWorkbookDynamicOverlayLayerInstancesV3(overlay: DynamicGridOverlayBatchV3, layer: 'fill' | 'chrome'): Float32Array {
+  if (layer === 'fill') {
+    return overlay.rectInstances.subarray(0, overlay.fillRectCount * RECT_INSTANCE_FLOAT_COUNT)
+  }
+  const start = overlay.fillRectCount * RECT_INSTANCE_FLOAT_COUNT
+  const end = start + overlay.borderRectCount * RECT_INSTANCE_FLOAT_COUNT
+  return overlay.rectInstances.subarray(start, end)
+}
+
+function resolveWorkbookDynamicOverlayLayerSignatureV3(overlay: DynamicGridOverlayBatchV3, layer: 'fill' | 'chrome'): string {
+  return [resolveOverlayRectSignatureV3(overlay), layer, resolveWorkbookDynamicOverlayLayerRectCountV3(overlay, layer)].join(':')
 }
 
 function buildRectInstanceDataFromHeader(input: {

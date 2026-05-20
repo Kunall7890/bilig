@@ -83,6 +83,34 @@ function createFilledOverlay(cameraSeq: number): DynamicGridOverlayBatchV3 {
   }
 }
 
+function createFilledAndBorderOverlay(cameraSeq: number): DynamicGridOverlayBatchV3 {
+  const rectInstances = new Float32Array(40)
+  rectInstances[0] = 12
+  rectInstances[1] = 18
+  rectInstances[2] = 44
+  rectInstances[3] = 24
+  rectInstances[4] = 0
+  rectInstances[5] = 1
+  rectInstances[6] = 0
+  rectInstances[7] = 1
+  rectInstances[20] = 14
+  rectInstances[21] = 20
+  rectInstances[22] = 44
+  rectInstances[23] = 2
+  rectInstances[28] = 0
+  rectInstances[29] = 0.25
+  rectInstances[30] = 0
+  rectInstances[31] = 1
+  return {
+    ...createOverlay(cameraSeq),
+    borderRectCount: 1,
+    fillRectCount: 1,
+    rectCount: 2,
+    rectInstances,
+    rectSignature: `filled-border-camera:${cameraSeq}`,
+  }
+}
+
 function createBodyPane(rowStart = 0): WorkbookRenderTilePaneState {
   const tile: GridRenderTile = {
     bounds: { colEnd: 31, colStart: 0, rowEnd: rowStart + 31, rowStart },
@@ -587,6 +615,70 @@ describe('WorkbookPaneCanvasFallbackV3', () => {
     })
 
     expect(clearRect).toHaveBeenCalled()
+
+    await act(async () => {
+      root.unmount()
+    })
+  })
+
+  test('draws selection fills below text and selection chrome above text in fallback canvas', async () => {
+    ;(globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true
+    const host = document.createElement('div')
+    Object.defineProperty(host, 'clientWidth', { configurable: true, value: 480 })
+    Object.defineProperty(host, 'clientHeight', { configurable: true, value: 240 })
+    document.body.appendChild(host)
+
+    const fillRect = vi.fn()
+    const fillText = vi.fn()
+    const context = {
+      beginPath: vi.fn(),
+      clearRect: vi.fn(),
+      clip: vi.fn(),
+      fillRect,
+      fillStyle: '',
+      fillText,
+      font: '',
+      lineTo: vi.fn(),
+      lineWidth: 1,
+      measureText: vi.fn(() => ({ width: 120 })),
+      moveTo: vi.fn(),
+      rect: vi.fn(),
+      restore: vi.fn(),
+      save: vi.fn(),
+      setTransform: vi.fn(),
+      stroke: vi.fn(),
+      strokeStyle: '',
+      textAlign: 'left' as CanvasTextAlign,
+      textBaseline: 'middle' as CanvasTextBaseline,
+      translate: vi.fn(),
+    }
+    Object.defineProperty(HTMLCanvasElement.prototype, 'getContext', {
+      configurable: true,
+      value: vi.fn(() => context),
+    })
+    vi.spyOn(window, 'requestAnimationFrame').mockReturnValue(1)
+    vi.spyOn(window, 'cancelAnimationFrame').mockImplementation(() => undefined)
+
+    const root = createRoot(host)
+    await act(async () => {
+      root.render(
+        createElement(WorkbookPaneCanvasFallbackV3, {
+          active: true,
+          drawText: true,
+          geometry: null,
+          headerPanes: [],
+          host,
+          overlay: createFilledAndBorderOverlay(1),
+          scrollTransformStore: null,
+          tilePanes: [createTextBodyPane()],
+        }),
+      )
+    })
+
+    expect(fillRect).toHaveBeenCalledTimes(2)
+    expect(fillText).toHaveBeenCalledWith('stale canvas text', 112, 36)
+    expect(fillRect.mock.invocationCallOrder[0]).toBeLessThan(fillText.mock.invocationCallOrder[0] ?? 0)
+    expect(fillText.mock.invocationCallOrder[0]).toBeLessThan(fillRect.mock.invocationCallOrder[1] ?? 0)
 
     await act(async () => {
       root.unmount()

@@ -29,7 +29,7 @@ export interface GridSelectionVisualOverlayProps {
   readonly gridSelection: GridSelection
   readonly hoverCell?: Item | null | undefined
   readonly selectedCell: Item
-  readonly selectionChromeMode?: 'visible' | 'geometry-only' | undefined
+  readonly selectionChromeMode?: 'visible' | 'geometry-only' | 'chrome-only' | undefined
   readonly selectionRange: Pick<Rectangle, 'x' | 'y' | 'width' | 'height'> | null
   readonly showFillHandle: boolean
   readonly scrollTransformStore?: WorkbookGridScrollStore | undefined
@@ -91,11 +91,21 @@ export function GridSelectionVisualOverlay(props: GridSelectionVisualOverlayProp
           data-grid-selection-visual-key={rect.key}
           data-grid-selection-visual-role={rect.role}
           key={keyForRect(rect)}
-          style={styleForRect(rect, selectionChromeMode === 'geometry-only' && rect.role !== 'hover-fill')}
+          style={styleForRect(rect, shouldHideVisualRect(rect.role, selectionChromeMode))}
         />
       ))}
     </div>
   )
+}
+
+function shouldHideVisualRect(role: VisualRectRole, mode: NonNullable<GridSelectionVisualOverlayProps['selectionChromeMode']>): boolean {
+  if (mode === 'geometry-only') {
+    return role !== 'hover-fill'
+  }
+  if (mode === 'chrome-only') {
+    return role === 'selection-fill' || role === 'header-fill' || role === 'hover-fill'
+  }
+  return false
 }
 
 export function buildGridSelectionVisualRects(input: {
