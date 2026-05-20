@@ -385,16 +385,16 @@ export function createEngineFormulaEvaluationService(args: {
     if (directIndexExactMatchResult !== undefined) {
       return applyDirectCriteriaResultTransforms(readCellValueByIndex, formula, directIndexExactMatchResult)
     }
-    const exactAggregateResult =
-      resolvedPairs.length === 1 && directCriteria.aggregateKind !== 'first'
-        ? args.criterionCache.getOrBuildExactAggregate({
-            criteriaPair: resolvedPairs[0]!,
+    const exactCriteriaAggregateResult =
+      directCriteria.aggregateKind !== 'first'
+        ? args.criterionCache.getOrBuildExactCriteriaAggregate({
+            criteriaPairs: resolvedPairs,
             ...(aggregateRange === undefined ? {} : { aggregateRange }),
             aggregateKind: directCriteria.aggregateKind,
           })
         : undefined
-    if (exactAggregateResult !== undefined) {
-      return applyCachedAggregateResult(exactAggregateResult)
+    if (exactCriteriaAggregateResult !== undefined) {
+      return applyCachedAggregateResult(exactCriteriaAggregateResult)
     }
 
     const nativePredicateAggregateResult = tryEvaluateNativeDirectCriteriaPredicateAggregate(

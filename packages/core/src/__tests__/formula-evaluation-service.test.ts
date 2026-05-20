@@ -174,6 +174,48 @@ describe('EngineFormulaEvaluationService', () => {
     expect(engine.getPerformanceCounters().directCriteriaMatchCacheHits).toBe(0)
   })
 
+  it('uses compound exact aggregate buckets for multi-criteria formulas', async () => {
+    const engine = new SpreadsheetEngine({ workbookName: 'evaluation-direct-criteria-compound-exact-buckets' })
+    await engine.ready()
+    engine.createSheet('Sheet1')
+    engine.setCellValue('Sheet1', 'E1', 'B')
+    engine.setCellValue('Sheet1', 'F1', 'target')
+    let expectedCount = 0
+    let expectedSum = 0
+    let expectedMin = Number.POSITIVE_INFINITY
+    let expectedMax = Number.NEGATIVE_INFINITY
+    for (let row = 2; row <= 257; row += 1) {
+      const value = row - 1
+      const group = value % 2 === 0 ? 'A' : 'B'
+      const flag = value % 16 === 0 ? 'target' : 'other'
+      engine.setCellValue('Sheet1', `A${row}`, group)
+      engine.setCellValue('Sheet1', `B${row}`, flag)
+      engine.setCellValue('Sheet1', `C${row}`, value)
+      if (group === 'A' && flag === 'target') {
+        expectedCount += 1
+        expectedSum += value
+        expectedMin = Math.min(expectedMin, value)
+        expectedMax = Math.max(expectedMax, value)
+      }
+    }
+    engine.setCellFormula('Sheet1', 'G1', 'COUNTIFS(A2:A257,E1,B2:B257,F1)')
+    engine.setCellFormula('Sheet1', 'G2', 'SUMIFS(C2:C257,A2:A257,E1,B2:B257,F1)')
+    engine.setCellFormula('Sheet1', 'G3', 'AVERAGEIFS(C2:C257,A2:A257,E1,B2:B257,F1)')
+    engine.setCellFormula('Sheet1', 'G4', 'MINIFS(C2:C257,A2:A257,E1,B2:B257,F1)')
+    engine.setCellFormula('Sheet1', 'G5', 'MAXIFS(C2:C257,A2:A257,E1,B2:B257,F1)')
+
+    engine.resetPerformanceCounters()
+    engine.setCellValue('Sheet1', 'E1', 'A')
+
+    expect(engine.getCellValue('Sheet1', 'G1')).toEqual({ tag: ValueTag.Number, value: expectedCount })
+    expect(engine.getCellValue('Sheet1', 'G2')).toEqual({ tag: ValueTag.Number, value: expectedSum })
+    expect(engine.getCellValue('Sheet1', 'G3')).toEqual({ tag: ValueTag.Number, value: expectedSum / expectedCount })
+    expect(engine.getCellValue('Sheet1', 'G4')).toEqual({ tag: ValueTag.Number, value: expectedMin })
+    expect(engine.getCellValue('Sheet1', 'G5')).toEqual({ tag: ValueTag.Number, value: expectedMax })
+    expect(engine.getPerformanceCounters().nativeDirectCriteriaPredicateAggregateEvaluations).toBe(0)
+    expect(engine.getPerformanceCounters().directCriteriaMatchCacheHits).toBe(0)
+  })
+
   it('shares direct criteria matches across mixed criteria count and sum formulas', async () => {
     const engine = new SpreadsheetEngine({ workbookName: 'evaluation-direct-criteria-repeated-count-cache' })
     await engine.ready()

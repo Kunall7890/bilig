@@ -324,6 +324,97 @@ describe('createCriterionRangeCacheService', () => {
         aggregateKind: 'min',
       }),
     ).toEqual({ tag: ValueTag.Number, value: 4 })
+    expect(
+      criterionCache.getOrBuildExactAggregate({
+        criteriaPair: {
+          ...criteriaPair,
+          criteria: { tag: ValueTag.String, value: 'missing', stringId: strings.intern('missing') },
+        },
+        aggregateRange: { sheetName: 'Sheet1', rowStart: 0, rowEnd: 5, col: 1, length: 6 },
+        aggregateKind: 'average',
+      }),
+    ).toEqual({ tag: ValueTag.Error, code: ErrorCode.Div0 })
+  })
+
+  it('aggregates compound exact criteria from the most selective equality rowset', () => {
+    const workbook = new WorkbookStore('criteria-cache-compound-exact-aggregate')
+    const strings = new StringPool()
+    workbook.createSheet('Sheet1')
+
+    ;['A', 'A', 'A', 'A', 'A', 'A', 'A', 'A'].forEach((value, index) => {
+      setStoredCellValue(workbook, strings, 'Sheet1', `A${index + 1}`, {
+        tag: ValueTag.String,
+        value,
+      })
+    })
+    ;['skip', 'target', 'skip', 'skip', 'skip', 'skip', 'target', 'skip'].forEach((value, index) => {
+      setStoredCellValue(workbook, strings, 'Sheet1', `B${index + 1}`, {
+        tag: ValueTag.String,
+        value,
+      })
+    })
+    ;[5, 20, 7, 9, 11, 13, 30, 17].forEach((value, index) => {
+      setStoredCellValue(workbook, strings, 'Sheet1', `C${index + 1}`, {
+        tag: ValueTag.Number,
+        value,
+      })
+    })
+
+    const realRuntimeColumnStore = createEngineRuntimeColumnStoreService({
+      state: { workbook, strings },
+    })
+    let readTagCalls = 0
+    const runtimeColumnStore = {
+      ...realRuntimeColumnStore,
+      getColumnView(request: Parameters<typeof realRuntimeColumnStore.getColumnView>[0]) {
+        const view = realRuntimeColumnStore.getColumnView(request)
+        return {
+          ...view,
+          readTagAt(offset: number) {
+            readTagCalls += 1
+            return view.readTagAt(offset)
+          },
+        }
+      },
+    }
+    const criterionCache = createCriterionRangeCacheService({
+      runtimeColumnStore,
+      regionGraph: createRegionGraph({ workbook }),
+      depPatternStore: createDepPatternStore(),
+    })
+    const criteriaPairs = [
+      {
+        range: { sheetName: 'Sheet1', rowStart: 0, rowEnd: 7, col: 0, length: 8 },
+        criteria: { tag: ValueTag.String, value: 'A', stringId: strings.intern('A') },
+      },
+      {
+        range: { sheetName: 'Sheet1', rowStart: 0, rowEnd: 7, col: 1, length: 8 },
+        criteria: { tag: ValueTag.String, value: 'target', stringId: strings.intern('target') },
+      },
+    ] as const
+
+    expect(
+      criterionCache.getOrBuildCompoundExactAggregate({
+        criteriaPairs,
+        aggregateRange: { sheetName: 'Sheet1', rowStart: 0, rowEnd: 7, col: 2, length: 8 },
+        aggregateKind: 'sum',
+      }),
+    ).toEqual({ tag: ValueTag.Number, value: 50 })
+    expect(readTagCalls).toBeLessThan(8)
+
+    expect(
+      criterionCache.getOrBuildCompoundExactAggregate({
+        criteriaPairs: [
+          criteriaPairs[0],
+          {
+            ...criteriaPairs[1],
+            criteria: { tag: ValueTag.String, value: 'missing', stringId: strings.intern('missing') },
+          },
+        ],
+        aggregateRange: { sheetName: 'Sheet1', rowStart: 0, rowEnd: 7, col: 2, length: 8 },
+        aggregateKind: 'average',
+      }),
+    ).toEqual({ tag: ValueTag.Error, code: ErrorCode.Div0 })
   })
 
   it('supports compiled operator criteria and validates matching range lengths', () => {
