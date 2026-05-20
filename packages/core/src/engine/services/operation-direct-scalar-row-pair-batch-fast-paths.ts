@@ -1,6 +1,8 @@
 import type { EngineChangedCell } from '@bilig/protocol'
+import { ErrorCode, ValueTag } from '@bilig/protocol'
 import type { EngineOpBatch } from '@bilig/workbook-domain'
 import type { EngineCellMutationRef } from '../../cell-mutations-at.js'
+import { CellFlags } from '../../cell-store.js'
 import { makeCellEntity } from '../../entity-ids.js'
 import { addEngineCounter } from '../../perf/engine-counters.js'
 import { markBatchApplied } from '../../replica-state.js'
@@ -13,7 +15,6 @@ import {
 } from './direct-scalar-helpers.js'
 import { tagTrustedPhysicalTrackedChanges } from './operation-change-helpers.js'
 import { emitCellMutationFastPathBatchResult } from './operation-fast-path-batch-result.js'
-import { writeOperationNumericLiteralToExistingCellWithoutColumnNotify } from './operation-literal-write-helpers.js'
 
 const EMPTY_CHANGED_CELLS = new Uint32Array(0)
 
@@ -236,6 +237,13 @@ export function createOperationDirectScalarRowPairBatchFastPaths(args: Operation
     const requiresChangedSet = hasGeneralEventListeners || hasTrackedEventListeners || hasWatchedCellListeners
     const changedInputCount = inputCellIndices.length
     const explicitChangedCount = requiresChangedSet ? inputCellIndices.length : 0
+    const flags = cellStore.flags
+    const versions = cellStore.versions
+    const stringIds = cellStore.stringIds
+    const tags = cellStore.tags
+    const numbers = cellStore.numbers
+    const errors = cellStore.errors
+    const clearAuthoredBlankFlag = ~CellFlags.AuthoredBlank
     args.setBatchMutationDepth(args.getBatchMutationDepth() + 1)
     try {
       for (let index = 0; index < refs.length; index += 1) {
@@ -245,11 +253,15 @@ export function createOperationDirectScalarRowPairBatchFastPaths(args: Operation
         if (mutation.kind !== 'setCellValue' || typeof mutation.value !== 'number') {
           throw new Error('Expected dense row-pair batch to contain only numeric literal writes')
         }
-        writeOperationNumericLiteralToExistingCellWithoutColumnNotify({
-          cellStore: args.state.workbook.cellStore,
-          cellIndex,
-          value: mutation.value,
-        })
+        const currentFlags = flags[cellIndex] ?? 0
+        if ((currentFlags & CellFlags.AuthoredBlank) !== 0) {
+          flags[cellIndex] = currentFlags & clearAuthoredBlankFlag
+        }
+        tags[cellIndex] = ValueTag.Number
+        errors[cellIndex] = ErrorCode.None
+        stringIds[cellIndex] = 0
+        numbers[cellIndex] = mutation.value
+        versions[cellIndex] = (versions[cellIndex] ?? 0) + 1
       }
       args.state.workbook.notifyColumnsWritten(firstRef.sheetId, Uint32Array.of(firstMutation.col, secondMutation.col))
     } finally {
@@ -447,15 +459,26 @@ export function createOperationDirectScalarRowPairBatchFastPaths(args: Operation
     const requiresChangedSet = hasGeneralEventListeners || hasTrackedEventListeners || hasWatchedCellListeners
     const changedInputCount = inputCellIndices.length
     const explicitChangedCount = requiresChangedSet ? inputCellIndices.length : 0
+    const flags = cellStore.flags
+    const versions = cellStore.versions
+    const stringIds = cellStore.stringIds
+    const tags = cellStore.tags
+    const numbers = cellStore.numbers
+    const errors = cellStore.errors
+    const clearAuthoredBlankFlag = ~CellFlags.AuthoredBlank
     args.setBatchMutationDepth(args.getBatchMutationDepth() + 1)
     try {
       for (let index = 0; index < refs.length; index += 1) {
         const cellIndex = inputCellIndices[index]!
-        writeOperationNumericLiteralToExistingCellWithoutColumnNotify({
-          cellStore: args.state.workbook.cellStore,
-          cellIndex,
-          value: inputNumericValues[index]!,
-        })
+        const currentFlags = flags[cellIndex] ?? 0
+        if ((currentFlags & CellFlags.AuthoredBlank) !== 0) {
+          flags[cellIndex] = currentFlags & clearAuthoredBlankFlag
+        }
+        tags[cellIndex] = ValueTag.Number
+        errors[cellIndex] = ErrorCode.None
+        stringIds[cellIndex] = 0
+        numbers[cellIndex] = inputNumericValues[index]!
+        versions[cellIndex] = (versions[cellIndex] ?? 0) + 1
       }
       args.state.workbook.notifyColumnsWritten(firstRef.sheetId, Uint32Array.of(firstMutation.col, secondMutation.col))
     } finally {
