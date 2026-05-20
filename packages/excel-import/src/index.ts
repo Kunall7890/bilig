@@ -71,22 +71,16 @@ import {
   type ExcelWorkbookImportContentType,
 } from './workbook-import-content-types.js'
 import { createWorkbookPreview, type ImportedWorkbookPreview } from './workbook-import-preview.js'
-import {
-  collectImportedFormulaExternalWorkbookReferences,
-  readImportedExternalLinkCaches,
-  readImportedExternalWorkbookReferences,
-  translateImportedFormulaExternalReferences,
-} from './xlsx-external-references.js'
-import { normalizeImportedFormulaSource, translateImportedFormulaStructuredReferences } from './xlsx-formula-translation.js'
+import { readImportedExternalLinkCaches, readImportedExternalWorkbookReferences } from './xlsx-external-references.js'
+import { normalizeImportedFormulaSource } from './xlsx-formula-translation.js'
 import { readImportedSheetHyperlinks } from './xlsx-hyperlinks.js'
 import { collectStyleCandidateAddresses, internImportedStyle, readImportedXlsxCellStyle } from './xlsx-import-cell-styles.js'
+import { buildImportedFormulaSnapshotCell } from './xlsx-import-formula-cells.js'
 import { buildImportedSheetMetadata } from './xlsx-import-sheet-metadata.js'
 import { buildImportedWorkbookMetadata } from './xlsx-import-workbook-metadata.js'
 import {
   externalPivotCachesWarning,
   externalWorkbookReferencesWarning,
-  formulaReferencesExternalWorkbook,
-  formulaReferencesVolatileFunction,
   macroExecutionDeclinedWarning,
   volatileFormulasWarning,
   workbookDefinedNamesReferenceExternalWorkbook,
@@ -441,14 +435,6 @@ function importSheetJsWorkbook(
   const importedWorksheetFormulaManifestsBySheet = workbookZip
     ? readImportedWorksheetFormulaManifests(workbookZip, workbook.SheetNames, sheetPathsByName, fallbackSheetPaths)
     : new Map()
-  const importedWorksheetFormulasBySheet = new Map(
-    [...importedWorksheetFormulaManifestsBySheet.entries()].map(([sheetName, formulasByAddress]) => [
-      sheetName,
-      new Map(
-        [...formulasByAddress.entries()].filter((entry) => entry[1].formula.trim().length > 0).map((entry) => [entry[0], entry[1].formula]),
-      ),
-    ]),
-  )
   const importedThreadedCommentArtifacts = workbookZip
     ? readImportedWorkbookThreadedCommentArtifacts(workbookZip, workbook.SheetNames)
     : undefined
@@ -487,7 +473,6 @@ function importSheetJsWorkbook(
 
     const importedComments = readImportedSheetComments(sheetName, sheet)
     const importedWorksheetTextValues = importedWorksheetTextValuesBySheet.get(sheetName)
-    const importedWorksheetFormulas = importedWorksheetFormulasBySheet.get(sheetName)
     const importedWorksheetFormulaManifests = importedWorksheetFormulaManifestsBySheet.get(sheetName)
     const importedHyperlinks = readImportedSheetHyperlinks(sheetName, sheet)
     if (importedComments.ignoredCount > 0 && !ignoredCommentsSeen) {
@@ -544,6 +529,20 @@ function importSheetJsWorkbook(
         endColumn: column,
       }
     }
+    const recordImportedFormulaDiagnostics = (result: NonNullable<ReturnType<typeof buildImportedFormulaSnapshotCell>>) => {
+      formulaCellSeen = true
+      if (!externalWorkbookReferenceWarningSeen && result.hasExternalWorkbookDependency) {
+        externalWorkbookReferenceWarningSeen = true
+        warnings.push(externalWorkbookReferencesWarning)
+      }
+      if (!volatileFormulaWarningSeen && result.hasVolatileFormula) {
+        volatileFormulaWarningSeen = true
+        warnings.push(volatileFormulasWarning)
+      }
+      if (result.unsupportedFormulaDependency) {
+        unsupportedFormulaDependencies.push(result.unsupportedFormulaDependency)
+      }
+    }
     const rowCount = range ? range.e.r + 1 : 0
     const columnCount = range ? range.e.c + 1 : 0
     const importableAddresses =
@@ -558,51 +557,23 @@ function importSheetJsWorkbook(
       seenCellAddresses.add(address)
       const nextCell: WorkbookSnapshot['sheets'][number]['cells'][number] = { address }
       const formulaManifest = importedWorksheetFormulaManifests?.get(address)
-      const formula = formulaManifest?.formula ?? importedWorksheetFormulas?.get(address) ?? cell['f']
+      const manifestFormula = formulaManifest?.formula
+      const formula = typeof manifestFormula === 'string' && manifestFormula.trim().length > 0 ? manifestFormula : cell['f']
       const xmlTextValue = importedWorksheetTextValues?.get(address)
       if (typeof formula === 'string' && formula.trim().length > 0) {
-        const normalizedFormula = normalizeImportedFormulaSource(formula)
-        formulaCellSeen = true
-        const externalReferenceTranslation = translateImportedFormulaExternalReferences(normalizedFormula, importedExternalLinkCaches)
-        const hasExternalWorkbookDependency =
-          externalReferenceTranslation.resolvedCount > 0 ||
-          externalReferenceTranslation.unresolvedCount > 0 ||
-          formulaReferencesExternalWorkbook(externalReferenceTranslation.formula)
-        if (!externalWorkbookReferenceWarningSeen && hasExternalWorkbookDependency) {
-          externalWorkbookReferenceWarningSeen = true
-          warnings.push(externalWorkbookReferencesWarning)
-        }
-        if (!volatileFormulaWarningSeen && formulaReferencesVolatileFunction(normalizedFormula)) {
-          volatileFormulaWarningSeen = true
-          warnings.push(volatileFormulasWarning)
-        }
-        nextCell.formula = translateImportedFormulaStructuredReferences({
-          formula: externalReferenceTranslation.formula,
-          ownerSheetName: sheetName,
-          ownerAddress: address,
+        const formulaResult = buildImportedFormulaSnapshotCell({
+          sheetName,
+          address,
+          formula,
+          formulaManifest,
+          cachedLiteral: xmlTextValue ?? readImportedLiteralCellValue(cell),
           tables: importedTables,
+          externalLinkCaches: importedExternalLinkCaches,
+          externalWorkbookReferences: importedExternalWorkbookReferences,
         })
-        const cachedLiteral =
-          formulaManifest?.cachedValue !== undefined ? formulaManifest.cachedValue : (xmlTextValue ?? readImportedLiteralCellValue(cell))
-        if (hasExternalWorkbookDependency) {
-          unsupportedFormulaDependencies.push({
-            kind: 'external-workbook-reference',
-            sheetName,
-            address,
-            formula: normalizedFormula,
-            importedFormula: nextCell.formula,
-            linkedWorkbooks: [...collectImportedFormulaExternalWorkbookReferences(normalizedFormula, importedExternalWorkbookReferences)],
-            cachedValuesUsed: cachedLiteral !== undefined || externalReferenceTranslation.resolvedCount > 0,
-            cachedFormulaValuePreserved: cachedLiteral !== undefined,
-            cachedExternalReferenceValuesUsed: externalReferenceTranslation.resolvedCount > 0,
-            resolvedExternalReferenceCount: externalReferenceTranslation.resolvedCount,
-            unresolvedExternalReferenceCount: externalReferenceTranslation.unresolvedCount,
-            reason:
-              'Formula depends on an external workbook reference; cached linked values are preserved but linked workbooks are not recalculated during import.',
-          })
-        }
-        if (cachedLiteral !== undefined) {
-          nextCell.value = cachedLiteral
+        if (formulaResult) {
+          Object.assign(nextCell, formulaResult.formulaCell)
+          recordImportedFormulaDiagnostics(formulaResult)
         }
       } else {
         const literal = xmlTextValue ?? readImportedLiteralCellValue(cell)
@@ -623,6 +594,38 @@ function importSheetJsWorkbook(
       if (nextCell.value !== undefined || nextCell.formula !== undefined || nextCell.format !== undefined) {
         pushImportedSnapshotCell(cells, runtimeCellCoords, nextCell, row, column)
       }
+    }
+    for (const [address, formulaManifest] of [...(importedWorksheetFormulaManifests?.entries() ?? [])]
+      .filter(([candidateAddress, candidate]) => !seenCellAddresses.has(candidateAddress) && candidate.formula.trim().length > 0)
+      .toSorted((left, right) => compareCellAddresses(left[0], right[0]))) {
+      const decoded = XLSX.utils.decode_cell(address)
+      seenCellAddresses.add(address)
+      const formulaResult = buildImportedFormulaSnapshotCell({
+        sheetName,
+        address,
+        formula: formulaManifest.formula,
+        formulaManifest,
+        cachedLiteral: importedWorksheetTextValues?.get(address),
+        tables: importedTables,
+        externalLinkCaches: importedExternalLinkCaches,
+        externalWorkbookReferences: importedExternalWorkbookReferences,
+      })
+      if (!formulaResult) {
+        continue
+      }
+      const nextCell: WorkbookSnapshot['sheets'][number]['cells'][number] = { ...formulaResult.formulaCell }
+      const importedFormat = importedFormatsByAddress?.get(address)
+      if (importedFormat !== undefined) {
+        nextCell.format = importedFormat
+      }
+      const importedStyle = importedStylesByAddress?.get(address)
+      if (importedStyle) {
+        addStyleCell(decoded.r, decoded.c, internImportedStyle(importedStyle, styleCatalog))
+      } else if (activeStyleRow === decoded.r) {
+        flushActiveStyleRun()
+      }
+      recordImportedFormulaDiagnostics(formulaResult)
+      pushImportedSnapshotCell(cells, runtimeCellCoords, nextCell, decoded.r, decoded.c)
     }
     const missingStyledAddresses = new Set([...(importedStylesByAddress?.keys() ?? []), ...(importedFormatsByAddress?.keys() ?? [])])
     for (const missingAddress of [...missingStyledAddresses]
@@ -665,14 +668,15 @@ function importSheetJsWorkbook(
         columnCount,
         nonEmptyCellCount: cells.length,
         readCellText: (row, col) => {
-          const cell = worksheetCellAt(sheet, row, col)
-          if (!cell) {
-            return ''
-          }
           const address = XLSX.utils.encode_cell({ r: row, c: col })
-          const formula = importedWorksheetFormulas?.get(address) ?? cell['f']
+          const cell = worksheetCellAt(sheet, row, col)
+          const manifestFormula = importedWorksheetFormulaManifests?.get(address)?.formula
+          const formula = typeof manifestFormula === 'string' && manifestFormula.trim().length > 0 ? manifestFormula : cell?.['f']
           if (typeof formula === 'string' && formula.trim().length > 0) {
             return `=${normalizeImportedFormulaSource(formula)}`
+          }
+          if (!cell) {
+            return toDisplayText(importedWorksheetTextValues?.get(address))
           }
           return toDisplayText(readImportedLiteralCellValue(cell) ?? importedWorksheetTextValues?.get(address))
         },

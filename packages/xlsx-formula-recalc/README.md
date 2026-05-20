@@ -14,6 +14,35 @@ It fits the common `xlsx-populate`, SheetJS, and template-generation case
 where the file writer can create or edit the XLSX, but the Node service also
 needs fresh formula readback before returning.
 
+## If You Arrived From SheetJS or xlsx-populate
+
+`xlsx`, SheetJS-style workbook objects, and `xlsx-populate` are good at file
+I/O. They can read workbook bytes, write cells, preserve formulas, and export
+an `.xlsx` artifact.
+
+They do not make stale cached formula values fresh inside your Node process.
+That is the failure behind issues and searches like:
+
+- `xlsx-populate formula calculated value`
+- `SheetJS formula result not updating`
+- `xlsx formula recalculation Node.js`
+- `get computed value from xlsx formula cell`
+
+Use this package at the file boundary:
+
+1. let your existing library produce XLSX bytes;
+2. call `recalculateXlsx(...)`;
+3. read the proof cells from `result.reads`;
+4. write `result.xlsx` if the recalculated workbook artifact is needed.
+
+That keeps your current file-writer choice intact and adds only the missing
+calculation/readback step.
+
+For a cross-library proof, run
+[`examples/recalc-bridge-workflows`](../../examples/recalc-bridge-workflows).
+It edits the same workbook through SheetJS/`xlsx`, `xlsx-populate`, and
+ExcelJS, then verifies that Bilig refreshes the stale formula result.
+
 ## Install
 
 ```sh
@@ -73,6 +102,16 @@ const result = recalculateXlsx(output, {
 ```
 
 For the full workbook API, import `WorkPaper`, `importXlsx`, and `exportXlsx` from this package.
+
+## Common Boundaries
+
+| Existing tool                          | Keep using it for                                      | Add this package when                               |
+| -------------------------------------- | ------------------------------------------------------ | --------------------------------------------------- |
+| `xlsx-populate`                        | template editing and workbook generation               | formula cells need fresh cached values in Node      |
+| SheetJS / `xlsx`                       | broad XLSX parsing, writing, and file interchange      | edited inputs must update dependent formulas now    |
+| ExcelJS                                | styled reports, sheets, tables, and ExcelJS workbooks  | use `exceljs-formula-recalc` for the ExcelJS object |
+| Excel, LibreOffice, Microsoft Graph    | exact spreadsheet application behavior                 | you cannot depend on an external app or API call    |
+| `@bilig/headless` or `bilig-workpaper` | service-owned formula workbook state with JSON storage | the workbook does not have to stay XLSX-first       |
 
 ## Scope
 
