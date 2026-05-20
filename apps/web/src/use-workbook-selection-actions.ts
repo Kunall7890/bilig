@@ -8,7 +8,12 @@ import type { WorkbookMutationMethod } from './workbook-sync.js'
 import { OPTIMISTIC_CELL_SNAPSHOT_FLAG } from './workbook-optimistic-cell-flags.js'
 import { parseEditorInput, parsedEditorInputFromSnapshot, type EditingMode, type ParsedEditorInput } from './worker-workbook-app-model.js'
 import { createOptimisticCellSnapshot, createSupersedingCellSnapshot, evaluateOptimisticFormula } from './workbook-optimistic-cell.js'
-import { createEmptyOptimisticSnapshot, normalizeCellRange, type OptimisticViewportStore } from './workbook-optimistic-range.js'
+import {
+  createContentClearedOptimisticSnapshot,
+  createEmptyOptimisticSnapshot,
+  normalizeCellRange,
+  type OptimisticViewportStore,
+} from './workbook-optimistic-range.js'
 
 export { applyOptimisticClearRange } from './workbook-optimistic-range.js'
 
@@ -300,7 +305,7 @@ export function applyOptimisticCommitOps(viewportStore: OptimisticViewportStore 
     const parsed = parsedInputFromCommitOp(op)
     const next =
       parsed.kind === 'clear'
-        ? createEmptyOptimisticSnapshot(opSheetName, opAddress, previous.version + 1)
+        ? createContentClearedOptimisticSnapshot(previous)
         : createOptimisticCellSnapshot({
             sheetName: opSheetName,
             address: opAddress,

@@ -285,8 +285,8 @@ test('web app preserves the active cell inside a selected area and collapses on 
   await expect(page.getByTestId('name-box')).toHaveValue('C3')
   await expect(page.getByTestId('sheet-grid-focus-target')).toHaveAttribute('aria-label', 'Sheet1 C3')
   await expect(page.locator('[data-grid-selection-visual-role="selection-fill"]')).toHaveCount(0)
-  await expect(page.locator('[data-grid-selection-visual-role="active-border"]')).toHaveCount(0)
-  await expect(page.locator('[data-grid-selection-visual-role="selection-border"]')).toHaveCount(1)
+  await expect(page.locator('[data-grid-selection-visual-role="active-border"]')).toHaveCount(1)
+  await expect(page.locator('[data-grid-selection-visual-role="selection-border"]')).toHaveCount(0)
 })
 
 test('@browser-ci web app keeps reverse-drag range selection chrome geometrically aligned', async ({ page }) => {
@@ -391,12 +391,12 @@ test('web app clips spilled text before far horizontally scrolled selections', a
   const runBox = await page
     .locator(`[data-native-text-run-row="${String(rowIndex)}"][data-native-text-run-col="${String(sourceColumnIndex)}"]`)
     .boundingBox()
-  const selectionBorderBox = await page.locator('[data-grid-selection-visual-role="selection-border"]').boundingBox()
-  if (!runBox || !selectionBorderBox) {
+  const activeBorderBox = await page.locator('[data-grid-selection-visual-role="active-border"]').boundingBox()
+  if (!runBox || !activeBorderBox) {
     throw new Error('far grid text run or selection border is not visible')
   }
 
-  expect(runBox.x + runBox.width).toBeLessThanOrEqual(selectionBorderBox.x + 0.5)
+  expect(runBox.x + runBox.width).toBeLessThanOrEqual(activeBorderBox.x + 0.5)
 })
 
 test('web app clips spilled text before selected whole columns on non-active rows', async ({ page }) => {

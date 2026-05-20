@@ -74,7 +74,7 @@ function buildWorkbookHeaderGpuSceneV3(input: WorkbookHeaderPaneInputV3): GridGp
       headerSelectedFillColor: parseGpuColor(workbookThemeColors.accentSoft),
       resizeGuideColor: parseGpuColor('rgba(33, 86, 58, 0.72)'),
       resizeGuideGlowColor: parseGpuColor('rgba(191, 213, 196, 0.28)'),
-      selectionFillColor: parseGpuColor('rgba(33, 86, 58, 0.08)'),
+      selectionFillColor: parseGpuColor(workbookThemeColors.selectionFill),
     },
     activeHeaderDrag: null,
     columnWidths: input.columnWidths,

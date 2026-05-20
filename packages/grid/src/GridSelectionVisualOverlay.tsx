@@ -146,11 +146,15 @@ function appendBodySelectionVisualRects(
     }
   }
 
-  for (const bounds of input.geometry.rangeScreenRects(input.selectionRange)) {
-    rects.push({ role: 'selection-border', bounds })
+  const activeCell = input.gridSelection.current?.cell ?? null
+  if (isMultiCellSelection) {
+    for (const bounds of input.geometry.rangeScreenRects(input.selectionRange)) {
+      rects.push({ role: 'selection-border', bounds })
+    }
+  } else {
+    appendCellBorderRects(rects, input.geometry, [input.selectionRange.x, input.selectionRange.y], 'active-border')
   }
 
-  const activeCell = input.gridSelection.current?.cell ?? null
   if (activeCell && isMultiCellSelection && cellInRange(activeCell, input.selectionRange)) {
     appendCellBorderRects(rects, input.geometry, activeCell, 'active-border')
   }
@@ -368,6 +372,6 @@ function styleForRect(rect: GridSelectionVisualRect): CSSProperties {
   }
   return {
     ...base,
-    backgroundColor: 'rgba(33, 86, 58, 0.08)',
+    backgroundColor: workbookThemeColors.selectionFill,
   }
 }

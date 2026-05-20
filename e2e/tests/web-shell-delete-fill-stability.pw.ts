@@ -71,6 +71,46 @@ test('@browser-ci web app keeps deleted filled cells stable after click-away and
   await expect(formulaInput).toHaveValue('')
 })
 
+test('@browser-ci web app preserves filled-cell presentation when formula-bar clear commits as delete', async ({ page }) => {
+  const documentId = createTestDocumentId('playwright-formula-clear-fill-stability')
+  const text = 'formula-clear-keeps-fill'
+  await page.setViewportSize({ width: 1166, height: 820 })
+  await page.goto(`/?document=${encodeURIComponent(documentId)}&persist=0&sheet=Sheet1&cell=A1`)
+  await waitForWorkbookReady(page)
+
+  const formulaInput = page.getByTestId('formula-input')
+
+  await clickProductCell(page, 3, 9)
+  await formulaInput.fill(text)
+  await formulaInput.press('Enter')
+  await expect.poll(() => nativeTextRunTextAt(page, 3, 9)).toBe(text)
+
+  await clickProductCell(page, 3, 9)
+  await pickToolbarPresetColor(page, 'Fill color', 'green')
+  expect(
+    Math.min(...(await sampleGreenFillPixelsAcrossFrames(page, 3, 9, 4))),
+    'setup should visibly paint D10 green before formula-bar clear',
+  ).toBeGreaterThan(120)
+
+  await formulaInput.fill('')
+  await formulaInput.press('Enter')
+  await expect(formulaInput).toHaveValue('')
+  await expect.poll(() => nativeTextRunTextAt(page, 3, 9)).toBe('')
+  expect(
+    Math.min(...(await sampleGreenFillPixelsAcrossFrames(page, 3, 9, 4))),
+    'formula-bar clear should not flash the retained fill to default while commit delete is optimistic',
+  ).toBeGreaterThan(120)
+
+  await clickProductCell(page, 5, 11)
+  await expect.poll(() => nativeTextRunsInclude(page, text)).toBe(false)
+  await expect.poll(() => countGreenFillPixelsInCell(page, 3, 9)).toBeGreaterThan(120)
+
+  await clickProductCell(page, 3, 9)
+  await expect(formulaInput).toHaveValue('')
+  await expect.poll(() => nativeTextRunsInclude(page, text)).toBe(false)
+  await expect.poll(() => countGreenFillPixelsInCell(page, 3, 9)).toBeGreaterThan(120)
+})
+
 test('@browser-ci web app applies fill color after moving text into an empty tile range', async ({ page }) => {
   const documentId = createTestDocumentId('playwright-move-text-fill-range')
   const text = 'moved-fill-stability'

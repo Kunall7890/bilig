@@ -103,6 +103,49 @@ describe('use workbook selection action helpers', () => {
     expect(writes).toHaveLength(3)
   })
 
+  it('preserves presentation when optimistic commit ops clear cell content', () => {
+    const cells = new Map<string, CellSnapshot>([
+      [
+        'Sheet1:D10',
+        {
+          ...emptyCell('Sheet1', 'D10'),
+          format: '0.00',
+          formula: 'SUM(A1:A2)',
+          input: '=SUM(A1:A2)',
+          numberFormatId: 'fmt-filled',
+          styleId: 'style-green-fill',
+          value: { tag: ValueTag.Number, value: 12 },
+          version: 7,
+        },
+      ],
+    ])
+    const writes: CellSnapshot[] = []
+    const viewportStore = {
+      getCell(sheetName: string, address: string) {
+        return cells.get(`${sheetName}:${address}`) ?? emptyCell(sheetName, address)
+      },
+      setCellSnapshot(snapshot: CellSnapshot) {
+        writes.push(snapshot)
+        cells.set(`${snapshot.sheetName}:${snapshot.address}`, snapshot)
+      },
+    }
+
+    const rollback = applyOptimisticCommitOps(viewportStore, [{ kind: 'deleteCell', sheetName: 'Sheet1', addr: 'D10' }])
+
+    expect(rollback).toEqual(expect.any(Function))
+    expect(cells.get('Sheet1:D10')).toMatchObject({
+      flags: OPTIMISTIC_CELL_SNAPSHOT_FLAG,
+      format: '0.00',
+      numberFormatId: 'fmt-filled',
+      styleId: 'style-green-fill',
+      value: { tag: ValueTag.Empty },
+      version: 8,
+    })
+    expect(cells.get('Sheet1:D10')).not.toHaveProperty('formula')
+    expect(cells.get('Sheet1:D10')).not.toHaveProperty('input')
+    expect(writes).toHaveLength(1)
+  })
+
   it('clears the projected selected range before worker patches arrive', () => {
     const cells = new Map<string, CellSnapshot>([
       [

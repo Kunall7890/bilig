@@ -51,6 +51,28 @@ describe('GridSelectionVisualOverlay', () => {
     )
   })
 
+  test('draws a single selected cell with active-cell chrome', () => {
+    const geometry = createGeometry()
+    const selection = createGridSelection(2, 4)
+
+    const rects = buildGridSelectionVisualRects({
+      geometry,
+      gridSelection: selection,
+      selectedCell: [2, 4],
+      selectionRange: selection.current?.range ?? null,
+      showFillHandle: true,
+    })
+
+    expect(rects).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ role: 'active-border', bounds: expect.objectContaining({ x: 246, y: 104, width: 100, height: 20 }) }),
+        expect.objectContaining({ role: 'fill-handle', bounds: expect.objectContaining({ x: 342.5, y: 120.5, width: 7, height: 7 }) }),
+      ]),
+    )
+    expect(rects.some((rect) => rect.role === 'selection-border')).toBe(false)
+    expect(rects.some((rect) => rect.role === 'selection-fill')).toBe(false)
+  })
+
   test('builds hover chrome in the DOM overlay without covering the selected range', () => {
     const geometry = createGeometry()
     const selection = createRangeSelection(createGridSelection(1, 1), [1, 1], [3, 3])
