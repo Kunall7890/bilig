@@ -4,6 +4,17 @@ All notable changes to `@bilig/headless` will be documented in this file.
 
 This package is released as part of the aligned bilig library package set.
 
+## 0.36.1
+
+- Release type: patch
+- Previous libraries tag: libraries-v0.36.0
+- Manual override: no
+
+## Fixes
+- perf(formula): widen native over-limit initialization (6198ed6f)
+- perf(core): speed wide dense cell allocation (369b2f5e)
+- fix(release): skip unprovisioned runtime packages (9d486e56)
+
 ## 0.36.0
 
 - Release type: minor
