@@ -15,7 +15,7 @@ interface LargeSimpleStyleCoordinateScannedWorksheet {
   readonly cellScan: ImportedWorksheetCellScan
 }
 
-const maxDimensionCellPreallocation = 8_000_000
+const maxDimensionCellPreallocation = 16_000_000
 const minXmlBytesPerPreallocatedCell = 16
 const deferredStyleCoordinateWorksheetXmlThreshold = 16_000_000
 
