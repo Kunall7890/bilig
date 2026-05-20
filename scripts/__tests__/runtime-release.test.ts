@@ -172,6 +172,27 @@ describe('runtime release helpers', () => {
     ).toBe(true)
   })
 
+  it('allows explicitly skipping unprovisioned leaf packages during partial recovery', () => {
+    const publishedVersions = [
+      { packageName: '@bilig/protocol', version: '0.36.0' },
+      { packageName: 'sheetjs-formula-recalc', version: null },
+      { packageName: 'exceljs-formula-recalc', version: '0.35.1' },
+    ]
+
+    expect(
+      planRuntimePackagePublishProvisioning({
+        publishedVersions,
+        allowNewNpmPackages: false,
+        skipUnprovisionedNpmPackages: true,
+        dryRun: false,
+      }),
+    ).toEqual({
+      publishAllowed: true,
+      missingPackageNames: ['sheetjs-formula-recalc'],
+      reason: 'unprovisioned npm package name(s) will be skipped: sheetjs-formula-recalc',
+    })
+  })
+
   it('uses strict boolean parsing for runtime publish controls', () => {
     expect(parseBooleanEnv(undefined)).toBe(false)
     expect(parseBooleanEnv('')).toBe(false)

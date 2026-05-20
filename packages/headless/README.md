@@ -19,6 +19,7 @@ the search or production bug you actually have:
 | `SheetJS formula result not updating` or stale `xlsx` results | `npm install sheetjs-formula-recalc` or `npm install xlsx-formula-recalc`                                                                                           | `npx --package sheetjs-formula-recalc sheetjs-recalc --demo --json` returns fresh readback. |
 | `xlsx-populate` writes formulas but Node reads old values     | `npm install xlsx-formula-recalc`                                                                                                                                  | `npx --package xlsx-formula-recalc xlsx-recalc --demo --json` updates the cached value. |
 | ExcelJS formula cells need recalculated values                | `npm install exceljs exceljs-formula-recalc`                                                                                                                       | `npx --package exceljs-formula-recalc exceljs-recalc --demo --json` mutates the workbook boundary. |
+| An AI agent needs spreadsheet tools instead of UI automation  | `npm create @bilig/workpaper@latest pricing-agent -- --agent`                                                                                                      | [AI spreadsheet agent tool](https://proompteng.github.io/bilig/ai-agent-spreadsheet-tool-node.html) shows the write/recalc/read/persist loop. |
 | Formula workbook state belongs in a service or agent tool     | `npm install bilig-workpaper` or `npm install @bilig/headless`                                                                                                      | `npm exec --package @bilig/headless@0.36.0 -- bilig-agent-challenge` prints `verified: true`. |
 | You need the lower-level runtime package and subpaths         | `npm install @bilig/headless`                                                                                                                                      | The examples below prove WorkPaper JSON, XLSX import/export, provenance, and package footprint. |
 
@@ -37,7 +38,8 @@ inspecting `node_modules/@bilig/headless` can find the write/read/persist loop
 locally. The public docs expose the same path through
 [`AGENTS.md`](https://proompteng.github.io/bilig/AGENTS.md),
 [`agent.json`](https://proompteng.github.io/bilig/.well-known/agent.json),
-[`skill.txt`](https://proompteng.github.io/bilig/skill.txt), and
+[`skill.txt`](https://proompteng.github.io/bilig/skill.txt),
+[`AI spreadsheet agent tool`](https://proompteng.github.io/bilig/ai-agent-spreadsheet-tool-node.html), and
 [`llms-full.txt`](https://proompteng.github.io/bilig/llms-full.txt).
 
 This package is not a browser grid, desktop Excel automation, or a source of

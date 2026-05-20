@@ -37,6 +37,7 @@ const versionedStaticReferenceRoots = [
   'docs/claude-desktop-mcpb-workpaper.md',
   'docs/formula-bug-clinic.md',
   'docs/formula-workbooks-node-services-agent-tools.md',
+  'docs/ai-agent-spreadsheet-tool-node.md',
   'docs/headless-workpaper-agent-handbook.md',
   'docs/index.html',
   'docs/llms.txt',
@@ -484,6 +485,11 @@ const llmsFullSources = [
     title: 'Agent WorkPaper Tool-Calling Recipe',
     relativePath: 'docs/agent-workpaper-tool-calling-recipe.md',
     url: `${repositoryUrl}/blob/main/docs/agent-workpaper-tool-calling-recipe.md`,
+  },
+  {
+    title: 'AI Spreadsheet Agent Tool For Node.js',
+    relativePath: 'docs/ai-agent-spreadsheet-tool-node.md',
+    url: `${repositoryUrl}/blob/main/docs/ai-agent-spreadsheet-tool-node.md`,
   },
   {
     title: 'OpenAI Agents SDK WorkPaper Tool',

@@ -60,6 +60,8 @@ describe('headless package workflow', () => {
     expect(source).toContain('scripts/check-create-workpaper-package.ts')
     expect(source).toContain('allow_new_packages')
     expect(source).toContain('ALLOW_NEW_NPM_PACKAGES')
+    expect(source).toContain('skip_unprovisioned_packages')
+    expect(source).toContain('SKIP_UNPROVISIONED_NPM_PACKAGES')
     expect(source).toContain('bun scripts/sync-runtime-release-metadata.ts')
     expect(source).toContain('bun scripts/sync-agent-discovery-docs.ts')
     expect(agentDiscoverySource).toContain('syncVersionedStaticReferenceLine')

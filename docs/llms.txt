@@ -75,6 +75,7 @@ restoring it, and confirming the restored value matches. Return `editedCell`,
 - https://proompteng.github.io/bilig/stop-driving-spreadsheets-with-screenshots.html
 - https://proompteng.github.io/bilig/show-hn-formula-workbooks-node-services.html
 - https://proompteng.github.io/bilig/formula-workbooks-node-services-agent-tools.html
+- https://proompteng.github.io/bilig/ai-agent-spreadsheet-tool-node.html
 - https://proompteng.github.io/bilig/headless-spreadsheet-engine-node-services-agents.html
 - https://proompteng.github.io/bilig/xlsx-formula-recalculation-node.html
 - https://proompteng.github.io/bilig/sheetjs-formula-result-not-updating-node.html
@@ -291,6 +292,12 @@ npm exec --package @bilig/headless@0.36.0 -- bilig-workpaper-mcp --workpaper ./p
   https://github.com/proompteng/bilig/blob/main/docs/sheetjs-exceljs-alternative-formula-workbook-api.md
   routes high-traffic SheetJS, xlsx-populate, ExcelJS, xlsx-calc, FormulaJS,
   and HyperFormula users to the narrowest recalculation or WorkPaper path.
+- AI spreadsheet agent tool for Node.js:
+  https://proompteng.github.io/bilig/ai-agent-spreadsheet-tool-node.html
+  https://github.com/proompteng/bilig/blob/main/docs/ai-agent-spreadsheet-tool-node.md
+  gives OpenAI, LangChain, Vercel AI SDK, and Excel/XLSX agent builders one
+  path from `npm create @bilig/workpaper@latest pricing-agent -- --agent` to
+  verified write/recalculate/read/persist proof.
 - SheetJS formula result not updating in Node.js:
   https://proompteng.github.io/bilig/sheetjs-formula-result-not-updating-node.html
   https://github.com/proompteng/bilig/blob/main/docs/sheetjs-formula-result-not-updating-node.md

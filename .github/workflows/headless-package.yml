@@ -65,6 +65,11 @@ on:
         type: boolean
         required: false
         default: false
+      skip_unprovisioned_packages:
+        description: 'Publish provisioned packages and skip unprovisioned leaf packages that still need first-time npm creation'
+        type: boolean
+        required: false
+        default: false
       release_from_github_mirror:
         description: 'Deprecated: plan against GitHub mirror only; publishing still requires Forgejo canonical refs'
         type: boolean
@@ -257,6 +262,7 @@ jobs:
       npm_tag: ${{ steps.release_meta.outputs.npm_tag }}
       dry_run: ${{ steps.release_meta.outputs.dry_run }}
       allow_new_packages: ${{ steps.release_meta.outputs.allow_new_packages }}
+      skip_unprovisioned_packages: ${{ steps.release_meta.outputs.skip_unprovisioned_packages }}
       release_from_github_mirror: ${{ steps.release_meta.outputs.release_from_github_mirror }}
       planner_args: ${{ steps.release_meta.outputs.planner_args }}
     steps:
@@ -292,6 +298,7 @@ jobs:
           INPUT_NPM_TAG: ${{ github.event.inputs.npm_tag }}
           INPUT_DRY_RUN: ${{ github.event.inputs.dry_run }}
           INPUT_ALLOW_NEW_PACKAGES: ${{ github.event.inputs.allow_new_packages }}
+          INPUT_SKIP_UNPROVISIONED_PACKAGES: ${{ github.event.inputs.skip_unprovisioned_packages }}
           INPUT_RELEASE_FROM_GITHUB_MIRROR: ${{ github.event.inputs.release_from_github_mirror }}
           INPUT_TARGET_VERSION: ${{ github.event.inputs.target_version }}
         run: |
@@ -301,11 +308,13 @@ jobs:
             npm_tag_input="latest"
             dry_run_input="false"
             allow_new_packages_input="false"
+            skip_unprovisioned_packages_input="false"
             release_from_github_mirror_input="false"
           else
             npm_tag_input="${INPUT_NPM_TAG:-latest}"
             dry_run_input="${INPUT_DRY_RUN:-false}"
             allow_new_packages_input="${INPUT_ALLOW_NEW_PACKAGES:-false}"
+            skip_unprovisioned_packages_input="${INPUT_SKIP_UNPROVISIONED_PACKAGES:-false}"
             release_from_github_mirror_input="${INPUT_RELEASE_FROM_GITHUB_MIRROR:-false}"
           fi
 
@@ -327,6 +336,15 @@ jobs:
               ;;
           esac
 
+          case "$skip_unprovisioned_packages_input" in
+            true|True|TRUE) skip_unprovisioned_packages_value=true ;;
+            false|False|FALSE|"") skip_unprovisioned_packages_value=false ;;
+            *)
+              echo 'skip_unprovisioned_packages input must be true or false' >&2
+              exit 1
+              ;;
+          esac
+
           case "$release_from_github_mirror_input" in
             true|True|TRUE) release_from_github_mirror_value=true ;;
             false|False|FALSE|"") release_from_github_mirror_value=false ;;
@@ -343,6 +361,9 @@ jobs:
           if [[ "${allow_new_packages_value}" == "true" ]]; then
             planner_args="${planner_args:+${planner_args} }--allow-new-npm-packages"
           fi
+          if [[ "${skip_unprovisioned_packages_value}" == "true" ]]; then
+            planner_args="${planner_args:+${planner_args} }--skip-unprovisioned-packages"
+          fi
           if [[ "${dry_run_value}" == "true" ]]; then
             planner_args="${planner_args:+${planner_args} }--dry-run"
           fi
@@ -351,6 +372,7 @@ jobs:
             echo "npm_tag=$npm_tag_input"
             echo "dry_run=$dry_run_value"
             echo "allow_new_packages=$allow_new_packages_value"
+            echo "skip_unprovisioned_packages=$skip_unprovisioned_packages_value"
             echo "release_from_github_mirror=$release_from_github_mirror_value"
             echo "planner_args=$planner_args"
           } >> "$GITHUB_OUTPUT"
@@ -842,6 +864,7 @@ jobs:
         id: npm_provisioning
         env:
           ALLOW_NEW_NPM_PACKAGES: ${{ needs.plan_release.outputs.allow_new_packages }}
+          SKIP_UNPROVISIONED_NPM_PACKAGES: ${{ needs.plan_release.outputs.skip_unprovisioned_packages }}
           DRY_RUN: ${{ needs.plan_release.outputs.dry_run }}
         run: |
           set -euo pipefail
@@ -948,6 +971,7 @@ jobs:
           NPM_DIST_TAG: ${{ needs.plan_release.outputs.npm_tag }}
           DRY_RUN: ${{ needs.plan_release.outputs.dry_run }}
           ALLOW_NEW_NPM_PACKAGES: ${{ needs.plan_release.outputs.allow_new_packages }}
+          SKIP_UNPROVISIONED_NPM_PACKAGES: ${{ needs.plan_release.outputs.skip_unprovisioned_packages }}
           TARGET_VERSION: ${{ needs.plan_release.outputs.target_version }}
         run: |
           set -euo pipefail

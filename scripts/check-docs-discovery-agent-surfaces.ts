@@ -39,6 +39,7 @@ export async function requireAgentPublicSurfaceDiscovery(input: {
     xlsxFormulaRecalculationNode,
     googleSheetsApiBoundaryDoc,
     whyAgentsDoc,
+    aiAgentSpreadsheetToolNode,
     headlessWorkpaperAgentHandbook,
     agentToolCallingDoc,
     aiSdkLangChainDoc,
@@ -176,6 +177,19 @@ export async function requireAgentPublicSurfaceDiscovery(input: {
     '"restoredMatchesAfter": true',
   ]) {
     requireIncludes(whyAgentsDoc, required, 'docs/why-agents-need-workbook-apis.md')
+  }
+  for (const required of [
+    'title: AI spreadsheet agent tool for Node.js',
+    'description: Build an AI agent spreadsheet tool that edits workbook inputs, recalculates formulas, verifies readback, and persists state without driving Excel or screenshots.',
+    'npm create @bilig/workpaper@latest pricing-agent -- --agent',
+    'npm exec --package @bilig/headless@latest -- bilig-agent-challenge',
+    'npx --package xlsx-formula-recalc xlsx-recalc quote.xlsx',
+    'npx --package exceljs-formula-recalc exceljs-recalc --demo --json',
+    'OpenAI Agents SDK function tools',
+    'LangChain.js tools and LangGraph.js `ToolNode`',
+    'Star or bookmark Bilig',
+  ] as const) {
+    requireIncludes(aiAgentSpreadsheetToolNode, required, 'docs/ai-agent-spreadsheet-tool-node.md')
   }
   for (const required of [
     'description: A compact playbook for agents that need workbook formulas without opening Excel',
