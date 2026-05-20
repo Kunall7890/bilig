@@ -15,6 +15,9 @@ const colon = 58
 const doubleQuote = 34
 const singleQuote = 39
 const greaterThan = 62
+const conditionalFormattingCloseBytes = new Uint8Array([
+  60, 47, 99, 111, 110, 100, 105, 116, 105, 111, 110, 97, 108, 70, 111, 114, 109, 97, 116, 116, 105, 110, 103, 62,
+])
 
 export interface LargeSimpleConditionalFormattingByteScan {
   readonly conditionalFormats?: WorkbookConditionalFormatSnapshot[]
@@ -71,6 +74,25 @@ export function readLargeSimpleConditionalFormattingFromBytes(
     conditionalFormats,
     ruleCount: conditionalFormats.length,
   }
+}
+
+export function wrapLargeSimpleConditionalFormatRuleBytes(
+  rootTag: Uint8Array,
+  bytes: Uint8Array,
+  startIndex: number,
+  endIndex: number,
+): Uint8Array {
+  const ruleBytes = bytes.subarray(startIndex, endIndex)
+  const output = new Uint8Array(rootTag.byteLength + ruleBytes.byteLength + conditionalFormattingCloseBytes.byteLength)
+  output.set(rootTag)
+  output.set(ruleBytes, rootTag.byteLength)
+  output.set(conditionalFormattingCloseBytes, rootTag.byteLength + ruleBytes.byteLength)
+  return output
+}
+
+export function countLargeSimpleConditionalFormattingSqrefRangesFromRootTag(rootTag: Uint8Array): number {
+  const tag = readXmlTagName(rootTag, 1)
+  return tag ? countSqrefRangesFromTag(rootTag, tag.endIndex, rootTag.byteLength - 1) : 1
 }
 
 function readConditionalFormatRules(bytes: Uint8Array, startIndex: number, endIndex: number): ParsedConditionalFormatRule[] | null {
@@ -192,6 +214,26 @@ function readConditionalFormatRuleCount(bytes: Uint8Array, startIndex: number, e
     ? (parseSqrefRanges('', decodeXmlText(readXmlAttribute(bytes, root.nameEnd, root.tagEnd, 'sqref') ?? ''))?.length ?? 1)
     : 1
   return Math.max(1, ranges * countOpeningTags(bytes, startIndex, endIndex, 'cfRule'))
+}
+
+function countSqrefRangesFromTag(bytes: Uint8Array, nameEnd: number, tagEnd: number): number {
+  const sqref = readXmlAttributeRange(bytes, nameEnd, tagEnd, 'sqref')
+  if (!sqref) {
+    return 1
+  }
+  let count = 0
+  let inToken = false
+  for (let index = sqref.start; index < sqref.end; index += 1) {
+    if (isAsciiWhitespace(bytes[index] ?? 0)) {
+      inToken = false
+      continue
+    }
+    if (!inToken) {
+      count += 1
+      inToken = true
+    }
+  }
+  return Math.max(1, count)
 }
 
 function parseSqrefRanges(sheetName: string, value: string): CellRangeRef[] | null {

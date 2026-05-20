@@ -166,6 +166,30 @@ describe('large simple worksheet stream scanners', () => {
     expect(Math.max(...retainedBufferLengths)).toBeLessThan(1024)
   })
 
+  it('streams large split hyperlink metadata without retaining the full parent body', () => {
+    const headlessRetainedBufferLengths: number[] = []
+    const headlessScan = parseHeadlessLargeSimpleWorksheetFromChunks(splitLargeHyperlinksWorksheetXml(), 0, {
+      hasSharedStrings: false,
+      onRetainedBufferLength: (length) => headlessRetainedBufferLengths.push(length),
+    })
+    const retainedBufferLengths: number[] = []
+    const scan = parseLargeSimpleWorksheetCellsFromChunks(splitLargeHyperlinksWorksheetXml(), 0, {
+      hasSharedStrings: false,
+      sheetName: 'Data',
+      onRetainedBufferLength: (length) => retainedBufferLengths.push(length),
+    })
+
+    expect(headlessScan?.cellCount).toBe(1)
+    expect(scan?.metadata?.hyperlinks).toEqual([
+      { ref: 'A1', location: 'Summary!A1', tooltip: 'Jump', display: 'Summary' },
+      { ref: 'B1', relationshipId: 'rIdHyperlink1' },
+    ])
+    expect(headlessRetainedBufferLengths.length).toBeGreaterThan(0)
+    expect(retainedBufferLengths.length).toBeGreaterThan(0)
+    expect(Math.max(...headlessRetainedBufferLengths)).toBeLessThan(1024)
+    expect(Math.max(...retainedBufferLengths)).toBeLessThan(1024)
+  })
+
   it('streams large split conditional formatting metadata without retaining the full parent body', () => {
     const headlessRetainedBufferLengths: number[] = []
     const headlessScan = parseHeadlessLargeSimpleWorksheetFromChunks(splitLargeConditionalFormattingWorksheetXml(), 0, {
@@ -545,6 +569,27 @@ function splitLargeDataValidationsWorksheetXml(): (onChunk: (chunk: Uint8Array) 
     ' '.repeat(20_000),
     '<dataValidation type="whole" operator="between" sqref="B1 B2"><formula1>1</formula1><formula2>10</formula2></dataValidation></',
     'dataValidations>',
+    '</worksheet>',
+  ]
+  return (onChunk) => {
+    for (const chunk of chunks) {
+      onChunk(encoder.encode(chunk))
+    }
+    return true
+  }
+}
+
+function splitLargeHyperlinksWorksheetXml(): (onChunk: (chunk: Uint8Array) => void) => boolean {
+  const chunks = [
+    '<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">',
+    '<dimension ref="A1"/>',
+    '<sheetData><row r="1"><c r="A1"><v>1</v></c></row></sheetData>',
+    '<hyperlinks><hyperlink ref="A1" location="Summary!A1" tooltip="Jump" display="Summary"/>',
+    ' '.repeat(40_000),
+    ' '.repeat(40_000),
+    ' '.repeat(20_000),
+    '<hyperlink ref="B1" r:id="rIdHyperlink1"/></',
+    'hyperlinks>',
     '</worksheet>',
   ]
   return (onChunk) => {

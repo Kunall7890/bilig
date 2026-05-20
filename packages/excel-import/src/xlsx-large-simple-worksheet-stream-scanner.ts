@@ -10,7 +10,11 @@ import {
   readLargeSimpleCellValueFromTextRange,
   readLargeSimpleSharedStringIndexFromTextRange,
 } from './xlsx-large-simple-cell-value-scan.js'
-import { readLargeSimpleConditionalFormattingFromBytes } from './xlsx-large-simple-conditional-format-byte-scan.js'
+import {
+  countLargeSimpleConditionalFormattingSqrefRangesFromRootTag,
+  readLargeSimpleConditionalFormattingFromBytes,
+  wrapLargeSimpleConditionalFormatRuleBytes,
+} from './xlsx-large-simple-conditional-format-byte-scan.js'
 import {
   countLargeSimpleDataValidationsFromBytes,
   readLargeSimpleDataValidationsFromBytes,
@@ -76,9 +80,6 @@ import type {
 const lessThan = 60
 const slash = 47
 const emptyBytes = new Uint8Array(0)
-const conditionalFormattingCloseBytes = new Uint8Array([
-  60, 47, 99, 111, 110, 100, 105, 116, 105, 111, 110, 97, 108, 70, 111, 114, 109, 97, 116, 116, 105, 110, 103, 62,
-])
 const packedAddressColumnFactor = 16_384
 const extensionElementPattern = /<(?:[A-Za-z_][\w.-]*:)?ext\b[^>]*(?:\/>|>[\s\S]*?<\/(?:[A-Za-z_][\w.-]*:)?ext>)/gu
 const slicerListElementPattern = /<(?:[A-Za-z_][\w.-]*:)?slicerList\b/u
@@ -203,6 +204,7 @@ class LargeSimpleWorksheetChunkScanner {
   private activeMetadataElement: StreamedMetadataElement | null = null
   private activeConditionalFormatting: ActiveConditionalFormatting | null = null
   private activeDataValidations = false
+  private activeHyperlinks = false
 
   constructor(
     private readonly sheetIndex: number,
@@ -259,7 +261,7 @@ class LargeSimpleWorksheetChunkScanner {
       return null
     }
     this.process(true)
-    if (this.activeMetadataElement !== null || this.activeConditionalFormatting !== null) {
+    if (this.activeMetadataElement !== null || this.activeConditionalFormatting !== null || this.activeHyperlinks) {
       this.failed = true
     }
     this.compact()
@@ -381,6 +383,12 @@ class LargeSimpleWorksheetChunkScanner {
       }
       if (this.activeDataValidations) {
         if (!this.processActiveDataValidations(final)) {
+          return
+        }
+        continue
+      }
+      if (this.activeHyperlinks) {
+        if (!this.processActiveHyperlinks(final)) {
           return
         }
         continue
@@ -641,6 +649,10 @@ class LargeSimpleWorksheetChunkScanner {
       this.index = tagEnd + 1
       return true
     }
+    if (localName === 'hyperlinks' && isSelfClosingTag(this.buffer, tagEnd)) {
+      this.index = tagEnd + 1
+      return true
+    }
     if (isSelfClosingTag(this.buffer, tagEnd)) {
       const handled = this.retainMetadataXml && this.collectTypedMetadataElement(localName, this.index, tagEnd + 1)
       if (!handled) {
@@ -681,6 +693,17 @@ class LargeSimpleWorksheetChunkScanner {
       this.activeDataValidations = true
       this.index = tagEnd + 1
       if (!this.processActiveDataValidations(final)) {
+        if (final) {
+          this.failed = true
+        }
+        return false
+      }
+      return true
+    }
+    if (localName === 'hyperlinks') {
+      this.activeHyperlinks = true
+      this.index = tagEnd + 1
+      if (!this.processActiveHyperlinks(final)) {
         if (final) {
           this.failed = true
         }
@@ -934,7 +957,7 @@ class LargeSimpleWorksheetChunkScanner {
     active.ruleSeen = true
     const endIndex = selfClosing ? tagEnd + 1 : closing.end
     if (!this.retainMetadataXml) {
-      this.conditionalFormatCount += activeConditionalFormattingRangeCount(active)
+      this.conditionalFormatCount += countLargeSimpleConditionalFormattingSqrefRangesFromRootTag(active.rootTag)
       this.index = endIndex
       return true
     }
@@ -942,7 +965,7 @@ class LargeSimpleWorksheetChunkScanner {
       this.failed = true
       return true
     }
-    const scanBytes = wrapConditionalFormatRule(active.rootTag, this.buffer, startIndex, endIndex)
+    const scanBytes = wrapLargeSimpleConditionalFormatRuleBytes(active.rootTag, this.buffer, startIndex, endIndex)
     const scan = readLargeSimpleConditionalFormattingFromBytes(
       this.sheetName,
       scanBytes,
@@ -962,6 +985,61 @@ class LargeSimpleWorksheetChunkScanner {
     }
     this.index = endIndex
     return true
+  }
+
+  private processActiveHyperlinks(final: boolean): boolean {
+    while (!this.failed && this.index < this.buffer.byteLength) {
+      if (this.buffer[this.index] !== lessThan) {
+        this.index += 1
+        continue
+      }
+      const closing = this.buffer[this.index + 1] === slash
+      const tagNameStart = this.index + (closing ? 2 : 1)
+      const tag = readXmlTagName(this.buffer, tagNameStart)
+      if (!tag) {
+        if (!final && tagNameStart >= this.buffer.byteLength) {
+          return false
+        }
+        this.index += 1
+        continue
+      }
+      const tagEnd = findTagEnd(this.buffer, tag.endIndex)
+      if (tagEnd === null) {
+        if (final) {
+          this.failed = true
+        }
+        return false
+      }
+      if (closing && tag.localName === 'hyperlinks') {
+        this.activeHyperlinks = false
+        this.index = tagEnd + 1
+        return true
+      }
+      if (!closing && tag.localName === 'hyperlink') {
+        this.collectActiveHyperlinkTag(tagEnd)
+      }
+      this.index = tagEnd + 1
+    }
+    if (final) {
+      this.failed = true
+    } else {
+      this.index = this.buffer.byteLength
+    }
+    return false
+  }
+
+  private collectActiveHyperlinkTag(tagEnd: number): void {
+    if (!this.retainMetadataXml) {
+      return
+    }
+    const refs = readLargeSimpleSheetHyperlinkRefsFromBytes(this.buffer, this.index, tagEnd + 1)
+    if (refs === null) {
+      this.failed = true
+      return
+    }
+    if (refs.length > 0) {
+      this.hyperlinks = [...(this.hyperlinks ?? []), ...refs]
+    }
   }
 
   private processActiveDataValidations(final: boolean): boolean {
@@ -1082,20 +1160,6 @@ class LargeSimpleWorksheetChunkScanner {
   private reportRetainedBufferLength: () => void = () => {}
 }
 
-function wrapConditionalFormatRule(rootTag: Uint8Array, bytes: Uint8Array, startIndex: number, endIndex: number): Uint8Array {
-  const ruleBytes = bytes.subarray(startIndex, endIndex)
-  const output = new Uint8Array(rootTag.byteLength + ruleBytes.byteLength + conditionalFormattingCloseBytes.byteLength)
-  output.set(rootTag)
-  output.set(ruleBytes, rootTag.byteLength)
-  output.set(conditionalFormattingCloseBytes, rootTag.byteLength + ruleBytes.byteLength)
-  return output
-}
-
-function activeConditionalFormattingRangeCount(active: ActiveConditionalFormatting): number {
-  const tag = readXmlTagName(active.rootTag, 1)
-  return tag ? countSqrefRangesFromTag(active.rootTag, tag.endIndex, active.rootTag.byteLength - 1) : 1
-}
-
 function readSlicerListExtensionXml(xml: string): string | undefined {
   extensionElementPattern.lastIndex = 0
   return [...xml.matchAll(extensionElementPattern)].find((match) => slicerListElementPattern.test(match[0]))?.[0]
@@ -1103,30 +1167,6 @@ function readSlicerListExtensionXml(xml: string): string | undefined {
 
 function readElementAttribute(xml: string, name: string): string | null {
   return new RegExp(`\\s${name}=("|')([\\s\\S]*?)\\1`, 'u').exec(xml)?.[2] ?? null
-}
-
-function countSqrefRangesFromTag(bytes: Uint8Array, nameEnd: number, tagEnd: number): number {
-  const sqref = readXmlAttributeRangeFromTag(bytes, nameEnd, tagEnd, 'sqref')
-  if (!sqref) {
-    return 1
-  }
-  let count = 0
-  let inToken = false
-  for (let index = sqref.start; index < sqref.end; index += 1) {
-    if (isWhitespaceByte(bytes[index] ?? 0)) {
-      inToken = false
-      continue
-    }
-    if (!inToken) {
-      count += 1
-      inToken = true
-    }
-  }
-  return Math.max(1, count)
-}
-
-function isWhitespaceByte(byte: number): boolean {
-  return byte === 9 || byte === 10 || byte === 12 || byte === 13 || byte === 32
 }
 
 function readPositiveIntegerAttributeFromTag(bytes: Uint8Array, nameEnd: number, tagEnd: number, attributeName: string): number | null {
