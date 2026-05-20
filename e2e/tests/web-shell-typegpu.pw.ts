@@ -1032,20 +1032,27 @@ test('@browser-webgpu @browser-deep main workbook shell keeps DOM editor overlay
   expectNear(editorBox.width, expectedViewportRect.width, tolerance)
   expectNear(editorBox.height, expectedViewportRect.height, tolerance)
 
-  const readback = await waitForReadback(
-    page,
-    {
-      points: [
-        { name: 'activeCellTopBorder', x: expectedLocalX + Math.floor(PRODUCT_COLUMN_WIDTH / 2), y: expectedLocalY },
-        { name: 'activeCellLeftBorder', x: expectedLocalX, y: expectedLocalY + Math.floor(PRODUCT_ROW_HEIGHT / 2) },
-      ],
-      regions: [],
-    },
-    (result) => result.points.activeCellTopBorder.a > 150 && result.points.activeCellLeftBorder.a > 150,
+  // While the editor is open, active-cell chrome is DOM-owned; the GPU readback sequence above proves the renderer advanced.
+  const selectionVisualRects = await waitForSelectionVisualRects(page, (rects) =>
+    rects.some(
+      (rect) =>
+        (rect.role === 'selection-border' || rect.role === 'active-border') &&
+        Math.abs(rect.left - expectedLocalX) <= tolerance &&
+        Math.abs(rect.top - expectedLocalY) <= tolerance &&
+        Math.abs(rect.width - PRODUCT_COLUMN_WIDTH) <= tolerance &&
+        Math.abs(rect.height - PRODUCT_ROW_HEIGHT) <= tolerance,
+    ),
   )
-
-  expect(readback.points.activeCellTopBorder.a).toBeGreaterThan(150)
-  expect(readback.points.activeCellLeftBorder.a).toBeGreaterThan(150)
+  expect(
+    selectionVisualRects.some(
+      (rect) =>
+        (rect.role === 'selection-border' || rect.role === 'active-border') &&
+        Math.abs(rect.left - expectedLocalX) <= tolerance &&
+        Math.abs(rect.top - expectedLocalY) <= tolerance &&
+        Math.abs(rect.width - PRODUCT_COLUMN_WIDTH) <= tolerance &&
+        Math.abs(rect.height - PRODUCT_ROW_HEIGHT) <= tolerance,
+    ),
+  ).toBe(true)
 
   await saveReadbackArtifact(page, testInfo, 'main-workbook-grid-editor-overlay-readback.png', 'main-workbook-grid-editor-overlay-readback')
 })
