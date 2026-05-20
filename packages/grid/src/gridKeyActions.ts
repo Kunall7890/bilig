@@ -397,10 +397,10 @@ export function resolveGridKeyAction(options: ResolveGridKeyActionOptions): Grid
   }
 
   if (hasPrimaryModifier && !event.altKey) {
-    if (normalizedKey === 'c') {
+    if (!event.shiftKey && normalizedKey === 'c') {
       return { kind: 'clipboard-copy' }
     }
-    if (normalizedKey === 'x') {
+    if (!event.shiftKey && normalizedKey === 'x') {
       return { kind: 'clipboard-cut' }
     }
     if (normalizedKey === 'v') {

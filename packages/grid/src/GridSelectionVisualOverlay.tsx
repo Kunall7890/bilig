@@ -327,9 +327,9 @@ function classNameForRole(role: VisualRectRole): string {
     case 'hover-fill':
       return 'absolute box-border'
     case 'selection-border':
-      return 'absolute box-border border border-[var(--wb-accent)]'
+      return 'absolute box-border'
     case 'active-border':
-      return 'absolute box-border border-2 border-[var(--wb-accent)]'
+      return 'absolute box-border'
     case 'fill-handle':
       return 'absolute box-border rounded-[1px] border border-[var(--wb-surface)] bg-[var(--wb-accent)]'
   }
@@ -350,6 +350,7 @@ function styleForRect(rect: GridSelectionVisualRect): CSSProperties {
     return {
       ...base,
       backgroundColor: 'transparent',
+      boxShadow: `inset 0 0 0 ${rect.role === 'active-border' ? 2 : 1}px ${workbookThemeColors.accent}`,
     }
   }
   if (rect.role === 'fill-handle') {

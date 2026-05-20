@@ -477,6 +477,32 @@ describe('gridKeyActions', () => {
 
     expect(
       resolveGridKeyAction({
+        event: { key: 'c', ctrlKey: true, metaKey: false, altKey: false, shiftKey: true },
+        isEditingCell: false,
+        editorValue: '',
+        editorInputFocused: false,
+        pendingTypeSeed: null,
+        selectedCell: [1, 1],
+        currentSelectionCell: [3, 2],
+        currentRangeAnchor: [1, 1],
+      }),
+    ).toEqual({ kind: 'none' })
+
+    expect(
+      resolveGridKeyAction({
+        event: { key: 'x', ctrlKey: true, metaKey: false, altKey: false, shiftKey: true },
+        isEditingCell: false,
+        editorValue: '',
+        editorInputFocused: false,
+        pendingTypeSeed: null,
+        selectedCell: [1, 1],
+        currentSelectionCell: [3, 2],
+        currentRangeAnchor: [1, 1],
+      }),
+    ).toEqual({ kind: 'none' })
+
+    expect(
+      resolveGridKeyAction({
         event: { key: 'v', ctrlKey: true, metaKey: false, altKey: false },
         isEditingCell: false,
         editorValue: '',
