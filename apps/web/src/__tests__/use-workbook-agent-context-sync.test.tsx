@@ -448,7 +448,7 @@ describe('useWorkbookAgentContextSync', () => {
     }
   })
 
-  it('syncs rendered proof freshness during active assistant turns without immediate request floods', async () => {
+  it('coalesces rendered proof freshness during active assistant turns onto the passive sync cadence', async () => {
     ;(globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true
     vi.useFakeTimers()
 
@@ -495,18 +495,30 @@ describe('useWorkbookAgentContextSync', () => {
 
       expect(syncThreadContext).toHaveBeenCalledTimes(1)
 
-      await act(async () => {
-        host.querySelector<HTMLButtonElement>("[data-testid='revision']")?.click()
-      })
+      const advanceRevision = async () => {
+        await act(async () => {
+          host.querySelector<HTMLButtonElement>("[data-testid='revision']")?.click()
+        })
+      }
+
+      await advanceRevision()
+      await advanceRevision()
+      await advanceRevision()
 
       await act(async () => {
-        await vi.advanceTimersByTimeAsync(200)
+        await vi.advanceTimersByTimeAsync(4_800)
+      })
+
+      expect(syncThreadContext).toHaveBeenCalledTimes(1)
+
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(250)
       })
 
       expect(syncThreadContext).toHaveBeenCalledTimes(2)
       expect(syncThreadContext).toHaveBeenLastCalledWith(
         'thr-1',
-        expect.objectContaining({ rendered: expect.objectContaining({ capturedRevision: 8 }) }),
+        expect.objectContaining({ rendered: expect.objectContaining({ capturedRevision: 10 }) }),
       )
     } finally {
       await act(async () => {

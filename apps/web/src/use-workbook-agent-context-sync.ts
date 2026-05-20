@@ -34,7 +34,6 @@ export function useWorkbookAgentContextSync(input: {
   const enabledRef = useRef(input.enabled)
   const snapshotRef = useRef(input.snapshot)
   const lastContextKeyRef = useRef<string>('')
-  const lastSemanticContextKeyRef = useRef<string>('')
   const lastPriorityContextKeyRef = useRef<string>('')
   const hasSyncedContextRef = useRef(false)
   const contextSyncInFlightRef = useRef(false)
@@ -67,7 +66,6 @@ export function useWorkbookAgentContextSync(input: {
   const resetContextSync = useCallback(() => {
     clearPendingContextSync()
     lastContextKeyRef.current = ''
-    lastSemanticContextKeyRef.current = ''
     lastPriorityContextKeyRef.current = ''
     hasSyncedContextRef.current = false
     contextSyncFailureCountRef.current = 0
@@ -105,7 +103,6 @@ export function useWorkbookAgentContextSync(input: {
         if (isPendingContextSyncCurrent(pending)) {
           lastContextKeyRef.current = pending.key
           lastPriorityContextKeyRef.current = pending.priorityKey
-          lastSemanticContextKeyRef.current = `${pending.threadId}:${stringifyWorkbookAgentContextSyncKey(pending.context)}`
           hasSyncedContextRef.current = true
           contextSyncFailureCountRef.current = 0
           nextContextSyncRetryAtRef.current = 0
@@ -142,7 +139,6 @@ export function useWorkbookAgentContextSync(input: {
       return
     }
     const nextContext = input.getContextRef.current()
-    const nextSemanticContextKey = `${activeSession.threadId}:${stringifyWorkbookAgentContextSyncKey(nextContext)}`
     const tracksRenderedProofFreshness = snapshotRef.current.status === 'inProgress' && snapshotRef.current.activeTurnId !== null
     const nextContextKey = `${activeSession.threadId}:${
       tracksRenderedProofFreshness
@@ -153,10 +149,7 @@ export function useWorkbookAgentContextSync(input: {
     if (lastContextKeyRef.current === nextContextKey) {
       return
     }
-    const semanticContextChanged = lastSemanticContextKeyRef.current !== nextSemanticContextKey
-    const renderedProofOnlyContextChanged = tracksRenderedProofFreshness && !semanticContextChanged
-    const shouldPrioritizeSync =
-      !hasSyncedContextRef.current || lastPriorityContextKeyRef.current !== nextPriorityContextKey || renderedProofOnlyContextChanged
+    const shouldPrioritizeSync = !hasSyncedContextRef.current || lastPriorityContextKeyRef.current !== nextPriorityContextKey
     const minimumIntervalMs =
       !shouldPrioritizeSync && snapshotRef.current.status === 'inProgress'
         ? AGENT_CONTEXT_SYNC_PASSIVE_IN_PROGRESS_MIN_INTERVAL_MS
