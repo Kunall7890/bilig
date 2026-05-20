@@ -4,6 +4,15 @@ All notable changes to `@bilig/headless` will be documented in this file.
 
 This package is released as part of the aligned bilig library package set.
 
+## 0.40.16
+
+- Release type: patch
+- Previous libraries tag: libraries-v0.40.15
+- Manual override: no
+
+## Fixes
+- fix(xlsx): fall back on untyped streamed metadata (2ee22194)
+
 ## 0.40.15
 
 - Release type: patch
