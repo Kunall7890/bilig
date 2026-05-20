@@ -252,6 +252,32 @@ describe('large simple XLSX import arena', () => {
     expect(arena.materializeSheetCells(5)).toEqual([{ address: 'A2', value: 2 }])
   })
 
+  it('keeps near-dense row-major coordinates readable after sparse cells break the dense path', () => {
+    const arena = new ImportedWorkbookArena()
+    arena.reserveDenseRowMajorCellCapacity(0, 4, 3)
+
+    arena.addCell({ sheetIndex: 0, row: 0, column: 0, value: 'A1' })
+    arena.addCell({ sheetIndex: 0, row: 0, column: 1, value: 'B1' })
+    arena.addCell({ sheetIndex: 0, row: 0, column: 3, value: 'D1' })
+    arena.addCell({ sheetIndex: 0, row: 1, column: 0, value: 'A2' })
+
+    const lazyCells = arena.createLazySheetCells(0)
+
+    expect(lazyCells).toHaveLength(4)
+    expect(lazyCells.map((cell) => cell.address)).toEqual(['A1', 'B1', 'D1', 'A2'])
+    expect(arena.materializeSheetCells(0)).toEqual([
+      { address: 'A1', value: 'A1' },
+      { address: 'B1', value: 'B1' },
+      { address: 'D1', value: 'D1' },
+      { address: 'A2', value: 'A2' },
+    ])
+    expect(arena.sheetCellsAreDenseRowMajor(0, 4, 3)).toBe(false)
+
+    const snapshot = arena.snapshot()
+    expect(snapshot.rows).toEqual(new Uint32Array([0, 0, 0, 1]))
+    expect(snapshot.columns).toEqual(new Uint16Array([0, 1, 3, 0]))
+  })
+
   it('allocates number, string, boolean, and formula storage only when cells need those pools', () => {
     const stringOnlyArena = new ImportedWorkbookArena()
     stringOnlyArena.addCell({ sheetIndex: 0, row: 0, column: 0, value: 'Only text' })

@@ -2,6 +2,7 @@ import type { LiteralInput, WorkbookRichTextCellSnapshot, WorkbookSnapshot } fro
 import { toDisplayText } from './workbook-import-helpers.js'
 import { filledUint32Array, growFloat64Array, growUint8Array, growUint16Array, growUint32Array } from './xlsx-large-simple-array-storage.js'
 import { createLazyWorkbookRichTextCells } from './xlsx-large-simple-lazy-rich-text-cells.js'
+import { createLazyWorkbookSheetCells } from './xlsx-large-simple-lazy-sheet-cells.js'
 import type { LargeSimpleSharedStrings } from './xlsx-large-simple-shared-strings.js'
 import type { ImportedWorkbookStringPool } from './xlsx-large-simple-string-pool.js'
 import type { ImportedWorksheetStyleIndexArena } from './xlsx-large-simple-style-index-arena.js'
@@ -51,12 +52,6 @@ export interface ImportedWorkbookArenaSnapshot {
 type WorkbookSheetCells = WorkbookSnapshot['sheets'][number]['cells']
 type WorkbookSheetCell = WorkbookSheetCells[number]
 
-const lazyCellsBrand = Symbol('bilig.lazyImportedXlsxCells')
-
-export interface ImportedWorkbookLazySheetCells extends Array<WorkbookSheetCell> {
-  readonly [lazyCellsBrand]: true
-}
-
 export interface ImportedWorkbookArenaOptions {
   readonly deduplicateStrings?: ImportedWorkbookArenaDedupeMode
   readonly deduplicateFormulas?: ImportedWorkbookArenaDedupeMode
@@ -77,6 +72,8 @@ export class ImportedWorkbookArena {
   private formulaIds: Uint32Array<ArrayBuffer> | undefined
   private length = 0
   private denseRowMajorWidth: number | null = null
+  private linearCellIndexes: Uint32Array<ArrayBuffer> | undefined
+  private linearRowMajorWidth: number | null = null
   private readonly strings: string[] = []
   private readonly stringIdsByValue = new Map<string, number>()
   private readonly formulas: string[] = []
@@ -186,180 +183,12 @@ export class ImportedWorkbookArena {
   createLazySheetCells(sheetIndex: number): WorkbookSheetCells {
     const arenaIndexes = this.lazySheetCellIndexes(sheetIndex)
     const cellCount = typeof arenaIndexes === 'number' ? arenaIndexes : arenaIndexes.length
-    const materialize = (index: number): WorkbookSheetCell | undefined => {
+    return createLazyWorkbookSheetCells(cellCount, (index) => {
       if (!Number.isInteger(index) || index < 0 || index >= cellCount) {
         return undefined
       }
       return this.materializeCellAtArenaIndex(typeof arenaIndexes === 'number' ? index : (arenaIndexes[index] ?? -1))
-    }
-    const iterate = function* (): IterableIterator<WorkbookSheetCell> {
-      for (let index = 0; index < cellCount; index += 1) {
-        const cell = materialize(index)
-        if (cell) {
-          yield cell
-        }
-      }
-    }
-    const target: ImportedWorkbookLazySheetCells = Object.assign([], { [lazyCellsBrand]: true as const })
-    let proxy: WorkbookSheetCells
-    proxy = new Proxy<ImportedWorkbookLazySheetCells>(target, {
-      get: (_target, property) => {
-        if (property === lazyCellsBrand) {
-          return true
-        }
-        if (property === 'length') {
-          return cellCount
-        }
-        if (property === Symbol.iterator || property === 'values') {
-          return iterate
-        }
-        if (property === 'entries') {
-          return function* entries(): IterableIterator<[number, WorkbookSheetCell]> {
-            for (let index = 0; index < cellCount; index += 1) {
-              const cell = materialize(index)
-              if (cell) {
-                yield [index, cell]
-              }
-            }
-          }
-        }
-        if (property === 'keys') {
-          return function* keys(): IterableIterator<number> {
-            for (let index = 0; index < cellCount; index += 1) {
-              yield index
-            }
-          }
-        }
-        if (property === 'at') {
-          return (index: number) => materialize(index < 0 ? cellCount + index : index)
-        }
-        if (property === 'forEach') {
-          return (callback: (cell: WorkbookSheetCell, index: number, cells: WorkbookSheetCells) => void, thisArg?: unknown) => {
-            for (let index = 0; index < cellCount; index += 1) {
-              const cell = materialize(index)
-              if (cell) {
-                callback.call(thisArg, cell, index, proxy)
-              }
-            }
-          }
-        }
-        if (property === 'map') {
-          return <T>(callback: (cell: WorkbookSheetCell, index: number, cells: WorkbookSheetCells) => T, thisArg?: unknown): T[] => {
-            const output: T[] = []
-            for (let index = 0; index < cellCount; index += 1) {
-              const cell = materialize(index)
-              if (cell) {
-                output.push(callback.call(thisArg, cell, index, proxy))
-              }
-            }
-            return output
-          }
-        }
-        if (property === 'filter') {
-          return (callback: (cell: WorkbookSheetCell, index: number, cells: WorkbookSheetCells) => boolean, thisArg?: unknown) => {
-            const output: WorkbookSheetCell[] = []
-            for (let index = 0; index < cellCount; index += 1) {
-              const cell = materialize(index)
-              if (cell && callback.call(thisArg, cell, index, proxy)) {
-                output.push(cell)
-              }
-            }
-            return output
-          }
-        }
-        if (property === 'reduce') {
-          return function reduce(
-            callback: (previous: unknown, cell: WorkbookSheetCell, index: number, cells: WorkbookSheetCells) => unknown,
-            initialValue?: unknown,
-          ): unknown {
-            let index = 0
-            let accumulator = initialValue
-            if (arguments.length < 2) {
-              const first = materialize(0)
-              if (!first) {
-                throw new TypeError('Reduce of empty array with no initial value')
-              }
-              accumulator = first
-              index = 1
-            }
-            for (; index < cellCount; index += 1) {
-              const cell = materialize(index)
-              if (cell) {
-                accumulator = callback(accumulator, cell, index, proxy)
-              }
-            }
-            return accumulator
-          }
-        }
-        if (property === 'some') {
-          return (callback: (cell: WorkbookSheetCell, index: number, cells: WorkbookSheetCells) => boolean, thisArg?: unknown) => {
-            for (let index = 0; index < cellCount; index += 1) {
-              const cell = materialize(index)
-              if (cell && callback.call(thisArg, cell, index, proxy)) {
-                return true
-              }
-            }
-            return false
-          }
-        }
-        if (property === 'every') {
-          return (callback: (cell: WorkbookSheetCell, index: number, cells: WorkbookSheetCells) => boolean, thisArg?: unknown) => {
-            for (let index = 0; index < cellCount; index += 1) {
-              const cell = materialize(index)
-              if (cell && !callback.call(thisArg, cell, index, proxy)) {
-                return false
-              }
-            }
-            return true
-          }
-        }
-        if (property === 'find') {
-          return (callback: (cell: WorkbookSheetCell, index: number, cells: WorkbookSheetCells) => boolean, thisArg?: unknown) => {
-            for (let index = 0; index < cellCount; index += 1) {
-              const cell = materialize(index)
-              if (cell && callback.call(thisArg, cell, index, proxy)) {
-                return cell
-              }
-            }
-            return undefined
-          }
-        }
-        if (property === 'slice') {
-          return (start?: number, end?: number) => {
-            const length = cellCount
-            const from = normalizeSliceIndex(start ?? 0, length)
-            const to = normalizeSliceIndex(end ?? length, length)
-            const output: WorkbookSheetCell[] = []
-            for (let index = from; index < to; index += 1) {
-              const cell = materialize(index)
-              if (cell) {
-                output.push(cell)
-              }
-            }
-            return output
-          }
-        }
-        if (property === 'toJSON' || property === 'toArray') {
-          return () => Array.from(iterate())
-        }
-        if (typeof property === 'string' && isArrayIndexProperty(property)) {
-          return materialize(Number(property))
-        }
-        return Reflect.get(Array.prototype, property)
-      },
-      has: (_target, property) => property === 'length' || (typeof property === 'string' && isArrayIndexProperty(property)),
-      getOwnPropertyDescriptor: (_target, property) => {
-        if (property === 'length') {
-          return { configurable: true, enumerable: false, value: cellCount }
-        }
-        if (typeof property === 'string' && isArrayIndexProperty(property)) {
-          const value = materialize(Number(property))
-          return value === undefined ? undefined : { configurable: true, enumerable: true, value }
-        }
-        return undefined
-      },
     })
-    return proxy
   }
 
   readPreviewText(row: number, column: number): string {
@@ -485,6 +314,8 @@ export class ImportedWorkbookArena {
     this.formulaIds = undefined
     this.length = 0
     this.denseRowMajorWidth = null
+    this.linearCellIndexes = undefined
+    this.linearRowMajorWidth = null
     this.strings.length = 0
     this.stringIdsByValue.clear()
     this.stringDedupeKeys.length = 0
@@ -524,6 +355,17 @@ export class ImportedWorkbookArena {
         row === expectedRow &&
         column === index % this.denseRowMajorWidth
       ) {
+        return index
+      }
+      if (canStoreLinearCoordinate(this.denseRowMajorWidth, row, column)) {
+        this.materializeLinearCoordinateStorage(index)
+      } else {
+        this.materializeCoordinateStorage(index)
+      }
+    }
+    if (this.linearCellIndexes && this.linearRowMajorWidth !== null) {
+      if (canStoreLinearCoordinate(this.linearRowMajorWidth, row, column)) {
+        this.linearCellIndexes[index] = row * this.linearRowMajorWidth + column
         return index
       }
       this.materializeCoordinateStorage(index)
@@ -844,25 +686,63 @@ export class ImportedWorkbookArena {
   }
 
   private rowAt(index: number): number {
-    return this.denseRowMajorWidth === null ? (this.rows[index] ?? 0) : Math.floor(index / this.denseRowMajorWidth)
+    if (this.denseRowMajorWidth !== null) {
+      return Math.floor(index / this.denseRowMajorWidth)
+    }
+    if (this.linearCellIndexes && this.linearRowMajorWidth !== null) {
+      return Math.floor((this.linearCellIndexes[index] ?? 0) / this.linearRowMajorWidth)
+    }
+    return this.rows[index] ?? 0
   }
 
   private columnAt(index: number): number {
-    return this.denseRowMajorWidth === null ? (this.columns[index] ?? 0) : index % this.denseRowMajorWidth
+    if (this.denseRowMajorWidth !== null) {
+      return index % this.denseRowMajorWidth
+    }
+    if (this.linearCellIndexes && this.linearRowMajorWidth !== null) {
+      return (this.linearCellIndexes[index] ?? 0) % this.linearRowMajorWidth
+    }
+    return this.columns[index] ?? 0
   }
 
   private materializeCoordinateStorage(upToIndex: number): void {
-    const width = this.denseRowMajorWidth
+    const width = this.denseRowMajorWidth ?? this.linearRowMajorWidth
     if (width === null) {
       return
     }
     this.rows = new Uint32Array(this.valueKinds.length)
     this.columns = new Uint16Array(this.valueKinds.length)
-    for (let index = 0; index < upToIndex; index += 1) {
-      this.rows[index] = Math.floor(index / width)
-      this.columns[index] = index % width
+    const linearCellIndexes = this.linearCellIndexes
+    if (linearCellIndexes) {
+      for (let index = 0; index < upToIndex; index += 1) {
+        const linearCellIndex = linearCellIndexes[index] ?? 0
+        this.rows[index] = Math.floor(linearCellIndex / width)
+        this.columns[index] = linearCellIndex % width
+      }
+    } else {
+      for (let index = 0; index < upToIndex; index += 1) {
+        this.rows[index] = Math.floor(index / width)
+        this.columns[index] = index % width
+      }
     }
     this.denseRowMajorWidth = null
+    this.linearCellIndexes = undefined
+    this.linearRowMajorWidth = null
+  }
+
+  private materializeLinearCoordinateStorage(upToIndex: number): void {
+    const width = this.denseRowMajorWidth
+    if (width === null) {
+      return
+    }
+    this.linearCellIndexes = new Uint32Array(this.valueKinds.length)
+    for (let index = 0; index < upToIndex; index += 1) {
+      this.linearCellIndexes[index] = index
+    }
+    this.linearRowMajorWidth = width
+    this.denseRowMajorWidth = null
+    this.rows = new Uint32Array(0)
+    this.columns = new Uint16Array(0)
   }
 
   private setPreviewValue(row: number, column: number, value: LiteralInput): void {
@@ -899,7 +779,9 @@ export class ImportedWorkbookArena {
     if (this.sheetIndexes) {
       this.sheetIndexes = growUint32Array(this.sheetIndexes, nextCapacity)
     }
-    if (this.denseRowMajorWidth === null) {
+    if (this.linearCellIndexes) {
+      this.linearCellIndexes = growUint32Array(this.linearCellIndexes, nextCapacity)
+    } else if (this.denseRowMajorWidth === null) {
       this.rows = growUint32Array(this.rows, nextCapacity)
       this.columns = growUint16Array(this.columns, nextCapacity)
     }
@@ -950,22 +832,6 @@ function previewIndex(row: number, column: number): number {
   return isPreviewCell(row, column) ? row * previewColumnCount + column : -1
 }
 
-function isArrayIndexProperty(property: string): boolean {
-  if (property.length === 0 || !/^(?:0|[1-9][0-9]*)$/u.test(property)) {
-    return false
-  }
-  const index = Number(property)
-  return Number.isSafeInteger(index) && index >= 0 && index < 2 ** 32 - 1
-}
-
-function normalizeSliceIndex(index: number, length: number): number {
-  const integer = Math.trunc(index)
-  if (integer < 0) {
-    return Math.max(length + integer, 0)
-  }
-  return Math.min(integer, length)
-}
-
 function encodeCellAddress(row: number, column: number): string {
   let value = column + 1
   let columnName = ''
@@ -975,4 +841,12 @@ function encodeCellAddress(row: number, column: number): string {
     value = Math.floor(value / 26)
   }
   return `${columnName}${String(row + 1)}`
+}
+
+function canStoreLinearCoordinate(width: number, row: number, column: number): boolean {
+  if (!Number.isSafeInteger(width) || width <= 0 || row < 0 || column < 0 || column >= width) {
+    return false
+  }
+  const linearCellIndex = row * width + column
+  return Number.isSafeInteger(linearCellIndex) && linearCellIndex >= 0 && linearCellIndex <= 0xffffffff
 }
