@@ -83,7 +83,7 @@ const emptyBytes = new Uint8Array(0)
 const packedAddressColumnFactor = 16_384
 const extensionElementPattern = /<(?:[A-Za-z_][\w.-]*:)?ext\b[^>]*(?:\/>|>[\s\S]*?<\/(?:[A-Za-z_][\w.-]*:)?ext>)/gu
 const slicerListElementPattern = /<(?:[A-Za-z_][\w.-]*:)?slicerList\b/u
-type StreamedMetadataElement = 'mergeCells' | 'tableParts'
+type StreamedMetadataElement = 'cols' | 'mergeCells' | 'tableParts'
 
 interface ActiveConditionalFormatting {
   readonly rootTag: Uint8Array
@@ -678,7 +678,7 @@ class LargeSimpleWorksheetChunkScanner {
       }
       return true
     }
-    if (localName === 'mergeCells' || localName === 'tableParts') {
+    if (localName === 'cols' || localName === 'mergeCells' || localName === 'tableParts') {
       this.activeMetadataElement = localName
       this.index = tagEnd + 1
       if (!this.processActiveMetadataElement(final)) {
@@ -1127,6 +1127,10 @@ class LargeSimpleWorksheetChunkScanner {
   }
 
   private collectActiveMetadataTag(activeElement: StreamedMetadataElement, localName: string, nameEnd: number, tagEnd: number): void {
+    if (activeElement === 'cols' && localName === 'col') {
+      this.collectColumnMetadataTag(tagEnd)
+      return
+    }
     if (activeElement === 'mergeCells' && localName === 'mergeCell') {
       this.collectMergeCellTag(nameEnd, tagEnd)
       return
@@ -1142,6 +1146,15 @@ class LargeSimpleWorksheetChunkScanner {
         }
       }
     }
+  }
+
+  private collectColumnMetadataTag(tagEnd: number): void {
+    if (!this.retainMetadataXml) {
+      return
+    }
+    this.columnEntries ??= []
+    this.columnMetadata ??= []
+    appendLargeSimpleColumnMetadataFromBytes(this.columnEntries, this.columnMetadata, this.buffer, this.index, tagEnd + 1)
   }
 
   private collectMergeCellTag(nameEnd: number, tagEnd: number): void {

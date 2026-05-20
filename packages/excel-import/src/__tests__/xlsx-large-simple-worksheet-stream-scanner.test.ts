@@ -117,6 +117,52 @@ describe('large simple worksheet stream scanners', () => {
     expect(Math.max(...retainedBufferLengths)).toBeLessThan(1024)
   })
 
+  it('streams large split column metadata without retaining the full parent body', () => {
+    const headlessRetainedBufferLengths: number[] = []
+    const headlessScan = parseHeadlessLargeSimpleWorksheetFromChunks(splitLargeColsWorksheetXml(), 0, {
+      hasSharedStrings: false,
+      onRetainedBufferLength: (length) => headlessRetainedBufferLengths.push(length),
+    })
+    const retainedBufferLengths: number[] = []
+    const scan = parseLargeSimpleWorksheetCellsFromChunks(splitLargeColsWorksheetXml(), 0, {
+      hasSharedStrings: false,
+      onRetainedBufferLength: (length) => retainedBufferLengths.push(length),
+    })
+
+    expect(headlessScan?.cellCount).toBe(1)
+    expect(scan?.metadata?.columns).toEqual({
+      entries: [
+        { id: 'col:0', index: 0, size: 75, hidden: true },
+        { id: 'col:1', index: 1, size: 75, hidden: true },
+        { id: 'col:4', index: 4, size: 48 },
+      ],
+      metadata: [
+        {
+          start: 0,
+          count: 2,
+          size: 75,
+          xlsxWidth: 12.5,
+          styleIndex: 3,
+          hidden: true,
+          customWidth: true,
+          bestFit: false,
+          outlineLevel: 1,
+        },
+        {
+          start: 4,
+          count: 1,
+          size: 48,
+          xlsxWidth: 8,
+          customWidth: true,
+        },
+      ],
+    })
+    expect(headlessRetainedBufferLengths.length).toBeGreaterThan(0)
+    expect(retainedBufferLengths.length).toBeGreaterThan(0)
+    expect(Math.max(...headlessRetainedBufferLengths)).toBeLessThan(1024)
+    expect(Math.max(...retainedBufferLengths)).toBeLessThan(1024)
+  })
+
   it('streams large split table metadata in materialized scans without retaining metadata bodies', () => {
     const retainedBufferLengths: number[] = []
     const scan = parseLargeSimpleWorksheetCellsFromChunks(splitLargeTablePartsWorksheetXml(), 0, {
@@ -527,6 +573,27 @@ function splitLargeMergeCellsWorksheetXml(): (onChunk: (chunk: Uint8Array) => vo
     ' '.repeat(20_000),
     '<mergeCell ref="A2:B2"/></',
     'mergeCells>',
+    '</worksheet>',
+  ]
+  return (onChunk) => {
+    for (const chunk of chunks) {
+      onChunk(encoder.encode(chunk))
+    }
+    return true
+  }
+}
+
+function splitLargeColsWorksheetXml(): (onChunk: (chunk: Uint8Array) => void) => boolean {
+  const chunks = [
+    '<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">',
+    '<dimension ref="A1"/>',
+    '<cols><col min="1" max="2" width="12.5" style="3" hidden="1" customWidth="1" bestFit="0" outlineLevel="1"/>',
+    ' '.repeat(40_000),
+    ' '.repeat(40_000),
+    ' '.repeat(20_000),
+    '<col min="5" max="5" width="8" customWidth="1"/></',
+    'cols>',
+    '<sheetData><row r="1"><c r="A1"><v>1</v></c></row></sheetData>',
     '</worksheet>',
   ]
   return (onChunk) => {
