@@ -1,9 +1,8 @@
 import type { CompiledFormula } from '@bilig/formula'
-import { FormulaMode, ErrorCode, Opcode } from '@bilig/protocol'
+import { FormulaMode, ErrorCode } from '@bilig/protocol'
 import { CellFlags } from '../../cell-store.js'
 import type { EdgeSlice } from '../../edge-arena.js'
 import { entityPayload, isRangeEntity, makeCellEntity } from '../../entity-ids.js'
-import { tableDependencyKey } from '../../engine-metadata-utils.js'
 import { errorValue } from '../../engine-value-utils.js'
 import { addEngineCounter } from '../../perf/engine-counters.js'
 import { normalizeDefinedName } from '../../workbook-store.js'
@@ -27,7 +26,6 @@ import {
   aggregateColumnDependencyKey,
   appendDirectAggregateColumnReverseEdges,
   appendTrackedReverseEdge,
-  collectTrackedDependents,
   directCriteriaAggregateColumn,
   directRegionIdsForFormula,
   hasQualifiedDependencies,
@@ -69,6 +67,13 @@ import { rebuildDeferredFormulaFamilyIndex } from './formula-family-index-rebuil
 import { bindFreshDirectAggregateFormulaRun } from './formula-binding-fresh-direct-aggregate-run.js'
 import { createFormulaBindingDirectAggregateRetargeter } from './formula-binding-direct-aggregate-retarget.js'
 import { bindFreshDirectScalarFormulaRun } from './formula-binding-fresh-direct-scalar-run.js'
+import {
+  EMPTY_RUNTIME_PROGRAM,
+  PUSH_CELL_OPCODE,
+  PUSH_RANGE_OPCODE,
+  PUSH_STRING_OPCODE,
+} from './formula-binding-runtime-program-constants.js'
+import { collectDefinedNameDependents, collectTableDependents } from './formula-binding-reference-dependents.js'
 import type {
   BindPreparedFormulaOptions,
   CreateEngineFormulaBindingServiceArgs,
@@ -77,11 +82,6 @@ import type {
 } from './formula-binding-service-types.js'
 export { formulaBindingServiceTestHooks } from './formula-binding-service-test-hooks.js'
 export type * from './formula-binding-service-types.js'
-
-const PUSH_CELL_OPCODE = Number(Opcode.PushCell)
-const PUSH_RANGE_OPCODE = Number(Opcode.PushRange)
-const PUSH_STRING_OPCODE = Number(Opcode.PushString)
-const EMPTY_RUNTIME_PROGRAM = new Uint32Array(0)
 
 export function createEngineFormulaBindingService(args: CreateEngineFormulaBindingServiceArgs): EngineFormulaBindingService {
   const resolvedCompiledCache = new Map<string, ParsedCompiledFormula>()
@@ -810,6 +810,8 @@ export function createEngineFormulaBindingService(args: CreateEngineFormulaBindi
     serviceArgs: args,
     bindFormulaNow,
   })
+  const collectDefinedNameDependentsNow = (names: readonly string[]) => collectDefinedNameDependents(args.reverseState, names)
+  const collectTableDependentsNow = (tableNames: readonly string[]) => collectTableDependents(args.reverseState, tableNames)
   const { retargetDirectAggregateFormulaForStructuralTransformNow, retargetDirectAggregateFormulasForStructuralTransformNow } =
     createFormulaBindingDirectAggregateRetargeter(args)
 
@@ -935,11 +937,10 @@ export function createEngineFormulaBindingService(args: CreateEngineFormulaBindi
     retargetRangeDependenciesNow,
     rebindFormulaCellsNow,
     rebindDefinedNameDependentsNow(names, formulaChangedCount) {
-      return rebindFormulaCellsNow(collectTrackedDependents(args.reverseState.reverseDefinedNameEdges, names), formulaChangedCount)
+      return rebindFormulaCellsNow(collectDefinedNameDependentsNow(names), formulaChangedCount)
     },
     rebindTableDependentsNow(tableNames, formulaChangedCount) {
-      const normalized = tableNames.map((name) => tableDependencyKey(name))
-      return rebindFormulaCellsNow(collectTrackedDependents(args.reverseState.reverseTableEdges, normalized), formulaChangedCount)
+      return rebindFormulaCellsNow(collectTableDependentsNow(tableNames), formulaChangedCount)
     },
     rebindFormulasForSheetNow,
     forEachFormulaCellOwnedBySheetNow(sheetName, fn) {
@@ -981,18 +982,8 @@ export function createEngineFormulaBindingService(args: CreateEngineFormulaBindi
     collectFormulaCellsReferencingSheetNow(sheetName) {
       return formulaSheetIndex.collectReferencingSheet(sheetName)
     },
-    collectFormulaCellsForDefinedNamesNow(names) {
-      return collectTrackedDependents(
-        args.reverseState.reverseDefinedNameEdges,
-        names.map((name) => normalizeDefinedName(name)),
-      )
-    },
-    collectFormulaCellsForTablesNow(tableNames) {
-      return collectTrackedDependents(
-        args.reverseState.reverseTableEdges,
-        tableNames.map((name) => tableDependencyKey(name)),
-      )
-    },
+    collectFormulaCellsForDefinedNamesNow: collectDefinedNameDependentsNow,
+    collectFormulaCellsForTablesNow: collectTableDependentsNow,
     getFormulaFamilyStatsNow() {
       formulaFamilyIndex.ensureNow()
       return args.formulaFamilies.getStats()

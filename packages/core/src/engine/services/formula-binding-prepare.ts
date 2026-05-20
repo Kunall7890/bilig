@@ -1,5 +1,5 @@
 import { formulaContainsDateSystemSensitiveBuiltin, type CompiledFormula } from '@bilig/formula'
-import { FormulaMode, Opcode } from '@bilig/protocol'
+import { FormulaMode } from '@bilig/protocol'
 import { resolveRuntimeDirectLookupBinding } from '../direct-vector-lookup.js'
 import {
   INLINE_SCALAR_FAST_PLAN_ARITHMETIC,
@@ -24,11 +24,13 @@ import {
 import type { FormulaBindingDependencyMaterializer } from './formula-binding-dependency-materializer.js'
 import type { CreateEngineFormulaBindingServiceArgs, FormulaOwnerPosition } from './formula-binding-service-types.js'
 import { buildInlineScalarPlanCellIndices, classifyInlineScalarFastPlan } from './formula-leaf-inline-scalar-evaluator.js'
+import {
+  EMPTY_RUNTIME_PROGRAM,
+  PUSH_CELL_OPCODE,
+  PUSH_RANGE_OPCODE,
+  PUSH_STRING_OPCODE,
+} from './formula-binding-runtime-program-constants.js'
 
-const PUSH_CELL_OPCODE = Number(Opcode.PushCell)
-const PUSH_RANGE_OPCODE = Number(Opcode.PushRange)
-const PUSH_STRING_OPCODE = Number(Opcode.PushString)
-const EMPTY_RUNTIME_PROGRAM = new Uint32Array(0)
 const INVALID_INLINE_STRING_ID = 0xffffffff
 
 function normalizeWorkbookMetadataMode(compiled: ParsedCompiledFormula): ParsedCompiledFormula {
