@@ -1,6 +1,9 @@
 import { describe, expect, it } from 'vitest'
 
-import { readLargeSimpleReferencedSharedStringsFromChunks } from '../xlsx-large-simple-shared-strings.js'
+import {
+  createLargeSimpleSharedStringSubset,
+  readLargeSimpleReferencedSharedStringsFromChunks,
+} from '../xlsx-large-simple-shared-strings.js'
 
 const encoder = new TextEncoder()
 
@@ -84,5 +87,23 @@ describe('large simple shared string streaming', () => {
     expect(typeof Object.getOwnPropertyDescriptor(entry, 'text')?.get).toBe('function')
     expect(entry?.text).toBe('Rich Text')
     expect(entry?.text).toBe('Rich Text')
+  })
+
+  it('creates sparse sheet-scoped shared-string subsets without unrelated entries', () => {
+    const subset = createLargeSimpleSharedStringSubset(
+      [
+        { text: 'Unused 0', rich: false },
+        { text: 'Alpha', rich: false },
+        { text: 'Unused 2', rich: false },
+        { text: 'Beta', rich: false },
+      ],
+      new Set([1, 3]),
+    )
+
+    expect(Array.isArray(subset)).toBe(false)
+    expect(subset?.length).toBe(4)
+    expect(subset?.[0]).toBeUndefined()
+    expect(subset?.[1]).toEqual({ text: 'Alpha', rich: false })
+    expect(subset?.[3]).toEqual({ text: 'Beta', rich: false })
   })
 })

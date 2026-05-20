@@ -29,7 +29,7 @@ import { LargeSimpleXlsxImportPhaseRecorder, type LargeSimpleXlsxImportPhaseTele
 import { prepareLargeSimplePackageArtifactsForZipRelease } from './xlsx-large-simple-package-artifact-release.js'
 import { readLargeSimpleSheetPrintMetadata, readLargeSimpleSheetPrintPageSetup } from './xlsx-large-simple-printer-settings.js'
 import { readAllLargeSimpleSharedStrings, readReferencedLargeSimpleSharedStrings } from './xlsx-large-simple-referenced-shared-strings.js'
-import type { LargeSimpleSharedStrings } from './xlsx-large-simple-shared-strings.js'
+import { createLargeSimpleSharedStringSubset, type LargeSimpleSharedStrings } from './xlsx-large-simple-shared-strings.js'
 import { shouldUseSharedStringlessFastPathBytes } from './xlsx-large-simple-shared-stringless-fast-path.js'
 import { buildLargeSimpleStyleRanges } from './xlsx-large-simple-style-ranges.js'
 import { readLargeSimpleWorkbookStylesFromChunks } from './xlsx-large-simple-styles.js'
@@ -155,6 +155,7 @@ interface ScannedWorksheet {
   readonly worksheetXml: string | undefined
   readonly metadataScan: LargeSimpleWorksheetScannedMetadata | undefined
   readonly metadataInput: LargeSimpleSheetMetadataInput
+  readonly sharedStringIndexes: ReadonlySet<number>
 }
 
 type LargeSimpleSheetMetadataInput = Pick<
@@ -371,7 +372,13 @@ export function tryImportLargeSimpleXlsx(
       return null
     }
     retainedMetadataScan = streamedMetadataScan
-    cellScan.arena.collectSharedStringIndexes(referencedSharedStringIndexes)
+    const sharedStringIndexes = new Set<number>()
+    if (hasSharedStrings) {
+      cellScan.arena.collectSharedStringIndexes(sharedStringIndexes)
+      for (const index of sharedStringIndexes) {
+        referencedSharedStringIndexes.add(index)
+      }
+    }
     phaseRecorder.finish('worksheet-scan', worksheetScanStart)
     collectLargeSimpleImportGarbage()
     const metadataParsingStart = phaseRecorder.start()
@@ -497,6 +504,7 @@ export function tryImportLargeSimpleXlsx(
       worksheetXml,
       metadataScan: retainedMetadataScan,
       metadataInput,
+      sharedStringIndexes,
     })
     phaseRecorder.finish('metadata-parsing', metadataParsingStart)
   }
@@ -510,6 +518,20 @@ export function tryImportLargeSimpleXlsx(
     sharedStrings = referencedSharedStrings
   }
   delete zip[sharedStringsPath]
+  const sharedStringsByScannedWorksheetIndex = new Map<number, LargeSimpleSharedStrings>()
+  if (materializeCells && hasSharedStrings && referencedSharedStringIndexes.size > 0 && scannedWorksheets.length > 1) {
+    for (const [index, scanned] of scannedWorksheets.entries()) {
+      if (!scanned || scanned.sharedStringIndexes.size === 0) {
+        continue
+      }
+      const sheetSharedStrings = createLargeSimpleSharedStringSubset(sharedStrings, scanned.sharedStringIndexes)
+      if (sheetSharedStrings === null) {
+        return null
+      }
+      sharedStringsByScannedWorksheetIndex.set(index, sheetSharedStrings)
+    }
+    sharedStrings = []
+  }
   referencedSharedStringIndexes.clear()
   fallbackSharedStrings = null
   phaseRecorder.finish('shared-string-resolution', sharedStringResolutionStart)
@@ -618,7 +640,10 @@ export function tryImportLargeSimpleXlsx(
     }
     const snapshotMaterializationStart = phaseRecorder.start()
     const retainSharedStringRefsForCells = materializeCells && hasSharedStrings
-    const resolvedRichTextCells = retainSharedStringRefsForCells ? scanned.cellScan.arena.retainSharedStringReferences(sharedStrings) : []
+    const sheetSharedStrings = sharedStringsByScannedWorksheetIndex.get(index) ?? sharedStrings
+    const resolvedRichTextCells = retainSharedStringRefsForCells
+      ? scanned.cellScan.arena.retainSharedStringReferences(sheetSharedStrings)
+      : []
     if (resolvedRichTextCells === null) {
       return null
     }
@@ -661,6 +686,7 @@ export function tryImportLargeSimpleXlsx(
     )
     appendParsedWorksheet(parsed)
     scannedWorksheets[index] = undefined
+    sharedStringsByScannedWorksheetIndex.delete(index)
     phaseRecorder.finish('public-snapshot-materialization', snapshotMaterializationStart)
   }
   sharedStrings = []

@@ -46,6 +46,26 @@ export function readLargeSimpleReferencedSharedStringsFromChunks(
   return scanner.finish()
 }
 
+export function createLargeSimpleSharedStringSubset(
+  sharedStrings: LargeSimpleSharedStrings,
+  referencedIndexes: ReadonlySet<number>,
+): LargeSimpleSharedStrings | null {
+  if (referencedIndexes.size === 0) {
+    return []
+  }
+  const entries = new Map<number, LargeSimpleSharedStringEntry>()
+  let maxReferencedIndex = 0
+  for (const index of referencedIndexes) {
+    const entry = sharedStrings[index]
+    if (!entry) {
+      return null
+    }
+    entries.set(index, entry)
+    maxReferencedIndex = Math.max(maxReferencedIndex, index)
+  }
+  return createReferencedSharedStringTable(entries, maxReferencedIndex, { preferSparse: true })
+}
+
 export function readLargeSimpleRichTextCellArtifact(
   address: string,
   openingTag: string,
@@ -234,9 +254,10 @@ class LargeSimpleSharedStringChunkScanner {
 function createReferencedSharedStringTable(
   entries: ReadonlyMap<number, LargeSimpleSharedStringEntry>,
   maxReferencedIndex: number,
+  options: { readonly preferSparse?: boolean } = {},
 ): LargeSimpleSharedStrings {
   const length = maxReferencedIndex + 1
-  if (length <= entries.size * sparseReferencedSharedStringDensityDivisor) {
+  if (options.preferSparse !== true && length <= entries.size * sparseReferencedSharedStringDensityDivisor) {
     const output: LargeSimpleSharedStringEntry[] = []
     output.length = length
     for (const [index, entry] of entries) {
