@@ -31,7 +31,6 @@ import { buildLargeSimpleStyleRanges } from './xlsx-large-simple-style-ranges.js
 import { readLargeSimpleWorkbookStylesFromChunks } from './xlsx-large-simple-styles.js'
 import { ImportedWorkbookStringPool } from './xlsx-large-simple-string-pool.js'
 import { ImportedWorkbookArena, ImportedWorksheetStyleIndexArena, type ImportedWorksheetCellScan } from './xlsx-large-simple-arena.js'
-import { readImportedWorkbookSheetProtections } from './xlsx-sheet-protection.js'
 import {
   parseHeadlessLargeSimpleWorksheetFromChunks,
   type HeadlessLargeSimpleWorksheetScan,
@@ -245,12 +244,6 @@ export function tryImportLargeSimpleXlsx(
           workbookSheets.map((entry) => entry.name),
         )
       : null
-  const importedSheetProtectionsBySheet = materializeCells
-    ? readImportedWorkbookSheetProtections(
-        zip,
-        workbookSheets.map((entry) => entry.name),
-      )
-    : null
   const deduplicateInlineStrings = hasSharedStrings
   let fallbackSharedStrings: readonly LargeSimpleSharedStringEntry[] | null | undefined = hasSharedStrings ? undefined : []
   delete zip[workbookPath]
@@ -552,7 +545,6 @@ export function tryImportLargeSimpleXlsx(
       importedDrawingArtifacts?.sheetArtifactsByName.get(scanned.name)
     const pivotArtifacts = importedPivotArtifacts?.sheetArtifactsByName.get(scanned.name)
     const legacyCommentVml = importedLegacyCommentVmlBySheet?.get(scanned.name)
-    const sheetProtection = importedSheetProtectionsBySheet?.get(scanned.name)
     const parsed = buildParsedWorksheet(
       scanned.name,
       scanned.order,
@@ -563,7 +555,6 @@ export function tryImportLargeSimpleXlsx(
         ...scanned.metadataInput,
         ...(drawingArtifacts ? { drawingArtifacts } : {}),
         ...(pivotArtifacts ? { pivotArtifacts } : {}),
-        ...(sheetProtection ? { sheetProtection } : {}),
         ...(legacyCommentVml
           ? {
               legacyCommentVml: {

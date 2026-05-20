@@ -350,15 +350,16 @@ function parseTableXml(sheetName: string, xml: string): WorkbookTableSnapshot | 
   })
   const style = parseTableStyle(recordChild(table, 'tableStyleInfo'))
   const sortState = readSortStateXml(xml)
+  const hasTotalsRowColumnMetadata = columns.some((column) => column.totalsRowLabel !== undefined || column.totalsRowFunction !== undefined)
   return {
     name,
     sheetName,
     startAddress: ref.startAddress,
     endAddress: ref.endAddress,
     columnNames: columns.map((column) => column.name),
-    ...(columns.some((column) => column.totalsRowLabel !== undefined || column.totalsRowFunction !== undefined) ? { columns } : {}),
+    ...(hasTotalsRowColumnMetadata ? { columns } : {}),
     headerRow: table['headerRowCount'] !== '0',
-    totalsRow: table['totalsRowShown'] === '1' || table['totalsRowCount'] === '1',
+    totalsRow: table['totalsRowShown'] === '1' || table['totalsRowCount'] === '1' || hasTotalsRowColumnMetadata,
     ...(style ? { style } : {}),
     ...(sortState ? { sortState } : {}),
   }

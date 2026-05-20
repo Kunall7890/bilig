@@ -1,12 +1,11 @@
 import type { EngineOpBatch } from '@bilig/workbook-domain'
-import { FormulaMode, type CellRangeRef, type EngineEvent } from '@bilig/protocol'
+import type { CellRangeRef, EngineEvent } from '@bilig/protocol'
 import { batchOpOrder, compareOpOrder, markBatchApplied } from '../../replica-state.js'
-import { calculationSettingsEqual, normalizeWorkbookCalculationSettings, tableDependencyKey } from '../../engine-metadata-utils.js'
+import { calculationSettingsEqual, normalizeWorkbookCalculationSettings } from '../../engine-metadata-utils.js'
 import { normalizeDefinedName } from '../../workbook-store.js'
 import type { PreparedCellAddress } from '../runtime-state.js'
 import { DirectFormulaIndexCollection } from './direct-formula-index-collection.js'
 import { assertNever } from './operation-change-helpers.js'
-import { isScalarOnlyDefinedNameValue } from './defined-name-value-helpers.js'
 import { shouldApplyOp as shouldApplyReplicaOp } from './operation-replica-helpers.js'
 import { assertProtectionAllowsOp as assertProtectionAllowsProtectedOp } from './operation-protection-helpers.js'
 import type { DirectFormulaMetricCounts } from './operation-post-recalc-direct-formulas.js'
@@ -604,7 +603,7 @@ export function createOperationBatchApplier(input: CreateOperationBatchApplierAr
           case 'upsertTable': {
             args.state.workbook.setTable(op.table)
             const reboundCount = formulaChangedCount
-            formulaChangedCount = args.rebindTableDependents([tableDependencyKey(op.table.name)], formulaChangedCount)
+            formulaChangedCount = args.rebindTableDependents([op.table.name], formulaChangedCount)
             topologyChanged = topologyChanged || formulaChangedCount !== reboundCount
             setEntityVersionForOp(op, order)
             break
@@ -612,7 +611,7 @@ export function createOperationBatchApplier(input: CreateOperationBatchApplierAr
           case 'deleteTable': {
             args.state.workbook.deleteTable(op.name)
             const reboundCount = formulaChangedCount
-            formulaChangedCount = args.rebindTableDependents([tableDependencyKey(op.name)], formulaChangedCount)
+            formulaChangedCount = args.rebindTableDependents([op.name], formulaChangedCount)
             topologyChanged = topologyChanged || formulaChangedCount !== reboundCount
             setEntityVersionForOp(op, order)
             break
@@ -787,17 +786,7 @@ export function createOperationBatchApplier(input: CreateOperationBatchApplierAr
           case 'upsertDefinedName': {
             const normalizedName = normalizeDefinedName(op.name)
             args.state.workbook.setDefinedName(op.name, op.value)
-            const dependentFormulaCells = args.collectFormulaCellsForDefinedNames([normalizedName])
-            const canRecalculateWithoutRebind =
-              isScalarOnlyDefinedNameValue(op.value) &&
-              dependentFormulaCells.every((cellIndex) => args.state.formulas.get(cellIndex)?.compiled.mode === FormulaMode.JsOnly)
-            if (canRecalculateWithoutRebind) {
-              for (const cellIndex of dependentFormulaCells) {
-                formulaChangedCount = args.markFormulaChanged(cellIndex, formulaChangedCount)
-              }
-            } else {
-              formulaChangedCount = args.rebindDefinedNameDependents([normalizedName], formulaChangedCount)
-            }
+            formulaChangedCount = args.rebindDefinedNameDependents([normalizedName], formulaChangedCount)
             setEntityVersionForOp(op, order)
             break
           }

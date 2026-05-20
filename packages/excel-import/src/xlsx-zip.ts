@@ -13,6 +13,7 @@ export interface XlsxZipByteSource {
 export interface XlsxZipEntryMetadata {
   readonly path: string
   readonly compressedSize: number
+  readonly uncompressedSize: number
   readonly compressionMethod: number
 }
 
@@ -53,6 +54,7 @@ export function readXlsxZipEntryMetadata(source: XlsxZipByteSource): readonly Xl
     readCentralDirectoryEntries(source)?.map((entry) => ({
       path: entry.path,
       compressedSize: entry.compressedSize,
+      uncompressedSize: entry.uncompressedSize,
       compressionMethod: entry.compressionMethod,
     })) ?? null
   )
@@ -76,6 +78,9 @@ export function forEachInflatedXlsxZipEntryChunk(
   const metadata = (zip as XlsxZipEntriesWithCentralDirectorySource)[xlsxZipCentralDirectorySourceSymbol]
   const source = metadata?.source
   const entry = metadata?.entriesByPath.get(normalizeZipPath(path))
+  if (metadata && (!source || !entry)) {
+    return false
+  }
   if (!metadata || !source || !entry) {
     const inflated = zip[normalizeZipPath(path)]
     if (!inflated) {
@@ -114,6 +119,16 @@ export function readLazyXlsxZipSourceByteLength(zip: XlsxZipEntries): number | u
   return metadata ? (metadata.source?.byteLength ?? 0) : undefined
 }
 
+export function readXlsxZipEntryUncompressedSize(zip: XlsxZipEntries, path: string): number | undefined {
+  const normalizedPath = normalizeZipPath(path)
+  const metadata = (zip as XlsxZipEntriesWithCentralDirectorySource)[xlsxZipCentralDirectorySourceSymbol]
+  const entry = metadata?.entriesByPath.get(normalizedPath)
+  if (entry) {
+    return entry.uncompressedSize
+  }
+  return zip[normalizedPath]?.byteLength
+}
+
 const localFileHeaderSignature = 0x04034b50
 const centralDirectoryFileHeaderSignature = 0x02014b50
 const endOfCentralDirectorySignature = 0x06054b50
@@ -129,6 +144,7 @@ interface CentralDirectoryEntry {
   readonly path: string
   readonly localHeaderOffset: number
   readonly compressedSize: number
+  readonly uncompressedSize: number
   readonly compressionMethod: number
 }
 
@@ -199,6 +215,7 @@ function readCentralDirectoryEntries(source: XlsxZipByteSource): CentralDirector
   while (offset + 46 <= endOffset && readUint32(centralDirectory, offset) === centralDirectoryFileHeaderSignature) {
     const compressionMethod = readUint16(centralDirectory, offset + 10)
     const compressedSize = readUint32(centralDirectory, offset + 20)
+    const uncompressedSize = readUint32(centralDirectory, offset + 24)
     const fileNameLength = readUint16(centralDirectory, offset + 28)
     const extraFieldLength = readUint16(centralDirectory, offset + 30)
     const fileCommentLength = readUint16(centralDirectory, offset + 32)
@@ -215,7 +232,7 @@ function readCentralDirectoryEntries(source: XlsxZipByteSource): CentralDirector
       return null
     }
     const path = normalizeZipPath(textDecoder.decode(centralDirectory.subarray(fileNameStart, fileNameEnd)))
-    entries.push({ path, localHeaderOffset, compressedSize, compressionMethod })
+    entries.push({ path, localHeaderOffset, compressedSize, uncompressedSize, compressionMethod })
     offset = nextOffset
   }
   return offset === endOffset ? entries : null
