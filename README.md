@@ -50,7 +50,7 @@ Project site: <https://proompteng.github.io/bilig/>
 | ----------------------------------------------------------------------------------------------- | -------------------------------------------- | -------------------------------------------------------------------------------------------- |
 | Formula workbook state inside a Node service or agent tool                                      | `npm install bilig-workpaper`                | [90-second Node quickstart](docs/try-bilig-headless-in-node.md)                              |
 | AI agent needs to edit workbook inputs and verify formula readback                              | `npm create @bilig/workpaper@latest pricing-agent -- --agent` | [AI spreadsheet agent tool](docs/ai-agent-spreadsheet-tool-node.md)          |
-| SheetJS / `xlsx` pipeline returns stale formula values after input edits                        | `npm install xlsx-formula-recalc`            | [SheetJS formula result not updating](docs/sheetjs-formula-result-not-updating-node.md)       |
+| SheetJS / `xlsx` pipeline returns stale formula values after input edits                        | `npm install sheetjs-formula-recalc`         | [SheetJS formula result not updating](docs/sheetjs-formula-result-not-updating-node.md)       |
 | Generic XLSX bytes changed in Node; formula outputs must refresh before returning               | `npm install xlsx-formula-recalc`            | [XLSX formula recalculation in Node.js](docs/xlsx-formula-recalculation-node.md)             |
 | Existing ExcelJS workflow needs recalculated values, not stale cached results                   | `npm install exceljs exceljs-formula-recalc` | [ExcelJS formula recalculation in Node.js](docs/exceljs-formula-recalculation-node.md)       |
 | Full runtime package with agent metadata, MCP binary, provenance docs, and lower-level subpaths | `npm install @bilig/headless`                | [npm provenance and package trust](docs/npm-provenance-package-trust.md)                     |
@@ -62,7 +62,7 @@ before returning, use the file-level recalculation package before evaluating
 the broader WorkPaper runtime:
 
 ```sh
-npx --package xlsx-formula-recalc sheetjs-recalc --demo --json
+npx --package sheetjs-formula-recalc sheetjs-recalc --demo --json
 
 npx --package xlsx-formula-recalc xlsx-recalc --demo --json
 

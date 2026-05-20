@@ -295,7 +295,7 @@ Project site: <https://proompteng.github.io/bilig/>
 | ----------------------------------------------------------------------------------------------- | -------------------------------------------- | -------------------------------------------------------------------------------------------- |
 | Formula workbook state inside a Node service or agent tool                                      | `npm install bilig-workpaper`                | [90-second Node quickstart](docs/try-bilig-headless-in-node.md)                              |
 | AI agent needs to edit workbook inputs and verify formula readback                              | `npm create @bilig/workpaper@latest pricing-agent -- --agent` | [AI spreadsheet agent tool](docs/ai-agent-spreadsheet-tool-node.md)          |
-| SheetJS / `xlsx` pipeline returns stale formula values after input edits                        | `npm install xlsx-formula-recalc`            | [SheetJS formula result not updating](docs/sheetjs-formula-result-not-updating-node.md)       |
+| SheetJS / `xlsx` pipeline returns stale formula values after input edits                        | `npm install sheetjs-formula-recalc`         | [SheetJS formula result not updating](docs/sheetjs-formula-result-not-updating-node.md)       |
 | Generic XLSX bytes changed in Node; formula outputs must refresh before returning               | `npm install xlsx-formula-recalc`            | [XLSX formula recalculation in Node.js](docs/xlsx-formula-recalculation-node.md)             |
 | Existing ExcelJS workflow needs recalculated values, not stale cached results                   | `npm install exceljs exceljs-formula-recalc` | [ExcelJS formula recalculation in Node.js](docs/exceljs-formula-recalculation-node.md)       |
 | Full runtime package with agent metadata, MCP binary, provenance docs, and lower-level subpaths | `npm install @bilig/headless`                | [npm provenance and package trust](docs/npm-provenance-package-trust.md)                     |
@@ -307,7 +307,7 @@ before returning, use the file-level recalculation package before evaluating
 the broader WorkPaper runtime:
 
 ```sh
-npx --package xlsx-formula-recalc sheetjs-recalc --demo --json
+npx --package sheetjs-formula-recalc sheetjs-recalc --demo --json
 
 npx --package xlsx-formula-recalc xlsx-recalc --demo --json
 
@@ -944,7 +944,7 @@ the search or production bug you actually have:
 
 | Problem or search intent                                      | Start here                                                                                                                                                         | Proof before adoption                                                                |
 | ------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------ |
-| `SheetJS formula result not updating` or stale `xlsx` results | `npm install xlsx-formula-recalc`                                                                                                                                  | `npx --package xlsx-formula-recalc sheetjs-recalc --demo --json` returns fresh readback. |
+| `SheetJS formula result not updating` or stale `xlsx` results | `npm install sheetjs-formula-recalc`                                                                                                                              | `npx --package sheetjs-formula-recalc sheetjs-recalc --demo --json` returns fresh readback. |
 | `xlsx-populate` writes formulas but Node reads old values     | `npm install xlsx-formula-recalc`                                                                                                                                  | `npx --package xlsx-formula-recalc xlsx-recalc --demo --json` updates the cached value. |
 | ExcelJS formula cells need recalculated values                | `npm install exceljs exceljs-formula-recalc`                                                                                                                       | `npx --package exceljs-formula-recalc exceljs-recalc --demo --json` mutates the workbook boundary. |
 | An AI agent needs spreadsheet tools instead of UI automation  | `npm create @bilig/workpaper@latest pricing-agent -- --agent`                                                                                                      | [AI spreadsheet agent tool](https://proompteng.github.io/bilig/ai-agent-spreadsheet-tool-node.html) shows the write/recalc/read/persist loop. |

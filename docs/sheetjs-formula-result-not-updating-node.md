@@ -31,18 +31,18 @@ Node process.
 
 ## Use a narrow recalculation bridge
 
-If your app already has XLSX bytes from SheetJS, use the live XLSX
+If your app already has XLSX bytes from SheetJS, use the SheetJS-named
 recalculation bridge at the boundary. It keeps SheetJS responsible for file I/O
 and adds only the missing recalculation/readback step:
 
 ```sh
-npm install xlsx-formula-recalc
+npm install sheetjs-formula-recalc
 ```
 
 One-off proof:
 
 ```sh
-npx --package xlsx-formula-recalc sheetjs-recalc --demo --json
+npx --package sheetjs-formula-recalc sheetjs-recalc --demo --json
 ```
 
 Exact reproduction for the high-view Stack Overflow question:
@@ -57,12 +57,12 @@ npm --prefix examples/recalc-bridge-workflows run so:sheetjs-63085785
 That script mirrors the small case from
 [How to recalculate all formulas in excel file through Javascript?](https://stackoverflow.com/questions/63085785/how-to-recalculate-all-formulas-in-excel-file-through-javascript):
 `A1` changes from `1` to `3`, SheetJS still has the stale cached `C1 = 3`,
-then `xlsx-formula-recalc` verifies `C1 = 5`.
+then `sheetjs-formula-recalc` verifies `C1 = 5`.
 
 For a real workbook:
 
 ```sh
-npx --package xlsx-formula-recalc sheetjs-recalc pricing.xlsx \
+npx --package sheetjs-formula-recalc sheetjs-recalc pricing.xlsx \
   --set Inputs!B2=48 \
   --set Inputs!B3=1500 \
   --read Summary!B7 \
@@ -77,9 +77,9 @@ recalculation.
 
 ```ts
 import { readFile, writeFile } from 'node:fs/promises'
-import { recalculateXlsx } from 'xlsx-formula-recalc'
+import { recalculateSheetjsWorkbook } from 'sheetjs-formula-recalc'
 
-const result = recalculateXlsx(await readFile('pricing.xlsx'), {
+const result = recalculateSheetjsWorkbook(await readFile('pricing.xlsx'), {
   fileName: 'pricing.xlsx',
   edits: [
     { target: 'Inputs!B2', value: 48 },
@@ -124,7 +124,7 @@ library and add recalculation, instead of rewriting the whole workbook pipeline.
 | Read or write many spreadsheet formats | SheetJS / `xlsx` |
 | Generate a styled XLSX report for a human to open later | SheetJS, ExcelJS, or `xlsx-populate` |
 | Ask Excel to recalculate when someone opens the file | workbook calc properties or Excel itself |
-| Recalculate SheetJS / `xlsx` bytes inside Node after changing inputs | `xlsx-formula-recalc` |
+| Recalculate SheetJS / `xlsx` bytes inside Node after changing inputs | `sheetjs-formula-recalc` |
 | Recalculate generic XLSX bytes from another writer | `xlsx-formula-recalc` |
 | Keep an ExcelJS workbook and add fresh formula readback | `exceljs-formula-recalc` |
 | Own formula-backed workbook state as JSON in a service | `@bilig/headless` or `bilig-workpaper` |
@@ -153,6 +153,7 @@ cells, and export a workbook with tests around that boundary.
 - [xlsx-populate formula results in Node.js](xlsx-populate-formula-result-node.md)
 - [ExcelJS formula recalculation in Node.js](exceljs-formula-recalculation-node.md)
 - [xlsx-formula-recalc package](https://www.npmjs.com/package/xlsx-formula-recalc)
+- [sheetjs-formula-recalc package](https://www.npmjs.com/package/sheetjs-formula-recalc)
 - [SheetJS, xlsx-populate, and ExcelJS bridge example](https://github.com/proompteng/bilig/tree/main/examples/recalc-bridge-workflows)
 
 If this saves you from opening Excel in a backend job just to refresh formula
@@ -169,5 +170,7 @@ find: <https://github.com/proompteng/bilig/stargazers>.
   <https://docs.sheetjs.com/docs/api/parse-options>
 - `xlsx` npm package:
   <https://www.npmjs.com/package/xlsx>
+- `sheetjs-formula-recalc` npm package:
+  <https://www.npmjs.com/package/sheetjs-formula-recalc>
 - `xlsx-formula-recalc` npm package:
   <https://www.npmjs.com/package/xlsx-formula-recalc>

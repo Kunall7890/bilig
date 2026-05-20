@@ -78,8 +78,8 @@ const headlessPackageSpec = `@bilig/headless@${headlessPackageVersion}`
 const mcpbReleaseAssetUrl = `https://github.com/proompteng/bilig/releases/download/libraries-v${headlessPackageVersion}/bilig-workpaper.mcpb`
 const mcpbReleaseChecksumUrl = `${mcpbReleaseAssetUrl}.sha256`
 const xlsxRecalcCli = 'npx --package xlsx-formula-recalc xlsx-recalc'
-const liveSheetjsRecalcCli = 'npx --package xlsx-formula-recalc sheetjs-recalc'
-const liveSheetjsRecalcPackage = 'xlsx-formula-recalc'
+const liveSheetjsRecalcCli = 'npx --package sheetjs-formula-recalc sheetjs-recalc'
+const liveSheetjsRecalcPackage = 'sheetjs-formula-recalc'
 
 const headlessSpreadsheetEngineNodeServicesAgents = await readFile(
   join(docsRoot, 'headless-spreadsheet-engine-node-services-agents.md'),
@@ -680,7 +680,7 @@ requireIncludes(
 requireIncludes(headlessReadme, 'docs/excel-file-calculation-engine-node.md', 'packages/headless/README.md')
 requireIncludes(headlessReadme, 'docs/exceljs-shared-formula-recalculation-node.md', 'packages/headless/README.md')
 requireIncludes(index, 'examples/xlsx-recalculation-node', 'docs/index.html')
-requireIncludes(index, 'SheetJS-named command from the live XLSX recalculation package', 'docs/index.html')
+requireIncludes(index, 'SheetJS-named package before moving to a full workbook runtime', 'docs/index.html')
 requireIncludes(index, 'xlsx-populate, and ExcelJS with one workbook', 'docs/index.html')
 requireIncludes(index, './xlsx-formula-recalculation-node.html', 'docs/index.html')
 requireIncludes(index, './xlsx-recalculation-proof.html', 'docs/index.html')
@@ -706,6 +706,7 @@ requireIncludes(
 requireIncludes(llms, xlsxRecalcCli, 'docs/llms.txt')
 requireIncludes(llms, liveSheetjsRecalcCli, 'docs/llms.txt')
 requireIncludes(llms, 'https://www.npmjs.com/package/xlsx-formula-recalc', 'docs/llms.txt')
+requireIncludes(llms, 'https://www.npmjs.com/package/sheetjs-formula-recalc', 'docs/llms.txt')
 requireIncludes(index, 'xlsx-recalc --demo --json', 'docs/index.html')
 requireIncludes(index, 'sheetjs-recalc --demo --json', 'docs/index.html')
 requireIncludes(index, 'sheetjs-formula-result-not-updating-node.html', 'docs/index.html')

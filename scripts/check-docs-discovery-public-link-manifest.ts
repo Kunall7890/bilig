@@ -71,6 +71,7 @@ export const llmsRequiredLinks = [
   'repository: https://github.com/proompteng/bilig',
   'npm workpaper package: https://www.npmjs.com/package/bilig-workpaper',
   'npm xlsx recalculation package: https://www.npmjs.com/package/xlsx-formula-recalc',
+  'npm SheetJS recalculation package: https://www.npmjs.com/package/sheetjs-formula-recalc',
   'npm ExcelJS recalculation package: https://www.npmjs.com/package/exceljs-formula-recalc',
   'npm full runtime package: https://www.npmjs.com/package/@bilig/headless',
   'npx --package xlsx-formula-recalc xlsx-recalc pricing.xlsx',
