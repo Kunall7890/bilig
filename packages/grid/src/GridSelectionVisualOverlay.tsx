@@ -8,10 +8,19 @@ import { workbookThemeColors } from './workbookTheme.js'
 
 type VisualRectRole = 'selection-fill' | 'selection-border' | 'active-border' | 'fill-handle' | 'header-fill' | 'hover-fill'
 
+interface BorderSides {
+  readonly bottom: boolean
+  readonly left: boolean
+  readonly right: boolean
+  readonly top: boolean
+}
+
 export interface GridSelectionVisualRect {
   readonly role: VisualRectRole
   readonly key: string
   readonly bounds: Rectangle
+  readonly borderSides?: BorderSides | undefined
+  readonly strokeWidth?: number | undefined
 }
 
 export interface GridSelectionVisualOverlayProps {
@@ -179,7 +188,10 @@ function appendBodySelectionVisualRects(
   }
 
   if (activeCell && isMultiCellSelection && cellInRange(activeCell, input.selectionRange)) {
-    appendCellBorderRects(rects, input.geometry, activeCell, 'active-border', `active-border:cell:${activeCell[0]}:${activeCell[1]}`)
+    appendCellBorderRects(rects, input.geometry, activeCell, 'active-border', `active-border:cell:${activeCell[0]}:${activeCell[1]}`, {
+      borderSides: resolveActiveCellBorderSides(activeCell, input.selectionRange),
+      strokeWidth: 2,
+    })
   }
 
   if (input.showFillHandle) {
@@ -302,11 +314,35 @@ function appendCellBorderRects(
   cell: readonly [number, number],
   role: VisualRectRole,
   keyPrefix: string,
+  options?: {
+    readonly borderSides?: BorderSides | undefined
+    readonly strokeWidth?: number | undefined
+  },
 ): void {
   let segmentIndex = 0
   for (const bounds of geometry.rangeScreenRects({ x: cell[0], y: cell[1], width: 1, height: 1 })) {
-    rects.push({ role, key: `${keyPrefix}:${segmentIndex}`, bounds })
+    rects.push({
+      role,
+      key: `${keyPrefix}:${segmentIndex}`,
+      bounds,
+      borderSides: options?.borderSides,
+      strokeWidth: options?.strokeWidth,
+    })
     segmentIndex += 1
+  }
+}
+
+function resolveActiveCellBorderSides(
+  cell: readonly [number, number],
+  range: Pick<Rectangle, 'x' | 'y' | 'width' | 'height'>,
+): BorderSides {
+  const right = range.x + range.width - 1
+  const bottom = range.y + range.height - 1
+  return {
+    bottom: cell[1] < bottom,
+    left: cell[0] > range.x,
+    right: cell[0] < right,
+    top: cell[1] > range.y,
   }
 }
 
@@ -447,10 +483,18 @@ function styleForRect(rect: GridSelectionVisualRect): CSSProperties {
     width: rect.bounds.width,
   }
   if (rect.role === 'selection-border' || rect.role === 'active-border') {
+    const borderSides = rect.borderSides ?? { bottom: true, left: true, right: true, top: true }
+    const strokeWidth = rect.strokeWidth ?? (rect.role === 'active-border' ? 2 : 1)
     return {
       ...base,
       backgroundColor: 'transparent',
-      boxShadow: `inset 0 0 0 ${rect.role === 'active-border' ? 2 : 1}px ${workbookThemeColors.accent}`,
+      borderBottomWidth: borderSides.bottom ? strokeWidth : 0,
+      borderColor: workbookThemeColors.accent,
+      borderLeftWidth: borderSides.left ? strokeWidth : 0,
+      borderRightWidth: borderSides.right ? strokeWidth : 0,
+      borderStyle: 'solid',
+      borderTopWidth: borderSides.top ? strokeWidth : 0,
+      boxSizing: 'border-box',
     }
   }
   if (rect.role === 'fill-handle') {

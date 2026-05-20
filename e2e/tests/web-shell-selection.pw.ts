@@ -310,6 +310,20 @@ test('@browser-ci web app keeps reverse-drag range selection chrome geometricall
   await expectVisualRectNear(page.locator('[data-grid-selection-visual-role="selection-border"]'), expectedRange, 'selection border')
   await expectVisualRectNear(page.locator('[data-grid-selection-visual-role="active-border"]'), expectedActiveCell, 'active cell border')
   await expectVisualRectNear(page.locator('[data-grid-selection-visual-role="fill-handle"]'), expectedFillHandle, 'fill handle')
+  await expectBorderStyle(page.locator('[data-grid-selection-visual-role="selection-border"]'), {
+    bottom: '1px',
+    boxShadow: 'none',
+    left: '1px',
+    right: '1px',
+    top: '1px',
+  })
+  await expectBorderStyle(page.locator('[data-grid-selection-visual-role="active-border"]'), {
+    bottom: '0px',
+    boxShadow: 'none',
+    left: '2px',
+    right: '0px',
+    top: '2px',
+  })
 })
 
 test('@browser-ci web app keeps active cell chrome synchronized inside a keyboard-cycled range', async ({ page }) => {
@@ -794,6 +808,29 @@ async function expectVisualRectNear(
   expect(actual.y, `${label} y`).toBeCloseTo(expected.y, 0)
   expect(actual.width, `${label} width`).toBeCloseTo(expected.width, 0)
   expect(actual.height, `${label} height`).toBeCloseTo(expected.height, 0)
+}
+
+async function expectBorderStyle(
+  locator: ReturnType<Page['locator']>,
+  expected: {
+    readonly bottom: string
+    readonly boxShadow: string
+    readonly left: string
+    readonly right: string
+    readonly top: string
+  },
+): Promise<void> {
+  const actual = await locator.evaluate((node) => {
+    const style = window.getComputedStyle(node)
+    return {
+      bottom: style.borderBottomWidth,
+      boxShadow: style.boxShadow,
+      left: style.borderLeftWidth,
+      right: style.borderRightWidth,
+      top: style.borderTopWidth,
+    }
+  })
+  expect(actual).toEqual(expected)
 }
 
 async function dragSelectedRangeBorderPreview(

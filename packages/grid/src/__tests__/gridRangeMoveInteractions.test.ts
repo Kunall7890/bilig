@@ -20,6 +20,7 @@ describe('gridRangeMoveInteractions', () => {
       listenerTarget,
       sourceRange: { x: 1, y: 1, width: 2, height: 2 },
       pointerCell: [2, 2],
+      activeCell: [2, 1],
       resolvePointerCell,
       setGridSelection,
       onSelectionChange,
@@ -32,6 +33,7 @@ describe('gridRangeMoveInteractions', () => {
     expect(onSelectionChange).toHaveBeenCalledWith(
       expect.objectContaining({
         current: expect.objectContaining({
+          cell: [5, 4],
           range: { x: 4, y: 4, width: 2, height: 2 },
         }),
       }),
@@ -46,6 +48,7 @@ describe('gridRangeMoveInteractions', () => {
       1,
       expect.objectContaining({
         current: expect.objectContaining({
+          cell: [5, 4],
           range: { x: 4, y: 4, width: 2, height: 2 },
         }),
       }),
@@ -54,6 +57,7 @@ describe('gridRangeMoveInteractions', () => {
       2,
       expect.objectContaining({
         current: expect.objectContaining({
+          cell: [5, 4],
           range: { x: 4, y: 4, width: 2, height: 2 },
         }),
       }),
@@ -61,6 +65,7 @@ describe('gridRangeMoveInteractions', () => {
     expect(onSelectionChange).toHaveBeenLastCalledWith(
       expect.objectContaining({
         current: expect.objectContaining({
+          cell: [5, 4],
           range: { x: 4, y: 4, width: 2, height: 2 },
         }),
       }),
@@ -85,6 +90,7 @@ describe('gridRangeMoveInteractions', () => {
       listenerTarget,
       sourceRange: { x: 1, y: 1, width: 2, height: 2 },
       pointerCell: [1, 1],
+      activeCell: [2, 2],
       resolvePointerCell,
       setGridSelection,
       onSelectionChange,
@@ -101,6 +107,7 @@ describe('gridRangeMoveInteractions', () => {
     expect(setGridSelection).toHaveBeenCalledWith(
       expect.objectContaining({
         current: expect.objectContaining({
+          cell: [2, 2],
           range: { x: 1, y: 1, width: 2, height: 2 },
         }),
       }),

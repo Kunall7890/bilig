@@ -243,6 +243,7 @@ export function useWorkbookGridHostPointerHandlers(input: {
         listenerTarget: window,
         sourceRange: selectionRange,
         pointerCell,
+        activeCell: activeSelectionCell,
         resolvePointerCell,
         setGridSelection,
         onSelectionChange: emitSelectionChange,
@@ -255,6 +256,7 @@ export function useWorkbookGridHostPointerHandlers(input: {
     },
     [
       commitActiveEdit,
+      activeSelectionCell,
       emitSelectionChange,
       focusGrid,
       isEditingCell,

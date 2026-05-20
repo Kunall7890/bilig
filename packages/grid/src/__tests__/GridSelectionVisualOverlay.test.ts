@@ -137,6 +137,32 @@ describe('GridSelectionVisualOverlay', () => {
     expect(rects.some((rect) => rect.role === 'selection-fill')).toBe(false)
   })
 
+  test('does not double-paint active cell sides already covered by the selected range perimeter', () => {
+    const geometry = createGeometry()
+    const topLeftSelection = createRangeSelection(createGridSelection(1, 1), [1, 1], [3, 3])
+    const bottomRightSelection = createRangeSelection(createGridSelection(3, 3), [3, 3], [1, 1])
+
+    const topLeftActiveBorder = buildGridSelectionVisualRects({
+      geometry,
+      gridSelection: topLeftSelection,
+      selectedCell: [1, 1],
+      selectionRange: topLeftSelection.current?.range ?? null,
+      showFillHandle: true,
+    }).find((rect) => rect.role === 'active-border')
+    const bottomRightActiveBorder = buildGridSelectionVisualRects({
+      geometry,
+      gridSelection: bottomRightSelection,
+      selectedCell: [3, 3],
+      selectionRange: bottomRightSelection.current?.range ?? null,
+      showFillHandle: true,
+    }).find((rect) => rect.role === 'active-border')
+
+    expect(topLeftActiveBorder?.borderSides).toEqual({ bottom: true, left: false, right: true, top: false })
+    expect(topLeftActiveBorder?.strokeWidth).toBe(2)
+    expect(bottomRightActiveBorder?.borderSides).toEqual({ bottom: false, left: true, right: false, top: true })
+    expect(bottomRightActiveBorder?.strokeWidth).toBe(2)
+  })
+
   test('builds hover chrome in the DOM overlay without covering the selected range', () => {
     const geometry = createGeometry()
     const selection = createRangeSelection(createGridSelection(1, 1), [1, 1], [3, 3])
