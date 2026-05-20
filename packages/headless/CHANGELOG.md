@@ -4,6 +4,16 @@ All notable changes to `@bilig/headless` will be documented in this file.
 
 This package is released as part of the aligned bilig library package set.
 
+## 0.40.12
+
+- Release type: patch
+- Previous libraries tag: libraries-v0.40.11
+- Manual override: no
+
+## Fixes
+- perf(core): replay large formula family runs (03488e2d)
+- fix(xlsx): keep rich shared strings lazy (d7acef49)
+
 ## 0.40.11
 
 - Release type: patch
