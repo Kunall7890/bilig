@@ -357,6 +357,8 @@ describe('ProjectedViewportStore', () => {
       fill: { backgroundColor: '#00ff00' },
     })
     expect(countSheetCells(cache, 'Sheet1')).toBe(0)
+    const deltaListener = vi.fn()
+    const unsubscribeDeltas = cache.subscribeWorkbookDeltas(deltaListener)
 
     const unsubscribeViewport = cache.subscribeViewport(
       'Sheet1',
@@ -371,6 +373,23 @@ describe('ProjectedViewportStore', () => {
       { initialPatch: 'none' },
     )
 
+    expect(deltaListener).toHaveBeenCalledTimes(1)
+    expect(deltaListener).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        dirty: {
+          axisX: new Uint32Array(),
+          axisY: new Uint32Array(),
+          cellRanges: Uint32Array.from(
+            Array.from({ length: 30 }, (_, index) => {
+              const row = 695 + Math.floor(index / 3)
+              const col = 3 + (index % 3)
+              return [row, row, col, col, LOCAL_CELL_VISUAL_DIRTY_MASK]
+            }).flat(),
+          ),
+        },
+        source: 'localOptimistic',
+      }),
+    )
     expect(countSheetCells(cache, 'Sheet1')).toBeLessThanOrEqual(30)
     const materializedCell = cache.getCell('Sheet1', 'E700')
     expect(cache.getCellStyle(materializedCell.styleId)).toEqual({
@@ -400,10 +419,51 @@ describe('ProjectedViewportStore', () => {
     })
     expect(tiles.some((tile) => hasOpaqueGreenFillRect(tile.rectInstances, tile.rectCount))).toBe(true)
 
+    deltaListener.mockClear()
     rollback?.()
+    expect(deltaListener).toHaveBeenCalledTimes(1)
+    expect(deltaListener).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        dirty: {
+          axisX: new Uint32Array(),
+          axisY: new Uint32Array(),
+          cellRanges: Uint32Array.from(
+            Array.from({ length: 30 }, (_, index) => {
+              const row = 695 + Math.floor(index / 3)
+              const col = 3 + (index % 3)
+              return [row, row, col, col, LOCAL_CELL_VISUAL_DIRTY_MASK]
+            }).flat(),
+          ),
+        },
+        source: 'localOptimistic',
+      }),
+    )
     expect(countSheetCells(cache, 'Sheet1')).toBe(0)
     expect(cache.peekCell('Sheet1', 'E700')).toBeUndefined()
+    const rollbackTiles = buildLocalFixedRenderTiles({
+      cameraSeq: 2,
+      columnWidths: cache.getColumnWidths('Sheet1'),
+      dprBucket: 1,
+      engine: cache,
+      generation: 4,
+      gridMetrics: getGridMetrics(),
+      rowHeights: cache.getRowHeights('Sheet1'),
+      sheetId: 7,
+      sheetOrdinal: 7,
+      sheetName: 'Sheet1',
+      sortedColumnWidthOverrides: [],
+      sortedRowHeightOverrides: [],
+      viewport: {
+        sheetName: 'Sheet1',
+        rowStart: 695,
+        rowEnd: 704,
+        colStart: 3,
+        colEnd: 5,
+      },
+    })
+    expect(rollbackTiles.some((tile) => hasOpaqueGreenFillRect(tile.rectInstances, tile.rectCount))).toBe(false)
     unsubscribeViewport()
+    unsubscribeDeltas()
   })
 
   it('lets newer small style edits override an older large range overlay', () => {

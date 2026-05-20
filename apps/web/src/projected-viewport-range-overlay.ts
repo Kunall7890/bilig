@@ -28,6 +28,7 @@ export interface ProjectedViewportRangeOverlayStoreCallbacks {
   readonly getCell: (sheetName: string, address: string) => CellSnapshot
   readonly hasCellSnapshot: (sheetName: string, address: string) => boolean
   readonly setCellSnapshot: (snapshot: CellSnapshot) => void
+  readonly setCellSnapshots?: ((snapshots: readonly CellSnapshot[]) => void) | undefined
 }
 
 export class ProjectedViewportRangeOverlayStore {
@@ -155,11 +156,16 @@ export class ProjectedViewportRangeOverlayStore {
       if (!intersection) {
         return
       }
+      const snapshotsToSet: CellSnapshot[] = []
       for (let row = intersection.startRow; row <= intersection.endRow; row += 1) {
         for (let col = intersection.startCol; col <= intersection.endCol; col += 1) {
-          this.materializeAddress(sheetName, formatAddress(row, col))
+          const nextSnapshot = this.materializeAddress(sheetName, formatAddress(row, col))
+          if (nextSnapshot) {
+            snapshotsToSet.push(nextSnapshot)
+          }
         }
       }
+      this.setCellSnapshots(snapshotsToSet)
     })
   }
 
@@ -169,17 +175,23 @@ export class ProjectedViewportRangeOverlayStore {
       this.overlays.splice(overlayIndex, 1)
     }
     this.invalidateResolvedSnapshots()
+    const snapshotsToSet: CellSnapshot[] = []
+    const snapshotsToDelete: Array<{ readonly sheetName: string; readonly address: string }> = []
     overlay.materializedPreviousSnapshots.forEach(({ restoreSnapshot, snapshot }) => {
       if (this.getSuppressedOverlayMaxId(snapshot.sheetName, snapshot.address) >= overlay.id) {
         return
       }
       const nextSnapshot = this.apply(snapshot.sheetName, snapshot.address, snapshot)
       if (restoreSnapshot || cellSnapshotSignature(nextSnapshot) !== cellSnapshotSignature(snapshot)) {
-        this.callbacks.setCellSnapshot(nextSnapshot)
+        snapshotsToSet.push(nextSnapshot)
         return
       }
-      this.callbacks.setCellSnapshot(snapshot)
-      this.callbacks.deleteCellSnapshot(snapshot.sheetName, snapshot.address)
+      snapshotsToSet.push(snapshot)
+      snapshotsToDelete.push({ sheetName: snapshot.sheetName, address: snapshot.address })
+    })
+    this.setCellSnapshots(snapshotsToSet)
+    snapshotsToDelete.forEach(({ sheetName, address }) => {
+      this.callbacks.deleteCellSnapshot(sheetName, address)
     })
     overlay.materializedPreviousSnapshots.clear()
   }
@@ -190,12 +202,17 @@ export class ProjectedViewportRangeOverlayStore {
       startAddress: formatAddress(overlay.range.startRow, overlay.range.startCol),
       endAddress: formatAddress(overlay.range.endRow, overlay.range.endCol),
     }
+    const snapshotsToSet: CellSnapshot[] = []
     this.callbacks.forEachCachedOrVisibleCellSnapshotInRange(range, (snapshot) => {
-      this.materializeAddress(snapshot.sheetName, snapshot.address)
+      const nextSnapshot = this.materializeAddress(snapshot.sheetName, snapshot.address)
+      if (nextSnapshot) {
+        snapshotsToSet.push(nextSnapshot)
+      }
     })
+    this.setCellSnapshots(snapshotsToSet)
   }
 
-  private materializeAddress(sheetName: string, address: string): void {
+  private materializeAddress(sheetName: string, address: string): CellSnapshot | null {
     const key = snapshotOverlayKey(sheetName, address)
     let nextSnapshot = this.callbacks.getCell(sheetName, address)
     let changed = false
@@ -216,9 +233,21 @@ export class ProjectedViewportRangeOverlayStore {
         })
       }
     })
-    if (changed && cellSnapshotSignature(this.callbacks.getCell(sheetName, address)) !== cellSnapshotSignature(nextSnapshot)) {
-      this.callbacks.setCellSnapshot(nextSnapshot)
+    if (!changed || cellSnapshotSignature(this.callbacks.getCell(sheetName, address)) === cellSnapshotSignature(nextSnapshot)) {
+      return null
     }
+    return nextSnapshot
+  }
+
+  private setCellSnapshots(snapshots: readonly CellSnapshot[]): void {
+    if (snapshots.length === 0) {
+      return
+    }
+    if (this.callbacks.setCellSnapshots) {
+      this.callbacks.setCellSnapshots(snapshots)
+      return
+    }
+    snapshots.forEach((snapshot) => this.callbacks.setCellSnapshot(snapshot))
   }
 
   private invalidateResolvedSnapshots(): void {
