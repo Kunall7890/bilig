@@ -11,7 +11,10 @@ import {
   readLargeSimpleSharedStringIndexFromTextRange,
 } from './xlsx-large-simple-cell-value-scan.js'
 import { readLargeSimpleConditionalFormattingFromBytes } from './xlsx-large-simple-conditional-format-byte-scan.js'
-import { readLargeSimpleDataValidationsFromBytes } from './xlsx-large-simple-data-validation-byte-scan.js'
+import {
+  countLargeSimpleDataValidationsFromBytes,
+  readLargeSimpleDataValidationsFromBytes,
+} from './xlsx-large-simple-data-validation-byte-scan.js'
 import {
   LargeSimpleFormulaRecords,
   parseLargeSimpleSharedFormulaIndex,
@@ -190,6 +193,7 @@ class LargeSimpleWorksheetChunkScanner {
   private readonly maxDimensionCellPreallocation: number
   private dimensionCellPreallocationApplied = false
   private activeMetadataElement: StreamedMetadataElement | null = null
+  private activeDataValidations = false
 
   constructor(
     private readonly sheetIndex: number,
@@ -356,6 +360,12 @@ class LargeSimpleWorksheetChunkScanner {
     while (!this.failed && this.index < this.buffer.byteLength) {
       if (this.activeMetadataElement !== null) {
         if (!this.processActiveMetadataElement(final)) {
+          return
+        }
+        continue
+      }
+      if (this.activeDataValidations) {
+        if (!this.processActiveDataValidations(final)) {
           return
         }
         continue
@@ -612,6 +622,10 @@ class LargeSimpleWorksheetChunkScanner {
   }
 
   private collectMetadataElement(localName: string, tagEnd: number, final: boolean): boolean {
+    if (localName === 'dataValidations' && isSelfClosingTag(this.buffer, tagEnd)) {
+      this.index = tagEnd + 1
+      return true
+    }
     if (isSelfClosingTag(this.buffer, tagEnd)) {
       const handled = this.retainMetadataXml && this.collectTypedMetadataElement(localName, this.index, tagEnd + 1)
       if (!handled) {
@@ -627,6 +641,17 @@ class LargeSimpleWorksheetChunkScanner {
       this.activeMetadataElement = localName
       this.index = tagEnd + 1
       if (!this.processActiveMetadataElement(final)) {
+        if (final) {
+          this.failed = true
+        }
+        return false
+      }
+      return true
+    }
+    if (localName === 'dataValidations') {
+      this.activeDataValidations = true
+      this.index = tagEnd + 1
+      if (!this.processActiveDataValidations(final)) {
         if (final) {
           this.failed = true
         }
@@ -748,21 +773,6 @@ class LargeSimpleWorksheetChunkScanner {
       }
       return true
     }
-    if (localName === 'dataValidations') {
-      if (!this.sheetName) {
-        return false
-      }
-      const validations = readLargeSimpleDataValidationsFromBytes(this.sheetName, this.buffer, startIndex, endIndex)
-      if (validations === null) {
-        return false
-      }
-      this.dataValidationCount += validations.length
-      if (validations.length > 0) {
-        this.dataValidations ??= []
-        this.dataValidations.push(...validations)
-      }
-      return true
-    }
     return false
   }
 
@@ -823,6 +833,90 @@ class LargeSimpleWorksheetChunkScanner {
       this.index = this.buffer.byteLength
     }
     return false
+  }
+
+  private processActiveDataValidations(final: boolean): boolean {
+    while (!this.failed && this.index < this.buffer.byteLength) {
+      if (this.buffer[this.index] !== lessThan) {
+        this.index += 1
+        continue
+      }
+      const closing = this.buffer[this.index + 1] === slash
+      const tagNameStart = this.index + (closing ? 2 : 1)
+      const tag = readXmlTagName(this.buffer, tagNameStart)
+      if (!tag) {
+        if (!final && tagNameStart >= this.buffer.byteLength) {
+          return false
+        }
+        this.index += 1
+        continue
+      }
+      const tagEnd = findTagEnd(this.buffer, tag.endIndex)
+      if (tagEnd === null) {
+        if (final) {
+          this.failed = true
+        }
+        return false
+      }
+      if (closing && tag.localName === 'dataValidations') {
+        this.activeDataValidations = false
+        this.index = tagEnd + 1
+        return true
+      }
+      if (!closing && tag.localName === 'dataValidation') {
+        if (!this.processActiveDataValidationElement(tagEnd, final)) {
+          return false
+        }
+        continue
+      }
+      this.index = tagEnd + 1
+    }
+    if (final) {
+      this.failed = true
+    } else {
+      this.index = this.buffer.byteLength
+    }
+    return false
+  }
+
+  private processActiveDataValidationElement(tagEnd: number, final: boolean): boolean {
+    const startIndex = this.index
+    const selfClosing = isSelfClosingTag(this.buffer, tagEnd)
+    const contentStart = tagEnd + 1
+    const closing = selfClosing ? { start: contentStart, end: contentStart } : findClosingTag(this.buffer, contentStart, 'dataValidation')
+    if (!closing) {
+      if (final) {
+        this.failed = true
+      }
+      this.index = startIndex
+      return false
+    }
+    const endIndex = selfClosing ? tagEnd + 1 : closing.end
+    if (this.retainMetadataXml) {
+      if (!this.sheetName) {
+        this.failed = true
+        return true
+      }
+      const validations = readLargeSimpleDataValidationsFromBytes(this.sheetName, this.buffer, startIndex, endIndex)
+      if (validations === null) {
+        this.failed = true
+        return true
+      }
+      this.dataValidationCount += validations.length
+      if (validations.length > 0) {
+        this.dataValidations ??= []
+        this.dataValidations.push(...validations)
+      }
+    } else {
+      const count = countLargeSimpleDataValidationsFromBytes(this.sheetName ?? 'Sheet1', this.buffer, startIndex, endIndex)
+      if (count === null) {
+        this.failed = true
+        return true
+      }
+      this.dataValidationCount += count
+    }
+    this.index = endIndex
+    return true
   }
 
   private collectActiveMetadataTag(activeElement: StreamedMetadataElement, localName: string, nameEnd: number, tagEnd: number): void {

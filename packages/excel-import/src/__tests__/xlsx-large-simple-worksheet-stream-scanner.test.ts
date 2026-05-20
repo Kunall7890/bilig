@@ -131,6 +131,41 @@ describe('large simple worksheet stream scanners', () => {
     expect(Math.max(...retainedBufferLengths)).toBeLessThan(1024)
   })
 
+  it('streams large split data-validation metadata without retaining the full parent body', () => {
+    const headlessRetainedBufferLengths: number[] = []
+    const headlessScan = parseHeadlessLargeSimpleWorksheetFromChunks(splitLargeDataValidationsWorksheetXml(), 0, {
+      hasSharedStrings: false,
+      onRetainedBufferLength: (length) => headlessRetainedBufferLengths.push(length),
+    })
+    const retainedBufferLengths: number[] = []
+    const scan = parseLargeSimpleWorksheetCellsFromChunks(splitLargeDataValidationsWorksheetXml(), 0, {
+      hasSharedStrings: false,
+      sheetName: 'Data',
+      onRetainedBufferLength: (length) => retainedBufferLengths.push(length),
+    })
+
+    expect(headlessScan?.dataValidationCount).toBe(3)
+    expect(scan?.cellScan.dataValidationCount).toBe(3)
+    expect(scan?.metadata?.dataValidations).toEqual([
+      {
+        range: { sheetName: 'Data', startAddress: 'A1', endAddress: 'A1' },
+        rule: { kind: 'list', values: ['Open', 'Closed'] },
+      },
+      {
+        range: { sheetName: 'Data', startAddress: 'B1', endAddress: 'B1' },
+        rule: { kind: 'whole', operator: 'between', values: [1, 10] },
+      },
+      {
+        range: { sheetName: 'Data', startAddress: 'B2', endAddress: 'B2' },
+        rule: { kind: 'whole', operator: 'between', values: [1, 10] },
+      },
+    ])
+    expect(headlessRetainedBufferLengths.length).toBeGreaterThan(0)
+    expect(retainedBufferLengths.length).toBeGreaterThan(0)
+    expect(Math.max(...headlessRetainedBufferLengths)).toBeLessThan(1024)
+    expect(Math.max(...retainedBufferLengths)).toBeLessThan(1024)
+  })
+
   it('rejects unterminated streamed metadata in headless and materialized scans', () => {
     expect(
       parseHeadlessLargeSimpleWorksheetFromChunks(splitUnterminatedMergeCellsWorksheetXml(), 0, { hasSharedStrings: false }),
@@ -437,6 +472,27 @@ function splitLargeTablePartsWorksheetXml(): (onChunk: (chunk: Uint8Array) => vo
     ' '.repeat(20_000),
     '<tablePart r:id="rIdTable2"/></',
     'tableParts>',
+    '</worksheet>',
+  ]
+  return (onChunk) => {
+    for (const chunk of chunks) {
+      onChunk(encoder.encode(chunk))
+    }
+    return true
+  }
+}
+
+function splitLargeDataValidationsWorksheetXml(): (onChunk: (chunk: Uint8Array) => void) => boolean {
+  const chunks = [
+    '<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">',
+    '<dimension ref="A1"/>',
+    '<sheetData><row r="1"><c r="A1"><v>1</v></c></row></sheetData>',
+    '<dataValidations count="2"><dataValidation type="list" sqref="A1"><formula1>"Open,Closed"</formula1></dataValidation>',
+    ' '.repeat(40_000),
+    ' '.repeat(40_000),
+    ' '.repeat(20_000),
+    '<dataValidation type="whole" operator="between" sqref="B1 B2"><formula1>1</formula1><formula2>10</formula2></dataValidation></',
+    'dataValidations>',
     '</worksheet>',
   ]
   return (onChunk) => {

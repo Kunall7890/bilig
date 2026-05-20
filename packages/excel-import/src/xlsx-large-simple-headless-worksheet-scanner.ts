@@ -98,6 +98,7 @@ class HeadlessLargeSimpleWorksheetChunkScanner {
   private cellPackedAddress = -1
   private cellHasSharedStringType = false
   private activeMetadata: ActiveMetadataCount | null = null
+  private activeDataValidations = false
 
   constructor(
     private readonly sheetIndex: number,
@@ -184,6 +185,12 @@ class HeadlessLargeSimpleWorksheetChunkScanner {
         }
         continue
       }
+      if (this.activeDataValidations) {
+        if (!this.processActiveDataValidations(final)) {
+          return
+        }
+        continue
+      }
       if (this.buffer[this.index] !== lessThan) {
         this.index += 1
         continue
@@ -228,7 +235,7 @@ class HeadlessLargeSimpleWorksheetChunkScanner {
       }
       if (metadataWorksheetTagNames.has(tag.localName)) {
         if (tag.localName === 'dataValidations') {
-          if (!this.readDataValidations(tagEnd, final)) {
+          if (!this.startDataValidations(tagEnd, final)) {
             return
           }
           continue
@@ -314,26 +321,19 @@ class HeadlessLargeSimpleWorksheetChunkScanner {
     return true
   }
 
-  private readDataValidations(tagEnd: number, final: boolean): boolean {
-    const selfClosing = isSelfClosingTag(this.buffer, tagEnd)
-    const closing = selfClosing ? { end: tagEnd + 1 } : findClosingTag(this.buffer, tagEnd + 1, 'dataValidations')
-    if (!closing) {
+  private startDataValidations(tagEnd: number, final: boolean): boolean {
+    if (isSelfClosingTag(this.buffer, tagEnd)) {
+      this.index = tagEnd + 1
+      return true
+    }
+    this.activeDataValidations = true
+    this.index = tagEnd + 1
+    if (!this.processActiveDataValidations(final)) {
       if (final) {
         this.failed = true
       }
       return false
     }
-    const count = countLargeSimpleDataValidationsFromBytes('Sheet1', this.buffer, this.index, closing.end)
-    if (count === null) {
-      if (this.options.allowUnsupportedFeaturesForMetrics === true) {
-        this.index = closing.end
-        return true
-      }
-      this.failed = true
-      return true
-    }
-    this.dataValidationCount += count
-    this.index = closing.end
     return true
   }
 
@@ -530,6 +530,77 @@ class HeadlessLargeSimpleWorksheetChunkScanner {
       this.index = this.buffer.byteLength
     }
     return false
+  }
+
+  private processActiveDataValidations(final: boolean): boolean {
+    while (!this.failed && this.index < this.buffer.byteLength) {
+      if (this.buffer[this.index] !== lessThan) {
+        this.index += 1
+        continue
+      }
+      const closing = this.buffer[this.index + 1] === slash
+      const tagNameStart = this.index + (closing ? 2 : 1)
+      const tag = readXmlTagName(this.buffer, tagNameStart)
+      if (!tag) {
+        if (!final && tagNameStart >= this.buffer.byteLength) {
+          return false
+        }
+        this.index += 1
+        continue
+      }
+      const tagEnd = findTagEnd(this.buffer, tag.endIndex)
+      if (tagEnd === null) {
+        if (final) {
+          this.failed = true
+        }
+        return false
+      }
+      if (closing && tag.localName === 'dataValidations') {
+        this.activeDataValidations = false
+        this.index = tagEnd + 1
+        return true
+      }
+      if (!closing && tag.localName === 'dataValidation') {
+        if (!this.processActiveDataValidationElement(tagEnd, final)) {
+          return false
+        }
+        continue
+      }
+      this.index = tagEnd + 1
+    }
+    if (final) {
+      this.failed = true
+    } else {
+      this.index = this.buffer.byteLength
+    }
+    return false
+  }
+
+  private processActiveDataValidationElement(tagEnd: number, final: boolean): boolean {
+    const startIndex = this.index
+    const selfClosing = isSelfClosingTag(this.buffer, tagEnd)
+    const contentStart = tagEnd + 1
+    const closing = selfClosing ? { start: contentStart, end: contentStart } : findClosingTag(this.buffer, contentStart, 'dataValidation')
+    if (!closing) {
+      if (final) {
+        this.failed = true
+      }
+      this.index = startIndex
+      return false
+    }
+    const endIndex = selfClosing ? tagEnd + 1 : closing.end
+    const count = countLargeSimpleDataValidationsFromBytes('Sheet1', this.buffer, startIndex, endIndex)
+    if (count === null) {
+      if (this.options.allowUnsupportedFeaturesForMetrics === true) {
+        this.index = endIndex
+        return true
+      }
+      this.failed = true
+      return true
+    }
+    this.dataValidationCount += count
+    this.index = endIndex
+    return true
   }
 
   private finalizeMetadataCount(active: ActiveMetadataCount): void {
