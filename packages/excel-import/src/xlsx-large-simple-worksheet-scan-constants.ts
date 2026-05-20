@@ -1,4 +1,4 @@
-export const unsupportedWorksheetTagNames = new Set(['legacyDrawing', 'oleObjects', 'picture', 'sheetProtection'])
+export const unsupportedWorksheetTagNames = new Set(['oleObjects', 'picture'])
 
 export const metadataWorksheetTagNames = new Set([
   'autoFilter',

@@ -978,7 +978,7 @@ describe('large simple XLSX import fast path', () => {
     expect(tryImportLargeSimpleXlsx(bytes, 'structured-formula.xlsx', unzipSync(bytes), { minByteLength: 0 })).toBeNull()
   })
 
-  it('falls back when chart parts require semantic chart import', () => {
+  it('does not fall back solely because preserved chart package parts are present', () => {
     const bytes = buildLargeSimpleWorkbook({
       includeSharedStrings: false,
       worksheetXml: [
@@ -993,8 +993,34 @@ describe('large simple XLSX import fast path', () => {
       },
     })
 
-    expect(tryImportLargeSimpleXlsx(bytes, 'chart.xlsx', unzipSync(bytes), { minByteLength: 0 })).toBeNull()
+    expect(tryImportLargeSimpleXlsx(bytes, 'chart.xlsx', unzipSync(bytes), { minByteLength: 0 })?.stats.cellCount).toBe(1)
     expect(inspectXlsx(bytes, 'chart.xlsx')?.stats.cellCount).toBe(1)
+  })
+
+  it('streams large cached formula workbooks with calcChain below the old byte threshold', () => {
+    const rows: string[] = []
+    for (let row = 1; row <= 50_001; row += 1) {
+      rows.push(`<row r="${String(row)}"><c r="A${String(row)}"><f>B${String(row)}+1</f><v>${String(row)}</v></c></row>`)
+    }
+    const bytes = buildLargeSimpleWorkbook({
+      includeSharedStrings: false,
+      worksheetXml: [
+        '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>',
+        '<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">',
+        '<dimension ref="A1:A50001"/>',
+        `<sheetData>${rows.join('')}</sheetData>`,
+        '</worksheet>',
+      ].join(''),
+      extraEntries: {
+        'xl/calcChain.xml': '<calcChain xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><c r="A1" i="1"/></calcChain>',
+        'docProps/padding.bin': deterministicBytes(1_100_000),
+      },
+    })
+
+    const imported = importXlsx(bytes, 'cached-formula-calcchain.xlsx')
+
+    expect(imported.stats?.formulaCellCount).toBe(50_001)
+    expect(imported.snapshot.sheets[0]?.cells).toHaveLength(50_001)
   })
 })
 
@@ -1142,6 +1168,16 @@ function isLazyZipByteSource(value: unknown): value is XlsxZipByteSource {
 
 function readLittleEndianUint16(source: Uint8Array, offset: number): number {
   return (source[offset] ?? 0) | ((source[offset + 1] ?? 0) << 8)
+}
+
+function deterministicBytes(length: number): Uint8Array {
+  const bytes = new Uint8Array(length)
+  let state = 0x12345678
+  for (let index = 0; index < length; index += 1) {
+    state = (Math.imul(state, 1664525) + 1013904223) >>> 0
+    bytes[index] = (state >>> 24) & 0xff
+  }
+  return bytes
 }
 
 function encodeColumnName(index: number): string {

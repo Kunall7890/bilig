@@ -15,8 +15,11 @@ import {
   readImportedSheetConditionalFormatsFromElementXml,
   readImportedSheetConditionalFormatsFromWorksheetXml,
 } from './xlsx-conditional-formats.js'
+import { legacyCommentThreadSignature, readImportedWorkbookLegacyCommentVml } from './xlsx-comment-vml.js'
 import { readImportedWorkbookDrawingArtifactsFromWorksheetRelationships } from './xlsx-drawing-artifacts.js'
+import { readImportedWorkbookExternalLinkArtifacts } from './xlsx-external-link-artifacts.js'
 import { readImportedSheetAutoFilters } from './xlsx-filters.js'
+import { readImportedWorkbookChartDrawingArtifacts } from './xlsx-import-chart-drawing-artifacts.js'
 import { decodeXmlText, readWorkbookDefinedNames, readXmlAttribute, resolveTargetPath } from './xlsx-large-simple-defined-names.js'
 import { readLargeSimpleSheetHyperlinks, resolveLargeSimpleSheetHyperlinks } from './xlsx-large-simple-hyperlinks.js'
 import { LargeSimpleXlsxImportPhaseRecorder, type LargeSimpleXlsxImportPhaseTelemetry } from './xlsx-large-simple-import-telemetry.js'
@@ -28,6 +31,7 @@ import { buildLargeSimpleStyleRanges } from './xlsx-large-simple-style-ranges.js
 import { readLargeSimpleWorkbookStylesFromChunks } from './xlsx-large-simple-styles.js'
 import { ImportedWorkbookStringPool } from './xlsx-large-simple-string-pool.js'
 import { ImportedWorkbookArena, ImportedWorksheetStyleIndexArena, type ImportedWorksheetCellScan } from './xlsx-large-simple-arena.js'
+import { readImportedWorksheetSheetProtection } from './xlsx-sheet-protection.js'
 import {
   parseHeadlessLargeSimpleWorksheetFromChunks,
   type HeadlessLargeSimpleWorksheetScan,
@@ -47,6 +51,7 @@ import {
   readLargeSimpleSheetFormatPr,
   type LargeSimpleWorksheetScannedMetadata,
 } from './xlsx-large-simple-worksheet-metadata.js'
+import { readImportedPivotArtifacts } from './xlsx-pivot-artifacts.js'
 import { readImportedSheetTablesFromRelationshipIds, readImportedSheetTablesFromWorksheetXml } from './xlsx-tables.js'
 import {
   forEachInflatedXlsxZipEntryChunk,
@@ -146,7 +151,16 @@ interface ScannedWorksheet {
 
 type LargeSimpleSheetMetadataInput = Pick<
   SheetMetadataSnapshot,
-  'conditionalFormatArtifacts' | 'conditionalFormats' | 'drawingArtifacts' | 'filters' | 'hyperlinks' | 'printerSettings' | 'printPageSetup'
+  | 'conditionalFormatArtifacts'
+  | 'conditionalFormats'
+  | 'drawingArtifacts'
+  | 'filters'
+  | 'hyperlinks'
+  | 'legacyCommentVml'
+  | 'pivotArtifacts'
+  | 'printerSettings'
+  | 'printPageSetup'
+  | 'sheetProtection'
 >
 
 const defaultLargeSimpleXlsxByteThreshold = 1_000_000
@@ -157,8 +171,7 @@ const workbookRelationshipsPath = 'xl/_rels/workbook.xml.rels'
 const sharedStringsPath = 'xl/sharedStrings.xml'
 const stylesPath = 'xl/styles.xml'
 const worksheetRelationshipType = 'http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet'
-const unsupportedPackagePathPattern =
-  /^xl\/(?:charts|chartSheets|comments|ctrlProps|externalLinks|model|pivotCache|pivotTables|threadedComments|vbaProject\.bin)/u
+const unsupportedPackagePathPattern = /^xl\/(?:ctrlProps|model|threadedComments|vbaProject\.bin)/u
 
 export function tryImportLargeSimpleXlsx(
   source: LargeSimpleXlsxImportSource,
@@ -207,13 +220,40 @@ export function tryImportLargeSimpleXlsx(
   const materializeMetadata = options.materializeMetadata !== false
   const hasSharedStrings = packagePaths.includes(sharedStringsPath)
   const hasStyles = packagePaths.includes(stylesPath)
+  const hasDrawingParts = packagePaths.some((path) => path.startsWith('xl/drawings/') || path.startsWith('xl/media/'))
+  const hasChartParts = packagePaths.some((path) => path.startsWith('xl/charts/') || path.startsWith('xl/chartSheets/'))
+  const hasPivotParts = packagePaths.some((path) => path.startsWith('xl/pivotTables/') || path.startsWith('xl/pivotCache/'))
+  const hasExternalLinkParts = packagePaths.some((path) => path.startsWith('xl/externalLinks/'))
+  const hasLegacyCommentParts = packagePaths.some((path) => path.startsWith('xl/comments') || path.endsWith('.vml'))
+  const importedExternalLinkArtifacts =
+    materializeCells && hasExternalLinkParts ? readImportedWorkbookExternalLinkArtifacts(zip) : undefined
+  const importedPivotArtifacts =
+    materializeCells && hasPivotParts
+      ? readImportedPivotArtifacts(
+          zip,
+          workbookSheets.map((entry) => entry.name),
+        )
+      : null
+  const importedChartDrawingArtifacts =
+    materializeCells && hasChartParts
+      ? readImportedWorkbookChartDrawingArtifacts(
+          zip,
+          workbookSheets.map((entry) => entry.name),
+        )
+      : null
+  const importedLegacyCommentVmlBySheet =
+    materializeCells && hasLegacyCommentParts
+      ? readImportedWorkbookLegacyCommentVml(
+          zip,
+          workbookSheets.map((entry) => entry.name),
+        )
+      : null
   const deduplicateInlineStrings = hasSharedStrings
   let fallbackSharedStrings: readonly LargeSimpleSharedStringEntry[] | null | undefined = hasSharedStrings ? undefined : []
   delete zip[workbookPath]
   delete zip[workbookRelationshipsPath]
   const workbookName = stringPool.intern(normalizeWorkbookName(fileName))
   const warnings = workbookDefinedNames.ignoredCount > 0 ? ['Some defined names were ignored during XLSX import.'] : []
-  const hasDrawingParts = packagePaths.some((path) => path.startsWith('xl/drawings/') || path.startsWith('xl/media/'))
   phaseRecorder.finish('zip-setup', zipSetupStart)
   const importedTables: WorkbookTableSnapshot[] = []
   const sheets: WorkbookSnapshot['sheets'] = []
@@ -524,7 +564,11 @@ export function tryImportLargeSimpleXlsx(
     if (resolvedRichTextCells.length > 0) {
       scanned.cellScan.richTextCells.push(...resolvedRichTextCells)
     }
-    const drawingArtifacts = importedDrawingArtifacts?.sheetArtifactsByName.get(scanned.name)
+    const drawingArtifacts =
+      importedChartDrawingArtifacts?.drawingArtifacts.sheetArtifactsByName.get(scanned.name) ??
+      importedDrawingArtifacts?.sheetArtifactsByName.get(scanned.name)
+    const pivotArtifacts = importedPivotArtifacts?.sheetArtifactsByName.get(scanned.name)
+    const legacyCommentVml = importedLegacyCommentVmlBySheet?.get(scanned.name)
     const parsed = buildParsedWorksheet(
       scanned.name,
       scanned.order,
@@ -534,6 +578,15 @@ export function tryImportLargeSimpleXlsx(
       {
         ...scanned.metadataInput,
         ...(drawingArtifacts ? { drawingArtifacts } : {}),
+        ...(pivotArtifacts ? { pivotArtifacts } : {}),
+        ...(legacyCommentVml
+          ? {
+              legacyCommentVml: {
+                ...legacyCommentVml,
+                commentSignature: legacyCommentThreadSignature(undefined),
+              },
+            }
+          : {}),
       },
       {
         materializeCells,
@@ -554,15 +607,34 @@ export function tryImportLargeSimpleXlsx(
   const hasFormulaCells = sheetStats.some((entry) => entry.formulaCellCount > 0)
   const workbookMetadata =
     workbookDefinedNames.definedNames ||
+    importedChartDrawingArtifacts?.drawingArtifacts.artifacts ||
     importedDrawingArtifacts?.artifacts ||
+    importedChartDrawingArtifacts?.chartArtifacts.artifacts ||
+    importedChartDrawingArtifacts?.chartArtifacts.chartSheetArtifacts ||
+    importedChartDrawingArtifacts?.charts ||
+    importedPivotArtifacts?.artifacts ||
     sortedImportedTables ||
     styleCatalog.size > 0 ||
+    importedExternalLinkArtifacts ||
     hasFormulaCells
       ? {
           ...(workbookDefinedNames.definedNames ? { definedNames: workbookDefinedNames.definedNames } : {}),
-          ...(importedDrawingArtifacts?.artifacts ? { drawingArtifacts: importedDrawingArtifacts.artifacts } : {}),
+          ...(importedChartDrawingArtifacts?.drawingArtifacts.artifacts
+            ? { drawingArtifacts: importedChartDrawingArtifacts.drawingArtifacts.artifacts }
+            : importedDrawingArtifacts?.artifacts
+              ? { drawingArtifacts: importedDrawingArtifacts.artifacts }
+              : {}),
+          ...(importedChartDrawingArtifacts?.chartArtifacts.artifacts
+            ? { chartArtifacts: importedChartDrawingArtifacts.chartArtifacts.artifacts }
+            : {}),
+          ...(importedChartDrawingArtifacts?.chartArtifacts.chartSheetArtifacts
+            ? { chartSheetArtifacts: importedChartDrawingArtifacts.chartArtifacts.chartSheetArtifacts }
+            : {}),
+          ...(importedChartDrawingArtifacts?.charts ? { charts: importedChartDrawingArtifacts.charts } : {}),
+          ...(importedPivotArtifacts?.artifacts ? { pivotArtifacts: importedPivotArtifacts.artifacts } : {}),
           ...(sortedImportedTables ? { tables: sortedImportedTables } : {}),
           ...(styleCatalog.size > 0 ? { styles: [...styleCatalog.values()] } : {}),
+          ...(importedExternalLinkArtifacts ? { externalLinkArtifacts: importedExternalLinkArtifacts } : {}),
           ...(hasFormulaCells
             ? {
                 calculationSettings: {
@@ -711,6 +783,8 @@ function buildParsedWorksheet(
     input.conditionalFormats?.length ??
     (worksheetXml ? readConditionalFormattingBlockCount(worksheetXml) : (cellScan.conditionalFormatCount ?? 0))
   const conditionalFormats = normalizeConditionalFormatIds(sheetName, input.conditionalFormats)
+  const sheetProtection =
+    input.sheetProtection ?? (worksheetXml ? (readImportedWorksheetSheetProtection(sheetName, worksheetXml) ?? undefined) : undefined)
   const styleRanges =
     options.materializeCells && options.styleCatalog && options.stylesByIndex
       ? buildLargeSimpleStyleRanges(sheetName, cellScan, options.stylesByIndex, options.styleCatalog)
@@ -724,6 +798,9 @@ function buildParsedWorksheet(
     ...(styleRanges.length > 0 ? { styleRanges } : {}),
     ...(merges.length > 0 ? { merges } : {}),
     ...(input.drawingArtifacts ? { drawingArtifacts: input.drawingArtifacts } : {}),
+    ...(input.pivotArtifacts ? { pivotArtifacts: input.pivotArtifacts } : {}),
+    ...(input.legacyCommentVml ? { legacyCommentVml: input.legacyCommentVml } : {}),
+    ...(sheetProtection ? { sheetProtection } : {}),
     ...(input.filters ? { filters: input.filters } : {}),
     ...(input.hyperlinks ? { hyperlinks: input.hyperlinks } : {}),
     ...(conditionalFormats ? { conditionalFormats } : {}),

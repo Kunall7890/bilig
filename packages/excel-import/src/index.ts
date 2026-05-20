@@ -63,7 +63,8 @@ import {
   normalizeWorkbookImportContentType,
   type ExcelWorkbookImportContentType,
 } from './workbook-import-content-types.js'
-import { createWorkbookPreview, type ImportedWorkbookPreview } from './workbook-import-preview.js'
+import { createWorkbookPreview } from './workbook-import-preview.js'
+import type { ImportedWorkbook } from './workbook-import-result.js'
 import { readImportedExternalLinkCaches, readImportedExternalWorkbookReferences } from './xlsx-external-references.js'
 import { normalizeImportedFormulaSource } from './xlsx-formula-translation.js'
 import { readImportedSheetHyperlinks } from './xlsx-hyperlinks.js'
@@ -108,6 +109,7 @@ export {
 export { readImportedXlsxCellStyle } from './xlsx-import-cell-styles.js'
 export type { ImportedWorkbookSheetPreview } from './workbook-import-helpers.js'
 export type { ImportedWorkbookPreview } from './workbook-import-preview.js'
+export type { ImportedWorkbook } from './workbook-import-result.js'
 export {
   CSV_CONTENT_TYPE,
   EXCEL_WORKBOOK_IMPORT_CONTENT_TYPES,
@@ -123,16 +125,9 @@ export type { ExcelWorkbookImportContentType, WorkbookImportContentType } from '
 const largeWorkbookStyleCandidateThreshold = 100_000
 const denseSheetJsByteThreshold = 1_000_000
 const largeCalcChainStreamingByteThreshold = 5_000_000
+const largeCalcChainStreamingFormulaThreshold = 50_000
 const denseSheetJsMaxColumnCount = 128
 const textDecoder = new TextDecoder()
-
-export interface ImportedWorkbook {
-  snapshot: WorkbookSnapshot
-  workbookName: string
-  sheetNames: string[]
-  warnings: string[]
-  preview: ImportedWorkbookPreview
-}
 
 export type CsvImportOptions = CsvParseOptions
 export type XlsxHeadlessInspectResult = LargeSimpleXlsxHeadlessInspectResult
@@ -920,23 +915,29 @@ export function importXlsx(bytes: Uint8Array | ArrayBuffer, fileName: string, op
   const sourceByteLength = ownedSource.bytes.byteLength
   const limits = resolveXlsxImportLimits(options)
   const inspectionOptions = options.limits ? { minByteLength: 0 } : undefined
-  const inspection = limits ? inspectLargeSimpleXlsxSource(ownedSource.bytes, fileName, inspectionOptions) : null
-  assertXlsxInspectionWithinMaterializationLimits(inspection, limits)
   const workbookZip = readValidXlsxZipContainer(ownedSource.bytes, 'lazy')
   const hasCalcChain = Object.hasOwn(workbookZip, 'xl/calcChain.xml')
-  const allowCachedUnsupportedFormulaText = hasCalcChain && sourceByteLength >= largeCalcChainStreamingByteThreshold
-  const largeSimpleImport =
-    hasCalcChain && sourceByteLength < largeCalcChainStreamingByteThreshold
-      ? null
-      : tryImportLargeSimpleXlsx({ byteLength: sourceByteLength }, fileName, workbookZip, {
-          ...(options.limits ? { minByteLength: 0 } : {}),
-          allowUnsupportedFormulaText: allowCachedUnsupportedFormulaText,
-          allowUnsupportedCellMetadata: allowCachedUnsupportedFormulaText,
-          skipBroadBlankStyleCells: true,
-          includeCellCoordinates: true,
-          releaseArenaAfterMaterialization: true,
-          releaseZipSource: true,
-        })
+  const inspection =
+    limits || (hasCalcChain && sourceByteLength >= denseSheetJsByteThreshold)
+      ? inspectLargeSimpleXlsxSource(ownedSource.bytes, fileName, inspectionOptions)
+      : null
+  assertXlsxInspectionWithinMaterializationLimits(inspection, limits)
+  const hasLargeCalcChainFormulaSet = hasCalcChain && (inspection?.stats.formulaCellCount ?? 0) >= largeCalcChainStreamingFormulaThreshold
+  const allowCachedUnsupportedFormulaText =
+    hasCalcChain && (sourceByteLength >= largeCalcChainStreamingByteThreshold || hasLargeCalcChainFormulaSet)
+  const shouldTryLargeSimpleImport =
+    !hasCalcChain || sourceByteLength >= largeCalcChainStreamingByteThreshold || hasLargeCalcChainFormulaSet
+  const largeSimpleImport = !shouldTryLargeSimpleImport
+    ? null
+    : tryImportLargeSimpleXlsx({ byteLength: sourceByteLength }, fileName, workbookZip, {
+        ...(options.limits ? { minByteLength: 0 } : {}),
+        allowUnsupportedFormulaText: allowCachedUnsupportedFormulaText,
+        allowUnsupportedCellMetadata: allowCachedUnsupportedFormulaText,
+        skipBroadBlankStyleCells: true,
+        includeCellCoordinates: true,
+        releaseArenaAfterMaterialization: true,
+        releaseZipSource: true,
+      })
   if (largeSimpleImport) {
     attachImportedXlsxSourceBytes(largeSimpleImport.snapshot, ownedSource.bytes)
     return largeSimpleImport

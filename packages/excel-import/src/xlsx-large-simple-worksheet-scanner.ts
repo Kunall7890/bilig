@@ -17,7 +17,7 @@ const slash = 47
 const greaterThan = 62
 const doubleQuote = 34
 const singleQuote = 39
-const unsupportedWorksheetTagNames = new Set(['dataValidations', 'legacyDrawing', 'oleObjects', 'picture', 'sheetProtection'])
+const unsupportedWorksheetTagNames = new Set(['dataValidations', 'oleObjects', 'picture'])
 const metadataWorksheetTagNames = new Set([
   'autoFilter',
   'colBreaks',
