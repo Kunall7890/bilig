@@ -36,6 +36,7 @@ describe('WorkPaper HyperFormula snapshot parity', () => {
     const currentSurface = extractClassSurface(
       [
         readFileSync(new URL('../work-paper-runtime.ts', import.meta.url), 'utf8'),
+        readFileSync(new URL('../work-paper-runtime-lifecycle-base.ts', import.meta.url), 'utf8'),
         readFileSync(new URL('../work-paper-runtime-fast-path-base.ts', import.meta.url), 'utf8'),
         readFileSync(new URL('../work-paper-runtime-surface.ts', import.meta.url), 'utf8'),
         readFileSync(new URL('../work-paper-runtime-metadata-surface.ts', import.meta.url), 'utf8'),
