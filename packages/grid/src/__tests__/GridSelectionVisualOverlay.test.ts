@@ -51,8 +51,41 @@ describe('GridSelectionVisualOverlay', () => {
         expect.objectContaining({ role: 'header-fill', bounds: expect.objectContaining({ x: 147, y: 1, width: 98, height: 22 }) }),
         expect.objectContaining({ role: 'header-fill', bounds: expect.objectContaining({ x: 247, y: 1, width: 98, height: 22 }) }),
         expect.objectContaining({ role: 'header-fill', bounds: expect.objectContaining({ x: 347, y: 1, width: 98, height: 22 }) }),
-        expect.objectContaining({ role: 'selection-fill', bounds: expect.objectContaining({ x: 147, y: 25, width: 298 }) }),
+        expect.objectContaining({ role: 'selection-fill', bounds: expect.objectContaining({ x: 147, y: 25, width: 298, height: 78 }) }),
+        expect.objectContaining({ role: 'selection-fill', bounds: expect.objectContaining({ x: 247, y: 105, width: 198, height: 18 }) }),
+        expect.objectContaining({ role: 'selection-fill', bounds: expect.objectContaining({ x: 147, y: 125, width: 298 }) }),
         expect.objectContaining({ role: 'active-border', bounds: expect.objectContaining({ x: 146, y: 104, width: 100, height: 20 }) }),
+      ]),
+    )
+    expect(rects).not.toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ role: 'selection-fill', bounds: expect.objectContaining({ x: 147, y: 105, width: 98, height: 18 }) }),
+      ]),
+    )
+  })
+
+  test('clips scrolled axis header fills to their panes', () => {
+    const geometry = createFrozenScrolledGeometry()
+    const selection = createColumnSliceSelection(1, 3, 2)
+
+    const rects = buildGridSelectionVisualRects({
+      geometry,
+      gridSelection: selection,
+      selectedCell: [1, 2],
+      selectionRange: selection.current?.range ?? null,
+      showFillHandle: false,
+    })
+
+    expect(rects).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ role: 'header-fill', bounds: expect.objectContaining({ x: 147, y: 1, width: 48, height: 22 }) }),
+        expect.objectContaining({ role: 'header-fill', bounds: expect.objectContaining({ x: 197, y: 1, width: 98, height: 22 }) }),
+        expect.objectContaining({ role: 'header-fill', bounds: expect.objectContaining({ x: 297, y: 1, width: 98, height: 22 }) }),
+      ]),
+    )
+    expect(rects).not.toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ role: 'header-fill', bounds: expect.objectContaining({ x: 97, y: 1, width: 98, height: 22 }) }),
       ]),
     )
   })
@@ -124,6 +157,24 @@ function createGeometry() {
     rows: createGridAxisWorldIndex({ axisLength: 20, defaultSize: 20 }),
     scrollLeft: 0,
     scrollTop: 0,
+    sheetName: 'Sheet1',
+    updatedAt: 100,
+  })
+}
+
+function createFrozenScrolledGeometry() {
+  const metrics = getGridMetrics()
+  return createGridGeometrySnapshotFromAxes({
+    columns: createGridAxisWorldIndex({ axisLength: 20, defaultSize: 100 }),
+    dpr: 2,
+    freezeCols: 1,
+    freezeRows: 1,
+    gridMetrics: metrics,
+    hostHeight: 220,
+    hostWidth: 520,
+    rows: createGridAxisWorldIndex({ axisLength: 20, defaultSize: 20 }),
+    scrollLeft: 50,
+    scrollTop: 10,
     sheetName: 'Sheet1',
     updatedAt: 100,
   })

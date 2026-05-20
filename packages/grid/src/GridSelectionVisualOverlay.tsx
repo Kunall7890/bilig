@@ -199,8 +199,13 @@ function appendAxisSelectionVisualRects(
       continue
     }
     const bounds = input.geometry.columnHeaderScreenRect(index)
-    if (bounds) {
-      appendInsetRect(rects, 'header-fill', bounds, 1, 1)
+    const clip =
+      index < input.geometry.camera.frozenColumnCount
+        ? paneFrame(input.geometry, 'column-header-frozen')
+        : paneFrame(input.geometry, 'column-header-body')
+    const clipped = bounds && clip ? clipRect(bounds, clip) : null
+    if (clipped) {
+      appendInsetRect(rects, 'header-fill', clipped, 1, 1)
     }
   }
   for (const index of visibleRowIndexes(input.geometry)) {
@@ -208,17 +213,28 @@ function appendAxisSelectionVisualRects(
       continue
     }
     const bounds = input.geometry.rowHeaderScreenRect(index)
-    if (bounds) {
-      appendInsetRect(rects, 'header-fill', bounds, 1, 1)
+    const clip =
+      index < input.geometry.camera.frozenRowCount
+        ? paneFrame(input.geometry, 'row-header-frozen')
+        : paneFrame(input.geometry, 'row-header-body')
+    const clipped = bounds && clip ? clipRect(bounds, clip) : null
+    if (clipped) {
+      appendInsetRect(rects, 'header-fill', clipped, 1, 1)
     }
   }
 
+  const activeCell = input.gridSelection.current?.cell ?? input.selectedCell
   if (input.gridSelection.columns.length > 0) {
     for (const range of columnRanges) {
       const start = Math.max(0, range.start)
       const endExclusive = Math.max(start + 1, Math.min(MAX_COLS, range.endExclusive))
-      for (const bounds of input.geometry.rangeScreenRects({ x: start, y: 0, width: endExclusive - start, height: MAX_ROWS })) {
-        appendInsetRect(rects, 'selection-fill', bounds, 1, 1)
+      for (const fillRange of splitSelectionFillRangeAroundActiveCell(
+        { x: start, y: 0, width: endExclusive - start, height: MAX_ROWS },
+        activeCell,
+      )) {
+        for (const bounds of input.geometry.rangeScreenRects(fillRange)) {
+          appendInsetRect(rects, 'selection-fill', bounds, 1, 1)
+        }
       }
     }
   }
@@ -226,8 +242,13 @@ function appendAxisSelectionVisualRects(
     for (const range of rowRanges) {
       const start = Math.max(0, range.start)
       const endExclusive = Math.max(start + 1, Math.min(MAX_ROWS, range.endExclusive))
-      for (const bounds of input.geometry.rangeScreenRects({ x: 0, y: start, width: MAX_COLS, height: endExclusive - start })) {
-        appendInsetRect(rects, 'selection-fill', bounds, 1, 1)
+      for (const fillRange of splitSelectionFillRangeAroundActiveCell(
+        { x: 0, y: start, width: MAX_COLS, height: endExclusive - start },
+        activeCell,
+      )) {
+        for (const bounds of input.geometry.rangeScreenRects(fillRange)) {
+          appendInsetRect(rects, 'selection-fill', bounds, 1, 1)
+        }
       }
     }
   }
@@ -315,6 +336,21 @@ function visibleRowIndexes(geometry: GridGeometrySnapshot): readonly number[] {
 
 function isIndexSelected(index: number, ranges: readonly AxisSelectionRange[]): boolean {
   return ranges.some((range) => index >= range.start && index < range.endExclusive)
+}
+
+function paneFrame(geometry: GridGeometrySnapshot, kind: GridGeometrySnapshot['camera']['panes'][number]['kind']): Rectangle | null {
+  return geometry.camera.panes.find((pane) => pane.kind === kind)?.frame ?? null
+}
+
+function clipRect(rect: Rectangle, clip: Rectangle): Rectangle | null {
+  const x = Math.max(rect.x, clip.x)
+  const y = Math.max(rect.y, clip.y)
+  const right = Math.min(rect.x + rect.width, clip.x + clip.width)
+  const bottom = Math.min(rect.y + rect.height, clip.y + clip.height)
+  if (right <= x || bottom <= y) {
+    return null
+  }
+  return { x, y, width: right - x, height: bottom - y }
 }
 
 function cellInRange(cell: Item, range: Pick<Rectangle, 'x' | 'y' | 'width' | 'height'>): boolean {

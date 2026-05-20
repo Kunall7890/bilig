@@ -271,6 +271,7 @@ function appendAxisSelectionOverlay(input: {
   const selectionFillColor = parseGpuColor(workbookThemeColors.selectionFill)
   if ((input.gridSelection?.columns.length ?? 0) > 0) {
     appendAxisBodySelectionFills({
+      activeCell: input.gridSelection?.current?.cell ?? input.selectedCell,
       color: selectionFillColor,
       fillRects: input.fillRects,
       geometry: input.geometry,
@@ -280,6 +281,7 @@ function appendAxisSelectionOverlay(input: {
   }
   if ((input.gridSelection?.rows.length ?? 0) > 0) {
     appendAxisBodySelectionFills({
+      activeCell: input.gridSelection?.current?.cell ?? input.selectedCell,
       color: selectionFillColor,
       fillRects: input.fillRects,
       geometry: input.geometry,
@@ -310,20 +312,23 @@ function appendAxisBodySelectionFills(input: {
   readonly geometry: GridGeometrySnapshot
   readonly ranges: readonly AxisSelectionRange[]
   readonly axis: 'column' | 'row'
+  readonly activeCell?: Item | null | undefined
   readonly color: GridGpuRect['color']
   readonly fillRects: GridGpuRect[]
 }): void {
   for (const range of input.ranges) {
     const start = Math.max(0, range.start)
     const endExclusive = Math.max(start + 1, Math.min(input.axis === 'column' ? MAX_COLS : MAX_ROWS, range.endExclusive))
+    const selectionRange =
+      input.axis === 'column'
+        ? { x: start, y: 0, width: endExclusive - start, height: MAX_ROWS }
+        : { x: 0, y: start, width: MAX_COLS, height: endExclusive - start }
     appendSelectionFillRects({
+      activeCell: input.activeCell,
       color: input.color,
       fillRects: input.fillRects,
       geometry: input.geometry,
-      range:
-        input.axis === 'column'
-          ? { x: start, y: 0, width: endExclusive - start, height: MAX_ROWS }
-          : { x: 0, y: start, width: MAX_COLS, height: endExclusive - start },
+      range: selectionRange,
     })
   }
 }
