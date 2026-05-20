@@ -11,6 +11,40 @@ const commonExpandedNoOpEmptyRowPattern = /<row r=(?:"[^"]*"|'[^']*')(?: spans=(
 const possibleStyleOnlyBlankCellPattern = /<c\b(?:[^>"']|"[^"]*"|'[^']*')*\/>|<c\b(?:[^>"']|"[^"]*"|'[^']*')*>\s*<\/c>/u
 const possibleNoOpEmptyRowPattern = /<row\b(?:[^>"']|"[^"]*"|'[^']*')*\/>|<row\b(?:[^>"']|"[^"]*"|'[^']*')*>\s*<\/row>/u
 
+interface StripStyleOnlyBlankCellsOptions {
+  readonly minBlankCellCount?: number
+}
+
+interface PrepareSheetJsParserXlsxBytesOptions extends StripStyleOnlyBlankCellsOptions {
+  readonly omitParserIgnoredPackageParts?: boolean
+}
+
+const sheetJsParserIgnoredPackagePartPattern = /^(?:xl\/model\/|xl\/customData\/|customXml\/)/u
+
+function shouldOmitSheetJsParserPackagePart(path: string, options: PrepareSheetJsParserXlsxBytesOptions): boolean {
+  return options.omitParserIgnoredPackageParts === true && sheetJsParserIgnoredPackagePartPattern.test(path)
+}
+
+function hasSheetJsParserIgnoredPackagePart(zip: Unzipped, options: PrepareSheetJsParserXlsxBytesOptions): boolean {
+  return (
+    options.omitParserIgnoredPackageParts === true && Object.keys(zip).some((path) => sheetJsParserIgnoredPackagePartPattern.test(path))
+  )
+}
+
+function cloneZipForSheetJsParser(zip: Unzipped, options: PrepareSheetJsParserXlsxBytesOptions): Unzipped {
+  const output: Unzipped = {}
+  for (const path of Object.keys(zip)) {
+    if (shouldOmitSheetJsParserPackagePart(path, options)) {
+      continue
+    }
+    const bytes = zip[path]
+    if (bytes) {
+      output[path] = bytes
+    }
+  }
+  return output
+}
+
 function forEachXmlAttribute(tag: string, visit: (name: string, value: string) => boolean): boolean {
   xmlAttributePattern.lastIndex = 0
   let match: RegExpExecArray | null
@@ -162,10 +196,73 @@ function stripWorkbookWorksheetXml(data: Uint8Array, zip: Unzipped, stripWorkshe
   return outputZip ? zipSync(outputZip) : data
 }
 
+function shouldStripStyleOnlyBlankCells(zip: Unzipped, options: StripStyleOnlyBlankCellsOptions): boolean {
+  const minBlankCellCount = Math.max(0, Math.trunc(options.minBlankCellCount ?? 0))
+  if (minBlankCellCount === 0) {
+    return true
+  }
+  let blankCellCount = 0
+  for (const path of Object.keys(zip)) {
+    if (!xlsxWorksheetXmlPathPattern.test(path)) {
+      continue
+    }
+    const worksheetBytes = zip[path]
+    if (!worksheetBytes) {
+      continue
+    }
+    const worksheetXml = strFromU8(worksheetBytes)
+    if (!possibleStyleOnlyBlankCellPattern.test(worksheetXml)) {
+      continue
+    }
+    for (const match of worksheetXml.matchAll(/<c\b(?:[^>"']|"[^"]*"|'[^']*')*\/>|<c\b(?:[^>"']|"[^"]*"|'[^']*')*>\s*<\/c>/gu)) {
+      if (isStyleOnlyBlankCellXml(match[0] ?? '')) {
+        blankCellCount += 1
+        if (blankCellCount >= minBlankCellCount) {
+          return true
+        }
+      }
+    }
+  }
+  return false
+}
+
 export function stripNoOpEmptyRowsFromXlsx(data: Uint8Array, zip: Unzipped): Uint8Array {
   return stripWorkbookWorksheetXml(data, zip, stripNoOpEmptyRows)
 }
 
-export function stripStyleOnlyBlankCellsForSheetJs(data: Uint8Array, zip: Unzipped): Uint8Array {
+export function stripStyleOnlyBlankCellsForSheetJs(
+  data: Uint8Array,
+  zip: Unzipped,
+  options: StripStyleOnlyBlankCellsOptions = {},
+): Uint8Array {
+  if (!shouldStripStyleOnlyBlankCells(zip, options)) {
+    return data
+  }
   return stripWorkbookWorksheetXml(data, zip, stripStyleOnlyBlankCells)
+}
+
+export function prepareSheetJsParserXlsxBytes(
+  data: Uint8Array,
+  zip: Unzipped,
+  options: PrepareSheetJsParserXlsxBytesOptions = {},
+): Uint8Array {
+  const shouldStripBlankCells = shouldStripStyleOnlyBlankCells(zip, options)
+  let outputZip: Unzipped | null = hasSheetJsParserIgnoredPackagePart(zip, options) ? cloneZipForSheetJsParser(zip, options) : null
+  for (const path of Object.keys(zip)) {
+    if (!xlsxWorksheetXmlPathPattern.test(path)) {
+      continue
+    }
+    const worksheetBytes = zip[path]
+    if (!worksheetBytes) {
+      continue
+    }
+    const worksheetXml = strFromU8(worksheetBytes)
+    const strippedWorksheetXml = shouldStripBlankCells ? stripStyleOnlyBlankCells(worksheetXml) : stripNoOpEmptyRows(worksheetXml)
+    if (strippedWorksheetXml === worksheetXml) {
+      continue
+    }
+    outputZip ??= cloneZipForSheetJsParser(zip, options)
+    outputZip[path] = strToU8(strippedWorksheetXml)
+  }
+  return outputZip ? zipSync(outputZip) : data
 }

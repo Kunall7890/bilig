@@ -31,7 +31,7 @@ import {
 import { asArray, isRecord, normalizeRgbColor, numberValue, recordChild, stringValue, toArgbColor } from './xlsx-style-values.js'
 import { readImportedWorkbookThemeArtifact } from './xlsx-theme-artifacts.js'
 import { workbookSheetPathEntries } from './xlsx-workbook-sheet-paths.js'
-import { getZipText as getZipEntryText, readXlsxZipEntries, type XlsxZipSource } from './xlsx-zip.js'
+import { getZipText as getZipEntryText, readXlsxZipEntries, type XlsxZipEntries, type XlsxZipSource } from './xlsx-zip.js'
 
 type ImportedCellStyle = Omit<CellStyleRecord, 'id'>
 type ExportCellAlignment = Record<string, boolean | number | string>
@@ -94,8 +94,8 @@ function getFileText(files: unknown, path: string): string | null {
   return null
 }
 
-function getPackageText(files: unknown, sourceZip: XlsxZipSource | null, path: string): string | null {
-  return sourceZip ? getZipEntryText(readXlsxZipEntries(sourceZip), path) : getFileText(files, path)
+function getPackageText(files: unknown, sourceZip: XlsxZipEntries | null, path: string): string | null {
+  return sourceZip ? getZipEntryText(sourceZip, path) : getFileText(files, path)
 }
 
 function workbookRecord(workbook: XLSX.WorkBook): Record<string, unknown> | null {

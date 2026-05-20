@@ -8,7 +8,14 @@ import type {
   WorkbookPreservedPackagePartSnapshot,
   WorkbookSnapshot,
 } from '@bilig/protocol'
-import { getZipText, normalizeZipPath, readXlsxZipEntries, type XlsxZipEntries, type XlsxZipSource } from './xlsx-zip.js'
+import {
+  getZipText,
+  normalizeZipPath,
+  readXlsxZipEntries,
+  readXlsxZipEntryUncompressedSize,
+  type XlsxZipEntries,
+  type XlsxZipSource,
+} from './xlsx-zip.js'
 import {
   buildRelationshipsXml,
   escapeXml,
@@ -24,7 +31,9 @@ const workbookRelationshipsPath = 'xl/_rels/workbook.xml.rels'
 const contentTypesPath = '[Content_Types].xml'
 const powerPivotDataRelationshipType = 'http://schemas.openxmlformats.org/officeDocument/2006/relationships/powerPivotData'
 const customXmlRelationshipType = 'http://schemas.openxmlformats.org/officeDocument/2006/relationships/customXml'
+const customDataPropertiesRelationshipType = 'http://schemas.microsoft.com/office/2007/relationships/customDataProps'
 const dataModelPackagePartPattern = /^xl\/model\//u
+const customDataPackagePartPattern = /^xl\/customData\//u
 const customXmlPackagePartPattern = /^customXml\//u
 
 function encodeBase64(bytes: Uint8Array): string {
@@ -42,6 +51,37 @@ function encodedPartSnapshot(path: string, bytes: Uint8Array): WorkbookPreserved
     dataBase64: encodeBase64(bytes),
     byteLength: bytes.byteLength,
   }
+}
+
+class LazyEncodedPartSnapshot implements WorkbookPreservedPackagePartSnapshot {
+  readonly storage = 'base64' as const
+  declare readonly dataBase64: string
+  private dataBase64Cache: string | undefined
+
+  constructor(
+    readonly path: string,
+    readonly byteLength: number,
+    private readonly readBytes: () => Uint8Array | undefined,
+  ) {
+    Object.defineProperty(this, 'dataBase64', {
+      configurable: true,
+      enumerable: true,
+      get: () => this.getDataBase64(),
+    })
+  }
+
+  private getDataBase64(): string {
+    this.dataBase64Cache ??= encodeBase64(this.readBytes() ?? new Uint8Array())
+    return this.dataBase64Cache
+  }
+}
+
+function lazyEncodedPartSnapshot(
+  path: string,
+  byteLength: number,
+  readBytes: () => Uint8Array | undefined,
+): WorkbookPreservedPackagePartSnapshot {
+  return new LazyEncodedPartSnapshot(path, byteLength, readBytes)
 }
 
 function decodedPartBytes(part: WorkbookPreservedPackagePartSnapshot): Uint8Array | undefined {
@@ -147,11 +187,15 @@ function parsedRelationship(relationship: WorkbookPackageRelationshipSnapshot): 
 }
 
 function isDataModelRelationship(relationship: ParsedRelationship): boolean {
-  return relationship.type === powerPivotDataRelationshipType || relationship.type === customXmlRelationshipType
+  return (
+    relationship.type === powerPivotDataRelationshipType ||
+    relationship.type === customXmlRelationshipType ||
+    relationship.type === customDataPropertiesRelationshipType
+  )
 }
 
 function isDataModelPackagePartPath(path: string): boolean {
-  return dataModelPackagePartPattern.test(path) || customXmlPackagePartPattern.test(path)
+  return dataModelPackagePartPattern.test(path) || customDataPackagePartPattern.test(path) || customXmlPackagePartPattern.test(path)
 }
 
 function preservedPartsByPath(parts: readonly WorkbookPreservedPackagePartSnapshot[]): Map<string, Uint8Array> {
@@ -211,6 +255,18 @@ export function readImportedWorkbookDataModelArtifacts(source: XlsxZipSource): W
   const relationships = parseRelationships(getZipText(zip, workbookRelationshipsPath)).filter(isDataModelRelationship)
   const contentTypesXml = getZipText(zip, contentTypesPath) ?? ''
   const parts = partPaths.flatMap((path) => {
+    const byteLength = readXlsxZipEntryUncompressedSize(zip, path)
+    if (byteLength !== undefined) {
+      return [
+        lazyEncodedPartSnapshot(path, byteLength, () => {
+          const bytes = zip[path]
+          if (bytes) {
+            Reflect.deleteProperty(zip, path)
+          }
+          return bytes
+        }),
+      ]
+    }
     const bytes = zip[path]
     if (!bytes) {
       return []

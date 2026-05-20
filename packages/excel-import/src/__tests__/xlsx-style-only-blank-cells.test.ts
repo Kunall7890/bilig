@@ -1,7 +1,11 @@
 import { strFromU8, strToU8, unzipSync, zipSync } from 'fflate'
 import { describe, expect, it } from 'vitest'
 
-import { stripNoOpEmptyRowsFromXlsx, stripStyleOnlyBlankCellsForSheetJs } from '../xlsx-style-only-blank-cells.js'
+import {
+  prepareSheetJsParserXlsxBytes,
+  stripNoOpEmptyRowsFromXlsx,
+  stripStyleOnlyBlankCellsForSheetJs,
+} from '../xlsx-style-only-blank-cells.js'
 
 describe('stripStyleOnlyBlankCellsForSheetJs', () => {
   it('removes no-op empty rows while preserving meaningful row metadata', () => {
@@ -70,5 +74,65 @@ describe('stripStyleOnlyBlankCellsForSheetJs', () => {
 
     expect(originalSheetXml).toContain('<c r="A1" s="2"/>')
     expect(strippedSheetXml).not.toContain('<c r="A1" s="2"/>')
+  })
+
+  it('skips SheetJS parser rewrites when styled blank cells are below the configured threshold', () => {
+    const bytes = zipSync({
+      'xl/worksheets/sheet1.xml': strToU8(`<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">
+  <sheetData>
+    <row r="1"><c r="A1" s="2"/></row>
+  </sheetData>
+</worksheet>`),
+    })
+    const stripped = stripStyleOnlyBlankCellsForSheetJs(bytes, unzipSync(bytes), { minBlankCellCount: 2 })
+
+    expect(stripped).toBe(bytes)
+  })
+
+  it('rewrites SheetJS parser bytes when styled blank cells reach the configured threshold', () => {
+    const bytes = zipSync({
+      'xl/worksheets/sheet1.xml': strToU8(`<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">
+  <sheetData>
+    <row r="1"><c r="A1" s="2"/></row>
+    <row r="2"><c r="A2" s="2"/></row>
+  </sheetData>
+</worksheet>`),
+    })
+    const stripped = stripStyleOnlyBlankCellsForSheetJs(bytes, unzipSync(bytes), { minBlankCellCount: 2 })
+    const strippedSheetXml = strFromU8(unzipSync(stripped)['xl/worksheets/sheet1.xml'] ?? new Uint8Array())
+
+    expect(stripped).not.toBe(bytes)
+    expect(strippedSheetXml).not.toContain('<c r="A1" s="2"/>')
+    expect(strippedSheetXml).not.toContain('<c r="A2" s="2"/>')
+  })
+
+  it('omits PowerPivot data model package parts from SheetJS parser bytes without reading lazy entries', () => {
+    const bytes = zipSync({
+      'xl/worksheets/sheet1.xml': strToU8(`<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">
+  <sheetData><row r="1"><c r="A1"><v>1</v></c></row></sheetData>
+</worksheet>`),
+      'xl/model/item.data': new Uint8Array([1, 2, 3]),
+      'xl/customData/item1.data': new Uint8Array([4, 5, 6]),
+      'customXml/item1.xml': strToU8('<root/>'),
+    })
+    const zip = unzipSync(bytes)
+    Object.defineProperty(zip, 'xl/model/item.data', {
+      configurable: true,
+      enumerable: true,
+      get() {
+        throw new Error('data model bytes should stay out of the SheetJS parser package')
+      },
+    })
+    const parserBytes = prepareSheetJsParserXlsxBytes(bytes, zip, { omitParserIgnoredPackageParts: true })
+    const parserZip = unzipSync(parserBytes)
+
+    expect(parserBytes).not.toBe(bytes)
+    expect(parserZip['xl/worksheets/sheet1.xml']).toBeDefined()
+    expect(parserZip['xl/model/item.data']).toBeUndefined()
+    expect(parserZip['xl/customData/item1.data']).toBeUndefined()
+    expect(parserZip['customXml/item1.xml']).toBeUndefined()
   })
 })

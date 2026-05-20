@@ -15,7 +15,9 @@ import {
   readImportedSheetConditionalFormatsFromElementXml,
   readImportedSheetConditionalFormatsFromWorksheetXml,
 } from './xlsx-conditional-formats.js'
+import { buildImportedCellMetadataReferenceSnapshots, readImportedWorkbookCellMetadataPart } from './xlsx-cell-metadata.js'
 import { legacyCommentThreadSignature, readImportedWorkbookLegacyCommentVml } from './xlsx-comment-vml.js'
+import { readImportedWorkbookDataModelArtifacts } from './xlsx-data-model-artifacts.js'
 import { readImportedWorkbookDrawingArtifactsFromWorksheetRelationships } from './xlsx-drawing-artifacts.js'
 import { readImportedWorkbookExternalLinkArtifacts } from './xlsx-external-link-artifacts.js'
 import { readImportedSheetAutoFilters } from './xlsx-filters.js'
@@ -52,6 +54,10 @@ import {
   type LargeSimpleWorksheetScannedMetadata,
 } from './xlsx-large-simple-worksheet-metadata.js'
 import { readImportedPivotArtifacts } from './xlsx-pivot-artifacts.js'
+import {
+  readImportedWorkbookSlicerConnectionArtifactsFromSheets,
+  type ImportedWorkbookSlicerConnectionSheetSource,
+} from './xlsx-slicer-connection-artifacts.js'
 import { readImportedSheetTablesFromRelationshipIds, readImportedSheetTablesFromWorksheetXml } from './xlsx-tables.js'
 import {
   forEachInflatedXlsxZipEntryChunk,
@@ -171,7 +177,7 @@ const workbookRelationshipsPath = 'xl/_rels/workbook.xml.rels'
 const sharedStringsPath = 'xl/sharedStrings.xml'
 const stylesPath = 'xl/styles.xml'
 const worksheetRelationshipType = 'http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet'
-const unsupportedPackagePathPattern = /^xl\/(?:ctrlProps|model|threadedComments|vbaProject\.bin)/u
+const unsupportedPackagePathPattern = /^xl\/(?:ctrlProps|threadedComments|vbaProject\.bin)/u
 
 export function tryImportLargeSimpleXlsx(
   source: LargeSimpleXlsxImportSource,
@@ -225,8 +231,16 @@ export function tryImportLargeSimpleXlsx(
   const hasPivotParts = packagePaths.some((path) => path.startsWith('xl/pivotTables/') || path.startsWith('xl/pivotCache/'))
   const hasExternalLinkParts = packagePaths.some((path) => path.startsWith('xl/externalLinks/'))
   const hasLegacyCommentParts = packagePaths.some((path) => path.startsWith('xl/comments') || path.endsWith('.vml'))
+  const hasDataModelParts = packagePaths.some(
+    (path) => path.startsWith('xl/model/') || path.startsWith('xl/customData/') || path.startsWith('customXml/'),
+  )
+  const hasSlicerConnectionParts = packagePaths.some(
+    (path) => path === 'xl/connections.xml' || path.startsWith('xl/slicerCaches/') || path.startsWith('xl/slicers/'),
+  )
   const importedExternalLinkArtifacts =
     materializeCells && hasExternalLinkParts ? readImportedWorkbookExternalLinkArtifacts(zip) : undefined
+  const importedDataModelArtifacts = materializeCells && hasDataModelParts ? readImportedWorkbookDataModelArtifacts(zip) : undefined
+  const importedWorkbookCellMetadata = materializeCells ? readImportedWorkbookCellMetadataPart(zip) : undefined
   const importedPivotArtifacts =
     materializeCells && hasPivotParts
       ? readImportedPivotArtifacts(
@@ -248,7 +262,8 @@ export function tryImportLargeSimpleXlsx(
           workbookSheets.map((entry) => entry.name),
         )
       : null
-  const deduplicateInlineStrings = hasSharedStrings
+  const deduplicateInlineStrings = hasSharedStrings ? true : 'bounded'
+  const deduplicateFormulaStrings = 'bounded'
   let fallbackSharedStrings: readonly LargeSimpleSharedStringEntry[] | null | undefined = hasSharedStrings ? undefined : []
   delete zip[workbookPath]
   delete zip[workbookRelationshipsPath]
@@ -263,7 +278,12 @@ export function tryImportLargeSimpleXlsx(
   const scannedWorksheets: (ScannedWorksheet | undefined)[] = []
   const referencedSharedStringIndexes = new Set<number>()
   const materializeSheetsImmediately =
-    materializeCells && options.releaseZipSource !== true && !hasSharedStrings && !hasStyles && !hasDrawingParts
+    materializeCells &&
+    options.releaseZipSource !== true &&
+    !hasSharedStrings &&
+    !hasStyles &&
+    !hasDrawingParts &&
+    !hasSlicerConnectionParts
   const emptyStylesByIndex = new Map<number, Omit<CellStyleRecord, 'id'>>()
   const appendParsedWorksheet = (parsed: ParsedWorksheet): void => {
     sheets.push(parsed.sheet)
@@ -300,6 +320,7 @@ export function tryImportLargeSimpleXlsx(
           sheetName: entry.name,
           stringPool,
           deduplicateStrings: deduplicateInlineStrings,
+          deduplicateFormulas: deduplicateFormulaStrings,
           ...(options.allowUnsupportedFormulaText === undefined
             ? {}
             : { allowUnsupportedFormulaText: options.allowUnsupportedFormulaText }),
@@ -347,6 +368,7 @@ export function tryImportLargeSimpleXlsx(
         retainCells: materializeCells,
         stringPool,
         deduplicateStrings: deduplicateInlineStrings,
+        deduplicateFormulas: deduplicateFormulaStrings,
         ...(options.allowUnsupportedFormulaText === undefined ? {} : { allowUnsupportedFormulaText: options.allowUnsupportedFormulaText }),
       })
       if (
@@ -541,11 +563,23 @@ export function tryImportLargeSimpleXlsx(
           }),
         )
       : null
+  const importedSlicerConnectionArtifacts =
+    materializeCells && hasSlicerConnectionParts
+      ? readImportedWorkbookSlicerConnectionArtifactsFromSheets(zip, slicerConnectionSheetSources(scannedWorksheets, worksheetEntries), {
+          workbookXml,
+          workbookRelationshipsXml,
+        })
+      : undefined
   if (options.releaseZipSource === true) {
     const zipSourceReleaseStart = phaseRecorder.start()
     const zipSourceBytesBeforeRelease = readLazyXlsxZipSourceByteLength(zip)
-    releaseLazyXlsxZipSource(zip)
-    const ownedSourceReleaseEvidence = options.releaseOwnedSourceBytes?.()
+    const retainZipSourceForLazyPackageArtifacts =
+      zipSourceBytesBeforeRelease !== undefined &&
+      ((importedDataModelArtifacts?.parts.length ?? 0) > 0 || (importedSlicerConnectionArtifacts?.parts.length ?? 0) > 0)
+    if (!retainZipSourceForLazyPackageArtifacts) {
+      releaseLazyXlsxZipSource(zip)
+    }
+    const ownedSourceReleaseEvidence = retainZipSourceForLazyPackageArtifacts ? undefined : options.releaseOwnedSourceBytes?.()
     phaseRecorder.finish('zip-source-release', zipSourceReleaseStart, {
       ...(zipSourceBytesBeforeRelease !== undefined ? { zipSourceBytesBeforeRelease } : {}),
       ...(zipSourceBytesBeforeRelease !== undefined ? { zipSourceBytesAfterRelease: readLazyXlsxZipSourceByteLength(zip) ?? 0 } : {}),
@@ -615,7 +649,10 @@ export function tryImportLargeSimpleXlsx(
     importedPivotArtifacts?.artifacts ||
     sortedImportedTables ||
     styleCatalog.size > 0 ||
+    importedDataModelArtifacts ||
     importedExternalLinkArtifacts ||
+    importedSlicerConnectionArtifacts ||
+    importedWorkbookCellMetadata ||
     hasFormulaCells
       ? {
           ...(workbookDefinedNames.definedNames ? { definedNames: workbookDefinedNames.definedNames } : {}),
@@ -634,7 +671,10 @@ export function tryImportLargeSimpleXlsx(
           ...(importedPivotArtifacts?.artifacts ? { pivotArtifacts: importedPivotArtifacts.artifacts } : {}),
           ...(sortedImportedTables ? { tables: sortedImportedTables } : {}),
           ...(styleCatalog.size > 0 ? { styles: [...styleCatalog.values()] } : {}),
+          ...(importedDataModelArtifacts ? { dataModelArtifacts: importedDataModelArtifacts } : {}),
           ...(importedExternalLinkArtifacts ? { externalLinkArtifacts: importedExternalLinkArtifacts } : {}),
+          ...(importedSlicerConnectionArtifacts ? { slicerConnectionArtifacts: importedSlicerConnectionArtifacts } : {}),
+          ...(importedWorkbookCellMetadata ? { cellMetadata: importedWorkbookCellMetadata } : {}),
           ...(hasFormulaCells
             ? {
                 calculationSettings: {
@@ -731,6 +771,28 @@ function withoutConditionalFormattingXml(
   return Object.keys(retained).length > 0 ? retained : undefined
 }
 
+function slicerConnectionSheetSources(
+  scannedWorksheets: readonly (ScannedWorksheet | undefined)[],
+  worksheetEntries: readonly { readonly path: string }[],
+): ImportedWorkbookSlicerConnectionSheetSource[] {
+  return scannedWorksheets.flatMap((scanned) => {
+    if (!scanned) {
+      return []
+    }
+    const sheetPath = worksheetEntries[scanned.order]?.path
+    if (!sheetPath) {
+      return []
+    }
+    return [
+      {
+        sheetName: scanned.name,
+        sheetPath,
+        ...(scanned.metadataScan?.sheetSlicerListExtXml ? { sheetSlicerListExtXml: scanned.metadataScan.sheetSlicerListExtXml } : {}),
+      },
+    ]
+  })
+}
+
 function appendConditionalFormats(
   input: LargeSimpleSheetMetadataInput,
   conditionalFormats: readonly WorkbookConditionalFormatSnapshot[] | undefined,
@@ -789,6 +851,15 @@ function buildParsedWorksheet(
     options.materializeCells && options.styleCatalog && options.stylesByIndex
       ? buildLargeSimpleStyleRanges(sheetName, cellScan, options.stylesByIndex, options.styleCatalog)
       : []
+  const useLazyCells = options.materializeCells && cellScan.cellCount > lazySheetCellMaterializationThreshold
+  const cellMaterializationOptions =
+    options.includeCellCoordinates === undefined ? {} : { includeCoordinates: options.includeCellCoordinates }
+  const cells = options.materializeCells
+    ? useLazyCells
+      ? cellScan.arena.createLazySheetCells(cellScan.sheetIndex, cellMaterializationOptions)
+      : cellScan.arena.materializeSheetCells(cellScan.sheetIndex, cellMaterializationOptions)
+    : []
+  const cellMetadataRefs = buildImportedCellMetadataReferenceSnapshots(metadataScan?.cellMetadataRefs, cells)
   const metadata: SheetMetadataSnapshot = {
     ...(columns.entries.length > 0 ? { columns: columns.entries } : {}),
     ...(rows.entries.length > 0 ? { rows: rows.entries } : {}),
@@ -805,18 +876,11 @@ function buildParsedWorksheet(
     ...(input.hyperlinks ? { hyperlinks: input.hyperlinks } : {}),
     ...(conditionalFormats ? { conditionalFormats } : {}),
     ...(input.conditionalFormatArtifacts ? { conditionalFormatArtifacts: input.conditionalFormatArtifacts } : {}),
+    ...(cellMetadataRefs ? { cellMetadataRefs } : {}),
     ...(input.printerSettings ? { printerSettings: input.printerSettings } : {}),
     ...(input.printPageSetup ? { printPageSetup: input.printPageSetup } : {}),
     ...(cellScan.richTextCells.length > 0 ? { richTextArtifacts: { cells: cellScan.richTextCells } } : {}),
   }
-  const useLazyCells = options.materializeCells && cellScan.cellCount > lazySheetCellMaterializationThreshold
-  const cellMaterializationOptions =
-    options.includeCellCoordinates === undefined ? {} : { includeCoordinates: options.includeCellCoordinates }
-  const cells = options.materializeCells
-    ? useLazyCells
-      ? cellScan.arena.createLazySheetCells(cellScan.sheetIndex, cellMaterializationOptions)
-      : cellScan.arena.materializeSheetCells(cellScan.sheetIndex, cellMaterializationOptions)
-    : []
   const sheet: WorkbookSnapshot['sheets'][number] = {
     id: order + 1,
     name: sheetName,
@@ -851,6 +915,9 @@ function buildParsedWorksheet(
   }
   if (options.releaseArenaAfterMaterialization === true && !useLazyCells) {
     cellScan.arena.release()
+    cellScan.styleIndexes.release()
+  } else if (options.releaseArenaAfterMaterialization === true) {
+    cellScan.arena.releaseMaterializationScratch()
     cellScan.styleIndexes.release()
   }
   return parsed
