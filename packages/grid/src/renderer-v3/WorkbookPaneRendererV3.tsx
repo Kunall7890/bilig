@@ -2,6 +2,7 @@ import { memo, useCallback, useEffect, useLayoutEffect, useRef, useSyncExternalS
 import type { GridRenderRevisionSnapshot } from '../grid-engine.js'
 import type { GridGeometrySnapshot } from '../gridGeometry.js'
 import type { GridHeaderPaneState } from '../gridHeaderPanes.js'
+import type { Rectangle } from '../gridTypes.js'
 import type { GridCameraStore } from '../runtime/gridCameraStore.js'
 import type { WorkbookGridScrollStore } from '../workbookGridScrollStore.js'
 import { WorkbookPaneCanvasFallbackV3 } from './WorkbookPaneCanvasFallbackV3.js'
@@ -26,6 +27,7 @@ export interface WorkbookPaneRendererV3Props {
   readonly overlayBuilder?: ((geometry: GridGeometrySnapshot) => DynamicGridOverlayBatchV3 | null | undefined) | undefined
   readonly overlay?: DynamicGridOverlayBatchV3 | undefined
   readonly scrollTransformStore?: WorkbookGridScrollStore | null
+  readonly selectionOcclusionRanges?: readonly Pick<Rectangle, 'x' | 'y' | 'width' | 'height'>[] | null | undefined
   readonly suppressedTextCell?: SuppressedNativeTextCellV3 | null | undefined
 }
 
@@ -41,6 +43,7 @@ export const WorkbookPaneRendererV3 = memo(function WorkbookPaneRendererV3({
   preloadTilePanes = [],
   renderRevisionSnapshot = null,
   scrollTransformStore = null,
+  selectionOcclusionRanges = null,
   suppressedTextCell = null,
   tilePanes,
 }: WorkbookPaneRendererV3Props) {
@@ -257,6 +260,7 @@ export const WorkbookPaneRendererV3 = memo(function WorkbookPaneRendererV3({
           headerPanes={headerPanes}
           presentedScrollSnapshot={presentedVisualFrame?.scrollSnapshot ?? null}
           scrollTransformStore={scrollTransformStore}
+          selectionOcclusionRanges={selectionOcclusionRanges}
           suppressedTextCell={suppressedTextCell}
           tilePanes={tilePanes}
         />
