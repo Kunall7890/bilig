@@ -4,6 +4,31 @@ All notable changes to `@bilig/headless` will be documented in this file.
 
 This package is released as part of the aligned bilig library package set.
 
+## 0.40.0
+
+- Release type: minor
+- Previous libraries tag: libraries-v0.39.0
+- Manual override: no
+
+## Features
+- feat(excel-import): reduce xlsx import memory (6c04e41d)
+- feat(excel-import): compact dense runtime coordinates (052c5349)
+
+## Fixes
+- fix(core): route metadata formulas through js parity (4d72b3de)
+- perf(core): index compound exact criteria aggregates (0e2bb2dc)
+- fix(xlsx): bound large workbook import builds (74210d5e)
+- fix(xlsx): preserve unsupported chart drawings (892322e6)
+- fix(excel-import): preserve compact import fidelity (a0340a33)
+- fix(xlsx): stream cached formula imports (415e0cb1)
+- fix(xlsx): warn on data table formula imports (f9cae29e)
+- fix(xlsx): reduce fallback import memory (0b3105e6)
+
+## Internal runtime changes
+- test(core): add semantic invariant gate (80c73e48)
+- docs(agent): add recalc skill metadata (d3aa7850)
+- refactor(excel-import): use shared workbook semantics in tests (38f49c24)
+
 ## 0.39.0
 
 - Release type: minor
