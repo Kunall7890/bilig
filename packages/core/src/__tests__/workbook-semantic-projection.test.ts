@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import type { WorkbookSnapshot } from '@bilig/protocol'
 import {
   normalizeWorkbookSnapshotForSemanticComparison,
+  diffWorkbookSemanticSnapshots,
   projectWorkbookSemanticSnapshot,
   workbookSemanticSnapshotsEqual,
 } from '../semantics/index.js'
@@ -145,5 +146,22 @@ describe('workbook semantic projection', () => {
 
     expect(projectWorkbookSemanticSnapshot(left)).toEqual(projectWorkbookSemanticSnapshot(right))
     expect(workbookSemanticSnapshotsEqual(left, right)).toBe(true)
+  })
+
+  it('reports stable projection paths for semantic differences', () => {
+    const left: WorkbookSnapshot = {
+      ...baseSnapshot,
+      sheets: [{ name: 'Sheet1', order: 0, cells: [{ address: 'A1', value: 12 }] }],
+    }
+    const right: WorkbookSnapshot = {
+      ...baseSnapshot,
+      sheets: [{ name: 'Sheet1', order: 0, cells: [{ address: 'A1', value: 13 }] }],
+    }
+
+    expect(diffWorkbookSemanticSnapshots(left, right)).toContainEqual({
+      path: '$.valueFormulaFormatSheets.0.cells.0.value',
+      left: 12,
+      right: 13,
+    })
   })
 })
