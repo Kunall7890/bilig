@@ -126,4 +126,110 @@ describe('beginWorkbookGridFillHandleDrag', () => {
     expect(setIsFillHandleDragging).toHaveBeenLastCalledWith(false)
     expect(cleanupRef.current).toBeNull()
   })
+
+  it('auto-scrolls the grid edge while fill-handle drag stays active', () => {
+    const target = new PointerTarget()
+    const cleanupRef = { current: null as (() => void) | null }
+    const frameCallbacks: FrameRequestCallback[] = []
+    const scrollViewport = createScrollViewport()
+    const setFillPreviewRange = vi.fn()
+
+    beginWorkbookGridFillHandleDrag({
+      cleanupRef,
+      listenerTarget: target,
+      pointerId: 7,
+      sourceRange: { x: 1, y: 1, width: 1, height: 1 },
+      gridSelection: createRectangleSelectionFromRange({ x: 1, y: 1, width: 1, height: 1 }),
+      resolvePointerCell: (_clientX, _clientY) => [1, 1 + Math.floor(scrollViewport.scrollTop / 10)],
+      setGridSelection: vi.fn(),
+      onSelectionChange: vi.fn(),
+      onFillRange: vi.fn(),
+      setFillPreviewRange,
+      setFillPreviewRangeRef: vi.fn(),
+      setIsFillHandleDragging: vi.fn(),
+      resetHoverState: vi.fn(),
+      scrollViewport,
+      requestAnimationFrame: (callback) => {
+        frameCallbacks.push(callback)
+        return frameCallbacks.length
+      },
+      cancelAnimationFrame: vi.fn(),
+    })
+
+    target.emit('pointermove', { pointerId: 7, clientX: 50, clientY: 98 })
+    frameCallbacks.shift()?.(performance.now())
+
+    expect(scrollViewport.scrollTop).toBeGreaterThan(0)
+    expect(scrollViewport.dispatchEvent).toHaveBeenCalledWith(expect.any(Event))
+    expect(setFillPreviewRange).toHaveBeenLastCalledWith({
+      x: 1,
+      y: 2,
+      width: 1,
+      height: expect.any(Number),
+    })
+    expect(setFillPreviewRange.mock.lastCall?.[0]?.height).toBeGreaterThan(1)
+  })
+
+  it('applies the auto-scrolled fill preview on pointer up', () => {
+    const target = new PointerTarget()
+    const cleanupRef = { current: null as (() => void) | null }
+    const frameCallbacks: FrameRequestCallback[] = []
+    const scrollViewport = createScrollViewport()
+    const onFillRange = vi.fn()
+
+    beginWorkbookGridFillHandleDrag({
+      cleanupRef,
+      listenerTarget: target,
+      pointerId: 7,
+      sourceRange: { x: 1, y: 1, width: 1, height: 1 },
+      gridSelection: createRectangleSelectionFromRange({ x: 1, y: 1, width: 1, height: 1 }),
+      resolvePointerCell: (_clientX, _clientY) => [1, 1 + Math.floor(scrollViewport.scrollTop / 10)],
+      setGridSelection: vi.fn(),
+      onSelectionChange: vi.fn(),
+      onFillRange,
+      setFillPreviewRange: vi.fn(),
+      setFillPreviewRangeRef: vi.fn(),
+      setIsFillHandleDragging: vi.fn(),
+      resetHoverState: vi.fn(),
+      scrollViewport,
+      requestAnimationFrame: (callback) => {
+        frameCallbacks.push(callback)
+        return frameCallbacks.length
+      },
+      cancelAnimationFrame: vi.fn(),
+    })
+
+    target.emit('pointermove', { pointerId: 7, clientX: 50, clientY: 98 })
+    frameCallbacks.shift()?.(performance.now())
+    target.emit('pointerup', { pointerId: 7, clientX: 50, clientY: 98 })
+
+    expect(onFillRange).toHaveBeenCalledWith('B2', 'B2', 'B3', 'B5')
+  })
 })
+
+function createScrollViewport(): {
+  clientHeight: number
+  clientWidth: number
+  dispatchEvent: ReturnType<typeof vi.fn>
+  getBoundingClientRect(): Pick<DOMRect, 'bottom' | 'left' | 'right' | 'top'>
+  scrollHeight: number
+  scrollLeft: number
+  scrollTop: number
+  scrollWidth: number
+} {
+  return {
+    clientHeight: 100,
+    clientWidth: 100,
+    dispatchEvent: vi.fn(),
+    getBoundingClientRect: () => ({
+      bottom: 100,
+      left: 0,
+      right: 100,
+      top: 0,
+    }),
+    scrollHeight: 1_000,
+    scrollLeft: 0,
+    scrollTop: 0,
+    scrollWidth: 1_000,
+  }
+}

@@ -670,6 +670,41 @@ test('@browser-ci web app supports fill-handle propagation', async ({ page }) =>
   await expect(resolvedValue).toHaveText('7')
 })
 
+test('@browser-ci web app autoscrolls while dragging the fill handle past visible rows', async ({ page }) => {
+  await page.setViewportSize({ width: 1180, height: 360 })
+  await gotoWorkbookShell(page, `/?document=${encodeURIComponent(createTestDocumentId('fill-handle-edge-autoscroll'))}&persist=0`)
+  await waitForWorkbookReady(page)
+
+  const nameBox = page.getByTestId('name-box')
+  const formulaInput = page.getByTestId('formula-input')
+  const scrollViewport = page.getByTestId('grid-scroll-viewport')
+  const grid = await page.getByTestId('sheet-grid').boundingBox()
+  if (!grid) {
+    throw new Error('sheet grid is not visible')
+  }
+
+  await nameBox.fill('B2')
+  await nameBox.press('Enter')
+  await formulaInput.fill('9')
+  await formulaInput.press('Enter')
+
+  const { sourceX, sourceY } = await getProductFillHandleDragPoints(page, 1, 1, 1, 1)
+  await page.mouse.move(sourceX, sourceY)
+  await page.mouse.down()
+  await page.mouse.move(sourceX, grid.y + grid.height - 18, { steps: 8 })
+  await expect
+    .poll(() => scrollViewport.evaluate((node) => node.scrollTop), {
+      message: 'fill-handle drag should autoscroll the grid at the lower edge',
+    })
+    .toBeGreaterThan(PRODUCT_ROW_HEIGHT * 12)
+  await page.mouse.up()
+
+  await expect(page.getByTestId('status-selection')).toContainText('!B2:B')
+  await nameBox.fill('B20')
+  await nameBox.press('Enter')
+  await expect(formulaInput).toHaveValue('9')
+})
+
 remoteSyncTest('web app enables undo and redo for a normal edit', async ({ page }) => {
   const documentId = createTestDocumentId('playwright-undo-redo-basic')
   await page.goto(`/?document=${encodeURIComponent(documentId)}`)

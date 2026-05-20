@@ -117,6 +117,52 @@ describe('large simple worksheet stream scanners', () => {
     expect(Math.max(...retainedBufferLengths)).toBeLessThan(1024)
   })
 
+  it('streams large split column metadata without retaining the full parent body', () => {
+    const headlessRetainedBufferLengths: number[] = []
+    const headlessScan = parseHeadlessLargeSimpleWorksheetFromChunks(splitLargeColsWorksheetXml(), 0, {
+      hasSharedStrings: false,
+      onRetainedBufferLength: (length) => headlessRetainedBufferLengths.push(length),
+    })
+    const retainedBufferLengths: number[] = []
+    const scan = parseLargeSimpleWorksheetCellsFromChunks(splitLargeColsWorksheetXml(), 0, {
+      hasSharedStrings: false,
+      onRetainedBufferLength: (length) => retainedBufferLengths.push(length),
+    })
+
+    expect(headlessScan?.cellCount).toBe(1)
+    expect(scan?.metadata?.columns).toEqual({
+      entries: [
+        { id: 'col:0', index: 0, size: 75, hidden: true },
+        { id: 'col:1', index: 1, size: 75, hidden: true },
+        { id: 'col:4', index: 4, size: 48 },
+      ],
+      metadata: [
+        {
+          start: 0,
+          count: 2,
+          size: 75,
+          xlsxWidth: 12.5,
+          styleIndex: 3,
+          hidden: true,
+          customWidth: true,
+          bestFit: false,
+          outlineLevel: 1,
+        },
+        {
+          start: 4,
+          count: 1,
+          size: 48,
+          xlsxWidth: 8,
+          customWidth: true,
+        },
+      ],
+    })
+    expect(headlessRetainedBufferLengths.length).toBeGreaterThan(0)
+    expect(retainedBufferLengths.length).toBeGreaterThan(0)
+    expect(Math.max(...headlessRetainedBufferLengths)).toBeLessThan(1024)
+    expect(Math.max(...retainedBufferLengths)).toBeLessThan(1024)
+  })
+
   it('streams large split table metadata in materialized scans without retaining metadata bodies', () => {
     const retainedBufferLengths: number[] = []
     const scan = parseLargeSimpleWorksheetCellsFromChunks(splitLargeTablePartsWorksheetXml(), 0, {
@@ -158,6 +204,68 @@ describe('large simple worksheet stream scanners', () => {
       {
         range: { sheetName: 'Data', startAddress: 'B2', endAddress: 'B2' },
         rule: { kind: 'whole', operator: 'between', values: [1, 10] },
+      },
+    ])
+    expect(headlessRetainedBufferLengths.length).toBeGreaterThan(0)
+    expect(retainedBufferLengths.length).toBeGreaterThan(0)
+    expect(Math.max(...headlessRetainedBufferLengths)).toBeLessThan(1024)
+    expect(Math.max(...retainedBufferLengths)).toBeLessThan(1024)
+  })
+
+  it('streams large split hyperlink metadata without retaining the full parent body', () => {
+    const headlessRetainedBufferLengths: number[] = []
+    const headlessScan = parseHeadlessLargeSimpleWorksheetFromChunks(splitLargeHyperlinksWorksheetXml(), 0, {
+      hasSharedStrings: false,
+      onRetainedBufferLength: (length) => headlessRetainedBufferLengths.push(length),
+    })
+    const retainedBufferLengths: number[] = []
+    const scan = parseLargeSimpleWorksheetCellsFromChunks(splitLargeHyperlinksWorksheetXml(), 0, {
+      hasSharedStrings: false,
+      sheetName: 'Data',
+      onRetainedBufferLength: (length) => retainedBufferLengths.push(length),
+    })
+
+    expect(headlessScan?.cellCount).toBe(1)
+    expect(scan?.metadata?.hyperlinks).toEqual([
+      { ref: 'A1', location: 'Summary!A1', tooltip: 'Jump', display: 'Summary' },
+      { ref: 'B1', relationshipId: 'rIdHyperlink1' },
+    ])
+    expect(headlessRetainedBufferLengths.length).toBeGreaterThan(0)
+    expect(retainedBufferLengths.length).toBeGreaterThan(0)
+    expect(Math.max(...headlessRetainedBufferLengths)).toBeLessThan(1024)
+    expect(Math.max(...retainedBufferLengths)).toBeLessThan(1024)
+  })
+
+  it('streams large split auto-filter metadata without retaining the full parent body', () => {
+    const headlessRetainedBufferLengths: number[] = []
+    const headlessScan = parseHeadlessLargeSimpleWorksheetFromChunks(splitLargeAutoFilterWorksheetXml(), 0, {
+      hasSharedStrings: false,
+      onRetainedBufferLength: (length) => headlessRetainedBufferLengths.push(length),
+    })
+    const retainedBufferLengths: number[] = []
+    const scan = parseLargeSimpleWorksheetCellsFromChunks(splitLargeAutoFilterWorksheetXml(), 0, {
+      hasSharedStrings: false,
+      sheetName: 'Data',
+      onRetainedBufferLength: (length) => retainedBufferLengths.push(length),
+    })
+
+    expect(headlessScan?.cellCount).toBe(1)
+    expect(scan?.metadata?.filters).toEqual([
+      {
+        sheetName: 'Data',
+        startAddress: 'A1',
+        endAddress: 'D6',
+        criteria: [
+          {
+            colId: 1,
+            hiddenButton: true,
+            filters: { blank: false, values: ['Finance & Ops'] },
+          },
+          {
+            colId: 2,
+            customFilters: { and: true, filters: [{ operator: 'lessThan', value: '0' }] },
+          },
+        ],
       },
     ])
     expect(headlessRetainedBufferLengths.length).toBeGreaterThan(0)
@@ -513,6 +621,27 @@ function splitLargeMergeCellsWorksheetXml(): (onChunk: (chunk: Uint8Array) => vo
   }
 }
 
+function splitLargeColsWorksheetXml(): (onChunk: (chunk: Uint8Array) => void) => boolean {
+  const chunks = [
+    '<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">',
+    '<dimension ref="A1"/>',
+    '<cols><col min="1" max="2" width="12.5" style="3" hidden="1" customWidth="1" bestFit="0" outlineLevel="1"/>',
+    ' '.repeat(40_000),
+    ' '.repeat(40_000),
+    ' '.repeat(20_000),
+    '<col min="5" max="5" width="8" customWidth="1"/></',
+    'cols>',
+    '<sheetData><row r="1"><c r="A1"><v>1</v></c></row></sheetData>',
+    '</worksheet>',
+  ]
+  return (onChunk) => {
+    for (const chunk of chunks) {
+      onChunk(encoder.encode(chunk))
+    }
+    return true
+  }
+}
+
 function splitLargeTablePartsWorksheetXml(): (onChunk: (chunk: Uint8Array) => void) => boolean {
   const chunks = [
     '<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">',
@@ -545,6 +674,48 @@ function splitLargeDataValidationsWorksheetXml(): (onChunk: (chunk: Uint8Array) 
     ' '.repeat(20_000),
     '<dataValidation type="whole" operator="between" sqref="B1 B2"><formula1>1</formula1><formula2>10</formula2></dataValidation></',
     'dataValidations>',
+    '</worksheet>',
+  ]
+  return (onChunk) => {
+    for (const chunk of chunks) {
+      onChunk(encoder.encode(chunk))
+    }
+    return true
+  }
+}
+
+function splitLargeHyperlinksWorksheetXml(): (onChunk: (chunk: Uint8Array) => void) => boolean {
+  const chunks = [
+    '<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">',
+    '<dimension ref="A1"/>',
+    '<sheetData><row r="1"><c r="A1"><v>1</v></c></row></sheetData>',
+    '<hyperlinks><hyperlink ref="A1" location="Summary!A1" tooltip="Jump" display="Summary"/>',
+    ' '.repeat(40_000),
+    ' '.repeat(40_000),
+    ' '.repeat(20_000),
+    '<hyperlink ref="B1" r:id="rIdHyperlink1"/></',
+    'hyperlinks>',
+    '</worksheet>',
+  ]
+  return (onChunk) => {
+    for (const chunk of chunks) {
+      onChunk(encoder.encode(chunk))
+    }
+    return true
+  }
+}
+
+function splitLargeAutoFilterWorksheetXml(): (onChunk: (chunk: Uint8Array) => void) => boolean {
+  const chunks = [
+    '<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">',
+    '<dimension ref="A1"/>',
+    '<sheetData><row r="1"><c r="A1"><v>1</v></c></row></sheetData>',
+    '<autoFilter ref="A1:D6"><filterColumn colId="1" hiddenButton="1"><filters blank="0"><filter val="Finance &amp; Ops"/></filters></filterColumn>',
+    ' '.repeat(40_000),
+    ' '.repeat(40_000),
+    ' '.repeat(20_000),
+    '<filterColumn colId="2"><customFilters and="1"><customFilter operator="lessThan" val="0"/></customFilters></filterColumn></',
+    'autoFilter>',
     '</worksheet>',
   ]
   return (onChunk) => {

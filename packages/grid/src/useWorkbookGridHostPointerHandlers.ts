@@ -150,6 +150,7 @@ export function useWorkbookGridHostPointerHandlers(input: {
           fillPreviewRangeRef.current = range
         },
         setIsFillHandleDragging,
+        scrollViewport: renderState.scrollViewportRef.current,
         resetHoverState: () => {
           setHoverState(resetGridHoverState)
         },
@@ -162,6 +163,7 @@ export function useWorkbookGridHostPointerHandlers(input: {
       focusGrid,
       gridSelection,
       onFillRange,
+      renderState.scrollViewportRef,
       resolvePointerCell,
       selectionRange,
       setFillPreviewRange,

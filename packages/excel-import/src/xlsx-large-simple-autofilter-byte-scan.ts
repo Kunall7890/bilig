@@ -13,6 +13,7 @@ const colon = 58
 const doubleQuote = 34
 const singleQuote = 39
 const greaterThan = 62
+const autoFilterCloseBytes = new Uint8Array([60, 47, 97, 117, 116, 111, 70, 105, 108, 116, 101, 114, 62])
 
 export function readLargeSimpleAutoFiltersFromBytes(
   sheetName: string,
@@ -47,6 +48,38 @@ export function readLargeSimpleAutoFiltersFromBytes(
     index = tagEnd + 1
   }
   return filters
+}
+
+export function readLargeSimpleAutoFilterRootFromBytes(
+  sheetName: string,
+  bytes: Uint8Array,
+  startIndex: number,
+  endIndex: number,
+): WorkbookAutoFilterSnapshot | null {
+  const tag = readXmlTagName(bytes, startIndex + 1)
+  if (tag?.localName !== 'autoFilter') {
+    return null
+  }
+  const tagEnd = findTagEnd(bytes, tag.endIndex, endIndex)
+  if (tagEnd === null) {
+    return null
+  }
+  const ref = readAttributeFromTag(bytes, tag.endIndex, tagEnd, 'ref')
+  return ref ? parseRangeRef(sheetName, ref) : null
+}
+
+export function wrapLargeSimpleAutoFilterColumnBytes(
+  rootTag: Uint8Array,
+  bytes: Uint8Array,
+  startIndex: number,
+  endIndex: number,
+): Uint8Array {
+  const columnBytes = bytes.subarray(startIndex, endIndex)
+  const output = new Uint8Array(rootTag.byteLength + columnBytes.byteLength + autoFilterCloseBytes.byteLength)
+  output.set(rootTag)
+  output.set(columnBytes, rootTag.byteLength)
+  output.set(autoFilterCloseBytes, rootTag.byteLength + columnBytes.byteLength)
+  return output
 }
 
 function parseAutoFilterFromBytes(

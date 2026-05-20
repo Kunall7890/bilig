@@ -1,11 +1,20 @@
 import type {
   WorkbookAxisEntrySnapshot,
   WorkbookAxisMetadataSnapshot,
+  WorkbookAutoFilterSnapshot,
   WorkbookConditionalFormatSnapshot,
   WorkbookDataValidationSnapshot,
 } from '@bilig/protocol'
-import { readLargeSimpleAutoFiltersFromBytes } from './xlsx-large-simple-autofilter-byte-scan.js'
-import { readLargeSimpleConditionalFormattingFromBytes } from './xlsx-large-simple-conditional-format-byte-scan.js'
+import {
+  readLargeSimpleAutoFilterRootFromBytes,
+  readLargeSimpleAutoFiltersFromBytes,
+  wrapLargeSimpleAutoFilterColumnBytes,
+} from './xlsx-large-simple-autofilter-byte-scan.js'
+import {
+  countLargeSimpleConditionalFormattingSqrefRangesFromRootTag,
+  readLargeSimpleConditionalFormattingFromBytes,
+  wrapLargeSimpleConditionalFormatRuleBytes,
+} from './xlsx-large-simple-conditional-format-byte-scan.js'
 import {
   countLargeSimpleDataValidationsFromBytes,
   readLargeSimpleDataValidationsFromBytes,
@@ -33,23 +42,24 @@ import {
   findTagEnd,
   isSelfClosingTag,
   readXmlAttributeFromTag,
-  readXmlAttributeRangeFromTag,
   readXmlTagName,
 } from './xlsx-large-simple-worksheet-stream-xml.js'
 
 const lessThan = 60
 const slash = 47
-const conditionalFormattingCloseBytes = new Uint8Array([
-  60, 47, 99, 111, 110, 100, 105, 116, 105, 111, 110, 97, 108, 70, 111, 114, 109, 97, 116, 116, 105, 110, 103, 62,
-])
 const extensionElementPattern = /<(?:[A-Za-z_][\w.-]*:)?ext\b[^>]*(?:\/>|>[\s\S]*?<\/(?:[A-Za-z_][\w.-]*:)?ext>)/gu
 const slicerListElementPattern = /<(?:[A-Za-z_][\w.-]*:)?slicerList\b/u
 
-type StreamedMetadataElement = 'mergeCells' | 'tableParts'
+type StreamedMetadataElement = 'cols' | 'mergeCells' | 'tableParts'
 
 interface ActiveConditionalFormatting {
   readonly rootTag: Uint8Array
   ruleSeen: boolean
+}
+
+interface ActiveAutoFilter {
+  readonly rootTag: Uint8Array
+  filter: WorkbookAutoFilterSnapshot | null
 }
 
 export interface LargeSimpleWorksheetMetadataProcessResult {
@@ -80,8 +90,10 @@ export class LargeSimpleWorksheetStreamMetadataScanner {
   private sheetSlicerListExtXml: string | undefined
   private tableRelationshipIds: string[] | undefined
   private activeMetadataElement: StreamedMetadataElement | null = null
+  private activeAutoFilter: ActiveAutoFilter | null = null
   private activeConditionalFormatting: ActiveConditionalFormatting | null = null
   private activeDataValidations = false
+  private activeHyperlinks = false
   private mergeCountValue = 0
   private conditionalFormatCountValue = 0
   private dataValidationCountValue = 0
@@ -111,7 +123,13 @@ export class LargeSimpleWorksheetStreamMetadataScanner {
   }
 
   hasActiveStream(): boolean {
-    return this.activeMetadataElement !== null || this.activeConditionalFormatting !== null || this.activeDataValidations
+    return (
+      this.activeMetadataElement !== null ||
+      this.activeAutoFilter !== null ||
+      this.activeConditionalFormatting !== null ||
+      this.activeDataValidations ||
+      this.activeHyperlinks
+    )
   }
 
   collectWorksheetRootOpenTag(bytes: Uint8Array, startIndex: number, endIndex: number): void {
@@ -196,12 +214,28 @@ export class LargeSimpleWorksheetStreamMetadataScanner {
     if (localName === 'dataValidations' && isSelfClosingTag(bytes, tagEnd)) {
       return completed(tagEnd + 1)
     }
+    if (localName === 'hyperlinks' && isSelfClosingTag(bytes, tagEnd)) {
+      return completed(tagEnd + 1)
+    }
     if (isSelfClosingTag(bytes, tagEnd)) {
       const handled = this.options.retainMetadataXml && this.collectTypedMetadataElement(localName, bytes, startIndex, tagEnd + 1)
       if (!handled) {
         this.countMetadataElement(localName, bytes, tagEnd + 1, tagEnd + 1)
       }
       return this.options.retainMetadataXml && !handled ? failed(tagEnd + 1) : completed(tagEnd + 1)
+    }
+    if (localName === 'autoFilter') {
+      if (this.options.retainMetadataXml && !this.options.sheetName) {
+        return failed(startIndex)
+      }
+      this.activeAutoFilter = {
+        rootTag: bytes.slice(startIndex, tagEnd + 1),
+        filter:
+          this.options.retainMetadataXml && this.options.sheetName
+            ? readLargeSimpleAutoFilterRootFromBytes(this.options.sheetName, bytes, startIndex, tagEnd + 1)
+            : null,
+      }
+      return this.processActiveAutoFilter(bytes, tagEnd + 1, final)
     }
     if (localName === 'conditionalFormatting') {
       this.activeConditionalFormatting = {
@@ -210,13 +244,17 @@ export class LargeSimpleWorksheetStreamMetadataScanner {
       }
       return this.processActiveConditionalFormatting(bytes, tagEnd + 1, final)
     }
-    if (localName === 'mergeCells' || localName === 'tableParts') {
+    if (localName === 'cols' || localName === 'mergeCells' || localName === 'tableParts') {
       this.activeMetadataElement = localName
       return this.processActiveMetadataElement(bytes, tagEnd + 1, final)
     }
     if (localName === 'dataValidations') {
       this.activeDataValidations = true
       return this.processActiveDataValidations(bytes, tagEnd + 1, final)
+    }
+    if (localName === 'hyperlinks') {
+      this.activeHyperlinks = true
+      return this.processActiveHyperlinks(bytes, tagEnd + 1, final)
     }
     const closing = findClosingTag(bytes, tagEnd + 1, localName)
     if (!closing) {
@@ -233,11 +271,17 @@ export class LargeSimpleWorksheetStreamMetadataScanner {
     if (this.activeMetadataElement !== null) {
       return this.processActiveMetadataElement(bytes, index, final)
     }
+    if (this.activeAutoFilter !== null) {
+      return this.processActiveAutoFilter(bytes, index, final)
+    }
     if (this.activeConditionalFormatting !== null) {
       return this.processActiveConditionalFormatting(bytes, index, final)
     }
     if (this.activeDataValidations) {
       return this.processActiveDataValidations(bytes, index, final)
+    }
+    if (this.activeHyperlinks) {
+      return this.processActiveHyperlinks(bytes, index, final)
     }
     return completed(index)
   }
@@ -341,6 +385,74 @@ export class LargeSimpleWorksheetStreamMetadataScanner {
     return false
   }
 
+  private processActiveAutoFilter(bytes: Uint8Array, index: number, final: boolean): LargeSimpleWorksheetMetadataProcessResult {
+    const active = this.activeAutoFilter
+    if (active === null) {
+      return completed(index)
+    }
+    while (index < bytes.byteLength) {
+      if (bytes[index] !== lessThan) {
+        index += 1
+        continue
+      }
+      const closing = bytes[index + 1] === slash
+      const tagNameStart = index + (closing ? 2 : 1)
+      const tag = readXmlTagName(bytes, tagNameStart)
+      if (!tag) {
+        if (!final && tagNameStart >= bytes.byteLength) {
+          return incomplete(index)
+        }
+        index += 1
+        continue
+      }
+      const tagEnd = findTagEnd(bytes, tag.endIndex)
+      if (tagEnd === null) {
+        return final ? failed(index, false) : incomplete(index)
+      }
+      if (closing && tag.localName === 'autoFilter') {
+        if (this.options.retainMetadataXml && active.filter) {
+          this.filters = [...(this.filters ?? []), active.filter]
+        }
+        this.activeAutoFilter = null
+        return completed(tagEnd + 1)
+      }
+      if (!closing && tag.localName === 'filterColumn') {
+        const result = this.processActiveAutoFilterColumn(active, bytes, index, tagEnd, final)
+        if (!result.complete || result.failed) {
+          return result
+        }
+        index = result.index
+        continue
+      }
+      index = tagEnd + 1
+    }
+    return final ? failed(index, false) : incomplete(bytes.byteLength)
+  }
+
+  private processActiveAutoFilterColumn(
+    active: ActiveAutoFilter,
+    bytes: Uint8Array,
+    startIndex: number,
+    tagEnd: number,
+    final: boolean,
+  ): LargeSimpleWorksheetMetadataProcessResult {
+    const selfClosing = isSelfClosingTag(bytes, tagEnd)
+    const contentStart = tagEnd + 1
+    const closing = selfClosing ? { start: contentStart, end: contentStart } : findClosingTag(bytes, contentStart, 'filterColumn')
+    if (!closing) {
+      return final ? failed(startIndex, false) : incomplete(startIndex)
+    }
+    const endIndex = selfClosing ? tagEnd + 1 : closing.end
+    if (this.options.retainMetadataXml && this.options.sheetName) {
+      const wrapped = wrapLargeSimpleAutoFilterColumnBytes(active.rootTag, bytes, startIndex, endIndex)
+      const parsed = readLargeSimpleAutoFiltersFromBytes(this.options.sheetName, wrapped, 0, wrapped.byteLength)[0]
+      if (parsed) {
+        active.filter = mergeAutoFilterCriteria(active.filter ?? parsed, parsed.criteria)
+      }
+    }
+    return completed(endIndex)
+  }
+
   private countMetadataElement(localName: string, bytes: Uint8Array, contentStart: number, contentEnd: number): void {
     if (localName === 'conditionalFormatting') {
       this.conditionalFormatCountValue += Math.max(1, countOpeningTags(bytes, contentStart, contentEnd, 'cfRule'))
@@ -384,7 +496,7 @@ export class LargeSimpleWorksheetStreamMetadataScanner {
         return completed(tagEnd + 1)
       }
       if (!closing) {
-        this.collectActiveMetadataTag(activeElement, tag.localName, bytes, tag.endIndex, tagEnd)
+        this.collectActiveMetadataTag(activeElement, tag.localName, bytes, index, tag.endIndex, tagEnd)
       }
       index = tagEnd + 1
     }
@@ -454,13 +566,13 @@ export class LargeSimpleWorksheetStreamMetadataScanner {
     active.ruleSeen = true
     const endIndex = selfClosing ? tagEnd + 1 : closing.end
     if (!this.options.retainMetadataXml) {
-      this.conditionalFormatCountValue += activeConditionalFormattingRangeCount(active)
+      this.conditionalFormatCountValue += countLargeSimpleConditionalFormattingSqrefRangesFromRootTag(active.rootTag)
       return completed(endIndex)
     }
     if (!this.options.sheetName) {
       return failed(startIndex)
     }
-    const scanBytes = wrapConditionalFormatRule(active.rootTag, bytes, startIndex, endIndex)
+    const scanBytes = wrapLargeSimpleConditionalFormatRuleBytes(active.rootTag, bytes, startIndex, endIndex)
     const scan = readLargeSimpleConditionalFormattingFromBytes(
       this.options.sheetName,
       scanBytes,
@@ -479,6 +591,59 @@ export class LargeSimpleWorksheetStreamMetadataScanner {
       this.conditionalFormattingXml.push(scan.artifactXml)
     }
     return completed(endIndex)
+  }
+
+  private processActiveHyperlinks(bytes: Uint8Array, index: number, final: boolean): LargeSimpleWorksheetMetadataProcessResult {
+    while (index < bytes.byteLength) {
+      if (bytes[index] !== lessThan) {
+        index += 1
+        continue
+      }
+      const closing = bytes[index + 1] === slash
+      const tagNameStart = index + (closing ? 2 : 1)
+      const tag = readXmlTagName(bytes, tagNameStart)
+      if (!tag) {
+        if (!final && tagNameStart >= bytes.byteLength) {
+          return incomplete(index)
+        }
+        index += 1
+        continue
+      }
+      const tagEnd = findTagEnd(bytes, tag.endIndex)
+      if (tagEnd === null) {
+        return final ? failed(index, false) : incomplete(index)
+      }
+      if (closing && tag.localName === 'hyperlinks') {
+        this.activeHyperlinks = false
+        return completed(tagEnd + 1)
+      }
+      if (!closing && tag.localName === 'hyperlink') {
+        const result = this.collectActiveHyperlinkTag(bytes, index, tagEnd)
+        if (result) {
+          return result
+        }
+      }
+      index = tagEnd + 1
+    }
+    return final ? failed(index, false) : incomplete(bytes.byteLength)
+  }
+
+  private collectActiveHyperlinkTag(
+    bytes: Uint8Array,
+    startIndex: number,
+    tagEnd: number,
+  ): LargeSimpleWorksheetMetadataProcessResult | undefined {
+    if (!this.options.retainMetadataXml) {
+      return undefined
+    }
+    const refs = readLargeSimpleSheetHyperlinkRefsFromBytes(bytes, startIndex, tagEnd + 1)
+    if (refs === null) {
+      return failed(startIndex)
+    }
+    if (refs.length > 0) {
+      this.hyperlinks = [...(this.hyperlinks ?? []), ...refs]
+    }
+    return undefined
   }
 
   private processActiveDataValidations(bytes: Uint8Array, index: number, final: boolean): LargeSimpleWorksheetMetadataProcessResult {
@@ -558,9 +723,14 @@ export class LargeSimpleWorksheetStreamMetadataScanner {
     activeElement: StreamedMetadataElement,
     localName: string,
     bytes: Uint8Array,
+    startIndex: number,
     nameEnd: number,
     tagEnd: number,
   ): void {
+    if (activeElement === 'cols' && localName === 'col') {
+      this.collectColumnMetadataTag(bytes, startIndex, tagEnd)
+      return
+    }
     if (activeElement === 'mergeCells' && localName === 'mergeCell') {
       this.collectMergeCellTag(bytes, nameEnd, tagEnd)
       return
@@ -576,6 +746,15 @@ export class LargeSimpleWorksheetStreamMetadataScanner {
         }
       }
     }
+  }
+
+  private collectColumnMetadataTag(bytes: Uint8Array, startIndex: number, tagEnd: number): void {
+    if (!this.options.retainMetadataXml) {
+      return
+    }
+    this.columnEntries ??= []
+    this.columnMetadata ??= []
+    appendLargeSimpleColumnMetadataFromBytes(this.columnEntries, this.columnMetadata, bytes, startIndex, tagEnd + 1)
   }
 
   private collectMergeCellTag(bytes: Uint8Array, nameEnd: number, tagEnd: number): void {
@@ -604,18 +783,11 @@ function failed(index: number, complete = true): LargeSimpleWorksheetMetadataPro
   return { index, complete, failed: true }
 }
 
-function wrapConditionalFormatRule(rootTag: Uint8Array, bytes: Uint8Array, startIndex: number, endIndex: number): Uint8Array {
-  const ruleBytes = bytes.subarray(startIndex, endIndex)
-  const output = new Uint8Array(rootTag.byteLength + ruleBytes.byteLength + conditionalFormattingCloseBytes.byteLength)
-  output.set(rootTag)
-  output.set(ruleBytes, rootTag.byteLength)
-  output.set(conditionalFormattingCloseBytes, rootTag.byteLength + ruleBytes.byteLength)
-  return output
-}
-
-function activeConditionalFormattingRangeCount(active: ActiveConditionalFormatting): number {
-  const tag = readXmlTagName(active.rootTag, 1)
-  return tag ? countSqrefRangesFromTag(active.rootTag, tag.endIndex, active.rootTag.byteLength - 1) : 1
+function mergeAutoFilterCriteria(
+  filter: WorkbookAutoFilterSnapshot,
+  criteria: WorkbookAutoFilterSnapshot['criteria'],
+): WorkbookAutoFilterSnapshot {
+  return criteria && criteria.length > 0 ? { ...filter, criteria: [...(filter.criteria ?? []), ...criteria] } : filter
 }
 
 function readSlicerListExtensionXml(xml: string): string | undefined {
@@ -625,28 +797,4 @@ function readSlicerListExtensionXml(xml: string): string | undefined {
 
 function readElementAttribute(xml: string, name: string): string | null {
   return new RegExp(`\\s${name}=("|')([\\s\\S]*?)\\1`, 'u').exec(xml)?.[2] ?? null
-}
-
-function countSqrefRangesFromTag(bytes: Uint8Array, nameEnd: number, tagEnd: number): number {
-  const sqref = readXmlAttributeRangeFromTag(bytes, nameEnd, tagEnd, 'sqref')
-  if (!sqref) {
-    return 1
-  }
-  let count = 0
-  let inToken = false
-  for (let index = sqref.start; index < sqref.end; index += 1) {
-    if (isWhitespaceByte(bytes[index] ?? 0)) {
-      inToken = false
-      continue
-    }
-    if (!inToken) {
-      count += 1
-      inToken = true
-    }
-  }
-  return Math.max(1, count)
-}
-
-function isWhitespaceByte(byte: number): boolean {
-  return byte === 9 || byte === 10 || byte === 12 || byte === 13 || byte === 32
 }
