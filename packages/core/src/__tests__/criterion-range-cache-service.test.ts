@@ -417,6 +417,87 @@ describe('createCriterionRangeCacheService', () => {
     ).toEqual({ tag: ValueTag.Error, code: ErrorCode.Div0 })
   })
 
+  it('reuses compound exact aggregate buckets across different criteria tuples', () => {
+    const workbook = new WorkbookStore('criteria-cache-compound-exact-buckets')
+    const strings = new StringPool()
+    workbook.createSheet('Sheet1')
+
+    ;['East', 'East', 'West', 'West', 'East', 'West'].forEach((value, index) => {
+      setStoredCellValue(workbook, strings, 'Sheet1', `A${index + 1}`, {
+        tag: ValueTag.String,
+        value,
+      })
+    })
+    ;['Retail', 'Wholesale', 'Retail', 'Wholesale', 'Retail', 'Retail'].forEach((value, index) => {
+      setStoredCellValue(workbook, strings, 'Sheet1', `B${index + 1}`, {
+        tag: ValueTag.String,
+        value,
+      })
+    })
+    ;[10, 20, 30, 40, 50, 60].forEach((value, index) => {
+      setStoredCellValue(workbook, strings, 'Sheet1', `C${index + 1}`, {
+        tag: ValueTag.Number,
+        value,
+      })
+    })
+
+    const realRuntimeColumnStore = createEngineRuntimeColumnStoreService({
+      state: { workbook, strings },
+    })
+    let readTagCalls = 0
+    const runtimeColumnStore = {
+      ...realRuntimeColumnStore,
+      getColumnView(request: Parameters<typeof realRuntimeColumnStore.getColumnView>[0]) {
+        const view = realRuntimeColumnStore.getColumnView(request)
+        return {
+          ...view,
+          readTagAt(offset: number) {
+            readTagCalls += 1
+            return view.readTagAt(offset)
+          },
+        }
+      },
+    }
+    const criterionCache = createCriterionRangeCacheService({
+      runtimeColumnStore,
+      regionGraph: createRegionGraph({ workbook }),
+      depPatternStore: createDepPatternStore(),
+    })
+    const criteriaRangeA = { sheetName: 'Sheet1', rowStart: 0, rowEnd: 5, col: 0, length: 6 } as const
+    const criteriaRangeB = { sheetName: 'Sheet1', rowStart: 0, rowEnd: 5, col: 1, length: 6 } as const
+    const aggregateRange = { sheetName: 'Sheet1', rowStart: 0, rowEnd: 5, col: 2, length: 6 } as const
+    const request = (
+      first: string,
+      second: string,
+    ): Parameters<typeof criterionCache.getOrBuildCompoundExactAggregate>[0] & { readonly useCompoundBucketIndex: true } => ({
+      criteriaPairs: [
+        {
+          range: criteriaRangeA,
+          criteria: { tag: ValueTag.String, value: first, stringId: strings.intern(first) },
+        },
+        {
+          range: criteriaRangeB,
+          criteria: { tag: ValueTag.String, value: second, stringId: strings.intern(second) },
+        },
+      ],
+      aggregateRange,
+      aggregateKind: 'sum',
+      useCompoundBucketIndex: true,
+    })
+
+    expect(criterionCache.getOrBuildCompoundExactAggregate(request('East', 'Retail'))).toEqual({
+      tag: ValueTag.Number,
+      value: 60,
+    })
+    const callsAfterFirstTuple = readTagCalls
+
+    expect(criterionCache.getOrBuildCompoundExactAggregate(request('West', 'Retail'))).toEqual({
+      tag: ValueTag.Number,
+      value: 90,
+    })
+    expect(readTagCalls).toBe(callsAfterFirstTuple)
+  })
+
   it('supports compiled operator criteria and validates matching range lengths', () => {
     const workbook = new WorkbookStore('criteria-cache-operators')
     const strings = new StringPool()

@@ -81,6 +81,47 @@ describe('DirtyTileIndexV3', () => {
     expect(index.getSpans(axisY)).toEqual([])
   })
 
+  it('marks visible and warm tiles for full-sheet dirty deltas', () => {
+    const index = new DirtyTileIndexV3()
+    const sheetMask = DirtyMaskV3.Value | DirtyMaskV3.Style | DirtyMaskV3.Text | DirtyMaskV3.Rect | DirtyMaskV3.Border
+
+    markWorkbookDeltaDirtyTilesV3(
+      index,
+      {
+        sheetOrdinal: 7,
+        dirty: {
+          axisX: new Uint32Array(),
+          axisY: new Uint32Array(),
+          cellRanges: new Uint32Array(),
+          sheets: Uint32Array.from([7, sheetMask]),
+        },
+      },
+      { dprBucket: 1 },
+    )
+
+    const topLeft = tileKeyFromCell({ sheetOrdinal: 7, dprBucket: 1, row: 0, col: 0 })
+    const deepSameSheet = tileKeyFromCell({ sheetOrdinal: 7, dprBucket: 1, row: 4096, col: 512 })
+    const otherSheet = tileKeyFromCell({ sheetOrdinal: 8, dprBucket: 1, row: 4096, col: 512 })
+    const expectedMask = sheetMask | DirtyMaskV3.AxisX
+
+    expect(index.getMask(topLeft)).toBe(expectedMask)
+    expect(index.getMask(deepSameSheet)).toBe(expectedMask)
+    expect(index.getMask(otherSheet)).toBe(0)
+    expect(index.getSpans(deepSameSheet)).toEqual([
+      {
+        colEnd: 127,
+        colStart: 0,
+        mask: expectedMask,
+        rowEnd: 31,
+        rowStart: 0,
+      },
+    ])
+
+    expect(index.consumeVisible([topLeft])).toEqual([topLeft])
+    expect(index.getUnconsumedMask(topLeft)).toBe(0)
+    expect(index.getUnconsumedMask(deepSameSheet)).toBe(expectedMask)
+  })
+
   it('expands true axis geometry damage through the rest of the tile', () => {
     const index = new DirtyTileIndexV3()
     markWorkbookDeltaDirtyTilesV3(

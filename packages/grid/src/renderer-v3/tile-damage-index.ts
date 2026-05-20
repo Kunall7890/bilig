@@ -17,6 +17,7 @@ export interface WorkbookDeltaDirtyRangesLikeV3 {
   readonly cellRanges: Uint32Array
   readonly axisX: Uint32Array
   readonly axisY: Uint32Array
+  readonly sheets?: Uint32Array | undefined
 }
 
 export interface WorkbookDeltaBatchLikeV3 {
@@ -183,6 +184,18 @@ export class DirtyTileIndexV3 {
     }
   }
 
+  markSheet(input: { readonly sheetOrdinal: number; readonly dprBucket: number; readonly mask: number }): void {
+    this.markCellRange({
+      colEnd: MAX_COLS - 1,
+      colStart: 0,
+      dprBucket: input.dprBucket,
+      mask: input.mask,
+      rowEnd: MAX_ROWS - 1,
+      rowStart: 0,
+      sheetOrdinal: input.sheetOrdinal,
+    })
+  }
+
   applyWorkbookDelta(batch: WorkbookDeltaBatchLikeV3, options: { readonly dprBucket: number }): void {
     markWorkbookDeltaDirtyTilesV3(this, batch, options)
   }
@@ -333,6 +346,13 @@ export function markWorkbookDeltaDirtyTilesV3(
       sheetOrdinal: batch.sheetOrdinal,
     })
   })
+  forEachDirtySheet(batch.dirty.sheets, (sheetOrdinal, mask) => {
+    index.markSheet({
+      dprBucket: options.dprBucket,
+      mask,
+      sheetOrdinal,
+    })
+  })
 }
 
 function forEachDirtyCellRange(
@@ -347,5 +367,14 @@ function forEachDirtyCellRange(
 function forEachDirtyAxisRange(ranges: Uint32Array, callback: (start: number, end: number, mask: number) => void): void {
   for (let offset = 0; offset + 2 < ranges.length; offset += 3) {
     callback(ranges[offset] ?? 0, ranges[offset + 1] ?? 0, ranges[offset + 2] ?? 0)
+  }
+}
+
+function forEachDirtySheet(sheets: Uint32Array | undefined, callback: (sheetOrdinal: number, mask: number) => void): void {
+  if (!sheets) {
+    return
+  }
+  for (let offset = 0; offset + 1 < sheets.length; offset += 2) {
+    callback(sheets[offset] ?? 0, sheets[offset + 1] ?? 0)
   }
 }

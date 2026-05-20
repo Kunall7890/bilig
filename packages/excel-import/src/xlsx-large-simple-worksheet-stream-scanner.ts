@@ -34,7 +34,7 @@ import {
   readLargeSimpleSheetFormatPrTagFromBytes,
   readLargeSimpleTableRelationshipIdsFromBytes,
 } from './xlsx-large-simple-metadata-byte-scan.js'
-import type { LargeSimpleSharedStringEntry } from './xlsx-large-simple-shared-strings.js'
+import type { LargeSimpleSharedStrings } from './xlsx-large-simple-shared-strings.js'
 import type { ImportedWorkbookStringPool } from './xlsx-large-simple-string-pool.js'
 import { stringItemText } from './xlsx-large-simple-worksheet-stream-text.js'
 import {
@@ -90,7 +90,7 @@ export function parseLargeSimpleWorksheetCellsFromChunks(
   options: {
     readonly hasSharedStrings: boolean
     readonly retainCells?: boolean
-    readonly sharedStrings?: readonly LargeSimpleSharedStringEntry[]
+    readonly sharedStrings?: LargeSimpleSharedStrings
     readonly deferSharedStrings?: boolean
     readonly retainMetadataXml?: boolean
     readonly sheetName?: string
@@ -178,10 +178,9 @@ class LargeSimpleWorksheetChunkScanner {
   private sheetFormatPr: LargeSimpleWorksheetScannedMetadata['sheetFormatPr']
   private sheetSlicerListExtXml: string | undefined
   private tableRelationshipIds: string[] | undefined
-  private readonly metadataSnippets: string[] = []
   private readonly hasSharedStrings: boolean
   private readonly retainCells: boolean
-  private readonly sharedStrings: readonly LargeSimpleSharedStringEntry[]
+  private readonly sharedStrings: LargeSimpleSharedStrings
   private readonly deferSharedStrings: boolean
   private readonly retainMetadataXml: boolean
   private readonly allowUnsupportedFormulaText: boolean
@@ -197,7 +196,7 @@ class LargeSimpleWorksheetChunkScanner {
     options: {
       readonly hasSharedStrings: boolean
       readonly retainCells: boolean
-      readonly sharedStrings: readonly LargeSimpleSharedStringEntry[]
+      readonly sharedStrings: LargeSimpleSharedStrings
       readonly deferSharedStrings: boolean
       readonly retainMetadataXml: boolean
       readonly sheetName: string | undefined
@@ -281,7 +280,7 @@ class LargeSimpleWorksheetChunkScanner {
               }
             : null,
       },
-      metadataXml: this.metadataSnippets.length > 0 ? `<worksheet>${this.metadataSnippets.join('')}</worksheet>` : undefined,
+      metadataXml: undefined,
       metadata: this.buildMetadataScan(),
     }
   }
@@ -615,15 +614,11 @@ class LargeSimpleWorksheetChunkScanner {
   private collectMetadataElement(localName: string, tagEnd: number, final: boolean): boolean {
     if (isSelfClosingTag(this.buffer, tagEnd)) {
       const handled = this.retainMetadataXml && this.collectTypedMetadataElement(localName, this.index, tagEnd + 1)
-      if (!handled && this.retainMetadataXml && localName === 'dataValidations') {
-        this.failed = true
-        return true
-      }
       if (!handled) {
         this.countMetadataElement(localName, tagEnd + 1, tagEnd + 1)
       }
       if (this.retainMetadataXml && !handled) {
-        this.metadataSnippets.push(decodeBytes(this.buffer, this.index, tagEnd + 1))
+        this.failed = true
       }
       this.index = tagEnd + 1
       return true
@@ -647,15 +642,11 @@ class LargeSimpleWorksheetChunkScanner {
       return false
     }
     const handled = this.retainMetadataXml && this.collectTypedMetadataElement(localName, this.index, closing.end)
-    if (!handled && this.retainMetadataXml && localName === 'dataValidations') {
-      this.failed = true
-      return true
-    }
     if (!handled) {
       this.countMetadataElement(localName, tagEnd + 1, closing.start)
     }
     if (this.retainMetadataXml && !handled) {
-      this.metadataSnippets.push(decodeBytes(this.buffer, this.index, closing.end))
+      this.failed = true
     }
     this.index = closing.end
     return true
@@ -936,7 +927,7 @@ function readRichTextCellArtifact(
   column: number,
   type: string | null,
   sharedStringIndex: number | null,
-  sharedStrings: readonly LargeSimpleSharedStringEntry[],
+  sharedStrings: LargeSimpleSharedStrings,
 ): WorkbookRichTextCellSnapshot | undefined {
   if (type === 's') {
     const entry = sharedStringIndex === null ? undefined : sharedStrings[sharedStringIndex]

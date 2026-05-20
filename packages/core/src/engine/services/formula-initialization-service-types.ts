@@ -19,10 +19,13 @@ export interface EngineFormulaInitializationService {
   readonly initializeCellFormulasAtNow: (refs: readonly EngineCellMutationRef[], potentialNewCells?: number) => void
   readonly initializeFormulaSourcesAtNow: (refs: EngineFormulaSourceRefs, potentialNewCells?: number) => void
   readonly initializePreparedCellFormulasAt: (
-    refs: readonly PreparedFormulaInitializationRef[],
+    refs: InitialFormulaEntryRefSource<PreparedFormulaInitializationRef>,
     potentialNewCells?: number,
   ) => Effect.Effect<void, EngineMutationError>
-  readonly initializePreparedCellFormulasAtNow: (refs: readonly PreparedFormulaInitializationRef[], potentialNewCells?: number) => void
+  readonly initializePreparedCellFormulasAtNow: (
+    refs: InitialFormulaEntryRefSource<PreparedFormulaInitializationRef>,
+    potentialNewCells?: number,
+  ) => void
   readonly initializeHydratedPreparedCellFormulasAt: (
     refs: InitialFormulaEntryRefSource<HydratedPreparedFormulaInitializationRef>,
     potentialNewCells?: number,

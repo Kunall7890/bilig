@@ -63,6 +63,9 @@ export function isClipboardShortcut(event: GridKeyboardModifierState): boolean {
     return false
   }
   const normalizedKey = event.key.toLowerCase()
+  if (event.shiftKey && normalizedKey !== 'v') {
+    return false
+  }
   return normalizedKey === 'c' || normalizedKey === 'x' || normalizedKey === 'v'
 }
 

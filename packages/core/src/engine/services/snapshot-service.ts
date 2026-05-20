@@ -77,7 +77,10 @@ export function createEngineSnapshotService(args: {
   readonly initializeCellFormulasAt: (refs: readonly EngineCellMutationRef[], potentialNewCells?: number) => void
   readonly initializeFormulaSourcesAt?: (refs: EngineFormulaSourceRefs, potentialNewCells?: number) => void
   readonly resolveTemplateForCell?: (source: string, row: number, col: number) => FormulaTemplateResolution
-  readonly initializePreparedCellFormulasAt?: (refs: readonly PreparedFormulaInitializationRef[], potentialNewCells?: number) => void
+  readonly initializePreparedCellFormulasAt?: (
+    refs: InitialFormulaEntryRefSource<PreparedFormulaInitializationRef>,
+    potentialNewCells?: number,
+  ) => void
   readonly initializeHydratedPreparedCellFormulasAt?: (
     refs: InitialFormulaEntryRefSource<HydratedPreparedFormulaInitializationRef>,
     potentialNewCells?: number,

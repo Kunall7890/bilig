@@ -256,7 +256,7 @@ async function exerciseClickAwayEditCommit(
   await expect(input.renderer).toHaveAttribute('data-v3-canvas-proof-layer', 'not-mounted')
 }
 
-async function dragProductSelectedContentLane(page: Page, startColumn: number, startRow: number, targetColumn: number, targetRow: number) {
+async function dragProductSelectionBorder(page: Page, startColumn: number, startRow: number, targetColumn: number, targetRow: number) {
   const gridLocator = page.getByTestId('sheet-grid')
   await expect(gridLocator).toBeVisible()
   const grid = await gridLocator.boundingBox()
@@ -265,9 +265,8 @@ async function dragProductSelectedContentLane(page: Page, startColumn: number, s
   }
 
   const startLeft = await getProductColumnLeft(page, startColumn)
-  const startWidth = await getProductColumnWidth(page, startColumn)
-  const sourceX = grid.x + startLeft + Math.min(32, Math.floor(startWidth * 0.35))
-  const sourceY = grid.y + PRODUCT_HEADER_HEIGHT + startRow * PRODUCT_ROW_HEIGHT + Math.floor(PRODUCT_ROW_HEIGHT / 2)
+  const sourceX = grid.x + startLeft + 3
+  const sourceY = grid.y + PRODUCT_HEADER_HEIGHT + startRow * PRODUCT_ROW_HEIGHT + 2
   const targetLeft = await getProductColumnLeft(page, targetColumn)
   const targetWidth = await getProductColumnWidth(page, targetColumn)
   const targetX = grid.x + targetLeft + Math.floor(targetWidth / 2)
@@ -1210,7 +1209,7 @@ test('@browser-webgpu @browser-deep moved content delete preserves selected fill
   await formulaInput.fill(movedText)
   await formulaInput.press('Enter')
   await expect(formulaInput).toHaveValue(movedText)
-  await dragProductSelectedContentLane(page, 1, 1, 3, 3)
+  await dragProductSelectionBorder(page, 1, 1, 3, 3)
   await expect(page.getByTestId('status-selection')).toHaveText('Sheet1!D4')
 
   await clickProductCell(page, 1, 1)
@@ -1583,7 +1582,7 @@ test('@browser-webgpu @browser-perf main workbook shell keeps typegpu content vi
   await saveReadbackArtifact(page, testInfo, 'main-workbook-grid-hover-scroll-readback.png', 'main-workbook-grid-hover-scroll-readback')
 })
 
-test('@browser-webgpu @browser-perf main workbook shell keeps typegpu text visible across tile boundary scroll and resize', async ({
+test('@browser-webgpu @browser-perf main workbook shell keeps grid content and native text visible across tile boundary scroll and resize', async ({
   page,
 }, testInfo) => {
   test.slow()

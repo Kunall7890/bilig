@@ -71,6 +71,46 @@ test('@browser-ci web app keeps deleted filled cells stable after click-away and
   await expect(formulaInput).toHaveValue('')
 })
 
+test('@browser-ci web app preserves filled-cell presentation when formula-bar clear commits as delete', async ({ page }) => {
+  const documentId = createTestDocumentId('playwright-formula-clear-fill-stability')
+  const text = 'formula-clear-keeps-fill'
+  await page.setViewportSize({ width: 1166, height: 820 })
+  await page.goto(`/?document=${encodeURIComponent(documentId)}&persist=0&sheet=Sheet1&cell=A1`)
+  await waitForWorkbookReady(page)
+
+  const formulaInput = page.getByTestId('formula-input')
+
+  await clickProductCell(page, 3, 9)
+  await formulaInput.fill(text)
+  await formulaInput.press('Enter')
+  await expect.poll(() => nativeTextRunTextAt(page, 3, 9)).toBe(text)
+
+  await clickProductCell(page, 3, 9)
+  await pickToolbarPresetColor(page, 'Fill color', 'green')
+  expect(
+    Math.min(...(await sampleGreenFillPixelsAcrossFrames(page, 3, 9, 4))),
+    'setup should visibly paint D10 green before formula-bar clear',
+  ).toBeGreaterThan(120)
+
+  await formulaInput.fill('')
+  await formulaInput.press('Enter')
+  await expect(formulaInput).toHaveValue('')
+  await expect.poll(() => nativeTextRunTextAt(page, 3, 9)).toBe('')
+  expect(
+    Math.min(...(await sampleGreenFillPixelsAcrossFrames(page, 3, 9, 4))),
+    'formula-bar clear should not flash the retained fill to default while commit delete is optimistic',
+  ).toBeGreaterThan(120)
+
+  await clickProductCell(page, 5, 11)
+  await expect.poll(() => nativeTextRunsInclude(page, text)).toBe(false)
+  await expect.poll(() => countGreenFillPixelsInCell(page, 3, 9)).toBeGreaterThan(120)
+
+  await clickProductCell(page, 3, 9)
+  await expect(formulaInput).toHaveValue('')
+  await expect.poll(() => nativeTextRunsInclude(page, text)).toBe(false)
+  await expect.poll(() => countGreenFillPixelsInCell(page, 3, 9)).toBeGreaterThan(120)
+})
+
 test('@browser-ci web app applies fill color after moving text into an empty tile range', async ({ page }) => {
   const documentId = createTestDocumentId('playwright-move-text-fill-range')
   const text = 'moved-fill-stability'
@@ -86,7 +126,7 @@ test('@browser-ci web app applies fill color after moving text into an empty til
   await formulaInput.press('Enter')
   await expect.poll(() => nativeTextRunTextAt(page, 1, 1)).toBe(text)
 
-  await dragProductSelectedContentLane(page, 1, 1, 3, 4)
+  await dragProductSelectionBorder(page, 1, 1, 3, 4)
   await expect.poll(() => nativeTextRunTextAt(page, 1, 1)).toBe('')
   await expect.poll(() => nativeTextRunTextAt(page, 3, 4)).toBe(text)
 
@@ -199,7 +239,7 @@ async function sampleGreenFillPixelsAcrossFrames(
   return await sampleGreenFillPixelsAcrossFrames(page, columnIndex, rowIndex, remainingSamples - 1, [...samples, pixels])
 }
 
-async function dragProductSelectedContentLane(page: Page, startColumn: number, startRow: number, targetColumn: number, targetRow: number) {
+async function dragProductSelectionBorder(page: Page, startColumn: number, startRow: number, targetColumn: number, targetRow: number) {
   const gridLocator = page.getByTestId('sheet-grid')
   await expect(gridLocator).toBeVisible()
   const grid = await gridLocator.boundingBox()
@@ -209,17 +249,12 @@ async function dragProductSelectedContentLane(page: Page, startColumn: number, s
 
   const startLeft = await getProductColumnLeft(page, startColumn)
   const startTop = await getProductRowTop(page, startRow)
-  const startWidth = await getProductColumnWidth(page, startColumn)
-  const startHeight = await getProductRowHeight(page, startRow)
   const targetLeft = await getProductColumnLeft(page, targetColumn)
   const targetTop = await getProductRowTop(page, targetRow)
   const targetWidth = await getProductColumnWidth(page, targetColumn)
   const targetHeight = await getProductRowHeight(page, targetRow)
 
-  await page.mouse.move(
-    grid.x + startLeft + Math.min(32, Math.floor(startWidth * 0.35)),
-    grid.y + PRODUCT_HEADER_HEIGHT + startTop + Math.floor(startHeight / 2),
-  )
+  await page.mouse.move(grid.x + startLeft + 3, grid.y + PRODUCT_HEADER_HEIGHT + startTop + 2)
   await page.mouse.down()
   await page.mouse.move(
     grid.x + targetLeft + Math.floor(targetWidth / 2),

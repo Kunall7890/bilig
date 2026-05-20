@@ -2,14 +2,25 @@ import { useEffect, useMemo, useState, type CSSProperties } from 'react'
 import { MAX_COLS, MAX_ROWS } from '@bilig/protocol'
 import type { GridGeometrySnapshot } from './gridGeometry.js'
 import type { GridSelection, Item, Rectangle } from './gridTypes.js'
+import { splitSelectionFillRangeAroundActiveCell } from './gridSelectionFillRanges.js'
 import type { WorkbookGridScrollStore } from './workbookGridScrollStore.js'
 import { workbookThemeColors } from './workbookTheme.js'
 
 type VisualRectRole = 'selection-fill' | 'selection-border' | 'active-border' | 'fill-handle' | 'header-fill' | 'hover-fill'
 
+interface BorderSides {
+  readonly bottom: boolean
+  readonly left: boolean
+  readonly right: boolean
+  readonly top: boolean
+}
+
 export interface GridSelectionVisualRect {
   readonly role: VisualRectRole
+  readonly key: string
   readonly bounds: Rectangle
+  readonly borderSides?: BorderSides | undefined
+  readonly strokeWidth?: number | undefined
 }
 
 export interface GridSelectionVisualOverlayProps {
@@ -75,6 +86,7 @@ export function GridSelectionVisualOverlay(props: GridSelectionVisualOverlayProp
       {rects.map((rect) => (
         <div
           className={classNameForRole(rect.role)}
+          data-grid-selection-visual-key={rect.key}
           data-grid-selection-visual-role={rect.role}
           key={keyForRect(rect)}
           style={styleForRect(rect)}
@@ -114,8 +126,10 @@ function appendHoverVisualRects(
   if (input.selectionRange && cellInRange(hoverCell, input.selectionRange)) {
     return
   }
+  let segmentIndex = 0
   for (const bounds of input.geometry.rangeScreenRects({ x: hoverCell[0], y: hoverCell[1], width: 1, height: 1 })) {
-    appendInsetRect(rects, 'hover-fill', bounds, 1, 1)
+    appendInsetRect(rects, 'hover-fill', `hover-fill:cell:${hoverCell[0]}:${hoverCell[1]}:${segmentIndex}`, bounds, 1, 1)
+    segmentIndex += 1
   }
 }
 
@@ -135,30 +149,55 @@ function appendBodySelectionVisualRects(
   const hasAxisSelection = input.gridSelection.columns.length > 0 || input.gridSelection.rows.length > 0
   if (hasAxisSelection) {
     const activeCell = input.gridSelection.current?.cell ?? [input.selectionRange.x, input.selectionRange.y]
-    appendCellBorderRects(rects, input.geometry, activeCell, 'active-border')
+    appendCellBorderRects(rects, input.geometry, activeCell, 'active-border', `active-border:cell:${activeCell[0]}:${activeCell[1]}`)
     return
   }
 
   const isMultiCellSelection = input.selectionRange.width > 1 || input.selectionRange.height > 1
+  const activeCell = input.gridSelection.current?.cell ?? null
   if (isMultiCellSelection) {
-    for (const bounds of input.geometry.rangeScreenRects(input.selectionRange)) {
-      appendInsetRect(rects, 'selection-fill', bounds, 1, 1)
+    let fillIndex = 0
+    for (const fillRange of splitSelectionFillRangeAroundActiveCell(input.selectionRange, activeCell)) {
+      let segmentIndex = 0
+      for (const bounds of input.geometry.rangeScreenRects(fillRange)) {
+        appendInsetRect(rects, 'selection-fill', stableRangeKey('selection-fill:range', fillRange, fillIndex, segmentIndex), bounds, 1, 1)
+        segmentIndex += 1
+      }
+      fillIndex += 1
     }
   }
 
-  for (const bounds of input.geometry.rangeScreenRects(input.selectionRange)) {
-    rects.push({ role: 'selection-border', bounds })
+  if (isMultiCellSelection) {
+    let segmentIndex = 0
+    for (const bounds of input.geometry.rangeScreenRects(input.selectionRange)) {
+      rects.push({
+        role: 'selection-border',
+        key: stableRangeKey('selection-border:range', input.selectionRange, 0, segmentIndex),
+        bounds,
+      })
+      segmentIndex += 1
+    }
+  } else {
+    appendCellBorderRects(
+      rects,
+      input.geometry,
+      [input.selectionRange.x, input.selectionRange.y],
+      'active-border',
+      `active-border:cell:${input.selectionRange.x}:${input.selectionRange.y}`,
+    )
   }
 
-  const activeCell = input.gridSelection.current?.cell ?? null
   if (activeCell && isMultiCellSelection && cellInRange(activeCell, input.selectionRange)) {
-    appendCellBorderRects(rects, input.geometry, activeCell, 'active-border')
+    appendCellBorderRects(rects, input.geometry, activeCell, 'active-border', `active-border:cell:${activeCell[0]}:${activeCell[1]}`, {
+      borderSides: resolveActiveCellBorderSides(activeCell, input.selectionRange),
+      strokeWidth: 2,
+    })
   }
 
   if (input.showFillHandle) {
     const handle = input.geometry.fillHandleScreenRect(input.selectionRange)
     if (handle) {
-      rects.push({ role: 'fill-handle', bounds: handle })
+      rects.push({ role: 'fill-handle', key: stableRangeKey('fill-handle:range', input.selectionRange, 0, 0), bounds: handle })
     }
   }
 }
@@ -192,8 +231,13 @@ function appendAxisSelectionVisualRects(
       continue
     }
     const bounds = input.geometry.columnHeaderScreenRect(index)
-    if (bounds) {
-      appendInsetRect(rects, 'header-fill', bounds, 1, 1)
+    const clip =
+      index < input.geometry.camera.frozenColumnCount
+        ? paneFrame(input.geometry, 'column-header-frozen')
+        : paneFrame(input.geometry, 'column-header-body')
+    const clipped = bounds && clip ? clipRect(bounds, clip) : null
+    if (clipped) {
+      appendInsetRect(rects, 'header-fill', `header-fill:column:${index}`, clipped, 1, 1)
     }
   }
   for (const index of visibleRowIndexes(input.geometry)) {
@@ -201,17 +245,39 @@ function appendAxisSelectionVisualRects(
       continue
     }
     const bounds = input.geometry.rowHeaderScreenRect(index)
-    if (bounds) {
-      appendInsetRect(rects, 'header-fill', bounds, 1, 1)
+    const clip =
+      index < input.geometry.camera.frozenRowCount
+        ? paneFrame(input.geometry, 'row-header-frozen')
+        : paneFrame(input.geometry, 'row-header-body')
+    const clipped = bounds && clip ? clipRect(bounds, clip) : null
+    if (clipped) {
+      appendInsetRect(rects, 'header-fill', `header-fill:row:${index}`, clipped, 1, 1)
     }
   }
 
+  const activeCell = input.gridSelection.current?.cell ?? input.selectedCell
   if (input.gridSelection.columns.length > 0) {
     for (const range of columnRanges) {
       const start = Math.max(0, range.start)
       const endExclusive = Math.max(start + 1, Math.min(MAX_COLS, range.endExclusive))
-      for (const bounds of input.geometry.rangeScreenRects({ x: start, y: 0, width: endExclusive - start, height: MAX_ROWS })) {
-        appendInsetRect(rects, 'selection-fill', bounds, 1, 1)
+      let fillIndex = 0
+      for (const fillRange of splitSelectionFillRangeAroundActiveCell(
+        { x: start, y: 0, width: endExclusive - start, height: MAX_ROWS },
+        activeCell,
+      )) {
+        let segmentIndex = 0
+        for (const bounds of input.geometry.rangeScreenRects(fillRange)) {
+          appendInsetRect(
+            rects,
+            'selection-fill',
+            stableRangeKey(`selection-fill:columns:${start}:${endExclusive}`, fillRange, fillIndex, segmentIndex),
+            bounds,
+            1,
+            1,
+          )
+          segmentIndex += 1
+        }
+        fillIndex += 1
       }
     }
   }
@@ -219,8 +285,24 @@ function appendAxisSelectionVisualRects(
     for (const range of rowRanges) {
       const start = Math.max(0, range.start)
       const endExclusive = Math.max(start + 1, Math.min(MAX_ROWS, range.endExclusive))
-      for (const bounds of input.geometry.rangeScreenRects({ x: 0, y: start, width: MAX_COLS, height: endExclusive - start })) {
-        appendInsetRect(rects, 'selection-fill', bounds, 1, 1)
+      let fillIndex = 0
+      for (const fillRange of splitSelectionFillRangeAroundActiveCell(
+        { x: 0, y: start, width: MAX_COLS, height: endExclusive - start },
+        activeCell,
+      )) {
+        let segmentIndex = 0
+        for (const bounds of input.geometry.rangeScreenRects(fillRange)) {
+          appendInsetRect(
+            rects,
+            'selection-fill',
+            stableRangeKey(`selection-fill:rows:${start}:${endExclusive}`, fillRange, fillIndex, segmentIndex),
+            bounds,
+            1,
+            1,
+          )
+          segmentIndex += 1
+        }
+        fillIndex += 1
       }
     }
   }
@@ -231,13 +313,47 @@ function appendCellBorderRects(
   geometry: GridGeometrySnapshot,
   cell: readonly [number, number],
   role: VisualRectRole,
+  keyPrefix: string,
+  options?: {
+    readonly borderSides?: BorderSides | undefined
+    readonly strokeWidth?: number | undefined
+  },
 ): void {
+  let segmentIndex = 0
   for (const bounds of geometry.rangeScreenRects({ x: cell[0], y: cell[1], width: 1, height: 1 })) {
-    rects.push({ role, bounds })
+    rects.push({
+      role,
+      key: `${keyPrefix}:${segmentIndex}`,
+      bounds,
+      borderSides: options?.borderSides,
+      strokeWidth: options?.strokeWidth,
+    })
+    segmentIndex += 1
   }
 }
 
-function appendInsetRect(rects: GridSelectionVisualRect[], role: VisualRectRole, bounds: Rectangle, insetX: number, insetY: number): void {
+function resolveActiveCellBorderSides(
+  cell: readonly [number, number],
+  range: Pick<Rectangle, 'x' | 'y' | 'width' | 'height'>,
+): BorderSides {
+  const right = range.x + range.width - 1
+  const bottom = range.y + range.height - 1
+  return {
+    bottom: cell[1] < bottom,
+    left: cell[0] > range.x,
+    right: cell[0] < right,
+    top: cell[1] > range.y,
+  }
+}
+
+function appendInsetRect(
+  rects: GridSelectionVisualRect[],
+  role: VisualRectRole,
+  key: string,
+  bounds: Rectangle,
+  insetX: number,
+  insetY: number,
+): void {
   const insetBounds = {
     x: bounds.x + insetX,
     y: bounds.y + insetY,
@@ -245,8 +361,17 @@ function appendInsetRect(rects: GridSelectionVisualRect[], role: VisualRectRole,
     height: Math.max(0, bounds.height - insetY * 2),
   }
   if (insetBounds.width > 0 && insetBounds.height > 0) {
-    rects.push({ role, bounds: insetBounds })
+    rects.push({ role, key, bounds: insetBounds })
   }
+}
+
+function stableRangeKey(
+  prefix: string,
+  range: Pick<Rectangle, 'x' | 'y' | 'width' | 'height'>,
+  fillIndex: number,
+  segmentIndex: number,
+): string {
+  return `${prefix}:${range.x}:${range.y}:${range.width}:${range.height}:${fillIndex}:${segmentIndex}`
 }
 
 interface AxisSelectionRange {
@@ -310,6 +435,21 @@ function isIndexSelected(index: number, ranges: readonly AxisSelectionRange[]): 
   return ranges.some((range) => index >= range.start && index < range.endExclusive)
 }
 
+function paneFrame(geometry: GridGeometrySnapshot, kind: GridGeometrySnapshot['camera']['panes'][number]['kind']): Rectangle | null {
+  return geometry.camera.panes.find((pane) => pane.kind === kind)?.frame ?? null
+}
+
+function clipRect(rect: Rectangle, clip: Rectangle): Rectangle | null {
+  const x = Math.max(rect.x, clip.x)
+  const y = Math.max(rect.y, clip.y)
+  const right = Math.min(rect.x + rect.width, clip.x + clip.width)
+  const bottom = Math.min(rect.y + rect.height, clip.y + clip.height)
+  if (right <= x || bottom <= y) {
+    return null
+  }
+  return { x, y, width: right - x, height: bottom - y }
+}
+
 function cellInRange(cell: Item, range: Pick<Rectangle, 'x' | 'y' | 'width' | 'height'>): boolean {
   return cell[0] >= range.x && cell[0] < range.x + range.width && cell[1] >= range.y && cell[1] < range.y + range.height
 }
@@ -323,16 +463,16 @@ function classNameForRole(role: VisualRectRole): string {
     case 'hover-fill':
       return 'absolute box-border'
     case 'selection-border':
-      return 'absolute box-border border border-[var(--wb-accent)]'
+      return 'absolute box-border'
     case 'active-border':
-      return 'absolute box-border border-2 border-[var(--wb-accent)]'
+      return 'absolute box-border'
     case 'fill-handle':
       return 'absolute box-border rounded-[1px] border border-[var(--wb-surface)] bg-[var(--wb-accent)]'
   }
 }
 
 function keyForRect(rect: GridSelectionVisualRect): string {
-  return `${rect.role}:${rect.bounds.x}:${rect.bounds.y}:${rect.bounds.width}:${rect.bounds.height}`
+  return `${rect.role}:${rect.key}`
 }
 
 function styleForRect(rect: GridSelectionVisualRect): CSSProperties {
@@ -343,9 +483,18 @@ function styleForRect(rect: GridSelectionVisualRect): CSSProperties {
     width: rect.bounds.width,
   }
   if (rect.role === 'selection-border' || rect.role === 'active-border') {
+    const borderSides = rect.borderSides ?? { bottom: true, left: true, right: true, top: true }
+    const strokeWidth = rect.strokeWidth ?? (rect.role === 'active-border' ? 2 : 1)
     return {
       ...base,
       backgroundColor: 'transparent',
+      borderBottomWidth: borderSides.bottom ? strokeWidth : 0,
+      borderColor: workbookThemeColors.accent,
+      borderLeftWidth: borderSides.left ? strokeWidth : 0,
+      borderRightWidth: borderSides.right ? strokeWidth : 0,
+      borderStyle: 'solid',
+      borderTopWidth: borderSides.top ? strokeWidth : 0,
+      boxSizing: 'border-box',
     }
   }
   if (rect.role === 'fill-handle') {
@@ -368,6 +517,6 @@ function styleForRect(rect: GridSelectionVisualRect): CSSProperties {
   }
   return {
     ...base,
-    backgroundColor: 'rgba(33, 86, 58, 0.08)',
+    backgroundColor: workbookThemeColors.selectionFill,
   }
 }

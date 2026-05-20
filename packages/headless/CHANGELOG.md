@@ -4,6 +4,81 @@ All notable changes to `@bilig/headless` will be documented in this file.
 
 This package is released as part of the aligned bilig library package set.
 
+## 0.40.18
+
+- Release type: patch
+- Previous libraries tag: libraries-v0.40.17
+- Manual override: no
+
+## Fixes
+- perf(xlsx): scope shared strings per sheet (ef6dc2b2)
+
+## 0.40.17
+
+- Release type: patch
+- Previous libraries tag: libraries-v0.40.16
+- Manual override: no
+
+## Fixes
+- perf(xlsx): avoid eager shared-string arena copies (9e0b47aa)
+- perf(core): summarize far shifted aggregate pages (f90f01a5)
+
+## 0.40.16
+
+- Release type: patch
+- Previous libraries tag: libraries-v0.40.15
+- Manual override: no
+
+## Fixes
+- fix(xlsx): fall back on untyped streamed metadata (2ee22194)
+
+## 0.40.15
+
+- Release type: patch
+- Previous libraries tag: libraries-v0.40.14
+- Manual override: no
+
+## Fixes
+- perf(core): bulk bind fresh direct scalar runs (047b854a)
+
+## 0.40.14
+
+- Release type: patch
+- Previous libraries tag: libraries-v0.40.13
+- Manual override: no
+
+## Fixes
+- perf(core): bucket compound exact criteria aggregates (62cd7e72)
+
+## 0.40.13
+
+- Release type: patch
+- Previous libraries tag: libraries-v0.40.12
+- Manual override: no
+
+## Fixes
+- fix(xlsx): compact near-dense import coordinates (d15533c7)
+- perf(core): restore prepared runtime family runs (4312390b)
+
+## 0.40.12
+
+- Release type: patch
+- Previous libraries tag: libraries-v0.40.11
+- Manual override: no
+
+## Fixes
+- perf(core): replay large formula family runs (03488e2d)
+- fix(xlsx): keep rich shared strings lazy (d7acef49)
+
+## 0.40.11
+
+- Release type: patch
+- Previous libraries tag: libraries-v0.40.10
+- Manual override: no
+
+## Fixes
+- fix(xlsx): pack shared string arena storage (dd790620)
+
 ## 0.40.10
 
 - Release type: patch

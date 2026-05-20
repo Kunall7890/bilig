@@ -275,7 +275,7 @@ test('web app preserves the active cell inside a selected area and collapses on 
   await expect(page.getByTestId('status-selection')).toHaveText('Sheet1!B2:D4')
   await expect(page.getByTestId('name-box')).toHaveValue('B2:D4')
   await expect(page.getByTestId('sheet-grid-focus-target')).toHaveAttribute('aria-label', 'Sheet1 D4')
-  await expect(page.locator('[data-grid-selection-visual-role="selection-fill"]')).toHaveCount(1)
+  await expect(page.locator('[data-grid-selection-visual-role="selection-fill"]')).toHaveCount(2)
   await expect(page.locator('[data-grid-selection-visual-role="selection-border"]')).toHaveCount(1)
   await expect(page.locator('[data-grid-selection-visual-role="active-border"]')).toHaveCount(1)
   await expect(page.locator('[data-grid-selection-visual-role="fill-handle"]')).toHaveCount(1)
@@ -285,8 +285,8 @@ test('web app preserves the active cell inside a selected area and collapses on 
   await expect(page.getByTestId('name-box')).toHaveValue('C3')
   await expect(page.getByTestId('sheet-grid-focus-target')).toHaveAttribute('aria-label', 'Sheet1 C3')
   await expect(page.locator('[data-grid-selection-visual-role="selection-fill"]')).toHaveCount(0)
-  await expect(page.locator('[data-grid-selection-visual-role="active-border"]')).toHaveCount(0)
-  await expect(page.locator('[data-grid-selection-visual-role="selection-border"]')).toHaveCount(1)
+  await expect(page.locator('[data-grid-selection-visual-role="active-border"]')).toHaveCount(1)
+  await expect(page.locator('[data-grid-selection-visual-role="selection-border"]')).toHaveCount(0)
 })
 
 test('@browser-ci web app keeps reverse-drag range selection chrome geometrically aligned', async ({ page }) => {
@@ -310,6 +310,20 @@ test('@browser-ci web app keeps reverse-drag range selection chrome geometricall
   await expectVisualRectNear(page.locator('[data-grid-selection-visual-role="selection-border"]'), expectedRange, 'selection border')
   await expectVisualRectNear(page.locator('[data-grid-selection-visual-role="active-border"]'), expectedActiveCell, 'active cell border')
   await expectVisualRectNear(page.locator('[data-grid-selection-visual-role="fill-handle"]'), expectedFillHandle, 'fill handle')
+  await expectBorderStyle(page.locator('[data-grid-selection-visual-role="selection-border"]'), {
+    bottom: '1px',
+    boxShadow: 'none',
+    left: '1px',
+    right: '1px',
+    top: '1px',
+  })
+  await expectBorderStyle(page.locator('[data-grid-selection-visual-role="active-border"]'), {
+    bottom: '0px',
+    boxShadow: 'none',
+    left: '2px',
+    right: '0px',
+    top: '2px',
+  })
 })
 
 test('@browser-ci web app keeps active cell chrome synchronized inside a keyboard-cycled range', async ({ page }) => {
@@ -357,6 +371,45 @@ test('@browser-ci web app keeps active cell chrome synchronized inside a keyboar
     'active cell border after enter',
   )
   await expectVisualRectNear(page.locator('[data-grid-selection-visual-role="fill-handle"]'), expectedFillHandle, 'fill handle after enter')
+
+  await page.getByTestId('sheet-grid-focus-target').press('ArrowRight')
+  await expect(page.getByTestId('status-selection')).toHaveText('Sheet1!D3')
+  await expect(page.getByTestId('name-box')).toHaveValue('D3')
+  await expect(page.getByTestId('sheet-grid-focus-target')).toHaveAttribute('aria-label', 'Sheet1 D3')
+  await expect(page.locator('[data-grid-selection-visual-role="selection-border"]')).toHaveCount(0)
+  await expectVisualRectNear(
+    page.locator('[data-grid-selection-visual-role="active-border"]'),
+    await getProductCellRangeBox(page, 3, 2, 3, 2),
+    'collapsed active cell border after arrow',
+  )
+})
+
+test('@browser-ci web app starts a fresh area selection from the selected range interior', async ({ page }) => {
+  await page.goto(`/?document=${encodeURIComponent(createTestDocumentId('playwright-interior-drag-selects-area'))}&persist=0`)
+  await waitForWorkbookReady(page)
+
+  await writeCellValue(page, 'B2', 'keep-b2')
+  await writeCellValue(page, 'D4', 'keep-d4')
+
+  await dragProductBodySelection(page, 1, 1, 3, 3)
+  await expect(page.getByTestId('status-selection')).toHaveText('Sheet1!B2:D4')
+
+  await dragProductSelectedInterior(page, 1, 1, 5, 5)
+  await expect(page.getByTestId('status-selection')).toHaveText('Sheet1!B2:F6')
+  await expect(page.getByTestId('name-box')).toHaveValue('B2:F6')
+
+  await expectVisualRectNear(
+    page.locator('[data-grid-selection-visual-role="selection-border"]'),
+    await getProductCellRangeBox(page, 1, 1, 5, 5),
+    'interior-drag selection border',
+  )
+
+  await selectAddress(page, 'B2')
+  await expect(page.getByTestId('formula-input')).toHaveValue('keep-b2')
+  await selectAddress(page, 'D4')
+  await expect(page.getByTestId('formula-input')).toHaveValue('keep-d4')
+  await selectAddress(page, 'F6')
+  await expect(page.getByTestId('formula-input')).toHaveValue('')
 })
 
 test('web app clips spilled text before the active selected cell', async ({ page }) => {
@@ -391,12 +444,12 @@ test('web app clips spilled text before far horizontally scrolled selections', a
   const runBox = await page
     .locator(`[data-native-text-run-row="${String(rowIndex)}"][data-native-text-run-col="${String(sourceColumnIndex)}"]`)
     .boundingBox()
-  const selectionBorderBox = await page.locator('[data-grid-selection-visual-role="selection-border"]').boundingBox()
-  if (!runBox || !selectionBorderBox) {
+  const activeBorderBox = await page.locator('[data-grid-selection-visual-role="active-border"]').boundingBox()
+  if (!runBox || !activeBorderBox) {
     throw new Error('far grid text run or selection border is not visible')
   }
 
-  expect(runBox.x + runBox.width).toBeLessThanOrEqual(selectionBorderBox.x + 0.5)
+  expect(runBox.x + runBox.width).toBeLessThanOrEqual(activeBorderBox.x + 0.5)
 })
 
 test('web app clips spilled text before selected whole columns on non-active rows', async ({ page }) => {
@@ -757,6 +810,29 @@ async function expectVisualRectNear(
   expect(actual.height, `${label} height`).toBeCloseTo(expected.height, 0)
 }
 
+async function expectBorderStyle(
+  locator: ReturnType<Page['locator']>,
+  expected: {
+    readonly bottom: string
+    readonly boxShadow: string
+    readonly left: string
+    readonly right: string
+    readonly top: string
+  },
+): Promise<void> {
+  const actual = await locator.evaluate((node) => {
+    const style = window.getComputedStyle(node)
+    return {
+      bottom: style.borderBottomWidth,
+      boxShadow: style.boxShadow,
+      left: style.borderLeftWidth,
+      right: style.borderRightWidth,
+      top: style.borderTopWidth,
+    }
+  })
+  expect(actual).toEqual(expected)
+}
+
 async function dragSelectedRangeBorderPreview(
   page: Page,
   startColumn: number,
@@ -896,6 +972,42 @@ async function writeCellValue(page: Page, address: string, value: string): Promi
   await formulaInput.press('Enter')
   await selectAddress(page, address)
   await expect.poll(() => readFormulaValue(page)).toBe(value)
+}
+
+async function dragProductSelectedInterior(
+  page: Page,
+  startColumn: number,
+  startRow: number,
+  targetColumn: number,
+  targetRow: number,
+): Promise<void> {
+  const gridLocator = page.getByTestId('sheet-grid')
+  await expect(gridLocator).toBeVisible()
+  const grid = await gridLocator.boundingBox()
+  if (!grid) {
+    throw new Error('sheet grid is not visible')
+  }
+
+  const startLeft = await getProductColumnLeft(page, startColumn)
+  const startTop = await getProductRowTop(page, startRow)
+  const startWidth = await getProductColumnWidth(page, startColumn)
+  const startHeight = await getProductRowHeight(page, startRow)
+  const targetLeft = await getProductColumnLeft(page, targetColumn)
+  const targetTop = await getProductRowTop(page, targetRow)
+  const targetWidth = await getProductColumnWidth(page, targetColumn)
+  const targetHeight = await getProductRowHeight(page, targetRow)
+
+  await page.mouse.move(
+    grid.x + startLeft + Math.min(32, Math.floor(startWidth * 0.35)),
+    grid.y + PRODUCT_HEADER_HEIGHT + startTop + Math.floor(startHeight / 2),
+  )
+  await page.mouse.down()
+  await page.mouse.move(
+    grid.x + targetLeft + Math.floor(targetWidth / 2),
+    grid.y + PRODUCT_HEADER_HEIGHT + targetTop + Math.floor(targetHeight / 2),
+    { steps: 12 },
+  )
+  await page.mouse.up()
 }
 
 async function selectAddress(page: Page, address: string): Promise<void> {

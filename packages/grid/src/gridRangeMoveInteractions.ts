@@ -35,6 +35,7 @@ export function beginWorkbookGridRangeMove(input: {
   listenerTarget: PointerListenerTarget
   sourceRange: Rectangle
   pointerCell: Item
+  activeCell?: Item | null | undefined
   resolvePointerCell: (clientX: number, clientY: number) => Item | null
   setGridSelection: (selection: ReturnType<typeof createRectangleSelectionFromRange>) => void
   onSelectionChange: (selection: ReturnType<typeof createRectangleSelectionFromRange>) => void
@@ -47,6 +48,7 @@ export function beginWorkbookGridRangeMove(input: {
   cancelAnimationFrame?: CancelRangeMoveFrame | undefined
 }): void {
   const {
+    activeCell = null,
     cancelAnimationFrame = resolveDefaultCancelAnimationFrame(),
     cleanupRef,
     listenerTarget,
@@ -63,6 +65,7 @@ export function beginWorkbookGridRangeMove(input: {
     sourceRange,
   } = input
   const anchorOffset: Item = [pointerCell[0] - sourceRange.x, pointerCell[1] - sourceRange.y]
+  const activeCellOffset = resolveActiveCellOffset(sourceRange, activeCell)
   let previewRange = sourceRange
   let lastPointerEvent: PointerEventLike | null = null
   let autoScrollFrame: number | null = null
@@ -81,7 +84,7 @@ export function beginWorkbookGridRangeMove(input: {
       return
     }
     previewRange = nextRange
-    const nextSelection = createRectangleSelectionFromRange(nextRange)
+    const nextSelection = createRangeMoveSelection(nextRange, activeCellOffset)
     setGridSelection(nextSelection)
     onSelectionChange(nextSelection)
   }
@@ -129,7 +132,7 @@ export function beginWorkbookGridRangeMove(input: {
     lastPointerEvent = nativeEvent
     updatePreview(nativeEvent)
     cleanup(nativeEvent)
-    const nextSelection = createRectangleSelectionFromRange(previewRange)
+    const nextSelection = createRangeMoveSelection(previewRange, activeCellOffset)
     setGridSelection(nextSelection)
     onSelectionChange(nextSelection)
     if (sameRectangle(sourceRange, previewRange)) {
@@ -145,6 +148,30 @@ export function beginWorkbookGridRangeMove(input: {
   }
   listenerTarget.addEventListener('pointermove', move, true)
   listenerTarget.addEventListener('pointerup', up, true)
+}
+
+function resolveActiveCellOffset(sourceRange: Rectangle, activeCell: Item | null): Item | null {
+  if (
+    !activeCell ||
+    activeCell[0] < sourceRange.x ||
+    activeCell[0] >= sourceRange.x + sourceRange.width ||
+    activeCell[1] < sourceRange.y ||
+    activeCell[1] >= sourceRange.y + sourceRange.height
+  ) {
+    return null
+  }
+  return [activeCell[0] - sourceRange.x, activeCell[1] - sourceRange.y]
+}
+
+function createRangeMoveSelection(range: Rectangle, activeCellOffset: Item | null): ReturnType<typeof createRectangleSelectionFromRange> {
+  const selection = createRectangleSelectionFromRange(range)
+  if (activeCellOffset && selection.current) {
+    selection.current = {
+      ...selection.current,
+      cell: [range.x + activeCellOffset[0], range.y + activeCellOffset[1]],
+    }
+  }
+  return selection
 }
 
 function resolveDefaultRequestAnimationFrame(): RequestRangeMoveFrame | undefined {

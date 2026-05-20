@@ -21,6 +21,7 @@ import {
   materializeWrittenColumns,
   type WrittenColumnTracker,
 } from '../written-column-tracker.js'
+import { attachRuntimeFormulaFamilyRunHints } from './runtime-image-formula-family-run-hints.js'
 import { restoreAlignedRuntimeFormulaFamilyRuns, type RuntimeImageFormulaFamilyRunSnapshot } from './runtime-image-formula-family-runs.js'
 import { formulaCachedLiteralToRestoredValue, restoreLiteralCell } from './runtime-image-literal-restore.js'
 import { restoreVisualMetadata, restoreWorkbookStructure } from './runtime-image-metadata-restore.js'
@@ -73,7 +74,10 @@ export interface RuntimeImageRestoreArgs {
   readonly initializeCellFormulasAt: (refs: readonly EngineCellMutationRef[], potentialNewCells?: number) => void
   readonly initializeFormulaSourcesAt?: (refs: EngineFormulaSourceRefs, potentialNewCells?: number) => void
   readonly resolveTemplateForCell?: (source: string, row: number, col: number) => FormulaTemplateResolution
-  readonly initializePreparedCellFormulasAt?: (refs: readonly PreparedRuntimeFormulaRef[], potentialNewCells?: number) => void
+  readonly initializePreparedCellFormulasAt?: (
+    refs: InitialFormulaEntryRefSource<PreparedRuntimeFormulaRef>,
+    potentialNewCells?: number,
+  ) => void
   readonly initializeHydratedPreparedCellFormulasAt?: (
     refs: InitialFormulaEntryRefSource<HydratedPreparedRuntimeFormulaRef>,
     potentialNewCells?: number,
@@ -653,6 +657,7 @@ export function restoreWorkbookFromRuntimeImage(args: RuntimeImageRestoreArgs): 
   const formulaRefs: EngineCellMutationRef[] = []
   const formulaSourceRefs = args.initializeFormulaSourcesAt ? new RestoredFormulaSourceRefTable(totalCellCount) : undefined
   const preparedFormulaRefs: PreparedRuntimeFormulaRef[] = []
+  let preparedFormulaRefsAreRuntimeCellIndexAligned = true
   const hydratedPreparedFormulaRefs = new RestoredHydratedPreparedFormulaRefTable(totalCellCount, args.runtimeImage.formulaInstances)
   const cachedFormulaRefs: CachedRuntimeFormulaRef[] = []
   const canHydratePreparedSnapshotFormulaValues = args.initializeHydratedPreparedCellFormulasAt && args.resolveTemplateForCell
@@ -750,6 +755,9 @@ export function restoreWorkbookFromRuntimeImage(args: RuntimeImageRestoreArgs): 
               }
             }
             if (canReuseRuntimeTemplate && args.initializePreparedCellFormulasAt) {
+              if (restoredFormula.cellIndex !== cellIndex) {
+                preparedFormulaRefsAreRuntimeCellIndexAligned = false
+              }
               preparedFormulaRefs.push({
                 sheetId,
                 row,
@@ -898,22 +906,27 @@ export function restoreWorkbookFromRuntimeImage(args: RuntimeImageRestoreArgs): 
     }
   })
 
+  const runtimeFormulaFamilyRunCount = args.runtimeImage.formulaFamilyRuns?.length ?? 0
+  const restoredFormulaFamilyRuns =
+    runtimeFormulaFamilyRunCount === 0
+      ? undefined
+      : restoreAlignedRuntimeFormulaFamilyRuns({
+          runs: args.runtimeImage.formulaFamilyRuns,
+          sheetIdsByName,
+        })
+  const formulaSourceRefCount = formulaSourceRefs?.length ?? 0
+
   if (hydratedPreparedFormulaRefs.length > 0 && args.initializeHydratedPreparedCellFormulasAt) {
     args.checkEvaluationBudget?.()
-    const restoredFormulaFamilyRuns =
-      hydratedPreparedFormulaRefs.freshFormulaInstances === undefined
-        ? undefined
-        : restoreAlignedRuntimeFormulaFamilyRuns({
-            runs: args.runtimeImage.formulaFamilyRuns,
-            sheetIdsByName,
-          })
-    if (restoredFormulaFamilyRuns !== undefined) {
-      if (restoredFormulaFamilyRuns.fallbackCount === 0 && restoredFormulaFamilyRuns.runs.length > 0) {
-        hydratedPreparedFormulaRefs.freshFormulaFamilyRuns = restoredFormulaFamilyRuns.runs
-      }
-      hydratedPreparedFormulaRefs.freshFormulaFamilyRunFallbackCount = restoredFormulaFamilyRuns.fallbackCount
-    } else if ((args.runtimeImage.formulaFamilyRuns?.length ?? 0) > 0) {
-      hydratedPreparedFormulaRefs.freshFormulaFamilyRunFallbackCount = args.runtimeImage.formulaFamilyRuns!.length
+    const allRuntimeImageFormulasAreHydrated =
+      preparedFormulaRefs.length === 0 && cachedFormulaRefs.length === 0 && formulaSourceRefCount === 0 && formulaRefs.length === 0
+    if (allRuntimeImageFormulasAreHydrated) {
+      attachRuntimeFormulaFamilyRunHints({
+        refs: hydratedPreparedFormulaRefs,
+        restoredRuns: hydratedPreparedFormulaRefs.freshFormulaInstances === undefined ? undefined : restoredFormulaFamilyRuns,
+        runtimeRunCount: runtimeFormulaFamilyRunCount,
+        cellIndicesAreRuntimeAligned: hydratedPreparedFormulaRefs.freshFormulaInstances !== undefined,
+      })
     }
     args.initializeHydratedPreparedCellFormulasAt(hydratedPreparedFormulaRefs, hydratedPreparedFormulaRefs.length)
   }
@@ -923,6 +936,16 @@ export function restoreWorkbookFromRuntimeImage(args: RuntimeImageRestoreArgs): 
   }
   if (preparedFormulaRefs.length > 0 && args.initializePreparedCellFormulasAt) {
     args.checkEvaluationBudget?.()
+    const allRuntimeImageFormulasArePrepared =
+      hydratedPreparedFormulaRefs.length === 0 && cachedFormulaRefs.length === 0 && formulaSourceRefCount === 0 && formulaRefs.length === 0
+    if (allRuntimeImageFormulasArePrepared) {
+      attachRuntimeFormulaFamilyRunHints({
+        refs: preparedFormulaRefs,
+        restoredRuns: restoredFormulaFamilyRuns,
+        runtimeRunCount: runtimeFormulaFamilyRunCount,
+        cellIndicesAreRuntimeAligned: preparedFormulaRefsAreRuntimeCellIndexAligned,
+      })
+    }
     args.initializePreparedCellFormulasAt(preparedFormulaRefs, preparedFormulaRefs.length)
   }
   if (formulaSourceRefs && formulaSourceRefs.length > 0) {

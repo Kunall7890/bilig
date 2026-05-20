@@ -105,6 +105,7 @@ export const WorkbookPaneRendererV3 = memo(function WorkbookPaneRendererV3({
     backendStatus,
     enableCanvasFallback,
     frameProofStatus,
+    hasPresentedAnyVisibleFrame,
     hasPresentedVisibleFrame,
     headerPaneCount: headerPanes.length,
     overlayRectCount: overlay?.rectCount ?? 0,
@@ -277,6 +278,7 @@ export function shouldMountWorkbookCanvasProofLayerV3(input: {
   readonly backendStatus: WorkbookPaneSurfaceBackendStatusV3
   readonly enableCanvasFallback?: boolean | undefined
   readonly frameProofStatus?: 'idle' | 'pending' | 'presented' | undefined
+  readonly hasPresentedAnyVisibleFrame?: boolean | undefined
   readonly hasPresentedFrame?: boolean | undefined
   readonly hasPresentedVisibleFrame?: boolean | undefined
   readonly headerPaneCount: number
@@ -286,10 +288,19 @@ export function shouldMountWorkbookCanvasProofLayerV3(input: {
   if (input.enableCanvasFallback) {
     return true
   }
-  if (input.backendStatus !== 'ready') {
+  if (input.backendStatus === 'unavailable') {
     return true
   }
   const hasVisiblePaneContent = hasWorkbookPaneVisibleContentV3(input)
+  const hasPresentedAnyVisibleFrame = Boolean(
+    input.hasPresentedAnyVisibleFrame || input.hasPresentedVisibleFrame || input.hasPresentedFrame,
+  )
+  if (input.backendStatus !== 'ready') {
+    return !hasPresentedAnyVisibleFrame
+  }
+  if (hasPresentedAnyVisibleFrame) {
+    return false
+  }
   if (input.frameProofStatus === 'pending') {
     return hasVisiblePaneContent
   }

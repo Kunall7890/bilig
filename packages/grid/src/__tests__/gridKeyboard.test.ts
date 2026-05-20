@@ -31,6 +31,8 @@ describe('gridKeyboard', () => {
     expect(isNavigationKey('ArrowDown')).toBe(true)
     expect(isNavigationKey('Enter')).toBe(false)
     expect(isClipboardShortcut({ altKey: false, ctrlKey: true, key: 'c', metaKey: false })).toBe(true)
+    expect(isClipboardShortcut({ altKey: false, ctrlKey: true, key: 'c', metaKey: false, shiftKey: true })).toBe(false)
+    expect(isClipboardShortcut({ altKey: false, ctrlKey: true, key: 'x', metaKey: false, shiftKey: true })).toBe(false)
     expect(isClipboardShortcut({ altKey: false, ctrlKey: true, key: 'v', metaKey: false, shiftKey: true })).toBe(true)
     expect(isFillShortcut({ altKey: false, ctrlKey: true, key: 'd', metaKey: false, shiftKey: false })).toBe(true)
     expect(isFillShortcut({ altKey: false, ctrlKey: false, key: 'r', metaKey: true, shiftKey: false })).toBe(true)
