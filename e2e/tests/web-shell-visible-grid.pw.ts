@@ -430,6 +430,44 @@ test('@browser-ci web app repaints same-size TypeGPU fill color changes without 
   ).toBeGreaterThan(120)
 })
 
+test('@browser-ci web app paints toolbar fill across a selected range without hiding the range color', async ({ page }) => {
+  const documentId = createTestDocumentId('playwright-range-fill-visible')
+  await page.setViewportSize({ width: 1166, height: 820 })
+  await page.goto(`/?document=${encodeURIComponent(documentId)}&persist=0&sheet=Sheet1&cell=A1`)
+  await waitForWorkbookReady(page)
+
+  await dragProductBodySelection(page, 2, 4, 5, 10)
+  await expect(page.getByTestId('name-box')).toHaveValue('C5:F11')
+
+  await pickToolbarPresetColor(page, 'Fill color', 'green')
+  await expect(page.getByTestId('name-box')).toHaveValue('C5:F11')
+  await expect
+    .poll(() => countGreenFillPixelsInCell(page, 2, 4), {
+      message: 'selected range start cell should visibly repaint green while the range remains selected',
+      timeout: 5_000,
+    })
+    .toBeGreaterThan(120)
+  await expect.poll(() => countGreenFillPixelsInCell(page, 4, 7)).toBeGreaterThan(120)
+  await expect.poll(() => countGreenFillPixelsInCell(page, 5, 10)).toBeGreaterThan(120)
+
+  await pickToolbarPresetColor(page, 'Fill color', 'blue')
+  await expect(page.getByTestId('name-box')).toHaveValue('C5:F11')
+  await expect
+    .poll(() => countBlueFillPixelsInCell(page, 2, 4), {
+      message: 'same selected range should repaint blue instead of keeping stale green cells',
+      timeout: 5_000,
+    })
+    .toBeGreaterThan(120)
+  await expect.poll(() => countBlueFillPixelsInCell(page, 4, 7)).toBeGreaterThan(120)
+  await expect.poll(() => countBlueFillPixelsInCell(page, 5, 10)).toBeGreaterThan(120)
+  await expect.poll(() => countGreenFillPixelsInCell(page, 4, 7)).toBeLessThan(12)
+
+  await clickProductCell(page, 7, 12)
+  await expect.poll(() => countBlueFillPixelsInCell(page, 2, 4)).toBeGreaterThan(120)
+  await expect.poll(() => countBlueFillPixelsInCell(page, 4, 7)).toBeGreaterThan(120)
+  await expect.poll(() => countBlueFillPixelsInCell(page, 5, 10)).toBeGreaterThan(120)
+})
+
 test('@browser-ci web app repaints moved text cells when a background fill is applied', async ({ page, context }) => {
   const documentId = createTestDocumentId('playwright-moved-cell-fill-repaint')
   const movedText = 'moved-fill-proof'
