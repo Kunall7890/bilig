@@ -150,4 +150,29 @@ describe('WorkbookGridSurface selection autoscroll', () => {
       }),
     ).toBe(restoredRangeSelection)
   })
+
+  test('rejects stale render ranges that no longer contain the committed active cell', () => {
+    const committedSelection = createGridSelection(6, 7)
+    const staleRangeSelection = {
+      ...createGridSelection(6, 7),
+      current: {
+        cell: [6, 7] as const,
+        range: { x: 1, y: 1, width: 3, height: 4 },
+        rangeStack: [],
+      },
+    }
+
+    expect(
+      resolveWorkbookGridSurfaceDisplaySelection({
+        activeHeaderDrag: null,
+        committedCellSelection: committedSelection,
+        isEditingCell: false,
+        isFillHandleDragging: false,
+        isRangeMoveDragging: false,
+        renderGridSelection: staleRangeSelection,
+        renderSelectionRange: staleRangeSelection.current?.range,
+        selectedCell: [6, 7],
+      }),
+    ).toBe(committedSelection)
+  })
 })

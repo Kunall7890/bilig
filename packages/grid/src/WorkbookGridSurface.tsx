@@ -2,6 +2,7 @@ import { useCallback, useEffect, useLayoutEffect, useMemo, useRef } from 'react'
 import { parseCellAddress } from '@bilig/formula'
 import { CellEditorOverlay } from './CellEditorOverlay.js'
 import { GridFillHandleOverlay } from './GridFillHandleOverlay.js'
+import { GridSelectionVisualOverlay } from './GridSelectionVisualOverlay.js'
 import { WorkbookGridContextMenu } from './WorkbookGridContextMenu.js'
 import { createGridSelection } from './gridSelection.js'
 import { WorkbookPaneRendererV3 } from './renderer-v3/WorkbookPaneRendererV3.js'
@@ -10,7 +11,7 @@ import { resolveResizeGuideColumn, resolveResizeGuideRow } from './useGridResize
 import { useWorkbookGridInteractions } from './useWorkbookGridInteractions.js'
 import { useWorkbookGridRenderState } from './useWorkbookGridRenderState.js'
 import { WORKBOOK_DEFAULT_FONT_SIZE, WORKBOOK_FONT_SANS, workbookFontPointSizeToCssPx } from './workbookTheme.js'
-import type { GridSelection, Item } from './gridTypes.js'
+import type { GridSelection, Item, Rectangle } from './gridTypes.js'
 import type { WorkbookGridSurfaceProps } from './workbookGridSurfaceTypes.js'
 export { hasSelectionTargetChanged } from './workbookGridViewport.js'
 export type {
@@ -29,7 +30,7 @@ export function resolveWorkbookGridSurfaceDisplaySelection(input: {
   readonly isFillHandleDragging: boolean
   readonly isRangeMoveDragging: boolean
   readonly renderGridSelection: GridSelection
-  readonly renderSelectionRange?: { readonly width: number; readonly height: number } | null | undefined
+  readonly renderSelectionRange?: Pick<Rectangle, 'x' | 'y' | 'width' | 'height'> | null | undefined
   readonly selectedCell: Item
 }): GridSelection {
   if (input.isEditingCell) {
@@ -41,7 +42,17 @@ export function resolveWorkbookGridSurfaceDisplaySelection(input: {
   const hasAxisSelection = input.renderGridSelection.columns.length > 0 || input.renderGridSelection.rows.length > 0
   const currentCell = input.renderGridSelection.current?.cell ?? null
   const currentCellMatchesSelected = currentCell?.[0] === input.selectedCell[0] && currentCell[1] === input.selectedCell[1]
+  const renderRangeContainsSelected =
+    input.renderSelectionRange !== null &&
+    input.renderSelectionRange !== undefined &&
+    input.selectedCell[0] >= input.renderSelectionRange.x &&
+    input.selectedCell[0] < input.renderSelectionRange.x + input.renderSelectionRange.width &&
+    input.selectedCell[1] >= input.renderSelectionRange.y &&
+    input.selectedCell[1] < input.renderSelectionRange.y + input.renderSelectionRange.height
   if (!hasAxisSelection && !currentCellMatchesSelected) {
+    return input.committedCellSelection
+  }
+  if (!hasAxisSelection && currentCellMatchesSelected && !renderRangeContainsSelected) {
     return input.committedCellSelection
   }
   const renderSelectionIsSingleCell =
@@ -239,13 +250,8 @@ export function WorkbookGridSurface(props: WorkbookGridSurfaceProps) {
         previewRects,
         selectedCell: [displaySelectionCol, displaySelectionRow],
         selectionRange: displaySelectionRange,
-        showFillHandle:
-          !props.isEditingCell &&
-          displaySelectionRange !== null &&
-          displayGridSelection.columns.length === 0 &&
-          displayGridSelection.rows.length === 0 &&
-          fillPreviewRange === null &&
-          !isRangeMoveDragging,
+        showFillHandle: false,
+        showSelectionOverlay: false,
         resizeGuideColumn,
         resizeGuideColumnWidth,
         resizeGuideRow,
@@ -258,9 +264,7 @@ export function WorkbookGridSurface(props: WorkbookGridSurfaceProps) {
       displaySelectionRange,
       fillPreviewRange,
       hoverCell,
-      isRangeMoveDragging,
       previewRects,
-      props.isEditingCell,
       resizeGuideColumn,
       resizeGuideColumnWidth,
       resizeGuideRow,
@@ -346,6 +350,22 @@ export function WorkbookGridSurface(props: WorkbookGridSurfaceProps) {
           suppressedTextCell={suppressedEditorTextCell}
           tilePanes={renderState.renderTilePanes}
           preloadTilePanes={renderState.preloadDataPanes}
+        />
+        <GridSelectionVisualOverlay
+          geometry={v2Geometry}
+          getGeometrySnapshot={getLiveGeometrySnapshot}
+          gridSelection={displayGridSelection}
+          scrollTransformStore={renderState.scrollTransformStore}
+          selectedCell={[displaySelectionCol, displaySelectionRow]}
+          selectionRange={displaySelectionRange}
+          showFillHandle={
+            !props.isEditingCell &&
+            displaySelectionRange !== null &&
+            displayGridSelection.columns.length === 0 &&
+            displayGridSelection.rows.length === 0 &&
+            fillPreviewRange === null &&
+            !isRangeMoveDragging
+          }
         />
         <button
           aria-label="Select entire sheet"
