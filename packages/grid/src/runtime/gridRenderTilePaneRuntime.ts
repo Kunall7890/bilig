@@ -807,7 +807,7 @@ export class GridRenderTilePaneRuntime {
         sourceTile && sourceTile.coord.sheetId === sheetId && sourceTile.coord.sheetOrdinal === sheetOrdinal
           ? sourceTile
           : this.resolveResidentRenderTile(input, tileKey, sheetId, sheetOrdinal)
-      const dirtyMask = visibleTileKeys.has(tileKey) ? input.gridRuntimeHost.tiles.dirtyTiles.getUnconsumedMask(tileKey) : 0
+      const dirtyMask = input.gridRuntimeHost.tiles.dirtyTiles.getUnconsumedMask(tileKey)
       const isDirty = dirtyMask !== 0
       const isMissingResidentTile = !tile
       const isMissingGridPayload = tile !== null && !hasCompleteRenderTileGrid(tile)
