@@ -648,6 +648,7 @@ export function createEngineOperationService(args: CreateEngineOperationServiceA
     tryApplyLookupOnlyNumericColumnLiteralBatch,
     tryApplyDenseRectangularDirectAggregateLiteralBatch,
     tryApplyFreshDenseRectangularNumericLiteralBatch,
+    tryApplyDenseSingleColumnAffineExistingNumericBatch,
   } = createOperationDirectScalarBatchFastPaths({
     state: args.state,
     emitBatch,
@@ -869,6 +870,8 @@ export function createEngineOperationService(args: CreateEngineOperationServiceA
   })
   const applyCellMutationsAtNow = (...input: Parameters<typeof applyCellMutationsAtNowCore>) =>
     withOperationEvaluationBudget(() => applyCellMutationsAtNowCore(...input))
+  const applyExistingNumericCellMutationsAtNow = (...input: Parameters<typeof tryApplyDenseSingleColumnAffineExistingNumericBatch>) =>
+    withOperationEvaluationBudget(() => tryApplyDenseSingleColumnAffineExistingNumericBatch(...input))
 
   const __testHooks: Record<string, unknown> = ENGINE_OPERATION_TEST_HOOKS_ENABLED
     ? {
@@ -938,6 +941,7 @@ export function createEngineOperationService(args: CreateEngineOperationServiceA
       })
     },
     applyCellMutationsAtNow,
+    applyExistingNumericCellMutationsAtNow,
     applyExistingNumericCellMutationAtNow,
     applyExistingLiteralCellMutationAtNow,
     applyDerivedOp(op) {

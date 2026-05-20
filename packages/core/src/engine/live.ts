@@ -793,6 +793,8 @@ export function createEngineServiceRuntime(args: {
         operations.applyLocalSingleStructuralAxisOpWithoutBatchNow(op, options),
       applyCellMutationsAtBatchNow: (refs, batch, source, potentialNewCells) =>
         operations.applyCellMutationsAtNow(refs, batch, source, potentialNewCells),
+      applyExistingNumericCellMutationsAtBatchNow: (record, batch, source) =>
+        operations.applyExistingNumericCellMutationsAtNow(record, batch, source),
       applyExistingNumericCellMutationAtNow: (request) => operations.applyExistingNumericCellMutationAtNow(request),
       applyExistingLiteralCellMutationAtNow: (request) => operations.applyExistingLiteralCellMutationAtNow(request),
       hasExternallyVisibleLocalMutationObservers: () =>

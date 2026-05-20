@@ -958,15 +958,14 @@ describe('EngineMutationService', () => {
 
     const undoStack = getUndoStack(engine)
     const latest = undoStack.at(-1)
-    expect(latest?.inverse.kind).toBe('cell-mutations')
-    if (latest?.inverse.kind !== 'cell-mutations') {
-      throw new Error('Expected lazy cell mutation inverse')
+    expect(latest?.inverse.kind).toBe('existing-numeric-cell-mutations')
+    if (latest?.inverse.kind !== 'existing-numeric-cell-mutations') {
+      throw new Error('Expected typed numeric cell mutation inverse')
     }
-    expect(Object.hasOwn(Object.getOwnPropertyDescriptor(latest.inverse, 'refs') ?? {}, 'get')).toBe(true)
-    expect(latest.inverse.refs).toEqual([
-      { sheetId: sheet.id, cellIndex: a2, mutation: { kind: 'setCellValue', row: 1, col: 0, value: 2 } },
-      { sheetId: sheet.id, cellIndex: a1, mutation: { kind: 'setCellValue', row: 0, col: 0, value: 1 } },
-    ])
+    expect(Array.from(latest.inverse.cellIndexPlusOnes)).toEqual([a2 + 1, a1 + 1])
+    expect(Array.from(latest.inverse.rows)).toEqual([1, 0])
+    expect(Array.from(latest.inverse.cols)).toEqual([0, 0])
+    expect(Array.from(latest.inverse.numbers)).toEqual([2, 1])
     expect(engine.getCellValue('Sheet1', 'B1')).toEqual({ tag: ValueTag.Number, value: 20 })
     expect(engine.getCellValue('Sheet1', 'B2')).toEqual({ tag: ValueTag.Number, value: 40 })
 
@@ -981,6 +980,54 @@ describe('EngineMutationService', () => {
     expect(engine.getCellValue('Sheet1', 'A2')).toEqual({ tag: ValueTag.Number, value: 20 })
     expect(engine.getCellValue('Sheet1', 'B1')).toEqual({ tag: ValueTag.Number, value: 20 })
     expect(engine.getCellValue('Sheet1', 'B2')).toEqual({ tag: ValueTag.Number, value: 40 })
+  })
+
+  it('replays typed numeric batch undo through the direct scalar fast path', async () => {
+    const engine = new SpreadsheetEngine({ workbookName: 'typed-direct-scalar-batch-undo' })
+    await engine.ready()
+    engine.createSheet('Sheet1')
+    const count = 40
+    for (let row = 0; row < count; row += 1) {
+      const address = `A${row + 1}`
+      engine.setCellValue('Sheet1', address, row + 1)
+      engine.setCellFormula('Sheet1', `B${row + 1}`, `${address}*2+1`)
+    }
+    const sheet = engine.workbook.getSheet('Sheet1')
+    if (!sheet) {
+      throw new Error('Expected initialized sheet')
+    }
+    const refs = Array.from({ length: count }, (_, row) => {
+      const cellIndex = engine.workbook.getCellIndex('Sheet1', `A${row + 1}`)
+      if (cellIndex === undefined) {
+        throw new Error(`Expected initialized A${row + 1}`)
+      }
+      return {
+        sheetId: sheet.id,
+        cellIndex,
+        mutation: { kind: 'setCellValue' as const, row, col: 0, value: (row + 1) * 10 },
+      }
+    })
+
+    engine.applyCellMutationsAtWithOptions(refs, {
+      captureUndo: true,
+      potentialNewCells: 0,
+      source: 'local',
+      returnUndoOps: false,
+      reuseRefs: true,
+    })
+    const latest = getUndoStack(engine).at(-1)
+    expect(latest?.inverse.kind).toBe('existing-numeric-cell-mutations')
+
+    engine.resetPerformanceCounters()
+    expect(engine.undo()).toBe(true)
+
+    const counters = engine.getPerformanceCounters()
+    expect(counters.directScalarDeltaApplications).toBe(count)
+    expect(counters.directScalarDeltaOnlyRecalcSkips).toBe(1)
+    expect(counters.changedCellPayloadsBuilt).toBe(0)
+    expect(counters.topoRebuilds).toBe(0)
+    expect(engine.getCellValue('Sheet1', 'A40')).toEqual({ tag: ValueTag.Number, value: 40 })
+    expect(engine.getCellValue('Sheet1', 'B40')).toEqual({ tag: ValueTag.Number, value: 81 })
   })
 
   it('fast-paths structural insert history while preserving undo and redo', async () => {

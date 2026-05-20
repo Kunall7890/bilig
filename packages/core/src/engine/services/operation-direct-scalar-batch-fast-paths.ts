@@ -6,7 +6,7 @@ import { writeLiteralToCellStore } from '../../engine-value-utils.js'
 import { makeCellEntity } from '../../entity-ids.js'
 import { addEngineCounter } from '../../perf/engine-counters.js'
 import { markBatchApplied } from '../../replica-state.js'
-import type { EngineRuntimeState, RuntimeDirectScalarDescriptor, U32 } from '../runtime-state.js'
+import type { EngineRuntimeState, RuntimeDirectScalarDescriptor, TransactionRecord, U32 } from '../runtime-state.js'
 import { directScalarLiteralNumericValue } from './direct-scalar-helpers.js'
 import { PendingNumericCellValues, type DirectScalarCurrentOperand } from './direct-formula-index-collection.js'
 import {
@@ -144,6 +144,10 @@ export function createOperationDirectScalarBatchFastPaths(args: OperationDirectS
     batch: EngineOpBatch | null,
     potentialNewCells?: number,
   ) => boolean
+  readonly tryApplyDenseSingleColumnAffineExistingNumericBatch: (
+    record: Extract<TransactionRecord, { kind: 'existing-numeric-cell-mutations' }>,
+    batch: EngineOpBatch | null,
+  ) => boolean
 } {
   const {
     emitBatch,
@@ -164,8 +168,11 @@ export function createOperationDirectScalarBatchFastPaths(args: OperationDirectS
     planApproximateLookupNumericColumnWrite,
   } = args
 
-  const { tryApplyDenseSingleColumnAffineDirectScalarLiteralBatch, tryApplyDenseSingleColumnDirectScalarLiteralBatch } =
-    createOperationDirectScalarSingleColumnBatchFastPaths(args)
+  const {
+    tryApplyDenseSingleColumnAffineDirectScalarLiteralBatch,
+    tryApplyDenseSingleColumnDirectScalarLiteralBatch,
+    tryApplyDenseSingleColumnAffineExistingNumericBatch,
+  } = createOperationDirectScalarSingleColumnBatchFastPaths(args)
 
   const { tryApplyDenseRowPairSimpleDirectScalarLiteralBatch, tryApplyDenseRowPairDirectScalarLiteralBatch } =
     createOperationDirectScalarRowPairBatchFastPaths({
@@ -692,5 +699,6 @@ export function createOperationDirectScalarBatchFastPaths(args: OperationDirectS
     tryApplyLookupOnlyNumericColumnLiteralBatch,
     tryApplyDenseRectangularDirectAggregateLiteralBatch,
     tryApplyFreshDenseRectangularNumericLiteralBatch,
+    tryApplyDenseSingleColumnAffineExistingNumericBatch,
   }
 }

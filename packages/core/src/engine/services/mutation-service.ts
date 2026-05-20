@@ -25,6 +25,7 @@ import {
   createLazyCellMutationTransactionRecord,
   createLazySingleOpTransactionRecord,
   createOpsTransactionRecord,
+  existingNumericCellMutationsRecordToRefs,
   createSingleExistingLiteralCellMutationTransactionRecord,
   createSingleExistingNumericCellMutationTransactionRecord,
   singleExistingLiteralCellMutationRecordToRef,
@@ -91,6 +92,11 @@ export function createEngineMutationService(args: {
     source: 'local' | 'restore' | 'undo' | 'redo',
     potentialNewCells?: number,
   ) => void
+  readonly applyExistingNumericCellMutationsAtBatchNow?: (
+    record: Extract<TransactionRecord, { kind: 'existing-numeric-cell-mutations' }>,
+    batch: EngineOpBatch | null,
+    source: 'local' | 'restore' | 'undo' | 'redo',
+  ) => boolean
   readonly applyExistingNumericCellMutationAtNow?: (
     request: EngineExistingNumericCellMutationRef,
   ) => EngineExistingNumericCellMutationResult | null
@@ -228,7 +234,11 @@ export function createEngineMutationService(args: {
     source: 'local' | 'restore' | 'undo' | 'redo',
     options: { readonly emitTracked?: boolean } = {},
   ): void => {
-    if ((record.kind === 'ops' && record.ops.length === 0) || (record.kind === 'cell-mutations' && record.refs.length === 0)) {
+    if (
+      (record.kind === 'ops' && record.ops.length === 0) ||
+      (record.kind === 'cell-mutations' && record.refs.length === 0) ||
+      (record.kind === 'existing-numeric-cell-mutations' && record.sheetIds.length === 0)
+    ) {
       return
     }
     if (record.kind === 'single-existing-numeric-cell-mutation') {
@@ -257,6 +267,22 @@ export function createEngineMutationService(args: {
           )
         : null
       args.applyCellMutationsAtBatchNow(record.refs, batch, source, record.potentialNewCells)
+      return
+    }
+    if (record.kind === 'existing-numeric-cell-mutations') {
+      const refs = shouldCreateLocalBatch() ? existingNumericCellMutationsRecordToRefs(record) : undefined
+      const batch =
+        refs === undefined
+          ? null
+          : createBatch(
+              args.state.replicaState,
+              refs.map((ref) => cellMutationRefToEngineOp(args.state.workbook, ref)),
+            )
+      if (args.applyExistingNumericCellMutationsAtBatchNow?.(record, batch, source)) {
+        return
+      }
+      const materializedRefs = refs ?? existingNumericCellMutationsRecordToRefs(record)
+      args.applyCellMutationsAtBatchNow(materializedRefs, batch, source, record.potentialNewCells)
       return
     }
     if (
