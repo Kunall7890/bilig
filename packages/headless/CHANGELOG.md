@@ -4,6 +4,16 @@ All notable changes to `@bilig/headless` will be documented in this file.
 
 This package is released as part of the aligned bilig library package set.
 
+## 0.40.27
+
+- Release type: patch
+- Previous libraries tag: libraries-v0.40.26
+- Manual override: no
+
+## Fixes
+- perf(headless): lazily summarize aggregate pages (1c7cdea2)
+- perf(xlsx): stream package artifact imports (74033d79)
+
 ## 0.40.26
 
 - Release type: patch
