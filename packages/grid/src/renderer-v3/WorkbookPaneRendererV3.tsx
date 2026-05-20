@@ -83,7 +83,8 @@ export const WorkbookPaneRendererV3 = memo(function WorkbookPaneRendererV3({
     hostRuntime.getPresentedVisualFrameSnapshot,
     hostRuntime.getPresentedVisualFrameSnapshot,
   )
-  const hasPresentedVisibleFrame = presentedFrameProofSignature.length > 0
+  const hasPresentedAnyVisibleFrame = presentedFrameProofSignature.length > 0
+  const hasPresentedVisibleFrame = hasPresentedFrame && frameProofStatus === 'presented'
 
   const setCanvasRef = useCallback(
     (canvas: HTMLCanvasElement | null) => {
@@ -224,6 +225,7 @@ export const WorkbookPaneRendererV3 = memo(function WorkbookPaneRendererV3({
           data-v3-frame-proof-status={frameProofStatus}
           data-v3-frame-proof-signature={frameProofSignature}
           data-v3-has-presented-frame={hasPresentedFrame ? 'true' : 'false'}
+          data-v3-has-presented-any-frame={hasPresentedAnyVisibleFrame ? 'true' : 'false'}
           data-v3-has-presented-visible-frame={hasPresentedVisibleFrame ? 'true' : 'false'}
           data-v3-header-pane-count={headerPanes.length}
           data-v3-header-text-run-count={headerTextRunCount}
@@ -286,9 +288,6 @@ export function shouldMountWorkbookCanvasProofLayerV3(input: {
     return true
   }
   const hasVisiblePaneContent = hasWorkbookPaneVisibleContentV3(input)
-  if (input.hasPresentedVisibleFrame) {
-    return false
-  }
   if (input.frameProofStatus === 'pending') {
     return hasVisiblePaneContent
   }
