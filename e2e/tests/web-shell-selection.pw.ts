@@ -318,10 +318,10 @@ test('@browser-ci web app keeps reverse-drag range selection chrome geometricall
     top: '1px',
   })
   await expectBorderStyle(page.locator('[data-grid-selection-visual-role="active-border"]'), {
-    bottom: '0px',
+    bottom: '2px',
     boxShadow: 'none',
     left: '2px',
-    right: '0px',
+    right: '2px',
     top: '2px',
   })
 })

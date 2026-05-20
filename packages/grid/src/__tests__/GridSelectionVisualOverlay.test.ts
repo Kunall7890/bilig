@@ -144,7 +144,7 @@ describe('GridSelectionVisualOverlay', () => {
     expect(rects.some((rect) => rect.role === 'selection-fill')).toBe(false)
   })
 
-  test('does not double-paint active cell sides already covered by the selected range perimeter', () => {
+  test('keeps a complete active cell outline at every selected range edge', () => {
     const geometry = createGeometry()
     const topLeftSelection = createRangeSelection(createGridSelection(1, 1), [1, 1], [3, 3])
     const bottomRightSelection = createRangeSelection(createGridSelection(3, 3), [3, 3], [1, 1])
@@ -164,9 +164,9 @@ describe('GridSelectionVisualOverlay', () => {
       showFillHandle: true,
     }).find((rect) => rect.role === 'active-border')
 
-    expect(topLeftActiveBorder?.borderSides).toEqual({ bottom: true, left: false, right: true, top: false })
+    expect(topLeftActiveBorder).not.toHaveProperty('borderSides')
     expect(topLeftActiveBorder?.strokeWidth).toBe(2)
-    expect(bottomRightActiveBorder?.borderSides).toEqual({ bottom: false, left: true, right: false, top: true })
+    expect(bottomRightActiveBorder).not.toHaveProperty('borderSides')
     expect(bottomRightActiveBorder?.strokeWidth).toBe(2)
   })
 
