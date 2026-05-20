@@ -5,24 +5,10 @@ import {
   WorkPaperNamedExpressionDoesNotExistError,
   WorkPaperOperationError,
   WorkPaperSheetError,
-  WorkPaperSheetSizeLimitExceededError,
 } from './work-paper-errors.js'
-import {
-  cloneConfig,
-  canApplyRuntimeOnlyWorkPaperConfigUpdate,
-  canReuseWorkPaperSnapshotRebuild,
-  DEFAULT_CONFIG,
-  normalizeConfiguredWorkPaperCalculationSettings,
-  validateWorkPaperConfig,
-  WORKPAPER_CONFIG_KEYS,
-  WORKPAPER_PUBLIC_ERROR_NAMES,
-} from './work-paper-config.js'
+import { cloneConfig, DEFAULT_CONFIG, validateWorkPaperConfig, WORKPAPER_PUBLIC_ERROR_NAMES } from './work-paper-config.js'
 import { assertRowAndColumn, makeNamedExpressionKey } from './work-paper-runtime-helpers.js'
-import {
-  inspectSheetDimensionsWithinLimits,
-  validateSheetWithinLimits,
-  workPaperSheetHasDynamicSpillFormula,
-} from './work-paper-sheet-inspection.js'
+import { inspectSheetDimensionsWithinLimits, workPaperSheetHasDynamicSpillFormula } from './work-paper-sheet-inspection.js'
 import { WorkPaperSheetDimensionCache } from './work-paper-sheet-dimension-cache.js'
 import type { WorkPaperAxisIntervalEditMode, WorkPaperAxisKind } from './work-paper-axis-helpers.js'
 import {
@@ -51,7 +37,7 @@ import { WorkPaperEmitter } from './work-paper-emitter.js'
 import { replaceWorkPaperSheetContent } from './work-paper-sheet-replacement.js'
 import { restorePublicWorkPaperFormula, rewriteWorkPaperFormulaForStorage } from './work-paper-formula-rewrite.js'
 import { applyWorkPaperMatrixContents, applyWorkPaperSerializedMatrix } from './work-paper-matrix-application.js'
-import { cloneWorkPaperClipboardPayload, type WorkPaperClipboardPayload } from './work-paper-clipboard.js'
+import type { WorkPaperClipboardPayload } from './work-paper-clipboard.js'
 import type { QueuedEvent } from './work-paper-tracked-event-helpers.js'
 import type { VisibilitySnapshot } from './work-paper-visibility-snapshot.js'
 import {
@@ -74,14 +60,9 @@ import {
 import { buildWorkPaperRawCellMutation } from './work-paper-literal-mutation-queue.js'
 import { WorkPaperMutationQueues } from './work-paper-mutation-queues.js'
 import { WorkPaperEngineEventTracker } from './work-paper-engine-event-tracker.js'
-import { WorkPaperRuntimeFastPathBase } from './work-paper-runtime-fast-path-base.js'
-import { cloneWorkPaperHistoryRecords } from './work-paper-history.js'
+import { WorkPaperRuntimeLifecycleBase } from './work-paper-runtime-lifecycle-base.js'
 import { tryChangeSimpleNumericNamedExpressionFastPath } from './work-paper-named-expression-fast-path-runtime.js'
-import {
-  createWorkPaperEngine,
-  workPaperEvaluationTimeoutErrorFrom,
-  type WorkPaperTransactionSnapshot,
-} from './work-paper-runtime-construction.js'
+import { createWorkPaperEngine, workPaperEvaluationTimeoutErrorFrom } from './work-paper-runtime-construction.js'
 
 type NamedExpressionValueSnapshot = WorkPaperNamedExpressionValueSnapshot
 
@@ -95,7 +76,7 @@ type WorkPaperStructuralInsertEngine = SpreadsheetEngine & {
   insertColumns(sheetName: string, start: number, count: number, options?: { readonly emitTracked?: boolean }): void
 }
 
-export class WorkPaper extends WorkPaperRuntimeFastPathBase {
+export class WorkPaper extends WorkPaperRuntimeLifecycleBase {
   readonly workbookId = nextWorkbookId++
   protected engine: SpreadsheetEngine
   protected readonly emitter = new WorkPaperEmitter()
@@ -121,7 +102,7 @@ export class WorkPaper extends WorkPaperRuntimeFastPathBase {
   protected suspendedUsesTrackedFastPath = false
   protected queuedEvents: QueuedEvent[] = []
   protected readonly engineEvents = new WorkPaperEngineEventTracker()
-  private engineEventsAttached = false
+  protected engineEventsAttached = false
   protected disposed = false
   protected readonly mutationQueues = new WorkPaperMutationQueues({
     applyCellMutationsAtWithOptions: (refs, options) => {
@@ -508,51 +489,6 @@ export class WorkPaper extends WorkPaperRuntimeFastPathBase {
     return workbook
   }
 
-  updateConfig(next: WorkPaperConfig): void {
-    this.assertNotDisposed()
-    this.engineEvents.materializePendingLazyChanges()
-    const merged = {
-      ...this.config,
-      ...cloneConfig(next),
-    }
-    const changedKeys = WORKPAPER_CONFIG_KEYS.filter((key) => Object.hasOwn(next, key) && this.config[key] !== merged[key])
-    if (changedKeys.length === 0) {
-      return
-    }
-    validateWorkPaperConfig(merged)
-    if (canApplyRuntimeOnlyWorkPaperConfigUpdate(changedKeys)) {
-      this.applyRuntimeOnlyConfigUpdate(merged)
-      return
-    }
-    this.rebuildWithConfig(merged)
-  }
-
-  protected applyCalculationSettings(settings: WorkPaperConfig['calculationSettings']): void {
-    this.captureChanges(undefined, () => {
-      const normalized = normalizeConfiguredWorkPaperCalculationSettings(settings, this.engine.getCalculationSettings())
-      this.engine.setCalculationSettings(normalized ?? this.engine.getCalculationSettings())
-      this.config = {
-        ...this.config,
-        ...(settings === undefined ? { calculationSettings: undefined } : { calculationSettings: structuredClone(settings) }),
-      }
-    })
-  }
-
-  transaction(operations: () => void): WorkPaperChange[] {
-    this.assertNotDisposed()
-    if (this.shouldSuppressEvents()) {
-      throw new WorkPaperOperationError('WorkPaper transactions cannot run inside another suppressed mutation scope')
-    }
-    this.engineEvents.materializePendingLazyChanges()
-    const snapshot = this.captureTransactionSnapshot()
-    try {
-      return this.batch(operations)
-    } catch (error) {
-      this.restoreTransactionSnapshot(snapshot)
-      throw error
-    }
-  }
-
   protected canEditAxisIntervals(
     axis: WorkPaperAxisKind,
     mode: WorkPaperAxisIntervalEditMode,
@@ -649,68 +585,6 @@ export class WorkPaper extends WorkPaperRuntimeFastPathBase {
     })
   }
 
-  private captureTransactionSnapshot(): WorkPaperTransactionSnapshot {
-    return {
-      clipboard: cloneWorkPaperClipboardPayload(this.clipboard),
-      config: cloneConfig(this.config),
-      namedExpressions: this.getAllNamedExpressionsSerialized(),
-      redoStack: cloneWorkPaperHistoryRecords(this.getRedoStack()),
-      sheets: this.getAllSheetsSerialized(),
-      undoStack: cloneWorkPaperHistoryRecords(this.getUndoStack()),
-    }
-  }
-
-  private restoreTransactionSnapshot(snapshot: WorkPaperTransactionSnapshot): void {
-    this.clearFunctionBindings({ preserveInternalFunctionLookup: true })
-    this.namedExpressions.clear()
-    this.replaceEngineForConfig(snapshot.config)
-    this.config = cloneConfig(snapshot.config)
-    this.captureFunctionRegistry()
-    this.engineEvents.withCaptureDisabled(() => {
-      initializeWorkPaperFromSheets({
-        engine: this.engine,
-        config: this.config,
-        sheets: snapshot.sheets,
-        namedExpressions: snapshot.namedExpressions,
-        hasNamedExpressions: () => this.namedExpressions.size > 0,
-        hasFunctionAliases: () => this.functionAliasLookup.size > 0 || this.internalFunctionLookup.size > 0,
-        withEngineEventCaptureDisabled: (callback) => callback(),
-        upsertNamedExpression: (expression, options) => this.upsertNamedExpressionInternal(expression, options),
-        rewriteFormulaForStorage: (formula, ownerSheetId) => this.rewriteFormulaForStorage(formula, ownerSheetId),
-        requireSheetId: (name) => this.requireSheetId(name),
-        cacheInitializedSheetDimensions: (sheetId, dimensions, options) =>
-          this.sheetDimensionCache.cacheInitialized(sheetId, dimensions, options),
-        clearHistoryStacks: () => this.clearHistoryStacks(),
-        resetChangeTrackingCaches: () => this.resetChangeTrackingCaches(),
-      })
-    })
-    this.resetTransactionRuntimeState()
-    this.restoreHistoryStacks(snapshot)
-    this.clipboard = cloneWorkPaperClipboardPayload(snapshot.clipboard)
-  }
-
-  private resetTransactionRuntimeState(): void {
-    this.batchDepth = 0
-    this.batchStartVisibility = null
-    this.batchStartNamedValues = null
-    this.batchUsesTrackedFastPath = false
-    this.batchUndoStackLength = 0
-    this.evaluationSuspended = false
-    this.suspendedVisibility = null
-    this.suspendedNamedValues = null
-    this.suspendedUsesTrackedFastPath = false
-    this.queuedEvents = []
-    this.clearHistoryStacks()
-    this.resetChangeTrackingCaches()
-  }
-
-  private restoreHistoryStacks(snapshot: WorkPaperTransactionSnapshot): void {
-    const undoStack = this.getUndoStack()
-    const redoStack = this.getRedoStack()
-    undoStack.push(...cloneWorkPaperHistoryRecords(snapshot.undoStack))
-    redoStack.push(...cloneWorkPaperHistoryRecords(snapshot.redoStack))
-  }
-
   protected applyMatrixContents(
     address: WorkPaperCellAddress,
     content: WorkPaperSheet,
@@ -793,7 +667,7 @@ export class WorkPaper extends WorkPaperRuntimeFastPathBase {
     }
   }
 
-  private captureFunctionRegistry(): void {
+  protected override captureFunctionRegistry(): void {
     captureWorkPaperFunctionRegistry({
       workbookId: this.workbookId,
       configFunctionPlugins: this.config.functionPlugins,
@@ -805,7 +679,7 @@ export class WorkPaper extends WorkPaperRuntimeFastPathBase {
     })
   }
 
-  private clearFunctionBindings(options: { preserveInternalFunctionLookup?: boolean } = {}): void {
+  protected override clearFunctionBindings(options: { preserveInternalFunctionLookup?: boolean } = {}): void {
     clearWorkPaperFunctionBindings({
       functionSnapshot: this.functionSnapshot,
       functionAliasLookup: this.functionAliasLookup,
@@ -817,95 +691,6 @@ export class WorkPaper extends WorkPaperRuntimeFastPathBase {
     })
   }
 
-  private validateCurrentSheetsWithinLimits(nextConfig: WorkPaperConfig): void {
-    this.listSheetRecords().forEach((sheet) => {
-      const dimensions = this.getSheetDimensions(sheet.id)
-      if (dimensions.height > (nextConfig.maxRows ?? MAX_ROWS) || dimensions.width > (nextConfig.maxColumns ?? MAX_COLS)) {
-        throw new WorkPaperSheetSizeLimitExceededError()
-      }
-    })
-  }
-
-  private applyRuntimeOnlyConfigUpdate(nextConfig: WorkPaperConfig): void {
-    if (this.config.useColumnIndex !== nextConfig.useColumnIndex) {
-      ;(this.engine as SpreadsheetEngine & { setUseColumnIndexEnabled(enabled: boolean): void }).setUseColumnIndexEnabled(
-        nextConfig.useColumnIndex ?? false,
-      )
-    }
-    if (this.config.evaluationTimeoutMs !== nextConfig.evaluationTimeoutMs) {
-      this.engine.setEvaluationTimeoutMs(nextConfig.evaluationTimeoutMs)
-    }
-    this.config = cloneConfig(nextConfig)
-  }
-
-  private rebuildWithConfig(nextConfig: WorkPaperConfig): void {
-    this.validateCurrentSheetsWithinLimits(nextConfig)
-    const canReuseSnapshot = canReuseWorkPaperSnapshotRebuild(this.config, nextConfig)
-    const snapshot = canReuseSnapshot ? this.engine.exportSnapshot() : null
-    const serializedSheets = canReuseSnapshot ? null : this.getAllSheetsSerialized()
-    if (serializedSheets) {
-      Object.entries(serializedSheets).forEach(([sheetName, sheet]) => {
-        validateSheetWithinLimits(sheetName, sheet, nextConfig)
-      })
-    }
-    const serializedNamedExpressions = canReuseSnapshot ? null : this.getAllNamedExpressionsSerialized()
-    const suspended = this.evaluationSuspended
-    const clipboard = cloneWorkPaperClipboardPayload(this.clipboard)
-
-    this.clearFunctionBindings({ preserveInternalFunctionLookup: true })
-    if (!canReuseSnapshot) {
-      this.namedExpressions.clear()
-    }
-    this.replaceEngineForConfig(nextConfig)
-    this.config = cloneConfig(nextConfig)
-    this.captureFunctionRegistry()
-
-    this.engineEvents.withCaptureDisabled(() => {
-      if (snapshot) {
-        this.engine.importSnapshot(snapshot)
-        const calculationSettings = normalizeConfiguredWorkPaperCalculationSettings(
-          this.config.calculationSettings,
-          this.engine.getCalculationSettings(),
-        )
-        if (calculationSettings !== undefined) {
-          this.engine.setCalculationSettings(calculationSettings)
-        }
-      } else {
-        try {
-          initializeWorkPaperFromSheets({
-            engine: this.engine,
-            config: this.config,
-            sheets: serializedSheets!,
-            namedExpressions: serializedNamedExpressions!,
-            hasNamedExpressions: () => this.namedExpressions.size > 0,
-            hasFunctionAliases: () => this.functionAliasLookup.size > 0 || this.internalFunctionLookup.size > 0,
-            withEngineEventCaptureDisabled: (callback) => callback(),
-            upsertNamedExpression: (expression, options) => this.upsertNamedExpressionInternal(expression, options),
-            rewriteFormulaForStorage: (formula, ownerSheetId) => this.rewriteFormulaForStorage(formula, ownerSheetId),
-            requireSheetId: (name) => this.requireSheetId(name),
-            cacheInitializedSheetDimensions: (sheetId, dimensions, options) =>
-              this.sheetDimensionCache.cacheInitialized(sheetId, dimensions, options),
-            clearHistoryStacks: () => this.clearHistoryStacks(),
-            resetChangeTrackingCaches: () => this.resetChangeTrackingCaches(),
-          })
-        } catch (error) {
-          const timeoutError = workPaperEvaluationTimeoutErrorFrom(error)
-          if (timeoutError) {
-            throw timeoutError
-          }
-          throw error
-        }
-      }
-    })
-    this.clearHistoryStacks()
-    this.resetChangeTrackingCaches()
-    this.clipboard = clipboard
-    if (suspended) {
-      this.suspendedVisibility = this.ensureVisibilityCache()
-      this.suspendedNamedValues = this.ensureNamedExpressionValueCache()
-    }
-  }
-
   protected rewriteFormulaForStorage(formula: string, ownerSheetId: number): string {
     return rewriteWorkPaperFormulaForStorage({
       formula,
@@ -914,13 +699,6 @@ export class WorkPaper extends WorkPaperRuntimeFastPathBase {
       functionAliasLookup: this.functionAliasLookup,
       messageOf: (error, fallback) => this.messageOf(error, fallback),
     })
-  }
-
-  private replaceEngineForConfig(config: WorkPaperConfig): void {
-    this.engineEvents.detach()
-    this.engineEventsAttached = false
-    this.engine = createWorkPaperEngine(config)
-    this.sheetDimensionCache = new WorkPaperSheetDimensionCache(this.engine)
   }
 
   protected restorePublicFormula(formula: string, ownerSheetId: number): string {
