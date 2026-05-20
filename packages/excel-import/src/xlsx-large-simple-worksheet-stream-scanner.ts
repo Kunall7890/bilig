@@ -1,11 +1,16 @@
 import type {
   WorkbookAxisEntrySnapshot,
   WorkbookAxisMetadataSnapshot,
+  WorkbookAutoFilterSnapshot,
   WorkbookConditionalFormatSnapshot,
   WorkbookDataValidationSnapshot,
   WorkbookRichTextCellSnapshot,
 } from '@bilig/protocol'
-import { readLargeSimpleAutoFiltersFromBytes } from './xlsx-large-simple-autofilter-byte-scan.js'
+import {
+  readLargeSimpleAutoFilterRootFromBytes,
+  readLargeSimpleAutoFiltersFromBytes,
+  wrapLargeSimpleAutoFilterColumnBytes,
+} from './xlsx-large-simple-autofilter-byte-scan.js'
 import {
   readLargeSimpleCellValueFromTextRange,
   readLargeSimpleSharedStringIndexFromTextRange,
@@ -88,6 +93,11 @@ type StreamedMetadataElement = 'cols' | 'mergeCells' | 'tableParts'
 interface ActiveConditionalFormatting {
   readonly rootTag: Uint8Array
   ruleSeen: boolean
+}
+
+interface ActiveAutoFilter {
+  readonly rootTag: Uint8Array
+  filter: WorkbookAutoFilterSnapshot | null
 }
 
 export interface LargeSimpleWorksheetStreamScan {
@@ -202,6 +212,7 @@ class LargeSimpleWorksheetChunkScanner {
   private readonly maxDimensionCellPreallocation: number
   private dimensionCellPreallocationApplied = false
   private activeMetadataElement: StreamedMetadataElement | null = null
+  private activeAutoFilter: ActiveAutoFilter | null = null
   private activeConditionalFormatting: ActiveConditionalFormatting | null = null
   private activeDataValidations = false
   private activeHyperlinks = false
@@ -261,7 +272,12 @@ class LargeSimpleWorksheetChunkScanner {
       return null
     }
     this.process(true)
-    if (this.activeMetadataElement !== null || this.activeConditionalFormatting !== null || this.activeHyperlinks) {
+    if (
+      this.activeMetadataElement !== null ||
+      this.activeAutoFilter !== null ||
+      this.activeConditionalFormatting !== null ||
+      this.activeHyperlinks
+    ) {
       this.failed = true
     }
     this.compact()
@@ -371,6 +387,12 @@ class LargeSimpleWorksheetChunkScanner {
     while (!this.failed && this.index < this.buffer.byteLength) {
       if (this.activeMetadataElement !== null) {
         if (!this.processActiveMetadataElement(final)) {
+          return
+        }
+        continue
+      }
+      if (this.activeAutoFilter !== null) {
+        if (!this.processActiveAutoFilter(final)) {
           return
         }
         continue
@@ -664,6 +686,27 @@ class LargeSimpleWorksheetChunkScanner {
       this.index = tagEnd + 1
       return true
     }
+    if (localName === 'autoFilter') {
+      if (this.retainMetadataXml && !this.sheetName) {
+        this.failed = true
+        return true
+      }
+      this.activeAutoFilter = {
+        rootTag: this.buffer.slice(this.index, tagEnd + 1),
+        filter:
+          this.retainMetadataXml && this.sheetName
+            ? readLargeSimpleAutoFilterRootFromBytes(this.sheetName, this.buffer, this.index, tagEnd + 1)
+            : null,
+      }
+      this.index = tagEnd + 1
+      if (!this.processActiveAutoFilter(final)) {
+        if (final) {
+          this.failed = true
+        }
+        return false
+      }
+      return true
+    }
     if (localName === 'conditionalFormatting') {
       this.activeConditionalFormatting = {
         rootTag: this.buffer.slice(this.index, tagEnd + 1),
@@ -826,6 +869,81 @@ class LargeSimpleWorksheetChunkScanner {
       return true
     }
     return false
+  }
+
+  private processActiveAutoFilter(final: boolean): boolean {
+    const active = this.activeAutoFilter
+    if (active === null) {
+      return true
+    }
+    while (!this.failed && this.index < this.buffer.byteLength) {
+      if (this.buffer[this.index] !== lessThan) {
+        this.index += 1
+        continue
+      }
+      const closing = this.buffer[this.index + 1] === slash
+      const tagNameStart = this.index + (closing ? 2 : 1)
+      const tag = readXmlTagName(this.buffer, tagNameStart)
+      if (!tag) {
+        if (!final && tagNameStart >= this.buffer.byteLength) {
+          return false
+        }
+        this.index += 1
+        continue
+      }
+      const tagEnd = findTagEnd(this.buffer, tag.endIndex)
+      if (tagEnd === null) {
+        if (final) {
+          this.failed = true
+        }
+        return false
+      }
+      if (closing && tag.localName === 'autoFilter') {
+        if (this.retainMetadataXml && active.filter) {
+          this.filters = [...(this.filters ?? []), active.filter]
+        }
+        this.activeAutoFilter = null
+        this.index = tagEnd + 1
+        return true
+      }
+      if (!closing && tag.localName === 'filterColumn') {
+        if (!this.processActiveAutoFilterColumn(active, tagEnd, final)) {
+          return false
+        }
+        continue
+      }
+      this.index = tagEnd + 1
+    }
+    if (final) {
+      this.failed = true
+    } else {
+      this.index = this.buffer.byteLength
+    }
+    return false
+  }
+
+  private processActiveAutoFilterColumn(active: ActiveAutoFilter, tagEnd: number, final: boolean): boolean {
+    const startIndex = this.index
+    const selfClosing = isSelfClosingTag(this.buffer, tagEnd)
+    const contentStart = tagEnd + 1
+    const closing = selfClosing ? { start: contentStart, end: contentStart } : findClosingTag(this.buffer, contentStart, 'filterColumn')
+    if (!closing) {
+      if (final) {
+        this.failed = true
+      }
+      this.index = startIndex
+      return false
+    }
+    const endIndex = selfClosing ? tagEnd + 1 : closing.end
+    if (this.retainMetadataXml && this.sheetName) {
+      const wrapped = wrapLargeSimpleAutoFilterColumnBytes(active.rootTag, this.buffer, startIndex, endIndex)
+      const parsed = readLargeSimpleAutoFiltersFromBytes(this.sheetName, wrapped, 0, wrapped.byteLength)[0]
+      if (parsed) {
+        active.filter = mergeAutoFilterCriteria(active.filter ?? parsed, parsed.criteria)
+      }
+    }
+    this.index = endIndex
+    return true
   }
 
   private countMetadataElement(localName: string, contentStart: number, contentEnd: number): void {
@@ -1171,6 +1289,13 @@ class LargeSimpleWorksheetChunkScanner {
   }
 
   private reportRetainedBufferLength: () => void = () => {}
+}
+
+function mergeAutoFilterCriteria(
+  filter: WorkbookAutoFilterSnapshot,
+  criteria: WorkbookAutoFilterSnapshot['criteria'],
+): WorkbookAutoFilterSnapshot {
+  return criteria && criteria.length > 0 ? { ...filter, criteria: [...(filter.criteria ?? []), ...criteria] } : filter
 }
 
 function readSlicerListExtensionXml(xml: string): string | undefined {
