@@ -43,6 +43,31 @@ export interface WasmDirectScalarValueBatchLayout {
   outErrors: Uint16Array
 }
 
+export interface WasmDirectScalarStoreTargetBatchLayout {
+  targets: Uint32Array
+  operators: Uint8Array
+  leftBatchRefs: Uint32Array
+  leftTags: Uint8Array
+  leftValues: Float64Array
+  leftErrors: Uint16Array
+  rightBatchRefs: Uint32Array
+  rightTags: Uint8Array
+  rightValues: Float64Array
+  rightErrors: Uint16Array
+  resultOffsets: Float64Array
+}
+
+export interface WasmDenseDirectScalarRowChainStoreTargetBatchLayout {
+  leftValues: Float64Array
+  rightValues: Float64Array
+  firstTargets: Uint32Array
+  secondTargets: Uint32Array
+  rowCount: number
+  firstFormulaCode: number
+  secondFormulaScale: number
+  secondFormulaOffset: number
+}
+
 export interface WasmDenseNumericRowAggregateBatchLayout {
   aggregateKind: number
   values: Float64Array
@@ -52,6 +77,47 @@ export interface WasmDenseNumericRowAggregateBatchLayout {
   aggregateColCount: number
   resultOffset: number
   outNumbers: Float64Array
+}
+
+export interface WasmAnchoredPrefixAggregateBatchLayout {
+  aggregateKind: number
+  tags: Uint8Array
+  numbers: Float64Array
+  errors: Uint16Array
+  rowCount: number
+  colCount: number
+  formulaRowEnds: Uint32Array
+  resultOffsets: Float64Array
+  outTags: Uint8Array
+  outNumbers: Float64Array
+  outErrors: Uint16Array
+}
+
+export interface WasmDirectCriteriaMatchedAggregateBatchLayout {
+  aggregateKinds: Uint8Array
+  matchStarts: Uint32Array
+  matchLengths: Uint32Array
+  matchedRows: Uint32Array
+  aggregateTags: Uint8Array
+  aggregateNumbers: Float64Array
+  aggregateErrors: Uint16Array
+  outTags: Uint8Array
+  outNumbers: Float64Array
+  outErrors: Uint16Array
+}
+
+export interface WasmUniformNumericLookupBatchLayout {
+  kinds: Uint8Array
+  matchModes: Uint8Array
+  starts: Float64Array
+  steps: Float64Array
+  lengths: Uint32Array
+  repeatedRunLengths: Uint32Array
+  lookupTags: Uint8Array
+  lookupNumbers: Float64Array
+  outTags: Uint8Array
+  outNumbers: Float64Array
+  outErrors: Uint16Array
 }
 
 const OUTPUT_STRING_BASE = 2147483648
@@ -267,6 +333,60 @@ export class WasmKernelFacade {
     return true
   }
 
+  evalDirectScalarStoreTargetBatch(layout: WasmDirectScalarStoreTargetBatchLayout, cellCapacity: number): boolean {
+    if (!this.kernel) {
+      return false
+    }
+    this.ensureCapacity(
+      cellCapacity,
+      this.kernel.getFormulaCapacity(),
+      this.kernel.getConstantCapacity(),
+      this.kernel.getRangeCapacity(),
+      this.kernel.getMemberCapacity(),
+    )
+    this.kernel.evalDirectScalarStoreTargetBatch(
+      layout.targets,
+      layout.operators,
+      layout.leftBatchRefs,
+      layout.leftTags,
+      layout.leftValues,
+      layout.leftErrors,
+      layout.rightBatchRefs,
+      layout.rightTags,
+      layout.rightValues,
+      layout.rightErrors,
+      layout.resultOffsets,
+    )
+    return true
+  }
+
+  evalDenseDirectScalarRowChainStoreTargetBatch(
+    layout: WasmDenseDirectScalarRowChainStoreTargetBatchLayout,
+    cellCapacity: number,
+  ): boolean {
+    if (!this.kernel) {
+      return false
+    }
+    this.ensureCapacity(
+      cellCapacity,
+      this.kernel.getFormulaCapacity(),
+      this.kernel.getConstantCapacity(),
+      this.kernel.getRangeCapacity(),
+      this.kernel.getMemberCapacity(),
+    )
+    this.kernel.evalDenseDirectScalarRowChainStoreTargetBatch(
+      layout.leftValues,
+      layout.rightValues,
+      layout.firstTargets,
+      layout.secondTargets,
+      layout.rowCount,
+      layout.firstFormulaCode,
+      layout.secondFormulaScale,
+      layout.secondFormulaOffset,
+    )
+    return true
+  }
+
   evalDenseNumericRowAggregateBatch(layout: WasmDenseNumericRowAggregateBatchLayout): boolean {
     if (!this.kernel) {
       return false
@@ -280,6 +400,65 @@ export class WasmKernelFacade {
       layout.aggregateColCount,
       layout.resultOffset,
       layout.outNumbers,
+    )
+    return true
+  }
+
+  evalAnchoredPrefixAggregateBatch(layout: WasmAnchoredPrefixAggregateBatchLayout): boolean {
+    if (!this.kernel) {
+      return false
+    }
+    this.kernel.evalAnchoredPrefixAggregateBatch(
+      layout.aggregateKind,
+      layout.tags,
+      layout.numbers,
+      layout.errors,
+      layout.rowCount,
+      layout.colCount,
+      layout.formulaRowEnds,
+      layout.resultOffsets,
+      layout.outTags,
+      layout.outNumbers,
+      layout.outErrors,
+    )
+    return true
+  }
+
+  evalDirectCriteriaMatchedAggregateBatch(layout: WasmDirectCriteriaMatchedAggregateBatchLayout): boolean {
+    if (!this.kernel) {
+      return false
+    }
+    this.kernel.evalDirectCriteriaMatchedAggregateBatch(
+      layout.aggregateKinds,
+      layout.matchStarts,
+      layout.matchLengths,
+      layout.matchedRows,
+      layout.aggregateTags,
+      layout.aggregateNumbers,
+      layout.aggregateErrors,
+      layout.outTags,
+      layout.outNumbers,
+      layout.outErrors,
+    )
+    return true
+  }
+
+  evalUniformNumericLookupBatch(layout: WasmUniformNumericLookupBatchLayout): boolean {
+    if (!this.kernel) {
+      return false
+    }
+    this.kernel.evalUniformNumericLookupBatch(
+      layout.kinds,
+      layout.matchModes,
+      layout.starts,
+      layout.steps,
+      layout.lengths,
+      layout.repeatedRunLengths,
+      layout.lookupTags,
+      layout.lookupNumbers,
+      layout.outTags,
+      layout.outNumbers,
+      layout.outErrors,
     )
     return true
   }

@@ -1,4 +1,4 @@
-import type { EngineCellMutationRef } from '@bilig/core'
+import type { EngineCellMutationRef } from '@bilig/core/headless-runtime'
 import type { LiteralInput } from '@bilig/protocol'
 import {
   isBlankRawCellContent,

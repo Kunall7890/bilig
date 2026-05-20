@@ -14,7 +14,11 @@ import type {
 
 const SCALAR_RANGE_FUNCTION_RE =
   /^(?:_XLFN\.)?(?:_XLWS\.)?(?:SUM|COUNT|COUNTA|COUNTBLANK|MIN|MAX|AVERAGE|AVG|SUMIF|COUNTIF|SUMIFS|COUNTIFS|ABS)\(.*\)(?:[+\-*/]\d+(?:\.\d+)?)?$/
-const SIMPLE_SCALAR_EXPRESSION_RE = /^\$?[A-Z]+\$?\d+(?:[+\-*/](?:\$?[A-Z]+\$?\d+|\d+(?:\.\d+)?))*$/
+const SCALAR_CELL_REF_PATTERN = String.raw`(?:'(?:[^']|'')+'!|[A-Z_][A-Z0-9_ .]*!)?\$?[A-Z]+\$?\d+`
+const SCALAR_NUMBER_PATTERN = String.raw`\d+(?:\.\d+)?`
+const SIMPLE_SCALAR_EXPRESSION_RE = new RegExp(
+  `^(?:${SCALAR_CELL_REF_PATTERN}|${SCALAR_NUMBER_PATTERN})(?:[+\\-*/](?:${SCALAR_CELL_REF_PATTERN}|${SCALAR_NUMBER_PATTERN}))*$`,
+)
 const SCALAR_ONLY_FUNCTION_NAMES = ['CONCATENATE', 'IF', 'LEN', 'MAX', 'MIN', 'PMT', 'POWER', 'ROUND', 'SQRT'] as const
 const SCALAR_ONLY_FUNCTION_MARKERS = SCALAR_ONLY_FUNCTION_NAMES.map((name) => `${name}(`)
 const FORMULA_SPILL_PRODUCING_FUNCTION_MARKERS = FORMULA_SPILL_PRODUCING_FUNCTION_NAMES.map((name) => `${name}(`)

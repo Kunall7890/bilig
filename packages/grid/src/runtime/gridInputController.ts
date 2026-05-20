@@ -30,6 +30,7 @@ export class GridInputController {
   readonly columnResizeActiveRef = createRuntimeRef(false)
   readonly lastBodyClickCellRef = createRuntimeRef<Item | null>(null)
   readonly internalClipboardRef = createRuntimeRef<InternalClipboardRange | null>(null)
+  readonly keyboardModifierStateRef = createRuntimeRef({ primary: false, shift: false })
   readonly pendingClipboardCopySequenceRef = createRuntimeRef(0)
   readonly pendingKeyboardPasteSequenceRef = createRuntimeRef(0)
   readonly suppressNextNativePasteRef = createRuntimeRef(false)

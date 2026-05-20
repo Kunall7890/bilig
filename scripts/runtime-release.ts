@@ -10,7 +10,9 @@ export const RUNTIME_PACKAGE_CONTENT_PATH_PATTERNS = [
   'packages/core/**',
   'packages/excel-import/**',
   'packages/headless/**',
+  'packages/bilig/**',
   'packages/xlsx-formula-recalc/**',
+  'packages/sheetjs-formula-recalc/**',
   'packages/exceljs-formula-recalc/**',
   'packages/create-workpaper/**',
 ] as const

@@ -2,18 +2,31 @@
 
 [![CI](https://github.com/proompteng/bilig/actions/workflows/ci.yml/badge.svg)](https://github.com/proompteng/bilig/actions/workflows/ci.yml)
 [![GitHub Repo stars](https://img.shields.io/github/stars/proompteng/bilig?style=social)](https://github.com/proompteng/bilig/stargazers)
-[![npm: @bilig/headless](https://img.shields.io/npm/v/@bilig/headless?label=%40bilig%2Fheadless)](https://www.npmjs.com/package/@bilig/headless)
-[![npm weekly downloads](https://img.shields.io/npm/dw/@bilig/headless?label=npm%20downloads)](https://www.npmjs.com/package/@bilig/headless)
-[![MCP server score](https://glama.ai/mcp/servers/proompteng/bilig/badges/score.svg)](https://glama.ai/mcp/servers/proompteng/bilig)
+[![npm: bilig-workpaper](https://img.shields.io/npm/v/bilig-workpaper?label=bilig-workpaper)](https://www.npmjs.com/package/bilig-workpaper)
+[![npm: xlsx-formula-recalc](https://img.shields.io/npm/v/xlsx-formula-recalc?label=xlsx-formula-recalc)](https://www.npmjs.com/package/xlsx-formula-recalc)
+[![npm weekly downloads](https://img.shields.io/npm/dw/@bilig/headless?label=%40bilig%2Fheadless%20downloads)](https://www.npmjs.com/package/@bilig/headless)
 [![CodeQL](https://github.com/proompteng/bilig/actions/workflows/codeql.yml/badge.svg)](https://github.com/proompteng/bilig/actions/workflows/codeql.yml)
 [![OpenSSF Scorecard](https://api.scorecard.dev/projects/github.com/proompteng/bilig/badge)](https://scorecard.dev/viewer/?uri=github.com/proompteng/bilig)
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
 
 **Formula workbooks for Node services and agent tools.**
 
-Use [`@bilig/headless`](https://www.npmjs.com/package/@bilig/headless) when a
+Use [`bilig-workpaper`](https://www.npmjs.com/package/bilig-workpaper) when a
 calculation is easiest to review as cells and formulas, but it has to run in a
-Node service, queue worker, serverless route, test, or coding-agent tool.
+Node service, queue worker, serverless route, test, or coding-agent tool. Use
+[`xlsx-formula-recalc`](https://www.npmjs.com/package/xlsx-formula-recalc) when
+the immediate problem is "I changed XLSX inputs in Node and need the formula
+results now." Use
+[`sheetjs-formula-recalc`](https://www.npmjs.com/package/sheetjs-formula-recalc)
+when the same bug is showing up in a SheetJS / `xlsx` pipeline. Use
+[`exceljs-formula-recalc`](https://www.npmjs.com/package/exceljs-formula-recalc)
+when the workbook is already moving through ExcelJS.
+
+The scoped [`@bilig/headless`](https://www.npmjs.com/package/@bilig/headless)
+package remains the fully qualified runtime package with bundled agent
+metadata. The unscoped packages exist so people searching npm for WorkPaper,
+XLSX recalculation, ExcelJS formulas, SheetJS alternatives, or server-side
+spreadsheet formulas land on the narrow install path first.
 
 It gives you a `WorkPaper`: build sheets, write inputs, recalculate, read the
 cell value, and save the workbook as JSON. No browser grid is involved.
@@ -31,26 +44,70 @@ workbook would be ceremony.
 
 Project site: <https://proompteng.github.io/bilig/>
 
+## Which Package Should I Install?
+
+| Problem you have right now                                                                      | Install                                      | First proof                                                                                  |
+| ----------------------------------------------------------------------------------------------- | -------------------------------------------- | -------------------------------------------------------------------------------------------- |
+| Formula workbook state inside a Node service or agent tool                                      | `npm install bilig-workpaper`                | [90-second Node quickstart](docs/try-bilig-headless-in-node.md)                              |
+| SheetJS / `xlsx` pipeline returns stale formula values after input edits                        | `npm install sheetjs-formula-recalc`         | [SheetJS formula result not updating](docs/sheetjs-formula-result-not-updating-node.md)       |
+| Generic XLSX bytes changed in Node; formula outputs must refresh before returning               | `npm install xlsx-formula-recalc`            | [XLSX formula recalculation in Node.js](docs/xlsx-formula-recalculation-node.md)             |
+| Existing ExcelJS workflow needs recalculated values, not stale cached results                   | `npm install exceljs exceljs-formula-recalc` | [ExcelJS formula recalculation in Node.js](docs/exceljs-formula-recalculation-node.md)       |
+| Full runtime package with agent metadata, MCP binary, provenance docs, and lower-level subpaths | `npm install @bilig/headless`                | [npm provenance and package trust](docs/npm-provenance-package-trust.md)                     |
+
+### Stale XLSX Formula Values? Run This First
+
+If a Node job already has an XLSX file and only needs fresh formula values
+before returning, use the file-level recalculation package before evaluating
+the broader WorkPaper runtime:
+
+```sh
+npx --package sheetjs-formula-recalc sheetjs-recalc --demo --json
+
+npx --package xlsx-formula-recalc xlsx-recalc --demo --json
+
+npx --package xlsx-formula-recalc xlsx-recalc quote.xlsx \
+  --set Inputs!B2=42 \
+  --read Summary!B7 \
+  --out quote.recalculated.xlsx \
+  --json
+```
+
+If the workbook is already in ExcelJS, keep that boundary and add
+`exceljs-formula-recalc`:
+
+```sh
+npm install exceljs exceljs-formula-recalc
+npx --package exceljs-formula-recalc exceljs-recalc --demo --json
+```
+
+For one checkout proof across SheetJS/`xlsx`, `xlsx-populate`, and ExcelJS:
+
+```sh
+npm --prefix examples/recalc-bridge-workflows install
+npm --prefix examples/recalc-bridge-workflows run smoke
+```
+
 ## Choose An Evaluation Path
 
-| If you are evaluating... | Start here                                                                                                                                                                                                                | What should be true before you star, watch, or adopt                                                  |
-| ------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------- |
-| Basic fit                | [Why use Bilig?](docs/why-use-bilig.md)                                                                                                                                                                                   | The problem is workbook-shaped business logic that needs API readback and persistence.                |
-| Published npm package    | [90-second Node quickstart](docs/try-bilig-headless-in-node.md)                                                                                                                                                           | It edits one input, recalculates, persists JSON, restores, and prints `verified: true`.               |
-| Backend service shape    | [Quote approval WorkPaper API](docs/quote-approval-workpaper-api.md)                                                                                                                                                      | A realistic route-style workflow returns formula readback and `restoredMatchesAfter: true`.           |
-| Agent or MCP tools       | [Headless WorkPaper agent handbook](docs/headless-workpaper-agent-handbook.md), [MCP spreadsheet tool server](docs/mcp-workpaper-tool-server.md), and [Claude Desktop MCPB bundle](docs/claude-desktop-mcpb-workpaper.md) | The agent installs a tool path, gets a copy-paste handoff prompt, then proves write/readback/persist. |
-| Agent-owned XLSX files   | [Agent XLSX recalculation without LibreOffice](docs/agent-xlsx-formula-recalculation-without-libreoffice.md)                                                                                                              | A tool can edit XLSX inputs, recalculate, export, reimport, and return `verified: true`.              |
-| Public technical review  | [Show HN maintainer note](docs/show-hn-formula-workbooks-node-services.md)                                                                                                                                                | One shareable page has the npm check, benchmark caveat, known limits, and feedback ask.               |
-| Trust and performance    | [npm provenance](docs/npm-provenance-package-trust.md) and [benchmark evidence](docs/what-workpaper-benchmark-proves.md)                                                                                                  | npm shows SLSA provenance, and benchmark claims match the checked artifact.                           |
-| Almost a fit             | [adoption blocker form](https://github.com/proompteng/bilig/discussions/new?category=general)                                                                                                                             | Name the formula, import/export, persistence, framework, MCP, package, or benchmark gap.              |
-| Formula or XLSX bug      | [formula bug clinic](docs/formula-bug-clinic.md)                                                                                                                                                                          | Share a reduced public case that can become a test, example, corpus fixture, or docs proof.           |
-| Real workbook blocked    | [submit a workbook fixture](docs/submit-workbook-fixture.md)                                                                                                                                                              | Use the structured form when a reduced workbook is ready.                                             |
+| If you are evaluating...      | Start here                                                                                                                                                                                                                | What should be true before you star, watch, or adopt                                                   |
+| ----------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------ |
+| Basic fit                     | [Why use Bilig?](docs/why-use-bilig.md)                                                                                                                                                                                   | The problem is workbook-shaped business logic that needs API readback and persistence.                 |
+| Published npm package         | [90-second Node quickstart](docs/try-bilig-headless-in-node.md)                                                                                                                                                           | `bilig-workpaper` edits one input, recalculates, persists JSON, restores, and prints `verified: true`. |
+| XLSX or ExcelJS recalculation | [XLSX formula recalculation](docs/xlsx-formula-recalculation-node.md) and [ExcelJS formula recalculation](docs/exceljs-formula-recalculation-node.md)                                                                     | The package updates inputs, reads recalculated values, and exports or mutates the workbook boundary.   |
+| Backend service shape         | [Quote approval WorkPaper API](docs/quote-approval-workpaper-api.md)                                                                                                                                                      | A realistic route-style workflow returns formula readback and `restoredMatchesAfter: true`.            |
+| Agent or MCP tools            | [Headless WorkPaper agent handbook](docs/headless-workpaper-agent-handbook.md), [MCP spreadsheet tool server](docs/mcp-workpaper-tool-server.md), and [Claude Desktop MCPB bundle](docs/claude-desktop-mcpb-workpaper.md) | The agent installs a tool path, gets a copy-paste handoff prompt, then proves write/readback/persist.  |
+| Agent-owned XLSX files        | [Agent XLSX recalculation without LibreOffice](docs/agent-xlsx-formula-recalculation-without-libreoffice.md)                                                                                                              | A tool can edit XLSX inputs, recalculate, export, reimport, and return `verified: true`.               |
+| Public technical review       | [Show HN maintainer note](docs/show-hn-formula-workbooks-node-services.md)                                                                                                                                                | One shareable page has the npm check, benchmark caveat, known limits, and feedback ask.                |
+| Trust and performance         | [npm provenance](docs/npm-provenance-package-trust.md) and [benchmark evidence](docs/what-workpaper-benchmark-proves.md)                                                                                                  | npm shows SLSA provenance, and benchmark claims match the checked artifact.                            |
+| Almost a fit                  | [adoption blocker form](https://github.com/proompteng/bilig/discussions/new?category=general)                                                                                                                             | Name the formula, import/export, persistence, framework, MCP, package, or benchmark gap.               |
+| Formula or XLSX bug           | [formula bug clinic](docs/formula-bug-clinic.md)                                                                                                                                                                          | Share a reduced public case that can become a test, example, corpus fixture, or docs proof.            |
+| Real workbook blocked         | [submit a workbook fixture](docs/submit-workbook-fixture.md)                                                                                                                                                              | Use the structured form when a reduced workbook is ready.                                              |
 
 Reduced workbook already in hand? Generate the paste-ready fixture report in
 one command:
 
 ```sh
-npm exec --package @bilig/headless@0.31.0 -- bilig-formula-clinic ./reduced.xlsx --cells "Summary!B7,Inputs!B2"
+npm exec --package @bilig/headless@0.35.1 -- bilig-formula-clinic ./reduced.xlsx --cells "Summary!B7,Inputs!B2"
 ```
 
 Handing a spreadsheet task to another coding agent? Start with the
@@ -60,15 +117,15 @@ To prove the package-owned agent loop without cloning the repo or downloading a
 TypeScript file:
 
 ```sh
-npm exec --package @bilig/headless@0.31.0 -- bilig-agent-challenge
-npm exec --package @bilig/headless@0.31.0 -- bilig-mcp-challenge
+npm exec --package @bilig/headless@0.35.1 -- bilig-agent-challenge
+npm exec --package @bilig/headless@0.35.1 -- bilig-mcp-challenge
 ```
 
 Agent tools that support skill manifests can start from
 [`skill.md`](docs/skill.md) or the well-known index at
 [`docs/.well-known/agent-skills/index.json`](docs/.well-known/agent-skills/index.json).
 Claude Desktop users can also install the released MCPB bundle directly:
-<https://github.com/proompteng/bilig/releases/download/libraries-v0.31.0/bilig-workpaper.mcpb>.
+<https://github.com/proompteng/bilig/releases/download/libraries-v0.35.1/bilig-workpaper.mcpb>.
 If you need a copy-paste eval for another tool host, use the
 [agent workbook challenge](docs/agent-workbook-challenge.md): one input edit,
 one dependent formula readback, one serialized restore, and a `verified: true`
@@ -89,7 +146,7 @@ mkdir bilig-headless-eval
 cd bilig-headless-eval
 npm init -y
 npm pkg set type=module
-npm install @bilig/headless
+npm install bilig-workpaper
 npm install -D tsx typescript @types/node
 curl -fsSLo quickstart.ts https://proompteng.github.io/bilig/npm-eval.ts
 npx tsx quickstart.ts
@@ -103,7 +160,7 @@ Expected output:
   "after": 38400,
   "afterRestore": 38400,
   "sheets": ["Inputs", "Summary"],
-  "bytes": 1000,
+  "bytes": 999,
   "verified": true,
   "nextStep": "If this proof matches your service or agent workflow, star or bookmark Bilig: https://github.com/proompteng/bilig/stargazers"
 }
@@ -145,7 +202,7 @@ Most integrations are just this: build a workbook, write an input, read the
 calculated value, and save the workbook state.
 
 ```ts
-import { WorkPaper, exportWorkPaperDocument, serializeWorkPaperDocument } from '@bilig/headless'
+import { WorkPaper, exportWorkPaperDocument, serializeWorkPaperDocument } from 'bilig-workpaper'
 
 const workbook = WorkPaper.buildFromSheets({
   Inputs: [
@@ -192,9 +249,9 @@ matters.
 
 <!-- headless-package-footprint:start -->
 
-Current checked npm footprint for `@bilig/headless@0.31.0`:
+Current checked npm footprint for `@bilig/headless@0.35.1`:
 
-- Pack dry run: `497 kB` tarball, `2.98 MB` unpacked, `489` package entries.
+- Pack dry run: `499 kB` tarball, `3.00 MB` unpacked, `495` package entries.
 - Boundary: the main import is the WorkPaper formula/JSON runtime; XLSX
   import/export stays behind the `@bilig/headless/xlsx` subpath; MCP is the
   `bilig-workpaper-mcp` binary wrapper; reduced workbook reports use the
@@ -279,6 +336,7 @@ the [MCP server guide](docs/mcp-workpaper-tool-server.md),
 [agent XLSX formula recalculation without LibreOffice](docs/agent-xlsx-formula-recalculation-without-libreoffice.md),
 [Excel file as a Node calculation engine](docs/excel-file-calculation-engine-node.md),
 [stale XLSX formula cache in Node.js](docs/stale-xlsx-formula-cache-node.md),
+[SheetJS formula result not updating in Node.js](docs/sheetjs-formula-result-not-updating-node.md),
 [Microsoft Graph Excel recalculation in Node.js](docs/microsoft-graph-excel-recalculation-node.md),
 [xlsx-calc alternative for Node workbook recalculation](docs/xlsx-calc-alternative-node-workbook-recalculation.md),
 [ExcelJS formula recalculation in Node.js](docs/exceljs-formula-recalculation-node.md),
@@ -299,7 +357,7 @@ and [serverless quote approval](examples/serverless-workpaper-api). Run
 `npm run agent:framework-adapters`,
 `npm run agent:mcp-tools`, `npm run agent:mcp-transcript`,
 `npm run agent:mcp-file-transcript`, `npm run agent:mcp-stdio`, or
-`npm exec --package @bilig/headless@0.31.0 -- bilig-workpaper-mcp` when that is the
+`npm exec --package @bilig/headless@0.35.1 -- bilig-workpaper-mcp` when that is the
 path you are evaluating.
 
 The serverless example also includes `npm run next-route-handler`,
@@ -343,6 +401,7 @@ The most useful entry points:
 - [fulfillment capacity plan](examples/headless-workpaper#fulfillment-capacity-plan)
 - [quote approval threshold](examples/headless-workpaper#quote-approval-threshold)
 - [subscription MRR forecast](examples/headless-workpaper#subscription-mrr-forecast)
+- [SheetJS, xlsx-populate, and ExcelJS recalculation bridge](examples/recalc-bridge-workflows)
 
 For agent tools:
 
@@ -371,11 +430,11 @@ The agent framework guide is
 The package also ships the MCP stdio binary:
 
 ```sh
-npm exec --package @bilig/headless@0.31.0 -- bilig-agent-challenge
-npm exec --package @bilig/headless@0.31.0 -- bilig-formula-clinic ./reduced.xlsx --cells "Summary!B7,Inputs!B2"
-npm exec --package @bilig/headless@0.31.0 -- bilig-mcp-challenge
-npm exec --package @bilig/headless@0.31.0 -- bilig-workpaper-mcp
-npm exec --package @bilig/headless@0.31.0 -- bilig-workpaper-mcp --workpaper ./pricing.workpaper.json --init-demo-workpaper --writable
+npm exec --package @bilig/headless@0.35.1 -- bilig-agent-challenge
+npm exec --package @bilig/headless@0.35.1 -- bilig-formula-clinic ./reduced.xlsx --cells "Summary!B7,Inputs!B2"
+npm exec --package @bilig/headless@0.35.1 -- bilig-mcp-challenge
+npm exec --package @bilig/headless@0.35.1 -- bilig-workpaper-mcp
+npm exec --package @bilig/headless@0.35.1 -- bilig-workpaper-mcp --workpaper ./pricing.workpaper.json --init-demo-workpaper --writable
 docker build --target bilig-workpaper-mcp -t bilig-workpaper-mcp:local .
 ```
 

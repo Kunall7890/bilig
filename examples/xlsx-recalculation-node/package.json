@@ -1,14 +1,15 @@
 {
   "name": "bilig-xlsx-recalculation-node-example",
   "private": true,
-  "description": "Runnable Node XLSX formula recalculation example for @bilig/headless.",
+  "description": "Runnable Node XLSX formula recalculation example for xlsx-formula-recalc.",
   "type": "module",
   "scripts": {
     "start": "tsx recalculate-xlsx.ts",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@bilig/headless": "latest"
+    "@bilig/headless": "latest",
+    "xlsx-formula-recalc": "latest"
   },
   "devDependencies": {
     "@types/node": "25.5.0",

@@ -4,6 +4,7 @@ import { fileURLToPath } from 'node:url'
 
 import { WorkPaper } from '@bilig/headless'
 import { exportXlsx, importXlsx } from '@bilig/headless/xlsx'
+import { recalculateXlsx } from 'xlsx-formula-recalc'
 
 type WorkPaperInstance = ReturnType<typeof WorkPaper.buildFromSheets>
 
@@ -27,25 +28,28 @@ const sourceWorkbook = createPricingWorkbook()
 writeFileSync(sourceXlsxPath, exportXlsx(sourceWorkbook.exportSnapshot()))
 sourceWorkbook.dispose()
 
-const imported = importXlsx(new Uint8Array(readFileSync(sourceXlsxPath)), 'pricing-model-source.xlsx')
-const pricingWorkbook = WorkPaper.buildFromSnapshot(imported.snapshot, {
+const beforeImport = importXlsx(new Uint8Array(readFileSync(sourceXlsxPath)), 'pricing-model-source.xlsx')
+const beforeWorkbook = WorkPaper.buildFromSnapshot(beforeImport.snapshot, {
   evaluationTimeoutMs: 30_000,
   useColumnIndex: true,
 })
+const before = readQuoteSummary(beforeWorkbook, requireSheet(beforeWorkbook, 'Summary'))
+beforeWorkbook.dispose()
 
-const inputs = requireSheet(pricingWorkbook, 'Inputs')
-const summary = requireSheet(pricingWorkbook, 'Summary')
-const before = readQuoteSummary(pricingWorkbook, summary)
+const recalculated = recalculateXlsx(new Uint8Array(readFileSync(sourceXlsxPath)), {
+  fileName: 'pricing-model-source.xlsx',
+  edits: [
+    { target: 'Inputs!B2', value: 48 },
+    { target: 'Inputs!B3', value: 1500 },
+    { target: 'Inputs!B4', value: 0.12 },
+    { target: 'Inputs!B5', value: 690 },
+    { target: 'Inputs!B6', value: 0.3 },
+  ],
+  reads: ['Summary!B2', 'Summary!B3', 'Summary!B4', 'Summary!B5', 'Summary!B6', 'Summary!B7'],
+})
 
-pricingWorkbook.setCellContents({ sheet: inputs, row: 1, col: 1 }, 48)
-pricingWorkbook.setCellContents({ sheet: inputs, row: 2, col: 1 }, 1500)
-pricingWorkbook.setCellContents({ sheet: inputs, row: 3, col: 1 }, 0.12)
-pricingWorkbook.setCellContents({ sheet: inputs, row: 4, col: 1 }, 690)
-pricingWorkbook.setCellContents({ sheet: inputs, row: 5, col: 1 }, 0.3)
-
-const after = readQuoteSummary(pricingWorkbook, summary)
-writeFileSync(editedXlsxPath, exportXlsx(pricingWorkbook.exportSnapshot()))
-pricingWorkbook.dispose()
+const after = quoteSummaryFromReads(recalculated.reads)
+writeFileSync(editedXlsxPath, recalculated.xlsx)
 
 const roundTrip = importXlsx(new Uint8Array(readFileSync(editedXlsxPath)), 'pricing-model-edited.xlsx')
 const restored = WorkPaper.buildFromSnapshot(roundTrip.snapshot, {
@@ -113,6 +117,17 @@ function readQuoteSummary(workbook: WorkPaperInstance, sheet: number): QuoteSumm
   }
 }
 
+function quoteSummaryFromReads(reads: Readonly<Record<string, unknown>>): QuoteSummary {
+  return {
+    listRevenue: readRoundedCell(reads['Summary!B2'], 'Summary!B2'),
+    discountAmount: readRoundedCell(reads['Summary!B3'], 'Summary!B3'),
+    netRevenue: readRoundedCell(reads['Summary!B4'], 'Summary!B4'),
+    totalCost: readRoundedCell(reads['Summary!B5'], 'Summary!B5'),
+    grossMargin: readRoundedCell(reads['Summary!B6'], 'Summary!B6'),
+    decision: readStringCell(reads['Summary!B7'], 'Summary!B7'),
+  }
+}
+
 function requireSheet(workbook: WorkPaperInstance, sheetName: string): number {
   const sheet = workbook.getSheetId(sheetName)
   if (sheet === undefined) {
@@ -139,6 +154,24 @@ function readString(workbook: WorkPaperInstance, sheet: number, row: number, col
     return cell.value
   }
   throw new Error(`Expected string cell at row ${row.toString()} col ${col.toString()}, got ${JSON.stringify(cell)}`)
+}
+
+function readRoundedCell(cell: unknown, target: string): number {
+  return Math.round(readNumberCell(cell, target) * 10000) / 10000
+}
+
+function readNumberCell(cell: unknown, target: string): number {
+  if (isRecord(cell) && typeof cell.value === 'number') {
+    return cell.value
+  }
+  throw new Error(`Expected numeric cell at ${target}, got ${JSON.stringify(cell)}`)
+}
+
+function readStringCell(cell: unknown, target: string): string {
+  if (isRecord(cell) && typeof cell.value === 'string') {
+    return cell.value
+  }
+  throw new Error(`Expected string cell at ${target}, got ${JSON.stringify(cell)}`)
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {

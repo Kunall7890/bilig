@@ -1,7 +1,17 @@
 import type * as Fs from 'node:fs'
 import type * as FsPromises from 'node:fs/promises'
 import type * as NodeUrl from 'node:url'
+import { evalAnchoredPrefixAggregateBatchRaw, evalDenseNumericRowAggregateBatchRaw } from './raw-kernel-direct-aggregate-bridge.js'
+import { evalDirectCriteriaMatchedAggregateBatchRaw } from './raw-kernel-direct-criteria-aggregate-bridge.js'
+import { evalUniformNumericLookupBatchRaw } from './raw-kernel-direct-lookup-bridge.js'
+import {
+  evalDenseDirectScalarRowChainStoreTargetBatchRaw,
+  evalDirectScalarStoreTargetBatchRaw,
+  evalDirectScalarValueBatchRaw,
+} from './raw-kernel-direct-scalar-bridge.js'
+import { materializePivotTableRaw } from './raw-kernel-pivot-bridge.js'
 import { isRawKernelExports, type RawKernelExports } from './raw-kernel-exports.js'
+import { evalBatchRaw } from './raw-kernel-vm-bridge.js'
 
 type TypedArrayValue = Uint8Array | Uint16Array | Uint32Array | Float64Array
 
@@ -64,6 +74,29 @@ export interface SpreadsheetKernel {
     outNumbers: Float64Array,
     outErrors: Uint16Array,
   ): void
+  evalDirectScalarStoreTargetBatch(
+    targets: Uint32Array,
+    operators: Uint8Array,
+    leftBatchRefs: Uint32Array,
+    leftTags: Uint8Array,
+    leftValues: Float64Array,
+    leftErrors: Uint16Array,
+    rightBatchRefs: Uint32Array,
+    rightTags: Uint8Array,
+    rightValues: Float64Array,
+    rightErrors: Uint16Array,
+    resultOffsets: Float64Array,
+  ): void
+  evalDenseDirectScalarRowChainStoreTargetBatch(
+    leftValues: Float64Array,
+    rightValues: Float64Array,
+    firstTargets: Uint32Array,
+    secondTargets: Uint32Array,
+    rowCount: number,
+    firstFormulaCode: number,
+    secondFormulaScale: number,
+    secondFormulaOffset: number,
+  ): void
   evalDenseNumericRowAggregateBatch(
     aggregateKind: number,
     values: Float64Array,
@@ -73,6 +106,44 @@ export interface SpreadsheetKernel {
     aggregateColCount: number,
     resultOffset: number,
     outNumbers: Float64Array,
+  ): void
+  evalAnchoredPrefixAggregateBatch(
+    aggregateKind: number,
+    tags: Uint8Array,
+    numbers: Float64Array,
+    errors: Uint16Array,
+    rowCount: number,
+    colCount: number,
+    formulaRowEnds: Uint32Array,
+    resultOffsets: Float64Array,
+    outTags: Uint8Array,
+    outNumbers: Float64Array,
+    outErrors: Uint16Array,
+  ): void
+  evalDirectCriteriaMatchedAggregateBatch(
+    aggregateKinds: Uint8Array,
+    matchStarts: Uint32Array,
+    matchLengths: Uint32Array,
+    matchedRows: Uint32Array,
+    aggregateTags: Uint8Array,
+    aggregateNumbers: Float64Array,
+    aggregateErrors: Uint16Array,
+    outTags: Uint8Array,
+    outNumbers: Float64Array,
+    outErrors: Uint16Array,
+  ): void
+  evalUniformNumericLookupBatch(
+    kinds: Uint8Array,
+    matchModes: Uint8Array,
+    starts: Float64Array,
+    steps: Float64Array,
+    lengths: Uint32Array,
+    repeatedRunLengths: Uint32Array,
+    lookupTags: Uint8Array,
+    lookupNumbers: Float64Array,
+    outTags: Uint8Array,
+    outNumbers: Float64Array,
+    outErrors: Uint16Array,
   ): void
   evalBatch(cellIndices: Uint32Array): void
   materializePivotTable(
@@ -273,70 +344,6 @@ class RawKernelBridge {
     }
   }
 
-  evalDirectScalarValueBatch(
-    operators: Uint8Array,
-    leftBatchRefs: Uint32Array,
-    leftTags: Uint8Array,
-    leftValues: Float64Array,
-    leftErrors: Uint16Array,
-    rightBatchRefs: Uint32Array,
-    rightTags: Uint8Array,
-    rightValues: Float64Array,
-    rightErrors: Uint16Array,
-    resultOffsets: Float64Array,
-    outTags: Uint8Array,
-    outNumbers: Float64Array,
-    outErrors: Uint16Array,
-  ): void {
-    const operatorsPtr = this.lowerTypedArray(operators, uint8Spec)
-    const leftBatchRefsPtr = this.lowerTypedArray(leftBatchRefs, uint32Spec)
-    const leftTagsPtr = this.lowerTypedArray(leftTags, uint8Spec)
-    const leftValuesPtr = this.lowerTypedArray(leftValues, float64Spec)
-    const leftErrorsPtr = this.lowerTypedArray(leftErrors, uint16Spec)
-    const rightBatchRefsPtr = this.lowerTypedArray(rightBatchRefs, uint32Spec)
-    const rightTagsPtr = this.lowerTypedArray(rightTags, uint8Spec)
-    const rightValuesPtr = this.lowerTypedArray(rightValues, float64Spec)
-    const rightErrorsPtr = this.lowerTypedArray(rightErrors, uint16Spec)
-    const resultOffsetsPtr = this.lowerTypedArray(resultOffsets, float64Spec)
-    const outTagsPtr = this.lowerTypedArray(outTags, uint8Spec)
-    const outNumbersPtr = this.lowerTypedArray(outNumbers, float64Spec)
-    const outErrorsPtr = this.lowerTypedArray(outErrors, uint16Spec)
-    try {
-      this.raw.evalDirectScalarValueBatch(
-        operatorsPtr,
-        leftBatchRefsPtr,
-        leftTagsPtr,
-        leftValuesPtr,
-        leftErrorsPtr,
-        rightBatchRefsPtr,
-        rightTagsPtr,
-        rightValuesPtr,
-        rightErrorsPtr,
-        resultOffsetsPtr,
-        outTagsPtr,
-        outNumbersPtr,
-        outErrorsPtr,
-      )
-      this.copyLoweredTypedArray(outTagsPtr, outTags, uint8Spec)
-      this.copyLoweredTypedArray(outNumbersPtr, outNumbers, float64Spec)
-      this.copyLoweredTypedArray(outErrorsPtr, outErrors, uint16Spec)
-    } finally {
-      this.raw.__unpin(operatorsPtr)
-      this.raw.__unpin(leftBatchRefsPtr)
-      this.raw.__unpin(leftTagsPtr)
-      this.raw.__unpin(leftValuesPtr)
-      this.raw.__unpin(leftErrorsPtr)
-      this.raw.__unpin(rightBatchRefsPtr)
-      this.raw.__unpin(rightTagsPtr)
-      this.raw.__unpin(rightValuesPtr)
-      this.raw.__unpin(rightErrorsPtr)
-      this.raw.__unpin(resultOffsetsPtr)
-      this.raw.__unpin(outTagsPtr)
-      this.raw.__unpin(outNumbersPtr)
-      this.raw.__unpin(outErrorsPtr)
-    }
-  }
-
   evalDenseNumericRowAggregateBatch(
     aggregateKind: number,
     values: Float64Array,
@@ -347,33 +354,83 @@ class RawKernelBridge {
     resultOffset: number,
     outNumbers: Float64Array,
   ): void {
-    const valuesPtr = this.lowerTypedArray(values, float64Spec)
-    const outNumbersPtr = this.lowerTypedArray(outNumbers, float64Spec)
-    try {
-      this.raw.evalDenseNumericRowAggregateBatch(
-        aggregateKind,
-        valuesPtr,
-        rowCount,
-        prefixColCount,
-        startColOffset,
-        aggregateColCount,
-        resultOffset,
-        outNumbersPtr,
-      )
-      this.copyLoweredTypedArray(outNumbersPtr, outNumbers, float64Spec)
-    } finally {
-      this.raw.__unpin(valuesPtr)
-      this.raw.__unpin(outNumbersPtr)
-    }
+    evalDenseNumericRowAggregateBatchRaw(
+      this.raw,
+      aggregateKind,
+      values,
+      rowCount,
+      prefixColCount,
+      startColOffset,
+      aggregateColCount,
+      resultOffset,
+      outNumbers,
+    )
+  }
+
+  evalAnchoredPrefixAggregateBatch(
+    aggregateKind: number,
+    tags: Uint8Array,
+    numbers: Float64Array,
+    errors: Uint16Array,
+    rowCount: number,
+    colCount: number,
+    formulaRowEnds: Uint32Array,
+    resultOffsets: Float64Array,
+    outTags: Uint8Array,
+    outNumbers: Float64Array,
+    outErrors: Uint16Array,
+  ): void {
+    evalAnchoredPrefixAggregateBatchRaw(
+      this.raw,
+      aggregateKind,
+      tags,
+      numbers,
+      errors,
+      rowCount,
+      colCount,
+      formulaRowEnds,
+      resultOffsets,
+      outTags,
+      outNumbers,
+      outErrors,
+    )
+  }
+
+  evalDirectCriteriaMatchedAggregateBatch(...args: Parameters<SpreadsheetKernel['evalDirectCriteriaMatchedAggregateBatch']>): void {
+    evalDirectCriteriaMatchedAggregateBatchRaw(this.raw, ...args)
+  }
+
+  evalUniformNumericLookupBatch(
+    kinds: Uint8Array,
+    matchModes: Uint8Array,
+    starts: Float64Array,
+    steps: Float64Array,
+    lengths: Uint32Array,
+    repeatedRunLengths: Uint32Array,
+    lookupTags: Uint8Array,
+    lookupNumbers: Float64Array,
+    outTags: Uint8Array,
+    outNumbers: Float64Array,
+    outErrors: Uint16Array,
+  ): void {
+    evalUniformNumericLookupBatchRaw(
+      this.raw,
+      kinds,
+      matchModes,
+      starts,
+      steps,
+      lengths,
+      repeatedRunLengths,
+      lookupTags,
+      lookupNumbers,
+      outTags,
+      outNumbers,
+      outErrors,
+    )
   }
 
   evalBatch(cellIndices: Uint32Array): void {
-    const cellIndicesPtr = this.lowerTypedArray(cellIndices, uint32Spec)
-    try {
-      this.raw.evalBatch(cellIndicesPtr)
-    } finally {
-      this.raw.__unpin(cellIndicesPtr)
-    }
+    evalBatchRaw(this.raw, cellIndices)
   }
 
   materializePivotTable(
@@ -383,24 +440,7 @@ class RawKernelBridge {
     valueColumnIndices: Uint32Array,
     valueAggregations: Uint8Array,
   ): void {
-    const groupByPtr = this.lowerTypedArray(groupByColumnIndices, uint32Spec)
-    const valueColsPtr = this.lowerTypedArray(valueColumnIndices, uint32Spec)
-    const valueAggsPtr = this.lowerTypedArray(valueAggregations, uint8Spec)
-    try {
-      this.raw.materializePivotTable(
-        sourceRangeIndex,
-        sourceWidth,
-        groupByColumnIndices.length,
-        groupByPtr,
-        valueColumnIndices.length,
-        valueColsPtr,
-        valueAggsPtr,
-      )
-    } finally {
-      this.raw.__unpin(groupByPtr)
-      this.raw.__unpin(valueColsPtr)
-      this.raw.__unpin(valueAggsPtr)
-    }
+    materializePivotTableRaw(this.raw, sourceRangeIndex, sourceWidth, groupByColumnIndices, valueColumnIndices, valueAggregations)
   }
 
   private lowerTypedArray<T extends TypedArrayValue>(values: T, spec: LoweredArraySpec<T>): number {
@@ -418,25 +458,12 @@ class RawKernelBridge {
     }
   }
 
-  private copyLoweredTypedArray<T extends TypedArrayValue>(pointer: number, target: T, spec: LoweredArraySpec<T>): void {
-    target.set(new spec.ctor(this.raw.memory.buffer, this.getUint32(pointer + 4), target.length))
-  }
-
   private setUint32(pointer: number, value: number): void {
     try {
       this.dataView.setUint32(pointer, value, true)
     } catch {
       this.dataView = new DataView(this.raw.memory.buffer)
       this.dataView.setUint32(pointer, value, true)
-    }
-  }
-
-  private getUint32(pointer: number): number {
-    try {
-      return this.dataView.getUint32(pointer, true)
-    } catch {
-      this.dataView = new DataView(this.raw.memory.buffer)
-      return this.dataView.getUint32(pointer, true)
     }
   }
 }
@@ -555,7 +582,8 @@ class KernelHandle implements SpreadsheetKernel {
     outNumbers: Float64Array,
     outErrors: Uint16Array,
   ): void {
-    this.bridge.evalDirectScalarValueBatch(
+    evalDirectScalarValueBatchRaw(
+      this.raw,
       operators,
       leftBatchRefs,
       leftTags,
@@ -570,6 +598,43 @@ class KernelHandle implements SpreadsheetKernel {
       outNumbers,
       outErrors,
     )
+  }
+
+  evalDirectScalarStoreTargetBatch(
+    targets: Uint32Array,
+    operators: Uint8Array,
+    leftBatchRefs: Uint32Array,
+    leftTags: Uint8Array,
+    leftValues: Float64Array,
+    leftErrors: Uint16Array,
+    rightBatchRefs: Uint32Array,
+    rightTags: Uint8Array,
+    rightValues: Float64Array,
+    rightErrors: Uint16Array,
+    resultOffsets: Float64Array,
+  ): void {
+    evalDirectScalarStoreTargetBatchRaw(
+      this.raw,
+      targets,
+      operators,
+      leftBatchRefs,
+      leftTags,
+      leftValues,
+      leftErrors,
+      rightBatchRefs,
+      rightTags,
+      rightValues,
+      rightErrors,
+      resultOffsets,
+    )
+    this.refreshViews()
+  }
+
+  evalDenseDirectScalarRowChainStoreTargetBatch(
+    ...args: Parameters<SpreadsheetKernel['evalDenseDirectScalarRowChainStoreTargetBatch']>
+  ): void {
+    evalDenseDirectScalarRowChainStoreTargetBatchRaw(this.raw, ...args)
+    this.refreshViews()
   }
 
   evalDenseNumericRowAggregateBatch(
@@ -591,6 +656,66 @@ class KernelHandle implements SpreadsheetKernel {
       aggregateColCount,
       resultOffset,
       outNumbers,
+    )
+  }
+
+  evalAnchoredPrefixAggregateBatch(
+    aggregateKind: number,
+    tags: Uint8Array,
+    numbers: Float64Array,
+    errors: Uint16Array,
+    rowCount: number,
+    colCount: number,
+    formulaRowEnds: Uint32Array,
+    resultOffsets: Float64Array,
+    outTags: Uint8Array,
+    outNumbers: Float64Array,
+    outErrors: Uint16Array,
+  ): void {
+    this.bridge.evalAnchoredPrefixAggregateBatch(
+      aggregateKind,
+      tags,
+      numbers,
+      errors,
+      rowCount,
+      colCount,
+      formulaRowEnds,
+      resultOffsets,
+      outTags,
+      outNumbers,
+      outErrors,
+    )
+  }
+
+  evalDirectCriteriaMatchedAggregateBatch(...args: Parameters<SpreadsheetKernel['evalDirectCriteriaMatchedAggregateBatch']>): void {
+    this.bridge.evalDirectCriteriaMatchedAggregateBatch(...args)
+  }
+
+  evalUniformNumericLookupBatch(
+    kinds: Uint8Array,
+    matchModes: Uint8Array,
+    starts: Float64Array,
+    steps: Float64Array,
+    lengths: Uint32Array,
+    repeatedRunLengths: Uint32Array,
+    lookupTags: Uint8Array,
+    lookupNumbers: Float64Array,
+    outTags: Uint8Array,
+    outNumbers: Float64Array,
+    outErrors: Uint16Array,
+  ): void {
+    this.bridge.evalUniformNumericLookupBatch(
+      kinds,
+      matchModes,
+      starts,
+      steps,
+      lengths,
+      repeatedRunLengths,
+      lookupTags,
+      lookupNumbers,
+      outTags,
+      outNumbers,
+      outErrors,
     )
   }
 

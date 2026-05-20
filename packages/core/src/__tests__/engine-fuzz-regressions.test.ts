@@ -38,6 +38,25 @@ describe('engine fuzz regressions', () => {
     ])
   })
 
+  it('does not apply stale direct formula deltas to literals written later in the same batch', async () => {
+    const engine = new SpreadsheetEngine({ workbookName: 'stale-direct-delta-literal-overwrite-regression' })
+    await engine.ready()
+    engine.createSheet('Sheet1')
+
+    engine.setCellFormula('Sheet1', 'C2', 'B2+A1')
+    engine.fillRange(
+      { sheetName: 'Sheet1', startAddress: 'B2', endAddress: 'C3' },
+      { sheetName: 'Sheet1', startAddress: 'C5', endAddress: 'D6' },
+    )
+    engine.setRangeValues({ sheetName: 'Sheet1', startAddress: 'C5', endAddress: 'D6' }, [
+      [1, 0],
+      ['north', 0],
+    ])
+
+    expect(engine.getCell('Sheet1', 'D5').formula).toBeUndefined()
+    expect(engine.getCellValue('Sheet1', 'D5')).toEqual({ tag: ValueTag.Number, value: 0 })
+  })
+
   it('keeps coalesced style history aligned before structural row inserts', async () => {
     const seedSnapshot = await createEngineSeedSnapshot('sparse-format', 'style-history-row-insert-regression')
     const engine = new SpreadsheetEngine({

@@ -21,9 +21,25 @@ describe('workspace resolution', () => {
       packageDir: 'packages/formula',
       sourceEntry: 'packages/formula/src/external-function-adapter.ts',
     })
+    expect(resolution['bilig-workpaper']).toEqual({
+      packageDir: 'packages/bilig',
+      sourceEntry: 'packages/bilig/src/index.ts',
+    })
+    expect(resolution['bilig-workpaper/xlsx']).toEqual({
+      packageDir: 'packages/bilig',
+      sourceEntry: 'packages/bilig/src/xlsx.ts',
+    })
     expect(resolution['xlsx-formula-recalc']).toEqual({
       packageDir: 'packages/xlsx-formula-recalc',
       sourceEntry: 'packages/xlsx-formula-recalc/src/index.ts',
+    })
+    expect(resolution['xlsx-formula-recalc/cli-api']).toEqual({
+      packageDir: 'packages/xlsx-formula-recalc',
+      sourceEntry: 'packages/xlsx-formula-recalc/src/cli-api.ts',
+    })
+    expect(resolution['sheetjs-formula-recalc']).toEqual({
+      packageDir: 'packages/sheetjs-formula-recalc',
+      sourceEntry: 'packages/sheetjs-formula-recalc/src/index.ts',
     })
     expect(resolution['exceljs-formula-recalc']).toEqual({
       packageDir: 'packages/exceljs-formula-recalc',

@@ -10,8 +10,8 @@ const OP_MUL = 3
 const OP_DIV = 4
 const OP_ABS = 5
 const BATCH_REF_NONE = 0xffffffff
-export const MIN_INITIAL_NATIVE_DIRECT_SCALAR_BATCH_SIZE = 1024
-export const MAX_INITIAL_NATIVE_DIRECT_SCALAR_BATCH_SIZE = 2500
+export const MIN_INITIAL_NATIVE_DIRECT_SCALAR_BATCH_SIZE = 8192
+export const MAX_INITIAL_NATIVE_DIRECT_SCALAR_BATCH_SIZE = 12_288
 
 interface InitialNativeDirectScalarBatchState {
   readonly workbook: EngineRuntimeState['workbook']
@@ -44,9 +44,6 @@ export function createInitialNativeDirectScalarBatch(args: {
   const rightValues = new Float64Array(args.capacity)
   const rightErrors = new Uint16Array(args.capacity)
   const resultOffsets = new Float64Array(args.capacity)
-  const outTags = new Uint8Array(args.capacity)
-  const outNumbers = new Float64Array(args.capacity)
-  const outErrors = new Uint16Array(args.capacity)
   const targetOrdinalByCellIndex = new Map<number, number>()
   const columnsBySheetId = new Map<number, Set<number>>()
   let count = 0
@@ -79,6 +76,9 @@ export function createInitialNativeDirectScalarBatch(args: {
           return true
         }
         const cellStore = args.state.workbook.cellStore
+        if (((cellStore.flags[operand.cellIndex] ?? 0) & CellFlags.HasFormula) !== 0) {
+          return false
+        }
         batchRefs[index] = BATCH_REF_NONE
         const tag = (cellStore.tags[operand.cellIndex] as ValueTag | undefined) ?? ValueTag.Empty
         if (tag === ValueTag.String) {
@@ -164,34 +164,38 @@ export function createInitialNativeDirectScalarBatch(args: {
       }
       const targetView = targets.subarray(0, count)
       if (
-        !args.state.wasm.evalDirectScalarValueBatch({
-          operators: operators.subarray(0, count),
-          leftBatchRefs: leftBatchRefs.subarray(0, count),
-          leftTags: leftTags.subarray(0, count),
-          leftValues: leftValues.subarray(0, count),
-          leftErrors: leftErrors.subarray(0, count),
-          rightBatchRefs: rightBatchRefs.subarray(0, count),
-          rightTags: rightTags.subarray(0, count),
-          rightValues: rightValues.subarray(0, count),
-          rightErrors: rightErrors.subarray(0, count),
-          resultOffsets: resultOffsets.subarray(0, count),
-          outTags: outTags.subarray(0, count),
-          outNumbers: outNumbers.subarray(0, count),
-          outErrors: outErrors.subarray(0, count),
-        })
+        !args.state.wasm.evalDirectScalarStoreTargetBatch(
+          {
+            targets: targetView,
+            operators: operators.subarray(0, count),
+            leftBatchRefs: leftBatchRefs.subarray(0, count),
+            leftTags: leftTags.subarray(0, count),
+            leftValues: leftValues.subarray(0, count),
+            leftErrors: leftErrors.subarray(0, count),
+            rightBatchRefs: rightBatchRefs.subarray(0, count),
+            rightTags: rightTags.subarray(0, count),
+            rightValues: rightValues.subarray(0, count),
+            rightErrors: rightErrors.subarray(0, count),
+            resultOffsets: resultOffsets.subarray(0, count),
+          },
+          args.state.workbook.cellStore.size,
+        )
       ) {
         return undefined
       }
       const cellStore = args.state.workbook.cellStore
+      const kernelTags = args.state.wasm.tags
+      const kernelNumbers = args.state.wasm.numbers
+      const kernelErrors = args.state.wasm.errors
       for (let index = 0; index < count; index += 1) {
         const cellIndex = targets[index]!
-        const tag = (outTags[index] as ValueTag | undefined) ?? ValueTag.Empty
+        const tag = (kernelTags[cellIndex] as ValueTag | undefined) ?? ValueTag.Empty
         cellStore.flags[cellIndex] = (cellStore.flags[cellIndex] ?? 0) & ~(CellFlags.SpillChild | CellFlags.PivotOutput)
         cellStore.tags[cellIndex] = tag
         cellStore.errors[cellIndex] =
-          tag === ValueTag.Error ? ((outErrors[index] as ErrorCode | undefined) ?? ErrorCode.None) : ErrorCode.None
+          tag === ValueTag.Error ? ((kernelErrors[cellIndex] as ErrorCode | undefined) ?? ErrorCode.None) : ErrorCode.None
         cellStore.stringIds[cellIndex] = 0
-        cellStore.numbers[cellIndex] = tag === ValueTag.Number || tag === ValueTag.Boolean ? (outNumbers[index] ?? 0) : 0
+        cellStore.numbers[cellIndex] = tag === ValueTag.Number || tag === ValueTag.Boolean ? (kernelNumbers[cellIndex] ?? 0) : 0
         cellStore.versions[cellIndex] = (cellStore.versions[cellIndex] ?? 0) + 1
       }
       columnsBySheetId.forEach((columns, sheetId) => {

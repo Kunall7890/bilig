@@ -164,6 +164,11 @@ function runNodeSmoke(
     readback: number
     workbookMutated: boolean
   }
+  biligWorkpaper: {
+    revenue: number
+    sheetNames: string[]
+    verified: boolean
+  }
   projectDir: string
   snapshotImport: {
     currencyLabel: string
@@ -410,10 +415,14 @@ function runNodeSmoke(
     ].join('\n'),
   )
   writeXlsxImportScript(projectDir)
+  writeBiligWorkpaperScript(projectDir)
   writeExceljsFormulaRecalcScript(projectDir)
 
   installTarballs(projectDir, tarballPaths, ['exceljs@4.4.0'])
   const npmEval = parseNodeNpmEvalOutput(runTextCommand('npm', ['run', '--silent', 'npm-eval'], { cwd: projectDir }))
+  const biligWorkpaper = parseNodeBiligWorkpaperOutput(
+    runTextCommand('npx', ['--no-install', 'tsx', 'bilig-workpaper.ts'], { cwd: projectDir }),
+  )
   const exceljsFormulaRecalc = parseNodeExceljsFormulaRecalcOutput(
     runTextCommand('npx', ['--no-install', 'tsx', 'exceljs-formula-recalc.ts'], { cwd: projectDir }),
   )
@@ -510,6 +519,7 @@ function runNodeSmoke(
     packageMcpStdio,
     persistence,
     projectDir,
+    biligWorkpaper,
     exceljsFormulaRecalc,
     npmEval,
     rangeReadback,
@@ -519,6 +529,53 @@ function runNodeSmoke(
     snapshotImport,
     xlsxImport,
     output,
+  }
+}
+
+function writeBiligWorkpaperScript(projectDir: string): void {
+  writeFileSync(
+    join(projectDir, 'bilig-workpaper.ts'),
+    [
+      'import { WorkPaper } from "bilig-workpaper";',
+      'import { exportXlsx, importXlsx } from "bilig-workpaper/xlsx";',
+      '',
+      'const workbook = WorkPaper.buildFromSheets({',
+      '  Inputs: [[',
+      '    "Metric",',
+      '    "Value",',
+      '  ], ["Units", 40], ["Price", 1200]],',
+      '  Summary: [["Metric", "Value"], ["Revenue", "=Inputs!B2*Inputs!B3"]],',
+      '});',
+      'const inputs = workbook.getSheetId("Inputs");',
+      'const summary = workbook.getSheetId("Summary");',
+      'if (inputs === undefined || summary === undefined) throw new Error("Expected sheets to exist");',
+      'workbook.setCellContents({ sheet: inputs, row: 1, col: 1 }, 48);',
+      'workbook.setCellContents({ sheet: inputs, row: 2, col: 1 }, 1500);',
+      'const revenue = workbook.getCellValue({ sheet: summary, row: 1, col: 1 });',
+      'const exported = exportXlsx(workbook.exportSnapshot());',
+      'const imported = importXlsx(exported, "pricing.xlsx");',
+      'workbook.dispose();',
+      'if (revenue.tag !== 1 || revenue.value !== 72000) throw new Error(`Unexpected revenue: ${JSON.stringify(revenue)}`);',
+      'console.log(JSON.stringify({ revenue: revenue.value, sheetNames: imported.sheetNames, verified: true }));',
+      '',
+    ].join('\n'),
+  )
+}
+
+function parseNodeBiligWorkpaperOutput(output: string): { revenue: number; sheetNames: string[]; verified: boolean } {
+  const parsed = parseJsonRecord(output, 'bilig-workpaper smoke output')
+  if (
+    typeof parsed.revenue !== 'number' ||
+    !Array.isArray(parsed.sheetNames) ||
+    !parsed.sheetNames.every((entry) => typeof entry === 'string') ||
+    parsed.verified !== true
+  ) {
+    throw new Error(`Unexpected bilig-workpaper smoke output: ${output}`)
+  }
+  return {
+    revenue: parsed.revenue,
+    sheetNames: parsed.sheetNames,
+    verified: parsed.verified,
   }
 }
 

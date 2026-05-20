@@ -31,6 +31,10 @@
     "packageDir": "packages/core",
     "sourceEntry": "packages/core/src/index.ts"
   },
+  "@bilig/core/headless-runtime": {
+    "packageDir": "packages/core",
+    "sourceEntry": "packages/core/src/headless-runtime.ts"
+  },
   "@bilig/excel-fixtures": {
     "packageDir": "packages/excel-fixtures",
     "sourceEntry": "packages/excel-fixtures/src/index.ts"
@@ -58,6 +62,10 @@
   "@bilig/headless": {
     "packageDir": "packages/headless",
     "sourceEntry": "packages/headless/src/index.ts"
+  },
+  "@bilig/headless/cli": {
+    "packageDir": "packages/headless",
+    "sourceEntry": "packages/headless/src/cli.ts"
   },
   "@bilig/headless/mcp": {
     "packageDir": "packages/headless",
@@ -103,12 +111,32 @@
     "packageDir": "packages/zero-sync",
     "sourceEntry": "packages/zero-sync/src/index.ts"
   },
+  "bilig-workpaper": {
+    "packageDir": "packages/bilig",
+    "sourceEntry": "packages/bilig/src/index.ts"
+  },
+  "bilig-workpaper/mcp": {
+    "packageDir": "packages/bilig",
+    "sourceEntry": "packages/bilig/src/mcp.ts"
+  },
+  "bilig-workpaper/xlsx": {
+    "packageDir": "packages/bilig",
+    "sourceEntry": "packages/bilig/src/xlsx.ts"
+  },
   "exceljs-formula-recalc": {
     "packageDir": "packages/exceljs-formula-recalc",
     "sourceEntry": "packages/exceljs-formula-recalc/src/index.ts"
   },
+  "sheetjs-formula-recalc": {
+    "packageDir": "packages/sheetjs-formula-recalc",
+    "sourceEntry": "packages/sheetjs-formula-recalc/src/index.ts"
+  },
   "xlsx-formula-recalc": {
     "packageDir": "packages/xlsx-formula-recalc",
     "sourceEntry": "packages/xlsx-formula-recalc/src/index.ts"
+  },
+  "xlsx-formula-recalc/cli-api": {
+    "packageDir": "packages/xlsx-formula-recalc",
+    "sourceEntry": "packages/xlsx-formula-recalc/src/cli-api.ts"
   }
 }

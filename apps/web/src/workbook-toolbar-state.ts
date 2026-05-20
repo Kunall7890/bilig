@@ -19,6 +19,7 @@ export const DEFAULT_BORDER_SIDE = {
 } as const
 
 const PENDING_STYLE_ID = '__bilig_pending_toolbar_style__'
+const WORKBOOK_KEYBOARD_SCOPE_SELECTOR = '[data-workbook-keyboard-scope="true"]'
 
 type WorkbookHeaderStatusTone = 'positive' | 'progress' | 'warning' | 'danger' | 'neutral'
 
@@ -69,12 +70,29 @@ export function shouldKeepWorkbookShortcutInsideTextEntry(target: EventTarget | 
   )
 }
 
+export function shouldRouteWorkbookShortcutToWorkbookScope(activeElement: Element | null = getActiveElement()): boolean {
+  if (typeof document === 'undefined') {
+    return false
+  }
+  if (activeElement === null || activeElement === document.body || activeElement === document.documentElement) {
+    return true
+  }
+  return activeElement.closest(WORKBOOK_KEYBOARD_SCOPE_SELECTOR) !== null
+}
+
 export function queueWorkbookHistoryShortcut(callback: () => void): void {
   if (typeof queueMicrotask === 'function') {
     queueMicrotask(callback)
     return
   }
   setTimeout(callback, 0)
+}
+
+function getActiveElement(): Element | null {
+  if (typeof document === 'undefined') {
+    return null
+  }
+  return document.activeElement
 }
 
 function fillPatchMatches(selectedStyle: CellStyleRecord | undefined, patch: CellStyleFillPatch | null | undefined): boolean {

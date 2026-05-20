@@ -1,0 +1,86 @@
+{
+  "name": "bilig-workpaper",
+  "version": "0.35.1",
+  "description": "Bilig WorkPaper runtime for Node.js services, agent tools, and server-side spreadsheet formulas.",
+  "keywords": [
+    "agent-tools",
+    "ai-agents",
+    "bilig",
+    "bilig-workpaper",
+    "excel",
+    "excel-calculation-engine",
+    "excel-formulas",
+    "exceljs",
+    "formula-engine",
+    "formula-recalculation",
+    "headless-spreadsheet",
+    "hyperformula",
+    "node",
+    "server-side-spreadsheet",
+    "sheetjs",
+    "spreadsheet",
+    "spreadsheet-automation",
+    "spreadsheet-engine",
+    "spreadsheet-formulas",
+    "workbook",
+    "workbook-api",
+    "workpaper",
+    "xlsx",
+    "xlsx-calc",
+    "xlsx-formula",
+    "xlsx-recalculation"
+  ],
+  "homepage": "https://proompteng.github.io/bilig/",
+  "bugs": {
+    "url": "https://github.com/proompteng/bilig/issues"
+  },
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/proompteng/bilig.git",
+    "directory": "packages/bilig"
+  },
+  "bin": {
+    "bilig-agent-challenge": "./dist/agent-workbook-challenge-bin.js",
+    "bilig-formula-clinic": "./dist/formula-clinic-bin.js",
+    "bilig-mcp-challenge": "./dist/mcp-challenge-bin.js",
+    "bilig-workpaper-mcp": "./dist/work-paper-mcp-stdio-bin.js"
+  },
+  "files": [
+    "dist",
+    "AGENTS.md",
+    "SKILL.md",
+    "README.md",
+    "LICENSE"
+  ],
+  "type": "module",
+  "sideEffects": false,
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./mcp": {
+      "types": "./dist/mcp.d.ts",
+      "import": "./dist/mcp.js"
+    },
+    "./xlsx": {
+      "types": "./dist/xlsx.d.ts",
+      "import": "./dist/xlsx.js"
+    }
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "scripts": {
+    "build": "pnpm --dir ../.. --filter @bilig/headless build && rm -rf dist tsconfig.tsbuildinfo && tsc -p tsconfig.json"
+  },
+  "dependencies": {
+    "@bilig/headless": "workspace:*"
+  },
+  "engines": {
+    "node": ">=22.0.0"
+  }
+}

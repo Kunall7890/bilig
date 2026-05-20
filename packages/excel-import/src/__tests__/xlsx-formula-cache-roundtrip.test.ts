@@ -29,6 +29,16 @@ describe('formula cache roundtrip', () => {
     expect(reimportedCells.get('C2')).toMatchObject({ formula: 'B1/A1', value: 1.2916666666666667 })
   })
 
+  it('imports formula cells that omit cached result values', () => {
+    const imported = importXlsx(buildFormulaWithoutCachedValueWorkbookBytes(), 'formula-without-cache.xlsx')
+    const summary = imported.snapshot.sheets.find((sheet) => sheet.name === 'Summary')
+    const cells = new Map(summary?.cells.map((cell) => [cell.address, cell]) ?? [])
+
+    expect(cells.get('B2')).toMatchObject({ formula: 'Inputs!B2*Inputs!B3' })
+    expect(cells.get('B2')?.value).toBeUndefined()
+    expect(imported.preview.sheets.find((sheet) => sheet.name === 'Summary')?.previewRows[1]?.[1]).toBe('=Inputs!B2*Inputs!B3')
+  })
+
   it('preserves string-literal references when expanding shared formulas', () => {
     const imported = importXlsx(buildSharedIndirectFormulaWorkbookBytes(), 'shared-indirect-formulas.xlsx')
     const contents = imported.snapshot.sheets.find((sheet) => sheet.name === 'Contents')
@@ -93,6 +103,31 @@ function buildFormulaCacheWorkbookBytes(): Uint8Array {
 
   XLSX.utils.book_append_sheet(workbook, sheet, 'FormulaCache')
   return XLSX.write(workbook, { bookType: 'xlsx', type: 'buffer' })
+}
+
+function buildFormulaWithoutCachedValueWorkbookBytes(): Uint8Array {
+  const workbook = XLSX.utils.book_new()
+  XLSX.utils.book_append_sheet(
+    workbook,
+    XLSX.utils.aoa_to_sheet([
+      ['Metric', 'Value'],
+      ['Units', 40],
+      ['Price', 1200],
+    ]),
+    'Inputs',
+  )
+  const summary = XLSX.utils.aoa_to_sheet([
+    ['Metric', 'Value'],
+    ['Revenue', null],
+  ])
+  summary.B2 = { t: 'n', f: 'Inputs!B2*Inputs!B3', v: 48_000 }
+  summary['!ref'] = 'A1:B2'
+  XLSX.utils.book_append_sheet(workbook, summary, 'Summary')
+
+  const zip = unzipSync(XLSX.write(workbook, { bookType: 'xlsx', type: 'buffer' }))
+  const sheetXml = strFromU8(zip['xl/worksheets/sheet2.xml'] ?? new Uint8Array())
+  zip['xl/worksheets/sheet2.xml'] = strToU8(replaceCellXml(sheetXml, 'B2', '<c r="B2"><f>Inputs!B2*Inputs!B3</f></c>'))
+  return zipSync(zip)
 }
 
 function buildSharedIndirectFormulaWorkbookBytes(): Uint8Array {

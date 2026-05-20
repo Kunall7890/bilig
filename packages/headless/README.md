@@ -4,45 +4,52 @@
 [![npm weekly downloads](https://img.shields.io/npm/dw/@bilig/headless?label=npm%20downloads)](https://www.npmjs.com/package/@bilig/headless)
 [![GitHub](https://img.shields.io/badge/GitHub-proompteng%2Fbilig-blue)](https://github.com/proompteng/bilig)
 [![GitHub Repo stars](https://img.shields.io/github/stars/proompteng/bilig?style=social)](https://github.com/proompteng/bilig/stargazers)
-[![MCP server score](https://glama.ai/mcp/servers/proompteng/bilig/badges/score.svg)](https://glama.ai/mcp/servers/proompteng/bilig)
 [![CodeQL](https://github.com/proompteng/bilig/actions/workflows/codeql.yml/badge.svg)](https://github.com/proompteng/bilig/actions/workflows/codeql.yml)
 [![OpenSSF Scorecard](https://api.scorecard.dev/projects/github.com/proompteng/bilig/badge)](https://scorecard.dev/viewer/?uri=github.com/proompteng/bilig)
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](https://github.com/proompteng/bilig/blob/main/LICENSE)
 
-`@bilig/headless` is a workbook runtime for Node.js services and agent tools.
+`@bilig/headless` is the full WorkPaper runtime for Node.js services and agent
+tools.
 
-If this npm page is the first thing you found, the fit test is simple: use
-Bilig when the spreadsheet is the business logic, but production needs API
-readback, tests, persistence, and agent-readable proof instead of a person
-opening a spreadsheet app.
+If this npm page is the first thing you found, start with the path that matches
+the search or production bug you actually have:
 
-Use it when the calculation is easiest to understand as sheets, cells, and
-formulas, but the execution belongs in TypeScript. Your code owns a
-`WorkPaper`: build sheets, write inputs, recalculate formulas, read the cell
-value, and save the workbook as JSON.
+| Problem or search intent                                      | Start here                                                                                                                                                         | Proof before adoption                                                                |
+| ------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------ |
+| `SheetJS formula result not updating` or stale `xlsx` results | `npm install sheetjs-formula-recalc` or `npm install xlsx-formula-recalc`                                                                                           | `npx --package sheetjs-formula-recalc sheetjs-recalc --demo --json` returns fresh readback. |
+| `xlsx-populate` writes formulas but Node reads old values     | `npm install xlsx-formula-recalc`                                                                                                                                  | `npx --package xlsx-formula-recalc xlsx-recalc --demo --json` updates the cached value. |
+| ExcelJS formula cells need recalculated values                | `npm install exceljs exceljs-formula-recalc`                                                                                                                       | `npx --package exceljs-formula-recalc exceljs-recalc --demo --json` mutates the workbook boundary. |
+| Formula workbook state belongs in a service or agent tool     | `npm install bilig-workpaper` or `npm install @bilig/headless`                                                                                                      | `npm exec --package @bilig/headless@0.35.1 -- bilig-agent-challenge` prints `verified: true`. |
+| You need the lower-level runtime package and subpaths         | `npm install @bilig/headless`                                                                                                                                      | The examples below prove WorkPaper JSON, XLSX import/export, provenance, and package footprint. |
 
-Product code gets reviewable workbook-shaped logic without shipping a
-spreadsheet UI. Coding agents get narrow tools such as `readRange` and
-`setInputCell` instead of guessing state from screenshots.
+Use `@bilig/headless` when the spreadsheet is the business logic, but
+production needs API readback, tests, persistence, and agent-readable proof
+instead of a person opening a spreadsheet app.
+
+Your code owns a `WorkPaper`: build sheets, write inputs, recalculate formulas,
+read the cell value, and save the workbook as JSON. Product code gets
+reviewable workbook-shaped logic without shipping a spreadsheet UI. Coding
+agents get narrow tools such as `readRange` and `setInputCell` instead of
+guessing state from screenshots.
+
 The npm tarball also includes `AGENTS.md` and `SKILL.md` so coding agents
 inspecting `node_modules/@bilig/headless` can find the write/read/persist loop
-without leaving the package. The public docs expose the same path through
+locally. The public docs expose the same path through
 [`AGENTS.md`](https://proompteng.github.io/bilig/AGENTS.md),
 [`agent.json`](https://proompteng.github.io/bilig/.well-known/agent.json),
 [`skill.txt`](https://proompteng.github.io/bilig/skill.txt), and
 [`llms-full.txt`](https://proompteng.github.io/bilig/llms-full.txt).
 
-The `bilig-workpaper-mcp` binary exposes file-backed WorkPaper tools with
-explicit parameter descriptions, `outputSchema` metadata, and MCP safety
-annotations, so clients and directories can see which calls read, write,
-persist, or validate workbook state before an agent invokes them.
-The `bilig-formula-clinic` binary turns a reduced XLSX into a paste-ready
-fixture report without uploading workbook contents.
-
 This package is not a browser grid, desktop Excel automation, or a source of
 truth for stale XLSX cached formula values. XLSX import/export is available from
 the `@bilig/headless/xlsx` subpath for services that need workbook ingestion
 around the same WorkPaper model.
+
+The `bilig-workpaper-mcp` binary still ships for hosts that specifically need an
+MCP stdio boundary. It is not the default evaluation path; prove the direct npm
+or TypeScript path first unless your tool host requires MCP.
+The `bilig-formula-clinic` binary turns a reduced XLSX into a paste-ready
+fixture report without uploading workbook contents.
 
 ## Choose An Evaluation Path
 
@@ -63,14 +70,14 @@ around the same WorkPaper model.
 Reduced workbook already in hand?
 
 ```sh
-npm exec --package @bilig/headless@0.31.0 -- bilig-formula-clinic ./reduced.xlsx --cells "Summary!B7,Inputs!B2"
+npm exec --package @bilig/headless@0.35.1 -- bilig-formula-clinic ./reduced.xlsx --cells "Summary!B7,Inputs!B2"
 ```
 
 Handing a spreadsheet task to another coding agent?
 
 ```sh
-npm exec --package @bilig/headless@0.31.0 -- bilig-agent-challenge
-npm exec --package @bilig/headless@0.31.0 -- bilig-mcp-challenge
+npm exec --package @bilig/headless@0.35.1 -- bilig-agent-challenge
+npm exec --package @bilig/headless@0.35.1 -- bilig-mcp-challenge
 ```
 
 The first command proves the direct WorkPaper API. The second command proves
@@ -111,9 +118,9 @@ configs, `mcp/bilig-workpaper.mcp.json`, `npm run agent:verify`, and
 
 <!-- headless-package-footprint:start -->
 
-Current checked npm footprint for `@bilig/headless@0.31.0`:
+Current checked npm footprint for `@bilig/headless@0.35.1`:
 
-- Pack dry run: `497 kB` tarball, `2.98 MB` unpacked, `489` package entries.
+- Pack dry run: `499 kB` tarball, `3.00 MB` unpacked, `495` package entries.
 - Boundary: the main import is the WorkPaper formula/JSON runtime; XLSX
   import/export stays behind the `@bilig/headless/xlsx` subpath; MCP is the
   `bilig-workpaper-mcp` binary wrapper; reduced workbook reports use the
@@ -196,8 +203,8 @@ building a workbook, changing an input, saving the document, restoring it, and
 checking that the dependent formula still reads back correctly.
 
 ```sh
-npm exec --package @bilig/headless@0.31.0 -- bilig-agent-challenge
-npm exec --package @bilig/headless@0.31.0 -- bilig-mcp-challenge
+npm exec --package @bilig/headless@0.35.1 -- bilig-agent-challenge
+npm exec --package @bilig/headless@0.35.1 -- bilig-mcp-challenge
 ```
 
 Expected output:
@@ -399,9 +406,9 @@ MCP examples:
 - The package ships npm-executable binaries:
 
 ```sh
-npm exec --package @bilig/headless@0.31.0 -- bilig-formula-clinic ./reduced.xlsx --cells "Summary!B7,Inputs!B2"
-npm exec --package @bilig/headless@0.31.0 -- bilig-workpaper-mcp
-npm exec --package @bilig/headless@0.31.0 -- bilig-workpaper-mcp --workpaper ./pricing.workpaper.json --init-demo-workpaper --writable
+npm exec --package @bilig/headless@0.35.1 -- bilig-formula-clinic ./reduced.xlsx --cells "Summary!B7,Inputs!B2"
+npm exec --package @bilig/headless@0.35.1 -- bilig-workpaper-mcp
+npm exec --package @bilig/headless@0.35.1 -- bilig-workpaper-mcp --workpaper ./pricing.workpaper.json --init-demo-workpaper --writable
 docker build --target bilig-workpaper-mcp -t bilig-workpaper-mcp:local .
 ```
 
@@ -453,7 +460,7 @@ For setup details, use the
 and
 [Claude Desktop MCPB guide](https://github.com/proompteng/bilig/blob/main/docs/claude-desktop-mcpb-workpaper.md).
 The released Claude Desktop bundle is published at
-<https://github.com/proompteng/bilig/releases/download/libraries-v0.31.0/bilig-workpaper.mcpb>.
+<https://github.com/proompteng/bilig/releases/download/libraries-v0.35.1/bilig-workpaper.mcpb>.
 Smithery users can install the hosted demo with
 `npx -y smithery mcp add gkonushev/bilig-workpaper`.
 
@@ -775,7 +782,7 @@ When the sanity check passes, these are the next useful pages.
   [MCP directory page](https://github.com/proompteng/bilig/blob/main/docs/mcp-spreadsheet-server-directory.md),
   [MCP client setup](https://github.com/proompteng/bilig/blob/main/docs/mcp-client-setup.md),
   and [Claude Desktop MCPB bundle](https://github.com/proompteng/bilig/blob/main/docs/claude-desktop-mcpb-workpaper.md)
-  ([download](https://github.com/proompteng/bilig/releases/download/libraries-v0.31.0/bilig-workpaper.mcpb)).
+  ([download](https://github.com/proompteng/bilig/releases/download/libraries-v0.35.1/bilig-workpaper.mcpb)).
 - Choosing the stack:
   [screenshot automation boundary](https://github.com/proompteng/bilig/blob/main/docs/stop-driving-spreadsheets-with-screenshots.md),
   [Node spreadsheet formula engine](https://github.com/proompteng/bilig/blob/main/docs/node-spreadsheet-formula-engine.md),
@@ -786,6 +793,7 @@ When the sanity check passes, these are the next useful pages.
   [XLSX formula recalculation in Node.js](https://github.com/proompteng/bilig/blob/main/docs/xlsx-formula-recalculation-node.md),
   [Excel file as a Node calculation engine](https://github.com/proompteng/bilig/blob/main/docs/excel-file-calculation-engine-node.md),
   [stale XLSX formula cache in Node.js](https://github.com/proompteng/bilig/blob/main/docs/stale-xlsx-formula-cache-node.md),
+  [SheetJS formula result not updating in Node.js](https://github.com/proompteng/bilig/blob/main/docs/sheetjs-formula-result-not-updating-node.md),
   [Microsoft Graph Excel recalculation in Node.js](https://github.com/proompteng/bilig/blob/main/docs/microsoft-graph-excel-recalculation-node.md),
   [xlsx-calc alternative for Node workbook recalculation](https://github.com/proompteng/bilig/blob/main/docs/xlsx-calc-alternative-node-workbook-recalculation.md),
   [ExcelJS formula recalculation in Node.js](https://github.com/proompteng/bilig/blob/main/docs/exceljs-formula-recalculation-node.md),

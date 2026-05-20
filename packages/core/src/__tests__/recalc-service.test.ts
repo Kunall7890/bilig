@@ -5,6 +5,7 @@ import { utcDateToExcelSerial } from '@bilig/formula'
 import { SpreadsheetEngine } from '../engine.js'
 import type { EngineTrackedEvent } from '../events.js'
 import type { EngineRecalcService } from '../engine/services/recalc-service.js'
+import { areDifferentialCellValuesEqual, filterSkippedCachedFormulaCells } from '../engine/services/recalc-service-helpers.js'
 import type { RuntimeFormula } from '../engine/runtime-state.js'
 
 function isEngineRecalcService(value: unknown): value is EngineRecalcService {
@@ -43,6 +44,21 @@ function getFormulaTable(engine: SpreadsheetEngine): { get(cellIndex: number): R
 }
 
 describe('EngineRecalcService', () => {
+  it('filters skipped cached formula cells without reordering changed cells', () => {
+    expect(Array.from(filterSkippedCachedFormulaCells(Uint32Array.of(3, 4, 5, 6), 3, undefined))).toEqual([3, 4, 5])
+    expect(Array.from(filterSkippedCachedFormulaCells(Uint32Array.of(3, 4, 5, 6), 4, new Set([4, 6])))).toEqual([3, 5])
+  })
+
+  it('compares differential numeric values with a tight floating-point tolerance', () => {
+    expect(areDifferentialCellValuesEqual({ tag: ValueTag.Number, value: 100 }, { tag: ValueTag.Number, value: 100 + 5e-11 })).toBe(true)
+    expect(
+      areDifferentialCellValuesEqual({ tag: ValueTag.Number, value: Number.POSITIVE_INFINITY }, { tag: ValueTag.Number, value: 1 }),
+    ).toBe(false)
+    expect(areDifferentialCellValuesEqual({ tag: ValueTag.String, value: '100', stringId: 1 }, { tag: ValueTag.Number, value: 100 })).toBe(
+      false,
+    )
+  })
+
   it('performs dirty-region recalculation through the extracted service boundary', async () => {
     const engine = new SpreadsheetEngine({ workbookName: 'recalc-dirty' })
     await engine.ready()
@@ -90,6 +106,60 @@ describe('EngineRecalcService', () => {
 
     expect(changed).toContain(b1Index)
     expect(engine.getCellValue('Sheet1', 'B1')).toEqual({ tag: ValueTag.Number, value: 50 })
+  })
+
+  it('batches large direct scalar full recalculation through the native scalar kernel', async () => {
+    const rowCount = 160
+    const engine = new SpreadsheetEngine({ workbookName: 'recalc-native-direct-scalar' })
+    await engine.ready()
+    engine.createSheet('Sheet1')
+
+    for (let row = 1; row <= rowCount; row += 1) {
+      engine.setCellValue('Sheet1', `A${row}`, row)
+      engine.setCellFormula('Sheet1', `B${row}`, `A${row}*2+1`)
+    }
+
+    for (let row = 1; row <= rowCount; row += 1) {
+      const cellIndex = engine.workbook.ensureCell('Sheet1', `A${row}`)
+      engine.workbook.cellStore.setValue(cellIndex, { tag: ValueTag.Number, value: row + 10 })
+    }
+
+    engine.resetPerformanceCounters()
+    const changed = Effect.runSync(getRecalcService(engine).recalculateNow())
+    const counters = engine.getPerformanceCounters() as Record<string, number | undefined> & {
+      readonly nativeDirectScalarRecalcEvaluations?: number
+    }
+
+    expect(changed).toContain(engine.workbook.getCellIndex('Sheet1', `B${rowCount}`))
+    expect(engine.getCellValue('Sheet1', `B${rowCount}`)).toEqual({ tag: ValueTag.Number, value: (rowCount + 10) * 2 + 1 })
+    expect(engine.getLastMetrics().wasmFormulaCount).toBeGreaterThanOrEqual(rowCount)
+    expect(counters.nativeDirectScalarRecalcEvaluations).toBeGreaterThanOrEqual(rowCount)
+  })
+
+  it('keeps numeric text direct scalar recalculation on the JS oracle path', async () => {
+    const rowCount = 80
+    const engine = new SpreadsheetEngine({ workbookName: 'recalc-native-direct-scalar-text' })
+    await engine.ready()
+    engine.createSheet('Sheet1')
+
+    for (let row = 1; row <= rowCount; row += 1) {
+      engine.setCellValue('Sheet1', `A${row}`, `${row}`)
+      engine.setCellFormula('Sheet1', `B${row}`, `A${row}*2+1`)
+    }
+
+    for (let row = 1; row <= rowCount; row += 1) {
+      const textValue = `${row + 10}`
+      const stringId = engine.strings.intern(textValue)
+      const cellIndex = engine.workbook.ensureCell('Sheet1', `A${row}`)
+      engine.workbook.cellStore.setValue(cellIndex, { tag: ValueTag.String, value: textValue, stringId }, stringId)
+    }
+
+    engine.resetPerformanceCounters()
+    const changed = Effect.runSync(getRecalcService(engine).recalculateNow())
+
+    expect(changed).toContain(engine.workbook.getCellIndex('Sheet1', `B${rowCount}`))
+    expect(engine.getCellValue('Sheet1', `B${rowCount}`)).toEqual({ tag: ValueTag.Number, value: (rowCount + 10) * 2 + 1 })
+    expect(engine.getPerformanceCounters().nativeDirectScalarRecalcEvaluations).toBe(0)
   })
 
   it('preserves imported cached unsupported formula values during full recalculation', async () => {

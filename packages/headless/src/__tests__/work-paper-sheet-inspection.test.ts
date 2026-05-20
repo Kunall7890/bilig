@@ -49,7 +49,7 @@ describe('work paper sheet inspection', () => {
     const compileSpy = vi.spyOn(formula, 'compileFormula')
     try {
       const sheet: WorkPaperSheet = [
-        [1, 2, '=a1 + b1', '= sum ( A1:A1 ) + 1', '=IF(A1>0,"yes","no")'],
+        [1, 2, '=a1 + b1', '=Inputs!B2*Inputs!B3', "='Other Sheet'!$B$2*'Other Sheet'!$B$3", '= sum ( A1:A1 ) + 1'],
         [3, 4, '=A2*B2+5', '=COUNTIFS(A1:A2,">0")', '=CONCATENATE(A2,"-",B2)'],
         [5, 6, '=ABS(A3)', '=MAX(A1:A3)', '=ROUND(SQRT(A3),2)'],
         [7, 8, '=LEN(A4)+LEN(B4)', '=PMT(A4/12,A4,B4)', '=MIN(A1,B1,A4)+MAX(A1,B1,A4)'],
@@ -58,10 +58,10 @@ describe('work paper sheet inspection', () => {
       expect(inspectSheetWithinLimits('Sheet1', sheet, {})).toEqual({
         hasFormula: true,
         hasDynamicSpillFormula: false,
-        dimensions: { width: 5, height: 4 },
-        materializedCellCount: 20,
-        maxColumnCount: 5,
-        formulaCellCount: 12,
+        dimensions: { width: 6, height: 4 },
+        materializedCellCount: 21,
+        maxColumnCount: 6,
+        formulaCellCount: 13,
         allMaterializedCellsAreNumbers: false,
       })
       expect(compileSpy).not.toHaveBeenCalled()

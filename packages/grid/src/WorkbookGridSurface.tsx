@@ -97,6 +97,7 @@ export function WorkbookGridSurface(props: WorkbookGridSurfaceProps) {
     hiddenColumns: props.hiddenColumns,
     hiddenRows: props.hiddenRows,
     getCellEditorSeed: props.getCellEditorSeed,
+    getCellResolvedValue: props.getCellResolvedValue,
     onSetColumnHidden: props.onSetColumnHidden,
     onSetRowHidden: props.onSetRowHidden,
     onInsertRows: props.onInsertRows,

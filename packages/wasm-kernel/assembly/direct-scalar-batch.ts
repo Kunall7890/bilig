@@ -1,4 +1,5 @@
 import { ErrorCode, ValueTag } from './protocol'
+import { errors, numbers, stringIds, tags } from './vm'
 
 const DIRECT_SCALAR_OP_ADD: u8 = 1
 const DIRECT_SCALAR_OP_SUB: u8 = 2
@@ -57,6 +58,42 @@ function writeDirectScalarValueBatchResult(
   }
   outNumbers[index] = value
   outErrors[index] = ErrorCode.None
+}
+
+function readDirectScalarStoreTargetBatchOperand(targets: Uint32Array, batchRef: u32, tag: u8, value: f64, error: u16): void {
+  let operandTag = tag
+  let operandValue = value
+  let operandError = error
+  if (batchRef != DIRECT_SCALAR_BATCH_REF_NONE) {
+    const targetCellIndex = <i32>targets[<i32>batchRef]
+    operandTag = tags[targetCellIndex]
+    operandValue = numbers[targetCellIndex]
+    operandError = errors[targetCellIndex]
+  }
+  if (operandTag == ValueTag.Error) {
+    directScalarOperandTag = <u8>ValueTag.Error
+    directScalarOperandValue = operandError
+    return
+  }
+  if (operandTag == ValueTag.String) {
+    directScalarOperandTag = <u8>ValueTag.Error
+    directScalarOperandValue = ErrorCode.Value
+    return
+  }
+  directScalarOperandTag = <u8>ValueTag.Number
+  directScalarOperandValue = operandTag == ValueTag.Boolean ? (operandValue != 0 ? 1 : 0) : operandTag == ValueTag.Empty ? 0 : operandValue
+}
+
+function writeDirectScalarStoreTargetBatchResult(targetCellIndex: i32, tag: u8, value: f64): void {
+  tags[targetCellIndex] = tag
+  stringIds[targetCellIndex] = 0
+  if (tag == ValueTag.Error) {
+    numbers[targetCellIndex] = 0
+    errors[targetCellIndex] = <u16>value
+    return
+  }
+  numbers[targetCellIndex] = value
+  errors[targetCellIndex] = ErrorCode.None
 }
 
 export function evalDirectScalarValueBatch(
@@ -131,5 +168,63 @@ export function evalDirectScalarValueBatch(
       continue
     }
     writeDirectScalarValueBatchResult(index, <u8>ValueTag.Number, result + resultOffsets[index], outTags, outNumbers, outErrors)
+  }
+}
+
+export function evalDirectScalarStoreTargetBatch(
+  targets: Uint32Array,
+  operators: Uint8Array,
+  leftBatchRefs: Uint32Array,
+  leftTags: Uint8Array,
+  leftValues: Float64Array,
+  leftErrors: Uint16Array,
+  rightBatchRefs: Uint32Array,
+  rightTags: Uint8Array,
+  rightValues: Float64Array,
+  rightErrors: Uint16Array,
+  resultOffsets: Float64Array,
+): void {
+  for (let index = 0; index < operators.length; index++) {
+    const operator = operators[index]
+    readDirectScalarStoreTargetBatchOperand(targets, leftBatchRefs[index], leftTags[index], leftValues[index], leftErrors[index])
+    const leftTag = directScalarOperandTag
+    const leftValue = directScalarOperandValue
+    const targetCellIndex = <i32>targets[index]
+    if (leftTag == ValueTag.Error) {
+      writeDirectScalarStoreTargetBatchResult(targetCellIndex, leftTag, leftValue)
+      continue
+    }
+
+    if (operator == DIRECT_SCALAR_OP_ABS) {
+      writeDirectScalarStoreTargetBatchResult(targetCellIndex, <u8>ValueTag.Number, Math.abs(leftValue))
+      continue
+    }
+
+    readDirectScalarStoreTargetBatchOperand(targets, rightBatchRefs[index], rightTags[index], rightValues[index], rightErrors[index])
+    const rightTag = directScalarOperandTag
+    const rightValue = directScalarOperandValue
+    if (rightTag == ValueTag.Error) {
+      writeDirectScalarStoreTargetBatchResult(targetCellIndex, rightTag, rightValue)
+      continue
+    }
+
+    let result: f64 = 0
+    if (operator == DIRECT_SCALAR_OP_ADD) {
+      result = leftValue + rightValue
+    } else if (operator == DIRECT_SCALAR_OP_SUB) {
+      result = leftValue - rightValue
+    } else if (operator == DIRECT_SCALAR_OP_MUL) {
+      result = leftValue * rightValue
+    } else if (operator == DIRECT_SCALAR_OP_DIV) {
+      if (rightValue == 0) {
+        writeDirectScalarStoreTargetBatchResult(targetCellIndex, <u8>ValueTag.Error, ErrorCode.Div0)
+        continue
+      }
+      result = leftValue / rightValue
+    } else {
+      writeDirectScalarStoreTargetBatchResult(targetCellIndex, <u8>ValueTag.Error, ErrorCode.Value)
+      continue
+    }
+    writeDirectScalarStoreTargetBatchResult(targetCellIndex, <u8>ValueTag.Number, result + resultOffsets[index])
   }
 }

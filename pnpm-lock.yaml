@@ -300,6 +300,12 @@ importers:
         specifier: 0.9.2
         version: 0.9.2
 
+  packages/bilig:
+    dependencies:
+      '@bilig/headless':
+        specifier: workspace:*
+        version: link:../headless
+
   packages/binary-protocol:
     dependencies:
       '@bilig/protocol':
@@ -470,6 +476,12 @@ importers:
       effect:
         specifier: 3.21.0
         version: 3.21.0
+
+  packages/sheetjs-formula-recalc:
+    dependencies:
+      xlsx-formula-recalc:
+        specifier: workspace:*
+        version: link:../xlsx-formula-recalc
 
   packages/storage-server:
     dependencies:

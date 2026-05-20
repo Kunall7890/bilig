@@ -10,6 +10,7 @@ import {
   getProductColumnWidth,
   gotoWorkbookShell,
   pickToolbarPresetColor,
+  PRIMARY_MODIFIER,
   PRODUCT_COLUMN_WIDTH,
   PRODUCT_HEADER_HEIGHT,
   PRODUCT_ROW_HEIGHT,
@@ -1273,6 +1274,157 @@ test('@browser-webgpu @browser-deep name-box range fill presents the current fra
     testInfo,
     'main-workbook-grid-name-box-fill-refresh-readback.png',
     'main-workbook-grid-name-box-fill-refresh-readback',
+  )
+})
+
+test('@browser-webgpu @browser-deep large range fill remains applied after scrolling into uncached rows', async ({ page }, testInfo) => {
+  const initialPoints = [
+    { ...selectedRangeFillProbe(3, 3), name: 'topLeft' },
+    { ...selectedRangeFillProbe(4, 8), name: 'middle' },
+    { ...selectedRangeFillProbe(5, 12), name: 'bottomRight' },
+  ]
+  const scrolledPoints = [
+    { ...selectedRangeFillProbe(3, 5), name: 'scrolledD' },
+    { ...selectedRangeFillProbe(4, 8), name: 'scrolledE' },
+    { ...selectedRangeFillProbe(5, 11), name: 'scrolledF' },
+  ]
+
+  await page.setViewportSize({ width: 960, height: 720 })
+  await installTypeGpuReadbackHarness(page)
+  await gotoWorkbookShell(page, `/?document=${encodeURIComponent(createTestDocumentId('typegpu-large-range-fill-scroll'))}&persist=0`)
+  await waitForWorkbookReady(page)
+  await waitForTypeGpuRenderer(page)
+  await page.waitForFunction(
+    () =>
+      Boolean(
+        (window as Window & { __biligGpuReadbackInspector?: { readonly isReady: () => boolean } }).__biligGpuReadbackInspector?.isReady(),
+      ),
+    undefined,
+    { timeout: 15_000 },
+  )
+
+  const nameBox = page.getByTestId('name-box')
+  await nameBox.fill('D4:F240')
+  await nameBox.press('Enter')
+  await expect(page.getByTestId('status-selection')).toHaveText('Sheet1!D4:F240')
+  await pickToolbarPresetColor(page, 'Fill color', 'theme green')
+  const initialReadback = await waitForReadback(
+    page,
+    {
+      points: initialPoints,
+      regions: [],
+    },
+    (result) => allReadbackPointsMatch(result, isThemeGreenFill),
+  )
+
+  await page.getByTestId('grid-scroll-viewport').evaluate((viewport, rowHeight) => {
+    if (!(viewport instanceof HTMLDivElement)) {
+      throw new Error('grid scroll viewport is not a div')
+    }
+    viewport.scrollTop = rowHeight * 160
+    viewport.dispatchEvent(new Event('scroll'))
+  }, PRODUCT_ROW_HEIGHT)
+  await waitForReadbackSequence(page, initialReadback.sequence)
+
+  const scrolledReadback = await waitForReadback(
+    page,
+    {
+      points: scrolledPoints,
+      regions: [],
+    },
+    (result) => result.sequence > initialReadback.sequence && allReadbackPointsMatch(result, isThemeGreenFill),
+  )
+  expect(scrolledReadback.sequence).toBeGreaterThan(initialReadback.sequence)
+
+  await clickProductCell(page, 4, 8)
+  await pickToolbarPresetColor(page, 'Fill color', 'light cornflower blue 2')
+  const overrideReadback = await waitForReadback(
+    page,
+    {
+      points: scrolledPoints,
+      regions: [],
+    },
+    (result) =>
+      result.sequence > scrolledReadback.sequence &&
+      isThemeGreenFill(result.points.scrolledD) &&
+      isCornflowerBlueFill(result.points.scrolledE) &&
+      isThemeGreenFill(result.points.scrolledF),
+  )
+  expect(overrideReadback.sequence).toBeGreaterThan(scrolledReadback.sequence)
+  await saveReadbackArtifact(
+    page,
+    testInfo,
+    'main-workbook-grid-large-range-fill-scroll-readback.png',
+    'main-workbook-grid-large-range-fill-scroll-readback',
+  )
+})
+
+test('@browser-webgpu @browser-deep keyboard fill down paints uncached rows before sync catch-up', async ({ page }, testInfo) => {
+  const scrolledPoints = [
+    { ...selectedRangeFillProbe(1, 5), name: 'bVisibleTop' },
+    { ...selectedRangeFillProbe(1, 8), name: 'bVisibleMiddle' },
+    { ...selectedRangeFillProbe(1, 11), name: 'bVisibleBottom' },
+  ]
+
+  await page.setViewportSize({ width: 960, height: 720 })
+  await installTypeGpuReadbackHarness(page)
+  await gotoWorkbookShell(page, `/?document=${encodeURIComponent(createTestDocumentId('typegpu-keyboard-filldown-scroll'))}&persist=0`)
+  await waitForWorkbookReady(page)
+  await waitForTypeGpuRenderer(page)
+  await page.waitForFunction(
+    () =>
+      Boolean(
+        (window as Window & { __biligGpuReadbackInspector?: { readonly isReady: () => boolean } }).__biligGpuReadbackInspector?.isReady(),
+      ),
+    undefined,
+    { timeout: 15_000 },
+  )
+
+  const formulaInput = page.getByTestId('formula-input')
+  const nameBox = page.getByTestId('name-box')
+  const grid = page.getByTestId('sheet-grid')
+
+  await clickProductCell(page, 1, 1)
+  await formulaInput.fill('filldown-overlay')
+  await formulaInput.press('Enter')
+  await clickProductCell(page, 1, 1)
+  await pickToolbarPresetColor(page, 'Fill color', 'theme green')
+
+  await nameBox.fill('B2:B20000')
+  await nameBox.press('Enter')
+  await expect(page.getByTestId('status-selection')).toHaveText('Sheet1!B2:B20000')
+  await grid.press(`${PRIMARY_MODIFIER}+D`)
+
+  const filledSequence = await page.evaluate(() => {
+    return (
+      (
+        window as Window & { __biligGpuReadbackInspector?: { readonly getSequence: () => number } }
+      ).__biligGpuReadbackInspector?.getSequence() ?? 0
+    )
+  })
+  await page.getByTestId('grid-scroll-viewport').evaluate((viewport, rowHeight) => {
+    if (!(viewport instanceof HTMLDivElement)) {
+      throw new Error('grid scroll viewport is not a div')
+    }
+    viewport.scrollTop = rowHeight * 160
+    viewport.dispatchEvent(new Event('scroll'))
+  }, PRODUCT_ROW_HEIGHT)
+  await waitForReadbackSequence(page, filledSequence)
+
+  const readback = await waitForReadback(
+    page,
+    {
+      points: scrolledPoints,
+      regions: [],
+    },
+    (result) => result.sequence > filledSequence && allReadbackPointsMatch(result, isThemeGreenFill),
+  )
+  expect(readback.sequence).toBeGreaterThan(filledSequence)
+  await saveReadbackArtifact(
+    page,
+    testInfo,
+    'main-workbook-grid-keyboard-filldown-scroll-readback.png',
+    'main-workbook-grid-keyboard-filldown-scroll-readback',
   )
 })
 

@@ -216,7 +216,7 @@ export async function requireSharedPublicDocsDiscovery(args: {
     ['docs/javascript-spreadsheet-library-headless-node.md', 'docs/sheetjs-exceljs-alternative-formula-workbook-api.md'],
   )
   requireIncludes(args.llms, 'https://proompteng.github.io/bilig/sheetjs-exceljs-alternative-formula-workbook-api.html', 'docs/llms.txt')
-  requireIncludes(args.llms, 'includes a TypeScript WorkPaper runtime check', 'docs/llms.txt')
+  requireIncludes(args.llms, 'routes high-traffic SheetJS, xlsx-populate, ExcelJS, xlsx-calc, FormulaJS', 'docs/llms.txt')
 
   requireDocumentsInclude(
     [

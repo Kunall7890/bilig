@@ -1626,7 +1626,7 @@ test('web app applies advertised number and border formatting shortcuts from the
   await expect(borders).toHaveAttribute('aria-pressed', 'false')
 })
 
-test('web app keeps formatting shortcuts active after toolbar focus without letting delete keys clear cells', async ({ page }) => {
+test('web app returns grid focus after toolbar formatting commands and keeps shortcuts active', async ({ page }) => {
   const documentId = createTestDocumentId('playwright-toolbar-focus-shortcut-scope')
   await page.goto(`/?document=${encodeURIComponent(documentId)}`)
   await waitForWorkbookReady(page)
@@ -1641,7 +1641,8 @@ test('web app keeps formatting shortcuts active after toolbar focus without lett
   await expect(formulaInput).toHaveValue('clear-after-toolbar-focus')
 
   await boldButton.click()
-  await expect(page.getByLabel('Bold')).toHaveClass(/bg-\[var\(--wb-accent-soft\)\]/)
+  await expect(boldButton).not.toBeFocused()
+  await expect(boldButton).toHaveClass(/bg-\[var\(--wb-accent-soft\)\]/)
   await boldButton.focus()
   await expect(boldButton).toBeFocused()
   await page.keyboard.press('Delete')
@@ -1652,10 +1653,11 @@ test('web app keeps formatting shortcuts active after toolbar focus without lett
   await expect(formulaInput).toHaveValue('clear-after-toolbar-focus')
   await expect(boldButton).toBeFocused()
 
+  await clickProductCell(page, 2, 2)
+
   await page.keyboard.press(`${PRIMARY_MODIFIER}+B`)
   await expect(page.getByLabel('Bold')).not.toHaveClass(/bg-\[var\(--wb-accent-soft\)\]/)
 
-  await clickProductCell(page, 2, 2)
   await expect(page.getByTestId('status-selection')).toHaveText('Sheet1!C3')
   await page.keyboard.press('Delete')
   await expect(formulaInput).toHaveValue('')

@@ -159,6 +159,21 @@ describe('formula runtime differential fuzz', () => {
     FUZZ_TEST_TIMEOUT_MS,
   )
 
+  it('keeps XLOOKUP omitted if_not_found parity when an approximate match succeeds', async () => {
+    const engine = new SpreadsheetEngine({
+      workbookName: 'xlookup-omitted-if-not-found-approximate-parity',
+      replicaId: 'xlookup-omitted-if-not-found-approximate-parity',
+    })
+    await engine.ready()
+    seedInventoryDifferentialWorkbook(engine)
+
+    engine.setCellFormula(sheetName, 'H8', '=XLOOKUP(72,G1:G5,H1:H5,,-1)')
+
+    expect(engine.explainCell(sheetName, 'H8').mode).toBe(FormulaMode.WasmFastPath)
+    expect(engine.recalculateDifferential().drift).toEqual([])
+    expectCellSemantics(engine.getCellValue(sheetName, 'H8'), { tag: ValueTag.Number, value: 0 })
+  })
+
   it(
     'keeps generated fast-path formulas in JS and wasm parity',
     async () => {

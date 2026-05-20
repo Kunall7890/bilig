@@ -1,4 +1,5 @@
 import type { FormulaNode } from './ast.js'
+import { parseRangeAddress } from './addressing.js'
 import { rewriteSpecialCall } from './special-call-rewrites.js'
 
 const VOLATILE_BUILTINS = new Set(['TODAY', 'NOW', 'RAND', 'RANDBETWEEN', 'RANDARRAY', 'OFFSET', 'INDIRECT', 'SUBTOTAL'])
@@ -45,6 +46,48 @@ export interface VolatileMetadata {
   randCallCount: number
 }
 
+function cellRangeShape(node: FormulaNode): { rows: number; cols: number } | undefined {
+  if (node.kind !== 'RangeRef' || node.refKind !== 'cells' || node.sheetEndName !== undefined) {
+    return undefined
+  }
+  try {
+    const sheetPrefix = node.sheetName ? `${node.sheetName}!` : ''
+    const range = parseRangeAddress(`${sheetPrefix}${node.start}:${node.end}`)
+    if (range.kind !== 'cells') {
+      return undefined
+    }
+    return {
+      rows: range.end.row - range.start.row + 1,
+      cols: range.end.col - range.start.col + 1,
+    }
+  } catch {
+    return undefined
+  }
+}
+
+function xlookupProducesSpill(args: readonly FormulaNode[]): boolean {
+  const [lookupValue, lookupArray, returnArray] = args
+  if (!lookupValue || !lookupArray || !returnArray) {
+    return false
+  }
+  if (producesSpillResult(lookupValue)) {
+    return true
+  }
+
+  const lookupShape = cellRangeShape(lookupArray)
+  const returnShape = cellRangeShape(returnArray)
+  if (!lookupShape || !returnShape) {
+    return producesSpillResult(returnArray)
+  }
+  if (lookupShape.cols === 1) {
+    return returnShape.rows === lookupShape.rows && returnShape.cols > 1
+  }
+  if (lookupShape.rows === 1) {
+    return returnShape.cols === lookupShape.cols && returnShape.rows > 1
+  }
+  return false
+}
+
 export function producesSpillResult(node: FormulaNode): boolean {
   switch (node.kind) {
     case 'NumberLiteral':
@@ -71,6 +114,9 @@ export function producesSpillResult(node: FormulaNode): boolean {
     case 'CallExpr':
       if (node.callee.toUpperCase() === 'CHOOSE') {
         return node.args.slice(1).some((arg) => producesSpillResult(arg))
+      }
+      if (node.callee.toUpperCase() === 'XLOOKUP') {
+        return xlookupProducesSpill(node.args)
       }
       if (node.callee.toUpperCase() === 'TREND' || node.callee.toUpperCase() === 'GROWTH') {
         const shapeArg = node.args[2] ?? node.args[1] ?? node.args[0]

@@ -1,14 +1,14 @@
 ---
-title: Try bilig headless spreadsheet engine in Node
+title: Try Bilig WorkPaper in Node
 published: true
-description: Try @bilig/headless from an empty Node.js directory, edit one workbook input, read the calculated value, and verify JSON restore.
+description: Try bilig-workpaper from an empty Node.js directory, edit one workbook input, read the calculated value, and verify JSON restore.
 tags: typescript, node, spreadsheet, formulas, opensource
 canonical_url: https://proompteng.github.io/bilig/try-bilig-headless-in-node.html
 cover_image: https://raw.githubusercontent.com/proompteng/bilig/main/docs/assets/github-social-preview.png
 image: /assets/github-social-preview.png
 ---
 
-# Try bilig headless spreadsheet engine in Node
+# Try Bilig WorkPaper in Node
 
 This page is for people who want to try the package before reading the whole
 repo. It starts from an empty directory, installs the published npm package,
@@ -24,7 +24,7 @@ mkdir bilig-headless-eval
 cd bilig-headless-eval
 npm init -y
 npm pkg set type=module
-npm install @bilig/headless
+npm install bilig-workpaper
 npm install -D tsx typescript @types/node
 curl -fsSLo quickstart.ts https://proompteng.github.io/bilig/npm-eval.ts
 npx tsx quickstart.ts
@@ -38,7 +38,7 @@ Expected output:
   "after": 38400,
   "afterRestore": 38400,
   "sheets": ["Inputs", "Summary"],
-  "bytes": 1000,
+  "bytes": 999,
   "verified": true,
   "nextStep": "If this proof matches your service or agent workflow, star or bookmark Bilig: https://github.com/proompteng/bilig/stargazers"
 }
@@ -75,7 +75,7 @@ Expected output (same as above; `verified` must be `true`):
   "after": 38400,
   "afterRestore": 38400,
   "sheets": ["Inputs", "Summary"],
-  "bytes": 1000,
+  "bytes": 999,
   "verified": true,
   "nextStep": "If this proof matches your service or agent workflow, star or bookmark Bilig: https://github.com/proompteng/bilig/stargazers"
 }
@@ -105,7 +105,8 @@ compatibility pages before adopting it.
 ## Next paths
 
 - [GitHub repository](https://github.com/proompteng/bilig)
-- [npm package](https://www.npmjs.com/package/@bilig/headless)
+- [bilig-workpaper npm package](https://www.npmjs.com/package/bilig-workpaper)
+- [@bilig/headless npm package](https://www.npmjs.com/package/@bilig/headless)
 - [Five Node.js workbook automation examples](workbook-automation-examples-node.md)
 - [Node.js spreadsheet formula engine guide](node-spreadsheet-formula-engine.md)
 - [WorkPaper service recipe](node-service-workpaper-recipe.md)

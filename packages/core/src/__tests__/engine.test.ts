@@ -2079,6 +2079,19 @@ describe('SpreadsheetEngine', () => {
     expect(engine.explainCell('Sheet1', 'E4').mode).toBe(FormulaMode.WasmFastPath)
   })
 
+  it('keeps JS fallback ABS from swallowing arithmetic errors before wasm is ready', () => {
+    const engine = new SpreadsheetEngine({ workbookName: 'js-fallback-error-propagation' })
+    engine.createSheet('Sheet1')
+    engine.setCellValue('Sheet1', 'J12', 100)
+    engine.setCellValue('Sheet1', 'M12', 78)
+    engine.setCellFormula('Sheet1', 'Q12', 'SQRT(ABS((1/J12)+(1/K12)+(1/M12)+(1/N12)))')
+
+    expect(engine.getCellValue('Sheet1', 'Q12')).toEqual({
+      tag: ValueTag.Error,
+      code: ErrorCode.Div0,
+    })
+  })
+
   it('routes gamma inverse functions and aliases through the wasm path', async () => {
     const engine = new SpreadsheetEngine({ workbookName: 'spec' })
     await engine.ready()
@@ -3253,6 +3266,18 @@ describe('SpreadsheetEngine', () => {
     engine.setCellValue('Sheet1', 'C1', 1)
     engine.setCellValue('Sheet1', 'C2', 3)
     engine.setCellValue('Sheet1', 'C3', 5)
+    engine.setCellValue('Sheet1', 'O1', 'ID1')
+    engine.setCellValue('Sheet1', 'O2', 'ID2')
+    engine.setCellValue('Sheet1', 'O3', 'ID3')
+    engine.setCellValue('Sheet1', 'P1', 'Alex')
+    engine.setCellValue('Sheet1', 'Q1', 'North')
+    engine.setCellValue('Sheet1', 'R1', 10)
+    engine.setCellValue('Sheet1', 'P2', 'James')
+    engine.setCellValue('Sheet1', 'Q2', 'South')
+    engine.setCellValue('Sheet1', 'R2', 20)
+    engine.setCellValue('Sheet1', 'P3', 'Mina')
+    engine.setCellValue('Sheet1', 'Q3', 'West')
+    engine.setCellValue('Sheet1', 'R3', 30)
 
     engine.setCellFormula('Sheet1', 'D1', 'MATCH("pear",A1:A4,0)')
     expect(engine.getCellValue('Sheet1', 'D1')).toEqual({ tag: ValueTag.Number, value: 2 })
@@ -3271,6 +3296,24 @@ describe('SpreadsheetEngine', () => {
       tag: ValueTag.String,
       value: 'fallback',
     })
+    expect(engine.getLastMetrics()).toMatchObject({ wasmFormulaCount: 1, jsFormulaCount: 0 })
+
+    engine.setCellFormula('Sheet1', 'D6', 'XLOOKUP(4,C1:C3,B1:B3,"fallback",-1)')
+    expect(engine.getCellValue('Sheet1', 'D6')).toEqual({ tag: ValueTag.Number, value: 20 })
+    expect(engine.explainCell('Sheet1', 'D6').mode).toBe(FormulaMode.WasmFastPath)
+    expect(engine.getLastMetrics()).toMatchObject({ wasmFormulaCount: 1, jsFormulaCount: 0 })
+
+    engine.setCellFormula('Sheet1', 'D7', 'XLOOKUP(4,C1:C3,B1:B3,"fallback",1)')
+    expect(engine.getCellValue('Sheet1', 'D7')).toEqual({ tag: ValueTag.Number, value: 30 })
+    expect(engine.explainCell('Sheet1', 'D7').mode).toBe(FormulaMode.WasmFastPath)
+    expect(engine.getLastMetrics()).toMatchObject({ wasmFormulaCount: 1, jsFormulaCount: 0 })
+
+    engine.setCellFormula('Sheet1', 'F1', 'XLOOKUP("ID2",O1:O3,P1:R3)')
+    expect(engine.getCellValue('Sheet1', 'F1')).toMatchObject({ tag: ValueTag.String, value: 'James' })
+    expect(engine.getCellValue('Sheet1', 'G1')).toMatchObject({ tag: ValueTag.String, value: 'South' })
+    expect(engine.getCellValue('Sheet1', 'H1')).toEqual({ tag: ValueTag.Number, value: 20 })
+    expect(engine.exportSnapshot().workbook.metadata?.spills).toEqual([{ sheetName: 'Sheet1', address: 'F1', rows: 1, cols: 3 }])
+    expect(engine.explainCell('Sheet1', 'F1').mode).toBe(FormulaMode.WasmFastPath)
     expect(engine.getLastMetrics()).toMatchObject({ wasmFormulaCount: 1, jsFormulaCount: 0 })
 
     engine.setCellValue('Sheet1', 'A1', 'pear')

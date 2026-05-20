@@ -1,4 +1,9 @@
-import { CellFlags, type EngineCellMutationAt, type EngineCellMutationRef, type EngineExistingLiteralCellMutationRef } from '@bilig/core'
+import {
+  CellFlags,
+  type EngineCellMutationAt,
+  type EngineCellMutationRef,
+  type EngineExistingLiteralCellMutationRef,
+} from '@bilig/core/headless-runtime'
 import { ValueTag } from '@bilig/protocol'
 import { workPaperFormulaMayResizeDynamically } from './work-paper-sheet-inspection.js'
 import type { WorkPaperSheetDimensions } from './work-paper-types.js'

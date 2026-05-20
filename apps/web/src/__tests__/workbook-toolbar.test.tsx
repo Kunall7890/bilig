@@ -113,6 +113,15 @@ function dispatchWorkbookShortcut(init: KeyboardEventInit & { readonly key: stri
   return event
 }
 
+function createWorkbookKeyboardScopeHost() {
+  const scope = document.createElement('div')
+  scope.dataset['workbookKeyboardScope'] = 'true'
+  const host = document.createElement('div')
+  scope.appendChild(host)
+  document.body.appendChild(scope)
+  return host
+}
+
 async function flushToolbarMutationQueue(cycles = 3): Promise<void> {
   await Promise.resolve()
   if (cycles > 1) {
@@ -138,8 +147,7 @@ describe('WorkbookToolbar', () => {
         endAddress: 'A1',
       },
     }
-    const host = document.createElement('div')
-    document.body.appendChild(host)
+    const host = createWorkbookKeyboardScopeHost()
     const root = createRoot(host)
 
     await act(async () => {
@@ -173,6 +181,57 @@ describe('WorkbookToolbar', () => {
     })
   })
 
+  it('drops optimistic color swatches when workbook history takes ownership', async () => {
+    ;(globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true
+
+    let resolveMutation: (() => void) | undefined
+    const invokeMutation = vi.fn(
+      () =>
+        new Promise<void>((resolve) => {
+          resolveMutation = resolve
+        }),
+    )
+    const onUndo = vi.fn()
+    const selectionRangeRef: MutableRefObject<CellRangeRef> = {
+      current: {
+        sheetName: 'Sheet1',
+        startAddress: 'B2',
+        endAddress: 'B2',
+      },
+    }
+    const host = createWorkbookKeyboardScopeHost()
+    const root = createRoot(host)
+
+    await act(async () => {
+      root.render(<ToolbarHookHarness invokeMutation={invokeMutation} onUndo={onUndo} selectionRangeRef={selectionRangeRef} />)
+    })
+
+    await act(async () => {
+      host.querySelector("[aria-label='Fill color']")?.dispatchEvent(new MouseEvent('click', { bubbles: true }))
+    })
+    const greenSwatch = document.querySelector("[aria-label='Fill color green']")
+    expect(greenSwatch).not.toBeNull()
+
+    await act(async () => {
+      greenSwatch?.dispatchEvent(new MouseEvent('click', { bubbles: true }))
+      await Promise.resolve()
+    })
+    expect(host.querySelector("[aria-label='Fill color']")?.getAttribute('data-current-color')).toBe('#00ff00')
+
+    await act(async () => {
+      dispatchWorkbookShortcut({ key: 'z', metaKey: true })
+      await flushToolbarMutationQueue()
+    })
+
+    expect(onUndo).toHaveBeenCalledTimes(1)
+    expect(host.querySelector("[aria-label='Fill color']")?.getAttribute('data-current-color')).toBe('#ffffff')
+
+    await act(async () => {
+      resolveMutation?.()
+      root.unmount()
+    })
+  })
+
   it('routes supported workbook toolbar shortcuts to the active selection', async () => {
     ;(globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true
 
@@ -186,8 +245,7 @@ describe('WorkbookToolbar', () => {
         endAddress: 'D5',
       },
     }
-    const host = document.createElement('div')
-    document.body.appendChild(host)
+    const host = createWorkbookKeyboardScopeHost()
     const root = createRoot(host)
     const selectionRange = selectionRangeRef.current
 
@@ -319,6 +377,69 @@ describe('WorkbookToolbar', () => {
     })
   })
 
+  it('keeps workbook shortcuts scoped to the workbook keyboard surface', async () => {
+    ;(globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true
+
+    const invokeMutation = vi.fn(async () => {})
+    const onUndo = vi.fn()
+    const selectionRangeRef: MutableRefObject<CellRangeRef> = {
+      current: {
+        sheetName: 'Sheet1',
+        startAddress: 'B2',
+        endAddress: 'B2',
+      },
+    }
+    const host = createWorkbookKeyboardScopeHost()
+    const root = createRoot(host)
+    const outsideButton = document.createElement('button')
+    outsideButton.type = 'button'
+    outsideButton.textContent = 'Outside workbook'
+    document.body.appendChild(outsideButton)
+
+    await act(async () => {
+      root.render(<ToolbarHookHarness invokeMutation={invokeMutation} onUndo={onUndo} selectionRangeRef={selectionRangeRef} />)
+    })
+
+    await act(async () => {
+      outsideButton.focus()
+    })
+    expect(document.activeElement).toBe(outsideButton)
+
+    await act(async () => {
+      const outsideBoldEvent = new KeyboardEvent('keydown', { bubbles: true, cancelable: true, key: 'b', metaKey: true })
+      outsideButton.dispatchEvent(outsideBoldEvent)
+      const outsideUndoEvent = new InputEvent('beforeinput', { bubbles: true, cancelable: true, inputType: 'historyUndo' })
+      outsideButton.dispatchEvent(outsideUndoEvent)
+      await flushToolbarMutationQueue()
+      expect(outsideBoldEvent.defaultPrevented).toBe(false)
+      expect(outsideUndoEvent.defaultPrevented).toBe(false)
+    })
+
+    expect(invokeMutation).not.toHaveBeenCalled()
+    expect(onUndo).not.toHaveBeenCalled()
+
+    const boldButton = host.querySelector<HTMLButtonElement>("[aria-label='Bold']")
+    expect(boldButton).not.toBeNull()
+    await act(async () => {
+      boldButton?.focus()
+    })
+    expect(document.activeElement).toBe(boldButton)
+
+    await act(async () => {
+      const insideBoldEvent = new KeyboardEvent('keydown', { bubbles: true, cancelable: true, key: 'b', metaKey: true })
+      boldButton?.dispatchEvent(insideBoldEvent)
+      await flushToolbarMutationQueue()
+      expect(insideBoldEvent.defaultPrevented).toBe(true)
+    })
+
+    expect(invokeMutation).toHaveBeenCalledTimes(1)
+    expect(invokeMutation).toHaveBeenLastCalledWith('setRangeStyle', selectionRangeRef.current, { font: { bold: true } })
+
+    await act(async () => {
+      root.unmount()
+    })
+  })
+
   it('serializes border shortcut clears before applying replacement borders', async () => {
     ;(globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true
 
@@ -338,8 +459,7 @@ describe('WorkbookToolbar', () => {
         endAddress: 'A1',
       },
     }
-    const host = document.createElement('div')
-    document.body.appendChild(host)
+    const host = createWorkbookKeyboardScopeHost()
     const root = createRoot(host)
 
     await act(async () => {
@@ -393,8 +513,7 @@ describe('WorkbookToolbar', () => {
         endAddress: 'A1',
       },
     }
-    const host = document.createElement('div')
-    document.body.appendChild(host)
+    const host = createWorkbookKeyboardScopeHost()
     const root = createRoot(host)
 
     await act(async () => {
@@ -453,8 +572,7 @@ describe('WorkbookToolbar', () => {
         endAddress: 'A1',
       },
     }
-    const host = document.createElement('div')
-    document.body.appendChild(host)
+    const host = createWorkbookKeyboardScopeHost()
     const root = createRoot(host)
 
     await act(async () => {
@@ -494,8 +612,7 @@ describe('WorkbookToolbar', () => {
         endAddress: 'A1',
       },
     }
-    const host = document.createElement('div')
-    document.body.appendChild(host)
+    const host = createWorkbookKeyboardScopeHost()
     const root = createRoot(host)
     const textInput = document.createElement('input')
     textInput.value = 'native-history'
@@ -685,8 +802,7 @@ describe('WorkbookToolbar', () => {
         endAddress: 'A1',
       },
     }
-    const host = document.createElement('div')
-    document.body.appendChild(host)
+    const host = createWorkbookKeyboardScopeHost()
     const root = createRoot(host)
 
     await act(async () => {
@@ -704,8 +820,7 @@ describe('WorkbookToolbar', () => {
     ;(globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true
 
     const onHideCurrentRow = vi.fn()
-    const host = document.createElement('div')
-    document.body.appendChild(host)
+    const host = createWorkbookKeyboardScopeHost()
     const root = createRoot(host)
 
     await act(async () => {
@@ -787,8 +902,7 @@ describe('WorkbookToolbar', () => {
   it('shows shared shortcut labels on alignment buttons', async () => {
     ;(globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true
 
-    const host = document.createElement('div')
-    document.body.appendChild(host)
+    const host = createWorkbookKeyboardScopeHost()
     const root = createRoot(host)
 
     await act(async () => {
@@ -858,8 +972,7 @@ describe('WorkbookToolbar', () => {
     const requestGridFocus = vi.fn()
     const onFillColorSelect = vi.fn()
     const onToggleBold = vi.fn()
-    const host = document.createElement('div')
-    document.body.appendChild(host)
+    const host = createWorkbookKeyboardScopeHost()
     const root = createRoot(host)
     const flushFocusReturn = async () => {
       await act(async () => {
@@ -950,8 +1063,7 @@ describe('WorkbookToolbar', () => {
   it('keeps toolbar controls on one shared height system', async () => {
     ;(globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true
 
-    const host = document.createElement('div')
-    document.body.appendChild(host)
+    const host = createWorkbookKeyboardScopeHost()
     const root = createRoot(host)
 
     await act(async () => {
@@ -1026,8 +1138,7 @@ describe('WorkbookToolbar', () => {
   it("renders trailing controls in the toolbar's right slot", async () => {
     ;(globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true
 
-    const host = document.createElement('div')
-    document.body.appendChild(host)
+    const host = createWorkbookKeyboardScopeHost()
     const root = createRoot(host)
 
     await act(async () => {
@@ -1104,8 +1215,7 @@ describe('WorkbookToolbar', () => {
         endAddress: 'A1',
       },
     }
-    const host = document.createElement('div')
-    document.body.appendChild(host)
+    const host = createWorkbookKeyboardScopeHost()
     const root = createRoot(host)
 
     await act(async () => {
@@ -1150,8 +1260,7 @@ describe('WorkbookToolbar', () => {
         endAddress: 'D5',
       },
     }
-    const host = document.createElement('div')
-    document.body.appendChild(host)
+    const host = createWorkbookKeyboardScopeHost()
     const root = createRoot(host)
 
     await act(async () => {
@@ -1204,8 +1313,7 @@ describe('WorkbookToolbar', () => {
         endAddress: 'A1',
       },
     }
-    const host = document.createElement('div')
-    document.body.appendChild(host)
+    const host = createWorkbookKeyboardScopeHost()
     const root = createRoot(host)
 
     await act(async () => {
@@ -1241,8 +1349,7 @@ describe('WorkbookToolbar', () => {
         endAddress: 'A1',
       },
     }
-    const host = document.createElement('div')
-    document.body.appendChild(host)
+    const host = createWorkbookKeyboardScopeHost()
     const root = createRoot(host)
     const addSpy = vi.spyOn(window, 'addEventListener')
     const removeSpy = vi.spyOn(window, 'removeEventListener')
@@ -1321,8 +1428,7 @@ describe('WorkbookToolbar', () => {
         endAddress: 'A1',
       },
     }
-    const host = document.createElement('div')
-    document.body.appendChild(host)
+    const host = createWorkbookKeyboardScopeHost()
     const root = createRoot(host)
 
     await act(async () => {
@@ -1423,8 +1529,7 @@ describe('WorkbookToolbar', () => {
         endAddress: 'A1',
       },
     }
-    const host = document.createElement('div')
-    document.body.appendChild(host)
+    const host = createWorkbookKeyboardScopeHost()
     const root = createRoot(host)
 
     await act(async () => {
@@ -1466,8 +1571,7 @@ describe('WorkbookToolbar', () => {
         endAddress: 'A1',
       },
     }
-    const host = document.createElement('div')
-    document.body.appendChild(host)
+    const host = createWorkbookKeyboardScopeHost()
     const root = createRoot(host)
 
     await act(async () => {
@@ -1525,8 +1629,7 @@ describe('WorkbookToolbar', () => {
   it('hides native toolbar overflow scrollbars while preserving horizontal scrolling', async () => {
     ;(globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true
 
-    const host = document.createElement('div')
-    document.body.appendChild(host)
+    const host = createWorkbookKeyboardScopeHost()
     const root = createRoot(host)
 
     await act(async () => {
@@ -1593,8 +1696,7 @@ describe('WorkbookToolbar', () => {
   it('signals hidden formatting actions on narrow toolbar scroll regions', async () => {
     ;(globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true
 
-    const host = document.createElement('div')
-    document.body.appendChild(host)
+    const host = createWorkbookKeyboardScopeHost()
     const root = createRoot(host)
 
     await act(async () => {

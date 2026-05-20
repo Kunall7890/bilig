@@ -9,7 +9,9 @@ export const RUNTIME_PACKAGE_DIRS = [
   'packages/core',
   'packages/excel-import',
   'packages/headless',
+  'packages/bilig',
   'packages/xlsx-formula-recalc',
+  'packages/sheetjs-formula-recalc',
   'packages/exceljs-formula-recalc',
   'packages/create-workpaper',
 ] as const
@@ -23,7 +25,9 @@ export const RUNTIME_NPM_PACKAGE_DIRS = [
   'packages/formula',
   'packages/core',
   'packages/headless',
+  'packages/bilig',
   'packages/xlsx-formula-recalc',
+  'packages/sheetjs-formula-recalc',
   'packages/exceljs-formula-recalc',
   'packages/create-workpaper',
 ] as const satisfies readonly RuntimePackageDir[]

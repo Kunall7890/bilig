@@ -1,5 +1,5 @@
-import { mkdir, readFile, writeFile } from 'node:fs/promises'
-import { dirname, join } from 'node:path'
+import { mkdir, readdir, readFile, writeFile } from 'node:fs/promises'
+import { dirname, extname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { mcpServerCardManifest } from './agent-discovery-mcp-card.ts'
 
@@ -11,7 +11,9 @@ const remoteMcpServerCard = 'https://bilig.proompteng.ai/.well-known/mcp/server-
 const repositoryUrl = 'https://github.com/proompteng/bilig'
 const skillName = 'bilig-workpaper'
 const headlessPackageVersion = parsePackageVersion(await readFile(join(repoRoot, 'packages', 'headless', 'package.json'), 'utf8'))
+const workpaperPackageVersion = parsePackageVersion(await readFile(join(repoRoot, 'packages', 'bilig', 'package.json'), 'utf8'))
 const headlessPackageSpec = `@bilig/headless@${headlessPackageVersion}`
+const workpaperPackageSpec = `bilig-workpaper@${workpaperPackageVersion}`
 const mcpbReleaseTag = `libraries-v${headlessPackageVersion}`
 const mcpbReleaseAssetUrl = `${repositoryUrl}/releases/download/${mcpbReleaseTag}/bilig-workpaper.mcpb`
 const mcpbReleaseChecksumUrl = `${mcpbReleaseAssetUrl}.sha256`
@@ -22,6 +24,29 @@ const agentNotAFitBoundaries = [
   'Office macros or desktop Excel automation',
   'one-off arithmetic',
 ] as const
+const versionedStaticReferenceRoots = [
+  'README.md',
+  'packages/headless/README.md',
+  'packages/headless/AGENTS.md',
+  'packages/headless/SKILL.md',
+  'packages/bilig/README.md',
+  'packages/bilig/AGENTS.md',
+  'packages/bilig/SKILL.md',
+  'skills/bilig-workpaper/SKILL.md',
+  'docs/agent-workbook-challenge.md',
+  'docs/claude-desktop-mcpb-workpaper.md',
+  'docs/formula-bug-clinic.md',
+  'docs/formula-workbooks-node-services-agent-tools.md',
+  'docs/headless-workpaper-agent-handbook.md',
+  'docs/index.html',
+  'docs/llms.txt',
+  'docs/mcp-client-setup.md',
+  'docs/mcp-spreadsheet-server-directory.md',
+  'docs/mcp-workpaper-tool-server.md',
+  'docs/spreadsheet-mcp-server-comparison.md',
+  'docs/why-agents-need-workbook-apis.md',
+] as const
+const versionedStaticReferenceExtensions = new Set(['.html', '.json', '.md', '.txt'])
 
 const checkOnly = process.argv.includes('--check')
 
@@ -402,6 +427,37 @@ If any proof step fails, report the blocker instead of claiming the workbook was
 - Repository: ${repositoryUrl}
 `
 
+const workpaperPackageAgentInstructions = headlessPackageAgentInstructions
+  .replace('# @bilig/headless agent notes', '# bilig-workpaper agent notes')
+  .replace('agent inspecting `node_modules/@bilig/headless`', 'agent inspecting `node_modules/bilig-workpaper`')
+  .replace(/@bilig\/headless/g, 'bilig-workpaper')
+  .replaceAll(headlessPackageSpec, workpaperPackageSpec)
+
+const workpaperPackageSkillDocument = skillDocument
+  .replace(/@bilig\/headless/g, 'bilig-workpaper')
+  .replaceAll(headlessPackageSpec, workpaperPackageSpec)
+  .replace(
+    `## First Choice: MCP
+
+Use MCP when the host can run a stdio server or call a Streamable HTTP server.
+Configure stdio as an argument array, not a shell-concatenated string:
+
+Before wiring a client, an agent can prove the direct WorkPaper loop with:`,
+    `## First Choice: Direct npm proof or TypeScript
+
+Use the package directly when the host can run npm or TypeScript. This is the
+highest-traffic evaluator path because it meets developers where they already
+search: npm, ExcelJS, SheetJS, xlsx-populate, and StackOverflow formula
+recalculation problems.
+
+Start by proving the direct WorkPaper loop:`,
+  )
+  .replace(
+    'For the actual file-backed MCP path, run the package-owned challenge first:',
+    'Use MCP only when the host specifically needs an MCP client boundary. For that path, run the package-owned challenge first:',
+  )
+  .replace('## Second Choice: Direct TypeScript', '## Direct TypeScript')
+
 const llmsFullSources = [
   { title: 'Repository README', relativePath: 'README.md', url: `${repositoryUrl}/blob/main/README.md` },
   {
@@ -716,6 +772,8 @@ async function generatedTargets(): Promise<ReadonlyArray<readonly [string, strin
     ['skills/bilig-workpaper/SKILL.md', skillDocument],
     ['packages/headless/SKILL.md', skillDocument],
     ['packages/headless/AGENTS.md', headlessPackageAgentInstructions],
+    ['packages/bilig/SKILL.md', workpaperPackageSkillDocument],
+    ['packages/bilig/AGENTS.md', workpaperPackageAgentInstructions],
   ] as const
 }
 
@@ -730,6 +788,84 @@ async function readIfExists(path: string): Promise<string | undefined> {
   }
 }
 
+async function collectVersionedStaticReferenceFiles(relativePath: string): Promise<string[]> {
+  const absolutePath = join(repoRoot, relativePath)
+  try {
+    const entries = await readdir(absolutePath, { withFileTypes: true })
+    const nested = await Promise.all(
+      entries.map((entry) => {
+        const entryRelativePath = `${relativePath}/${entry.name}`
+        return entry.isDirectory() ? collectVersionedStaticReferenceFiles(entryRelativePath) : [entryRelativePath]
+      }),
+    )
+    return nested.flat().filter((entryRelativePath) => versionedStaticReferenceExtensions.has(extname(entryRelativePath)))
+  } catch (error) {
+    if (error instanceof Error && 'code' in error && error.code === 'ENOTDIR') {
+      return versionedStaticReferenceExtensions.has(extname(relativePath)) ? [relativePath] : []
+    }
+    if (error instanceof Error && 'code' in error && error.code === 'ENOENT') {
+      return []
+    }
+    throw error
+  }
+}
+
+function syncVersionedStaticReferenceLine(line: string): string {
+  const stableSemverPattern = String.raw`\d+\.\d+\.\d+`
+  return line
+    .replace(new RegExp(`(npm exec --package )@bilig/headless@${stableSemverPattern}`, 'g'), `$1${headlessPackageSpec}`)
+    .replace(new RegExp(`("--package",\\s*")@bilig/headless@${stableSemverPattern}(")`, 'g'), `$1${headlessPackageSpec}$2`)
+    .replace(new RegExp(`^(\\s*)"@bilig/headless@${stableSemverPattern}"(,?\\s*)$`, 'g'), `$1"${headlessPackageSpec}"$2`)
+    .replace(
+      new RegExp(`(Current checked npm footprint for \`)@bilig/headless@${stableSemverPattern}(\`)`, 'g'),
+      `$1${headlessPackageSpec}$2`,
+    )
+    .replace(new RegExp(`npm latest is \`${stableSemverPattern}\``, 'g'), `npm latest is \`${headlessPackageVersion}\``)
+    .replace(new RegExp(`npm latest is \`@bilig/headless@${stableSemverPattern}\``, 'g'), `npm latest is \`${headlessPackageSpec}\``)
+    .replace(new RegExp(`npm latest \`@bilig/headless@${stableSemverPattern}\``, 'g'), `npm latest \`${headlessPackageSpec}\``)
+    .replace(new RegExp(`(now points reviewers at \`)@bilig/headless@${stableSemverPattern}(\`)`, 'g'), `$1${headlessPackageSpec}$2`)
+    .replace(new RegExp(`libraries-v${stableSemverPattern}`, 'g'), mcpbReleaseTag)
+}
+
+function syncVersionedStaticReferenceContent(content: string): string {
+  return content
+    .split(/(?<=\n)/)
+    .map(syncVersionedStaticReferenceLine)
+    .join('')
+}
+
+async function syncVersionedStaticReferences(): Promise<string[]> {
+  const targetFiles = [
+    ...new Set((await Promise.all(versionedStaticReferenceRoots.map(collectVersionedStaticReferenceFiles))).flat()),
+  ].toSorted()
+  const staleTargets: string[] = []
+
+  await Promise.all(
+    targetFiles.map(async (relativePath) => {
+      const absolutePath = join(repoRoot, relativePath)
+      const existing = await readIfExists(absolutePath)
+      if (existing === undefined) {
+        return
+      }
+
+      const nextContent = syncVersionedStaticReferenceContent(existing)
+      if (nextContent === existing) {
+        return
+      }
+
+      if (checkOnly) {
+        staleTargets.push(relativePath)
+        return
+      }
+
+      await writeFile(absolutePath, nextContent)
+    }),
+  )
+
+  return staleTargets.toSorted()
+}
+
+const staticReferenceMismatches = await syncVersionedStaticReferences()
 const targetResults = await Promise.all(
   (await generatedTargets()).map(async ([relativePath, content]): Promise<string | undefined> => {
     const absolutePath = join(repoRoot, relativePath)
@@ -748,7 +884,7 @@ const targetResults = await Promise.all(
   }),
 )
 
-const mismatchedTargets = targetResults.filter((target): target is string => target !== undefined)
+const mismatchedTargets = [...staticReferenceMismatches, ...targetResults.filter((target): target is string => target !== undefined)]
 
 if (mismatchedTargets.length > 0) {
   console.error(`Agent discovery docs are stale:\n${mismatchedTargets.map((target) => `- ${target}`).join('\n')}`)

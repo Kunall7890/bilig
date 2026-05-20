@@ -12,6 +12,7 @@ export const docsSiteSources = [
   ['xlsx-recalculation-proof.html', 'xlsx-recalculation-proof.md'],
   ['agent-xlsx-formula-recalculation-without-libreoffice.html', 'agent-xlsx-formula-recalculation-without-libreoffice.md'],
   ['xlsx-formula-recalculation-node.html', 'xlsx-formula-recalculation-node.md'],
+  ['sheetjs-formula-result-not-updating-node.html', 'sheetjs-formula-result-not-updating-node.md'],
   ['excel-file-calculation-engine-node.html', 'excel-file-calculation-engine-node.md'],
   ['stale-xlsx-formula-cache-node.html', 'stale-xlsx-formula-cache-node.md'],
   ['microsoft-graph-excel-recalculation-node.html', 'microsoft-graph-excel-recalculation-node.md'],

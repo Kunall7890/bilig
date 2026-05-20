@@ -20,6 +20,75 @@ export type DeferredInitialFormulaFamilyRun = Omit<FormulaFamilyRunUpsertArgs, '
   rows?: number[]
 }
 
+export type DeferredInitialFormulaFamilyRunMap = Map<number, Map<number, Map<number, DeferredInitialFormulaFamilyRun>>>
+
+export function createDeferredInitialFormulaFamilyRunMap(): DeferredInitialFormulaFamilyRunMap {
+  return new Map()
+}
+
+function getDeferredFormulaFamilyRun(
+  runs: DeferredInitialFormulaFamilyRunMap,
+  sheetId: number,
+  templateId: number,
+  col: number,
+): DeferredInitialFormulaFamilyRun | undefined {
+  return runs.get(sheetId)?.get(templateId)?.get(col)
+}
+
+function setDeferredFormulaFamilyRun(
+  runs: DeferredInitialFormulaFamilyRunMap,
+  sheetId: number,
+  templateId: number,
+  col: number,
+  run: DeferredInitialFormulaFamilyRun,
+): void {
+  let templateRuns = runs.get(sheetId)
+  if (!templateRuns) {
+    templateRuns = new Map()
+    runs.set(sheetId, templateRuns)
+  }
+  let columnRuns = templateRuns.get(templateId)
+  if (!columnRuns) {
+    columnRuns = new Map()
+    templateRuns.set(templateId, columnRuns)
+  }
+  columnRuns.set(col, run)
+}
+
+export function collectDeferredInitialFormulaFamilyRuns(runs: DeferredInitialFormulaFamilyRunMap): DeferredInitialFormulaFamilyRun[] {
+  const result: DeferredInitialFormulaFamilyRun[] = []
+  runs.forEach((templateRuns) => {
+    templateRuns.forEach((columnRuns) => {
+      columnRuns.forEach((run) => {
+        result.push(run)
+      })
+    })
+  })
+  return result
+}
+
+export function flushDeferredInitialFormulaFamilyRuns(args: {
+  readonly runs: DeferredInitialFormulaFamilyRunMap | undefined
+  readonly shouldDeferFormulaFamilyIndex: boolean
+  readonly deferFormulaFamilyIndexRuns?: ((runs: readonly DeferredInitialFormulaFamilyRun[]) => void) | undefined
+  readonly deferFormulaFamilyIndexRebuild?: (() => void) | undefined
+  readonly registerFormulaFamilyRun: (run: DeferredInitialFormulaFamilyRun) => void
+  readonly checkEvaluationBudget?: (() => void) | undefined
+}): void {
+  if (args.shouldDeferFormulaFamilyIndex) {
+    if (args.runs) {
+      args.deferFormulaFamilyIndexRuns?.(collectDeferredInitialFormulaFamilyRuns(args.runs))
+    } else {
+      args.deferFormulaFamilyIndexRebuild?.()
+    }
+  } else if (args.runs) {
+    collectDeferredInitialFormulaFamilyRuns(args.runs).forEach((run) => {
+      args.checkEvaluationBudget?.()
+      args.registerFormulaFamilyRun(run)
+    })
+  }
+}
+
 export function materializeDeferredFormulaFamilyRunMembers(run: DeferredInitialFormulaFamilyRun): FormulaFamilyMember[] {
   const step = run.cellIndices.length <= 1 ? 1 : run.step
   return run.cellIndices.map((cellIndex, index) => ({
@@ -30,8 +99,8 @@ export function materializeDeferredFormulaFamilyRunMembers(run: DeferredInitialF
 }
 
 export function noteDeferredFormulaFamilyRunMember(args: {
-  readonly runs: Map<string, DeferredInitialFormulaFamilyRun> | undefined
-  readonly formulas: { readonly get: (cellIndex: number) => RuntimeFormula | undefined }
+  readonly runs: DeferredInitialFormulaFamilyRunMap | undefined
+  readonly runtimeFormula: RuntimeFormula | undefined
   readonly prepared: {
     readonly cellIndex: number
     readonly sheetId: number
@@ -45,17 +114,15 @@ export function noteDeferredFormulaFamilyRunMember(args: {
   if (!runs || templateId === undefined) {
     return
   }
-  const familyKey = `${prepared.sheetId}\t${templateId}\t${prepared.col}`
-  let run = runs.get(familyKey)
+  let run = getDeferredFormulaFamilyRun(runs, prepared.sheetId, templateId, prepared.col)
   if (!run) {
-    const runtimeFormula = args.formulas.get(prepared.cellIndex)
-    if (runtimeFormula === undefined) {
+    if (args.runtimeFormula === undefined) {
       return
     }
     run = {
       sheetId: prepared.sheetId,
       templateId,
-      shapeKey: initialFormulaFamilyShapeKey(runtimeFormula),
+      shapeKey: initialFormulaFamilyShapeKey(args.runtimeFormula),
       axis: 'row',
       fixedIndex: prepared.col,
       start: prepared.row,
@@ -64,7 +131,7 @@ export function noteDeferredFormulaFamilyRunMember(args: {
       ordered: true,
       cellIndices: [],
     }
-    runs.set(familyKey, run)
+    setDeferredFormulaFamilyRun(runs, prepared.sheetId, templateId, prepared.col, run)
   } else {
     const nextStep = prepared.row - run.lastIndex
     let breaksOrder = false

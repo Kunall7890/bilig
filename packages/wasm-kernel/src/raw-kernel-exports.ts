@@ -33,6 +33,29 @@ export interface RawKernelExports {
     outNumbers: number,
     outErrors: number,
   ): void
+  evalDirectScalarStoreTargetBatch(
+    targets: number,
+    operators: number,
+    leftBatchRefs: number,
+    leftTags: number,
+    leftValues: number,
+    leftErrors: number,
+    rightBatchRefs: number,
+    rightTags: number,
+    rightValues: number,
+    rightErrors: number,
+    resultOffsets: number,
+  ): void
+  evalDenseDirectScalarRowChainStoreTargetBatch(
+    leftValues: number,
+    rightValues: number,
+    firstTargets: number,
+    secondTargets: number,
+    rowCount: number,
+    firstFormulaCode: number,
+    secondFormulaScale: number,
+    secondFormulaOffset: number,
+  ): void
   evalDenseNumericRowAggregateBatch(
     aggregateKind: number,
     values: number,
@@ -42,6 +65,44 @@ export interface RawKernelExports {
     aggregateColCount: number,
     resultOffset: number,
     outNumbers: number,
+  ): void
+  evalAnchoredPrefixAggregateBatch(
+    aggregateKind: number,
+    tags: number,
+    numbers: number,
+    errors: number,
+    rowCount: number,
+    colCount: number,
+    formulaRowEnds: number,
+    resultOffsets: number,
+    outTags: number,
+    outNumbers: number,
+    outErrors: number,
+  ): void
+  evalDirectCriteriaMatchedAggregateBatch(
+    aggregateKinds: number,
+    matchStarts: number,
+    matchLengths: number,
+    matchedRows: number,
+    aggregateTags: number,
+    aggregateNumbers: number,
+    aggregateErrors: number,
+    outTags: number,
+    outNumbers: number,
+    outErrors: number,
+  ): void
+  evalUniformNumericLookupBatch(
+    kinds: number,
+    matchModes: number,
+    starts: number,
+    steps: number,
+    lengths: number,
+    repeatedRunLengths: number,
+    lookupTags: number,
+    lookupNumbers: number,
+    outTags: number,
+    outNumbers: number,
+    outErrors: number,
   ): void
   evalBatch(cellIndices: number): void
   materializePivotTable(
@@ -115,7 +176,12 @@ export function isRawKernelExports(value: unknown): value is RawKernelExports {
     'uploadStrings',
     'writeCells',
     'evalDirectScalarValueBatch',
+    'evalDirectScalarStoreTargetBatch',
+    'evalDenseDirectScalarRowChainStoreTargetBatch',
     'evalDenseNumericRowAggregateBatch',
+    'evalAnchoredPrefixAggregateBatch',
+    'evalDirectCriteriaMatchedAggregateBatch',
+    'evalUniformNumericLookupBatch',
     'evalBatch',
     'materializePivotTable',
     'getPivotResultTagsPtr',

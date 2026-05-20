@@ -32,6 +32,7 @@ export const homepageRequiredLinks = [
   './xlsx-recalculation-proof.ts',
   './agent-xlsx-formula-recalculation-without-libreoffice.html',
   './stale-xlsx-formula-cache-node.html',
+  './sheetjs-formula-result-not-updating-node.html',
   './xlsx-template-formula-recalculation-node.html',
   './xlsx-populate-formula-result-node.html',
   './microsoft-graph-excel-recalculation-node.html',
@@ -67,7 +68,11 @@ export const homepageRequiredLinks = [
 
 export const llmsRequiredLinks = [
   'repository: https://github.com/proompteng/bilig',
-  'npm package: https://www.npmjs.com/package/@bilig/headless',
+  'npm workpaper package: https://www.npmjs.com/package/bilig-workpaper',
+  'npm xlsx recalculation package: https://www.npmjs.com/package/xlsx-formula-recalc',
+  'npm ExcelJS recalculation package: https://www.npmjs.com/package/exceljs-formula-recalc',
+  'npm full runtime package: https://www.npmjs.com/package/@bilig/headless',
+  'npx --package xlsx-formula-recalc xlsx-recalc pricing.xlsx',
   'pnpm --dir bilig/examples/headless-workpaper run agent:tool-call',
   'pnpm --dir bilig/examples/headless-workpaper run agent:openai-agents-sdk',
   'pnpm --dir bilig/examples/headless-workpaper run agent:framework-adapters',
@@ -81,6 +86,7 @@ export const llmsRequiredLinks = [
   'https://proompteng.github.io/bilig/skill.txt',
   'https://proompteng.github.io/bilig/llms-full.txt',
   'https://proompteng.github.io/bilig/why-use-bilig.html',
+  'https://proompteng.github.io/bilig/sheetjs-formula-result-not-updating-node.html',
   'https://github.com/proompteng/bilig/blob/main/docs/why-use-bilig.md',
   'https://proompteng.github.io/bilig/stop-driving-spreadsheets-with-screenshots.html',
   'https://proompteng.github.io/bilig/formula-workbooks-node-services-agent-tools.html',

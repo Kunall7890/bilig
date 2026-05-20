@@ -174,6 +174,66 @@ describe('createCriterionRangeCacheService', () => {
     expect(readTagCalls).toBe(3)
   })
 
+  it('uses the most selective equality row index for multi-criteria requests', () => {
+    const workbook = new WorkbookStore('criteria-cache-multi-equality-index')
+    const strings = new StringPool()
+    workbook.createSheet('Sheet1')
+
+    ;['A', 'A', 'A', 'A', 'A', 'A'].forEach((value, index) => {
+      setStoredCellValue(workbook, strings, 'Sheet1', `A${index + 1}`, {
+        tag: ValueTag.String,
+        value,
+      })
+    })
+    ;['skip', 'target', 'skip', 'skip', 'skip', 'skip'].forEach((value, index) => {
+      setStoredCellValue(workbook, strings, 'Sheet1', `B${index + 1}`, {
+        tag: ValueTag.String,
+        value,
+      })
+    })
+
+    const realRuntimeColumnStore = createEngineRuntimeColumnStoreService({
+      state: { workbook, strings },
+    })
+    let readTagCalls = 0
+    const runtimeColumnStore = {
+      ...realRuntimeColumnStore,
+      getColumnView(request: Parameters<typeof realRuntimeColumnStore.getColumnView>[0]) {
+        const view = realRuntimeColumnStore.getColumnView(request)
+        return {
+          ...view,
+          readTagAt(offset: number) {
+            readTagCalls += 1
+            return view.readTagAt(offset)
+          },
+        }
+      },
+    }
+    const criterionCache = createCriterionRangeCacheService({
+      runtimeColumnStore,
+      regionGraph: createRegionGraph({ workbook }),
+      depPatternStore: createDepPatternStore(),
+    })
+
+    const matching = criterionCache.getOrBuildMatchingRows({
+      criteriaPairs: [
+        {
+          range: { sheetName: 'Sheet1', rowStart: 0, rowEnd: 5, col: 0, length: 6 },
+          criteria: { tag: ValueTag.String, value: 'A', stringId: strings.intern('A') },
+        },
+        {
+          range: { sheetName: 'Sheet1', rowStart: 0, rowEnd: 5, col: 1, length: 6 },
+          criteria: { tag: ValueTag.String, value: 'target', stringId: strings.intern('target') },
+        },
+      ],
+    })
+    if (isErrorValue(matching)) {
+      throw new Error(`unexpected criteria cache error: ${matching.code}`)
+    }
+    expect([...matching.rows]).toEqual([1])
+    expect(readTagCalls).toBe(2)
+  })
+
   it('computes exact criteria count and sum aggregates from a grouped column pass', () => {
     const workbook = new WorkbookStore('criteria-cache-exact-aggregate')
     const strings = new StringPool()

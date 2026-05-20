@@ -132,6 +132,7 @@ export function useWorkbookGridKeyboardHandler(input: {
   getGridSelection?: (() => GridSelection) | undefined
   hostRef: MutableRefObject<HTMLDivElement | null>
   internalClipboardRef: MutableRefObject<InternalClipboardRange | null>
+  keyboardModifierStateRef: MutableRefObject<{ readonly primary: boolean; readonly shift: boolean }>
   isEditingCell: boolean
   onCancelEdit: () => void
   onClearCell: (selection?: GridSelectionSnapshot) => void
@@ -172,6 +173,10 @@ export function useWorkbookGridKeyboardHandler(input: {
 
   const handleGridKey = useCallback(
     (event: GridKeyboardEventLike) => {
+      input.keyboardModifierStateRef.current = {
+        primary: event.ctrlKey || event.metaKey,
+        shift: event.shiftKey === true,
+      }
       const pendingTypedEdit = resolvePendingTypedEdit(event)
       if (!input.isEditingCell && pendingTypedEdit) {
         const pendingEdit = deferredBeginEditScheduler.consume()
@@ -256,6 +261,10 @@ export function useWorkbookGridKeyboardHandler(input: {
 
   useEffect(() => {
     const handleWindowKeyDown = (event: KeyboardEvent) => {
+      input.keyboardModifierStateRef.current = {
+        primary: event.ctrlKey || event.metaKey,
+        shift: event.shiftKey,
+      }
       if (
         event.defaultPrevented ||
         (event as KeyboardEvent & { __biligGridHandled?: boolean }).__biligGridHandled === true ||
@@ -317,6 +326,10 @@ export function useWorkbookGridKeyboardHandler(input: {
 
     window.addEventListener('keydown', handleWindowKeyDown, true)
     const handleWindowKeyUp = (event: KeyboardEvent) => {
+      input.keyboardModifierStateRef.current = {
+        primary: event.ctrlKey || event.metaKey,
+        shift: event.shiftKey,
+      }
       if (event.defaultPrevented || isGridKeyboardEditableTarget(event.target)) {
         return
       }
@@ -344,7 +357,7 @@ export function useWorkbookGridKeyboardHandler(input: {
       window.removeEventListener('keydown', handleWindowKeyDown, true)
       window.removeEventListener('keyup', handleWindowKeyUp, true)
     }
-  }, [handleGridKey, input.hostRef])
+  }, [handleGridKey, input.hostRef, input.keyboardModifierStateRef])
 
   return {
     handleGridKey,

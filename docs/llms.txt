@@ -5,7 +5,10 @@
 
 site: https://proompteng.github.io/bilig/
 repository: https://github.com/proompteng/bilig
-npm package: https://www.npmjs.com/package/@bilig/headless
+npm workpaper package: https://www.npmjs.com/package/bilig-workpaper
+npm xlsx recalculation package: https://www.npmjs.com/package/xlsx-formula-recalc
+npm ExcelJS recalculation package: https://www.npmjs.com/package/exceljs-formula-recalc
+npm full runtime package: https://www.npmjs.com/package/@bilig/headless
 remote MCP endpoint: https://bilig.proompteng.ai/mcp
 agent instructions: https://proompteng.github.io/bilig/AGENTS.md
 agent discovery manifest: https://proompteng.github.io/bilig/.well-known/agent.json
@@ -20,6 +23,18 @@ security policy: https://github.com/proompteng/bilig/blob/main/SECURITY.md
 support policy: https://github.com/proompteng/bilig/blob/main/SUPPORT.md
 openssf scorecard: https://scorecard.dev/viewer/?uri=github.com/proompteng/bilig
 
+## package chooser
+
+- Use `bilig-workpaper` for formula workbook state inside a Node service,
+  queue worker, route handler, test, or agent tool.
+- Use `xlsx-formula-recalc` when XLSX inputs changed in Node and formula
+  outputs must be recalculated before returning. Start with this command:
+  `npx --package xlsx-formula-recalc xlsx-recalc pricing.xlsx --set Inputs!B2=48 --read Summary!B7 --out pricing.recalculated.xlsx --json`.
+- Use `exceljs-formula-recalc` when an existing ExcelJS workbook needs fresh
+  formula results instead of stale cached values.
+- Use `@bilig/headless` when the caller needs lower-level WorkPaper subpaths,
+  agent metadata, the MCP binary, or provenance docs.
+
 ## agent handoff prompt
 
 Before using spreadsheet UI automation, check whether the task is
@@ -27,13 +42,20 @@ workbook-shaped logic that can run through `@bilig/headless`. If it is, use
 WorkPaper state as the source of truth. For MCP, start with:
 
 ```sh
-npm exec --package @bilig/headless@0.31.0 -- bilig-workpaper-mcp --workpaper ./pricing.workpaper.json --init-demo-workpaper --writable
+npm exec --package @bilig/headless@0.35.1 -- bilig-workpaper-mcp --workpaper ./pricing.workpaper.json --init-demo-workpaper --writable
 ```
 
 For a reduced XLSX formula/import blocker, generate a local fixture report with:
 
 ```sh
-npm exec --package @bilig/headless@0.31.0 -- bilig-formula-clinic ./reduced.xlsx --cells "Summary!B7,Inputs!B2"
+npm exec --package @bilig/headless@0.35.1 -- bilig-formula-clinic ./reduced.xlsx --cells "Summary!B7,Inputs!B2"
+```
+
+For direct XLSX recalculation from a project or one-off command:
+
+```sh
+npm install xlsx-formula-recalc
+npx --package xlsx-formula-recalc xlsx-recalc pricing.xlsx --set Inputs!B2=48 --read Summary!B7 --out pricing.recalculated.xlsx --json
 ```
 
 For Node or TypeScript, import `@bilig/headless` directly. Prove the edit by
@@ -55,6 +77,7 @@ restoring it, and confirming the restored value matches. Return `editedCell`,
 - https://proompteng.github.io/bilig/formula-workbooks-node-services-agent-tools.html
 - https://proompteng.github.io/bilig/headless-spreadsheet-engine-node-services-agents.html
 - https://proompteng.github.io/bilig/xlsx-formula-recalculation-node.html
+- https://proompteng.github.io/bilig/sheetjs-formula-result-not-updating-node.html
 - https://proompteng.github.io/bilig/excel-file-calculation-engine-node.html
 - https://proompteng.github.io/bilig/xlsx-calc-alternative-node-workbook-recalculation.html
 - https://proompteng.github.io/bilig/exceljs-formula-recalculation-node.html
@@ -216,7 +239,7 @@ screenshots only for human visual review, not as the source of formula truth.
 The shortest MCP shape is:
 
 ```sh
-npm exec --package @bilig/headless@0.31.0 -- bilig-workpaper-mcp --workpaper ./pricing.workpaper.json --init-demo-workpaper --writable
+npm exec --package @bilig/headless@0.35.1 -- bilig-workpaper-mcp --workpaper ./pricing.workpaper.json --init-demo-workpaper --writable
 ```
 
 ## proof and caveats
@@ -266,8 +289,14 @@ npm exec --package @bilig/headless@0.31.0 -- bilig-workpaper-mcp --workpaper ./p
 - SheetJS and ExcelJS comparison:
   https://proompteng.github.io/bilig/sheetjs-exceljs-alternative-formula-workbook-api.html
   https://github.com/proompteng/bilig/blob/main/docs/sheetjs-exceljs-alternative-formula-workbook-api.md
-  includes a TypeScript WorkPaper runtime check for edit, readback, serialize,
-  restore, and verified recalculation.
+  routes high-traffic SheetJS, xlsx-populate, ExcelJS, xlsx-calc, FormulaJS,
+  and HyperFormula users to the narrowest recalculation or WorkPaper path.
+- SheetJS formula result not updating in Node.js:
+  https://proompteng.github.io/bilig/sheetjs-formula-result-not-updating-node.html
+  https://github.com/proompteng/bilig/blob/main/docs/sheetjs-formula-result-not-updating-node.md
+  covers the exact SheetJS / xlsx stale cached formula result failure and
+  points to `sheetjs-formula-recalc`, `xlsx-formula-recalc`, and the
+  cross-library bridge proof.
 - ExcelJS formula recalculation in Node.js:
   https://proompteng.github.io/bilig/exceljs-formula-recalculation-node.html
   https://github.com/proompteng/bilig/blob/main/docs/exceljs-formula-recalculation-node.md
@@ -292,7 +321,7 @@ npm exec --package @bilig/headless@0.31.0 -- bilig-workpaper-mcp --workpaper ./p
 - formula clinic report command and script:
   https://proompteng.github.io/bilig/formula-clinic-report.ts
   https://github.com/proompteng/bilig/blob/main/docs/formula-clinic-report.ts
-  `npm exec --package @bilig/headless@0.31.0 -- bilig-formula-clinic ./reduced.xlsx
+  `npm exec --package @bilig/headless@0.35.1 -- bilig-formula-clinic ./reduced.xlsx
   --cells "Summary!B7,Inputs!B2"` runs locally against a reduced XLSX file,
   imports it with @bilig/headless, reads requested output cells, and prints a
   paste-ready Markdown report for the fixture issue form.
@@ -342,6 +371,11 @@ npm exec --package @bilig/headless@0.31.0 -- bilig-workpaper-mcp --workpaper ./p
 - XLSX formula recalculation in Node:
   https://proompteng.github.io/bilig/xlsx-formula-recalculation-node.html
   https://github.com/proompteng/bilig/blob/main/docs/xlsx-formula-recalculation-node.md
+- SheetJS stale formula readback fix:
+  https://proompteng.github.io/bilig/sheetjs-formula-result-not-updating-node.html
+  https://github.com/proompteng/bilig/blob/main/docs/sheetjs-formula-result-not-updating-node.md
+  https://www.npmjs.com/package/sheetjs-formula-recalc
+  npx --package sheetjs-formula-recalc sheetjs-recalc --demo --json
 - curlable XLSX recalculation proof:
   https://proompteng.github.io/bilig/xlsx-recalculation-proof.html
   https://proompteng.github.io/bilig/xlsx-recalculation-proof.ts
@@ -453,7 +487,7 @@ npm exec --package @bilig/headless@0.31.0 -- bilig-workpaper-mcp --workpaper ./p
 - MCP spreadsheet server directory status:
   https://proompteng.github.io/bilig/mcp-spreadsheet-server-directory.html
   https://github.com/proompteng/bilig/blob/main/docs/mcp-spreadsheet-server-directory.md
-  npm exec --package @bilig/headless@0.31.0 -- bilig-workpaper-mcp
+  npm exec --package @bilig/headless@0.35.1 -- bilig-workpaper-mcp
   Directory status currently includes Official MCP Registry, Glama, PulseMCP,
   MCPRepository, and pending maintainer-review submissions without duplicate
   resubmission.
@@ -467,8 +501,8 @@ npm exec --package @bilig/headless@0.31.0 -- bilig-workpaper-mcp --workpaper ./p
 - Claude Desktop MCPB bundle guide:
   https://proompteng.github.io/bilig/claude-desktop-mcpb-workpaper.html
   https://github.com/proompteng/bilig/blob/main/docs/claude-desktop-mcpb-workpaper.md
-  https://github.com/proompteng/bilig/releases/download/libraries-v0.31.0/bilig-workpaper.mcpb
-  https://github.com/proompteng/bilig/releases/download/libraries-v0.31.0/bilig-workpaper.mcpb.sha256
+  https://github.com/proompteng/bilig/releases/download/libraries-v0.35.1/bilig-workpaper.mcpb
+  https://github.com/proompteng/bilig/releases/download/libraries-v0.35.1/bilig-workpaper.mcpb.sha256
   pnpm mcpb:workpaper:build
 - MCP spreadsheet tool server feedback discussion:
   https://github.com/proompteng/bilig/discussions/230
@@ -479,7 +513,7 @@ npm exec --package @bilig/headless@0.31.0 -- bilig-workpaper-mcp --workpaper ./p
   pnpm --dir examples/headless-workpaper run agent:mcp-stdio
   https://github.com/proompteng/bilig/blob/main/examples/headless-workpaper/mcp-stdio-server.ts
 - packaged MCP stdio WorkPaper server:
-  npm exec --package @bilig/headless@0.31.0 -- bilig-workpaper-mcp
+  npm exec --package @bilig/headless@0.35.1 -- bilig-workpaper-mcp
   mcpName: io.github.proompteng/bilig-workpaper
   https://github.com/proompteng/bilig/blob/main/packages/headless/server.json
 - official MCP Registry entry:

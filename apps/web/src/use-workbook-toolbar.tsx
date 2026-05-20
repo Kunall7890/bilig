@@ -26,6 +26,7 @@ import {
   queueWorkbookHistoryShortcut,
   selectedStyleMatchesPatch,
   shouldKeepWorkbookShortcutInsideTextEntry,
+  shouldRouteWorkbookShortcutToWorkbookScope,
 } from './workbook-toolbar-state.js'
 import { createRangeRef, getNormalizedRangeBounds, type ZeroConnectionState } from './worker-workbook-app-model.js'
 
@@ -179,6 +180,16 @@ export function useWorkbookToolbar(input: {
       setOptimisticStyle(null)
     }
   }, [optimisticStyle, selectedStyle])
+
+  const handleUndo = useCallback(() => {
+    setOptimisticStyle(null)
+    onUndo()
+  }, [onUndo])
+
+  const handleRedo = useCallback(() => {
+    setOptimisticStyle(null)
+    onRedo()
+  }, [onRedo])
 
   const applyRangeStyle = useCallback(
     async (patch: CellStylePatch) => {
@@ -402,8 +413,8 @@ export function useWorkbookToolbar(input: {
     isBoldActive,
     isItalicActive,
     isUnderlineActive,
-    onRedo,
-    onUndo,
+    onRedo: handleRedo,
+    onUndo: handleUndo,
     setNumberFormatPreset,
     writesAllowed,
   })
@@ -414,8 +425,8 @@ export function useWorkbookToolbar(input: {
     isBoldActive,
     isItalicActive,
     isUnderlineActive,
-    onRedo,
-    onUndo,
+    onRedo: handleRedo,
+    onUndo: handleUndo,
     setNumberFormatPreset,
     writesAllowed,
   }
@@ -426,6 +437,9 @@ export function useWorkbookToolbar(input: {
         return
       }
       if (shouldKeepWorkbookShortcutInsideTextEntry(event.target)) {
+        return
+      }
+      if (!shouldRouteWorkbookShortcutToWorkbookScope()) {
         return
       }
       if (event.inputType !== 'historyUndo' && event.inputType !== 'historyRedo') {
@@ -447,7 +461,12 @@ export function useWorkbookToolbar(input: {
     }
 
     const handleWindowShortcut = (event: KeyboardEvent) => {
-      if (event.defaultPrevented || shouldKeepWorkbookShortcutInsideTextEntry(event.target) || event.altKey) {
+      if (
+        event.defaultPrevented ||
+        shouldKeepWorkbookShortcutInsideTextEntry(event.target) ||
+        !shouldRouteWorkbookShortcutToWorkbookScope() ||
+        event.altKey
+      ) {
         return
       }
 
@@ -558,7 +577,7 @@ export function useWorkbookToolbar(input: {
         onClearStyle={() => {
           void clearRangeStyleFields()
         }}
-        onRedo={onRedo}
+        onRedo={handleRedo}
         onFillColorReset={() => {
           void resetFillColor()
         }}
@@ -603,7 +622,7 @@ export function useWorkbookToolbar(input: {
             alignment: { wrap: !isWrapActive },
           })
         }}
-        onUndo={onUndo}
+        onUndo={handleUndo}
         onUnhideCurrentColumn={onUnhideCurrentColumn}
         onUnhideCurrentRow={onUnhideCurrentRow}
         onUnmergeSelectedCells={() => {
@@ -649,10 +668,10 @@ export function useWorkbookToolbar(input: {
       isUnderlineActive,
       isWrapActive,
       mergeSelectedCells,
-      onRedo,
+      handleRedo,
       onHideCurrentColumn,
       onHideCurrentRow,
-      onUndo,
+      handleUndo,
       onUnhideCurrentColumn,
       onUnhideCurrentRow,
       resetFillColor,

@@ -11,6 +11,21 @@ export function createOperationDirectFormulaDeltas(args: {
   readonly canSkipTerminalFormulaColumnVersion: (cellIndex: number) => boolean
   readonly canSkipDirectFormulaColumnVersion: (cellIndex: number) => boolean
 }) {
+  const hasActiveDirectFormula = (cellIndex: number): boolean => {
+    const formula = args.state.formulas.get(cellIndex)
+    return formula?.directAggregate !== undefined || formula?.directCriteria !== undefined || formula?.directScalar !== undefined
+  }
+
+  const hasActiveDirectScalarFormula = (cellIndex: number): boolean => args.state.formulas.get(cellIndex)?.directScalar !== undefined
+  const isWritableDirectScalarNumberFormula = (cellIndex: number): boolean => {
+    const cellStore = args.state.workbook.cellStore
+    return (
+      hasActiveDirectScalarFormula(cellIndex) &&
+      ((cellStore.flags[cellIndex] ?? 0) & CellFlags.InCycle) === 0 &&
+      cellStore.tags[cellIndex] === ValueTag.Number
+    )
+  }
+
   const applyDirectFormulaNumericDelta = (cellIndex: number, delta: number): boolean => {
     const cellStore = args.state.workbook.cellStore
     if (cellStore.tags[cellIndex] !== ValueTag.Number) {
@@ -142,7 +157,8 @@ export function createOperationDirectFormulaDeltas(args: {
         !args.state.formulas.get(cellIndex) ||
         ((cellStore.flags[cellIndex] ?? 0) & CellFlags.InCycle) !== 0 ||
         cellStore.tags[cellIndex] !== ValueTag.Number ||
-        collection.getDeltaAt(index) === undefined
+        collection.getDeltaAt(index) === undefined ||
+        !hasActiveDirectFormula(cellIndex)
       ) {
         return undefined
       }
@@ -194,6 +210,11 @@ export function createOperationDirectFormulaDeltas(args: {
     const hasValidatedTerminalWrites = collection.hasValidatedScalarDeltaCells()
     if (collection.hasCleanScalarDeltaCells()) {
       const cellIndices = collection.getCellIndicesForRead()
+      for (let index = 0; index < cellIndices.length; index += 1) {
+        if (!isWritableDirectScalarNumberFormula(cellIndices[index]!)) {
+          return undefined
+        }
+      }
       const changed = captureChanged
         ? cellIndices instanceof Uint32Array
           ? cellIndices
@@ -213,11 +234,7 @@ export function createOperationDirectFormulaDeltas(args: {
       const cellIndices = collection.getCellIndicesForRead()
       for (let index = 0; index < cellIndices.length; index += 1) {
         const cellIndex = cellIndices[index]!
-        if (
-          !args.state.formulas.get(cellIndex) ||
-          ((cellStore.flags[cellIndex] ?? 0) & CellFlags.InCycle) !== 0 ||
-          cellStore.tags[cellIndex] !== ValueTag.Number
-        ) {
+        if (!isWritableDirectScalarNumberFormula(cellIndex)) {
           return undefined
         }
       }
@@ -255,21 +272,17 @@ export function createOperationDirectFormulaDeltas(args: {
     let canUseTerminalFormulaWrites = hasValidatedTerminalWrites
     if (!hasValidatedTerminalWrites) {
       canUseTerminalFormulaWrites = true
-    }
-    for (let index = 0; index < collection.size; index += 1) {
-      const cellIndex = collection.getCellIndexAt(index)
-      if (
-        !args.state.formulas.get(cellIndex) ||
-        ((cellStore.flags[cellIndex] ?? 0) & CellFlags.InCycle) !== 0 ||
-        cellStore.tags[cellIndex] !== ValueTag.Number
-      ) {
-        return undefined
-      }
-      if (canUseTerminalFormulaWrites && !args.canSkipDirectFormulaColumnVersion(cellIndex)) {
-        canUseTerminalFormulaWrites = false
-      }
-      if (captureChanged) {
-        changed[index] = cellIndex
+      for (let index = 0; index < collection.size; index += 1) {
+        const cellIndex = collection.getCellIndexAt(index)
+        if (!isWritableDirectScalarNumberFormula(cellIndex)) {
+          return undefined
+        }
+        if (canUseTerminalFormulaWrites && !args.canSkipDirectFormulaColumnVersion(cellIndex)) {
+          canUseTerminalFormulaWrites = false
+        }
+        if (captureChanged) {
+          changed[index] = cellIndex
+        }
       }
     }
     const applyDeltas = (): void => {

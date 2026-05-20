@@ -1,0 +1,20 @@
+{
+  "name": "bilig-recalc-bridge-workflows-example",
+  "private": true,
+  "description": "One-command proof that Bilig recalculates formulas after SheetJS, xlsx-populate, and ExcelJS edits.",
+  "type": "module",
+  "scripts": {
+    "smoke": "node smoke.mjs",
+    "start": "npm run smoke"
+  },
+  "dependencies": {
+    "exceljs": "4.4.0",
+    "exceljs-formula-recalc": "latest",
+    "xlsx": "0.18.5",
+    "xlsx-formula-recalc": "latest",
+    "xlsx-populate": "1.21.0"
+  },
+  "engines": {
+    "node": ">=22.0.0"
+  }
+}

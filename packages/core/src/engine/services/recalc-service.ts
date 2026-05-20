@@ -22,6 +22,8 @@ import { dominantScalarErrorForCycleFormula } from './recalc-cycle-error-dominan
 import { consumeVolatileRandomValues, createRecalcVolatileState, toOrderedUint32 } from './recalc-evaluation-state.js'
 import { emitRecalcBatchEvents } from './recalc-event-emission.js'
 import { resolveRecalcIterationSettings } from './recalc-iteration-settings.js'
+import { createRecalcNativeDirectScalarBatch, MAX_RECALC_NATIVE_DIRECT_SCALAR_BATCH_SIZE } from './formula-recalc-native-direct-scalar.js'
+import { areDifferentialCellValuesEqual, filterSkippedCachedFormulaCells } from './recalc-service-helpers.js'
 
 export interface DirtyRegion {
   readonly sheetName: string
@@ -62,41 +64,10 @@ interface RecalculateInternalOptions {
   readonly preserveCachedValuesOnFullRecalc?: boolean
 }
 
-function filterSkippedCachedFormulaCells(ordered: U32, orderedCount: number, skipped: ReadonlySet<number> | undefined): U32 {
-  if (!skipped || skipped.size === 0) {
-    return ordered.length === orderedCount ? ordered : ordered.subarray(0, orderedCount)
-  }
-  const filtered = new Uint32Array(orderedCount)
-  let filteredCount = 0
-  for (let index = 0; index < orderedCount; index += 1) {
-    const cellIndex = ordered[index]
-    if (cellIndex === undefined || skipped.has(cellIndex)) {
-      continue
-    }
-    filtered[filteredCount] = cellIndex
-    filteredCount += 1
-  }
-  return filtered.subarray(0, filteredCount)
-}
-
-function areDifferentialCellValuesEqual(left: CellValue, right: CellValue): boolean {
-  if (areCellValuesEqual(left, right)) {
-    return true
-  }
-  if (left.tag !== ValueTag.Number || right.tag !== ValueTag.Number) {
-    return false
-  }
-  if (!Number.isFinite(left.value) || !Number.isFinite(right.value)) {
-    return false
-  }
-  const tolerance = 1e-12 * Math.max(1, Math.abs(left.value), Math.abs(right.value))
-  return Math.abs(left.value - right.value) <= tolerance
-}
-
 export function createEngineRecalcService(args: {
   readonly state: Pick<
     EngineRuntimeState,
-    'workbook' | 'strings' | 'wasm' | 'formulas' | 'ranges' | 'events' | 'getLastMetrics' | 'setLastMetrics'
+    'workbook' | 'strings' | 'wasm' | 'formulas' | 'ranges' | 'events' | 'counters' | 'getLastMetrics' | 'setLastMetrics'
   >
   readonly getCellByIndex: (cellIndex: number) => CellSnapshot
   readonly exportSnapshot: () => WorkbookSnapshot
@@ -392,6 +363,11 @@ export function createEngineRecalcService(args: {
           wasmBatchHasVolatile = false
           wasmBatchRandCount = 0
         }
+        const nativeDirectScalarBatch = createRecalcNativeDirectScalarBatch({
+          state: args.state,
+          capacity: Math.min(Math.max(orderedCount, 1), MAX_RECALC_NATIVE_DIRECT_SCALAR_BATCH_SIZE),
+        })
+        const nativeDirectScalarCells: number[] = []
         const readStoredValue = (cellIndex: number): CellValue =>
           args.state.workbook.cellStore.getValue(cellIndex, (id) => (id === 0 ? '' : args.state.strings.get(id)))
         const clearDerivedFormulaFlags = (cellIndex: number): boolean => {
@@ -507,6 +483,55 @@ export function createEngineRecalcService(args: {
           return 1
         }
 
+        const evaluateDirectFormulaImmediately = (cellIndex: number, formula: RuntimeFormula): boolean => {
+          args.checkEvaluationBudget()
+          const directLookupChanges = args.evaluateDirectLookupFormula(cellIndex)
+          args.checkEvaluationBudget()
+          if (directLookupChanges === undefined) {
+            return false
+          }
+          if (
+            formula.compiled.mode === FormulaMode.WasmFastPath &&
+            (formula.directScalar !== undefined || formula.directAggregate !== undefined)
+          ) {
+            wasmCount += 1
+          } else if (
+            formula.compiled.mode !== FormulaMode.WasmFastPath &&
+            (formula.directScalar !== undefined || formula.directAggregate !== undefined)
+          ) {
+            jsCount += 1
+          }
+          noteQueuedSpillChanges(directLookupChanges)
+          queueKernelSync(cellIndex)
+          return true
+        }
+
+        const flushNativeDirectScalarBatch = (): void => {
+          if (nativeDirectScalarBatch.count === 0) {
+            return
+          }
+          const evaluated = nativeDirectScalarBatch.evaluate()
+          if (evaluated !== undefined) {
+            wasmCount += evaluated.length
+            for (let index = 0; index < evaluated.length; index += 1) {
+              queueKernelSync(evaluated[index]!)
+            }
+          } else {
+            for (let index = 0; index < nativeDirectScalarCells.length; index += 1) {
+              const cellIndex = nativeDirectScalarCells[index]!
+              const formula = args.state.formulas.get(cellIndex)
+              if (formula && !evaluateDirectFormulaImmediately(cellIndex, formula)) {
+                jsCount += 1
+                const spillChanges = args.evaluateUnsupportedFormula(cellIndex)
+                noteQueuedSpillChanges(spillChanges)
+                queueKernelSync(cellIndex)
+              }
+            }
+          }
+          nativeDirectScalarCells.length = 0
+          nativeDirectScalarBatch.reset()
+        }
+
         const evaluateFormulaCell = (
           cellIndex: number,
           formula: RuntimeFormula,
@@ -525,11 +550,15 @@ export function createEngineRecalcService(args: {
             evaluationOptions.treatCycleFormulaAsError &&
             ((args.state.workbook.cellStore.flags[cellIndex] ?? 0) & CellFlags.InCycle) !== 0
           ) {
+            flushPendingWasmBatch()
+            flushNativeDirectScalarBatch()
             jsCount += 1
             materializeCycleFormulaError(cellIndex, formula)
             return
           }
           if (evaluationOptions.allowCycleDependencyError && hasCycleDependency(cellIndex)) {
+            flushPendingWasmBatch()
+            flushNativeDirectScalarBatch()
             jsCount += 1
             materializeCycleFormulaError(cellIndex, formula)
             return
@@ -541,27 +570,32 @@ export function createEngineRecalcService(args: {
             formula.directCriteria !== undefined
           ) {
             flushPendingWasmBatch()
-            args.checkEvaluationBudget()
-            const directLookupChanges = args.evaluateDirectLookupFormula(cellIndex)
-            args.checkEvaluationBudget()
-            if (directLookupChanges !== undefined) {
-              if (
-                formula.compiled.mode === FormulaMode.WasmFastPath &&
-                (formula.directScalar !== undefined || formula.directAggregate !== undefined)
-              ) {
-                wasmCount += 1
-              } else if (
-                formula.compiled.mode !== FormulaMode.WasmFastPath &&
-                (formula.directScalar !== undefined || formula.directAggregate !== undefined)
-              ) {
-                jsCount += 1
+            if (
+              !evaluationOptions.forceJs &&
+              formula.directScalar !== undefined &&
+              formula.directLookup === undefined &&
+              formula.directAggregate === undefined &&
+              formula.directCriteria === undefined &&
+              formula.compiled.mode === FormulaMode.WasmFastPath &&
+              !formula.compiled.producesSpill
+            ) {
+              if (nativeDirectScalarBatch.count >= MAX_RECALC_NATIVE_DIRECT_SCALAR_BATCH_SIZE) {
+                flushNativeDirectScalarBatch()
               }
-              noteQueuedSpillChanges(directLookupChanges)
-              queueKernelSync(cellIndex)
+              if (nativeDirectScalarBatch.add(cellIndex, formula)) {
+                nativeDirectScalarCells.push(cellIndex)
+                return
+              }
+              flushNativeDirectScalarBatch()
+            } else {
+              flushNativeDirectScalarBatch()
+            }
+            if (evaluateDirectFormulaImmediately(cellIndex, formula)) {
               return
             }
           }
           if (!evaluationOptions.forceJs && formula.compiled.mode === FormulaMode.WasmFastPath && args.state.wasm.ready) {
+            flushNativeDirectScalarBatch()
             if (formula.compiled.producesSpill) {
               flushPendingWasmBatch()
               wasmCount += evaluateWasmSpillFormula(cellIndex, formula)
@@ -574,6 +608,7 @@ export function createEngineRecalcService(args: {
             return
           }
           flushPendingWasmBatch()
+          flushNativeDirectScalarBatch()
           jsCount += 1
           args.checkEvaluationBudget()
           const spillChanges = args.evaluateUnsupportedFormula(cellIndex)
@@ -631,6 +666,7 @@ export function createEngineRecalcService(args: {
             const node = cycleEvaluationNodes[nodeIndex]!
             if (node.kind === 'cycle') {
               flushPendingWasmBatch()
+              flushNativeDirectScalarBatch()
               evaluateCycleNode(node)
               continue
             }
@@ -663,6 +699,7 @@ export function createEngineRecalcService(args: {
           }
         }
 
+        flushNativeDirectScalarBatch()
         flushPendingWasmBatch()
         args.setDeferredKernelSyncCount(pendingKernelSyncCount)
         deferredKernelSyncCount = pendingKernelSyncCount

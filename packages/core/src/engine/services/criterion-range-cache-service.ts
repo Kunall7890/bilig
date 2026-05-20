@@ -672,14 +672,11 @@ export function createCriterionRangeCacheService(args: {
 
     const predicates = criteriaPairs.map((pair) => buildSlicePredicate(compileCriteriaMatcher(pair.criteria)))
     const matchingRows: number[] = []
-    const canUseIndexedEqualityRows = criteriaPairs.length === 1
     let limitingPairIndex: number | undefined
     let limitingIndexedRows: Uint32Array | undefined
     let limitingPairNonEmptyRows = Number.POSITIVE_INFINITY
     for (let pairIndex = 0; pairIndex < predicates.length; pairIndex += 1) {
-      const indexedRows = canUseIndexedEqualityRows
-        ? readIndexedEqualityRows(resolvedPairs[pairIndex]!.view, predicates[pairIndex]!, args.runtimeColumnStore)
-        : undefined
+      const indexedRows = readIndexedEqualityRows(resolvedPairs[pairIndex]!.view, predicates[pairIndex]!, args.runtimeColumnStore)
       if (indexedRows !== undefined) {
         if (indexedRows.length < limitingPairNonEmptyRows) {
           limitingPairIndex = undefined

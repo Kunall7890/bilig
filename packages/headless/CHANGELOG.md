@@ -4,6 +4,205 @@ All notable changes to `@bilig/headless` will be documented in this file.
 
 This package is released as part of the aligned bilig library package set.
 
+## 0.35.1
+
+- Release type: patch
+- Previous libraries tag: libraries-v0.35.0
+- Manual override: no
+
+## Fixes
+- perf(formula): native anchored prefix initialization (da6b943d)
+
+## Internal runtime changes
+- docs(growth): target sheetjs formula readback traffic (55faaa0b)
+
+## 0.35.0
+
+- Release type: minor
+- Previous libraries tag: libraries-v0.34.1
+- Manual override: no
+
+## Features
+- feat(recalc): cover incumbent xlsx formula bridges (bb5da689)
+
+## Fixes
+- perf(formula): retune native direct scalar initialization (f5b076ac)
+- perf(headless): skip scalar inspection compiles (fc973438)
+
+## 0.34.1
+
+- Release type: patch
+- Previous libraries tag: libraries-v0.34.0
+- Manual override: no
+
+## Fixes
+- perf(formula): promote xlookup spill returns (060be2c8)
+
+## 0.34.0
+
+- Release type: minor
+- Previous libraries tag: libraries-v0.33.1
+- Manual override: no
+
+## Features
+- feat(recalc): ship package-native formula proof CLIs (b9d6bfd8)
+
+## Fixes
+- perf(core): reuse safe inline initial formulas (3944959a)
+
+## 0.33.1
+
+- Release type: patch
+- Previous libraries tag: libraries-v0.33.0
+- Manual override: no
+
+## Fixes
+- perf(formula): promote xlookup approximate matching (25bd729f)
+
+## 0.33.0
+
+- Release type: minor
+- Previous libraries tag: libraries-v0.32.9
+- Manual override: no
+
+## Features
+- feat(bilig-workpaper): ship agent-ready npm entrypoints (9da4ee33)
+
+## 0.32.9
+
+- Release type: patch
+- Previous libraries tag: libraries-v0.32.8
+- Manual override: no
+
+## Fixes
+- perf(core): avoid string keys in formula family init (028e5084)
+
+## 0.32.8
+
+- Release type: patch
+- Previous libraries tag: libraries-v0.32.7
+- Manual override: no
+
+## Fixes
+- perf(formula): add native row-chain scalar init (2ff802d5)
+
+## 0.32.7
+
+- Release type: patch
+- Previous libraries tag: libraries-v0.32.6
+- Manual override: no
+
+## Fixes
+- fix(release): sync static discovery references (0eaed367)
+- fix(xlsx-formula-recalc): surface high-traffic recalc entrypoint (d7f76fde)
+
+## 0.32.6
+
+- Release type: patch
+- Previous libraries tag: libraries-v0.32.5
+- Manual override: no
+
+## Fixes
+- perf(formula): write native scalar init into kernel store (c08356c1)
+- fix(docs): sync 0.32.5 public agent links (a80d2c7d)
+
+## 0.32.5
+
+- Release type: patch
+- Previous libraries tag: libraries-v0.32.4
+- Manual override: no
+
+## Fixes
+- fix(release): sync agent discovery docs (26007971)
+
+## 0.32.4
+
+- Release type: patch
+- Previous libraries tag: libraries-v0.32.3
+- Manual override: no
+
+## Fixes
+- fix(formula): align headless error semantics (b1c774a9)
+- fix(core): ignore stale direct formula deltas (4e6bf441)
+
+## Internal runtime changes
+- docs(discovery): sync 0.32.3 agent surfaces (5bdb4132)
+
+## 0.32.3
+
+- Release type: patch
+- Previous libraries tag: libraries-v0.32.2
+- Manual override: no
+
+## Fixes
+- perf(headless): fast-path public literal batches (80edd87e)
+
+## Internal runtime changes
+- docs(discovery): sync 0.32.2 agent surfaces (291aa4f2)
+- docs(growth): route evaluators to recalc packages (fdde26f3)
+
+## 0.32.2
+
+- Release type: patch
+- Previous libraries tag: libraries-v0.32.1
+- Manual override: no
+
+## Fixes
+
+- perf(formula): batch direct scalar recalc natively (ecd34ab9)
+
+## Internal runtime changes
+
+- docs(discovery): sync 0.32.1 agent surfaces (f297f822)
+
+## 0.32.1
+
+- Release type: patch
+- Previous libraries tag: libraries-v0.32.0
+- Manual override: no
+
+## Fixes
+
+- perf(headless): narrow core startup imports (f3ddf1ab)
+- fix(package): use publishable workpaper package name (478a0039)
+
+## Internal runtime changes
+
+- docs(discovery): sync 0.32 agent surfaces (eee388d2)
+
+## 0.32.0
+
+- Release type: minor
+- Previous libraries tag: libraries-v0.31.1
+- Manual override: no
+
+## Features
+
+- feat(package): add unscoped bilig runtime package (e3fd2c02)
+
+## Fixes
+
+- perf(formula): reduce matched criteria aggregates natively (95da4cf9)
+
+## Internal runtime changes
+
+- docs(discovery): sync 0.31.1 agent surfaces (37df83a0)
+- docs(discovery): sync 0.31.1 agent surfaces (5ec4853e)
+
+## 0.31.1
+
+- Release type: patch
+- Previous libraries tag: libraries-v0.31.0
+- Manual override: no
+
+## Fixes
+
+- perf(core): cache runtime restore string ids (87276c1e)
+
+## Internal runtime changes
+
+- docs(discovery): sync 0.31.0 agent surfaces (03bfead1)
+
 ## 0.31.0
 
 - Release type: minor
@@ -11,13 +210,16 @@ This package is released as part of the aligned bilig library package set.
 - Manual override: no
 
 ## Features
+
 - feat(package): add exceljs formula recalc adapter (e24ca045)
 
 ## Fixes
+
 - perf(headless): narrow custom function adapter import (5d04174c)
 - fix(agent): throttle passive context churn (0febed2b)
 
 ## Internal runtime changes
+
 - docs(discovery): sync 0.30.2 agent surfaces (fc4a6030)
 
 ## 0.30.2
@@ -27,6 +229,7 @@ This package is released as part of the aligned bilig library package set.
 - Manual override: no
 
 ## Fixes
+
 - fix(grid): stabilize editor terminal shortcuts (68e0d32f)
 
 ## 0.30.1

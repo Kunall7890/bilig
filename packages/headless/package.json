@@ -1,21 +1,21 @@
 {
   "name": "@bilig/headless",
-  "version": "0.31.0",
+  "version": "0.35.1",
   "description": "Formula WorkPaper runtime for Node.js services and agent tools with JSON persistence and formula readback.",
   "keywords": [
     "agent-tools",
     "ai-agents",
     "excel",
     "excel-formulas",
+    "exceljs",
     "formula-engine",
-    "formula-evaluation",
     "formula-recalculation",
     "headless-spreadsheet",
     "hyperformula",
     "mcp",
     "mcp-server",
-    "model-context-protocol",
     "node",
+    "sheetjs",
     "spreadsheet-agent",
     "spreadsheet-automation",
     "spreadsheet-engine",
@@ -26,7 +26,7 @@
     "workbook-api",
     "workpaper",
     "xlsx",
-    "xlsx-formula"
+    "xlsx-calc"
   ],
   "homepage": "https://proompteng.github.io/bilig/",
   "bugs": {
@@ -60,6 +60,10 @@
     ".": {
       "types": "./dist/index.d.ts",
       "import": "./dist/index.js"
+    },
+    "./cli": {
+      "types": "./dist/cli.d.ts",
+      "import": "./dist/cli.js"
     },
     "./mcp": {
       "types": "./dist/mcp.d.ts",

@@ -4,6 +4,8 @@ import { OPTIMISTIC_CELL_SNAPSHOT_FLAG } from './workbook-optimistic-cell-flags.
 import { createSupersedingCellSnapshot } from './workbook-optimistic-cell.js'
 
 export interface OptimisticViewportStore {
+  beginOptimisticClearRange?(range: CellRangeRef): (() => void) | null
+  beginOptimisticRangeOverlay?(range: CellRangeRef, apply: (snapshot: CellSnapshot) => CellSnapshot): (() => void) | null
   forEachCachedOrVisibleCellSnapshotInRange?(range: CellRangeRef, listener: (snapshot: CellSnapshot) => void): void
   forEachCellSnapshotInRange?(range: CellRangeRef, listener: (snapshot: CellSnapshot) => void): void
   peekCell?(sheetName: string, address: string): CellSnapshot | undefined
@@ -56,6 +58,7 @@ export function applyOptimisticClearRange(viewportStore: OptimisticViewportStore
   const cellCount = (bounds.endRow - bounds.startRow + 1) * (bounds.endCol - bounds.startCol + 1)
 
   if (cellCount > MAX_MATERIALIZED_OPTIMISTIC_CLEAR_CELLS) {
+    const rollbackOverlay = viewportStore.beginOptimisticClearRange?.(range) ?? null
     const queueClearSnapshot = (previous: CellSnapshot) => {
       const next = createContentClearedOptimisticSnapshot(previous)
       previousSnapshots.push(previous)
@@ -69,11 +72,12 @@ export function applyOptimisticClearRange(viewportStore: OptimisticViewportStore
     } else {
       return null
     }
-    if (nextSnapshots.length === 0) {
+    if (nextSnapshots.length === 0 && !rollbackOverlay) {
       return null
     }
     nextSnapshots.forEach((snapshot) => viewportStore.setCellSnapshot(snapshot))
     return () => {
+      rollbackOverlay?.()
       previousSnapshots.forEach((snapshot) => {
         rollbackVersion += 1
         viewportStore.setCellSnapshot(createSupersedingCellSnapshot(snapshot, rollbackVersion))

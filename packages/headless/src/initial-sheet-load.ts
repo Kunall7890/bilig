@@ -7,7 +7,7 @@ import {
   type LiteralSheetLoadInspection,
   type SheetRecord,
   type SpreadsheetEngine,
-} from '@bilig/core'
+} from '@bilig/core/headless-runtime'
 import { parseFormula } from '@bilig/formula'
 import { ErrorCode, ValueTag } from '@bilig/protocol'
 import { isBlankRawCellContent, stripLeadingEquals } from './work-paper-runtime-helpers.js'

@@ -140,7 +140,7 @@ async function primeWorkbookGridScrollRenderer(page: Page) {
 
 export async function warmStartWorkbookScrollPerf(page: Page, workload: string, warmupFrames = 12, maxAttempts = 8) {
   const quietFrames = Math.max(warmupFrames, 96)
-  const runWarmup = async (attempt: number): Promise<void> => {
+  const runWarmup = async (attempt: number): Promise<WorkbookScrollPerfReport> => {
     await startWorkbookScrollPerf(page, `${workload}:warmup:${String(attempt)}`, { primeRenderer: attempt === 1 })
     await settleWorkbookScrollPerf(page, warmupFrames + quietFrames + 2)
     const warmupReport = await stopWorkbookScrollPerf(page)
@@ -165,15 +165,16 @@ export async function warmStartWorkbookScrollPerf(page: Page, workload: string, 
       hasSurfaceCommitNoise ||
       hasTypeGpuWarmupNoise
     if (!hasRenderNoise) {
-      return
+      return warmupReport
     }
     if (attempt >= maxAttempts) {
       throw new Error(`scroll performance never reached a steady state for ${workload}`)
     }
-    await runWarmup(attempt + 1)
+    return await runWarmup(attempt + 1)
   }
-  await runWarmup(1)
+  const warmupReport = await runWarmup(1)
   await startWorkbookScrollPerf(page, workload, { primeRenderer: false })
+  return warmupReport
 }
 
 export async function resetGridScroll(page: Page, input: { left?: number; top?: number } = {}) {

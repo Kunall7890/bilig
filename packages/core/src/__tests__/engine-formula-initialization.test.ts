@@ -271,6 +271,44 @@ describe('SpreadsheetEngine formula initialization', () => {
     expect(engine.getPerformanceCounters().regionQueryIndexBuilds).toBe(0)
   })
 
+  it('uses native anchored prefix aggregate initialization beyond the JS direct limit', async () => {
+    const rowCount = 20_000
+    const engine = new SpreadsheetEngine({ workbookName: 'engine-formula-initialize-native-prefix-aggregate-family' })
+    await engine.ready()
+    engine.createSheet('Sheet1')
+    const sheetId = engine.workbook.getSheet('Sheet1')!.id
+    for (let row = 1; row <= rowCount; row += 1) {
+      engine.setCellValue('Sheet1', `A${row}`, row)
+    }
+
+    engine.resetPerformanceCounters()
+    engine.initializeCellFormulasAt(
+      Array.from({ length: rowCount }, (_entry, row) => ({
+        sheetId,
+        mutation: {
+          kind: 'setCellFormula' as const,
+          row,
+          col: 1,
+          formula: `SUM(A1:A${row + 1})`,
+        },
+      })),
+      rowCount,
+    )
+
+    expect(engine.getCellValue('Sheet1', `B${rowCount}`)).toEqual({
+      tag: ValueTag.Number,
+      value: (rowCount * (rowCount + 1)) / 2,
+    })
+    expect(engine.getLastMetrics()).toMatchObject({ dirtyFormulaCount: 0, wasmFormulaCount: 0, jsFormulaCount: 0 })
+    expect(engine.getPerformanceCounters()).toMatchObject({
+      directFormulaInitialEvaluations: rowCount,
+      nativeDirectAggregatePrefixEvaluations: rowCount,
+      directAggregatePrefixEvaluations: 0,
+      directAggregateScanEvaluations: 0,
+      regionQueryIndexBuilds: 0,
+    })
+  })
+
   it('materializes out-of-order anchored prefix aggregates during initial direct evaluation', async () => {
     const engine = new SpreadsheetEngine({ workbookName: 'engine-formula-initialize-out-of-order-prefix-aggregate' })
     await engine.ready()
@@ -380,6 +418,7 @@ describe('SpreadsheetEngine formula initialization', () => {
       engine.setCellValue('Sheet1', `B${rowNumber}`, rowNumber * 10)
       refs.push({ sheetId, mutation: { kind: 'setCellFormula' as const, row, col: 2, formula: `A${rowNumber}+B${rowNumber}` } })
       refs.push({ sheetId, mutation: { kind: 'setCellFormula' as const, row, col: 3, formula: `C${rowNumber}*2` } })
+      refs.push({ sheetId, mutation: { kind: 'setCellFormula' as const, row, col: 35, formula: `A${rowNumber}+B${rowNumber}` } })
     }
     const notifyCellValueWritten = vi.spyOn(engine.workbook, 'notifyCellValueWritten')
     const notifyColumnsWritten = vi.spyOn(engine.workbook, 'notifyColumnsWritten')
@@ -390,8 +429,12 @@ describe('SpreadsheetEngine formula initialization', () => {
       tag: ValueTag.Number,
       value: rowCount * 11 * 2,
     })
+    expect(engine.getCellValue('Sheet1', `AJ${rowCount}`)).toEqual({
+      tag: ValueTag.Number,
+      value: rowCount * 11,
+    })
     expect(notifyCellValueWritten).not.toHaveBeenCalled()
-    expect(notifyColumnsWritten).toHaveBeenCalledWith(sheetId, Uint32Array.from([2, 3]))
+    expect(notifyColumnsWritten).toHaveBeenCalledWith(sheetId, Uint32Array.from([2, 3, 35]))
     expect(engine.getPerformanceCounters().directFormulaInitialEvaluations).toBe(refs.length)
     expect(engine.getPerformanceCounters()).toMatchObject({ nativeDirectScalarInitialEvaluations: 0 })
     notifyCellValueWritten.mockRestore()
@@ -399,7 +442,7 @@ describe('SpreadsheetEngine formula initialization', () => {
   })
 
   it('uses native direct scalar batches for large fresh formula initialization', async () => {
-    const rowCount = 600
+    const rowCount = 6000
     const engine = new SpreadsheetEngine({ workbookName: 'engine-formula-initialize-native-bulk-value-columns' })
     await engine.ready()
     engine.createSheet('Sheet1')
@@ -425,9 +468,50 @@ describe('SpreadsheetEngine formula initialization', () => {
     })
   })
 
-  it('keeps oversized direct scalar initialization on the JS path', async () => {
-    const rowCount = 1300
-    const engine = new SpreadsheetEngine({ workbookName: 'engine-formula-initialize-oversized-value-columns' })
+  it('uses native uniform lookup batches for large fresh formula initialization', async () => {
+    const lookupRows = 2000
+    const formulaRows = 150
+    const engine = new SpreadsheetEngine({ workbookName: 'engine-formula-initialize-native-lookup-columns' })
+    await engine.ready()
+    engine.createSheet('Sheet1')
+    const sheetId = engine.workbook.getSheet('Sheet1')!.id
+    for (let row = 0; row < lookupRows; row += 1) {
+      engine.setCellValue('Sheet1', `A${row + 1}`, row + 1)
+    }
+    const refs: EngineCellMutationRef[] = []
+    for (let row = 0; row < formulaRows; row += 1) {
+      const rowNumber = row + 1
+      engine.setCellValue('Sheet1', `D${rowNumber}`, rowNumber + 100)
+      engine.setCellValue('Sheet1', `E${rowNumber}`, rowNumber + 0.5)
+      refs.push({
+        sheetId,
+        mutation: { kind: 'setCellFormula' as const, row, col: 5, formula: `MATCH(D${rowNumber},A1:A${lookupRows},0)` },
+      })
+      refs.push({
+        sheetId,
+        mutation: { kind: 'setCellFormula' as const, row, col: 6, formula: `MATCH(E${rowNumber},A1:A${lookupRows},1)` },
+      })
+    }
+
+    engine.initializeCellFormulasAt(refs, refs.length)
+
+    expect(engine.getCellValue('Sheet1', `F${formulaRows}`)).toEqual({
+      tag: ValueTag.Number,
+      value: formulaRows + 100,
+    })
+    expect(engine.getCellValue('Sheet1', `G${formulaRows}`)).toEqual({
+      tag: ValueTag.Number,
+      value: formulaRows,
+    })
+    expect(engine.getPerformanceCounters()).toMatchObject({
+      directFormulaInitialEvaluations: refs.length,
+      nativeDirectLookupInitialEvaluations: refs.length,
+    })
+  })
+
+  it('keeps mid-sized direct scalar initialization on the JS path', async () => {
+    const rowCount = 1500
+    const engine = new SpreadsheetEngine({ workbookName: 'engine-formula-initialize-mid-size-js-value-columns' })
     await engine.ready()
     engine.createSheet('Sheet1')
     const sheetId = engine.workbook.getSheet('Sheet1')!.id
@@ -449,6 +533,60 @@ describe('SpreadsheetEngine formula initialization', () => {
     expect(engine.getPerformanceCounters()).toMatchObject({
       directFormulaInitialEvaluations: refs.length,
       nativeDirectScalarInitialEvaluations: 0,
+    })
+  })
+
+  it('uses native direct scalar initialization for 12000 formula mixed-content builds', async () => {
+    const rowCount = 6000
+    const engine = new SpreadsheetEngine({ workbookName: 'engine-formula-initialize-12000-native-value-columns' })
+    await engine.ready()
+    engine.createSheet('Sheet1')
+    const sheetId = engine.workbook.getSheet('Sheet1')!.id
+    const refs: EngineCellMutationRef[] = []
+    for (let row = 0; row < rowCount; row += 1) {
+      const rowNumber = row + 1
+      engine.setCellValue('Sheet1', `A${rowNumber}`, rowNumber)
+      engine.setCellValue('Sheet1', `B${rowNumber}`, rowNumber * 10)
+      refs.push({ sheetId, mutation: { kind: 'setCellFormula' as const, row, col: 2, formula: `A${rowNumber}+B${rowNumber}` } })
+      refs.push({ sheetId, mutation: { kind: 'setCellFormula' as const, row, col: 3, formula: `C${rowNumber}*2` } })
+    }
+
+    engine.initializeCellFormulasAt(refs, refs.length)
+
+    expect(engine.getCellValue('Sheet1', `D${rowCount}`)).toEqual({
+      tag: ValueTag.Number,
+      value: rowCount * 11 * 2,
+    })
+    expect(engine.getPerformanceCounters()).toMatchObject({
+      directFormulaInitialEvaluations: refs.length,
+      nativeDirectScalarInitialEvaluations: refs.length,
+    })
+  })
+
+  it('uses native row-chain initialization for larger direct scalar formula chains', async () => {
+    const rowCount = 8193
+    const engine = new SpreadsheetEngine({ workbookName: 'engine-formula-initialize-native-row-chain' })
+    await engine.ready()
+    engine.createSheet('Sheet1')
+    const sheetId = engine.workbook.getSheet('Sheet1')!.id
+    const refs: EngineCellMutationRef[] = []
+    for (let row = 0; row < rowCount; row += 1) {
+      const rowNumber = row + 1
+      engine.setCellValue('Sheet1', `A${rowNumber}`, rowNumber)
+      engine.setCellValue('Sheet1', `B${rowNumber}`, rowNumber * 10)
+      refs.push({ sheetId, mutation: { kind: 'setCellFormula' as const, row, col: 2, formula: `A${rowNumber}+B${rowNumber}` } })
+      refs.push({ sheetId, mutation: { kind: 'setCellFormula' as const, row, col: 3, formula: `C${rowNumber}*2` } })
+    }
+
+    engine.initializeCellFormulasAt(refs, refs.length)
+
+    expect(engine.getCellValue('Sheet1', `D${rowCount}`)).toEqual({
+      tag: ValueTag.Number,
+      value: rowCount * 11 * 2,
+    })
+    expect(engine.getPerformanceCounters()).toMatchObject({
+      directFormulaInitialEvaluations: refs.length,
+      nativeDirectScalarInitialEvaluations: refs.length,
     })
   })
 

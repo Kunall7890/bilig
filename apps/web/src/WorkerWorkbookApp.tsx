@@ -372,6 +372,7 @@ function WorkerWorkbookAppInner({
                 onDeleteSheet={app.writesAllowed ? app.deleteSheet : undefined}
                 onEditorChange={app.handleEditorChange}
                 onFillRange={app.fillSelectionRange}
+                getCellResolvedValue={app.getCellResolvedValue}
                 onMoveRange={app.moveSelectionRange}
                 onPaste={app.pasteIntoSelection}
                 previewRanges={app.previewRanges}
