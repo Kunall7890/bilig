@@ -4288,7 +4288,7 @@ describe('SpreadsheetEngine', () => {
       tag: ValueTag.Error,
       code: ErrorCode.Name,
     })
-    expect(engine.getLastMetrics()).toMatchObject({ wasmFormulaCount: 0, jsFormulaCount: 1 })
+    expect(engine.getLastMetrics()).toMatchObject({ wasmFormulaCount: 1, jsFormulaCount: 0 })
 
     const changed: number[][] = []
     const unsubscribe = engine.subscribe((event) => {
@@ -4303,19 +4303,19 @@ describe('SpreadsheetEngine', () => {
     expect(engine.getDefinedName('taxrate')).toEqual({ name: 'TaxRate', value: 0.085 })
     expect(engine.getDefinedNames()).toEqual([{ name: 'TaxRate', value: 0.085 }])
     expect(engine.getCellValue('Sheet1', 'A2')).toEqual({ tag: ValueTag.Number, value: 8.5 })
-    expect(engine.getLastMetrics()).toMatchObject({ wasmFormulaCount: 0, jsFormulaCount: 1 })
+    expect(engine.getLastMetrics()).toMatchObject({ wasmFormulaCount: 1, jsFormulaCount: 0 })
     expect(changed.at(-1)).toContain(a2Index!)
 
     engine.setDefinedName('TAXRATE', 0.09)
     expect(engine.getCellValue('Sheet1', 'A2')).toEqual({ tag: ValueTag.Number, value: 9 })
-    expect(engine.getLastMetrics()).toMatchObject({ wasmFormulaCount: 0, jsFormulaCount: 1 })
+    expect(engine.getLastMetrics()).toMatchObject({ wasmFormulaCount: 1, jsFormulaCount: 0 })
 
     expect(engine.deleteDefinedName('taxrate')).toBe(true)
     expect(engine.getCellValue('Sheet1', 'A2')).toEqual({
       tag: ValueTag.Error,
       code: ErrorCode.Name,
     })
-    expect(engine.getLastMetrics()).toMatchObject({ wasmFormulaCount: 0, jsFormulaCount: 1 })
+    expect(engine.getLastMetrics()).toMatchObject({ wasmFormulaCount: 1, jsFormulaCount: 0 })
 
     unsubscribe()
   })
@@ -5478,7 +5478,7 @@ describe('SpreadsheetEngine', () => {
     engine.setDefinedName('FeeRate', 0.015)
 
     expect(engine.getCellValue('Sheet1', 'A1')).toEqual({ tag: ValueTag.Number, value: 0.1 })
-    expect(engine.getLastMetrics()).toMatchObject({ wasmFormulaCount: 0, jsFormulaCount: 1 })
+    expect(engine.getLastMetrics()).toMatchObject({ wasmFormulaCount: 1, jsFormulaCount: 0 })
   })
 
   it('resolves named range formulas through workbook metadata and rebinds dependencies', async () => {
@@ -5492,8 +5492,8 @@ describe('SpreadsheetEngine', () => {
     engine.setCellFormula('Sheet1', 'B1', 'SUM(SalesRange)')
 
     expect(engine.getCellValue('Sheet1', 'B1')).toEqual({ tag: ValueTag.Number, value: 37 })
-    expect(engine.explainCell('Sheet1', 'B1').mode).toBe(FormulaMode.JsOnly)
-    expect(engine.getLastMetrics()).toMatchObject({ wasmFormulaCount: 0, jsFormulaCount: 1 })
+    expect(engine.explainCell('Sheet1', 'B1').mode).toBe(FormulaMode.WasmFastPath)
+    expect(engine.getLastMetrics()).toMatchObject({ wasmFormulaCount: 1, jsFormulaCount: 0 })
 
     engine.setCellValue('Sheet1', 'A2', 20)
     expect(engine.getCellValue('Sheet1', 'B1')).toEqual({ tag: ValueTag.Number, value: 45 })
@@ -5526,8 +5526,8 @@ describe('SpreadsheetEngine', () => {
 
     engine.setCellFormula('Sheet1', 'C1', 'SUM(Sales[Amount])')
     expect(engine.getCellValue('Sheet1', 'C1')).toEqual({ tag: ValueTag.Number, value: 37 })
-    expect(engine.explainCell('Sheet1', 'C1').mode).toBe(FormulaMode.JsOnly)
-    expect(engine.getLastMetrics()).toMatchObject({ wasmFormulaCount: 0, jsFormulaCount: 1 })
+    expect(engine.explainCell('Sheet1', 'C1').mode).toBe(FormulaMode.WasmFastPath)
+    expect(engine.getLastMetrics()).toMatchObject({ wasmFormulaCount: 1, jsFormulaCount: 0 })
 
     engine.setCellValue('Sheet1', 'B3', 20)
     expect(engine.getCellValue('Sheet1', 'C1')).toEqual({ tag: ValueTag.Number, value: 45 })
