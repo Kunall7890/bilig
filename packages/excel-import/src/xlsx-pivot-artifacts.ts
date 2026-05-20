@@ -227,14 +227,44 @@ function insertWorkbookPivotCachesXml(workbookXml: string, pivotCachesXml: strin
   return withoutPivotCaches.replace('</workbook>', `${nextPivotCachesXml}</workbook>`)
 }
 
+class LazyPivotPackagePartSnapshot implements WorkbookPivotPackagePartSnapshot {
+  declare readonly xml: string
+  private xmlCache: string | undefined
+
+  constructor(
+    readonly path: string,
+    private readonly readXml: () => string,
+  ) {
+    Object.defineProperty(this, 'xml', {
+      configurable: true,
+      enumerable: true,
+      get: () => this.getXml(),
+    })
+  }
+
+  private getXml(): string {
+    this.xmlCache ??= this.readXml()
+    return this.xmlCache
+  }
+}
+
+function lazyPivotPackagePartSnapshot(path: string, readXml: () => string): WorkbookPivotPackagePartSnapshot {
+  return new LazyPivotPackagePartSnapshot(path, readXml)
+}
+
 function readPivotPackageParts(zip: XlsxZipEntries): WorkbookPivotPackagePartSnapshot[] {
   return Object.keys(zip)
     .filter((path) => pivotPackagePartPathPattern.test(path))
     .toSorted()
-    .flatMap((path) => {
-      const bytes = zip[path]
-      return bytes ? [{ path, xml: strFromU8(bytes) }] : []
-    })
+    .map((path) =>
+      lazyPivotPackagePartSnapshot(path, () => {
+        const bytes = zip[path]
+        if (bytes) {
+          Reflect.deleteProperty(zip, path)
+        }
+        return bytes ? strFromU8(bytes) : ''
+      }),
+    )
 }
 
 function readPivotTableDefinitionsXml(sheetXml: string | null): string | undefined {

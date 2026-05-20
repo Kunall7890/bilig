@@ -8,7 +8,14 @@ import type {
   WorkbookSheetDrawingArtifactsSnapshot,
   WorkbookSnapshot,
 } from '@bilig/protocol'
-import { getZipText, normalizeZipPath, readXlsxZipEntries, type XlsxZipEntries, type XlsxZipSource } from './xlsx-zip.js'
+import {
+  getZipText,
+  normalizeZipPath,
+  readXlsxZipEntries,
+  readXlsxZipEntryUncompressedSize,
+  type XlsxZipEntries,
+  type XlsxZipSource,
+} from './xlsx-zip.js'
 import {
   addContentTypeOverride,
   buildRelationshipsXml,
@@ -19,8 +26,8 @@ import {
   setZipText,
   type ParsedRelationship,
 } from './xlsx-pivot-artifacts.js'
+import { decodedPartBytes, encodedPartSnapshot, lazyEncodedPartSnapshot } from './xlsx-preserved-package-parts.js'
 
-const binaryChunkSize = 0x8000
 const worksheetDrawingRelationshipType = 'http://schemas.openxmlformats.org/officeDocument/2006/relationships/drawing'
 const chartRelationshipType = 'http://schemas.openxmlformats.org/officeDocument/2006/relationships/chart'
 const drawingContentType = 'application/vnd.openxmlformats-officedocument.drawing+xml'
@@ -30,38 +37,6 @@ const drawingAnchorElementPattern =
 const namespaceDeclarationPattern = /\s(xmlns(?::[A-Za-z_][\w.-]*)?)=("|')([\s\S]*?)\2/gu
 const nonVisualPropertyIdPattern = /(<(?:[A-Za-z_][\w.-]*:)?cNvPr\b[^>]*\bid=")([0-9]+)(")/u
 const drawingRelationshipAttributePattern = /\b(?:r:(?:id|embed|link)|id)=("|')([\s\S]*?)\1/gu
-
-function encodeBinaryString(bytes: Uint8Array): string {
-  let binary = ''
-  for (let offset = 0; offset < bytes.length; offset += binaryChunkSize) {
-    binary += String.fromCharCode(...bytes.subarray(offset, offset + binaryChunkSize))
-  }
-  return binary
-}
-
-function decodeBinaryString(binary: string): Uint8Array {
-  const bytes = new Uint8Array(binary.length)
-  for (let index = 0; index < binary.length; index += 1) {
-    bytes[index] = binary.charCodeAt(index)
-  }
-  return bytes
-}
-
-function encodeBase64(bytes: Uint8Array): string {
-  const btoa = globalThis.btoa
-  if (typeof btoa === 'function') {
-    return btoa(encodeBinaryString(bytes))
-  }
-  return Buffer.from(bytes).toString('base64')
-}
-
-function decodeBase64(dataBase64: string): Uint8Array {
-  const atob = globalThis.atob
-  if (typeof atob === 'function') {
-    return decodeBinaryString(atob(dataBase64))
-  }
-  return new Uint8Array(Buffer.from(dataBase64, 'base64'))
-}
 
 function escapeXml(value: string): string {
   return value.replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;').replaceAll('"', '&quot;').replaceAll("'", '&apos;')
@@ -239,7 +214,7 @@ function collectDrawingDependencyPaths(input: {
 
   while (pending.length > 0) {
     const nextPartPath = pending.pop()
-    if (!nextPartPath || collectedPaths.has(nextPartPath) || !input.zip[nextPartPath]) {
+    if (!nextPartPath || collectedPaths.has(nextPartPath) || !Object.hasOwn(input.zip, nextPartPath)) {
       continue
     }
     collectedPaths.add(nextPartPath)
@@ -260,23 +235,6 @@ function collectDrawingDependencyPaths(input: {
   return collectedPaths
 }
 
-function encodedPartSnapshot(path: string, bytes: Uint8Array): WorkbookPreservedPackagePartSnapshot {
-  return {
-    path,
-    storage: 'base64',
-    dataBase64: encodeBase64(bytes),
-    byteLength: bytes.byteLength,
-  }
-}
-
-function decodedPartBytes(part: WorkbookPreservedPackagePartSnapshot): Uint8Array | undefined {
-  if (part.storage !== 'base64') {
-    return undefined
-  }
-  const bytes = decodeBase64(part.dataBase64)
-  return bytes.byteLength === part.byteLength ? bytes : undefined
-}
-
 function preservedPartsByPath(parts: readonly WorkbookPreservedPackagePartSnapshot[]): Map<string, Uint8Array> {
   const output = new Map<string, Uint8Array>()
   parts.forEach((part) => {
@@ -286,6 +244,26 @@ function preservedPartsByPath(parts: readonly WorkbookPreservedPackagePartSnapsh
     }
   })
   return output
+}
+
+function preservedPartSnapshot(zip: XlsxZipEntries, path: string): WorkbookPreservedPackagePartSnapshot | undefined {
+  const byteLength = readXlsxZipEntryUncompressedSize(zip, path)
+  if (byteLength !== undefined) {
+    return lazyEncodedPartSnapshot(path, byteLength, () => {
+      const bytes = zip[path]
+      if (bytes) {
+        Reflect.deleteProperty(zip, path)
+      }
+      return bytes
+    })
+  }
+  const bytes = zip[path]
+  if (!bytes) {
+    return undefined
+  }
+  const snapshot = encodedPartSnapshot(path, bytes)
+  Reflect.deleteProperty(zip, path)
+  return snapshot
 }
 
 function preservedPartText(partsByPath: ReadonlyMap<string, Uint8Array>, path: string): string | null {
@@ -491,8 +469,8 @@ export function readImportedWorkbookDrawingArtifactsFromWorksheetRelationships(
   const contentTypePartPaths = [...partPaths].filter((path) => !path.endsWith('.rels'))
   const contentTypesXml = getZipText(zip, '[Content_Types].xml') ?? ''
   const parts = [...partPaths].toSorted().flatMap((path) => {
-    const bytes = zip[path]
-    return bytes ? [encodedPartSnapshot(path, bytes)] : []
+    const snapshot = preservedPartSnapshot(zip, path)
+    return snapshot ? [snapshot] : []
   })
 
   return {

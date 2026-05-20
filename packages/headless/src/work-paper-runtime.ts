@@ -68,8 +68,12 @@ type NamedExpressionValueSnapshot = WorkPaperNamedExpressionValueSnapshot
 
 let nextWorkbookId = 1
 const importedXlsxSourceBytes = Symbol.for('bilig.importedXlsxSourceBytes')
+type ImportedXlsxSourceReader = {
+  readonly byteLength: number
+  readBytes(): Uint8Array
+}
 type SnapshotWithImportedXlsxSource = WorkbookSnapshot & {
-  readonly [importedXlsxSourceBytes]?: Uint8Array
+  readonly [importedXlsxSourceBytes]?: Uint8Array | ImportedXlsxSourceReader
 }
 type MetadataRenameEngine = SpreadsheetEngine & {
   readonly renameSheetMetadataOnlyById?: (sheetId: number, newName: string) => boolean
