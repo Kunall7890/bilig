@@ -4,6 +4,16 @@ All notable changes to `@bilig/headless` will be documented in this file.
 
 This package is released as part of the aligned bilig library package set.
 
+## 0.40.17
+
+- Release type: patch
+- Previous libraries tag: libraries-v0.40.16
+- Manual override: no
+
+## Fixes
+- perf(xlsx): avoid eager shared-string arena copies (9e0b47aa)
+- perf(core): summarize far shifted aggregate pages (f90f01a5)
+
 ## 0.40.16
 
 - Release type: patch
