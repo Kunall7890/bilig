@@ -1,13 +1,14 @@
-import type { WorkbookRichTextCellSnapshot } from '@bilig/protocol'
+import type { WorkbookAutoFilterSnapshot, WorkbookRichTextCellSnapshot } from '@bilig/protocol'
+import {
+  readLargeSimpleAutoFilterRootFromBytes,
+  readLargeSimpleAutoFiltersFromBytes,
+  wrapLargeSimpleAutoFilterColumnBytes,
+} from './xlsx-large-simple-autofilter-byte-scan.js'
 import {
   readLargeSimpleCellValueFromTextRange,
   readLargeSimpleSharedStringIndexFromTextRange,
 } from './xlsx-large-simple-cell-value-scan.js'
-import {
-  LargeSimpleFormulaRecords,
-  parseLargeSimpleSharedFormulaIndex,
-  readLargeSimpleFormulaTypeCode,
-} from './xlsx-large-simple-formula-records.js'
+import { LargeSimpleFormulaRecords, readLargeSimpleFormulaTypeCode } from './xlsx-large-simple-formula-records.js'
 import {
   ImportedWorkbookArena,
   ImportedWorksheetStyleIndexArena,
@@ -16,39 +17,41 @@ import {
 } from './xlsx-large-simple-arena.js'
 import type { LargeSimpleSharedStrings } from './xlsx-large-simple-shared-strings.js'
 import type { ImportedWorkbookStringPool } from './xlsx-large-simple-string-pool.js'
-import { stringItemText } from './xlsx-large-simple-worksheet-stream-text.js'
-import {
-  decodeBytes,
-  decodeCellAddress,
-  encodeCellAddress,
-  packedAddressColumn,
-  packedAddressRow,
-} from './xlsx-large-simple-xml-byte-utils.js'
+import { decodeBytes, decodeCellAddress, packedAddressColumn, packedAddressRow } from './xlsx-large-simple-xml-byte-utils.js'
 import {
   findClosingTag,
-  findNextOpeningTag,
   findTagEnd,
   hasElement,
   isSelfClosingTag,
   readCellStyleIndexFromTag,
   readElementTextRange,
-  readElementXml,
   readPackedCellAddressAttributeFromTag,
-  readXmlAttributeRangeFromTag,
   readXmlAttributeFromTag,
   readXmlTagName,
 } from './xlsx-large-simple-worksheet-stream-xml.js'
-import { LargeSimpleWorksheetStreamMetadataScanner } from './xlsx-large-simple-worksheet-stream-metadata.js'
+import { metadataWorksheetTagNames, unsupportedWorksheetTagNames } from './xlsx-large-simple-worksheet-scan-constants.js'
 import {
-  metadataWorksheetTagNames,
-  richTextRunPattern,
-  unsupportedWorksheetTagNames,
-} from './xlsx-large-simple-worksheet-scan-constants.js'
+  readFormulaSpec,
+  readInlineStringCellValue,
+  readPositiveIntegerAttributeFromTag,
+  readRichTextCellArtifact,
+} from './xlsx-large-simple-worksheet-stream-cell-readers.js'
+import {
+  type ActiveConditionalFormatting,
+  LargeSimpleWorksheetStreamMetadataCollector,
+  type StreamedMetadataElement,
+} from './xlsx-large-simple-worksheet-stream-metadata.js'
 import type { LargeSimpleWorksheetScannedMetadata } from './xlsx-large-simple-worksheet-metadata.js'
 
 const lessThan = 60
+const slash = 47
 const emptyBytes = new Uint8Array(0)
 const packedAddressColumnFactor = 16_384
+
+interface ActiveAutoFilter {
+  readonly rootTag: Uint8Array
+  filter: WorkbookAutoFilterSnapshot | null
+}
 
 export interface LargeSimpleWorksheetStreamScan {
   readonly cellScan: ImportedWorksheetCellScan
@@ -112,13 +115,14 @@ class LargeSimpleWorksheetChunkScanner {
   private readonly formulas: LargeSimpleFormulaRecords
   private readonly richTextCells: WorkbookRichTextCellSnapshot[] = []
   private readonly styleIndexes = new ImportedWorksheetStyleIndexArena()
+  private readonly metadata: LargeSimpleWorksheetStreamMetadataCollector
   private rowCount = 0
   private columnCount = 0
   private cellCount = 0
   private valueCellCount = 0
   private formulaCellCount = 0
   private blankStyleCellCount = 0
-  private readonly metadataScanner: LargeSimpleWorksheetStreamMetadataScanner
+  private readonly sheetName: string | undefined
   private minRow = Number.POSITIVE_INFINITY
   private minColumn = Number.POSITIVE_INFINITY
   private maxRow = -1
@@ -130,12 +134,18 @@ class LargeSimpleWorksheetChunkScanner {
   private readonly retainCells: boolean
   private readonly sharedStrings: LargeSimpleSharedStrings
   private readonly deferSharedStrings: boolean
+  private readonly retainMetadataXml: boolean
   private readonly allowUnsupportedFormulaText: boolean
   private readonly preserveBlankStyleCells: boolean
   private readonly retainStyleIndexes: boolean
   private readonly retainStyleCoordinates: boolean
   private readonly maxDimensionCellPreallocation: number
   private dimensionCellPreallocationApplied = false
+  private activeMetadataElement: StreamedMetadataElement | null = null
+  private activeAutoFilter: ActiveAutoFilter | null = null
+  private activeConditionalFormatting: ActiveConditionalFormatting | null = null
+  private activeDataValidations = false
+  private activeHyperlinks = false
 
   constructor(
     private readonly sheetIndex: number,
@@ -172,10 +182,9 @@ class LargeSimpleWorksheetChunkScanner {
     this.retainCells = options.retainCells
     this.sharedStrings = options.sharedStrings
     this.deferSharedStrings = options.deferSharedStrings
-    this.metadataScanner = new LargeSimpleWorksheetStreamMetadataScanner({
-      retainMetadataXml: options.retainMetadataXml,
-      sheetName: options.sheetName,
-    })
+    this.retainMetadataXml = options.retainMetadataXml
+    this.sheetName = options.sheetName
+    this.metadata = new LargeSimpleWorksheetStreamMetadataCollector(this.sheetName, this.retainMetadataXml)
     this.reportRetainedBufferLength = () => options.onRetainedBufferLength?.(this.buffer.byteLength)
   }
 
@@ -194,7 +203,12 @@ class LargeSimpleWorksheetChunkScanner {
       return null
     }
     this.process(true)
-    if (this.metadataScanner.hasActiveStream()) {
+    if (
+      this.activeMetadataElement !== null ||
+      this.activeAutoFilter !== null ||
+      this.activeConditionalFormatting !== null ||
+      this.activeHyperlinks
+    ) {
       this.failed = true
     }
     this.compact()
@@ -212,10 +226,10 @@ class LargeSimpleWorksheetChunkScanner {
         cellCount: this.cellCount,
         valueCellCount: this.valueCellCount,
         formulaCellCount: this.formulaCellCount,
-        mergeCount: this.metadataScanner.mergeCount,
-        conditionalFormatCount: this.metadataScanner.conditionalFormatCount,
-        dataValidationCount: this.metadataScanner.dataValidationCount,
-        tableCount: this.metadataScanner.tableCount,
+        mergeCount: this.metadata.mergeCount,
+        conditionalFormatCount: this.metadata.conditionalFormatCount,
+        dataValidationCount: this.metadata.dataValidationCount,
+        tableCount: this.metadata.tableCount,
         rowCount: this.rowCount,
         columnCount: this.columnCount,
         usedRange:
@@ -229,7 +243,7 @@ class LargeSimpleWorksheetChunkScanner {
             : null,
       },
       metadataXml: undefined,
-      metadata: this.metadataScanner.buildMetadataScan(),
+      metadata: this.metadata.buildMetadataScan(),
     }
   }
 
@@ -262,13 +276,32 @@ class LargeSimpleWorksheetChunkScanner {
 
   private process(final: boolean): void {
     while (!this.failed && this.index < this.buffer.byteLength) {
-      if (this.metadataScanner.hasActiveStream()) {
-        const result = this.metadataScanner.processActive(this.buffer, this.index, final)
-        this.index = result.index
-        if (result.failed) {
-          this.failed = true
+      if (this.activeMetadataElement !== null) {
+        if (!this.processActiveMetadataElement(final)) {
+          return
         }
-        if (!result.complete) {
+        continue
+      }
+      if (this.activeAutoFilter !== null) {
+        if (!this.processActiveAutoFilter(final)) {
+          return
+        }
+        continue
+      }
+      if (this.activeConditionalFormatting !== null) {
+        if (!this.processActiveConditionalFormatting(final)) {
+          return
+        }
+        continue
+      }
+      if (this.activeDataValidations) {
+        if (!this.processActiveDataValidations(final)) {
+          return
+        }
+        continue
+      }
+      if (this.activeHyperlinks) {
+        if (!this.processActiveHyperlinks(final)) {
           return
         }
         continue
@@ -297,7 +330,9 @@ class LargeSimpleWorksheetChunkScanner {
         return
       }
       if (tag.localName === 'worksheet') {
-        this.metadataScanner.collectWorksheetRootOpenTag(this.buffer, this.index, tagEnd + 1)
+        if (this.retainMetadataXml) {
+          this.metadata.setWorksheetRootOpenTag(decodeBytes(this.buffer, this.index, tagEnd + 1))
+        }
         this.index = tagEnd + 1
         continue
       }
@@ -308,7 +343,9 @@ class LargeSimpleWorksheetChunkScanner {
       }
       if (tag.localName === 'row') {
         this.readRow(tag.endIndex, tagEnd)
-        this.metadataScanner.collectRowMetadata(this.buffer, tag.endIndex, tagEnd, this.currentRow)
+        if (this.retainMetadataXml) {
+          this.metadata.collectRowMetadata(this.buffer, tag.endIndex, tagEnd, this.currentRow)
+        }
         this.index = tagEnd + 1
         continue
       }
@@ -319,12 +356,7 @@ class LargeSimpleWorksheetChunkScanner {
         continue
       }
       if (metadataWorksheetTagNames.has(tag.localName)) {
-        const result = this.metadataScanner.collectMetadataElement(tag.localName, this.buffer, this.index, tagEnd, final)
-        this.index = result.index
-        if (result.failed) {
-          this.failed = true
-        }
-        if (!result.complete) {
+        if (!this.collectMetadataElement(tag.localName, tagEnd, final)) {
           return
         }
         continue
@@ -389,7 +421,7 @@ class LargeSimpleWorksheetChunkScanner {
     const column = packedAddressColumn(packedAddress)
     this.currentRow = row
     this.nextImplicitColumn = column + 1
-    this.metadataScanner.collectCellMetadataRef(this.buffer, nameEnd, tagEnd, encodeCellAddress(row, column))
+    this.metadata.collectCellMetadataRef(this.buffer, row, column, nameEnd, tagEnd)
     const cellType = readXmlAttributeFromTag(this.buffer, nameEnd, tagEnd, 't')
     if (!this.hasSharedStrings && cellType === 's') {
       this.failed = true
@@ -499,92 +531,427 @@ class LargeSimpleWorksheetChunkScanner {
     this.styleIndexes.addRequiredStyleIndex(styleIndex)
   }
 
+  private collectMetadataElement(localName: string, tagEnd: number, final: boolean): boolean {
+    if (localName === 'dataValidations' && isSelfClosingTag(this.buffer, tagEnd)) {
+      this.index = tagEnd + 1
+      return true
+    }
+    if (localName === 'hyperlinks' && isSelfClosingTag(this.buffer, tagEnd)) {
+      this.index = tagEnd + 1
+      return true
+    }
+    if (isSelfClosingTag(this.buffer, tagEnd)) {
+      const handled = this.retainMetadataXml && this.metadata.collectTypedMetadataElement(localName, this.buffer, this.index, tagEnd + 1)
+      if (!handled) {
+        this.metadata.countMetadataElement(localName, this.buffer, tagEnd + 1, tagEnd + 1)
+      }
+      if (this.retainMetadataXml && !handled) {
+        this.failed = true
+      }
+      this.index = tagEnd + 1
+      return true
+    }
+    if (localName === 'autoFilter') {
+      if (this.retainMetadataXml && !this.sheetName) {
+        this.failed = true
+        return true
+      }
+      this.activeAutoFilter = {
+        rootTag: this.buffer.slice(this.index, tagEnd + 1),
+        filter:
+          this.retainMetadataXml && this.sheetName
+            ? readLargeSimpleAutoFilterRootFromBytes(this.sheetName, this.buffer, this.index, tagEnd + 1)
+            : null,
+      }
+      this.index = tagEnd + 1
+      if (!this.processActiveAutoFilter(final)) {
+        if (final) {
+          this.failed = true
+        }
+        return false
+      }
+      return true
+    }
+    if (localName === 'conditionalFormatting') {
+      this.activeConditionalFormatting = {
+        rootTag: this.buffer.slice(this.index, tagEnd + 1),
+        ruleSeen: false,
+      }
+      this.index = tagEnd + 1
+      if (!this.processActiveConditionalFormatting(final)) {
+        if (final) {
+          this.failed = true
+        }
+        return false
+      }
+      return true
+    }
+    if (localName === 'cols' || localName === 'mergeCells' || localName === 'tableParts') {
+      this.activeMetadataElement = localName
+      this.index = tagEnd + 1
+      if (!this.processActiveMetadataElement(final)) {
+        if (final) {
+          this.failed = true
+        }
+        return false
+      }
+      return true
+    }
+    if (localName === 'dataValidations') {
+      this.activeDataValidations = true
+      this.index = tagEnd + 1
+      if (!this.processActiveDataValidations(final)) {
+        if (final) {
+          this.failed = true
+        }
+        return false
+      }
+      return true
+    }
+    if (localName === 'hyperlinks') {
+      this.activeHyperlinks = true
+      this.index = tagEnd + 1
+      if (!this.processActiveHyperlinks(final)) {
+        if (final) {
+          this.failed = true
+        }
+        return false
+      }
+      return true
+    }
+    const closing = findClosingTag(this.buffer, tagEnd + 1, localName)
+    if (!closing) {
+      if (final) {
+        this.failed = true
+      }
+      return false
+    }
+    const handled = this.retainMetadataXml && this.metadata.collectTypedMetadataElement(localName, this.buffer, this.index, closing.end)
+    if (!handled) {
+      this.metadata.countMetadataElement(localName, this.buffer, tagEnd + 1, closing.start)
+    }
+    if (this.retainMetadataXml && !handled) {
+      this.failed = true
+    }
+    this.index = closing.end
+    return true
+  }
+
+  private processActiveAutoFilter(final: boolean): boolean {
+    const active = this.activeAutoFilter
+    if (active === null) {
+      return true
+    }
+    while (!this.failed && this.index < this.buffer.byteLength) {
+      if (this.buffer[this.index] !== lessThan) {
+        this.index += 1
+        continue
+      }
+      const closing = this.buffer[this.index + 1] === slash
+      const tagNameStart = this.index + (closing ? 2 : 1)
+      const tag = readXmlTagName(this.buffer, tagNameStart)
+      if (!tag) {
+        if (!final && tagNameStart >= this.buffer.byteLength) {
+          return false
+        }
+        this.index += 1
+        continue
+      }
+      const tagEnd = findTagEnd(this.buffer, tag.endIndex)
+      if (tagEnd === null) {
+        if (final) {
+          this.failed = true
+        }
+        return false
+      }
+      if (closing && tag.localName === 'autoFilter') {
+        this.metadata.addAutoFilter(active.filter)
+        this.activeAutoFilter = null
+        this.index = tagEnd + 1
+        return true
+      }
+      if (!closing && tag.localName === 'filterColumn') {
+        if (!this.processActiveAutoFilterColumn(active, tagEnd, final)) {
+          return false
+        }
+        continue
+      }
+      this.index = tagEnd + 1
+    }
+    if (final) {
+      this.failed = true
+    } else {
+      this.index = this.buffer.byteLength
+    }
+    return false
+  }
+
+  private processActiveAutoFilterColumn(active: ActiveAutoFilter, tagEnd: number, final: boolean): boolean {
+    const startIndex = this.index
+    const selfClosing = isSelfClosingTag(this.buffer, tagEnd)
+    const contentStart = tagEnd + 1
+    const closing = selfClosing ? { start: contentStart, end: contentStart } : findClosingTag(this.buffer, contentStart, 'filterColumn')
+    if (!closing) {
+      if (final) {
+        this.failed = true
+      }
+      this.index = startIndex
+      return false
+    }
+    const endIndex = selfClosing ? tagEnd + 1 : closing.end
+    if (this.retainMetadataXml && this.sheetName) {
+      const wrapped = wrapLargeSimpleAutoFilterColumnBytes(active.rootTag, this.buffer, startIndex, endIndex)
+      const parsed = readLargeSimpleAutoFiltersFromBytes(this.sheetName, wrapped, 0, wrapped.byteLength)[0]
+      if (parsed) {
+        active.filter = mergeAutoFilterCriteria(active.filter ?? parsed, parsed.criteria)
+      }
+    }
+    this.index = endIndex
+    return true
+  }
+
+  private processActiveMetadataElement(final: boolean): boolean {
+    const activeElement = this.activeMetadataElement
+    if (activeElement === null) {
+      return true
+    }
+    while (this.index < this.buffer.byteLength) {
+      if (this.buffer[this.index] !== lessThan) {
+        this.index += 1
+        continue
+      }
+      const closing = this.buffer[this.index + 1] === slash
+      const tagNameStart = this.index + (closing ? 2 : 1)
+      const tag = readXmlTagName(this.buffer, tagNameStart)
+      if (!tag) {
+        if (!final && tagNameStart >= this.buffer.byteLength) {
+          return false
+        }
+        this.index += 1
+        continue
+      }
+      const tagEnd = findTagEnd(this.buffer, tag.endIndex)
+      if (tagEnd === null) {
+        if (final) {
+          this.failed = true
+        }
+        return false
+      }
+      if (closing && tag.localName === activeElement) {
+        this.activeMetadataElement = null
+        this.index = tagEnd + 1
+        return true
+      }
+      if (!closing) {
+        this.metadata.collectActiveMetadataTag(activeElement, tag.localName, this.buffer, this.index, tag.endIndex, tagEnd)
+      }
+      this.index = tagEnd + 1
+    }
+    if (final) {
+      this.failed = true
+    } else {
+      this.index = this.buffer.byteLength
+    }
+    return false
+  }
+
+  private processActiveConditionalFormatting(final: boolean): boolean {
+    const active = this.activeConditionalFormatting
+    if (active === null) {
+      return true
+    }
+    while (!this.failed && this.index < this.buffer.byteLength) {
+      if (this.buffer[this.index] !== lessThan) {
+        this.index += 1
+        continue
+      }
+      const closing = this.buffer[this.index + 1] === slash
+      const tagNameStart = this.index + (closing ? 2 : 1)
+      const tag = readXmlTagName(this.buffer, tagNameStart)
+      if (!tag) {
+        if (!final && tagNameStart >= this.buffer.byteLength) {
+          return false
+        }
+        this.index += 1
+        continue
+      }
+      const tagEnd = findTagEnd(this.buffer, tag.endIndex)
+      if (tagEnd === null) {
+        if (final) {
+          this.failed = true
+        }
+        return false
+      }
+      if (closing && tag.localName === 'conditionalFormatting') {
+        if (!active.ruleSeen) {
+          this.metadata.conditionalFormatCount += 1
+        }
+        this.activeConditionalFormatting = null
+        this.index = tagEnd + 1
+        return true
+      }
+      if (!closing && tag.localName === 'cfRule') {
+        if (!this.processActiveConditionalFormatRule(active, tagEnd, final)) {
+          return false
+        }
+        continue
+      }
+      if (!closing && this.retainMetadataXml) {
+        this.failed = true
+        return true
+      }
+      this.index = tagEnd + 1
+    }
+    if (final) {
+      this.failed = true
+    } else {
+      this.index = this.buffer.byteLength
+    }
+    return false
+  }
+
+  private processActiveConditionalFormatRule(active: ActiveConditionalFormatting, tagEnd: number, final: boolean): boolean {
+    const startIndex = this.index
+    const selfClosing = isSelfClosingTag(this.buffer, tagEnd)
+    const contentStart = tagEnd + 1
+    const closing = selfClosing ? { start: contentStart, end: contentStart } : findClosingTag(this.buffer, contentStart, 'cfRule')
+    if (!closing) {
+      if (final) {
+        this.failed = true
+      }
+      this.index = startIndex
+      return false
+    }
+    active.ruleSeen = true
+    const endIndex = selfClosing ? tagEnd + 1 : closing.end
+    if (!this.retainMetadataXml) {
+      this.metadata.countConditionalFormatRootRule(active.rootTag)
+      this.index = endIndex
+      return true
+    }
+    if (!this.metadata.collectConditionalFormattingRule(active.rootTag, this.buffer, startIndex, endIndex)) {
+      this.failed = true
+      return true
+    }
+    this.index = endIndex
+    return true
+  }
+
+  private processActiveHyperlinks(final: boolean): boolean {
+    while (!this.failed && this.index < this.buffer.byteLength) {
+      if (this.buffer[this.index] !== lessThan) {
+        this.index += 1
+        continue
+      }
+      const closing = this.buffer[this.index + 1] === slash
+      const tagNameStart = this.index + (closing ? 2 : 1)
+      const tag = readXmlTagName(this.buffer, tagNameStart)
+      if (!tag) {
+        if (!final && tagNameStart >= this.buffer.byteLength) {
+          return false
+        }
+        this.index += 1
+        continue
+      }
+      const tagEnd = findTagEnd(this.buffer, tag.endIndex)
+      if (tagEnd === null) {
+        if (final) {
+          this.failed = true
+        }
+        return false
+      }
+      if (closing && tag.localName === 'hyperlinks') {
+        this.activeHyperlinks = false
+        this.index = tagEnd + 1
+        return true
+      }
+      if (!closing && tag.localName === 'hyperlink') {
+        if (!this.metadata.collectActiveHyperlinkTag(this.buffer, this.index, tagEnd)) {
+          this.failed = true
+          return true
+        }
+      }
+      this.index = tagEnd + 1
+    }
+    if (final) {
+      this.failed = true
+    } else {
+      this.index = this.buffer.byteLength
+    }
+    return false
+  }
+
+  private processActiveDataValidations(final: boolean): boolean {
+    while (!this.failed && this.index < this.buffer.byteLength) {
+      if (this.buffer[this.index] !== lessThan) {
+        this.index += 1
+        continue
+      }
+      const closing = this.buffer[this.index + 1] === slash
+      const tagNameStart = this.index + (closing ? 2 : 1)
+      const tag = readXmlTagName(this.buffer, tagNameStart)
+      if (!tag) {
+        if (!final && tagNameStart >= this.buffer.byteLength) {
+          return false
+        }
+        this.index += 1
+        continue
+      }
+      const tagEnd = findTagEnd(this.buffer, tag.endIndex)
+      if (tagEnd === null) {
+        if (final) {
+          this.failed = true
+        }
+        return false
+      }
+      if (closing && tag.localName === 'dataValidations') {
+        this.activeDataValidations = false
+        this.index = tagEnd + 1
+        return true
+      }
+      if (!closing && tag.localName === 'dataValidation') {
+        if (!this.processActiveDataValidationElement(tagEnd, final)) {
+          return false
+        }
+        continue
+      }
+      this.index = tagEnd + 1
+    }
+    if (final) {
+      this.failed = true
+    } else {
+      this.index = this.buffer.byteLength
+    }
+    return false
+  }
+
+  private processActiveDataValidationElement(tagEnd: number, final: boolean): boolean {
+    const startIndex = this.index
+    const selfClosing = isSelfClosingTag(this.buffer, tagEnd)
+    const contentStart = tagEnd + 1
+    const closing = selfClosing ? { start: contentStart, end: contentStart } : findClosingTag(this.buffer, contentStart, 'dataValidation')
+    if (!closing) {
+      if (final) {
+        this.failed = true
+      }
+      this.index = startIndex
+      return false
+    }
+    const endIndex = selfClosing ? tagEnd + 1 : closing.end
+    if (!this.metadata.collectDataValidationElement(this.buffer, startIndex, endIndex)) {
+      this.failed = true
+      return true
+    }
+    this.index = endIndex
+    return true
+  }
+
   private reportRetainedBufferLength: () => void = () => {}
 }
 
-function readPositiveIntegerAttributeFromTag(bytes: Uint8Array, nameEnd: number, tagEnd: number, attributeName: string): number | null {
-  const range = readXmlAttributeRangeFromTag(bytes, nameEnd, tagEnd, attributeName)
-  if (!range || range.start === range.end) {
-    return null
-  }
-  let value = 0
-  for (let index = range.start; index < range.end; index += 1) {
-    const byte = bytes[index] ?? 0
-    if (byte < 48 || byte > 57) {
-      return null
-    }
-    value = value * 10 + byte - 48
-  }
-  return value > 0 && Number.isSafeInteger(value) ? value : null
-}
-
-function readInlineStringCellValue(bytes: Uint8Array, contentStart: number, contentEnd: number): string | undefined {
-  const inlineStringXml = readElementXml(bytes, contentStart, contentEnd, 'is')
-  return inlineStringXml ? stringItemText(inlineStringXml) : undefined
-}
-
-function readFormulaSpec(
-  bytes: Uint8Array,
-  contentStart: number,
-  contentEnd: number,
-  allowUnsupportedFormulaText: boolean,
-): { readonly typeCode: number; readonly sharedIndex: number | null; readonly rawFormula: string } | null | undefined {
-  const tag = findNextOpeningTag(bytes, contentStart, 'f', contentEnd)
-  if (!tag) {
-    return undefined
-  }
-  const tagEnd = findTagEnd(bytes, tag.nameEnd, contentEnd)
-  if (tagEnd === null) {
-    return null
-  }
-  const type = readXmlAttributeFromTag(bytes, tag.nameEnd, tagEnd, 't')
-  if (!allowUnsupportedFormulaText && (type === 'array' || type === 'dataTable')) {
-    return null
-  }
-  const selfClosing = isSelfClosingTag(bytes, tagEnd)
-  const closing = selfClosing ? { start: tagEnd + 1, end: tagEnd + 1 } : findClosingTag(bytes, tagEnd + 1, 'f', contentEnd)
-  if (!closing) {
-    return null
-  }
-  return {
-    typeCode: readLargeSimpleFormulaTypeCode(type),
-    sharedIndex: parseLargeSimpleSharedFormulaIndex(readXmlAttributeFromTag(bytes, tag.nameEnd, tagEnd, 'si')),
-    rawFormula: selfClosing ? '' : decodeBytes(bytes, tagEnd + 1, closing.start).trim(),
-  }
-}
-
-function readRichTextCellArtifact(
-  bytes: Uint8Array,
-  contentStart: number,
-  contentEnd: number,
-  row: number,
-  column: number,
-  type: string | null,
-  sharedStringIndex: number | null,
-  sharedStrings: LargeSimpleSharedStrings,
-): WorkbookRichTextCellSnapshot | undefined {
-  if (type === 's') {
-    const entry = sharedStringIndex === null ? undefined : sharedStrings[sharedStringIndex]
-    return entry?.rich
-      ? {
-          address: encodeCellAddress(row, column),
-          text: entry.text,
-          storage: 'sharedString',
-          xml: entry.xml ?? '',
-        }
-      : undefined
-  }
-  if (type !== 'inlineStr') {
-    return undefined
-  }
-  const inlineStringXml = readElementXml(bytes, contentStart, contentEnd, 'is')
-  if (!inlineStringXml || !richTextRunPattern.test(inlineStringXml)) {
-    return undefined
-  }
-  return {
-    address: encodeCellAddress(row, column),
-    text: stringItemText(inlineStringXml),
-    storage: 'inlineString',
-    xml: inlineStringXml,
-  }
+function mergeAutoFilterCriteria(
+  filter: WorkbookAutoFilterSnapshot,
+  criteria: WorkbookAutoFilterSnapshot['criteria'],
+): WorkbookAutoFilterSnapshot {
+  return criteria && criteria.length > 0 ? { ...filter, criteria: [...(filter.criteria ?? []), ...criteria] } : filter
 }
