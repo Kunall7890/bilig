@@ -1,6 +1,5 @@
 import { Buffer } from 'node:buffer'
-import { TextDecoder } from 'node:util'
-import { createInflateRaw, inflateRawSync } from 'node:zlib'
+import { createInflateRaw } from 'node:zlib'
 
 import {
   forEachInflatedXlsxZipEntryChunk,
@@ -14,14 +13,18 @@ import {
 } from '../packages/excel-import/src/xlsx-zip.js'
 import type { WorkbookExternalWorkbookReferenceSnapshot } from '../packages/protocol/src/types.js'
 import { WorksheetDataValidationSupportScanner } from './public-workbook-corpus-xlsx-data-validation-footprint.ts'
+import {
+  decodeBytes,
+  normalizeZipPath,
+  readZipCentralDirectory,
+  readZipEntryBytes,
+  readZipEntryPayload,
+  readZipEntryText,
+  type WorkbookPackageEntry,
+  type ZipEntryInfo,
+} from './public-workbook-corpus-xlsx-zip-footprint.ts'
+export { isZipWorkbook } from './public-workbook-corpus-xlsx-zip-footprint.ts'
 import type { WorkbookFootprint } from './public-workbook-corpus-workbook.ts'
-
-interface ZipEntryInfo {
-  readonly path: string
-  readonly compressionMethod: number
-  readonly compressedSize: number
-  readonly localHeaderOffset: number
-}
 
 interface ParsedRelationship {
   readonly id: string
@@ -33,12 +36,6 @@ interface ParsedRelationship {
 interface ParsedSheet {
   readonly name: string
   readonly path: string | null
-}
-
-interface WorkbookPackageEntry {
-  readonly path: string
-  readonly compressionMethod: number
-  readonly compressedSize: number
 }
 
 interface WorksheetFootprint {
@@ -58,10 +55,6 @@ interface WorksheetFootprint {
   xmlCellCount: number
 }
 
-const decoder = new TextDecoder()
-const eocdSignature = 0x06054b50
-const centralDirectorySignature = 0x02014b50
-const localFileHeaderSignature = 0x04034b50
 const lessThanByte = 0x3c
 const greaterThanByte = 0x3e
 const slashByte = 0x2f
@@ -69,10 +62,6 @@ const equalsByte = 0x3d
 const doubleQuoteByte = 0x22
 const singleQuoteByte = 0x27
 const whitespaceBytes = new Set([0x09, 0x0a, 0x0d, 0x20])
-
-export function isZipWorkbook(bytes: Uint8Array): boolean {
-  return bytes.length >= 4 && bytes[0] === 0x50 && bytes[1] === 0x4b && bytes[2] === 0x03 && bytes[3] === 0x04
-}
 
 export function inspectXlsxWorkbookFootprintLowMemory(bytes: Uint8Array, fileName: string): WorkbookFootprint {
   const context = readWorkbookPackageContext(bytes)
@@ -317,80 +306,6 @@ function worksheetDimension(sheetName: string, footprint: WorksheetFootprint): W
     nonEmptyCellCount: footprint.cellCount,
     usedRange: footprint.usedRange,
   }
-}
-
-function readZipCentralDirectory(bytes: Uint8Array): ZipEntryInfo[] {
-  const eocdOffset = findEndOfCentralDirectory(bytes)
-  const centralDirectorySize = readUint32(bytes, eocdOffset + 12)
-  const centralDirectoryOffset = readUint32(bytes, eocdOffset + 16)
-  if (centralDirectorySize === 0xffffffff || centralDirectoryOffset === 0xffffffff) {
-    throw new Error('Zip64 central directories are not supported by the low-memory XLSX footprint scanner')
-  }
-  const entries: ZipEntryInfo[] = []
-  let offset = centralDirectoryOffset
-  const endOffset = centralDirectoryOffset + centralDirectorySize
-  while (offset < endOffset) {
-    if (readUint32(bytes, offset) !== centralDirectorySignature) {
-      throw new Error('Invalid XLSX central directory entry')
-    }
-    const compressionMethod = readUint16(bytes, offset + 10)
-    const compressedSize = readUint32(bytes, offset + 20)
-    const fileNameLength = readUint16(bytes, offset + 28)
-    const extraFieldLength = readUint16(bytes, offset + 30)
-    const fileCommentLength = readUint16(bytes, offset + 32)
-    const localHeaderOffset = readUint32(bytes, offset + 42)
-    const path = normalizeZipPath(decodeBytes(bytes.subarray(offset + 46, offset + 46 + fileNameLength)))
-    entries.push({ path, compressionMethod, compressedSize, localHeaderOffset })
-    offset += 46 + fileNameLength + extraFieldLength + fileCommentLength
-  }
-  return entries
-}
-
-function findEndOfCentralDirectory(bytes: Uint8Array): number {
-  const minOffset = Math.max(0, bytes.length - 65_557)
-  for (let offset = bytes.length - 22; offset >= minOffset; offset -= 1) {
-    if (readUint32(bytes, offset) === eocdSignature) {
-      return offset
-    }
-  }
-  throw new Error('Invalid XLSX zip: end of central directory not found')
-}
-
-function readZipEntryBytes(bytes: Uint8Array, entry: ZipEntryInfo | undefined): Uint8Array | null {
-  const payload = readZipEntryPayload(bytes, entry)
-  if (!payload) {
-    return null
-  }
-  if (payload.compressionMethod === 0) {
-    return payload.compressed
-  }
-  if (payload.compressionMethod === 8) {
-    return inflateRawSync(payload.compressed)
-  }
-  throw new Error(`Unsupported XLSX zip compression method ${String(payload.compressionMethod)} for ${payload.path}`)
-}
-
-function readZipEntryPayload(
-  bytes: Uint8Array,
-  entry: ZipEntryInfo | undefined,
-): { readonly compressed: Uint8Array; readonly compressionMethod: number; readonly path: string } | null {
-  if (!entry) {
-    return null
-  }
-  const offset = entry.localHeaderOffset
-  if (readUint32(bytes, offset) !== localFileHeaderSignature) {
-    throw new Error(`Invalid local file header for ${entry.path}`)
-  }
-  const fileNameLength = readUint16(bytes, offset + 26)
-  const extraFieldLength = readUint16(bytes, offset + 28)
-  const dataOffset = offset + 30 + fileNameLength + extraFieldLength
-  const compressed = bytes.subarray(dataOffset, dataOffset + entry.compressedSize)
-  return { compressed, compressionMethod: entry.compressionMethod, path: entry.path }
-}
-
-function readZipEntryText(bytes: Uint8Array, entry: ZipEntryInfo | undefined): string | null {
-  const entryBytes = readZipEntryBytes(bytes, entry)
-  return entryBytes ? decodeBytes(entryBytes) : null
 }
 
 function readWorkbookSheets(
@@ -672,7 +587,7 @@ function readWorkbookExternalLinkTargets(workbookXml: string, workbookRelationsh
   return targets
 }
 
-function readFallbackExternalLinkTargets(entries: readonly ZipEntryInfo[]): Map<number, string> {
+function readFallbackExternalLinkTargets(entries: readonly WorkbookPackageEntry[]): Map<number, string> {
   const targets = new Map<number, string>()
   for (const entry of entries) {
     const match = /^xl\/externalLinks\/externalLink([1-9][0-9]*)\.xml$/u.exec(entry.path)
@@ -842,14 +757,6 @@ function decodeXmlEntities(value: string): string {
       }
     }
   })
-}
-
-function normalizeZipPath(path: string): string {
-  return path.replace(/^\/+/, '')
-}
-
-function decodeBytes(bytes: Uint8Array): string {
-  return decoder.decode(bytes)
 }
 
 const cElementNameBytes = asciiBytes('c')
@@ -1055,14 +962,6 @@ function copyBytes(bytes: Uint8Array): Uint8Array {
 
 function asciiBytes(value: string): Uint8Array {
   return Uint8Array.from(value, (character) => character.charCodeAt(0))
-}
-
-function readUint16(bytes: Uint8Array, offset: number): number {
-  return bytes[offset] | (bytes[offset + 1] << 8)
-}
-
-function readUint32(bytes: Uint8Array, offset: number): number {
-  return (bytes[offset] | (bytes[offset + 1] << 8) | (bytes[offset + 2] << 16) | (bytes[offset + 3] << 24)) >>> 0
 }
 
 function escapeRegExp(value: string): string {
