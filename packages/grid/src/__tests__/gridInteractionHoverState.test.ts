@@ -92,7 +92,7 @@ describe('resolveWorkbookGridHoverState', () => {
     expect(getCellScreenBounds).not.toHaveBeenCalled()
   })
 
-  it('returns range-move grab when hovering the content lane inside an already-selected range', () => {
+  it('keeps regular cell hover in the leading content lane inside an already-selected range', () => {
     const state = resolveWorkbookGridHoverState({
       ...baseInput(),
       clientX: 98,
@@ -111,7 +111,7 @@ describe('resolveWorkbookGridHoverState', () => {
       ),
     })
 
-    expect(state).toEqual({ cell: null, header: null, cursor: 'grab' })
+    expect(state).toEqual({ cell: [2, 3], header: null, cursor: 'cell' })
   })
 
   it('keeps regular cell hover in the center of an already-selected range so body drags can select ranges', () => {

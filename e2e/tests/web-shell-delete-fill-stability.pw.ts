@@ -126,7 +126,7 @@ test('@browser-ci web app applies fill color after moving text into an empty til
   await formulaInput.press('Enter')
   await expect.poll(() => nativeTextRunTextAt(page, 1, 1)).toBe(text)
 
-  await dragProductSelectedContentLane(page, 1, 1, 3, 4)
+  await dragProductSelectionBorder(page, 1, 1, 3, 4)
   await expect.poll(() => nativeTextRunTextAt(page, 1, 1)).toBe('')
   await expect.poll(() => nativeTextRunTextAt(page, 3, 4)).toBe(text)
 
@@ -239,7 +239,7 @@ async function sampleGreenFillPixelsAcrossFrames(
   return await sampleGreenFillPixelsAcrossFrames(page, columnIndex, rowIndex, remainingSamples - 1, [...samples, pixels])
 }
 
-async function dragProductSelectedContentLane(page: Page, startColumn: number, startRow: number, targetColumn: number, targetRow: number) {
+async function dragProductSelectionBorder(page: Page, startColumn: number, startRow: number, targetColumn: number, targetRow: number) {
   const gridLocator = page.getByTestId('sheet-grid')
   await expect(gridLocator).toBeVisible()
   const grid = await gridLocator.boundingBox()
@@ -249,17 +249,12 @@ async function dragProductSelectedContentLane(page: Page, startColumn: number, s
 
   const startLeft = await getProductColumnLeft(page, startColumn)
   const startTop = await getProductRowTop(page, startRow)
-  const startWidth = await getProductColumnWidth(page, startColumn)
-  const startHeight = await getProductRowHeight(page, startRow)
   const targetLeft = await getProductColumnLeft(page, targetColumn)
   const targetTop = await getProductRowTop(page, targetRow)
   const targetWidth = await getProductColumnWidth(page, targetColumn)
   const targetHeight = await getProductRowHeight(page, targetRow)
 
-  await page.mouse.move(
-    grid.x + startLeft + Math.min(32, Math.floor(startWidth * 0.35)),
-    grid.y + PRODUCT_HEADER_HEIGHT + startTop + Math.floor(startHeight / 2),
-  )
+  await page.mouse.move(grid.x + startLeft + 3, grid.y + PRODUCT_HEADER_HEIGHT + startTop + 2)
   await page.mouse.down()
   await page.mouse.move(
     grid.x + targetLeft + Math.floor(targetWidth / 2),

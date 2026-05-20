@@ -1,5 +1,5 @@
 import { useCallback, type MouseEvent as ReactMouseEvent, type PointerEvent as ReactPointerEvent } from 'react'
-import { resolveSelectionContentMoveCandidateCell, resolveSelectionMoveAnchorCell } from './gridRangeMove.js'
+import { resolveSelectionMoveAnchorCell } from './gridRangeMove.js'
 import { sameGridHoverState, type GridHoverState } from './gridHover.js'
 import {
   finishGridResize,
@@ -27,7 +27,6 @@ import type { useWorkbookGridPointerResolvers } from './useWorkbookGridPointerRe
 import type { useWorkbookGridRenderState } from './useWorkbookGridRenderState.js'
 
 const DEFAULT_GRID_HOVER_STATE: GridHoverState = { cell: null, header: null, cursor: 'default' }
-const INTERIOR_RANGE_MOVE_START_THRESHOLD_PX = 4
 
 function resetGridHoverState(current: GridHoverState): GridHoverState {
   return sameGridHoverState(current, DEFAULT_GRID_HOVER_STATE) ? current : DEFAULT_GRID_HOVER_STATE
@@ -120,7 +119,6 @@ export function useWorkbookGridHostPointerHandlers(input: {
     dragPointerCellRef,
     fillHandleCleanupRef,
     fillPreviewRangeRef,
-    interiorRangeMoveCandidateRef,
     interactionState,
     lastBodyClickCellRef,
     lastResizeHandleActivationRef,
@@ -272,47 +270,6 @@ export function useWorkbookGridHostPointerHandlers(input: {
     ],
   )
 
-  const clearInteriorRangeMoveCandidate = useCallback(() => {
-    interiorRangeMoveCandidateRef.current = null
-  }, [interiorRangeMoveCandidateRef])
-
-  const maybeBeginInteriorRangeMove = useCallback(
-    (event: ReactPointerEvent<HTMLDivElement>): boolean => {
-      const candidate = interiorRangeMoveCandidateRef.current
-      if (!candidate || candidate.pointerId !== event.pointerId || (event.buttons & 1) !== 1) {
-        return false
-      }
-      const deltaX = event.clientX - candidate.startClientX
-      const deltaY = event.clientY - candidate.startClientY
-      if (Math.hypot(deltaX, deltaY) < INTERIOR_RANGE_MOVE_START_THRESHOLD_PX) {
-        event.preventDefault()
-        event.stopPropagation()
-        return true
-      }
-
-      event.preventDefault()
-      event.stopPropagation()
-      clearInteriorRangeMoveCandidate()
-      resetGridPointerInteraction(interactionState, {
-        clearIgnoreNextPointerSelection: true,
-      })
-      setActiveResizeColumn(null)
-      setActiveResizeRow(null)
-      setActiveHeaderDrag(null)
-      beginRangeMove(candidate.pointerCell)
-      return true
-    },
-    [
-      beginRangeMove,
-      clearInteriorRangeMoveCandidate,
-      interactionState,
-      interiorRangeMoveCandidateRef,
-      setActiveHeaderDrag,
-      setActiveResizeColumn,
-      setActiveResizeRow,
-    ],
-  )
-
   const beginColumnResize = useCallback(
     (columnIndex: number, startClientX: number) => {
       beginWorkbookGridColumnResize({
@@ -451,7 +408,6 @@ export function useWorkbookGridHostPointerHandlers(input: {
       })
     },
     handleHostPointerDownCapture: (event: ReactPointerEvent<HTMLDivElement>) => {
-      clearInteriorRangeMoveCandidate()
       if (isFillHandleTarget(event.target)) {
         return
       }
@@ -507,19 +463,6 @@ export function useWorkbookGridHostPointerHandlers(input: {
         }
       }
 
-      const pointerCell = pointerGeometry === null ? null : resolvePointerCell(event.clientX, event.clientY, visibleRegion, pointerGeometry)
-      if (allowsRangeMove && !event.shiftKey && selectionRange && pointerCell) {
-        const interiorMoveCell = resolveSelectionContentMoveCandidateCell(event.clientX, event.clientY, selectionRange, getCellScreenBounds)
-        if (interiorMoveCell) {
-          interiorRangeMoveCandidateRef.current = {
-            pointerId: event.pointerId,
-            pointerCell: interiorMoveCell,
-            startClientX: event.clientX,
-            startClientY: event.clientY,
-          }
-        }
-      }
-
       const headerSelection =
         pointerGeometry === null ? null : resolveHeaderSelectionAtPointer(event.clientX, event.clientY, visibleRegion, pointerGeometry)
       setActiveResizeColumn(null)
@@ -566,9 +509,6 @@ export function useWorkbookGridHostPointerHandlers(input: {
       if (isFillHandleDragging || isFillHandleTarget(event.target)) {
         return
       }
-      if (maybeBeginInteriorRangeMove(event)) {
-        return
-      }
       const visibleRegion = getVisibleRegion()
       handleGridPointerMove({
         dragAnchorCell: dragAnchorCellRef.current,
@@ -588,7 +528,6 @@ export function useWorkbookGridHostPointerHandlers(input: {
       refreshHoverState(event.clientX, event.clientY, event.buttons)
     },
     handleHostPointerUpCapture: (event: ReactPointerEvent<HTMLDivElement>) => {
-      clearInteriorRangeMoveCandidate()
       if (resizeCleanupRef.current !== null || activeResizeColumn !== null || activeResizeRow !== null) {
         return
       }

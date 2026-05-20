@@ -2,7 +2,6 @@ import { describe, expect, test } from 'vitest'
 import {
   isSelectionMoveHandleHit,
   resolveSelectionBounds,
-  resolveSelectionContentMoveCandidateCell,
   resolveSelectionMoveAnchorCell,
   resolveSelectionMoveCandidateCell,
 } from '../gridRangeMove.js'
@@ -33,11 +32,6 @@ describe('gridRangeMove', () => {
 
   test('resolves an interior selected cell as a deferred range-move candidate', () => {
     expect(resolveSelectionMoveCandidateCell(202, 57, { x: 1, y: 1, width: 2, height: 2 }, getCellBounds)).toEqual([1, 1])
-  })
-
-  test('resolves the leading content lane as a content drag candidate', () => {
-    expect(resolveSelectionContentMoveCandidateCell(182, 57, { x: 1, y: 1, width: 2, height: 2 }, getCellBounds)).toEqual([1, 1])
-    expect(resolveSelectionContentMoveCandidateCell(202, 57, { x: 1, y: 1, width: 2, height: 2 }, getCellBounds)).toBeNull()
   })
 
   test('reports selection-border hits through the shared helper', () => {
