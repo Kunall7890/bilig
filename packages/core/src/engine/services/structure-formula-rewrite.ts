@@ -161,7 +161,8 @@ export function rewriteFormulaFromTemplate(
   }
   const cacheKey =
     `${representative.templateId}:${representative.ownerSheetName}:${targetSheetName}:${transform.kind}:${transform.axis}:${transform.start}:${transform.count}:` +
-    `${transform.kind === 'move' ? transform.target : ''}`
+    `${transform.kind === 'move' ? transform.target : ''}` +
+    (transform.kind === 'delete' ? `:${representative.representativeRow}:${representative.representativeCol}:${formula.source}` : '')
   let rewrittenTemplate = cache.get(cacheKey)
   if (rewrittenTemplate === undefined) {
     rewrittenTemplate =

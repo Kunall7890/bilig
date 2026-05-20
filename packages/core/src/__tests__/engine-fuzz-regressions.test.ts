@@ -924,6 +924,42 @@ describe('engine fuzz regressions', () => {
     expect(restored.getCellValue('Sheet1', 'B6')).toEqual({ tag: ValueTag.Number, value: 3 })
   })
 
+  it('keeps exported copied formula families independent across structural deletes', async () => {
+    const engine = new SpreadsheetEngine({
+      workbookName: 'exported-copied-formula-family-delete-regression',
+      replicaId: 'exported-copied-formula-family-delete-regression',
+    })
+    await engine.ready()
+    engine.createSheet('Sheet1')
+
+    engine.setRangeValues(
+      {
+        sheetName: 'Sheet1',
+        startAddress: 'A1',
+        endAddress: 'B2',
+      },
+      [
+        [4, 2],
+        [3, 7],
+      ],
+    )
+    engine.setCellFormula('Sheet1', 'C1', 'A1+B2')
+    engine.setCellFormula('Sheet1', 'D2', 'C1*A2')
+    engine.copyRange(
+      { sheetName: 'Sheet1', startAddress: 'C1', endAddress: 'D2' },
+      { sheetName: 'Sheet1', startAddress: 'E2', endAddress: 'F3' },
+    )
+
+    engine.exportSnapshot()
+    engine.insertColumns('Sheet1', 0, 1)
+    engine.deleteColumns('Sheet1', 1, 1)
+
+    expect(engine.getCell('Sheet1', 'C1').formula).toBe('#REF!+B2')
+    expect(engine.getCell('Sheet1', 'D2').formula).toBe('C1*#REF!')
+    expect(engine.getCell('Sheet1', 'E2').formula).toBe('C2+D3')
+    expect(engine.getCell('Sheet1', 'F3').formula).toBe('E2*C3')
+  })
+
   it('does not rewrite formulas for sparse moves from outside materialized columns', async () => {
     const engine = new SpreadsheetEngine({
       workbookName: 'sparse-outside-column-move-regression',
