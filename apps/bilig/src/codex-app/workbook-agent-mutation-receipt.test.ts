@@ -278,6 +278,10 @@ const stagedPayloadSchema = z.object({
     renderedReadback: z.object({
       requested: z.literal(false),
     }),
+    semanticReadback: z.object({
+      requested: z.literal(false),
+      matched: z.null(),
+    }),
     undo: z.object({
       available: z.literal(false),
       reasonUnavailable: z.string(),
@@ -317,6 +321,11 @@ const appliedPayloadSchema = z.object({
       requested: z.literal(true),
       available: z.literal(false),
       matched: z.null(),
+      incompleteReason: z.string(),
+    }),
+    semanticReadback: z.object({
+      requested: z.literal(true),
+      matched: z.literal(false),
       incompleteReason: z.string(),
     }),
     undo: z.object({
@@ -454,6 +463,7 @@ describe('workbook agent mutation receipt helpers', () => {
 
     const payload = appliedPayloadSchema.parse(parsePayload(result))
     expect(payload.mutationReceipt.renderedReadback.incompleteReason).toContain('No browser-rendered context')
+    expect(payload.mutationReceipt.semanticReadback.incompleteReason).toContain('No browser-rendered context')
     expect(payload.mutationReceipt.warnings).toContain('No browser-rendered context was attached to this tool call.')
   })
 
@@ -510,12 +520,111 @@ describe('workbook agent mutation receipt helpers', () => {
             requested: z.literal(true),
             matched: z.literal(true),
           }),
+          semanticReadback: z.object({
+            requested: z.literal(true),
+            matched: z.literal(false),
+            incompleteReason: z.string(),
+          }),
           warnings: z.array(z.string()),
         }),
       })
       .parse(parsePayload(result))
     expect(payload.mutationReceipt.authoritativeReadback.incompleteReason).toContain('Authoritative readback did not match')
+    expect(payload.mutationReceipt.semanticReadback.incompleteReason).toContain('Authoritative readback')
     expect(payload.mutationReceipt.warnings).toContain('Authoritative readback did not match preview expectations.')
+  })
+
+  it('does not report applied when rendered proof is stale even if authoritative proof and undo agree', async () => {
+    const engine = await createEngine()
+    const appliedValue = 'Rendered proof must be fresh'
+    const command: WorkbookAgentCommand = {
+      kind: 'writeRange',
+      sheetName: 'Sheet1',
+      startAddress: 'B2',
+      values: [[appliedValue]],
+    }
+    const bundle = createBundle(command, 'bundle-stale-rendered-proof')
+    const undoBundle = applyWorkbookAgentCommandBundleWithUndoCapture(engine, bundle)
+    const { zeroSyncService } = createZeroSyncHarness(engine, {
+      headRevision: 2,
+      calculatedRevision: 2,
+      changes: [
+        {
+          revision: 2,
+          actorUserId: 'alex@example.com',
+          clientMutationId: null,
+          eventKind: 'applyAgentCommandBundle',
+          summary: 'Write cells in Sheet1!B2',
+          sheetId: null,
+          sheetName: 'Sheet1',
+          anchorAddress: 'B2',
+          range: {
+            sheetName: 'Sheet1',
+            startAddress: 'B2',
+            endAddress: 'B2',
+          },
+          rangeInvalid: false,
+          undoBundle,
+          revertedByRevision: null,
+          revertsRevision: null,
+          createdAtUnixMs: 2,
+        },
+      ],
+    })
+
+    const result = await stageWorkbookAgentCommandResult(
+      {
+        documentId: 'doc-1',
+        session: { userID: 'alex@example.com', roles: ['editor'] },
+        uiContext: createRenderedContext({
+          address: 'B2',
+          value: appliedValue,
+          capturedRevision: 1,
+        }),
+        zeroSyncService,
+        stageCommand: async () => ({
+          bundle,
+          executionRecord: createExecutionRecord({
+            bundle,
+            appliedRevision: 2,
+            afterInput: appliedValue,
+          }),
+        }),
+      },
+      command,
+      'writeRange',
+    )
+
+    const payload = z
+      .object({
+        applied: z.literal(true),
+        status: z.literal('verification_incomplete'),
+        mutationReceipt: z.object({
+          status: z.literal('verification_incomplete'),
+          authoritativeReadback: z.object({
+            requested: z.literal(true),
+            matched: z.literal(true),
+          }),
+          renderedReadback: z.object({
+            requested: z.literal(true),
+            matched: z.null(),
+            stale: z.literal(true),
+            incompleteReason: z.string(),
+          }),
+          semanticReadback: z.object({
+            requested: z.literal(true),
+            matched: z.literal(false),
+            incompleteReason: z.string(),
+          }),
+          undo: z.object({
+            available: z.literal(true),
+          }),
+        }),
+      })
+      .parse(parsePayload(result))
+    expect(payload.mutationReceipt.status).toBe('verification_incomplete')
+    expect(payload.mutationReceipt.semanticReadback.matched).toBe(false)
+    expect(payload.mutationReceipt.semanticReadback.incompleteReason).toContain('Rendered')
   })
 
   it('does not report applied when undo proof is missing even if readbacks agree', async () => {
@@ -571,6 +680,11 @@ describe('workbook agent mutation receipt helpers', () => {
           renderedReadback: z.object({
             requested: z.literal(true),
             matched: z.literal(true),
+          }),
+          semanticReadback: z.object({
+            requested: z.literal(true),
+            matched: z.literal(true),
+            incompleteReason: z.null(),
           }),
           undo: z.object({
             available: z.literal(false),
@@ -803,6 +917,11 @@ describe('workbook agent mutation receipt helpers', () => {
           renderedReadback: z.object({
             requested: z.literal(true),
             matched: z.literal(true),
+          }),
+          semanticReadback: z.object({
+            requested: z.literal(true),
+            matched: z.literal(true),
+            incompleteReason: z.null(),
           }),
           warnings: z.array(z.string()),
         }),

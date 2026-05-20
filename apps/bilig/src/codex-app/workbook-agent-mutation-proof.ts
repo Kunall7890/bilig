@@ -39,6 +39,12 @@ export interface WorkbookAuthoritativeReadbackProof {
   readonly incompleteReason: string | null
 }
 
+export interface WorkbookSemanticReadbackProof {
+  readonly requested: boolean
+  readonly matched: boolean | null
+  readonly incompleteReason: string | null
+}
+
 export interface WorkbookMutationUndoProof {
   readonly available: boolean
   readonly token: string | null
