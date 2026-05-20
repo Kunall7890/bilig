@@ -709,9 +709,7 @@ export class GridRenderTilePaneRuntime {
     }
 
     if (input.renderTileSource && input.sheetId !== undefined) {
-      return this.buildHybridLocalDirtyTiles(input, input.renderTileSource, input.sheetId, {
-        localizeDirtyVisibleTiles: false,
-      })
+      return this.buildHybridLocalDirtyTiles(input, input.renderTileSource, input.sheetId)
     }
 
     return this.buildLocalTiles(input)

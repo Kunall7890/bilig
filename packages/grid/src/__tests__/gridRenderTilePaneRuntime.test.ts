@@ -3,6 +3,7 @@ import { formatAddress } from '@bilig/formula'
 import { ValueTag, type CellSnapshot, type CellStyleRecord } from '@bilig/protocol'
 import type { GridEngineLike } from '../grid-engine.js'
 import { getGridMetrics } from '../gridMetrics.js'
+import { materializeGridRenderTileV3 } from '../renderer-v3/grid-tile-materializer.js'
 import { GRID_RECT_INSTANCE_FLOAT_COUNT_V3 } from '../renderer-v3/rect-instance-buffer.js'
 import type {
   GridRenderTile,
@@ -949,6 +950,122 @@ describe('GridRenderTilePaneRuntime', () => {
 
     expect(state.residentBodyPane?.tile).not.toBe(staleRemoteTile)
     expect(state.residentBodyPane?.tile.textRuns.some((run) => run.text === 'deleted value')).toBe(false)
+  })
+
+  it('localizes visible dirty remote tiles even when the stale remote payload looks complete', () => {
+    const runtime = new GridRenderTilePaneRuntime()
+    const host = createHost()
+    const tileId = host.viewportTileKeys({
+      dprBucket: 1,
+      sheetOrdinal: 7,
+      viewport: { colEnd: 127, colStart: 0, rowEnd: 31, rowStart: 0 },
+    })[0]
+    if (tileId === undefined) {
+      throw new Error('Expected a visible render tile key for the test viewport')
+    }
+    const remoteTile = createRenderTile(tileId)
+    host.tiles.applyWorkbookDelta(
+      createWorkbookDeltaBatch({
+        dirty: {
+          axisX: new Uint32Array(),
+          axisY: new Uint32Array(),
+          cellRanges: new Uint32Array([0, 0, 0, 0, DirtyMaskV3.Style | DirtyMaskV3.Rect]),
+        },
+      }),
+      { dprBucket: 1 },
+    )
+
+    const state = runtime.resolve(
+      createInput({
+        engine: LOCAL_EMPTY_ENGINE,
+        gridRuntimeHost: host,
+        renderTileSource: createRenderTileSource([remoteTile]),
+        visibleViewport: { colEnd: 10, colStart: 0, rowEnd: 10, rowStart: 0 },
+      }),
+    )
+
+    expect(state.residentBodyPane?.tile).not.toBe(remoteTile)
+    expect(state.residentBodyPane?.tile.dirtyLocalRows).toEqual(new Uint32Array([0, 0]))
+    expect(state.residentBodyPane?.tile.dirtyLocalCols).toEqual(new Uint32Array([0, 0]))
+    expect(state.residentBodyPane?.tile.dirtyMasks).toEqual(new Uint32Array([DirtyMaskV3.Style | DirtyMaskV3.Rect]))
+    expect(state.tileReadiness.visibleDirtyTileKeys).toContain(tileId)
+    expect(host.tiles.dirtyTiles.getUnconsumedMask(tileId)).toBe(0)
+  })
+
+  it('keeps clean neighboring remote tiles resident while localizing dirty visible tiles', () => {
+    const runtime = new GridRenderTilePaneRuntime()
+    const host = createHost()
+    const [dirtyTileId, cleanTileId] = host.viewportTileKeys({
+      dprBucket: 1,
+      sheetOrdinal: 7,
+      viewport: { colEnd: 255, colStart: 0, rowEnd: 31, rowStart: 0 },
+    })
+    if (dirtyTileId === undefined || cleanTileId === undefined) {
+      throw new Error('Expected two render tile keys for the test viewport')
+    }
+    const dirtyRemoteTile = createRenderTile(dirtyTileId)
+    const cleanRemoteTextAddress = formatAddress(0, 128)
+    const engine: GridEngineLike = {
+      ...LOCAL_EMPTY_ENGINE,
+      getCell: (_sheetName, address) =>
+        address === cleanRemoteTextAddress
+          ? createStringCellSnapshot(cleanRemoteTextAddress, 'clean remote text')
+          : createEmptyCellSnapshot(address),
+    }
+    const cleanRemoteTile = materializeGridRenderTileV3({
+      axisSeqX: 1,
+      axisSeqY: 1,
+      cameraSeq: 1,
+      columnWidths: {},
+      dprBucket: 1,
+      engine,
+      freezeSeq: 1,
+      gridMetrics: getGridMetrics(),
+      materializedAtSeq: 1,
+      packetSeq: 1,
+      rectSeq: 1,
+      rowHeights: {},
+      sheetId: 7,
+      sheetName: 'Sheet1',
+      sheetOrdinal: 7,
+      sortedColumnWidthOverrides: [],
+      sortedRowHeightOverrides: [],
+      styleSeq: 1,
+      textSeq: 1,
+      valueSeq: 1,
+      viewport: { colEnd: 255, colStart: 128, rowEnd: 31, rowStart: 0 },
+    })
+    expect(cleanRemoteTile.tileId).toBe(cleanTileId)
+    host.tiles.applyWorkbookDelta(
+      createWorkbookDeltaBatch({
+        dirty: {
+          axisX: new Uint32Array(),
+          axisY: new Uint32Array(),
+          cellRanges: new Uint32Array([0, 0, 0, 0, DirtyMaskV3.Style | DirtyMaskV3.Rect]),
+        },
+      }),
+      { dprBucket: 1 },
+    )
+
+    const state = runtime.resolve(
+      createInput({
+        engine,
+        gridRuntimeHost: host,
+        renderTileSource: createRenderTileSource([dirtyRemoteTile, cleanRemoteTile]),
+        renderTileViewport: { colEnd: 255, colStart: 0, rowEnd: 31, rowStart: 0 },
+        residentViewport: { colEnd: 255, colStart: 0, rowEnd: 31, rowStart: 0 },
+        visibleViewport: { colEnd: 255, colStart: 0, rowEnd: 31, rowStart: 0 },
+      }),
+    )
+
+    expect(state.renderTilePanes.map((pane) => pane.tile.tileId)).toEqual([dirtyTileId, cleanTileId])
+    expect(state.renderTilePanes[0]?.tile).not.toBe(dirtyRemoteTile)
+    expect(state.renderTilePanes[0]?.tile.dirtyLocalRows).toEqual(new Uint32Array([0, 0]))
+    expect(state.renderTilePanes[0]?.tile.dirtyLocalCols).toEqual(new Uint32Array([0, 0]))
+    expect(state.renderTilePanes[0]?.tile.dirtyMasks).toEqual(new Uint32Array([DirtyMaskV3.Style | DirtyMaskV3.Rect]))
+    expect(state.renderTilePanes[1]?.tile).toBe(cleanRemoteTile)
+    expect(state.renderTilePanes[1]?.tile.textRuns[0]?.text).toBe('clean remote text')
+    expect(host.tiles.dirtyTiles.getUnconsumedMask(dirtyTileId)).toBe(0)
   })
 
   it('requires coherent sheet id and ordinal for remote tiles when both are known', () => {
