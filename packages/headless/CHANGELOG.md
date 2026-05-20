@@ -11,9 +11,11 @@ This package is released as part of the aligned bilig library package set.
 - Manual override: no
 
 ## Features
+
 - feat(runtime): add scoped Bilig npm packages (b2b1a825)
 
 ## Fixes
+
 - perf(core): chunk initial direct scalar runs (5cef046e)
 
 ## 0.37.2
@@ -23,6 +25,7 @@ This package is released as part of the aligned bilig library package set.
 - Manual override: no
 
 ## Fixes
+
 - fix(zero): share persisted value guards (10bab669)
 - perf(formula): tighten scalar row-pair batch writes (586e30cb)
 - perf(core): avoid reparsing initial formula templates (a7d70e4f)
@@ -34,6 +37,7 @@ This package is released as part of the aligned bilig library package set.
 - Manual override: no
 
 ## Fixes
+
 - perf(core): share written column tracking (4a22f9fb)
 - perf(formula): route large ifs aggregates through native predicate (30cf1116)
 - perf(core): skip supported formula cache parses (2e44b5a5)
@@ -41,6 +45,7 @@ This package is released as part of the aligned bilig library package set.
 - perf(formula): tighten scalar column batch writes (51b72473)
 
 ## Internal runtime changes
+
 - docs(growth): route sheetjs users to named package (bd0987f8)
 
 ## 0.37.0
@@ -50,9 +55,11 @@ This package is released as part of the aligned bilig library package set.
 - Manual override: no
 
 ## Features
+
 - feat(xlsx): expose sheetjs recalc command (ad9ad52f)
 
 ## Fixes
+
 - perf(formula): add native predicate criteria aggregation (e5aabb7b)
 
 ## 0.36.2
@@ -62,6 +69,7 @@ This package is released as part of the aligned bilig library package set.
 - Manual override: no
 
 ## Fixes
+
 - fix(docs): route sheetjs users to live xlsx package (e8bfef83)
 
 ## 0.36.1
@@ -71,6 +79,7 @@ This package is released as part of the aligned bilig library package set.
 - Manual override: no
 
 ## Fixes
+
 - perf(formula): widen native over-limit initialization (6198ed6f)
 - perf(core): speed wide dense cell allocation (369b2f5e)
 - fix(release): skip unprovisioned runtime packages (9d486e56)
@@ -82,9 +91,11 @@ This package is released as part of the aligned bilig library package set.
 - Manual override: no
 
 ## Features
+
 - feat(recalc): add sheetjs formula recalc package (b27bbd1a)
 
 ## Fixes
+
 - perf(core): trim formula initialization bookkeeping (3e58a650)
 
 ## 0.35.1
@@ -94,9 +105,11 @@ This package is released as part of the aligned bilig library package set.
 - Manual override: no
 
 ## Fixes
+
 - perf(formula): native anchored prefix initialization (da6b943d)
 
 ## Internal runtime changes
+
 - docs(growth): target sheetjs formula readback traffic (55faaa0b)
 
 ## 0.35.0
@@ -106,9 +119,11 @@ This package is released as part of the aligned bilig library package set.
 - Manual override: no
 
 ## Features
+
 - feat(recalc): cover incumbent xlsx formula bridges (bb5da689)
 
 ## Fixes
+
 - perf(formula): retune native direct scalar initialization (f5b076ac)
 - perf(headless): skip scalar inspection compiles (fc973438)
 
@@ -119,6 +134,7 @@ This package is released as part of the aligned bilig library package set.
 - Manual override: no
 
 ## Fixes
+
 - perf(formula): promote xlookup spill returns (060be2c8)
 
 ## 0.34.0
@@ -128,9 +144,11 @@ This package is released as part of the aligned bilig library package set.
 - Manual override: no
 
 ## Features
+
 - feat(recalc): ship package-native formula proof CLIs (b9d6bfd8)
 
 ## Fixes
+
 - perf(core): reuse safe inline initial formulas (3944959a)
 
 ## 0.33.1
@@ -140,6 +158,7 @@ This package is released as part of the aligned bilig library package set.
 - Manual override: no
 
 ## Fixes
+
 - perf(formula): promote xlookup approximate matching (25bd729f)
 
 ## 0.33.0
@@ -149,6 +168,7 @@ This package is released as part of the aligned bilig library package set.
 - Manual override: no
 
 ## Features
+
 - feat(bilig-workpaper): ship agent-ready npm entrypoints (9da4ee33)
 
 ## 0.32.9
@@ -158,6 +178,7 @@ This package is released as part of the aligned bilig library package set.
 - Manual override: no
 
 ## Fixes
+
 - perf(core): avoid string keys in formula family init (028e5084)
 
 ## 0.32.8
@@ -167,6 +188,7 @@ This package is released as part of the aligned bilig library package set.
 - Manual override: no
 
 ## Fixes
+
 - perf(formula): add native row-chain scalar init (2ff802d5)
 
 ## 0.32.7
@@ -176,6 +198,7 @@ This package is released as part of the aligned bilig library package set.
 - Manual override: no
 
 ## Fixes
+
 - fix(release): sync static discovery references (0eaed367)
 - fix(xlsx-formula-recalc): surface high-traffic recalc entrypoint (d7f76fde)
 
@@ -186,6 +209,7 @@ This package is released as part of the aligned bilig library package set.
 - Manual override: no
 
 ## Fixes
+
 - perf(formula): write native scalar init into kernel store (c08356c1)
 - fix(docs): sync 0.32.5 public agent links (a80d2c7d)
 
@@ -196,6 +220,7 @@ This package is released as part of the aligned bilig library package set.
 - Manual override: no
 
 ## Fixes
+
 - fix(release): sync agent discovery docs (26007971)
 
 ## 0.32.4
@@ -205,10 +230,12 @@ This package is released as part of the aligned bilig library package set.
 - Manual override: no
 
 ## Fixes
+
 - fix(formula): align headless error semantics (b1c774a9)
 - fix(core): ignore stale direct formula deltas (4e6bf441)
 
 ## Internal runtime changes
+
 - docs(discovery): sync 0.32.3 agent surfaces (5bdb4132)
 
 ## 0.32.3
@@ -218,9 +245,11 @@ This package is released as part of the aligned bilig library package set.
 - Manual override: no
 
 ## Fixes
+
 - perf(headless): fast-path public literal batches (80edd87e)
 
 ## Internal runtime changes
+
 - docs(discovery): sync 0.32.2 agent surfaces (291aa4f2)
 - docs(growth): route evaluators to recalc packages (fdde26f3)
 
