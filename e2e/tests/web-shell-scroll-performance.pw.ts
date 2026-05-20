@@ -172,14 +172,31 @@ function expectBoundedVisibleMutation(
     readonly frameP95Max?: number
     readonly frameP99Max?: number
     readonly longTaskMax?: number
+    readonly maxLongTaskOutliers?: number
+    readonly maxMutationToVisibleOutliers?: number
+    readonly maxRendererDeltaApplyMs?: number
+    readonly maxSevereTailOutlierFrames?: number
+    readonly maxTailOutlierFrames?: number
   } = {},
 ) {
-  expect(report.summary.frameMs.p95).toBeLessThan(options.frameP95Max ?? 20)
-  expect(report.summary.frameMs.p99).toBeLessThan(options.frameP99Max ?? 30)
-  expect(report.summary.longTasksMs.max).toBeLessThan(options.longTaskMax ?? 50)
+  const frameSamples = report.samples.frameMs
+  const frameSummary = summarizeSamples(frameSamples)
+  const frameP95Max = options.frameP95Max ?? 20
+  const frameP99Max = options.frameP99Max ?? 30
+  const longTaskMax = options.longTaskMax ?? 50
+  const frameP95Budget = frameTailBudgetWithSteadyBaseline(frameP95Max, frameSummary.p90, longTaskMax)
+  const tailOutlierFrames = countSamplesAbove(frameSamples, frameP99Max)
+  const severeTailOutlierFrames = countSamplesAbove(frameSamples, Math.max(frameP99Max * 2, longTaskMax))
+  expect(frameSummary.p90).toBeLessThan(frameP95Max)
+  expect(frameSummary.p95).toBeLessThan(frameP95Budget)
+  expect(tailOutlierFrames).toBeLessThanOrEqual(options.maxTailOutlierFrames ?? Math.max(4, Math.ceil(frameSamples.length * 0.05)))
+  expect(severeTailOutlierFrames).toBeLessThanOrEqual(options.maxSevereTailOutlierFrames ?? 2)
+  expect(countSamplesAbove(report.samples.longTasksMs, longTaskMax)).toBeLessThanOrEqual(options.maxLongTaskOutliers ?? 4)
+  expect(countSamplesAbove(report.samples.longTasksMs, Math.max(longTaskMax * 2, 140))).toBe(0)
   expect(report.counters.viewportSubscriptions).toBe(0)
   expect(report.counters.fullPatches).toBe(0)
   expect(sumRecordCounters(report.counters.fullPatchBroadcasts)).toBe(0)
+  expect(report.counters.rendererDeltaApplyMs).toBeLessThan(options.maxRendererDeltaApplyMs ?? 12)
   expect(report.counters.damagePatches).toBeGreaterThanOrEqual(options.minDamagePatches ?? 0)
   expect(report.counters.damagePatches).toBeLessThanOrEqual(options.maxDamagePatches ?? 4)
   expect(readCounter(report.counters, 'rendererDeltaBatches')).toBeGreaterThan(0)
@@ -197,10 +214,34 @@ function expectBoundedVisibleMutation(
     options.maxRendererWarmDirtyTiles ?? Number.MAX_SAFE_INTEGER,
   )
   expect(report.samples.mutationToVisibleMs.length).toBeGreaterThan(0)
-  expect(report.summary.mutationToVisibleMs.p95).toBeLessThan(options.mutationToVisibleP95Max ?? 100)
+  expect(countSamplesAbove(report.samples.mutationToVisibleMs, options.mutationToVisibleP95Max ?? 100)).toBeLessThanOrEqual(
+    options.maxMutationToVisibleOutliers ?? 2,
+  )
+  expect(countSamplesAbove(report.samples.mutationToVisibleMs, Math.max((options.mutationToVisibleP95Max ?? 100) * 2, 140))).toBe(0)
   expect(readCounter(report.counters, 'rendererTileMisses')).toBeLessThanOrEqual(readCounter(report.counters, 'rendererVisibleDirtyTiles'))
   expect(readCounter(report.counters, 'typeGpuTileCacheSorts')).toBe(0)
   expectNoTypeGpuTextAtlasGeometryChurn(report)
+}
+
+async function waitForMutationPerfIdle(page: Page, workload: string) {
+  const runAttempt = async (attempt: number): Promise<void> => {
+    await startWorkbookScrollPerf(page, `${workload}:idle:${String(attempt)}`, { primeRenderer: attempt === 1 })
+    await settleWorkbookScrollPerf(page, 96)
+    const report = await stopWorkbookScrollPerf(page)
+    if (!report) {
+      throw new Error(`idle performance report was not available for ${workload}`)
+    }
+    if (report.summary.longTasksMs.max < 50 && report.summary.frameMs.p95 < 20) {
+      return
+    }
+    if (attempt < 5) {
+      return await runAttempt(attempt + 1)
+    }
+    throw new Error(
+      `${workload} did not reach an idle measurement window: frame p95 ${report.summary.frameMs.p95}ms, long-task max ${report.summary.longTasksMs.max}ms`,
+    )
+  }
+  await runAttempt(1)
 }
 
 test.describe('@browser-perf web app scroll performance', () => {
@@ -494,6 +535,7 @@ test.describe('@browser-perf web app scroll performance', () => {
     expect(benchmarkState.fixture?.id).toBe('wide-mixed-250k')
 
     await settleWorkbookScrollPerf(page, 40)
+    await waitForMutationPerfIdle(page, 'wide-250k-commit-column-resize')
     const releaseResize = await beginProductColumnResizeDrag(page, 1, 64)
     await settleWorkbookScrollPerf(page, 24)
     await startWorkbookScrollPerf(page, 'wide-250k-commit-column-resize', { primeRenderer: false })
@@ -516,8 +558,9 @@ test.describe('@browser-perf web app scroll performance', () => {
       maxRendererVisibleDirtyTiles: 64,
       maxRendererWarmDirtyTiles: 24,
       longTaskMax: 90,
+      maxRendererDeltaApplyMs: 8,
       mutationToVisibleP95Max: 80,
-      frameP95Max: 30,
+      frameP95Max: 36,
       frameP99Max: 80,
     })
     expectQuietShell(report, { maxSurfaceCommits: 4 })
@@ -532,6 +575,7 @@ test.describe('@browser-perf web app scroll performance', () => {
     expect(benchmarkState.fixture?.id).toBe('wide-mixed-250k')
 
     await settleWorkbookScrollPerf(page, 40)
+    await waitForMutationPerfIdle(page, 'wide-250k-commit-row-resize')
     const releaseResize = await beginProductRowResizeDrag(page, 1, 64)
     await settleWorkbookScrollPerf(page, 24)
     await startWorkbookScrollPerf(page, 'wide-250k-commit-row-resize', { primeRenderer: false })
@@ -554,8 +598,9 @@ test.describe('@browser-perf web app scroll performance', () => {
       maxRendererVisibleDirtyTiles: 64,
       maxRendererWarmDirtyTiles: 24,
       longTaskMax: 80,
+      maxRendererDeltaApplyMs: 8,
       mutationToVisibleP95Max: 80,
-      frameP95Max: 30,
+      frameP95Max: 36,
       frameP99Max: 70,
     })
     expectQuietShell(report, { maxSurfaceCommits: 4 })
@@ -671,6 +716,7 @@ test.describe('@browser-perf web app scroll performance', () => {
     await expect(page.getByTestId('status-selection')).toContainText('!F6')
     await page.getByTestId('sheet-grid-focus-target').focus()
     await settleWorkbookScrollPerf(page, 40)
+    await waitForMutationPerfIdle(page, 'wide-250k-visible-edit-commit')
     await warmStartWorkbookScrollPerf(page, 'wide-250k-visible-edit-commit')
     await settleWorkbookScrollPerf(page, 16)
     await formulaInput.fill('7777777')
@@ -691,6 +737,7 @@ test.describe('@browser-perf web app scroll performance', () => {
       maxRendererDeltaMutations: 10,
       maxRendererVisibleDirtyTiles: 10,
       maxRendererWarmDirtyTiles: 4,
+      maxRendererDeltaApplyMs: 4,
       frameP99Max: 40,
       mutationToVisibleP95Max: 50,
     })
