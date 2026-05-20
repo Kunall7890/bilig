@@ -37,6 +37,8 @@ import {
   MAX_INITIAL_NATIVE_DIRECT_SCALAR_BATCH_SIZE,
   MIN_INITIAL_NATIVE_DIRECT_SCALAR_BATCH_SIZE,
 } from './formula-initialization-native-direct-scalar.js'
+import { createInitialDirectScalarRunChunkCollector } from './formula-initialization-direct-scalar-run-chunks.js'
+import { createInitialDirectScalarPreEvaluationTracker } from './formula-initialization-direct-scalar-pre-evaluation.js'
 import {
   createInitialNativeDirectScalarRowChainBatch,
   MIN_INITIAL_NATIVE_DIRECT_SCALAR_ROW_CHAIN_BATCH_SIZE,
@@ -164,12 +166,10 @@ export function createEngineFormulaInitializationService(args: EngineFormulaInit
       let canUseNativeInitialDirectLookupOverLimit = false
       let canUseNativeInitialPrefixAggregateOverLimit = false
       let inlineInitialDirectScalarWriter: InitialFormulaValueWriter | undefined
-      let inlineInitialDirectScalarCellBuffer: Uint32Array | undefined = hadExistingFormulas
-        ? new Uint32Array(Math.max(refs.length, 1))
-        : undefined
-      let inlineInitialDirectScalarCellCount = 0
-      let inlineInitialDirectScalarReusableCells: Uint8Array | undefined
-      let allInlineInitialDirectScalarCellsReusable = true
+      const nativeInitialDirectScalarRunChunks =
+        hadExistingFormulas || refs.length < MIN_INITIAL_NATIVE_DIRECT_SCALAR_BATCH_SIZE
+          ? undefined
+          : createInitialDirectScalarRunChunkCollector({ state: args.state })
       let nativeInitialDirectScalarBatch =
         hadExistingFormulas ||
         refs.length < MIN_INITIAL_NATIVE_DIRECT_SCALAR_BATCH_SIZE ||
@@ -223,6 +223,14 @@ export function createEngineFormulaInitializationService(args: EngineFormulaInit
         }
       }
       const orderedPreparedCellList = (): InitialFormulaCellIndexList => orderedPreparedCellIndices ?? targetCellIndices
+      const inlineInitialDirectScalarCells = createInitialDirectScalarPreEvaluationTracker({
+        state: args.state,
+        refsLength: refs.length,
+        targetCellIndices,
+        maxTargetCellIndex,
+        orderedPreparedCellList,
+        orderedPreparedCellCount: () => orderedPreparedCellCount,
+      })
       const materializeFreshFormulaChangedBuffer = (): number => {
         if (hadExistingFormulas || freshFormulaChangedBufferMaterialized) {
           return formulaChangedCount
@@ -238,59 +246,8 @@ export function createEngineFormulaInitializationService(args: EngineFormulaInit
       const logicalFormulaChangedCount = (): number =>
         !hadExistingFormulas && !freshFormulaChangedBufferMaterialized ? orderedPreparedCellCount : formulaChangedCount
 
-      const materializeInlineInitialDirectScalarCellBuffer = (): Uint32Array => {
-        if (inlineInitialDirectScalarCellBuffer) {
-          return inlineInitialDirectScalarCellBuffer
-        }
-        inlineInitialDirectScalarCellBuffer = new Uint32Array(Math.max(refs.length, 1))
-        inlineInitialDirectScalarCellBuffer.set(targetCellIndices.subarray(0, inlineInitialDirectScalarCellCount))
-        return inlineInitialDirectScalarCellBuffer
-      }
-      const pushInlineInitialDirectScalarCell = (cellIndex: number): void => {
-        if (
-          !hadExistingFormulas &&
-          inlineInitialDirectScalarCellBuffer === undefined &&
-          cellIndex === targetCellIndices[inlineInitialDirectScalarCellCount]
-        ) {
-          inlineInitialDirectScalarCellCount += 1
-          return
-        }
-        let buffer = materializeInlineInitialDirectScalarCellBuffer()
-        if (inlineInitialDirectScalarCellCount === buffer.length) {
-          const next = new Uint32Array(buffer.length * 2)
-          next.set(buffer)
-          inlineInitialDirectScalarCellBuffer = next
-          buffer = next
-        }
-        buffer[inlineInitialDirectScalarCellCount] = cellIndex
-        inlineInitialDirectScalarCellCount += 1
-      }
-      const materializeInlineInitialDirectScalarReusableCells = (): Uint8Array => {
-        if (inlineInitialDirectScalarReusableCells) {
-          return inlineInitialDirectScalarReusableCells
-        }
-        inlineInitialDirectScalarReusableCells = new Uint8Array(maxTargetCellIndex + 1)
-        return inlineInitialDirectScalarReusableCells
-      }
       const noteInlineInitialDirectScalarCell = (prepared: { cellIndex: number }, runtimeFormula: RuntimeFormula): void => {
-        pushInlineInitialDirectScalarCell(prepared.cellIndex)
-        const reusableCells = materializeInlineInitialDirectScalarReusableCells()
-        let canReuse = true
-        for (let index = 0; index < runtimeFormula.dependencyIndices.length; index += 1) {
-          const dependencyCellIndex = runtimeFormula.dependencyIndices[index]!
-          if (
-            ((args.state.workbook.cellStore.flags[dependencyCellIndex] ?? 0) & CellFlags.HasFormula) !== 0 &&
-            reusableCells[dependencyCellIndex] !== 1
-          ) {
-            canReuse = false
-            break
-          }
-        }
-        if (canReuse) {
-          reusableCells[prepared.cellIndex] = 1
-        } else {
-          allInlineInitialDirectScalarCellsReusable = false
-        }
+        inlineInitialDirectScalarCells.noteCell(prepared.cellIndex, runtimeFormula)
       }
 
       const tryInlineInitialDirectScalarEvaluation = (
@@ -307,6 +264,14 @@ export function createEngineFormulaInitializationService(args: EngineFormulaInit
           return
         }
         if (runtimeFormula.directScalar !== undefined) {
+          const addedToNativeRunChunks =
+            nativeInitialDirectScalarRunChunks?.add({
+              cellIndex: prepared.cellIndex,
+              sheetId: prepared.sheetId,
+              row: prepared.row,
+              col: prepared.col,
+              runtimeFormula,
+            }) === true
           let addedToNativeRowChain = false
           if (nativeInitialDirectScalarRowChainBatch) {
             if (nativeInitialDirectScalarRowChainBatch.add(prepared, runtimeFormula)) {
@@ -324,6 +289,9 @@ export function createEngineFormulaInitializationService(args: EngineFormulaInit
             nativeInitialDirectScalarCellCount = 0
           }
           if (addedToNativeRowChain) {
+            return
+          }
+          if (addedToNativeRunChunks) {
             return
           }
           const numericValue = evaluateInitialDirectScalarNumber(args.state, runtimeFormula.directScalar)
@@ -485,6 +453,10 @@ export function createEngineFormulaInitializationService(args: EngineFormulaInit
           hasInitialPrefixAggregateCandidates &&
           orderedPreparedCellCount > INITIAL_DIRECT_FORMULA_EVALUATION_LIMIT &&
           canEvaluateInitialPrefixAggregateGroupsNatively(args, orderedPreparedCellList(), { requireAllCells: true })
+        const canUseNativeInitialDirectScalarRunChunksOverLimit =
+          nativeInitialDirectScalarRunChunks !== undefined &&
+          orderedPreparedCellCount > INITIAL_DIRECT_FORMULA_EVALUATION_LIMIT &&
+          nativeInitialDirectScalarRunChunks.hasNativeChunks()
         canUseInitialDirectEvaluation =
           canAssignTopoInBatch &&
           !hadExistingFormulas &&
@@ -494,7 +466,8 @@ export function createEngineFormulaInitializationService(args: EngineFormulaInit
             canUseNativeInitialDirectScalarRowChain ||
             canUseNativeInitialDirectScalarOverLimit ||
             canUseNativeInitialDirectLookupOverLimit ||
-            canUseNativeInitialPrefixAggregateOverLimit) &&
+            canUseNativeInitialPrefixAggregateOverLimit ||
+            canUseNativeInitialDirectScalarRunChunksOverLimit) &&
           orderedPreparedCellCount === refs.length
         compileMs += performance.now() - compileStarted
       } finally {
@@ -543,7 +516,25 @@ export function createEngineFormulaInitializationService(args: EngineFormulaInit
       }
       let recalculated: U32
       const allowInitialDirectEvaluationOverLimit =
-        canUseNativeInitialDirectScalarOverLimit || canUseNativeInitialDirectLookupOverLimit || canUseNativeInitialPrefixAggregateOverLimit
+        canUseNativeInitialDirectScalarOverLimit ||
+        canUseNativeInitialDirectLookupOverLimit ||
+        canUseNativeInitialPrefixAggregateOverLimit ||
+        (nativeInitialDirectScalarRunChunks !== undefined &&
+          orderedPreparedCellCount > INITIAL_DIRECT_FORMULA_EVALUATION_LIMIT &&
+          nativeInitialDirectScalarRunChunks.hasNativeChunks())
+      const canEvaluateWholeBatchNatively =
+        useInitialDirectEvaluation &&
+        !hasInitialPrefixAggregateCandidates &&
+        ((nativeInitialDirectScalarRowChainBatch !== undefined &&
+          nativeInitialDirectScalarRowChainBatch.count === orderedPreparedCellCount) ||
+          nativeInitialDirectScalarCellCount === orderedPreparedCellCount ||
+          nativeInitialDirectLookupCellCount === orderedPreparedCellCount)
+      if (useInitialDirectEvaluation && !canEvaluateWholeBatchNatively) {
+        const runChunkCells = nativeInitialDirectScalarRunChunks?.evaluate()
+        if (runChunkCells) {
+          inlineInitialDirectScalarCells.noteReusableCells(runChunkCells)
+        }
+      }
       if (
         useInitialDirectEvaluation &&
         nativeInitialDirectScalarRowChainBatch !== undefined &&
@@ -619,12 +610,10 @@ export function createEngineFormulaInitializationService(args: EngineFormulaInit
         }
       } else if (
         useInitialDirectEvaluation &&
-        inlineInitialDirectScalarCellCount === orderedPreparedCellCount &&
+        inlineInitialDirectScalarCells.cellCount === orderedPreparedCellCount &&
         !hasInitialPrefixAggregateCandidates
       ) {
-        recalculated = inlineInitialDirectScalarCellBuffer
-          ? inlineInitialDirectScalarCellBuffer.subarray(0, inlineInitialDirectScalarCellCount)
-          : targetCellIndices
+        recalculated = inlineInitialDirectScalarCells.cellIndices!.subarray(0, inlineInitialDirectScalarCells.cellCount)
         args.deferKernelSync(recalculated)
         addEngineCounter(args.state.counters, 'directFormulaInitialEvaluations', orderedPreparedCellCount)
       } else if (useInitialDirectEvaluation) {
@@ -632,11 +621,11 @@ export function createEngineFormulaInitializationService(args: EngineFormulaInit
           alreadyValidated: true,
           hasPrefixAggregateCandidates: hasInitialPrefixAggregateCandidates,
           allowOverLimit: allowInitialDirectEvaluationOverLimit,
-          ...(inlineInitialDirectScalarCellCount > 0
+          ...(inlineInitialDirectScalarCells.cellCount > 0
             ? {
-                preEvaluatedCellIndices: inlineInitialDirectScalarCellBuffer ?? targetCellIndices,
-                preEvaluatedCellCount: inlineInitialDirectScalarCellCount,
-                preEvaluatedCellsAreReusable: allInlineInitialDirectScalarCellsReusable,
+                preEvaluatedCellIndices: inlineInitialDirectScalarCells.cellIndices!,
+                preEvaluatedCellCount: inlineInitialDirectScalarCells.cellCount,
+                preEvaluatedCellsAreReusable: inlineInitialDirectScalarCells.allCellsReusable,
               }
             : {}),
         })
