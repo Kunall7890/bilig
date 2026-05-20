@@ -150,6 +150,36 @@ describe('dynamic overlay batch v3', () => {
     )
   })
 
+  test('can exclude hover from TypeGPU overlay batches so normal selection stays allocation-free', () => {
+    const metrics = getGridMetrics()
+    const geometry = createGridGeometrySnapshotFromAxes({
+      columns: createGridAxisWorldIndex({ axisLength: 20, defaultSize: 100 }),
+      dpr: 2,
+      freezeCols: 0,
+      freezeRows: 0,
+      gridMetrics: metrics,
+      hostHeight: 220,
+      hostWidth: 520,
+      rows: createGridAxisWorldIndex({ axisLength: 20, defaultSize: 20 }),
+      scrollLeft: 0,
+      scrollTop: 0,
+      sheetName: 'Sheet1',
+      updatedAt: 100,
+    })
+
+    const overlay = buildDynamicGridOverlayBatchV3({
+      geometry,
+      hoveredCell: [3, 3],
+      selectionRange: null,
+      showFillHandle: false,
+      showHoverOverlay: false,
+      showSelectionOverlay: false,
+    })
+
+    expect(overlay.rectCount).toBe(0)
+    expect(overlay.rectInstances).toHaveLength(DYNAMIC_OVERLAY_RECT_INSTANCE_FLOAT_COUNT_V3)
+  })
+
   test('draws row-selection body highlights through the dynamic overlay', () => {
     const metrics = getGridMetrics()
     const geometry = createGridGeometrySnapshotFromAxes({

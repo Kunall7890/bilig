@@ -20,6 +20,19 @@ function createContext(address: string): WorkbookAgentUiContext {
   }
 }
 
+function createRenderedContext(address: string, capturedRevision: number): WorkbookAgentUiContext {
+  return {
+    ...createContext(address),
+    rendered: {
+      capturedAtUnixMs: capturedRevision * 100,
+      capturedRevision,
+      batchId: capturedRevision,
+      selection: null,
+      visibleRange: null,
+    },
+  }
+}
+
 function createSnapshot(status: WorkbookAgentThreadSnapshot['status'] = 'idle'): WorkbookAgentThreadSnapshot {
   return {
     activeTurnId: status === 'inProgress' ? 'turn-1' : null,
@@ -279,6 +292,73 @@ describe('useWorkbookAgentContextSync', () => {
     }
   })
 
+  it('skips idle rendered proof revision churn after the initial sync', async () => {
+    ;(globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true
+    vi.useFakeTimers()
+
+    const syncThreadContext = vi.fn(async () => {})
+    const host = document.createElement('div')
+    document.body.appendChild(host)
+    const root = createRoot(host)
+
+    function Harness() {
+      const [capturedRevision, setCapturedRevision] = useState(7)
+      const contextRef = useRef(createRenderedContext('A1', capturedRevision))
+      const sessionRef = useRef({ threadId: 'thr-1' })
+      const getContextRef = useRef(() => contextRef.current)
+      const snapshot = useMemo(createSnapshot, [])
+      contextRef.current = createRenderedContext('A1', capturedRevision)
+      const { scheduleContextSync } = useWorkbookAgentContextSync({
+        client: { syncThreadContext },
+        documentId: 'doc-1',
+        enabled: true,
+        getContextRef,
+        sessionRef,
+        snapshot,
+      })
+
+      useEffect(() => {
+        scheduleContextSync()
+      }, [capturedRevision, scheduleContextSync])
+
+      return (
+        <button data-testid="revision" type="button" onClick={() => setCapturedRevision((current) => current + 1)}>
+          {capturedRevision}
+        </button>
+      )
+    }
+
+    try {
+      await act(async () => {
+        root.render(<Harness />)
+      })
+
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(200)
+      })
+
+      expect(syncThreadContext).toHaveBeenCalledTimes(1)
+
+      await act(async () => {
+        host.querySelector<HTMLButtonElement>("[data-testid='revision']")?.click()
+      })
+
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(1_000)
+      })
+
+      expect(syncThreadContext).toHaveBeenCalledTimes(1)
+      expect(syncThreadContext).toHaveBeenLastCalledWith(
+        'thr-1',
+        expect.objectContaining({ rendered: expect.objectContaining({ capturedRevision: 7 }) }),
+      )
+    } finally {
+      await act(async () => {
+        root.unmount()
+      })
+    }
+  })
+
   it('throttles passive rendered context churn during active assistant turns', async () => {
     ;(globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true
     vi.useFakeTimers()
@@ -360,6 +440,73 @@ describe('useWorkbookAgentContextSync', () => {
       expect(syncThreadContext).toHaveBeenLastCalledWith(
         'thr-1',
         expect.objectContaining({ viewport: expect.objectContaining({ rowEnd: 21 }) }),
+      )
+    } finally {
+      await act(async () => {
+        root.unmount()
+      })
+    }
+  })
+
+  it('syncs rendered proof freshness during active assistant turns without immediate request floods', async () => {
+    ;(globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true
+    vi.useFakeTimers()
+
+    const syncThreadContext = vi.fn(async () => {})
+    const host = document.createElement('div')
+    document.body.appendChild(host)
+    const root = createRoot(host)
+
+    function Harness() {
+      const [capturedRevision, setCapturedRevision] = useState(7)
+      const contextRef = useRef(createRenderedContext('A1', capturedRevision))
+      const sessionRef = useRef({ threadId: 'thr-1' })
+      const getContextRef = useRef(() => contextRef.current)
+      const snapshot = useMemo(() => createSnapshot('inProgress'), [])
+      contextRef.current = createRenderedContext('A1', capturedRevision)
+      const { scheduleContextSync } = useWorkbookAgentContextSync({
+        client: { syncThreadContext },
+        documentId: 'doc-1',
+        enabled: true,
+        getContextRef,
+        sessionRef,
+        snapshot,
+      })
+
+      useEffect(() => {
+        scheduleContextSync()
+      }, [capturedRevision, scheduleContextSync])
+
+      return (
+        <button data-testid="revision" type="button" onClick={() => setCapturedRevision((current) => current + 1)}>
+          {capturedRevision}
+        </button>
+      )
+    }
+
+    try {
+      await act(async () => {
+        root.render(<Harness />)
+      })
+
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(200)
+      })
+
+      expect(syncThreadContext).toHaveBeenCalledTimes(1)
+
+      await act(async () => {
+        host.querySelector<HTMLButtonElement>("[data-testid='revision']")?.click()
+      })
+
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(200)
+      })
+
+      expect(syncThreadContext).toHaveBeenCalledTimes(2)
+      expect(syncThreadContext).toHaveBeenLastCalledWith(
+        'thr-1',
+        expect.objectContaining({ rendered: expect.objectContaining({ capturedRevision: 8 }) }),
       )
     } finally {
       await act(async () => {

@@ -50,6 +50,37 @@ describe('GridSelectionVisualOverlay', () => {
       ]),
     )
   })
+
+  test('builds hover chrome in the DOM overlay without covering the selected range', () => {
+    const geometry = createGeometry()
+    const selection = createRangeSelection(createGridSelection(1, 1), [1, 1], [3, 3])
+
+    expect(
+      buildGridSelectionVisualRects({
+        geometry,
+        gridSelection: selection,
+        hoverCell: [4, 5],
+        selectedCell: [1, 1],
+        selectionRange: selection.current?.range ?? null,
+        showFillHandle: false,
+      }),
+    ).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ role: 'hover-fill', bounds: expect.objectContaining({ x: 447, y: 125, width: 98, height: 18 }) }),
+      ]),
+    )
+
+    expect(
+      buildGridSelectionVisualRects({
+        geometry,
+        gridSelection: selection,
+        hoverCell: [2, 2],
+        selectedCell: [1, 1],
+        selectionRange: selection.current?.range ?? null,
+        showFillHandle: false,
+      }).some((rect) => rect.role === 'hover-fill'),
+    ).toBe(false)
+  })
 })
 
 function createGeometry() {

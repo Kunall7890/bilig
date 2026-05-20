@@ -1,7 +1,12 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState, type MutableRefObject } from 'react'
 import type { GridSelectionSnapshot } from '@bilig/grid'
 import { formatAddress, parseCellAddress } from '@bilig/formula'
-import { stringifyWorkbookAgentUiContextSemanticKey, type WorkbookAgentRenderedRange, type WorkbookAgentUiContext } from '@bilig/contracts'
+import {
+  stringifyWorkbookAgentUiContextRenderedProofKey,
+  stringifyWorkbookAgentUiContextSemanticKey,
+  type WorkbookAgentRenderedRange,
+  type WorkbookAgentUiContext,
+} from '@bilig/contracts'
 import { MAX_COLS, MAX_ROWS, VIEWPORT_TILE_COLUMN_COUNT, VIEWPORT_TILE_ROW_COUNT, type CellRangeRef, type Viewport } from '@bilig/protocol'
 import { buildWorkbookAgentContext } from './workbook-agent-context.js'
 import type { ProjectedViewportStore } from './projected-viewport-store.js'
@@ -118,6 +123,7 @@ export function useWorkerWorkbookAgentContext(input: {
 }) {
   const { selection, selectionRangeRef, selectionSnapshotRef, selectionRef, workerHandleRef, runtimeControllerRef } = input
   const [renderedAgentContextVersion, setRenderedAgentContextVersion] = useState(0)
+  const [renderedAgentContextProofVersion, setRenderedAgentContextProofVersion] = useState(0)
   const visibleViewportRef = useRef<Viewport>(selectionViewport(selection))
   const visibleViewportSubscriptionRef = useRef<{
     readonly cleanup: () => void
@@ -125,6 +131,7 @@ export function useWorkerWorkbookAgentContext(input: {
     readonly viewport: Viewport
   } | null>(null)
   const lastRenderedAgentContextKeyRef = useRef<string | null>(null)
+  const lastRenderedAgentContextProofKeyRef = useRef<string | null>(null)
   const selectedAddress = selection.address
   const selectedSheetName = selection.sheetName
   const selectedRangeStartAddress = selectionSnapshotRef.current.range.startAddress
@@ -152,16 +159,26 @@ export function useWorkerWorkbookAgentContext(input: {
   }, [selectionRangeRef, selectionSnapshotRef, workerHandleRef])
 
   const rememberCurrentRenderedAgentContext = useCallback(() => {
-    lastRenderedAgentContextKeyRef.current = stringifyWorkbookAgentUiContextSemanticKey(buildCurrentAgentContext())
+    const context = buildCurrentAgentContext()
+    lastRenderedAgentContextKeyRef.current = stringifyWorkbookAgentUiContextSemanticKey(context)
+    lastRenderedAgentContextProofKeyRef.current = stringifyWorkbookAgentUiContextRenderedProofKey(context)
   }, [buildCurrentAgentContext])
 
   const notifyRenderedAgentContextChanged = useCallback(() => {
-    const nextKey = stringifyWorkbookAgentUiContextSemanticKey(buildCurrentAgentContext())
+    const context = buildCurrentAgentContext()
+    const nextKey = stringifyWorkbookAgentUiContextSemanticKey(context)
+    const nextProofKey = stringifyWorkbookAgentUiContextRenderedProofKey(context)
     if (lastRenderedAgentContextKeyRef.current === nextKey) {
+      if (lastRenderedAgentContextProofKeyRef.current !== nextProofKey) {
+        lastRenderedAgentContextProofKeyRef.current = nextProofKey
+        setRenderedAgentContextProofVersion((version) => version + 1)
+      }
       return
     }
     lastRenderedAgentContextKeyRef.current = nextKey
+    lastRenderedAgentContextProofKeyRef.current = nextProofKey
     setRenderedAgentContextVersion((version) => version + 1)
+    setRenderedAgentContextProofVersion((version) => version + 1)
   }, [buildCurrentAgentContext])
 
   useLayoutEffect(() => {
@@ -189,7 +206,7 @@ export function useWorkerWorkbookAgentContext(input: {
           () => {
             notifyRenderedAgentContextChanged()
           },
-          { initialPatch: 'full' },
+          { initialPatch: 'full', notifyOnProofRevision: true },
         ),
         sheetName,
         viewport: projectionViewport,
@@ -231,6 +248,7 @@ export function useWorkerWorkbookAgentContext(input: {
       selectionSnapshotRef.current.range.endAddress,
       renderedAgentContextVersion,
     ].join(':'),
+    agentContextProofVersion: renderedAgentContextProofVersion,
     getAgentContext,
     handleVisibleViewportChange,
     resetVisibleViewportForSheet,

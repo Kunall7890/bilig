@@ -41,6 +41,7 @@ export function buildDynamicGridOverlayBatchV3(input: {
   readonly hoveredCell?: readonly [number, number] | null | undefined
   readonly showFillHandle: boolean
   readonly activeHeaderDrag?: HeaderSelection | null | undefined
+  readonly showHoverOverlay?: boolean | undefined
   readonly showSelectionOverlay?: boolean | undefined
   readonly resizeGuideColumn?: number | null | undefined
   readonly resizeGuideColumnWidth?: number | null | undefined
@@ -77,12 +78,14 @@ export function buildDynamicGridOverlayBatchV3(input: {
     fillRects,
     previewRects: input.previewRects ?? [],
   })
-  appendHoverOverlay({
-    fillRects,
-    geometry: input.geometry,
-    hoveredCell: input.hoveredCell ?? null,
-    selectionRange: input.selectionRange,
-  })
+  if (input.showHoverOverlay !== false) {
+    appendHoverOverlay({
+      fillRects,
+      geometry: input.geometry,
+      hoveredCell: input.hoveredCell ?? null,
+      selectionRange: input.selectionRange,
+    })
+  }
   appendResizeGuides({
     borderRects,
     geometry: input.geometry,

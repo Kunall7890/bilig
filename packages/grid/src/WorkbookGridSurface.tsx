@@ -302,6 +302,7 @@ export function WorkbookGridSurface(props: WorkbookGridSurfaceProps) {
         selectedCell: [displaySelectionCol, displaySelectionRow],
         selectionRange: displaySelectionRange,
         showFillHandle: false,
+        showHoverOverlay: false,
         showSelectionOverlay: false,
         resizeGuideColumn,
         resizeGuideColumnWidth,
@@ -408,6 +409,7 @@ export function WorkbookGridSurface(props: WorkbookGridSurfaceProps) {
           geometry={v2Geometry}
           getGeometrySnapshot={getLiveGeometrySnapshot}
           gridSelection={displayGridSelection}
+          hoverCell={hoverCell}
           scrollTransformStore={renderState.scrollTransformStore}
           selectedCell={[displaySelectionCol, displaySelectionRow]}
           selectionRange={displaySelectionRange}

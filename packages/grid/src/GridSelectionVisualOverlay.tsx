@@ -5,7 +5,7 @@ import type { GridSelection, Item, Rectangle } from './gridTypes.js'
 import type { WorkbookGridScrollStore } from './workbookGridScrollStore.js'
 import { workbookThemeColors } from './workbookTheme.js'
 
-type VisualRectRole = 'selection-fill' | 'selection-border' | 'active-border' | 'fill-handle' | 'header-fill'
+type VisualRectRole = 'selection-fill' | 'selection-border' | 'active-border' | 'fill-handle' | 'header-fill' | 'hover-fill'
 
 export interface GridSelectionVisualRect {
   readonly role: VisualRectRole
@@ -16,6 +16,7 @@ export interface GridSelectionVisualOverlayProps {
   readonly geometry?: GridGeometrySnapshot | null | undefined
   readonly getGeometrySnapshot?: (() => GridGeometrySnapshot | null) | undefined
   readonly gridSelection: GridSelection
+  readonly hoverCell?: Item | null | undefined
   readonly selectedCell: Item
   readonly selectionRange: Pick<Rectangle, 'x' | 'y' | 'width' | 'height'> | null
   readonly showFillHandle: boolean
@@ -27,6 +28,7 @@ export function GridSelectionVisualOverlay(props: GridSelectionVisualOverlayProp
     geometry: staticGeometry,
     getGeometrySnapshot,
     gridSelection,
+    hoverCell,
     scrollTransformStore,
     selectedCell,
     selectionRange,
@@ -51,12 +53,13 @@ export function GridSelectionVisualOverlay(props: GridSelectionVisualOverlayProp
         ? buildGridSelectionVisualRects({
             geometry,
             gridSelection,
+            hoverCell: hoverCell ?? null,
             selectedCell,
             selectionRange,
             showFillHandle,
           })
         : [],
-    [geometry, gridSelection, selectedCell, selectionRange, showFillHandle],
+    [geometry, gridSelection, hoverCell, selectedCell, selectionRange, showFillHandle],
   )
 
   if (rects.length === 0) {
@@ -84,14 +87,36 @@ export function GridSelectionVisualOverlay(props: GridSelectionVisualOverlayProp
 export function buildGridSelectionVisualRects(input: {
   readonly geometry: GridGeometrySnapshot
   readonly gridSelection: GridSelection
+  readonly hoverCell?: Item | null | undefined
   readonly selectedCell: Item
   readonly selectionRange: Pick<Rectangle, 'x' | 'y' | 'width' | 'height'> | null
   readonly showFillHandle: boolean
 }): readonly GridSelectionVisualRect[] {
   const rects: GridSelectionVisualRect[] = []
+  appendHoverVisualRects(rects, input)
   appendAxisSelectionVisualRects(rects, input)
   appendBodySelectionVisualRects(rects, input)
   return rects
+}
+
+function appendHoverVisualRects(
+  rects: GridSelectionVisualRect[],
+  input: {
+    readonly geometry: GridGeometrySnapshot
+    readonly hoverCell?: Item | null | undefined
+    readonly selectionRange: Pick<Rectangle, 'x' | 'y' | 'width' | 'height'> | null
+  },
+): void {
+  const hoverCell = input.hoverCell ?? null
+  if (!hoverCell) {
+    return
+  }
+  if (input.selectionRange && cellInRange(hoverCell, input.selectionRange)) {
+    return
+  }
+  for (const bounds of input.geometry.rangeScreenRects({ x: hoverCell[0], y: hoverCell[1], width: 1, height: 1 })) {
+    appendInsetRect(rects, 'hover-fill', bounds, 1, 1)
+  }
 }
 
 function appendBodySelectionVisualRects(
@@ -295,6 +320,8 @@ function classNameForRole(role: VisualRectRole): string {
       return 'absolute box-border'
     case 'header-fill':
       return 'absolute box-border'
+    case 'hover-fill':
+      return 'absolute box-border'
     case 'selection-border':
       return 'absolute box-border border border-[var(--wb-accent)]'
     case 'active-border':
@@ -331,6 +358,12 @@ function styleForRect(rect: GridSelectionVisualRect): CSSProperties {
     return {
       ...base,
       backgroundColor: workbookThemeColors.accentSoft,
+    }
+  }
+  if (rect.role === 'hover-fill') {
+    return {
+      ...base,
+      backgroundColor: 'rgba(31, 122, 67, 0.05)',
     }
   }
   return {

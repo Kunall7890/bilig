@@ -3,7 +3,7 @@ import {
   WorkbookAgentThreadScopeSchema,
   WorkbookAgentThreadSummarySchema,
   decodeUnknownSync,
-  stringifyWorkbookAgentUiContextSemanticKey,
+  stringifyWorkbookAgentUiContextRenderedProofKey,
   type WorkbookAgentThreadSnapshot,
   type WorkbookAgentThreadScope,
   type WorkbookAgentThreadSummary,
@@ -115,7 +115,7 @@ function createThreadContextSyncState(): ThreadContextSyncState {
 }
 
 function contextSyncKey(threadId: string, context: WorkbookAgentUiContext): string {
-  return `${threadId}:${stringifyWorkbookAgentUiContextSemanticKey(context)}`
+  return `${threadId}:${stringifyWorkbookAgentUiContextRenderedProofKey(context)}`
 }
 
 function scopedRequestKey(...parts: readonly string[]): string {

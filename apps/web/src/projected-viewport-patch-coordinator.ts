@@ -21,7 +21,13 @@ const EMPTY_PATCH_APPLIED: ProjectedViewportPatchApplied = Object.freeze({
 
 interface ProjectedViewportSubscriptionOptions {
   readonly initialPatch?: 'full' | 'none'
+  readonly notifyOnProofRevision?: boolean
 }
+
+const readViewportProofRevision = (patch: ViewportPatch): number | null =>
+  typeof patch.authoritativeRevision === 'number' && Number.isSafeInteger(patch.authoritativeRevision) && patch.authoritativeRevision >= 0
+    ? patch.authoritativeRevision
+    : null
 
 export class ProjectedViewportPatchCoordinator {
   constructor(
@@ -51,6 +57,8 @@ export class ProjectedViewportPatchCoordinator {
     let timeoutHandle: ReturnType<typeof setTimeout> | null = null
     const pendingDamage = new Map<string, { cell: CellItem }>()
     let pendingStructuralChange = false
+    let pendingProofRevisionChange = false
+    let lastNotifiedProofRevision: number | null = null
     let lastAppliedPatchVersion = 0
     const scheduleFlush = () => {
       if (frameHandle !== null || timeoutHandle !== null) {
@@ -59,12 +67,13 @@ export class ProjectedViewportPatchCoordinator {
       const flush = () => {
         frameHandle = null
         timeoutHandle = null
-        if (!pendingStructuralChange && pendingDamage.size === 0) {
+        if (!pendingStructuralChange && !pendingProofRevisionChange && pendingDamage.size === 0) {
           return
         }
         const damage = pendingDamage.size === 0 ? undefined : [...pendingDamage.values()]
         pendingDamage.clear()
         pendingStructuralChange = false
+        pendingProofRevisionChange = false
         listener(damage)
       }
       if (typeof window === 'undefined') {
@@ -85,6 +94,13 @@ export class ProjectedViewportPatchCoordinator {
         pendingDamage.set(`${entry.cell[0]}:${entry.cell[1]}`, entry)
       }
       pendingStructuralChange = pendingStructuralChange || result.axisChanged || result.freezeChanged
+      if (options.notifyOnProofRevision) {
+        const proofRevision = readViewportProofRevision(patch)
+        if (proofRevision !== null && proofRevision !== lastNotifiedProofRevision) {
+          lastNotifiedProofRevision = proofRevision
+          pendingProofRevisionChange = true
+        }
+      }
     }
     const subscription =
       options.initialPatch === 'none' ? ({ sheetName, ...viewport, initialPatch: 'none' } as const) : ({ sheetName, ...viewport } as const)

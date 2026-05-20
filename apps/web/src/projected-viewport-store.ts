@@ -418,14 +418,16 @@ export class ProjectedViewportStore implements GridEngineLike {
     sheetName: string,
     viewport: Viewport,
     listener: (damage?: readonly { cell: readonly [number, number] }[]) => void,
-    options: { readonly initialPatch?: 'full' | 'none' } = {},
+    options: { readonly initialPatch?: 'full' | 'none'; readonly notifyOnProofRevision?: boolean } = {},
   ): () => void {
-    const unsubscribe = this.patchCoordinator.subscribeViewport(
-      sheetName,
-      viewport,
-      listener,
-      options.initialPatch === undefined ? {} : { initialPatch: options.initialPatch },
-    )
+    const subscriptionOptions: { initialPatch?: 'full' | 'none'; notifyOnProofRevision?: boolean } = {}
+    if (options.initialPatch !== undefined) {
+      subscriptionOptions.initialPatch = options.initialPatch
+    }
+    if (options.notifyOnProofRevision !== undefined) {
+      subscriptionOptions.notifyOnProofRevision = options.notifyOnProofRevision
+    }
+    const unsubscribe = this.patchCoordinator.subscribeViewport(sheetName, viewport, listener, subscriptionOptions)
     this.rangeOverlayStore.materializeViewport(sheetName, viewport)
     return unsubscribe
   }

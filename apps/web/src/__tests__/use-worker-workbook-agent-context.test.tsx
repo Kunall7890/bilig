@@ -180,7 +180,7 @@ describe('useWorkerWorkbookAgentContext', () => {
         colEnd: 131,
       }),
       expect.any(Function),
-      { initialPatch: 'full' },
+      { initialPatch: 'full', notifyOnProofRevision: true },
     )
 
     await act(async () => {
@@ -188,7 +188,7 @@ describe('useWorkerWorkbookAgentContext', () => {
     })
   })
 
-  it('does not advance the agent context version for rendered metadata churn when visible content is unchanged', async () => {
+  it('tracks rendered proof freshness separately from semantic context when visible content is unchanged', async () => {
     ;(globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true
 
     let viewportListener: (() => void) | null = null
@@ -214,12 +214,14 @@ describe('useWorkerWorkbookAgentContext', () => {
     })
 
     const initialVersion = capturedStates.at(-1)?.agentContextVersion
+    const initialProofVersion = capturedStates.at(-1)?.agentContextProofVersion
     viewportStore.setMetrics(8, 12)
     await act(async () => {
       viewportListener?.()
     })
 
     expect(capturedStates.at(-1)?.agentContextVersion).toBe(initialVersion)
+    expect(capturedStates.at(-1)?.agentContextProofVersion).not.toBe(initialProofVersion)
 
     viewportStore.setCellValue('Sheet1:A1', 'changed')
     viewportStore.setMetrics(9, 13)
