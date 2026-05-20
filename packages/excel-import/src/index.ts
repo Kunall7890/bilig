@@ -277,7 +277,9 @@ function buildImportedLegacyCommentVmlSnapshot(
 
 function readValidXlsxZipContainer(bytes: Uint8Array, mode: 'eager' | 'lazy' = 'eager'): Unzipped {
   try {
-    return mode === 'lazy' ? readXlsxZipEntriesLazy(bytes) : readXlsxZipEntries(bytes)
+    const zip = mode === 'lazy' ? readXlsxZipEntriesLazy(bytes) : readXlsxZipEntries(bytes)
+    void zip['xl/workbook.xml']
+    return zip
   } catch {
     throw new InvalidXlsxZipContainerError()
   }

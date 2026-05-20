@@ -137,6 +137,7 @@ const deflatedCompressionMethod = 8
 const zip64Sentinel = 0xffffffff
 const maxEndOfCentralDirectorySearch = 65_557
 const defaultZipEntryChunkSize = 64 * 1024
+const syncChunkedInflateCompressedSizeLimit = 256 * 1024
 const xlsxZipCentralDirectorySourceSymbol: unique symbol = Symbol('bilig.xlsxZipCentralDirectorySource')
 const textDecoder = new TextDecoder()
 
@@ -318,6 +319,13 @@ function inflateCentralDirectoryEntryChunks(
     return
   }
   if (compressionMethod === deflatedCompressionMethod) {
+    if (compressedSize <= syncChunkedInflateCompressedSizeLimit) {
+      const inflated = inflateCentralDirectoryEntry(source, localHeaderOffset, compressedSize, compressionMethod)
+      for (let offset = 0; offset < inflated.byteLength; offset += options.chunkSize) {
+        onChunk(inflated.subarray(offset, Math.min(inflated.byteLength, offset + options.chunkSize)))
+      }
+      return
+    }
     const inflate = new Inflate((chunk) => {
       onChunk(chunk)
     })

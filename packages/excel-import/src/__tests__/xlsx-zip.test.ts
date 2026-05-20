@@ -47,6 +47,13 @@ describe('XLSX ZIP reader', () => {
     expect(forEachInflatedXlsxZipEntryChunk(zip, 'xl/workbook.xml', () => undefined)).toBe(false)
     expect(() => getZipText(zip, 'xl/workbook.xml')).toThrow(/released/u)
   })
+
+  it('fails fast for corrupt small streamed ZIP entries', () => {
+    const path = 'xl/workbook.xml'
+    const zip = readXlsxZipEntriesLazy(corruptFirstCompressedByte(buildStreamedZip(path, '<workbook><sheets/></workbook>')))
+
+    expect(() => forEachInflatedXlsxZipEntryChunk(zip, path, () => undefined)).toThrow()
+  })
 })
 
 function buildStreamedZip(path: string, text: string): Uint8Array {
@@ -84,4 +91,13 @@ function buildStreamedZip(path: string, text: string): Uint8Array {
   endOfCentralDirectory.writeUInt32LE(centralDirectoryOffset, 16)
 
   return Buffer.concat([localHeader, fileName, compressed, dataDescriptor, centralDirectory, fileName, endOfCentralDirectory])
+}
+
+function corruptFirstCompressedByte(bytes: Uint8Array): Uint8Array {
+  const nameLength = bytes[26] | (bytes[27] << 8)
+  const extraLength = bytes[28] | (bytes[29] << 8)
+  const compressedDataStart = 30 + nameLength + extraLength
+  const corrupted = new Uint8Array(bytes)
+  corrupted[compressedDataStart] = corrupted[compressedDataStart] ^ 0xff
+  return corrupted
 }
