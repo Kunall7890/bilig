@@ -813,6 +813,7 @@ export class GridRenderTilePaneRuntime {
       const isMissingGridPayload = tile !== null && !hasCompleteRenderTileGrid(tile)
       const shouldLocalizeDirty = (options.localizeDirtyVisibleTiles ?? true) && isDirty
       const shouldLocalizeDirtyPresentation = isDirty && (dirtyMask & (DirtyMaskV3.Style | DirtyMaskV3.Rect | DirtyMaskV3.Border)) !== 0
+      const shouldLocalizeProjectedRevision = tileProjectionRevisionIsBehind(tile, input.engine)
       const hasPendingDirtyRenderTilePatch = isDirty && tile !== null && hasCompleteRenderTileGrid(tile)
       const shouldLocalizeSelectedCellText =
         !hasPendingDirtyRenderTilePatch &&
@@ -823,7 +824,7 @@ export class GridRenderTilePaneRuntime {
         this.visibleTextRefreshCache.needsLocalRefresh(tileKey, tile, {
           columnWidths: input.columnWidths,
           engine: input.engine,
-          revisionSensitive: isDirty,
+          revisionSensitive: isDirty || engineHasLocalProjectionRevision(input.engine),
           gridMetrics: input.gridMetrics,
           rowHeights: input.rowHeights,
           sceneRevision: input.sceneRevision,
@@ -838,6 +839,7 @@ export class GridRenderTilePaneRuntime {
         isMissingResidentTile ||
         isMissingGridPayload ||
         shouldLocalizeDirtyPresentation ||
+        shouldLocalizeProjectedRevision ||
         shouldLocalizeSelectedCellText ||
         shouldLocalizeVisibleText ||
         shouldLocalizeEditingCellText
@@ -926,6 +928,36 @@ export class GridRenderTilePaneRuntime {
 
 function normalizeNonNegativeInteger(value: number | null | undefined): number | null {
   return typeof value === 'number' && Number.isInteger(value) && value >= 0 ? value : null
+}
+
+function engineHasLocalProjectionRevision(engine: GridEngineLike): boolean {
+  const revision = engine.getRenderRevisionSnapshot?.()
+  if (!revision) {
+    return false
+  }
+  const localRevision = normalizeNonNegativeInteger(revision.localRevision)
+  if (localRevision !== null && localRevision > 0) {
+    return true
+  }
+  const projectedRevision = normalizeNonNegativeInteger(revision.projectedRevision)
+  if (projectedRevision === null || projectedRevision === 0) {
+    return false
+  }
+  const authoritativeRevision = normalizeNonNegativeInteger(revision.authoritativeRevision)
+  return authoritativeRevision !== null && projectedRevision > authoritativeRevision
+}
+
+function tileProjectionRevisionIsBehind(tile: GridRenderTile | null, engine: GridEngineLike): boolean {
+  if (!tile) {
+    return false
+  }
+  const revision = engine.getRenderRevisionSnapshot?.()
+  const authoritativeRevision = normalizeNonNegativeInteger(revision?.authoritativeRevision)
+  const projectedRevision = normalizeNonNegativeInteger(revision?.projectedRevision)
+  if (authoritativeRevision === null || projectedRevision === null || projectedRevision <= authoritativeRevision) {
+    return false
+  }
+  return tile.lastBatchId < projectedRevision
 }
 
 export function getGridRenderTilePaneRuntime(current: unknown): GridRenderTilePaneRuntime {

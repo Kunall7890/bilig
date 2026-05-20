@@ -260,7 +260,7 @@ export const WorkbookPaneRendererV3 = memo(function WorkbookPaneRendererV3({
           cameraStore={cameraStore}
           geometry={geometry}
           headerPanes={headerPanes}
-          presentedScrollSnapshot={presentedVisualFrame?.scrollSnapshot ?? null}
+          presentedScrollSnapshot={frameProofStatus === 'presented' ? (presentedVisualFrame?.scrollSnapshot ?? null) : null}
           scrollTransformStore={scrollTransformStore}
           selectionOcclusionRanges={selectionOcclusionRanges}
           suppressedTextCell={suppressedTextCell}

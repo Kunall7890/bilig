@@ -2814,7 +2814,7 @@ describe('GridRenderTilePaneRuntime', () => {
     expect(refreshed.residentBodyPane?.tile).toBe(staleRemoteTile)
   })
 
-  it('keeps clean remote tiles resident when the local workbook revision changes without tile damage', () => {
+  it('rechecks visible text when the local workbook revision changes without tile damage', () => {
     const runtime = new GridRenderTilePaneRuntime()
     const host = createHost()
     const tileId = host.viewportTileKeys({
@@ -2882,8 +2882,17 @@ describe('GridRenderTilePaneRuntime', () => {
       }),
     )
 
-    expect(refreshed.residentBodyPane?.tile).toBe(remoteTile)
-    expect(getCellCallCount).toBe(callsAfterInitialResolve)
+    expect(refreshed.residentBodyPane?.tile).not.toBe(remoteTile)
+    expect(refreshed.residentBodyPane?.tile.textRuns).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          col: 1,
+          row: 24,
+          text: 'abcdef',
+        }),
+      ]),
+    )
+    expect(getCellCallCount).toBeGreaterThan(callsAfterInitialResolve)
   })
 
   it('rebuilds visible remote tiles when style revisions are stale even if text still matches', () => {

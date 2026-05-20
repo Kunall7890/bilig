@@ -401,6 +401,62 @@ describe('WorkbookPaneNativeTextLayerV3', () => {
     })
   })
 
+  test('renders resident tile text when exact clipping intersects even if the coarse pane window is hidden', async () => {
+    const host = document.createElement('div')
+    document.body.appendChild(host)
+    const root = createRoot(host)
+    const metrics = getGridMetrics()
+    const sourceCol = 128
+    const scrollLeft = resolveColumnOffset(123, [], metrics.columnWidth)
+    const run = createRun({
+      clipHeight: 22,
+      clipWidth: metrics.columnWidth * 3,
+      clipX: 0,
+      clipY: metrics.rowHeight * 4,
+      col: sourceCol,
+      row: 4,
+      text: 'far spill text',
+      width: metrics.columnWidth * 3,
+      x: 0,
+      y: metrics.rowHeight * 4,
+    })
+    const pane: WorkbookRenderTilePaneState = {
+      ...createPane(run, { viewport: { colEnd: 255, colStart: 128 } }),
+      contentOffset: { x: resolveColumnOffset(sourceCol, [], metrics.columnWidth), y: 0 },
+      drawVisible: false,
+      frame: { height: 240, width: 560, x: metrics.rowMarkerWidth, y: metrics.headerHeight },
+      paneId: 'body:0:1',
+      surfaceSize: {
+        height: metrics.rowHeight * 32,
+        width: metrics.columnWidth * 128,
+      },
+    }
+    const scrollStore = new WorkbookGridScrollStore()
+
+    try {
+      scrollStore.setSnapshot({ renderTx: scrollLeft, renderTy: 0, scrollLeft, scrollTop: 0, tx: scrollLeft, ty: 0 })
+      await act(async () => {
+        root.render(
+          <WorkbookPaneNativeTextLayerV3
+            active
+            cameraStore={null}
+            geometry={null}
+            headerPanes={[]}
+            scrollTransformStore={scrollStore}
+            tilePanes={[pane]}
+          />,
+        )
+      })
+
+      expect(host.querySelector('[data-native-text-run-row="4"][data-native-text-run-col="128"]')?.textContent).toBe('far spill text')
+    } finally {
+      await act(async () => {
+        root.unmount()
+      })
+      host.remove()
+    }
+  })
+
   test('uses the presented renderer scroll frame instead of racing ahead on live scroll', async () => {
     ;(globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true
     const host = document.createElement('div')

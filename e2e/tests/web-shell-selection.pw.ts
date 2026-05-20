@@ -847,11 +847,17 @@ async function writeCellValue(page: Page, address: string, value: string): Promi
   const formulaInput = page.getByTestId('formula-input')
   await formulaInput.fill(value)
   await formulaInput.press('Enter')
+  await selectAddress(page, address)
+  await expect.poll(() => readFormulaValue(page)).toBe(value)
 }
 
 async function selectAddress(page: Page, address: string): Promise<void> {
   const nameBox = page.getByTestId('name-box')
-  await nameBox.fill(address)
+  await nameBox.click()
+  await nameBox.press(`${PRIMARY_MODIFIER}+A`)
+  await nameBox.press('Backspace')
+  await expect(nameBox).toHaveValue('')
+  await page.keyboard.type(address)
   await expect(nameBox).toHaveValue(address)
   await nameBox.press('Enter')
   await expect(page.getByTestId('status-selection')).toHaveText(`Sheet1!${address}`)
