@@ -615,8 +615,8 @@ export function tryImportLargeSimpleXlsx(
     if (resolvedRichTextCells === null) {
       return null
     }
-    if (resolvedRichTextCells.length > 0) {
-      scanned.cellScan.richTextCells.push(...resolvedRichTextCells)
+    for (const richTextCell of resolvedRichTextCells) {
+      scanned.cellScan.richTextCells.push(richTextCell)
     }
     const drawingArtifacts =
       importedChartDrawingArtifacts?.drawingArtifacts.sheetArtifactsByName.get(scanned.name) ??

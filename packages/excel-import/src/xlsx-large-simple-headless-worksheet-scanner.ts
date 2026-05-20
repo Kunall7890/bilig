@@ -90,6 +90,9 @@ class HeadlessLargeSimpleWorksheetChunkScanner {
   private minColumn = Number.POSITIVE_INFINITY
   private maxRow = -1
   private maxColumn = -1
+  private currentRow = -1
+  private nextImplicitRow = 0
+  private nextImplicitColumn = 0
   private cellContentFlags = 0
   private cellContentNextIndex = 0
   private cellPackedAddress = -1
@@ -212,6 +215,11 @@ class HeadlessLargeSimpleWorksheetChunkScanner {
         this.index = tagEnd + 1
         continue
       }
+      if (tag.localName === 'row') {
+        this.readRow(tag.endIndex, tagEnd)
+        this.index = tagEnd + 1
+        continue
+      }
       if (tag.localName === 'c') {
         if (!this.readCell(tag.endIndex, tagEnd, final)) {
           return
@@ -255,6 +263,13 @@ class HeadlessLargeSimpleWorksheetChunkScanner {
     this.columnCount = Math.max(this.columnCount, range.startColumn + 1, range.endColumn + 1)
   }
 
+  private readRow(nameEnd: number, tagEnd: number): void {
+    const row = readPositiveIntegerAttributeFromTag(this.buffer, nameEnd, tagEnd, 'r')
+    this.currentRow = row === null ? this.nextImplicitRow : row - 1
+    this.nextImplicitRow = this.currentRow + 1
+    this.nextImplicitColumn = 0
+  }
+
   private readCell(nameEnd: number, tagEnd: number, final: boolean): boolean {
     const selfClosing = isSelfClosingTag(this.buffer, tagEnd)
     const contentStart = tagEnd + 1
@@ -276,6 +291,8 @@ class HeadlessLargeSimpleWorksheetChunkScanner {
     }
     const row = packedAddressRow(this.cellPackedAddress)
     const column = packedAddressColumn(this.cellPackedAddress)
+    this.currentRow = row
+    this.nextImplicitColumn = column + 1
     const hasValue = (contentFlags & cellContentHasValue) !== 0
     const hasFormula = (contentFlags & cellContentHasFormula) !== 0
     if (hasValue || hasFormula) {
@@ -431,9 +448,15 @@ class HeadlessLargeSimpleWorksheetChunkScanner {
       }
       index += 1
     }
-    this.cellPackedAddress = packedAddress ?? -1
+    this.cellPackedAddress = packedAddress ?? this.readImplicitCellPackedAddress()
     this.cellHasSharedStringType = hasSharedStringType
-    return packedAddress !== null
+    return this.cellPackedAddress !== -1
+  }
+
+  private readImplicitCellPackedAddress(): number {
+    return this.currentRow < 0 || this.nextImplicitColumn >= packedAddressColumnFactor
+      ? -1
+      : packCellAddress(this.currentRow, this.nextImplicitColumn)
   }
 
   private countMetadataElement(localName: string, nameEnd: number, tagEnd: number, final: boolean): boolean {
@@ -633,6 +656,22 @@ function countSqrefRangesFromTag(bytes: Uint8Array, nameEnd: number, tagEnd: num
     }
   }
   return Math.max(1, count)
+}
+
+function readPositiveIntegerAttributeFromTag(bytes: Uint8Array, nameEnd: number, tagEnd: number, attributeName: string): number | null {
+  const range = readXmlAttributeRangeFromTag(bytes, nameEnd, tagEnd, attributeName)
+  if (!range || range.start === range.end) {
+    return null
+  }
+  let value = 0
+  for (let index = range.start; index < range.end; index += 1) {
+    const byte = bytes[index] ?? 0
+    if (byte < 48 || byte > 57) {
+      return null
+    }
+    value = value * 10 + byte - 48
+  }
+  return value > 0 && Number.isSafeInteger(value) ? value : null
 }
 
 function readXmlTagName(bytes: Uint8Array, startIndex: number): { readonly localName: string; readonly endIndex: number } | null {

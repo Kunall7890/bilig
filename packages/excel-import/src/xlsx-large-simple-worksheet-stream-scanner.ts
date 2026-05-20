@@ -55,6 +55,7 @@ import {
   readElementTextRange,
   readElementXml,
   readPackedCellAddressAttributeFromTag,
+  readXmlAttributeRangeFromTag,
   readXmlAttributeFromTag,
   readXmlTagName,
 } from './xlsx-large-simple-worksheet-stream-xml.js'
@@ -72,6 +73,7 @@ import type {
 const lessThan = 60
 const slash = 47
 const emptyBytes = new Uint8Array(0)
+const packedAddressColumnFactor = 16_384
 const extensionElementPattern = /<(?:[A-Za-z_][\w.-]*:)?ext\b[^>]*(?:\/>|>[\s\S]*?<\/(?:[A-Za-z_][\w.-]*:)?ext>)/gu
 const slicerListElementPattern = /<(?:[A-Za-z_][\w.-]*:)?slicerList\b/u
 type StreamedMetadataElement = 'mergeCells' | 'tableParts'
@@ -148,6 +150,9 @@ class LargeSimpleWorksheetChunkScanner {
   private minColumn = Number.POSITIVE_INFINITY
   private maxRow = -1
   private maxColumn = -1
+  private currentRow = -1
+  private nextImplicitRow = 0
+  private nextImplicitColumn = 0
   private columnEntries: WorkbookAxisEntrySnapshot[] | undefined
   private columnMetadata: WorkbookAxisMetadataSnapshot[] | undefined
   private conditionalFormats: WorkbookConditionalFormatSnapshot[] | undefined
@@ -380,6 +385,7 @@ class LargeSimpleWorksheetChunkScanner {
         continue
       }
       if (tag.localName === 'row') {
+        this.readRow(tag.endIndex, tagEnd)
         if (this.retainMetadataXml) {
           this.collectRowMetadata(tag.endIndex, tagEnd)
         }
@@ -400,6 +406,13 @@ class LargeSimpleWorksheetChunkScanner {
       }
       this.index = tagEnd + 1
     }
+  }
+
+  private readRow(nameEnd: number, tagEnd: number): void {
+    const row = readPositiveIntegerAttributeFromTag(this.buffer, nameEnd, tagEnd, 'r')
+    this.currentRow = row === null ? this.nextImplicitRow : row - 1
+    this.nextImplicitRow = this.currentRow + 1
+    this.nextImplicitColumn = 0
   }
 
   private readDimension(nameEnd: number, tagEnd: number): void {
@@ -438,7 +451,7 @@ class LargeSimpleWorksheetChunkScanner {
     }
     this.rowEntries ??= []
     this.rowMetadata ??= []
-    appendLargeSimpleRowMetadataTagFromBytes(this.rowEntries, this.rowMetadata, this.buffer, nameEnd, tagEnd)
+    appendLargeSimpleRowMetadataTagFromBytes(this.rowEntries, this.rowMetadata, this.buffer, nameEnd, tagEnd, this.currentRow)
   }
 
   private readCell(nameEnd: number, tagEnd: number, final: boolean): boolean {
@@ -451,13 +464,15 @@ class LargeSimpleWorksheetChunkScanner {
       }
       return false
     }
-    const packedAddress = readPackedCellAddressAttributeFromTag(this.buffer, nameEnd, tagEnd)
+    const packedAddress = this.readCellPackedAddress(nameEnd, tagEnd)
     if (packedAddress === null) {
       this.failed = true
       return false
     }
     const row = packedAddressRow(packedAddress)
     const column = packedAddressColumn(packedAddress)
+    this.currentRow = row
+    this.nextImplicitColumn = column + 1
     this.collectCellMetadataRef(row, column, nameEnd, tagEnd)
     const cellType = readXmlAttributeFromTag(this.buffer, nameEnd, tagEnd, 't')
     if ((!this.hasSharedStrings && cellType === 's') || (!this.retainCells && cellType === 'inlineStr')) {
@@ -545,6 +560,16 @@ class LargeSimpleWorksheetChunkScanner {
     }
     this.index = selfClosing ? tagEnd + 1 : closing.end
     return true
+  }
+
+  private readCellPackedAddress(nameEnd: number, tagEnd: number): number | null {
+    const packedAddress = readPackedCellAddressAttributeFromTag(this.buffer, nameEnd, tagEnd)
+    if (packedAddress !== null) {
+      return packedAddress
+    }
+    return this.currentRow < 0 || this.nextImplicitColumn >= packedAddressColumnFactor
+      ? null
+      : this.currentRow * packedAddressColumnFactor + this.nextImplicitColumn
   }
 
   private collectCellMetadataRef(row: number, column: number, nameEnd: number, tagEnd: number): void {
@@ -827,6 +852,22 @@ function readSlicerListExtensionXml(xml: string): string | undefined {
 
 function readElementAttribute(xml: string, name: string): string | null {
   return new RegExp(`\\s${name}=("|')([\\s\\S]*?)\\1`, 'u').exec(xml)?.[2] ?? null
+}
+
+function readPositiveIntegerAttributeFromTag(bytes: Uint8Array, nameEnd: number, tagEnd: number, attributeName: string): number | null {
+  const range = readXmlAttributeRangeFromTag(bytes, nameEnd, tagEnd, attributeName)
+  if (!range || range.start === range.end) {
+    return null
+  }
+  let value = 0
+  for (let index = range.start; index < range.end; index += 1) {
+    const byte = bytes[index] ?? 0
+    if (byte < 48 || byte > 57) {
+      return null
+    }
+    value = value * 10 + byte - 48
+  }
+  return value > 0 && Number.isSafeInteger(value) ? value : null
 }
 
 function readInlineStringCellValue(bytes: Uint8Array, contentStart: number, contentEnd: number): string | undefined {

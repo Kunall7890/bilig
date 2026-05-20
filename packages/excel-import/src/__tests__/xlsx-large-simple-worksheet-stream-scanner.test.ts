@@ -117,6 +117,32 @@ describe('large simple worksheet stream scanners', () => {
     ])
   })
 
+  it('infers omitted row and cell refs from stream order', () => {
+    const headless = parseHeadlessLargeSimpleWorksheetFromChunks(splitAfterTagOpen(implicitAddressWorksheetXml()), 0, {
+      hasSharedStrings: true,
+    })
+    const scan = parseLargeSimpleWorksheetCellsFromChunks(splitAfterTagOpen(implicitAddressWorksheetXml()), 0, {
+      hasSharedStrings: true,
+      sharedStrings: [{ text: 'Shared label', rich: false }],
+    })
+
+    expect(headless).toMatchObject({
+      cellCount: 4,
+      valueCellCount: 4,
+      formulaCellCount: 1,
+      rowCount: 2,
+      columnCount: 2,
+      usedRange: { startRow: 0, startColumn: 0, endRow: 1, endColumn: 1 },
+    })
+    expect(scan?.cellScan.arena.materializeSheetCells(0)).toEqual([
+      { address: 'A1', value: 1 },
+      { address: 'B1', value: 2 },
+      { address: 'A2', value: 'Shared label' },
+      { address: 'B2', value: 3, formula: 'A1+B1' },
+    ])
+    expect(scan?.metadata?.rows?.entries).toEqual([{ id: 'row:0', index: 0, size: 16 }])
+  })
+
   it('collects exact worksheet metadata records without retaining metadata XML', () => {
     const scan = parseLargeSimpleWorksheetCellsFromChunks(splitAfterTagOpen(metadataWorksheetXml()), 0, {
       hasSharedStrings: false,
@@ -391,6 +417,18 @@ function scalarWorksheetXml(): string {
     '<c r="G1" t="e"><v>#DIV/0!</v></c>',
     '<c r="H1" t="s"><v>0</v></c>',
     '</row></sheetData>',
+    '</worksheet>',
+  ].join('')
+}
+
+function implicitAddressWorksheetXml(): string {
+  return [
+    '<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">',
+    '<dimension ref="A1:B2"/>',
+    '<sheetData>',
+    '<row ht="12" customHeight="1"><c><v>1</v></c><c><v>2</v></c></row>',
+    '<row><c t="s"><v>0</v></c><c><f>A1+B1</f><v>3</v></c></row>',
+    '</sheetData>',
     '</worksheet>',
   ].join('')
 }
