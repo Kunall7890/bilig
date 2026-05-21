@@ -10,7 +10,7 @@ import {
   parseRangeAddress,
 } from '@bilig/formula'
 import { ValueTag, type CellValue } from '@bilig/protocol'
-import { mapStructuralAxisInterval } from '../../engine-structural-utils.js'
+import { mapStructuralAxisIndex, mapStructuralAxisInterval } from '../../engine-structural-utils.js'
 import { resolveRuntimeDirectLookupBinding } from '../direct-vector-lookup.js'
 import type {
   EngineRuntimeState,
@@ -78,12 +78,12 @@ export function rewriteDirectAggregateDescriptorForStructuralTransform(args: {
   }
   const nextRows =
     args.transform.axis === 'row'
-      ? mapStructuralAxisInterval(args.descriptor.rowStart, args.descriptor.rowEnd, args.transform)
+      ? mapDirectAggregateReferenceInterval(args.descriptor.rowStart, args.descriptor.rowEnd, args.transform)
       : { start: args.descriptor.rowStart, end: args.descriptor.rowEnd }
   const descriptorColEnd = args.descriptor.colEnd ?? args.descriptor.col
   const nextCols =
     args.transform.axis === 'column'
-      ? mapStructuralAxisInterval(args.descriptor.col, descriptorColEnd, args.transform)
+      ? mapDirectAggregateReferenceInterval(args.descriptor.col, descriptorColEnd, args.transform)
       : { start: args.descriptor.col, end: descriptorColEnd }
   if (!nextRows || !nextCols) {
     return undefined
@@ -106,6 +106,46 @@ export function rewriteDirectAggregateDescriptorForStructuralTransform(args: {
     length: (nextRows.end - nextRows.start + 1) * (nextCols.end - nextCols.start + 1),
     ...(args.descriptor.resultOffset !== undefined ? { resultOffset: args.descriptor.resultOffset } : {}),
   }
+}
+
+function mapDirectAggregateReferenceInterval(
+  start: number,
+  end: number,
+  transform: StructuralAxisTransform,
+): { start: number; end: number } | undefined {
+  if (transform.kind !== 'move') {
+    return mapStructuralAxisInterval(start, end, transform)
+  }
+  if (transform.target <= transform.start) {
+    return mapStructuralAxisInterval(start, end, transform)
+  }
+  const movedStart = transform.start
+  const movedEnd = transform.start + transform.count - 1
+  if (end < movedStart || start > movedEnd || (start >= movedStart && end <= movedEnd)) {
+    return mapStructuralAxisInterval(start, end, transform)
+  }
+
+  const survivorSegments: Array<{ readonly start: number; readonly end: number }> = []
+  if (start < movedStart) {
+    survivorSegments.push({ start, end: Math.min(end, movedStart - 1) })
+  }
+  if (end > movedEnd) {
+    survivorSegments.push({ start: Math.max(start, movedEnd + 1), end })
+  }
+
+  let nextStart: number | undefined
+  let nextEnd: number | undefined
+  survivorSegments.forEach((segment) => {
+    const mappedStart = mapStructuralAxisIndex(segment.start, transform)
+    const mappedEnd = mapStructuralAxisIndex(segment.end, transform)
+    if (mappedStart === undefined || mappedEnd === undefined) {
+      return
+    }
+    nextStart = nextStart === undefined ? Math.min(mappedStart, mappedEnd) : Math.min(nextStart, mappedStart, mappedEnd)
+    nextEnd = nextEnd === undefined ? Math.max(mappedStart, mappedEnd) : Math.max(nextEnd, mappedStart, mappedEnd)
+  })
+
+  return nextStart === undefined || nextEnd === undefined ? undefined : { start: nextStart, end: nextEnd }
 }
 
 type DirectCriteriaCallNode = Extract<FormulaNode, { readonly kind: 'CallExpr' }>

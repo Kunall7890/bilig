@@ -170,6 +170,25 @@ export function structuralDirectAggregateRewritePreservesValue(
     formula.compiled.symbolicTables.length === 0 &&
     formula.compiled.symbolicSpills.length === 0 &&
     formula.directLookup === undefined &&
-    formula.directCriteria === undefined
+    formula.directCriteria === undefined &&
+    !directAggregateMovePartiallyExtractsReferencedAxis(formula.directAggregate, transform)
   )
+}
+
+function directAggregateMovePartiallyExtractsReferencedAxis(
+  range: RuntimeFormula['directAggregate'],
+  transform: StructuralAxisTransform,
+): boolean {
+  if (!range || transform.kind !== 'move') {
+    return false
+  }
+  const start = transform.axis === 'row' ? range.rowStart : range.col
+  const end = transform.axis === 'row' ? range.rowEnd : (range.colEnd ?? range.col)
+  const movedStart = transform.start
+  const movedEnd = transform.start + transform.count - 1
+  const overlapsMovedAxis = start <= movedEnd && end >= movedStart
+  if (!overlapsMovedAxis) {
+    return false
+  }
+  return !(start >= movedStart && end <= movedEnd)
 }

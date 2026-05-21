@@ -151,6 +151,15 @@ describe('translateFormulaReferences', () => {
         target: 0,
       }),
     ).toBe('A1')
+    expect(
+      rewriteFormulaForStructuralTransform('SUM(B1:C1)', 'Sheet1', 'Sheet1', {
+        kind: 'move',
+        axis: 'column',
+        start: 1,
+        count: 1,
+        target: 4,
+      }),
+    ).toBe('SUM(B1:B1)')
   })
 
   it('collapses deleted references to surviving ranges or #REF', () => {
@@ -231,7 +240,7 @@ describe('translateFormulaReferences', () => {
         count: 1,
         target: 3,
       }),
-    ).toEqual({ startAddress: 'B1', endAddress: 'D1' })
+    ).toEqual({ startAddress: 'B1', endAddress: 'C1' })
   })
 
   it('rewrites single-cell addresses and throws for invalid address inputs', () => {
@@ -472,7 +481,7 @@ describe('translateFormulaReferences', () => {
         count: 2,
         target: 4,
       }),
-    ).toBe('SUM(B:F)')
+    ).toBe('SUM(B:C)')
     expect(
       rewriteFormulaForStructuralTransform('SUM(5:7)', 'Sheet1', 'Sheet1', {
         kind: 'move',
@@ -538,7 +547,7 @@ describe('translateFormulaReferences', () => {
         count: 1,
         target: 5,
       }),
-    ).toBe('SUM(A1:C6)')
+    ).toBe('SUM(A1:C2)')
 
     expect(
       rewriteFormulaForStructuralTransform("'Sheet With Spaces'!A1", 'Sheet1', 'Sheet With Spaces', {
@@ -850,17 +859,17 @@ describe('translateFormulaReferences', () => {
       target: 4,
     })
 
-    expect(rewritten.source).toBe('SUM(2:5)')
+    expect(rewritten.source).toBe('SUM(2:2)')
     expect(rewritten.reusedProgram).toBe(true)
-    expect(rewritten.compiled.deps).toEqual(['2:5'])
-    expect(rewritten.compiled.symbolicRanges).toEqual(['2:5'])
+    expect(rewritten.compiled.deps).toEqual(['2:2'])
+    expect(rewritten.compiled.symbolicRanges).toEqual(['2:2'])
     expect(rewritten.compiled.jsPlan).toEqual([
-      { opcode: 'push-range', start: '2', end: '5', refKind: 'rows' },
+      { opcode: 'push-range', start: '2', end: '2', refKind: 'rows' },
       {
         opcode: 'call',
         callee: 'SUM',
         argc: 1,
-        argRefs: [{ kind: 'range', start: '2', end: '5', refKind: 'rows' }],
+        argRefs: [{ kind: 'range', start: '2', end: '2', refKind: 'rows' }],
       },
       { opcode: 'return' },
     ])

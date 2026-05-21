@@ -9,6 +9,7 @@ import {
   buildReportSummary,
   isMacosExcelInstalled,
   runMacosExcelInspectionOracle,
+  runMacosExcelStructuralOperationOracle,
   type FormulaCellComparison,
   type NormalizedFormulaValue,
 } from '@bilig/excel-fixtures'
@@ -39,6 +40,12 @@ const expectedDynamicSpillOracleValues = [
   { address: 'B2', value: { kind: 'number', value: 4 } },
   { address: 'B3', value: { kind: 'number', value: 6 } },
 ] as const
+const structuralMoveColumnFormulaOracleCell = {
+  address: 'F1',
+  formula: '=SUM(B1:B1)',
+  rawValue: 'number\t3.0',
+  value: { kind: 'number', value: 3 },
+} as const
 
 describe('macOS Desktop Excel XLSX oracle for WorkPaper', () => {
   it('exports and reimports the oracle fixture through the headless workbook path', () => {
@@ -111,6 +118,43 @@ describe('macOS Desktop Excel XLSX oracle for WorkPaper', () => {
       } finally {
         reimported.dispose()
       }
+    } finally {
+      workbook.dispose()
+    }
+  })
+
+  it('rewrites moved-out column ranges like Desktop Excel', () => {
+    const workbook = buildStructuralMoveColumnOracleWorkbook()
+    const sheetId = workbook.getSheetId('Cases')!
+    try {
+      workbook.moveColumns(sheetId, 1, 1, 4)
+      expect(workbook.getCellFormula(addressToCell('F1'))).toBe('=SUM(B1:B1)')
+      expect(normalizedCellValue(workbook.getCellValue(addressToCell('F1')))).toEqual(structuralMoveColumnFormulaOracleCell.value)
+
+      const imported = importXlsx(exportXlsx(workbook.exportSnapshot()), 'headless-structural-move-column-oracle.xlsx')
+      const reimported = WorkPaper.buildFromSnapshot(imported.snapshot, workbookConfig)
+      try {
+        expect(reimported.getCellFormula(addressToCell('F1'))).toBe('=SUM(B1:B1)')
+        expect(normalizedCellValue(reimported.getCellValue(addressToCell('F1')))).toEqual(structuralMoveColumnFormulaOracleCell.value)
+      } finally {
+        reimported.dispose()
+      }
+    } finally {
+      workbook.dispose()
+    }
+  })
+
+  it('keeps dynamic-array spill metadata valid after structural row inserts', () => {
+    const workbook = buildDynamicSpillOracleWorkbook()
+    const sheetId = workbook.getSheetId('Cases')!
+    try {
+      workbook.addRows(sheetId, 0, 1)
+      expect(workbook.exportSnapshot().workbook.metadata?.spills).toEqual([{ sheetName: 'Cases', address: 'B2', rows: 3, cols: 1 }])
+      expect(['B2', 'B3', 'B4'].map((address) => normalizedCellValue(workbook.getCellValue(addressToCell(address))))).toEqual(
+        expectedDynamicSpillOracleValues.map((expected) => expected.value),
+      )
+      const imported = importXlsx(exportXlsx(workbook.exportSnapshot()), 'headless-structural-dynamic-spill-oracle.xlsx')
+      expect(imported.snapshot.workbook.metadata?.spills).toEqual([{ sheetName: 'Cases', address: 'B2', rows: 3, cols: 1 }])
     } finally {
       workbook.dispose()
     }
@@ -286,6 +330,47 @@ describe('macOS Desktop Excel XLSX oracle for WorkPaper', () => {
     },
     60_000,
   )
+
+  it.runIf(process.env.BILIG_EXCEL_ORACLE_RUN === '1')(
+    'matches Desktop Excel column-move formula rewrite semantics',
+    () => {
+      if (!isMacosExcelInstalled()) {
+        throw new Error('BILIG_EXCEL_ORACLE_RUN=1 requires /Applications/Microsoft Excel.app')
+      }
+
+      const tempDir = mkdtempSync(join(tmpdir(), 'bilig-headless-excel-structural-move-oracle-'))
+      try {
+        const workbookPath = join(tempDir, 'headless-structural-move-column-oracle.xlsx')
+        const workbook = buildStructuralMoveColumnOracleWorkbook()
+        try {
+          writeFileSync(workbookPath, exportXlsx(workbook.exportSnapshot()))
+        } finally {
+          workbook.dispose()
+        }
+
+        const excelResult = runMacosExcelStructuralOperationOracle({
+          workbookPath,
+          worksheetName: 'Cases',
+          operations: [{ kind: 'moveColumns', sourceRange: 'B:B', destinationRange: 'F:F' }],
+          inspectCells: ['F1'],
+          saveWorkbook: true,
+        })
+        expect(excelResult.cells).toEqual([structuralMoveColumnFormulaOracleCell])
+
+        const imported = importXlsx(new Uint8Array(readFileSync(workbookPath)), 'headless-structural-move-column-oracle-recalculated.xlsx')
+        const reimported = WorkPaper.buildFromSnapshot(imported.snapshot, workbookConfig)
+        try {
+          expect(reimported.getCellFormula(addressToCell('F1'))).toBe('=SUM(B1:B1)')
+          expect(normalizedCellValue(reimported.getCellValue(addressToCell('F1')))).toEqual(structuralMoveColumnFormulaOracleCell.value)
+        } finally {
+          reimported.dispose()
+        }
+      } finally {
+        rmSync(tempDir, { recursive: true, force: true })
+      }
+    },
+    60_000,
+  )
 })
 
 function buildOracleWorkbook(): WorkPaper {
@@ -330,6 +415,15 @@ function buildDynamicSpillOracleWorkbook(): WorkPaper {
   return WorkPaper.buildFromSheets(
     {
       Cases: [[1, '=MAP(A1:A3,LAMBDA(x,x*2))'], [2], [3]],
+    },
+    workbookConfig,
+  )
+}
+
+function buildStructuralMoveColumnOracleWorkbook(): WorkPaper {
+  return WorkPaper.buildFromSheets(
+    {
+      Cases: [[1, 2, 3, 4, 5, '=SUM(B1:C1)']],
     },
     workbookConfig,
   )

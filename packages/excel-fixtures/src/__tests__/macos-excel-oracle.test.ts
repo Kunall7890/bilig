@@ -8,11 +8,13 @@ import * as XLSX from 'xlsx'
 import {
   createMacosExcelRecalculationAppleScript,
   createMacosExcelInspectionAppleScript,
+  createMacosExcelStructuralOperationAppleScript,
   isMacosExcelInstalled,
   parseMacosExcelInspectionOutput,
   parseMacosExcelRecalculationOutput,
   runMacosExcelInspectionOracle,
   runMacosExcelRecalculationOracle,
+  runMacosExcelStructuralOperationOracle,
 } from '../macos-excel-oracle.js'
 
 describe('macOS Desktop Excel oracle harness', () => {
@@ -53,6 +55,22 @@ describe('macOS Desktop Excel oracle harness', () => {
     expect(script).toContain('set inspectedRange to range "C1"')
     expect(script).toContain('my formulaText(formula of inspectedRange)')
     expect(script).toContain('my typedCellValue(value of inspectedRange)')
+    expect(script).toContain('close targetWorkbook saving yes')
+    expect(script).not.toContain('active workbook')
+  })
+
+  it('builds a structural operation runner that can cut-insert columns before inspection', () => {
+    const script = createMacosExcelStructuralOperationAppleScript({
+      worksheetName: 'Cases',
+      operations: [{ kind: 'moveColumns', sourceRange: 'B:B', destinationRange: 'F:F' }],
+      inspectCells: ['F1'],
+      saveWorkbook: true,
+    })
+
+    expect(script).toContain('set targetWorksheet to worksheet "Cases"')
+    expect(script).toContain('cut range (range "B:B" of targetWorksheet)')
+    expect(script).toContain('insert into range (range "F:F" of targetWorksheet) shift shift to right')
+    expect(script).toContain('set inspectedRange to range "F1" of targetWorksheet')
     expect(script).toContain('close targetWorkbook saving yes')
     expect(script).not.toContain('active workbook')
   })
@@ -121,6 +139,22 @@ describe('macOS Desktop Excel oracle harness', () => {
         })
         expect(inspection.cells).toEqual([
           { address: 'C1', formula: '=A1+B1*2', rawValue: 'number\t16.0', value: { kind: 'number', value: 16 } },
+        ])
+
+        const structuralWorkbookPath = join(tempDir, 'structural-oracle.xlsx')
+        const structuralWorksheet = XLSX.utils.aoa_to_sheet([[1, 2, 3, 4, 5, { f: 'SUM(B1:C1)' }]])
+        const structuralWorkbook = XLSX.utils.book_new()
+        XLSX.utils.book_append_sheet(structuralWorkbook, structuralWorksheet, 'Cases')
+        writeFileSync(structuralWorkbookPath, XLSX.write(structuralWorkbook, { type: 'buffer', bookType: 'xlsx' }))
+
+        const structural = runMacosExcelStructuralOperationOracle({
+          workbookPath: structuralWorkbookPath,
+          worksheetName: 'Cases',
+          operations: [{ kind: 'moveColumns', sourceRange: 'B:B', destinationRange: 'F:F' }],
+          inspectCells: ['F1'],
+        })
+        expect(structural.cells).toEqual([
+          { address: 'F1', formula: '=SUM(B1:B1)', rawValue: 'number\t3.0', value: { kind: 'number', value: 3 } },
         ])
       } finally {
         rmSync(tempDir, { recursive: true, force: true })
