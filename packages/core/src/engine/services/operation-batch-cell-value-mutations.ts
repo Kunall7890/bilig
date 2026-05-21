@@ -207,7 +207,11 @@ export function applyBatchSetCellValueOp(request: ApplyBatchSetCellValueOpArgs):
   const sortedLookupDependentsHandled = lookupWritePlans?.sortedHandled === true
   const cellIndex = request.preparedCells.ensureCellTracked(op.sheetName, op.address, preparedCellAddress)
   if (!request.isRestore) {
-    changedInputCount = args.markSpillRootsChanged(args.clearOwnedSpill(cellIndex), changedInputCount)
+    const clearedSpill = args.clearSpillForCell(cellIndex)
+    changedInputCount = args.markSpillRootsChanged(clearedSpill.changedCellIndices, changedInputCount)
+    if (clearedSpill.ownerCellIndex !== undefined) {
+      formulaChangedCount = args.markFormulaChanged(clearedSpill.ownerCellIndex, formulaChangedCount)
+    }
     const removedFormula = args.removeFormula(cellIndex)
     if (removedFormula) {
       args.invalidateAggregateColumn({ sheetName: op.sheetName, col: parsedAddress.col })
@@ -412,7 +416,11 @@ export function applyBatchClearCellOp(request: ApplyBatchClearCellOpArgs): Batch
     return { changedInputCount, formulaChangedCount, explicitChangedCount, topologyChanged, refreshAllPivots }
   }
   changedInputCount = args.markPivotRootsChanged(args.clearPivotForCell(targetCellIndex), changedInputCount)
-  changedInputCount = args.markSpillRootsChanged(args.clearOwnedSpill(targetCellIndex), changedInputCount)
+  const clearedSpill = args.clearSpillForCell(targetCellIndex)
+  changedInputCount = args.markSpillRootsChanged(clearedSpill.changedCellIndices, changedInputCount)
+  if (clearedSpill.ownerCellIndex !== undefined) {
+    formulaChangedCount = args.markFormulaChanged(clearedSpill.ownerCellIndex, formulaChangedCount)
+  }
   const removedFormula = args.removeFormula(targetCellIndex)
   if (removedFormula) {
     args.invalidateAggregateColumn({ sheetName: op.sheetName, col: parsedAddress.col })

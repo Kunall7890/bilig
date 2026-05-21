@@ -144,6 +144,7 @@ export interface CreateEngineOperationServiceArgs {
     graphRefreshRequired: boolean
   }
   readonly clearOwnedSpill: (cellIndex: number) => number[]
+  readonly clearSpillForCell: (cellIndex: number) => { readonly changedCellIndices: number[]; readonly ownerCellIndex: number | undefined }
   readonly clearPivotForCell: (cellIndex: number) => number[]
   readonly clearOwnedPivot: (pivot: WorkbookPivotRecord) => number[]
   readonly materializePivot: (pivot: WorkbookPivotRecord) => number[]

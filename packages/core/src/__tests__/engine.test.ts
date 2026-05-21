@@ -890,12 +890,43 @@ describe('SpreadsheetEngine', () => {
 
     expect(engine.getCellValue('Sheet1', 'A1')).toEqual({
       tag: ValueTag.Error,
-      code: ErrorCode.Blocked,
+      code: ErrorCode.Spill,
     })
     expect(engine.getLastMetrics()).toMatchObject({ wasmFormulaCount: 1, jsFormulaCount: 0 })
     expect(engine.getCellValue('Sheet1', 'A2')).toEqual({ tag: ValueTag.Number, value: 99 })
     expect(engine.getCellValue('Sheet1', 'A3')).toEqual({ tag: ValueTag.Empty })
-    expect(engine.exportSnapshot().workbook.metadata?.spills).toBeUndefined()
+    expect(engine.exportSnapshot().workbook.metadata?.spills).toEqual([{ sheetName: 'Sheet1', address: 'A1', rows: 1, cols: 1 }])
+  })
+
+  it('blocks and unblocks dynamic arrays when spill children are authored and cleared', async () => {
+    const engine = new SpreadsheetEngine({ workbookName: 'spec' })
+    await engine.ready()
+    engine.createSheet('Sheet1')
+    engine.setCellValue('Sheet1', 'A1', 3)
+    engine.setCellFormula('Sheet1', 'B1', 'SEQUENCE(A1,1,1,1)')
+    engine.setCellFormula('Sheet1', 'D1', 'SUM(B1#)')
+    engine.setCellFormula('Sheet1', 'E1', 'ROWS(B1#)')
+    engine.setCellFormula('Sheet1', 'F1', 'IFERROR(INDEX(B1#,2),"missing")')
+
+    engine.setCellValue('Sheet1', 'B2', 99)
+
+    expect(engine.getCellValue('Sheet1', 'B1')).toEqual({ tag: ValueTag.Error, code: ErrorCode.Spill })
+    expect(engine.getCellValue('Sheet1', 'B2')).toEqual({ tag: ValueTag.Number, value: 99 })
+    expect(engine.getCellValue('Sheet1', 'B3')).toEqual({ tag: ValueTag.Empty })
+    expect(engine.getCellValue('Sheet1', 'D1')).toEqual({ tag: ValueTag.Error, code: ErrorCode.Spill })
+    expect(engine.getCellValue('Sheet1', 'E1')).toEqual({ tag: ValueTag.Number, value: 1 })
+    expect(engine.getCellValue('Sheet1', 'F1')).toMatchObject({ tag: ValueTag.String, value: 'missing' })
+    expect(engine.exportSnapshot().workbook.metadata?.spills).toEqual([{ sheetName: 'Sheet1', address: 'B1', rows: 1, cols: 1 }])
+
+    engine.clearCell('Sheet1', 'B2')
+
+    expect(engine.getCellValue('Sheet1', 'B1')).toEqual({ tag: ValueTag.Number, value: 1 })
+    expect(engine.getCellValue('Sheet1', 'B2')).toEqual({ tag: ValueTag.Number, value: 2 })
+    expect(engine.getCellValue('Sheet1', 'B3')).toEqual({ tag: ValueTag.Number, value: 3 })
+    expect(engine.getCellValue('Sheet1', 'D1')).toEqual({ tag: ValueTag.Number, value: 6 })
+    expect(engine.getCellValue('Sheet1', 'E1')).toEqual({ tag: ValueTag.Number, value: 3 })
+    expect(engine.getCellValue('Sheet1', 'F1')).toEqual({ tag: ValueTag.Number, value: 2 })
+    expect(engine.exportSnapshot().workbook.metadata?.spills).toEqual([{ sheetName: 'Sheet1', address: 'B1', rows: 3, cols: 1 }])
   })
 
   it('evaluates nested sequence aggregates on the wasm path', async () => {

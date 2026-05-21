@@ -199,7 +199,8 @@ describe('formula', () => {
 
   it('routes accelerated text-splitting formulas to the wasm path while keeping indirection helpers on JS', () => {
     expect(compileFormula('TEXTSPLIT(A1,",")')).toMatchObject({ mode: 1, producesSpill: true })
-    expect(compileFormula('INDIRECT("A1")').mode).toBe(0)
+    expect(compileFormula('INDIRECT("A1")')).toMatchObject({ mode: 0, producesSpill: true })
+    expect(compileFormula('INDIRECT("A1:A3")')).toMatchObject({ mode: 0, producesSpill: true })
     expect(compileFormula('FORMULA(A1)').mode).toBe(0)
     expect(compileFormula('GETPIVOTDATA("Sales",A1)').mode).toBe(0)
   })

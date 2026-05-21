@@ -112,6 +112,9 @@ export function producesSpillResult(node: FormulaNode): boolean {
     case 'BinaryExpr':
       return producesSpillResult(node.left) || producesSpillResult(node.right)
     case 'CallExpr':
+      if (node.callee.toUpperCase() === 'INDIRECT') {
+        return true
+      }
       if (node.callee.toUpperCase() === 'CHOOSE') {
         return node.args.some((arg) => producesSpillResult(arg))
       }

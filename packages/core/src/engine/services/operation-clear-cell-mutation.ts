@@ -264,7 +264,11 @@ export function applyClearCellMutation(request: ApplyClearCellMutationArgs): Cle
   }
 
   changedInputCount = args.markPivotRootsChanged(args.clearPivotForCell(existingIndex), changedInputCount)
-  changedInputCount = args.markSpillRootsChanged(args.clearOwnedSpill(existingIndex), changedInputCount)
+  const clearedSpill = args.clearSpillForCell(existingIndex)
+  changedInputCount = args.markSpillRootsChanged(clearedSpill.changedCellIndices, changedInputCount)
+  if (clearedSpill.ownerCellIndex !== undefined) {
+    formulaChangedCount = args.markFormulaChanged(clearedSpill.ownerCellIndex, formulaChangedCount)
+  }
   const removedFormula = args.removeFormula(existingIndex)
   topologyChanged = removedFormula || topologyChanged
   if (removedFormula) {

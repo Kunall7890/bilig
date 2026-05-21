@@ -729,6 +729,7 @@ export function createEngineServiceRuntime(args: {
     removeSheetRuntime: (sheetName, explicitChangedCount) => support.removeSheetRuntimeNow(sheetName, explicitChangedCount),
     applyStructuralAxisOp: (op) => structure.applyStructuralAxisOpNow(op),
     clearOwnedSpill: (cellIndex) => support.clearOwnedSpillNow(cellIndex),
+    clearSpillForCell: (cellIndex) => support.clearSpillForCellNow(cellIndex),
     clearPivotForCell: (cellIndex) => getPivot().clearPivotForCellNow(cellIndex),
     clearOwnedPivot: (pivotRecord) => getPivot().clearOwnedPivotNow(pivotRecord),
     materializePivot: (pivotRecord) => getPivot().materializePivotNow(pivotRecord),

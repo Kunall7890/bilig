@@ -85,6 +85,29 @@ const expectedDesktopExcelShrinkingSpillReferenceOracleCells = [
   { address: 'B3', rawValue: 'string\t', value: { kind: 'string', value: '' } },
   ...expectedShrinkingSpillReferenceOracleCells.slice(3),
 ] as const
+const blockedSpillReferenceOracleAddresses = ['B1', 'B2', 'B3', 'D1', 'E1', 'F1'] as const
+const expectedBlockedSpillReferenceOracleValues = [
+  { address: 'B1', value: { kind: 'error', value: String(ErrorCode.Spill) } },
+  { address: 'B2', value: { kind: 'number', value: 99 } },
+  { address: 'B3', value: { kind: 'blank' } },
+  { address: 'D1', value: { kind: 'error', value: String(ErrorCode.Spill) } },
+  { address: 'E1', value: { kind: 'number', value: 1 } },
+  { address: 'F1', value: { kind: 'string', value: 'missing' } },
+] as const
+const expectedDesktopExcelBlockedSpillReferenceValues = [
+  expectedBlockedSpillReferenceOracleValues[0],
+  expectedBlockedSpillReferenceOracleValues[1],
+  { address: 'B3', value: { kind: 'string', value: '' } },
+  ...expectedBlockedSpillReferenceOracleValues.slice(3),
+] as const
+const expectedUnblockedSpillReferenceOracleValues = [
+  { address: 'B1', value: { kind: 'number', value: 1 } },
+  { address: 'B2', value: { kind: 'number', value: 2 } },
+  { address: 'B3', value: { kind: 'number', value: 3 } },
+  { address: 'D1', value: { kind: 'number', value: 6 } },
+  { address: 'E1', value: { kind: 'number', value: 3 } },
+  { address: 'F1', value: { kind: 'number', value: 2 } },
+] as const
 const textsplitErrorOracleAddresses = ['C1', 'D1', 'C2', 'D2'] as const
 const expectedTextsplitErrorOracleCells = [
   { address: 'C1', formula: '=TEXTSPLIT(A1,",","|")', rawValue: 'string\tred', value: { kind: 'string', value: 'red' } },
@@ -422,6 +445,47 @@ describe('macOS Desktop Excel XLSX oracle for WorkPaper', () => {
       } finally {
         reimported.dispose()
       }
+    } finally {
+      workbook.dispose()
+    }
+  })
+
+  it('blocks spill-reference consumers when a spill child is authored and unblocks after clear', () => {
+    const workbook = buildShrinkingSpillReferenceOracleWorkbook()
+    try {
+      workbook.setCellContents(addressToCell('B2'), 99)
+
+      expect(
+        blockedSpillReferenceOracleAddresses.map((address) => ({
+          address,
+          value: normalizedCellValue(workbook.getCellValue(addressToCell(address))),
+        })),
+      ).toEqual(expectedBlockedSpillReferenceOracleValues)
+      expect(workbook.exportSnapshot().workbook.metadata?.spills).toEqual([{ sheetName: 'Cases', address: 'B1', rows: 1, cols: 1 }])
+
+      const blockedImported = importXlsx(exportXlsx(workbook.exportSnapshot()), 'headless-blocked-spill-reference-oracle.xlsx')
+      const blockedReimported = WorkPaper.buildFromSnapshot(blockedImported.snapshot, workbookConfig)
+      try {
+        expect(
+          blockedSpillReferenceOracleAddresses.map((address) => ({
+            address,
+            value: normalizedCellValue(blockedReimported.getCellValue(addressToCell(address))),
+          })),
+        ).toEqual(expectedBlockedSpillReferenceOracleValues)
+        expect(blockedImported.snapshot.workbook.metadata?.spills).toEqual([{ sheetName: 'Cases', address: 'B1', rows: 1, cols: 1 }])
+      } finally {
+        blockedReimported.dispose()
+      }
+
+      workbook.setCellContents(addressToCell('B2'), null)
+
+      expect(
+        blockedSpillReferenceOracleAddresses.map((address) => ({
+          address,
+          value: normalizedCellValue(workbook.getCellValue(addressToCell(address))),
+        })),
+      ).toEqual(expectedUnblockedSpillReferenceOracleValues)
+      expect(workbook.exportSnapshot().workbook.metadata?.spills).toEqual([{ sheetName: 'Cases', address: 'B1', rows: 3, cols: 1 }])
     } finally {
       workbook.dispose()
     }
@@ -1201,6 +1265,91 @@ describe('macOS Desktop Excel XLSX oracle for WorkPaper', () => {
           expect(imported.snapshot.workbook.metadata?.spills).toEqual([{ sheetName: 'Cases', address: 'B1', rows: 1, cols: 1 }])
         } finally {
           reimported.dispose()
+        }
+      } finally {
+        rmSync(tempDir, { recursive: true, force: true })
+      }
+    },
+    60_000,
+  )
+
+  it.runIf(process.env.BILIG_EXCEL_ORACLE_RUN === '1')(
+    'matches Desktop Excel spill-reference semantics after authoring and clearing a spill child',
+    () => {
+      if (!isMacosExcelInstalled()) {
+        throw new Error('BILIG_EXCEL_ORACLE_RUN=1 requires /Applications/Microsoft Excel.app')
+      }
+
+      const tempDir = mkdtempSync(join(tmpdir(), 'bilig-headless-excel-blocked-spill-reference-oracle-'))
+      try {
+        const workbookPath = join(tempDir, 'headless-blocked-spill-reference-oracle.xlsx')
+        const workbook = buildShrinkingSpillReferenceOracleWorkbook()
+        try {
+          writeFileSync(workbookPath, exportXlsx(workbook.exportSnapshot()))
+        } finally {
+          workbook.dispose()
+        }
+
+        const blockedExcelResult = runMacosExcelStructuralOperationOracle({
+          workbookPath,
+          worksheetName: 'Cases',
+          operations: [{ kind: 'setCellValue', address: 'B2', value: 99 }],
+          inspectCells: blockedSpillReferenceOracleAddresses,
+          saveWorkbook: true,
+        })
+
+        expect(blockedExcelResult.cells.map(({ address, value }) => ({ address, value }))).toEqual(
+          expectedDesktopExcelBlockedSpillReferenceValues,
+        )
+        expect(blockedExcelResult.cells[0]?.formula).toBe('=SEQUENCE(A1,1,1,1)')
+        expect(blockedExcelResult.cells[3]?.formula).toBe('=SUM(B1#)')
+        expect(blockedExcelResult.cells[4]?.formula).toBe('=ROWS(B1#)')
+        expect(blockedExcelResult.cells[5]?.formula).toBe('=IFERROR(INDEX(B1#,2),"missing")')
+
+        const blockedImported = importXlsx(
+          new Uint8Array(readFileSync(workbookPath)),
+          'headless-blocked-spill-reference-oracle-recalculated.xlsx',
+        )
+        const blockedReimported = WorkPaper.buildFromSnapshot(blockedImported.snapshot, workbookConfig)
+        try {
+          expect(blockedImported.snapshot.workbook.metadata?.spills).toEqual([{ sheetName: 'Cases', address: 'B1', rows: 1, cols: 1 }])
+          expect(normalizedCellValue(blockedReimported.getCellValue(addressToCell('B2')))).toEqual({ kind: 'number', value: 99 })
+          expect(normalizedCellValue(blockedReimported.getCellValue(addressToCell('E1')))).toEqual({ kind: 'number', value: 1 })
+          expect(normalizedCellValue(blockedReimported.getCellValue(addressToCell('F1')))).toEqual({
+            kind: 'string',
+            value: 'missing',
+          })
+        } finally {
+          blockedReimported.dispose()
+        }
+
+        const unblockedExcelResult = runMacosExcelStructuralOperationOracle({
+          workbookPath,
+          worksheetName: 'Cases',
+          operations: [{ kind: 'clearCell', address: 'B2' }],
+          inspectCells: blockedSpillReferenceOracleAddresses,
+          saveWorkbook: true,
+        })
+
+        expect(unblockedExcelResult.cells.map(({ address, value }) => ({ address, value }))).toEqual(
+          expectedUnblockedSpillReferenceOracleValues,
+        )
+
+        const unblockedImported = importXlsx(
+          new Uint8Array(readFileSync(workbookPath)),
+          'headless-unblocked-spill-reference-oracle-recalculated.xlsx',
+        )
+        const unblockedReimported = WorkPaper.buildFromSnapshot(unblockedImported.snapshot, workbookConfig)
+        try {
+          expect(
+            blockedSpillReferenceOracleAddresses.map((address) => ({
+              address,
+              value: normalizedCellValue(unblockedReimported.getCellValue(addressToCell(address))),
+            })),
+          ).toEqual(expectedUnblockedSpillReferenceOracleValues)
+          expect(unblockedImported.snapshot.workbook.metadata?.spills).toEqual([{ sheetName: 'Cases', address: 'B1', rows: 3, cols: 1 }])
+        } finally {
+          unblockedReimported.dispose()
         }
       } finally {
         rmSync(tempDir, { recursive: true, force: true })

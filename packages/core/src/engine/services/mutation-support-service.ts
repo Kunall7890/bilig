@@ -13,8 +13,29 @@ import { createMutationSupportChangeSetTracker } from './mutation-support-change
 
 type DerivedOp = Extract<EngineOp, { kind: 'upsertSpillRange' | 'deleteSpillRange' | 'upsertPivotTable' | 'deletePivotTable' }>
 
+export interface SpillClearResult {
+  readonly changedCellIndices: number[]
+  readonly ownerCellIndex: number | undefined
+}
+
 function mutationErrorMessage(message: string, cause: unknown): string {
   return cause instanceof Error && cause.message.length > 0 ? cause.message : message
+}
+
+function removePackedCellIndex(indices: Uint32Array, cellIndex: number): Uint32Array {
+  let found = false
+  const next = new Uint32Array(indices.length)
+  let cursor = 0
+  for (let index = 0; index < indices.length; index += 1) {
+    const current = indices[index]!
+    if (current === cellIndex) {
+      found = true
+      continue
+    }
+    next[cursor] = current
+    cursor += 1
+  }
+  return found ? next.subarray(0, cursor) : indices
 }
 
 export interface EngineMutationSupportService {
@@ -38,6 +59,7 @@ export interface EngineMutationSupportService {
   readonly ensureCellTracked: (sheetName: string, address: string) => Effect.Effect<number, EngineMutationError>
   readonly ensureCellTrackedByCoords: (sheetId: number, row: number, col: number) => Effect.Effect<number, EngineMutationError>
   readonly clearOwnedSpill: (cellIndex: number) => Effect.Effect<number[], EngineMutationError>
+  readonly clearSpillForCell: (cellIndex: number) => Effect.Effect<SpillClearResult, EngineMutationError>
   readonly materializeSpill: (
     cellIndex: number,
     arrayValue: { values: CellValue[]; rows: number; cols: number },
@@ -64,6 +86,7 @@ export interface EngineMutationSupportService {
   readonly ensureCellTrackedNow: (sheetName: string, address: string) => number
   readonly ensureCellTrackedByCoordsNow: (sheetId: number, row: number, col: number) => number
   readonly clearOwnedSpillNow: (cellIndex: number) => number[]
+  readonly clearSpillForCellNow: (cellIndex: number) => SpillClearResult
   readonly materializeSpillNow: (cellIndex: number, arrayValue: { values: CellValue[]; rows: number; cols: number }) => SpillMaterialization
   readonly removeSheetRuntimeNow: (
     sheetName: string,
@@ -147,8 +170,18 @@ export function createEngineMutationSupportService(args: {
     setReverseEdgeSlice(entityId, args.edgeArena.appendUnique(slice, dependentEntityId))
   }
 
+  const removeReverseEdge = (entityId: number, dependentEntityId: number): void => {
+    const slice = getReverseEdgeSlice(entityId)
+    if (!slice) {
+      return
+    }
+    setReverseEdgeSlice(entityId, args.edgeArena.removeValue(slice, dependentEntityId))
+  }
+
   const getEntityDependents = (entityId: number): Uint32Array =>
     args.edgeArena.readView(getReverseEdgeSlice(entityId) ?? args.edgeArena.empty())
+
+  const blockedSpillBlockersByOwner = new Map<number, Set<number>>()
 
   const changeSets = createMutationSupportChangeSetTracker({
     formulas: args.state.formulas,
@@ -232,7 +265,26 @@ export function createEngineMutationSupportService(args: {
     return true
   }
 
+  const clearBlockedSpillObstructionsForOwner = (ownerCellIndex: number): void => {
+    const blockers = blockedSpillBlockersByOwner.get(ownerCellIndex)
+    if (!blockers) {
+      return
+    }
+    const formula = args.state.formulas.get(ownerCellIndex)
+    const formulaEntity = makeCellEntity(ownerCellIndex)
+    blockers.forEach((blockerCellIndex) => {
+      const blockerEntity = makeCellEntity(blockerCellIndex)
+      removeReverseEdge(blockerEntity, formulaEntity)
+      if (formula) {
+        formula.dependencyIndices = removePackedCellIndex(formula.dependencyIndices, blockerCellIndex)
+        formula.dependencyEntities = args.edgeArena.removeValue(formula.dependencyEntities, blockerEntity)
+      }
+    })
+    blockedSpillBlockersByOwner.delete(ownerCellIndex)
+  }
+
   const clearOwnedSpillNow = (cellIndex: number): number[] => {
+    clearBlockedSpillObstructionsForOwner(cellIndex)
     const sheetName = args.state.workbook.getSheetNameById(args.state.workbook.cellStore.sheetIds[cellIndex]!)
     const address = args.state.workbook.getAddress(cellIndex)
     const spill = args.state.workbook.getSpill(sheetName, address)
@@ -261,6 +313,95 @@ export function createEngineMutationSupportService(args: {
     return changedCellIndices
   }
 
+  const findContainingSpillNow = (
+    cellIndex: number,
+  ):
+    | {
+        readonly sheetName: string
+        readonly address: string
+        readonly ownerCellIndex: number | undefined
+        readonly ownerRow: number
+        readonly ownerCol: number
+        readonly rows: number
+        readonly cols: number
+      }
+    | undefined => {
+    const sheetId = args.state.workbook.cellStore.sheetIds[cellIndex]
+    if (sheetId === undefined) {
+      return undefined
+    }
+    const sheetName = args.state.workbook.getSheetNameById(sheetId)
+    const position = args.state.workbook.getCellPosition(cellIndex)
+    const row = position?.row ?? args.state.workbook.cellStore.rows[cellIndex] ?? 0
+    const col = position?.col ?? args.state.workbook.cellStore.cols[cellIndex] ?? 0
+    for (const spill of args.state.workbook.listSpills()) {
+      if (spill.sheetName !== sheetName) {
+        continue
+      }
+      const owner = parseCellAddress(spill.address, spill.sheetName)
+      if (row < owner.row || row >= owner.row + spill.rows || col < owner.col || col >= owner.col + spill.cols) {
+        continue
+      }
+      return {
+        sheetName,
+        address: spill.address,
+        ownerCellIndex: args.state.workbook.getCellIndex(sheetName, spill.address),
+        ownerRow: owner.row,
+        ownerCol: owner.col,
+        rows: spill.rows,
+        cols: spill.cols,
+      }
+    }
+    return undefined
+  }
+
+  const clearSpillForCellNow = (cellIndex: number): SpillClearResult => {
+    const spill = findContainingSpillNow(cellIndex)
+    if (!spill) {
+      return { changedCellIndices: [], ownerCellIndex: undefined }
+    }
+    if (spill.ownerCellIndex === cellIndex) {
+      return { changedCellIndices: clearOwnedSpillNow(cellIndex), ownerCellIndex: undefined }
+    }
+
+    const changedCellIndices: number[] = []
+    for (let rowOffset = 0; rowOffset < spill.rows; rowOffset += 1) {
+      for (let colOffset = 0; colOffset < spill.cols; colOffset += 1) {
+        if (rowOffset === 0 && colOffset === 0) {
+          continue
+        }
+        const childAddress = formatAddress(spill.ownerRow + rowOffset, spill.ownerCol + colOffset)
+        const childIndex = args.state.workbook.getCellIndex(spill.sheetName, childAddress)
+        if (childIndex === undefined || childIndex === cellIndex) {
+          continue
+        }
+        if (clearSpillChildCell(childIndex)) {
+          changedCellIndices.push(childIndex)
+        }
+      }
+    }
+    changedCellIndices.push(...args.applyDerivedOp({ kind: 'deleteSpillRange', sheetName: spill.sheetName, address: spill.address }))
+    return { changedCellIndices, ownerCellIndex: spill.ownerCellIndex }
+  }
+
+  const trackSpillObstructionDependency = (ownerCellIndex: number, blockerCellIndex: number): void => {
+    const formula = args.state.formulas.get(ownerCellIndex)
+    if (!formula) {
+      return
+    }
+    let blockers = blockedSpillBlockersByOwner.get(ownerCellIndex)
+    if (!blockers) {
+      blockers = new Set<number>()
+      blockedSpillBlockersByOwner.set(ownerCellIndex, blockers)
+    }
+    blockers.add(blockerCellIndex)
+    const blockerEntity = makeCellEntity(blockerCellIndex)
+    const formulaEntity = makeCellEntity(ownerCellIndex)
+    formula.dependencyIndices = appendPackedCellIndex(formula.dependencyIndices, blockerCellIndex)
+    formula.dependencyEntities = args.edgeArena.appendUnique(formula.dependencyEntities, blockerEntity)
+    appendReverseEdge(blockerEntity, formulaEntity)
+  }
+
   const materializeSpillNow = (
     cellIndex: number,
     arrayValue: { values: CellValue[]; rows: number; cols: number },
@@ -287,7 +428,9 @@ export function createEngineMutationSupportService(args: {
         }
         const targetValue = args.state.workbook.cellStore.getValue(targetIndex, (id) => args.state.strings.get(id))
         if (args.state.formulas.get(targetIndex) || targetValue.tag !== ValueTag.Empty) {
-          return { changedCellIndices, ownerValue: errorValue(ErrorCode.Blocked) }
+          trackSpillObstructionDependency(cellIndex, targetIndex)
+          changedCellIndices.push(...args.applyDerivedOp({ kind: 'upsertSpillRange', sheetName, address, rows: 1, cols: 1 }))
+          return { changedCellIndices, ownerValue: errorValue(ErrorCode.Spill) }
         }
       }
     }
@@ -573,6 +716,16 @@ export function createEngineMutationSupportService(args: {
           }),
       })
     },
+    clearSpillForCell(cellIndex) {
+      return Effect.try({
+        try: () => clearSpillForCellNow(cellIndex),
+        catch: (cause) =>
+          new EngineMutationError({
+            message: mutationErrorMessage(`Failed to clear spill containing ${cellIndex}`, cause),
+            cause,
+          }),
+      })
+    },
     materializeSpill(cellIndex, arrayValue) {
       return Effect.try({
         try: () => materializeSpillNow(cellIndex, arrayValue),
@@ -639,6 +792,7 @@ export function createEngineMutationSupportService(args: {
     ensureCellTrackedNow,
     ensureCellTrackedByCoordsNow,
     clearOwnedSpillNow,
+    clearSpillForCellNow,
     materializeSpillNow,
     removeSheetRuntimeNow,
     syncDynamicRangesNow,
