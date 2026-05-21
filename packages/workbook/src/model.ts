@@ -10,7 +10,7 @@ import {
 } from './input.js'
 import { isWorkbookOp } from './guards.js'
 import type { WorkbookOp } from './ops.js'
-import type { WorkbookChangeSummary, WorkbookCheckResult, WorkbookRunError } from './result.js'
+import type { WorkbookChangeSummary, WorkbookCheckResult, WorkbookRunError, WorkbookRunErrorCode } from './result.js'
 
 export type WorkbookActionCommand =
   | {
@@ -393,7 +393,7 @@ function inputProperty(input: WorkbookActionInput | undefined): { readonly input
 function failedPlan<Refs>(
   modelName: string,
   actionName: string,
-  code: string,
+  code: WorkbookRunErrorCode,
   message: string,
   checks: readonly WorkbookCheckResult[] = [],
   input?: WorkbookActionInput,

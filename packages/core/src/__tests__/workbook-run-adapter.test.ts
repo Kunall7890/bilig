@@ -404,7 +404,7 @@ describe('workbook run adapter', () => {
       status: 'failed',
       errors: [
         {
-          code: 'engine_apply_failed',
+          code: 'apply_failed',
           message: expect.stringContaining('Ambiguous table selector table with Input, Result matched First, Second'),
         },
       ],

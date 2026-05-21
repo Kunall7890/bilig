@@ -636,7 +636,7 @@ export function createWorkbookRunAdapter(engine: SpreadsheetEngine, options: Wor
           status: 'failed',
           errors: [
             {
-              code: 'engine_apply_failed',
+              code: 'apply_failed',
               message: errorMessage(error),
             },
           ],

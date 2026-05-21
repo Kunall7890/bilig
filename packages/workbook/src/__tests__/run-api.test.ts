@@ -4,9 +4,11 @@ import {
   defineModel,
   findRange,
   formula,
+  isWorkbookRunErrorCode,
   runWorkbookAction,
   runWorkbookPlan,
   verifyWorkbookReadbacks,
+  workbookRunErrorCodes,
   type WorkbookModel,
   type WorkbookRunAdapter,
 } from '../index.js'
@@ -39,6 +41,18 @@ function first<T>(values: readonly T[]): T {
 }
 
 describe('@bilig/workbook run api', () => {
+  it('exports stable inspectable run error codes', () => {
+    expect(Object.isFrozen(workbookRunErrorCodes)).toBe(true)
+    expect(workbookRunErrorCodes).toContain('action_not_found')
+    expect(workbookRunErrorCodes).toContain('invalid_action_input')
+    expect(workbookRunErrorCodes).toContain('formula_input_not_resolved')
+    expect(workbookRunErrorCodes).toContain('readback_missing')
+    expect(workbookRunErrorCodes).toContain('runtime_rejected')
+    expect(new Set(workbookRunErrorCodes).size).toBe(workbookRunErrorCodes.length)
+    expect(isWorkbookRunErrorCode('check_not_verified')).toBe(true)
+    expect(isWorkbookRunErrorCode('custom_runtime_error')).toBe(false)
+  })
+
   it('plans, verifies, applies, reads back, and returns done for value checks', async () => {
     const model = valueModel()
     const apply = vi.fn<WorkbookRunAdapter<{ output: ReturnType<typeof findRange> }>['apply']>(() => ({

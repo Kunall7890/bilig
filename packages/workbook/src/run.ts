@@ -2,7 +2,7 @@ import type { WorkbookRef } from './find.js'
 import type { WorkbookActionInput } from './input.js'
 import { planWorkbookAction, type WorkbookActionMap, type WorkbookActionPlan, type WorkbookModel } from './model.js'
 import { verifyWorkbookReadbacks, type WorkbookRunReadback } from './readback.js'
-import type { WorkbookCheckResult, WorkbookRunError, WorkbookRunResult, WorkbookUndoRef } from './result.js'
+import type { WorkbookCheckResult, WorkbookRunError, WorkbookRunErrorCode, WorkbookRunResult, WorkbookUndoRef } from './result.js'
 import { verifyPlan } from './verify.js'
 
 type MaybePromise<T> = T | Promise<T>
@@ -26,7 +26,7 @@ function errorMessage(error: unknown): string {
   return error instanceof Error ? error.message : String(error)
 }
 
-function runError(code: string, message: string): WorkbookRunError {
+function runError(code: WorkbookRunErrorCode, message: string): WorkbookRunError {
   return {
     code,
     message,

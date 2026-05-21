@@ -25,6 +25,7 @@ import type {
   WorkbookCheckExpectation,
   WorkbookCheckResult,
   WorkbookCheckStatus,
+  WorkbookRunErrorCode,
   WorkbookRunResult,
   WorkbookUndoRef,
 } from './result.js'
@@ -184,7 +185,7 @@ export type WorkbookRunResultDescription =
     }
 
 export interface WorkbookRunErrorDescription {
-  readonly code: string
+  readonly code: WorkbookRunErrorCode
   readonly message: string
 }
 

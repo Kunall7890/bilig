@@ -31,6 +31,8 @@ The public surface stays generic:
 - `runWorkbookAction`
 - `verifyWorkbookReadbacks`
 - `normalizeWorkbookActionInputDescription`
+- `workbookRunErrorCodes`
+- `isWorkbookRunErrorCode`
 - `formula`
 - `workbook.addOp(op, { target?, message? })` inside model actions
 - `WorkbookModel`
@@ -76,6 +78,8 @@ The public surface stays generic:
 - `WorkbookReadbackCheckOptions`
 - `WorkbookRawFormulaOptions`
 - `WorkbookRunResult`
+- `WorkbookRunError`
+- `WorkbookRunErrorCode`
 - `WorkbookCheckResult`
 
 The low-level operation language remains available:
@@ -237,6 +241,12 @@ Use `describeRunResult` after execution when an agent needs the same JSON-safe
 shape for `done` or `failed` run results. It preserves changed summaries,
 checks, errors, and undo ops, but describes workbook refs without helper
 functions such as `table.column()` or `rows.column()`.
+Run errors use a stable `WorkbookRunErrorCode` union rather than arbitrary
+strings. Use the frozen `workbookRunErrorCodes` list and `isWorkbookRunErrorCode`
+guard when an adapter, logger, or approval layer needs to branch on known
+failure classes. Runtime adapters should use `apply_failed` for apply
+exceptions and `runtime_rejected` for intentional runtime refusal with a
+specific message instead of inventing new public codes.
 Use `describeRuntimeRequirements(plan)` before runtime handoff when an agent
 needs to inspect what the adapter must do. It returns a JSON-safe list of
 generic `apply`, `read`, and `verify` requirements with boring capabilities

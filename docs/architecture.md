@@ -32,6 +32,7 @@ flowchart LR
   - JSON-safe action input planning and verification
   - action-object metadata and plain input descriptions for agent manifests
   - machine-readable readback checks for runtime proof
+  - stable run error code union for predictable agent branching
   - transport-neutral run adapters for apply-and-prove receipts
   - generic check verifier handoff for runtime-owned invariants
   - transport-neutral workbook ops and txns
