@@ -1,6 +1,9 @@
-import type { CellRangeRef } from '@bilig/protocol'
+import { MAX_COLS, MAX_ROWS, type CellRangeRef, type CellStyleRecord } from '@bilig/protocol'
+import { formatAddress } from '@bilig/formula'
 import type { EngineOp } from '@bilig/workbook'
 import type { OpOrder } from '../../replica-state.js'
+import { WORKBOOK_DEFAULT_STYLE_ID } from '../../workbook-default-style-format.js'
+import { cellStyleKey, normalizeCellStyleRecord } from '../../workbook-store-records.js'
 import type { WorkbookStore } from '../../workbook-store.js'
 import { assertNever } from './operation-change-helpers.js'
 import type { MutationSource } from './operation-service-types.js'
@@ -68,6 +71,8 @@ type OperationStructuralMetadataWorkbook = Pick<
   | 'deleteCommentThread'
   | 'setNote'
   | 'deleteNote'
+  | 'getCellStyle'
+  | 'listStyleRanges'
   | 'upsertCellStyle'
   | 'upsertCellNumberFormat'
   | 'setStyleRange'
@@ -79,6 +84,7 @@ type OperationStructuralMetadataWorkbook = Pick<
   | 'deleteImage'
   | 'setShape'
   | 'deleteShape'
+  | 'sheetsByName'
 >
 
 interface OperationStructuralMetadataInvalidationSpan {
@@ -207,9 +213,15 @@ export function applyOperationStructuralMetadataOp(args: {
       args.workbook.deleteNote(args.op.sheetName, args.op.address)
       change.structuralInvalidation = true
       break
-    case 'upsertCellStyle':
+    case 'upsertCellStyle': {
+      const previousStyle = args.workbook.getCellStyle(args.op.style.id)
+      const shouldInvalidateStyle = hasCellStylePresentationChanged(previousStyle, args.op.style)
       args.workbook.upsertCellStyle(args.op.style)
+      if (shouldInvalidateStyle) {
+        change.invalidatedRanges.push(...collectCellStyleInvalidatedRanges(args.workbook, args.op.style.id))
+      }
       break
+    }
     case 'upsertCellNumberFormat':
       args.workbook.upsertCellNumberFormat(args.op.format)
       break
@@ -254,4 +266,44 @@ export function applyOperationStructuralMetadataOp(args: {
 
   args.setEntityVersionForOp(args.op, args.order)
   return change
+}
+
+function hasCellStylePresentationChanged(previousStyle: CellStyleRecord | undefined, nextStyle: CellStyleRecord): boolean {
+  if (previousStyle === undefined) {
+    return true
+  }
+  return cellStyleKey(normalizeCellStyleRecord(previousStyle)) !== cellStyleKey(normalizeCellStyleRecord(nextStyle))
+}
+
+function collectCellStyleInvalidatedRanges(workbook: OperationStructuralMetadataWorkbook, styleId: string): CellRangeRef[] {
+  if (styleId === WORKBOOK_DEFAULT_STYLE_ID) {
+    return [...workbook.sheetsByName.values()]
+      .toSorted((left, right) => left.order - right.order)
+      .map((sheet) => fullSheetRange(sheet.name))
+  }
+
+  const invalidated: CellRangeRef[] = []
+  const seen = new Set<string>()
+  for (const sheet of workbook.sheetsByName.values()) {
+    for (const record of workbook.listStyleRanges(sheet.name)) {
+      if (record.styleId !== styleId) {
+        continue
+      }
+      const key = `${record.range.sheetName}\0${record.range.startAddress}\0${record.range.endAddress}`
+      if (seen.has(key)) {
+        continue
+      }
+      seen.add(key)
+      invalidated.push({ ...record.range })
+    }
+  }
+  return invalidated
+}
+
+function fullSheetRange(sheetName: string): CellRangeRef {
+  return {
+    sheetName,
+    startAddress: formatAddress(0, 0),
+    endAddress: formatAddress(MAX_ROWS - 1, MAX_COLS - 1),
+  }
 }

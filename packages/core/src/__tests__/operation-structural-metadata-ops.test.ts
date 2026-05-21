@@ -75,6 +75,57 @@ describe('operation structural metadata ops', () => {
     expect(harness.versionedKinds).toEqual(['setStyleRange', 'mergeCells'])
   })
 
+  it('invalidates ranges that reference a changed style record', () => {
+    const harness = createHarness()
+    const range = { sheetName: 'Sheet1', startAddress: 'C3', endAddress: 'D4' }
+    harness.workbook.upsertCellStyle({ id: 'style:accent', fill: { backgroundColor: '#ffeeaa' } })
+    harness.workbook.setStyleRange(range, 'style:accent')
+
+    const change = harness.apply({
+      kind: 'upsertCellStyle',
+      style: { id: 'style:accent', fill: { backgroundColor: '#34a853' } },
+    })
+
+    expect(change).toMatchObject({
+      structuralInvalidation: false,
+      invalidatedRanges: [range],
+    })
+    expect(harness.workbook.getCellStyle('style:accent')?.fill?.backgroundColor).toBe('#34a853')
+    expect(harness.versionedKinds).toEqual(['upsertCellStyle'])
+  })
+
+  it('skips style invalidation when the upserted style is presentation-equivalent', () => {
+    const harness = createHarness()
+    const range = { sheetName: 'Sheet1', startAddress: 'C3', endAddress: 'D4' }
+    harness.workbook.upsertCellStyle({ id: 'style:accent', fill: { backgroundColor: '#00ff00' } })
+    harness.workbook.setStyleRange(range, 'style:accent')
+
+    const change = harness.apply({
+      kind: 'upsertCellStyle',
+      style: { id: 'style:accent', fill: { backgroundColor: '#0f0' } },
+    })
+
+    expect(change.invalidatedRanges).toEqual([])
+    expect(harness.workbook.getCellStyle('style:accent')?.fill?.backgroundColor).toBe('#00ff00')
+    expect(harness.versionedKinds).toEqual(['upsertCellStyle'])
+  })
+
+  it('invalidates full visible sheets when the default style changes', () => {
+    const harness = createHarness()
+    harness.workbook.createSheet('Sheet2')
+
+    const change = harness.apply({
+      kind: 'upsertCellStyle',
+      style: { id: 'style-0', fill: { backgroundColor: '#ffffff' } },
+    })
+
+    expect(change.invalidatedRanges).toEqual([
+      { sheetName: 'Sheet1', startAddress: 'A1', endAddress: 'XFD1048576' },
+      { sheetName: 'Sheet2', startAddress: 'A1', endAddress: 'XFD1048576' },
+    ])
+    expect(harness.versionedKinds).toEqual(['upsertCellStyle'])
+  })
+
   it('applies structural sheet metadata and reports a full structural invalidation', () => {
     const harness = createHarness()
 

@@ -26,6 +26,7 @@ export interface RenderTileDeltaConnectionIdentity {
   readonly sheetId: number | undefined
   readonly sheetOrdinal: number | undefined
   readonly sheetName: string
+  readonly visibleViewport: Viewport
   readonly viewport: Viewport
 }
 
@@ -221,6 +222,7 @@ export function sameRenderTileDeltaConnectionIdentity(
     left.sheetName === right.sheetName &&
     left.sheetOrdinal === right.sheetOrdinal &&
     sameOptionalViewportIdentity(left.residentViewport, right.residentViewport) &&
+    sameViewportIdentity(left.visibleViewport, right.visibleViewport) &&
     sameViewportIdentity(left.viewport, right.viewport)
   )
 }

@@ -438,6 +438,7 @@ export class GridRenderTilePaneRuntime {
   }
 
   private syncRenderTileDeltaConnection(input: GridRenderTileConnectionRuntimeInput): void {
+    const visibleViewport = input.visibleViewport ?? input.residentViewport ?? input.renderTileViewport
     const identity: RenderTileDeltaConnectionIdentity = {
       dprBucket: input.dprBucket,
       freezeCols: input.freezeCols ?? 0,
@@ -447,6 +448,7 @@ export class GridRenderTilePaneRuntime {
       sheetId: input.sheetId,
       sheetName: input.sheetName,
       sheetOrdinal: input.sheetOrdinal,
+      visibleViewport,
       viewport: input.renderTileViewport,
     }
     if (this.renderTileDeltaConnection && sameRenderTileDeltaConnectionIdentity(this.renderTileDeltaConnection.identity, identity)) {
@@ -466,7 +468,7 @@ export class GridRenderTilePaneRuntime {
         sheetId: input.sheetId,
         sheetName: input.sheetName,
         sheetOrdinal: input.sheetOrdinal,
-        visibleViewport: input.visibleViewport,
+        visibleViewport,
       }),
     }
   }

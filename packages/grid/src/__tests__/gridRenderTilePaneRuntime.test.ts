@@ -1786,6 +1786,72 @@ describe('GridRenderTilePaneRuntime', () => {
     expect(localUnsubscribeCount).toBe(1)
   })
 
+  it('reconciles render tile interest when only the visible viewport changes inside a resident viewport', () => {
+    const runtime = new GridRenderTilePaneRuntime()
+    const host = createHost()
+    const renderTileSource = createCapturingRenderTileSource()
+    const renderTileViewport = { colEnd: 127, colStart: 0, rowEnd: 95, rowStart: 0 }
+    const firstVisibleViewport = { colEnd: 127, colStart: 0, rowEnd: 31, rowStart: 0 }
+    const nextVisibleViewport = { colEnd: 127, colStart: 0, rowEnd: 95, rowStart: 64 }
+
+    runtime.syncConnections({
+      dprBucket: 1,
+      engine: LOCAL_EMPTY_ENGINE,
+      gridRuntimeHost: host,
+      needsLocalCellInvalidation: false,
+      renderTileSource: renderTileSource.source,
+      renderTileViewport,
+      residentViewport: renderTileViewport,
+      sheetId: 7,
+      sheetName: 'Sheet1',
+      visibleAddresses: [],
+      visibleViewport: firstVisibleViewport,
+    })
+    const firstSubscription = renderTileSource.captured()
+
+    expect(firstSubscription?.tileInterest?.visibleTileKeys).toEqual([
+      packTileKey53({ colTile: 0, dprBucket: 1, rowTile: 0, sheetOrdinal: 7 }),
+    ])
+
+    runtime.syncConnections({
+      dprBucket: 1,
+      engine: LOCAL_EMPTY_ENGINE,
+      gridRuntimeHost: host,
+      needsLocalCellInvalidation: false,
+      renderTileSource: renderTileSource.source,
+      renderTileViewport,
+      residentViewport: renderTileViewport,
+      sheetId: 7,
+      sheetName: 'Sheet1',
+      visibleAddresses: [],
+      visibleViewport: nextVisibleViewport,
+    })
+
+    expect(renderTileSource.subscribeCount()).toBe(2)
+    expect(renderTileSource.unsubscribeCount()).toBe(1)
+    expect(renderTileSource.captured()).not.toBe(firstSubscription)
+    expect(renderTileSource.captured()?.tileInterest?.visibleTileKeys).toEqual([
+      packTileKey53({ colTile: 0, dprBucket: 1, rowTile: 2, sheetOrdinal: 7 }),
+    ])
+
+    runtime.syncConnections({
+      dprBucket: 1,
+      engine: LOCAL_EMPTY_ENGINE,
+      gridRuntimeHost: host,
+      needsLocalCellInvalidation: false,
+      renderTileSource: renderTileSource.source,
+      renderTileViewport,
+      residentViewport: renderTileViewport,
+      sheetId: 7,
+      sheetName: 'Sheet1',
+      visibleAddresses: [],
+      visibleViewport: { ...nextVisibleViewport },
+    })
+
+    expect(renderTileSource.subscribeCount()).toBe(2)
+    expect(renderTileSource.unsubscribeCount()).toBe(1)
+  })
+
   it('matches workbook delta damage by sheet ordinal when sheet id differs from order', () => {
     const runtime = new GridRenderTilePaneRuntime()
     const host = createHost()
