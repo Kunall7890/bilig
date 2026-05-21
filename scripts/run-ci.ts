@@ -451,7 +451,7 @@ try {
 
   if (runFullGates) {
     allCompleted.push(
-      ...(await runStage('functional heavy checks', [
+      ...(await runSequential('functional heavy checks', [
         {
           label: 'vitest heavy checks',
           steps: [headlessGuardedSumifsPerformanceLane, coverageLane, unifiedFuzzLane],
