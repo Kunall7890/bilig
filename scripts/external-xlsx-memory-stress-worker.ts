@@ -5,15 +5,33 @@ import { createRequire } from 'node:module'
 import { basename, resolve } from 'node:path'
 import { pathToFileURL } from 'node:url'
 
-import { importXlsxFromZipByteSource } from '../packages/excel-import/src/xlsx-byte-source-import.js'
-import { tryInspectLargeSimpleXlsxHeadless } from '../packages/excel-import/src/xlsx-large-simple-headless-inspect.js'
-import { readXlsxZipEntriesLazyFromByteSource } from '../packages/excel-import/src/xlsx-zip.js'
 import type { ImportedWorkbook } from '../packages/excel-import/src/workbook-import-result.js'
+import type { XlsxByteSourceImportOptions } from '../packages/excel-import/src/xlsx-byte-source-import.js'
+import type { tryInspectLargeSimpleXlsxHeadless } from '../packages/excel-import/src/xlsx-large-simple-headless-inspect.js'
+import type { XlsxZipEntries } from '../packages/excel-import/src/xlsx-zip.js'
 import { readFlagArg, readStringArg } from './public-workbook-corpus-cli.ts'
 import { FileBackedXlsxZipByteSource } from './public-workbook-corpus-xlsx-byte-source.ts'
 
 interface PublicXlsxImportModule {
   readonly importXlsx: (bytes: Uint8Array, fileName: string) => ImportedWorkbook
+}
+
+interface XlsxByteSourceImportModule {
+  readonly importXlsxFromZipByteSource: (
+    source: FileBackedXlsxZipByteSource,
+    fileName: string,
+    options?: XlsxByteSourceImportOptions,
+  ) => ImportedWorkbook
+}
+
+type TryInspectLargeSimpleXlsxHeadless = typeof tryInspectLargeSimpleXlsxHeadless
+
+interface LargeSimpleInspectModule {
+  readonly tryInspectLargeSimpleXlsxHeadless: TryInspectLargeSimpleXlsxHeadless
+}
+
+interface XlsxZipModule {
+  readonly readXlsxZipEntriesLazyFromByteSource: (source: FileBackedXlsxZipByteSource) => XlsxZipEntries | null
 }
 
 export interface ExternalXlsxStressWorkerSummary {
@@ -28,6 +46,9 @@ export interface ExternalXlsxStressWorkerSummary {
 
 const requireModule = createRequire(import.meta.url)
 const headlessInspectCellThreshold = 1_000_000
+let xlsxByteSourceImportModule: XlsxByteSourceImportModule | undefined
+let largeSimpleInspectModule: LargeSimpleInspectModule | undefined
+let xlsxZipModule: XlsxZipModule | undefined
 
 export function runExternalXlsxStressWorker(): void {
   const filePath = resolve(readStringArg('--file', ''))
@@ -84,12 +105,12 @@ function summarizeFileBackedXlsx(filePath: string, fileName: string): ExternalXl
   return summarizeExternalXlsxImportedWorkbook(importFileBackedXlsx(filePath, fileName))
 }
 
-function inspectFileBackedXlsxHeadless(filePath: string, fileName: string): ReturnType<typeof tryInspectLargeSimpleXlsxHeadless> {
+function inspectFileBackedXlsxHeadless(filePath: string, fileName: string): ReturnType<TryInspectLargeSimpleXlsxHeadless> {
   const source = new FileBackedXlsxZipByteSource(filePath)
   try {
-    const zip = readXlsxZipEntriesLazyFromByteSource(source)
+    const zip = loadXlsxZipModule().readXlsxZipEntriesLazyFromByteSource(source)
     return zip
-      ? tryInspectLargeSimpleXlsxHeadless({ byteLength: source.byteLength }, fileName, zip, {
+      ? loadLargeSimpleInspectModule().tryInspectLargeSimpleXlsxHeadless({ byteLength: source.byteLength }, fileName, zip, {
           allowUnsupportedWorksheetFeaturesForMetrics: true,
           minByteLength: 0,
           releaseZipSource: true,
@@ -108,10 +129,29 @@ function importPublicXlsx(bytes: Uint8Array, fileName: string): ImportedWorkbook
 function importFileBackedXlsx(filePath: string, fileName: string): ImportedWorkbook {
   const source = new FileBackedXlsxZipByteSource(filePath)
   try {
-    return importXlsxFromZipByteSource(source, fileName, { attachSourceReaderForUntouchedExport: false })
+    return loadXlsxByteSourceImportModule().importXlsxFromZipByteSource(source, fileName, {
+      attachSourceReaderForUntouchedExport: false,
+    })
   } finally {
     source.release()
   }
+}
+
+function loadXlsxByteSourceImportModule(): XlsxByteSourceImportModule {
+  xlsxByteSourceImportModule ??= readXlsxByteSourceImportModule(requireModule('../packages/excel-import/src/xlsx-byte-source-import.js'))
+  return xlsxByteSourceImportModule
+}
+
+function loadLargeSimpleInspectModule(): LargeSimpleInspectModule {
+  largeSimpleInspectModule ??= readLargeSimpleInspectModule(
+    requireModule('../packages/excel-import/src/xlsx-large-simple-headless-inspect.js'),
+  )
+  return largeSimpleInspectModule
+}
+
+function loadXlsxZipModule(): XlsxZipModule {
+  xlsxZipModule ??= readXlsxZipModule(requireModule('../packages/excel-import/src/xlsx-zip.js'))
+  return xlsxZipModule
 }
 
 function readPublicXlsxImportModule(value: unknown): PublicXlsxImportModule {
@@ -119,6 +159,27 @@ function readPublicXlsxImportModule(value: unknown): PublicXlsxImportModule {
     return { importXlsx: value['importXlsx'] }
   }
   throw new Error('Public XLSX importer module is missing required exports')
+}
+
+function readXlsxByteSourceImportModule(value: unknown): XlsxByteSourceImportModule {
+  if (isRecord(value) && typeof value['importXlsxFromZipByteSource'] === 'function') {
+    return { importXlsxFromZipByteSource: value['importXlsxFromZipByteSource'] }
+  }
+  throw new Error('XLSX byte-source importer module is missing required exports')
+}
+
+function readLargeSimpleInspectModule(value: unknown): LargeSimpleInspectModule {
+  if (isRecord(value) && typeof value['tryInspectLargeSimpleXlsxHeadless'] === 'function') {
+    return { tryInspectLargeSimpleXlsxHeadless: value['tryInspectLargeSimpleXlsxHeadless'] }
+  }
+  throw new Error('Large-simple XLSX inspect module is missing required exports')
+}
+
+function readXlsxZipModule(value: unknown): XlsxZipModule {
+  if (isRecord(value) && typeof value['readXlsxZipEntriesLazyFromByteSource'] === 'function') {
+    return { readXlsxZipEntriesLazyFromByteSource: value['readXlsxZipEntriesLazyFromByteSource'] }
+  }
+  throw new Error('XLSX zip module is missing required exports')
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {

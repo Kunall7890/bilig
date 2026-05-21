@@ -122,11 +122,26 @@ class TempFileImportedXlsxSourceReader implements ImportedXlsxSourceReader, Xlsx
   }
 
   readRangeInto(start: number, end: number, target: Uint8Array): Uint8Array {
+    if (!Number.isSafeInteger(start) || !Number.isSafeInteger(end) || start < 0 || end < start || end > this.byteLength) {
+      throw new Error('Invalid imported XLSX temp source byte range')
+    }
     const length = end - start
     if (length > target.byteLength) {
       throw new Error('Imported XLSX temp source read target is too small')
     }
-    target.set(this.readRange(start, end))
+    const fd = openSync(this.path, 'r')
+    try {
+      let offset = 0
+      while (offset < length) {
+        const bytesRead = readSync(fd, target, offset, length - offset, start + offset)
+        if (bytesRead === 0) {
+          throw new Error('Unexpected end of imported XLSX temp source')
+        }
+        offset += bytesRead
+      }
+    } finally {
+      closeSync(fd)
+    }
     return target.subarray(0, length)
   }
 

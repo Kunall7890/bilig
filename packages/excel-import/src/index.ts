@@ -20,8 +20,8 @@ import {
   shouldRetryDataOnlyLargeSimpleImport,
   type XlsxImportOptions,
 } from './xlsx-import-limits.js'
-import { tryInspectLargeSimpleXlsxHeadless, type LargeSimpleXlsxHeadlessInspectResult } from './xlsx-large-simple-headless-inspect.js'
-import { tryImportLargeSimpleXlsx } from './xlsx-large-simple-import.js'
+import type { LargeSimpleXlsxHeadlessInspectResult, tryInspectLargeSimpleXlsxHeadless } from './xlsx-large-simple-headless-inspect.js'
+import type { tryImportLargeSimpleXlsx } from './xlsx-large-simple-import.js'
 import {
   hasFullImporterOnlyPackageMetadata,
   shouldBypassLargeSimpleByteThresholdForPackageArtifacts,
@@ -33,7 +33,13 @@ import {
   createTempFileImportedXlsxSourceReader,
   type ImportedXlsxSourceReader,
 } from './xlsx-source-bytes.js'
-import { readLazyXlsxZipSource, readXlsxZipEntries, readXlsxZipEntriesLazy, type XlsxZipByteSource } from './xlsx-zip.js'
+import {
+  readLazyXlsxZipSource,
+  readXlsxZipEntries,
+  readXlsxZipEntriesLazy,
+  readXlsxZipEntriesLazyFromByteSource,
+  type XlsxZipByteSource,
+} from './xlsx-zip.js'
 
 export { manualCalculationModeWarning, precisionAsDisplayedCalculationWarning } from './xlsx-calculation-settings.js'
 export {
@@ -99,9 +105,22 @@ interface SheetJsImportModule {
   ) => ImportedWorkbook
 }
 
+type TryImportLargeSimpleXlsx = typeof tryImportLargeSimpleXlsx
+type TryInspectLargeSimpleXlsxHeadless = typeof tryInspectLargeSimpleXlsxHeadless
+
+interface LargeSimpleImportModule {
+  readonly tryImportLargeSimpleXlsx: TryImportLargeSimpleXlsx
+}
+
+interface LargeSimpleInspectModule {
+  readonly tryInspectLargeSimpleXlsxHeadless: TryInspectLargeSimpleXlsxHeadless
+}
+
 let xlsxExportModule: XlsxExportModule | undefined
 let csvImportModule: CsvImportModule | undefined
 let sheetJsImportModule: SheetJsImportModule | undefined
+let largeSimpleImportModule: LargeSimpleImportModule | undefined
+let largeSimpleInspectModule: LargeSimpleInspectModule | undefined
 
 function loadXlsxExportModule(): XlsxExportModule {
   xlsxExportModule ??= readXlsxExportModule(readVitestEagerModule('./xlsx-export.js') ?? requireLocalModule('./xlsx-export.js'))
@@ -120,6 +139,20 @@ function loadSheetJsImportModule(): SheetJsImportModule {
   return sheetJsImportModule
 }
 
+function loadLargeSimpleImportModule(): LargeSimpleImportModule {
+  largeSimpleImportModule ??= readLargeSimpleImportModule(
+    readVitestEagerModule('./xlsx-large-simple-import.js') ?? requireLocalModule('./xlsx-large-simple-import.js'),
+  )
+  return largeSimpleImportModule
+}
+
+function loadLargeSimpleInspectModule(): LargeSimpleInspectModule {
+  largeSimpleInspectModule ??= readLargeSimpleInspectModule(
+    readVitestEagerModule('./xlsx-large-simple-headless-inspect.js') ?? requireLocalModule('./xlsx-large-simple-headless-inspect.js'),
+  )
+  return largeSimpleInspectModule
+}
+
 function readVitestEagerModules(): Readonly<Record<string, unknown>> {
   if (process.env['VITEST'] !== 'true') {
     return {}
@@ -127,7 +160,16 @@ function readVitestEagerModules(): Readonly<Record<string, unknown>> {
   if (!isImportMetaGlob(import.meta.glob)) {
     return {}
   }
-  return import.meta.glob(['./xlsx-export.ts', './csv-import.ts', './xlsx-sheetjs-import.ts'], { eager: true })
+  return import.meta.glob(
+    [
+      './xlsx-export.ts',
+      './csv-import.ts',
+      './xlsx-sheetjs-import.ts',
+      './xlsx-large-simple-import.ts',
+      './xlsx-large-simple-headless-inspect.ts',
+    ],
+    { eager: true },
+  )
 }
 
 function readVitestEagerModule(path: string): unknown {
@@ -173,6 +215,14 @@ function isPreparedSheetJsImportFunction(value: unknown): value is SheetJsImport
   return typeof value === 'function'
 }
 
+function isLargeSimpleImportFunction(value: unknown): value is TryImportLargeSimpleXlsx {
+  return typeof value === 'function'
+}
+
+function isLargeSimpleInspectFunction(value: unknown): value is TryInspectLargeSimpleXlsxHeadless {
+  return typeof value === 'function'
+}
+
 function readXlsxExportModule(value: unknown): XlsxExportModule {
   const loadedExportXlsx = isRecord(value) ? value['exportXlsx'] : undefined
   if (isXlsxExportFunction(loadedExportXlsx)) {
@@ -199,6 +249,22 @@ function readSheetJsImportModule(value: unknown): SheetJsImportModule {
     }
   }
   throw new Error('SheetJS XLSX import module is missing required exports')
+}
+
+function readLargeSimpleImportModule(value: unknown): LargeSimpleImportModule {
+  const loadedTryImportLargeSimpleXlsx = isRecord(value) ? value['tryImportLargeSimpleXlsx'] : undefined
+  if (isLargeSimpleImportFunction(loadedTryImportLargeSimpleXlsx)) {
+    return { tryImportLargeSimpleXlsx: loadedTryImportLargeSimpleXlsx }
+  }
+  throw new Error('Large-simple XLSX import module is missing required exports')
+}
+
+function readLargeSimpleInspectModule(value: unknown): LargeSimpleInspectModule {
+  const loadedTryInspectLargeSimpleXlsxHeadless = isRecord(value) ? value['tryInspectLargeSimpleXlsxHeadless'] : undefined
+  if (isLargeSimpleInspectFunction(loadedTryInspectLargeSimpleXlsxHeadless)) {
+    return { tryInspectLargeSimpleXlsxHeadless: loadedTryInspectLargeSimpleXlsxHeadless }
+  }
+  throw new Error('Large-simple XLSX inspect module is missing required exports')
 }
 
 export function exportXlsx(snapshot: WorkbookSnapshot): Uint8Array {
@@ -260,13 +326,39 @@ function readValidXlsxZipContainer(bytes: Uint8Array, mode: 'eager' | 'lazy' = '
   }
 }
 
+function readValidXlsxZipContainerFromByteSource(source: XlsxZipByteSource): Unzipped {
+  try {
+    const zip = readXlsxZipEntriesLazyFromByteSource(borrowXlsxZipByteSource(source))
+    if (!zip) {
+      throw new Error('Unsupported XLSX zip byte source')
+    }
+    void zip['xl/workbook.xml']
+    return zip
+  } catch {
+    throw new InvalidXlsxZipContainerError()
+  }
+}
+
 function inspectLargeSimpleXlsxSource(
   data: Uint8Array,
   fileName: string,
   options: { readonly minByteLength?: number } = {},
 ): LargeSimpleXlsxHeadlessInspectResult | null {
   const inspectionZip = readValidXlsxZipContainer(data, 'lazy')
-  return tryInspectLargeSimpleXlsxHeadless({ byteLength: data.byteLength }, fileName, inspectionZip, {
+  return loadLargeSimpleInspectModule().tryInspectLargeSimpleXlsxHeadless({ byteLength: data.byteLength }, fileName, inspectionZip, {
+    allowUnsupportedWorksheetFeaturesForMetrics: true,
+    ...(options.minByteLength !== undefined ? { minByteLength: options.minByteLength } : {}),
+    releaseZipSource: true,
+  })
+}
+
+function inspectLargeSimpleXlsxByteSource(
+  source: XlsxZipByteSource,
+  fileName: string,
+  options: { readonly minByteLength?: number } = {},
+): LargeSimpleXlsxHeadlessInspectResult | null {
+  const inspectionZip = readValidXlsxZipContainerFromByteSource(source)
+  return loadLargeSimpleInspectModule().tryInspectLargeSimpleXlsxHeadless({ byteLength: source.byteLength }, fileName, inspectionZip, {
     allowUnsupportedWorksheetFeaturesForMetrics: true,
     ...(options.minByteLength !== undefined ? { minByteLength: options.minByteLength } : {}),
     releaseZipSource: true,
@@ -278,21 +370,43 @@ export function inspectXlsx(bytes: Uint8Array | ArrayBuffer, fileName: string): 
   return inspectLargeSimpleXlsxSource(data, fileName, { minByteLength: 0 })
 }
 
+function borrowXlsxZipByteSource(source: XlsxZipByteSource): XlsxZipByteSource {
+  return {
+    byteLength: source.byteLength,
+    readRange: (start, end) => source.readRange(start, end),
+    ...(source.readRangeInto
+      ? {
+          readRangeInto: (start: number, end: number, target: Uint8Array) => source.readRangeInto!(start, end, target),
+        }
+      : {}),
+  }
+}
+
 export function importXlsx(bytes: Uint8Array | ArrayBuffer, fileName: string, options: XlsxImportOptions = {}): ImportedWorkbook {
   const ownedSource: OwnedXlsxSourceBytes = { bytes: bytes instanceof Uint8Array ? bytes : new Uint8Array(bytes) }
   const sourceByteLength = ownedSource.bytes.byteLength
   let spooledUntouchedExportSource: (ImportedXlsxSourceReader & XlsxZipByteSource) | undefined =
     sourceByteLength > largeSimpleInMemoryUntouchedExportSourceLimit ? createTempFileImportedXlsxSourceReader(ownedSource.bytes) : undefined
+  let preReleasedOwnedSourceEvidence: ReturnType<typeof releaseOwnedXlsxSourceBytes> | undefined
   const limits = resolveXlsxImportLimits(options)
   const inspectionOptions = options.limits ? { minByteLength: 0 } : undefined
-  const workbookZip = readValidXlsxZipContainer(ownedSource.bytes, 'lazy')
+  const workbookZip = spooledUntouchedExportSource
+    ? readValidXlsxZipContainerFromByteSource(spooledUntouchedExportSource)
+    : readValidXlsxZipContainer(ownedSource.bytes, 'lazy')
+  if (spooledUntouchedExportSource) {
+    preReleasedOwnedSourceEvidence = releaseOwnedXlsxSourceBytes(ownedSource, (releasedBytes) => (bytes = releasedBytes))
+  }
   const hasCalcChain = Object.hasOwn(workbookZip, 'xl/calcChain.xml')
   const bypassLargeSimpleByteThreshold =
     shouldBypassLargeSimpleByteThresholdForPackageArtifacts(workbookZip) && !hasFullImporterOnlyPackageMetadata(workbookZip)
   const needsCalcChainFormulaCountInspection =
     hasCalcChain && sourceByteLength >= denseSheetJsByteThreshold && sourceByteLength < largeCalcChainStreamingByteThreshold
   const inspection =
-    limits || needsCalcChainFormulaCountInspection ? inspectLargeSimpleXlsxSource(ownedSource.bytes, fileName, inspectionOptions) : null
+    limits || needsCalcChainFormulaCountInspection
+      ? spooledUntouchedExportSource
+        ? inspectLargeSimpleXlsxByteSource(spooledUntouchedExportSource, fileName, inspectionOptions)
+        : inspectLargeSimpleXlsxSource(ownedSource.bytes, fileName, inspectionOptions)
+      : null
   assertXlsxInspectionWithinMaterializationLimits(inspection, limits)
   const hasLargeCalcChainFormulaSet = hasCalcChain && (inspection?.stats.formulaCellCount ?? 0) >= largeCalcChainStreamingFormulaThreshold
   const allowCachedUnsupportedFormulaText =
@@ -304,7 +418,14 @@ export function importXlsx(bytes: Uint8Array | ArrayBuffer, fileName: string, op
     bypassLargeSimpleByteThreshold
   const releaseOwnedSourceBytesForLargeSimpleImport =
     spooledUntouchedExportSource || (bypassLargeSimpleByteThreshold && sourceByteLength < denseSheetJsByteThreshold)
-      ? () => releaseOwnedXlsxSourceBytes(ownedSource, (releasedBytes) => (bytes = releasedBytes))
+      ? () => {
+          if (preReleasedOwnedSourceEvidence) {
+            const evidence = preReleasedOwnedSourceEvidence
+            preReleasedOwnedSourceEvidence = undefined
+            return evidence
+          }
+          return releaseOwnedXlsxSourceBytes(ownedSource, (releasedBytes) => (bytes = releasedBytes))
+        }
       : undefined
   const largeSimpleImportOptions = {
     ...(options.limits || bypassLargeSimpleByteThreshold ? { minByteLength: 0 } : {}),
@@ -318,18 +439,21 @@ export function importXlsx(bytes: Uint8Array | ArrayBuffer, fileName: string, op
     ...(releaseOwnedSourceBytesForLargeSimpleImport ? { releaseOwnedSourceBytes: releaseOwnedSourceBytesForLargeSimpleImport } : {}),
   }
   let largeSimpleImport = shouldTryLargeSimpleImport
-    ? tryImportLargeSimpleXlsx({ byteLength: sourceByteLength }, fileName, workbookZip, largeSimpleImportOptions)
+    ? loadLargeSimpleImportModule().tryImportLargeSimpleXlsx(
+        { byteLength: sourceByteLength },
+        fileName,
+        workbookZip,
+        largeSimpleImportOptions,
+      )
     : null
   if (!largeSimpleImport && shouldRetryDataOnlyLargeSimpleImport(inspection, sourceByteLength, allowCachedUnsupportedFormulaText)) {
-    largeSimpleImport = tryImportLargeSimpleXlsx(
-      { byteLength: sourceByteLength },
-      fileName,
-      readValidXlsxZipContainer(ownedSource.bytes, 'lazy'),
-      {
-        ...largeSimpleImportOptions,
-        materializeMetadata: false,
-      },
-    )
+    const retryZip = spooledUntouchedExportSource
+      ? readValidXlsxZipContainerFromByteSource(spooledUntouchedExportSource)
+      : readValidXlsxZipContainer(ownedSource.bytes, 'lazy')
+    largeSimpleImport = loadLargeSimpleImportModule().tryImportLargeSimpleXlsx({ byteLength: sourceByteLength }, fileName, retryZip, {
+      ...largeSimpleImportOptions,
+      materializeMetadata: false,
+    })
   }
   if (largeSimpleImport) {
     if (ownedSource.bytes.byteLength > 0) {
@@ -353,12 +477,13 @@ export function importXlsx(bytes: Uint8Array | ArrayBuffer, fileName: string, op
   if (!fallbackData || fallbackData.byteLength === 0) {
     throw new InvalidXlsxZipContainerError()
   }
+  const sourceBytesForUntouchedExport = ownedSource.bytes.byteLength > 0 ? ownedSource.bytes : fallbackData
   const imported = importSheetJsWorkbook(
     fallbackData,
     fileName,
     XLSX_CONTENT_TYPE,
     readValidXlsxZipContainer(fallbackData, 'lazy'),
-    ownedSource.bytes,
+    sourceBytesForUntouchedExport,
   )
   return imported
 }
