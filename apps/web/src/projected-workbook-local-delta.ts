@@ -8,6 +8,13 @@ export interface ProjectedWorkbookLocalDeltaSheetIdentity {
   readonly sheetOrdinal: number
 }
 
+export interface ProjectedWorkbookLocalDeltaRange {
+  readonly startRow: number
+  readonly endRow: number
+  readonly startCol: number
+  readonly endCol: number
+}
+
 const LOCAL_AXIS_X_DIRTY_MASK = DirtyMaskV3.AxisX | DirtyMaskV3.Text | DirtyMaskV3.Rect
 const LOCAL_AXIS_Y_DIRTY_MASK = DirtyMaskV3.AxisY | DirtyMaskV3.Text | DirtyMaskV3.Rect
 const LOCAL_CELL_VISUAL_DIRTY_MASK = DirtyMaskV3.Value | DirtyMaskV3.Style | DirtyMaskV3.Text | DirtyMaskV3.Rect | DirtyMaskV3.Border
@@ -53,6 +60,36 @@ export function buildLocalCellSnapshotsWorkbookDelta(input: {
     source: 'localOptimistic',
     styleSeq: valueSeq,
     valueSeq,
+    version: 1,
+  }
+}
+
+export function buildLocalRangeWorkbookDelta(input: {
+  readonly identity: ProjectedWorkbookLocalDeltaSheetIdentity
+  readonly seq: number
+  readonly range: ProjectedWorkbookLocalDeltaRange
+}): WorkbookDeltaBatchV3 {
+  const rowStart = clampAxisIndex(Math.min(input.range.startRow, input.range.endRow), MAX_ROWS)
+  const rowEnd = clampAxisIndex(Math.max(input.range.startRow, input.range.endRow), MAX_ROWS)
+  const colStart = clampAxisIndex(Math.min(input.range.startCol, input.range.endCol), MAX_COLS)
+  const colEnd = clampAxisIndex(Math.max(input.range.startCol, input.range.endCol), MAX_COLS)
+  return {
+    axisSeqX: 0,
+    axisSeqY: 0,
+    calcSeq: input.seq,
+    dirty: {
+      axisX: new Uint32Array(),
+      axisY: new Uint32Array(),
+      cellRanges: new Uint32Array([rowStart, rowEnd, colStart, colEnd, LOCAL_CELL_VISUAL_DIRTY_MASK]),
+    },
+    freezeSeq: 0,
+    magic: 'bilig.workbook.delta.v3',
+    seq: input.seq,
+    sheetId: input.identity.sheetId,
+    sheetOrdinal: input.identity.sheetOrdinal,
+    source: 'localOptimistic',
+    styleSeq: input.seq,
+    valueSeq: input.seq,
     version: 1,
   }
 }

@@ -27,7 +27,12 @@ import type { ProjectedRenderTile, ProjectedTileSceneChange, ProjectedTileSceneS
 import { normalizeWorkbookMergeRange } from './worker-runtime-support.js'
 import { ProjectedWorkbookLocalDeltaPublisher } from './projected-workbook-local-delta-publisher.js'
 import { ProjectedViewportPatchRevisionGate } from './projected-viewport-patch-revision-gate.js'
-import { normalizeViewportRange, ProjectedViewportRangeOverlayStore, viewportRangeCellCount } from './projected-viewport-range-overlay.js'
+import {
+  normalizeViewportRange,
+  ProjectedViewportRangeOverlayStore,
+  viewportRangeCellCount,
+  type NormalizedViewportRange,
+} from './projected-viewport-range-overlay.js'
 import { createContentClearedOptimisticSnapshot } from './workbook-optimistic-range.js'
 import { OPTIMISTIC_CELL_SNAPSHOT_FLAG } from './workbook-optimistic-cell-flags.js'
 
@@ -572,7 +577,21 @@ export class ProjectedViewportStore implements GridEngineLike {
   ): (() => void) | null {
     const normalizedRange = normalizeViewportRange(range)
     if (viewportRangeCellCount(normalizedRange) > MAX_MATERIALIZED_OPTIMISTIC_STYLE_CELLS) {
-      return this.rangeOverlayStore.register(range, (snapshot) => this.applyStyleMutationToSnapshot(snapshot, mutateStyle))
+      const revisionBeforeRegister = this.localRevision
+      const rollback = this.rangeOverlayStore.register(range, (snapshot) => this.applyStyleMutationToSnapshot(snapshot, mutateStyle))
+      if (!rollback) {
+        return null
+      }
+      if (this.localRevision === revisionBeforeRegister) {
+        this.emitLocalRangeVisualDelta(normalizedRange)
+      }
+      return () => {
+        const revisionBeforeRollback = this.localRevision
+        rollback()
+        if (this.localRevision === revisionBeforeRollback) {
+          this.emitLocalRangeVisualDelta(normalizedRange)
+        }
+      }
     }
     const previousSnapshots: Array<{
       readonly existed: boolean
@@ -607,6 +626,11 @@ export class ProjectedViewportStore implements GridEngineLike {
         }
       })
     }
+  }
+
+  private emitLocalRangeVisualDelta(range: NormalizedViewportRange): void {
+    this.localRevision += 1
+    this.localDeltaPublisher.emitRange(range.sheetName, range)
   }
 
   private internLocalCellStyle(style: Omit<CellStyleRecord, 'id'>): CellStyleRecord {
