@@ -21,7 +21,10 @@ export interface ImportedWorkbookArenaSnapshot {
   readonly columns: Uint16Array
   readonly valueKinds: Uint8Array
   readonly numberValues?: Float64Array
+  readonly tinyIntegerValues?: Int8Array
   readonly smallIntegerValues?: Int16Array
+  readonly sparseSmallIntegerCellIndexes?: Uint32Array
+  readonly sparseSmallIntegerValues?: Int16Array
   readonly integerValues?: Int32Array
   readonly sparseIntegerCellIndexes?: Uint32Array
   readonly sparseIntegerValues?: Int32Array

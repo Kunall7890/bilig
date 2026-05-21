@@ -7,6 +7,8 @@ export const previewCellCount = previewRowCount * previewColumnCount
 
 export const maxSpreadsheetColumnCount = 16_384
 export const initialSparseIntegerCapacity = 16
+const minInt8 = -0x80
+const maxInt8 = 0x7f
 const minInt16 = -0x8000
 const maxInt16 = 0x7fff
 const minInt32 = -0x80000000
@@ -34,6 +36,10 @@ export function canStoreLinearCoordinate(width: number, row: number, column: num
 
 export function canStoreInt32Number(value: number): boolean {
   return Number.isInteger(value) && value >= minInt32 && value <= maxInt32 && !Object.is(value, -0)
+}
+
+export function canStoreInt8Number(value: number): boolean {
+  return Number.isInteger(value) && value >= minInt8 && value <= maxInt8 && !Object.is(value, -0)
 }
 
 export function canStoreInt16Number(value: number): boolean {
