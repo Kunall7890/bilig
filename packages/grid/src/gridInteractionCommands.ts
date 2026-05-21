@@ -107,7 +107,9 @@ export function selectEntireWorkbookSheet(input: {
 }): void {
   const { focusGrid, isEditingCell, onCommitEdit, onSelectionChange, setGridSelection } = input
   if (isEditingCell) {
-    onCommitEdit()
+    if (onCommitEdit() === false) {
+      return
+    }
   }
   const nextSelection = createSheetSelection()
   setGridSelection(nextSelection)

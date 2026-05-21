@@ -15,6 +15,61 @@ export async function countBlueFillPixelsInCell(page: Page, columnIndex: number,
   return await countFillPixelsInCell(page, columnIndex, rowIndex, 'blue')
 }
 
+export async function countDarkReadbackPixelsInCell(page: Page, columnIndex: number, rowIndex: number): Promise<number> {
+  const [columnLeft, columnWidth, rowTop, rowHeight, scroll, canvas] = await Promise.all([
+    getProductColumnLeft(page, columnIndex),
+    getProductColumnWidth(page, columnIndex),
+    getProductRowTop(page, rowIndex),
+    getProductRowHeight(page, rowIndex),
+    page.getByTestId('grid-scroll-viewport').evaluate((node) => ({
+      scrollLeft: node.scrollLeft,
+      scrollTop: node.scrollTop,
+    })),
+    page.getByTestId('grid-pane-renderer').evaluate((node) => {
+      if (!(node instanceof HTMLCanvasElement)) {
+        throw new Error('TypeGPU renderer is not a canvas')
+      }
+      return {
+        clientHeight: node.clientHeight,
+        clientWidth: node.clientWidth,
+        height: node.height,
+        width: node.width,
+      }
+    }),
+  ])
+  const scaleX = canvas.clientWidth > 0 ? canvas.width / canvas.clientWidth : 1
+  const scaleY = canvas.clientHeight > 0 ? canvas.height / canvas.clientHeight : 1
+  return await page.evaluate(
+    ({ region }) => {
+      const inspector = (
+        window as Window & {
+          __biligCellReadbackInspector?: {
+            readonly countDarkPixels: (region: {
+              readonly x0: number
+              readonly y0: number
+              readonly x1: number
+              readonly y1: number
+            }) => number
+            readonly isReady: () => boolean
+          }
+        }
+      ).__biligCellReadbackInspector
+      if (!inspector?.isReady()) {
+        return 0
+      }
+      return inspector.countDarkPixels(region)
+    },
+    {
+      region: {
+        x0: (columnLeft - scroll.scrollLeft + 8) * scaleX,
+        x1: (columnLeft - scroll.scrollLeft + columnWidth - 8) * scaleX,
+        y0: (PRODUCT_HEADER_HEIGHT + rowTop - scroll.scrollTop + 5) * scaleY,
+        y1: (PRODUCT_HEADER_HEIGHT + rowTop - scroll.scrollTop + rowHeight - 5) * scaleY,
+      },
+    },
+  )
+}
+
 export async function installTypeGpuCellReadbackHarness(page: Page): Promise<void> {
   await page.addInitScript(() => {
     const globalWindow = window as Window & {
@@ -29,6 +84,7 @@ export async function installTypeGpuCellReadbackHarness(page: Page): Promise<voi
       }
       __biligCellReadbackInspector?: {
         readonly countBluePixels: (region: { readonly x0: number; readonly y0: number; readonly x1: number; readonly y1: number }) => number
+        readonly countDarkPixels: (region: { readonly x0: number; readonly y0: number; readonly x1: number; readonly y1: number }) => number
         readonly countGreenPixels: (region: {
           readonly x0: number
           readonly y0: number
@@ -85,9 +141,36 @@ export async function installTypeGpuCellReadbackHarness(page: Page): Promise<voi
       return count
     }
 
+    const countDarkPixelsInRegion = (region: { readonly x0: number; readonly y0: number; readonly x1: number; readonly y1: number }) => {
+      if (!readbackState.ready) {
+        return 0
+      }
+      let count = 0
+      const x0 = Math.max(0, Math.floor(region.x0))
+      const y0 = Math.max(0, Math.floor(region.y0))
+      const x1 = Math.min(readbackState.width, Math.ceil(region.x1))
+      const y1 = Math.min(readbackState.height, Math.ceil(region.y1))
+      for (let y = y0; y < y1; y += 1) {
+        for (let x = x0; x < x1; x += 1) {
+          const offset = y * readbackState.bytesPerRow + x * 4
+          const blue = readbackState.bgra[offset + 0] ?? 255
+          const green = readbackState.bgra[offset + 1] ?? 255
+          const red = readbackState.bgra[offset + 2] ?? 255
+          const alpha = readbackState.bgra[offset + 3] ?? 0
+          if (alpha > 220 && red < 120 && green < 120 && blue < 120) {
+            count += 1
+          }
+        }
+      }
+      return count
+    }
+
     globalWindow.__biligCellReadbackInspector = {
       countBluePixels(region) {
         return countPixels(region, 'blue')
+      },
+      countDarkPixels(region) {
+        return countDarkPixelsInRegion(region)
       },
       countGreenPixels(region) {
         return countPixels(region, 'green')

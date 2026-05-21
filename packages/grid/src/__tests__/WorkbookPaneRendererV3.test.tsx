@@ -9,6 +9,7 @@ import { GridCameraStore } from '../runtime/gridCameraStore.js'
 import {
   TYPEGPU_V3_ACTIVE_RESOURCE_DEFER_MS,
   WorkbookPaneRendererV3,
+  resolveWorkbookPaneSelectionOccludedTilePanesV3,
   resolveWorkbookPanePresentedRevisionV3,
   resolveWorkbookPaneTileSceneCameraSeqV3,
   resolveWorkbookPaneTileSceneRevisionV3,
@@ -458,6 +459,63 @@ describe('WorkbookPaneRendererV3', () => {
       renderTx: 64 * metrics.columnWidth,
       renderTy: 0,
     })
+  })
+
+  test('clips TypeGPU text runs against full-column selection occlusion', () => {
+    const metrics = getGridMetrics()
+    const geometry = createGridGeometrySnapshotFromAxes({
+      columns: createGridAxisWorldIndex({ axisLength: 1024, defaultSize: metrics.columnWidth }),
+      dpr: 1,
+      gridMetrics: metrics,
+      hostHeight: 720,
+      hostWidth: 1280,
+      rows: createGridAxisWorldIndex({ axisLength: 1024, defaultSize: metrics.rowHeight }),
+      scrollLeft: 0,
+      scrollTop: 0,
+      sheetName: 'Sheet1',
+    })
+    const pane = createTilePane()
+    const textRun = {
+      align: 'left' as const,
+      clipHeight: metrics.rowHeight,
+      clipWidth: metrics.columnWidth * 4,
+      clipX: 0,
+      clipY: metrics.rowHeight * 4,
+      col: 0,
+      color: '#111827',
+      font: '400 14.667px Arial, "Helvetica Neue", Helvetica, sans-serif',
+      fontSize: 14.667,
+      height: metrics.rowHeight,
+      row: 4,
+      strike: false,
+      text: 'column spill text column spill text',
+      underline: false,
+      width: metrics.columnWidth * 4,
+      wrap: false,
+      x: 0,
+      y: metrics.rowHeight * 4,
+    }
+    const textPane: WorkbookRenderTilePaneState = {
+      ...pane,
+      tile: {
+        ...pane.tile,
+        textCount: 1,
+        textRuns: [textRun],
+        textSignature: 'remote-spill',
+      },
+    }
+
+    const occludedPanes = resolveWorkbookPaneSelectionOccludedTilePanesV3({
+      geometry,
+      selectionOcclusionRanges: [{ x: 2, y: 0, width: 1, height: 1024 }],
+      tilePanes: [textPane],
+    })
+
+    expect(occludedPanes[0]).not.toBe(textPane)
+    const occludedRun = occludedPanes[0]?.tile.textRuns[0]
+    expect(occludedRun?.clipWidth).toBe(metrics.columnWidth * 2)
+    expect(occludedPanes[0]?.tile.textCount).toBe(1)
+    expect(occludedPanes[0]?.tile.textSignature).toBeUndefined()
   })
 
   test('defers V3 preload resource sync only while scroll input or camera velocity is fresh', () => {

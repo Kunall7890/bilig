@@ -1,4 +1,4 @@
-import { memo, useCallback, useEffect, useLayoutEffect, useRef, useSyncExternalStore } from 'react'
+import { memo, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useSyncExternalStore } from 'react'
 import type { GridRenderRevisionSnapshot } from '../grid-engine.js'
 import type { GridGeometrySnapshot } from '../gridGeometry.js'
 import type { GridHeaderPaneState } from '../gridHeaderPanes.js'
@@ -10,7 +10,11 @@ export { resolveTypeGpuV3DrawScrollSnapshot } from './workbook-pane-renderer-run
 import type { DynamicGridOverlayBatchV3 } from './dynamic-overlay-batch.js'
 import type { WorkbookRenderTilePaneState } from './render-tile-pane-state.js'
 import { WorkbookPaneNativeRectLayerV3 } from './WorkbookPaneNativeRectLayerV3.js'
-import { WorkbookPaneNativeTextLayerV3, type SuppressedNativeTextCellV3 } from './WorkbookPaneNativeTextLayerV3.js'
+import {
+  WorkbookPaneNativeTextLayerV3,
+  resolveNativeTextRunSelectionOccludedClipV3,
+  type SuppressedNativeTextCellV3,
+} from './WorkbookPaneNativeTextLayerV3.js'
 import { WorkbookPaneRendererHostRuntimeV3 } from './workbook-pane-renderer-host-runtime.js'
 
 export interface WorkbookPaneRendererV3Props {
@@ -90,7 +94,16 @@ export const WorkbookPaneRendererV3 = memo(function WorkbookPaneRendererV3({
     [hostRuntime],
   )
   const headerTextRunCount = countHeaderPaneTextRunsV3(headerPanes)
-  const tileTextRunCount = countTilePaneTextRunsV3(tilePanes)
+  const typeGpuTilePanes = useMemo(
+    () =>
+      resolveWorkbookPaneSelectionOccludedTilePanesV3({
+        geometry,
+        selectionOcclusionRanges,
+        tilePanes,
+      }),
+    [geometry, selectionOcclusionRanges, tilePanes],
+  )
+  const tileTextRunCount = countTilePaneTextRunsV3(typeGpuTilePanes)
   const showTypeGpuCanvas = backendStatus !== 'unavailable'
   const nativeLayerSource = showTypeGpuCanvas ? 'none' : 'backend-unavailable-live'
   const presentedHeaderPanes = presentedVisualFrame?.headerPanes ?? []
@@ -117,7 +130,7 @@ export const WorkbookPaneRendererV3 = memo(function WorkbookPaneRendererV3({
       preloadTilePanes,
       renderRevisionSnapshot,
       scrollTransformStore,
-      tilePanes,
+      tilePanes: typeGpuTilePanes,
     })
   }, [
     active,
@@ -131,7 +144,7 @@ export const WorkbookPaneRendererV3 = memo(function WorkbookPaneRendererV3({
     preloadTilePanes,
     renderRevisionSnapshot,
     scrollTransformStore,
-    tilePanes,
+    typeGpuTilePanes,
   ])
 
   useEffect(() => {
@@ -153,8 +166,8 @@ export const WorkbookPaneRendererV3 = memo(function WorkbookPaneRendererV3({
   if (!active || !host) {
     return null
   }
-  const tileSceneRevision = resolveWorkbookPaneTileSceneRevisionV3(tilePanes)
-  const tileSceneCameraSeq = resolveWorkbookPaneTileSceneCameraSeqV3(tilePanes)
+  const tileSceneRevision = resolveWorkbookPaneTileSceneRevisionV3(typeGpuTilePanes)
+  const tileSceneCameraSeq = resolveWorkbookPaneTileSceneCameraSeqV3(typeGpuTilePanes)
   const visibleRenderRevision = resolveWorkbookPanePresentedRevisionV3(frameProofStatus, tileSceneRevision)
   const visibleRenderCameraSeq = resolveWorkbookPanePresentedRevisionV3(frameProofStatus, tileSceneCameraSeq)
   const visibleProjectedRenderRevision = resolveWorkbookPanePresentedRevisionV3(frameProofStatus, renderRevisionSnapshot?.projectedRevision)
@@ -212,7 +225,7 @@ export const WorkbookPaneRendererV3 = memo(function WorkbookPaneRendererV3({
           data-v3-text-run-count={tileTextRunCount}
           data-v3-tile-scene-camera-seq={tileSceneCameraSeq ?? ''}
           data-v3-tile-scene-revision={tileSceneRevision ?? ''}
-          data-v3-tile-pane-count={tilePanes.length}
+          data-v3-tile-pane-count={typeGpuTilePanes.length}
           data-v3-visible-authoritative-render-revision={visibleAuthoritativeRenderRevision ?? ''}
           data-v3-visible-local-render-revision={visibleLocalRenderRevision ?? ''}
           data-v3-visible-projected-render-revision={visibleProjectedRenderRevision ?? ''}
@@ -264,6 +277,73 @@ function countHeaderPaneTextRunsV3(headerPanes: readonly GridHeaderPaneState[]):
 
 function countTilePaneTextRunsV3(tilePanes: readonly WorkbookRenderTilePaneState[]): number {
   return tilePanes.reduce((total, pane) => total + pane.tile.textRuns.length, 0)
+}
+
+export function resolveWorkbookPaneSelectionOccludedTilePanesV3(input: {
+  readonly geometry: GridGeometrySnapshot | null
+  readonly selectionOcclusionRanges?: readonly Pick<Rectangle, 'x' | 'y' | 'width' | 'height'>[] | null | undefined
+  readonly tilePanes: readonly WorkbookRenderTilePaneState[]
+}): readonly WorkbookRenderTilePaneState[] {
+  const ranges = input.selectionOcclusionRanges ?? []
+  if (!input.geometry || ranges.length === 0) {
+    return input.tilePanes
+  }
+
+  let panesChanged = false
+  const nextPanes = input.tilePanes.map((pane) => {
+    if (pane.tile.textRuns.length === 0) {
+      return pane
+    }
+
+    let textRunsChanged = false
+    const nextTextRuns: (typeof pane.tile.textRuns)[number][] = []
+    for (const run of pane.tile.textRuns) {
+      const clip = resolveNativeTextRunSelectionOccludedClipV3({
+        clipHeight: run.clipHeight,
+        clipWidth: run.clipWidth,
+        clipX: run.clipX,
+        clipY: run.clipY,
+        geometry: input.geometry,
+        pane,
+        run,
+        selectionOcclusionRanges: ranges,
+      })
+      if (!clip) {
+        textRunsChanged = true
+        continue
+      }
+      if (clip.clipX !== run.clipX || clip.clipY !== run.clipY || clip.clipWidth !== run.clipWidth || clip.clipHeight !== run.clipHeight) {
+        textRunsChanged = true
+        nextTextRuns.push({
+          ...run,
+          clipHeight: clip.clipHeight,
+          clipWidth: clip.clipWidth,
+          clipX: clip.clipX,
+          clipY: clip.clipY,
+        })
+        continue
+      }
+      nextTextRuns.push(run)
+    }
+
+    if (!textRunsChanged) {
+      return pane
+    }
+
+    panesChanged = true
+    return {
+      ...pane,
+      tile: {
+        ...pane.tile,
+        dirty: undefined,
+        textCount: nextTextRuns.length,
+        textRuns: nextTextRuns,
+        textSignature: undefined,
+      },
+    }
+  })
+
+  return panesChanged ? nextPanes : input.tilePanes
 }
 
 export function resolveWorkbookPaneTileSceneRevisionV3(tilePanes: readonly WorkbookRenderTilePaneState[]): number | null {

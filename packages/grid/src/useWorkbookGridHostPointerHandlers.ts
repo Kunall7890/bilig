@@ -22,7 +22,7 @@ import { beginWorkbookGridRangeMove } from './gridRangeMoveInteractions.js'
 import { beginWorkbookGridFillHandleDrag } from './gridFillHandleInteractions.js'
 import type { GridInputController } from './runtime/gridInputController.js'
 import type { GridSelection, Item, Rectangle } from './gridTypes.js'
-import type { WorkbookGridSurfaceProps } from './workbookGridSurfaceTypes.js'
+import type { EditCommitResult, WorkbookGridSurfaceProps } from './workbookGridSurfaceTypes.js'
 import type { useWorkbookGridPointerResolvers } from './useWorkbookGridPointerResolvers.js'
 import type { useWorkbookGridRenderState } from './useWorkbookGridRenderState.js'
 
@@ -45,7 +45,7 @@ export function useWorkbookGridHostPointerHandlers(input: {
   readonly allowsRangeMove: boolean
   readonly applyAutofitWidth: (columnIndex: number, width: number) => void
   readonly beginEditAt: (addr: string, seed?: string) => void
-  readonly commitActiveEdit: () => void
+  readonly commitActiveEdit: () => EditCommitResult
   readonly emitSelectionChange: (nextSelection: GridSelection) => void
   readonly inputController: GridInputController
   readonly isEditingCell: boolean

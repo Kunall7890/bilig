@@ -533,16 +533,16 @@ export function useWorkerWorkbookInteractionState(input: {
   )
 
   const commitEditor = useCallback(
-    (movement?: EditMovement, valueOverride?: string, targetSelectionOverride?: EditTargetSelection) => {
+    (movement?: EditMovement, valueOverride?: string, targetSelectionOverride?: EditTargetSelection): boolean => {
       if (!writesAllowed) {
-        return
+        return false
       }
       if (editingModeRef.current === 'idle' && valueOverride === undefined && targetSelectionOverride === undefined) {
         if (movement && !pendingEditCommitMovementAppliedRef.current) {
           pendingEditCommitMovementAppliedRef.current = true
           completeSelectionNavigation(selectionRef.current, movement)
         }
-        return
+        return true
       }
       const targetSelection =
         targetSelectionOverride ?? (editingModeRef.current === 'idle' ? selectionRef.current : editorTargetRef.current)
@@ -557,7 +557,7 @@ export function useWorkerWorkbookInteractionState(input: {
           pendingEditCommitMovementAppliedRef.current = true
           finishEditingWithAuthoritative(targetSelection, movement)
         }
-        return
+        return true
       }
       pendingEditCommitSessionRef.current = commitSessionId
       pendingEditCommitMovementAppliedRef.current = false
@@ -576,7 +576,7 @@ export function useWorkerWorkbookInteractionState(input: {
         if (draftMatchesBase) {
           pendingEditCommitMovementAppliedRef.current = Boolean(movement)
           finishEditingWithAuthoritative(targetSelection, movement)
-          return
+          return true
         }
         setEditorConflict({
           sheetName: targetSelection.sheetName,
@@ -585,14 +585,14 @@ export function useWorkerWorkbookInteractionState(input: {
           baseSnapshot: targetBaseSnapshot,
           authoritativeSnapshot: liveSnapshot,
         })
-        return
+        return false
       }
 
       if (draftMatchesLiveSnapshot) {
         pendingEditCommitSessionRef.current = null
         pendingEditCommitMovementAppliedRef.current = Boolean(movement)
         finishEditingWithAuthoritative(targetSelection, movement)
-        return
+        return true
       }
 
       const nextSelection = completeSelectionNavigation(targetSelection, movement)
@@ -630,6 +630,7 @@ export function useWorkerWorkbookInteractionState(input: {
           }
         }
       })()
+      return true
     },
     [
       applyOptimisticParsedInput,

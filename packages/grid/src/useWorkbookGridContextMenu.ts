@@ -3,6 +3,7 @@ import { createColumnSliceSelection, createRowSliceSelection } from './gridSelec
 import type { HeaderSelection, VisibleRegionState } from './gridPointer.js'
 import type { Item, GridSelection } from './gridTypes.js'
 import type { WorkbookGridContextMenuState } from './WorkbookGridContextMenu.js'
+import type { EditCommitResult } from './workbookGridSurfaceTypes.js'
 import type { WorkbookGridContextMenuTarget } from './workbookGridContextMenuTarget.js'
 
 type SingleAxisSelection = Pick<GridSelection['columns'], 'length' | 'hasIndex' | 'ranges'>
@@ -23,7 +24,7 @@ export function useWorkbookGridContextMenu(input: {
   hiddenColumnsByIndex?: Readonly<Record<number, true>> | undefined
   hiddenRowsByIndex?: Readonly<Record<number, true>> | undefined
   isEditingCell: boolean
-  onCommitEdit(this: void): void
+  onCommitEdit(this: void): EditCommitResult
   onDeleteColumns?: ((startCol: number, count: number) => void | Promise<void>) | undefined
   onDeleteRows?: ((startRow: number, count: number) => void | Promise<void>) | undefined
   onInsertColumns?: ((startCol: number, count: number) => void) | undefined
@@ -191,7 +192,9 @@ export function useWorkbookGridContextMenu(input: {
       }
 
       if (isEditingCell) {
-        onCommitEdit()
+        if (onCommitEdit() === false) {
+          return false
+        }
       }
       focusGrid()
 

@@ -1,6 +1,7 @@
 import type { GridGeometrySnapshot } from './gridGeometry.js'
 import type { GridHoverState } from './gridHover.js'
 import type { HeaderSelection, VisibleRegionState } from './gridPointer.js'
+import type { EditCommitResult } from './workbookGridSurfaceTypes.js'
 
 const RESIZE_HANDLE_DOUBLE_CLICK_MS = 700
 
@@ -76,7 +77,7 @@ export function handleWorkbookGridColumnAutofitAtPointer(input: {
   columnWidths: Readonly<Record<number, number>>
   defaultColumnWidth: number
   isEditingCell: boolean
-  commitActiveEdit: () => void
+  commitActiveEdit: () => EditCommitResult
   computeAutofitColumnWidth: (columnIndex: number) => number
   applyAutofitWidth: (columnIndex: number, width: number) => void
   finishResize: () => void
@@ -120,7 +121,9 @@ export function handleWorkbookGridColumnAutofitAtPointer(input: {
   event.preventDefault()
   event.stopPropagation()
   if (isEditingCell) {
-    commitActiveEdit()
+    if (commitActiveEdit() === false) {
+      return true
+    }
   }
   applyWorkbookGridColumnAutofit({
     columnIndex,
@@ -142,7 +145,7 @@ export function handleWorkbookGridResizePointerDown(input: {
   defaultColumnWidth: number
   defaultRowHeight: number
   isEditingCell: boolean
-  commitActiveEdit: () => void
+  commitActiveEdit: () => EditCommitResult
   focusGrid: () => void
   setActiveHeaderDrag: (header: HeaderSelection | null) => void
   setHoverState: SetGridHoverState
@@ -209,7 +212,9 @@ export function handleWorkbookGridResizePointerDown(input: {
     event.preventDefault()
     event.stopPropagation()
     if (isEditingCell) {
-      commitActiveEdit()
+      if (commitActiveEdit() === false) {
+        return true
+      }
     }
     focusGrid()
     setActiveHeaderDrag(null)
@@ -256,7 +261,9 @@ export function handleWorkbookGridResizePointerDown(input: {
   event.preventDefault()
   event.stopPropagation()
   if (isEditingCell) {
-    commitActiveEdit()
+    if (commitActiveEdit() === false) {
+      return true
+    }
   }
   focusGrid()
   setActiveHeaderDrag(null)

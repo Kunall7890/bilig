@@ -72,7 +72,7 @@ export interface TextContextConfigurationTarget {
 
 const ATLAS_DIRTY_PAGE_SIZE = 32
 const ATLAS_PAGE_ID_STRIDE = 65536
-export const MIN_GLYPH_ATLAS_SCALE = 1
+export const MIN_GLYPH_ATLAS_SCALE = 2
 export const MAX_GLYPH_ATLAS_SCALE = 4
 export const WORKBOOK_ATLAS_TEXT_RENDERING: WorkbookTextRendering = 'optimizeLegibility'
 

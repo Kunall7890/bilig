@@ -8,6 +8,7 @@ import {
   clickProductBodyOffset,
   clickProductCell,
   clickProductCellUpperHalf,
+  countDarkReadbackPixelsInCell,
   createTestDocumentId,
   dragProductBodySelection,
   dragProductColumnResize,
@@ -17,6 +18,7 @@ import {
   getProductColumnWidth,
   getProductRowHeight,
   getProductRowTop,
+  installTypeGpuCellReadbackHarness,
   settleWorkbookScrollPerf,
   startWorkbookScrollPerf,
   stopWorkbookScrollPerf,
@@ -601,12 +603,19 @@ test('@browser-ci web app starts a fresh area selection from the selected range 
 })
 
 test('web app clips spilled text before the active selected cell', async ({ page }) => {
+  await installTypeGpuCellReadbackHarness(page)
   await page.goto(`/?document=${encodeURIComponent(createTestDocumentId('playwright-selection-spill-clip'))}&persist=0`)
   await waitForWorkbookReady(page)
 
   await writeCellValue(page, 'A5', 'sfasf sfasf sfasf sfasf sfasf sfasf')
   await selectAddress(page, 'C5')
   await expect(page.getByTestId('name-box')).toHaveValue('C5')
+
+  if (await isTypeGpuCanvasActive(page)) {
+    await expectCellTextPixels(page, 0, 4, 'visible')
+    await expectCellTextPixels(page, 2, 4, 'hidden')
+    return
+  }
 
   const runBox = await page.locator('[data-native-text-run-row="4"][data-native-text-run-col="0"]').boundingBox()
   const gridBox = await page.getByTestId('sheet-grid').boundingBox()
@@ -620,6 +629,7 @@ test('web app clips spilled text before the active selected cell', async ({ page
 
 test('web app clips spilled text before far horizontally scrolled selections', async ({ page }) => {
   await page.setViewportSize({ width: 1166, height: 820 })
+  await installTypeGpuCellReadbackHarness(page)
   await page.goto(`/?document=${encodeURIComponent(createTestDocumentId('playwright-far-selection-spill-clip'))}&persist=0`)
   await waitForWorkbookReady(page)
 
@@ -628,6 +638,12 @@ test('web app clips spilled text before far horizontally scrolled selections', a
   const selectedColumnIndex = 130
   await writeCellValue(page, formatGridAddress(rowIndex, sourceColumnIndex), 'far spill text far spill text far spill text')
   await selectAddress(page, formatGridAddress(rowIndex, selectedColumnIndex))
+
+  if (await isTypeGpuCanvasActive(page)) {
+    await expectCellTextPixels(page, sourceColumnIndex, rowIndex, 'visible')
+    await expectCellTextPixels(page, selectedColumnIndex, rowIndex, 'hidden')
+    return
+  }
 
   const runBox = await page
     .locator(`[data-native-text-run-row="${String(rowIndex)}"][data-native-text-run-col="${String(sourceColumnIndex)}"]`)
@@ -641,6 +657,7 @@ test('web app clips spilled text before far horizontally scrolled selections', a
 })
 
 test('web app clips spilled text before selected whole columns on non-active rows', async ({ page }) => {
+  await installTypeGpuCellReadbackHarness(page)
   await page.goto(`/?document=${encodeURIComponent(createTestDocumentId('playwright-column-selection-spill-clip'))}&persist=0`)
   await waitForWorkbookReady(page)
 
@@ -654,6 +671,12 @@ test('web app clips spilled text before selected whole columns on non-active row
     },
   })
   await expect(page.getByTestId('status-selection')).toHaveText('Sheet1!C:C')
+
+  if (await isTypeGpuCanvasActive(page)) {
+    await expectCellTextPixels(page, 0, 4, 'visible')
+    await expectCellTextPixels(page, 2, 4, 'hidden')
+    return
+  }
 
   const runBox = await page.locator('[data-native-text-run-row="4"][data-native-text-run-col="0"]').boundingBox()
   const gridBox = await grid.boundingBox()
@@ -1002,7 +1025,28 @@ async function expectSelectionVisualRoles(page: Page, roles: readonly string[], 
   const selector = roles.map((role) => `[data-grid-selection-visual-role="${role}"]`).join(',')
   const opacities = await page.locator(selector).evaluateAll((nodes) => nodes.map((node) => window.getComputedStyle(node).opacity))
   expect(opacities.length).toBeGreaterThan(0)
+  if (expected === 'visible' && opacities.every((opacity) => opacity === '0') && (await isTypeGpuCanvasActive(page))) {
+    await expect
+      .poll(async () => Number((await page.getByTestId('grid-pane-renderer').getAttribute('data-v3-presented-overlay-rect-count')) ?? '0'))
+      .toBeGreaterThan(0)
+    return
+  }
   expect(opacities.every((opacity) => (expected === 'visible' ? opacity !== '0' : opacity === '0'))).toBe(true)
+}
+
+async function isTypeGpuCanvasActive(page: Page): Promise<boolean> {
+  return (await page.getByTestId('grid-pane-renderer').count()) > 0
+}
+
+async function expectCellTextPixels(page: Page, columnIndex: number, rowIndex: number, expected: 'hidden' | 'visible'): Promise<void> {
+  const poll = expect.poll(async () => await countDarkReadbackPixelsInCell(page, columnIndex, rowIndex), {
+    message: `cell ${columnIndex}:${rowIndex} text pixels should be ${expected}`,
+  })
+  if (expected === 'visible') {
+    await poll.toBeGreaterThan(4)
+    return
+  }
+  await poll.toBeLessThanOrEqual(2)
 }
 
 async function expectBorderStyle(

@@ -21,7 +21,7 @@ function ContextMenuHarness(props: {
   hiddenColumns?: Readonly<Record<number, true>> | undefined
   hiddenRows?: Readonly<Record<number, true>> | undefined
   isEditingCell?: boolean
-  onCommitEdit?: (() => void) | undefined
+  onCommitEdit?: (() => boolean | void) | undefined
   onDeleteColumn?: ((columnIndex: number, count: number) => void) | undefined
   onDeleteRow?: ((rowIndex: number, count: number) => void) | undefined
   onHideColumn?: ((columnIndex: number, hidden: boolean) => void) | undefined
@@ -340,6 +340,52 @@ describe('workbook grid context menu', () => {
 
     expect(onCommitEdit).toHaveBeenCalledTimes(1)
     expect(host.querySelector("[data-testid='grid-context-action-hide-column']")).not.toBeNull()
+
+    await act(async () => {
+      root.unmount()
+    })
+  })
+
+  it('does not open a context menu or move selection when the active edit refuses to close', async () => {
+    const onCommitEdit = vi.fn(() => false)
+    const focusGrid = vi.fn()
+    const setGridSelection = vi.fn()
+    const onSelectionChange = vi.fn()
+    const host = document.createElement('div')
+    document.body.appendChild(host)
+    const root = createRoot(host)
+
+    await act(async () => {
+      root.render(
+        <ContextMenuHarness
+          focusGrid={focusGrid}
+          headerSelection={{ kind: 'column', index: 3 }}
+          isEditingCell
+          onCommitEdit={onCommitEdit}
+          onHideColumn={vi.fn()}
+          onSelectionChange={onSelectionChange}
+          setGridSelection={setGridSelection}
+        />,
+      )
+    })
+
+    const target = host.querySelector("[data-testid='host']")
+    await act(async () => {
+      target?.dispatchEvent(
+        new MouseEvent('contextmenu', {
+          bubbles: true,
+          button: 2,
+          clientX: 64,
+          clientY: 24,
+        }),
+      )
+    })
+
+    expect(onCommitEdit).toHaveBeenCalledTimes(1)
+    expect(host.querySelector("[data-testid='grid-context-menu']")).toBeNull()
+    expect(focusGrid).not.toHaveBeenCalled()
+    expect(setGridSelection).not.toHaveBeenCalled()
+    expect(onSelectionChange).not.toHaveBeenCalled()
 
     await act(async () => {
       root.unmount()

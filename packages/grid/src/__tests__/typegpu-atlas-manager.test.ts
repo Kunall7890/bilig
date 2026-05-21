@@ -28,8 +28,8 @@ describe('glyph-atlas', () => {
   })
 
   it('resolves atlas scale from the active device pixel ratio bucket', () => {
-    expect(resolveGlyphAtlasScale(0)).toBe(1)
-    expect(resolveGlyphAtlasScale(1)).toBe(1)
+    expect(resolveGlyphAtlasScale(0)).toBe(2)
+    expect(resolveGlyphAtlasScale(1)).toBe(2)
     expect(resolveGlyphAtlasScale(1.25)).toBe(2)
     expect(resolveGlyphAtlasScale(2)).toBe(2)
     expect(resolveGlyphAtlasScale(99)).toBe(4)
@@ -138,20 +138,20 @@ describe('glyph-atlas', () => {
     const geometryVersion = atlas.getGlyphGeometryVersion()
     const version = atlas.getVersion()
 
-    expect(atlas.getScale()).toBe(1)
-    expect(atlas.getSize()).toEqual({ height: 512, width: 512 })
+    expect(atlas.getScale()).toBe(2)
+    expect(atlas.getSize()).toEqual({ height: 1024, width: 1024 })
     expect(atlas.setScale(1)).toBe(false)
     expect(atlas.getGlyphGeometryVersion()).toBe(geometryVersion)
 
-    expect(atlas.setScale(2)).toBe(true)
-    expect(atlas.getScale()).toBe(2)
-    expect(atlas.getSize()).toEqual({ height: 1024, width: 1024 })
+    expect(atlas.setScale(3)).toBe(true)
+    expect(atlas.getScale()).toBe(3)
+    expect(atlas.getSize()).toEqual({ height: 1536, width: 1536 })
     expect(atlas.getVersion()).toBeGreaterThan(version)
     expect(atlas.getGlyphGeometryVersion()).toBeGreaterThan(geometryVersion)
     expect(atlas.getTextAtlasPagesStats()).toMatchObject({ glyphCount: 0 })
 
     const second = atlas.intern('400 11px Geist', 'A')
     expect(second.key).not.toBe(first.key)
-    expect(second.key.startsWith('2:')).toBe(true)
+    expect(second.key.startsWith('3:')).toBe(true)
   })
 })

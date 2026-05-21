@@ -7,6 +7,7 @@ export type { GridSelectionSnapshot } from './gridTypes.js'
 
 export type EditMovement = readonly [-1 | 0 | 1, -1 | 0 | 1]
 export type EditSelectionBehavior = 'select-all' | 'caret-end'
+export type EditCommitResult = boolean | void
 export interface EditTargetSelection {
   readonly sheetName: string
   readonly address: string
@@ -35,7 +36,7 @@ export interface WorkbookGridSurfaceProps {
   getCellEditorSeed?: ((sheetName: string, address: string) => string | undefined) | undefined
   onBeginEdit(this: void, seed?: string, selectionBehavior?: EditSelectionBehavior, targetSelection?: EditTargetSelection): void
   onEditorChange(this: void, next: string): void
-  onCommitEdit(this: void, movement?: EditMovement, valueOverride?: string, targetSelectionOverride?: EditTargetSelection): void
+  onCommitEdit(this: void, movement?: EditMovement, valueOverride?: string, targetSelectionOverride?: EditTargetSelection): EditCommitResult
   onCancelEdit(this: void): void
   onClearCell(this: void, selection?: GridSelectionSnapshot): void
   onFillRange(this: void, sourceStartAddr: string, sourceEndAddr: string, targetStartAddr: string, targetEndAddr: string): void
