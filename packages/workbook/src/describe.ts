@@ -95,6 +95,12 @@ export type WorkbookActionCommandDescription =
       readonly kind: 'clear'
       readonly target: WorkbookRefDescription
     }
+  | {
+      readonly kind: 'op'
+      readonly op: WorkbookOp
+      readonly target?: WorkbookRefDescription
+      readonly message?: string
+    }
 
 export interface WorkbookChangeSummaryDescription {
   readonly kind: string
@@ -235,6 +241,13 @@ function describeCommand(command: WorkbookActionCommand): WorkbookActionCommandD
       return {
         kind: 'clear',
         target: describeRef(command.target),
+      }
+    case 'op':
+      return {
+        kind: 'op',
+        op: command.op,
+        ...(command.target !== undefined ? { target: describeRef(command.target) } : {}),
+        ...(command.message !== undefined ? { message: command.message } : {}),
       }
   }
 }

@@ -66,9 +66,10 @@ It exposes:
 - `verifyPlan`
 - `verifyModel`
 - `formula`
+- `workbook.addOp(op, { target?, message? })` inside model actions
 - `findTable`, `findColumn`, `findRange`, `findName`, and `findRows` through the model workbook context and as top-level helpers
 - `check.exists`, `check.noFormulaErrors`, and `check.custom` through the model workbook context and as top-level helpers
-- `WorkbookModel`, `WorkbookAction`, `WorkbookActionPlanResult`, `WorkbookModelDescription`, `WorkbookRefDescription`, `WorkbookActionPlanDescription`, `WorkbookActionPlanResultDescription`, `WorkbookPlanVerification`, `WorkbookPlanIssue`, `WorkbookModelVerification`, `WorkbookModelActionVerification`, `WorkbookCustomCheckOptions`, `WorkbookRunResult`, and `WorkbookCheckResult`
+- `WorkbookModel`, `WorkbookAction`, `WorkbookAddOpOptions`, `WorkbookActionPlanResult`, `WorkbookModelDescription`, `WorkbookRefDescription`, `WorkbookActionPlanDescription`, `WorkbookActionPlanResultDescription`, `WorkbookPlanVerification`, `WorkbookPlanIssue`, `WorkbookModelVerification`, `WorkbookModelActionVerification`, `WorkbookCustomCheckOptions`, `WorkbookRunResult`, and `WorkbookCheckResult`
 - the existing low-level operation language: `WorkbookOp`, `WorkbookTxn`, `EngineOp`, and `EngineOpBatch`
 
 The package builds portable workbook intent and concrete low-level ops when the
@@ -80,6 +81,14 @@ Known single-cell `workbook.format(ref, { numberFormat })` actions compile to
 concrete `setCellFormat` ops, including `numberFormat: null` for explicit
 format clears. Style patches remain high-level intent until the runtime resolves
 style ids.
+When a consumer needs a workbook operation that is already covered by the
+low-level operation language, model actions can call
+`workbook.addOp(op, { target?, message? })`. The op is guarded with
+`isWorkbookOp`, cloned into `plan.ops`, and kept as a command so agents can
+inspect the handoff without pulling in `@bilig/core`. When a `target` is
+supplied for an address or range op, `verifyPlan` checks that the op touches the
+same range. For op kinds without an inferable range, `target` is descriptive for
+logs and approvals rather than proof of affected cells.
 
 Formula helpers keep referenced workbook inputs separate from formula text.
 Planned `writeFormula` commands expose those inputs directly, which lets agents
@@ -116,6 +125,9 @@ flags unresolved command targets, unresolved formula inputs, duplicate resolved
 refs, unparsable formulas, and missing concrete ops for write, clear, and
 number-format commands whose target is already known as a single cell. Custom
 check targets and supporting refs must also resolve through `refsUsed`.
+Low-level `addOp` commands must contain valid `WorkbookOp` values, must still
+appear in `plan.ops`, and must match their declared `target` when the op exposes
+a concrete address or range.
 `verifyModel` applies the same planning and verification flow to every action
 in a consumer-defined model, returning one JSON-safe model-level verdict.
 

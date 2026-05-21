@@ -1,6 +1,8 @@
+import type { CellRangeRef } from '@bilig/protocol'
 import { parseFormula } from '@bilig/formula'
 import { describePlanResult, describeRef, type WorkbookActionPlanResultDescription, type WorkbookRefDescription } from './describe.js'
 import type { WorkbookRef } from './find.js'
+import { isWorkbookOp } from './guards.js'
 import {
   inspectModel,
   planWorkbookAction,
@@ -21,7 +23,10 @@ export type WorkbookPlanIssueCode =
   | 'change_target_not_resolved'
   | 'check_target_not_resolved'
   | 'check_ref_not_resolved'
+  | 'invalid_workbook_op'
+  | 'op_target_mismatch'
   | 'missing_concrete_op'
+  | 'missing_workbook_op'
 
 export interface WorkbookPlanIssue {
   readonly code: WorkbookPlanIssueCode
@@ -80,6 +85,10 @@ function concreteSingleCell(target: WorkbookRef): { sheetName: string; address: 
 }
 
 function expectedConcreteOp(command: WorkbookActionCommand): WorkbookConcreteCommandOp | null {
+  if (command.kind === 'op') {
+    return null
+  }
+
   const target = concreteSingleCell(command.target)
   if (target === null) {
     return null
@@ -118,6 +127,10 @@ function expectedConcreteOp(command: WorkbookActionCommand): WorkbookConcreteCom
   }
 }
 
+function commandTarget(command: WorkbookActionCommand): WorkbookRef | undefined {
+  return command.target
+}
+
 function opMatches(expected: WorkbookConcreteCommandOp, actual: WorkbookOp): boolean {
   if (expected.kind !== actual.kind) {
     return false
@@ -151,6 +164,138 @@ function opMatches(expected: WorkbookConcreteCommandOp, actual: WorkbookOp): boo
   }
 }
 
+function canonicalJson(value: unknown): string {
+  return JSON.stringify(canonicalValue(value))
+}
+
+function canonicalValue(value: unknown): unknown {
+  if (Array.isArray(value)) {
+    return value.map(canonicalValue)
+  }
+  if (typeof value === 'object' && value !== null) {
+    return Object.fromEntries(
+      Object.entries(value)
+        .toSorted(([left], [right]) => left.localeCompare(right))
+        .map(([key, entry]) => [key, canonicalValue(entry)]),
+    )
+  }
+  return value
+}
+
+function workbookOpMatches(expected: WorkbookOp, actual: WorkbookOp): boolean {
+  return canonicalJson(actual) === canonicalJson(expected)
+}
+
+function singleCellRange(sheetName: string, address: string): CellRangeRef {
+  return {
+    sheetName,
+    startAddress: address,
+    endAddress: address,
+  }
+}
+
+function tableRange(table: { readonly sheetName: string; readonly startAddress: string; readonly endAddress: string }): CellRangeRef {
+  return {
+    sheetName: table.sheetName,
+    startAddress: table.startAddress,
+    endAddress: table.endAddress,
+  }
+}
+
+function rangesEqual(left: CellRangeRef, right: CellRangeRef): boolean {
+  return left.sheetName === right.sheetName && left.startAddress === right.startAddress && left.endAddress === right.endAddress
+}
+
+function opTargetRange(op: WorkbookOp): CellRangeRef | null {
+  if (
+    op.kind === 'setCellValue' ||
+    op.kind === 'setCellFormula' ||
+    op.kind === 'setCellFormat' ||
+    op.kind === 'clearCell' ||
+    op.kind === 'deleteCommentThread' ||
+    op.kind === 'deleteNote' ||
+    op.kind === 'upsertCommentThread' ||
+    op.kind === 'upsertNote' ||
+    op.kind === 'upsertSpillRange' ||
+    op.kind === 'deleteSpillRange' ||
+    op.kind === 'upsertPivotTable' ||
+    op.kind === 'deletePivotTable' ||
+    op.kind === 'upsertChart' ||
+    op.kind === 'upsertImage' ||
+    op.kind === 'upsertShape'
+  ) {
+    if (op.kind === 'upsertCommentThread') {
+      return singleCellRange(op.thread.sheetName, op.thread.address)
+    }
+    if (op.kind === 'upsertNote') {
+      return singleCellRange(op.note.sheetName, op.note.address)
+    }
+    if (op.kind === 'upsertChart') {
+      return singleCellRange(op.chart.sheetName, op.chart.address)
+    }
+    if (op.kind === 'upsertImage') {
+      return singleCellRange(op.image.sheetName, op.image.address)
+    }
+    if (op.kind === 'upsertShape') {
+      return singleCellRange(op.shape.sheetName, op.shape.address)
+    }
+    return singleCellRange(op.sheetName, op.address)
+  }
+
+  if (op.kind === 'mergeCells' || op.kind === 'unmergeCells' || op.kind === 'setStyleRange' || op.kind === 'setFormatRange') {
+    return op.range
+  }
+
+  if (
+    op.kind === 'setFilter' ||
+    op.kind === 'clearFilter' ||
+    op.kind === 'setSort' ||
+    op.kind === 'clearSort' ||
+    op.kind === 'clearDataValidation'
+  ) {
+    return {
+      ...op.range,
+      sheetName: op.sheetName,
+    }
+  }
+
+  if (op.kind === 'setDataValidation') {
+    return op.validation.range
+  }
+  if (op.kind === 'upsertConditionalFormat') {
+    return op.format.range
+  }
+  if (op.kind === 'upsertRangeProtection') {
+    return op.protection.range
+  }
+  if (op.kind === 'upsertTable') {
+    return tableRange(op.table)
+  }
+
+  return null
+}
+
+function opTargetMismatch(op: WorkbookOp, target: WorkbookRef | undefined): string | null {
+  if (target === undefined) {
+    return null
+  }
+
+  const range = opTargetRange(op)
+  if (range === null) {
+    return null
+  }
+
+  if (target.kind !== 'range') {
+    return `Low-level workbook op ${op.kind} targets ${range.sheetName}!${range.startAddress}:${range.endAddress}, but ${target.label} is not a range ref`
+  }
+
+  if (!rangesEqual(range, target.range)) {
+    return `Low-level workbook op ${op.kind} targets ${range.sheetName}!${range.startAddress}:${range.endAddress}, but command target is ${target.label}`
+  }
+
+  return null
+}
+
 function errorMessage(error: unknown): string {
   return error instanceof Error ? error.message : String(error)
 }
@@ -180,13 +325,15 @@ export function verifyPlan<Refs>(plan: WorkbookActionPlan<Refs>): WorkbookPlanVe
   }
 
   plan.commands.forEach((command, commandIndex) => {
-    if (!hasRef(command.target)) {
+    const target = commandTarget(command)
+
+    if (target !== undefined && !hasRef(target)) {
       issues.push(
         issue({
           code: 'command_target_not_resolved',
           path: `commands[${commandIndex}].target`,
-          ref: command.target,
-          message: `${command.target.label} is used as a command target but is missing from refsUsed`,
+          ref: target,
+          message: `${target.label} is used as a command target but is missing from refsUsed`,
         }),
       )
     }
@@ -216,14 +363,44 @@ export function verifyPlan<Refs>(plan: WorkbookActionPlan<Refs>): WorkbookPlanVe
       })
     }
 
+    if (command.kind === 'op') {
+      if (!isWorkbookOp(command.op)) {
+        issues.push({
+          code: 'invalid_workbook_op',
+          path: `commands[${commandIndex}].op`,
+          message: 'Low-level workbook op is not a valid WorkbookOp',
+        })
+      } else {
+        const mismatch = opTargetMismatch(command.op, command.target)
+        if (mismatch !== null) {
+          issues.push(
+            issue({
+              code: 'op_target_mismatch',
+              path: `commands[${commandIndex}].target`,
+              ...(command.target !== undefined ? { ref: command.target } : {}),
+              message: mismatch,
+            }),
+          )
+        }
+        if (!plan.ops.some((op) => workbookOpMatches(command.op, op))) {
+          issues.push({
+            code: 'missing_workbook_op',
+            path: `commands[${commandIndex}].op`,
+            message: `Low-level workbook op ${command.op.kind} is missing from plan ops`,
+          })
+        }
+      }
+    }
+
     const expectedOp = expectedConcreteOp(command)
     if (expectedOp !== null && !plan.ops.some((op) => opMatches(expectedOp, op))) {
+      const expectedTarget = commandTarget(command)
       issues.push(
         issue({
           code: 'missing_concrete_op',
           path: `commands[${commandIndex}]`,
-          ref: command.target,
-          message: `${command.target.label} has no matching concrete workbook op`,
+          ...(expectedTarget !== undefined ? { ref: expectedTarget } : {}),
+          message: `${expectedTarget?.label ?? 'Command'} has no matching concrete workbook op`,
         }),
       )
     }

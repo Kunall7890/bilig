@@ -2,6 +2,7 @@ import type { CellStylePatch, LiteralInput } from '@bilig/protocol'
 import { formula, type WorkbookFormulaOperand } from './formula.js'
 import { collectWorkbookRefs, createWorkbookFindApi, type WorkbookFindApi, type WorkbookRef } from './find.js'
 import { createWorkbookCheckApi, type WorkbookCheckApi } from './check.js'
+import { isWorkbookOp } from './guards.js'
 import type { WorkbookOp } from './ops.js'
 import type { WorkbookChangeSummary, WorkbookCheckResult, WorkbookRunError } from './result.js'
 
@@ -27,6 +28,17 @@ export type WorkbookActionCommand =
       readonly kind: 'clear'
       readonly target: WorkbookRef
     }
+  | {
+      readonly kind: 'op'
+      readonly op: WorkbookOp
+      readonly target?: WorkbookRef
+      readonly message?: string
+    }
+
+export interface WorkbookAddOpOptions {
+  readonly target?: WorkbookRef
+  readonly message?: string
+}
 
 export interface WorkbookModelWorkbook extends WorkbookFindApi {
   readonly check: WorkbookCheckApi
@@ -34,6 +46,7 @@ export interface WorkbookModelWorkbook extends WorkbookFindApi {
   readonly writeValue: (target: WorkbookRef, value: LiteralInput) => void
   readonly format: (target: WorkbookRef, options: { readonly style?: CellStylePatch; readonly numberFormat?: string | null }) => void
   readonly clear: (target: WorkbookRef) => void
+  readonly addOp: (op: WorkbookOp, options?: WorkbookAddOpOptions) => void
 }
 
 export interface WorkbookActionContext<Refs> {
@@ -130,7 +143,22 @@ function commandMessage(command: WorkbookActionCommand): string {
       return `Format ${command.target.label}`
     case 'clear':
       return `Clear ${command.target.label}`
+    case 'op':
+      return (
+        command.message ??
+        (command.target === undefined
+          ? `Add workbook op ${command.op.kind}`
+          : `Add workbook op ${command.op.kind} for ${command.target.label}`)
+      )
   }
+}
+
+function commandTarget(command: WorkbookActionCommand): WorkbookRef | undefined {
+  return command.target
+}
+
+function cloneWorkbookOp(op: WorkbookOp): WorkbookOp {
+  return structuredClone(op)
 }
 
 function createModelWorkbook(input: {
@@ -142,7 +170,21 @@ function createModelWorkbook(input: {
   const check = createWorkbookCheckApi((entry) => input.checks.push(entry))
 
   function pushCommand(command: WorkbookActionCommand): void {
+    if (command.kind === 'op') {
+      const commandOp = cloneWorkbookOp(command.op)
+      const planOp = cloneWorkbookOp(command.op)
+      input.commands.push({
+        kind: 'op',
+        op: commandOp,
+        ...(command.target !== undefined ? { target: command.target } : {}),
+        ...(command.message !== undefined ? { message: command.message } : {}),
+      })
+      input.ops.push(planOp)
+      return
+    }
+
     input.commands.push(command)
+
     const target = concreteSingleCell(command.target)
     if (target === null) {
       return
@@ -216,6 +258,17 @@ function createModelWorkbook(input: {
         target,
       })
     },
+    addOp(op, options = {}) {
+      if (!isWorkbookOp(op)) {
+        throw new Error('Workbook op is not a valid WorkbookOp')
+      }
+      pushCommand({
+        kind: 'op',
+        op,
+        ...(options.target !== undefined ? { target: options.target } : {}),
+        ...(options.message !== undefined ? { message: options.message } : {}),
+      })
+    },
   }
 }
 
@@ -269,11 +322,14 @@ function createActionPlan<Refs>(
     refsUsed: collectWorkbookRefs(refs),
     commands,
     ops,
-    changed: commands.map((command) => ({
-      kind: command.kind,
-      target: command.target,
-      message: commandMessage(command),
-    })),
+    changed: commands.map((command) => {
+      const target = commandTarget(command)
+      return {
+        kind: command.kind,
+        ...(target !== undefined ? { target } : {}),
+        message: commandMessage(command),
+      }
+    }),
     checks,
   }
 }

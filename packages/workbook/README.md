@@ -25,8 +25,10 @@ The public surface stays generic:
 - `verifyPlan`
 - `verifyModel`
 - `formula`
+- `workbook.addOp(op, { target?, message? })` inside model actions
 - `WorkbookModel`
 - `WorkbookAction`
+- `WorkbookAddOpOptions`
 - `WorkbookActionPlanResult`
 - `WorkbookModelDescription`
 - `WorkbookRefDescription`
@@ -63,6 +65,14 @@ Known single-cell `workbook.format(ref, { numberFormat })` actions compile to
 concrete `setCellFormat` ops. Use `numberFormat: null` to plan an explicit
 format clear. Style patches remain high-level intent until the runtime resolves
 style ids.
+Use `workbook.addOp(op, { target?, message? })` inside model actions when a
+consumer needs the existing low-level workbook operation language directly. The
+op is runtime-guarded with `isWorkbookOp`, cloned into `plan.ops`, and kept in
+the command log so agents can inspect it without depending on `@bilig/core`.
+When a `target` is supplied for an address or range op, `verifyPlan` checks that
+the op touches the same range. For op kinds without an inferable range, `target`
+is still useful for logs and approvals but cannot prove the affected cells by
+itself.
 
 Action plans expose `refsUsed`, a flat deduped list of workbook refs found in
 the consumer-defined `refs` object. Use `collectWorkbookRefs` directly when an
@@ -93,6 +103,8 @@ action is internally consistent. It checks for unresolved refs, unparsable
 formulas, duplicate resolved refs, and missing concrete ops for write, clear,
 and number-format commands that already target a known single cell. Custom check
 targets and supporting refs must also resolve through the model's `refsUsed`
-contract.
+contract. Low-level `addOp` commands must contain valid `WorkbookOp` values,
+must still appear in `plan.ops`, and must match their declared `target` when the
+op exposes a concrete address or range.
 Use `verifyModel` to plan and verify every action in a consumer-defined model
 with one JSON-safe result.
