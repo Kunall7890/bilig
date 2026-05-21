@@ -194,7 +194,7 @@ export function applySetCellValueMutation(request: ApplySetCellValueMutationArgs
   const sortedLookupDependentsHandled = lookupWritePlans.sortedHandled
   const needsLookupValueRead = lookupWritePlans.needsLookupValueRead
   let directDependentsHandled = false
-  if (!isRestore && canFastOverwriteExisting) {
+  if (!isRestore && canFastOverwriteExisting && !hasAggregateDependents) {
     const oldNumber = request.directScalarCellNumericValue(existingIndex)
     const newNumber = directScalarLiteralNumericValue(mutation.value)
     if (oldNumber !== undefined && newNumber !== undefined) {

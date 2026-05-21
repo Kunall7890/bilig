@@ -135,7 +135,10 @@ export interface CreateEngineOperationServiceArgs {
     sheetName: string,
     explicitChangedCount: number,
   ) => { changedInputCount: number; formulaChangedCount: number; explicitChangedCount: number }
-  readonly applyStructuralAxisOp: (op: StructuralAxisOp) => {
+  readonly applyStructuralAxisOp: (
+    op: StructuralAxisOp,
+    source?: MutationSource,
+  ) => {
     transaction: StructuralTransaction
     changedCellIndices: number[]
     precomputedChangedInputCellIndices: number[]

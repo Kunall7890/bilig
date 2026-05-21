@@ -68,8 +68,7 @@ export class GridDrawSchedulerV3 {
       lastTileMutationSignalAt: this.lastTileMutationSignalAt,
       now,
     })
-    const hasRecentTileMutationSignal = now - this.lastTileMutationSignalAt < TYPEGPU_V3_ACTIVE_RESOURCE_DEFER_MS
-    if (deferPreloadSync && !hasRecentTileMutationSignal) {
+    if (deferPreloadSync) {
       this.scheduleIdlePreloadRetry(input.requestIdlePreloadDraw)
     }
     return {

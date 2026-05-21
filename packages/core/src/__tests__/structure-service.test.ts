@@ -2,7 +2,7 @@ import { Effect } from 'effect'
 import { describe, expect, it, vi } from 'vitest'
 import { ErrorCode, ValueTag } from '@bilig/protocol'
 import { SpreadsheetEngine } from '../engine.js'
-import type { EngineStructureService, StructuralAxisOp } from '../engine/services/structure-service.js'
+import type { EngineStructureService } from '../engine/services/structure-service.js'
 
 interface FormulaBindingServiceForStructureTest {
   readonly collectFormulaCellsReferencingSheetNow: (sheetName: string) => readonly number[]
@@ -53,7 +53,7 @@ function getStructureService(engine: SpreadsheetEngine): EngineStructureService 
 
 interface EngineStructureServiceWithSyncPath extends EngineStructureService {
   readonly materializeDeferredStructuralFormulaSourcesNow: () => void
-  readonly applyStructuralAxisOpNow: (op: StructuralAxisOp) => unknown
+  readonly applyStructuralAxisOpNow: EngineStructureService['applyStructuralAxisOpNow']
 }
 
 function getStructureServiceWithSyncPath(engine: SpreadsheetEngine): EngineStructureServiceWithSyncPath {

@@ -2057,6 +2057,8 @@ describe('GridRenderTilePaneRuntime', () => {
 
     expect(refreshed.residentBodyPane?.tile).not.toBe(initial.residentBodyPane?.tile)
     expect(hasOpaqueGreenFillRect(refreshed.residentBodyPane?.tile)).toBe(true)
+    expect(refreshed.residentBodyPane?.tile.lastBatchId).toBe(1)
+    expect(refreshed.residentBodyPane?.tile.version.styles).toBe(1)
   })
 
   it('rebuilds resident tiles for pending local projections even when the remote batch id is ahead', () => {
@@ -2112,6 +2114,44 @@ describe('GridRenderTilePaneRuntime', () => {
 
     expect(refreshed.residentBodyPane?.tile).not.toBe(remoteTile)
     expect(hasOpaqueGreenFillRect(refreshed.residentBodyPane?.tile)).toBe(true)
+    expect(refreshed.residentBodyPane?.tile.lastBatchId).toBe(24)
+    expect(refreshed.residentBodyPane?.tile.version.styles).toBe(24)
+  })
+
+  it('stamps local style tiles with projected revision for GPU resource freshness', () => {
+    const runtime = new GridRenderTilePaneRuntime()
+    const host = createHost()
+    const engineWithLocalStyle: GridEngineLike = {
+      getCell: (_sheetName, address) => ({
+        ...(address === 'E6' ? { styleId: 'style-green' } : {}),
+        ...createEmptyCellSnapshot(address),
+      }),
+      getCellStyle: (styleId) => (styleId === 'style-green' ? { id: 'style-green', fill: { backgroundColor: '#00ff00' } } : undefined),
+      getRenderRevisionSnapshot: () => ({
+        authoritativeRevision: 17,
+        localRevision: 24,
+        projectedRevision: 50,
+        tileSceneCameraSeq: 3,
+        tileSceneRevision: 23,
+      }),
+      subscribeCells: () => () => {},
+      workbook: {
+        getSheet: () => undefined,
+      },
+    }
+
+    const resolved = runtime.resolve(
+      createInput({
+        engine: engineWithLocalStyle,
+        gridRuntimeHost: host,
+        renderTileSource: createRenderTileSource([]),
+        sceneRevision: 0,
+      }),
+    )
+
+    expect(hasOpaqueGreenFillRect(resolved.residentBodyPane?.tile)).toBe(true)
+    expect(resolved.residentBodyPane?.tile.lastBatchId).toBe(50)
+    expect(resolved.residentBodyPane?.tile.version.styles).toBe(50)
   })
 
   it('keeps local tiles through stale render tile deltas until the renderer batch catches up', () => {

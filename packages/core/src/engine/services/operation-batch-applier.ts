@@ -164,7 +164,7 @@ export function createOperationBatchApplier(input: CreateOperationBatchApplierAr
 
     try {
       const order = batch === undefined ? undefined : batchOpOrder(batch, 0)
-      const structural = args.applyStructuralAxisOp(op)
+      const structural = args.applyStructuralAxisOp(op, source)
       if (source === 'local') {
         captureLocalStructuralInsertEntries(batch, 0, op)
       }
@@ -561,7 +561,7 @@ export function createOperationBatchApplier(input: CreateOperationBatchApplierAr
           case 'insertColumns':
           case 'deleteColumns':
           case 'moveColumns': {
-            const structural = args.applyStructuralAxisOp(op)
+            const structural = args.applyStructuralAxisOp(op, source)
             if (source === 'local') {
               captureLocalStructuralInsertEntries(batch, opIndex, op)
             }

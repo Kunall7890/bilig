@@ -39,6 +39,7 @@ import { collectStructuralFormulaImpacts } from './structure-formula-impacts.js'
 import type {
   CreateEngineStructureServiceArgs,
   EngineStructureService,
+  StructuralAxisApplyOptions,
   StructuralAxisOp,
   StructuralAxisOpResult,
   StructuralFormulaRebindInput,
@@ -55,6 +56,11 @@ export type {
 
 const EMPTY_STRING_SET = new Set<string>()
 const EMPTY_DELETED_TABLE_COLUMNS: [] = []
+
+function shouldApplyGeneratedTableHeaderCellWrites(options: StructuralAxisApplyOptions | undefined): boolean {
+  const source = options?.source ?? 'local'
+  return source !== 'restore' && source !== 'undo' && source !== 'redo'
+}
 
 function dependencyIncludesOwnerCell(
   dependency: ParsedDependencyReference,
@@ -332,7 +338,7 @@ export function createEngineStructureService(args: CreateEngineStructureServiceA
           }),
       })
     },
-    applyStructuralAxisOpNow(op): StructuralAxisOpResult {
+    applyStructuralAxisOpNow(op, options): StructuralAxisOpResult {
       materializeDeferredStructuralFormulaSources()
       const transform = structuralTransformForCurrentSheet(op)
       const sheetName = op.sheetName
@@ -391,10 +397,12 @@ export function createEngineStructureService(args: CreateEngineStructureServiceA
 
       args.state.workbook.applyPlannedStructuralTransaction(transaction)
 
-      const tableHeaderCellChangedIndices = tableHeaderCellWrites.flatMap((write) => {
-        const cellIndex = args.writeTableHeaderCell(write.sheetName, write.row, write.col, write.value)
-        return cellIndex === undefined ? [] : [cellIndex]
-      })
+      const tableHeaderCellChangedIndices = shouldApplyGeneratedTableHeaderCellWrites(options)
+        ? tableHeaderCellWrites.flatMap((write) => {
+            const cellIndex = args.writeTableHeaderCell(write.sheetName, write.row, write.col, write.value)
+            return cellIndex === undefined ? [] : [cellIndex]
+          })
+        : []
 
       const hasNoFormulaStructuralWork =
         impactedFormulas.formulaCellIndices.length === 0 &&
@@ -537,9 +545,9 @@ export function createEngineStructureService(args: CreateEngineStructureServiceA
         graphRefreshRequired,
       }
     },
-    applyStructuralAxisOp(op) {
+    applyStructuralAxisOp(op, options) {
       return Effect.try({
-        try: () => service.applyStructuralAxisOpNow(op),
+        try: () => service.applyStructuralAxisOpNow(op, options),
         catch: (cause) =>
           new EngineStructureError({
             message: `Failed to apply structural operation ${op.kind}`,

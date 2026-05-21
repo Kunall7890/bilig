@@ -119,6 +119,23 @@ describe('WorkPaper/core parity fuzz', () => {
     await assertArithmeticTextCoercionThroughSaveLoad('3', 5)
   })
 
+  it('recalculates direct scalar formulas when the input also feeds aggregate formulas', async () => {
+    const harness = await createParityHarness()
+
+    applyParityAction(harness, { kind: 'set-cell', row: 0, col: 2, value: '=SUM(A1:B2)' })
+    applyParityAction(harness, { kind: 'set-cell', row: 0, col: 0, value: 0 })
+
+    expect(harness.workPaper.getCellValue({ sheet: harness.sheetId, row: 5, col: 1 })).toEqual({ tag: ValueTag.Number, value: 2 })
+    assertCoreParity(harness)
+
+    applyParityAction(harness, { kind: 'insert-rows', start: 0, count: 1 })
+
+    expect(harness.workPaper.getCellValue({ sheet: harness.sheetId, row: 6, col: 1 })).toEqual({ tag: ValueTag.Number, value: 2 })
+    assertCoreParity(harness)
+    assertRestoredWorkPaperParity(harness)
+    await assertRestoredEngineParity(harness)
+  })
+
   it('keeps headless WorkPaper edits, structural operations, undo/redo, and save/load in core parity', async () => {
     await runProperty({
       suite: 'headless/core-parity/work-paper-engine-action-sequence',

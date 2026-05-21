@@ -17,6 +17,12 @@ export type StructuralAxisOp = Extract<
   }
 >
 
+export type StructuralAxisMutationSource = 'local' | 'remote' | 'restore' | 'undo' | 'redo'
+
+export interface StructuralAxisApplyOptions {
+  readonly source?: StructuralAxisMutationSource
+}
+
 export interface EngineStructureState {
   readonly workbook: WorkbookStore
   readonly formulas: FormulaTable<RuntimeFormula>
@@ -52,8 +58,11 @@ export interface EngineStructureService {
   readonly captureColumnRangeCellState: (sheetName: string, start: number, count: number) => Effect.Effect<EngineOp[], EngineStructureError>
   readonly materializeDeferredStructuralFormulaSourcesNow: () => void
   readonly materializeDeferredStructuralFormulaSources: () => Effect.Effect<void, EngineStructureError>
-  readonly applyStructuralAxisOpNow: (op: StructuralAxisOp) => StructuralAxisOpResult
-  readonly applyStructuralAxisOp: (op: StructuralAxisOp) => Effect.Effect<StructuralAxisOpResult, EngineStructureError>
+  readonly applyStructuralAxisOpNow: (op: StructuralAxisOp, options?: StructuralAxisApplyOptions) => StructuralAxisOpResult
+  readonly applyStructuralAxisOp: (
+    op: StructuralAxisOp,
+    options?: StructuralAxisApplyOptions,
+  ) => Effect.Effect<StructuralAxisOpResult, EngineStructureError>
 }
 
 export interface CreateEngineStructureServiceArgs {

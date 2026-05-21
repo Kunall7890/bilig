@@ -268,10 +268,11 @@ export class ProjectedViewportStore implements GridEngineLike {
   }
 
   getRenderRevisionSnapshot(): GridRenderRevisionSnapshot {
+    const lastBatchId = this.patchRevisionGate.getLastBatchId()
     return {
       authoritativeRevision: this.patchRevisionGate.getLastAuthoritativeRevision(),
       localRevision: this.localRevision,
-      projectedRevision: this.patchRevisionGate.getLastBatchId(),
+      projectedRevision: Math.max(lastBatchId, this.localDeltaPublisher.getLastLocalWorkbookDeltaSeq()),
       tileSceneCameraSeq: this.tileSceneStore?.getLastCameraSeq() ?? null,
       tileSceneRevision: this.tileSceneStore?.getLastBatchId() ?? null,
     }

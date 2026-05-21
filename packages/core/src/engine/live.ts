@@ -730,7 +730,7 @@ export function createEngineServiceRuntime(args: {
       binding.rebindFormulasForSheetNow(sheetName, formulaChangedCount, candidates),
     materializeDeferredStructuralFormulaSources: () => structure.materializeDeferredStructuralFormulaSourcesNow(),
     removeSheetRuntime: (sheetName, explicitChangedCount) => support.removeSheetRuntimeNow(sheetName, explicitChangedCount),
-    applyStructuralAxisOp: (op) => structure.applyStructuralAxisOpNow(op),
+    applyStructuralAxisOp: (op, source) => structure.applyStructuralAxisOpNow(op, source === undefined ? undefined : { source }),
     clearOwnedSpill: (cellIndex) => support.clearOwnedSpillNow(cellIndex),
     clearPivotForCell: (cellIndex) => getPivot().clearPivotForCellNow(cellIndex),
     clearOwnedPivot: (pivotRecord) => getPivot().clearOwnedPivotNow(pivotRecord),

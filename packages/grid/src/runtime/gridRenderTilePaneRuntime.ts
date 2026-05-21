@@ -674,6 +674,7 @@ export class GridRenderTilePaneRuntime {
     tileKey: TileKey53,
     baseTile: GridRenderTile,
   ): GridRenderTile | null {
+    const generation = resolveLocalRenderTileGeneration(input)
     const localTiles = buildLocalFixedRenderTiles({
       cameraSeq: input.gridRuntimeHost.snapshot().camera.seq,
       columnWidths: input.columnWidths,
@@ -682,7 +683,7 @@ export class GridRenderTilePaneRuntime {
       editingCell: input.editingCell ?? null,
       engine: input.engine,
       freezeSeq: input.gridRuntimeHost.snapshot().freezeSeq,
-      generation: input.sceneRevision,
+      generation,
       gridMetrics: input.gridMetrics,
       reuseStaticGridRectsByTileId: hasCompleteRenderTileGrid(baseTile) ? new Map([[tileKey, baseTile]]) : undefined,
       rowHeights: input.rowHeights,
@@ -748,6 +749,7 @@ export class GridRenderTilePaneRuntime {
         return hybrid
       }
     }
+    const generation = resolveLocalRenderTileGeneration(input)
     return {
       source: 'local',
       tiles: buildLocalFixedRenderTiles({
@@ -758,7 +760,7 @@ export class GridRenderTilePaneRuntime {
         editingCell: input.editingCell ?? null,
         engine: input.engine,
         freezeSeq: input.gridRuntimeHost.snapshot().freezeSeq,
-        generation: input.sceneRevision,
+        generation,
         gridMetrics: input.gridMetrics,
         rowHeights: input.rowHeights,
         selectedCell: input.selectedCell,
@@ -882,6 +884,7 @@ export class GridRenderTilePaneRuntime {
       return { source: 'remote', tiles: tileKeys.map((tileKey) => remoteTiles.get(tileKey)!) }
     }
 
+    const generation = resolveLocalRenderTileGeneration(input)
     const localTiles = new Map(
       buildLocalFixedRenderTiles({
         cameraSeq: input.gridRuntimeHost.snapshot().camera.seq,
@@ -890,7 +893,7 @@ export class GridRenderTilePaneRuntime {
         dprBucket: input.dprBucket,
         editingCell: input.editingCell ?? null,
         engine: input.engine,
-        generation: input.sceneRevision,
+        generation,
         gridMetrics: input.gridMetrics,
         rowHeights: input.rowHeights,
         selectedCell: input.selectedCell,
@@ -937,6 +940,18 @@ export class GridRenderTilePaneRuntime {
       listener()
     })
   }
+}
+
+function resolveLocalRenderTileGeneration(input: GridRenderTilePaneRuntimeInput): number {
+  const revision = input.engine.getRenderRevisionSnapshot?.()
+  return Math.max(
+    input.sceneRevision,
+    normalizeNonNegativeInteger(revision?.authoritativeRevision) ?? 0,
+    normalizeNonNegativeInteger(revision?.localRevision) ?? 0,
+    normalizeNonNegativeInteger(revision?.projectedRevision) ?? 0,
+    normalizeNonNegativeInteger(revision?.tileSceneCameraSeq) ?? 0,
+    normalizeNonNegativeInteger(revision?.tileSceneRevision) ?? 0,
+  )
 }
 
 export function getGridRenderTilePaneRuntime(current: unknown): GridRenderTilePaneRuntime {

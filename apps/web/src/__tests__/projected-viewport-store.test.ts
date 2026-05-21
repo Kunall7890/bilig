@@ -763,6 +763,68 @@ describe('ProjectedViewportStore', () => {
     expect(cache.getRenderRevisionSnapshot().localRevision).toBe(1)
   })
 
+  it('includes local optimistic deltas in projected render revision while worker tiles catch up', () => {
+    const cache = new ProjectedViewportStore(createNoopWorkerEngineClient())
+    const listener = vi.fn()
+    cache.setSheetIdentities([{ id: 7, name: 'Sheet1', order: 3 }])
+    cache.applyViewportPatch({
+      ...createPatch(),
+      authoritativeRevision: 17,
+      metrics: {
+        ...TEST_METRICS,
+        batchId: 23,
+      },
+    })
+    const unsubscribeDeltas = cache.subscribeWorkbookDeltas(listener)
+
+    cache.setCellSnapshot({
+      sheetName: 'Sheet1',
+      address: 'D5',
+      flags: 0,
+      input: 'local',
+      value: { tag: ValueTag.String, value: 'local', stringId: 0 },
+      version: 24,
+    })
+
+    expect(listener).toHaveBeenCalledTimes(1)
+    expect(listener.mock.calls[0]?.[0]).toMatchObject({ seq: 24, source: 'localOptimistic' })
+    expect(cache.getRenderRevisionSnapshot()).toMatchObject({
+      authoritativeRevision: 17,
+      localRevision: 1,
+      projectedRevision: 24,
+    })
+
+    unsubscribeDeltas()
+  })
+
+  it('advances projected render revision for local style writes before delta subscriptions are ready', () => {
+    const cache = new ProjectedViewportStore(createNoopWorkerEngineClient())
+    cache.applyViewportPatch({
+      ...createPatch(),
+      authoritativeRevision: 17,
+      metrics: {
+        ...TEST_METRICS,
+        batchId: 23,
+      },
+    })
+
+    const rollback = cache.setRangeStyle(
+      {
+        endAddress: 'D9',
+        sheetName: 'Sheet1',
+        startAddress: 'B2',
+      },
+      { fill: { backgroundColor: '#34a853' } },
+    )
+
+    expect(rollback).not.toBeNull()
+    expect(cache.getRenderRevisionSnapshot()).toMatchObject({
+      authoritativeRevision: 17,
+      localRevision: 24,
+      projectedRevision: 47,
+    })
+  })
+
   it('publishes local dirty ranges when optimistic trust flags are cleared', () => {
     const cache = new ProjectedViewportStore(createNoopWorkerEngineClient())
     const listener = vi.fn()

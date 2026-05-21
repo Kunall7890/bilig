@@ -25,6 +25,10 @@ export class ProjectedWorkbookLocalDeltaPublisher {
 
   constructor(private readonly options: ProjectedWorkbookLocalDeltaPublisherOptions) {}
 
+  getLastLocalWorkbookDeltaSeq(): number {
+    return this.localWorkbookDeltaSeq
+  }
+
   subscribe(listener: ProjectedWorkbookLocalDeltaListener): () => void {
     this.listeners.add(listener)
     return () => {
@@ -37,7 +41,11 @@ export class ProjectedWorkbookLocalDeltaPublisher {
   }
 
   emitCellSnapshots(sheetName: string, snapshots: readonly CellSnapshot[], dirtyMask?: number): void {
-    if (this.listeners.size === 0 || snapshots.length === 0) {
+    if (snapshots.length === 0) {
+      return
+    }
+    const seq = this.nextLocalWorkbookDeltaSeq()
+    if (this.listeners.size === 0) {
       return
     }
     const identity = this.options.resolveSheetIdentity(sheetName)
@@ -48,7 +56,7 @@ export class ProjectedWorkbookLocalDeltaPublisher {
     const batch = buildLocalCellSnapshotsWorkbookDelta({
       dirtyMask,
       identity,
-      seq: this.nextLocalWorkbookDeltaSeq(),
+      seq,
       snapshots,
     })
     this.publish(batch)
@@ -56,6 +64,7 @@ export class ProjectedWorkbookLocalDeltaPublisher {
   }
 
   emitRange(sheetName: string, range: ProjectedWorkbookLocalDeltaRange): void {
+    const seq = this.nextLocalWorkbookDeltaSeq()
     if (this.listeners.size === 0) {
       return
     }
@@ -67,13 +76,14 @@ export class ProjectedWorkbookLocalDeltaPublisher {
     const batch = buildLocalRangeWorkbookDelta({
       identity,
       range,
-      seq: this.nextLocalWorkbookDeltaSeq(),
+      seq,
     })
     this.publish(batch)
     this.noteRendererDeltaApply(startedAt, 1)
   }
 
   emitAxis(sheetName: string, axis: ProjectedWorkbookLocalDeltaAxis, index: number): void {
+    const seq = this.nextLocalWorkbookDeltaSeq()
     if (this.listeners.size === 0) {
       return
     }
@@ -86,7 +96,7 @@ export class ProjectedWorkbookLocalDeltaPublisher {
       axis,
       identity,
       index,
-      seq: this.nextLocalWorkbookDeltaSeq(),
+      seq,
     })
     this.publish(batch)
     this.noteRendererDeltaApply(startedAt, 1)
