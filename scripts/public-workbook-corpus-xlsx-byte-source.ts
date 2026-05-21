@@ -30,6 +30,28 @@ export class FileBackedXlsxZipByteSource implements XlsxZipByteSource {
     return output
   }
 
+  readRangeInto(start: number, end: number, target: Uint8Array): Uint8Array {
+    if (this.fd === null) {
+      throw new Error('XLSX ZIP file source has been released')
+    }
+    if (!Number.isSafeInteger(start) || !Number.isSafeInteger(end) || start < 0 || end < start || end > this.byteLength) {
+      throw new Error('Invalid XLSX ZIP file byte range')
+    }
+    const length = end - start
+    if (length > target.byteLength) {
+      throw new Error('XLSX ZIP read target is too small')
+    }
+    let offset = 0
+    while (offset < length) {
+      const bytesRead = readSync(this.fd, target, offset, length - offset, start + offset)
+      if (bytesRead === 0) {
+        throw new Error('Unexpected end of XLSX ZIP file source')
+      }
+      offset += bytesRead
+    }
+    return target.subarray(0, length)
+  }
+
   release(): void {
     if (this.fd === null) {
       return

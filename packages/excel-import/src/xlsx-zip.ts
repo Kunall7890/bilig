@@ -7,6 +7,7 @@ export type XlsxZipSource = Uint8Array | XlsxZipEntries
 export interface XlsxZipByteSource {
   readonly byteLength: number
   readRange(start: number, end: number): Uint8Array
+  readRangeInto?(start: number, end: number, target: Uint8Array): Uint8Array
   release?(): void
 }
 
@@ -352,13 +353,26 @@ function inflateCentralDirectoryEntryChunks(
       inflate.push(source.readRange(dataStart, dataEnd), true)
       return
     }
+    const compressedChunkScratch = source.readRangeInto ? new Uint8Array(Math.max(1, Math.trunc(options.chunkSize))) : undefined
     for (let offset = 0; offset < compressedSize; offset += options.chunkSize) {
       const end = Math.min(compressedSize, offset + options.chunkSize)
-      inflate.push(source.readRange(dataStart + offset, dataStart + end), end === compressedSize)
+      inflate.push(readSourceRange(source, dataStart + offset, dataStart + end, compressedChunkScratch), end === compressedSize)
     }
     return
   }
   throw new Error(`Unsupported XLSX compression method: ${String(compressionMethod)}`)
+}
+
+function readSourceRange(source: XlsxZipByteSource, start: number, end: number, scratch: Uint8Array | undefined): Uint8Array {
+  const length = end - start
+  if (!scratch || !source.readRangeInto || length > scratch.byteLength) {
+    return source.readRange(start, end)
+  }
+  const chunk = source.readRangeInto(start, end, scratch)
+  if (chunk.byteLength !== length) {
+    throw new Error('XLSX ZIP byte source returned an invalid chunk length')
+  }
+  return chunk
 }
 
 function forEachSourceChunk(

@@ -89,6 +89,7 @@ describe('XLSX ZIP reader', () => {
 
     expect(Buffer.concat(chunks)).toEqual(Buffer.from(payload))
     expect(chunks.length).toBeGreaterThan(1)
+    expect(source.readIntoCount).toBeGreaterThan(0)
     expect(source.maxReadLength).toBeLessThan(16 * 1024)
   })
 })
@@ -133,6 +134,7 @@ function buildStreamedZip(path: string, text: string | Uint8Array): Uint8Array {
 class CountingZipByteSource implements XlsxZipByteSource {
   readonly byteLength: number
   maxReadLength = 0
+  readIntoCount = 0
 
   constructor(private readonly bytes: Uint8Array) {
     this.byteLength = bytes.byteLength
@@ -141,6 +143,14 @@ class CountingZipByteSource implements XlsxZipByteSource {
   readRange(start: number, end: number): Uint8Array {
     this.maxReadLength = Math.max(this.maxReadLength, end - start)
     return this.bytes.subarray(start, end)
+  }
+
+  readRangeInto(start: number, end: number, target: Uint8Array): Uint8Array {
+    const length = end - start
+    this.readIntoCount += 1
+    this.maxReadLength = Math.max(this.maxReadLength, length)
+    target.set(this.bytes.subarray(start, end), 0)
+    return target.subarray(0, length)
   }
 }
 

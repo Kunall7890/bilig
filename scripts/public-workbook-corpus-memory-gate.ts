@@ -32,11 +32,7 @@ const rootDir = resolve(new URL('..', import.meta.url).pathname)
 const mib = 1024 * 1024
 export const memoryGateRssBudgets = {
   publicWorkbookMaxRssBytes: 112 * mib,
-  // The 750k compact-inspect fixture sits right on the Bun/Linux allocator
-  // boundary: GitHub has sampled it at 113.2 MiB while the imported workbook
-  // still completed correctly. Keep a small fixture-specific budget above
-  // runner RSS page/allocation jitter without relaxing the public workbook gates.
-  synthetic750kMaxRssBytes: 116 * mib,
+  synthetic750kMaxRssBytes: 112 * mib,
   syntheticRepeatedStringMaxRssBytes: 112 * mib,
   syntheticDuplicateSharedStringMaxRssBytes: 112 * mib,
   syntheticMixedRichSharedStringMaxRssBytes: 112 * mib,
