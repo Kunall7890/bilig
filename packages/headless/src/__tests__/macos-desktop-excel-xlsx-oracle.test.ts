@@ -41,6 +41,15 @@ const expectedDynamicSpillOracleValues = [
   { address: 'B2', value: { kind: 'number', value: 4 } },
   { address: 'B3', value: { kind: 'number', value: 6 } },
 ] as const
+const spillReferenceOracleAddresses = ['B1', 'B2', 'B3', 'D1', 'E1', 'F1'] as const
+const expectedSpillReferenceOracleCells = [
+  { address: 'B1', formula: '=SEQUENCE(3,1,1,1)', rawValue: 'number\t1.0', value: { kind: 'number', value: 1 } },
+  { address: 'B2', rawValue: 'number\t2.0', value: { kind: 'number', value: 2 } },
+  { address: 'B3', rawValue: 'number\t3.0', value: { kind: 'number', value: 3 } },
+  { address: 'D1', formula: '=SUM(B1#)', rawValue: 'number\t6.0', value: { kind: 'number', value: 6 } },
+  { address: 'E1', formula: '=ROWS(B1#)', rawValue: 'number\t3.0', value: { kind: 'number', value: 3 } },
+  { address: 'F1', formula: '=INDEX(B1#,2)', rawValue: 'number\t2.0', value: { kind: 'number', value: 2 } },
+] as const
 const chooseArrayIndexOracleAddresses = ['E1', 'F1', 'E2', 'F2', 'E3', 'F3', 'H1', 'H2', 'H3', 'H4', 'H6', 'H7'] as const
 const expectedChooseArrayIndexOracleValues = [
   { address: 'E1', value: { kind: 'string', value: 'a' } },
@@ -234,6 +243,31 @@ describe('macOS Desktop Excel XLSX oracle for WorkPaper', () => {
         expect(dynamicSpillOracleAddresses.map((address) => normalizedCellValue(reimported.getCellValue(addressToCell(address))))).toEqual(
           expectedDynamicSpillOracleValues.map((expected) => expected.value),
         )
+        expect(imported.snapshot.workbook.metadata?.spills).toEqual([{ sheetName: 'Cases', address: 'B1', rows: 3, cols: 1 }])
+      } finally {
+        reimported.dispose()
+      }
+    } finally {
+      workbook.dispose()
+    }
+  })
+
+  it('exports spill-reference consumer formulas through Desktop Excel-compatible XLSX', () => {
+    const workbook = buildSpillReferenceOracleWorkbook()
+    try {
+      expect(spillReferenceOracleAddresses.map((address) => normalizedCellValue(workbook.getCellValue(addressToCell(address))))).toEqual(
+        expectedSpillReferenceOracleCells.map((expected) => expected.value),
+      )
+
+      const imported = importXlsx(exportXlsx(workbook.exportSnapshot()), 'headless-spill-reference-oracle.xlsx')
+      const reimported = WorkPaper.buildFromSnapshot(imported.snapshot, workbookConfig)
+      try {
+        expect(
+          spillReferenceOracleAddresses.map((address) => normalizedCellValue(reimported.getCellValue(addressToCell(address)))),
+        ).toEqual(expectedSpillReferenceOracleCells.map((expected) => expected.value))
+        expect(reimported.getCellFormula(addressToCell('D1'))).toBe('=SUM(B1#)')
+        expect(reimported.getCellFormula(addressToCell('E1'))).toBe('=ROWS(B1#)')
+        expect(reimported.getCellFormula(addressToCell('F1'))).toBe('=INDEX(B1#,2)')
         expect(imported.snapshot.workbook.metadata?.spills).toEqual([{ sheetName: 'Cases', address: 'B1', rows: 3, cols: 1 }])
       } finally {
         reimported.dispose()
@@ -743,6 +777,53 @@ describe('macOS Desktop Excel XLSX oracle for WorkPaper', () => {
   )
 
   it.runIf(process.env.BILIG_EXCEL_ORACLE_RUN === '1')(
+    'matches Desktop Excel spill-reference formula consumer semantics',
+    () => {
+      if (!isMacosExcelInstalled()) {
+        throw new Error('BILIG_EXCEL_ORACLE_RUN=1 requires /Applications/Microsoft Excel.app')
+      }
+
+      const tempDir = mkdtempSync(join(tmpdir(), 'bilig-headless-excel-spill-reference-oracle-'))
+      try {
+        const workbookPath = join(tempDir, 'headless-spill-reference-oracle.xlsx')
+        const workbook = buildSpillReferenceOracleWorkbook()
+        try {
+          writeFileSync(workbookPath, exportXlsx(workbook.exportSnapshot()))
+        } finally {
+          workbook.dispose()
+        }
+
+        const excelResult = runMacosExcelInspectionOracle({
+          workbookPath,
+          worksheetName: 'Cases',
+          formulaCells: [],
+          inspectCells: spillReferenceOracleAddresses,
+          saveWorkbook: true,
+        })
+
+        expect(excelResult.cells).toEqual(expectedSpillReferenceOracleCells)
+
+        const imported = importXlsx(new Uint8Array(readFileSync(workbookPath)), 'headless-spill-reference-oracle-recalculated.xlsx')
+        const reimported = WorkPaper.buildFromSnapshot(imported.snapshot, workbookConfig)
+        try {
+          expect(
+            spillReferenceOracleAddresses.map((address) => normalizedCellValue(reimported.getCellValue(addressToCell(address)))),
+          ).toEqual(expectedSpillReferenceOracleCells.map((expected) => expected.value))
+          expect(reimported.getCellFormula(addressToCell('D1'))).toBe('=SUM(B1#)')
+          expect(reimported.getCellFormula(addressToCell('E1'))).toBe('=ROWS(B1#)')
+          expect(reimported.getCellFormula(addressToCell('F1'))).toBe('=INDEX(B1#,2)')
+          expect(imported.snapshot.workbook.metadata?.spills).toEqual([{ sheetName: 'Cases', address: 'B1', rows: 3, cols: 1 }])
+        } finally {
+          reimported.dispose()
+        }
+      } finally {
+        rmSync(tempDir, { recursive: true, force: true })
+      }
+    },
+    60_000,
+  )
+
+  it.runIf(process.env.BILIG_EXCEL_ORACLE_RUN === '1')(
     'matches Desktop Excel CHOOSE array-index virtual table semantics',
     () => {
       if (!isMacosExcelInstalled()) {
@@ -1177,6 +1258,15 @@ function buildDynamicSpillOracleWorkbook(): WorkPaper {
   return WorkPaper.buildFromSheets(
     {
       Cases: [[1, '=MAP(A1:A3,LAMBDA(x,x*2))'], [2], [3]],
+    },
+    workbookConfig,
+  )
+}
+
+function buildSpillReferenceOracleWorkbook(): WorkPaper {
+  return WorkPaper.buildFromSheets(
+    {
+      Cases: [[1, '=SEQUENCE(3,1,1,1)', null, '=SUM(B1#)', '=ROWS(B1#)', '=INDEX(B1#,2)'], [2], [3]],
     },
     workbookConfig,
   )

@@ -96,13 +96,12 @@ const xlsxWorksheetFutureFunctionNames: ReadonlySet<string> = new Set(['FILTER']
 export function normalizeImportedFormulaSource(formula: string): string {
   const trimmed = formula.trim()
   const prefix = namespacedSpreadsheetFormulaPattern.exec(trimmed)
-  return normalizeImportedLambdaParameterNames(
-    transformFormulaFunctionNames(prefix ? trimmed.slice(prefix[0].length) : formula, normalizeImportedFunctionToken),
-  )
+  const source = transformFormulaFunctionNames(prefix ? trimmed.slice(prefix[0].length) : formula, normalizeImportedFunctionToken)
+  return normalizeImportedLambdaParameterNames(normalizeImportedAnchorArrayCalls(source))
 }
 
 export function encodeFormulaForXlsx(formula: string): string {
-  return encodeLambdaParameterNamesForXlsx(transformFormulaFunctionNames(formula, encodeFunctionTokenForXlsx))
+  return encodeLambdaParameterNamesForXlsx(transformFormulaFunctionNames(encodeSpillReferencesForXlsx(formula), encodeFunctionTokenForXlsx))
 }
 
 function isIdentifierStart(character: string): boolean {
@@ -182,6 +181,179 @@ function encodeFunctionTokenForXlsx(name: string): string {
     return name
   }
   return xlsxWorksheetFutureFunctionNames.has(upper) ? `_xlfn._xlws.${upper}` : `_xlfn.${upper}`
+}
+
+function isReferenceBoundaryBefore(source: string, index: number): boolean {
+  if (index <= 0) {
+    return true
+  }
+  const previous = source[index - 1]!
+  return previous !== '!' && previous !== ']' && !/[A-Za-z0-9_.]/u.test(previous)
+}
+
+function readUnquotedSheetQualifier(source: string, startIndex: number): number | undefined {
+  let index = startIndex
+  while (index < source.length && /[A-Za-z0-9_.]/u.test(source[index]!)) {
+    index += 1
+  }
+  return index > startIndex && source[index] === '!' ? index + 1 : undefined
+}
+
+function readCellReferenceToken(source: string, startIndex: number): { readonly text: string; readonly endIndex: number } | undefined {
+  let index = startIndex
+  if (source[index] === '$') {
+    index += 1
+  }
+  const columnStart = index
+  while (index < source.length && /[A-Za-z]/u.test(source[index]!)) {
+    index += 1
+  }
+  if (index === columnStart) {
+    return undefined
+  }
+  if (source[index] === '$') {
+    index += 1
+  }
+  const rowStart = index
+  while (index < source.length && /[0-9]/u.test(source[index]!)) {
+    index += 1
+  }
+  if (index === rowStart || /[A-Za-z0-9_.]/u.test(source[index] ?? '')) {
+    return undefined
+  }
+  const text = source.slice(startIndex, index)
+  try {
+    decodeA1CellRef(text)
+  } catch {
+    return undefined
+  }
+  return { text, endIndex: index }
+}
+
+function readQualifiedCellReferenceToken(
+  source: string,
+  startIndex: number,
+): { readonly text: string; readonly endIndex: number } | undefined {
+  if (!isReferenceBoundaryBefore(source, startIndex)) {
+    return undefined
+  }
+
+  let cellStartIndex = startIndex
+  if (source[startIndex] === "'") {
+    const sheetEndIndex = skipSingleQuotedSheetName(source, startIndex)
+    if (source[sheetEndIndex] !== '!') {
+      return undefined
+    }
+    cellStartIndex = sheetEndIndex + 1
+  } else {
+    const sheetEndIndex = readUnquotedSheetQualifier(source, startIndex)
+    if (sheetEndIndex !== undefined) {
+      cellStartIndex = sheetEndIndex
+    }
+  }
+
+  const cell = readCellReferenceToken(source, cellStartIndex)
+  if (!cell) {
+    return undefined
+  }
+  return { text: source.slice(startIndex, cell.endIndex), endIndex: cell.endIndex }
+}
+
+function readSpillReferenceToken(
+  source: string,
+  startIndex: number,
+): { readonly reference: string; readonly endIndex: number } | undefined {
+  const reference = readQualifiedCellReferenceToken(source, startIndex)
+  if (!reference || source[reference.endIndex] !== '#') {
+    return undefined
+  }
+  return { reference: reference.text, endIndex: reference.endIndex + 1 }
+}
+
+function encodeSpillReferencesForXlsx(formula: string): string {
+  let output = ''
+  let index = 0
+  while (index < formula.length) {
+    const character = formula[index]!
+    if (character === '"') {
+      const endIndex = skipDoubleQuotedString(formula, index)
+      output += formula.slice(index, endIndex)
+      index = endIndex
+      continue
+    }
+
+    const spill = readSpillReferenceToken(formula, index)
+    if (spill) {
+      output += `_xlfn.ANCHORARRAY(${spill.reference})`
+      index = spill.endIndex
+      continue
+    }
+
+    if (character === "'") {
+      const endIndex = skipSingleQuotedSheetName(formula, index)
+      output += formula.slice(index, endIndex)
+      index = endIndex
+      continue
+    }
+    output += character
+    index += 1
+  }
+  return output
+}
+
+function normalizeImportedAnchorArrayCalls(formula: string): string {
+  let output = ''
+  let index = 0
+  while (index < formula.length) {
+    const character = formula[index]!
+    if (character === '"') {
+      const endIndex = skipDoubleQuotedString(formula, index)
+      output += formula.slice(index, endIndex)
+      index = endIndex
+      continue
+    }
+    if (character === "'") {
+      const endIndex = skipSingleQuotedSheetName(formula, index)
+      output += formula.slice(index, endIndex)
+      index = endIndex
+      continue
+    }
+    if (!isIdentifierStart(character)) {
+      output += character
+      index += 1
+      continue
+    }
+
+    let endIndex = index + 1
+    while (endIndex < formula.length && isIdentifierPart(formula[endIndex]!)) {
+      endIndex += 1
+    }
+    const name = formula.slice(index, endIndex)
+    const callStartIndex = skipWhitespace(formula, endIndex)
+    if (name.toUpperCase() !== 'ANCHORARRAY' || formula[callStartIndex] !== '(') {
+      output += name
+      index = endIndex
+      continue
+    }
+
+    const closeParenIndex = findMatchingParen(formula, callStartIndex)
+    if (closeParenIndex < 0) {
+      output += name
+      index = endIndex
+      continue
+    }
+    const args = splitTopLevelFormulaArguments(formula.slice(callStartIndex + 1, closeParenIndex))
+    const reference = args.length === 1 ? readQualifiedCellReferenceToken(args[0]!.trim(), 0) : undefined
+    if (!reference || reference.endIndex !== args[0]!.trim().length) {
+      output += formula.slice(index, closeParenIndex + 1)
+      index = closeParenIndex + 1
+      continue
+    }
+
+    output += `${reference.text}#`
+    index = closeParenIndex + 1
+  }
+  return output
 }
 
 const lambdaCallTokenPattern = /(?:^|[^A-Za-z0-9_.])((?:_xlfn\.)?LAMBDA)\s*\(/giu

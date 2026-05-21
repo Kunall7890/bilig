@@ -207,6 +207,62 @@ describe('formula cache roundtrip', () => {
     expect(reimported.snapshot.workbook.metadata?.spills).toEqual([{ sheetName: 'Sheet1', address: 'B1', rows: 3, cols: 1 }])
   })
 
+  it('exports spill-reference consumers with Desktop Excel ANCHORARRAY formulas', () => {
+    const snapshot = attachRuntimeImage(
+      {
+        version: 1,
+        workbook: {
+          name: 'spill-reference-export',
+          metadata: {
+            spills: [{ sheetName: 'Cases', address: 'B1', rows: 3, cols: 1 }],
+          },
+        },
+        sheets: [
+          {
+            id: 1,
+            name: 'Cases',
+            order: 0,
+            cells: [
+              { address: 'A1', value: 1 },
+              { address: 'A2', value: 2 },
+              { address: 'A3', value: 3 },
+              { address: 'B1', formula: 'SEQUENCE(3,1,1,1)' },
+              { address: 'D1', formula: 'SUM(B1#)', value: 6 },
+              { address: 'E1', formula: 'ROWS(B1#)', value: 3 },
+              { address: 'F1', formula: "INDEX('Cases'!B1#,2)", value: 2 },
+            ],
+          },
+        ],
+      } satisfies WorkbookSnapshot,
+      {
+        version: 1,
+        templateBank: [],
+        formulaInstances: [],
+        formulaValues: [],
+        cellValues: [
+          { sheetName: 'Cases', row: 0, col: 1, value: { tag: ValueTag.Number, value: 1 } },
+          { sheetName: 'Cases', row: 1, col: 1, value: { tag: ValueTag.Number, value: 2 } },
+          { sheetName: 'Cases', row: 2, col: 1, value: { tag: ValueTag.Number, value: 3 } },
+        ],
+      },
+    )
+
+    const exported = exportXlsx(snapshot)
+    const sheetXml = strFromU8(unzipSync(exported)['xl/worksheets/sheet1.xml'] ?? new Uint8Array())
+
+    expect(cellXml(sheetXml, 'D1')).toContain('<f>SUM(_xlfn.ANCHORARRAY(B1))</f>')
+    expect(cellXml(sheetXml, 'E1')).toContain('<f>ROWS(_xlfn.ANCHORARRAY(B1))</f>')
+    expect(cellXml(sheetXml, 'F1')).toContain('<f>INDEX(_xlfn.ANCHORARRAY(&apos;Cases&apos;!B1),2)</f>')
+    expect(cellXml(sheetXml, 'D1')).not.toContain('B1#')
+
+    const reimported = importXlsx(exported, 'spill-reference-export.xlsx')
+    const cells = new Map(reimported.snapshot.sheets[0]?.cells.map((cell) => [cell.address, cell]) ?? [])
+    expect(cells.get('D1')).toMatchObject({ formula: 'SUM(B1#)', value: 6 })
+    expect(cells.get('E1')).toMatchObject({ formula: 'ROWS(B1#)', value: 3 })
+    expect(cells.get('F1')).toMatchObject({ formula: "INDEX('Cases'!B1#,2)", value: 2 })
+    expect(reimported.snapshot.workbook.metadata?.spills).toEqual([{ sheetName: 'Cases', address: 'B1', rows: 3, cols: 1 }])
+  })
+
   it('keeps inserted native spill cache rows sorted before later worksheet rows', () => {
     const snapshot = attachRuntimeImage(
       {
