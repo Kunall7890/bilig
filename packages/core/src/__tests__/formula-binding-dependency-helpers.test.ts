@@ -6,6 +6,7 @@ import {
   appendSheetRenameSourceTransform,
   appendTrackedReverseEdge,
   appendUnindexedAggregateColumnReverseEdge,
+  collectIndexedDirectAggregateColumnDependentsForRow,
   collectTrackedDependents,
   directCriteriaAggregateColumn,
   directLookupColumnInfo,
@@ -92,6 +93,9 @@ describe('formula binding dependency helpers', () => {
       }),
     ).toBe(true)
     expect(visited.toSorted((left, right) => left - right)).toEqual([101, 102, 103])
+    expect(collectIndexedDirectAggregateColumnDependentsForRow(dependents!, 3)?.toSorted((left, right) => left - right)).toEqual([
+      101, 102, 103,
+    ])
 
     removeDirectAggregateColumnReverseEdges(
       registry,
