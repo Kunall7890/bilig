@@ -10,7 +10,6 @@ import {
   growUint32Array,
 } from './xlsx-large-simple-array-storage.js'
 import {
-  binarySearchUint32,
   binarySearchUint32Prefix,
   canStoreInt8Number,
   canStoreInt16Number,
@@ -39,6 +38,7 @@ import type { LargeSimpleSharedStrings } from './xlsx-large-simple-shared-string
 import type { ImportedWorkbookStringPool } from './xlsx-large-simple-string-pool.js'
 
 const denseRowMajorEarlyMismatchCapacityDivisor = 4
+const sparseStringDenseThresholdFloor = 1_000_000
 
 export abstract class ImportedWorkbookArenaBase {
   protected sheetIndex: number | null = null
@@ -59,6 +59,7 @@ export abstract class ImportedWorkbookArenaBase {
   protected stringIds: Uint32Array<ArrayBuffer> | undefined
   protected sparseStringCellIndexes: Uint32Array<ArrayBuffer> | undefined
   protected sparseStringIds: Uint32Array<ArrayBuffer> | undefined
+  protected sparseStringCount = 0
   protected booleanValues: Uint8Array<ArrayBuffer> | undefined
   protected formulaIds: Uint32Array<ArrayBuffer> | undefined
   protected length = 0
@@ -254,7 +255,7 @@ export abstract class ImportedWorkbookArenaBase {
     }
     this.valueKinds[index] = valueKindString
     this.stringValueCount += 1
-    this.ensureStringIdStorage()[index] = this.internString(value)
+    this.storeStringId(index, this.internString(value))
   }
 
   protected materializeValue(index: number): LiteralInput | undefined {
@@ -301,7 +302,7 @@ export abstract class ImportedWorkbookArenaBase {
     }
     if (this.sparseStringCellIndexes && this.sparseStringIds) {
       const output = filledUint32Array(this.valueKinds.length, noPoolId)
-      for (let index = 0; index < this.sparseStringCellIndexes.length; index += 1) {
+      for (let index = 0; index < this.sparseStringCount; index += 1) {
         const cellIndex = this.sparseStringCellIndexes[index] ?? -1
         if (cellIndex >= 0 && cellIndex < output.length) {
           output[cellIndex] = this.sparseStringIds[index] ?? noPoolId
@@ -309,6 +310,7 @@ export abstract class ImportedWorkbookArenaBase {
       }
       this.sparseStringCellIndexes = undefined
       this.sparseStringIds = undefined
+      this.sparseStringCount = 0
       this.stringIds = output
       return this.stringIds
     }
@@ -450,6 +452,10 @@ export abstract class ImportedWorkbookArenaBase {
     return Math.max(initialSparseIntegerCapacity, this.valueKinds.length >>> 2)
   }
 
+  protected sparseStringDenseThreshold(): number {
+    return Math.max(sparseStringDenseThresholdFloor, this.valueKinds.length >>> 2)
+  }
+
   protected ensureFormulaIdStorage(): Uint32Array<ArrayBuffer> {
     if (this.formulaIds) {
       return this.formulaIds
@@ -473,7 +479,7 @@ export abstract class ImportedWorkbookArenaBase {
       this.numberValues[index] = sharedStringIndex
       return
     }
-    this.ensureStringIdStorage()[index] = sharedStringIndex
+    this.storeStringId(index, sharedStringIndex)
   }
 
   protected sharedStringIndexAt(index: number): number {
@@ -487,16 +493,86 @@ export abstract class ImportedWorkbookArenaBase {
   }
 
   protected moveSharedStringIndexesToNumberValues(): void {
-    if (!this.numberValues || !this.stringIds || this.sharedStringRefCount === 0 || this.stringValueCount > 0) {
+    if (!this.numberValues || this.sharedStringRefCount === 0 || this.stringValueCount > 0) {
       return
     }
-    for (let index = 0; index < this.length; index += 1) {
-      if ((this.valueKinds[index] ?? valueKindEmpty) === valueKindSharedStringRef) {
-        this.numberValues[index] = this.stringIds[index] ?? noPoolId
+    if (this.stringIds) {
+      for (let index = 0; index < this.length; index += 1) {
+        if ((this.valueKinds[index] ?? valueKindEmpty) === valueKindSharedStringRef) {
+          this.numberValues[index] = this.stringIds[index] ?? noPoolId
+        }
+      }
+      this.stringIds = undefined
+      this.sharedStringRefsInNumberValues = true
+      return
+    }
+    const sparseIndexes = this.sparseStringCellIndexes
+    const sparseIds = this.sparseStringIds
+    if (!sparseIndexes || !sparseIds || this.sparseStringCount === 0) {
+      return
+    }
+    for (let offset = 0; offset < this.sparseStringCount; offset += 1) {
+      const index = sparseIndexes[offset] ?? -1
+      if (index >= 0 && index < this.length && (this.valueKinds[index] ?? valueKindEmpty) === valueKindSharedStringRef) {
+        this.numberValues[index] = sparseIds[offset] ?? noPoolId
       }
     }
-    this.stringIds = undefined
+    this.sparseStringCellIndexes = undefined
+    this.sparseStringIds = undefined
+    this.sparseStringCount = 0
     this.sharedStringRefsInNumberValues = true
+  }
+
+  protected storeStringId(index: number, stringId: number): void {
+    if (this.stringIds) {
+      this.stringIds[index] = stringId
+      return
+    }
+    if (this.sparseStringCellIndexes && this.sparseStringIds) {
+      const existingOffset = binarySearchUint32Prefix(this.sparseStringCellIndexes, this.sparseStringCount, index)
+      if (existingOffset !== -1) {
+        this.sparseStringIds[existingOffset] = stringId
+        return
+      }
+    }
+    if (this.sparseStringCount >= this.sparseStringDenseThreshold()) {
+      this.ensureStringIdStorage()[index] = stringId
+      return
+    }
+    if (!this.sparseStringCellIndexes || !this.sparseStringIds) {
+      this.sparseStringCellIndexes = new Uint32Array(initialSparseIntegerCapacity)
+      this.sparseStringIds = new Uint32Array(initialSparseIntegerCapacity)
+    } else if (this.sparseStringCount >= this.sparseStringCellIndexes.length) {
+      const nextCapacity = this.sparseStringCellIndexes.length * 2
+      this.sparseStringCellIndexes = growUint32Array(this.sparseStringCellIndexes, nextCapacity)
+      this.sparseStringIds = growUint32Array(this.sparseStringIds, nextCapacity)
+    }
+    const insertOffset = this.sparseStringInsertOffset(index)
+    if (insertOffset < this.sparseStringCount) {
+      this.sparseStringCellIndexes.copyWithin(insertOffset + 1, insertOffset, this.sparseStringCount)
+      this.sparseStringIds.copyWithin(insertOffset + 1, insertOffset, this.sparseStringCount)
+    }
+    this.sparseStringCellIndexes[insertOffset] = index
+    this.sparseStringIds[insertOffset] = stringId
+    this.sparseStringCount += 1
+  }
+
+  protected sparseStringInsertOffset(index: number): number {
+    const sparseIndexes = this.sparseStringCellIndexes
+    if (!sparseIndexes || this.sparseStringCount === 0) {
+      return 0
+    }
+    let low = 0
+    let high = this.sparseStringCount
+    while (low < high) {
+      const mid = (low + high) >>> 1
+      if ((sparseIndexes[mid] ?? 0) < index) {
+        low = mid + 1
+      } else {
+        high = mid
+      }
+    }
+    return low
   }
 
   protected stringIdAt(index: number): number {
@@ -505,10 +581,10 @@ export abstract class ImportedWorkbookArenaBase {
     }
     const sparseIndexes = this.sparseStringCellIndexes
     const sparseIds = this.sparseStringIds
-    if (!sparseIndexes || !sparseIds) {
+    if (!sparseIndexes || !sparseIds || this.sparseStringCount === 0) {
       return noPoolId
     }
-    const offset = binarySearchUint32(sparseIndexes, index)
+    const offset = binarySearchUint32Prefix(sparseIndexes, this.sparseStringCount, index)
     return offset === -1 ? noPoolId : (sparseIds[offset] ?? noPoolId)
   }
 
@@ -737,9 +813,6 @@ export abstract class ImportedWorkbookArenaBase {
   }
 
   protected resizeStorage(nextCapacity: number): void {
-    if (this.sparseStringCellIndexes || this.sparseStringIds) {
-      this.ensureStringIdStorage()
-    }
     if (this.sheetIndexes) {
       this.sheetIndexes = growUint32Array(this.sheetIndexes, nextCapacity)
     }
@@ -774,6 +847,20 @@ export abstract class ImportedWorkbookArenaBase {
   }
 
   protected compactSparseStringIds(): void {
+    if (this.sparseStringCellIndexes && this.sparseStringIds) {
+      if (this.sparseStringCount === 0) {
+        this.sparseStringCellIndexes = undefined
+        this.sparseStringIds = undefined
+        return
+      }
+      if (this.sparseStringCellIndexes.length !== this.sparseStringCount) {
+        this.sparseStringCellIndexes = this.sparseStringCellIndexes.slice(0, this.sparseStringCount)
+      }
+      if (this.sparseStringIds.length !== this.sparseStringCount) {
+        this.sparseStringIds = this.sparseStringIds.slice(0, this.sparseStringCount)
+      }
+      return
+    }
     const denseStringIds = this.stringIds
     if (!denseStringIds || this.length === 0) {
       return
@@ -788,6 +875,7 @@ export abstract class ImportedWorkbookArenaBase {
       this.stringIds = undefined
       this.sparseStringCellIndexes = undefined
       this.sparseStringIds = undefined
+      this.sparseStringCount = 0
       return
     }
     if (retainedCount * 2 >= this.length) {
@@ -808,6 +896,7 @@ export abstract class ImportedWorkbookArenaBase {
     this.stringIds = undefined
     this.sparseStringCellIndexes = indexes
     this.sparseStringIds = ids
+    this.sparseStringCount = retainedCount
   }
 
   protected snapshotStringIds(): Uint32Array | undefined {
@@ -816,11 +905,11 @@ export abstract class ImportedWorkbookArenaBase {
     }
     const sparseIndexes = this.sparseStringCellIndexes
     const sparseIds = this.sparseStringIds
-    if (!sparseIndexes || !sparseIds || sparseIndexes.length === 0) {
+    if (!sparseIndexes || !sparseIds || this.sparseStringCount === 0) {
       return undefined
     }
     const output = filledUint32Array(this.length, noPoolId)
-    for (let index = 0; index < sparseIndexes.length; index += 1) {
+    for (let index = 0; index < this.sparseStringCount; index += 1) {
       const cellIndex = sparseIndexes[index] ?? -1
       if (cellIndex >= 0 && cellIndex < output.length) {
         output[cellIndex] = sparseIds[index] ?? noPoolId

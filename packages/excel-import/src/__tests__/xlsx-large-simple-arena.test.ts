@@ -91,6 +91,37 @@ describe('large simple XLSX import arena', () => {
     expect(detachedCells[1]).toEqual({ address: 'A2', value: '' })
   })
 
+  it('keeps rare inline string ids sparse in large mostly-empty sheets', () => {
+    const arena = new ImportedWorkbookArena()
+    arena.reserveDenseRowMajorCellCapacity(0, 2_000, 1_000)
+    const retainedAfterReserve = arena.retainedStorageByteLength()
+
+    arena.addCell({ sheetIndex: 0, row: 0, column: 0, value: '' })
+    arena.addCell({ sheetIndex: 0, row: 0, column: 1, value: 'Rare header' })
+    const retainedAfterRareString = arena.retainedStorageByteLength()
+
+    expect(retainedAfterRareString - retainedAfterReserve).toBeLessThan(16_384)
+    expect(arena.materializeSheetCells(0)).toEqual([
+      { address: 'A1', value: '' },
+      { address: 'B1', value: 'Rare header' },
+    ])
+    expect(arena.snapshot().stringIds).toEqual(new Uint32Array([0xffffffff, 0]))
+  })
+
+  it('does not densify string ids from an early header cluster before the large sheet is scanned', () => {
+    const arena = new ImportedWorkbookArena()
+    const baselineArena = new ImportedWorkbookArena()
+    const retainedBaseline = baselineArena.retainedStorageByteLength()
+
+    for (let column = 0; column < 32; column += 1) {
+      arena.addCell({ sheetIndex: 0, row: 0, column, value: `Header ${String(column + 1)}` })
+    }
+
+    expect(arena.retainedStorageByteLength() - retainedBaseline).toBeLessThan(1_024)
+    expect(arena.materializeSheetCells(0)[0]).toEqual({ address: 'A1', value: 'Header 1' })
+    expect(arena.materializeSheetCells(0).at(-1)).toEqual({ address: 'AF1', value: 'Header 32' })
+  })
+
   it('bounds repeated string and formula interning for large import arenas', () => {
     const pool = new ImportedWorkbookStringPool()
     const arena = new ImportedWorkbookArena(pool, {

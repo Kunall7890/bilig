@@ -200,15 +200,15 @@ export class ImportedWorkbookArena extends ImportedWorkbookArenaBase {
       }
       this.valueKinds[index] = valueKindString
       this.stringValueCount += 1
-      const stringIds = this.ensureStringIdStorage()
-      stringIds[index] = this.internString(entry.text)
+      const stringId = this.internString(entry.text)
+      this.storeStringId(index, stringId)
       const row = this.rowAt(index)
       const column = this.columnAt(index)
       if (isPreviewCell(row, column)) {
         this.setPreviewValue(row, column, entry.text)
       }
       if (entry.rich) {
-        const text = this.strings[stringIds[index] ?? noPoolId] ?? entry.text
+        const text = this.strings[stringId] ?? entry.text
         richTextCells.push({
           address: encodeCellAddress(row, column),
           text,
@@ -289,7 +289,7 @@ export class ImportedWorkbookArena extends ImportedWorkbookArenaBase {
       this.valueKinds[index] = valueKindString
       this.sharedStringRefCount = Math.max(0, this.sharedStringRefCount - 1)
       this.stringValueCount += 1
-      this.ensureStringIdStorage()[index] = this.internString(entry.text)
+      this.storeStringId(index, this.internString(entry.text))
       if (isPreviewCell(row, column)) {
         this.setPreviewValue(row, column, entry.text)
       }
@@ -349,6 +349,7 @@ export class ImportedWorkbookArena extends ImportedWorkbookArenaBase {
     this.stringIds = undefined
     this.sparseStringCellIndexes = undefined
     this.sparseStringIds = undefined
+    this.sparseStringCount = 0
     this.booleanValues = undefined
     this.formulaIds = undefined
     this.length = 0
@@ -415,6 +416,12 @@ export class ImportedWorkbookArena extends ImportedWorkbookArenaBase {
     }
     if (this.stringIds && this.stringIds.length !== this.length) {
       this.stringIds = this.stringIds.slice(0, this.length)
+    }
+    if (this.sparseStringCellIndexes && this.sparseStringCellIndexes.length !== this.sparseStringCount) {
+      this.sparseStringCellIndexes = this.sparseStringCellIndexes.slice(0, this.sparseStringCount)
+    }
+    if (this.sparseStringIds && this.sparseStringIds.length !== this.sparseStringCount) {
+      this.sparseStringIds = this.sparseStringIds.slice(0, this.sparseStringCount)
     }
     if (this.booleanValues && this.booleanValues.length !== this.length) {
       this.booleanValues = this.booleanValues.slice(0, this.length)
