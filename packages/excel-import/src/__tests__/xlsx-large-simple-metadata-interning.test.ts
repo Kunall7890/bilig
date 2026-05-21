@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 
-import { internLargeSimpleWorksheetMetadata } from '../xlsx-large-simple-metadata-interning.js'
+import { internLargeSimpleSheetMetadataInput, internLargeSimpleWorksheetMetadata } from '../xlsx-large-simple-metadata-interning.js'
+import type { LargeSimpleSheetMetadataInput } from '../xlsx-large-simple-import-types.js'
 import { ImportedWorkbookStringPool } from '../xlsx-large-simple-string-pool.js'
 import type { LargeSimpleWorksheetScannedMetadata } from '../xlsx-large-simple-worksheet-metadata.js'
 
@@ -93,5 +94,96 @@ describe('large simple XLSX metadata interning', () => {
     expect(interned?.legacyDrawingRelationshipId).toBe('rIdLegacy')
     expect(interned?.sheetSlicerListExtXml).toBe('<ext><x14:slicerList/></ext>')
     expect(pool.count).toBeLessThan(30)
+  })
+
+  it('pools resolved metadata input strings assembled after worksheet XML parsing', () => {
+    const pool = new ImportedWorkbookStringPool()
+    const input: LargeSimpleSheetMetadataInput = {
+      conditionalFormatArtifacts: { xml: '<conditionalFormatting sqref="A1"><cfRule type="dataBar"/></conditionalFormatting>' },
+      conditionalFormats: [
+        {
+          id: 'xlsx-cf:Data:A1:A1:1',
+          range: { sheetName: 'Data', startAddress: 'A1', endAddress: 'A1' },
+          rule: { kind: 'formula', formula: '=Data!A1>0' },
+          style: {},
+          priority: 1,
+        },
+      ],
+      controlArtifacts: {
+        controlsXml: '<controls><control r:id="rIdShared"/></controls>',
+        worksheetRootOpenTag: '<worksheet xmlns:r="relationships">',
+        relationships: [{ id: 'rIdShared', type: 'control', target: '../ctrlProp/control1.xml' }],
+      },
+      validations: [
+        {
+          range: { sheetName: 'Data', startAddress: 'A1', endAddress: 'A1' },
+          rule: { kind: 'list', source: { kind: 'range-ref', sheetName: 'Data', startAddress: 'A1', endAddress: 'A1' } },
+          promptTitle: 'Open row',
+          promptMessage: 'Open row',
+        },
+      ],
+      drawingArtifacts: {
+        relationshipTarget: '../drawings/drawing1.xml',
+        preservedChartRelationshipIds: ['rIdShared'],
+      },
+      filters: [
+        {
+          sheetName: 'Data',
+          startAddress: 'A1',
+          endAddress: 'A1',
+          criteria: [{ colId: 0, filters: { values: ['Open row'] }, customFilters: { filters: [{ value: 'Open row' }] } }],
+        },
+      ],
+      hyperlinks: [
+        {
+          sheetName: 'Data',
+          address: 'A1',
+          target: '#Data!A1',
+          tooltip: 'Open row',
+          display: 'Open row',
+        },
+      ],
+      legacyCommentVml: {
+        relationshipTarget: '../drawings/vmlDrawing1.vml',
+        vmlXml: '<xml><v:shape id="comment"/></xml>',
+        commentsRelationshipTarget: '../comments1.xml',
+        commentsXml: '<comments/>',
+        commentSignature: 'comment-signature',
+      },
+      pivotArtifacts: {
+        relationships: [{ id: 'rIdShared', type: 'pivotTable', target: '../pivotTables/pivotTable1.xml' }],
+        pivotTableDefinitionsXml: '<pivotTableDefinition name="Pivot1"/>',
+      },
+      printerSettings: [
+        {
+          relationshipTarget: '../printerSettings/printerSettings1.bin',
+          storage: 'base64',
+          dataBase64: 'AQIDBA==',
+          byteLength: 4,
+          pageSetupXml: '<pageSetup r:id="rIdShared"/>',
+        },
+      ],
+      printPageSetup: {
+        printOptionsXml: '<printOptions horizontalCentered="1"/>',
+        pageMarginsXml: '<pageMargins left="0.7" right="0.7"/>',
+        pageSetupXml: '<pageSetup r:id="rIdShared"/>',
+      },
+      sheetProtection: {
+        sheetName: 'Data',
+        xmlAttributes: [{ name: 'algorithmName', value: 'SHA-512' }],
+      },
+    }
+    const original = structuredClone(input)
+
+    const interned = internLargeSimpleSheetMetadataInput(input, pool)
+
+    expect(interned).toBe(input)
+    expect(interned).toEqual(original)
+    expect(interned.controlArtifacts).toBe(input.controlArtifacts)
+    expect(interned.validations).toBe(input.validations)
+    expect(interned.filters).toBe(input.filters)
+    expect(interned.hyperlinks).toBe(input.hyperlinks)
+    expect(interned.printerSettings).toBe(input.printerSettings)
+    expect(pool.count).toBeLessThan(35)
   })
 })
