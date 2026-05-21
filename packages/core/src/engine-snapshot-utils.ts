@@ -4,6 +4,7 @@ import type {
   WorkbookAxisMetadataSnapshot,
   WorkbookFreezePaneSnapshot,
   WorkbookMergeRangeSnapshot,
+  WorkbookSheetDataTableFormulasSnapshot,
   WorkbookSheetTabColorSnapshot,
 } from '@bilig/protocol'
 import type { EngineOp } from '@bilig/workbook'
@@ -111,7 +112,17 @@ function sheetTabColorToSnapshot(record: WorkbookSheetTabColorRecord | undefined
   return snapshot
 }
 
+function dataTableFormulasToSnapshot(
+  formulas: WorkbookSheetDataTableFormulasSnapshot | undefined,
+): WorkbookSheetDataTableFormulasSnapshot | undefined {
+  if (!formulas || formulas.formulas.length === 0) {
+    return undefined
+  }
+  return { formulas: formulas.formulas.map((formula) => ({ ...formula })) }
+}
+
 export function exportSheetMetadata(workbook: WorkbookStore, sheetName: string): SheetMetadataSnapshot | undefined {
+  const sheet = workbook.getSheet(sheetName)
   const rows = workbook.listRowAxisEntries(sheetName)
   const columns = workbook.listColumnAxisEntries(sheetName)
   const rowMetadata = axisMetadataToSnapshot(workbook.listRowMetadata(sheetName))
@@ -140,6 +151,7 @@ export function exportSheetMetadata(workbook: WorkbookStore, sheetName: string):
   const protectedRanges = workbook.listRangeProtections(sheetName).map((protection) => structuredClone(protection))
   const commentThreads = workbook.listCommentThreads(sheetName).map((thread) => structuredClone(thread))
   const notes = workbook.listNotes(sheetName).map((note) => structuredClone(note))
+  const dataTableFormulas = dataTableFormulasToSnapshot(sheet?.dataTableFormulas)
 
   if (
     rows.length === 0 &&
@@ -160,7 +172,8 @@ export function exportSheetMetadata(workbook: WorkbookStore, sheetName: string):
     conditionalFormats.length === 0 &&
     protectedRanges.length === 0 &&
     commentThreads.length === 0 &&
-    notes.length === 0
+    notes.length === 0 &&
+    dataTableFormulas === undefined
   ) {
     return undefined
   }
@@ -222,6 +235,9 @@ export function exportSheetMetadata(workbook: WorkbookStore, sheetName: string):
   }
   if (notes.length > 0) {
     metadata.notes = notes
+  }
+  if (dataTableFormulas) {
+    metadata.dataTableFormulas = dataTableFormulas
   }
   return metadata
 }

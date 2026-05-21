@@ -131,6 +131,12 @@ function restoreSheetMetadata(args: { readonly workbook: WorkbookStore; readonly
   sheet.metadata?.notes?.forEach((note) => {
     workbook.setNote(structuredClone(note))
   })
+  if (sheet.metadata?.dataTableFormulas && sheet.metadata.dataTableFormulas.formulas.length > 0) {
+    const targetSheet = workbook.getSheet(sheet.name)
+    if (targetSheet) {
+      targetSheet.dataTableFormulas = structuredClone(sheet.metadata.dataTableFormulas)
+    }
+  }
 }
 
 function restoreAxisMetadata(args: {

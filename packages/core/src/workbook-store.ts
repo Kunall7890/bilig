@@ -234,6 +234,7 @@ export class WorkbookStore {
       this.metadata.rangeProtections.size > 0 ||
       this.metadata.commentThreads.size > 0 ||
       this.metadata.notes.size > 0 ||
+      (sheet?.dataTableFormulas?.formulas.length ?? 0) > 0 ||
       (sheet?.styleRanges.length ?? 0) > 0 ||
       (sheet?.formatRanges.length ?? 0) > 0
     )

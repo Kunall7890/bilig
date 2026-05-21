@@ -36,6 +36,7 @@ import {
 import { tryEvaluateDirectVectorLookup } from './formula-evaluation-direct-lookup.js'
 import { tryEvaluateDirectIndexExactMatch, tryEvaluateDirectIndexOffset } from './formula-evaluation-direct-index.js'
 import { tryEvaluateDirectScalar } from './formula-evaluation-direct-scalar.js'
+import { getRuntimeFormulaStructuralCompiled } from '../runtime-formula-source.js'
 import {
   cellValuesEqual,
   directErrorResult,
@@ -700,8 +701,9 @@ export function createEngineFormulaEvaluationService(args: {
       isRowHidden,
       checkEvaluationBudget: (stepCost) => args.checkEvaluationBudget(stepCost),
     }
-    const jsPlan = formula.compiled.jsPlan.length > 0 ? formula.compiled.jsPlan : lowerToPlan(formula.compiled.optimizedAst)
-    const result = formula.compiled.producesSpill
+    const compiled = getRuntimeFormulaStructuralCompiled(formula) ?? formula.compiled
+    const jsPlan = compiled.jsPlan.length > 0 ? compiled.jsPlan : lowerToPlan(compiled.optimizedAst)
+    const result = compiled.producesSpill
       ? evaluatePlanResult(jsPlan, evaluationContext)
       : evaluatePlanScalarResult(jsPlan, evaluationContext)
     visiting.delete(visitKey)

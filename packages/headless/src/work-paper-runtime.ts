@@ -418,6 +418,7 @@ export class WorkPaper extends WorkPaperRuntimeLifecycleBase {
     if (amount <= 0 || start + amount > limit) {
       throw new WorkPaperOperationError(`${axis === 'row' ? 'Rows' : 'Columns'} cannot be added`)
     }
+    this.preservedImportedSnapshot = undefined
     if (this.batchDepth === 0 && !this.evaluationSuspended && this.visibilityCache === null && this.namedExpressions.size === 0) {
       if (this.engineEvents.hasPendingLazyChanges) {
         this.engineEvents.materializePendingLazyChanges()
@@ -635,6 +636,7 @@ export class WorkPaper extends WorkPaperRuntimeLifecycleBase {
     amount: number,
     options: { readonly emitTracked?: boolean } = {},
   ): void {
+    this.preservedImportedSnapshot = undefined
     const sheetName = sheet.name
     const structuralInsertEngine = this.engine as WorkPaperStructuralInsertEngine
     if (axis === 'row') {
@@ -652,6 +654,7 @@ export class WorkPaper extends WorkPaperRuntimeLifecycleBase {
   }
 
   protected applyAxisMove(axis: WorkPaperAxisKind, sheetId: number, start: number, count: number, target: number): void {
+    this.preservedImportedSnapshot = undefined
     if (axis === 'row') {
       this.engine.moveRows(this.sheetName(sheetId), start, count, target)
     } else {
