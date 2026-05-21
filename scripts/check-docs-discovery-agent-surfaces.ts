@@ -55,7 +55,7 @@ export async function requireAgentPublicSurfaceDiscovery(input: {
     nodeSpreadsheetFormulaEngine,
   } = input.context
   const { headlessSpreadsheetEngineNodeServicesAgents, spreadsheetMcpServerComparison } = input
-  const headlessPackageSpec = `@bilig/headless@${headlessPackageVersion}`
+  const workpaperPackageSpec = `@bilig/workpaper@${headlessPackageVersion}`
   const mcpbReleaseAssetUrl = `https://github.com/proompteng/bilig/releases/download/libraries-v${headlessPackageVersion}/bilig-workpaper.mcpb`
   const mcpbReleaseChecksumUrl = `${mcpbReleaseAssetUrl}.sha256`
   const officialRegistryLatestMarkedVersion = '0.27.0'
@@ -284,7 +284,7 @@ export async function requireAgentPublicSurfaceDiscovery(input: {
   }
   requireIncludes(
     mcpWorkPaperToolServerDoc,
-    'description: Expose @bilig/headless workbook reads, verified edits, formula contracts, persistence checks, resources, and prompts through MCP.',
+    'description: Expose @bilig/workpaper workbook reads, verified edits, formula contracts, persistence checks, resources, and prompts through MCP.',
     'docs/mcp-workpaper-tool-server.md',
   )
   requireIncludes(
@@ -309,17 +309,17 @@ export async function requireAgentPublicSurfaceDiscovery(input: {
   requireIncludes(rootPackageJson, '"workpaper:smoke:external": "bun scripts/workpaper-external-smoke.ts"', 'package.json')
   requireIncludes(
     mcpWorkPaperToolServerDoc,
-    `npm exec --package ${headlessPackageSpec} -- bilig-mcp-challenge`,
+    `npm exec --package ${workpaperPackageSpec} -- bilig-mcp-challenge`,
     'docs/mcp-workpaper-tool-server.md',
   )
   requireIncludes(
     mcpWorkPaperToolServerDoc,
-    `npm exec --package ${headlessPackageSpec} -- bilig-workpaper-mcp`,
+    `npm exec --package ${workpaperPackageSpec} -- bilig-workpaper-mcp`,
     'docs/mcp-workpaper-tool-server.md',
   )
   requireIncludes(
     mcpWorkPaperToolServerDoc,
-    `npm exec --package ${headlessPackageSpec} -- bilig-workpaper-mcp --workpaper ./pricing.workpaper.json --init-demo-workpaper --writable`,
+    `npm exec --package ${workpaperPackageSpec} -- bilig-workpaper-mcp --workpaper ./pricing.workpaper.json --init-demo-workpaper --writable`,
     'docs/mcp-workpaper-tool-server.md',
   )
   requireIncludes(mcpWorkPaperToolServerDoc, '`list_sheets`, `read_range`, `read_cell`', 'docs/mcp-workpaper-tool-server.md')
@@ -351,6 +351,8 @@ export async function requireAgentPublicSurfaceDiscovery(input: {
     'docs/mcp-workpaper-tool-server.md',
   )
   for (const required of [
+    'npm install --omit=dev "@bilig/workpaper@${BILIG_WORKPAPER_VERSION}"',
+    "import { buildDemoWorkPaper, exportWorkPaperDocument, serializeWorkPaperDocument } from '@bilig/workpaper'",
     'ENTRYPOINT ["./node_modules/.bin/bilig-workpaper-mcp", "--workpaper", "/workpaper/pricing.workpaper.json", "--writable"]',
     'io.modelcontextprotocol.server.name="io.github.proompteng/bilig-workpaper"',
   ]) {
@@ -391,7 +393,7 @@ export async function requireAgentPublicSurfaceDiscovery(input: {
   }
   for (const required of [
     'description: Live directory and install status for the Bilig WorkPaper MCP server',
-    `npm exec --package ${headlessPackageSpec} -- bilig-workpaper-mcp`,
+    `npm exec --package ${workpaperPackageSpec} -- bilig-workpaper-mcp`,
     'io.github.proompteng/bilig-workpaper',
     'https://registry.modelcontextprotocol.io/v0.1/servers?search=io.github.proompteng%2Fbilig-workpaper',
     'https://glama.ai/mcp/servers/proompteng/bilig',
@@ -413,7 +415,7 @@ export async function requireAgentPublicSurfaceDiscovery(input: {
     'Cline MCP Marketplace           | Submitted for maintainer review; issue body refreshed on May 19',
     'The Docker MCP Registry pull request was refreshed on May 19, 2026',
     '`a1ecdd52cda3d54e0254afce129a9012c5027826`',
-    `the PR body\nnow points reviewers at \`@bilig/headless@${headlessPackageVersion}\` and \`libraries-v${headlessPackageVersion}\``,
+    `the PR body\nnow points reviewers at \`@bilig/workpaper@${headlessPackageVersion}\` and \`libraries-v${headlessPackageVersion}\``,
     'The Goose MCP catalog pull request was closed on May 19, 2026',
     'Do not resubmit there until maintainers reopen that path',
     'The mcp.so and Cline MCP Marketplace submissions were refreshed on May 19, 2026',
@@ -443,9 +445,9 @@ export async function requireAgentPublicSurfaceDiscovery(input: {
     'file-backed tools',
     'A-grade Tool Definition Quality',
     "Glama's source crawl, hosted smoke build, and JSON\nAPI can refresh on different cadences",
-    `npm latest is \`@bilig/headless@${headlessPackageVersion}\``,
+    `npm latest is \`@bilig/workpaper@${headlessPackageVersion}\``,
     `official Registry latest-marked entry is\n\`io.github.proompteng/bilig-workpaper@${officialRegistryLatestMarkedVersion}\``,
-    `does not yet match npm latest \`@bilig/headless@${headlessPackageVersion}\``,
+    `does not yet match npm latest \`@bilig/workpaper@${headlessPackageVersion}\``,
     'remote `https://bilig.proompteng.ai/mcp`',
     'limit=100',
     'read_workpaper_summary',
@@ -473,10 +475,10 @@ export async function requireAgentPublicSurfaceDiscovery(input: {
     'https://bilig.proompteng.ai/.well-known/mcp/server-card.json',
     'mcp-protocol-version: 2025-11-25',
     '## Persistent file-backed stdio server',
-    `npm exec --package ${headlessPackageSpec} -- bilig-workpaper-mcp`,
+    `npm exec --package ${workpaperPackageSpec} -- bilig-workpaper-mcp`,
     'The first command is demo mode. The client configs below use file-backed mode',
-    `"args": ["exec", "--package", "${headlessPackageSpec}", "--", "bilig-workpaper-mcp", "--workpaper", "./pricing.workpaper.json", "--init-demo-workpaper", "--writable"]`,
-    `args = ["exec", "--package", "${headlessPackageSpec}", "--", "bilig-workpaper-mcp", "--workpaper", "./pricing.workpaper.json", "--init-demo-workpaper", "--writable"]`,
+    `"args": ["exec", "--package", "${workpaperPackageSpec}", "--", "bilig-workpaper-mcp", "--workpaper", "./pricing.workpaper.json", "--init-demo-workpaper", "--writable"]`,
+    `args = ["exec", "--package", "${workpaperPackageSpec}", "--", "bilig-workpaper-mcp", "--workpaper", "./pricing.workpaper.json", "--init-demo-workpaper", "--writable"]`,
     'pnpm mcpb:workpaper:build',
     mcpbReleaseAssetUrl,
     mcpbReleaseChecksumUrl,

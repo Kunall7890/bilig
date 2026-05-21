@@ -16,7 +16,17 @@ describe('syncRuntimePackageVersions', () => {
       mkdirSync(absoluteDir, { recursive: true })
       writeFileSync(
         join(absoluteDir, 'package.json'),
-        `${JSON.stringify({ name: packageNameForDir(packageDir), version: '0.1.95' }, null, 2)}\n`,
+        `${JSON.stringify(
+          {
+            name: packageNameForDir(packageDir),
+            version: '0.1.95',
+            ...(packageDir === 'packages/headless' || packageDir === 'packages/workpaper'
+              ? { mcpName: 'io.github.proompteng/bilig-workpaper' }
+              : {}),
+          },
+          null,
+          2,
+        )}\n`,
       )
     }
 
@@ -46,11 +56,35 @@ describe('syncRuntimePackageVersions', () => {
         2,
       )}\n`,
     )
+    writeFileSync(
+      join(rootDir, 'packages/workpaper/server.json'),
+      `${JSON.stringify(
+        {
+          name: 'io.github.proompteng.bilig',
+          version: '0.1.95',
+          remotes: [
+            {
+              type: 'streamable-http',
+              url: 'https://bilig.proompteng.ai/mcp',
+            },
+          ],
+          packages: [
+            {
+              registryType: 'npm',
+              identifier: '@bilig/workpaper',
+              version: '0.1.95',
+            },
+          ],
+        },
+        null,
+        2,
+      )}\n`,
+    )
 
     const result = syncRuntimePackageVersions({ rootDir, version: '0.14.14' })
 
     expect(result.updatedPackages).toEqual(RUNTIME_PACKAGE_DIRS.map(packageNameForDir))
-    expect(result.updatedFiles).toHaveLength(RUNTIME_PACKAGE_DIRS.length + 2)
+    expect(result.updatedFiles).toHaveLength(RUNTIME_PACKAGE_DIRS.length + 3)
 
     for (const packageDir of RUNTIME_PACKAGE_DIRS) {
       const manifest = JSON.parse(readFileSync(join(rootDir, packageDir, 'package.json'), 'utf8'))
@@ -64,6 +98,14 @@ describe('syncRuntimePackageVersions', () => {
       url: 'https://bilig.proompteng.ai/mcp',
     })
     expect(serverJson.packages[0].version).toBe('0.14.14')
+
+    const workpaperServerJson = JSON.parse(readFileSync(join(rootDir, 'packages/workpaper/server.json'), 'utf8'))
+    expect(workpaperServerJson.version).toBe('0.14.14')
+    expect(workpaperServerJson.remotes[0]).toEqual({
+      type: 'streamable-http',
+      url: 'https://bilig.proompteng.ai/mcp',
+    })
+    expect(workpaperServerJson.packages[0].version).toBe('0.14.14')
 
     const releasePleaseManifest = JSON.parse(readFileSync(join(rootDir, '.release-please-manifest.json'), 'utf8'))
     expect(releasePleaseManifest['packages/headless']).toBe('0.14.14')

@@ -60,10 +60,7 @@ export function validateStagedMcpServerMetadata(packageName: string, stagedPacka
   }
 }
 
-function shouldValidateMcpMetadata(packageName: string, manifest: Record<string, unknown>): manifest is { name: string; mcpName: string } {
-  if (packageName !== '@bilig/headless') {
-    return false
-  }
+function shouldValidateMcpMetadata(_packageName: string, manifest: Record<string, unknown>): manifest is { name: string; mcpName: string } {
   return typeof manifest['name'] === 'string' && typeof manifest['mcpName'] === 'string'
 }
 

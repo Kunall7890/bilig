@@ -836,9 +836,12 @@ function syncVersionedStaticReferenceLine(line: string): string {
       `$1${headlessPackageSpec}$2`,
     )
     .replace(new RegExp(`npm latest is \`${stableSemverPattern}\``, 'g'), `npm latest is \`${headlessPackageVersion}\``)
-    .replace(new RegExp(`npm latest is \`@bilig/headless@${stableSemverPattern}\``, 'g'), `npm latest is \`${headlessPackageSpec}\``)
-    .replace(new RegExp(`npm latest \`@bilig/headless@${stableSemverPattern}\``, 'g'), `npm latest \`${headlessPackageSpec}\``)
-    .replace(new RegExp(`(now points reviewers at \`)@bilig/headless@${stableSemverPattern}(\`)`, 'g'), `$1${headlessPackageSpec}$2`)
+    .replace(new RegExp(`npm latest is \`@bilig/headless@${stableSemverPattern}\``, 'g'), `npm latest is \`${workpaperPackageSpec}\``)
+    .replace(new RegExp(`npm latest is \`@bilig/workpaper@${stableSemverPattern}\``, 'g'), `npm latest is \`${workpaperPackageSpec}\``)
+    .replace(new RegExp(`npm latest \`@bilig/headless@${stableSemverPattern}\``, 'g'), `npm latest \`${workpaperPackageSpec}\``)
+    .replace(new RegExp(`npm latest \`@bilig/workpaper@${stableSemverPattern}\``, 'g'), `npm latest \`${workpaperPackageSpec}\``)
+    .replace(new RegExp(`(now points reviewers at \`)@bilig/headless@${stableSemverPattern}(\`)`, 'g'), `$1${workpaperPackageSpec}$2`)
+    .replace(new RegExp(`(now points reviewers at \`)@bilig/workpaper@${stableSemverPattern}(\`)`, 'g'), `$1${workpaperPackageSpec}$2`)
     .replace(new RegExp(`libraries-v${stableSemverPattern}`, 'g'), mcpbReleaseTag)
 }
 
