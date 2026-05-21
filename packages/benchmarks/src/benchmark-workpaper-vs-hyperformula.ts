@@ -2,6 +2,7 @@ import type { NumericSummary } from './stats.js'
 
 export const DEFAULT_COMPETITIVE_WARMUP_COUNT = 2
 export const DEFAULT_COMPETITIVE_SAMPLE_COUNT = 5
+export const DEFAULT_EXPANDED_COMPETITIVE_SAMPLE_COUNT = 200
 export const HYPERFORMULA_LICENSE_KEY = 'gpl-v3'
 
 export interface ComparativeBenchmarkSuiteOptions {

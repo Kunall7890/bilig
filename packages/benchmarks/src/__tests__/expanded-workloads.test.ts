@@ -6,6 +6,7 @@ import { ENGINE_COUNTER_KEYS } from '../../../core/src/perf/engine-counters.js'
 import {
   EXPANDED_COMPARATIVE_WORKLOAD_SCORECARD_LANE,
   EXPANDED_COMPARATIVE_WORKLOADS,
+  DEFAULT_EXPANDED_COMPETITIVE_SAMPLE_COUNT,
   buildExpandedComparativeBenchmarkReport,
   parseExpandedBenchmarkCliOptions,
   type ExpandedComparativeBenchmarkResult,
@@ -514,6 +515,7 @@ describe('expanded comparative benchmark workloads', () => {
   })
 
   it('parses expanded benchmark CLI sample controls strictly', () => {
+    expect(DEFAULT_EXPANDED_COMPETITIVE_SAMPLE_COUNT).toBe(200)
     expect(parseExpandedBenchmarkCliOptions(['--sample-count', '5', '--warmup-count', '0'])).toEqual({
       sampleCount: 5,
       warmupCount: 0,

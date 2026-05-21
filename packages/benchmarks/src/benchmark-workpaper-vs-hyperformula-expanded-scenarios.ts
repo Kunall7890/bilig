@@ -1,5 +1,5 @@
 import type { ComparativeBenchmarkSuiteOptions } from './benchmark-workpaper-vs-hyperformula.js'
-import { DEFAULT_COMPETITIVE_SAMPLE_COUNT, DEFAULT_COMPETITIVE_WARMUP_COUNT } from './benchmark-workpaper-vs-hyperformula.js'
+import { DEFAULT_COMPETITIVE_WARMUP_COUNT, DEFAULT_EXPANDED_COMPETITIVE_SAMPLE_COUNT } from './benchmark-workpaper-vs-hyperformula.js'
 import {
   runComparableScenario,
   runLeadershipScenario,
@@ -905,7 +905,7 @@ export function runWorkPaperVsHyperFormulaExpandedBenchmarkSuite(
 
 function resolveSuiteOptions(options: ComparativeBenchmarkSuiteOptions): Required<ComparativeBenchmarkSuiteOptions> {
   return {
-    sampleCount: options.sampleCount ?? DEFAULT_COMPETITIVE_SAMPLE_COUNT,
+    sampleCount: options.sampleCount ?? DEFAULT_EXPANDED_COMPETITIVE_SAMPLE_COUNT,
     warmupCount: options.warmupCount ?? DEFAULT_COMPETITIVE_WARMUP_COUNT,
   }
 }

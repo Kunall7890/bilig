@@ -4,8 +4,8 @@ import { execFileSync } from 'node:child_process'
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { dirname, join, resolve } from 'node:path'
 import {
-  DEFAULT_COMPETITIVE_SAMPLE_COUNT,
   DEFAULT_COMPETITIVE_WARMUP_COUNT,
+  DEFAULT_EXPANDED_COMPETITIVE_SAMPLE_COUNT,
 } from '../packages/benchmarks/src/benchmark-workpaper-vs-hyperformula.ts'
 import {
   EXPANDED_COMPARATIVE_WORKLOADS,
@@ -87,7 +87,7 @@ const isCheckMode = rawCliArgs.includes('--check')
 const benchmarkCliOptions = parseExpandedBenchmarkCliOptions(rawCliArgs.filter((arg) => arg !== '--check'))
 const workpaperSourcePath = 'packages/headless'
 
-const sampleCount = benchmarkCliOptions.sampleCount ?? DEFAULT_COMPETITIVE_SAMPLE_COUNT
+const sampleCount = benchmarkCliOptions.sampleCount ?? DEFAULT_EXPANDED_COMPETITIVE_SAMPLE_COUNT
 const warmupCount = benchmarkCliOptions.warmupCount ?? DEFAULT_COMPETITIVE_WARMUP_COUNT
 
 if (isCheckMode) {
