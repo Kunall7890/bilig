@@ -135,7 +135,16 @@ When the user has a reduced XLSX formula/import bug, generate a local report thr
 ```json
 {
   "command": "npm",
-  "args": ["exec", "--package", "@bilig/workpaper@0.40.43", "--", "bilig-formula-clinic", "./reduced.xlsx", "--cells", "Summary!B7,Inputs!B2"]
+  "args": [
+    "exec",
+    "--package",
+    "@bilig/workpaper@0.40.43",
+    "--",
+    "bilig-formula-clinic",
+    "./reduced.xlsx",
+    "--cells",
+    "Summary!B7,Inputs!B2"
+  ]
 }
 ```
 

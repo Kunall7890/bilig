@@ -50,6 +50,7 @@ import {
   type NativeDirectCriteriaPredicateLayoutCache,
 } from './formula-evaluation-direct-criteria-native.js'
 import { createDirectCriteriaSharingContext } from './formula-evaluation-direct-criteria-sharing.js'
+import { createRowHiddenResolver } from './formula-evaluation-row-hidden.js'
 import type { EngineFormulaEvaluationService } from './formula-evaluation-service-types.js'
 export type { EngineFormulaEvaluationService } from './formula-evaluation-service-types.js'
 
@@ -258,33 +259,6 @@ export function createEngineFormulaEvaluationService(args: {
           )
     }
     return []
-  }
-  const createRowHiddenResolver = (): ((sheetName: string, rowIndex: number) => boolean) => {
-    const hiddenRowsBySheet = new Map<string, Set<number>>()
-    return (sheetName, rowIndex) => {
-      if (!Number.isInteger(rowIndex) || rowIndex < 0) {
-        return false
-      }
-      let hiddenRows = hiddenRowsBySheet.get(sheetName)
-      if (hiddenRows === undefined) {
-        hiddenRows = new Set<number>()
-        for (const entry of args.state.workbook.listRowAxisEntries(sheetName)) {
-          if (entry.hidden === true) {
-            hiddenRows.add(entry.index)
-          }
-        }
-        for (const record of args.state.workbook.listRowMetadata(sheetName)) {
-          if (record.hidden !== true) {
-            continue
-          }
-          for (let row = record.start; row < record.start + record.count; row += 1) {
-            hiddenRows.add(row)
-          }
-        }
-        hiddenRowsBySheet.set(sheetName, hiddenRows)
-      }
-      return hiddenRows.has(rowIndex)
-    }
   }
   const resolveIndexedExactMatch = (lookupValue: CellValue, range: RangeBuiltinArgument): number | undefined => {
     if (!args.state.getUseColumnIndex() || range.refKind !== 'cells' || range.cols !== 1) {
@@ -674,7 +648,7 @@ export function createEngineFormulaEvaluationService(args: {
     }
 
     visiting.add(visitKey)
-    const isRowHidden = createRowHiddenResolver()
+    const isRowHidden = createRowHiddenResolver(args.state.workbook)
     const evaluationContext: EvaluationContext = {
       sheetName,
       workbookName: args.state.workbook.workbookName,
@@ -867,7 +841,7 @@ export function createEngineFormulaEvaluationService(args: {
       return storeFormulaResult(cellIndex, formula, directResult)
     }
 
-    const isRowHidden = createRowHiddenResolver()
+    const isRowHidden = createRowHiddenResolver(args.state.workbook)
     const evaluationContext: EvaluationContext = {
       sheetName,
       workbookName: args.state.workbook.workbookName,

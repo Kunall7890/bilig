@@ -168,6 +168,12 @@ adapter is not called. If a readback expectation is missing or mismatched, the
 run fails with deterministic codes such as `readback_missing`,
 `value_mismatch`, or `formula_mismatch`. Formula readbacks are exact and should
 use the normalized no-leading-`=` form produced by `formula.source`.
+Adapters can also expose `verifyChecks(checks, plan)` for generic proof of
+non-readback checks such as existence checks, formula-error checks, and
+consumer-defined invariants. `verifyChecks` returns the same checks in the same
+order and may only change `status`; malformed output fails with
+`invalid_check_verification`, thrown verifier errors fail with
+`check_verification_failed`, and failed checks become `check_failed` run errors.
 
 ## Core engine surface
 

@@ -28,6 +28,7 @@ flowchart LR
   - JSON-safe action input planning and verification
   - machine-readable readback checks for runtime proof
   - transport-neutral run adapters for apply-and-prove receipts
+  - generic check verifier handoff for runtime-owned invariants
   - transport-neutral workbook ops and txns
 - `packages/zero-sync`
   - Zero schema

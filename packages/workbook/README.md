@@ -73,30 +73,30 @@ exception control flow.
 Actions can also accept a JSON-safe input:
 
 ```ts
-import { defineModel } from "@bilig/workbook";
+import { defineModel } from '@bilig/workbook'
 
 export const model = defineModel({
-  name: "custom-writer",
+  name: 'custom-writer',
 
   find(workbook) {
     return {
-      output: workbook.findRange({ sheetName: "Sheet1", address: "B2" }),
-    };
+      output: workbook.findRange({ sheetName: 'Sheet1', address: 'B2' }),
+    }
   },
 
   actions: {
     write({ refs, workbook, input }) {
-      if (typeof input !== "object" || input === null || Array.isArray(input)) {
-        throw new Error("input object required");
+      if (typeof input !== 'object' || input === null || Array.isArray(input)) {
+        throw new Error('input object required')
       }
-      const value = input.value;
-      if (typeof value !== "number") {
-        throw new Error("numeric value required");
+      const value = input.value
+      if (typeof value !== 'number') {
+        throw new Error('numeric value required')
       }
-      workbook.writeValue(refs.output, value);
+      workbook.writeValue(refs.output, value)
     },
   },
-});
+})
 ```
 
 `planWorkbookAction(model, "write", { value: 12 })` clones and canonicalizes
@@ -180,14 +180,14 @@ generic apply-and-prove loop. The adapter owns runtime execution and semantic
 readback:
 
 ```ts
-const result = await runWorkbookAction(model, "write", {
+const result = await runWorkbookAction(model, 'write', {
   apply(plan) {
-    return runtime.apply(plan.ops);
+    return runtime.apply(plan.ops)
   },
   read(targets) {
-    return runtime.read(targets);
+    return runtime.read(targets)
   },
-});
+})
 ```
 
 `runWorkbookAction` plans the action, runs `verifyPlan`, calls
@@ -199,3 +199,11 @@ not called. If a readback expectation is missing or mismatched, the returned
 `readback_missing`, `value_mismatch`, or `formula_mismatch`.
 Formula readbacks are exact: adapters should return formula text in the same
 normalized no-leading-`=` form produced by `formula.source`.
+Adapters can also provide `verifyChecks(checks, plan)` to prove non-readback
+checks such as `exists`, `noFormulaErrors`, and consumer-defined `custom`
+invariants. The verifier must return the same checks in the same order and may
+only change `status`; changing `kind`, `target`, `refs`, `expectation`, or
+`message` fails the run as `invalid_check_verification`. If any verified check
+is `failed`, the run returns `failed` with `check_failed`. Existing adapters
+remain compatible, but agent-facing adapters should provide `verifyChecks` and
+avoid claiming full proof while checks remain `planned`.

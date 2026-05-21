@@ -11,6 +11,7 @@ This package is released as part of the aligned bilig library package set.
 - Manual override: no
 
 ## Fixes
+
 - perf(excel-import): finalize simple sheets earlier (c8c573cd)
 
 ## 0.40.42
@@ -20,11 +21,13 @@ This package is released as part of the aligned bilig library package set.
 - Manual override: no
 
 ## Fixes
+
 - perf(core): bulk bind fresh aggregate rows (6444c861)
 - perf(excel-import): compact shared string import storage (f5a34983)
 - fix(formula): align empty string criteria with Excel (f48b401c)
 
 ## Internal runtime changes
+
 - ci(release): block npm publish on red repo ci (080cfb1c)
 - chore(workpaper): remove root excel oracle script (3e66b459)
 - test(excel): add package-owned macos oracle (ab2080bd)
@@ -41,9 +44,11 @@ This package is released as part of the aligned bilig library package set.
 - Manual override: no
 
 ## Fixes
+
 - perf(excel-import): retain only rich shared string refs (8c14a27a)
 
 ## Internal runtime changes
+
 - ci(n8n): prefer oidc for npm publish (a16fffe0)
 
 ## 0.40.40
@@ -53,6 +58,7 @@ This package is released as part of the aligned bilig library package set.
 - Manual override: no
 
 ## Fixes
+
 - perf(core): index sliding aggregate dependent collection (e726b7b8)
 - perf(core): tighten direct formula delta batches (a55ac416)
 - perf(excel-import): stream control workbook artifacts (e8ee7810)
@@ -66,6 +72,7 @@ This package is released as part of the aligned bilig library package set.
 - perf(excel-import): build previews after cell release (e96200c1)
 
 ## Internal runtime changes
+
 - refactor(excel-import): split style artifact candidates (069bdf62)
 - ci(release): require full ci before npm publish (f191097b)
 - chore(release): runtime packages v0.40.36 (059f37b7)
@@ -83,6 +90,7 @@ This package is released as part of the aligned bilig library package set.
 - Manual override: no
 
 ## Fixes
+
 - perf(core): index sliding aggregate dependent collection (e726b7b8)
 - perf(core): tighten direct formula delta batches (a55ac416)
 - perf(excel-import): stream control workbook artifacts (e8ee7810)
@@ -92,6 +100,7 @@ This package is released as part of the aligned bilig library package set.
 - perf(excel-import): add headless external stress path (6a75ce87)
 
 ## Internal runtime changes
+
 - refactor(excel-import): split style artifact candidates (069bdf62)
 - ci(release): require full ci before npm publish (f191097b)
 - chore(release): runtime packages v0.40.36 (059f37b7)
@@ -105,6 +114,7 @@ This package is released as part of the aligned bilig library package set.
 - Manual override: no
 
 ## Fixes
+
 - perf(core): index sliding aggregate dependent collection (e726b7b8)
 - perf(core): tighten direct formula delta batches (a55ac416)
 - perf(excel-import): stream control workbook artifacts (e8ee7810)
@@ -112,6 +122,7 @@ This package is released as part of the aligned bilig library package set.
 - perf(excel-import): trim fast xlsx import memory (7d0aa436)
 
 ## Internal runtime changes
+
 - refactor(excel-import): split style artifact candidates (069bdf62)
 - ci(release): require full ci before npm publish (f191097b)
 - chore(release): runtime packages v0.40.36 (059f37b7)
@@ -124,11 +135,13 @@ This package is released as part of the aligned bilig library package set.
 - Manual override: no
 
 ## Fixes
+
 - perf(core): index sliding aggregate dependent collection (e726b7b8)
 - perf(core): tighten direct formula delta batches (a55ac416)
 - perf(excel-import): stream control workbook artifacts (e8ee7810)
 
 ## Internal runtime changes
+
 - refactor(excel-import): split style artifact candidates (069bdf62)
 - ci(release): require full ci before npm publish (f191097b)
 - chore(release): runtime packages v0.40.36 (059f37b7)
@@ -140,9 +153,11 @@ This package is released as part of the aligned bilig library package set.
 - Manual override: no
 
 ## Fixes
+
 - perf(core): index sliding aggregate dependent collection (e726b7b8)
 
 ## Internal runtime changes
+
 - refactor(excel-import): split style artifact candidates (069bdf62)
 - ci(release): require full ci before npm publish (f191097b)
 
@@ -153,6 +168,7 @@ This package is released as part of the aligned bilig library package set.
 - Manual override: no
 
 ## Fixes
+
 - perf(excel-import): avoid byte-source fallback materialization (c1eb1103)
 
 ## 0.40.34
@@ -162,6 +178,7 @@ This package is released as part of the aligned bilig library package set.
 - Manual override: no
 
 ## Fixes
+
 - perf(core): bind fresh direct formula runs in one pass (9d7c76e5)
 
 ## 0.40.33
@@ -171,6 +188,7 @@ This package is released as part of the aligned bilig library package set.
 - Manual override: no
 
 ## Fixes
+
 - perf(excel-import): release sheet import storage sooner (2dcb5ab3)
 
 ## 0.40.32
@@ -180,6 +198,7 @@ This package is released as part of the aligned bilig library package set.
 - Manual override: no
 
 ## Fixes
+
 - perf(excel-import): avoid verifier source rereads (f64db341)
 
 ## 0.40.31
@@ -189,10 +208,12 @@ This package is released as part of the aligned bilig library package set.
 - Manual override: no
 
 ## Fixes
+
 - perf(headless): replay numeric undo batches from typed history (553b29e3)
 - perf(excel-import): skip redundant calcchain inspection (6e6e03a4)
 
 ## Internal runtime changes
+
 - refactor(excel-import): split large simple helpers (397fd290)
 - test(headless): expect packed numeric undo history (38acf175)
 
@@ -203,6 +224,7 @@ This package is released as part of the aligned bilig library package set.
 - Manual override: no
 
 ## Fixes
+
 - perf(xlsx): store rare arena integers sparsely (1a52eb87)
 
 ## 0.40.29
@@ -212,6 +234,7 @@ This package is released as part of the aligned bilig library package set.
 - Manual override: no
 
 ## Fixes
+
 - perf(xlsx): pack small integers in import arena (4fa2d029)
 
 ## 0.40.28
@@ -221,6 +244,7 @@ This package is released as part of the aligned bilig library package set.
 - Manual override: no
 
 ## Fixes
+
 - perf(xlsx): compact headless verifier imports (9347c803)
 
 ## 0.40.27
@@ -230,6 +254,7 @@ This package is released as part of the aligned bilig library package set.
 - Manual override: no
 
 ## Fixes
+
 - perf(headless): lazily summarize aggregate pages (1c7cdea2)
 - perf(xlsx): stream package artifact imports (74033d79)
 
@@ -240,10 +265,12 @@ This package is released as part of the aligned bilig library package set.
 - Manual override: no
 
 ## Fixes
+
 - perf(xlsx): stream auto-filter metadata (bfdc18e2)
 - perf(headless): avoid singleton hydrated formula bindings (18b998f3)
 
 ## Internal runtime changes
+
 - refactor(excel-import): split worksheet stream cell readers (9a2588b9)
 
 ## 0.40.25
@@ -253,6 +280,7 @@ This package is released as part of the aligned bilig library package set.
 - Manual override: no
 
 ## Fixes
+
 - perf(xlsx): stream column metadata (dc088b51)
 
 ## 0.40.24
@@ -262,6 +290,7 @@ This package is released as part of the aligned bilig library package set.
 - Manual override: no
 
 ## Fixes
+
 - perf(xlsx): stream conditional format metadata (2a33eb95)
 
 ## 0.40.23
@@ -271,6 +300,7 @@ This package is released as part of the aligned bilig library package set.
 - Manual override: no
 
 ## Fixes
+
 - perf(xlsx): pool cached formula records (dbf6365c)
 - perf(xlsx): release plain shared string tables (820fde93)
 - fix(xlsx): restore large workbook export path (b5232805)
@@ -286,6 +316,7 @@ This package is released as part of the aligned bilig library package set.
 - Manual override: no
 
 ## Fixes
+
 - perf(core): fast-bind hydrated aggregate formulas (f6ead970)
 - perf(xlsx): stream small PowerPivot packages (baf6dc71)
 
@@ -296,6 +327,7 @@ This package is released as part of the aligned bilig library package set.
 - Manual override: no
 
 ## Fixes
+
 - perf(xlsx): intern streamed worksheet metadata (2afd7a34)
 
 ## 0.40.20
@@ -305,6 +337,7 @@ This package is released as part of the aligned bilig library package set.
 - Manual override: no
 
 ## Fixes
+
 - perf(xlsx): avoid lazy metadata cell expansion (0c2d693b)
 
 ## 0.40.19
@@ -314,6 +347,7 @@ This package is released as part of the aligned bilig library package set.
 - Manual override: no
 
 ## Fixes
+
 - perf(xlsx): materialize compressed style ranges (1873f142)
 - perf(core): fast-bind restored direct scalar formulas (72afb11c)
 
@@ -324,6 +358,7 @@ This package is released as part of the aligned bilig library package set.
 - Manual override: no
 
 ## Fixes
+
 - perf(xlsx): scope shared strings per sheet (ef6dc2b2)
 
 ## 0.40.17
@@ -333,6 +368,7 @@ This package is released as part of the aligned bilig library package set.
 - Manual override: no
 
 ## Fixes
+
 - perf(xlsx): avoid eager shared-string arena copies (9e0b47aa)
 - perf(core): summarize far shifted aggregate pages (f90f01a5)
 
@@ -343,6 +379,7 @@ This package is released as part of the aligned bilig library package set.
 - Manual override: no
 
 ## Fixes
+
 - fix(xlsx): fall back on untyped streamed metadata (2ee22194)
 
 ## 0.40.15
@@ -352,6 +389,7 @@ This package is released as part of the aligned bilig library package set.
 - Manual override: no
 
 ## Fixes
+
 - perf(core): bulk bind fresh direct scalar runs (047b854a)
 
 ## 0.40.14
@@ -361,6 +399,7 @@ This package is released as part of the aligned bilig library package set.
 - Manual override: no
 
 ## Fixes
+
 - perf(core): bucket compound exact criteria aggregates (62cd7e72)
 
 ## 0.40.13
@@ -370,6 +409,7 @@ This package is released as part of the aligned bilig library package set.
 - Manual override: no
 
 ## Fixes
+
 - fix(xlsx): compact near-dense import coordinates (d15533c7)
 - perf(core): restore prepared runtime family runs (4312390b)
 
@@ -380,6 +420,7 @@ This package is released as part of the aligned bilig library package set.
 - Manual override: no
 
 ## Fixes
+
 - perf(core): replay large formula family runs (03488e2d)
 - fix(xlsx): keep rich shared strings lazy (d7acef49)
 
@@ -390,6 +431,7 @@ This package is released as part of the aligned bilig library package set.
 - Manual override: no
 
 ## Fixes
+
 - fix(xlsx): pack shared string arena storage (dd790620)
 
 ## 0.40.10
@@ -399,6 +441,7 @@ This package is released as part of the aligned bilig library package set.
 - Manual override: no
 
 ## Fixes
+
 - fix(xlsx): reduce dense arena overgrowth (06d3a15d)
 
 ## 0.40.9
@@ -408,6 +451,7 @@ This package is released as part of the aligned bilig library package set.
 - Manual override: no
 
 ## Fixes
+
 - fix(xlsx): defer large style coordinates (cdffc3ae)
 
 ## 0.40.8
@@ -417,6 +461,7 @@ This package is released as part of the aligned bilig library package set.
 - Manual override: no
 
 ## Fixes
+
 - fix(xlsx): stream implicit worksheet refs (935e2b33)
 
 ## 0.40.7
@@ -426,6 +471,7 @@ This package is released as part of the aligned bilig library package set.
 - Manual override: no
 
 ## Fixes
+
 - fix(xlsx): release dense import buffers (5d8bee40)
 
 ## 0.40.6
@@ -435,6 +481,7 @@ This package is released as part of the aligned bilig library package set.
 - Manual override: no
 
 ## Fixes
+
 - fix(xlsx): reduce lazy snapshot materialization memory (07ee4e89)
 
 ## 0.40.5
@@ -444,6 +491,7 @@ This package is released as part of the aligned bilig library package set.
 - Manual override: no
 
 ## Fixes
+
 - fix(xlsx): stream OLE control artifacts (44b46ee8)
 
 ## 0.40.4
@@ -453,6 +501,7 @@ This package is released as part of the aligned bilig library package set.
 - Manual override: no
 
 ## Fixes
+
 - fix(xlsx): fail fast on corrupt zip entries (3b9d58d4)
 - fix(xlsx): stream data validation metadata (917ac2e6)
 
@@ -463,6 +512,7 @@ This package is released as part of the aligned bilig library package set.
 - Manual override: no
 
 ## Fixes
+
 - fix(xlsx): add file-backed import source path (8addb2e1)
 
 ## 0.40.2
@@ -472,6 +522,7 @@ This package is released as part of the aligned bilig library package set.
 - Manual override: no
 
 ## Fixes
+
 - fix(xlsx): stream complex import artifacts (f7469d8c)
 
 ## 0.40.1
@@ -481,6 +532,7 @@ This package is released as part of the aligned bilig library package set.
 - Manual override: no
 
 ## Fixes
+
 - fix(xlsx): release large import arena scratch (717b6a8a)
 
 ## 0.40.0
@@ -490,10 +542,12 @@ This package is released as part of the aligned bilig library package set.
 - Manual override: no
 
 ## Features
+
 - feat(excel-import): reduce xlsx import memory (6c04e41d)
 - feat(excel-import): compact dense runtime coordinates (052c5349)
 
 ## Fixes
+
 - fix(core): route metadata formulas through js parity (4d72b3de)
 - perf(core): index compound exact criteria aggregates (0e2bb2dc)
 - fix(xlsx): bound large workbook import builds (74210d5e)
@@ -504,6 +558,7 @@ This package is released as part of the aligned bilig library package set.
 - fix(xlsx): reduce fallback import memory (0b3105e6)
 
 ## Internal runtime changes
+
 - test(core): add semantic invariant gate (80c73e48)
 - docs(agent): add recalc skill metadata (d3aa7850)
 - refactor(excel-import): use shared workbook semantics in tests (38f49c24)
@@ -515,9 +570,11 @@ This package is released as part of the aligned bilig library package set.
 - Manual override: no
 
 ## Features
+
 - feat(core): centralize workbook semantic projection (e7d9434d)
 
 ## Internal runtime changes
+
 - ci(release): use current npm for runtime assets (7e0a788d)
 - docs(agent): sync workpaper discovery release docs (2c1d76a8)
 
@@ -528,6 +585,7 @@ This package is released as part of the aligned bilig library package set.
 - Manual override: no
 
 ## Fixes
+
 - fix(headless): make WorkPaper config rebuild rollback atomic (5306047f)
 - perf(formula): accelerate mixed criteria predicates (063d9edc)
 - fix(core): preserve formula binding timeout failures (c9dc9f48)
@@ -536,6 +594,7 @@ This package is released as part of the aligned bilig library package set.
 - fix(core): enforce operation evaluation budgets (332ef129)
 
 ## Internal runtime changes
+
 - docs(npm): canonicalize scoped runtime packages (4d9202f0)
 - test(headless): cover split WorkPaper surface base (4d7dc45c)
 - test(headless): allow whole-column criteria regression on CI (6b7ccebd)

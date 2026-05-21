@@ -390,7 +390,8 @@ requireIncludes(
   'packages/headless/AGENTS.md',
 )
 requireIncludes(headlessSkillNotes, 'name: bilig-workpaper', 'packages/headless/SKILL.md')
-requireIncludes(headlessSkillNotes, '"bilig-formula-clinic", "./reduced.xlsx"', 'packages/headless/SKILL.md')
+requireIncludes(headlessSkillNotes, '"bilig-formula-clinic"', 'packages/headless/SKILL.md')
+requireIncludes(headlessSkillNotes, '"./reduced.xlsx"', 'packages/headless/SKILL.md')
 requireIncludes(headlessSkillNotes, 'Do not trigger it for manual spreadsheet editing', 'packages/headless/SKILL.md')
 requireIncludes(headlessSkillNotes, '## Command Safety', 'packages/headless/SKILL.md')
 requireIncludes(headlessSkillNotes, 'argument array, not a shell-concatenated string', 'packages/headless/SKILL.md')

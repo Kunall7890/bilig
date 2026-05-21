@@ -129,6 +129,271 @@ describe('@bilig/workbook run api', () => {
     ])
   })
 
+  it('keeps non-readback checks planned for legacy adapters without a generic check verifier', async () => {
+    const model = defineModel({
+      name: 'run-legacy-check-model',
+
+      find(workbook) {
+        return {
+          result: workbook.findRange({ sheetName: 'Sheet1', address: 'C2' }),
+        }
+      },
+
+      checks({ refs, workbook }) {
+        return [workbook.check.exists(refs.result)]
+      },
+
+      actions: {
+        inspect({ refs }) {
+          void refs.result
+        },
+      },
+    })
+
+    const result = await runWorkbookAction(model, 'inspect', {
+      apply: () => ({ status: 'applied' }),
+    })
+
+    expect(result).toEqual({
+      status: 'done',
+      changed: [],
+      checks: [expect.objectContaining({ status: 'planned', kind: 'exists', message: 'Sheet1!C2 exists' })],
+    })
+  })
+
+  it('passes non-readback and custom checks through the generic check verifier', async () => {
+    const model = defineModel({
+      name: 'run-check-proof-model',
+
+      find(workbook) {
+        const table = workbook.findTable({ name: 'Inputs', headers: ['Amount', 'Rate'] })
+        return {
+          table,
+          result: workbook.findRange({ sheetName: 'Sheet1', address: 'C2' }),
+        }
+      },
+
+      checks({ refs, workbook }) {
+        return [
+          workbook.check.exists(refs.table),
+          workbook.check.noFormulaErrors(refs.result),
+          workbook.check.custom({
+            kind: 'consumerInvariant',
+            target: refs.result,
+            refs: [refs.table],
+            message: 'Consumer invariant holds',
+          }),
+        ]
+      },
+
+      actions: {
+        inspect({ refs }) {
+          void refs.table
+        },
+      },
+    })
+
+    const result = await runWorkbookAction(model, 'inspect', {
+      apply: () => ({ status: 'applied' }),
+      verifyChecks: (checks) => checks.map((checkResult) => ({ ...checkResult, status: 'passed' })),
+    })
+
+    expect(result).toEqual({
+      status: 'done',
+      changed: [],
+      checks: [
+        expect.objectContaining({ status: 'passed', kind: 'exists', message: 'Inputs exists' }),
+        expect.objectContaining({ status: 'passed', kind: 'noFormulaErrors', message: 'Sheet1!C2 has no formula errors' }),
+        expect.objectContaining({ status: 'passed', kind: 'consumerInvariant', message: 'Consumer invariant holds' }),
+      ],
+    })
+  })
+
+  it('returns failed when the generic check verifier marks a check failed', async () => {
+    const model = defineModel({
+      name: 'run-check-failure-model',
+
+      find(workbook) {
+        return {
+          result: workbook.findRange({ sheetName: 'Sheet1', address: 'C2' }),
+        }
+      },
+
+      checks({ refs, workbook }) {
+        return [
+          workbook.check.custom({
+            kind: 'consumerInvariant',
+            target: refs.result,
+            message: 'Consumer invariant holds',
+          }),
+        ]
+      },
+
+      actions: {
+        inspect({ refs }) {
+          void refs.result
+        },
+      },
+    })
+
+    const result = await runWorkbookAction(model, 'inspect', {
+      apply: () => ({ status: 'applied' }),
+      verifyChecks: (checks) => checks.map((checkResult) => ({ ...checkResult, status: 'failed' })),
+    })
+
+    expect(result).toEqual({
+      status: 'failed',
+      errors: [
+        {
+          code: 'check_failed',
+          message: 'Sheet1!C2 failed check consumerInvariant: Consumer invariant holds',
+        },
+      ],
+      checks: [
+        expect.objectContaining({
+          status: 'failed',
+          kind: 'consumerInvariant',
+          message: 'Consumer invariant holds',
+        }),
+      ],
+    })
+  })
+
+  it('rejects malformed generic check verifier output', async () => {
+    const model = defineModel({
+      name: 'run-malformed-check-proof-model',
+
+      find(workbook) {
+        return {
+          result: workbook.findRange({ sheetName: 'Sheet1', address: 'C2' }),
+        }
+      },
+
+      checks({ refs, workbook }) {
+        return [workbook.check.exists(refs.result)]
+      },
+
+      actions: {
+        inspect({ refs }) {
+          void refs.result
+        },
+      },
+    })
+
+    await expect(
+      runWorkbookAction(model, 'inspect', {
+        apply: () => ({ status: 'applied' }),
+        verifyChecks: () => [],
+      }),
+    ).resolves.toEqual({
+      status: 'failed',
+      errors: [
+        {
+          code: 'invalid_check_verification',
+          message: 'Check verifier returned 0 checks for 1 planned checks',
+        },
+      ],
+      checks: [expect.objectContaining({ status: 'planned', kind: 'exists' })],
+    })
+
+    await expect(
+      runWorkbookAction(model, 'inspect', {
+        apply: () => ({ status: 'applied' }),
+        verifyChecks: (checks) => checks.map((checkResult) => ({ ...checkResult, message: 'Changed message' })),
+      }),
+    ).resolves.toEqual({
+      status: 'failed',
+      errors: [
+        {
+          code: 'invalid_check_verification',
+          message: 'Check verifier changed the check contract at index 0 for exists',
+        },
+      ],
+      checks: [expect.objectContaining({ status: 'planned', kind: 'exists', message: 'Sheet1!C2 exists' })],
+    })
+  })
+
+  it('rejects in-place generic check verifier contract mutations', async () => {
+    const model = defineModel({
+      name: 'run-mutating-check-proof-model',
+
+      find(workbook) {
+        return {
+          result: workbook.findRange({ sheetName: 'Sheet1', address: 'C2' }),
+        }
+      },
+
+      checks({ refs, workbook }) {
+        return [workbook.check.exists(refs.result)]
+      },
+
+      actions: {
+        inspect({ refs }) {
+          void refs.result
+        },
+      },
+    })
+
+    const result = await runWorkbookAction(model, 'inspect', {
+      apply: () => ({ status: 'applied' }),
+      verifyChecks(checks) {
+        Object.defineProperty(first(checks), 'message', { value: 'Changed message' })
+        return checks
+      },
+    })
+
+    expect(result).toEqual({
+      status: 'failed',
+      errors: [
+        {
+          code: 'invalid_check_verification',
+          message: 'Check verifier changed the check contract at index 0 for exists',
+        },
+      ],
+      checks: [expect.objectContaining({ status: 'planned', kind: 'exists', message: 'Sheet1!C2 exists' })],
+    })
+  })
+
+  it('returns failed when the generic check verifier throws', async () => {
+    const model = defineModel({
+      name: 'run-throwing-check-proof-model',
+
+      find(workbook) {
+        return {
+          result: workbook.findRange({ sheetName: 'Sheet1', address: 'C2' }),
+        }
+      },
+
+      checks({ refs, workbook }) {
+        return [workbook.check.exists(refs.result)]
+      },
+
+      actions: {
+        inspect({ refs }) {
+          void refs.result
+        },
+      },
+    })
+
+    const result = await runWorkbookAction(model, 'inspect', {
+      apply: () => ({ status: 'applied' }),
+      verifyChecks() {
+        throw new Error('check backend unavailable')
+      },
+    })
+
+    expect(result).toEqual({
+      status: 'failed',
+      errors: [
+        {
+          code: 'check_verification_failed',
+          message: 'check backend unavailable',
+        },
+      ],
+      checks: [expect.objectContaining({ status: 'planned', kind: 'exists' })],
+    })
+  })
+
   it('does not apply when action planning fails', async () => {
     const model = valueModel()
     const apply = vi.fn<WorkbookRunAdapter['apply']>(() => ({ status: 'applied' }))

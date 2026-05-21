@@ -1,4 +1,19 @@
-import type { Page } from '@playwright/test'
+import { expect, type Page } from '@playwright/test'
+import {
+  PRODUCT_HEADER_HEIGHT,
+  getProductColumnLeft,
+  getProductColumnWidth,
+  getProductRowHeight,
+  getProductRowTop,
+} from './web-shell-product-grid-helpers.js'
+
+export async function countGreenFillPixelsInCell(page: Page, columnIndex: number, rowIndex: number): Promise<number> {
+  return await countFillPixelsInCell(page, columnIndex, rowIndex, 'green')
+}
+
+export async function countBlueFillPixelsInCell(page: Page, columnIndex: number, rowIndex: number): Promise<number> {
+  return await countFillPixelsInCell(page, columnIndex, rowIndex, 'blue')
+}
 
 export async function installTypeGpuCellReadbackHarness(page: Page): Promise<void> {
   await page.addInitScript(() => {
@@ -245,5 +260,70 @@ async function countFillReadbackPixelsInCell(page: Page, columnIndex: number, ro
       },
       targetColor: color,
     },
+  )
+}
+
+async function countFillPixelsInCell(page: Page, columnIndex: number, rowIndex: number, color: 'blue' | 'green'): Promise<number> {
+  const gridLocator = page.getByTestId('sheet-grid')
+  await expect(gridLocator).toBeVisible()
+  const grid = await gridLocator.boundingBox()
+  if (!grid) {
+    throw new Error('sheet grid is not visible')
+  }
+
+  const [columnLeft, columnWidth, rowTop, rowHeight, scroll] = await Promise.all([
+    getProductColumnLeft(page, columnIndex),
+    getProductColumnWidth(page, columnIndex),
+    getProductRowTop(page, rowIndex),
+    getProductRowHeight(page, rowIndex),
+    page.getByTestId('grid-scroll-viewport').evaluate((node) => ({
+      scrollLeft: node.scrollLeft,
+      scrollTop: node.scrollTop,
+    })),
+  ])
+  const buffer = await page.screenshot({
+    animations: 'disabled',
+    caret: 'hide',
+    clip: {
+      x: Math.round(grid.x + columnLeft - scroll.scrollLeft + 8),
+      y: Math.round(grid.y + PRODUCT_HEADER_HEIGHT + rowTop - scroll.scrollTop + 5),
+      width: Math.max(1, Math.round(columnWidth - 16)),
+      height: Math.max(1, Math.round(rowHeight - 10)),
+    },
+  })
+
+  return await page.evaluate(
+    async ({ dataUrl, targetColor }) => {
+      const image = await new Promise<HTMLImageElement>((resolve, reject) => {
+        const element = new Image()
+        element.addEventListener('load', () => resolve(element), { once: true })
+        element.addEventListener('error', () => reject(new Error('Failed to decode fill screenshot')), { once: true })
+        element.src = dataUrl
+      })
+      const canvas = document.createElement('canvas')
+      canvas.width = image.naturalWidth
+      canvas.height = image.naturalHeight
+      const context = canvas.getContext('2d')
+      if (!context) {
+        throw new Error('Missing 2d context for fill screenshot analysis')
+      }
+      context.drawImage(image, 0, 0)
+      const pixels = context.getImageData(0, 0, canvas.width, canvas.height).data
+      let matchingPixels = 0
+      for (let index = 0; index < pixels.length; index += 4) {
+        const alpha = pixels[index + 3] ?? 0
+        const red = pixels[index] ?? 255
+        const green = pixels[index + 1] ?? 0
+        const blue = pixels[index + 2] ?? 255
+        if (targetColor === 'green' && alpha > 220 && red < 110 && green > 135 && blue < 120) {
+          matchingPixels += 1
+        }
+        if (targetColor === 'blue' && alpha > 220 && red < 120 && green < 120 && blue > 135) {
+          matchingPixels += 1
+        }
+      }
+      return matchingPixels
+    },
+    { dataUrl: `data:image/png;base64,${buffer.toString('base64')}`, targetColor: color },
   )
 }
