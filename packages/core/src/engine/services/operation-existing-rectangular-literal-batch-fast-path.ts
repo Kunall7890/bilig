@@ -50,10 +50,10 @@ export function createOperationExistingRectangularLiteralBatchFastPath(args: Ope
     if (refs.length < 32 || (potentialNewCells ?? 0) !== 0 || args.state.workbook.hasPivots()) {
       return false
     }
-    args.materializeDeferredStructuralFormulaSources()
     if (args.state.formulas.size !== 0 || args.state.workbook.listDefinedNames().length !== 0) {
       return false
     }
+    args.materializeDeferredStructuralFormulaSources()
     const rectangle = collectExistingDenseNumericRectangle(args, refs)
     if (rectangle === null) {
       return false
