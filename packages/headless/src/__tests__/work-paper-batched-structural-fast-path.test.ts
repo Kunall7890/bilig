@@ -376,6 +376,43 @@ describe('work paper batched structural fast path', () => {
     }
   })
 
+  it('keeps small appended aggregate matrices on the JS direct path', () => {
+    const workbook = WorkPaper.buildFromSheets({
+      Data: [
+        [1, 2, 3, 4, '=SUM(A1:D1)'],
+        [2, 4, 6, 8, '=SUM(A2:D2)'],
+      ],
+    })
+    const sheetId = workbook.getSheetId('Data')!
+    const appendCount = 100
+    const inputCols = 4
+    const rows = Array.from({ length: appendCount }, (_entry, index) => {
+      const rowNumber = index + 3
+      return [rowNumber, rowNumber * 2, rowNumber * 3, rowNumber * 4, `=SUM(A${rowNumber}:D${rowNumber})`]
+    })
+
+    workbook.resetPerformanceCounters()
+    const changes = workbook.batch(() => {
+      workbook.addRows(sheetId, 2, appendCount)
+      workbook.setCellContents(cell(sheetId, 2, 0), rows)
+    })
+
+    expect(changes).toHaveLength(appendCount * (inputCols + 1))
+    expect(hasDeferredTrackedIndexChanges(changes)).toBe(true)
+    expect(workbook.getCellValue(cell(sheetId, 2, 4))).toEqual({ tag: ValueTag.Number, value: 30 })
+    expect(workbook.getCellValue(cell(sheetId, appendCount + 1, 4))).toEqual({
+      tag: ValueTag.Number,
+      value: (appendCount + 2) * 10,
+    })
+    expect(workbook.getPerformanceCounters()).toMatchObject({
+      directFormulaKernelSyncOnlyRecalcSkips: 1,
+      kernelSyncOnlyRecalcSkips: 1,
+      nativeDirectAggregatePrefixEvaluations: 0,
+      regionQueryIndexBuilds: 0,
+      topoRepairs: 0,
+    })
+  })
+
   it('bulk-binds fresh appended direct-scalar formula matrices after structural edits', () => {
     const workbook = WorkPaper.buildFromSheets({
       Data: [
