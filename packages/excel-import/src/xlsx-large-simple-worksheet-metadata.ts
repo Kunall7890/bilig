@@ -222,20 +222,41 @@ export function appendRowMetadata(
   ) {
     return
   }
-  metadata.push({
-    start: index,
-    count: 1,
-    ...(size !== null ? { size } : {}),
-    ...(input.height !== null ? { xlsxHeight: input.height } : {}),
-    ...(input.styleIndex !== null ? { styleIndex: input.styleIndex } : {}),
-    ...(input.hidden !== null ? { hidden: input.hidden } : {}),
-    ...(input.customFormat !== null ? { customFormat: input.customFormat } : {}),
-    ...(input.customHeight !== null ? { customHeight: input.customHeight } : {}),
-    ...(input.outlineLevel !== null ? { outlineLevel: input.outlineLevel } : {}),
-    ...(input.collapsed !== null ? { collapsed: input.collapsed } : {}),
-    ...(input.thickTop !== null ? { thickTop: input.thickTop } : {}),
-    ...(input.thickBottom !== null ? { thickBottom: input.thickBottom } : {}),
-  })
+  if (
+    !tryExtendLastAxisMetadataRange(
+      metadata,
+      index,
+      1,
+      size ?? undefined,
+      input.height ?? undefined,
+      undefined,
+      input.styleIndex ?? undefined,
+      input.hidden ?? undefined,
+      undefined,
+      input.customFormat ?? undefined,
+      input.customHeight ?? undefined,
+      undefined,
+      input.outlineLevel ?? undefined,
+      input.collapsed ?? undefined,
+      input.thickTop ?? undefined,
+      input.thickBottom ?? undefined,
+    )
+  ) {
+    metadata.push({
+      start: index,
+      count: 1,
+      ...(size !== null ? { size } : {}),
+      ...(input.height !== null ? { xlsxHeight: input.height } : {}),
+      ...(input.styleIndex !== null ? { styleIndex: input.styleIndex } : {}),
+      ...(input.hidden !== null ? { hidden: input.hidden } : {}),
+      ...(input.customFormat !== null ? { customFormat: input.customFormat } : {}),
+      ...(input.customHeight !== null ? { customHeight: input.customHeight } : {}),
+      ...(input.outlineLevel !== null ? { outlineLevel: input.outlineLevel } : {}),
+      ...(input.collapsed !== null ? { collapsed: input.collapsed } : {}),
+      ...(input.thickTop !== null ? { thickTop: input.thickTop } : {}),
+      ...(input.thickBottom !== null ? { thickBottom: input.thickBottom } : {}),
+    })
+  }
   if ((size !== null || input.hidden === true) && entries.length < maxExpandedAxisMetadataEntries) {
     entries.push({
       id: `row:${String(index)}`,
@@ -281,19 +302,40 @@ export function appendColumnMetadata(
   ) {
     return
   }
-  metadata.push({
-    start,
-    count,
-    ...(size !== null ? { size } : {}),
-    ...(input.width !== null ? { xlsxWidth: input.width } : {}),
-    ...(input.styleIndex !== null ? { styleIndex: input.styleIndex } : {}),
-    ...(input.hidden !== null ? { hidden: input.hidden } : {}),
-    ...(input.customWidth !== null ? { customWidth: input.customWidth } : {}),
-    ...(input.customFormat !== null ? { customFormat: input.customFormat } : {}),
-    ...(input.bestFit !== null ? { bestFit: input.bestFit } : {}),
-    ...(input.outlineLevel !== null ? { outlineLevel: input.outlineLevel } : {}),
-    ...(input.collapsed !== null ? { collapsed: input.collapsed } : {}),
-  })
+  if (
+    !tryExtendLastAxisMetadataRange(
+      metadata,
+      start,
+      count,
+      size ?? undefined,
+      undefined,
+      input.width ?? undefined,
+      input.styleIndex ?? undefined,
+      input.hidden ?? undefined,
+      input.customWidth ?? undefined,
+      input.customFormat ?? undefined,
+      undefined,
+      input.bestFit ?? undefined,
+      input.outlineLevel ?? undefined,
+      input.collapsed ?? undefined,
+      undefined,
+      undefined,
+    )
+  ) {
+    metadata.push({
+      start,
+      count,
+      ...(size !== null ? { size } : {}),
+      ...(input.width !== null ? { xlsxWidth: input.width } : {}),
+      ...(input.styleIndex !== null ? { styleIndex: input.styleIndex } : {}),
+      ...(input.hidden !== null ? { hidden: input.hidden } : {}),
+      ...(input.customWidth !== null ? { customWidth: input.customWidth } : {}),
+      ...(input.customFormat !== null ? { customFormat: input.customFormat } : {}),
+      ...(input.bestFit !== null ? { bestFit: input.bestFit } : {}),
+      ...(input.outlineLevel !== null ? { outlineLevel: input.outlineLevel } : {}),
+      ...(input.collapsed !== null ? { collapsed: input.collapsed } : {}),
+    })
+  }
   if ((size !== null || input.hidden === true) && entries.length + count <= maxExpandedAxisMetadataEntries) {
     for (let column = start; column < start + count; column += 1) {
       entries.push({
@@ -304,6 +346,49 @@ export function appendColumnMetadata(
       })
     }
   }
+}
+
+function tryExtendLastAxisMetadataRange(
+  metadata: WorkbookAxisMetadataSnapshot[],
+  start: number,
+  count: number,
+  size: number | undefined,
+  xlsxHeight: number | undefined,
+  xlsxWidth: number | undefined,
+  styleIndex: number | undefined,
+  hidden: boolean | undefined,
+  customWidth: boolean | undefined,
+  customFormat: boolean | undefined,
+  customHeight: boolean | undefined,
+  bestFit: boolean | undefined,
+  outlineLevel: number | undefined,
+  collapsed: boolean | undefined,
+  thickTop: boolean | undefined,
+  thickBottom: boolean | undefined,
+): boolean {
+  const previous = metadata[metadata.length - 1]
+  if (
+    previous &&
+    previous.start + previous.count === start &&
+    previous.size === size &&
+    previous.xlsxHeight === xlsxHeight &&
+    previous.xlsxWidth === xlsxWidth &&
+    previous.styleIndex === styleIndex &&
+    previous.hidden === hidden &&
+    previous.customWidth === customWidth &&
+    previous.customFormat === customFormat &&
+    previous.customHeight === customHeight &&
+    previous.bestFit === bestFit &&
+    previous.outlineLevel === outlineLevel &&
+    previous.collapsed === collapsed &&
+    previous.thickTop === thickTop &&
+    previous.thickBottom === thickBottom
+  ) {
+    const mutablePrevious = previous as { count: number }
+    mutablePrevious.count += count
+    return true
+  }
+  return false
 }
 
 export function readLargeSimpleSheetFormatPrTag(tag: string): WorkbookSheetFormatPrSnapshot | undefined {

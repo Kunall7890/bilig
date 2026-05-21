@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 
 import {
   appendLargeSimpleColumnMetadataFromBytes,
+  appendLargeSimpleRowMetadataTagFromBytes,
   readLargeSimpleDrawingRelationshipIdTagFromBytes,
   readLargeSimpleSheetFormatPrTagFromBytes,
   readLargeSimpleTableRelationshipIdsFromBytes,
@@ -36,6 +37,36 @@ describe('large simple metadata byte scan', () => {
         outlineLevel: 1,
       },
     ])
+  })
+
+  it('coalesces contiguous repeated row and column metadata while scanning bytes', () => {
+    const rowMetadata: Parameters<typeof appendLargeSimpleRowMetadataTagFromBytes>[1] = []
+    const rowEntries: Parameters<typeof appendLargeSimpleRowMetadataTagFromBytes>[0] = []
+    for (const row of [
+      '<row r="1" s="2" customFormat="1"/>',
+      '<row r="2" s="2" customFormat="1"/>',
+      '<row r="3" s="3" customFormat="1"/>',
+    ]) {
+      const bytes = encoder.encode(row)
+      appendLargeSimpleRowMetadataTagFromBytes(rowEntries, rowMetadata, bytes, '<row'.length, bytes.byteLength - 1)
+    }
+
+    expect(rowEntries).toEqual([])
+    expect(rowMetadata).toEqual([
+      { start: 0, count: 2, styleIndex: 2, customFormat: true },
+      { start: 2, count: 1, styleIndex: 3, customFormat: true },
+    ])
+
+    const columnBytes = encoder.encode(
+      '<cols><col min="1" max="1" style="4" customFormat="1"/><col min="2" max="3" style="4" customFormat="1"/></cols>',
+    )
+    const columnEntries: Parameters<typeof appendLargeSimpleColumnMetadataFromBytes>[0] = []
+    const columnMetadata: Parameters<typeof appendLargeSimpleColumnMetadataFromBytes>[1] = []
+
+    appendLargeSimpleColumnMetadataFromBytes(columnEntries, columnMetadata, columnBytes, 0, columnBytes.byteLength)
+
+    expect(columnEntries).toEqual([])
+    expect(columnMetadata).toEqual([{ start: 0, count: 3, styleIndex: 4, customFormat: true }])
   })
 
   it('parses sheet format, drawing, and table relationship metadata from bytes', () => {

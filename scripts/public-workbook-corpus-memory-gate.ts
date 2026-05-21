@@ -33,6 +33,7 @@ const mib = 1024 * 1024
 export const memoryGateRssBudgets = {
   publicWorkbookMaxRssBytes: 112 * mib,
   synthetic750kMaxRssBytes: 112 * mib,
+  syntheticRepeatedRowMetadataMaxRssBytes: 112 * mib,
   syntheticRepeatedStringMaxRssBytes: 112 * mib,
   syntheticDuplicateSharedStringMaxRssBytes: 112 * mib,
   syntheticMixedRichSharedStringMaxRssBytes: 112 * mib,
@@ -42,6 +43,7 @@ export const memoryGateRssBudgets = {
 const {
   publicWorkbookMaxRssBytes,
   synthetic750kMaxRssBytes,
+  syntheticRepeatedRowMetadataMaxRssBytes,
   syntheticRepeatedStringMaxRssBytes,
   syntheticDuplicateSharedStringMaxRssBytes,
   syntheticMixedRichSharedStringMaxRssBytes,
@@ -73,6 +75,7 @@ async function main(): Promise<void> {
     results.push(...(await runPublicWorkbookGates({ cacheDir, manifestPath, requirePublic })))
   }
   results.push(await runSynthetic750kGate(syntheticCacheDir))
+  results.push(await runSyntheticRepeatedRowMetadataGate(syntheticCacheDir))
   results.push(await runSyntheticRepeatedStringGate(syntheticCacheDir))
   results.push(await runSyntheticDuplicateSharedStringGate(syntheticCacheDir))
   results.push(await runSyntheticMixedRichSharedStringGate(syntheticCacheDir))
@@ -87,6 +90,7 @@ async function main(): Promise<void> {
         targets: {
           publicWorkbookMaxRssBytes,
           synthetic750kMaxRssBytes,
+          syntheticRepeatedRowMetadataMaxRssBytes,
           syntheticRepeatedStringMaxRssBytes,
           syntheticDuplicateSharedStringMaxRssBytes,
           syntheticMixedRichSharedStringMaxRssBytes,
@@ -142,6 +146,20 @@ async function runSynthetic750kGate(cacheDir: string): Promise<MemoryGateResult>
       artifactId: artifact.id,
       label: artifact.fileName,
       maxRssBytes: synthetic750kMaxRssBytes,
+    },
+    artifact,
+    cacheDir,
+    join(cacheDir, 'manifest.json'),
+  )
+}
+
+async function runSyntheticRepeatedRowMetadataGate(cacheDir: string): Promise<MemoryGateResult> {
+  const artifact = writeSyntheticRepeatedRowMetadataWorkbook(cacheDir)
+  return runGateTarget(
+    {
+      artifactId: artifact.id,
+      label: artifact.fileName,
+      maxRssBytes: syntheticRepeatedRowMetadataMaxRssBytes,
     },
     artifact,
     cacheDir,
@@ -325,6 +343,29 @@ function writeSynthetic750kWorkbook(cacheDir: string): PublicWorkbookArtifact {
       `<sheetData>${rows.join('')}</sheetData>`,
       '</worksheet>',
     ].join(''),
+  })
+}
+
+function writeSyntheticRepeatedRowMetadataWorkbook(cacheDir: string): PublicWorkbookArtifact {
+  const rowCount = 125_000
+  const rows: string[] = []
+  for (let row = 1; row <= rowCount; row += 1) {
+    rows.push(`<row r="${String(row)}" s="1" customFormat="1"><c r="A${String(row)}"><v>${String(row)}</v></c></row>`)
+  }
+  return writeSyntheticWorkbookArtifact(cacheDir, {
+    id: 'synthetic-repeated-row-metadata-memory-v4',
+    fileName: 'synthetic-repeated-row-metadata-memory-v4.xlsx',
+    sourceId: 'synthetic-repeated-row-metadata-memory-v4',
+    worksheetXml: [
+      '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>',
+      '<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">',
+      `<dimension ref="A1:A${String(rowCount)}"/>`,
+      `<sheetData>${rows.join('')}</sheetData>`,
+      '</worksheet>',
+    ].join(''),
+    extraEntries: {
+      'docProps/padding.bin': deterministicBytes(1_200_000),
+    },
   })
 }
 
