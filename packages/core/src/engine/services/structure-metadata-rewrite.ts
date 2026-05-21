@@ -39,6 +39,14 @@ type WorkbookTableColumnRecord = NonNullable<WorkbookTableRecord['columns']>[num
 
 const METADATA_CELL_REF_RE = /^\$?([A-Z]+)\$?([1-9]\d*)$/i
 
+function quoteFormulaSheetName(sheetName: string): string {
+  return /^[A-Za-z0-9_.$]+$/u.test(sheetName) ? sheetName : `'${sheetName.replaceAll("'", "''")}'`
+}
+
+function invalidDefinedNameReferenceFormula(sheetName: string): { readonly kind: 'formula'; readonly formula: string } {
+  return { kind: 'formula', formula: `=${quoteFormulaSheetName(sheetName)}!#REF!` }
+}
+
 export function rewriteDefinedNamesForStructuralTransform(
   args: StructureMetadataRewriteArgs,
   sheetName: string,
@@ -106,7 +114,7 @@ export function rewriteDefinedNamesForStructuralTransform(
         }
         const nextAddress = rewriteAddressForStructuralTransform(record.value.address, transform)
         if (!nextAddress) {
-          workbook.deleteDefinedName(record.name, record.scopeSheetName)
+          workbook.setDefinedName(record.name, invalidDefinedNameReferenceFormula(record.value.sheetName), record.scopeSheetName)
           changedNames.add(normalizeDefinedName(record.name))
           return
         }
@@ -129,7 +137,7 @@ export function rewriteDefinedNamesForStructuralTransform(
         }
         const nextRange = rewriteMetadataRangeForStructuralTransform(record.value, transform)
         if (!nextRange) {
-          workbook.deleteDefinedName(record.name, record.scopeSheetName)
+          workbook.setDefinedName(record.name, invalidDefinedNameReferenceFormula(record.value.sheetName), record.scopeSheetName)
           changedNames.add(normalizeDefinedName(record.name))
           return
         }
