@@ -109,6 +109,23 @@ export function releaseLazyXlsxZipSource(zip: XlsxZipEntries): boolean {
   return true
 }
 
+export function releaseInflatedLazyXlsxZipEntries(zip: XlsxZipEntries): number {
+  const metadata = (zip as XlsxZipEntriesWithCentralDirectorySource)[xlsxZipCentralDirectorySourceSymbol]
+  if (!metadata?.source) {
+    return 0
+  }
+  let releasedByteLength = 0
+  for (const [path, entry] of metadata.entriesByPath) {
+    const descriptor = Object.getOwnPropertyDescriptor(zip, path)
+    if (!descriptor || !('value' in descriptor) || !(descriptor.value instanceof Uint8Array)) {
+      continue
+    }
+    releasedByteLength += descriptor.value.byteLength
+    defineLazyZipEntry(zip, metadata, entry)
+  }
+  return releasedByteLength
+}
+
 export function readLazyXlsxZipSource(zip: XlsxZipEntries): Uint8Array | undefined {
   const metadata = (zip as XlsxZipEntriesWithCentralDirectorySource)[xlsxZipCentralDirectorySourceSymbol]
   const source = metadata?.source

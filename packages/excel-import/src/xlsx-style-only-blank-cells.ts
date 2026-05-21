@@ -246,6 +246,10 @@ export function prepareSheetJsParserXlsxBytes(
   zip: Unzipped,
   options: PrepareSheetJsParserXlsxBytesOptions = {},
 ): Uint8Array {
+  return prepareSheetJsParserXlsxBytesFromZip(zip, options) ?? data
+}
+
+export function prepareSheetJsParserXlsxBytesFromZip(zip: Unzipped, options: PrepareSheetJsParserXlsxBytesOptions = {}): Uint8Array | null {
   const shouldStripBlankCells = shouldStripStyleOnlyBlankCells(zip, options)
   let outputZip: Unzipped | null = hasSheetJsParserIgnoredPackagePart(zip, options) ? cloneZipForSheetJsParser(zip, options) : null
   for (const path of Object.keys(zip)) {
@@ -264,5 +268,5 @@ export function prepareSheetJsParserXlsxBytes(
     outputZip ??= cloneZipForSheetJsParser(zip, options)
     outputZip[path] = strToU8(strippedWorksheetXml)
   }
-  return outputZip ? zipSync(outputZip) : data
+  return outputZip ? zipSync(outputZip) : null
 }

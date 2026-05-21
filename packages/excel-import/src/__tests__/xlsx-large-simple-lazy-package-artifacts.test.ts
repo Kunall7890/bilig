@@ -1,5 +1,6 @@
-import { strToU8, zipSync } from 'fflate'
+import { strToU8, unzipSync, zipSync } from 'fflate'
 import { describe, expect, it } from 'vitest'
+import * as XLSX from 'xlsx'
 
 import { tryImportLargeSimpleXlsx } from '../xlsx-large-simple-import.js'
 import { importXlsxFromZipByteSource } from '../xlsx-byte-source-import.js'
@@ -73,6 +74,37 @@ describe('large simple XLSX lazy package artifacts', () => {
     expect(imported.snapshot.workbook.metadata?.properties).toEqual([{ key: 'scenario', value: 'PowerPivot smoke' }])
     expect(imported.snapshot.workbook.metadata?.documentPropertyArtifacts?.custom?.path).toBe('docProps/custom.xml')
     expect(imported.snapshot.workbook.metadata?.dataModelArtifacts?.parts).toHaveLength(1)
+    expect(source.fullReadCount).toBe(0)
+  })
+
+  it('uses a prepared parser ZIP for verifier-only fallback imports with large package artifacts', () => {
+    const modelBytes = deterministicBytes(512_000)
+    const workbook = XLSX.utils.book_new()
+    XLSX.utils.book_append_sheet(workbook, XLSX.utils.aoa_to_sheet([[7]]), 'Data')
+    const zip = unzipSync(XLSX.write(workbook, { bookType: 'xlsx', type: 'buffer' }))
+    zip['xl/_rels/workbook.xml.rels'] = strToU8(
+      new TextDecoder()
+        .decode(zip['xl/_rels/workbook.xml.rels'])
+        .replace(
+          '</Relationships>',
+          '<Relationship Id="rIdModel" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/powerPivotData" Target="model/item.data"/></Relationships>',
+        ),
+    )
+    zip['xl/model/item.data'] = modelBytes
+    zip['xl/threadedComments/threadedComment1.xml'] = strToU8(
+      '<threadedComments xmlns="http://schemas.microsoft.com/office/spreadsheetml/2018/threadedcomments"/>',
+    )
+    const bytes = zipSync(zip)
+    const source = new CountingXlsxZipByteSource(bytes)
+
+    const imported = importXlsxFromZipByteSource(source, 'fallback-byte-source-data-model.xlsx', {
+      attachSourceReaderForUntouchedExport: false,
+    })
+    const dataModelPart = imported.snapshot.workbook.metadata?.dataModelArtifacts?.parts[0]
+
+    expect(imported.snapshot.sheets[0]?.cells.map(({ address, value }) => ({ address, value }))).toEqual([{ address: 'A1', value: 7 }])
+    expect(dataModelPart?.path).toBe('xl/model/item.data')
+    expect(decodeBase64(dataModelPart?.dataBase64 ?? '')).toEqual(modelBytes)
     expect(source.fullReadCount).toBe(0)
   })
 

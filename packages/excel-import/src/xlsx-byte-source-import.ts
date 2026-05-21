@@ -1,5 +1,6 @@
 import type { ImportedWorkbook } from './workbook-import-result.js'
-import { importXlsx } from './index.js'
+import { importXlsx, importXlsxFromPreparedSheetJsParserData } from './index.js'
+import { XLSX_CONTENT_TYPE } from './workbook-import-content-types.js'
 import {
   assertXlsxInspectionWithinMaterializationLimits,
   denseSheetJsByteThreshold,
@@ -15,9 +16,11 @@ import {
   shouldBypassLargeSimpleByteThresholdForPackageArtifacts,
 } from './xlsx-large-simple-package-artifact-threshold.js'
 import { attachImportedXlsxSourceReader, detachImportedXlsxSourceBytes } from './xlsx-source-bytes.js'
+import { prepareSheetJsParserXlsxBytesFromZip } from './xlsx-style-only-blank-cells.js'
 import { readXlsxZipEntriesLazyFromByteSource, type XlsxZipByteSource } from './xlsx-zip.js'
 
 const largeCalcChainStreamingByteThreshold = 5_000_000
+const sheetJsBlankStyleStripMinCellCount = 1_000
 
 export interface XlsxByteSourceImportOptions extends XlsxImportOptions {
   readonly attachSourceReaderForUntouchedExport?: boolean
@@ -80,7 +83,28 @@ export function importXlsxFromZipByteSource(
     }
     return largeSimpleImport
   }
+  if (options.attachSourceReaderForUntouchedExport === false) {
+    const preparedFallback = importXlsxFromPreparedByteSourceFallback(source, fileName)
+    if (preparedFallback) {
+      return preparedFallback
+    }
+  }
   return importXlsxFromMaterializedSource(source, fileName, options)
+}
+
+function importXlsxFromPreparedByteSourceFallback(source: XlsxZipByteSource, fileName: string): ImportedWorkbook | null {
+  const workbookZip = readXlsxZipEntriesLazyFromByteSource(borrowXlsxZipByteSource(source))
+  if (!workbookZip) {
+    return null
+  }
+  const parserData = prepareSheetJsParserXlsxBytesFromZip(workbookZip, {
+    minBlankCellCount: sheetJsBlankStyleStripMinCellCount,
+    omitParserIgnoredPackageParts: true,
+  })
+  if (!parserData) {
+    return null
+  }
+  return importXlsxFromPreparedSheetJsParserData(parserData, fileName, XLSX_CONTENT_TYPE, workbookZip, source.byteLength)
 }
 
 function importXlsxFromMaterializedSource(

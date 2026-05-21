@@ -100,7 +100,7 @@ import { releaseOwnedXlsxSourceBytes, type OwnedXlsxSourceBytes } from './xlsx-o
 import { attachImportedXlsxSourceBytes } from './xlsx-source-bytes.js'
 import { worksheetCellAt, worksheetCellEntries, worksheetCellEntriesAtAddresses } from './xlsx-worksheet-cells.js'
 import { readImportedWorksheetTextValues } from './xlsx-worksheet-text-values.js'
-import { readLazyXlsxZipSource, readXlsxZipEntries, readXlsxZipEntriesLazy } from './xlsx-zip.js'
+import { readLazyXlsxZipSource, readXlsxZipEntries, readXlsxZipEntriesLazy, releaseInflatedLazyXlsxZipEntries } from './xlsx-zip.js'
 import { importCsv } from './csv-import.js'
 import {
   attachImportedRuntimeCoordinates,
@@ -293,7 +293,40 @@ function importSheetJsWorkbook(
         omitParserIgnoredPackageParts: true,
       })
     : data
-  const workbook = XLSX.read(parserData, {
+  releaseFallbackInflatedZipEntries(workbookZip)
+  const workbook = readSheetJsWorkbookFromParserData(parserData, denseSheetJsParse)
+  return importParsedSheetJsWorkbook({
+    workbook,
+    fileName,
+    contentType,
+    workbookZip,
+    fallbackArtifactSource: parserData,
+    sourceFileSizeBytes: data.byteLength,
+    ...(sourceBytesForUntouchedExport ? { sourceBytesForUntouchedExport } : {}),
+  })
+}
+
+export function importXlsxFromPreparedSheetJsParserData(
+  parserData: Uint8Array,
+  fileName: string,
+  contentType: ExcelWorkbookImportContentType,
+  workbookZip: Unzipped | null,
+  sourceFileSizeBytes: number,
+): ImportedWorkbook {
+  releaseFallbackInflatedZipEntries(workbookZip)
+  const workbook = readSheetJsWorkbookFromParserData(parserData, false)
+  return importParsedSheetJsWorkbook({
+    workbook,
+    fileName,
+    contentType,
+    workbookZip,
+    fallbackArtifactSource: parserData,
+    sourceFileSizeBytes,
+  })
+}
+
+function readSheetJsWorkbookFromParserData(parserData: Uint8Array, denseSheetJsParse: boolean): XLSX.WorkBook {
+  return XLSX.read(parserData, {
     type: 'array',
     cellFormula: true,
     cellNF: true,
@@ -304,6 +337,18 @@ function importSheetJsWorkbook(
     bookVBA: true,
     dense: denseSheetJsParse,
   })
+}
+
+function importParsedSheetJsWorkbook(args: {
+  readonly workbook: XLSX.WorkBook
+  readonly fileName: string
+  readonly contentType: ExcelWorkbookImportContentType
+  readonly workbookZip: Unzipped | null
+  readonly fallbackArtifactSource: Uint8Array
+  readonly sourceFileSizeBytes: number
+  readonly sourceBytesForUntouchedExport?: Uint8Array
+}): ImportedWorkbook {
+  const { workbook, fileName, contentType, workbookZip, fallbackArtifactSource, sourceFileSizeBytes, sourceBytesForUntouchedExport } = args
   const workbookName = normalizeWorkbookName(fileName)
   const sheetPathsByName = workbookSheetPathsByName(workbook)
   const fallbackSheetPaths = workbookDirectorySheetPaths(workbook)
@@ -314,7 +359,7 @@ function importSheetJsWorkbook(
     warnings.push(externalWorkbookReferencesWarning)
   }
   const styleArtifactSource =
-    contentType === XLSX_CONTENT_TYPE || contentType === XLSM_CONTENT_TYPE ? (workbookZip ?? parserData) : undefined
+    contentType === XLSX_CONTENT_TYPE || contentType === XLSM_CONTENT_TYPE ? (workbookZip ?? fallbackArtifactSource) : undefined
   const importedStyleArtifacts = readImportedWorkbookStyleArtifacts(workbook, workbook.SheetNames, styleArtifactSource)
   const baseStyleCandidates = collectStyleCandidateAddresses(workbook, workbook.SheetNames, largeWorkbookStyleCandidateThreshold)
   const styleCandidates = addStyleArtifactCandidateAddresses(
@@ -389,7 +434,7 @@ function importSheetJsWorkbook(
   const importedSortsBySheet = workbookZip ? readImportedWorkbookSorts(workbookZip, workbook.SheetNames) : new Map()
   const importedValidationsBySheet = workbookZip ? readImportedWorkbookDataValidations(workbookZip, workbook.SheetNames) : new Map()
   const conditionalFormatArtifactSource =
-    contentType === XLSX_CONTENT_TYPE || contentType === XLSM_CONTENT_TYPE ? (workbookZip ?? data) : workbookZip
+    contentType === XLSX_CONTENT_TYPE || contentType === XLSM_CONTENT_TYPE ? (workbookZip ?? fallbackArtifactSource) : workbookZip
   const importedConditionalFormatsBySheet = conditionalFormatArtifactSource
     ? readImportedWorkbookConditionalFormats(conditionalFormatArtifactSource, workbook.SheetNames)
     : new Map()
@@ -754,6 +799,7 @@ function importSheetJsWorkbook(
         ...(importedCalculationSettings ? { calculationSettings: importedCalculationSettings } : {}),
       })
     : undefined
+  releaseFallbackInflatedZipEntries(workbookZip)
 
   const shouldUseCachedFormulaOpenModeForImportedWorkbook = shouldUseCachedFormulaOpenMode({
     cachedFormulaValueCount,
@@ -824,12 +870,19 @@ function importSheetJsWorkbook(
     preview: createWorkbookPreview({
       contentType,
       fileName,
-      fileSizeBytes: data.byteLength,
+      fileSizeBytes: sourceFileSizeBytes,
       workbookName,
       sheets: previewSheets,
       warnings,
     }),
   }
+}
+
+function releaseFallbackInflatedZipEntries(workbookZip: Unzipped | null): void {
+  if (!workbookZip) {
+    return
+  }
+  releaseInflatedLazyXlsxZipEntries(workbookZip)
 }
 
 export function inspectXlsx(bytes: Uint8Array | ArrayBuffer, fileName: string): XlsxHeadlessInspectResult | null {
