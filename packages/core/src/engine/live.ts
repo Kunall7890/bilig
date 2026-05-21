@@ -466,6 +466,25 @@ export function createEngineServiceRuntime(args: {
     captureStoredCellOps: (cellIndex, sheetName, address, sourceSheetName, sourceAddress) =>
       cellState.captureStoredCellOpsNow(cellIndex, sheetName, address, sourceSheetName, sourceAddress),
     clearOwnedSpill: (cellIndex) => support.clearOwnedSpillNow(cellIndex),
+    writeTableHeaderCell: (sheetName, row, col, value) => {
+      const sheetId = args.state.workbook.getSheet(sheetName)?.id
+      if (sheetId === undefined) {
+        return undefined
+      }
+      const { cellIndex } = args.state.workbook.ensureCellAt(sheetId, row, col)
+      const currentValue = args.state.workbook.cellStore.getValue(cellIndex, (id) => args.state.strings.get(id))
+      const currentFlags = args.state.workbook.cellStore.flags[cellIndex] ?? 0
+      const nextFlags =
+        currentFlags & ~(CellFlags.HasFormula | CellFlags.JsOnly | CellFlags.InCycle | CellFlags.SpillChild | CellFlags.PivotOutput)
+      if (currentValue.tag === ValueTag.String && currentValue.value === value && currentFlags === nextFlags) {
+        return undefined
+      }
+      const stringId = args.state.strings.intern(value)
+      binding.clearFormulaNow(cellIndex)
+      args.state.workbook.cellStore.setValue(cellIndex, { tag: ValueTag.String, value, stringId }, stringId)
+      args.state.workbook.cellStore.flags[cellIndex] = nextFlags
+      return cellIndex
+    },
     removeFormula: (cellIndex) => binding.clearFormulaNow(cellIndex),
     clearOwnedPivot: (pivotRecord) => getPivot().clearOwnedPivotNow(pivotRecord),
     refreshRangeDependencies: (rangeIndices) => binding.refreshRangeDependenciesNow(rangeIndices),

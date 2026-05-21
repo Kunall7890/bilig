@@ -19,6 +19,15 @@ type MetadataRangeLike = {
   readonly endAddress: string
 }
 
+interface StructuralTableHeaderCellWrite {
+  readonly sheetName: string
+  readonly row: number
+  readonly col: number
+  readonly value: string
+}
+
+type WorkbookTableColumnRecord = NonNullable<WorkbookTableRecord['columns']>[number]
+
 const METADATA_CELL_REF_RE = /^\$?([A-Z]+)\$?([1-9]\d*)$/i
 
 export function rewriteDefinedNamesForStructuralTransform(
@@ -121,21 +130,23 @@ export function rewriteWorkbookMetadataForStructuralTransform(
   args: StructureMetadataRewriteArgs,
   sheetName: string,
   transform: StructuralAxisTransform,
-): { changedTableNames: Set<string> } {
+): { changedTableNames: Set<string>; tableHeaderCellWrites: StructuralTableHeaderCellWrite[] } {
   const workbook = args.state.workbook
   const changedTableNames = new Set<string>()
+  const tableHeaderCellWrites: StructuralTableHeaderCellWrite[] = []
   workbook.listTables().forEach((table) => {
     if (table.sheetName !== sheetName) {
       return
     }
-    const nextTable = rewriteTableForStructuralTransform(table, transform)
-    if (!nextTable) {
+    const rewrite = rewriteTableForStructuralTransform(table, transform)
+    if (!rewrite) {
       changedTableNames.add(table.name)
       workbook.deleteTable(table.name)
       return
     }
     changedTableNames.add(table.name)
-    workbook.setTable(nextTable)
+    tableHeaderCellWrites.push(...rewrite.headerCellWrites)
+    workbook.setTable(rewrite.table)
   })
   const rewrittenMergeRanges: CellRangeRef[] = []
   workbook.listMergeRanges(sheetName).forEach((merge) => {
@@ -334,7 +345,7 @@ export function rewriteWorkbookMetadataForStructuralTransform(
       address: nextAddress,
     })
   })
-  return { changedTableNames }
+  return { changedTableNames, tableHeaderCellWrites }
 }
 
 function rewriteMetadataRangeForStructuralTransform<T extends MetadataRangeLike>(
@@ -360,13 +371,14 @@ function withRewrittenMetadataRange<T extends MetadataRangeLike>(range: T, rewri
 function rewriteTableForStructuralTransform(
   table: WorkbookTableRecord,
   transform: StructuralAxisTransform,
-): WorkbookTableRecord | undefined {
-  const range = rewriteMetadataRangeForStructuralTransform(table, transform)
+): { table: WorkbookTableRecord; headerCellWrites: StructuralTableHeaderCellWrite[] } | undefined {
+  const rewrittenRange = rewriteMetadataRangeForStructuralTransform(table, transform)
+  const range = rewrittenRange ? ensureMinimumTableDataBodyRange(rewrittenRange, table) : undefined
   if (!range) {
     return undefined
   }
   if (transform.axis !== 'column') {
-    return range
+    return { table: range, headerCellWrites: [] }
   }
   const previousStart = parseUnboundedMetadataCellAddress(table.startAddress)
   const previousEnd = parseUnboundedMetadataCellAddress(table.endAddress)
@@ -381,8 +393,11 @@ function rewriteTableForStructuralTransform(
   const nextEndCol = Math.max(nextStart[1], nextEnd[1])
   const previousWidth = previousEndCol - previousStartCol + 1
   const nextWidth = nextEndCol - nextStartCol + 1
-  const nextColumnNames = Array.from({ length: nextWidth }, (_, index) => `Column ${String(index + 1)}`)
-  const nextColumns = table.columns ? nextColumnNames.map((name) => ({ name })) : undefined
+  const nextColumnNames: Array<string | undefined> = Array.from({ length: nextWidth }, () => undefined)
+  const nextColumns: Array<WorkbookTableColumnRecord | undefined> | undefined = table.columns
+    ? Array.from({ length: nextWidth }, () => undefined)
+    : undefined
+  const usedColumnNames = new Set<string>()
 
   for (let previousIndex = 0; previousIndex < previousWidth; previousIndex += 1) {
     const mappedCol = mapTableColumnPointForStructuralTransform(previousStartCol + previousIndex, transform)
@@ -390,7 +405,8 @@ function rewriteTableForStructuralTransform(
       continue
     }
     const nextIndex = mappedCol - nextStartCol
-    const name = table.columnNames[previousIndex] ?? `Column ${String(previousIndex + 1)}`
+    const name = table.columnNames[previousIndex] ?? nextGeneratedTableColumnName(usedColumnNames)
+    usedColumnNames.add(normalizeTableColumnName(name))
     nextColumnNames[nextIndex] = name
     if (nextColumns) {
       const previousColumn = table.columns?.[previousIndex]
@@ -398,11 +414,80 @@ function rewriteTableForStructuralTransform(
     }
   }
 
-  return {
-    ...range,
-    columnNames: nextColumnNames,
-    ...(nextColumns ? { columns: nextColumns } : {}),
+  const headerCellWrites: StructuralTableHeaderCellWrite[] = []
+  const headerRow = Math.min(previousStart[0], previousEnd[0])
+  for (let nextIndex = 0; nextIndex < nextWidth; nextIndex += 1) {
+    if (nextColumnNames[nextIndex] !== undefined) {
+      continue
+    }
+    const name = nextGeneratedTableColumnName(usedColumnNames)
+    usedColumnNames.add(normalizeTableColumnName(name))
+    nextColumnNames[nextIndex] = name
+    if (nextColumns) {
+      nextColumns[nextIndex] = { name }
+    }
+    const col = nextStartCol + nextIndex
+    if (table.headerRow && transform.kind === 'insert' && col >= transform.start && col < transform.start + transform.count) {
+      headerCellWrites.push({ sheetName: range.sheetName, row: headerRow, col, value: name })
+    }
   }
+  const finalizedColumnNames = nextColumnNames.map((name) => {
+    if (name === undefined) {
+      throw new Error('Missing table column name after structural rewrite')
+    }
+    return name
+  })
+  const finalizedColumns = nextColumns?.map((column) => {
+    if (column === undefined) {
+      throw new Error('Missing table column record after structural rewrite')
+    }
+    return column
+  })
+
+  return {
+    table: {
+      ...range,
+      columnNames: finalizedColumnNames,
+      ...(finalizedColumns ? { columns: finalizedColumns } : {}),
+    },
+    headerCellWrites,
+  }
+}
+
+function ensureMinimumTableDataBodyRange<T extends MetadataRangeLike>(range: T, table: WorkbookTableRecord): T | undefined {
+  const start = parseUnboundedMetadataCellAddress(range.startAddress)
+  const end = parseUnboundedMetadataCellAddress(range.endAddress)
+  if (!start || !end) {
+    throw new Error('Invalid table metadata reference')
+  }
+  const startRow = Math.min(start[0], end[0])
+  const endRow = Math.max(start[0], end[0])
+  const endCol = Math.max(start[1], end[1])
+  const minimumRowCount = (table.headerRow ? 1 : 0) + (table.totalsRow ? 1 : 0) + 1
+  if (endRow - startRow + 1 >= minimumRowCount) {
+    return range
+  }
+  const nextEndRow = startRow + minimumRowCount - 1
+  if (nextEndRow >= MAX_ROWS) {
+    return range
+  }
+  return withRewrittenMetadataRange(range, {
+    sheetName: range.sheetName,
+    startAddress: range.startAddress,
+    endAddress: formatAddress(nextEndRow, endCol),
+  })
+}
+
+function nextGeneratedTableColumnName(usedColumnNames: Set<string>): string {
+  let suffix = 1
+  while (usedColumnNames.has(normalizeTableColumnName(`Column${String(suffix)}`))) {
+    suffix += 1
+  }
+  return `Column${String(suffix)}`
+}
+
+function normalizeTableColumnName(name: string): string {
+  return name.trim().toUpperCase()
 }
 
 function mapTableColumnPointForStructuralTransform(index: number, transform: StructuralAxisTransform): number | undefined {

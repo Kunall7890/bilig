@@ -609,10 +609,10 @@ export function createEngineFormulaEvaluationService(args: {
     const start = parseCellAddress(table.startAddress, table.sheetName)
     const end = parseCellAddress(table.endAddress, table.sheetName)
     const startRow = start.row + (table.headerRow ? 1 : 0)
-    const endRow = end.row - (table.totalsRow ? 1 : 0)
-    if (endRow < startRow) {
+    if (startRow >= MAX_ROWS) {
       return { kind: 'ErrorLiteral', code: ErrorCode.Ref }
     }
+    const endRow = Math.max(startRow, end.row - (table.totalsRow ? 1 : 0))
     const column = start.col + columnIndex
     return {
       kind: 'RangeRef',

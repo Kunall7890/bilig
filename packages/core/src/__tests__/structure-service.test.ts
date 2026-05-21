@@ -339,16 +339,47 @@ describe('EngineStructureService', () => {
     expect(engine.getTable('Sales')).toMatchObject({
       startAddress: 'A1',
       endAddress: 'D3',
-      columnNames: ['Region', 'Column 2', 'Revenue', 'Margin'],
+      columnNames: ['Region', 'Column1', 'Revenue', 'Margin'],
       columns: [
         { name: 'Region' },
-        { name: 'Column 2' },
+        { name: 'Column1' },
         { name: 'Revenue', totalsRowFunction: 'sum' },
         { name: 'Margin', totalsRowFunction: 'average' },
       ],
     })
+    expect(engine.getCellValue('Data', 'B1')).toEqual({ tag: ValueTag.String, value: 'Column1', stringId: expect.any(Number) })
     expect(engine.getCell('Data', 'F1').formula).toBe('SUM(Sales[Margin])')
     expect(engine.getCellValue('Data', 'F1')).toEqual({ tag: ValueTag.Number, value: 5 })
+  })
+
+  it('keeps an empty Excel-compatible table body row when deleting the only data row', async () => {
+    const engine = new SpreadsheetEngine({ workbookName: 'structure-table-empty-body-delete' })
+    await engine.ready()
+    engine.createSheet('Data')
+    engine.setRangeValues({ sheetName: 'Data', startAddress: 'A1', endAddress: 'B2' }, [
+      ['Region', 'Amount'],
+      ['East', 10],
+    ])
+    engine.setTable({
+      name: 'Sales',
+      sheetName: 'Data',
+      startAddress: 'A1',
+      endAddress: 'B2',
+      columnNames: ['Region', 'Amount'],
+      headerRow: true,
+      totalsRow: false,
+    })
+    engine.setCellFormula('Data', 'D1', 'SUM(Sales[Amount])')
+
+    engine.deleteRows('Data', 1, 1)
+
+    expect(engine.getTable('Sales')).toMatchObject({
+      startAddress: 'A1',
+      endAddress: 'B2',
+      columnNames: ['Region', 'Amount'],
+    })
+    expect(engine.getCell('Data', 'D1').formula).toBe('SUM(Sales[Amount])')
+    expect(engine.getCellValue('Data', 'D1')).toEqual({ tag: ValueTag.Number, value: 0 })
   })
 
   it('rewrites formulas and axis identities across column deletes and moves through the service', async () => {

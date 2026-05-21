@@ -273,9 +273,9 @@ export function createEngineStructureService(args: CreateEngineStructureServiceA
       const changedDefinedNames = hasStructuralMetadata
         ? rewriteDefinedNamesForStructuralTransform(args, sheetName, transform)
         : EMPTY_STRING_SET
-      const { changedTableNames } = hasStructuralMetadata
+      const { changedTableNames, tableHeaderCellWrites } = hasStructuralMetadata
         ? rewriteWorkbookMetadataForStructuralTransform(args, sheetName, transform)
-        : { changedTableNames: EMPTY_STRING_SET }
+        : { changedTableNames: EMPTY_STRING_SET, tableHeaderCellWrites: [] }
       const impactedFormulas = collectStructuralFormulaImpacts(args, {
         targetSheetId,
         transform,
@@ -318,6 +318,11 @@ export function createEngineStructureService(args: CreateEngineStructureServiceA
 
       args.state.workbook.applyPlannedStructuralTransaction(transaction)
 
+      const tableHeaderCellChangedIndices = tableHeaderCellWrites.flatMap((write) => {
+        const cellIndex = args.writeTableHeaderCell(write.sheetName, write.row, write.col, write.value)
+        return cellIndex === undefined ? [] : [cellIndex]
+      })
+
       const hasNoFormulaStructuralWork =
         impactedFormulas.formulaCellIndices.length === 0 &&
         impactedFormulas.rebindCellIndices.length === 0 &&
@@ -329,6 +334,7 @@ export function createEngineStructureService(args: CreateEngineStructureServiceA
         transaction.removedCellIndices.length === 0 &&
         changedDefinedNames.size === 0 &&
         changedTableNames.size === 0 &&
+        tableHeaderCellChangedIndices.length === 0 &&
         !hasPivots &&
         !hadSheetSpillMetadata
       ) {
@@ -462,7 +468,7 @@ export function createEngineStructureService(args: CreateEngineStructureServiceA
         removedCycleFormulaCount > 0
       return {
         transaction,
-        changedCellIndices: [...transaction.removedCellIndices, ...preStructuralSpillChangedCellIndices],
+        changedCellIndices: [...transaction.removedCellIndices, ...preStructuralSpillChangedCellIndices, ...tableHeaderCellChangedIndices],
         precomputedChangedInputCellIndices: impactedFormulas.precomputedChangedInputCellIndices,
         formulaCellIndices: formulaCellIndices.filter((cellIndex) => !preservedFormulaCellIndices.has(cellIndex)),
         topologyChanged,
