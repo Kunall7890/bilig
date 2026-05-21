@@ -20,6 +20,9 @@ export function rangeDependencyAxisAffected(
   }
   const start = transform.axis === 'row' ? rangeDescriptor.row1 : rangeDescriptor.col1
   const end = transform.axis === 'row' ? rangeDescriptor.row2 : rangeDescriptor.col2
+  if (structuralMovePartiallyExtractsReferencedAxis(start, end, transform)) {
+    return true
+  }
   const next = mapStructuralAxisInterval(start, end, transform)
   return next === undefined || next.start !== start || next.end !== end
 }
@@ -196,11 +199,21 @@ function directAggregateMovePartiallyExtractsReferencedAxis(
   }
   const start = transform.axis === 'row' ? range.rowStart : range.col
   const end = transform.axis === 'row' ? range.rowEnd : (range.colEnd ?? range.col)
+  return structuralMovePartiallyExtractsReferencedAxis(start, end, transform)
+}
+
+function structuralMovePartiallyExtractsReferencedAxis(start: number, end: number, transform: StructuralAxisTransform): boolean {
+  if (transform.kind !== 'move') {
+    return false
+  }
   const movedStart = transform.start
   const movedEnd = transform.start + transform.count - 1
   const overlapsMovedAxis = start <= movedEnd && end >= movedStart
   if (!overlapsMovedAxis) {
     return false
   }
-  return !(start >= movedStart && end <= movedEnd)
+  if (start >= movedStart && end <= movedEnd) {
+    return false
+  }
+  return true
 }

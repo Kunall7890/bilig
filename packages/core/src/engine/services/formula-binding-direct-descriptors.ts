@@ -116,9 +116,6 @@ function mapDirectAggregateReferenceInterval(
   if (transform.kind !== 'move') {
     return mapStructuralAxisInterval(start, end, transform)
   }
-  if (transform.target <= transform.start) {
-    return mapStructuralAxisInterval(start, end, transform)
-  }
   const movedStart = transform.start
   const movedEnd = transform.start + transform.count - 1
   if (end < movedStart || start > movedEnd || (start >= movedStart && end <= movedEnd)) {

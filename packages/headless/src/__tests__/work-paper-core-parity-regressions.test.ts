@@ -178,16 +178,16 @@ describe('WorkPaper/core parity regressions', () => {
 
     workbook.moveColumns(sheetId, 0, 1, 1)
 
-    expect(workbook.getCellSerialized({ sheet: sheetId, row: 2, col: 1 })).toBe('=SUM(A1:B2)')
-    expect(workbook.getCellValue({ sheet: sheetId, row: 2, col: 1 })).toEqual({ tag: ValueTag.Error, code: ErrorCode.Cycle })
+    expect(workbook.getCellSerialized({ sheet: sheetId, row: 2, col: 1 })).toBe('=SUM(A1:A2)')
+    expect(workbook.getCellValue({ sheet: sheetId, row: 2, col: 1 })).toEqual({ tag: ValueTag.Error, code: ErrorCode.Ref })
 
     workbook.undo()
     expect(workbook.getCellSerialized({ sheet: sheetId, row: 2, col: 0 })).toBe('=SUM(A1:B2)')
-    expect(workbook.getCellValue({ sheet: sheetId, row: 2, col: 0 })).toEqual({ tag: ValueTag.Error, code: ErrorCode.Cycle })
+    expect(workbook.getCellValue({ sheet: sheetId, row: 2, col: 0 })).toEqual({ tag: ValueTag.Error, code: ErrorCode.Ref })
 
     workbook.redo()
-    expect(workbook.getCellSerialized({ sheet: sheetId, row: 2, col: 1 })).toBe('=SUM(A1:B2)')
-    expect(workbook.getCellValue({ sheet: sheetId, row: 2, col: 1 })).toEqual({ tag: ValueTag.Error, code: ErrorCode.Cycle })
+    expect(workbook.getCellSerialized({ sheet: sheetId, row: 2, col: 1 })).toBe('=SUM(A1:A2)')
+    expect(workbook.getCellValue({ sheet: sheetId, row: 2, col: 1 })).toEqual({ tag: ValueTag.Error, code: ErrorCode.Ref })
   })
 })
 

@@ -766,7 +766,7 @@ describe('engine fuzz regressions', () => {
     expect(restored.getCellValue('Sheet1', 'A7')).toEqual({ tag: ValueTag.Number, value: 105 })
   })
 
-  it('does not preserve stale direct aggregate values when row moves create a self-reference', async () => {
+  it('shrinks direct aggregate row ranges when moves extract referenced cells', async () => {
     const engine = new SpreadsheetEngine({
       workbookName: 'direct-aggregate-move-self-reference-regression',
       replicaId: 'direct-aggregate-move-self-reference-regression',
@@ -781,8 +781,8 @@ describe('engine fuzz regressions', () => {
 
     engine.moveRows('Sheet1', 0, 1, 5)
 
-    expect(engine.getCell('Sheet1', 'A5').formula).toBe('SUM(A1:A6)')
-    expect(engine.getCellValue('Sheet1', 'A5')).toEqual({ tag: ValueTag.Error, code: ErrorCode.Cycle })
+    expect(engine.getCell('Sheet1', 'A5').formula).toBe('SUM(A1:A4)')
+    expect(engine.getCellValue('Sheet1', 'A5')).toEqual({ tag: ValueTag.Number, value: 104 })
 
     const restored = new SpreadsheetEngine({
       workbookName: 'direct-aggregate-move-self-reference-regression-restored',
@@ -791,14 +791,15 @@ describe('engine fuzz regressions', () => {
     await restored.ready()
     restored.importSnapshot(engine.exportSnapshot())
 
-    expect(restored.getCellValue('Sheet1', 'A5')).toEqual({ tag: ValueTag.Error, code: ErrorCode.Cycle })
+    expect(restored.getCell('Sheet1', 'A5').formula).toBe('SUM(A1:A4)')
+    expect(restored.getCellValue('Sheet1', 'A5')).toEqual({ tag: ValueTag.Number, value: 104 })
 
     expect(engine.undo()).toBe(true)
     expect(engine.getCell('Sheet1', 'A6').formula).toBe('SUM(A1:A5)')
     expect(engine.getCellValue('Sheet1', 'A6')).toEqual({ tag: ValueTag.Number, value: 105 })
   })
 
-  it('restores self-referential range formulas as cycles after undoing structural deletes', async () => {
+  it('restores shrunk direct aggregate row ranges after undoing structural deletes', async () => {
     const engine = new SpreadsheetEngine({
       workbookName: 'direct-aggregate-delete-undo-self-reference-regression',
       replicaId: 'direct-aggregate-delete-undo-self-reference-regression',
@@ -813,14 +814,14 @@ describe('engine fuzz regressions', () => {
 
     engine.moveRows('Sheet1', 0, 1, 5)
     engine.insertRows('Sheet1', 0, 1)
-    expect(engine.getCell('Sheet1', 'A6').formula).toBe('SUM(A2:A7)')
-    expect(engine.getCellValue('Sheet1', 'A6')).toEqual({ tag: ValueTag.Error, code: ErrorCode.Cycle })
+    expect(engine.getCell('Sheet1', 'A6').formula).toBe('SUM(A2:A5)')
+    expect(engine.getCellValue('Sheet1', 'A6')).toEqual({ tag: ValueTag.Number, value: 104 })
 
     engine.deleteRows('Sheet1', 5, 1)
     expect(engine.undo()).toBe(true)
 
-    expect(engine.getCell('Sheet1', 'A6').formula).toBe('SUM(A2:A7)')
-    expect(engine.getCellValue('Sheet1', 'A6')).toEqual({ tag: ValueTag.Error, code: ErrorCode.Cycle })
+    expect(engine.getCell('Sheet1', 'A6').formula).toBe('SUM(A2:A5)')
+    expect(engine.getCellValue('Sheet1', 'A6')).toEqual({ tag: ValueTag.Number, value: 104 })
   })
 
   it('restores formulas with deferred move rewrites after undoing structural deletes', async () => {
@@ -1026,7 +1027,7 @@ describe('engine fuzz regressions', () => {
     expect(restored.getCellValue('Sheet1', 'A2')).toEqual({ tag: ValueTag.Number, value: 23 })
   })
 
-  it('recalculates direct aggregate moves when a range expands across moved cells', async () => {
+  it('recalculates direct aggregate moves when a range shrinks around moved cells', async () => {
     const engine = new SpreadsheetEngine({
       workbookName: 'direct-aggregate-move-expanded-range-regression',
       replicaId: 'direct-aggregate-move-expanded-range-regression',
@@ -1042,8 +1043,8 @@ describe('engine fuzz regressions', () => {
 
     engine.moveColumns('Sheet1', 0, 1, 2)
 
-    expect(engine.getCell('Sheet1', 'D1').formula).toBe('SUM(A1:C2)')
-    expect(engine.getCellValue('Sheet1', 'D1')).toEqual({ tag: ValueTag.Number, value: 42 })
+    expect(engine.getCell('Sheet1', 'D1').formula).toBe('SUM(A1:A2)')
+    expect(engine.getCellValue('Sheet1', 'D1')).toEqual({ tag: ValueTag.Number, value: 14 })
 
     const restored = new SpreadsheetEngine({
       workbookName: 'direct-aggregate-move-expanded-range-regression-restored',
@@ -1052,8 +1053,8 @@ describe('engine fuzz regressions', () => {
     await restored.ready()
     restored.importSnapshot(engine.exportSnapshot())
 
-    expect(restored.getCell('Sheet1', 'D1').formula).toBe('SUM(A1:C2)')
-    expect(restored.getCellValue('Sheet1', 'D1')).toEqual({ tag: ValueTag.Number, value: 42 })
+    expect(restored.getCell('Sheet1', 'D1').formula).toBe('SUM(A1:A2)')
+    expect(restored.getCellValue('Sheet1', 'D1')).toEqual({ tag: ValueTag.Number, value: 14 })
   })
 
   it('restores snapshots when a formula runtime image contains a stale template id', async () => {
@@ -1369,15 +1370,15 @@ describe('engine fuzz regressions', () => {
 
     engine.moveColumns('Sheet1', 0, 1, 1)
 
-    expect(engine.getCell('Sheet1', 'B3').formula).toBe('SUM(A1:B2)')
-    expect(engine.getCellValue('Sheet1', 'B3')).toEqual({ tag: ValueTag.Error, code: ErrorCode.Cycle })
+    expect(engine.getCell('Sheet1', 'B3').formula).toBe('SUM(A1:A2)')
+    expect(engine.getCellValue('Sheet1', 'B3')).toEqual({ tag: ValueTag.Error, code: ErrorCode.Ref })
 
     expect(engine.undo()).toBe(true)
     expect(engine.getCell('Sheet1', 'A3').formula).toBe('SUM(A1:B2)')
-    expect(engine.getCellValue('Sheet1', 'A3')).toEqual({ tag: ValueTag.Error, code: ErrorCode.Cycle })
+    expect(engine.getCellValue('Sheet1', 'A3')).toEqual({ tag: ValueTag.Error, code: ErrorCode.Ref })
 
     expect(engine.redo()).toBe(true)
-    expect(engine.getCell('Sheet1', 'B3').formula).toBe('SUM(A1:B2)')
-    expect(engine.getCellValue('Sheet1', 'B3')).toEqual({ tag: ValueTag.Error, code: ErrorCode.Cycle })
+    expect(engine.getCell('Sheet1', 'B3').formula).toBe('SUM(A1:A2)')
+    expect(engine.getCellValue('Sheet1', 'B3')).toEqual({ tag: ValueTag.Error, code: ErrorCode.Ref })
   })
 })

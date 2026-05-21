@@ -674,15 +674,18 @@ describe('EngineStructureService', () => {
 
     expect(result.topologyChanged).toBe(false)
     expect(result.graphRefreshRequired).toBe(false)
-    expect(engine.getCell('Sheet1', 'B1').formula).toBe('SUM(A1:A3)')
+    expect(engine.getCell('Sheet1', 'B1').formula).toBe('SUM(A2:A3)')
     expect(engine.getCell('Sheet1', 'B2').formula).toBe('SUM(A2:A2)')
     expect(engine.getCell('Sheet1', 'B3').formula).toBe('SUM(A2:A3)')
-    expect(engine.getCell('Sheet1', 'B4').formula).toBe('SUM(A1:A4)')
+    expect(engine.getCell('Sheet1', 'B4').formula).toBe('SUM(A2:A4)')
     expect(engine.getCellValue('Sheet1', 'B1')).toEqual({ tag: ValueTag.Number, value: 6 })
     expect(engine.getCellValue('Sheet1', 'B2')).toEqual({ tag: ValueTag.Number, value: 1 })
     expect(engine.getCellValue('Sheet1', 'B3')).toEqual({ tag: ValueTag.Number, value: 3 })
     expect(engine.getCellValue('Sheet1', 'B4')).toEqual({ tag: ValueTag.Number, value: 10 })
-    expect(result.formulaCellIndices).toEqual([])
+    expect(result.formulaCellIndices).toEqual([
+      engine.workbook.getCellIndex('Sheet1', 'B1')!,
+      engine.workbook.getCellIndex('Sheet1', 'B4')!,
+    ])
     expect(engine.getPerformanceCounters().structuralFormulaImpactCandidates).toBe(0)
   })
 

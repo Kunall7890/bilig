@@ -5238,9 +5238,12 @@ describe('SpreadsheetEngine', () => {
 
     engine.moveRows('Data', 2, 1, 0)
 
-    expect(engine.getCellValue('Summary', 'A1')).toEqual({ tag: ValueTag.Number, value: 30 })
-    expect(engine.getCellValue('Summary', 'A2')).toEqual({ tag: ValueTag.Number, value: 10 })
-    expect(engine.getCellValue('Summary', 'A3')).toEqual({ tag: ValueTag.Number, value: 100 })
+    expect(engine.getCell('Summary', 'A1').formula).toBe('INDEX(Data!A2:A4,1)')
+    expect(engine.getCell('Summary', 'A2').formula).toBe('INDEX(Data!A2:A4,2)')
+    expect(engine.getCell('Summary', 'A3').formula).toBe('SUM(Data!A2:A4)')
+    expect(engine.getCellValue('Summary', 'A1')).toEqual({ tag: ValueTag.Number, value: 10 })
+    expect(engine.getCellValue('Summary', 'A2')).toEqual({ tag: ValueTag.Number, value: 20 })
+    expect(engine.getCellValue('Summary', 'A3')).toEqual({ tag: ValueTag.Number, value: 70 })
   })
 
   it('undoes structural row deletes without losing cross-sheet formula correctness', async () => {
