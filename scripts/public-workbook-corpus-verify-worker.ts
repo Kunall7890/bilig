@@ -1,7 +1,6 @@
 import { existsSync, readFileSync } from 'node:fs'
 import { join } from 'node:path'
 
-import { parsePublicWorkbookArtifact, parsePublicWorkbookManifestJson } from './public-workbook-corpus-json.ts'
 import {
   tryInspectLargeSimpleXlsxHeadless,
   type LargeSimpleXlsxHeadlessInspectResult,
@@ -14,7 +13,6 @@ import {
 } from '../packages/excel-import/src/xlsx-zip.js'
 import type { PublicWorkbookArtifact, PublicWorkbookCorpusCase, PublicWorkbookFeatureCounts } from './public-workbook-corpus-types.ts'
 import { defaultSelfRssCheckIntervalMs, startSelfRssGuard } from './public-workbook-corpus-process.ts'
-import { readMegabytesArg, readNumberArg, readFlagArg, readStringArg } from './public-workbook-corpus-cli.ts'
 import { largeSimpleImportPhaseTelemetryEvidence } from './public-workbook-corpus-large-simple-evidence.ts'
 import { FileBackedXlsxZipByteSource, isZipWorkbookSource, sha256XlsxZipByteSourceHex } from './public-workbook-corpus-xlsx-byte-source.ts'
 
@@ -34,7 +32,7 @@ try {
   if (!artifactId) {
     throw new Error('Expected --artifact-id for verify-artifact-worker')
   }
-  const artifact = readWorkerArtifact(artifactId)
+  const artifact = await readWorkerArtifact(artifactId)
   if (!artifact) {
     throw new Error(`Manifest does not contain public workbook artifact ${artifactId}`)
   }
@@ -193,18 +191,185 @@ function buildCompactLargeSimpleCaseFromInspect(
   }
 }
 
-function readWorkerArtifact(artifactId: string): PublicWorkbookArtifact | undefined {
+async function readWorkerArtifact(artifactId: string): Promise<PublicWorkbookArtifact | undefined> {
   const artifactJsonBase64 = readStringArg('--artifact-json-base64', '')
   if (artifactJsonBase64) {
-    const artifact = parsePublicWorkbookArtifact(JSON.parse(Buffer.from(artifactJsonBase64, 'base64').toString('utf8')))
+    const artifact = parseWorkerArtifact(JSON.parse(Buffer.from(artifactJsonBase64, 'base64').toString('utf8')))
     if (artifact.id !== artifactId) {
       throw new Error(`Worker artifact id mismatch: expected ${artifactId}, received ${artifact.id}`)
     }
     return artifact
   }
   const manifestPath = readStringArg('--manifest', '.cache/public-workbook-corpus/manifest.json')
+  const { parsePublicWorkbookManifestJson } = await import('./public-workbook-corpus-json.ts')
   const manifest = parsePublicWorkbookManifestJson(JSON.parse(readFileSync(manifestPath, 'utf8')))
   return manifest.artifacts.find((entry) => entry.id === artifactId)
+}
+
+function readStringArg(name: string, fallback: string): string {
+  // Keep worker argument parsing local so the low-RSS verifier does not load the broad public corpus CLI module.
+  let value: string | null = null
+  let count = 0
+  for (const [index, arg] of process.argv.entries()) {
+    const parsed = readArgValueForName(name, arg, index)
+    if (parsed === null) {
+      continue
+    }
+    count += 1
+    assertArgSpecifiedOnce(name, count)
+    value = parsed
+  }
+  return value ?? fallback
+}
+
+function readNumberArg(name: string, fallback: number): number {
+  const raw = readStringArg(name, String(fallback))
+  const parsed = Number(raw)
+  if (!/^\d+$/u.test(raw) || parsed <= 0 || !Number.isSafeInteger(parsed)) {
+    throw new Error(`Expected ${name} to be a positive integer`)
+  }
+  return parsed
+}
+
+function readMegabytesArg(name: string, fallbackBytes: number): number {
+  const raw = readStringArg(name, String(Math.ceil(fallbackBytes / 1024 / 1024)))
+  const parsed = Number(raw)
+  if (!/^\d+$/u.test(raw) || parsed <= 0 || !Number.isSafeInteger(parsed) || parsed > Math.floor(Number.MAX_SAFE_INTEGER / 1024 / 1024)) {
+    throw new Error(`Expected ${name} to be a positive integer number of MiB`)
+  }
+  return parsed * 1024 * 1024
+}
+
+function readFlagArg(name: string): boolean {
+  let value = false
+  let count = 0
+  for (const [index, arg] of process.argv.entries()) {
+    if (arg === name) {
+      count += 1
+      assertArgSpecifiedOnce(name, count)
+      const next = process.argv[index + 1]
+      value = next === undefined || next.startsWith('--') ? true : readBooleanArgValue(name, next)
+      continue
+    }
+    const inlinePrefix = `${name}=`
+    if (!arg.startsWith(inlinePrefix)) {
+      continue
+    }
+    count += 1
+    assertArgSpecifiedOnce(name, count)
+    value = readBooleanArgValue(name, arg.slice(inlinePrefix.length))
+  }
+  return value
+}
+
+function assertArgSpecifiedOnce(name: string, count: number): void {
+  if (count > 1) {
+    throw new Error(`Expected ${name} to be specified once`)
+  }
+}
+
+function readArgValueForName(name: string, arg: string, index: number): string | null {
+  if (arg === name) {
+    return readArgValueAt(name, index)
+  }
+  const inlinePrefix = `${name}=`
+  if (!arg.startsWith(inlinePrefix)) {
+    return null
+  }
+  const value = arg.slice(inlinePrefix.length)
+  if (value.trim().length === 0) {
+    throw new Error(`Expected ${name} to have a value`)
+  }
+  return value
+}
+
+function readArgValueAt(name: string, index: number): string {
+  const next = process.argv[index + 1]
+  if (next === undefined || next.trim().length === 0 || next.startsWith('--')) {
+    throw new Error(`Expected ${name} to have a value`)
+  }
+  return next
+}
+
+function readBooleanArgValue(name: string, raw: string): boolean {
+  if (raw === 'true') {
+    return true
+  }
+  if (raw === 'false') {
+    return false
+  }
+  throw new Error(`Expected ${name} to be true or false`)
+}
+
+function parseWorkerArtifact(value: unknown): PublicWorkbookArtifact {
+  const record = readRecord(value)
+  const topicEvidence = readOptionalStringArray(record, 'topicEvidence')
+  return {
+    id: readRequiredString(record, 'id'),
+    sourceId: readRequiredString(record, 'sourceId'),
+    sourceUrl: readRequiredString(record, 'sourceUrl'),
+    downloadUrl: readRequiredString(record, 'downloadUrl'),
+    fileName: readRequiredString(record, 'fileName'),
+    cachePath: readRequiredString(record, 'cachePath'),
+    sha256: readRequiredString(record, 'sha256'),
+    byteSize: readRequiredInteger(record, 'byteSize'),
+    workbookFingerprint: readRequiredString(record, 'workbookFingerprint'),
+    fetchedAt: readRequiredString(record, 'fetchedAt'),
+    license: parseWorkerLicense(record['license']),
+    ...(topicEvidence ? { topicEvidence } : {}),
+  }
+}
+
+function parseWorkerLicense(value: unknown): PublicWorkbookArtifact['license'] {
+  const record = readRecord(value)
+  return {
+    spdxId: readNullableString(record, 'spdxId'),
+    title: readRequiredString(record, 'title'),
+    evidenceUrl: readNullableString(record, 'evidenceUrl'),
+  }
+}
+
+function readRecord(value: unknown): Record<string, unknown> {
+  if (value === null || typeof value !== 'object' || Array.isArray(value)) {
+    throw new Error('Expected object')
+  }
+  const record: Record<string, unknown> = {}
+  for (const key of Object.keys(value)) {
+    record[key] = Reflect.get(value, key)
+  }
+  return record
+}
+
+function readRequiredString(record: Record<string, unknown>, key: string): string {
+  const value = record[key]
+  if (typeof value !== 'string' || value.trim().length === 0) {
+    throw new Error(`Expected ${key} to be a non-empty string`)
+  }
+  return value.trim()
+}
+
+function readNullableString(record: Record<string, unknown>, key: string): string | null {
+  const value = record[key]
+  return typeof value === 'string' && value.trim().length > 0 ? value.trim() : null
+}
+
+function readRequiredInteger(record: Record<string, unknown>, key: string): number {
+  const value = record[key]
+  if (!Number.isInteger(value)) {
+    throw new Error(`Expected ${key} to be an integer`)
+  }
+  return value
+}
+
+function readOptionalStringArray(record: Record<string, unknown>, key: string): readonly string[] | undefined {
+  const value = record[key]
+  if (value === undefined) {
+    return undefined
+  }
+  if (!Array.isArray(value) || !value.every((entry) => typeof entry === 'string')) {
+    throw new Error(`Expected ${key} to be a string array`)
+  }
+  return value.map((entry) => entry.trim()).filter((entry) => entry.length > 0)
 }
 
 function writeWorkerPhase(phase: string): void {
