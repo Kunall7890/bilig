@@ -3,7 +3,14 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 
 import { exportXlsx, importXlsx } from '@bilig/excel-import'
-import { isMacosExcelInstalled, runMacosExcelRecalculationOracle, type NormalizedFormulaValue } from '@bilig/excel-fixtures'
+import {
+  buildFormulaCellComparison,
+  buildReportSummary,
+  isMacosExcelInstalled,
+  runMacosExcelInspectionOracle,
+  type FormulaCellComparison,
+  type NormalizedFormulaValue,
+} from '@bilig/excel-fixtures'
 import { ValueTag, type CellValue } from '@bilig/protocol'
 import { describe, expect, it } from 'vitest'
 
@@ -48,24 +55,43 @@ describe('macOS Desktop Excel XLSX oracle for WorkPaper', () => {
           workbook.dispose()
         }
 
-        const excelResult = runMacosExcelRecalculationOracle({
+        const excelResult = runMacosExcelInspectionOracle({
           workbookPath,
           worksheetName: 'Cases',
           formulaCells: [],
-          valueCells: ['C1', 'C2'],
+          inspectCells: ['C1', 'C2'],
           saveWorkbook: true,
         })
 
-        expect(excelResult.values).toEqual([
-          { kind: 'number', value: 16 },
-          { kind: 'number', value: 22 },
+        expect(excelResult.cells).toEqual([
+          { address: 'C1', formula: '=A1+B1*2', rawValue: 'number\t16.0', value: { kind: 'number', value: 16 } },
+          { address: 'C2', formula: '=SUM(A1:B2)', rawValue: 'number\t22.0', value: { kind: 'number', value: 22 } },
         ])
 
         const imported = importXlsx(new Uint8Array(readFileSync(workbookPath)), 'headless-oracle-recalculated.xlsx')
         const reimported = WorkPaper.buildFromSnapshot(imported.snapshot, workbookConfig)
         try {
-          expect(normalizedCellValue(reimported.getCellValue(cell(0, 2)))).toEqual(excelResult.values[0])
-          expect(normalizedCellValue(reimported.getCellValue(cell(1, 2)))).toEqual(excelResult.values[1])
+          const comparisons = buildHeadlessExcelComparisons(reimported, excelResult.cells)
+          const summary = buildReportSummary({
+            workbooks: [
+              {
+                id: 'headless-oracle',
+                workbook: 'headless-oracle.xlsx',
+                elapsedMs: 0,
+                formulaCells: comparisons.length,
+                status: 'ok',
+                comparisons,
+              },
+            ],
+          })
+
+          expect(comparisons.map((comparison) => comparison.classification)).toEqual(['bilig_matches_excel', 'bilig_matches_excel'])
+          expect(summary).toMatchObject({
+            biligVsFreshExcelMatchRate: 1,
+            comparableFormulaCells: 2,
+            realBiligMismatches: 0,
+            totalFormulaCells: 2,
+          })
         } finally {
           reimported.dispose()
         }
@@ -91,6 +117,39 @@ function buildOracleWorkbook(): WorkPaper {
 
 function cell(row: number, col: number): WorkPaperCellAddress {
   return { sheet: 1, row, col }
+}
+
+function buildHeadlessExcelComparisons(
+  workbook: WorkPaper,
+  excelCells: readonly { readonly address: string; readonly formula?: string; readonly value: NormalizedFormulaValue }[],
+): FormulaCellComparison[] {
+  return excelCells.map((excelCell) => {
+    const address = addressToCell(excelCell.address)
+    const formula = workbook.getCellFormula(address)
+    if (!formula) {
+      throw new Error(`Missing imported formula at ${excelCell.address}`)
+    }
+    return buildFormulaCellComparison({
+      workbookId: 'headless-oracle',
+      sheet: 'Cases',
+      address: excelCell.address,
+      formula,
+      ...(excelCell.formula !== undefined ? { excelOracleFormula: excelCell.formula } : {}),
+      excelOracleValue: excelCell.value,
+      actualBiligValue: normalizedCellValue(workbook.getCellValue(address)),
+    })
+  })
+}
+
+function addressToCell(address: string): WorkPaperCellAddress {
+  switch (address) {
+    case 'C1':
+      return cell(0, 2)
+    case 'C2':
+      return cell(1, 2)
+    default:
+      throw new Error(`Unexpected oracle address: ${address}`)
+  }
 }
 
 function normalizedCellValue(value: CellValue): NormalizedFormulaValue {

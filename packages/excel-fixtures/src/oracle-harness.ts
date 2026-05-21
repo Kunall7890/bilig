@@ -46,6 +46,12 @@ export interface FormulaCellComparison extends SanitizedFormulaSample {
   readonly biligMatchesExcel?: boolean
 }
 
+export interface FormulaCellComparisonBuildInput extends FormulaComparisonInput {
+  readonly address: string
+  readonly sheet: string
+  readonly workbookId: string
+}
+
 export interface WorkbookEvaluation {
   readonly elapsedMs: number
   readonly error?: string
@@ -125,6 +131,38 @@ export function classifyFormulaComparison(input: FormulaComparisonInput): Formul
 
 export function formulaSourcesEquivalentForOracle(sourceFormula: string, oracleFormula: string): boolean {
   return canonicalFormulaForOracleComparison(sourceFormula) === canonicalFormulaForOracleComparison(oracleFormula)
+}
+
+export function buildFormulaCellComparison(input: FormulaCellComparisonBuildInput): FormulaCellComparison {
+  const classification = classifyFormulaComparison(input)
+  const biligMatchesEmbeddedCache =
+    input.actualBiligValue === undefined || input.embeddedCacheValue === undefined
+      ? undefined
+      : normalizedValuesEqual(input.actualBiligValue, input.embeddedCacheValue)
+  const cacheMatchesExcel =
+    input.embeddedCacheValue === undefined || input.excelOracleValue === undefined
+      ? undefined
+      : normalizedValuesEqual(input.embeddedCacheValue, input.excelOracleValue)
+  const biligMatchesExcel =
+    input.actualBiligValue === undefined || input.excelOracleValue === undefined
+      ? undefined
+      : normalizedValuesEqual(input.actualBiligValue, input.excelOracleValue)
+
+  return {
+    workbookId: input.workbookId,
+    sheet: input.sheet,
+    address: input.address,
+    formula: sanitizeFormula(input.formula),
+    functionFamilies: formulaFamilies(input.formula),
+    classification,
+    reproNotes: reproNotesFor(classification),
+    ...(input.actualBiligValue !== undefined ? { actualBiligValue: sanitizePresentNormalizedValue(input.actualBiligValue) } : {}),
+    ...(input.embeddedCacheValue !== undefined ? { embeddedCacheValue: sanitizePresentNormalizedValue(input.embeddedCacheValue) } : {}),
+    ...(input.excelOracleValue !== undefined ? { expectedExcelValue: sanitizePresentNormalizedValue(input.excelOracleValue) } : {}),
+    ...(biligMatchesEmbeddedCache !== undefined ? { biligMatchesEmbeddedCache } : {}),
+    ...(cacheMatchesExcel !== undefined ? { cacheMatchesExcel } : {}),
+    ...(biligMatchesExcel !== undefined ? { biligMatchesExcel } : {}),
+  }
 }
 
 function canonicalFormulaForOracleComparison(formula: string): string {
@@ -270,6 +308,10 @@ export function sanitizeNormalizedValue(value: NormalizedFormulaValue | undefine
     return value
   }
   return { kind: 'string', value: redactedStringValue(value.value) }
+}
+
+function sanitizePresentNormalizedValue(value: NormalizedFormulaValue): NormalizedFormulaValue {
+  return value.kind === 'string' ? { kind: 'string', value: redactedStringValue(value.value) } : value
 }
 
 export function formatNullableRate(value: number | null): string {
