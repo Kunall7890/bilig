@@ -949,58 +949,39 @@ export function createEngineFormulaEvaluationService(args: {
     return storeFormulaResult(cellIndex, formula, result)
   }
 
+  const effectWithEngineError = <A>(tryFn: () => A, message: string) =>
+    Effect.try({
+      try: tryFn,
+      catch: (cause) =>
+        new EngineFormulaEvaluationError({
+          message: evaluationErrorMessage(message, cause),
+          cause,
+        }),
+    })
+
   return {
     evaluateDirectLookupFormulaNow: evaluateDirectLookupFormulaNow,
     evaluateDirectLookupFormula(cellIndex) {
-      return Effect.try({
-        try: () => evaluateDirectLookupFormulaNow(cellIndex),
-        catch: (cause) =>
-          new EngineFormulaEvaluationError({
-            message: evaluationErrorMessage(`Failed to evaluate direct lookup formula ${cellIndex}`, cause),
-            cause,
-          }),
-      })
+      return effectWithEngineError(() => evaluateDirectLookupFormulaNow(cellIndex), `Failed to evaluate direct lookup formula ${cellIndex}`)
     },
     evaluateUnsupportedFormula(cellIndex) {
-      return Effect.try({
-        try: () => evaluateUnsupportedFormulaNow(cellIndex),
-        catch: (cause) =>
-          new EngineFormulaEvaluationError({
-            message: evaluationErrorMessage(`Failed to evaluate formula ${cellIndex}`, cause),
-            cause,
-          }),
-      })
+      return effectWithEngineError(() => evaluateUnsupportedFormulaNow(cellIndex), `Failed to evaluate formula ${cellIndex}`)
     },
     evaluateUnsupportedFormulaNow,
     resolveStructuredReference(tableName, columnName) {
-      return Effect.try({
-        try: () => resolveStructuredReferenceNow(tableName, columnName),
-        catch: (cause) =>
-          new EngineFormulaEvaluationError({
-            message: evaluationErrorMessage(`Failed to resolve structured reference ${tableName}[${columnName}]`, cause),
-            cause,
-          }),
-      })
+      return effectWithEngineError(
+        () => resolveStructuredReferenceNow(tableName, columnName),
+        `Failed to resolve structured reference ${tableName}[${columnName}]`,
+      )
     },
     resolveSpillReference(currentSheetName, sheetName, address) {
-      return Effect.try({
-        try: () => resolveSpillReferenceNow(currentSheetName, sheetName, address),
-        catch: (cause) =>
-          new EngineFormulaEvaluationError({
-            message: evaluationErrorMessage(`Failed to resolve spill reference ${address}#`, cause),
-            cause,
-          }),
-      })
+      return effectWithEngineError(
+        () => resolveSpillReferenceNow(currentSheetName, sheetName, address),
+        `Failed to resolve spill reference ${address}#`,
+      )
     },
     resolveMultipleOperations(request) {
-      return Effect.try({
-        try: () => resolveMultipleOperationsNow(request),
-        catch: (cause) =>
-          new EngineFormulaEvaluationError({
-            message: evaluationErrorMessage('Failed to resolve MULTIPLE.OPERATIONS', cause),
-            cause,
-          }),
-      })
+      return effectWithEngineError(() => resolveMultipleOperationsNow(request), 'Failed to resolve MULTIPLE.OPERATIONS')
     },
   }
 }

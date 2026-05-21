@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
     inputs:
       package_version:
-        description: 'Published @bilig/headless version to register, or latest'
+        description: 'Published @bilig/workpaper version to register, or latest'
         default: 'latest'
         required: true
         type: string
@@ -50,7 +50,7 @@ jobs:
           fi
 
           echo "version=${version}" >> "$GITHUB_OUTPUT"
-          echo "Registering @bilig/headless@${version}" >> "$GITHUB_STEP_SUMMARY"
+          echo "Registering @bilig/workpaper@${version}" >> "$GITHUB_STEP_SUMMARY"
 
       - name: Download package metadata
         if: steps.package.outputs.skip != 'true'
@@ -61,7 +61,7 @@ jobs:
 
           rm -rf build/mcp-registry
           mkdir -p build/mcp-registry
-          npm pack "@bilig/headless@${PACKAGE_VERSION}" --pack-destination build/mcp-registry
+          npm pack "@bilig/workpaper@${PACKAGE_VERSION}" --pack-destination build/mcp-registry
           tarball="$(find build/mcp-registry -maxdepth 1 -name '*.tgz' -print -quit)"
           test -n "${tarball}"
           tar -xzf "${tarball}" -C build/mcp-registry
@@ -90,7 +90,7 @@ jobs:
             : undefined;
 
           const failures = [];
-          if (manifest.name !== "@bilig/headless") failures.push(`unexpected package: ${manifest.name}`);
+          if (manifest.name !== "@bilig/workpaper") failures.push(`unexpected package: ${manifest.name}`);
           if (manifest.mcpName !== "io.github.proompteng/bilig-workpaper") failures.push(`unexpected mcpName: ${manifest.mcpName}`);
           if (server.name !== manifest.mcpName) failures.push(`server name mismatch: ${server.name} !== ${manifest.mcpName}`);
           if (server.version !== manifest.version) failures.push(`server version mismatch: ${server.version} !== ${manifest.version}`);
