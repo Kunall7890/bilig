@@ -266,6 +266,21 @@ describe('WorkbookPaneRendererV3', () => {
     ])
   })
 
+  test('keeps resident native rects visible when tile interest marks the pane hidden', () => {
+    const rects = buildNativeRectLayerRectsForPaneV3({
+      pane: { ...createRectTilePane(), drawVisible: false },
+      scrollSnapshot: { tx: 0, ty: 0 },
+    })
+
+    expect(rects).toHaveLength(1)
+    expect(rects[0]).toMatchObject({
+      color: 'rgba(221, 216, 204, 1.0000)',
+      left: 10,
+      top: 12,
+      width: 80,
+    })
+  })
+
   test('exposes visible workbook revisions only after frame proof is presented', () => {
     expect(resolveWorkbookPanePresentedRevisionV3('presented', 14)).toBe(14)
     expect(resolveWorkbookPanePresentedRevisionV3('presented', 0)).toBe(0)
