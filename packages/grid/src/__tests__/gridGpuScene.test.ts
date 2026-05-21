@@ -45,10 +45,11 @@ function createSelection() {
 
 const GRID_LINE_COLOR = parseGpuColor(workbookThemeColors.gridBorder)
 const HEADER_FILL_COLOR = parseGpuColor(workbookThemeColors.surfaceSubtle)
-const HEADER_SELECTED_FILL_COLOR = parseGpuColor(workbookThemeColors.accentSoft)
+const HEADER_SELECTED_FILL_COLOR = parseGpuColor(workbookThemeColors.selectionHeaderFill)
 const HEADER_HOVER_FILL_COLOR = parseGpuColor(workbookThemeColors.muted)
 const SELECTION_FILL_COLOR = parseGpuColor(workbookThemeColors.selectionFill)
-const SELECTION_OUTLINE_COLOR = parseGpuColor(workbookThemeColors.accent)
+const SELECTION_OUTLINE_COLOR = parseGpuColor(workbookThemeColors.selectionAccent)
+const CHECKBOX_SELECTED_COLOR = parseGpuColor(workbookThemeColors.accent)
 const HOVER_FILL_COLOR = parseGpuColor(workbookThemeColors.hoverFill)
 const RESIZE_GUIDE_GLOW_COLOR = parseGpuColor('rgba(191, 213, 196, 0.28)')
 const RESIZE_GUIDE_COLOR = parseGpuColor('rgba(33, 86, 58, 0.72)')
@@ -246,7 +247,7 @@ describe('gridGpuScene', () => {
       x: 100,
       y: 48,
       width: 200,
-      height: 1,
+      height: 2,
       color: SELECTION_OUTLINE_COLOR,
     })
     expect(scene.fillRects.some((rect) => rect.width === 6 && rect.height === 6)).toBe(false)
@@ -569,7 +570,7 @@ describe('gridGpuScene', () => {
       x: 100,
       y: 240,
       width: 100,
-      height: 1,
+      height: 2,
       color: SELECTION_OUTLINE_COLOR,
     })
     expect(
@@ -736,7 +737,7 @@ describe('gridGpuScene', () => {
       y: 29,
       width: 14,
       height: 14,
-      color: SELECTION_OUTLINE_COLOR,
+      color: CHECKBOX_SELECTED_COLOR,
     })
     expect(
       scene.fillRects.filter((rect) => rect.color.r === 1 && rect.color.g === 1 && rect.color.b === 1 && rect.width === 2),

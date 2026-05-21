@@ -45,8 +45,8 @@ describe('dynamic overlay batch v3', () => {
     expect(overlay.surfaceSize).toEqual({ height: 220, width: 520 })
     expect(readOverlayRects(overlay)).toEqual(
       expect.arrayContaining([
-        expect.objectContaining({ x: 146, y: 44, width: 150, height: 1 }),
-        expect.objectContaining({ x: 146, y: 44, width: 1, height: 30 }),
+        expect.objectContaining({ x: 146, y: 44, width: 150, height: 2 }),
+        expect.objectContaining({ x: 146, y: 44, width: 2, height: 30 }),
         expect.objectContaining({ x: 292.5, y: 70.5, width: 7, height: 7 }),
         expect.objectContaining({ x: 297, y: 75, width: 98, height: 18 }),
       ]),
@@ -194,7 +194,7 @@ describe('dynamic overlay batch v3', () => {
 
     expect(overlay.fillRectCount).toBeGreaterThan(0)
     expect(overlay.borderRectCount).toBe(0)
-    expect(readOverlayRects(overlay).find((rect) => rect.x === 247 && rect.y === 45)?.color.a).toBeGreaterThanOrEqual(0.2)
+    expect(readOverlayRects(overlay).find((rect) => rect.x === 247 && rect.y === 45)?.color.a).toBeGreaterThanOrEqual(0.159)
     expect(readOverlayRects(overlay)).toEqual(
       expect.arrayContaining([
         expect.objectContaining({ x: 247, y: 45, width: 198, height: 18 }),

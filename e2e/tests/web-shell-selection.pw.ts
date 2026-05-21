@@ -313,19 +313,22 @@ test('@browser-ci web app keeps reverse-drag range selection chrome geometricall
   await expectVisualRectNear(page.locator('[data-grid-selection-visual-role="active-border"]'), expectedActiveCell, 'active cell border')
   await expectVisualRectNear(page.locator('[data-grid-selection-visual-role="fill-handle"]'), expectedFillHandle, 'fill handle')
   await expectBorderStyle(page.locator('[data-grid-selection-visual-role="selection-border"]'), {
-    bottom: '1px',
-    boxShadow: 'none',
-    left: '1px',
-    right: '1px',
-    top: '1px',
-  })
-  await expectBorderStyle(page.locator('[data-grid-selection-visual-role="active-border"]'), {
     bottom: '2px',
     boxShadow: 'none',
+    color: 'rgb(26, 115, 232)',
     left: '2px',
     right: '2px',
     top: '2px',
   })
+  await expectBorderStyle(page.locator('[data-grid-selection-visual-role="active-border"]'), {
+    bottom: '2px',
+    boxShadow: 'none',
+    color: 'rgb(26, 115, 232)',
+    left: '2px',
+    right: '2px',
+    top: '2px',
+  })
+  await expect(page.locator('[data-grid-selection-visual-role="fill-handle"]')).toHaveCSS('background-color', 'rgb(26, 115, 232)')
 })
 
 test('@browser-ci web app collapses a locally dragged range when the active address is explicitly reselected', async ({ page }) => {
@@ -994,6 +997,7 @@ async function expectBorderStyle(
   expected: {
     readonly bottom: string
     readonly boxShadow: string
+    readonly color?: string | undefined
     readonly left: string
     readonly right: string
     readonly top: string
@@ -1004,12 +1008,18 @@ async function expectBorderStyle(
     return {
       bottom: style.borderBottomWidth,
       boxShadow: style.boxShadow,
+      color: style.borderTopColor,
       left: style.borderLeftWidth,
       right: style.borderRightWidth,
       top: style.borderTopWidth,
     }
   })
-  expect(actual).toEqual(expected)
+  const { color, ...expectedWidths } = expected
+  const { color: actualColor, ...actualWidths } = actual
+  expect(actualWidths).toEqual(expectedWidths)
+  if (color !== undefined) {
+    expect(actualColor).toBe(color)
+  }
 }
 
 async function dragSelectedRangeBorderPreview(

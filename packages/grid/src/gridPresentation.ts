@@ -59,7 +59,7 @@ export function getGridTheme(options?: { gpuSurfaceEnabled?: boolean; textSurfac
     bgCell: workbookThemeColors.surface,
     bgCellMedium: workbookThemeColors.surfaceSubtle,
     bgHeader: workbookThemeColors.surfaceSubtle,
-    bgHeaderHasFocus: workbookThemeColors.accentSoft,
+    bgHeaderHasFocus: workbookThemeColors.selectionHeaderFill,
     bgHeaderHovered: workbookThemeColors.muted,
     borderColor: workbookThemeColors.border,
     cellHorizontalPadding: 8,
