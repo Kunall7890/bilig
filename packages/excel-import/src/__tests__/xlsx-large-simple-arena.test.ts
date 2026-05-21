@@ -113,6 +113,56 @@ describe('large simple XLSX import arena', () => {
     expect([...lazyCells]).toEqual([{ address: 'A1', value: 'Alpha', formula: 'B1' }])
   })
 
+  it('detaches lazy cells so the import arena and shared string pool can be fully released', () => {
+    const pool = new ImportedWorkbookStringPool()
+    const arena = new ImportedWorkbookArena(pool)
+    arena.reserveDenseRowMajorCellCapacity(0, 2, 2)
+    const firstCell = arena.addCell({ sheetIndex: 0, row: 0, column: 0, value: 'Alpha' })
+    arena.setFormula(firstCell, 'B1')
+    arena.addCell({ sheetIndex: 0, row: 0, column: 1, value: 127 })
+    arena.addCell({ sheetIndex: 0, row: 1, column: 0, value: 32767 })
+    arena.addCell({ sheetIndex: 0, row: 1, column: 1, value: true })
+
+    const detachedCells = arena.createDetachedLazySheetCells(0)
+    arena.release()
+    pool.release()
+
+    expect(arena.cellCount).toBe(0)
+    expect(pool.count).toBe(0)
+    expect(detachedCells).toHaveLength(4)
+    expect(detachedCells[0]).toEqual({ address: 'A1', value: 'Alpha', formula: 'B1' })
+    expect(detachedCells.at(-1)).toEqual({ address: 'B2', value: true })
+    expect(detachedCells.map((cell) => cell.address)).toEqual(['A1', 'B1', 'A2', 'B2'])
+  })
+
+  it('detaches lazy retained shared-string cells from the import arena', () => {
+    const arena = new ImportedWorkbookArena()
+    const firstCell = arena.addSharedStringCell({ sheetIndex: 0, row: 0, column: 0, sharedStringIndex: 2 })
+    arena.setFormula(firstCell, 'A1&""')
+    arena.addCell({ sheetIndex: 0, row: 0, column: 1, value: 42 })
+    const richTextCells = arena.retainSharedStringReferences([
+      { text: 'unused', rich: false },
+      { text: 'also unused', rich: false },
+      { text: 'Shared label', rich: true, xml: '<si><r><t>Shared label</t></r></si>' },
+    ])
+
+    const detachedCells = arena.createDetachedLazySheetCells(0)
+    arena.release()
+
+    expect(richTextCells).toEqual([
+      {
+        address: 'A1',
+        text: 'Shared label',
+        storage: 'sharedString',
+        xml: '<si><r><t>Shared label</t></r></si>',
+      },
+    ])
+    expect(arena.cellCount).toBe(0)
+    expect(detachedCells).toHaveLength(2)
+    expect(detachedCells[0]).toEqual({ address: 'A1', value: 'Shared label', formula: 'A1&""' })
+    expect(detachedCells[1]).toEqual({ address: 'B1', value: 42 })
+  })
+
   it('shrinks dense dimension preallocation when early cells prove sparse', () => {
     const arena = new ImportedWorkbookArena()
     arena.reserveDenseRowMajorCellCapacity(0, 1_000, 1_000)

@@ -11,6 +11,7 @@ import type {
 } from './xlsx-large-simple-arena-types.js'
 import { createLazyWorkbookRichTextCells } from './xlsx-large-simple-lazy-rich-text-cells.js'
 import { createLazyWorkbookSheetCells } from './xlsx-large-simple-lazy-sheet-cells.js'
+import { createDetachedLazyWorkbookSheetCells } from './xlsx-large-simple-detached-lazy-sheet-cells.js'
 import type { LargeSimpleSharedStringIndexSet, LargeSimpleSharedStringIndexSink } from './xlsx-large-simple-shared-string-indexes.js'
 import type { LargeSimpleSharedStrings } from './xlsx-large-simple-shared-strings.js'
 import { decodeCellAddress } from './xlsx-large-simple-xml-byte-utils.js'
@@ -122,6 +123,41 @@ export class ImportedWorkbookArena extends ImportedWorkbookArenaBase {
         return undefined
       }
       return this.materializeCellAtArenaIndex(typeof arenaIndexes === 'number' ? index : (arenaIndexes[index] ?? -1))
+    })
+  }
+
+  createDetachedLazySheetCells(sheetIndex: number): WorkbookSheetCells {
+    const arenaIndexes = this.lazySheetCellIndexes(sheetIndex)
+    const cellCount = typeof arenaIndexes === 'number' ? arenaIndexes : arenaIndexes.length
+    this.compactSparseStringIds()
+    this.compactRetainedStorage()
+    return createDetachedLazyWorkbookSheetCells({
+      cellCount,
+      arenaIndexes,
+      length: this.length,
+      denseRowMajorWidth: this.denseRowMajorWidth,
+      ...(this.linearCellIndexes ? { linearCellIndexes: this.linearCellIndexes } : {}),
+      linearRowMajorWidth: this.linearRowMajorWidth,
+      rows: this.rows,
+      columns: this.columns,
+      valueKinds: this.valueKinds,
+      ...(this.numberValues ? { numberValues: this.numberValues } : {}),
+      ...(this.tinyIntegerValues ? { tinyIntegerValues: this.tinyIntegerValues } : {}),
+      ...(this.smallIntegerValues ? { smallIntegerValues: this.smallIntegerValues } : {}),
+      ...(this.sparseSmallIntegerCellIndexes ? { sparseSmallIntegerCellIndexes: this.sparseSmallIntegerCellIndexes } : {}),
+      ...(this.sparseSmallIntegerValues ? { sparseSmallIntegerValues: this.sparseSmallIntegerValues } : {}),
+      ...(this.integerValues ? { integerValues: this.integerValues } : {}),
+      ...(this.sparseIntegerCellIndexes ? { sparseIntegerCellIndexes: this.sparseIntegerCellIndexes } : {}),
+      ...(this.sparseIntegerValues ? { sparseIntegerValues: this.sparseIntegerValues } : {}),
+      ...(this.stringIds ? { stringIds: this.stringIds } : {}),
+      ...(this.sparseStringCellIndexes ? { sparseStringCellIndexes: this.sparseStringCellIndexes } : {}),
+      ...(this.sparseStringIds ? { sparseStringIds: this.sparseStringIds } : {}),
+      ...(this.booleanValues ? { booleanValues: this.booleanValues } : {}),
+      ...(this.formulaIds ? { formulaIds: this.formulaIds } : {}),
+      strings: this.strings.slice(),
+      formulas: this.formulas.slice(),
+      ...(this.sharedStrings ? { sharedStrings: this.sharedStrings } : {}),
+      sharedStringRefsInNumberValues: this.sharedStringRefsInNumberValues,
     })
   }
 

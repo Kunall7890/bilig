@@ -62,9 +62,12 @@ export function buildParsedWorksheet(
       (options.numberFormatsByStyleIndex && options.numberFormatsByStyleIndex.size > 0
         ? lazySheetCellMaterializationNumberFormatThreshold
         : lazySheetCellMaterializationThreshold)
+  const detachLazyCells = useLazyCells && options.releaseArenaAfterMaterialization !== false
   const cells = options.materializeCells
     ? useLazyCells
-      ? cellScan.arena.createLazySheetCells(cellScan.sheetIndex)
+      ? detachLazyCells
+        ? cellScan.arena.createDetachedLazySheetCells(cellScan.sheetIndex)
+        : cellScan.arena.createLazySheetCells(cellScan.sheetIndex)
       : cellScan.arena.materializeSheetCells(cellScan.sheetIndex)
     : []
   if (!useLazyCells && options.numberFormatsByStyleIndex && options.numberFormatsByStyleIndex.size > 0) {
@@ -80,6 +83,7 @@ export function buildParsedWorksheet(
   })
   releaseProjectedCellScanStorage(cellScan, {
     releaseArenaAfterMaterialization: options.releaseArenaAfterMaterialization,
+    detachLazyCells,
     useLazyCells,
   })
   const metadata: SheetMetadataSnapshot = {
