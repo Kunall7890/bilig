@@ -308,10 +308,11 @@ export function WorkbookGridSurface(props: WorkbookGridSurfaceProps) {
         hoveredCell: hoverCell,
         previewRects,
         selectedCell: [displaySelectionCol, displaySelectionRow],
+        selectionOverlayMode: 'fills-only',
         selectionRange: displaySelectionRange,
-        showSelectionOverlay: false,
         showFillHandle: showSelectionFillHandle,
         showHoverOverlay: false,
+        showSelectionOverlay: true,
         resizeGuideColumn,
         resizeGuideColumnWidth,
         resizeGuideRow,
@@ -421,7 +422,7 @@ export function WorkbookGridSurface(props: WorkbookGridSurfaceProps) {
           hoverCell={hoverCell}
           scrollTransformStore={renderState.scrollTransformStore}
           selectedCell={[displaySelectionCol, displaySelectionRow]}
-          selectionChromeMode="visible"
+          selectionChromeMode="chrome-only"
           selectionRange={displaySelectionRange}
           showFillHandle={showSelectionFillHandle}
         />

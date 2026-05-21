@@ -279,7 +279,8 @@ test('web app preserves the active cell inside a selected area and collapses on 
   await expect(page.locator('[data-grid-selection-visual-role="selection-border"]')).toHaveCount(1)
   await expect(page.locator('[data-grid-selection-visual-role="active-border"]')).toHaveCount(1)
   await expect(page.locator('[data-grid-selection-visual-role="fill-handle"]')).toHaveCount(1)
-  await expectSelectionVisualRoles(page, ['header-fill', 'selection-fill', 'selection-border', 'active-border', 'fill-handle'], 'visible')
+  await expectSelectionVisualRoles(page, ['header-fill', 'selection-fill'], 'hidden')
+  await expectSelectionVisualRoles(page, ['selection-border', 'active-border', 'fill-handle'], 'visible')
 
   await clickProductCell(page, 2, 2)
   await expect(page.getByTestId('status-selection')).toHaveText('Sheet1!C3')
@@ -288,7 +289,8 @@ test('web app preserves the active cell inside a selected area and collapses on 
   await expect(page.locator('[data-grid-selection-visual-role="selection-fill"]')).toHaveCount(0)
   await expect(page.locator('[data-grid-selection-visual-role="active-border"]')).toHaveCount(1)
   await expect(page.locator('[data-grid-selection-visual-role="selection-border"]')).toHaveCount(0)
-  await expectSelectionVisualRoles(page, ['active-border', 'fill-handle', 'header-fill'], 'visible')
+  await expectSelectionVisualRoles(page, ['header-fill'], 'hidden')
+  await expectSelectionVisualRoles(page, ['active-border', 'fill-handle'], 'visible')
 })
 
 test('@browser-ci web app keeps reverse-drag range selection chrome geometrically aligned', async ({ page }) => {

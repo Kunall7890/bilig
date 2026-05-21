@@ -85,7 +85,20 @@ export class ProjectedViewportStore implements GridEngineLike {
       getCell: (sheetName, address) => this.cellCache.getCell(sheetName, address),
       hasCellSnapshot: (sheetName, address) => this.cellCache.hasCellSnapshot(sheetName, address),
       setCellSnapshot: (snapshot) => {
-        this.setCellSnapshot(snapshot, { force: true, forceOptimistic: true, suppressRangeOverlays: false })
+        this.setCellSnapshot(snapshot, {
+          force: true,
+          forceOptimistic: true,
+          localDeltaDirtyMask: LOCAL_CELL_VISUAL_DIRTY_MASK,
+          suppressRangeOverlays: false,
+        })
+      },
+      setCellSnapshots: (snapshots) => {
+        this.setCellSnapshots(snapshots, {
+          force: true,
+          forceOptimistic: true,
+          localDeltaDirtyMask: LOCAL_CELL_VISUAL_DIRTY_MASK,
+          suppressRangeOverlays: false,
+        })
       },
     })
     this.axisStore = new ProjectedViewportAxisStore({
@@ -260,13 +273,27 @@ export class ProjectedViewportStore implements GridEngineLike {
   }
 
   setCellSnapshot(snapshot: CellSnapshot, options: ProjectedCellSnapshotWriteOptions = {}): void {
-    if (options.suppressRangeOverlays !== false) {
-      this.rangeOverlayStore.suppressExistingOverlaysForCell(snapshot.sheetName, snapshot.address)
-    }
-    const result = this.cellCache.writeCellSnapshot(snapshot, options)
-    if (result.changed && result.acceptedSnapshot && options.emitLocalDelta !== false) {
+    this.setCellSnapshots([snapshot], options)
+  }
+
+  private setCellSnapshots(snapshots: readonly CellSnapshot[], options: ProjectedCellSnapshotWriteOptions = {}): void {
+    const acceptedSnapshotsBySheet = new Map<string, CellSnapshot[]>()
+    snapshots.forEach((snapshot) => {
+      if (options.suppressRangeOverlays !== false) {
+        this.rangeOverlayStore.suppressExistingOverlaysForCell(snapshot.sheetName, snapshot.address)
+      }
+      const result = this.cellCache.writeCellSnapshot(snapshot, options)
+      if (result.changed && result.acceptedSnapshot && options.emitLocalDelta !== false) {
+        const acceptedSnapshots = acceptedSnapshotsBySheet.get(result.acceptedSnapshot.sheetName) ?? []
+        acceptedSnapshots.push(result.acceptedSnapshot)
+        acceptedSnapshotsBySheet.set(result.acceptedSnapshot.sheetName, acceptedSnapshots)
+      }
+    })
+    if (acceptedSnapshotsBySheet.size > 0) {
       this.localRevision += 1
-      this.localDeltaPublisher.emitCellSnapshot(result.acceptedSnapshot, options.localDeltaDirtyMask)
+      acceptedSnapshotsBySheet.forEach((acceptedSnapshots, sheetName) => {
+        this.localDeltaPublisher.emitCellSnapshots(sheetName, acceptedSnapshots, options.localDeltaDirtyMask)
+      })
     }
   }
 
