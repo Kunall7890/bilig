@@ -1,7 +1,7 @@
 import type { WorkbookRichTextCellSnapshot } from '@bilig/protocol'
 import { parseLargeSimpleSharedFormulaIndex, readLargeSimpleFormulaTypeCode } from './xlsx-large-simple-formula-records.js'
 import type { LargeSimpleSharedStrings } from './xlsx-large-simple-shared-strings.js'
-import { stringItemText } from './xlsx-large-simple-worksheet-stream-text.js'
+import { decodeXmlText, normalizeWorksheetText, stringItemText } from './xlsx-large-simple-worksheet-stream-text.js'
 import { decodeBytes, encodeCellAddress } from './xlsx-large-simple-xml-byte-utils.js'
 import { richTextRunPattern } from './xlsx-large-simple-worksheet-scan-constants.js'
 import {
@@ -48,8 +48,45 @@ export function readPositiveIntegerAttributeFromTag(
 }
 
 export function readInlineStringCellValue(bytes: Uint8Array, contentStart: number, contentEnd: number): string | undefined {
-  const inlineStringXml = readElementXml(bytes, contentStart, contentEnd, 'is')
-  return inlineStringXml ? stringItemText(inlineStringXml) : undefined
+  const tag = findNextOpeningTag(bytes, contentStart, 'is', contentEnd)
+  if (!tag) {
+    return undefined
+  }
+  const tagEnd = findTagEnd(bytes, tag.nameEnd, contentEnd)
+  if (tagEnd === null) {
+    return undefined
+  }
+  const inlineStringEnd = isSelfClosingTag(bytes, tagEnd) ? tagEnd + 1 : findClosingTag(bytes, tagEnd + 1, 'is', contentEnd)?.start
+  if (inlineStringEnd === undefined) {
+    return undefined
+  }
+  let textIndex = tagEnd + 1
+  let text = ''
+  let textElementSeen = false
+  while (textIndex < inlineStringEnd) {
+    const textTag = findNextOpeningTag(bytes, textIndex, 't', inlineStringEnd)
+    if (!textTag) {
+      break
+    }
+    const textTagEnd = findTagEnd(bytes, textTag.nameEnd, inlineStringEnd)
+    if (textTagEnd === null) {
+      return undefined
+    }
+    textElementSeen = true
+    if (isSelfClosingTag(bytes, textTagEnd)) {
+      textIndex = textTagEnd + 1
+      continue
+    }
+    const textClosing = findClosingTag(bytes, textTagEnd + 1, 't', inlineStringEnd)
+    if (!textClosing) {
+      return undefined
+    }
+    if (textClosing.start > textTagEnd + 1) {
+      text += decodeXmlText(decodeBytes(bytes, textTagEnd + 1, textClosing.start))
+    }
+    textIndex = textClosing.end
+  }
+  return textElementSeen ? normalizeWorksheetText(text) : ''
 }
 
 export function readFormulaSpec(
@@ -104,6 +141,9 @@ export function readRichTextCellArtifact(
       : undefined
   }
   if (type !== 'inlineStr') {
+    return undefined
+  }
+  if (!findNextOpeningTag(bytes, contentStart, 'r', contentEnd)) {
     return undefined
   }
   const inlineStringXml = readElementXml(bytes, contentStart, contentEnd, 'is')

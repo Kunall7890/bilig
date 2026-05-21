@@ -70,6 +70,27 @@ describe('large simple XLSX import arena', () => {
     expect(pool.count).toBe(0)
   })
 
+  it('stores empty string cells without allocating string-id storage', () => {
+    const arena = new ImportedWorkbookArena()
+    arena.reserveDenseRowMajorCellCapacity(0, 1, 3)
+    arena.addCell({ sheetIndex: 0, row: 0, column: 0, value: '' })
+    arena.addCell({ sheetIndex: 0, row: 1, column: 0, value: '' })
+
+    expect(arena.snapshot().strings).toEqual([])
+    expect(arena.snapshot().stringIds).toBeUndefined()
+    expect(arena.materializeSheetCells(0)).toEqual([
+      { address: 'A1', value: '' },
+      { address: 'A2', value: '' },
+    ])
+
+    const detachedCells = arena.createDetachedLazySheetCells(0)
+    arena.release()
+
+    expect(detachedCells).toHaveLength(2)
+    expect(detachedCells[0]).toEqual({ address: 'A1', value: '' })
+    expect(detachedCells[1]).toEqual({ address: 'A2', value: '' })
+  })
+
   it('bounds repeated string and formula interning for large import arenas', () => {
     const pool = new ImportedWorkbookStringPool()
     const arena = new ImportedWorkbookArena(pool, {
@@ -486,6 +507,24 @@ describe('large simple XLSX import arena', () => {
     const snapshot = arena.snapshot()
     expect(snapshot.rows).toEqual(new Uint32Array([0, 0, 0, 1]))
     expect(snapshot.columns).toEqual(new Uint16Array([0, 1, 3, 0]))
+  })
+
+  it('tracks large dimension coordinates linearly without row and column arrays', () => {
+    const arena = new ImportedWorkbookArena()
+    arena.trackLinearRowMajorCellCoordinates(0, 100, 100_000)
+    const retainedAfterTracking = arena.retainedStorageByteLength()
+    arena.addCell({ sheetIndex: 0, row: 0, column: 0, value: 'A1' })
+    arena.addCell({ sheetIndex: 0, row: 999, column: 99, value: 'CV1000' })
+    const retainedAfterCells = arena.retainedStorageByteLength()
+    const detachedCells = arena.createDetachedLazySheetCells(0)
+    arena.release()
+
+    expect(retainedAfterTracking).toBeLessThan(10_000)
+    expect(retainedAfterCells).toBeLessThan(20_000)
+    expect(Array.from(detachedCells)).toEqual([
+      { address: 'A1', value: 'A1' },
+      { address: 'CV1000', value: 'CV1000' },
+    ])
   })
 
   it('materializes requested cells by address without expanding the full sheet', () => {

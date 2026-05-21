@@ -4,6 +4,7 @@ import {
   noPoolId,
   valueKindBoolean,
   valueKindEmpty,
+  valueKindEmptyString,
   valueKindInteger,
   valueKindNull,
   valueKindNumber,
@@ -97,6 +98,8 @@ function materializeDetachedValue(source: DetachedLazySheetCellSource, index: nu
       return (source.booleanValues?.[index] ?? 0) === 1
     case valueKindNull:
       return null
+    case valueKindEmptyString:
+      return ''
     default:
       return undefined
   }

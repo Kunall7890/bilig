@@ -397,17 +397,15 @@ class LargeSimpleWorksheetChunkScanner {
 
   private reserveDimensionCellCapacity(rowCount: number, columnCount: number): void {
     const cellCapacity = rowCount * columnCount
-    if (
-      !this.retainCells ||
-      this.dimensionCellPreallocationApplied ||
-      !Number.isSafeInteger(cellCapacity) ||
-      cellCapacity <= 0 ||
-      cellCapacity > Math.min(this.maxDimensionCellPreallocation, maxEagerDenseDimensionCellPreallocation)
-    ) {
+    if (!this.retainCells || this.dimensionCellPreallocationApplied || !Number.isSafeInteger(cellCapacity) || cellCapacity <= 0) {
       return
     }
     this.dimensionCellPreallocationApplied = true
-    this.arena.reserveDenseRowMajorCellCapacity(this.sheetIndex, columnCount, rowCount)
+    if (cellCapacity <= Math.min(this.maxDimensionCellPreallocation, maxEagerDenseDimensionCellPreallocation)) {
+      this.arena.reserveDenseRowMajorCellCapacity(this.sheetIndex, columnCount, rowCount)
+      return
+    }
+    this.arena.trackLinearRowMajorCellCoordinates(this.sheetIndex, columnCount, rowCount)
   }
 
   private readCell(nameEnd: number, tagEnd: number, final: boolean): boolean {

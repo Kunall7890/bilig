@@ -65,6 +65,10 @@ function readNumberValue(bytes: Uint8Array, range: LargeSimpleXmlTextRange): num
   if (integerValue !== null) {
     return integerValue
   }
+  const decimalValue = readSimpleDecimalNumber(bytes, range)
+  if (decimalValue !== null) {
+    return decimalValue
+  }
   const value = Number(decodeBytes(bytes, range.start, range.end).trim())
   return Number.isFinite(value) ? value : undefined
 }
@@ -132,6 +136,55 @@ function readSafeIntegerNumber(bytes: Uint8Array, range: LargeSimpleXmlTextRange
     index += 1
   }
   return sign * value
+}
+
+function readSimpleDecimalNumber(bytes: Uint8Array, range: LargeSimpleXmlTextRange): number | null {
+  const trimmed = trimmedRange(bytes, range)
+  let index = trimmed.start
+  const end = trimmed.end
+  if (index === end) {
+    return null
+  }
+  let sign = 1
+  const first = bytes[index]
+  if (first === 43 || first === 45) {
+    sign = first === 45 ? -1 : 1
+    index += 1
+  }
+  if (index === end) {
+    return null
+  }
+  let significand = 0
+  let decimalScale = 1
+  let digitCount = 0
+  let sawDigit = false
+  let sawDecimalPoint = false
+  while (index < end) {
+    const byte = bytes[index] ?? 0
+    if (byte >= 48 && byte <= 57) {
+      if (digitCount >= 15) {
+        return null
+      }
+      sawDigit = true
+      digitCount += 1
+      significand = significand * 10 + byte - 48
+      if (sawDecimalPoint) {
+        decimalScale *= 10
+      }
+      index += 1
+      continue
+    }
+    if (byte === 46 && !sawDecimalPoint) {
+      sawDecimalPoint = true
+      index += 1
+      continue
+    }
+    return null
+  }
+  if (!sawDigit || !sawDecimalPoint) {
+    return null
+  }
+  return sign * (significand / decimalScale)
 }
 
 function trimmedRange(bytes: Uint8Array, range: LargeSimpleXmlTextRange): LargeSimpleXmlTextRange {

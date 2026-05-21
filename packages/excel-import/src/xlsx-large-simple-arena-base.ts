@@ -25,6 +25,7 @@ import {
   noPoolId,
   valueKindBoolean,
   valueKindEmpty,
+  valueKindEmptyString,
   valueKindInteger,
   valueKindNull,
   valueKindNumber,
@@ -141,6 +142,22 @@ export abstract class ImportedWorkbookArenaBase {
     this.reserveCellCapacity(capacity)
   }
 
+  trackLinearRowMajorCellCoordinates(sheetIndex: number, width: number, height: number): void {
+    if (
+      this.length !== 0 ||
+      this.sheetIndexes ||
+      (this.sheetIndex !== null && this.sheetIndex !== sheetIndex) ||
+      !canStoreLinearCoordinate(width, height - 1, width - 1)
+    ) {
+      return
+    }
+    this.sheetIndex = sheetIndex
+    this.linearRowMajorWidth = width
+    this.linearCellIndexes = new Uint32Array(this.valueKinds.length)
+    this.rows = new Uint32Array(0)
+    this.columns = new Uint16Array(0)
+  }
+
   protected appendCell(sheetIndex: number, row: number, column: number): number {
     const index = this.length
     this.length += 1
@@ -231,6 +248,10 @@ export abstract class ImportedWorkbookArenaBase {
       this.ensureBooleanValueStorage()[index] = value ? 1 : 0
       return
     }
+    if (value === '') {
+      this.valueKinds[index] = valueKindEmptyString
+      return
+    }
     this.valueKinds[index] = valueKindString
     this.stringValueCount += 1
     this.ensureStringIdStorage()[index] = this.internString(value)
@@ -259,6 +280,8 @@ export abstract class ImportedWorkbookArenaBase {
         return (this.booleanValues?.[index] ?? 0) === 1
       case valueKindNull:
         return null
+      case valueKindEmptyString:
+        return ''
       default:
         return undefined
     }
