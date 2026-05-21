@@ -89,17 +89,27 @@ export const WorkbookPaneRendererV3 = memo(function WorkbookPaneRendererV3({
     },
     [hostRuntime],
   )
-  const headerTextRunCount = headerPanes.reduce((total, pane) => total + pane.textRuns.length, 0)
-  const tileTextRunCount = tilePanes.reduce((total, pane) => total + pane.tile.textRuns.length, 0)
-  const hasNativeTextRuns = headerTextRunCount + tileTextRunCount > 0
-  const showNativeTextLayer = active && hasNativeTextRuns
+  const headerTextRunCount = countHeaderPaneTextRunsV3(headerPanes)
+  const tileTextRunCount = countTilePaneTextRunsV3(tilePanes)
+  const hasLiveNativeTextRuns = headerTextRunCount + tileTextRunCount > 0
   const showTypeGpuCanvas = backendStatus !== 'unavailable'
+  const nativeLayerSource = presentedVisualFrame ? 'presented-frame' : showTypeGpuCanvas ? 'none' : 'backend-unavailable-live'
+  const presentedHeaderPanes = presentedVisualFrame?.headerPanes ?? []
+  const presentedTilePanes = presentedVisualFrame?.tilePanes ?? []
+  const nativeHeaderPanes = presentedVisualFrame?.headerPanes ?? (showTypeGpuCanvas ? [] : headerPanes)
+  const nativeTilePanes = presentedVisualFrame?.tilePanes ?? (showTypeGpuCanvas ? [] : tilePanes)
+  const presentedHeaderTextRunCount = countHeaderPaneTextRunsV3(presentedHeaderPanes)
+  const presentedTileTextRunCount = countTilePaneTextRunsV3(presentedTilePanes)
+  const nativeHeaderTextRunCount = countHeaderPaneTextRunsV3(nativeHeaderPanes)
+  const nativeTileTextRunCount = countTilePaneTextRunsV3(nativeTilePanes)
+  const hasNativeTextLayerRuns = nativeHeaderTextRunCount + nativeTileTextRunCount > 0
+  const showNativeTextLayer = active && hasNativeTextLayerRuns
 
   useLayoutEffect(() => {
     hostRuntime.updateProps({
       active,
       cameraStore,
-      drawText: !showNativeTextLayer,
+      drawText: !hasLiveNativeTextRuns,
       geometry,
       headerPanes,
       host,
@@ -122,7 +132,7 @@ export const WorkbookPaneRendererV3 = memo(function WorkbookPaneRendererV3({
     preloadTilePanes,
     renderRevisionSnapshot,
     scrollTransformStore,
-    showNativeTextLayer,
+    hasLiveNativeTextRuns,
     tilePanes,
   ])
 
@@ -169,7 +179,7 @@ export const WorkbookPaneRendererV3 = memo(function WorkbookPaneRendererV3({
           data-v3-body-world-x={geometry?.camera.bodyWorldX ?? 0}
           data-v3-body-world-y={geometry?.camera.bodyWorldY ?? 0}
           data-v3-canvas-proof-layer="disabled"
-          data-v3-draw-text={showNativeTextLayer ? 'false' : 'true'}
+          data-v3-draw-text={hasLiveNativeTextRuns ? 'false' : 'true'}
           data-v3-frame-proof-status={frameProofStatus}
           data-v3-frame-proof-signature={frameProofSignature}
           data-v3-has-presented-frame={hasPresentedFrame ? 'true' : 'false'}
@@ -181,6 +191,12 @@ export const WorkbookPaneRendererV3 = memo(function WorkbookPaneRendererV3({
           data-v3-local-render-revision={renderRevisionSnapshot?.localRevision ?? ''}
           data-v3-presented-frame-proof-signature={presentedFrameProofSignature}
           data-v3-presented-camera-seq={presentedVisualFrame?.cameraSeq ?? ''}
+          data-v3-presented-draw-text={presentedVisualFrame ? (presentedVisualFrame.drawText ? 'true' : 'false') : ''}
+          data-v3-presented-header-pane-count={presentedHeaderPanes.length}
+          data-v3-presented-header-text-run-count={presentedHeaderTextRunCount}
+          data-v3-native-layer-source={nativeLayerSource}
+          data-v3-native-header-pane-count={nativeHeaderPanes.length}
+          data-v3-native-header-text-run-count={nativeHeaderTextRunCount}
           data-v3-presented-overlay-camera-seq={presentedVisualFrame?.overlayCameraSeq ?? ''}
           data-v3-presented-overlay-rect-count={presentedVisualFrame?.overlayRectCount ?? ''}
           data-v3-presented-overlay-rect-signature={presentedVisualFrame?.overlayRectSignature ?? ''}
@@ -189,6 +205,10 @@ export const WorkbookPaneRendererV3 = memo(function WorkbookPaneRendererV3({
           data-v3-presented-render-ty={presentedVisualFrame?.scrollSnapshot.renderTy ?? presentedVisualFrame?.scrollSnapshot.ty ?? ''}
           data-v3-presented-scroll-left={presentedVisualFrame?.scrollSnapshot.scrollLeft ?? ''}
           data-v3-presented-scroll-top={presentedVisualFrame?.scrollSnapshot.scrollTop ?? ''}
+          data-v3-presented-text-run-count={presentedTileTextRunCount}
+          data-v3-presented-tile-pane-count={presentedTilePanes.length}
+          data-v3-native-text-run-count={nativeTileTextRunCount}
+          data-v3-native-tile-pane-count={nativeTilePanes.length}
           data-v3-preload-pane-count={preloadTilePanes.length}
           data-v3-projected-render-revision={renderRevisionSnapshot?.projectedRevision ?? ''}
           data-v3-text-run-count={tileTextRunCount}
@@ -218,27 +238,35 @@ export const WorkbookPaneRendererV3 = memo(function WorkbookPaneRendererV3({
         active={active}
         cameraStore={cameraStore}
         geometry={geometry}
-        headerPanes={headerPanes}
+        headerPanes={nativeHeaderPanes}
         presentedScrollSnapshot={presentedVisualFrame?.scrollSnapshot ?? null}
         scrollTransformStore={scrollTransformStore}
-        tilePanes={tilePanes}
+        tilePanes={nativeTilePanes}
       />
       {showNativeTextLayer ? (
         <WorkbookPaneNativeTextLayerV3
           active={active}
           cameraStore={cameraStore}
           geometry={geometry}
-          headerPanes={headerPanes}
+          headerPanes={nativeHeaderPanes}
           presentedScrollSnapshot={presentedVisualFrame?.scrollSnapshot ?? null}
           scrollTransformStore={scrollTransformStore}
           selectionOcclusionRanges={selectionOcclusionRanges}
           suppressedTextCell={suppressedTextCell}
-          tilePanes={tilePanes}
+          tilePanes={nativeTilePanes}
         />
       ) : null}
     </>
   )
 })
+
+function countHeaderPaneTextRunsV3(headerPanes: readonly GridHeaderPaneState[]): number {
+  return headerPanes.reduce((total, pane) => total + pane.textRuns.length, 0)
+}
+
+function countTilePaneTextRunsV3(tilePanes: readonly WorkbookRenderTilePaneState[]): number {
+  return tilePanes.reduce((total, pane) => total + pane.tile.textRuns.length, 0)
+}
 
 export function resolveWorkbookPaneTileSceneRevisionV3(tilePanes: readonly WorkbookRenderTilePaneState[]): number | null {
   return maxTilePaneField(tilePanes, (pane) => pane.tile.lastBatchId)
