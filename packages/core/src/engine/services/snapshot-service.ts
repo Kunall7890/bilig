@@ -1,5 +1,11 @@
 import { Effect } from 'effect'
-import { ValueTag, type CellSnapshot, type WorkbookCalculationSettingsSnapshot, type WorkbookSnapshot } from '@bilig/protocol'
+import {
+  ValueTag,
+  type CellSnapshot,
+  type CellValue,
+  type WorkbookCalculationSettingsSnapshot,
+  type WorkbookSnapshot,
+} from '@bilig/protocol'
 import type { EngineCellMutationRef, EngineFormulaSourceRefs } from '../../cell-mutations-at.js'
 import { CellFlags } from '../../cell-store.js'
 import { cloneCellStyleRecord } from '../../engine-style-utils.js'
@@ -202,6 +208,12 @@ export function createEngineSnapshotService(args: {
             dimensions: { width: number; height: number }
             cellCount: number
           }> = []
+          const runtimeImageCellValues: Array<{
+            sheetName: string
+            row: number
+            col: number
+            value: CellValue
+          }> = []
           const workbookSnapshot: WorkbookSnapshot = {
             version: 1,
             workbook,
@@ -216,6 +228,14 @@ export function createEngineSnapshotService(args: {
                 sheet.grid.forEachCellEntry((cellIndex, row, col) => {
                   const cellSnapshot = args.getCellByIndex(cellIndex)
                   const explicitFormat = args.state.workbook.getCellFormat(cellIndex)
+                  if (cellSnapshot.value.tag !== ValueTag.Empty) {
+                    runtimeImageCellValues.push({
+                      sheetName: sheet.name,
+                      row,
+                      col,
+                      value: cellSnapshot.value,
+                    })
+                  }
                   if ((cellSnapshot.flags & (CellFlags.SpillChild | CellFlags.PivotOutput)) !== 0) {
                     return
                   }
@@ -280,6 +300,7 @@ export function createEngineSnapshotService(args: {
                 col: record.col,
                 value: args.getCellByIndex(record.cellIndex).value,
               })),
+              ...(runtimeImageCellValues.length > 0 ? { cellValues: runtimeImageCellValues } : {}),
               ...(args.exportFormulaFamilyRuns ? { formulaFamilyRuns: args.exportFormulaFamilyRuns() } : {}),
               sheetCells: runtimeImageSheetCells,
             } satisfies RuntimeImage)

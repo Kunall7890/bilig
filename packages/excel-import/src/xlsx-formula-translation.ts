@@ -46,7 +46,11 @@ const xlsxFutureFunctionNames: ReadonlySet<string> = new Set([
   'IFS',
   'ISFORMULA',
   'ISOWEEKNUM',
+  'ISOMITTED',
+  'LAMBDA',
   'LET',
+  'MAKEARRAY',
+  'MAP',
   'MAXIFS',
   'MINIFS',
   'MUNIT',
@@ -54,6 +58,8 @@ const xlsxFutureFunctionNames: ReadonlySet<string> = new Set([
   'PDURATION',
   'PHI',
   'RRI',
+  'REDUCE',
+  'SCAN',
   'SEQUENCE',
   'SHEET',
   'SHEETS',
@@ -85,11 +91,13 @@ const xlsxWorksheetFutureFunctionNames: ReadonlySet<string> = new Set(['FILTER']
 export function normalizeImportedFormulaSource(formula: string): string {
   const trimmed = formula.trim()
   const prefix = namespacedSpreadsheetFormulaPattern.exec(trimmed)
-  return transformFormulaFunctionNames(prefix ? trimmed.slice(prefix[0].length) : formula, normalizeImportedFunctionToken)
+  return normalizeImportedLambdaParameterNames(
+    transformFormulaFunctionNames(prefix ? trimmed.slice(prefix[0].length) : formula, normalizeImportedFunctionToken),
+  )
 }
 
 export function encodeFormulaForXlsx(formula: string): string {
-  return transformFormulaFunctionNames(formula, encodeFunctionTokenForXlsx)
+  return encodeLambdaParameterNamesForXlsx(transformFormulaFunctionNames(formula, encodeFunctionTokenForXlsx))
 }
 
 function isIdentifierStart(character: string): boolean {
@@ -169,6 +177,163 @@ function encodeFunctionTokenForXlsx(name: string): string {
     return name
   }
   return xlsxWorksheetFutureFunctionNames.has(upper) ? `_xlfn._xlws.${upper}` : `_xlfn.${upper}`
+}
+
+const lambdaCallTokenPattern = /(?:^|[^A-Za-z0-9_.])((?:_xlfn\.)?LAMBDA)\s*\(/giu
+const lambdaParameterNamePattern = /^(?:_xlpm\.)?[A-Za-z_][A-Za-z0-9_.]*$/iu
+
+function normalizeImportedLambdaParameterNames(formula: string): string {
+  return formula.replace(/\b_xlpm\.([A-Za-z_][A-Za-z0-9_.]*)/giu, '$1')
+}
+
+function encodeLambdaParameterNamesForXlsx(formula: string): string {
+  return transformLambdaCalls(formula, encodeLambdaCallParameterNames)
+}
+
+function transformLambdaCalls(formula: string, transform: (call: string) => string): string {
+  let output = ''
+  let cursor = 0
+  while (cursor < formula.length) {
+    lambdaCallTokenPattern.lastIndex = cursor
+    const match = lambdaCallTokenPattern.exec(formula)
+    if (!match || match.index === undefined) {
+      output += formula.slice(cursor)
+      break
+    }
+    const tokenStart = match.index + match[0].indexOf(match[1]!)
+    const openParenIndex = formula.indexOf('(', tokenStart + match[1]!.length)
+    const closeParenIndex = openParenIndex >= 0 ? findMatchingParen(formula, openParenIndex) : -1
+    if (openParenIndex < 0 || closeParenIndex < 0) {
+      output += formula.slice(cursor)
+      break
+    }
+    output += formula.slice(cursor, tokenStart)
+    output += transform(formula.slice(tokenStart, closeParenIndex + 1))
+    cursor = closeParenIndex + 1
+  }
+  return output
+}
+
+function encodeLambdaCallParameterNames(call: string): string {
+  const openParenIndex = call.indexOf('(')
+  if (openParenIndex < 0 || !call.endsWith(')')) {
+    return call
+  }
+  const callee = call.slice(0, openParenIndex)
+  const args = splitTopLevelFormulaArguments(call.slice(openParenIndex + 1, -1))
+  if (args.length < 2) {
+    return call
+  }
+  const parameterNames = args.slice(0, -1).map((arg) => normalizeLambdaParameterName(arg.trim()))
+  if (parameterNames.some((name) => name === undefined)) {
+    return call
+  }
+  const scopedParameters = new Set(parameterNames.filter((name): name is string => name !== undefined))
+  const encodedParameters = parameterNames.map((name) => `_xlpm.${name}`)
+  const encodedBody = prefixLambdaParameterReferences(
+    transformLambdaCalls(args[args.length - 1]!, encodeLambdaCallParameterNames),
+    scopedParameters,
+  )
+  return `${callee}(${[...encodedParameters, encodedBody].join(',')})`
+}
+
+function normalizeLambdaParameterName(parameter: string): string | undefined {
+  if (!lambdaParameterNamePattern.test(parameter)) {
+    return undefined
+  }
+  return parameter.replace(/^_xlpm\./iu, '')
+}
+
+function splitTopLevelFormulaArguments(source: string): string[] {
+  const args: string[] = []
+  let start = 0
+  let depth = 0
+  let index = 0
+  while (index < source.length) {
+    const character = source[index]!
+    if (character === '"') {
+      index = skipDoubleQuotedString(source, index)
+      continue
+    }
+    if (character === "'") {
+      index = skipSingleQuotedSheetName(source, index)
+      continue
+    }
+    if (character === '(' || character === '[' || character === '{') {
+      depth += 1
+    } else if (character === ')' || character === ']' || character === '}') {
+      depth = Math.max(0, depth - 1)
+    } else if (character === ',' && depth === 0) {
+      args.push(source.slice(start, index))
+      start = index + 1
+    }
+    index += 1
+  }
+  args.push(source.slice(start))
+  return args
+}
+
+function findMatchingParen(source: string, openParenIndex: number): number {
+  let depth = 0
+  let index = openParenIndex
+  while (index < source.length) {
+    const character = source[index]!
+    if (character === '"') {
+      index = skipDoubleQuotedString(source, index)
+      continue
+    }
+    if (character === "'") {
+      index = skipSingleQuotedSheetName(source, index)
+      continue
+    }
+    if (character === '(') {
+      depth += 1
+    } else if (character === ')') {
+      depth -= 1
+      if (depth === 0) {
+        return index
+      }
+    }
+    index += 1
+  }
+  return -1
+}
+
+function prefixLambdaParameterReferences(source: string, parameterNames: ReadonlySet<string>): string {
+  if (parameterNames.size === 0) {
+    return source
+  }
+  let output = ''
+  let index = 0
+  while (index < source.length) {
+    const character = source[index]!
+    if (character === '"') {
+      const endIndex = skipDoubleQuotedString(source, index)
+      output += source.slice(index, endIndex)
+      index = endIndex
+      continue
+    }
+    if (character === "'") {
+      const endIndex = skipSingleQuotedSheetName(source, index)
+      output += source.slice(index, endIndex)
+      index = endIndex
+      continue
+    }
+    if (!isIdentifierStart(character)) {
+      output += character
+      index += 1
+      continue
+    }
+    let endIndex = index + 1
+    while (endIndex < source.length && isIdentifierPart(source[endIndex]!)) {
+      endIndex += 1
+    }
+    const name = source.slice(index, endIndex)
+    const callStartIndex = skipWhitespace(source, endIndex)
+    output += parameterNames.has(name) && source[callStartIndex] !== '(' ? `_xlpm.${name}` : name
+    index = endIndex
+  }
+  return output
 }
 
 function skipDoubleQuotedString(source: string, startIndex: number): number {

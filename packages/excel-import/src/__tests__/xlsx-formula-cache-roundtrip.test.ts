@@ -2,7 +2,8 @@ import { strFromU8, strToU8, unzipSync, zipSync } from 'fflate'
 import * as XLSX from 'xlsx'
 import { describe, expect, it } from 'vitest'
 
-import type { WorkbookSnapshot } from '@bilig/protocol'
+import { attachRuntimeImage } from '@bilig/core'
+import { ValueTag, type WorkbookSnapshot } from '@bilig/protocol'
 import { exportXlsx, importXlsx } from '../index.js'
 
 describe('formula cache roundtrip', () => {
@@ -143,6 +144,67 @@ describe('formula cache roundtrip', () => {
     expect(cells.get('G2')).toMatchObject({ formula: 'IF(TRUE,"XLOOKUP(",TEXTJOIN("-",TRUE,A2:A4))' })
     expect(cells.get('H2')).toMatchObject({ formula: 'XLOOKUP("c",B2:B4,C2:C4)' })
     expect(cells.get('I2')).toMatchObject({ formula: 'FILTER(A2:A4,A2:A4<>"")' })
+  })
+
+  it('exports native dynamic array spills with Desktop Excel metadata and cached children', () => {
+    const snapshot = attachRuntimeImage(
+      {
+        version: 1,
+        workbook: {
+          name: 'lambda-spill-export',
+          metadata: {
+            spills: [{ sheetName: 'Sheet1', address: 'B1', rows: 3, cols: 1 }],
+          },
+        },
+        sheets: [
+          {
+            id: 1,
+            name: 'Sheet1',
+            order: 0,
+            cells: [
+              { address: 'A1', value: 1 },
+              { address: 'A2', value: 2 },
+              { address: 'A3', value: 3 },
+              { address: 'B1', formula: 'MAP(A1:A3,LAMBDA(x,x*2))' },
+            ],
+          },
+        ],
+      } satisfies WorkbookSnapshot,
+      {
+        version: 1,
+        templateBank: [],
+        formulaInstances: [],
+        formulaValues: [],
+        cellValues: [
+          { sheetName: 'Sheet1', row: 0, col: 1, value: { tag: ValueTag.Number, value: 2 } },
+          { sheetName: 'Sheet1', row: 1, col: 1, value: { tag: ValueTag.Number, value: 4 } },
+          { sheetName: 'Sheet1', row: 2, col: 1, value: { tag: ValueTag.Number, value: 6 } },
+        ],
+      },
+    )
+
+    const exported = exportXlsx(snapshot)
+    const zip = unzipSync(exported)
+    const sheetXml = strFromU8(zip['xl/worksheets/sheet1.xml'] ?? new Uint8Array())
+    const metadataXml = strFromU8(zip['xl/metadata.xml'] ?? new Uint8Array())
+    const workbookRelsXml = strFromU8(zip['xl/_rels/workbook.xml.rels'] ?? new Uint8Array())
+    const contentTypesXml = strFromU8(zip['[Content_Types].xml'] ?? new Uint8Array())
+
+    expect(cellXml(sheetXml, 'B1')).toContain('cm="1"')
+    expect(cellXml(sheetXml, 'B1')).toContain('<f t="array" ref="B1:B3">_xlfn.MAP(A1:A3,_xlfn.LAMBDA(_xlpm.x,_xlpm.x*2))</f>')
+    expect(cellXml(sheetXml, 'B1')).toContain('<v>2</v>')
+    expect(cellXml(sheetXml, 'B2')).toContain('<v>4</v>')
+    expect(cellXml(sheetXml, 'B3')).toContain('<v>6</v>')
+    expect(metadataXml).toContain('dynamicArrayProperties')
+    expect(workbookRelsXml).toContain('relationships/sheetMetadata')
+    expect(contentTypesXml).toContain('spreadsheetml.sheetMetadata+xml')
+
+    const reimported = importXlsx(exported, 'lambda-spill-export.xlsx')
+    const cells = new Map(reimported.snapshot.sheets[0]?.cells.map((cell) => [cell.address, cell]) ?? [])
+    expect(cells.get('B1')).toMatchObject({ formula: 'MAP(A1:A3,LAMBDA(x,x*2))', value: 2 })
+    expect(cells.get('B2')).toMatchObject({ value: 4 })
+    expect(cells.get('B3')).toMatchObject({ value: 6 })
+    expect(reimported.snapshot.workbook.metadata?.spills).toEqual([{ sheetName: 'Sheet1', address: 'B1', rows: 3, cols: 1 }])
   })
 })
 

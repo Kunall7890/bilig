@@ -53,6 +53,7 @@ import {
 } from './work-paper-tracked-event-helpers.js'
 import { tryRenameWorkPaperSheetWithoutVisibilitySnapshots } from './work-paper-sheet-rename-fast-path.js'
 import { WORKPAPER_PUBLIC_ERROR_NAMES } from './work-paper-config.js'
+import { cloneWorkPaperSnapshotWithRuntimeImage } from './work-paper-snapshot-clone.js'
 import type {
   RawCellContent,
   WorkPaperCellAddress,
@@ -122,7 +123,7 @@ export abstract class WorkPaperRuntimeSurface extends WorkPaperRuntimeMetadataSu
   exportSnapshot(): WorkbookSnapshot {
     this.assertNotDisposed()
     this.engineEvents.materializePendingLazyChanges()
-    return structuredClone(this.engine.exportSnapshot())
+    return cloneWorkPaperSnapshotWithRuntimeImage(this.engine.exportSnapshot())
   }
 
   rebuildAndRecalculate(): WorkPaperChange[] {

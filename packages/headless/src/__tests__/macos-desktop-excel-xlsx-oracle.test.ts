@@ -3,6 +3,7 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 
 import { exportXlsx, importXlsx } from '@bilig/excel-import'
+import { readRuntimeImage } from '@bilig/core'
 import {
   buildFormulaCellComparison,
   buildReportSummary,
@@ -31,6 +32,12 @@ const expectedFutureFunctionOracleCells = [
   { address: 'D2', formula: '=TEXTJOIN("-",TRUE,A2:A4)', rawValue: 'string\ta-c', value: { kind: 'string', value: 'a-c' } },
   { address: 'E2', formula: '=XLOOKUP("b",B2:B4,C2:C4)', rawValue: 'number\t20.0', value: { kind: 'number', value: 20 } },
   { address: 'F2', formula: '=XMATCH("b",B2:B4,0)', rawValue: 'number\t2.0', value: { kind: 'number', value: 2 } },
+] as const
+const dynamicSpillOracleAddresses = ['B1', 'B2', 'B3'] as const
+const expectedDynamicSpillOracleValues = [
+  { address: 'B1', value: { kind: 'number', value: 2 } },
+  { address: 'B2', value: { kind: 'number', value: 4 } },
+  { address: 'B3', value: { kind: 'number', value: 6 } },
 ] as const
 
 describe('macOS Desktop Excel XLSX oracle for WorkPaper', () => {
@@ -68,6 +75,39 @@ describe('macOS Desktop Excel XLSX oracle for WorkPaper', () => {
         expect(
           futureFunctionOracleAddresses.map((address) => normalizedCellValue(reimported.getCellValue(addressToCell(address)))),
         ).toEqual(expectedFutureFunctionOracleCells.map((expected) => expected.value))
+      } finally {
+        reimported.dispose()
+      }
+    } finally {
+      workbook.dispose()
+    }
+  })
+
+  it('exports native dynamic-array spill caches through the headless XLSX path', () => {
+    const workbook = buildDynamicSpillOracleWorkbook()
+    try {
+      expect(dynamicSpillOracleAddresses.map((address) => normalizedCellValue(workbook.getCellValue(addressToCell(address))))).toEqual(
+        expectedDynamicSpillOracleValues.map((expected) => expected.value),
+      )
+
+      const snapshot = workbook.exportSnapshot()
+      expect(
+        readRuntimeImage(snapshot)
+          ?.cellValues?.filter((cellValue) => cellValue.sheetName === 'Cases' && cellValue.col === 1)
+          .map(({ row, value }) => ({ row, value })),
+      ).toEqual([
+        { row: 0, value: { tag: ValueTag.Number, value: 2 } },
+        { row: 1, value: { tag: ValueTag.Number, value: 4 } },
+        { row: 2, value: { tag: ValueTag.Number, value: 6 } },
+      ])
+
+      const imported = importXlsx(exportXlsx(snapshot), 'headless-dynamic-spill-oracle.xlsx')
+      const reimported = WorkPaper.buildFromSnapshot(imported.snapshot, workbookConfig)
+      try {
+        expect(dynamicSpillOracleAddresses.map((address) => normalizedCellValue(reimported.getCellValue(addressToCell(address))))).toEqual(
+          expectedDynamicSpillOracleValues.map((expected) => expected.value),
+        )
+        expect(imported.snapshot.workbook.metadata?.spills).toEqual([{ sheetName: 'Cases', address: 'B1', rows: 3, cols: 1 }])
       } finally {
         reimported.dispose()
       }
@@ -201,6 +241,51 @@ describe('macOS Desktop Excel XLSX oracle for WorkPaper', () => {
     },
     60_000,
   )
+
+  it.runIf(process.env.BILIG_EXCEL_ORACLE_RUN === '1')(
+    'round-trips Desktop Excel native dynamic-array spill caches back into headless import',
+    () => {
+      if (!isMacosExcelInstalled()) {
+        throw new Error('BILIG_EXCEL_ORACLE_RUN=1 requires /Applications/Microsoft Excel.app')
+      }
+
+      const tempDir = mkdtempSync(join(tmpdir(), 'bilig-headless-excel-dynamic-spill-oracle-'))
+      try {
+        const workbookPath = join(tempDir, 'headless-dynamic-spill-oracle.xlsx')
+        const workbook = buildDynamicSpillOracleWorkbook()
+        try {
+          writeFileSync(workbookPath, exportXlsx(workbook.exportSnapshot()))
+        } finally {
+          workbook.dispose()
+        }
+
+        const excelResult = runMacosExcelInspectionOracle({
+          workbookPath,
+          worksheetName: 'Cases',
+          formulaCells: [],
+          inspectCells: dynamicSpillOracleAddresses,
+          saveWorkbook: true,
+        })
+
+        expect(excelResult.cells.map(({ address, value }) => ({ address, value }))).toEqual(expectedDynamicSpillOracleValues)
+        expect(excelResult.cells[0]?.formula).toBe('=MAP(A1:A3,LAMBDA(x,x*2))')
+
+        const imported = importXlsx(new Uint8Array(readFileSync(workbookPath)), 'headless-dynamic-spill-oracle-recalculated.xlsx')
+        const reimported = WorkPaper.buildFromSnapshot(imported.snapshot, workbookConfig)
+        try {
+          expect(
+            dynamicSpillOracleAddresses.map((address) => normalizedCellValue(reimported.getCellValue(addressToCell(address)))),
+          ).toEqual(expectedDynamicSpillOracleValues.map((expected) => expected.value))
+          expect(imported.snapshot.workbook.metadata?.spills).toEqual([{ sheetName: 'Cases', address: 'B1', rows: 3, cols: 1 }])
+        } finally {
+          reimported.dispose()
+        }
+      } finally {
+        rmSync(tempDir, { recursive: true, force: true })
+      }
+    },
+    60_000,
+  )
 })
 
 function buildOracleWorkbook(): WorkPaper {
@@ -236,6 +321,15 @@ function buildFutureFunctionOracleWorkbook(): WorkPaper {
         [null, 'b', 20],
         ['c', 'c', 30],
       ],
+    },
+    workbookConfig,
+  )
+}
+
+function buildDynamicSpillOracleWorkbook(): WorkPaper {
+  return WorkPaper.buildFromSheets(
+    {
+      Cases: [[1, '=MAP(A1:A3,LAMBDA(x,x*2))'], [2], [3]],
     },
     workbookConfig,
   )

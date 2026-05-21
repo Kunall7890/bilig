@@ -57,6 +57,7 @@ import {
   initializeWorkPaperFromSheets,
   initializeWorkPaperFromSnapshot,
 } from './work-paper-sheet-initialization.js'
+import { attachWorkPaperRuntimeImage, cloneWorkPaperSnapshotWithRuntimeImage } from './work-paper-snapshot-clone.js'
 import { buildWorkPaperRawCellMutation } from './work-paper-literal-mutation-queue.js'
 import { WorkPaperEngineEventTracker } from './work-paper-engine-event-tracker.js'
 import { WorkPaperRuntimeLifecycleBase } from './work-paper-runtime-lifecycle-base.js'
@@ -162,7 +163,7 @@ function clonePreservedImportedSnapshot(snapshot: WorkbookSnapshot): WorkbookSna
       value: sourceBytes,
     })
   }
-  return cloned
+  return attachWorkPaperRuntimeImage(snapshot, cloned)
 }
 
 export class WorkPaper extends WorkPaperRuntimeLifecycleBase {
@@ -254,7 +255,7 @@ export class WorkPaper extends WorkPaperRuntimeLifecycleBase {
     if (this.preservedImportedSnapshot !== undefined) {
       return clonePreservedImportedSnapshot(this.preservedImportedSnapshot)
     }
-    return structuredClone(this.engine.exportSnapshot())
+    return cloneWorkPaperSnapshotWithRuntimeImage(this.engine.exportSnapshot())
   }
 
   override setCellContents(address: WorkPaperCellAddress, content: RawCellContent | WorkPaperSheet): WorkPaperChange[] {
