@@ -214,7 +214,7 @@ function rangesEqual(left: CellRangeRef, right: CellRangeRef): boolean {
   return left.sheetName === right.sheetName && left.startAddress === right.startAddress && left.endAddress === right.endAddress
 }
 
-function opTargetRange(op: WorkbookOp): CellRangeRef | null {
+function opTargetRange(op: WorkbookOp) {
   if (
     op.kind === 'setCellValue' ||
     op.kind === 'setCellFormula' ||

@@ -59,10 +59,10 @@ describe('local-session-snapshot-store', () => {
     const session = createSession('doc-compact')
     const broadcastFrames: string[] = []
     let capturedSnapshot: WorkbookSnapshot | null = null
-    let capturedBatch: ReturnType<typeof createAppendBatchFrame>['batch'] | null = null
+    const appendFrames: ReturnType<typeof createAppendBatchFrame>[] = []
 
     session.engine.subscribeBatches((batch) => {
-      capturedBatch = batch
+      appendFrames.push(createAppendBatchFrame(session.documentId, 1, batch))
     })
     session.engine.setRangeValues(
       {
@@ -72,11 +72,11 @@ describe('local-session-snapshot-store', () => {
       },
       [[456]],
     )
-    if (!capturedBatch) {
+    const appendFrame = appendFrames[0]
+    if (!appendFrame) {
       throw new Error('Expected engine batch')
     }
     session.cursor = 1
-    const appendFrame = createAppendBatchFrame(session.documentId, 1, capturedBatch)
     session.batches = [{ cursor: appendFrame.cursor, frame: appendFrame }]
 
     maybeCompactLocalSession(session, {

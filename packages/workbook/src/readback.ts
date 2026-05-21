@@ -15,8 +15,8 @@ export interface WorkbookReadbackIssue {
   readonly message: string
   readonly check: WorkbookCheckResult
   readonly target?: WorkbookRef
-  readonly expected?: LiteralInput | string | null
-  readonly actual?: LiteralInput | string | null
+  readonly expected?: LiteralInput
+  readonly actual?: LiteralInput
 }
 
 export interface WorkbookReadbackVerification {
@@ -58,7 +58,7 @@ function missingReadback(check: WorkbookCheckResult): WorkbookReadbackIssue {
   })
 }
 
-function valueMismatch(check: WorkbookCheckResult, expected: LiteralInput, actual: LiteralInput | undefined): WorkbookReadbackIssue {
+function valueMismatch(check: WorkbookCheckResult, expected: LiteralInput, actual?: LiteralInput): WorkbookReadbackIssue {
   return issue({
     code: 'value_mismatch',
     check,
