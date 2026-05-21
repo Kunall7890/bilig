@@ -83,6 +83,11 @@ export function buildParsedWorksheet(
         : cellScan.arena.createLazySheetCells(cellScan.sheetIndex)
       : cellScan.arena.materializeSheetCells(cellScan.sheetIndex)
     : []
+  const arenaReleasedAfterCellProjection =
+    options.materializeCells && options.releaseArenaAfterMaterialization === true && (!useLazyCells || detachLazyCells)
+  if (arenaReleasedAfterCellProjection) {
+    cellScan.arena.release()
+  }
   if (!useLazyCells && options.numberFormatsByStyleIndex && options.numberFormatsByStyleIndex.size > 0) {
     applyLargeSimpleNumberFormatsToCells(cells, cellScan, options.numberFormatsByStyleIndex)
   }
@@ -91,6 +96,7 @@ export function buildParsedWorksheet(
     buildLargeSimpleCellMetadataReferenceSnapshots(metadataScan?.cellMetadataRefs, cells, cellScan, useLazyCells)
   releaseProjectedCellScanStorage(cellScan, {
     releaseArenaAfterMaterialization: options.releaseArenaAfterMaterialization,
+    arenaReleased: arenaReleasedAfterCellProjection,
     detachLazyCells,
     useLazyCells,
   })

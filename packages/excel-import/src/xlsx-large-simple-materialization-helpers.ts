@@ -6,6 +6,7 @@ export function releaseProjectedCellScanStorage(
   cellScan: ImportedWorksheetCellScan,
   options: {
     readonly releaseArenaAfterMaterialization: boolean | undefined
+    readonly arenaReleased?: boolean
     readonly detachLazyCells?: boolean
     readonly useLazyCells: boolean
   },
@@ -13,10 +14,12 @@ export function releaseProjectedCellScanStorage(
   if (options.releaseArenaAfterMaterialization !== true) {
     return
   }
-  if (options.useLazyCells && options.detachLazyCells !== true) {
-    cellScan.arena.releaseMaterializationScratch()
-  } else {
-    cellScan.arena.release()
+  if (options.arenaReleased !== true) {
+    if (options.useLazyCells && options.detachLazyCells !== true) {
+      cellScan.arena.releaseMaterializationScratch()
+    } else {
+      cellScan.arena.release()
+    }
   }
   cellScan.styleIndexes.release()
 }
