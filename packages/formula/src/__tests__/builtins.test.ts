@@ -45,9 +45,16 @@ describe('formula builtins', () => {
       code: ErrorCode.Value,
     })
 
-    expect(COUNTBLANK({ tag: ValueTag.Empty }, { tag: ValueTag.String, value: 'x', stringId: 1 }, { tag: ValueTag.Empty })).toEqual({
+    expect(
+      COUNTBLANK(
+        { tag: ValueTag.Empty },
+        { tag: ValueTag.String, value: 'x', stringId: 1 },
+        { tag: ValueTag.String, value: '', stringId: 2 },
+        { tag: ValueTag.Empty },
+      ),
+    ).toEqual({
       tag: ValueTag.Number,
-      value: 2,
+      value: 3,
     })
 
     expect(BITAND({ tag: ValueTag.Number, value: 6 }, { tag: ValueTag.Number, value: 3 }, { tag: ValueTag.Number, value: 1 })).toEqual({

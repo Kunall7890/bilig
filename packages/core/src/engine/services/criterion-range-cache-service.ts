@@ -255,6 +255,9 @@ function slicePredicateMatches(
     }
     case 'eq-string': {
       const tag = decodeValueTag(view.readTagAt(offset))
+      if (predicate.negate && predicate.value === '') {
+        return tag !== ValueTag.Empty && tag !== ValueTag.Error
+      }
       const matches =
         (tag === ValueTag.String || tag === ValueTag.Empty) &&
         (tag === ValueTag.Empty ? '' : normalizeSliceString(runtimeColumnStore, view.readStringIdAt(offset))) === predicate.value

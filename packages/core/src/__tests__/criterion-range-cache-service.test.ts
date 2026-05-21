@@ -792,6 +792,19 @@ describe('createCriterionRangeCacheService', () => {
     }
     expect([...emptyMatches.rows]).toEqual([0, 1])
 
+    const notEmptyMatches = criterionCache.getOrBuildMatchingRows({
+      criteriaPairs: [
+        {
+          range: { sheetName: 'Sheet1', rowStart: 0, rowEnd: 5, col: 0, length: 6 },
+          criteria: { tag: ValueTag.String, value: '<>', stringId: strings.intern('<>') },
+        },
+      ],
+    })
+    if (isErrorValue(notEmptyMatches)) {
+      throw new Error(`unexpected not-empty-match error: ${notEmptyMatches.code}`)
+    }
+    expect([...notEmptyMatches.rows]).toEqual([1, 2, 3, 4])
+
     const falseMatches = criterionCache.getOrBuildMatchingRows({
       criteriaPairs: [
         {
