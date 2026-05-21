@@ -1,4 +1,5 @@
 import { deflateRawSync } from 'node:zlib'
+import { createHash } from 'node:crypto'
 
 import { describe, expect, it } from 'vitest'
 
@@ -92,6 +93,37 @@ describe('XLSX ZIP reader', () => {
     expect(source.readIntoCount).toBeGreaterThan(0)
     expect(source.maxReadLength).toBeLessThan(16 * 1024)
   })
+
+  it('streams stored entries through reusable readRangeInto scratch buffers', () => {
+    const path = 'xl/worksheets/sheet1.xml'
+    const payload = semiCompressibleBytes(512 * 1024)
+    const source = new CountingZipByteSource(buildStoredZip(path, payload))
+    const zip = readXlsxZipEntriesLazyFromByteSource(source)
+    const hash = createHash('sha256')
+    let streamedByteLength = 0
+
+    expect(zip).not.toBeNull()
+    source.resetCounts()
+    expect(
+      forEachInflatedXlsxZipEntryChunk(
+        zip!,
+        path,
+        (chunk) => {
+          streamedByteLength += chunk.byteLength
+          hash.update(chunk)
+        },
+        {
+          chunkSize: 4096,
+        },
+      ),
+    ).toBe(true)
+
+    expect(streamedByteLength).toBe(payload.byteLength)
+    expect(hash.digest('hex')).toBe(createHash('sha256').update(payload).digest('hex'))
+    expect(source.readIntoCount).toBeGreaterThan(0)
+    expect(source.rangeCount).toBe(0)
+    expect(source.maxReadLength).toBeLessThanOrEqual(4096)
+  })
 })
 
 function buildStreamedZip(path: string, text: string | Uint8Array): Uint8Array {
@@ -131,9 +163,41 @@ function buildStreamedZip(path: string, text: string | Uint8Array): Uint8Array {
   return Buffer.concat([localHeader, fileName, compressed, dataDescriptor, centralDirectory, fileName, endOfCentralDirectory])
 }
 
+function buildStoredZip(path: string, text: Uint8Array): Uint8Array {
+  const fileName = Buffer.from(path)
+  const payload = Buffer.from(text)
+  const localHeader = Buffer.alloc(30)
+  localHeader.writeUInt32LE(0x04034b50, 0)
+  localHeader.writeUInt16LE(20, 4)
+  localHeader.writeUInt16LE(0, 8)
+  localHeader.writeUInt32LE(payload.length, 18)
+  localHeader.writeUInt32LE(payload.length, 22)
+  localHeader.writeUInt16LE(fileName.length, 26)
+
+  const centralDirectoryOffset = localHeader.length + fileName.length + payload.length
+  const centralDirectory = Buffer.alloc(46)
+  centralDirectory.writeUInt32LE(0x02014b50, 0)
+  centralDirectory.writeUInt16LE(20, 4)
+  centralDirectory.writeUInt16LE(20, 6)
+  centralDirectory.writeUInt16LE(0, 10)
+  centralDirectory.writeUInt32LE(payload.length, 20)
+  centralDirectory.writeUInt32LE(payload.length, 24)
+  centralDirectory.writeUInt16LE(fileName.length, 28)
+
+  const endOfCentralDirectory = Buffer.alloc(22)
+  endOfCentralDirectory.writeUInt32LE(0x06054b50, 0)
+  endOfCentralDirectory.writeUInt16LE(1, 8)
+  endOfCentralDirectory.writeUInt16LE(1, 10)
+  endOfCentralDirectory.writeUInt32LE(centralDirectory.length + fileName.length, 12)
+  endOfCentralDirectory.writeUInt32LE(centralDirectoryOffset, 16)
+
+  return Buffer.concat([localHeader, fileName, payload, centralDirectory, fileName, endOfCentralDirectory])
+}
+
 class CountingZipByteSource implements XlsxZipByteSource {
   readonly byteLength: number
   maxReadLength = 0
+  rangeCount = 0
   readIntoCount = 0
 
   constructor(private readonly bytes: Uint8Array) {
@@ -141,6 +205,7 @@ class CountingZipByteSource implements XlsxZipByteSource {
   }
 
   readRange(start: number, end: number): Uint8Array {
+    this.rangeCount += 1
     this.maxReadLength = Math.max(this.maxReadLength, end - start)
     return this.bytes.subarray(start, end)
   }
@@ -151,6 +216,12 @@ class CountingZipByteSource implements XlsxZipByteSource {
     this.maxReadLength = Math.max(this.maxReadLength, length)
     target.set(this.bytes.subarray(start, end), 0)
     return target.subarray(0, length)
+  }
+
+  resetCounts(): void {
+    this.maxReadLength = 0
+    this.rangeCount = 0
+    this.readIntoCount = 0
   }
 }
 
