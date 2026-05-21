@@ -1353,9 +1353,9 @@ describe('GridRenderTilePaneRuntime', () => {
     const unsubscribe = runtime.connectLocalCellInvalidation(
       {
         engine,
+        localInvalidationAddresses: ['A1', 'B2'],
         needsLocalCellInvalidation: true,
         sheetName: 'Sheet1',
-        visibleAddresses: ['A1', 'B2'],
       },
       () => invalidations.push('invalidated'),
     )
@@ -1728,18 +1728,18 @@ describe('GridRenderTilePaneRuntime', () => {
         }
       },
     }
-    const visibleAddresses = ['A1', 'B2']
+    const localInvalidationAddresses = ['A1', 'B2']
 
     runtime.syncConnections({
       dprBucket: 1,
       engine,
       gridRuntimeHost: host,
+      localInvalidationAddresses,
       needsLocalCellInvalidation: true,
       renderTileSource: renderTileSource.source,
       renderTileViewport: { colEnd: 127, colStart: 0, rowEnd: 31, rowStart: 0 },
       sheetId: 7,
       sheetName: 'Sheet1',
-      visibleAddresses,
     })
     const firstSubscription = renderTileSource.captured()
 
@@ -1747,31 +1747,31 @@ describe('GridRenderTilePaneRuntime', () => {
       dprBucket: 1,
       engine,
       gridRuntimeHost: host,
+      localInvalidationAddresses: [...localInvalidationAddresses],
       needsLocalCellInvalidation: true,
       renderTileSource: renderTileSource.source,
       renderTileViewport: { colEnd: 127, colStart: 0, rowEnd: 31, rowStart: 0 },
       sheetId: 7,
       sheetName: 'Sheet1',
-      visibleAddresses: [...visibleAddresses],
     })
 
     expect(renderTileSource.captured()).toBe(firstSubscription)
     expect(renderTileSource.unsubscribed()).toBe(false)
     expect(renderTileSource.subscribeCount()).toBe(1)
     expect(subscribedSheetName).toBe('Sheet1')
-    expect(subscribedAddresses).toBe(visibleAddresses)
+    expect(subscribedAddresses).toBe(localInvalidationAddresses)
     expect(localUnsubscribeCount).toBe(0)
 
     runtime.syncConnections({
       dprBucket: 1,
       engine,
       gridRuntimeHost: host,
+      localInvalidationAddresses,
       needsLocalCellInvalidation: true,
       renderTileSource: renderTileSource.source,
       renderTileViewport: { colEnd: 255, colStart: 0, rowEnd: 31, rowStart: 0 },
       sheetId: 7,
       sheetName: 'Sheet1',
-      visibleAddresses,
     })
 
     expect(renderTileSource.unsubscribed()).toBe(true)
@@ -1798,13 +1798,13 @@ describe('GridRenderTilePaneRuntime', () => {
       dprBucket: 1,
       engine: LOCAL_EMPTY_ENGINE,
       gridRuntimeHost: host,
+      localInvalidationAddresses: [],
       needsLocalCellInvalidation: false,
       renderTileSource: renderTileSource.source,
       renderTileViewport,
       residentViewport: renderTileViewport,
       sheetId: 7,
       sheetName: 'Sheet1',
-      visibleAddresses: [],
       visibleViewport: firstVisibleViewport,
     })
     const firstSubscription = renderTileSource.captured()
@@ -1817,13 +1817,13 @@ describe('GridRenderTilePaneRuntime', () => {
       dprBucket: 1,
       engine: LOCAL_EMPTY_ENGINE,
       gridRuntimeHost: host,
+      localInvalidationAddresses: [],
       needsLocalCellInvalidation: false,
       renderTileSource: renderTileSource.source,
       renderTileViewport,
       residentViewport: renderTileViewport,
       sheetId: 7,
       sheetName: 'Sheet1',
-      visibleAddresses: [],
       visibleViewport: nextVisibleViewport,
     })
 
@@ -1838,13 +1838,13 @@ describe('GridRenderTilePaneRuntime', () => {
       dprBucket: 1,
       engine: LOCAL_EMPTY_ENGINE,
       gridRuntimeHost: host,
+      localInvalidationAddresses: [],
       needsLocalCellInvalidation: false,
       renderTileSource: renderTileSource.source,
       renderTileViewport,
       residentViewport: renderTileViewport,
       sheetId: 7,
       sheetName: 'Sheet1',
-      visibleAddresses: [],
       visibleViewport: { ...nextVisibleViewport },
     })
 

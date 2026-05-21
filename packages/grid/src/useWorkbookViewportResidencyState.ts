@@ -29,7 +29,7 @@ export function useWorkbookViewportResidencyState(input: {
       visibleRegion,
     })
   }, [freezeCols, freezeRows, gridRuntimeHost, sceneRevision, visibleRegion])
-  const { visibleAddresses } = state
+  const { residentAddresses } = state
 
   useEffect(() => {
     return () => {
@@ -40,11 +40,11 @@ export function useWorkbookViewportResidencyState(input: {
   useEffect(() => {
     gridRuntimeHost.syncViewportResidencyInvalidation({
       engine,
+      residentAddresses,
       sheetName,
       shouldUseRemoteRenderTileSource,
-      visibleAddresses,
     })
-  }, [engine, gridRuntimeHost, sheetName, shouldUseRemoteRenderTileSource, visibleAddresses])
+  }, [engine, gridRuntimeHost, residentAddresses, sheetName, shouldUseRemoteRenderTileSource])
 
   return state
 }

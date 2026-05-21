@@ -39,9 +39,9 @@ export interface WorkbookDeltaConnectionIdentity {
 
 export interface LocalInvalidationConnectionIdentity {
   readonly engine: GridEngineLike
+  readonly localInvalidationAddresses: readonly string[]
   readonly needsLocalCellInvalidation: boolean
   readonly sheetName: string
-  readonly visibleAddresses: readonly string[]
 }
 
 export interface RetainedFixedRenderTileDataPanesCompatibility {
@@ -245,9 +245,9 @@ export function sameLocalInvalidationConnectionIdentity(
 ): boolean {
   return (
     left.engine === right.engine &&
+    sameStringListIdentity(left.localInvalidationAddresses, right.localInvalidationAddresses) &&
     left.needsLocalCellInvalidation === right.needsLocalCellInvalidation &&
-    left.sheetName === right.sheetName &&
-    sameStringListIdentity(left.visibleAddresses, right.visibleAddresses)
+    left.sheetName === right.sheetName
   )
 }
 

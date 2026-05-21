@@ -18,9 +18,11 @@ export interface GridResidentHeaderRegion {
 
 export interface GridViewportResidencyState {
   readonly viewport: Viewport
+  readonly residentAddresses: readonly string[]
   readonly residentViewport: Viewport
   readonly renderTileViewport: Viewport
   readonly residentHeaderItems: readonly Item[]
+  readonly residentItems: readonly Item[]
   readonly residentHeaderRegion: GridResidentHeaderRegion
   readonly sceneRevision: number
   readonly visibleAddresses: readonly string[]
@@ -35,9 +37,9 @@ export interface GridViewportResidencyRuntimeInput {
 
 export interface GridViewportResidencyInvalidationInput {
   readonly engine: GridEngineLike
+  readonly residentAddresses: readonly string[]
   readonly sheetName: string
   readonly shouldUseRemoteRenderTileSource: boolean
-  readonly visibleAddresses: readonly string[]
 }
 
 interface RuntimeConnection<Identity> {
@@ -47,20 +49,20 @@ interface RuntimeConnection<Identity> {
 
 interface LocalSceneInvalidationConnectionIdentity {
   readonly engine: GridEngineLike
+  readonly residentAddresses: readonly string[]
   readonly sheetName: string
   readonly shouldUseRemoteRenderTileSource: boolean
-  readonly visibleAddresses: readonly string[]
 }
 
 interface GridViewportResidentCache {
   readonly freezeCols: number
   readonly freezeRows: number
+  readonly residentAddresses: readonly string[]
   readonly renderTileViewport: Viewport
   readonly residentHeaderItems: readonly Item[]
   readonly residentHeaderRegion: GridResidentHeaderRegion
+  readonly residentItems: readonly Item[]
   readonly residentViewport: Viewport
-  readonly visibleAddresses: readonly string[]
-  readonly visibleItems: readonly Item[]
 }
 
 export class GridViewportResidencyRuntime {
@@ -78,16 +80,22 @@ export class GridViewportResidencyRuntime {
     }
     const residentViewport = this.residentViewport
     const residentCache = this.resolveResidentCache(input, residentViewport)
+    const visibleItems = collectViewportItems(viewport, {
+      freezeCols: input.freezeCols,
+      freezeRows: input.freezeRows,
+    })
 
     return {
+      residentAddresses: residentCache.residentAddresses,
+      residentItems: residentCache.residentItems,
       renderTileViewport: residentCache.renderTileViewport,
       residentHeaderItems: residentCache.residentHeaderItems,
       residentHeaderRegion: residentCache.residentHeaderRegion,
       residentViewport,
       sceneRevision: this.sceneRevision,
       viewport,
-      visibleAddresses: residentCache.visibleAddresses,
-      visibleItems: residentCache.visibleItems,
+      visibleAddresses: visibleItems.map(([col, row]) => formatAddress(row, col)),
+      visibleItems,
     }
   }
 
@@ -109,14 +117,14 @@ export class GridViewportResidencyRuntime {
   }
 
   connectLocalSceneInvalidation(input: GridViewportResidencyInvalidationInput, listener?: () => void): (() => void) | undefined {
-    if (input.shouldUseRemoteRenderTileSource || input.visibleAddresses.length === 0) {
+    if (input.shouldUseRemoteRenderTileSource || input.residentAddresses.length === 0) {
       return undefined
     }
     const invalidate = () => {
       this.invalidateScene()
       listener?.()
     }
-    const unsubscribeCells = input.engine.subscribeCells(input.sheetName, input.visibleAddresses, invalidate)
+    const unsubscribeCells = input.engine.subscribeCells(input.sheetName, input.residentAddresses, invalidate)
     const unsubscribeMerges = input.engine.subscribeSheetChannel?.(input.sheetName, 'merges', invalidate)
     if (!unsubscribeMerges) {
       return unsubscribeCells
@@ -130,9 +138,9 @@ export class GridViewportResidencyRuntime {
   syncLocalSceneInvalidation(input: GridViewportResidencyInvalidationInput): void {
     const identity: LocalSceneInvalidationConnectionIdentity = {
       engine: input.engine,
+      residentAddresses: input.residentAddresses,
       sheetName: input.sheetName,
       shouldUseRemoteRenderTileSource: input.shouldUseRemoteRenderTileSource,
-      visibleAddresses: input.visibleAddresses,
     }
     if (
       this.localSceneInvalidationConnection &&
@@ -162,20 +170,22 @@ export class GridViewportResidencyRuntime {
       return current
     }
 
-    const visibleItems = collectViewportItems(residentViewport, {
+    const residentItems = collectViewportItems(residentViewport, {
       freezeCols: input.freezeCols,
       freezeRows: input.freezeRows,
     })
     const next: GridViewportResidentCache = {
       freezeCols: input.freezeCols,
       freezeRows: input.freezeRows,
+      residentAddresses: residentItems.map(([col, row]) => formatAddress(row, col)),
       renderTileViewport: {
         rowStart: input.freezeRows > 0 ? 0 : residentViewport.rowStart,
         rowEnd: residentViewport.rowEnd,
         colStart: input.freezeCols > 0 ? 0 : residentViewport.colStart,
         colEnd: residentViewport.colEnd,
       },
-      residentHeaderItems: visibleItems,
+      residentHeaderItems: residentItems,
+      residentItems,
       residentHeaderRegion: {
         range: {
           x: residentViewport.colStart,
@@ -189,8 +199,6 @@ export class GridViewportResidencyRuntime {
         freezeCols: input.freezeCols,
       },
       residentViewport,
-      visibleAddresses: visibleItems.map(([col, row]) => formatAddress(row, col)),
-      visibleItems,
     }
     this.residentCache = next
     return next
@@ -211,7 +219,7 @@ function sameLocalSceneInvalidationConnectionIdentity(
     left.engine === right.engine &&
     left.sheetName === right.sheetName &&
     left.shouldUseRemoteRenderTileSource === right.shouldUseRemoteRenderTileSource &&
-    sameStringListIdentity(left.visibleAddresses, right.visibleAddresses)
+    sameStringListIdentity(left.residentAddresses, right.residentAddresses)
   )
 }
 
