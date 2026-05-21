@@ -929,6 +929,69 @@ describe('SpreadsheetEngine', () => {
     expect(engine.exportSnapshot().workbook.metadata?.spills).toEqual([{ sheetName: 'Sheet1', address: 'B1', rows: 3, cols: 1 }])
   })
 
+  it('rematerializes dynamic arrays when structural row edits cut through spill children', async () => {
+    const buildEngine = async (): Promise<SpreadsheetEngine> => {
+      const engine = new SpreadsheetEngine({ workbookName: 'spec' })
+      await engine.ready()
+      engine.createSheet('Sheet1')
+      engine.setCellValue('Sheet1', 'A1', 3)
+      engine.setCellFormula('Sheet1', 'B1', 'SEQUENCE(A1,1,1,1)')
+      engine.setCellFormula('Sheet1', 'D1', 'SUM(B1#)')
+      engine.setCellFormula('Sheet1', 'E1', 'ROWS(B1#)')
+      engine.setCellFormula('Sheet1', 'F1', 'IFERROR(INDEX(B1#,2),"missing")')
+      return engine
+    }
+    const expectRematerialized = (engine: SpreadsheetEngine): void => {
+      expect(engine.getCellValue('Sheet1', 'B1')).toEqual({ tag: ValueTag.Number, value: 1 })
+      expect(engine.getCellValue('Sheet1', 'B2')).toEqual({ tag: ValueTag.Number, value: 2 })
+      expect(engine.getCellValue('Sheet1', 'B3')).toEqual({ tag: ValueTag.Number, value: 3 })
+      expect(engine.getCellValue('Sheet1', 'B4')).toEqual({ tag: ValueTag.Empty })
+      expect(engine.getCellValue('Sheet1', 'D1')).toEqual({ tag: ValueTag.Number, value: 6 })
+      expect(engine.getCellValue('Sheet1', 'E1')).toEqual({ tag: ValueTag.Number, value: 3 })
+      expect(engine.getCellValue('Sheet1', 'F1')).toEqual({ tag: ValueTag.Number, value: 2 })
+      expect(engine.exportSnapshot().workbook.metadata?.spills).toEqual([{ sheetName: 'Sheet1', address: 'B1', rows: 3, cols: 1 }])
+    }
+
+    const inserted = await buildEngine()
+    inserted.insertRows('Sheet1', 1, 1)
+    expectRematerialized(inserted)
+
+    const deleted = await buildEngine()
+    deleted.deleteRows('Sheet1', 1, 1)
+    expectRematerialized(deleted)
+  })
+
+  it('rematerializes horizontal dynamic arrays when structural column edits cut through spill children', async () => {
+    const buildEngine = async (): Promise<SpreadsheetEngine> => {
+      const engine = new SpreadsheetEngine({ workbookName: 'spec' })
+      await engine.ready()
+      engine.createSheet('Sheet1')
+      engine.setCellFormula('Sheet1', 'B1', 'SEQUENCE(1,3,1,1)')
+      engine.setCellFormula('Sheet1', 'A3', 'SUM(B1#)')
+      engine.setCellFormula('Sheet1', 'A4', 'COLUMNS(B1#)')
+      engine.setCellFormula('Sheet1', 'A5', 'IFERROR(INDEX(B1#,1,2),"missing")')
+      return engine
+    }
+    const expectRematerialized = (engine: SpreadsheetEngine): void => {
+      expect(engine.getCellValue('Sheet1', 'B1')).toEqual({ tag: ValueTag.Number, value: 1 })
+      expect(engine.getCellValue('Sheet1', 'C1')).toEqual({ tag: ValueTag.Number, value: 2 })
+      expect(engine.getCellValue('Sheet1', 'D1')).toEqual({ tag: ValueTag.Number, value: 3 })
+      expect(engine.getCellValue('Sheet1', 'E1')).toEqual({ tag: ValueTag.Empty })
+      expect(engine.getCellValue('Sheet1', 'A3')).toEqual({ tag: ValueTag.Number, value: 6 })
+      expect(engine.getCellValue('Sheet1', 'A4')).toEqual({ tag: ValueTag.Number, value: 3 })
+      expect(engine.getCellValue('Sheet1', 'A5')).toEqual({ tag: ValueTag.Number, value: 2 })
+      expect(engine.exportSnapshot().workbook.metadata?.spills).toEqual([{ sheetName: 'Sheet1', address: 'B1', rows: 1, cols: 3 }])
+    }
+
+    const inserted = await buildEngine()
+    inserted.insertColumns('Sheet1', 2, 1)
+    expectRematerialized(inserted)
+
+    const deleted = await buildEngine()
+    deleted.deleteColumns('Sheet1', 2, 1)
+    expectRematerialized(deleted)
+  })
+
   it('evaluates nested sequence aggregates on the wasm path', async () => {
     const engine = new SpreadsheetEngine({ workbookName: 'spec' })
     await engine.ready()

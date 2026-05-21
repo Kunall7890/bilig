@@ -311,7 +311,9 @@ export function createEngineStructureService(args: CreateEngineStructureServiceA
           throw new Error(`Missing sheet for structural op: ${sheetName}`)
         })()
       const hadSheetSpillMetadata = hasStructuralMetadata && args.state.workbook.listSpills().some((spill) => spill.sheetName === sheetName)
-      const preStructuralSpillChangedCellIndices = hadSheetSpillMetadata ? clearSpillArtifactsForSheet(args, sheetName) : []
+      const preStructuralSpillArtifacts = hadSheetSpillMetadata
+        ? clearSpillArtifactsForSheet(args, sheetName)
+        : { changedCellIndices: [], ownerCellIndices: [] }
 
       switch (op.kind) {
         case 'insertRows':
@@ -456,6 +458,9 @@ export function createEngineStructureService(args: CreateEngineStructureServiceA
         addEngineCounter(args.state.counters, 'structuralFormulaRebindInputs', remainingRebindInputs.length)
       }
       const formulaCellIndices = impactedFormulas.formulaCellIndices.filter((cellIndex) => isCellIndexMapped(args, cellIndex))
+      const structuralSpillFormulaCellIndices = preStructuralSpillArtifacts.ownerCellIndices.filter(
+        (cellIndex) => isCellIndexMapped(args, cellIndex) && args.state.formulas.has(cellIndex),
+      )
       const onlyDirectAggregateFormulaCells =
         formulaCellIndices.length > 0 &&
         formulaCellIndices.every((cellIndex) => args.state.formulas.get(cellIndex)?.directAggregate !== undefined)
@@ -485,11 +490,19 @@ export function createEngineStructureService(args: CreateEngineStructureServiceA
       const graphRefreshRequired =
         ((hasNonPreservedRebind || lostSurvivingFormulaCells) && !onlyDirectAggregateFormulaCells && !deleteOnlyAcyclicRebind) ||
         removedCycleFormulaCount > 0
+      const recalculatedFormulaCellIndices = [
+        ...formulaCellIndices.filter((cellIndex) => !preservedFormulaCellIndices.has(cellIndex)),
+        ...structuralSpillFormulaCellIndices,
+      ]
       return {
         transaction,
-        changedCellIndices: [...transaction.removedCellIndices, ...preStructuralSpillChangedCellIndices, ...tableHeaderCellChangedIndices],
+        changedCellIndices: [
+          ...transaction.removedCellIndices,
+          ...preStructuralSpillArtifacts.changedCellIndices,
+          ...tableHeaderCellChangedIndices,
+        ],
         precomputedChangedInputCellIndices: impactedFormulas.precomputedChangedInputCellIndices,
-        formulaCellIndices: formulaCellIndices.filter((cellIndex) => !preservedFormulaCellIndices.has(cellIndex)),
+        formulaCellIndices: [...new Set(recalculatedFormulaCellIndices)],
         topologyChanged,
         graphRefreshRequired,
       }
