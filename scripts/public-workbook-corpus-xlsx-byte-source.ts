@@ -1,3 +1,4 @@
+import { createHash } from 'node:crypto'
 import { closeSync, fstatSync, openSync, readSync } from 'node:fs'
 
 import type { XlsxZipByteSource } from '../packages/excel-import/src/xlsx-zip.js'
@@ -64,4 +65,27 @@ export class FileBackedXlsxZipByteSource implements XlsxZipByteSource {
 export function isZipWorkbookSource(source: XlsxZipByteSource): boolean {
   const bytes = source.readRange(0, Math.min(4, source.byteLength))
   return bytes.length >= 4 && bytes[0] === 0x50 && bytes[1] === 0x4b && bytes[2] === 0x03 && bytes[3] === 0x04
+}
+
+export function sha256XlsxZipByteSourceHex(source: XlsxZipByteSource): string {
+  const hash = createHash('sha256')
+  const chunkSize = 64 * 1024
+  const scratch = source.readRangeInto ? new Uint8Array(chunkSize) : undefined
+  for (let offset = 0; offset < source.byteLength; offset += chunkSize) {
+    const end = Math.min(source.byteLength, offset + chunkSize)
+    hash.update(readXlsxZipByteSourceRange(source, offset, end, scratch))
+  }
+  return hash.digest('hex')
+}
+
+function readXlsxZipByteSourceRange(source: XlsxZipByteSource, start: number, end: number, scratch: Uint8Array | undefined): Uint8Array {
+  const length = end - start
+  if (!scratch || !source.readRangeInto || length > scratch.byteLength) {
+    return source.readRange(start, end)
+  }
+  const chunk = source.readRangeInto(start, end, scratch)
+  if (chunk.byteLength !== length) {
+    throw new Error('XLSX ZIP byte source returned an invalid hash chunk length')
+  }
+  return chunk
 }

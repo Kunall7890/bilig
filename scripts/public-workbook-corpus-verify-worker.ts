@@ -1,4 +1,3 @@
-import { createHash } from 'node:crypto'
 import { existsSync, readFileSync } from 'node:fs'
 import { join } from 'node:path'
 
@@ -17,7 +16,7 @@ import type { PublicWorkbookArtifact, PublicWorkbookCorpusCase, PublicWorkbookFe
 import { defaultSelfRssCheckIntervalMs, startSelfRssGuard } from './public-workbook-corpus-process.ts'
 import { readMegabytesArg, readNumberArg, readFlagArg, readStringArg } from './public-workbook-corpus-cli.ts'
 import { largeSimpleImportPhaseTelemetryEvidence } from './public-workbook-corpus-large-simple-evidence.ts'
-import { FileBackedXlsxZipByteSource, isZipWorkbookSource } from './public-workbook-corpus-xlsx-byte-source.ts'
+import { FileBackedXlsxZipByteSource, isZipWorkbookSource, sha256XlsxZipByteSourceHex } from './public-workbook-corpus-xlsx-byte-source.ts'
 
 const verificationWorkerPhasePrefix = 'bilig-public-workbook-verify-phase='
 const defaultVerifyTimeoutMs = 180_000
@@ -71,7 +70,7 @@ function tryVerifyCompactLargeSimpleArtifact(
   writeWorkerPhase('read-cache')
   const source = new FileBackedXlsxZipByteSource(cachePath)
   try {
-    if (sha256Hex(source) !== artifact.sha256 || !isZipWorkbookSource(source)) {
+    if (sha256XlsxZipByteSourceHex(source) !== artifact.sha256 || !isZipWorkbookSource(source)) {
       return null
     }
     collectGarbage()
@@ -220,15 +219,6 @@ function capVerifyMaxRssBytes(value: number): number {
     )
   }
   return normalizedValue
-}
-
-function sha256Hex(source: XlsxZipByteSource): string {
-  const hash = createHash('sha256')
-  const chunkSize = 64 * 1024
-  for (let offset = 0; offset < source.byteLength; offset += chunkSize) {
-    hash.update(source.readRange(offset, Math.min(source.byteLength, offset + chunkSize)))
-  }
-  return hash.digest('hex')
 }
 
 function collectGarbage(): void {

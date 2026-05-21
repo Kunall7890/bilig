@@ -1,4 +1,3 @@
-import { createHash } from 'node:crypto'
 import { existsSync } from 'node:fs'
 import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -62,7 +61,7 @@ import {
   timeVerificationPhase,
   withVerificationRuntimeMetrics,
 } from './public-workbook-corpus-verification-metrics.ts'
-import { FileBackedXlsxZipByteSource } from './public-workbook-corpus-xlsx-byte-source.ts'
+import { FileBackedXlsxZipByteSource, sha256XlsxZipByteSourceHex } from './public-workbook-corpus-xlsx-byte-source.ts'
 import {
   cellValuesMatchOracle,
   countImportedWorkbookFeatures,
@@ -200,7 +199,7 @@ export async function verifyCachedWorkbookArtifact(
   }
   const source = new FileBackedXlsxZipByteSource(cachePath)
   try {
-    const actualHash = await timeVerificationPhase(runtimeMetrics, workerOptions, 'read-cache', () => sha256Hex(source))
+    const actualHash = await timeVerificationPhase(runtimeMetrics, workerOptions, 'read-cache', () => sha256XlsxZipByteSourceHex(source))
     if (actualHash !== artifact.sha256) {
       return finishCase(
         failedCase(artifact, 'failed', baseEvidence, [
@@ -762,15 +761,6 @@ function collectGarbage(): void {
   if (typeof gc === 'function') {
     gc()
   }
-}
-
-function sha256Hex(source: XlsxZipByteSource): string {
-  const hash = createHash('sha256')
-  const chunkSize = 64 * 1024
-  for (let offset = 0; offset < source.byteLength; offset += chunkSize) {
-    hash.update(source.readRange(offset, Math.min(source.byteLength, offset + chunkSize)))
-  }
-  return hash.digest('hex')
 }
 
 function readAllSourceBytes(source: XlsxZipByteSource): Uint8Array {

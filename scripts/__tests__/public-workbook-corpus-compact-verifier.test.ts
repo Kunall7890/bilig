@@ -1,3 +1,4 @@
+import { createHash } from 'node:crypto'
 import { mkdirSync, mkdtempSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
@@ -19,6 +20,7 @@ import {
 import { startVerificationRuntimeMetrics } from '../public-workbook-corpus-verification-metrics.ts'
 import type { PublicWorkbookArtifact, PublicWorkbookFeatureCounts } from '../public-workbook-corpus-types.ts'
 import type { WorkbookFootprint } from '../public-workbook-corpus-workbook.ts'
+import { sha256XlsxZipByteSourceHex } from '../public-workbook-corpus-xlsx-byte-source.ts'
 
 describe('public workbook corpus compact verifier', () => {
   it('uses headless large-simple verification when public arrays are not needed', async () => {
@@ -112,6 +114,14 @@ describe('public workbook corpus compact verifier', () => {
     })
 
     expect(corpusCase?.featureCounts.cellCount).toBe(200_001)
+    expect(countedSource.readIntoCount).toBeGreaterThan(0)
+  })
+
+  it('hashes byte sources through the reusable read buffer', () => {
+    const workbookBytes = buildLargeSimpleNumericWorkbookBytes(200_001)
+    const countedSource = countingXlsxZipByteSourceFromBytes(workbookBytes)
+
+    expect(sha256XlsxZipByteSourceHex(countedSource)).toBe(createHash('sha256').update(workbookBytes).digest('hex'))
     expect(countedSource.readIntoCount).toBeGreaterThan(0)
   })
 
