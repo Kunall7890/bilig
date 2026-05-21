@@ -3,6 +3,8 @@ import { existsSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 
+import { ErrorCode } from '@bilig/protocol'
+
 import type { NormalizedFormulaValue } from './oracle-harness.js'
 
 export const defaultMacosExcelAppPath = '/Applications/Microsoft Excel.app' as const
@@ -157,6 +159,8 @@ export function createMacosExcelRecalculationAppleScript(
       (address) =>
         `      set output to output & linefeed & my typedCellValue(value of range ${toAppleScriptString(
           address,
+        )} of worksheet ${toAppleScriptString(request.worksheetName)} of (targetWorkbook), string value of range ${toAppleScriptString(
+          address,
         )} of worksheet ${toAppleScriptString(request.worksheetName)} of (targetWorkbook))`,
     )
     .join('\n')
@@ -189,8 +193,11 @@ ${valueReads}
   return output
 end run
 
-on typedCellValue(cellValue)
+on typedCellValue(cellValue, renderedValue)
   if cellValue is missing value then
+    if my isExcelErrorDisplayText(renderedValue) then
+      return "error" & (ASCII character 9) & renderedValue
+    end if
     return "blank" & (ASCII character 9)
   end if
   set valueClass to class of cellValue
@@ -205,6 +212,23 @@ on typedCellValue(cellValue)
   end if
   return "string" & (ASCII character 9) & (cellValue as string)
 end typedCellValue
+
+on isExcelErrorDisplayText(displayText)
+  if displayText is "#DIV/0!" then return true
+  if displayText is "#REF!" then return true
+  if displayText is "#VALUE!" then return true
+  if displayText is "#NAME?" then return true
+  if displayText is "#N/A" then return true
+  if displayText is "#SPILL!" then return true
+  if displayText is "#BLOCKED!" then return true
+  if displayText is "#NUM!" then return true
+  if displayText is "#NULL!" then return true
+  if displayText is "#CALC!" then return true
+  if displayText is "#FIELD!" then return true
+  if displayText is "#UNKNOWN!" then return true
+  if displayText is "#GETTING_DATA" then return true
+  return false
+end isExcelErrorDisplayText
 `
 }
 
@@ -229,7 +253,7 @@ export function createMacosExcelInspectionAppleScript(
       const escapedAddress = toAppleScriptString(address)
       const escapedSheet = toAppleScriptString(request.worksheetName)
       return `      set inspectedRange to range ${escapedAddress} of worksheet ${escapedSheet} of (targetWorkbook)
-      set output to output & linefeed & ${escapedAddress} & (ASCII character 9) & my formulaText(formula of inspectedRange) & (ASCII character 9) & my typedCellValue(value of inspectedRange)`
+      set output to output & linefeed & ${escapedAddress} & (ASCII character 9) & my formulaText(formula of inspectedRange) & (ASCII character 9) & my typedCellValue(value of inspectedRange, string value of inspectedRange)`
     })
     .join('\n')
 
@@ -289,7 +313,7 @@ export function createMacosExcelStructuralOperationAppleScript(
     .map((address) => {
       const escapedAddress = toAppleScriptString(address)
       return `      set inspectedRange to range ${escapedAddress} of targetWorksheet
-      set output to output & linefeed & ${escapedAddress} & (ASCII character 9) & my formulaText(formula of inspectedRange) & (ASCII character 9) & my typedCellValue(value of inspectedRange)`
+      set output to output & linefeed & ${escapedAddress} & (ASCII character 9) & my formulaText(formula of inspectedRange) & (ASCII character 9) & my typedCellValue(value of inspectedRange, string value of inspectedRange)`
     })
     .join('\n')
 
@@ -383,6 +407,11 @@ function parseTypedExcelValue(rawValue: string): NormalizedFormulaValue {
     }
     case 'string':
       return { kind: 'string', value }
+    case 'error':
+      if (value.length === 0) {
+        throw new Error('Unexpected empty Microsoft Excel error oracle value')
+      }
+      return { kind: 'error', value: normalizeExcelErrorValue(value) }
     default:
       throw new Error(`Unexpected Microsoft Excel oracle value kind: ${kind}`)
   }
@@ -445,6 +474,21 @@ function toAppleScriptValue(value: string | number | boolean): string {
   return String(value)
 }
 
+const excelErrorCodeByDisplay = new Map<string, ErrorCode>([
+  ['#DIV/0!', ErrorCode.Div0],
+  ['#REF!', ErrorCode.Ref],
+  ['#VALUE!', ErrorCode.Value],
+  ['#NAME?', ErrorCode.Name],
+  ['#N/A', ErrorCode.NA],
+  ['#SPILL!', ErrorCode.Spill],
+  ['#BLOCKED!', ErrorCode.Blocked],
+  ['#NUM!', ErrorCode.Num],
+])
+
+function normalizeExcelErrorValue(value: string): string {
+  return String(excelErrorCodeByDisplay.get(value.toUpperCase()) ?? value)
+}
+
 function cellValueAppleScriptHelpers(): string {
   return `on formulaText(cellFormula)
   if cellFormula is missing value then
@@ -453,8 +497,11 @@ function cellValueAppleScriptHelpers(): string {
   return cellFormula as string
 end formulaText
 
-on typedCellValue(cellValue)
+on typedCellValue(cellValue, renderedValue)
   if cellValue is missing value then
+    if my isExcelErrorDisplayText(renderedValue) then
+      return "error" & (ASCII character 9) & renderedValue
+    end if
     return "blank" & (ASCII character 9)
   end if
   set valueClass to class of cellValue
@@ -469,5 +516,22 @@ on typedCellValue(cellValue)
   end if
   return "string" & (ASCII character 9) & (cellValue as string)
 end typedCellValue
+
+on isExcelErrorDisplayText(displayText)
+  if displayText is "#DIV/0!" then return true
+  if displayText is "#REF!" then return true
+  if displayText is "#VALUE!" then return true
+  if displayText is "#NAME?" then return true
+  if displayText is "#N/A" then return true
+  if displayText is "#SPILL!" then return true
+  if displayText is "#BLOCKED!" then return true
+  if displayText is "#NUM!" then return true
+  if displayText is "#NULL!" then return true
+  if displayText is "#CALC!" then return true
+  if displayText is "#FIELD!" then return true
+  if displayText is "#UNKNOWN!" then return true
+  if displayText is "#GETTING_DATA" then return true
+  return false
+end isExcelErrorDisplayText
 `
 }

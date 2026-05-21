@@ -63,6 +63,13 @@ const expectedSpillReferenceOracleCells = [
   { address: 'E1', formula: '=ROWS(B1#)', rawValue: 'number\t3.0', value: { kind: 'number', value: 3 } },
   { address: 'F1', formula: '=INDEX(B1#,2)', rawValue: 'number\t2.0', value: { kind: 'number', value: 2 } },
 ] as const
+const textsplitErrorOracleAddresses = ['C1', 'D1', 'C2', 'D2'] as const
+const expectedTextsplitErrorOracleCells = [
+  { address: 'C1', formula: '=TEXTSPLIT(A1,",","|")', rawValue: 'string\tred', value: { kind: 'string', value: 'red' } },
+  { address: 'D1', rawValue: 'string\tblue', value: { kind: 'string', value: 'blue' } },
+  { address: 'C2', rawValue: 'string\tgreen', value: { kind: 'string', value: 'green' } },
+  { address: 'D2', rawValue: 'error\t#N/A', value: { kind: 'error', value: String(ErrorCode.NA) } },
+] as const
 const chooseArrayIndexOracleAddresses = ['E1', 'F1', 'E2', 'F2', 'E3', 'F3', 'H1', 'H2', 'H3', 'H4', 'H6', 'H7'] as const
 const expectedChooseArrayIndexOracleValues = [
   { address: 'E1', value: { kind: 'string', value: 'a' } },
@@ -305,6 +312,28 @@ describe('macOS Desktop Excel XLSX oracle for WorkPaper', () => {
         expect(reimported.getCellFormula(addressToCell('E1'))).toBe('=ROWS(B1#)')
         expect(reimported.getCellFormula(addressToCell('F1'))).toBe('=INDEX(B1#,2)')
         expect(imported.snapshot.workbook.metadata?.spills).toEqual([{ sheetName: 'Cases', address: 'B1', rows: 3, cols: 1 }])
+      } finally {
+        reimported.dispose()
+      }
+    } finally {
+      workbook.dispose()
+    }
+  })
+
+  it('exports and reimports TEXTSPLIT error spill children through the headless XLSX path', () => {
+    const workbook = buildTextsplitErrorOracleWorkbook()
+    try {
+      expect(textsplitErrorOracleAddresses.map((address) => normalizedCellValue(workbook.getCellValue(addressToCell(address))))).toEqual(
+        expectedTextsplitErrorOracleCells.map((expected) => expected.value),
+      )
+
+      const imported = importXlsx(exportXlsx(workbook.exportSnapshot()), 'headless-textsplit-error-oracle.xlsx')
+      const reimported = WorkPaper.buildFromSnapshot(imported.snapshot, workbookConfig)
+      try {
+        expect(
+          textsplitErrorOracleAddresses.map((address) => normalizedCellValue(reimported.getCellValue(addressToCell(address)))),
+        ).toEqual(expectedTextsplitErrorOracleCells.map((expected) => expected.value))
+        expect(imported.snapshot.workbook.metadata?.spills).toEqual([{ sheetName: 'Cases', address: 'C1', rows: 2, cols: 2 }])
       } finally {
         reimported.dispose()
       }
@@ -910,6 +939,50 @@ describe('macOS Desktop Excel XLSX oracle for WorkPaper', () => {
   )
 
   it.runIf(process.env.BILIG_EXCEL_ORACLE_RUN === '1')(
+    'round-trips Desktop Excel TEXTSPLIT error spill-child caches back into headless import',
+    () => {
+      if (!isMacosExcelInstalled()) {
+        throw new Error('BILIG_EXCEL_ORACLE_RUN=1 requires /Applications/Microsoft Excel.app')
+      }
+
+      const tempDir = mkdtempSync(join(tmpdir(), 'bilig-headless-excel-textsplit-error-oracle-'))
+      try {
+        const workbookPath = join(tempDir, 'headless-textsplit-error-oracle.xlsx')
+        const workbook = buildTextsplitErrorOracleWorkbook()
+        try {
+          writeFileSync(workbookPath, exportXlsx(workbook.exportSnapshot()))
+        } finally {
+          workbook.dispose()
+        }
+
+        const excelResult = runMacosExcelInspectionOracle({
+          workbookPath,
+          worksheetName: 'Cases',
+          formulaCells: [],
+          inspectCells: textsplitErrorOracleAddresses,
+          saveWorkbook: true,
+        })
+
+        expect(excelResult.cells).toEqual(expectedTextsplitErrorOracleCells)
+
+        const imported = importXlsx(new Uint8Array(readFileSync(workbookPath)), 'headless-textsplit-error-oracle-recalculated.xlsx')
+        const reimported = WorkPaper.buildFromSnapshot(imported.snapshot, workbookConfig)
+        try {
+          expect(
+            textsplitErrorOracleAddresses.map((address) => normalizedCellValue(reimported.getCellValue(addressToCell(address)))),
+          ).toEqual(expectedTextsplitErrorOracleCells.map((expected) => expected.value))
+          expect(imported.snapshot.workbook.metadata?.spills).toEqual([{ sheetName: 'Cases', address: 'C1', rows: 2, cols: 2 }])
+        } finally {
+          reimported.dispose()
+        }
+      } finally {
+        rmSync(tempDir, { recursive: true, force: true })
+      }
+    },
+    60_000,
+  )
+
+  it.runIf(process.env.BILIG_EXCEL_ORACLE_RUN === '1')(
     'matches Desktop Excel CHOOSE array-index virtual table semantics',
     () => {
       if (!isMacosExcelInstalled()) {
@@ -1366,6 +1439,15 @@ function buildSpillReferenceOracleWorkbook(): WorkPaper {
   return WorkPaper.buildFromSheets(
     {
       Cases: [[1, '=SEQUENCE(3,1,1,1)', null, '=SUM(B1#)', '=ROWS(B1#)', '=INDEX(B1#,2)'], [2], [3]],
+    },
+    workbookConfig,
+  )
+}
+
+function buildTextsplitErrorOracleWorkbook(): WorkPaper {
+  return WorkPaper.buildFromSheets(
+    {
+      Cases: [['red,blue|green', null, '=TEXTSPLIT(A1,",","|")']],
     },
     workbookConfig,
   )
