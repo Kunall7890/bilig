@@ -26,6 +26,7 @@ flowchart LR
 - `@bilig/workbook`
   - agent-first public workbook model API
   - JSON-safe action input planning and verification
+  - machine-readable readback checks for runtime proof
   - transport-neutral workbook ops and txns
 - `packages/zero-sync`
   - Zero schema

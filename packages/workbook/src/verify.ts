@@ -25,6 +25,8 @@ export type WorkbookPlanIssueCode =
   | 'change_target_not_resolved'
   | 'check_target_not_resolved'
   | 'check_ref_not_resolved'
+  | 'check_expectation_input_not_resolved'
+  | 'invalid_check_expectation_formula'
   | 'invalid_workbook_op'
   | 'op_target_mismatch'
   | 'missing_concrete_op'
@@ -461,6 +463,31 @@ export function verifyPlan<Refs>(plan: WorkbookActionPlan<Refs>): WorkbookPlanVe
         )
       }
     })
+
+    if (check.expectation?.kind === 'formulaEquals') {
+      try {
+        parseFormula(check.expectation.formula)
+      } catch (error) {
+        issues.push({
+          code: 'invalid_check_expectation_formula',
+          path: `checks[${checkIndex}].expectation.formula`,
+          message: `Formula expectation for ${check.target?.label ?? check.kind} is not parseable: ${errorMessage(error)}`,
+        })
+      }
+
+      check.expectation.inputs.forEach((input, inputIndex) => {
+        if (!hasRef(input)) {
+          issues.push(
+            issue({
+              code: 'check_expectation_input_not_resolved',
+              path: `checks[${checkIndex}].expectation.inputs[${inputIndex}]`,
+              ref: input,
+              message: `${input.label} appears in a formula expectation but is missing from refsUsed`,
+            }),
+          )
+        }
+      })
+    }
   })
 
   return {

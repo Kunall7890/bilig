@@ -1,6 +1,18 @@
+import type { LiteralInput } from '@bilig/protocol'
 import type { WorkbookRef } from './find.js'
 
 export type WorkbookCheckStatus = 'planned' | 'passed' | 'failed'
+
+export type WorkbookCheckExpectation =
+  | {
+      readonly kind: 'valueEquals'
+      readonly value: LiteralInput
+    }
+  | {
+      readonly kind: 'formulaEquals'
+      readonly formula: string
+      readonly inputs: readonly WorkbookRef[]
+    }
 
 export interface WorkbookCheckResult {
   readonly status: WorkbookCheckStatus
@@ -8,6 +20,7 @@ export interface WorkbookCheckResult {
   readonly target?: WorkbookRef
   readonly refs?: readonly WorkbookRef[]
   readonly message: string
+  readonly expectation?: WorkbookCheckExpectation
 }
 
 export interface WorkbookChangeSummary {

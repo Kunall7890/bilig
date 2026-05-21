@@ -40,7 +40,10 @@ The public surface stays generic:
 - `WorkbookModelVerification`
 - `WorkbookModelActionVerification`
 - `WorkbookModelVerificationOptions`
+- `WorkbookCheckExpectation`
+- `WorkbookCheckExpectationDescription`
 - `WorkbookCustomCheckOptions`
+- `WorkbookReadbackCheckOptions`
 - `WorkbookRawFormulaOptions`
 - `WorkbookRunResult`
 - `WorkbookCheckResult`
@@ -127,6 +130,11 @@ when an agent or test needs the same generic refs outside a model callback.
 consumer-defined row selectors do not collapse during dedupe.
 Use `check.exists(ref)` and `check.noFormulaErrors(ref)` directly when an agent
 or test needs the same generic planned checks outside a model callback.
+Use `check.valueEquals(ref, value)` and `check.formulaEquals(ref, formula)` when
+an action should carry machine-readable readback expectations for runtime
+verification. `formulaEquals` stores normalized formula text plus explicit model
+refs used by that formula, so an agent can inspect the post-action proof target
+without depending on a rendered spreadsheet UI.
 Use `check.custom({ kind, message, target, refs })` for consumer-defined
 invariants; the package does not need to know what the model means. `target`
 names the main ref, and `refs` names any supporting refs the invariant depends
@@ -148,9 +156,11 @@ action is internally consistent. It checks for non-JSON-safe action input,
 unresolved refs, unparsable formulas, duplicate resolved refs, and missing
 concrete ops for write, clear, and number-format commands that already target a
 known single cell. Custom check targets and supporting refs must also resolve
-through the model's `refsUsed` contract. Low-level `addOp` commands must contain
-valid `WorkbookOp` values, must still appear in `plan.ops`, and must match their
-declared `target` when the op exposes a concrete address or range.
+through the model's `refsUsed` contract. Formula readback expectation inputs
+must also resolve through `refsUsed`, and expectation formulas must be parseable.
+Low-level `addOp` commands must contain valid `WorkbookOp` values, must still
+appear in `plan.ops`, and must match their declared `target` when the op exposes
+a concrete address or range.
 Use `verifyModel` to plan and verify every action in a consumer-defined model
 with one JSON-safe result. Pass `inputs` when specific actions require
 parameters.

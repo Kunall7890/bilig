@@ -19,7 +19,7 @@ import {
 } from './model.js'
 import type { WorkbookActionInput } from './input.js'
 import type { WorkbookOp } from './ops.js'
-import type { WorkbookChangeSummary, WorkbookCheckResult, WorkbookCheckStatus } from './result.js'
+import type { WorkbookChangeSummary, WorkbookCheckExpectation, WorkbookCheckResult, WorkbookCheckStatus } from './result.js'
 
 export interface WorkbookModelDescription {
   readonly name: string
@@ -115,7 +115,19 @@ export interface WorkbookCheckResultDescription {
   readonly target?: WorkbookRefDescription
   readonly refs?: readonly WorkbookRefDescription[]
   readonly message: string
+  readonly expectation?: WorkbookCheckExpectationDescription
 }
+
+export type WorkbookCheckExpectationDescription =
+  | {
+      readonly kind: 'valueEquals'
+      readonly value: LiteralInput
+    }
+  | {
+      readonly kind: 'formulaEquals'
+      readonly formula: string
+      readonly inputs: readonly WorkbookRefDescription[]
+    }
 
 export interface WorkbookActionPlanDescription {
   readonly modelName: string
@@ -270,6 +282,23 @@ function describeCheck(check: WorkbookCheckResult): WorkbookCheckResultDescripti
     ...(check.target !== undefined ? { target: describeRef(check.target) } : {}),
     ...(check.refs !== undefined ? { refs: check.refs.map(describeRef) } : {}),
     message: check.message,
+    ...(check.expectation !== undefined ? { expectation: describeExpectation(check.expectation) } : {}),
+  }
+}
+
+function describeExpectation(expectation: WorkbookCheckExpectation): WorkbookCheckExpectationDescription {
+  switch (expectation.kind) {
+    case 'valueEquals':
+      return {
+        kind: 'valueEquals',
+        value: expectation.value,
+      }
+    case 'formulaEquals':
+      return {
+        kind: 'formulaEquals',
+        formula: expectation.formula,
+        inputs: expectation.inputs.map(describeRef),
+      }
   }
 }
 

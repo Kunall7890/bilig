@@ -1,7 +1,40 @@
 import { describe, expect, it } from 'vitest'
-import { check, defineModel, describePlanResult, findRange, findTable, planWorkbookAction, verifyPlan } from '../index.js'
+import { check, defineModel, describePlanResult, findRange, findTable, formula, planWorkbookAction, verifyPlan } from '../index.js'
 
 describe('@bilig/workbook check api', () => {
+  it('exports machine-readable readback checks without runtime dependencies', () => {
+    const table = findTable({ name: 'Inputs' })
+    const amount = table.column('Amount')
+    const output = findRange({ sheetName: 'Model', address: 'C2' })
+
+    expect(check.valueEquals(output, 12)).toEqual({
+      status: 'planned',
+      kind: 'valueEquals',
+      target: output,
+      message: 'Model!C2 equals 12',
+      expectation: {
+        kind: 'valueEquals',
+        value: 12,
+      },
+    })
+    expect(
+      check.formulaEquals(output, formula.multiply(amount, 2), {
+        message: 'Output formula matches the declared model formula',
+      }),
+    ).toEqual({
+      status: 'planned',
+      kind: 'formulaEquals',
+      target: output,
+      message: 'Output formula matches the declared model formula',
+      expectation: {
+        kind: 'formulaEquals',
+        formula: '(Inputs[Amount])*(2)',
+        inputs: [amount],
+      },
+    })
+    expect(() => check.valueEquals(output, Number.NaN)).toThrowError('Workbook readback value must be a finite JSON literal')
+  })
+
   it('exports custom planned checks for consumer-defined invariants', () => {
     const inputs = findTable({ name: 'Inputs' })
     const output = findRange({ sheetName: 'Model', address: 'C2' })
@@ -32,6 +65,128 @@ describe('@bilig/workbook check api', () => {
     })
     expect(() => check.custom({ kind: ' ', message: 'valid message' })).toThrowError('Workbook check kind cannot be empty')
     expect(() => check.custom({ kind: 'validKind', message: ' ' })).toThrowError('Workbook check message cannot be empty')
+  })
+
+  it('plans and describes readback checks through model actions', () => {
+    const model = defineModel({
+      name: 'readback-check-model',
+
+      find(workbook) {
+        const table = workbook.findTable({ name: 'Inputs' })
+        return {
+          amount: table.column('Amount'),
+          output: workbook.findRange({ sheetName: 'Model', address: 'C2' }),
+          formulaOutput: workbook.findRange({ sheetName: 'Model', address: 'D2' }),
+        }
+      },
+
+      actions: {
+        calculate({ refs, workbook }) {
+          const expectedFormula = formula.add(refs.amount, 1)
+          workbook.writeValue(refs.output, 12)
+          workbook.check.valueEquals(refs.output, 12)
+          workbook.writeFormula(refs.formulaOutput, expectedFormula)
+          workbook.check.formulaEquals(refs.formulaOutput, expectedFormula)
+        },
+      },
+    })
+
+    const result = planWorkbookAction(model, 'calculate')
+    expect(result.status).toBe('planned')
+    if (result.status !== 'planned') {
+      throw new Error('expected planned result')
+    }
+
+    expect(result.plan.checks).toEqual([
+      {
+        status: 'planned',
+        kind: 'valueEquals',
+        target: result.plan.refs.output,
+        message: 'Model!C2 equals 12',
+        expectation: {
+          kind: 'valueEquals',
+          value: 12,
+        },
+      },
+      {
+        status: 'planned',
+        kind: 'formulaEquals',
+        target: result.plan.refs.formulaOutput,
+        message: 'Model!D2 formula equals (Inputs[Amount])+(1)',
+        expectation: {
+          kind: 'formulaEquals',
+          formula: '(Inputs[Amount])+(1)',
+          inputs: [result.plan.refs.amount],
+        },
+      },
+    ])
+    expect(verifyPlan(result.plan)).toEqual({
+      status: 'valid',
+      modelName: 'readback-check-model',
+      actionName: 'calculate',
+      issues: [],
+    })
+    expect(describePlanResult(result)).toEqual({
+      status: 'planned',
+      plan: expect.objectContaining({
+        modelName: 'readback-check-model',
+        actionName: 'calculate',
+        checks: [
+          {
+            status: 'planned',
+            kind: 'valueEquals',
+            target: {
+              kind: 'range',
+              id: 'range_Model_C2_C2',
+              label: 'Model!C2',
+              range: {
+                sheetName: 'Model',
+                startAddress: 'C2',
+                endAddress: 'C2',
+              },
+            },
+            message: 'Model!C2 equals 12',
+            expectation: {
+              kind: 'valueEquals',
+              value: 12,
+            },
+          },
+          {
+            status: 'planned',
+            kind: 'formulaEquals',
+            target: {
+              kind: 'range',
+              id: 'range_Model_D2_D2',
+              label: 'Model!D2',
+              range: {
+                sheetName: 'Model',
+                startAddress: 'D2',
+                endAddress: 'D2',
+              },
+            },
+            message: 'Model!D2 formula equals (Inputs[Amount])+(1)',
+            expectation: {
+              kind: 'formulaEquals',
+              formula: '(Inputs[Amount])+(1)',
+              inputs: [
+                {
+                  kind: 'column',
+                  id: 'table_Inputs_Amount',
+                  label: 'Inputs.Amount',
+                  table: {
+                    kind: 'table',
+                    id: 'table_Inputs',
+                    label: 'Inputs',
+                    name: 'Inputs',
+                  },
+                  name: 'Amount',
+                },
+              ],
+            },
+          },
+        ],
+      }),
+    })
   })
 
   it('plans and describes custom checks without built-in business concepts', () => {
@@ -187,6 +342,107 @@ describe('@bilig/workbook check api', () => {
           },
           message: 'Model!A2 appears in checks but is missing from refsUsed',
         },
+      ],
+    })
+  })
+
+  it('verifies formula expectation inputs resolve through the model refs contract', () => {
+    const model = defineModel({
+      name: 'readback-check-ref-verification',
+
+      find(workbook) {
+        return {
+          output: workbook.findRange({ sheetName: 'Model', address: 'C2' }),
+        }
+      },
+
+      actions: {
+        calculate({ refs, workbook }) {
+          const hiddenInput = workbook.findRange({ sheetName: 'Model', address: 'A2' })
+          workbook.check.formulaEquals(refs.output, formula.add(hiddenInput, 1))
+        },
+      },
+    })
+
+    const result = planWorkbookAction(model, 'calculate')
+    expect(result.status).toBe('planned')
+    if (result.status !== 'planned') {
+      throw new Error('expected planned result')
+    }
+
+    expect(verifyPlan(result.plan)).toEqual({
+      status: 'invalid',
+      modelName: 'readback-check-ref-verification',
+      actionName: 'calculate',
+      issues: [
+        {
+          code: 'check_expectation_input_not_resolved',
+          path: 'checks[0].expectation.inputs[0]',
+          ref: {
+            kind: 'range',
+            id: 'range_Model_A2_A2',
+            label: 'Model!A2',
+            range: {
+              sheetName: 'Model',
+              startAddress: 'A2',
+              endAddress: 'A2',
+            },
+          },
+          message: 'Model!A2 appears in a formula expectation but is missing from refsUsed',
+        },
+      ],
+    })
+  })
+
+  it('verifies formula expectation text is parseable', () => {
+    const model = defineModel({
+      name: 'readback-check-formula-verification',
+
+      find(workbook) {
+        return {
+          output: workbook.findRange({ sheetName: 'Model', address: 'C2' }),
+        }
+      },
+
+      actions: {
+        calculate({ refs, workbook }) {
+          workbook.check.formulaEquals(refs.output, formula.raw('1+1'))
+        },
+      },
+    })
+
+    const result = planWorkbookAction(model, 'calculate')
+    expect(result.status).toBe('planned')
+    if (result.status !== 'planned') {
+      throw new Error('expected planned result')
+    }
+
+    const [plannedCheck] = result.plan.checks
+    if (plannedCheck?.expectation?.kind !== 'formulaEquals') {
+      throw new Error('expected formula expectation')
+    }
+    const brokenPlan = {
+      ...result.plan,
+      checks: [
+        {
+          ...plannedCheck,
+          expectation: {
+            ...plannedCheck.expectation,
+            formula: 'SUM(',
+          },
+        },
+      ],
+    }
+
+    expect(verifyPlan(brokenPlan)).toEqual({
+      status: 'invalid',
+      modelName: 'readback-check-formula-verification',
+      actionName: 'calculate',
+      issues: [
+        expect.objectContaining({
+          code: 'invalid_check_expectation_formula',
+          path: 'checks[0].expectation.formula',
+        }),
       ],
     })
   })
