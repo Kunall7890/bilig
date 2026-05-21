@@ -1,5 +1,5 @@
 import type { CellStyleRecord, SheetMetadataSnapshot, WorkbookSnapshot } from '@bilig/protocol'
-import { createSheetPreview, toDisplayText } from './workbook-import-helpers.js'
+import { createSheetPreview } from './workbook-import-helpers.js'
 import { buildLargeSimpleCellMetadataReferenceSnapshots } from './xlsx-large-simple-cell-metadata.js'
 import {
   normalizeLargeSimpleConditionalFormatIds,
@@ -17,7 +17,6 @@ import {
   type LargeSimpleWorksheetScannedMetadata,
 } from './xlsx-large-simple-worksheet-metadata.js'
 import type { LargeSimpleSheetMetadataInput, ParsedWorksheet } from './xlsx-large-simple-import-types.js'
-import { decodeCellAddress } from './xlsx-large-simple-xml-byte-utils.js'
 
 export const lazySheetCellMaterializationThreshold = 65_536
 export const lazySheetCellMaterializationNumberFormatThreshold = 100_000
@@ -68,16 +67,13 @@ export function buildParsedWorksheet(
     applyLargeSimpleNumberFormatsToCells(cells, cellScan, options.numberFormatsByStyleIndex)
   }
   const cellMetadataRefs = buildLargeSimpleCellMetadataReferenceSnapshots(metadataScan?.cellMetadataRefs, cells, cellScan, useLazyCells)
-  const preview =
-    options.materializeCells && !useLazyCells
-      ? createPreviewFromMaterializedCells(sheetName, cellScan, cells)
-      : createSheetPreview({
-          name: sheetName,
-          rowCount: cellScan.rowCount,
-          columnCount: cellScan.columnCount,
-          nonEmptyCellCount: cellScan.cellCount,
-          readCellText: (row, column) => cellScan.arena.readPreviewText(row, column),
-        })
+  const preview = createSheetPreview({
+    name: sheetName,
+    rowCount: cellScan.rowCount,
+    columnCount: cellScan.columnCount,
+    nonEmptyCellCount: cellScan.cellCount,
+    readCellText: (row, column) => cellScan.arena.readPreviewText(row, column),
+  })
   releaseProjectedCellScanStorage(cellScan, {
     releaseArenaAfterMaterialization: options.releaseArenaAfterMaterialization,
     useLazyCells,
@@ -131,29 +127,5 @@ export function buildParsedWorksheet(
         usedRange: cellScan.usedRange,
       },
     },
-  }
-}
-
-function createPreviewFromMaterializedCells(
-  sheetName: string,
-  cellScan: ImportedWorksheetCellScan,
-  cells: WorkbookSnapshot['sheets'][number]['cells'],
-): ParsedWorksheet['preview'] {
-  const rowLimit = Math.min(cellScan.rowCount, 8)
-  const columnLimit = Math.min(cellScan.columnCount, 6)
-  const previewValues = Array.from({ length: rowLimit }, () => Array.from({ length: columnLimit }, () => ''))
-  for (const cell of cells) {
-    const decoded = decodeCellAddress(cell.address)
-    if (!decoded || decoded.row >= rowLimit || decoded.column >= columnLimit) {
-      continue
-    }
-    previewValues[decoded.row]![decoded.column] = 'value' in cell ? toDisplayText(cell.value) : 'formula' in cell ? `=${cell.formula}` : ''
-  }
-  return {
-    name: sheetName,
-    rowCount: cellScan.rowCount,
-    columnCount: cellScan.columnCount,
-    nonEmptyCellCount: cellScan.cellCount,
-    previewRows: previewValues,
   }
 }

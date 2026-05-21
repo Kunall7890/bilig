@@ -19,6 +19,53 @@ const publicWorkbookCorpusVerifyWorkerScriptPath = fileURLToPath(new URL('./publ
 const noop = (): void => undefined
 
 export const verificationWorkerPhasePrefix = 'bilig-public-workbook-verify-phase='
+export const disableBunSmolVerificationWorkerEnvVar = 'BILIG_PUBLIC_WORKBOOK_VERIFY_DISABLE_BUN_SMOL'
+
+type RuntimeVersions = Readonly<Record<string, string | undefined>>
+
+export function shouldUseBunSmolForVerificationWorker(
+  args: {
+    readonly versions?: RuntimeVersions
+    readonly env?: Readonly<Record<string, string | undefined>>
+  } = {},
+): boolean {
+  const versions = args.versions ?? readProcessRuntimeVersions()
+  if (!readRuntimeVersion(versions, 'bun')) {
+    return false
+  }
+  const env = args.env ?? process.env
+  const disabled = env[disableBunSmolVerificationWorkerEnvVar]
+  return disabled !== '1' && disabled?.toLowerCase() !== 'true'
+}
+
+function readProcessRuntimeVersions(): RuntimeVersions {
+  const versions: Record<string, string | undefined> = {}
+  for (const [key, value] of Object.entries(process.versions)) {
+    if (typeof value === 'string') {
+      versions[key] = value
+    }
+  }
+  return versions
+}
+
+function readRuntimeVersion(versions: RuntimeVersions, key: string): string | undefined {
+  for (const [name, value] of Object.entries(versions)) {
+    if (name === key && typeof value === 'string') {
+      return value
+    }
+  }
+  return undefined
+}
+
+export function buildVerificationWorkerProcessArgs(
+  workerArgs: readonly string[],
+  args: {
+    readonly versions?: RuntimeVersions
+    readonly env?: Readonly<Record<string, string | undefined>>
+  } = {},
+): string[] {
+  return shouldUseBunSmolForVerificationWorker(args) ? ['--smol', ...workerArgs] : [...workerArgs]
+}
 
 export function verifyCachedWorkbookArtifactIsolated(args: {
   readonly artifact: PublicWorkbookArtifact
@@ -33,7 +80,7 @@ export function verifyCachedWorkbookArtifactIsolated(args: {
   const baseEvidence = artifactBaseEvidence(args.artifact)
   const runtimeMetrics = startVerificationRuntimeMetrics()
   return new Promise<PublicWorkbookCorpusCase>((resolvePromise) => {
-    const childArgs = [
+    const workerArgs = [
       publicWorkbookCorpusVerifyWorkerScriptPath,
       'verify-artifact-worker',
       '--manifest',
@@ -50,6 +97,7 @@ export function verifyCachedWorkbookArtifactIsolated(args: {
       String(args.maxCellCount),
       ...(args.runStructuralSmoke ? ['--structural-smoke'] : []),
     ]
+    const childArgs = buildVerificationWorkerProcessArgs(workerArgs)
     const child = spawn(process.execPath, childArgs, {
       detached: true,
       stdio: ['ignore', 'pipe', 'pipe'],

@@ -165,7 +165,7 @@ function readLargeSimpleVerifierZipEntries(source: XlsxZipByteSource): XlsxZipEn
   return isZipWorkbookSource(source) ? readXlsxZipEntriesLazyFromByteSource(borrowXlsxZipByteSource(source)) : null
 }
 
-function borrowXlsxZipByteSource(source: XlsxZipByteSource): XlsxZipByteSource {
+export function borrowXlsxZipByteSource(source: XlsxZipByteSource): XlsxZipByteSource {
   return {
     byteLength: source.byteLength,
     readRange: (start, end) => source.readRange(start, end),
