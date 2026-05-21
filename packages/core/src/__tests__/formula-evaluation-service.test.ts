@@ -216,7 +216,7 @@ describe('EngineFormulaEvaluationService', () => {
     expect(engine.getPerformanceCounters().directCriteriaMatchCacheHits).toBe(0)
   })
 
-  it('shares direct criteria matches across mixed criteria count and sum formulas', async () => {
+  it('evaluates mixed criteria aggregates without materializing matched rows', async () => {
     const engine = new SpreadsheetEngine({ workbookName: 'evaluation-direct-criteria-repeated-count-cache' })
     await engine.ready()
     engine.createSheet('Sheet1')
@@ -242,11 +242,12 @@ describe('EngineFormulaEvaluationService', () => {
 
     expect(engine.getCellValue('Sheet1', 'F1')).toEqual({ tag: ValueTag.Number, value: 3 })
     expect(engine.getCellValue('Sheet1', 'J1')).toEqual({ tag: ValueTag.Number, value: 36 })
-    expect(engine.getPerformanceCounters().directCriteriaMatchCacheHits).toBeGreaterThanOrEqual(1)
+    expect(engine.getPerformanceCounters().nativeDirectCriteriaPredicateAggregateEvaluations).toBe(0)
+    expect(engine.getPerformanceCounters().directCriteriaMatchCacheHits).toBe(0)
   })
 
-  it('uses native predicate aggregation for safe mixed string and numeric criteria', async () => {
-    const engine = new SpreadsheetEngine({ workbookName: 'evaluation-direct-criteria-native-mixed-predicate' })
+  it('uses indexed predicate aggregation for mixed exact and numeric criteria', async () => {
+    const engine = new SpreadsheetEngine({ workbookName: 'evaluation-direct-criteria-indexed-mixed-predicate' })
     await engine.ready()
     engine.createSheet('Sheet1')
     const rowCount = 512
@@ -279,7 +280,7 @@ describe('EngineFormulaEvaluationService', () => {
 
     expect(engine.getCellValue('Sheet1', 'F1')).toEqual({ tag: ValueTag.Number, value: expectedCount })
     expect(engine.getCellValue('Sheet1', 'G1')).toEqual({ tag: ValueTag.Number, value: expectedSum })
-    expect(engine.getPerformanceCounters().nativeDirectCriteriaPredicateAggregateEvaluations).toBe(2)
+    expect(engine.getPerformanceCounters().nativeDirectCriteriaPredicateAggregateEvaluations).toBe(0)
     expect(engine.getPerformanceCounters().directCriteriaMatchCacheHits).toBe(0)
   })
 

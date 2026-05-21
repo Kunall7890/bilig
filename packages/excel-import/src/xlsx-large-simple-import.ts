@@ -36,7 +36,8 @@ import { readLargeSimpleWorkbookStylesFromChunks } from './xlsx-large-simple-sty
 import { readLargeSimpleWorkbookNumberFormatsFromChunks } from './xlsx-large-simple-number-formats.js'
 import {
   maxPreallocatedWorksheetCells,
-  prepareLargeSimpleStyleIndexes,
+  prepareLargeSimpleStyleIndexForWorksheet,
+  releaseLargeSimpleStyleIndexes,
   shouldDeferLargeSimpleStyleCoordinates,
 } from './xlsx-large-simple-style-coordinate-rescan.js'
 import { collectLargeSimpleImportGarbage } from './xlsx-large-simple-garbage.js'
@@ -585,23 +586,15 @@ export function tryImportLargeSimpleXlsx(
     warnings.push('Some cell styles were ignored during XLSX import.')
   }
   requiredStyleIndexes.clear()
-  if (
-    !prepareLargeSimpleStyleIndexes(
-      zip,
-      worksheetEntries,
-      scannedWorksheets,
-      stylesByIndex.size > 0 ? stylesByIndex : numberFormatsByStyleIndex,
-      {
-        hasSharedStrings,
-        ...(options.allowUnsupportedFormulaText === undefined ? {} : { allowUnsupportedFormulaText: options.allowUnsupportedFormulaText }),
-        ...(options.allowUnsupportedCellMetadata === undefined
-          ? {}
-          : { allowUnsupportedCellMetadata: options.allowUnsupportedCellMetadata }),
-      },
-    )
-  ) {
-    return null
+  const sheetNeedsStyleCoordinateMaterialization = (cellScan: ImportedWorksheetCellScan): boolean =>
+    stylesByIndex.size > 0 || (numberFormatsByStyleIndex.size > 0 && cellScan.cellCount <= lazySheetCellMaterializationThreshold)
+  if (!stylesByIndex.size && !numberFormatsByStyleIndex.size) {
+    releaseLargeSimpleStyleIndexes(scannedWorksheets)
   }
+  const needsDeferredStyleCoordinateMaterialization = scannedWorksheets.some(
+    (scanned) =>
+      scanned && sheetNeedsStyleCoordinateMaterialization(scanned.cellScan) && !scanned.cellScan.styleIndexes.hasCoordinateStorage,
+  )
   delete zip[stylesPath]
   phaseRecorder.finish('style-parsing', styleParsingStart)
   const importedDrawingArtifacts =
@@ -644,7 +637,7 @@ export function tryImportLargeSimpleXlsx(
           largeSimpleLegacyCommentVmlSheetSources(scannedWorksheets, worksheetEntries),
         )
       : null
-  if (options.releaseZipSource === true) {
+  const releaseZipSourceForMaterialization = (): void => {
     const zipSourceReleaseStart = phaseRecorder.start()
     const zipSourceBytesBeforeRelease = readLazyXlsxZipSourceByteLength(zip)
     const artifactReleasePlan = prepareLargeSimplePackageArtifactsForZipRelease({
@@ -671,6 +664,9 @@ export function tryImportLargeSimpleXlsx(
       ...ownedSourceReleaseEvidence,
     })
   }
+  if (options.releaseZipSource === true && !needsDeferredStyleCoordinateMaterialization) {
+    releaseZipSourceForMaterialization()
+  }
   for (const [index, scanned] of scannedWorksheets.entries()) {
     if (!scanned) {
       continue
@@ -683,8 +679,24 @@ export function tryImportLargeSimpleXlsx(
     if (resolvedRichTextCells === null) {
       return null
     }
+    const needsStyleCoordinatesForSheet = sheetNeedsStyleCoordinateMaterialization(scanned.cellScan)
+    const styleIndexes = needsStyleCoordinatesForSheet
+      ? prepareLargeSimpleStyleIndexForWorksheet(zip, worksheetEntries, scanned, {
+          hasSharedStrings,
+          ...(options.allowUnsupportedFormulaText === undefined
+            ? {}
+            : { allowUnsupportedFormulaText: options.allowUnsupportedFormulaText }),
+          ...(options.allowUnsupportedCellMetadata === undefined
+            ? {}
+            : { allowUnsupportedCellMetadata: options.allowUnsupportedCellMetadata }),
+        })
+      : scanned.cellScan.styleIndexes
+    if (!styleIndexes) {
+      return null
+    }
     const cellScan = {
       ...scanned.cellScan,
+      styleIndexes,
       richTextCells: mergeWorkbookRichTextCells(scanned.cellScan.richTextCells, resolvedRichTextCells),
     }
     const drawingArtifacts =
@@ -728,6 +740,10 @@ export function tryImportLargeSimpleXlsx(
     appendParsedWorksheet(parsed)
     scannedWorksheets[index] = undefined
     phaseRecorder.finish('public-snapshot-materialization', snapshotMaterializationStart)
+    collectLargeSimpleImportGarbage()
+  }
+  if (options.releaseZipSource === true && needsDeferredStyleCoordinateMaterialization) {
+    releaseZipSourceForMaterialization()
   }
   sharedStrings = []
   stringPool.release()
