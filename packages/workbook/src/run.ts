@@ -1,8 +1,16 @@
 import type { WorkbookRef } from './find.js'
 import type { WorkbookActionInput } from './input.js'
 import { planWorkbookAction, type WorkbookActionMap, type WorkbookActionPlan, type WorkbookModel } from './model.js'
-import { verifyWorkbookReadbacks, type WorkbookRunReadback } from './readback.js'
-import type { WorkbookCheckResult, WorkbookRunError, WorkbookRunErrorCode, WorkbookRunResult, WorkbookUndoRef } from './result.js'
+import { verifyWorkbookReadbacks, type WorkbookReadbackIssue, type WorkbookRunReadback } from './readback.js'
+import type { WorkbookRuntimePreview } from './requirements.js'
+import type {
+  WorkbookAppliedSummary,
+  WorkbookCheckResult,
+  WorkbookRunError,
+  WorkbookRunErrorCode,
+  WorkbookRunResult,
+  WorkbookUndoRef,
+} from './result.js'
 import { verifyPlan } from './verify.js'
 
 type MaybePromise<T> = T | Promise<T>
@@ -14,6 +22,7 @@ export interface WorkbookRunApplyResult {
 }
 
 export interface WorkbookRunAdapter<Refs = unknown> {
+  readonly preview?: (plan: WorkbookActionPlan<Refs>) => MaybePromise<WorkbookRuntimePreview>
   readonly apply: (plan: WorkbookActionPlan<Refs>) => MaybePromise<WorkbookRunApplyResult>
   readonly read?: (targets: readonly WorkbookRef[], plan: WorkbookActionPlan<Refs>) => MaybePromise<readonly WorkbookRunReadback[]>
   readonly verifyChecks?: (
@@ -30,6 +39,36 @@ function runError(code: WorkbookRunErrorCode, message: string): WorkbookRunError
   return {
     code,
     message,
+  }
+}
+
+function planIssueError(issue: ReturnType<typeof verifyPlan>['issues'][number]): WorkbookRunError {
+  return {
+    code: issue.code,
+    message: issue.message,
+    path: issue.path,
+  }
+}
+
+function readbackIssueError(issue: WorkbookReadbackIssue): WorkbookRunError {
+  return {
+    code: issue.code,
+    message: issue.message,
+    ...(issue.path !== undefined ? { path: issue.path } : {}),
+    ...(issue.target !== undefined ? { target: issue.target } : {}),
+    check: issue.check,
+    ...(issue.expected !== undefined ? { expected: issue.expected } : {}),
+    ...(issue.actual !== undefined ? { actual: issue.actual } : {}),
+  }
+}
+
+function appliedSummary(preview: WorkbookRuntimePreview | undefined): WorkbookAppliedSummary | undefined {
+  if (preview === undefined) {
+    return undefined
+  }
+  return {
+    opCount: preview.materializedOps.length,
+    ops: preview.materializedOps,
   }
 }
 
@@ -58,7 +97,7 @@ function failedFromPlanIssues<Refs>(plan: WorkbookActionPlan<Refs>): WorkbookRun
 
   return {
     status: 'failed',
-    errors: verification.issues.map((issue) => runError(issue.code, issue.message)),
+    errors: verification.issues.map(planIssueError),
     checks: plan.checks,
   }
 }
@@ -260,6 +299,19 @@ export async function runWorkbookPlan<Refs>(plan: WorkbookActionPlan<Refs>, adap
     return invalidPlan
   }
 
+  let preview: WorkbookRuntimePreview | undefined
+  if (adapter.preview !== undefined) {
+    try {
+      preview = await adapter.preview(plan)
+    } catch (error) {
+      return {
+        status: 'failed',
+        errors: [runError('runtime_rejected', errorMessage(error))],
+        checks: plan.checks,
+      }
+    }
+  }
+
   let applyResult: WorkbookRunApplyResult
   try {
     applyResult = await adapter.apply(plan)
@@ -282,7 +334,7 @@ export async function runWorkbookPlan<Refs>(plan: WorkbookActionPlan<Refs>, adap
       const readbackVerification = verifyWorkbookReadbacks(checks, [])
       return {
         status: 'failed',
-        errors: readbackVerification.issues.map((issue) => runError(issue.code, issue.message)),
+        errors: readbackVerification.issues.map(readbackIssueError),
         checks: readbackVerification.checks,
       }
     }
@@ -303,7 +355,7 @@ export async function runWorkbookPlan<Refs>(plan: WorkbookActionPlan<Refs>, adap
     if (readbackVerification.status === 'failed') {
       return {
         status: 'failed',
-        errors: readbackVerification.issues.map((issue) => runError(issue.code, issue.message)),
+        errors: readbackVerification.issues.map(readbackIssueError),
         checks,
       }
     }
@@ -328,11 +380,13 @@ export async function runWorkbookPlan<Refs>(plan: WorkbookActionPlan<Refs>, adap
     }
   }
 
+  const applied = appliedSummary(preview)
   return {
     status: 'done',
     changed: plan.changed,
     checks,
     ...(applyResult.undo !== undefined ? { undo: applyResult.undo } : {}),
+    ...(applied !== undefined ? { applied } : {}),
   }
 }
 

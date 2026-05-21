@@ -5,13 +5,17 @@ function summary(requirement: ReturnType<typeof describeRuntimeRequirements>['re
   return {
     kind: requirement.kind,
     capability: requirement.capability,
+    path: requirement.path,
+    materialization: requirement.materialization,
     commandIndex: requirement.commandIndex,
     checkIndex: requirement.checkIndex,
     opIndex: requirement.opIndex,
+    opIndexes: requirement.opIndexes,
     opKind: requirement.opKind,
     checkKind: requirement.checkKind,
     target: requirement.target?.label,
     refs: requirement.refs?.map((ref) => ref.label),
+    expectation: requirement.expectation?.kind,
     message: requirement.message,
   }
 }
@@ -63,49 +67,65 @@ describe('@bilig/workbook runtime requirements api', () => {
       {
         kind: 'apply',
         capability: 'writeFormula',
+        path: 'commands[0]',
+        materialization: 'adapterMaterialization',
         commandIndex: 0,
         checkIndex: undefined,
         opIndex: undefined,
+        opIndexes: undefined,
         opKind: undefined,
         checkKind: undefined,
         target: 'Inputs rows where Status eq "Active".Result',
         refs: ['Inputs rows where Status eq "Active".Base', 'Inputs rows where Status eq "Active".Rate'],
+        expectation: undefined,
         message: 'Apply formula write to Inputs rows where Status eq "Active".Result',
       },
       {
         kind: 'read',
         capability: 'read',
+        path: 'checks[1]',
+        materialization: undefined,
         commandIndex: undefined,
         checkIndex: 1,
         opIndex: undefined,
+        opIndexes: undefined,
         opKind: undefined,
         checkKind: 'formulaEquals',
         target: 'Inputs rows where Status eq "Active".Result',
         refs: ['Inputs rows where Status eq "Active".Base', 'Inputs rows where Status eq "Active".Rate'],
+        expectation: 'formulaEquals',
         message: 'Read Inputs rows where Status eq "Active".Result for formulaEquals',
       },
       {
         kind: 'verify',
         capability: 'verifyCheck',
+        path: 'checks[0]',
+        materialization: undefined,
         commandIndex: undefined,
         checkIndex: 0,
         opIndex: undefined,
+        opIndexes: undefined,
         opKind: undefined,
         checkKind: 'exists',
         target: 'Inputs',
         refs: undefined,
+        expectation: undefined,
         message: 'Verify exists for Inputs',
       },
       {
         kind: 'verify',
         capability: 'verifyCheck',
+        path: 'checks[2]',
+        materialization: undefined,
         commandIndex: undefined,
         checkIndex: 2,
         opIndex: undefined,
+        opIndexes: undefined,
         opKind: undefined,
         checkKind: 'noFormulaErrors',
         target: 'Inputs rows where Status eq "Active".Result',
         refs: undefined,
+        expectation: undefined,
         message: 'Verify noFormulaErrors for Inputs rows where Status eq "Active".Result',
       },
     ])
@@ -136,14 +156,57 @@ describe('@bilig/workbook runtime requirements api', () => {
       {
         kind: 'apply',
         capability: 'applyOp',
+        path: 'ops[0]',
+        materialization: 'providedOp',
         commandIndex: undefined,
         checkIndex: undefined,
         opIndex: 0,
+        opIndexes: undefined,
         opKind: 'setCellValue',
         checkKind: undefined,
         target: undefined,
         refs: undefined,
+        expectation: undefined,
         message: 'Apply workbook op setCellValue',
+      },
+    ])
+  })
+
+  it('marks known single-cell commands as concrete op backed handoff requirements', () => {
+    const model = defineModel({
+      name: 'single-cell-requirements',
+
+      find(workbook) {
+        return {
+          output: workbook.findRange({ sheetName: 'Sheet1', address: 'B2' }),
+        }
+      },
+
+      actions: {
+        write({ refs, workbook }) {
+          workbook.writeValue(refs.output, 12)
+        },
+      },
+    })
+
+    const plan = buildWorkbookActionPlan(model, 'write')
+
+    expect(describeRuntimeRequirements(plan).requirements.map(summary)).toEqual([
+      {
+        kind: 'apply',
+        capability: 'writeValue',
+        path: 'commands[0]',
+        materialization: 'concreteOp',
+        commandIndex: 0,
+        checkIndex: undefined,
+        opIndex: undefined,
+        opIndexes: [0],
+        opKind: undefined,
+        checkKind: undefined,
+        target: 'Sheet1!B2',
+        refs: undefined,
+        expectation: undefined,
+        message: 'Apply value write to Sheet1!B2',
       },
     ])
   })

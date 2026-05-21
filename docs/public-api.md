@@ -72,13 +72,17 @@ It exposes:
 - `runWorkbookAction`
 - `verifyWorkbookReadbacks`
 - `normalizeWorkbookActionInputDescription`
+- `workbookPlanIssueCodes`
+- `isWorkbookPlanIssueCode`
+- `workbookReadbackIssueCodes`
+- `isWorkbookReadbackIssueCode`
 - `workbookRunErrorCodes`
 - `isWorkbookRunErrorCode`
 - `formula`
 - `workbook.addOp(op, { target?, message? })` inside model actions
 - `findTable`, `findColumn`, `findRange`, `findName`, and `findRows` through the model workbook context and as top-level helpers
 - `check.exists`, `check.noFormulaErrors`, `check.valueEquals`, `check.formulaEquals`, and `check.custom` through the model workbook context and as top-level helpers
-- `WorkbookModel`, `WorkbookAction`, `WorkbookActionConfig`, `WorkbookActionDefinition`, `WorkbookActionContext`, `WorkbookCheckContext`, `WorkbookFindWorkbook`, `WorkbookCheckWorkbook`, `WorkbookActionWorkbook`, `WorkbookModelWorkbook`, `WorkbookFindNamespace`, `WorkbookActionInput`, `WorkbookActionInputDescription`, `WorkbookActionInputDescriptionKind`, `WorkbookActionInspection`, `WorkbookAddOpOptions`, `WorkbookActionPlanResult`, `WorkbookModelDescription`, `WorkbookRefDescription`, `WorkbookActionPlanDescription`, `WorkbookActionPlanResultDescription`, `WorkbookRunResultDescription`, `WorkbookUndoRefDescription`, `WorkbookRuntimeRequirements`, `WorkbookRuntimeRequirement`, `WorkbookRuntimeCapability`, `WorkbookPlanVerification`, `WorkbookPlanIssue`, `WorkbookModelVerification`, `WorkbookModelActionVerification`, `WorkbookModelVerificationOptions`, `WorkbookRunAdapter`, `WorkbookRunApplyResult`, `WorkbookRunReadback`, `WorkbookReadbackVerification`, `WorkbookReadbackIssue`, `WorkbookReadbackIssueCode`, `WorkbookCheckExpectation`, `WorkbookCheckExpectationDescription`, `WorkbookCustomCheckOptions`, `WorkbookReadbackCheckOptions`, `WorkbookRawFormulaOptions`, `WorkbookRunResult`, `WorkbookRunError`, `WorkbookRunErrorCode`, and `WorkbookCheckResult`
+- `WorkbookModel`, `WorkbookAction`, `WorkbookActionConfig`, `WorkbookActionDefinition`, `WorkbookActionContext`, `WorkbookCheckContext`, `WorkbookFindWorkbook`, `WorkbookCheckWorkbook`, `WorkbookActionWorkbook`, `WorkbookModelWorkbook`, `WorkbookFindNamespace`, `WorkbookActionInput`, `WorkbookActionInputDescription`, `WorkbookActionInputDescriptionKind`, `WorkbookActionInspection`, `WorkbookAddOpOptions`, `WorkbookActionPlanResult`, `WorkbookModelDescription`, `WorkbookRefDescription`, `WorkbookActionPlanDescription`, `WorkbookActionPlanResultDescription`, `WorkbookRunResultDescription`, `WorkbookUndoRefDescription`, `WorkbookAppliedSummaryDescription`, `WorkbookRuntimeRequirements`, `WorkbookRuntimeRequirement`, `WorkbookRuntimeCapability`, `WorkbookRuntimeMaterialization`, `WorkbookRuntimePreview`, `WorkbookPlanVerification`, `WorkbookPlanIssue`, `WorkbookPlanIssueCode`, `WorkbookModelVerification`, `WorkbookModelActionVerification`, `WorkbookModelVerificationOptions`, `WorkbookRunAdapter`, `WorkbookRunApplyResult`, `WorkbookRunReadback`, `WorkbookReadbackVerification`, `WorkbookReadbackIssue`, `WorkbookReadbackIssueCode`, `WorkbookCheckExpectation`, `WorkbookCheckExpectationDescription`, `WorkbookCustomCheckOptions`, `WorkbookReadbackCheckOptions`, `WorkbookRawFormulaOptions`, `WorkbookRunResult`, `WorkbookAppliedSummary`, `WorkbookRunError`, `WorkbookRunErrorCode`, and `WorkbookCheckResult`
 - the existing low-level operation language: `WorkbookOp`, `WorkbookTxn`, `EngineOp`, and `EngineOpBatch`
 
 The package builds portable workbook intent and concrete low-level ops when the
@@ -210,7 +214,11 @@ and undo ops while removing ref helper functions from the public result.
 for the same plan: which generic commands must be applied, which readbacks are
 needed, and which checks need proof. It stays generic, with capabilities such
 as `writeFormula`, `writeValue`, `format`, `clear`, `applyOp`, `read`, and
-`verifyCheck`, and it does not import the engine.
+`verifyCheck`. Apply requirements include a stable `path` and a materialization
+classification: `concreteOp`, `providedOp`, or `adapterMaterialization`. Read
+requirements include the machine-readable expectation. This lets agents see
+whether the handoff is already backed by portable ops or needs runtime
+materialization without importing the engine.
 
 `verifyPlan` gives agents a runtime-free consistency check before handoff. It
 flags invalid action input, unresolved command targets, unresolved formula
@@ -218,6 +226,12 @@ inputs, duplicate resolved refs, unparsable formulas, and missing concrete ops
 for write, clear, and number-format commands whose target is already known as a
 single cell. Custom check targets and supporting refs must also resolve through
 `refsUsed`.
+Planning issues expose a stable `WorkbookPlanIssueCode` union plus the frozen
+`workbookPlanIssueCodes` list and `isWorkbookPlanIssueCode` guard, so agents
+can branch on static handoff failures without inventing or string-matching
+custom codes. Readback failures mirror that contract with
+`WorkbookReadbackIssueCode`, `workbookReadbackIssueCodes`, and
+`isWorkbookReadbackIssueCode`.
 Formula readback expectation inputs must resolve through `refsUsed`, and
 formula expectation text must be parseable.
 Checks must start as `planned`; consumer model code cannot mark a check passed
@@ -230,14 +244,18 @@ in a consumer-defined model, returning one JSON-safe model-level verdict.
 `runWorkbookPlan(plan, adapter)` and
 `runWorkbookAction(model, actionName, adapter, input)` add a transport-neutral
 apply-and-prove loop on top of the same contracts. The adapter receives the full
-plan, applies it through whatever runtime the consumer owns, and optionally
-returns semantic readbacks for the expectation targets. `@bilig/workbook`
-compares those readbacks against `valueEquals` and `formulaEquals` checks and
-returns a boring `WorkbookRunResult`. If static verification fails, the apply
-adapter is not called. If a readback expectation is missing or mismatched, the
-run fails with deterministic codes such as `readback_missing`,
-`value_mismatch`, or `formula_mismatch`. Formula readbacks are exact and should
-use the normalized no-leading-`=` form produced by `formula.source`.
+plan, optionally previews materialized ops, applies it through whatever runtime
+the consumer owns, and optionally returns semantic readbacks for the expectation
+targets. `@bilig/workbook` compares those readbacks against `valueEquals` and
+`formulaEquals` checks and returns a boring `WorkbookRunResult`. If static
+verification fails, the apply adapter is not called. If preview is available,
+successful run results include an `applied` summary with the materialized op
+count and ops. If a readback expectation is missing, duplicated, or mismatched,
+the run fails with deterministic codes such as `readback_missing`,
+`duplicate_readback`, `value_mismatch`, or `formula_mismatch`, plus structured
+`path`, `target`, `check`, `expected`, and `actual` fields where available.
+Formula readbacks are exact and should use the normalized no-leading-`=` form
+produced by `formula.source`.
 Run errors use the stable `WorkbookRunErrorCode` union. Agents and adapters can
 inspect the frozen `workbookRunErrorCodes` list or call
 `isWorkbookRunErrorCode(value)` before branching on a code. Runtime adapters
@@ -257,8 +275,9 @@ If a check remains `planned` after readback and adapter verification,
 does not hide unproven checks.
 `@bilig/core` provides `createWorkbookRunAdapter(engine)` for the canonical
 engine handoff. It materializes generic `plan.commands` into engine operations,
-including range and table-column writes, falls back to explicit `plan.ops` for
-low-level plans, reads single-cell `valueEquals` and `formulaEquals` targets,
+including range and table-column writes, applies additional `plan.ops` that are
+not already represented by materialized commands, previews exact materialized
+ops before apply, reads single-cell `valueEquals` and `formulaEquals` targets,
 and verifies generic `exists` and `noFormulaErrors` checks. When the engine
 captures an undo transaction, the adapter returns a portable `undo.ops` ref
 using the same workbook operation language. Consumer-defined business meaning

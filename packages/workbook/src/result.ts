@@ -35,6 +35,11 @@ export interface WorkbookUndoRef {
   readonly ops?: readonly EngineOp[]
 }
 
+export interface WorkbookAppliedSummary {
+  readonly opCount: number
+  readonly ops?: readonly EngineOp[]
+}
+
 export type WorkbookRunErrorCode =
   | 'action_not_found'
   | 'invalid_action_input'
@@ -58,6 +63,7 @@ export type WorkbookRunErrorCode =
   | 'apply_failed'
   | 'readback_failed'
   | 'readback_missing'
+  | 'duplicate_readback'
   | 'value_mismatch'
   | 'formula_mismatch'
   | 'invalid_check_verification'
@@ -89,6 +95,7 @@ export const workbookRunErrorCodes = Object.freeze([
   'apply_failed',
   'readback_failed',
   'readback_missing',
+  'duplicate_readback',
   'value_mismatch',
   'formula_mismatch',
   'invalid_check_verification',
@@ -105,6 +112,11 @@ export function isWorkbookRunErrorCode(value: unknown): value is WorkbookRunErro
 export interface WorkbookRunError {
   readonly code: WorkbookRunErrorCode
   readonly message: string
+  readonly path?: string
+  readonly target?: WorkbookRef
+  readonly check?: WorkbookCheckResult
+  readonly expected?: LiteralInput
+  readonly actual?: LiteralInput
 }
 
 export type WorkbookRunResult =
@@ -113,6 +125,7 @@ export type WorkbookRunResult =
       readonly changed: readonly WorkbookChangeSummary[]
       readonly checks: readonly WorkbookCheckResult[]
       readonly undo?: WorkbookUndoRef
+      readonly applied?: WorkbookAppliedSummary
     }
   | {
       readonly status: 'failed'

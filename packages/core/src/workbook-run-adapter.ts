@@ -15,6 +15,7 @@ import {
   type WorkbookRunReadback,
   type WorkbookTableRef,
   type WorkbookUndoRef,
+  describeRuntimeRequirements,
 } from '@bilig/workbook'
 import type { SpreadsheetEngine } from './engine.js'
 import { buildFormatClearOps, buildFormatPatchOps, buildStylePatchOps } from './engine-range-format-ops.js'
@@ -595,11 +596,32 @@ function materializeCommandOps(engine: SpreadsheetEngine, command: WorkbookActio
   }
 }
 
+function canonicalValue(value: unknown): unknown {
+  if (Array.isArray(value)) {
+    return value.map(canonicalValue)
+  }
+  if (typeof value === 'object' && value !== null) {
+    return Object.fromEntries(
+      Object.entries(value)
+        .toSorted(([left], [right]) => left.localeCompare(right))
+        .map(([key, entry]) => [key, canonicalValue(entry)]),
+    )
+  }
+  return value
+}
+
+function opKey(op: EngineOp): string {
+  return JSON.stringify(canonicalValue(op))
+}
+
 function materializePlanOps(engine: SpreadsheetEngine, plan: WorkbookActionPlan): readonly EngineOp[] {
   if (plan.commands.length === 0) {
     return plan.ops
   }
-  return plan.commands.flatMap((command) => materializeCommandOps(engine, command))
+  const commandOps = plan.commands.flatMap((command) => materializeCommandOps(engine, command))
+  const commandOpKeys = new Set(commandOps.map(opKey))
+  const additionalOps = plan.ops.filter((op) => !commandOpKeys.has(opKey(op)))
+  return [...commandOps, ...additionalOps]
 }
 
 function verifyCheck(engine: SpreadsheetEngine, check: WorkbookCheckResult): WorkbookCheckResult {
@@ -617,6 +639,14 @@ function verifyCheck(engine: SpreadsheetEngine, check: WorkbookCheckResult): Wor
 
 export function createWorkbookRunAdapter(engine: SpreadsheetEngine, options: WorkbookRunEngineAdapterOptions = {}): WorkbookRunAdapter {
   return {
+    preview(plan: WorkbookActionPlan) {
+      return {
+        modelName: plan.modelName,
+        actionName: plan.actionName,
+        requirements: describeRuntimeRequirements(plan).requirements,
+        materializedOps: materializePlanOps(engine, plan),
+      }
+    },
     apply(plan: WorkbookActionPlan) {
       try {
         const ops = materializePlanOps(engine, plan)

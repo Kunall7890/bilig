@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { ValueTag } from '@bilig/protocol'
-import { defineModel, findRange, findTable, formula, runWorkbookAction } from '@bilig/workbook'
+import { buildWorkbookActionPlan, defineModel, findRange, findTable, formula, runWorkbookAction, runWorkbookPlan } from '@bilig/workbook'
 import { SpreadsheetEngine } from '../engine.js'
 import { createWorkbookRunAdapter } from '../workbook-run-adapter.js'
 
@@ -36,7 +36,20 @@ describe('workbook run adapter', () => {
       },
     })
 
-    const result = await runWorkbookAction(model, 'calculate', createWorkbookRunAdapter(engine))
+    const adapter = createWorkbookRunAdapter(engine)
+    const plan = buildWorkbookActionPlan(model, 'calculate')
+    const preview = await adapter.preview?.(plan)
+
+    expect(preview?.materializedOps).toEqual([
+      {
+        kind: 'setCellFormula',
+        sheetName: 'Sheet1',
+        address: 'C1',
+        formula: '(Sheet1!A1)+(Sheet1!B1)',
+      },
+    ])
+
+    const result = await runWorkbookPlan(plan, adapter)
 
     expect(result).toMatchObject({ status: 'done' })
     if (result.status !== 'done') {
@@ -52,6 +65,10 @@ describe('workbook run adapter', () => {
       ['valueEquals', 'passed'],
       ['noFormulaErrors', 'passed'],
     ])
+    expect(result.applied).toEqual({
+      opCount: 1,
+      ops: preview?.materializedOps,
+    })
 
     engine.applyOps(result.undo?.ops ?? [], { trusted: true })
 
@@ -160,6 +177,57 @@ describe('workbook run adapter', () => {
       ['exists', 'passed'],
       ['noFormulaErrors', 'passed'],
     ])
+    expect(result.applied).toEqual({
+      opCount: 2,
+      ops: [
+        { kind: 'setCellFormula', sheetName: 'Sheet1', address: 'C2', formula: '(Sheet1!A2)*(Sheet1!B2)' },
+        { kind: 'setCellFormula', sheetName: 'Sheet1', address: 'C3', formula: '(Sheet1!A3)*(Sheet1!B3)' },
+      ],
+    })
+  })
+
+  it('applies additional plan ops after command materialization instead of silently ignoring them', async () => {
+    const engine = new SpreadsheetEngine({ workbookName: 'workbook-run-adapter-extra-ops' })
+    await engine.ready()
+    engine.createSheet('Sheet1')
+
+    const model = defineModel({
+      name: 'generic-extra-op',
+      find(workbook) {
+        return {
+          first: workbook.findRange({ sheetName: 'Sheet1', address: 'A1' }),
+        }
+      },
+      actions: {
+        write({ refs, workbook }) {
+          workbook.writeValue(refs.first, 1)
+        },
+      },
+    })
+    const plan = buildWorkbookActionPlan(model, 'write')
+    const adapter = createWorkbookRunAdapter(engine)
+
+    const result = await runWorkbookPlan(
+      {
+        ...plan,
+        ops: [...plan.ops, { kind: 'setCellValue', sheetName: 'Sheet1', address: 'B1', value: 2 }],
+      },
+      adapter,
+    )
+
+    expect(result).toMatchObject({ status: 'done' })
+    if (result.status !== 'done') {
+      throw new Error(result.errors.map((error) => error.message).join('\n'))
+    }
+    expect(engine.getCellValue('Sheet1', 'A1')).toEqual({ tag: ValueTag.Number, value: 1 })
+    expect(engine.getCellValue('Sheet1', 'B1')).toEqual({ tag: ValueTag.Number, value: 2 })
+    expect(result.applied).toEqual({
+      opCount: 2,
+      ops: [
+        { kind: 'setCellValue', sheetName: 'Sheet1', address: 'A1', value: 1 },
+        { kind: 'setCellValue', sheetName: 'Sheet1', address: 'B1', value: 2 },
+      ],
+    })
   })
 
   it('verifies exists checks for workbook tables without hardcoded model assumptions', async () => {
@@ -298,7 +366,26 @@ describe('workbook run adapter', () => {
       },
     })
 
-    const result = await runWorkbookAction(model, 'calculate', createWorkbookRunAdapter(engine))
+    const adapter = createWorkbookRunAdapter(engine)
+    const plan = buildWorkbookActionPlan(model, 'calculate')
+    const preview = await adapter.preview?.(plan)
+
+    expect(preview?.materializedOps).toEqual([
+      {
+        kind: 'setCellFormula',
+        sheetName: 'Sheet1',
+        address: 'D2',
+        formula: '(Sheet1!B2)*(Sheet1!C2)',
+      },
+      {
+        kind: 'setCellFormula',
+        sheetName: 'Sheet1',
+        address: 'D4',
+        formula: '(Sheet1!B4)*(Sheet1!C4)',
+      },
+    ])
+
+    const result = await runWorkbookPlan(plan, adapter)
 
     expect(result).toMatchObject({ status: 'done' })
     if (result.status !== 'done') {
@@ -314,6 +401,10 @@ describe('workbook run adapter', () => {
       ['exists', 'passed'],
       ['noFormulaErrors', 'passed'],
     ])
+    expect(result.applied).toEqual({
+      opCount: 2,
+      ops: preview?.materializedOps,
+    })
   })
 
   it('fails exists checks for row selectors that match no rows', async () => {
@@ -404,7 +495,7 @@ describe('workbook run adapter', () => {
       status: 'failed',
       errors: [
         {
-          code: 'apply_failed',
+          code: 'runtime_rejected',
           message: expect.stringContaining('Ambiguous table selector table with Input, Result matched First, Second'),
         },
       ],

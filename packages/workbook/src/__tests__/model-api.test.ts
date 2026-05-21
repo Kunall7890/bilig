@@ -15,15 +15,28 @@ import {
   findRows,
   findTable,
   inspectModel,
+  isWorkbookPlanIssueCode,
   isWorkbookRef,
   planWorkbookAction,
   defineModel,
   formula,
   verifyModel,
   verifyPlan,
+  workbookPlanIssueCodes,
 } from '../index.js'
 
 describe('@bilig/workbook model api', () => {
+  it('exports stable inspectable plan issue codes', () => {
+    expect(Object.isFrozen(workbookPlanIssueCodes)).toBe(true)
+    expect(workbookPlanIssueCodes).toContain('invalid_action_input')
+    expect(workbookPlanIssueCodes).toContain('formula_input_not_resolved')
+    expect(workbookPlanIssueCodes).toContain('invalid_check_expectation_formula')
+    expect(workbookPlanIssueCodes).toContain('missing_workbook_op')
+    expect(new Set(workbookPlanIssueCodes).size).toBe(workbookPlanIssueCodes.length)
+    expect(isWorkbookPlanIssueCode('check_ref_not_resolved')).toBe(true)
+    expect(isWorkbookPlanIssueCode('custom_plan_issue')).toBe(false)
+  })
+
   it('preserves model metadata, refs, checks, commands, and concrete workbook ops', () => {
     const model = defineModel({
       name: 'custom-model',

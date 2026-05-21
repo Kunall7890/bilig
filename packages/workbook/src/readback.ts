@@ -8,11 +8,23 @@ export interface WorkbookRunReadback {
   readonly formula?: string | null
 }
 
-export type WorkbookReadbackIssueCode = 'readback_missing' | 'value_mismatch' | 'formula_mismatch'
+export type WorkbookReadbackIssueCode = 'readback_missing' | 'duplicate_readback' | 'value_mismatch' | 'formula_mismatch'
+
+export const workbookReadbackIssueCodes = Object.freeze([
+  'readback_missing',
+  'duplicate_readback',
+  'value_mismatch',
+  'formula_mismatch',
+] satisfies readonly WorkbookReadbackIssueCode[])
+
+export function isWorkbookReadbackIssueCode(value: unknown): value is WorkbookReadbackIssueCode {
+  return typeof value === 'string' && workbookReadbackIssueCodes.some((code) => code === value)
+}
 
 export interface WorkbookReadbackIssue {
   readonly code: WorkbookReadbackIssueCode
   readonly message: string
+  readonly path?: string
   readonly check: WorkbookCheckResult
   readonly target?: WorkbookRef
   readonly expected?: LiteralInput
@@ -55,6 +67,15 @@ function missingReadback(check: WorkbookCheckResult): WorkbookReadbackIssue {
     check,
     ...(check.target !== undefined ? { target: check.target } : {}),
     message: `${check.target?.label ?? check.kind} has no readback`,
+  })
+}
+
+function duplicateReadback(check: WorkbookCheckResult, readback: WorkbookRunReadback): WorkbookReadbackIssue {
+  return issue({
+    code: 'duplicate_readback',
+    check,
+    target: readback.target,
+    message: `${readback.target.label} has more than one readback`,
   })
 }
 
@@ -142,20 +163,39 @@ export function verifyWorkbookReadbacks(
   readbacks: readonly WorkbookRunReadback[],
 ): WorkbookReadbackVerification {
   const readbackByTarget = new Map<string, WorkbookRunReadback>()
+  const duplicateReadbacks = new Map<string, WorkbookRunReadback>()
   readbacks.forEach((readback) => {
-    if (!readbackByTarget.has(readbackKey(readback))) {
-      readbackByTarget.set(readbackKey(readback), readback)
+    const key = readbackKey(readback)
+    if (readbackByTarget.has(key)) {
+      duplicateReadbacks.set(key, readback)
+      return
     }
+    readbackByTarget.set(key, readback)
   })
 
   const verifiedChecks: WorkbookCheckResult[] = []
   const issues: WorkbookReadbackIssue[] = []
 
-  checks.forEach((check) => {
+  checks.forEach((check, checkIndex) => {
+    if (check.target !== undefined) {
+      const duplicate = duplicateReadbacks.get(refKey(check.target))
+      if (duplicate !== undefined) {
+        const failedCheck = checked(check, 'failed')
+        verifiedChecks.push(failedCheck)
+        issues.push({
+          ...duplicateReadback(failedCheck, duplicate),
+          path: `checks[${String(checkIndex)}]`,
+        })
+        return
+      }
+    }
     const result = verifyCheck(check, readbackByTarget)
     verifiedChecks.push(result.check)
     if (result.issue !== undefined) {
-      issues.push(result.issue)
+      issues.push({
+        ...result.issue,
+        path: `checks[${String(checkIndex)}]`,
+      })
     }
   })
 

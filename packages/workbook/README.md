@@ -31,6 +31,10 @@ The public surface stays generic:
 - `runWorkbookAction`
 - `verifyWorkbookReadbacks`
 - `normalizeWorkbookActionInputDescription`
+- `workbookPlanIssueCodes`
+- `isWorkbookPlanIssueCode`
+- `workbookReadbackIssueCodes`
+- `isWorkbookReadbackIssueCode`
 - `workbookRunErrorCodes`
 - `isWorkbookRunErrorCode`
 - `formula`
@@ -58,11 +62,15 @@ The public surface stays generic:
 - `WorkbookActionPlanResultDescription`
 - `WorkbookRunResultDescription`
 - `WorkbookUndoRefDescription`
+- `WorkbookAppliedSummaryDescription`
 - `WorkbookRuntimeRequirements`
 - `WorkbookRuntimeRequirement`
 - `WorkbookRuntimeCapability`
+- `WorkbookRuntimeMaterialization`
+- `WorkbookRuntimePreview`
 - `WorkbookPlanVerification`
 - `WorkbookPlanIssue`
+- `WorkbookPlanIssueCode`
 - `WorkbookModelVerification`
 - `WorkbookModelActionVerification`
 - `WorkbookModelVerificationOptions`
@@ -78,6 +86,7 @@ The public surface stays generic:
 - `WorkbookReadbackCheckOptions`
 - `WorkbookRawFormulaOptions`
 - `WorkbookRunResult`
+- `WorkbookAppliedSummary`
 - `WorkbookRunError`
 - `WorkbookRunErrorCode`
 - `WorkbookCheckResult`
@@ -247,11 +256,19 @@ guard when an adapter, logger, or approval layer needs to branch on known
 failure classes. Runtime adapters should use `apply_failed` for apply
 exceptions and `runtime_rejected` for intentional runtime refusal with a
 specific message instead of inventing new public codes.
+Planning and readback failures expose the same kind of boring machine contract:
+use `workbookPlanIssueCodes` with `isWorkbookPlanIssueCode`, and
+`workbookReadbackIssueCodes` with `isWorkbookReadbackIssueCode`, when an agent
+needs to branch before or after runtime handoff without guessing string values.
 Use `describeRuntimeRequirements(plan)` before runtime handoff when an agent
 needs to inspect what the adapter must do. It returns a JSON-safe list of
 generic `apply`, `read`, and `verify` requirements with boring capabilities
 such as `writeFormula`, `writeValue`, `format`, `clear`, `applyOp`, `read`, and
-`verifyCheck`. It does not execute anything and it does not import the engine.
+`verifyCheck`. Apply requirements also say whether the command is already backed
+by a concrete op, is a provided low-level op, or needs runtime materialization.
+Every requirement has a stable `path` such as `commands[0]`, `checks[2]`, or
+`ops[1]`; read requirements include the machine-readable expectation. It does
+not execute anything and it does not import the engine.
 
 Use `verifyPlan` before runtime handoff when an agent needs to prove a planned
 action is internally consistent. It checks for non-JSON-safe action input,
@@ -286,12 +303,16 @@ const result = await runWorkbookAction(model, 'write', {
 ```
 
 `runWorkbookAction` plans the action, runs `verifyPlan`, calls
-`adapter.apply(plan)`, then evaluates `valueEquals` and `formulaEquals` checks
-against `adapter.read(targets, plan)`. It never imports the engine, headless
-runtime, app server, or UI. If static verification fails, the apply adapter is
-not called. If a readback expectation is missing or mismatched, the returned
-`WorkbookRunResult` is `failed` with deterministic error codes such as
-`readback_missing`, `value_mismatch`, or `formula_mismatch`.
+optional `adapter.preview(plan)`, calls `adapter.apply(plan)`, then evaluates
+`valueEquals` and `formulaEquals` checks against `adapter.read(targets, plan)`.
+It never imports the engine, headless runtime, app server, or UI. If static
+verification fails, the apply adapter is not called. If preview is available,
+successful results include an `applied` summary with the materialized op count
+and ops that the adapter preview produced. If a readback expectation is missing,
+duplicated, or mismatched, the returned `WorkbookRunResult` is `failed` with
+deterministic error codes such as `readback_missing`, `duplicate_readback`,
+`value_mismatch`, or `formula_mismatch`; errors preserve structured `path`,
+`target`, `check`, `expected`, and `actual` fields where available.
 Formula readbacks are exact: adapters should return formula text in the same
 normalized no-leading-`=` form produced by `formula.source`.
 `adapter.apply` only applies the plan and may return an undo ref; it cannot
@@ -307,8 +328,9 @@ readback and adapter verification, the run returns `failed` with
 
 When running against Bilig's engine, use `createWorkbookRunAdapter(engine)` from
 `@bilig/core`. The adapter materializes generic `plan.commands` into engine
-operations, falls back to explicit `plan.ops` for low-level plans, reads
-single-cell expectation targets, and verifies generic `exists` and
-`noFormulaErrors` checks without adding workbook-specific business models to
-this package. If the engine captures undo, the run result includes `undo.ops` in
-the same portable operation language.
+operations, previews the exact materialized ops, applies additional `plan.ops`
+that are not already represented by materialized commands, reads single-cell
+expectation targets, and verifies generic `exists` and `noFormulaErrors` checks
+without adding workbook-specific business models to this package. If the engine
+captures undo, the run result includes `undo.ops` in the same portable
+operation language.

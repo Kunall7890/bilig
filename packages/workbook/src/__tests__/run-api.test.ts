@@ -4,10 +4,12 @@ import {
   defineModel,
   findRange,
   formula,
+  isWorkbookReadbackIssueCode,
   isWorkbookRunErrorCode,
   runWorkbookAction,
   runWorkbookPlan,
   verifyWorkbookReadbacks,
+  workbookReadbackIssueCodes,
   workbookRunErrorCodes,
   type WorkbookModel,
   type WorkbookRunAdapter,
@@ -47,10 +49,19 @@ describe('@bilig/workbook run api', () => {
     expect(workbookRunErrorCodes).toContain('invalid_action_input')
     expect(workbookRunErrorCodes).toContain('formula_input_not_resolved')
     expect(workbookRunErrorCodes).toContain('readback_missing')
+    expect(workbookRunErrorCodes).toContain('duplicate_readback')
     expect(workbookRunErrorCodes).toContain('runtime_rejected')
     expect(new Set(workbookRunErrorCodes).size).toBe(workbookRunErrorCodes.length)
     expect(isWorkbookRunErrorCode('check_not_verified')).toBe(true)
     expect(isWorkbookRunErrorCode('custom_runtime_error')).toBe(false)
+  })
+
+  it('exports stable inspectable readback issue codes', () => {
+    expect(Object.isFrozen(workbookReadbackIssueCodes)).toBe(true)
+    expect(workbookReadbackIssueCodes).toEqual(['readback_missing', 'duplicate_readback', 'value_mismatch', 'formula_mismatch'])
+    expect(new Set(workbookReadbackIssueCodes).size).toBe(workbookReadbackIssueCodes.length)
+    expect(isWorkbookReadbackIssueCode('formula_mismatch')).toBe(true)
+    expect(isWorkbookReadbackIssueCode('custom_readback_issue')).toBe(false)
   })
 
   it('plans, verifies, applies, reads back, and returns done for value checks', async () => {
@@ -93,6 +104,60 @@ describe('@bilig/workbook run api', () => {
         },
       ],
       undo: { id: 'undo-1' },
+    })
+  })
+
+  it('includes adapter preview materialized ops in successful run results', async () => {
+    const model = valueModel()
+
+    const result = await runWorkbookAction(model, 'write', {
+      preview: (plan) => ({
+        modelName: plan.modelName,
+        actionName: plan.actionName,
+        requirements: [],
+        materializedOps: [{ kind: 'setCellValue', sheetName: 'Sheet1', address: 'B2', value: 12 }],
+      }),
+      apply: () => ({ status: 'applied' }),
+      read: (targets) => [
+        {
+          target: first(targets),
+          value: 12,
+        },
+      ],
+    })
+
+    expect(result).toEqual({
+      status: 'done',
+      changed: [
+        {
+          kind: 'writeValue',
+          target: expect.objectContaining({ label: 'Sheet1!B2' }),
+          message: 'Write value to Sheet1!B2',
+        },
+      ],
+      checks: [
+        {
+          status: 'passed',
+          kind: 'valueEquals',
+          target: expect.objectContaining({ label: 'Sheet1!B2' }),
+          message: 'Sheet1!B2 equals 12',
+          expectation: {
+            kind: 'valueEquals',
+            value: 12,
+          },
+        },
+      ],
+      applied: {
+        opCount: 1,
+        ops: [{ kind: 'setCellValue', sheetName: 'Sheet1', address: 'B2', value: 12 }],
+      },
+    })
+    expect(describeRunResult(result)).toMatchObject({
+      status: 'done',
+      applied: {
+        opCount: 1,
+        ops: [{ kind: 'setCellValue', sheetName: 'Sheet1', address: 'B2', value: 12 }],
+      },
     })
   })
 
@@ -597,6 +662,7 @@ describe('@bilig/workbook run api', () => {
         {
           code: 'formula_input_not_resolved',
           message: 'Sheet1!Z9 is used as a formula input but is missing from refsUsed',
+          path: 'commands[0].inputs[0]',
         },
       ],
       checks: [],
@@ -635,6 +701,7 @@ describe('@bilig/workbook run api', () => {
         {
           code: 'check_status_not_planned',
           message: 'Sheet1!C2 check exists must start planned before runtime proof',
+          path: 'checks[0].status',
         },
       ],
       checks: [
@@ -748,6 +815,9 @@ describe('@bilig/workbook run api', () => {
         {
           code: 'readback_missing',
           message: 'Sheet1!B2 has no readback',
+          path: 'checks[0]',
+          target: expect.objectContaining({ label: 'Sheet1!B2' }),
+          check: expect.objectContaining({ kind: 'valueEquals', message: 'Sheet1!B2 equals 12' }),
         },
       ],
       checks: [
@@ -762,6 +832,38 @@ describe('@bilig/workbook run api', () => {
           },
         },
       ],
+    })
+  })
+
+  it('returns failed when duplicate readbacks make proof ambiguous', async () => {
+    const model = valueModel()
+
+    const result = await runWorkbookAction(model, 'write', {
+      apply: () => ({ status: 'applied' }),
+      read: (targets) => [
+        {
+          target: first(targets),
+          value: 12,
+        },
+        {
+          target: first(targets),
+          value: 12,
+        },
+      ],
+    })
+
+    expect(result).toEqual({
+      status: 'failed',
+      errors: [
+        {
+          code: 'duplicate_readback',
+          message: 'Sheet1!B2 has more than one readback',
+          path: 'checks[0]',
+          target: expect.objectContaining({ label: 'Sheet1!B2' }),
+          check: expect.objectContaining({ kind: 'valueEquals', message: 'Sheet1!B2 equals 12' }),
+        },
+      ],
+      checks: [expect.objectContaining({ status: 'failed', kind: 'valueEquals', message: 'Sheet1!B2 equals 12' })],
     })
   })
 
@@ -784,6 +886,11 @@ describe('@bilig/workbook run api', () => {
         {
           code: 'value_mismatch',
           message: 'Sheet1!B2 expected value 12 but read 13',
+          path: 'checks[0]',
+          target: expect.objectContaining({ label: 'Sheet1!B2' }),
+          check: expect.objectContaining({ kind: 'valueEquals', message: 'Sheet1!B2 equals 12' }),
+          expected: 12,
+          actual: 13,
         },
       ],
       checks: [
@@ -838,6 +945,7 @@ describe('@bilig/workbook run api', () => {
       issues: [
         {
           code: 'formula_mismatch',
+          path: 'checks[0]',
           check: expect.objectContaining({ kind: 'formulaEquals' }),
           target,
           expected: 'A2+B2',

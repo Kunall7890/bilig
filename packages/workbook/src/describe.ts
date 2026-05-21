@@ -21,10 +21,12 @@ import {
 import type { WorkbookActionInput } from './input.js'
 import type { WorkbookOp } from './ops.js'
 import type {
+  WorkbookAppliedSummary,
   WorkbookChangeSummary,
   WorkbookCheckExpectation,
   WorkbookCheckResult,
   WorkbookCheckStatus,
+  WorkbookRunError,
   WorkbookRunErrorCode,
   WorkbookRunResult,
   WorkbookUndoRef,
@@ -177,6 +179,7 @@ export type WorkbookRunResultDescription =
       readonly changed: readonly WorkbookChangeSummaryDescription[]
       readonly checks: readonly WorkbookCheckResultDescription[]
       readonly undo?: WorkbookUndoRefDescription
+      readonly applied?: WorkbookAppliedSummaryDescription
     }
   | {
       readonly status: 'failed'
@@ -187,6 +190,16 @@ export type WorkbookRunResultDescription =
 export interface WorkbookRunErrorDescription {
   readonly code: WorkbookRunErrorCode
   readonly message: string
+  readonly path?: string
+  readonly target?: WorkbookRefDescription
+  readonly check?: WorkbookCheckResultDescription
+  readonly expected?: LiteralInput
+  readonly actual?: LiteralInput
+}
+
+export interface WorkbookAppliedSummaryDescription {
+  readonly opCount: number
+  readonly ops?: readonly WorkbookOp[]
 }
 
 export function describeModel<Refs, Actions extends WorkbookActionMap<Refs>>(
@@ -346,10 +359,22 @@ export function describePlan<Refs>(plan: WorkbookActionPlan<Refs>): WorkbookActi
   }
 }
 
-function describeError(error: WorkbookRunErrorDescription): WorkbookRunErrorDescription {
+function describeError(error: WorkbookRunError): WorkbookRunErrorDescription {
   return {
     code: error.code,
     message: error.message,
+    ...(error.path !== undefined ? { path: error.path } : {}),
+    ...(error.target !== undefined ? { target: describeRef(error.target) } : {}),
+    ...(error.check !== undefined ? { check: describeCheck(error.check) } : {}),
+    ...(error.expected !== undefined ? { expected: error.expected } : {}),
+    ...(error.actual !== undefined ? { actual: error.actual } : {}),
+  }
+}
+
+function describeApplied(applied: WorkbookAppliedSummary): WorkbookAppliedSummaryDescription {
+  return {
+    opCount: applied.opCount,
+    ...(applied.ops !== undefined ? { ops: [...applied.ops] } : {}),
   }
 }
 
@@ -384,6 +409,7 @@ export function describeRunResult(result: WorkbookRunResult): WorkbookRunResultD
       changed: result.changed.map(describeChange),
       checks: result.checks.map(describeCheck),
       ...(result.undo !== undefined ? { undo: describeUndo(result.undo) } : {}),
+      ...(result.applied !== undefined ? { applied: describeApplied(result.applied) } : {}),
     }
   }
   return {
