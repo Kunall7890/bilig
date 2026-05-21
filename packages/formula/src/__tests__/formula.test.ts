@@ -153,8 +153,9 @@ describe('formula', () => {
     expect(compileFormula('RAND()').mode).toBe(1)
   })
 
-  it('marks SUBTOTAL as metadata-sensitive for row visibility recalculation', () => {
+  it('marks visibility-aware aggregate calls as metadata-sensitive for row visibility recalculation', () => {
     expect(compileFormula('SUBTOTAL(109,A1:A2)').volatile).toBe(true)
+    expect(compileFormula('AGGREGATE(9,5,A1:A2)').volatile).toBe(true)
     expect(compileFormula('INDIRECT("A1")').volatile).toBe(true)
   })
 

@@ -1302,4 +1302,41 @@ describe('Workpaper formula regressions', () => {
     expectNumber(cellValue(workbook, 'Table', 15, 1), 77_015)
     expectNumber(cellValue(workbook, 'Table', 15, 3), 8)
   })
+
+  it('resolves imported AGGREGATE option semantics for hidden rows, errors, and nested rollups', () => {
+    const snapshot: WorkbookSnapshot = {
+      version: 1,
+      workbook: { name: 'aggregate-options-filtered-rollup' },
+      sheets: [
+        {
+          id: 1,
+          name: 'Rollup',
+          order: 0,
+          metadata: {
+            rows: [{ id: 'row:1', index: 1, hidden: true }],
+          },
+          cells: [
+            { address: 'A1', value: 10 },
+            { address: 'A2', value: 20 },
+            { address: 'A3', value: 30 },
+            { address: 'A4', formula: 'SUBTOTAL(9,A1:A3)' },
+            { address: 'A5', formula: '1/0' },
+            { address: 'B1', formula: 'AGGREGATE(9,3,A1:A5)' },
+            { address: 'B2', formula: 'AGGREGATE(9,6,A1:A5)' },
+            { address: 'B3', formula: 'AGGREGATE(9,4,A1:A5)' },
+            { address: 'B4', formula: 'AGGREGATE(9,7,A1:A5)' },
+            { address: 'C1', formula: 'SUBTOTAL(109,A1:A4)' },
+          ],
+        },
+      ],
+    }
+
+    const workbook = WorkPaper.buildFromSnapshot(snapshot, { maxRows: 16, maxColumns: 8, useColumnIndex: true })
+
+    expectNumber(cellValue(workbook, 'Rollup', 0, 1), 40)
+    expectNumber(cellValue(workbook, 'Rollup', 1, 1), 120)
+    expect(cellValue(workbook, 'Rollup', 2, 1)).toEqual({ tag: ValueTag.Error, code: ErrorCode.Div0 })
+    expectNumber(cellValue(workbook, 'Rollup', 3, 1), 100)
+    expectNumber(cellValue(workbook, 'Rollup', 0, 2), 40)
+  })
 })

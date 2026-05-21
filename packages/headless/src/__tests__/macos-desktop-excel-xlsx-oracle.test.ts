@@ -15,7 +15,7 @@ import {
   type FormulaCellComparison,
   type NormalizedFormulaValue,
 } from '@bilig/excel-fixtures'
-import { ErrorCode, ValueTag, type CellValue } from '@bilig/protocol'
+import { ErrorCode, ValueTag, type CellValue, type WorkbookSnapshot } from '@bilig/protocol'
 import { describe, expect, it } from 'vitest'
 
 import { WorkPaper, type WorkPaperCellAddress } from '../index.js'
@@ -179,6 +179,14 @@ const expectedOneVariableDataTableImportedFormulaByAddress = new Map([
   ['B7', '=MULTIPLE.OPERATIONS(B5,A1,A7)'],
   ['B8', '=MULTIPLE.OPERATIONS(B5,A1,A8)'],
 ] as const)
+const aggregateOptionsOracleAddresses = ['B1', 'B2', 'B3', 'B4', 'C1'] as const
+const expectedAggregateOptionsOracleCells = [
+  { address: 'B1', formula: '=AGGREGATE(9,3,A1:A5)', rawValue: 'number\t40.0', value: { kind: 'number', value: 40 } },
+  { address: 'B2', formula: '=AGGREGATE(9,6,A1:A5)', rawValue: 'number\t120.0', value: { kind: 'number', value: 120 } },
+  { address: 'B3', formula: '=AGGREGATE(9,4,A1:A5)', rawValue: 'error\t#DIV/0!', value: { kind: 'error', value: String(ErrorCode.Div0) } },
+  { address: 'B4', formula: '=AGGREGATE(9,7,A1:A5)', rawValue: 'number\t100.0', value: { kind: 'number', value: 100 } },
+  { address: 'C1', formula: '=SUBTOTAL(109,A1:A4)', rawValue: 'number\t40.0', value: { kind: 'number', value: 40 } },
+] as const
 
 describe('macOS Desktop Excel XLSX oracle for WorkPaper', () => {
   it('exports and reimports the oracle fixture through the headless workbook path', () => {
@@ -194,6 +202,27 @@ describe('macOS Desktop Excel XLSX oracle for WorkPaper', () => {
         expect(oracleFormulaAddresses.map((address) => normalizedCellValue(reimported.getCellValue(addressToCell(address))))).toEqual(
           expectedOracleCells.map((expected) => expected.value),
         )
+      } finally {
+        reimported.dispose()
+      }
+    } finally {
+      workbook.dispose()
+    }
+  })
+
+  it('exports and reimports AGGREGATE option semantics through the headless workbook path', () => {
+    const workbook = buildAggregateOptionsOracleWorkbook()
+    try {
+      expect(aggregateOptionsOracleAddresses.map((address) => normalizedCellValue(workbook.getCellValue(addressToCell(address))))).toEqual(
+        expectedAggregateOptionsOracleCells.map((expected) => expected.value),
+      )
+
+      const imported = importXlsx(exportXlsx(workbook.exportSnapshot()), 'headless-aggregate-options-oracle.xlsx')
+      const reimported = WorkPaper.buildFromSnapshot(imported.snapshot, workbookConfig)
+      try {
+        expect(
+          aggregateOptionsOracleAddresses.map((address) => normalizedCellValue(reimported.getCellValue(addressToCell(address)))),
+        ).toEqual(expectedAggregateOptionsOracleCells.map((expected) => expected.value))
       } finally {
         reimported.dispose()
       }
@@ -712,6 +741,69 @@ describe('macOS Desktop Excel XLSX oracle for WorkPaper', () => {
             comparableFormulaCells: oracleFormulaAddresses.length,
             realBiligMismatches: 0,
             totalFormulaCells: oracleFormulaAddresses.length,
+          })
+        } finally {
+          reimported.dispose()
+        }
+      } finally {
+        rmSync(tempDir, { recursive: true, force: true })
+      }
+    },
+    60_000,
+  )
+
+  it.runIf(process.env.BILIG_EXCEL_ORACLE_RUN === '1')(
+    'round-trips Desktop Excel AGGREGATE option semantics into headless import',
+    () => {
+      if (!isMacosExcelInstalled()) {
+        throw new Error('BILIG_EXCEL_ORACLE_RUN=1 requires /Applications/Microsoft Excel.app')
+      }
+
+      const tempDir = mkdtempSync(join(tmpdir(), 'bilig-headless-aggregate-options-oracle-'))
+      try {
+        const workbookPath = join(tempDir, 'headless-aggregate-options-oracle.xlsx')
+        const workbook = buildAggregateOptionsOracleWorkbook()
+        try {
+          writeFileSync(workbookPath, exportXlsx(workbook.exportSnapshot()))
+        } finally {
+          workbook.dispose()
+        }
+
+        const excelResult = runMacosExcelInspectionOracle({
+          workbookPath,
+          worksheetName: 'Cases',
+          formulaCells: [],
+          inspectCells: aggregateOptionsOracleAddresses,
+          saveWorkbook: true,
+        })
+
+        expect(excelResult.cells).toEqual(expectedAggregateOptionsOracleCells)
+
+        const imported = importXlsx(new Uint8Array(readFileSync(workbookPath)), 'headless-aggregate-options-oracle-recalculated.xlsx')
+        const reimported = WorkPaper.buildFromSnapshot(imported.snapshot, workbookConfig)
+        try {
+          const comparisons = buildHeadlessExcelComparisons(reimported, excelResult.cells, 'headless-aggregate-options-oracle')
+          const summary = buildReportSummary({
+            workbooks: [
+              {
+                id: 'headless-aggregate-options-oracle',
+                workbook: 'headless-aggregate-options-oracle.xlsx',
+                elapsedMs: 0,
+                formulaCells: comparisons.length,
+                status: 'ok',
+                comparisons,
+              },
+            ],
+          })
+
+          expect(comparisons.map((comparison) => comparison.classification)).toEqual(
+            aggregateOptionsOracleAddresses.map(() => 'bilig_matches_excel'),
+          )
+          expect(summary).toMatchObject({
+            biligVsFreshExcelMatchRate: 1,
+            comparableFormulaCells: aggregateOptionsOracleAddresses.length,
+            realBiligMismatches: 0,
+            totalFormulaCells: aggregateOptionsOracleAddresses.length,
           })
         } finally {
           reimported.dispose()
@@ -1547,6 +1639,36 @@ function buildOracleWorkbook(): WorkPaper {
     },
     workbookConfig,
   )
+}
+
+function buildAggregateOptionsOracleWorkbook(): WorkPaper {
+  const snapshot: WorkbookSnapshot = {
+    version: 1,
+    workbook: { name: 'headless-aggregate-options-oracle' },
+    sheets: [
+      {
+        id: 1,
+        name: 'Cases',
+        order: 0,
+        metadata: {
+          rows: [{ id: 'row:1', index: 1, hidden: true }],
+        },
+        cells: [
+          { address: 'A1', value: 10 },
+          { address: 'A2', value: 20 },
+          { address: 'A3', value: 30 },
+          { address: 'A4', formula: 'SUBTOTAL(9,A1:A3)' },
+          { address: 'A5', formula: '1/0' },
+          { address: 'B1', formula: 'AGGREGATE(9,3,A1:A5)' },
+          { address: 'B2', formula: 'AGGREGATE(9,6,A1:A5)' },
+          { address: 'B3', formula: 'AGGREGATE(9,4,A1:A5)' },
+          { address: 'B4', formula: 'AGGREGATE(9,7,A1:A5)' },
+          { address: 'C1', formula: 'SUBTOTAL(109,A1:A4)' },
+        ],
+      },
+    ],
+  }
+  return WorkPaper.buildFromSnapshot(snapshot, workbookConfig)
 }
 
 function buildIndexImplicitIntersectionOracleWorkbook(): WorkPaper {

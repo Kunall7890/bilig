@@ -119,6 +119,7 @@ describe('formula cache roundtrip', () => {
             { address: 'G2', formula: 'IF(TRUE,"XLOOKUP(",TEXTJOIN("-",TRUE,A2:A4))' },
             { address: 'H2', formula: '_xlfn.XLOOKUP("c",B2:B4,C2:C4)' },
             { address: 'I2', formula: 'FILTER(A2:A4,A2:A4<>"")' },
+            { address: 'J2', formula: 'AGGREGATE(9,6,C2:C4)' },
           ],
         },
       ],
@@ -135,6 +136,7 @@ describe('formula cache roundtrip', () => {
     expect(cellXml(sheetXml, 'H2')).toContain('<f>_xlfn.XLOOKUP(&quot;c&quot;,B2:B4,C2:C4)</f>')
     expect(cellXml(sheetXml, 'H2')).not.toContain('_xlfn._xlfn.')
     expect(cellXml(sheetXml, 'I2')).toContain('<f>_xlfn._xlws.FILTER(A2:A4,A2:A4&lt;&gt;&quot;&quot;)</f>')
+    expect(cellXml(sheetXml, 'J2')).toContain('<f>_xlfn.AGGREGATE(9,6,C2:C4)</f>')
 
     const reimported = importXlsx(exported, 'future-function-export.xlsx')
     const cells = new Map(reimported.snapshot.sheets[0]?.cells.map((cell) => [cell.address, cell]) ?? [])
@@ -145,6 +147,7 @@ describe('formula cache roundtrip', () => {
     expect(cells.get('G2')).toMatchObject({ formula: 'IF(TRUE,"XLOOKUP(",TEXTJOIN("-",TRUE,A2:A4))' })
     expect(cells.get('H2')).toMatchObject({ formula: 'XLOOKUP("c",B2:B4,C2:C4)' })
     expect(cells.get('I2')).toMatchObject({ formula: 'FILTER(A2:A4,A2:A4<>"")' })
+    expect(cells.get('J2')).toMatchObject({ formula: 'AGGREGATE(9,6,C2:C4)' })
   })
 
   it('exports SINGLE implicit-intersection wrappers as Excel future functions', () => {

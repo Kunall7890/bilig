@@ -3,6 +3,7 @@ import { formatAddress, parseCellAddress, parseRangeAddress } from './addressing
 import { getBuiltin } from './builtins.js'
 import { getLookupBuiltin, type RangeBuiltinArgument } from './builtins/lookup.js'
 import { evaluateGroupBy, evaluatePivotBy } from './group-pivot-evaluator.js'
+import { parseFormula } from './parser.js'
 import { isArrayValue } from './runtime-values.js'
 import type { EvaluationContext, ReferenceOperand, StackValue } from './js-evaluator.js'
 
@@ -55,6 +56,15 @@ interface ReferenceBounds {
   colStart: number
   colEnd: number
 }
+
+interface AggregateCandidateValue {
+  value: CellValue
+  sheetName?: string
+  address?: string
+}
+
+const nestedSubtotalCallees = new Set(['SUBTOTAL'])
+const nestedAggregateCallees = new Set(['SUBTOTAL', 'AGGREGATE'])
 
 type ScalarArgumentResult = { kind: 'ok'; value: CellValue | undefined } | { kind: 'error'; value: CellValue }
 type IntegerArgumentResult = { kind: 'omitted' } | { kind: 'ok'; value: number } | { kind: 'error'; value: CellValue }
@@ -623,54 +633,109 @@ function evaluateReferenceOffset(
   )
 }
 
-function hiddenAwareSubtotalValues(value: StackValue, ref: ReferenceOperand | undefined, context: EvaluationContext): CellValue[] {
+function aggregateOptionIgnoresHiddenRows(option: number): boolean {
+  return option === 1 || option === 3 || option === 5 || option === 7
+}
+
+function aggregateOptionIgnoresErrors(option: number): boolean {
+  return option === 2 || option === 3 || option === 6 || option === 7
+}
+
+function aggregateOptionIgnoresNestedRollups(option: number): boolean {
+  return option >= 0 && option <= 3
+}
+
+function firstErrorValue(values: readonly CellValue[]): CellValue | undefined {
+  return values.find((value) => value.tag === ValueTag.Error)
+}
+
+function isNestedRollupFormula(context: EvaluationContext, sheetName: string, address: string, callees: ReadonlySet<string>): boolean {
+  const source = context.resolveFormula?.(sheetName, address)
+  if (!source) {
+    return false
+  }
+  try {
+    const ast = parseFormula(source)
+    if (ast.kind !== 'CallExpr') {
+      return false
+    }
+    const callee = ast.callee.toUpperCase()
+    return callees.has(callee)
+  } catch {
+    return false
+  }
+}
+
+function filterNestedRollupCandidates(
+  candidates: readonly AggregateCandidateValue[],
+  context: EvaluationContext,
+  callees: ReadonlySet<string>,
+): AggregateCandidateValue[] {
+  return candidates.filter(
+    (candidate) =>
+      !candidate.sheetName || !candidate.address || !isNestedRollupFormula(context, candidate.sheetName, candidate.address, callees),
+  )
+}
+
+function collectAggregateCandidates(
+  value: StackValue,
+  ref: ReferenceOperand | undefined,
+  context: EvaluationContext,
+  ignoreHiddenRows: boolean,
+): AggregateCandidateValue[] {
   if (value.kind === 'scalar') {
     if (ref?.kind !== 'cell' || !ref.address) {
-      return [value.value]
+      return [{ value: value.value }]
     }
     const sheetName = ref.sheetName ?? context.sheetName
-    const row = parseCellAddress(ref.address, sheetName).row
-    return context.isRowHidden?.(sheetName, row) === true ? [] : [value.value]
+    const cell = parseCellAddress(ref.address, sheetName)
+    if (ignoreHiddenRows && context.isRowHidden?.(sheetName, cell.row) === true) {
+      return []
+    }
+    return [{ value: value.value, sheetName, address: formatAddress(cell.row, cell.col) }]
   }
   if (value.kind === 'omitted' || value.kind === 'lambda') {
-    return [valueError()]
+    return [{ value: valueError() }]
   }
   if (value.kind === 'array') {
-    return [...value.values]
+    return value.values.map((cellValue) => ({ value: cellValue }))
   }
   if (value.refKind !== 'cells') {
-    return [...value.values]
+    return value.values.map((cellValue) => ({ value: cellValue }))
   }
 
   const sheetName = ref?.sheetName ?? value.sheetName ?? context.sheetName
   const start = ref?.kind === 'range' ? ref.start : value.start
   const end = ref?.kind === 'range' ? ref.end : value.end
   if (!start || !end) {
-    return [...value.values]
+    return value.values.map((cellValue) => ({ value: cellValue }))
   }
 
   let startRow = 0
+  let startCol = 0
   let cols = value.cols
   try {
     const parsed = parseRangeAddress(`${start}:${end}`, sheetName)
     if (parsed.kind !== 'cells') {
-      return [...value.values]
+      return value.values.map((cellValue) => ({ value: cellValue }))
     }
     startRow = parsed.start.row
+    startCol = parsed.start.col
     cols = parsed.end.col - parsed.start.col + 1
   } catch {
-    return [...value.values]
+    return value.values.map((cellValue) => ({ value: cellValue }))
   }
 
-  const visibleValues: CellValue[] = []
+  const candidates: AggregateCandidateValue[] = []
   for (let index = 0; index < value.values.length; index += 1) {
     const row = startRow + Math.floor(index / cols)
-    if (context.isRowHidden?.(sheetName, row) === true) {
+    if (ignoreHiddenRows && context.isRowHidden?.(sheetName, row) === true) {
       continue
     }
-    visibleValues.push(value.values[index]!)
+    const col = startCol + (index % cols)
+    candidates.push({ value: value.values[index]!, sheetName, address: formatAddress(row, col) })
   }
-  return visibleValues
+  return candidates
 }
 
 export function evaluateWorkbookSpecialCall(
@@ -699,15 +764,47 @@ export function evaluateWorkbookSpecialCall(
       if (functionNum === undefined) {
         return deps.stackScalar(deps.error(ErrorCode.Value))
       }
-      if (functionNum <= 100 || !context.isRowHidden) {
+      const ignoreHiddenRows = functionNum > 100 && context.isRowHidden !== undefined
+      if (!ignoreHiddenRows && !context.resolveFormula) {
         return undefined
       }
       const subtotal = getBuiltin('SUBTOTAL')
       if (!subtotal) {
         return undefined
       }
-      const values = rawArgs.slice(1).flatMap((value, index) => hiddenAwareSubtotalValues(value, argRefs[index + 1], context))
+      const candidates = rawArgs
+        .slice(1)
+        .flatMap((value, index) => collectAggregateCandidates(value, argRefs[index + 1], context, ignoreHiddenRows))
+      const values = filterNestedRollupCandidates(candidates, context, nestedSubtotalCallees).map((candidate) => candidate.value)
       const result = subtotal({ tag: ValueTag.Number, value: functionNum }, ...values)
+      return isArrayValue(result) ? result : deps.stackScalar(result)
+    }
+    case 'AGGREGATE': {
+      const functionNum = deps.scalarIntegerArgument(rawArgs[0])
+      const option = deps.scalarIntegerArgument(rawArgs[1])
+      if (functionNum === undefined || option === undefined || option < 0 || option > 7) {
+        return deps.stackScalar(deps.error(ErrorCode.Value))
+      }
+      const aggregate = getBuiltin('AGGREGATE')
+      if (!aggregate) {
+        return undefined
+      }
+      const candidates = rawArgs
+        .slice(2)
+        .flatMap((value, index) => collectAggregateCandidates(value, argRefs[index + 2], context, aggregateOptionIgnoresHiddenRows(option)))
+      const nestedFilteredCandidates = aggregateOptionIgnoresNestedRollups(option)
+        ? filterNestedRollupCandidates(candidates, context, nestedAggregateCallees)
+        : candidates
+      let values = nestedFilteredCandidates.map((candidate) => candidate.value)
+      if (aggregateOptionIgnoresErrors(option)) {
+        values = values.filter((value) => value.tag !== ValueTag.Error)
+      } else {
+        const error = firstErrorValue(values)
+        if (error) {
+          return deps.stackScalar(error)
+        }
+      }
+      const result = aggregate({ tag: ValueTag.Number, value: functionNum }, { tag: ValueTag.Number, value: option }, ...values)
       return isArrayValue(result) ? result : deps.stackScalar(result)
     }
     case 'GETPIVOTDATA': {

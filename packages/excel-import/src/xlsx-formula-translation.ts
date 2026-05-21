@@ -25,6 +25,7 @@ interface StructuredReferenceRewriteContext {
 const namespacedSpreadsheetFormulaPattern = /^(?:msoxl|of):=/iu
 
 const xlsxFutureFunctionNames: ReadonlySet<string> = new Set([
+  'AGGREGATE',
   'ARRAYTOTEXT',
   'BASE',
   'BITAND',

@@ -2,7 +2,7 @@ import type { FormulaNode } from './ast.js'
 import { parseRangeAddress } from './addressing.js'
 import { rewriteSpecialCall } from './special-call-rewrites.js'
 
-const VOLATILE_BUILTINS = new Set(['TODAY', 'NOW', 'RAND', 'RANDBETWEEN', 'RANDARRAY', 'OFFSET', 'INDIRECT', 'SUBTOTAL'])
+const VOLATILE_BUILTINS = new Set(['TODAY', 'NOW', 'RAND', 'RANDBETWEEN', 'RANDARRAY', 'OFFSET', 'INDIRECT', 'SUBTOTAL', 'AGGREGATE'])
 
 export const FORMULA_SPILL_PRODUCING_FUNCTION_NAMES = [
   'SEQUENCE',
