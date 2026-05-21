@@ -188,6 +188,82 @@ describe('wasm kernel aggregate and criteria dispatch', () => {
     expect(kernel.readNumbers()[cellIndex(3, 1, 4)]).toBe(110)
   })
 
+  it('matches Excel empty-string criteria semantics in conditional aggregates', async () => {
+    const kernel = await createKernel()
+    const strings = packStrings(['North', '', ' ', 'South', '<>'])
+    const width = 8
+    kernel.init(32, 7, 0, 2, 10)
+    kernel.uploadStrings(strings.offsets, strings.lengths, strings.data)
+
+    const cellTags = new Uint8Array(32)
+    const cellNumbers = new Float64Array(32)
+    const cellStringIds = new Uint32Array(32)
+    const cellErrors = new Uint16Array(32)
+
+    cellTags[0] = ValueTag.String
+    cellStringIds[0] = 0
+    cellTags[2] = ValueTag.String
+    cellStringIds[2] = 1
+    cellTags[3] = ValueTag.String
+    cellStringIds[3] = 2
+    cellTags[4] = ValueTag.String
+    cellStringIds[4] = 3
+    for (let index = 0; index < 5; index += 1) {
+      cellTags[index + 5] = ValueTag.Number
+      cellNumbers[index + 5] = (index + 1) * 10
+    }
+
+    kernel.writeCells(cellTags, cellNumbers, cellStringIds, cellErrors)
+    kernel.uploadRangeMembers(Uint32Array.from([0, 1, 2, 3, 4, 5, 6, 7, 8, 9]), Uint32Array.from([0, 5]), Uint32Array.from([5, 5]))
+    kernel.uploadRangeShapes(Uint32Array.from([5, 5]), Uint32Array.from([1, 1]))
+
+    const packed = packPrograms([
+      [encodePushRange(0), encodeCall(BuiltinId.Countblank, 1), encodeRet()],
+      [encodePushRange(0), encodePushString(1), encodeCall(BuiltinId.Countif, 2), encodeRet()],
+      [encodePushRange(0), encodePushString(4), encodeCall(BuiltinId.Countif, 2), encodeRet()],
+      [encodePushRange(0), encodePushString(4), encodeCall(BuiltinId.Countifs, 2), encodeRet()],
+      [encodePushRange(0), encodePushString(1), encodePushRange(1), encodeCall(BuiltinId.Sumif, 3), encodeRet()],
+      [encodePushRange(0), encodePushString(4), encodePushRange(1), encodeCall(BuiltinId.Sumif, 3), encodeRet()],
+      [encodePushRange(1), encodePushRange(0), encodePushString(4), encodeCall(BuiltinId.Sumifs, 3), encodeRet()],
+    ])
+    kernel.uploadPrograms(
+      packed.programs,
+      packed.offsets,
+      packed.lengths,
+      Uint32Array.from([
+        cellIndex(2, 0, width),
+        cellIndex(2, 1, width),
+        cellIndex(2, 2, width),
+        cellIndex(2, 3, width),
+        cellIndex(2, 4, width),
+        cellIndex(2, 5, width),
+        cellIndex(2, 6, width),
+      ]),
+    )
+    const constants = packConstants([[], [], [], [], [], [], []])
+    kernel.uploadConstants(constants.constants, constants.offsets, constants.lengths)
+
+    kernel.evalBatch(
+      Uint32Array.from([
+        cellIndex(2, 0, width),
+        cellIndex(2, 1, width),
+        cellIndex(2, 2, width),
+        cellIndex(2, 3, width),
+        cellIndex(2, 4, width),
+        cellIndex(2, 5, width),
+        cellIndex(2, 6, width),
+      ]),
+    )
+
+    expect(kernel.readNumbers()[cellIndex(2, 0, width)]).toBe(2)
+    expect(kernel.readNumbers()[cellIndex(2, 1, width)]).toBe(2)
+    expect(kernel.readNumbers()[cellIndex(2, 2, width)]).toBe(4)
+    expect(kernel.readNumbers()[cellIndex(2, 3, width)]).toBe(4)
+    expect(kernel.readNumbers()[cellIndex(2, 4, width)]).toBe(50)
+    expect(kernel.readNumbers()[cellIndex(2, 5, width)]).toBe(130)
+    expect(kernel.readNumbers()[cellIndex(2, 6, width)]).toBe(130)
+  })
+
   it('matches comma-grouped numeric criteria in conditional aggregates', async () => {
     const kernel = await createKernel()
     const width = 8

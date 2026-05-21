@@ -1,6 +1,11 @@
 import { describe, expect, it } from 'vitest'
 
-import { classifyFormulaComparison, type NormalizedFormulaValue } from '../oracle-harness.js'
+import {
+  buildFormulaCellComparison,
+  buildReportSummary,
+  classifyFormulaComparison,
+  type NormalizedFormulaValue,
+} from '../oracle-harness.js'
 
 const numberValue = (value: number): NormalizedFormulaValue => ({ kind: 'number', value })
 
@@ -81,5 +86,42 @@ describe('WorkPaper Excel oracle harness classifier', () => {
         formula: 'XLOOKUP(2,A2:A4,B2:B4)',
       }),
     ).toBe('bilig_matches_excel')
+  })
+
+  it('builds sanitized comparison records for report summaries', () => {
+    const comparison = buildFormulaCellComparison({
+      workbookId: 'finance-model',
+      sheet: 'Summary',
+      address: 'C1',
+      formula: '=SUM(https://example.com/private.xlsx)',
+      excelOracleFormula: '=SUM(https://example.com/private.xlsx)',
+      excelOracleValue: numberValue(16),
+      actualBiligValue: numberValue(15),
+      embeddedCacheValue: numberValue(16),
+    })
+
+    expect(comparison).toMatchObject({
+      workbookId: 'finance-model',
+      sheet: 'Summary',
+      address: 'C1',
+      formula: '=SUM(<url>)',
+      classification: 'cache_fresh_bilig_mismatches_excel',
+      functionFamilies: ['SUM'],
+      biligMatchesEmbeddedCache: false,
+      cacheMatchesExcel: true,
+      biligMatchesExcel: false,
+    })
+    expect(
+      buildReportSummary({
+        workbooks: [
+          { id: 'finance-model', workbook: 'finance.xlsx', elapsedMs: 12, formulaCells: 1, status: 'ok', comparisons: [comparison] },
+        ],
+      }),
+    ).toMatchObject({
+      biligVsFreshExcelMatchRate: 0,
+      comparableFormulaCells: 1,
+      realBiligMismatches: 1,
+      topMismatchFormulaFamilies: [{ family: 'SUM', count: 1 }],
+    })
   })
 })

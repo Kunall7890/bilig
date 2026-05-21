@@ -23,6 +23,7 @@ const preflightStructuralSmokeSheetCountLimit = 80
 const preflightFormulaOracleFormulaCellLimit = 2_000
 const preflightFormulaOracleDependencyCellLimit = 2_000_000
 const preflightFormulaOracleRangeCellLimit = 50_000
+const preflightFormulaOracleSourceFallbackByteLimit = 8 * 1024 * 1024
 const excelMaxRows = 1_048_576
 const excelMaxColumns = 16_384
 
@@ -215,6 +216,24 @@ export function formulaOracleFormulaCountResourceLimitPreflight(input: {
     }
   }
   return null
+}
+
+export function formulaOracleSourceFallbackResourceLimitPreflight(sourceByteLength: number): ResourceLimitPreflight | null {
+  if (sourceByteLength <= preflightFormulaOracleSourceFallbackByteLimit) {
+    return null
+  }
+  return {
+    classification: `xlsx.publicCorpus.resourceLimit:preflightFormulaOracleSourceBytes>${String(
+      preflightFormulaOracleSourceFallbackByteLimit,
+    )}`,
+    evidence: [
+      'rss-limit-phase=formula-oracle',
+      `Formula oracle SheetJS fallback skipped because workbook source is ${String(
+        sourceByteLength,
+      )} bytes, above verifier fallback budget ${String(preflightFormulaOracleSourceFallbackByteLimit)}.`,
+      `formula-oracle-source-bytes=${String(sourceByteLength)}`,
+    ],
+  }
 }
 
 function countFormulaCells(snapshot: WorkbookSnapshot): number {

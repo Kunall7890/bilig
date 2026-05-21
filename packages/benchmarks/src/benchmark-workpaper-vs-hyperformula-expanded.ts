@@ -1,10 +1,11 @@
 import type { ComparativeBenchmarkSuiteOptions } from './benchmark-workpaper-vs-hyperformula.js'
-import { DEFAULT_COMPETITIVE_SAMPLE_COUNT, DEFAULT_COMPETITIVE_WARMUP_COUNT } from './benchmark-workpaper-vs-hyperformula.js'
+import { DEFAULT_COMPETITIVE_WARMUP_COUNT, DEFAULT_EXPANDED_COMPETITIVE_SAMPLE_COUNT } from './benchmark-workpaper-vs-hyperformula.js'
 import { runWorkPaperVsHyperFormulaExpandedBenchmarkSuite } from './benchmark-workpaper-vs-hyperformula-expanded-scenarios.js'
 import type { ExpandedComparativeBenchmarkResult } from './benchmark-workpaper-vs-hyperformula-expanded-runner.js'
 import { buildExpandedCompetitiveFamilyReport, type ExpandedCompetitiveFamilySummary } from './report-competitive-families.js'
 
 export { EXPANDED_COMPARATIVE_WORKLOAD_SCORECARD_LANE, EXPANDED_COMPARATIVE_WORKLOADS } from './expanded-competitive-workloads.js'
+export { DEFAULT_EXPANDED_COMPETITIVE_SAMPLE_COUNT } from './benchmark-workpaper-vs-hyperformula.js'
 export type { ExpandedComparativeBenchmarkWorkload } from './expanded-competitive-workloads.js'
 export { runWorkPaperVsHyperFormulaExpandedBenchmarkSuite } from './benchmark-workpaper-vs-hyperformula-expanded-scenarios.js'
 export type {
@@ -36,7 +37,7 @@ export function buildExpandedComparativeBenchmarkReport(
 if (import.meta.url === `file://${process.argv[1]}`) {
   const cliOptions = parseExpandedBenchmarkCliOptions(process.argv.slice(2))
   const benchmarkResults = runWorkPaperVsHyperFormulaExpandedBenchmarkSuite({
-    sampleCount: cliOptions.sampleCount ?? DEFAULT_COMPETITIVE_SAMPLE_COUNT,
+    sampleCount: cliOptions.sampleCount ?? DEFAULT_EXPANDED_COMPETITIVE_SAMPLE_COUNT,
     warmupCount: cliOptions.warmupCount ?? DEFAULT_COMPETITIVE_WARMUP_COUNT,
   })
   console.log(JSON.stringify(buildExpandedComparativeBenchmarkReport(benchmarkResults), null, 2))

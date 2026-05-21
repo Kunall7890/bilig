@@ -1270,6 +1270,24 @@ describe('lookup builtins', () => {
     expect(MDETERM(err(ErrorCode.Ref))).toEqual(err(ErrorCode.Value))
   })
 
+  it('matches Excel empty-string criteria semantics for conditional aggregates', () => {
+    const COUNTIF = getLookupBuiltin('COUNTIF')!
+    const COUNTIFS = getLookupBuiltin('COUNTIFS')!
+    const SUMIF = getLookupBuiltin('SUMIF')!
+    const SUMIFS = getLookupBuiltin('SUMIFS')!
+
+    const criteriaRange = cellRange([text('North'), empty(), text(''), text(' '), text('South')], 5, 1)
+    const sumRange = cellRange([num(10), num(20), num(30), num(40), num(50)], 5, 1)
+
+    expect(COUNTIF(criteriaRange, text(''))).toEqual(num(2))
+    expect(COUNTIF(criteriaRange, text('='))).toEqual(num(2))
+    expect(COUNTIF(criteriaRange, text('<>'))).toEqual(num(4))
+    expect(COUNTIFS(criteriaRange, text('<>'))).toEqual(num(4))
+    expect(SUMIF(criteriaRange, text(''), sumRange)).toEqual(num(50))
+    expect(SUMIF(criteriaRange, text('<>'), sumRange)).toEqual(num(130))
+    expect(SUMIFS(sumRange, criteriaRange, text('<>'))).toEqual(num(130))
+  })
+
   it('covers conditional criteria parsing variants', () => {
     const COUNTIF = getLookupBuiltin('COUNTIF')!
     const SUMIF = getLookupBuiltin('SUMIF')!

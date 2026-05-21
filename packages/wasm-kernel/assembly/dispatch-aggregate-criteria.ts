@@ -4,6 +4,7 @@ import { scalarErrorAt, rangeErrorAt } from './builtin-args'
 import { gcdPairCalc, lcmPairCalc, truncAbs } from './numeric-core'
 import { toNumberOrNaN } from './operands'
 import { STACK_KIND_ARRAY, STACK_KIND_RANGE, STACK_KIND_SCALAR, writeResult } from './result-io'
+import { textLength } from './text-codec'
 import { coerceScalarNumberLikeText } from './text-special'
 import {
   readCachedRangeSumTag,
@@ -23,6 +24,10 @@ function writeAggregateError(
   kindStack: Uint8Array,
 ): i32 {
   return writeResult(base, STACK_KIND_SCALAR, <u8>ValueTag.Error, error, rangeIndexStack, valueStack, tagStack, kindStack)
+}
+
+function isCountblankBlank(tag: u8, value: f64, stringLengths: Uint32Array, outputStringLengths: Uint32Array): bool {
+  return tag == ValueTag.Empty || (tag == ValueTag.String && textLength(tag, value, stringLengths, outputStringLengths) == 0)
 }
 
 export function tryApplyAggregateCriteriaBuiltin(
@@ -341,7 +346,7 @@ export function tryApplyAggregateCriteriaBuiltin(
         const length = <i32>rangeLengths[rangeIndex]
         for (let cursor = 0; cursor < length; cursor += 1) {
           const memberIndex = rangeMembers[start + cursor]
-          if (cellTags[memberIndex] == ValueTag.Empty) {
+          if (isCountblankBlank(cellTags[memberIndex], <f64>cellStringIds[memberIndex], stringLengths, outputStringLengths)) {
             count += 1
           }
         }
@@ -351,13 +356,20 @@ export function tryApplyAggregateCriteriaBuiltin(
         const arrayIndex = rangeIndexStack[slot]
         const length = readSpillArrayLength(arrayIndex)
         for (let cursor = 0; cursor < length; cursor += 1) {
-          if (readSpillArrayTag(arrayIndex, cursor) == ValueTag.Empty) {
+          if (
+            isCountblankBlank(
+              readSpillArrayTag(arrayIndex, cursor),
+              readSpillArrayNumber(arrayIndex, cursor),
+              stringLengths,
+              outputStringLengths,
+            )
+          ) {
             count += 1
           }
         }
         continue
       }
-      if (tagStack[slot] == ValueTag.Empty) {
+      if (isCountblankBlank(tagStack[slot], valueStack[slot], stringLengths, outputStringLengths)) {
         count += 1
       }
     }

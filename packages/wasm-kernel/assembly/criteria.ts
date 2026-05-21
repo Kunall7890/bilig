@@ -216,6 +216,9 @@ export function matchesCriteriaValue(
       operandText = unescapeCriteriaPattern(textPattern)
     }
   }
+  if (operator == CRITERIA_OP_NE && operandTag == ValueTag.String && operandText != null && operandText.length == 0) {
+    return valueTag != ValueTag.Empty
+  }
 
   if (valueTag == ValueTag.Empty && operandTag == ValueTag.Number && operator != CRITERIA_OP_EQ && operator != CRITERIA_OP_NE) {
     return false

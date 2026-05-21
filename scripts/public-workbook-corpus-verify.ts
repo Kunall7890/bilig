@@ -45,6 +45,8 @@ import {
   importResourceLimitPreflight,
   formulaOracleFormulaCountResourceLimitPreflight,
   formulaOracleResourceLimitPreflight,
+  formulaOracleSourceFallbackResourceLimitPreflight,
+  type ResourceLimitPreflight,
   roundTripResourceLimitPreflight,
   structuralSmokeResourceLimitPreflight,
   unsupportedPreflightResourceLimitCase,
@@ -66,6 +68,7 @@ import {
   countImportedWorkbookFeatures,
   countWorkbookFeatures,
   extractFormulaOracles,
+  extractFormulaOraclesFromXlsxByteSource,
   formatCellValue,
   importedWorkbookMetadata,
   inspectWorkbookFootprint,
@@ -114,6 +117,7 @@ export const externalLinkTransitiveFormulaUnsupportedClassification = 'xlsx.exte
 interface DetailedFormulaOracleValidationResult extends FormulaOracleValidationResult {
   readonly mismatchDetails: readonly FormulaOracleMismatchDetail[]
   readonly skippedUnsupportedFormulaCount: number
+  readonly resourceLimit?: ResourceLimitPreflight
 }
 
 interface UnsupportedFormulaOracleCacheClassification {
@@ -288,12 +292,14 @@ export async function verifyCachedWorkbookArtifact(
       unsupportedFormulaOracleWarning,
       unsupportedFormulaOracleCache,
       unsupportedExternalLinkFormulaOracle,
+      formulaOracleSourceResourceLimit,
     } = formulaOracleResourceLimit
       ? {
           formulaOracleValidation: emptyFormulaOracleValidation(),
           unsupportedFormulaOracleWarning: false,
           unsupportedFormulaOracleCache: emptyUnsupportedFormulaOracleCacheClassification(),
           unsupportedExternalLinkFormulaOracle: emptyUnsupportedFormulaOracleCacheClassification(),
+          formulaOracleSourceResourceLimit: null,
         }
       : await timeVerificationPhase(runtimeMetrics, workerOptions, 'formula-oracle', async () => {
           const nextFormulaOracleValidation =
@@ -301,7 +307,8 @@ export async function verifyCachedWorkbookArtifact(
               ? emptyFormulaOracleValidation()
               : await validateFormulaOracles(
                   imported.snapshot,
-                  readAllSourceBytes(source),
+                  source,
+                  artifact.fileName,
                   unsupportedFormulaDependencyKeys(imported.snapshot),
                 )
           collectGarbage()
@@ -321,6 +328,7 @@ export async function verifyCachedWorkbookArtifact(
             unsupportedFormulaOracleWarning: nextUnsupportedFormulaOracleWarning,
             unsupportedFormulaOracleCache: nextUnsupportedFormulaOracleCache,
             unsupportedExternalLinkFormulaOracle: nextUnsupportedExternalLinkFormulaOracle,
+            formulaOracleSourceResourceLimit: nextFormulaOracleValidation.resourceLimit ?? null,
           }
         })
     const unsupportedLocaleDecimalCommaFormulaOracle = classifyUnsupportedLocaleDecimalCommaFormulaOracle(
@@ -331,11 +339,13 @@ export async function verifyCachedWorkbookArtifact(
     const structuralSmokeResourceLimit = runStructuralSmoke ? structuralSmokeResourceLimitPreflight(featureCounts) : null
     const phaseResourceLimitClassifications = [
       ...(formulaOracleResourceLimit ? [formulaOracleResourceLimit.classification] : []),
+      ...(formulaOracleSourceResourceLimit ? [formulaOracleSourceResourceLimit.classification] : []),
       ...(roundTripResourceLimit ? [roundTripResourceLimit.classification] : []),
       ...(structuralSmokeResourceLimit ? [structuralSmokeResourceLimit.classification] : []),
     ]
     const phaseResourceLimitEvidence = [
       ...(formulaOracleResourceLimit?.evidence ?? []),
+      ...(formulaOracleSourceResourceLimit?.evidence ?? []),
       ...(roundTripResourceLimit?.evidence ?? []),
       ...(structuralSmokeResourceLimit?.evidence ?? []),
     ]
@@ -352,11 +362,17 @@ export async function verifyCachedWorkbookArtifact(
     const roundTripSkipEvidence = roundTripValidationSkipEvidence(imported.warnings)
     const externalWorkbookReferences = summarizeExternalWorkbookReferences(imported.snapshot)
     const unsupportedWorkbookEvidence = unsupportedWorkbookMetadataEvidence(imported.snapshot, formulaOracleValidation)
-    let structuralSmokeSnapshot = runStructuralSmoke && !structuralSmokeResourceLimit ? imported.snapshot : undefined
-    const roundTripPassed = await timeVerificationPhase(runtimeMetrics, workerOptions, 'round-trip', () =>
-      roundTripSkipEvidence || roundTripResourceLimit ? true : roundTripsSupportedSemantics(detachImportedWorkbookSnapshot(imported)),
+    const shouldRunStructuralSmoke = runStructuralSmoke && !structuralSmokeResourceLimit
+    const roundTripValidation = await timeVerificationPhase(runtimeMetrics, workerOptions, 'round-trip', () =>
+      roundTripSkipEvidence || roundTripResourceLimit
+        ? { passed: true, structuralSmokeSnapshot: shouldRunStructuralSmoke ? imported.snapshot : undefined }
+        : roundTripsSupportedSemantics(detachImportedWorkbookSnapshot(imported), {
+            retainRoundTrippedSnapshot: shouldRunStructuralSmoke,
+          }),
     )
+    const roundTripPassed = roundTripValidation.passed
     collectGarbage()
+    let structuralSmokeSnapshot = shouldRunStructuralSmoke ? roundTripValidation.structuralSmokeSnapshot : undefined
     const structuralSmokePassed = await timeVerificationPhase(runtimeMetrics, workerOptions, 'structural-smoke', () =>
       structuralSmokeSnapshot ? runStructuralSmokeOps(structuralSmokeSnapshot) : runStructuralSmoke ? null : null,
     )
@@ -440,11 +456,21 @@ export function capVerifyMaxRssBytes(value: number): number {
 
 async function validateFormulaOracles(
   snapshot: WorkbookSnapshot,
-  bytes: Uint8Array,
+  source: XlsxZipByteSource,
+  fileName: string,
   skippedFormulaKeys: ReadonlySet<string> = new Set(),
 ): Promise<DetailedFormulaOracleValidationResult> {
   try {
-    const allFormulaOracles = extractFormulaOracles(bytes)
+    const sourceFormulaOracles = extractFormulaOraclesFromXlsxByteSource(source, fileName)
+    const sourceFallbackResourceLimit =
+      sourceFormulaOracles === null ? formulaOracleSourceFallbackResourceLimitPreflight(source.byteLength) : null
+    if (sourceFallbackResourceLimit) {
+      return {
+        ...emptyFormulaOracleValidation(),
+        resourceLimit: sourceFallbackResourceLimit,
+      }
+    }
+    const allFormulaOracles = sourceFormulaOracles ?? extractFormulaOracles(readAllSourceBytes(source))
     const formulaOracles = allFormulaOracles.filter(
       (oracle) => !skippedFormulaKeys.has(formulaOracleCellKey(oracle.sheetName, oracle.address)),
     )
@@ -680,7 +706,15 @@ function formulaOracleCellKey(sheetName: string, address: string): string {
   return `${sheetName}\u0000${address}`
 }
 
-async function roundTripsSupportedSemantics(snapshot: WorkbookSnapshot): Promise<boolean> {
+interface RoundTripSemanticValidationResult {
+  readonly passed: boolean
+  readonly structuralSmokeSnapshot?: WorkbookSnapshot
+}
+
+export async function roundTripsSupportedSemantics(
+  snapshot: WorkbookSnapshot,
+  options: { readonly retainRoundTrippedSnapshot?: boolean } = {},
+): Promise<RoundTripSemanticValidationResult> {
   try {
     const [{ exportXlsx }, { roundTripSemanticsDigest }] = await Promise.all([
       import('../packages/excel-import/src/index.js'),
@@ -693,10 +727,14 @@ async function roundTripsSupportedSemantics(snapshot: WorkbookSnapshot): Promise
     const exported = exportXlsx(snapshot)
     snapshot = createDetachedWorkbookSnapshot(workbookName)
     collectGarbage()
-    const actualDigest = roundTripSemanticsDigest(importXlsx(exported, `${workbookName}.xlsx`).snapshot)
-    return actualDigest === expectedDigest
+    const roundTrippedSnapshot = importXlsx(exported, `${workbookName}.xlsx`).snapshot
+    const actualDigest = roundTripSemanticsDigest(roundTrippedSnapshot)
+    return {
+      passed: actualDigest === expectedDigest,
+      ...(options.retainRoundTrippedSnapshot ? { structuralSmokeSnapshot: roundTrippedSnapshot } : {}),
+    }
   } catch {
-    return false
+    return { passed: false }
   }
 }
 

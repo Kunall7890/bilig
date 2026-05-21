@@ -455,7 +455,7 @@ const scalarBuiltins: Record<string, Builtin> = {
   COUNTBLANK: (...args) => {
     let blanks = 0
     for (const arg of args) {
-      if (arg.tag === ValueTag.Empty) {
+      if (arg.tag === ValueTag.Empty || (arg.tag === ValueTag.String && arg.value === '')) {
         blanks += 1
       }
     }
