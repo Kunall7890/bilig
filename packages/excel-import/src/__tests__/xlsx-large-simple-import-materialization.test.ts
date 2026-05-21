@@ -318,6 +318,73 @@ describe('large simple XLSX import materialization lifetime', () => {
     expect(readLazyXlsxZipSourceByteLength(zip)).toBe(0)
   })
 
+  it('finalizes no-op styled sheets after style parsing before package artifacts pin arenas', () => {
+    const bytes = buildIndependentWorkbook(
+      [
+        {
+          name: 'NoOpStyled',
+          path: 'xl/worksheets/sheet1.xml',
+          xml: [
+            '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>',
+            '<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">',
+            '<dimension ref="A1:B1"/>',
+            '<sheetData><row r="1"><c r="A1" s="1"><v>7</v></c><c r="B1" t="inlineStr"><is><t>No-op style</t></is></c></row></sheetData>',
+            '</worksheet>',
+          ].join(''),
+        },
+        {
+          name: 'Drawing',
+          path: 'xl/worksheets/sheet2.xml',
+          xml: [
+            '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>',
+            '<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">',
+            '<dimension ref="A1:B1"/>',
+            '<sheetData><row r="1"><c r="A1"><v>11</v></c><c r="B1" t="inlineStr"><is><t>B inline</t></is></c></row></sheetData>',
+            '<drawing r:id="rIdDrawing"/>',
+            '</worksheet>',
+          ].join(''),
+        },
+      ],
+      {
+        'xl/styles.xml': stylesXmlWithNoEffectiveStyle(),
+        'xl/worksheets/_rels/sheet2.xml.rels': [
+          '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>',
+          '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">',
+          '<Relationship Id="rIdDrawing" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/drawing" Target="../drawings/drawing1.xml"/>',
+          '</Relationships>',
+        ].join(''),
+        'xl/drawings/drawing1.xml':
+          '<xdr:wsDr xmlns:xdr="http://schemas.openxmlformats.org/drawingml/2006/spreadsheetDrawing" xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main"/>',
+      },
+    )
+    const zip = readXlsxZipEntriesLazy(bytes)
+
+    const imported = tryImportLargeSimpleXlsx(bytes, 'no-op-styled-artifact.xlsx', zip, {
+      minByteLength: 0,
+      releaseZipSource: true,
+      allowPreReleaseSheetFinalization: true,
+    })
+    const phases = imported?.stats.phaseTelemetry.map((entry) => entry.phase) ?? []
+    const materializationIndexes = phases.flatMap((phase, index) => (phase === 'public-snapshot-materialization' ? [index] : []))
+    const styleParsingIndex = phases.indexOf('style-parsing')
+    const zipSourceReleaseIndex = phases.indexOf('zip-source-release')
+
+    expect(styleParsingIndex).toBeGreaterThanOrEqual(0)
+    expect(materializationIndexes.some((index) => index > styleParsingIndex && index < zipSourceReleaseIndex)).toBe(true)
+    expect(imported?.snapshot.sheets.map((sheet) => sheet.cells)).toEqual([
+      [
+        { address: 'A1', value: 7 },
+        { address: 'B1', value: 'No-op style' },
+      ],
+      [
+        { address: 'A1', value: 11 },
+        { address: 'B1', value: 'B inline' },
+      ],
+    ])
+    expect(imported?.snapshot.workbook.metadata?.styles).toBeUndefined()
+    expect(readLazyXlsxZipSourceByteLength(zip)).toBe(0)
+  })
+
   it('resolves plain shared strings before exposing large lazy cell arrays', () => {
     const rowCount = 100_001
     const rows: string[] = []
@@ -493,6 +560,20 @@ function stylesXmlWithNumberFormat(): string {
   <cellXfs count="2">
     <xf numFmtId="0" fontId="0" fillId="0" borderId="0"/>
     <xf numFmtId="164" fontId="0" fillId="0" borderId="0" applyNumberFormat="1"/>
+  </cellXfs>
+</styleSheet>`
+}
+
+function stylesXmlWithNoEffectiveStyle(): string {
+  return `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">
+  <fonts count="1"><font/></fonts>
+  <fills count="1"><fill><patternFill patternType="none"/></fill></fills>
+  <borders count="1"><border/></borders>
+  <cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs>
+  <cellXfs count="2">
+    <xf numFmtId="0" fontId="0" fillId="0" borderId="0"/>
+    <xf numFmtId="0" fontId="0" fillId="0" borderId="0"/>
   </cellXfs>
 </styleSheet>`
 }

@@ -609,6 +609,52 @@ export function tryImportLargeSimpleXlsx(
   )
   delete zip[stylesPath]
   phaseRecorder.finish('style-parsing', styleParsingStart)
+  if (
+    materializeCells &&
+    stylesByIndex.size === 0 &&
+    numberFormatsByStyleIndex.size === 0 &&
+    (options.releaseZipSource !== true || allowPreReleaseSheetFinalization)
+  ) {
+    for (const [index, scanned] of scannedWorksheets.entries()) {
+      if (
+        !scanned ||
+        scanned.sharedStringIndexes.size > 0 ||
+        sheetHasRelationshipBackedArtifacts(scanned.name, scanned.metadataScan, scanned.worksheetXml)
+      ) {
+        continue
+      }
+      const snapshotMaterializationStart = phaseRecorder.start()
+      const resolvedRichTextCells =
+        hasSharedStrings && scanned.hasUnresolvedSharedStringReferences === true
+          ? scanned.cellScan.arena.retainSharedStringReferences(scanned.sharedStrings ?? sharedStrings)
+          : []
+      if (resolvedRichTextCells === null) {
+        return null
+      }
+      appendParsedWorksheet(
+        buildParsedWorksheet(
+          scanned.name,
+          scanned.order,
+          {
+            ...scanned.cellScan,
+            richTextCells: mergeWorkbookRichTextCells(scanned.cellScan.richTextCells, resolvedRichTextCells),
+          },
+          scanned.worksheetXml,
+          scanned.metadataScan,
+          scanned.metadataInput,
+          {
+            materializeCells,
+            releaseArenaAfterMaterialization: options.releaseArenaAfterMaterialization !== false,
+            styleCatalog,
+            stylesByIndex: emptyStylesByIndex,
+          },
+        ),
+      )
+      scannedWorksheets[index] = undefined
+      phaseRecorder.finish('public-snapshot-materialization', snapshotMaterializationStart)
+      collectLargeSimpleImportGarbage()
+    }
+  }
   const importedDrawingArtifacts =
     materializeCells && hasDrawingParts
       ? readImportedWorkbookDrawingArtifactsFromWorksheetRelationships(
