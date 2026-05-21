@@ -26,7 +26,11 @@ export function tryEvaluateDirectAggregate(input: {
   const pageStats = directAggregatePageStats(directAggregate.rowStart, directAggregate.rowEnd)
   const canUsePageSummary =
     input.formula.dependencyIndices.length === 0 &&
-    (directAggregate.aggregateKind === 'sum' || directAggregate.aggregateKind === 'average' || directAggregate.aggregateKind === 'count') &&
+    (directAggregate.aggregateKind === 'sum' ||
+      directAggregate.aggregateKind === 'average' ||
+      directAggregate.aggregateKind === 'count' ||
+      directAggregate.aggregateKind === 'min' ||
+      directAggregate.aggregateKind === 'max') &&
     directAggregate.rowStart >= DIRECT_AGGREGATE_PAGE_SHIFT_MIN_ROWS &&
     pageStats.edgeCells <= Math.max(pageStats.fullPageCells, BLOCK_ROWS * 2) &&
     !hasReusableSharedPrefix(input.aggregateCache, directAggregate)
@@ -34,6 +38,8 @@ export function tryEvaluateDirectAggregate(input: {
     let sum = 0
     let count = 0
     let averageCount = 0
+    let minimum = Number.POSITIVE_INFINITY
+    let maximum = Number.NEGATIVE_INFINITY
     let errorCount = 0
     let errorCode = ErrorCode.None
     let fullPageHits = 0
@@ -53,6 +59,8 @@ export function tryEvaluateDirectAggregate(input: {
       sum += summary.sum
       count += summary.count
       averageCount += summary.averageCount
+      minimum = Math.min(minimum, summary.minimum)
+      maximum = Math.max(maximum, summary.maximum)
       errorCount += summary.errorCount
       fullPageHits += summary.fullPageHits
       edgeCellScans += summary.edgeCellScans
@@ -72,6 +80,12 @@ export function tryEvaluateDirectAggregate(input: {
       }
       if (directAggregate.aggregateKind === 'count') {
         return offsetDirectAggregateResult(directAggregate, directNumberResult(count))
+      }
+      if (directAggregate.aggregateKind === 'min') {
+        return offsetDirectAggregateResult(directAggregate, directNumberResult(minimum === Number.POSITIVE_INFINITY ? 0 : minimum))
+      }
+      if (directAggregate.aggregateKind === 'max') {
+        return offsetDirectAggregateResult(directAggregate, directNumberResult(maximum === Number.NEGATIVE_INFINITY ? 0 : maximum))
       }
       return averageCount === 0
         ? directErrorResult(ErrorCode.Div0)
