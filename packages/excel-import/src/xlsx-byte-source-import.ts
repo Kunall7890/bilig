@@ -32,8 +32,10 @@ export function importXlsxFromZipByteSource(
   const hasCalcChain = Object.hasOwn(workbookZip, 'xl/calcChain.xml')
   const bypassLargeSimpleByteThreshold =
     shouldBypassLargeSimpleByteThresholdForPackageArtifacts(workbookZip) && !hasFullImporterOnlyPackageMetadata(workbookZip)
+  const needsCalcChainFormulaCountInspection =
+    hasCalcChain && source.byteLength >= denseSheetJsByteThreshold && source.byteLength < largeCalcChainStreamingByteThreshold
   const inspection =
-    limits || (hasCalcChain && source.byteLength >= denseSheetJsByteThreshold)
+    limits || needsCalcChainFormulaCountInspection
       ? inspectLargeSimpleXlsxSource(source, fileName, options.limits ? { minByteLength: 0 } : undefined)
       : null
   assertXlsxInspectionWithinMaterializationLimits(inspection, limits)
