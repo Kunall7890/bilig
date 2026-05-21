@@ -240,7 +240,7 @@ export function collectViewportCells(
   for (let index = 0; index < invalidatedRows.length; index += 1) {
     const rowInvalidation = invalidatedRows[index]!
     const rowStart = Math.max(viewport.rowStart, rowInvalidation.startIndex)
-    const rowEnd = Math.min(viewport.rowEnd, rowInvalidation.endIndex)
+    const rowEnd = viewport.rowEnd
     if (rowStart > rowEnd) {
       continue
     }
@@ -254,7 +254,7 @@ export function collectViewportCells(
   for (let index = 0; index < invalidatedColumns.length; index += 1) {
     const columnInvalidation = invalidatedColumns[index]!
     const colStart = Math.max(viewport.colStart, columnInvalidation.startIndex)
-    const colEnd = Math.min(viewport.colEnd, columnInvalidation.endIndex)
+    const colEnd = viewport.colEnd
     if (colStart > colEnd) {
       continue
     }

@@ -14,6 +14,12 @@ export function isPrintableKey(event: GridKeyboardModifierState): boolean {
 }
 
 export function normalizeKeyboardKey(key: string, code?: string): string {
+  if (code === 'Minus') {
+    return '-'
+  }
+  if (code === 'Equal') {
+    return '='
+  }
   if (code?.startsWith('Numpad')) {
     const suffix = code.slice('Numpad'.length)
     if (/^\d$/.test(suffix)) {

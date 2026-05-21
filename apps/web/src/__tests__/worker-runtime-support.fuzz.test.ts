@@ -4,27 +4,27 @@ import { runProperty } from '@bilig/test-fuzz'
 import { collectViewportCells, type ViewportCellPosition } from '../worker-runtime-support.js'
 
 describe('worker runtime support fuzz', () => {
-  it('should collect only cells inside invalidated row end bounds', async () => {
+  it('should collect shifted cells from invalidated row starts through the viewport end', async () => {
     await runProperty({
-      suite: 'web/worker-runtime/viewport-row-invalidation-bounds',
+      suite: 'web/worker-runtime/viewport-row-invalidation-shift-tail',
       arbitrary: viewportAxisInvalidationArbitrary,
       predicate: async ({ viewport, startIndex, endIndex }) => {
         const actual = collectViewportCells(viewport, null, [], [{ startIndex, endIndex }], [])
 
-        expect(cellKeys(actual)).toEqual(expectedRowInvalidationKeys(viewport, startIndex, endIndex))
+        expect(cellKeys(actual)).toEqual(expectedRowInvalidationKeys(viewport, startIndex))
       },
       parameters: { numRuns: 120 },
     })
   })
 
-  it('should collect only cells inside invalidated column end bounds', async () => {
+  it('should collect shifted cells from invalidated column starts through the viewport end', async () => {
     await runProperty({
-      suite: 'web/worker-runtime/viewport-column-invalidation-bounds',
+      suite: 'web/worker-runtime/viewport-column-invalidation-shift-tail',
       arbitrary: viewportAxisInvalidationArbitrary,
       predicate: async ({ viewport, startIndex, endIndex }) => {
         const actual = collectViewportCells(viewport, null, [], [], [{ startIndex, endIndex }])
 
-        expect(cellKeys(actual)).toEqual(expectedColumnInvalidationKeys(viewport, startIndex, endIndex))
+        expect(cellKeys(actual)).toEqual(expectedColumnInvalidationKeys(viewport, startIndex))
       },
       parameters: { numRuns: 120 },
     })
@@ -62,10 +62,9 @@ function cellKeys(cells: readonly ViewportCellPosition[]): string[] {
 function expectedRowInvalidationKeys(
   viewport: { readonly rowStart: number; readonly rowEnd: number; readonly colStart: number; readonly colEnd: number },
   startIndex: number,
-  endIndex: number,
 ): string[] {
   const rowStart = Math.max(viewport.rowStart, startIndex)
-  const rowEnd = Math.min(viewport.rowEnd, endIndex)
+  const rowEnd = viewport.rowEnd
   if (rowStart > rowEnd) {
     return []
   }
@@ -81,10 +80,9 @@ function expectedRowInvalidationKeys(
 function expectedColumnInvalidationKeys(
   viewport: { readonly rowStart: number; readonly rowEnd: number; readonly colStart: number; readonly colEnd: number },
   startIndex: number,
-  endIndex: number,
 ): string[] {
   const colStart = Math.max(viewport.colStart, startIndex)
-  const colEnd = Math.min(viewport.colEnd, endIndex)
+  const colEnd = viewport.colEnd
   if (colStart > colEnd) {
     return []
   }

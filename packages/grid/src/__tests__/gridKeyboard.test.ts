@@ -18,6 +18,9 @@ import {
 
 describe('gridKeyboard', () => {
   test('normalizes numpad keys into printable characters', () => {
+    expect(normalizeKeyboardKey('–', 'Minus')).toBe('-')
+    expect(normalizeKeyboardKey('−', 'Minus')).toBe('-')
+    expect(normalizeKeyboardKey('=', 'Equal')).toBe('=')
     expect(normalizeKeyboardKey('1', 'Numpad1')).toBe('1')
     expect(normalizeKeyboardKey('.', 'NumpadDecimal')).toBe('.')
     expect(normalizeKeyboardKey('+', 'NumpadAdd')).toBe('+')
