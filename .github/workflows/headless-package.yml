@@ -905,6 +905,18 @@ jobs:
           test "${origin_sha}" = "${head_sha}"
           test "${github_sha}" = "${head_sha}"
 
+      - name: Wait for github-ci success before publishing release metadata
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+
+          node scripts/wait-for-github-ci-green.mjs \
+            --repo "${GITHUB_REPOSITORY}" \
+            --sha "$(git rev-parse HEAD)" \
+            --workflow github-ci \
+            --branch main
+
       - name: Build runtime package chain
         run: |
           set -euo pipefail
