@@ -59,6 +59,7 @@ describe('large simple XLSX data validations', () => {
 
     expect(inspected?.stats.dataValidationCount).toBe(4)
     expect(inspected?.stats.cellCount).toBe(3)
+    expect(inspected?.sheetMetadataKeys).toContain('validations')
   })
 
   it('counts broad headless data-validation refs without requiring product metadata materialization', () => {

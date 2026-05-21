@@ -2,7 +2,7 @@ import type { CellStyleRecord, WorkbookSnapshot, WorkbookTableSnapshot } from '@
 import { attachImportedRuntimeImage } from './import-runtime-image.js'
 import { normalizeWorkbookName } from './workbook-import-helpers.js'
 import { XLSX_CONTENT_TYPE } from './workbook-import-content-types.js'
-import { createWorkbookPreview, type ImportedWorkbookPreview } from './workbook-import-preview.js'
+import { createWorkbookPreview } from './workbook-import-preview.js'
 import {
   readImportedSheetConditionalFormatArtifactsFromElementXml,
   readImportedSheetConditionalFormatArtifactsFromWorksheetXml,
@@ -20,7 +20,7 @@ import { readImportedWorkbookChartDrawingArtifacts } from './xlsx-import-chart-d
 import { externalPivotCachesWarning } from './xlsx-import-warnings.js'
 import { readWorkbookDefinedNames } from './xlsx-large-simple-defined-names.js'
 import { readLargeSimpleSheetHyperlinks, resolveLargeSimpleSheetHyperlinks } from './xlsx-large-simple-hyperlinks.js'
-import { LargeSimpleXlsxImportPhaseRecorder, type LargeSimpleXlsxImportPhaseTelemetry } from './xlsx-large-simple-import-telemetry.js'
+import { LargeSimpleXlsxImportPhaseRecorder } from './xlsx-large-simple-import-telemetry.js'
 import { appendLargeSimpleConditionalFormats } from './xlsx-large-simple-conditional-format-helpers.js'
 import { internLargeSimpleWorksheetMetadata } from './xlsx-large-simple-metadata-interning.js'
 import { prepareLargeSimplePackageArtifactsForZipRelease } from './xlsx-large-simple-package-artifact-release.js'
@@ -72,7 +72,6 @@ import {
   withoutLargeSimpleConditionalFormattingXml,
   type LargeSimpleWorksheetScannedMetadata,
 } from './xlsx-large-simple-worksheet-metadata.js'
-import type { LargeSimpleSheetMetadataInput } from './xlsx-large-simple-sheet-metadata-input.js'
 import { readImportedPivotArtifacts } from './xlsx-pivot-artifacts.js'
 import { readImportedWorkbookSlicerConnectionArtifactsFromSheets } from './xlsx-slicer-connection-artifacts.js'
 import { readImportedSheetTablesFromRelationshipIds, readImportedSheetTablesFromWorksheetXml } from './xlsx-tables.js'
@@ -86,73 +85,23 @@ import {
   releaseLazyXlsxZipSource,
   type XlsxZipEntries,
 } from './xlsx-zip.js'
+import type {
+  LargeSimpleSheetMetadataInput,
+  LargeSimpleXlsxImportOptions,
+  LargeSimpleXlsxImportResult,
+  LargeSimpleXlsxImportSource,
+  LargeSimpleXlsxImportStats,
+  ScannedWorksheet,
+} from './xlsx-large-simple-import-types.js'
 
-export interface LargeSimpleXlsxImportResult {
-  snapshot: WorkbookSnapshot
-  workbookName: string
-  sheetNames: string[]
-  warnings: string[]
-  preview: ImportedWorkbookPreview
-  stats: LargeSimpleXlsxImportStats
-}
-
-export interface LargeSimpleXlsxImportOptions {
-  minByteLength?: number
-  materializeCells?: boolean
-  materializeMetadata?: boolean
-  releaseArenaAfterMaterialization?: boolean
-  releaseZipSource?: boolean
-  allowUnsupportedFormulaText?: boolean
-  allowUnsupportedCellMetadata?: boolean
-  skipBroadBlankStyleCells?: boolean
-  includeCellCoordinates?: boolean
-  maxMaterializedLazyPackageArtifactBytes?: number
-  releaseOwnedSourceBytes?: () => LargeSimpleXlsxOwnedSourceReleaseEvidence | undefined
-}
-
-export interface LargeSimpleXlsxImportSource {
-  readonly byteLength: number
-}
-
-export interface LargeSimpleXlsxOwnedSourceReleaseEvidence {
-  readonly ownedSourceBytesBeforeRelease?: number
-  readonly ownedSourceBytesAfterRelease?: number
-}
-
-export interface LargeSimpleXlsxImportStats {
-  readonly sheetCount: number
-  readonly cellCount: number
-  readonly formulaCellCount: number
-  readonly valueCellCount: number
-  readonly definedNameCount: number
-  readonly tableCount: number
-  readonly mergeCount: number
-  readonly conditionalFormatCount: number
-  readonly dataValidationCount: number
-  readonly warningCount: number
-  readonly dimensions: readonly LargeSimpleXlsxSheetDimension[]
-  readonly phaseTelemetry: readonly LargeSimpleXlsxImportPhaseTelemetry[]
-}
-
-export interface LargeSimpleXlsxSheetDimension {
-  readonly sheetName: string
-  readonly rowCount: number
-  readonly columnCount: number
-  readonly nonEmptyCellCount: number
-  readonly usedRange: ImportedWorksheetCellScan['usedRange']
-}
-
-interface ScannedWorksheet {
-  readonly name: string
-  readonly order: number
-  readonly cellScan: ImportedWorksheetCellScan
-  readonly worksheetXml: string | undefined
-  readonly metadataScan: LargeSimpleWorksheetScannedMetadata | undefined
-  readonly metadataInput: LargeSimpleSheetMetadataInput
-  readonly sharedStringIndexes: Set<number>
-  readonly sharedStrings?: LargeSimpleSharedStrings
-  readonly hasUnresolvedSharedStringReferences?: boolean
-}
+export type {
+  LargeSimpleXlsxImportOptions,
+  LargeSimpleXlsxImportResult,
+  LargeSimpleXlsxImportSource,
+  LargeSimpleXlsxImportStats,
+  LargeSimpleXlsxOwnedSourceReleaseEvidence,
+  LargeSimpleXlsxSheetDimension,
+} from './xlsx-large-simple-import-types.js'
 
 const defaultLargeSimpleXlsxByteThreshold = 1_000_000
 const maxPreservedBlankStyleCellCount = 10_000
@@ -351,7 +300,10 @@ export function tryImportLargeSimpleXlsx(
         return null
       }
       if (hasSharedStrings && fallbackSharedStrings === undefined) {
-        fallbackSharedStrings = readAllLargeSimpleSharedStrings(zip)
+        fallbackSharedStrings = readAllLargeSimpleSharedStrings(zip, {
+          deduplicateText: 'bounded',
+          stringPool,
+        })
         if (fallbackSharedStrings === null) {
           return null
         }
@@ -518,7 +470,12 @@ export function tryImportLargeSimpleXlsx(
   const sharedStringResolutionStart = phaseRecorder.start()
   let sharedStrings: LargeSimpleSharedStrings = fallbackSharedStrings ?? []
   if (materializeCells && hasSharedStrings && referencedSharedStringIndexes.size > 0) {
-    const referencedSharedStrings = fallbackSharedStrings ?? readReferencedLargeSimpleSharedStrings(zip, referencedSharedStringIndexes)
+    const referencedSharedStrings =
+      fallbackSharedStrings ??
+      readReferencedLargeSimpleSharedStrings(zip, referencedSharedStringIndexes, {
+        deduplicateText: 'bounded',
+        stringPool,
+      })
     if (referencedSharedStrings === null) {
       return null
     }

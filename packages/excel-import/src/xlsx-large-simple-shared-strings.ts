@@ -1,5 +1,7 @@
 import type { WorkbookRichTextCellSnapshot } from '@bilig/protocol'
 import { decodeExcelEscapedText } from './xlsx-escaped-text.js'
+import type { ImportedWorkbookArenaDedupeMode } from './xlsx-large-simple-arena-types.js'
+import type { ImportedWorkbookStringPool } from './xlsx-large-simple-string-pool.js'
 
 export interface LargeSimpleSharedStringEntry {
   readonly text: string
@@ -22,12 +24,29 @@ const sparseReferencedSharedStringDensityDivisor = 64
 
 export interface LargeSimpleReferencedSharedStringScanOptions {
   readonly onRetainedBufferLength?: (length: number) => void
+  readonly stringPool?: ImportedWorkbookStringPool
+  readonly deduplicateText?: ImportedWorkbookArenaDedupeMode
+  readonly dedupeMaxEntries?: number
 }
 
-export function readLargeSimpleSharedStrings(sharedStringsXml: string): LargeSimpleSharedStringEntry[] {
+interface LargeSimpleSharedStringReadOptions extends LargeSimpleReferencedSharedStringScanOptions {
+  readonly plainEntryPool?: LargeSimpleSharedStringEntryPool
+}
+
+interface LargeSimpleSharedStringEntryPool {
+  readonly entries: Map<string, LargeSimpleSharedStringEntry>
+  readonly keys: string[]
+  evictionIndex: number
+}
+
+export function readLargeSimpleSharedStrings(
+  sharedStringsXml: string,
+  options: LargeSimpleReferencedSharedStringScanOptions = {},
+): LargeSimpleSharedStringEntry[] {
+  const readOptions = sharedStringReadOptions(options)
   return [...sharedStringsXml.matchAll(sharedStringElementPattern)].map((match) => {
     const xml = match[0]
-    return readLargeSimpleSharedStringEntry(xml)
+    return readLargeSimpleSharedStringEntry(xml, readOptions)
   })
 }
 
@@ -120,11 +139,13 @@ class LargeSimpleSharedStringChunkScanner {
   private failed = false
   private skippingUnreferencedElementName: string | null = null
   private readonly maxReferencedIndex: number
+  private readonly readOptions: LargeSimpleSharedStringReadOptions
 
   constructor(
     private readonly referencedIndexes: ReadonlySet<number>,
     private readonly options: LargeSimpleReferencedSharedStringScanOptions,
   ) {
+    this.readOptions = sharedStringReadOptions(options)
     let maxIndex = 0
     for (const index of referencedIndexes) {
       maxIndex = Math.max(maxIndex, index)
@@ -201,7 +222,7 @@ class LargeSimpleSharedStringChunkScanner {
         return
       }
       if (this.referencedIndexes.has(this.sharedStringIndex)) {
-        this.setEntry(this.sharedStringIndex, readLargeSimpleSharedStringEntry(this.buffer.slice(opening.start, xmlEnd)))
+        this.setEntry(this.sharedStringIndex, readLargeSimpleSharedStringEntry(this.buffer.slice(opening.start, xmlEnd), this.readOptions))
       }
       this.sharedStringIndex += 1
       this.index = xmlEnd
@@ -305,23 +326,81 @@ function closingTagRetainLength(elementName: string): number {
   return Math.max(partialSharedStringTagRetainLength, elementName.length + 4)
 }
 
-function readLargeSimpleSharedStringEntry(xml: string): LargeSimpleSharedStringEntry {
+function readLargeSimpleSharedStringEntry(xml: string, options: LargeSimpleSharedStringReadOptions): LargeSimpleSharedStringEntry {
   const rich = richTextRunPattern.test(xml)
   if (!rich) {
-    return { text: stringItemText(xml), rich: false }
+    return internPlainSharedStringEntry(internSharedStringText(stringItemText(xml), options), options)
   }
-  return lazyRichSharedStringEntry(xml)
+  return lazyRichSharedStringEntry(xml, options)
 }
 
-function lazyRichSharedStringEntry(xml: string): LargeSimpleSharedStringEntry {
+function lazyRichSharedStringEntry(xml: string, options: LargeSimpleSharedStringReadOptions): LargeSimpleSharedStringEntry {
   let text: string | undefined
   return {
     rich: true,
     xml,
     get text() {
-      text ??= stringItemText(xml)
+      text ??= internSharedStringText(stringItemText(xml), options)
       return text
     },
+  }
+}
+
+function internSharedStringText(value: string, options: LargeSimpleReferencedSharedStringScanOptions): string {
+  const mode = options.deduplicateText ?? 'bounded'
+  if (mode === false || !options.stringPool) {
+    return value
+  }
+  if (mode === 'bounded') {
+    return options.stringPool.internBounded(value, options.dedupeMaxEntries ?? 8192)
+  }
+  return options.stringPool.intern(value)
+}
+
+function sharedStringReadOptions(options: LargeSimpleReferencedSharedStringScanOptions): LargeSimpleSharedStringReadOptions {
+  if ((options.deduplicateText ?? 'bounded') === false) {
+    return options
+  }
+  return {
+    ...options,
+    plainEntryPool: {
+      entries: new Map(),
+      keys: [],
+      evictionIndex: 0,
+    },
+  }
+}
+
+function internPlainSharedStringEntry(text: string, options: LargeSimpleSharedStringReadOptions): LargeSimpleSharedStringEntry {
+  const pool = options.plainEntryPool
+  if (!pool) {
+    return { text, rich: false }
+  }
+  const existing = pool.entries.get(text)
+  if (existing) {
+    return existing
+  }
+  const entry = { text, rich: false } satisfies LargeSimpleSharedStringEntry
+  pool.entries.set(text, entry)
+  pool.keys.push(text)
+  if ((options.deduplicateText ?? 'bounded') === 'bounded') {
+    evictPlainSharedStringEntries(pool, options.dedupeMaxEntries ?? 8192)
+  }
+  return entry
+}
+
+function evictPlainSharedStringEntries(pool: LargeSimpleSharedStringEntryPool, maxEntries: number): void {
+  const limit = Math.max(0, Math.trunc(maxEntries))
+  while (pool.keys.length - pool.evictionIndex > limit) {
+    const key = pool.keys[pool.evictionIndex]
+    pool.evictionIndex += 1
+    if (key !== undefined) {
+      pool.entries.delete(key)
+    }
+  }
+  if (pool.evictionIndex > limit && pool.evictionIndex * 2 > pool.keys.length) {
+    pool.keys.splice(0, pool.evictionIndex)
+    pool.evictionIndex = 0
   }
 }
 

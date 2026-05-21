@@ -77,8 +77,8 @@ function summarizeFileBackedXlsx(filePath: string, fileName: string): ExternalXl
       cells: headless.stats.cellCount,
       formulas: headless.stats.formulaCellCount,
       warnings: headless.warnings.length,
-      workbookMetadataKeys: [],
-      sheetMetadataKeys: [],
+      workbookMetadataKeys: headless.workbookMetadataKeys,
+      sheetMetadataKeys: headless.sheetMetadataKeys,
     }
   }
   return summarizeExternalXlsxImportedWorkbook(importFileBackedXlsx(filePath, fileName))

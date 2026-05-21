@@ -60,6 +60,10 @@ import type {
   HydratedPreparedFormulaInitializationRef,
   PreparedFormulaInitializationRef,
 } from './formula-initialization-service-types.js'
+import {
+  createFormulaInitializationSheetNameResolver,
+  scanFormulaInitializationCycleMembers,
+} from './formula-initialization-service-helpers.js'
 import { tryBindHydratedFreshDirectFormula } from './formula-initialization-hydrated-direct-scalar.js'
 import { tryEvaluateFormulaLeafInlineScalar } from './formula-leaf-inline-scalar-evaluator.js'
 import { initializeCachedFormulaSourcesAtNow as initializeCachedFormulaSourcesAtNowUnchecked } from './formula-initialization-cached-formulas.js'
@@ -71,29 +75,8 @@ export type {
   PreparedFormulaInitializationRef,
 } from './formula-initialization-service-types.js'
 export function createEngineFormulaInitializationService(args: EngineFormulaInitializationServiceArgs): EngineFormulaInitializationService {
-  const sheetNameById = new Map<number, string>()
-  const hasCycleMembersNow = (): boolean => {
-    addEngineCounter(args.state.counters, 'cycleFormulaScans')
-    let found = false
-    args.state.formulas.forEach((_formula, cellIndex) => {
-      if (((args.state.workbook.cellStore.flags[cellIndex] ?? 0) & CellFlags.InCycle) !== 0) {
-        found = true
-      }
-    })
-    return found
-  }
-  const resolveSheetName = (sheetId: number): string => {
-    const cached = sheetNameById.get(sheetId)
-    if (cached !== undefined) {
-      return cached
-    }
-    const sheet = args.state.workbook.getSheetById(sheetId)
-    if (!sheet) {
-      throw new Error(`Unknown sheet id: ${sheetId}`)
-    }
-    sheetNameById.set(sheetId, sheet.name)
-    return sheet.name
-  }
+  const hasCycleMembersNow = (): boolean => scanFormulaInitializationCycleMembers(args.state)
+  const resolveSheetName = createFormulaInitializationSheetNameResolver(args.state)
 
   const noteDeferredFormulaFamilyRunMember = (
     runs: DeferredInitialFormulaFamilyRunMap | undefined,
@@ -154,6 +137,7 @@ export function createEngineFormulaInitializationService(args: EngineFormulaInit
       let canUseNativeInitialDirectScalarOverLimit = false
       let canUseNativeInitialDirectLookupOverLimit = false
       let canUseNativeInitialPrefixAggregateOverLimit = false
+      let canUseNativeInitialDirectScalarRunChunksOverLimit = false
       let inlineInitialDirectScalarWriter: InitialFormulaValueWriter | undefined
       const nativeInitialDirectScalarRunChunks =
         hadExistingFormulas || refs.length < MIN_INITIAL_NATIVE_DIRECT_SCALAR_BATCH_SIZE
@@ -464,7 +448,13 @@ export function createEngineFormulaInitializationService(args: EngineFormulaInit
           hasInitialPrefixAggregateCandidates &&
           orderedPreparedCellCount > INITIAL_DIRECT_FORMULA_EVALUATION_LIMIT &&
           canEvaluateInitialPrefixAggregateGroupsNatively(args, orderedPreparedCellList(), { requireAllCells: true })
-        const canUseNativeInitialDirectScalarRunChunksOverLimit =
+        const canUseWholeBatchNativeInitialDirectEvaluation =
+          canUseNativeInitialDirectScalarRowChain ||
+          canUseNativeInitialDirectScalarOverLimit ||
+          canUseNativeInitialDirectLookupOverLimit ||
+          canUseNativeInitialPrefixAggregateOverLimit
+        canUseNativeInitialDirectScalarRunChunksOverLimit =
+          !canUseWholeBatchNativeInitialDirectEvaluation &&
           nativeInitialDirectScalarRunChunks !== undefined &&
           orderedPreparedCellCount > INITIAL_DIRECT_FORMULA_EVALUATION_LIMIT &&
           nativeInitialDirectScalarRunChunks.hasNativeChunks()
@@ -530,9 +520,7 @@ export function createEngineFormulaInitializationService(args: EngineFormulaInit
         canUseNativeInitialDirectScalarOverLimit ||
         canUseNativeInitialDirectLookupOverLimit ||
         canUseNativeInitialPrefixAggregateOverLimit ||
-        (nativeInitialDirectScalarRunChunks !== undefined &&
-          orderedPreparedCellCount > INITIAL_DIRECT_FORMULA_EVALUATION_LIMIT &&
-          nativeInitialDirectScalarRunChunks.hasNativeChunks())
+        canUseNativeInitialDirectScalarRunChunksOverLimit
       const canEvaluateWholeBatchNatively =
         useInitialDirectEvaluation &&
         !hasInitialPrefixAggregateCandidates &&

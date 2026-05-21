@@ -19,6 +19,8 @@ export interface LargeSimpleXlsxHeadlessInspectResult {
   readonly workbookName: string
   readonly sheetNames: string[]
   readonly warnings: string[]
+  readonly workbookMetadataKeys: readonly string[]
+  readonly sheetMetadataKeys: readonly string[]
   readonly stats: LargeSimpleXlsxImportStats
 }
 
@@ -102,6 +104,7 @@ export function tryInspectLargeSimpleXlsxHeadless(
   let mergeCount = 0
   let conditionalFormatCount = 0
   let dataValidationCount = 0
+  const sheetMetadataKeys = new Set<string>()
   for (const [order, entry] of worksheetEntries.entries()) {
     const worksheetScanStart = phaseRecorder.start()
     const scan = parseHeadlessLargeSimpleWorksheetFromChunks(
@@ -123,6 +126,9 @@ export function tryInspectLargeSimpleXlsxHeadless(
     mergeCount += scan.mergeCount ?? 0
     conditionalFormatCount += scan.conditionalFormatCount ?? 0
     dataValidationCount += scan.dataValidationCount ?? 0
+    for (const key of scan.metadataKeys) {
+      sheetMetadataKeys.add(key)
+    }
     dimensions.push({
       sheetName: entry.name,
       rowCount: scan.rowCount,
@@ -149,6 +155,8 @@ export function tryInspectLargeSimpleXlsxHeadless(
     workbookName: normalizeWorkbookName(fileName),
     sheetNames: workbookSheets.map((entry) => entry.name),
     warnings: definedNames.ignoredCount > 0 ? ['Some defined names were ignored during XLSX import.'] : [],
+    workbookMetadataKeys: workbookMetadataKeysForHeadlessPackage(packagePaths, definedNames.count),
+    sheetMetadataKeys: [...sheetMetadataKeys].toSorted(),
     stats: {
       sheetCount: workbookSheets.length,
       cellCount,
@@ -228,6 +236,38 @@ function inspectWorkbookDefinedNames(
 
 function definedNameReferencesExternalWorkbook(value: string): boolean {
   return /(?:^|[=,+(*/\s])'?\[[^\]]+\]/u.test(value)
+}
+
+function workbookMetadataKeysForHeadlessPackage(packagePaths: readonly string[], definedNameCount: number): readonly string[] {
+  const keys = new Set<string>()
+  if (definedNameCount > 0) {
+    keys.add('definedNames')
+  }
+  for (const path of packagePaths) {
+    if (path === 'xl/metadata.xml') {
+      keys.add('cellMetadata')
+    } else if (path.startsWith('xl/charts/')) {
+      keys.add('charts')
+      keys.add('chartArtifacts')
+    } else if (path.startsWith('xl/chartSheets/')) {
+      keys.add('chartSheetArtifacts')
+    } else if (path.startsWith('xl/drawings/') || path.startsWith('xl/media/')) {
+      keys.add('drawingArtifacts')
+    } else if (path.startsWith('xl/pivotTables/') || path.startsWith('xl/pivotCache/')) {
+      keys.add('pivotArtifacts')
+    } else if (path.startsWith('xl/model/') || path.startsWith('xl/customData/') || path.startsWith('customXml/')) {
+      keys.add('dataModelArtifacts')
+    } else if (path === 'xl/connections.xml' || path.startsWith('xl/slicerCaches/') || path.startsWith('xl/slicers/')) {
+      keys.add('slicerConnectionArtifacts')
+    } else if (path.startsWith('xl/externalLinks/')) {
+      keys.add('externalLinkArtifacts')
+    } else if (path.startsWith('xl/activeX/') || path.startsWith('xl/ctrlProps/') || path.startsWith('xl/embeddings/')) {
+      keys.add('controlArtifacts')
+    } else if (path.startsWith('docProps/')) {
+      keys.add('documentPropertyArtifacts')
+    }
+  }
+  return [...keys].toSorted()
 }
 
 function readXmlAttribute(xml: string, attributeName: string): string | null {
