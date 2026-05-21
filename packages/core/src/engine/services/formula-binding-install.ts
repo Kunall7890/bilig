@@ -4,9 +4,9 @@ import { spillDependencyKeyFromRef, tableDependencyKey } from '../../engine-meta
 import type { RuntimeFormula } from '../runtime-state.js'
 import {
   aggregateColumnDependencyKey,
+  appendDirectCriteriaAggregateColumnReverseEdge,
   appendDirectAggregateColumnReverseEdges,
   appendTrackedReverseEdge,
-  appendUnindexedAggregateColumnReverseEdge,
   directCriteriaAggregateColumn,
   directLookupColumnInfo,
   directRegionIdsForFormula,
@@ -152,9 +152,10 @@ export function installFreshFormulaBindingNow(args: {
   if (directCriteriaAggregate) {
     const aggregateSheet = serviceArgs.state.workbook.getSheet(directCriteriaAggregate.sheetName)
     if (aggregateSheet) {
-      appendUnindexedAggregateColumnReverseEdge(
+      appendDirectCriteriaAggregateColumnReverseEdge(
         serviceArgs.reverseState.reverseAggregateColumnEdges,
         aggregateColumnDependencyKey(aggregateSheet.id, directCriteriaAggregate.col),
+        directCriteriaAggregate,
         args.cellIndex,
       )
     }

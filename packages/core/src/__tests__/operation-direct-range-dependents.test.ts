@@ -3,7 +3,10 @@ import { ValueTag } from '@bilig/protocol'
 import type { RuntimeDirectAggregateDescriptor, RuntimeDirectCriteriaDescriptor } from '../engine/runtime-state.js'
 import { DirectFormulaIndexCollection } from '../engine/services/direct-formula-index-collection.js'
 import { aggregateColumnDependencyKey } from '../engine/services/direct-formula-recalc-helpers.js'
-import { appendDirectAggregateColumnReverseEdges } from '../engine/services/formula-binding-dependency-helpers.js'
+import {
+  appendDirectAggregateColumnReverseEdges,
+  appendDirectCriteriaAggregateColumnReverseEdge,
+} from '../engine/services/formula-binding-dependency-helpers.js'
 import { createOperationDirectRangeDependentService } from '../engine/services/operation-direct-range-dependents.js'
 
 function directAggregate(overrides: Partial<RuntimeDirectAggregateDescriptor> = {}): RuntimeDirectAggregateDescriptor {
@@ -49,6 +52,10 @@ function createService(
     singleRegionDependent?: number
     aggregateDependents?: readonly number[]
     indexedAggregateDependents?: readonly { readonly cellIndex: number; readonly aggregate: RuntimeDirectAggregateDescriptor }[]
+    indexedCriteriaAggregateDependents?: readonly {
+      readonly cellIndex: number
+      readonly aggregateRange: Pick<NonNullable<RuntimeDirectCriteriaDescriptor['aggregateRange']>, 'rowStart' | 'rowEnd'>
+    }[]
     hasNoCellDependents?: boolean
     entityDependent?: number
     criteriaDelta?: number | undefined
@@ -63,6 +70,14 @@ function createService(
       aggregateEdges,
       { getSheet: (sheetName: string) => (sheetName === 'Sheet1' ? { id: 7 } : undefined) },
       dependent.aggregate,
+      dependent.cellIndex,
+    )
+  })
+  request.indexedCriteriaAggregateDependents?.forEach((dependent) => {
+    appendDirectCriteriaAggregateColumnReverseEdge(
+      aggregateEdges,
+      aggregateColumnDependencyKey(7, 0),
+      dependent.aggregateRange,
       dependent.cellIndex,
     )
   })
@@ -126,6 +141,44 @@ describe('operation direct range dependents', () => {
         { cellIndex: 10, aggregate: directAggregate({ rowStart: 1, rowEnd: 3 }) },
         { cellIndex: 11, aggregate: directAggregate({ rowStart: 2, rowEnd: 4 }) },
         { cellIndex: 13, aggregate: directAggregate({ rowStart: 20, rowEnd: 30 }) },
+      ],
+    })
+
+    expect(service.collectAffectedDirectRangeDependents({ sheetName: 'Sheet1', row: 2, col: 0 })).toEqual([10, 11])
+  })
+
+  it('collects multi-window criteria aggregate dependents from the row index without scanning unrelated windows', () => {
+    const service = createService({
+      formulas: {
+        get(cellIndex: number) {
+          if (cellIndex === 13) {
+            throw new Error('unrelated criteria aggregate window should not be scanned')
+          }
+          const formulas = new Map([
+            [
+              10,
+              {
+                directCriteria: directCriteria({
+                  aggregateRange: { regionId: 1, sheetName: 'Sheet1', rowStart: 1, rowEnd: 3, col: 0, length: 3 },
+                }),
+              },
+            ],
+            [
+              11,
+              {
+                directCriteria: directCriteria({
+                  aggregateRange: { regionId: 1, sheetName: 'Sheet1', rowStart: 2, rowEnd: 4, col: 0, length: 3 },
+                }),
+              },
+            ],
+          ])
+          return formulas.get(cellIndex)
+        },
+      },
+      indexedCriteriaAggregateDependents: [
+        { cellIndex: 10, aggregateRange: { rowStart: 1, rowEnd: 3 } },
+        { cellIndex: 11, aggregateRange: { rowStart: 2, rowEnd: 4 } },
+        { cellIndex: 13, aggregateRange: { rowStart: 20, rowEnd: 30 } },
       ],
     })
 

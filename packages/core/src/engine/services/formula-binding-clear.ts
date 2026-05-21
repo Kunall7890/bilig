@@ -16,8 +16,8 @@ import {
   directCriteriaAggregateColumn,
   directLookupColumnInfo,
   removeDirectAggregateColumnReverseEdges,
+  removeDirectCriteriaAggregateColumnReverseEdge,
   removeTrackedReverseEdge,
-  removeUnindexedAggregateColumnReverseEdge,
 } from './formula-binding-dependency-helpers.js'
 import { normalizeDefinedName } from '../../workbook-store.js'
 import type { FormulaBindingMemberCounts } from './formula-binding-member-counts.js'
@@ -92,7 +92,7 @@ export function clearFormulaBindingNow(args: {
     if (directCriteriaAggregate) {
       const aggregateSheet = serviceArgs.state.workbook.getSheet(directCriteriaAggregate.sheetName)
       if (aggregateSheet) {
-        removeUnindexedAggregateColumnReverseEdge(
+        removeDirectCriteriaAggregateColumnReverseEdge(
           serviceArgs.reverseState.reverseAggregateColumnEdges,
           aggregateColumnDependencyKey(aggregateSheet.id, directCriteriaAggregate.col),
           args.cellIndex,

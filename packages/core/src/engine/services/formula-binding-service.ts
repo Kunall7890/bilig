@@ -31,7 +31,7 @@ import {
   directRegionIdsForFormula,
   hasQualifiedDependencies,
   removeDirectAggregateColumnReverseEdges,
-  removeUnindexedAggregateColumnReverseEdge,
+  removeDirectCriteriaAggregateColumnReverseEdge,
 } from './formula-binding-dependency-helpers.js'
 import {
   buildDirectAggregateDescriptor,
@@ -418,7 +418,7 @@ export function createEngineFormulaBindingService(args: CreateEngineFormulaBindi
     if (previousDirectCriteriaAggregate) {
       const previousCriteriaSheet = args.state.workbook.getSheet(previousDirectCriteriaAggregate.sheetName)
       if (previousCriteriaSheet) {
-        removeUnindexedAggregateColumnReverseEdge(
+        removeDirectCriteriaAggregateColumnReverseEdge(
           args.reverseState.reverseAggregateColumnEdges,
           aggregateColumnDependencyKey(previousCriteriaSheet.id, previousDirectCriteriaAggregate.col),
           cellIndex,
