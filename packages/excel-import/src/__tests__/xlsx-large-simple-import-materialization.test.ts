@@ -1,9 +1,11 @@
 import { strToU8, zipSync } from 'fflate'
 import { describe, expect, it } from 'vitest'
 
+import { importXlsx } from '../index.js'
 import { lazySheetCellMaterializationThreshold } from '../xlsx-large-simple-build-parsed-worksheet.js'
 import { tryImportLargeSimpleXlsx } from '../xlsx-large-simple-import.js'
 import { isLazyWorkbookSheetCells } from '../xlsx-large-simple-lazy-sheet-cells.js'
+import { detachImportedXlsxSourceBytes } from '../xlsx-source-bytes.js'
 import { readLazyXlsxZipSourceByteLength, readXlsxZipEntriesLazy } from '../xlsx-zip.js'
 
 describe('large simple XLSX import materialization lifetime', () => {
@@ -101,6 +103,48 @@ describe('large simple XLSX import materialization lifetime', () => {
     expect(phases.indexOf('public-snapshot-materialization')).toBeLessThan(phases.indexOf('zip-source-release'))
     expect(readLazyXlsxZipSourceByteLength(zip)).toBe(0)
   })
+
+  it('enables public spooled-source imports to finalize independent sheets before global materialization', () => {
+    const bytes = buildIndependentWorkbook(
+      [
+        {
+          name: 'First',
+          path: 'xl/worksheets/sheet1.xml',
+          xml: worksheetXml('A', 7),
+        },
+        {
+          name: 'Second',
+          path: 'xl/worksheets/sheet2.xml',
+          xml: worksheetXml('B', 11),
+        },
+      ],
+      { 'docProps/padding.bin': deterministicBytes(9_000_000) },
+    )
+
+    const imported = importXlsx(bytes, 'public-spooled-independent-sheets.xlsx')
+    const phases = imported.stats?.phaseTelemetry.map((entry) => entry.phase) ?? []
+    const ownedReleasePhase = imported.stats?.phaseTelemetry.find((entry) => entry.ownedSourceBytesBeforeRelease !== undefined)
+    const firstMaterializationIndex = phases.indexOf('public-snapshot-materialization')
+    const sharedStringResolutionIndex = phases.indexOf('shared-string-resolution')
+    const styleParsingIndex = phases.indexOf('style-parsing')
+
+    expect(imported.snapshot.sheets.map((sheet) => sheet.cells)).toEqual([
+      [
+        { address: 'A1', value: 7 },
+        { address: 'B1', value: 'A inline' },
+      ],
+      [
+        { address: 'A1', value: 11 },
+        { address: 'B1', value: 'B inline' },
+      ],
+    ])
+    expect(ownedReleasePhase?.ownedSourceBytesBeforeRelease).toBeGreaterThan(8 * 1024 * 1024)
+    expect(ownedReleasePhase?.ownedSourceBytesAfterRelease).toBe(0)
+    expect(firstMaterializationIndex).toBeGreaterThanOrEqual(0)
+    expect(firstMaterializationIndex).toBeLessThan(sharedStringResolutionIndex)
+    expect(firstMaterializationIndex).toBeLessThan(styleParsingIndex)
+    expect(detachImportedXlsxSourceBytes(imported.snapshot)).toBe(true)
+  }, 30_000)
 
   it('keeps single-sheet imports on the default ZIP-release-before-materialization path', () => {
     const bytes = buildIndependentWorkbook([
@@ -533,7 +577,7 @@ function worksheetXml(label: string, value: number): string {
 
 function buildIndependentWorkbook(
   sheets: readonly { readonly name: string; readonly path: string; readonly xml: string }[],
-  extraEntries: Record<string, string> = {},
+  extraEntries: Record<string, string | Uint8Array> = {},
 ): Uint8Array {
   return zipSync({
     'xl/workbook.xml': strToU8(`<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
@@ -552,8 +596,20 @@ ${sheets
   .join('')}
 </Relationships>`),
     ...Object.fromEntries(sheets.map((sheet) => [sheet.path, strToU8(sheet.xml)])),
-    ...Object.fromEntries(Object.entries(extraEntries).map(([path, xml]) => [path, strToU8(xml)])),
+    ...Object.fromEntries(
+      Object.entries(extraEntries).map(([path, content]) => [path, content instanceof Uint8Array ? content : strToU8(content)]),
+    ),
   })
+}
+
+function deterministicBytes(length: number): Uint8Array {
+  const bytes = new Uint8Array(length)
+  let state = 0x12345678
+  for (let index = 0; index < length; index += 1) {
+    state = (Math.imul(state, 1664525) + 1013904223) >>> 0
+    bytes[index] = (state >>> 24) & 0xff
+  }
+  return bytes
 }
 
 function sharedStringWorksheetXml(sharedStringIndexes: readonly number[]): string {

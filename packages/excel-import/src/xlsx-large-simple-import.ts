@@ -225,7 +225,7 @@ export function tryImportLargeSimpleXlsx(
     materializeCells &&
     worksheetEntries.length > 1 &&
     options.allowPreReleaseSheetFinalization === true &&
-    options.releaseOwnedSourceBytes === undefined
+    (options.releaseOwnedSourceBytes === undefined || options.allowPreReleaseSheetFinalizationWithOwnedSourceRelease === true)
   const sheetHasRelationshipBackedArtifacts = (
     sheetName: string,
     metadataScan: LargeSimpleWorksheetScannedMetadata | undefined,
