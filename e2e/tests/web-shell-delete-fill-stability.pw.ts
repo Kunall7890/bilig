@@ -1,7 +1,7 @@
 import { expect, test, type Page } from '@playwright/test'
 import {
   clickProductCell,
-  countGreenFillReadbackPixelsInCell,
+  countGreenFillPixelsInCell,
   createTestDocumentId,
   expectToolbarColor,
   getProductColumnLeft,
@@ -9,7 +9,6 @@ import {
   getProductRowHeight,
   getProductRowTop,
   getToolbarButton,
-  installTypeGpuCellReadbackHarness,
   PRIMARY_MODIFIER,
   PRODUCT_HEADER_HEIGHT,
   pickToolbarPresetColor,
@@ -20,7 +19,6 @@ test('@browser-ci web app keeps deleted filled cells stable after click-away and
   const documentId = createTestDocumentId('playwright-delete-fill-stability')
   const text = 'delete-fill-no-ghost'
   await page.setViewportSize({ width: 1166, height: 820 })
-  await installTypeGpuCellReadbackHarness(page)
   await page.goto(`/?document=${encodeURIComponent(documentId)}&persist=0&sheet=Sheet1&cell=A1`)
   await waitForWorkbookReady(page)
 
@@ -31,10 +29,11 @@ test('@browser-ci web app keeps deleted filled cells stable after click-away and
   await formulaInput.fill(text)
   await formulaInput.press('Enter')
   await expect(formulaInput).toHaveValue(text)
+  await expect.poll(() => nativeTextRunTextAt(page, 1, 1)).toBe(text)
 
   await pickToolbarPresetColor(page, 'Fill color', 'green')
   await expect
-    .poll(() => countGreenFillReadbackPixelsInCell(page, 1, 1), {
+    .poll(() => countGreenFillPixelsInCell(page, 1, 1), {
       message: 'setup should visibly paint B2 green before deletion',
       timeout: 5_000,
     })
@@ -43,27 +42,30 @@ test('@browser-ci web app keeps deleted filled cells stable after click-away and
   await clickProductCell(page, 1, 1)
   await grid.press('Delete')
   await expect(formulaInput).toHaveValue('')
+  await expect.poll(() => nativeTextRunTextAt(page, 1, 1)).toBe('')
   expect(
     Math.min(...(await sampleGreenFillPixelsAcrossFrames(page, 1, 1, 4))),
     'delete must clear text without flashing the retained fill to default',
   ).toBeGreaterThan(120)
 
   await clickProductCell(page, 4, 4)
-  await expect.poll(() => countGreenFillReadbackPixelsInCell(page, 1, 1)).toBeGreaterThan(120)
+  await expect.poll(() => nativeTextRunsInclude(page, text)).toBe(false)
+  await expect.poll(() => countGreenFillPixelsInCell(page, 1, 1)).toBeGreaterThan(120)
 
   await page.getByTestId('grid-scroll-viewport').evaluate((viewport) => {
     viewport.scrollTop = 900
     viewport.scrollLeft = 220
     viewport.dispatchEvent(new Event('scroll', { bubbles: true }))
   })
-  await expect.poll(() => countGreenFillReadbackPixelsInCell(page, 1, 1)).toBe(0)
+  await expect.poll(() => nativeTextRunsInclude(page, text)).toBe(false)
 
   await page.getByTestId('grid-scroll-viewport').evaluate((viewport) => {
     viewport.scrollTop = 0
     viewport.scrollLeft = 0
     viewport.dispatchEvent(new Event('scroll', { bubbles: true }))
   })
-  await expect.poll(() => countGreenFillReadbackPixelsInCell(page, 1, 1)).toBeGreaterThan(120)
+  await expect.poll(() => nativeTextRunsInclude(page, text)).toBe(false)
+  await expect.poll(() => countGreenFillPixelsInCell(page, 1, 1)).toBeGreaterThan(120)
 
   await clickProductCell(page, 1, 1)
   await expect(formulaInput).toHaveValue('')
@@ -73,7 +75,6 @@ test('@browser-ci web app preserves filled-cell presentation when formula-bar cl
   const documentId = createTestDocumentId('playwright-formula-clear-fill-stability')
   const text = 'formula-clear-keeps-fill'
   await page.setViewportSize({ width: 1166, height: 820 })
-  await installTypeGpuCellReadbackHarness(page)
   await page.goto(`/?document=${encodeURIComponent(documentId)}&persist=0&sheet=Sheet1&cell=A1`)
   await waitForWorkbookReady(page)
 
@@ -82,7 +83,7 @@ test('@browser-ci web app preserves filled-cell presentation when formula-bar cl
   await clickProductCell(page, 3, 9)
   await formulaInput.fill(text)
   await formulaInput.press('Enter')
-  await expect(formulaInput).toHaveValue(text)
+  await expect.poll(() => nativeTextRunTextAt(page, 3, 9)).toBe(text)
 
   await clickProductCell(page, 3, 9)
   await pickToolbarPresetColor(page, 'Fill color', 'green')
@@ -94,24 +95,26 @@ test('@browser-ci web app preserves filled-cell presentation when formula-bar cl
   await formulaInput.fill('')
   await formulaInput.press('Enter')
   await expect(formulaInput).toHaveValue('')
+  await expect.poll(() => nativeTextRunTextAt(page, 3, 9)).toBe('')
   expect(
     Math.min(...(await sampleGreenFillPixelsAcrossFrames(page, 3, 9, 4))),
     'formula-bar clear should not flash the retained fill to default while commit delete is optimistic',
   ).toBeGreaterThan(120)
 
   await clickProductCell(page, 5, 11)
-  await expect.poll(() => countGreenFillReadbackPixelsInCell(page, 3, 9)).toBeGreaterThan(120)
+  await expect.poll(() => nativeTextRunsInclude(page, text)).toBe(false)
+  await expect.poll(() => countGreenFillPixelsInCell(page, 3, 9)).toBeGreaterThan(120)
 
   await clickProductCell(page, 3, 9)
   await expect(formulaInput).toHaveValue('')
-  await expect.poll(() => countGreenFillReadbackPixelsInCell(page, 3, 9)).toBeGreaterThan(120)
+  await expect.poll(() => nativeTextRunsInclude(page, text)).toBe(false)
+  await expect.poll(() => countGreenFillPixelsInCell(page, 3, 9)).toBeGreaterThan(120)
 })
 
 test('@browser-ci web app applies fill color after moving text into an empty tile range', async ({ page }) => {
   const documentId = createTestDocumentId('playwright-move-text-fill-range')
   const text = 'moved-fill-stability'
   await page.setViewportSize({ width: 1166, height: 820 })
-  await installTypeGpuCellReadbackHarness(page)
   await page.goto(`/?document=${encodeURIComponent(documentId)}&persist=0&sheet=Sheet1&cell=A1`)
   await waitForWorkbookReady(page)
 
@@ -121,13 +124,11 @@ test('@browser-ci web app applies fill color after moving text into an empty til
   await clickProductCell(page, 1, 1)
   await formulaInput.fill(text)
   await formulaInput.press('Enter')
-  await expect(formulaInput).toHaveValue(text)
+  await expect.poll(() => nativeTextRunTextAt(page, 1, 1)).toBe(text)
 
   await dragProductSelectionBorder(page, 1, 1, 3, 4)
-  await clickProductCell(page, 1, 1)
-  await expect(formulaInput).toHaveValue('')
-  await clickProductCell(page, 3, 4)
-  await expect(formulaInput).toHaveValue(text)
+  await expect.poll(() => nativeTextRunTextAt(page, 1, 1)).toBe('')
+  await expect.poll(() => nativeTextRunTextAt(page, 3, 4)).toBe(text)
 
   await clickProductCell(page, 3, 4)
   await clickProductCell(page, 5, 7, { shift: true })
@@ -145,7 +146,7 @@ test('@browser-ci web app applies fill color after moving text into an empty til
     .poll(
       async () => {
         const pixelCounts = await Promise.all(
-          fillProofCells.map(([columnIndex, rowIndex]) => countGreenFillReadbackPixelsInCell(page, columnIndex, rowIndex)),
+          fillProofCells.map(([columnIndex, rowIndex]) => countGreenFillPixelsInCell(page, columnIndex, rowIndex)),
         )
         return Math.min(...pixelCounts)
       },
@@ -158,19 +159,20 @@ test('@browser-ci web app applies fill color after moving text into an empty til
 
   await grid.press('Delete')
   await expect(formulaInput).toHaveValue('')
-  await expect.poll(() => countGreenFillReadbackPixelsInCell(page, 3, 4)).toBeGreaterThan(120)
+  await expect.poll(() => nativeTextRunsInclude(page, text)).toBe(false)
+  await expect.poll(() => countGreenFillPixelsInCell(page, 3, 4)).toBeGreaterThan(120)
 
   await clickProductCell(page, 7, 9)
   await clickProductCell(page, 3, 4)
   await expect(formulaInput).toHaveValue('')
-  await expect.poll(() => countGreenFillReadbackPixelsInCell(page, 3, 4)).toBeGreaterThan(120)
+  await expect.poll(() => nativeTextRunsInclude(page, text)).toBe(false)
+  await expect.poll(() => countGreenFillPixelsInCell(page, 3, 4)).toBeGreaterThan(120)
 })
 
 test('@browser-ci web app keeps fill undo and redo visually stable from grid keyboard ownership', async ({ page }) => {
   const documentId = createTestDocumentId('playwright-fill-undo-redo-stability')
   const redoShortcut = PRIMARY_MODIFIER === 'Meta' ? 'Meta+Shift+Z' : 'Control+Y'
   await page.setViewportSize({ width: 1166, height: 820 })
-  await installTypeGpuCellReadbackHarness(page)
   await page.goto(`/?document=${encodeURIComponent(documentId)}&persist=0&sheet=Sheet1&cell=A1`)
   await waitForWorkbookReady(page)
 
@@ -193,7 +195,7 @@ test('@browser-ci web app keeps fill undo and redo visually stable from grid key
 
   await grid.press(`${PRIMARY_MODIFIER}+Z`)
   await expect(formulaInput).toHaveValue('')
-  await expect.poll(() => countGreenFillReadbackPixelsInCell(page, 1, 1)).toBe(0)
+  await expect.poll(() => countGreenFillPixelsInCell(page, 1, 1)).toBe(0)
   await expectToolbarColor(getToolbarButton(page, 'Fill color'), '#ffffff')
   await expect(page.getByTestId('name-box')).toHaveValue('B2')
 
@@ -207,6 +209,21 @@ test('@browser-ci web app keeps fill undo and redo visually stable from grid key
   await expect(page.getByTestId('name-box')).toHaveValue('B2')
 })
 
+async function nativeTextRunsInclude(page: Page, text: string): Promise<boolean> {
+  return await page.evaluate(
+    (needle) => Array.from(document.querySelectorAll('[data-native-text-run]')).some((run) => run.textContent?.includes(needle) ?? false),
+    text,
+  )
+}
+
+async function nativeTextRunTextAt(page: Page, columnIndex: number, rowIndex: number): Promise<string> {
+  return await page.evaluate(
+    ({ col, row }) =>
+      document.querySelector(`[data-native-text-run-row="${String(row)}"][data-native-text-run-col="${String(col)}"]`)?.textContent ?? '',
+    { col: columnIndex, row: rowIndex },
+  )
+}
+
 async function sampleGreenFillPixelsAcrossFrames(
   page: Page,
   columnIndex: number,
@@ -217,7 +234,7 @@ async function sampleGreenFillPixelsAcrossFrames(
   if (remainingSamples <= 0) {
     return samples
   }
-  const pixels = await countGreenFillReadbackPixelsInCell(page, columnIndex, rowIndex)
+  const pixels = await countGreenFillPixelsInCell(page, columnIndex, rowIndex)
   await page.waitForTimeout(50)
   return await sampleGreenFillPixelsAcrossFrames(page, columnIndex, rowIndex, remainingSamples - 1, [...samples, pixels])
 }
