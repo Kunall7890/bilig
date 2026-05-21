@@ -65,6 +65,26 @@ const expectedSpillReferenceOracleCells = [
   { address: 'E1', formula: '=ROWS(B1#)', rawValue: 'number\t3.0', value: { kind: 'number', value: 3 } },
   { address: 'F1', formula: '=INDEX(B1#,2)', rawValue: 'number\t2.0', value: { kind: 'number', value: 2 } },
 ] as const
+const shrinkingSpillReferenceOracleAddresses = ['B1', 'B2', 'B3', 'D1', 'E1', 'F1'] as const
+const expectedShrinkingSpillReferenceOracleCells = [
+  { address: 'B1', formula: '=SEQUENCE(A1,1,1,1)', rawValue: 'number\t1.0', value: { kind: 'number', value: 1 } },
+  { address: 'B2', rawValue: 'blank\t', value: { kind: 'blank' } },
+  { address: 'B3', rawValue: 'blank\t', value: { kind: 'blank' } },
+  { address: 'D1', formula: '=SUM(B1#)', rawValue: 'number\t1.0', value: { kind: 'number', value: 1 } },
+  { address: 'E1', formula: '=ROWS(B1#)', rawValue: 'number\t1.0', value: { kind: 'number', value: 1 } },
+  {
+    address: 'F1',
+    formula: '=IFERROR(INDEX(B1#,2),"missing")',
+    rawValue: 'string\tmissing',
+    value: { kind: 'string', value: 'missing' },
+  },
+] as const
+const expectedDesktopExcelShrinkingSpillReferenceOracleCells = [
+  expectedShrinkingSpillReferenceOracleCells[0],
+  { address: 'B2', rawValue: 'string\t', value: { kind: 'string', value: '' } },
+  { address: 'B3', rawValue: 'string\t', value: { kind: 'string', value: '' } },
+  ...expectedShrinkingSpillReferenceOracleCells.slice(3),
+] as const
 const textsplitErrorOracleAddresses = ['C1', 'D1', 'C2', 'D2'] as const
 const expectedTextsplitErrorOracleCells = [
   { address: 'C1', formula: '=TEXTSPLIT(A1,",","|")', rawValue: 'string\tred', value: { kind: 'string', value: 'red' } },
@@ -371,6 +391,34 @@ describe('macOS Desktop Excel XLSX oracle for WorkPaper', () => {
         expect(reimported.getCellFormula(addressToCell('E1'))).toBe('=ROWS(B1#)')
         expect(reimported.getCellFormula(addressToCell('F1'))).toBe('=INDEX(B1#,2)')
         expect(imported.snapshot.workbook.metadata?.spills).toEqual([{ sheetName: 'Cases', address: 'B1', rows: 3, cols: 1 }])
+      } finally {
+        reimported.dispose()
+      }
+    } finally {
+      workbook.dispose()
+    }
+  })
+
+  it('keeps spill-reference consumers valid when a dynamic-array owner shrinks to one cell', () => {
+    const workbook = buildShrinkingSpillReferenceOracleWorkbook()
+    try {
+      workbook.setCellContents(addressToCell('A1'), 1)
+
+      expect(
+        shrinkingSpillReferenceOracleAddresses.map((address) => normalizedCellValue(workbook.getCellValue(addressToCell(address)))),
+      ).toEqual(expectedShrinkingSpillReferenceOracleCells.map((expected) => expected.value))
+      expect(workbook.exportSnapshot().workbook.metadata?.spills).toEqual([{ sheetName: 'Cases', address: 'B1', rows: 1, cols: 1 }])
+
+      const imported = importXlsx(exportXlsx(workbook.exportSnapshot()), 'headless-shrinking-spill-reference-oracle.xlsx')
+      const reimported = WorkPaper.buildFromSnapshot(imported.snapshot, workbookConfig)
+      try {
+        expect(
+          shrinkingSpillReferenceOracleAddresses.map((address) => normalizedCellValue(reimported.getCellValue(addressToCell(address)))),
+        ).toEqual(expectedShrinkingSpillReferenceOracleCells.map((expected) => expected.value))
+        expect(reimported.getCellFormula(addressToCell('D1'))).toBe('=SUM(B1#)')
+        expect(reimported.getCellFormula(addressToCell('E1'))).toBe('=ROWS(B1#)')
+        expect(reimported.getCellFormula(addressToCell('F1'))).toBe('=IFERROR(INDEX(B1#,2),"missing")')
+        expect(imported.snapshot.workbook.metadata?.spills).toEqual([{ sheetName: 'Cases', address: 'B1', rows: 1, cols: 1 }])
       } finally {
         reimported.dispose()
       }
@@ -1111,6 +1159,57 @@ describe('macOS Desktop Excel XLSX oracle for WorkPaper', () => {
   )
 
   it.runIf(process.env.BILIG_EXCEL_ORACLE_RUN === '1')(
+    'matches Desktop Excel spill-reference semantics after a dynamic-array shrink to one cell',
+    () => {
+      if (!isMacosExcelInstalled()) {
+        throw new Error('BILIG_EXCEL_ORACLE_RUN=1 requires /Applications/Microsoft Excel.app')
+      }
+
+      const tempDir = mkdtempSync(join(tmpdir(), 'bilig-headless-excel-shrinking-spill-reference-oracle-'))
+      try {
+        const workbookPath = join(tempDir, 'headless-shrinking-spill-reference-oracle.xlsx')
+        const workbook = buildShrinkingSpillReferenceOracleWorkbook()
+        try {
+          workbook.setCellContents(addressToCell('A1'), 1)
+          writeFileSync(workbookPath, exportXlsx(workbook.exportSnapshot()))
+        } finally {
+          workbook.dispose()
+        }
+
+        const excelResult = runMacosExcelInspectionOracle({
+          workbookPath,
+          worksheetName: 'Cases',
+          formulaCells: [],
+          inspectCells: shrinkingSpillReferenceOracleAddresses,
+          saveWorkbook: true,
+        })
+
+        expect(excelResult.cells).toEqual(expectedDesktopExcelShrinkingSpillReferenceOracleCells)
+
+        const imported = importXlsx(
+          new Uint8Array(readFileSync(workbookPath)),
+          'headless-shrinking-spill-reference-oracle-recalculated.xlsx',
+        )
+        const reimported = WorkPaper.buildFromSnapshot(imported.snapshot, workbookConfig)
+        try {
+          expect(
+            shrinkingSpillReferenceOracleAddresses.map((address) => normalizedCellValue(reimported.getCellValue(addressToCell(address)))),
+          ).toEqual(expectedShrinkingSpillReferenceOracleCells.map((expected) => expected.value))
+          expect(reimported.getCellFormula(addressToCell('D1'))).toBe('=SUM(B1#)')
+          expect(reimported.getCellFormula(addressToCell('E1'))).toBe('=ROWS(B1#)')
+          expect(reimported.getCellFormula(addressToCell('F1'))).toBe('=IFERROR(INDEX(B1#,2),"missing")')
+          expect(imported.snapshot.workbook.metadata?.spills).toEqual([{ sheetName: 'Cases', address: 'B1', rows: 1, cols: 1 }])
+        } finally {
+          reimported.dispose()
+        }
+      } finally {
+        rmSync(tempDir, { recursive: true, force: true })
+      }
+    },
+    60_000,
+  )
+
+  it.runIf(process.env.BILIG_EXCEL_ORACLE_RUN === '1')(
     'round-trips Desktop Excel TEXTSPLIT error spill-child caches back into headless import',
     () => {
       if (!isMacosExcelInstalled()) {
@@ -1741,6 +1840,15 @@ function buildSpillReferenceOracleWorkbook(): WorkPaper {
   return WorkPaper.buildFromSheets(
     {
       Cases: [[1, '=SEQUENCE(3,1,1,1)', null, '=SUM(B1#)', '=ROWS(B1#)', '=INDEX(B1#,2)'], [2], [3]],
+    },
+    workbookConfig,
+  )
+}
+
+function buildShrinkingSpillReferenceOracleWorkbook(): WorkPaper {
+  return WorkPaper.buildFromSheets(
+    {
+      Cases: [[3, '=SEQUENCE(A1,1,1,1)', null, '=SUM(B1#)', '=ROWS(B1#)', '=IFERROR(INDEX(B1#,2),"missing")'], [], []],
     },
     workbookConfig,
   )

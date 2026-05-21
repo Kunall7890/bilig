@@ -258,6 +258,55 @@ describe('formula cache roundtrip', () => {
     expect(reimported.snapshot.workbook.metadata?.spills).toEqual([{ sheetName: 'Sheet1', address: 'B1', rows: 3, cols: 1 }])
   })
 
+  it('exports one-cell dynamic array spills with Desktop Excel metadata', () => {
+    const snapshot = attachRuntimeImage(
+      {
+        version: 1,
+        workbook: {
+          name: 'one-cell-spill-export',
+          metadata: {
+            spills: [{ sheetName: 'Cases', address: 'B1', rows: 1, cols: 1 }],
+          },
+        },
+        sheets: [
+          {
+            id: 1,
+            name: 'Cases',
+            order: 0,
+            cells: [
+              { address: 'A1', value: 1 },
+              { address: 'B1', formula: 'SEQUENCE(A1,1,1,1)' },
+              { address: 'D1', formula: 'ROWS(B1#)', value: 1 },
+            ],
+          },
+        ],
+      } satisfies WorkbookSnapshot,
+      {
+        version: 1,
+        templateBank: [],
+        formulaInstances: [],
+        formulaValues: [],
+        cellValues: [{ sheetName: 'Cases', row: 0, col: 1, value: { tag: ValueTag.Number, value: 1 } }],
+      },
+    )
+
+    const exported = exportXlsx(snapshot)
+    const zip = unzipSync(exported)
+    const sheetXml = strFromU8(zip['xl/worksheets/sheet1.xml'] ?? new Uint8Array())
+    const metadataXml = strFromU8(zip['xl/metadata.xml'] ?? new Uint8Array())
+
+    expect(cellXml(sheetXml, 'B1')).toContain('cm="1"')
+    expect(cellXml(sheetXml, 'B1')).toContain('<f t="array" ref="B1">_xlfn.SEQUENCE(A1,1,1,1)</f>')
+    expect(cellXml(sheetXml, 'D1')).toContain('<f>ROWS(_xlfn.ANCHORARRAY(B1))</f>')
+    expect(metadataXml).toContain('dynamicArrayProperties')
+
+    const reimported = importXlsx(exported, 'one-cell-spill-export.xlsx')
+    const cells = new Map(reimported.snapshot.sheets[0]?.cells.map((cell) => [cell.address, cell]) ?? [])
+    expect(cells.get('B1')).toMatchObject({ formula: 'SEQUENCE(A1,1,1,1)', value: 1 })
+    expect(cells.get('D1')).toMatchObject({ formula: 'ROWS(B1#)', value: 1 })
+    expect(reimported.snapshot.workbook.metadata?.spills).toEqual([{ sheetName: 'Cases', address: 'B1', rows: 1, cols: 1 }])
+  })
+
   it('exports spill-reference consumers with Desktop Excel ANCHORARRAY formulas', () => {
     const snapshot = attachRuntimeImage(
       {

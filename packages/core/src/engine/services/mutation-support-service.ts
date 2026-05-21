@@ -306,17 +306,15 @@ export function createEngineMutationSupportService(args: {
       }
     }
 
-    if (arrayValue.rows > 1 || arrayValue.cols > 1) {
-      changedCellIndices.push(
-        ...args.applyDerivedOp({
-          kind: 'upsertSpillRange',
-          sheetName,
-          address,
-          rows: arrayValue.rows,
-          cols: arrayValue.cols,
-        }),
-      )
-    }
+    changedCellIndices.push(
+      ...args.applyDerivedOp({
+        kind: 'upsertSpillRange',
+        sheetName,
+        address,
+        rows: arrayValue.rows,
+        cols: arrayValue.cols,
+      }),
+    )
 
     return {
       changedCellIndices,
