@@ -632,12 +632,15 @@ function buildDirectAggregateCandidate(node: FormulaNode, symbolicRanges: readon
 export function compileFormulaAst(source: string, ast: FormulaNode, options: CompileFormulaAstOptions = {}): CompiledFormula {
   const optimizedAst = optimizeFormula(ast)
   const bound = bindFormula(optimizedAst)
+  const rootOffsetRequiresLegacyScalar = rootOffsetMayNeedLegacyScalar(ast, optimizedAst)
   const mode =
-    bound.mode === FormulaMode.WasmFastPath && rootIndexMayNeedImplicitIntersection(optimizedAst) ? FormulaMode.JsOnly : bound.mode
+    rootOffsetRequiresLegacyScalar || (bound.mode === FormulaMode.WasmFastPath && rootIndexMayNeedImplicitIntersection(optimizedAst))
+      ? FormulaMode.JsOnly
+      : bound.mode
   const state: CompilerState = { program: [], constants: [], refs: [], ranges: [], strings: [] }
-  const jsPlan = lowerToPlan(optimizedAst)
+  const jsPlan = lowerToPlan(rootOffsetRequiresLegacyScalar ? ast : optimizedAst)
   const volatileMetadata = analyzeVolatileMetadata(options.originalAst ?? ast)
-  const spillResult = producesSpillResult(optimizedAst)
+  const spillResult = rootOffsetRequiresLegacyScalar ? false : producesSpillResult(optimizedAst)
   const parsedReferencesByKey = collectParsedDependencyReferencesFromAst(optimizedAst)
   const parsedDependencies = buildParsedDependenciesFromReferences(parsedReferencesByKey, bound.deps)
 
@@ -692,6 +695,13 @@ function rootIndexMayNeedImplicitIntersection(node: FormulaNode): boolean {
     return false
   }
   return !isDefinitelyNonZeroIndexArgument(node.args[1]) || !isDefinitelyNonZeroIndexArgument(node.args[2])
+}
+
+function rootOffsetMayNeedLegacyScalar(originalAst: FormulaNode, optimizedAst: FormulaNode): boolean {
+  if (originalAst.kind !== 'CallExpr' || originalAst.callee.trim().toUpperCase() !== 'OFFSET') {
+    return false
+  }
+  return optimizedAst.kind !== 'CellRef' && optimizedAst.kind !== 'ErrorLiteral'
 }
 
 function isDefinitelyNonZeroIndexArgument(node: FormulaNode | undefined): boolean {

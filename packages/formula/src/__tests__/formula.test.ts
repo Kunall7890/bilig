@@ -176,9 +176,14 @@ describe('formula', () => {
     expect(compileFormula('SUM(INDEX(A1:C3,0,2))')).toMatchObject({ mode: 1, producesSpill: false })
   })
 
-  it('routes dynamic-array family builtins to the wasm path for numeric-compatible inputs', () => {
-    expect(compileFormula('OFFSET(A1:B4,0,0,2,2)')).toMatchObject({ mode: 0, producesSpill: true })
+  it('keeps standalone OFFSET reference results on the JS scalarization path', () => {
+    expect(compileFormula('OFFSET(A1,1,1)')).toMatchObject({ mode: 1, producesSpill: false })
+    expect(compileFormula('OFFSET(A1:B4,0,0,2,2)')).toMatchObject({ mode: 0, producesSpill: false })
+    expect(compileFormula('OFFSET(A1:B4,A5,B5,2,2)')).toMatchObject({ mode: 0, producesSpill: false })
     expect(compileFormula('SUM(OFFSET(A1:B4,0,0,2,2))')).toMatchObject({ mode: 1, symbolicRanges: ['A1:B2'] })
+  })
+
+  it('routes dynamic-array family builtins to the wasm path for numeric-compatible inputs', () => {
     expect(compileFormula('TAKE(A1:B4,2)')).toMatchObject({ mode: 1, producesSpill: true })
     expect(compileFormula('DROP(A1:B4,1)')).toMatchObject({ mode: 1, producesSpill: true })
     expect(compileFormula('CHOOSECOLS(A1:B4,2)')).toMatchObject({ mode: 1, producesSpill: true })

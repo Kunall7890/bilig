@@ -1092,6 +1092,9 @@ describe('Workpaper formula regressions', () => {
     rows[5][2] = 1030
     rows[0][4] = '=SUM(OFFSET(B2:C2,4,0))'
     rows[1][4] = '=OFFSET(B2:C2,4,0)'
+    rows[6][1] = '=OFFSET(B2:C2,4,0)'
+    rows[6][2] = '=OFFSET(B2:C2,4,0)'
+    rows[6][3] = '=OFFSET(B2:C2,4,0)'
 
     rows[2][10] = 1
     rows[10][3] = 2
@@ -1110,9 +1113,13 @@ describe('Workpaper formula regressions', () => {
     )
 
     expectNumber(cellValue(workbook, 'Sheet1', 0, 4), 1185)
-    expectNumber(cellValue(workbook, 'Sheet1', 1, 4), 155)
+    expectEmpty(cellValue(workbook, 'Sheet1', 1, 4))
+    expectNumber(cellValue(workbook, 'Sheet1', 6, 1), 155)
+    expectNumber(cellValue(workbook, 'Sheet1', 6, 2), 1030)
+    expectEmpty(cellValue(workbook, 'Sheet1', 6, 3))
     expectNumberClose(cellValue(workbook, 'Sheet1', 2, 3), 1)
     expectNumber(cellValue(workbook, 'Sheet1', 2, 5), 10)
+    expect(workbook.engine.getSpillRanges()).toEqual([])
 
     const sheetId = workbook.getSheetId('Sheet1')!
     workbook.setCellContents({ sheet: sheetId, row: 14, col: 3 }, 10)

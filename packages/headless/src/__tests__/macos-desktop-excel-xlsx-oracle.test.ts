@@ -90,6 +90,21 @@ const expectedIndexImplicitIntersectionOracleCells = [
   { address: 'H1', formula: '=SUM(INDEX(A1:C3,2,0))', rawValue: 'number\t15.0', value: { kind: 'number', value: 15 } },
   { address: 'I1', formula: '=SUM(INDEX(A1:C3,0,0))', rawValue: 'number\t45.0', value: { kind: 'number', value: 45 } },
 ] as const
+const offsetImplicitIntersectionOracleAddresses = ['E1', 'E2', 'E3', 'E4', 'A5', 'B5', 'C5', 'D5', 'E5', 'G1', 'H1', 'I1'] as const
+const expectedOffsetImplicitIntersectionOracleCells = [
+  { address: 'E1', formula: '=OFFSET(A1,0,1,3,1)', rawValue: 'number\t2.0', value: { kind: 'number', value: 2 } },
+  { address: 'E2', formula: '=OFFSET(A1,0,1,3,1)', rawValue: 'number\t5.0', value: { kind: 'number', value: 5 } },
+  { address: 'E3', formula: '=OFFSET(A1,0,1,3,1)', rawValue: 'number\t8.0', value: { kind: 'number', value: 8 } },
+  { address: 'E4', formula: '=OFFSET(A1,0,1,3,1)', rawValue: 'blank\t', value: { kind: 'blank' } },
+  { address: 'A5', formula: '=OFFSET(A2,0,0,1,3)', rawValue: 'number\t4.0', value: { kind: 'number', value: 4 } },
+  { address: 'B5', formula: '=OFFSET(A2,0,0,1,3)', rawValue: 'number\t5.0', value: { kind: 'number', value: 5 } },
+  { address: 'C5', formula: '=OFFSET(A2,0,0,1,3)', rawValue: 'number\t6.0', value: { kind: 'number', value: 6 } },
+  { address: 'D5', formula: '=OFFSET(A2,0,0,1,3)', rawValue: 'blank\t', value: { kind: 'blank' } },
+  { address: 'E5', formula: '=OFFSET(A1,0,0,3,3)', rawValue: 'blank\t', value: { kind: 'blank' } },
+  { address: 'G1', formula: '=SUM(OFFSET(A1,0,1,3,1))', rawValue: 'number\t15.0', value: { kind: 'number', value: 15 } },
+  { address: 'H1', formula: '=SUM(OFFSET(A2,0,0,1,3))', rawValue: 'number\t15.0', value: { kind: 'number', value: 15 } },
+  { address: 'I1', formula: '=SUM(OFFSET(A1,0,0,3,3))', rawValue: 'number\t45.0', value: { kind: 'number', value: 45 } },
+] as const
 
 describe('macOS Desktop Excel XLSX oracle for WorkPaper', () => {
   it('exports and reimports the oracle fixture through the headless workbook path', () => {
@@ -127,6 +142,29 @@ describe('macOS Desktop Excel XLSX oracle for WorkPaper', () => {
         expect(
           indexImplicitIntersectionOracleAddresses.map((address) => normalizedCellValue(reimported.getCellValue(addressToCell(address)))),
         ).toEqual(expectedIndexImplicitIntersectionOracleCells.map((expected) => expected.value))
+        expect(reimported.engine.getSpillRanges()).toEqual([])
+      } finally {
+        reimported.dispose()
+      }
+    } finally {
+      workbook.dispose()
+    }
+  })
+
+  it('exports and reimports standalone OFFSET implicit-intersection formulas without spill metadata', () => {
+    const workbook = buildOffsetImplicitIntersectionOracleWorkbook()
+    try {
+      expect(
+        offsetImplicitIntersectionOracleAddresses.map((address) => normalizedCellValue(workbook.getCellValue(addressToCell(address)))),
+      ).toEqual(expectedOffsetImplicitIntersectionOracleCells.map((expected) => expected.value))
+      expect(workbook.engine.getSpillRanges()).toEqual([])
+
+      const imported = importXlsx(exportXlsx(workbook.exportSnapshot()), 'headless-offset-implicit-intersection-oracle.xlsx')
+      const reimported = WorkPaper.buildFromSnapshot(imported.snapshot, indexImplicitIntersectionConfig)
+      try {
+        expect(
+          offsetImplicitIntersectionOracleAddresses.map((address) => normalizedCellValue(reimported.getCellValue(addressToCell(address)))),
+        ).toEqual(expectedOffsetImplicitIntersectionOracleCells.map((expected) => expected.value))
         expect(reimported.engine.getSpillRanges()).toEqual([])
       } finally {
         reimported.dispose()
@@ -524,6 +562,52 @@ describe('macOS Desktop Excel XLSX oracle for WorkPaper', () => {
           expect(
             indexImplicitIntersectionOracleAddresses.map((address) => normalizedCellValue(reimported.getCellValue(addressToCell(address)))),
           ).toEqual(expectedIndexImplicitIntersectionOracleCells.map((expected) => expected.value))
+          expect(reimported.engine.getSpillRanges()).toEqual([])
+        } finally {
+          reimported.dispose()
+        }
+      } finally {
+        rmSync(tempDir, { recursive: true, force: true })
+      }
+    },
+    60_000,
+  )
+
+  it.runIf(process.env.BILIG_EXCEL_ORACLE_RUN === '1')(
+    'matches Desktop Excel standalone OFFSET implicit-intersection semantics',
+    () => {
+      if (!isMacosExcelInstalled()) {
+        throw new Error('BILIG_EXCEL_ORACLE_RUN=1 requires /Applications/Microsoft Excel.app')
+      }
+
+      const tempDir = mkdtempSync(join(tmpdir(), 'bilig-headless-excel-offset-implicit-oracle-'))
+      try {
+        const workbookPath = join(tempDir, 'headless-offset-implicit-intersection-oracle.xlsx')
+        const workbook = buildOffsetImplicitIntersectionOracleWorkbook()
+        try {
+          writeFileSync(workbookPath, exportXlsx(workbook.exportSnapshot()))
+        } finally {
+          workbook.dispose()
+        }
+
+        const excelResult = runMacosExcelInspectionOracle({
+          workbookPath,
+          worksheetName: 'Sheet1',
+          formulaCells: [],
+          inspectCells: offsetImplicitIntersectionOracleAddresses,
+          saveWorkbook: true,
+        })
+
+        expect(excelResult.cells).toEqual(expectedOffsetImplicitIntersectionOracleCells)
+
+        const imported = importXlsx(new Uint8Array(readFileSync(workbookPath)), 'headless-offset-implicit-intersection-recalculated.xlsx')
+        const reimported = WorkPaper.buildFromSnapshot(imported.snapshot, indexImplicitIntersectionConfig)
+        try {
+          expect(
+            offsetImplicitIntersectionOracleAddresses.map((address) =>
+              normalizedCellValue(reimported.getCellValue(addressToCell(address))),
+            ),
+          ).toEqual(expectedOffsetImplicitIntersectionOracleCells.map((expected) => expected.value))
           expect(reimported.engine.getSpillRanges()).toEqual([])
         } finally {
           reimported.dispose()
@@ -991,6 +1075,21 @@ function buildIndexImplicitIntersectionOracleWorkbook(): WorkPaper {
         [7, 8, 9, null, '=INDEX(A1:C3,0,2)'],
         [null, null, null, null, '=INDEX(A1:C3,0,2)'],
         ['=INDEX(A1:C3,2,0)', '=INDEX(A1:C3,2,0)', '=INDEX(A1:C3,2,0)', '=INDEX(A1:C3,2,0)', '=INDEX(A1:C3,0,0)'],
+      ],
+    },
+    indexImplicitIntersectionConfig,
+  )
+}
+
+function buildOffsetImplicitIntersectionOracleWorkbook(): WorkPaper {
+  return WorkPaper.buildFromSheets(
+    {
+      Sheet1: [
+        [1, 2, 3, null, '=OFFSET(A1,0,1,3,1)', null, '=SUM(OFFSET(A1,0,1,3,1))', '=SUM(OFFSET(A2,0,0,1,3))', '=SUM(OFFSET(A1,0,0,3,3))'],
+        [4, 5, 6, null, '=OFFSET(A1,0,1,3,1)'],
+        [7, 8, 9, null, '=OFFSET(A1,0,1,3,1)'],
+        [null, null, null, null, '=OFFSET(A1,0,1,3,1)'],
+        ['=OFFSET(A2,0,0,1,3)', '=OFFSET(A2,0,0,1,3)', '=OFFSET(A2,0,0,1,3)', '=OFFSET(A2,0,0,1,3)', '=OFFSET(A1,0,0,3,3)'],
       ],
     },
     indexImplicitIntersectionConfig,

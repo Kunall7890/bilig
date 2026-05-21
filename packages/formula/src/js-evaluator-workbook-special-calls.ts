@@ -560,6 +560,69 @@ function evaluateReferenceIndex(
   )
 }
 
+function evaluateReferenceOffset(
+  rawArgs: StackValue[],
+  context: EvaluationContext,
+  argRefs: readonly (ReferenceOperand | undefined)[],
+  deps: WorkbookSpecialCallDeps,
+): StackValue | undefined {
+  const bounds = referenceBoundsFromArg(rawArgs[0], argRefs[0], context)
+  if (!bounds) {
+    return undefined
+  }
+  if (rawArgs.length < 3 || rawArgs.length > 5) {
+    return deps.stackScalar(deps.error(ErrorCode.Value))
+  }
+
+  const rowArg = integerIndexArgument(rawArgs[1], deps)
+  if (rowArg.kind === 'error') {
+    return deps.stackScalar(rowArg.value)
+  }
+  const colArg = integerIndexArgument(rawArgs[2], deps)
+  if (colArg.kind === 'error') {
+    return deps.stackScalar(colArg.value)
+  }
+  if (rowArg.kind !== 'ok' || colArg.kind !== 'ok') {
+    return deps.stackScalar(deps.error(ErrorCode.Value))
+  }
+
+  const referenceRows = bounds.rowEnd - bounds.rowStart + 1
+  const referenceCols = bounds.colEnd - bounds.colStart + 1
+  const heightArg = rawArgs.length >= 4 ? integerIndexArgument(rawArgs[3], deps) : ({ kind: 'ok', value: referenceRows } as const)
+  if (heightArg.kind === 'error') {
+    return deps.stackScalar(heightArg.value)
+  }
+  const widthArg = rawArgs.length >= 5 ? integerIndexArgument(rawArgs[4], deps) : ({ kind: 'ok', value: referenceCols } as const)
+  if (widthArg.kind === 'error') {
+    return deps.stackScalar(widthArg.value)
+  }
+  if (heightArg.kind !== 'ok' || widthArg.kind !== 'ok') {
+    return deps.stackScalar(deps.error(ErrorCode.Value))
+  }
+  if (heightArg.value < 1 || widthArg.value < 1) {
+    return deps.stackScalar(deps.error(ErrorCode.Value))
+  }
+
+  const rowStart = bounds.rowStart + rowArg.value
+  const colStart = bounds.colStart + colArg.value
+  const rowEnd = rowStart + heightArg.value - 1
+  const colEnd = colStart + widthArg.value - 1
+  if (rowStart < 0 || colStart < 0 || rowEnd >= MAX_ROWS || colEnd >= MAX_COLS || rowEnd < rowStart || colEnd < colStart) {
+    return deps.stackScalar(deps.error(ErrorCode.Ref))
+  }
+
+  return stackCellRange(
+    {
+      sheetName: bounds.sheetName,
+      rowStart,
+      rowEnd,
+      colStart,
+      colEnd,
+    },
+    context,
+  )
+}
+
 function hiddenAwareSubtotalValues(value: StackValue, ref: ReferenceOperand | undefined, context: EvaluationContext): CellValue[] {
   if (value.kind === 'scalar') {
     if (ref?.kind !== 'cell' || !ref.address) {
@@ -626,6 +689,8 @@ export function evaluateWorkbookSpecialCall(
       return evaluateWholeAxisMatch(callee, rawArgs, context, argRefs, deps)
     case 'INDEX':
       return evaluateReferenceIndex(rawArgs, context, argRefs, deps)
+    case 'OFFSET':
+      return evaluateReferenceOffset(rawArgs, context, argRefs, deps)
     case 'ROWS':
     case 'COLUMNS':
       return evaluateWholeAxisShape(callee, rawArgs, context, argRefs, deps)
