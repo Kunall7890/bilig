@@ -7,6 +7,7 @@ import {
   buildLocalAxisWorkbookDelta,
   buildLocalCellSnapshotWorkbookDelta,
   buildLocalCellSnapshotsWorkbookDelta,
+  buildLocalRangeWorkbookDelta,
 } from '../projected-workbook-local-delta.js'
 
 const identity = {
@@ -91,6 +92,32 @@ describe('projected workbook local delta builders', () => {
     expect(batch.dirty.cellRanges).toEqual(
       new Uint32Array([1, 1, 1, 1, LOCAL_CELL_VISUAL_DIRTY_MASK, 3, 3, 3, 3, LOCAL_CELL_VISUAL_DIRTY_MASK]),
     )
+  })
+
+  it('builds coarse range deltas for unmaterialized optimistic style overlays', () => {
+    const batch = buildLocalRangeWorkbookDelta({
+      identity,
+      range: {
+        startRow: 4,
+        endRow: 899,
+        startCol: 3,
+        endCol: 5,
+      },
+      seq: 49,
+    })
+
+    expect(batch).toMatchObject({
+      calcSeq: 49,
+      seq: 49,
+      sheetId: 7,
+      sheetOrdinal: 3,
+      source: 'localOptimistic',
+      styleSeq: 49,
+      valueSeq: 49,
+    })
+    expect(batch.dirty.axisX).toEqual(new Uint32Array())
+    expect(batch.dirty.axisY).toEqual(new Uint32Array())
+    expect(batch.dirty.cellRanges).toEqual(new Uint32Array([4, 899, 3, 5, LOCAL_CELL_VISUAL_DIRTY_MASK]))
   })
 
   it('builds axis deltas with isolated axis damage and clamped indices', () => {

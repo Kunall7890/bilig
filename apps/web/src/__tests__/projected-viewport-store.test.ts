@@ -466,6 +466,59 @@ describe('ProjectedViewportStore', () => {
     unsubscribeDeltas()
   })
 
+  it('publishes coarse local range deltas for large background overlays set and cleared before viewport materialization', () => {
+    const cache = new ProjectedViewportStore(createNoopWorkerEngineClient())
+    const deltaListener = vi.fn()
+    cache.setSheetIdentities([{ id: 7, name: 'Sheet1', order: 3 }])
+    const unsubscribeDeltas = cache.subscribeWorkbookDeltas(deltaListener)
+    const range = { sheetName: 'Sheet1', startAddress: 'D5', endAddress: 'F900' }
+
+    const rollbackSet = cache.setRangeStyle(range, { fill: { backgroundColor: '#00ff00' } })
+
+    expect(rollbackSet).toEqual(expect.any(Function))
+    expect(cache.getRenderRevisionSnapshot().localRevision).toBe(1)
+    expect(countSheetCells(cache, 'Sheet1')).toBe(0)
+    expect(cache.getCellStyle(cache.getCell('Sheet1', 'E700').styleId)).toEqual({
+      id: cache.getCell('Sheet1', 'E700').styleId,
+      fill: { backgroundColor: '#00ff00' },
+    })
+    expect(countSheetCells(cache, 'Sheet1')).toBe(0)
+    expect(deltaListener).toHaveBeenCalledTimes(1)
+    expect(deltaListener).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        dirty: {
+          axisX: new Uint32Array(),
+          axisY: new Uint32Array(),
+          cellRanges: new Uint32Array([4, 899, 3, 5, LOCAL_CELL_VISUAL_DIRTY_MASK]),
+        },
+        seq: 1,
+        source: 'localOptimistic',
+      }),
+    )
+
+    const rollbackClear = cache.clearRangeStyle(range, ['backgroundColor'])
+
+    expect(rollbackClear).toEqual(expect.any(Function))
+    expect(cache.getRenderRevisionSnapshot().localRevision).toBe(2)
+    expect(countSheetCells(cache, 'Sheet1')).toBe(0)
+    expect(cache.getCellStyle(cache.getCell('Sheet1', 'E700').styleId)?.fill).toBeUndefined()
+    expect(countSheetCells(cache, 'Sheet1')).toBe(0)
+    expect(deltaListener).toHaveBeenCalledTimes(2)
+    expect(deltaListener).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        dirty: {
+          axisX: new Uint32Array(),
+          axisY: new Uint32Array(),
+          cellRanges: new Uint32Array([4, 899, 3, 5, LOCAL_CELL_VISUAL_DIRTY_MASK]),
+        },
+        seq: 2,
+        source: 'localOptimistic',
+      }),
+    )
+
+    unsubscribeDeltas()
+  })
+
   it('lets newer small style edits override an older large range overlay', () => {
     const cache = new ProjectedViewportStore(createNoopWorkerEngineClient())
 

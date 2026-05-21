@@ -4,6 +4,8 @@ import { getWorkbookScrollPerfCollector } from './perf/workbook-scroll-perf.js'
 import {
   buildLocalAxisWorkbookDelta,
   buildLocalCellSnapshotsWorkbookDelta,
+  buildLocalRangeWorkbookDelta,
+  type ProjectedWorkbookLocalDeltaRange,
   type ProjectedWorkbookLocalDeltaSheetIdentity,
 } from './projected-workbook-local-delta.js'
 
@@ -51,6 +53,24 @@ export class ProjectedWorkbookLocalDeltaPublisher {
     })
     this.publish(batch)
     this.noteRendererDeltaApply(startedAt, snapshots.length)
+  }
+
+  emitRange(sheetName: string, range: ProjectedWorkbookLocalDeltaRange): void {
+    if (this.listeners.size === 0) {
+      return
+    }
+    const identity = this.options.resolveSheetIdentity(sheetName)
+    if (!identity) {
+      return
+    }
+    const startedAt = this.now()
+    const batch = buildLocalRangeWorkbookDelta({
+      identity,
+      range,
+      seq: this.nextLocalWorkbookDeltaSeq(),
+    })
+    this.publish(batch)
+    this.noteRendererDeltaApply(startedAt, 1)
   }
 
   emitAxis(sheetName: string, axis: ProjectedWorkbookLocalDeltaAxis, index: number): void {
