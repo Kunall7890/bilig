@@ -195,7 +195,13 @@ export function parseFormula(source: string): FormulaNode {
   function parseStructuredReference(tableName: string): StructuredRefNode {
     eat('lbracket')
     const token = current()
-    if (token.kind !== 'identifier' && token.kind !== 'quotedIdentifier' && token.kind !== 'string' && token.kind !== 'number') {
+    if (
+      token.kind !== 'bracketContent' &&
+      token.kind !== 'identifier' &&
+      token.kind !== 'quotedIdentifier' &&
+      token.kind !== 'string' &&
+      token.kind !== 'number'
+    ) {
       throw new Error(`Expected a structured reference column, received ${token.kind}`)
     }
     eat(token.kind)

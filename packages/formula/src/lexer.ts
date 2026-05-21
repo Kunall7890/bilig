@@ -3,6 +3,7 @@ export type TokenKind =
   | 'identifier'
   | 'quotedIdentifier'
   | 'string'
+  | 'bracketContent'
   | 'error'
   | 'lbracket'
   | 'rbracket'
@@ -110,6 +111,18 @@ export function lexFormula(input: string): Token[] {
           value: source.slice(index, index + errorLiteral.length),
         })
         index += errorLiteral.length
+        continue
+      }
+    }
+
+    if (char === '[') {
+      let end = index + 1
+      while (end < source.length && source[end] !== ']') end += 1
+      if (end < source.length) {
+        tokens.push({ kind: 'lbracket', value: '[' })
+        tokens.push({ kind: 'bracketContent', value: source.slice(index + 1, end) })
+        tokens.push({ kind: 'rbracket', value: ']' })
+        index = end + 1
         continue
       }
     }

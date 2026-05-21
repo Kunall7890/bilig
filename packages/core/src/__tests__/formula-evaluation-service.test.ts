@@ -611,6 +611,34 @@ describe('EngineFormulaEvaluationService', () => {
     expect(Effect.runSync(getEvaluationService(engine).resolveSpillReference('Sheet1', undefined, 'Z1'))).toBeUndefined()
   })
 
+  it('evaluates structured references to table headers with spaces', async () => {
+    const engine = new SpreadsheetEngine({ workbookName: 'evaluation-structured-ref-spaced-headers' })
+    await engine.ready()
+    engine.createSheet('Data')
+    engine.setRangeValues({ sheetName: 'Data', startAddress: 'A1', endAddress: 'B3' }, [
+      ['Q1 Sales', 'Units Sold'],
+      [10, 2],
+      [20, 3],
+    ])
+    engine.setTable({
+      name: 'Sales',
+      sheetName: 'Data',
+      startAddress: 'A1',
+      endAddress: 'B3',
+      columnNames: ['Q1 Sales', 'Units Sold'],
+      headerRow: true,
+      totalsRow: false,
+    })
+
+    engine.setCellFormula('Data', 'D1', 'SUM(Sales[Q1 Sales])')
+    engine.setCellFormula('Data', 'E1', 'SUM(Sales[Units Sold])')
+
+    expect(engine.getCell('Data', 'D1').formula).toBe('SUM(Sales[Q1 Sales])')
+    expect(engine.getCellValue('Data', 'D1')).toEqual({ tag: ValueTag.Number, value: 30 })
+    expect(engine.getCell('Data', 'E1').formula).toBe('SUM(Sales[Units Sold])')
+    expect(engine.getCellValue('Data', 'E1')).toEqual({ tag: ValueTag.Number, value: 5 })
+  })
+
   it('resolves MULTIPLE.OPERATIONS through reference replacements and missing formula cells', async () => {
     const engine = new SpreadsheetEngine({ workbookName: 'evaluation-multiple-operations' })
     await engine.ready()

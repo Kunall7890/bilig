@@ -10,6 +10,7 @@ import {
   lowerToPlan,
   parseFormula,
 } from '../index.js'
+import { serializeFormula } from '../formula-serializer.js'
 
 const context = {
   sheetName: 'Sheet1',
@@ -257,6 +258,20 @@ describe('formula parser/compiler edges', () => {
     const structuredBound = bindFormula(structured)
     expect(structuredBound.symbolicTables).toEqual(['Sales'])
     expect(structuredBound.mode).toBe(FormulaMode.JsOnly)
+
+    expect(lexFormula('SUM(Sales[Q1 Sales])').slice(2, 6)).toEqual([
+      { kind: 'identifier', value: 'Sales' },
+      { kind: 'lbracket', value: '[' },
+      { kind: 'bracketContent', value: 'Q1 Sales' },
+      { kind: 'rbracket', value: ']' },
+    ])
+    const spacedColumn = parseFormula('SUM(Sales[Q1 Sales])')
+    expect(spacedColumn).toEqual({
+      kind: 'CallExpr',
+      callee: 'SUM',
+      args: [{ kind: 'StructuredRef', tableName: 'Sales', columnName: 'Q1 Sales' }],
+    })
+    expect(serializeFormula(spacedColumn)).toBe('SUM(Sales[Q1 Sales])')
 
     const spill = parseFormula('A1#')
     expect(spill).toEqual({ kind: 'SpillRef', ref: 'A1' })
