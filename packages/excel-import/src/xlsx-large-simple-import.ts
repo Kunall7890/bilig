@@ -37,8 +37,7 @@ import {
   type LargeSimpleSharedStrings,
 } from './xlsx-large-simple-shared-strings.js'
 import { shouldUseSharedStringlessFastPathBytes } from './xlsx-large-simple-shared-stringless-fast-path.js'
-import { readLargeSimpleWorkbookStylesFromChunks } from './xlsx-large-simple-styles.js'
-import { readLargeSimpleWorkbookNumberFormatsFromChunks } from './xlsx-large-simple-number-formats.js'
+import { readLargeSimpleWorkbookStyleArtifactsFromChunks } from './xlsx-large-simple-styles.js'
 import {
   maxPreallocatedWorksheetCells,
   prepareLargeSimpleStyleIndexForWorksheet,
@@ -574,20 +573,15 @@ export function tryImportLargeSimpleXlsx(
     }
     scanned.cellScan.styleIndexes.collectRequiredStyleIndexes(requiredStyleIndexes)
   }
-  const parsedStylesByIndex =
+  const parsedStyleArtifacts =
     materializeCells && hasStyles
-      ? readLargeSimpleWorkbookStylesFromChunks(
+      ? readLargeSimpleWorkbookStyleArtifactsFromChunks(
           (onChunk) => forEachInflatedXlsxZipEntryChunk(zip, stylesPath, onChunk),
           requiredStyleIndexes,
         )
-      : new Map()
-  const parsedNumberFormatsByStyleIndex =
-    materializeCells && hasStyles
-      ? readLargeSimpleWorkbookNumberFormatsFromChunks(
-          (onChunk) => forEachInflatedXlsxZipEntryChunk(zip, stylesPath, onChunk),
-          requiredStyleIndexes,
-        )
-      : new Map()
+      : { stylesByIndex: new Map(), numberFormatsByStyleIndex: new Map() }
+  const parsedStylesByIndex = parsedStyleArtifacts.stylesByIndex
+  const parsedNumberFormatsByStyleIndex = parsedStyleArtifacts.numberFormatsByStyleIndex
   if (parsedNumberFormatsByStyleIndex === null) {
     return null
   }

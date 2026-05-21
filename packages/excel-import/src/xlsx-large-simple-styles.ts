@@ -6,6 +6,7 @@ import type {
   CellStyleRecord,
   CellVerticalAlignment,
 } from '@bilig/protocol'
+import { builtinNumberFormatCode, LargeSimpleNumberFormatCollector } from './xlsx-large-simple-number-formats.js'
 
 type ImportedCellStyle = Omit<CellStyleRecord, 'id'>
 
@@ -13,6 +14,11 @@ const elementTextCache = new Map<string, RegExp>()
 
 export interface LargeSimpleWorkbookStylesScanOptions {
   readonly onRetainedBufferLength?: (length: number) => void
+}
+
+export interface LargeSimpleWorkbookStyleArtifacts {
+  readonly stylesByIndex: Map<number, ImportedCellStyle> | null
+  readonly numberFormatsByStyleIndex: Map<number, string> | null
 }
 
 export function readLargeSimpleWorkbookStyles(
@@ -68,6 +74,81 @@ export function readLargeSimpleWorkbookStyles(
     }
   }
   return styles
+}
+
+export function readLargeSimpleWorkbookStyleArtifactsFromChunks(
+  readChunks: (onChunk: (chunk: Uint8Array) => void) => boolean,
+  requiredStyleIndexes: ReadonlySet<number>,
+  options: LargeSimpleWorkbookStylesScanOptions = {},
+): LargeSimpleWorkbookStyleArtifacts {
+  if (requiredStyleIndexes.size === 0) {
+    return { stylesByIndex: new Map(), numberFormatsByStyleIndex: new Map() }
+  }
+  const cellXfs = collectIndexedXmlElementsFromChunks(readChunks, 'cellXfs', 'xf', requiredStyleIndexes, options)
+  if (!cellXfs) {
+    return { stylesByIndex: null, numberFormatsByStyleIndex: null }
+  }
+  const requiredFillIndexes = new Set<number>()
+  const requiredFontIndexes = new Set<number>()
+  const requiredCustomFormatIds = new Set<number>()
+  const styleRefs = new Map<number, StyleComponentRefs>()
+  const styleFormatIds = new Map<number, number>()
+  let stylesSupported = true
+  for (const styleIndex of requiredStyleIndexes) {
+    const xfXml = cellXfs.get(styleIndex)
+    if (!xfXml) {
+      return { stylesByIndex: null, numberFormatsByStyleIndex: null }
+    }
+    const openingTag = readXfOpeningTag(xfXml)
+    if (!openingTag) {
+      return { stylesByIndex: null, numberFormatsByStyleIndex: null }
+    }
+    const formatId = readNonNegativeIntegerAttribute(openingTag, 'numFmtId')
+    if (formatId !== null && formatId !== 0) {
+      styleFormatIds.set(styleIndex, formatId)
+      if (!builtinNumberFormatCode(formatId)) {
+        requiredCustomFormatIds.add(formatId)
+      }
+    }
+    if (!stylesSupported) {
+      continue
+    }
+    const refs = readStyleComponentRefsFromOpeningTag(xfXml, openingTag)
+    if (!refs) {
+      stylesSupported = false
+      styleRefs.clear()
+      requiredFillIndexes.clear()
+      requiredFontIndexes.clear()
+      continue
+    }
+    styleRefs.set(styleIndex, refs)
+    if (refs.fillApplied && refs.fillId !== null) {
+      requiredFillIndexes.add(refs.fillId)
+    }
+    if (refs.fontApplied && refs.fontId !== null) {
+      requiredFontIndexes.add(refs.fontId)
+    }
+  }
+  if (requiredFillIndexes.size === 0 && requiredFontIndexes.size === 0 && requiredCustomFormatIds.size === 0) {
+    return {
+      stylesByIndex: stylesSupported ? buildStylesByIndex(styleRefs, new Map(), new Map()) : null,
+      numberFormatsByStyleIndex: buildNumberFormatsByStyleIndex(styleFormatIds, new Map()),
+    }
+  }
+  const components = collectLargeSimpleWorkbookStyleComponentsFromChunks(
+    readChunks,
+    stylesSupported ? requiredFillIndexes : new Set<number>(),
+    stylesSupported ? requiredFontIndexes : new Set<number>(),
+    requiredCustomFormatIds,
+    options,
+  )
+  if (!components) {
+    return { stylesByIndex: null, numberFormatsByStyleIndex: null }
+  }
+  return {
+    stylesByIndex: stylesSupported ? buildStylesByIndex(styleRefs, components.fills, components.fonts) : null,
+    numberFormatsByStyleIndex: buildNumberFormatsByStyleIndex(styleFormatIds, components.numberFormats),
+  }
 }
 
 export function readLargeSimpleWorkbookStylesFromChunks(
@@ -136,11 +217,21 @@ interface StyleComponentRefs {
   readonly protection?: CellStyleProtectionSnapshot
 }
 
+interface LargeSimpleWorkbookStyleComponents {
+  readonly fills: Map<number, string> | null
+  readonly fonts: Map<number, string> | null
+  readonly numberFormats: Map<number, string> | null
+}
+
 function readStyleComponentRefs(xfXml: string): StyleComponentRefs | null {
-  const openingTag = /<(?:[A-Za-z_][\w.-]*:)?xf\b(?:[^>"']|"[^"]*"|'[^']*')*(?:\/>|>)/u.exec(xfXml)?.[0]
+  const openingTag = readXfOpeningTag(xfXml)
   if (!openingTag) {
     return null
   }
+  return readStyleComponentRefsFromOpeningTag(xfXml, openingTag)
+}
+
+function readStyleComponentRefsFromOpeningTag(xfXml: string, openingTag: string): StyleComponentRefs | null {
   const fillId = readNonNegativeIntegerAttribute(openingTag, 'fillId')
   const fontId = readNonNegativeIntegerAttribute(openingTag, 'fontId')
   const borderId = readNonNegativeIntegerAttribute(openingTag, 'borderId')
@@ -160,6 +251,55 @@ function readStyleComponentRefs(xfXml: string): StyleComponentRefs | null {
     ...(alignment ? { alignment } : {}),
     ...(protection !== undefined ? { protection } : {}),
   }
+}
+
+function readXfOpeningTag(xfXml: string): string | null {
+  return /<(?:[A-Za-z_][\w.-]*:)?xf\b(?:[^>"']|"[^"]*"|'[^']*')*(?:\/>|>)/u.exec(xfXml)?.[0] ?? null
+}
+
+function buildStylesByIndex(
+  styleRefs: ReadonlyMap<number, StyleComponentRefs>,
+  fills: ReadonlyMap<number, string> | null,
+  fonts: ReadonlyMap<number, string> | null,
+): Map<number, ImportedCellStyle> | null {
+  if (!fills || !fonts) {
+    return null
+  }
+  const styles = new Map<number, ImportedCellStyle>()
+  for (const [styleIndex, refs] of styleRefs) {
+    const fill = refs.fillApplied && refs.fillId !== null ? readFillStyle(fills.get(refs.fillId) ?? '') : undefined
+    const font = refs.fontApplied && refs.fontId !== null ? readFontStyle(fonts.get(refs.fontId) ?? '') : undefined
+    if (fill === null || font === null) {
+      return null
+    }
+    const style: ImportedCellStyle = {
+      ...(fill ? { fill } : {}),
+      ...(font ? { font } : {}),
+      ...(refs.alignment ? { alignment: refs.alignment } : {}),
+      ...(refs.protection !== undefined ? { protection: refs.protection } : {}),
+    }
+    if (Object.keys(style).length > 0) {
+      styles.set(styleIndex, style)
+    }
+  }
+  return styles
+}
+
+function buildNumberFormatsByStyleIndex(
+  styleFormatIds: ReadonlyMap<number, number>,
+  customFormats: ReadonlyMap<number, string> | null,
+): Map<number, string> | null {
+  if (!customFormats) {
+    return null
+  }
+  const formatsByStyleIndex = new Map<number, string>()
+  for (const [styleIndex, formatId] of styleFormatIds) {
+    const format = builtinNumberFormatCode(formatId) ?? customFormats.get(formatId)
+    if (format) {
+      formatsByStyleIndex.set(styleIndex, format)
+    }
+  }
+  return formatsByStyleIndex
 }
 
 function readFillStyles(stylesXml: string): Array<ImportedCellStyle['fill'] | null> | null {
@@ -365,6 +505,32 @@ function collectIndexedXmlElementsFromChunks(
     return null
   }
   return collector.finish()
+}
+
+function collectLargeSimpleWorkbookStyleComponentsFromChunks(
+  readChunks: (onChunk: (chunk: Uint8Array) => void) => boolean,
+  requiredFillIndexes: ReadonlySet<number>,
+  requiredFontIndexes: ReadonlySet<number>,
+  requiredCustomFormatIds: ReadonlySet<number>,
+  options: LargeSimpleWorkbookStylesScanOptions,
+): LargeSimpleWorkbookStyleComponents | null {
+  const fillCollector = new IndexedXmlElementCollector('fills', 'fill', requiredFillIndexes, options)
+  const fontCollector = new IndexedXmlElementCollector('fonts', 'font', requiredFontIndexes, options)
+  const numberFormatCollector = new LargeSimpleNumberFormatCollector(requiredCustomFormatIds, options)
+  if (
+    !readChunks((chunk) => {
+      fillCollector.push(chunk)
+      fontCollector.push(chunk)
+      numberFormatCollector.push(chunk)
+    })
+  ) {
+    return null
+  }
+  return {
+    fills: fillCollector.finish(),
+    fonts: fontCollector.finish(),
+    numberFormats: numberFormatCollector.finish(),
+  }
 }
 
 class IndexedXmlElementCollector {
