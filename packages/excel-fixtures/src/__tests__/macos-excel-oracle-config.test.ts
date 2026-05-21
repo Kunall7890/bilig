@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-import { resolveExcelOracleDisabled } from '../workpaper-excel-oracle-config.ts'
+import { resolveExcelOracleDisabled } from '../macos-excel-oracle-config.js'
 
 describe('WorkPaper Excel oracle config', () => {
   it('defaults to allowing Excel oracle automation checks', () => {

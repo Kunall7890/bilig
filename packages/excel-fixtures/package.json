@@ -38,6 +38,7 @@
     "access": "public"
   },
   "scripts": {
+    "test": "vitest run --root ../.. packages/excel-fixtures/src/__tests__",
     "build": "tsc -p tsconfig.json"
   },
   "dependencies": {
