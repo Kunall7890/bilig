@@ -22,6 +22,7 @@ The public surface stays generic:
 - `describeRef`
 - `describePlan`
 - `describePlanResult`
+- `describeRunResult`
 - `describeRuntimeRequirements`
 - `verifyPlan`
 - `verifyModel`
@@ -39,6 +40,8 @@ The public surface stays generic:
 - `WorkbookRefDescription`
 - `WorkbookActionPlanDescription`
 - `WorkbookActionPlanResultDescription`
+- `WorkbookRunResultDescription`
+- `WorkbookUndoRefDescription`
 - `WorkbookRuntimeRequirements`
 - `WorkbookRuntimeRequirement`
 - `WorkbookRuntimeCapability`
@@ -167,6 +170,10 @@ consumer-private `refs` object shape and helper functions such as
 `table.column()`.
 Use `describePlanResult` when the same JSON-safe handoff is needed for either
 planned or failed action planning.
+Use `describeRunResult` after execution when an agent needs the same JSON-safe
+shape for `done` or `failed` run results. It preserves changed summaries,
+checks, errors, and undo ops, but describes workbook refs without helper
+functions such as `table.column()` or `rows.column()`.
 Use `describeRuntimeRequirements(plan)` before runtime handoff when an agent
 needs to inspect what the adapter must do. It returns a JSON-safe list of
 generic `apply`, `read`, and `verify` requirements with boring capabilities

@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from 'vitest'
 import {
+  describeRunResult,
   defineModel,
   findRange,
   formula,
@@ -79,6 +80,64 @@ describe('@bilig/workbook run api', () => {
       ],
       undo: { id: 'undo-1' },
     })
+  })
+
+  it('describes successful run results without leaking ref helper functions', async () => {
+    const model = defineModel({
+      name: 'run-description-model',
+
+      find(workbook) {
+        return {
+          table: workbook.findTable({ name: 'Inputs', headers: ['Amount'] }),
+        }
+      },
+
+      checks({ refs, workbook }) {
+        return [workbook.check.exists(refs.table)]
+      },
+
+      actions: {
+        inspect({ refs }) {
+          void refs.table
+        },
+      },
+    })
+
+    const result = await runWorkbookAction(model, 'inspect', {
+      apply: () => ({
+        status: 'applied',
+        undo: {
+          id: 'undo-1',
+          ops: [{ kind: 'setCellValue', sheetName: 'Sheet1', address: 'A1', value: 1 }],
+        },
+      }),
+      verifyChecks: (checks) => checks.map((checkResult) => ({ ...checkResult, status: 'passed' })),
+    })
+    const described = describeRunResult(result)
+
+    expect(described).toEqual({
+      status: 'done',
+      changed: [],
+      checks: [
+        {
+          status: 'passed',
+          kind: 'exists',
+          target: {
+            kind: 'table',
+            id: 'table_Inputs_Amount',
+            label: 'Inputs',
+            name: 'Inputs',
+            headers: ['Amount'],
+          },
+          message: 'Inputs exists',
+        },
+      ],
+      undo: {
+        id: 'undo-1',
+        ops: [{ kind: 'setCellValue', sheetName: 'Sheet1', address: 'A1', value: 1 }],
+      },
+    })
+    expect(JSON.parse(JSON.stringify(described))).toEqual(described)
   })
 
   it('passes formula readback checks with exact normalized formula text', async () => {
@@ -526,6 +585,55 @@ describe('@bilig/workbook run api', () => {
         },
       ],
     })
+  })
+
+  it('describes failed run results as JSON-safe errors and checks', async () => {
+    const model = valueModel()
+
+    const result = await runWorkbookAction(model, 'write', {
+      apply: () => ({
+        status: 'failed',
+        errors: [
+          {
+            code: 'runtime_rejected',
+            message: 'runtime rejected the plan',
+          },
+        ],
+      }),
+    })
+    const described = describeRunResult(result)
+
+    expect(described).toEqual({
+      status: 'failed',
+      errors: [
+        {
+          code: 'runtime_rejected',
+          message: 'runtime rejected the plan',
+        },
+      ],
+      checks: [
+        {
+          status: 'planned',
+          kind: 'valueEquals',
+          target: {
+            kind: 'range',
+            id: 'range_Sheet1_B2_B2',
+            label: 'Sheet1!B2',
+            range: {
+              sheetName: 'Sheet1',
+              startAddress: 'B2',
+              endAddress: 'B2',
+            },
+          },
+          message: 'Sheet1!B2 equals 12',
+          expectation: {
+            kind: 'valueEquals',
+            value: 12,
+          },
+        },
+      ],
+    })
+    expect(JSON.parse(JSON.stringify(described))).toEqual(described)
   })
 
   it('returns failed when an expected readback is missing', async () => {

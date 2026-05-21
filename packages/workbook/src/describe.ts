@@ -19,7 +19,14 @@ import {
 } from './model.js'
 import type { WorkbookActionInput } from './input.js'
 import type { WorkbookOp } from './ops.js'
-import type { WorkbookChangeSummary, WorkbookCheckExpectation, WorkbookCheckResult, WorkbookCheckStatus } from './result.js'
+import type {
+  WorkbookChangeSummary,
+  WorkbookCheckExpectation,
+  WorkbookCheckResult,
+  WorkbookCheckStatus,
+  WorkbookRunResult,
+  WorkbookUndoRef,
+} from './result.js'
 
 export interface WorkbookModelDescription {
   readonly name: string
@@ -151,6 +158,24 @@ export type WorkbookActionPlanResultDescription =
       readonly modelName: string
       readonly actionName: string
       readonly input?: WorkbookActionInput
+      readonly errors: readonly WorkbookRunErrorDescription[]
+      readonly checks: readonly WorkbookCheckResultDescription[]
+    }
+
+export interface WorkbookUndoRefDescription {
+  readonly id: string
+  readonly ops?: readonly WorkbookOp[]
+}
+
+export type WorkbookRunResultDescription =
+  | {
+      readonly status: 'done'
+      readonly changed: readonly WorkbookChangeSummaryDescription[]
+      readonly checks: readonly WorkbookCheckResultDescription[]
+      readonly undo?: WorkbookUndoRefDescription
+    }
+  | {
+      readonly status: 'failed'
       readonly errors: readonly WorkbookRunErrorDescription[]
       readonly checks: readonly WorkbookCheckResultDescription[]
     }
@@ -324,6 +349,13 @@ function describeError(error: WorkbookRunErrorDescription): WorkbookRunErrorDesc
   }
 }
 
+function describeUndo(undo: WorkbookUndoRef): WorkbookUndoRefDescription {
+  return {
+    id: undo.id,
+    ...(undo.ops !== undefined ? { ops: [...undo.ops] } : {}),
+  }
+}
+
 export function describePlanResult<Refs>(result: WorkbookActionPlanResult<Refs>): WorkbookActionPlanResultDescription {
   if (result.status === 'planned') {
     return {
@@ -336,6 +368,22 @@ export function describePlanResult<Refs>(result: WorkbookActionPlanResult<Refs>)
     modelName: result.modelName,
     actionName: result.actionName,
     ...(result.input !== undefined ? { input: result.input } : {}),
+    errors: result.errors.map(describeError),
+    checks: result.checks.map(describeCheck),
+  }
+}
+
+export function describeRunResult(result: WorkbookRunResult): WorkbookRunResultDescription {
+  if (result.status === 'done') {
+    return {
+      status: 'done',
+      changed: result.changed.map(describeChange),
+      checks: result.checks.map(describeCheck),
+      ...(result.undo !== undefined ? { undo: describeUndo(result.undo) } : {}),
+    }
+  }
+  return {
+    status: 'failed',
     errors: result.errors.map(describeError),
     checks: result.checks.map(describeCheck),
   }
