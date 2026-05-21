@@ -992,6 +992,87 @@ describe('SpreadsheetEngine', () => {
     expectRematerialized(deleted)
   })
 
+  it('rewrites spill-reference consumers when moving dynamic-array owner rows', async () => {
+    const engine = new SpreadsheetEngine({ workbookName: 'spec' })
+    await engine.ready()
+    engine.createSheet('Sheet1')
+    engine.setCellValue('Sheet1', 'A1', 3)
+    engine.setCellFormula('Sheet1', 'B1', 'SEQUENCE(A1,1,1,1)')
+    engine.setCellFormula('Sheet1', 'D1', 'SUM(B1#)')
+    engine.setCellFormula('Sheet1', 'E1', 'ROWS(B1#)')
+    engine.setCellFormula('Sheet1', 'F1', 'IFERROR(INDEX(B1#,2),"missing")')
+
+    engine.moveRows('Sheet1', 0, 1, 2)
+
+    expect(engine.getCell('Sheet1', 'B3').formula).toBe('SEQUENCE(A3,1,1,1)')
+    expect(engine.getCell('Sheet1', 'D3').formula).toBe('SUM(B3#)')
+    expect(engine.getCell('Sheet1', 'E3').formula).toBe('ROWS(B3#)')
+    expect(engine.getCell('Sheet1', 'F3').formula).toBe('IFERROR(INDEX(B3#,2),"missing")')
+    expect(engine.getCellValue('Sheet1', 'B3')).toEqual({ tag: ValueTag.Number, value: 1 })
+    expect(engine.getCellValue('Sheet1', 'B4')).toEqual({ tag: ValueTag.Number, value: 2 })
+    expect(engine.getCellValue('Sheet1', 'B5')).toEqual({ tag: ValueTag.Number, value: 3 })
+    expect(engine.getCellValue('Sheet1', 'D3')).toEqual({ tag: ValueTag.Number, value: 6 })
+    expect(engine.getCellValue('Sheet1', 'E3')).toEqual({ tag: ValueTag.Number, value: 3 })
+    expect(engine.getCellValue('Sheet1', 'F3')).toEqual({ tag: ValueTag.Number, value: 2 })
+    expect(engine.exportSnapshot().workbook.metadata?.spills).toEqual([{ sheetName: 'Sheet1', address: 'B3', rows: 3, cols: 1 }])
+  })
+
+  it('rewrites spill-reference consumers when moving dynamic-array owner columns', async () => {
+    const engine = new SpreadsheetEngine({ workbookName: 'spec' })
+    await engine.ready()
+    engine.createSheet('Sheet1')
+    engine.setCellFormula('Sheet1', 'B1', 'SEQUENCE(1,3,1,1)')
+    engine.setCellFormula('Sheet1', 'A3', 'SUM(B1#)')
+    engine.setCellFormula('Sheet1', 'A4', 'COLUMNS(B1#)')
+    engine.setCellFormula('Sheet1', 'A5', 'IFERROR(INDEX(B1#,1,2),"missing")')
+
+    engine.moveColumns('Sheet1', 1, 1, 2)
+
+    expect(engine.getCell('Sheet1', 'C1').formula).toBe('SEQUENCE(1,3,1,1)')
+    expect(engine.getCell('Sheet1', 'A3').formula).toBe('SUM(C1#)')
+    expect(engine.getCell('Sheet1', 'A4').formula).toBe('COLUMNS(C1#)')
+    expect(engine.getCell('Sheet1', 'A5').formula).toBe('IFERROR(INDEX(C1#,1,2),"missing")')
+    expect(engine.getCellValue('Sheet1', 'C1')).toEqual({ tag: ValueTag.Number, value: 1 })
+    expect(engine.getCellValue('Sheet1', 'D1')).toEqual({ tag: ValueTag.Number, value: 2 })
+    expect(engine.getCellValue('Sheet1', 'E1')).toEqual({ tag: ValueTag.Number, value: 3 })
+    expect(engine.getCellValue('Sheet1', 'A3')).toEqual({ tag: ValueTag.Number, value: 6 })
+    expect(engine.getCellValue('Sheet1', 'A4')).toEqual({ tag: ValueTag.Number, value: 3 })
+    expect(engine.getCellValue('Sheet1', 'A5')).toEqual({ tag: ValueTag.Number, value: 2 })
+    expect(engine.exportSnapshot().workbook.metadata?.spills).toEqual([{ sheetName: 'Sheet1', address: 'C1', rows: 1, cols: 3 }])
+  })
+
+  it('keeps two-dimensional spill consumers valid when moving the owner column', async () => {
+    const engine = new SpreadsheetEngine({ workbookName: 'spec' })
+    await engine.ready()
+    engine.createSheet('Sheet1')
+    engine.setCellFormula('Sheet1', 'B2', 'SEQUENCE(2,3,1,1)')
+    engine.setCellFormula('Sheet1', 'G2', 'SUM(B2#)')
+    engine.setCellFormula('Sheet1', 'G3', 'ROWS(B2#)')
+    engine.setCellFormula('Sheet1', 'G4', 'COLUMNS(B2#)')
+    engine.setCellFormula('Sheet1', 'G5', 'IFERROR(INDEX(B2#,2,2),"missing")')
+
+    engine.moveColumns('Sheet1', 1, 1, 3)
+
+    expect(engine.getCell('Sheet1', 'D2').formula).toBe('SEQUENCE(2,3,1,1)')
+    expect(engine.getCell('Sheet1', 'G2').formula).toBe('SUM(D2#)')
+    expect(engine.getCell('Sheet1', 'G3').formula).toBe('ROWS(D2#)')
+    expect(engine.getCell('Sheet1', 'G4').formula).toBe('COLUMNS(D2#)')
+    expect(engine.getCell('Sheet1', 'G5').formula).toBe('IFERROR(INDEX(D2#,2,2),"missing")')
+    expect(['D2', 'E2', 'F2', 'D3', 'E3', 'F3'].map((address) => engine.getCellValue('Sheet1', address))).toEqual([
+      { tag: ValueTag.Number, value: 1 },
+      { tag: ValueTag.Number, value: 2 },
+      { tag: ValueTag.Number, value: 3 },
+      { tag: ValueTag.Number, value: 4 },
+      { tag: ValueTag.Number, value: 5 },
+      { tag: ValueTag.Number, value: 6 },
+    ])
+    expect(engine.getCellValue('Sheet1', 'G2')).toEqual({ tag: ValueTag.Number, value: 21 })
+    expect(engine.getCellValue('Sheet1', 'G3')).toEqual({ tag: ValueTag.Number, value: 2 })
+    expect(engine.getCellValue('Sheet1', 'G4')).toEqual({ tag: ValueTag.Number, value: 3 })
+    expect(engine.getCellValue('Sheet1', 'G5')).toEqual({ tag: ValueTag.Number, value: 5 })
+    expect(engine.exportSnapshot().workbook.metadata?.spills).toEqual([{ sheetName: 'Sheet1', address: 'D2', rows: 2, cols: 3 }])
+  })
+
   it('evaluates nested sequence aggregates on the wasm path', async () => {
     const engine = new SpreadsheetEngine({ workbookName: 'spec' })
     await engine.ready()

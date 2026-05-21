@@ -297,6 +297,9 @@ export function collectStructuralFormulaImpacts(
     if (!directAggregate || directAggregate.sheetName !== argsForImpact.sheetName) {
       return false
     }
+    if (formula.compiled.symbolicSpills.length > 0) {
+      return false
+    }
     if (mapStructuralAxisIndex(ownerPosition.row, argsForImpact.transform) === undefined) {
       return false
     }
