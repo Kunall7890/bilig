@@ -1,4 +1,5 @@
-import { binarySearchUint32Prefix, initialSparseIntegerCapacity } from './xlsx-large-simple-arena-helpers.js'
+import { initialSparseIntegerCapacity } from './xlsx-large-simple-arena-constants.js'
+import { binarySearchUint32Prefix } from './xlsx-large-simple-arena-helpers.js'
 import { growInt16Array, growInt32Array, growUint32Array } from './xlsx-large-simple-array-storage.js'
 
 export class SparseInt16ArenaValues {

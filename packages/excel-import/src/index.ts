@@ -821,10 +821,10 @@ export function importXlsx(bytes: Uint8Array | ArrayBuffer, fileName: string, op
   const hasCalcChain = Object.hasOwn(workbookZip, 'xl/calcChain.xml')
   const bypassLargeSimpleByteThreshold =
     shouldBypassLargeSimpleByteThresholdForPackageArtifacts(workbookZip) && !hasFullImporterOnlyPackageMetadata(workbookZip)
+  const needsCalcChainFormulaCountInspection =
+    hasCalcChain && sourceByteLength >= denseSheetJsByteThreshold && sourceByteLength < largeCalcChainStreamingByteThreshold
   const inspection =
-    limits || (hasCalcChain && sourceByteLength >= denseSheetJsByteThreshold)
-      ? inspectLargeSimpleXlsxSource(ownedSource.bytes, fileName, inspectionOptions)
-      : null
+    limits || needsCalcChainFormulaCountInspection ? inspectLargeSimpleXlsxSource(ownedSource.bytes, fileName, inspectionOptions) : null
   assertXlsxInspectionWithinMaterializationLimits(inspection, limits)
   const hasLargeCalcChainFormulaSet = hasCalcChain && (inspection?.stats.formulaCellCount ?? 0) >= largeCalcChainStreamingFormulaThreshold
   const allowCachedUnsupportedFormulaText =

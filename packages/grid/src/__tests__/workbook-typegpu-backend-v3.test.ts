@@ -452,6 +452,13 @@ describe('workbook typegpu backend v3 tile path', () => {
     const pane = createTilePane(baseTile)
     const residentContent = tileResources.getContent(resolveWorkbookTileContentBufferKeyV3(pane))
     residentContent.rectCount = 32
+    residentContent.rectRevisionKey = resolveGridRectTileRevisionKeyV3({
+      tile: {
+        ...baseTile,
+        rectCount: 32,
+        rectInstances: new Float32Array(32 * GRID_RECT_INSTANCE_FLOAT_COUNT_V3),
+      },
+    })
     residentContent.textCount = 4
 
     expect(hasTransientEmptyTypeGpuBodyFrameV3({ tilePanes: [pane], tileResources })).toBe(true)
@@ -470,6 +477,56 @@ describe('workbook typegpu backend v3 tile path', () => {
         tileResources,
       }),
     ).toBe(false)
+  })
+
+  test('does not preserve resident fills when an authoritative zero-rect style revision clears them', () => {
+    const tileResources = new TypeGpuTileResourceCacheV3()
+    const filledTile: GridRenderTile = {
+      ...createRenderTile(2),
+      rectCount: 4,
+      rectInstances: new Float32Array(4 * GRID_RECT_INSTANCE_FLOAT_COUNT_V3),
+      rectSignature: 'filled',
+    }
+    const clearTile = createRenderTile(3, filledTile.tileId)
+    const residentContent = tileResources.getContent(resolveWorkbookTileContentBufferKeyV3(createTilePane(filledTile)))
+    residentContent.rectCount = filledTile.rectCount
+    residentContent.rectRevisionKey = resolveGridRectTileRevisionKeyV3({ tile: filledTile })
+
+    expect(
+      hasTransientEmptyTypeGpuBodyFrameV3({
+        tilePanes: [createTilePane(clearTile)],
+        tileResources,
+      }),
+    ).toBe(false)
+  })
+
+  test('does not draw a resident filled tile after resources lag an authoritative zero-rect clear', () => {
+    const filledTile: GridRenderTile = {
+      ...createRenderTile(2),
+      rectCount: 4,
+      rectInstances: new Float32Array(4 * GRID_RECT_INSTANCE_FLOAT_COUNT_V3),
+      rectSignature: 'filled',
+    }
+    const clearTile = createRenderTile(3, filledTile.tileId)
+    const clearPane = createTilePane(clearTile)
+    const tileResources = new TypeGpuTileResourceCacheV3()
+    const residency = new TileResidencyV3<GridRenderTile, null>()
+    const onTileMiss = vi.fn()
+    upsertRenderTile(residency, filledTile)
+    const entry = tileResources.getContent(resolveWorkbookTileContentBufferKeyV3(clearPane))
+    entry.rectCount = filledTile.rectCount
+    entry.rectRevisionKey = resolveGridRectTileRevisionKeyV3({ tile: filledTile })
+    entry.textRevisionKey = resolveGridTextTileRevisionKeyV3(clearTile)
+
+    expect(
+      resolveTypeGpuDrawTilePanesV3({
+        onTileMiss,
+        panes: [clearPane],
+        residency,
+        tileResources,
+      })[0]?.tile,
+    ).toBe(clearTile)
+    expect(onTileMiss).toHaveBeenCalledWith(clearTile.tileId)
   })
 
   test('uploads full V3 atlas refreshes into a COPY_DST WebGPU texture', () => {

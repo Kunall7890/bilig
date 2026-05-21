@@ -14,7 +14,7 @@ import type { EnginePatch } from '../../patches/patch-types.js'
 import type { FormulaFamilyFreshUniformRunRegistrationArgs, FormulaFamilyRunUpsertArgs } from '../../formula/formula-family-store.js'
 import type { FormulaInstanceSnapshot } from '../../formula/formula-instance-table.js'
 import type { WorkbookPivotRecord } from '../../workbook-store.js'
-import type { EngineRuntimeState, PreparedCellAddress, U32 } from '../runtime-state.js'
+import type { EngineRuntimeState, PreparedCellAddress, TransactionRecord, U32 } from '../runtime-state.js'
 import type { StructuralTransaction } from '../structural-transaction.js'
 import type { EngineMutationError } from '../errors.js'
 import type { ExactColumnIndexService } from './exact-column-index-service.js'
@@ -78,6 +78,11 @@ export interface EngineOperationService {
     source: 'local' | 'restore' | 'undo' | 'redo',
     potentialNewCells?: number,
   ) => void
+  readonly applyExistingNumericCellMutationsAtNow: (
+    record: Extract<TransactionRecord, { kind: 'existing-numeric-cell-mutations' }>,
+    batch: EngineOpBatch | null,
+    source: 'local' | 'restore' | 'undo' | 'redo',
+  ) => boolean
   readonly applyExistingNumericCellMutationAtNow: (
     request: EngineExistingNumericCellMutationRef,
   ) => EngineExistingNumericCellMutationResult | null

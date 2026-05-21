@@ -1,17 +1,11 @@
-import type { LiteralInput, WorkbookSnapshot } from '@bilig/protocol'
+import type { LiteralInput } from '@bilig/protocol'
 
-export interface ImportedWorksheetArenaCellInput {
-  readonly sheetIndex: number
-  readonly row: number
-  readonly column: number
-  readonly value: LiteralInput | undefined
-}
+export type ImportedWorkbookArenaDedupeMode = boolean | 'bounded'
 
-export interface ImportedWorksheetArenaSharedStringCellInput {
-  readonly sheetIndex: number
-  readonly row: number
-  readonly column: number
-  readonly sharedStringIndex: number
+export interface ImportedWorkbookArenaOptions {
+  readonly deduplicateStrings?: ImportedWorkbookArenaDedupeMode
+  readonly deduplicateFormulas?: ImportedWorkbookArenaDedupeMode
+  readonly dedupeMaxEntries?: number
 }
 
 export interface ImportedWorkbookArenaSnapshot {
@@ -35,13 +29,16 @@ export interface ImportedWorkbookArenaSnapshot {
   readonly formulas: readonly string[]
 }
 
-export type WorkbookSheetCells = WorkbookSnapshot['sheets'][number]['cells']
-export type WorkbookSheetCell = WorkbookSheetCells[number]
-
-export interface ImportedWorkbookArenaOptions {
-  readonly deduplicateStrings?: ImportedWorkbookArenaDedupeMode
-  readonly deduplicateFormulas?: ImportedWorkbookArenaDedupeMode
-  readonly dedupeMaxEntries?: number
+export interface ImportedWorksheetArenaCellInput {
+  readonly sheetIndex: number
+  readonly row: number
+  readonly column: number
+  readonly value: LiteralInput | undefined
 }
 
-export type ImportedWorkbookArenaDedupeMode = boolean | 'bounded'
+export interface ImportedWorksheetArenaSharedStringCellInput {
+  readonly sheetIndex: number
+  readonly row: number
+  readonly column: number
+  readonly sharedStringIndex: number
+}

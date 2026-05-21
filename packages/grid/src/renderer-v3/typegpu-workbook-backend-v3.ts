@@ -21,9 +21,14 @@ import {
 } from './typegpu-layer-buffer-pool.js'
 import {
   TypeGpuTileResourceCacheV3,
+  areGridRectTileRevisionKeysEqualV3,
+  areGridTextTileRevisionKeysEqualV3,
+  resolveGridRectTileRevisionKeyV3,
+  resolveGridTextTileRevisionKeyV3,
   resolveWorkbookTileContentBufferKeyV3,
   syncTypeGpuTilePaneResourcesV3,
   type TypeGpuTileContentResourceEntryV3,
+  type TypeGpuTileRectRevisionKeyV3,
 } from './typegpu-tile-buffer-pool.js'
 import { drawTypeGpuTilePanesV3, type TypeGpuTileDrawSurface } from './typegpu-tile-render-pass.js'
 
@@ -169,11 +174,38 @@ export function hasTransientEmptyTypeGpuBodyFrameV3(input: {
       continue
     }
     // Only hide transient missing grid payloads; zero text is a valid authoritative clear.
-    if (content.rectCount > 0 && pane.tile.rectCount === 0) {
+    if (
+      content.rectCount > 0 &&
+      pane.tile.rectCount === 0 &&
+      isTransientMissingRectPayloadV3({
+        currentRectRevisionKey: resolveGridRectTileRevisionKeyV3({ tile: pane.tile }),
+        residentRectRevisionKey: content.rectRevisionKey,
+      })
+    ) {
       return true
     }
   }
   return false
+}
+
+function isTransientMissingRectPayloadV3(input: {
+  readonly currentRectRevisionKey: TypeGpuTileRectRevisionKeyV3
+  readonly residentRectRevisionKey: TypeGpuTileRectRevisionKeyV3 | null
+}): boolean {
+  const resident = input.residentRectRevisionKey
+  const current = input.currentRectRevisionKey
+  if (!resident) {
+    return false
+  }
+  return (
+    resident.tileId === current.tileId &&
+    resident.valueSeq === current.valueSeq &&
+    resident.styleSeq === current.styleSeq &&
+    resident.axisSeqX === current.axisSeqX &&
+    resident.axisSeqY === current.axisSeqY &&
+    resident.freezeSeq === current.freezeSeq &&
+    resident.batchSeq === current.batchSeq
+  )
 }
 
 export function syncRenderTileResidencyFromPanesV3(input: {
@@ -238,12 +270,17 @@ export function resolveTypeGpuDrawTilePanesV3(input: {
 
 function isTileContentDrawReady(entry: TypeGpuTileContentResourceEntryV3, pane: WorkbookRenderTilePaneState, drawText: boolean): boolean {
   const tile = pane.tile
-  const rectReady = tile.rectCount === 0 ? entry.rectRevisionKey !== null : entry.rectHandle !== null && entry.rectCount >= tile.rectCount
+  const currentRectRevisionKey = resolveGridRectTileRevisionKeyV3({ tile })
+  const rectRevisionReady = areGridRectTileRevisionKeysEqualV3(entry.rectRevisionKey, currentRectRevisionKey)
+  const rectReady =
+    tile.rectCount === 0 ? rectRevisionReady : rectRevisionReady && entry.rectHandle !== null && entry.rectCount >= tile.rectCount
+  const currentTextRevisionKey = resolveGridTextTileRevisionKeyV3(tile)
+  const textRevisionReady = areGridTextTileRevisionKeysEqualV3(entry.textRevisionKey, currentTextRevisionKey)
   const textReady = !drawText
     ? true
     : tile.textCount === 0
-      ? entry.textRevisionKey !== null
-      : entry.textHandle !== null && entry.textRevisionKey !== null && entry.textCount > 0
+      ? textRevisionReady
+      : textRevisionReady && entry.textHandle !== null && entry.textCount >= tile.textCount
   return rectReady && textReady
 }
 

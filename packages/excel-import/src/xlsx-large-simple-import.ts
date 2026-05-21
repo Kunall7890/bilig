@@ -21,6 +21,11 @@ import { buildLargeSimpleCellMetadataReferenceSnapshots } from './xlsx-large-sim
 import { readWorkbookDefinedNames } from './xlsx-large-simple-defined-names.js'
 import { readLargeSimpleSheetHyperlinks, resolveLargeSimpleSheetHyperlinks } from './xlsx-large-simple-hyperlinks.js'
 import { LargeSimpleXlsxImportPhaseRecorder, type LargeSimpleXlsxImportPhaseTelemetry } from './xlsx-large-simple-import-telemetry.js'
+import {
+  appendLargeSimpleConditionalFormats,
+  normalizeLargeSimpleConditionalFormatIds,
+  readLargeSimpleConditionalFormattingBlockCount,
+} from './xlsx-large-simple-conditional-format-helpers.js'
 import { internLargeSimpleWorksheetMetadata } from './xlsx-large-simple-metadata-interning.js'
 import { prepareLargeSimplePackageArtifactsForZipRelease } from './xlsx-large-simple-package-artifact-release.js'
 import { readLargeSimpleSheetPrintMetadata, readLargeSimpleSheetPrintPageSetup } from './xlsx-large-simple-printer-settings.js'
@@ -66,12 +71,7 @@ import {
   withoutLargeSimpleConditionalFormattingXml,
   type LargeSimpleWorksheetScannedMetadata,
 } from './xlsx-large-simple-worksheet-metadata.js'
-import {
-  appendConditionalFormats,
-  normalizeConditionalFormatIds,
-  readConditionalFormattingBlockCount,
-  type LargeSimpleSheetMetadataInput,
-} from './xlsx-large-simple-sheet-metadata-input.js'
+import type { LargeSimpleSheetMetadataInput } from './xlsx-large-simple-sheet-metadata-input.js'
 import { readImportedPivotArtifacts } from './xlsx-pivot-artifacts.js'
 import { readImportedWorkbookSlicerConnectionArtifactsFromSheets } from './xlsx-slicer-connection-artifacts.js'
 import { readImportedSheetTablesFromRelationshipIds, readImportedSheetTablesFromWorksheetXml } from './xlsx-tables.js'
@@ -432,7 +432,7 @@ export function tryImportLargeSimpleXlsx(
         const conditionalFormatArtifacts = hasConditionalFormats
           ? readImportedSheetConditionalFormatArtifactsFromWorksheetXml(worksheetXml)
           : undefined
-        metadataInput = appendConditionalFormats(
+        metadataInput = appendLargeSimpleConditionalFormats(
           {
             ...(hyperlinks ? { hyperlinks } : {}),
             ...(filters.length > 0 ? { filters } : {}),
@@ -441,11 +441,11 @@ export function tryImportLargeSimpleXlsx(
           conditionalFormats,
         )
       } else {
-        metadataInput = appendConditionalFormats(metadataInput, conditionalFormats)
+        metadataInput = appendLargeSimpleConditionalFormats(metadataInput, conditionalFormats)
       }
     }
     if (streamedMetadataScan?.conditionalFormats && streamedMetadataScan.conditionalFormats.length > 0) {
-      metadataInput = appendConditionalFormats(metadataInput, streamedMetadataScan.conditionalFormats)
+      metadataInput = appendLargeSimpleConditionalFormats(metadataInput, streamedMetadataScan.conditionalFormats)
     }
     if (materializeMetadata && streamedMetadataScan?.conditionalFormattingXml && streamedMetadataScan.conditionalFormattingXml.length > 0) {
       const conditionalFormats = readImportedSheetConditionalFormatsFromElementXml(
@@ -456,7 +456,7 @@ export function tryImportLargeSimpleXlsx(
       const conditionalFormatArtifacts = materializeCells
         ? readImportedSheetConditionalFormatArtifactsFromElementXml(streamedMetadataScan.conditionalFormattingXml)
         : undefined
-      metadataInput = appendConditionalFormats(
+      metadataInput = appendLargeSimpleConditionalFormats(
         {
           ...metadataInput,
           ...(conditionalFormatArtifacts ? { conditionalFormatArtifacts } : {}),
@@ -879,8 +879,8 @@ function buildParsedWorksheet(
   const sheetFormatPr = metadataScan?.sheetFormatPr ?? (worksheetXml ? readLargeSimpleSheetFormatPr(worksheetXml) : undefined)
   const conditionalFormatCount =
     input.conditionalFormats?.length ??
-    (worksheetXml ? readConditionalFormattingBlockCount(worksheetXml) : (cellScan.conditionalFormatCount ?? 0))
-  const conditionalFormats = normalizeConditionalFormatIds(sheetName, input.conditionalFormats)
+    (worksheetXml ? readLargeSimpleConditionalFormattingBlockCount(worksheetXml) : (cellScan.conditionalFormatCount ?? 0))
+  const conditionalFormats = normalizeLargeSimpleConditionalFormatIds(sheetName, input.conditionalFormats)
   const sheetProtection =
     input.sheetProtection ?? (worksheetXml ? (readImportedWorksheetSheetProtection(sheetName, worksheetXml) ?? undefined) : undefined)
   const dataValidationCount = input.validations?.length ?? cellScan.dataValidationCount ?? 0

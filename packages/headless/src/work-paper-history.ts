@@ -14,6 +14,15 @@ export type WorkPaperHistoryTransactionRecord =
       potentialNewCells?: number
     }
   | {
+      kind: 'existing-numeric-cell-mutations'
+      sheetIds: Uint32Array
+      cellIndexPlusOnes: Uint32Array
+      rows: Uint32Array
+      cols: Uint32Array
+      numbers: Float64Array
+      potentialNewCells?: number
+    }
+  | {
       kind: 'cell-mutations'
       refs: Array<{
         sheetId: number
@@ -46,7 +55,7 @@ export function readWorkPaperHistoryStack(owner: object, propertyName: 'undoStac
 
 export function workPaperHistoryTopIsCellMutations(stack: readonly WorkPaperHistoryRecord[]): boolean {
   const kind = stack.at(-1)?.forward.kind
-  return kind === 'cell-mutations' || kind === 'single-existing-numeric-cell-mutation'
+  return kind === 'cell-mutations' || kind === 'single-existing-numeric-cell-mutation' || kind === 'existing-numeric-cell-mutations'
 }
 
 export function clearWorkPaperHistoryStacks(undoStack: WorkPaperHistoryRecord[], redoStack: WorkPaperHistoryRecord[]): void {
@@ -85,6 +94,16 @@ function cloneWorkPaperHistoryTransactionRecord(record: WorkPaperHistoryTransact
         value: record.value,
         ...(record.potentialNewCells !== undefined ? { potentialNewCells: record.potentialNewCells } : {}),
       }
+    case 'existing-numeric-cell-mutations':
+      return {
+        kind: 'existing-numeric-cell-mutations',
+        sheetIds: record.sheetIds.slice(),
+        cellIndexPlusOnes: record.cellIndexPlusOnes.slice(),
+        rows: record.rows.slice(),
+        cols: record.cols.slice(),
+        numbers: record.numbers.slice(),
+        ...(record.potentialNewCells !== undefined ? { potentialNewCells: record.potentialNewCells } : {}),
+      }
     case 'cell-mutations':
       return {
         kind: 'cell-mutations',
@@ -118,6 +137,21 @@ export function workPaperHistoryTransactionOps(
             },
           ]
         : []
+    }
+    case 'existing-numeric-cell-mutations': {
+      const ops: unknown[] = []
+      for (let index = 0; index < record.sheetIds.length; index += 1) {
+        const sheetName = resolveSheetName(record.sheetIds[index]!)
+        if (sheetName) {
+          ops.push({
+            kind: 'setCellValue',
+            sheetName,
+            address: formatAddress(record.rows[index]!, record.cols[index]!),
+            value: record.numbers[index]!,
+          })
+        }
+      }
+      return ops
     }
     case 'cell-mutations':
       return record.refs.flatMap((ref) => {

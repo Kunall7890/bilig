@@ -112,6 +112,15 @@ export type TransactionRecord =
       value: LiteralInput
       potentialNewCells?: number
     }
+  | {
+      kind: 'existing-numeric-cell-mutations'
+      sheetIds: Uint32Array
+      cellIndexPlusOnes: Uint32Array
+      rows: Uint32Array
+      cols: Uint32Array
+      numbers: Float64Array
+      potentialNewCells?: number
+    }
   | CellMutationTransactionRecord
 
 export interface TransactionLogEntry {

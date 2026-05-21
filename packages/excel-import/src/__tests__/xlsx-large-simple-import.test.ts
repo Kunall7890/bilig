@@ -3,6 +3,7 @@ import { strToU8, unzipSync, zipSync } from 'fflate'
 import { readRuntimeImage } from '@bilig/core'
 
 import { importXlsx, inspectXlsx, XlsxImportSizeLimitExceededError } from '../index.js'
+import { importXlsxFromZipByteSource } from '../xlsx-byte-source-import.js'
 import { tryImportLargeSimpleXlsx } from '../xlsx-large-simple-import.js'
 import { forEachInflatedXlsxZipEntryChunk, readXlsxZipEntriesLazy, type XlsxZipByteSource } from '../xlsx-zip.js'
 
@@ -1245,6 +1246,30 @@ describe('large simple XLSX import fast path', () => {
     expect(imported.stats?.formulaCellCount).toBe(50_001)
     expect(imported.snapshot.sheets[0]?.cells).toHaveLength(50_001)
   })
+
+  it('skips duplicate calcChain pre-inspection for large byte-source imports', () => {
+    const bytes = buildLargeSimpleWorkbook({
+      includeSharedStrings: false,
+      worksheetXml: [
+        '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>',
+        '<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">',
+        '<dimension ref="A1"/>',
+        '<sheetData><row r="1"><c r="A1"><f>B1+1</f><v>2</v></c></row></sheetData>',
+        '</worksheet>',
+      ].join(''),
+      extraEntries: {
+        'xl/calcChain.xml': '<calcChain xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><c r="A1" i="1"/></calcChain>',
+        'docProps/padding.bin': deterministicBytes(5_100_000),
+      },
+    })
+    const counted = countByteSourceZipEntryStreams(bytes, 'xl/worksheets/sheet1.xml')
+
+    const imported = importXlsxFromZipByteSource(counted.source, 'large-calcchain-byte-source.xlsx')
+
+    expect(imported.stats?.formulaCellCount).toBe(1)
+    expect(imported.snapshot.sheets[0]?.cells).toEqual([{ address: 'A1', value: 2, formula: 'B1+1' }])
+    expect(counted.count()).toBe(1)
+  })
 })
 
 function buildLargeSimpleWorkbook(input: {
@@ -1337,6 +1362,51 @@ function countLazyZipEntryStreams(zip: Record<string, Uint8Array>, path: string)
   return () => streamCount
 }
 
+function countByteSourceZipEntryStreams(
+  bytes: Uint8Array,
+  path: string,
+): {
+  readonly source: {
+    readonly byteLength: number
+    readRange(start: number, end: number): Uint8Array
+  }
+  readonly count: () => number
+} {
+  const [dataStart, dataEnd] = findLocalZipEntryDataRange(bytes, path)
+  let streamCount = 0
+  return {
+    source: {
+      byteLength: bytes.byteLength,
+      readRange(start = 0, end = bytes.byteLength): Uint8Array {
+        if (start === dataStart && end === dataEnd) {
+          streamCount += 1
+        }
+        return bytes.subarray(start, end)
+      },
+    },
+    count: () => streamCount,
+  }
+}
+
+function findLocalZipEntryDataRange(bytes: Uint8Array, path: string): readonly [number, number] {
+  const decoder = new TextDecoder()
+  let offset = 0
+  while (offset + 30 <= bytes.byteLength && readLittleEndianUint32(bytes, offset) === 0x04034b50) {
+    const compressedSize = readLittleEndianUint32(bytes, offset + 18)
+    const fileNameLength = readLittleEndianUint16(bytes, offset + 26)
+    const extraFieldLength = readLittleEndianUint16(bytes, offset + 28)
+    const fileNameStart = offset + 30
+    const fileNameEnd = fileNameStart + fileNameLength
+    const dataStart = fileNameEnd + extraFieldLength
+    const dataEnd = dataStart + compressedSize
+    if (decoder.decode(bytes.subarray(fileNameStart, fileNameEnd)) === path) {
+      return [dataStart, dataEnd]
+    }
+    offset = dataEnd
+  }
+  throw new Error(`Missing local ZIP header for ${path}`)
+}
+
 function readLazyZipMetadata(zip: Record<string, Uint8Array>):
   | {
       source: XlsxZipByteSource
@@ -1391,6 +1461,10 @@ function isLazyZipByteSource(value: unknown): value is XlsxZipByteSource {
 
 function readLittleEndianUint16(source: Uint8Array, offset: number): number {
   return (source[offset] ?? 0) | ((source[offset + 1] ?? 0) << 8)
+}
+
+function readLittleEndianUint32(source: Uint8Array, offset: number): number {
+  return (source[offset] | (source[offset + 1] << 8) | (source[offset + 2] << 16) | (source[offset + 3] << 24)) >>> 0
 }
 
 function deterministicBytes(length: number): Uint8Array {

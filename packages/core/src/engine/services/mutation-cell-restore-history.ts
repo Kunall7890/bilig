@@ -13,6 +13,7 @@ import {
 } from './mutation-captured-cell-restores.js'
 import type { FastMutationHistoryResult } from './mutation-history-fast-path.js'
 import {
+  createExistingNumericCellMutationsTransactionRecord,
   createLazyCellMutationTransactionRecord,
   createLazyMaterializedCellMutationTransactionRecord,
   createLazySingleOpTransactionRecord,
@@ -347,7 +348,6 @@ export function createMutationCellRestoreHistoryHelpers(args: MutationCellRestor
     const cellIndexPlusOnes = new Uint32Array(count)
     const rows = new Uint32Array(count)
     const cols = new Uint32Array(count)
-    const kinds = new Uint8Array(count)
     const numbers = new Float64Array(count)
     const cellStore = args.workbook.cellStore
     let cachedSheetId = -1
@@ -388,22 +388,18 @@ export function createMutationCellRestoreHistoryHelpers(args: MutationCellRestor
       cellIndexPlusOnes[targetIndex] = existingCellIndex + 1
       rows[targetIndex] = mutation.row
       cols[targetIndex] = mutation.col
-      kinds[targetIndex] = CapturedCellMutationKind.NumberValue
       numbers[targetIndex] = cellStore.numbers[existingCellIndex] ?? 0
     }
 
-    return createLazyMaterializedCellMutationTransactionRecord(
-      () =>
-        materializeCapturedCellMutationRestores({
-          sheetIds,
-          cellIndexPlusOnes,
-          rows,
-          cols,
-          kinds,
-          numbers,
-          potentialNewCells: count,
-        }),
-      count,
+    return createExistingNumericCellMutationsTransactionRecord(
+      {
+        sheetIds,
+        cellIndexPlusOnes,
+        rows,
+        cols,
+        numbers,
+      },
+      0,
     )
   }
 
