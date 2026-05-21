@@ -1,6 +1,6 @@
 import type { EngineOpBatch } from '@bilig/workbook'
 import type { CellValue } from '@bilig/protocol'
-import type { EngineCellMutationRef } from '../../cell-mutations-at.js'
+import type { EngineCellMutationRef, EngineFreshDirectAggregateMatrixPlan } from '../../cell-mutations-at.js'
 import { batchOpOrder, markBatchApplied, type OpOrder } from '../../replica-state.js'
 import { DirectFormulaIndexCollection } from './direct-formula-index-collection.js'
 import { aggregateColumnDependencyKey } from './direct-formula-recalc-helpers.js'
@@ -244,12 +244,23 @@ export function createOperationCellMutationApplier(input: CreateOperationCellMut
     batch: EngineOpBatch | null,
     source: 'local' | 'restore' | 'undo' | 'redo',
     potentialNewCells?: number,
+    options?: {
+      readonly freshDirectAggregateMatrixPlan?: EngineFreshDirectAggregateMatrixPlan
+    },
   ): void {
     const isRestore = source === 'restore'
     if (tryApplySingleExistingDirectLiteralMutation(refs, batch, source)) {
       return
     }
-    if (freshDirectAggregateFormulaBatchFastPath?.tryApplyFreshDirectAggregateFormulaMatrixBatch(refs, batch, source, potentialNewCells)) {
+    if (
+      freshDirectAggregateFormulaBatchFastPath?.tryApplyFreshDirectAggregateFormulaMatrixBatch(
+        refs,
+        batch,
+        source,
+        potentialNewCells,
+        options?.freshDirectAggregateMatrixPlan,
+      )
+    ) {
       return
     }
     if (freshDirectScalarFormulaBatchFastPath?.tryApplyFreshDirectScalarFormulaMatrixBatch(refs, batch, source, potentialNewCells)) {

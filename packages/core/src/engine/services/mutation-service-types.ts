@@ -6,6 +6,7 @@ import type {
   EngineExistingLiteralCellMutationRef,
   EngineExistingNumericCellMutationRef,
   EngineExistingNumericCellMutationResult,
+  EngineFreshDirectAggregateMatrixPlan,
 } from '../../cell-mutations-at.js'
 import type { CsvParseOptions } from '../../csv.js'
 import type { CommitOp, TransactionRecord } from '../runtime-state.js'
@@ -28,6 +29,7 @@ export interface EngineMutationService {
     options?: {
       returnUndoOps?: boolean
       reuseRefs?: boolean
+      freshDirectAggregateMatrixPlan?: EngineFreshDirectAggregateMatrixPlan
     },
   ) => readonly EngineOp[] | null
   readonly executeLocalExistingNumericCellMutationAtNow: (
@@ -50,6 +52,7 @@ export interface EngineMutationService {
       source?: 'local' | 'restore'
       returnUndoOps?: boolean
       reuseRefs?: boolean
+      freshDirectAggregateMatrixPlan?: EngineFreshDirectAggregateMatrixPlan
     },
   ) => readonly EngineOp[] | null
   readonly applyCellMutationsAt: (
@@ -60,6 +63,7 @@ export interface EngineMutationService {
       source?: 'local' | 'restore'
       returnUndoOps?: boolean
       reuseRefs?: boolean
+      freshDirectAggregateMatrixPlan?: EngineFreshDirectAggregateMatrixPlan
     },
   ) => Effect.Effect<readonly EngineOp[] | null, EngineMutationError>
   readonly executeLocal: (

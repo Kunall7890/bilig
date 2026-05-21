@@ -64,6 +64,8 @@ const oracleFormulaRunCounterKeys = [
   'freshDirectScalarBulkFallbacks',
   'freshDirectScalarBulkReverseEdgeSlices',
   'freshDirectScalarFormulaObjectsMaterialized',
+  'freshDirectAggregateMatrixPlanApplications',
+  'freshDirectAggregateMatrixPlanMembers',
 ] as const satisfies readonly EngineCounterKey[]
 
 describe('engine counters', () => {

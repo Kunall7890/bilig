@@ -1,4 +1,4 @@
-import type { EngineCellMutationRef } from '@bilig/core/headless-runtime'
+import type { EngineCellMutationRef, EngineFreshDirectAggregateMatrixPlan } from '@bilig/core/headless-runtime'
 import { canSkipDimensionUpdateAfterLiteralMutation, countPotentialNewTrackedCellMutations } from './work-paper-tracked-event-helpers.js'
 
 export interface WorkPaperCellMutationApplyOptions {
@@ -8,6 +8,7 @@ export interface WorkPaperCellMutationApplyOptions {
   readonly returnUndoOps?: boolean
   readonly reuseRefs?: boolean
   readonly skipDimensionUpdate?: boolean
+  readonly freshDirectAggregateMatrixPlan?: EngineFreshDirectAggregateMatrixPlan
 }
 
 export interface WorkPaperCellMutationApplyRuntime {

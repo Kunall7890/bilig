@@ -20,6 +20,7 @@ import type {
   EngineExistingLiteralCellMutationRef,
   EngineExistingNumericCellMutationRef,
   EngineExistingNumericCellMutationResult,
+  EngineFreshDirectAggregateMatrixPlan,
   EngineFormulaSourceRefs,
 } from './cell-mutations-at.js'
 import { cloneEngineCounters, resetEngineCounters, type EngineCounters } from './perf/engine-counters.js'
@@ -218,6 +219,7 @@ export class SpreadsheetEngine extends SpreadsheetEngineWorkbookFacadeBase {
       source?: 'local' | 'restore'
       returnUndoOps?: boolean
       reuseRefs?: boolean
+      freshDirectAggregateMatrixPlan?: EngineFreshDirectAggregateMatrixPlan
     } = {},
   ): readonly EngineOp[] | null {
     return this.runtime.mutation.applyCellMutationsAtNow(refs, options)

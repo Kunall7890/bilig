@@ -1,4 +1,4 @@
-import type { EngineCellMutationRef } from '@bilig/core/headless-runtime'
+import type { EngineCellMutationRef, EngineFreshDirectAggregateMatrixPlan } from '@bilig/core/headless-runtime'
 import { translateFormulaReferences } from '@bilig/formula'
 import { buildMatrixMutationPlan, type MatrixMutationDimensionImpact } from './matrix-mutation-plan.js'
 import { workPaperFormulaMayResizeDynamically } from './work-paper-sheet-inspection.js'
@@ -12,6 +12,7 @@ export interface WorkPaperCellMutationApplyOptions {
   returnUndoOps?: boolean
   reuseRefs?: boolean
   skipDimensionUpdate?: boolean
+  freshDirectAggregateMatrixPlan?: EngineFreshDirectAggregateMatrixPlan
 }
 
 export interface WorkPaperMatrixApplyOptions {
@@ -109,6 +110,7 @@ export function applyWorkPaperMatrixContents(input: {
   const freshNumericFormulaPlan = tryBuildFreshNumericFormulaColumnMatrixPlan(planInput)
   if (freshNumericFormulaPlan !== undefined) {
     const applyOptions = createApplyOptions(freshNumericFormulaPlan.potentialNewCells)
+    applyOptions.freshDirectAggregateMatrixPlan = freshNumericFormulaPlan.freshDirectAggregateMatrixPlan
     if (canUpdateDimensionsOnce) {
       applyOptions.skipDimensionUpdate = true
     }
@@ -184,9 +186,25 @@ function isFormulaContent(content: RawCellContent): content is string {
   return typeof content === 'string' && content.trim().startsWith('=')
 }
 
+function isPotentialDirectAggregateFormulaContent(content: RawCellContent): content is string {
+  if (!isFormulaContent(content)) {
+    return false
+  }
+  const normalized = stripLeadingEquals(content).trimStart().toUpperCase()
+  return (
+    normalized.startsWith('SUM(') ||
+    normalized.startsWith('AVERAGE(') ||
+    normalized.startsWith('COUNT(') ||
+    normalized.startsWith('COUNTA(') ||
+    normalized.startsWith('MIN(') ||
+    normalized.startsWith('MAX(')
+  )
+}
+
 function tryBuildFreshNumericFormulaColumnMatrixPlan(args: MatrixMutationPlanInput):
   | {
       readonly refs: readonly EngineCellMutationRef[]
+      readonly freshDirectAggregateMatrixPlan: EngineFreshDirectAggregateMatrixPlan
       readonly potentialNewCells: number
       readonly dimensionImpact: MatrixMutationDimensionImpact
     }
@@ -201,6 +219,8 @@ function tryBuildFreshNumericFormulaColumnMatrixPlan(args: MatrixMutationPlanInp
   const inputColCount = firstWidth - 1
   const rowCount = args.content.length
   const valueCount = rowCount * inputColCount
+  const values = new Float64Array(valueCount)
+  const formulaSources = Array<string>(rowCount)
   const refs: EngineCellMutationRef[] = []
   refs.length = valueCount + rowCount
   let valueCursor = 0
@@ -225,10 +245,11 @@ function tryBuildFreshNumericFormulaColumnMatrixPlan(args: MatrixMutationPlanInp
           value: raw,
         },
       }
+      values[valueCursor] = raw
       valueCursor += 1
     }
     const rawFormula = row[inputColCount]!
-    if (!isFormulaContent(rawFormula)) {
+    if (!isPotentialDirectAggregateFormulaContent(rawFormula)) {
       return undefined
     }
     const destination: WorkPaperCellAddress = {
@@ -240,6 +261,7 @@ function tryBuildFreshNumericFormulaColumnMatrixPlan(args: MatrixMutationPlanInp
     if (workPaperFormulaMayResizeDynamically(rewrittenFormula)) {
       return undefined
     }
+    formulaSources[rowOffset] = rewrittenFormula
     refs[formulaCursor] = {
       sheetId: args.target.sheet,
       mutation: {
@@ -253,6 +275,15 @@ function tryBuildFreshNumericFormulaColumnMatrixPlan(args: MatrixMutationPlanInp
   }
   return {
     refs,
+    freshDirectAggregateMatrixPlan: {
+      sheetId: args.target.sheet,
+      rowStart: args.target.row,
+      rowCount,
+      colStart: args.target.col,
+      inputColCount,
+      values,
+      formulaSources,
+    },
     potentialNewCells: refs.length,
     dimensionImpact: {
       hasDynamicFormula: false,
