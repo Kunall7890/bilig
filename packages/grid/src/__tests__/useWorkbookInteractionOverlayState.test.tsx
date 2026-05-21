@@ -104,7 +104,7 @@ describe('useWorkbookInteractionOverlayState', () => {
       latestState?.setFillPreviewRange({ height: 1, width: 2, x: 1, y: 2 })
     })
 
-    expect(latestState?.requiresLiveViewportState).toBe(false)
+    expect(latestState?.requiresLiveViewportState).toBe(true)
     expect(latestState?.fillPreviewBounds).toEqual({ height: 22, width: 208, x: 120, y: 64 })
 
     await act(async () => {

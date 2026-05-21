@@ -93,12 +93,28 @@ async function expectSelectionVisualOpacity(locator: Locator, label: string, exp
   ).toBe(true)
 }
 
+async function expectPresentedOverlayRects(page: Page, label: string): Promise<void> {
+  await expect
+    .poll(
+      async () => {
+        const value = await page.getByTestId('grid-pane-renderer').getAttribute('data-v3-presented-overlay-rect-count')
+        return Number(value ?? '0')
+      },
+      { message: `${label} should be presented by the TypeGPU overlay`, timeout: 5_000 },
+    )
+    .toBeGreaterThan(0)
+}
+
 function allReadbackPointsMatch(result: DynamicReadbackResult, predicate: (point: ReadbackPoint) => boolean): boolean {
   return Object.values(result.points).every(predicate)
 }
 
 function isCornflowerBlueFill(point: ReadbackPoint): boolean {
   return point.a === 255 && point.b > point.g && point.g > point.r && point.b - point.r > 55
+}
+
+function isSelectionBlueTint(point: ReadbackPoint): boolean {
+  return point.a === 255 && point.b > point.g && point.g >= point.r && point.b - point.r >= 18
 }
 
 function isThemeGreenFill(point: ReadbackPoint): boolean {
@@ -439,14 +455,18 @@ test('@browser-webgpu @browser-serial main workbook shell grid renders and updat
     regions: [],
   } as const
 
+  await expectPresentedOverlayRects(page, 'range selection chrome')
   const rangeReadback = await waitForReadback(page, rangeProbe, (result) => {
-    return result.sequence > valueReadback.sequence
+    return (
+      result.sequence > valueReadback.sequence &&
+      isSelectionBlueTint(result.points.selectedRangeFill) &&
+      isSelectionBlueTint(result.points.topHeaderSelectionFill)
+    )
   })
 
   expect(rangeReadback.points.activeCellFill).toMatchObject({ r: 255, g: 255, b: 255, a: 255 })
-  expect(rangeReadback.points.selectedRangeFill).toMatchObject({ r: 255, g: 255, b: 255, a: 255 })
-  expect(rangeReadback.points.topHeaderSelectionFill).toMatchObject({ r: 243, g: 242, b: 238, a: 255 })
-  await expect(page.getByTestId('grid-pane-renderer')).toHaveAttribute('data-v3-presented-overlay-rect-count', '0')
+  expect(isSelectionBlueTint(rangeReadback.points.selectedRangeFill)).toBe(true)
+  expect(isSelectionBlueTint(rangeReadback.points.topHeaderSelectionFill)).toBe(true)
   await expect(page.getByTestId('grid-pane-renderer')).toHaveAttribute('data-v3-presented-overlay-rect-signature', /^[a-z0-9-]+$/)
   const domSelectionFillOpacity = await page
     .locator(
@@ -458,7 +478,7 @@ test('@browser-webgpu @browser-serial main workbook shell grid renders and updat
     )
     .evaluateAll((nodes) => nodes.map((node) => window.getComputedStyle(node).opacity))
   expect(domSelectionFillOpacity.length).toBeGreaterThan(0)
-  expect(domSelectionFillOpacity.every((opacity) => opacity !== '0')).toBe(true)
+  expect(domSelectionFillOpacity.every((opacity) => opacity === '0')).toBe(true)
   const domSelectionChromeOpacity = await page
     .locator(
       [
@@ -469,7 +489,7 @@ test('@browser-webgpu @browser-serial main workbook shell grid renders and updat
     )
     .evaluateAll((nodes) => nodes.map((node) => window.getComputedStyle(node).opacity))
   expect(domSelectionChromeOpacity.length).toBeGreaterThan(0)
-  expect(domSelectionChromeOpacity.every((opacity) => opacity !== '0')).toBe(true)
+  expect(domSelectionChromeOpacity.every((opacity) => opacity === '0')).toBe(true)
   await expect(page.getByTestId('grid-pane-renderer-floor')).toHaveCount(0)
   await expect(page.getByTestId('grid-pane-renderer-fallback')).toHaveCount(0)
   await expect(page.getByTestId('grid-pane-renderer')).toHaveCSS('opacity', '1')
@@ -1276,21 +1296,22 @@ test('@browser-webgpu @browser-deep axis selections paint atomically over the ty
     },
   })
   await expect(page.getByTestId('status-selection')).toHaveText('Sheet1!C:C')
+  await expectPresentedOverlayRects(page, 'column axis selection chrome')
 
   await expectSelectionVisualOpacity(
     page.locator('[data-grid-selection-visual-key="header-fill:column:2"]'),
     'selected column header fill',
-    'visible',
+    'hidden',
   )
   await expectSelectionVisualOpacity(
     page.locator('[data-grid-selection-visual-role="selection-fill"]'),
     'selected column body fill',
-    'visible',
+    'hidden',
   )
   await expectSelectionVisualOpacity(
     page.locator('[data-grid-selection-visual-role="active-border"]'),
     'selected column active cell border',
-    'visible',
+    'hidden',
   )
   await expect(page.locator('[data-grid-selection-visual-key="header-fill:column:3"]')).toHaveCount(0)
 
@@ -1302,21 +1323,18 @@ test('@browser-webgpu @browser-deep axis selections paint atomically over the ty
     },
   })
   await expect(page.getByTestId('status-selection')).toHaveText('Sheet1!6:6')
+  await expectPresentedOverlayRects(page, 'row axis selection chrome')
 
   await expectSelectionVisualOpacity(
     page.locator('[data-grid-selection-visual-key="header-fill:row:5"]'),
     'selected row header fill',
-    'visible',
+    'hidden',
   )
-  await expectSelectionVisualOpacity(
-    page.locator('[data-grid-selection-visual-role="selection-fill"]'),
-    'selected row body fill',
-    'visible',
-  )
+  await expectSelectionVisualOpacity(page.locator('[data-grid-selection-visual-role="selection-fill"]'), 'selected row body fill', 'hidden')
   await expectSelectionVisualOpacity(
     page.locator('[data-grid-selection-visual-role="active-border"]'),
     'selected row active cell border',
-    'visible',
+    'hidden',
   )
   await expect(page.locator('[data-grid-selection-visual-key="header-fill:row:6"]')).toHaveCount(0)
 

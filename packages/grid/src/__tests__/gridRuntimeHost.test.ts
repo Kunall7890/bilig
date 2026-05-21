@@ -156,7 +156,7 @@ describe('GridRuntimeHost', () => {
       }),
     ).toMatchObject({
       fillPreviewBounds: { height: 10, width: 80, x: 30, y: 20 },
-      requiresLiveViewportState: false,
+      requiresLiveViewportState: true,
       selectionRange: { height: 1, width: 1, x: 3, y: 4 },
     })
   })

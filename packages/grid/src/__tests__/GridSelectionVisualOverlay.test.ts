@@ -244,6 +244,37 @@ describe('GridSelectionVisualOverlay', () => {
       root.unmount()
     })
   })
+
+  test('geometry-only mode mounts selection hit geometry without visible DOM chrome', async () => {
+    ;(globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true
+    const geometry = createGeometry()
+    const selection = createRangeSelection(createGridSelection(1, 1), [1, 1], [3, 3])
+    const host = document.createElement('div')
+    document.body.appendChild(host)
+    const root = createRoot(host)
+
+    await act(async () => {
+      root.render(
+        createElement(GridSelectionVisualOverlay, {
+          geometry,
+          gridSelection: selection,
+          hoverCell: [4, 5],
+          selectedCell: [1, 1],
+          selectionChromeMode: 'geometry-only',
+          selectionRange: selection.current?.range ?? null,
+          showFillHandle: true,
+        }),
+      )
+    })
+
+    const elements = Array.from(host.querySelectorAll<HTMLElement>('[data-grid-selection-visual-role]'))
+    expect(elements.length).toBeGreaterThan(0)
+    expect(elements.every((element) => element.style.opacity === '0')).toBe(true)
+
+    await act(async () => {
+      root.unmount()
+    })
+  })
 })
 
 function createGeometry() {
