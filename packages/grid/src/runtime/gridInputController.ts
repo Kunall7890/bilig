@@ -122,7 +122,7 @@ export class GridInputController {
         input.focusGrid()
       })
     }
-    if (input.isEditingCell) {
+    if (!input.isEditingCell) {
       this.pendingTypeSeedRef.current = null
     }
     this.wasEditingOverlayRef.current = input.isEditingCell

@@ -135,6 +135,15 @@ export function useWorkbookGridHostPointerHandlers(input: {
       event.preventDefault()
       event.stopPropagation()
       focusGrid()
+      rangeMoveCleanupRef.current?.()
+      resizeCleanupRef.current?.()
+      resetGridPointerInteraction(interactionState, {
+        clearIgnoreNextPointerSelection: true,
+      })
+      setActiveResizeColumn(null)
+      setActiveResizeRow(null)
+      setActiveHeaderDrag(null)
+      setIsRangeMoveDragging(false)
       beginWorkbookGridFillHandleDrag({
         cleanupRef: fillHandleCleanupRef,
         listenerTarget: window,
@@ -162,14 +171,21 @@ export function useWorkbookGridHostPointerHandlers(input: {
       fillPreviewRangeRef,
       focusGrid,
       gridSelection,
+      interactionState,
       onFillRange,
+      rangeMoveCleanupRef,
       renderState.scrollViewportRef,
+      resizeCleanupRef,
       resolvePointerCell,
       selectionRange,
+      setActiveHeaderDrag,
+      setActiveResizeColumn,
+      setActiveResizeRow,
       setFillPreviewRange,
       setGridSelection,
       setHoverState,
       setIsFillHandleDragging,
+      setIsRangeMoveDragging,
     ],
   )
 
@@ -541,6 +557,12 @@ export function useWorkbookGridHostPointerHandlers(input: {
     },
     handleHostPointerUpCapture: (event: ReactPointerEvent<HTMLDivElement>) => {
       if (resizeCleanupRef.current !== null || activeResizeColumn !== null || activeResizeRow !== null) {
+        return
+      }
+      if (isFillHandleDragging || fillHandleCleanupRef.current !== null) {
+        event.preventDefault()
+        event.stopPropagation()
+        focusGrid()
         return
       }
       if (isRangeMoveDragging) {

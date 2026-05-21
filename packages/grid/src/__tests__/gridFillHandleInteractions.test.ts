@@ -7,6 +7,8 @@ interface PointerEventLike {
   readonly clientX: number
   readonly clientY: number
   readonly pointerId: number
+  preventDefault?(): void
+  stopPropagation?(): void
 }
 
 class PointerTarget {
@@ -204,6 +206,39 @@ describe('beginWorkbookGridFillHandleDrag', () => {
     target.emit('pointerup', { pointerId: 7, clientX: 50, clientY: 98 })
 
     expect(onFillRange).toHaveBeenCalledWith('B2', 'B2', 'B3', 'B5')
+  })
+
+  it('claims matching pointer events so normal grid pointer handling cannot also finish the gesture', () => {
+    const target = new PointerTarget()
+    const cleanupRef = { current: null as (() => void) | null }
+    const preventDefault = vi.fn()
+    const stopPropagation = vi.fn()
+
+    beginWorkbookGridFillHandleDrag({
+      cleanupRef,
+      listenerTarget: target,
+      pointerId: 7,
+      sourceRange: { x: 1, y: 1, width: 1, height: 1 },
+      gridSelection: createRectangleSelectionFromRange({ x: 1, y: 1, width: 1, height: 1 }),
+      resolvePointerCell: (clientX, clientY) => [clientX, clientY],
+      setGridSelection: vi.fn(),
+      onSelectionChange: vi.fn(),
+      onFillRange: vi.fn(),
+      setFillPreviewRange: vi.fn(),
+      setFillPreviewRangeRef: vi.fn(),
+      setIsFillHandleDragging: vi.fn(),
+      resetHoverState: vi.fn(),
+    })
+
+    target.emit('pointermove', { pointerId: 8, clientX: 4, clientY: 4, preventDefault, stopPropagation })
+    expect(preventDefault).not.toHaveBeenCalled()
+    expect(stopPropagation).not.toHaveBeenCalled()
+
+    target.emit('pointermove', { pointerId: 7, clientX: 4, clientY: 4, preventDefault, stopPropagation })
+    target.emit('pointerup', { pointerId: 7, clientX: 4, clientY: 4, preventDefault, stopPropagation })
+
+    expect(preventDefault).toHaveBeenCalledTimes(2)
+    expect(stopPropagation).toHaveBeenCalledTimes(2)
   })
 })
 

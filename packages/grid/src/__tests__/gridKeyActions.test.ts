@@ -14,7 +14,22 @@ describe('gridKeyActions', () => {
         currentSelectionCell: [0, 0],
         currentRangeAnchor: [0, 0],
       }),
-    ).toEqual({ kind: 'edit-append', value: 'abcx' })
+    ).toEqual({ kind: 'edit-append', pendingTypeSeed: 'abcx', value: 'abcx' })
+  })
+
+  test('continues unfocused edit appends from the last emitted draft instead of a stale editor prop', () => {
+    expect(
+      resolveGridKeyAction({
+        event: { key: 'y', ctrlKey: false, metaKey: false, altKey: false },
+        isEditingCell: true,
+        editorValue: 'abc',
+        editorInputFocused: false,
+        pendingTypeSeed: 'abcx',
+        selectedCell: [0, 0],
+        currentSelectionCell: [0, 0],
+        currentRangeAnchor: [0, 0],
+      }),
+    ).toEqual({ kind: 'edit-append', pendingTypeSeed: 'abcxy', value: 'abcxy' })
   })
 
   test('ignores printable characters during edit mode when the editor input is focused', () => {

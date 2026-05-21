@@ -335,11 +335,15 @@ export function handleGridKey({
 
   const currentSelectionCell = gridSelection.current?.cell ?? null
   const currentSelectionRange = gridSelection.current?.range ?? null
+  const editorInputFocused = isCellEditorInputFocused()
+  if (isEditingCell && editorInputFocused) {
+    pendingTypeSeedRef.current = null
+  }
   const action = resolveGridKeyAction({
     event,
     isEditingCell,
     editorValue,
-    editorInputFocused: isCellEditorInputFocused(),
+    editorInputFocused,
     pendingTypeSeed: pendingTypeSeedRef.current,
     selectedCell: [selectedCell.col, selectedCell.row],
     currentSelectionCell,
@@ -364,12 +368,15 @@ export function handleGridKey({
 
   switch (action.kind) {
     case 'edit-append':
+      pendingTypeSeedRef.current = action.pendingTypeSeed
       onEditorChange(action.value)
       return
     case 'commit-edit':
+      pendingTypeSeedRef.current = null
       onCommitEdit(action.movement)
       return
     case 'cancel-edit':
+      pendingTypeSeedRef.current = null
       onCancelEdit()
       return
     case 'begin-edit':
