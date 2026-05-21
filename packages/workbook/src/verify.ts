@@ -23,6 +23,7 @@ export type WorkbookPlanIssueCode =
   | 'formula_input_not_resolved'
   | 'invalid_formula'
   | 'change_target_not_resolved'
+  | 'check_status_not_planned'
   | 'check_target_not_resolved'
   | 'check_ref_not_resolved'
   | 'check_expectation_input_not_resolved'
@@ -440,6 +441,14 @@ export function verifyPlan<Refs>(plan: WorkbookActionPlan<Refs>): WorkbookPlanVe
   })
 
   plan.checks.forEach((check, checkIndex) => {
+    if (check.status !== 'planned') {
+      issues.push({
+        code: 'check_status_not_planned',
+        path: `checks[${checkIndex}].status`,
+        message: `${check.target?.label ?? check.kind} check ${check.kind} must start planned before runtime proof`,
+      })
+    }
+
     if (check.target !== undefined && !hasRef(check.target)) {
       issues.push(
         issue({

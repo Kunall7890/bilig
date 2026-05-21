@@ -142,8 +142,12 @@ the consumer-defined `refs` object. Use `collectWorkbookRefs` directly when an
 agent needs to inspect refs from any nested consumer shape.
 Use `findTable`, `findColumn`, `findRange`, `findName`, and `findRows` directly
 when an agent or test needs the same generic refs outside a model callback.
-`findRows` refs include the predicate value in their stable id and label so two
-consumer-defined row selectors do not collapse during dedupe.
+Selector helpers trim text, canonicalize cell addresses, and reject empty table
+names, column names, named ranges, headers, invalid range addresses, invalid row
+operators, and non-finite row predicate values before a plan reaches runtime.
+`findRows` refs include the predicate value in their stable id so two
+consumer-defined row selectors do not collapse during dedupe, while labels stay
+human-readable for agent logs.
 For table-backed rows, use `rows.column("Amount")` to target only that column in
 the matching rows. Runtime adapters can materialize row-filtered columns into
 the exact cells to read, write, format, clear, or use as row-wise formula inputs
@@ -187,6 +191,8 @@ concrete ops for write, clear, and number-format commands that already target a
 known single cell. Custom check targets and supporting refs must also resolve
 through the model's `refsUsed` contract. Formula readback expectation inputs
 must also resolve through `refsUsed`, and expectation formulas must be parseable.
+Checks must start as `planned`; consumer code cannot mark a check passed or
+failed before runtime proof.
 Low-level `addOp` commands must contain valid `WorkbookOp` values, must still
 appear in `plan.ops`, and must match their declared `target` when the op exposes
 a concrete address or range.
@@ -219,6 +225,8 @@ not called. If a readback expectation is missing or mismatched, the returned
 `readback_missing`, `value_mismatch`, or `formula_mismatch`.
 Formula readbacks are exact: adapters should return formula text in the same
 normalized no-leading-`=` form produced by `formula.source`.
+`adapter.apply` only applies the plan and may return an undo ref; it cannot
+drop, replace, or prove checks.
 Adapters provide `verifyChecks(checks, plan)` to prove non-readback checks such
 as `exists`, `noFormulaErrors`, and consumer-defined `custom` invariants. The
 verifier must return the same checks in the same order and may only change

@@ -146,7 +146,7 @@ describe('@bilig/workbook model api', () => {
     expect(rows).toEqual({
       kind: 'rows',
       id: 'table_Model_Inputs_Amount_Rate_Status_eq_string__22Active_22',
-      label: 'table_Model_Inputs_Amount_Rate rows where Status eq "Active"',
+      label: 'Inputs rows where Status eq "Active"',
       table,
       where: {
         column: 'Status',
@@ -158,7 +158,7 @@ describe('@bilig/workbook model api', () => {
     expect(rows.column('Amount')).toEqual({
       kind: 'column',
       id: 'table_Model_Inputs_Amount_Rate_Status_eq_string__22Active_22_Amount',
-      label: 'table_Model_Inputs_Amount_Rate rows where Status eq "Active".Amount',
+      label: 'Inputs rows where Status eq "Active".Amount',
       table,
       rows,
       name: 'Amount',
@@ -196,8 +196,8 @@ describe('@bilig/workbook model api', () => {
 
     expect(activeRows.id).toBe('table_Inputs_Status_eq_string__22Active_22')
     expect(inactiveRows.id).toBe('table_Inputs_Status_eq_string__22Inactive_22')
-    expect(activeRows.label).toBe('table_Inputs rows where Status eq "Active"')
-    expect(inactiveRows.label).toBe('table_Inputs rows where Status eq "Inactive"')
+    expect(activeRows.label).toBe('Inputs rows where Status eq "Active"')
+    expect(inactiveRows.label).toBe('Inputs rows where Status eq "Inactive"')
     expect(collectWorkbookRefs({ activeRows, inactiveRows })).toEqual([activeRows, table, inactiveRows])
   })
 
@@ -218,7 +218,7 @@ describe('@bilig/workbook model api', () => {
     expect(describeRef(activeAmount)).toEqual({
       kind: 'column',
       id: 'table_Inputs_Status_eq_string__22Active_22_Amount',
-      label: 'table_Inputs rows where Status eq "Active".Amount',
+      label: 'Inputs rows where Status eq "Active".Amount',
       table: {
         kind: 'table',
         id: 'table_Inputs',
@@ -228,7 +228,7 @@ describe('@bilig/workbook model api', () => {
       rows: {
         kind: 'rows',
         id: 'table_Inputs_Status_eq_string__22Active_22',
-        label: 'table_Inputs rows where Status eq "Active"',
+        label: 'Inputs rows where Status eq "Active"',
         table: {
           kind: 'table',
           id: 'table_Inputs',
@@ -243,6 +243,95 @@ describe('@bilig/workbook model api', () => {
       },
       name: 'Amount',
     })
+  })
+
+  it('normalizes public find selectors before planning', () => {
+    const table = findTable({ name: ' Inputs ', sheetName: ' Model ', headers: [' Amount ', 'Rate'] })
+    const range = findRange({ sheetName: ' Sheet1 ', address: ' c2 ' })
+    const rows = findRows({
+      table,
+      where: {
+        column: ' Status ',
+        op: 'eq',
+        value: 'Active',
+      },
+    })
+
+    expect(table).toEqual({
+      kind: 'table',
+      id: 'table_Model_Inputs_Amount_Rate',
+      label: 'Inputs',
+      name: 'Inputs',
+      sheetName: 'Model',
+      headers: ['Amount', 'Rate'],
+      column: expect.any(Function),
+    })
+    expect(table.column(' Amount ')).toEqual({
+      kind: 'column',
+      id: 'table_Model_Inputs_Amount_Rate_Amount',
+      label: 'Inputs.Amount',
+      table,
+      name: 'Amount',
+    })
+    expect(range).toEqual({
+      kind: 'range',
+      id: 'range_Sheet1_C2_C2',
+      label: 'Sheet1!C2',
+      range: {
+        sheetName: 'Sheet1',
+        startAddress: 'C2',
+        endAddress: 'C2',
+      },
+    })
+    expect(rows.where.column).toBe('Status')
+    expect(rows.label).toBe('Inputs rows where Status eq "Active"')
+  })
+
+  it('rejects malformed public find selectors before planning', () => {
+    expect(() => findName('   ')).toThrowError('Workbook selector name cannot be empty')
+    expect(() => findTable({})).toThrowError('Workbook table selector needs a name, sheet name, or headers')
+    expect(() => findTable({ headers: [] })).toThrowError('Workbook table headers cannot be empty')
+    expect(() => findTable({ headers: ['Amount', ' '] })).toThrowError('Workbook selector table header cannot be empty')
+
+    const table = findTable({ name: 'Inputs' })
+    expect(() => findColumn({ table, name: ' ' })).toThrowError('Workbook selector column name cannot be empty')
+    expect(() => findRange({ sheetName: 'Sheet1', address: 'not-a-cell' })).toThrowError('Workbook range address is invalid: not-a-cell')
+    expect(() => findRange({ sheetName: 'Sheet1', startAddress: 'C2', endAddress: 'A1' })).toThrowError(
+      'Workbook range endAddress must not be before startAddress',
+    )
+    expect(() =>
+      findRows({
+        where: {
+          column: 'Status',
+          op: 'eq',
+          value: 'Active',
+        },
+      }),
+    ).toThrowError('Workbook rows selector requires a table or sheet name')
+    expect(() =>
+      Reflect.apply(findRows, undefined, [
+        {
+          table,
+          where: {
+            column: 'Status',
+            op: 'bad',
+            value: 'Active',
+          },
+        },
+      ]),
+    ).toThrowError('Unsupported workbook row operator: bad')
+    expect(() =>
+      Reflect.apply(findRows, undefined, [
+        {
+          table,
+          where: {
+            column: 'Status',
+            op: 'eq',
+            value: Number.NaN,
+          },
+        },
+      ]),
+    ).toThrowError('Workbook rows selector value must be a finite JSON literal')
   })
 
   it('exports simple top-level check helpers for generic refs', () => {
@@ -347,6 +436,17 @@ describe('@bilig/workbook model api', () => {
     const plan = buildWorkbookActionPlan(model, 'clear')
 
     expect(plan.refsUsed).toEqual([plan.refs.result])
+  })
+
+  it('does not treat inherited ref-looking properties as workbook refs', () => {
+    const inherited = Object.create({
+      kind: 'range',
+      id: 'range_Polluted_A1_A1',
+      label: 'Polluted!A1',
+    }) as unknown
+
+    expect(isWorkbookRef(inherited)).toBe(false)
+    expect(collectWorkbookRefs({ inherited })).toEqual([])
   })
 
   it('describes plans as JSON-safe agent-readable intent', () => {

@@ -63,6 +63,16 @@ describe('@bilig/workbook check api', () => {
       kind: 'modelReady',
       message: 'Model has all required inputs',
     })
+    const prePassedOptions = {
+      kind: 'prePassed',
+      message: 'Consumer code cannot self-prove a check',
+      status: 'passed',
+    }
+    expect(check.custom(prePassedOptions)).toEqual({
+      status: 'planned',
+      kind: 'prePassed',
+      message: 'Consumer code cannot self-prove a check',
+    })
     expect(() => check.custom({ kind: ' ', message: 'valid message' })).toThrowError('Workbook check kind cannot be empty')
     expect(() => check.custom({ kind: 'validKind', message: ' ' })).toThrowError('Workbook check message cannot be empty')
   })

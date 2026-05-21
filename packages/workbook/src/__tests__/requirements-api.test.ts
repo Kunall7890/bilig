@@ -68,12 +68,9 @@ describe('@bilig/workbook runtime requirements api', () => {
         opIndex: undefined,
         opKind: undefined,
         checkKind: undefined,
-        target: 'table_Inputs_Base_Rate_Result rows where Status eq "Active".Result',
-        refs: [
-          'table_Inputs_Base_Rate_Result rows where Status eq "Active".Base',
-          'table_Inputs_Base_Rate_Result rows where Status eq "Active".Rate',
-        ],
-        message: 'Apply formula write to table_Inputs_Base_Rate_Result rows where Status eq "Active".Result',
+        target: 'Inputs rows where Status eq "Active".Result',
+        refs: ['Inputs rows where Status eq "Active".Base', 'Inputs rows where Status eq "Active".Rate'],
+        message: 'Apply formula write to Inputs rows where Status eq "Active".Result',
       },
       {
         kind: 'read',
@@ -83,12 +80,9 @@ describe('@bilig/workbook runtime requirements api', () => {
         opIndex: undefined,
         opKind: undefined,
         checkKind: 'formulaEquals',
-        target: 'table_Inputs_Base_Rate_Result rows where Status eq "Active".Result',
-        refs: [
-          'table_Inputs_Base_Rate_Result rows where Status eq "Active".Base',
-          'table_Inputs_Base_Rate_Result rows where Status eq "Active".Rate',
-        ],
-        message: 'Read table_Inputs_Base_Rate_Result rows where Status eq "Active".Result for formulaEquals',
+        target: 'Inputs rows where Status eq "Active".Result',
+        refs: ['Inputs rows where Status eq "Active".Base', 'Inputs rows where Status eq "Active".Rate'],
+        message: 'Read Inputs rows where Status eq "Active".Result for formulaEquals',
       },
       {
         kind: 'verify',
@@ -110,9 +104,9 @@ describe('@bilig/workbook runtime requirements api', () => {
         opIndex: undefined,
         opKind: undefined,
         checkKind: 'noFormulaErrors',
-        target: 'table_Inputs_Base_Rate_Result rows where Status eq "Active".Result',
+        target: 'Inputs rows where Status eq "Active".Result',
         refs: undefined,
-        message: 'Verify noFormulaErrors for table_Inputs_Base_Rate_Result rows where Status eq "Active".Result',
+        message: 'Verify noFormulaErrors for Inputs rows where Status eq "Active".Result',
       },
     ])
     expect(JSON.parse(JSON.stringify(requirements))).toEqual(requirements)

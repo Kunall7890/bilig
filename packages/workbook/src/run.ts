@@ -10,7 +10,6 @@ type MaybePromise<T> = T | Promise<T>
 export interface WorkbookRunApplyResult {
   readonly status: 'applied' | 'failed'
   readonly errors?: readonly WorkbookRunError[]
-  readonly checks?: readonly WorkbookCheckResult[]
   readonly undo?: WorkbookUndoRef
 }
 
@@ -68,7 +67,7 @@ function failedApplyResult(plan: WorkbookActionPlan, result: WorkbookRunApplyRes
   return {
     status: 'failed',
     errors: result.errors ?? [runError('apply_failed', `Workbook action ${plan.modelName}.${plan.actionName} failed to apply`)],
-    checks: result.checks ?? plan.checks,
+    checks: plan.checks,
   }
 }
 
@@ -276,7 +275,7 @@ export async function runWorkbookPlan<Refs>(plan: WorkbookActionPlan<Refs>, adap
     return failedApplyResult(plan, applyResult)
   }
 
-  let checks = applyResult.checks ?? plan.checks
+  let checks = plan.checks
   const targets = readbackTargets(checks)
   if (targets.length > 0) {
     if (adapter.read === undefined) {

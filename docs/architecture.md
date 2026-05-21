@@ -26,6 +26,7 @@ flowchart LR
   - snapshot import/export
 - `@bilig/workbook`
   - agent-first public workbook model API
+  - generic selector validation before runtime handoff
   - JSON-safe action input planning and verification
   - machine-readable readback checks for runtime proof
   - transport-neutral run adapters for apply-and-prove receipts

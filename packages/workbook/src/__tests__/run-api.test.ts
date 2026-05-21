@@ -225,6 +225,46 @@ describe('@bilig/workbook run api', () => {
     })
   })
 
+  it('does not let apply results drop planned checks', async () => {
+    const model = defineModel({
+      name: 'run-apply-proof-boundary-model',
+
+      find(workbook) {
+        return {
+          result: workbook.findRange({ sheetName: 'Sheet1', address: 'C2' }),
+        }
+      },
+
+      checks({ refs, workbook }) {
+        return [workbook.check.exists(refs.result)]
+      },
+
+      actions: {
+        inspect({ refs }) {
+          void refs.result
+        },
+      },
+    })
+
+    const result = await runWorkbookAction(model, 'inspect', {
+      apply: () => ({
+        status: 'applied',
+        checks: [],
+      }),
+    })
+
+    expect(result).toEqual({
+      status: 'failed',
+      errors: [
+        {
+          code: 'check_not_verified',
+          message: 'Sheet1!C2 did not verify check exists: Sheet1!C2 exists',
+        },
+      ],
+      checks: [expect.objectContaining({ status: 'planned', kind: 'exists', message: 'Sheet1!C2 exists' })],
+    })
+  })
+
   it('fails when the generic check verifier leaves checks planned', async () => {
     const model = defineModel({
       name: 'run-unverified-check-model',
@@ -546,6 +586,51 @@ describe('@bilig/workbook run api', () => {
         },
       ],
       checks: [],
+    })
+  })
+
+  it('does not apply when a plan contains already-proved checks', async () => {
+    const target = findRange({ sheetName: 'Sheet1', address: 'C2' })
+    const apply = vi.fn<WorkbookRunAdapter['apply']>(() => ({ status: 'applied' }))
+
+    const result = await runWorkbookPlan(
+      {
+        modelName: 'pre-proved-run-plan',
+        actionName: 'inspect',
+        refs: { target },
+        refsUsed: [target],
+        commands: [],
+        ops: [],
+        changed: [],
+        checks: [
+          {
+            status: 'passed',
+            kind: 'exists',
+            target,
+            message: 'Sheet1!C2 exists',
+          },
+        ],
+      },
+      { apply },
+    )
+
+    expect(apply).not.toHaveBeenCalled()
+    expect(result).toEqual({
+      status: 'failed',
+      errors: [
+        {
+          code: 'check_status_not_planned',
+          message: 'Sheet1!C2 check exists must start planned before runtime proof',
+        },
+      ],
+      checks: [
+        {
+          status: 'passed',
+          kind: 'exists',
+          target,
+          message: 'Sheet1!C2 exists',
+        },
+      ],
     })
   })
 

@@ -1,14 +1,13 @@
 import { isLiteralInput, type LiteralInput } from '@bilig/protocol'
 import type { WorkbookRef } from './find.js'
 import { formula, type WorkbookFormulaOperand } from './formula.js'
-import type { WorkbookCheckExpectation, WorkbookCheckResult, WorkbookCheckStatus } from './result.js'
+import type { WorkbookCheckExpectation, WorkbookCheckResult } from './result.js'
 
 export interface WorkbookCustomCheckOptions {
   readonly kind: string
   readonly message: string
   readonly target?: WorkbookRef
   readonly refs?: readonly WorkbookRef[]
-  readonly status?: WorkbookCheckStatus
 }
 
 export interface WorkbookReadbackCheckOptions {
@@ -43,13 +42,6 @@ function requiredText(value: string, name: string): string {
   return trimmed
 }
 
-function normalizeCheckStatus(status: WorkbookCheckStatus | undefined): WorkbookCheckStatus {
-  if (status === undefined || status === 'planned' || status === 'passed' || status === 'failed') {
-    return status ?? 'planned'
-  }
-  throw new Error(`Unsupported workbook check status: ${String(status)}`)
-}
-
 function checkedLiteralInput(value: LiteralInput): LiteralInput {
   if (!isLiteralInput(value)) {
     throw new Error('Workbook readback value must be a finite JSON literal')
@@ -81,7 +73,7 @@ function uniqueRefs(refs: readonly WorkbookRef[] | undefined): readonly Workbook
 function createWorkbookCheck(options: WorkbookCheckBuildOptions): WorkbookCheckResult {
   const refs = uniqueRefs(options.refs)
   return {
-    status: normalizeCheckStatus(options.status),
+    status: 'planned',
     kind: requiredText(options.kind, 'kind'),
     ...(options.target !== undefined ? { target: options.target } : {}),
     ...(refs !== undefined ? { refs } : {}),
