@@ -8,6 +8,7 @@ import {
   dragProductHeaderSelection,
   getProductColumnLeft,
   getProductColumnWidth,
+  getProductFillHandleDragPoints,
   gotoWorkbookShell,
   pickToolbarPresetColor,
   PRIMARY_MODIFIER,
@@ -1189,6 +1190,125 @@ test('@browser-webgpu @browser-deep selected range fill changes stay visually au
     testInfo,
     'main-workbook-grid-selected-fill-refresh-readback.png',
     'main-workbook-grid-selected-fill-refresh-readback',
+  )
+})
+
+test('@browser-webgpu @browser-deep fill-handle drag commits through the typegpu readback layer', async ({ page }, testInfo) => {
+  const sourceColumn = 2
+  const sourceRow = 5
+  const targetRow = 7
+  const copiedText = 'fill-drag-pixels'
+  const points = [
+    { ...selectedRangeFillProbe(sourceColumn, sourceRow), name: 'sourceC6' },
+    { ...selectedRangeFillProbe(sourceColumn, sourceRow + 1), name: 'targetC7' },
+    { ...selectedRangeFillProbe(sourceColumn, targetRow), name: 'targetC8' },
+  ]
+  const targetGlyphRegions = [
+    {
+      name: 'targetC7Glyphs',
+      x0: PRODUCT_ROW_MARKER_WIDTH + PRODUCT_COLUMN_WIDTH * sourceColumn + 8,
+      y0: PRODUCT_HEADER_HEIGHT + PRODUCT_ROW_HEIGHT * (sourceRow + 1) + 5,
+      x1: PRODUCT_ROW_MARKER_WIDTH + PRODUCT_COLUMN_WIDTH * (sourceColumn + 1) - 8,
+      y1: PRODUCT_HEADER_HEIGHT + PRODUCT_ROW_HEIGHT * (sourceRow + 2) - 5,
+    },
+    {
+      name: 'targetC8Glyphs',
+      x0: PRODUCT_ROW_MARKER_WIDTH + PRODUCT_COLUMN_WIDTH * sourceColumn + 8,
+      y0: PRODUCT_HEADER_HEIGHT + PRODUCT_ROW_HEIGHT * targetRow + 5,
+      x1: PRODUCT_ROW_MARKER_WIDTH + PRODUCT_COLUMN_WIDTH * (sourceColumn + 1) - 8,
+      y1: PRODUCT_HEADER_HEIGHT + PRODUCT_ROW_HEIGHT * (targetRow + 1) - 5,
+    },
+  ] as const
+
+  await page.setViewportSize({ width: 960, height: 720 })
+  await installTypeGpuReadbackHarness(page)
+  await gotoWorkbookShell(page, `/?document=${encodeURIComponent(createTestDocumentId('typegpu-fill-handle-commit'))}&persist=0`)
+  await waitForWorkbookReady(page)
+  await waitForTypeGpuRenderer(page)
+  await expect(page.getByTestId('grid-pane-renderer')).toHaveAttribute('data-v3-backend-status', 'ready')
+  await expect(page.getByTestId('grid-native-text-layer')).toHaveCount(0)
+  await page.waitForFunction(
+    () =>
+      Boolean(
+        (window as Window & { __biligGpuReadbackInspector?: { readonly isReady: () => boolean } }).__biligGpuReadbackInspector?.isReady(),
+      ),
+    undefined,
+    { timeout: 15_000 },
+  )
+
+  const formulaInput = page.getByTestId('formula-input')
+  await clickProductCell(page, sourceColumn, sourceRow)
+  await formulaInput.fill(copiedText)
+  await formulaInput.press('Enter')
+  await clickProductCell(page, sourceColumn, sourceRow)
+  await pickToolbarPresetColor(page, 'Fill color', 'theme green')
+  const sourceReadback = await waitForReadback(
+    page,
+    {
+      points: [points[0]],
+      regions: [],
+    },
+    (result) => isThemeGreenFill(result.points.sourceC6),
+  )
+
+  const { sourceX, sourceY, targetX, targetY } = await getProductFillHandleDragPoints(
+    page,
+    sourceColumn,
+    sourceRow,
+    sourceColumn,
+    targetRow,
+  )
+  const handleState = await page.locator("[data-grid-fill-handle='true']").evaluate((node) => {
+    const bounds = node.getBoundingClientRect()
+    const style = window.getComputedStyle(node)
+    return {
+      display: style.display,
+      pointerEvents: style.pointerEvents,
+      x0: bounds.left,
+      x1: bounds.right,
+      y0: bounds.top,
+      y1: bounds.bottom,
+    }
+  })
+  expect(handleState.display).not.toBe('none')
+  expect(handleState.pointerEvents).not.toBe('none')
+  expect(sourceX).toBeGreaterThanOrEqual(handleState.x0)
+  expect(sourceX).toBeLessThanOrEqual(handleState.x1)
+  expect(sourceY).toBeGreaterThanOrEqual(handleState.y0)
+  expect(sourceY).toBeLessThanOrEqual(handleState.y1)
+  await page.mouse.move(sourceX, sourceY)
+  await page.mouse.down()
+  await page.mouse.move(targetX, targetY, { steps: 10 })
+  await expect(page.locator("[data-grid-fill-preview='true']")).toHaveCount(0)
+  await page.mouse.up()
+
+  await expect(page.getByTestId('status-selection')).toContainText('!C6:C8')
+  await expect(page.getByTestId('grid-native-text-layer')).toHaveCount(0)
+  const committedReadback = await waitForReadback(
+    page,
+    {
+      points,
+      regions: targetGlyphRegions,
+    },
+    (result) =>
+      result.sequence > sourceReadback.sequence &&
+      allReadbackPointsMatch(result, isThemeGreenFill) &&
+      result.darkPixelCounts.targetC7Glyphs > 6 &&
+      result.darkPixelCounts.targetC8Glyphs > 6,
+  )
+  expect(committedReadback.darkPixelCounts.targetC7Glyphs).toBeGreaterThan(6)
+  expect(committedReadback.darkPixelCounts.targetC8Glyphs).toBeGreaterThan(6)
+  await expect
+    .poll(async () =>
+      page.evaluate((text) => [...document.querySelectorAll('[data-native-text-run]')].some((run) => run.textContent === text), copiedText),
+    )
+    .toBe(false)
+
+  await saveReadbackArtifact(
+    page,
+    testInfo,
+    'main-workbook-grid-fill-handle-commit-readback.png',
+    'main-workbook-grid-fill-handle-commit-readback',
   )
 })
 

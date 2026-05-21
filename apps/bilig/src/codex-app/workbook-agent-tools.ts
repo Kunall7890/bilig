@@ -464,7 +464,8 @@ export async function handleWorkbookAgentToolCall(
         return textToolResult(
           stringifyJson({
             undone: true,
-            applied: true,
+            applied: verificationStatus.verificationComplete,
+            mutationExecuted: true,
             staged: false,
             queuedForTurnApply: false,
             status: verificationStatus.verificationComplete ? 'applied' : 'verification_incomplete',

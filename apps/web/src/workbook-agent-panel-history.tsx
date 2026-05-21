@@ -52,8 +52,15 @@ export function PreviewRangeList(props: { readonly ranges: readonly WorkbookAgen
   )
 }
 
-function workflowStatusTone(status: WorkbookAgentWorkflowRun['status']): 'accent' | 'danger' | 'neutral' {
-  switch (status) {
+function workflowNeedsMutationProof(run: WorkbookAgentWorkflowRun): boolean {
+  return run.status === 'completed' && run.mutationExecuted === true && run.verificationComplete === false
+}
+
+function workflowStatusTone(run: WorkbookAgentWorkflowRun): 'accent' | 'danger' | 'neutral' {
+  if (workflowNeedsMutationProof(run)) {
+    return 'danger'
+  }
+  switch (run.status) {
     case 'running':
       return 'accent'
     case 'failed':
@@ -64,8 +71,11 @@ function workflowStatusTone(status: WorkbookAgentWorkflowRun['status']): 'accent
   }
 }
 
-function workflowStatusLabel(status: WorkbookAgentWorkflowRun['status']): string {
-  switch (status) {
+function workflowStatusLabel(run: WorkbookAgentWorkflowRun): string {
+  if (workflowNeedsMutationProof(run)) {
+    return 'Needs proof'
+  }
+  switch (run.status) {
     case 'running':
       return 'Running'
     case 'failed':
@@ -119,11 +129,11 @@ export function WorkflowRunRow(props: {
         </div>
         <span
           className={workbookPillClass({
-            tone: workflowStatusTone(props.run.status),
+            tone: workflowStatusTone(props.run),
             weight: 'strong',
           })}
         >
-          {workflowStatusLabel(props.run.status)}
+          {workflowStatusLabel(props.run)}
         </span>
       </div>
       {props.run.steps.length > 0 ? (

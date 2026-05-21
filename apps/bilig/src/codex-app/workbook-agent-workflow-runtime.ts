@@ -13,6 +13,7 @@ import {
   failWorkflowSteps,
 } from './workbook-agent-workflows.js'
 import { createWorkflowAbortError, isWorkflowAbortError, throwIfWorkflowCancelled } from './workbook-agent-workflow-abort.js'
+import { buildMutationReceipt, type WorkbookToolMutationReceipt } from './workbook-agent-mutation-receipt.js'
 import { createSystemEntry } from './workbook-agent-session-model.js'
 import {
   type QueuedWorkbookAgentWorkflowRun,
@@ -25,6 +26,17 @@ import {
 import { logError } from '../runtime-logger.js'
 
 const DEFAULT_WORKFLOW_SHUTDOWN_DRAIN_TIMEOUT_MS = 5_000
+
+function summarizeWorkflowMutationReceipt(input: {
+  readonly executionRecord: WorkbookAgentExecutionRecord
+  readonly receipt: WorkbookToolMutationReceipt
+}): string {
+  if (input.receipt.status === 'applied') {
+    return `Applied workflow: ${input.executionRecord.summary}`
+  }
+  const primaryWarning = input.receipt.warnings[0] ?? 'Mutation proof is incomplete.'
+  return `Workflow mutation verification incomplete at revision r${String(input.executionRecord.appliedRevision)}: ${primaryWarning}`
+}
 
 export class WorkbookAgentWorkflowRuntime {
   private readonly workflowRunTasks = new Map<string, Promise<void>>()
@@ -256,6 +268,10 @@ export class WorkbookAgentWorkflowRuntime {
 
       const completedAtUnixMs = this.options.now()
       let completedSummary = result.summary
+      let mutationExecuted: boolean | null = null
+      let verificationComplete: boolean | null = null
+      let mutationStatus: WorkbookAgentWorkflowRun['mutationStatus'] | null = null
+      let mutationReceipt: unknown = null
       const completedRunBase: WorkbookAgentWorkflowRun = {
         ...input.runningRun,
         title: result.title,
@@ -301,7 +317,23 @@ export class WorkbookAgentWorkflowRuntime {
             return
           }
           if (executionRecord) {
-            completedSummary = `Applied workflow: ${executionRecord.summary}`
+            const receipt = await buildMutationReceipt({
+              context: {
+                documentId: input.documentId,
+                uiContext: input.sessionState.durable.context,
+                zeroSyncService: this.options.zeroSyncService,
+              },
+              toolName: `workflow:${input.workflowTemplate}`,
+              normalized: {
+                bundle: workflowBundle,
+                executionRecord,
+              },
+            })
+            mutationExecuted = true
+            verificationComplete = receipt.status === 'applied'
+            mutationStatus = receipt.status
+            mutationReceipt = receipt
+            completedSummary = summarizeWorkflowMutationReceipt({ executionRecord, receipt })
           }
         } else {
           if (input.sessionState.scope === 'private') {
@@ -313,6 +345,10 @@ export class WorkbookAgentWorkflowRuntime {
           if (!this.isWorkflowStillRunning(input, abortController)) {
             return
           }
+          mutationExecuted = false
+          verificationComplete = false
+          mutationStatus = 'staged'
+          completedSummary = `Prepared workflow review item; the workbook is unchanged until this is applied: ${workflowBundle.summary}`
         }
       }
       if (!this.isWorkflowStillRunning(input, abortController)) {
@@ -321,6 +357,10 @@ export class WorkbookAgentWorkflowRuntime {
       const completedRun: WorkbookAgentWorkflowRun = {
         ...completedRunBase,
         summary: completedSummary,
+        mutationExecuted,
+        verificationComplete,
+        mutationStatus,
+        mutationReceipt,
       }
       input.sessionState.durable.workflowRuns = upsertWorkflowRun(input.sessionState.durable.workflowRuns, completedRun)
       input.sessionState.durable.entries = upsertEntry(

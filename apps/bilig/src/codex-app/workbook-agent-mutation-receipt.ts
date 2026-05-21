@@ -18,6 +18,7 @@ import {
   type WorkbookAuthoritativeReadbackProof,
   type WorkbookMutationUndoProof,
   type WorkbookSemanticReadbackProof,
+  type WorkbookAgentMutationProofContext,
 } from './workbook-agent-mutation-proof.js'
 import { stringifyJson, textToolResult, type WorkbookAgentStageCommandResult } from './workbook-agent-tool-shared.js'
 
@@ -171,8 +172,8 @@ function buildWorkbookSemanticReadbackProof(input: {
   }
 }
 
-async function buildMutationReceipt(input: {
-  readonly context: WorkbookAgentToolStageContext
+export async function buildMutationReceipt(input: {
+  readonly context: WorkbookAgentMutationProofContext
   readonly toolName: string
   readonly normalized: WorkbookAgentStageCommandResult
 }): Promise<WorkbookToolMutationReceipt> {
