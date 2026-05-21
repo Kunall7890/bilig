@@ -44,6 +44,8 @@ export interface ProjectedTileSceneChange {
   readonly structural: boolean
 }
 
+const INVALIDATED_CELL_RUN_DIRTY_MASK = DirtyMaskV3.Value | DirtyMaskV3.Style | DirtyMaskV3.Text | DirtyMaskV3.Rect | DirtyMaskV3.Border
+
 export class ProjectedTileSceneStore {
   private readonly residency = new TileResidencyV3<ProjectedRenderTile>()
   private readonly dirtyTiles = new DirtyTileIndexV3()
@@ -131,7 +133,7 @@ export class ProjectedTileSceneStore {
             break
           }
           this.residency.delete(mutation.tileId)
-          this.dirtyTiles.markTile(mutation.tileId, DirtyMaskV3.Value | DirtyMaskV3.Text | DirtyMaskV3.Rect)
+          this.dirtyTiles.markTile(mutation.tileId, INVALIDATED_CELL_RUN_DIRTY_MASK)
           changedTileIds.delete(mutation.tileId)
           invalidatedTileIds.add(mutation.tileId)
           break

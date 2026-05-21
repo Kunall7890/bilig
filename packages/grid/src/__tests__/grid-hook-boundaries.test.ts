@@ -39,6 +39,18 @@ describe('grid hook boundary helpers', () => {
     ).toBe(false)
     expect(
       resolveRequiresLiveViewportState({
+        fillPreviewActive: true,
+        hasActiveHeaderDrag: false,
+        hasActiveResizeColumn: false,
+        hasActiveResizeRow: false,
+        hasColumnResizePreview: false,
+        hasRowResizePreview: false,
+        isEditingCell: false,
+        isFillHandleDragging: true,
+      }),
+    ).toBe(false)
+    expect(
+      resolveRequiresLiveViewportState({
         fillPreviewActive: false,
         hasActiveHeaderDrag: false,
         hasActiveResizeColumn: true,
