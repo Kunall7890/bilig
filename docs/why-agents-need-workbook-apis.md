@@ -153,7 +153,7 @@ If the agent already supports MCP, skip the TypeScript wrapper and start the
 published stdio server in file-backed mode:
 
 ```sh
-npm exec --package @bilig/headless@0.40.43 -- bilig-workpaper-mcp --workpaper ./pricing.workpaper.json --init-demo-workpaper --writable
+npm exec --package @bilig/workpaper@0.40.43 -- bilig-workpaper-mcp --workpaper ./pricing.workpaper.json --init-demo-workpaper --writable
 ```
 
 That command creates `pricing.workpaper.json` only when it is missing, exposes
@@ -219,7 +219,7 @@ parity. It does not claim every benchmark p95 row is faster than HyperFormula.
 The current public claim is narrower: `@bilig/headless` exposes a WorkPaper API
 for programmatic workbook creation, formulas, structural operations,
 persistence, and checked-in benchmark evidence. The evidence note records
-WorkPaper `100/100` mean wins on scorecard-eligible comparable workloads against
+WorkPaper `94/100` mean wins on scorecard-eligible comparable workloads against
 HyperFormula-style workloads, with the p95 evidence documented separately.
 
 Read the benchmark note here:

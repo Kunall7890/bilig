@@ -133,9 +133,19 @@ function requireNotIncludes(haystack: string, needle: string, context: string): 
 }
 
 async function buildEvidence(): Promise<PublicEvidence> {
-  const [packageManifest, serverManifest, releasePleaseManifest, benchmarkArtifact, leadershipScorecard] = await Promise.all([
+  const [
+    packageManifest,
+    serverManifest,
+    workpaperPackageManifest,
+    workpaperServerManifest,
+    releasePleaseManifest,
+    benchmarkArtifact,
+    leadershipScorecard,
+  ] = await Promise.all([
     readJsonRecord(join(repoRoot, 'packages', 'headless', 'package.json'), 'packages/headless/package.json'),
     readJsonRecord(join(repoRoot, 'packages', 'headless', 'server.json'), 'packages/headless/server.json'),
+    readJsonRecord(join(repoRoot, 'packages', 'workpaper', 'package.json'), 'packages/workpaper/package.json'),
+    readJsonRecord(join(repoRoot, 'packages', 'workpaper', 'server.json'), 'packages/workpaper/server.json'),
     readJsonRecord(join(repoRoot, '.release-please-manifest.json'), '.release-please-manifest.json'),
     readJsonRecord(join(repoRoot, 'packages', 'benchmarks', 'baselines', 'workpaper-vs-hyperformula.json'), 'workpaper benchmark artifact'),
     readJsonRecord(
@@ -146,6 +156,8 @@ async function buildEvidence(): Promise<PublicEvidence> {
 
   const packageName = readString(packageManifest, 'name', 'packages/headless/package.json')
   const packageVersion = readString(packageManifest, 'version', 'packages/headless/package.json')
+  const workpaperPackageName = readString(workpaperPackageManifest, 'name', 'packages/workpaper/package.json')
+  const workpaperPackageVersion = readString(workpaperPackageManifest, 'version', 'packages/workpaper/package.json')
   const releasePleaseVersion = readString(releasePleaseManifest, 'packages/headless', '.release-please-manifest.json')
   const serverVersion = readString(serverManifest, 'version', 'packages/headless/server.json')
   const serverPackages = serverManifest['packages']
@@ -159,6 +171,18 @@ async function buildEvidence(): Promise<PublicEvidence> {
     throw new Error(`packages/headless/server.json is missing npm package entry for ${packageName}`)
   }
   const mcpPackageVersion = readString(npmServerPackage, 'version', 'packages/headless/server.json package entry')
+  const workpaperServerVersion = readString(workpaperServerManifest, 'version', 'packages/workpaper/server.json')
+  const workpaperServerPackages = workpaperServerManifest['packages']
+  if (!Array.isArray(workpaperServerPackages)) {
+    throw new Error('packages/workpaper/server.json.packages must be an array')
+  }
+  const workpaperNpmServerPackage = workpaperServerPackages
+    .map((entry) => asRecord(entry, 'packages/workpaper/server.json.packages[]'))
+    .find((entry) => entry['identifier'] === workpaperPackageName)
+  if (!workpaperNpmServerPackage) {
+    throw new Error(`packages/workpaper/server.json is missing npm package entry for ${workpaperPackageName}`)
+  }
+  const workpaperMcpPackageVersion = readString(workpaperNpmServerPackage, 'version', 'packages/workpaper/server.json package entry')
 
   const benchmark = asRecord(benchmarkArtifact['benchmark'], 'workpaper benchmark artifact.benchmark')
   const engines = asRecord(benchmarkArtifact['engines'], 'workpaper benchmark artifact.engines')
@@ -176,6 +200,9 @@ async function buildEvidence(): Promise<PublicEvidence> {
     ['.release-please-manifest.json', releasePleaseVersion],
     ['packages/headless/server.json', serverVersion],
     ['packages/headless/server.json package entry', mcpPackageVersion],
+    ['packages/workpaper/package.json', workpaperPackageVersion],
+    ['packages/workpaper/server.json', workpaperServerVersion],
+    ['packages/workpaper/server.json package entry', workpaperMcpPackageVersion],
   ] as const
   for (const [context, version] of alignedVersionEntries) {
     if (version !== packageVersion) {
@@ -347,7 +374,7 @@ async function assertPublicSurfaces(evidence: PublicEvidence): Promise<void> {
   )
   requireIncludesIgnoringWhitespace(
     index,
-    `${overall.worstP95RatioWorkload} is the narrowest p95 win: <code>${p95Ratio}</code>`,
+    `${overall.worstP95RatioWorkload} is the current worst p95 row: <code>${p95Ratio}</code>`,
     'docs/index.html',
   )
 

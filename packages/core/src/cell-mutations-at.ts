@@ -6,7 +6,7 @@ import type { WorkbookStore } from './workbook-store.js'
 export type EngineCellMutationAt =
   | { kind: 'setCellValue'; row: number; col: number; value: LiteralInput }
   | { kind: 'setCellFormula'; row: number; col: number; formula: string }
-  | { kind: 'clearCell'; row: number; col: number }
+  | { kind: 'clearCell'; row: number; col: number; skipTableHeaderRename?: boolean }
 
 export interface EngineCellMutationRef {
   sheetId: number
@@ -82,6 +82,7 @@ export function cloneCellMutationAt(mutation: EngineCellMutationAt): EngineCellM
         kind: 'clearCell',
         row: mutation.row,
         col: mutation.col,
+        ...(mutation.skipTableHeaderRename === true ? { skipTableHeaderRename: true } : {}),
       }
   }
 }
@@ -120,6 +121,7 @@ export function cellMutationRefToEngineOp(workbook: Pick<WorkbookStore, 'getShee
         kind: 'clearCell',
         sheetName: sheet.name,
         address,
+        ...(ref.mutation.skipTableHeaderRename === true ? { skipTableHeaderRename: true } : {}),
       }
   }
 }

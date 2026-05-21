@@ -5,12 +5,15 @@ import {
   rewriteAddressForStructuralTransform,
   rewriteFormulaForStructuralTransform,
   rewriteRangeForStructuralTransform,
+  parseFormula,
+  type FormulaNode,
   type StructuralAxisTransform,
 } from '@bilig/formula'
 import { mapStructuralBoundary } from '../../engine-structural-utils.js'
 import { normalizeDefinedName, type WorkbookTableRecord } from '../../workbook-store.js'
 import type { CreateEngineStructureServiceArgs } from './structure-service-types.js'
 import { rewriteFormulaSourceForDeletedStructuredReferences } from './structure-structured-ref-rewrite.js'
+import { nextGeneratedTableColumnName, normalizeTableColumnName } from './table-column-name-helpers.js'
 
 type StructureMetadataRewriteArgs = Pick<CreateEngineStructureServiceArgs, 'state' | 'clearOwnedPivot'>
 
@@ -41,6 +44,7 @@ export function rewriteDefinedNamesForStructuralTransform(
   sheetName: string,
   transform: StructuralAxisTransform,
   deletedTableColumns: readonly DeletedTableColumnReference[],
+  changedTableNames: ReadonlySet<string>,
 ): Set<string> {
   const workbook = args.state.workbook
   const changedNames = new Set<string>()
@@ -52,6 +56,8 @@ export function rewriteDefinedNamesForStructuralTransform(
       }
       if (`=${nextFormula}` !== record.value) {
         workbook.setDefinedName(record.name, `=${nextFormula}`, record.scopeSheetName)
+        changedNames.add(normalizeDefinedName(record.name))
+      } else if (formulaReferencesChangedTable(nextFormula, changedTableNames)) {
         changedNames.add(normalizeDefinedName(record.name))
       }
       return
@@ -77,16 +83,21 @@ export function rewriteDefinedNamesForStructuralTransform(
         if (nextValue.formula !== record.value.formula) {
           workbook.setDefinedName(record.name, nextValue, record.scopeSheetName)
           changedNames.add(normalizeDefinedName(record.name))
+        } else if (formulaReferencesChangedTable(nextFormula, changedTableNames)) {
+          changedNames.add(normalizeDefinedName(record.name))
         }
         return
       }
       case 'structured-ref': {
         const value = record.value
-        if (!deletedTableColumns.some((deleted) => tableColumnReferenceMatches(deleted, value.tableName, value.columnName))) {
+        if (deletedTableColumns.some((deleted) => tableColumnReferenceMatches(deleted, value.tableName, value.columnName))) {
+          workbook.setDefinedName(record.name, { kind: 'formula', formula: '=#REF!' }, record.scopeSheetName)
+          changedNames.add(normalizeDefinedName(record.name))
           return
         }
-        workbook.setDefinedName(record.name, { kind: 'formula', formula: '=#REF!' }, record.scopeSheetName)
-        changedNames.add(normalizeDefinedName(record.name))
+        if (structuredReferenceTouchesChangedTable(value.tableName, changedTableNames)) {
+          changedNames.add(normalizeDefinedName(record.name))
+        }
         return
       }
       case 'cell-ref': {
@@ -154,6 +165,64 @@ function tableColumnReferenceMatches(deleted: DeletedTableColumnReference, table
     normalizeTableColumnName(deleted.tableName) === normalizeTableColumnName(tableName) &&
     normalizeTableColumnName(deleted.columnName) === normalizeTableColumnName(columnName)
   )
+}
+
+function formulaReferencesChangedTable(formula: string, changedTableNames: ReadonlySet<string>): boolean {
+  if (changedTableNames.size === 0) {
+    return false
+  }
+  try {
+    return formulaNodeReferencesChangedTable(parseFormula(formula), changedTableNames)
+  } catch {
+    return false
+  }
+}
+
+function formulaNodeReferencesChangedTable(node: FormulaNode, changedTableNames: ReadonlySet<string>): boolean {
+  switch (node.kind) {
+    case 'StructuredRef':
+      return structuredReferenceTouchesChangedTable(node.tableName, changedTableNames)
+    case 'ArrayConstant':
+      return node.rows.some((row) => row.some((entry) => formulaNodeReferencesChangedTable(entry, changedTableNames)))
+    case 'UnaryExpr':
+      return formulaNodeReferencesChangedTable(node.argument, changedTableNames)
+    case 'BinaryExpr':
+      return (
+        formulaNodeReferencesChangedTable(node.left, changedTableNames) || formulaNodeReferencesChangedTable(node.right, changedTableNames)
+      )
+    case 'CallExpr':
+      return node.args.some((arg) => formulaNodeReferencesChangedTable(arg, changedTableNames))
+    case 'InvokeExpr':
+      return (
+        formulaNodeReferencesChangedTable(node.callee, changedTableNames) ||
+        node.args.some((arg) => formulaNodeReferencesChangedTable(arg, changedTableNames))
+      )
+    case 'NumberLiteral':
+    case 'BooleanLiteral':
+    case 'StringLiteral':
+    case 'ErrorLiteral':
+    case 'OmittedArgument':
+    case 'NameRef':
+    case 'CellRef':
+    case 'SpillRef':
+    case 'ColumnRef':
+    case 'RowRef':
+    case 'RangeRef':
+      return false
+  }
+}
+
+function structuredReferenceTouchesChangedTable(tableName: string, changedTableNames: ReadonlySet<string>): boolean {
+  if (changedTableNames.has(tableName)) {
+    return true
+  }
+  const normalizedTableName = normalizeTableColumnName(tableName)
+  for (const changedTableName of changedTableNames) {
+    if (normalizeTableColumnName(changedTableName) === normalizedTableName) {
+      return true
+    }
+  }
+  return false
 }
 
 export function rewriteWorkbookMetadataForStructuralTransform(
@@ -516,18 +585,6 @@ function ensureMinimumTableDataBodyRange<T extends MetadataRangeLike>(range: T, 
     startAddress: range.startAddress,
     endAddress: formatAddress(nextEndRow, endCol),
   })
-}
-
-function nextGeneratedTableColumnName(usedColumnNames: Set<string>): string {
-  let suffix = 1
-  while (usedColumnNames.has(normalizeTableColumnName(`Column${String(suffix)}`))) {
-    suffix += 1
-  }
-  return `Column${String(suffix)}`
-}
-
-function normalizeTableColumnName(name: string): string {
-  return name.trim().toUpperCase()
 }
 
 function mapTableColumnPointForStructuralTransform(index: number, transform: StructuralAxisTransform): number | undefined {

@@ -119,8 +119,10 @@ export interface FindRowsOptions {
   }
 }
 
+export interface FindRangeCellInput extends CellRangeRef {}
+
 export type FindRangeInput =
-  | CellRangeRef
+  | FindRangeCellInput
   | {
       readonly sheetName: string
       readonly address: string

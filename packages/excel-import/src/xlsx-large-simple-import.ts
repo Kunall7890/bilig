@@ -37,8 +37,7 @@ import {
   type LargeSimpleSharedStrings,
 } from './xlsx-large-simple-shared-strings.js'
 import { shouldUseSharedStringlessFastPathBytes } from './xlsx-large-simple-shared-stringless-fast-path.js'
-import { readLargeSimpleWorkbookStylesFromChunks } from './xlsx-large-simple-styles.js'
-import { readLargeSimpleWorkbookNumberFormatsFromChunks } from './xlsx-large-simple-number-formats.js'
+import { readLargeSimpleWorkbookStyleArtifactsFromChunks } from './xlsx-large-simple-styles.js'
 import {
   maxPreallocatedWorksheetCells,
   prepareLargeSimpleStyleIndexForWorksheet,
@@ -84,6 +83,7 @@ import {
   normalizeZipPath,
   readLazyXlsxZipSourceByteLength,
   releaseLazyXlsxZipSource,
+  replaceLazyXlsxZipSource,
   type XlsxZipEntries,
 } from './xlsx-zip.js'
 import type {
@@ -170,6 +170,20 @@ export function tryImportLargeSimpleXlsx(
   const hasSlicerConnectionParts = packagePaths.some(
     (path) => path === 'xl/connections.xml' || path.startsWith('xl/slicerCaches/') || path.startsWith('xl/slicers/'),
   )
+  phaseRecorder.finish('zip-setup', zipSetupStart)
+  let ownedSourceReleasedForReplacement = false
+  if (options.releaseZipSource === true && options.replacementZipSource) {
+    const zipSourceReleaseStart = phaseRecorder.start()
+    const zipSourceBytesBeforeRelease = readLazyXlsxZipSourceByteLength(zip)
+    const zipSourceReplaced = replaceLazyXlsxZipSource(zip, options.replacementZipSource)
+    const ownedSourceReleaseEvidence = zipSourceReplaced ? options.releaseOwnedSourceBytes?.() : undefined
+    ownedSourceReleasedForReplacement = Boolean(ownedSourceReleaseEvidence)
+    phaseRecorder.finish('zip-source-release', zipSourceReleaseStart, {
+      ...(zipSourceBytesBeforeRelease !== undefined ? { zipSourceBytesBeforeRelease } : {}),
+      ...(zipSourceBytesBeforeRelease !== undefined ? { zipSourceBytesAfterRelease: readLazyXlsxZipSourceByteLength(zip) ?? 0 } : {}),
+      ...ownedSourceReleaseEvidence,
+    })
+  }
   const importedExternalLinkArtifacts =
     materializeCells && hasExternalLinkParts ? readImportedWorkbookExternalLinkArtifacts(zip) : undefined
   const importedDataModelArtifacts = materializeCells && hasDataModelParts ? readImportedWorkbookDataModelArtifacts(zip) : undefined
@@ -201,7 +215,6 @@ export function tryImportLargeSimpleXlsx(
   if (hasExternalLargeSimplePivotCaches(zip)) {
     warnings.push(externalPivotCachesWarning)
   }
-  phaseRecorder.finish('zip-setup', zipSetupStart)
   const importedTables: WorkbookTableSnapshot[] = []
   const sheets: WorkbookSnapshot['sheets'] = []
   const previewSheets: ParsedWorksheet['preview'][] = []
@@ -595,20 +608,15 @@ export function tryImportLargeSimpleXlsx(
     }
     scanned.cellScan.styleIndexes.collectRequiredStyleIndexes(requiredStyleIndexes)
   }
-  const parsedStylesByIndex =
+  const parsedStyleArtifacts =
     materializeCells && hasStyles
-      ? readLargeSimpleWorkbookStylesFromChunks(
+      ? readLargeSimpleWorkbookStyleArtifactsFromChunks(
           (onChunk) => forEachInflatedXlsxZipEntryChunk(zip, stylesPath, onChunk),
           requiredStyleIndexes,
         )
-      : new Map()
-  const parsedNumberFormatsByStyleIndex =
-    materializeCells && hasStyles
-      ? readLargeSimpleWorkbookNumberFormatsFromChunks(
-          (onChunk) => forEachInflatedXlsxZipEntryChunk(zip, stylesPath, onChunk),
-          requiredStyleIndexes,
-        )
-      : new Map()
+      : { stylesByIndex: new Map(), numberFormatsByStyleIndex: new Map() }
+  const parsedStylesByIndex = parsedStyleArtifacts.stylesByIndex
+  const parsedNumberFormatsByStyleIndex = parsedStyleArtifacts.numberFormatsByStyleIndex
   if (parsedNumberFormatsByStyleIndex === null) {
     return null
   }
@@ -630,6 +638,52 @@ export function tryImportLargeSimpleXlsx(
   )
   delete zip[stylesPath]
   phaseRecorder.finish('style-parsing', styleParsingStart)
+  if (
+    materializeCells &&
+    stylesByIndex.size === 0 &&
+    numberFormatsByStyleIndex.size === 0 &&
+    (options.releaseZipSource !== true || allowPreReleaseSheetFinalization)
+  ) {
+    for (const [index, scanned] of scannedWorksheets.entries()) {
+      if (
+        !scanned ||
+        scanned.sharedStringIndexes.size > 0 ||
+        sheetHasRelationshipBackedArtifacts(scanned.name, scanned.metadataScan, scanned.worksheetXml)
+      ) {
+        continue
+      }
+      const snapshotMaterializationStart = phaseRecorder.start()
+      const resolvedRichTextCells =
+        hasSharedStrings && scanned.hasUnresolvedSharedStringReferences === true
+          ? scanned.cellScan.arena.retainSharedStringReferences(scanned.sharedStrings ?? sharedStrings)
+          : []
+      if (resolvedRichTextCells === null) {
+        return null
+      }
+      appendParsedWorksheet(
+        buildParsedWorksheet(
+          scanned.name,
+          scanned.order,
+          {
+            ...scanned.cellScan,
+            richTextCells: mergeWorkbookRichTextCells(scanned.cellScan.richTextCells, resolvedRichTextCells),
+          },
+          scanned.worksheetXml,
+          scanned.metadataScan,
+          scanned.metadataInput,
+          {
+            materializeCells,
+            releaseArenaAfterMaterialization: options.releaseArenaAfterMaterialization !== false,
+            styleCatalog,
+            stylesByIndex: emptyStylesByIndex,
+          },
+        ),
+      )
+      scannedWorksheets[index] = undefined
+      phaseRecorder.finish('public-snapshot-materialization', snapshotMaterializationStart)
+      collectLargeSimpleImportGarbage()
+    }
+  }
   const importedDrawingArtifacts =
     materializeCells && hasDrawingParts
       ? readImportedWorkbookDrawingArtifactsFromWorksheetRelationships(
@@ -687,10 +741,14 @@ export function tryImportLargeSimpleXlsx(
       opaqueArtifacts: [importedPivotArtifacts?.artifacts],
     })
     const retainZipSourceForLazyPackageArtifacts = zipSourceBytesBeforeRelease !== undefined && artifactReleasePlan.retainZipSource
-    if (!retainZipSourceForLazyPackageArtifacts) {
+    const releaseZipSource = !retainZipSourceForLazyPackageArtifacts && !options.replacementZipSource
+    if (releaseZipSource) {
       releaseLazyXlsxZipSource(zip)
     }
-    const ownedSourceReleaseEvidence = retainZipSourceForLazyPackageArtifacts ? undefined : options.releaseOwnedSourceBytes?.()
+    const ownedSourceReleaseEvidence =
+      ownedSourceReleasedForReplacement || (retainZipSourceForLazyPackageArtifacts && options.replacementZipSource)
+        ? undefined
+        : options.releaseOwnedSourceBytes?.()
     phaseRecorder.finish('zip-source-release', zipSourceReleaseStart, {
       ...(zipSourceBytesBeforeRelease !== undefined ? { zipSourceBytesBeforeRelease } : {}),
       ...(zipSourceBytesBeforeRelease !== undefined ? { zipSourceBytesAfterRelease: readLazyXlsxZipSourceByteLength(zip) ?? 0 } : {}),

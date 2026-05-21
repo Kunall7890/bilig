@@ -5,6 +5,7 @@ import { describe, expect, it } from 'vitest'
 import { attachRuntimeImage } from '@bilig/core'
 import { ValueTag, type WorkbookSnapshot } from '@bilig/protocol'
 import { exportXlsx, importXlsx } from '../index.js'
+import { normalizeImportedFormulaSource } from '../xlsx-formula-translation.js'
 
 describe('formula cache roundtrip', () => {
   it('preserves cached formula result values through import and export', () => {
@@ -146,6 +147,53 @@ describe('formula cache roundtrip', () => {
     expect(cells.get('I2')).toMatchObject({ formula: 'FILTER(A2:A4,A2:A4<>"")' })
   })
 
+  it('exports SINGLE implicit-intersection wrappers as Excel future functions', () => {
+    const snapshot: WorkbookSnapshot = {
+      version: 1,
+      workbook: { name: 'single-implicit-intersection-export' },
+      sheets: [
+        {
+          id: 1,
+          name: 'Cases',
+          order: 0,
+          cells: [
+            { address: 'A1', value: 1 },
+            { address: 'A2', value: 2 },
+            { address: 'A3', value: 3 },
+            { address: 'C1', formula: 'SINGLE(A1:A3)', value: 1 },
+            { address: 'C2', formula: 'SINGLE(A1:A3)', value: 2 },
+            { address: 'C3', formula: 'SINGLE(A1:A3)', value: 3 },
+            { address: 'D1', formula: 'SUM(SINGLE(A1:A3))', value: 1 },
+          ],
+        },
+      ],
+    }
+
+    const exported = exportXlsx(snapshot)
+    const sheetXml = strFromU8(unzipSync(exported)['xl/worksheets/sheet1.xml'] ?? new Uint8Array())
+
+    expect(cellXml(sheetXml, 'C1')).toContain('<f>_xlfn.SINGLE(A1:A3)</f>')
+    expect(cellXml(sheetXml, 'C2')).toContain('<f>_xlfn.SINGLE(A1:A3)</f>')
+    expect(cellXml(sheetXml, 'C3')).toContain('<f>_xlfn.SINGLE(A1:A3)</f>')
+    expect(cellXml(sheetXml, 'D1')).toContain('<f>SUM(_xlfn.SINGLE(A1:A3))</f>')
+    expect(cellXml(sheetXml, 'C1')).not.toContain('_xludf.SINGLE')
+
+    const reimported = importXlsx(exported, 'single-implicit-intersection-export.xlsx')
+    const cells = new Map(reimported.snapshot.sheets[0]?.cells.map((cell) => [cell.address, cell]) ?? [])
+
+    expect(cells.get('C1')).toMatchObject({ formula: 'SINGLE(A1:A3)', value: 1 })
+    expect(cells.get('C2')).toMatchObject({ formula: 'SINGLE(A1:A3)', value: 2 })
+    expect(cells.get('C3')).toMatchObject({ formula: 'SINGLE(A1:A3)', value: 3 })
+    expect(cells.get('D1')).toMatchObject({ formula: 'SUM(SINGLE(A1:A3))', value: 1 })
+  })
+
+  it('normalizes imported root range formulas as implicit intersections', () => {
+    expect(normalizeImportedFormulaSource('A1:A3')).toBe('SINGLE(A1:A3)')
+    expect(normalizeImportedFormulaSource("'Cases'!A1:A3")).toBe("SINGLE('Cases'!A1:A3)")
+    expect(normalizeImportedFormulaSource('_xlfn.SINGLE(A1:A3)')).toBe('SINGLE(A1:A3)')
+    expect(normalizeImportedFormulaSource('SUM(A1:A3)')).toBe('SUM(A1:A3)')
+  })
+
   it('exports native dynamic array spills with Desktop Excel metadata and cached children', () => {
     const snapshot = attachRuntimeImage(
       {
@@ -205,6 +253,112 @@ describe('formula cache roundtrip', () => {
     expect(cells.get('B2')).toMatchObject({ value: 4 })
     expect(cells.get('B3')).toMatchObject({ value: 6 })
     expect(reimported.snapshot.workbook.metadata?.spills).toEqual([{ sheetName: 'Sheet1', address: 'B1', rows: 3, cols: 1 }])
+  })
+
+  it('exports spill-reference consumers with Desktop Excel ANCHORARRAY formulas', () => {
+    const snapshot = attachRuntimeImage(
+      {
+        version: 1,
+        workbook: {
+          name: 'spill-reference-export',
+          metadata: {
+            spills: [{ sheetName: 'Cases', address: 'B1', rows: 3, cols: 1 }],
+          },
+        },
+        sheets: [
+          {
+            id: 1,
+            name: 'Cases',
+            order: 0,
+            cells: [
+              { address: 'A1', value: 1 },
+              { address: 'A2', value: 2 },
+              { address: 'A3', value: 3 },
+              { address: 'B1', formula: 'SEQUENCE(3,1,1,1)' },
+              { address: 'D1', formula: 'SUM(B1#)', value: 6 },
+              { address: 'E1', formula: 'ROWS(B1#)', value: 3 },
+              { address: 'F1', formula: "INDEX('Cases'!B1#,2)", value: 2 },
+            ],
+          },
+        ],
+      } satisfies WorkbookSnapshot,
+      {
+        version: 1,
+        templateBank: [],
+        formulaInstances: [],
+        formulaValues: [],
+        cellValues: [
+          { sheetName: 'Cases', row: 0, col: 1, value: { tag: ValueTag.Number, value: 1 } },
+          { sheetName: 'Cases', row: 1, col: 1, value: { tag: ValueTag.Number, value: 2 } },
+          { sheetName: 'Cases', row: 2, col: 1, value: { tag: ValueTag.Number, value: 3 } },
+        ],
+      },
+    )
+
+    const exported = exportXlsx(snapshot)
+    const sheetXml = strFromU8(unzipSync(exported)['xl/worksheets/sheet1.xml'] ?? new Uint8Array())
+
+    expect(cellXml(sheetXml, 'D1')).toContain('<f>SUM(_xlfn.ANCHORARRAY(B1))</f>')
+    expect(cellXml(sheetXml, 'E1')).toContain('<f>ROWS(_xlfn.ANCHORARRAY(B1))</f>')
+    expect(cellXml(sheetXml, 'F1')).toContain('<f>INDEX(_xlfn.ANCHORARRAY(&apos;Cases&apos;!B1),2)</f>')
+    expect(cellXml(sheetXml, 'D1')).not.toContain('B1#')
+
+    const reimported = importXlsx(exported, 'spill-reference-export.xlsx')
+    const cells = new Map(reimported.snapshot.sheets[0]?.cells.map((cell) => [cell.address, cell]) ?? [])
+    expect(cells.get('D1')).toMatchObject({ formula: 'SUM(B1#)', value: 6 })
+    expect(cells.get('E1')).toMatchObject({ formula: 'ROWS(B1#)', value: 3 })
+    expect(cells.get('F1')).toMatchObject({ formula: "INDEX('Cases'!B1#,2)", value: 2 })
+    expect(reimported.snapshot.workbook.metadata?.spills).toEqual([{ sheetName: 'Cases', address: 'B1', rows: 3, cols: 1 }])
+  })
+
+  it('keeps inserted native spill cache rows sorted before later worksheet rows', () => {
+    const snapshot = attachRuntimeImage(
+      {
+        version: 1,
+        workbook: {
+          name: 'native-spill-row-order',
+          metadata: {
+            spills: [{ sheetName: 'Sheet1', address: 'H2', rows: 3, cols: 1 }],
+          },
+        },
+        sheets: [
+          {
+            id: 1,
+            name: 'Sheet1',
+            order: 0,
+            cells: [
+              { address: 'A1', value: 'a' },
+              { address: 'C1', value: 100 },
+              { address: 'A2', value: 'b' },
+              { address: 'C2', value: 200 },
+              { address: 'A3', value: 'c' },
+              { address: 'C3', value: 300 },
+              { address: 'H2', formula: 'CHOOSE(2,A1:A3,C1:C3)' },
+              { address: 'H6', formula: 'SUM(CHOOSE(2,B1:B3,C1:C3))', value: 600 },
+              { address: 'H7', formula: 'XLOOKUP("b",A1:A3,C1:C3,"missing",0)', value: 200 },
+            ],
+          },
+        ],
+      } satisfies WorkbookSnapshot,
+      {
+        version: 1,
+        templateBank: [],
+        formulaInstances: [],
+        formulaValues: [],
+        cellValues: [
+          { sheetName: 'Sheet1', row: 1, col: 7, value: { tag: ValueTag.Number, value: 100 } },
+          { sheetName: 'Sheet1', row: 2, col: 7, value: { tag: ValueTag.Number, value: 200 } },
+          { sheetName: 'Sheet1', row: 3, col: 7, value: { tag: ValueTag.Number, value: 300 } },
+        ],
+      },
+    )
+
+    const exported = exportXlsx(snapshot)
+    const sheetXml = strFromU8(unzipSync(exported)['xl/worksheets/sheet1.xml'] ?? new Uint8Array())
+
+    expect(rowNumbers(sheetXml)).toEqual([1, 2, 3, 4, 6, 7])
+    expect(cellXml(sheetXml, 'H2')).toContain('<f t="array" ref="H2:H4">CHOOSE(2,A1:A3,C1:C3)</f>')
+    expect(cellXml(sheetXml, 'H4')).toContain('<v>300</v>')
   })
 })
 
@@ -289,4 +443,8 @@ function replaceCellXml(sheetXml: string, address: string, replacement: string):
     throw new Error(`Missing fixture cell ${address}`)
   }
   return sheetXml.replace(pattern, replacement)
+}
+
+function rowNumbers(sheetXml: string): number[] {
+  return [...sheetXml.matchAll(/<row\b[^>]*\br="([0-9]+)"/gu)].map((match) => Number(match[1]))
 }

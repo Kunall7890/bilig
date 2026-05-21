@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { MAX_COLS } from '@bilig/protocol'
 import {
   aggregateColumnDependencyKey,
+  appendDirectCriteriaAggregateColumnReverseEdge,
   appendDirectAggregateColumnReverseEdges,
   appendSheetRenameSourceTransform,
   appendTrackedReverseEdge,
@@ -15,6 +16,7 @@ import {
   hasQualifiedDependencies,
   parseQualifiedDependencySheetName,
   removeDirectAggregateColumnReverseEdges,
+  removeDirectCriteriaAggregateColumnReverseEdge,
   removeTrackedReverseEdge,
   removeUnindexedAggregateColumnReverseEdge,
   visitIndexedDirectAggregateColumnDependentsForRow,
@@ -159,6 +161,22 @@ describe('formula binding dependency helpers', () => {
     expect(registry.get(key)).toEqual(new Set([10]))
   })
 
+  it('indexes direct criteria aggregate reverse edges by aggregate rows', () => {
+    const registry = new Map<number, Set<number>>()
+    const key = aggregateColumnDependencyKey(4, 0)
+    appendDirectCriteriaAggregateColumnReverseEdge(registry, key, { rowStart: 2, rowEnd: 5 }, 20)
+    appendDirectCriteriaAggregateColumnReverseEdge(registry, key, { rowStart: 8, rowEnd: 9 }, 21)
+
+    const dependents = registry.get(key)
+    expect(dependents).toEqual(new Set([20, 21]))
+    expect(collectIndexedDirectAggregateColumnDependentsForRow(dependents!, 3)).toEqual([20])
+    expect(collectIndexedDirectAggregateColumnDependentsForRow(dependents!, 8)).toEqual([21])
+
+    removeDirectCriteriaAggregateColumnReverseEdge(registry, key, 20)
+    expect(collectIndexedDirectAggregateColumnDependentsForRow(dependents!, 3)).toEqual([])
+    expect(collectIndexedDirectAggregateColumnDependentsForRow(dependents!, 8)).toEqual([21])
+  })
+
   it('parses qualified dependency sheet names including escaped quoted names', () => {
     expect(parseQualifiedDependencySheetName('Sheet1!A1')).toBe('Sheet1')
     expect(parseQualifiedDependencySheetName("'Q1 Report'!A1")).toBe('Q1 Report')
@@ -183,8 +201,11 @@ describe('formula binding dependency helpers', () => {
       directRegionIdsForFormula({
         directAggregate: { regionId: 1, regionIds: [1, 2] },
         directCriteria: {
-          aggregateRange: { regionId: 3, sheetName: 'Sheet1', col: 4 },
-          criteriaPairs: [{ range: { regionId: 2 } }, { range: { regionId: 5 } }],
+          aggregateRange: { regionId: 3, sheetName: 'Sheet1', rowStart: 0, rowEnd: 9, col: 4, length: 10 },
+          criteriaPairs: [
+            { range: { regionId: 2, sheetName: 'Sheet1', rowStart: 0, rowEnd: 9, col: 0, length: 10 } },
+            { range: { regionId: 5, sheetName: 'Sheet1', rowStart: 0, rowEnd: 9, col: 1, length: 10 } },
+          ],
         },
       }),
     ).toEqual([1, 3, 2, 5])
@@ -204,8 +225,10 @@ describe('formula binding dependency helpers', () => {
   it('builds column keys and direct lookup column info', () => {
     expect(aggregateColumnDependencyKey(2, 3)).toBe(2 * MAX_COLS + 3)
     expect(formulaColumnCountKey(4, 5)).toBe(4 * MAX_COLS + 5)
-    expect(directCriteriaAggregateColumn({ aggregateRange: { sheetName: 'Sheet1', col: 7 } })).toEqual({
+    expect(directCriteriaAggregateColumn({ aggregateRange: { sheetName: 'Sheet1', rowStart: 2, rowEnd: 9, col: 7 } })).toEqual({
       sheetName: 'Sheet1',
+      rowStart: 2,
+      rowEnd: 9,
       col: 7,
     })
     expect(directCriteriaAggregateColumn(undefined)).toBeUndefined()

@@ -577,14 +577,14 @@ export function useWorkbookSync(input: {
       })
       try {
         const viewportStore = workerHandleRef.current?.viewportStore
-        const deferVisibleStyleMutationUntilDurable = isStyleMutation(mutation)
+        const deferProjectionStyleMutationUntilJournaled = isStyleMutation(mutation)
         rollbackOptimisticMutation = combineMutationRollbacks(
           applyOptimisticCellMutation(viewportStore, mutation),
           applyOptimisticRangeMutation(viewportStore, mutation),
-          deferVisibleStyleMutationUntilDurable ? null : applyOptimisticStyleMutation(viewportStore, mutation),
+          applyOptimisticStyleMutation(viewportStore, mutation),
         )
         await trackLocalMutationTask(async () => {
-          if (!deferVisibleStyleMutationUntilDurable) {
+          if (!deferProjectionStyleMutationUntilJournaled) {
             try {
               await applyOptimisticProjectionMutation(runtimeController, mutation)
             } catch (error) {
@@ -592,12 +592,6 @@ export function useWorkbookSync(input: {
             }
           }
           await enqueuePendingMutation(mutation)
-          if (deferVisibleStyleMutationUntilDurable) {
-            rollbackOptimisticMutation = combineMutationRollbacks(
-              rollbackOptimisticMutation,
-              applyOptimisticStyleMutation(workerHandleRef.current?.viewportStore, mutation),
-            )
-          }
         })
         if (remoteMutationTransportAvailable && canAttemptRemoteSync(connectionStateRef.current)) {
           scheduleAuthoritativeRefreshProbes()

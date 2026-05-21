@@ -13,7 +13,7 @@ import type { ExactLookupImpactCaches } from './operation-lookup-dirty-markers.j
 import type { OperationLookupPlanner } from './operation-lookup-planner.js'
 import { applyOperationLookupNumericWriteTailPatches, planOperationLookupNumericWrites } from './operation-lookup-write-plans.js'
 import type { CreateEngineOperationServiceArgs } from './operation-service-types.js'
-import { applyTableHeaderRenameForSetCellValue } from './operation-table-header-rename.js'
+import { applyTableHeaderRenameForSetCellValue, isTableHeaderCell } from './operation-table-header-rename.js'
 
 type SetCellValueMutation = Extract<EngineCellMutationRef['mutation'], { kind: 'setCellValue' }>
 
@@ -126,6 +126,7 @@ export function applySetCellValueMutation(request: ApplySetCellValueMutationArgs
   let formulaChangedCount = request.formulaChangedCount
   let explicitChangedCount = request.explicitChangedCount
   let topologyChanged = request.topologyChanged
+  let effectiveValue = mutation.value
 
   const markReplicaVersion = (): void => {
     if (!isRestore && args.state.trackReplicaVersions) {
@@ -146,12 +147,21 @@ export function applySetCellValueMutation(request: ApplySetCellValueMutationArgs
     topologyChanged = rebound.topologyChanged
   }
 
-  if (mutation.value === null && !isRestore && (existingIndex === undefined || request.isNullLiteralWriteNoOp(existingIndex))) {
+  if (
+    mutation.value === null &&
+    !isRestore &&
+    (existingIndex === undefined || request.isNullLiteralWriteNoOp(existingIndex)) &&
+    !isTableHeaderCell(args.state.workbook.listTables(), sheetName, mutation.row, mutation.col)
+  ) {
     return { changedInputCount, formulaChangedCount, explicitChangedCount, topologyChanged }
   }
 
   if (!isRestore) {
-    ;({ formulaChangedCount, topologyChanged } = applyTableHeaderRenameForSetCellValue({
+    ;({
+      formulaChangedCount,
+      topologyChanged,
+      value: effectiveValue,
+    } = applyTableHeaderRenameForSetCellValue({
       serviceArgs: args,
       sheetName,
       row: mutation.row,
@@ -167,11 +177,11 @@ export function applySetCellValueMutation(request: ApplySetCellValueMutationArgs
   const oldExactLookupNumber =
     canFastOverwriteExisting && hasExactLookupDependents ? request.readExactNumericValueForLookup(existingIndex) : undefined
   const newExactLookupNumber =
-    hasExactLookupDependents || needsDirectLookupNumericValue ? exactLookupLiteralNumericValue(mutation.value) : undefined
+    hasExactLookupDependents || needsDirectLookupNumericValue ? exactLookupLiteralNumericValue(effectiveValue) : undefined
   const oldApproximateLookupNumber =
     canFastOverwriteExisting && hasSortedLookupDependents ? request.readApproximateNumericValueForLookup(existingIndex) : undefined
   const newApproximateLookupNumber =
-    hasSortedLookupDependents || needsDirectLookupNumericValue ? directScalarLiteralNumericValue(mutation.value) : undefined
+    hasSortedLookupDependents || needsDirectLookupNumericValue ? directScalarLiteralNumericValue(effectiveValue) : undefined
   const lookupWritePlans = planOperationLookupNumericWrites({
     isRestore,
     hasAggregateDependents,
@@ -196,7 +206,7 @@ export function applySetCellValueMutation(request: ApplySetCellValueMutationArgs
   let directDependentsHandled = false
   if (!isRestore && canFastOverwriteExisting && !hasAggregateDependents) {
     const oldNumber = request.directScalarCellNumericValue(existingIndex)
-    const newNumber = directScalarLiteralNumericValue(mutation.value)
+    const newNumber = directScalarLiteralNumericValue(effectiveValue)
     if (oldNumber !== undefined && newNumber !== undefined) {
       directDependentsHandled = request.markPostRecalcDirectScalarNumericDependents(
         existingIndex,
@@ -244,9 +254,9 @@ export function applySetCellValueMutation(request: ApplySetCellValueMutationArgs
     if (!needsLookupValueRead) {
       return
     }
-    const newStringId = typeof mutation.value === 'string' ? args.state.workbook.cellStore.stringIds[cellIndex] : undefined
+    const newStringId = typeof effectiveValue === 'string' ? args.state.workbook.cellStore.stringIds[cellIndex] : undefined
     const priorLookup = prior ?? request.readCellValueForLookup(existingIndex)
-    const newLookupValue = newValue ?? literalToValue(mutation.value, args.state.strings)
+    const newLookupValue = newValue ?? literalToValue(effectiveValue, args.state.strings)
     if (hasExactLookupDependents || hasAggregateDependents) {
       const exactLookupRequest = withOptionalLookupStringIds({
         sheetName,
@@ -297,7 +307,7 @@ export function applySetCellValueMutation(request: ApplySetCellValueMutationArgs
   }
 
   if (canFastOverwriteExisting) {
-    writeLiteralToCellStore(args.state.workbook.cellStore, existingIndex, mutation.value, args.state.strings)
+    writeLiteralToCellStore(args.state.workbook.cellStore, existingIndex, effectiveValue, args.state.strings)
     args.state.workbook.notifyCellValueWritten(existingIndex)
     if (lookupWritePlans.handledLookupDependents) {
       const columnVersionAfterWrite = (args.state.workbook.getSheetById(sheetId)?.columnVersions[mutation.col] ?? 0) + 1
@@ -325,7 +335,7 @@ export function applySetCellValueMutation(request: ApplySetCellValueMutationArgs
         request.noteHandledLookupInputCellIndex(existingIndex)
       }
     }
-    const newValue = needsLookupValueRead || !directDependentsHandled ? literalToValue(mutation.value, args.state.strings) : undefined
+    const newValue = needsLookupValueRead || !directDependentsHandled ? literalToValue(effectiveValue, args.state.strings) : undefined
     markDirectFormulaDependents(existingIndex, newValue)
     markLookupDependents(existingIndex, newValue)
     changedInputCount = args.markInputChanged(existingIndex, changedInputCount)
@@ -349,18 +359,18 @@ export function applySetCellValueMutation(request: ApplySetCellValueMutationArgs
       request.clearTrackedColumnDependencyFlagCache()
     }
   }
-  writeLiteralToCellStore(args.state.workbook.cellStore, cellIndex, mutation.value, args.state.strings)
+  writeLiteralToCellStore(args.state.workbook.cellStore, cellIndex, effectiveValue, args.state.strings)
   args.state.workbook.notifyCellValueWritten(cellIndex)
   if (!isRestore) {
     rebindValueSensitiveDependents(cellIndex)
   }
-  const newValue = needsLookupValueRead || !directDependentsHandled ? literalToValue(mutation.value, args.state.strings) : undefined
+  const newValue = needsLookupValueRead || !directDependentsHandled ? literalToValue(effectiveValue, args.state.strings) : undefined
   markDirectFormulaDependents(cellIndex, newValue)
   markLookupDependents(cellIndex, newValue)
   args.state.workbook.cellStore.flags[cellIndex] =
     (args.state.workbook.cellStore.flags[cellIndex] ?? 0) &
     ~(CellFlags.HasFormula | CellFlags.JsOnly | CellFlags.InCycle | CellFlags.SpillChild | CellFlags.PivotOutput)
-  if (!isRestore && mutation.value === null) {
+  if (!isRestore && effectiveValue === null) {
     request.pruneCellIfOrphaned(cellIndex)
   }
   changedInputCount = args.markInputChanged(cellIndex, changedInputCount)

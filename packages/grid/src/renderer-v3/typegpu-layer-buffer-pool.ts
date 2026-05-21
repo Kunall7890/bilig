@@ -183,12 +183,15 @@ export function syncTypeGpuHeaderResourcesV3(input: {
   const syncText = input.syncText ?? true
   input.headerPanes.forEach((pane) => {
     const entry = input.layerResources.get(resolveWorkbookHeaderLayerKeyV3(pane))
-    const textSignature = resolveHeaderTextSignatureV3(pane)
     if (syncText) {
       const atlas = input.atlas
       if (!atlas) {
         throw new Error('syncTypeGpuHeaderResourcesV3 requires an atlas when text syncing is enabled')
       }
+      const textSignature = resolveHeaderTextSignatureV3({
+        atlasGeometryVersion: atlas.getGlyphGeometryVersion(),
+        pane,
+      })
       if (entry.textSignature !== textSignature) {
         syncHeaderTextResource({
           atlas,
@@ -410,8 +413,8 @@ function createTextBuffer(artifacts: TypeGpuLayerBufferArtifactsV3, capacityByte
   return artifacts.root.createBuffer(WORKBOOK_TEXT_INSTANCE_LAYOUT.schemaForCount(count)).$usage('vertex') as TextInstanceVertexBuffer
 }
 
-function resolveHeaderTextSignatureV3(pane: GridHeaderPaneState): string {
-  return ['header-text-v3', pane.paneId, pane.textCount, pane.textSignature].join(':')
+function resolveHeaderTextSignatureV3(input: { readonly atlasGeometryVersion: number; readonly pane: GridHeaderPaneState }): string {
+  return ['header-text-v3', input.pane.paneId, input.pane.textCount, input.pane.textSignature, input.atlasGeometryVersion].join(':')
 }
 
 function resolveHeaderRectSignatureV3(input: {

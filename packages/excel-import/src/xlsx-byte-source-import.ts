@@ -23,9 +23,24 @@ import { readXlsxZipEntriesLazyFromByteSource, type XlsxZipByteSource, type Xlsx
 const largeCalcChainStreamingByteThreshold = 5_000_000
 const sheetJsBlankStyleStripMinCellCount = 1_000
 const requireModule = createRequire(import.meta.url)
+const vitestEagerModules = readVitestEagerModules()
+
+type ImportMetaGlob = (patterns: readonly string[], options: { readonly eager: true }) => Readonly<Record<string, unknown>>
+
+declare global {
+  interface ImportMeta {
+    readonly glob?: ImportMetaGlob
+  }
+}
 
 interface SheetJsImporterModule {
-  readonly importXlsx: (bytes: Uint8Array, fileName: string, options?: XlsxByteSourceImportOptions) => ImportedWorkbook
+  readonly importSheetJsWorkbook: (
+    bytes: Uint8Array,
+    fileName: string,
+    contentType: typeof XLSX_CONTENT_TYPE,
+    workbookZip: XlsxZipEntries | null,
+    sourceBytesForUntouchedExport?: Uint8Array,
+  ) => ImportedWorkbook
   readonly importXlsxFromPreparedSheetJsParserData: (
     parserData: Uint8Array,
     fileName: string,
@@ -134,7 +149,7 @@ function importXlsxFromMaterializedSource(
   fileName: string,
   options: XlsxByteSourceImportOptions,
 ): ImportedWorkbook {
-  const imported = loadSheetJsImporterModule().importXlsx(readAllSourceBytes(source), fileName, options)
+  const imported = loadSheetJsImporterModule().importSheetJsWorkbook(readAllSourceBytes(source), fileName, XLSX_CONTENT_TYPE, null)
   if (options.attachSourceReaderForUntouchedExport === false) {
     detachImportedXlsxSourceBytes(imported.snapshot)
   }
@@ -147,21 +162,43 @@ function loadSheetJsImporterModule(): SheetJsImporterModule {
 }
 
 function requireSheetJsImporterModule(): SheetJsImporterModule {
+  const vitestModule = readVitestEagerModule('./xlsx-sheetjs-import.js')
+  if (vitestModule) {
+    return readSheetJsImporterModule(vitestModule)
+  }
   try {
-    return readSheetJsImporterModule(requireModule('./index.js'))
+    return readSheetJsImporterModule(requireModule('./xlsx-sheetjs-import.js'))
   } catch (error) {
     if (!isModuleNotFoundError(error)) {
       throw error
     }
   }
   try {
-    return readSheetJsImporterModule(requireModule('../dist/index.js'))
+    return readSheetJsImporterModule(requireModule('../dist/xlsx-sheetjs-import.js'))
   } catch (error) {
     if (!isModuleNotFoundError(error)) {
       throw error
     }
-    return readSheetJsImporterModule(requireModule('./index.ts'))
+    return readSheetJsImporterModule(requireModule('./xlsx-sheetjs-import.ts'))
   }
+}
+
+function readVitestEagerModules(): Readonly<Record<string, unknown>> {
+  if (process.env['VITEST'] !== 'true') {
+    return {}
+  }
+  if (!isImportMetaGlob(import.meta.glob)) {
+    return {}
+  }
+  return import.meta.glob(['./xlsx-sheetjs-import.ts'], { eager: true })
+}
+
+function readVitestEagerModule(path: string): unknown {
+  return vitestEagerModules[path] ?? vitestEagerModules[path.replace(/\.js$/u, '.ts')]
+}
+
+function isImportMetaGlob(value: unknown): value is ImportMetaGlob {
+  return typeof value === 'function'
 }
 
 function isModuleNotFoundError(error: unknown): boolean {
@@ -177,7 +214,9 @@ function readSheetJsImporterModule(value: unknown): SheetJsImporterModule {
 
 function isSheetJsImporterModule(value: unknown): value is SheetJsImporterModule {
   return (
-    isRecord(value) && typeof value['importXlsx'] === 'function' && typeof value['importXlsxFromPreparedSheetJsParserData'] === 'function'
+    isRecord(value) &&
+    typeof value['importSheetJsWorkbook'] === 'function' &&
+    typeof value['importXlsxFromPreparedSheetJsParserData'] === 'function'
   )
 }
 

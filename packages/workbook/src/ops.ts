@@ -131,7 +131,7 @@ export type WorkbookOp =
   | { kind: 'upsertCellNumberFormat'; format: WorkbookCellNumberFormatOp }
   | { kind: 'setStyleRange'; range: CellRangeRef; styleId: string }
   | { kind: 'setFormatRange'; range: CellRangeRef; formatId: string }
-  | { kind: 'clearCell'; sheetName: string; address: string }
+  | { kind: 'clearCell'; sheetName: string; address: string; skipTableHeaderRename?: boolean }
   | { kind: 'upsertDefinedName'; name: string; value: WorkbookDefinedNameValueSnapshot }
   | { kind: 'deleteDefinedName'; name: string }
   | { kind: 'upsertTable'; table: WorkbookTableOp }

@@ -353,7 +353,7 @@ export function createEngineStructureService(args: CreateEngineStructureServiceA
         ? rewriteWorkbookMetadataForStructuralTransform(args, sheetName, transform)
         : { changedTableNames: EMPTY_STRING_SET, tableHeaderCellWrites: [], deletedTableColumns: EMPTY_DELETED_TABLE_COLUMNS }
       const changedDefinedNames = hasStructuralMetadata
-        ? rewriteDefinedNamesForStructuralTransform(args, sheetName, transform, deletedTableColumns)
+        ? rewriteDefinedNamesForStructuralTransform(args, sheetName, transform, deletedTableColumns, changedTableNames)
         : EMPTY_STRING_SET
       const impactedFormulas = collectStructuralFormulaImpacts(args, {
         targetSheetId,

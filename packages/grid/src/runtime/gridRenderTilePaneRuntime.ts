@@ -846,9 +846,10 @@ export class GridRenderTilePaneRuntime {
           sheetName: input.sheetName,
           sortedColumnWidthOverrides: input.sortedColumnWidthOverrides,
           sortedRowHeightOverrides: input.sortedRowHeightOverrides,
-          visibleViewport: input.residentViewport,
+          visibleViewport: input.visibleViewport,
         })
-      const shouldLocalizeEditingCellText = editingCellTileKey === tileKey
+      const shouldLocalizeEditingCellText =
+        editingCellTileKey === tileKey || (input.editingCell !== null && input.editingCell !== undefined && visibleTileKeys.has(tileKey))
       if (
         shouldLocalizeDirty ||
         isMissingResidentTile ||

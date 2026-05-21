@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 
 import { readLargeSimpleWorkbookNumberFormatsFromChunks } from '../xlsx-large-simple-number-formats.js'
-import { readLargeSimpleWorkbookStylesFromChunks } from '../xlsx-large-simple-styles.js'
+import { readLargeSimpleWorkbookStyleArtifactsFromChunks, readLargeSimpleWorkbookStylesFromChunks } from '../xlsx-large-simple-styles.js'
 
 const encoder = new TextEncoder()
 
@@ -62,5 +62,57 @@ describe('large simple styles streaming', () => {
       fill: { backgroundColor: '#ffcc00' },
     })
     expect(readLargeSimpleWorkbookNumberFormatsFromChunks(readChunks, new Set([1]))?.get(1)).toBe('00000')
+  })
+
+  it('collects style and number-format artifacts with a shared component pass', () => {
+    let readPassCount = 0
+    const chunks = [
+      '<styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">',
+      '<numFmts count="1"><numFmt numFmtId="164" formatCode="00000"/></numFmts>',
+      '<fonts count="2"><font/><font><b/><name val="Inter"/><sz val="11"/></font></fonts>',
+      '<fills count="2"><fill><patternFill patternType="none"/></fill><fill><patternFill patternType="solid"><fgColor rgb="FFFFCC00"/></patternFill></fill></fills>',
+      '<cellXfs count="2"><xf numFmtId="0" fillId="0" fontId="0"/><xf numFmtId="164" fillId="1" fontId="1" applyFill="1" applyFont="1" applyNumberFormat="1"/></cellXfs>',
+      '</styleSheet>',
+    ]
+    const readChunks = (onChunk: (chunk: Uint8Array) => void): boolean => {
+      readPassCount += 1
+      for (const chunk of chunks) {
+        onChunk(encoder.encode(chunk))
+      }
+      return true
+    }
+
+    const artifacts = readLargeSimpleWorkbookStyleArtifactsFromChunks(readChunks, new Set([1]))
+
+    expect(artifacts.stylesByIndex?.get(1)).toEqual({
+      fill: { backgroundColor: '#ffcc00' },
+      font: { bold: true, family: 'Inter', size: 11 },
+    })
+    expect(artifacts.numberFormatsByStyleIndex?.get(1)).toBe('00000')
+    expect(readPassCount).toBe(2)
+  })
+
+  it('keeps number formats when an unsupported visual style forces style fallback', () => {
+    let readPassCount = 0
+    const chunks = [
+      '<styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">',
+      '<numFmts count="1"><numFmt numFmtId="164" formatCode="00000"/></numFmts>',
+      '<borders count="2"><border/><border><left style="thin"/></border></borders>',
+      '<cellXfs count="2"><xf numFmtId="0" fillId="0" fontId="0"/><xf numFmtId="164" borderId="1" applyBorder="1" applyNumberFormat="1"/></cellXfs>',
+      '</styleSheet>',
+    ]
+    const readChunks = (onChunk: (chunk: Uint8Array) => void): boolean => {
+      readPassCount += 1
+      for (const chunk of chunks) {
+        onChunk(encoder.encode(chunk))
+      }
+      return true
+    }
+
+    const artifacts = readLargeSimpleWorkbookStyleArtifactsFromChunks(readChunks, new Set([1]))
+
+    expect(artifacts.stylesByIndex).toBeNull()
+    expect(artifacts.numberFormatsByStyleIndex?.get(1)).toBe('00000')
+    expect(readPassCount).toBe(2)
   })
 })

@@ -11,6 +11,7 @@ This package is released as part of the aligned bilig library package set.
 - Manual override: no
 
 ## Fixes
+
 - perf(excel-import): finalize simple sheets earlier (c8c573cd)
 
 ## 0.40.42
@@ -20,11 +21,13 @@ This package is released as part of the aligned bilig library package set.
 - Manual override: no
 
 ## Fixes
+
 - perf(core): bulk bind fresh aggregate rows (6444c861)
 - perf(excel-import): compact shared string import storage (f5a34983)
 - fix(formula): align empty string criteria with Excel (f48b401c)
 
 ## Internal runtime changes
+
 - ci(release): block npm publish on red repo ci (080cfb1c)
 - chore(workpaper): remove root excel oracle script (3e66b459)
 - test(excel): add package-owned macos oracle (ab2080bd)
@@ -41,9 +44,11 @@ This package is released as part of the aligned bilig library package set.
 - Manual override: no
 
 ## Fixes
+
 - perf(excel-import): retain only rich shared string refs (8c14a27a)
 
 ## Internal runtime changes
+
 - ci(n8n): prefer oidc for npm publish (a16fffe0)
 
 ## 0.40.40
@@ -53,6 +58,7 @@ This package is released as part of the aligned bilig library package set.
 - Manual override: no
 
 ## Fixes
+
 - perf(core): index sliding aggregate dependent collection (e726b7b8)
 - perf(core): tighten direct formula delta batches (a55ac416)
 - perf(excel-import): stream control workbook artifacts (e8ee7810)
@@ -66,6 +72,7 @@ This package is released as part of the aligned bilig library package set.
 - perf(excel-import): build previews after cell release (e96200c1)
 
 ## Internal runtime changes
+
 - refactor(excel-import): split style artifact candidates (069bdf62)
 - ci(release): require full ci before npm publish (f191097b)
 - chore(release): runtime packages v0.40.36 (059f37b7)
@@ -83,6 +90,7 @@ This package is released as part of the aligned bilig library package set.
 - Manual override: no
 
 ## Fixes
+
 - perf(core): index sliding aggregate dependent collection (e726b7b8)
 - perf(core): tighten direct formula delta batches (a55ac416)
 - perf(excel-import): stream control workbook artifacts (e8ee7810)
@@ -92,6 +100,7 @@ This package is released as part of the aligned bilig library package set.
 - perf(excel-import): add headless external stress path (6a75ce87)
 
 ## Internal runtime changes
+
 - refactor(excel-import): split style artifact candidates (069bdf62)
 - ci(release): require full ci before npm publish (f191097b)
 - chore(release): runtime packages v0.40.36 (059f37b7)
@@ -105,6 +114,7 @@ This package is released as part of the aligned bilig library package set.
 - Manual override: no
 
 ## Fixes
+
 - perf(core): index sliding aggregate dependent collection (e726b7b8)
 - perf(core): tighten direct formula delta batches (a55ac416)
 - perf(excel-import): stream control workbook artifacts (e8ee7810)
@@ -112,6 +122,7 @@ This package is released as part of the aligned bilig library package set.
 - perf(excel-import): trim fast xlsx import memory (7d0aa436)
 
 ## Internal runtime changes
+
 - refactor(excel-import): split style artifact candidates (069bdf62)
 - ci(release): require full ci before npm publish (f191097b)
 - chore(release): runtime packages v0.40.36 (059f37b7)
@@ -124,11 +135,13 @@ This package is released as part of the aligned bilig library package set.
 - Manual override: no
 
 ## Fixes
+
 - perf(core): index sliding aggregate dependent collection (e726b7b8)
 - perf(core): tighten direct formula delta batches (a55ac416)
 - perf(excel-import): stream control workbook artifacts (e8ee7810)
 
 ## Internal runtime changes
+
 - refactor(excel-import): split style artifact candidates (069bdf62)
 - ci(release): require full ci before npm publish (f191097b)
 - chore(release): runtime packages v0.40.36 (059f37b7)
@@ -140,9 +153,11 @@ This package is released as part of the aligned bilig library package set.
 - Manual override: no
 
 ## Fixes
+
 - perf(core): index sliding aggregate dependent collection (e726b7b8)
 
 ## Internal runtime changes
+
 - refactor(excel-import): split style artifact candidates (069bdf62)
 - ci(release): require full ci before npm publish (f191097b)
 
@@ -153,6 +168,7 @@ This package is released as part of the aligned bilig library package set.
 - Manual override: no
 
 ## Fixes
+
 - perf(excel-import): avoid byte-source fallback materialization (c1eb1103)
 
 ## 0.40.34
@@ -162,6 +178,7 @@ This package is released as part of the aligned bilig library package set.
 - Manual override: no
 
 ## Fixes
+
 - perf(core): bind fresh direct formula runs in one pass (9d7c76e5)
 
 ## 0.40.33
@@ -171,6 +188,7 @@ This package is released as part of the aligned bilig library package set.
 - Manual override: no
 
 ## Fixes
+
 - perf(excel-import): release sheet import storage sooner (2dcb5ab3)
 
 ## 0.40.32
@@ -180,6 +198,7 @@ This package is released as part of the aligned bilig library package set.
 - Manual override: no
 
 ## Fixes
+
 - perf(excel-import): avoid verifier source rereads (f64db341)
 
 ## 0.40.31
@@ -189,10 +208,12 @@ This package is released as part of the aligned bilig library package set.
 - Manual override: no
 
 ## Fixes
+
 - perf(headless): replay numeric undo batches from typed history (553b29e3)
 - perf(excel-import): skip redundant calcchain inspection (6e6e03a4)
 
 ## Internal runtime changes
+
 - refactor(excel-import): split large simple helpers (397fd290)
 - test(headless): expect packed numeric undo history (38acf175)
 

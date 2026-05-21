@@ -113,6 +113,25 @@ describe('large simple XLSX import arena', () => {
     expect([...lazyCells]).toEqual([{ address: 'A1', value: 'Alpha', formula: 'B1' }])
   })
 
+  it('shrinks dense dimension preallocation when early cells prove sparse', () => {
+    const arena = new ImportedWorkbookArena()
+    arena.reserveDenseRowMajorCellCapacity(0, 1_000, 1_000)
+    const retainedAfterReserve = arena.retainedStorageByteLength()
+
+    arena.addCell({ sheetIndex: 0, row: 0, column: 0, value: 'Alpha' })
+    const retainedAfterFirstString = arena.retainedStorageByteLength()
+    arena.addCell({ sheetIndex: 0, row: 10, column: 10, value: 'Sparse' })
+    const retainedAfterSparseMismatch = arena.retainedStorageByteLength()
+
+    expect(retainedAfterFirstString).toBeGreaterThan(retainedAfterReserve)
+    expect(retainedAfterSparseMismatch).toBeLessThan(retainedAfterFirstString / 100)
+    expect(arena.materializeSheetCells(0)).toEqual([
+      { address: 'A1', value: 'Alpha' },
+      { address: 'K11', value: 'Sparse' },
+    ])
+    expect(arena.snapshot().stringIds).toEqual(new Uint32Array([0, 1]))
+  })
+
   it('keeps lazy shared-string cells readable without duplicating shared strings into arena pools', () => {
     const arena = new ImportedWorkbookArena()
     const cell = arena.addSharedStringCell({ sheetIndex: 0, row: 0, column: 0, sharedStringIndex: 2 })

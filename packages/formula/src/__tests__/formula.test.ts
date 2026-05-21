@@ -168,9 +168,22 @@ describe('formula', () => {
     expect(compileFormula('COUNTA(SEQUENCE(A1,1,1,1))').mode).toBe(1)
   })
 
-  it('routes dynamic-array family builtins to the wasm path for numeric-compatible inputs', () => {
-    expect(compileFormula('OFFSET(A1:B4,0,0,2,2)')).toMatchObject({ mode: 0, producesSpill: true })
+  it('keeps standalone INDEX reference results on the JS scalarization path', () => {
+    expect(compileFormula('INDEX(A1:C3,2,1)')).toMatchObject({ mode: 1, producesSpill: false })
+    expect(compileFormula('INDEX(A1:C3,0,2)')).toMatchObject({ mode: 0, producesSpill: false })
+    expect(compileFormula('INDEX(A1:C3,2,0)')).toMatchObject({ mode: 0, producesSpill: false })
+    expect(compileFormula('INDEX(A1:C3,A4,B4)')).toMatchObject({ mode: 0, producesSpill: false })
+    expect(compileFormula('SUM(INDEX(A1:C3,0,2))')).toMatchObject({ mode: 1, producesSpill: false })
+  })
+
+  it('keeps standalone OFFSET reference results on the JS scalarization path', () => {
+    expect(compileFormula('OFFSET(A1,1,1)')).toMatchObject({ mode: 1, producesSpill: false })
+    expect(compileFormula('OFFSET(A1:B4,0,0,2,2)')).toMatchObject({ mode: 0, producesSpill: false })
+    expect(compileFormula('OFFSET(A1:B4,A5,B5,2,2)')).toMatchObject({ mode: 0, producesSpill: false })
     expect(compileFormula('SUM(OFFSET(A1:B4,0,0,2,2))')).toMatchObject({ mode: 1, symbolicRanges: ['A1:B2'] })
+  })
+
+  it('routes dynamic-array family builtins to the wasm path for numeric-compatible inputs', () => {
     expect(compileFormula('TAKE(A1:B4,2)')).toMatchObject({ mode: 1, producesSpill: true })
     expect(compileFormula('DROP(A1:B4,1)')).toMatchObject({ mode: 1, producesSpill: true })
     expect(compileFormula('CHOOSECOLS(A1:B4,2)')).toMatchObject({ mode: 1, producesSpill: true })
@@ -768,6 +781,8 @@ describe('formula', () => {
     expect(compileFormula('TEXTAFTER(A1,"-")').mode).toBe(1)
     expect(compileFormula('CHOOSE(2,"red","blue","green")').mode).toBe(1)
     expect(compileFormula('CHOOSE(1,A1:B2,C1:D2)')).toMatchObject({ mode: 1, producesSpill: true })
+    expect(compileFormula('CHOOSE({1,2},A1:A3,B1:B3)')).toMatchObject({ mode: 0, producesSpill: true })
+    expect(compileFormula('CHOOSE({1,2},1,2)')).toMatchObject({ mode: 0, producesSpill: true })
     expect(compileFormula('FILTER(A1:A4,A1:A4>2)')).toMatchObject({ mode: 1, producesSpill: true })
     expect(compileFormula('UNIQUE(A1:A4)')).toMatchObject({ mode: 1, producesSpill: true })
     expect(compileFormula('FILTER(A1:A4,B1:B4)')).toMatchObject({ mode: 1, producesSpill: true })

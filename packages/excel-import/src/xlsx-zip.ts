@@ -110,6 +110,16 @@ export function releaseLazyXlsxZipSource(zip: XlsxZipEntries): boolean {
   return true
 }
 
+export function replaceLazyXlsxZipSource(zip: XlsxZipEntries, source: XlsxZipByteSource): boolean {
+  const metadata = (zip as XlsxZipEntriesWithCentralDirectorySource)[xlsxZipCentralDirectorySourceSymbol]
+  if (!metadata?.source) {
+    return false
+  }
+  metadata.source.release?.()
+  metadata.source = source
+  return true
+}
+
 export function releaseInflatedLazyXlsxZipEntries(zip: XlsxZipEntries): number {
   const metadata = (zip as XlsxZipEntriesWithCentralDirectorySource)[xlsxZipCentralDirectorySourceSymbol]
   if (!metadata?.source) {
@@ -294,7 +304,7 @@ function inflateCentralDirectoryEntry(
   compressedSize: number,
   compressionMethod: number,
 ): Uint8Array {
-  const localHeader = source.readRange(localHeaderOffset, localHeaderOffset + 30)
+  const localHeader = readLocalFileHeader(source, localHeaderOffset)
   if (readUint32(localHeader, 0) !== localFileHeaderSignature) {
     throw new Error('Invalid XLSX local file header')
   }
@@ -323,7 +333,7 @@ function inflateCentralDirectoryEntryChunks(
   onChunk: (chunk: Uint8Array) => void,
   options: { readonly chunkSize: number; readonly uncompressedSize: number },
 ): void {
-  const localHeader = source.readRange(localHeaderOffset, localHeaderOffset + 30)
+  const localHeader = readLocalFileHeader(source, localHeaderOffset)
   if (readUint32(localHeader, 0) !== localFileHeaderSignature) {
     throw new Error('Invalid XLSX local file header')
   }
@@ -335,7 +345,8 @@ function inflateCentralDirectoryEntryChunks(
     throw new Error('Invalid XLSX compressed data range')
   }
   if (compressionMethod === storedCompressionMethod) {
-    forEachSourceChunk(source, dataStart, dataEnd, options.chunkSize, onChunk)
+    const storedChunkScratch = source.readRangeInto ? new Uint8Array(Math.max(1, Math.trunc(options.chunkSize))) : undefined
+    forEachSourceChunk(source, dataStart, dataEnd, options.chunkSize, onChunk, storedChunkScratch)
     return
   }
   if (compressionMethod === deflatedCompressionMethod) {
@@ -363,6 +374,10 @@ function inflateCentralDirectoryEntryChunks(
   throw new Error(`Unsupported XLSX compression method: ${String(compressionMethod)}`)
 }
 
+function readLocalFileHeader(source: XlsxZipByteSource, localHeaderOffset: number): Uint8Array {
+  return readSourceRange(source, localHeaderOffset, localHeaderOffset + 30, source.readRangeInto ? new Uint8Array(30) : undefined)
+}
+
 function readSourceRange(source: XlsxZipByteSource, start: number, end: number, scratch: Uint8Array | undefined): Uint8Array {
   const length = end - start
   if (!scratch || !source.readRangeInto || length > scratch.byteLength) {
@@ -381,14 +396,15 @@ function forEachSourceChunk(
   end: number,
   chunkSize: number,
   onChunk: (chunk: Uint8Array) => void,
+  scratch: Uint8Array | undefined = undefined,
 ): void {
   const normalizedChunkSize = Math.max(1, Math.trunc(chunkSize))
   if (start === end) {
-    onChunk(source.readRange(start, end))
+    onChunk(readSourceRange(source, start, end, scratch))
     return
   }
   for (let offset = start; offset < end; offset += normalizedChunkSize) {
-    onChunk(source.readRange(offset, Math.min(end, offset + normalizedChunkSize)))
+    onChunk(readSourceRange(source, offset, Math.min(end, offset + normalizedChunkSize), scratch))
   }
 }
 

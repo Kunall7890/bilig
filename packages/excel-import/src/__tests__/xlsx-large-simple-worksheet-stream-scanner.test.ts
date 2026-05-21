@@ -61,6 +61,20 @@ describe('large simple worksheet stream scanners', () => {
     ])
   })
 
+  it('does not retain huge dense arena storage when dimension refs are sparse lies', () => {
+    const scan = parseLargeSimpleWorksheetCellsFromChunks(splitAfterTagOpen(sparseDimensionWorksheetXml()), 0, {
+      hasSharedStrings: false,
+      maxDimensionCellPreallocation: 1_000_000,
+    })
+
+    expect(scan?.cellScan.cellCount).toBe(2)
+    expect(scan?.cellScan.arena.retainedStorageByteLength()).toBeLessThan(64 * 1024)
+    expect(scan?.cellScan.arena.materializeSheetCells(0)).toEqual([
+      { address: 'A1', value: 'Alpha' },
+      { address: 'K11', value: 'Sparse' },
+    ])
+  })
+
   it('can defer style coordinates while retaining required style indexes', () => {
     const scan = parseLargeSimpleWorksheetCellsFromChunks(splitAfterTagOpen(styledWorksheetXml()), 0, {
       hasSharedStrings: false,
@@ -556,6 +570,18 @@ function worksheetXml(): string {
     '<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">',
     '<dimension ref="A1:B1"/>',
     '<sheetData><row r="1"><c r="A1"><v>1</v></c><c r="B1"><v>2</v></c></row></sheetData>',
+    '</worksheet>',
+  ].join('')
+}
+
+function sparseDimensionWorksheetXml(): string {
+  return [
+    '<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">',
+    '<dimension ref="A1:ALL1000"/>',
+    '<sheetData>',
+    '<row r="1"><c r="A1" t="inlineStr"><is><t>Alpha</t></is></c></row>',
+    '<row r="11"><c r="K11" t="inlineStr"><is><t>Sparse</t></is></c></row>',
+    '</sheetData>',
     '</worksheet>',
   ].join('')
 }

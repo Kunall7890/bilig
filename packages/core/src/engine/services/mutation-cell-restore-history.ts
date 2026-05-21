@@ -472,7 +472,12 @@ export function tryMutationCellRefsFromOps(workbook: WorkbookStore, ops: readonl
           ? { kind: 'setCellValue', row: parsed.row, col: parsed.col, value: op.value }
           : op.kind === 'setCellFormula'
             ? { kind: 'setCellFormula', row: parsed.row, col: parsed.col, formula: op.formula }
-            : { kind: 'clearCell', row: parsed.row, col: parsed.col },
+            : {
+                kind: 'clearCell',
+                row: parsed.row,
+                col: parsed.col,
+                ...(op.skipTableHeaderRename === true ? { skipTableHeaderRename: true } : {}),
+              },
     }
   }
   return refs

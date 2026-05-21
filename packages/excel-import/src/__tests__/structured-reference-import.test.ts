@@ -321,6 +321,76 @@ describe('structured reference XLSX import', () => {
     expect(reexportedTableXml).toMatch(/name="Road show _x000a_visits"/iu)
   })
 
+  it('rewrites imported structured references with special-character table headers', async () => {
+    const snapshot: WorkbookSnapshot = {
+      version: 1,
+      workbook: {
+        name: 'Special Structured Headers',
+        metadata: {
+          tables: [
+            {
+              name: 'Sales',
+              sheetName: 'Data',
+              startAddress: 'A1',
+              endAddress: 'E3',
+              columnNames: ['Revenue, Net', 'A:B', '# Units', "Owner's Share", 'A[B]'],
+              headerRow: true,
+              totalsRow: false,
+            },
+          ],
+        },
+      },
+      sheets: [
+        {
+          id: 1,
+          name: 'Data',
+          order: 0,
+          cells: [
+            { address: 'A1', value: 'Revenue, Net' },
+            { address: 'B1', value: 'A:B' },
+            { address: 'C1', value: '# Units' },
+            { address: 'D1', value: "Owner's Share" },
+            { address: 'E1', value: 'A[B]' },
+            { address: 'A2', value: 10 },
+            { address: 'B2', value: 2 },
+            { address: 'C2', value: 4 },
+            { address: 'D2', value: 0.25 },
+            { address: 'E2', value: 100 },
+            { address: 'A3', value: 20 },
+            { address: 'B3', value: 3 },
+            { address: 'C3', value: 6 },
+            { address: 'D3', value: 0.75 },
+            { address: 'E3', value: 200 },
+            { address: 'G1', formula: 'SUM(Sales[Revenue, Net])' },
+            { address: 'G2', formula: 'SUM(Sales[A:B])' },
+            { address: 'G3', formula: "SUM(Sales['# Units])" },
+            { address: 'G4', formula: "SUM(Sales[Owner''s Share])" },
+            { address: 'G5', formula: "SUM(Sales[A'[B']])" },
+          ],
+        },
+      ],
+    }
+
+    const imported = importXlsx(exportXlsx(snapshot), 'special-structured-headers.xlsx')
+    const sheet = imported.snapshot.sheets.find((candidate) => candidate.name === 'Data')
+
+    expect(sheet?.cells.find((cell) => cell.address === 'G1')?.formula).toBe("SUM('Data'!A2:A3)")
+    expect(sheet?.cells.find((cell) => cell.address === 'G2')?.formula).toBe("SUM('Data'!B2:B3)")
+    expect(sheet?.cells.find((cell) => cell.address === 'G3')?.formula).toBe("SUM('Data'!C2:C3)")
+    expect(sheet?.cells.find((cell) => cell.address === 'G4')?.formula).toBe("SUM('Data'!D2:D3)")
+    expect(sheet?.cells.find((cell) => cell.address === 'G5')?.formula).toBe("SUM('Data'!E2:E3)")
+
+    const engine = new SpreadsheetEngine({ workbookName: 'special-structured-headers' })
+    await engine.ready()
+    engine.importSnapshot(imported.snapshot)
+
+    expect(engine.getCellValue('Data', 'G1')).toEqual({ tag: ValueTag.Number, value: 30 })
+    expect(engine.getCellValue('Data', 'G2')).toEqual({ tag: ValueTag.Number, value: 5 })
+    expect(engine.getCellValue('Data', 'G3')).toEqual({ tag: ValueTag.Number, value: 10 })
+    expect(engine.getCellValue('Data', 'G4')).toEqual({ tag: ValueTag.Number, value: 1 })
+    expect(engine.getCellValue('Data', 'G5')).toEqual({ tag: ValueTag.Number, value: 300 })
+  })
+
   it('rewrites Excel total-row structured-reference aliases', () => {
     const snapshot: WorkbookSnapshot = {
       version: 1,

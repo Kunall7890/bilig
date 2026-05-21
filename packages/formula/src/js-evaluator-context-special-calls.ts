@@ -9,6 +9,7 @@ interface ContextSpecialCallDeps {
   stringValue: (value: string) => CellValue
   stackScalar: (value: CellValue) => StackValue
   cloneStackValue: (value: StackValue) => StackValue
+  matrixFromStackValue: (value: StackValue) => { rows: number; cols: number; values: readonly CellValue[] } | undefined
   toNumber: (value: CellValue) => number | undefined
   toStringValue: (value: CellValue) => string
   isSingleCellValue: (value: StackValue) => CellValue | undefined
@@ -21,6 +22,91 @@ interface ContextSpecialCallDeps {
   cellTypeCode: (value: CellValue) => string
   sheetNames: (context: EvaluationContext) => string[]
   sheetIndexByName: (name: string, context: EvaluationContext) => number | undefined
+}
+
+interface ChosenMatrix {
+  rows: number
+  cols: number
+  values: readonly CellValue[]
+}
+
+function chooseIndexValue(value: CellValue, choiceCount: number): number | CellValue {
+  if (value.tag === ValueTag.Error) {
+    return value
+  }
+  const numeric = value.tag === ValueTag.Number || value.tag === ValueTag.Boolean ? Number(value.value) : undefined
+  if (numeric === undefined || !Number.isFinite(numeric)) {
+    return { tag: ValueTag.Error, code: ErrorCode.Value }
+  }
+  const truncated = Math.trunc(numeric)
+  return truncated < 1 || truncated > choiceCount ? { tag: ValueTag.Error, code: ErrorCode.Value } : truncated
+}
+
+function chooseMatrixForIndex(indexValue: CellValue, rawArgs: StackValue[], deps: ContextSpecialCallDeps): ChosenMatrix | CellValue {
+  const choice = chooseIndexValue(indexValue, rawArgs.length - 1)
+  if (typeof choice !== 'number') {
+    return choice
+  }
+  return deps.matrixFromStackValue(rawArgs[choice]!) ?? deps.error(ErrorCode.Value)
+}
+
+function chosenValueAt(matrix: ChosenMatrix, row: number, col: number, deps: ContextSpecialCallDeps): CellValue {
+  if (matrix.rows === 1 && matrix.cols === 1) {
+    return matrix.values[0] ?? deps.emptyValue()
+  }
+  return matrix.values[row * matrix.cols + col] ?? deps.emptyValue()
+}
+
+function evaluateChooseArrayIndex(rawArgs: StackValue[], deps: ContextSpecialCallDeps): StackValue {
+  const indexMatrix = deps.matrixFromStackValue(rawArgs[0]!)
+  if (!indexMatrix) {
+    return deps.stackScalar(deps.error(ErrorCode.Value))
+  }
+  const choices: ChosenMatrix[] = []
+  for (const value of indexMatrix.values) {
+    const choice = chooseMatrixForIndex(value, rawArgs, deps)
+    if ('tag' in choice) {
+      return deps.stackScalar(choice)
+    }
+    choices.push(choice)
+  }
+
+  if (indexMatrix.rows === 1) {
+    const resultRows = choices.reduce((max, choice) => Math.max(max, choice.rows), 1)
+    if (choices.some((choice) => choice.rows !== resultRows && !(choice.rows === 1 && choice.cols === 1))) {
+      return deps.stackScalar(deps.error(ErrorCode.Value))
+    }
+    const resultCols = choices.reduce((sum, choice) => sum + (choice.rows === 1 && choice.cols === 1 ? 1 : choice.cols), 0)
+    const values: CellValue[] = []
+    for (let row = 0; row < resultRows; row += 1) {
+      for (const choice of choices) {
+        const choiceCols = choice.rows === 1 && choice.cols === 1 ? 1 : choice.cols
+        for (let col = 0; col < choiceCols; col += 1) {
+          values.push(chosenValueAt(choice, row, col, deps))
+        }
+      }
+    }
+    return { kind: 'array', rows: resultRows, cols: resultCols, values }
+  }
+
+  if (indexMatrix.cols === 1) {
+    const resultCols = choices.reduce((max, choice) => Math.max(max, choice.cols), 1)
+    if (choices.some((choice) => choice.cols !== resultCols && !(choice.rows === 1 && choice.cols === 1))) {
+      return deps.stackScalar(deps.error(ErrorCode.Value))
+    }
+    const values: CellValue[] = []
+    for (const choice of choices) {
+      const choiceRows = choice.rows === 1 && choice.cols === 1 ? 1 : choice.rows
+      for (let row = 0; row < choiceRows; row += 1) {
+        for (let col = 0; col < resultCols; col += 1) {
+          values.push(chosenValueAt(choice, row, col, deps))
+        }
+      }
+    }
+    return { kind: 'array', rows: values.length / resultCols, cols: resultCols, values }
+  }
+
+  return deps.stackScalar(deps.error(ErrorCode.Value))
 }
 
 export function evaluateContextSpecialCall(
@@ -115,6 +201,10 @@ export function evaluateContextSpecialCall(
     case 'CHOOSE': {
       if (rawArgs.length < 2) {
         return deps.stackScalar(deps.error(ErrorCode.Value))
+      }
+      const indexMatrix = deps.matrixFromStackValue(rawArgs[0]!)
+      if (indexMatrix && indexMatrix.rows * indexMatrix.cols > 1) {
+        return evaluateChooseArrayIndex(rawArgs, deps)
       }
       const indexValue = deps.isSingleCellValue(rawArgs[0]!)
       const choice = indexValue ? deps.toNumber(indexValue) : undefined

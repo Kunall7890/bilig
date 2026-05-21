@@ -42,6 +42,7 @@
     "dist",
     "AGENTS.md",
     "SKILL.md",
+    "server.json",
     "README.md",
     "LICENSE"
   ],
@@ -75,5 +76,6 @@
   },
   "engines": {
     "node": ">=22.0.0"
-  }
+  },
+  "mcpName": "io.github.proompteng/bilig-workpaper"
 }

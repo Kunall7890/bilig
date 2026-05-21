@@ -1,7 +1,7 @@
 ---
 title: MCP spreadsheet tool server for WorkPaper agents
 published: true
-description: Expose @bilig/headless workbook reads, verified edits, formula contracts, persistence checks, resources, and prompts through MCP.
+description: Expose @bilig/workpaper workbook reads, verified edits, formula contracts, persistence checks, resources, and prompts through MCP.
 tags: mcp, model context protocol, spreadsheet, tool calling, node
 canonical_url: https://proompteng.github.io/bilig/mcp-workpaper-tool-server.html
 cover_image: https://raw.githubusercontent.com/proompteng/bilig/main/docs/assets/github-social-preview.png
@@ -16,8 +16,9 @@ the workbook context resources, invoke a reusable workflow prompt, call one
 tool, return exact cell readback, and include enough structured output for the
 agent to verify the edit.
 
-`@bilig/headless` owns the workbook behavior. MCP should stay as the transport
-and discovery layer around ordinary Node functions.
+`@bilig/workpaper` is the public agent-facing package for WorkPaper MCP. MCP
+stays as the transport and discovery layer around ordinary Node functions; the
+lower-level runtime implementation still lives in `@bilig/headless`.
 
 If you need the short agent decision path before the protocol details, start
 with the [headless WorkPaper agent handbook](headless-workpaper-agent-handbook.md).
@@ -123,7 +124,7 @@ printf '%s\n' \
 The npm package exposes the demo server as `bilig-workpaper-mcp` by default:
 
 ```sh
-npm exec --package @bilig/headless@0.40.43 -- bilig-workpaper-mcp
+npm exec --package @bilig/workpaper@0.40.43 -- bilig-workpaper-mcp
 ```
 
 ## Remote Stateless Endpoint
@@ -165,8 +166,8 @@ For a real agent workflow, point the same binary at a persisted WorkPaper JSON
 document:
 
 ```sh
-npm exec --package @bilig/headless@0.40.43 -- bilig-mcp-challenge
-npm exec --package @bilig/headless@0.40.43 -- bilig-workpaper-mcp --workpaper ./pricing.workpaper.json --init-demo-workpaper --writable
+npm exec --package @bilig/workpaper@0.40.43 -- bilig-mcp-challenge
+npm exec --package @bilig/workpaper@0.40.43 -- bilig-workpaper-mcp --workpaper ./pricing.workpaper.json --init-demo-workpaper --writable
 ```
 
 `bilig-mcp-challenge` is the one-command evaluator path. It initializes the
@@ -209,7 +210,7 @@ pnpm --dir examples/headless-workpaper install --ignore-workspace
 pnpm --dir examples/headless-workpaper run agent:mcp-file-transcript
 ```
 
-A passing run starts `npm exec --package @bilig/headless@latest --
+A passing run starts `npm exec --package @bilig/workpaper@latest --
 bilig-workpaper-mcp --workpaper pricing.workpaper.json --init-demo-workpaper --writable`, lists the
 file-backed tool surface, writes `Inputs!B3`, persists the JSON file, reads
 `Summary!B3`, and asserts that the recalculated value is `96000`.
@@ -230,7 +231,7 @@ printf '%s\n' \
   docker run --rm -i bilig-workpaper-mcp:local
 ```
 
-The target installs `@bilig/headless` from npm, seeds
+The target installs `@bilig/workpaper` from npm, seeds
 `/workpaper/pricing.workpaper.json`, and starts
 `bilig-workpaper-mcp --workpaper /workpaper/pricing.workpaper.json --init-demo-workpaper --writable`
 over stdio. That makes directory introspection see the general WorkPaper tools:
@@ -255,8 +256,9 @@ The hosted endpoint origin serves the same crawler-friendly card at
 That gives Smithery-style scanners a same-origin metadata path when they start
 from the remote MCP URL rather than the documentation site.
 
-The package carries `mcpName: io.github.proompteng/bilig-workpaper` and a
-matching `server.json`. It is published in the official MCP Registry as
+The `@bilig/workpaper` package carries
+`mcpName: io.github.proompteng/bilig-workpaper` and a matching `server.json`.
+It is the canonical package metadata for the official MCP Registry entry
 `io.github.proompteng/bilig-workpaper`:
 <https://registry.modelcontextprotocol.io/v0.1/servers?search=io.github.proompteng%2Fbilig-workpaper>.
 
@@ -272,10 +274,10 @@ pending directory-review status.
 Before submitting the server to an MCP registry, verify this repo-specific
 readiness checklist:
 
-- `packages/headless/server.json` exists and describes the packaged stdio
+- `packages/workpaper/server.json` exists and describes the packaged stdio
   server.
-- `packages/headless/package.json` exposes `bilig-workpaper-mcp` in `bin`.
-- `packages/headless/package.json` includes
+- `packages/workpaper/package.json` exposes `bilig-workpaper-mcp` in `bin`.
+- `packages/workpaper/package.json` includes
   `mcpName: io.github.proompteng/bilig-workpaper`.
 - `pnpm publish:runtime:check` passes against the runtime packages.
 - `pnpm workpaper:smoke:external` passes against packed local runtime packages.
@@ -331,7 +333,7 @@ try {
 ```
 
 The server command is `bilig-workpaper-mcp`; the `npm exec --package
-@bilig/headless -- bilig-workpaper-mcp` wrapper only resolves the published npm
+@bilig/workpaper -- bilig-workpaper-mcp` wrapper only resolves the published npm
 package for a clean checkout. The stdio transport receives `npm` as the command
 and the rest as `args`, so shell parsing does not sit between the AI SDK client
 and the MCP server. The two tool calls prove the useful workflow: read a

@@ -34,7 +34,7 @@ export function syncRuntimePackageVersions(options: SyncRuntimePackageVersionsOp
   }
 
   syncReleasePleaseManifestVersion(options.rootDir, version, updatedFiles)
-  syncHeadlessMcpServerVersion(options.rootDir, version, updatedFiles)
+  syncMcpServerVersions(options.rootDir, version, runtimePackages, updatedFiles)
 
   return {
     version,
@@ -53,19 +53,31 @@ function syncReleasePleaseManifestVersion(rootDir: string, version: string, upda
   }
 }
 
-function syncHeadlessMcpServerVersion(rootDir: string, version: string, updatedFiles: string[]): void {
-  const serverJsonPath = join(rootDir, 'packages/headless/server.json')
-  const serverJson = readJsonRecord(serverJsonPath)
-  serverJson['version'] = version
+function syncMcpServerVersions(
+  rootDir: string,
+  version: string,
+  runtimePackages: readonly { readonly dir: string; readonly name: string }[],
+  updatedFiles: string[],
+): void {
+  for (const runtimePackage of runtimePackages) {
+    const packageJsonPath = join(rootDir, runtimePackage.dir, 'package.json')
+    const manifest = readJsonRecord(packageJsonPath)
+    if (typeof manifest['mcpName'] !== 'string') {
+      continue
+    }
+    const serverJsonPath = join(rootDir, runtimePackage.dir, 'server.json')
+    const serverJson = readJsonRecord(serverJsonPath)
+    serverJson['version'] = version
 
-  const npmPackage = findNpmPackageEntry(serverJson, '@bilig/headless')
-  if (!npmPackage) {
-    throw new Error('packages/headless/server.json must include an npm package entry for @bilig/headless')
-  }
-  npmPackage['version'] = version
+    const npmPackage = findNpmPackageEntry(serverJson, runtimePackage.name)
+    if (!npmPackage) {
+      throw new Error(`${runtimePackage.dir}/server.json must include an npm package entry for ${runtimePackage.name}`)
+    }
+    npmPackage['version'] = version
 
-  if (writeJsonIfChanged(serverJsonPath, serverJson)) {
-    updatedFiles.push(serverJsonPath)
+    if (writeJsonIfChanged(serverJsonPath, serverJson)) {
+      updatedFiles.push(serverJsonPath)
+    }
   }
 }
 

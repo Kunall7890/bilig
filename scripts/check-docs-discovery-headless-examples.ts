@@ -37,11 +37,20 @@ export async function requireHeadlessExampleDiscovery({
   agentToolCallingDoc: string
   aiSdkLangChainDoc: string
 }): Promise<void> {
-  const [headlessExampleReadme, headlessExamplePackage, headlessPackageManifest, headlessServerJson] = await Promise.all([
+  const [
+    headlessExampleReadme,
+    headlessExamplePackage,
+    headlessPackageManifest,
+    headlessServerJson,
+    workpaperPackageManifest,
+    workpaperServerJson,
+  ] = await Promise.all([
     readFile(join(repoRoot, 'examples', 'headless-workpaper', 'README.md'), 'utf8'),
     readFile(join(repoRoot, 'examples', 'headless-workpaper', 'package.json'), 'utf8'),
     readFile(join(repoRoot, 'packages', 'headless', 'package.json'), 'utf8'),
     readFile(join(repoRoot, 'packages', 'headless', 'server.json'), 'utf8'),
+    readFile(join(repoRoot, 'packages', 'workpaper', 'package.json'), 'utf8'),
+    readFile(join(repoRoot, 'packages', 'workpaper', 'server.json'), 'utf8'),
   ])
   const headlessPackageSpec = `@bilig/headless@${parsePackageVersion(headlessPackageManifest)}`
   await requireNpmEvalDiscovery(repoRoot, docsRoot, readme, headlessReadme, headlessExampleReadme)
@@ -142,6 +151,15 @@ export async function requireHeadlessExampleDiscovery({
   requireIncludes(readme, '`export_workpaper_document`, and `validate_formula`', 'README.md')
   requireIncludes(headlessServerJson, '"name": "io.github.proompteng/bilig-workpaper"', 'packages/headless/server.json')
   requireIncludes(headlessServerJson, '"identifier": "@bilig/headless"', 'packages/headless/server.json')
+  requireIncludes(workpaperPackageManifest, '"mcpName": "io.github.proompteng/bilig-workpaper"', 'packages/workpaper/package.json')
+  requireIncludes(workpaperPackageManifest, '"server.json"', 'packages/workpaper/package.json')
+  requireIncludes(
+    workpaperPackageManifest,
+    '"bilig-workpaper-mcp": "./dist/work-paper-mcp-stdio-bin.js"',
+    'packages/workpaper/package.json',
+  )
+  requireIncludes(workpaperServerJson, '"name": "io.github.proompteng/bilig-workpaper"', 'packages/workpaper/server.json')
+  requireIncludes(workpaperServerJson, '"identifier": "@bilig/workpaper"', 'packages/workpaper/server.json')
   requireIncludes(headlessReadme, 'npm run invoice-totals', 'packages/headless/README.md')
   requireIncludes(headlessReadme, '#invoice-totals', 'packages/headless/README.md')
   requireIncludes(headlessReadme, 'npm run budget-variance', 'packages/headless/README.md')

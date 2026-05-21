@@ -98,10 +98,13 @@ export function drawWorkbookTypeGpuTileFrameV3(input: {
         ? [...input.preloadTilePanes, ...visibleTilePanes]
         : visibleTilePanes
   const headerPanes = input.headerPanes ?? []
-  const preserveResidentBodyTiles = hasTransientEmptyTypeGpuBodyFrameV3({
-    tilePanes: visibleTilePanes,
-    tileResources: input.backend.tileResources,
-  })
+  const atlasScaleChanged = input.backend.atlas.setScale(input.surface.dpr)
+  const preserveResidentBodyTiles =
+    !atlasScaleChanged &&
+    hasTransientEmptyTypeGpuBodyFrameV3({
+      tilePanes: visibleTilePanes,
+      tileResources: input.backend.tileResources,
+    })
   if (preserveResidentBodyTiles) {
     input.backend.tileResidency.markVisible(input.tilePanes.map((pane) => pane.tile.tileId))
   } else {

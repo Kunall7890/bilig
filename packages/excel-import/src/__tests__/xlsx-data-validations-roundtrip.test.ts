@@ -70,6 +70,64 @@ describe('data validation roundtrip', () => {
     ])
   })
 
+  it('escapes structured-reference list validation sources with special table headers', () => {
+    const snapshot = {
+      version: 1,
+      workbook: {
+        name: 'Structured Validation',
+        metadata: {
+          tables: [
+            {
+              name: 'Sales',
+              sheetName: 'Model',
+              startAddress: 'D1',
+              endAddress: 'D3',
+              columnNames: ['# Units'],
+              headerRow: true,
+              totalsRow: false,
+            },
+          ],
+        },
+      },
+      sheets: [
+        {
+          id: 1,
+          name: 'Model',
+          order: 0,
+          cells: [
+            { address: 'A1', value: 'Choice' },
+            { address: 'D1', value: '# Units' },
+            { address: 'D2', value: 'Base' },
+            { address: 'D3', value: 'Upside' },
+          ],
+          metadata: {
+            validations: [
+              {
+                range: { sheetName: 'Model', startAddress: 'A2', endAddress: 'A2' },
+                rule: { kind: 'list', source: { kind: 'structured-ref', tableName: 'Sales', columnName: '# Units' } },
+              },
+            ],
+          },
+        },
+      ],
+    } as const
+
+    const exported = exportXlsx(snapshot)
+    expect(readDataValidations(exported)).toEqual([
+      {
+        type: 'list',
+        sqref: 'A2',
+        promptTitle: null,
+        prompt: null,
+        formula1: 'Sales[&apos;# Units]',
+        formula2: '',
+      },
+    ])
+
+    const imported = importXlsx(exported, 'structured-validation.xlsx')
+    expect(imported.snapshot.sheets[0]?.metadata?.validations).toEqual(snapshot.sheets[0]?.metadata?.validations)
+  })
+
   it('ignores broken list validation references during XLSX import', async () => {
     const source = buildBrokenListValidationWorkbookBytes()
     const imported = importXlsx(source, 'broken-list-validation.xlsx')

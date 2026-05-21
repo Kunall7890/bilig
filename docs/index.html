@@ -544,7 +544,7 @@ function readNumber(cell: unknown): number {
                 <span>bilig-workpaper-mcp</span>
                 <span>stdio</span>
               </div>
-              <pre><code>$ npm exec --package @bilig/headless@0.40.43 -- bilig-workpaper-mcp --workpaper ./pricing.workpaper.json --init-demo-workpaper --writable
+              <pre><code>$ npm exec --package @bilig/workpaper@0.40.43 -- bilig-workpaper-mcp --workpaper ./pricing.workpaper.json --init-demo-workpaper --writable
 <span class="ok">ok</span> tools/list
 <span class="ok">ok</span> tools/call read_range
 <span class="ok">ok</span> tools/call set_cell_contents
@@ -564,8 +564,8 @@ $ curl https://bilig.proompteng.ai/mcp -H 'accept: application/json, text/event-
               <p class="kicker">Benchmark</p>
               <h2 id="proof-title">The benchmark is public. So is the caveat.</h2>
               <p>
-                The checked JSON has bilig ahead on every comparable mean-latency and p95 row.
-                <span>The narrowest p95 win is named beside the number.</span>
+                The checked JSON has bilig ahead on the aggregate mean and p95 scorecard, with holdouts visible.
+                <span>The worst p95 row is named beside the number.</span>
               </p>
             </div>
 
@@ -578,12 +578,11 @@ $ curl https://bilig.proompteng.ai/mcp -H 'accept: application/json, text/event-
               <div class="proof-result">
                 <div class="proof-metric">
                   <span class="proof-label">comparable mean rows</span>
-                  <strong>100/100</strong>
+                  <strong>94/100</strong>
                 </div>
                 <p>
-                  100 of 100 comparable mean-latency rows are faster in the checked file. aggregate-overlapping-sliding-window-wide is the
-                  narrowest p95 win:
-                  <code>0.946x</code>. Browser UI rendering is not part of this benchmark.
+                  94 of 100 comparable mean-latency rows are faster in the checked file. structural-move-rows is the current worst p95 row:
+                  <code>4.047x</code>. Browser UI rendering is not part of this benchmark.
                 </p>
               </div>
 
@@ -599,8 +598,8 @@ $ curl https://bilig.proompteng.ai/mcp -H 'accept: application/json, text/event-
                   </dd>
                 </div>
                 <div class="proof-fact">
-                  <dt>Narrowest p95</dt>
-                  <dd>aggregate-overlapping-sliding-window-wide is the narrowest p95 win: <code>0.946x</code>.</dd>
+                  <dt>Worst p95</dt>
+                  <dd>structural-move-rows is the current worst p95 row: <code>4.047x</code>.</dd>
                 </div>
                 <div class="proof-fact">
                   <dt>Out of scope</dt>

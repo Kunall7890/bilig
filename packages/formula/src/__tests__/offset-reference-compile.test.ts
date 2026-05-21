@@ -18,12 +18,13 @@ describe('OFFSET reference compilation', () => {
     expect(simple.deps).toEqual(['B6:C6'])
     expect(simple.symbolicRanges).toEqual(['B6:C6'])
 
-    const spilling = compileFormula('OFFSET(B2:C2,4,0)')
+    const standalone = compileFormula('OFFSET(B2:C2,4,0)')
 
-    expect(spilling.mode).toBe(FormulaMode.JsOnly)
-    expect(spilling.volatile).toBe(true)
-    expect(spilling.deps).toEqual(['B6:C6'])
-    expect(spilling.optimizedAst).toEqual({ kind: 'RangeRef', refKind: 'cells', start: 'B6', end: 'C6' })
+    expect(standalone.mode).toBe(FormulaMode.JsOnly)
+    expect(standalone.volatile).toBe(true)
+    expect(standalone.producesSpill).toBe(false)
+    expect(standalone.deps).toEqual(['B6:C6'])
+    expect(standalone.optimizedAst).toEqual({ kind: 'RangeRef', refKind: 'cells', start: 'B6', end: 'C6' })
   })
 
   it('keeps dynamic worksheet-reference OFFSET formulas on the context-aware JS path', () => {

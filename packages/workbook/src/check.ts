@@ -1,5 +1,7 @@
+import { isLiteralInput, type LiteralInput } from '@bilig/protocol'
 import type { WorkbookRef } from './find.js'
-import type { WorkbookCheckResult, WorkbookCheckStatus } from './result.js'
+import { formula, type WorkbookFormulaOperand } from './formula.js'
+import type { WorkbookCheckExpectation, WorkbookCheckResult, WorkbookCheckStatus } from './result.js'
 
 export interface WorkbookCustomCheckOptions {
   readonly kind: string
@@ -9,14 +11,28 @@ export interface WorkbookCustomCheckOptions {
   readonly status?: WorkbookCheckStatus
 }
 
+export interface WorkbookReadbackCheckOptions {
+  readonly message?: string
+}
+
 export interface WorkbookCheckApi {
   readonly exists: (target: WorkbookRef) => WorkbookCheckResult
   readonly noFormulaErrors: (target: WorkbookRef) => WorkbookCheckResult
+  readonly valueEquals: (target: WorkbookRef, value: LiteralInput, options?: WorkbookReadbackCheckOptions) => WorkbookCheckResult
+  readonly formulaEquals: (
+    target: WorkbookRef,
+    value: WorkbookFormulaOperand,
+    options?: WorkbookReadbackCheckOptions,
+  ) => WorkbookCheckResult
   readonly custom: (options: WorkbookCustomCheckOptions) => WorkbookCheckResult
 }
 
 export function createWorkbookCheckResult(kind: string, target: WorkbookRef, message: string): WorkbookCheckResult {
   return createWorkbookCustomCheck({ kind, target, message })
+}
+
+interface WorkbookCheckBuildOptions extends WorkbookCustomCheckOptions {
+  readonly expectation?: WorkbookCheckExpectation
 }
 
 function requiredText(value: string, name: string): string {
@@ -32,6 +48,13 @@ function normalizeCheckStatus(status: WorkbookCheckStatus | undefined): Workbook
     return status ?? 'planned'
   }
   throw new Error(`Unsupported workbook check status: ${String(status)}`)
+}
+
+function checkedLiteralInput(value: LiteralInput): LiteralInput {
+  if (!isLiteralInput(value)) {
+    throw new Error('Workbook readback value must be a finite JSON literal')
+  }
+  return value
 }
 
 function refKey(ref: WorkbookRef): string {
@@ -55,7 +78,7 @@ function uniqueRefs(refs: readonly WorkbookRef[] | undefined): readonly Workbook
   return unique.length === 0 ? undefined : unique
 }
 
-export function createWorkbookCustomCheck(options: WorkbookCustomCheckOptions): WorkbookCheckResult {
+function createWorkbookCheck(options: WorkbookCheckBuildOptions): WorkbookCheckResult {
   const refs = uniqueRefs(options.refs)
   return {
     status: normalizeCheckStatus(options.status),
@@ -63,12 +86,17 @@ export function createWorkbookCustomCheck(options: WorkbookCustomCheckOptions): 
     ...(options.target !== undefined ? { target: options.target } : {}),
     ...(refs !== undefined ? { refs } : {}),
     message: requiredText(options.message, 'message'),
+    ...(options.expectation !== undefined ? { expectation: options.expectation } : {}),
   }
 }
 
+export function createWorkbookCustomCheck(options: WorkbookCustomCheckOptions): WorkbookCheckResult {
+  return createWorkbookCheck(options)
+}
+
 export function createWorkbookCheckApi(record?: (check: WorkbookCheckResult) => void): WorkbookCheckApi {
-  function planned(options: WorkbookCustomCheckOptions): WorkbookCheckResult {
-    const check = createWorkbookCustomCheck(options)
+  function planned(options: WorkbookCheckBuildOptions): WorkbookCheckResult {
+    const check = createWorkbookCheck(options)
     record?.(check)
     return check
   }
@@ -79,6 +107,32 @@ export function createWorkbookCheckApi(record?: (check: WorkbookCheckResult) => 
     },
     noFormulaErrors(target) {
       return planned({ kind: 'noFormulaErrors', target, message: `${target.label} has no formula errors` })
+    },
+    valueEquals(target, value, options = {}) {
+      const expected = checkedLiteralInput(value)
+      return planned({
+        kind: 'valueEquals',
+        target,
+        message: options.message ?? `${target.label} equals ${JSON.stringify(expected)}`,
+        expectation: {
+          kind: 'valueEquals',
+          value: expected,
+        },
+      })
+    },
+    formulaEquals(target, value, options = {}) {
+      const source = formula.source(value)
+      const inputs = formula.inputs(value)
+      return planned({
+        kind: 'formulaEquals',
+        target,
+        message: options.message ?? `${target.label} formula equals ${source}`,
+        expectation: {
+          kind: 'formulaEquals',
+          formula: source,
+          inputs,
+        },
+      })
     },
     custom(options) {
       return planned(options)

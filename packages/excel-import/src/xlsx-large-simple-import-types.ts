@@ -6,6 +6,7 @@ import type { LargeSimpleXlsxImportPhaseTelemetry } from './xlsx-large-simple-im
 import type { LargeSimpleSharedStringIndexSet } from './xlsx-large-simple-shared-string-indexes.js'
 import type { LargeSimpleSharedStrings } from './xlsx-large-simple-shared-strings.js'
 import type { LargeSimpleWorksheetScannedMetadata } from './xlsx-large-simple-worksheet-metadata.js'
+import type { XlsxZipByteSource } from './xlsx-zip.js'
 
 export interface LargeSimpleXlsxImportResult {
   snapshot: WorkbookSnapshot
@@ -28,6 +29,7 @@ export interface LargeSimpleXlsxImportOptions {
   skipBroadBlankStyleCells?: boolean
   includeCellCoordinates?: boolean
   maxMaterializedLazyPackageArtifactBytes?: number
+  replacementZipSource?: XlsxZipByteSource
   releaseOwnedSourceBytes?: () => LargeSimpleXlsxOwnedSourceReleaseEvidence | undefined
 }
 

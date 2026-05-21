@@ -24,10 +24,14 @@ The public surface stays generic:
 - `describePlanResult`
 - `verifyPlan`
 - `verifyModel`
+- `runWorkbookPlan`
+- `runWorkbookAction`
+- `verifyWorkbookReadbacks`
 - `formula`
 - `workbook.addOp(op, { target?, message? })` inside model actions
 - `WorkbookModel`
 - `WorkbookAction`
+- `WorkbookActionInput`
 - `WorkbookAddOpOptions`
 - `WorkbookActionPlanResult`
 - `WorkbookModelDescription`
@@ -38,7 +42,17 @@ The public surface stays generic:
 - `WorkbookPlanIssue`
 - `WorkbookModelVerification`
 - `WorkbookModelActionVerification`
+- `WorkbookModelVerificationOptions`
+- `WorkbookRunAdapter`
+- `WorkbookRunApplyResult`
+- `WorkbookRunReadback`
+- `WorkbookReadbackVerification`
+- `WorkbookReadbackIssue`
+- `WorkbookReadbackIssueCode`
+- `WorkbookCheckExpectation`
+- `WorkbookCheckExpectationDescription`
 - `WorkbookCustomCheckOptions`
+- `WorkbookReadbackCheckOptions`
 - `WorkbookRawFormulaOptions`
 - `WorkbookRunResult`
 - `WorkbookCheckResult`
@@ -56,6 +70,42 @@ Calculation and workbook execution stay in `@bilig/core` and the app runtime.
 Use `planWorkbookAction` when an action name comes from an agent or user input;
 it returns `planned` or structured `failed` results instead of requiring
 exception control flow.
+Actions can also accept a JSON-safe input:
+
+```ts
+import { defineModel } from '@bilig/workbook'
+
+export const model = defineModel({
+  name: 'custom-writer',
+
+  find(workbook) {
+    return {
+      output: workbook.findRange({ sheetName: 'Sheet1', address: 'B2' }),
+    }
+  },
+
+  actions: {
+    write({ refs, workbook, input }) {
+      if (typeof input !== 'object' || input === null || Array.isArray(input)) {
+        throw new Error('input object required')
+      }
+      const value = input.value
+      if (typeof value !== 'number') {
+        throw new Error('numeric value required')
+      }
+      workbook.writeValue(refs.output, value)
+    },
+  },
+})
+```
+
+`planWorkbookAction(model, "write", { value: 12 })` clones and canonicalizes
+that input into the plan so an agent can inspect exactly what was requested.
+Inputs must be plain JSON values: strings, finite numbers, booleans, `null`,
+arrays without holes, and plain objects. This package intentionally does not add
+schema dependencies; consumers own their own input validation inside actions.
+Use `verifyModel(model, { inputs: { write: { value: 12 } } })` when whole-model
+verification needs parameters for specific actions.
 
 Formula expressions also keep their workbook inputs separate from their formula
 text. A planned `writeFormula` command includes both the parseable formula
@@ -89,6 +139,11 @@ when an agent or test needs the same generic refs outside a model callback.
 consumer-defined row selectors do not collapse during dedupe.
 Use `check.exists(ref)` and `check.noFormulaErrors(ref)` directly when an agent
 or test needs the same generic planned checks outside a model callback.
+Use `check.valueEquals(ref, value)` and `check.formulaEquals(ref, formula)` when
+an action should carry machine-readable readback expectations for runtime
+verification. `formulaEquals` stores normalized formula text plus explicit model
+refs used by that formula, so an agent can inspect the post-action proof target
+without depending on a rendered spreadsheet UI.
 Use `check.custom({ kind, message, target, refs })` for consumer-defined
 invariants; the package does not need to know what the model means. `target`
 names the main ref, and `refs` names any supporting refs the invariant depends
@@ -99,18 +154,56 @@ action names, and whether model-level checks exist without running `find`,
 checks, or actions.
 Use `describeRef` and `describePlan` when an agent needs JSON-safe intent for
 logs, comparisons, approvals, or runtime handoff. Descriptions keep the same
-generic refs, commands, checks, changes, and ops, but omit consumer-private
-`refs` object shape and helper functions such as `table.column()`.
+generic action input, refs, commands, checks, changes, and ops, but omit
+consumer-private `refs` object shape and helper functions such as
+`table.column()`.
 Use `describePlanResult` when the same JSON-safe handoff is needed for either
 planned or failed action planning.
 
 Use `verifyPlan` before runtime handoff when an agent needs to prove a planned
-action is internally consistent. It checks for unresolved refs, unparsable
-formulas, duplicate resolved refs, and missing concrete ops for write, clear,
-and number-format commands that already target a known single cell. Custom check
-targets and supporting refs must also resolve through the model's `refsUsed`
-contract. Low-level `addOp` commands must contain valid `WorkbookOp` values,
-must still appear in `plan.ops`, and must match their declared `target` when the
-op exposes a concrete address or range.
+action is internally consistent. It checks for non-JSON-safe action input,
+unresolved refs, unparsable formulas, duplicate resolved refs, and missing
+concrete ops for write, clear, and number-format commands that already target a
+known single cell. Custom check targets and supporting refs must also resolve
+through the model's `refsUsed` contract. Formula readback expectation inputs
+must also resolve through `refsUsed`, and expectation formulas must be parseable.
+Low-level `addOp` commands must contain valid `WorkbookOp` values, must still
+appear in `plan.ops`, and must match their declared `target` when the op exposes
+a concrete address or range.
 Use `verifyModel` to plan and verify every action in a consumer-defined model
-with one JSON-safe result.
+with one JSON-safe result. Pass `inputs` when specific actions require
+parameters.
+
+Use `runWorkbookPlan(plan, adapter)` or
+`runWorkbookAction(model, actionName, adapter, input)` when an agent needs a
+generic apply-and-prove loop. The adapter owns runtime execution and semantic
+readback:
+
+```ts
+const result = await runWorkbookAction(model, 'write', {
+  apply(plan) {
+    return runtime.apply(plan.ops)
+  },
+  read(targets) {
+    return runtime.read(targets)
+  },
+})
+```
+
+`runWorkbookAction` plans the action, runs `verifyPlan`, calls
+`adapter.apply(plan)`, then evaluates `valueEquals` and `formulaEquals` checks
+against `adapter.read(targets, plan)`. It never imports the engine, headless
+runtime, app server, or UI. If static verification fails, the apply adapter is
+not called. If a readback expectation is missing or mismatched, the returned
+`WorkbookRunResult` is `failed` with deterministic error codes such as
+`readback_missing`, `value_mismatch`, or `formula_mismatch`.
+Formula readbacks are exact: adapters should return formula text in the same
+normalized no-leading-`=` form produced by `formula.source`.
+Adapters can also provide `verifyChecks(checks, plan)` to prove non-readback
+checks such as `exists`, `noFormulaErrors`, and consumer-defined `custom`
+invariants. The verifier must return the same checks in the same order and may
+only change `status`; changing `kind`, `target`, `refs`, `expectation`, or
+`message` fails the run as `invalid_check_verification`. If any verified check
+is `failed`, the run returns `failed` with `check_failed`. Existing adapters
+remain compatible, but agent-facing adapters should provide `verifyChecks` and
+avoid claiming full proof while checks remain `planned`.

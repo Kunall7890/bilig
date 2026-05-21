@@ -43,6 +43,32 @@ workbook would be ceremony.
 
 Project site: <https://proompteng.github.io/bilig/>
 
+## n8n Formula Readback
+
+Need an n8n workflow to write workbook inputs, recalculate formulas, and verify
+the computed value before the workflow continues? Start with the no-install
+proof workflow:
+
+```text
+examples/n8n-workpaper-formula-readback/bilig-workpaper-formula-readback.n8n.json
+```
+
+Or hit the hosted proof route directly:
+
+```sh
+curl -sS -X POST https://bilig.proompteng.ai/api/workpaper/n8n/forecast \
+  -H 'content-type: application/json' \
+  --data '{"sheetName":"Inputs","address":"B3","value":0.4}'
+```
+
+Use this when n8n owns the workbook/calculation state and needs formula-backed
+readback without opening Excel, LibreOffice, Google Sheets, or a browser UI. Do
+not use it as a patch for Microsoft Excel 365 / Graph append-row behavior or
+for making n8n's built-in XLSX writer reinterpret text as formulas.
+
+See [n8n WorkPaper formula readback](docs/n8n-workpaper-formula-readback.md)
+for the proof shape, import steps, and limits.
+
 ## Which Package Should I Install?
 
 | Problem you have right now                                                                      | Install                                      | First proof                                                                                  |
@@ -498,9 +524,9 @@ seven file-backed WorkPaper tools:
   It keeps the empty npm-project command, `verified: true` output, benchmark
   caveat, known limits, and feedback ask together.
 - Run `pnpm workpaper:bench:competitive:check`. The checked-in artifact shows
-  [`100/100` comparable WorkPaper mean wins](docs/what-workpaper-benchmark-proves.md)
-  and no p95 holdouts; the narrowest p95 win is
-  `aggregate-overlapping-sliding-window-wide` at `0.946x`.
+  [`94/100` comparable WorkPaper mean wins](docs/what-workpaper-benchmark-proves.md)
+  with seven p95 holdouts; the current worst p95 row is
+  `structural-move-rows` at `4.047x`.
 - The benchmark card is generated from that artifact:
   [`docs/assets/workpaper-benchmark-card.png`](docs/assets/workpaper-benchmark-card.png).
 - Read the [compatibility limits](docs/where-bilig-is-not-excel-compatible-yet.md)

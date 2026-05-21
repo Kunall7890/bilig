@@ -26,9 +26,9 @@ as useful evidence, but they do not satisfy broad coverage alone.
 
 Current checked-in metadata:
 
-- generated at `2026-05-19T04:08:42.274Z`
-- benchmark sampling: `5` measured samples after `2` warmup samples
-- WorkPaper package: `@bilig/headless` `0.18.25`
+- generated at `2026-05-21T11:06:55.712Z`
+- benchmark sampling: `200` measured samples after `2` warmup samples
+- WorkPaper package: `@bilig/headless` `0.40.43`
 - comparison engine: HyperFormula `3.2.0`, local checkout commit
   `9a510a2acb97c3d3490f9e3b9e961a1c4a98b9ad`, GPL-v3 license key
 - scalar formula comparison engine: TrueCalc `0.6.4`, `7` comparable scalar
@@ -41,26 +41,26 @@ Current checked-in metadata:
 ## What The Claim Is
 
 The current scorecard is not a blanket performance-leadership claim. A fresh
-checked-in run shows WorkPaper leading HyperFormula on every directly
-comparable workbook-wide headless spreadsheet-engine mean-latency workload. The
-current checked-in artifact records `100/100` mean-latency wins:
+checked-in run shows WorkPaper leading HyperFormula in aggregate across the
+directly comparable workbook-wide headless spreadsheet-engine workloads, with
+visible holdouts. The current checked-in artifact records `94/100` mean-latency wins:
 
 | Lane    | Comparable Workloads | WorkPaper Mean Wins | HyperFormula Mean Wins |
 | ------- | -------------------: | ------------------: | ---------------------: |
-| Overall |                `100` |               `100` |                    `0` |
-| Public  |                 `73` |                `73` |                    `0` |
-| Holdout |                 `27` |                `27` |                    `0` |
+| Overall |                `100` |                `94` |                    `6` |
+| Public  |                 `73` |                `70` |                    `3` |
+| Holdout |                 `27` |                `24` |                    `3` |
 
-The overall directional mean-ratio geomean is `0.3251117423911046`. The overall
-directional p95-ratio geomean is `0.33186260703682735`. Ratios below `1.0` mean
+The overall directional mean-ratio geomean is `0.3142595685818306`. The overall
+directional p95-ratio geomean is `0.3401955031215613`. Ratios below `1.0` mean
 WorkPaper is faster for that metric.
 
-The current worst mean row is `structural-insert-columns-small`, with a
-mean ratio of `0.7462622876061227`. The current narrowest p95 win is
-`aggregate-overlapping-sliding-window-wide`, with a p95 ratio of
-`0.945655463200891`. The
+The current worst mean row is `structural-append-formula-rows-small`, with a
+mean ratio of `2.2670751444925408`. The current worst p95 row is
+`structural-move-rows`, with a p95 ratio of
+`4.046934276296977`. The
 headless leadership scorecard
-currently records `100/100` workloads winning both
+currently records `93/100` workloads winning both
 mean and p95 against HyperFormula.
 
 It is also not a blanket "fastest against every formula evaluator" claim. The
@@ -78,10 +78,10 @@ coverage rather than proof of blanket leadership.
 
 ## How To Read The p95 Evidence
 
-The `100/100` count is about mean latency: for each comparable workload
-row, WorkPaper's average measured time is lower than HyperFormula's average
-measured time. Mean wins are useful because they summarize the normal cost of
-each workload, and the current scorecard also wins every comparable p95 row.
+The `94/100` count is about mean latency: for each comparable workload row,
+WorkPaper's average measured time is lower than HyperFormula's average measured
+time. Mean wins are useful because they summarize the normal cost of each
+workload, and the current scorecard keeps p95 holdouts visible.
 
 Each p95 row asks a different question: "near the slow end of this workload's
 sample set, which engine was faster?" A single row can lose on p95 even when its
@@ -89,9 +89,8 @@ mean wins, because a small number of slower samples can move the tail without
 moving the average enough to flip the mean result.
 
 The p95 geomean is an aggregate across the per-workload p95 ratios. Read the
-current result as: WorkPaper leads the overall mean and p95 aggregate and has no
-current comparable p95 holdouts, while future workload families still need to be
-added and checked instead of assumed.
+current result as: WorkPaper leads the overall mean and p95 aggregate while
+retaining seven comparable p95 holdouts that still need implementation work.
 
 ## What Is Measured
 

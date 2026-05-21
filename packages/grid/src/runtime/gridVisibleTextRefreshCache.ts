@@ -288,6 +288,9 @@ function tileMatchesExpectedVisibleRectScene(
   expectedVisibleFills: readonly VisibleCellFillExpectation[],
 ): boolean {
   if (!tile.rectSignature) {
+    if (tileHasUnverifiableNonFillPaintRects(tile)) {
+      return false
+    }
     return tileMatchesExpectedVisibleFillCoverage(tile, expectedVisibleFills)
   }
   const getCellBounds = createTileCellBoundsResolverV3({
@@ -335,6 +338,25 @@ function tileMatchesExpectedVisibleRectScene(
     resolveTileSurfaceSizeV3(tile.bounds, input),
   )
   return tile.rectSignature === expectedRectBuffer.rectSignature
+}
+
+function tileHasUnverifiableNonFillPaintRects(tile: GridRenderTile): boolean {
+  const expectedGridLineCount = expectedBaseGridLineRectCount(tile)
+  let visibleNonFillRectCount = 0
+  const readableRectCount = Math.min(tile.rectCount, Math.floor(tile.rectInstances.length / GRID_RECT_INSTANCE_FLOAT_COUNT_V3))
+  for (let index = 0; index < readableRectCount; index += 1) {
+    const offset = index * GRID_RECT_INSTANCE_FLOAT_COUNT_V3
+    const instanceKind = tile.rectInstances[offset + 13] ?? -1
+    const borderAlpha = tile.rectInstances[offset + 11] ?? 0
+    if (instanceKind !== 0 && borderAlpha > 0.01) {
+      visibleNonFillRectCount += 1
+    }
+  }
+  return (
+    visibleNonFillRectCount > expectedGridLineCount ||
+    (visibleNonFillRectCount > 0 && tile.rectCount > expectedGridLineCount) ||
+    tile.rectCount > readableRectCount + expectedGridLineCount
+  )
 }
 
 function tileMatchesExpectedVisibleFillCoverage(

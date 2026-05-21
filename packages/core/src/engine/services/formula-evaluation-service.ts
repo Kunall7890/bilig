@@ -3,12 +3,15 @@ import { ErrorCode, MAX_COLS, MAX_ROWS, ValueTag, type CellValue } from '@bilig/
 import {
   createLookupBuiltinResolver,
   evaluatePlanResult,
+  evaluatePlanScalarResult,
   formatAddress,
   lowerToPlan,
   isArrayValue,
+  scalarFromEvaluationResult,
   type EvaluationContext,
   type EvaluationResult,
   type FormulaNode,
+  type JsPlanInstruction,
   type RangeBuiltinArgument,
   parseCellAddress,
   parseRangeAddress,
@@ -50,6 +53,7 @@ import {
   type NativeDirectCriteriaPredicateLayoutCache,
 } from './formula-evaluation-direct-criteria-native.js'
 import { createDirectCriteriaSharingContext } from './formula-evaluation-direct-criteria-sharing.js'
+import { createRowHiddenResolver } from './formula-evaluation-row-hidden.js'
 import type { EngineFormulaEvaluationService } from './formula-evaluation-service-types.js'
 export type { EngineFormulaEvaluationService } from './formula-evaluation-service-types.js'
 
@@ -259,33 +263,6 @@ export function createEngineFormulaEvaluationService(args: {
     }
     return []
   }
-  const createRowHiddenResolver = (): ((sheetName: string, rowIndex: number) => boolean) => {
-    const hiddenRowsBySheet = new Map<string, Set<number>>()
-    return (sheetName, rowIndex) => {
-      if (!Number.isInteger(rowIndex) || rowIndex < 0) {
-        return false
-      }
-      let hiddenRows = hiddenRowsBySheet.get(sheetName)
-      if (hiddenRows === undefined) {
-        hiddenRows = new Set<number>()
-        for (const entry of args.state.workbook.listRowAxisEntries(sheetName)) {
-          if (entry.hidden === true) {
-            hiddenRows.add(entry.index)
-          }
-        }
-        for (const record of args.state.workbook.listRowMetadata(sheetName)) {
-          if (record.hidden !== true) {
-            continue
-          }
-          for (let row = record.start; row < record.start + record.count; row += 1) {
-            hiddenRows.add(row)
-          }
-        }
-        hiddenRowsBySheet.set(sheetName, hiddenRows)
-      }
-      return hiddenRows.has(rowIndex)
-    }
-  }
   const resolveIndexedExactMatch = (lookupValue: CellValue, range: RangeBuiltinArgument): number | undefined => {
     if (!args.state.getUseColumnIndex() || range.refKind !== 'cells' || range.cols !== 1) {
       return undefined
@@ -338,7 +315,7 @@ export function createEngineFormulaEvaluationService(args: {
     return args.sortedLookup.findVectorMatch(request)
   }
   const directCriteriaSharing = createDirectCriteriaSharingContext({ state: args.state, readCellValueByIndex })
-  const tryEvaluateDirectCriteriaAggregate = (formula: RuntimeFormula): CellValue | undefined => {
+  const tryEvaluateDirectCriteriaAggregate = (formula: RuntimeFormula, cellIndex: number): CellValue | undefined => {
     const directCriteria = formula.directCriteria
     if (!directCriteria) return undefined
     const transformShortCircuit = tryEvaluateDirectCriteriaTransformShortCircuit(readCellValueByIndex, formula)
@@ -349,6 +326,7 @@ export function createEngineFormulaEvaluationService(args: {
       directCriteria,
       runtimeColumnStore: args.runtimeColumnStore,
       readCellValueByIndex,
+      ownerRow: args.state.workbook.cellStore.rows[cellIndex],
     })
     if (directIndexOffsetResult !== undefined) {
       return applyDirectCriteriaResultTransforms(readCellValueByIndex, formula, directIndexOffsetResult)
@@ -659,7 +637,7 @@ export function createEngineFormulaEvaluationService(args: {
     }
 
     visiting.add(visitKey)
-    const isRowHidden = createRowHiddenResolver()
+    const isRowHidden = createRowHiddenResolver(args.state.workbook)
     const evaluationContext: EvaluationContext = {
       sheetName,
       workbookName: args.state.workbook.workbookName,
@@ -712,7 +690,9 @@ export function createEngineFormulaEvaluationService(args: {
       checkEvaluationBudget: (stepCost) => args.checkEvaluationBudget(stepCost),
     }
     const jsPlan = formula.compiled.jsPlan.length > 0 ? formula.compiled.jsPlan : lowerToPlan(formula.compiled.optimizedAst)
-    const result = evaluatePlanResult(jsPlan, evaluationContext)
+    const result = formula.compiled.producesSpill
+      ? evaluatePlanResult(jsPlan, evaluationContext)
+      : evaluatePlanScalarResult(jsPlan, evaluationContext)
     visiting.delete(visitKey)
     return isArrayValue(result) ? (result.values[0] ?? emptyValue()) : result
   }
@@ -748,10 +728,20 @@ export function createEngineFormulaEvaluationService(args: {
     return evaluateCellWithReferenceReplacements(request.formulaSheetName, request.formulaAddress, replacements, new Set<string>())
   }
 
-  const storeFormulaResult = (cellIndex: number, formula: RuntimeFormula, result: EvaluationResult): number[] => {
+  const storeFormulaResult = (
+    cellIndex: number,
+    formula: RuntimeFormula,
+    result: EvaluationResult,
+    options: { readonly allowDynamicArraySpill?: boolean } = {},
+  ): number[] => {
     const beforeValue = args.state.workbook.cellStore.getValue(cellIndex, (id) => (id === 0 ? '' : args.state.strings.get(id)))
     const materialization = isArrayValue(result)
-      ? args.materializeSpill(cellIndex, result)
+      ? formula.compiled.producesSpill || options.allowDynamicArraySpill === true
+        ? args.materializeSpill(cellIndex, result)
+        : {
+            changedCellIndices: args.clearOwnedSpill(cellIndex),
+            ownerValue: scalarFromEvaluationResult(result),
+          }
       : formula.compiled.producesSpill
         ? {
             changedCellIndices: args.clearOwnedSpill(cellIndex),
@@ -815,7 +805,7 @@ export function createEngineFormulaEvaluationService(args: {
         aggregateCache: args.aggregateCache,
         readCellValueByIndex,
       }) ??
-      tryEvaluateDirectCriteriaAggregate(formula)
+      tryEvaluateDirectCriteriaAggregate(formula, cellIndex)
     return directResult === undefined
       ? undefined
       : formula.compiled.producesSpill
@@ -841,12 +831,12 @@ export function createEngineFormulaEvaluationService(args: {
         aggregateCache: args.aggregateCache,
         readCellValueByIndex,
       }) ??
-      tryEvaluateDirectCriteriaAggregate(formula)
+      tryEvaluateDirectCriteriaAggregate(formula, cellIndex)
     if (directResult !== undefined) {
       return storeFormulaResult(cellIndex, formula, directResult)
     }
 
-    const isRowHidden = createRowHiddenResolver()
+    const isRowHidden = createRowHiddenResolver(args.state.workbook)
     const evaluationContext: EvaluationContext = {
       sheetName,
       workbookName: args.state.workbook.workbookName,
@@ -922,9 +912,23 @@ export function createEngineFormulaEvaluationService(args: {
       },
       resolveLookupBuiltin: lookupBuiltinResolver,
     }
-    const result = evaluatePlanResult(compiled.jsPlan.length > 0 ? compiled.jsPlan : lowerToPlan(compiled.ast), evaluationContext)
-    return storeFormulaResult(cellIndex, formula, result)
+    const jsPlan = compiled.jsPlan.length > 0 ? compiled.jsPlan : lowerToPlan(compiled.ast)
+    const allowDynamicArraySpill = compiled.producesSpill || planMayProduceRuntimeSpill(jsPlan)
+    const result = allowDynamicArraySpill
+      ? evaluatePlanResult(jsPlan, evaluationContext)
+      : evaluatePlanScalarResult(jsPlan, evaluationContext)
+    return storeFormulaResult(cellIndex, formula, result, { allowDynamicArraySpill })
   }
+
+  const effectWithEngineError = <A>(tryFn: () => A, message: string) =>
+    Effect.try({
+      try: tryFn,
+      catch: (cause) =>
+        new EngineFormulaEvaluationError({
+          message: evaluationErrorMessage(message, cause),
+          cause,
+        }),
+    })
 
   return {
     clearCachesNow() {
@@ -933,55 +937,35 @@ export function createEngineFormulaEvaluationService(args: {
     },
     evaluateDirectLookupFormulaNow: evaluateDirectLookupFormulaNow,
     evaluateDirectLookupFormula(cellIndex) {
-      return Effect.try({
-        try: () => evaluateDirectLookupFormulaNow(cellIndex),
-        catch: (cause) =>
-          new EngineFormulaEvaluationError({
-            message: evaluationErrorMessage(`Failed to evaluate direct lookup formula ${cellIndex}`, cause),
-            cause,
-          }),
-      })
+      return effectWithEngineError(() => evaluateDirectLookupFormulaNow(cellIndex), `Failed to evaluate direct lookup formula ${cellIndex}`)
     },
     evaluateUnsupportedFormula(cellIndex) {
-      return Effect.try({
-        try: () => evaluateUnsupportedFormulaNow(cellIndex),
-        catch: (cause) =>
-          new EngineFormulaEvaluationError({
-            message: evaluationErrorMessage(`Failed to evaluate formula ${cellIndex}`, cause),
-            cause,
-          }),
-      })
+      return effectWithEngineError(() => evaluateUnsupportedFormulaNow(cellIndex), `Failed to evaluate formula ${cellIndex}`)
     },
     evaluateUnsupportedFormulaNow,
     resolveStructuredReference(tableName, columnName) {
-      return Effect.try({
-        try: () => resolveStructuredReferenceNow(tableName, columnName),
-        catch: (cause) =>
-          new EngineFormulaEvaluationError({
-            message: evaluationErrorMessage(`Failed to resolve structured reference ${tableName}[${columnName}]`, cause),
-            cause,
-          }),
-      })
+      return effectWithEngineError(
+        () => resolveStructuredReferenceNow(tableName, columnName),
+        `Failed to resolve structured reference ${tableName}[${columnName}]`,
+      )
     },
     resolveSpillReference(currentSheetName, sheetName, address) {
-      return Effect.try({
-        try: () => resolveSpillReferenceNow(currentSheetName, sheetName, address),
-        catch: (cause) =>
-          new EngineFormulaEvaluationError({
-            message: evaluationErrorMessage(`Failed to resolve spill reference ${address}#`, cause),
-            cause,
-          }),
-      })
+      return effectWithEngineError(
+        () => resolveSpillReferenceNow(currentSheetName, sheetName, address),
+        `Failed to resolve spill reference ${address}#`,
+      )
     },
     resolveMultipleOperations(request) {
-      return Effect.try({
-        try: () => resolveMultipleOperationsNow(request),
-        catch: (cause) =>
-          new EngineFormulaEvaluationError({
-            message: evaluationErrorMessage('Failed to resolve MULTIPLE.OPERATIONS', cause),
-            cause,
-          }),
-      })
+      return effectWithEngineError(() => resolveMultipleOperationsNow(request), 'Failed to resolve MULTIPLE.OPERATIONS')
     },
   }
+}
+
+function planMayProduceRuntimeSpill(plan: readonly JsPlanInstruction[]): boolean {
+  return plan.some((instruction) => {
+    if (instruction.opcode === 'call' && instruction.callee.toUpperCase() === 'INDIRECT') {
+      return true
+    }
+    return instruction.opcode === 'push-lambda' && planMayProduceRuntimeSpill(instruction.body)
+  })
 }

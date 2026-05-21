@@ -10,6 +10,7 @@ import {
   lowerToPlan,
   parseFormula,
 } from '../index.js'
+import { serializeFormula } from '../formula-serializer.js'
 
 const context = {
   sheetName: 'Sheet1',
@@ -257,6 +258,35 @@ describe('formula parser/compiler edges', () => {
     const structuredBound = bindFormula(structured)
     expect(structuredBound.symbolicTables).toEqual(['Sales'])
     expect(structuredBound.mode).toBe(FormulaMode.JsOnly)
+
+    expect(lexFormula('SUM(Sales[Q1 Sales])').slice(2, 6)).toEqual([
+      { kind: 'identifier', value: 'Sales' },
+      { kind: 'lbracket', value: '[' },
+      { kind: 'bracketContent', value: 'Q1 Sales' },
+      { kind: 'rbracket', value: ']' },
+    ])
+    const spacedColumn = parseFormula('SUM(Sales[Q1 Sales])')
+    expect(spacedColumn).toEqual({
+      kind: 'CallExpr',
+      callee: 'SUM',
+      args: [{ kind: 'StructuredRef', tableName: 'Sales', columnName: 'Q1 Sales' }],
+    })
+    expect(serializeFormula(spacedColumn)).toBe('SUM(Sales[Q1 Sales])')
+
+    for (const { source, columnName, serialized } of [
+      { source: 'SUM(Sales[[Revenue, Net]])', columnName: 'Revenue, Net', serialized: 'SUM(Sales[Revenue, Net])' },
+      { source: 'SUM(Sales[A:B])', columnName: 'A:B', serialized: 'SUM(Sales[A:B])' },
+      { source: "SUM(Sales['# Units])", columnName: '# Units', serialized: "SUM(Sales['# Units])" },
+      { source: "SUM(Sales[Owner''s Share])", columnName: "Owner's Share", serialized: "SUM(Sales[Owner''s Share])" },
+      { source: "SUM(Sales[A'[B']])", columnName: 'A[B]', serialized: "SUM(Sales[A'[B']])" },
+    ]) {
+      expect(parseFormula(source)).toEqual({
+        kind: 'CallExpr',
+        callee: 'SUM',
+        args: [{ kind: 'StructuredRef', tableName: 'Sales', columnName }],
+      })
+      expect(serializeFormula(parseFormula(source))).toBe(serialized)
+    }
 
     const spill = parseFormula('A1#')
     expect(spill).toEqual({ kind: 'SpillRef', ref: 'A1' })

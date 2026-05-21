@@ -91,13 +91,12 @@ export const WorkbookPaneRendererV3 = memo(function WorkbookPaneRendererV3({
   )
   const headerTextRunCount = countHeaderPaneTextRunsV3(headerPanes)
   const tileTextRunCount = countTilePaneTextRunsV3(tilePanes)
-  const hasLiveNativeTextRuns = headerTextRunCount + tileTextRunCount > 0
   const showTypeGpuCanvas = backendStatus !== 'unavailable'
-  const nativeLayerSource = presentedVisualFrame ? 'presented-frame' : showTypeGpuCanvas ? 'none' : 'backend-unavailable-live'
+  const nativeLayerSource = showTypeGpuCanvas ? 'none' : 'backend-unavailable-live'
   const presentedHeaderPanes = presentedVisualFrame?.headerPanes ?? []
   const presentedTilePanes = presentedVisualFrame?.tilePanes ?? []
-  const nativeHeaderPanes = presentedVisualFrame?.headerPanes ?? (showTypeGpuCanvas ? [] : headerPanes)
-  const nativeTilePanes = presentedVisualFrame?.tilePanes ?? (showTypeGpuCanvas ? [] : tilePanes)
+  const nativeHeaderPanes = showTypeGpuCanvas ? [] : headerPanes
+  const nativeTilePanes = showTypeGpuCanvas ? [] : tilePanes
   const presentedHeaderTextRunCount = countHeaderPaneTextRunsV3(presentedHeaderPanes)
   const presentedTileTextRunCount = countTilePaneTextRunsV3(presentedTilePanes)
   const nativeHeaderTextRunCount = countHeaderPaneTextRunsV3(nativeHeaderPanes)
@@ -109,7 +108,7 @@ export const WorkbookPaneRendererV3 = memo(function WorkbookPaneRendererV3({
     hostRuntime.updateProps({
       active,
       cameraStore,
-      drawText: !hasLiveNativeTextRuns,
+      drawText: true,
       geometry,
       headerPanes,
       host,
@@ -132,7 +131,6 @@ export const WorkbookPaneRendererV3 = memo(function WorkbookPaneRendererV3({
     preloadTilePanes,
     renderRevisionSnapshot,
     scrollTransformStore,
-    hasLiveNativeTextRuns,
     tilePanes,
   ])
 
@@ -179,7 +177,7 @@ export const WorkbookPaneRendererV3 = memo(function WorkbookPaneRendererV3({
           data-v3-body-world-x={geometry?.camera.bodyWorldX ?? 0}
           data-v3-body-world-y={geometry?.camera.bodyWorldY ?? 0}
           data-v3-canvas-proof-layer="disabled"
-          data-v3-draw-text={hasLiveNativeTextRuns ? 'false' : 'true'}
+          data-v3-draw-text="true"
           data-v3-frame-proof-status={frameProofStatus}
           data-v3-frame-proof-signature={frameProofSignature}
           data-v3-has-presented-frame={hasPresentedFrame ? 'true' : 'false'}
@@ -235,7 +233,7 @@ export const WorkbookPaneRendererV3 = memo(function WorkbookPaneRendererV3({
         />
       ) : null}
       <WorkbookPaneNativeRectLayerV3
-        active={active}
+        active={active && !showTypeGpuCanvas}
         cameraStore={cameraStore}
         geometry={geometry}
         headerPanes={nativeHeaderPanes}

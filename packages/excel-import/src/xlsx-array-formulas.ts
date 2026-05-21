@@ -19,6 +19,7 @@ import {
   parseRelationships,
   setZipText,
 } from './xlsx-pivot-artifacts.js'
+import { addMissingCellsToSheetXml } from './xlsx-cell-insertion.js'
 import { encodeFormulaForXlsx } from './xlsx-formula-translation.js'
 
 const cellElementPattern = /<c\b(?<attributes>[^>]*)>(?<body>[\s\S]*?)<\/c>/gu
@@ -179,9 +180,12 @@ function insertFormulaCellIntoRow(sheetXml: string, formula: WorkbookSheetArrayF
 }
 
 function insertFormulaCellIntoSheetData(sheetXml: string, formula: WorkbookSheetArrayFormulaSnapshot): string {
-  const rowNumber = cellRowNumber(formula.address) ?? 1
-  const rowXml = `<row r="${String(rowNumber)}"><c r="${escapeXml(formula.address)}">${formula.formulaXml}</c></row>`
-  return sheetXml.includes('</sheetData>') ? sheetXml.replace('</sheetData>', `${rowXml}</sheetData>`) : sheetXml
+  return addMissingCellsToSheetXml(sheetXml, [
+    {
+      address: formula.address,
+      xml: `<c r="${escapeXml(formula.address)}">${formula.formulaXml}</c>`,
+    },
+  ])
 }
 
 function insertCellIntoRow(sheetXml: string, address: string, cellXml: string): string | null {
@@ -208,9 +212,7 @@ function insertCellIntoRow(sheetXml: string, address: string, cellXml: string): 
 }
 
 function insertCellIntoSheetData(sheetXml: string, address: string, cellXml: string): string {
-  const rowNumber = cellRowNumber(address) ?? 1
-  const rowXml = `<row r="${String(rowNumber)}">${cellXml}</row>`
-  return sheetXml.includes('</sheetData>') ? sheetXml.replace('</sheetData>', `${rowXml}</sheetData>`) : sheetXml
+  return addMissingCellsToSheetXml(sheetXml, [{ address, xml: cellXml }])
 }
 
 function upsertArrayFormula(sheetXml: string, formula: WorkbookSheetArrayFormulaSnapshot): string {

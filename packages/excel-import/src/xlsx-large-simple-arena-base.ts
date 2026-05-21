@@ -35,6 +35,8 @@ import { SparseInt16ArenaValues, SparseInt32ArenaValues } from './xlsx-large-sim
 import type { LargeSimpleSharedStrings } from './xlsx-large-simple-shared-strings.js'
 import type { ImportedWorkbookStringPool } from './xlsx-large-simple-string-pool.js'
 
+const denseRowMajorEarlyMismatchCapacityDivisor = 4
+
 export abstract class ImportedWorkbookArenaBase {
   protected sheetIndex: number | null = null
   protected sheetIndexes: Uint32Array<ArrayBuffer> | undefined
@@ -141,7 +143,9 @@ export abstract class ImportedWorkbookArenaBase {
       ) {
         return index
       }
-      if (canStoreLinearCoordinate(this.denseRowMajorWidth, row, column)) {
+      if (this.shouldAbandonDenseRowMajorPreallocation(index)) {
+        this.shrinkDenseRowMajorPreallocationToCoordinateStorage(index)
+      } else if (canStoreLinearCoordinate(this.denseRowMajorWidth, row, column)) {
         this.materializeLinearCoordinateStorage(index)
       } else {
         this.materializeCoordinateStorage(index)
@@ -157,6 +161,10 @@ export abstract class ImportedWorkbookArenaBase {
     this.rows[index] = row
     this.columns[index] = column
     return index
+  }
+
+  private shouldAbandonDenseRowMajorPreallocation(mismatchIndex: number): boolean {
+    return mismatchIndex < initialCellCapacity || mismatchIndex * denseRowMajorEarlyMismatchCapacityDivisor < this.valueKinds.length
   }
 
   protected recordSheetIndex(index: number, sheetIndex: number): void {
@@ -467,6 +475,61 @@ export abstract class ImportedWorkbookArenaBase {
         this.rows[index] = Math.floor(index / width)
         this.columns[index] = index % width
       }
+    }
+    this.denseRowMajorWidth = null
+    this.linearCellIndexes = undefined
+    this.linearRowMajorWidth = null
+  }
+
+  private shrinkDenseRowMajorPreallocationToCoordinateStorage(upToIndex: number): void {
+    const width = this.denseRowMajorWidth
+    if (width === null) {
+      return
+    }
+    const nextCapacity = Math.max(initialCellCapacity, this.length)
+    const copyLength = Math.min(upToIndex, nextCapacity)
+    const previousValueKinds = this.valueKinds
+    const previousSheetIndexes = this.sheetIndexes
+    const previousNumberValues = this.numberValues
+    const previousTinyIntegerValues = this.tinyIntegerValues
+    const previousStringIds = this.stringIds
+    const previousBooleanValues = this.booleanValues
+    const previousFormulaIds = this.formulaIds
+
+    this.rows = new Uint32Array(nextCapacity)
+    this.columns = new Uint16Array(nextCapacity)
+    for (let index = 0; index < copyLength; index += 1) {
+      this.rows[index] = Math.floor(index / width)
+      this.columns[index] = index % width
+    }
+    if (previousSheetIndexes) {
+      this.sheetIndexes = new Uint32Array(nextCapacity)
+      this.sheetIndexes.set(previousSheetIndexes.subarray(0, copyLength))
+    }
+    this.valueKinds = new Uint8Array(nextCapacity)
+    this.valueKinds.set(previousValueKinds.subarray(0, copyLength))
+    if (previousNumberValues) {
+      this.numberValues = new Float64Array(nextCapacity)
+      this.numberValues.fill(Number.NaN)
+      this.numberValues.set(previousNumberValues.subarray(0, copyLength))
+    }
+    if (previousTinyIntegerValues) {
+      this.tinyIntegerValues = new Int8Array(nextCapacity)
+      this.tinyIntegerValues.set(previousTinyIntegerValues.subarray(0, copyLength))
+    }
+    this.smallIntegers.compact(nextCapacity)
+    this.integers.compact(nextCapacity)
+    if (previousStringIds) {
+      this.stringIds = filledUint32Array(nextCapacity, noPoolId)
+      this.stringIds.set(previousStringIds.subarray(0, copyLength))
+    }
+    if (previousBooleanValues) {
+      this.booleanValues = new Uint8Array(nextCapacity)
+      this.booleanValues.set(previousBooleanValues.subarray(0, copyLength))
+    }
+    if (previousFormulaIds) {
+      this.formulaIds = filledUint32Array(nextCapacity, noPoolId)
+      this.formulaIds.set(previousFormulaIds.subarray(0, copyLength))
     }
     this.denseRowMajorWidth = null
     this.linearCellIndexes = undefined

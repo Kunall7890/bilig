@@ -18,7 +18,7 @@ import type { ExactLookupImpactCaches } from './operation-lookup-dirty-markers.j
 import type { OperationLookupPlanner } from './operation-lookup-planner.js'
 import { applyOperationLookupNumericWriteTailPatches, planOperationLookupNumericWrites } from './operation-lookup-write-plans.js'
 import type { CreateEngineOperationServiceArgs, MutationSource } from './operation-service-types.js'
-import { applyTableHeaderRenameForSetCellValue } from './operation-table-header-rename.js'
+import { applyTableHeaderRenameForSetCellValue, isTableHeaderCell } from './operation-table-header-rename.js'
 
 type BatchSetCellValueOp = Extract<EngineOp, { kind: 'setCellValue' }>
 type BatchClearCellOp = Extract<EngineOp, { kind: 'clearCell' }>
@@ -138,6 +138,7 @@ export function applyBatchSetCellValueOp(request: ApplyBatchSetCellValueOpArgs):
   let explicitChangedCount = request.explicitChangedCount
   let topologyChanged = request.topologyChanged
   let refreshAllPivots = request.refreshAllPivots
+  let effectiveValue = op.value
 
   if (
     !request.isRestore &&
@@ -150,12 +151,37 @@ export function applyBatchSetCellValueOp(request: ApplyBatchSetCellValueOpArgs):
   ) {
     refreshAllPivots = true
   }
+  if (!request.isRestore) {
+    if (
+      op.value === null &&
+      (existingIndex === undefined || request.isNullLiteralWriteNoOp(existingIndex)) &&
+      !isTableHeaderCell(args.state.workbook.listTables(), op.sheetName, parsedAddress.row, parsedAddress.col)
+    ) {
+      return { changedInputCount, formulaChangedCount, explicitChangedCount, topologyChanged, refreshAllPivots }
+    }
+    ;({
+      formulaChangedCount,
+      topologyChanged,
+      value: effectiveValue,
+    } = applyTableHeaderRenameForSetCellValue({
+      serviceArgs: args,
+      sheetName: op.sheetName,
+      row: parsedAddress.row,
+      col: parsedAddress.col,
+      value: op.value,
+      formulaChangedCount,
+      topologyChanged,
+    }))
+    if (existingIndex !== undefined) {
+      changedInputCount = args.markPivotRootsChanged(args.clearPivotForCell(existingIndex), changedInputCount)
+    }
+  }
   const needsLookupValueRead = hasExactLookupDependents || hasSortedLookupDependents || hasAggregateDependents
   const prior = request.readCellValueForLookup(existingIndex)
   const oldExactLookupNumber = hasExactLookupDependents ? normalizeExactNumericValue(prior.value) : undefined
-  const newExactLookupNumber = hasExactLookupDependents ? exactLookupLiteralNumericValue(op.value) : undefined
+  const newExactLookupNumber = hasExactLookupDependents ? exactLookupLiteralNumericValue(effectiveValue) : undefined
   const oldApproximateLookupNumber = hasSortedLookupDependents ? normalizeApproximateNumericValue(prior.value) : undefined
-  const newApproximateLookupNumber = hasSortedLookupDependents ? directScalarLiteralNumericValue(op.value) : undefined
+  const newApproximateLookupNumber = hasSortedLookupDependents ? directScalarLiteralNumericValue(effectiveValue) : undefined
   const lookupWritePlans =
     sheetId === undefined
       ? undefined
@@ -179,23 +205,6 @@ export function applyBatchSetCellValueOp(request: ApplyBatchSetCellValueOpArgs):
         })
   const exactLookupDependentsHandled = lookupWritePlans?.exactHandled === true
   const sortedLookupDependentsHandled = lookupWritePlans?.sortedHandled === true
-  if (!request.isRestore) {
-    if (op.value === null && (existingIndex === undefined || request.isNullLiteralWriteNoOp(existingIndex))) {
-      return { changedInputCount, formulaChangedCount, explicitChangedCount, topologyChanged, refreshAllPivots }
-    }
-    ;({ formulaChangedCount, topologyChanged } = applyTableHeaderRenameForSetCellValue({
-      serviceArgs: args,
-      sheetName: op.sheetName,
-      row: parsedAddress.row,
-      col: parsedAddress.col,
-      value: op.value,
-      formulaChangedCount,
-      topologyChanged,
-    }))
-    if (existingIndex !== undefined) {
-      changedInputCount = args.markPivotRootsChanged(args.clearPivotForCell(existingIndex), changedInputCount)
-    }
-  }
   const cellIndex = request.preparedCells.ensureCellTracked(op.sheetName, op.address, preparedCellAddress)
   if (!request.isRestore) {
     changedInputCount = args.markSpillRootsChanged(args.clearOwnedSpill(cellIndex), changedInputCount)
@@ -207,8 +216,8 @@ export function applyBatchSetCellValueOp(request: ApplyBatchSetCellValueOpArgs):
     }
     topologyChanged = removedFormula || topologyChanged
   }
-  writeLiteralToCellStore(args.state.workbook.cellStore, cellIndex, op.value, args.state.strings)
-  if (op.value === null) {
+  writeLiteralToCellStore(args.state.workbook.cellStore, cellIndex, effectiveValue, args.state.strings)
+  if (effectiveValue === null) {
     args.state.workbook.cellStore.flags[cellIndex] = (args.state.workbook.cellStore.flags[cellIndex] ?? 0) | CellFlags.AuthoredBlank
   }
   args.state.workbook.notifyCellValueWritten(cellIndex)
@@ -235,8 +244,8 @@ export function applyBatchSetCellValueOp(request: ApplyBatchSetCellValueOpArgs):
   }
   if (needsLookupValueRead) {
     const formulaChangedCountBeforeLookupNotes = formulaChangedCount
-    const newValue = literalToValue(op.value, args.state.strings)
-    const newStringId = typeof op.value === 'string' ? args.state.workbook.cellStore.stringIds[cellIndex] : undefined
+    const newValue = literalToValue(effectiveValue, args.state.strings)
+    const newStringId = typeof effectiveValue === 'string' ? args.state.workbook.cellStore.stringIds[cellIndex] : undefined
     if (!request.isRestore) {
       const directDependentsHandled = request.markPostRecalcDirectFormulaDependents(
         cellIndex,
@@ -307,7 +316,7 @@ export function applyBatchSetCellValueOp(request: ApplyBatchSetCellValueOpArgs):
       request.lookupHandledInputCellIndices.push(cellIndex)
     }
   } else if (!request.isRestore) {
-    const newValue = literalToValue(op.value, args.state.strings)
+    const newValue = literalToValue(effectiveValue, args.state.strings)
     const directDependentsHandled = request.markPostRecalcDirectFormulaDependents(
       cellIndex,
       request.postRecalcDirectFormulaIndices,
@@ -321,7 +330,7 @@ export function applyBatchSetCellValueOp(request: ApplyBatchSetCellValueOpArgs):
   args.state.workbook.cellStore.flags[cellIndex] =
     (args.state.workbook.cellStore.flags[cellIndex] ?? 0) &
     ~(CellFlags.HasFormula | CellFlags.JsOnly | CellFlags.InCycle | CellFlags.SpillChild | CellFlags.PivotOutput)
-  if (!request.isRestore && op.value === null) {
+  if (!request.isRestore && effectiveValue === null) {
     request.pruneCellIfOrphaned(cellIndex)
   }
   changedInputCount = args.markInputChanged(cellIndex, changedInputCount)
@@ -335,7 +344,7 @@ export function applyBatchSetCellValueOp(request: ApplyBatchSetCellValueOpArgs):
 export function applyBatchClearCellOp(request: ApplyBatchClearCellOpArgs): BatchCellValueMutationCounts {
   const args = request.serviceArgs
   const { op, preparedCellAddress } = request
-  const cellIndex = request.preparedCells.getExistingCellIndex(op.sheetName, op.address, preparedCellAddress)
+  let cellIndex = request.preparedCells.getExistingCellIndex(op.sheetName, op.address, preparedCellAddress)
   const parsedAddress = preparedCellAddress ?? parseCellAddress(op.address, op.sheetName)
   const sheet = args.state.workbook.getSheet(op.sheetName)
   const sheetId = sheet?.id
@@ -348,6 +357,7 @@ export function applyBatchClearCellOp(request: ApplyBatchClearCellOpArgs): Batch
   let explicitChangedCount = request.explicitChangedCount
   let topologyChanged = request.topologyChanged
   let refreshAllPivots = request.refreshAllPivots
+  let headerClearValue: string | undefined
 
   if (
     !request.isRestore &&
@@ -360,43 +370,83 @@ export function applyBatchClearCellOp(request: ApplyBatchClearCellOpArgs): Batch
   ) {
     refreshAllPivots = true
   }
+  if (
+    !request.isRestore &&
+    op.skipTableHeaderRename !== true &&
+    isTableHeaderCell(args.state.workbook.listTables(), op.sheetName, parsedAddress.row, parsedAddress.col)
+  ) {
+    const renamed = applyTableHeaderRenameForSetCellValue({
+      serviceArgs: args,
+      sheetName: op.sheetName,
+      row: parsedAddress.row,
+      col: parsedAddress.col,
+      value: null,
+      formulaChangedCount,
+      topologyChanged,
+    })
+    formulaChangedCount = renamed.formulaChangedCount
+    topologyChanged = renamed.topologyChanged
+    headerClearValue = String(renamed.value ?? '')
+  }
   const prior = request.readCellValueForLookup(cellIndex)
+  const nextValue = headerClearValue === undefined ? emptyValue() : literalToValue(headerClearValue, args.state.strings)
   if (cellIndex === undefined) {
+    if (headerClearValue !== undefined) {
+      cellIndex = request.preparedCells.ensureCellTracked(op.sheetName, op.address, preparedCellAddress)
+      writeLiteralToCellStore(args.state.workbook.cellStore, cellIndex, headerClearValue, args.state.strings)
+      args.state.workbook.notifyCellValueWritten(cellIndex)
+      if (!request.isRestore) {
+        ;({ changedInputCount, formulaChangedCount, explicitChangedCount, topologyChanged, refreshAllPivots } =
+          request.rebindValueSensitiveFormulaDependents(cellIndex, {
+            changedInputCount,
+            formulaChangedCount,
+            explicitChangedCount,
+            topologyChanged,
+            refreshAllPivots,
+          }))
+      }
+      changedInputCount = args.markInputChanged(cellIndex, changedInputCount)
+      explicitChangedCount = args.markExplicitChanged(cellIndex, explicitChangedCount)
+    }
     request.setEntityVersionForOp(op, request.order)
     return { changedInputCount, formulaChangedCount, explicitChangedCount, topologyChanged, refreshAllPivots }
   }
-  if (request.isClearCellNoOp(cellIndex)) {
+  const targetCellIndex = cellIndex
+  if (headerClearValue === undefined && request.isClearCellNoOp(targetCellIndex)) {
     return { changedInputCount, formulaChangedCount, explicitChangedCount, topologyChanged, refreshAllPivots }
   }
-  changedInputCount = args.markPivotRootsChanged(args.clearPivotForCell(cellIndex), changedInputCount)
-  changedInputCount = args.markSpillRootsChanged(args.clearOwnedSpill(cellIndex), changedInputCount)
-  const removedFormula = args.removeFormula(cellIndex)
+  changedInputCount = args.markPivotRootsChanged(args.clearPivotForCell(targetCellIndex), changedInputCount)
+  changedInputCount = args.markSpillRootsChanged(args.clearOwnedSpill(targetCellIndex), changedInputCount)
+  const removedFormula = args.removeFormula(targetCellIndex)
   if (removedFormula) {
     args.invalidateAggregateColumn({ sheetName: op.sheetName, col: parsedAddress.col })
     request.clearLookupImpactCaches()
-    formulaChangedCount = request.refreshDependentRangesAndRebindFormulaDependents(cellIndex, formulaChangedCount)
+    formulaChangedCount = request.refreshDependentRangesAndRebindFormulaDependents(targetCellIndex, formulaChangedCount)
   }
   topologyChanged = removedFormula || topologyChanged
-  args.state.workbook.cellStore.setValue(cellIndex, emptyValue())
-  args.state.workbook.notifyCellValueWritten(cellIndex)
+  if (headerClearValue === undefined) {
+    args.state.workbook.cellStore.setValue(targetCellIndex, emptyValue())
+  } else {
+    writeLiteralToCellStore(args.state.workbook.cellStore, targetCellIndex, headerClearValue, args.state.strings)
+  }
+  args.state.workbook.notifyCellValueWritten(targetCellIndex)
   if (!request.isRestore) {
     ;({ changedInputCount, formulaChangedCount, explicitChangedCount, topologyChanged, refreshAllPivots } =
-      request.rebindValueSensitiveFormulaDependents(cellIndex, {
+      request.rebindValueSensitiveFormulaDependents(targetCellIndex, {
         changedInputCount,
         formulaChangedCount,
         explicitChangedCount,
         topologyChanged,
         refreshAllPivots,
       }))
-    const nextValue = emptyValue()
     const directDependentsHandled = request.markPostRecalcDirectFormulaDependents(
-      cellIndex,
+      targetCellIndex,
       request.postRecalcDirectFormulaIndices,
       prior.value,
       nextValue,
     )
     if (!directDependentsHandled) {
-      request.markDirectScalarDeltaClosure(cellIndex, prior.value, nextValue, request.postRecalcDirectFormulaIndices)
+      request.markDirectScalarDeltaClosure(targetCellIndex, prior.value, nextValue, request.postRecalcDirectFormulaIndices)
     }
   }
   if (needsLookupValueRead) {
@@ -406,10 +456,10 @@ export function applyBatchClearCellOp(request: ApplyBatchClearCellOpArgs): Batch
         row: parsedAddress.row,
         col: parsedAddress.col,
         oldValue: prior.value,
-        newValue: emptyValue(),
+        newValue: nextValue,
         oldStringId: prior.stringId,
-        newStringId: undefined,
-        inputCellIndex: cellIndex,
+        newStringId: headerClearValue === undefined ? undefined : args.state.workbook.cellStore.stringIds[targetCellIndex],
+        inputCellIndex: targetCellIndex,
       })
       if (hasExactLookupDependents) {
         formulaChangedCount = request.noteExactLookupLiteralWriteWhenDirty(
@@ -439,20 +489,25 @@ export function applyBatchClearCellOp(request: ApplyBatchClearCellOpArgs): Batch
         row: parsedAddress.row,
         col: parsedAddress.col,
         oldValue: prior.value,
-        newValue: emptyValue(),
+        newValue: nextValue,
         oldStringId: prior.stringId,
-        newStringId: undefined,
+        newStringId: headerClearValue === undefined ? undefined : args.state.workbook.cellStore.stringIds[targetCellIndex],
       })
       formulaChangedCount = request.noteSortedLookupLiteralWriteWhenDirty(sortedLookupRequest, formulaChangedCount)
     }
   }
-  args.state.workbook.cellStore.flags[cellIndex] =
-    (args.state.workbook.cellStore.flags[cellIndex] ?? 0) &
-    ~(CellFlags.HasFormula | CellFlags.JsOnly | CellFlags.InCycle | CellFlags.SpillChild | CellFlags.PivotOutput | CellFlags.AuthoredBlank)
-  request.normalizeHistoryDependencyPlaceholder(cellIndex, request.source)
-  request.pruneCellIfOrphaned(cellIndex)
-  changedInputCount = args.markInputChanged(cellIndex, changedInputCount)
-  explicitChangedCount = args.markExplicitChanged(cellIndex, explicitChangedCount)
+  args.state.workbook.cellStore.flags[targetCellIndex] =
+    (args.state.workbook.cellStore.flags[targetCellIndex] ?? 0) &
+    ~(CellFlags.HasFormula | CellFlags.JsOnly | CellFlags.InCycle | CellFlags.SpillChild | CellFlags.PivotOutput)
+  if (headerClearValue === undefined) {
+    args.state.workbook.cellStore.flags[targetCellIndex] &= ~CellFlags.AuthoredBlank
+  }
+  request.normalizeHistoryDependencyPlaceholder(targetCellIndex, request.source)
+  if (headerClearValue === undefined) {
+    request.pruneCellIfOrphaned(targetCellIndex)
+  }
+  changedInputCount = args.markInputChanged(targetCellIndex, changedInputCount)
+  explicitChangedCount = args.markExplicitChanged(targetCellIndex, explicitChangedCount)
   request.setEntityVersionForOp(op, request.order)
   return { changedInputCount, formulaChangedCount, explicitChangedCount, topologyChanged, refreshAllPivots }
 }

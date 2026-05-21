@@ -255,6 +255,10 @@ export function createOperationCellMutationApplier(input: CreateOperationCellMut
     if (freshDirectScalarFormulaBatchFastPath?.tryApplyFreshDirectScalarFormulaMatrixBatch(refs, batch, source, potentialNewCells)) {
       return
     }
+    const triedFormulaLiteralBatchFastPath = source === 'local' && args.state.formulas.size !== 0
+    if (triedFormulaLiteralBatchFastPath && tryApplyCoalescedDirectScalarLiteralBatch(refs, batch, source, potentialNewCells)) {
+      return
+    }
     if (
       source === 'local' &&
       existingRectangularLiteralBatchFastPath.tryApplyExistingDenseRectangularNumericLiteralBatch(refs, batch, potentialNewCells)
@@ -264,7 +268,7 @@ export function createOperationCellMutationApplier(input: CreateOperationCellMut
     if (source === 'local' && tryApplyFreshDenseRectangularNumericLiteralBatch(refs, batch, potentialNewCells)) {
       return
     }
-    if (tryApplyCoalescedDirectScalarLiteralBatch(refs, batch, source, potentialNewCells)) {
+    if (!triedFormulaLiteralBatchFastPath && tryApplyCoalescedDirectScalarLiteralBatch(refs, batch, source, potentialNewCells)) {
       return
     }
     if (freshDirectAggregateFormulaBatchFastPath?.tryApplyFreshDirectAggregateFormulaBatch(refs, batch, source, potentialNewCells)) {

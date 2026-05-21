@@ -26,6 +26,10 @@ function expectString(value: CellValue, expected: string): void {
   expect(value).toMatchObject({ tag: ValueTag.String, value: expected })
 }
 
+function expectEmpty(value: CellValue): void {
+  expect(value).toEqual({ tag: ValueTag.Empty })
+}
+
 function slope(ys: readonly number[], xs: readonly number[]): number {
   const xMean = xs.reduce((sum, value) => sum + value, 0) / xs.length
   const yMean = ys.reduce((sum, value) => sum + value, 0) / ys.length
@@ -420,6 +424,35 @@ describe('Workpaper formula regressions', () => {
     expectString(cellValue(workbook, 'Sheet1', 6, 0), 'Participating Preferred')
     expectNumber(cellValue(workbook, 'Sheet1', 6, 1), 300)
     expectString(cellValue(workbook, 'Sheet1', 6, 2), 'Participating Preferred')
+  })
+
+  it('matches Desktop Excel implicit intersection for standalone INDEX reference results', () => {
+    const workbook = WorkPaper.buildFromSheets(
+      {
+        Sheet1: [
+          [1, 2, 3, null, '=INDEX(A1:C3,0,2)', null, '=SUM(INDEX(A1:C3,0,2))', '=SUM(INDEX(A1:C3,2,0))', '=SUM(INDEX(A1:C3,0,0))'],
+          [4, 5, 6, null, '=INDEX(A1:C3,0,2)'],
+          [7, 8, 9, null, '=INDEX(A1:C3,0,2)'],
+          [null, null, null, null, '=INDEX(A1:C3,0,2)'],
+          ['=INDEX(A1:C3,2,0)', '=INDEX(A1:C3,2,0)', '=INDEX(A1:C3,2,0)', '=INDEX(A1:C3,2,0)', '=INDEX(A1:C3,0,0)'],
+        ],
+      },
+      { maxRows: 10, maxColumns: 10, useColumnIndex: true },
+    )
+
+    expectNumber(cellValue(workbook, 'Sheet1', 0, 4), 2)
+    expectNumber(cellValue(workbook, 'Sheet1', 1, 4), 5)
+    expectNumber(cellValue(workbook, 'Sheet1', 2, 4), 8)
+    expectEmpty(cellValue(workbook, 'Sheet1', 3, 4))
+    expectNumber(cellValue(workbook, 'Sheet1', 4, 0), 4)
+    expectNumber(cellValue(workbook, 'Sheet1', 4, 1), 5)
+    expectNumber(cellValue(workbook, 'Sheet1', 4, 2), 6)
+    expectEmpty(cellValue(workbook, 'Sheet1', 4, 3))
+    expectEmpty(cellValue(workbook, 'Sheet1', 4, 4))
+    expectNumber(cellValue(workbook, 'Sheet1', 0, 6), 15)
+    expectNumber(cellValue(workbook, 'Sheet1', 0, 7), 15)
+    expectNumber(cellValue(workbook, 'Sheet1', 0, 8), 45)
+    expect(workbook.engine.getSpillRanges()).toEqual([])
   })
 
   it('resolves row-offset INDEX and MATCH lookups during initial load', () => {
@@ -1059,6 +1092,9 @@ describe('Workpaper formula regressions', () => {
     rows[5][2] = 1030
     rows[0][4] = '=SUM(OFFSET(B2:C2,4,0))'
     rows[1][4] = '=OFFSET(B2:C2,4,0)'
+    rows[6][1] = '=OFFSET(B2:C2,4,0)'
+    rows[6][2] = '=OFFSET(B2:C2,4,0)'
+    rows[6][3] = '=OFFSET(B2:C2,4,0)'
 
     rows[2][10] = 1
     rows[10][3] = 2
@@ -1077,9 +1113,13 @@ describe('Workpaper formula regressions', () => {
     )
 
     expectNumber(cellValue(workbook, 'Sheet1', 0, 4), 1185)
-    expectNumber(cellValue(workbook, 'Sheet1', 1, 4), 155)
+    expectEmpty(cellValue(workbook, 'Sheet1', 1, 4))
+    expectNumber(cellValue(workbook, 'Sheet1', 6, 1), 155)
+    expectNumber(cellValue(workbook, 'Sheet1', 6, 2), 1030)
+    expectEmpty(cellValue(workbook, 'Sheet1', 6, 3))
     expectNumberClose(cellValue(workbook, 'Sheet1', 2, 3), 1)
     expectNumber(cellValue(workbook, 'Sheet1', 2, 5), 10)
+    expect(workbook.engine.getSpillRanges()).toEqual([])
 
     const sheetId = workbook.getSheetId('Sheet1')!
     workbook.setCellContents({ sheet: sheetId, row: 14, col: 3 }, 10)
@@ -1143,6 +1183,48 @@ describe('Workpaper formula regressions', () => {
     expectString(cellValue(workbook, 'Sheet1', 4, 0), 'Printer')
     expectString(cellValue(workbook, 'Sheet1', 5, 0), 'Dock')
     expectString(cellValue(workbook, 'Sheet1', 6, 0), 'Keyboard')
+  })
+
+  it('resolves CHOOSE array-index virtual tables for spills, aggregation, and lookup', () => {
+    const rows = Array.from({ length: 8 }, () => Array.from<TestCell>({ length: 8 }).fill(null))
+    rows[0][0] = 'a'
+    rows[0][1] = 10
+    rows[0][2] = 100
+    rows[1][0] = 'b'
+    rows[1][1] = 20
+    rows[1][2] = 200
+    rows[2][0] = 'c'
+    rows[2][1] = 30
+    rows[2][2] = 300
+    rows[0][4] = '=CHOOSE({1,2},A1:A3,B1:B3)'
+    rows[0][7] = '=SUM(CHOOSE({1,2},B1:B3,C1:C3))'
+    rows[1][7] = '=CHOOSE(2,A1:A3,C1:C3)'
+    rows[5][7] = '=SUM(CHOOSE(2,B1:B3,C1:C3))'
+    rows[6][7] = '=XLOOKUP("b",CHOOSE(1,A1:A3,C1:C3),CHOOSE(1,B1:B3,C1:C3),"missing",0)'
+
+    const workbook = WorkPaper.buildFromSheets(
+      {
+        ChooseRef: rows,
+      },
+      { maxRows: 12, maxColumns: 10, useColumnIndex: true },
+    )
+
+    expectString(cellValue(workbook, 'ChooseRef', 0, 4), 'a')
+    expectNumber(cellValue(workbook, 'ChooseRef', 0, 5), 10)
+    expectString(cellValue(workbook, 'ChooseRef', 1, 4), 'b')
+    expectNumber(cellValue(workbook, 'ChooseRef', 1, 5), 20)
+    expectString(cellValue(workbook, 'ChooseRef', 2, 4), 'c')
+    expectNumber(cellValue(workbook, 'ChooseRef', 2, 5), 30)
+    expectNumber(cellValue(workbook, 'ChooseRef', 0, 7), 660)
+    expectNumber(cellValue(workbook, 'ChooseRef', 1, 7), 100)
+    expectNumber(cellValue(workbook, 'ChooseRef', 2, 7), 200)
+    expectNumber(cellValue(workbook, 'ChooseRef', 3, 7), 300)
+    expectNumber(cellValue(workbook, 'ChooseRef', 5, 7), 600)
+    expectNumber(cellValue(workbook, 'ChooseRef', 6, 7), 20)
+    expect(workbook.engine.getSpillRanges()).toEqual([
+      { sheetName: 'ChooseRef', address: 'E1', rows: 3, cols: 2 },
+      { sheetName: 'ChooseRef', address: 'H2', rows: 3, cols: 1 },
+    ])
   })
 
   it('resolves formula number text coercion during concatenation', () => {

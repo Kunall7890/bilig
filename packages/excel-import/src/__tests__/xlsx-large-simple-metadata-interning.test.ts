@@ -31,8 +31,23 @@ describe('large simple XLSX metadata interning', () => {
         worksheetRootOpenTag: '<worksheet xmlns:r="relationships">',
         legacyDrawingRelationshipId: 'rIdLegacy',
       },
+      dataValidations: [
+        {
+          range: { sheetName: 'Data', startAddress: 'C1', endAddress: 'C4' },
+          rule: { kind: 'list', source: { kind: 'range-ref', sheetName: 'Model', startAddress: 'A1', endAddress: 'A4' } },
+          promptTitle: 'Status',
+          promptMessage: 'Pick a value',
+        },
+      ],
       drawingRelationshipId: 'rIdDrawing',
-      filters: [{ sheetName: 'Data', startAddress: 'A1', endAddress: 'B2' }],
+      filters: [
+        {
+          sheetName: 'Data',
+          startAddress: 'A1',
+          endAddress: 'B2',
+          criteria: [{ colId: 0, filters: { values: ['Open'] }, customFilters: { filters: [{ value: 'Closed' }] } }],
+        },
+      ],
       hyperlinks: [
         {
           ref: 'A1',
@@ -56,12 +71,25 @@ describe('large simple XLSX metadata interning', () => {
       sheetSlicerListExtXml: '<ext><x14:slicerList/></ext>',
       tableRelationshipIds: ['rIdTable'],
     }
+    const original = structuredClone(metadata)
 
     const interned = internLargeSimpleWorksheetMetadata(metadata, pool)
 
-    expect(interned).toEqual(metadata)
-    expect(interned?.cellMetadataRefs).toEqual(metadata.cellMetadataRefs)
-    expect(interned?.controlArtifacts).toEqual(metadata.controlArtifacts)
+    expect(interned).toBe(metadata)
+    expect(interned?.columns).toBe(metadata.columns)
+    expect(interned?.columns?.entries).toBe(metadata.columns?.entries)
+    expect(interned?.columns?.metadata).toBe(metadata.columns?.metadata)
+    expect(interned?.conditionalFormats).toBe(metadata.conditionalFormats)
+    expect(interned?.dataValidations).toBe(metadata.dataValidations)
+    expect(interned?.filters).toBe(metadata.filters)
+    expect(interned?.hyperlinks).toBe(metadata.hyperlinks)
+    expect(interned?.merges).toBe(metadata.merges)
+    expect(interned?.rows).toBe(metadata.rows)
+    expect(interned?.rows?.entries).toBe(metadata.rows?.entries)
+    expect(interned?.rows?.metadata).toBe(metadata.rows?.metadata)
+    expect(interned).toEqual(original)
+    expect(interned?.cellMetadataRefs).toEqual(original.cellMetadataRefs)
+    expect(interned?.controlArtifacts).toEqual(original.controlArtifacts)
     expect(interned?.legacyDrawingRelationshipId).toBe('rIdLegacy')
     expect(interned?.sheetSlicerListExtXml).toBe('<ext><x14:slicerList/></ext>')
     expect(pool.count).toBeLessThan(30)

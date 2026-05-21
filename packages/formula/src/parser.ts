@@ -17,6 +17,7 @@ import type {
 import { columnToIndex, isCellReferenceText, isColumnReferenceText, isRowReferenceText } from './addressing.js'
 import { normalizeFormulaFunctionName } from './function-name-normalization.js'
 import { lexFormula, type Token } from './lexer.js'
+import { parseStructuredReferenceColumnSpecifier } from './structured-reference-syntax.js'
 import { ErrorCode } from '@bilig/protocol'
 
 const PRECEDENCE: Record<string, number> = {
@@ -195,15 +196,25 @@ export function parseFormula(source: string): FormulaNode {
   function parseStructuredReference(tableName: string): StructuredRefNode {
     eat('lbracket')
     const token = current()
-    if (token.kind !== 'identifier' && token.kind !== 'quotedIdentifier' && token.kind !== 'string' && token.kind !== 'number') {
+    if (
+      token.kind !== 'bracketContent' &&
+      token.kind !== 'identifier' &&
+      token.kind !== 'quotedIdentifier' &&
+      token.kind !== 'string' &&
+      token.kind !== 'number'
+    ) {
       throw new Error(`Expected a structured reference column, received ${token.kind}`)
     }
     eat(token.kind)
     eat('rbracket')
+    const columnName = parseStructuredReferenceColumnSpecifier(token.value)
+    if (columnName === undefined) {
+      throw new Error(`Unsupported structured reference column specifier '${token.value}'`)
+    }
     return {
       kind: 'StructuredRef',
       tableName,
-      columnName: token.value,
+      columnName,
     }
   }
 

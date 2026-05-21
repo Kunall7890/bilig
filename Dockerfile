@@ -15,7 +15,7 @@ RUN corepack enable
 
 FROM node:24-bookworm-slim@sha256:24dc26ef1e3c3690f27ebc4136c9c186c3133b25563ae4d7f0692e4d1fe5db0e AS bilig-workpaper-mcp
 
-ARG BILIG_HEADLESS_VERSION=0.23.3
+ARG BILIG_WORKPAPER_VERSION=0.23.3
 ENV NODE_ENV="production"
 WORKDIR /workpaper
 
@@ -24,8 +24,8 @@ LABEL org.opencontainers.image.source="https://github.com/proompteng/bilig"
 LABEL org.opencontainers.image.description="Bilig WorkPaper stdio MCP server for formula-backed workbook readback and verified edits."
 
 RUN npm init -y >/dev/null \
-  && npm install --omit=dev "@bilig/headless@${BILIG_HEADLESS_VERSION}" \
-  && node --input-type=module -e "import { writeFileSync } from 'node:fs'; import { buildDemoWorkPaper, exportWorkPaperDocument, serializeWorkPaperDocument } from '@bilig/headless'; writeFileSync('/workpaper/pricing.workpaper.json', serializeWorkPaperDocument(exportWorkPaperDocument(buildDemoWorkPaper(), { includeConfig: true })));" \
+  && npm install --omit=dev "@bilig/workpaper@${BILIG_WORKPAPER_VERSION}" \
+  && node --input-type=module -e "import { writeFileSync } from 'node:fs'; import { buildDemoWorkPaper, exportWorkPaperDocument, serializeWorkPaperDocument } from '@bilig/workpaper'; writeFileSync('/workpaper/pricing.workpaper.json', serializeWorkPaperDocument(exportWorkPaperDocument(buildDemoWorkPaper(), { includeConfig: true })));" \
   && npm cache clean --force
 
 ENTRYPOINT ["./node_modules/.bin/bilig-workpaper-mcp", "--workpaper", "/workpaper/pricing.workpaper.json", "--writable"]

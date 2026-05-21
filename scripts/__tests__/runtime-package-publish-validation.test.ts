@@ -50,6 +50,15 @@ describe('runtime package publish validation', () => {
     expect(() => validateStagedMcpServerMetadata('@bilig/headless', stagedPackageDir, '9.9.9')).not.toThrow()
   })
 
+  it('accepts a staged scoped WorkPaper package with MCP metadata', () => {
+    const stagedPackageDir = stageMcpPackage({
+      packageName: '@bilig/workpaper',
+      manifestVersion: '9.9.9',
+    })
+
+    expect(() => validateStagedRuntimePackageVersion('@bilig/workpaper', stagedPackageDir, '9.9.9')).not.toThrow()
+  })
+
   it('rejects stale MCP server metadata in a staged headless package', () => {
     const stagedPackageDir = stageHeadlessPackage({
       manifestVersion: '9.9.9',
@@ -99,6 +108,24 @@ function stageHeadlessPackage(args: {
   readonly serverVersion?: string
   readonly versionModuleSource: string
 }): string {
+  return stageMcpPackage({
+    packageName: '@bilig/headless',
+    manifestVersion: args.manifestVersion,
+    includeRemote: args.includeRemote,
+    serverDescription: args.serverDescription,
+    serverVersion: args.serverVersion,
+    versionModuleSource: args.versionModuleSource,
+  })
+}
+
+function stageMcpPackage(args: {
+  readonly packageName: '@bilig/headless' | '@bilig/workpaper'
+  readonly manifestVersion: string
+  readonly includeRemote?: boolean
+  readonly serverDescription?: string
+  readonly serverVersion?: string
+  readonly versionModuleSource?: string
+}): string {
   const stagedPackageDir = mkdtempSync(join(tmpdir(), 'bilig-runtime-version-validation-'))
   tempDirs.push(stagedPackageDir)
   mkdirSync(join(stagedPackageDir, 'dist'), { recursive: true })
@@ -106,7 +133,7 @@ function stageHeadlessPackage(args: {
   writeFileSync(
     join(stagedPackageDir, 'package.json'),
     `${JSON.stringify({
-      name: '@bilig/headless',
+      name: args.packageName,
       version: args.manifestVersion,
       mcpName: 'io.github.proompteng/bilig-workpaper',
     })}\n`,
@@ -131,7 +158,7 @@ function stageHeadlessPackage(args: {
         packages: [
           {
             registryType: 'npm',
-            identifier: '@bilig/headless',
+            identifier: args.packageName,
             version: serverVersion,
             transport: {
               type: 'stdio',
@@ -143,7 +170,9 @@ function stageHeadlessPackage(args: {
       2,
     )}\n`,
   )
-  writeFileSync(join(stagedPackageDir, 'dist/work-paper-version.js'), args.versionModuleSource)
+  if (args.versionModuleSource) {
+    writeFileSync(join(stagedPackageDir, 'dist/work-paper-version.js'), args.versionModuleSource)
+  }
   return stagedPackageDir
 }
 

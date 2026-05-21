@@ -4,6 +4,7 @@ import {
   WORKBOOK_ATLAS_TEXT_RENDERING,
   configureTextContext,
   createGlyphAtlas,
+  resolveGlyphAtlasScale,
   type TextContextConfigurationTarget,
 } from '../renderer-v3/typegpu-atlas-manager.js'
 
@@ -24,6 +25,14 @@ describe('glyph-atlas', () => {
     expect(context.imageSmoothingQuality).toBe('high')
     expect(context.fontKerning).toBe('normal')
     expect(context.textRendering).toBe(WORKBOOK_ATLAS_TEXT_RENDERING)
+  })
+
+  it('resolves atlas scale from the active device pixel ratio bucket', () => {
+    expect(resolveGlyphAtlasScale(0)).toBe(1)
+    expect(resolveGlyphAtlasScale(1)).toBe(1)
+    expect(resolveGlyphAtlasScale(1.25)).toBe(2)
+    expect(resolveGlyphAtlasScale(2)).toBe(2)
+    expect(resolveGlyphAtlasScale(99)).toBe(4)
   })
 
   it('returns stable glyph keys for repeated runs', () => {
@@ -120,5 +129,29 @@ describe('glyph-atlas', () => {
       dirtyPageCount: 0,
       glyphCount: 1,
     })
+  })
+
+  it('rekeys and invalidates glyph geometry when the surface DPR bucket changes', () => {
+    const atlas = createGlyphAtlas({ initialHeight: 512, initialWidth: 512, scale: 1 })
+    const first = atlas.intern('400 11px Geist', 'A')
+    atlas.drainDirtyPages()
+    const geometryVersion = atlas.getGlyphGeometryVersion()
+    const version = atlas.getVersion()
+
+    expect(atlas.getScale()).toBe(1)
+    expect(atlas.getSize()).toEqual({ height: 512, width: 512 })
+    expect(atlas.setScale(1)).toBe(false)
+    expect(atlas.getGlyphGeometryVersion()).toBe(geometryVersion)
+
+    expect(atlas.setScale(2)).toBe(true)
+    expect(atlas.getScale()).toBe(2)
+    expect(atlas.getSize()).toEqual({ height: 1024, width: 1024 })
+    expect(atlas.getVersion()).toBeGreaterThan(version)
+    expect(atlas.getGlyphGeometryVersion()).toBeGreaterThan(geometryVersion)
+    expect(atlas.getTextAtlasPagesStats()).toMatchObject({ glyphCount: 0 })
+
+    const second = atlas.intern('400 11px Geist', 'A')
+    expect(second.key).not.toBe(first.key)
+    expect(second.key.startsWith('2:')).toBe(true)
   })
 })

@@ -11,11 +11,13 @@ import {
   type WorkbookActionPlan,
   type WorkbookModel,
 } from './model.js'
+import { getOwnActionInput, hasOwnActionInput, normalizeWorkbookActionInput, type WorkbookActionInput } from './input.js'
 import type { WorkbookOp } from './ops.js'
 
 type WorkbookConcreteCommandOp = Extract<WorkbookOp, { kind: 'setCellFormula' | 'setCellValue' | 'setCellFormat' | 'clearCell' }>
 
 export type WorkbookPlanIssueCode =
+  | 'invalid_action_input'
   | 'duplicate_ref'
   | 'command_target_not_resolved'
   | 'formula_input_not_resolved'
@@ -23,6 +25,8 @@ export type WorkbookPlanIssueCode =
   | 'change_target_not_resolved'
   | 'check_target_not_resolved'
   | 'check_ref_not_resolved'
+  | 'check_expectation_input_not_resolved'
+  | 'invalid_check_expectation_formula'
   | 'invalid_workbook_op'
   | 'op_target_mismatch'
   | 'missing_concrete_op'
@@ -52,6 +56,10 @@ export interface WorkbookModelVerification {
   readonly status: 'valid' | 'invalid'
   readonly modelName: string
   readonly actions: readonly WorkbookModelActionVerification[]
+}
+
+export interface WorkbookModelVerificationOptions {
+  readonly inputs?: Partial<Record<string, WorkbookActionInput>>
 }
 
 function refKey(ref: WorkbookRef): string {
@@ -206,7 +214,7 @@ function rangesEqual(left: CellRangeRef, right: CellRangeRef): boolean {
   return left.sheetName === right.sheetName && left.startAddress === right.startAddress && left.endAddress === right.endAddress
 }
 
-function opTargetRange(op: WorkbookOp): CellRangeRef | null {
+function opTargetRange(op: WorkbookOp) {
   if (
     op.kind === 'setCellValue' ||
     op.kind === 'setCellFormula' ||
@@ -303,6 +311,18 @@ function errorMessage(error: unknown): string {
 export function verifyPlan<Refs>(plan: WorkbookActionPlan<Refs>): WorkbookPlanVerification {
   const issues: WorkbookPlanIssue[] = []
   const knownRefs = new Set<string>()
+
+  if (hasOwnActionInput(plan)) {
+    try {
+      normalizeWorkbookActionInput(getOwnActionInput(plan))
+    } catch (error) {
+      issues.push({
+        code: 'invalid_action_input',
+        path: 'input',
+        message: errorMessage(error),
+      })
+    }
+  }
 
   plan.refsUsed.forEach((ref, index) => {
     const key = refKey(ref)
@@ -443,6 +463,31 @@ export function verifyPlan<Refs>(plan: WorkbookActionPlan<Refs>): WorkbookPlanVe
         )
       }
     })
+
+    if (check.expectation?.kind === 'formulaEquals') {
+      try {
+        parseFormula(check.expectation.formula)
+      } catch (error) {
+        issues.push({
+          code: 'invalid_check_expectation_formula',
+          path: `checks[${checkIndex}].expectation.formula`,
+          message: `Formula expectation for ${check.target?.label ?? check.kind} is not parseable: ${errorMessage(error)}`,
+        })
+      }
+
+      check.expectation.inputs.forEach((input, inputIndex) => {
+        if (!hasRef(input)) {
+          issues.push(
+            issue({
+              code: 'check_expectation_input_not_resolved',
+              path: `checks[${checkIndex}].expectation.inputs[${inputIndex}]`,
+              ref: input,
+              message: `${input.label} appears in a formula expectation but is missing from refsUsed`,
+            }),
+          )
+        }
+      })
+    }
   })
 
   return {
@@ -453,9 +498,12 @@ export function verifyPlan<Refs>(plan: WorkbookActionPlan<Refs>): WorkbookPlanVe
   }
 }
 
-export function verifyModel<Refs, Actions extends WorkbookActionMap<Refs>>(model: WorkbookModel<Refs, Actions>): WorkbookModelVerification {
+export function verifyModel<Refs, Actions extends WorkbookActionMap<Refs>>(
+  model: WorkbookModel<Refs, Actions>,
+  options: WorkbookModelVerificationOptions = {},
+): WorkbookModelVerification {
   const actions = inspectModel(model).actions.map((actionName): WorkbookModelActionVerification => {
-    const planning = planWorkbookAction(model, actionName)
+    const planning = planWorkbookAction(model, actionName, options.inputs?.[actionName])
     const describedPlanning = describePlanResult(planning)
     if (planning.status === 'failed') {
       return {

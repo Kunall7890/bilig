@@ -179,18 +179,22 @@ function appendDirectAggregateColumnOwnerInterval(
   formulaCellIndex: number,
   directAggregate: RuntimeDirectAggregateDescriptor,
 ): void {
+  appendDirectAggregateColumnOwnerRows(dependents, formulaCellIndex, directAggregate.rowStart, directAggregate.rowEnd)
+}
+
+function appendDirectAggregateColumnOwnerRows(dependents: Set<number>, formulaCellIndex: number, rowStart: number, rowEnd: number): void {
   const index = getOrCreateDirectAggregateColumnOwnerIndex(dependents)
   const previous = index.intervalsByFormulaCellIndex.get(formulaCellIndex)
   if (previous !== undefined) {
-    if (previous.rowStart === directAggregate.rowStart && previous.rowEnd === directAggregate.rowEnd) {
+    if (previous.rowStart === rowStart && previous.rowEnd === rowEnd) {
       return
     }
     index.intervalsByFormulaCellIndex.delete(formulaCellIndex)
   }
   const interval = {
     formulaCellIndex,
-    rowStart: directAggregate.rowStart,
-    rowEnd: directAggregate.rowEnd,
+    rowStart,
+    rowEnd,
   }
   index.intervalsByFormulaCellIndex.set(formulaCellIndex, interval)
   index.intervalsByRowStart.push(interval)
@@ -398,6 +402,19 @@ export function appendUnindexedAggregateColumnReverseEdge(
   }
 }
 
+export function appendDirectCriteriaAggregateColumnReverseEdge(
+  registry: Map<number, Set<number>>,
+  key: number,
+  aggregateRange: { readonly rowStart: number; readonly rowEnd: number },
+  dependentCellIndex: number,
+): void {
+  appendTrackedReverseEdge(registry, key, dependentCellIndex)
+  const dependents = registry.get(key)
+  if (dependents !== undefined) {
+    appendDirectAggregateColumnOwnerRows(dependents, dependentCellIndex, aggregateRange.rowStart, aggregateRange.rowEnd)
+  }
+}
+
 export function removeUnindexedAggregateColumnReverseEdge(
   registry: Map<number, Set<number>>,
   key: number,
@@ -410,12 +427,26 @@ export function removeUnindexedAggregateColumnReverseEdge(
   removeTrackedReverseEdge(registry, key, dependentCellIndex)
 }
 
+export function removeDirectCriteriaAggregateColumnReverseEdge(
+  registry: Map<number, Set<number>>,
+  key: number,
+  dependentCellIndex: number,
+): void {
+  const dependents = registry.get(key)
+  if (dependents !== undefined) {
+    removeDirectAggregateColumnOwnerInterval(dependents, dependentCellIndex)
+  }
+  removeTrackedReverseEdge(registry, key, dependentCellIndex)
+}
+
 export function directCriteriaAggregateColumn(
   value:
     | {
         readonly aggregateRange?:
           | {
               readonly sheetName: string
+              readonly rowStart: number
+              readonly rowEnd: number
               readonly col: number
             }
           | undefined
@@ -424,11 +455,20 @@ export function directCriteriaAggregateColumn(
 ):
   | {
       readonly sheetName: string
+      readonly rowStart: number
+      readonly rowEnd: number
       readonly col: number
     }
   | undefined {
   const aggregateRange = value?.aggregateRange
-  return aggregateRange ? { sheetName: aggregateRange.sheetName, col: aggregateRange.col } : undefined
+  return aggregateRange
+    ? {
+        sheetName: aggregateRange.sheetName,
+        rowStart: aggregateRange.rowStart,
+        rowEnd: aggregateRange.rowEnd,
+        col: aggregateRange.col,
+      }
+    : undefined
 }
 
 export function formulaColumnCountKey(sheetId: number, col: number): number {

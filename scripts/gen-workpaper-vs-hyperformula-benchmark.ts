@@ -96,7 +96,13 @@ if (isCheckMode) {
   }
 
   const artifactJson = readFileSync(outputPath, 'utf8')
-  assertEngineSourcePath(parseJsonRecord(artifactJson), 'workpaper', workpaperSourcePath)
+  const artifactRecord = parseJsonRecord(artifactJson)
+  assertEngineSourcePath(artifactRecord, 'workpaper', workpaperSourcePath)
+  assertBenchmarkSettings(artifactRecord, {
+    sampleCount,
+    warmupCount,
+  })
+  assertNoRawBenchmarkSampleArrays(artifactRecord)
   const existing = parseArtifactForShape(artifactJson)
   const actualShape = normalizeArtifactShape(existing)
   const actualWorkloads = actualShape.workloads.map((workload) => workload.workload)
@@ -170,7 +176,7 @@ const artifact: ExpandedCompetitiveBenchmarkArtifact = {
 }
 
 mkdirSync(dirname(outputPath), { recursive: true })
-writeFileSync(outputPath, formatJsonForRepo(`${JSON.stringify(artifact, null, 2)}\n`))
+writeFileSync(outputPath, formatJsonForRepo(`${JSON.stringify(compactRawBenchmarkSampleArrays(artifact), null, 2)}\n`))
 console.log(
   JSON.stringify(
     {
@@ -327,6 +333,80 @@ function assertEngineSourcePath(artifactRecord: Record<string, unknown>, engineN
       )}. Run: bun scripts/gen-workpaper-vs-hyperformula-benchmark.ts`,
     )
   }
+}
+
+function assertBenchmarkSettings(
+  artifactRecord: Record<string, unknown>,
+  expected: { readonly sampleCount: number; readonly warmupCount: number },
+): void {
+  const benchmark = recordField(artifactRecord, 'benchmark')
+  const actualSampleCount = benchmark.sampleCount
+  const actualWarmupCount = benchmark.warmupCount
+  if (actualSampleCount === expected.sampleCount && actualWarmupCount === expected.warmupCount) {
+    return
+  }
+
+  throw new Error(
+    `WorkPaper competitive benchmark sample settings are stale. Expected sampleCount=${String(
+      expected.sampleCount,
+    )} warmupCount=${String(expected.warmupCount)}, got sampleCount=${String(actualSampleCount)} warmupCount=${String(
+      actualWarmupCount,
+    )}. Run: bun scripts/gen-workpaper-vs-hyperformula-benchmark.ts`,
+  )
+}
+
+function assertNoRawBenchmarkSampleArrays(artifactRecord: Record<string, unknown>): void {
+  const sampleArrayCount = countRawBenchmarkSampleArrays(artifactRecord)
+  if (sampleArrayCount === 0) {
+    return
+  }
+
+  throw new Error(
+    `WorkPaper competitive benchmark artifact stores ${String(
+      sampleArrayCount,
+    )} raw sample arrays. Run: bun scripts/gen-workpaper-vs-hyperformula-benchmark.ts`,
+  )
+}
+
+function compactRawBenchmarkSampleArrays(value: unknown): unknown {
+  if (Array.isArray(value)) {
+    return value.map(compactRawBenchmarkSampleArrays)
+  }
+  if (!isRecord(value)) {
+    return value
+  }
+
+  const compacted: Record<string, unknown> = {}
+  for (const [key, child] of Object.entries(value)) {
+    if (key === 'samples' && isRawNumberArray(child)) {
+      continue
+    }
+    compacted[key] = compactRawBenchmarkSampleArrays(child)
+  }
+  return compacted
+}
+
+function countRawBenchmarkSampleArrays(value: unknown): number {
+  if (Array.isArray(value)) {
+    return value.reduce((count, child) => count + countRawBenchmarkSampleArrays(child), 0)
+  }
+  if (!isRecord(value)) {
+    return 0
+  }
+
+  let count = 0
+  for (const [key, child] of Object.entries(value)) {
+    if (key === 'samples' && isRawNumberArray(child)) {
+      count += 1
+      continue
+    }
+    count += countRawBenchmarkSampleArrays(child)
+  }
+  return count
+}
+
+function isRawNumberArray(value: unknown): value is number[] {
+  return Array.isArray(value) && value.every((entry) => typeof entry === 'number')
 }
 
 function recordField(value: Record<string, unknown>, field: string): Record<string, unknown> {

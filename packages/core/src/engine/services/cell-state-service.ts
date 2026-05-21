@@ -52,6 +52,7 @@ export interface EngineCellStateService {
 export interface CellStateRestoreOptions {
   readonly clearExistingFormat?: boolean
   readonly forceFormatWrite?: boolean
+  readonly skipTableHeaderRename?: boolean
 }
 
 function cellStateErrorMessage(message: string, cause: unknown): string {
@@ -90,6 +91,7 @@ export function createEngineCellStateService(args: {
     styleIdOverride = snapshot.styleId ?? WorkbookStore.defaultStyleId,
     options: CellStateRestoreOptions = { clearExistingFormat: true },
   ): EngineOp[] => {
+    const resolvedOptions: CellStateRestoreOptions = { clearExistingFormat: true, ...options }
     const ops: EngineOp[] = []
     const targetCellIndex = args.state.workbook.getCellIndex(sheetName, address)
     const explicitCurrentFormat = targetCellIndex === undefined ? undefined : args.state.workbook.getCellFormat(targetCellIndex)
@@ -114,7 +116,16 @@ export function createEngineCellStateService(args: {
     } else {
       switch (snapshot.value.tag) {
         case ValueTag.Empty:
-          ops.push(shouldRestoreExplicitBlank ? explicitBlankOp : { kind: 'clearCell', sheetName, address })
+          ops.push(
+            shouldRestoreExplicitBlank
+              ? explicitBlankOp
+              : {
+                  kind: 'clearCell',
+                  sheetName,
+                  address,
+                  ...(resolvedOptions.skipTableHeaderRename === true ? { skipTableHeaderRename: true } : {}),
+                },
+          )
           break
         case ValueTag.Number:
         case ValueTag.Boolean:
@@ -122,18 +133,27 @@ export function createEngineCellStateService(args: {
           ops.push({ kind: 'setCellValue', sheetName, address, value: snapshot.value.value })
           break
         case ValueTag.Error:
-          ops.push(shouldRestoreExplicitBlank ? explicitBlankOp : { kind: 'clearCell', sheetName, address })
+          ops.push(
+            shouldRestoreExplicitBlank
+              ? explicitBlankOp
+              : {
+                  kind: 'clearCell',
+                  sheetName,
+                  address,
+                  ...(resolvedOptions.skipTableHeaderRename === true ? { skipTableHeaderRename: true } : {}),
+                },
+          )
           break
       }
     }
-    if (nextFormat !== null && (options.forceFormatWrite === true || nextFormat !== currentFormat)) {
+    if (nextFormat !== null && (resolvedOptions.forceFormatWrite === true || nextFormat !== currentFormat)) {
       ops.push({
         kind: 'setCellFormat',
         sheetName,
         address,
         format: nextFormat,
       })
-    } else if (nextFormat === null && options.clearExistingFormat === true) {
+    } else if (nextFormat === null && resolvedOptions.clearExistingFormat === true) {
       if (explicitCurrentFormat !== undefined) {
         ops.push({
           kind: 'setCellFormat',

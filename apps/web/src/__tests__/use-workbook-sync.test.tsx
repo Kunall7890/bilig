@@ -840,7 +840,7 @@ describe('useWorkbookSync', () => {
     })
   })
 
-  it('does not paint range styles until the pending mutation journal is durable', async () => {
+  it('paints range styles immediately while the pending mutation journal is still durably enqueueing', async () => {
     ;(globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true
     let resolveEnqueue: ((mutation: PendingWorkbookMutation) => void) | null = null
     const enqueueMutation = new Promise<PendingWorkbookMutation>((resolve) => {
@@ -907,8 +907,9 @@ describe('useWorkbookSync', () => {
       method: 'setRangeStyle',
       args: [range, patch],
     })
-    expect(setRangeStyle).not.toHaveBeenCalled()
-    expect(viewportStore.getCell('Sheet1', 'B1').styleId).toBeUndefined()
+    expect(setRangeStyle).toHaveBeenCalledWith(range, patch)
+    const optimisticallyStyledCell = viewportStore.getCell('Sheet1', 'B1')
+    expect(viewportStore.getCellStyle(optimisticallyStyledCell.styleId)?.fill?.backgroundColor).toBe('#34a853')
 
     await act(async () => {
       resolveEnqueue?.({
@@ -919,7 +920,6 @@ describe('useWorkbookSync', () => {
       await stylePromise
     })
 
-    expect(setRangeStyle).toHaveBeenCalledWith(range, patch)
     const styledCell = viewportStore.getCell('Sheet1', 'B1')
     expect(viewportStore.getCellStyle(styledCell.styleId)?.fill?.backgroundColor).toBe('#34a853')
 
@@ -928,7 +928,7 @@ describe('useWorkbookSync', () => {
     })
   })
 
-  it('does not clear painted range styles until the pending mutation journal is durable', async () => {
+  it('clears painted range styles immediately while the pending mutation journal is still durably enqueueing', async () => {
     ;(globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true
     let resolveEnqueue: ((mutation: PendingWorkbookMutation) => void) | null = null
     const enqueueMutation = new Promise<PendingWorkbookMutation>((resolve) => {
@@ -996,8 +996,8 @@ describe('useWorkbookSync', () => {
       method: 'clearRangeStyle',
       args: [range, fields],
     })
-    expect(clearRangeStyle).not.toHaveBeenCalled()
-    expect(viewportStore.getCellStyle(viewportStore.getCell('Sheet1', 'B1').styleId)?.fill?.backgroundColor).toBe('#34a853')
+    expect(clearRangeStyle).toHaveBeenCalledWith(range, fields)
+    expect(viewportStore.getCellStyle(viewportStore.getCell('Sheet1', 'B1').styleId)?.fill).toBeUndefined()
 
     await act(async () => {
       resolveEnqueue?.({
@@ -1008,7 +1008,6 @@ describe('useWorkbookSync', () => {
       await clearPromise
     })
 
-    expect(clearRangeStyle).toHaveBeenCalledWith(range, fields)
     expect(viewportStore.getCellStyle(viewportStore.getCell('Sheet1', 'B1').styleId)?.fill).toBeUndefined()
 
     await act(async () => {

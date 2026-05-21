@@ -36,6 +36,7 @@ interface MutationRangeOperationsRuntime {
     snapshot: CellSnapshot,
     sourceSheetName?: string,
     sourceAddress?: string,
+    options?: { readonly skipTableHeaderRename?: boolean },
   ) => EngineOp[]
   readonly executeLocal: (
     ops: EngineOp[],
@@ -347,7 +348,11 @@ export function createMutationRangeOperations(args: MutationRangeOperationsRunti
               if (!hasStoredCellState(source.sheetName, address)) {
                 continue
               }
-              ops.push(...args.toCellStateOps(source.sheetName, address, emptyCellSnapshot(source.sheetName, address)))
+              ops.push(
+                ...args.toCellStateOps(source.sheetName, address, emptyCellSnapshot(source.sheetName, address), undefined, undefined, {
+                  skipTableHeaderRename: true,
+                }),
+              )
             }
           }
           for (let rowOffset = 0; rowOffset < targetHeight; rowOffset += 1) {

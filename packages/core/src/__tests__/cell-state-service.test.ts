@@ -132,6 +132,56 @@ describe('EngineCellStateService', () => {
     ])
   })
 
+  it('keeps presentation cleanup when suppressing table-header renames for range moves', async () => {
+    const engine = new SpreadsheetEngine({ workbookName: 'cell-state-move-clear' })
+    await engine.ready()
+    engine.createSheet('Sheet1')
+    engine.setCellValue('Sheet1', 'A1', 1)
+    engine.setRangeNumberFormat({ sheetName: 'Sheet1', startAddress: 'A1', endAddress: 'A1' }, '0.00')
+    engine.setRangeStyle({ sheetName: 'Sheet1', startAddress: 'A1', endAddress: 'A1' }, { fill: { backgroundColor: '#34a853' } })
+
+    const ops = Effect.runSync(
+      getCellStateService(engine).toCellStateOps(
+        'Sheet1',
+        'A1',
+        {
+          value: { tag: ValueTag.Empty },
+          flags: 0,
+          version: 0,
+        },
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        { skipTableHeaderRename: true },
+      ),
+    )
+
+    expect(ops).toContainEqual({ kind: 'clearCell', sheetName: 'Sheet1', address: 'A1', skipTableHeaderRename: true })
+    expect(ops).toContainEqual({
+      kind: 'setFormatRange',
+      range: { sheetName: 'Sheet1', startAddress: 'A1', endAddress: 'A1' },
+      formatId: WorkbookStore.defaultFormatId,
+    })
+    expect(ops).toContainEqual({
+      kind: 'setStyleRange',
+      range: { sheetName: 'Sheet1', startAddress: 'A1', endAddress: 'A1' },
+      styleId: WorkbookStore.defaultStyleId,
+    })
+  })
+
+  it('restores formula cells through the cell-state inverse path', async () => {
+    const engine = new SpreadsheetEngine({ workbookName: 'cell-state-formula-restore' })
+    await engine.ready()
+    engine.createSheet('Sheet1')
+    engine.setCellValue('Sheet1', 'A1', 4)
+    engine.setCellFormula('Sheet1', 'B1', 'A1*2')
+
+    expect(Effect.runSync(getCellStateService(engine).restoreCellOps('Sheet1', 'B1'))).toEqual([
+      { kind: 'setCellFormula', sheetName: 'Sheet1', address: 'B1', formula: 'A1*2' },
+    ])
+  })
+
   it('replays explicit blank snapshots as null writes instead of clear ops', async () => {
     const engine = new SpreadsheetEngine({ workbookName: 'cell-state-explicit-blank' })
     await engine.ready()
@@ -170,7 +220,8 @@ describe('EngineCellStateService', () => {
 
   it('wraps service failures with contextual EngineCellStateError messages', () => {
     const workbook = new WorkbookStore('cell-state-errors')
-    workbook.createSheet('Sheet1')
+    const sheet = workbook.createSheet('Sheet1')
+    workbook.ensureCellAt(sheet.id, 0, 0)
     const manual = createEngineCellStateService({
       state: { workbook },
       getCell: () => {
@@ -193,5 +244,6 @@ describe('EngineCellStateService', () => {
         }),
       ),
     ).toThrowError('Failed to read range Sheet1!A1:A1')
+    expect(() => Effect.runSync(manual.restoreCellOps('Sheet1', 'A1'))).toThrowError('Failed to restore cell ops for Sheet1!A1')
   })
 })

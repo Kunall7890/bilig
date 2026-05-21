@@ -687,7 +687,11 @@ export function isWorkbookOp(value: unknown): value is WorkbookOp {
     case 'setFormatRange':
       return isCellRangeRef(value['range']) && hasString(value, 'formatId')
     case 'clearCell':
-      return hasString(value, 'sheetName') && hasString(value, 'address')
+      return (
+        hasString(value, 'sheetName') &&
+        hasString(value, 'address') &&
+        (value['skipTableHeaderRename'] === undefined || typeof value['skipTableHeaderRename'] === 'boolean')
+      )
     case 'upsertDefinedName':
       return hasString(value, 'name') && isWorkbookDefinedNameValue(value['value'])
     case 'deleteDefinedName':

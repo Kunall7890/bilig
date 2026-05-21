@@ -63,7 +63,9 @@ export class FileBackedXlsxZipByteSource implements XlsxZipByteSource {
 }
 
 export function isZipWorkbookSource(source: XlsxZipByteSource): boolean {
-  const bytes = source.readRange(0, Math.min(4, source.byteLength))
+  const magicByteLength = Math.min(4, source.byteLength)
+  const scratch = source.readRangeInto ? new Uint8Array(4) : undefined
+  const bytes = readXlsxZipByteSourceRange(source, 0, magicByteLength, scratch)
   return bytes.length >= 4 && bytes[0] === 0x50 && bytes[1] === 0x4b && bytes[2] === 0x03 && bytes[3] === 0x04
 }
 

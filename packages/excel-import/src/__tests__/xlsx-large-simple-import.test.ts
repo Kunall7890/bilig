@@ -1070,7 +1070,7 @@ describe('large simple XLSX import fast path', () => {
       { range: { sheetName: 'Data', startAddress: 'A2', endAddress: 'A2' }, styleId },
     ])
     expect(imported?.snapshot.workbook.metadata?.styles).toEqual([{ id: styleId, fill: { backgroundColor: '#ffcc00' } }])
-    expect(stylesStreamCount()).toBe(3)
+    expect(stylesStreamCount()).toBe(2)
   })
 
   it('compacts broad style-only blank templates into style ranges without SheetJS fallback', () => {

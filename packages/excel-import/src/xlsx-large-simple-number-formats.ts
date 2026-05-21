@@ -128,7 +128,7 @@ function collectNumberFormatsFromChunks(
   if (requiredFormatIds.size === 0) {
     return new Map()
   }
-  const collector = new NumberFormatCollector(requiredFormatIds, options)
+  const collector = new LargeSimpleNumberFormatCollector(requiredFormatIds, options)
   if (!readChunks((chunk) => collector.push(chunk))) {
     return null
   }
@@ -317,7 +317,7 @@ class IndexedXmlElementCollector {
   }
 }
 
-class NumberFormatCollector {
+export class LargeSimpleNumberFormatCollector {
   private readonly decoder = new TextDecoder()
   private buffer = ''
   private index = 0
@@ -489,7 +489,7 @@ class NumberFormatCollector {
   }
 }
 
-function builtinNumberFormatCode(formatId: number): string | undefined {
+export function builtinNumberFormatCode(formatId: number): string | undefined {
   return normalizeNumberFormatCode(builtinNumberFormatCodes.get(formatId))
 }
 
