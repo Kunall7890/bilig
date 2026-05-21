@@ -31,11 +31,13 @@
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",
-      "import": "./dist/index.js"
+      "import": "./dist/index.js",
+      "default": "./dist/index.js"
     },
     "./headless-runtime": {
       "types": "./dist/headless-runtime.d.ts",
-      "import": "./dist/headless-runtime.js"
+      "import": "./dist/headless-runtime.js",
+      "default": "./dist/headless-runtime.js"
     }
   },
   "publishConfig": {
