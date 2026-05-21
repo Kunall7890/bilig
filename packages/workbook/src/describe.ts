@@ -138,9 +138,17 @@ export type WorkbookCheckExpectationDescription =
       readonly value: LiteralInput
     }
   | {
+      readonly kind: 'valuesEqual'
+      readonly values: readonly (readonly LiteralInput[])[]
+    }
+  | {
       readonly kind: 'formulaEquals'
       readonly formula: string
       readonly inputs: readonly WorkbookRefDescription[]
+    }
+  | {
+      readonly kind: 'formulasEqual'
+      readonly formulas: readonly (readonly (string | null)[])[]
     }
 
 export interface WorkbookActionPlanDescription {
@@ -193,8 +201,8 @@ export interface WorkbookRunErrorDescription {
   readonly path?: string
   readonly target?: WorkbookRefDescription
   readonly check?: WorkbookCheckResultDescription
-  readonly expected?: LiteralInput
-  readonly actual?: LiteralInput
+  readonly expected?: WorkbookActionInput
+  readonly actual?: WorkbookActionInput
 }
 
 export interface WorkbookAppliedSummaryDescription {
@@ -337,11 +345,21 @@ function describeExpectation(expectation: WorkbookCheckExpectation): WorkbookChe
         kind: 'valueEquals',
         value: expectation.value,
       }
+    case 'valuesEqual':
+      return {
+        kind: 'valuesEqual',
+        values: expectation.values.map((row) => [...row]),
+      }
     case 'formulaEquals':
       return {
         kind: 'formulaEquals',
         formula: expectation.formula,
         inputs: expectation.inputs.map(describeRef),
+      }
+    case 'formulasEqual':
+      return {
+        kind: 'formulasEqual',
+        formulas: expectation.formulas.map((row) => [...row]),
       }
   }
 }

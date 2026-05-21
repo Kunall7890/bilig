@@ -5,6 +5,7 @@ import { createWorkbookCheckApi, type WorkbookCheckApi } from './check.js'
 import {
   normalizeOptionalWorkbookActionInput,
   normalizeWorkbookActionInputDescription,
+  validateWorkbookActionInput,
   type WorkbookActionInput,
   type WorkbookActionInputDescription,
 } from './input.js'
@@ -465,6 +466,13 @@ export function planWorkbookAction<Refs, Actions extends WorkbookActionMap<Refs>
       ...inputProperty(normalizedInput),
       checks: [],
       errors: [actionNotFound(model.name, actionName)],
+    }
+  }
+  if (isActionConfig(actionDefinition) && actionDefinition.input !== undefined) {
+    try {
+      validateWorkbookActionInput(normalizeWorkbookActionInputDescription(actionDefinition.input), normalizedInput)
+    } catch (error) {
+      return failedPlan<Refs>(model.name, actionName, 'invalid_action_input', errorMessage(error), [], normalizedInput)
     }
   }
   const action = actionRunner(actionDefinition)

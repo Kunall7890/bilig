@@ -91,10 +91,22 @@ function expectationDescription(expectation: WorkbookCheckExpectation): Workbook
       value: expectation.value,
     }
   }
+  if (expectation.kind === 'valuesEqual') {
+    return {
+      kind: 'valuesEqual',
+      values: expectation.values.map((row) => [...row]),
+    }
+  }
+  if (expectation.kind === 'formulaEquals') {
+    return {
+      kind: 'formulaEquals',
+      formula: expectation.formula,
+      inputs: expectation.inputs.map(describeRef),
+    }
+  }
   return {
-    kind: 'formulaEquals',
-    formula: expectation.formula,
-    inputs: expectation.inputs.map(describeRef),
+    kind: 'formulasEqual',
+    formulas: expectation.formulas.map((row) => [...row]),
   }
 }
 

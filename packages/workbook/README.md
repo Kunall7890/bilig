@@ -76,6 +76,7 @@ The public surface stays generic:
 - `WorkbookModelVerificationOptions`
 - `WorkbookRunAdapter`
 - `WorkbookRunApplyResult`
+- `WorkbookCellReadback`
 - `WorkbookRunReadback`
 - `WorkbookReadbackVerification`
 - `WorkbookReadbackIssue`
@@ -136,8 +137,11 @@ export const model = defineModel({
 `planWorkbookAction(model, "write", { value: 12 })` clones and canonicalizes
 that input into the plan so an agent can inspect exactly what was requested.
 Inputs must be plain JSON values: strings, finite numbers, booleans, `null`,
-arrays without holes, and plain objects. This package intentionally does not add
-schema dependencies; consumers own their own input validation inside actions.
+arrays without holes, and plain objects. When an action object declares input
+metadata, `planWorkbookAction` validates the provided value against the declared
+JSON kind, required fields, and array item kind before `find`, `checks`, or the
+action body run. This stays intentionally small: it is a dependency-free guard
+for agent handoff, not a model-specific schema framework.
 Use `verifyModel(model, { inputs: { write: { value: 12 } } })` when whole-model
 verification needs parameters for specific actions.
 
@@ -168,12 +172,12 @@ actions: {
 }
 ```
 
-Input descriptions are intentionally descriptive metadata, not a schema engine.
-They support boring JSON kinds: `json`, `object`, `array`, `string`, `number`,
-`boolean`, and `null`. `object` descriptions may list sorted `fields`; `array`
-descriptions may list `items`. `normalizeWorkbookActionInputDescription` trims
-text, rejects malformed metadata, returns frozen data, and keeps the package
-free of `zod`, `effect`, or model-specific validators.
+Input descriptions support boring JSON kinds: `json`, `object`, `array`,
+`string`, `number`, `boolean`, and `null`. `object` descriptions may list sorted
+`fields`; `array` descriptions may list `items`; any description may be marked
+`required`. `normalizeWorkbookActionInputDescription` trims text, rejects
+malformed metadata, returns frozen data, and keeps the package free of `zod`,
+`effect`, or model-specific validators.
 
 Formula expressions also keep their workbook inputs separate from their formula
 text. A planned `writeFormula` command includes both the parseable formula
@@ -220,11 +224,12 @@ the exact cells to read, write, format, clear, or use as row-wise formula inputs
 without hardcoding a business model.
 Use `check.exists(ref)` and `check.noFormulaErrors(ref)` directly when an agent
 or test needs the same generic planned checks outside a model callback.
-Use `check.valueEquals(ref, value)` and `check.formulaEquals(ref, formula)` when
-an action should carry machine-readable readback expectations for runtime
-verification. `formulaEquals` stores normalized formula text plus explicit model
-refs used by that formula, so an agent can inspect the post-action proof target
-without depending on a rendered spreadsheet UI.
+Use `check.valueEquals(ref, value)` and `check.formulaEquals(ref, formula)` for
+single-cell readback expectations. Use `check.valuesEqual(ref, rows)` and
+`check.formulasEqual(ref, rows)` when the target may resolve to a range, table
+column, or row-filtered column. `formulaEquals` stores normalized formula text
+plus explicit model refs used by that formula, so an agent can inspect the
+post-action proof target without depending on a rendered spreadsheet UI.
 Use `check.custom({ kind, message, target, refs })` for consumer-defined
 invariants; the package does not need to know what the model means. `target`
 names the main ref, and `refs` names any supporting refs the invariant depends
@@ -304,15 +309,19 @@ const result = await runWorkbookAction(model, 'write', {
 
 `runWorkbookAction` plans the action, runs `verifyPlan`, calls
 optional `adapter.preview(plan)`, calls `adapter.apply(plan)`, then evaluates
-`valueEquals` and `formulaEquals` checks against `adapter.read(targets, plan)`.
+`valueEquals`, `valuesEqual`, `formulaEquals`, and `formulasEqual` checks
+against `adapter.read(targets, plan)`.
 It never imports the engine, headless runtime, app server, or UI. If static
 verification fails, the apply adapter is not called. If preview is available,
 successful results include an `applied` summary with the materialized op count
 and ops that the adapter preview produced. If a readback expectation is missing,
 duplicated, or mismatched, the returned `WorkbookRunResult` is `failed` with
 deterministic error codes such as `readback_missing`, `duplicate_readback`,
-`value_mismatch`, or `formula_mismatch`; errors preserve structured `path`,
-`target`, `check`, `expected`, and `actual` fields where available.
+`value_mismatch`, `values_mismatch`, `formula_mismatch`, or
+`formulas_mismatch`; errors preserve structured `path`, `target`, `check`,
+`expected`, and `actual` fields where available.
+Runtime outputs are validated too: malformed preview, apply, or readback
+payloads fail as `invalid_runtime_result` instead of being treated as proof.
 Formula readbacks are exact: adapters should return formula text in the same
 normalized no-leading-`=` form produced by `formula.source`.
 `adapter.apply` only applies the plan and may return an undo ref; it cannot
@@ -329,8 +338,9 @@ readback and adapter verification, the run returns `failed` with
 When running against Bilig's engine, use `createWorkbookRunAdapter(engine)` from
 `@bilig/core`. The adapter materializes generic `plan.commands` into engine
 operations, previews the exact materialized ops, applies additional `plan.ops`
-that are not already represented by materialized commands, reads single-cell
-expectation targets, and verifies generic `exists` and `noFormulaErrors` checks
+that are not already represented by materialized commands, reads single-cell and
+multi-cell expectation targets, and verifies generic `exists` and
+`noFormulaErrors` checks
 without adding workbook-specific business models to this package. If the engine
 captures undo, the run result includes `undo.ops` in the same portable
 operation language.

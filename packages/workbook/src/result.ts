@@ -1,5 +1,6 @@
 import type { LiteralInput } from '@bilig/protocol'
 import type { WorkbookRef } from './find.js'
+import type { WorkbookActionInput } from './input.js'
 import type { EngineOp } from './ops.js'
 
 export type WorkbookCheckStatus = 'planned' | 'passed' | 'failed'
@@ -10,9 +11,17 @@ export type WorkbookCheckExpectation =
       readonly value: LiteralInput
     }
   | {
+      readonly kind: 'valuesEqual'
+      readonly values: readonly (readonly LiteralInput[])[]
+    }
+  | {
       readonly kind: 'formulaEquals'
       readonly formula: string
       readonly inputs: readonly WorkbookRef[]
+    }
+  | {
+      readonly kind: 'formulasEqual'
+      readonly formulas: readonly (readonly (string | null)[])[]
     }
 
 export interface WorkbookCheckResult {
@@ -65,11 +74,14 @@ export type WorkbookRunErrorCode =
   | 'readback_missing'
   | 'duplicate_readback'
   | 'value_mismatch'
+  | 'values_mismatch'
   | 'formula_mismatch'
+  | 'formulas_mismatch'
   | 'invalid_check_verification'
   | 'check_verification_failed'
   | 'check_failed'
   | 'check_not_verified'
+  | 'invalid_runtime_result'
   | 'runtime_rejected'
 
 export const workbookRunErrorCodes = Object.freeze([
@@ -97,11 +109,14 @@ export const workbookRunErrorCodes = Object.freeze([
   'readback_missing',
   'duplicate_readback',
   'value_mismatch',
+  'values_mismatch',
   'formula_mismatch',
+  'formulas_mismatch',
   'invalid_check_verification',
   'check_verification_failed',
   'check_failed',
   'check_not_verified',
+  'invalid_runtime_result',
   'runtime_rejected',
 ] satisfies readonly WorkbookRunErrorCode[])
 
@@ -115,8 +130,8 @@ export interface WorkbookRunError {
   readonly path?: string
   readonly target?: WorkbookRef
   readonly check?: WorkbookCheckResult
-  readonly expected?: LiteralInput
-  readonly actual?: LiteralInput
+  readonly expected?: WorkbookActionInput
+  readonly actual?: WorkbookActionInput
 }
 
 export type WorkbookRunResult =

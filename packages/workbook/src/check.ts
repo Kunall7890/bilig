@@ -18,9 +18,19 @@ export interface WorkbookCheckApi {
   readonly exists: (target: WorkbookRef) => WorkbookCheckResult
   readonly noFormulaErrors: (target: WorkbookRef) => WorkbookCheckResult
   readonly valueEquals: (target: WorkbookRef, value: LiteralInput, options?: WorkbookReadbackCheckOptions) => WorkbookCheckResult
+  readonly valuesEqual: (
+    target: WorkbookRef,
+    values: readonly (readonly LiteralInput[])[],
+    options?: WorkbookReadbackCheckOptions,
+  ) => WorkbookCheckResult
   readonly formulaEquals: (
     target: WorkbookRef,
     value: WorkbookFormulaOperand,
+    options?: WorkbookReadbackCheckOptions,
+  ) => WorkbookCheckResult
+  readonly formulasEqual: (
+    target: WorkbookRef,
+    formulas: readonly (readonly (string | null)[])[],
     options?: WorkbookReadbackCheckOptions,
   ) => WorkbookCheckResult
   readonly custom: (options: WorkbookCustomCheckOptions) => WorkbookCheckResult
@@ -47,6 +57,51 @@ function checkedLiteralInput(value: LiteralInput): LiteralInput {
     throw new Error('Workbook readback value must be a finite JSON literal')
   }
   return value
+}
+
+function checkedLiteralMatrix(values: readonly (readonly LiteralInput[])[]): readonly (readonly LiteralInput[])[] {
+  if (!Array.isArray(values)) {
+    throw new Error('Workbook readback values must be an array of rows')
+  }
+  let width: number | undefined
+  return Object.freeze(
+    values.map((row, rowIndex) => {
+      if (!Array.isArray(row)) {
+        throw new Error(`Workbook readback values row ${rowIndex.toString()} must be an array`)
+      }
+      width ??= row.length
+      if (row.length !== width) {
+        throw new Error('Workbook readback values must be rectangular')
+      }
+      return Object.freeze(row.map(checkedLiteralInput))
+    }),
+  )
+}
+
+function checkedFormulaMatrix(formulas: readonly (readonly (string | null)[])[]): readonly (readonly (string | null)[])[] {
+  if (!Array.isArray(formulas)) {
+    throw new Error('Workbook readback formulas must be an array of rows')
+  }
+  let width: number | undefined
+  return Object.freeze(
+    formulas.map((row, rowIndex) => {
+      if (!Array.isArray(row)) {
+        throw new Error(`Workbook readback formulas row ${rowIndex.toString()} must be an array`)
+      }
+      width ??= row.length
+      if (row.length !== width) {
+        throw new Error('Workbook readback formulas must be rectangular')
+      }
+      return Object.freeze(
+        row.map((formulaText) => {
+          if (formulaText !== null && typeof formulaText !== 'string') {
+            throw new Error('Workbook readback formula must be a string or null')
+          }
+          return formulaText
+        }),
+      )
+    }),
+  )
 }
 
 function refKey(ref: WorkbookRef): string {
@@ -112,6 +167,18 @@ export function createWorkbookCheckApi(record?: (check: WorkbookCheckResult) => 
         },
       })
     },
+    valuesEqual(target, values, options = {}) {
+      const expected = checkedLiteralMatrix(values)
+      return planned({
+        kind: 'valuesEqual',
+        target,
+        message: options.message ?? `${target.label} values equal ${JSON.stringify(expected)}`,
+        expectation: {
+          kind: 'valuesEqual',
+          values: expected,
+        },
+      })
+    },
     formulaEquals(target, value, options = {}) {
       const source = formula.source(value)
       const inputs = formula.inputs(value)
@@ -123,6 +190,18 @@ export function createWorkbookCheckApi(record?: (check: WorkbookCheckResult) => 
           kind: 'formulaEquals',
           formula: source,
           inputs,
+        },
+      })
+    },
+    formulasEqual(target, formulas, options = {}) {
+      const expected = checkedFormulaMatrix(formulas)
+      return planned({
+        kind: 'formulasEqual',
+        target,
+        message: options.message ?? `${target.label} formulas equal ${JSON.stringify(expected)}`,
+        expectation: {
+          kind: 'formulasEqual',
+          formulas: expected,
         },
       })
     },

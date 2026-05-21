@@ -17,6 +17,16 @@ describe('@bilig/workbook check api', () => {
         value: 12,
       },
     })
+    expect(check.valuesEqual(output, [[12, 24]])).toEqual({
+      status: 'planned',
+      kind: 'valuesEqual',
+      target: output,
+      message: 'Model!C2 values equal [[12,24]]',
+      expectation: {
+        kind: 'valuesEqual',
+        values: [[12, 24]],
+      },
+    })
     expect(
       check.formulaEquals(output, formula.multiply(amount, 2), {
         message: 'Output formula matches the declared model formula',
@@ -32,7 +42,19 @@ describe('@bilig/workbook check api', () => {
         inputs: [amount],
       },
     })
+    expect(check.formulasEqual(output, [['A2+B2', null]])).toEqual({
+      status: 'planned',
+      kind: 'formulasEqual',
+      target: output,
+      message: 'Model!C2 formulas equal [["A2+B2",null]]',
+      expectation: {
+        kind: 'formulasEqual',
+        formulas: [['A2+B2', null]],
+      },
+    })
     expect(() => check.valueEquals(output, Number.NaN)).toThrowError('Workbook readback value must be a finite JSON literal')
+    expect(() => check.valuesEqual(output, [[1], [1, 2]])).toThrowError('Workbook readback values must be rectangular')
+    expect(() => check.formulasEqual(output, [['A1'], [null, 'B1']])).toThrowError('Workbook readback formulas must be rectangular')
   })
 
   it('exports custom planned checks for consumer-defined invariants', () => {

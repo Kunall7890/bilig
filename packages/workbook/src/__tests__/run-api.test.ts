@@ -11,6 +11,7 @@ import {
   verifyWorkbookReadbacks,
   workbookReadbackIssueCodes,
   workbookRunErrorCodes,
+  type EngineOp,
   type WorkbookModel,
   type WorkbookRunAdapter,
 } from '../index.js'
@@ -50,6 +51,7 @@ describe('@bilig/workbook run api', () => {
     expect(workbookRunErrorCodes).toContain('formula_input_not_resolved')
     expect(workbookRunErrorCodes).toContain('readback_missing')
     expect(workbookRunErrorCodes).toContain('duplicate_readback')
+    expect(workbookRunErrorCodes).toContain('invalid_runtime_result')
     expect(workbookRunErrorCodes).toContain('runtime_rejected')
     expect(new Set(workbookRunErrorCodes).size).toBe(workbookRunErrorCodes.length)
     expect(isWorkbookRunErrorCode('check_not_verified')).toBe(true)
@@ -58,7 +60,14 @@ describe('@bilig/workbook run api', () => {
 
   it('exports stable inspectable readback issue codes', () => {
     expect(Object.isFrozen(workbookReadbackIssueCodes)).toBe(true)
-    expect(workbookReadbackIssueCodes).toEqual(['readback_missing', 'duplicate_readback', 'value_mismatch', 'formula_mismatch'])
+    expect(workbookReadbackIssueCodes).toEqual([
+      'readback_missing',
+      'duplicate_readback',
+      'value_mismatch',
+      'values_mismatch',
+      'formula_mismatch',
+      'formulas_mismatch',
+    ])
     expect(new Set(workbookReadbackIssueCodes).size).toBe(workbookReadbackIssueCodes.length)
     expect(isWorkbookReadbackIssueCode('formula_mismatch')).toBe(true)
     expect(isWorkbookReadbackIssueCode('custom_readback_issue')).toBe(false)
@@ -953,6 +962,193 @@ describe('@bilig/workbook run api', () => {
           message: 'Sheet1!C2 expected formula A2+B2 but read =A2+B2',
         },
       ],
+    })
+  })
+
+  it('verifies multi-cell values and formulas from readback matrices', () => {
+    const target = findRange({ sheetName: 'Sheet1', startAddress: 'C2', endAddress: 'D3' })
+    const verification = verifyWorkbookReadbacks(
+      [
+        {
+          status: 'planned',
+          kind: 'valuesEqual',
+          target,
+          message: 'Result values match',
+          expectation: {
+            kind: 'valuesEqual',
+            values: [
+              [6, 8],
+              [10, 12],
+            ],
+          },
+        },
+        {
+          status: 'planned',
+          kind: 'formulasEqual',
+          target,
+          message: 'Result formulas match',
+          expectation: {
+            kind: 'formulasEqual',
+            formulas: [
+              ['A2+B2', 'A2*B2'],
+              ['A3+B3', 'A3*B3'],
+            ],
+          },
+        },
+      ],
+      [
+        {
+          target,
+          values: [
+            [6, 8],
+            [10, 12],
+          ],
+          formulas: [
+            ['A2+B2', 'A2*B2'],
+            ['A3+B3', 'A3*B3'],
+          ],
+          cells: [
+            { sheetName: 'Sheet1', address: 'C2', value: 6, formula: 'A2+B2' },
+            { sheetName: 'Sheet1', address: 'D2', value: 8, formula: 'A2*B2' },
+            { sheetName: 'Sheet1', address: 'C3', value: 10, formula: 'A3+B3' },
+            { sheetName: 'Sheet1', address: 'D3', value: 12, formula: 'A3*B3' },
+          ],
+        },
+      ],
+    )
+
+    expect(verification).toEqual({
+      status: 'passed',
+      checks: [
+        expect.objectContaining({ status: 'passed', kind: 'valuesEqual' }),
+        expect.objectContaining({ status: 'passed', kind: 'formulasEqual' }),
+      ],
+      issues: [],
+    })
+  })
+
+  it('returns structured matrix mismatch proof for multi-cell readbacks', () => {
+    const target = findRange({ sheetName: 'Sheet1', startAddress: 'C2', endAddress: 'D2' })
+    const verification = verifyWorkbookReadbacks(
+      [
+        {
+          status: 'planned',
+          kind: 'valuesEqual',
+          target,
+          message: 'Result values match',
+          expectation: {
+            kind: 'valuesEqual',
+            values: [[6, 8]],
+          },
+        },
+      ],
+      [{ target, values: [[6, 9]] }],
+    )
+
+    expect(verification).toEqual({
+      status: 'failed',
+      checks: [expect.objectContaining({ status: 'failed', kind: 'valuesEqual' })],
+      issues: [
+        {
+          code: 'values_mismatch',
+          path: 'checks[0]',
+          check: expect.objectContaining({ kind: 'valuesEqual' }),
+          target,
+          expected: [[6, 8]],
+          actual: [[6, 9]],
+          message: 'Sheet1!C2:D2 expected values [[6,8]] but read [[6,9]]',
+        },
+      ],
+    })
+  })
+
+  it('rejects malformed runtime adapter outputs instead of treating them as proof', async () => {
+    const model = valueModel()
+    const invalidPreviewOp: EngineOp = { kind: 'setCellValue', sheetName: 'Sheet1', address: 'B2', value: 12 }
+    Object.defineProperty(invalidPreviewOp, 'kind', { value: 'notAWorkbookOp', enumerable: true })
+
+    await expect(
+      runWorkbookAction(model, 'write', {
+        preview: () => ({
+          modelName: model.name,
+          actionName: 'write',
+          requirements: [],
+          materializedOps: [invalidPreviewOp],
+        }),
+        apply: () => ({ status: 'applied' }),
+      }),
+    ).resolves.toEqual({
+      status: 'failed',
+      errors: [
+        {
+          code: 'invalid_runtime_result',
+          message: 'Runtime preview materializedOps must be a WorkbookOp array',
+          path: 'preview.materializedOps',
+        },
+      ],
+      checks: [expect.objectContaining({ status: 'planned', kind: 'valueEquals' })],
+    })
+
+    const adapter: WorkbookRunAdapter<{ readonly output: ReturnType<typeof findRange> }> = {
+      apply: () => ({ status: 'applied' }),
+      read(targets) {
+        const readback = { target: first(targets), value: 12 }
+        Object.defineProperty(readback, 'value', { value: Number.NaN, enumerable: true })
+        return [readback]
+      },
+    }
+
+    await expect(runWorkbookAction(model, 'write', adapter)).resolves.toEqual({
+      status: 'failed',
+      errors: [
+        {
+          code: 'invalid_runtime_result',
+          message: 'Runtime readback value must be a literal input',
+          path: 'read[0].value',
+        },
+      ],
+      checks: [expect.objectContaining({ status: 'planned', kind: 'valueEquals' })],
+    })
+
+    await expect(
+      runWorkbookAction(model, 'write', {
+        apply: () => ({ status: 'applied' }),
+        read: (targets) => [
+          {
+            target: first(targets),
+            values: [[12], [13, 14]],
+          },
+        ],
+      }),
+    ).resolves.toEqual({
+      status: 'failed',
+      errors: [
+        {
+          code: 'invalid_runtime_result',
+          message: 'Runtime readback values must be an array of literal rows',
+          path: 'read[0].values',
+        },
+      ],
+      checks: [expect.objectContaining({ status: 'planned', kind: 'valueEquals' })],
+    })
+  })
+
+  it('returns a structured apply failure when the adapter fails without errors', async () => {
+    const model = valueModel()
+
+    await expect(
+      runWorkbookAction(model, 'write', {
+        apply: () => ({ status: 'failed', errors: [] }),
+      }),
+    ).resolves.toEqual({
+      status: 'failed',
+      errors: [
+        {
+          code: 'apply_failed',
+          message: 'Workbook action run-value-model.write failed to apply',
+        },
+      ],
+      checks: [expect.objectContaining({ status: 'planned', kind: 'valueEquals' })],
     })
   })
 

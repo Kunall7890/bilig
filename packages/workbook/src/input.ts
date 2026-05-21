@@ -146,6 +146,78 @@ export function normalizeWorkbookActionInputDescription(input: unknown): Workboo
   return normalizeInputDescription(input, 'input', new WeakSet())
 }
 
+function hasRequiredChild(description: WorkbookActionInputDescription): boolean {
+  return (
+    description.kind === 'object' &&
+    description.fields !== undefined &&
+    Object.values(description.fields).some((field) => field.required === true)
+  )
+}
+
+function inputKind(value: WorkbookActionInput): Exclude<WorkbookActionInputDescriptionKind, 'json'> {
+  if (value === null) {
+    return 'null'
+  }
+  if (Array.isArray(value)) {
+    return 'array'
+  }
+  if (typeof value === 'object') {
+    return 'object'
+  }
+  if (typeof value === 'string') {
+    return 'string'
+  }
+  if (typeof value === 'number') {
+    return 'number'
+  }
+  return 'boolean'
+}
+
+function isInputObject(value: WorkbookActionInput): value is { readonly [key: string]: WorkbookActionInput } {
+  return typeof value === 'object' && value !== null && !Array.isArray(value)
+}
+
+function validateInputAgainstDescription(
+  description: WorkbookActionInputDescription,
+  value: WorkbookActionInput | undefined,
+  path: string,
+): void {
+  if (value === undefined) {
+    if (description.required === true || hasRequiredChild(description)) {
+      throw new WorkbookActionInputError(`Action input at ${path} is required`)
+    }
+    return
+  }
+
+  if (description.kind !== 'json' && inputKind(value) !== description.kind) {
+    throw new WorkbookActionInputError(`Action input at ${path} must be ${description.kind}`)
+  }
+
+  if (description.kind === 'object' && description.fields !== undefined) {
+    if (!isInputObject(value)) {
+      throw new WorkbookActionInputError(`Action input at ${path} must be object`)
+    }
+    Object.entries(description.fields).forEach(([key, field]) => {
+      const childValue = Object.hasOwn(value, key) ? value[key] : undefined
+      validateInputAgainstDescription(field, childValue, childPath(path, key))
+    })
+    return
+  }
+
+  if (description.kind === 'array' && description.items !== undefined) {
+    if (!Array.isArray(value)) {
+      throw new WorkbookActionInputError(`Action input at ${path} must be array`)
+    }
+    value.forEach((entry, index) => {
+      validateInputAgainstDescription(description.items!, entry, `${path}[${index.toString()}]`)
+    })
+  }
+}
+
+export function validateWorkbookActionInput(description: WorkbookActionInputDescription, input: WorkbookActionInput | undefined): void {
+  validateInputAgainstDescription(description, input, 'input')
+}
+
 function normalizeInput(value: unknown, path: string, seen: WeakSet<object>): WorkbookActionInput {
   if (value === null || typeof value === 'string' || typeof value === 'boolean') {
     return value

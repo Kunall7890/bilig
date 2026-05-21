@@ -154,7 +154,12 @@ describe('workbook run adapter', () => {
         }
       },
       checks({ refs, workbook }) {
-        return [workbook.check.exists(refs.result), workbook.check.noFormulaErrors(refs.result)]
+        return [
+          workbook.check.exists(refs.result),
+          workbook.check.noFormulaErrors(refs.result),
+          workbook.check.valuesEqual(refs.result, [[6], [20]]),
+          workbook.check.formulasEqual(refs.result, [['(Sheet1!A2)*(Sheet1!B2)'], ['(Sheet1!A3)*(Sheet1!B3)']]),
+        ]
       },
       actions: {
         calculate({ refs, workbook }) {
@@ -176,6 +181,8 @@ describe('workbook run adapter', () => {
     expect(result.checks.map((check) => [check.kind, check.status])).toEqual([
       ['exists', 'passed'],
       ['noFormulaErrors', 'passed'],
+      ['valuesEqual', 'passed'],
+      ['formulasEqual', 'passed'],
     ])
     expect(result.applied).toEqual({
       opCount: 2,
@@ -357,7 +364,11 @@ describe('workbook run adapter', () => {
         }
       },
       checks({ refs, workbook }) {
-        return [workbook.check.exists(refs.actualRows), workbook.check.noFormulaErrors(refs.result)]
+        return [
+          workbook.check.exists(refs.actualRows),
+          workbook.check.noFormulaErrors(refs.result),
+          workbook.check.valuesEqual(refs.result, [[6], [20]]),
+        ]
       },
       actions: {
         calculate({ refs, workbook }) {
@@ -400,6 +411,7 @@ describe('workbook run adapter', () => {
     expect(result.checks.map((check) => [check.kind, check.status])).toEqual([
       ['exists', 'passed'],
       ['noFormulaErrors', 'passed'],
+      ['valuesEqual', 'passed'],
     ])
     expect(result.applied).toEqual({
       opCount: 2,

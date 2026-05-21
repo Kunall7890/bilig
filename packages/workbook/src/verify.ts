@@ -519,6 +519,25 @@ export function verifyPlan<Refs>(plan: WorkbookActionPlan<Refs>): WorkbookPlanVe
         }
       })
     }
+
+    if (check.expectation?.kind === 'formulasEqual') {
+      check.expectation.formulas.forEach((row, rowIndex) => {
+        row.forEach((formula, colIndex) => {
+          if (formula === null) {
+            return
+          }
+          try {
+            parseFormula(formula)
+          } catch (error) {
+            issues.push({
+              code: 'invalid_check_expectation_formula',
+              path: `checks[${checkIndex}].expectation.formulas[${rowIndex}][${colIndex}]`,
+              message: `Formula expectation for ${check.target?.label ?? check.kind} is not parseable: ${errorMessage(error)}`,
+            })
+          }
+        })
+      })
+    }
   })
 
   return {

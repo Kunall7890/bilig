@@ -7,10 +7,9 @@ import {
   type WorkbookActionPlan,
   type WorkbookCheckResult,
   type WorkbookColumnRef,
-  type WorkbookNameRef,
-  type WorkbookRangeRef,
   type WorkbookRef,
   type WorkbookRowsRef,
+  type WorkbookCellReadback,
   type WorkbookRunAdapter,
   type WorkbookRunReadback,
   type WorkbookTableRef,
@@ -422,65 +421,51 @@ function verifyNoFormulaErrors(engine: SpreadsheetEngine, ref: WorkbookRef): 'pa
   return ranges.some((range) => rangeHasFormulaErrors(engine, range)) ? 'failed' : 'passed'
 }
 
-function readbackForRange(engine: SpreadsheetEngine, target: WorkbookRangeRef): WorkbookRunReadback | null {
-  const range = target.range
-  if (range.startAddress !== range.endAddress || !rangeExists(engine, range)) {
-    return null
-  }
-  const cell = engine.getCell(range.sheetName, range.startAddress)
-  const value = literalFromCellValue(cell.value)
-  return {
-    target,
-    ...(value !== undefined ? { value } : {}),
-    formula: cell.formula ?? null,
-  }
-}
+function readbackForRanges(engine: SpreadsheetEngine, target: WorkbookRef, ranges: readonly CellRangeRef[]): WorkbookRunReadback {
+  const values: LiteralInput[][] = []
+  const formulas: (string | null)[][] = []
+  const cells: WorkbookCellReadback[] = []
 
-function readbackForName(engine: SpreadsheetEngine, target: WorkbookNameRef): WorkbookRunReadback | null {
-  const definedName = engine.getDefinedName(target.name)
-  if (definedName === undefined) {
-    return null
+  for (const range of ranges) {
+    const bounds = rangeBounds(range)
+    for (let row = bounds.startRow; row <= bounds.endRow; row += 1) {
+      const valueRow: LiteralInput[] = []
+      const formulaRow: (string | null)[] = []
+      for (let col = bounds.startCol; col <= bounds.endCol; col += 1) {
+        const address = formatAddress(row, col)
+        const cell = engine.getCell(range.sheetName, address)
+        const value = literalFromCellValue(cell.value)
+        valueRow.push(value ?? null)
+        formulaRow.push(cell.formula ?? null)
+        cells.push({
+          sheetName: range.sheetName,
+          address,
+          ...(value !== undefined ? { value } : {}),
+          formula: cell.formula ?? null,
+        })
+      }
+      values.push(valueRow)
+      formulas.push(formulaRow)
+    }
   }
-  const range = rangeFromDefinedNameValue(definedName.value)
-  if (range === null || range.startAddress !== range.endAddress || !rangeExists(engine, range)) {
-    return null
-  }
-  const cell = engine.getCell(range.sheetName, range.startAddress)
-  const value = literalFromCellValue(cell.value)
-  return {
-    target,
-    ...(value !== undefined ? { value } : {}),
-    formula: cell.formula ?? null,
-  }
-}
 
-function readbackForColumn(engine: SpreadsheetEngine, target: WorkbookColumnRef): WorkbookRunReadback | null {
-  const cells = cellsFromRef(engine, target)
-  if (cells === null || cells.length !== 1) {
-    return null
-  }
-  const targetCell = cells[0]!
-  const cell = engine.getCell(targetCell.sheetName, targetCell.address)
-  const value = literalFromCellValue(cell.value)
+  const single = cells.length === 1 ? cells[0] : undefined
   return {
     target,
-    ...(value !== undefined ? { value } : {}),
-    formula: cell.formula ?? null,
+    ...(single?.value !== undefined ? { value: single.value } : {}),
+    ...(single !== undefined ? { formula: single.formula ?? null } : {}),
+    values,
+    formulas,
+    cells,
   }
 }
 
 function readbackForTarget(engine: SpreadsheetEngine, target: WorkbookRef): WorkbookRunReadback | null {
-  switch (target.kind) {
-    case 'range':
-      return readbackForRange(engine, target)
-    case 'name':
-      return readbackForName(engine, target)
-    case 'column':
-      return readbackForColumn(engine, target)
-    case 'table':
-    case 'rows':
-      return null
+  const ranges = rangesFromRef(engine, target)
+  if (ranges === null || !ranges.every((range) => rangeExists(engine, range))) {
+    return null
   }
+  return readbackForRanges(engine, target, ranges)
 }
 
 function inputReplacementForCell(
