@@ -43,10 +43,9 @@ export function bindFreshDirectAggregateFormulaRun(args: {
     throw new Error('Expected fresh direct aggregate formula cell index count to match member count')
   }
   for (let index = 0; index < args.run.members.length; index += 1) {
-    assertFreshDirectAggregateFormulaCell(args.serviceArgs, args.run.cellIndices[index]!, args.run.members[index]!)
-  }
-
-  for (let index = 0; index < args.run.members.length; index += 1) {
+    const cellIndex = args.run.cellIndices[index]!
+    const member = args.run.members[index]!
+    assertFreshDirectAggregateFormulaCell(args.serviceArgs, cellIndex, member)
     bindFreshDirectAggregateFormulaMember(
       args.serviceArgs,
       args.edgeArena,
@@ -54,8 +53,8 @@ export function bindFreshDirectAggregateFormulaRun(args: {
       args.trackFormulaSheetIndexes,
       args.run.sheetId,
       args.run.ownerSheetName,
-      args.run.cellIndices[index]!,
-      args.run.members[index]!,
+      cellIndex,
+      member,
     )
   }
 }

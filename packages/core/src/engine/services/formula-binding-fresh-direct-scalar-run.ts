@@ -47,10 +47,8 @@ export function bindFreshDirectScalarFormulaRun(args: {
   }
 
   for (let index = 0; index < args.run.members.length; index += 1) {
-    assertFreshDirectScalarFormulaCell(args.serviceArgs, args.run.cellIndices[index]!)
-  }
-
-  for (let index = 0; index < args.run.members.length; index += 1) {
+    const cellIndex = args.run.cellIndices[index]!
+    assertFreshDirectScalarFormulaCell(args.serviceArgs, cellIndex)
     bindFreshDirectScalarFormulaMember(
       args.serviceArgs,
       args.edgeArena,
@@ -59,7 +57,7 @@ export function bindFreshDirectScalarFormulaRun(args: {
       args.trackFormulaSheetIndexes,
       args.run.sheetId,
       args.run.ownerSheetName,
-      args.run.cellIndices[index]!,
+      cellIndex,
       args.run.members[index]!,
     )
   }
