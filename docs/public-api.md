@@ -121,6 +121,10 @@ The same generic refs are available outside model callbacks through top-level
 `findRows` refs include their predicate value in the stable id and label, so
 distinct consumer-defined row predicates remain distinct during agent
 inspection and dedupe.
+For table-backed row selectors, `rows.column("Amount")` targets that column only
+inside the matching rows. Core/app runtime adapters can resolve those generic
+refs into exact cells for writes, formats, clears, checks, and row-wise formula
+input alignment without adding hardcoded workbook models.
 The same planned checks are available outside model callbacks through top-level
 `check.exists(ref)`, `check.noFormulaErrors(ref)`,
 `check.valueEquals(ref, value)`, `check.formulaEquals(ref, formula)`, and

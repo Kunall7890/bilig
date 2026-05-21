@@ -249,22 +249,93 @@ describe('workbook run adapter', () => {
     expect(engine.getCell('Sheet1', 'B1').format).toBe('0.00')
   })
 
-  it('fails unresolved noFormulaErrors checks instead of leaving them planned', async () => {
-    const engine = new SpreadsheetEngine({ workbookName: 'workbook-run-adapter-unresolved-formula-check' })
+  it('materializes row-filtered table formulas only for matching rows', async () => {
+    const engine = new SpreadsheetEngine({ workbookName: 'workbook-run-adapter-filtered-row-formulas' })
     await engine.ready()
     engine.createSheet('Sheet1')
+    engine.setCellValue('Sheet1', 'A1', 'Kind')
+    engine.setCellValue('Sheet1', 'B1', 'Base')
+    engine.setCellValue('Sheet1', 'C1', 'Rate')
+    engine.setCellValue('Sheet1', 'D1', 'Result')
+    engine.setCellValue('Sheet1', 'A2', 'actual')
+    engine.setCellValue('Sheet1', 'B2', 2)
+    engine.setCellValue('Sheet1', 'C2', 3)
+    engine.setCellValue('Sheet1', 'A3', 'budget')
+    engine.setCellValue('Sheet1', 'B3', 100)
+    engine.setCellValue('Sheet1', 'C3', 100)
+    engine.setCellValue('Sheet1', 'A4', 'actual')
+    engine.setCellValue('Sheet1', 'B4', 4)
+    engine.setCellValue('Sheet1', 'C4', 5)
     engine.setTable({
       name: 'Inputs',
       sheetName: 'Sheet1',
       startAddress: 'A1',
-      endAddress: 'B3',
+      endAddress: 'D4',
+      columnNames: ['Kind', 'Base', 'Rate', 'Result'],
+      headerRow: true,
+      totalsRow: false,
+    })
+
+    const model = defineModel({
+      name: 'generic-row-calculation',
+      find(workbook) {
+        const table = workbook.findTable({ name: 'Inputs' })
+        const actualRows = workbook.findRows({ table, where: { column: 'Kind', op: 'eq', value: 'actual' } })
+        return {
+          actualRows,
+          base: actualRows.column('Base'),
+          rate: actualRows.column('Rate'),
+          result: actualRows.column('Result'),
+        }
+      },
+      checks({ refs, workbook }) {
+        return [workbook.check.exists(refs.actualRows), workbook.check.noFormulaErrors(refs.result)]
+      },
+      actions: {
+        calculate({ refs, workbook }) {
+          workbook.writeFormula(refs.result, formula.multiply(refs.base, refs.rate))
+        },
+      },
+    })
+
+    const result = await runWorkbookAction(model, 'calculate', createWorkbookRunAdapter(engine))
+
+    expect(result).toMatchObject({ status: 'done' })
+    if (result.status !== 'done') {
+      throw new Error(result.errors.map((error) => error.message).join('\n'))
+    }
+    expect(engine.getCell('Sheet1', 'D2').formula).toBe('(Sheet1!B2)*(Sheet1!C2)')
+    expect(engine.getCellValue('Sheet1', 'D2')).toEqual({ tag: ValueTag.Number, value: 6 })
+    expect(engine.getCell('Sheet1', 'D3').formula).toBeUndefined()
+    expect(engine.getCellValue('Sheet1', 'D3')).toEqual({ tag: ValueTag.Empty })
+    expect(engine.getCell('Sheet1', 'D4').formula).toBe('(Sheet1!B4)*(Sheet1!C4)')
+    expect(engine.getCellValue('Sheet1', 'D4')).toEqual({ tag: ValueTag.Number, value: 20 })
+    expect(result.checks.map((check) => [check.kind, check.status])).toEqual([
+      ['exists', 'passed'],
+      ['noFormulaErrors', 'passed'],
+    ])
+  })
+
+  it('fails exists checks for row selectors that match no rows', async () => {
+    const engine = new SpreadsheetEngine({ workbookName: 'workbook-run-adapter-empty-row-selector' })
+    await engine.ready()
+    engine.createSheet('Sheet1')
+    engine.setCellValue('Sheet1', 'A1', 'Kind')
+    engine.setCellValue('Sheet1', 'B1', 'Amount')
+    engine.setCellValue('Sheet1', 'A2', 'budget')
+    engine.setCellValue('Sheet1', 'B2', 10)
+    engine.setTable({
+      name: 'Inputs',
+      sheetName: 'Sheet1',
+      startAddress: 'A1',
+      endAddress: 'B2',
       columnNames: ['Kind', 'Amount'],
       headerRow: true,
       totalsRow: false,
     })
 
     const model = defineModel({
-      name: 'generic-row-check',
+      name: 'generic-empty-row-check',
       find(workbook) {
         const table = workbook.findTable({ name: 'Inputs' })
         return {
@@ -272,7 +343,7 @@ describe('workbook run adapter', () => {
         }
       },
       checks({ refs, workbook }) {
-        return [workbook.check.noFormulaErrors(refs.rows)]
+        return [workbook.check.exists(refs.rows)]
       },
       actions: {
         inspect() {},
@@ -284,7 +355,7 @@ describe('workbook run adapter', () => {
     expect(result).toMatchObject({
       status: 'failed',
       errors: [{ code: 'check_failed' }],
-      checks: [expect.objectContaining({ status: 'failed', kind: 'noFormulaErrors' })],
+      checks: [expect.objectContaining({ status: 'failed', kind: 'exists' })],
     })
   })
 

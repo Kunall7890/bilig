@@ -153,7 +153,26 @@ describe('@bilig/workbook model api', () => {
         op: 'eq',
         value: 'Active',
       },
+      column: expect.any(Function),
     })
+    expect(rows.column('Amount')).toEqual({
+      kind: 'column',
+      id: 'table_Model_Inputs_Amount_Rate_Status_eq_string__22Active_22_Amount',
+      label: 'table_Model_Inputs_Amount_Rate rows where Status eq "Active".Amount',
+      table,
+      rows,
+      name: 'Amount',
+    })
+    expect(() =>
+      findRows({
+        sheetName: 'Model',
+        where: {
+          column: 'Status',
+          op: 'eq',
+          value: 'Active',
+        },
+      }).column('Amount'),
+    ).toThrowError('Rows column selection requires a table-backed row selector')
   })
 
   it('keeps row selector refs distinct by predicate value', () => {
@@ -179,7 +198,51 @@ describe('@bilig/workbook model api', () => {
     expect(inactiveRows.id).toBe('table_Inputs_Status_eq_string__22Inactive_22')
     expect(activeRows.label).toBe('table_Inputs rows where Status eq "Active"')
     expect(inactiveRows.label).toBe('table_Inputs rows where Status eq "Inactive"')
-    expect(collectWorkbookRefs({ activeRows, inactiveRows })).toEqual([activeRows, inactiveRows])
+    expect(collectWorkbookRefs({ activeRows, inactiveRows })).toEqual([activeRows, table, inactiveRows])
+  })
+
+  it('describes row-filtered columns as JSON-safe dependent refs', () => {
+    const table = findTable({ name: 'Inputs' })
+    const activeRows = findRows({
+      table,
+      where: {
+        column: 'Status',
+        op: 'eq',
+        value: 'Active',
+      },
+    })
+    const activeAmount = activeRows.column('Amount')
+
+    expect(collectWorkbookRefs({ activeAmount })).toEqual([activeAmount, activeRows, table])
+    expect(formula.source(formula.ref(activeAmount))).toBe('__bilig_ref_table_Inputs_Status_eq_string__22Active_22_Amount')
+    expect(describeRef(activeAmount)).toEqual({
+      kind: 'column',
+      id: 'table_Inputs_Status_eq_string__22Active_22_Amount',
+      label: 'table_Inputs rows where Status eq "Active".Amount',
+      table: {
+        kind: 'table',
+        id: 'table_Inputs',
+        label: 'Inputs',
+        name: 'Inputs',
+      },
+      rows: {
+        kind: 'rows',
+        id: 'table_Inputs_Status_eq_string__22Active_22',
+        label: 'table_Inputs rows where Status eq "Active"',
+        table: {
+          kind: 'table',
+          id: 'table_Inputs',
+          label: 'Inputs',
+          name: 'Inputs',
+        },
+        where: {
+          column: 'Status',
+          op: 'eq',
+          value: 'Active',
+        },
+      },
+      name: 'Amount',
+    })
   })
 
   it('exports simple top-level check helpers for generic refs', () => {

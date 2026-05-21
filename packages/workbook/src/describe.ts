@@ -53,6 +53,7 @@ export interface WorkbookTableRefDescription extends WorkbookBaseRefDescription 
 export interface WorkbookColumnRefDescription extends WorkbookBaseRefDescription {
   readonly kind: 'column'
   readonly table: WorkbookTableRefDescription
+  readonly rows?: WorkbookRowsRefDescription
   readonly name: string
 }
 
@@ -200,6 +201,7 @@ function describeColumnRef(ref: WorkbookColumnRef): WorkbookColumnRefDescription
     id: ref.id,
     label: ref.label,
     table: describeTableRef(ref.table),
+    ...(ref.rows !== undefined ? { rows: describeRowsRef(ref.rows) } : {}),
     name: ref.name,
   }
 }

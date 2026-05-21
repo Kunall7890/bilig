@@ -137,6 +137,10 @@ Use `findTable`, `findColumn`, `findRange`, `findName`, and `findRows` directly
 when an agent or test needs the same generic refs outside a model callback.
 `findRows` refs include the predicate value in their stable id and label so two
 consumer-defined row selectors do not collapse during dedupe.
+For table-backed rows, use `rows.column("Amount")` to target only that column in
+the matching rows. Runtime adapters can materialize row-filtered columns into
+the exact cells to read, write, format, clear, or use as row-wise formula inputs
+without hardcoding a business model.
 Use `check.exists(ref)` and `check.noFormulaErrors(ref)` directly when an agent
 or test needs the same generic planned checks outside a model callback.
 Use `check.valueEquals(ref, value)` and `check.formulaEquals(ref, formula)` when

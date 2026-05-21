@@ -82,7 +82,7 @@ function refSource(ref: WorkbookRef): string {
   if (ref.kind === 'name') {
     return ref.name
   }
-  if (ref.kind === 'column' && ref.table.name) {
+  if (ref.kind === 'column' && ref.rows === undefined && ref.table.name) {
     return `${ref.table.name}[${ref.name}]`
   }
   return placeholderRefSource(ref)

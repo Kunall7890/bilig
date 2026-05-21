@@ -29,6 +29,7 @@ export interface WorkbookTableRef extends WorkbookBaseRef {
 export interface WorkbookColumnRef extends WorkbookBaseRef {
   readonly kind: 'column'
   readonly table: WorkbookTableRef
+  readonly rows?: WorkbookRowsRef
   readonly name: string
 }
 
@@ -43,6 +44,7 @@ export interface WorkbookRowsRef extends WorkbookBaseRef {
     readonly op: WorkbookRowOperator
     readonly value: LiteralInput
   }
+  readonly column: (name: string) => WorkbookColumnRef
 }
 
 export type WorkbookRef = WorkbookRangeRef | WorkbookNameRef | WorkbookTableRef | WorkbookColumnRef | WorkbookRowsRef
@@ -68,6 +70,14 @@ export function collectWorkbookRefs(value: unknown): readonly WorkbookRef[] {
   const seenRefs = new Set<string>()
   const seenObjects = new WeakSet<object>()
 
+  function pushRef(ref: WorkbookRef): void {
+    const key = `${ref.kind}:${ref.id}`
+    if (!seenRefs.has(key)) {
+      seenRefs.add(key)
+      refs.push(ref)
+    }
+  }
+
   function visit(current: unknown): void {
     if (current === null || current === undefined || typeof current !== 'object') {
       return
@@ -78,10 +88,13 @@ export function collectWorkbookRefs(value: unknown): readonly WorkbookRef[] {
     seenObjects.add(current)
 
     if (isWorkbookRef(current)) {
-      const key = `${current.kind}:${current.id}`
-      if (!seenRefs.has(key)) {
-        seenRefs.add(key)
-        refs.push(current)
+      pushRef(current)
+      if (current.kind === 'column') {
+        visit(current.rows)
+        visit(current.table)
+      }
+      if (current.kind === 'rows') {
+        visit(current.table)
       }
       return
     }
@@ -106,6 +119,7 @@ export interface FindTableOptions {
 
 export interface FindColumnOptions {
   readonly table: WorkbookTableRef
+  readonly rows?: WorkbookRowsRef
   readonly name: string
 }
 
@@ -204,11 +218,14 @@ export function createWorkbookTableRef(options: FindTableOptions): WorkbookTable
 }
 
 export function createWorkbookColumnRef(options: FindColumnOptions): WorkbookColumnRef {
+  const ownerId = options.rows?.id ?? options.table.id
+  const ownerLabel = options.rows?.label ?? options.table.label
   return {
     kind: 'column',
-    id: cleanIdPart(`${options.table.id}_${options.name}`),
-    label: `${options.table.label}.${options.name}`,
+    id: cleanIdPart(`${ownerId}_${options.name}`),
+    label: `${ownerLabel}.${options.name}`,
     table: options.table,
+    ...(options.rows !== undefined ? { rows: options.rows } : {}),
     name: options.name,
   }
 }
@@ -234,14 +251,21 @@ export function createWorkbookNameRef(name: string): WorkbookNameRef {
 
 export function createWorkbookRowsRef(options: FindRowsOptions): WorkbookRowsRef {
   const owner = options.table?.id ?? options.sheetName ?? 'rows'
-  return {
+  const rows: WorkbookRowsRef = {
     kind: 'rows',
     id: cleanIdPart(`${owner}_${options.where.column}_${options.where.op}_${literalIdPart(options.where.value)}`),
     label: `${owner} rows where ${options.where.column} ${options.where.op} ${literalLabel(options.where.value)}`,
     ...(options.sheetName !== undefined ? { sheetName: options.sheetName } : {}),
     ...(options.table !== undefined ? { table: options.table } : {}),
     where: options.where,
+    column(name) {
+      if (rows.table === undefined) {
+        throw new Error('Rows column selection requires a table-backed row selector')
+      }
+      return createWorkbookColumnRef({ table: rows.table, rows, name })
+    },
   }
+  return rows
 }
 
 export function findTable(options: FindTableOptions): WorkbookTableRef {
