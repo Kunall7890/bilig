@@ -54,6 +54,10 @@ const tableColumnDeleteOracleFormulaCells = [
   { address: 'D1', formula: '=SUM(#REF!)' },
   { address: 'E1', formula: '=SUM(Sales[Margin])' },
 ] as const
+const tableColumnDeleteDefinedNameOracleFormulaCells = [
+  { address: 'D1', formula: '=SUM(SalesAmount)' },
+  { address: 'E1', formula: '=SUM(SalesAmountFormula)' },
+] as const
 const tableHeaderRenameOracleCells = [
   { address: 'B1', formula: 'Revenue', rawValue: 'string\tRevenue', value: { kind: 'string', value: 'Revenue' } },
   { address: 'E1', formula: '=SUM(Sales[Revenue])', rawValue: 'number\t30.0', value: { kind: 'number', value: 30 } },
@@ -266,6 +270,36 @@ describe('macOS Desktop Excel XLSX oracle for WorkPaper', () => {
       })
       expect(normalizedCellValue(reimported.getCellValue(addressToCell('E1')))).toEqual({ kind: 'number', value: 30 })
       expect(normalizedCellValue(reimported.getCellValue(addressToCell('F1')))).toEqual({ kind: 'number', value: 5 })
+    } finally {
+      reimported.dispose()
+    }
+  })
+
+  it('rewrites table-column defined names to #REF! before XLSX export', async () => {
+    const engine = await buildTableColumnDeleteDefinedNameOracleEngine()
+
+    engine.deleteColumns('Data', 1, 1)
+
+    expect(engine.getDefinedName('SalesAmount')).toEqual({
+      name: 'SalesAmount',
+      value: { kind: 'formula', formula: '=#REF!' },
+    })
+    expect(engine.getDefinedName('SalesAmountFormula')).toEqual({
+      name: 'SalesAmountFormula',
+      value: { kind: 'formula', formula: '=#REF!' },
+    })
+    expect(engine.getCellValue('Data', 'D1')).toEqual({ tag: ValueTag.Error, code: ErrorCode.Ref })
+    expect(engine.getCellValue('Data', 'E1')).toEqual({ tag: ValueTag.Error, code: ErrorCode.Ref })
+
+    const imported = importXlsx(exportXlsx(engine.exportSnapshot()), 'headless-table-column-delete-defined-name-oracle.xlsx')
+    const reimported = WorkPaper.buildFromSnapshot(imported.snapshot, workbookConfig)
+    try {
+      expect(imported.snapshot.workbook.metadata?.definedNames).toEqual([
+        { name: 'SalesAmount', value: { kind: 'formula', formula: '=#REF!' } },
+        { name: 'SalesAmountFormula', value: { kind: 'formula', formula: '=#REF!' } },
+      ])
+      expect(normalizedCellValue(reimported.getCellValue(addressToCell('D1')))).toEqual({ kind: 'error', value: String(ErrorCode.Ref) })
+      expect(normalizedCellValue(reimported.getCellValue(addressToCell('E1')))).toEqual({ kind: 'error', value: String(ErrorCode.Ref) })
     } finally {
       reimported.dispose()
     }
@@ -667,6 +701,58 @@ describe('macOS Desktop Excel XLSX oracle for WorkPaper', () => {
   )
 
   it.runIf(process.env.BILIG_EXCEL_ORACLE_RUN === '1')(
+    'matches Desktop Excel table-column defined-name deletion semantics',
+    async () => {
+      if (!isMacosExcelInstalled()) {
+        throw new Error('BILIG_EXCEL_ORACLE_RUN=1 requires /Applications/Microsoft Excel.app')
+      }
+
+      const tempDir = mkdtempSync(join(tmpdir(), 'bilig-headless-excel-table-column-defined-name-delete-oracle-'))
+      try {
+        const workbookPath = join(tempDir, 'headless-table-column-defined-name-delete-oracle.xlsx')
+        const engine = await buildTableColumnDeleteDefinedNameOracleEngine()
+        writeFileSync(workbookPath, exportXlsx(engine.exportSnapshot()))
+
+        const excelResult = runMacosExcelStructuralOperationOracle({
+          workbookPath,
+          worksheetName: 'Data',
+          operations: [{ kind: 'deleteColumns', range: 'B:B' }],
+          inspectCells: ['D1', 'E1'],
+          saveWorkbook: true,
+        })
+        expect(excelResult.cells.map(({ address, formula }) => ({ address, formula }))).toEqual(
+          tableColumnDeleteDefinedNameOracleFormulaCells,
+        )
+
+        const imported = importXlsx(
+          new Uint8Array(readFileSync(workbookPath)),
+          'headless-table-column-defined-name-delete-oracle-recalculated.xlsx',
+        )
+        const reimported = WorkPaper.buildFromSnapshot(imported.snapshot, workbookConfig)
+        try {
+          expect(imported.snapshot.workbook.metadata?.definedNames).toEqual([
+            { name: 'SalesAmount', value: { kind: 'formula', formula: '=#REF!' } },
+            { name: 'SalesAmountFormula', value: { kind: 'formula', formula: '=#REF!' } },
+          ])
+          expect(normalizedCellValue(reimported.getCellValue(addressToCell('D1')))).toEqual({
+            kind: 'error',
+            value: String(ErrorCode.Ref),
+          })
+          expect(normalizedCellValue(reimported.getCellValue(addressToCell('E1')))).toEqual({
+            kind: 'error',
+            value: String(ErrorCode.Ref),
+          })
+        } finally {
+          reimported.dispose()
+        }
+      } finally {
+        rmSync(tempDir, { recursive: true, force: true })
+      }
+    },
+    60_000,
+  )
+
+  it.runIf(process.env.BILIG_EXCEL_ORACLE_RUN === '1')(
     'matches Desktop Excel empty-table-body structured-reference semantics',
     async () => {
       if (!isMacosExcelInstalled()) {
@@ -808,6 +894,31 @@ async function buildTableColumnDeleteOracleEngine(): Promise<SpreadsheetEngine> 
   })
   engine.setCellFormula('Data', 'E1', 'SUM(Sales[Amount])')
   engine.setCellFormula('Data', 'F1', 'SUM(Sales[Margin])')
+  return engine
+}
+
+async function buildTableColumnDeleteDefinedNameOracleEngine(): Promise<SpreadsheetEngine> {
+  const engine = new SpreadsheetEngine({ workbookName: 'table-column-delete-defined-name-oracle' })
+  await engine.ready()
+  engine.createSheet('Data')
+  engine.setRangeValues({ sheetName: 'Data', startAddress: 'A1', endAddress: 'C3' }, [
+    ['Region', 'Amount', 'Margin'],
+    ['East', 10, 2],
+    ['West', 20, 3],
+  ])
+  engine.setTable({
+    name: 'Sales',
+    sheetName: 'Data',
+    startAddress: 'A1',
+    endAddress: 'C3',
+    columnNames: ['Region', 'Amount', 'Margin'],
+    headerRow: true,
+    totalsRow: false,
+  })
+  engine.setDefinedName('SalesAmount', { kind: 'structured-ref', tableName: 'Sales', columnName: 'Amount' })
+  engine.setDefinedName('SalesAmountFormula', { kind: 'formula', formula: '=Sales[Amount]' })
+  engine.setCellFormula('Data', 'E1', 'SUM(SalesAmount)')
+  engine.setCellFormula('Data', 'F1', 'SUM(SalesAmountFormula)')
   return engine
 }
 
