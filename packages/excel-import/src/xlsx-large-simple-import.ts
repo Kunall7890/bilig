@@ -1,6 +1,6 @@
-import type { CellStyleRecord, SheetMetadataSnapshot, WorkbookSnapshot, WorkbookTableSnapshot } from '@bilig/protocol'
+import type { CellStyleRecord, WorkbookSnapshot, WorkbookTableSnapshot } from '@bilig/protocol'
 import { attachRuntimeImage } from '@bilig/core'
-import { createSheetPreview, normalizeWorkbookName } from './workbook-import-helpers.js'
+import { normalizeWorkbookName } from './workbook-import-helpers.js'
 import { XLSX_CONTENT_TYPE } from './workbook-import-content-types.js'
 import { createWorkbookPreview, type ImportedWorkbookPreview } from './workbook-import-preview.js'
 import {
@@ -18,15 +18,10 @@ import { readImportedWorkbookExternalLinkArtifacts } from './xlsx-external-link-
 import { readImportedSheetAutoFilters } from './xlsx-filters.js'
 import { readImportedWorkbookChartDrawingArtifacts } from './xlsx-import-chart-drawing-artifacts.js'
 import { externalPivotCachesWarning } from './xlsx-import-warnings.js'
-import { buildLargeSimpleCellMetadataReferenceSnapshots } from './xlsx-large-simple-cell-metadata.js'
 import { readWorkbookDefinedNames } from './xlsx-large-simple-defined-names.js'
 import { readLargeSimpleSheetHyperlinks, resolveLargeSimpleSheetHyperlinks } from './xlsx-large-simple-hyperlinks.js'
 import { LargeSimpleXlsxImportPhaseRecorder, type LargeSimpleXlsxImportPhaseTelemetry } from './xlsx-large-simple-import-telemetry.js'
-import {
-  appendLargeSimpleConditionalFormats,
-  normalizeLargeSimpleConditionalFormatIds,
-  readLargeSimpleConditionalFormattingBlockCount,
-} from './xlsx-large-simple-conditional-format-helpers.js'
+import { appendLargeSimpleConditionalFormats } from './xlsx-large-simple-conditional-format-helpers.js'
 import { internLargeSimpleWorksheetMetadata } from './xlsx-large-simple-metadata-interning.js'
 import { prepareLargeSimplePackageArtifactsForZipRelease } from './xlsx-large-simple-package-artifact-release.js'
 import { readLargeSimpleSheetPrintMetadata, readLargeSimpleSheetPrintPageSetup } from './xlsx-large-simple-printer-settings.js'
@@ -37,9 +32,8 @@ import {
   type LargeSimpleSharedStrings,
 } from './xlsx-large-simple-shared-strings.js'
 import { shouldUseSharedStringlessFastPathBytes } from './xlsx-large-simple-shared-stringless-fast-path.js'
-import { buildLargeSimpleStyleRanges } from './xlsx-large-simple-style-ranges.js'
 import { readLargeSimpleWorkbookStylesFromChunks } from './xlsx-large-simple-styles.js'
-import { applyLargeSimpleNumberFormatsToCells, readLargeSimpleWorkbookNumberFormatsFromChunks } from './xlsx-large-simple-number-formats.js'
+import { readLargeSimpleWorkbookNumberFormatsFromChunks } from './xlsx-large-simple-number-formats.js'
 import {
   maxPreallocatedWorksheetCells,
   prepareLargeSimpleStyleIndexes,
@@ -48,14 +42,13 @@ import {
 import { collectLargeSimpleImportGarbage } from './xlsx-large-simple-garbage.js'
 import {
   drawingRelationshipIdForScannedWorksheet,
-  releaseProjectedCellScanStorage,
   sheetPivotArtifactsWithStreamedDefinitions,
 } from './xlsx-large-simple-materialization-helpers.js'
+import { buildParsedWorksheet, type LargeSimpleParsedWorksheet } from './xlsx-large-simple-parsed-worksheet.js'
 import { mergeWorkbookRichTextCells } from './xlsx-large-simple-lazy-rich-text-cells.js'
 import { hasExternalLargeSimplePivotCaches } from './xlsx-large-simple-pivot-warnings.js'
 import { ImportedWorkbookStringPool } from './xlsx-large-simple-string-pool.js'
 import type { ImportedWorksheetCellScan } from './xlsx-large-simple-arena.js'
-import { readImportedWorksheetSheetProtection } from './xlsx-sheet-protection.js'
 import {
   largeSimpleControlArtifactSheetSources,
   largeSimpleLegacyCommentVmlSheetSources,
@@ -71,10 +64,6 @@ import {
 } from './xlsx-large-simple-worksheet-scanner.js'
 import { parseLargeSimpleWorksheetCellsFromChunks } from './xlsx-large-simple-worksheet-stream-scanner.js'
 import {
-  readLargeSimpleColumnMetadata,
-  readLargeSimpleMergeRanges,
-  readLargeSimpleRowMetadata,
-  readLargeSimpleSheetFormatPr,
   withoutLargeSimpleConditionalFormattingXml,
   type LargeSimpleWorksheetScannedMetadata,
 } from './xlsx-large-simple-worksheet-metadata.js'
@@ -148,21 +137,6 @@ export interface LargeSimpleXlsxSheetDimension {
   readonly usedRange: ImportedWorksheetCellScan['usedRange']
 }
 
-interface ParsedWorksheet {
-  readonly sheet: WorkbookSnapshot['sheets'][number]
-  readonly preview: ReturnType<typeof createSheetPreview>
-  readonly stats: {
-    readonly cellCount: number
-    readonly formulaCellCount: number
-    readonly valueCellCount: number
-    readonly tableCount: number
-    readonly mergeCount: number
-    readonly conditionalFormatCount: number
-    readonly dataValidationCount: number
-    readonly dimension: LargeSimpleXlsxSheetDimension
-  }
-}
-
 interface ScannedWorksheet {
   readonly name: string
   readonly order: number
@@ -176,7 +150,6 @@ interface ScannedWorksheet {
 }
 
 const defaultLargeSimpleXlsxByteThreshold = 1_000_000
-const lazySheetCellMaterializationThreshold = 100_000
 const maxPreservedBlankStyleCellCount = 10_000
 const workbookPath = 'xl/workbook.xml'
 const workbookRelationshipsPath = 'xl/_rels/workbook.xml.rels'
@@ -276,8 +249,8 @@ export function tryImportLargeSimpleXlsx(
   phaseRecorder.finish('zip-setup', zipSetupStart)
   const importedTables: WorkbookTableSnapshot[] = []
   const sheets: WorkbookSnapshot['sheets'] = []
-  const previewSheets: ParsedWorksheet['preview'][] = []
-  const sheetStats: ParsedWorksheet['stats'][] = []
+  const previewSheets: LargeSimpleParsedWorksheet['preview'][] = []
+  const sheetStats: LargeSimpleParsedWorksheet['stats'][] = []
   const styleCatalog = new Map<string, CellStyleRecord>()
   const scannedWorksheets: (ScannedWorksheet | undefined)[] = []
   const referencedSharedStringIndexes = new Set<number>()
@@ -289,7 +262,7 @@ export function tryImportLargeSimpleXlsx(
     !hasDrawingParts &&
     !hasSlicerConnectionParts
   const emptyStylesByIndex = new Map<number, Omit<CellStyleRecord, 'id'>>()
-  const appendParsedWorksheet = (parsed: ParsedWorksheet): void => {
+  const appendParsedWorksheet = (parsed: LargeSimpleParsedWorksheet): void => {
     sheets.push(parsed.sheet)
     previewSheets.push(parsed.preview)
     sheetStats.push(parsed.stats)
@@ -895,114 +868,4 @@ function releaseSharedStringIndexSet(indexes: Set<number>): void {
     return
   }
   indexes.clear()
-}
-
-function buildParsedWorksheet(
-  sheetName: string,
-  order: number,
-  cellScan: ImportedWorksheetCellScan,
-  worksheetXml: string | undefined,
-  metadataScan: LargeSimpleWorksheetScannedMetadata | undefined,
-  input: LargeSimpleSheetMetadataInput = {},
-  options: {
-    readonly materializeCells: boolean
-    readonly releaseArenaAfterMaterialization?: boolean
-    readonly includeCellCoordinates?: boolean
-    readonly numberFormatsByStyleIndex?: ReadonlyMap<number, string>
-    readonly styleCatalog?: Map<string, CellStyleRecord>
-    readonly stylesByIndex?: ReadonlyMap<number, Omit<CellStyleRecord, 'id'>>
-  } = { materializeCells: true },
-): ParsedWorksheet {
-  const merges =
-    metadataScan?.merges?.map((range) => ({ sheetName, ...range })) ??
-    (worksheetXml ? readLargeSimpleMergeRanges(sheetName, worksheetXml) : [])
-  const mergeCount = worksheetXml ? merges.length : (cellScan.mergeCount ?? 0)
-  const columns = metadataScan?.columns ?? (worksheetXml ? readLargeSimpleColumnMetadata(worksheetXml) : { entries: [], metadata: [] })
-  const rows = metadataScan?.rows ?? (worksheetXml ? readLargeSimpleRowMetadata(worksheetXml) : { entries: [], metadata: [] })
-  const sheetFormatPr = metadataScan?.sheetFormatPr ?? (worksheetXml ? readLargeSimpleSheetFormatPr(worksheetXml) : undefined)
-  const conditionalFormatCount =
-    input.conditionalFormats?.length ??
-    (worksheetXml ? readLargeSimpleConditionalFormattingBlockCount(worksheetXml) : (cellScan.conditionalFormatCount ?? 0))
-  const conditionalFormats = normalizeLargeSimpleConditionalFormatIds(sheetName, input.conditionalFormats)
-  const sheetProtection =
-    input.sheetProtection ?? (worksheetXml ? (readImportedWorksheetSheetProtection(sheetName, worksheetXml) ?? undefined) : undefined)
-  const dataValidationCount = input.validations?.length ?? cellScan.dataValidationCount ?? 0
-  const styleRanges =
-    options.materializeCells && options.styleCatalog && options.stylesByIndex
-      ? buildLargeSimpleStyleRanges(sheetName, cellScan, options.stylesByIndex, options.styleCatalog)
-      : []
-  const preview = createSheetPreview({
-    name: sheetName,
-    rowCount: cellScan.rowCount,
-    columnCount: cellScan.columnCount,
-    nonEmptyCellCount: cellScan.cellCount,
-    readCellText: (row, column) => cellScan.arena.readPreviewText(row, column),
-  })
-  const useLazyCells = options.materializeCells && cellScan.cellCount > lazySheetCellMaterializationThreshold
-  const cellMaterializationOptions =
-    options.includeCellCoordinates === undefined ? {} : { includeCoordinates: options.includeCellCoordinates }
-  const cells = options.materializeCells
-    ? useLazyCells
-      ? cellScan.arena.createLazySheetCells(cellScan.sheetIndex, cellMaterializationOptions)
-      : cellScan.arena.materializeSheetCells(cellScan.sheetIndex, cellMaterializationOptions)
-    : []
-  if (!useLazyCells && options.numberFormatsByStyleIndex && options.numberFormatsByStyleIndex.size > 0) {
-    applyLargeSimpleNumberFormatsToCells(cells, cellScan, options.numberFormatsByStyleIndex)
-  }
-  const cellMetadataRefs = buildLargeSimpleCellMetadataReferenceSnapshots(metadataScan?.cellMetadataRefs, cells, cellScan, useLazyCells)
-  releaseProjectedCellScanStorage(cellScan, {
-    releaseArenaAfterMaterialization: options.releaseArenaAfterMaterialization,
-    useLazyCells,
-  })
-  const metadata: SheetMetadataSnapshot = {
-    ...(columns.entries.length > 0 ? { columns: columns.entries } : {}),
-    ...(rows.entries.length > 0 ? { rows: rows.entries } : {}),
-    ...(columns.metadata.length > 0 ? { columnMetadata: columns.metadata } : {}),
-    ...(rows.metadata.length > 0 ? { rowMetadata: rows.metadata } : {}),
-    ...(sheetFormatPr ? { sheetFormatPr } : {}),
-    ...(styleRanges.length > 0 ? { styleRanges } : {}),
-    ...(merges.length > 0 ? { merges } : {}),
-    ...(input.drawingArtifacts ? { drawingArtifacts: input.drawingArtifacts } : {}),
-    ...(input.controlArtifacts ? { controlArtifacts: input.controlArtifacts } : {}),
-    ...(input.pivotArtifacts ? { pivotArtifacts: input.pivotArtifacts } : {}),
-    ...(input.legacyCommentVml ? { legacyCommentVml: input.legacyCommentVml } : {}),
-    ...(sheetProtection ? { sheetProtection } : {}),
-    ...(input.filters ? { filters: input.filters } : {}),
-    ...(input.hyperlinks ? { hyperlinks: input.hyperlinks } : {}),
-    ...(input.validations ? { validations: input.validations } : {}),
-    ...(conditionalFormats ? { conditionalFormats } : {}),
-    ...(input.conditionalFormatArtifacts ? { conditionalFormatArtifacts: input.conditionalFormatArtifacts } : {}),
-    ...(cellMetadataRefs ? { cellMetadataRefs } : {}),
-    ...(input.printerSettings ? { printerSettings: input.printerSettings } : {}),
-    ...(input.printPageSetup ? { printPageSetup: input.printPageSetup } : {}),
-    ...(cellScan.richTextCells.length > 0 ? { richTextArtifacts: { cells: cellScan.richTextCells } } : {}),
-  }
-  const sheet: WorkbookSnapshot['sheets'][number] = {
-    id: order + 1,
-    name: sheetName,
-    order,
-    ...(Object.keys(metadata).length > 0 ? { metadata } : {}),
-    cells,
-  }
-  const parsed: ParsedWorksheet = {
-    sheet,
-    preview,
-    stats: {
-      cellCount: cellScan.cellCount,
-      formulaCellCount: cellScan.formulaCellCount,
-      valueCellCount: cellScan.valueCellCount,
-      tableCount: cellScan.tableCount ?? 0,
-      mergeCount,
-      conditionalFormatCount,
-      dataValidationCount,
-      dimension: {
-        sheetName,
-        rowCount: cellScan.rowCount,
-        columnCount: cellScan.columnCount,
-        nonEmptyCellCount: cellScan.cellCount,
-        usedRange: cellScan.usedRange,
-      },
-    },
-  }
-  return parsed
 }
