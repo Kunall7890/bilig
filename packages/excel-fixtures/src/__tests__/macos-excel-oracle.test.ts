@@ -79,6 +79,24 @@ describe('macOS Desktop Excel oracle harness', () => {
     expect(script).not.toContain('active workbook')
   })
 
+  it('builds one-variable and two-variable data-table structural operations', () => {
+    const script = createMacosExcelStructuralOperationAppleScript({
+      worksheetName: 'Cases',
+      operations: [
+        { kind: 'createDataTable', range: 'B1:D2', rowInput: 'A1' },
+        { kind: 'createDataTable', range: 'A5:B8', columnInput: 'A1' },
+        { kind: 'createDataTable', range: 'B2:D4', rowInput: 'A1', columnInput: 'A2' },
+      ],
+      inspectCells: ['C2'],
+    })
+
+    expect(script).toContain('data table (range "B1:D2" of targetWorksheet) row input (range "A1" of targetWorksheet)')
+    expect(script).toContain('data table (range "A5:B8" of targetWorksheet) column input (range "A1" of targetWorksheet)')
+    expect(script).toContain(
+      'data table (range "B2:D4" of targetWorksheet) row input (range "A1" of targetWorksheet) column input (range "A2" of targetWorksheet)',
+    )
+  })
+
   it('parses typed Excel oracle values into normalized formula values', () => {
     expect(
       parseMacosExcelRecalculationOutput(

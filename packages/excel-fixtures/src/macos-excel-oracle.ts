@@ -48,7 +48,7 @@ export type MacosExcelStructuralOperation =
   | { readonly kind: 'setCellValue'; readonly address: string; readonly value: string | number | boolean }
   | { readonly kind: 'moveRows'; readonly sourceRange: string; readonly destinationRange: string }
   | { readonly kind: 'moveColumns'; readonly sourceRange: string; readonly destinationRange: string }
-  | { readonly kind: 'createDataTable'; readonly range: string; readonly rowInput: string; readonly columnInput: string }
+  | { readonly kind: 'createDataTable'; readonly range: string; readonly rowInput?: string; readonly columnInput?: string }
 
 export interface MacosExcelStructuralOperationOracleRequest {
   readonly workbookPath: string
@@ -459,9 +459,16 @@ function structuralOperationAppleScript(operation: MacosExcelStructuralOperation
         `insert into range (range ${toAppleScriptString(operation.destinationRange)} of targetWorksheet) shift shift to right`,
       ].join('\n      ')
     case 'createDataTable':
-      return `data table (range ${toAppleScriptString(operation.range)} of targetWorksheet) row input (range ${toAppleScriptString(
-        operation.rowInput,
-      )} of targetWorksheet) column input (range ${toAppleScriptString(operation.columnInput)} of targetWorksheet)`
+      if (!operation.rowInput && !operation.columnInput) {
+        throw new Error('macOS Excel data table operation requires a row input, column input, or both')
+      }
+      return [
+        `data table (range ${toAppleScriptString(operation.range)} of targetWorksheet)`,
+        operation.rowInput ? `row input (range ${toAppleScriptString(operation.rowInput)} of targetWorksheet)` : '',
+        operation.columnInput ? `column input (range ${toAppleScriptString(operation.columnInput)} of targetWorksheet)` : '',
+      ]
+        .filter((part) => part.length > 0)
+        .join(' ')
   }
 }
 

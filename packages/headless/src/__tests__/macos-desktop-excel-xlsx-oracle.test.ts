@@ -164,6 +164,21 @@ const expectedDataTableImportedFormulaByAddress = new Map([
   ['C4', '=MULTIPLE.OPERATIONS(B2,A1,C2,A2,B4)'],
   ['D4', '=MULTIPLE.OPERATIONS(B2,A1,D2,A2,B4)'],
 ] as const)
+const oneVariableDataTableOracleAddresses = ['C2', 'D2', 'B6', 'B7', 'B8'] as const
+const expectedOneVariableDataTableOracleValues = [
+  { address: 'C2', value: { kind: 'number', value: 30 } },
+  { address: 'D2', value: { kind: 'number', value: 40 } },
+  { address: 'B6', value: { kind: 'number', value: 20 } },
+  { address: 'B7', value: { kind: 'number', value: 30 } },
+  { address: 'B8', value: { kind: 'number', value: 40 } },
+] as const
+const expectedOneVariableDataTableImportedFormulaByAddress = new Map([
+  ['C2', '=MULTIPLE.OPERATIONS(B2,A1,C1)'],
+  ['D2', '=MULTIPLE.OPERATIONS(B2,A1,D1)'],
+  ['B6', '=MULTIPLE.OPERATIONS(B5,A1,A6)'],
+  ['B7', '=MULTIPLE.OPERATIONS(B5,A1,A7)'],
+  ['B8', '=MULTIPLE.OPERATIONS(B5,A1,A8)'],
+] as const)
 
 describe('macOS Desktop Excel XLSX oracle for WorkPaper', () => {
   it('exports and reimports the oracle fixture through the headless workbook path', () => {
@@ -611,6 +626,33 @@ describe('macOS Desktop Excel XLSX oracle for WorkPaper', () => {
         expectedDataTableOracleValues.map((expected) => expected.value),
       )
       for (const [address, formula] of expectedDataTableImportedFormulaByAddress) {
+        expect(workbook.getCellFormula(addressToCell(address))).toBe(formula)
+      }
+    } finally {
+      workbook.dispose()
+    }
+  })
+
+  it('imports native one-variable data-table outputs into headless calculable formulas', () => {
+    const imported = importXlsx(buildNativeOneVariableDataTableXlsx(), 'headless-native-one-variable-data-table-oracle.xlsx')
+    expect(imported.warnings).not.toContain(dataTableFormulasWarning)
+    expect(imported.snapshot.sheets[0]?.metadata?.dataTableFormulas?.formulas).toEqual([
+      {
+        address: 'C2',
+        formulaXml: '<f t="dataTable" ref="C2:D2" dt2D="0" dtr="1" r1="A1"/>',
+      },
+      {
+        address: 'B6',
+        formulaXml: '<f t="dataTable" ref="B6:B8" dt2D="0" dtr="0" r1="A1"/>',
+      },
+    ])
+
+    const workbook = WorkPaper.buildFromSnapshot(imported.snapshot, workbookConfig)
+    try {
+      expect(
+        oneVariableDataTableOracleAddresses.map((address) => normalizedCellValue(workbook.getCellValue(addressToCell(address)))),
+      ).toEqual(expectedOneVariableDataTableOracleValues.map((expected) => expected.value))
+      for (const [address, formula] of expectedOneVariableDataTableImportedFormulaByAddress) {
         expect(workbook.getCellFormula(addressToCell(address))).toBe(formula)
       }
     } finally {
@@ -1430,6 +1472,57 @@ describe('macOS Desktop Excel XLSX oracle for WorkPaper', () => {
     },
     60_000,
   )
+
+  it.runIf(process.env.BILIG_EXCEL_ORACLE_RUN === '1')(
+    'imports Desktop Excel native one-variable data-table outputs into headless formulas',
+    () => {
+      if (!isMacosExcelInstalled()) {
+        throw new Error('BILIG_EXCEL_ORACLE_RUN=1 requires /Applications/Microsoft Excel.app')
+      }
+
+      const tempDir = mkdtempSync(join(tmpdir(), 'bilig-headless-excel-one-variable-data-table-oracle-'))
+      try {
+        const workbookPath = join(tempDir, 'headless-one-variable-data-table-oracle.xlsx')
+        const workbook = buildOneVariableDataTableOracleWorkbook(false)
+        try {
+          writeFileSync(workbookPath, exportXlsx(workbook.exportSnapshot()))
+        } finally {
+          workbook.dispose()
+        }
+
+        const excelResult = runMacosExcelStructuralOperationOracle({
+          workbookPath,
+          worksheetName: 'DataTable',
+          operations: [
+            { kind: 'createDataTable', range: 'B1:D2', rowInput: 'A1' },
+            { kind: 'createDataTable', range: 'A5:B8', columnInput: 'A1' },
+          ],
+          inspectCells: oneVariableDataTableOracleAddresses,
+          saveWorkbook: true,
+        })
+        expect(excelResult.cells.map(({ address, value }) => ({ address, value }))).toEqual(expectedOneVariableDataTableOracleValues)
+
+        const imported = importXlsx(new Uint8Array(readFileSync(workbookPath)), 'headless-one-variable-data-table-oracle-recalculated.xlsx')
+        expect(imported.warnings).not.toContain(dataTableFormulasWarning)
+        expect(imported.snapshot.sheets[0]?.metadata?.dataTableFormulas?.formulas.map(({ address }) => address)).toEqual(['C2', 'B6'])
+
+        const reimported = WorkPaper.buildFromSnapshot(imported.snapshot, workbookConfig)
+        try {
+          expect(
+            oneVariableDataTableOracleAddresses.map((address) => normalizedCellValue(reimported.getCellValue(addressToCell(address)))),
+          ).toEqual(expectedOneVariableDataTableOracleValues.map((expected) => expected.value))
+          for (const [address, formula] of expectedOneVariableDataTableImportedFormulaByAddress) {
+            expect(reimported.getCellFormula(addressToCell(address))).toBe(formula)
+          }
+        } finally {
+          reimported.dispose()
+        }
+      } finally {
+        rmSync(tempDir, { recursive: true, force: true })
+      }
+    },
+    60_000,
+  )
 })
 
 function buildOracleWorkbook(): WorkPaper {
@@ -1580,6 +1673,24 @@ function buildDataTableOracleWorkbook(includeOutputs: boolean): WorkPaper {
   )
 }
 
+function buildOneVariableDataTableOracleWorkbook(includeOutputs: boolean): WorkPaper {
+  return WorkPaper.buildFromSheets(
+    {
+      DataTable: [
+        [1, 2, 3, 4],
+        ['=A1*10', '=A2', includeOutputs ? 30 : null, includeOutputs ? 40 : null],
+        [],
+        [],
+        [1, '=A1*10'],
+        [2, includeOutputs ? 20 : null],
+        [3, includeOutputs ? 30 : null],
+        [4, includeOutputs ? 40 : null],
+      ],
+    },
+    workbookConfig,
+  )
+}
+
 function buildNativeDataTableXlsx(): Uint8Array {
   const workbook = buildDataTableOracleWorkbook(true)
   try {
@@ -1590,6 +1701,28 @@ function buildNativeDataTableXlsx(): Uint8Array {
         /<c\b[^>]*\br=(["'])C3\1[^>]*>[\s\S]*?<\/c>/u,
         '<c r="C3"><f t="dataTable" ref="C3:D4" dt2D="1" dtr="1" r1="A1" r2="A2"/><v>40</v></c>',
       ),
+    )
+    return zipSync(zip)
+  } finally {
+    workbook.dispose()
+  }
+}
+
+function buildNativeOneVariableDataTableXlsx(): Uint8Array {
+  const workbook = buildOneVariableDataTableOracleWorkbook(true)
+  try {
+    const zip = unzipSync(exportXlsx(workbook.exportSnapshot()))
+    const sheetXml = readZipTextFromZip(zip, 'xl/worksheets/sheet1.xml')
+    zip['xl/worksheets/sheet1.xml'] = strToU8(
+      sheetXml
+        .replace(
+          /<c\b[^>]*\br=(["'])C2\1[^>]*>[\s\S]*?<\/c>/u,
+          '<c r="C2"><f t="dataTable" ref="C2:D2" dt2D="0" dtr="1" r1="A1"/><v>30</v></c>',
+        )
+        .replace(
+          /<c\b[^>]*\br=(["'])B6\1[^>]*>[\s\S]*?<\/c>/u,
+          '<c r="B6"><f t="dataTable" ref="B6:B8" dt2D="0" dtr="0" r1="A1"/><v>20</v></c>',
+        ),
     )
     return zipSync(zip)
   } finally {

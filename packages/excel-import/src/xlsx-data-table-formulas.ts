@@ -75,7 +75,7 @@ function readFormulaAttribute(formulaXml: string, attributeName: string): string
 }
 
 function isEnabledXmlFlag(value: string | null): boolean {
-  return value === '1' || value === 'true'
+  return value === '1' || value?.toLowerCase() === 'true'
 }
 
 function decodeFormulaRefRange(formula: WorkbookSheetDataTableFormulaSnapshot): XLSX.Range | null {
@@ -120,13 +120,47 @@ function buildTwoVariableDataTableFormulaCells(formula: WorkbookSheetDataTableFo
   return formulaCells
 }
 
+function buildOneVariableDataTableFormulaCells(formula: WorkbookSheetDataTableFormulaSnapshot): Map<string, string> | null {
+  if (isEnabledXmlFlag(readFormulaAttribute(formula.formulaXml, 'dt2D'))) {
+    return null
+  }
+  const input = readFormulaAttribute(formula.formulaXml, 'r1')
+  const range = decodeFormulaRefRange(formula)
+  if (!input || !range || range.s.r < 1 || range.s.c < 1) {
+    return null
+  }
+  if (formula.address !== XLSX.utils.encode_cell(range.s)) {
+    return null
+  }
+
+  const rowInputTable = isEnabledXmlFlag(readFormulaAttribute(formula.formulaXml, 'dtr'))
+  const sourceFormulaAddress = rowInputTable
+    ? XLSX.utils.encode_cell({ r: range.s.r, c: range.s.c - 1 })
+    : XLSX.utils.encode_cell({ r: range.s.r - 1, c: range.s.c })
+  const formulaCells = new Map<string, string>()
+  for (let row = range.s.r; row <= range.e.r; row += 1) {
+    for (let column = range.s.c; column <= range.e.c; column += 1) {
+      const address = XLSX.utils.encode_cell({ r: row, c: column })
+      const replacementAddress = rowInputTable
+        ? XLSX.utils.encode_cell({ r: range.s.r - 1, c: column })
+        : XLSX.utils.encode_cell({ r: row, c: range.s.c - 1 })
+      formulaCells.set(address, `MULTIPLE.OPERATIONS(${sourceFormulaAddress},${input},${replacementAddress})`)
+    }
+  }
+  return formulaCells
+}
+
+function buildDataTableFormulaCells(formula: WorkbookSheetDataTableFormulaSnapshot): Map<string, string> | null {
+  return buildTwoVariableDataTableFormulaCells(formula) ?? buildOneVariableDataTableFormulaCells(formula)
+}
+
 export function buildImportedDataTableFormulaCells(
   dataTableFormulas: WorkbookSheetDataTableFormulasSnapshot | undefined,
 ): ImportedDataTableFormulaCells {
   const formulaCells = new Map<string, string>()
   let unsupportedCount = 0
   for (const formula of dataTableFormulas?.formulas ?? []) {
-    const loweredFormulaCells = buildTwoVariableDataTableFormulaCells(formula)
+    const loweredFormulaCells = buildDataTableFormulaCells(formula)
     if (!loweredFormulaCells) {
       unsupportedCount += 1
       continue
