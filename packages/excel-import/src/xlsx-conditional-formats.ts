@@ -1,6 +1,5 @@
 import { strFromU8, strToU8, unzipSync, zipSync } from 'fflate'
 import { XMLParser } from 'fast-xml-parser'
-import * as XLSX from 'xlsx'
 
 import type {
   CellRangeRef,
@@ -12,6 +11,7 @@ import type {
   WorkbookSnapshot,
   WorkbookValidationComparisonOperator,
 } from '@bilig/protocol'
+import { decodeA1RangeRef, encodeA1CellRef, encodeA1RangeRef } from './xlsx-a1-utils.js'
 import { applyExportWorksheetDimensionsToWorksheetXml } from './xlsx-dimensions.js'
 import { readXlsxZipEntries, type XlsxZipSource } from './xlsx-zip.js'
 
@@ -146,8 +146,7 @@ function toArgbColor(value: string): string | null {
 
 function rangeRefA1(range: CellRangeRef): string | null {
   try {
-    const decoded = XLSX.utils.decode_range(`${range.startAddress}:${range.endAddress}`.replaceAll('$', ''))
-    return XLSX.utils.encode_range(decoded)
+    return encodeA1RangeRef(decodeA1RangeRef(`${range.startAddress}:${range.endAddress}`))
   } catch {
     return null
   }
@@ -155,11 +154,11 @@ function rangeRefA1(range: CellRangeRef): string | null {
 
 function parseSqrefRange(sheetName: string, ref: string): CellRangeRef | null {
   try {
-    const decoded = XLSX.utils.decode_range(ref.replaceAll('$', ''))
+    const decoded = decodeA1RangeRef(ref)
     return {
       sheetName,
-      startAddress: XLSX.utils.encode_cell(decoded.s),
-      endAddress: XLSX.utils.encode_cell(decoded.e),
+      startAddress: encodeA1CellRef(decoded.s),
+      endAddress: encodeA1CellRef(decoded.e),
     }
   } catch {
     return null

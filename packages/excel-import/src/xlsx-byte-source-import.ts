@@ -1,5 +1,6 @@
+import { createRequire } from 'node:module'
+
 import type { ImportedWorkbook } from './workbook-import-result.js'
-import { importXlsx, importXlsxFromPreparedSheetJsParserData } from './index.js'
 import { XLSX_CONTENT_TYPE } from './workbook-import-content-types.js'
 import {
   assertXlsxInspectionWithinMaterializationLimits,
@@ -17,10 +18,24 @@ import {
 } from './xlsx-large-simple-package-artifact-threshold.js'
 import { attachImportedXlsxSourceReader, detachImportedXlsxSourceBytes } from './xlsx-source-bytes.js'
 import { prepareSheetJsParserXlsxBytesFromZip } from './xlsx-style-only-blank-cells.js'
-import { readXlsxZipEntriesLazyFromByteSource, type XlsxZipByteSource } from './xlsx-zip.js'
+import { readXlsxZipEntriesLazyFromByteSource, type XlsxZipByteSource, type XlsxZipEntries } from './xlsx-zip.js'
 
 const largeCalcChainStreamingByteThreshold = 5_000_000
 const sheetJsBlankStyleStripMinCellCount = 1_000
+const requireModule = createRequire(import.meta.url)
+
+interface SheetJsImporterModule {
+  readonly importXlsx: (bytes: Uint8Array, fileName: string, options?: XlsxByteSourceImportOptions) => ImportedWorkbook
+  readonly importXlsxFromPreparedSheetJsParserData: (
+    parserData: Uint8Array,
+    fileName: string,
+    contentType: typeof XLSX_CONTENT_TYPE,
+    workbookZip: XlsxZipEntries,
+    sourceByteLength: number,
+  ) => ImportedWorkbook
+}
+
+let sheetJsImporterModule: SheetJsImporterModule | undefined
 
 export interface XlsxByteSourceImportOptions extends XlsxImportOptions {
   readonly attachSourceReaderForUntouchedExport?: boolean
@@ -104,7 +119,13 @@ function importXlsxFromPreparedByteSourceFallback(source: XlsxZipByteSource, fil
   if (!parserData) {
     return null
   }
-  return importXlsxFromPreparedSheetJsParserData(parserData, fileName, XLSX_CONTENT_TYPE, workbookZip, source.byteLength)
+  return loadSheetJsImporterModule().importXlsxFromPreparedSheetJsParserData(
+    parserData,
+    fileName,
+    XLSX_CONTENT_TYPE,
+    workbookZip,
+    source.byteLength,
+  )
 }
 
 function importXlsxFromMaterializedSource(
@@ -112,11 +133,55 @@ function importXlsxFromMaterializedSource(
   fileName: string,
   options: XlsxByteSourceImportOptions,
 ): ImportedWorkbook {
-  const imported = importXlsx(readAllSourceBytes(source), fileName, options)
+  const imported = loadSheetJsImporterModule().importXlsx(readAllSourceBytes(source), fileName, options)
   if (options.attachSourceReaderForUntouchedExport === false) {
     detachImportedXlsxSourceBytes(imported.snapshot)
   }
   return imported
+}
+
+function loadSheetJsImporterModule(): SheetJsImporterModule {
+  sheetJsImporterModule ??= requireSheetJsImporterModule()
+  return sheetJsImporterModule
+}
+
+function requireSheetJsImporterModule(): SheetJsImporterModule {
+  try {
+    return readSheetJsImporterModule(requireModule('./index.js'))
+  } catch (error) {
+    if (!isModuleNotFoundError(error)) {
+      throw error
+    }
+  }
+  try {
+    return readSheetJsImporterModule(requireModule('../dist/index.js'))
+  } catch (error) {
+    if (!isModuleNotFoundError(error)) {
+      throw error
+    }
+    return readSheetJsImporterModule(requireModule('./index.ts'))
+  }
+}
+
+function isModuleNotFoundError(error: unknown): boolean {
+  return isRecord(error) && error['code'] === 'MODULE_NOT_FOUND'
+}
+
+function readSheetJsImporterModule(value: unknown): SheetJsImporterModule {
+  if (isSheetJsImporterModule(value)) {
+    return value
+  }
+  throw new Error('SheetJS XLSX importer module is missing required exports')
+}
+
+function isSheetJsImporterModule(value: unknown): value is SheetJsImporterModule {
+  return (
+    isRecord(value) && typeof value['importXlsx'] === 'function' && typeof value['importXlsxFromPreparedSheetJsParserData'] === 'function'
+  )
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null
 }
 
 function inspectLargeSimpleXlsxSource(

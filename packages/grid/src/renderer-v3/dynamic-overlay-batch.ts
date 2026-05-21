@@ -218,7 +218,7 @@ function appendSelectionOverlay(input: {
     return
   }
   const hasAxisSelection = (input.gridSelection?.columns.length ?? 0) > 0 || (input.gridSelection?.rows.length ?? 0) > 0
-  const borderColor = parseGpuColor(workbookThemeColors.accent)
+  const borderColor = parseGpuColor(workbookThemeColors.selectionAccent)
   if (hasAxisSelection) {
     if (!input.showSelectionChrome) {
       return
@@ -241,7 +241,7 @@ function appendSelectionOverlay(input: {
     })
     if (input.showSelectionChrome) {
       for (const rect of input.geometry.rangeScreenRects(input.selectionRange)) {
-        appendBorderRects(input.borderRects, rect, borderColor, 1)
+        appendBorderRects(input.borderRects, rect, borderColor, 2)
       }
     }
   } else if (input.showSelectionChrome) {
@@ -271,7 +271,7 @@ function appendAxisSelectionOverlay(input: {
   readonly fillRects: GridGpuRect[]
   readonly borderRects: GridGpuRect[]
 }): void {
-  const headerFillColor = parseGpuColor(workbookThemeColors.accentSoft)
+  const headerFillColor = parseGpuColor(workbookThemeColors.selectionHeaderFill)
   const columnRanges = resolveSelectedAxisRanges({
     axis: input.gridSelection?.columns ?? null,
     fallbackIndex: input.selectedCell?.[0] ?? null,

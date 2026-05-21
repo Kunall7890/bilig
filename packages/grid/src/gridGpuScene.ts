@@ -47,11 +47,11 @@ interface BuildGridGpuSceneOptions {
 
 const GRID_LINE_COLOR = parseGpuColor(workbookThemeColors.gridBorder)
 const HEADER_FILL_COLOR = parseGpuColor(workbookThemeColors.surfaceSubtle)
-const HEADER_SELECTED_FILL_COLOR = parseGpuColor(workbookThemeColors.accentSoft)
+const HEADER_SELECTED_FILL_COLOR = parseGpuColor(workbookThemeColors.selectionHeaderFill)
 const HEADER_HOVER_FILL_COLOR = parseGpuColor(workbookThemeColors.muted)
 const HEADER_DRAG_ANCHOR_FILL_COLOR = parseGpuColor('rgba(33, 86, 58, 0.18)')
 const SELECTION_FILL_COLOR = parseGpuColor(workbookThemeColors.selectionFill)
-const SELECTION_OUTLINE_COLOR = parseGpuColor(workbookThemeColors.accent)
+const SELECTION_OUTLINE_COLOR = parseGpuColor(workbookThemeColors.selectionAccent)
 const HOVER_FILL_COLOR = parseGpuColor(workbookThemeColors.hoverFill)
 const HOVER_OUTLINE_COLOR = parseGpuColor(workbookThemeColors.hoverOutline)
 const RESIZE_GUIDE_COLOR = parseGpuColor('rgba(33, 86, 58, 0.72)')
@@ -473,7 +473,7 @@ function pushSelectionRects(options: {
   // authoritative spreadsheet content and must remain visually exact while the
   // range is selected; row/column slice selections still use their own body
   // affordance through the axis selection path.
-  const outlineThickness = 1
+  const outlineThickness = 2
   borderRects.push(
     {
       x: selectionRect.x,

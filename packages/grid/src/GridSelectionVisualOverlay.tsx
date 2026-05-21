@@ -178,6 +178,7 @@ function appendBodySelectionVisualRects(
         role: 'selection-border',
         key: stableRangeKey('selection-border:range', input.selectionRange, 0, segmentIndex),
         bounds,
+        strokeWidth: 2,
       })
       segmentIndex += 1
     }
@@ -476,7 +477,7 @@ function styleForRect(rect: GridSelectionVisualRect, geometryOnly = false): CSSP
       ...base,
       backgroundColor: 'transparent',
       borderBottomWidth: strokeWidth,
-      borderColor: workbookThemeColors.accent,
+      borderColor: workbookThemeColors.selectionAccent,
       borderLeftWidth: strokeWidth,
       borderRightWidth: strokeWidth,
       borderStyle: 'solid',
@@ -487,13 +488,14 @@ function styleForRect(rect: GridSelectionVisualRect, geometryOnly = false): CSSP
   if (rect.role === 'fill-handle') {
     return {
       ...base,
-      boxShadow: `0 0 0 1px ${workbookThemeColors.accent}`,
+      backgroundColor: workbookThemeColors.selectionAccent,
+      boxShadow: `0 0 0 1px ${workbookThemeColors.selectionAccent}`,
     }
   }
   if (rect.role === 'header-fill') {
     return {
       ...base,
-      backgroundColor: workbookThemeColors.accentSoft,
+      backgroundColor: workbookThemeColors.selectionHeaderFill,
     }
   }
   if (rect.role === 'hover-fill') {

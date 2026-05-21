@@ -1,8 +1,8 @@
 import { strFromU8, strToU8, unzipSync, zipSync } from 'fflate'
 import { XMLParser } from 'fast-xml-parser'
-import * as XLSX from 'xlsx'
 
 import type { WorkbookSnapshot, WorkbookTableColumnSnapshot, WorkbookTableSnapshot, WorkbookTableStyleSnapshot } from '@bilig/protocol'
+import { decodeA1CellRef, decodeA1RangeRef, encodeA1CellRef, encodeA1RangeRef } from './xlsx-a1-utils.js'
 import { decodeExcelEscapedText, encodeExcelEscapedText } from './xlsx-escaped-text.js'
 import { readSortStateXml } from './xlsx-sorts.js'
 import { readXlsxZipEntries, type XlsxZipSource } from './xlsx-zip.js'
@@ -167,17 +167,15 @@ function ensureRelationshipNamespace(xml: string): string {
 }
 
 function rangeRefA1(table: WorkbookTableSnapshot): string {
-  const start = XLSX.utils.decode_cell(table.startAddress)
-  const end = XLSX.utils.decode_cell(table.endAddress)
-  return XLSX.utils.encode_range({ s: start, e: end })
+  return encodeA1RangeRef({ s: decodeA1CellRef(table.startAddress), e: decodeA1CellRef(table.endAddress) })
 }
 
 function parseRangeRef(ref: string): { startAddress: string; endAddress: string } | null {
   try {
-    const decoded = XLSX.utils.decode_range(ref.replaceAll('$', ''))
+    const decoded = decodeA1RangeRef(ref)
     return {
-      startAddress: XLSX.utils.encode_cell(decoded.s),
-      endAddress: XLSX.utils.encode_cell(decoded.e),
+      startAddress: encodeA1CellRef(decoded.s),
+      endAddress: encodeA1CellRef(decoded.e),
     }
   } catch {
     return null

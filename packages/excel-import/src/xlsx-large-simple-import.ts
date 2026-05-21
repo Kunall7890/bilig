@@ -1,5 +1,5 @@
 import type { CellStyleRecord, WorkbookSnapshot, WorkbookTableSnapshot } from '@bilig/protocol'
-import { attachRuntimeImage } from '@bilig/core'
+import { attachImportedRuntimeImage } from './import-runtime-image.js'
 import { normalizeWorkbookName } from './workbook-import-helpers.js'
 import { XLSX_CONTENT_TYPE } from './workbook-import-content-types.js'
 import { createWorkbookPreview, type ImportedWorkbookPreview } from './workbook-import-preview.js'
@@ -840,7 +840,7 @@ export function tryImportLargeSimpleXlsx(
   return {
     snapshot:
       runtimeSheetCells.length > 0
-        ? attachRuntimeImage(snapshot, {
+        ? attachImportedRuntimeImage(snapshot, {
             version: 1,
             templateBank: [],
             formulaInstances: [],

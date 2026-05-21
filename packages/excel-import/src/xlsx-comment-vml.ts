@@ -1,7 +1,7 @@
 import { strToU8, unzipSync, zipSync } from 'fflate'
-import * as XLSX from 'xlsx'
 
 import type { WorkbookCommentThreadSnapshot, WorkbookLegacyCommentVmlSnapshot, WorkbookSnapshot } from '@bilig/protocol'
+import { decodeA1CellRef, encodeA1CellRef } from './xlsx-a1-utils.js'
 import { getZipText, readXlsxZipEntries, type XlsxZipEntries, type XlsxZipSource } from './xlsx-zip.js'
 
 interface ParsedRelationship {
@@ -152,7 +152,7 @@ function relationshipPathForPart(path: string): string {
 
 function normalizeCommentAddress(address: string): string {
   try {
-    return XLSX.utils.encode_cell(XLSX.utils.decode_cell(address))
+    return encodeA1CellRef(decodeA1CellRef(address))
   } catch {
     return address.trim().toUpperCase()
   }
