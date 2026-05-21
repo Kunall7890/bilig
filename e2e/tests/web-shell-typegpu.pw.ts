@@ -329,6 +329,18 @@ test('@browser-webgpu isolated workbook pane renderer draws grid content through
   await saveReadbackArtifact(page, testInfo, 'isolated-pane-renderer-readback.png', 'isolated-pane-renderer-readback')
 })
 
+test('@browser-ci isolated workbook pane renderer keeps native text visible when Canvas2D fallback owns presentation', async ({ page }) => {
+  await page.setViewportSize({ width: 640, height: 480 })
+  await gotoWorkbookShell(page, `${ISOLATED_WORKBOOK_PANE_RENDERER_PATH}?canvasFallback=1`)
+  await page.waitForSelector('[data-testid="isolated-pane-renderer-route"]', { timeout: 15_000 })
+
+  await expect(page.getByTestId('grid-pane-renderer-fallback')).toBeVisible()
+  await expect(page.getByTestId('grid-pane-renderer-fallback')).toHaveAttribute('data-v3-draw-text', 'false')
+  await expect(page.getByTestId('grid-native-text-layer')).toBeVisible()
+  await expect(page.getByTestId('grid-native-text-layer')).toContainText('North')
+  await expect(page.getByTestId('grid-native-text-layer')).toContainText('168')
+})
+
 test('main workbook shell mounts typegpu-v3 as the only grid renderer', async ({ page }) => {
   await page.setViewportSize({ width: 960, height: 720 })
   await gotoWorkbookShell(page)

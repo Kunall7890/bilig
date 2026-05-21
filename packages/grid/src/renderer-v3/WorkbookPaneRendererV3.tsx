@@ -4,7 +4,7 @@ import type { GridGeometrySnapshot } from '../gridGeometry.js'
 import type { GridHeaderPaneState } from '../gridHeaderPanes.js'
 import type { Rectangle } from '../gridTypes.js'
 import type { GridCameraStore } from '../runtime/gridCameraStore.js'
-import type { WorkbookGridScrollStore } from '../workbookGridScrollStore.js'
+import type { WorkbookGridScrollSnapshot, WorkbookGridScrollStore } from '../workbookGridScrollStore.js'
 import { WorkbookPaneCanvasFallbackV3 } from './WorkbookPaneCanvasFallbackV3.js'
 export { TYPEGPU_V3_ACTIVE_RESOURCE_DEFER_MS, GridDrawSchedulerV3, shouldDeferTypeGpuV3PreloadSync } from './draw-scheduler.js'
 export { resolveTypeGpuV3DrawScrollSnapshot } from './workbook-pane-renderer-runtime.js'
@@ -12,6 +12,7 @@ import type { DynamicGridOverlayBatchV3 } from './dynamic-overlay-batch.js'
 import type { WorkbookRenderTilePaneState } from './render-tile-pane-state.js'
 import { WorkbookPaneNativeTextLayerV3, type SuppressedNativeTextCellV3 } from './WorkbookPaneNativeTextLayerV3.js'
 import { WorkbookPaneRendererHostRuntimeV3 } from './workbook-pane-renderer-host-runtime.js'
+import type { WorkbookPanePresentedVisualFrameV3 } from './workbook-pane-renderer-runtime.js'
 import type { WorkbookPaneSurfaceBackendStatusV3 } from './workbook-pane-surface-runtime.js'
 
 export interface WorkbookPaneRendererV3Props {
@@ -179,6 +180,10 @@ export const WorkbookPaneRendererV3 = memo(function WorkbookPaneRendererV3({
     frameProofStatus,
     renderRevisionSnapshot?.authoritativeRevision,
   )
+  const nativeTextPresentedScrollSnapshot = resolveWorkbookPaneNativeTextPresentedScrollSnapshotV3({
+    presentedVisualFrame,
+    showCanvasFallback,
+  })
 
   return (
     <>
@@ -265,7 +270,7 @@ export const WorkbookPaneRendererV3 = memo(function WorkbookPaneRendererV3({
           cameraStore={cameraStore}
           geometry={geometry}
           headerPanes={headerPanes}
-          presentedScrollSnapshot={frameProofStatus === 'presented' ? (presentedVisualFrame?.scrollSnapshot ?? null) : null}
+          presentedScrollSnapshot={nativeTextPresentedScrollSnapshot}
           scrollTransformStore={scrollTransformStore}
           selectionOcclusionRanges={selectionOcclusionRanges}
           suppressedTextCell={suppressedTextCell}
@@ -275,6 +280,16 @@ export const WorkbookPaneRendererV3 = memo(function WorkbookPaneRendererV3({
     </>
   )
 })
+
+export function resolveWorkbookPaneNativeTextPresentedScrollSnapshotV3(input: {
+  readonly presentedVisualFrame: WorkbookPanePresentedVisualFrameV3 | null
+  readonly showCanvasFallback: boolean
+}): WorkbookGridScrollSnapshot | null {
+  if (input.showCanvasFallback) {
+    return null
+  }
+  return input.presentedVisualFrame?.scrollSnapshot ?? null
+}
 
 export function shouldMountWorkbookCanvasProofLayerV3(input: {
   readonly backendStatus: WorkbookPaneSurfaceBackendStatusV3

@@ -89,10 +89,6 @@ export function buildParsedWorksheet(
     applyLargeSimpleNumberFormatsToCells(cells, cellScan, options.numberFormatsByStyleIndex)
   }
   const cellMetadataRefs = buildLargeSimpleCellMetadataReferenceSnapshots(metadataScan?.cellMetadataRefs, cells, cellScan, useLazyCells)
-  releaseProjectedCellScanStorage(cellScan, {
-    releaseArenaAfterMaterialization: options.releaseArenaAfterMaterialization,
-    useLazyCells,
-  })
   const preview =
     options.materializeCells && !useLazyCells
       ? createPreviewFromMaterializedCells(sheetName, cellScan, cells)
@@ -103,6 +99,10 @@ export function buildParsedWorksheet(
           nonEmptyCellCount: cellScan.cellCount,
           readCellText: (row, column) => cellScan.arena.readPreviewText(row, column),
         })
+  releaseProjectedCellScanStorage(cellScan, {
+    releaseArenaAfterMaterialization: options.releaseArenaAfterMaterialization,
+    useLazyCells,
+  })
   const metadata: SheetMetadataSnapshot = {
     ...(columns.entries.length > 0 ? { columns: columns.entries } : {}),
     ...(rows.entries.length > 0 ? { rows: rows.entries } : {}),

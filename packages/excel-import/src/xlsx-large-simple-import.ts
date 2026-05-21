@@ -27,6 +27,11 @@ import { prepareLargeSimplePackageArtifactsForZipRelease } from './xlsx-large-si
 import { readLargeSimpleSheetPrintMetadata, readLargeSimpleSheetPrintPageSetup } from './xlsx-large-simple-printer-settings.js'
 import { readAllLargeSimpleSharedStrings, readReferencedLargeSimpleSharedStrings } from './xlsx-large-simple-referenced-shared-strings.js'
 import {
+  emptyLargeSimpleSharedStringIndexes,
+  LargeSimpleSharedStringIndexCollector,
+  type LargeSimpleSharedStringIndexSet,
+} from './xlsx-large-simple-shared-string-indexes.js'
+import {
   collectReferencedLargeSimpleRichSharedStringIndexes,
   createLargeSimpleSharedStringSubset,
   type LargeSimpleSharedStrings,
@@ -110,7 +115,6 @@ const workbookRelationshipsPath = 'xl/_rels/workbook.xml.rels'
 const sharedStringsPath = 'xl/sharedStrings.xml'
 const stylesPath = 'xl/styles.xml'
 const unsupportedPackagePathPattern = /^xl\/(?:ctrlProps|threadedComments|vbaProject\.bin)/u
-const emptySharedStringIndexes: Set<number> = new Set()
 export function tryImportLargeSimpleXlsx(
   source: LargeSimpleXlsxImportSource,
   fileName: string,
@@ -207,7 +211,7 @@ export function tryImportLargeSimpleXlsx(
   const sheetStats: LargeSimpleParsedWorksheet['stats'][] = []
   const styleCatalog = new Map<string, CellStyleRecord>()
   const scannedWorksheets: (ScannedWorksheet | undefined)[] = []
-  const referencedSharedStringIndexes = new Set<number>()
+  const referencedSharedStringIndexes = new LargeSimpleSharedStringIndexCollector()
   const materializeSheetsImmediately =
     materializeCells &&
     options.releaseZipSource !== true &&
@@ -330,12 +334,12 @@ export function tryImportLargeSimpleXlsx(
       return null
     }
     retainedMetadataScan = streamedMetadataScan
-    const sharedStringIndexes = new Set<number>()
+    let sharedStringIndexes: LargeSimpleSharedStringIndexSet = emptyLargeSimpleSharedStringIndexes
     if (hasSharedStrings) {
-      cellScan.arena.collectSharedStringIndexes(sharedStringIndexes)
-      for (const index of sharedStringIndexes) {
-        referencedSharedStringIndexes.add(index)
-      }
+      const sharedStringIndexCollector = new LargeSimpleSharedStringIndexCollector()
+      cellScan.arena.collectSharedStringIndexes(sharedStringIndexCollector)
+      sharedStringIndexes = sharedStringIndexCollector.finalize()
+      referencedSharedStringIndexes.addAll(sharedStringIndexes)
     }
     phaseRecorder.finish('worksheet-scan', worksheetScanStart)
     collectLargeSimpleImportGarbage()
@@ -469,10 +473,11 @@ export function tryImportLargeSimpleXlsx(
   }
   const sharedStringResolutionStart = phaseRecorder.start()
   let sharedStrings: LargeSimpleSharedStrings = fallbackSharedStrings ?? []
-  if (materializeCells && hasSharedStrings && referencedSharedStringIndexes.size > 0) {
+  const referencedSharedStringIndexSet = referencedSharedStringIndexes.finalize()
+  if (materializeCells && hasSharedStrings && referencedSharedStringIndexSet.size > 0) {
     const referencedSharedStrings =
       fallbackSharedStrings ??
-      readReferencedLargeSimpleSharedStrings(zip, referencedSharedStringIndexes, {
+      readReferencedLargeSimpleSharedStrings(zip, referencedSharedStringIndexSet, {
         deduplicateText: 'bounded',
         stringPool,
       })
@@ -482,7 +487,7 @@ export function tryImportLargeSimpleXlsx(
     sharedStrings = referencedSharedStrings
   }
   delete zip[sharedStringsPath]
-  if (materializeCells && hasSharedStrings && referencedSharedStringIndexes.size > 0) {
+  if (materializeCells && hasSharedStrings && referencedSharedStringIndexSet.size > 0) {
     for (const [index, scanned] of scannedWorksheets.entries()) {
       if (!scanned || scanned.sharedStringIndexes.size === 0) {
         continue
@@ -495,10 +500,9 @@ export function tryImportLargeSimpleXlsx(
         if (scanned.cellScan.arena.resolveSharedStrings(sharedStrings) === null) {
           return null
         }
-        releaseSharedStringIndexSet(scanned.sharedStringIndexes)
         scannedWorksheets[index] = {
           ...scanned,
-          sharedStringIndexes: emptySharedStringIndexes,
+          sharedStringIndexes: emptyLargeSimpleSharedStringIndexes,
         }
         continue
       }
@@ -509,17 +513,16 @@ export function tryImportLargeSimpleXlsx(
       if (sheetSharedStrings === null) {
         return null
       }
-      releaseSharedStringIndexSet(scanned.sharedStringIndexes)
       scannedWorksheets[index] = {
         ...scanned,
         sharedStrings: sheetSharedStrings,
-        sharedStringIndexes: emptySharedStringIndexes,
+        sharedStringIndexes: emptyLargeSimpleSharedStringIndexes,
         hasUnresolvedSharedStringReferences: true,
       }
     }
     sharedStrings = []
   }
-  referencedSharedStringIndexes.clear()
+  referencedSharedStringIndexes.release()
   fallbackSharedStrings = null
   phaseRecorder.finish('shared-string-resolution', sharedStringResolutionStart)
   collectLargeSimpleImportGarbage()
@@ -845,11 +848,4 @@ export function tryImportLargeSimpleXlsx(
     }),
     stats,
   }
-}
-
-function releaseSharedStringIndexSet(indexes: Set<number>): void {
-  if (indexes === emptySharedStringIndexes || indexes.size === 0) {
-    return
-  }
-  indexes.clear()
 }

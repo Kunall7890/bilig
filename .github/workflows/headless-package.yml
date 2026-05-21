@@ -580,6 +580,7 @@ jobs:
       - plan_release
     if: github.ref == 'refs/heads/main' && needs.plan_release.outputs.release_needed == 'true'
     permissions:
+      actions: read
       contents: write
       id-token: write
     steps:
@@ -892,6 +893,18 @@ jobs:
           test "${origin_sha}" = "${head_sha}"
           test "${github_sha}" = "${head_sha}"
 
+      - name: Wait for github-ci success before publishing
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+
+          node scripts/wait-for-github-ci-green.mjs \
+            --repo "${GITHUB_REPOSITORY}" \
+            --sha "$(git rev-parse HEAD)" \
+            --workflow github-ci \
+            --branch main
+
       - name: Build runtime package chain
         run: |
           set -euo pipefail
@@ -1068,6 +1081,7 @@ jobs:
     needs: verify
     if: github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main' && github.event.inputs.publish_n8n_node == 'true'
     permissions:
+      actions: read
       contents: read
       id-token: write
     steps:
@@ -1146,6 +1160,19 @@ jobs:
             echo "already_published=false" >> "$GITHUB_OUTPUT"
             echo "${package_name}@${package_version} is not published yet"
           fi
+
+      - name: Wait for github-ci success before publishing n8n node
+        if: steps.n8n_package.outputs.already_published != 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+
+          node scripts/wait-for-github-ci-green.mjs \
+            --repo "${GITHUB_REPOSITORY}" \
+            --sha "$(git rev-parse HEAD)" \
+            --workflow github-ci \
+            --branch main
 
       - name: Publish n8n community node
         if: steps.n8n_package.outputs.already_published != 'true'

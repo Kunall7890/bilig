@@ -33,6 +33,18 @@ export class SparseInt16ArenaValues {
     this.sparseCount = 0
   }
 
+  compact(length: number): void {
+    if (this.denseValues && this.denseValues.length !== length) {
+      this.denseValues = this.denseValues.slice(0, length)
+    }
+    if (this.sparseCellIndexes && this.sparseCellIndexes.length !== this.sparseCount) {
+      this.sparseCellIndexes = this.sparseCellIndexes.slice(0, this.sparseCount)
+    }
+    if (this.sparseValues && this.sparseValues.length !== this.sparseCount) {
+      this.sparseValues = this.sparseValues.slice(0, this.sparseCount)
+    }
+  }
+
   resize(nextCapacity: number): void {
     if (this.denseValues) {
       this.denseValues = growInt16Array(this.denseValues, nextCapacity)
@@ -126,6 +138,18 @@ export class SparseInt32ArenaValues {
     this.sparseCellIndexes = undefined
     this.sparseValues = undefined
     this.sparseCount = 0
+  }
+
+  compact(length: number): void {
+    if (this.denseValues && this.denseValues.length !== length) {
+      this.denseValues = this.denseValues.slice(0, length)
+    }
+    if (this.sparseCellIndexes && this.sparseCellIndexes.length !== this.sparseCount) {
+      this.sparseCellIndexes = this.sparseCellIndexes.slice(0, this.sparseCount)
+    }
+    if (this.sparseValues && this.sparseValues.length !== this.sparseCount) {
+      this.sparseValues = this.sparseValues.slice(0, this.sparseCount)
+    }
   }
 
   resize(nextCapacity: number): void {
