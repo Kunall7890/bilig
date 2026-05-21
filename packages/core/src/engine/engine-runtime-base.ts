@@ -359,6 +359,7 @@ export abstract class SpreadsheetEngineRuntimeBase {
         getEntityDependents: () => new Uint32Array(),
         getSingleEntityDependent: () => -1,
         collectFormulaDependents: () => new Uint32Array(),
+        collectFormulaCellsForTables: () => [],
         noteExactLookupLiteralWrite: () => {
           return
         },

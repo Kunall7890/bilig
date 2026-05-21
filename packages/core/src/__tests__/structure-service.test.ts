@@ -316,6 +316,46 @@ describe('EngineStructureService', () => {
     expect(engine.exportSnapshot()).toEqual(initialSnapshot)
   })
 
+  it('renames table metadata and structured formula sources when editing a header cell', async () => {
+    const engine = new SpreadsheetEngine({ workbookName: 'structure-table-header-rename' })
+    await engine.ready()
+    engine.createSheet('Data')
+    engine.setRangeValues({ sheetName: 'Data', startAddress: 'A1', endAddress: 'C3' }, [
+      ['Region', 'Amount', 'Margin'],
+      ['East', 10, 2],
+      ['West', 20, 3],
+    ])
+    engine.setTable({
+      name: 'Sales',
+      sheetName: 'Data',
+      startAddress: 'A1',
+      endAddress: 'C3',
+      columnNames: ['Region', 'Amount', 'Margin'],
+      columns: [{ name: 'Region' }, { name: 'Amount', totalsRowFunction: 'sum' }, { name: 'Margin', totalsRowFunction: 'average' }],
+      headerRow: true,
+      totalsRow: false,
+    })
+    engine.setCellFormula('Data', 'E1', 'SUM(Sales[Amount])')
+    engine.setCellFormula('Data', 'F1', 'SUM(Sales[Margin])')
+    const initialSnapshot = engine.exportSnapshot()
+
+    engine.setCellValue('Data', 'B1', 'Revenue')
+
+    expect(engine.getTable('Sales')).toMatchObject({
+      startAddress: 'A1',
+      endAddress: 'C3',
+      columnNames: ['Region', 'Revenue', 'Margin'],
+      columns: [{ name: 'Region' }, { name: 'Revenue', totalsRowFunction: 'sum' }, { name: 'Margin', totalsRowFunction: 'average' }],
+    })
+    expect(engine.getCellValue('Data', 'B1')).toMatchObject({ tag: ValueTag.String, value: 'Revenue' })
+    expect(engine.getCell('Data', 'E1').formula).toBe('SUM(Sales[Revenue])')
+    expect(engine.getCellValue('Data', 'E1')).toEqual({ tag: ValueTag.Number, value: 30 })
+    expect(engine.getCell('Data', 'F1').formula).toBe('SUM(Sales[Margin])')
+    expect(engine.getCellValue('Data', 'F1')).toEqual({ tag: ValueTag.Number, value: 5 })
+    expect(engine.undo()).toBe(true)
+    expect(engine.exportSnapshot()).toEqual(initialSnapshot)
+  })
+
   it('adds generated table column metadata when inserting inside the table', async () => {
     const engine = new SpreadsheetEngine({ workbookName: 'structure-table-column-insert' })
     await engine.ready()

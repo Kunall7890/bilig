@@ -697,6 +697,7 @@ export function createEngineServiceRuntime(args: {
     rebindDefinedNameDependents: (names, formulaChangedCount) => binding.rebindDefinedNameDependentsNow(names, formulaChangedCount),
     collectFormulaCellsForDefinedNames: (names) => binding.collectFormulaCellsForDefinedNamesNow(names),
     rebindTableDependents: (tableNames, formulaChangedCount) => binding.rebindTableDependentsNow(tableNames, formulaChangedCount),
+    collectFormulaCellsForTables: (tableNames) => binding.collectFormulaCellsForTablesNow(tableNames),
     rebindFormulaCells: (candidates, formulaChangedCount) => binding.rebindFormulaCellsNow(candidates, formulaChangedCount),
     hasRegionFormulaSubscriptionsForColumn: (sheetName, col) => {
       const sheet = args.state.workbook.getSheet(sheetName)

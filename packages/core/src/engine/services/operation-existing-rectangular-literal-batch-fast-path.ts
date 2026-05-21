@@ -6,6 +6,7 @@ import { markBatchApplied } from '../../replica-state.js'
 import type { EngineRuntimeState, U32 } from '../runtime-state.js'
 import { tagTrustedPhysicalTrackedChanges } from './operation-change-helpers.js'
 import { emitCellMutationFastPathBatchResult } from './operation-fast-path-batch-result.js'
+import { isTableHeaderCell } from './operation-table-header-rename.js'
 
 type FastPathState = Pick<
   EngineRuntimeState,
@@ -125,6 +126,7 @@ function collectExistingDenseNumericRectangle(
   }
 
   const cellStore = args.state.workbook.cellStore
+  const tables = args.state.workbook.listTables()
   const cellIndices = new Uint32Array(refs.length)
   const values = new Float64Array(refs.length)
   const firstRow = firstMutation.row
@@ -170,6 +172,9 @@ function collectExistingDenseNumericRectangle(
         ? candidate
         : sheet.grid.getPhysical(mutation.row, mutation.col)
     if (cellIndex === -1 || !args.canFastPathLiteralOverwrite(cellIndex) || cellStore.tags[cellIndex] !== ValueTag.Number) {
+      return null
+    }
+    if (isTableHeaderCell(tables, sheet.name, mutation.row, mutation.col)) {
       return null
     }
     cellIndices[refIndex] = cellIndex

@@ -126,6 +126,7 @@ export interface CreateEngineOperationServiceArgs {
   readonly rebindDefinedNameDependents: (names: readonly string[], formulaChangedCount: number) => number
   readonly collectFormulaCellsForDefinedNames: (names: readonly string[]) => readonly number[]
   readonly rebindTableDependents: (tableNames: readonly string[], formulaChangedCount: number) => number
+  readonly collectFormulaCellsForTables: (tableNames: readonly string[]) => readonly number[]
   readonly rebindFormulaCells: (candidates: readonly number[], formulaChangedCount: number) => number
   readonly refreshRangeDependencies: (rangeIndices: readonly number[]) => void
   readonly rebindFormulasForSheet: (sheetName: string, formulaChangedCount: number, candidates?: readonly number[] | U32) => number
