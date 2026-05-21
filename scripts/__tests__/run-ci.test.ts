@@ -106,6 +106,20 @@ describe('run-ci', () => {
     expect(source).toContain('pnpm run ci uses the full correctness profile')
   })
 
+  it('validates the production release bundle before the browser preview bundle rewrites dist', () => {
+    const source = readFileSync(resolve(repoRoot, 'scripts/run-ci.ts'), 'utf8')
+    const releaseGateIndex = source.indexOf("await runSequential('release bundle gate', releaseBundleTasks)")
+    const functionalGateIndex = source.indexOf('if (runFullGates) {')
+    const browserGateIndex = source.indexOf("await runSequential('browser gates', [browserLane])")
+
+    expect(source).toContain('const releaseBundleTasks: readonly CiTask[] = [')
+    expect(releaseGateIndex).toBeGreaterThanOrEqual(0)
+    expect(functionalGateIndex).toBeGreaterThanOrEqual(0)
+    expect(browserGateIndex).toBeGreaterThanOrEqual(0)
+    expect(releaseGateIndex).toBeLessThan(functionalGateIndex)
+    expect(releaseGateIndex).toBeLessThan(browserGateIndex)
+  })
+
   it('guards broad pre-push lint through the same resource gate', () => {
     const packageJson = readFileSync(resolve(repoRoot, 'package.json'), 'utf8')
     const prePushSource = readFileSync(resolve(repoRoot, 'scripts/run-pre-push.ts'), 'utf8')

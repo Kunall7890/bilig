@@ -278,6 +278,10 @@ const unifiedFuzzLane = pnpm('unified fuzz', 'test:fuzz')
 const browserWebBundleBuild = withEnv(pnpm('browser web bundle build', '--filter', '@bilig/web', 'build:bundle'), {
   VITE_BILIG_REMOTE_SYNC: '0',
 })
+const releaseBundleTasks: readonly CiTask[] = [
+  pnpm('production web bundle build', '--filter', '@bilig/web', 'build:bundle'),
+  pnpm('release check', 'release:check'),
+]
 const appRuntimeDependencyBuild = pnpm('app runtime dependency build', '--filter', '@bilig/app^...', 'run', 'build')
 const wasmBuildTask: CiTask = {
   label: 'wasm build',
@@ -449,6 +453,9 @@ try {
     ])),
   )
 
+  // Validate the production-sync bundle before the browser-preview build intentionally rewrites dist for local sync.
+  allCompleted.push(...(await runSequential('release bundle gate', releaseBundleTasks)))
+
   if (runFullGates) {
     allCompleted.push(
       ...(await runSequential('functional heavy checks', [
@@ -473,13 +480,6 @@ try {
   if (!skipBrowserGates) {
     allCompleted.push(...(await runSequential('browser gates', [browserLane])))
   }
-
-  allCompleted.push(
-    ...(await runSequential('release bundle gate', [
-      pnpm('production web bundle build', '--filter', '@bilig/web', 'build:bundle'),
-      pnpm('release check', 'release:check'),
-    ])),
-  )
 
   allCompleted.push(
     ...(await runSequential('performance and clean-diff gates', [
