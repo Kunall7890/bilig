@@ -45,6 +45,8 @@ import {
   importResourceLimitPreflight,
   formulaOracleFormulaCountResourceLimitPreflight,
   formulaOracleResourceLimitPreflight,
+  formulaOracleSourceFallbackResourceLimitPreflight,
+  type ResourceLimitPreflight,
   roundTripResourceLimitPreflight,
   structuralSmokeResourceLimitPreflight,
   unsupportedPreflightResourceLimitCase,
@@ -66,6 +68,7 @@ import {
   countImportedWorkbookFeatures,
   countWorkbookFeatures,
   extractFormulaOracles,
+  extractFormulaOraclesFromXlsxByteSource,
   formatCellValue,
   importedWorkbookMetadata,
   inspectWorkbookFootprint,
@@ -114,6 +117,7 @@ export const externalLinkTransitiveFormulaUnsupportedClassification = 'xlsx.exte
 interface DetailedFormulaOracleValidationResult extends FormulaOracleValidationResult {
   readonly mismatchDetails: readonly FormulaOracleMismatchDetail[]
   readonly skippedUnsupportedFormulaCount: number
+  readonly resourceLimit?: ResourceLimitPreflight
 }
 
 interface UnsupportedFormulaOracleCacheClassification {
@@ -288,12 +292,14 @@ export async function verifyCachedWorkbookArtifact(
       unsupportedFormulaOracleWarning,
       unsupportedFormulaOracleCache,
       unsupportedExternalLinkFormulaOracle,
+      formulaOracleSourceResourceLimit,
     } = formulaOracleResourceLimit
       ? {
           formulaOracleValidation: emptyFormulaOracleValidation(),
           unsupportedFormulaOracleWarning: false,
           unsupportedFormulaOracleCache: emptyUnsupportedFormulaOracleCacheClassification(),
           unsupportedExternalLinkFormulaOracle: emptyUnsupportedFormulaOracleCacheClassification(),
+          formulaOracleSourceResourceLimit: null,
         }
       : await timeVerificationPhase(runtimeMetrics, workerOptions, 'formula-oracle', async () => {
           const nextFormulaOracleValidation =
@@ -301,7 +307,8 @@ export async function verifyCachedWorkbookArtifact(
               ? emptyFormulaOracleValidation()
               : await validateFormulaOracles(
                   imported.snapshot,
-                  readAllSourceBytes(source),
+                  source,
+                  artifact.fileName,
                   unsupportedFormulaDependencyKeys(imported.snapshot),
                 )
           collectGarbage()
@@ -321,6 +328,7 @@ export async function verifyCachedWorkbookArtifact(
             unsupportedFormulaOracleWarning: nextUnsupportedFormulaOracleWarning,
             unsupportedFormulaOracleCache: nextUnsupportedFormulaOracleCache,
             unsupportedExternalLinkFormulaOracle: nextUnsupportedExternalLinkFormulaOracle,
+            formulaOracleSourceResourceLimit: nextFormulaOracleValidation.resourceLimit ?? null,
           }
         })
     const unsupportedLocaleDecimalCommaFormulaOracle = classifyUnsupportedLocaleDecimalCommaFormulaOracle(
@@ -331,11 +339,13 @@ export async function verifyCachedWorkbookArtifact(
     const structuralSmokeResourceLimit = runStructuralSmoke ? structuralSmokeResourceLimitPreflight(featureCounts) : null
     const phaseResourceLimitClassifications = [
       ...(formulaOracleResourceLimit ? [formulaOracleResourceLimit.classification] : []),
+      ...(formulaOracleSourceResourceLimit ? [formulaOracleSourceResourceLimit.classification] : []),
       ...(roundTripResourceLimit ? [roundTripResourceLimit.classification] : []),
       ...(structuralSmokeResourceLimit ? [structuralSmokeResourceLimit.classification] : []),
     ]
     const phaseResourceLimitEvidence = [
       ...(formulaOracleResourceLimit?.evidence ?? []),
+      ...(formulaOracleSourceResourceLimit?.evidence ?? []),
       ...(roundTripResourceLimit?.evidence ?? []),
       ...(structuralSmokeResourceLimit?.evidence ?? []),
     ]
@@ -440,11 +450,21 @@ export function capVerifyMaxRssBytes(value: number): number {
 
 async function validateFormulaOracles(
   snapshot: WorkbookSnapshot,
-  bytes: Uint8Array,
+  source: XlsxZipByteSource,
+  fileName: string,
   skippedFormulaKeys: ReadonlySet<string> = new Set(),
 ): Promise<DetailedFormulaOracleValidationResult> {
   try {
-    const allFormulaOracles = extractFormulaOracles(bytes)
+    const sourceFormulaOracles = extractFormulaOraclesFromXlsxByteSource(source, fileName)
+    const sourceFallbackResourceLimit =
+      sourceFormulaOracles === null ? formulaOracleSourceFallbackResourceLimitPreflight(source.byteLength) : null
+    if (sourceFallbackResourceLimit) {
+      return {
+        ...emptyFormulaOracleValidation(),
+        resourceLimit: sourceFallbackResourceLimit,
+      }
+    }
+    const allFormulaOracles = sourceFormulaOracles ?? extractFormulaOracles(readAllSourceBytes(source))
     const formulaOracles = allFormulaOracles.filter(
       (oracle) => !skippedFormulaKeys.has(formulaOracleCellKey(oracle.sheetName, oracle.address)),
     )

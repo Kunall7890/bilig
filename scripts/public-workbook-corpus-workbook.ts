@@ -4,7 +4,16 @@ import * as XLSX from 'xlsx'
 
 import { importXlsx, type ImportedWorkbook } from '../packages/excel-import/src/index.js'
 import { readImportedExternalWorkbookReferences } from '../packages/excel-import/src/xlsx-external-references.js'
-import { readXlsxZipEntries, readXlsxZipEntriesLazyFromByteSource, type XlsxZipByteSource } from '../packages/excel-import/src/xlsx-zip.js'
+import { readWorkbookSheets, readWorksheetPathsByRelationshipId } from '../packages/excel-import/src/xlsx-large-simple-workbook-metadata.js'
+import { decodeCellAddress, encodeCellAddress } from '../packages/excel-import/src/xlsx-large-simple-xml-byte-utils.js'
+import { decodeXmlText } from '../packages/excel-import/src/xlsx-large-simple-worksheet-stream-text.js'
+import {
+  getZipText,
+  readXlsxZipEntries,
+  readXlsxZipEntriesLazyFromByteSource,
+  releaseInflatedLazyXlsxZipEntries,
+  type XlsxZipByteSource,
+} from '../packages/excel-import/src/xlsx-zip.js'
 import { ErrorCode, ValueTag } from '../packages/protocol/src/enums.js'
 import type { CellValue, WorkbookExternalWorkbookReferenceSnapshot, WorkbookSnapshot } from '../packages/protocol/src/types.js'
 import type { FormulaOracle, PublicWorkbookCorpusCase, PublicWorkbookFeatureCounts } from './public-workbook-corpus-types.ts'
@@ -344,6 +353,51 @@ export function extractFormulaOracles(bytes: Uint8Array): FormulaOracle[] {
   return oracles
 }
 
+export function extractFormulaOraclesFromXlsxByteSource(source: XlsxZipByteSource, fileName: string): FormulaOracle[] | null {
+  if (!isOpenXmlWorkbookFileName(fileName)) {
+    return null
+  }
+  const zip = readXlsxZipEntriesLazyFromByteSource(source)
+  if (!zip) {
+    return null
+  }
+  try {
+    const workbookXml = getZipText(zip, 'xl/workbook.xml')
+    const workbookRelationshipsXml = getZipText(zip, 'xl/_rels/workbook.xml.rels')
+    if (!workbookXml || !workbookRelationshipsXml) {
+      return null
+    }
+    const workbookSheets = readWorkbookSheets(workbookXml)
+    const worksheetPathsByRelationshipId = readWorksheetPathsByRelationshipId(workbookRelationshipsXml)
+    if (workbookSheets.length === 0 || worksheetPathsByRelationshipId.size === 0) {
+      return null
+    }
+    releaseInflatedLazyXlsxZipEntries(zip)
+    const oracles: FormulaOracle[] = []
+    for (const sheet of workbookSheets) {
+      const worksheetPath = worksheetPathsByRelationshipId.get(sheet.relationshipId)
+      if (!worksheetPath) {
+        return null
+      }
+      const worksheetXml = getZipText(zip, worksheetPath)
+      if (!worksheetXml) {
+        return null
+      }
+      const sheetOracles = extractFormulaOraclesFromWorksheetXml(sheet.name, worksheetXml)
+      releaseInflatedLazyXlsxZipEntries(zip)
+      if (!sheetOracles) {
+        return null
+      }
+      oracles.push(...sheetOracles)
+    }
+    return oracles
+  } catch {
+    return null
+  } finally {
+    releaseInflatedLazyXlsxZipEntries(zip)
+  }
+}
+
 export function cellValuesMatchOracle(actual: CellValue, expected: CellValue): boolean {
   if (actual.tag !== expected.tag) {
     return false
@@ -397,6 +451,82 @@ function cellValueFromXlsx(cell: Record<string, unknown>): CellValue | null {
     default:
       return null
   }
+}
+
+type XmlFormulaOracleCellValue =
+  | { readonly kind: 'value'; readonly value: CellValue }
+  | { readonly kind: 'skip' }
+  | { readonly kind: 'unsupported' }
+
+function extractFormulaOraclesFromWorksheetXml(sheetName: string, worksheetXml: string): FormulaOracle[] | null {
+  const oracles: FormulaOracle[] = []
+  for (const match of worksheetXml.matchAll(/<((?:[A-Za-z_][\w.-]*:)?c)\b((?:[^>"']|"[^"]*"|'[^']*')*)>([\s\S]*?)<\/\1>/gu)) {
+    const attributes = match[2] ?? ''
+    const content = match[3] ?? ''
+    if (!/<(?:[A-Za-z_][\w.-]*:)?f\b/u.test(content)) {
+      continue
+    }
+    const rawAddress = readXmlAttribute(attributes, 'r')
+    const decodedAddress = rawAddress ? decodeCellAddress(decodeXmlText(rawAddress)) : null
+    if (!decodedAddress) {
+      return null
+    }
+    const rawCachedValue = readXmlElementText(content, 'v')
+    if (rawCachedValue === null) {
+      continue
+    }
+    const cellValue = cellValueFromWorksheetFormulaCache(readXmlAttribute(attributes, 't'), rawCachedValue)
+    if (cellValue.kind === 'unsupported') {
+      return null
+    }
+    if (cellValue.kind === 'skip') {
+      continue
+    }
+    oracles.push({
+      sheetName,
+      address: encodeCellAddress(decodedAddress.row, decodedAddress.column),
+      expected: cellValue.value,
+    })
+  }
+  return oracles
+}
+
+function cellValueFromWorksheetFormulaCache(type: string | null, rawCachedValue: string): XmlFormulaOracleCellValue {
+  const text = decodeXmlText(rawCachedValue.trim())
+  switch (type ?? 'n') {
+    case 'n': {
+      const value = Number(text)
+      return Number.isFinite(value) ? { kind: 'value', value: { tag: ValueTag.Number, value } } : { kind: 'skip' }
+    }
+    case 'b':
+      if (text === '1' || /^true$/iu.test(text)) {
+        return { kind: 'value', value: { tag: ValueTag.Boolean, value: true } }
+      }
+      if (text === '0' || /^false$/iu.test(text)) {
+        return { kind: 'value', value: { tag: ValueTag.Boolean, value: false } }
+      }
+      return { kind: 'skip' }
+    case 'str':
+      return { kind: 'value', value: { tag: ValueTag.String, value: decodeXmlText(rawCachedValue), stringId: 0 } }
+    case 'd':
+    case 'e':
+    case 'z':
+      return { kind: 'skip' }
+    default:
+      return { kind: 'unsupported' }
+  }
+}
+
+function readXmlAttribute(xml: string, attributeName: string): string | null {
+  return new RegExp(`\\s${attributeName}=("|')([\\s\\S]*?)\\1`, 'u').exec(xml)?.[2] ?? null
+}
+
+function readXmlElementText(xml: string, elementName: string): string | null {
+  const pattern = new RegExp(
+    `<(?:[A-Za-z_][\\w.-]*:)?${elementName}\\b(?:[^>"']|"[^"]*"|'[^']*')*>([\\s\\S]*?)<\\/(?:[A-Za-z_][\\w.-]*:)?${elementName}>`,
+    'u',
+  )
+  return pattern.exec(xml)?.[1] ?? null
 }
 
 function expandUsedRange(current: WorkbookSheetUsedRange | null, row: number, column: number): WorkbookSheetUsedRange {

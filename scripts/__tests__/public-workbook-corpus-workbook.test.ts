@@ -9,6 +9,7 @@ import type { WorkbookSnapshot } from '../../packages/protocol/src/types.js'
 import {
   countImportedWorkbookFeatures,
   extractFormulaOracles,
+  extractFormulaOraclesFromXlsxByteSource,
   importedWorkbookMetadata,
   inspectWorkbookFootprint,
   inspectWorkbookFootprintForWorker,
@@ -16,7 +17,8 @@ import {
 
 describe('public workbook corpus workbook helpers', () => {
   it('extracts formula oracles from broad sparse worksheet refs', () => {
-    const oracles = extractFormulaOracles(buildBroadSparseWorkbookBytes())
+    const bytes = buildBroadSparseWorkbookBytes()
+    const oracles = extractFormulaOracles(bytes)
 
     expect(oracles).toEqual([
       {
@@ -25,7 +27,39 @@ describe('public workbook corpus workbook helpers', () => {
         expected: { tag: ValueTag.Number, value: 42 },
       },
     ])
+    expect(extractFormulaOraclesFromXlsxByteSource(byteSourceFromBytes(bytes), 'sparse.xlsx')).toEqual(oracles)
   }, 15_000)
+
+  it('extracts formula oracles from an XLSX byte source without reading the whole source', () => {
+    const bytes = buildFormulaOracleWorkbookBytes()
+    const source = new TrackingByteSource(bytes)
+    const oracles = extractFormulaOraclesFromXlsxByteSource(source, 'formula-oracles.xlsx')
+
+    expect(oracles).toEqual([
+      {
+        sheetName: 'Formula & Facts',
+        address: 'A1',
+        expected: { tag: ValueTag.Number, value: 42 },
+      },
+      {
+        sheetName: 'Formula & Facts',
+        address: 'B2',
+        expected: { tag: ValueTag.Boolean, value: true },
+      },
+      {
+        sheetName: 'Formula & Facts',
+        address: 'C3',
+        expected: { tag: ValueTag.String, value: 'Hello & goodbye', stringId: 0 },
+      },
+    ])
+    expect(source.fullSourceReadCount).toBe(0)
+  })
+
+  it('keeps unsupported formula cache encodings on the fallback path', () => {
+    expect(
+      extractFormulaOraclesFromXlsxByteSource(byteSourceFromBytes(buildFormulaOracleWorkbookWithSharedStringCache()), 'shared.xlsx'),
+    ).toBeNull()
+  })
 
   it('uses imported large-simple stats without walking lazy sheet cells', () => {
     const cells = new Proxy([], {
@@ -290,6 +324,92 @@ function buildBroadSparseWorkbookBytes(): Uint8Array {
   }
   XLSX.utils.book_append_sheet(workbook, sheet, 'Sparse')
   return XLSX.write(workbook, { bookType: 'xlsx', type: 'buffer' })
+}
+
+class TrackingByteSource {
+  readonly byteLength: number
+  fullSourceReadCount = 0
+
+  constructor(private readonly bytes: Uint8Array) {
+    this.byteLength = bytes.byteLength
+  }
+
+  readRange(start: number, end: number): Uint8Array {
+    if (start === 0 && end === this.bytes.byteLength) {
+      this.fullSourceReadCount += 1
+    }
+    return this.bytes.subarray(start, end)
+  }
+}
+
+function byteSourceFromBytes(bytes: Uint8Array): TrackingByteSource {
+  return new TrackingByteSource(bytes)
+}
+
+function buildFormulaOracleWorkbookBytes(): Uint8Array {
+  return buildZip([
+    workbookXml('Formula &amp; Facts'),
+    workbookRelationshipsXml(),
+    {
+      path: 'xl/worksheets/sheet1.xml',
+      text: [
+        '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>',
+        '<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">',
+        '<sheetData>',
+        '<row r="1"><c r="A1"><f>40+2</f><v>42</v></c></row>',
+        '<row r="2"><c r="B2" t="b"><f>TRUE()</f><v>1</v></c></row>',
+        '<row r="3"><c r="C3" t="str"><f>"Hello"</f><v>Hello &amp; goodbye</v></c></row>',
+        '</sheetData></worksheet>',
+      ].join(''),
+    },
+    largePaddingEntry(),
+  ])
+}
+
+function buildFormulaOracleWorkbookWithSharedStringCache(): Uint8Array {
+  return buildZip([
+    workbookXml('Shared'),
+    workbookRelationshipsXml(),
+    {
+      path: 'xl/worksheets/sheet1.xml',
+      text: [
+        '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>',
+        '<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">',
+        '<sheetData><row r="1"><c r="A1" t="s"><f>"cached"</f><v>0</v></c></row></sheetData></worksheet>',
+      ].join(''),
+    },
+  ])
+}
+
+function workbookXml(sheetName: string): { readonly path: string; readonly text: string } {
+  return {
+    path: 'xl/workbook.xml',
+    text: [
+      '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>',
+      '<workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" ',
+      'xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">',
+      `<sheets><sheet name="${sheetName}" sheetId="1" r:id="rId1"/></sheets></workbook>`,
+    ].join(''),
+  }
+}
+
+function workbookRelationshipsXml(): { readonly path: string; readonly text: string } {
+  return {
+    path: 'xl/_rels/workbook.xml.rels',
+    text: [
+      '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>',
+      '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">',
+      '<Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" ',
+      'Target="worksheets/sheet1.xml"/></Relationships>',
+    ].join(''),
+  }
+}
+
+function largePaddingEntry(): { readonly path: string; readonly text: string } {
+  return {
+    path: 'xl/media/pad.txt',
+    text: Array.from({ length: 16_000 }, (_value, index) => `padding-${String(index)}-${String((index * 2_654_435_761) >>> 0)}`).join('\n'),
+  }
 }
 
 function buildWorkbookWithAdjacentBlankCellElements(): Uint8Array {
