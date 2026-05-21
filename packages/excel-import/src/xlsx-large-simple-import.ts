@@ -45,7 +45,11 @@ import {
   drawingRelationshipIdForScannedWorksheet,
   sheetPivotArtifactsWithStreamedDefinitions,
 } from './xlsx-large-simple-materialization-helpers.js'
-import { buildParsedWorksheet, type LargeSimpleParsedWorksheet } from './xlsx-large-simple-parsed-worksheet.js'
+import {
+  buildParsedWorksheet,
+  lazySheetCellMaterializationThreshold,
+  type LargeSimpleParsedWorksheet,
+} from './xlsx-large-simple-parsed-worksheet.js'
 import { mergeWorkbookRichTextCells } from './xlsx-large-simple-lazy-rich-text-cells.js'
 import { hasExternalLargeSimplePivotCaches } from './xlsx-large-simple-pivot-warnings.js'
 import { ImportedWorkbookStringPool } from './xlsx-large-simple-string-pool.js'

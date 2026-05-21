@@ -19,7 +19,7 @@ import {
   type LargeSimpleWorksheetScannedMetadata,
 } from './xlsx-large-simple-worksheet-metadata.js'
 
-const lazySheetCellMaterializationThreshold = 100_000
+export const lazySheetCellMaterializationThreshold = 100_000
 
 export interface LargeSimpleParsedWorksheet {
   readonly sheet: WorkbookSnapshot['sheets'][number]
