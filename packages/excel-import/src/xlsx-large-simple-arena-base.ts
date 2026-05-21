@@ -64,9 +64,9 @@ export abstract class ImportedWorkbookArenaBase {
   protected denseRowMajorWidth: number | null = null
   protected linearCellIndexes: Uint32Array<ArrayBuffer> | undefined
   protected linearRowMajorWidth: number | null = null
-  protected readonly strings: string[] = []
+  protected strings: string[] = []
   protected readonly stringIdsByValue = new Map<string, number>()
-  protected readonly formulas: string[] = []
+  protected formulas: string[] = []
   protected readonly formulaIdsByValue = new Map<string, number>()
   protected sharedStrings: LargeSimpleSharedStrings | undefined
   protected stringValueCount = 0

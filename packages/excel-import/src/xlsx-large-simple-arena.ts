@@ -131,6 +131,16 @@ export class ImportedWorkbookArena extends ImportedWorkbookArenaBase {
     const cellCount = typeof arenaIndexes === 'number' ? arenaIndexes : arenaIndexes.length
     this.compactSparseStringIds()
     this.compactRetainedStorage()
+    const strings = this.strings
+    const formulas = this.formulas
+    this.strings = []
+    this.formulas = []
+    this.stringIdsByValue.clear()
+    this.stringDedupeKeys.length = 0
+    this.stringDedupeEvictionIndex = 0
+    this.formulaIdsByValue.clear()
+    this.formulaDedupeKeys.length = 0
+    this.formulaDedupeEvictionIndex = 0
     return createDetachedLazyWorkbookSheetCells({
       cellCount,
       arenaIndexes,
@@ -154,8 +164,8 @@ export class ImportedWorkbookArena extends ImportedWorkbookArenaBase {
       ...(this.sparseStringIds ? { sparseStringIds: this.sparseStringIds } : {}),
       ...(this.booleanValues ? { booleanValues: this.booleanValues } : {}),
       ...(this.formulaIds ? { formulaIds: this.formulaIds } : {}),
-      strings: this.strings.slice(),
-      formulas: this.formulas.slice(),
+      strings,
+      formulas,
       ...(this.sharedStrings ? { sharedStrings: this.sharedStrings } : {}),
       sharedStringRefsInNumberValues: this.sharedStringRefsInNumberValues,
     })

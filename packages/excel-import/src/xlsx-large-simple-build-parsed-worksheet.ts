@@ -1,6 +1,9 @@
 import type { CellStyleRecord, SheetMetadataSnapshot, WorkbookSnapshot } from '@bilig/protocol'
 import { createSheetPreview } from './workbook-import-helpers.js'
-import { buildLargeSimpleCellMetadataReferenceSnapshots } from './xlsx-large-simple-cell-metadata.js'
+import {
+  buildLargeSimpleCellMetadataReferenceSnapshots,
+  buildLargeSimpleLazyCellMetadataReferenceSnapshots,
+} from './xlsx-large-simple-cell-metadata.js'
 import { internLargeSimpleSheetMetadataInput } from './xlsx-large-simple-metadata-interning.js'
 import {
   normalizeLargeSimpleConditionalFormatIds,
@@ -63,6 +66,16 @@ export function buildParsedWorksheet(
         ? lazySheetCellMaterializationNumberFormatThreshold
         : lazySheetCellMaterializationThreshold)
   const detachLazyCells = useLazyCells && options.releaseArenaAfterMaterialization !== false
+  const preview = createSheetPreview({
+    name: sheetName,
+    rowCount: cellScan.rowCount,
+    columnCount: cellScan.columnCount,
+    nonEmptyCellCount: cellScan.cellCount,
+    readCellText: (row, column) => cellScan.arena.readPreviewText(row, column),
+  })
+  const detachedLazyCellMetadataRefs = detachLazyCells
+    ? buildLargeSimpleLazyCellMetadataReferenceSnapshots(metadataScan?.cellMetadataRefs, cellScan)
+    : undefined
   const cells = options.materializeCells
     ? useLazyCells
       ? detachLazyCells
@@ -73,14 +86,9 @@ export function buildParsedWorksheet(
   if (!useLazyCells && options.numberFormatsByStyleIndex && options.numberFormatsByStyleIndex.size > 0) {
     applyLargeSimpleNumberFormatsToCells(cells, cellScan, options.numberFormatsByStyleIndex)
   }
-  const cellMetadataRefs = buildLargeSimpleCellMetadataReferenceSnapshots(metadataScan?.cellMetadataRefs, cells, cellScan, useLazyCells)
-  const preview = createSheetPreview({
-    name: sheetName,
-    rowCount: cellScan.rowCount,
-    columnCount: cellScan.columnCount,
-    nonEmptyCellCount: cellScan.cellCount,
-    readCellText: (row, column) => cellScan.arena.readPreviewText(row, column),
-  })
+  const cellMetadataRefs =
+    detachedLazyCellMetadataRefs ??
+    buildLargeSimpleCellMetadataReferenceSnapshots(metadataScan?.cellMetadataRefs, cells, cellScan, useLazyCells)
   releaseProjectedCellScanStorage(cellScan, {
     releaseArenaAfterMaterialization: options.releaseArenaAfterMaterialization,
     detachLazyCells,

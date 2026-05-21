@@ -135,6 +135,26 @@ describe('large simple XLSX import arena', () => {
     expect(detachedCells.map((cell) => cell.address)).toEqual(['A1', 'B1', 'A2', 'B2'])
   })
 
+  it('transfers detached lazy string and formula pools out of the import arena', () => {
+    const arena = new ImportedWorkbookArena()
+    const firstCell = arena.addCell({ sheetIndex: 0, row: 0, column: 0, value: 'Unique inline label' })
+    const secondCell = arena.addCell({ sheetIndex: 0, row: 1, column: 0, value: 'Second inline label' })
+    arena.setFormula(firstCell, 'B1&"!"')
+    arena.setFormula(secondCell, 'B2&"!"')
+
+    const detachedCells = arena.createDetachedLazySheetCells(0)
+    const snapshotAfterTransfer = arena.snapshot()
+
+    expect(snapshotAfterTransfer.strings).toHaveLength(0)
+    expect(snapshotAfterTransfer.formulas).toHaveLength(0)
+
+    arena.release()
+
+    expect(detachedCells).toHaveLength(2)
+    expect(detachedCells[0]).toEqual({ address: 'A1', value: 'Unique inline label', formula: 'B1&"!"' })
+    expect(detachedCells[1]).toEqual({ address: 'A2', value: 'Second inline label', formula: 'B2&"!"' })
+  })
+
   it('detaches lazy retained shared-string cells from the import arena', () => {
     const arena = new ImportedWorkbookArena()
     const firstCell = arena.addSharedStringCell({ sheetIndex: 0, row: 0, column: 0, sharedStringIndex: 2 })

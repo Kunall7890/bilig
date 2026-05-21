@@ -20,6 +20,16 @@ export function buildLargeSimpleCellMetadataReferenceSnapshots(
   if (!useLazyCells) {
     return buildImportedCellMetadataReferenceSnapshots(refs, cells)
   }
+  return buildLargeSimpleLazyCellMetadataReferenceSnapshots(refs, cellScan)
+}
+
+export function buildLargeSimpleLazyCellMetadataReferenceSnapshots(
+  refs: readonly LargeSimpleWorksheetCellMetadataRef[] | undefined,
+  cellScan: Pick<ImportedWorksheetCellScan, 'arena' | 'sheetIndex'>,
+): WorkbookCellMetadataReferenceSnapshot[] | undefined {
+  if (!refs || refs.length === 0) {
+    return undefined
+  }
   return buildImportedCellMetadataReferenceSnapshotsFromCellMap(
     refs,
     cellScan.arena.materializeSheetCellsByAddress(cellScan.sheetIndex, new Set(refs.map((ref) => ref.address))),

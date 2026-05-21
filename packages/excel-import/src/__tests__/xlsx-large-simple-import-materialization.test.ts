@@ -472,6 +472,53 @@ describe('large simple XLSX import materialization lifetime', () => {
     expect(imported?.preview.sheets[0]?.previewRows[0]?.[0]).toBe('1')
     expect(readLazyXlsxZipSourceByteLength(zip)).toBe(0)
   })
+
+  it('keeps detached lazy inline strings and formulas readable after arena release', () => {
+    const rowCount = lazySheetCellMaterializationThreshold + 1
+    const rows: string[] = []
+    for (let row = 1; row <= rowCount; row += 1) {
+      const label = `Inline ${String(row)}`
+      rows.push(
+        `<row r="${String(row)}"><c r="A${String(row)}" t="inlineStr"><is><t>${label}</t></is></c><c r="B${String(
+          row,
+        )}"><f>LEN(A${String(row)})</f><v>${String(label.length)}</v></c></row>`,
+      )
+    }
+    const bytes = buildIndependentWorkbook([
+      {
+        name: 'Data',
+        path: 'xl/worksheets/sheet1.xml',
+        xml: [
+          '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>',
+          '<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">',
+          `<dimension ref="A1:B${String(rowCount)}"/>`,
+          `<sheetData>${rows.join('')}</sheetData>`,
+          '</worksheet>',
+        ].join(''),
+      },
+    ])
+    const zip = readXlsxZipEntriesLazy(bytes)
+
+    const imported = tryImportLargeSimpleXlsx(bytes, 'medium-large-inline-formulas.xlsx', zip, {
+      minByteLength: 0,
+      releaseZipSource: true,
+    })
+    const cells = imported?.snapshot.sheets[0]?.cells
+    const lastFormulaIndex = rowCount * 2 - 1
+
+    expect(isLazyWorkbookSheetCells(cells)).toBe(true)
+    expect(cells).toHaveLength(rowCount * 2)
+    expect(cells?.[0]).toEqual({ address: 'A1', value: 'Inline 1' })
+    expect(cells?.[1]).toEqual({ address: 'B1', value: 8, formula: 'LEN(A1)' })
+    expect(cells?.[lastFormulaIndex - 1]).toEqual({ address: `A${String(rowCount)}`, value: `Inline ${String(rowCount)}` })
+    expect(cells?.[lastFormulaIndex]).toEqual({
+      address: `B${String(rowCount)}`,
+      value: `Inline ${String(rowCount)}`.length,
+      formula: `LEN(A${String(rowCount)})`,
+    })
+    expect(imported?.preview.sheets[0]?.previewRows[0]).toEqual(['Inline 1', '8'])
+    expect(readLazyXlsxZipSourceByteLength(zip)).toBe(0)
+  })
 })
 
 function worksheetXml(label: string, value: number): string {
