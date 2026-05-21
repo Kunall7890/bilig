@@ -678,6 +678,7 @@ jobs:
           git fetch --force github main
 
       - name: Validate Forgejo and GitHub branch alignment
+        id: publish_release_alignment
         run: |
           set -euo pipefail
 
@@ -688,10 +689,51 @@ jobs:
           echo "GitHub main: ${github_sha}"
           echo "Workflow SHA: ${GITHUB_SHA}"
 
-          test "${origin_sha}" = "${github_sha}"
-          test "${origin_sha}" = "${GITHUB_SHA}"
+          if [[ "${origin_sha}" != "${github_sha}" ]]; then
+            echo "current=false" >> "$GITHUB_OUTPUT"
+            echo "reason=Forgejo and GitHub main are not aligned" >> "$GITHUB_OUTPUT"
+            {
+              echo "### runtime release skipped"
+              echo
+              echo "Forgejo and GitHub main are not aligned, so this workflow will not mutate release metadata or publish packages."
+              echo
+              echo "- Forgejo main: ${origin_sha}"
+              echo "- GitHub main: ${github_sha}"
+            } >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+
+          if [[ "${origin_sha}" != "${GITHUB_SHA}" ]]; then
+            echo "current=false" >> "$GITHUB_OUTPUT"
+            echo "reason=stale workflow SHA; newer main exists" >> "$GITHUB_OUTPUT"
+            {
+              echo "### runtime release skipped"
+              echo
+              echo "A newer main commit exists, so this stale workflow run will not mutate release metadata or publish packages."
+              echo
+              echo "- workflow SHA: ${GITHUB_SHA}"
+              echo "- current main: ${origin_sha}"
+            } >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+
+          echo "current=true" >> "$GITHUB_OUTPUT"
+          echo "reason=" >> "$GITHUB_OUTPUT"
+
+      - name: Report skipped stale runtime release
+        if: steps.publish_release_alignment.outputs.current != 'true'
+        env:
+          REASON: ${{ steps.publish_release_alignment.outputs.reason }}
+        run: |
+          set -euo pipefail
+          {
+            echo "### runtime release publish path skipped"
+            echo
+            echo "${REASON:-stale workflow SHA; newer main exists}"
+          } >> "$GITHUB_STEP_SUMMARY"
 
       - name: Regenerate release notes
+        if: steps.publish_release_alignment.outputs.current == 'true'
         run: |
           set -euo pipefail
 
@@ -710,6 +752,7 @@ jobs:
           PLANNER_ARGS: ${{ needs.plan_release.outputs.planner_args }}
 
       - name: Confirm package version baseline
+        if: steps.publish_release_alignment.outputs.current == 'true'
         run: |
           node - <<'NODE'
           const fs = require('node:fs');
@@ -746,6 +789,7 @@ jobs:
           NODE
 
       - name: Wait for github-ci success before release mutation
+        if: steps.publish_release_alignment.outputs.current == 'true'
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
@@ -758,6 +802,7 @@ jobs:
             --branch main
 
       - name: Sync and commit runtime release metadata
+        if: steps.publish_release_alignment.outputs.current == 'true'
         env:
           TARGET_VERSION: ${{ needs.plan_release.outputs.target_version }}
           DRY_RUN: ${{ needs.plan_release.outputs.dry_run }}
@@ -906,6 +951,7 @@ jobs:
           test "${github_sha}" = "${head_sha}"
 
       - name: Wait for github-ci success before publishing release metadata
+        if: steps.publish_release_alignment.outputs.current == 'true'
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
@@ -918,6 +964,7 @@ jobs:
             --branch main
 
       - name: Build runtime package chain
+        if: steps.publish_release_alignment.outputs.current == 'true'
         run: |
           set -euo pipefail
           pnpm --filter @bilig/protocol build
@@ -937,11 +984,13 @@ jobs:
           pnpm --filter @bilig/exceljs-formula-recalc build
 
       - name: Validate publishable runtime package set
+        if: steps.publish_release_alignment.outputs.current == 'true'
         run: |
           set -euo pipefail
           pnpm publish:runtime:check
 
       - name: Check npm package name provisioning
+        if: steps.publish_release_alignment.outputs.current == 'true'
         id: npm_provisioning
         env:
           ALLOW_NEW_NPM_PACKAGES: ${{ needs.plan_release.outputs.allow_new_packages }}
@@ -952,7 +1001,7 @@ jobs:
           bun scripts/check-runtime-npm-provisioning.ts
 
       - name: Report skipped runtime package release
-        if: steps.npm_provisioning.outputs.publish_allowed != 'true'
+        if: steps.publish_release_alignment.outputs.current == 'true' && steps.npm_provisioning.outputs.publish_allowed != 'true'
         env:
           REASON: ${{ steps.npm_provisioning.outputs.reason }}
           MISSING_PACKAGES: ${{ steps.npm_provisioning.outputs.missing_packages }}
