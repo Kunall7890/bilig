@@ -137,27 +137,19 @@ export function trySetExistingNumericWorkPaperCellContentsWithTrackedFastPath(
   if (runtime.hasTrackedEngineEvents()) {
     runtime.clearTrackedEngineEvents()
   }
+  const compactDirectChanges = tryBuildCompactDirectExistingNumericTrackedChanges(runtime, request, result)
+  if (compactDirectChanges !== null) {
+    if (runtime.hasValuesUpdatedListeners()) {
+      runtime.emitValuesUpdated(compactDirectChanges)
+    }
+    return compactDirectChanges
+  }
   const compactLazyChanges = tryBuildCompactLazyDirectExistingNumericTrackedChanges(runtime, engine, request, result)
   if (compactLazyChanges !== null) {
     if (runtime.hasValuesUpdatedListeners()) {
       runtime.emitValuesUpdated(compactLazyChanges)
     }
     return compactLazyChanges
-  }
-  if (result.changedCellIndices === undefined && result.changedCellCount === 1 && result.firstChangedCellIndex === request.cellIndex) {
-    const changes: WorkPaperCellChange[] = [
-      {
-        kind: 'cell',
-        address: { sheet: request.address.sheet, row: request.address.row, col: request.address.col },
-        sheetName: request.sheet.name,
-        a1: runtime.trackedA1(request.address.row, request.address.col),
-        newValue: { tag: ValueTag.Number, value: request.value },
-      },
-    ]
-    if (runtime.hasValuesUpdatedListeners()) {
-      runtime.emitValuesUpdated(changes)
-    }
-    return changes
   }
   const lazyChanges = tryBuildLazyDirectExistingNumericTrackedChanges(
     runtime,
@@ -175,36 +167,6 @@ export function trySetExistingNumericWorkPaperCellContentsWithTrackedFastPath(
       runtime.emitValuesUpdated(lazyChanges)
     }
     return lazyChanges
-  }
-  if (
-    result.changedCellIndices === undefined &&
-    result.changedCellCount === 2 &&
-    result.firstChangedCellIndex === request.cellIndex &&
-    result.secondChangedCellIndex !== undefined &&
-    result.secondChangedNumericValue !== undefined &&
-    result.secondChangedRow !== undefined &&
-    result.secondChangedCol !== undefined
-  ) {
-    const changes: WorkPaperCellChange[] = [
-      {
-        kind: 'cell',
-        address: { sheet: request.address.sheet, row: request.address.row, col: request.address.col },
-        sheetName: request.sheet.name,
-        a1: runtime.trackedA1(request.address.row, request.address.col),
-        newValue: { tag: ValueTag.Number, value: request.value },
-      },
-      {
-        kind: 'cell',
-        address: { sheet: request.address.sheet, row: result.secondChangedRow, col: result.secondChangedCol },
-        sheetName: request.sheet.name,
-        a1: runtime.trackedA1(result.secondChangedRow, result.secondChangedCol),
-        newValue: { tag: ValueTag.Number, value: result.secondChangedNumericValue },
-      },
-    ]
-    if (runtime.hasValuesUpdatedListeners()) {
-      runtime.emitValuesUpdated(changes)
-    }
-    return changes
   }
 
   let changes: WorkPaperChange[] | null = tryBuildDirectExistingNumericTrackedChanges({
@@ -236,6 +198,54 @@ export function trySetExistingNumericWorkPaperCellContentsWithTrackedFastPath(
     runtime.emitValuesUpdated(changes)
   }
   return changes
+}
+
+function tryBuildCompactDirectExistingNumericTrackedChanges(
+  runtime: WorkPaperExistingNumericFastPathRuntime,
+  request: ExistingNumericWorkPaperCellContentsRequest,
+  result: EngineExistingNumericCellMutationResult,
+): WorkPaperCellChange[] | null {
+  if (result.changedCellIndices !== undefined || result.firstChangedCellIndex !== request.cellIndex) {
+    return null
+  }
+  if (result.changedCellCount === 1) {
+    const changes: WorkPaperCellChange[] = [
+      {
+        kind: 'cell',
+        address: { sheet: request.address.sheet, row: request.address.row, col: request.address.col },
+        sheetName: request.sheet.name,
+        a1: runtime.trackedA1(request.address.row, request.address.col),
+        newValue: { tag: ValueTag.Number, value: request.value },
+      },
+    ]
+    return changes
+  }
+  if (
+    result.changedCellCount === 2 &&
+    result.secondChangedCellIndex !== undefined &&
+    result.secondChangedNumericValue !== undefined &&
+    result.secondChangedRow !== undefined &&
+    result.secondChangedCol !== undefined
+  ) {
+    const changes: WorkPaperCellChange[] = [
+      {
+        kind: 'cell',
+        address: { sheet: request.address.sheet, row: request.address.row, col: request.address.col },
+        sheetName: request.sheet.name,
+        a1: runtime.trackedA1(request.address.row, request.address.col),
+        newValue: { tag: ValueTag.Number, value: request.value },
+      },
+      {
+        kind: 'cell',
+        address: { sheet: request.address.sheet, row: result.secondChangedRow, col: result.secondChangedCol },
+        sheetName: request.sheet.name,
+        a1: runtime.trackedA1(result.secondChangedRow, result.secondChangedCol),
+        newValue: { tag: ValueTag.Number, value: result.secondChangedNumericValue },
+      },
+    ]
+    return changes
+  }
+  return null
 }
 
 function tryBuildCompactLazyDirectExistingNumericTrackedChanges(
