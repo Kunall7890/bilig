@@ -8,10 +8,10 @@ export function readAlignedFreshFormulaFamilyRunsFromRefs<Entry>(args: {
   readonly hadExistingFormulas: boolean
   readonly counters: EngineRuntimeState['counters']
 }): readonly DeferredInitialFormulaFamilyRun[] | undefined {
-  if (args.hadExistingFormulas) {
+  const freshFormulaFamilyRuns = readFreshFormulaFamilyRunsFromRefs(args.refs)
+  if (args.hadExistingFormulas && freshFormulaFamilyRuns === undefined) {
     return undefined
   }
-  const freshFormulaFamilyRuns = readFreshFormulaFamilyRunsFromRefs(args.refs)
   const alignedFreshFormulaFamilyRuns = freshFormulaFamilyRuns?.runs
   if (freshFormulaFamilyRuns?.fallbackCount) {
     addEngineCounter(args.counters, 'formulaFamilyRuntimeRunFallbacks', freshFormulaFamilyRuns.fallbackCount)

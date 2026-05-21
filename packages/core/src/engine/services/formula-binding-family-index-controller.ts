@@ -114,7 +114,7 @@ export function createFormulaBindingFamilyIndexController(args: {
 
   const deferRunsNow = (runs: readonly DeferredInitialFormulaFamilyRun[]): void => {
     args.formulaFamilyShapeKeyCache.clear()
-    deferredRuns = [...runs]
+    deferredRuns = deferredRuns === undefined ? [...runs] : [...deferredRuns, ...runs]
     deferredStructuralSourceTransforms = undefined
     needsRebuild = true
   }

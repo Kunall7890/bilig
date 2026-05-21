@@ -12,7 +12,7 @@ export interface RuntimeImageFormulaFamilyRunSnapshot {
   readonly cellIndices: readonly number[]
 }
 
-interface RestoredRuntimeFormulaFamilyRuns {
+export interface RestoredRuntimeFormulaFamilyRuns {
   readonly runs: DeferredInitialFormulaFamilyRun[]
   readonly fallbackCount: number
 }
