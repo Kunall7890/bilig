@@ -147,7 +147,7 @@ interface RendererPresentationSample {
 }
 
 function isResizeGuidePixel(point: ReadbackPoint): boolean {
-  return point.a > 150 && point.g > point.r && point.r < 180 && point.b < 180
+  return point.a > 150 && point.r < 80 && point.g > 80 && point.b > 180 && point.r < point.g && point.g < point.b
 }
 
 function expectNear(actual: number, expected: number, tolerance: number): void {
