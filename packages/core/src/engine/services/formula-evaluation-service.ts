@@ -43,6 +43,7 @@ import {
   referenceReplacementKey,
 } from './formula-evaluation-helpers.js'
 import { tryEvaluateDirectAggregate } from './formula-evaluation-direct-aggregate.js'
+import { firstMatchedAggregateError } from './formula-evaluation-direct-criteria-aggregate.js'
 import {
   tryEvaluateNativeDirectCriteriaMatchedAggregate,
   tryEvaluateNativeDirectCriteriaPredicateAggregate,
@@ -582,20 +583,6 @@ export function createEngineFormulaEvaluationService(args: {
         directNumberResult(maximum === Number.NEGATIVE_INFINITY ? 0 : maximum),
       ),
     )
-  }
-
-  const firstMatchedAggregateError = (
-    view: ReturnType<EngineRuntimeColumnStoreService['getColumnView']>,
-    rows: ArrayLike<number>,
-    length: number,
-  ): CellValue | undefined => {
-    for (let index = 0; index < length; index += 1) {
-      const row = rows[index]!
-      if ((view.readTagAt(row) as ValueTag) === ValueTag.Error) {
-        return directErrorResult(view.readErrorAt(row) as ErrorCode)
-      }
-    }
-    return undefined
   }
 
   const resolveStructuredReferenceNow = (tableName: string, columnName: string): FormulaNode | undefined => {
