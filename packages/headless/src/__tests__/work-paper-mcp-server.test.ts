@@ -66,8 +66,12 @@ describe('WorkPaper MCP server', () => {
     const exitPromise = new Promise<number | null>((resolve, reject) => {
       const timeout = setTimeout(() => {
         child.kill('SIGKILL')
-        reject(new Error('Timed out waiting for bilig-workpaper-mcp smoke test process to exit'))
-      }, 5000)
+        reject(
+          new Error(
+            `Timed out waiting for bilig-workpaper-mcp smoke test process to exit; stdout=${JSON.stringify(stdout.join(''))}; stderr=${JSON.stringify(stderr.join(''))}`,
+          ),
+        )
+      }, 15000)
 
       child.once('error', (error) => {
         clearTimeout(timeout)

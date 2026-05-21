@@ -21,4 +21,39 @@ describe('formula serializer', () => {
       }),
     ).toBe('(1+2)*3')
   })
+
+  it('serializes omitted arguments, array constants, fallback errors, and 3D range edge prefixes', () => {
+    expect(serializeFormula({ kind: 'OmittedArgument' })).toBe('')
+    expect(serializeFormula({ kind: 'ErrorLiteral', code: 999 })).toBe('#ERROR!')
+    expect(
+      serializeFormula({
+        kind: 'ArrayConstant',
+        rows: [
+          [
+            { kind: 'NumberLiteral', value: 1 },
+            { kind: 'BooleanLiteral', value: true },
+            { kind: 'StringLiteral', value: 'x' },
+          ],
+          [{ kind: 'ErrorLiteral', code: ErrorCode.Div0 }, { kind: 'OmittedArgument' }],
+        ],
+      }),
+    ).toBe('{1,TRUE,"x";#DIV/0!,}')
+    expect(
+      serializeFormula({
+        kind: 'RangeRef',
+        sheetEndName: 'Sheet 3',
+        start: 'A1',
+        end: 'B2',
+      }),
+    ).toBe('A1:B2')
+    expect(
+      serializeFormula({
+        kind: 'RangeRef',
+        sheetName: 'Sheet 1',
+        sheetEndName: 'Sheet 3',
+        start: 'A1',
+        end: 'B2',
+      }),
+    ).toBe("'Sheet 1':'Sheet 3'!A1:B2")
+  })
 })
