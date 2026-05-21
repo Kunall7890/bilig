@@ -9,6 +9,7 @@ import { GridCameraStore } from '../runtime/gridCameraStore.js'
 import {
   TYPEGPU_V3_ACTIVE_RESOURCE_DEFER_MS,
   WorkbookPaneRendererV3,
+  resolveWorkbookPaneNativeTextPresentedScrollSnapshotV3,
   resolveWorkbookPanePresentedRevisionV3,
   resolveWorkbookPaneTileSceneCameraSeqV3,
   resolveWorkbookPaneTileSceneRevisionV3,
@@ -370,6 +371,39 @@ describe('WorkbookPaneRendererV3', () => {
         showCanvasFallback: false,
       }),
     ).toBe(1)
+  })
+
+  test('keeps native text on live scroll while Canvas2D fallback owns the visible frame', () => {
+    const presentedScrollSnapshot = {
+      renderTx: 208,
+      renderTy: 88,
+      scrollLeft: 208,
+      scrollTop: 88,
+      tx: 12,
+      ty: 8,
+    }
+    const presentedVisualFrame = {
+      cameraSeq: 14,
+      overlayCameraSeq: null,
+      overlayRectCount: 0,
+      overlayRectSignature: null,
+      overlaySeq: null,
+      scrollSnapshot: presentedScrollSnapshot,
+      surface: { dpr: 2, height: 360, pixelHeight: 720, pixelWidth: 1280, width: 640 },
+    }
+
+    expect(
+      resolveWorkbookPaneNativeTextPresentedScrollSnapshotV3({
+        presentedVisualFrame,
+        showCanvasFallback: false,
+      }),
+    ).toBe(presentedScrollSnapshot)
+    expect(
+      resolveWorkbookPaneNativeTextPresentedScrollSnapshotV3({
+        presentedVisualFrame,
+        showCanvasFallback: true,
+      }),
+    ).toBeNull()
   })
 
   test('includes surface size and device scale in frame proof identity', () => {
