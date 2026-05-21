@@ -1,8 +1,8 @@
 import { parseCellAddress } from '@bilig/formula'
 import type { LiteralInput } from '@bilig/protocol'
-import type { WorkbookTableRecord } from '../../workbook-store.js'
+import { normalizeDefinedName, type WorkbookTableRecord } from '../../workbook-store.js'
 import type { CreateEngineOperationServiceArgs } from './operation-service-types.js'
-import { rewriteFormulaSourceForRenamedStructuredReference } from './structure-structured-ref-rewrite.js'
+import { rewriteFormulaSourceForRenamedStructuredReference, type RenamedTableColumnReference } from './structure-structured-ref-rewrite.js'
 
 interface TableHeaderRenameCounts {
   readonly formulaChangedCount: number
@@ -46,16 +46,23 @@ export function applyTableHeaderRenameForSetCellValue(args: {
 
   let formulaChangedCount = args.formulaChangedCount
   let topologyChanged = args.topologyChanged
+  const renamedReference = {
+    tableName: header.table.name,
+    oldColumnName: previousColumnName,
+    newColumnName: nextColumnName,
+  }
+  const changedDefinedNames = rewriteDefinedNamesForRenamedTableColumn(args.serviceArgs, renamedReference)
+  if (changedDefinedNames.size > 0) {
+    const reboundCount = formulaChangedCount
+    formulaChangedCount = args.serviceArgs.rebindDefinedNameDependents([...changedDefinedNames], formulaChangedCount)
+    topologyChanged = topologyChanged || formulaChangedCount !== reboundCount
+  }
   for (const cellIndex of args.serviceArgs.collectFormulaCellsForTables([header.table.name])) {
     const formula = args.serviceArgs.state.formulas.get(cellIndex)
     if (!formula) {
       continue
     }
-    const source = rewriteFormulaSourceForRenamedStructuredReference(formula.source, {
-      tableName: header.table.name,
-      oldColumnName: previousColumnName,
-      newColumnName: nextColumnName,
-    })
+    const source = rewriteFormulaSourceForRenamedStructuredReference(formula.source, renamedReference)
     if (!source || source === formula.source) {
       continue
     }
@@ -76,6 +83,56 @@ export function applyTableHeaderRenameForSetCellValue(args: {
 
 export function isTableHeaderCell(tables: readonly WorkbookTableRecord[], sheetName: string, row: number, col: number): boolean {
   return findTableHeaderCell(tables, sheetName, row, col) !== undefined
+}
+
+function rewriteDefinedNamesForRenamedTableColumn(
+  args: CreateEngineOperationServiceArgs,
+  renamedReference: RenamedTableColumnReference,
+): Set<string> {
+  const changedNames = new Set<string>()
+  for (const record of args.state.workbook.listDefinedNames()) {
+    const value = record.value
+    if (typeof value === 'string' && value.startsWith('=')) {
+      const source = rewriteFormulaSourceForRenamedStructuredReference(value.slice(1), renamedReference)
+      if (!source || `=${source}` === value) {
+        continue
+      }
+      args.state.workbook.setDefinedName(record.name, `=${source}`, record.scopeSheetName)
+      changedNames.add(normalizeDefinedName(record.name))
+      continue
+    }
+    if (typeof value !== 'object' || value === null) {
+      continue
+    }
+    switch (value.kind) {
+      case 'formula': {
+        const formula = value.formula.startsWith('=') ? value.formula.slice(1) : value.formula
+        const source = rewriteFormulaSourceForRenamedStructuredReference(formula, renamedReference)
+        if (!source) {
+          break
+        }
+        const nextFormula = value.formula.startsWith('=') ? `=${source}` : source
+        if (nextFormula === value.formula) {
+          break
+        }
+        args.state.workbook.setDefinedName(record.name, { ...value, formula: nextFormula }, record.scopeSheetName)
+        changedNames.add(normalizeDefinedName(record.name))
+        break
+      }
+      case 'structured-ref':
+        if (!structuredReferenceMatches(renamedReference, value.tableName, value.columnName)) {
+          break
+        }
+        args.state.workbook.setDefinedName(record.name, { ...value, columnName: renamedReference.newColumnName }, record.scopeSheetName)
+        changedNames.add(normalizeDefinedName(record.name))
+        break
+      case 'cell-ref':
+      case 'range-ref':
+      case 'scalar':
+        break
+    }
+  }
+  return changedNames
 }
 
 export function findTableHeaderCell(
@@ -102,6 +159,13 @@ export function findTableHeaderCell(
 
 function normalizeTableColumnName(name: string): string {
   return name.trim().toUpperCase()
+}
+
+function structuredReferenceMatches(reference: RenamedTableColumnReference, tableName: string, columnName: string): boolean {
+  return (
+    normalizeTableColumnName(reference.tableName) === normalizeTableColumnName(tableName) &&
+    normalizeTableColumnName(reference.oldColumnName) === normalizeTableColumnName(columnName)
+  )
 }
 
 function tableColumnNameForLiteral(value: LiteralInput): string | undefined {

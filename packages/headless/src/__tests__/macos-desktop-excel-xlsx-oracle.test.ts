@@ -63,6 +63,11 @@ const tableHeaderRenameOracleCells = [
   { address: 'E1', formula: '=SUM(Sales[Revenue])', rawValue: 'number\t30.0', value: { kind: 'number', value: 30 } },
   { address: 'F1', formula: '=SUM(Sales[Margin])', rawValue: 'number\t5.0', value: { kind: 'number', value: 5 } },
 ] as const
+const tableHeaderRenameDefinedNameOracleCells = [
+  { address: 'B1', formula: 'Revenue', rawValue: 'string\tRevenue', value: { kind: 'string', value: 'Revenue' } },
+  { address: 'E1', formula: '=SUM(SalesAmount)', rawValue: 'number\t30.0', value: { kind: 'number', value: 30 } },
+  { address: 'F1', formula: '=SUM(SalesAmountFormula)', rawValue: 'number\t30.0', value: { kind: 'number', value: 30 } },
+] as const
 const tableEmptyBodyOracleCell = {
   address: 'D1',
   formula: '=SUM(Sales[Amount])',
@@ -300,6 +305,36 @@ describe('macOS Desktop Excel XLSX oracle for WorkPaper', () => {
       ])
       expect(normalizedCellValue(reimported.getCellValue(addressToCell('D1')))).toEqual({ kind: 'error', value: String(ErrorCode.Ref) })
       expect(normalizedCellValue(reimported.getCellValue(addressToCell('E1')))).toEqual({ kind: 'error', value: String(ErrorCode.Ref) })
+    } finally {
+      reimported.dispose()
+    }
+  })
+
+  it('renames table-column defined names before XLSX export', async () => {
+    const engine = await buildTableHeaderRenameDefinedNameOracleEngine()
+
+    engine.setCellValue('Data', 'B1', 'Revenue')
+
+    expect(engine.getDefinedName('SalesAmount')).toEqual({
+      name: 'SalesAmount',
+      value: { kind: 'structured-ref', tableName: 'Sales', columnName: 'Revenue' },
+    })
+    expect(engine.getDefinedName('SalesAmountFormula')).toEqual({
+      name: 'SalesAmountFormula',
+      value: { kind: 'formula', formula: '=Sales[Revenue]' },
+    })
+    expect(engine.getCellValue('Data', 'E1')).toEqual({ tag: ValueTag.Number, value: 30 })
+    expect(engine.getCellValue('Data', 'F1')).toEqual({ tag: ValueTag.Number, value: 30 })
+
+    const imported = importXlsx(exportXlsx(engine.exportSnapshot()), 'headless-table-header-rename-defined-name-oracle.xlsx')
+    const reimported = WorkPaper.buildFromSnapshot(imported.snapshot, workbookConfig)
+    try {
+      expect(imported.snapshot.workbook.metadata?.definedNames).toEqual([
+        { name: 'SalesAmount', value: { kind: 'formula', formula: '=Sales[Revenue]' } },
+        { name: 'SalesAmountFormula', value: { kind: 'formula', formula: '=Sales[Revenue]' } },
+      ])
+      expect(normalizedCellValue(reimported.getCellValue(addressToCell('E1')))).toEqual({ kind: 'number', value: 30 })
+      expect(normalizedCellValue(reimported.getCellValue(addressToCell('F1')))).toEqual({ kind: 'number', value: 30 })
     } finally {
       reimported.dispose()
     }
@@ -648,6 +683,50 @@ describe('macOS Desktop Excel XLSX oracle for WorkPaper', () => {
   )
 
   it.runIf(process.env.BILIG_EXCEL_ORACLE_RUN === '1')(
+    'matches Desktop Excel table-header defined-name rename semantics',
+    async () => {
+      if (!isMacosExcelInstalled()) {
+        throw new Error('BILIG_EXCEL_ORACLE_RUN=1 requires /Applications/Microsoft Excel.app')
+      }
+
+      const tempDir = mkdtempSync(join(tmpdir(), 'bilig-headless-excel-table-header-defined-name-rename-oracle-'))
+      try {
+        const workbookPath = join(tempDir, 'headless-table-header-defined-name-rename-oracle.xlsx')
+        const engine = await buildTableHeaderRenameDefinedNameOracleEngine()
+        writeFileSync(workbookPath, exportXlsx(engine.exportSnapshot()))
+
+        const excelResult = runMacosExcelStructuralOperationOracle({
+          workbookPath,
+          worksheetName: 'Data',
+          operations: [{ kind: 'setCellValue', address: 'B1', value: 'Revenue' }],
+          inspectCells: ['B1', 'E1', 'F1'],
+          saveWorkbook: true,
+        })
+        expect(excelResult.cells).toEqual(tableHeaderRenameDefinedNameOracleCells)
+
+        const imported = importXlsx(
+          new Uint8Array(readFileSync(workbookPath)),
+          'headless-table-header-defined-name-rename-oracle-recalculated.xlsx',
+        )
+        const reimported = WorkPaper.buildFromSnapshot(imported.snapshot, workbookConfig)
+        try {
+          expect(imported.snapshot.workbook.metadata?.definedNames).toEqual([
+            { name: 'SalesAmount', value: { kind: 'formula', formula: '=Sales[Revenue]' } },
+            { name: 'SalesAmountFormula', value: { kind: 'formula', formula: '=Sales[Revenue]' } },
+          ])
+          expect(normalizedCellValue(reimported.getCellValue(addressToCell('E1')))).toEqual({ kind: 'number', value: 30 })
+          expect(normalizedCellValue(reimported.getCellValue(addressToCell('F1')))).toEqual({ kind: 'number', value: 30 })
+        } finally {
+          reimported.dispose()
+        }
+      } finally {
+        rmSync(tempDir, { recursive: true, force: true })
+      }
+    },
+    60_000,
+  )
+
+  it.runIf(process.env.BILIG_EXCEL_ORACLE_RUN === '1')(
     'matches Desktop Excel table column-delete structured-reference semantics',
     async () => {
       if (!isMacosExcelInstalled()) {
@@ -899,6 +978,31 @@ async function buildTableColumnDeleteOracleEngine(): Promise<SpreadsheetEngine> 
 
 async function buildTableColumnDeleteDefinedNameOracleEngine(): Promise<SpreadsheetEngine> {
   const engine = new SpreadsheetEngine({ workbookName: 'table-column-delete-defined-name-oracle' })
+  await engine.ready()
+  engine.createSheet('Data')
+  engine.setRangeValues({ sheetName: 'Data', startAddress: 'A1', endAddress: 'C3' }, [
+    ['Region', 'Amount', 'Margin'],
+    ['East', 10, 2],
+    ['West', 20, 3],
+  ])
+  engine.setTable({
+    name: 'Sales',
+    sheetName: 'Data',
+    startAddress: 'A1',
+    endAddress: 'C3',
+    columnNames: ['Region', 'Amount', 'Margin'],
+    headerRow: true,
+    totalsRow: false,
+  })
+  engine.setDefinedName('SalesAmount', { kind: 'structured-ref', tableName: 'Sales', columnName: 'Amount' })
+  engine.setDefinedName('SalesAmountFormula', { kind: 'formula', formula: '=Sales[Amount]' })
+  engine.setCellFormula('Data', 'E1', 'SUM(SalesAmount)')
+  engine.setCellFormula('Data', 'F1', 'SUM(SalesAmountFormula)')
+  return engine
+}
+
+async function buildTableHeaderRenameDefinedNameOracleEngine(): Promise<SpreadsheetEngine> {
+  const engine = new SpreadsheetEngine({ workbookName: 'table-header-rename-defined-name-oracle' })
   await engine.ready()
   engine.createSheet('Data')
   engine.setRangeValues({ sheetName: 'Data', startAddress: 'A1', endAddress: 'C3' }, [

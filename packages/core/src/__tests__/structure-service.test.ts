@@ -403,6 +403,53 @@ describe('EngineStructureService', () => {
     expect(engine.exportSnapshot()).toEqual(initialSnapshot)
   })
 
+  it('renames table-column defined names when editing a header cell', async () => {
+    const engine = new SpreadsheetEngine({ workbookName: 'structure-table-header-rename-defined-names' })
+    await engine.ready()
+    engine.createSheet('Data')
+    engine.setRangeValues({ sheetName: 'Data', startAddress: 'A1', endAddress: 'C3' }, [
+      ['Region', 'Amount', 'Margin'],
+      ['East', 10, 2],
+      ['West', 20, 3],
+    ])
+    engine.setTable({
+      name: 'Sales',
+      sheetName: 'Data',
+      startAddress: 'A1',
+      endAddress: 'C3',
+      columnNames: ['Region', 'Amount', 'Margin'],
+      headerRow: true,
+      totalsRow: false,
+    })
+    engine.setDefinedName('SalesAmount', { kind: 'structured-ref', tableName: 'Sales', columnName: 'Amount' })
+    engine.setDefinedName('SalesAmountFormula', { kind: 'formula', formula: '=Sales[Amount]' })
+    engine.setCellFormula('Data', 'E1', 'SUM(SalesAmount)')
+    engine.setCellFormula('Data', 'F1', 'SUM(SalesAmountFormula)')
+    const initialSnapshot = engine.exportSnapshot()
+
+    engine.setCellValue('Data', 'B1', 'Revenue')
+
+    expect(engine.getTable('Sales')).toMatchObject({
+      startAddress: 'A1',
+      endAddress: 'C3',
+      columnNames: ['Region', 'Revenue', 'Margin'],
+    })
+    expect(engine.getDefinedName('SalesAmount')).toEqual({
+      name: 'SalesAmount',
+      value: { kind: 'structured-ref', tableName: 'Sales', columnName: 'Revenue' },
+    })
+    expect(engine.getDefinedName('SalesAmountFormula')).toEqual({
+      name: 'SalesAmountFormula',
+      value: { kind: 'formula', formula: '=Sales[Revenue]' },
+    })
+    expect(engine.getCell('Data', 'E1').formula).toBe('SUM(SalesAmount)')
+    expect(engine.getCellValue('Data', 'E1')).toEqual({ tag: ValueTag.Number, value: 30 })
+    expect(engine.getCell('Data', 'F1').formula).toBe('SUM(SalesAmountFormula)')
+    expect(engine.getCellValue('Data', 'F1')).toEqual({ tag: ValueTag.Number, value: 30 })
+    expect(engine.undo()).toBe(true)
+    expect(engine.exportSnapshot()).toEqual(initialSnapshot)
+  })
+
   it('adds generated table column metadata when inserting inside the table', async () => {
     const engine = new SpreadsheetEngine({ workbookName: 'structure-table-column-insert' })
     await engine.ready()
