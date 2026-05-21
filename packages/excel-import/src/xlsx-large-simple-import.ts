@@ -215,11 +215,15 @@ export function tryImportLargeSimpleXlsx(
     options.releaseOwnedSourceBytes === undefined
   const hasRelationshipBackedSheetArtifacts =
     hasDrawingParts || hasChartParts || hasPivotParts || hasLegacyCommentParts || hasSlicerConnectionParts
-  const materializeSheetsImmediately =
+  const canFinalizeSheetBeforeStyleParsing = (
+    cellScan: ImportedWorksheetCellScan,
+    metadataScan: LargeSimpleWorksheetScannedMetadata | undefined,
+  ): boolean =>
     materializeCells &&
-    !hasSharedStrings &&
-    !hasStyles &&
     !hasRelationshipBackedSheetArtifacts &&
+    !metadataScan?.controlArtifacts &&
+    cellScan.styleIndexes.hasCoordinateStorage &&
+    cellScan.styleIndexes.count === 0 &&
     (options.releaseZipSource !== true || allowPreReleaseSheetFinalization)
   const emptyStylesByIndex = new Map<number, Omit<CellStyleRecord, 'id'>>()
   const appendParsedWorksheet = (parsed: ParsedWorksheet): void => {
@@ -428,7 +432,7 @@ export function tryImportLargeSimpleXlsx(
       metadataInput = { ...metadataInput, filters: [...streamedMetadataScan.filters] }
     }
     worksheetBytes = undefined
-    if (materializeSheetsImmediately && !retainedMetadataScan?.controlArtifacts) {
+    if (!hasSharedStrings && canFinalizeSheetBeforeStyleParsing(cellScan, retainedMetadataScan)) {
       phaseRecorder.finish('metadata-parsing', metadataParsingStart)
       const snapshotMaterializationStart = phaseRecorder.start()
       appendParsedWorksheet(
@@ -508,9 +512,9 @@ export function tryImportLargeSimpleXlsx(
   fallbackSharedStrings = null
   phaseRecorder.finish('shared-string-resolution', sharedStringResolutionStart)
   collectLargeSimpleImportGarbage()
-  if (allowPreReleaseSheetFinalization && !hasStyles && !hasRelationshipBackedSheetArtifacts) {
+  if ((options.releaseZipSource !== true || allowPreReleaseSheetFinalization) && !hasRelationshipBackedSheetArtifacts) {
     for (const [index, scanned] of scannedWorksheets.entries()) {
-      if (!scanned || scanned.metadataScan?.controlArtifacts) {
+      if (!scanned || scanned.sharedStringIndexes.size > 0 || !canFinalizeSheetBeforeStyleParsing(scanned.cellScan, scanned.metadataScan)) {
         continue
       }
       const snapshotMaterializationStart = phaseRecorder.start()

@@ -149,6 +149,7 @@ describe('large simple XLSX import materialization lifetime', () => {
   <si><t>Gamma</t></si>
   ${richStringXml}
 </sst>`,
+      { 'xl/styles.xml': stylesXmlWithNumberFormat() },
     )
     const zip = readXlsxZipEntriesLazy(bytes)
     Object.defineProperty(zip, 'xl/sharedStrings.xml', {
@@ -209,6 +210,53 @@ describe('large simple XLSX import materialization lifetime', () => {
       'style-parsing',
       'zip-source-release',
     ])
+  })
+
+  it('finalizes unstyled sheets before style parsing when the workbook has a style part', () => {
+    const bytes = buildIndependentWorkbook(
+      [
+        {
+          name: 'Plain',
+          path: 'xl/worksheets/sheet1.xml',
+          xml: worksheetXml('A', 7),
+        },
+        {
+          name: 'Styled',
+          path: 'xl/worksheets/sheet2.xml',
+          xml: [
+            '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>',
+            '<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">',
+            '<dimension ref="A1:B1"/>',
+            '<sheetData><row r="1"><c r="A1" s="1"><v>11</v></c><c r="B1" t="inlineStr"><is><t>B inline</t></is></c></row></sheetData>',
+            '</worksheet>',
+          ].join(''),
+        },
+      ],
+      { 'xl/styles.xml': stylesXmlWithNumberFormat() },
+    )
+    const zip = readXlsxZipEntriesLazy(bytes)
+
+    const imported = tryImportLargeSimpleXlsx(bytes, 'unstyled-before-styles.xlsx', zip, {
+      minByteLength: 0,
+      releaseZipSource: true,
+      allowPreReleaseSheetFinalization: true,
+    })
+    const phases = imported?.stats.phaseTelemetry.map((entry) => entry.phase) ?? []
+    const firstMaterializationIndex = phases.indexOf('public-snapshot-materialization')
+    const styleParsingIndex = phases.indexOf('style-parsing')
+
+    expect(firstMaterializationIndex).toBeLessThan(styleParsingIndex)
+    expect(imported?.snapshot.sheets.map((sheet) => sheet.cells)).toEqual([
+      [
+        { address: 'A1', value: 7 },
+        { address: 'B1', value: 'A inline' },
+      ],
+      [
+        { address: 'A1', value: 11, format: '00000' },
+        { address: 'B1', value: 'B inline' },
+      ],
+    ])
+    expect(readLazyXlsxZipSourceByteLength(zip)).toBe(0)
   })
 
   it('resolves plain shared strings before exposing large lazy cell arrays', () => {
@@ -310,7 +358,10 @@ function worksheetXml(label: string, value: number): string {
   ].join('')
 }
 
-function buildIndependentWorkbook(sheets: readonly { readonly name: string; readonly path: string; readonly xml: string }[]): Uint8Array {
+function buildIndependentWorkbook(
+  sheets: readonly { readonly name: string; readonly path: string; readonly xml: string }[],
+  extraEntries: Record<string, string> = {},
+): Uint8Array {
   return zipSync({
     'xl/workbook.xml': strToU8(`<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">
@@ -328,6 +379,7 @@ ${sheets
   .join('')}
 </Relationships>`),
     ...Object.fromEntries(sheets.map((sheet) => [sheet.path, strToU8(sheet.xml)])),
+    ...Object.fromEntries(Object.entries(extraEntries).map(([path, xml]) => [path, strToU8(xml)])),
   })
 }
 
@@ -346,6 +398,7 @@ function sharedStringWorksheetXml(sharedStringIndexes: readonly number[]): strin
 function buildSharedStringWorkbook(
   sheets: readonly { readonly name: string; readonly path: string; readonly xml: string }[],
   sharedStringsXml: string,
+  extraEntries: Record<string, string> = {},
 ): Uint8Array {
   return zipSync({
     'xl/workbook.xml': strToU8(`<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
@@ -366,5 +419,21 @@ ${sheets
 </Relationships>`),
     'xl/sharedStrings.xml': strToU8(sharedStringsXml),
     ...Object.fromEntries(sheets.map((sheet) => [sheet.path, strToU8(sheet.xml)])),
+    ...Object.fromEntries(Object.entries(extraEntries).map(([path, xml]) => [path, strToU8(xml)])),
   })
+}
+
+function stylesXmlWithNumberFormat(): string {
+  return `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">
+  <numFmts count="1"><numFmt numFmtId="164" formatCode="00000"/></numFmts>
+  <fonts count="1"><font/></fonts>
+  <fills count="1"><fill><patternFill patternType="none"/></fill></fills>
+  <borders count="1"><border/></borders>
+  <cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs>
+  <cellXfs count="2">
+    <xf numFmtId="0" fontId="0" fillId="0" borderId="0"/>
+    <xf numFmtId="164" fontId="0" fillId="0" borderId="0" applyNumberFormat="1"/>
+  </cellXfs>
+</styleSheet>`
 }
