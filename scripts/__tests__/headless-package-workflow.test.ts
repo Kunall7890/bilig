@@ -109,6 +109,8 @@ describe('headless package workflow', () => {
     expect(source).toContain('git rebase origin/main')
     expect(source).toContain('GitHub main mirrors release metadata SHA')
     expect(source).toContain('Refusing to push release metadata directly to GitHub main.')
+    expect(source).toContain('Run full repository CI before publishing')
+    expect(source).toContain('pnpm run ci')
     expect(source).toContain('GitHub tag mirror has ${TAG_NAME}')
     expect(source).toContain('Refusing to push runtime tags directly to GitHub.')
     expect(source).not.toContain('git push github')

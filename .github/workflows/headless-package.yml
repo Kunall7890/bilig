@@ -874,6 +874,11 @@ jobs:
           test "${origin_sha}" = "${head_sha}"
           test "${github_sha}" = "${head_sha}"
 
+      - name: Run full repository CI before publishing
+        run: |
+          set -euo pipefail
+          pnpm run ci
+
       - name: Build runtime package chain
         run: |
           set -euo pipefail
