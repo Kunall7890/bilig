@@ -478,6 +478,11 @@ describe('work paper batched structural fast path', () => {
       expect(workbook.getPerformanceCounters()).toMatchObject({
         calcChainFullScans: 0,
         directFormulaKernelSyncOnlyRecalcSkips: 1,
+        freshDirectScalarBulkRunBindings: 1,
+        freshDirectScalarBulkMembers: appendCount,
+        freshDirectScalarBulkFallbacks: 0,
+        freshDirectScalarBulkReverseEdgeSlices: appendCount * 2,
+        freshDirectScalarFormulaObjectsMaterialized: appendCount,
         kernelSyncOnlyRecalcSkips: 1,
         regionQueryIndexBuilds: 0,
         topoRebuilds: 0,

@@ -47,7 +47,7 @@ export interface ExpandedComparativeLeadershipResult {
 
 type EngineCounterSummary = Record<keyof EngineCounters, number>
 
-export type EngineCounterNumericSummary = Record<keyof EngineCounters, NumericSummary>
+export type EngineCounterNumericSummary = Partial<Record<keyof EngineCounters, NumericSummary>>
 
 export type ExpandedComparativeBenchmarkResult = ExpandedComparativeComparableResult | ExpandedComparativeLeadershipResult
 
@@ -165,70 +165,7 @@ function summarizeEngineCounters(samples: readonly BenchmarkSample[]): EngineCou
   if (counterSamples.length === 0) {
     return undefined
   }
-  const zeroSummary = summarizeNumbers([0])
-  const summaries: EngineCounterNumericSummary = {
-    cellsRemapped: zeroSummary,
-    rangesMaterialized: zeroSummary,
-    rangeMembersExpanded: zeroSummary,
-    formulasParsed: zeroSummary,
-    formulasBound: zeroSummary,
-    columnSliceBuilds: zeroSummary,
-    exactIndexBuilds: zeroSummary,
-    approxIndexBuilds: zeroSummary,
-    topoRebuilds: zeroSummary,
-    changedCellPayloadsBuilt: zeroSummary,
-    snapshotOpsReplayed: zeroSummary,
-    wasmFullUploads: zeroSummary,
-    directAggregateScanEvaluations: zeroSummary,
-    directAggregateScanCells: zeroSummary,
-    directAggregatePageEvaluations: zeroSummary,
-    directAggregatePageFullHits: zeroSummary,
-    directAggregatePageEdgeCells: zeroSummary,
-    directAggregatePrefixEvaluations: zeroSummary,
-    nativeDirectAggregatePrefixEvaluations: zeroSummary,
-    directAggregateDeltaApplications: zeroSummary,
-    directAggregateDeltaOnlyRecalcSkips: zeroSummary,
-    directScalarDeltaApplications: zeroSummary,
-    directScalarDeltaOnlyRecalcSkips: zeroSummary,
-    kernelSyncOnlyRecalcSkips: zeroSummary,
-    directFormulaKernelSyncOnlyRecalcSkips: zeroSummary,
-    directFormulaInitialEvaluations: zeroSummary,
-    nativeDirectScalarInitialEvaluations: zeroSummary,
-    nativeDirectScalarRecalcEvaluations: zeroSummary,
-    nativeDirectLookupInitialEvaluations: zeroSummary,
-    nativeDirectLookupRecalcEvaluations: zeroSummary,
-    nativeDirectCriteriaAggregateEvaluations: zeroSummary,
-    nativeDirectCriteriaPredicateAggregateEvaluations: zeroSummary,
-    directCriteriaMatchCacheHits: zeroSummary,
-    directCriteriaAggregateCacheHits: zeroSummary,
-    formulaFamilyRuntimeRunsRestored: zeroSummary,
-    formulaFamilyRuntimeRunMembersRestored: zeroSummary,
-    formulaFamilyRuntimeRunFallbacks: zeroSummary,
-    initialFreshDirectScalarFastBindings: zeroSummary,
-    runtimeHydratedDirectAggregateFastBindings: zeroSummary,
-    runtimeHydratedDirectScalarFastBindings: zeroSummary,
-    structuralTransactions: zeroSummary,
-    structuralPlannedCells: zeroSummary,
-    structuralSurvivorCellsRemapped: zeroSummary,
-    structuralRemovedCells: zeroSummary,
-    structuralUndoCapturedCells: zeroSummary,
-    structuralUndoCapturedFormulas: zeroSummary,
-    structuralUndoFormulaDependencyScans: zeroSummary,
-    structuralFormulaImpactCandidates: zeroSummary,
-    structuralFormulaRebindInputs: zeroSummary,
-    structuralRangeRetargets: zeroSummary,
-    sheetGridBlockScans: zeroSummary,
-    axisMapSplices: zeroSummary,
-    axisMapMoves: zeroSummary,
-    regionQueryIndexBuilds: zeroSummary,
-    columnOwnerBuilds: zeroSummary,
-    lookupOwnerBuilds: zeroSummary,
-    calcChainFullScans: zeroSummary,
-    cycleFormulaScans: zeroSummary,
-    topoRepairs: zeroSummary,
-    topoRepairFailures: zeroSummary,
-    topoRepairAffectedFormulas: zeroSummary,
-  }
+  const summaries: EngineCounterNumericSummary = {}
   for (const key of ENGINE_COUNTER_KEYS) {
     summaries[key] = summarizeNumbers(counterSamples.map((counters) => counters[key]))
   }
