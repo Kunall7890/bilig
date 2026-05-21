@@ -22,6 +22,7 @@ export interface LargeSimpleXlsxImportOptions {
   materializeMetadata?: boolean
   releaseArenaAfterMaterialization?: boolean
   releaseZipSource?: boolean
+  allowPreReleaseSheetFinalization?: boolean
   allowUnsupportedFormulaText?: boolean
   allowUnsupportedCellMetadata?: boolean
   maxMaterializedLazyPackageArtifactBytes?: number

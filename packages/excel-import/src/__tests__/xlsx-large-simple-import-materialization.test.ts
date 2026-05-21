@@ -62,7 +62,70 @@ describe('large simple XLSX import materialization lifetime', () => {
     expect(phases.indexOf('zip-source-release')).toBeLessThan(phases.indexOf('public-snapshot-materialization'))
   })
 
-  it('materializes shared-string sheets after ZIP source release without dropping rich text', () => {
+  it('finalizes independent sheets before ZIP source release when internal pre-release mode is enabled', () => {
+    const bytes = buildIndependentWorkbook([
+      {
+        name: 'First',
+        path: 'xl/worksheets/sheet1.xml',
+        xml: worksheetXml('A', 7),
+      },
+      {
+        name: 'Second',
+        path: 'xl/worksheets/sheet2.xml',
+        xml: worksheetXml('B', 11),
+      },
+    ])
+    const zip = readXlsxZipEntriesLazy(bytes)
+
+    const imported = tryImportLargeSimpleXlsx(bytes, 'independent-pre-release.xlsx', zip, {
+      minByteLength: 0,
+      releaseZipSource: true,
+      allowPreReleaseSheetFinalization: true,
+    })
+    const phases = imported?.stats.phaseTelemetry.map((entry) => entry.phase) ?? []
+
+    expect(imported?.snapshot.sheets.map((sheet) => sheet.name)).toEqual(['First', 'Second'])
+    expect(imported?.snapshot.sheets.map((sheet) => sheet.cells)).toEqual([
+      [
+        { address: 'A1', value: 7 },
+        { address: 'B1', value: 'A inline' },
+      ],
+      [
+        { address: 'A1', value: 11 },
+        { address: 'B1', value: 'B inline' },
+      ],
+    ])
+    expect(phases.indexOf('public-snapshot-materialization')).toBeGreaterThanOrEqual(0)
+    expect(phases.indexOf('public-snapshot-materialization')).toBeLessThan(phases.indexOf('zip-source-release'))
+    expect(readLazyXlsxZipSourceByteLength(zip)).toBe(0)
+  })
+
+  it('keeps single-sheet imports on the default ZIP-release-before-materialization path', () => {
+    const bytes = buildIndependentWorkbook([
+      {
+        name: 'Only',
+        path: 'xl/worksheets/sheet1.xml',
+        xml: worksheetXml('A', 7),
+      },
+    ])
+    const zip = readXlsxZipEntriesLazy(bytes)
+
+    const imported = tryImportLargeSimpleXlsx(bytes, 'single-sheet-pre-release.xlsx', zip, {
+      minByteLength: 0,
+      releaseZipSource: true,
+      allowPreReleaseSheetFinalization: true,
+    })
+    const phases = imported?.stats.phaseTelemetry.map((entry) => entry.phase) ?? []
+
+    expect(imported?.snapshot.sheets[0]?.cells).toEqual([
+      { address: 'A1', value: 7 },
+      { address: 'B1', value: 'A inline' },
+    ])
+    expect(phases.indexOf('zip-source-release')).toBeLessThan(phases.indexOf('public-snapshot-materialization'))
+    expect(readLazyXlsxZipSourceByteLength(zip)).toBe(0)
+  })
+
+  it('finalizes shared-string sheets after string resolution in internal pre-release mode without dropping rich text', () => {
     const richStringXml = '<si><r><rPr><b/></rPr><t>Rich</t></r><r><t xml:space="preserve"> Value</t></r></si>'
     const bytes = buildSharedStringWorkbook(
       [
@@ -111,6 +174,7 @@ describe('large simple XLSX import materialization lifetime', () => {
     const imported = tryImportLargeSimpleXlsx(bytes, 'shared-string-sheets.xlsx', zip, {
       minByteLength: 0,
       releaseZipSource: true,
+      allowPreReleaseSheetFinalization: true,
     })
 
     expect(imported?.snapshot.sheets.map((sheet) => sheet.cells)).toEqual([
@@ -139,9 +203,9 @@ describe('large simple XLSX import materialization lifetime', () => {
       'worksheet-scan',
       'metadata-parsing',
       'shared-string-resolution',
+      'public-snapshot-materialization',
       'style-parsing',
       'zip-source-release',
-      'public-snapshot-materialization',
     ])
   })
 

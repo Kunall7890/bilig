@@ -73,6 +73,7 @@ export function importXlsxFromZipByteSource(
     ...(options.limits || bypassLargeSimpleByteThreshold ? { minByteLength: 0 } : {}),
     allowUnsupportedFormulaText: allowCachedUnsupportedFormulaText,
     allowUnsupportedCellMetadata: allowCachedUnsupportedFormulaText,
+    allowPreReleaseSheetFinalization: true,
     releaseArenaAfterMaterialization: true,
     releaseZipSource: true,
     maxMaterializedLazyPackageArtifactBytes: 8 * 1024 * 1024,

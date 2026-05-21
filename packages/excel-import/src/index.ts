@@ -883,6 +883,7 @@ export function importXlsx(bytes: Uint8Array | ArrayBuffer, fileName: string, op
     ...(options.limits || bypassLargeSimpleByteThreshold ? { minByteLength: 0 } : {}),
     allowUnsupportedFormulaText: allowCachedUnsupportedFormulaText,
     allowUnsupportedCellMetadata: allowCachedUnsupportedFormulaText,
+    allowPreReleaseSheetFinalization: releaseOwnedSourceBytesForMaterializedPackageArtifacts === undefined,
     releaseArenaAfterMaterialization: true,
     releaseZipSource: true,
     maxMaterializedLazyPackageArtifactBytes: 8 * 1024 * 1024,

@@ -59,6 +59,33 @@ describe('large simple XLSX import ZIP ownership', () => {
     expect(phases.indexOf('zip-source-release')).toBeLessThan(phases.indexOf('public-snapshot-materialization'))
   })
 
+  it('keeps owned source release before materialization even when pre-release finalization is requested', () => {
+    let ownedBytes = buildSharedStringWorkbook()
+    const zip = readXlsxZipEntriesLazy(ownedBytes)
+
+    const imported = tryImportLargeSimpleXlsx({ byteLength: ownedBytes.byteLength }, 'zip-release-forced.xlsx', zip, {
+      minByteLength: 0,
+      releaseZipSource: true,
+      allowPreReleaseSheetFinalization: true,
+      releaseOwnedSourceBytes: () => {
+        const ownedSourceBytesBeforeRelease = ownedBytes.byteLength
+        ownedBytes = new Uint8Array(0)
+        return {
+          ownedSourceBytesBeforeRelease,
+          ownedSourceBytesAfterRelease: ownedBytes.byteLength,
+        }
+      },
+    })
+
+    const phases = imported?.stats.phaseTelemetry.map((entry) => entry.phase) ?? []
+    expect(imported?.snapshot.sheets[0]?.cells).toEqual([
+      { address: 'A1', value: 'Alpha' },
+      { address: 'B1', value: 'Beta' },
+    ])
+    expect(ownedBytes.byteLength).toBe(0)
+    expect(phases.indexOf('zip-source-release')).toBeLessThan(phases.indexOf('public-snapshot-materialization'))
+  })
+
   it('records owned source release for the headless verifier path', () => {
     let ownedBytes = buildSharedStringWorkbook()
     const zip = readXlsxZipEntriesLazy(ownedBytes)
