@@ -16,6 +16,7 @@ import {
   attachFreshDenseDirectAggregateMatrixCells,
   createFreshFormulaCellAttacher,
   createFreshMatrixDirectAggregateTemplate,
+  evaluateFreshDirectAggregateMatrixNumericRow,
   evaluateFreshDirectAggregateMatrixRow,
   materializeFreshMatrixAxisIds,
   normalizeFreshMatrixDirectAggregateOffset,
@@ -638,11 +639,45 @@ function materializeFreshDirectAggregateFormulaResults(
   if (nativeResults !== undefined) {
     return nativeResults
   }
+  const numericResults = new Float64Array(input.seeds.length)
+  for (let rowOffset = 0; rowOffset < input.seeds.length; rowOffset += 1) {
+    const seed = input.seeds[rowOffset]!
+    args.checkEvaluationBudget(input.inputColCount)
+    const result = evaluateFreshDirectAggregateMatrixNumericRow({
+      aggregateKind: seed.aggregateKind,
+      colEnd: seed.aggregateColEnd,
+      colStart: seed.aggregateColStart,
+      inputColCount: input.inputColCount,
+      matrixColStart: input.matrixColStart,
+      resultOffset: seed.resultOffset,
+      rowOffset,
+      values: input.values,
+    })
+    if (result === undefined) {
+      return materializeFreshDirectAggregateFormulaObjectResults(args, input, rowOffset)
+    }
+    numericResults[rowOffset] = result
+  }
+  return numericResults
+}
+
+function materializeFreshDirectAggregateFormulaObjectResults(
+  args: OperationFreshDirectAggregateFormulaBatchFastPathArgs,
+  input: {
+    readonly inputColCount: number
+    readonly matrixColStart: number
+    readonly seeds: readonly FreshDirectAggregateFormulaEntrySeed[]
+    readonly values: Float64Array
+  },
+  startRowOffset: number,
+): DirectScalarCurrentOperand[] {
   const results: DirectScalarCurrentOperand[] = []
   results.length = input.seeds.length
   for (let rowOffset = 0; rowOffset < input.seeds.length; rowOffset += 1) {
     const seed = input.seeds[rowOffset]!
-    args.checkEvaluationBudget(input.inputColCount)
+    if (rowOffset > startRowOffset) {
+      args.checkEvaluationBudget(input.inputColCount)
+    }
     results[rowOffset] = evaluateFreshDirectAggregateMatrixRow({
       aggregateKind: seed.aggregateKind,
       colEnd: seed.aggregateColEnd,

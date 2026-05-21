@@ -108,6 +108,23 @@ export function evaluateFreshDirectAggregateMatrixRow(input: {
   readonly rowOffset: number
   readonly values: Float64Array
 }): DirectScalarCurrentOperand {
+  const result = evaluateFreshDirectAggregateMatrixNumericRow(input)
+  if (result === undefined) {
+    return { kind: 'error', code: ErrorCode.Div0 }
+  }
+  return { kind: 'number', value: result }
+}
+
+export function evaluateFreshDirectAggregateMatrixNumericRow(input: {
+  readonly aggregateKind: 'sum' | 'average' | 'count' | 'min' | 'max'
+  readonly colEnd: number
+  readonly colStart: number
+  readonly inputColCount: number
+  readonly matrixColStart: number
+  readonly resultOffset: number | undefined
+  readonly rowOffset: number
+  readonly values: Float64Array
+}): number | undefined {
   let sum = 0
   let count = 0
   let minimum = Number.POSITIVE_INFINITY
@@ -137,9 +154,9 @@ export function evaluateFreshDirectAggregateMatrixRow(input: {
               ? 0
               : maximum
   if (result === undefined) {
-    return { kind: 'error', code: ErrorCode.Div0 }
+    return undefined
   }
-  return { kind: 'number', value: result + (input.resultOffset ?? 0) }
+  return result + (input.resultOffset ?? 0)
 }
 
 function freshMatrixDirectAggregateSourceMatchesTemplate(

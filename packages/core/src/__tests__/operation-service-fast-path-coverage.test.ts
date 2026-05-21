@@ -796,6 +796,81 @@ describe('operation-service dense mutation fast paths', () => {
     expect(engine.getCellValue('Sheet1', 'E17')).toEqual({ tag: ValueTag.Empty })
   })
 
+  it('keeps small fresh aggregate matrices on the numeric JS fallback', async () => {
+    const cases = [
+      ['SUM', 30, 1020],
+      ['COUNT', 4, 4],
+      ['AVERAGE', 7.5, 255],
+      ['MIN', 3, 102],
+      ['MAX', 12, 408],
+    ] as const
+
+    await Promise.all(
+      cases.map(async ([functionName, firstExpected, lastExpected]) => {
+        const engine = new SpreadsheetEngine({ workbookName: `small-fresh-${functionName.toLowerCase()}-matrix-fast-path` })
+        await engine.ready()
+        engine.createSheet('Sheet1')
+
+        const existingRows = 2
+        const appendRows = 100
+        const inputCols = 4
+        for (let row = 1; row <= existingRows; row += 1) {
+          for (let col = 0; col < inputCols; col += 1) {
+            engine.setCellValue('Sheet1', `${String.fromCharCode(65 + col)}${row}`, row * (col + 1))
+          }
+          engine.setCellFormula('Sheet1', `E${row}`, `${functionName}(A${row}:D${row})`)
+        }
+        engine.insertRows('Sheet1', existingRows, appendRows)
+
+        const sheetId = engine.workbook.getSheet('Sheet1')!.id
+        const valueRefs: EngineCellMutationRef[] = []
+        const formulaRefs: EngineCellMutationRef[] = []
+        for (let row = 0; row < appendRows; row += 1) {
+          const rowIndex = existingRows + row
+          const rowNumber = rowIndex + 1
+          for (let col = 0; col < inputCols; col += 1) {
+            valueRefs.push({
+              sheetId,
+              mutation: { kind: 'setCellValue', row: rowIndex, col, value: rowNumber * (col + 1) },
+            })
+          }
+          formulaRefs.push({
+            sheetId,
+            mutation: { kind: 'setCellFormula', row: rowIndex, col: inputCols, formula: `${functionName}(A${rowNumber}:D${rowNumber})` },
+          })
+        }
+
+        const formulaScan = vi.spyOn(formulaScanTable(engine), 'forEach')
+        try {
+          engine.resetPerformanceCounters()
+          engine.applyCellMutationsAt([...valueRefs, ...formulaRefs], valueRefs.length + formulaRefs.length)
+
+          expect(engine.getCellValue('Sheet1', 'E3')).toEqual({ tag: ValueTag.Number, value: firstExpected })
+          expect(engine.getCellValue('Sheet1', `E${existingRows + appendRows}`)).toEqual({ tag: ValueTag.Number, value: lastExpected })
+          expect(engine.getLastMetrics()).toMatchObject({
+            changedInputCount: appendRows * (inputCols + 1),
+            dirtyFormulaCount: 0,
+            jsFormulaCount: 0,
+            wasmFormulaCount: 0,
+          })
+          expect(engine.getPerformanceCounters()).toMatchObject({
+            calcChainFullScans: 0,
+            directAggregateScanCells: 0,
+            directAggregateScanEvaluations: 0,
+            directFormulaKernelSyncOnlyRecalcSkips: 1,
+            formulasBound: 0,
+            kernelSyncOnlyRecalcSkips: 1,
+            nativeDirectAggregatePrefixEvaluations: 0,
+            topoRepairs: 0,
+          })
+          expect(formulaScan).not.toHaveBeenCalled()
+        } finally {
+          formulaScan.mockRestore()
+        }
+      }),
+    )
+  })
+
   it('applies the operation timeout budget before formula-only fresh aggregate batches mutate cells', async () => {
     const engine = new SpreadsheetEngine({ workbookName: 'formula-only-fresh-row-aggregate-timeout' })
     await engine.ready()
