@@ -2,7 +2,9 @@ import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 
-import { exportXlsx, importXlsx } from '@bilig/excel-import'
+import { strFromU8, strToU8, unzipSync, zipSync } from 'fflate'
+
+import { dataTableFormulasWarning, exportXlsx, importXlsx } from '@bilig/excel-import'
 import { readRuntimeImage, SpreadsheetEngine } from '@bilig/core'
 import {
   buildFormulaCellComparison,
@@ -62,6 +64,13 @@ const expectedSpillReferenceOracleCells = [
   { address: 'D1', formula: '=SUM(B1#)', rawValue: 'number\t6.0', value: { kind: 'number', value: 6 } },
   { address: 'E1', formula: '=ROWS(B1#)', rawValue: 'number\t3.0', value: { kind: 'number', value: 3 } },
   { address: 'F1', formula: '=INDEX(B1#,2)', rawValue: 'number\t2.0', value: { kind: 'number', value: 2 } },
+] as const
+const textsplitErrorOracleAddresses = ['C1', 'D1', 'C2', 'D2'] as const
+const expectedTextsplitErrorOracleCells = [
+  { address: 'C1', formula: '=TEXTSPLIT(A1,",","|")', rawValue: 'string\tred', value: { kind: 'string', value: 'red' } },
+  { address: 'D1', rawValue: 'string\tblue', value: { kind: 'string', value: 'blue' } },
+  { address: 'C2', rawValue: 'string\tgreen', value: { kind: 'string', value: 'green' } },
+  { address: 'D2', rawValue: 'error\t#N/A', value: { kind: 'error', value: String(ErrorCode.NA) } },
 ] as const
 const chooseArrayIndexOracleAddresses = ['E1', 'F1', 'E2', 'F2', 'E3', 'F3', 'H1', 'H2', 'H3', 'H4', 'H6', 'H7'] as const
 const expectedChooseArrayIndexOracleValues = [
@@ -123,12 +132,12 @@ const expectedIndexImplicitIntersectionOracleCells = [
   { address: 'E1', formula: '=INDEX(A1:C3,0,2)', rawValue: 'number\t2.0', value: { kind: 'number', value: 2 } },
   { address: 'E2', formula: '=INDEX(A1:C3,0,2)', rawValue: 'number\t5.0', value: { kind: 'number', value: 5 } },
   { address: 'E3', formula: '=INDEX(A1:C3,0,2)', rawValue: 'number\t8.0', value: { kind: 'number', value: 8 } },
-  { address: 'E4', formula: '=INDEX(A1:C3,0,2)', rawValue: 'blank\t', value: { kind: 'blank' } },
+  { address: 'E4', formula: '=INDEX(A1:C3,0,2)', rawValue: 'error\t#VALUE!', value: { kind: 'error', value: String(ErrorCode.Value) } },
   { address: 'A5', formula: '=INDEX(A1:C3,2,0)', rawValue: 'number\t4.0', value: { kind: 'number', value: 4 } },
   { address: 'B5', formula: '=INDEX(A1:C3,2,0)', rawValue: 'number\t5.0', value: { kind: 'number', value: 5 } },
   { address: 'C5', formula: '=INDEX(A1:C3,2,0)', rawValue: 'number\t6.0', value: { kind: 'number', value: 6 } },
-  { address: 'D5', formula: '=INDEX(A1:C3,2,0)', rawValue: 'blank\t', value: { kind: 'blank' } },
-  { address: 'E5', formula: '=INDEX(A1:C3,0,0)', rawValue: 'blank\t', value: { kind: 'blank' } },
+  { address: 'D5', formula: '=INDEX(A1:C3,2,0)', rawValue: 'error\t#VALUE!', value: { kind: 'error', value: String(ErrorCode.Value) } },
+  { address: 'E5', formula: '=INDEX(A1:C3,0,0)', rawValue: 'error\t#VALUE!', value: { kind: 'error', value: String(ErrorCode.Value) } },
   { address: 'G1', formula: '=SUM(INDEX(A1:C3,0,2))', rawValue: 'number\t15.0', value: { kind: 'number', value: 15 } },
   { address: 'H1', formula: '=SUM(INDEX(A1:C3,2,0))', rawValue: 'number\t15.0', value: { kind: 'number', value: 15 } },
   { address: 'I1', formula: '=SUM(INDEX(A1:C3,0,0))', rawValue: 'number\t45.0', value: { kind: 'number', value: 45 } },
@@ -138,16 +147,44 @@ const expectedOffsetImplicitIntersectionOracleCells = [
   { address: 'E1', formula: '=OFFSET(A1,0,1,3,1)', rawValue: 'number\t2.0', value: { kind: 'number', value: 2 } },
   { address: 'E2', formula: '=OFFSET(A1,0,1,3,1)', rawValue: 'number\t5.0', value: { kind: 'number', value: 5 } },
   { address: 'E3', formula: '=OFFSET(A1,0,1,3,1)', rawValue: 'number\t8.0', value: { kind: 'number', value: 8 } },
-  { address: 'E4', formula: '=OFFSET(A1,0,1,3,1)', rawValue: 'blank\t', value: { kind: 'blank' } },
+  { address: 'E4', formula: '=OFFSET(A1,0,1,3,1)', rawValue: 'error\t#VALUE!', value: { kind: 'error', value: String(ErrorCode.Value) } },
   { address: 'A5', formula: '=OFFSET(A2,0,0,1,3)', rawValue: 'number\t4.0', value: { kind: 'number', value: 4 } },
   { address: 'B5', formula: '=OFFSET(A2,0,0,1,3)', rawValue: 'number\t5.0', value: { kind: 'number', value: 5 } },
   { address: 'C5', formula: '=OFFSET(A2,0,0,1,3)', rawValue: 'number\t6.0', value: { kind: 'number', value: 6 } },
-  { address: 'D5', formula: '=OFFSET(A2,0,0,1,3)', rawValue: 'blank\t', value: { kind: 'blank' } },
-  { address: 'E5', formula: '=OFFSET(A1,0,0,3,3)', rawValue: 'blank\t', value: { kind: 'blank' } },
+  { address: 'D5', formula: '=OFFSET(A2,0,0,1,3)', rawValue: 'error\t#VALUE!', value: { kind: 'error', value: String(ErrorCode.Value) } },
+  { address: 'E5', formula: '=OFFSET(A1,0,0,3,3)', rawValue: 'error\t#VALUE!', value: { kind: 'error', value: String(ErrorCode.Value) } },
   { address: 'G1', formula: '=SUM(OFFSET(A1,0,1,3,1))', rawValue: 'number\t15.0', value: { kind: 'number', value: 15 } },
   { address: 'H1', formula: '=SUM(OFFSET(A2,0,0,1,3))', rawValue: 'number\t15.0', value: { kind: 'number', value: 15 } },
   { address: 'I1', formula: '=SUM(OFFSET(A1,0,0,3,3))', rawValue: 'number\t45.0', value: { kind: 'number', value: 45 } },
 ] as const
+const dataTableOracleAddresses = ['C3', 'D3', 'C4', 'D4'] as const
+const expectedDataTableOracleValues = [
+  { address: 'C3', value: { kind: 'number', value: 40 } },
+  { address: 'D3', value: { kind: 'number', value: 60 } },
+  { address: 'C4', value: { kind: 'number', value: 60 } },
+  { address: 'D4', value: { kind: 'number', value: 90 } },
+] as const
+const expectedDataTableImportedFormulaByAddress = new Map([
+  ['C3', '=MULTIPLE.OPERATIONS(B2,A1,C2,A2,B3)'],
+  ['D3', '=MULTIPLE.OPERATIONS(B2,A1,D2,A2,B3)'],
+  ['C4', '=MULTIPLE.OPERATIONS(B2,A1,C2,A2,B4)'],
+  ['D4', '=MULTIPLE.OPERATIONS(B2,A1,D2,A2,B4)'],
+] as const)
+const oneVariableDataTableOracleAddresses = ['C2', 'D2', 'B6', 'B7', 'B8'] as const
+const expectedOneVariableDataTableOracleValues = [
+  { address: 'C2', value: { kind: 'number', value: 30 } },
+  { address: 'D2', value: { kind: 'number', value: 40 } },
+  { address: 'B6', value: { kind: 'number', value: 20 } },
+  { address: 'B7', value: { kind: 'number', value: 30 } },
+  { address: 'B8', value: { kind: 'number', value: 40 } },
+] as const
+const expectedOneVariableDataTableImportedFormulaByAddress = new Map([
+  ['C2', '=MULTIPLE.OPERATIONS(B2,A1,C1)'],
+  ['D2', '=MULTIPLE.OPERATIONS(B2,A1,D1)'],
+  ['B6', '=MULTIPLE.OPERATIONS(B5,A1,A6)'],
+  ['B7', '=MULTIPLE.OPERATIONS(B5,A1,A7)'],
+  ['B8', '=MULTIPLE.OPERATIONS(B5,A1,A8)'],
+] as const)
 
 describe('macOS Desktop Excel XLSX oracle for WorkPaper', () => {
   it('exports and reimports the oracle fixture through the headless workbook path', () => {
@@ -311,6 +348,28 @@ describe('macOS Desktop Excel XLSX oracle for WorkPaper', () => {
         expect(reimported.getCellFormula(addressToCell('E1'))).toBe('=ROWS(B1#)')
         expect(reimported.getCellFormula(addressToCell('F1'))).toBe('=INDEX(B1#,2)')
         expect(imported.snapshot.workbook.metadata?.spills).toEqual([{ sheetName: 'Cases', address: 'B1', rows: 3, cols: 1 }])
+      } finally {
+        reimported.dispose()
+      }
+    } finally {
+      workbook.dispose()
+    }
+  })
+
+  it('exports and reimports TEXTSPLIT error spill children through the headless XLSX path', () => {
+    const workbook = buildTextsplitErrorOracleWorkbook()
+    try {
+      expect(textsplitErrorOracleAddresses.map((address) => normalizedCellValue(workbook.getCellValue(addressToCell(address))))).toEqual(
+        expectedTextsplitErrorOracleCells.map((expected) => expected.value),
+      )
+
+      const imported = importXlsx(exportXlsx(workbook.exportSnapshot()), 'headless-textsplit-error-oracle.xlsx')
+      const reimported = WorkPaper.buildFromSnapshot(imported.snapshot, workbookConfig)
+      try {
+        expect(
+          textsplitErrorOracleAddresses.map((address) => normalizedCellValue(reimported.getCellValue(addressToCell(address)))),
+        ).toEqual(expectedTextsplitErrorOracleCells.map((expected) => expected.value))
+        expect(imported.snapshot.workbook.metadata?.spills).toEqual([{ sheetName: 'Cases', address: 'C1', rows: 2, cols: 2 }])
       } finally {
         reimported.dispose()
       }
@@ -577,6 +636,56 @@ describe('macOS Desktop Excel XLSX oracle for WorkPaper', () => {
       expect(normalizedCellValue(reimported.getCellValue(addressToCell('D1')))).toEqual(tableEmptyBodyOracleCell.value)
     } finally {
       reimported.dispose()
+    }
+  })
+
+  it('imports native two-variable data-table outputs into headless calculable formulas', () => {
+    const imported = importXlsx(buildNativeDataTableXlsx(), 'headless-native-data-table-oracle.xlsx')
+    expect(imported.warnings).not.toContain(dataTableFormulasWarning)
+    expect(imported.snapshot.sheets[0]?.metadata?.dataTableFormulas?.formulas).toEqual([
+      {
+        address: 'C3',
+        formulaXml: '<f t="dataTable" ref="C3:D4" dt2D="1" dtr="1" r1="A1" r2="A2"/>',
+      },
+    ])
+
+    const workbook = WorkPaper.buildFromSnapshot(imported.snapshot, workbookConfig)
+    try {
+      expect(dataTableOracleAddresses.map((address) => normalizedCellValue(workbook.getCellValue(addressToCell(address))))).toEqual(
+        expectedDataTableOracleValues.map((expected) => expected.value),
+      )
+      for (const [address, formula] of expectedDataTableImportedFormulaByAddress) {
+        expect(workbook.getCellFormula(addressToCell(address))).toBe(formula)
+      }
+    } finally {
+      workbook.dispose()
+    }
+  })
+
+  it('imports native one-variable data-table outputs into headless calculable formulas', () => {
+    const imported = importXlsx(buildNativeOneVariableDataTableXlsx(), 'headless-native-one-variable-data-table-oracle.xlsx')
+    expect(imported.warnings).not.toContain(dataTableFormulasWarning)
+    expect(imported.snapshot.sheets[0]?.metadata?.dataTableFormulas?.formulas).toEqual([
+      {
+        address: 'C2',
+        formulaXml: '<f t="dataTable" ref="C2:D2" dt2D="0" dtr="1" r1="A1"/>',
+      },
+      {
+        address: 'B6',
+        formulaXml: '<f t="dataTable" ref="B6:B8" dt2D="0" dtr="0" r1="A1"/>',
+      },
+    ])
+
+    const workbook = WorkPaper.buildFromSnapshot(imported.snapshot, workbookConfig)
+    try {
+      expect(
+        oneVariableDataTableOracleAddresses.map((address) => normalizedCellValue(workbook.getCellValue(addressToCell(address)))),
+      ).toEqual(expectedOneVariableDataTableOracleValues.map((expected) => expected.value))
+      for (const [address, formula] of expectedOneVariableDataTableImportedFormulaByAddress) {
+        expect(workbook.getCellFormula(addressToCell(address))).toBe(formula)
+      }
+    } finally {
+      workbook.dispose()
     }
   })
 
@@ -928,6 +1037,50 @@ describe('macOS Desktop Excel XLSX oracle for WorkPaper', () => {
           expect(reimported.getCellFormula(addressToCell('E1'))).toBe('=ROWS(B1#)')
           expect(reimported.getCellFormula(addressToCell('F1'))).toBe('=INDEX(B1#,2)')
           expect(imported.snapshot.workbook.metadata?.spills).toEqual([{ sheetName: 'Cases', address: 'B1', rows: 3, cols: 1 }])
+        } finally {
+          reimported.dispose()
+        }
+      } finally {
+        rmSync(tempDir, { recursive: true, force: true })
+      }
+    },
+    60_000,
+  )
+
+  it.runIf(process.env.BILIG_EXCEL_ORACLE_RUN === '1')(
+    'round-trips Desktop Excel TEXTSPLIT error spill-child caches back into headless import',
+    () => {
+      if (!isMacosExcelInstalled()) {
+        throw new Error('BILIG_EXCEL_ORACLE_RUN=1 requires /Applications/Microsoft Excel.app')
+      }
+
+      const tempDir = mkdtempSync(join(tmpdir(), 'bilig-headless-excel-textsplit-error-oracle-'))
+      try {
+        const workbookPath = join(tempDir, 'headless-textsplit-error-oracle.xlsx')
+        const workbook = buildTextsplitErrorOracleWorkbook()
+        try {
+          writeFileSync(workbookPath, exportXlsx(workbook.exportSnapshot()))
+        } finally {
+          workbook.dispose()
+        }
+
+        const excelResult = runMacosExcelInspectionOracle({
+          workbookPath,
+          worksheetName: 'Cases',
+          formulaCells: [],
+          inspectCells: textsplitErrorOracleAddresses,
+          saveWorkbook: true,
+        })
+
+        expect(excelResult.cells).toEqual(expectedTextsplitErrorOracleCells)
+
+        const imported = importXlsx(new Uint8Array(readFileSync(workbookPath)), 'headless-textsplit-error-oracle-recalculated.xlsx')
+        const reimported = WorkPaper.buildFromSnapshot(imported.snapshot, workbookConfig)
+        try {
+          expect(
+            textsplitErrorOracleAddresses.map((address) => normalizedCellValue(reimported.getCellValue(addressToCell(address)))),
+          ).toEqual(expectedTextsplitErrorOracleCells.map((expected) => expected.value))
+          expect(imported.snapshot.workbook.metadata?.spills).toEqual([{ sheetName: 'Cases', address: 'C1', rows: 2, cols: 2 }])
         } finally {
           reimported.dispose()
         }
@@ -1330,6 +1483,106 @@ describe('macOS Desktop Excel XLSX oracle for WorkPaper', () => {
     },
     60_000,
   )
+
+  it.runIf(process.env.BILIG_EXCEL_ORACLE_RUN === '1')(
+    'imports Desktop Excel native data-table outputs into headless formulas',
+    () => {
+      if (!isMacosExcelInstalled()) {
+        throw new Error('BILIG_EXCEL_ORACLE_RUN=1 requires /Applications/Microsoft Excel.app')
+      }
+
+      const tempDir = mkdtempSync(join(tmpdir(), 'bilig-headless-excel-data-table-oracle-'))
+      try {
+        const workbookPath = join(tempDir, 'headless-data-table-oracle.xlsx')
+        const workbook = buildDataTableOracleWorkbook(false)
+        try {
+          writeFileSync(workbookPath, exportXlsx(workbook.exportSnapshot()))
+        } finally {
+          workbook.dispose()
+        }
+
+        const excelResult = runMacosExcelStructuralOperationOracle({
+          workbookPath,
+          worksheetName: 'DataTable',
+          operations: [{ kind: 'createDataTable', range: 'B2:D4', rowInput: 'A1', columnInput: 'A2' }],
+          inspectCells: dataTableOracleAddresses,
+          saveWorkbook: true,
+        })
+        expect(excelResult.cells.map(({ address, value }) => ({ address, value }))).toEqual(expectedDataTableOracleValues)
+
+        const imported = importXlsx(new Uint8Array(readFileSync(workbookPath)), 'headless-data-table-oracle-recalculated.xlsx')
+        expect(imported.warnings).not.toContain(dataTableFormulasWarning)
+        expect(imported.snapshot.sheets[0]?.metadata?.dataTableFormulas?.formulas[0]?.address).toBe('C3')
+        expect(imported.snapshot.sheets[0]?.metadata?.dataTableFormulas?.formulas[0]?.formulaXml).toContain('t="dataTable"')
+
+        const reimported = WorkPaper.buildFromSnapshot(imported.snapshot, workbookConfig)
+        try {
+          expect(dataTableOracleAddresses.map((address) => normalizedCellValue(reimported.getCellValue(addressToCell(address))))).toEqual(
+            expectedDataTableOracleValues.map((expected) => expected.value),
+          )
+          for (const [address, formula] of expectedDataTableImportedFormulaByAddress) {
+            expect(reimported.getCellFormula(addressToCell(address))).toBe(formula)
+          }
+        } finally {
+          reimported.dispose()
+        }
+      } finally {
+        rmSync(tempDir, { recursive: true, force: true })
+      }
+    },
+    60_000,
+  )
+
+  it.runIf(process.env.BILIG_EXCEL_ORACLE_RUN === '1')(
+    'imports Desktop Excel native one-variable data-table outputs into headless formulas',
+    () => {
+      if (!isMacosExcelInstalled()) {
+        throw new Error('BILIG_EXCEL_ORACLE_RUN=1 requires /Applications/Microsoft Excel.app')
+      }
+
+      const tempDir = mkdtempSync(join(tmpdir(), 'bilig-headless-excel-one-variable-data-table-oracle-'))
+      try {
+        const workbookPath = join(tempDir, 'headless-one-variable-data-table-oracle.xlsx')
+        const workbook = buildOneVariableDataTableOracleWorkbook(false)
+        try {
+          writeFileSync(workbookPath, exportXlsx(workbook.exportSnapshot()))
+        } finally {
+          workbook.dispose()
+        }
+
+        const excelResult = runMacosExcelStructuralOperationOracle({
+          workbookPath,
+          worksheetName: 'DataTable',
+          operations: [
+            { kind: 'createDataTable', range: 'B1:D2', rowInput: 'A1' },
+            { kind: 'createDataTable', range: 'A5:B8', columnInput: 'A1' },
+          ],
+          inspectCells: oneVariableDataTableOracleAddresses,
+          saveWorkbook: true,
+        })
+        expect(excelResult.cells.map(({ address, value }) => ({ address, value }))).toEqual(expectedOneVariableDataTableOracleValues)
+
+        const imported = importXlsx(new Uint8Array(readFileSync(workbookPath)), 'headless-one-variable-data-table-oracle-recalculated.xlsx')
+        expect(imported.warnings).not.toContain(dataTableFormulasWarning)
+        expect(imported.snapshot.sheets[0]?.metadata?.dataTableFormulas?.formulas.map(({ address }) => address)).toEqual(['C2', 'B6'])
+
+        const reimported = WorkPaper.buildFromSnapshot(imported.snapshot, workbookConfig)
+        try {
+          expect(
+            oneVariableDataTableOracleAddresses.map((address) => normalizedCellValue(reimported.getCellValue(addressToCell(address)))),
+          ).toEqual(expectedOneVariableDataTableOracleValues.map((expected) => expected.value))
+          for (const [address, formula] of expectedOneVariableDataTableImportedFormulaByAddress) {
+            expect(reimported.getCellFormula(addressToCell(address))).toBe(formula)
+          }
+        } finally {
+          reimported.dispose()
+        }
+      } finally {
+        rmSync(tempDir, { recursive: true, force: true })
+      }
+    },
+    60_000,
+  )
 })
 
 function buildOracleWorkbook(): WorkPaper {
@@ -1431,6 +1684,15 @@ function buildSpillReferenceOracleWorkbook(): WorkPaper {
   )
 }
 
+function buildTextsplitErrorOracleWorkbook(): WorkPaper {
+  return WorkPaper.buildFromSheets(
+    {
+      Cases: [['red,blue|green', null, '=TEXTSPLIT(A1,",","|")']],
+    },
+    workbookConfig,
+  )
+}
+
 function buildChooseArrayIndexOracleWorkbook(): WorkPaper {
   return WorkPaper.buildFromSheets(
     {
@@ -1464,6 +1726,85 @@ function buildStructuralBackwardMoveColumnOracleWorkbook(): WorkPaper {
     },
     workbookConfig,
   )
+}
+
+function buildDataTableOracleWorkbook(includeOutputs: boolean): WorkPaper {
+  return WorkPaper.buildFromSheets(
+    {
+      DataTable: [
+        [1],
+        [10, '=A3', 2, 3],
+        ['=A1*A2', 20, includeOutputs ? 40 : null, includeOutputs ? 60 : null],
+        [null, 30, includeOutputs ? 60 : null, includeOutputs ? 90 : null],
+      ],
+    },
+    workbookConfig,
+  )
+}
+
+function buildOneVariableDataTableOracleWorkbook(includeOutputs: boolean): WorkPaper {
+  return WorkPaper.buildFromSheets(
+    {
+      DataTable: [
+        [1, 2, 3, 4],
+        ['=A1*10', '=A2', includeOutputs ? 30 : null, includeOutputs ? 40 : null],
+        [],
+        [],
+        [1, '=A1*10'],
+        [2, includeOutputs ? 20 : null],
+        [3, includeOutputs ? 30 : null],
+        [4, includeOutputs ? 40 : null],
+      ],
+    },
+    workbookConfig,
+  )
+}
+
+function buildNativeDataTableXlsx(): Uint8Array {
+  const workbook = buildDataTableOracleWorkbook(true)
+  try {
+    const zip = unzipSync(exportXlsx(workbook.exportSnapshot()))
+    const sheetXml = readZipTextFromZip(zip, 'xl/worksheets/sheet1.xml')
+    zip['xl/worksheets/sheet1.xml'] = strToU8(
+      sheetXml.replace(
+        /<c\b[^>]*\br=(["'])C3\1[^>]*>[\s\S]*?<\/c>/u,
+        '<c r="C3"><f t="dataTable" ref="C3:D4" dt2D="1" dtr="1" r1="A1" r2="A2"/><v>40</v></c>',
+      ),
+    )
+    return zipSync(zip)
+  } finally {
+    workbook.dispose()
+  }
+}
+
+function buildNativeOneVariableDataTableXlsx(): Uint8Array {
+  const workbook = buildOneVariableDataTableOracleWorkbook(true)
+  try {
+    const zip = unzipSync(exportXlsx(workbook.exportSnapshot()))
+    const sheetXml = readZipTextFromZip(zip, 'xl/worksheets/sheet1.xml')
+    zip['xl/worksheets/sheet1.xml'] = strToU8(
+      sheetXml
+        .replace(
+          /<c\b[^>]*\br=(["'])C2\1[^>]*>[\s\S]*?<\/c>/u,
+          '<c r="C2"><f t="dataTable" ref="C2:D2" dt2D="0" dtr="1" r1="A1"/><v>30</v></c>',
+        )
+        .replace(
+          /<c\b[^>]*\br=(["'])B6\1[^>]*>[\s\S]*?<\/c>/u,
+          '<c r="B6"><f t="dataTable" ref="B6:B8" dt2D="0" dtr="0" r1="A1"/><v>20</v></c>',
+        ),
+    )
+    return zipSync(zip)
+  } finally {
+    workbook.dispose()
+  }
+}
+
+function readZipTextFromZip(zip: Record<string, Uint8Array>, path: string): string {
+  const bytes = zip[path]
+  if (!bytes) {
+    throw new Error(`Missing XLSX part: ${path}`)
+  }
+  return strFromU8(bytes)
 }
 
 async function buildTableColumnInsertOracleEngine(): Promise<SpreadsheetEngine> {

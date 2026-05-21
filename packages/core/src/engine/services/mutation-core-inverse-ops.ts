@@ -30,6 +30,18 @@ function isMutationCoreCapturedInverseOp(op: EngineOp): op is MutationCoreCaptur
   return mutationCoreCapturedInverseKinds.has(op.kind)
 }
 
+function withHeaderRenameSkip(ops: EngineOp[], skipTableHeaderRename: boolean): EngineOp[] {
+  if (!skipTableHeaderRename) {
+    return ops
+  }
+  return ops.map((op) => {
+    if (op.kind === 'setCellValue' || op.kind === 'clearCell') {
+      return { ...op, skipTableHeaderRename: true }
+    }
+    return op
+  })
+}
+
 function captureDeletedSheetInverseOps(
   workbook: WorkbookStore,
   sheetName: string,
@@ -197,8 +209,9 @@ export function createMutationCoreInverseOps(args: {
         ]
       }
       case 'setCellValue':
-      case 'setCellFormula':
       case 'clearCell':
+        return withHeaderRenameSkip(args.restoreCellOps(op.sheetName, op.address), op.skipTableHeaderRename === true)
+      case 'setCellFormula':
         return args.restoreCellOps(op.sheetName, op.address)
       default: {
         const exhaustive: never = op

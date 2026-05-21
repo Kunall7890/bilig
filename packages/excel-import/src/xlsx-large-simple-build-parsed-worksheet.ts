@@ -1,11 +1,13 @@
 import type { CellStyleRecord, SheetMetadataSnapshot, WorkbookSnapshot } from '@bilig/protocol'
 import { createSheetPreview, toDisplayText } from './workbook-import-helpers.js'
 import { buildLargeSimpleCellMetadataReferenceSnapshots } from './xlsx-large-simple-cell-metadata.js'
+import { internLargeSimpleSheetMetadataInput } from './xlsx-large-simple-metadata-interning.js'
 import {
   normalizeLargeSimpleConditionalFormatIds,
   readLargeSimpleConditionalFormattingBlockCount,
 } from './xlsx-large-simple-conditional-format-helpers.js'
 import type { ImportedWorksheetCellScan } from './xlsx-large-simple-arena.js'
+import type { ImportedWorkbookStringPool } from './xlsx-large-simple-string-pool.js'
 import { buildLargeSimpleStyleRanges } from './xlsx-large-simple-style-ranges.js'
 import { applyLargeSimpleNumberFormatsToCells } from './xlsx-large-simple-number-formats.js'
 import { releaseProjectedCellScanStorage } from './xlsx-large-simple-materialization-helpers.js'
@@ -37,8 +39,10 @@ export function buildParsedWorksheet(
     readonly numberFormatsByStyleIndex?: ReadonlyMap<number, string>
     readonly styleCatalog?: Map<string, CellStyleRecord>
     readonly stylesByIndex?: ReadonlyMap<number, Omit<CellStyleRecord, 'id'>>
+    readonly stringPool?: ImportedWorkbookStringPool
   } = { materializeCells: true },
 ): ParsedWorksheet {
+  const internedInput = internLargeSimpleSheetMetadataInput(input, options.stringPool)
   const merges =
     metadataScan?.merges?.map((range) => ({ sheetName, ...range })) ??
     (worksheetXml ? readLargeSimpleMergeRanges(sheetName, worksheetXml) : [])
@@ -47,12 +51,13 @@ export function buildParsedWorksheet(
   const rows = metadataScan?.rows ?? (worksheetXml ? readLargeSimpleRowMetadata(worksheetXml) : { entries: [], metadata: [] })
   const sheetFormatPr = metadataScan?.sheetFormatPr ?? (worksheetXml ? readLargeSimpleSheetFormatPr(worksheetXml) : undefined)
   const conditionalFormatCount =
-    input.conditionalFormats?.length ??
+    internedInput.conditionalFormats?.length ??
     (worksheetXml ? readLargeSimpleConditionalFormattingBlockCount(worksheetXml) : (cellScan.conditionalFormatCount ?? 0))
-  const conditionalFormats = normalizeLargeSimpleConditionalFormatIds(sheetName, input.conditionalFormats)
+  const conditionalFormats = normalizeLargeSimpleConditionalFormatIds(sheetName, internedInput.conditionalFormats)
   const sheetProtection =
-    input.sheetProtection ?? (worksheetXml ? (readImportedWorksheetSheetProtection(sheetName, worksheetXml) ?? undefined) : undefined)
-  const dataValidationCount = input.validations?.length ?? cellScan.dataValidationCount ?? 0
+    internedInput.sheetProtection ??
+    (worksheetXml ? (readImportedWorksheetSheetProtection(sheetName, worksheetXml) ?? undefined) : undefined)
+  const dataValidationCount = internedInput.validations?.length ?? cellScan.dataValidationCount ?? 0
   const styleRanges =
     options.materializeCells && options.styleCatalog && options.stylesByIndex
       ? buildLargeSimpleStyleRanges(sheetName, cellScan, options.stylesByIndex, options.styleCatalog)
@@ -65,9 +70,12 @@ export function buildParsedWorksheet(
       (options.numberFormatsByStyleIndex && options.numberFormatsByStyleIndex.size > 0
         ? lazySheetCellMaterializationNumberFormatThreshold
         : lazySheetCellMaterializationThreshold)
+  const detachLazyCells = useLazyCells && options.releaseArenaAfterMaterialization !== false && options.includeCellCoordinates !== true
   const cells = options.materializeCells
     ? useLazyCells
-      ? cellScan.arena.createLazySheetCells(cellScan.sheetIndex, cellMaterializationOptions)
+      ? detachLazyCells
+        ? cellScan.arena.createDetachedLazySheetCells(cellScan.sheetIndex)
+        : cellScan.arena.createLazySheetCells(cellScan.sheetIndex, cellMaterializationOptions)
       : cellScan.arena.materializeSheetCells(cellScan.sheetIndex, cellMaterializationOptions)
     : []
   if (!useLazyCells && options.numberFormatsByStyleIndex && options.numberFormatsByStyleIndex.size > 0) {
@@ -86,6 +94,7 @@ export function buildParsedWorksheet(
         })
   releaseProjectedCellScanStorage(cellScan, {
     releaseArenaAfterMaterialization: options.releaseArenaAfterMaterialization,
+    detachLazyCells,
     useLazyCells,
   })
   const metadata: SheetMetadataSnapshot = {
@@ -96,19 +105,19 @@ export function buildParsedWorksheet(
     ...(sheetFormatPr ? { sheetFormatPr } : {}),
     ...(styleRanges.length > 0 ? { styleRanges } : {}),
     ...(merges.length > 0 ? { merges } : {}),
-    ...(input.drawingArtifacts ? { drawingArtifacts: input.drawingArtifacts } : {}),
-    ...(input.controlArtifacts ? { controlArtifacts: input.controlArtifacts } : {}),
-    ...(input.pivotArtifacts ? { pivotArtifacts: input.pivotArtifacts } : {}),
-    ...(input.legacyCommentVml ? { legacyCommentVml: input.legacyCommentVml } : {}),
+    ...(internedInput.drawingArtifacts ? { drawingArtifacts: internedInput.drawingArtifacts } : {}),
+    ...(internedInput.controlArtifacts ? { controlArtifacts: internedInput.controlArtifacts } : {}),
+    ...(internedInput.pivotArtifacts ? { pivotArtifacts: internedInput.pivotArtifacts } : {}),
+    ...(internedInput.legacyCommentVml ? { legacyCommentVml: internedInput.legacyCommentVml } : {}),
     ...(sheetProtection ? { sheetProtection } : {}),
-    ...(input.filters ? { filters: input.filters } : {}),
-    ...(input.hyperlinks ? { hyperlinks: input.hyperlinks } : {}),
-    ...(input.validations ? { validations: input.validations } : {}),
+    ...(internedInput.filters ? { filters: internedInput.filters } : {}),
+    ...(internedInput.hyperlinks ? { hyperlinks: internedInput.hyperlinks } : {}),
+    ...(internedInput.validations ? { validations: internedInput.validations } : {}),
     ...(conditionalFormats ? { conditionalFormats } : {}),
-    ...(input.conditionalFormatArtifacts ? { conditionalFormatArtifacts: input.conditionalFormatArtifacts } : {}),
+    ...(internedInput.conditionalFormatArtifacts ? { conditionalFormatArtifacts: internedInput.conditionalFormatArtifacts } : {}),
     ...(cellMetadataRefs ? { cellMetadataRefs } : {}),
-    ...(input.printerSettings ? { printerSettings: input.printerSettings } : {}),
-    ...(input.printPageSetup ? { printPageSetup: input.printPageSetup } : {}),
+    ...(internedInput.printerSettings ? { printerSettings: internedInput.printerSettings } : {}),
+    ...(internedInput.printPageSetup ? { printPageSetup: internedInput.printPageSetup } : {}),
     ...(cellScan.richTextCells.length > 0 ? { richTextArtifacts: { cells: cellScan.richTextCells } } : {}),
   }
   const sheet: WorkbookSnapshot['sheets'][number] = {

@@ -47,6 +47,7 @@ const lessThan = 60
 const slash = 47
 const emptyBytes = new Uint8Array(0)
 const packedAddressColumnFactor = 16_384
+const maxEagerDenseDimensionCellPreallocation = 1_000_000
 
 interface ActiveAutoFilter {
   readonly rootTag: Uint8Array
@@ -391,10 +392,11 @@ class LargeSimpleWorksheetChunkScanner {
   private reserveDimensionCellCapacity(rowCount: number, columnCount: number): void {
     const cellCapacity = rowCount * columnCount
     if (
+      !this.retainCells ||
       this.dimensionCellPreallocationApplied ||
       !Number.isSafeInteger(cellCapacity) ||
       cellCapacity <= 0 ||
-      cellCapacity > this.maxDimensionCellPreallocation
+      cellCapacity > Math.min(this.maxDimensionCellPreallocation, maxEagerDenseDimensionCellPreallocation)
     ) {
       return
     }

@@ -174,11 +174,20 @@ consumer-defined invariants. `verifyChecks` returns the same checks in the same
 order and may only change `status`; malformed output fails with
 `invalid_check_verification`, thrown verifier errors fail with
 `check_verification_failed`, and failed checks become `check_failed` run errors.
+`@bilig/core` provides `createWorkbookRunAdapter(engine)` for the canonical
+engine handoff. It materializes generic `plan.commands` into engine operations,
+including range and table-column writes, falls back to explicit `plan.ops` for
+low-level plans, reads single-cell `valueEquals` and `formulaEquals` targets,
+and verifies generic `exists` and `noFormulaErrors` checks. When the engine
+captures an undo transaction, the adapter returns a portable `undo.ops` ref
+using the same workbook operation language. Consumer-defined business meaning
+stays in the model; the core adapter only proves generic workbook facts.
 
 ## Core engine surface
 
 The canonical engine surface includes:
 
+- `createWorkbookRunAdapter`
 - `createSheet`
 - `deleteSheet`
 - `setCellValue`

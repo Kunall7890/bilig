@@ -111,9 +111,9 @@ export interface GridRenderTileDamageRuntimeInput {
 
 export interface GridRenderTileLocalInvalidationRuntimeInput {
   readonly engine: GridEngineLike
+  readonly localInvalidationAddresses: readonly string[]
   readonly needsLocalCellInvalidation: boolean
   readonly sheetName: string
-  readonly visibleAddresses: readonly string[]
 }
 
 export interface GridRenderTileConnectionRuntimeInput {
@@ -122,6 +122,7 @@ export interface GridRenderTileConnectionRuntimeInput {
   readonly freezeCols?: number | undefined
   readonly freezeRows?: number | undefined
   readonly gridRuntimeHost: GridRuntimeHost
+  readonly localInvalidationAddresses: readonly string[]
   readonly needsLocalCellInvalidation: boolean
   readonly renderTileSource?: GridRenderTileSource | undefined
   readonly renderTileViewport: Viewport
@@ -129,7 +130,6 @@ export interface GridRenderTileConnectionRuntimeInput {
   readonly sheetId?: number | undefined
   readonly sheetOrdinal?: number | undefined
   readonly sheetName: string
-  readonly visibleAddresses: readonly string[]
   readonly visibleViewport?: Viewport | undefined
 }
 
@@ -334,7 +334,7 @@ export class GridRenderTilePaneRuntime {
   }
 
   connectLocalCellInvalidation(input: GridRenderTileLocalInvalidationRuntimeInput, listener?: () => void): (() => void) | undefined {
-    if (!input.needsLocalCellInvalidation || input.visibleAddresses.length === 0) {
+    if (!input.needsLocalCellInvalidation || input.localInvalidationAddresses.length === 0) {
       return undefined
     }
     const invalidate = () => {
@@ -342,7 +342,7 @@ export class GridRenderTilePaneRuntime {
       this.noteLocalFallbackInvalidation()
       listener?.()
     }
-    const unsubscribeCells = input.engine.subscribeCells(input.sheetName, input.visibleAddresses, invalidate)
+    const unsubscribeCells = input.engine.subscribeCells(input.sheetName, input.localInvalidationAddresses, invalidate)
     const unsubscribeMerges = input.engine.subscribeSheetChannel?.(input.sheetName, 'merges', invalidate)
     if (!unsubscribeMerges) {
       return unsubscribeCells
@@ -452,6 +452,7 @@ export class GridRenderTilePaneRuntime {
   }
 
   private syncRenderTileDeltaConnection(input: GridRenderTileConnectionRuntimeInput): void {
+    const visibleViewport = input.visibleViewport ?? input.residentViewport ?? input.renderTileViewport
     const identity: RenderTileDeltaConnectionIdentity = {
       dprBucket: input.dprBucket,
       freezeCols: input.freezeCols ?? 0,
@@ -461,6 +462,7 @@ export class GridRenderTilePaneRuntime {
       sheetId: input.sheetId,
       sheetName: input.sheetName,
       sheetOrdinal: input.sheetOrdinal,
+      visibleViewport,
       viewport: input.renderTileViewport,
     }
     if (this.renderTileDeltaConnection && sameRenderTileDeltaConnectionIdentity(this.renderTileDeltaConnection.identity, identity)) {
@@ -481,7 +483,7 @@ export class GridRenderTilePaneRuntime {
         sheetId: input.sheetId,
         sheetName: input.sheetName,
         sheetOrdinal: input.sheetOrdinal,
-        visibleViewport: input.visibleViewport,
+        visibleViewport,
       }),
     }
   }
@@ -512,9 +514,9 @@ export class GridRenderTilePaneRuntime {
   private syncLocalInvalidationConnection(input: GridRenderTileConnectionRuntimeInput): void {
     const identity: LocalInvalidationConnectionIdentity = {
       engine: input.engine,
+      localInvalidationAddresses: input.localInvalidationAddresses,
       needsLocalCellInvalidation: input.needsLocalCellInvalidation,
       sheetName: input.sheetName,
-      visibleAddresses: input.visibleAddresses,
     }
     if (this.localInvalidationConnection && sameLocalInvalidationConnectionIdentity(this.localInvalidationConnection.identity, identity)) {
       return
@@ -524,9 +526,9 @@ export class GridRenderTilePaneRuntime {
       identity,
       unsubscribe: this.connectLocalCellInvalidation({
         engine: input.engine,
+        localInvalidationAddresses: input.localInvalidationAddresses,
         needsLocalCellInvalidation: input.needsLocalCellInvalidation,
         sheetName: input.sheetName,
-        visibleAddresses: input.visibleAddresses,
       }),
     }
   }

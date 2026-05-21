@@ -156,7 +156,7 @@ describe('GridRuntimeHost', () => {
       }),
     ).toMatchObject({
       fillPreviewBounds: { height: 10, width: 80, x: 30, y: 20 },
-      requiresLiveViewportState: false,
+      requiresLiveViewportState: true,
       selectionRange: { height: 1, width: 1, x: 3, y: 4 },
     })
   })
@@ -231,7 +231,7 @@ describe('GridRuntimeHost', () => {
       sheetId: 1,
       sheetName: 'Sheet1',
       sheetOrdinal: 0,
-      visibleAddresses: [],
+      localInvalidationAddresses: [],
     })
 
     host.dispose()
@@ -376,8 +376,17 @@ describe('GridRuntimeHost', () => {
       x: 256,
       y: 96,
     })
+    expect(first.visibleAddresses).toHaveLength(108)
+    expect(first.visibleAddresses).toContain('JA111')
+    expect(first.visibleAddresses).not.toContain('IW97')
+    expect(first.residentAddresses).toContain('IW97')
     expect(sameWindow.residentViewport).toBe(first.residentViewport)
-    expect(sameWindow.visibleAddresses).toBe(first.visibleAddresses)
+    expect(sameWindow.residentHeaderItems).toBe(first.residentHeaderItems)
+    expect(sameWindow.residentAddresses).toBe(first.residentAddresses)
+    expect(sameWindow.visibleAddresses).not.toBe(first.visibleAddresses)
+    expect(first.visibleAddresses).not.toContain('JK119')
+    expect(sameWindow.visibleAddresses).toContain('JK119')
+    expect(sameWindow.visibleAddresses).not.toContain('JA111')
     expect(sameWindow.sceneRevision).toBe(1)
   })
 
@@ -433,15 +442,15 @@ describe('GridRuntimeHost', () => {
 
     host.syncViewportResidencyInvalidation({
       engine,
+      residentAddresses: ['A1', 'B2'],
       sheetName: 'Sheet1',
       shouldUseRemoteRenderTileSource: false,
-      visibleAddresses: ['A1', 'B2'],
     })
     host.syncViewportResidencyInvalidation({
       engine,
+      residentAddresses: ['A1', 'B2'],
       sheetName: 'Sheet1',
       shouldUseRemoteRenderTileSource: false,
-      visibleAddresses: ['A1', 'B2'],
     })
 
     expect(subscribeCells).toHaveBeenCalledTimes(1)
@@ -453,9 +462,9 @@ describe('GridRuntimeHost', () => {
 
     host.syncViewportResidencyInvalidation({
       engine,
+      residentAddresses: ['A1', 'B2'],
       sheetName: 'Sheet1',
       shouldUseRemoteRenderTileSource: true,
-      visibleAddresses: ['A1', 'B2'],
     })
 
     expect(unsubscribe).toHaveBeenCalledTimes(1)

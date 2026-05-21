@@ -105,7 +105,14 @@ export function createEngineCellStateService(args: {
     const currentStyleId = args.state.workbook.getStyleId(sheetName, parsedTarget.row, parsedTarget.col)
     const nextFormat = formatOverride === '' ? null : formatOverride
     const isAuthoredBlank = (snapshot.flags & CellFlags.AuthoredBlank) !== 0
-    const explicitBlankOp = { kind: 'setCellValue' as const, sheetName, address, value: null }
+    const skipHeaderRename = resolvedOptions.skipTableHeaderRename === true
+    const explicitBlankOp = {
+      kind: 'setCellValue' as const,
+      sheetName,
+      address,
+      value: null,
+      ...(skipHeaderRename ? { skipTableHeaderRename: true } : {}),
+    }
     const shouldRestoreExplicitBlank = (snapshot.version ?? 0) !== 0 || isAuthoredBlank
     if (snapshot.formula !== undefined) {
       const translatedFormula =
@@ -123,14 +130,20 @@ export function createEngineCellStateService(args: {
                   kind: 'clearCell',
                   sheetName,
                   address,
-                  ...(resolvedOptions.skipTableHeaderRename === true ? { skipTableHeaderRename: true } : {}),
+                  ...(skipHeaderRename ? { skipTableHeaderRename: true } : {}),
                 },
           )
           break
         case ValueTag.Number:
         case ValueTag.Boolean:
         case ValueTag.String:
-          ops.push({ kind: 'setCellValue', sheetName, address, value: snapshot.value.value })
+          ops.push({
+            kind: 'setCellValue',
+            sheetName,
+            address,
+            value: snapshot.value.value,
+            ...(skipHeaderRename ? { skipTableHeaderRename: true } : {}),
+          })
           break
         case ValueTag.Error:
           ops.push(
@@ -140,7 +153,7 @@ export function createEngineCellStateService(args: {
                   kind: 'clearCell',
                   sheetName,
                   address,
-                  ...(resolvedOptions.skipTableHeaderRename === true ? { skipTableHeaderRename: true } : {}),
+                  ...(skipHeaderRename ? { skipTableHeaderRename: true } : {}),
                 },
           )
           break

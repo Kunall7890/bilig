@@ -104,4 +104,39 @@ describe('mutation core inverse ops', () => {
       Reflect.apply(inverse.inverseOpsFor, inverse, [{ kind: 'unsupportedMutation' }])
     }).toThrow('Unhandled metadata inverse operation: unsupportedMutation')
   })
+
+  it('preserves table-header rename suppression on restored value and clear inverses', () => {
+    const workbook = createWorkbookWithSheet()
+    const inverse = createMutationCoreInverseOps({
+      workbook,
+      captureSheetCellState: () => [],
+      captureRowRangeCellState: () => [],
+      captureColumnRangeCellState: () => [],
+      restoreCellOps: (sheetName, address) => [
+        { kind: 'setCellValue', sheetName, address, value: `old-${address}` },
+        { kind: 'setCellFormula', sheetName, address: 'C3', formula: 'A1' },
+      ],
+      captureFormulaCellStateForStructuralUndo: () => [],
+    })
+
+    expect(
+      inverse.inverseOpsFor({ kind: 'setCellValue', sheetName: 'Sheet1', address: 'A1', value: 1, skipTableHeaderRename: true }),
+    ).toEqual([
+      { kind: 'setCellValue', sheetName: 'Sheet1', address: 'A1', value: 'old-A1', skipTableHeaderRename: true },
+      { kind: 'setCellFormula', sheetName: 'Sheet1', address: 'C3', formula: 'A1' },
+    ])
+    expect(inverse.inverseOpsFor({ kind: 'clearCell', sheetName: 'Sheet1', address: 'B2', skipTableHeaderRename: true })[0]).toEqual({
+      kind: 'setCellValue',
+      sheetName: 'Sheet1',
+      address: 'B2',
+      value: 'old-B2',
+      skipTableHeaderRename: true,
+    })
+    expect(inverse.inverseOpsFor({ kind: 'setCellFormula', sheetName: 'Sheet1', address: 'D4', formula: 'A1' })[0]).toEqual({
+      kind: 'setCellValue',
+      sheetName: 'Sheet1',
+      address: 'D4',
+      value: 'old-D4',
+    })
+  })
 })

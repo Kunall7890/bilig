@@ -159,19 +159,21 @@ export function applyBatchSetCellValueOp(request: ApplyBatchSetCellValueOpArgs):
     ) {
       return { changedInputCount, formulaChangedCount, explicitChangedCount, topologyChanged, refreshAllPivots }
     }
-    ;({
-      formulaChangedCount,
-      topologyChanged,
-      value: effectiveValue,
-    } = applyTableHeaderRenameForSetCellValue({
-      serviceArgs: args,
-      sheetName: op.sheetName,
-      row: parsedAddress.row,
-      col: parsedAddress.col,
-      value: op.value,
-      formulaChangedCount,
-      topologyChanged,
-    }))
+    if (op.skipTableHeaderRename !== true) {
+      ;({
+        formulaChangedCount,
+        topologyChanged,
+        value: effectiveValue,
+      } = applyTableHeaderRenameForSetCellValue({
+        serviceArgs: args,
+        sheetName: op.sheetName,
+        row: parsedAddress.row,
+        col: parsedAddress.col,
+        value: op.value,
+        formulaChangedCount,
+        topologyChanged,
+      }))
+    }
     if (existingIndex !== undefined) {
       changedInputCount = args.markPivotRootsChanged(args.clearPivotForCell(existingIndex), changedInputCount)
     }

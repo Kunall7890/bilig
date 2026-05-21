@@ -5,8 +5,16 @@ import type {
   WorkbookAutoFilterSnapshot,
   WorkbookConditionalFormatSnapshot,
   WorkbookDataValidationSnapshot,
+  WorkbookHyperlinkSnapshot,
+  WorkbookPackageRelationshipSnapshot,
+  WorkbookPrinterSettingsSnapshot,
+  WorkbookSheetControlArtifactsSnapshot,
+  WorkbookSheetDrawingArtifactsSnapshot,
+  WorkbookSheetPivotArtifactsSnapshot,
+  WorkbookSheetProtectionSnapshot,
 } from '@bilig/protocol'
 import type { ImportedWorkbookStringPool } from './xlsx-large-simple-string-pool.js'
+import type { LargeSimpleSheetMetadataInput } from './xlsx-large-simple-import-types.js'
 import type { LargeSimpleWorksheetScannedMetadata } from './xlsx-large-simple-worksheet-metadata.js'
 
 type Mutable<T> = { -readonly [Key in keyof T]: T[Key] }
@@ -56,6 +64,32 @@ export function internLargeSimpleWorksheetMetadata(
   }
   internStringArrayInPlace(metadata.tableRelationshipIds, intern)
   return metadata
+}
+
+export function internLargeSimpleSheetMetadataInput(
+  input: LargeSimpleSheetMetadataInput,
+  stringPool: ImportedWorkbookStringPool | undefined,
+): LargeSimpleSheetMetadataInput {
+  if (!stringPool) {
+    return input
+  }
+  const intern = (value: string): string => stringPool.intern(value)
+  if (input.conditionalFormatArtifacts) {
+    const mutableArtifacts = input.conditionalFormatArtifacts as Mutable<typeof input.conditionalFormatArtifacts>
+    mutableArtifacts.xml = intern(input.conditionalFormatArtifacts.xml)
+  }
+  internConditionalFormatsInPlace(input.conditionalFormats, intern)
+  internSheetControlArtifactsInPlace(input.controlArtifacts, intern)
+  internDataValidationsInPlace(input.validations, intern)
+  internSheetDrawingArtifactsInPlace(input.drawingArtifacts, intern)
+  internFiltersInPlace(input.filters, intern)
+  internWorkbookHyperlinksInPlace(input.hyperlinks, intern)
+  internLegacyCommentVmlInPlace(input.legacyCommentVml, intern)
+  internSheetPivotArtifactsInPlace(input.pivotArtifacts, intern)
+  internPrinterSettingsInPlace(input.printerSettings, intern)
+  internPrintPageSetupInPlace(input.printPageSetup, intern)
+  internSheetProtectionInPlace(input.sheetProtection, intern)
+  return input
 }
 
 function internCellMetadataRefsInPlace(
@@ -257,6 +291,127 @@ function internHyperlinksInPlace(hyperlinks: LargeSimpleWorksheetScannedMetadata
     if (hyperlink.display) {
       mutableHyperlink.display = intern(hyperlink.display)
     }
+  }
+}
+
+function internWorkbookHyperlinksInPlace(
+  hyperlinks: readonly WorkbookHyperlinkSnapshot[] | undefined,
+  intern: (value: string) => string,
+): void {
+  for (const hyperlink of hyperlinks ?? []) {
+    const mutableHyperlink = hyperlink as Mutable<WorkbookHyperlinkSnapshot>
+    mutableHyperlink.sheetName = intern(hyperlink.sheetName)
+    mutableHyperlink.address = intern(hyperlink.address)
+    mutableHyperlink.target = intern(hyperlink.target)
+    if (hyperlink.tooltip) {
+      mutableHyperlink.tooltip = intern(hyperlink.tooltip)
+    }
+    if (hyperlink.display) {
+      mutableHyperlink.display = intern(hyperlink.display)
+    }
+  }
+}
+
+function internSheetDrawingArtifactsInPlace(
+  artifacts: WorkbookSheetDrawingArtifactsSnapshot | undefined,
+  intern: (value: string) => string,
+): void {
+  if (!artifacts) {
+    return
+  }
+  const mutableArtifacts = artifacts as Mutable<WorkbookSheetDrawingArtifactsSnapshot>
+  mutableArtifacts.relationshipTarget = intern(artifacts.relationshipTarget)
+  internStringArrayInPlace(artifacts.preservedChartRelationshipIds, intern)
+}
+
+function internSheetControlArtifactsInPlace(
+  artifacts: WorkbookSheetControlArtifactsSnapshot | undefined,
+  intern: (value: string) => string,
+): void {
+  if (!artifacts) {
+    return
+  }
+  const mutableArtifacts = artifacts as Mutable<WorkbookSheetControlArtifactsSnapshot>
+  mutableArtifacts.controlsXml = intern(artifacts.controlsXml)
+  mutableArtifacts.worksheetRootOpenTag = intern(artifacts.worksheetRootOpenTag)
+  internPackageRelationshipsInPlace(artifacts.relationships, intern)
+}
+
+function internPackageRelationshipsInPlace(
+  relationships: readonly WorkbookPackageRelationshipSnapshot[] | undefined,
+  intern: (value: string) => string,
+): void {
+  for (const relationship of relationships ?? []) {
+    const mutableRelationship = relationship as Mutable<WorkbookPackageRelationshipSnapshot>
+    mutableRelationship.id = intern(relationship.id)
+    mutableRelationship.type = intern(relationship.type)
+    mutableRelationship.target = intern(relationship.target)
+    if (relationship.targetMode) {
+      mutableRelationship.targetMode = intern(relationship.targetMode)
+    }
+  }
+}
+
+function internLegacyCommentVmlInPlace(
+  legacyCommentVml: LargeSimpleSheetMetadataInput['legacyCommentVml'],
+  intern: (value: string) => string,
+): void {
+  if (!legacyCommentVml) {
+    return
+  }
+  const mutableLegacyCommentVml = legacyCommentVml as Mutable<typeof legacyCommentVml>
+  mutableLegacyCommentVml.relationshipTarget = intern(legacyCommentVml.relationshipTarget)
+  mutableLegacyCommentVml.vmlXml = intern(legacyCommentVml.vmlXml)
+  mutableLegacyCommentVml.commentSignature = intern(legacyCommentVml.commentSignature)
+  if (legacyCommentVml.commentsRelationshipTarget) {
+    mutableLegacyCommentVml.commentsRelationshipTarget = intern(legacyCommentVml.commentsRelationshipTarget)
+  }
+  if (legacyCommentVml.commentsXml) {
+    mutableLegacyCommentVml.commentsXml = intern(legacyCommentVml.commentsXml)
+  }
+}
+
+function internSheetPivotArtifactsInPlace(
+  pivotArtifacts: WorkbookSheetPivotArtifactsSnapshot | undefined,
+  intern: (value: string) => string,
+): void {
+  if (!pivotArtifacts) {
+    return
+  }
+  const mutablePivotArtifacts = pivotArtifacts as Mutable<WorkbookSheetPivotArtifactsSnapshot>
+  internPackageRelationshipsInPlace(pivotArtifacts.relationships, intern)
+  if (pivotArtifacts.pivotTableDefinitionsXml) {
+    mutablePivotArtifacts.pivotTableDefinitionsXml = intern(pivotArtifacts.pivotTableDefinitionsXml)
+  }
+}
+
+function internPrinterSettingsInPlace(
+  printerSettings: readonly WorkbookPrinterSettingsSnapshot[] | undefined,
+  intern: (value: string) => string,
+): void {
+  for (const setting of printerSettings ?? []) {
+    const mutableSetting = setting as Mutable<WorkbookPrinterSettingsSnapshot>
+    mutableSetting.relationshipTarget = intern(setting.relationshipTarget)
+    mutableSetting.dataBase64 = intern(setting.dataBase64)
+    if (setting.pageSetupXml) {
+      mutableSetting.pageSetupXml = intern(setting.pageSetupXml)
+    }
+  }
+}
+
+function internSheetProtectionInPlace(
+  sheetProtection: WorkbookSheetProtectionSnapshot | undefined,
+  intern: (value: string) => string,
+): void {
+  if (!sheetProtection) {
+    return
+  }
+  const mutableSheetProtection = sheetProtection as Mutable<WorkbookSheetProtectionSnapshot>
+  mutableSheetProtection.sheetName = intern(sheetProtection.sheetName)
+  for (const attribute of sheetProtection.xmlAttributes ?? []) {
+    const mutableAttribute = attribute as Mutable<typeof attribute>
+    mutableAttribute.name = intern(attribute.name)
+    mutableAttribute.value = intern(attribute.value)
   }
 }
 

@@ -5,6 +5,12 @@ export interface ArrayValue {
   values: CellValue[]
   rows: number
   cols: number
+  sourceRange?: {
+    refKind: 'cells' | 'rows' | 'cols'
+    sheetName?: string
+    start?: string
+    end?: string
+  }
 }
 
 export interface RangeLikeValue {

@@ -1,6 +1,8 @@
 import { expect, test, type Page } from '@playwright/test'
 import {
+  PRODUCT_COLUMN_WIDTH,
   PRODUCT_HEADER_HEIGHT,
+  PRODUCT_ROW_HEIGHT,
   PRODUCT_ROW_MARKER_WIDTH,
   PRIMARY_MODIFIER,
   clickProductCell,
@@ -516,6 +518,86 @@ test('@browser-ci web app paints toolbar fill across a selected range without hi
   await expect.poll(() => countBlueFillReadbackPixelsInCell(page, 5, 10)).toBeGreaterThan(120)
 })
 
+test('@browser-ci web app remaps visible TypeGPU cells exactly while scrolling inside one resident window', async ({ page }) => {
+  const documentId = createTestDocumentId('playwright-resident-visible-remap')
+  await page.setViewportSize({ width: 1166, height: 820 })
+  await page.goto(`/?document=${encodeURIComponent(documentId)}&persist=0&sheet=Sheet1&cell=A1`)
+  await waitForWorkbookReady(page)
+
+  const formulaInput = page.getByTestId('formula-input')
+  const nameBox = page.getByTestId('name-box')
+
+  await clickProductCell(page, 1, 1)
+  await formulaInput.fill('resident-visible-b2')
+  await formulaInput.press('Enter')
+  await pickToolbarPresetColor(page, 'Fill color', 'green')
+  await expect.poll(() => countGreenFillReadbackPixelsInCell(page, 1, 1)).toBeGreaterThan(120)
+  await expect.poll(() => countBlueFillReadbackPixelsInCell(page, 1, 1)).toBeLessThan(12)
+
+  await nameBox.fill('L32')
+  await nameBox.press('Enter')
+  await expect(nameBox).toHaveValue('L32')
+  await formulaInput.fill('resident-visible-l32')
+  await formulaInput.press('Enter')
+  await pickToolbarPresetColor(page, 'Fill color', 'blue')
+  await expect.poll(() => countBlueFillReadbackPixelsInCell(page, 11, 31)).toBeGreaterThan(120)
+  await expect.poll(() => countGreenFillReadbackPixelsInCell(page, 11, 31)).toBeLessThan(12)
+
+  await scrollGridViewportTo(page, 0, 0)
+  await clickVisibleGridBodySlot(page, 1, 1)
+  await expect(nameBox).toHaveValue('B2')
+  await expect(formulaInput).toHaveValue('resident-visible-b2')
+  await expect
+    .poll(readRendererSurfaceState(page), {
+      message: 'resident remap proof must stay on the TypeGPU V3 renderer without native or fallback masking',
+      timeout: 5_000,
+    })
+    .toMatchObject({
+      fallbackMounted: false,
+      textOverlayMounted: false,
+      typeGpuMode: 'typegpu-v3',
+      typeGpuOpacity: '1',
+    })
+  await expect
+    .poll(readRenderRevisionState(page), {
+      message: 'resident remap proof should expose authoritative visible TypeGPU frame revisions',
+      timeout: 5_000,
+    })
+    .toMatchObject({
+      projectedRevisionPresent: true,
+      typeGpuProjectedRevisionMatchesGrid: true,
+      tileSceneRevisionPresent: true,
+      visibleProjectedRevisionMatchesGrid: true,
+      visibleRenderRevisionPresent: true,
+    })
+  await expect.poll(() => countGreenFillReadbackPixelsInCell(page, 1, 1)).toBeGreaterThan(120)
+  await expect.poll(() => countBlueFillReadbackPixelsInCell(page, 1, 1)).toBeLessThan(12)
+
+  await scrollGridViewportTo(page, PRODUCT_COLUMN_WIDTH * 10, PRODUCT_ROW_HEIGHT * 30)
+  await expect
+    .poll(() => countBlueFillReadbackPixelsInCell(page, 11, 31), {
+      message: 'after scrolling inside the resident window, the same visible slot must map to L32 blue instead of stale B2 green',
+      timeout: 5_000,
+    })
+    .toBeGreaterThan(120)
+  await expect.poll(() => countGreenFillReadbackPixelsInCell(page, 11, 31)).toBeLessThan(12)
+  await clickVisibleGridBodySlot(page, 1, 1)
+  await expect(nameBox).toHaveValue('L32')
+  await expect(formulaInput).toHaveValue('resident-visible-l32')
+
+  await scrollGridViewportTo(page, 0, 0)
+  await expect
+    .poll(() => countGreenFillReadbackPixelsInCell(page, 1, 1), {
+      message: 'scrolling back must restore B2 green in the same visible slot without retaining L32 blue',
+      timeout: 5_000,
+    })
+    .toBeGreaterThan(120)
+  await expect.poll(() => countBlueFillReadbackPixelsInCell(page, 1, 1)).toBeLessThan(12)
+  await clickVisibleGridBodySlot(page, 1, 1)
+  await expect(nameBox).toHaveValue('B2')
+  await expect(formulaInput).toHaveValue('resident-visible-b2')
+})
+
 test('@browser-ci web app repaints moved text cells when a background fill is applied', async ({ page, context }) => {
   const documentId = createTestDocumentId('playwright-moved-cell-fill-repaint')
   const movedText = 'moved-fill-proof'
@@ -911,6 +993,18 @@ async function clickVisibleGridBodySlot(page: Page, columnIndex: number, visible
     grid.x + columnLeft + Math.floor(columnWidth / 2),
     grid.y + PRODUCT_HEADER_HEIGHT + visibleRowSlot * rowHeight + Math.floor(rowHeight / 2),
   )
+}
+
+async function scrollGridViewportTo(page: Page, scrollLeft: number, scrollTop: number): Promise<void> {
+  await page.getByTestId('grid-scroll-viewport').evaluate(
+    (viewport, target) => {
+      viewport.scrollLeft = target.scrollLeft
+      viewport.scrollTop = target.scrollTop
+      viewport.dispatchEvent(new Event('scroll', { bubbles: true }))
+    },
+    { scrollLeft, scrollTop },
+  )
+  await page.waitForTimeout(50)
 }
 
 function shouldAllowHeadlessWebGpuScreenshotGap(): boolean {

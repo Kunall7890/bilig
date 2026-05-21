@@ -75,6 +75,39 @@ describe('large simple worksheet stream scanners', () => {
     ])
   })
 
+  it('does not retain dense arena storage for huge dimensions without materialized cells', () => {
+    const scan = parseLargeSimpleWorksheetCellsFromChunks(splitAfterTagOpen(largeStyleCoordinateOnlyDimensionWorksheetXml()), 0, {
+      hasSharedStrings: false,
+      retainCells: false,
+      retainStyleIndexes: true,
+      retainStyleCoordinates: true,
+      maxDimensionCellPreallocation: 1_000_000,
+    })
+    const coordinates: Array<{ row: number; column: number; styleIndex: number }> = []
+
+    scan?.cellScan.styleIndexes.forEach((row, column, styleIndex) => coordinates.push({ row, column, styleIndex }))
+
+    expect(scan?.cellScan.cellCount).toBe(2)
+    expect(scan?.cellScan.arena.retainedStorageByteLength()).toBeLessThan(64 * 1024)
+    expect(scan?.cellScan.arena.materializeSheetCells(0)).toEqual([])
+    expect(coordinates).toEqual([
+      { row: 0, column: 0, styleIndex: 3 },
+      { row: 10, column: 10, styleIndex: 4 },
+    ])
+  })
+
+  it('caps caller-requested dense arena preallocation for oversized dimensions', () => {
+    const scan = parseLargeSimpleWorksheetCellsFromChunks(splitAfterTagOpen(emptyOversizedDimensionWorksheetXml()), 0, {
+      hasSharedStrings: false,
+      maxDimensionCellPreallocation: 2_000_000,
+    })
+
+    expect(scan?.cellScan.cellCount).toBe(0)
+    expect(scan?.cellScan.rowCount).toBe(122)
+    expect(scan?.cellScan.columnCount).toBe(16_384)
+    expect(scan?.cellScan.arena.retainedStorageByteLength()).toBeLessThan(64 * 1024)
+  })
+
   it('can defer style coordinates while retaining required style indexes', () => {
     const scan = parseLargeSimpleWorksheetCellsFromChunks(splitAfterTagOpen(styledWorksheetXml()), 0, {
       hasSharedStrings: false,
@@ -582,6 +615,27 @@ function sparseDimensionWorksheetXml(): string {
     '<row r="1"><c r="A1" t="inlineStr"><is><t>Alpha</t></is></c></row>',
     '<row r="11"><c r="K11" t="inlineStr"><is><t>Sparse</t></is></c></row>',
     '</sheetData>',
+    '</worksheet>',
+  ].join('')
+}
+
+function largeStyleCoordinateOnlyDimensionWorksheetXml(): string {
+  return [
+    '<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">',
+    '<dimension ref="A1:ALL1000"/>',
+    '<sheetData>',
+    '<row r="1"><c r="A1" s="3"><v>1</v></c></row>',
+    '<row r="11"><c r="K11" s="4"><v>2</v></c></row>',
+    '</sheetData>',
+    '</worksheet>',
+  ].join('')
+}
+
+function emptyOversizedDimensionWorksheetXml(): string {
+  return [
+    '<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">',
+    '<dimension ref="A1:XFD122"/>',
+    '<sheetData/>',
     '</worksheet>',
   ].join('')
 }

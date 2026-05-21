@@ -6,13 +6,14 @@ export function releaseProjectedCellScanStorage(
   cellScan: ImportedWorksheetCellScan,
   options: {
     readonly releaseArenaAfterMaterialization: boolean | undefined
+    readonly detachLazyCells?: boolean
     readonly useLazyCells: boolean
   },
 ): void {
   if (options.releaseArenaAfterMaterialization !== true) {
     return
   }
-  if (options.useLazyCells) {
+  if (options.useLazyCells && options.detachLazyCells !== true) {
     cellScan.arena.releaseMaterializationScratch()
   } else {
     cellScan.arena.release()

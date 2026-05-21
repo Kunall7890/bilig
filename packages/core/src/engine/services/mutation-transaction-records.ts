@@ -170,6 +170,7 @@ export function renderCommitCellMutationToEngineOp(entry: RenderCommitCellMutati
         sheetName: entry.sheetName,
         address,
         value: entry.mutation.value,
+        ...(entry.mutation.skipTableHeaderRename === true ? { skipTableHeaderRename: true } : {}),
       }
     case 'setCellFormula':
       return {
@@ -183,6 +184,7 @@ export function renderCommitCellMutationToEngineOp(entry: RenderCommitCellMutati
         kind: 'clearCell',
         sheetName: entry.sheetName,
         address,
+        ...(entry.mutation.skipTableHeaderRename === true ? { skipTableHeaderRename: true } : {}),
       }
   }
 }

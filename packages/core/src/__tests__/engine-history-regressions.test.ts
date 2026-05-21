@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { ValueTag } from '@bilig/protocol'
 import { SpreadsheetEngine } from '../engine.js'
 import {
+  applyCoreAction,
   createEngineSeedSnapshot,
   exportReplaySnapshot,
   normalizeSnapshotForSemanticComparison,
@@ -64,6 +65,70 @@ describe('engine history regressions', () => {
     expect(engine.getCellValue('Sheet1', 'B1')).toEqual({ tag: ValueTag.Empty })
     expect(normalizeSnapshotForSemanticComparison(engine.exportSnapshot())).toEqual(
       normalizeSnapshotForSemanticComparison(expectedAfterMove),
+    )
+  })
+
+  it('replays generated table headers when redoing table column inserts', async () => {
+    const seedSnapshot = await createEngineSeedSnapshot('pivot-analytics', 'table-header-insert-redo-regression')
+    const engine = new SpreadsheetEngine({
+      workbookName: seedSnapshot.workbook.name,
+      replicaId: 'table-header-insert-redo-regression',
+    })
+    await engine.ready()
+    engine.importSnapshot(structuredClone(seedSnapshot))
+
+    const insertAction = {
+      kind: 'insertColumns',
+      start: 1,
+      count: 1,
+    } satisfies CoreAction
+
+    applyCoreAction(engine, insertAction)
+    expect(engine.undo()).toBe(true)
+    expect(normalizeSnapshotForSemanticComparison(engine.exportSnapshot())).toEqual(normalizeSnapshotForSemanticComparison(seedSnapshot))
+
+    expect(engine.redo()).toBe(true)
+
+    const expectedAfterInsert = await exportReplaySnapshot(seedSnapshot, [insertAction])
+    expect(engine.getCellValue('Sheet1', 'B1')).toMatchObject({ tag: ValueTag.String, value: 'Column1' })
+    expect(normalizeSnapshotForSemanticComparison(engine.exportSnapshot())).toEqual(
+      normalizeSnapshotForSemanticComparison(expectedAfterInsert),
+    )
+  })
+
+  it('does not rename table headers when undoing moved header-cell values after row delete', async () => {
+    const seedSnapshot = await createEngineSeedSnapshot('named-structures', 'table-header-move-after-delete-undo-regression')
+    const engine = new SpreadsheetEngine({
+      workbookName: seedSnapshot.workbook.name,
+      replicaId: 'table-header-move-after-delete-undo-regression',
+    })
+    await engine.ready()
+    engine.importSnapshot(structuredClone(seedSnapshot))
+
+    const deleteAction = {
+      kind: 'deleteRows',
+      start: 0,
+      count: 1,
+    } satisfies CoreAction
+    const moveAction = {
+      kind: 'move',
+      source: { sheetName: 'Sheet1', startAddress: 'A1', endAddress: 'A1' },
+      target: { sheetName: 'Sheet1', startAddress: 'A2', endAddress: 'A2' },
+    } satisfies CoreAction
+
+    engine.deleteRows('Sheet1', deleteAction.start, deleteAction.count)
+    const expectedAfterDelete = await exportReplaySnapshot(seedSnapshot, [deleteAction])
+    expect(normalizeSnapshotForSemanticComparison(engine.exportSnapshot())).toEqual(
+      normalizeSnapshotForSemanticComparison(expectedAfterDelete),
+    )
+
+    engine.moveRange(moveAction.source, moveAction.target)
+    expect(engine.undo()).toBe(true)
+
+    expect(engine.getCellValue('Sheet1', 'A1')).toEqual({ tag: ValueTag.Number, value: 1 })
+    expect(engine.getTable('Sales')?.columnNames).toEqual(['Qty', 'Amount'])
+    expect(normalizeSnapshotForSemanticComparison(engine.exportSnapshot())).toEqual(
+      normalizeSnapshotForSemanticComparison(expectedAfterDelete),
     )
   })
 })

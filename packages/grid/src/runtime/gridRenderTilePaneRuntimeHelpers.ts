@@ -28,6 +28,7 @@ export interface RenderTileDeltaConnectionIdentity {
   readonly sheetId: number | undefined
   readonly sheetOrdinal: number | undefined
   readonly sheetName: string
+  readonly visibleViewport: Viewport
   readonly viewport: Viewport
 }
 
@@ -40,9 +41,9 @@ export interface WorkbookDeltaConnectionIdentity {
 
 export interface LocalInvalidationConnectionIdentity {
   readonly engine: GridEngineLike
+  readonly localInvalidationAddresses: readonly string[]
   readonly needsLocalCellInvalidation: boolean
   readonly sheetName: string
-  readonly visibleAddresses: readonly string[]
 }
 
 export interface RetainedFixedRenderTileDataPanesCompatibility {
@@ -223,6 +224,7 @@ export function sameRenderTileDeltaConnectionIdentity(
     left.sheetName === right.sheetName &&
     left.sheetOrdinal === right.sheetOrdinal &&
     sameOptionalViewportIdentity(left.residentViewport, right.residentViewport) &&
+    sameViewportIdentity(left.visibleViewport, right.visibleViewport) &&
     sameViewportIdentity(left.viewport, right.viewport)
   )
 }
@@ -245,9 +247,9 @@ export function sameLocalInvalidationConnectionIdentity(
 ): boolean {
   return (
     left.engine === right.engine &&
+    sameStringListIdentity(left.localInvalidationAddresses, right.localInvalidationAddresses) &&
     left.needsLocalCellInvalidation === right.needsLocalCellInvalidation &&
-    left.sheetName === right.sheetName &&
-    sameStringListIdentity(left.visibleAddresses, right.visibleAddresses)
+    left.sheetName === right.sheetName
   )
 }
 

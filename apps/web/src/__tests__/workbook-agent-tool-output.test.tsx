@@ -48,7 +48,9 @@ describe('workbook agent tool output trust summaries', () => {
   it('summarizes verification-incomplete mutation receipts before applied wording', () => {
     const summary = summarizeToolEntry(
       toolEntry({
-        applied: true,
+        applied: false,
+        mutationExecuted: true,
+        verificationComplete: false,
         status: 'verification_incomplete',
         summary: 'Applied workbook change set at revision r2: Write cells in Sheet1!B2',
         mutationReceipt: {
@@ -70,7 +72,9 @@ describe('workbook agent tool output trust summaries', () => {
       root.render(
         <StructuredToolOutput
           outputText={JSON.stringify({
-            applied: true,
+            applied: false,
+            mutationExecuted: true,
+            verificationComplete: false,
             status: 'verification_incomplete',
             summary: 'Applied workbook change set at revision r2: Write cells in Sheet1!B2',
             mutationReceipt: {

@@ -124,6 +124,7 @@ export type WorkbookOp =
       address: string
       value: LiteralInput
       authoredBlank?: boolean
+      skipTableHeaderRename?: boolean
     }
   | { kind: 'setCellFormula'; sheetName: string; address: string; formula: string }
   | { kind: 'setCellFormat'; sheetName: string; address: string; format: string | null }

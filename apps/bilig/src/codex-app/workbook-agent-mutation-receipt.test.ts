@@ -265,6 +265,8 @@ function parsePayload(result: CodexDynamicToolCallResult): unknown {
 
 const stagedPayloadSchema = z.object({
   applied: z.literal(false),
+  mutationExecuted: z.literal(false),
+  verificationComplete: z.literal(false),
   staged: z.literal(true),
   reviewQueued: z.literal(true),
   queuedForTurnApply: z.literal(false),
@@ -292,6 +294,8 @@ const stagedPayloadSchema = z.object({
 
 const queuedPayloadSchema = z.object({
   applied: z.literal(false),
+  mutationExecuted: z.literal(false),
+  verificationComplete: z.literal(false),
   staged: z.literal(false),
   reviewQueued: z.literal(false),
   queuedForTurnApply: z.literal(true),
@@ -304,7 +308,9 @@ const queuedPayloadSchema = z.object({
 })
 
 const appliedPayloadSchema = z.object({
-  applied: z.literal(true),
+  applied: z.literal(false),
+  mutationExecuted: z.literal(true),
+  verificationComplete: z.literal(false),
   staged: z.literal(false),
   reviewQueued: z.literal(false),
   queuedForTurnApply: z.literal(false),
@@ -507,7 +513,9 @@ describe('workbook agent mutation receipt helpers', () => {
 
     const payload = z
       .object({
-        applied: z.literal(true),
+        applied: z.literal(false),
+        mutationExecuted: z.literal(true),
+        verificationComplete: z.literal(false),
         status: z.literal('verification_incomplete'),
         mutationReceipt: z.object({
           status: z.literal('verification_incomplete'),
@@ -597,7 +605,9 @@ describe('workbook agent mutation receipt helpers', () => {
 
     const payload = z
       .object({
-        applied: z.literal(true),
+        applied: z.literal(false),
+        mutationExecuted: z.literal(true),
+        verificationComplete: z.literal(false),
         status: z.literal('verification_incomplete'),
         mutationReceipt: z.object({
           status: z.literal('verification_incomplete'),
@@ -669,7 +679,9 @@ describe('workbook agent mutation receipt helpers', () => {
 
     const payload = z
       .object({
-        applied: z.literal(true),
+        applied: z.literal(false),
+        mutationExecuted: z.literal(true),
+        verificationComplete: z.literal(false),
         status: z.literal('verification_incomplete'),
         mutationReceipt: z.object({
           status: z.literal('verification_incomplete'),
@@ -741,7 +753,9 @@ describe('workbook agent mutation receipt helpers', () => {
 
     const payload = z
       .object({
-        applied: z.literal(true),
+        applied: z.literal(false),
+        mutationExecuted: z.literal(true),
+        verificationComplete: z.literal(false),
         status: z.literal('verification_incomplete'),
         mutationReceipt: z.object({
           status: z.literal('verification_incomplete'),

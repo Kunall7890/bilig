@@ -266,7 +266,7 @@ describe('direct formula evaluation helpers', () => {
         readCellValueByIndex,
         ownerRow: 9,
       }),
-    ).toEqual(emptyCell)
+    ).toEqual(errorCell(ErrorCode.Value))
     expect(
       tryEvaluateDirectIndexOffset({
         directCriteria: {

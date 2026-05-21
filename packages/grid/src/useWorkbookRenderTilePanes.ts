@@ -32,6 +32,7 @@ export function useWorkbookRenderTilePanes(input: {
   readonly hostClientHeight: number
   readonly hostClientWidth: number
   readonly hostElement: HTMLDivElement | null
+  readonly localInvalidationAddresses: readonly string[]
   readonly renderTileSource?: GridRenderTileSource | undefined
   readonly renderTileViewport: Viewport
   readonly residentViewport: Viewport
@@ -44,7 +45,6 @@ export function useWorkbookRenderTilePanes(input: {
   readonly sheetName: string
   readonly sortedColumnWidthOverrides: SortedAxisOverrides
   readonly sortedRowHeightOverrides: SortedAxisOverrides
-  readonly visibleAddresses: readonly string[]
   readonly visibleViewport: Viewport
 }): WorkbookRenderTilePanesState {
   const {
@@ -61,6 +61,7 @@ export function useWorkbookRenderTilePanes(input: {
     hostClientHeight,
     hostClientWidth,
     hostElement,
+    localInvalidationAddresses,
     renderTileSource,
     renderTileViewport,
     residentViewport,
@@ -73,7 +74,6 @@ export function useWorkbookRenderTilePanes(input: {
     sheetName,
     sortedColumnWidthOverrides,
     sortedRowHeightOverrides,
-    visibleAddresses,
     visibleViewport,
   } = input
   const renderTileBridgeState = useSyncExternalStore(
@@ -169,6 +169,7 @@ export function useWorkbookRenderTilePanes(input: {
       engine,
       freezeCols,
       freezeRows,
+      localInvalidationAddresses,
       needsLocalCellInvalidation: state.needsLocalCellInvalidation,
       renderTileSource,
       renderTileViewport,
@@ -176,7 +177,6 @@ export function useWorkbookRenderTilePanes(input: {
       sheetId,
       sheetOrdinal,
       sheetName,
-      visibleAddresses,
       visibleViewport,
     })
   }, [
@@ -185,6 +185,7 @@ export function useWorkbookRenderTilePanes(input: {
     freezeCols,
     freezeRows,
     gridRuntimeHost,
+    localInvalidationAddresses,
     renderTileSource,
     renderTileViewport,
     residentViewport,
@@ -192,7 +193,6 @@ export function useWorkbookRenderTilePanes(input: {
     sheetName,
     sheetOrdinal,
     state.needsLocalCellInvalidation,
-    visibleAddresses,
     visibleViewport,
   ])
 

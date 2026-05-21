@@ -59,7 +59,7 @@ const EMPTY_DELETED_TABLE_COLUMNS: [] = []
 
 function shouldApplyGeneratedTableHeaderCellWrites(options: StructuralAxisApplyOptions | undefined): boolean {
   const source = options?.source ?? 'local'
-  return source !== 'restore' && source !== 'undo' && source !== 'redo'
+  return source !== 'restore' && source !== 'undo'
 }
 
 function dependencyIncludesOwnerCell(

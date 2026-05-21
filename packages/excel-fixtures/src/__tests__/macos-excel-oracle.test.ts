@@ -2,6 +2,7 @@ import { mkdtempSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 
+import { ErrorCode } from '@bilig/protocol'
 import { describe, expect, it } from 'vitest'
 import * as XLSX from 'xlsx'
 
@@ -29,6 +30,8 @@ describe('macOS Desktop Excel oracle harness', () => {
     expect(script).toContain('open workbook workbook file name workbookPath')
     expect(script).toContain('set formula of range "C1"')
     expect(script).toContain('calculate full rebuild')
+    expect(script).toContain('my typedCellValue(value of range "C1"')
+    expect(script).toContain('string value of range "C1"')
     expect(script).toContain('close targetWorkbook saving no')
     expect(script).not.toContain('active workbook')
   })
@@ -54,7 +57,7 @@ describe('macOS Desktop Excel oracle harness', () => {
 
     expect(script).toContain('set inspectedRange to range "C1"')
     expect(script).toContain('my formulaText(formula of inspectedRange)')
-    expect(script).toContain('my typedCellValue(value of inspectedRange)')
+    expect(script).toContain('my typedCellValue(value of inspectedRange, string value of inspectedRange)')
     expect(script).toContain('close targetWorkbook saving yes')
     expect(script).not.toContain('active workbook')
   })
@@ -71,23 +74,54 @@ describe('macOS Desktop Excel oracle harness', () => {
     expect(script).toContain('cut range (range "B:B" of targetWorksheet)')
     expect(script).toContain('insert into range (range "F:F" of targetWorksheet) shift shift to right')
     expect(script).toContain('set inspectedRange to range "F1" of targetWorksheet')
+    expect(script).toContain('my typedCellValue(value of inspectedRange, string value of inspectedRange)')
     expect(script).toContain('close targetWorkbook saving yes')
     expect(script).not.toContain('active workbook')
   })
 
+  it('builds one-variable and two-variable data-table structural operations', () => {
+    const script = createMacosExcelStructuralOperationAppleScript({
+      worksheetName: 'Cases',
+      operations: [
+        { kind: 'createDataTable', range: 'B1:D2', rowInput: 'A1' },
+        { kind: 'createDataTable', range: 'A5:B8', columnInput: 'A1' },
+        { kind: 'createDataTable', range: 'B2:D4', rowInput: 'A1', columnInput: 'A2' },
+      ],
+      inspectCells: ['C2'],
+    })
+
+    expect(script).toContain('data table (range "B1:D2" of targetWorksheet) row input (range "A1" of targetWorksheet)')
+    expect(script).toContain('data table (range "A5:B8" of targetWorksheet) column input (range "A1" of targetWorksheet)')
+    expect(script).toContain(
+      'data table (range "B2:D4" of targetWorksheet) row input (range "A1" of targetWorksheet) column input (range "A2" of targetWorksheet)',
+    )
+  })
+
   it('parses typed Excel oracle values into normalized formula values', () => {
     expect(
-      parseMacosExcelRecalculationOutput(['version=16.96', 'number\t42', 'boolean\ttrue', 'string\tBilig', 'blank\t'].join('\n'), 4),
+      parseMacosExcelRecalculationOutput(
+        ['version=16.96', 'number\t42', 'boolean\ttrue', 'string\tBilig', 'blank\t', 'error\t#N/A'].join('\n'),
+        5,
+      ),
     ).toEqual({
       excelVersion: '16.96',
-      rawValues: ['number\t42', 'boolean\ttrue', 'string\tBilig', 'blank\t'],
-      values: [{ kind: 'number', value: 42 }, { kind: 'boolean', value: true }, { kind: 'string', value: 'Bilig' }, { kind: 'blank' }],
+      rawValues: ['number\t42', 'boolean\ttrue', 'string\tBilig', 'blank\t', 'error\t#N/A'],
+      values: [
+        { kind: 'number', value: 42 },
+        { kind: 'boolean', value: true },
+        { kind: 'string', value: 'Bilig' },
+        { kind: 'blank' },
+        { kind: 'error', value: String(ErrorCode.NA) },
+      ],
     })
   })
 
   it('parses inspected formula cells into address-keyed normalized values', () => {
     expect(
-      parseMacosExcelInspectionOutput(['version=16.109', 'C1\tA1+B1*2\tnumber\t16.0', 'D1\t\tstring\tready'].join('\n'), ['C1', 'D1']),
+      parseMacosExcelInspectionOutput(
+        ['version=16.109', 'C1\tA1+B1*2\tnumber\t16.0', 'D1\t\tstring\tready', 'E1\tNA()\terror\t#N/A'].join('\n'),
+        ['C1', 'D1', 'E1'],
+      ),
     ).toEqual({
       excelVersion: '16.109',
       cells: [
@@ -101,6 +135,12 @@ describe('macOS Desktop Excel oracle harness', () => {
           address: 'D1',
           rawValue: 'string\tready',
           value: { kind: 'string', value: 'ready' },
+        },
+        {
+          address: 'E1',
+          formula: 'NA()',
+          rawValue: 'error\t#N/A',
+          value: { kind: 'error', value: String(ErrorCode.NA) },
         },
       ],
     })

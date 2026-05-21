@@ -1,7 +1,9 @@
 import { addEngineCounter } from '../../perf/engine-counters.js'
 import type { EngineRuntimeState, RuntimeDirectAggregateDescriptor } from '../runtime-state.js'
 
-const NATIVE_FRESH_DIRECT_AGGREGATE_MATRIX_MIN_ROWS = 64
+// Small fresh append matrices are faster in the JS row loop than through the
+// native bridge setup; keep WASM for batches large enough to amortize it.
+const NATIVE_FRESH_DIRECT_AGGREGATE_MATRIX_MIN_ROWS = 128
 const NATIVE_DIRECT_AGGREGATE_OP_SUM = 1
 const NATIVE_DIRECT_AGGREGATE_OP_AVERAGE = 2
 const NATIVE_DIRECT_AGGREGATE_OP_COUNT = 3

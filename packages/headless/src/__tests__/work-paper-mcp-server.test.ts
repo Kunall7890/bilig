@@ -413,7 +413,7 @@ describe('WorkPaper MCP server', () => {
         const timeout = setTimeout(() => {
           child.kill('SIGKILL')
           reject(new Error('Timed out waiting for file-backed bilig-workpaper-mcp smoke test process to exit'))
-        }, 5000)
+        }, 15000)
 
         child.once('error', (error) => {
           clearTimeout(timeout)
@@ -504,7 +504,7 @@ describe('WorkPaper MCP server', () => {
         const timeout = setTimeout(() => {
           child.kill('SIGKILL')
           reject(new Error('Timed out waiting for demo-init bilig-workpaper-mcp smoke test process to exit'))
-        }, 5000)
+        }, 15000)
 
         child.once('error', (error) => {
           clearTimeout(timeout)

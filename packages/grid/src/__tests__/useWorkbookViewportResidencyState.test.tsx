@@ -119,6 +119,13 @@ describe('useWorkbookViewportResidencyState', () => {
       x: 256,
       y: 96,
     })
+    expect(latestState?.visibleAddresses).toHaveLength(108)
+    expect(latestState?.visibleAddresses).toContain('A1')
+    expect(latestState?.visibleAddresses).toContain('JA111')
+    expect(latestState?.visibleAddresses).toContain('JJ118')
+    expect(latestState?.visibleAddresses).not.toContain('IW97')
+    expect(latestState?.residentAddresses).toContain('IW97')
+    expect(latestState?.residentHeaderItems).toHaveLength(25_026)
 
     await act(async () => {
       root.unmount()
@@ -162,6 +169,7 @@ describe('useWorkbookViewportResidencyState', () => {
     expect(subscribeCells).toHaveBeenCalledTimes(1)
     expect(subscribeCells.mock.calls[0]?.[0]).toBe('Sheet1')
     expect(subscribeCells.mock.calls[0]?.[1]).toContain('A1')
+    expect(subscribeCells.mock.calls[0]?.[1]).toContain('JA111')
     expect(subscribeCells.mock.calls[0]?.[1]).toContain('IW97')
     expect(latestState?.sceneRevision).toBe(0)
 
@@ -215,7 +223,14 @@ describe('GridViewportResidencyRuntime', () => {
     })
 
     expect(sameResident.residentViewport).toBe(first.residentViewport)
-    expect(sameResident.visibleAddresses).toBe(first.visibleAddresses)
+    expect(sameResident.residentHeaderItems).toBe(first.residentHeaderItems)
+    expect(sameResident.residentAddresses).toBe(first.residentAddresses)
+    expect(first.residentAddresses).toContain('IW97')
+    expect(sameResident.visibleAddresses).not.toBe(first.visibleAddresses)
+    expect(first.visibleAddresses).toContain('JA111')
+    expect(first.visibleAddresses).not.toContain('JK119')
+    expect(sameResident.visibleAddresses).toContain('JK119')
+    expect(sameResident.visibleAddresses).not.toContain('JA111')
     expect(sameResident.renderTileViewport).toBe(first.renderTileViewport)
     expect(sameResident.sceneRevision).toBe(1)
     expect(nextResident.residentViewport).not.toBe(first.residentViewport)
@@ -238,9 +253,9 @@ describe('GridViewportResidencyRuntime', () => {
     const remoteUnsubscribe = runtime.connectLocalSceneInvalidation(
       {
         engine: createEngine(subscribeCells),
+        residentAddresses: ['A1'],
         sheetName: 'Sheet1',
         shouldUseRemoteRenderTileSource: true,
-        visibleAddresses: ['A1'],
       },
       () => invalidations.push('remote'),
     )
@@ -254,9 +269,9 @@ describe('GridViewportResidencyRuntime', () => {
             return unsubscribeMerges
           },
         },
+        residentAddresses: ['A1', 'B2'],
         sheetName: 'Sheet1',
         shouldUseRemoteRenderTileSource: false,
-        visibleAddresses: ['A1', 'B2'],
       },
       () => invalidations.push('local'),
     )
@@ -285,30 +300,30 @@ describe('GridViewportResidencyRuntime', () => {
       return unsubscribe
     })
     const engine = createEngine(subscribeCells)
-    const visibleAddresses = ['A1', 'B2']
+    const residentAddresses = ['A1', 'B2']
 
     runtime.syncLocalSceneInvalidation({
       engine,
+      residentAddresses,
       sheetName: 'Sheet1',
       shouldUseRemoteRenderTileSource: false,
-      visibleAddresses,
     })
     runtime.syncLocalSceneInvalidation({
       engine,
+      residentAddresses: [...residentAddresses],
       sheetName: 'Sheet1',
       shouldUseRemoteRenderTileSource: false,
-      visibleAddresses: [...visibleAddresses],
     })
 
     expect(subscribeCells).toHaveBeenCalledTimes(1)
-    expect(subscribeCells.mock.calls[0]?.[1]).toBe(visibleAddresses)
+    expect(subscribeCells.mock.calls[0]?.[1]).toBe(residentAddresses)
     expect(unsubscribe).not.toHaveBeenCalled()
 
     runtime.syncLocalSceneInvalidation({
       engine,
+      residentAddresses: ['A1', 'B2', 'C3'],
       sheetName: 'Sheet1',
       shouldUseRemoteRenderTileSource: false,
-      visibleAddresses: ['A1', 'B2', 'C3'],
     })
 
     expect(subscribeCells).toHaveBeenCalledTimes(2)

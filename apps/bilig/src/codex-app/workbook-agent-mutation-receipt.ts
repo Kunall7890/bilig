@@ -282,7 +282,9 @@ export async function stageWorkbookAgentCommandResult(
     })
     return textToolResult(
       stringifyJson({
-        applied: mutationReceipt.status === 'applied' || mutationReceipt.status === 'verification_incomplete',
+        applied: mutationReceipt.status === 'applied',
+        mutationExecuted: true,
+        verificationComplete: mutationReceipt.status === 'applied',
         staged: false,
         reviewQueued: false,
         queuedForTurnApply: false,
@@ -307,6 +309,8 @@ export async function stageWorkbookAgentCommandResult(
     return textToolResult(
       stringifyJson({
         applied: false,
+        mutationExecuted: false,
+        verificationComplete: false,
         staged: false,
         reviewQueued: false,
         queuedForTurnApply: true,
@@ -324,6 +328,8 @@ export async function stageWorkbookAgentCommandResult(
   return textToolResult(
     stringifyJson({
       applied: false,
+      mutationExecuted: false,
+      verificationComplete: false,
       staged: true,
       reviewQueued: true,
       queuedForTurnApply: false,

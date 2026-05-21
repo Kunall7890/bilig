@@ -156,7 +156,7 @@ export function applySetCellValueMutation(request: ApplySetCellValueMutationArgs
     return { changedInputCount, formulaChangedCount, explicitChangedCount, topologyChanged }
   }
 
-  if (!isRestore) {
+  if (!isRestore && mutation.skipTableHeaderRename !== true) {
     ;({
       formulaChangedCount,
       topologyChanged,

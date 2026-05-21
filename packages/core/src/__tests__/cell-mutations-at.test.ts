@@ -6,6 +6,7 @@ import {
   cloneCellMutationRef,
   countPotentialNewCellsForMutationRefs,
 } from '../cell-mutations-at.js'
+import { tryMutationCellRefsFromOps } from '../engine/services/mutation-cell-restore-history.js'
 
 describe('cell mutations at', () => {
   it('clones all supported mutation shapes', () => {
@@ -15,12 +16,14 @@ describe('cell mutations at', () => {
         row: 1,
         col: 2,
         value: 42,
+        skipTableHeaderRename: true,
       }),
     ).toEqual({
       kind: 'setCellValue',
       row: 1,
       col: 2,
       value: 42,
+      skipTableHeaderRename: true,
     })
 
     expect(
@@ -62,6 +65,7 @@ describe('cell mutations at', () => {
         row: 0,
         col: 0,
         value: 7,
+        skipTableHeaderRename: true,
       },
     })
     const formulaRef = cloneCellMutationRef({
@@ -89,6 +93,7 @@ describe('cell mutations at', () => {
         row: 0,
         col: 0,
         value: 7,
+        skipTableHeaderRename: true,
       },
     })
     expect(cellMutationRefToEngineOp(workbook, valueRef)).toEqual({
@@ -96,6 +101,7 @@ describe('cell mutations at', () => {
       sheetName: 'Sheet1',
       address: 'A1',
       value: 7,
+      skipTableHeaderRename: true,
     })
     expect(cellMutationRefToEngineOp(workbook, formulaRef)).toEqual({
       kind: 'setCellFormula',
@@ -129,5 +135,28 @@ describe('cell mutations at', () => {
         mutation: { kind: 'clearCell', row: 0, col: 0 },
       }),
     ).toThrow('Unknown sheet id: 999')
+  })
+
+  it('converts low-level cell ops to refs while preserving header-rename suppression', () => {
+    const workbook = new WorkbookStore('cell-mutations')
+    workbook.createSheet('Sheet1', 0)
+    const sheetId = workbook.getSheet('Sheet1')!.id
+
+    expect(tryMutationCellRefsFromOps(workbook, [])).toEqual([])
+    expect(
+      tryMutationCellRefsFromOps(workbook, [
+        { kind: 'setCellValue', sheetName: 'Sheet1', address: 'A1', value: 1, skipTableHeaderRename: true },
+        { kind: 'clearCell', sheetName: 'Sheet1', address: 'B2', skipTableHeaderRename: true },
+      ]),
+    ).toEqual([
+      {
+        sheetId,
+        mutation: { kind: 'setCellValue', row: 0, col: 0, value: 1, skipTableHeaderRename: true },
+      },
+      {
+        sheetId,
+        mutation: { kind: 'clearCell', row: 1, col: 1, skipTableHeaderRename: true },
+      },
+    ])
   })
 })

@@ -95,6 +95,13 @@ describe('csv helpers', () => {
     ])
   })
 
+  it('auto-detects tab-delimited CSV while ignoring delimiters inside quotes', () => {
+    expect(parseCsv('Account\tDescription\tAmount\n4000\t"contains,comma;semicolon"\t125.50')).toEqual([
+      ['Account', 'Description', 'Amount'],
+      ['4000', 'contains,comma;semicolon', '125.50'],
+    ])
+  })
+
   it('parses CSV cell inputs into formulas, booleans, numbers, raw strings, or empties', () => {
     expect(parseCsvCellInput('   ')).toBeUndefined()
     expect(parseCsvCellInput('=SUM(A1:A2)')).toEqual({ formula: 'SUM(A1:A2)' })
@@ -116,9 +123,12 @@ describe('csv helpers', () => {
 
   it('parses common accounting number formats', () => {
     expect(parseCsvCellInput('$1,234.56')).toEqual({ value: 1234.56 })
+    expect(parseCsvCellInput('$-1,234.56')).toEqual({ value: -1234.56 })
     expect(parseCsvCellInput('12.5%')).toEqual({ value: 0.125 })
     expect(parseCsvCellInput('-3.25%')).toEqual({ value: -0.0325 })
     expect(parseCsvCellInput('($987.65)')).toEqual({ value: -987.65 })
     expect(parseCsvCellInput('(987.65)')).toEqual({ value: -987.65 })
+    const overflowingDigits = '9'.repeat(400)
+    expect(parseCsvCellInput(overflowingDigits)).toEqual({ value: overflowingDigits })
   })
 })

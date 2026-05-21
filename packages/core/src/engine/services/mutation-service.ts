@@ -173,7 +173,9 @@ export function createEngineMutationService(args: {
     if (op.kind !== 'setCellValue' && op.kind !== 'setCellFormula' && op.kind !== 'clearCell') {
       return null
     }
-    const inverseOp = tryRestoreSimpleCellOpFromStore(op.sheetName, op.address)
+    const inverseOp = tryRestoreSimpleCellOpFromStore(op.sheetName, op.address, {
+      skipTableHeaderRename: (op.kind === 'setCellValue' || op.kind === 'clearCell') && op.skipTableHeaderRename === true,
+    })
     if (inverseOp === null) {
       return null
     }

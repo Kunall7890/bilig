@@ -218,6 +218,51 @@ describe('EngineCellStateService', () => {
     ).toEqual([{ kind: 'setCellValue', sheetName: 'Sheet1', address: 'E4', value: null }])
   })
 
+  it('propagates table-header rename suppression to value restorations', async () => {
+    const engine = new SpreadsheetEngine({ workbookName: 'cell-state-move-value-restore' })
+    await engine.ready()
+    engine.createSheet('Sheet1')
+    const cellState = getCellStateService(engine)
+
+    expect(
+      Effect.runSync(
+        cellState.toCellStateOps(
+          'Sheet1',
+          'A1',
+          {
+            value: { tag: ValueTag.Number, value: 5 },
+            flags: 0,
+            version: 0,
+          },
+          undefined,
+          undefined,
+          undefined,
+          undefined,
+          { skipTableHeaderRename: true },
+        ),
+      ),
+    ).toEqual([{ kind: 'setCellValue', sheetName: 'Sheet1', address: 'A1', value: 5, skipTableHeaderRename: true }])
+
+    expect(
+      Effect.runSync(
+        cellState.toCellStateOps(
+          'Sheet1',
+          'A2',
+          {
+            value: { tag: ValueTag.Empty },
+            flags: 0,
+            version: 1,
+          },
+          undefined,
+          undefined,
+          undefined,
+          undefined,
+          { skipTableHeaderRename: true },
+        ),
+      ),
+    ).toEqual([{ kind: 'setCellValue', sheetName: 'Sheet1', address: 'A2', value: null, skipTableHeaderRename: true }])
+  })
+
   it('wraps service failures with contextual EngineCellStateError messages', () => {
     const workbook = new WorkbookStore('cell-state-errors')
     const sheet = workbook.createSheet('Sheet1')

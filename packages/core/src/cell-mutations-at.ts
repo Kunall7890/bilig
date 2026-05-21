@@ -4,7 +4,7 @@ import type { EngineOp } from '@bilig/workbook'
 import type { WorkbookStore } from './workbook-store.js'
 
 export type EngineCellMutationAt =
-  | { kind: 'setCellValue'; row: number; col: number; value: LiteralInput }
+  | { kind: 'setCellValue'; row: number; col: number; value: LiteralInput; skipTableHeaderRename?: boolean }
   | { kind: 'setCellFormula'; row: number; col: number; formula: string }
   | { kind: 'clearCell'; row: number; col: number; skipTableHeaderRename?: boolean }
 
@@ -69,6 +69,7 @@ export function cloneCellMutationAt(mutation: EngineCellMutationAt): EngineCellM
         row: mutation.row,
         col: mutation.col,
         value: mutation.value,
+        ...(mutation.skipTableHeaderRename === true ? { skipTableHeaderRename: true } : {}),
       }
     case 'setCellFormula':
       return {
@@ -108,6 +109,7 @@ export function cellMutationRefToEngineOp(workbook: Pick<WorkbookStore, 'getShee
         sheetName: sheet.name,
         address,
         value: ref.mutation.value,
+        ...(ref.mutation.skipTableHeaderRename === true ? { skipTableHeaderRename: true } : {}),
       }
     case 'setCellFormula':
       return {

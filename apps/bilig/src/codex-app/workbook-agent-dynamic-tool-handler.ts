@@ -13,11 +13,7 @@ import { createWorkbookAgentServiceError } from '../workbook-agent-errors.js'
 import { cloneUiContext, type WorkbookAgentThreadState, toContextRef } from './workbook-agent-service-shared.js'
 import { inspectWorkbookRange, normalizeWorkbookAgentUiContext } from './workbook-agent-inspection.js'
 import { selectWorkbookRenderedReadback } from './workbook-agent-rendered-readback.js'
-import {
-  hasRenderedContext,
-  shouldWaitForRenderedTool,
-  waitForWorkbookAgentRenderedContext,
-} from './workbook-agent-rendered-context-wait.js'
+import { shouldWaitForRenderedTool, waitForWorkbookAgentRenderedContext } from './workbook-agent-rendered-context-wait.js'
 import { assertWorkbookAgentToolCallOwnsTurn } from './workbook-agent-turn-lifecycle.js'
 
 function firstRenderedVerificationRange(bundle: ReturnType<typeof appendWorkbookAgentCommandToBundle>) {
@@ -178,7 +174,7 @@ export function createWorkbookAgentDynamicToolHandler(input: {
               bundle,
               assertApplyStillAuthorized: assertRequestTurnOwnsSession,
             })
-            if (executionRecord && hasRenderedContext(requestContext)) {
+            if (executionRecord && requestContext !== null) {
               requestContext = await waitForRenderedContext(
                 executionRecord.appliedRevision,
                 async (latestContext) => await renderedVerificationRangeMatches(latestContext, bundle, executionRecord.appliedRevision),

@@ -220,7 +220,7 @@ export function useWorkbookGridPaneRenderRuntime(input: {
     restoreViewportTarget,
   })
 
-  const { viewport, residentViewport, renderTileViewport, residentHeaderItems, residentHeaderRegion, sceneRevision, visibleAddresses } =
+  const { viewport, residentAddresses, residentViewport, renderTileViewport, residentHeaderItems, residentHeaderRegion, sceneRevision } =
     viewportResidency
   const getHeaderCellLocalBounds = useWorkbookHeaderCellBounds({
     columnWidths,
@@ -260,6 +260,7 @@ export function useWorkbookGridPaneRenderRuntime(input: {
     hostClientHeight,
     hostClientWidth,
     hostElement,
+    localInvalidationAddresses: residentAddresses,
     renderTileSource,
     renderTileViewport,
     residentViewport,
@@ -272,7 +273,6 @@ export function useWorkbookGridPaneRenderRuntime(input: {
     sheetName,
     sortedColumnWidthOverrides,
     sortedRowHeightOverrides,
-    visibleAddresses,
     visibleViewport: viewport,
   })
   const useVisibleHeaderPaneWindow =

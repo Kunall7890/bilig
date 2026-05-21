@@ -26,8 +26,8 @@ function expectString(value: CellValue, expected: string): void {
   expect(value).toMatchObject({ tag: ValueTag.String, value: expected })
 }
 
-function expectEmpty(value: CellValue): void {
-  expect(value).toEqual({ tag: ValueTag.Empty })
+function expectValueError(value: CellValue): void {
+  expect(value).toEqual({ tag: ValueTag.Error, code: ErrorCode.Value })
 }
 
 function slope(ys: readonly number[], xs: readonly number[]): number {
@@ -443,12 +443,12 @@ describe('Workpaper formula regressions', () => {
     expectNumber(cellValue(workbook, 'Sheet1', 0, 4), 2)
     expectNumber(cellValue(workbook, 'Sheet1', 1, 4), 5)
     expectNumber(cellValue(workbook, 'Sheet1', 2, 4), 8)
-    expectEmpty(cellValue(workbook, 'Sheet1', 3, 4))
+    expectValueError(cellValue(workbook, 'Sheet1', 3, 4))
     expectNumber(cellValue(workbook, 'Sheet1', 4, 0), 4)
     expectNumber(cellValue(workbook, 'Sheet1', 4, 1), 5)
     expectNumber(cellValue(workbook, 'Sheet1', 4, 2), 6)
-    expectEmpty(cellValue(workbook, 'Sheet1', 4, 3))
-    expectEmpty(cellValue(workbook, 'Sheet1', 4, 4))
+    expectValueError(cellValue(workbook, 'Sheet1', 4, 3))
+    expectValueError(cellValue(workbook, 'Sheet1', 4, 4))
     expectNumber(cellValue(workbook, 'Sheet1', 0, 6), 15)
     expectNumber(cellValue(workbook, 'Sheet1', 0, 7), 15)
     expectNumber(cellValue(workbook, 'Sheet1', 0, 8), 45)
@@ -1113,10 +1113,10 @@ describe('Workpaper formula regressions', () => {
     )
 
     expectNumber(cellValue(workbook, 'Sheet1', 0, 4), 1185)
-    expectEmpty(cellValue(workbook, 'Sheet1', 1, 4))
+    expectValueError(cellValue(workbook, 'Sheet1', 1, 4))
     expectNumber(cellValue(workbook, 'Sheet1', 6, 1), 155)
     expectNumber(cellValue(workbook, 'Sheet1', 6, 2), 1030)
-    expectEmpty(cellValue(workbook, 'Sheet1', 6, 3))
+    expectValueError(cellValue(workbook, 'Sheet1', 6, 3))
     expectNumberClose(cellValue(workbook, 'Sheet1', 2, 3), 1)
     expectNumber(cellValue(workbook, 'Sheet1', 2, 5), 10)
     expect(workbook.engine.getSpillRanges()).toEqual([])

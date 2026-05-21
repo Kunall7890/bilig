@@ -54,8 +54,9 @@ const engineOpArbitrary = fc.oneof<GuardedOp>(
       sheetName: fc.constantFrom('Sheet1', 'Sheet2'),
       address: fc.constantFrom('A1', 'B2', 'C3', 'D4'),
       value: fc.oneof(fc.integer({ min: -50, max: 50 }), fc.boolean(), fc.constantFrom('north', 'south'), fc.constant(null)),
+      skipTableHeaderRename: fc.boolean(),
     })
-    .map(({ sheetName, address, value }) => ({ kind: 'setCellValue', sheetName, address, value })),
+    .map(({ sheetName, address, value, skipTableHeaderRename }) => (Object.assign({kind:`setCellValue`,sheetName,address,value}, skipTableHeaderRename?{skipTableHeaderRename:true}:{}))),
   fc
     .record({
       sheetName: fc.constantFrom('Sheet1', 'Sheet2'),

@@ -1,5 +1,6 @@
 import type { LiteralInput } from '@bilig/protocol'
 import type { WorkbookRef } from './find.js'
+import type { EngineOp } from './ops.js'
 
 export type WorkbookCheckStatus = 'planned' | 'passed' | 'failed'
 
@@ -31,6 +32,7 @@ export interface WorkbookChangeSummary {
 
 export interface WorkbookUndoRef {
   readonly id: string
+  readonly ops?: readonly EngineOp[]
 }
 
 export interface WorkbookRunError {

@@ -92,7 +92,7 @@ export function GridSelectionVisualOverlay(props: GridSelectionVisualOverlayProp
 
 function shouldHideVisualRect(role: VisualRectRole, mode: NonNullable<GridSelectionVisualOverlayProps['selectionChromeMode']>): boolean {
   if (mode === 'geometry-only') {
-    return role !== 'hover-fill'
+    return true
   }
   if (mode === 'chrome-only') {
     return role === 'selection-fill' || role === 'header-fill' || role === 'hover-fill'

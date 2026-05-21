@@ -1,4 +1,4 @@
-import { importCsv } from '@bilig/excel-import'
+import { importCsv } from '../../excel-import/dist/csv-import.js'
 
 const decoder = new TextDecoder('utf-8', { fatal: false })
 

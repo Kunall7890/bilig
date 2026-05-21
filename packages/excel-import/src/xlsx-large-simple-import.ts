@@ -488,6 +488,7 @@ export function tryImportLargeSimpleXlsx(
           ...(options.includeCellCoordinates === undefined ? {} : { includeCellCoordinates: options.includeCellCoordinates }),
           styleCatalog,
           stylesByIndex: emptyStylesByIndex,
+          stringPool,
         }),
       )
       phaseRecorder.finish('public-snapshot-materialization', snapshotMaterializationStart)
@@ -592,6 +593,7 @@ export function tryImportLargeSimpleXlsx(
             releaseArenaAfterMaterialization: options.releaseArenaAfterMaterialization !== false,
             styleCatalog,
             stylesByIndex: emptyStylesByIndex,
+            stringPool,
           },
         ),
       )
@@ -676,6 +678,7 @@ export function tryImportLargeSimpleXlsx(
             releaseArenaAfterMaterialization: options.releaseArenaAfterMaterialization !== false,
             styleCatalog,
             stylesByIndex: emptyStylesByIndex,
+            stringPool,
           },
         ),
       )
@@ -828,6 +831,7 @@ export function tryImportLargeSimpleXlsx(
         styleCatalog,
         stylesByIndex,
         numberFormatsByStyleIndex,
+        stringPool,
       },
     )
     appendParsedWorksheet(parsed)

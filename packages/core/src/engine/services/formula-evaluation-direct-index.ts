@@ -60,7 +60,7 @@ export function tryEvaluateDirectIndexOffset(args: {
     }
     const implicitOffset = args.ownerRow - aggregateRange.rowStart
     if (implicitOffset < 0 || implicitOffset >= aggregateRange.length) {
-      return { tag: ValueTag.Empty }
+      return directErrorResult(ErrorCode.Value)
     }
     return args.runtimeColumnStore
       .getColumnView({

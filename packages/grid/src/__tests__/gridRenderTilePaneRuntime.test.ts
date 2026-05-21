@@ -1478,9 +1478,9 @@ describe('GridRenderTilePaneRuntime', () => {
     const unsubscribe = runtime.connectLocalCellInvalidation(
       {
         engine,
+        localInvalidationAddresses: ['A1', 'B2'],
         needsLocalCellInvalidation: true,
         sheetName: 'Sheet1',
-        visibleAddresses: ['A1', 'B2'],
       },
       () => invalidations.push('invalidated'),
     )
@@ -1853,18 +1853,18 @@ describe('GridRenderTilePaneRuntime', () => {
         }
       },
     }
-    const visibleAddresses = ['A1', 'B2']
+    const localInvalidationAddresses = ['A1', 'B2']
 
     runtime.syncConnections({
       dprBucket: 1,
       engine,
       gridRuntimeHost: host,
+      localInvalidationAddresses,
       needsLocalCellInvalidation: true,
       renderTileSource: renderTileSource.source,
       renderTileViewport: { colEnd: 127, colStart: 0, rowEnd: 31, rowStart: 0 },
       sheetId: 7,
       sheetName: 'Sheet1',
-      visibleAddresses,
     })
     const firstSubscription = renderTileSource.captured()
 
@@ -1872,31 +1872,31 @@ describe('GridRenderTilePaneRuntime', () => {
       dprBucket: 1,
       engine,
       gridRuntimeHost: host,
+      localInvalidationAddresses: [...localInvalidationAddresses],
       needsLocalCellInvalidation: true,
       renderTileSource: renderTileSource.source,
       renderTileViewport: { colEnd: 127, colStart: 0, rowEnd: 31, rowStart: 0 },
       sheetId: 7,
       sheetName: 'Sheet1',
-      visibleAddresses: [...visibleAddresses],
     })
 
     expect(renderTileSource.captured()).toBe(firstSubscription)
     expect(renderTileSource.unsubscribed()).toBe(false)
     expect(renderTileSource.subscribeCount()).toBe(1)
     expect(subscribedSheetName).toBe('Sheet1')
-    expect(subscribedAddresses).toBe(visibleAddresses)
+    expect(subscribedAddresses).toBe(localInvalidationAddresses)
     expect(localUnsubscribeCount).toBe(0)
 
     runtime.syncConnections({
       dprBucket: 1,
       engine,
       gridRuntimeHost: host,
+      localInvalidationAddresses,
       needsLocalCellInvalidation: true,
       renderTileSource: renderTileSource.source,
       renderTileViewport: { colEnd: 255, colStart: 0, rowEnd: 31, rowStart: 0 },
       sheetId: 7,
       sheetName: 'Sheet1',
-      visibleAddresses,
     })
 
     expect(renderTileSource.unsubscribed()).toBe(true)
@@ -1909,6 +1909,72 @@ describe('GridRenderTilePaneRuntime', () => {
 
     expect(renderTileSource.unsubscribeCount()).toBe(2)
     expect(localUnsubscribeCount).toBe(1)
+  })
+
+  it('reconciles render tile interest when only the visible viewport changes inside a resident viewport', () => {
+    const runtime = new GridRenderTilePaneRuntime()
+    const host = createHost()
+    const renderTileSource = createCapturingRenderTileSource()
+    const renderTileViewport = { colEnd: 127, colStart: 0, rowEnd: 95, rowStart: 0 }
+    const firstVisibleViewport = { colEnd: 127, colStart: 0, rowEnd: 31, rowStart: 0 }
+    const nextVisibleViewport = { colEnd: 127, colStart: 0, rowEnd: 95, rowStart: 64 }
+
+    runtime.syncConnections({
+      dprBucket: 1,
+      engine: LOCAL_EMPTY_ENGINE,
+      gridRuntimeHost: host,
+      localInvalidationAddresses: [],
+      needsLocalCellInvalidation: false,
+      renderTileSource: renderTileSource.source,
+      renderTileViewport,
+      residentViewport: renderTileViewport,
+      sheetId: 7,
+      sheetName: 'Sheet1',
+      visibleViewport: firstVisibleViewport,
+    })
+    const firstSubscription = renderTileSource.captured()
+
+    expect(firstSubscription?.tileInterest?.visibleTileKeys).toEqual([
+      packTileKey53({ colTile: 0, dprBucket: 1, rowTile: 0, sheetOrdinal: 7 }),
+    ])
+
+    runtime.syncConnections({
+      dprBucket: 1,
+      engine: LOCAL_EMPTY_ENGINE,
+      gridRuntimeHost: host,
+      localInvalidationAddresses: [],
+      needsLocalCellInvalidation: false,
+      renderTileSource: renderTileSource.source,
+      renderTileViewport,
+      residentViewport: renderTileViewport,
+      sheetId: 7,
+      sheetName: 'Sheet1',
+      visibleViewport: nextVisibleViewport,
+    })
+
+    expect(renderTileSource.subscribeCount()).toBe(2)
+    expect(renderTileSource.unsubscribeCount()).toBe(1)
+    expect(renderTileSource.captured()).not.toBe(firstSubscription)
+    expect(renderTileSource.captured()?.tileInterest?.visibleTileKeys).toEqual([
+      packTileKey53({ colTile: 0, dprBucket: 1, rowTile: 2, sheetOrdinal: 7 }),
+    ])
+
+    runtime.syncConnections({
+      dprBucket: 1,
+      engine: LOCAL_EMPTY_ENGINE,
+      gridRuntimeHost: host,
+      localInvalidationAddresses: [],
+      needsLocalCellInvalidation: false,
+      renderTileSource: renderTileSource.source,
+      renderTileViewport,
+      residentViewport: renderTileViewport,
+      sheetId: 7,
+      sheetName: 'Sheet1',
+      visibleViewport: { ...nextVisibleViewport },
+    })
+
+    expect(renderTileSource.subscribeCount()).toBe(2)
+    expect(renderTileSource.unsubscribeCount()).toBe(1)
   })
 
   it('matches workbook delta damage by sheet ordinal when sheet id differs from order', () => {

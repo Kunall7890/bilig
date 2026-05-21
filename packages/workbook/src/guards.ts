@@ -670,7 +670,8 @@ export function isWorkbookOp(value: unknown): value is WorkbookOp {
         hasString(value, 'sheetName') &&
         hasString(value, 'address') &&
         isLiteralInput(value['value']) &&
-        (value['authoredBlank'] === undefined || typeof value['authoredBlank'] === 'boolean')
+        (value['authoredBlank'] === undefined || typeof value['authoredBlank'] === 'boolean') &&
+        (value['skipTableHeaderRename'] === undefined || typeof value['skipTableHeaderRename'] === 'boolean')
       )
     case 'setCellFormula':
       return hasString(value, 'sheetName') && hasString(value, 'address') && hasString(value, 'formula')

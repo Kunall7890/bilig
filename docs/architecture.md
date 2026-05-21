@@ -22,6 +22,7 @@ flowchart LR
   - transactions
   - metadata
   - formula/runtime execution
+  - canonical `@bilig/workbook` run adapter for materializing generic commands and proving generic checks
   - snapshot import/export
 - `@bilig/workbook`
   - agent-first public workbook model API

@@ -1,4 +1,5 @@
 import { ErrorCode, ValueTag, formatGeneralNumberValue, type CellValue } from '@bilig/protocol'
+import { formatAddress, parseCellAddress } from '../addressing.js'
 import type { ArrayValue } from '../runtime-values.js'
 import type { LookupBuiltin, LookupBuiltinArgument, RangeBuiltinArgument } from './lookup.js'
 
@@ -119,6 +120,53 @@ function getRangeWindowValues(
   return values
 }
 
+function sourceRangeWindow(
+  range: RangeBuiltinArgument,
+  rowStart: number,
+  colStart: number,
+  rowCount: number,
+  colCount: number,
+): ArrayValue['sourceRange'] | undefined {
+  if (range.refKind !== 'cells' || !range.start || !range.end || rowCount <= 0 || colCount <= 0) {
+    return undefined
+  }
+
+  try {
+    const start = parseCellAddress(range.start, range.sheetName)
+    const end = parseCellAddress(range.end, range.sheetName)
+    const rowBase = Math.min(start.row, end.row)
+    const colBase = Math.min(start.col, end.col)
+    const sourceRange: ArrayValue['sourceRange'] = {
+      refKind: 'cells',
+      start: formatAddress(rowBase + rowStart, colBase + colStart),
+      end: formatAddress(rowBase + rowStart + rowCount - 1, colBase + colStart + colCount - 1),
+    }
+    if (range.sheetName !== undefined) {
+      sourceRange.sheetName = range.sheetName
+    }
+    return sourceRange
+  } catch {
+    return undefined
+  }
+}
+
+function arrayResultFromRangeWindow(
+  deps: LookupArrayShapeBuiltinDeps,
+  range: RangeBuiltinArgument,
+  rowStart: number,
+  colStart: number,
+  rowCount: number,
+  colCount: number,
+): ArrayValue {
+  const result = deps.arrayResult(
+    getRangeWindowValues(range, rowStart, colStart, rowCount, colCount, deps.getRangeValue),
+    rowCount,
+    colCount,
+  )
+  const sourceRange = sourceRangeWindow(range, rowStart, colStart, rowCount, colCount)
+  return sourceRange ? { ...result, sourceRange } : result
+}
+
 export function createLookupArrayShapeBuiltins(deps: LookupArrayShapeBuiltinDeps): Record<string, LookupBuiltin> {
   return {
     AREAS: (arrayArg) => {
@@ -212,7 +260,7 @@ export function createLookupArrayShapeBuiltins(deps: LookupArrayShapeBuiltinDeps
       }
 
       if (rowNum === 0 && colNum === 0) {
-        return deps.arrayResult([...array.values], array.rows, array.cols)
+        return arrayResultFromRangeWindow(deps, array, 0, 0, array.rows, array.cols)
       }
       if (rowNum === 0) {
         if (colNum < 1 || colNum > array.cols) {
@@ -222,7 +270,9 @@ export function createLookupArrayShapeBuiltins(deps: LookupArrayShapeBuiltinDeps
         for (let row = 0; row < array.rows; row += 1) {
           values.push(deps.getRangeValue(array, row, colNum - 1))
         }
-        return values.length === 1 ? (values[0] ?? deps.errorValue(ErrorCode.Ref)) : deps.arrayResult(values, array.rows, 1)
+        return values.length === 1
+          ? (values[0] ?? deps.errorValue(ErrorCode.Ref))
+          : arrayResultFromRangeWindow(deps, array, 0, colNum - 1, array.rows, 1)
       }
       if (colNum === 0) {
         if (rowNum < 1 || rowNum > array.rows) {
@@ -232,7 +282,9 @@ export function createLookupArrayShapeBuiltins(deps: LookupArrayShapeBuiltinDeps
         for (let col = 0; col < array.cols; col += 1) {
           values.push(deps.getRangeValue(array, rowNum - 1, col))
         }
-        return values.length === 1 ? (values[0] ?? deps.errorValue(ErrorCode.Ref)) : deps.arrayResult(values, 1, array.cols)
+        return values.length === 1
+          ? (values[0] ?? deps.errorValue(ErrorCode.Ref))
+          : arrayResultFromRangeWindow(deps, array, rowNum - 1, 0, 1, array.cols)
       }
 
       return deps.getRangeValue(array, rowNum - 1, colNum - 1)
@@ -292,7 +344,7 @@ export function createLookupArrayShapeBuiltins(deps: LookupArrayShapeBuiltinDeps
       if (height === 1 && width === 1) {
         return deps.getRangeValue(reference, rowStart, colStart)
       }
-      return deps.arrayResult(getRangeWindowValues(reference, rowStart, colStart, height, width, deps.getRangeValue), height, width)
+      return arrayResultFromRangeWindow(deps, reference, rowStart, colStart, height, width)
     },
     TAKE: (arrayArg, rowsArg, colsArg) => {
       const array = deps.toCellRange(arrayArg)
