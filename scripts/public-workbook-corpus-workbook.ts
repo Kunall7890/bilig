@@ -8,6 +8,7 @@ import { readWorkbookSheets, readWorksheetPathsByRelationshipId } from '../packa
 import { decodeCellAddress, encodeCellAddress } from '../packages/excel-import/src/xlsx-large-simple-xml-byte-utils.js'
 import { decodeXmlText } from '../packages/excel-import/src/xlsx-large-simple-worksheet-stream-text.js'
 import {
+  forEachInflatedXlsxZipEntryChunk,
   getZipText,
   readXlsxZipEntries,
   readXlsxZipEntriesLazyFromByteSource,
@@ -47,6 +48,9 @@ interface WorksheetCellEntry {
 }
 
 const largeSimpleHeadlessFingerprintCellThreshold = 100_000
+const formulaOracleWorksheetChunkSize = 16 * 1024
+const maxFormulaOracleCellXmlBufferLength = 8 * 1024 * 1024
+const xmlCellStartPattern = /<(?:[A-Za-z_][\w.-]*:)?c\b/u
 
 export function countWorkbookFeatures(snapshot: WorkbookSnapshot, warnings: readonly string[]): PublicWorkbookFeatureCounts {
   return {
@@ -379,11 +383,9 @@ export function extractFormulaOraclesFromXlsxByteSource(source: XlsxZipByteSourc
       if (!worksheetPath) {
         return null
       }
-      const worksheetXml = getZipText(zip, worksheetPath)
-      if (!worksheetXml) {
-        return null
-      }
-      const sheetOracles = extractFormulaOraclesFromWorksheetXml(sheet.name, worksheetXml)
+      const sheetOracles = extractFormulaOraclesFromWorksheetXmlChunks(sheet.name, (onChunk) =>
+        forEachInflatedXlsxZipEntryChunk(zip, worksheetPath, onChunk, { chunkSize: formulaOracleWorksheetChunkSize }),
+      )
       releaseInflatedLazyXlsxZipEntries(zip)
       if (!sheetOracles) {
         return null
@@ -458,37 +460,131 @@ type XmlFormulaOracleCellValue =
   | { readonly kind: 'skip' }
   | { readonly kind: 'unsupported' }
 
-function extractFormulaOraclesFromWorksheetXml(sheetName: string, worksheetXml: string): FormulaOracle[] | null {
+export function extractFormulaOraclesFromWorksheetXmlChunks(
+  sheetName: string,
+  readChunks: (onChunk: (chunk: Uint8Array) => void) => boolean,
+): FormulaOracle[] | null {
+  const decoder = new TextDecoder()
   const oracles: FormulaOracle[] = []
-  for (const match of worksheetXml.matchAll(/<((?:[A-Za-z_][\w.-]*:)?c)\b((?:[^>"']|"[^"]*"|'[^']*')*)>([\s\S]*?)<\/\1>/gu)) {
-    const attributes = match[2] ?? ''
-    const content = match[3] ?? ''
-    if (!/<(?:[A-Za-z_][\w.-]*:)?f\b/u.test(content)) {
-      continue
+  let buffer = ''
+  let unsupported = false
+  const scan = (final: boolean): void => {
+    if (unsupported) {
+      return
     }
-    const rawAddress = readXmlAttribute(attributes, 'r')
-    const decodedAddress = rawAddress ? decodeCellAddress(decodeXmlText(rawAddress)) : null
-    if (!decodedAddress) {
-      return null
-    }
-    const rawCachedValue = readXmlElementText(content, 'v')
-    if (rawCachedValue === null) {
-      continue
-    }
-    const cellValue = cellValueFromWorksheetFormulaCache(readXmlAttribute(attributes, 't'), rawCachedValue)
-    if (cellValue.kind === 'unsupported') {
-      return null
-    }
-    if (cellValue.kind === 'skip') {
-      continue
-    }
-    oracles.push({
-      sheetName,
-      address: encodeCellAddress(decodedAddress.row, decodedAddress.column),
-      expected: cellValue.value,
-    })
+    const scanned = scanFormulaOracleCellBuffer(sheetName, buffer, final, oracles)
+    buffer = scanned.buffer
+    unsupported = scanned.unsupported
   }
-  return oracles
+  const readOk = readChunks((chunk) => {
+    if (unsupported) {
+      return
+    }
+    buffer += decoder.decode(chunk, { stream: true })
+    scan(false)
+  })
+  if (!readOk || unsupported) {
+    return null
+  }
+  buffer += decoder.decode()
+  scan(true)
+  return unsupported ? null : oracles
+}
+
+function scanFormulaOracleCellBuffer(
+  sheetName: string,
+  inputBuffer: string,
+  final: boolean,
+  oracles: FormulaOracle[],
+): { readonly buffer: string; readonly unsupported: boolean } {
+  let buffer = inputBuffer
+  while (buffer.length > 0) {
+    const startMatch = xmlCellStartPattern.exec(buffer)
+    if (!startMatch) {
+      return { buffer: final ? '' : buffer.slice(Math.max(0, buffer.length - 64)), unsupported: false }
+    }
+    if (startMatch.index > 0) {
+      buffer = buffer.slice(startMatch.index)
+    }
+    const openingTagEnd = findXmlTagEnd(buffer)
+    if (openingTagEnd < 0) {
+      return buffer.length > maxFormulaOracleCellXmlBufferLength ? { buffer: '', unsupported: true } : { buffer, unsupported: false }
+    }
+    const openingTag = buffer.slice(0, openingTagEnd + 1)
+    if (/\/>\s*$/u.test(openingTag)) {
+      buffer = buffer.slice(openingTagEnd + 1)
+      continue
+    }
+    const tagName = /^<((?:[A-Za-z_][\w.-]*:)?c)\b/u.exec(openingTag)?.[1]
+    if (!tagName) {
+      return { buffer: '', unsupported: true }
+    }
+    const closingTag = `</${tagName}>`
+    const closeIndex = buffer.indexOf(closingTag, openingTagEnd + 1)
+    if (closeIndex < 0) {
+      return buffer.length > maxFormulaOracleCellXmlBufferLength || final
+        ? { buffer: '', unsupported: true }
+        : { buffer, unsupported: false }
+    }
+    const content = buffer.slice(openingTagEnd + 1, closeIndex)
+    const extracted = extractFormulaOracleFromCellXml(sheetName, openingTag, content)
+    if (extracted === null) {
+      return { buffer: '', unsupported: true }
+    }
+    if (extracted) {
+      oracles.push(extracted)
+    }
+    buffer = buffer.slice(closeIndex + closingTag.length)
+  }
+  return { buffer, unsupported: false }
+}
+
+function extractFormulaOracleFromCellXml(sheetName: string, openingTag: string, content: string): FormulaOracle | undefined | null {
+  if (!/<(?:[A-Za-z_][\w.-]*:)?f\b/u.test(content)) {
+    return undefined
+  }
+  const rawAddress = readXmlAttribute(openingTag, 'r')
+  const decodedAddress = rawAddress ? decodeCellAddress(decodeXmlText(rawAddress)) : null
+  if (!decodedAddress) {
+    return null
+  }
+  const rawCachedValue = readXmlElementText(content, 'v')
+  if (rawCachedValue === null) {
+    return undefined
+  }
+  const cellValue = cellValueFromWorksheetFormulaCache(readXmlAttribute(openingTag, 't'), rawCachedValue)
+  if (cellValue.kind === 'unsupported') {
+    return null
+  }
+  if (cellValue.kind === 'skip') {
+    return undefined
+  }
+  return {
+    sheetName,
+    address: encodeCellAddress(decodedAddress.row, decodedAddress.column),
+    expected: cellValue.value,
+  }
+}
+
+function findXmlTagEnd(xml: string): number {
+  let quote: '"' | "'" | '' = ''
+  for (let index = 0; index < xml.length; index += 1) {
+    const char = xml[index]
+    if (quote) {
+      if (char === quote) {
+        quote = ''
+      }
+      continue
+    }
+    if (char === '"' || char === "'") {
+      quote = char
+      continue
+    }
+    if (char === '>') {
+      return index
+    }
+  }
+  return -1
 }
 
 function cellValueFromWorksheetFormulaCache(type: string | null, rawCachedValue: string): XmlFormulaOracleCellValue {

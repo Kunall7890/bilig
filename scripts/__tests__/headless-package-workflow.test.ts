@@ -107,6 +107,13 @@ describe('headless package workflow', () => {
     expect(source).toContain('GitHub mirror main could not be fetched; runtime release planning skipped after verification')
     expect(source).toContain('RELEASE_ALIGNMENT_REASON')
     expect(source).toContain('reason=stale workflow SHA; newer main exists')
+    expect(source).toContain('id: publish_release_alignment')
+    expect(source).toContain('Report skipped stale runtime release')
+    expect(source).toContain('this stale workflow run will not mutate release metadata or publish packages')
+    expect(source).toContain("if: steps.publish_release_alignment.outputs.current == 'true'")
+    expect(source).toContain(
+      "if: steps.publish_release_alignment.outputs.current == 'true' && steps.npm_provisioning.outputs.publish_allowed != 'true'",
+    )
     expect(source).toContain('git push origin HEAD:main')
     expect(source).toContain('git rebase origin/main')
     expect(source).toContain('GitHub main mirrors release metadata SHA')
