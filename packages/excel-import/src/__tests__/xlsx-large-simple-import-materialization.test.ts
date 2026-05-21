@@ -247,9 +247,9 @@ describe('large simple XLSX import materialization lifetime', () => {
     expect(readLazyXlsxZipSourceByteLength(zip)).toBe(0)
     expect(imported?.stats.phaseTelemetry.map((entry) => entry.phase)).toEqual([
       'zip-setup',
+      'shared-string-resolution',
       'worksheet-scan',
       'metadata-parsing',
-      'shared-string-resolution',
       'public-snapshot-materialization',
       'style-parsing',
       'zip-source-release',

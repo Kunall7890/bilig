@@ -503,9 +503,9 @@ describe('large simple XLSX import fast path', () => {
     expect(worksheetStreamCount()).toBe(1)
     expect(imported?.stats.phaseTelemetry.map((entry) => entry.phase)).toEqual([
       'zip-setup',
+      'shared-string-resolution',
       'worksheet-scan',
       'metadata-parsing',
-      'shared-string-resolution',
       'style-parsing',
       'zip-source-release',
       'public-snapshot-materialization',

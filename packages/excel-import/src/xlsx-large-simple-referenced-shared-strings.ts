@@ -1,4 +1,5 @@
 import {
+  readAllLargeSimpleSharedStringsFromChunks,
   readLargeSimpleReferencedSharedStringsFromChunks,
   readLargeSimpleSharedStrings,
   type LargeSimpleSharedStrings,
@@ -31,4 +32,11 @@ export function readAllLargeSimpleSharedStrings(
 ): LargeSimpleSharedStrings | null {
   const sharedStringsXml = getZipText(zip, sharedStringsPath)
   return sharedStringsXml ? readLargeSimpleSharedStrings(sharedStringsXml, options) : null
+}
+
+export function readAllLargeSimpleSharedStringsStreamed(
+  zip: XlsxZipEntries,
+  options: LargeSimpleReferencedSharedStringScanOptions = {},
+): LargeSimpleSharedStrings | null {
+  return readAllLargeSimpleSharedStringsFromChunks((onChunk) => forEachInflatedXlsxZipEntryChunk(zip, sharedStringsPath, onChunk), options)
 }

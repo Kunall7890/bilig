@@ -25,7 +25,11 @@ import { appendLargeSimpleConditionalFormats } from './xlsx-large-simple-conditi
 import { internLargeSimpleWorksheetMetadata } from './xlsx-large-simple-metadata-interning.js'
 import { prepareLargeSimplePackageArtifactsForZipRelease } from './xlsx-large-simple-package-artifact-release.js'
 import { readLargeSimpleSheetPrintMetadata, readLargeSimpleSheetPrintPageSetup } from './xlsx-large-simple-printer-settings.js'
-import { readAllLargeSimpleSharedStrings, readReferencedLargeSimpleSharedStrings } from './xlsx-large-simple-referenced-shared-strings.js'
+import {
+  readAllLargeSimpleSharedStrings,
+  readAllLargeSimpleSharedStringsStreamed,
+  readReferencedLargeSimpleSharedStrings,
+} from './xlsx-large-simple-referenced-shared-strings.js'
 import {
   emptyLargeSimpleSharedStringIndexes,
   LargeSimpleSharedStringIndexCollector,
@@ -86,6 +90,7 @@ import {
   getZipText,
   normalizeZipPath,
   readLazyXlsxZipSourceByteLength,
+  readXlsxZipEntryUncompressedSize,
   releaseLazyXlsxZipSource,
   replaceLazyXlsxZipSource,
   type XlsxZipEntries,
@@ -110,6 +115,8 @@ export type {
 } from './xlsx-large-simple-import-types.js'
 
 const defaultLargeSimpleXlsxByteThreshold = 1_000_000
+const maxMultiSheetDimensionCellPreallocation = 1_000_000
+const eagerSharedStringsXmlByteThreshold = 1_000_000
 const workbookPath = 'xl/workbook.xml'
 const workbookRelationshipsPath = 'xl/_rels/workbook.xml.rels'
 const sharedStringsPath = 'xl/sharedStrings.xml'
@@ -162,6 +169,7 @@ export function tryImportLargeSimpleXlsx(
   const materializeMetadata = options.materializeMetadata !== false
   const hasSharedStrings = packagePaths.includes(sharedStringsPath)
   const hasStyles = packagePaths.includes(stylesPath)
+  const hasCalcChain = packagePaths.includes('xl/calcChain.xml')
   const hasDrawingParts = packagePaths.some((path) => path.startsWith('xl/drawings/') || path.startsWith('xl/media/'))
   const hasChartParts = packagePaths.some((path) => path.startsWith('xl/charts/') || path.startsWith('xl/chartSheets/'))
   const hasPivotParts = packagePaths.some((path) => path.startsWith('xl/pivotTables/') || path.startsWith('xl/pivotCache/'))
@@ -211,6 +219,23 @@ export function tryImportLargeSimpleXlsx(
   const deduplicateInlineStrings = hasSharedStrings ? true : 'bounded'
   const deduplicateFormulaStrings = 'bounded'
   let fallbackSharedStrings: LargeSimpleSharedStrings | null | undefined = hasSharedStrings ? undefined : []
+  if (
+    materializeCells &&
+    hasSharedStrings &&
+    !hasCalcChain &&
+    !hasPivotParts &&
+    (readXlsxZipEntryUncompressedSize(zip, sharedStringsPath) ?? Number.POSITIVE_INFINITY) <= eagerSharedStringsXmlByteThreshold
+  ) {
+    const sharedStringResolutionStart = phaseRecorder.start()
+    fallbackSharedStrings = readAllLargeSimpleSharedStringsStreamed(zip, {
+      deduplicateText: 'bounded',
+      stringPool,
+    })
+    if (fallbackSharedStrings === null) {
+      return null
+    }
+    phaseRecorder.finish('shared-string-resolution', sharedStringResolutionStart)
+  }
   delete zip[workbookPath]
   delete zip[workbookRelationshipsPath]
   const workbookName = stringPool.intern(normalizeWorkbookName(fileName))
@@ -252,8 +277,8 @@ export function tryImportLargeSimpleXlsx(
   ): boolean =>
     materializeCells &&
     !sheetHasRelationshipBackedArtifacts(sheetName, metadataScan, worksheetXml) &&
-    cellScan.styleIndexes.hasCoordinateStorage &&
     cellScan.styleIndexes.count === 0 &&
+    !cellScan.styleIndexes.hasRequiredStyleIndexes &&
     (options.releaseZipSource !== true || allowPreReleaseSheetFinalization)
   const emptyStylesByIndex = new Map<number, Omit<CellStyleRecord, 'id'>>()
   const appendParsedWorksheet = (parsed: ParsedWorksheet): void => {
@@ -292,7 +317,7 @@ export function tryImportLargeSimpleXlsx(
           retainStyleIndexes: materializeCells && hasStyles,
           retainStyleCoordinates: materializeCells && hasStyles && !deferStyleCoordinates,
           sharedStrings: fallbackSharedStrings ?? [],
-          deferSharedStrings: materializeCells && hasSharedStrings,
+          deferSharedStrings: materializeCells && hasSharedStrings && fallbackSharedStrings === undefined,
           retainMetadataXml: materializeMetadata,
           sheetName: entry.name,
           stringPool,
@@ -304,7 +329,10 @@ export function tryImportLargeSimpleXlsx(
           ...(options.allowUnsupportedCellMetadata === undefined
             ? {}
             : { allowUnsupportedCellMetadata: options.allowUnsupportedCellMetadata }),
-          maxDimensionCellPreallocation: maxPreallocatedWorksheetCells(zip, entry.path),
+          maxDimensionCellPreallocation:
+            worksheetEntries.length === 1
+              ? maxPreallocatedWorksheetCells(zip, entry.path)
+              : Math.min(maxPreallocatedWorksheetCells(zip, entry.path), maxMultiSheetDimensionCellPreallocation),
         },
       )
       if (!streamed) {
@@ -462,7 +490,10 @@ export function tryImportLargeSimpleXlsx(
       metadataInput = { ...metadataInput, filters: [...streamedMetadataScan.filters] }
     }
     worksheetBytes = undefined
-    if (!hasSharedStrings && canFinalizeSheetBeforeStyleParsing(entry.name, cellScan, retainedMetadataScan, worksheetXml)) {
+    if (
+      (!hasSharedStrings || fallbackSharedStrings !== undefined) &&
+      canFinalizeSheetBeforeStyleParsing(entry.name, cellScan, retainedMetadataScan, worksheetXml)
+    ) {
       phaseRecorder.finish('metadata-parsing', metadataParsingStart)
       const snapshotMaterializationStart = phaseRecorder.start()
       appendParsedWorksheet(

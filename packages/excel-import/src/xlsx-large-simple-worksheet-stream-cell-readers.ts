@@ -5,6 +5,9 @@ import { decodeXmlText, normalizeWorksheetText, stringItemText } from './xlsx-la
 import { decodeBytes, encodeCellAddress } from './xlsx-large-simple-xml-byte-utils.js'
 import { richTextRunPattern } from './xlsx-large-simple-worksheet-scan-constants.js'
 import {
+  cellTypeCodeFromString,
+  cellTypeInlineStringCode,
+  cellTypeSharedStringCode,
   findClosingTag,
   findNextOpeningTag,
   findTagEnd,
@@ -12,6 +15,7 @@ import {
   readElementXml,
   readXmlAttributeFromTag,
   readXmlAttributeRangeFromTag,
+  type LargeSimpleCellTypeCode,
 } from './xlsx-large-simple-worksheet-stream-xml.js'
 
 const extensionElementPattern = /<(?:[A-Za-z_][\w.-]*:)?ext\b[^>]*(?:\/>|>[\s\S]*?<\/(?:[A-Za-z_][\w.-]*:)?ext>)/gu
@@ -129,7 +133,29 @@ export function readRichTextCellArtifact(
   sharedStringIndex: number | null,
   sharedStrings: LargeSimpleSharedStrings,
 ): WorkbookRichTextCellSnapshot | undefined {
-  if (type === 's') {
+  return readRichTextCellArtifactByTypeCode(
+    bytes,
+    contentStart,
+    contentEnd,
+    row,
+    column,
+    cellTypeCodeFromString(type),
+    sharedStringIndex,
+    sharedStrings,
+  )
+}
+
+export function readRichTextCellArtifactByTypeCode(
+  bytes: Uint8Array,
+  contentStart: number,
+  contentEnd: number,
+  row: number,
+  column: number,
+  type: LargeSimpleCellTypeCode,
+  sharedStringIndex: number | null,
+  sharedStrings: LargeSimpleSharedStrings,
+): WorkbookRichTextCellSnapshot | undefined {
+  if (type === cellTypeSharedStringCode) {
     const entry = sharedStringIndex === null ? undefined : sharedStrings[sharedStringIndex]
     return entry?.rich
       ? {
@@ -140,7 +166,7 @@ export function readRichTextCellArtifact(
         }
       : undefined
   }
-  if (type !== 'inlineStr') {
+  if (type !== cellTypeInlineStringCode) {
     return undefined
   }
   if (!findNextOpeningTag(bytes, contentStart, 'r', contentEnd)) {

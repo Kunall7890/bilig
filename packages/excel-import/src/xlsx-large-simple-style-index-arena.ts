@@ -42,6 +42,10 @@ export class ImportedWorksheetStyleIndexArena {
     return !this.coordinatesDeferred
   }
 
+  get hasRequiredStyleIndexes(): boolean {
+    return (this.requiredStyleIndexes?.size ?? 0) > 0
+  }
+
   get isRowMajorOrdered(): boolean {
     return this.rowMajorOrdered
   }

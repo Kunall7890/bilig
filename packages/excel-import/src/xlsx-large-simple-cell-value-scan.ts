@@ -2,6 +2,18 @@ import { strFromU8 } from 'fflate'
 
 import type { LiteralInput } from '@bilig/protocol'
 import type { LargeSimpleSharedStrings } from './xlsx-large-simple-shared-strings.js'
+import {
+  cellTypeBooleanCode,
+  cellTypeCodeFromString,
+  cellTypeDateCode,
+  cellTypeErrorCode,
+  cellTypeFormulaStringCode,
+  cellTypeInlineStringCode,
+  cellTypeNumberCode,
+  cellTypeSharedStringCode,
+  cellTypeUnknownCode,
+  type LargeSimpleCellTypeCode,
+} from './xlsx-large-simple-worksheet-stream-xml.js'
 import { decodeXmlText, normalizeWorksheetText } from './xlsx-large-simple-worksheet-stream-text.js'
 
 export interface LargeSimpleXmlTextRange {
@@ -15,24 +27,33 @@ export function readLargeSimpleCellValueFromTextRange(
   type: string | null,
   sharedStrings: LargeSimpleSharedStrings,
 ): LiteralInput | undefined {
+  return readLargeSimpleCellValueFromTextRangeByTypeCode(bytes, rawValueRange, cellTypeCodeFromString(type), sharedStrings)
+}
+
+export function readLargeSimpleCellValueFromTextRangeByTypeCode(
+  bytes: Uint8Array,
+  rawValueRange: LargeSimpleXmlTextRange | null,
+  type: LargeSimpleCellTypeCode,
+  sharedStrings: LargeSimpleSharedStrings,
+): LiteralInput | undefined {
   switch (type) {
-    case null:
+    case cellTypeNumberCode:
       return rawValueRange ? readNumberValue(bytes, rawValueRange) : undefined
-    case 's': {
+    case cellTypeSharedStringCode: {
       const index = readLargeSimpleSharedStringIndexFromTextRange(bytes, rawValueRange)
       return index === null ? undefined : sharedStrings[index]?.text
     }
-    case 'inlineStr':
+    case cellTypeInlineStringCode:
       return undefined
-    case 'str':
+    case cellTypeFormulaStringCode:
       return rawValueRange ? normalizeWorksheetText(decodeXmlText(decodeBytes(bytes, rawValueRange.start, rawValueRange.end))) : undefined
-    case 'b':
+    case cellTypeBooleanCode:
       return rawValueRange ? readBooleanValue(bytes, rawValueRange) : undefined
-    case 'e':
+    case cellTypeErrorCode:
       return rawValueRange ? decodeXmlText(decodeBytes(bytes, rawValueRange.start, rawValueRange.end)) : undefined
-    case 'd':
+    case cellTypeDateCode:
       return undefined
-    default:
+    case cellTypeUnknownCode:
       return undefined
   }
 }
