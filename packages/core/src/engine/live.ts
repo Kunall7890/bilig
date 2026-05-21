@@ -46,9 +46,9 @@ import { createEngineTraversalService, type EngineTraversalService } from './ser
 import { getRuntimeFormulaSource } from './runtime-formula-source.js'
 import { deferKernelSyncNow } from './services/live-kernel-sync-state.js'
 import { createEngineFullInvalidationService } from './services/full-invalidation-service.js'
-import { runEngineEffect } from './effect-runtime.js'
+import { runEngineEffect } from './live-effect.js'
 
-export { runEngineEffect, runEngineEffectPromise } from './effect-runtime.js'
+export { runEngineEffect, runEngineEffectPromise } from './live-effect.js'
 
 export interface EngineServiceRuntime {
   readonly cellState: EngineCellStateService

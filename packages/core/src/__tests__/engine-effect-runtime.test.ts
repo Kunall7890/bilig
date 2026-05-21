@@ -1,7 +1,7 @@
 import { Effect } from 'effect'
 import { describe, expect, it } from 'vitest'
 
-import { runEngineEffect, runEngineEffectPromise } from '../engine/effect-runtime.js'
+import { runEngineEffect, runEngineEffectPromise } from '../engine/live-effect.js'
 
 describe('engine effect runtime helpers', () => {
   it('unwraps synchronous effect successes and failures', () => {
