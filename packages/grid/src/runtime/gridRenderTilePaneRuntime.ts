@@ -32,6 +32,12 @@ import {
   type RetainedFixedRenderTileDataPanesCompatibility,
   type WorkbookDeltaConnectionIdentity,
 } from './gridRenderTilePaneRuntimeHelpers.js'
+import {
+  normalizeNonNegativeInteger,
+  resolveLocalRenderGeneration,
+  tileProjectionRevisionIsBehind,
+  tileSatisfiesRequiredProjectedRevision,
+} from './gridRenderTileRevision.js'
 import { hasCompleteRenderTileGrid, tileSelectedTextNeedsLocalRefresh } from './gridRenderTileTrust.js'
 import { GridVisibleTextRefreshCache } from './gridVisibleTextRefreshCache.js'
 
@@ -914,10 +920,6 @@ export class GridRenderTilePaneRuntime {
   }
 }
 
-function normalizeNonNegativeInteger(value: number | null | undefined): number | null {
-  return typeof value === 'number' && Number.isInteger(value) && value >= 0 ? value : null
-}
-
 function resolveAcknowledgedVisibleDirtyPaneTileKeys(
   panes: readonly WorkbookRenderTilePaneState[],
   input: GridRenderTilePaneRuntimeInput,
@@ -947,54 +949,6 @@ function hasUnacknowledgedVisibleDirtyTileKeys(
   }
   const acknowledged = new Set(acknowledgedVisibleTileKeys)
   return readiness.visibleDirtyTileKeys.some((key) => !acknowledged.has(key))
-}
-
-function tileProjectionRevisionIsBehind(tile: GridRenderTile | null, engine: GridEngineLike): boolean {
-  if (!tile) {
-    return false
-  }
-  const renderRevision = engine.getRenderRevisionSnapshot?.()
-  const projectedRevision = normalizeNonNegativeInteger(renderRevision?.projectedRevision)
-  if (projectedRevision === null) {
-    return false
-  }
-  const authoritativeRevision = normalizeNonNegativeInteger(renderRevision?.authoritativeRevision)
-  const localRevision = normalizeNonNegativeInteger(renderRevision?.localRevision)
-  const hasPendingLocalProjection =
-    localRevision !== null && localRevision > 0 && (authoritativeRevision === null || projectedRevision > authoritativeRevision)
-  return tile.lastBatchId < projectedRevision || hasPendingLocalProjection
-}
-
-function resolveLocalRenderGeneration(input: GridRenderTilePaneRuntimeInput): number {
-  const renderRevision = input.engine.getRenderRevisionSnapshot?.()
-  return Math.max(
-    input.sceneRevision,
-    normalizeNonNegativeInteger(renderRevision?.localRevision) ?? 0,
-    normalizeNonNegativeInteger(renderRevision?.projectedRevision) ?? 0,
-  )
-}
-
-function tileSatisfiesRequiredProjectedRevision(
-  tile: GridRenderTile,
-  engine: GridEngineLike,
-  requiredProjectedRevision: number | null,
-): boolean {
-  if (requiredProjectedRevision === null) {
-    return true
-  }
-  const renderRevision = engine.getRenderRevisionSnapshot?.()
-  if (!renderRevision) {
-    return true
-  }
-  const projectedRevision = normalizeNonNegativeInteger(renderRevision.projectedRevision)
-  if (projectedRevision === null || projectedRevision < requiredProjectedRevision) {
-    return false
-  }
-  return (
-    tile.version.styles >= requiredProjectedRevision &&
-    tile.version.text >= requiredProjectedRevision &&
-    tile.version.values >= requiredProjectedRevision
-  )
 }
 
 export function getGridRenderTilePaneRuntime(current: unknown): GridRenderTilePaneRuntime {
