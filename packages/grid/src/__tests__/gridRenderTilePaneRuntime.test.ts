@@ -812,6 +812,74 @@ describe('GridRenderTilePaneRuntime', () => {
     expect(state.renderTilePanes.flatMap((pane) => pane.tile.textRuns.map((run) => run.text))).not.toContain('Month 1')
   })
 
+  it('localizes visible neighboring tiles while editing so overflow text cannot ghost beside the editor', () => {
+    const runtime = new GridRenderTilePaneRuntime()
+    const host = createHost()
+    const viewport = { colEnd: 255, colStart: 0, rowEnd: 31, rowStart: 0 }
+    const tileIds = host.viewportTileKeys({
+      dprBucket: 1,
+      sheetOrdinal: 7,
+      viewport,
+    })
+    const sourceTile = createRenderTile(tileIds[0])
+    const adjacentRemoteTile: GridRenderTile = {
+      ...createRenderTile(tileIds[1]),
+      bounds: { colEnd: 255, colStart: 128, rowEnd: 31, rowStart: 0 },
+      coord: {
+        colTile: 1,
+        dprBucket: 1,
+        paneKind: 'body',
+        rowTile: 0,
+        sheetId: 7,
+        sheetOrdinal: 7,
+      },
+      textCount: 1,
+      textRuns: [
+        {
+          align: 'left',
+          clipHeight: 20,
+          clipWidth: 260,
+          clipX: -20,
+          clipY: 40,
+          color: '#111827',
+          col: 127,
+          font: '400 12px Arial',
+          fontSize: 12,
+          height: 20,
+          row: 2,
+          strike: false,
+          text: 'overflow-editor-ghost',
+          underline: false,
+          width: 260,
+          x: -20,
+          y: 40,
+        },
+      ],
+    }
+    const editAddress = formatAddress(2, 127)
+    const state = runtime.resolve(
+      createInput({
+        editingCell: [127, 2],
+        engine: {
+          ...LOCAL_EMPTY_ENGINE,
+          getCell: (_sheetName, address) =>
+            address === editAddress ? createStringCellSnapshot(editAddress, 'overflow-editor-ghost') : createEmptyCellSnapshot(address),
+        },
+        gridRuntimeHost: host,
+        renderTileSource: createRenderTileSource([sourceTile, adjacentRemoteTile]),
+        renderTileViewport: viewport,
+        residentViewport: viewport,
+        selectedCell: [127, 2],
+        selectedCellSnapshot: createStringCellSnapshot(editAddress, 'overflow-editor-ghost'),
+        visibleViewport: viewport,
+      }),
+    )
+
+    const adjacentPane = state.renderTilePanes.find((pane) => pane.tile.tileId === tileIds[1])
+    expect(adjacentPane?.tile).not.toBe(adjacentRemoteTile)
+    expect(state.renderTilePanes.flatMap((pane) => pane.tile.textRuns.map((run) => run.text))).not.toContain('overflow-editor-ghost')
+  })
+
   it('rebuilds visible remote tiles with missing grid payloads as local grid tiles', () => {
     const runtime = new GridRenderTilePaneRuntime()
     const host = createHost()

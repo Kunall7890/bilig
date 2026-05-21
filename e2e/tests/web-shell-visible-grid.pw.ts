@@ -265,6 +265,44 @@ test('@browser-ci web app keeps the live cell editor above the TypeGPU grid text
     })
 })
 
+test('@browser-ci web app suppresses TypeGPU overflow text while editing a tile-boundary cell', async ({ page }) => {
+  const documentId = createTestDocumentId('playwright-editor-tile-boundary-overflow')
+  const overflowText = 'overflow-editor-ghost '.repeat(8).trim()
+  await page.setViewportSize({ width: 1166, height: 820 })
+  await page.goto(`/?document=${encodeURIComponent(documentId)}&persist=0&sheet=Sheet1&cell=A1`)
+  await waitForWorkbookReady(page)
+
+  const formulaInput = page.getByTestId('formula-input')
+  const grid = page.getByTestId('sheet-grid')
+  const nameBox = page.getByTestId('name-box')
+
+  await nameBox.fill('DX3')
+  await nameBox.press('Enter')
+  await expect(page.getByTestId('status-selection')).toHaveText('Sheet1!DX3')
+  await formulaInput.fill(overflowText)
+  await formulaInput.press('Enter')
+
+  await nameBox.fill('DX3')
+  await nameBox.press('Enter')
+  await expect(formulaInput).toHaveValue(overflowText)
+  await expect
+    .poll(readTypeGpuTextRunCount(page), {
+      message: 'the committed tile-boundary text should be present before editing starts',
+      timeout: 5_000,
+    })
+    .toBeGreaterThan(0)
+
+  await grid.press('F2')
+  await expect(page.getByTestId('cell-editor-input')).toHaveValue(overflowText)
+  await expect(page.getByTestId('grid-native-text-layer')).toHaveCount(0)
+  await expect
+    .poll(readTypeGpuTextRunCount(page), {
+      message: 'TypeGPU must not keep remote overflow text visible beside the live editor',
+      timeout: 5_000,
+    })
+    .toBe(0)
+})
+
 test('@browser-ci web app keeps rendered edits, clears, headers, and fills coherent across click-away and reload', async ({ page }) => {
   const documentId = createTestDocumentId('playwright-rendered-table-stakes')
   const editedText = 'rendered-table-stakes'
