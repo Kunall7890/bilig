@@ -5,7 +5,7 @@ import { describe, expect, it } from 'vitest'
 
 import { exportXlsx } from '../../packages/excel-import/src/index.js'
 import type { WorkbookSnapshot } from '../../packages/protocol/src/types.js'
-import { verifyCachedWorkbookArtifact } from '../public-workbook-corpus-verify.ts'
+import { roundTripsSupportedSemantics, verifyCachedWorkbookArtifact } from '../public-workbook-corpus-verify.ts'
 import { sha256HexSync } from '../public-workbook-corpus-workbook.ts'
 
 describe('public workbook corpus verification phase order', () => {
@@ -45,6 +45,25 @@ describe('public workbook corpus verification phase order', () => {
     expect(result.validation.roundTripPassed).toBe(true)
     expect(result.validation.structuralSmokePassed).toBe(true)
     expect(phases.indexOf('round-trip')).toBeLessThan(phases.indexOf('structural-smoke'))
+  })
+
+  it('uses the round-tripped snapshot for structural smoke instead of retaining the original through reimport', async () => {
+    const snapshot = buildSmallWorkbook()
+
+    const result = await roundTripsSupportedSemantics(snapshot, { retainRoundTrippedSnapshot: true })
+
+    expect(result.passed).toBe(true)
+    expect(result.structuralSmokeSnapshot).toBeDefined()
+    expect(result.structuralSmokeSnapshot).not.toBe(snapshot)
+    expect(result.structuralSmokeSnapshot?.sheets[0]?.name).toBe('Sheet1')
+    expect(result.structuralSmokeSnapshot?.sheets[0]?.cells).not.toBe(snapshot.sheets[0]?.cells)
+  })
+
+  it('does not keep a structural-smoke snapshot when the caller does not need one', async () => {
+    const result = await roundTripsSupportedSemantics(buildSmallWorkbook())
+
+    expect(result.passed).toBe(true)
+    expect(result.structuralSmokeSnapshot).toBeUndefined()
   })
 })
 

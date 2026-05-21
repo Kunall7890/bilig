@@ -362,11 +362,17 @@ export async function verifyCachedWorkbookArtifact(
     const roundTripSkipEvidence = roundTripValidationSkipEvidence(imported.warnings)
     const externalWorkbookReferences = summarizeExternalWorkbookReferences(imported.snapshot)
     const unsupportedWorkbookEvidence = unsupportedWorkbookMetadataEvidence(imported.snapshot, formulaOracleValidation)
-    let structuralSmokeSnapshot = runStructuralSmoke && !structuralSmokeResourceLimit ? imported.snapshot : undefined
-    const roundTripPassed = await timeVerificationPhase(runtimeMetrics, workerOptions, 'round-trip', () =>
-      roundTripSkipEvidence || roundTripResourceLimit ? true : roundTripsSupportedSemantics(detachImportedWorkbookSnapshot(imported)),
+    const shouldRunStructuralSmoke = runStructuralSmoke && !structuralSmokeResourceLimit
+    const roundTripValidation = await timeVerificationPhase(runtimeMetrics, workerOptions, 'round-trip', () =>
+      roundTripSkipEvidence || roundTripResourceLimit
+        ? { passed: true, structuralSmokeSnapshot: shouldRunStructuralSmoke ? imported.snapshot : undefined }
+        : roundTripsSupportedSemantics(detachImportedWorkbookSnapshot(imported), {
+            retainRoundTrippedSnapshot: shouldRunStructuralSmoke,
+          }),
     )
+    const roundTripPassed = roundTripValidation.passed
     collectGarbage()
+    let structuralSmokeSnapshot = shouldRunStructuralSmoke ? roundTripValidation.structuralSmokeSnapshot : undefined
     const structuralSmokePassed = await timeVerificationPhase(runtimeMetrics, workerOptions, 'structural-smoke', () =>
       structuralSmokeSnapshot ? runStructuralSmokeOps(structuralSmokeSnapshot) : runStructuralSmoke ? null : null,
     )
@@ -700,7 +706,15 @@ function formulaOracleCellKey(sheetName: string, address: string): string {
   return `${sheetName}\u0000${address}`
 }
 
-async function roundTripsSupportedSemantics(snapshot: WorkbookSnapshot): Promise<boolean> {
+interface RoundTripSemanticValidationResult {
+  readonly passed: boolean
+  readonly structuralSmokeSnapshot?: WorkbookSnapshot
+}
+
+export async function roundTripsSupportedSemantics(
+  snapshot: WorkbookSnapshot,
+  options: { readonly retainRoundTrippedSnapshot?: boolean } = {},
+): Promise<RoundTripSemanticValidationResult> {
   try {
     const [{ exportXlsx }, { roundTripSemanticsDigest }] = await Promise.all([
       import('../packages/excel-import/src/index.js'),
@@ -713,10 +727,14 @@ async function roundTripsSupportedSemantics(snapshot: WorkbookSnapshot): Promise
     const exported = exportXlsx(snapshot)
     snapshot = createDetachedWorkbookSnapshot(workbookName)
     collectGarbage()
-    const actualDigest = roundTripSemanticsDigest(importXlsx(exported, `${workbookName}.xlsx`).snapshot)
-    return actualDigest === expectedDigest
+    const roundTrippedSnapshot = importXlsx(exported, `${workbookName}.xlsx`).snapshot
+    const actualDigest = roundTripSemanticsDigest(roundTrippedSnapshot)
+    return {
+      passed: actualDigest === expectedDigest,
+      ...(options.retainRoundTrippedSnapshot ? { structuralSmokeSnapshot: roundTrippedSnapshot } : {}),
+    }
   } catch {
-    return false
+    return { passed: false }
   }
 }
 
