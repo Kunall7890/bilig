@@ -51,6 +51,16 @@ function escapeXml(value: string): string {
   return value.replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;').replaceAll('"', '&quot;').replaceAll("'", '&apos;')
 }
 
+function xmlText(value: unknown): string | undefined {
+  if (typeof value === 'string') {
+    return value
+  }
+  if (isRecord(value) && typeof value['#text'] === 'string') {
+    return value['#text']
+  }
+  return undefined
+}
+
 function escapeExcelXmlTextAttribute(value: string): string {
   return escapeXml(encodeExcelEscapedText(value))
 }
@@ -217,17 +227,25 @@ function exportTableColumns(table: WorkbookTableSnapshot): WorkbookTableColumnSn
     if (column?.totalsRowFunction !== undefined) {
       exportedColumn.totalsRowFunction = column.totalsRowFunction
     }
+    if (column?.calculatedColumnFormula !== undefined) {
+      exportedColumn.calculatedColumnFormula = column.calculatedColumnFormula
+    }
     return exportedColumn
   })
 }
 
 function buildTableColumnXml(column: WorkbookTableColumnSnapshot, index: number): string {
-  return [
+  const attributes = [
     `<tableColumn id="${String(index + 1)}" name="${escapeExcelXmlTextAttribute(column.name)}"`,
     column.totalsRowLabel !== undefined ? ` totalsRowLabel="${escapeExcelXmlTextAttribute(column.totalsRowLabel)}"` : '',
     column.totalsRowFunction !== undefined ? ` totalsRowFunction="${escapeXml(column.totalsRowFunction)}"` : '',
-    '/>',
   ].join('')
+  const children = [
+    column.calculatedColumnFormula !== undefined
+      ? `<calculatedColumnFormula>${escapeXml(column.calculatedColumnFormula)}</calculatedColumnFormula>`
+      : '',
+  ].join('')
+  return children.length > 0 ? `${attributes}>${children}</tableColumn>` : `${attributes}/>`
 }
 
 function buildTableStyleXml(style: WorkbookTableStyleSnapshot | undefined): string {
@@ -341,6 +359,9 @@ function parseTableXml(sheetName: string, xml: string): WorkbookTableSnapshot | 
     }
     const column: WorkbookTableColumnSnapshot = {
       name: columnName,
+      ...(typeof xmlText(entry['calculatedColumnFormula']) === 'string'
+        ? { calculatedColumnFormula: xmlText(entry['calculatedColumnFormula'])! }
+        : {}),
       ...(typeof entry['totalsRowLabel'] === 'string' ? { totalsRowLabel: decodeExcelEscapedText(entry['totalsRowLabel']) } : {}),
       ...(typeof entry['totalsRowFunction'] === 'string' ? { totalsRowFunction: entry['totalsRowFunction'] } : {}),
     }
@@ -348,6 +369,10 @@ function parseTableXml(sheetName: string, xml: string): WorkbookTableSnapshot | 
   })
   const style = parseTableStyle(recordChild(table, 'tableStyleInfo'))
   const sortState = readSortStateXml(xml)
+  const hasColumnMetadata = columns.some(
+    (column) =>
+      column.calculatedColumnFormula !== undefined || column.totalsRowLabel !== undefined || column.totalsRowFunction !== undefined,
+  )
   const hasTotalsRowColumnMetadata = columns.some((column) => column.totalsRowLabel !== undefined || column.totalsRowFunction !== undefined)
   return {
     name,
@@ -355,7 +380,7 @@ function parseTableXml(sheetName: string, xml: string): WorkbookTableSnapshot | 
     startAddress: ref.startAddress,
     endAddress: ref.endAddress,
     columnNames: columns.map((column) => column.name),
-    ...(hasTotalsRowColumnMetadata ? { columns } : {}),
+    ...(hasColumnMetadata ? { columns } : {}),
     headerRow: table['headerRowCount'] !== '0',
     totalsRow: table['totalsRowShown'] === '1' || table['totalsRowCount'] === '1' || hasTotalsRowColumnMetadata,
     ...(style ? { style } : {}),

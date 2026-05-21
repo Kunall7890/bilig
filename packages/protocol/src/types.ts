@@ -409,6 +409,7 @@ export interface WorkbookTableSnapshot {
 
 export interface WorkbookTableColumnSnapshot {
   name: string
+  calculatedColumnFormula?: string
   totalsRowLabel?: string
   totalsRowFunction?: string
 }
