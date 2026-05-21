@@ -17,6 +17,7 @@ The public surface stays generic:
 - `inspectModel`
 - `collectWorkbookRefs`
 - `findTable`, `findColumn`, `findRange`, `findName`, `findRows`
+- `find`
 - `check`
 - `describeModel`
 - `describeRef`
@@ -33,6 +34,13 @@ The public surface stays generic:
 - `workbook.addOp(op, { target?, message? })` inside model actions
 - `WorkbookModel`
 - `WorkbookAction`
+- `WorkbookActionContext`
+- `WorkbookCheckContext`
+- `WorkbookFindWorkbook`
+- `WorkbookCheckWorkbook`
+- `WorkbookActionWorkbook`
+- `WorkbookModelWorkbook`
+- `WorkbookFindNamespace`
 - `WorkbookActionInput`
 - `WorkbookAddOpOptions`
 - `WorkbookActionPlanResult`
@@ -141,13 +149,18 @@ Action plans expose `refsUsed`, a flat deduped list of workbook refs found in
 the consumer-defined `refs` object. Use `collectWorkbookRefs` directly when an
 agent needs to inspect refs from any nested consumer shape.
 Use `findTable`, `findColumn`, `findRange`, `findName`, and `findRows` directly
-when an agent or test needs the same generic refs outside a model callback.
+when an agent or test needs the same generic refs outside a model callback. The
+same helpers are also available as a frozen `find` namespace with short aliases
+such as `find.table(...)`, `find.range(...)`, and `find.rows(...)`.
 Selector helpers trim text, canonicalize cell addresses, and reject empty table
 names, column names, named ranges, headers, invalid range addresses, invalid row
 operators, and non-finite row predicate values before a plan reaches runtime.
 `findRows` refs include the predicate value in their stable id so two
 consumer-defined row selectors do not collapse during dedupe, while labels stay
 human-readable for agent logs.
+Refs are frozen data objects. Ergonomic helpers like `table.column()` and
+`rows.column()` remain available, but they are non-enumerable so JSON
+inspection, object keys, and plan descriptions stay data-first.
 For table-backed rows, use `rows.column("Amount")` to target only that column in
 the matching rows. Runtime adapters can materialize row-filtered columns into
 the exact cells to read, write, format, clear, or use as row-wise formula inputs
@@ -163,6 +176,11 @@ Use `check.custom({ kind, message, target, refs })` for consumer-defined
 invariants; the package does not need to know what the model means. `target`
 names the main ref, and `refs` names any supporting refs the invariant depends
 on so agents can describe and verify the full check contract.
+
+Model callback phases are deliberately scoped. `find(workbook)` receives only
+the find API; `checks({ workbook })` receives find helpers plus `workbook.check`;
+actions receive find helpers, checks, and mutation planning methods. That keeps
+discovery and proof declaration separate from workbook mutation intent.
 
 Use `describeModel` when an agent needs a JSON-safe manifest of model name,
 action names, and whether model-level checks exist without running `find`,

@@ -44,6 +44,11 @@ function hasOwnString<Key extends string>(value: object, key: Key): value is Rec
   return descriptor !== undefined && typeof descriptor.value === 'string'
 }
 
+function hasOwnFunction<Key extends string>(value: object, key: Key): value is Record<Key, (...args: never[]) => unknown> {
+  const descriptor = Object.getOwnPropertyDescriptor(value, key)
+  return descriptor !== undefined && typeof descriptor.value === 'function'
+}
+
 export interface WorkbookRowsRef extends WorkbookBaseRef {
   readonly kind: 'rows'
   readonly sheetName?: string
@@ -60,15 +65,86 @@ export type WorkbookRef = WorkbookRangeRef | WorkbookNameRef | WorkbookTableRef 
 
 const WORKBOOK_REF_KINDS = new Set<string>(['range', 'name', 'table', 'column', 'rows'])
 
-export function isWorkbookRef(value: unknown): value is WorkbookRef {
+function hasValidBaseRef(value: object): value is WorkbookBaseRef {
+  return hasOwnString(value, 'kind') && WORKBOOK_REF_KINDS.has(value.kind) && hasOwnString(value, 'id') && hasOwnString(value, 'label')
+}
+
+function hasOptionalString(value: object, key: string): boolean {
+  const descriptor = Object.getOwnPropertyDescriptor(value, key)
+  return descriptor === undefined || typeof descriptor.value === 'string'
+}
+
+function hasOptionalStringArray(value: object, key: string): boolean {
+  const descriptor = Object.getOwnPropertyDescriptor(value, key)
+  return descriptor === undefined || (Array.isArray(descriptor.value) && descriptor.value.every((entry) => typeof entry === 'string'))
+}
+
+function isCellRangeRef(value: unknown): value is CellRangeRef {
   return (
     typeof value === 'object' &&
     value !== null &&
-    hasOwnString(value, 'kind') &&
-    WORKBOOK_REF_KINDS.has(value.kind) &&
-    hasOwnString(value, 'id') &&
-    hasOwnString(value, 'label')
+    hasOwnString(value, 'sheetName') &&
+    hasOwnString(value, 'startAddress') &&
+    hasOwnString(value, 'endAddress')
   )
+}
+
+function isWorkbookTableRef(value: unknown): value is WorkbookTableRef {
+  return (
+    typeof value === 'object' &&
+    value !== null &&
+    hasValidBaseRef(value) &&
+    value.kind === 'table' &&
+    hasOptionalString(value, 'name') &&
+    hasOptionalString(value, 'sheetName') &&
+    hasOptionalStringArray(value, 'headers') &&
+    hasOwnFunction(value, 'column')
+  )
+}
+
+function isWorkbookRowsRef(value: unknown): value is WorkbookRowsRef {
+  if (typeof value !== 'object' || value === null || !hasValidBaseRef(value) || value.kind !== 'rows' || !hasOwnFunction(value, 'column')) {
+    return false
+  }
+  const where = Object.getOwnPropertyDescriptor(value, 'where')?.value
+  if (
+    typeof where !== 'object' ||
+    where === null ||
+    !hasOwnString(where, 'column') ||
+    !isWorkbookRowOperator(Object.getOwnPropertyDescriptor(where, 'op')?.value) ||
+    !isLiteralInput(Object.getOwnPropertyDescriptor(where, 'value')?.value)
+  ) {
+    return false
+  }
+  const table = Object.getOwnPropertyDescriptor(value, 'table')?.value
+  return hasOptionalString(value, 'sheetName') && (table === undefined || isWorkbookTableRef(table))
+}
+
+function isWorkbookColumnRef(value: unknown): value is WorkbookColumnRef {
+  if (typeof value !== 'object' || value === null || !hasValidBaseRef(value) || value.kind !== 'column' || !hasOwnString(value, 'name')) {
+    return false
+  }
+  const table = Object.getOwnPropertyDescriptor(value, 'table')?.value
+  const rows = Object.getOwnPropertyDescriptor(value, 'rows')?.value
+  return isWorkbookTableRef(table) && (rows === undefined || isWorkbookRowsRef(rows))
+}
+
+export function isWorkbookRef(value: unknown): value is WorkbookRef {
+  if (typeof value !== 'object' || value === null || !hasValidBaseRef(value)) {
+    return false
+  }
+  switch (value.kind) {
+    case 'range':
+      return isCellRangeRef(Object.getOwnPropertyDescriptor(value, 'range')?.value)
+    case 'name':
+      return hasOwnString(value, 'name')
+    case 'table':
+      return isWorkbookTableRef(value)
+    case 'column':
+      return isWorkbookColumnRef(value)
+    case 'rows':
+      return isWorkbookRowsRef(value)
+  }
 }
 
 export function collectWorkbookRefs(value: unknown): readonly WorkbookRef[] {
@@ -159,6 +235,14 @@ export interface WorkbookFindApi {
   readonly findRange: (input: FindRangeInput) => WorkbookRangeRef
   readonly findName: (name: string) => WorkbookNameRef
   readonly findRows: (options: FindRowsOptions) => WorkbookRowsRef
+}
+
+export interface WorkbookFindNamespace extends WorkbookFindApi {
+  readonly table: (options: FindTableOptions) => WorkbookTableRef
+  readonly column: (options: FindColumnOptions) => WorkbookColumnRef
+  readonly range: (input: FindRangeInput) => WorkbookRangeRef
+  readonly name: (name: string) => WorkbookNameRef
+  readonly rows: (options: FindRowsOptions) => WorkbookRowsRef
 }
 
 function cleanIdPart(value: string): string {
@@ -260,6 +344,12 @@ function literalLabel(value: LiteralInput): string {
   return JSON.stringify(value)
 }
 
+function hideHelper<T extends object, Key extends keyof T & string>(target: T, key: Key): void {
+  Object.defineProperty(target, key, {
+    enumerable: false,
+  })
+}
+
 function rangeLabel(range: CellRangeRef): string {
   return range.startAddress === range.endAddress
     ? `${range.sheetName}!${range.startAddress}`
@@ -305,19 +395,20 @@ export function createWorkbookTableRef(options: FindTableOptions): WorkbookTable
     label,
     ...(tableName !== undefined ? { name: tableName } : {}),
     ...(sheetName !== undefined ? { sheetName } : {}),
-    ...(headers !== undefined ? { headers: [...headers] } : {}),
+    ...(headers !== undefined ? { headers: Object.freeze([...headers]) } : {}),
     column(name) {
       return createWorkbookColumnRef({ table, name })
     },
   }
-  return table
+  hideHelper(table, 'column')
+  return Object.freeze(table)
 }
 
 export function createWorkbookColumnRef(options: FindColumnOptions): WorkbookColumnRef {
   const name = requiredSelectorText(options.name, 'column name')
   const ownerId = options.rows?.id ?? options.table.id
   const ownerLabel = options.rows?.label ?? options.table.label
-  return {
+  const column: WorkbookColumnRef = {
     kind: 'column',
     id: cleanIdPart(`${ownerId}_${name}`),
     label: `${ownerLabel}.${name}`,
@@ -325,26 +416,27 @@ export function createWorkbookColumnRef(options: FindColumnOptions): WorkbookCol
     ...(options.rows !== undefined ? { rows: options.rows } : {}),
     name,
   }
+  return Object.freeze(column)
 }
 
 export function createWorkbookRangeRef(input: FindRangeInput): WorkbookRangeRef {
   const range = normalizeRangeRef(input)
-  return {
+  return Object.freeze({
     kind: 'range',
     id: cleanIdPart(`range_${range.sheetName}_${range.startAddress}_${range.endAddress}`),
     label: rangeLabel(range),
-    range,
-  }
+    range: Object.freeze(range),
+  })
 }
 
 export function createWorkbookNameRef(name: string): WorkbookNameRef {
   const normalizedName = requiredSelectorText(name, 'name')
-  return {
+  return Object.freeze({
     kind: 'name',
     id: cleanIdPart(`name_${normalizedName}`),
     label: normalizedName,
     name: normalizedName,
-  }
+  })
 }
 
 export function createWorkbookRowsRef(options: FindRowsOptions): WorkbookRowsRef {
@@ -365,7 +457,7 @@ export function createWorkbookRowsRef(options: FindRowsOptions): WorkbookRowsRef
     label: `${ownerLabel} rows where ${where.column} ${where.op} ${literalLabel(where.value)}`,
     ...(sheetName !== undefined ? { sheetName } : {}),
     ...(options.table !== undefined ? { table: options.table } : {}),
-    where,
+    where: Object.freeze(where),
     column(name) {
       if (rows.table === undefined) {
         throw new Error('Rows column selection requires a table-backed row selector')
@@ -373,7 +465,8 @@ export function createWorkbookRowsRef(options: FindRowsOptions): WorkbookRowsRef
       return createWorkbookColumnRef({ table: rows.table, rows, name })
     },
   }
-  return rows
+  hideHelper(rows, 'column')
+  return Object.freeze(rows)
 }
 
 export function findTable(options: FindTableOptions): WorkbookTableRef {
@@ -405,3 +498,12 @@ export function createWorkbookFindApi(): WorkbookFindApi {
     findRows,
   }
 }
+
+export const find: WorkbookFindNamespace = Object.freeze({
+  ...createWorkbookFindApi(),
+  table: findTable,
+  column: findColumn,
+  range: findRange,
+  name: findName,
+  rows: findRows,
+})

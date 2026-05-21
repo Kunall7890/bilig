@@ -9,6 +9,7 @@ import {
   describePlanResult,
   describeRef,
   findColumn,
+  find,
   findName,
   findRange,
   findRows,
@@ -93,6 +94,64 @@ describe('@bilig/workbook model api', () => {
     }
   })
 
+  it('keeps find, check, and action workbook phases scoped', () => {
+    const seen: string[][] = []
+    const model = defineModel({
+      name: 'phase-scoped-model',
+
+      find(workbook) {
+        seen.push(Object.keys(workbook).toSorted())
+        expect(Object.isFrozen(workbook)).toBe(true)
+        expect('check' in workbook).toBe(false)
+        expect('writeValue' in workbook).toBe(false)
+        return {
+          table: workbook.findTable({ name: 'Inputs' }),
+          output: workbook.findRange({ sheetName: 'Sheet1', address: 'B2' }),
+        }
+      },
+
+      checks({ refs, workbook }) {
+        seen.push(Object.keys(workbook).toSorted())
+        expect(Object.isFrozen(workbook)).toBe(true)
+        expect('writeValue' in workbook).toBe(false)
+        expect('addOp' in workbook).toBe(false)
+        const hidden = workbook.findRange({ sheetName: 'Sheet1', address: 'A1' })
+        return [
+          workbook.check.exists(refs.table),
+          workbook.check.custom({ kind: 'hiddenSupport', refs: [hidden], message: 'Hidden support ref' }),
+        ]
+      },
+
+      actions: {
+        write({ refs, workbook }) {
+          seen.push(Object.keys(workbook).toSorted())
+          expect(Object.isFrozen(workbook)).toBe(true)
+          workbook.writeValue(refs.output, 12)
+          workbook.check.valueEquals(refs.output, 12)
+        },
+      },
+    })
+
+    const result = planWorkbookAction(model, 'write')
+
+    expect(result.status).toBe('planned')
+    expect(seen).toEqual([
+      ['findColumn', 'findName', 'findRange', 'findRows', 'findTable'],
+      ['check', 'findColumn', 'findName', 'findRange', 'findRows', 'findTable'],
+      ['addOp', 'check', 'clear', 'findColumn', 'findName', 'findRange', 'findRows', 'findTable', 'format', 'writeFormula', 'writeValue'],
+    ])
+    if (result.status === 'planned') {
+      expect(result.plan.commands).toEqual([
+        {
+          kind: 'writeValue',
+          target: result.plan.refs.output,
+          value: 12,
+        },
+      ])
+      expect(verifyPlan(result.plan).issues.map((issue) => issue.code)).toEqual(['check_ref_not_resolved'])
+    }
+  })
+
   it('creates formula helpers that normalize through the formula parser', () => {
     const amount = formula.raw('Sheet1!A1')
     const rate = formula.raw('Sheet1!B1')
@@ -124,8 +183,8 @@ describe('@bilig/workbook model api', () => {
       name: 'Inputs',
       sheetName: 'Model',
       headers: ['Amount', 'Rate'],
-      column: expect.any(Function),
     })
+    expect(table.column).toEqual(expect.any(Function))
     expect(amount).toEqual(amountViaTable)
     expect(result).toEqual({
       kind: 'range',
@@ -153,8 +212,8 @@ describe('@bilig/workbook model api', () => {
         op: 'eq',
         value: 'Active',
       },
-      column: expect.any(Function),
     })
+    expect(rows.column).toEqual(expect.any(Function))
     expect(rows.column('Amount')).toEqual({
       kind: 'column',
       id: 'table_Model_Inputs_Amount_Rate_Status_eq_string__22Active_22_Amount',
@@ -173,6 +232,37 @@ describe('@bilig/workbook model api', () => {
         },
       }).column('Amount'),
     ).toThrowError('Rows column selection requires a table-backed row selector')
+  })
+
+  it('exports a frozen find namespace and keeps ref helpers off enumerable data', () => {
+    const table = find.table({ name: 'Inputs', sheetName: 'Model', headers: ['Amount'] })
+    const rows = find.rows({ table, where: { column: 'Status', op: 'eq', value: 'Active' } })
+    const column = rows.column('Amount')
+    const range = find.range({ sheetName: 'Sheet1', address: 'A1' })
+
+    expect(Object.isFrozen(find)).toBe(true)
+    expect(find.findTable).toBe(findTable)
+    expect(find.table).toBe(findTable)
+    expect(Object.keys(table)).toEqual(['kind', 'id', 'label', 'name', 'sheetName', 'headers'])
+    expect(Object.keys(rows)).toEqual(['kind', 'id', 'label', 'table', 'where'])
+    expect(table.column).toEqual(expect.any(Function))
+    expect(rows.column).toEqual(expect.any(Function))
+    expect(Object.isFrozen(table)).toBe(true)
+    expect(Object.isFrozen(table.headers)).toBe(true)
+    expect(Object.isFrozen(rows)).toBe(true)
+    expect(Object.isFrozen(rows.where)).toBe(true)
+    expect(Object.isFrozen(column)).toBe(true)
+    expect(Object.isFrozen(range)).toBe(true)
+    expect(Object.isFrozen(range.range)).toBe(true)
+    expect(JSON.parse(JSON.stringify(table))).toEqual({
+      kind: 'table',
+      id: 'table_Model_Inputs_Amount',
+      label: 'Inputs',
+      name: 'Inputs',
+      sheetName: 'Model',
+      headers: ['Amount'],
+    })
+    expect(() => Object.defineProperty(table, 'label', { value: 'Changed' })).toThrowError(TypeError)
   })
 
   it('keeps row selector refs distinct by predicate value', () => {
@@ -264,8 +354,8 @@ describe('@bilig/workbook model api', () => {
       name: 'Inputs',
       sheetName: 'Model',
       headers: ['Amount', 'Rate'],
-      column: expect.any(Function),
     })
+    expect(table.column).toEqual(expect.any(Function))
     expect(table.column(' Amount ')).toEqual({
       kind: 'column',
       id: 'table_Model_Inputs_Amount_Rate_Amount',
@@ -447,6 +537,35 @@ describe('@bilig/workbook model api', () => {
 
     expect(isWorkbookRef(inherited)).toBe(false)
     expect(collectWorkbookRefs({ inherited })).toEqual([])
+  })
+
+  it('does not treat incomplete JSON descriptions as live workbook refs', () => {
+    const table = findTable({ name: 'Inputs' })
+    const tableDescription = describeRef(table)
+    const incompleteRange = {
+      kind: 'range',
+      id: 'range_Model_A1_A1',
+      label: 'Model!A1',
+    }
+    const malformedRows = {
+      kind: 'rows',
+      id: 'rows_bad',
+      label: 'bad rows',
+      where: {
+        column: 'Status',
+        op: 'eq',
+        value: Number.NaN,
+      },
+      column() {
+        return table.column('Status')
+      },
+    }
+
+    expect(isWorkbookRef(table)).toBe(true)
+    expect(isWorkbookRef(tableDescription)).toBe(false)
+    expect(isWorkbookRef(incompleteRange)).toBe(false)
+    expect(isWorkbookRef(malformedRows)).toBe(false)
+    expect(collectWorkbookRefs({ tableDescription, incompleteRange, malformedRows })).toEqual([])
   })
 
   it('describes plans as JSON-safe agent-readable intent', () => {

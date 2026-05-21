@@ -41,8 +41,13 @@ export interface WorkbookAddOpOptions {
   readonly message?: string
 }
 
-export interface WorkbookModelWorkbook extends WorkbookFindApi {
+export interface WorkbookFindWorkbook extends WorkbookFindApi {}
+
+export interface WorkbookCheckWorkbook extends WorkbookFindApi {
   readonly check: WorkbookCheckApi
+}
+
+export interface WorkbookActionWorkbook extends WorkbookCheckWorkbook {
   readonly writeFormula: (target: WorkbookRef, value: WorkbookFormulaOperand) => void
   readonly writeValue: (target: WorkbookRef, value: LiteralInput) => void
   readonly format: (target: WorkbookRef, options: { readonly style?: CellStylePatch; readonly numberFormat?: string | null }) => void
@@ -50,9 +55,17 @@ export interface WorkbookModelWorkbook extends WorkbookFindApi {
   readonly addOp: (op: WorkbookOp, options?: WorkbookAddOpOptions) => void
 }
 
+export interface WorkbookModelWorkbook extends WorkbookActionWorkbook {}
+
 export interface WorkbookActionContext<Refs> {
   readonly refs: Refs
-  readonly workbook: WorkbookModelWorkbook
+  readonly workbook: WorkbookActionWorkbook
+  readonly input?: WorkbookActionInput
+}
+
+export interface WorkbookCheckContext<Refs> {
+  readonly refs: Refs
+  readonly workbook: WorkbookCheckWorkbook
   readonly input?: WorkbookActionInput
 }
 
@@ -62,8 +75,8 @@ export type WorkbookActionMap<Refs> = Record<string, WorkbookAction<Refs>>
 
 export interface WorkbookModelConfig<Refs, Actions extends WorkbookActionMap<Refs>> {
   readonly name: string
-  readonly find: (workbook: WorkbookModelWorkbook) => Refs
-  readonly checks?: (context: WorkbookActionContext<Refs>) => readonly WorkbookCheckResult[]
+  readonly find: (workbook: WorkbookFindWorkbook) => Refs
+  readonly checks?: (context: WorkbookCheckContext<Refs>) => readonly WorkbookCheckResult[]
   readonly actions: Actions
 }
 
@@ -165,13 +178,19 @@ function cloneWorkbookOp(op: WorkbookOp): WorkbookOp {
   return structuredClone(op)
 }
 
-function createModelWorkbook(input: {
+function createCheckWorkbook(input: { readonly checks: WorkbookCheckResult[] }): WorkbookCheckWorkbook {
+  return Object.freeze({
+    ...createWorkbookFindApi(),
+    check: createWorkbookCheckApi((entry) => input.checks.push(entry)),
+  })
+}
+
+function createActionWorkbook(input: {
   readonly commands: WorkbookActionCommand[]
   readonly ops: WorkbookOp[]
   readonly checks: WorkbookCheckResult[]
-}): WorkbookModelWorkbook {
-  const find = createWorkbookFindApi()
-  const check = createWorkbookCheckApi((entry) => input.checks.push(entry))
+}): WorkbookActionWorkbook {
+  const checkWorkbook = createCheckWorkbook({ checks: input.checks })
 
   function pushCommand(command: WorkbookActionCommand): void {
     if (command.kind === 'op') {
@@ -230,10 +249,9 @@ function createModelWorkbook(input: {
     }
   }
 
-  return {
-    ...find,
-    check,
-    writeFormula(target, value) {
+  const workbook: WorkbookActionWorkbook = {
+    ...checkWorkbook,
+    writeFormula(target: WorkbookRef, value: WorkbookFormulaOperand) {
       pushCommand({
         kind: 'writeFormula',
         target,
@@ -241,14 +259,14 @@ function createModelWorkbook(input: {
         inputs: formula.inputs(value),
       })
     },
-    writeValue(target, value) {
+    writeValue(target: WorkbookRef, value: LiteralInput) {
       pushCommand({
         kind: 'writeValue',
         target,
         value,
       })
     },
-    format(target, options) {
+    format(target: WorkbookRef, options: { readonly style?: CellStylePatch; readonly numberFormat?: string | null }) {
       pushCommand({
         kind: 'format',
         target,
@@ -256,13 +274,13 @@ function createModelWorkbook(input: {
         ...(options.numberFormat !== undefined ? { numberFormat: options.numberFormat } : {}),
       })
     },
-    clear(target) {
+    clear(target: WorkbookRef) {
       pushCommand({
         kind: 'clear',
         target,
       })
     },
-    addOp(op, options = {}) {
+    addOp(op: WorkbookOp, options: WorkbookAddOpOptions = {}) {
       if (!isWorkbookOp(op)) {
         throw new Error('Workbook op is not a valid WorkbookOp')
       }
@@ -274,6 +292,7 @@ function createModelWorkbook(input: {
       })
     },
   }
+  return Object.freeze(workbook)
 }
 
 function pushReturnedChecks(target: WorkbookCheckResult[], returned: readonly WorkbookCheckResult[] | undefined): void {
@@ -373,24 +392,29 @@ export function planWorkbookAction<Refs, Actions extends WorkbookActionMap<Refs>
   const commands: WorkbookActionCommand[] = []
   const ops: WorkbookOp[] = []
   const checks: WorkbookCheckResult[] = []
-  const workbook = createModelWorkbook({ commands, ops, checks })
+  const findWorkbook = Object.freeze(createWorkbookFindApi())
 
   let refs: Refs
   try {
-    refs = model.find(workbook)
+    refs = model.find(findWorkbook)
   } catch (error) {
     return failedPlan<Refs>(model.name, actionName, 'find_failed', errorMessage(error), checks, normalizedInput)
   }
 
-  const context: WorkbookActionContext<Refs> = { refs, workbook, ...inputProperty(normalizedInput) }
+  const checkContext: WorkbookCheckContext<Refs> = { refs, workbook: createCheckWorkbook({ checks }), ...inputProperty(normalizedInput) }
   try {
-    pushReturnedChecks(checks, model.checks?.(context))
+    pushReturnedChecks(checks, model.checks?.(checkContext))
   } catch (error) {
     return failedPlan<Refs>(model.name, actionName, 'checks_failed', errorMessage(error), checks, normalizedInput)
   }
 
+  const actionContext: WorkbookActionContext<Refs> = {
+    refs,
+    workbook: createActionWorkbook({ commands, ops, checks }),
+    ...inputProperty(normalizedInput),
+  }
   try {
-    action(context)
+    action(actionContext)
   } catch (error) {
     return failedPlan<Refs>(model.name, actionName, 'action_failed', errorMessage(error), checks, normalizedInput)
   }

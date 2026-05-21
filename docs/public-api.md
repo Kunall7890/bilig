@@ -58,6 +58,7 @@ It exposes:
 - `inspectModel`
 - `collectWorkbookRefs`
 - `findTable`, `findColumn`, `findRange`, `findName`, and `findRows`
+- `find`
 - `check`
 - `describeModel`
 - `describeRef`
@@ -74,7 +75,7 @@ It exposes:
 - `workbook.addOp(op, { target?, message? })` inside model actions
 - `findTable`, `findColumn`, `findRange`, `findName`, and `findRows` through the model workbook context and as top-level helpers
 - `check.exists`, `check.noFormulaErrors`, `check.valueEquals`, `check.formulaEquals`, and `check.custom` through the model workbook context and as top-level helpers
-- `WorkbookModel`, `WorkbookAction`, `WorkbookActionInput`, `WorkbookAddOpOptions`, `WorkbookActionPlanResult`, `WorkbookModelDescription`, `WorkbookRefDescription`, `WorkbookActionPlanDescription`, `WorkbookActionPlanResultDescription`, `WorkbookRunResultDescription`, `WorkbookUndoRefDescription`, `WorkbookRuntimeRequirements`, `WorkbookRuntimeRequirement`, `WorkbookRuntimeCapability`, `WorkbookPlanVerification`, `WorkbookPlanIssue`, `WorkbookModelVerification`, `WorkbookModelActionVerification`, `WorkbookModelVerificationOptions`, `WorkbookRunAdapter`, `WorkbookRunApplyResult`, `WorkbookRunReadback`, `WorkbookReadbackVerification`, `WorkbookReadbackIssue`, `WorkbookReadbackIssueCode`, `WorkbookCheckExpectation`, `WorkbookCheckExpectationDescription`, `WorkbookCustomCheckOptions`, `WorkbookReadbackCheckOptions`, `WorkbookRawFormulaOptions`, `WorkbookRunResult`, and `WorkbookCheckResult`
+- `WorkbookModel`, `WorkbookAction`, `WorkbookActionContext`, `WorkbookCheckContext`, `WorkbookFindWorkbook`, `WorkbookCheckWorkbook`, `WorkbookActionWorkbook`, `WorkbookModelWorkbook`, `WorkbookFindNamespace`, `WorkbookActionInput`, `WorkbookAddOpOptions`, `WorkbookActionPlanResult`, `WorkbookModelDescription`, `WorkbookRefDescription`, `WorkbookActionPlanDescription`, `WorkbookActionPlanResultDescription`, `WorkbookRunResultDescription`, `WorkbookUndoRefDescription`, `WorkbookRuntimeRequirements`, `WorkbookRuntimeRequirement`, `WorkbookRuntimeCapability`, `WorkbookPlanVerification`, `WorkbookPlanIssue`, `WorkbookModelVerification`, `WorkbookModelActionVerification`, `WorkbookModelVerificationOptions`, `WorkbookRunAdapter`, `WorkbookRunApplyResult`, `WorkbookRunReadback`, `WorkbookReadbackVerification`, `WorkbookReadbackIssue`, `WorkbookReadbackIssueCode`, `WorkbookCheckExpectation`, `WorkbookCheckExpectationDescription`, `WorkbookCustomCheckOptions`, `WorkbookReadbackCheckOptions`, `WorkbookRawFormulaOptions`, `WorkbookRunResult`, and `WorkbookCheckResult`
 - the existing low-level operation language: `WorkbookOp`, `WorkbookTxn`, `EngineOp`, and `EngineOpBatch`
 
 The package builds portable workbook intent and concrete low-level ops when the
@@ -119,7 +120,9 @@ Action plans also expose `refsUsed`, a flat deduped list of workbook refs found
 inside the consumer-defined `refs` object. This keeps custom models generic
 while still letting agents inspect what the model resolved.
 The same generic refs are available outside model callbacks through top-level
-`findTable`, `findColumn`, `findRange`, `findName`, and `findRows` helpers.
+`findTable`, `findColumn`, `findRange`, `findName`, and `findRows` helpers, or
+through the frozen `find` namespace with short aliases such as
+`find.table(...)`, `find.range(...)`, and `find.rows(...)`.
 These selector helpers trim text, canonicalize cell addresses, and reject empty
 or malformed selectors before the runtime handoff. That keeps bad agent intent
 out of the plan instead of letting an invalid address, blank column, invalid row
@@ -127,6 +130,9 @@ operator, or non-finite predicate value fail later inside an engine adapter.
 `findRows` refs include their predicate value in the stable id, so distinct
 consumer-defined row predicates remain distinct during agent inspection and
 dedupe. Labels stay simple and readable for logs.
+Refs are frozen data objects. Helper methods such as `table.column()` and
+`rows.column()` remain available for ergonomics, but they are non-enumerable so
+object-key inspection and JSON descriptions stay data-first.
 For table-backed row selectors, `rows.column("Amount")` targets that column only
 inside the matching rows. Core/app runtime adapters can resolve those generic
 refs into exact cells for writes, formats, clears, checks, and row-wise formula
@@ -143,6 +149,12 @@ channel: `valueEquals` stores the expected literal value, and `formulaEquals`
 stores normalized formula text plus explicit formula input refs. Runtime code
 can evaluate those expectations after applying the plan, while agents can
 inspect the proof target without relying on visual spreadsheet state.
+
+Model callback phases expose only the API needed for that phase. `find` gets
+find helpers only, `checks` gets find helpers and planned-check helpers, and
+actions get find helpers, checks, and mutation-planning methods. Discovery and
+proof declaration cannot accidentally write workbook intent before the action
+phase.
 
 `describeModel` returns a JSON-safe model manifest with the model name, sorted
 action names, and whether model-level checks exist. It does not run `find`,
