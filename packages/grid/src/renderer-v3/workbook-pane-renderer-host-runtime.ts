@@ -90,9 +90,8 @@ export class WorkbookPaneRendererHostRuntimeV3 {
       if (snapshot.backendStatus !== 'ready') {
         this.setFrameProofStatus(this.frameProofSignature ? 'pending' : 'idle')
       }
-      if (!this.applyRendererState()) {
-        this.requestRenderDraw()
-      }
+      this.applyRendererState()
+      this.requestRenderDraw()
     })
   }
 
@@ -132,9 +131,8 @@ export class WorkbookPaneRendererHostRuntimeV3 {
     this.surfaceRuntime.setHost(props.host)
     this.surfaceRuntime.setActive(props.active)
     this.syncCanvasTarget()
-    if (!this.applyRendererState()) {
-      this.requestRenderDraw()
-    }
+    this.applyRendererState()
+    this.requestRenderDraw()
   }
 
   setCanvas(canvas: HTMLCanvasElement | null): void {
@@ -165,8 +163,8 @@ export class WorkbookPaneRendererHostRuntimeV3 {
     }
   }
 
-  private applyRendererState(): boolean {
-    const hasDirtyTileUpdate = this.rendererRuntime.updateState({
+  private applyRendererState(): void {
+    this.rendererRuntime.updateState({
       active: this.props.active,
       backend: this.surfaceSnapshot.backend,
       cameraStore: this.props.cameraStore,
@@ -181,10 +179,6 @@ export class WorkbookPaneRendererHostRuntimeV3 {
       tilePanes: this.props.tilePanes,
       webGpuReady: this.surfaceSnapshot.webGpuReady,
     })
-    if (hasDirtyTileUpdate) {
-      this.rendererRuntime.drawNow()
-    }
-    return hasDirtyTileUpdate
   }
 
   private requestRenderDraw(): void {
