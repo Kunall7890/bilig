@@ -4,6 +4,27 @@ All notable changes to `@bilig/headless` will be documented in this file.
 
 This package is released as part of the aligned bilig library package set.
 
+## 0.40.42
+
+- Release type: patch
+- Previous libraries tag: libraries-v0.40.41
+- Manual override: no
+
+## Fixes
+- perf(core): bulk bind fresh aggregate rows (6444c861)
+- perf(excel-import): compact shared string import storage (f5a34983)
+- fix(formula): align empty string criteria with Excel (f48b401c)
+
+## Internal runtime changes
+- ci(release): block npm publish on red repo ci (080cfb1c)
+- chore(workpaper): remove root excel oracle script (3e66b459)
+- test(excel): add package-owned macos oracle (ab2080bd)
+- ci(release): gate release mutation on green ci (cb9f8c3b)
+- test(excel): report desktop oracle comparisons (f4aaa093)
+- ci(release): verify release commit before publish (c85cc159)
+- test(benchmarks): raise expanded comparison samples (5f345bd6)
+- ci(release): skip stale publish runs cleanly (a7417f8c)
+
 ## 0.40.41
 
 - Release type: patch

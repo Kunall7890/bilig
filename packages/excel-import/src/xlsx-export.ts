@@ -27,6 +27,7 @@ import { addExportExternalLinkArtifactsToXlsxBytes } from './xlsx-external-link-
 import { addExportWorksheetDimensionsToXlsxBytes, applyExportWorksheetDimensionsToWorksheetXml } from './xlsx-dimensions.js'
 import { addExportFiltersToXlsxBytes } from './xlsx-filters.js'
 import { addExportFreezePanesToXlsxBytes } from './xlsx-freeze-panes.js'
+import { encodeFormulaForXlsx } from './xlsx-formula-translation.js'
 import { addExportPivotsToXlsxBytes } from './xlsx-pivot-export.js'
 import { addExportPrintPageSetupToXlsxBytes } from './xlsx-print-page-setup.js'
 import { addExportProtectedRangesToXlsxBytes } from './xlsx-protected-ranges.js'
@@ -584,9 +585,9 @@ function buildExportCell(cell: WorkbookSnapshot['sheets'][number]['cells'][numbe
     }
   }
   if (typeof cell.formula === 'string' && cell.formula.trim().length > 0) {
-    output.f = cell.formula.replace(/^=/, '')
+    output.f = encodeFormulaForXlsx(cell.formula.replace(/^=/, ''))
     if (output.v === undefined) {
-      output.t = 'e'
+      output.t = 'z'
     } else {
       output.t = output.t ?? 'n'
     }

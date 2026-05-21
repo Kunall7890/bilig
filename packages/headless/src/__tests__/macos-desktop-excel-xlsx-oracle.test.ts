@@ -26,6 +26,12 @@ const expectedOracleCells = [
   { address: 'G1', formula: '=SUMIF(A1:A5,"<>",B1:B5)', rawValue: 'number\t130.0', value: { kind: 'number', value: 130 } },
   { address: 'H1', formula: '=SUMIFS(B1:B5,A1:A5,"<>")', rawValue: 'number\t130.0', value: { kind: 'number', value: 130 } },
 ] as const
+const futureFunctionOracleAddresses = ['D2', 'E2', 'F2'] as const
+const expectedFutureFunctionOracleCells = [
+  { address: 'D2', formula: '=TEXTJOIN("-",TRUE,A2:A4)', rawValue: 'string\ta-c', value: { kind: 'string', value: 'a-c' } },
+  { address: 'E2', formula: '=XLOOKUP("b",B2:B4,C2:C4)', rawValue: 'number\t20.0', value: { kind: 'number', value: 20 } },
+  { address: 'F2', formula: '=XMATCH("b",B2:B4,0)', rawValue: 'number\t2.0', value: { kind: 'number', value: 2 } },
+] as const
 
 describe('macOS Desktop Excel XLSX oracle for WorkPaper', () => {
   it('exports and reimports the oracle fixture through the headless workbook path', () => {
@@ -41,6 +47,27 @@ describe('macOS Desktop Excel XLSX oracle for WorkPaper', () => {
         expect(oracleFormulaAddresses.map((address) => normalizedCellValue(reimported.getCellValue(addressToCell(address))))).toEqual(
           expectedOracleCells.map((expected) => expected.value),
         )
+      } finally {
+        reimported.dispose()
+      }
+    } finally {
+      workbook.dispose()
+    }
+  })
+
+  it('exports Excel future functions in a Desktop Excel-compatible XLSX shape', () => {
+    const workbook = buildFutureFunctionOracleWorkbook()
+    try {
+      expect(futureFunctionOracleAddresses.map((address) => normalizedCellValue(workbook.getCellValue(addressToCell(address))))).toEqual(
+        expectedFutureFunctionOracleCells.map((expected) => expected.value),
+      )
+
+      const imported = importXlsx(exportXlsx(workbook.exportSnapshot()), 'headless-future-function-oracle.xlsx')
+      const reimported = WorkPaper.buildFromSnapshot(imported.snapshot, workbookConfig)
+      try {
+        expect(
+          futureFunctionOracleAddresses.map((address) => normalizedCellValue(reimported.getCellValue(addressToCell(address)))),
+        ).toEqual(expectedFutureFunctionOracleCells.map((expected) => expected.value))
       } finally {
         reimported.dispose()
       }
@@ -111,6 +138,69 @@ describe('macOS Desktop Excel XLSX oracle for WorkPaper', () => {
     },
     60_000,
   )
+
+  it.runIf(process.env.BILIG_EXCEL_ORACLE_RUN === '1')(
+    'round-trips fresh Desktop Excel future-function recalculation caches back into headless import',
+    () => {
+      if (!isMacosExcelInstalled()) {
+        throw new Error('BILIG_EXCEL_ORACLE_RUN=1 requires /Applications/Microsoft Excel.app')
+      }
+
+      const tempDir = mkdtempSync(join(tmpdir(), 'bilig-headless-excel-future-function-oracle-'))
+      try {
+        const workbookPath = join(tempDir, 'headless-future-function-oracle.xlsx')
+        const workbook = buildFutureFunctionOracleWorkbook()
+        try {
+          writeFileSync(workbookPath, exportXlsx(workbook.exportSnapshot()))
+        } finally {
+          workbook.dispose()
+        }
+
+        const excelResult = runMacosExcelInspectionOracle({
+          workbookPath,
+          worksheetName: 'Cases',
+          formulaCells: [],
+          inspectCells: futureFunctionOracleAddresses,
+          saveWorkbook: true,
+        })
+
+        expect(excelResult.cells).toEqual(expectedFutureFunctionOracleCells)
+
+        const imported = importXlsx(new Uint8Array(readFileSync(workbookPath)), 'headless-future-function-oracle-recalculated.xlsx')
+        const reimported = WorkPaper.buildFromSnapshot(imported.snapshot, workbookConfig)
+        try {
+          const comparisons = buildHeadlessExcelComparisons(reimported, excelResult.cells, 'headless-future-function-oracle')
+          const summary = buildReportSummary({
+            workbooks: [
+              {
+                id: 'headless-future-function-oracle',
+                workbook: 'headless-future-function-oracle.xlsx',
+                elapsedMs: 0,
+                formulaCells: comparisons.length,
+                status: 'ok',
+                comparisons,
+              },
+            ],
+          })
+
+          expect(comparisons.map((comparison) => comparison.classification)).toEqual(
+            futureFunctionOracleAddresses.map(() => 'bilig_matches_excel'),
+          )
+          expect(summary).toMatchObject({
+            biligVsFreshExcelMatchRate: 1,
+            comparableFormulaCells: futureFunctionOracleAddresses.length,
+            realBiligMismatches: 0,
+            totalFormulaCells: futureFunctionOracleAddresses.length,
+          })
+        } finally {
+          reimported.dispose()
+        }
+      } finally {
+        rmSync(tempDir, { recursive: true, force: true })
+      }
+    },
+    60_000,
+  )
 })
 
 function buildOracleWorkbook(): WorkPaper {
@@ -137,6 +227,20 @@ function buildOracleWorkbook(): WorkPaper {
   )
 }
 
+function buildFutureFunctionOracleWorkbook(): WorkPaper {
+  return WorkPaper.buildFromSheets(
+    {
+      Cases: [
+        ['Label', 'Key', 'Value', 'Joined', 'Lookup', 'Match'],
+        ['a', 'a', 10, '=TEXTJOIN("-",TRUE,A2:A4)', '=XLOOKUP("b",B2:B4,C2:C4)', '=XMATCH("b",B2:B4,0)'],
+        [null, 'b', 20],
+        ['c', 'c', 30],
+      ],
+    },
+    workbookConfig,
+  )
+}
+
 function cell(row: number, col: number): WorkPaperCellAddress {
   return { sheet: 1, row, col }
 }
@@ -144,6 +248,7 @@ function cell(row: number, col: number): WorkPaperCellAddress {
 function buildHeadlessExcelComparisons(
   workbook: WorkPaper,
   excelCells: readonly { readonly address: string; readonly formula?: string; readonly value: NormalizedFormulaValue }[],
+  workbookId = 'headless-oracle',
 ): FormulaCellComparison[] {
   return excelCells.map((excelCell) => {
     const address = addressToCell(excelCell.address)
@@ -152,7 +257,7 @@ function buildHeadlessExcelComparisons(
       throw new Error(`Missing imported formula at ${excelCell.address}`)
     }
     return buildFormulaCellComparison({
-      workbookId: 'headless-oracle',
+      workbookId,
       sheet: 'Cases',
       address: excelCell.address,
       formula,

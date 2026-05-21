@@ -243,13 +243,26 @@ describe('WorkbookPaneRendererHostRuntimeV3', () => {
     expect(runtime.getFrameProofStatusSnapshot()).toBe('presented')
     expect(runtime.getHasPresentedFrameSnapshot()).toBe(true)
     const firstPresentedSignature = runtime.getPresentedFrameProofSignatureSnapshot()
+    const firstPresentedFrame = runtime.getPresentedVisualFrameSnapshot()
     expect(firstPresentedSignature).toBe(runtime.getFrameProofSignatureSnapshot())
+    expect(firstPresentedFrame?.tilePanes.at(0)?.tile.lastBatchId).toBe(1)
+    expect(firstPresentedFrame?.headerPanes).toEqual([])
 
     runtime.updateProps({ ...props, tilePanes: [secondPane] })
 
+    expect(runtime.getFrameProofStatusSnapshot()).toBe('pending')
+    expect(runtime.getHasPresentedFrameSnapshot()).toBe(false)
+    expect(runtime.getPresentedFrameProofSignatureSnapshot()).toBe(firstPresentedSignature)
+    expect(runtime.getPresentedFrameProofSignatureSnapshot()).not.toBe(runtime.getFrameProofSignatureSnapshot())
+    expect(runtime.getPresentedVisualFrameSnapshot()).toBe(firstPresentedFrame)
+    expect(runtime.getPresentedVisualFrameSnapshot()?.tilePanes.at(0)?.tile.lastBatchId).toBe(1)
+
+    animationFrames.flushNextFrame()
     expect(runtime.getFrameProofStatusSnapshot()).toBe('presented')
     expect(runtime.getHasPresentedFrameSnapshot()).toBe(true)
     expect(runtime.getPresentedFrameProofSignatureSnapshot()).toBe(runtime.getFrameProofSignatureSnapshot())
+    expect(runtime.getPresentedVisualFrameSnapshot()).not.toBe(firstPresentedFrame)
+    expect(runtime.getPresentedVisualFrameSnapshot()?.tilePanes.at(0)?.tile.lastBatchId).toBe(2)
 
     runtime.dispose()
     animationFrames.restore()
@@ -328,16 +341,19 @@ describe('WorkbookPaneRendererHostRuntimeV3', () => {
     expect(runtime.getFrameProofStatusSnapshot()).toBe('presented')
     expect(runtime.getHasPresentedFrameSnapshot()).toBe(true)
     expect(drawFrame.mock.calls.at(-1)?.[0]).toMatchObject({ drawText: true })
+    expect(runtime.getPresentedVisualFrameSnapshot()?.drawText).toBe(true)
 
     runtime.updateProps({ ...props, drawText: false })
 
     expect(runtime.getFrameProofStatusSnapshot()).toBe('pending')
     expect(runtime.getHasPresentedFrameSnapshot()).toBe(false)
+    expect(runtime.getPresentedVisualFrameSnapshot()?.drawText).toBe(true)
 
     animationFrames.flushNextFrame()
     expect(drawFrame.mock.calls.at(-1)?.[0]).toMatchObject({ drawText: false })
     expect(runtime.getFrameProofStatusSnapshot()).toBe('presented')
     expect(runtime.getHasPresentedFrameSnapshot()).toBe(true)
+    expect(runtime.getPresentedVisualFrameSnapshot()?.drawText).toBe(false)
 
     runtime.dispose()
     animationFrames.restore()
