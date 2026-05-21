@@ -213,15 +213,28 @@ export function tryImportLargeSimpleXlsx(
     worksheetEntries.length > 1 &&
     options.allowPreReleaseSheetFinalization === true &&
     options.releaseOwnedSourceBytes === undefined
-  const hasRelationshipBackedSheetArtifacts =
-    hasDrawingParts || hasChartParts || hasPivotParts || hasLegacyCommentParts || hasSlicerConnectionParts
+  const sheetHasRelationshipBackedArtifacts = (
+    sheetName: string,
+    metadataScan: LargeSimpleWorksheetScannedMetadata | undefined,
+    worksheetXml: string | undefined,
+  ): boolean =>
+    Boolean(
+      importedChartDrawingArtifacts?.drawingArtifacts.sheetArtifactsByName.has(sheetName) ||
+      importedPivotArtifacts?.sheetArtifactsByName.has(sheetName) ||
+      drawingRelationshipIdForScannedWorksheet({ metadataScan, worksheetXml }) ||
+      metadataScan?.controlArtifacts ||
+      metadataScan?.legacyDrawingRelationshipId ||
+      metadataScan?.pivotTableDefinitionsXml ||
+      metadataScan?.sheetSlicerListExtXml,
+    )
   const canFinalizeSheetBeforeStyleParsing = (
+    sheetName: string,
     cellScan: ImportedWorksheetCellScan,
     metadataScan: LargeSimpleWorksheetScannedMetadata | undefined,
+    worksheetXml: string | undefined,
   ): boolean =>
     materializeCells &&
-    !hasRelationshipBackedSheetArtifacts &&
-    !metadataScan?.controlArtifacts &&
+    !sheetHasRelationshipBackedArtifacts(sheetName, metadataScan, worksheetXml) &&
     cellScan.styleIndexes.hasCoordinateStorage &&
     cellScan.styleIndexes.count === 0 &&
     (options.releaseZipSource !== true || allowPreReleaseSheetFinalization)
@@ -432,7 +445,7 @@ export function tryImportLargeSimpleXlsx(
       metadataInput = { ...metadataInput, filters: [...streamedMetadataScan.filters] }
     }
     worksheetBytes = undefined
-    if (!hasSharedStrings && canFinalizeSheetBeforeStyleParsing(cellScan, retainedMetadataScan)) {
+    if (!hasSharedStrings && canFinalizeSheetBeforeStyleParsing(entry.name, cellScan, retainedMetadataScan, worksheetXml)) {
       phaseRecorder.finish('metadata-parsing', metadataParsingStart)
       const snapshotMaterializationStart = phaseRecorder.start()
       appendParsedWorksheet(
@@ -512,9 +525,13 @@ export function tryImportLargeSimpleXlsx(
   fallbackSharedStrings = null
   phaseRecorder.finish('shared-string-resolution', sharedStringResolutionStart)
   collectLargeSimpleImportGarbage()
-  if ((options.releaseZipSource !== true || allowPreReleaseSheetFinalization) && !hasRelationshipBackedSheetArtifacts) {
+  if (options.releaseZipSource !== true || allowPreReleaseSheetFinalization) {
     for (const [index, scanned] of scannedWorksheets.entries()) {
-      if (!scanned || scanned.sharedStringIndexes.size > 0 || !canFinalizeSheetBeforeStyleParsing(scanned.cellScan, scanned.metadataScan)) {
+      if (
+        !scanned ||
+        scanned.sharedStringIndexes.size > 0 ||
+        !canFinalizeSheetBeforeStyleParsing(scanned.name, scanned.cellScan, scanned.metadataScan, scanned.worksheetXml)
+      ) {
         continue
       }
       const snapshotMaterializationStart = phaseRecorder.start()
