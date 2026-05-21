@@ -27,6 +27,7 @@ flowchart LR
   - agent-first public workbook model API
   - JSON-safe action input planning and verification
   - machine-readable readback checks for runtime proof
+  - transport-neutral run adapters for apply-and-prove receipts
   - transport-neutral workbook ops and txns
 - `packages/zero-sync`
   - Zero schema

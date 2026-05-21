@@ -24,6 +24,9 @@ The public surface stays generic:
 - `describePlanResult`
 - `verifyPlan`
 - `verifyModel`
+- `runWorkbookPlan`
+- `runWorkbookAction`
+- `verifyWorkbookReadbacks`
 - `formula`
 - `workbook.addOp(op, { target?, message? })` inside model actions
 - `WorkbookModel`
@@ -40,6 +43,12 @@ The public surface stays generic:
 - `WorkbookModelVerification`
 - `WorkbookModelActionVerification`
 - `WorkbookModelVerificationOptions`
+- `WorkbookRunAdapter`
+- `WorkbookRunApplyResult`
+- `WorkbookRunReadback`
+- `WorkbookReadbackVerification`
+- `WorkbookReadbackIssue`
+- `WorkbookReadbackIssueCode`
 - `WorkbookCheckExpectation`
 - `WorkbookCheckExpectationDescription`
 - `WorkbookCustomCheckOptions`
@@ -164,3 +173,29 @@ a concrete address or range.
 Use `verifyModel` to plan and verify every action in a consumer-defined model
 with one JSON-safe result. Pass `inputs` when specific actions require
 parameters.
+
+Use `runWorkbookPlan(plan, adapter)` or
+`runWorkbookAction(model, actionName, adapter, input)` when an agent needs a
+generic apply-and-prove loop. The adapter owns runtime execution and semantic
+readback:
+
+```ts
+const result = await runWorkbookAction(model, "write", {
+  apply(plan) {
+    return runtime.apply(plan.ops);
+  },
+  read(targets) {
+    return runtime.read(targets);
+  },
+});
+```
+
+`runWorkbookAction` plans the action, runs `verifyPlan`, calls
+`adapter.apply(plan)`, then evaluates `valueEquals` and `formulaEquals` checks
+against `adapter.read(targets, plan)`. It never imports the engine, headless
+runtime, app server, or UI. If static verification fails, the apply adapter is
+not called. If a readback expectation is missing or mismatched, the returned
+`WorkbookRunResult` is `failed` with deterministic error codes such as
+`readback_missing`, `value_mismatch`, or `formula_mismatch`.
+Formula readbacks are exact: adapters should return formula text in the same
+normalized no-leading-`=` form produced by `formula.source`.
