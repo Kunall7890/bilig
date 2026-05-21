@@ -212,14 +212,14 @@ not called. If a readback expectation is missing or mismatched, the returned
 `readback_missing`, `value_mismatch`, or `formula_mismatch`.
 Formula readbacks are exact: adapters should return formula text in the same
 normalized no-leading-`=` form produced by `formula.source`.
-Adapters can also provide `verifyChecks(checks, plan)` to prove non-readback
-checks such as `exists`, `noFormulaErrors`, and consumer-defined `custom`
-invariants. The verifier must return the same checks in the same order and may
-only change `status`; changing `kind`, `target`, `refs`, `expectation`, or
-`message` fails the run as `invalid_check_verification`. If any verified check
-is `failed`, the run returns `failed` with `check_failed`. Existing adapters
-remain compatible, but agent-facing adapters should provide `verifyChecks` and
-avoid claiming full proof while checks remain `planned`.
+Adapters provide `verifyChecks(checks, plan)` to prove non-readback checks such
+as `exists`, `noFormulaErrors`, and consumer-defined `custom` invariants. The
+verifier must return the same checks in the same order and may only change
+`status`; changing `kind`, `target`, `refs`, `expectation`, or `message` fails
+the run as `invalid_check_verification`. If any verified check is `failed`, the
+run returns `failed` with `check_failed`. If any check remains `planned` after
+readback and adapter verification, the run returns `failed` with
+`check_not_verified`; `status: "done"` means every planned check has proof.
 
 When running against Bilig's engine, use `createWorkbookRunAdapter(engine)` from
 `@bilig/core`. The adapter materializes generic `plan.commands` into engine

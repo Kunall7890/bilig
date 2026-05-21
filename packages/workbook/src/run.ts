@@ -72,6 +72,10 @@ function failedApplyResult(plan: WorkbookActionPlan, result: WorkbookRunApplyRes
   }
 }
 
+function checkLabel(check: WorkbookCheckResult): string {
+  return check.target?.label ?? check.kind
+}
+
 function canonicalJson(value: unknown): string {
   return JSON.stringify(canonicalValue(value))
 }
@@ -245,6 +249,12 @@ async function verifyChecksWithAdapter<Refs>(
   return { checks: verifiedChecks, errors: [] }
 }
 
+function unverifiedCheckErrors(checks: readonly WorkbookCheckResult[]): readonly WorkbookRunError[] {
+  return checks
+    .filter((check) => check.status === 'planned')
+    .map((check) => runError('check_not_verified', `${checkLabel(check)} did not verify check ${check.kind}: ${check.message}`))
+}
+
 export async function runWorkbookPlan<Refs>(plan: WorkbookActionPlan<Refs>, adapter: WorkbookRunAdapter<Refs>): Promise<WorkbookRunResult> {
   const invalidPlan = failedFromPlanIssues(plan)
   if (invalidPlan !== null) {
@@ -306,6 +316,15 @@ export async function runWorkbookPlan<Refs>(plan: WorkbookActionPlan<Refs>, adap
     return {
       status: 'failed',
       errors: checkVerification.errors,
+      checks,
+    }
+  }
+
+  const unverifiedErrors = unverifiedCheckErrors(checks)
+  if (unverifiedErrors.length > 0) {
+    return {
+      status: 'failed',
+      errors: unverifiedErrors,
       checks,
     }
   }

@@ -129,7 +129,7 @@ describe('@bilig/workbook run api', () => {
     ])
   })
 
-  it('keeps non-readback checks planned for legacy adapters without a generic check verifier', async () => {
+  it('fails non-readback checks that the adapter does not verify', async () => {
     const model = defineModel({
       name: 'run-legacy-check-model',
 
@@ -155,8 +155,51 @@ describe('@bilig/workbook run api', () => {
     })
 
     expect(result).toEqual({
-      status: 'done',
-      changed: [],
+      status: 'failed',
+      errors: [
+        {
+          code: 'check_not_verified',
+          message: 'Sheet1!C2 did not verify check exists: Sheet1!C2 exists',
+        },
+      ],
+      checks: [expect.objectContaining({ status: 'planned', kind: 'exists', message: 'Sheet1!C2 exists' })],
+    })
+  })
+
+  it('fails when the generic check verifier leaves checks planned', async () => {
+    const model = defineModel({
+      name: 'run-unverified-check-model',
+
+      find(workbook) {
+        return {
+          result: workbook.findRange({ sheetName: 'Sheet1', address: 'C2' }),
+        }
+      },
+
+      checks({ refs, workbook }) {
+        return [workbook.check.exists(refs.result)]
+      },
+
+      actions: {
+        inspect({ refs }) {
+          void refs.result
+        },
+      },
+    })
+
+    const result = await runWorkbookAction(model, 'inspect', {
+      apply: () => ({ status: 'applied' }),
+      verifyChecks: (checks) => checks,
+    })
+
+    expect(result).toEqual({
+      status: 'failed',
+      errors: [
+        {
+          code: 'check_not_verified',
+          message: 'Sheet1!C2 did not verify check exists: Sheet1!C2 exists',
+        },
+      ],
       checks: [expect.objectContaining({ status: 'planned', kind: 'exists', message: 'Sheet1!C2 exists' })],
     })
   })

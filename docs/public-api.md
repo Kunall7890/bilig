@@ -184,6 +184,9 @@ consumer-defined invariants. `verifyChecks` returns the same checks in the same
 order and may only change `status`; malformed output fails with
 `invalid_check_verification`, thrown verifier errors fail with
 `check_verification_failed`, and failed checks become `check_failed` run errors.
+If a check remains `planned` after readback and adapter verification,
+`runWorkbookPlan` returns `failed` with `check_not_verified`; `status: "done"`
+does not hide unproven checks.
 `@bilig/core` provides `createWorkbookRunAdapter(engine)` for the canonical
 engine handoff. It materializes generic `plan.commands` into engine operations,
 including range and table-column writes, falls back to explicit `plan.ops` for
