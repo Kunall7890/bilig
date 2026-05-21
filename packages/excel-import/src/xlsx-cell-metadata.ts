@@ -1,7 +1,7 @@
 import { strToU8, unzipSync, zipSync } from 'fflate'
-import * as XLSX from 'xlsx'
 
 import type { WorkbookCellMetadataReferenceSnapshot, WorkbookCellMetadataSnapshot, WorkbookSnapshot } from '@bilig/protocol'
+import { decodeA1CellRef, decodeA1RangeRef, encodeA1CellRef, encodeA1RangeRef, type A1RangeRef } from './xlsx-a1-utils.js'
 import { getZipText, normalizeZipPath, readXlsxZipEntries, type XlsxZipEntries, type XlsxZipSource } from './xlsx-zip.js'
 
 interface ParsedRelationship {
@@ -110,7 +110,7 @@ function resolveTargetPath(basePartPath: string, target: string): string {
 
 function normalizeCellAddress(address: string): string {
   try {
-    return XLSX.utils.encode_cell(XLSX.utils.decode_cell(address))
+    return encodeA1CellRef(decodeA1CellRef(address))
   } catch {
     return address.trim().toUpperCase()
   }
@@ -286,8 +286,8 @@ function restorableCellMetadataRefs(sheet: WorkbookSnapshot['sheets'][number]): 
 }
 
 function compareCellAddresses(left: string, right: string): number {
-  const leftCell = XLSX.utils.decode_cell(left)
-  const rightCell = XLSX.utils.decode_cell(right)
+  const leftCell = decodeA1CellRef(left)
+  const rightCell = decodeA1CellRef(right)
   return leftCell.r - rightCell.r || leftCell.c - rightCell.c
 }
 
@@ -308,10 +308,10 @@ function insertCellsIntoRowXml(rowXml: string, refs: readonly WorkbookCellMetada
 
   let output = rowXml
   for (const ref of sortedRefs) {
-    const refColumn = XLSX.utils.decode_cell(ref.address).c
+    const refColumn = decodeA1CellRef(ref.address).c
     const insertBefore = [...output.matchAll(/<c\b[^>]*(?:\/>|>[\s\S]*?<\/c>)/gu)].find((match) => {
       const cellAddress = readAttribute(match[0], 'r')
-      return cellAddress ? XLSX.utils.decode_cell(cellAddress).c > refColumn : false
+      return cellAddress ? decodeA1CellRef(cellAddress).c > refColumn : false
     })
     if (insertBefore?.index !== undefined) {
       output = `${output.slice(0, insertBefore.index)}${metadataCellXml(ref)}${output.slice(insertBefore.index)}`
@@ -354,7 +354,7 @@ function insertRowIntoSheetDataXml(sheetDataXml: string, rowNumber: number, rowX
 function insertMissingMetadataCells(sheetXml: string, refs: readonly WorkbookCellMetadataReferenceSnapshot[]): string {
   const refsByRow = new Map<number, WorkbookCellMetadataReferenceSnapshot[]>()
   for (const ref of refs) {
-    const rowNumber = XLSX.utils.decode_cell(ref.address).r + 1
+    const rowNumber = decodeA1CellRef(ref.address).r + 1
     refsByRow.set(rowNumber, [...(refsByRow.get(rowNumber) ?? []), ref])
   }
 
@@ -378,8 +378,8 @@ function insertMissingMetadataCells(sheetXml: string, refs: readonly WorkbookCel
   return output
 }
 
-function expandRangeForAddress(range: XLSX.Range | null, address: string): XLSX.Range {
-  const decoded = XLSX.utils.decode_cell(address)
+function expandRangeForAddress(range: A1RangeRef | null, address: string): A1RangeRef {
+  const decoded = decodeA1CellRef(address)
   if (!range) {
     return { s: { r: decoded.r, c: decoded.c }, e: { r: decoded.r, c: decoded.c } }
   }
@@ -390,12 +390,12 @@ function expandRangeForAddress(range: XLSX.Range | null, address: string): XLSX.
 }
 
 function updateWorksheetDimension(sheetXml: string, refs: readonly WorkbookCellMetadataReferenceSnapshot[]): string {
-  let range: XLSX.Range | null = null
+  let range: A1RangeRef | null = null
   const currentDimension = /<dimension\b[^>]*>/u.exec(sheetXml)?.[0]
   const currentRef = currentDimension ? readAttribute(currentDimension, 'ref') : null
   if (currentRef) {
     try {
-      range = XLSX.utils.decode_range(currentRef)
+      range = decodeA1RangeRef(currentRef)
     } catch {
       range = null
     }
@@ -407,8 +407,8 @@ function updateWorksheetDimension(sheetXml: string, refs: readonly WorkbookCellM
     return sheetXml
   }
   const nextDimension = currentDimension
-    ? setXmlAttribute(currentDimension, 'ref', XLSX.utils.encode_range(range))
-    : `<dimension ref="${escapeXml(XLSX.utils.encode_range(range))}"/>`
+    ? setXmlAttribute(currentDimension, 'ref', encodeA1RangeRef(range))
+    : `<dimension ref="${escapeXml(encodeA1RangeRef(range))}"/>`
   return currentDimension
     ? sheetXml.replace(currentDimension, nextDimension)
     : sheetXml.replace(/<worksheet\b[^>]*>/u, (openingTag) => `${openingTag}${nextDimension}`)

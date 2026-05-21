@@ -3,13 +3,14 @@
 import { spawn } from 'node:child_process'
 import { createHash } from 'node:crypto'
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
+import { createRequire } from 'node:module'
 import { basename, dirname, join, resolve } from 'node:path'
 import { fileURLToPath, pathToFileURL } from 'node:url'
 
 import { unzipSync } from 'fflate'
 
-import { importXlsx } from '../packages/excel-import/src/index.js'
 import { importXlsxFromZipByteSource } from '../packages/excel-import/src/xlsx-byte-source-import.js'
+import type { ImportedWorkbook } from '../packages/excel-import/src/workbook-import-result.js'
 import { readFlagArg, readNumberArg, readStringArg } from './public-workbook-corpus-cli.ts'
 import { fetchBodyBytesWithTimeout } from './public-workbook-corpus-http.ts'
 import { formatByteSize, startChildRssWatchdog, terminateChildProcess } from './public-workbook-corpus-process.ts'
@@ -17,6 +18,7 @@ import { FileBackedXlsxZipByteSource } from './public-workbook-corpus-xlsx-byte-
 
 const rootDir = resolve(new URL('..', import.meta.url).pathname)
 const scriptPath = fileURLToPath(import.meta.url)
+const requireModule = createRequire(import.meta.url)
 const mib = 1024 * 1024
 const defaultCacheDir = join(rootDir, '.cache', 'external-xlsx-stress')
 const defaultMaxRssBytes = 512 * mib
@@ -106,6 +108,10 @@ interface WorkerSummary {
   readonly warnings: number
   readonly workbookMetadataKeys: readonly string[]
   readonly sheetMetadataKeys: readonly string[]
+}
+
+interface PublicXlsxImportModule {
+  readonly importXlsx: (bytes: Uint8Array, fileName: string) => ImportedWorkbook
 }
 
 const powerBiSamplesRepositoryUrl = 'https://github.com/microsoft/powerbi-desktop-samples'
@@ -519,12 +525,17 @@ function runWorker(): void {
   const filePath = resolve(readStringArg('--file', ''))
   const fileName = readStringArg('--file-name', basename(filePath))
   const usePublicImport = readFlagArg('--public-import')
-  const imported = usePublicImport ? importXlsx(readFileSync(filePath), fileName) : importFileBackedXlsx(filePath, fileName)
+  const imported = usePublicImport ? importPublicXlsx(readFileSync(filePath), fileName) : importFileBackedXlsx(filePath, fileName)
   collectGarbage()
   process.stdout.write(`${JSON.stringify(workerSummary(imported))}\n`)
 }
 
-function importFileBackedXlsx(filePath: string, fileName: string): ReturnType<typeof importXlsx> {
+function importPublicXlsx(bytes: Uint8Array, fileName: string): ImportedWorkbook {
+  const importer = readPublicXlsxImportModule(requireModule('../packages/excel-import/src/index.js'))
+  return importer.importXlsx(bytes, fileName)
+}
+
+function importFileBackedXlsx(filePath: string, fileName: string): ImportedWorkbook {
   const source = new FileBackedXlsxZipByteSource(filePath)
   try {
     return importXlsxFromZipByteSource(source, fileName, { attachSourceReaderForUntouchedExport: false })
@@ -591,6 +602,13 @@ function readWorkerStringArray(record: Readonly<Record<string, unknown>>, key: s
 
 function isRecord(value: unknown): value is Readonly<Record<string, unknown>> {
   return typeof value === 'object' && value !== null && !Array.isArray(value)
+}
+
+function readPublicXlsxImportModule(value: unknown): PublicXlsxImportModule {
+  if (isRecord(value) && typeof value['importXlsx'] === 'function') {
+    return { importXlsx: value['importXlsx'] }
+  }
+  throw new Error('Public XLSX importer module is missing required exports')
 }
 
 function compactWorkerOutput(value: string): string {

@@ -1,5 +1,3 @@
-import * as XLSX from 'xlsx'
-
 import type { WorkbookSnapshot } from '@bilig/protocol'
 import type { ImportedWorksheetCellScan } from './xlsx-large-simple-arena.js'
 import { encodeCellAddress, packArenaCellAddress } from './xlsx-large-simple-arena-helpers.js'
@@ -492,11 +490,7 @@ class NumberFormatCollector {
 }
 
 function builtinNumberFormatCode(formatId: number): string | undefined {
-  const ssf: unknown = XLSX.SSF
-  if (!isRecord(ssf) || !isRecord(ssf['_table'])) {
-    return undefined
-  }
-  return normalizeNumberFormatCode(ssf['_table'][String(formatId)])
+  return normalizeNumberFormatCode(builtinNumberFormatCodes.get(formatId))
 }
 
 function normalizeNumberFormatCode(value: unknown): string | undefined {
@@ -510,6 +504,38 @@ function normalizeNumberFormatCode(value: unknown): string | undefined {
 function closingStringTagRetainLength(elementName: string): number {
   return Math.max(256, elementName.length + 4)
 }
+
+const builtinNumberFormatCodes = new Map<number, string>([
+  [0, 'General'],
+  [1, '0'],
+  [2, '0.00'],
+  [3, '#,##0'],
+  [4, '#,##0.00'],
+  [9, '0%'],
+  [10, '0.00%'],
+  [11, '0.00E+00'],
+  [12, '# ?/?'],
+  [13, '# ??/??'],
+  [14, 'm/d/yy'],
+  [15, 'd-mmm-yy'],
+  [16, 'd-mmm'],
+  [17, 'mmm-yy'],
+  [18, 'h:mm AM/PM'],
+  [19, 'h:mm:ss AM/PM'],
+  [20, 'h:mm'],
+  [21, 'h:mm:ss'],
+  [22, 'm/d/yy h:mm'],
+  [37, '#,##0 ;(#,##0)'],
+  [38, '#,##0 ;[Red](#,##0)'],
+  [39, '#,##0.00;(#,##0.00)'],
+  [40, '#,##0.00;[Red](#,##0.00)'],
+  [45, 'mm:ss'],
+  [46, '[h]:mm:ss'],
+  [47, 'mmss.0'],
+  [48, '##0.0E+0'],
+  [49, '@'],
+  [56, '"上午/下午 "hh"時"mm"分"ss"秒 "'],
+])
 
 function findNextParentBoundaryOrChild(
   xml: string,
@@ -648,10 +674,6 @@ function decodeXmlAttribute(value: string): string {
     .replace(/&lt;/gu, '<')
     .replace(/&gt;/gu, '>')
     .replace(/&amp;/gu, '&')
-}
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === 'object' && value !== null
 }
 
 function escapeRegExp(value: string): string {

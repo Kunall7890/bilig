@@ -1,6 +1,5 @@
-import * as XLSX from 'xlsx'
-
 import type { WorkbookTableSnapshot } from '@bilig/protocol'
+import { decodeA1CellRef, encodeA1CellRef, type A1CellRef } from './xlsx-a1-utils.js'
 
 type StructuredReferenceSection = 'all' | 'data' | 'headers' | 'this-row' | 'totals'
 
@@ -256,16 +255,16 @@ function parseStructuredReferenceParts(text: string): StructuredReferenceParts |
     : undefined
 }
 
-function decodeAddress(address: string): XLSX.CellAddress | undefined {
+function decodeAddress(address: string): A1CellRef | undefined {
   try {
-    return XLSX.utils.decode_cell(address.replaceAll('$', ''))
+    return decodeA1CellRef(address)
   } catch {
     return undefined
   }
 }
 
 function encodeAddress(row: number, col: number): string {
-  return XLSX.utils.encode_cell({ r: row, c: col })
+  return encodeA1CellRef({ r: row, c: col })
 }
 
 function quoteSheetName(sheetName: string): string {

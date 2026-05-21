@@ -1,8 +1,8 @@
 import { strFromU8, strToU8, unzipSync, zipSync } from 'fflate'
 import { XMLParser } from 'fast-xml-parser'
-import * as XLSX from 'xlsx'
 
 import type { CellRangeRef, WorkbookSnapshot, WorkbookSortSnapshot } from '@bilig/protocol'
+import { decodeA1CellRef, decodeA1RangeRef, encodeA1CellRef, encodeA1RangeRef } from './xlsx-a1-utils.js'
 import { readXlsxZipEntries, type XlsxZipSource } from './xlsx-zip.js'
 
 type ZipEntries = Record<string, Uint8Array>
@@ -70,8 +70,7 @@ function setZipText(zip: ZipEntries, path: string, text: string): void {
 
 function rangeRefA1(range: CellRangeRef): string | null {
   try {
-    const decoded = XLSX.utils.decode_range(`${range.startAddress}:${range.endAddress}`.replaceAll('$', ''))
-    return XLSX.utils.encode_range(decoded)
+    return encodeA1RangeRef(decodeA1RangeRef(`${range.startAddress}:${range.endAddress}`))
   } catch {
     return null
   }
@@ -79,11 +78,11 @@ function rangeRefA1(range: CellRangeRef): string | null {
 
 function parseRangeRef(sheetName: string, ref: string): CellRangeRef | null {
   try {
-    const decoded = XLSX.utils.decode_range(ref.replaceAll('$', ''))
+    const decoded = decodeA1RangeRef(ref)
     return {
       sheetName,
-      startAddress: XLSX.utils.encode_cell(decoded.s),
-      endAddress: XLSX.utils.encode_cell(decoded.e),
+      startAddress: encodeA1CellRef(decoded.s),
+      endAddress: encodeA1CellRef(decoded.e),
     }
   } catch {
     return null
@@ -96,13 +95,13 @@ function isFalseAttribute(value: unknown): boolean {
 
 function keyConditionRef(range: CellRangeRef, keyAddress: string): string | null {
   try {
-    const rangeBounds = XLSX.utils.decode_range(`${range.startAddress}:${range.endAddress}`.replaceAll('$', ''))
-    const key = XLSX.utils.decode_cell(keyAddress.replaceAll('$', ''))
+    const rangeBounds = decodeA1RangeRef(`${range.startAddress}:${range.endAddress}`)
+    const key = decodeA1CellRef(keyAddress)
     if (key.c < rangeBounds.s.c || key.c > rangeBounds.e.c || key.r > rangeBounds.e.r) {
       return null
     }
     const startRow = key.r
-    return XLSX.utils.encode_range({
+    return encodeA1RangeRef({
       s: { r: startRow, c: key.c },
       e: { r: rangeBounds.e.r, c: key.c },
     })
@@ -190,9 +189,9 @@ function parseSortKey(ref: unknown, direction: unknown): WorkbookSortSnapshot['k
     return null
   }
   try {
-    const decoded = XLSX.utils.decode_range(ref.replaceAll('$', ''))
+    const decoded = decodeA1RangeRef(ref)
     return {
-      keyAddress: XLSX.utils.encode_cell(decoded.s),
+      keyAddress: encodeA1CellRef(decoded.s),
       direction: isFalseAttribute(direction) || direction === undefined ? 'asc' : 'desc',
     }
   } catch {

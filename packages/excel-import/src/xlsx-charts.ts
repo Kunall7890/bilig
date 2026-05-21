@@ -1,6 +1,5 @@
 import { strFromU8, strToU8, unzipSync, zipSync } from 'fflate'
 import { XMLParser } from 'fast-xml-parser'
-import * as XLSX from 'xlsx'
 
 import type {
   CellRangeRef,
@@ -10,6 +9,7 @@ import type {
   WorkbookChartType,
   WorkbookSnapshot,
 } from '@bilig/protocol'
+import { decodeA1CellRef, decodeA1RangeRef, encodeA1CellRef, encodeA1ColumnRef } from './xlsx-a1-utils.js'
 import { readXlsxZipEntries, type XlsxZipSource } from './xlsx-zip.js'
 
 type ZipEntries = Record<string, Uint8Array>
@@ -99,8 +99,8 @@ function nextPartIndex(zip: ZipEntries, prefix: string, suffix: string): number 
 }
 
 function absoluteAddress(address: string): string {
-  const decoded = XLSX.utils.decode_cell(address)
-  return `$${XLSX.utils.encode_col(decoded.c)}$${decoded.r + 1}`
+  const decoded = decodeA1CellRef(address)
+  return `$${encodeA1ColumnRef(decoded.c)}$${decoded.r + 1}`
 }
 
 function quoteSheetName(sheetName: string): string {
@@ -116,8 +116,8 @@ function formulaForRange(sheetName: string, range: CellRangeRef): string {
 function rangeFromIndexes(sheetName: string, startRow: number, startCol: number, endRow: number, endCol: number): CellRangeRef {
   return {
     sheetName,
-    startAddress: XLSX.utils.encode_cell({ r: startRow, c: startCol }),
-    endAddress: XLSX.utils.encode_cell({ r: endRow, c: endCol }),
+    startAddress: encodeA1CellRef({ r: startRow, c: startCol }),
+    endAddress: encodeA1CellRef({ r: endRow, c: endCol }),
   }
 }
 
@@ -173,7 +173,7 @@ function parseLegendPosition(value: unknown): WorkbookChartLegendPosition | unde
 }
 
 function buildChartSeries(chart: WorkbookChartSnapshot, exportSourceSheetName: string): ChartSeriesRefs[] {
-  const source = XLSX.utils.decode_range(`${chart.source.startAddress}:${chart.source.endAddress}`)
+  const source = decodeA1RangeRef(`${chart.source.startAddress}:${chart.source.endAddress}`)
   const orientation = chart.seriesOrientation ?? 'columns'
   const firstRowAsHeaders = chart.firstRowAsHeaders === true
   const firstColumnAsLabels = chart.firstColumnAsLabels === true
@@ -311,7 +311,7 @@ function buildChartXml(chart: WorkbookChartSnapshot, exportSourceSheetName: stri
 }
 
 function buildDrawingAnchorXml(chart: WorkbookChartSnapshot, relationshipId: string, anchorId: number): string {
-  const decoded = XLSX.utils.decode_cell(chart.address)
+  const decoded = decodeA1CellRef(chart.address)
   const endCol = decoded.c + Math.max(1, chart.cols)
   const endRow = decoded.r + Math.max(1, chart.rows)
   return [
@@ -523,21 +523,21 @@ function unionRanges(ranges: readonly CellRangeRef[]): CellRangeRef | null {
   if (!first) {
     return null
   }
-  let start = XLSX.utils.decode_cell(first.startAddress)
-  let end = XLSX.utils.decode_cell(first.endAddress)
+  let start = decodeA1CellRef(first.startAddress)
+  let end = decodeA1CellRef(first.endAddress)
   for (const range of ranges.slice(1)) {
     if (range.sheetName !== first.sheetName) {
       continue
     }
-    const nextStart = XLSX.utils.decode_cell(range.startAddress)
-    const nextEnd = XLSX.utils.decode_cell(range.endAddress)
+    const nextStart = decodeA1CellRef(range.startAddress)
+    const nextEnd = decodeA1CellRef(range.endAddress)
     start = { r: Math.min(start.r, nextStart.r), c: Math.min(start.c, nextStart.c) }
     end = { r: Math.max(end.r, nextEnd.r), c: Math.max(end.c, nextEnd.c) }
   }
   return {
     sheetName: first.sheetName,
-    startAddress: XLSX.utils.encode_cell(start),
-    endAddress: XLSX.utils.encode_cell(end),
+    startAddress: encodeA1CellRef(start),
+    endAddress: encodeA1CellRef(end),
   }
 }
 
@@ -547,8 +547,8 @@ function inferSeriesOrientation(series: readonly ChartSeriesRefs[]): WorkbookCha
     return undefined
   }
   const decoded = valueRanges.map((range) => ({
-    start: XLSX.utils.decode_cell(range.startAddress),
-    end: XLSX.utils.decode_cell(range.endAddress),
+    start: decodeA1CellRef(range.startAddress),
+    end: decodeA1CellRef(range.endAddress),
   }))
   const columns = decoded.every((range) => range.start.c === range.end.c)
   const rows = decoded.every((range) => range.start.r === range.end.r)
@@ -562,10 +562,10 @@ function inferSeriesOrientation(series: readonly ChartSeriesRefs[]): WorkbookCha
 }
 
 function rangeWithinSource(source: CellRangeRef, range: CellRangeRef): boolean {
-  const sourceStart = XLSX.utils.decode_cell(source.startAddress)
-  const sourceEnd = XLSX.utils.decode_cell(source.endAddress)
-  const rangeStart = XLSX.utils.decode_cell(range.startAddress)
-  const rangeEnd = XLSX.utils.decode_cell(range.endAddress)
+  const sourceStart = decodeA1CellRef(source.startAddress)
+  const sourceEnd = decodeA1CellRef(source.endAddress)
+  const rangeStart = decodeA1CellRef(range.startAddress)
+  const rangeEnd = decodeA1CellRef(range.endAddress)
   return (
     range.sheetName === source.sheetName &&
     rangeStart.r >= sourceStart.r &&
@@ -579,10 +579,10 @@ function isTopRowHeaderRange(source: CellRangeRef, range: CellRangeRef): boolean
   if (!rangeWithinSource(source, range)) {
     return false
   }
-  const sourceStart = XLSX.utils.decode_cell(source.startAddress)
-  const sourceEnd = XLSX.utils.decode_cell(source.endAddress)
-  const rangeStart = XLSX.utils.decode_cell(range.startAddress)
-  const rangeEnd = XLSX.utils.decode_cell(range.endAddress)
+  const sourceStart = decodeA1CellRef(source.startAddress)
+  const sourceEnd = decodeA1CellRef(source.endAddress)
+  const rangeStart = decodeA1CellRef(range.startAddress)
+  const rangeEnd = decodeA1CellRef(range.endAddress)
   return sourceStart.r < sourceEnd.r && rangeStart.r === sourceStart.r && rangeEnd.r === sourceStart.r
 }
 
@@ -590,10 +590,10 @@ function isFirstColumnLabelRange(source: CellRangeRef, range: CellRangeRef): boo
   if (!rangeWithinSource(source, range)) {
     return false
   }
-  const sourceStart = XLSX.utils.decode_cell(source.startAddress)
-  const sourceEnd = XLSX.utils.decode_cell(source.endAddress)
-  const rangeStart = XLSX.utils.decode_cell(range.startAddress)
-  const rangeEnd = XLSX.utils.decode_cell(range.endAddress)
+  const sourceStart = decodeA1CellRef(source.startAddress)
+  const sourceEnd = decodeA1CellRef(source.endAddress)
+  const rangeStart = decodeA1CellRef(range.startAddress)
+  const rangeEnd = decodeA1CellRef(range.endAddress)
   return sourceStart.c < sourceEnd.c && rangeStart.c === sourceStart.c && rangeEnd.c === sourceStart.c
 }
 
@@ -806,7 +806,7 @@ export function readImportedWorkbookChartReadResult(source: XlsxZipSource, sheet
       charts.push({
         id: readAnchorChartId(anchor, `xlsx-chart:${sheetName}:${String(anchorIndex + 1)}`),
         sheetName,
-        address: XLSX.utils.encode_cell({ r: fromRow, c: fromCol }),
+        address: encodeA1CellRef({ r: fromRow, c: fromCol }),
         rows: Math.max(1, toRow - fromRow),
         cols: Math.max(1, toCol - fromCol),
         ...chartMetadata,

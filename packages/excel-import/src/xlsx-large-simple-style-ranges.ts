@@ -1,5 +1,5 @@
 import type { CellStyleRecord, SheetStyleRangeSnapshot } from '@bilig/protocol'
-import { internImportedStyle } from './xlsx-import-cell-styles.js'
+import { internImportedStyle } from './xlsx-import-style-interning.js'
 import type { ImportedWorksheetCellScan } from './xlsx-large-simple-arena.js'
 
 export function buildLargeSimpleStyleRanges(
