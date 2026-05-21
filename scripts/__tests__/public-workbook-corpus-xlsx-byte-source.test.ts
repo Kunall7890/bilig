@@ -1,7 +1,7 @@
 import { createHash } from 'node:crypto'
 import { describe, expect, it } from 'vitest'
 
-import { sha256XlsxZipByteSourceHex } from '../public-workbook-corpus-xlsx-byte-source.ts'
+import { isZipWorkbookSource, sha256XlsxZipByteSourceHex } from '../public-workbook-corpus-xlsx-byte-source.ts'
 
 describe('public workbook corpus XLSX byte source helpers', () => {
   it('hashes byte sources through reusable readRangeInto scratch buffers', () => {
@@ -21,6 +21,15 @@ describe('public workbook corpus XLSX byte source helpers', () => {
     expect(sha256XlsxZipByteSourceHex(source)).toBe(sha256Hex(bytes))
 
     expect(source.rangeCount).toBe(3)
+  })
+
+  it('checks ZIP magic bytes through reusable readRangeInto scratch buffers', () => {
+    const source = new InstrumentedByteSource(Uint8Array.of(0x50, 0x4b, 0x03, 0x04, 0xff))
+
+    expect(isZipWorkbookSource(source)).toBe(true)
+
+    expect(source.readIntoCount).toBe(1)
+    expect(source.rangeCount).toBe(0)
   })
 })
 
