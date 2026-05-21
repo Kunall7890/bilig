@@ -1,7 +1,7 @@
 import { unzipSync, zipSync } from 'fflate'
 import * as XLSX from 'xlsx'
 
-import type { CellRangeRef, LiteralInput, WorkbookPivotSnapshot, WorkbookPivotValueSnapshot, WorkbookSnapshot } from '@bilig/protocol'
+import type { CellRangeRef, LiteralInput, WorkbookPivotSnapshot, WorkbookSnapshot } from '@bilig/protocol'
 import {
   addContentTypeOverride,
   addExportPreservedPivotArtifactsToXlsxBytes,
@@ -20,7 +20,7 @@ import {
   setZipText,
   spreadsheetNamespace,
 } from './xlsx-pivot-artifacts.js'
-import { defaultDataFieldVerb, subtotalValue } from './xlsx-pivot-aggregate-xml.js'
+import { buildPivotTableDefinitionXml } from './xlsx-pivot-export-layout.js'
 import { getZipText, type XlsxZipEntries } from './xlsx-zip.js'
 
 type ZipEntries = XlsxZipEntries
@@ -167,13 +167,17 @@ function uniqueValues(values: readonly LiteralInput[]): LiteralInput[] {
   const seen = new Set<string>()
   const output: LiteralInput[] = []
   for (const value of values) {
-    const key = `${typeof value}:${String(value)}`
+    const key = literalValueKey(value)
     if (!seen.has(key)) {
       seen.add(key)
       output.push(value)
     }
   }
   return output
+}
+
+function literalValueKey(value: LiteralInput): string {
+  return `${typeof value}:${String(value)}`
 }
 
 function cacheSharedItemXml(value: LiteralInput): string {
@@ -221,7 +225,11 @@ function buildPivotCacheDefinitionXml(
   ].join('')
 }
 
-function cacheRecordItemXml(value: LiteralInput): string {
+function cacheRecordItemXml(value: LiteralInput, sharedValues: readonly LiteralInput[]): string {
+  const sharedIndex = sharedValues.findIndex((candidate) => literalValueKey(candidate) === literalValueKey(value))
+  if (sharedIndex >= 0) {
+    return `<x v="${String(sharedIndex)}"/>`
+  }
   if (value === null) {
     return '<m/>'
   }
@@ -235,121 +243,14 @@ function cacheRecordItemXml(value: LiteralInput): string {
 }
 
 function buildPivotCacheRecordsXml(cacheTable: PivotCacheTable): string {
+  const sharedValuesByField = cacheTable.fields.map((field) => uniqueValues(field.values))
   return [
     '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>',
     `<pivotCacheRecords xmlns="${spreadsheetNamespace}" count="${String(cacheTable.rows.length)}">`,
-    ...cacheTable.rows.map((row) => ['<r>', ...row.map(cacheRecordItemXml), '</r>'].join('')),
+    ...cacheTable.rows.map((row) =>
+      ['<r>', ...row.map((value, fieldIndex) => cacheRecordItemXml(value, sharedValuesByField[fieldIndex] ?? [])), '</r>'].join(''),
+    ),
     '</pivotCacheRecords>',
-  ].join('')
-}
-
-function pivotFieldXml(index: number, fields: readonly string[], pivot: WorkbookPivotSnapshot): string {
-  const fieldName = fields[index] ?? ''
-  if (pivot.groupBy.includes(fieldName)) {
-    return '<pivotField axis="axisRow" showAll="0"><items count="1"><item t="default"/></items></pivotField>'
-  }
-  if ((pivot.columnFields ?? []).includes(fieldName)) {
-    return '<pivotField axis="axisCol" showAll="0"><items count="1"><item t="default"/></items></pivotField>'
-  }
-  if ((pivot.pageFields ?? []).some((field) => field.sourceColumn === fieldName)) {
-    return '<pivotField axis="axisPage" showAll="0"><items count="1"><item t="default"/></items></pivotField>'
-  }
-  if (pivot.values.some((value) => value.sourceColumn === fieldName)) {
-    return '<pivotField dataField="1" showAll="0"/>'
-  }
-  return '<pivotField showAll="0"/>'
-}
-
-function buildRowFieldsXml(fieldIndexes: readonly number[]): string {
-  if (fieldIndexes.length === 0) {
-    return ''
-  }
-  return [
-    `<rowFields count="${String(fieldIndexes.length)}">`,
-    ...fieldIndexes.map((index) => `<field x="${String(index)}"/>`),
-    '</rowFields>',
-  ].join('')
-}
-
-function buildColumnFieldsXml(fieldIndexes: readonly number[]): string {
-  if (fieldIndexes.length === 0) {
-    return ''
-  }
-  return [
-    `<colFields count="${String(fieldIndexes.length)}">`,
-    ...fieldIndexes.map((index) => `<field x="${String(index)}"/>`),
-    '</colFields>',
-  ].join('')
-}
-
-function buildPageFieldsXml(fieldIndexes: readonly number[]): string {
-  if (fieldIndexes.length === 0) {
-    return ''
-  }
-  return [
-    `<pageFields count="${String(fieldIndexes.length)}">`,
-    ...fieldIndexes.map((index) => `<pageField fld="${String(index)}"/>`),
-    '</pageFields>',
-  ].join('')
-}
-
-function defaultDataFieldName(value: WorkbookPivotValueSnapshot): string {
-  if (value.outputLabel && value.outputLabel.trim().length > 0) {
-    return value.outputLabel.trim()
-  }
-  return `${defaultDataFieldVerb(value.summarizeBy)} of ${value.sourceColumn}`
-}
-
-function buildDataFieldsXml(values: readonly WorkbookPivotValueSnapshot[], fieldIndexesByName: ReadonlyMap<string, number>): string {
-  if (values.length === 0) {
-    return ''
-  }
-  const fields = values.flatMap((value) => {
-    const fieldIndex = fieldIndexesByName.get(value.sourceColumn)
-    if (fieldIndex === undefined) {
-      return []
-    }
-    return [
-      `<dataField name="${escapeXml(defaultDataFieldName(value))}" fld="${String(fieldIndex)}" subtotal="${subtotalValue(
-        value.summarizeBy,
-      )}"/>`,
-    ]
-  })
-  return fields.length > 0 ? [`<dataFields count="${String(fields.length)}">`, ...fields, '</dataFields>'].join('') : ''
-}
-
-function buildPivotTableDefinitionXml(pivot: WorkbookPivotSnapshot, cacheId: number, cacheTable: PivotCacheTable): string {
-  const fieldNames = cacheTable.fields.map((field) => field.name)
-  const fieldIndexesByName = new Map(fieldNames.map((name, index) => [name, index]))
-  const rowFieldIndexes = pivot.groupBy.flatMap((fieldName) => {
-    const index = fieldIndexesByName.get(fieldName)
-    return index === undefined ? [] : [index]
-  })
-  const columnFieldIndexes = (pivot.columnFields ?? []).flatMap((fieldName) => {
-    const index = fieldIndexesByName.get(fieldName)
-    return index === undefined ? [] : [index]
-  })
-  const pageFieldIndexes = (pivot.pageFields ?? []).flatMap((field) => {
-    const index = fieldIndexesByName.get(field.sourceColumn)
-    return index === undefined ? [] : [index]
-  })
-  return [
-    '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>',
-    `<pivotTableDefinition xmlns="${spreadsheetNamespace}" name="${escapeXml(pivot.name)}" cacheId="${String(
-      cacheId,
-    )}" dataCaption="Values" updatedVersion="8" minRefreshableVersion="3" useAutoFormatting="1" itemPrintTitles="1" createdVersion="8" indent="0" outline="1" outlineData="1" multipleFieldFilters="0">`,
-    `<location ref="${escapeXml(pivotOutputRange(pivot))}" firstHeaderRow="1" firstDataRow="2" firstDataCol="${String(
-      Math.max(1, rowFieldIndexes.length),
-    )}"/>`,
-    `<pivotFields count="${String(fieldNames.length)}">`,
-    ...fieldNames.map((_, index) => pivotFieldXml(index, fieldNames, pivot)),
-    '</pivotFields>',
-    buildRowFieldsXml(rowFieldIndexes),
-    buildColumnFieldsXml(columnFieldIndexes),
-    buildPageFieldsXml(pageFieldIndexes),
-    buildDataFieldsXml(pivot.values, fieldIndexesByName),
-    '<pivotTableStyleInfo name="PivotStyleLight16" showRowHeaders="1" showColHeaders="1" showRowStripes="0" showColStripes="0" showLastColumn="1"/>',
-    '</pivotTableDefinition>',
   ].join('')
 }
 

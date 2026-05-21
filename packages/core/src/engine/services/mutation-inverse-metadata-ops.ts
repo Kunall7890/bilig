@@ -3,6 +3,7 @@ import { cloneCellStyleRecord } from '../../engine-style-utils.js'
 import { restoreFormatRangeOps, restoreStyleRangeOps } from '../../engine-range-format-ops.js'
 import type { WorkbookStore } from '../../workbook-store.js'
 import { rangesIntersect } from '../../workbook-merge-records.js'
+import { sourcefulPivotToUpsertOp } from './pivot-op-helpers.js'
 
 export function buildMutationMetadataInverseOps(workbook: WorkbookStore, op: EngineOp): EngineOp[] | undefined {
   switch (op.kind) {
@@ -315,38 +316,14 @@ export function buildMutationMetadataInverseOps(workbook: WorkbookStore, op: Eng
       if (!existing.source) {
         return [{ kind: 'deletePivotTable', sheetName: op.sheetName, address: op.address }]
       }
-      return [
-        {
-          kind: 'upsertPivotTable',
-          name: existing.name,
-          sheetName: existing.sheetName,
-          address: existing.address,
-          source: { ...existing.source },
-          groupBy: [...existing.groupBy],
-          values: existing.values.map((value) => Object.assign({}, value)),
-          rows: existing.rows,
-          cols: existing.cols,
-        },
-      ]
+      return [sourcefulPivotToUpsertOp({ ...existing, source: existing.source })]
     }
     case 'deletePivotTable': {
       const existing = workbook.getPivot(op.sheetName, op.address)
       if (!existing || !existing.source) {
         return []
       }
-      return [
-        {
-          kind: 'upsertPivotTable',
-          name: existing.name,
-          sheetName: existing.sheetName,
-          address: existing.address,
-          source: { ...existing.source },
-          groupBy: [...existing.groupBy],
-          values: existing.values.map((value) => Object.assign({}, value)),
-          rows: existing.rows,
-          cols: existing.cols,
-        },
-      ]
+      return [sourcefulPivotToUpsertOp({ ...existing, source: existing.source })]
     }
     case 'upsertChart': {
       const existing = workbook.getChart(op.chart.id)

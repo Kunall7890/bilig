@@ -44,6 +44,7 @@ export interface MacosExcelInspectionOracleRequest {
   readonly saveWorkbook?: boolean
   readonly timeoutMs?: number
   readonly updateLinks?: MacosExcelLinkUpdateMode
+  readonly refreshAll?: boolean
 }
 
 export type MacosExcelStructuralOperation =
@@ -68,6 +69,7 @@ export interface MacosExcelStructuralOperationOracleRequest {
   readonly saveWorkbook?: boolean
   readonly timeoutMs?: number
   readonly updateLinks?: MacosExcelLinkUpdateMode
+  readonly refreshAll?: boolean
 }
 
 export interface MacosExcelCellInspection {
@@ -305,7 +307,10 @@ end isExcelErrorDisplayText
 }
 
 export function createMacosExcelInspectionAppleScript(
-  request: Pick<MacosExcelInspectionOracleRequest, 'formulaCells' | 'inspectCells' | 'saveWorkbook' | 'updateLinks' | 'worksheetName'>,
+  request: Pick<
+    MacosExcelInspectionOracleRequest,
+    'formulaCells' | 'inspectCells' | 'refreshAll' | 'saveWorkbook' | 'updateLinks' | 'worksheetName'
+  >,
 ): string {
   if (request.inspectCells.length === 0) {
     throw new Error('macOS Excel inspection oracle request must inspect at least one cell')
@@ -313,6 +318,7 @@ export function createMacosExcelInspectionAppleScript(
 
   const closeSavingMode = request.saveWorkbook === true ? 'yes' : 'no'
   const updateLinksMode = macosExcelUpdateLinksModeAppleScript(request.updateLinks ?? 'never')
+  const refreshAll = request.refreshAll === true ? '      refresh all targetWorkbook' : ''
   const formulaCells = request.formulaCells
     .map(
       (cell) =>
@@ -340,6 +346,7 @@ export function createMacosExcelInspectionAppleScript(
 ${openCompanionWorkbooksAppleScript()}
       set targetWorkbook to open workbook workbook file name workbookPath update links ${updateLinksMode}
 ${formulaCells}
+${refreshAll}
       calculate full rebuild
       set output to "version=" & (version as string)
 ${inspectionReads}
@@ -364,7 +371,7 @@ ${cellValueAppleScriptHelpers()}`
 export function createMacosExcelStructuralOperationAppleScript(
   request: Pick<
     MacosExcelStructuralOperationOracleRequest,
-    'formulaCells' | 'inspectCells' | 'operations' | 'saveWorkbook' | 'worksheetName' | 'updateLinks'
+    'formulaCells' | 'inspectCells' | 'operations' | 'refreshAll' | 'saveWorkbook' | 'worksheetName' | 'updateLinks'
   >,
 ): string {
   if (request.operations.length === 0) {
@@ -376,6 +383,7 @@ export function createMacosExcelStructuralOperationAppleScript(
 
   const closeSavingMode = request.saveWorkbook === true ? 'yes' : 'no'
   const updateLinksMode = macosExcelUpdateLinksModeAppleScript(request.updateLinks ?? 'never')
+  const refreshAll = request.refreshAll === true ? '      refresh all targetWorkbook' : ''
   const formulaCells = (request.formulaCells ?? [])
     .map(
       (cell) =>
@@ -403,6 +411,7 @@ ${openCompanionWorkbooksAppleScript()}
       set targetWorksheet to worksheet ${toAppleScriptString(request.worksheetName)} of targetWorkbook
 ${formulaCells}
 ${operations}
+${refreshAll}
       calculate full rebuild
       set output to "version=" & (version as string)
 ${inspectionReads}

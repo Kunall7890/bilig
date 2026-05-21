@@ -4,6 +4,7 @@ import { sheetMetadataToOps } from '../../engine-snapshot-utils.js'
 import type { WorkbookStore } from '../../workbook-store.js'
 import { buildMutationMetadataInverseOps } from './mutation-inverse-metadata-ops.js'
 import { captureStructuralWorkbookMetadataOps, clearStructuralSheetMetadataOps } from './mutation-structural-metadata-ops.js'
+import { sourcefulPivotToUpsertOp } from './pivot-op-helpers.js'
 
 export type MutationCoreCapturedInverseKind =
   | 'deleteSheet'
@@ -69,17 +70,7 @@ function captureDeletedSheetInverseOps(
       if (!pivot.source) {
         return
       }
-      restoredOps.push({
-        kind: 'upsertPivotTable',
-        name: pivot.name,
-        sheetName: pivot.sheetName,
-        address: pivot.address,
-        source: { ...pivot.source },
-        groupBy: [...pivot.groupBy],
-        values: pivot.values.map((value) => Object.assign({}, value)),
-        rows: pivot.rows,
-        cols: pivot.cols,
-      })
+      restoredOps.push(sourcefulPivotToUpsertOp({ ...pivot, source: pivot.source }))
     })
   workbook
     .listCharts()

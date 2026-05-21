@@ -1,6 +1,7 @@
 import { rewriteAddressForStructuralTransform, rewriteRangeForStructuralTransform, type StructuralAxisTransform } from '@bilig/formula'
 import type { EngineOp } from '@bilig/workbook'
 import { WorkbookStore } from '../../workbook-store.js'
+import { sourcefulPivotToUpsertOp } from './pivot-op-helpers.js'
 
 type MutationStructuralMetadataWorkbook = Pick<
   WorkbookStore,
@@ -38,17 +39,7 @@ export function captureStructuralWorkbookMetadataOps(workbook: MutationStructura
     if (!pivot.source) {
       return
     }
-    restoredOps.push({
-      kind: 'upsertPivotTable',
-      name: pivot.name,
-      sheetName: pivot.sheetName,
-      address: pivot.address,
-      source: { ...pivot.source },
-      groupBy: [...pivot.groupBy],
-      values: pivot.values.map((value) => Object.assign({}, value)),
-      rows: pivot.rows,
-      cols: pivot.cols,
-    })
+    restoredOps.push(sourcefulPivotToUpsertOp({ ...pivot, source: pivot.source }))
   })
   workbook.listCharts().forEach((chart) => {
     restoredOps.push({ kind: 'upsertChart', chart: structuredClone(chart) })

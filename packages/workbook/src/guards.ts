@@ -8,7 +8,7 @@ const BORDER_WEIGHT_VALUES = new Set(['thin', 'medium', 'thick'])
 const NUMBER_FORMAT_KIND_VALUES = new Set(['general', 'number', 'currency', 'accounting', 'percent', 'date', 'time', 'datetime', 'text'])
 const COMPATIBILITY_MODE_VALUES = new Set(['excel-modern', 'odf-1.4'])
 const SORT_DIRECTION_VALUES = new Set(['asc', 'desc'])
-const PIVOT_AGGREGATION_VALUES = new Set(['sum', 'count'])
+const PIVOT_AGGREGATION_VALUES = new Set(['sum', 'count', 'countNums', 'average', 'min', 'max', 'product'])
 const VALIDATION_COMPARISON_OPERATOR_VALUES = new Set([
   'between',
   'notBetween',
@@ -520,6 +520,60 @@ function isWorkbookPivotValue(value: unknown): boolean {
   )
 }
 
+function isOptionalLiteralInputArray(value: unknown): boolean {
+  return value === undefined || (Array.isArray(value) && value.every((entry) => isLiteralInput(entry)))
+}
+
+function isWorkbookPivotFilter(value: unknown): boolean {
+  return (
+    isRecord(value) &&
+    hasString(value, 'sourceColumn') &&
+    isOptionalLiteralInputArray(value['includedValues']) &&
+    isOptionalLiteralInputArray(value['hiddenValues'])
+  )
+}
+
+function isWorkbookPivotPageField(value: unknown): boolean {
+  return isRecord(value) && hasString(value, 'sourceColumn') && isOptionalLiteralInput(value['selectedValue'])
+}
+
+function isWorkbookPivotHiddenItems(value: unknown): boolean {
+  return isRecord(value) && hasString(value, 'sourceColumn') && Array.isArray(value['values']) && value['values'].every(isLiteralInput)
+}
+
+function isWorkbookPivotCalculatedFormula(value: unknown): boolean {
+  return (
+    isRecord(value) &&
+    hasString(value, 'name') &&
+    hasString(value, 'formula') &&
+    (value['clause'] === '18.10' || value['clause'] === '3.2.3.1')
+  )
+}
+
+function isOptionalStringArray(value: unknown): boolean {
+  return value === undefined || isStringArray(value)
+}
+
+function isOptionalPivotFilterArray(value: unknown): boolean {
+  return value === undefined || (Array.isArray(value) && value.every(isWorkbookPivotFilter))
+}
+
+function isOptionalPivotPageFieldArray(value: unknown): boolean {
+  return value === undefined || (Array.isArray(value) && value.every(isWorkbookPivotPageField))
+}
+
+function isOptionalPivotHiddenItemsArray(value: unknown): boolean {
+  return value === undefined || (Array.isArray(value) && value.every(isWorkbookPivotHiddenItems))
+}
+
+function isOptionalPivotCalculatedFormulaArray(value: unknown): boolean {
+  return value === undefined || (Array.isArray(value) && value.every(isWorkbookPivotCalculatedFormula))
+}
+
+function isOptionalCachedRecords(value: unknown): boolean {
+  return value === undefined || (Array.isArray(value) && value.every((row) => Array.isArray(row) && row.every(isLiteralInput)))
+}
+
 const CHART_TYPE_VALUES = new Set(['column', 'bar', 'line', 'area', 'pie', 'scatter'])
 const CHART_SERIES_ORIENTATION_VALUES = new Set(['rows', 'columns'])
 const CHART_LEGEND_POSITION_VALUES = new Set(['top', 'right', 'bottom', 'left', 'hidden'])
@@ -712,6 +766,21 @@ export function isWorkbookOp(value: unknown): value is WorkbookOp {
         hasString(value, 'address') &&
         isCellRangeRef(value['source']) &&
         isStringArray(value['groupBy']) &&
+        isOptionalStringArray(value['columnFields']) &&
+        isOptionalPivotPageFieldArray(value['pageFields']) &&
+        isOptionalPivotFilterArray(value['filters']) &&
+        isOptionalPivotHiddenItemsArray(value['hiddenItems']) &&
+        isOptionalPivotCalculatedFormulaArray(value['calculatedFields']) &&
+        isOptionalPivotCalculatedFormulaArray(value['calculatedItems']) &&
+        (value['sourceKind'] === undefined ||
+          value['sourceKind'] === 'worksheet' ||
+          value['sourceKind'] === 'table' ||
+          value['sourceKind'] === 'named-range' ||
+          value['sourceKind'] === 'external-cache-only') &&
+        (value['cacheOnly'] === undefined || typeof value['cacheOnly'] === 'boolean') &&
+        (value['cacheId'] === undefined || isSafeNonNegativeInteger(value['cacheId'])) &&
+        isOptionalStringArray(value['cacheFields']) &&
+        isOptionalCachedRecords(value['cachedRecords']) &&
         Array.isArray(value['values']) &&
         value['values'].every((entry) => isWorkbookPivotValue(entry)) &&
         hasSafePositiveInteger(value, 'rows') &&
