@@ -33,11 +33,19 @@ export interface RuntimeImage {
   readonly templateBank: readonly FormulaTemplateSnapshot[]
   readonly formulaInstances: readonly FormulaInstanceSnapshot[]
   readonly formulaValues: readonly RuntimeImageFormulaValueSnapshot[]
+  readonly cellValues?: readonly RuntimeImageCellValueSnapshot[]
   readonly formulaFamilyRuns?: readonly RuntimeImageFormulaFamilyRunSnapshot[]
   readonly sheetCells?: readonly RuntimeImageSheetCellsSnapshot[]
 }
 
 export interface RuntimeImageFormulaValueSnapshot {
+  readonly sheetName: string
+  readonly row: number
+  readonly col: number
+  readonly value: CellValue
+}
+
+export interface RuntimeImageCellValueSnapshot {
   readonly sheetName: string
   readonly row: number
   readonly col: number
