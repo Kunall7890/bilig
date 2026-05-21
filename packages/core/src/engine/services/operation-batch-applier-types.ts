@@ -1,4 +1,4 @@
-import type { EngineOp, EngineOpBatch } from '@bilig/workbook-domain'
+import type { EngineOp, EngineOpBatch } from '@bilig/workbook'
 import type { CellValue } from '@bilig/protocol'
 import type { DirectFormulaIndexCollection } from './direct-formula-index-collection.js'
 import type { OperationReplicaVersionWriter } from './operation-replica-helpers.js'
