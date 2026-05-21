@@ -1,6 +1,10 @@
 import { FormulaMode } from '@bilig/protocol'
 import type { EdgeArena } from '../../edge-arena.js'
-import { appendDirectAggregateColumnReverseEdges } from './formula-binding-dependency-helpers.js'
+import {
+  appendDirectAggregateColumnReverseEdges,
+  appendFreshDirectAggregateColumnReverseEdgesForRun,
+  canAppendFreshDirectAggregateColumnReverseEdgesForRun,
+} from './formula-binding-dependency-helpers.js'
 import type { FormulaBindingMemberCounts } from './formula-binding-member-counts.js'
 import { markFormulaCellBound } from './formula-binding-cell-flags.js'
 import { makeUnmanagedCompiledPlan } from './formula-binding-plan-helpers.js'
@@ -42,6 +46,12 @@ export function bindFreshDirectAggregateFormulaRun(args: {
   if (args.run.cellIndices.length !== args.run.members.length) {
     throw new Error('Expected fresh direct aggregate formula cell index count to match member count')
   }
+  const useBulkReverseEdges = canAppendFreshDirectAggregateColumnReverseEdgesForRun(
+    args.serviceArgs.state.workbook,
+    args.run.ownerSheetName,
+    args.run.cellIndices,
+    args.run.members,
+  )
   for (let index = 0; index < args.run.members.length; index += 1) {
     const cellIndex = args.run.cellIndices[index]!
     const member = args.run.members[index]!
@@ -55,6 +65,16 @@ export function bindFreshDirectAggregateFormulaRun(args: {
       args.run.ownerSheetName,
       cellIndex,
       member,
+      !useBulkReverseEdges,
+    )
+  }
+  if (useBulkReverseEdges) {
+    appendFreshDirectAggregateColumnReverseEdgesForRun(
+      args.serviceArgs.reverseState.reverseAggregateColumnEdges,
+      args.serviceArgs.state.workbook,
+      args.run.ownerSheetName,
+      args.run.cellIndices,
+      args.run.members,
     )
   }
 }
@@ -92,6 +112,7 @@ function bindFreshDirectAggregateFormulaMember(
   ownerSheetName: string,
   cellIndex: number,
   member: FreshDirectAggregateFormulaBindingMember,
+  appendReverseEdges = true,
 ): void {
   const directAggregate = buildFreshDirectAggregateDescriptor(serviceArgs, ownerSheetName, member)
   const runtimeFormula: RuntimeFormula = {
@@ -124,12 +145,14 @@ function bindFreshDirectAggregateFormulaMember(
   runtimeFormula.formulaSlotId = formulaSlotId
   formulaMemberCounts.increment(sheetId, member.col)
   markFormulaCellBound(serviceArgs.state.workbook.cellStore, cellIndex, member.compiled.mode)
-  appendDirectAggregateColumnReverseEdges(
-    serviceArgs.reverseState.reverseAggregateColumnEdges,
-    serviceArgs.state.workbook,
-    directAggregate,
-    cellIndex,
-  )
+  if (appendReverseEdges) {
+    appendDirectAggregateColumnReverseEdges(
+      serviceArgs.reverseState.reverseAggregateColumnEdges,
+      serviceArgs.state.workbook,
+      directAggregate,
+      cellIndex,
+    )
+  }
   trackFormulaSheetIndexes(cellIndex, ownerSheetName, member.compiled)
   if (member.compiled.mode === FormulaMode.WasmFastPath && member.compiled.program.length > 0) {
     serviceArgs.scheduleWasmProgramSync()

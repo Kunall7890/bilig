@@ -59,7 +59,8 @@ interface FreshDirectAggregateMatrixBatch {
   readonly inputColCount: number
   readonly formulaCol: number
   readonly values: Float64Array
-  readonly formulaEntries: readonly FreshDirectAggregateFormulaEntry[]
+  readonly formulaEntries: readonly FreshDirectAggregateFormulaEntrySeed[]
+  readonly formulaResults: Float64Array | readonly DirectScalarCurrentOperand[]
 }
 
 export interface OperationFreshDirectAggregateFormulaBatchFastPathArgs {
@@ -99,6 +100,7 @@ export interface OperationFreshDirectAggregateFormulaBatchFastPathArgs {
   readonly deferKernelSync: (cellIndices: readonly number[] | U32) => void
   readonly captureChangedCells: (changedCellIndices: readonly number[] | U32) => readonly EngineChangedCell[]
   readonly applyDirectFormulaCurrentResult: (cellIndex: number, result: DirectScalarCurrentOperand) => boolean
+  readonly applyDirectFormulaNumericResult: (cellIndex: number, value: number) => void
 }
 
 export function createOperationFreshDirectAggregateFormulaBatchFastPath(args: OperationFreshDirectAggregateFormulaBatchFastPathArgs): {
@@ -215,7 +217,11 @@ export function createOperationFreshDirectAggregateFormulaBatchFastPath(args: Op
               templateId: entry.templateId,
             }
           }
-          args.applyDirectFormulaCurrentResult(cellIndex, entry.result)
+          if (matrix.formulaResults instanceof Float64Array) {
+            args.applyDirectFormulaNumericResult(cellIndex, matrix.formulaResults[rowOffset]!)
+          } else {
+            args.applyDirectFormulaCurrentResult(cellIndex, matrix.formulaResults[rowOffset]!)
+          }
           changedInputCount = args.markInputChanged(cellIndex, changedInputCount)
           if (requiresChangedSet) {
             explicitChangedCount = args.markExplicitChanged(cellIndex, explicitChangedCount)
@@ -597,7 +603,7 @@ function collectFreshDirectAggregateMatrixBatch(
       resultOffset: normalizeFreshMatrixDirectAggregateOffset(aggregate.resultOffset),
     })
   }
-  const formulaEntries = materializeFreshDirectAggregateFormulaEntries(args, {
+  const formulaResults = materializeFreshDirectAggregateFormulaResults(args, {
     inputColCount,
     matrixColStart: firstMutation.col,
     seeds: formulaEntrySeeds,
@@ -613,11 +619,12 @@ function collectFreshDirectAggregateMatrixBatch(
     inputColCount,
     formulaCol,
     values,
-    formulaEntries,
+    formulaEntries: formulaEntrySeeds,
+    formulaResults,
   }
 }
 
-function materializeFreshDirectAggregateFormulaEntries(
+function materializeFreshDirectAggregateFormulaResults(
   args: OperationFreshDirectAggregateFormulaBatchFastPathArgs,
   input: {
     readonly inputColCount: number
@@ -625,31 +632,29 @@ function materializeFreshDirectAggregateFormulaEntries(
     readonly seeds: readonly FreshDirectAggregateFormulaEntrySeed[]
     readonly values: Float64Array
   },
-): FreshDirectAggregateFormulaEntry[] {
+): Float64Array | DirectScalarCurrentOperand[] {
   args.checkEvaluationBudget(input.seeds.length * Math.max(1, input.inputColCount))
   const nativeResults = tryEvaluateNativeFreshDirectAggregateMatrixResults(args, input)
   if (nativeResults !== undefined) {
-    return input.seeds.map((seed, index) => ({
-      ...seed,
-      result: { kind: 'number', value: nativeResults[index]! },
-    }))
+    return nativeResults
   }
-  return input.seeds.map((seed, rowOffset) => {
+  const results: DirectScalarCurrentOperand[] = []
+  results.length = input.seeds.length
+  for (let rowOffset = 0; rowOffset < input.seeds.length; rowOffset += 1) {
+    const seed = input.seeds[rowOffset]!
     args.checkEvaluationBudget(input.inputColCount)
-    return {
-      ...seed,
-      result: evaluateFreshDirectAggregateMatrixRow({
-        aggregateKind: seed.aggregateKind,
-        colEnd: seed.aggregateColEnd,
-        colStart: seed.aggregateColStart,
-        inputColCount: input.inputColCount,
-        matrixColStart: input.matrixColStart,
-        resultOffset: seed.resultOffset,
-        rowOffset,
-        values: input.values,
-      }),
-    }
-  })
+    results[rowOffset] = evaluateFreshDirectAggregateMatrixRow({
+      aggregateKind: seed.aggregateKind,
+      colEnd: seed.aggregateColEnd,
+      colStart: seed.aggregateColStart,
+      inputColCount: input.inputColCount,
+      matrixColStart: input.matrixColStart,
+      resultOffset: seed.resultOffset,
+      rowOffset,
+      values: input.values,
+    })
+  }
+  return results
 }
 
 function writeFreshNumericLiteralToCellStore(

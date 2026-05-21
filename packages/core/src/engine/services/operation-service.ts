@@ -865,6 +865,7 @@ export function createEngineOperationService(args: CreateEngineOperationServiceA
       tryApplyDirectFormulaDeltas,
       countPostRecalcDirectFormulaMetric,
     },
+    applyDirectFormulaNumericResult,
     pruneCellIfOrphaned,
     normalizeHistoryDependencyPlaceholder,
   })

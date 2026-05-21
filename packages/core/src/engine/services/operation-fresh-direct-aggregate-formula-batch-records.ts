@@ -55,7 +55,7 @@ export function createFreshFormulaInstanceList(count: number): FormulaInstanceSn
 export function registerFreshDirectAggregateFormulaFamilyRun(
   args: FreshFormulaFamilyRunRegistrationArgs,
   sheetId: number,
-  entries: readonly FreshDirectAggregateFormulaEntry[],
+  entries: readonly FreshFormulaEntryPosition[],
   cellIndices: readonly number[] | Uint32Array,
 ): void {
   registerFreshBoundFormulaFamilyRun(args, sheetId, entries, cellIndices)

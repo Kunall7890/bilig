@@ -3,6 +3,32 @@ import { ValueTag } from '@bilig/protocol'
 
 import { SpreadsheetEngine, type EngineCellMutationRef } from '../engine.js'
 
+interface FormulaBindingServiceForTailAppendTest {
+  readonly collectFormulaCellsReferencingSheetNow: (sheetName: string) => readonly number[]
+  readonly forEachFormulaCellOwnedBySheetNow: (sheetName: string, fn: (cellIndex: number) => void) => void
+}
+
+function isFormulaBindingServiceForTailAppendTest(value: unknown): value is FormulaBindingServiceForTailAppendTest {
+  return (
+    typeof value === 'object' &&
+    value !== null &&
+    typeof Reflect.get(value, 'collectFormulaCellsReferencingSheetNow') === 'function' &&
+    typeof Reflect.get(value, 'forEachFormulaCellOwnedBySheetNow') === 'function'
+  )
+}
+
+function getFormulaBindingService(engine: SpreadsheetEngine): FormulaBindingServiceForTailAppendTest {
+  const runtime = Reflect.get(engine, 'runtime')
+  if (typeof runtime !== 'object' || runtime === null) {
+    throw new TypeError('Expected engine runtime')
+  }
+  const binding = Reflect.get(runtime, 'binding')
+  if (!isFormulaBindingServiceForTailAppendTest(binding)) {
+    throw new TypeError('Expected engine formula binding service')
+  }
+  return binding
+}
+
 describe('structural tail append direct aggregates', () => {
   it('does not defer unchanged existing row aggregate formulas after tail row inserts', async () => {
     const engine = new SpreadsheetEngine({ workbookName: 'tail-append-direct-aggregates' })
@@ -59,6 +85,8 @@ describe('structural tail append direct aggregates', () => {
 
     expect(engine.getCellValue('Sheet1', 'E13')).toEqual({ tag: ValueTag.Number, value: 130 })
     expect(engine.getCellValue('Sheet1', 'E20')).toEqual({ tag: ValueTag.Number, value: 200 })
+    engine.setCellValue('Sheet1', 'A13', 1000)
+    expect(engine.getCellValue('Sheet1', 'E13')).toEqual({ tag: ValueTag.Number, value: 1117 })
     expect(engine.getPerformanceCounters()).toMatchObject({
       directAggregateScanCells: 0,
       directAggregateScanEvaluations: 0,
@@ -110,5 +138,28 @@ describe('structural tail append direct aggregates', () => {
     expect(positionSpy).not.toHaveBeenCalled()
     expect(engine.getCellValue('Sheet1', 'E13')).toEqual({ tag: ValueTag.Number, value: 130 })
     expect(engine.getCellValue('Sheet1', 'E52')).toEqual({ tag: ValueTag.Number, value: 520 })
+  })
+
+  it('falls back to structural formula scanning when existing formulas reference appended rows', async () => {
+    const engine = new SpreadsheetEngine({ workbookName: 'tail-append-reference-overlap' })
+    await engine.ready()
+    engine.createSheet('Sheet1')
+
+    for (let row = 1; row <= 20; row += 1) {
+      engine.setCellValue('Sheet1', `A${row}`, row)
+    }
+    engine.setCellFormula('Sheet1', 'B1', 'SUM(A1:A20)')
+
+    const binding = getFormulaBindingService(engine)
+    const ownedFormulaScan = vi.spyOn(binding, 'forEachFormulaCellOwnedBySheetNow')
+    try {
+      engine.insertRows('Sheet1', 12, 2)
+      expect(ownedFormulaScan).toHaveBeenCalled()
+    } finally {
+      ownedFormulaScan.mockRestore()
+    }
+
+    expect(engine.getCell('Sheet1', 'B1').formula).toBe('SUM(A1:A22)')
+    expect(engine.getCellValue('Sheet1', 'B1')).toEqual({ tag: ValueTag.Number, value: 210 })
   })
 })

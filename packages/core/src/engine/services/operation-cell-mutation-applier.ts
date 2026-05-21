@@ -101,6 +101,7 @@ interface CreateOperationCellMutationApplierArgs {
   readonly hasCycleMembersNow: () => boolean
   readonly canSkipDirtyTraversalForChangedInputs: OperationCellDirtyTraversalSkip
   readonly directFormulaCallbacks: OperationCellDirectFormulaCallbacks
+  readonly applyDirectFormulaNumericResult: (cellIndex: number, value: number) => void
   readonly pruneCellIfOrphaned: (cellIndex: number) => void
   readonly normalizeHistoryDependencyPlaceholder: (cellIndex: number, source: MutationSource) => void
 }
@@ -147,6 +148,7 @@ export function createOperationCellMutationApplier(input: CreateOperationCellMut
       tryApplyDirectFormulaDeltas,
       countPostRecalcDirectFormulaMetric,
     },
+    applyDirectFormulaNumericResult,
     pruneCellIfOrphaned,
     normalizeHistoryDependencyPlaceholder,
   } = input
@@ -187,6 +189,7 @@ export function createOperationCellMutationApplier(input: CreateOperationCellMut
           deferKernelSync: args.deferKernelSync,
           captureChangedCells: args.captureChangedCells,
           applyDirectFormulaCurrentResult,
+          applyDirectFormulaNumericResult,
         })
   const freshDirectScalarFormulaBatchFastPath =
     args.bindFreshDirectScalarFormulaRun === undefined || args.compileTemplateFormula === undefined

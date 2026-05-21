@@ -137,6 +137,13 @@ interface DirectAggregateColumnOwnerInterval {
   readonly rowEnd: number
 }
 
+export interface FreshDirectAggregateColumnReverseEdgeRunMember {
+  readonly aggregateColStart: number
+  readonly aggregateColEnd: number
+  readonly aggregateRowStart: number
+  readonly aggregateRowEnd: number
+}
+
 interface DirectAggregateColumnOwnerIndex {
   readonly intervalsByFormulaCellIndex: Map<number, DirectAggregateColumnOwnerInterval>
   readonly intervalsByRowStart: DirectAggregateColumnOwnerInterval[]
@@ -183,6 +190,20 @@ function appendDirectAggregateColumnOwnerInterval(
     rowEnd: directAggregate.rowEnd,
   }
   index.intervalsByFormulaCellIndex.set(formulaCellIndex, interval)
+  index.intervalsByRowStart.push(interval)
+  const previousPrefixMax = index.prefixMaxRowEnd[index.prefixMaxRowEnd.length - 1] ?? Number.NEGATIVE_INFINITY
+  index.prefixMaxRowEnd.push(Math.max(previousPrefixMax, interval.rowEnd))
+  if (interval.rowStart < index.lastRowStart) {
+    index.orderedByRowStart = false
+  }
+  index.lastRowStart = interval.rowStart
+}
+
+function appendFreshDirectAggregateColumnOwnerInterval(
+  index: DirectAggregateColumnOwnerIndex,
+  interval: DirectAggregateColumnOwnerInterval,
+): void {
+  index.intervalsByFormulaCellIndex.set(interval.formulaCellIndex, interval)
   index.intervalsByRowStart.push(interval)
   const previousPrefixMax = index.prefixMaxRowEnd[index.prefixMaxRowEnd.length - 1] ?? Number.NEGATIVE_INFINITY
   index.prefixMaxRowEnd.push(Math.max(previousPrefixMax, interval.rowEnd))
@@ -276,6 +297,75 @@ export function appendDirectAggregateColumnReverseEdges(
       appendDirectAggregateColumnOwnerInterval(dependents, dependentCellIndex, directAggregate)
     }
   })
+}
+
+export function canAppendFreshDirectAggregateColumnReverseEdgesForRun(
+  workbook: FormulaBindingSheetLookup,
+  ownerSheetName: string,
+  cellIndices: readonly number[] | Uint32Array,
+  members: readonly FreshDirectAggregateColumnReverseEdgeRunMember[],
+): boolean {
+  const first = members[0]
+  if (first === undefined || cellIndices.length !== members.length || workbook.getSheet(ownerSheetName) === undefined) {
+    return false
+  }
+  if (first.aggregateColStart > first.aggregateColEnd) {
+    return false
+  }
+  for (let index = 0; index < members.length; index += 1) {
+    const member = members[index]!
+    if (
+      cellIndices[index] === undefined ||
+      member.aggregateColStart !== first.aggregateColStart ||
+      member.aggregateColEnd !== first.aggregateColEnd
+    ) {
+      return false
+    }
+  }
+  return true
+}
+
+export function appendFreshDirectAggregateColumnReverseEdgesForRun(
+  registry: Map<number, Set<number>>,
+  workbook: FormulaBindingSheetLookup,
+  ownerSheetName: string,
+  cellIndices: readonly number[] | Uint32Array,
+  members: readonly FreshDirectAggregateColumnReverseEdgeRunMember[],
+): void {
+  const first = members[0]
+  const sheet = workbook.getSheet(ownerSheetName)
+  if (first === undefined || sheet === undefined) {
+    return
+  }
+  const columnCount = first.aggregateColEnd - first.aggregateColStart + 1
+  const dependentSets: Set<number>[] = []
+  const ownerIndexes: DirectAggregateColumnOwnerIndex[] = []
+  dependentSets.length = columnCount
+  ownerIndexes.length = columnCount
+  for (let offset = 0; offset < columnCount; offset += 1) {
+    const key = aggregateColumnDependencyKey(sheet.id, first.aggregateColStart + offset)
+    let dependents = registry.get(key)
+    if (dependents === undefined) {
+      dependents = new Set()
+      registry.set(key, dependents)
+    }
+    dependentSets[offset] = dependents
+    ownerIndexes[offset] = getOrCreateDirectAggregateColumnOwnerIndex(dependents)
+  }
+
+  for (let memberIndex = 0; memberIndex < members.length; memberIndex += 1) {
+    const member = members[memberIndex]!
+    const formulaCellIndex = cellIndices[memberIndex]!
+    const interval = {
+      formulaCellIndex,
+      rowStart: member.aggregateRowStart,
+      rowEnd: member.aggregateRowEnd,
+    }
+    for (let offset = 0; offset < columnCount; offset += 1) {
+      dependentSets[offset]!.add(formulaCellIndex)
+      appendFreshDirectAggregateColumnOwnerInterval(ownerIndexes[offset]!, interval)
+    }
+  }
 }
 
 export function removeDirectAggregateColumnReverseEdges(
