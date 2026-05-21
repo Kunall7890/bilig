@@ -18,7 +18,7 @@ import type { tryInspectLargeSimpleXlsxHeadless } from './xlsx-large-simple-head
 import type { tryImportLargeSimpleXlsx } from './xlsx-large-simple-import.js'
 import { attachImportedXlsxSourceReader, detachImportedXlsxSourceBytes } from './xlsx-source-bytes.js'
 import type { prepareSheetJsParserXlsxBytesFromZip } from './xlsx-style-only-blank-cells.js'
-import { readXlsxZipEntriesLazyFromByteSource, type XlsxZipByteSource, type XlsxZipEntries } from './xlsx-zip.js'
+import { readXlsxZipEntriesLazy, readXlsxZipEntriesLazyFromByteSource, type XlsxZipByteSource, type XlsxZipEntries } from './xlsx-zip.js'
 
 const largeCalcChainStreamingByteThreshold = 5_000_000
 const sheetJsBlankStyleStripMinCellCount = 1_000
@@ -173,11 +173,20 @@ function importXlsxFromMaterializedSource(
   fileName: string,
   options: XlsxByteSourceImportOptions,
 ): ImportedWorkbook {
-  const imported = loadSheetJsImporterModule().importSheetJsWorkbook(readAllSourceBytes(source), fileName, XLSX_CONTENT_TYPE, null)
+  const data = readAllSourceBytes(source)
+  const imported = loadSheetJsImporterModule().importSheetJsWorkbook(data, fileName, XLSX_CONTENT_TYPE, readMaterializedWorkbookZip(data))
   if (options.attachSourceReaderForUntouchedExport === false) {
     detachImportedXlsxSourceBytes(imported.snapshot)
   }
   return imported
+}
+
+function readMaterializedWorkbookZip(data: Uint8Array): XlsxZipEntries | null {
+  try {
+    return readXlsxZipEntriesLazy(data)
+  } catch {
+    return null
+  }
 }
 
 function loadSheetJsImporterModule(): SheetJsImporterModule {

@@ -207,3 +207,11 @@ only change `status`; changing `kind`, `target`, `refs`, `expectation`, or
 is `failed`, the run returns `failed` with `check_failed`. Existing adapters
 remain compatible, but agent-facing adapters should provide `verifyChecks` and
 avoid claiming full proof while checks remain `planned`.
+
+When running against Bilig's engine, use `createWorkbookRunAdapter(engine)` from
+`@bilig/core`. The adapter materializes generic `plan.commands` into engine
+operations, falls back to explicit `plan.ops` for low-level plans, reads
+single-cell expectation targets, and verifies generic `exists` and
+`noFormulaErrors` checks without adding workbook-specific business models to
+this package. If the engine captures undo, the run result includes `undo.ops` in
+the same portable operation language.
