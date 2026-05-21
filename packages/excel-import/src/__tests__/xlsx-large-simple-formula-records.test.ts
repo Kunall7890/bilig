@@ -43,4 +43,27 @@ describe('large simple XLSX formula records', () => {
       { address: 'A3', value: 3, formula },
     ])
   })
+
+  it('keeps shared-formula coordinate storage lazy for ordinary formula-heavy sheets', () => {
+    const arena = new ImportedWorkbookArena()
+    const records = new LargeSimpleFormulaRecords()
+    const formulaCount = 1_024
+
+    for (let index = 0; index < formulaCount; index += 1) {
+      const cell = arena.addCell({ sheetIndex: 0, row: index, column: 0, value: index })
+      records.add(cell, index, 0, readLargeSimpleFormulaTypeCode(null), null, `B${String(index + 1)}+1`)
+    }
+
+    expect(records.retainedStorageByteLength()).toBeLessThanOrEqual(formulaCount * 8)
+    expect(records.resolveIntoArena(arena)).toBe(true)
+    expect(arena.materializeSheetCells(0).at(-1)).toEqual({
+      address: `A${String(formulaCount)}`,
+      value: formulaCount - 1,
+      formula: `B${String(formulaCount)}+1`,
+    })
+
+    records.release()
+    expect(records.rawFormulaPoolCount).toBe(0)
+    expect(records.retainedStorageByteLength()).toBe(0)
+  })
 })

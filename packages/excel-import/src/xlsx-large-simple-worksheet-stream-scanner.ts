@@ -214,7 +214,13 @@ class LargeSimpleWorksheetChunkScanner {
     }
     this.compact()
     this.reportRetainedBufferLength()
-    if (this.failed || (this.formulas.count > 0 && !this.formulas.resolveIntoArena(this.arena))) {
+    if (this.failed) {
+      this.formulas.release()
+      return null
+    }
+    const formulasResolved = this.formulas.count === 0 || this.formulas.resolveIntoArena(this.arena)
+    this.formulas.release()
+    if (!formulasResolved) {
       return null
     }
     return {
