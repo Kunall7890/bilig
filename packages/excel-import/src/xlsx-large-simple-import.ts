@@ -49,7 +49,11 @@ import {
   drawingRelationshipIdForScannedWorksheet,
   sheetPivotArtifactsWithStreamedDefinitions,
 } from './xlsx-large-simple-materialization-helpers.js'
-import { buildParsedWorksheet, lazySheetCellMaterializationNumberFormatThreshold } from './xlsx-large-simple-build-parsed-worksheet.js'
+import {
+  buildParsedWorksheet,
+  lazySheetCellMaterializationNumberFormatThreshold,
+  lazySheetCellMaterializationThreshold,
+} from './xlsx-large-simple-build-parsed-worksheet.js'
 import { mergeWorkbookRichTextCells } from './xlsx-large-simple-lazy-rich-text-cells.js'
 import { hasExternalLargeSimplePivotCaches } from './xlsx-large-simple-pivot-warnings.js'
 import { ImportedWorkbookStringPool } from './xlsx-large-simple-string-pool.js'
@@ -503,6 +507,15 @@ export function tryImportLargeSimpleXlsx(
   if (materializeCells && hasSharedStrings && referencedSharedStringIndexSet.size > 0) {
     for (const [index, scanned] of scannedWorksheets.entries()) {
       if (!scanned || scanned.sharedStringIndexes.size === 0) {
+        continue
+      }
+      if (scanned.cellScan.cellCount > lazySheetCellMaterializationThreshold) {
+        scannedWorksheets[index] = {
+          ...scanned,
+          sharedStrings,
+          sharedStringIndexes: emptyLargeSimpleSharedStringIndexes,
+          hasUnresolvedSharedStringReferences: true,
+        }
         continue
       }
       const richSharedStringIndexes = collectReferencedLargeSimpleRichSharedStringIndexes(sharedStrings, scanned.sharedStringIndexes)

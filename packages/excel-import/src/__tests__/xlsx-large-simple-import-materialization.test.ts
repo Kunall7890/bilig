@@ -429,7 +429,7 @@ describe('large simple XLSX import materialization lifetime', () => {
     expect(readLazyXlsxZipSourceByteLength(zip)).toBe(0)
   })
 
-  it('resolves plain shared strings before exposing large lazy cell arrays', () => {
+  it('keeps plain shared strings readable from large lazy cell arrays', () => {
     const rowCount = 100_001
     const rows: string[] = []
     for (let row = 1; row <= rowCount; row += 1) {
@@ -474,6 +474,50 @@ describe('large simple XLSX import materialization lifetime', () => {
     expect(cells?.at(-1)).toEqual({ address: `A${String(rowCount)}`, value: 'Repeated shared label' })
     expect(imported?.preview.sheets[0]?.previewRows[0]?.[0]).toBe('Repeated shared label')
     expect(imported?.snapshot.sheets[0]?.metadata?.richTextArtifacts).toBeUndefined()
+    expect(readLazyXlsxZipSourceByteLength(zip)).toBe(0)
+  })
+
+  it('keeps mixed shared-string and numeric lazy cells readable after arena release', () => {
+    const rowCount = lazySheetCellMaterializationThreshold + 1
+    const rows: string[] = []
+    for (let row = 1; row <= rowCount; row += 1) {
+      rows.push(`<row r="${String(row)}"><c r="A${String(row)}" t="s"><v>0</v></c><c r="B${String(row)}"><v>${String(row)}</v></c></row>`)
+    }
+    const bytes = buildSharedStringWorkbook(
+      [
+        {
+          name: 'Data',
+          path: 'xl/worksheets/sheet1.xml',
+          xml: [
+            '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>',
+            '<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">',
+            `<dimension ref="A1:B${String(rowCount)}"/>`,
+            `<sheetData>${rows.join('')}</sheetData>`,
+            '</worksheet>',
+          ].join(''),
+        },
+      ],
+      `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<sst xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" count="${String(rowCount)}" uniqueCount="1">
+  <si><t>Repeated shared label</t></si>
+</sst>`,
+    )
+    const zip = readXlsxZipEntriesLazy(bytes)
+
+    const imported = tryImportLargeSimpleXlsx(bytes, 'large-mixed-shared-strings.xlsx', zip, {
+      minByteLength: 0,
+      releaseZipSource: true,
+    })
+    const cells = imported?.snapshot.sheets[0]?.cells
+    const lastSharedStringIndex = rowCount * 2 - 2
+
+    expect(isLazyWorkbookSheetCells(cells)).toBe(true)
+    expect(cells).toHaveLength(rowCount * 2)
+    expect(cells?.[0]).toEqual({ address: 'A1', value: 'Repeated shared label' })
+    expect(cells?.[1]).toEqual({ address: 'B1', value: 1 })
+    expect(cells?.[lastSharedStringIndex]).toEqual({ address: `A${String(rowCount)}`, value: 'Repeated shared label' })
+    expect(cells?.[lastSharedStringIndex + 1]).toEqual({ address: `B${String(rowCount)}`, value: rowCount })
+    expect(imported?.preview.sheets[0]?.previewRows[0]).toEqual(['Repeated shared label', '1'])
     expect(readLazyXlsxZipSourceByteLength(zip)).toBe(0)
   })
 
