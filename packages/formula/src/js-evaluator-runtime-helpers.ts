@@ -194,7 +194,13 @@ export function cloneStackValue(value: StackValue): StackValue {
       scopes: cloneScopes(value.scopes),
     }
   }
-  return { kind: 'array', values: value.values, rows: value.rows, cols: value.cols }
+  return {
+    kind: 'array',
+    values: value.values,
+    rows: value.rows,
+    cols: value.cols,
+    ...(value.sourceRange ? { sourceRange: value.sourceRange } : {}),
+  }
 }
 
 export function cloneScopes(scopes: readonly Map<string, StackValue>[]): Array<Map<string, StackValue>> {
@@ -217,7 +223,10 @@ export function toRangeLike(value: StackValue): RangeLikeValue {
       values: value.values,
       rows: value.rows,
       cols: value.cols,
-      refKind: 'cells',
+      refKind: value.sourceRange?.refKind ?? 'cells',
+      ...(value.sourceRange?.sheetName !== undefined ? { sheetName: value.sourceRange.sheetName } : {}),
+      ...(value.sourceRange?.start !== undefined ? { start: value.sourceRange.start } : {}),
+      ...(value.sourceRange?.end !== undefined ? { end: value.sourceRange.end } : {}),
     }
   }
   return { kind: 'range', values: [value.value], rows: 1, cols: 1, refKind: 'cells' }
@@ -353,12 +362,15 @@ export function toRangeArgument(value: StackValue): CellValue | RangeBuiltinArgu
   return {
     kind: 'range',
     values: value.values,
-    refKind: value.kind === 'range' ? value.refKind : 'cells',
+    refKind: value.kind === 'range' ? value.refKind : (value.sourceRange?.refKind ?? 'cells'),
     rows: value.rows,
     cols: value.cols,
     ...(value.kind === 'range' && value.sheetName ? { sheetName: value.sheetName } : {}),
     ...(value.kind === 'range' && value.start ? { start: value.start } : {}),
     ...(value.kind === 'range' && value.end ? { end: value.end } : {}),
+    ...(value.kind === 'array' && value.sourceRange?.sheetName !== undefined ? { sheetName: value.sourceRange.sheetName } : {}),
+    ...(value.kind === 'array' && value.sourceRange?.start !== undefined ? { start: value.sourceRange.start } : {}),
+    ...(value.kind === 'array' && value.sourceRange?.end !== undefined ? { end: value.sourceRange.end } : {}),
   }
 }
 

@@ -646,7 +646,7 @@ export function evaluatePlanScalarResult(plan: readonly JsPlanInstruction[], con
 }
 
 export function evaluatePlan(plan: readonly JsPlanInstruction[], context: EvaluationContext): CellValue {
-  return scalarFromEvaluationResult(evaluatePlanResult(plan, context))
+  return scalarFromFinalStackValue(executePlan(plan, context), context)
 }
 
 export function evaluateAst(node: FormulaNode, context: EvaluationContext): CellValue {
@@ -675,6 +675,24 @@ function scalarFromFinalStackValue(value: StackValue | undefined, context: Evalu
       implicitIntersectionFromRange(value, context) ??
       (value.values[0]?.tag === ValueTag.Empty ? numberValue(0) : (value.values[0] ?? emptyValue()))
     )
+  }
+  if (value.sourceRange) {
+    const sourceIntersection = implicitIntersectionFromRange(
+      {
+        kind: 'range',
+        values: value.values,
+        rows: value.rows,
+        cols: value.cols,
+        refKind: value.sourceRange.refKind,
+        ...(value.sourceRange.sheetName !== undefined ? { sheetName: value.sourceRange.sheetName } : {}),
+        ...(value.sourceRange.start !== undefined ? { start: value.sourceRange.start } : {}),
+        ...(value.sourceRange.end !== undefined ? { end: value.sourceRange.end } : {}),
+      },
+      context,
+    )
+    if (sourceIntersection) {
+      return sourceIntersection
+    }
   }
   return value.values[0] ?? emptyValue()
 }
@@ -709,7 +727,7 @@ function implicitIntersectionFromRange(value: Extract<StackValue, { kind: 'range
             ? { row: rowOffset, col: colOffset }
             : undefined
     if (!selected) {
-      return emptyValue()
+      return error(ErrorCode.Value)
     }
     const selectedValue = value.values[selected.row * value.cols + selected.col] ?? emptyValue()
     return selectedValue.tag === ValueTag.Empty ? numberValue(0) : selectedValue
