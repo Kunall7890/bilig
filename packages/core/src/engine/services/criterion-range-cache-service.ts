@@ -8,6 +8,7 @@ import {
 } from '@bilig/formula'
 import type { EngineRuntimeColumnStoreService, RuntimeColumnView } from './runtime-column-store-service.js'
 import { sliceAbsoluteRowsToRangeView, type CriterionRowSetView } from './criterion-rowset-view.js'
+import { getOrBuildIndexedPredicateAggregateFromColumnViews } from './criterion-range-indexed-predicate-aggregate.js'
 import type { DepPatternStore } from '../../deps/dep-pattern-store.js'
 import type { RegionGraph } from '../../deps/region-graph.js'
 
@@ -34,6 +35,7 @@ export interface CriterionRangeCacheService {
   readonly getOrBuildExactCriteriaAggregate: (request: CriterionCompoundExactAggregateRequest) => CellValue | undefined
   readonly getOrBuildExactAggregate: (request: CriterionExactAggregateRequest) => CellValue | undefined
   readonly getOrBuildCompoundExactAggregate: (request: CriterionCompoundExactAggregateRequest) => CellValue | undefined
+  readonly getOrBuildIndexedPredicateAggregate: (request: CriterionCompoundExactAggregateRequest) => CellValue | undefined
 }
 
 interface CriterionCacheEntry {
@@ -58,7 +60,7 @@ export interface CriterionCompoundExactAggregateRequest {
   readonly useCompoundBucketIndex?: boolean
 }
 
-interface CriterionExactAggregateBucket {
+export interface CriterionExactAggregateBucket {
   count: number
   sum: number
   numericCount: number
@@ -91,7 +93,7 @@ type CriterionEqualityIndexKey =
       readonly value: string
     }
 
-type SliceFastPredicate =
+export type SliceFastPredicate =
   | {
       kind: 'eq-empty'
       negate: boolean
@@ -865,6 +867,20 @@ export function createCriterionRangeCacheService(args: {
       : getOrBuildCompoundExactAggregate(request)
   }
 
+  const getOrBuildIndexedPredicateAggregate = (request: CriterionCompoundExactAggregateRequest): CellValue | undefined => {
+    return getOrBuildIndexedPredicateAggregateFromColumnViews({
+      request,
+      runtimeColumnStore: args.runtimeColumnStore,
+      getColumnView,
+      buildSlicePredicate,
+      readIndexedEqualityRows,
+      slicePredicateMatches,
+      createExactAggregateBucket,
+      addExactAggregateMatch,
+      exactAggregateValueFromBucket,
+    })
+  }
+
   const getOrBuildMatchingRows = (request: { criteriaPairs: readonly CriterionRangePair[] }): CriterionRangeMatch | CellValue => {
     const { criteriaPairs } = request
     if (criteriaPairs.length === 0) {
@@ -974,6 +990,7 @@ export function createCriterionRangeCacheService(args: {
     getOrBuildCompoundExactAggregate,
     getOrBuildExactCriteriaAggregate,
     getOrBuildExactAggregate,
+    getOrBuildIndexedPredicateAggregate,
     getOrBuildMatchingRows,
   }
 }

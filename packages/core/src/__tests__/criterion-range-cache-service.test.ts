@@ -498,6 +498,129 @@ describe('createCriterionRangeCacheService', () => {
     expect(readTagCalls).toBe(callsAfterFirstTuple)
   })
 
+  it('aggregates mixed exact and operator criteria from the most selective equality rowset', () => {
+    const workbook = new WorkbookStore('criteria-cache-indexed-predicate-aggregate')
+    const strings = new StringPool()
+    workbook.createSheet('Sheet1')
+
+    ;['A', 'A', 'B', 'A', 'A', 'B', 'A', 'A'].forEach((value, index) => {
+      setStoredCellValue(workbook, strings, 'Sheet1', `A${index + 1}`, {
+        tag: ValueTag.String,
+        value,
+      })
+    })
+    ;[5, 20, 30, 40, 8, 15, 60, 70].forEach((value, index) => {
+      setStoredCellValue(workbook, strings, 'Sheet1', `B${index + 1}`, {
+        tag: ValueTag.Number,
+        value,
+      })
+    })
+    ;['skip', 'target', 'target', 'target', 'skip', 'target', 'target', 'skip'].forEach((value, index) => {
+      setStoredCellValue(workbook, strings, 'Sheet1', `C${index + 1}`, {
+        tag: ValueTag.String,
+        value,
+      })
+    })
+    ;[1, 2, 3, 4, 5, 6, 7, 8].forEach((value, index) => {
+      setStoredCellValue(workbook, strings, 'Sheet1', `D${index + 1}`, {
+        tag: ValueTag.Number,
+        value,
+      })
+    })
+
+    const realRuntimeColumnStore = createEngineRuntimeColumnStoreService({
+      state: { workbook, strings },
+    })
+    let readTagCalls = 0
+    const runtimeColumnStore = {
+      ...realRuntimeColumnStore,
+      getColumnView(request: Parameters<typeof realRuntimeColumnStore.getColumnView>[0]) {
+        const view = realRuntimeColumnStore.getColumnView(request)
+        return {
+          ...view,
+          readTagAt(offset: number) {
+            readTagCalls += 1
+            return view.readTagAt(offset)
+          },
+        }
+      },
+    }
+    const criterionCache = createCriterionRangeCacheService({
+      runtimeColumnStore,
+      regionGraph: createRegionGraph({ workbook }),
+      depPatternStore: createDepPatternStore(),
+    })
+    const criteriaPairs = [
+      {
+        range: { sheetName: 'Sheet1', rowStart: 0, rowEnd: 7, col: 0, length: 8 },
+        criteria: { tag: ValueTag.String, value: 'A', stringId: strings.intern('A') },
+      },
+      {
+        range: { sheetName: 'Sheet1', rowStart: 0, rowEnd: 7, col: 1, length: 8 },
+        criteria: { tag: ValueTag.String, value: '>=20', stringId: strings.intern('>=20') },
+      },
+      {
+        range: { sheetName: 'Sheet1', rowStart: 0, rowEnd: 7, col: 2, length: 8 },
+        criteria: { tag: ValueTag.String, value: 'target', stringId: strings.intern('target') },
+      },
+    ] as const
+    const aggregateRange = { sheetName: 'Sheet1', rowStart: 0, rowEnd: 7, col: 3, length: 8 } as const
+
+    expect(
+      criterionCache.getOrBuildIndexedPredicateAggregate({
+        criteriaPairs,
+        aggregateRange,
+        aggregateKind: 'sum',
+      }),
+    ).toEqual({ tag: ValueTag.Number, value: 13 })
+    expect(readTagCalls).toBeLessThan(20)
+
+    expect(
+      criterionCache.getOrBuildIndexedPredicateAggregate({
+        criteriaPairs,
+        aggregateKind: 'count',
+      }),
+    ).toEqual({ tag: ValueTag.Number, value: 3 })
+
+    expect(
+      criterionCache.getOrBuildIndexedPredicateAggregate({
+        criteriaPairs,
+        aggregateRange,
+        aggregateKind: 'average',
+      }),
+    ).toEqual({ tag: ValueTag.Number, value: 13 / 3 })
+
+    expect(
+      criterionCache.getOrBuildIndexedPredicateAggregate({
+        criteriaPairs,
+        aggregateRange,
+        aggregateKind: 'min',
+      }),
+    ).toEqual({ tag: ValueTag.Number, value: 2 })
+    expect(
+      criterionCache.getOrBuildIndexedPredicateAggregate({
+        criteriaPairs,
+        aggregateRange,
+        aggregateKind: 'max',
+      }),
+    ).toEqual({ tag: ValueTag.Number, value: 7 })
+
+    expect(
+      criterionCache.getOrBuildIndexedPredicateAggregate({
+        criteriaPairs: [
+          criteriaPairs[0],
+          criteriaPairs[1],
+          {
+            ...criteriaPairs[2],
+            criteria: { tag: ValueTag.String, value: 'missing', stringId: strings.intern('missing') },
+          },
+        ],
+        aggregateRange,
+        aggregateKind: 'average',
+      }),
+    ).toEqual({ tag: ValueTag.Error, code: ErrorCode.Div0 })
+  })
+
   it('supports compiled operator criteria and validates matching range lengths', () => {
     const workbook = new WorkbookStore('criteria-cache-operators')
     const strings = new StringPool()

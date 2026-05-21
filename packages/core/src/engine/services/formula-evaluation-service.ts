@@ -398,6 +398,18 @@ export function createEngineFormulaEvaluationService(args: {
       return applyCachedAggregateResult(exactCriteriaAggregateResult)
     }
 
+    const indexedPredicateAggregateResult =
+      directCriteria.aggregateKind !== 'first'
+        ? args.criterionCache.getOrBuildIndexedPredicateAggregate({
+            criteriaPairs: resolvedPairs,
+            ...(aggregateRange === undefined ? {} : { aggregateRange }),
+            aggregateKind: directCriteria.aggregateKind,
+          })
+        : undefined
+    if (indexedPredicateAggregateResult !== undefined) {
+      return applyCachedAggregateResult(indexedPredicateAggregateResult)
+    }
+
     const nativePredicateAggregateResult = tryEvaluateNativeDirectCriteriaPredicateAggregate(
       {
         state: args.state,
