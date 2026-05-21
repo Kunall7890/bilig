@@ -639,6 +639,38 @@ describe('EngineFormulaEvaluationService', () => {
     expect(engine.getCellValue('Data', 'E1')).toEqual({ tag: ValueTag.Number, value: 5 })
   })
 
+  it('evaluates escaped structured references to special-character table headers', async () => {
+    const engine = new SpreadsheetEngine({ workbookName: 'evaluation-structured-ref-special-headers' })
+    await engine.ready()
+    engine.createSheet('Data')
+    engine.setRangeValues({ sheetName: 'Data', startAddress: 'A1', endAddress: 'E3' }, [
+      ['Revenue, Net', 'A:B', '# Units', "Owner's Share", 'A[B]'],
+      [10, 2, 4, 0.25, 100],
+      [20, 3, 6, 0.75, 200],
+    ])
+    engine.setTable({
+      name: 'Sales',
+      sheetName: 'Data',
+      startAddress: 'A1',
+      endAddress: 'E3',
+      columnNames: ['Revenue, Net', 'A:B', '# Units', "Owner's Share", 'A[B]'],
+      headerRow: true,
+      totalsRow: false,
+    })
+
+    engine.setCellFormula('Data', 'G1', 'SUM(Sales[Revenue, Net])')
+    engine.setCellFormula('Data', 'G2', 'SUM(Sales[A:B])')
+    engine.setCellFormula('Data', 'G3', "SUM(Sales['# Units])")
+    engine.setCellFormula('Data', 'G4', "SUM(Sales[Owner''s Share])")
+    engine.setCellFormula('Data', 'G5', "SUM(Sales[A'[B']])")
+
+    expect(engine.getCellValue('Data', 'G1')).toEqual({ tag: ValueTag.Number, value: 30 })
+    expect(engine.getCellValue('Data', 'G2')).toEqual({ tag: ValueTag.Number, value: 5 })
+    expect(engine.getCellValue('Data', 'G3')).toEqual({ tag: ValueTag.Number, value: 10 })
+    expect(engine.getCellValue('Data', 'G4')).toEqual({ tag: ValueTag.Number, value: 1 })
+    expect(engine.getCellValue('Data', 'G5')).toEqual({ tag: ValueTag.Number, value: 300 })
+  })
+
   it('resolves MULTIPLE.OPERATIONS through reference replacements and missing formula cells', async () => {
     const engine = new SpreadsheetEngine({ workbookName: 'evaluation-multiple-operations' })
     await engine.ready()

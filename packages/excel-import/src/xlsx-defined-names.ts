@@ -1,5 +1,6 @@
 import * as XLSX from 'xlsx'
 
+import { formatStructuredReferenceColumnSpecifier } from '@bilig/formula'
 import type { LiteralInput, WorkbookDefinedNameSnapshot, WorkbookDefinedNameValueSnapshot } from '@bilig/protocol'
 
 interface ImportedSheetBounds {
@@ -321,7 +322,9 @@ function formatExportDefinedNameValue(
     case 'formula':
       return value.formula.startsWith('=') ? value.formula.slice(1).trim() : value.formula.trim()
     case 'structured-ref':
-      return value.columnName.trim().length > 0 ? `${value.tableName}[${value.columnName}]` : value.tableName
+      return value.columnName.trim().length > 0
+        ? `${value.tableName}[${formatStructuredReferenceColumnSpecifier(value.columnName)}]`
+        : value.tableName
   }
 }
 

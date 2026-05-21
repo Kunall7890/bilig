@@ -43,6 +43,13 @@ const spacedHeaderDeleteImportedCells = [
   { address: 'E1', value: { kind: 'error', value: String(ErrorCode.Ref) } },
   { address: 'F1', value: { kind: 'number', value: 5 } },
 ] as const
+const specialHeaderOracleCells = [
+  { address: 'G1', formula: '=SUM(Sales[Revenue, Net])', rawValue: 'number\t30.0', value: { kind: 'number', value: 30 } },
+  { address: 'G2', formula: '=SUM(Sales[A:B])', rawValue: 'number\t5.0', value: { kind: 'number', value: 5 } },
+  { address: 'G3', formula: "=SUM(Sales['# Units])", rawValue: 'number\t10.0', value: { kind: 'number', value: 10 } },
+  { address: 'G4', formula: "=SUM(Sales[Owner''s Share])", rawValue: 'number\t1.0', value: { kind: 'number', value: 1 } },
+  { address: 'G5', formula: "=SUM(Sales[A'[B']])", rawValue: 'number\t300.0', value: { kind: 'number', value: 300 } },
+] as const
 
 describe('macOS Desktop Excel structured-reference syntax oracle', () => {
   it('authors structured references for table headers with spaces before XLSX export', async () => {
@@ -63,6 +70,23 @@ describe('macOS Desktop Excel structured-reference syntax oracle', () => {
       { name: 'SalesUnitsFormula', value: { kind: 'formula', formula: '=Sales[Units Sold]' } },
     ])
     expectImportedValues(imported.snapshot, spacedHeaderOracleCells)
+  })
+
+  it('authors escaped structured references for special table headers before XLSX export', async () => {
+    const engine = await buildSpecialHeaderStructuredReferenceEngine()
+
+    expect(engine.getCellValue('Data', 'G1')).toEqual({ tag: ValueTag.Number, value: 30 })
+    expect(engine.getCellValue('Data', 'G2')).toEqual({ tag: ValueTag.Number, value: 5 })
+    expect(engine.getCellValue('Data', 'G3')).toEqual({ tag: ValueTag.Number, value: 10 })
+    expect(engine.getCellValue('Data', 'G4')).toEqual({ tag: ValueTag.Number, value: 1 })
+    expect(engine.getCellValue('Data', 'G5')).toEqual({ tag: ValueTag.Number, value: 300 })
+
+    const imported = importXlsx(exportXlsx(engine.exportSnapshot()), 'headless-structured-reference-special-headers.xlsx')
+    expect(imported.snapshot.workbook.metadata?.definedNames).toEqual([
+      { name: 'SalesBracketFormula', value: { kind: 'formula', formula: "=Sales[A'[B']]" } },
+      { name: 'SalesUnits', value: { kind: 'formula', formula: "=Sales['# Units]" } },
+    ])
+    expectImportedValues(imported.snapshot, specialHeaderOracleCells)
   })
 
   it.runIf(process.env.BILIG_EXCEL_ORACLE_RUN === '1')(
@@ -89,6 +113,37 @@ describe('macOS Desktop Excel structured-reference syntax oracle', () => {
 
         const imported = importXlsx(new Uint8Array(readFileSync(workbookPath)), 'headless-structured-reference-spaced-headers-saved.xlsx')
         expectImportedValues(imported.snapshot, spacedHeaderOracleCells)
+      } finally {
+        rmSync(tempDir, { recursive: true, force: true })
+      }
+    },
+    60_000,
+  )
+
+  it.runIf(process.env.BILIG_EXCEL_ORACLE_RUN === '1')(
+    'matches Desktop Excel structured references for special table headers',
+    async () => {
+      if (!isMacosExcelInstalled()) {
+        throw new Error('BILIG_EXCEL_ORACLE_RUN=1 requires /Applications/Microsoft Excel.app')
+      }
+
+      const tempDir = mkdtempSync(join(tmpdir(), 'bilig-headless-excel-structured-reference-special-headers-'))
+      try {
+        const workbookPath = join(tempDir, 'headless-structured-reference-special-headers.xlsx')
+        const engine = await buildSpecialHeaderStructuredReferenceEngine()
+        writeFileSync(workbookPath, exportXlsx(engine.exportSnapshot()))
+
+        const excelResult = runMacosExcelInspectionOracle({
+          workbookPath,
+          worksheetName: 'Data',
+          formulaCells: [],
+          inspectCells: specialHeaderOracleCells.map((cell) => cell.address),
+          saveWorkbook: true,
+        })
+        expect(excelResult.cells).toEqual(specialHeaderOracleCells)
+
+        const imported = importXlsx(new Uint8Array(readFileSync(workbookPath)), 'headless-structured-reference-special-headers-saved.xlsx')
+        expectImportedValues(imported.snapshot, specialHeaderOracleCells)
       } finally {
         rmSync(tempDir, { recursive: true, force: true })
       }
@@ -153,6 +208,34 @@ async function buildSpacedHeaderStructuredReferenceEngine(): Promise<Spreadsheet
   engine.setCellFormula('Data', 'E1', 'SUM(Sales[Units Sold])')
   engine.setCellFormula('Data', 'F1', 'SUM(SalesQ1)')
   engine.setCellFormula('Data', 'G1', 'SUM(SalesUnitsFormula)')
+  return engine
+}
+
+async function buildSpecialHeaderStructuredReferenceEngine(): Promise<SpreadsheetEngine> {
+  const engine = new SpreadsheetEngine({ workbookName: 'structured-reference-special-headers' })
+  await engine.ready()
+  engine.createSheet('Data')
+  engine.setRangeValues({ sheetName: 'Data', startAddress: 'A1', endAddress: 'E3' }, [
+    ['Revenue, Net', 'A:B', '# Units', "Owner's Share", 'A[B]'],
+    [10, 2, 4, 0.25, 100],
+    [20, 3, 6, 0.75, 200],
+  ])
+  engine.setTable({
+    name: 'Sales',
+    sheetName: 'Data',
+    startAddress: 'A1',
+    endAddress: 'E3',
+    columnNames: ['Revenue, Net', 'A:B', '# Units', "Owner's Share", 'A[B]'],
+    headerRow: true,
+    totalsRow: false,
+  })
+  engine.setDefinedName('SalesUnits', { kind: 'structured-ref', tableName: 'Sales', columnName: '# Units' })
+  engine.setDefinedName('SalesBracketFormula', { kind: 'formula', formula: "=Sales[A'[B']]" })
+  engine.setCellFormula('Data', 'G1', 'SUM(Sales[Revenue, Net])')
+  engine.setCellFormula('Data', 'G2', 'SUM(Sales[A:B])')
+  engine.setCellFormula('Data', 'G3', "SUM(Sales['# Units])")
+  engine.setCellFormula('Data', 'G4', "SUM(Sales[Owner''s Share])")
+  engine.setCellFormula('Data', 'G5', "SUM(Sales[A'[B']])")
   return engine
 }
 

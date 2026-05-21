@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import * as XLSX from 'xlsx'
 
-import { importXlsx } from '../index.js'
+import { exportXlsx, importXlsx } from '../index.js'
 
 describe('XLSX defined name import', () => {
   it('preserves sheet-scoped table-of-contents names without warning', () => {
@@ -46,5 +46,43 @@ describe('XLSX defined name import', () => {
       { name: '_xlnm.Print_Titles', scopeSheetName: 'Summary Info', value: { kind: 'formula', formula: "='Summary Info'!$4:$5" } },
       { name: 'AgenLength', value: { kind: 'formula', formula: '=#REF!' } },
     ])
+  })
+
+  it('escapes structured-reference defined names with special table headers during export', () => {
+    const exported = exportXlsx({
+      version: 1,
+      workbook: {
+        name: 'Structured Defined Names',
+        metadata: {
+          definedNames: [{ name: 'SalesUnits', value: { kind: 'structured-ref', tableName: 'Sales', columnName: '# Units' } }],
+          tables: [
+            {
+              name: 'Sales',
+              sheetName: 'Data',
+              startAddress: 'A1',
+              endAddress: 'A3',
+              columnNames: ['# Units'],
+              headerRow: true,
+              totalsRow: false,
+            },
+          ],
+        },
+      },
+      sheets: [
+        {
+          id: 1,
+          name: 'Data',
+          order: 0,
+          cells: [
+            { address: 'A1', value: '# Units' },
+            { address: 'A2', value: 10 },
+            { address: 'A3', value: 20 },
+          ],
+        },
+      ],
+    })
+    const workbook = XLSX.read(exported, { type: 'buffer' })
+
+    expect(workbook.Workbook?.Names).toEqual([{ Name: 'SalesUnits', Ref: "Sales['# Units]" }])
   })
 })

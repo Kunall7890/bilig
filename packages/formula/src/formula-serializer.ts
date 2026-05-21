@@ -1,5 +1,6 @@
 import { ErrorCode } from '@bilig/protocol'
 import type { BinaryExprNode, FormulaNode } from './ast.js'
+import { formatStructuredReferenceColumnSpecifier } from './structured-reference-syntax.js'
 import { formatSheetPrefix, quoteSheetNameIfNeeded } from './translation-reference-utils.js'
 
 const BINARY_PRECEDENCE: Record<BinaryExprNode['operator'], number> = {
@@ -57,7 +58,7 @@ export function serializeFormula(node: FormulaNode, parentPrecedence = 0, parent
     case 'NameRef':
       return `${formatSheetPrefix(node.sheetName)}${node.name}`
     case 'StructuredRef':
-      return `${node.tableName}[${node.columnName}]`
+      return `${node.tableName}[${formatStructuredReferenceColumnSpecifier(node.columnName)}]`
     case 'CellRef':
       return `${formatSheetPrefix(node.sheetName)}${node.ref}`
     case 'SpillRef':

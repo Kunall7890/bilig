@@ -1,4 +1,9 @@
 import type { WorkbookTableSnapshot } from '@bilig/protocol'
+import {
+  isStructuredReferenceEscapedCharacter,
+  parseStructuredReferenceColumnSpecifier,
+  scanStructuredReferenceBracket,
+} from '@bilig/formula'
 import { decodeA1CellRef, encodeA1CellRef, type A1CellRef } from './xlsx-a1-utils.js'
 
 type StructuredReferenceSection = 'all' | 'data' | 'headers' | 'this-row' | 'totals'
@@ -370,22 +375,8 @@ function readBalancedStructuredReference(
   source: string,
   startIndex: number,
 ): { readonly text: string; readonly endIndex: number } | undefined {
-  let depth = 0
-  for (let index = startIndex; index < source.length; index += 1) {
-    const character = source[index]
-    if (character === '[') {
-      depth += 1
-    } else if (character === ']') {
-      depth -= 1
-      if (depth === 0) {
-        return {
-          text: source.slice(startIndex + 1, index),
-          endIndex: index + 1,
-        }
-      }
-    }
-  }
-  return undefined
+  const scanned = scanStructuredReferenceBracket(source, startIndex)
+  return scanned ? { text: scanned.content, endIndex: scanned.endIndex } : undefined
 }
 
 function normalizeStructuredReferenceSection(item: string): StructuredReferenceSection | undefined {
@@ -411,29 +402,15 @@ function normalizeStructuredReferenceSection(item: string): StructuredReferenceS
 }
 
 function unescapeStructuredColumnName(item: string): string {
-  return item.replace(/^@/u, '').replace(/''/gu, "'").trim()
+  const unescaped = parseStructuredReferenceColumnSpecifier(item.replace(/^@/u, ''))
+  return unescaped ?? item.replace(/^@/u, '').replace(/''/gu, "'").trim()
 }
 
 function hasBalancedOuterBrackets(item: string): boolean {
   if (!item.startsWith('[') || !item.endsWith(']')) {
     return false
   }
-  let depth = 0
-  for (let index = 0; index < item.length; index += 1) {
-    const character = item[index]
-    if (character === '[') {
-      depth += 1
-    } else if (character === ']') {
-      depth -= 1
-      if (depth === 0) {
-        return index === item.length - 1
-      }
-      if (depth < 0) {
-        return false
-      }
-    }
-  }
-  return false
+  return scanStructuredReferenceBracket(item, 0)?.endIndex === item.length
 }
 
 function unwrapStructuredReferenceItem(item: string): string {
@@ -447,7 +424,9 @@ function splitStructuredReferenceTopLevel(text: string, separator: ',' | ':'): s
   let startIndex = 0
   for (let index = 0; index < text.length; index += 1) {
     const character = text[index]
-    if (character === '[') {
+    if (character === "'" && isStructuredReferenceEscapedCharacter(text[index + 1])) {
+      index += 1
+    } else if (character === '[') {
       depth += 1
     } else if (character === ']') {
       depth -= 1
@@ -649,6 +628,31 @@ function rewriteStructuredReference(
   return formatFormulaReference(table.sheetName, startRow, startCol, endRow, endCol)
 }
 
+function exactColumnReferenceParts(table: WorkbookTableSnapshot, text: string): StructuredReferenceParts | undefined {
+  if (normalizeStructuredReferenceSection(text)) {
+    return undefined
+  }
+  const columnName = parseStructuredReferenceColumnSpecifier(text)
+  if (columnName === undefined || findTableColumnIndex(table, columnName) < 0) {
+    return undefined
+  }
+  return { startColumnName: columnName, endColumnName: columnName }
+}
+
+function rewriteStructuredReferenceText(
+  table: WorkbookTableSnapshot,
+  text: string,
+  ownerSheetName: string,
+  ownerAddress: string,
+): string | undefined {
+  const directColumnParts = exactColumnReferenceParts(table, text)
+  if (directColumnParts) {
+    return rewriteStructuredReference(table, directColumnParts, ownerSheetName, ownerAddress)
+  }
+  const parts = parseStructuredReferenceParts(text)
+  return parts ? rewriteStructuredReference(table, parts, ownerSheetName, ownerAddress) : undefined
+}
+
 function ownerTableForAddress(
   tables: readonly WorkbookTableSnapshot[],
   ownerSheetName: string,
@@ -720,12 +724,10 @@ export function translateImportedFormulaStructuredReferences({
       const structuredReference = !isExternalWorkbookReferencePrefix(formula, index)
         ? readBalancedStructuredReference(formula, index)
         : undefined
-      const parts = structuredReference ? parseStructuredReferenceParts(structuredReference.text) : undefined
-      const rewritten = ownerTable
-        ? parts
-          ? rewriteStructuredReference(ownerTable, parts, ownerSheetName, ownerAddress)
+      const rewritten =
+        ownerTable && structuredReference
+          ? rewriteStructuredReferenceText(ownerTable, structuredReference.text, ownerSheetName, ownerAddress)
           : undefined
-        : undefined
       if (structuredReference && rewritten) {
         output += rewritten
         index = structuredReference.endIndex
@@ -754,8 +756,9 @@ export function translateImportedFormulaStructuredReferences({
     }
 
     const structuredReference = readBalancedStructuredReference(formula, identifierEnd)
-    const parts = structuredReference ? parseStructuredReferenceParts(structuredReference.text) : undefined
-    const rewritten = parts ? rewriteStructuredReference(table, parts, ownerSheetName, ownerAddress) : undefined
+    const rewritten = structuredReference
+      ? rewriteStructuredReferenceText(table, structuredReference.text, ownerSheetName, ownerAddress)
+      : undefined
     if (!structuredReference || !rewritten) {
       output += tableName
       index = identifierEnd

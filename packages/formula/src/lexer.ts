@@ -1,3 +1,5 @@
+import { scanStructuredReferenceBracket } from './structured-reference-syntax.js'
+
 export type TokenKind =
   | 'number'
   | 'identifier'
@@ -116,13 +118,12 @@ export function lexFormula(input: string): Token[] {
     }
 
     if (char === '[') {
-      let end = index + 1
-      while (end < source.length && source[end] !== ']') end += 1
-      if (end < source.length) {
+      const structuredReferenceBracket = scanStructuredReferenceBracket(source, index)
+      if (structuredReferenceBracket) {
         tokens.push({ kind: 'lbracket', value: '[' })
-        tokens.push({ kind: 'bracketContent', value: source.slice(index + 1, end) })
+        tokens.push({ kind: 'bracketContent', value: structuredReferenceBracket.content })
         tokens.push({ kind: 'rbracket', value: ']' })
-        index = end + 1
+        index = structuredReferenceBracket.endIndex
         continue
       }
     }

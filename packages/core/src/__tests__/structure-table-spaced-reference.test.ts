@@ -63,6 +63,46 @@ describe('spaced table structured references', () => {
     expect(engine.undo()).toBe(true)
     expect(engine.exportSnapshot()).toEqual(initialSnapshot)
   })
+
+  it('escapes formulas and defined names when renaming to a special table header', async () => {
+    const engine = new SpreadsheetEngine({ workbookName: 'structure-special-table-header-rename' })
+    await engine.ready()
+    engine.createSheet('Data')
+    engine.setRangeValues({ sheetName: 'Data', startAddress: 'A1', endAddress: 'B3' }, [
+      ['Amount', 'Units'],
+      [10, 2],
+      [20, 3],
+    ])
+    engine.setTable({
+      name: 'Sales',
+      sheetName: 'Data',
+      startAddress: 'A1',
+      endAddress: 'B3',
+      columnNames: ['Amount', 'Units'],
+      headerRow: true,
+      totalsRow: false,
+    })
+    engine.setDefinedName('SalesAmount', { kind: 'structured-ref', tableName: 'Sales', columnName: 'Amount' })
+    engine.setDefinedName('SalesAmountFormula', { kind: 'formula', formula: '=Sales[Amount]' })
+    engine.setCellFormula('Data', 'D1', 'SUM(Sales[Amount])')
+    engine.setCellFormula('Data', 'E1', 'SUM(SalesAmount)')
+    engine.setCellFormula('Data', 'F1', 'SUM(SalesAmountFormula)')
+
+    engine.setCellValue('Data', 'A1', '# Units')
+
+    expect(engine.getCell('Data', 'D1').formula).toBe("SUM(Sales['# Units])")
+    expect(engine.getCellValue('Data', 'D1')).toEqual({ tag: ValueTag.Number, value: 30 })
+    expect(engine.getDefinedName('SalesAmount')).toEqual({
+      name: 'SalesAmount',
+      value: { kind: 'structured-ref', tableName: 'Sales', columnName: '# Units' },
+    })
+    expect(engine.getDefinedName('SalesAmountFormula')).toEqual({
+      name: 'SalesAmountFormula',
+      value: { kind: 'formula', formula: "=Sales['# Units]" },
+    })
+    expect(engine.getCellValue('Data', 'E1')).toEqual({ tag: ValueTag.Number, value: 30 })
+    expect(engine.getCellValue('Data', 'F1')).toEqual({ tag: ValueTag.Number, value: 30 })
+  })
 })
 
 async function buildSpacedTableReferenceEngine(workbookName: string): Promise<SpreadsheetEngine> {

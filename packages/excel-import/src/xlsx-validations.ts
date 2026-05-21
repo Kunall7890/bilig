@@ -3,6 +3,11 @@ import { XMLParser } from 'fast-xml-parser'
 import * as XLSX from 'xlsx'
 
 import {
+  formatStructuredReferenceColumnSpecifier,
+  parseStructuredReferenceColumnSpecifier,
+  scanStructuredReferenceBracket,
+} from '@bilig/formula'
+import {
   MAX_COLS,
   MAX_ROWS,
   type CellRangeRef,
@@ -184,7 +189,9 @@ function formatValidationListSource(
         : formatExportSheetReference(source.sheetName, reference, exportSheetNamesByOriginalName)
     }
     case 'structured-ref':
-      return source.columnName.trim().length > 0 ? `${source.tableName}[${source.columnName}]` : source.tableName
+      return source.columnName.trim().length > 0
+        ? `${source.tableName}[${formatStructuredReferenceColumnSpecifier(source.columnName)}]`
+        : source.tableName
   }
 }
 
@@ -462,14 +469,22 @@ function parseSourceReference(sheetName: string, reference: string): WorkbookVal
 }
 
 function parseStructuredReference(value: string): WorkbookValidationListSourceSnapshot | null {
-  const match = /^([A-Za-z_][A-Za-z0-9_.]*)\[([^\]]+)\]$/u.exec(value)
+  const match = /^([A-Za-z_][A-Za-z0-9_.]*)(\[.*)$/u.exec(value)
   if (!match) {
+    return null
+  }
+  const structuredReference = scanStructuredReferenceBracket(value, match[1]!.length)
+  if (!structuredReference || structuredReference.endIndex !== value.length) {
+    return null
+  }
+  const columnName = parseStructuredReferenceColumnSpecifier(structuredReference.content)
+  if (columnName === undefined) {
     return null
   }
   return {
     kind: 'structured-ref',
     tableName: match[1] ?? '',
-    columnName: match[2] ?? '',
+    columnName,
   }
 }
 
