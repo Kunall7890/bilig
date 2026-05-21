@@ -376,7 +376,10 @@ export function tryImportLargeSimpleXlsx(
         return null
       }
       if (hasSharedStrings && fallbackSharedStrings === undefined) {
-        fallbackSharedStrings = readAllLargeSimpleSharedStrings(zip)
+        fallbackSharedStrings = readAllLargeSimpleSharedStrings(zip, {
+          deduplicateText: 'bounded',
+          stringPool,
+        })
         if (fallbackSharedStrings === null) {
           return null
         }
@@ -532,7 +535,12 @@ export function tryImportLargeSimpleXlsx(
   const sharedStringResolutionStart = phaseRecorder.start()
   let sharedStrings: LargeSimpleSharedStrings = fallbackSharedStrings ?? []
   if (materializeCells && hasSharedStrings && referencedSharedStringIndexes.size > 0) {
-    const referencedSharedStrings = fallbackSharedStrings ?? readReferencedLargeSimpleSharedStrings(zip, referencedSharedStringIndexes)
+    const referencedSharedStrings =
+      fallbackSharedStrings ??
+      readReferencedLargeSimpleSharedStrings(zip, referencedSharedStringIndexes, {
+        deduplicateText: 'bounded',
+        stringPool,
+      })
     if (referencedSharedStrings === null) {
       return null
     }

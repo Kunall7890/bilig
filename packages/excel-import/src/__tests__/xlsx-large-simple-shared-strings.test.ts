@@ -2,8 +2,10 @@ import { describe, expect, it } from 'vitest'
 
 import {
   createLargeSimpleSharedStringSubset,
+  readLargeSimpleSharedStrings,
   readLargeSimpleReferencedSharedStringsFromChunks,
 } from '../xlsx-large-simple-shared-strings.js'
+import { ImportedWorkbookStringPool } from '../xlsx-large-simple-string-pool.js'
 
 const encoder = new TextEncoder()
 
@@ -87,6 +89,51 @@ describe('large simple shared string streaming', () => {
     expect(typeof Object.getOwnPropertyDescriptor(entry, 'text')?.get).toBe('function')
     expect(entry?.text).toBe('Rich Text')
     expect(entry?.text).toBe('Rich Text')
+  })
+
+  it('deduplicates repeated referenced shared-string text through the import string pool', () => {
+    const pool = new ImportedWorkbookStringPool()
+    const sharedStrings = readLargeSimpleReferencedSharedStringsFromChunks(
+      (onChunk) => {
+        onChunk(
+          encoder.encode(
+            '<sst xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">' +
+              '<si><t>Repeated vendor label</t></si>' +
+              '<si><t>Repeated vendor label</t></si>' +
+              '<si><r><t>Repeated vendor label</t></r></si>' +
+              '</sst>',
+          ),
+        )
+        return true
+      },
+      new Set([0, 1, 2]),
+      { deduplicateText: true, stringPool: pool },
+    )
+
+    expect(sharedStrings?.[0]?.text).toBe('Repeated vendor label')
+    expect(sharedStrings?.[1]?.text).toBe('Repeated vendor label')
+    expect(sharedStrings?.[2]?.text).toBe('Repeated vendor label')
+    expect(sharedStrings?.[1]).toBe(sharedStrings?.[0])
+    expect(sharedStrings?.[2]).not.toBe(sharedStrings?.[0])
+    expect(pool.count).toBe(1)
+  })
+
+  it('deduplicates fallback full shared-string table text with the same pool path', () => {
+    const pool = new ImportedWorkbookStringPool()
+    const sharedStrings = readLargeSimpleSharedStrings(
+      '<sst xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">' +
+        '<si><t>Same</t></si>' +
+        '<si><t>Same</t></si>' +
+        '</sst>',
+      { deduplicateText: true, stringPool: pool },
+    )
+
+    expect(sharedStrings).toEqual([
+      { text: 'Same', rich: false },
+      { text: 'Same', rich: false },
+    ])
+    expect(sharedStrings[1]).toBe(sharedStrings[0])
+    expect(pool.count).toBe(1)
   })
 
   it('creates sparse sheet-scoped shared-string subsets without unrelated entries', () => {

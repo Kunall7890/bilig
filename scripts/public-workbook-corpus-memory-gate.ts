@@ -33,6 +33,7 @@ const mib = 1024 * 1024
 const publicWorkbookMaxRssBytes = 112 * mib
 const synthetic750kMaxRssBytes = 112 * mib
 const syntheticRepeatedStringMaxRssBytes = 112 * mib
+const syntheticDuplicateSharedStringMaxRssBytes = 112 * mib
 const syntheticFormulaHeavyMaxRssBytes = 112 * mib
 const syntheticCachedExternalFormulaMaxRssBytes = 112 * mib
 const hardMaxRssBytes = 192 * mib
@@ -61,6 +62,7 @@ async function main(): Promise<void> {
   }
   results.push(await runSynthetic750kGate(syntheticCacheDir))
   results.push(await runSyntheticRepeatedStringGate(syntheticCacheDir))
+  results.push(await runSyntheticDuplicateSharedStringGate(syntheticCacheDir))
   results.push(await runSyntheticFormulaHeavyGate(syntheticCacheDir))
   results.push(await runSyntheticCachedExternalFormulaGate(syntheticCacheDir))
 
@@ -73,6 +75,7 @@ async function main(): Promise<void> {
           publicWorkbookMaxRssBytes,
           synthetic750kMaxRssBytes,
           syntheticRepeatedStringMaxRssBytes,
+          syntheticDuplicateSharedStringMaxRssBytes,
           syntheticFormulaHeavyMaxRssBytes,
           syntheticCachedExternalFormulaMaxRssBytes,
           hardMaxRssBytes,
@@ -139,6 +142,20 @@ async function runSyntheticRepeatedStringGate(cacheDir: string): Promise<MemoryG
       artifactId: artifact.id,
       label: artifact.fileName,
       maxRssBytes: syntheticRepeatedStringMaxRssBytes,
+    },
+    artifact,
+    cacheDir,
+    join(cacheDir, 'manifest.json'),
+  )
+}
+
+async function runSyntheticDuplicateSharedStringGate(cacheDir: string): Promise<MemoryGateResult> {
+  const artifact = writeSyntheticDuplicateSharedStringWorkbook(cacheDir)
+  return runGateTarget(
+    {
+      artifactId: artifact.id,
+      label: artifact.fileName,
+      maxRssBytes: syntheticDuplicateSharedStringMaxRssBytes,
     },
     artifact,
     cacheDir,
@@ -299,6 +316,42 @@ function writeSyntheticRepeatedStringWorkbook(cacheDir: string): PublicWorkbookA
     id: 'synthetic-repeated-string-memory-v4',
     fileName: 'synthetic-repeated-string-memory-v4.xlsx',
     sourceId: 'synthetic-repeated-string-memory-v4',
+    worksheetXml: [
+      '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>',
+      '<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">',
+      `<dimension ref="A1:E${String(rowCount)}"/>`,
+      `<sheetData>${rows.join('')}</sheetData>`,
+      '</worksheet>',
+    ].join(''),
+  })
+}
+
+function writeSyntheticDuplicateSharedStringWorkbook(cacheDir: string): PublicWorkbookArtifact {
+  const rowCount = 25_000
+  const columnCount = 5
+  const rows: string[] = []
+  const sharedStrings: string[] = []
+  let sharedStringIndex = 0
+  for (let row = 1; row <= rowCount; row += 1) {
+    const cells: string[] = []
+    for (let column = 0; column < columnCount; column += 1) {
+      const address = `${String.fromCharCode(65 + column)}${String(row)}`
+      cells.push(`<c r="${address}" t="s"><v>${String(sharedStringIndex)}</v></c>`)
+      sharedStrings.push('<si><t>Repeated vendor label</t></si>')
+      sharedStringIndex += 1
+    }
+    rows.push(`<row r="${String(row)}">${cells.join('')}</row>`)
+  }
+  return writeSyntheticWorkbookArtifact(cacheDir, {
+    id: 'synthetic-duplicate-shared-string-memory-v4',
+    fileName: 'synthetic-duplicate-shared-string-memory-v4.xlsx',
+    sourceId: 'synthetic-duplicate-shared-string-memory-v4',
+    sharedStringsXml: [
+      '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>',
+      `<sst xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" count="${String(sharedStringIndex)}" uniqueCount="1">`,
+      sharedStrings.join(''),
+      '</sst>',
+    ].join(''),
     worksheetXml: [
       '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>',
       '<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">',
