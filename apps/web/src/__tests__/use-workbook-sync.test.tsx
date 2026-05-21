@@ -839,23 +839,27 @@ describe('useWorkbookSync', () => {
     })
   })
 
-  it('applies range style mutations to the projection before journaling waits can delay paint', async () => {
+  it('does not paint range styles until the pending mutation journal is durable', async () => {
     ;(globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true
+    let resolveEnqueue: ((mutation: PendingWorkbookMutation) => void) | null = null
+    const enqueueMutation = new Promise<PendingWorkbookMutation>((resolve) => {
+      resolveEnqueue = resolve
+    })
+    const viewportStore = new ProjectedViewportStore()
+    const setRangeStyle = vi.spyOn(viewportStore, 'setRangeStyle')
+    const workerHandleRef: { current: WorkerHandle | null } = {
+      current: {
+        viewportStore,
+      },
+    }
     let sync: ReturnType<typeof useWorkbookSync> | null = null
     const runtimeController = {
-      invoke: vi.fn(async (method: string, ...args: unknown[]) => {
+      invoke: vi.fn((method: string, input?: unknown) => {
         if (method === 'enqueuePendingMutation') {
-          if (!isPendingMutationInput(args[0])) {
+          if (!isPendingMutationInput(input)) {
             throw new Error('Expected pending mutation input')
           }
-          return {
-            ...createPendingMutation(),
-            method: args[0].method,
-            args: args[0].args,
-          }
-        }
-        if (method === 'setRangeStyle') {
-          return undefined
+          return enqueueMutation
         }
         throw new Error(`Unexpected runtime invoke: ${method}`)
       }),
@@ -867,7 +871,7 @@ describe('useWorkbookSync', () => {
         connectionStateName: 'closed',
         connectionStateRef: { current: 'closed' },
         runtimeController,
-        workerHandleRef: { current: null },
+        workerHandleRef,
         zeroRef: {
           current: {
             mutate() {
@@ -890,40 +894,62 @@ describe('useWorkbookSync', () => {
       throw new Error('Expected useWorkbookSync harness to initialize')
     }
 
-    const range = { sheetName: 'Sheet1', startAddress: 'B1', endAddress: 'E1048576' }
+    const range = { sheetName: 'Sheet1', startAddress: 'B1', endAddress: 'B1' }
     const patch = { fill: { backgroundColor: '#34a853' } }
+    let stylePromise!: Promise<void>
     await act(async () => {
-      await sync!.invokeMutation('setRangeStyle', range, patch)
+      stylePromise = sync!.invokeMutation('setRangeStyle', range, patch)
+      await Promise.resolve()
     })
 
-    expect(runtimeController.invoke).toHaveBeenNthCalledWith(1, 'setRangeStyle', range, patch)
-    expect(runtimeController.invoke).toHaveBeenNthCalledWith(2, 'enqueuePendingMutation', {
+    expect(runtimeController.invoke).toHaveBeenCalledWith('enqueuePendingMutation', {
       method: 'setRangeStyle',
       args: [range, patch],
     })
+    expect(setRangeStyle).not.toHaveBeenCalled()
+    expect(viewportStore.getCell('Sheet1', 'B1').styleId).toBeUndefined()
+
+    await act(async () => {
+      resolveEnqueue?.({
+        ...createPendingMutation(),
+        method: 'setRangeStyle',
+        args: [range, patch],
+      })
+      await stylePromise
+    })
+
+    expect(setRangeStyle).toHaveBeenCalledWith(range, patch)
+    const styledCell = viewportStore.getCell('Sheet1', 'B1')
+    expect(viewportStore.getCellStyle(styledCell.styleId)?.fill?.backgroundColor).toBe('#34a853')
 
     await act(async () => {
       root.unmount()
     })
   })
 
-  it('applies range style clears to the projection before journaling waits can delay paint', async () => {
+  it('does not clear painted range styles until the pending mutation journal is durable', async () => {
     ;(globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true
+    let resolveEnqueue: ((mutation: PendingWorkbookMutation) => void) | null = null
+    const enqueueMutation = new Promise<PendingWorkbookMutation>((resolve) => {
+      resolveEnqueue = resolve
+    })
+    const viewportStore = new ProjectedViewportStore()
+    const range = { sheetName: 'Sheet1', startAddress: 'B1', endAddress: 'B1' }
+    viewportStore.setRangeStyle(range, { fill: { backgroundColor: '#34a853' } })
+    const clearRangeStyle = vi.spyOn(viewportStore, 'clearRangeStyle')
+    const workerHandleRef: { current: WorkerHandle | null } = {
+      current: {
+        viewportStore,
+      },
+    }
     let sync: ReturnType<typeof useWorkbookSync> | null = null
     const runtimeController = {
-      invoke: vi.fn(async (method: string, ...args: unknown[]) => {
+      invoke: vi.fn((method: string, input?: unknown) => {
         if (method === 'enqueuePendingMutation') {
-          if (!isPendingMutationInput(args[0])) {
+          if (!isPendingMutationInput(input)) {
             throw new Error('Expected pending mutation input')
           }
-          return {
-            ...createPendingMutation(),
-            method: args[0].method,
-            args: args[0].args,
-          }
-        }
-        if (method === 'clearRangeStyle') {
-          return undefined
+          return enqueueMutation
         }
         throw new Error(`Unexpected runtime invoke: ${method}`)
       }),
@@ -935,7 +961,7 @@ describe('useWorkbookSync', () => {
         connectionStateName: 'closed',
         connectionStateRef: { current: 'closed' },
         runtimeController,
-        workerHandleRef: { current: null },
+        workerHandleRef,
         zeroRef: {
           current: {
             mutate() {
@@ -958,17 +984,31 @@ describe('useWorkbookSync', () => {
       throw new Error('Expected useWorkbookSync harness to initialize')
     }
 
-    const range = { sheetName: 'Sheet1', startAddress: 'B1', endAddress: 'E1048576' }
     const fields = ['backgroundColor'] as const
+    let clearPromise!: Promise<void>
     await act(async () => {
-      await sync!.invokeMutation('clearRangeStyle', range, fields)
+      clearPromise = sync!.invokeMutation('clearRangeStyle', range, fields)
+      await Promise.resolve()
     })
 
-    expect(runtimeController.invoke).toHaveBeenNthCalledWith(1, 'clearRangeStyle', range, fields)
-    expect(runtimeController.invoke).toHaveBeenNthCalledWith(2, 'enqueuePendingMutation', {
+    expect(runtimeController.invoke).toHaveBeenCalledWith('enqueuePendingMutation', {
       method: 'clearRangeStyle',
       args: [range, fields],
     })
+    expect(clearRangeStyle).not.toHaveBeenCalled()
+    expect(viewportStore.getCellStyle(viewportStore.getCell('Sheet1', 'B1').styleId)?.fill?.backgroundColor).toBe('#34a853')
+
+    await act(async () => {
+      resolveEnqueue?.({
+        ...createPendingMutation(),
+        method: 'clearRangeStyle',
+        args: [range, fields],
+      })
+      await clearPromise
+    })
+
+    expect(clearRangeStyle).toHaveBeenCalledWith(range, fields)
+    expect(viewportStore.getCellStyle(viewportStore.getCell('Sheet1', 'B1').styleId)?.fill).toBeUndefined()
 
     await act(async () => {
       root.unmount()

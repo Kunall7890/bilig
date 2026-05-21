@@ -2,6 +2,7 @@ import { expect, test, type Page } from '@playwright/test'
 import {
   TOOLBAR_SYNC_ACTIONS,
   clickProductCell,
+  countGreenFillPixelsInCell,
   createTestDocumentId,
   expectMatchingGridRangeScreenshots,
   openZeroWorkbookPage,
@@ -230,6 +231,43 @@ remoteSyncTest('web app restores persisted workbook state after a full reload', 
   await expect(page.getByTestId('status-selection')).toHaveText('Sheet1!A1')
   await expect(formulaInput).toHaveValue('17')
   await expect(resolvedValue).toHaveText('17')
+})
+
+remoteSyncTest('web app restores persisted fill styles after a full reload', async ({ page }) => {
+  const documentId = createTestDocumentId('playwright-zero-reload-fill-persist')
+  const formulaInput = page.getByTestId('formula-input')
+
+  await openZeroWorkbookPage(page, documentId)
+  await expect(page.getByTestId('worker-error')).toHaveCount(0)
+
+  await clickProductCell(page, 1, 1)
+  await expect(page.getByTestId('status-selection')).toHaveText('Sheet1!B2')
+  await formulaInput.fill('persist-fill')
+  await formulaInput.press('Enter')
+  await expect(formulaInput).toHaveValue('persist-fill')
+
+  await clickProductCell(page, 1, 1)
+  await pickToolbarPresetColor(page, 'Fill color', 'green')
+  await expect
+    .poll(() => countGreenFillPixelsInCell(page, 1, 1), {
+      message: 'B2 should visibly paint green before reload',
+      timeout: 5_000,
+    })
+    .toBeGreaterThan(120)
+
+  await page.reload({ waitUntil: 'domcontentloaded' })
+  await waitForWorkbookReady(page)
+  await expect(page.getByTestId('worker-error')).toHaveCount(0)
+
+  await clickProductCell(page, 1, 1)
+  await expect(page.getByTestId('status-selection')).toHaveText('Sheet1!B2')
+  await expect(formulaInput).toHaveValue('persist-fill')
+  await expect
+    .poll(() => countGreenFillPixelsInCell(page, 1, 1), {
+      message: 'B2 fill style should survive persisted reload',
+      timeout: 5_000,
+    })
+    .toBeGreaterThan(120)
 })
 
 remoteSyncTest('web app survives repeated tab crash restarts with persisted workbook state', async ({ page }) => {
