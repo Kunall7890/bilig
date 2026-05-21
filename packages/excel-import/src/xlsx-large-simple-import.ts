@@ -83,6 +83,7 @@ import {
   normalizeZipPath,
   readLazyXlsxZipSourceByteLength,
   releaseLazyXlsxZipSource,
+  replaceLazyXlsxZipSource,
   type XlsxZipEntries,
 } from './xlsx-zip.js'
 import type {
@@ -168,6 +169,20 @@ export function tryImportLargeSimpleXlsx(
   const hasSlicerConnectionParts = packagePaths.some(
     (path) => path === 'xl/connections.xml' || path.startsWith('xl/slicerCaches/') || path.startsWith('xl/slicers/'),
   )
+  phaseRecorder.finish('zip-setup', zipSetupStart)
+  let ownedSourceReleasedForReplacement = false
+  if (options.releaseZipSource === true && options.replacementZipSource) {
+    const zipSourceReleaseStart = phaseRecorder.start()
+    const zipSourceBytesBeforeRelease = readLazyXlsxZipSourceByteLength(zip)
+    const zipSourceReplaced = replaceLazyXlsxZipSource(zip, options.replacementZipSource)
+    const ownedSourceReleaseEvidence = zipSourceReplaced ? options.releaseOwnedSourceBytes?.() : undefined
+    ownedSourceReleasedForReplacement = Boolean(ownedSourceReleaseEvidence)
+    phaseRecorder.finish('zip-source-release', zipSourceReleaseStart, {
+      ...(zipSourceBytesBeforeRelease !== undefined ? { zipSourceBytesBeforeRelease } : {}),
+      ...(zipSourceBytesBeforeRelease !== undefined ? { zipSourceBytesAfterRelease: readLazyXlsxZipSourceByteLength(zip) ?? 0 } : {}),
+      ...ownedSourceReleaseEvidence,
+    })
+  }
   const importedExternalLinkArtifacts =
     materializeCells && hasExternalLinkParts ? readImportedWorkbookExternalLinkArtifacts(zip) : undefined
   const importedDataModelArtifacts = materializeCells && hasDataModelParts ? readImportedWorkbookDataModelArtifacts(zip) : undefined
@@ -199,7 +214,6 @@ export function tryImportLargeSimpleXlsx(
   if (hasExternalLargeSimplePivotCaches(zip)) {
     warnings.push(externalPivotCachesWarning)
   }
-  phaseRecorder.finish('zip-setup', zipSetupStart)
   const importedTables: WorkbookTableSnapshot[] = []
   const sheets: WorkbookSnapshot['sheets'] = []
   const previewSheets: ParsedWorksheet['preview'][] = []
@@ -706,10 +720,14 @@ export function tryImportLargeSimpleXlsx(
       opaqueArtifacts: [importedPivotArtifacts?.artifacts],
     })
     const retainZipSourceForLazyPackageArtifacts = zipSourceBytesBeforeRelease !== undefined && artifactReleasePlan.retainZipSource
-    if (!retainZipSourceForLazyPackageArtifacts) {
+    const releaseZipSource = !retainZipSourceForLazyPackageArtifacts && !options.replacementZipSource
+    if (releaseZipSource) {
       releaseLazyXlsxZipSource(zip)
     }
-    const ownedSourceReleaseEvidence = retainZipSourceForLazyPackageArtifacts ? undefined : options.releaseOwnedSourceBytes?.()
+    const ownedSourceReleaseEvidence =
+      ownedSourceReleasedForReplacement || (retainZipSourceForLazyPackageArtifacts && options.replacementZipSource)
+        ? undefined
+        : options.releaseOwnedSourceBytes?.()
     phaseRecorder.finish('zip-source-release', zipSourceReleaseStart, {
       ...(zipSourceBytesBeforeRelease !== undefined ? { zipSourceBytesBeforeRelease } : {}),
       ...(zipSourceBytesBeforeRelease !== undefined ? { zipSourceBytesAfterRelease: readLazyXlsxZipSourceByteLength(zip) ?? 0 } : {}),

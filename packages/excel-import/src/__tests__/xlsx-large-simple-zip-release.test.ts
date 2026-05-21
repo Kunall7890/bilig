@@ -140,6 +140,25 @@ describe('large simple XLSX import ZIP ownership', () => {
     )
   })
 
+  it('spools large public import source bytes while preserving unchanged export', () => {
+    const bytes = buildSharedStringWorkbook({
+      'docProps/padding.bin': deterministicBytes(9_000_000),
+    })
+
+    const imported = importXlsx(bytes, 'large-public-source-spool.xlsx')
+    const releasePhase = imported.stats?.phaseTelemetry.find((entry) => entry.phase === 'zip-source-release')
+    const exported = exportXlsx(imported.snapshot)
+
+    expect(imported.snapshot.sheets[0]?.cells).toEqual([
+      { address: 'A1', value: 'Alpha' },
+      { address: 'B1', value: 'Beta' },
+    ])
+    expect(releasePhase?.ownedSourceBytesBeforeRelease).toBeGreaterThan(8 * 1024 * 1024)
+    expect(releasePhase?.ownedSourceBytesAfterRelease).toBe(0)
+    expect(exported).toStrictEqual(bytes)
+    expect(detachImportedXlsxSourceBytes(imported.snapshot)).toBe(true)
+  }, 30_000)
+
   it('retains byte-source readers by default for unchanged export', () => {
     const bytes = buildSharedStringWorkbook({
       'docProps/padding.bin': deterministicBytes(1_200_000),

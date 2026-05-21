@@ -110,6 +110,16 @@ export function releaseLazyXlsxZipSource(zip: XlsxZipEntries): boolean {
   return true
 }
 
+export function replaceLazyXlsxZipSource(zip: XlsxZipEntries, source: XlsxZipByteSource): boolean {
+  const metadata = (zip as XlsxZipEntriesWithCentralDirectorySource)[xlsxZipCentralDirectorySourceSymbol]
+  if (!metadata?.source) {
+    return false
+  }
+  metadata.source.release?.()
+  metadata.source = source
+  return true
+}
+
 export function releaseInflatedLazyXlsxZipEntries(zip: XlsxZipEntries): number {
   const metadata = (zip as XlsxZipEntriesWithCentralDirectorySource)[xlsxZipCentralDirectorySourceSymbol]
   if (!metadata?.source) {
