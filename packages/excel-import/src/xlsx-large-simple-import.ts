@@ -17,6 +17,7 @@ import { readImportedWorkbookDrawingArtifactsFromWorksheetRelationships } from '
 import { readImportedWorkbookExternalLinkArtifacts } from './xlsx-external-link-artifacts.js'
 import { readImportedSheetAutoFilters } from './xlsx-filters.js'
 import { readImportedWorkbookChartDrawingArtifacts } from './xlsx-import-chart-drawing-artifacts.js'
+import { externalPivotCachesWarning } from './xlsx-import-warnings.js'
 import { buildLargeSimpleCellMetadataReferenceSnapshots } from './xlsx-large-simple-cell-metadata.js'
 import { readWorkbookDefinedNames } from './xlsx-large-simple-defined-names.js'
 import { readLargeSimpleSheetHyperlinks, resolveLargeSimpleSheetHyperlinks } from './xlsx-large-simple-hyperlinks.js'
@@ -38,16 +39,22 @@ import {
 import { shouldUseSharedStringlessFastPathBytes } from './xlsx-large-simple-shared-stringless-fast-path.js'
 import { buildLargeSimpleStyleRanges } from './xlsx-large-simple-style-ranges.js'
 import { readLargeSimpleWorkbookStylesFromChunks } from './xlsx-large-simple-styles.js'
+import { applyLargeSimpleNumberFormatsToCells, readLargeSimpleWorkbookNumberFormatsFromChunks } from './xlsx-large-simple-number-formats.js'
 import {
   maxPreallocatedWorksheetCells,
   prepareLargeSimpleStyleIndexes,
   shouldDeferLargeSimpleStyleCoordinates,
 } from './xlsx-large-simple-style-coordinate-rescan.js'
 import { collectLargeSimpleImportGarbage } from './xlsx-large-simple-garbage.js'
+import {
+  drawingRelationshipIdForScannedWorksheet,
+  releaseProjectedCellScanStorage,
+  sheetPivotArtifactsWithStreamedDefinitions,
+} from './xlsx-large-simple-materialization-helpers.js'
 import { mergeWorkbookRichTextCells } from './xlsx-large-simple-lazy-rich-text-cells.js'
+import { hasExternalLargeSimplePivotCaches } from './xlsx-large-simple-pivot-warnings.js'
 import { ImportedWorkbookStringPool } from './xlsx-large-simple-string-pool.js'
 import type { ImportedWorksheetCellScan } from './xlsx-large-simple-arena.js'
-import { releaseProjectedCellScanStorage } from './xlsx-large-simple-cell-scan-release.js'
 import { readImportedWorksheetSheetProtection } from './xlsx-sheet-protection.js'
 import {
   largeSimpleControlArtifactSheetSources,
@@ -65,7 +72,6 @@ import {
 import { parseLargeSimpleWorksheetCellsFromChunks } from './xlsx-large-simple-worksheet-stream-scanner.js'
 import {
   readLargeSimpleColumnMetadata,
-  readLargeSimpleDrawingRelationshipId,
   readLargeSimpleMergeRanges,
   readLargeSimpleRowMetadata,
   readLargeSimpleSheetFormatPr,
@@ -264,6 +270,9 @@ export function tryImportLargeSimpleXlsx(
   delete zip[workbookRelationshipsPath]
   const workbookName = stringPool.intern(normalizeWorkbookName(fileName))
   const warnings = workbookDefinedNames.ignoredCount > 0 ? ['Some defined names were ignored during XLSX import.'] : []
+  if (hasExternalLargeSimplePivotCaches(zip)) {
+    warnings.push(externalPivotCachesWarning)
+  }
   phaseRecorder.finish('zip-setup', zipSetupStart)
   const importedTables: WorkbookTableSnapshot[] = []
   const sheets: WorkbookSnapshot['sheets'] = []
@@ -587,17 +596,36 @@ export function tryImportLargeSimpleXlsx(
           requiredStyleIndexes,
         )
       : new Map()
+  const parsedNumberFormatsByStyleIndex =
+    materializeCells && hasStyles
+      ? readLargeSimpleWorkbookNumberFormatsFromChunks(
+          (onChunk) => forEachInflatedXlsxZipEntryChunk(zip, stylesPath, onChunk),
+          requiredStyleIndexes,
+        )
+      : new Map()
+  if (parsedNumberFormatsByStyleIndex === null) {
+    return null
+  }
   const stylesByIndex = parsedStylesByIndex ?? new Map()
+  const numberFormatsByStyleIndex = parsedNumberFormatsByStyleIndex
   if (parsedStylesByIndex === null) {
     warnings.push('Some cell styles were ignored during XLSX import.')
   }
   requiredStyleIndexes.clear()
   if (
-    !prepareLargeSimpleStyleIndexes(zip, worksheetEntries, scannedWorksheets, stylesByIndex, {
-      hasSharedStrings,
-      ...(options.allowUnsupportedFormulaText === undefined ? {} : { allowUnsupportedFormulaText: options.allowUnsupportedFormulaText }),
-      ...(options.allowUnsupportedCellMetadata === undefined ? {} : { allowUnsupportedCellMetadata: options.allowUnsupportedCellMetadata }),
-    })
+    !prepareLargeSimpleStyleIndexes(
+      zip,
+      worksheetEntries,
+      scannedWorksheets,
+      stylesByIndex.size > 0 ? stylesByIndex : numberFormatsByStyleIndex,
+      {
+        hasSharedStrings,
+        ...(options.allowUnsupportedFormulaText === undefined ? {} : { allowUnsupportedFormulaText: options.allowUnsupportedFormulaText }),
+        ...(options.allowUnsupportedCellMetadata === undefined
+          ? {}
+          : { allowUnsupportedCellMetadata: options.allowUnsupportedCellMetadata }),
+      },
+    )
   ) {
     return null
   }
@@ -721,6 +749,7 @@ export function tryImportLargeSimpleXlsx(
         ...(options.includeCellCoordinates === undefined ? {} : { includeCellCoordinates: options.includeCellCoordinates }),
         styleCatalog,
         stylesByIndex,
+        numberFormatsByStyleIndex,
       },
     )
     appendParsedWorksheet(parsed)
@@ -879,6 +908,7 @@ function buildParsedWorksheet(
     readonly materializeCells: boolean
     readonly releaseArenaAfterMaterialization?: boolean
     readonly includeCellCoordinates?: boolean
+    readonly numberFormatsByStyleIndex?: ReadonlyMap<number, string>
     readonly styleCatalog?: Map<string, CellStyleRecord>
     readonly stylesByIndex?: ReadonlyMap<number, Omit<CellStyleRecord, 'id'>>
   } = { materializeCells: true },
@@ -916,6 +946,9 @@ function buildParsedWorksheet(
       ? cellScan.arena.createLazySheetCells(cellScan.sheetIndex, cellMaterializationOptions)
       : cellScan.arena.materializeSheetCells(cellScan.sheetIndex, cellMaterializationOptions)
     : []
+  if (!useLazyCells && options.numberFormatsByStyleIndex && options.numberFormatsByStyleIndex.size > 0) {
+    applyLargeSimpleNumberFormatsToCells(cells, cellScan, options.numberFormatsByStyleIndex)
+  }
   const cellMetadataRefs = buildLargeSimpleCellMetadataReferenceSnapshots(metadataScan?.cellMetadataRefs, cells, cellScan, useLazyCells)
   releaseProjectedCellScanStorage(cellScan, {
     releaseArenaAfterMaterialization: options.releaseArenaAfterMaterialization,
@@ -972,24 +1005,4 @@ function buildParsedWorksheet(
     },
   }
   return parsed
-}
-
-function sheetPivotArtifactsWithStreamedDefinitions(
-  artifacts: SheetMetadataSnapshot['pivotArtifacts'],
-  pivotTableDefinitionsXml: string | undefined,
-): SheetMetadataSnapshot['pivotArtifacts'] {
-  if (!pivotTableDefinitionsXml) {
-    return artifacts
-  }
-  return {
-    relationships: artifacts?.relationships ?? [],
-    pivotTableDefinitionsXml,
-  }
-}
-
-function drawingRelationshipIdForScannedWorksheet(scanned: ScannedWorksheet): string | undefined {
-  return (
-    scanned.metadataScan?.drawingRelationshipId ??
-    (scanned.worksheetXml ? readLargeSimpleDrawingRelationshipId(scanned.worksheetXml) : undefined)
-  )
 }

@@ -843,6 +843,90 @@ describe('useWorkerWorkbookInteractionState', () => {
     })
   })
 
+  it('keeps a local range selection visible when the worker only echoes the active cell', async () => {
+    ;(globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true
+
+    const sendSelectionChanged = vi.fn()
+    const selectedCell = stringCell('Sheet1', 'A1', 'one')
+    const workerHandle = {
+      viewportStore: createViewportStoreMapStub([selectedCell, stringCell('Sheet1', 'A1', 'one'), stringCell('Sheet1', 'D4', 'active')]),
+    }
+    const harness = mountHarness()
+    let captured: ReturnType<typeof useWorkerWorkbookInteractionState> | null = null
+    const baseProps = {
+      documentId: 'doc-1',
+      selectedCell,
+      workerHandle,
+      invokeMutation: vi.fn(async () => undefined),
+      sendSelectionChanged,
+      capture: (value: ReturnType<typeof useWorkerWorkbookInteractionState>) => {
+        captured = value
+      },
+    }
+
+    await harness.render({
+      ...baseProps,
+      selection: { sheetName: 'Sheet1', address: 'A1' },
+    })
+    if (!captured) {
+      throw new Error('Expected interaction state capture')
+    }
+
+    await act(async () => {
+      captured?.handleSelectionChange(rangeSnapshot('Sheet1', 'D4', 'B2', 'D4'))
+    })
+    expect(captured.selectionSnapshot).toMatchObject({
+      sheetName: 'Sheet1',
+      address: 'D4',
+      kind: 'range',
+      range: { startAddress: 'B2', endAddress: 'D4' },
+    })
+    expect(captured.selectionRangeRef.current).toEqual({
+      sheetName: 'Sheet1',
+      startAddress: 'B2',
+      endAddress: 'D4',
+    })
+
+    await harness.render({
+      ...baseProps,
+      selection: { sheetName: 'Sheet1', address: 'A1' },
+    })
+    expect(captured.selectionSnapshot).toMatchObject({
+      address: 'D4',
+      kind: 'range',
+      range: { startAddress: 'B2', endAddress: 'D4' },
+    })
+
+    await harness.render({
+      ...baseProps,
+      selection: { sheetName: 'Sheet1', address: 'D4' },
+    })
+    expect(captured.selectionSnapshot).toMatchObject({
+      address: 'D4',
+      kind: 'range',
+      range: { startAddress: 'B2', endAddress: 'D4' },
+    })
+
+    await harness.render({
+      ...baseProps,
+      selection: { sheetName: 'Sheet1', address: 'A1' },
+    })
+    expect(captured.selectionSnapshot).toMatchObject({
+      address: 'D4',
+      kind: 'range',
+      range: { startAddress: 'B2', endAddress: 'D4' },
+    })
+    expect(captured.selectionRangeRef.current).toEqual({
+      sheetName: 'Sheet1',
+      startAddress: 'B2',
+      endAddress: 'D4',
+    })
+
+    await act(async () => {
+      harness.root.unmount()
+    })
+  })
+
   it('updates visible selection and editor readback before authoritative selection catches up', async () => {
     ;(globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true
 
@@ -1039,6 +1123,19 @@ function singleCellSnapshot(sheetName: string, address: string): GridSelectionSn
       sheetName,
       startAddress: address,
       endAddress: address,
+    },
+  }
+}
+
+function rangeSnapshot(sheetName: string, address: string, startAddress: string, endAddress: string): GridSelectionSnapshot {
+  return {
+    sheetName,
+    address,
+    kind: 'range',
+    range: {
+      sheetName,
+      startAddress,
+      endAddress,
     },
   }
 }

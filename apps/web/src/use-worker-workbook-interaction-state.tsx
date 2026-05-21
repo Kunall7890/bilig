@@ -54,6 +54,16 @@ function selectionSnapshotsEqual(left: GridSelectionSnapshot, right: GridSelecti
   )
 }
 
+function workerSelectionAcknowledgesSnapshot(snapshot: GridSelectionSnapshot, selection: WorkerRuntimeSelection): boolean {
+  return (
+    snapshot.kind === 'cell' &&
+    snapshot.sheetName === selection.sheetName &&
+    snapshot.address === selection.address &&
+    snapshot.range.startAddress === selection.address &&
+    snapshot.range.endAddress === selection.address
+  )
+}
+
 function readMountedCellEditorValue(): string | null {
   if (typeof document === 'undefined') {
     return null
@@ -177,18 +187,10 @@ export function useWorkerWorkbookInteractionState(input: {
       return
     }
     selectionRef.current = selection
-    if (
-      activeLocalSelection &&
-      activeLocalSelection.sheetName === selection.sheetName &&
-      activeLocalSelection.address === selection.address
-    ) {
+    if (activeLocalSelection && workerSelectionAcknowledgesSnapshot(activeLocalSelection, selection)) {
       pendingLocalSelectionRef.current = null
     }
-    if (
-      activeExternalSelection &&
-      activeExternalSelection.sheetName === selection.sheetName &&
-      activeExternalSelection.address === selection.address
-    ) {
+    if (activeExternalSelection && workerSelectionAcknowledgesSnapshot(activeExternalSelection, selection)) {
       pendingExternalSelectionRef.current = null
     }
     if (previousSelection.sheetName !== selection.sheetName || previousSelection.address !== selection.address) {
@@ -717,7 +719,7 @@ export function useWorkerWorkbookInteractionState(input: {
     (nextSelectionSnapshot: GridSelectionSnapshot, options?: { markAsExternal?: boolean }) => {
       const { sheetName, address } = nextSelectionSnapshot
       const previousSelection = selectionRef.current
-      const previousRange = selectionRangeRef.current
+      const previousSnapshot = selectionSnapshotRef.current
       const wasEditing = editingModeRef.current !== 'idle'
       if (wasEditing) {
         commitEditor(undefined, undefined, editorTargetRef.current)
@@ -725,13 +727,7 @@ export function useWorkerWorkbookInteractionState(input: {
           return
         }
       }
-      if (
-        previousSelection.sheetName === sheetName &&
-        previousSelection.address === address &&
-        previousRange.sheetName === sheetName &&
-        previousRange.startAddress === nextSelectionSnapshot.range.startAddress &&
-        previousRange.endAddress === nextSelectionSnapshot.range.endAddress
-      ) {
+      if (selectionSnapshotsEqual(previousSnapshot, nextSelectionSnapshot)) {
         if (options?.markAsExternal) {
           sendSelectionChanged({ sheetName, address })
         }

@@ -240,6 +240,15 @@ export function visitIndexedDirectAggregateColumnDependentsForRow(
   return true
 }
 
+export function collectIndexedDirectAggregateColumnDependentsForRow(dependents: Set<number>, row: number): number[] | undefined {
+  const collected: number[] = []
+  const usedIndex = visitIndexedDirectAggregateColumnDependentsForRow(dependents, row, (formulaCellIndex) => {
+    collected.push(formulaCellIndex)
+    return true
+  })
+  return usedIndex ? collected.toReversed() : undefined
+}
+
 function forEachDirectAggregateColumnDependencyKey(
   workbook: FormulaBindingSheetLookup,
   directAggregate: RuntimeDirectAggregateDescriptor | undefined,

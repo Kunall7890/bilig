@@ -5,6 +5,7 @@ import { stringifyWorkbookAgentContextSyncKey, stringifyWorkbookAgentRenderedPro
 
 const AGENT_CONTEXT_SYNC_DEBOUNCE_MS = 150
 const AGENT_CONTEXT_SYNC_MIN_INTERVAL_MS = 750
+const AGENT_CONTEXT_SYNC_ACTIVE_PRIORITY_MIN_INTERVAL_MS = 1_000
 const AGENT_CONTEXT_SYNC_PASSIVE_IN_PROGRESS_MIN_INTERVAL_MS = 5_000
 const AGENT_CONTEXT_SYNC_FAILURE_RETRY_INITIAL_MS = 2_000
 const AGENT_CONTEXT_SYNC_FAILURE_RETRY_MAX_MS = 15_000
@@ -150,8 +151,10 @@ export function useWorkbookAgentContextSync(input: {
       return
     }
     const shouldPrioritizeSync = !hasSyncedContextRef.current || lastPriorityContextKeyRef.current !== nextPriorityContextKey
-    const minimumIntervalMs =
-      !shouldPrioritizeSync && snapshotRef.current.status === 'inProgress'
+    const shouldRateLimitPrioritySync = shouldPrioritizeSync && hasSyncedContextRef.current && snapshotRef.current.status === 'inProgress'
+    const minimumIntervalMs = shouldRateLimitPrioritySync
+      ? AGENT_CONTEXT_SYNC_ACTIVE_PRIORITY_MIN_INTERVAL_MS
+      : !shouldPrioritizeSync && snapshotRef.current.status === 'inProgress'
         ? AGENT_CONTEXT_SYNC_PASSIVE_IN_PROGRESS_MIN_INTERVAL_MS
         : AGENT_CONTEXT_SYNC_MIN_INTERVAL_MS
     if (hasSyncedContextRef.current && !shouldPrioritizeSync && snapshotRef.current.status !== 'inProgress') {
@@ -177,7 +180,7 @@ export function useWorkbookAgentContextSync(input: {
     }
     const elapsedSinceLastSync = window.performance.now() - lastContextSyncAtRef.current
     const delayMs = resolveContextSyncDelay(
-      shouldPrioritizeSync
+      shouldPrioritizeSync && !shouldRateLimitPrioritySync
         ? AGENT_CONTEXT_SYNC_DEBOUNCE_MS
         : Math.max(AGENT_CONTEXT_SYNC_DEBOUNCE_MS, minimumIntervalMs - elapsedSinceLastSync),
     )

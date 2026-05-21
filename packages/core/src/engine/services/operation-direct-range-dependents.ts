@@ -7,7 +7,10 @@ import {
   directAggregateNumericContribution,
   directCriteriaTouchesPoint,
 } from './direct-formula-recalc-helpers.js'
-import { visitIndexedDirectAggregateColumnDependentsForRow } from './formula-binding-dependency-helpers.js'
+import {
+  collectIndexedDirectAggregateColumnDependentsForRow,
+  visitIndexedDirectAggregateColumnDependentsForRow,
+} from './formula-binding-dependency-helpers.js'
 
 export interface OperationDirectRangePoint {
   readonly sheetName: string
@@ -110,7 +113,12 @@ export function createOperationDirectRangeDependentService(args: {
       consider(dependents[dependentIndex]!)
     }
     if (sheetId !== undefined) {
-      args.reverseAggregateColumnEdges.get(aggregateColumnDependencyKey(sheetId, request.col))?.forEach(consider)
+      const aggregateDependents = args.reverseAggregateColumnEdges.get(aggregateColumnDependencyKey(sheetId, request.col))
+      if (aggregateDependents !== undefined) {
+        const indexedDependents = collectIndexedDirectAggregateColumnDependentsForRow(aggregateDependents, request.row)
+        const dependentsToVisit = indexedDependents ?? aggregateDependents
+        dependentsToVisit.forEach(consider)
+      }
     }
     return affected
   }

@@ -73,6 +73,7 @@ import { buildImportedFormulaSnapshotCell } from './xlsx-import-formula-cells.js
 import { readImportedMacroCodeNames } from './xlsx-import-macro-code-names.js'
 import { buildImportedSheetMetadata } from './xlsx-import-sheet-metadata.js'
 import { buildImportedWorkbookMetadata } from './xlsx-import-workbook-metadata.js'
+import { addStyleArtifactCandidateAddresses } from './xlsx-style-artifact-candidate-addresses.js'
 import {
   addWorkbookWarnings,
   dataTableFormulasWarning,
@@ -167,45 +168,6 @@ function toUint8Array(value: unknown): Uint8Array | null {
     return new Uint8Array(value)
   }
   return null
-}
-
-function addCandidateAddress(addressesBySheet: Map<string, Set<string>>, sheetName: string, address: string): boolean {
-  const addresses = addressesBySheet.get(sheetName) ?? new Set<string>()
-  const previousSize = addresses.size
-  addresses.add(address)
-  if (addresses.size > previousSize) {
-    addressesBySheet.set(sheetName, addresses)
-    return true
-  }
-  return false
-}
-
-function addStyleArtifactCandidateAddresses(
-  candidates: ReturnType<typeof collectStyleCandidateAddresses>,
-  importedStyleArtifacts: ReturnType<typeof readImportedWorkbookStyleArtifacts>,
-  maxCandidateCount: number,
-): ReturnType<typeof collectStyleCandidateAddresses> {
-  let count = candidates.count
-  const addressesBySheet = new Map([...candidates.addressesBySheet].map(([sheetName, addresses]) => [sheetName, new Set(addresses)]))
-  for (const [sheetName, artifacts] of importedStyleArtifacts.sheetArtifactsByName) {
-    for (const entry of artifacts.cellStyleIndexes) {
-      if (addCandidateAddress(addressesBySheet, sheetName, entry.address)) {
-        count += 1
-      }
-      if (count > maxCandidateCount) {
-        return candidates
-      }
-    }
-    for (const address of artifacts.blankCellAddresses ?? []) {
-      if (addCandidateAddress(addressesBySheet, sheetName, address)) {
-        count += 1
-      }
-      if (count > maxCandidateCount) {
-        return candidates
-      }
-    }
-  }
-  return { addressesBySheet, count }
 }
 
 function buildImportedLegacyCommentVmlSnapshot(
