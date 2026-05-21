@@ -26,9 +26,11 @@ import { GpuBufferArenaV3, type GpuBufferHandleV3 } from './gpu-buffer-arena.js'
 import { GRID_RECT_INSTANCE_FLOAT_COUNT_V3 } from './rect-instance-buffer.js'
 import type { GridRenderTile } from './render-tile-source.js'
 import { isFullGridRenderTileDirtySpanV3 } from './render-tile-dirty-spans.js'
+import { DirtyMaskV3 } from './tile-damage-index.js'
 import { shouldAttemptAxisOnlyTileTextGeometryResourceSync, syncAxisOnlyTileTextGeometryResource } from './typegpu-axis-text-sync.js'
 import type { WorkbookRenderTilePaneState } from './render-tile-pane-state.js'
 import {
+  areGridRectTileRevisionKeysEqualV3,
   areGridTextTileRevisionKeysEqualV3,
   resolveGridRectTileRevisionKeyV3,
   resolveGridTextTileRevisionKeyV3,
@@ -55,6 +57,8 @@ const TEXT_INSTANCE_FLOAT_COUNT = 16
 const RECT_INSTANCE_BYTE_COUNT = RECT_INSTANCE_FLOAT_COUNT * Float32Array.BYTES_PER_ELEMENT
 const TEXT_INSTANCE_BYTE_COUNT = TEXT_INSTANCE_FLOAT_COUNT * Float32Array.BYTES_PER_ELEMENT
 const MIN_TILE_TEXT_INSTANCE_COUNT = 32
+const RECT_PARTIAL_WRITE_UNSAFE_DIRTY_MASK_V3 =
+  DirtyMaskV3.Style | DirtyMaskV3.Rect | DirtyMaskV3.Border | DirtyMaskV3.AxisX | DirtyMaskV3.AxisY | DirtyMaskV3.Freeze
 
 export interface TypeGpuTileContentResourceEntryV3 {
   rectBaseCount: number
@@ -570,6 +574,7 @@ function syncTileRectResource(input: {
   readonly content: TypeGpuTileContentResourceEntryV3
   readonly rectRevisionKey: TypeGpuTileRectRevisionKeyV3
 }): void {
+  const previousRectRevisionKey = input.content.rectRevisionKey
   const decorationRects = input.content.decorationRects ?? []
   const rectPayload = buildRectInstanceDataFromTile({
     decorationRects,
@@ -591,6 +596,11 @@ function syncTileRectResource(input: {
   writeTileRectPayload({
     canWritePartialPayload: canWritePartialPayload && handle === previousHandle,
     content: input.content,
+    forceFullPayloadWrite: shouldForceFullRectPayloadWriteForDirtyRevisionV3({
+      dirtyMask: resolveTileDirtyMaskForPartialRectWriteV3(input.pane.tile),
+      nextRectRevisionKey: input.rectRevisionKey,
+      previousRectRevisionKey,
+    }),
     handle,
     label: `tile-rect:${resolveWorkbookTileContentBufferKeyV3(input.pane)}`,
     rectPayload,
@@ -603,6 +613,7 @@ function syncTileRectResource(input: {
 function writeTileRectPayload(input: {
   readonly canWritePartialPayload: boolean
   readonly content: TypeGpuTileContentResourceEntryV3
+  readonly forceFullPayloadWrite: boolean
   readonly handle: GpuBufferHandleV3<RectInstanceVertexBuffer>
   readonly label: string
   readonly rectPayload: { readonly floats: Float32Array; readonly count: number }
@@ -614,6 +625,7 @@ function writeTileRectPayload(input: {
       canWritePartialPayload: input.canWritePartialPayload,
       contentRectCount: input.content.rectCount,
       dirtySpans,
+      forceFullPayloadWrite: input.forceFullPayloadWrite,
       rectPayloadCount: input.rectPayload.count,
     })
   ) {
@@ -651,14 +663,42 @@ export function shouldFullWriteTileRectPayloadV3(input: {
   readonly canWritePartialPayload: boolean
   readonly contentRectCount: number
   readonly dirtySpans: readonly { readonly offset: number; readonly length: number }[]
+  readonly forceFullPayloadWrite?: boolean | undefined
   readonly rectPayloadCount: number
 }): boolean {
   return (
+    input.forceFullPayloadWrite === true ||
     !input.canWritePartialPayload ||
     input.contentRectCount !== input.rectPayloadCount ||
     input.dirtySpans.length === 0 ||
     input.dirtySpans.some((span) => isFullGridRenderTileDirtySpanV3(span, input.rectPayloadCount))
   )
+}
+
+export function shouldForceFullRectPayloadWriteForDirtyRevisionV3(input: {
+  readonly dirtyMask: number | null
+  readonly nextRectRevisionKey: TypeGpuTileRectRevisionKeyV3
+  readonly previousRectRevisionKey: TypeGpuTileRectRevisionKeyV3 | null
+}): boolean {
+  if (
+    input.previousRectRevisionKey === null ||
+    areGridRectTileRevisionKeysEqualV3(input.previousRectRevisionKey, input.nextRectRevisionKey)
+  ) {
+    return false
+  }
+  return input.dirtyMask !== null && (input.dirtyMask & RECT_PARTIAL_WRITE_UNSAFE_DIRTY_MASK_V3) !== 0
+}
+
+function resolveTileDirtyMaskForPartialRectWriteV3(tile: Pick<GridRenderTile, 'dirtyMasks'>): number | null {
+  const dirtyMasks = tile.dirtyMasks
+  if (!dirtyMasks || dirtyMasks.length === 0) {
+    return null
+  }
+  let mask = 0
+  for (const dirtyMask of dirtyMasks) {
+    mask |= dirtyMask
+  }
+  return mask
 }
 
 function prepareRectBuffer(

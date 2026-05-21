@@ -1581,6 +1581,17 @@ test('@browser-webgpu @browser-deep large range fill remains applied after scrol
     (result) => allReadbackPointsMatch(result, isThemeGreenFill),
   )
 
+  await pickToolbarPresetColor(page, 'Fill color', 'light cornflower blue 2')
+  const repaintReadback = await waitForReadback(
+    page,
+    {
+      points: initialPoints,
+      regions: [],
+    },
+    (result) => result.sequence > initialReadback.sequence && allReadbackPointsMatch(result, isCornflowerBlueFill),
+  )
+  expect(repaintReadback.sequence).toBeGreaterThan(initialReadback.sequence)
+
   await page.getByTestId('grid-scroll-viewport').evaluate((viewport, rowHeight) => {
     if (!(viewport instanceof HTMLDivElement)) {
       throw new Error('grid scroll viewport is not a div')
@@ -1596,12 +1607,12 @@ test('@browser-webgpu @browser-deep large range fill remains applied after scrol
       points: scrolledPoints,
       regions: [],
     },
-    (result) => result.sequence > initialReadback.sequence && allReadbackPointsMatch(result, isThemeGreenFill),
+    (result) => result.sequence > repaintReadback.sequence && allReadbackPointsMatch(result, isCornflowerBlueFill),
   )
-  expect(scrolledReadback.sequence).toBeGreaterThan(initialReadback.sequence)
+  expect(scrolledReadback.sequence).toBeGreaterThan(repaintReadback.sequence)
 
   await clickProductCell(page, 4, 8)
-  await pickToolbarPresetColor(page, 'Fill color', 'light cornflower blue 2')
+  await pickToolbarPresetColor(page, 'Fill color', 'theme green')
   const overrideReadback = await waitForReadback(
     page,
     {
@@ -1610,9 +1621,9 @@ test('@browser-webgpu @browser-deep large range fill remains applied after scrol
     },
     (result) =>
       result.sequence > scrolledReadback.sequence &&
-      isThemeGreenFill(result.points.scrolledD) &&
-      isCornflowerBlueFill(result.points.scrolledE) &&
-      isThemeGreenFill(result.points.scrolledF),
+      isCornflowerBlueFill(result.points.scrolledD) &&
+      isThemeGreenFill(result.points.scrolledE) &&
+      isCornflowerBlueFill(result.points.scrolledF),
   )
   expect(overrideReadback.sequence).toBeGreaterThan(scrolledReadback.sequence)
   await saveReadbackArtifact(

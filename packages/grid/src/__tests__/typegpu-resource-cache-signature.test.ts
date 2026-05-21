@@ -8,6 +8,7 @@ import {
   resolveGridRectTileRevisionKeyV3,
   resolveGridTextTileRevisionKeyV3,
   resolveMissingTextGlyphRunSpansV3,
+  shouldForceFullRectPayloadWriteForDirtyRevisionV3,
   shouldFullWriteTileRectPayloadV3,
   shouldSyncGridRectTileResourceV3,
   shouldSyncGridTextTileResourceV3,
@@ -175,6 +176,62 @@ describe('typegpu v3 resource cache revision keys', () => {
         contentRectCount: 2,
         dirtySpans: [{ length: 1, offset: 1 }],
         rectPayloadCount: 2,
+      }),
+    ).toBe(false)
+  })
+
+  test('full-writes V3 rect payloads for dirty style revision changes even with partial spans', () => {
+    const base = createTile({
+      dirtyMasks: new Uint32Array([DirtyMaskV3.Style]),
+      rectCount: 4,
+      rectSignature: 'base-fill',
+    })
+    const changed = createTile({
+      dirtyMasks: new Uint32Array([DirtyMaskV3.Style]),
+      rectCount: 4,
+      rectSignature: 'changed-fill',
+      version: { ...base.version, styles: base.version.styles + 1 },
+    })
+    const forceFullPayloadWrite = shouldForceFullRectPayloadWriteForDirtyRevisionV3({
+      dirtyMask: DirtyMaskV3.Style,
+      nextRectRevisionKey: rectRevisionKey(changed),
+      previousRectRevisionKey: rectRevisionKey(base),
+    })
+
+    expect(forceFullPayloadWrite).toBe(true)
+    expect(
+      shouldFullWriteTileRectPayloadV3({
+        canWritePartialPayload: true,
+        contentRectCount: 4,
+        dirtySpans: [{ length: 1, offset: 2 }],
+        forceFullPayloadWrite,
+        rectPayloadCount: 4,
+      }),
+    ).toBe(true)
+  })
+
+  test('keeps V3 rect partial writes for non-rect dirty revision changes', () => {
+    const base = createTile({ rectCount: 4, rectSignature: 'stable-fill' })
+    const valueOnly = createTile({
+      dirtyMasks: new Uint32Array([DirtyMaskV3.Value]),
+      rectCount: 4,
+      rectSignature: 'stable-fill',
+      version: { ...base.version, values: base.version.values + 1 },
+    })
+    const forceFullPayloadWrite = shouldForceFullRectPayloadWriteForDirtyRevisionV3({
+      dirtyMask: DirtyMaskV3.Value,
+      nextRectRevisionKey: rectRevisionKey(valueOnly),
+      previousRectRevisionKey: rectRevisionKey(base),
+    })
+
+    expect(forceFullPayloadWrite).toBe(false)
+    expect(
+      shouldFullWriteTileRectPayloadV3({
+        canWritePartialPayload: true,
+        contentRectCount: 4,
+        dirtySpans: [{ length: 1, offset: 2 }],
+        forceFullPayloadWrite,
+        rectPayloadCount: 4,
       }),
     ).toBe(false)
   })
