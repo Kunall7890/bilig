@@ -11,7 +11,7 @@ export function requireXlsxCorpusVerifierDiscovery(content: string): void {
     '# Do not trust stale XLSX cached formula values',
     'Only the second report is an accuracy verdict.',
     '## Run the Excel oracle harness',
-    'pnpm workpaper:xlsx-oracle -- prepare-oracle /path/to/workbooks "$OUT"',
+    'The Excel oracle harness belongs in a workspace package',
     'cache-diagnostic.json',
     'excel-oracle-report.json',
     'missing_excel_oracle',

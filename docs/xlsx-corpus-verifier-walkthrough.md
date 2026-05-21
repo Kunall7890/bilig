@@ -66,15 +66,8 @@ correctness bug.
 
 ## Run the Excel oracle harness
 
-From the repository root:
-
-```sh
-OUT=.cache/excel-oracle-evaluation
-pnpm workpaper:xlsx-oracle -- prepare-oracle /path/to/workbooks "$OUT"
-pnpm workpaper:xlsx-oracle -- evaluate-cache /path/to/workbooks "$OUT"
-pnpm workpaper:xlsx-oracle -- evaluate-oracle /path/to/workbooks "$OUT/recalculated" "$OUT"
-pnpm workpaper:xlsx-oracle -- summarize "$OUT"
-```
+The Excel oracle harness belongs in a workspace package, not as a root-level
+one-off script. Use the packaged harness once it is installed in this repo.
 
 The commands preserve your original files. All derived workbooks and reports go
 under the output folder.
@@ -249,9 +242,7 @@ For a service that depends on workbook logic, keep a small private corpus in the
 repo or in a CI-only fixture bundle:
 
 ```sh
-pnpm workpaper:xlsx-oracle -- prepare-oracle ./fixtures/workbooks .cache/oracle
-pnpm workpaper:xlsx-oracle -- evaluate-oracle ./fixtures/workbooks .cache/oracle/recalculated .cache/oracle
-pnpm workpaper:xlsx-oracle -- summarize .cache/oracle
+pnpm workpaper:xlsx-corpus:check -- ./fixtures/workbooks
 ```
 
 Five to ten representative workbooks are usually better than hundreds of files
