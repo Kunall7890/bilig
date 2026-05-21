@@ -2,12 +2,17 @@ import { WORKBOOK_AGENT_TOOL_NAMES, normalizeWorkbookAgentToolName } from '@bili
 import type { WorkbookAgentThreadState } from './workbook-agent-service-shared.js'
 
 const RENDERED_CONTEXT_WAIT_TIMEOUT_MS = 20_000
+const RENDERED_CONTEXT_ATTACH_TIMEOUT_MS = 1_000
 const RENDERED_CONTEXT_POLL_INTERVAL_MS = 50
 
 type WorkbookAgentUiContext = WorkbookAgentThreadState['durable']['context']
 
 export function hasRenderedContext(context: WorkbookAgentUiContext): boolean {
   return context?.rendered !== undefined
+}
+
+function canPollForRenderedContext(context: WorkbookAgentUiContext): boolean {
+  return context !== null
 }
 
 function renderedRevision(context: WorkbookAgentUiContext): number | null {
@@ -39,6 +44,7 @@ export async function waitForWorkbookAgentRenderedContext(input: {
   readonly delay?: (ms: number) => Promise<void>
   readonly now?: () => number
   readonly timeoutMs?: number
+  readonly attachTimeoutMs?: number
   readonly pollIntervalMs?: number
 }): Promise<WorkbookAgentUiContext> {
   const delay =
@@ -49,14 +55,22 @@ export async function waitForWorkbookAgentRenderedContext(input: {
       }))
   const now = input.now ?? Date.now
   const timeoutMs = input.timeoutMs ?? RENDERED_CONTEXT_WAIT_TIMEOUT_MS
+  const attachTimeoutMs = input.attachTimeoutMs ?? RENDERED_CONTEXT_ATTACH_TIMEOUT_MS
   const pollIntervalMs = input.pollIntervalMs ?? RENDERED_CONTEXT_POLL_INTERVAL_MS
-  const deadline = now() + timeoutMs
+  const startedAt = now()
+  const deadline = startedAt + timeoutMs
+  const attachDeadline = startedAt + attachTimeoutMs
 
   const pollRenderedContext = async (latestContext: WorkbookAgentUiContext): Promise<WorkbookAgentUiContext> => {
     if (hasRenderedContextAtRevision(latestContext, input.minRevision) && (!input.isReady || (await input.isReady(latestContext)))) {
       return latestContext
     }
-    if (!hasRenderedContext(latestContext) || now() >= deadline) {
+    const latestNow = now()
+    if (
+      !canPollForRenderedContext(latestContext) ||
+      latestNow >= deadline ||
+      (!hasRenderedContext(latestContext) && latestNow >= attachDeadline)
+    ) {
       return latestContext
     }
     await delay(pollIntervalMs)

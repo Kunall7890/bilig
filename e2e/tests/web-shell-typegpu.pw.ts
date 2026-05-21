@@ -1194,6 +1194,13 @@ test('@browser-webgpu @browser-deep selected range fill changes stay visually au
 
 test('@browser-webgpu @browser-deep moved content delete preserves selected fill without fallback flashes', async ({ page }, testInfo) => {
   const movedText = 'move-fill-delete-proof'
+  const movedTextRegion = {
+    name: 'movedTextGlyphs',
+    x0: PRODUCT_ROW_MARKER_WIDTH + PRODUCT_COLUMN_WIDTH * 3 + 8,
+    y0: PRODUCT_HEADER_HEIGHT + PRODUCT_ROW_HEIGHT * 3 + 5,
+    x1: PRODUCT_ROW_MARKER_WIDTH + PRODUCT_COLUMN_WIDTH * 4 - 8,
+    y1: PRODUCT_HEADER_HEIGHT + PRODUCT_ROW_HEIGHT * 4 - 5,
+  } as const
   const points = [
     { ...selectedRangeFillProbe(1, 1), name: 'topLeft' },
     { ...selectedRangeFillProbe(2, 4), name: 'middle' },
@@ -1205,6 +1212,8 @@ test('@browser-webgpu @browser-deep moved content delete preserves selected fill
   await gotoWorkbookShell(page, `/?document=${encodeURIComponent(createTestDocumentId('typegpu-move-fill-delete-no-flash'))}`)
   await waitForWorkbookReady(page)
   await waitForTypeGpuRenderer(page)
+  await expect(page.getByTestId('grid-pane-renderer')).toHaveAttribute('data-v3-backend-status', 'ready')
+  await expect(page.getByTestId('grid-native-text-layer')).toHaveCount(0)
   await page.waitForFunction(
     () =>
       Boolean(
@@ -1228,6 +1237,15 @@ test('@browser-webgpu @browser-deep moved content delete preserves selected fill
   await expect(formulaInput).toHaveValue('')
   await clickProductCell(page, 3, 3)
   await expect(formulaInput).toHaveValue(movedText)
+  const movedTextReadback = await waitForReadback(
+    page,
+    {
+      points: [],
+      regions: [movedTextRegion],
+    },
+    (result) => result.darkPixelCounts.movedTextGlyphs > 6,
+  )
+  expect(movedTextReadback.darkPixelCounts.movedTextGlyphs).toBeGreaterThan(6)
 
   await dragProductBodySelection(page, 1, 1, 3, 8)
   await expect(page.getByTestId('status-selection')).toContainText('!B2:D9')
@@ -1249,11 +1267,15 @@ test('@browser-webgpu @browser-deep moved content delete preserves selected fill
     page,
     {
       points,
-      regions: [],
+      regions: [movedTextRegion],
     },
-    (result) => result.sequence >= greenReadback.sequence && allReadbackPointsMatch(result, isThemeGreenFill),
+    (result) =>
+      result.sequence >= greenReadback.sequence &&
+      allReadbackPointsMatch(result, isThemeGreenFill) &&
+      result.darkPixelCounts.movedTextGlyphs <= 2,
   )
   expect(afterDeleteReadback.sequence).toBeGreaterThanOrEqual(greenReadback.sequence)
+  expect(afterDeleteReadback.darkPixelCounts.movedTextGlyphs).toBeLessThanOrEqual(2)
 
   await clickProductCell(page, 3, 3)
   await expect(formulaInput).toHaveValue('')

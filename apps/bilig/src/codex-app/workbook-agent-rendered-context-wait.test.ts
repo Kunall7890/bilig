@@ -32,6 +32,25 @@ function context(capturedRevision: number | null): WorkbookAgentUiContext {
   }
 }
 
+function contextWithoutRendered(): WorkbookAgentUiContext {
+  return {
+    selection: {
+      sheetName: 'Sheet1',
+      address: 'A1',
+      range: {
+        startAddress: 'A1',
+        endAddress: 'A1',
+      },
+    },
+    viewport: {
+      rowStart: 0,
+      rowEnd: 10,
+      colStart: 0,
+      colEnd: 10,
+    },
+  }
+}
+
 describe('workbook agent rendered context wait policy', () => {
   it('requires captured revision freshness instead of treating any rendered context as proof', () => {
     expect(hasRenderedContextAtRevision(context(4), 5)).toBe(false)
@@ -63,6 +82,7 @@ describe('workbook agent rendered context wait policy', () => {
         },
         now: () => now,
         timeoutMs: 1_000,
+        attachTimeoutMs: 1_000,
         pollIntervalMs: 50,
       }),
     ).resolves.toMatchObject({
@@ -71,5 +91,81 @@ describe('workbook agent rendered context wait policy', () => {
       },
     })
     expect(refreshes).toEqual([0, 50, 100])
+  })
+
+  it('waits for browser-rendered proof when a live UI context exists but rendered proof has not arrived yet', async () => {
+    const contexts = [contextWithoutRendered(), contextWithoutRendered(), context(6)]
+    const refreshes: number[] = []
+    let now = 0
+
+    await expect(
+      waitForWorkbookAgentRenderedContext({
+        minRevision: 6,
+        refreshContext: async () => {
+          refreshes.push(now)
+          return contexts.shift() ?? context(6)
+        },
+        delay: async (ms) => {
+          now += ms
+        },
+        now: () => now,
+        timeoutMs: 1_000,
+        pollIntervalMs: 50,
+      }),
+    ).resolves.toMatchObject({
+      rendered: {
+        capturedRevision: 6,
+      },
+    })
+    expect(refreshes).toEqual([0, 50, 100])
+  })
+
+  it('stops waiting after the rendered-proof attach grace when no browser proof arrives', async () => {
+    const refreshes: number[] = []
+    let now = 0
+
+    await expect(
+      waitForWorkbookAgentRenderedContext({
+        minRevision: 6,
+        refreshContext: async () => {
+          refreshes.push(now)
+          return contextWithoutRendered()
+        },
+        delay: async (ms) => {
+          now += ms
+        },
+        now: () => now,
+        timeoutMs: 1_000,
+        attachTimeoutMs: 150,
+        pollIntervalMs: 50,
+      }),
+    ).resolves.toMatchObject({
+      selection: {
+        address: 'A1',
+      },
+    })
+    expect(refreshes).toEqual([0, 50, 100, 150])
+  })
+
+  it('does not wait for rendered proof when no UI context is attached to the tool call', async () => {
+    const refreshes: number[] = []
+    let delayed = false
+
+    await expect(
+      waitForWorkbookAgentRenderedContext({
+        minRevision: 1,
+        refreshContext: async () => {
+          refreshes.push(refreshes.length)
+          return null
+        },
+        delay: async () => {
+          delayed = true
+        },
+        timeoutMs: 1_000,
+        pollIntervalMs: 50,
+      }),
+    ).resolves.toBeNull()
+    expect(refreshes).toEqual([0])
+    expect(delayed).toBe(false)
   })
 })
