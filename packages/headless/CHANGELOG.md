@@ -4,6 +4,22 @@ All notable changes to `@bilig/headless` will be documented in this file.
 
 This package is released as part of the aligned bilig library package set.
 
+## 0.40.37
+
+- Release type: patch
+- Previous libraries tag: libraries-v0.40.35
+- Manual override: no
+
+## Fixes
+- perf(core): index sliding aggregate dependent collection (e726b7b8)
+- perf(core): tighten direct formula delta batches (a55ac416)
+- perf(excel-import): stream control workbook artifacts (e8ee7810)
+
+## Internal runtime changes
+- refactor(excel-import): split style artifact candidates (069bdf62)
+- ci(release): require full ci before npm publish (f191097b)
+- chore(release): runtime packages v0.40.36 (059f37b7)
+
 ## 0.40.36
 
 - Release type: patch
