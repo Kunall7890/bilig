@@ -27,12 +27,13 @@ describe('macOS Desktop Excel oracle harness', () => {
     })
 
     expect(script).toContain('tell application "Microsoft Excel"')
-    expect(script).toContain('open workbook workbook file name workbookPath')
+    expect(script).toContain('open workbook workbook file name workbookPath update links do not update links')
     expect(script).toContain('set formula of range "C1"')
     expect(script).toContain('calculate full rebuild')
     expect(script).toContain('my typedCellValue(value of range "C1"')
     expect(script).toContain('string value of range "C1"')
     expect(script).toContain('close targetWorkbook saving no')
+    expect(script).not.toContain('set display alerts')
     expect(script).not.toContain('active workbook')
   })
 
@@ -47,6 +48,20 @@ describe('macOS Desktop Excel oracle harness', () => {
     expect(script).toContain('close targetWorkbook saving yes')
   })
 
+  it('can open companion workbooks and ask Excel to update external links', () => {
+    const script = createMacosExcelInspectionAppleScript({
+      worksheetName: 'Cases',
+      formulaCells: [],
+      inspectCells: ['C1'],
+      updateLinks: 'external',
+    })
+
+    expect(script).toContain('repeat with companionIndex from 2 to count of argv')
+    expect(script).toContain('open workbook workbook file name companionPath update links do not update links')
+    expect(script).toContain('open workbook workbook file name workbookPath update links update external links only')
+    expect(script).toContain('repeat with companionWorkbook in companionWorkbooks')
+  })
+
   it('builds an inspection runner that reads formulas and values from the opened workbook', () => {
     const script = createMacosExcelInspectionAppleScript({
       worksheetName: 'Cases',
@@ -56,9 +71,11 @@ describe('macOS Desktop Excel oracle harness', () => {
     })
 
     expect(script).toContain('set inspectedRange to range "C1"')
+    expect(script).toContain('open workbook workbook file name workbookPath update links do not update links')
     expect(script).toContain('my formulaText(formula of inspectedRange)')
     expect(script).toContain('my typedCellValue(value of inspectedRange, string value of inspectedRange)')
     expect(script).toContain('close targetWorkbook saving yes')
+    expect(script).not.toContain('set display alerts')
     expect(script).not.toContain('active workbook')
   })
 
@@ -71,11 +88,13 @@ describe('macOS Desktop Excel oracle harness', () => {
     })
 
     expect(script).toContain('set targetWorksheet to worksheet "Cases"')
+    expect(script).toContain('open workbook workbook file name workbookPath update links do not update links')
     expect(script).toContain('cut range (range "B:B" of targetWorksheet)')
     expect(script).toContain('insert into range (range "F:F" of targetWorksheet) shift shift to right')
     expect(script).toContain('set inspectedRange to range "F1" of targetWorksheet')
     expect(script).toContain('my typedCellValue(value of inspectedRange, string value of inspectedRange)')
     expect(script).toContain('close targetWorkbook saving yes')
+    expect(script).not.toContain('set display alerts')
     expect(script).not.toContain('active workbook')
   })
 

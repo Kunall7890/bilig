@@ -1,7 +1,7 @@
 import { execFileSync } from 'node:child_process'
-import { existsSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs'
-import { tmpdir } from 'node:os'
-import { join } from 'node:path'
+import { copyFileSync, existsSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs'
+import { homedir } from 'node:os'
+import { basename, join } from 'node:path'
 
 import { ErrorCode } from '@bilig/protocol'
 
@@ -14,14 +14,18 @@ export interface MacosExcelOracleFormulaCell {
   readonly formula: string
 }
 
+export type MacosExcelLinkUpdateMode = 'all' | 'external' | 'never' | 'remote'
+
 export interface MacosExcelRecalculationOracleRequest {
   readonly workbookPath: string
   readonly worksheetName: string
   readonly formulaCells: readonly MacosExcelOracleFormulaCell[]
   readonly valueCells: readonly string[]
+  readonly companionWorkbookPaths?: readonly string[]
   readonly appPath?: string
   readonly saveWorkbook?: boolean
   readonly timeoutMs?: number
+  readonly updateLinks?: MacosExcelLinkUpdateMode
 }
 
 export interface MacosExcelRecalculationOracleResult {
@@ -35,9 +39,11 @@ export interface MacosExcelInspectionOracleRequest {
   readonly worksheetName: string
   readonly formulaCells: readonly MacosExcelOracleFormulaCell[]
   readonly inspectCells: readonly string[]
+  readonly companionWorkbookPaths?: readonly string[]
   readonly appPath?: string
   readonly saveWorkbook?: boolean
   readonly timeoutMs?: number
+  readonly updateLinks?: MacosExcelLinkUpdateMode
 }
 
 export type MacosExcelStructuralOperation =
@@ -55,10 +61,12 @@ export interface MacosExcelStructuralOperationOracleRequest {
   readonly worksheetName: string
   readonly operations: readonly MacosExcelStructuralOperation[]
   readonly inspectCells: readonly string[]
+  readonly companionWorkbookPaths?: readonly string[]
   readonly formulaCells?: readonly MacosExcelOracleFormulaCell[]
   readonly appPath?: string
   readonly saveWorkbook?: boolean
   readonly timeoutMs?: number
+  readonly updateLinks?: MacosExcelLinkUpdateMode
 }
 
 export interface MacosExcelCellInspection {
@@ -83,14 +91,16 @@ export function runMacosExcelRecalculationOracle(request: MacosExcelRecalculatio
     throw new Error(`Microsoft Excel app is not installed at ${appPath}`)
   }
 
-  const tempDir = mkdtempSync(join(tmpdir(), 'bilig-macos-excel-oracle-'))
+  const tempDir = createMacosExcelOracleTempDir('bilig-macos-excel-oracle-')
   const scriptPath = join(tempDir, 'recalculate.scpt')
   try {
+    const stagedWorkbookPath = stageWorkbookForMacosExcelOracle(request.workbookPath, tempDir)
     writeFileSync(scriptPath, createMacosExcelRecalculationAppleScript(request))
-    const rawOutput = execFileSync('osascript', [scriptPath, request.workbookPath], {
+    const rawOutput = execFileSync('osascript', [scriptPath, stagedWorkbookPath, ...(request.companionWorkbookPaths ?? [])], {
       encoding: 'utf8',
       timeout: request.timeoutMs ?? 60_000,
     }).trim()
+    copySavedWorkbookFromMacosExcelOracle(request, stagedWorkbookPath)
     return parseMacosExcelRecalculationOutput(rawOutput, request.valueCells.length)
   } finally {
     rmSync(tempDir, { recursive: true, force: true })
@@ -103,14 +113,16 @@ export function runMacosExcelInspectionOracle(request: MacosExcelInspectionOracl
     throw new Error(`Microsoft Excel app is not installed at ${appPath}`)
   }
 
-  const tempDir = mkdtempSync(join(tmpdir(), 'bilig-macos-excel-oracle-inspect-'))
+  const tempDir = createMacosExcelOracleTempDir('bilig-macos-excel-oracle-inspect-')
   const scriptPath = join(tempDir, 'inspect.scpt')
   try {
+    const stagedWorkbookPath = stageWorkbookForMacosExcelOracle(request.workbookPath, tempDir)
     writeFileSync(scriptPath, createMacosExcelInspectionAppleScript(request))
-    const rawOutput = execFileSync('osascript', [scriptPath, request.workbookPath], {
+    const rawOutput = execFileSync('osascript', [scriptPath, stagedWorkbookPath, ...(request.companionWorkbookPaths ?? [])], {
       encoding: 'utf8',
       timeout: request.timeoutMs ?? 60_000,
     }).trim()
+    copySavedWorkbookFromMacosExcelOracle(request, stagedWorkbookPath)
     return parseMacosExcelInspectionOutput(rawOutput, request.inspectCells)
   } finally {
     rmSync(tempDir, { recursive: true, force: true })
@@ -125,28 +137,86 @@ export function runMacosExcelStructuralOperationOracle(
     throw new Error(`Microsoft Excel app is not installed at ${appPath}`)
   }
 
-  const tempDir = mkdtempSync(join(tmpdir(), 'bilig-macos-excel-oracle-structure-'))
+  const tempDir = createMacosExcelOracleTempDir('bilig-macos-excel-oracle-structure-')
   const scriptPath = join(tempDir, 'structure.scpt')
   try {
+    const stagedWorkbookPath = stageWorkbookForMacosExcelOracle(request.workbookPath, tempDir)
     writeFileSync(scriptPath, createMacosExcelStructuralOperationAppleScript(request))
-    const rawOutput = execFileSync('osascript', [scriptPath, request.workbookPath], {
+    const rawOutput = execFileSync('osascript', [scriptPath, stagedWorkbookPath, ...(request.companionWorkbookPaths ?? [])], {
       encoding: 'utf8',
       timeout: request.timeoutMs ?? 60_000,
     }).trim()
+    copySavedWorkbookFromMacosExcelOracle(request, stagedWorkbookPath)
     return parseMacosExcelInspectionOutput(rawOutput, request.inspectCells)
   } finally {
     rmSync(tempDir, { recursive: true, force: true })
   }
 }
 
+function createMacosExcelOracleTempDir(prefix: string): string {
+  const root = join(homedir(), 'Library/Containers/com.microsoft.Excel/Data/tmp/bilig-excel-oracle')
+  mkdirSync(root, { recursive: true })
+  return mkdtempSync(join(root, prefix))
+}
+
+function stageWorkbookForMacosExcelOracle(workbookPath: string, tempDir: string): string {
+  const stagedWorkbookPath = join(tempDir, basename(workbookPath))
+  copyFileSync(workbookPath, stagedWorkbookPath)
+  return stagedWorkbookPath
+}
+
+function copySavedWorkbookFromMacosExcelOracle(
+  request:
+    | Pick<MacosExcelRecalculationOracleRequest, 'saveWorkbook' | 'workbookPath'>
+    | Pick<MacosExcelInspectionOracleRequest, 'saveWorkbook' | 'workbookPath'>
+    | Pick<MacosExcelStructuralOperationOracleRequest, 'saveWorkbook' | 'workbookPath'>,
+  stagedWorkbookPath: string,
+): void {
+  if (request.saveWorkbook === true) {
+    copyFileSync(stagedWorkbookPath, request.workbookPath)
+  }
+}
+
+function macosExcelUpdateLinksModeAppleScript(mode: MacosExcelLinkUpdateMode): string {
+  switch (mode) {
+    case 'all':
+      return 'update remote and external links'
+    case 'external':
+      return 'update external links only'
+    case 'never':
+      return 'do not update links'
+    case 'remote':
+      return 'update remote links only'
+  }
+}
+
+function openCompanionWorkbooksAppleScript(): string {
+  return `      if (count of argv) > 1 then
+        repeat with companionIndex from 2 to count of argv
+          set companionPath to item companionIndex of argv
+          set companionWorkbook to open workbook workbook file name companionPath update links do not update links
+          set companionWorkbooks to companionWorkbooks & {companionWorkbook}
+        end repeat
+      end if`
+}
+
+function closeCompanionWorkbooksAppleScript(): string {
+  return `      repeat with companionWorkbook in companionWorkbooks
+        try
+          close companionWorkbook saving no
+        end try
+      end repeat`
+}
+
 export function createMacosExcelRecalculationAppleScript(
-  request: Pick<MacosExcelRecalculationOracleRequest, 'formulaCells' | 'saveWorkbook' | 'valueCells' | 'worksheetName'>,
+  request: Pick<MacosExcelRecalculationOracleRequest, 'formulaCells' | 'saveWorkbook' | 'updateLinks' | 'valueCells' | 'worksheetName'>,
 ): string {
   if (request.valueCells.length === 0) {
     throw new Error('macOS Excel oracle request must read at least one value cell')
   }
 
   const closeSavingMode = request.saveWorkbook === true ? 'yes' : 'no'
+  const updateLinksMode = macosExcelUpdateLinksModeAppleScript(request.updateLinks ?? 'never')
   const formulaCells = request.formulaCells
     .map(
       (cell) =>
@@ -167,27 +237,27 @@ export function createMacosExcelRecalculationAppleScript(
     .join('\n')
 
   return `on run argv
-  set workbookPath to POSIX file (item 1 of argv)
+  set workbookPath to item 1 of argv
   set targetWorkbook to missing value
+  set companionWorkbooks to {}
   set output to ""
   tell application "Microsoft Excel"
-    set display alerts to false
-    set screen updating to false
     try
-      set targetWorkbook to open workbook workbook file name workbookPath
+${openCompanionWorkbooksAppleScript()}
+      set targetWorkbook to open workbook workbook file name workbookPath update links ${updateLinksMode}
 ${formulaCells}
       calculate full rebuild
       set output to "version=" & (version as string)
 ${valueReads}
       close targetWorkbook saving ${closeSavingMode}
-      set screen updating to true
+${closeCompanionWorkbooksAppleScript()}
     on error errMsg number errNum
       if targetWorkbook is not missing value then
         try
           close targetWorkbook saving no
         end try
       end if
-      set screen updating to true
+${closeCompanionWorkbooksAppleScript()}
       error errMsg number errNum
     end try
   end tell
@@ -234,13 +304,14 @@ end isExcelErrorDisplayText
 }
 
 export function createMacosExcelInspectionAppleScript(
-  request: Pick<MacosExcelInspectionOracleRequest, 'formulaCells' | 'inspectCells' | 'saveWorkbook' | 'worksheetName'>,
+  request: Pick<MacosExcelInspectionOracleRequest, 'formulaCells' | 'inspectCells' | 'saveWorkbook' | 'updateLinks' | 'worksheetName'>,
 ): string {
   if (request.inspectCells.length === 0) {
     throw new Error('macOS Excel inspection oracle request must inspect at least one cell')
   }
 
   const closeSavingMode = request.saveWorkbook === true ? 'yes' : 'no'
+  const updateLinksMode = macosExcelUpdateLinksModeAppleScript(request.updateLinks ?? 'never')
   const formulaCells = request.formulaCells
     .map(
       (cell) =>
@@ -259,27 +330,27 @@ export function createMacosExcelInspectionAppleScript(
     .join('\n')
 
   return `on run argv
-  set workbookPath to POSIX file (item 1 of argv)
+  set workbookPath to item 1 of argv
   set targetWorkbook to missing value
+  set companionWorkbooks to {}
   set output to ""
   tell application "Microsoft Excel"
-    set display alerts to false
-    set screen updating to false
     try
-      set targetWorkbook to open workbook workbook file name workbookPath
+${openCompanionWorkbooksAppleScript()}
+      set targetWorkbook to open workbook workbook file name workbookPath update links ${updateLinksMode}
 ${formulaCells}
       calculate full rebuild
       set output to "version=" & (version as string)
 ${inspectionReads}
       close targetWorkbook saving ${closeSavingMode}
-      set screen updating to true
+${closeCompanionWorkbooksAppleScript()}
     on error errMsg number errNum
       if targetWorkbook is not missing value then
         try
           close targetWorkbook saving no
         end try
       end if
-      set screen updating to true
+${closeCompanionWorkbooksAppleScript()}
       error errMsg number errNum
     end try
   end tell
@@ -292,7 +363,7 @@ ${cellValueAppleScriptHelpers()}`
 export function createMacosExcelStructuralOperationAppleScript(
   request: Pick<
     MacosExcelStructuralOperationOracleRequest,
-    'formulaCells' | 'inspectCells' | 'operations' | 'saveWorkbook' | 'worksheetName'
+    'formulaCells' | 'inspectCells' | 'operations' | 'saveWorkbook' | 'worksheetName' | 'updateLinks'
   >,
 ): string {
   if (request.operations.length === 0) {
@@ -303,6 +374,7 @@ export function createMacosExcelStructuralOperationAppleScript(
   }
 
   const closeSavingMode = request.saveWorkbook === true ? 'yes' : 'no'
+  const updateLinksMode = macosExcelUpdateLinksModeAppleScript(request.updateLinks ?? 'never')
   const formulaCells = (request.formulaCells ?? [])
     .map(
       (cell) =>
@@ -319,14 +391,14 @@ export function createMacosExcelStructuralOperationAppleScript(
     .join('\n')
 
   return `on run argv
-  set workbookPath to POSIX file (item 1 of argv)
+  set workbookPath to item 1 of argv
   set targetWorkbook to missing value
+  set companionWorkbooks to {}
   set output to ""
   tell application "Microsoft Excel"
-    set display alerts to false
-    set screen updating to false
     try
-      set targetWorkbook to open workbook workbook file name workbookPath
+${openCompanionWorkbooksAppleScript()}
+      set targetWorkbook to open workbook workbook file name workbookPath update links ${updateLinksMode}
       set targetWorksheet to worksheet ${toAppleScriptString(request.worksheetName)} of targetWorkbook
 ${formulaCells}
 ${operations}
@@ -334,14 +406,14 @@ ${operations}
       set output to "version=" & (version as string)
 ${inspectionReads}
       close targetWorkbook saving ${closeSavingMode}
-      set screen updating to true
+${closeCompanionWorkbooksAppleScript()}
     on error errMsg number errNum
       if targetWorkbook is not missing value then
         try
           close targetWorkbook saving no
         end try
       end if
-      set screen updating to true
+${closeCompanionWorkbooksAppleScript()}
       error errMsg number errNum
     end try
   end tell

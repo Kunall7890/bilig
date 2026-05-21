@@ -100,6 +100,16 @@ function normalizeCellAddress(address: string): string {
   return address.replaceAll('$', '').toUpperCase()
 }
 
+interface ParsedCellAddress {
+  readonly row: number
+  readonly col: number
+}
+
+interface CachedExternalRange {
+  readonly formulaLiteral: string
+  readonly resolvedCount: number
+}
+
 function resolveTargetPath(basePartPath: string, target: string): string {
   if (target.startsWith('/')) {
     return target.replace(/^\/+/, '')
@@ -424,6 +434,19 @@ function readCellAddress(source: string, startIndex: number): { readonly address
   return { address, endIndex }
 }
 
+function parseCachedCellAddress(address: string): ParsedCellAddress | null {
+  const match = /^([A-Z]{1,3})([1-9][0-9]{0,6})$/u.exec(normalizeCellAddress(address))
+  if (!match) {
+    return null
+  }
+  let col = 0
+  for (const character of match[1]!) {
+    col = col * 26 + character.charCodeAt(0) - 64
+  }
+  const row = Number(match[2])
+  return col > 0 && Number.isSafeInteger(row) ? { row: row - 1, col: col - 1 } : null
+}
+
 function readExternalSheetName(value: string): { readonly bookIndex: number; readonly sheetName: string } | null {
   const match = /^\[([1-9][0-9]*)\](.+)$/u.exec(value)
   if (!match) {
@@ -456,6 +479,51 @@ function isRangeOrSpillReference(source: string, addressStartIndex: number, addr
   return source[addressStartIndex - 1] === ':' || source[addressEndIndex] === ':' || source[addressEndIndex] === '#'
 }
 
+function readCachedExternalRange(
+  caches: ImportedExternalLinkCaches,
+  bookIndex: number,
+  sheetName: string,
+  startAddress: string,
+  endAddress: string,
+): CachedExternalRange | null {
+  const start = parseCachedCellAddress(startAddress)
+  const end = parseCachedCellAddress(endAddress)
+  if (!start || !end) {
+    return null
+  }
+  const rowStart = Math.min(start.row, end.row)
+  const rowEnd = Math.max(start.row, end.row)
+  const colStart = Math.min(start.col, end.col)
+  const colEnd = Math.max(start.col, end.col)
+  const rows: string[][] = []
+  for (let row = rowStart; row <= rowEnd; row += 1) {
+    const values: string[] = []
+    for (let col = colStart; col <= colEnd; col += 1) {
+      const value = cachedExternalValue(caches, bookIndex, sheetName, formatA1Address(row, col))
+      if (!value) {
+        return null
+      }
+      values.push(formatFormulaLiteral(value))
+    }
+    rows.push(values)
+  }
+  return {
+    formulaLiteral: `{${rows.map((row) => row.join(',')).join(';')}}`,
+    resolvedCount: (rowEnd - rowStart + 1) * (colEnd - colStart + 1),
+  }
+}
+
+function formatA1Address(row: number, col: number): string {
+  let current = col + 1
+  let column = ''
+  while (current > 0) {
+    const remainder = (current - 1) % 26
+    column = String.fromCharCode(65 + remainder) + column
+    current = Math.floor((current - 1) / 26)
+  }
+  return `${column}${String(row + 1)}`
+}
+
 function formatFormulaLiteral(value: ExternalCachedValue): string {
   switch (value.kind) {
     case 'number':
@@ -482,6 +550,10 @@ function formulaNeedsPivotReferenceContext(formula: string): boolean {
   return /\bGETPIVOTDATA\s*\(/iu.test(formula)
 }
 
+function formulaNeedsCriteriaRangeReferenceContext(formula: string): boolean {
+  return /\b(?:AVERAGEIF|AVERAGEIFS|COUNTIF|COUNTIFS|MAXIFS|MINIFS|SUMIF|SUMIFS)\s*\(/iu.test(formula)
+}
+
 export function translateImportedFormulaExternalReferences(
   formula: string,
   caches: ImportedExternalLinkCaches,
@@ -490,6 +562,9 @@ export function translateImportedFormulaExternalReferences(
     return { formula, resolvedCount: 0, unresolvedCount: 0 }
   }
   if (formulaNeedsPivotReferenceContext(formula)) {
+    return { formula, resolvedCount: 0, unresolvedCount: 0 }
+  }
+  if (formulaNeedsCriteriaRangeReferenceContext(formula)) {
     return { formula, resolvedCount: 0, unresolvedCount: 0 }
   }
   let output = ''
@@ -515,9 +590,35 @@ export function translateImportedFormulaExternalReferences(
       }
       const externalSheet = readExternalSheetName(quoted.value)
       const address = readCellAddress(formula, quoted.endIndex + 1)
-      if (!externalSheet || !address || isRangeOrSpillReference(formula, quoted.endIndex + 1, address.endIndex)) {
+      if (!externalSheet || !address) {
         output += formula.slice(index, address?.endIndex ?? quoted.endIndex + 1)
         index = address?.endIndex ?? quoted.endIndex + 1
+        continue
+      }
+      if (formula[address.endIndex] === ':') {
+        const endAddress = readCellAddress(formula, address.endIndex + 1)
+        if (endAddress) {
+          const range = readCachedExternalRange(
+            caches,
+            externalSheet.bookIndex,
+            externalSheet.sheetName,
+            address.address,
+            endAddress.address,
+          )
+          if (range) {
+            output += range.formulaLiteral
+            resolvedCount += range.resolvedCount
+          } else {
+            output += formula.slice(index, endAddress.endIndex)
+            unresolvedCount += 1
+          }
+          index = endAddress.endIndex
+          continue
+        }
+      }
+      if (isRangeOrSpillReference(formula, quoted.endIndex + 1, address.endIndex)) {
+        output += formula.slice(index, address.endIndex)
+        index = address.endIndex
         continue
       }
       const value = cachedExternalValue(caches, externalSheet.bookIndex, externalSheet.sheetName, address.address)
@@ -534,7 +635,33 @@ export function translateImportedFormulaExternalReferences(
     if (character === '[') {
       const externalSheet = readUnquotedExternalSheetReference(formula, index)
       const address = externalSheet ? readCellAddress(formula, externalSheet.endIndex + 1) : null
-      if (!externalSheet || !address || isRangeOrSpillReference(formula, externalSheet.endIndex + 1, address.endIndex)) {
+      if (!externalSheet || !address) {
+        output += character
+        index += 1
+        continue
+      }
+      if (formula[address.endIndex] === ':') {
+        const endAddress = readCellAddress(formula, address.endIndex + 1)
+        if (endAddress) {
+          const range = readCachedExternalRange(
+            caches,
+            externalSheet.bookIndex,
+            externalSheet.sheetName,
+            address.address,
+            endAddress.address,
+          )
+          if (range) {
+            output += range.formulaLiteral
+            resolvedCount += range.resolvedCount
+          } else {
+            output += formula.slice(index, endAddress.endIndex)
+            unresolvedCount += 1
+          }
+          index = endAddress.endIndex
+          continue
+        }
+      }
+      if (isRangeOrSpillReference(formula, externalSheet.endIndex + 1, address.endIndex)) {
         output += character
         index += 1
         continue
