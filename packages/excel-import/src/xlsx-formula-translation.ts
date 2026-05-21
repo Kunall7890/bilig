@@ -18,10 +18,78 @@ interface StructuredReferenceRewriteContext {
 
 const namespacedSpreadsheetFormulaPattern = /^(?:msoxl|of):=/iu
 
+const xlsxFutureFunctionNames: ReadonlySet<string> = new Set([
+  'ARRAYTOTEXT',
+  'BASE',
+  'BITAND',
+  'BITLSHIFT',
+  'BITOR',
+  'BITRSHIFT',
+  'BITXOR',
+  'CEILING.MATH',
+  'CEILING.PRECISE',
+  'CHOOSECOLS',
+  'CHOOSEROWS',
+  'COMBINA',
+  'CONCAT',
+  'DAYS',
+  'DECIMAL',
+  'DROP',
+  'EXPAND',
+  'FILTER',
+  'FLOOR.MATH',
+  'FLOOR.PRECISE',
+  'FORMULATEXT',
+  'GAUSS',
+  'HSTACK',
+  'IFNA',
+  'IFS',
+  'ISFORMULA',
+  'ISOWEEKNUM',
+  'LET',
+  'MAXIFS',
+  'MINIFS',
+  'MUNIT',
+  'NUMBERVALUE',
+  'PDURATION',
+  'PHI',
+  'RRI',
+  'SEQUENCE',
+  'SHEET',
+  'SHEETS',
+  'SORT',
+  'SORTBY',
+  'SWITCH',
+  'TAKE',
+  'TEXTAFTER',
+  'TEXTBEFORE',
+  'TEXTJOIN',
+  'TEXTSPLIT',
+  'TOCOL',
+  'TOROW',
+  'UNICHAR',
+  'UNICODE',
+  'UNIQUE',
+  'VALUETOTEXT',
+  'VSTACK',
+  'WEBSERVICE',
+  'WRAPCOLS',
+  'WRAPROWS',
+  'XLOOKUP',
+  'XMATCH',
+  'XOR',
+] as const)
+
+const xlsxWorksheetFutureFunctionNames: ReadonlySet<string> = new Set(['FILTER'] as const)
+
 export function normalizeImportedFormulaSource(formula: string): string {
   const trimmed = formula.trim()
   const prefix = namespacedSpreadsheetFormulaPattern.exec(trimmed)
-  return prefix ? trimmed.slice(prefix[0].length) : formula
+  return transformFormulaFunctionNames(prefix ? trimmed.slice(prefix[0].length) : formula, normalizeImportedFunctionToken)
+}
+
+export function encodeFormulaForXlsx(formula: string): string {
+  return transformFormulaFunctionNames(formula, encodeFunctionTokenForXlsx)
 }
 
 function isIdentifierStart(character: string): boolean {
@@ -30,6 +98,77 @@ function isIdentifierStart(character: string): boolean {
 
 function isIdentifierPart(character: string): boolean {
   return /[A-Za-z0-9_.]/u.test(character)
+}
+
+function skipWhitespace(source: string, startIndex: number): number {
+  let index = startIndex
+  while (index < source.length && /\s/u.test(source[index]!)) {
+    index += 1
+  }
+  return index
+}
+
+function transformFormulaFunctionNames(formula: string, transform: (name: string) => string): string {
+  let output = ''
+  let index = 0
+  while (index < formula.length) {
+    const character = formula[index]!
+    if (character === '"') {
+      const endIndex = skipDoubleQuotedString(formula, index)
+      output += formula.slice(index, endIndex)
+      index = endIndex
+      continue
+    }
+    if (character === "'") {
+      const endIndex = skipSingleQuotedSheetName(formula, index)
+      output += formula.slice(index, endIndex)
+      index = endIndex
+      continue
+    }
+    if (!isIdentifierStart(character)) {
+      output += character
+      index += 1
+      continue
+    }
+
+    let endIndex = index + 1
+    while (endIndex < formula.length && isIdentifierPart(formula[endIndex]!)) {
+      endIndex += 1
+    }
+    const name = formula.slice(index, endIndex)
+    const callStartIndex = skipWhitespace(formula, endIndex)
+    output += formula[callStartIndex] === '(' ? transform(name) : name
+    index = endIndex
+  }
+  return output
+}
+
+function normalizeImportedFunctionToken(name: string): string {
+  const upper = name.toUpperCase()
+  if (upper.startsWith('_XLFN._XLWS.')) {
+    return name.slice('_xlfn._xlws.'.length)
+  }
+  if (upper.startsWith('_XLFN.')) {
+    return name.slice('_xlfn.'.length)
+  }
+  if (upper.startsWith('_XLWS.')) {
+    return name.slice('_xlws.'.length)
+  }
+  return name
+}
+
+function encodeFunctionTokenForXlsx(name: string): string {
+  const upper = name.toUpperCase()
+  if (upper.startsWith('_XLFN.')) {
+    return name
+  }
+  if (upper.startsWith('_XLWS.')) {
+    return `_xlfn.${name}`
+  }
+  if (!xlsxFutureFunctionNames.has(upper)) {
+    return name
+  }
+  return xlsxWorksheetFutureFunctionNames.has(upper) ? `_xlfn._xlws.${upper}` : `_xlfn.${upper}`
 }
 
 function skipDoubleQuotedString(source: string, startIndex: number): number {

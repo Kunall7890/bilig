@@ -88,6 +88,62 @@ describe('formula cache roundtrip', () => {
       ]),
     )
   })
+
+  it('exports future functions with Excel OOXML prefixes and normalizes them on import', () => {
+    const snapshot: WorkbookSnapshot = {
+      version: 1,
+      workbook: { name: 'future-function-export' },
+      sheets: [
+        {
+          id: 1,
+          name: 'Cases',
+          order: 0,
+          cells: [
+            { address: 'A1', value: 'Text' },
+            { address: 'A2', value: 'a' },
+            { address: 'A3', value: '' },
+            { address: 'A4', value: 'c' },
+            { address: 'B1', value: 'Key' },
+            { address: 'B2', value: 'a' },
+            { address: 'B3', value: 'b' },
+            { address: 'B4', value: 'c' },
+            { address: 'C1', value: 'Value' },
+            { address: 'C2', value: 10 },
+            { address: 'C3', value: 20 },
+            { address: 'C4', value: 30 },
+            { address: 'D2', formula: 'TEXTJOIN("-",TRUE,A2:A4)' },
+            { address: 'E2', formula: 'XLOOKUP("b",B2:B4,C2:C4)' },
+            { address: 'F2', formula: 'XMATCH("b",B2:B4,0)' },
+            { address: 'G2', formula: 'IF(TRUE,"XLOOKUP(",TEXTJOIN("-",TRUE,A2:A4))' },
+            { address: 'H2', formula: '_xlfn.XLOOKUP("c",B2:B4,C2:C4)' },
+            { address: 'I2', formula: 'FILTER(A2:A4,A2:A4<>"")' },
+          ],
+        },
+      ],
+    }
+
+    const exported = exportXlsx(snapshot)
+    const sheetXml = strFromU8(unzipSync(exported)['xl/worksheets/sheet1.xml'] ?? new Uint8Array())
+
+    expect(cellXml(sheetXml, 'D2')).toContain('<f>_xlfn.TEXTJOIN(&quot;-&quot;,TRUE,A2:A4)</f>')
+    expect(cellXml(sheetXml, 'D2')).not.toContain('t="e"')
+    expect(cellXml(sheetXml, 'E2')).toContain('<f>_xlfn.XLOOKUP(&quot;b&quot;,B2:B4,C2:C4)</f>')
+    expect(cellXml(sheetXml, 'F2')).toContain('<f>_xlfn.XMATCH(&quot;b&quot;,B2:B4,0)</f>')
+    expect(cellXml(sheetXml, 'G2')).toContain('&quot;XLOOKUP(&quot;,_xlfn.TEXTJOIN')
+    expect(cellXml(sheetXml, 'H2')).toContain('<f>_xlfn.XLOOKUP(&quot;c&quot;,B2:B4,C2:C4)</f>')
+    expect(cellXml(sheetXml, 'H2')).not.toContain('_xlfn._xlfn.')
+    expect(cellXml(sheetXml, 'I2')).toContain('<f>_xlfn._xlws.FILTER(A2:A4,A2:A4&lt;&gt;&quot;&quot;)</f>')
+
+    const reimported = importXlsx(exported, 'future-function-export.xlsx')
+    const cells = new Map(reimported.snapshot.sheets[0]?.cells.map((cell) => [cell.address, cell]) ?? [])
+
+    expect(cells.get('D2')).toMatchObject({ formula: 'TEXTJOIN("-",TRUE,A2:A4)' })
+    expect(cells.get('E2')).toMatchObject({ formula: 'XLOOKUP("b",B2:B4,C2:C4)' })
+    expect(cells.get('F2')).toMatchObject({ formula: 'XMATCH("b",B2:B4,0)' })
+    expect(cells.get('G2')).toMatchObject({ formula: 'IF(TRUE,"XLOOKUP(",TEXTJOIN("-",TRUE,A2:A4))' })
+    expect(cells.get('H2')).toMatchObject({ formula: 'XLOOKUP("c",B2:B4,C2:C4)' })
+    expect(cells.get('I2')).toMatchObject({ formula: 'FILTER(A2:A4,A2:A4<>"")' })
+  })
 })
 
 function buildFormulaCacheWorkbookBytes(): Uint8Array {
