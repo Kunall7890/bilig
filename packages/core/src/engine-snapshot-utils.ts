@@ -4,6 +4,7 @@ import type {
   WorkbookAxisMetadataSnapshot,
   WorkbookFreezePaneSnapshot,
   WorkbookMergeRangeSnapshot,
+  WorkbookSheetArrayFormulasSnapshot,
   WorkbookSheetDataTableFormulasSnapshot,
   WorkbookSheetTabColorSnapshot,
 } from '@bilig/protocol'
@@ -121,6 +122,13 @@ function dataTableFormulasToSnapshot(
   return { formulas: formulas.formulas.map((formula) => ({ ...formula })) }
 }
 
+function arrayFormulasToSnapshot(formulas: WorkbookSheetArrayFormulasSnapshot | undefined): WorkbookSheetArrayFormulasSnapshot | undefined {
+  if (!formulas || formulas.formulas.length === 0) {
+    return undefined
+  }
+  return { formulas: formulas.formulas.map((formula) => ({ ...formula })) }
+}
+
 export function exportSheetMetadata(workbook: WorkbookStore, sheetName: string): SheetMetadataSnapshot | undefined {
   const sheet = workbook.getSheet(sheetName)
   const rows = workbook.listRowAxisEntries(sheetName)
@@ -151,6 +159,7 @@ export function exportSheetMetadata(workbook: WorkbookStore, sheetName: string):
   const protectedRanges = workbook.listRangeProtections(sheetName).map((protection) => structuredClone(protection))
   const commentThreads = workbook.listCommentThreads(sheetName).map((thread) => structuredClone(thread))
   const notes = workbook.listNotes(sheetName).map((note) => structuredClone(note))
+  const arrayFormulas = arrayFormulasToSnapshot(sheet?.arrayFormulas)
   const dataTableFormulas = dataTableFormulasToSnapshot(sheet?.dataTableFormulas)
 
   if (
@@ -173,6 +182,7 @@ export function exportSheetMetadata(workbook: WorkbookStore, sheetName: string):
     protectedRanges.length === 0 &&
     commentThreads.length === 0 &&
     notes.length === 0 &&
+    arrayFormulas === undefined &&
     dataTableFormulas === undefined
   ) {
     return undefined
@@ -235,6 +245,9 @@ export function exportSheetMetadata(workbook: WorkbookStore, sheetName: string):
   }
   if (notes.length > 0) {
     metadata.notes = notes
+  }
+  if (arrayFormulas) {
+    metadata.arrayFormulas = arrayFormulas
   }
   if (dataTableFormulas) {
     metadata.dataTableFormulas = dataTableFormulas

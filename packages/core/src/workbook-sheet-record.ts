@@ -7,6 +7,7 @@ import { SheetGrid } from './sheet-grid.js'
 import type { EngineCounters } from './perf/engine-counters.js'
 import { makeLogicalCellKey } from './workbook-cell-key-index.js'
 import type {
+  WorkbookSheetArrayFormulasSnapshot,
   WorkbookSheetDataTableFormulasSnapshot,
   WorkbookSheetFormatPrSnapshot,
   WorkbookSheetVisibilitySnapshot,
@@ -31,6 +32,7 @@ export interface SheetRecord {
   visibility?: WorkbookSheetVisibilitySnapshot
   styleRanges: WorkbookStyleRangeRecord[]
   formatRanges: WorkbookFormatRangeRecord[]
+  arrayFormulas?: WorkbookSheetArrayFormulasSnapshot
   dataTableFormulas?: WorkbookSheetDataTableFormulasSnapshot
 }
 

@@ -20,6 +20,7 @@ import {
 import { mapStructuralBoundary } from '../../engine-structural-utils.js'
 import { normalizeDefinedName, type WorkbookTableRecord } from '../../workbook-store.js'
 import type { CreateEngineStructureServiceArgs } from './structure-service-types.js'
+import { rewriteArrayFormulasForStructuralTransform } from './structure-array-formula-metadata-rewrite.js'
 import { rewriteFormulaSourceForDeletedStructuredReferences } from './structure-structured-ref-rewrite.js'
 import { nextGeneratedTableColumnName, normalizeTableColumnName } from './table-column-name-helpers.js'
 
@@ -568,6 +569,14 @@ export function rewriteWorkbookMetadataForStructuralTransform(
     })
   })
   const sheet = workbook.getSheet(sheetName)
+  if (sheet?.arrayFormulas) {
+    const arrayFormulas = rewriteArrayFormulasForStructuralTransform(sheetName, sheet.arrayFormulas, transform)
+    if (arrayFormulas) {
+      sheet.arrayFormulas = arrayFormulas
+    } else {
+      delete sheet.arrayFormulas
+    }
+  }
   if (sheet?.dataTableFormulas) {
     const dataTableFormulas = rewriteDataTableFormulasForStructuralTransform(sheet.dataTableFormulas, transform)
     if (dataTableFormulas) {
