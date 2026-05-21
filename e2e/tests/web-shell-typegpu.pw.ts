@@ -105,6 +105,17 @@ function isThemeGreenFill(point: ReadbackPoint): boolean {
   return point.a === 255 && point.g > point.r + 45 && point.g > point.b + 25
 }
 
+function isWorkbookWhitePixel(point: ReadbackPoint): boolean {
+  return point.a === 255 && point.r >= 245 && point.g >= 245 && point.b >= 245
+}
+
+function expectWorkbookWhitePixel(point: ReadbackPoint): void {
+  expect(point.a).toBe(255)
+  expect(point.r).toBeGreaterThanOrEqual(245)
+  expect(point.g).toBeGreaterThanOrEqual(245)
+  expect(point.b).toBeGreaterThanOrEqual(245)
+}
+
 interface NativeTextExpectation {
   readonly name: string
   readonly text: string
@@ -137,7 +148,7 @@ interface RendererPresentationSample {
 }
 
 function isResizeGuidePixel(point: ReadbackPoint): boolean {
-  return point.a > 150 && point.g > point.r && point.r < 180 && point.b < 180
+  return point.a === 255 && point.b >= 210 && point.g >= 95 && point.g <= 140 && point.r <= 50
 }
 
 function expectNear(actual: number, expected: number, tolerance: number): void {
@@ -848,10 +859,10 @@ test('@browser-webgpu @browser-deep main workbook shell keeps typegpu grid lines
 
   expect(readback.points.headerVerticalLine.a).toBeGreaterThan(150)
   expect(readback.points.bodyVerticalLine.a).toBeGreaterThan(150)
-  expect(readback.points.bodyVerticalBlank.a).toBeLessThan(50)
+  expectWorkbookWhitePixel(readback.points.bodyVerticalBlank)
   expect(readback.points.rowHeaderHorizontalLine.a).toBeGreaterThan(150)
   expect(readback.points.bodyHorizontalLine.a).toBeGreaterThan(150)
-  expect(readback.points.bodyHorizontalBlank.a).toBeLessThan(50)
+  expectWorkbookWhitePixel(readback.points.bodyHorizontalBlank)
   expect(verticalLineX).toBeGreaterThan(PRODUCT_ROW_MARKER_WIDTH)
   expect(horizontalLineY).toBeGreaterThan(PRODUCT_HEADER_HEIGHT)
 
@@ -908,7 +919,7 @@ test('@browser-webgpu @browser-deep main workbook shell draws typegpu resize gui
 
   expect(isResizeGuidePixel(columnReadback.points.columnGuideHeader)).toBe(true)
   expect(isResizeGuidePixel(columnReadback.points.columnGuideBody)).toBe(true)
-  expect(columnReadback.points.columnGuideAdjacent.a).toBeLessThan(80)
+  expectWorkbookWhitePixel(columnReadback.points.columnGuideAdjacent)
 
   await page.mouse.move(grid.x + Math.floor(PRODUCT_ROW_MARKER_WIDTH / 2), grid.y + rowGuideY)
   await page.mouse.down()
@@ -928,7 +939,7 @@ test('@browser-webgpu @browser-deep main workbook shell draws typegpu resize gui
 
   expect(isResizeGuidePixel(rowReadback.points.rowGuideHeader)).toBe(true)
   expect(isResizeGuidePixel(rowReadback.points.rowGuideBody)).toBe(true)
-  expect(rowReadback.points.rowGuideAdjacent.a).toBeLessThan(80)
+  expectWorkbookWhitePixel(rowReadback.points.rowGuideAdjacent)
   await page.mouse.up()
 
   await saveReadbackArtifact(page, testInfo, 'main-workbook-grid-resize-guide-readback.png', 'main-workbook-grid-resize-guide-readback')
@@ -1070,7 +1081,7 @@ test('@browser-webgpu @browser-deep main workbook shell refreshes typegpu reside
       points: [{ name: 'cellFill', ...fillPoint }],
       regions: [],
     },
-    (result) => result.points.cellFill.a === 0,
+    (result) => isWorkbookWhitePixel(result.points.cellFill),
   )
 
   await clickProductCell(page, 1, 1)
