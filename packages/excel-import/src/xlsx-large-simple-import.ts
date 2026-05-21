@@ -50,7 +50,7 @@ import {
   drawingRelationshipIdForScannedWorksheet,
   sheetPivotArtifactsWithStreamedDefinitions,
 } from './xlsx-large-simple-materialization-helpers.js'
-import { buildParsedWorksheet, lazySheetCellMaterializationThreshold } from './xlsx-large-simple-build-parsed-worksheet.js'
+import { buildParsedWorksheet, lazySheetCellMaterializationNumberFormatThreshold } from './xlsx-large-simple-build-parsed-worksheet.js'
 import { mergeWorkbookRichTextCells } from './xlsx-large-simple-lazy-rich-text-cells.js'
 import { hasExternalLargeSimplePivotCaches } from './xlsx-large-simple-pivot-warnings.js'
 import { ImportedWorkbookStringPool } from './xlsx-large-simple-string-pool.js'
@@ -598,7 +598,8 @@ export function tryImportLargeSimpleXlsx(
   }
   requiredStyleIndexes.clear()
   const sheetNeedsStyleCoordinateMaterialization = (cellScan: ImportedWorksheetCellScan): boolean =>
-    stylesByIndex.size > 0 || (numberFormatsByStyleIndex.size > 0 && cellScan.cellCount <= lazySheetCellMaterializationThreshold)
+    stylesByIndex.size > 0 ||
+    (numberFormatsByStyleIndex.size > 0 && cellScan.cellCount <= lazySheetCellMaterializationNumberFormatThreshold)
   if (!stylesByIndex.size && !numberFormatsByStyleIndex.size) {
     releaseLargeSimpleStyleIndexes(scannedWorksheets)
   }

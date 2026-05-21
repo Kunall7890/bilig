@@ -21,13 +21,20 @@ export function collectStructuralRangeDependencies(
   return [...rangeIndices]
 }
 
-export function clearSpillMetadataForSheet(args: CreateEngineStructureServiceArgs, sheetName: string): void {
+export function clearSpillArtifactsForSheet(args: CreateEngineStructureServiceArgs, sheetName: string): number[] {
+  const changedCellIndices: number[] = []
   args.state.workbook.listSpills().forEach((spill) => {
     if (spill.sheetName !== sheetName) {
       return
     }
-    args.state.workbook.deleteSpill(spill.sheetName, spill.address)
+    const ownerCellIndex = args.state.workbook.getCellIndex(spill.sheetName, spill.address)
+    if (ownerCellIndex === undefined) {
+      args.state.workbook.deleteSpill(spill.sheetName, spill.address)
+      return
+    }
+    changedCellIndices.push(...args.clearOwnedSpill(ownerCellIndex))
   })
+  return changedCellIndices
 }
 
 export function clearPivotOutputsForSheet(args: CreateEngineStructureServiceArgs, sheetName: string): void {

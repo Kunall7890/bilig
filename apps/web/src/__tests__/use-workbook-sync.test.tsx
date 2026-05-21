@@ -34,6 +34,81 @@ describe('useWorkbookSync', () => {
     vi.restoreAllMocks()
   })
 
+  it('keeps style mutations local instead of faking durable submit when no remote transport exists', async () => {
+    ;(globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true
+
+    let pendingMutation = createPendingMutation()
+    let sync: ReturnType<typeof useWorkbookSync> | null = null
+    const reportRuntimeError = vi.fn()
+    const mutate = vi.fn()
+    const runtimeController = {
+      invoke: vi.fn(async (method: string, input?: unknown) => {
+        switch (method) {
+          case 'setRangeStyle':
+            return undefined
+          case 'enqueuePendingMutation':
+            pendingMutation = {
+              ...pendingMutation,
+              method: 'setRangeStyle',
+              args:
+                typeof input === 'object' && input !== null && 'args' in input && Array.isArray(input.args)
+                  ? input.args
+                  : pendingMutation.args,
+            }
+            return pendingMutation
+          case 'listPendingMutations':
+            return [pendingMutation]
+          default:
+            throw new Error(`Unexpected runtime invoke: ${method}`)
+        }
+      }),
+    }
+
+    function Harness() {
+      sync = useWorkbookSync({
+        documentId: 'doc-1',
+        connectionStateName: 'connected',
+        connectionStateRef: { current: 'connected' },
+        runtimeController,
+        workerHandleRef: { current: null },
+        zeroRef: { current: { mutate } },
+        remoteMutationTransportAvailable: false,
+        reportRuntimeError,
+      })
+      return null
+    }
+
+    const host = document.createElement('div')
+    document.body.appendChild(host)
+    const root = createRoot(host)
+
+    await act(async () => {
+      root.render(<Harness />)
+    })
+
+    if (!sync) {
+      throw new Error('Expected useWorkbookSync harness to initialize')
+    }
+
+    await act(async () => {
+      await sync!.invokeMutation(
+        'setRangeStyle',
+        { sheetName: 'Sheet1', startAddress: 'B2', endAddress: 'B2' },
+        { fill: { backgroundColor: '#00ff00' } },
+      )
+    })
+
+    expect(mutate).not.toHaveBeenCalled()
+    expect(runtimeController.invoke).toHaveBeenCalledWith('enqueuePendingMutation', expect.objectContaining({ method: 'setRangeStyle' }))
+    expect(runtimeController.invoke).not.toHaveBeenCalledWith('recordPendingMutationAttempt', 'pending-1')
+    expect(runtimeController.invoke).not.toHaveBeenCalledWith('markPendingMutationSubmitted', 'pending-1')
+    expect(reportRuntimeError).not.toHaveBeenCalled()
+
+    await act(async () => {
+      root.unmount()
+    })
+  })
+
   it('marks non-retryable mutation failures without escalating them as runtime errors', async () => {
     ;(globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true
 

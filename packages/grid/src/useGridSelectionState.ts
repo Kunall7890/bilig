@@ -9,13 +9,9 @@ export function resolveRequiresLiveViewportState(input: {
   readonly hasRowResizePreview: boolean
 }): boolean {
   void input.isEditingCell
+  void input.fillPreviewActive
   void input.hasActiveResizeColumn
   void input.hasActiveResizeRow
-  return (
-    input.fillPreviewActive ||
-    input.isFillHandleDragging ||
-    input.hasActiveHeaderDrag ||
-    input.hasColumnResizePreview ||
-    input.hasRowResizePreview
-  )
+  void input.isFillHandleDragging
+  return input.hasActiveHeaderDrag || input.hasColumnResizePreview || input.hasRowResizePreview
 }

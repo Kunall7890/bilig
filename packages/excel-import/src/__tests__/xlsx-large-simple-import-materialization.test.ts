@@ -1,7 +1,9 @@
 import { strToU8, zipSync } from 'fflate'
 import { describe, expect, it } from 'vitest'
 
+import { lazySheetCellMaterializationThreshold } from '../xlsx-large-simple-build-parsed-worksheet.js'
 import { tryImportLargeSimpleXlsx } from '../xlsx-large-simple-import.js'
+import { isLazyWorkbookSheetCells } from '../xlsx-large-simple-lazy-sheet-cells.js'
 import { readLazyXlsxZipSourceByteLength, readXlsxZipEntriesLazy } from '../xlsx-zip.js'
 
 describe('large simple XLSX import materialization lifetime', () => {
@@ -254,6 +256,46 @@ describe('large simple XLSX import materialization lifetime', () => {
     expect(cells?.at(-1)).toEqual({ address: `A${String(rowCount)}`, value: 'Repeated shared label' })
     expect(imported?.preview.sheets[0]?.previewRows[0]?.[0]).toBe('Repeated shared label')
     expect(imported?.snapshot.sheets[0]?.metadata?.richTextArtifacts).toBeUndefined()
+    expect(readLazyXlsxZipSourceByteLength(zip)).toBe(0)
+  })
+
+  it('uses lazy cells for medium-large unformatted sheets without changing values or order', () => {
+    const rowCount = lazySheetCellMaterializationThreshold + 1
+    const rows: string[] = []
+    for (let row = 1; row <= rowCount; row += 1) {
+      rows.push(`<row r="${String(row)}"><c r="A${String(row)}"><v>${String(row)}</v></c></row>`)
+    }
+    const bytes = buildIndependentWorkbook([
+      {
+        name: 'Data',
+        path: 'xl/worksheets/sheet1.xml',
+        xml: [
+          '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>',
+          '<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">',
+          `<dimension ref="A1:A${String(rowCount)}"/>`,
+          `<sheetData>${rows.join('')}</sheetData>`,
+          '</worksheet>',
+        ].join(''),
+      },
+    ])
+    const zip = readXlsxZipEntriesLazy(bytes)
+
+    const imported = tryImportLargeSimpleXlsx(bytes, 'medium-large-unformatted.xlsx', zip, {
+      minByteLength: 0,
+      releaseZipSource: true,
+    })
+    const cells = imported?.snapshot.sheets[0]?.cells
+
+    expect(isLazyWorkbookSheetCells(cells)).toBe(true)
+    expect(cells).toHaveLength(rowCount)
+    expect(cells?.[0]).toEqual({ address: 'A1', value: 1 })
+    expect(cells?.at(-1)).toEqual({ address: `A${String(rowCount)}`, value: rowCount })
+    expect(cells?.slice(0, 3)).toEqual([
+      { address: 'A1', value: 1 },
+      { address: 'A2', value: 2 },
+      { address: 'A3', value: 3 },
+    ])
+    expect(imported?.preview.sheets[0]?.previewRows[0]?.[0]).toBe('1')
     expect(readLazyXlsxZipSourceByteLength(zip)).toBe(0)
   })
 })

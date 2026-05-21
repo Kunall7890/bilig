@@ -135,11 +135,11 @@ export function rewriteRangeForStructuralTransform(
   }
   const nextRows =
     transform.axis === 'row'
-      ? mapInterval(Math.min(start.row, end.row), Math.max(start.row, end.row), transform)
+      ? mapReferenceIntervalForStructuralTransform(Math.min(start.row, end.row), Math.max(start.row, end.row), transform)
       : { start: Math.min(start.row, end.row), end: Math.max(start.row, end.row) }
   const nextCols =
     transform.axis === 'column'
-      ? mapInterval(Math.min(start.col, end.col), Math.max(start.col, end.col), transform)
+      ? mapReferenceIntervalForStructuralTransform(Math.min(start.col, end.col), Math.max(start.col, end.col), transform)
       : { start: Math.min(start.col, end.col), end: Math.max(start.col, end.col) }
   if (!nextRows || !nextCols) {
     return undefined
@@ -337,11 +337,11 @@ function rewriteRangeNode(
     }
     const nextRows =
       transform.axis === 'row'
-        ? mapInterval(Math.min(start.row, end.row), Math.max(start.row, end.row), transform)
+        ? mapReferenceIntervalForStructuralTransform(Math.min(start.row, end.row), Math.max(start.row, end.row), transform)
         : { start: Math.min(start.row, end.row), end: Math.max(start.row, end.row) }
     const nextCols =
       transform.axis === 'column'
-        ? mapInterval(Math.min(start.col, end.col), Math.max(start.col, end.col), transform)
+        ? mapReferenceIntervalForStructuralTransform(Math.min(start.col, end.col), Math.max(start.col, end.col), transform)
         : { start: Math.min(start.col, end.col), end: Math.max(start.col, end.col) }
     if (!nextRows || !nextCols) {
       return { kind: 'ErrorLiteral', code: ErrorCode.Ref }
@@ -357,7 +357,11 @@ function rewriteRangeNode(
   if (!start || !end) {
     return { kind: 'ErrorLiteral', code: ErrorCode.Ref }
   }
-  const nextInterval = mapInterval(Math.min(start.index, end.index), Math.max(start.index, end.index), transform)
+  const nextInterval = mapReferenceIntervalForStructuralTransform(
+    Math.min(start.index, end.index),
+    Math.max(start.index, end.index),
+    transform,
+  )
   if (!nextInterval) {
     return { kind: 'ErrorLiteral', code: ErrorCode.Ref }
   }
@@ -464,6 +468,49 @@ function targetsRangeSheet(
 ): boolean {
   const startSheetName = sheetName ?? ownerSheetName
   return startSheetName === targetSheetName || sheetEndName === targetSheetName
+}
+
+function mapReferenceIntervalForStructuralTransform(
+  start: number,
+  end: number,
+  transform: StructuralAxisTransform,
+): { start: number; end: number } | undefined {
+  if (transform.kind !== 'move') {
+    return mapInterval(start, end, transform)
+  }
+  if (transform.target <= transform.start) {
+    return mapInterval(start, end, transform)
+  }
+  const movedStart = transform.start
+  const movedEnd = transform.start + transform.count - 1
+  if (end < movedStart || start > movedEnd) {
+    return mapInterval(start, end, transform)
+  }
+  if (start >= movedStart && end <= movedEnd) {
+    return mapInterval(start, end, transform)
+  }
+
+  const survivorSegments: Array<{ readonly start: number; readonly end: number }> = []
+  if (start < movedStart) {
+    survivorSegments.push({ start, end: Math.min(end, movedStart - 1) })
+  }
+  if (end > movedEnd) {
+    survivorSegments.push({ start: Math.max(start, movedEnd + 1), end })
+  }
+
+  let nextStart: number | undefined
+  let nextEnd: number | undefined
+  survivorSegments.forEach((segment) => {
+    const mappedStart = mapPointIndex(segment.start, transform)
+    const mappedEnd = mapPointIndex(segment.end, transform)
+    if (mappedStart === undefined || mappedEnd === undefined) {
+      return
+    }
+    nextStart = nextStart === undefined ? Math.min(mappedStart, mappedEnd) : Math.min(nextStart, mappedStart, mappedEnd)
+    nextEnd = nextEnd === undefined ? Math.max(mappedStart, mappedEnd) : Math.max(nextEnd, mappedStart, mappedEnd)
+  })
+
+  return nextStart === undefined || nextEnd === undefined ? undefined : { start: nextStart, end: nextEnd }
 }
 
 function formatParsedRangeEndpoint(reference: ParsedRangeReferenceInfo, address: string, endpoint: 'start' | 'end'): string {
@@ -603,7 +650,7 @@ function rewriteAxisRangeAddress(
 ): RangeAddress | undefined {
   const startIndex = range.kind === 'rows' ? range.start.row : range.start.col
   const endIndex = range.kind === 'rows' ? range.end.row : range.end.col
-  const nextInterval = mapInterval(startIndex, endIndex, transform)
+  const nextInterval = mapReferenceIntervalForStructuralTransform(startIndex, endIndex, transform)
   if (!nextInterval) {
     return undefined
   }

@@ -9,6 +9,10 @@ export interface ImportedWorkbookLazySheetCells extends Array<WorkbookSheetCell>
   readonly [lazyCellsBrand]: true
 }
 
+export function isLazyWorkbookSheetCells(cells: WorkbookSheetCells | undefined): cells is ImportedWorkbookLazySheetCells {
+  return cells !== undefined && lazyCellsBrand in cells
+}
+
 export function createLazyWorkbookSheetCells(
   cellCount: number,
   materialize: (index: number) => WorkbookSheetCell | undefined,
@@ -167,7 +171,8 @@ export function createLazyWorkbookSheetCells(
       }
       return Reflect.get(Array.prototype, property)
     },
-    has: (_target, property) => property === 'length' || (typeof property === 'string' && isArrayIndexProperty(property)),
+    has: (_target, property) =>
+      property === lazyCellsBrand || property === 'length' || (typeof property === 'string' && isArrayIndexProperty(property)),
     getOwnPropertyDescriptor: (_target, property) => {
       if (property === 'length') {
         return { configurable: true, enumerable: false, value: cellCount }

@@ -65,6 +65,7 @@ export interface CreateEngineStructureServiceArgs {
     sourceSheetName?: string,
     sourceAddress?: string,
   ) => EngineOp[]
+  readonly clearOwnedSpill: (cellIndex: number) => readonly number[]
   readonly removeFormula: (cellIndex: number) => boolean
   readonly clearOwnedPivot: (pivot: WorkbookPivotRecord) => number[]
   readonly refreshRangeDependencies: (rangeIndices: readonly number[]) => void

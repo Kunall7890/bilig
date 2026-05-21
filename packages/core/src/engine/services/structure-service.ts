@@ -26,9 +26,9 @@ import {
 } from './structure-formula-rewrite.js'
 import { rewriteDefinedNamesForStructuralTransform, rewriteWorkbookMetadataForStructuralTransform } from './structure-metadata-rewrite.js'
 import {
+  clearSpillArtifactsForSheet,
   clearPivotOutputsForSheet,
   clearRemovedCellRuntimeState,
-  clearSpillMetadataForSheet,
   collectStructuralRangeDependencies,
   isCellIndexMapped,
 } from './structure-runtime-cleanup.js'
@@ -347,6 +347,8 @@ export function createEngineStructureService(args: CreateEngineStructureServiceA
         (() => {
           throw new Error(`Missing sheet for structural op: ${sheetName}`)
         })()
+      const hadSheetSpillMetadata = hasStructuralMetadata && args.state.workbook.listSpills().some((spill) => spill.sheetName === sheetName)
+      const preStructuralSpillChangedCellIndices = hadSheetSpillMetadata ? clearSpillArtifactsForSheet(args, sheetName) : []
 
       switch (op.kind) {
         case 'insertRows':
@@ -377,14 +379,13 @@ export function createEngineStructureService(args: CreateEngineStructureServiceA
         impactedFormulas.precomputedChangedInputCellIndices.length === 0 &&
         impactedFormulas.precomputedDirectAggregateValueCellIndices.length === 0 &&
         impactedFormulas.directAggregateRetargetCellIndices.length === 0
-      const hasSheetSpillMetadata = hasStructuralMetadata && args.state.workbook.listSpills().some((spill) => spill.sheetName === sheetName)
       if (
         hasNoFormulaStructuralWork &&
         transaction.removedCellIndices.length === 0 &&
         changedDefinedNames.size === 0 &&
         changedTableNames.size === 0 &&
         !hasPivots &&
-        !hasSheetSpillMetadata
+        !hadSheetSpillMetadata
       ) {
         return {
           transaction,
@@ -407,7 +408,6 @@ export function createEngineStructureService(args: CreateEngineStructureServiceA
         clearRemovedCellRuntimeState(args, cellIndex)
       })
 
-      clearSpillMetadataForSheet(args, sheetName)
       args.retargetRangeDependencies(transaction, structuralRangeDependencies)
       const directRetargetedFormulaCellIndices: number[] = []
       const directRetargetedPreservedFormulaCellIndices: number[] = []
@@ -505,7 +505,7 @@ export function createEngineStructureService(args: CreateEngineStructureServiceA
         removedCycleFormulaCount > 0
       return {
         transaction,
-        changedCellIndices: [...transaction.removedCellIndices],
+        changedCellIndices: [...transaction.removedCellIndices, ...preStructuralSpillChangedCellIndices],
         precomputedChangedInputCellIndices: impactedFormulas.precomputedChangedInputCellIndices,
         formulaCellIndices: formulaCellIndices.filter((cellIndex) => !preservedFormulaCellIndices.has(cellIndex)),
         topologyChanged,

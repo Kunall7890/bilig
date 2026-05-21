@@ -95,6 +95,26 @@ describe('public workbook corpus compact verifier', () => {
     )
   })
 
+  it('keeps reusable byte-source reads through compact verifier ZIP wrappers', () => {
+    const workbookBytes = buildLargeSimpleNumericWorkbookBytes(200_001)
+    const countedSource = countingXlsxZipByteSourceFromBytes(workbookBytes)
+
+    const corpusCase = verifyLargeSimpleWorkbookCompactPreflight({
+      artifact: testArtifact({ byteSize: workbookBytes.byteLength }),
+      source: countedSource,
+      baseEvidence: [],
+      classifyUnsupportedFeatures: (_snapshot, _warnings, _featureCounts, options) => [...(options.extraClassifications ?? [])],
+      maxCellCount: 100_000,
+      minByteLength: 0,
+      runStructuralSmoke: true,
+      runtimeMetrics: startVerificationRuntimeMetrics(),
+      workerOptions: {},
+    })
+
+    expect(corpusCase?.featureCounts.cellCount).toBe(200_001)
+    expect(countedSource.readIntoCount).toBeGreaterThan(0)
+  })
+
   it('uses headless large-simple verification for formula-heavy workbooks when formula oracle is resource-skipped', async () => {
     const workbookBytes = buildLargeSimpleFormulaHeavyWorkbookBytes({ rowCount: 100_001, formulaRowCount: 2_001 })
     expect(workbookBytes.byteLength).toBeLessThan(1_000_000)
@@ -167,6 +187,22 @@ function xlsxZipByteSourceFromBytes(bytes: Uint8Array) {
     byteLength: bytes.byteLength,
     readRange(start: number, end: number): Uint8Array {
       return bytes.subarray(start, end)
+    },
+  }
+}
+
+function countingXlsxZipByteSourceFromBytes(bytes: Uint8Array) {
+  return {
+    byteLength: bytes.byteLength,
+    readIntoCount: 0,
+    readRange(start: number, end: number): Uint8Array {
+      return bytes.subarray(start, end)
+    },
+    readRangeInto(start: number, end: number, target: Uint8Array): Uint8Array {
+      const length = end - start
+      this.readIntoCount += 1
+      target.set(bytes.subarray(start, end), 0)
+      return target.subarray(0, length)
     },
   }
 }

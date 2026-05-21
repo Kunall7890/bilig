@@ -245,9 +245,19 @@ export function useWorkbookSync(input: {
   runtimeController: WorkbookSyncRuntimeController | null
   workerHandleRef: MutableRefObject<WorkerHandle | null>
   zeroRef: MutableRefObject<ZeroMutationSource>
+  remoteMutationTransportAvailable?: boolean
   reportRuntimeError: (error: unknown) => void
 }) {
-  const { documentId, connectionStateName, connectionStateRef, runtimeController, workerHandleRef, zeroRef, reportRuntimeError } = input
+  const {
+    documentId,
+    connectionStateName,
+    connectionStateRef,
+    runtimeController,
+    workerHandleRef,
+    zeroRef,
+    remoteMutationTransportAvailable = true,
+    reportRuntimeError,
+  } = input
   const localMutationQueueRef = useRef<Promise<void>>(Promise.resolve())
   const syncQueueRef = useRef<Promise<void>>(Promise.resolve())
   const authoritativeRefreshTimerRefs = useRef<Array<ReturnType<typeof setTimeout>>>([])
@@ -340,6 +350,13 @@ export function useWorkbookSync(input: {
       mutation: PendingWorkbookMutation,
       onLateFailure?: (failure: ZeroMutationObserverFailure) => void,
     ): Promise<ZeroMutationObserverOutcome> => {
+      if (!remoteMutationTransportAvailable) {
+        return {
+          ok: false,
+          retryable: true,
+          error: new Error('Remote workbook mutation transport is not configured'),
+        }
+      }
       try {
         const result = zeroRef.current.mutate(buildZeroWorkbookMutation(documentId, mutation))
         const observerResult = observeZeroMutationResult(result)
@@ -358,11 +375,11 @@ export function useWorkbookSync(input: {
         }
       }
     },
-    [documentId, zeroRef],
+    [documentId, remoteMutationTransportAvailable, zeroRef],
   )
 
   const drainPendingMutationsLocked = useCallback(async (): Promise<void> => {
-    if (!runtimeController || !canAttemptRemoteSync(connectionStateRef.current)) {
+    if (!runtimeController || !remoteMutationTransportAvailable || !canAttemptRemoteSync(connectionStateRef.current)) {
       return
     }
 
@@ -404,7 +421,15 @@ export function useWorkbookSync(input: {
     }
 
     await drainBatch(await listPendingMutations())
-  }, [connectionStateRef, listPendingMutations, reportRuntimeError, runZeroMutation, runtimeController, scheduleAuthoritativeRefreshProbes])
+  }, [
+    connectionStateRef,
+    listPendingMutations,
+    remoteMutationTransportAvailable,
+    reportRuntimeError,
+    runZeroMutation,
+    runtimeController,
+    scheduleAuthoritativeRefreshProbes,
+  ])
 
   const drainPendingMutations = useCallback(async (): Promise<void> => {
     try {
@@ -561,7 +586,7 @@ export function useWorkbookSync(input: {
           }
           await enqueuePendingMutation(mutation)
         })
-        if (canAttemptRemoteSync(connectionStateRef.current)) {
+        if (remoteMutationTransportAvailable && canAttemptRemoteSync(connectionStateRef.current)) {
           scheduleAuthoritativeRefreshProbes()
         }
       } catch (error) {
@@ -573,7 +598,7 @@ export function useWorkbookSync(input: {
       void (async () => {
         try {
           await runSerializedSyncTask(async () => {
-            if (canAttemptRemoteSync(connectionStateRef.current)) {
+            if (remoteMutationTransportAvailable && canAttemptRemoteSync(connectionStateRef.current)) {
               await drainPendingMutationsLocked()
             }
           })
@@ -586,6 +611,7 @@ export function useWorkbookSync(input: {
       connectionStateRef,
       drainPendingMutationsLocked,
       enqueuePendingMutation,
+      remoteMutationTransportAvailable,
       reportRuntimeError,
       runSerializedSyncTask,
       runtimeController,
@@ -706,11 +732,11 @@ export function useWorkbookSync(input: {
   )
 
   useEffect(() => {
-    if (!runtimeController || !canAttemptRemoteSync(connectionStateName)) {
+    if (!runtimeController || !remoteMutationTransportAvailable || !canAttemptRemoteSync(connectionStateName)) {
       return
     }
     void drainPendingMutations()
-  }, [connectionStateName, drainPendingMutations, runtimeController])
+  }, [connectionStateName, drainPendingMutations, remoteMutationTransportAvailable, runtimeController])
 
   const retryPendingMutation = useCallback(
     async (id: string): Promise<void> => {
@@ -719,12 +745,19 @@ export function useWorkbookSync(input: {
       }
       await runSerializedLocalMutationTask(() => runtimeController.invoke('retryPendingMutation', id))
       await runSerializedSyncTask(async () => {
-        if (canAttemptRemoteSync(connectionStateRef.current)) {
+        if (remoteMutationTransportAvailable && canAttemptRemoteSync(connectionStateRef.current)) {
           await drainPendingMutationsLocked()
         }
       })
     },
-    [connectionStateRef, drainPendingMutationsLocked, runSerializedLocalMutationTask, runSerializedSyncTask, runtimeController],
+    [
+      connectionStateRef,
+      drainPendingMutationsLocked,
+      remoteMutationTransportAvailable,
+      runSerializedLocalMutationTask,
+      runSerializedSyncTask,
+      runtimeController,
+    ],
   )
 
   const undoLocalChange = useCallback(async (): Promise<void> => {

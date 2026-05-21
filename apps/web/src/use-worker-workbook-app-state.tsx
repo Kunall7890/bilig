@@ -213,6 +213,7 @@ export function useWorkerWorkbookAppState(input: {
     runtimeController,
     workerHandleRef,
     zeroRef,
+    remoteMutationTransportAvailable: zeroConfigured,
     reportRuntimeError,
   })
   const [localMutationEpoch, setLocalMutationEpoch] = useState(0)

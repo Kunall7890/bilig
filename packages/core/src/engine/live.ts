@@ -465,6 +465,7 @@ export function createEngineServiceRuntime(args: {
     },
     captureStoredCellOps: (cellIndex, sheetName, address, sourceSheetName, sourceAddress) =>
       cellState.captureStoredCellOpsNow(cellIndex, sheetName, address, sourceSheetName, sourceAddress),
+    clearOwnedSpill: (cellIndex) => support.clearOwnedSpillNow(cellIndex),
     removeFormula: (cellIndex) => binding.clearFormulaNow(cellIndex),
     clearOwnedPivot: (pivotRecord) => getPivot().clearOwnedPivotNow(pivotRecord),
     refreshRangeDependencies: (rangeIndices) => binding.refreshRangeDependenciesNow(rangeIndices),

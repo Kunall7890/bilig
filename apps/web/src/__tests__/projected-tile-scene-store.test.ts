@@ -6,7 +6,7 @@ import {
   type RenderTileReplaceMutation,
 } from '@bilig/worker-transport'
 import { ValueTag } from '@bilig/protocol'
-import { DirtyMaskV3 } from '../../../../packages/grid/src/renderer-v3/tile-damage-index.js'
+import { DirtyMaskV3, DirtyTileIndexV3 } from '../../../../packages/grid/src/renderer-v3/tile-damage-index.js'
 import { OPTIMISTIC_CELL_SNAPSHOT_FLAG } from '../workbook-optimistic-cell-flags.js'
 import { ProjectedTileSceneStore } from '../projected-tile-scene-store.js'
 import { ProjectedViewportStore } from '../projected-viewport-store.js'
@@ -164,6 +164,7 @@ describe('ProjectedTileSceneStore', () => {
   })
 
   it('rejects partial cell-run mutations by invalidating the tile instead of keeping stale visuals', () => {
+    const markTileSpy = vi.spyOn(DirtyTileIndexV3.prototype, 'markTile')
     const store = new ProjectedTileSceneStore()
     store.applyDelta(createBatch(2, [createTileReplace(101, 2)]))
 
@@ -197,6 +198,7 @@ describe('ProjectedTileSceneStore', () => {
     expect(change.changedTileIds).toEqual([])
     expect(change.invalidatedTileIds).toEqual([101])
     expect(store.peekTile(101)).toBeNull()
+    expect(markTileSpy).toHaveBeenCalledWith(101, LOCAL_OPTIMISTIC_CELL_VISUAL_DIRTY_MASK)
   })
 
   it('subscribes to worker render tile deltas and decodes incoming batches', () => {

@@ -38,6 +38,25 @@ export interface MacosExcelInspectionOracleRequest {
   readonly timeoutMs?: number
 }
 
+export type MacosExcelStructuralOperation =
+  | { readonly kind: 'insertRows'; readonly range: string }
+  | { readonly kind: 'insertColumns'; readonly range: string }
+  | { readonly kind: 'deleteRows'; readonly range: string }
+  | { readonly kind: 'deleteColumns'; readonly range: string }
+  | { readonly kind: 'moveRows'; readonly sourceRange: string; readonly destinationRange: string }
+  | { readonly kind: 'moveColumns'; readonly sourceRange: string; readonly destinationRange: string }
+
+export interface MacosExcelStructuralOperationOracleRequest {
+  readonly workbookPath: string
+  readonly worksheetName: string
+  readonly operations: readonly MacosExcelStructuralOperation[]
+  readonly inspectCells: readonly string[]
+  readonly formulaCells?: readonly MacosExcelOracleFormulaCell[]
+  readonly appPath?: string
+  readonly saveWorkbook?: boolean
+  readonly timeoutMs?: number
+}
+
 export interface MacosExcelCellInspection {
   readonly address: string
   readonly formula?: string
@@ -84,6 +103,28 @@ export function runMacosExcelInspectionOracle(request: MacosExcelInspectionOracl
   const scriptPath = join(tempDir, 'inspect.scpt')
   try {
     writeFileSync(scriptPath, createMacosExcelInspectionAppleScript(request))
+    const rawOutput = execFileSync('osascript', [scriptPath, request.workbookPath], {
+      encoding: 'utf8',
+      timeout: request.timeoutMs ?? 60_000,
+    }).trim()
+    return parseMacosExcelInspectionOutput(rawOutput, request.inspectCells)
+  } finally {
+    rmSync(tempDir, { recursive: true, force: true })
+  }
+}
+
+export function runMacosExcelStructuralOperationOracle(
+  request: MacosExcelStructuralOperationOracleRequest,
+): MacosExcelInspectionOracleResult {
+  const appPath = request.appPath ?? defaultMacosExcelAppPath
+  if (!isMacosExcelInstalled(appPath)) {
+    throw new Error(`Microsoft Excel app is not installed at ${appPath}`)
+  }
+
+  const tempDir = mkdtempSync(join(tmpdir(), 'bilig-macos-excel-oracle-structure-'))
+  const scriptPath = join(tempDir, 'structure.scpt')
+  try {
+    writeFileSync(scriptPath, createMacosExcelStructuralOperationAppleScript(request))
     const rawOutput = execFileSync('osascript', [scriptPath, request.workbookPath], {
       encoding: 'utf8',
       timeout: request.timeoutMs ?? 60_000,
@@ -222,6 +263,68 @@ end run
 ${cellValueAppleScriptHelpers()}`
 }
 
+export function createMacosExcelStructuralOperationAppleScript(
+  request: Pick<
+    MacosExcelStructuralOperationOracleRequest,
+    'formulaCells' | 'inspectCells' | 'operations' | 'saveWorkbook' | 'worksheetName'
+  >,
+): string {
+  if (request.operations.length === 0) {
+    throw new Error('macOS Excel structural oracle request must apply at least one operation')
+  }
+  if (request.inspectCells.length === 0) {
+    throw new Error('macOS Excel structural oracle request must inspect at least one cell')
+  }
+
+  const closeSavingMode = request.saveWorkbook === true ? 'yes' : 'no'
+  const formulaCells = (request.formulaCells ?? [])
+    .map(
+      (cell) =>
+        `      set formula of range ${toAppleScriptString(cell.address)} of targetWorksheet to ${toAppleScriptString(cell.formula)}`,
+    )
+    .join('\n')
+  const operations = request.operations.map((operation) => `      ${structuralOperationAppleScript(operation)}`).join('\n')
+  const inspectionReads = request.inspectCells
+    .map((address) => {
+      const escapedAddress = toAppleScriptString(address)
+      return `      set inspectedRange to range ${escapedAddress} of targetWorksheet
+      set output to output & linefeed & ${escapedAddress} & (ASCII character 9) & my formulaText(formula of inspectedRange) & (ASCII character 9) & my typedCellValue(value of inspectedRange)`
+    })
+    .join('\n')
+
+  return `on run argv
+  set workbookPath to POSIX file (item 1 of argv)
+  set targetWorkbook to missing value
+  set output to ""
+  tell application "Microsoft Excel"
+    set display alerts to false
+    set screen updating to false
+    try
+      set targetWorkbook to open workbook workbook file name workbookPath
+      set targetWorksheet to worksheet ${toAppleScriptString(request.worksheetName)} of targetWorkbook
+${formulaCells}
+${operations}
+      calculate full rebuild
+      set output to "version=" & (version as string)
+${inspectionReads}
+      close targetWorkbook saving ${closeSavingMode}
+      set screen updating to true
+    on error errMsg number errNum
+      if targetWorkbook is not missing value then
+        try
+          close targetWorkbook saving no
+        end try
+      end if
+      set screen updating to true
+      error errMsg number errNum
+    end try
+  end tell
+  return output
+end run
+
+${cellValueAppleScriptHelpers()}`
+}
+
 export function parseMacosExcelRecalculationOutput(rawOutput: string, expectedValueCount: number): MacosExcelRecalculationOracleResult {
   const lines = rawOutput.split(/\r?\n/u)
   const versionLine = lines[0]
@@ -299,6 +402,29 @@ function parseInspectionCell(rawLine: string, expectedAddress: string): MacosExc
     ...(formula !== undefined ? { formula } : {}),
     rawValue,
     value: parseTypedExcelValue(rawValue),
+  }
+}
+
+function structuralOperationAppleScript(operation: MacosExcelStructuralOperation): string {
+  switch (operation.kind) {
+    case 'insertRows':
+      return `insert into range (range ${toAppleScriptString(operation.range)} of targetWorksheet) shift shift down`
+    case 'insertColumns':
+      return `insert into range (range ${toAppleScriptString(operation.range)} of targetWorksheet) shift shift to right`
+    case 'deleteRows':
+      return `delete range (range ${toAppleScriptString(operation.range)} of targetWorksheet) shift shift up`
+    case 'deleteColumns':
+      return `delete range (range ${toAppleScriptString(operation.range)} of targetWorksheet) shift shift to left`
+    case 'moveRows':
+      return [
+        `cut range (range ${toAppleScriptString(operation.sourceRange)} of targetWorksheet)`,
+        `insert into range (range ${toAppleScriptString(operation.destinationRange)} of targetWorksheet) shift shift down`,
+      ].join('\n      ')
+    case 'moveColumns':
+      return [
+        `cut range (range ${toAppleScriptString(operation.sourceRange)} of targetWorksheet)`,
+        `insert into range (range ${toAppleScriptString(operation.destinationRange)} of targetWorksheet) shift shift to right`,
+      ].join('\n      ')
   }
 }
 

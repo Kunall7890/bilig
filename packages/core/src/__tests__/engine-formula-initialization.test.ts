@@ -759,6 +759,7 @@ describe('SpreadsheetEngine formula initialization', () => {
     })
     expect(engine.getPerformanceCounters()).toMatchObject({
       directFormulaInitialEvaluations: refs.length,
+      initialFreshDirectScalarFastBindings: refs.length,
       nativeDirectScalarInitialEvaluations: 0,
     })
   })
@@ -786,6 +787,7 @@ describe('SpreadsheetEngine formula initialization', () => {
     })
     expect(engine.getPerformanceCounters()).toMatchObject({
       directFormulaInitialEvaluations: refs.length,
+      initialFreshDirectScalarFastBindings: refs.length,
       nativeDirectScalarInitialEvaluations: refs.length,
     })
   })
