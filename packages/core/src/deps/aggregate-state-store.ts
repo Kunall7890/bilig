@@ -35,6 +35,8 @@ export interface AggregateColumnWindowSummary {
   readonly sum: number
   readonly count: number
   readonly averageCount: number
+  readonly minimum: number
+  readonly maximum: number
   readonly errorCount: number
   readonly errorCode: ErrorCode
   readonly fullPageHits: number
@@ -71,6 +73,8 @@ interface MutableAggregateColumnWindowSummary {
   sum: number
   count: number
   averageCount: number
+  minimum: number
+  maximum: number
   errorCount: number
   errorCode: ErrorCode
   fullPageHits: number
@@ -90,6 +94,8 @@ interface AggregatePageSummary {
   readonly sum: number
   readonly count: number
   readonly averageCount: number
+  readonly minimum: number
+  readonly maximum: number
   readonly errorCount: number
   readonly errorCode: ErrorCode
 }
@@ -202,6 +208,8 @@ function emptyWindowSummary(): MutableAggregateColumnWindowSummary {
     sum: 0,
     count: 0,
     averageCount: 0,
+    minimum: Number.POSITIVE_INFINITY,
+    maximum: Number.NEGATIVE_INFINITY,
     errorCount: 0,
     errorCode: ErrorCode.None,
     fullPageHits: 0,
@@ -220,9 +228,16 @@ function addRawAggregateContribution(
       summary.sum += numeric
       summary.count += 1
       summary.averageCount += 1
+      summary.minimum = Math.min(summary.minimum, numeric)
+      summary.maximum = Math.max(summary.maximum, numeric)
       break
     case ValueTag.Boolean:
-      summary.sum += numeric !== 0 ? 1 : 0
+      {
+        const booleanNumber = numeric !== 0 ? 1 : 0
+        summary.sum += booleanNumber
+        summary.minimum = Math.min(summary.minimum, booleanNumber)
+        summary.maximum = Math.max(summary.maximum, booleanNumber)
+      }
       summary.count += 1
       summary.averageCount += 1
       break
@@ -246,6 +261,8 @@ function addPageSummary(target: MutableAggregateColumnWindowSummary, page: Aggre
   target.sum += page.sum
   target.count += page.count
   target.averageCount += page.averageCount
+  target.minimum = Math.min(target.minimum, page.minimum)
+  target.maximum = Math.max(target.maximum, page.maximum)
   target.errorCount += page.errorCount
   if (target.errorCode === ErrorCode.None && page.errorCode !== ErrorCode.None) {
     target.errorCode = page.errorCode
@@ -261,6 +278,8 @@ function summarizePage(page: RuntimeColumnPage): AggregatePageSummary {
     sum: summary.sum,
     count: summary.count,
     averageCount: summary.averageCount,
+    minimum: summary.minimum,
+    maximum: summary.maximum,
     errorCount: summary.errorCount,
     errorCode: summary.errorCode,
   }
@@ -433,6 +452,8 @@ export function createAggregateStateStore(args: {
         sum: 0,
         count: 0,
         averageCount: 0,
+        minimum: Number.POSITIVE_INFINITY,
+        maximum: Number.NEGATIVE_INFINITY,
         errorCount: 0,
         errorCode: ErrorCode.None,
         fullPageHits: 0,
