@@ -2,7 +2,7 @@ import { formatAddress } from '@bilig/formula'
 import type { CellValue } from '@bilig/protocol'
 import type { EngineCellMutationRef } from '../../cell-mutations-at.js'
 import { CellFlags } from '../../cell-store.js'
-import { emptyValue } from '../../engine-value-utils.js'
+import { emptyValue, literalToValue, writeLiteralToCellStore } from '../../engine-value-utils.js'
 import type { OpOrder } from '../../replica-state.js'
 import type { CreateEngineOperationServiceArgs, MutationSource } from './operation-service-types.js'
 import type { DirectFormulaIndexCollection } from './direct-formula-index-collection.js'
@@ -10,6 +10,7 @@ import { withOptionalLookupStringIds } from './direct-lookup-helpers.js'
 import type { OperationTrackedColumnDependencyFlags } from './operation-column-dependency-tracker.js'
 import type { ExactLookupImpactCaches } from './operation-lookup-dirty-markers.js'
 import type { OperationLookupAccess } from './operation-lookup-access.js'
+import { applyTableHeaderRenameForSetCellValue, isTableHeaderCell } from './operation-table-header-rename.js'
 
 type ClearCellMutation = Extract<EngineCellMutationRef['mutation'], { kind: 'clearCell' }>
 type OperationCellMutationSource = Exclude<MutationSource, 'remote'>
@@ -105,18 +106,46 @@ export function applyClearCellMutation(request: ApplyClearCellMutationArgs): Cle
   let formulaChangedCount = request.formulaChangedCount
   let explicitChangedCount = request.explicitChangedCount
   let topologyChanged = request.topologyChanged
+  let headerClearValue: string | undefined
+
+  const sheetName = request.resolveSheetName(sheetId)
+  if (!isRestore && isTableHeaderCell(args.state.workbook.listTables(), sheetName, mutation.row, mutation.col)) {
+    const renamed = applyTableHeaderRenameForSetCellValue({
+      serviceArgs: args,
+      sheetName,
+      row: mutation.row,
+      col: mutation.col,
+      value: null,
+      formulaChangedCount,
+      topologyChanged,
+    })
+    formulaChangedCount = renamed.formulaChangedCount
+    topologyChanged = renamed.topologyChanged
+    headerClearValue = String(renamed.value ?? '')
+  }
 
   const markReplicaVersion = (): void => {
     if (!isRestore && args.state.trackReplicaVersions) {
-      request.setCellEntityVersion(request.resolveSheetName(sheetId), formatAddress(mutation.row, mutation.col), request.order!)
+      request.setCellEntityVersion(sheetName, formatAddress(mutation.row, mutation.col), request.order!)
     }
+  }
+
+  const nextCellValue = (): CellValue =>
+    headerClearValue === undefined ? emptyValue() : literalToValue(headerClearValue, args.state.strings)
+
+  const writeNextCellValue = (cellIndex: number): void => {
+    if (headerClearValue === undefined) {
+      args.state.workbook.cellStore.setValue(cellIndex, emptyValue())
+      return
+    }
+    writeLiteralToCellStore(args.state.workbook.cellStore, cellIndex, headerClearValue, args.state.strings)
   }
 
   const markDirectDependents = (cellIndex: number): void => {
     if (isRestore) {
       return
     }
-    const nextValue = emptyValue()
+    const nextValue = nextCellValue()
     const directDependentsHandled = request.markPostRecalcDirectFormulaDependents(
       cellIndex,
       request.postRecalcDirectFormulaIndices,
@@ -132,8 +161,8 @@ export function applyClearCellMutation(request: ApplyClearCellMutationArgs): Cle
     if (!needsLookupValueRead) {
       return
     }
-    const sheetName = request.resolveSheetName(sheetId)
-    const nextValue = emptyValue()
+    const nextValue = nextCellValue()
+    const newStringId = headerClearValue === undefined ? undefined : args.state.workbook.cellStore.stringIds[cellIndex]
     if (hasExactLookupDependents || hasAggregateDependents) {
       const exactLookupRequest = withOptionalLookupStringIds({
         sheetName,
@@ -142,7 +171,7 @@ export function applyClearCellMutation(request: ApplyClearCellMutationArgs): Cle
         oldValue: prior.value,
         newValue: nextValue,
         oldStringId: prior.stringId,
-        newStringId: undefined,
+        newStringId,
         inputCellIndex: cellIndex,
       })
       if (hasExactLookupDependents) {
@@ -175,7 +204,7 @@ export function applyClearCellMutation(request: ApplyClearCellMutationArgs): Cle
         oldValue: prior.value,
         newValue: nextValue,
         oldStringId: prior.stringId,
-        newStringId: undefined,
+        newStringId,
       })
       formulaChangedCount = request.noteSortedLookupLiteralWriteWhenDirty(sortedLookupRequest, formulaChangedCount)
     }
@@ -201,12 +230,12 @@ export function applyClearCellMutation(request: ApplyClearCellMutationArgs): Cle
     topologyChanged = rebound.topologyChanged
   }
 
-  if (existingIndex !== undefined && request.isClearCellNoOp(existingIndex)) {
+  if (existingIndex !== undefined && headerClearValue === undefined && request.isClearCellNoOp(existingIndex)) {
     return { changedInputCount, formulaChangedCount, explicitChangedCount, topologyChanged }
   }
 
   if (existingIndex !== undefined && request.canFastPathLiteralOverwrite(existingIndex)) {
-    args.state.workbook.cellStore.setValue(existingIndex, emptyValue())
+    writeNextCellValue(existingIndex)
     args.state.workbook.notifyCellValueWritten(existingIndex)
     if (!isRestore) {
       rebindValueSensitiveDependents(existingIndex)
@@ -219,6 +248,17 @@ export function applyClearCellMutation(request: ApplyClearCellMutationArgs): Cle
   }
 
   if (existingIndex === undefined) {
+    if (headerClearValue !== undefined) {
+      const cellIndex = args.state.workbook.ensureCellAt(sheetId, mutation.row, mutation.col).cellIndex
+      writeNextCellValue(cellIndex)
+      args.state.workbook.notifyCellValueWritten(cellIndex)
+      if (!isRestore) {
+        rebindValueSensitiveDependents(cellIndex)
+      }
+      markDirectDependents(cellIndex)
+      markLookupAndAggregateDependents(cellIndex)
+      markChanged(cellIndex)
+    }
     markReplicaVersion()
     return { changedInputCount, formulaChangedCount, explicitChangedCount, topologyChanged }
   }
@@ -228,10 +268,10 @@ export function applyClearCellMutation(request: ApplyClearCellMutationArgs): Cle
   const removedFormula = args.removeFormula(existingIndex)
   topologyChanged = removedFormula || topologyChanged
   if (removedFormula) {
-    args.invalidateAggregateColumn({ sheetName: request.resolveSheetName(sheetId), col: mutation.col })
+    args.invalidateAggregateColumn({ sheetName, col: mutation.col })
     request.clearTrackedColumnDependencyFlagCache()
   }
-  args.state.workbook.cellStore.setValue(existingIndex, emptyValue())
+  writeNextCellValue(existingIndex)
   args.state.workbook.notifyCellValueWritten(existingIndex)
   if (!isRestore) {
     rebindValueSensitiveDependents(existingIndex)
@@ -240,9 +280,12 @@ export function applyClearCellMutation(request: ApplyClearCellMutationArgs): Cle
   markLookupAndAggregateDependents(existingIndex)
   args.state.workbook.cellStore.flags[existingIndex] =
     (args.state.workbook.cellStore.flags[existingIndex] ?? 0) &
-    ~(CellFlags.AuthoredBlank | CellFlags.HasFormula | CellFlags.JsOnly | CellFlags.InCycle | CellFlags.SpillChild | CellFlags.PivotOutput)
+    ~(CellFlags.HasFormula | CellFlags.JsOnly | CellFlags.InCycle | CellFlags.SpillChild | CellFlags.PivotOutput)
+  if (headerClearValue === undefined) {
+    args.state.workbook.cellStore.flags[existingIndex] &= ~CellFlags.AuthoredBlank
+  }
   request.normalizeHistoryDependencyPlaceholder(existingIndex, request.source)
-  if (!isRestore) {
+  if (!isRestore && headerClearValue === undefined) {
     request.pruneCellIfOrphaned(existingIndex)
   }
   markChanged(existingIndex)

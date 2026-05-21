@@ -11,6 +11,7 @@ import { mapStructuralBoundary } from '../../engine-structural-utils.js'
 import { normalizeDefinedName, type WorkbookTableRecord } from '../../workbook-store.js'
 import type { CreateEngineStructureServiceArgs } from './structure-service-types.js'
 import { rewriteFormulaSourceForDeletedStructuredReferences } from './structure-structured-ref-rewrite.js'
+import { nextGeneratedTableColumnName, normalizeTableColumnName } from './table-column-name-helpers.js'
 
 type StructureMetadataRewriteArgs = Pick<CreateEngineStructureServiceArgs, 'state' | 'clearOwnedPivot'>
 
@@ -516,18 +517,6 @@ function ensureMinimumTableDataBodyRange<T extends MetadataRangeLike>(range: T, 
     startAddress: range.startAddress,
     endAddress: formatAddress(nextEndRow, endCol),
   })
-}
-
-function nextGeneratedTableColumnName(usedColumnNames: Set<string>): string {
-  let suffix = 1
-  while (usedColumnNames.has(normalizeTableColumnName(`Column${String(suffix)}`))) {
-    suffix += 1
-  }
-  return `Column${String(suffix)}`
-}
-
-function normalizeTableColumnName(name: string): string {
-  return name.trim().toUpperCase()
 }
 
 function mapTableColumnPointForStructuralTransform(index: number, transform: StructuralAxisTransform): number | undefined {

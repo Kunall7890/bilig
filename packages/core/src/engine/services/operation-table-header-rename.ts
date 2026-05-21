@@ -3,10 +3,12 @@ import type { LiteralInput } from '@bilig/protocol'
 import { normalizeDefinedName, type WorkbookTableRecord } from '../../workbook-store.js'
 import type { CreateEngineOperationServiceArgs } from './operation-service-types.js'
 import { rewriteFormulaSourceForRenamedStructuredReference, type RenamedTableColumnReference } from './structure-structured-ref-rewrite.js'
+import { excelCompatibleTableColumnName, normalizeTableColumnName } from './table-column-name-helpers.js'
 
 interface TableHeaderRenameCounts {
   readonly formulaChangedCount: number
   readonly topologyChanged: boolean
+  readonly value: LiteralInput
 }
 
 export function applyTableHeaderRenameForSetCellValue(args: {
@@ -18,19 +20,16 @@ export function applyTableHeaderRenameForSetCellValue(args: {
   readonly formulaChangedCount: number
   readonly topologyChanged: boolean
 }): TableHeaderRenameCounts {
-  const nextColumnName = tableColumnNameForLiteral(args.value)
-  if (nextColumnName === undefined) {
-    return { formulaChangedCount: args.formulaChangedCount, topologyChanged: args.topologyChanged }
-  }
-
   const header = findTableHeaderCell(args.serviceArgs.state.workbook.listTables(), args.sheetName, args.row, args.col)
   if (!header) {
-    return { formulaChangedCount: args.formulaChangedCount, topologyChanged: args.topologyChanged }
+    return { formulaChangedCount: args.formulaChangedCount, topologyChanged: args.topologyChanged, value: args.value }
   }
 
+  const requestedColumnName = tableColumnNameForLiteral(args.value)
+  const nextColumnName = excelCompatibleTableColumnName(requestedColumnName, header.table.columnNames, header.columnIndex)
   const previousColumnName = header.table.columnNames[header.columnIndex] ?? ''
   if (normalizeTableColumnName(previousColumnName) === normalizeTableColumnName(nextColumnName)) {
-    return { formulaChangedCount: args.formulaChangedCount, topologyChanged: args.topologyChanged }
+    return { formulaChangedCount: args.formulaChangedCount, topologyChanged: args.topologyChanged, value: nextColumnName }
   }
 
   const nextColumnNames = header.table.columnNames.slice()
@@ -78,7 +77,7 @@ export function applyTableHeaderRenameForSetCellValue(args: {
     topologyChanged = topologyChanged || changedTopology
   }
 
-  return { formulaChangedCount, topologyChanged }
+  return { formulaChangedCount, topologyChanged, value: nextColumnName }
 }
 
 export function isTableHeaderCell(tables: readonly WorkbookTableRecord[], sheetName: string, row: number, col: number): boolean {
@@ -157,10 +156,6 @@ export function findTableHeaderCell(
   return undefined
 }
 
-function normalizeTableColumnName(name: string): string {
-  return name.trim().toUpperCase()
-}
-
 function structuredReferenceMatches(reference: RenamedTableColumnReference, tableName: string, columnName: string): boolean {
   return (
     normalizeTableColumnName(reference.tableName) === normalizeTableColumnName(tableName) &&
@@ -168,11 +163,10 @@ function structuredReferenceMatches(reference: RenamedTableColumnReference, tabl
   )
 }
 
-function tableColumnNameForLiteral(value: LiteralInput): string | undefined {
+function tableColumnNameForLiteral(value: LiteralInput): string {
   if (value === null) {
-    return undefined
+    return ''
   }
   const name = typeof value === 'boolean' ? (value ? 'TRUE' : 'FALSE') : String(value)
-  const trimmed = name.trim()
-  return trimmed.length === 0 ? undefined : trimmed
+  return name.trim()
 }
