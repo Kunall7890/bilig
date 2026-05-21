@@ -10,6 +10,7 @@ import {
   countImportedWorkbookFeatures,
   extractFormulaOracles,
   extractFormulaOraclesFromXlsxByteSource,
+  extractFormulaOraclesFromWorksheetXmlChunks,
   importedWorkbookMetadata,
   inspectWorkbookFootprint,
   inspectWorkbookFootprintForWorker,
@@ -53,6 +54,36 @@ describe('public workbook corpus workbook helpers', () => {
       },
     ])
     expect(source.fullSourceReadCount).toBe(0)
+  })
+
+  it('extracts formula oracles from worksheet XML chunks across cell boundaries', () => {
+    const worksheetXml = [
+      '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>',
+      '<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">',
+      '<sheetData>',
+      '<row r="1"><c r="A1" custom="quoted > value"><f>40+2</f><v>42</v></c></row>',
+      '<row r="2"><c r="B2" t="b"><f>TRUE()</f><v>1</v></c></row>',
+      '<row r="3"><c r="C3" t="str"><f>"Hello"</f><v>Hello &amp; goodbye</v></c></row>',
+      '</sheetData></worksheet>',
+    ].join('')
+
+    expect(extractFormulaOraclesFromWorksheetXmlChunks('Chunked', chunkedUtf8Reader(worksheetXml, 9))).toEqual([
+      {
+        sheetName: 'Chunked',
+        address: 'A1',
+        expected: { tag: ValueTag.Number, value: 42 },
+      },
+      {
+        sheetName: 'Chunked',
+        address: 'B2',
+        expected: { tag: ValueTag.Boolean, value: true },
+      },
+      {
+        sheetName: 'Chunked',
+        address: 'C3',
+        expected: { tag: ValueTag.String, value: 'Hello & goodbye', stringId: 0 },
+      },
+    ])
   })
 
   it('keeps unsupported formula cache encodings on the fallback path', () => {
@@ -344,6 +375,16 @@ class TrackingByteSource {
 
 function byteSourceFromBytes(bytes: Uint8Array): TrackingByteSource {
   return new TrackingByteSource(bytes)
+}
+
+function chunkedUtf8Reader(text: string, chunkSize: number): (onChunk: (chunk: Uint8Array) => void) => boolean {
+  const bytes = new TextEncoder().encode(text)
+  return (onChunk) => {
+    for (let offset = 0; offset < bytes.byteLength; offset += chunkSize) {
+      onChunk(bytes.subarray(offset, Math.min(bytes.byteLength, offset + chunkSize)))
+    }
+    return true
+  }
 }
 
 function buildFormulaOracleWorkbookBytes(): Uint8Array {
