@@ -53,15 +53,18 @@
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",
-      "import": "./dist/index.js"
+      "import": "./dist/index.js",
+      "default": "./dist/index.js"
     },
     "./mcp": {
       "types": "./dist/mcp.d.ts",
-      "import": "./dist/mcp.js"
+      "import": "./dist/mcp.js",
+      "default": "./dist/mcp.js"
     },
     "./xlsx": {
       "types": "./dist/xlsx.d.ts",
-      "import": "./dist/xlsx.js"
+      "import": "./dist/xlsx.js",
+      "default": "./dist/xlsx.js"
     }
   },
   "publishConfig": {
