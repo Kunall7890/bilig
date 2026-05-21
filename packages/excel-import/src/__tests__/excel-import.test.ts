@@ -486,21 +486,40 @@ describe('excel import', () => {
   it('materializes external workbook range references from saved XLSX external-link caches', async () => {
     const imported = importXlsx(buildExternalLinkRangeCacheWorkbook(), 'external-link-range-cache.xlsx')
     const cells = new Map(imported.snapshot.sheets[0]?.cells.map((cell) => [cell.address, cell]) ?? [])
+    const cacheSheet = imported.snapshot.sheets.find((sheet) => sheet.name === '__bilig_ext_1_Rates')
+    const cacheCells = new Map(cacheSheet?.cells.map((cell) => [cell.address, cell.value]) ?? [])
 
-    expect(cells.get('C1')).toMatchObject({ formula: 'SUM({10;20;30})*B1', value: 120 })
+    expect(cacheSheet).toMatchObject({
+      name: '__bilig_ext_1_Rates',
+      order: 1,
+      metadata: { visibility: 'veryHidden' },
+    })
+    expect(cacheCells).toEqual(
+      new Map([
+        ['A1', 'SKU'],
+        ['B1', 'Rate'],
+        ['A2', 'A'],
+        ['B2', 10],
+        ['A3', 'B'],
+        ['B3', 20],
+        ['A4', 'C'],
+        ['B4', 30],
+      ]),
+    )
+    expect(cells.get('C1')).toMatchObject({ formula: "SUM('__bilig_ext_1_Rates'!$B$2:$B$4)*B1", value: 120 })
     expect(cells.get('C2')).toMatchObject({
-      formula: 'XLOOKUP("B",{"A";"B";"C"},{10;20;30})*B1',
+      formula: "XLOOKUP(\"B\",'__bilig_ext_1_Rates'!$A$2:$A$4,'__bilig_ext_1_Rates'!$B$2:$B$4)*B1",
       value: 40,
     })
     expect(cells.get('C3')).toMatchObject({
-      formula: 'SUMPRODUCT({10;20;30},--({"A";"B";"C"}="C"))*B1',
+      formula: "SUMPRODUCT('__bilig_ext_1_Rates'!$B$2:$B$4,--('__bilig_ext_1_Rates'!$A$2:$A$4=\"C\"))*B1",
       value: 60,
     })
     expect(imported.warnings).toEqual([externalWorkbookReferencesWarning])
     expect(imported.snapshot.workbook.metadata?.unsupportedFormulaDependencies).toEqual([
       expect.objectContaining({
         address: 'C1',
-        importedFormula: 'SUM({10;20;30})*B1',
+        importedFormula: "SUM('__bilig_ext_1_Rates'!$B$2:$B$4)*B1",
         cachedValuesUsed: true,
         cachedFormulaValuePreserved: true,
         cachedExternalReferenceValuesUsed: true,
@@ -509,7 +528,7 @@ describe('excel import', () => {
       }),
       expect.objectContaining({
         address: 'C2',
-        importedFormula: 'XLOOKUP("B",{"A";"B";"C"},{10;20;30})*B1',
+        importedFormula: "XLOOKUP(\"B\",'__bilig_ext_1_Rates'!$A$2:$A$4,'__bilig_ext_1_Rates'!$B$2:$B$4)*B1",
         cachedValuesUsed: true,
         cachedFormulaValuePreserved: true,
         cachedExternalReferenceValuesUsed: true,
@@ -518,7 +537,7 @@ describe('excel import', () => {
       }),
       expect.objectContaining({
         address: 'C3',
-        importedFormula: 'SUMPRODUCT({10;20;30},--({"A";"B";"C"}="C"))*B1',
+        importedFormula: "SUMPRODUCT('__bilig_ext_1_Rates'!$B$2:$B$4,--('__bilig_ext_1_Rates'!$A$2:$A$4=\"C\"))*B1",
         cachedValuesUsed: true,
         cachedFormulaValuePreserved: true,
         cachedExternalReferenceValuesUsed: true,
@@ -542,7 +561,7 @@ describe('excel import', () => {
     expect(engine.getCellValue('Model', 'C3')).toEqual({ tag: ValueTag.Number, value: 90 })
   })
 
-  it('preserves external criteria-function ranges instead of exporting invalid inline-array formulas', () => {
+  it('materializes external criteria-function ranges as hidden-sheet references', async () => {
     const imported = importXlsx(
       buildExternalLinkRangeCacheWorkbook("SUMIFS('[1]Rates'!$B$2:$B$4,'[1]Rates'!$A$2:$A$4,\"C\")*B1"),
       'external-link-range-cache-sumifs.xlsx',
@@ -550,19 +569,37 @@ describe('excel import', () => {
     const cells = new Map(imported.snapshot.sheets[0]?.cells.map((cell) => [cell.address, cell]) ?? [])
 
     expect(cells.get('C3')).toMatchObject({
-      formula: "SUMIFS('[1]Rates'!$B$2:$B$4,'[1]Rates'!$A$2:$A$4,\"C\")*B1",
+      formula: "SUMIFS('__bilig_ext_1_Rates'!$B$2:$B$4,'__bilig_ext_1_Rates'!$A$2:$A$4,\"C\")*B1",
       value: 60,
     })
     expect(imported.snapshot.workbook.metadata?.unsupportedFormulaDependencies).toContainEqual(
       expect.objectContaining({
         address: 'C3',
-        importedFormula: "SUMIFS('[1]Rates'!$B$2:$B$4,'[1]Rates'!$A$2:$A$4,\"C\")*B1",
+        importedFormula: "SUMIFS('__bilig_ext_1_Rates'!$B$2:$B$4,'__bilig_ext_1_Rates'!$A$2:$A$4,\"C\")*B1",
         cachedValuesUsed: true,
         cachedFormulaValuePreserved: true,
-        cachedExternalReferenceValuesUsed: false,
-        resolvedExternalReferenceCount: 0,
+        cachedExternalReferenceValuesUsed: true,
+        resolvedExternalReferenceCount: 6,
       }),
     )
+    const exportedZip = unzipSync(exportXlsx(imported.snapshot))
+    const modelSheetXml = strFromU8(exportedZip['xl/worksheets/sheet1.xml'] ?? new Uint8Array())
+    const workbookXml = strFromU8(exportedZip['xl/workbook.xml'] ?? new Uint8Array())
+
+    expect(modelSheetXml).toContain('__bilig_ext_1_Rates')
+    expect(modelSheetXml).not.toContain('{')
+    expect(workbookXml).toContain('name="__bilig_ext_1_Rates"')
+    expect(workbookXml).toContain('state="veryHidden"')
+
+    const engine = new SpreadsheetEngine({ workbookName: 'external-link-range-cache-sumifs-import' })
+    await engine.ready()
+    engine.importSnapshot(imported.snapshot)
+
+    expect(engine.getCellValue('Model', 'C3')).toEqual({ tag: ValueTag.Number, value: 60 })
+
+    engine.setCellValue('Model', 'B1', 3)
+
+    expect(engine.getCellValue('Model', 'C3')).toEqual({ tag: ValueTag.Number, value: 90 })
   })
 
   it('preserves external GETPIVOTDATA anchors instead of replacing them with cached labels', () => {

@@ -27,13 +27,21 @@ const changedExternalRangeValues = [
 ] as const
 
 describe('macOS Desktop Excel external-link cache oracle', () => {
-  it('imports cached external ranges as recalculable inline arrays', async () => {
+  it('imports cached external ranges as hidden-sheet references', async () => {
     const imported = importXlsx(buildExternalLinkRangeCacheWorkbook(), 'external-link-range-cache.xlsx')
     const cells = new Map(imported.snapshot.sheets[0]?.cells.map((cell) => [cell.address, cell]) ?? [])
+    const cacheSheet = imported.snapshot.sheets.find((sheet) => sheet.name === '__bilig_ext_1_Rates')
 
-    expect(cells.get('C1')).toMatchObject({ formula: 'SUM({10;20;30})*B1', value: 120 })
-    expect(cells.get('C2')).toMatchObject({ formula: 'XLOOKUP("B",{"A";"B";"C"},{10;20;30})*B1', value: 40 })
-    expect(cells.get('C3')).toMatchObject({ formula: 'SUMPRODUCT({10;20;30},--({"A";"B";"C"}="C"))*B1', value: 60 })
+    expect(cacheSheet).toMatchObject({ metadata: { visibility: 'veryHidden' } })
+    expect(cells.get('C1')).toMatchObject({ formula: "SUM('__bilig_ext_1_Rates'!$B$2:$B$4)*B1", value: 120 })
+    expect(cells.get('C2')).toMatchObject({
+      formula: "XLOOKUP(\"B\",'__bilig_ext_1_Rates'!$A$2:$A$4,'__bilig_ext_1_Rates'!$B$2:$B$4)*B1",
+      value: 40,
+    })
+    expect(cells.get('C3')).toMatchObject({
+      formula: "SUMIFS('__bilig_ext_1_Rates'!$B$2:$B$4,'__bilig_ext_1_Rates'!$A$2:$A$4,\"C\")*B1",
+      value: 60,
+    })
     expect(imported.warnings).toEqual([externalWorkbookReferencesWarning])
 
     const engine = new SpreadsheetEngine({ workbookName: 'external-link-range-cache-import' })
@@ -45,6 +53,15 @@ describe('macOS Desktop Excel external-link cache oracle', () => {
     engine.setCellValue('Model', 'B1', 3)
 
     expectEngineValues(engine, changedExternalRangeValues)
+
+    const exportedZip = unzipSync(exportXlsx(engine.exportSnapshot()))
+    const modelSheetXml = xmlText(exportedZip, 'xl/worksheets/sheet1.xml')
+    const workbookXml = xmlText(exportedZip, 'xl/workbook.xml')
+
+    expect(modelSheetXml).toContain('__bilig_ext_1_Rates')
+    expect(modelSheetXml).not.toContain('{')
+    expect(workbookXml).toContain('name="__bilig_ext_1_Rates"')
+    expect(workbookXml).toContain('state="veryHidden"')
   })
 
   it.runIf(process.env.BILIG_EXCEL_ORACLE_RUN === '1')(
@@ -146,7 +163,7 @@ function buildExternalLinkRangeCacheWorkbook(target = 'file:///tmp/rates.xlsx'):
   const sheet = XLSX.utils.aoa_to_sheet([[null, 2]])
   sheet.C1 = { t: 'n', f: "SUM('[1]Rates'!$B$2:$B$4)*B1", v: 120 }
   sheet.C2 = { t: 'n', f: "_xlfn.XLOOKUP(\"B\",'[1]Rates'!$A$2:$A$4,'[1]Rates'!$B$2:$B$4)*B1", v: 40 }
-  sheet.C3 = { t: 'n', f: "SUMPRODUCT('[1]Rates'!$B$2:$B$4,--('[1]Rates'!$A$2:$A$4=\"C\"))*B1", v: 60 }
+  sheet.C3 = { t: 'n', f: "SUMIFS('[1]Rates'!$B$2:$B$4,'[1]Rates'!$A$2:$A$4,\"C\")*B1", v: 60 }
   sheet['!ref'] = 'A1:C3'
   XLSX.utils.book_append_sheet(workbook, sheet, 'Model')
 

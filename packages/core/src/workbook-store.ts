@@ -23,6 +23,7 @@ import type {
   WorkbookSheetProtectionSnapshot,
   WorkbookSheetFormatPrSnapshot,
   WorkbookSheetTabColorSnapshot,
+  WorkbookSheetVisibilitySnapshot,
   WorkbookPivotSnapshot,
   WorkbookShapeSnapshot,
   WorkbookTableSnapshot,
@@ -594,6 +595,19 @@ export class WorkbookStore {
   getSheetFormatPr(sheetName: string): WorkbookSheetFormatPrSnapshot | undefined {
     const sheetFormatPr = this.getSheet(sheetName)?.sheetFormatPr
     return sheetFormatPr ? structuredClone(sheetFormatPr) : undefined
+  }
+
+  setSheetVisibility(sheetName: string, visibility: WorkbookSheetVisibilitySnapshot | undefined): void {
+    const sheet = this.getOrCreateSheet(sheetName)
+    if (visibility === undefined) {
+      delete sheet.visibility
+      return
+    }
+    sheet.visibility = visibility
+  }
+
+  getSheetVisibility(sheetName: string): WorkbookSheetVisibilitySnapshot | undefined {
+    return this.getSheet(sheetName)?.visibility
   }
 
   listRowAxisEntries(sheetName: string): WorkbookAxisEntrySnapshot[] {

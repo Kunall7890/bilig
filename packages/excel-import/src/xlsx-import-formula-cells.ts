@@ -2,6 +2,7 @@ import type { LiteralInput, WorkbookSnapshot, WorkbookTableSnapshot, WorkbookUns
 import {
   collectImportedFormulaExternalWorkbookReferences,
   translateImportedFormulaExternalReferences,
+  type ImportedExternalCacheSheetMap,
   type ImportedExternalLinkCaches,
   type ImportedExternalWorkbookReferences,
 } from './xlsx-external-references.js'
@@ -18,6 +19,7 @@ export interface ImportedFormulaSnapshotCellResult {
   readonly hasExternalWorkbookDependency: boolean
   readonly hasVolatileFormula: boolean
   readonly hasCachedLiteral: boolean
+  readonly materializedExternalCacheSheetKeys: readonly string[]
   readonly unsupportedFormulaDependency?: WorkbookUnsupportedFormulaDependencySnapshot
 }
 
@@ -29,6 +31,7 @@ export interface BuildImportedFormulaSnapshotCellArgs {
   readonly cachedLiteral: LiteralInput | undefined
   readonly tables: readonly WorkbookTableSnapshot[] | undefined
   readonly externalLinkCaches: ImportedExternalLinkCaches
+  readonly externalCacheSheetNames?: ImportedExternalCacheSheetMap
   readonly externalWorkbookReferences: ImportedExternalWorkbookReferences
 }
 
@@ -40,7 +43,11 @@ export function buildImportedFormulaSnapshotCell(
   }
 
   const normalizedFormula = normalizeImportedFormulaSource(args.formula)
-  const externalReferenceTranslation = translateImportedFormulaExternalReferences(normalizedFormula, args.externalLinkCaches)
+  const externalReferenceTranslation = translateImportedFormulaExternalReferences(
+    normalizedFormula,
+    args.externalLinkCaches,
+    args.externalCacheSheetNames,
+  )
   const hasExternalWorkbookDependency =
     externalReferenceTranslation.resolvedCount > 0 ||
     externalReferenceTranslation.unresolvedCount > 0 ||
@@ -80,6 +87,7 @@ export function buildImportedFormulaSnapshotCell(
     formulaCell,
     hasCachedLiteral: cachedLiteral !== undefined,
     hasExternalWorkbookDependency,
+    materializedExternalCacheSheetKeys: externalReferenceTranslation.materializedExternalCacheSheetKeys,
     hasVolatileFormula: formulaReferencesVolatileFunction(normalizedFormula),
     ...(unsupportedFormulaDependency ? { unsupportedFormulaDependency } : {}),
   }

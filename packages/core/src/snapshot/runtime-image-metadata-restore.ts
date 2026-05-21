@@ -83,6 +83,9 @@ function restoreSheetMetadata(args: { readonly workbook: WorkbookStore; readonly
   if (sheet.metadata?.sheetFormatPr) {
     workbook.setSheetFormatPr(sheet.name, sheet.metadata.sheetFormatPr)
   }
+  if (sheet.metadata?.visibility) {
+    workbook.setSheetVisibility(sheet.name, sheet.metadata.visibility)
+  }
   if (sheet.metadata?.freezePane) {
     workbook.setFreezePane(sheet.name, sheet.metadata.freezePane.rows, sheet.metadata.freezePane.cols, {
       ...(sheet.metadata.freezePane.topLeftCell !== undefined ? { topLeftCell: sheet.metadata.freezePane.topLeftCell } : {}),
