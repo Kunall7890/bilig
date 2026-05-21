@@ -444,6 +444,7 @@ export function createEngineStructureService(args: CreateEngineStructureServiceA
       rebindInputs.forEach((input) => {
         const formula = args.state.formulas.get(input.cellIndex)
         const directAggregateRetargeted =
+          input.preservesValue === true &&
           input.preservesBinding === true &&
           formula?.directAggregate !== undefined &&
           args.retargetDirectAggregateFormulaForStructuralTransform(input, sheetName, transform)

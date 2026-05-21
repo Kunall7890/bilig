@@ -1342,4 +1342,42 @@ describe('engine fuzz regressions', () => {
     expect(engine.getCell('Sheet1', 'C6').formula).toBe('B1+C1')
     expect(engine.getCellValue('Sheet1', 'C6')).toEqual({ tag: ValueTag.Number, value: 3 })
   })
+
+  it('rebuilds direct aggregate dependency order after column moves for stable undo and redo', async () => {
+    const engine = new SpreadsheetEngine({
+      workbookName: 'direct-aggregate-column-move-dependency-order-regression',
+      replicaId: 'direct-aggregate-column-move-dependency-order-regression',
+    })
+    await engine.ready()
+    engine.createSheet('Sheet1')
+
+    engine.setRangeValues({ sheetName: 'Sheet1', startAddress: 'A1', endAddress: 'E5' }, [
+      [1, 2, 3, 4, 5],
+      [11, 12, 13, 14, 15],
+      [21, 22, 23, 24, 25],
+      [31, 32, 33, 34, 35],
+      [41, 42, 43, 44, 45],
+    ])
+    engine.setCellFormula('Sheet1', 'A6', 'SUM(A1:A5)')
+    engine.setCellFormula('Sheet1', 'B6', 'A1+B1')
+
+    engine.moveRows('Sheet1', 0, 1, 5)
+    engine.deleteRows('Sheet1', 5, 1)
+    engine.deleteRows('Sheet1', 0, 1)
+    engine.deleteRows('Sheet1', 0, 2)
+    engine.setCellFormula('Sheet1', 'A3', 'SUM(A1:B2)')
+
+    engine.moveColumns('Sheet1', 0, 1, 1)
+
+    expect(engine.getCell('Sheet1', 'B3').formula).toBe('SUM(A1:B2)')
+    expect(engine.getCellValue('Sheet1', 'B3')).toEqual({ tag: ValueTag.Error, code: ErrorCode.Cycle })
+
+    expect(engine.undo()).toBe(true)
+    expect(engine.getCell('Sheet1', 'A3').formula).toBe('SUM(A1:B2)')
+    expect(engine.getCellValue('Sheet1', 'A3')).toEqual({ tag: ValueTag.Error, code: ErrorCode.Cycle })
+
+    expect(engine.redo()).toBe(true)
+    expect(engine.getCell('Sheet1', 'B3').formula).toBe('SUM(A1:B2)')
+    expect(engine.getCellValue('Sheet1', 'B3')).toEqual({ tag: ValueTag.Error, code: ErrorCode.Cycle })
+  })
 })

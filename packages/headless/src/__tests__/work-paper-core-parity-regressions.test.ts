@@ -166,6 +166,29 @@ describe('WorkPaper/core parity regressions', () => {
     expect(workbook.getCellSerialized({ sheet: sheetId, row: 6, col: 1 })).toBe('=A3+B3')
     expect(workbook.getCellValue({ sheet: sheetId, row: 6, col: 1 })).toEqual({ tag: ValueTag.Number, value: 43 })
   })
+
+  it('keeps direct aggregate error precedence stable through column move undo and redo', () => {
+    const { workbook, sheetId } = createSeededWorkbook()
+
+    workbook.moveRows(sheetId, 0, 1, 5)
+    workbook.removeRows(sheetId, 5, 1)
+    workbook.removeRows(sheetId, 0, 1)
+    workbook.removeRows(sheetId, 0, 2)
+    setCell(workbook, sheetId, 2, 0, '=SUM(A1:B2)')
+
+    workbook.moveColumns(sheetId, 0, 1, 1)
+
+    expect(workbook.getCellSerialized({ sheet: sheetId, row: 2, col: 1 })).toBe('=SUM(A1:B2)')
+    expect(workbook.getCellValue({ sheet: sheetId, row: 2, col: 1 })).toEqual({ tag: ValueTag.Error, code: ErrorCode.Cycle })
+
+    workbook.undo()
+    expect(workbook.getCellSerialized({ sheet: sheetId, row: 2, col: 0 })).toBe('=SUM(A1:B2)')
+    expect(workbook.getCellValue({ sheet: sheetId, row: 2, col: 0 })).toEqual({ tag: ValueTag.Error, code: ErrorCode.Cycle })
+
+    workbook.redo()
+    expect(workbook.getCellSerialized({ sheet: sheetId, row: 2, col: 1 })).toBe('=SUM(A1:B2)')
+    expect(workbook.getCellValue({ sheet: sheetId, row: 2, col: 1 })).toEqual({ tag: ValueTag.Error, code: ErrorCode.Cycle })
+  })
 })
 
 function createSeededWorkbook(): { workbook: WorkPaper; sheetId: number } {

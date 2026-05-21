@@ -1,6 +1,5 @@
 import type { CompiledFormula } from '@bilig/formula'
 import { FormulaMode, ErrorCode } from '@bilig/protocol'
-import { CellFlags } from '../../cell-store.js'
 import type { EdgeSlice } from '../../edge-arena.js'
 import { entityPayload, isRangeEntity, makeCellEntity } from '../../entity-ids.js'
 import { errorValue } from '../../engine-value-utils.js'
@@ -66,6 +65,8 @@ import { applyFormulaRuntimePlanFields } from './formula-binding-runtime-update.
 import { rebuildDeferredFormulaFamilyIndex } from './formula-family-index-rebuild.js'
 import { bindFreshDirectAggregateFormulaRun } from './formula-binding-fresh-direct-aggregate-run.js'
 import { createFormulaBindingDirectAggregateRetargeter } from './formula-binding-direct-aggregate-retarget.js'
+import { rebuildDirectAggregateFormulaDependenciesInPlace } from './formula-binding-direct-aggregate-dependencies.js'
+import { pruneFormulaBindingOrphanedDependencyCells, pruneFormulaBindingTrackedDependencyCell } from './formula-binding-orphan-pruning.js'
 import { bindFreshDirectScalarFormulaRun } from './formula-binding-fresh-direct-scalar-run.js'
 import {
   EMPTY_RUNTIME_PROGRAM,
@@ -263,30 +264,11 @@ export function createEngineFormulaBindingService(args: CreateEngineFormulaBindi
     appendTrackedReverseEdge(args.reverseState.reverseDefinedNameEdges, normalizeDefinedName(name), dependentCellIndex)
   }
 
-  const pruneTrackedDependencyCell = (cellIndex: number, ownerCellIndex: number): void => {
-    if (cellIndex === ownerCellIndex) {
-      return
-    }
-    if (getReverseEdgeSlice(makeCellEntity(cellIndex))) {
-      return
-    }
-    if (((args.state.workbook.cellStore.flags[cellIndex] ?? 0) & CellFlags.AuthoredBlank) !== 0) {
-      return
-    }
-    args.state.workbook.pruneCellIfEmpty(cellIndex)
-  }
+  const pruneTrackedDependencyCell = (cellIndex: number, ownerCellIndex: number): void =>
+    pruneFormulaBindingTrackedDependencyCell({ state: args.state, getReverseEdgeSlice, cellIndex, ownerCellIndex })
 
-  const pruneOrphanedDependencyCells = (cellIndices: readonly number[]): void => {
-    cellIndices.forEach((cellIndex) => {
-      if (getReverseEdgeSlice(makeCellEntity(cellIndex))) {
-        return
-      }
-      if (((args.state.workbook.cellStore.flags[cellIndex] ?? 0) & CellFlags.AuthoredBlank) !== 0) {
-        return
-      }
-      args.state.workbook.pruneCellIfEmpty(cellIndex)
-    })
-  }
+  const pruneOrphanedDependencyCells = (cellIndices: readonly number[]): void =>
+    pruneFormulaBindingOrphanedDependencyCells({ state: args.state, getReverseEdgeSlice, cellIndices })
 
   const updateFormulaDependenciesInPlaceNow = (
     cellIndex: number,
@@ -488,6 +470,17 @@ export function createEngineFormulaBindingService(args: CreateEngineFormulaBindi
     existing.directAggregate = nextDirectAggregate
     existing.directScalar = nextDirectScalar
     existing.directCriteria = undefined
+    if (nextDirectAggregate !== undefined) {
+      rebuildDirectAggregateFormulaDependenciesInPlace({
+        state: args.state,
+        edgeArena: args.edgeArena,
+        cellIndex,
+        formula: existing,
+        directAggregate: nextDirectAggregate,
+        removeReverseEdge,
+        appendKnownUniqueReverseEdge,
+      })
+    }
     updateVolatileFormulaIndex(cellIndex, existing)
     removeDirectAggregateColumnReverseEdges(
       args.reverseState.reverseAggregateColumnEdges,
