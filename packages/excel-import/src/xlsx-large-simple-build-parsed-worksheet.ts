@@ -19,7 +19,8 @@ import {
 import type { LargeSimpleSheetMetadataInput, ParsedWorksheet } from './xlsx-large-simple-import-types.js'
 import { decodeCellAddress } from './xlsx-large-simple-xml-byte-utils.js'
 
-export const lazySheetCellMaterializationThreshold = 100_000
+export const lazySheetCellMaterializationThreshold = 65_536
+export const lazySheetCellMaterializationNumberFormatThreshold = 100_000
 
 export function buildParsedWorksheet(
   sheetName: string,
@@ -52,7 +53,12 @@ export function buildParsedWorksheet(
     options.materializeCells && options.styleCatalog && options.stylesByIndex
       ? buildLargeSimpleStyleRanges(sheetName, cellScan, options.stylesByIndex, options.styleCatalog)
       : []
-  const useLazyCells = options.materializeCells && cellScan.cellCount > lazySheetCellMaterializationThreshold
+  const useLazyCells =
+    options.materializeCells &&
+    cellScan.cellCount >
+      (options.numberFormatsByStyleIndex && options.numberFormatsByStyleIndex.size > 0
+        ? lazySheetCellMaterializationNumberFormatThreshold
+        : lazySheetCellMaterializationThreshold)
   const cells = options.materializeCells
     ? useLazyCells
       ? cellScan.arena.createLazySheetCells(cellScan.sheetIndex)
