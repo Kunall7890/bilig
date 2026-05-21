@@ -90,6 +90,11 @@ on:
         type: boolean
         required: false
         default: false
+      publish_runtime_packages:
+        description: 'Plan and publish runtime packages during manual dispatch'
+        type: boolean
+        required: false
+        default: true
 
 concurrency:
   # Isolate push runs by commit so a newer push cannot cancel an already-started
@@ -276,7 +281,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 15
     needs: verify
-    if: github.ref == 'refs/heads/main'
+    if: github.ref == 'refs/heads/main' && (github.event_name != 'workflow_dispatch' || github.event.inputs.publish_runtime_packages != 'false')
     outputs:
       release_needed: ${{ steps.planner.outputs.release_needed }}
       bootstrap_required: ${{ steps.planner.outputs.bootstrap_required }}

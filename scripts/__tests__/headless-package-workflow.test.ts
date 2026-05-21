@@ -126,6 +126,8 @@ describe('headless package workflow', () => {
     expect(source).toContain('cd integrations/n8n-nodes-workpaper')
     expect(source).toContain('npm run check')
     expect(source).toContain('publish_n8n_node')
+    expect(source).toContain('publish_runtime_packages')
+    expect(source).toContain("github.event.inputs.publish_runtime_packages != 'false'")
     expect(source).toContain('publish-n8n-workpaper-node')
     expect(source).toContain('id-token: write')
     expect(source).toContain("npm publish \"${publish_args[@]}\"")
