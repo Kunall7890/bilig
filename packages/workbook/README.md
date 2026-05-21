@@ -28,6 +28,7 @@ The public surface stays generic:
 - `workbook.addOp(op, { target?, message? })` inside model actions
 - `WorkbookModel`
 - `WorkbookAction`
+- `WorkbookActionInput`
 - `WorkbookAddOpOptions`
 - `WorkbookActionPlanResult`
 - `WorkbookModelDescription`
@@ -38,6 +39,7 @@ The public surface stays generic:
 - `WorkbookPlanIssue`
 - `WorkbookModelVerification`
 - `WorkbookModelActionVerification`
+- `WorkbookModelVerificationOptions`
 - `WorkbookCustomCheckOptions`
 - `WorkbookRawFormulaOptions`
 - `WorkbookRunResult`
@@ -56,6 +58,42 @@ Calculation and workbook execution stay in `@bilig/core` and the app runtime.
 Use `planWorkbookAction` when an action name comes from an agent or user input;
 it returns `planned` or structured `failed` results instead of requiring
 exception control flow.
+Actions can also accept a JSON-safe input:
+
+```ts
+import { defineModel } from "@bilig/workbook";
+
+export const model = defineModel({
+  name: "custom-writer",
+
+  find(workbook) {
+    return {
+      output: workbook.findRange({ sheetName: "Sheet1", address: "B2" }),
+    };
+  },
+
+  actions: {
+    write({ refs, workbook, input }) {
+      if (typeof input !== "object" || input === null || Array.isArray(input)) {
+        throw new Error("input object required");
+      }
+      const value = input.value;
+      if (typeof value !== "number") {
+        throw new Error("numeric value required");
+      }
+      workbook.writeValue(refs.output, value);
+    },
+  },
+});
+```
+
+`planWorkbookAction(model, "write", { value: 12 })` clones and canonicalizes
+that input into the plan so an agent can inspect exactly what was requested.
+Inputs must be plain JSON values: strings, finite numbers, booleans, `null`,
+arrays without holes, and plain objects. This package intentionally does not add
+schema dependencies; consumers own their own input validation inside actions.
+Use `verifyModel(model, { inputs: { write: { value: 12 } } })` when whole-model
+verification needs parameters for specific actions.
 
 Formula expressions also keep their workbook inputs separate from their formula
 text. A planned `writeFormula` command includes both the parseable formula
@@ -99,18 +137,20 @@ action names, and whether model-level checks exist without running `find`,
 checks, or actions.
 Use `describeRef` and `describePlan` when an agent needs JSON-safe intent for
 logs, comparisons, approvals, or runtime handoff. Descriptions keep the same
-generic refs, commands, checks, changes, and ops, but omit consumer-private
-`refs` object shape and helper functions such as `table.column()`.
+generic action input, refs, commands, checks, changes, and ops, but omit
+consumer-private `refs` object shape and helper functions such as
+`table.column()`.
 Use `describePlanResult` when the same JSON-safe handoff is needed for either
 planned or failed action planning.
 
 Use `verifyPlan` before runtime handoff when an agent needs to prove a planned
-action is internally consistent. It checks for unresolved refs, unparsable
-formulas, duplicate resolved refs, and missing concrete ops for write, clear,
-and number-format commands that already target a known single cell. Custom check
-targets and supporting refs must also resolve through the model's `refsUsed`
-contract. Low-level `addOp` commands must contain valid `WorkbookOp` values,
-must still appear in `plan.ops`, and must match their declared `target` when the
-op exposes a concrete address or range.
+action is internally consistent. It checks for non-JSON-safe action input,
+unresolved refs, unparsable formulas, duplicate resolved refs, and missing
+concrete ops for write, clear, and number-format commands that already target a
+known single cell. Custom check targets and supporting refs must also resolve
+through the model's `refsUsed` contract. Low-level `addOp` commands must contain
+valid `WorkbookOp` values, must still appear in `plan.ops`, and must match their
+declared `target` when the op exposes a concrete address or range.
 Use `verifyModel` to plan and verify every action in a consumer-defined model
-with one JSON-safe result.
+with one JSON-safe result. Pass `inputs` when specific actions require
+parameters.

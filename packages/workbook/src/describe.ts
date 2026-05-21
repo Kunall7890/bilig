@@ -17,6 +17,7 @@ import {
   type WorkbookActionPlanResult,
   type WorkbookModel,
 } from './model.js'
+import type { WorkbookActionInput } from './input.js'
 import type { WorkbookOp } from './ops.js'
 import type { WorkbookChangeSummary, WorkbookCheckResult, WorkbookCheckStatus } from './result.js'
 
@@ -119,6 +120,7 @@ export interface WorkbookCheckResultDescription {
 export interface WorkbookActionPlanDescription {
   readonly modelName: string
   readonly actionName: string
+  readonly input?: WorkbookActionInput
   readonly refsUsed: readonly WorkbookRefDescription[]
   readonly commands: readonly WorkbookActionCommandDescription[]
   readonly ops: readonly WorkbookOp[]
@@ -135,6 +137,7 @@ export type WorkbookActionPlanResultDescription =
       readonly status: 'failed'
       readonly modelName: string
       readonly actionName: string
+      readonly input?: WorkbookActionInput
       readonly errors: readonly WorkbookRunErrorDescription[]
       readonly checks: readonly WorkbookCheckResultDescription[]
     }
@@ -274,6 +277,7 @@ export function describePlan<Refs>(plan: WorkbookActionPlan<Refs>): WorkbookActi
   return {
     modelName: plan.modelName,
     actionName: plan.actionName,
+    ...(plan.input !== undefined ? { input: plan.input } : {}),
     refsUsed: plan.refsUsed.map(describeRef),
     commands: plan.commands.map(describeCommand),
     ops: [...plan.ops],
@@ -300,6 +304,7 @@ export function describePlanResult<Refs>(result: WorkbookActionPlanResult<Refs>)
     status: 'failed',
     modelName: result.modelName,
     actionName: result.actionName,
+    ...(result.input !== undefined ? { input: result.input } : {}),
     errors: result.errors.map(describeError),
     checks: result.checks.map(describeCheck),
   }

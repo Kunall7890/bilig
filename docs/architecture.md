@@ -25,6 +25,7 @@ flowchart LR
   - snapshot import/export
 - `@bilig/workbook`
   - agent-first public workbook model API
+  - JSON-safe action input planning and verification
   - transport-neutral workbook ops and txns
 - `packages/zero-sync`
   - Zero schema

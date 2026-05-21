@@ -11,11 +11,13 @@ import {
   type WorkbookActionPlan,
   type WorkbookModel,
 } from './model.js'
+import { getOwnActionInput, hasOwnActionInput, normalizeWorkbookActionInput, type WorkbookActionInput } from './input.js'
 import type { WorkbookOp } from './ops.js'
 
 type WorkbookConcreteCommandOp = Extract<WorkbookOp, { kind: 'setCellFormula' | 'setCellValue' | 'setCellFormat' | 'clearCell' }>
 
 export type WorkbookPlanIssueCode =
+  | 'invalid_action_input'
   | 'duplicate_ref'
   | 'command_target_not_resolved'
   | 'formula_input_not_resolved'
@@ -52,6 +54,10 @@ export interface WorkbookModelVerification {
   readonly status: 'valid' | 'invalid'
   readonly modelName: string
   readonly actions: readonly WorkbookModelActionVerification[]
+}
+
+export interface WorkbookModelVerificationOptions {
+  readonly inputs?: Partial<Record<string, WorkbookActionInput>>
 }
 
 function refKey(ref: WorkbookRef): string {
@@ -304,6 +310,18 @@ export function verifyPlan<Refs>(plan: WorkbookActionPlan<Refs>): WorkbookPlanVe
   const issues: WorkbookPlanIssue[] = []
   const knownRefs = new Set<string>()
 
+  if (hasOwnActionInput(plan)) {
+    try {
+      normalizeWorkbookActionInput(getOwnActionInput(plan))
+    } catch (error) {
+      issues.push({
+        code: 'invalid_action_input',
+        path: 'input',
+        message: errorMessage(error),
+      })
+    }
+  }
+
   plan.refsUsed.forEach((ref, index) => {
     const key = refKey(ref)
     if (knownRefs.has(key)) {
@@ -453,9 +471,12 @@ export function verifyPlan<Refs>(plan: WorkbookActionPlan<Refs>): WorkbookPlanVe
   }
 }
 
-export function verifyModel<Refs, Actions extends WorkbookActionMap<Refs>>(model: WorkbookModel<Refs, Actions>): WorkbookModelVerification {
+export function verifyModel<Refs, Actions extends WorkbookActionMap<Refs>>(
+  model: WorkbookModel<Refs, Actions>,
+  options: WorkbookModelVerificationOptions = {},
+): WorkbookModelVerification {
   const actions = inspectModel(model).actions.map((actionName): WorkbookModelActionVerification => {
-    const planning = planWorkbookAction(model, actionName)
+    const planning = planWorkbookAction(model, actionName, options.inputs?.[actionName])
     const describedPlanning = describePlanResult(planning)
     if (planning.status === 'failed') {
       return {

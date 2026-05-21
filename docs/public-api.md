@@ -69,13 +69,23 @@ It exposes:
 - `workbook.addOp(op, { target?, message? })` inside model actions
 - `findTable`, `findColumn`, `findRange`, `findName`, and `findRows` through the model workbook context and as top-level helpers
 - `check.exists`, `check.noFormulaErrors`, and `check.custom` through the model workbook context and as top-level helpers
-- `WorkbookModel`, `WorkbookAction`, `WorkbookAddOpOptions`, `WorkbookActionPlanResult`, `WorkbookModelDescription`, `WorkbookRefDescription`, `WorkbookActionPlanDescription`, `WorkbookActionPlanResultDescription`, `WorkbookPlanVerification`, `WorkbookPlanIssue`, `WorkbookModelVerification`, `WorkbookModelActionVerification`, `WorkbookCustomCheckOptions`, `WorkbookRawFormulaOptions`, `WorkbookRunResult`, and `WorkbookCheckResult`
+- `WorkbookModel`, `WorkbookAction`, `WorkbookActionInput`, `WorkbookAddOpOptions`, `WorkbookActionPlanResult`, `WorkbookModelDescription`, `WorkbookRefDescription`, `WorkbookActionPlanDescription`, `WorkbookActionPlanResultDescription`, `WorkbookPlanVerification`, `WorkbookPlanIssue`, `WorkbookModelVerification`, `WorkbookModelActionVerification`, `WorkbookModelVerificationOptions`, `WorkbookCustomCheckOptions`, `WorkbookRawFormulaOptions`, `WorkbookRunResult`, and `WorkbookCheckResult`
 - the existing low-level operation language: `WorkbookOp`, `WorkbookTxn`, `EngineOp`, and `EngineOpBatch`
 
 The package builds portable workbook intent and concrete low-level ops when the
 target is already known. Formula helpers use `@bilig/formula` for parsing and
 normalization. Actual calculation and authoritative execution stay in
 `@bilig/core` and `apps/bilig`.
+
+Model actions can accept plain JSON-safe input through
+`planWorkbookAction(model, actionName, input)` and
+`buildWorkbookActionPlan(model, actionName, input)`. The input is cloned,
+canonicalized with stable object-key order, recorded on the plan, and exposed to
+the action context as `input`. Supported values are strings, finite numbers,
+booleans, `null`, arrays without holes, and plain objects. `@bilig/workbook`
+does not provide schemas or validators for consumer meaning; actions keep that
+validation generic and local. `verifyModel(model, { inputs })` supplies
+per-action inputs for whole-model verification.
 
 Known single-cell `workbook.format(ref, { numberFormat })` actions compile to
 concrete `setCellFormat` ops, including `numberFormat: null` for explicit
@@ -120,16 +130,17 @@ action names, and whether model-level checks exist. It does not run `find`,
 checks, or actions.
 For agent logs, approvals, tests, and runtime handoff, `describeRef` and
 `describePlan` produce JSON-safe descriptions of refs and action plans. The
-descriptions preserve generic workbook intent while removing consumer-private
-`refs` object shape and helper methods.
+descriptions preserve generic action input and workbook intent while removing
+consumer-private `refs` object shape and helper methods.
 `describePlanResult` applies the same description layer to either planned or
 failed action planning results.
 
 `verifyPlan` gives agents a runtime-free consistency check before handoff. It
-flags unresolved command targets, unresolved formula inputs, duplicate resolved
-refs, unparsable formulas, and missing concrete ops for write, clear, and
-number-format commands whose target is already known as a single cell. Custom
-check targets and supporting refs must also resolve through `refsUsed`.
+flags invalid action input, unresolved command targets, unresolved formula
+inputs, duplicate resolved refs, unparsable formulas, and missing concrete ops
+for write, clear, and number-format commands whose target is already known as a
+single cell. Custom check targets and supporting refs must also resolve through
+`refsUsed`.
 Low-level `addOp` commands must contain valid `WorkbookOp` values, must still
 appear in `plan.ops`, and must match their declared `target` when the op exposes
 a concrete address or range.

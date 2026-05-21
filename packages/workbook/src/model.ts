@@ -2,6 +2,7 @@ import type { CellStylePatch, LiteralInput } from '@bilig/protocol'
 import { formula, type WorkbookFormulaOperand } from './formula.js'
 import { collectWorkbookRefs, createWorkbookFindApi, type WorkbookFindApi, type WorkbookRef } from './find.js'
 import { createWorkbookCheckApi, type WorkbookCheckApi } from './check.js'
+import { normalizeOptionalWorkbookActionInput, type WorkbookActionInput } from './input.js'
 import { isWorkbookOp } from './guards.js'
 import type { WorkbookOp } from './ops.js'
 import type { WorkbookChangeSummary, WorkbookCheckResult, WorkbookRunError } from './result.js'
@@ -52,6 +53,7 @@ export interface WorkbookModelWorkbook extends WorkbookFindApi {
 export interface WorkbookActionContext<Refs> {
   readonly refs: Refs
   readonly workbook: WorkbookModelWorkbook
+  readonly input?: WorkbookActionInput
 }
 
 export type WorkbookAction<Refs> = (context: WorkbookActionContext<Refs>) => void
@@ -73,6 +75,7 @@ export interface WorkbookModel<
 export interface WorkbookActionPlan<Refs = unknown> {
   readonly modelName: string
   readonly actionName: string
+  readonly input?: WorkbookActionInput
   readonly refs: Refs
   readonly refsUsed: readonly WorkbookRef[]
   readonly commands: readonly WorkbookActionCommand[]
@@ -96,6 +99,7 @@ export type WorkbookActionPlanResult<Refs = unknown> =
       readonly status: 'failed'
       readonly modelName: string
       readonly actionName: string
+      readonly input?: WorkbookActionInput
       readonly errors: readonly WorkbookRunError[]
       readonly checks: readonly WorkbookCheckResult[]
     }
@@ -284,17 +288,23 @@ function errorMessage(error: unknown): string {
   return error instanceof Error ? error.message : String(error)
 }
 
+function inputProperty(input: WorkbookActionInput | undefined): { readonly input: WorkbookActionInput } | {} {
+  return input === undefined ? {} : { input }
+}
+
 function failedPlan<Refs>(
   modelName: string,
   actionName: string,
   code: string,
   message: string,
   checks: readonly WorkbookCheckResult[] = [],
+  input?: WorkbookActionInput,
 ): WorkbookActionPlanResult<Refs> {
   return {
     status: 'failed',
     modelName,
     actionName,
+    ...inputProperty(input),
     checks,
     errors: [{ code, message }],
   }
@@ -310,6 +320,7 @@ function actionNotFound(modelName: string, actionName: string): WorkbookRunError
 function createActionPlan<Refs>(
   modelName: string,
   actionName: string,
+  input: WorkbookActionInput | undefined,
   refs: Refs,
   commands: readonly WorkbookActionCommand[],
   ops: readonly WorkbookOp[],
@@ -318,6 +329,7 @@ function createActionPlan<Refs>(
   return {
     modelName,
     actionName,
+    ...inputProperty(input),
     refs,
     refsUsed: collectWorkbookRefs(refs),
     commands,
@@ -337,13 +349,22 @@ function createActionPlan<Refs>(
 export function planWorkbookAction<Refs, Actions extends WorkbookActionMap<Refs>>(
   model: WorkbookModel<Refs, Actions>,
   actionName: string,
+  input?: WorkbookActionInput,
 ): WorkbookActionPlanResult<Refs> {
+  let normalizedInput: WorkbookActionInput | undefined
+  try {
+    normalizedInput = normalizeOptionalWorkbookActionInput(input)
+  } catch (error) {
+    return failedPlan<Refs>(model.name, actionName, 'invalid_action_input', errorMessage(error))
+  }
+
   const action: WorkbookAction<Refs> | undefined = model.actions[actionName]
   if (action === undefined) {
     return {
       status: 'failed',
       modelName: model.name,
       actionName,
+      ...inputProperty(normalizedInput),
       checks: [],
       errors: [actionNotFound(model.name, actionName)],
     }
@@ -358,33 +379,34 @@ export function planWorkbookAction<Refs, Actions extends WorkbookActionMap<Refs>
   try {
     refs = model.find(workbook)
   } catch (error) {
-    return failedPlan<Refs>(model.name, actionName, 'find_failed', errorMessage(error), checks)
+    return failedPlan<Refs>(model.name, actionName, 'find_failed', errorMessage(error), checks, normalizedInput)
   }
 
-  const context: WorkbookActionContext<Refs> = { refs, workbook }
+  const context: WorkbookActionContext<Refs> = { refs, workbook, ...inputProperty(normalizedInput) }
   try {
     pushReturnedChecks(checks, model.checks?.(context))
   } catch (error) {
-    return failedPlan<Refs>(model.name, actionName, 'checks_failed', errorMessage(error), checks)
+    return failedPlan<Refs>(model.name, actionName, 'checks_failed', errorMessage(error), checks, normalizedInput)
   }
 
   try {
     action(context)
   } catch (error) {
-    return failedPlan<Refs>(model.name, actionName, 'action_failed', errorMessage(error), checks)
+    return failedPlan<Refs>(model.name, actionName, 'action_failed', errorMessage(error), checks, normalizedInput)
   }
 
   return {
     status: 'planned',
-    plan: createActionPlan(model.name, actionName, refs, commands, ops, checks),
+    plan: createActionPlan(model.name, actionName, normalizedInput, refs, commands, ops, checks),
   }
 }
 
 export function buildWorkbookActionPlan<Refs, Actions extends WorkbookActionMap<Refs>, ActionName extends keyof Actions & string>(
   model: WorkbookModel<Refs, Actions>,
   actionName: ActionName,
+  input?: WorkbookActionInput,
 ): WorkbookActionPlan<Refs> {
-  const result = planWorkbookAction(model, actionName)
+  const result = planWorkbookAction(model, actionName, input)
   if (result.status === 'failed') {
     const [error] = result.errors
     throw new Error(error?.message ?? `Workbook model ${model.name} failed to plan action ${actionName}`)
