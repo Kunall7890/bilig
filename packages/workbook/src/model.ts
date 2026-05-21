@@ -2,7 +2,12 @@ import type { CellStylePatch, LiteralInput } from '@bilig/protocol'
 import { formula, type WorkbookFormulaOperand } from './formula.js'
 import { collectWorkbookRefs, createWorkbookFindApi, type WorkbookFindApi, type WorkbookRef } from './find.js'
 import { createWorkbookCheckApi, type WorkbookCheckApi } from './check.js'
-import { normalizeOptionalWorkbookActionInput, type WorkbookActionInput } from './input.js'
+import {
+  normalizeOptionalWorkbookActionInput,
+  normalizeWorkbookActionInputDescription,
+  type WorkbookActionInput,
+  type WorkbookActionInputDescription,
+} from './input.js'
 import { isWorkbookOp } from './guards.js'
 import type { WorkbookOp } from './ops.js'
 import type { WorkbookChangeSummary, WorkbookCheckResult, WorkbookRunError } from './result.js'
@@ -71,10 +76,19 @@ export interface WorkbookCheckContext<Refs> {
 
 export type WorkbookAction<Refs> = (context: WorkbookActionContext<Refs>) => void
 
-export type WorkbookActionMap<Refs> = Record<string, WorkbookAction<Refs>>
+export interface WorkbookActionConfig<Refs> {
+  readonly description?: string
+  readonly input?: WorkbookActionInputDescription
+  readonly run: WorkbookAction<Refs>
+}
+
+export type WorkbookActionDefinition<Refs> = WorkbookAction<Refs> | WorkbookActionConfig<Refs>
+
+export type WorkbookActionMap<Refs> = Record<string, WorkbookActionDefinition<Refs>>
 
 export interface WorkbookModelConfig<Refs, Actions extends WorkbookActionMap<Refs>> {
   readonly name: string
+  readonly description?: string
   readonly find: (workbook: WorkbookFindWorkbook) => Refs
   readonly checks?: (context: WorkbookCheckContext<Refs>) => readonly WorkbookCheckResult[]
   readonly actions: Actions
@@ -97,9 +111,17 @@ export interface WorkbookActionPlan<Refs = unknown> {
   readonly checks: readonly WorkbookCheckResult[]
 }
 
+export interface WorkbookActionInspection {
+  readonly name: string
+  readonly description?: string
+  readonly input?: WorkbookActionInputDescription
+}
+
 export interface WorkbookModelInspection {
   readonly name: string
+  readonly description?: string
   readonly actions: readonly string[]
+  readonly actionDetails: readonly WorkbookActionInspection[]
   readonly hasChecks: boolean
 }
 
@@ -123,6 +145,7 @@ export function defineModel<Refs, Actions extends WorkbookActionMap<Refs>>(
   if (config.name.trim() === '') {
     throw new Error('Workbook model name cannot be empty')
   }
+  normalizeOptionalDescription(config.description, `Workbook model ${config.name} description`)
   const actionNames = Object.keys(config.actions)
   if (actionNames.length === 0) {
     throw new Error(`Workbook model ${config.name} must define at least one action`)
@@ -131,14 +154,70 @@ export function defineModel<Refs, Actions extends WorkbookActionMap<Refs>>(
   if (emptyActionName !== undefined) {
     throw new Error(`Workbook model ${config.name} has an empty action name`)
   }
+  actionNames.forEach((name) => {
+    validateActionDefinition(config.name, name, config.actions[name])
+  })
   return config
 }
 
 export function inspectModel<Refs, Actions extends WorkbookActionMap<Refs>>(model: WorkbookModel<Refs, Actions>): WorkbookModelInspection {
+  const actions = Object.keys(model.actions).toSorted()
+  const description = normalizeOptionalDescription(model.description, `Workbook model ${model.name} description`)
   return {
     name: model.name,
-    actions: Object.keys(model.actions).toSorted(),
+    ...(description !== undefined ? { description } : {}),
+    actions,
+    actionDetails: actions.map((actionName) => inspectAction(actionName, model.actions[actionName])),
     hasChecks: model.checks !== undefined,
+  }
+}
+
+function normalizeOptionalDescription(value: string | undefined, label: string): string | undefined {
+  if (value === undefined) {
+    return undefined
+  }
+  const description = value.trim()
+  if (description === '') {
+    throw new Error(`${label} cannot be empty`)
+  }
+  return description
+}
+
+function isActionConfig<Refs>(definition: WorkbookActionDefinition<Refs> | undefined): definition is WorkbookActionConfig<Refs> {
+  return typeof definition === 'object' && definition !== null
+}
+
+function validateActionDefinition<Refs>(
+  modelName: string,
+  actionName: string,
+  definition: WorkbookActionDefinition<Refs> | undefined,
+): void {
+  if (typeof definition === 'function') {
+    return
+  }
+  if (!isActionConfig(definition) || typeof definition.run !== 'function') {
+    throw new Error(`Workbook model ${modelName} action ${actionName} must be a function or action object with run`)
+  }
+  normalizeOptionalDescription(definition.description, `Workbook model ${modelName} action ${actionName} description`)
+  if (definition.input !== undefined) {
+    normalizeWorkbookActionInputDescription(definition.input)
+  }
+}
+
+function actionRunner<Refs>(definition: WorkbookActionDefinition<Refs>): WorkbookAction<Refs> {
+  return typeof definition === 'function' ? definition : definition.run
+}
+
+function inspectAction<Refs>(name: string, definition: WorkbookActionDefinition<Refs> | undefined): WorkbookActionInspection {
+  if (definition === undefined || typeof definition === 'function') {
+    return { name }
+  }
+  const description = normalizeOptionalDescription(definition.description, `Workbook action ${name} description`)
+  const input = definition.input === undefined ? undefined : normalizeWorkbookActionInputDescription(definition.input)
+  return {
+    name,
+    ...(description !== undefined ? { description } : {}),
+    ...(input !== undefined ? { input } : {}),
   }
 }
 
@@ -377,8 +456,8 @@ export function planWorkbookAction<Refs, Actions extends WorkbookActionMap<Refs>
     return failedPlan<Refs>(model.name, actionName, 'invalid_action_input', errorMessage(error))
   }
 
-  const action: WorkbookAction<Refs> | undefined = model.actions[actionName]
-  if (action === undefined) {
+  const actionDefinition = model.actions[actionName]
+  if (actionDefinition === undefined) {
     return {
       status: 'failed',
       modelName: model.name,
@@ -388,6 +467,7 @@ export function planWorkbookAction<Refs, Actions extends WorkbookActionMap<Refs>
       errors: [actionNotFound(model.name, actionName)],
     }
   }
+  const action = actionRunner(actionDefinition)
 
   const commands: WorkbookActionCommand[] = []
   const ops: WorkbookOp[] = []

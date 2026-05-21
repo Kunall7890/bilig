@@ -30,10 +30,13 @@ The public surface stays generic:
 - `runWorkbookPlan`
 - `runWorkbookAction`
 - `verifyWorkbookReadbacks`
+- `normalizeWorkbookActionInputDescription`
 - `formula`
 - `workbook.addOp(op, { target?, message? })` inside model actions
 - `WorkbookModel`
 - `WorkbookAction`
+- `WorkbookActionConfig`
+- `WorkbookActionDefinition`
 - `WorkbookActionContext`
 - `WorkbookCheckContext`
 - `WorkbookFindWorkbook`
@@ -42,6 +45,9 @@ The public surface stays generic:
 - `WorkbookModelWorkbook`
 - `WorkbookFindNamespace`
 - `WorkbookActionInput`
+- `WorkbookActionInputDescription`
+- `WorkbookActionInputDescriptionKind`
+- `WorkbookActionInspection`
 - `WorkbookAddOpOptions`
 - `WorkbookActionPlanResult`
 - `WorkbookModelDescription`
@@ -122,6 +128,40 @@ schema dependencies; consumers own their own input validation inside actions.
 Use `verifyModel(model, { inputs: { write: { value: 12 } } })` when whole-model
 verification needs parameters for specific actions.
 
+Actions can also be plain action objects when an agent needs a richer manifest
+without running workbook code:
+
+```ts
+actions: {
+  write: {
+    description: 'Write a consumer-provided value',
+    input: {
+      kind: 'object',
+      fields: {
+        value: { kind: 'number', required: true },
+      },
+    },
+    run({ refs, workbook, input }) {
+      if (typeof input !== 'object' || input === null || Array.isArray(input)) {
+        throw new Error('input object required')
+      }
+      const value = input.value
+      if (typeof value !== 'number') {
+        throw new Error('numeric value required')
+      }
+      workbook.writeValue(refs.output, value)
+    },
+  },
+}
+```
+
+Input descriptions are intentionally descriptive metadata, not a schema engine.
+They support boring JSON kinds: `json`, `object`, `array`, `string`, `number`,
+`boolean`, and `null`. `object` descriptions may list sorted `fields`; `array`
+descriptions may list `items`. `normalizeWorkbookActionInputDescription` trims
+text, rejects malformed metadata, returns frozen data, and keeps the package
+free of `zod`, `effect`, or model-specific validators.
+
 Formula expressions also keep their workbook inputs separate from their formula
 text. A planned `writeFormula` command includes both the parseable formula
 string and the generic model refs it used, so an agent can inspect what the
@@ -183,7 +223,8 @@ actions receive find helpers, checks, and mutation planning methods. That keeps
 discovery and proof declaration separate from workbook mutation intent.
 
 Use `describeModel` when an agent needs a JSON-safe manifest of model name,
-action names, and whether model-level checks exist without running `find`,
+model description, sorted action names, per-action descriptions, optional input
+descriptions, and whether model-level checks exist without running `find`,
 checks, or actions.
 Use `describeRef` and `describePlan` when an agent needs JSON-safe intent for
 logs, comparisons, approvals, or runtime handoff. Descriptions keep the same

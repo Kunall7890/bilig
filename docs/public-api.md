@@ -71,11 +71,12 @@ It exposes:
 - `runWorkbookPlan`
 - `runWorkbookAction`
 - `verifyWorkbookReadbacks`
+- `normalizeWorkbookActionInputDescription`
 - `formula`
 - `workbook.addOp(op, { target?, message? })` inside model actions
 - `findTable`, `findColumn`, `findRange`, `findName`, and `findRows` through the model workbook context and as top-level helpers
 - `check.exists`, `check.noFormulaErrors`, `check.valueEquals`, `check.formulaEquals`, and `check.custom` through the model workbook context and as top-level helpers
-- `WorkbookModel`, `WorkbookAction`, `WorkbookActionContext`, `WorkbookCheckContext`, `WorkbookFindWorkbook`, `WorkbookCheckWorkbook`, `WorkbookActionWorkbook`, `WorkbookModelWorkbook`, `WorkbookFindNamespace`, `WorkbookActionInput`, `WorkbookAddOpOptions`, `WorkbookActionPlanResult`, `WorkbookModelDescription`, `WorkbookRefDescription`, `WorkbookActionPlanDescription`, `WorkbookActionPlanResultDescription`, `WorkbookRunResultDescription`, `WorkbookUndoRefDescription`, `WorkbookRuntimeRequirements`, `WorkbookRuntimeRequirement`, `WorkbookRuntimeCapability`, `WorkbookPlanVerification`, `WorkbookPlanIssue`, `WorkbookModelVerification`, `WorkbookModelActionVerification`, `WorkbookModelVerificationOptions`, `WorkbookRunAdapter`, `WorkbookRunApplyResult`, `WorkbookRunReadback`, `WorkbookReadbackVerification`, `WorkbookReadbackIssue`, `WorkbookReadbackIssueCode`, `WorkbookCheckExpectation`, `WorkbookCheckExpectationDescription`, `WorkbookCustomCheckOptions`, `WorkbookReadbackCheckOptions`, `WorkbookRawFormulaOptions`, `WorkbookRunResult`, and `WorkbookCheckResult`
+- `WorkbookModel`, `WorkbookAction`, `WorkbookActionConfig`, `WorkbookActionDefinition`, `WorkbookActionContext`, `WorkbookCheckContext`, `WorkbookFindWorkbook`, `WorkbookCheckWorkbook`, `WorkbookActionWorkbook`, `WorkbookModelWorkbook`, `WorkbookFindNamespace`, `WorkbookActionInput`, `WorkbookActionInputDescription`, `WorkbookActionInputDescriptionKind`, `WorkbookActionInspection`, `WorkbookAddOpOptions`, `WorkbookActionPlanResult`, `WorkbookModelDescription`, `WorkbookRefDescription`, `WorkbookActionPlanDescription`, `WorkbookActionPlanResultDescription`, `WorkbookRunResultDescription`, `WorkbookUndoRefDescription`, `WorkbookRuntimeRequirements`, `WorkbookRuntimeRequirement`, `WorkbookRuntimeCapability`, `WorkbookPlanVerification`, `WorkbookPlanIssue`, `WorkbookModelVerification`, `WorkbookModelActionVerification`, `WorkbookModelVerificationOptions`, `WorkbookRunAdapter`, `WorkbookRunApplyResult`, `WorkbookRunReadback`, `WorkbookReadbackVerification`, `WorkbookReadbackIssue`, `WorkbookReadbackIssueCode`, `WorkbookCheckExpectation`, `WorkbookCheckExpectationDescription`, `WorkbookCustomCheckOptions`, `WorkbookReadbackCheckOptions`, `WorkbookRawFormulaOptions`, `WorkbookRunResult`, and `WorkbookCheckResult`
 - the existing low-level operation language: `WorkbookOp`, `WorkbookTxn`, `EngineOp`, and `EngineOpBatch`
 
 The package builds portable workbook intent and concrete low-level ops when the
@@ -92,6 +93,40 @@ booleans, `null`, arrays without holes, and plain objects. `@bilig/workbook`
 does not provide schemas or validators for consumer meaning; actions keep that
 validation generic and local. `verifyModel(model, { inputs })` supplies
 per-action inputs for whole-model verification.
+
+When agents need to know what an action expects before running workbook code,
+actions may be declared as action objects:
+
+```ts
+actions: {
+  write: {
+    description: 'Write a consumer-provided value',
+    input: {
+      kind: 'object',
+      fields: {
+        value: { kind: 'number', required: true },
+      },
+    },
+    run({ refs, workbook, input }) {
+      if (typeof input !== 'object' || input === null || Array.isArray(input)) {
+        throw new Error('input object required')
+      }
+      const value = input.value
+      if (typeof value !== 'number') {
+        throw new Error('numeric value required')
+      }
+      workbook.writeValue(refs.output, value)
+    },
+  },
+}
+```
+
+This is descriptive metadata, not a schema framework. Input descriptions use
+plain JSON kinds: `json`, `object`, `array`, `string`, `number`, `boolean`, and
+`null`. `object` descriptions may list `fields`; `array` descriptions may list
+`items`. `normalizeWorkbookActionInputDescription` trims text, rejects malformed
+metadata, freezes the result, and keeps `@bilig/workbook` independent from
+`zod`, `effect`, and model-specific validators.
 
 Known single-cell `workbook.format(ref, { numberFormat })` actions compile to
 concrete `setCellFormat` ops, including `numberFormat: null` for explicit
@@ -156,8 +191,9 @@ actions get find helpers, checks, and mutation-planning methods. Discovery and
 proof declaration cannot accidentally write workbook intent before the action
 phase.
 
-`describeModel` returns a JSON-safe model manifest with the model name, sorted
-action names, and whether model-level checks exist. It does not run `find`,
+`describeModel` returns a JSON-safe model manifest with the model name, optional
+model description, sorted action names, per-action descriptions, optional input
+descriptions, and whether model-level checks exist. It does not run `find`,
 checks, or actions.
 For agent logs, approvals, tests, and runtime handoff, `describeRef` and
 `describePlan` produce JSON-safe descriptions of refs and action plans. The

@@ -874,6 +874,7 @@ describe('@bilig/workbook model api', () => {
     expect(inspectModel(model)).toEqual({
       name: 'inspectable-model',
       actions: ['calculate', 'reset'],
+      actionDetails: [{ name: 'calculate' }, { name: 'reset' }],
       hasChecks: true,
     })
   })
@@ -902,6 +903,7 @@ describe('@bilig/workbook model api', () => {
     expect(description).toEqual({
       name: 'described-model-manifest',
       actions: ['calculate', 'reset'],
+      actionDetails: [{ name: 'calculate' }, { name: 'reset' }],
       hasChecks: true,
     })
     expect(JSON.parse(JSON.stringify(description))).toEqual(description)

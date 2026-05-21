@@ -30,6 +30,7 @@ flowchart LR
   - frozen workbook refs with non-enumerable ergonomic helpers
   - generic selector validation before runtime handoff
   - JSON-safe action input planning and verification
+  - action-object metadata and plain input descriptions for agent manifests
   - machine-readable readback checks for runtime proof
   - transport-neutral run adapters for apply-and-prove receipts
   - generic check verifier handoff for runtime-owned invariants

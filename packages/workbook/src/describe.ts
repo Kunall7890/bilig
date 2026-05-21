@@ -11,6 +11,7 @@ import type {
 } from './find.js'
 import {
   inspectModel,
+  type WorkbookActionInspection,
   type WorkbookActionCommand,
   type WorkbookActionMap,
   type WorkbookActionPlan,
@@ -30,7 +31,9 @@ import type {
 
 export interface WorkbookModelDescription {
   readonly name: string
+  readonly description?: string
   readonly actions: readonly string[]
+  readonly actionDetails: readonly WorkbookActionInspection[]
   readonly hasChecks: boolean
 }
 
