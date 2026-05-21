@@ -208,5 +208,10 @@ function borrowXlsxZipByteSource(source: XlsxZipByteSource): XlsxZipByteSource {
   return {
     byteLength: source.byteLength,
     readRange: (start, end) => source.readRange(start, end),
+    ...(source.readRangeInto
+      ? {
+          readRangeInto: (start: number, end: number, target: Uint8Array) => source.readRangeInto!(start, end, target),
+        }
+      : {}),
   }
 }

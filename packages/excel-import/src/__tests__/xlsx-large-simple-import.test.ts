@@ -1310,6 +1310,32 @@ describe('large simple XLSX import fast path', () => {
     expect(imported.snapshot.sheets[0]?.cells).toEqual([{ address: 'A1', value: 2, formula: 'B1+1' }])
     expect(counted.count()).toBe(1)
   })
+
+  it('keeps reusable byte-source reads through borrowed ZIP wrappers', () => {
+    const rows: string[] = []
+    for (let row = 1; row <= 50_001; row += 1) {
+      rows.push(`<row r="${String(row)}"><c r="A${String(row)}"><v>${String(row)}</v></c></row>`)
+    }
+    const bytes = buildLargeSimpleWorkbook({
+      includeSharedStrings: false,
+      worksheetXml: [
+        '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>',
+        '<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">',
+        '<dimension ref="A1:A50001"/>',
+        `<sheetData>${rows.join('')}</sheetData>`,
+        '</worksheet>',
+      ].join(''),
+      extraEntries: {
+        'docProps/padding.bin': deterministicBytes(1_100_000),
+      },
+    })
+    const counted = countByteSourceZipEntryStreams(bytes, 'xl/worksheets/sheet1.xml')
+
+    const imported = importXlsxFromZipByteSource(counted.source, 'large-byte-source.xlsx')
+
+    expect(imported.stats?.cellCount).toBe(50_001)
+    expect(counted.readIntoCount()).toBeGreaterThan(0)
+  })
 })
 
 function buildLargeSimpleWorkbook(input: {
@@ -1409,11 +1435,14 @@ function countByteSourceZipEntryStreams(
   readonly source: {
     readonly byteLength: number
     readRange(start: number, end: number): Uint8Array
+    readRangeInto(start: number, end: number, target: Uint8Array): Uint8Array
   }
   readonly count: () => number
+  readonly readIntoCount: () => number
 } {
   const [dataStart, dataEnd] = findLocalZipEntryDataRange(bytes, path)
   let streamCount = 0
+  let readIntoCount = 0
   return {
     source: {
       byteLength: bytes.byteLength,
@@ -1423,8 +1452,15 @@ function countByteSourceZipEntryStreams(
         }
         return bytes.subarray(start, end)
       },
+      readRangeInto(start: number, end: number, target: Uint8Array): Uint8Array {
+        const length = end - start
+        readIntoCount += 1
+        target.set(bytes.subarray(start, end), 0)
+        return target.subarray(0, length)
+      },
     },
     count: () => streamCount,
+    readIntoCount: () => readIntoCount,
   }
 }
 
