@@ -19,6 +19,7 @@ import { describe, expect, it } from 'vitest'
 import { WorkPaper, type WorkPaperCellAddress } from '../index.js'
 
 const workbookConfig = { maxRows: 16, maxColumns: 8, useColumnIndex: true }
+const indexImplicitIntersectionConfig = { maxRows: 10, maxColumns: 10, useColumnIndex: true }
 const oracleFormulaAddresses = ['C1', 'D1', 'E1', 'F1', 'G1', 'H1'] as const
 const expectedOracleCells = [
   { address: 'C1', formula: '=COUNTBLANK(A1:A5)', rawValue: 'number\t2.0', value: { kind: 'number', value: 2 } },
@@ -74,6 +75,21 @@ const tableEmptyBodyOracleCell = {
   rawValue: 'number\t0.0',
   value: { kind: 'number', value: 0 },
 } as const
+const indexImplicitIntersectionOracleAddresses = ['E1', 'E2', 'E3', 'E4', 'A5', 'B5', 'C5', 'D5', 'E5', 'G1', 'H1', 'I1'] as const
+const expectedIndexImplicitIntersectionOracleCells = [
+  { address: 'E1', formula: '=INDEX(A1:C3,0,2)', rawValue: 'number\t2.0', value: { kind: 'number', value: 2 } },
+  { address: 'E2', formula: '=INDEX(A1:C3,0,2)', rawValue: 'number\t5.0', value: { kind: 'number', value: 5 } },
+  { address: 'E3', formula: '=INDEX(A1:C3,0,2)', rawValue: 'number\t8.0', value: { kind: 'number', value: 8 } },
+  { address: 'E4', formula: '=INDEX(A1:C3,0,2)', rawValue: 'blank\t', value: { kind: 'blank' } },
+  { address: 'A5', formula: '=INDEX(A1:C3,2,0)', rawValue: 'number\t4.0', value: { kind: 'number', value: 4 } },
+  { address: 'B5', formula: '=INDEX(A1:C3,2,0)', rawValue: 'number\t5.0', value: { kind: 'number', value: 5 } },
+  { address: 'C5', formula: '=INDEX(A1:C3,2,0)', rawValue: 'number\t6.0', value: { kind: 'number', value: 6 } },
+  { address: 'D5', formula: '=INDEX(A1:C3,2,0)', rawValue: 'blank\t', value: { kind: 'blank' } },
+  { address: 'E5', formula: '=INDEX(A1:C3,0,0)', rawValue: 'blank\t', value: { kind: 'blank' } },
+  { address: 'G1', formula: '=SUM(INDEX(A1:C3,0,2))', rawValue: 'number\t15.0', value: { kind: 'number', value: 15 } },
+  { address: 'H1', formula: '=SUM(INDEX(A1:C3,2,0))', rawValue: 'number\t15.0', value: { kind: 'number', value: 15 } },
+  { address: 'I1', formula: '=SUM(INDEX(A1:C3,0,0))', rawValue: 'number\t45.0', value: { kind: 'number', value: 45 } },
+] as const
 
 describe('macOS Desktop Excel XLSX oracle for WorkPaper', () => {
   it('exports and reimports the oracle fixture through the headless workbook path', () => {
@@ -89,6 +105,29 @@ describe('macOS Desktop Excel XLSX oracle for WorkPaper', () => {
         expect(oracleFormulaAddresses.map((address) => normalizedCellValue(reimported.getCellValue(addressToCell(address))))).toEqual(
           expectedOracleCells.map((expected) => expected.value),
         )
+      } finally {
+        reimported.dispose()
+      }
+    } finally {
+      workbook.dispose()
+    }
+  })
+
+  it('exports and reimports standalone INDEX implicit-intersection formulas without spill metadata', () => {
+    const workbook = buildIndexImplicitIntersectionOracleWorkbook()
+    try {
+      expect(
+        indexImplicitIntersectionOracleAddresses.map((address) => normalizedCellValue(workbook.getCellValue(addressToCell(address)))),
+      ).toEqual(expectedIndexImplicitIntersectionOracleCells.map((expected) => expected.value))
+      expect(workbook.engine.getSpillRanges()).toEqual([])
+
+      const imported = importXlsx(exportXlsx(workbook.exportSnapshot()), 'headless-index-implicit-intersection-oracle.xlsx')
+      const reimported = WorkPaper.buildFromSnapshot(imported.snapshot, indexImplicitIntersectionConfig)
+      try {
+        expect(
+          indexImplicitIntersectionOracleAddresses.map((address) => normalizedCellValue(reimported.getCellValue(addressToCell(address)))),
+        ).toEqual(expectedIndexImplicitIntersectionOracleCells.map((expected) => expected.value))
+        expect(reimported.engine.getSpillRanges()).toEqual([])
       } finally {
         reimported.dispose()
       }
@@ -442,6 +481,50 @@ describe('macOS Desktop Excel XLSX oracle for WorkPaper', () => {
             realBiligMismatches: 0,
             totalFormulaCells: oracleFormulaAddresses.length,
           })
+        } finally {
+          reimported.dispose()
+        }
+      } finally {
+        rmSync(tempDir, { recursive: true, force: true })
+      }
+    },
+    60_000,
+  )
+
+  it.runIf(process.env.BILIG_EXCEL_ORACLE_RUN === '1')(
+    'matches Desktop Excel standalone INDEX implicit-intersection semantics',
+    () => {
+      if (!isMacosExcelInstalled()) {
+        throw new Error('BILIG_EXCEL_ORACLE_RUN=1 requires /Applications/Microsoft Excel.app')
+      }
+
+      const tempDir = mkdtempSync(join(tmpdir(), 'bilig-headless-excel-index-implicit-oracle-'))
+      try {
+        const workbookPath = join(tempDir, 'headless-index-implicit-intersection-oracle.xlsx')
+        const workbook = buildIndexImplicitIntersectionOracleWorkbook()
+        try {
+          writeFileSync(workbookPath, exportXlsx(workbook.exportSnapshot()))
+        } finally {
+          workbook.dispose()
+        }
+
+        const excelResult = runMacosExcelInspectionOracle({
+          workbookPath,
+          worksheetName: 'Sheet1',
+          formulaCells: [],
+          inspectCells: indexImplicitIntersectionOracleAddresses,
+          saveWorkbook: true,
+        })
+
+        expect(excelResult.cells).toEqual(expectedIndexImplicitIntersectionOracleCells)
+
+        const imported = importXlsx(new Uint8Array(readFileSync(workbookPath)), 'headless-index-implicit-intersection-recalculated.xlsx')
+        const reimported = WorkPaper.buildFromSnapshot(imported.snapshot, indexImplicitIntersectionConfig)
+        try {
+          expect(
+            indexImplicitIntersectionOracleAddresses.map((address) => normalizedCellValue(reimported.getCellValue(addressToCell(address)))),
+          ).toEqual(expectedIndexImplicitIntersectionOracleCells.map((expected) => expected.value))
+          expect(reimported.engine.getSpillRanges()).toEqual([])
         } finally {
           reimported.dispose()
         }
@@ -896,6 +979,21 @@ function buildOracleWorkbook(): WorkPaper {
       ],
     },
     workbookConfig,
+  )
+}
+
+function buildIndexImplicitIntersectionOracleWorkbook(): WorkPaper {
+  return WorkPaper.buildFromSheets(
+    {
+      Sheet1: [
+        [1, 2, 3, null, '=INDEX(A1:C3,0,2)', null, '=SUM(INDEX(A1:C3,0,2))', '=SUM(INDEX(A1:C3,2,0))', '=SUM(INDEX(A1:C3,0,0))'],
+        [4, 5, 6, null, '=INDEX(A1:C3,0,2)'],
+        [7, 8, 9, null, '=INDEX(A1:C3,0,2)'],
+        [null, null, null, null, '=INDEX(A1:C3,0,2)'],
+        ['=INDEX(A1:C3,2,0)', '=INDEX(A1:C3,2,0)', '=INDEX(A1:C3,2,0)', '=INDEX(A1:C3,2,0)', '=INDEX(A1:C3,0,0)'],
+      ],
+    },
+    indexImplicitIntersectionConfig,
   )
 }
 

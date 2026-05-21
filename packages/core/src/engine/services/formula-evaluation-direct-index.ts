@@ -34,6 +34,7 @@ export function tryEvaluateDirectIndexOffset(args: {
   readonly directCriteria: RuntimeDirectCriteriaDescriptor
   readonly runtimeColumnStore: EngineRuntimeColumnStoreService
   readonly readCellValueByIndex: (cellIndex: number | undefined) => CellValue
+  readonly ownerRow: number | undefined
 }): CellValue | undefined {
   if (args.directCriteria.offsetOperand === undefined || args.directCriteria.criteriaPairs.length !== 0) {
     return undefined
@@ -53,6 +54,23 @@ export function tryEvaluateDirectIndexOffset(args: {
     return directErrorResult(ErrorCode.Value)
   }
   const rowOffset = Math.trunc(offset.value)
+  if (rowOffset === 0) {
+    if (args.ownerRow === undefined) {
+      return undefined
+    }
+    const implicitOffset = args.ownerRow - aggregateRange.rowStart
+    if (implicitOffset < 0 || implicitOffset >= aggregateRange.length) {
+      return { tag: ValueTag.Empty }
+    }
+    return args.runtimeColumnStore
+      .getColumnView({
+        sheetName: aggregateRange.sheetName,
+        rowStart: aggregateRange.rowStart,
+        rowEnd: aggregateRange.rowEnd,
+        col: aggregateRange.col,
+      })
+      .readCellValueAt(implicitOffset)
+  }
   if (rowOffset < 1 || rowOffset > aggregateRange.length) {
     return directErrorResult(ErrorCode.Ref)
   }

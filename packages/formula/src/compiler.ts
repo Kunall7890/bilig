@@ -632,6 +632,8 @@ function buildDirectAggregateCandidate(node: FormulaNode, symbolicRanges: readon
 export function compileFormulaAst(source: string, ast: FormulaNode, options: CompileFormulaAstOptions = {}): CompiledFormula {
   const optimizedAst = optimizeFormula(ast)
   const bound = bindFormula(optimizedAst)
+  const mode =
+    bound.mode === FormulaMode.WasmFastPath && rootIndexMayNeedImplicitIntersection(optimizedAst) ? FormulaMode.JsOnly : bound.mode
   const state: CompilerState = { program: [], constants: [], refs: [], ranges: [], strings: [] }
   const jsPlan = lowerToPlan(optimizedAst)
   const volatileMetadata = analyzeVolatileMetadata(options.originalAst ?? ast)
@@ -639,7 +641,7 @@ export function compileFormulaAst(source: string, ast: FormulaNode, options: Com
   const parsedReferencesByKey = collectParsedDependencyReferencesFromAst(optimizedAst)
   const parsedDependencies = buildParsedDependenciesFromReferences(parsedReferencesByKey, bound.deps)
 
-  if (bound.mode === FormulaMode.WasmFastPath) {
+  if (mode === FormulaMode.WasmFastPath) {
     emitNode(optimizedAst, state)
   }
 
@@ -649,7 +651,7 @@ export function compileFormulaAst(source: string, ast: FormulaNode, options: Com
   return {
     id: 0,
     source,
-    mode: bound.mode,
+    mode,
     depsPtr: 0,
     depsLen: 0,
     programOffset: 0,
@@ -680,6 +682,20 @@ export function compileFormulaAst(source: string, ast: FormulaNode, options: Com
     jsPlan,
     maxStackDepth: computeMaxStackDepth(jsPlan),
   }
+}
+
+function rootIndexMayNeedImplicitIntersection(node: FormulaNode): boolean {
+  if (node.kind !== 'CallExpr' || node.callee.trim().toUpperCase() !== 'INDEX') {
+    return false
+  }
+  if (node.args.length < 2 || node.args.length > 3) {
+    return false
+  }
+  return !isDefinitelyNonZeroIndexArgument(node.args[1]) || !isDefinitelyNonZeroIndexArgument(node.args[2])
+}
+
+function isDefinitelyNonZeroIndexArgument(node: FormulaNode | undefined): boolean {
+  return node?.kind === 'NumberLiteral' && Number.isFinite(node.value) && Math.trunc(node.value) !== 0
 }
 
 export function compileFormula(source: string): CompiledFormula {

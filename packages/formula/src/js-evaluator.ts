@@ -1,6 +1,6 @@
 import { ErrorCode, ValueTag, type CellValue } from '@bilig/protocol'
 import type { FormulaNode } from './ast.js'
-import { formatAddress, parseRangeAddress } from './addressing.js'
+import { formatAddress, parseCellAddress, parseRangeAddress } from './addressing.js'
 import { getBuiltin, getDateSystemBuiltin, normalizeBuiltinLookupName } from './builtins.js'
 import { getLookupBuiltin, type RangeBuiltinArgument } from './builtins/lookup.js'
 import { evaluateArraySpecialCall } from './js-evaluator-array-special-calls.js'
@@ -640,6 +640,10 @@ export function evaluatePlanResult(plan: readonly JsPlanInstruction[], context: 
   return toEvaluationResult(executePlan(plan, context))
 }
 
+export function evaluatePlanScalarResult(plan: readonly JsPlanInstruction[], context: EvaluationContext): CellValue {
+  return scalarFromFinalStackValue(executePlan(plan, context), context)
+}
+
 export function evaluatePlan(plan: readonly JsPlanInstruction[], context: EvaluationContext): CellValue {
   return scalarFromEvaluationResult(evaluatePlanResult(plan, context))
 }
@@ -650,4 +654,69 @@ export function evaluateAst(node: FormulaNode, context: EvaluationContext): Cell
 
 export function evaluateAstResult(node: FormulaNode, context: EvaluationContext): EvaluationResult {
   return evaluatePlanResult(lowerToPlan(node), context)
+}
+
+function scalarFromFinalStackValue(value: StackValue | undefined, context: EvaluationContext): CellValue {
+  if (!value) {
+    return error(ErrorCode.Value)
+  }
+  if (value.kind === 'scalar') {
+    if (value.blankReference === true && value.value.tag === ValueTag.Empty) {
+      return numberValue(0)
+    }
+    return value.value
+  }
+  if (value.kind === 'omitted' || value.kind === 'lambda') {
+    return error(ErrorCode.Value)
+  }
+  if (value.kind === 'range') {
+    return (
+      implicitIntersectionFromRange(value, context) ??
+      (value.values[0]?.tag === ValueTag.Empty ? numberValue(0) : (value.values[0] ?? emptyValue()))
+    )
+  }
+  return value.values[0] ?? emptyValue()
+}
+
+function implicitIntersectionFromRange(value: Extract<StackValue, { kind: 'range' }>, context: EvaluationContext): CellValue | undefined {
+  if (value.refKind !== 'cells' || !value.start || !value.end || !context.currentAddress) {
+    return undefined
+  }
+  if (value.rows === 1 && value.cols === 1) {
+    const selectedValue = value.values[0] ?? emptyValue()
+    return selectedValue.tag === ValueTag.Empty ? numberValue(0) : selectedValue
+  }
+  const sheetName = value.sheetName ?? context.sheetName
+  if (!sameSheetName(sheetName, context.sheetName)) {
+    return undefined
+  }
+
+  try {
+    const start = parseCellAddress(value.start, sheetName)
+    const end = parseCellAddress(value.end, sheetName)
+    const current = parseCellAddress(context.currentAddress, context.sheetName)
+    const rowStart = Math.min(start.row, end.row)
+    const colStart = Math.min(start.col, end.col)
+    const rowOffset = current.row - rowStart
+    const colOffset = current.col - colStart
+    const selected =
+      value.cols === 1 && rowOffset >= 0 && rowOffset < value.rows
+        ? { row: rowOffset, col: 0 }
+        : value.rows === 1 && colOffset >= 0 && colOffset < value.cols
+          ? { row: 0, col: colOffset }
+          : rowOffset >= 0 && rowOffset < value.rows && colOffset >= 0 && colOffset < value.cols
+            ? { row: rowOffset, col: colOffset }
+            : undefined
+    if (!selected) {
+      return emptyValue()
+    }
+    const selectedValue = value.values[selected.row * value.cols + selected.col] ?? emptyValue()
+    return selectedValue.tag === ValueTag.Empty ? numberValue(0) : selectedValue
+  } catch {
+    return undefined
+  }
+}
+
+function sameSheetName(left: string, right: string): boolean {
+  return left.trim().toUpperCase() === right.trim().toUpperCase()
 }

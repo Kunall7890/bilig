@@ -3,9 +3,11 @@ import { ErrorCode, MAX_COLS, MAX_ROWS, ValueTag, type CellValue } from '@bilig/
 import {
   createLookupBuiltinResolver,
   evaluatePlanResult,
+  evaluatePlanScalarResult,
   formatAddress,
   lowerToPlan,
   isArrayValue,
+  scalarFromEvaluationResult,
   type EvaluationContext,
   type EvaluationResult,
   type FormulaNode,
@@ -336,7 +338,7 @@ export function createEngineFormulaEvaluationService(args: {
     return args.sortedLookup.findVectorMatch(request)
   }
   const directCriteriaSharing = createDirectCriteriaSharingContext({ state: args.state, readCellValueByIndex })
-  const tryEvaluateDirectCriteriaAggregate = (formula: RuntimeFormula): CellValue | undefined => {
+  const tryEvaluateDirectCriteriaAggregate = (formula: RuntimeFormula, cellIndex: number): CellValue | undefined => {
     const directCriteria = formula.directCriteria
     if (!directCriteria) return undefined
     const transformShortCircuit = tryEvaluateDirectCriteriaTransformShortCircuit(readCellValueByIndex, formula)
@@ -347,6 +349,7 @@ export function createEngineFormulaEvaluationService(args: {
       directCriteria,
       runtimeColumnStore: args.runtimeColumnStore,
       readCellValueByIndex,
+      ownerRow: args.state.workbook.cellStore.rows[cellIndex],
     })
     if (directIndexOffsetResult !== undefined) {
       return applyDirectCriteriaResultTransforms(readCellValueByIndex, formula, directIndexOffsetResult)
@@ -724,7 +727,9 @@ export function createEngineFormulaEvaluationService(args: {
       checkEvaluationBudget: (stepCost) => args.checkEvaluationBudget(stepCost),
     }
     const jsPlan = formula.compiled.jsPlan.length > 0 ? formula.compiled.jsPlan : lowerToPlan(formula.compiled.optimizedAst)
-    const result = evaluatePlanResult(jsPlan, evaluationContext)
+    const result = formula.compiled.producesSpill
+      ? evaluatePlanResult(jsPlan, evaluationContext)
+      : evaluatePlanScalarResult(jsPlan, evaluationContext)
     visiting.delete(visitKey)
     return isArrayValue(result) ? (result.values[0] ?? emptyValue()) : result
   }
@@ -763,7 +768,12 @@ export function createEngineFormulaEvaluationService(args: {
   const storeFormulaResult = (cellIndex: number, formula: RuntimeFormula, result: EvaluationResult): number[] => {
     const beforeValue = args.state.workbook.cellStore.getValue(cellIndex, (id) => (id === 0 ? '' : args.state.strings.get(id)))
     const materialization = isArrayValue(result)
-      ? args.materializeSpill(cellIndex, result)
+      ? formula.compiled.producesSpill
+        ? args.materializeSpill(cellIndex, result)
+        : {
+            changedCellIndices: args.clearOwnedSpill(cellIndex),
+            ownerValue: scalarFromEvaluationResult(result),
+          }
       : formula.compiled.producesSpill
         ? {
             changedCellIndices: args.clearOwnedSpill(cellIndex),
@@ -827,7 +837,7 @@ export function createEngineFormulaEvaluationService(args: {
         aggregateCache: args.aggregateCache,
         readCellValueByIndex,
       }) ??
-      tryEvaluateDirectCriteriaAggregate(formula)
+      tryEvaluateDirectCriteriaAggregate(formula, cellIndex)
     return directResult === undefined
       ? undefined
       : formula.compiled.producesSpill
@@ -852,7 +862,7 @@ export function createEngineFormulaEvaluationService(args: {
         aggregateCache: args.aggregateCache,
         readCellValueByIndex,
       }) ??
-      tryEvaluateDirectCriteriaAggregate(formula)
+      tryEvaluateDirectCriteriaAggregate(formula, cellIndex)
     if (directResult !== undefined) {
       return storeFormulaResult(cellIndex, formula, directResult)
     }
@@ -932,10 +942,10 @@ export function createEngineFormulaEvaluationService(args: {
       },
       resolveLookupBuiltin: lookupBuiltinResolver,
     }
-    const result = evaluatePlanResult(
-      formula.compiled.jsPlan.length > 0 ? formula.compiled.jsPlan : lowerToPlan(formula.compiled.ast),
-      evaluationContext,
-    )
+    const jsPlan = formula.compiled.jsPlan.length > 0 ? formula.compiled.jsPlan : lowerToPlan(formula.compiled.ast)
+    const result = formula.compiled.producesSpill
+      ? evaluatePlanResult(jsPlan, evaluationContext)
+      : evaluatePlanScalarResult(jsPlan, evaluationContext)
     return storeFormulaResult(cellIndex, formula, result)
   }
 

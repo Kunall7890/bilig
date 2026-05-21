@@ -26,6 +26,10 @@ function expectString(value: CellValue, expected: string): void {
   expect(value).toMatchObject({ tag: ValueTag.String, value: expected })
 }
 
+function expectEmpty(value: CellValue): void {
+  expect(value).toEqual({ tag: ValueTag.Empty })
+}
+
 function slope(ys: readonly number[], xs: readonly number[]): number {
   const xMean = xs.reduce((sum, value) => sum + value, 0) / xs.length
   const yMean = ys.reduce((sum, value) => sum + value, 0) / ys.length
@@ -420,6 +424,35 @@ describe('Workpaper formula regressions', () => {
     expectString(cellValue(workbook, 'Sheet1', 6, 0), 'Participating Preferred')
     expectNumber(cellValue(workbook, 'Sheet1', 6, 1), 300)
     expectString(cellValue(workbook, 'Sheet1', 6, 2), 'Participating Preferred')
+  })
+
+  it('matches Desktop Excel implicit intersection for standalone INDEX reference results', () => {
+    const workbook = WorkPaper.buildFromSheets(
+      {
+        Sheet1: [
+          [1, 2, 3, null, '=INDEX(A1:C3,0,2)', null, '=SUM(INDEX(A1:C3,0,2))', '=SUM(INDEX(A1:C3,2,0))', '=SUM(INDEX(A1:C3,0,0))'],
+          [4, 5, 6, null, '=INDEX(A1:C3,0,2)'],
+          [7, 8, 9, null, '=INDEX(A1:C3,0,2)'],
+          [null, null, null, null, '=INDEX(A1:C3,0,2)'],
+          ['=INDEX(A1:C3,2,0)', '=INDEX(A1:C3,2,0)', '=INDEX(A1:C3,2,0)', '=INDEX(A1:C3,2,0)', '=INDEX(A1:C3,0,0)'],
+        ],
+      },
+      { maxRows: 10, maxColumns: 10, useColumnIndex: true },
+    )
+
+    expectNumber(cellValue(workbook, 'Sheet1', 0, 4), 2)
+    expectNumber(cellValue(workbook, 'Sheet1', 1, 4), 5)
+    expectNumber(cellValue(workbook, 'Sheet1', 2, 4), 8)
+    expectEmpty(cellValue(workbook, 'Sheet1', 3, 4))
+    expectNumber(cellValue(workbook, 'Sheet1', 4, 0), 4)
+    expectNumber(cellValue(workbook, 'Sheet1', 4, 1), 5)
+    expectNumber(cellValue(workbook, 'Sheet1', 4, 2), 6)
+    expectEmpty(cellValue(workbook, 'Sheet1', 4, 3))
+    expectEmpty(cellValue(workbook, 'Sheet1', 4, 4))
+    expectNumber(cellValue(workbook, 'Sheet1', 0, 6), 15)
+    expectNumber(cellValue(workbook, 'Sheet1', 0, 7), 15)
+    expectNumber(cellValue(workbook, 'Sheet1', 0, 8), 45)
+    expect(workbook.engine.getSpillRanges()).toEqual([])
   })
 
   it('resolves row-offset INDEX and MATCH lookups during initial load', () => {
