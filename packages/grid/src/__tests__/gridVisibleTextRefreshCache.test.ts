@@ -483,6 +483,29 @@ describe('GridVisibleTextRefreshCache', () => {
 
     expect(cache.needsLocalRefresh(tile.tileId, tile, createInput({ engine: createEngine({}, {}, 7) }))).toBe(true)
   })
+
+  it('rejects current-revision authored border rects without signatures after borders are cleared', () => {
+    const cache = new GridVisibleTextRefreshCache()
+    const staleBorderRectCount = 32 + 128 + 1
+    const staleBorderRects = new Float32Array(staleBorderRectCount * GRID_RECT_INSTANCE_FLOAT_COUNT_V3)
+    staleBorderRects[11] = 1
+    staleBorderRects[13] = 1
+    const tile = createTile({
+      lastBatchId: 7,
+      rectCount: staleBorderRectCount,
+      rectInstances: staleBorderRects,
+      version: {
+        axisX: 7,
+        axisY: 7,
+        freeze: 7,
+        styles: 7,
+        text: 7,
+        values: 7,
+      },
+    })
+
+    expect(cache.needsLocalRefresh(tile.tileId, tile, createInput({ engine: createEngine({}, {}, 7) }))).toBe(true)
+  })
 })
 
 function createInput(overrides: Partial<Parameters<GridVisibleTextRefreshCache['needsLocalRefresh']>[2]> = {}) {

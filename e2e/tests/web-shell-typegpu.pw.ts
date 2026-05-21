@@ -314,18 +314,13 @@ test('@browser-webgpu isolated workbook pane renderer draws grid content through
   expect(summary?.points.selectionBorder.a ?? 0).toBeGreaterThan(150)
   expect(summary?.points.selectionBorder.g ?? 0).toBeGreaterThan(summary?.points.selectionBorder.r ?? 0)
   expect(summary?.points.bodyWhite).toMatchObject({ r: 255, g: 255, b: 255, a: 255 })
-  const textRuns = await waitForVisibleNativeTextRuns(
-    page,
-    [
-      { name: 'header', text: 'Region', exact: true },
-      { name: 'body', text: 'North', exact: true },
-      { name: 'number', text: '168', exact: true },
-    ],
-    (runs) => runs.matches.header && runs.matches.body && runs.matches.number,
-  )
-  expect(textRuns.matches.header).toBe(true)
-  expect(textRuns.matches.body).toBe(true)
-  expect(textRuns.matches.number).toBe(true)
+  expect(summary?.darkPixelCounts.header ?? 0).toBeGreaterThan(0)
+  expect(summary?.darkPixelCounts.body ?? 0).toBeGreaterThan(0)
+  expect(summary?.darkPixelCounts.number ?? 0).toBeGreaterThan(0)
+  await expect(page.getByTestId('grid-native-text-layer')).toHaveCount(0)
+  await expect(page.getByTestId('grid-native-rect-layer')).toHaveCount(0)
+  await expect(page.getByTestId('grid-pane-renderer')).toHaveAttribute('data-v3-draw-text', 'true')
+  await expect(page.getByTestId('grid-pane-renderer')).toHaveAttribute('data-v3-native-layer-source', 'none')
 
   await saveReadbackArtifact(page, testInfo, 'isolated-pane-renderer-readback.png', 'isolated-pane-renderer-readback')
 })
@@ -386,20 +381,16 @@ test('@browser-webgpu @browser-serial main workbook shell grid renders and updat
   } as const
 
   const initialReadback = await waitForReadback(page, initialProbe, (result) => {
-    return result.opaquePixelCounts.columnHeaderText > 100 && result.opaquePixelCounts.rowHeaderText > 100
-  })
-  const initialTextRuns = await waitForVisibleNativeTextRuns(page, [{ name: 'columnHeaderA', text: 'A', exact: true }], (runs) => {
-    return runs.matches.columnHeaderA && runs.rowHeaderRunCount > 5
+    return result.darkPixelCounts.columnHeaderText > 0 && result.darkPixelCounts.rowHeaderText > 0
   })
 
   expect(initialReadback.hasGpu).toBe(true)
   expect(initialReadback.width).toBeGreaterThan(400)
   expect(initialReadback.height).toBeGreaterThan(250)
   expect(initialReadback.points.bodyBlank).toMatchObject({ r: 255, g: 255, b: 255, a: 255 })
-  expect(initialReadback.opaquePixelCounts.columnHeaderText).toBeGreaterThan(100)
-  expect(initialReadback.opaquePixelCounts.rowHeaderText).toBeGreaterThan(100)
-  expect(initialTextRuns.matches.columnHeaderA).toBe(true)
-  expect(initialTextRuns.rowHeaderRunCount).toBeGreaterThan(5)
+  expect(initialReadback.darkPixelCounts.columnHeaderText).toBeGreaterThan(0)
+  expect(initialReadback.darkPixelCounts.rowHeaderText).toBeGreaterThan(0)
+  await expect(page.getByTestId('grid-native-text-layer')).toHaveCount(0)
 
   await clickProductCell(page, 2, 3)
   await expect(page.getByTestId('status-selection')).toHaveText('Sheet1!C4')
@@ -423,11 +414,10 @@ test('@browser-webgpu @browser-serial main workbook shell grid renders and updat
     ],
   } as const
 
-  const valueReadback = await inspectGpuReadback(page, valueProbe)
-  const valueTextRuns = await waitForVisibleNativeTextRuns(page, [{ name: 'c4ValueText', text: '123', exact: true }], (runs) => {
-    return runs.matches.c4ValueText
+  const valueReadback = await waitForReadback(page, valueProbe, (result) => {
+    return result.darkPixelCounts.c4ValueText > 0
   })
-  expect(valueTextRuns.matches.c4ValueText).toBe(true)
+  expect(valueReadback.darkPixelCounts.c4ValueText).toBeGreaterThan(0)
 
   await clickProductCell(page, 1, 1)
   await expect(page.getByTestId('status-selection')).toHaveText('Sheet1!B2')
