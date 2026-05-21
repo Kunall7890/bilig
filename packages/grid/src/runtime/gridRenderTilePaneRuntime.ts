@@ -194,8 +194,10 @@ export class GridRenderTilePaneRuntime {
     }
     const resolution = this.resolveTiles(input)
     const preloadResolution = this.resolvePreloadPanes(input, resolution?.tiles ?? [])
-    const tileReadiness = this.resolveTileReadiness(input, resolution?.tiles ?? [], preloadResolution.tiles)
     const fixedRenderTileDataPanes = resolution ? this.buildFixedRenderTileDataPanes(input, resolution) : null
+    const acknowledgedVisibleTileKeys =
+      fixedRenderTileDataPanes?.source === 'local' ? resolveAcknowledgedVisibleDirtyPaneTileKeys(fixedRenderTileDataPanes.panes) : []
+    const tileReadiness = this.resolveTileReadiness(input, resolution?.tiles ?? [], preloadResolution.tiles, acknowledgedVisibleTileKeys)
     if (input.sheetId !== undefined && fixedRenderTileDataPanes?.source === 'remote') {
       this.retainedFixedRenderTileDataPanes = {
         compatibility: buildRetainedFixedRenderTileDataPanesCompatibility(input),
@@ -204,9 +206,11 @@ export class GridRenderTilePaneRuntime {
     }
 
     const shouldUseRemoteRenderTileSource = input.renderTileSource !== undefined && input.sheetId !== undefined
+    const hasUnacknowledgedVisibleDirtyTiles = hasUnacknowledgedVisibleDirtyTileKeys(tileReadiness, acknowledgedVisibleTileKeys)
     const retainedFixedRenderTileDataPanes =
       fixedRenderTileDataPanes?.panes ??
       (shouldUseRemoteRenderTileSource &&
+      !hasUnacknowledgedVisibleDirtyTiles &&
       this.retainedFixedRenderTileDataPanes &&
       sameRetainedFixedRenderTileDataPanesCompatibility(
         this.retainedFixedRenderTileDataPanes.compatibility,
@@ -429,6 +433,7 @@ export class GridRenderTilePaneRuntime {
       this.lastWorkbookDeltaSeqBySheetAndSource.set(sequenceKey, batch.seq)
     }
     input.gridRuntimeHost.tiles.applyWorkbookDelta(batch, { dprBucket: input.dprBucket })
+    this.clearRetainedPanes()
     return true
   }
 
@@ -536,6 +541,7 @@ export class GridRenderTilePaneRuntime {
     input: GridRenderTilePaneRuntimeInput,
     tiles: readonly GridRenderTile[],
     preloadTiles: readonly GridRenderTile[] = [],
+    acknowledgedVisibleTileKeys: readonly TileKey53[] = [],
   ): GridTileReadinessSnapshotV3 {
     if (input.sheetId === undefined) {
       return EMPTY_TILE_PANE_RUNTIME_STATE.tileReadiness
@@ -551,7 +557,9 @@ export class GridRenderTilePaneRuntime {
       ...input,
       sheetId,
     })
-    return input.gridRuntimeHost.tiles.reconcileInterest(interest)
+    return input.gridRuntimeHost.tiles.reconcileInterest(interest, {
+      acknowledgedVisibleTileKeys,
+    })
   }
 
   private buildViewportTileInterest(input: GridRenderTileInterestRuntimeInput & { readonly sheetId: number }): GridTileInterestBatchV3 {
@@ -905,6 +913,30 @@ export class GridRenderTilePaneRuntime {
 
 function normalizeNonNegativeInteger(value: number | null | undefined): number | null {
   return typeof value === 'number' && Number.isInteger(value) && value >= 0 ? value : null
+}
+
+function resolveAcknowledgedVisibleDirtyPaneTileKeys(panes: readonly WorkbookRenderTilePaneState[]): readonly TileKey53[] {
+  const keys: number[] = []
+  const seen = new Set<number>()
+  for (const pane of panes) {
+    if (pane.drawVisible === false || (pane.tile.dirtyMasks?.length ?? 0) === 0 || seen.has(pane.tile.tileId)) {
+      continue
+    }
+    seen.add(pane.tile.tileId)
+    keys.push(pane.tile.tileId)
+  }
+  return keys
+}
+
+function hasUnacknowledgedVisibleDirtyTileKeys(
+  readiness: GridTileReadinessSnapshotV3,
+  acknowledgedVisibleTileKeys: readonly TileKey53[],
+): boolean {
+  if (readiness.visibleDirtyTileKeys.length === 0) {
+    return false
+  }
+  const acknowledged = new Set(acknowledgedVisibleTileKeys)
+  return readiness.visibleDirtyTileKeys.some((key) => !acknowledged.has(key))
 }
 
 function tileProjectionRevisionIsBehind(tile: GridRenderTile | null, engine: GridEngineLike): boolean {

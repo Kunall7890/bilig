@@ -185,6 +185,7 @@ function createCapturingRenderTileSource(): {
 
 function createMutableRenderTileSource(tiles: readonly GridRenderTile[] = []): {
   readonly source: GridRenderTileSource
+  readonly deleteTile: (tileId: number) => void
   readonly emit: (change: {
     readonly batchId?: number | undefined
     readonly cameraSeq?: number | undefined
@@ -198,6 +199,9 @@ function createMutableRenderTileSource(tiles: readonly GridRenderTile[] = []): {
   let listener: ((change: GridRenderTileSceneChange) => void) | null = null
   let unsubscribed = false
   return {
+    deleteTile: (tileId) => {
+      byId.delete(tileId)
+    },
     emit: (change) =>
       listener?.({
         batchId: change.batchId ?? 2,
@@ -247,6 +251,7 @@ function createWorkbookDeltaSource(): {
 
 function createMutableWorkbookDeltaRenderTileSource(tiles: readonly GridRenderTile[] = []): {
   readonly source: GridRenderTileSource
+  readonly deleteTile: (tileId: number) => void
   readonly emitWorkbookDelta: (batch: WorkbookDeltaBatchLikeV3) => void
   readonly emitRenderTileDelta: (change: {
     readonly batchId?: number | undefined
@@ -259,6 +264,7 @@ function createMutableWorkbookDeltaRenderTileSource(tiles: readonly GridRenderTi
   const renderTiles = createMutableRenderTileSource(tiles)
   let workbookDeltaListener: ((batch: WorkbookDeltaBatchLikeV3) => void) | null = null
   return {
+    deleteTile: renderTiles.deleteTile,
     emitRenderTileDelta: (change) => renderTiles.emit(change),
     emitWorkbookDelta: (batch) => workbookDeltaListener?.(batch),
     setTile: renderTiles.setTile,
@@ -506,6 +512,101 @@ describe('GridRenderTilePaneRuntime', () => {
     expect(missing.residentDataPanes.map((pane) => pane.tile.tileId)).toEqual([tileId])
     expect(missing.residentBodyPane?.tile).toBe(ready.residentBodyPane?.tile)
     expect(missing.needsLocalCellInvalidation).toBe(false)
+  })
+
+  it('does not resurrect retained background fills after local style clear when the remote source misses', () => {
+    const runtime = new GridRenderTilePaneRuntime()
+    const host = createHost()
+    const tileId = host.viewportTileKeys({
+      dprBucket: 1,
+      sheetOrdinal: 7,
+      viewport: { colEnd: 127, colStart: 0, rowEnd: 31, rowStart: 0 },
+    })[0]
+    if (tileId === undefined) {
+      throw new Error('Expected a visible render tile key for the test viewport')
+    }
+    const fullVisualDirtyMask = DirtyMaskV3.Value | DirtyMaskV3.Style | DirtyMaskV3.Text | DirtyMaskV3.Rect | DirtyMaskV3.Border
+    const styles: Record<string, CellStyleRecord> = {
+      'style-green': { id: 'style-green', fill: { backgroundColor: '#00ff00' } },
+    }
+    const greenFillEngine: GridEngineLike = {
+      getCell: (_sheetName, address) =>
+        address === 'A1' ? createStyledStringCellSnapshot('A1', 'A1', 'style-green') : createEmptyCellSnapshot(address),
+      getCellStyle: (styleId) => (styleId ? styles[styleId] : undefined),
+      subscribeCells: () => () => {},
+      workbook: {
+        getSheet: () => undefined,
+      },
+    }
+    const remoteGreenTile = materializeGridRenderTileV3({
+      axisSeqX: 1,
+      axisSeqY: 1,
+      cameraSeq: 1,
+      columnWidths: {},
+      dprBucket: 1,
+      engine: greenFillEngine,
+      freezeSeq: 0,
+      gridMetrics: getGridMetrics(),
+      materializedAtSeq: 1,
+      packetSeq: 1,
+      rectSeq: 1,
+      rowHeights: {},
+      sheetId: 7,
+      sheetName: 'Sheet1',
+      sheetOrdinal: 7,
+      sortedColumnWidthOverrides: [],
+      sortedRowHeightOverrides: [],
+      styleSeq: 1,
+      textSeq: 1,
+      valueSeq: 1,
+      viewport: { colEnd: 127, colStart: 0, rowEnd: 31, rowStart: 0 },
+    })
+    expect(remoteGreenTile.tileId).toBe(tileId)
+    expect(hasOpaqueGreenFillRect(remoteGreenTile)).toBe(true)
+    const renderTileSource = createMutableWorkbookDeltaRenderTileSource([remoteGreenTile])
+
+    const ready = runtime.resolve(
+      createInput({
+        engine: greenFillEngine,
+        gridRuntimeHost: host,
+        renderTileSource: renderTileSource.source,
+      }),
+    )
+    expect(ready.residentBodyPane?.tile).toBe(remoteGreenTile)
+    expect(hasOpaqueGreenFillRect(ready.residentBodyPane?.tile)).toBe(true)
+
+    runtime.connectWorkbookDeltaDamage({
+      dprBucket: 1,
+      gridRuntimeHost: host,
+      renderTileSource: renderTileSource.source,
+      sheetId: 7,
+    })
+    renderTileSource.emitWorkbookDelta(
+      createWorkbookDeltaBatch({
+        dirty: {
+          axisX: new Uint32Array(),
+          axisY: new Uint32Array(),
+          cellRanges: new Uint32Array([0, 0, 0, 0, fullVisualDirtyMask]),
+        },
+        source: 'localOptimistic',
+      }),
+    )
+    renderTileSource.deleteTile(tileId)
+
+    const cleared = runtime.resolve(
+      createInput({
+        engine: LOCAL_EMPTY_ENGINE,
+        gridRuntimeHost: host,
+        renderTileSource: renderTileSource.source,
+      }),
+    )
+
+    expect(cleared.residentBodyPane?.tile).not.toBe(remoteGreenTile)
+    expect(hasOpaqueGreenFillRect(cleared.residentBodyPane?.tile)).toBe(false)
+    expect(cleared.residentBodyPane?.tile.dirtyLocalRows).toEqual(new Uint32Array([0, 0]))
+    expect(cleared.residentBodyPane?.tile.dirtyLocalCols).toEqual(new Uint32Array([0, 0]))
+    expect(cleared.residentBodyPane?.tile.dirtyMasks).toEqual(new Uint32Array([fullVisualDirtyMask]))
+    expect(host.tiles.dirtyTiles.getUnconsumedMask(tileId)).toBe(0)
   })
 
   it('builds a local visible tile when remote tiles are unavailable before same-sheet retention exists', () => {

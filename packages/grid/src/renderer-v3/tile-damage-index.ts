@@ -234,6 +234,16 @@ export class DirtyTileIndexV3 {
     ]
   }
 
+  peekVisible(visibleKeys: Iterable<TileKey53>): TileKey53[] {
+    const dirty: number[] = []
+    for (const key of visibleKeys) {
+      if (this.getUnconsumedMask(key) !== 0) {
+        dirty.push(key)
+      }
+    }
+    return dirty
+  }
+
   private resolveMask(key: TileKey53, unconsumedOnly: boolean): number {
     const fields = unpackTileKey53(key)
     const axisXKey = packTileKey53({

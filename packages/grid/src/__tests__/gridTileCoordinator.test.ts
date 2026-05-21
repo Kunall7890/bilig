@@ -101,4 +101,40 @@ describe('GridTileCoordinator', () => {
       warmDirtyTileKeys: [],
     })
   })
+
+  it('does not consume visible dirty tiles until replacement tiles are acknowledged', () => {
+    const coordinator = new GridTileCoordinator()
+    const dirty = coordinator.upsertTile(tile(0, 1))
+    coordinator.applyWorkbookDelta(
+      {
+        sheetOrdinal: 1,
+        dirty: {
+          axisX: new Uint32Array(),
+          axisY: new Uint32Array(),
+          cellRanges: Uint32Array.from([0, 0, 128, 128, DirtyMaskV3.Value]),
+        },
+      },
+      { dprBucket: 1 },
+    )
+
+    const interest = coordinator.buildInterest({
+      sheetId: 10,
+      sheetOrdinal: 1,
+      cameraSeq: 2,
+      axisSeqX: 2,
+      axisSeqY: 3,
+      freezeSeq: 4,
+      visibleTileKeys: [dirty.key],
+      reason: 'mutation',
+    })
+
+    const unacknowledged = coordinator.reconcileInterest(interest, { acknowledgedVisibleTileKeys: [] })
+    expect(unacknowledged.visibleDirtyTileKeys).toEqual([dirty.key])
+    expect(unacknowledged.staleHits).toEqual([dirty.key])
+    expect(coordinator.dirtyTiles.getUnconsumedMask(dirty.key)).toBe(DirtyMaskV3.Value)
+
+    const acknowledged = coordinator.reconcileInterest(interest, { acknowledgedVisibleTileKeys: [dirty.key] })
+    expect(acknowledged.visibleDirtyTileKeys).toEqual([dirty.key])
+    expect(coordinator.dirtyTiles.getUnconsumedMask(dirty.key)).toBe(0)
+  })
 })

@@ -29,6 +29,10 @@ export interface GridTileReadinessSnapshotV3 {
   readonly visibleMarkedTiles: number
 }
 
+export interface GridTileReconcileOptionsV3 {
+  readonly acknowledgedVisibleTileKeys?: Iterable<TileKey53> | undefined
+}
+
 export class GridTileCoordinator<Packet = unknown, Resources = unknown> {
   readonly residency = new TileResidencyV3<Packet, Resources>()
   readonly dirtyTiles = new DirtyTileIndexV3()
@@ -73,7 +77,7 @@ export class GridTileCoordinator<Packet = unknown, Resources = unknown> {
     return this.residency.delete(key)
   }
 
-  reconcileInterest(input: GridTileInterestBatchV3): GridTileReadinessSnapshotV3 {
+  reconcileInterest(input: GridTileInterestBatchV3, options: GridTileReconcileOptionsV3 = {}): GridTileReadinessSnapshotV3 {
     const visibleMarkedTiles = this.residency.markVisible(input.visibleTileKeys)
     input.pinnedTileKeys.forEach((key) => {
       this.residency.pin(key, 2)
@@ -84,7 +88,7 @@ export class GridTileCoordinator<Packet = unknown, Resources = unknown> {
     const misses: number[] = []
     let staleLookupCount = 0
     let staleLookupScannedEntries = 0
-    const visibleDirtyTileKeys = this.dirtyTiles.consumeVisible(input.visibleTileKeys)
+    const visibleDirtyTileKeys = this.dirtyTiles.peekVisible(input.visibleTileKeys)
     const visibleDirty = new Set(visibleDirtyTileKeys)
 
     input.visibleTileKeys.forEach((key) => {
@@ -108,6 +112,8 @@ export class GridTileCoordinator<Packet = unknown, Resources = unknown> {
       }
       misses.push(key)
     })
+
+    this.consumeAcknowledgedVisibleDirtyTiles(visibleDirtyTileKeys, options.acknowledgedVisibleTileKeys)
 
     return {
       exactHits,
@@ -135,5 +141,23 @@ export class GridTileCoordinator<Packet = unknown, Resources = unknown> {
       freezeSeq: input.freezeSeq,
       excludeKey: key,
     })
+  }
+
+  private consumeAcknowledgedVisibleDirtyTiles(
+    visibleDirtyTileKeys: readonly TileKey53[],
+    acknowledgedVisibleTileKeys: Iterable<TileKey53> | undefined,
+  ): void {
+    if (visibleDirtyTileKeys.length === 0) {
+      return
+    }
+    if (acknowledgedVisibleTileKeys === undefined) {
+      this.dirtyTiles.consumeVisible(visibleDirtyTileKeys)
+      return
+    }
+    const acknowledged = new Set(acknowledgedVisibleTileKeys)
+    const consumed = visibleDirtyTileKeys.filter((key) => acknowledged.has(key))
+    if (consumed.length > 0) {
+      this.dirtyTiles.consumeVisible(consumed)
+    }
   }
 }
