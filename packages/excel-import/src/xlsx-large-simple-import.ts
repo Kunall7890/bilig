@@ -50,11 +50,7 @@ import {
   drawingRelationshipIdForScannedWorksheet,
   sheetPivotArtifactsWithStreamedDefinitions,
 } from './xlsx-large-simple-materialization-helpers.js'
-import {
-  buildParsedWorksheet,
-  lazySheetCellMaterializationThreshold,
-  type LargeSimpleParsedWorksheet,
-} from './xlsx-large-simple-parsed-worksheet.js'
+import { buildParsedWorksheet, lazySheetCellMaterializationThreshold } from './xlsx-large-simple-build-parsed-worksheet.js'
 import { mergeWorkbookRichTextCells } from './xlsx-large-simple-lazy-rich-text-cells.js'
 import { hasExternalLargeSimplePivotCaches } from './xlsx-large-simple-pivot-warnings.js'
 import { ImportedWorkbookStringPool } from './xlsx-large-simple-string-pool.js'
@@ -96,6 +92,7 @@ import type {
   LargeSimpleXlsxImportResult,
   LargeSimpleXlsxImportSource,
   LargeSimpleXlsxImportStats,
+  ParsedWorksheet,
   ScannedWorksheet,
 } from './xlsx-large-simple-import-types.js'
 
@@ -207,23 +204,29 @@ export function tryImportLargeSimpleXlsx(
   phaseRecorder.finish('zip-setup', zipSetupStart)
   const importedTables: WorkbookTableSnapshot[] = []
   const sheets: WorkbookSnapshot['sheets'] = []
-  const previewSheets: LargeSimpleParsedWorksheet['preview'][] = []
-  const sheetStats: LargeSimpleParsedWorksheet['stats'][] = []
+  const previewSheets: ParsedWorksheet['preview'][] = []
+  const sheetStats: ParsedWorksheet['stats'][] = []
   const styleCatalog = new Map<string, CellStyleRecord>()
   const scannedWorksheets: (ScannedWorksheet | undefined)[] = []
   const referencedSharedStringIndexes = new LargeSimpleSharedStringIndexCollector()
+  const allowPreReleaseSheetFinalization =
+    materializeCells &&
+    worksheetEntries.length > 1 &&
+    options.allowPreReleaseSheetFinalization === true &&
+    options.releaseOwnedSourceBytes === undefined
+  const hasRelationshipBackedSheetArtifacts =
+    hasDrawingParts || hasChartParts || hasPivotParts || hasLegacyCommentParts || hasSlicerConnectionParts
   const materializeSheetsImmediately =
     materializeCells &&
-    options.releaseZipSource !== true &&
     !hasSharedStrings &&
     !hasStyles &&
-    !hasDrawingParts &&
-    !hasSlicerConnectionParts
+    !hasRelationshipBackedSheetArtifacts &&
+    (options.releaseZipSource !== true || allowPreReleaseSheetFinalization)
   const emptyStylesByIndex = new Map<number, Omit<CellStyleRecord, 'id'>>()
-  const appendParsedWorksheet = (parsed: LargeSimpleParsedWorksheet): void => {
-    sheets.push(parsed.sheet)
-    previewSheets.push(parsed.preview)
-    sheetStats.push(parsed.stats)
+  const appendParsedWorksheet = (parsed: ParsedWorksheet): void => {
+    sheets[parsed.sheet.order] = parsed.sheet
+    previewSheets[parsed.sheet.order] = parsed.preview
+    sheetStats[parsed.sheet.order] = parsed.stats
   }
 
   for (const [order, entry] of worksheetEntries.entries()) {
@@ -526,6 +529,43 @@ export function tryImportLargeSimpleXlsx(
   fallbackSharedStrings = null
   phaseRecorder.finish('shared-string-resolution', sharedStringResolutionStart)
   collectLargeSimpleImportGarbage()
+  if (allowPreReleaseSheetFinalization && !hasStyles && !hasRelationshipBackedSheetArtifacts) {
+    for (const [index, scanned] of scannedWorksheets.entries()) {
+      if (!scanned || scanned.metadataScan?.controlArtifacts) {
+        continue
+      }
+      const snapshotMaterializationStart = phaseRecorder.start()
+      const resolvedRichTextCells =
+        materializeCells && hasSharedStrings && scanned.hasUnresolvedSharedStringReferences === true
+          ? scanned.cellScan.arena.retainSharedStringReferences(scanned.sharedStrings ?? sharedStrings)
+          : []
+      if (resolvedRichTextCells === null) {
+        return null
+      }
+      appendParsedWorksheet(
+        buildParsedWorksheet(
+          scanned.name,
+          scanned.order,
+          {
+            ...scanned.cellScan,
+            richTextCells: mergeWorkbookRichTextCells(scanned.cellScan.richTextCells, resolvedRichTextCells),
+          },
+          scanned.worksheetXml,
+          scanned.metadataScan,
+          scanned.metadataInput,
+          {
+            materializeCells,
+            releaseArenaAfterMaterialization: options.releaseArenaAfterMaterialization !== false,
+            styleCatalog,
+            stylesByIndex: emptyStylesByIndex,
+          },
+        ),
+      )
+      scannedWorksheets[index] = undefined
+      phaseRecorder.finish('public-snapshot-materialization', snapshotMaterializationStart)
+      collectLargeSimpleImportGarbage()
+    }
+  }
   const styleParsingStart = phaseRecorder.start()
   const requiredStyleIndexes = new Set<number>()
   for (const scanned of scannedWorksheets) {
@@ -643,6 +683,7 @@ export function tryImportLargeSimpleXlsx(
       continue
     }
     const snapshotMaterializationStart = phaseRecorder.start()
+    const needsStyleCoordinatesForSheet = sheetNeedsStyleCoordinateMaterialization(scanned.cellScan)
     const resolvedRichTextCells =
       materializeCells && hasSharedStrings && scanned.hasUnresolvedSharedStringReferences === true
         ? scanned.cellScan.arena.retainSharedStringReferences(scanned.sharedStrings ?? sharedStrings)
@@ -650,17 +691,18 @@ export function tryImportLargeSimpleXlsx(
     if (resolvedRichTextCells === null) {
       return null
     }
-    const needsStyleCoordinatesForSheet = sheetNeedsStyleCoordinateMaterialization(scanned.cellScan)
     const styleIndexes = needsStyleCoordinatesForSheet
-      ? prepareLargeSimpleStyleIndexForWorksheet(zip, worksheetEntries, scanned, {
-          hasSharedStrings,
-          ...(options.allowUnsupportedFormulaText === undefined
-            ? {}
-            : { allowUnsupportedFormulaText: options.allowUnsupportedFormulaText }),
-          ...(options.allowUnsupportedCellMetadata === undefined
-            ? {}
-            : { allowUnsupportedCellMetadata: options.allowUnsupportedCellMetadata }),
-        })
+      ? scanned.cellScan.styleIndexes.hasCoordinateStorage
+        ? scanned.cellScan.styleIndexes
+        : prepareLargeSimpleStyleIndexForWorksheet(zip, worksheetEntries, scanned, {
+            hasSharedStrings,
+            ...(options.allowUnsupportedFormulaText === undefined
+              ? {}
+              : { allowUnsupportedFormulaText: options.allowUnsupportedFormulaText }),
+            ...(options.allowUnsupportedCellMetadata === undefined
+              ? {}
+              : { allowUnsupportedCellMetadata: options.allowUnsupportedCellMetadata }),
+          })
       : scanned.cellScan.styleIndexes
     if (!styleIndexes) {
       return null

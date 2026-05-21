@@ -5,12 +5,10 @@ import {
   normalizeLargeSimpleConditionalFormatIds,
   readLargeSimpleConditionalFormattingBlockCount,
 } from './xlsx-large-simple-conditional-format-helpers.js'
-import { releaseProjectedCellScanStorage } from './xlsx-large-simple-materialization-helpers.js'
-import { applyLargeSimpleNumberFormatsToCells } from './xlsx-large-simple-number-formats.js'
-import { buildLargeSimpleStyleRanges } from './xlsx-large-simple-style-ranges.js'
-import type { LargeSimpleSheetMetadataInput } from './xlsx-large-simple-sheet-metadata-input.js'
 import type { ImportedWorksheetCellScan } from './xlsx-large-simple-arena.js'
-import { readImportedWorksheetSheetProtection } from './xlsx-sheet-protection.js'
+import { buildLargeSimpleStyleRanges } from './xlsx-large-simple-style-ranges.js'
+import { applyLargeSimpleNumberFormatsToCells } from './xlsx-large-simple-number-formats.js'
+import { releaseProjectedCellScanStorage } from './xlsx-large-simple-materialization-helpers.js'
 import {
   readLargeSimpleColumnMetadata,
   readLargeSimpleMergeRanges,
@@ -18,30 +16,11 @@ import {
   readLargeSimpleSheetFormatPr,
   type LargeSimpleWorksheetScannedMetadata,
 } from './xlsx-large-simple-worksheet-metadata.js'
+import type { LargeSimpleSheetMetadataInput, ParsedWorksheet } from './xlsx-large-simple-import-types.js'
+import { readImportedWorksheetSheetProtection } from './xlsx-sheet-protection.js'
 import { decodeCellAddress } from './xlsx-large-simple-xml-byte-utils.js'
 
 export const lazySheetCellMaterializationThreshold = 100_000
-
-export interface LargeSimpleParsedWorksheet {
-  readonly sheet: WorkbookSnapshot['sheets'][number]
-  readonly preview: ReturnType<typeof createSheetPreview>
-  readonly stats: {
-    readonly cellCount: number
-    readonly formulaCellCount: number
-    readonly valueCellCount: number
-    readonly tableCount: number
-    readonly mergeCount: number
-    readonly conditionalFormatCount: number
-    readonly dataValidationCount: number
-    readonly dimension: {
-      readonly sheetName: string
-      readonly rowCount: number
-      readonly columnCount: number
-      readonly nonEmptyCellCount: number
-      readonly usedRange: ImportedWorksheetCellScan['usedRange']
-    }
-  }
-}
 
 export function buildParsedWorksheet(
   sheetName: string,
@@ -58,7 +37,7 @@ export function buildParsedWorksheet(
     readonly styleCatalog?: Map<string, CellStyleRecord>
     readonly stylesByIndex?: ReadonlyMap<number, Omit<CellStyleRecord, 'id'>>
   } = { materializeCells: true },
-): LargeSimpleParsedWorksheet {
+): ParsedWorksheet {
   const merges =
     metadataScan?.merges?.map((range) => ({ sheetName, ...range })) ??
     (worksheetXml ? readLargeSimpleMergeRanges(sheetName, worksheetXml) : [])
@@ -159,22 +138,22 @@ function createPreviewFromMaterializedCells(
   sheetName: string,
   cellScan: ImportedWorksheetCellScan,
   cells: WorkbookSnapshot['sheets'][number]['cells'],
-): LargeSimpleParsedWorksheet['preview'] {
+): ParsedWorksheet['preview'] {
   const rowLimit = Math.min(cellScan.rowCount, 8)
   const columnLimit = Math.min(cellScan.columnCount, 6)
-  const previewRows = Array.from({ length: rowLimit }, () => Array.from({ length: columnLimit }, () => ''))
+  const previewValues = Array.from({ length: rowLimit }, () => Array.from({ length: columnLimit }, () => ''))
   for (const cell of cells) {
     const decoded = decodeCellAddress(cell.address)
     if (!decoded || decoded.row >= rowLimit || decoded.column >= columnLimit) {
       continue
     }
-    previewRows[decoded.row]![decoded.column] = 'value' in cell ? toDisplayText(cell.value) : 'formula' in cell ? `=${cell.formula}` : ''
+    previewValues[decoded.row]![decoded.column] = 'value' in cell ? toDisplayText(cell.value) : 'formula' in cell ? `=${cell.formula}` : ''
   }
   return {
     name: sheetName,
     rowCount: cellScan.rowCount,
     columnCount: cellScan.columnCount,
     nonEmptyCellCount: cellScan.cellCount,
-    previewRows,
+    previewRows: previewValues,
   }
 }
