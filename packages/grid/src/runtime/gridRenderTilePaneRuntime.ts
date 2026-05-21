@@ -11,6 +11,7 @@ import type { WorkbookDeltaBatchLikeV3 } from '../renderer-v3/tile-damage-index.
 import type { TileKey53 } from '../renderer-v3/tile-key.js'
 import type { GridTileInterestBatchV3, GridTileReadinessSnapshotV3 } from './gridTileCoordinator.js'
 import type { GridRuntimeHost } from './gridRuntimeHost.js'
+import { hasUnacknowledgedVisibleDirtyTileKeys, resolveAcknowledgedVisibleDirtyPaneTileKeys } from './gridRenderTilePaneRuntimeReadiness.js'
 import {
   buildRetainedFixedRenderTileDataPanesCompatibility,
   isResidentGridRenderTile,
@@ -24,20 +25,15 @@ import {
   sameRenderTileDeltaConnectionIdentity,
   sameRetainedFixedRenderTileDataPanesCompatibility,
   sameWorkbookDeltaConnectionIdentity,
-  shouldForceLocalTilesForWorkbookDelta,
   upsertRenderTileIntoHost,
+  shouldForceLocalTilesForWorkbookDelta,
   type GridRenderTileInterestRuntimeInput,
   type LocalInvalidationConnectionIdentity,
   type RenderTileDeltaConnectionIdentity,
   type RetainedFixedRenderTileDataPanesCompatibility,
   type WorkbookDeltaConnectionIdentity,
 } from './gridRenderTilePaneRuntimeHelpers.js'
-import {
-  normalizeNonNegativeInteger,
-  resolveLocalRenderGeneration,
-  tileProjectionRevisionIsBehind,
-  tileSatisfiesRequiredProjectedRevision,
-} from './gridRenderTileRevision.js'
+import { normalizeNonNegativeInteger, resolveLocalRenderGeneration, tileProjectionRevisionIsBehind } from './gridRenderTileRevision.js'
 import { hasCompleteRenderTileGrid, tileSelectedTextNeedsLocalRefresh } from './gridRenderTileTrust.js'
 import { GridVisibleTextRefreshCache } from './gridVisibleTextRefreshCache.js'
 
@@ -378,7 +374,7 @@ export class GridRenderTilePaneRuntime {
       }
       this.noteWorkbookDeltaDamage({
         forceLocalTiles: shouldForceLocalTilesForWorkbookDelta(batch),
-        sequence: batch.seq,
+        sequence: batch.source === 'localOptimistic' ? undefined : batch.seq,
       })
       listener?.(batch)
     })
@@ -871,6 +867,7 @@ export class GridRenderTilePaneRuntime {
         dprBucket: input.dprBucket,
         editingCell: input.editingCell ?? null,
         engine: input.engine,
+        freezeSeq: input.gridRuntimeHost.snapshot().freezeSeq,
         generation: resolveLocalRenderGeneration(input),
         gridMetrics: input.gridMetrics,
         rowHeights: input.rowHeights,
@@ -918,37 +915,6 @@ export class GridRenderTilePaneRuntime {
       listener()
     })
   }
-}
-
-function resolveAcknowledgedVisibleDirtyPaneTileKeys(
-  panes: readonly WorkbookRenderTilePaneState[],
-  input: GridRenderTilePaneRuntimeInput,
-): readonly TileKey53[] {
-  const keys: number[] = []
-  const seen = new Set<number>()
-  for (const pane of panes) {
-    if (pane.drawVisible === false || (pane.tile.dirtyMasks?.length ?? 0) === 0 || seen.has(pane.tile.tileId)) {
-      continue
-    }
-    const requiredProjectedRevision = input.gridRuntimeHost.tiles.dirtyTiles.getRequiredProjectedRevision(pane.tile.tileId)
-    if (!tileSatisfiesRequiredProjectedRevision(pane.tile, input.engine, requiredProjectedRevision)) {
-      continue
-    }
-    seen.add(pane.tile.tileId)
-    keys.push(pane.tile.tileId)
-  }
-  return keys
-}
-
-function hasUnacknowledgedVisibleDirtyTileKeys(
-  readiness: GridTileReadinessSnapshotV3,
-  acknowledgedVisibleTileKeys: readonly TileKey53[],
-): boolean {
-  if (readiness.visibleDirtyTileKeys.length === 0) {
-    return false
-  }
-  const acknowledged = new Set(acknowledgedVisibleTileKeys)
-  return readiness.visibleDirtyTileKeys.some((key) => !acknowledged.has(key))
 }
 
 export function getGridRenderTilePaneRuntime(current: unknown): GridRenderTilePaneRuntime {

@@ -10,11 +10,7 @@ export { resolveTypeGpuV3DrawScrollSnapshot } from './workbook-pane-renderer-run
 import type { DynamicGridOverlayBatchV3 } from './dynamic-overlay-batch.js'
 import type { WorkbookRenderTilePaneState } from './render-tile-pane-state.js'
 import { WorkbookPaneNativeRectLayerV3 } from './WorkbookPaneNativeRectLayerV3.js'
-import {
-  WorkbookPaneNativeTextLayerV3,
-  resolveNativeTextRunSelectionOccludedClipV3,
-  type SuppressedNativeTextCellV3,
-} from './WorkbookPaneNativeTextLayerV3.js'
+import { WorkbookPaneNativeTextLayerV3, type SuppressedNativeTextCellV3 } from './WorkbookPaneNativeTextLayerV3.js'
 import { WorkbookPaneRendererHostRuntimeV3 } from './workbook-pane-renderer-host-runtime.js'
 
 export interface WorkbookPaneRendererV3Props {
@@ -262,7 +258,7 @@ export const WorkbookPaneRendererV3 = memo(function WorkbookPaneRendererV3({
           headerPanes={nativeHeaderPanes}
           presentedScrollSnapshot={presentedVisualFrame?.scrollSnapshot ?? null}
           scrollTransformStore={scrollTransformStore}
-          selectionOcclusionRanges={selectionOcclusionRanges}
+          selectionOcclusionRanges={null}
           suppressedTextCell={suppressedTextCell}
           tilePanes={nativeTilePanes}
         />
@@ -284,66 +280,9 @@ export function resolveWorkbookPaneSelectionOccludedTilePanesV3(input: {
   readonly selectionOcclusionRanges?: readonly Pick<Rectangle, 'x' | 'y' | 'width' | 'height'>[] | null | undefined
   readonly tilePanes: readonly WorkbookRenderTilePaneState[]
 }): readonly WorkbookRenderTilePaneState[] {
-  const ranges = input.selectionOcclusionRanges ?? []
-  if (!input.geometry || ranges.length === 0) {
-    return input.tilePanes
-  }
-
-  let panesChanged = false
-  const nextPanes = input.tilePanes.map((pane) => {
-    if (pane.tile.textRuns.length === 0) {
-      return pane
-    }
-
-    let textRunsChanged = false
-    const nextTextRuns: (typeof pane.tile.textRuns)[number][] = []
-    for (const run of pane.tile.textRuns) {
-      const clip = resolveNativeTextRunSelectionOccludedClipV3({
-        clipHeight: run.clipHeight,
-        clipWidth: run.clipWidth,
-        clipX: run.clipX,
-        clipY: run.clipY,
-        geometry: input.geometry,
-        pane,
-        run,
-        selectionOcclusionRanges: ranges,
-      })
-      if (!clip) {
-        textRunsChanged = true
-        continue
-      }
-      if (clip.clipX !== run.clipX || clip.clipY !== run.clipY || clip.clipWidth !== run.clipWidth || clip.clipHeight !== run.clipHeight) {
-        textRunsChanged = true
-        nextTextRuns.push({
-          ...run,
-          clipHeight: clip.clipHeight,
-          clipWidth: clip.clipWidth,
-          clipX: clip.clipX,
-          clipY: clip.clipY,
-        })
-        continue
-      }
-      nextTextRuns.push(run)
-    }
-
-    if (!textRunsChanged) {
-      return pane
-    }
-
-    panesChanged = true
-    return {
-      ...pane,
-      tile: {
-        ...pane.tile,
-        dirty: undefined,
-        textCount: nextTextRuns.length,
-        textRuns: nextTextRuns,
-        textSignature: undefined,
-      },
-    }
-  })
-
-  return panesChanged ? nextPanes : input.tilePanes
+  void input.geometry
+  void input.selectionOcclusionRanges
+  return input.tilePanes
 }
 
 export function resolveWorkbookPaneTileSceneRevisionV3(tilePanes: readonly WorkbookRenderTilePaneState[]): number | null {

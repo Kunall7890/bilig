@@ -21,7 +21,7 @@ export function buildLocalFixedRenderTiles(input: {
   readonly dprBucket: number
   readonly generation: number
   readonly cameraSeq: number
-  readonly freezeSeq?: number | undefined
+  readonly freezeSeq: number
   readonly tileKeys?: readonly number[] | undefined
   readonly dirtySpansForTile?: ((tileId: number) => readonly DirtyTileLocalSpanV3[]) | undefined
   readonly editingCell?: Item | null | undefined
@@ -47,7 +47,7 @@ export function buildLocalFixedRenderTiles(input: {
       ...input,
       axisSeqX: axisVersionX,
       axisSeqY: axisVersionY,
-      freezeSeq: input.freezeSeq ?? 0,
+      freezeSeq: input.freezeSeq,
       glyphAtlasSeq: 0,
       materializedAtSeq: input.generation,
       packetSeq: input.generation,

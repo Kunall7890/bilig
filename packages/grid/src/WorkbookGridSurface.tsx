@@ -1,6 +1,5 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef } from 'react'
 import { formatAddress, parseCellAddress } from '@bilig/formula'
-import { MAX_COLS, MAX_ROWS } from '@bilig/protocol'
 import { CellEditorOverlay } from './CellEditorOverlay.js'
 import { GridFillHandleOverlay } from './GridFillHandleOverlay.js'
 import { GridSelectionVisualOverlay } from './GridSelectionVisualOverlay.js'
@@ -85,17 +84,8 @@ export function resolveWorkbookGridSurfaceTextOcclusionRanges(input: {
   readonly gridSelection: GridSelection
   readonly selectionRange: Pick<Rectangle, 'x' | 'y' | 'width' | 'height'> | null
 }): readonly Pick<Rectangle, 'x' | 'y' | 'width' | 'height'>[] {
-  const axisRanges: Pick<Rectangle, 'x' | 'y' | 'width' | 'height'>[] = []
-  for (const [start, endExclusive] of input.gridSelection.columns.ranges) {
-    axisRanges.push({ x: start, y: 0, width: endExclusive - start, height: MAX_ROWS })
-  }
-  for (const [start, endExclusive] of input.gridSelection.rows.ranges) {
-    axisRanges.push({ x: 0, y: start, width: MAX_COLS, height: endExclusive - start })
-  }
-  if (axisRanges.length > 0) {
-    return axisRanges
-  }
-  return input.selectionRange ? [input.selectionRange] : []
+  void input
+  return []
 }
 
 export function resolveWorkbookGridSurfaceDisplayCell(input: {

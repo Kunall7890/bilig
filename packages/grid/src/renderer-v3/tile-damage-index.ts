@@ -386,7 +386,8 @@ export function markWorkbookDeltaDirtyTilesV3(
   batch: WorkbookDeltaBatchLikeV3,
   options: { readonly dprBucket: number },
 ): void {
-  const requiredProjectedRevision = batch.source === 'workerAuthoritative' ? normalizeNonNegativeInteger(batch.seq) : null
+  const requiredProjectedRevision =
+    batch.source === 'workerAuthoritative' || batch.source === 'localOptimistic' ? normalizeNonNegativeInteger(batch.seq) : null
   forEachDirtyCellRange(batch.dirty.cellRanges, (rowStart, rowEnd, colStart, colEnd, mask) => {
     index.markCellRange({
       colEnd,

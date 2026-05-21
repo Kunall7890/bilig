@@ -2223,7 +2223,7 @@ describe('GridRenderTilePaneRuntime', () => {
     expect(hasOpaqueGreenFillRect(refreshed.residentBodyPane?.tile)).toBe(true)
   })
 
-  it('keeps local tiles through stale render tile deltas until the renderer batch catches up', () => {
+  it('keeps local tiles through stale render tile deltas until projected tile versions catch up', () => {
     const runtime = new GridRenderTilePaneRuntime()
     const host = createHost()
     const tileId = host.viewportTileKeys({
@@ -2305,13 +2305,23 @@ describe('GridRenderTilePaneRuntime', () => {
     renderTileSource.emitRenderTileDelta({ batchId: 9, cameraSeq: 9, changedTileIds: [tileId] })
 
     expect(runtime.snapshotBridgeState()).toEqual({
-      forceLocalTiles: true,
+      forceLocalTiles: false,
       localFallbackRevision: 1,
       renderTileRevision: 2,
     })
+    const staleProjectionEngine: GridEngineLike = {
+      ...LOCAL_EMPTY_ENGINE,
+      getRenderRevisionSnapshot: () => ({
+        authoritativeRevision: 9,
+        localRevision: 10,
+        projectedRevision: 9,
+        tileSceneCameraSeq: 9,
+        tileSceneRevision: 9,
+      }),
+    }
     const staleDeltaState = runtime.resolve(
       createInput({
-        engine: LOCAL_EMPTY_ENGINE,
+        engine: staleProjectionEngine,
         forceLocalTiles: runtime.snapshotBridgeState().forceLocalTiles,
         gridRuntimeHost: host,
         renderTileSource: renderTileSource.source,
@@ -2319,6 +2329,7 @@ describe('GridRenderTilePaneRuntime', () => {
     )
     expect(staleDeltaState.residentBodyPane?.tile.textRuns.some((run) => run.text === 'deleted text from stale tile')).toBe(false)
     expect(staleDeltaState.residentBodyPane?.tile.textRuns).toEqual([])
+    expect(host.tiles.dirtyTiles.getRequiredProjectedRevision(tileId)).toBe(10)
 
     const freshRemoteTile: GridRenderTile = {
       ...staleRemoteTile,
@@ -2328,6 +2339,7 @@ describe('GridRenderTilePaneRuntime', () => {
       textRuns: [],
       version: {
         ...staleRemoteTile.version,
+        styles: 10,
         text: 10,
         values: 10,
       },
@@ -2340,9 +2352,19 @@ describe('GridRenderTilePaneRuntime', () => {
       localFallbackRevision: 1,
       renderTileRevision: 3,
     })
+    const caughtUpEngine: GridEngineLike = {
+      ...LOCAL_EMPTY_ENGINE,
+      getRenderRevisionSnapshot: () => ({
+        authoritativeRevision: 10,
+        localRevision: 10,
+        projectedRevision: 10,
+        tileSceneCameraSeq: 10,
+        tileSceneRevision: 10,
+      }),
+    }
     const caughtUpState = runtime.resolve(
       createInput({
-        engine: LOCAL_EMPTY_ENGINE,
+        engine: caughtUpEngine,
         forceLocalTiles: runtime.snapshotBridgeState().forceLocalTiles,
         gridRuntimeHost: host,
         renderTileSource: renderTileSource.source,
@@ -3168,6 +3190,50 @@ describe('GridRenderTilePaneRuntime', () => {
     expect(fallback.renderTilePanes[0]?.tile.rectInstances).toBe(rectInstances)
     expect(fallback.renderTilePanes[0]?.tile.dirty?.rectSpans).toEqual([])
     expect(fallback.renderTilePanes[0]?.tile.dirty?.textSpans).toEqual([])
+  })
+
+  it('preserves runtime freeze sequence when hybrid dirty tiles are localized', () => {
+    const runtime = new GridRenderTilePaneRuntime()
+    const host = createHost()
+    host.updateCamera({
+      dpr: 1,
+      freezeCols: 1,
+      freezeRows: 1,
+      gridMetrics: getGridMetrics(),
+      scrollLeft: 0,
+      scrollTop: 0,
+      viewportHeight: 400,
+      viewportWidth: 800,
+    })
+    const tileId = host.viewportTileKeys({
+      dprBucket: 1,
+      sheetOrdinal: 7,
+      viewport: { colEnd: 127, colStart: 0, rowEnd: 31, rowStart: 0 },
+    })[0]
+    if (tileId === undefined) {
+      throw new Error('Expected a visible render tile key for the test viewport')
+    }
+
+    host.tiles.applyWorkbookDelta(
+      createWorkbookDeltaBatch({
+        dirty: {
+          axisX: new Uint32Array(),
+          axisY: new Uint32Array(),
+          cellRanges: new Uint32Array([6, 6, 5, 5, DirtyMaskV3.Value | DirtyMaskV3.Text]),
+        },
+      }),
+      { dprBucket: 1 },
+    )
+
+    const resolved = runtime.resolve(
+      createInput({
+        engine: LOCAL_EMPTY_ENGINE,
+        gridRuntimeHost: host,
+        renderTileSource: createRenderTileSource([createRenderTile(tileId)]),
+      }),
+    )
+
+    expect(resolved.renderTilePanes[0]?.tile.version.freeze).toBe(host.snapshot().freezeSeq)
   })
 
   it('reuses resident static rect buffers for text-only local dirty tiles when source misses', () => {

@@ -496,7 +496,7 @@ describe('WorkbookPaneRendererV3', () => {
     })
   })
 
-  test('clips TypeGPU text runs against full-column selection occlusion', () => {
+  test('keeps selection overlays from rewriting TypeGPU tile text payloads', () => {
     const metrics = getGridMetrics()
     const geometry = createGridGeometrySnapshotFromAxes({
       columns: createGridAxisWorldIndex({ axisLength: 1024, defaultSize: metrics.columnWidth }),
@@ -546,11 +546,12 @@ describe('WorkbookPaneRendererV3', () => {
       tilePanes: [textPane],
     })
 
-    expect(occludedPanes[0]).not.toBe(textPane)
+    expect(occludedPanes[0]).toBe(textPane)
     const occludedRun = occludedPanes[0]?.tile.textRuns[0]
-    expect(occludedRun?.clipWidth).toBe(metrics.columnWidth * 2)
+    expect(occludedRun).toBe(textRun)
+    expect(occludedRun?.clipWidth).toBe(metrics.columnWidth * 4)
     expect(occludedPanes[0]?.tile.textCount).toBe(1)
-    expect(occludedPanes[0]?.tile.textSignature).toBeUndefined()
+    expect(occludedPanes[0]?.tile.textSignature).toBe('remote-spill')
   })
 
   test('defers V3 preload resource sync only while scroll input or camera velocity is fresh', () => {
