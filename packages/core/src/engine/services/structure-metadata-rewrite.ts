@@ -26,6 +26,11 @@ interface StructuralTableHeaderCellWrite {
   readonly value: string
 }
 
+export interface DeletedTableColumnReference {
+  readonly tableName: string
+  readonly columnName: string
+}
+
 type WorkbookTableColumnRecord = NonNullable<WorkbookTableRecord['columns']>[number]
 
 const METADATA_CELL_REF_RE = /^\$?([A-Z]+)\$?([1-9]\d*)$/i
@@ -130,10 +135,15 @@ export function rewriteWorkbookMetadataForStructuralTransform(
   args: StructureMetadataRewriteArgs,
   sheetName: string,
   transform: StructuralAxisTransform,
-): { changedTableNames: Set<string>; tableHeaderCellWrites: StructuralTableHeaderCellWrite[] } {
+): {
+  changedTableNames: Set<string>
+  tableHeaderCellWrites: StructuralTableHeaderCellWrite[]
+  deletedTableColumns: DeletedTableColumnReference[]
+} {
   const workbook = args.state.workbook
   const changedTableNames = new Set<string>()
   const tableHeaderCellWrites: StructuralTableHeaderCellWrite[] = []
+  const deletedTableColumns: DeletedTableColumnReference[] = []
   workbook.listTables().forEach((table) => {
     if (table.sheetName !== sheetName) {
       return
@@ -141,11 +151,13 @@ export function rewriteWorkbookMetadataForStructuralTransform(
     const rewrite = rewriteTableForStructuralTransform(table, transform)
     if (!rewrite) {
       changedTableNames.add(table.name)
+      deletedTableColumns.push(...table.columnNames.map((columnName) => ({ tableName: table.name, columnName })))
       workbook.deleteTable(table.name)
       return
     }
     changedTableNames.add(table.name)
     tableHeaderCellWrites.push(...rewrite.headerCellWrites)
+    deletedTableColumns.push(...rewrite.deletedColumnNames.map((columnName) => ({ tableName: table.name, columnName })))
     workbook.setTable(rewrite.table)
   })
   const rewrittenMergeRanges: CellRangeRef[] = []
@@ -345,7 +357,7 @@ export function rewriteWorkbookMetadataForStructuralTransform(
       address: nextAddress,
     })
   })
-  return { changedTableNames, tableHeaderCellWrites }
+  return { changedTableNames, tableHeaderCellWrites, deletedTableColumns }
 }
 
 function rewriteMetadataRangeForStructuralTransform<T extends MetadataRangeLike>(
@@ -371,14 +383,14 @@ function withRewrittenMetadataRange<T extends MetadataRangeLike>(range: T, rewri
 function rewriteTableForStructuralTransform(
   table: WorkbookTableRecord,
   transform: StructuralAxisTransform,
-): { table: WorkbookTableRecord; headerCellWrites: StructuralTableHeaderCellWrite[] } | undefined {
+): { table: WorkbookTableRecord; headerCellWrites: StructuralTableHeaderCellWrite[]; deletedColumnNames: string[] } | undefined {
   const rewrittenRange = rewriteMetadataRangeForStructuralTransform(table, transform)
   const range = rewrittenRange ? ensureMinimumTableDataBodyRange(rewrittenRange, table) : undefined
   if (!range) {
     return undefined
   }
   if (transform.axis !== 'column') {
-    return { table: range, headerCellWrites: [] }
+    return { table: range, headerCellWrites: [], deletedColumnNames: [] }
   }
   const previousStart = parseUnboundedMetadataCellAddress(table.startAddress)
   const previousEnd = parseUnboundedMetadataCellAddress(table.endAddress)
@@ -398,10 +410,12 @@ function rewriteTableForStructuralTransform(
     ? Array.from({ length: nextWidth }, () => undefined)
     : undefined
   const usedColumnNames = new Set<string>()
+  const deletedColumnNames: string[] = []
 
   for (let previousIndex = 0; previousIndex < previousWidth; previousIndex += 1) {
     const mappedCol = mapTableColumnPointForStructuralTransform(previousStartCol + previousIndex, transform)
     if (mappedCol === undefined || mappedCol < nextStartCol || mappedCol > nextEndCol) {
+      deletedColumnNames.push(table.columnNames[previousIndex] ?? nextGeneratedTableColumnName(usedColumnNames))
       continue
     }
     const nextIndex = mappedCol - nextStartCol
@@ -451,6 +465,7 @@ function rewriteTableForStructuralTransform(
       ...(finalizedColumns ? { columns: finalizedColumns } : {}),
     },
     headerCellWrites,
+    deletedColumnNames,
   }
 }
 

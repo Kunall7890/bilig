@@ -13,7 +13,7 @@ import {
   type FormulaCellComparison,
   type NormalizedFormulaValue,
 } from '@bilig/excel-fixtures'
-import { ValueTag, type CellValue } from '@bilig/protocol'
+import { ErrorCode, ValueTag, type CellValue } from '@bilig/protocol'
 import { describe, expect, it } from 'vitest'
 
 import { WorkPaper, type WorkPaperCellAddress } from '../index.js'
@@ -49,6 +49,10 @@ const structuralMoveColumnFormulaOracleCell = {
 const tableColumnInsertOracleCells = [
   { address: 'B1', formula: 'Column1', rawValue: 'string\tColumn1', value: { kind: 'string', value: 'Column1' } },
   { address: 'F1', formula: '=SUM(Sales[Margin])', rawValue: 'number\t5.0', value: { kind: 'number', value: 5 } },
+] as const
+const tableColumnDeleteOracleFormulaCells = [
+  { address: 'D1', formula: '=SUM(#REF!)' },
+  { address: 'E1', formula: '=SUM(Sales[Margin])' },
 ] as const
 const tableEmptyBodyOracleCell = {
   address: 'D1',
@@ -192,6 +196,42 @@ describe('macOS Desktop Excel XLSX oracle for WorkPaper', () => {
       endAddress: 'D3',
       columnNames: ['Region', 'Column1', 'Revenue', 'Margin'],
     })
+  })
+
+  it('rewrites deleted table-column structured references before XLSX export', async () => {
+    const engine = await buildTableColumnDeleteOracleEngine()
+
+    engine.deleteColumns('Data', 1, 1)
+
+    expect(engine.getTable('Sales')).toMatchObject({
+      startAddress: 'A1',
+      endAddress: 'B3',
+      columnNames: ['Region', 'Margin'],
+    })
+    expect(engine.getCell('Data', 'D1').formula).toBe('SUM(#REF!)')
+    expect(engine.getCellValue('Data', 'D1')).toEqual({ tag: ValueTag.Error, code: ErrorCode.Ref })
+    expect(engine.getCell('Data', 'E1').formula).toBe('SUM(Sales[Margin])')
+    expect(engine.getCellValue('Data', 'E1')).toEqual({ tag: ValueTag.Number, value: 5 })
+
+    const imported = importXlsx(exportXlsx(engine.exportSnapshot()), 'headless-table-column-delete-oracle.xlsx')
+    const reimported = WorkPaper.buildFromSnapshot(imported.snapshot, workbookConfig)
+    try {
+      expect(imported.snapshot.workbook.metadata?.tables?.[0]).toMatchObject({
+        name: 'Sales',
+        sheetName: 'Data',
+        startAddress: 'A1',
+        endAddress: 'B3',
+        columnNames: ['Region', 'Margin'],
+      })
+      expect(reimported.getCellFormula(addressToCell('D1'))).toBe('=SUM(#REF!)')
+      expect(normalizedCellValue(reimported.getCellValue(addressToCell('D1')))).toEqual({
+        kind: 'error',
+        value: String(ErrorCode.Ref),
+      })
+      expect(normalizedCellValue(reimported.getCellValue(addressToCell('E1')))).toEqual({ kind: 'number', value: 5 })
+    } finally {
+      reimported.dispose()
+    }
   })
 
   it('keeps table structured-reference aggregates valid when deleting the only data row', async () => {
@@ -473,6 +513,59 @@ describe('macOS Desktop Excel XLSX oracle for WorkPaper', () => {
   )
 
   it.runIf(process.env.BILIG_EXCEL_ORACLE_RUN === '1')(
+    'matches Desktop Excel table column-delete structured-reference semantics',
+    async () => {
+      if (!isMacosExcelInstalled()) {
+        throw new Error('BILIG_EXCEL_ORACLE_RUN=1 requires /Applications/Microsoft Excel.app')
+      }
+
+      const tempDir = mkdtempSync(join(tmpdir(), 'bilig-headless-excel-table-column-delete-oracle-'))
+      try {
+        const workbookPath = join(tempDir, 'headless-table-column-delete-oracle.xlsx')
+        const engine = await buildTableColumnDeleteOracleEngine()
+        writeFileSync(workbookPath, exportXlsx(engine.exportSnapshot()))
+
+        const excelResult = runMacosExcelStructuralOperationOracle({
+          workbookPath,
+          worksheetName: 'Data',
+          operations: [{ kind: 'deleteColumns', range: 'B:B' }],
+          inspectCells: ['D1', 'E1'],
+          saveWorkbook: true,
+        })
+        expect(excelResult.cells.map(({ address, formula }) => ({ address, formula }))).toEqual(tableColumnDeleteOracleFormulaCells)
+        expect(excelResult.cells[1]).toMatchObject({
+          address: 'E1',
+          rawValue: 'number\t5.0',
+          value: { kind: 'number', value: 5 },
+        })
+
+        const imported = importXlsx(new Uint8Array(readFileSync(workbookPath)), 'headless-table-column-delete-oracle-recalculated.xlsx')
+        const reimported = WorkPaper.buildFromSnapshot(imported.snapshot, workbookConfig)
+        try {
+          expect(imported.snapshot.workbook.metadata?.tables?.[0]).toMatchObject({
+            name: 'Sales',
+            sheetName: 'Data',
+            startAddress: 'A1',
+            endAddress: 'B3',
+            columnNames: ['Region', 'Margin'],
+          })
+          expect(reimported.getCellFormula(addressToCell('D1'))).toBe('=SUM(#REF!)')
+          expect(normalizedCellValue(reimported.getCellValue(addressToCell('D1')))).toEqual({
+            kind: 'error',
+            value: String(ErrorCode.Ref),
+          })
+          expect(normalizedCellValue(reimported.getCellValue(addressToCell('E1')))).toEqual({ kind: 'number', value: 5 })
+        } finally {
+          reimported.dispose()
+        }
+      } finally {
+        rmSync(tempDir, { recursive: true, force: true })
+      }
+    },
+    60_000,
+  )
+
+  it.runIf(process.env.BILIG_EXCEL_ORACLE_RUN === '1')(
     'matches Desktop Excel empty-table-body structured-reference semantics',
     async () => {
       if (!isMacosExcelInstalled()) {
@@ -591,6 +684,29 @@ async function buildTableColumnInsertOracleEngine(): Promise<SpreadsheetEngine> 
     totalsRow: false,
   })
   engine.setCellFormula('Data', 'E1', 'SUM(Sales[Margin])')
+  return engine
+}
+
+async function buildTableColumnDeleteOracleEngine(): Promise<SpreadsheetEngine> {
+  const engine = new SpreadsheetEngine({ workbookName: 'table-column-delete-oracle' })
+  await engine.ready()
+  engine.createSheet('Data')
+  engine.setRangeValues({ sheetName: 'Data', startAddress: 'A1', endAddress: 'C3' }, [
+    ['Region', 'Amount', 'Margin'],
+    ['East', 10, 2],
+    ['West', 20, 3],
+  ])
+  engine.setTable({
+    name: 'Sales',
+    sheetName: 'Data',
+    startAddress: 'A1',
+    endAddress: 'C3',
+    columnNames: ['Region', 'Amount', 'Margin'],
+    headerRow: true,
+    totalsRow: false,
+  })
+  engine.setCellFormula('Data', 'E1', 'SUM(Sales[Amount])')
+  engine.setCellFormula('Data', 'F1', 'SUM(Sales[Margin])')
   return engine
 }
 

@@ -1,6 +1,6 @@
 import { Effect } from 'effect'
 import { describe, expect, it, vi } from 'vitest'
-import { ValueTag } from '@bilig/protocol'
+import { ErrorCode, ValueTag } from '@bilig/protocol'
 import { SpreadsheetEngine } from '../engine.js'
 import type { EngineStructureService, StructuralAxisOp } from '../engine/services/structure-service.js'
 
@@ -277,7 +277,7 @@ describe('EngineStructureService', () => {
     expect(engine.getCellValue('Data', 'D1')).toMatchObject({ tag: 1, value: 33 })
   })
 
-  it('keeps table column metadata aligned when deleting a column inside the table', async () => {
+  it('rewrites deleted table structured references to #REF! when deleting a table column', async () => {
     const engine = new SpreadsheetEngine({ workbookName: 'structure-table-column-delete' })
     await engine.ready()
     engine.createSheet('Data')
@@ -297,6 +297,7 @@ describe('EngineStructureService', () => {
       totalsRow: false,
     })
     engine.setCellFormula('Data', 'E1', 'SUM(Sales[Margin])')
+    engine.setCellFormula('Data', 'F1', 'SUM(Sales[Revenue])')
     const initialSnapshot = engine.exportSnapshot()
 
     engine.deleteColumns('Data', 1, 1)
@@ -309,6 +310,8 @@ describe('EngineStructureService', () => {
     })
     expect(engine.getCell('Data', 'D1').formula).toBe('SUM(Sales[Margin])')
     expect(engine.getCellValue('Data', 'D1')).toEqual({ tag: ValueTag.Number, value: 5 })
+    expect(engine.getCell('Data', 'E1').formula).toBe('SUM(#REF!)')
+    expect(engine.getCellValue('Data', 'E1')).toEqual({ tag: ValueTag.Error, code: ErrorCode.Ref })
     expect(engine.undo()).toBe(true)
     expect(engine.exportSnapshot()).toEqual(initialSnapshot)
   })
