@@ -126,9 +126,9 @@ importers:
       '@bilig/storage-server':
         specifier: workspace:*
         version: link:../../packages/storage-server
-      '@bilig/workbook-domain':
+      '@bilig/workbook':
         specifier: workspace:*
-        version: link:../../packages/workbook-domain
+        version: link:../../packages/workbook
       '@bilig/zero-sync':
         specifier: workspace:*
         version: link:../../packages/zero-sync
@@ -192,9 +192,9 @@ importers:
       '@bilig/runtime-kernel':
         specifier: workspace:*
         version: link:../../packages/runtime-kernel
-      '@bilig/workbook-domain':
+      '@bilig/workbook':
         specifier: workspace:*
-        version: link:../../packages/workbook-domain
+        version: link:../../packages/workbook
       '@bilig/worker-transport':
         specifier: workspace:*
         version: link:../../packages/worker-transport
@@ -339,9 +339,9 @@ importers:
       '@bilig/protocol':
         specifier: workspace:*
         version: link:../protocol
-      '@bilig/workbook-domain':
+      '@bilig/workbook':
         specifier: workspace:*
-        version: link:../workbook-domain
+        version: link:../workbook
 
   packages/contracts:
     dependencies:
@@ -360,9 +360,9 @@ importers:
       '@bilig/wasm-kernel':
         specifier: workspace:*
         version: link:../wasm-kernel
-      '@bilig/workbook-domain':
+      '@bilig/workbook':
         specifier: workspace:*
-        version: link:../workbook-domain
+        version: link:../workbook
       effect:
         specifier: 3.21.0
         version: 3.21.0
@@ -519,9 +519,9 @@ importers:
 
   packages/storage-server:
     dependencies:
-      '@bilig/workbook-domain':
+      '@bilig/workbook':
         specifier: workspace:*
-        version: link:../workbook-domain
+        version: link:../workbook
 
   packages/test-fuzz:
     dependencies:
@@ -547,8 +547,11 @@ importers:
         specifier: 0.28.12
         version: 0.28.12
 
-  packages/workbook-domain:
+  packages/workbook:
     dependencies:
+      '@bilig/formula':
+        specifier: workspace:*
+        version: link:../formula
       '@bilig/protocol':
         specifier: workspace:*
         version: link:../protocol
@@ -561,9 +564,9 @@ importers:
       '@bilig/protocol':
         specifier: workspace:*
         version: link:../protocol
-      '@bilig/workbook-domain':
+      '@bilig/workbook':
         specifier: workspace:*
-        version: link:../workbook-domain
+        version: link:../workbook
 
   packages/workpaper:
     dependencies:
@@ -594,9 +597,9 @@ importers:
       '@bilig/protocol':
         specifier: workspace:*
         version: link:../protocol
-      '@bilig/workbook-domain':
+      '@bilig/workbook':
         specifier: workspace:*
-        version: link:../workbook-domain
+        version: link:../workbook
       '@rocicorp/zero':
         specifier: 1.1.1
         version: 1.1.1(@opentelemetry/core@2.7.1(@opentelemetry/api@1.9.1))

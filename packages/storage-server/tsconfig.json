@@ -1,12 +1,12 @@
 {
-  "extends": "../../tsconfig.base.json",
+  "extends": "../../tsconfig.workspace-paths.json",
   "compilerOptions": {
     "rootDir": "src",
     "outDir": "dist"
   },
   "references": [
     {
-      "path": "../workbook-domain"
+      "path": "../workbook"
     }
   ],
   "include": ["src/**/*"],

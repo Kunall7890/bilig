@@ -1,4 +1,4 @@
-import type { EngineOp } from '@bilig/workbook-domain'
+import type { EngineOp } from '@bilig/workbook'
 
 type StructuralAxisOp = Extract<
   EngineOp,

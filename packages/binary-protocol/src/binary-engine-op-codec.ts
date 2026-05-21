@@ -1,5 +1,5 @@
 import type { WorkbookPivotValueSnapshot } from '@bilig/protocol'
-import type { EngineOp, EngineOpBatch, WorkbookSortKey } from '@bilig/workbook-domain'
+import type { EngineOp, EngineOpBatch, WorkbookSortKey } from '@bilig/workbook'
 import { BinaryProtocolError, type BinaryReader, type BinaryWriter } from './binary-io.js'
 import {
   assertNever,

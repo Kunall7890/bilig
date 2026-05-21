@@ -297,7 +297,17 @@ import { generateText } from 'ai'
 const client = await createMCPClient({
   transport: new Experimental_StdioMCPTransport({
     command: 'npm',
-    args: ['exec', '--package', '@bilig/headless@0.32.6', '--', 'bilig-workpaper-mcp'],
+    args: [
+      'exec',
+      '--package',
+      '@bilig/workpaper@0.40.43',
+      '--',
+      'bilig-workpaper-mcp',
+      '--workpaper',
+      './pricing.workpaper.json',
+      '--init-demo-workpaper',
+      '--writable',
+    ],
   }),
 })
 
@@ -307,9 +317,10 @@ try {
     model: 'your-model',
     tools,
     prompt: [
-      'Read the WorkPaper summary with read_workpaper_summary for Summary!A1:B5.',
-      'Then set Inputs!B3 to 0.4 with set_workpaper_input_cell.',
-      'Return editedCell plus the before and after expectedArr values.',
+      'Read Summary!A1:B5 with read_range.',
+      'Then set Inputs!B3 to 0.4 with set_cell_contents.',
+      'Read Summary!B3 with read_cell and export the document.',
+      'Return editedCell, before, after, persisted, and restoredMatchesAfter.',
     ].join('\n'),
   })
 

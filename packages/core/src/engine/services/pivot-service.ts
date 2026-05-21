@@ -1,7 +1,7 @@
 import { Effect } from 'effect'
 import { ErrorCode, MAX_COLS, MAX_ROWS, ValueTag, type CellRangeRef, type CellValue, type LiteralInput } from '@bilig/protocol'
 import { formatAddress, parseCellAddress } from '@bilig/formula'
-import type { EngineOp } from '@bilig/workbook-domain'
+import type { EngineOp } from '@bilig/workbook'
 import { CellFlags } from '../../cell-store.js'
 import { normalizeRange } from '../../engine-range-utils.js'
 import {

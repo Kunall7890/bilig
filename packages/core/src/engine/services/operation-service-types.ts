@@ -1,6 +1,6 @@
 import type { Effect } from 'effect'
 import type { CompiledFormula } from '@bilig/formula'
-import type { EngineOp, EngineOpBatch } from '@bilig/workbook-domain'
+import type { EngineOp, EngineOpBatch } from '@bilig/workbook'
 import type { CellRangeRef, CellValue, EngineChangedCell, SelectionState } from '@bilig/protocol'
 import type { EdgeSlice } from '../../edge-arena.js'
 import type { FormulaTemplateResolution } from '../../formula/template-bank.js'
@@ -126,6 +126,7 @@ export interface CreateEngineOperationServiceArgs {
   readonly rebindDefinedNameDependents: (names: readonly string[], formulaChangedCount: number) => number
   readonly collectFormulaCellsForDefinedNames: (names: readonly string[]) => readonly number[]
   readonly rebindTableDependents: (tableNames: readonly string[], formulaChangedCount: number) => number
+  readonly collectFormulaCellsForTables: (tableNames: readonly string[]) => readonly number[]
   readonly rebindFormulaCells: (candidates: readonly number[], formulaChangedCount: number) => number
   readonly refreshRangeDependencies: (rangeIndices: readonly number[]) => void
   readonly rebindFormulasForSheet: (sheetName: string, formulaChangedCount: number, candidates?: readonly number[] | U32) => number

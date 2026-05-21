@@ -1,6 +1,6 @@
 import { Effect } from 'effect'
 import type { EngineEvent } from '@bilig/protocol'
-import type { EngineOpBatch } from '@bilig/workbook-domain'
+import type { EngineOpBatch } from '@bilig/workbook'
 import type { EngineRuntimeState } from '../runtime-state.js'
 
 export interface EngineEventService {

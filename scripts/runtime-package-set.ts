@@ -3,9 +3,9 @@ import { join } from 'node:path'
 
 export const RUNTIME_PACKAGE_DIRS = [
   'packages/protocol',
-  'packages/workbook-domain',
-  'packages/wasm-kernel',
   'packages/formula',
+  'packages/workbook',
+  'packages/wasm-kernel',
   'packages/core',
   'packages/excel-import',
   'packages/headless',
@@ -24,9 +24,9 @@ export type RuntimePackageDir = (typeof RUNTIME_PACKAGE_DIRS)[number]
 
 export const RUNTIME_NPM_PACKAGE_DIRS = [
   'packages/protocol',
-  'packages/workbook-domain',
-  'packages/wasm-kernel',
   'packages/formula',
+  'packages/workbook',
+  'packages/wasm-kernel',
   'packages/core',
   'packages/headless',
   'packages/bilig',

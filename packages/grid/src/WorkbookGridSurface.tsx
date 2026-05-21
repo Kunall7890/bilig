@@ -311,6 +311,7 @@ export function WorkbookGridSurface(props: WorkbookGridSurfaceProps) {
     displayGridSelection.columns.length === 0 &&
     displayGridSelection.rows.length === 0 &&
     fillPreviewRange === null &&
+    !renderState.isFillHandleDragging &&
     !isRangeMoveDragging
   const dynamicOverlayBuilder = useCallback(
     (geometry: NonNullable<typeof v2Geometry>) => {
@@ -470,6 +471,7 @@ export function WorkbookGridSurface(props: WorkbookGridSurfaceProps) {
             displayGridSelection.columns.length > 0 ||
             displayGridSelection.rows.length > 0 ||
             Boolean(renderState.fillPreviewRange) ||
+            renderState.isFillHandleDragging ||
             renderState.isRangeMoveDragging
           }
           hostHeight={renderState.hostElement?.clientHeight ?? 0}

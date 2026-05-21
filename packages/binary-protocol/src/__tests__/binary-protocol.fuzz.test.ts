@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import * as fc from 'fast-check'
-import type { EngineOpBatch } from '@bilig/workbook-domain'
+import type { EngineOpBatch } from '@bilig/workbook'
 import { runProperty } from '@bilig/test-fuzz'
 import { createSnapshotChunkFrames, decodeFrame, encodeFrame, type ProtocolFrame, WORKBOOK_SNAPSHOT_CONTENT_TYPE } from '../index.js'
 

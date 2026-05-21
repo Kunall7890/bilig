@@ -6,7 +6,7 @@ import type {
   WorkbookMergeRangeSnapshot,
   WorkbookSheetTabColorSnapshot,
 } from '@bilig/protocol'
-import type { EngineOp } from '@bilig/workbook-domain'
+import type { EngineOp } from '@bilig/workbook'
 import type { WorkbookAxisMetadataRecord, WorkbookFreezePaneRecord, WorkbookSheetTabColorRecord, WorkbookStore } from './workbook-store.js'
 
 function cloneSnapshotRangeRef(range: CellRangeRef): CellRangeRef {

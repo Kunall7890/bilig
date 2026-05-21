@@ -1,4 +1,4 @@
-import type { EngineOp } from '@bilig/workbook-domain'
+import type { EngineOp } from '@bilig/workbook'
 import { compareOpOrder, type OpOrder } from '../../replica-state.js'
 import { normalizeDefinedName, pivotKey } from '../../workbook-store.js'
 import { assertNever } from './operation-change-helpers.js'

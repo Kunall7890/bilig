@@ -7,7 +7,7 @@ Workbook metadata is now carried by the transaction-based workbook engine and pr
 Closed runtime facts:
 
 - `@bilig/core` persists and exposes defined names, tables, pivots, spills, row and column metadata, calc settings, freeze panes, filters, and sorts.
-- `@bilig/workbook-domain` owns the transport-neutral workbook operation language.
+- `@bilig/workbook` owns the transport-neutral workbook operation language.
 - `@bilig/core` owns the replica-state helpers needed for local replay and snapshot restore.
 - `apps/bilig/src/zero/*` materializes authoritative workbook metadata into Postgres-backed rows for the browser path.
 
@@ -29,7 +29,7 @@ Closed runtime facts:
   - names, structured references, and spill semantics
 - `@bilig/protocol`
   - snapshot and transport-facing metadata types
-- `@bilig/workbook-domain`
+- `@bilig/workbook`
   - transport-neutral workbook ops and transactions
 - `apps/bilig/src/zero`
   - relational source/eval materialization for the Zero product path

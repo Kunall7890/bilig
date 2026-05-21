@@ -25,6 +25,7 @@ import {
   type StructuralFormulaRewriteCache,
 } from './structure-formula-rewrite.js'
 import { rewriteDefinedNamesForStructuralTransform, rewriteWorkbookMetadataForStructuralTransform } from './structure-metadata-rewrite.js'
+import { rewriteFormulaSourceForDeletedStructuredReferences } from './structure-structured-ref-rewrite.js'
 import {
   clearSpillArtifactsForSheet,
   clearPivotOutputsForSheet,
@@ -53,6 +54,7 @@ export type {
 } from './structure-service-types.js'
 
 const EMPTY_STRING_SET = new Set<string>()
+const EMPTY_DELETED_TABLE_COLUMNS: [] = []
 
 function dependencyIncludesOwnerCell(
   dependency: ParsedDependencyReference,
@@ -107,6 +109,10 @@ export function createEngineStructureService(args: CreateEngineStructureServiceA
     readonly transaction: StructuralTransaction
     readonly changedDefinedNames: ReadonlySet<string>
     readonly changedTableNames: ReadonlySet<string>
+    readonly deletedTableColumns: readonly {
+      readonly tableName: string
+      readonly columnName: string
+    }[]
     readonly ownerPositions: ReadonlyMap<number, { sheetName: string; row: number; col: number }>
     readonly precomputedDirectAggregateValueCellIndices: readonly number[]
   }) => {
@@ -188,6 +194,18 @@ export function createEngineStructureService(args: CreateEngineStructureServiceA
           ? rewriteStructuralFormulaCompiled(formula, ownerSheetName, argsForResolve.sheetName, argsForResolve.transform)
           : undefined
       const rewritten = !touchesChangedName && !touchesChangedTable ? (compiledRewrite ?? templateRewrite) : compiledRewrite
+      const changedMetadataFormulaSource = (): string => {
+        const structuralSource = rewriteFormulaSourceFallback(
+          formula.source,
+          ownerSheetName,
+          argsForResolve.sheetName,
+          argsForResolve.transform,
+        )
+        if (!touchesChangedTable) {
+          return structuralSource
+        }
+        return rewriteFormulaSourceForDeletedStructuredReferences(structuralSource, argsForResolve.deletedTableColumns) ?? structuralSource
+      }
       if (!rewritten) {
         if (!touchesChangedName && !touchesChangedTable && formula.directAggregate !== undefined) {
           return
@@ -212,7 +230,7 @@ export function createEngineStructureService(args: CreateEngineStructureServiceA
                 ownerSheetName,
                 ownerRow,
                 ownerCol,
-                source: formula.source,
+                source: touchesChangedName || touchesChangedTable ? changedMetadataFormulaSource() : formula.source,
               },
         )
         return
@@ -223,7 +241,7 @@ export function createEngineStructureService(args: CreateEngineStructureServiceA
           ownerSheetName,
           ownerRow,
           ownerCol,
-          source: rewriteFormulaSourceFallback(formula.source, ownerSheetName, argsForResolve.sheetName, argsForResolve.transform),
+          source: changedMetadataFormulaSource(),
         })
         return
       }
@@ -328,9 +346,9 @@ export function createEngineStructureService(args: CreateEngineStructureServiceA
       const changedDefinedNames = hasStructuralMetadata
         ? rewriteDefinedNamesForStructuralTransform(args, sheetName, transform)
         : EMPTY_STRING_SET
-      const { changedTableNames } = hasStructuralMetadata
+      const { changedTableNames, tableHeaderCellWrites, deletedTableColumns } = hasStructuralMetadata
         ? rewriteWorkbookMetadataForStructuralTransform(args, sheetName, transform)
-        : { changedTableNames: EMPTY_STRING_SET }
+        : { changedTableNames: EMPTY_STRING_SET, tableHeaderCellWrites: [], deletedTableColumns: EMPTY_DELETED_TABLE_COLUMNS }
       const impactedFormulas = collectStructuralFormulaImpacts(args, {
         targetSheetId,
         transform,
@@ -373,6 +391,11 @@ export function createEngineStructureService(args: CreateEngineStructureServiceA
 
       args.state.workbook.applyPlannedStructuralTransaction(transaction)
 
+      const tableHeaderCellChangedIndices = tableHeaderCellWrites.flatMap((write) => {
+        const cellIndex = args.writeTableHeaderCell(write.sheetName, write.row, write.col, write.value)
+        return cellIndex === undefined ? [] : [cellIndex]
+      })
+
       const hasNoFormulaStructuralWork =
         impactedFormulas.formulaCellIndices.length === 0 &&
         impactedFormulas.rebindCellIndices.length === 0 &&
@@ -384,6 +407,7 @@ export function createEngineStructureService(args: CreateEngineStructureServiceA
         transaction.removedCellIndices.length === 0 &&
         changedDefinedNames.size === 0 &&
         changedTableNames.size === 0 &&
+        tableHeaderCellChangedIndices.length === 0 &&
         !hasPivots &&
         !hadSheetSpillMetadata
       ) {
@@ -436,6 +460,7 @@ export function createEngineStructureService(args: CreateEngineStructureServiceA
         transaction,
         changedDefinedNames,
         changedTableNames,
+        deletedTableColumns,
         ownerPositions: impactedFormulas.ownerPositions,
         precomputedDirectAggregateValueCellIndices: [...precomputedDirectAggregateValueCellIndices],
       })
@@ -505,7 +530,7 @@ export function createEngineStructureService(args: CreateEngineStructureServiceA
         removedCycleFormulaCount > 0
       return {
         transaction,
-        changedCellIndices: [...transaction.removedCellIndices, ...preStructuralSpillChangedCellIndices],
+        changedCellIndices: [...transaction.removedCellIndices, ...preStructuralSpillChangedCellIndices, ...tableHeaderCellChangedIndices],
         precomputedChangedInputCellIndices: impactedFormulas.precomputedChangedInputCellIndices,
         formulaCellIndices: formulaCellIndices.filter((cellIndex) => !preservedFormulaCellIndices.has(cellIndex)),
         topologyChanged,

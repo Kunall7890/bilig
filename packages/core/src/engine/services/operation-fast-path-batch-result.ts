@@ -1,5 +1,5 @@
 import type { EngineChangedCell, EngineEvent } from '@bilig/protocol'
-import type { EngineOpBatch } from '@bilig/workbook-domain'
+import type { EngineOpBatch } from '@bilig/workbook'
 import type { EngineSyncClientConnection, U32 } from '../runtime-state.js'
 
 export interface OperationFastPathBatchResultState {

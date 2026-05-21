@@ -1,5 +1,5 @@
 import { parseCellAddress } from '@bilig/formula'
-import type { EngineOp } from '@bilig/workbook-domain'
+import type { EngineOp } from '@bilig/workbook'
 import type { CellValue } from '@bilig/protocol'
 import { CellFlags } from '../../cell-store.js'
 import { emptyValue, literalToValue, writeLiteralToCellStore } from '../../engine-value-utils.js'
@@ -18,6 +18,7 @@ import type { ExactLookupImpactCaches } from './operation-lookup-dirty-markers.j
 import type { OperationLookupPlanner } from './operation-lookup-planner.js'
 import { applyOperationLookupNumericWriteTailPatches, planOperationLookupNumericWrites } from './operation-lookup-write-plans.js'
 import type { CreateEngineOperationServiceArgs, MutationSource } from './operation-service-types.js'
+import { applyTableHeaderRenameForSetCellValue } from './operation-table-header-rename.js'
 
 type BatchSetCellValueOp = Extract<EngineOp, { kind: 'setCellValue' }>
 type BatchClearCellOp = Extract<EngineOp, { kind: 'clearCell' }>
@@ -182,6 +183,15 @@ export function applyBatchSetCellValueOp(request: ApplyBatchSetCellValueOpArgs):
     if (op.value === null && (existingIndex === undefined || request.isNullLiteralWriteNoOp(existingIndex))) {
       return { changedInputCount, formulaChangedCount, explicitChangedCount, topologyChanged, refreshAllPivots }
     }
+    ;({ formulaChangedCount, topologyChanged } = applyTableHeaderRenameForSetCellValue({
+      serviceArgs: args,
+      sheetName: op.sheetName,
+      row: parsedAddress.row,
+      col: parsedAddress.col,
+      value: op.value,
+      formulaChangedCount,
+      topologyChanged,
+    }))
     if (existingIndex !== undefined) {
       changedInputCount = args.markPivotRootsChanged(args.clearPivotForCell(existingIndex), changedInputCount)
     }

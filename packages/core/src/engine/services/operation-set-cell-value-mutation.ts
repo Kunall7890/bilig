@@ -13,6 +13,7 @@ import type { ExactLookupImpactCaches } from './operation-lookup-dirty-markers.j
 import type { OperationLookupPlanner } from './operation-lookup-planner.js'
 import { applyOperationLookupNumericWriteTailPatches, planOperationLookupNumericWrites } from './operation-lookup-write-plans.js'
 import type { CreateEngineOperationServiceArgs } from './operation-service-types.js'
+import { applyTableHeaderRenameForSetCellValue } from './operation-table-header-rename.js'
 
 type SetCellValueMutation = Extract<EngineCellMutationRef['mutation'], { kind: 'setCellValue' }>
 
@@ -147,6 +148,18 @@ export function applySetCellValueMutation(request: ApplySetCellValueMutationArgs
 
   if (mutation.value === null && !isRestore && (existingIndex === undefined || request.isNullLiteralWriteNoOp(existingIndex))) {
     return { changedInputCount, formulaChangedCount, explicitChangedCount, topologyChanged }
+  }
+
+  if (!isRestore) {
+    ;({ formulaChangedCount, topologyChanged } = applyTableHeaderRenameForSetCellValue({
+      serviceArgs: args,
+      sheetName,
+      row: mutation.row,
+      col: mutation.col,
+      value: mutation.value,
+      formulaChangedCount,
+      topologyChanged,
+    }))
   }
 
   const canFastOverwriteExisting = existingIndex !== undefined && request.canFastPathLiteralOverwrite(existingIndex)

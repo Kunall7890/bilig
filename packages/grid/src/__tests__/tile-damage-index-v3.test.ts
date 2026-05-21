@@ -34,6 +34,9 @@ describe('DirtyTileIndexV3', () => {
         rowStart: 31,
       },
     ])
+    expect([...index.peekVisible(keys)]).toEqual(keys)
+    expect(index.getUnconsumedMask(keys[0])).toBe(DirtyMaskV3.Value | DirtyMaskV3.Text)
+    expect(index.getSpans(keys[0])).toHaveLength(1)
     expect([...index.consumeVisible(keys)]).toEqual(keys)
     expect(index.getSpans(keys[0])).toEqual([])
     expect([...index.peekWarm(keys)]).toEqual([])

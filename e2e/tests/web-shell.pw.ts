@@ -225,6 +225,34 @@ test('@browser-ci web app keeps in-cell caret movement stable during rapid typin
   })
 })
 
+test('@browser-ci web app preserves a rapid type-to-edit burst during editor focus handoff', async ({ page }) => {
+  const documentId = createTestDocumentId('playwright-editor-focus-handoff-burst')
+  await page.goto(`/?document=${encodeURIComponent(documentId)}&persist=0`)
+  await waitForWorkbookReady(page)
+
+  await clickProductCell(page, 1, 1)
+  await expect(page.getByTestId('status-selection')).toHaveText('Sheet1!B2')
+  await page.getByTestId('sheet-grid-focus-target').focus()
+  await page.keyboard.type('abcdef')
+
+  const editor = page.getByTestId('cell-editor-input')
+  await expect(editor).toBeVisible()
+  await expect(editor).toHaveValue('abcdef')
+  await expect
+    .poll(() =>
+      editor.evaluate((element) => {
+        if (!(element instanceof HTMLTextAreaElement)) {
+          throw new Error('Expected in-cell editor textarea')
+        }
+        return {
+          end: element.selectionEnd,
+          start: element.selectionStart,
+        }
+      }),
+    )
+    .toEqual({ end: 6, start: 6 })
+})
+
 test('@browser-ci web app keeps click-away commits and keyboard clears stable', async ({ page }) => {
   const documentId = createTestDocumentId('playwright-click-away-clear')
   await page.goto(`/?document=${encodeURIComponent(documentId)}&persist=0&sheet=Sheet1&cell=D7`)
@@ -668,6 +696,36 @@ test('@browser-ci web app supports fill-handle propagation', async ({ page }) =>
   await expect(page.getByTestId('status-selection')).toHaveText('Sheet1!F8')
   await expect(formulaInput).toHaveValue('7')
   await expect(resolvedValue).toHaveText('7')
+})
+
+test('@browser-ci web app keeps fill-handle pointer-up exclusive before click-away selection', async ({ page }) => {
+  await gotoWorkbookShell(page, `/?document=${encodeURIComponent(createTestDocumentId('fill-handle-exclusive-pointer-up'))}&persist=0`)
+  await waitForWorkbookReady(page)
+
+  const nameBox = page.getByTestId('name-box')
+  const formulaInput = page.getByTestId('formula-input')
+
+  await nameBox.fill('F6')
+  await nameBox.press('Enter')
+  await formulaInput.fill('7')
+  await formulaInput.press('Enter')
+  await nameBox.fill('F6')
+  await nameBox.press('Enter')
+  await expect(page.getByTestId('status-selection')).toHaveText('Sheet1!F6')
+
+  await dragProductFillHandle(page, 5, 5, 5, 7)
+  await clickProductCell(page, 0, 0)
+  await expect(page.getByTestId('status-selection')).toHaveText('Sheet1!A1')
+
+  await nameBox.fill('F6')
+  await nameBox.press('Enter')
+  await expect(formulaInput).toHaveValue('7')
+  await nameBox.fill('F7')
+  await nameBox.press('Enter')
+  await expect(formulaInput).toHaveValue('7')
+  await nameBox.fill('F8')
+  await nameBox.press('Enter')
+  await expect(formulaInput).toHaveValue('7')
 })
 
 test('@browser-ci web app autoscrolls while dragging the fill handle past visible rows', async ({ page }) => {

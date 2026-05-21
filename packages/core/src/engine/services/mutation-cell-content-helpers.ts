@@ -1,5 +1,5 @@
 import { parseCellAddress, translateFormulaReferences } from '@bilig/formula'
-import type { EngineOp } from '@bilig/workbook-domain'
+import type { EngineOp } from '@bilig/workbook'
 import type { CellSnapshot } from '@bilig/protocol'
 
 export function getMutationMatrixCell(matrix: readonly (readonly CellSnapshot[])[], rowIndex: number, colIndex: number): CellSnapshot {

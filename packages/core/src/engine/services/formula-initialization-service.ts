@@ -68,14 +68,12 @@ import { tryBindHydratedFreshDirectFormula } from './formula-initialization-hydr
 import { tryEvaluateFormulaLeafInlineScalar } from './formula-leaf-inline-scalar-evaluator.js'
 import { initializeCachedFormulaSourcesAtNow as initializeCachedFormulaSourcesAtNowUnchecked } from './formula-initialization-cached-formulas.js'
 import { tryBindInitialFreshDirectScalarFormula } from './formula-initialization-fresh-direct-scalar-binding.js'
-
 export type {
   EngineFormulaInitializationService,
   EngineFormulaInitializationServiceArgs,
   HydratedPreparedFormulaInitializationRef,
   PreparedFormulaInitializationRef,
 } from './formula-initialization-service-types.js'
-
 export function createEngineFormulaInitializationService(args: EngineFormulaInitializationServiceArgs): EngineFormulaInitializationService {
   const hasCycleMembersNow = (): boolean => scanFormulaInitializationCycleMembers(args.state)
   const resolveSheetName = createFormulaInitializationSheetNameResolver(args.state)
@@ -163,7 +161,6 @@ export function createEngineFormulaInitializationService(args: EngineFormulaInit
           ? undefined
           : createInitialNativeDirectLookupBatch({ state: args.state, capacity: refs.length })
       let nativeInitialDirectLookupCellCount = 0
-      const shouldDeferFormulaFamilyIndex = !hadExistingFormulas && args.deferFormulaFamilyIndexRebuild !== undefined
       const shouldDeferFormulaInstanceTable =
         !hadExistingFormulas && (args.hydrateFreshFormulaInstances !== undefined || args.deferFormulaInstanceTableRebuild !== undefined)
       const deferredFormulaInstances = !hadExistingFormulas && args.hydrateFreshFormulaInstances !== undefined ? [] : undefined
@@ -172,6 +169,8 @@ export function createEngineFormulaInitializationService(args: EngineFormulaInit
         hadExistingFormulas,
         counters: args.state.counters,
       })
+      const shouldDeferFormulaFamilyIndex =
+        args.deferFormulaFamilyIndexRebuild !== undefined && (!hadExistingFormulas || alignedFreshFormulaFamilyRuns !== undefined)
       const canCaptureDeferredFormulaFamilyRuns = !shouldDeferFormulaFamilyIndex || args.deferFormulaFamilyIndexRuns !== undefined
       const deferredFormulaFamilyRuns =
         hadExistingFormulas || alignedFreshFormulaFamilyRuns !== undefined || !canCaptureDeferredFormulaFamilyRuns
@@ -778,7 +777,6 @@ export function createEngineFormulaInitializationService(args: EngineFormulaInit
     let canAssignTopoInBatch = !hadExistingFormulas
     let needsFreshTopoRebuild = false
     let nextTopoRank = 0
-    const shouldDeferFormulaFamilyIndex = !hadExistingFormulas && args.deferFormulaFamilyIndexRebuild !== undefined
     const shouldDeferFormulaInstanceTable =
       !hadExistingFormulas && (args.hydrateFreshFormulaInstances !== undefined || args.deferFormulaInstanceTableRebuild !== undefined)
     const alignedFreshFormulaInstances =
@@ -788,6 +786,8 @@ export function createEngineFormulaInitializationService(args: EngineFormulaInit
       hadExistingFormulas,
       counters: args.state.counters,
     })
+    const shouldDeferFormulaFamilyIndex =
+      args.deferFormulaFamilyIndexRebuild !== undefined && (!hadExistingFormulas || alignedFreshFormulaFamilyRuns !== undefined)
     const deferredFormulaInstances =
       !hadExistingFormulas && args.hydrateFreshFormulaInstances !== undefined && alignedFreshFormulaInstances === undefined ? [] : undefined
     const canCaptureDeferredFormulaFamilyRuns = !shouldDeferFormulaFamilyIndex || args.deferFormulaFamilyIndexRuns !== undefined

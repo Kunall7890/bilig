@@ -1,6 +1,6 @@
 import { Effect } from 'effect'
 import { describe, expect, it, vi } from 'vitest'
-import { ValueTag } from '@bilig/protocol'
+import { ErrorCode, ValueTag } from '@bilig/protocol'
 import { SpreadsheetEngine } from '../engine.js'
 import type { EngineStructureService, StructuralAxisOp } from '../engine/services/structure-service.js'
 
@@ -277,7 +277,7 @@ describe('EngineStructureService', () => {
     expect(engine.getCellValue('Data', 'D1')).toMatchObject({ tag: 1, value: 33 })
   })
 
-  it('keeps table column metadata aligned when deleting a column inside the table', async () => {
+  it('rewrites deleted table structured references to #REF! when deleting a table column', async () => {
     const engine = new SpreadsheetEngine({ workbookName: 'structure-table-column-delete' })
     await engine.ready()
     engine.createSheet('Data')
@@ -297,6 +297,7 @@ describe('EngineStructureService', () => {
       totalsRow: false,
     })
     engine.setCellFormula('Data', 'E1', 'SUM(Sales[Margin])')
+    engine.setCellFormula('Data', 'F1', 'SUM(Sales[Revenue])')
     const initialSnapshot = engine.exportSnapshot()
 
     engine.deleteColumns('Data', 1, 1)
@@ -309,6 +310,48 @@ describe('EngineStructureService', () => {
     })
     expect(engine.getCell('Data', 'D1').formula).toBe('SUM(Sales[Margin])')
     expect(engine.getCellValue('Data', 'D1')).toEqual({ tag: ValueTag.Number, value: 5 })
+    expect(engine.getCell('Data', 'E1').formula).toBe('SUM(#REF!)')
+    expect(engine.getCellValue('Data', 'E1')).toEqual({ tag: ValueTag.Error, code: ErrorCode.Ref })
+    expect(engine.undo()).toBe(true)
+    expect(engine.exportSnapshot()).toEqual(initialSnapshot)
+  })
+
+  it('renames table metadata and structured formula sources when editing a header cell', async () => {
+    const engine = new SpreadsheetEngine({ workbookName: 'structure-table-header-rename' })
+    await engine.ready()
+    engine.createSheet('Data')
+    engine.setRangeValues({ sheetName: 'Data', startAddress: 'A1', endAddress: 'C3' }, [
+      ['Region', 'Amount', 'Margin'],
+      ['East', 10, 2],
+      ['West', 20, 3],
+    ])
+    engine.setTable({
+      name: 'Sales',
+      sheetName: 'Data',
+      startAddress: 'A1',
+      endAddress: 'C3',
+      columnNames: ['Region', 'Amount', 'Margin'],
+      columns: [{ name: 'Region' }, { name: 'Amount', totalsRowFunction: 'sum' }, { name: 'Margin', totalsRowFunction: 'average' }],
+      headerRow: true,
+      totalsRow: false,
+    })
+    engine.setCellFormula('Data', 'E1', 'SUM(Sales[Amount])')
+    engine.setCellFormula('Data', 'F1', 'SUM(Sales[Margin])')
+    const initialSnapshot = engine.exportSnapshot()
+
+    engine.setCellValue('Data', 'B1', 'Revenue')
+
+    expect(engine.getTable('Sales')).toMatchObject({
+      startAddress: 'A1',
+      endAddress: 'C3',
+      columnNames: ['Region', 'Revenue', 'Margin'],
+      columns: [{ name: 'Region' }, { name: 'Revenue', totalsRowFunction: 'sum' }, { name: 'Margin', totalsRowFunction: 'average' }],
+    })
+    expect(engine.getCellValue('Data', 'B1')).toMatchObject({ tag: ValueTag.String, value: 'Revenue' })
+    expect(engine.getCell('Data', 'E1').formula).toBe('SUM(Sales[Revenue])')
+    expect(engine.getCellValue('Data', 'E1')).toEqual({ tag: ValueTag.Number, value: 30 })
+    expect(engine.getCell('Data', 'F1').formula).toBe('SUM(Sales[Margin])')
+    expect(engine.getCellValue('Data', 'F1')).toEqual({ tag: ValueTag.Number, value: 5 })
     expect(engine.undo()).toBe(true)
     expect(engine.exportSnapshot()).toEqual(initialSnapshot)
   })
@@ -339,16 +382,47 @@ describe('EngineStructureService', () => {
     expect(engine.getTable('Sales')).toMatchObject({
       startAddress: 'A1',
       endAddress: 'D3',
-      columnNames: ['Region', 'Column 2', 'Revenue', 'Margin'],
+      columnNames: ['Region', 'Column1', 'Revenue', 'Margin'],
       columns: [
         { name: 'Region' },
-        { name: 'Column 2' },
+        { name: 'Column1' },
         { name: 'Revenue', totalsRowFunction: 'sum' },
         { name: 'Margin', totalsRowFunction: 'average' },
       ],
     })
+    expect(engine.getCellValue('Data', 'B1')).toEqual({ tag: ValueTag.String, value: 'Column1', stringId: expect.any(Number) })
     expect(engine.getCell('Data', 'F1').formula).toBe('SUM(Sales[Margin])')
     expect(engine.getCellValue('Data', 'F1')).toEqual({ tag: ValueTag.Number, value: 5 })
+  })
+
+  it('keeps an empty Excel-compatible table body row when deleting the only data row', async () => {
+    const engine = new SpreadsheetEngine({ workbookName: 'structure-table-empty-body-delete' })
+    await engine.ready()
+    engine.createSheet('Data')
+    engine.setRangeValues({ sheetName: 'Data', startAddress: 'A1', endAddress: 'B2' }, [
+      ['Region', 'Amount'],
+      ['East', 10],
+    ])
+    engine.setTable({
+      name: 'Sales',
+      sheetName: 'Data',
+      startAddress: 'A1',
+      endAddress: 'B2',
+      columnNames: ['Region', 'Amount'],
+      headerRow: true,
+      totalsRow: false,
+    })
+    engine.setCellFormula('Data', 'D1', 'SUM(Sales[Amount])')
+
+    engine.deleteRows('Data', 1, 1)
+
+    expect(engine.getTable('Sales')).toMatchObject({
+      startAddress: 'A1',
+      endAddress: 'B2',
+      columnNames: ['Region', 'Amount'],
+    })
+    expect(engine.getCell('Data', 'D1').formula).toBe('SUM(Sales[Amount])')
+    expect(engine.getCellValue('Data', 'D1')).toEqual({ tag: ValueTag.Number, value: 0 })
   })
 
   it('rewrites formulas and axis identities across column deletes and moves through the service', async () => {

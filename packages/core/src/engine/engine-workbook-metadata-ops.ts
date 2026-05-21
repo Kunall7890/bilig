@@ -7,7 +7,7 @@ import type {
   WorkbookSheetProtectionSnapshot,
   WorkbookSortSnapshot,
 } from '@bilig/protocol'
-import type { EngineOp } from '@bilig/workbook-domain'
+import type { EngineOp } from '@bilig/workbook'
 import type { PivotTableInput } from './runtime-state.js'
 import type { WorkbookStore } from '../workbook-store.js'
 import { canonicalWorkbookRangeRef } from '../workbook-range-records.js'

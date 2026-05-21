@@ -1,6 +1,6 @@
 import { Effect } from 'effect'
 import type { WorkbookSnapshot } from '@bilig/protocol'
-import type { EngineOpBatch } from '@bilig/workbook-domain'
+import type { EngineOpBatch } from '@bilig/workbook'
 import { shouldApplyBatch } from '../../replica-state.js'
 import type { EngineRuntimeState, EngineSyncClient } from '../runtime-state.js'
 import { EngineSyncError } from '../errors.js'

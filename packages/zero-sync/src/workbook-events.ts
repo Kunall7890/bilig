@@ -3,7 +3,7 @@ import { isWorkbookSnapshot } from '@bilig/protocol'
 import { parseCellAddress } from '@bilig/formula'
 import { applyWorkbookAgentCommandBundle, type WorkbookAgentCommandBundle } from '@bilig/agent-api'
 import type { CommitOp, SpreadsheetEngine } from '@bilig/core'
-import { isEngineOps, type EngineOp, type EngineOpBatch } from '@bilig/workbook-domain'
+import { isEngineOps, type EngineOp, type EngineOpBatch } from '@bilig/workbook'
 import {
   applyAgentCommandBundleArgsSchema,
   applyBatchArgsSchema,

@@ -21,7 +21,7 @@ package boundaries; not every package name is provisioned on npm yet.
 - `@bilig/excel-import`
 - `@bilig/formula`
 - `@bilig/wasm-kernel`
-- `@bilig/workbook-domain`
+- `@bilig/workbook`
 - `@bilig/renderer`
 - `@bilig/grid`
 - `@bilig/binary-protocol`
@@ -39,6 +39,102 @@ package boundaries; not every package name is provisioned on npm yet.
 - `<Cell addr="..." value={...} />`
 - `<Cell addr="..." formula="..." />`
 - `<Cell addr="..." format="..." />`
+
+## Agent-first workbook surface
+
+`@bilig/workbook` is the generic public package for consumer-defined workbook
+models. It does not ship business-model templates and does not depend on
+`@bilig/core`, `@bilig/headless`, `@bilig/agent-api`, `zod`, or `effect`.
+
+Build `@bilig/workbook` so an agent would love using it: simple, generic,
+predictable, inspectable, verifiable, and never dependent on hardcoded business
+models or human spreadsheet UI assumptions.
+
+It exposes:
+
+- `defineModel`
+- `buildWorkbookActionPlan`
+- `planWorkbookAction`
+- `inspectModel`
+- `collectWorkbookRefs`
+- `findTable`, `findColumn`, `findRange`, `findName`, and `findRows`
+- `check`
+- `describeModel`
+- `describeRef`
+- `describePlan`
+- `describePlanResult`
+- `verifyPlan`
+- `verifyModel`
+- `formula`
+- `workbook.addOp(op, { target?, message? })` inside model actions
+- `findTable`, `findColumn`, `findRange`, `findName`, and `findRows` through the model workbook context and as top-level helpers
+- `check.exists`, `check.noFormulaErrors`, and `check.custom` through the model workbook context and as top-level helpers
+- `WorkbookModel`, `WorkbookAction`, `WorkbookAddOpOptions`, `WorkbookActionPlanResult`, `WorkbookModelDescription`, `WorkbookRefDescription`, `WorkbookActionPlanDescription`, `WorkbookActionPlanResultDescription`, `WorkbookPlanVerification`, `WorkbookPlanIssue`, `WorkbookModelVerification`, `WorkbookModelActionVerification`, `WorkbookCustomCheckOptions`, `WorkbookRawFormulaOptions`, `WorkbookRunResult`, and `WorkbookCheckResult`
+- the existing low-level operation language: `WorkbookOp`, `WorkbookTxn`, `EngineOp`, and `EngineOpBatch`
+
+The package builds portable workbook intent and concrete low-level ops when the
+target is already known. Formula helpers use `@bilig/formula` for parsing and
+normalization. Actual calculation and authoritative execution stay in
+`@bilig/core` and `apps/bilig`.
+
+Known single-cell `workbook.format(ref, { numberFormat })` actions compile to
+concrete `setCellFormat` ops, including `numberFormat: null` for explicit
+format clears. Style patches remain high-level intent until the runtime resolves
+style ids.
+When a consumer needs a workbook operation that is already covered by the
+low-level operation language, model actions can call
+`workbook.addOp(op, { target?, message? })`. The op is guarded with
+`isWorkbookOp`, cloned into `plan.ops`, and kept as a command so agents can
+inspect the handoff without pulling in `@bilig/core`. When a `target` is
+supplied for an address or range op, `verifyPlan` checks that the op touches the
+same range. For op kinds without an inferable range, `target` is descriptive for
+logs and approvals rather than proof of affected cells.
+
+Formula helpers keep referenced workbook inputs separate from formula text.
+Planned `writeFormula` commands expose those inputs directly, which lets agents
+inspect dependencies without relying on human UI coordinates or reverse-parsing
+placeholder formula names.
+For formulas outside the small helper set, `formula.raw(source, { inputs })`
+keeps arbitrary formula text generic while preserving explicit workbook
+dependencies for inspection and verification. These are declared dependencies,
+not parser-discovered proof that every formula reference has a matching model
+ref.
+
+Action plans also expose `refsUsed`, a flat deduped list of workbook refs found
+inside the consumer-defined `refs` object. This keeps custom models generic
+while still letting agents inspect what the model resolved.
+The same generic refs are available outside model callbacks through top-level
+`findTable`, `findColumn`, `findRange`, `findName`, and `findRows` helpers.
+`findRows` refs include their predicate value in the stable id and label, so
+distinct consumer-defined row predicates remain distinct during agent
+inspection and dedupe.
+The same planned checks are available outside model callbacks through top-level
+`check.exists(ref)`, `check.noFormulaErrors(ref)`, and
+`check.custom({ kind, message, target, refs })` helpers. Custom checks let
+consumers carry their own invariants without adding hardcoded business models to
+the package. `target` names the main ref, and `refs` names supporting refs so
+agents can describe and verify the full invariant contract.
+
+`describeModel` returns a JSON-safe model manifest with the model name, sorted
+action names, and whether model-level checks exist. It does not run `find`,
+checks, or actions.
+For agent logs, approvals, tests, and runtime handoff, `describeRef` and
+`describePlan` produce JSON-safe descriptions of refs and action plans. The
+descriptions preserve generic workbook intent while removing consumer-private
+`refs` object shape and helper methods.
+`describePlanResult` applies the same description layer to either planned or
+failed action planning results.
+
+`verifyPlan` gives agents a runtime-free consistency check before handoff. It
+flags unresolved command targets, unresolved formula inputs, duplicate resolved
+refs, unparsable formulas, and missing concrete ops for write, clear, and
+number-format commands whose target is already known as a single cell. Custom
+check targets and supporting refs must also resolve through `refsUsed`.
+Low-level `addOp` commands must contain valid `WorkbookOp` values, must still
+appear in `plan.ops`, and must match their declared `target` when the op exposes
+a concrete address or range.
+`verifyModel` applies the same planning and verification flow to every action
+in a consumer-defined model, returning one JSON-safe model-level verdict.
 
 ## Core engine surface
 

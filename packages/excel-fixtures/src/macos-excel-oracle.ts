@@ -43,6 +43,7 @@ export type MacosExcelStructuralOperation =
   | { readonly kind: 'insertColumns'; readonly range: string }
   | { readonly kind: 'deleteRows'; readonly range: string }
   | { readonly kind: 'deleteColumns'; readonly range: string }
+  | { readonly kind: 'setCellValue'; readonly address: string; readonly value: string | number | boolean }
   | { readonly kind: 'moveRows'; readonly sourceRange: string; readonly destinationRange: string }
   | { readonly kind: 'moveColumns'; readonly sourceRange: string; readonly destinationRange: string }
 
@@ -415,6 +416,8 @@ function structuralOperationAppleScript(operation: MacosExcelStructuralOperation
       return `delete range (range ${toAppleScriptString(operation.range)} of targetWorksheet) shift shift up`
     case 'deleteColumns':
       return `delete range (range ${toAppleScriptString(operation.range)} of targetWorksheet) shift shift to left`
+    case 'setCellValue':
+      return `set value of range ${toAppleScriptString(operation.address)} of targetWorksheet to ${toAppleScriptValue(operation.value)}`
     case 'moveRows':
       return [
         `cut range (range ${toAppleScriptString(operation.sourceRange)} of targetWorksheet)`,
@@ -430,6 +433,16 @@ function structuralOperationAppleScript(operation: MacosExcelStructuralOperation
 
 function toAppleScriptString(value: string): string {
   return `"${value.replaceAll('\\', '\\\\').replaceAll('"', '\\"')}"`
+}
+
+function toAppleScriptValue(value: string | number | boolean): string {
+  if (typeof value === 'string') {
+    return toAppleScriptString(value)
+  }
+  if (typeof value === 'boolean') {
+    return value ? 'true' : 'false'
+  }
+  return String(value)
 }
 
 function cellValueAppleScriptHelpers(): string {

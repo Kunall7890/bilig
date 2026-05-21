@@ -1,5 +1,5 @@
 import { Effect } from 'effect'
-import type { EngineOp } from '@bilig/workbook-domain'
+import type { EngineOp } from '@bilig/workbook'
 import type { EdgeArena, EdgeSlice } from '../../edge-arena.js'
 import { definedNameValuesEqual, renameDefinedNameValueSheet } from '../../engine-metadata-utils.js'
 import type { EngineRuntimeState } from '../runtime-state.js'

@@ -601,8 +601,11 @@ describe('EngineFormulaEvaluationService', () => {
       totalsRow: false,
     })
     expect(Effect.runSync(getEvaluationService(engine).resolveStructuredReference('HeaderOnly', 'Amount'))).toEqual({
-      kind: 'ErrorLiteral',
-      code: ErrorCode.Ref,
+      kind: 'RangeRef',
+      refKind: 'cells',
+      sheetName: 'Sheet1',
+      start: 'D2',
+      end: 'D2',
     } satisfies FormulaNode)
 
     expect(Effect.runSync(getEvaluationService(engine).resolveSpillReference('Sheet1', undefined, 'Z1'))).toBeUndefined()

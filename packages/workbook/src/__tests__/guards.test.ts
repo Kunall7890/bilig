@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { isEngineOp, isEngineOpBatch } from '../index.js'
 
-describe('workbook domain guards', () => {
+describe('workbook guards', () => {
   it('accepts engine op batches with valid workbook ops', () => {
     expect(
       isEngineOpBatch({

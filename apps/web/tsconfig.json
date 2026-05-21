@@ -19,7 +19,7 @@
     { "path": "../../packages/protocol" },
     { "path": "../../packages/runtime-kernel" },
     { "path": "../../packages/worker-transport" },
-    { "path": "../../packages/workbook-domain" },
+    { "path": "../../packages/workbook" },
     { "path": "../../packages/zero-sync" },
     { "path": "../../packages/test-fuzz" }
   ],

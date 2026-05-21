@@ -156,7 +156,7 @@ describe('GridInputController', () => {
       isEditingCell: true,
       requestAnimationFrame,
     })
-    expect(controller.pendingTypeSeedRef.current).toBeNull()
+    expect(controller.pendingTypeSeedRef.current).toBe('x')
     expect(focusGrid).not.toHaveBeenCalled()
 
     controller.syncEditingState({
@@ -164,6 +164,7 @@ describe('GridInputController', () => {
       isEditingCell: false,
       requestAnimationFrame,
     })
+    expect(controller.pendingTypeSeedRef.current).toBeNull()
     expect(requestAnimationFrame).toHaveBeenCalledTimes(1)
     expect(focusGrid).toHaveBeenCalledTimes(1)
   })

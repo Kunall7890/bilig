@@ -23,7 +23,8 @@ flowchart LR
   - metadata
   - formula/runtime execution
   - snapshot import/export
-- `@bilig/workbook-domain`
+- `@bilig/workbook`
+  - agent-first public workbook model API
   - transport-neutral workbook ops and txns
 - `packages/zero-sync`
   - Zero schema

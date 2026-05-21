@@ -1,5 +1,5 @@
 import { ErrorCode, ValueTag, type EngineChangedCell } from '@bilig/protocol'
-import type { EngineOpBatch } from '@bilig/workbook-domain'
+import type { EngineOpBatch } from '@bilig/workbook'
 import { formatAddress, type CompiledFormula } from '@bilig/formula'
 import { CellFlags } from '../../cell-store.js'
 import type { EngineCellMutationRef } from '../../cell-mutations-at.js'

@@ -1,6 +1,6 @@
 import { ValueTag } from '@bilig/protocol'
 import { formatAddress } from '@bilig/formula'
-import type { EngineOp } from '@bilig/workbook-domain'
+import type { EngineOp } from '@bilig/workbook'
 import { CellFlags } from '../../cell-store.js'
 import { addEngineCounter } from '../../perf/engine-counters.js'
 import { getRuntimeFormulaSource } from '../runtime-formula-source.js'

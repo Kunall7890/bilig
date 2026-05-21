@@ -1,6 +1,6 @@
 import type { Effect } from 'effect'
 import type { CellRangeRef, LiteralInput } from '@bilig/protocol'
-import type { EngineOp } from '@bilig/workbook-domain'
+import type { EngineOp } from '@bilig/workbook'
 import type {
   EngineCellMutationRef,
   EngineExistingLiteralCellMutationRef,

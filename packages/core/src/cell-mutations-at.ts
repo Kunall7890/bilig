@@ -1,6 +1,6 @@
 import { formatAddress } from '@bilig/formula'
 import type { CellValue, LiteralInput } from '@bilig/protocol'
-import type { EngineOp } from '@bilig/workbook-domain'
+import type { EngineOp } from '@bilig/workbook'
 import type { WorkbookStore } from './workbook-store.js'
 
 export type EngineCellMutationAt =

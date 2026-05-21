@@ -1,6 +1,6 @@
 import type { Effect } from 'effect'
 import type { CompiledFormula, StructuralAxisTransform } from '@bilig/formula'
-import type { EngineOp } from '@bilig/workbook-domain'
+import type { EngineOp } from '@bilig/workbook'
 import type { EngineCounters } from '../../perf/engine-counters.js'
 import type { RangeRegistry } from '../../range-registry.js'
 import type { FormulaTable } from '../../formula-table.js'
@@ -66,6 +66,7 @@ export interface CreateEngineStructureServiceArgs {
     sourceAddress?: string,
   ) => EngineOp[]
   readonly clearOwnedSpill: (cellIndex: number) => readonly number[]
+  readonly writeTableHeaderCell: (sheetName: string, row: number, col: number, value: string) => number | undefined
   readonly removeFormula: (cellIndex: number) => boolean
   readonly clearOwnedPivot: (pivot: WorkbookPivotRecord) => number[]
   readonly refreshRangeDependencies: (rangeIndices: readonly number[]) => void

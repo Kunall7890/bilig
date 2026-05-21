@@ -1,5 +1,5 @@
 import type { WorkbookChartSnapshot, WorkbookImageSnapshot, WorkbookShapeSnapshot } from '@bilig/protocol'
-import type { EngineOp } from '@bilig/workbook-domain'
+import type { EngineOp } from '@bilig/workbook'
 import type { WorkbookStore, WorkbookTableRecord } from '../workbook-store.js'
 import {
   cloneEngineTableRecord,

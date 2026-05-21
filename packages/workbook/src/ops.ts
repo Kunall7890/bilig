@@ -1,5 +1,3 @@
-export * from './guards.js'
-
 import type {
   CellRangeRef,
   CellNumberFormatRecord,

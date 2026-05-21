@@ -6,7 +6,7 @@
 
 **Architecture:** Keep Bilig's existing workbook engine, React shell, worker transport, and TypeGPU renderer. Add a Perspective-inspired view-window layer, render commit barrier, stable sheet identity rules, plugin-grade view contracts, and assistant semantic workflows around the existing system instead of replacing the grid with Perspective.
 
-**Tech Stack:** TypeScript, React, Vite, pnpm monorepo, `apps/web`, `apps/bilig`, `packages/grid`, `packages/worker-transport`, `packages/workbook-domain`, TypeGPU renderer V3, Vitest, Playwright.
+**Tech Stack:** TypeScript, React, Vite, pnpm monorepo, `apps/web`, `apps/bilig`, `packages/grid`, `packages/worker-transport`, `packages/workbook`, TypeGPU renderer V3, Vitest, Playwright.
 
 ---
 
@@ -156,7 +156,7 @@ Define a small plugin contract inspired by Perspective but shaped for Bilig:
 
 File:
 
-- `packages/workbook-domain/src/workbook-view-plugin.ts`
+- `packages/workbook/src/workbook-view-plugin.ts`
 
 Contract:
 
@@ -378,7 +378,7 @@ pnpm exec vitest run apps/web/src/__tests__/worker-workbook-app.test.tsx
 
 ### Phase 7: Add Plugin-Grade Analytics Views
 
-- [ ] Create `packages/workbook-domain/src/workbook-view-plugin.ts`.
+- [ ] Create `packages/workbook/src/workbook-view-plugin.ts`.
   - Define draw, update, resize, restyle, save, restore, and clear lifecycle.
 - [ ] Create `apps/web/src/workbook-view-plugin-registry.ts`.
   - Register grid as the first view consumer.

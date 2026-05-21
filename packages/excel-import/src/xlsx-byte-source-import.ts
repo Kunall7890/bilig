@@ -204,7 +204,7 @@ function readAllSourceBytes(source: XlsxZipByteSource): Uint8Array {
   return source.readRange(0, source.byteLength)
 }
 
-function borrowXlsxZipByteSource(source: XlsxZipByteSource): XlsxZipByteSource {
+export function borrowXlsxZipByteSource(source: XlsxZipByteSource): XlsxZipByteSource {
   return {
     byteLength: source.byteLength,
     readRange: (start, end) => source.readRange(start, end),

@@ -271,7 +271,7 @@ function buildRuntimePackageHardeningControl(): SecurityPostureControl {
   const hasRuntimeGate =
     packageJson.includes('"publish:runtime:check"') &&
     packageJson.includes(
-      '--require-aligned packages/protocol packages/workbook-domain packages/wasm-kernel packages/formula packages/core packages/excel-import packages/headless',
+      '--require-aligned packages/protocol packages/formula packages/workbook packages/wasm-kernel packages/core packages/excel-import packages/headless',
     )
   const rejectsSource = publishCheck.includes('tarball must not contain source files') && publishCheck.includes('workspace:*')
   const alignedRuntimePackages =

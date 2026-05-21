@@ -470,4 +470,49 @@ describe('EngineSnapshotService', () => {
       formulaForEach.mockRestore()
     }
   })
+
+  it('restores runtime formula-family runs across mixed hydrated and prepared restore buckets', async () => {
+    const source = new SpreadsheetEngine({
+      workbookName: 'snapshot-runtime-family-runs-mixed-source',
+      replicaId: 'snapshot-runtime-family-runs-mixed-source',
+    })
+    await source.ready()
+    source.createSheet('Sheet1')
+    for (let row = 1; row <= 32; row += 1) {
+      source.setCellValue('Sheet1', `A${row}`, row)
+      source.setCellValue('Sheet1', `B${row}`, row * 2)
+      source.setCellFormula('Sheet1', `C${row}`, `A${row}+B${row}`)
+      source.setCellFormula('Sheet1', `D${row}`, `C${row}*2`)
+      source.setCellFormula('Sheet1', `E${row}`, `SUM(A1:A${row})`)
+    }
+    const sourceFamilyStats = getFormulaFamilyStore(source).getStats()
+    const snapshot = source.exportSnapshot()
+    const runtimeImage = readRuntimeImage(snapshot)
+    expect(runtimeImage?.formulaFamilyRuns?.length).toBeGreaterThan(1)
+    attachRuntimeImage(snapshot, {
+      ...runtimeImage!,
+      formulaValues: runtimeImage!.formulaValues.filter((record) => record.col !== 3),
+    })
+
+    const restored = new SpreadsheetEngine({
+      workbookName: 'snapshot-runtime-family-runs-mixed-restored',
+      replicaId: 'snapshot-runtime-family-runs-mixed-restored',
+    })
+    await restored.ready()
+    restored.resetPerformanceCounters()
+    restored.importSnapshot(snapshot)
+
+    expect(restored.getCellValue('Sheet1', 'D32')).toEqual({ tag: ValueTag.Number, value: 192 })
+    expect(restored.getCellValue('Sheet1', 'E32')).toEqual({ tag: ValueTag.Number, value: 528 })
+    const formulaForEach = vi.spyOn(getRuntimeFormulaStore(restored), 'forEach')
+    try {
+      expect(getFormulaFamilyStore(restored).getStats()).toEqual(sourceFamilyStats)
+      expect(formulaForEach).not.toHaveBeenCalled()
+      expect(restored.getPerformanceCounters().formulaFamilyRuntimeRunsRestored).toBe(runtimeImage?.formulaFamilyRuns?.length)
+      expect(restored.getPerformanceCounters().formulaFamilyRuntimeRunMembersRestored).toBe(sourceFamilyStats.memberCount)
+      expect(restored.getPerformanceCounters().formulaFamilyRuntimeRunFallbacks).toBe(0)
+    } finally {
+      formulaForEach.mockRestore()
+    }
+  })
 })

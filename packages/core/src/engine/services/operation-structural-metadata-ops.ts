@@ -1,5 +1,5 @@
 import type { CellRangeRef } from '@bilig/protocol'
-import type { EngineOp } from '@bilig/workbook-domain'
+import type { EngineOp } from '@bilig/workbook'
 import type { OpOrder } from '../../replica-state.js'
 import type { WorkbookStore } from '../../workbook-store.js'
 import { assertNever } from './operation-change-helpers.js'

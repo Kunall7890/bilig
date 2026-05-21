@@ -16,7 +16,7 @@
     { "path": "../../packages/excel-import" },
     { "path": "../../packages/formula" },
     { "path": "../../packages/headless" },
-    { "path": "../../packages/workbook-domain" },
+    { "path": "../../packages/workbook" },
     { "path": "../../packages/zero-sync" }
   ],
   "include": ["src/**/*"],

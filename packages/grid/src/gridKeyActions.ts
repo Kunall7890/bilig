@@ -23,7 +23,7 @@ export interface GridKeyActionEvent {
 
 export type GridKeyAction =
   | { kind: 'none' }
-  | { kind: 'edit-append'; value: string }
+  | { kind: 'edit-append'; pendingTypeSeed: string; value: string }
   | { kind: 'commit-edit'; movement?: readonly [-1 | 0 | 1, -1 | 0 | 1] }
   | { kind: 'cancel-edit' }
   | {
@@ -197,7 +197,8 @@ export function resolveGridKeyAction(options: ResolveGridKeyActionOptions): Grid
         return { kind: 'cancel-edit' }
       }
       if (event.key.length === 1 && !event.ctrlKey && !event.metaKey && !event.altKey) {
-        return { kind: 'edit-append', value: `${editorValue}${event.key}` }
+        const value = `${pendingTypeSeed ?? editorValue}${event.key}`
+        return { kind: 'edit-append', pendingTypeSeed: value, value }
       }
     }
     return { kind: 'none' }

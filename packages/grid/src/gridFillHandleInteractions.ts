@@ -14,6 +14,8 @@ interface FillHandlePointerEventLike {
   readonly clientX: number
   readonly clientY: number
   readonly pointerId: number
+  preventDefault?(): void
+  stopPropagation?(): void
 }
 
 interface FillHandleListenerTarget {
@@ -69,20 +71,30 @@ export function beginWorkbookGridFillHandleDrag(input: {
   let lastPointerEvent: FillHandlePointerEventLike | null = null
   let autoScrollFrame: number | null = null
 
+  const claimPointerEvent = (nativeEvent: FillHandlePointerEventLike): boolean => {
+    if (nativeEvent.pointerId !== pointerId) {
+      return false
+    }
+    nativeEvent.preventDefault?.()
+    nativeEvent.stopPropagation?.()
+    return true
+  }
+
   cleanupRef.current?.()
   setFillPreviewRangeRef(null)
   setFillPreviewRange(null)
   setIsFillHandleDragging(true)
   resetHoverState()
 
-  const updatePreview = (nativeEvent: FillHandlePointerEventLike) => {
-    if (nativeEvent.pointerId !== pointerId) {
-      return
+  const updatePreview = (nativeEvent: FillHandlePointerEventLike): boolean => {
+    if (!claimPointerEvent(nativeEvent)) {
+      return false
     }
     const pointerCell = resolvePointerCell(nativeEvent.clientX, nativeEvent.clientY)
     activePreviewRange = pointerCell ? resolveFillHandlePreviewRange(sourceRange, pointerCell) : null
     setFillPreviewRangeRef(activePreviewRange)
     setFillPreviewRange(activePreviewRange)
+    return true
   }
 
   const cancelAutoScroll = () => {
@@ -108,11 +120,10 @@ export function beginWorkbookGridFillHandleDrag(input: {
   }
 
   const move = (nativeEvent: FillHandlePointerEventLike) => {
-    if (nativeEvent.pointerId !== pointerId) {
+    if (!updatePreview(nativeEvent)) {
       return
     }
     lastPointerEvent = nativeEvent
-    updatePreview(nativeEvent)
     scheduleAutoScroll()
   }
 
@@ -155,16 +166,15 @@ export function beginWorkbookGridFillHandleDrag(input: {
   }
 
   const handlePointerUp = (nativeEvent: FillHandlePointerEventLike) => {
-    if (nativeEvent.pointerId !== pointerId) {
+    if (!updatePreview(nativeEvent)) {
       return
     }
     lastPointerEvent = nativeEvent
-    updatePreview(nativeEvent)
     finish()
   }
 
   const handlePointerCancel = (nativeEvent: FillHandlePointerEventLike) => {
-    if (nativeEvent.pointerId !== pointerId) {
+    if (!claimPointerEvent(nativeEvent)) {
       return
     }
     activePreviewRange = null

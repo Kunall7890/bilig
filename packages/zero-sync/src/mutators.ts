@@ -2,7 +2,7 @@ import { defineMutator, defineMutatorsWithType } from '@rocicorp/zero'
 import { isWorkbookAgentCommandBundle, type WorkbookAgentCommandBundle } from '@bilig/agent-api'
 import { isCommitOps, type CommitOp } from '@bilig/core'
 import { z } from 'zod'
-import { isEngineOpBatch, type EngineOpBatch } from '@bilig/workbook-domain'
+import { isEngineOpBatch, type EngineOpBatch } from '@bilig/workbook'
 import type { CellRangeRef } from '@bilig/protocol'
 import {
   CELL_BORDER_STYLE_VALUES,

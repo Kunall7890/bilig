@@ -113,6 +113,50 @@ function KeyboardHandlerHarness(props: {
 }
 
 describe('gridClipboardKeyboardController', () => {
+  test('appends rapid unfocused editor keys from the latest emitted draft', () => {
+    const onEditorChange = vi.fn()
+    const pendingTypeSeedRef = { current: null as string | null }
+
+    const baseOptions = {
+      applyClipboardValues: vi.fn(),
+      beginSelectedEdit: vi.fn(),
+      captureInternalClipboardSelection: vi.fn(),
+      editorValue: 'a',
+      gridSelection: createGridSelection(1, 1),
+      internalClipboardRef: { current: null },
+      isSelectedCellBoolean: () => false,
+      isEditingCell: true,
+      onCancelEdit: vi.fn(),
+      onClearCell: vi.fn(),
+      onCommitEdit: vi.fn(),
+      onEditorChange,
+      onFillRange: vi.fn(),
+      onSelectionChange: vi.fn(),
+      scrollActiveCellIntoView: vi.fn(),
+      pendingClipboardCopySequenceRef: { current: 0 },
+      pendingKeyboardPasteSequenceRef: { current: 0 },
+      pendingTypeSeedRef,
+      selectedCell: { col: 1, row: 1 },
+      setGridSelection: vi.fn(),
+      sheetName: 'Sheet1',
+      suppressNextNativePasteRef: { current: false },
+      toggleSelectedBooleanCell: vi.fn(),
+    }
+
+    handleGridKey({
+      ...baseOptions,
+      event: { key: 'b', ctrlKey: false, metaKey: false, altKey: false, preventDefault: vi.fn() },
+    })
+    handleGridKey({
+      ...baseOptions,
+      event: { key: 'c', ctrlKey: false, metaKey: false, altKey: false, preventDefault: vi.fn() },
+    })
+
+    expect(onEditorChange).toHaveBeenNthCalledWith(1, 'ab')
+    expect(onEditorChange).toHaveBeenNthCalledWith(2, 'abc')
+    expect(pendingTypeSeedRef.current).toBe('abc')
+  })
+
   test('batches rapid typed edit seeds into one deferred begin-edit', () => {
     const beginSelectedEdit = vi.fn()
     const callbacks: FrameRequestCallback[] = []

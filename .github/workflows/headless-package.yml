@@ -10,7 +10,7 @@ on:
       - 'packages/core/**'
       - 'packages/formula/**'
       - 'packages/protocol/**'
-      - 'packages/workbook-domain/**'
+      - 'packages/workbook/**'
       - 'packages/wasm-kernel/**'
       - 'packages/excel-import/**'
       - 'packages/bilig/**'
@@ -145,7 +145,7 @@ jobs:
         run: |
           set -euo pipefail
           pnpm --filter @bilig/protocol build
-          pnpm --filter @bilig/workbook-domain build
+          pnpm --filter @bilig/workbook build
           pnpm --filter @bilig/wasm-kernel build
           pnpm --filter @bilig/formula build
           pnpm --filter @bilig/core build
@@ -241,7 +241,7 @@ jobs:
 
           package_dirs=(
             packages/protocol
-            packages/workbook-domain
+            packages/workbook
             packages/wasm-kernel
             packages/formula
             packages/core
@@ -758,7 +758,7 @@ jobs:
           const fs = require('node:fs');
           const packagePaths = [
             'packages/protocol/package.json',
-            'packages/workbook-domain/package.json',
+            'packages/workbook/package.json',
             'packages/wasm-kernel/package.json',
             'packages/formula/package.json',
             'packages/core/package.json',
@@ -828,7 +828,7 @@ jobs:
             docs/public-evidence.json
             README.md
             packages/protocol/package.json
-            packages/workbook-domain/package.json
+            packages/workbook/package.json
             packages/wasm-kernel/package.json
             packages/formula/package.json
             packages/core/package.json
@@ -884,7 +884,7 @@ jobs:
           # runner needs runtime d.ts outputs rebuilt after the version sync and
           # before pushing.
           pnpm --filter @bilig/protocol build
-          pnpm --filter @bilig/workbook-domain build
+          pnpm --filter @bilig/workbook build
           pnpm --filter @bilig/wasm-kernel build
           pnpm --filter @bilig/formula build
           pnpm --filter @bilig/core build
@@ -968,7 +968,7 @@ jobs:
         run: |
           set -euo pipefail
           pnpm --filter @bilig/protocol build
-          pnpm --filter @bilig/workbook-domain build
+          pnpm --filter @bilig/workbook build
           pnpm --filter @bilig/wasm-kernel build
           pnpm --filter @bilig/formula build
           pnpm --filter @bilig/core build

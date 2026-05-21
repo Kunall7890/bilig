@@ -21,7 +21,7 @@ import {
   materializeWrittenColumns,
   type WrittenColumnTracker,
 } from '../written-column-tracker.js'
-import { attachRuntimeFormulaFamilyRunHints } from './runtime-image-formula-family-run-hints.js'
+import { attachRuntimeFormulaFamilyRunHints, selectRuntimeFormulaFamilyRunHints } from './runtime-image-formula-family-run-hints.js'
 import { restoreAlignedRuntimeFormulaFamilyRuns, type RuntimeImageFormulaFamilyRunSnapshot } from './runtime-image-formula-family-runs.js'
 import { formulaCachedLiteralToRestoredValue, restoreLiteralCell } from './runtime-image-literal-restore.js'
 import { restoreVisualMetadata, restoreWorkbookStructure } from './runtime-image-metadata-restore.js'
@@ -400,6 +400,18 @@ class RestoredHydratedPreparedFormulaRefTable implements Iterable<HydratedPrepar
       }
     }
   }
+}
+
+function preparedRuntimeFormulaCellIndices(refs: readonly PreparedRuntimeFormulaRef[]): Uint32Array {
+  const cellIndices = new Uint32Array(refs.length)
+  for (let index = 0; index < refs.length; index += 1) {
+    const cellIndex = refs[index]!.cellIndex
+    if (cellIndex === undefined) {
+      return new Uint32Array(0)
+    }
+    cellIndices[index] = cellIndex
+  }
+  return cellIndices
 }
 
 function isFreshRuntimeLogicalSheetInternals(value: unknown): value is FreshRuntimeLogicalSheetInternals {
@@ -922,20 +934,18 @@ export function restoreWorkbookFromRuntimeImage(args: RuntimeImageRestoreArgs): 
           runs: args.runtimeImage.formulaFamilyRuns,
           sheetIdsByName,
         })
-  const formulaSourceRefCount = formulaSourceRefs?.length ?? 0
-
   if (hydratedPreparedFormulaRefs.length > 0 && args.initializeHydratedPreparedCellFormulasAt) {
     args.checkEvaluationBudget?.()
-    const allRuntimeImageFormulasAreHydrated =
-      preparedFormulaRefs.length === 0 && cachedFormulaRefs.length === 0 && formulaSourceRefCount === 0 && formulaRefs.length === 0
-    if (allRuntimeImageFormulasAreHydrated) {
-      attachRuntimeFormulaFamilyRunHints({
-        refs: hydratedPreparedFormulaRefs,
-        restoredRuns: hydratedPreparedFormulaRefs.freshFormulaInstances === undefined ? undefined : restoredFormulaFamilyRuns,
-        runtimeRunCount: runtimeFormulaFamilyRunCount,
-        cellIndicesAreRuntimeAligned: hydratedPreparedFormulaRefs.freshFormulaInstances !== undefined,
-      })
-    }
+    const selectedRestoredRuns = selectRuntimeFormulaFamilyRunHints({
+      restoredRuns: restoredFormulaFamilyRuns,
+      cellIndices: hydratedPreparedFormulaRefs.cellIndices.subarray(0, hydratedPreparedFormulaRefs.length),
+    })
+    attachRuntimeFormulaFamilyRunHints({
+      refs: hydratedPreparedFormulaRefs,
+      restoredRuns: hydratedPreparedFormulaRefs.freshFormulaInstances === undefined ? undefined : selectedRestoredRuns,
+      runtimeRunCount: selectedRestoredRuns?.runs.length ?? 0,
+      cellIndicesAreRuntimeAligned: hydratedPreparedFormulaRefs.freshFormulaInstances !== undefined,
+    })
     args.initializeHydratedPreparedCellFormulasAt(hydratedPreparedFormulaRefs, hydratedPreparedFormulaRefs.length)
   }
   if (cachedFormulaRefs.length > 0 && args.initializeCachedFormulaSourcesAt) {
@@ -944,16 +954,16 @@ export function restoreWorkbookFromRuntimeImage(args: RuntimeImageRestoreArgs): 
   }
   if (preparedFormulaRefs.length > 0 && args.initializePreparedCellFormulasAt) {
     args.checkEvaluationBudget?.()
-    const allRuntimeImageFormulasArePrepared =
-      hydratedPreparedFormulaRefs.length === 0 && cachedFormulaRefs.length === 0 && formulaSourceRefCount === 0 && formulaRefs.length === 0
-    if (allRuntimeImageFormulasArePrepared) {
-      attachRuntimeFormulaFamilyRunHints({
-        refs: preparedFormulaRefs,
-        restoredRuns: restoredFormulaFamilyRuns,
-        runtimeRunCount: runtimeFormulaFamilyRunCount,
-        cellIndicesAreRuntimeAligned: preparedFormulaRefsAreRuntimeCellIndexAligned,
-      })
-    }
+    const selectedRestoredRuns = selectRuntimeFormulaFamilyRunHints({
+      restoredRuns: restoredFormulaFamilyRuns,
+      cellIndices: preparedRuntimeFormulaCellIndices(preparedFormulaRefs),
+    })
+    attachRuntimeFormulaFamilyRunHints({
+      refs: preparedFormulaRefs,
+      restoredRuns: selectedRestoredRuns,
+      runtimeRunCount: selectedRestoredRuns?.runs.length ?? 0,
+      cellIndicesAreRuntimeAligned: preparedFormulaRefsAreRuntimeCellIndexAligned,
+    })
     args.initializePreparedCellFormulasAt(preparedFormulaRefs, preparedFormulaRefs.length)
   }
   if (formulaSourceRefs && formulaSourceRefs.length > 0) {

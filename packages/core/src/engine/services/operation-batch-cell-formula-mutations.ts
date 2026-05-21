@@ -1,5 +1,5 @@
 import { parseCellAddress } from '@bilig/formula'
-import type { EngineOp } from '@bilig/workbook-domain'
+import type { EngineOp } from '@bilig/workbook'
 import { CellFlags } from '../../cell-store.js'
 import type { OpOrder } from '../../replica-state.js'
 import type { PreparedCellAddress } from '../runtime-state.js'

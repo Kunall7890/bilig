@@ -1,5 +1,5 @@
 import { parseCellAddress } from '@bilig/formula'
-import type { EngineOp } from '@bilig/workbook-domain'
+import type { EngineOp } from '@bilig/workbook'
 import type { EngineCellMutationRef } from '../../cell-mutations-at.js'
 import type { WorkbookStore } from '../../workbook-store.js'
 import type { CommitOp, EngineRuntimeState, TransactionRecord } from '../runtime-state.js'

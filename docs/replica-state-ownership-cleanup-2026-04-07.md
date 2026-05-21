@@ -35,7 +35,7 @@ This is not just naming debt. It leaves the wrong ownership boundary in producti
 
 The current shape mixes three different concerns:
 
-1. `@bilig/workbook-domain` owns transport-neutral semantic workbook ops
+1. `@bilig/workbook` owns transport-neutral semantic workbook ops
 2. `@bilig/core` owns the runtime engine that actually applies and persists those ops
 3. `@bilig/crdt` still owns replica bookkeeping that is only meaningful because `@bilig/core` and local session code use it
 
@@ -102,7 +102,7 @@ Current problem:
 - `apps/bilig/package.json`
 - `apps/bilig/tsconfig.json`
 - `apps/web/vite.config.ts`
-- `packages/workbook-domain/README.md`
+- `packages/workbook/README.md`
 - `packages/crdt/README.md`
 - `docs/crdt-model.md`
 
@@ -121,7 +121,7 @@ The cleanup is not complete until all of those stop treating `@bilig/crdt` as an
 
 - moving replica bookkeeping into Zero
 - removing replica snapshots from worker or monolith restore flows
-- changing workbook op semantics in `@bilig/workbook-domain`
+- changing workbook op semantics in `@bilig/workbook`
 - redesigning the server-authoritative event model
 - changing browser/local-first persistence strategy
 
@@ -129,13 +129,13 @@ The cleanup is not complete until all of those stop treating `@bilig/crdt` as an
 
 - semantic ownership matters more than package deletion
 - app code should call engine APIs, not manipulate engine internals
-- `workbook-domain` should stay transport-neutral and declarative
+- `workbook` should stay transport-neutral and declarative
 - `core` should own mutable runtime bookkeeping needed to apply ops safely
 - Zero should not become a dumping ground for local runtime concerns
 
 ## Target ownership
 
-### `@bilig/workbook-domain`
+### `@bilig/workbook`
 
 Owns:
 
@@ -224,7 +224,7 @@ Then tighten the engine API:
 | app-layer duplicate check | `shouldApplyBatch(session.engine.replica, batch)` | `session.engine.applyRemoteBatch(batch)` boolean result |
 | engine internal replica access | `engine.replica` public field | replica state private to engine |
 | snapshot import/export | engine methods | same engine methods, same serialized shape |
-| transport-neutral op shapes | `@bilig/workbook-domain` | unchanged |
+| transport-neutral op shapes | `@bilig/workbook` | unchanged |
 | authoritative shared ordering | monolith + Zero | unchanged |
 
 App code should move from:
@@ -322,7 +322,7 @@ Cut list:
 - `apps/bilig/package.json`
 - `apps/bilig/tsconfig.json`
 - `apps/web/vite.config.ts`
-- `packages/workbook-domain/README.md`
+- `packages/workbook/README.md`
 - `packages/crdt/README.md`
 - `docs/crdt-model.md`
 

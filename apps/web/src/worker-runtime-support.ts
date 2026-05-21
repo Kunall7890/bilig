@@ -1,5 +1,5 @@
 import type { CommitOp, EngineReplicaSnapshot } from '@bilig/core'
-import type { EngineOpBatch } from '@bilig/workbook-domain'
+import type { EngineOpBatch } from '@bilig/workbook'
 import { formatAddress, parseCellAddress } from '@bilig/formula'
 import {
   type CellNumberFormatInput,

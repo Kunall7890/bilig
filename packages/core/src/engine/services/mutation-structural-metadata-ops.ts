@@ -1,5 +1,5 @@
 import { rewriteAddressForStructuralTransform, rewriteRangeForStructuralTransform, type StructuralAxisTransform } from '@bilig/formula'
-import type { EngineOp } from '@bilig/workbook-domain'
+import type { EngineOp } from '@bilig/workbook'
 import { WorkbookStore } from '../../workbook-store.js'
 
 type MutationStructuralMetadataWorkbook = Pick<

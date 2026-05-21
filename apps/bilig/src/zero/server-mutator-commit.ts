@@ -1,6 +1,6 @@
 import { isDeepStrictEqual } from 'node:util'
 import type { SpreadsheetEngine } from '@bilig/core'
-import type { EngineOp } from '@bilig/workbook-domain'
+import type { EngineOp } from '@bilig/workbook'
 import type { WorkbookChangeUndoBundle, WorkbookEventPayload } from '@bilig/zero-sync'
 import type { SessionIdentity } from '../http/session.js'
 import type { WorkbookRuntimeManager } from '../workbook-runtime/runtime-manager.js'

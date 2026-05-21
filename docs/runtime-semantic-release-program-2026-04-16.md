@@ -17,7 +17,7 @@ Replace the current aligned library package release versioning logic with a prod
 This program applies to the aligned library package set:
 
 - `@bilig/protocol`
-- `@bilig/workbook-domain`
+- `@bilig/workbook`
 - `@bilig/wasm-kernel`
 - `@bilig/formula`
 - `@bilig/core`
@@ -129,7 +129,7 @@ The planner should treat a commit as runtime-affecting when either of the follow
 Initial runtime-affecting path set:
 
 - `packages/protocol/**`
-- `packages/workbook-domain/**`
+- `packages/workbook/**`
 - `packages/wasm-kernel/**`
 - `packages/formula/**`
 - `packages/core/**`

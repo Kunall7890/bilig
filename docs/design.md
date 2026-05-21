@@ -4,7 +4,7 @@
 
 ## Current state
 
-- `@bilig/core`, `@bilig/formula`, `@bilig/wasm-kernel`, `@bilig/workbook-domain`, `apps/web`, and `apps/bilig` are the active product surface.
+- `@bilig/core`, `@bilig/formula`, `@bilig/wasm-kernel`, `@bilig/workbook`, `apps/web`, and `apps/bilig` are the active product surface.
 - The browser shell is worker-first and consumes viewport patches.
 - The production collaboration path is Zero-backed and Postgres-backed.
 - The monolith serves the active session, Zero, agent, and recalc surfaces.

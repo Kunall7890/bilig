@@ -1,6 +1,6 @@
 import { ValueTag, type CellSnapshot } from '@bilig/protocol'
 import { renameFormulaSheetReferences, rewriteFormulaForStructuralTransform } from '@bilig/formula'
-import type { EngineOp } from '@bilig/workbook-domain'
+import type { EngineOp } from '@bilig/workbook'
 import { CellFlags } from '../../cell-store.js'
 import { mapStructuralAxisIndex, mapStructuralAxisInterval, structuralTransformForOp } from '../../engine-structural-utils.js'
 import { sheetMetadataToOps } from '../../engine-snapshot-utils.js'

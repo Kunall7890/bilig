@@ -1,5 +1,5 @@
 import { ValueTag, type CellValue } from '@bilig/protocol'
-import type { EngineOpBatch } from '@bilig/workbook-domain'
+import type { EngineOpBatch } from '@bilig/workbook'
 import type {
   EngineCellMutationRef,
   EngineExistingLiteralCellMutationRef,
@@ -29,6 +29,7 @@ import { applyOperationLookupNumericWriteTailPatches, planOperationLookupNumeric
 import { hasNonAggregateFormulaDependentForCell } from './operation-non-aggregate-formula-dependent.js'
 import { tryApplySinglePostRecalcDirectFormula, type DirectFormulaMetricCounts } from './operation-post-recalc-direct-formulas.js'
 import type { MutationSource, OperationSingleExistingLiteralFastPathArgs } from './operation-single-existing-literal-fast-path-types.js'
+import { isTableHeaderCell } from './operation-table-header-rename.js'
 
 const DIRECT_RANGE_POST_RECALC_LIMIT = 16_384
 const EMPTY_CHANGED_CELLS = new Uint32Array(0)
@@ -211,6 +212,9 @@ export function createOperationSingleExistingLiteralFastPath(args: OperationSing
     }
     const sheet = args.state.workbook.getSheetById(ref.sheetId)
     if (!sheet || sheet.structureVersion !== 1) {
+      return false
+    }
+    if (isTableHeaderCell(args.state.workbook.listTables(), sheet.name, mutation.row, mutation.col)) {
       return false
     }
     const existingIndex =
@@ -637,6 +641,9 @@ export function createOperationSingleExistingLiteralFastPath(args: OperationSing
     const cellStore = args.state.workbook.cellStore
     const existingIndex = request.cellIndex
     const trustedExistingNumericLiteral = request.trustedExistingNumericLiteral === true
+    if (sheet && isTableHeaderCell(args.state.workbook.listTables(), sheet.name, request.row, request.col)) {
+      return null
+    }
     if (
       !sheet ||
       sheet.structureVersion !== 1 ||
@@ -941,6 +948,9 @@ export function createOperationSingleExistingLiteralFastPath(args: OperationSing
     const sheet = args.state.workbook.getSheetById(request.sheetId)
     const cellStore = args.state.workbook.cellStore
     const existingIndex = request.cellIndex
+    if (sheet && isTableHeaderCell(args.state.workbook.listTables(), sheet.name, request.row, request.col)) {
+      return null
+    }
     if (
       !sheet ||
       sheet.structureVersion !== 1 ||

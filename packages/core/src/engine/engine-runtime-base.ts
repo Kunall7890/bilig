@@ -1,6 +1,6 @@
 import type { CellSnapshot, RecalcMetrics, SelectionState, SyncState, WorkbookSnapshot } from '@bilig/protocol'
 import { Float64Arena, Uint32Arena } from '@bilig/formula/program-arena'
-import type { EngineOp, EngineOpBatch } from '@bilig/workbook-domain'
+import type { EngineOp, EngineOpBatch } from '@bilig/workbook'
 import { cellToCsvValue, serializeCsv } from '../csv.js'
 import { CycleDetector } from '../cycle-detection.js'
 import { EdgeArena, type EdgeSlice } from '../edge-arena.js'
@@ -359,6 +359,7 @@ export abstract class SpreadsheetEngineRuntimeBase {
         getEntityDependents: () => new Uint32Array(),
         getSingleEntityDependent: () => -1,
         collectFormulaDependents: () => new Uint32Array(),
+        collectFormulaCellsForTables: () => [],
         noteExactLookupLiteralWrite: () => {
           return
         },
