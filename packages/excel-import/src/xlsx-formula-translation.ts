@@ -1,6 +1,7 @@
 import type { WorkbookTableSnapshot } from '@bilig/protocol'
 import {
   isStructuredReferenceEscapedCharacter,
+  parseFormula,
   parseStructuredReferenceColumnSpecifier,
   scanStructuredReferenceBracket,
 } from '@bilig/formula'
@@ -68,6 +69,7 @@ const xlsxFutureFunctionNames: ReadonlySet<string> = new Set([
   'SEQUENCE',
   'SHEET',
   'SHEETS',
+  'SINGLE',
   'SORT',
   'SORTBY',
   'SWITCH',
@@ -97,7 +99,7 @@ export function normalizeImportedFormulaSource(formula: string): string {
   const trimmed = formula.trim()
   const prefix = namespacedSpreadsheetFormulaPattern.exec(trimmed)
   const source = transformFormulaFunctionNames(prefix ? trimmed.slice(prefix[0].length) : formula, normalizeImportedFunctionToken)
-  return normalizeImportedLambdaParameterNames(normalizeImportedAnchorArrayCalls(source))
+  return normalizeImportedImplicitIntersectionRange(normalizeImportedLambdaParameterNames(normalizeImportedAnchorArrayCalls(source)))
 }
 
 export function encodeFormulaForXlsx(formula: string): string {
@@ -354,6 +356,15 @@ function normalizeImportedAnchorArrayCalls(formula: string): string {
     index = closeParenIndex + 1
   }
   return output
+}
+
+function normalizeImportedImplicitIntersectionRange(formula: string): string {
+  const trimmed = formula.trim()
+  try {
+    return parseFormula(trimmed).kind === 'RangeRef' ? `SINGLE(${trimmed})` : formula
+  } catch {
+    return formula
+  }
 }
 
 const lambdaCallTokenPattern = /(?:^|[^A-Za-z0-9_.])((?:_xlfn\.)?LAMBDA)\s*\(/giu

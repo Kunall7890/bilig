@@ -35,6 +35,19 @@ const expectedFutureFunctionOracleCells = [
   { address: 'E2', formula: '=XLOOKUP("b",B2:B4,C2:C4)', rawValue: 'number\t20.0', value: { kind: 'number', value: 20 } },
   { address: 'F2', formula: '=XMATCH("b",B2:B4,0)', rawValue: 'number\t2.0', value: { kind: 'number', value: 2 } },
 ] as const
+const singleImplicitIntersectionOracleAddresses = ['C1', 'C2', 'C3', 'D1'] as const
+const expectedSingleImplicitIntersectionOracleValues = [
+  { address: 'C1', value: { kind: 'number', value: 1 } },
+  { address: 'C2', value: { kind: 'number', value: 2 } },
+  { address: 'C3', value: { kind: 'number', value: 3 } },
+  { address: 'D1', value: { kind: 'number', value: 1 } },
+] as const
+const expectedDesktopExcelSingleImplicitIntersectionOracleCells = [
+  { address: 'C1', formula: '=A1:A3', rawValue: 'number\t1.0', value: { kind: 'number', value: 1 } },
+  { address: 'C2', formula: '=A1:A3', rawValue: 'number\t2.0', value: { kind: 'number', value: 2 } },
+  { address: 'C3', formula: '=A1:A3', rawValue: 'number\t3.0', value: { kind: 'number', value: 3 } },
+  { address: 'D1', formula: '=SUM(@A1:A3)', rawValue: 'number\t1.0', value: { kind: 'number', value: 1 } },
+] as const
 const dynamicSpillOracleAddresses = ['B1', 'B2', 'B3'] as const
 const expectedDynamicSpillOracleValues = [
   { address: 'B1', value: { kind: 'number', value: 2 } },
@@ -211,6 +224,29 @@ describe('macOS Desktop Excel XLSX oracle for WorkPaper', () => {
         expect(
           futureFunctionOracleAddresses.map((address) => normalizedCellValue(reimported.getCellValue(addressToCell(address)))),
         ).toEqual(expectedFutureFunctionOracleCells.map((expected) => expected.value))
+      } finally {
+        reimported.dispose()
+      }
+    } finally {
+      workbook.dispose()
+    }
+  })
+
+  it('exports SINGLE implicit-intersection formulas through Desktop Excel-compatible XLSX', () => {
+    const workbook = buildSingleImplicitIntersectionOracleWorkbook()
+    try {
+      expect(
+        singleImplicitIntersectionOracleAddresses.map((address) => normalizedCellValue(workbook.getCellValue(addressToCell(address)))),
+      ).toEqual(expectedSingleImplicitIntersectionOracleValues.map((expected) => expected.value))
+
+      const imported = importXlsx(exportXlsx(workbook.exportSnapshot()), 'headless-single-implicit-intersection-oracle.xlsx')
+      const reimported = WorkPaper.buildFromSnapshot(imported.snapshot, workbookConfig)
+      try {
+        expect(
+          singleImplicitIntersectionOracleAddresses.map((address) => normalizedCellValue(reimported.getCellValue(addressToCell(address)))),
+        ).toEqual(expectedSingleImplicitIntersectionOracleValues.map((expected) => expected.value))
+        expect(reimported.getCellFormula(addressToCell('C1'))).toBe('=SINGLE(A1:A3)')
+        expect(reimported.getCellFormula(addressToCell('D1'))).toBe('=SUM(SINGLE(A1:A3))')
       } finally {
         reimported.dispose()
       }
@@ -721,6 +757,56 @@ describe('macOS Desktop Excel XLSX oracle for WorkPaper', () => {
             realBiligMismatches: 0,
             totalFormulaCells: futureFunctionOracleAddresses.length,
           })
+        } finally {
+          reimported.dispose()
+        }
+      } finally {
+        rmSync(tempDir, { recursive: true, force: true })
+      }
+    },
+    60_000,
+  )
+
+  it.runIf(process.env.BILIG_EXCEL_ORACLE_RUN === '1')(
+    'matches Desktop Excel SINGLE implicit-intersection semantics',
+    () => {
+      if (!isMacosExcelInstalled()) {
+        throw new Error('BILIG_EXCEL_ORACLE_RUN=1 requires /Applications/Microsoft Excel.app')
+      }
+
+      const tempDir = mkdtempSync(join(tmpdir(), 'bilig-headless-excel-single-implicit-intersection-oracle-'))
+      try {
+        const workbookPath = join(tempDir, 'headless-single-implicit-intersection-oracle.xlsx')
+        const workbook = buildSingleImplicitIntersectionOracleWorkbook()
+        try {
+          writeFileSync(workbookPath, exportXlsx(workbook.exportSnapshot()))
+        } finally {
+          workbook.dispose()
+        }
+
+        const excelResult = runMacosExcelInspectionOracle({
+          workbookPath,
+          worksheetName: 'Cases',
+          formulaCells: [],
+          inspectCells: singleImplicitIntersectionOracleAddresses,
+          saveWorkbook: true,
+        })
+
+        expect(excelResult.cells).toEqual(expectedDesktopExcelSingleImplicitIntersectionOracleCells)
+
+        const imported = importXlsx(
+          new Uint8Array(readFileSync(workbookPath)),
+          'headless-single-implicit-intersection-oracle-recalculated.xlsx',
+        )
+        const reimported = WorkPaper.buildFromSnapshot(imported.snapshot, workbookConfig)
+        try {
+          expect(
+            singleImplicitIntersectionOracleAddresses.map((address) =>
+              normalizedCellValue(reimported.getCellValue(addressToCell(address))),
+            ),
+          ).toEqual(expectedSingleImplicitIntersectionOracleValues.map((expected) => expected.value))
+          expect(reimported.getCellFormula(addressToCell('C1'))).toBe('=SINGLE(A1:A3)')
+          expect(reimported.getCellFormula(addressToCell('D1'))).toBe('=SUM(SINGLE(A1:A3))')
         } finally {
           reimported.dispose()
         }
@@ -1248,6 +1334,19 @@ function buildFutureFunctionOracleWorkbook(): WorkPaper {
         ['a', 'a', 10, '=TEXTJOIN("-",TRUE,A2:A4)', '=XLOOKUP("b",B2:B4,C2:C4)', '=XMATCH("b",B2:B4,0)'],
         [null, 'b', 20],
         ['c', 'c', 30],
+      ],
+    },
+    workbookConfig,
+  )
+}
+
+function buildSingleImplicitIntersectionOracleWorkbook(): WorkPaper {
+  return WorkPaper.buildFromSheets(
+    {
+      Cases: [
+        [1, null, '=SINGLE(A1:A3)', '=SUM(SINGLE(A1:A3))'],
+        [2, null, '=SINGLE(A1:A3)'],
+        [3, null, '=SINGLE(A1:A3)'],
       ],
     },
     workbookConfig,

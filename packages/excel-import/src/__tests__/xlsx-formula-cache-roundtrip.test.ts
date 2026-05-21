@@ -5,6 +5,7 @@ import { describe, expect, it } from 'vitest'
 import { attachRuntimeImage } from '@bilig/core'
 import { ValueTag, type WorkbookSnapshot } from '@bilig/protocol'
 import { exportXlsx, importXlsx } from '../index.js'
+import { normalizeImportedFormulaSource } from '../xlsx-formula-translation.js'
 
 describe('formula cache roundtrip', () => {
   it('preserves cached formula result values through import and export', () => {
@@ -144,6 +145,53 @@ describe('formula cache roundtrip', () => {
     expect(cells.get('G2')).toMatchObject({ formula: 'IF(TRUE,"XLOOKUP(",TEXTJOIN("-",TRUE,A2:A4))' })
     expect(cells.get('H2')).toMatchObject({ formula: 'XLOOKUP("c",B2:B4,C2:C4)' })
     expect(cells.get('I2')).toMatchObject({ formula: 'FILTER(A2:A4,A2:A4<>"")' })
+  })
+
+  it('exports SINGLE implicit-intersection wrappers as Excel future functions', () => {
+    const snapshot: WorkbookSnapshot = {
+      version: 1,
+      workbook: { name: 'single-implicit-intersection-export' },
+      sheets: [
+        {
+          id: 1,
+          name: 'Cases',
+          order: 0,
+          cells: [
+            { address: 'A1', value: 1 },
+            { address: 'A2', value: 2 },
+            { address: 'A3', value: 3 },
+            { address: 'C1', formula: 'SINGLE(A1:A3)', value: 1 },
+            { address: 'C2', formula: 'SINGLE(A1:A3)', value: 2 },
+            { address: 'C3', formula: 'SINGLE(A1:A3)', value: 3 },
+            { address: 'D1', formula: 'SUM(SINGLE(A1:A3))', value: 1 },
+          ],
+        },
+      ],
+    }
+
+    const exported = exportXlsx(snapshot)
+    const sheetXml = strFromU8(unzipSync(exported)['xl/worksheets/sheet1.xml'] ?? new Uint8Array())
+
+    expect(cellXml(sheetXml, 'C1')).toContain('<f>_xlfn.SINGLE(A1:A3)</f>')
+    expect(cellXml(sheetXml, 'C2')).toContain('<f>_xlfn.SINGLE(A1:A3)</f>')
+    expect(cellXml(sheetXml, 'C3')).toContain('<f>_xlfn.SINGLE(A1:A3)</f>')
+    expect(cellXml(sheetXml, 'D1')).toContain('<f>SUM(_xlfn.SINGLE(A1:A3))</f>')
+    expect(cellXml(sheetXml, 'C1')).not.toContain('_xludf.SINGLE')
+
+    const reimported = importXlsx(exported, 'single-implicit-intersection-export.xlsx')
+    const cells = new Map(reimported.snapshot.sheets[0]?.cells.map((cell) => [cell.address, cell]) ?? [])
+
+    expect(cells.get('C1')).toMatchObject({ formula: 'SINGLE(A1:A3)', value: 1 })
+    expect(cells.get('C2')).toMatchObject({ formula: 'SINGLE(A1:A3)', value: 2 })
+    expect(cells.get('C3')).toMatchObject({ formula: 'SINGLE(A1:A3)', value: 3 })
+    expect(cells.get('D1')).toMatchObject({ formula: 'SUM(SINGLE(A1:A3))', value: 1 })
+  })
+
+  it('normalizes imported root range formulas as implicit intersections', () => {
+    expect(normalizeImportedFormulaSource('A1:A3')).toBe('SINGLE(A1:A3)')
+    expect(normalizeImportedFormulaSource("'Cases'!A1:A3")).toBe("SINGLE('Cases'!A1:A3)")
+    expect(normalizeImportedFormulaSource('_xlfn.SINGLE(A1:A3)')).toBe('SINGLE(A1:A3)')
+    expect(normalizeImportedFormulaSource('SUM(A1:A3)')).toBe('SUM(A1:A3)')
   })
 
   it('exports native dynamic array spills with Desktop Excel metadata and cached children', () => {
