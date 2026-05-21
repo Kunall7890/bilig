@@ -69,7 +69,7 @@ It exposes:
 - `workbook.addOp(op, { target?, message? })` inside model actions
 - `findTable`, `findColumn`, `findRange`, `findName`, and `findRows` through the model workbook context and as top-level helpers
 - `check.exists`, `check.noFormulaErrors`, and `check.custom` through the model workbook context and as top-level helpers
-- `WorkbookModel`, `WorkbookAction`, `WorkbookAddOpOptions`, `WorkbookActionPlanResult`, `WorkbookModelDescription`, `WorkbookRefDescription`, `WorkbookActionPlanDescription`, `WorkbookActionPlanResultDescription`, `WorkbookPlanVerification`, `WorkbookPlanIssue`, `WorkbookModelVerification`, `WorkbookModelActionVerification`, `WorkbookCustomCheckOptions`, `WorkbookRunResult`, and `WorkbookCheckResult`
+- `WorkbookModel`, `WorkbookAction`, `WorkbookAddOpOptions`, `WorkbookActionPlanResult`, `WorkbookModelDescription`, `WorkbookRefDescription`, `WorkbookActionPlanDescription`, `WorkbookActionPlanResultDescription`, `WorkbookPlanVerification`, `WorkbookPlanIssue`, `WorkbookModelVerification`, `WorkbookModelActionVerification`, `WorkbookCustomCheckOptions`, `WorkbookRawFormulaOptions`, `WorkbookRunResult`, and `WorkbookCheckResult`
 - the existing low-level operation language: `WorkbookOp`, `WorkbookTxn`, `EngineOp`, and `EngineOpBatch`
 
 The package builds portable workbook intent and concrete low-level ops when the
@@ -94,6 +94,11 @@ Formula helpers keep referenced workbook inputs separate from formula text.
 Planned `writeFormula` commands expose those inputs directly, which lets agents
 inspect dependencies without relying on human UI coordinates or reverse-parsing
 placeholder formula names.
+For formulas outside the small helper set, `formula.raw(source, { inputs })`
+keeps arbitrary formula text generic while preserving explicit workbook
+dependencies for inspection and verification. These are declared dependencies,
+not parser-discovered proof that every formula reference has a matching model
+ref.
 
 Action plans also expose `refsUsed`, a flat deduped list of workbook refs found
 inside the consumer-defined `refs` object. This keeps custom models generic

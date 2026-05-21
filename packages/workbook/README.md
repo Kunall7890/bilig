@@ -39,6 +39,7 @@ The public surface stays generic:
 - `WorkbookModelVerification`
 - `WorkbookModelActionVerification`
 - `WorkbookCustomCheckOptions`
+- `WorkbookRawFormulaOptions`
 - `WorkbookRunResult`
 - `WorkbookCheckResult`
 
@@ -60,6 +61,11 @@ Formula expressions also keep their workbook inputs separate from their formula
 text. A planned `writeFormula` command includes both the parseable formula
 string and the generic model refs it used, so an agent can inspect what the
 action depends on without reverse-parsing placeholder names.
+For formulas outside the small helper set, use
+`formula.raw(source, { inputs })`; the source stays parseable while the
+declared refs remain inspectable and verifiable. These inputs are a declared
+dependency contract for agents, not parser-discovered proof that every formula
+reference has been mapped to a model ref.
 
 Known single-cell `workbook.format(ref, { numberFormat })` actions compile to
 concrete `setCellFormat` ops. Use `numberFormat: null` to plan an explicit

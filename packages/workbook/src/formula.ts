@@ -8,6 +8,10 @@ export interface WorkbookFormulaExpression {
   readonly inputs: readonly WorkbookRef[]
 }
 
+export interface WorkbookRawFormulaOptions {
+  readonly inputs?: readonly WorkbookRef[]
+}
+
 export type WorkbookFormulaOperand = WorkbookFormulaExpression | WorkbookRef | string | number | boolean
 
 function normalizeFormulaSource(source: string): string {
@@ -127,8 +131,8 @@ function call(name: string, args: readonly WorkbookFormulaOperand[]): WorkbookFo
 }
 
 export const formula = {
-  raw(source: string): WorkbookFormulaExpression {
-    return createFormulaExpression(source)
+  raw(source: string, options: WorkbookRawFormulaOptions = {}): WorkbookFormulaExpression {
+    return createFormulaExpression(source, options.inputs ?? [])
   },
   source(expression: WorkbookFormulaOperand): string {
     return normalizeFormulaSource(operandSource(expression))
