@@ -48,6 +48,7 @@ export type MacosExcelStructuralOperation =
   | { readonly kind: 'setCellValue'; readonly address: string; readonly value: string | number | boolean }
   | { readonly kind: 'moveRows'; readonly sourceRange: string; readonly destinationRange: string }
   | { readonly kind: 'moveColumns'; readonly sourceRange: string; readonly destinationRange: string }
+  | { readonly kind: 'createDataTable'; readonly range: string; readonly rowInput: string; readonly columnInput: string }
 
 export interface MacosExcelStructuralOperationOracleRequest {
   readonly workbookPath: string
@@ -457,6 +458,10 @@ function structuralOperationAppleScript(operation: MacosExcelStructuralOperation
         `cut range (range ${toAppleScriptString(operation.sourceRange)} of targetWorksheet)`,
         `insert into range (range ${toAppleScriptString(operation.destinationRange)} of targetWorksheet) shift shift to right`,
       ].join('\n      ')
+    case 'createDataTable':
+      return `data table (range ${toAppleScriptString(operation.range)} of targetWorksheet) row input (range ${toAppleScriptString(
+        operation.rowInput,
+      )} of targetWorksheet) column input (range ${toAppleScriptString(operation.columnInput)} of targetWorksheet)`
   }
 }
 

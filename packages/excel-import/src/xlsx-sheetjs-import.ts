@@ -18,7 +18,7 @@ import { readImportedSheetComments } from './xlsx-comments.js'
 import { readImportedWorkbookConditionalFormatArtifacts, readImportedWorkbookConditionalFormats } from './xlsx-conditional-formats.js'
 import { readImportedWorkbookControlArtifacts } from './xlsx-control-artifacts.js'
 import { readImportedWorkbookDataModelArtifacts } from './xlsx-data-model-artifacts.js'
-import { readImportedWorkbookDataTableFormulas } from './xlsx-data-table-formulas.js'
+import { buildImportedDataTableFormulaCells, readImportedWorkbookDataTableFormulas } from './xlsx-data-table-formulas.js'
 import { readImportedDefinedNames } from './xlsx-defined-names.js'
 import { shouldUseDenseSheetJsParse } from './xlsx-dense-sheetjs-parse.js'
 import { readImportedWorkbookExternalConnections } from './xlsx-external-connections.js'
@@ -282,9 +282,6 @@ function importParsedSheetJsWorkbook(args: {
     : undefined
   const importedArrayFormulasBySheet = workbookZip ? readImportedWorkbookArrayFormulas(workbookZip, workbook.SheetNames) : new Map()
   const importedDataTableFormulasBySheet = workbookZip ? readImportedWorkbookDataTableFormulas(workbookZip, workbook.SheetNames) : new Map()
-  if (importedDataTableFormulasBySheet.size > 0) {
-    warnings.push(dataTableFormulasWarning)
-  }
   const importedPivots = workbookZip
     ? readImportedWorkbookPivots(workbookZip, workbook.SheetNames, importedTables, importedDefinedNames.definedNames)
     : undefined
@@ -336,6 +333,7 @@ function importParsedSheetJsWorkbook(args: {
   let volatileFormulaWarningSeen = false
   let formulaCellCount = 0
   let cachedFormulaValueCount = 0
+  let unsupportedDataTableFormulaCount = 0
   const styleCatalog = new Map<string, CellStyleRecord>()
   const unsupportedFormulaDependencies: NonNullable<WorkbookMetadataSnapshot['unsupportedFormulaDependencies']> = []
   const importedArrayFormulaSpills: NonNullable<WorkbookMetadataSnapshot['spills']> = []
@@ -365,6 +363,9 @@ function importParsedSheetJsWorkbook(args: {
     const importedComments = readImportedSheetComments(sheetName, sheet)
     const importedWorksheetTextValues = importedWorksheetTextValuesBySheet.get(sheetName)
     const importedWorksheetFormulaManifests = importedWorksheetFormulaManifestsBySheet.get(sheetName)
+    const importedDataTableFormulasForSheet = importedDataTableFormulasBySheet.get(sheetName)
+    const importedDataTableFormulaCells = buildImportedDataTableFormulaCells(importedDataTableFormulasForSheet)
+    unsupportedDataTableFormulaCount += importedDataTableFormulaCells.unsupportedCount
     const importedHyperlinks = readImportedSheetHyperlinks(sheetName, sheet)
     if (importedComments.ignoredCount > 0 && !ignoredCommentsSeen) {
       ignoredCommentsSeen = true
@@ -452,14 +453,16 @@ function importParsedSheetJsWorkbook(args: {
       const nextCell: WorkbookSnapshot['sheets'][number]['cells'][number] = { address }
       const formulaManifest = importedWorksheetFormulaManifests?.get(address)
       const manifestFormula = formulaManifest?.formula
-      const formula = typeof manifestFormula === 'string' && manifestFormula.trim().length > 0 ? manifestFormula : cell['f']
+      const dataTableFormula = importedDataTableFormulaCells.formulaCells.get(address)
+      const formula =
+        dataTableFormula ?? (typeof manifestFormula === 'string' && manifestFormula.trim().length > 0 ? manifestFormula : cell['f'])
       const xmlTextValue = importedWorksheetTextValues?.get(address)
       if (typeof formula === 'string' && formula.trim().length > 0) {
         const formulaResult = buildImportedFormulaSnapshotCell({
           sheetName,
           address,
           formula,
-          formulaManifest,
+          formulaManifest: dataTableFormula ? undefined : formulaManifest,
           cachedLiteral: xmlTextValue ?? readImportedLiteralCellValue(cell),
           tables: importedTables,
           externalLinkCaches: importedExternalLinkCaches,
@@ -500,6 +503,39 @@ function importParsedSheetJsWorkbook(args: {
         formula: formulaManifest.formula,
         formulaManifest,
         cachedLiteral: importedWorksheetTextValues?.get(address),
+        tables: importedTables,
+        externalLinkCaches: importedExternalLinkCaches,
+        externalWorkbookReferences: importedExternalWorkbookReferences,
+      })
+      if (!formulaResult) {
+        continue
+      }
+      const nextCell: WorkbookSnapshot['sheets'][number]['cells'][number] = { ...formulaResult.formulaCell }
+      const importedFormat = importedFormatsByAddress?.get(address)
+      if (importedFormat !== undefined) {
+        nextCell.format = importedFormat
+      }
+      const importedStyle = importedStylesByAddress?.get(address)
+      if (importedStyle) {
+        addStyleCell(decoded.r, decoded.c, internImportedStyle(importedStyle, styleCatalog))
+      } else if (activeStyleRow === decoded.r) {
+        flushActiveStyleRun()
+      }
+      recordImportedFormulaDiagnostics(formulaResult)
+      pushImportedSnapshotCell(cells, runtimeCellCoords, nextCell, decoded.r, decoded.c)
+    }
+    for (const [address, formula] of [...importedDataTableFormulaCells.formulaCells.entries()]
+      .filter(([candidateAddress]) => !seenCellAddresses.has(candidateAddress))
+      .toSorted((left, right) => compareCellAddresses(left[0], right[0]))) {
+      const decoded = XLSX.utils.decode_cell(address)
+      const cell = worksheetCellAt(sheet, decoded.r, decoded.c)
+      seenCellAddresses.add(address)
+      const formulaResult = buildImportedFormulaSnapshotCell({
+        sheetName,
+        address,
+        formula,
+        formulaManifest: undefined,
+        cachedLiteral: importedWorksheetTextValues?.get(address) ?? (cell ? readImportedLiteralCellValue(cell) : undefined),
         tables: importedTables,
         externalLinkCaches: importedExternalLinkCaches,
         externalWorkbookReferences: importedExternalWorkbookReferences,
@@ -565,7 +601,9 @@ function importParsedSheetJsWorkbook(args: {
           const address = XLSX.utils.encode_cell({ r: row, c: col })
           const cell = worksheetCellAt(sheet, row, col)
           const manifestFormula = importedWorksheetFormulaManifests?.get(address)?.formula
-          const formula = typeof manifestFormula === 'string' && manifestFormula.trim().length > 0 ? manifestFormula : cell?.['f']
+          const formula =
+            importedDataTableFormulaCells.formulaCells.get(address) ??
+            (typeof manifestFormula === 'string' && manifestFormula.trim().length > 0 ? manifestFormula : cell?.['f'])
           if (typeof formula === 'string' && formula.trim().length > 0) {
             return `=${normalizeImportedFormulaSource(formula)}`
           }
@@ -593,7 +631,6 @@ function importParsedSheetJsWorkbook(args: {
     const importedDrawingArtifactsForSheet = importedChartDrawingArtifacts?.drawingArtifacts.sheetArtifactsByName.get(sheetName)
     const importedControlArtifactsForSheet = importedControlArtifacts?.sheetArtifactsByName.get(sheetName)
     const importedArrayFormulasForSheet = importedArrayFormulasBySheet.get(sheetName)
-    const importedDataTableFormulasForSheet = importedDataTableFormulasBySheet.get(sheetName)
     const importedSheetVisibility = importedSheetVisibilitiesBySheet.get(sheetName)
     const merges = buildMergeEntries(sheetName, sheet['!merges'])
     const importedSheetProtection = importedSheetProtectionsBySheet.get(sheetName)
@@ -655,6 +692,10 @@ function importParsedSheetJsWorkbook(args: {
       cells,
     }
   })
+
+  if (unsupportedDataTableFormulaCount > 0) {
+    warnings.push(dataTableFormulasWarning)
+  }
 
   if (workbookZip) {
     warnings.push(...readImportedWorkbookCalculationWarnings(workbookZip, { hasFormulaCells: formulaCellCount > 0 }))

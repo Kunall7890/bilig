@@ -5,39 +5,93 @@ import type { WorkbookSnapshot } from '@bilig/protocol'
 import { dataTableFormulasWarning, exportXlsx, importXlsx } from '../index.js'
 
 describe('xlsx data table formulas roundtrip', () => {
-  it('preserves what-if data-table formula metadata in worksheet cells', () => {
-    const source = buildWorkbookWithDataTableFormula()
+  it('lowers two-variable data-table outputs to calculable formulas while preserving native metadata', () => {
+    const source = buildWorkbookWithTwoVariableDataTableFormula()
 
     const imported = importXlsx(source, 'what-if-data-table.xlsx')
     const exported = exportXlsx(imported.snapshot)
 
-    expect(imported.warnings).toEqual([dataTableFormulasWarning])
+    expect(imported.warnings).not.toContain(dataTableFormulasWarning)
+    expect(imported.snapshot.sheets[0]?.metadata?.dataTableFormulas).toEqual({
+      formulas: [
+        {
+          address: 'C3',
+          formulaXml: '<f t="dataTable" ref="C3:D4" dt2D="1" dtr="1" r1="A1" r2="A2"/>',
+        },
+      ],
+    })
+    expect(snapshotCell(imported.snapshot, 'C3')).toMatchObject({
+      address: 'C3',
+      formula: 'MULTIPLE.OPERATIONS(B2,A1,C2,A2,B3)',
+      value: 40,
+    })
+    expect(snapshotCell(imported.snapshot, 'D3')).toMatchObject({
+      address: 'D3',
+      formula: 'MULTIPLE.OPERATIONS(B2,A1,D2,A2,B3)',
+      value: 60,
+    })
+    expect(snapshotCell(imported.snapshot, 'C4')).toMatchObject({
+      address: 'C4',
+      formula: 'MULTIPLE.OPERATIONS(B2,A1,C2,A2,B4)',
+      value: 60,
+    })
+    expect(snapshotCell(imported.snapshot, 'D4')).toMatchObject({
+      address: 'D4',
+      formula: 'MULTIPLE.OPERATIONS(B2,A1,D2,A2,B4)',
+      value: 90,
+    })
+
+    expect(dataTableFormulaXml(exported)).toEqual(dataTableFormulaXml(source))
+    expect(cellXml(exported, 'C3')).toContain('<v>40</v>')
+    for (const address of ['D3', 'C4', 'D4']) {
+      expect(cellXml(exported, address)).not.toContain('<f')
+      expect(cellXml(exported, address)).not.toContain('MULTIPLE.OPERATIONS')
+    }
+  })
+
+  it('keeps unsupported data-table formulas as preserved metadata with a warning', () => {
+    const source = buildWorkbookWithUnsupportedDataTableFormula()
+
+    const imported = importXlsx(source, 'one-variable-data-table.xlsx')
+    const exported = exportXlsx(imported.snapshot)
+
+    expect(imported.warnings).toContain(dataTableFormulasWarning)
     expect(imported.snapshot.sheets[0]?.metadata?.dataTableFormulas).toEqual({
       formulas: [
         {
           address: 'B2',
-          formulaXml: '<f t="dataTable" ref="B2:D4" dt2D="1" dtr="1" r1="A1" r2="A2" ca="1"/>',
+          formulaXml: '<f t="dataTable" ref="B2:D4" r1="A1" ca="1"/>',
         },
       ],
     })
+    expect(snapshotCell(imported.snapshot, 'B2')).toMatchObject({ address: 'B2', value: 42 })
+    expect(snapshotCell(imported.snapshot, 'B2')?.formula).toBeUndefined()
     expect(dataTableFormulaXml(exported)).toEqual(dataTableFormulaXml(source))
-    expect(cellXml(exported, 'B2')).toContain('<v>42</v>')
   })
 })
 
-function buildWorkbookWithDataTableFormula(): Uint8Array {
-  const zip = unzipSync(exportXlsx(buildWorkbook()))
+function buildWorkbookWithTwoVariableDataTableFormula(): Uint8Array {
+  const zip = unzipSync(exportXlsx(buildTwoVariableWorkbook()))
   const sheetXml = readZipTextFromZip(zip, 'xl/worksheets/sheet1.xml')
   zip['xl/worksheets/sheet1.xml'] = strToU8(
     sheetXml.replace(
-      /<c\b[^>]*\br=(["'])B2\1[^>]*>[\s\S]*?<\/c>/u,
-      '<c r="B2"><f t="dataTable" ref="B2:D4" dt2D="1" dtr="1" r1="A1" r2="A2" ca="1"/><v>42</v></c>',
+      /<c\b[^>]*\br=(["'])C3\1[^>]*>[\s\S]*?<\/c>/u,
+      '<c r="C3"><f t="dataTable" ref="C3:D4" dt2D="1" dtr="1" r1="A1" r2="A2"/><v>40</v></c>',
     ),
   )
   return zipSync(zip)
 }
 
-function buildWorkbook(): WorkbookSnapshot {
+function buildWorkbookWithUnsupportedDataTableFormula(): Uint8Array {
+  const zip = unzipSync(exportXlsx(buildUnsupportedWorkbook()))
+  const sheetXml = readZipTextFromZip(zip, 'xl/worksheets/sheet1.xml')
+  zip['xl/worksheets/sheet1.xml'] = strToU8(
+    sheetXml.replace(/<c\b[^>]*\br=(["'])B2\1[^>]*>[\s\S]*?<\/c>/u, '<c r="B2"><f t="dataTable" ref="B2:D4" r1="A1" ca="1"/><v>42</v></c>'),
+  )
+  return zipSync(zip)
+}
+
+function buildTwoVariableWorkbook(): WorkbookSnapshot {
   return {
     version: 1,
     workbook: { name: 'What-if table' },
@@ -47,8 +101,35 @@ function buildWorkbook(): WorkbookSnapshot {
         name: 'Sensitivity',
         order: 0,
         cells: [
+          { address: 'A1', value: 1 },
+          { address: 'A2', value: 10 },
+          { address: 'A3', formula: 'A1*A2', value: 10 },
+          { address: 'B2', formula: 'A3', value: 10 },
+          { address: 'C2', value: 2 },
+          { address: 'D2', value: 3 },
+          { address: 'B3', value: 20 },
+          { address: 'C3', value: 40 },
+          { address: 'D3', value: 60 },
+          { address: 'B4', value: 30 },
+          { address: 'C4', value: 60 },
+          { address: 'D4', value: 90 },
+        ],
+      },
+    ],
+  }
+}
+
+function buildUnsupportedWorkbook(): WorkbookSnapshot {
+  return {
+    version: 1,
+    workbook: { name: 'Unsupported what-if table' },
+    sheets: [
+      {
+        id: 1,
+        name: 'Sensitivity',
+        order: 0,
+        cells: [
           { address: 'A1', value: 10 },
-          { address: 'A2', value: 20 },
           { address: 'B2', value: 42 },
           { address: 'C2', value: 43 },
           { address: 'D4', value: 44 },
@@ -56,6 +137,10 @@ function buildWorkbook(): WorkbookSnapshot {
       },
     ],
   }
+}
+
+function snapshotCell(snapshot: WorkbookSnapshot, address: string): WorkbookSnapshot['sheets'][number]['cells'][number] | undefined {
+  return snapshot.sheets[0]?.cells.find((cell) => cell.address === address)
 }
 
 function dataTableFormulaXml(bytes: Uint8Array): string[] {

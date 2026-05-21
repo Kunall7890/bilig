@@ -2,7 +2,9 @@ import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 
-import { exportXlsx, importXlsx } from '@bilig/excel-import'
+import { strFromU8, strToU8, unzipSync, zipSync } from 'fflate'
+
+import { dataTableFormulasWarning, exportXlsx, importXlsx } from '@bilig/excel-import'
 import { readRuntimeImage, SpreadsheetEngine } from '@bilig/core'
 import {
   buildFormulaCellComparison,
@@ -149,6 +151,19 @@ const expectedOffsetImplicitIntersectionOracleCells = [
   { address: 'H1', formula: '=SUM(OFFSET(A2,0,0,1,3))', rawValue: 'number\t15.0', value: { kind: 'number', value: 15 } },
   { address: 'I1', formula: '=SUM(OFFSET(A1,0,0,3,3))', rawValue: 'number\t45.0', value: { kind: 'number', value: 45 } },
 ] as const
+const dataTableOracleAddresses = ['C3', 'D3', 'C4', 'D4'] as const
+const expectedDataTableOracleValues = [
+  { address: 'C3', value: { kind: 'number', value: 40 } },
+  { address: 'D3', value: { kind: 'number', value: 60 } },
+  { address: 'C4', value: { kind: 'number', value: 60 } },
+  { address: 'D4', value: { kind: 'number', value: 90 } },
+] as const
+const expectedDataTableImportedFormulaByAddress = new Map([
+  ['C3', '=MULTIPLE.OPERATIONS(B2,A1,C2,A2,B3)'],
+  ['D3', '=MULTIPLE.OPERATIONS(B2,A1,D2,A2,B3)'],
+  ['C4', '=MULTIPLE.OPERATIONS(B2,A1,C2,A2,B4)'],
+  ['D4', '=MULTIPLE.OPERATIONS(B2,A1,D2,A2,B4)'],
+] as const)
 
 describe('macOS Desktop Excel XLSX oracle for WorkPaper', () => {
   it('exports and reimports the oracle fixture through the headless workbook path', () => {
@@ -577,6 +592,29 @@ describe('macOS Desktop Excel XLSX oracle for WorkPaper', () => {
       expect(normalizedCellValue(reimported.getCellValue(addressToCell('D1')))).toEqual(tableEmptyBodyOracleCell.value)
     } finally {
       reimported.dispose()
+    }
+  })
+
+  it('imports native two-variable data-table outputs into headless calculable formulas', () => {
+    const imported = importXlsx(buildNativeDataTableXlsx(), 'headless-native-data-table-oracle.xlsx')
+    expect(imported.warnings).not.toContain(dataTableFormulasWarning)
+    expect(imported.snapshot.sheets[0]?.metadata?.dataTableFormulas?.formulas).toEqual([
+      {
+        address: 'C3',
+        formulaXml: '<f t="dataTable" ref="C3:D4" dt2D="1" dtr="1" r1="A1" r2="A2"/>',
+      },
+    ])
+
+    const workbook = WorkPaper.buildFromSnapshot(imported.snapshot, workbookConfig)
+    try {
+      expect(dataTableOracleAddresses.map((address) => normalizedCellValue(workbook.getCellValue(addressToCell(address))))).toEqual(
+        expectedDataTableOracleValues.map((expected) => expected.value),
+      )
+      for (const [address, formula] of expectedDataTableImportedFormulaByAddress) {
+        expect(workbook.getCellFormula(addressToCell(address))).toBe(formula)
+      }
+    } finally {
+      workbook.dispose()
     }
   })
 
@@ -1343,6 +1381,55 @@ describe('macOS Desktop Excel XLSX oracle for WorkPaper', () => {
     },
     60_000,
   )
+
+  it.runIf(process.env.BILIG_EXCEL_ORACLE_RUN === '1')(
+    'imports Desktop Excel native data-table outputs into headless formulas',
+    () => {
+      if (!isMacosExcelInstalled()) {
+        throw new Error('BILIG_EXCEL_ORACLE_RUN=1 requires /Applications/Microsoft Excel.app')
+      }
+
+      const tempDir = mkdtempSync(join(tmpdir(), 'bilig-headless-excel-data-table-oracle-'))
+      try {
+        const workbookPath = join(tempDir, 'headless-data-table-oracle.xlsx')
+        const workbook = buildDataTableOracleWorkbook(false)
+        try {
+          writeFileSync(workbookPath, exportXlsx(workbook.exportSnapshot()))
+        } finally {
+          workbook.dispose()
+        }
+
+        const excelResult = runMacosExcelStructuralOperationOracle({
+          workbookPath,
+          worksheetName: 'DataTable',
+          operations: [{ kind: 'createDataTable', range: 'B2:D4', rowInput: 'A1', columnInput: 'A2' }],
+          inspectCells: dataTableOracleAddresses,
+          saveWorkbook: true,
+        })
+        expect(excelResult.cells.map(({ address, value }) => ({ address, value }))).toEqual(expectedDataTableOracleValues)
+
+        const imported = importXlsx(new Uint8Array(readFileSync(workbookPath)), 'headless-data-table-oracle-recalculated.xlsx')
+        expect(imported.warnings).not.toContain(dataTableFormulasWarning)
+        expect(imported.snapshot.sheets[0]?.metadata?.dataTableFormulas?.formulas[0]?.address).toBe('C3')
+        expect(imported.snapshot.sheets[0]?.metadata?.dataTableFormulas?.formulas[0]?.formulaXml).toContain('t="dataTable"')
+
+        const reimported = WorkPaper.buildFromSnapshot(imported.snapshot, workbookConfig)
+        try {
+          expect(dataTableOracleAddresses.map((address) => normalizedCellValue(reimported.getCellValue(addressToCell(address))))).toEqual(
+            expectedDataTableOracleValues.map((expected) => expected.value),
+          )
+          for (const [address, formula] of expectedDataTableImportedFormulaByAddress) {
+            expect(reimported.getCellFormula(addressToCell(address))).toBe(formula)
+          }
+        } finally {
+          reimported.dispose()
+        }
+      } finally {
+        rmSync(tempDir, { recursive: true, force: true })
+      }
+    },
+    60_000,
+  )
 })
 
 function buildOracleWorkbook(): WorkPaper {
@@ -1477,6 +1564,45 @@ function buildStructuralMoveColumnOracleWorkbook(): WorkPaper {
     },
     workbookConfig,
   )
+}
+
+function buildDataTableOracleWorkbook(includeOutputs: boolean): WorkPaper {
+  return WorkPaper.buildFromSheets(
+    {
+      DataTable: [
+        [1],
+        [10, '=A3', 2, 3],
+        ['=A1*A2', 20, includeOutputs ? 40 : null, includeOutputs ? 60 : null],
+        [null, 30, includeOutputs ? 60 : null, includeOutputs ? 90 : null],
+      ],
+    },
+    workbookConfig,
+  )
+}
+
+function buildNativeDataTableXlsx(): Uint8Array {
+  const workbook = buildDataTableOracleWorkbook(true)
+  try {
+    const zip = unzipSync(exportXlsx(workbook.exportSnapshot()))
+    const sheetXml = readZipTextFromZip(zip, 'xl/worksheets/sheet1.xml')
+    zip['xl/worksheets/sheet1.xml'] = strToU8(
+      sheetXml.replace(
+        /<c\b[^>]*\br=(["'])C3\1[^>]*>[\s\S]*?<\/c>/u,
+        '<c r="C3"><f t="dataTable" ref="C3:D4" dt2D="1" dtr="1" r1="A1" r2="A2"/><v>40</v></c>',
+      ),
+    )
+    return zipSync(zip)
+  } finally {
+    workbook.dispose()
+  }
+}
+
+function readZipTextFromZip(zip: Record<string, Uint8Array>, path: string): string {
+  const bytes = zip[path]
+  if (!bytes) {
+    throw new Error(`Missing XLSX part: ${path}`)
+  }
+  return strFromU8(bytes)
 }
 
 async function buildTableColumnInsertOracleEngine(): Promise<SpreadsheetEngine> {
