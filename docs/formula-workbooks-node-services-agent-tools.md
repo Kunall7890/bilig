@@ -119,11 +119,10 @@ and needs formula readback, persistence, and restore proof.
 
 ## Evidence and limits
 
-The current checked benchmark artifact records `100/100` comparable
-mean-latency wins against HyperFormula-style workloads. The narrowest p95 row is
-public: `aggregate-overlapping-sliding-window-wide` is a `0.946x`
-WorkPaper-to-HyperFormula p95 ratio, and browser UI rendering is outside the
-benchmark.
+The current checked benchmark artifact records `94/100` comparable
+mean-latency wins against HyperFormula-style workloads. The worst p95 row is
+public: `structural-move-rows` is a `4.047x` WorkPaper-to-HyperFormula p95
+ratio, and browser UI rendering is outside the benchmark.
 
 This page does not claim full Excel compatibility. It does not claim chart,
 macro, formatting, collaborative editing, or complete XLSX fidelity. Start with

@@ -374,7 +374,7 @@ async function assertPublicSurfaces(evidence: PublicEvidence): Promise<void> {
   )
   requireIncludesIgnoringWhitespace(
     index,
-    `${overall.worstP95RatioWorkload} is the narrowest p95 win: <code>${p95Ratio}</code>`,
+    `${overall.worstP95RatioWorkload} is the current worst p95 row: <code>${p95Ratio}</code>`,
     'docs/index.html',
   )
 

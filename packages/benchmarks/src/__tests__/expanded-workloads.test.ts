@@ -3,6 +3,7 @@ import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { describe, expect, it } from 'vitest'
 import { ENGINE_COUNTER_KEYS } from '../../../core/src/perf/engine-counters.js'
+import { DEFAULT_COMPETITIVE_WARMUP_COUNT } from '../benchmark-workpaper-vs-hyperformula.js'
 import {
   EXPANDED_COMPARATIVE_WORKLOAD_SCORECARD_LANE,
   EXPANDED_COMPARATIVE_WORKLOADS,
@@ -296,6 +297,41 @@ function readExpandedBaselineReport(path: string): {
   }
 }
 
+function readExpandedBaselineBenchmarkSettings(path: string): { sampleCount: unknown; warmupCount: unknown } {
+  const parsed: unknown = JSON.parse(readFileSync(path, 'utf8'))
+  const benchmark =
+    parsed !== null &&
+    typeof parsed === 'object' &&
+    'benchmark' in parsed &&
+    parsed.benchmark !== null &&
+    typeof parsed.benchmark === 'object'
+      ? parsed.benchmark
+      : undefined
+  if (!benchmark || !('sampleCount' in benchmark) || !('warmupCount' in benchmark)) {
+    throw new Error(`Unexpected expanded baseline benchmark settings: ${path}`)
+  }
+  return {
+    sampleCount: benchmark.sampleCount,
+    warmupCount: benchmark.warmupCount,
+  }
+}
+
+function countRawBenchmarkSampleArrays(value: unknown): number {
+  if (Array.isArray(value)) {
+    return value.reduce((count, child) => count + countRawBenchmarkSampleArrays(child), 0)
+  }
+  if (value === null || typeof value !== 'object') {
+    return 0
+  }
+
+  return Object.entries(value).reduce((count, [key, child]) => {
+    if (key === 'samples' && Array.isArray(child) && child.every((entry) => typeof entry === 'number')) {
+      return count + 1
+    }
+    return count + countRawBenchmarkSampleArrays(child)
+  }, 0)
+}
+
 function isExpandedComparativeBenchmarkResult(value: unknown): value is ExpandedComparativeBenchmarkResult {
   if (value === null || typeof value !== 'object') {
     return false
@@ -413,6 +449,17 @@ describe('expanded comparative benchmark workloads', () => {
 
     expect(normalizeCompetitiveReportValue(baseline.families)).toEqual(normalizeCompetitiveReportValue(expectedReport.families))
     expect(normalizeCompetitiveReportValue(baseline.scorecard)).toEqual(normalizeCompetitiveReportValue(expectedReport.scorecard))
+  })
+
+  it('keeps checked-in expanded baseline on the default 200-sample proof settings', () => {
+    expect(readExpandedBaselineBenchmarkSettings(expandedBaselinePath)).toEqual({
+      sampleCount: DEFAULT_EXPANDED_COMPETITIVE_SAMPLE_COUNT,
+      warmupCount: DEFAULT_COMPETITIVE_WARMUP_COUNT,
+    })
+  })
+
+  it('keeps checked-in expanded baseline compact instead of storing raw timing sample arrays', () => {
+    expect(countRawBenchmarkSampleArrays(JSON.parse(readFileSync(expandedBaselinePath, 'utf8')))).toBe(0)
   })
 
   it('assigns every expanded workload to exactly one family', () => {
