@@ -67,6 +67,7 @@ import {
 import { tryBindHydratedFreshDirectFormula } from './formula-initialization-hydrated-direct-scalar.js'
 import { tryEvaluateFormulaLeafInlineScalar } from './formula-leaf-inline-scalar-evaluator.js'
 import { initializeCachedFormulaSourcesAtNow as initializeCachedFormulaSourcesAtNowUnchecked } from './formula-initialization-cached-formulas.js'
+import { tryBindInitialFreshDirectScalarFormula } from './formula-initialization-fresh-direct-scalar-binding.js'
 
 export type {
   EngineFormulaInitializationService,
@@ -74,6 +75,7 @@ export type {
   HydratedPreparedFormulaInitializationRef,
   PreparedFormulaInitializationRef,
 } from './formula-initialization-service-types.js'
+
 export function createEngineFormulaInitializationService(args: EngineFormulaInitializationServiceArgs): EngineFormulaInitializationService {
   const hasCycleMembersNow = (): boolean => scanFormulaInitializationCycleMembers(args.state)
   const resolveSheetName = createFormulaInitializationSheetNameResolver(args.state)
@@ -353,30 +355,40 @@ export function createEngineFormulaInitializationService(args: EngineFormulaInit
               try {
                 const prepared = resolveEntry(ref, cellIndex)
                 const requiresWorkbookMetadataBinding = compiledFormulaRequiresWorkbookMetadataBinding(prepared.compiled)
-                if (requiresWorkbookMetadataBinding) {
-                  args.bindFormula(prepared.cellIndex, prepared.ownerSheetName, prepared.source)
-                } else {
-                  args.bindPreparedFormula(
-                    prepared.cellIndex,
-                    prepared.ownerSheetName,
-                    prepared.source,
-                    prepared.compiled,
-                    prepared.templateId,
-                    {
-                      deferFamilyRegistration:
-                        shouldDeferFormulaFamilyIndex ||
-                        deferredFormulaFamilyRuns !== undefined ||
-                        alignedFreshFormulaFamilyRuns !== undefined,
-                      deferFormulaInstanceRegistration: shouldDeferFormulaInstanceTable,
-                      assumeFreshFormula: !hadExistingFormulas,
-                      resolveWorkbookDateSystem,
-                      ownerPosition: {
-                        sheetName: prepared.ownerSheetName,
-                        row: prepared.row,
-                        col: prepared.col,
+                if (
+                  !tryBindInitialFreshDirectScalarFormula({
+                    bindFreshDirectScalarFormulaRun: args.bindFreshDirectScalarFormulaRun,
+                    counters: args.state.counters,
+                    hadExistingFormulas,
+                    prepared,
+                    refsLength: refs.length,
+                  })
+                ) {
+                  if (requiresWorkbookMetadataBinding) {
+                    args.bindFormula(prepared.cellIndex, prepared.ownerSheetName, prepared.source)
+                  } else {
+                    args.bindPreparedFormula(
+                      prepared.cellIndex,
+                      prepared.ownerSheetName,
+                      prepared.source,
+                      prepared.compiled,
+                      prepared.templateId,
+                      {
+                        deferFamilyRegistration:
+                          shouldDeferFormulaFamilyIndex ||
+                          deferredFormulaFamilyRuns !== undefined ||
+                          alignedFreshFormulaFamilyRuns !== undefined,
+                        deferFormulaInstanceRegistration: shouldDeferFormulaInstanceTable,
+                        assumeFreshFormula: !hadExistingFormulas,
+                        resolveWorkbookDateSystem,
+                        ownerPosition: {
+                          sheetName: prepared.ownerSheetName,
+                          row: prepared.row,
+                          col: prepared.col,
+                        },
                       },
-                    },
-                  )
+                    )
+                  }
                 }
                 const runtimeFormula = args.state.formulas.get(prepared.cellIndex)
                 if (alignedFreshFormulaFamilyRuns === undefined) {

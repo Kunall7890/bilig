@@ -127,7 +127,7 @@ function normalizeDirectAggregateResultOffset(offset: number | undefined): numbe
   return offset === undefined || Object.is(offset, 0) ? undefined : offset
 }
 
-function canUseFreshDirectScalarFormulaBinding(compiled: HydratedPreparedFormulaInitializationRef['compiled']): boolean {
+export function canUseFreshDirectScalarFormulaBinding(compiled: HydratedPreparedFormulaInitializationRef['compiled']): boolean {
   if (
     compiled.volatile ||
     compiled.producesSpill ||
