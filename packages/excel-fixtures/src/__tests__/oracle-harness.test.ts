@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-import { classifyFormulaComparison, type NormalizedFormulaValue } from '../workpaper-excel-oracle-harness-core.ts'
+import { classifyFormulaComparison, type NormalizedFormulaValue } from '../oracle-harness.js'
 
 const numberValue = (value: number): NormalizedFormulaValue => ({ kind: 'number', value })
 

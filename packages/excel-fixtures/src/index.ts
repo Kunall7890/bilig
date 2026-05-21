@@ -7,6 +7,10 @@ import { canonicalStatisticalFixtures } from './statistical-fixtures.js'
 import { canonicalTextFixtures } from './text-fixtures.js'
 import { canonicalWorkbookSemanticsFixtures } from './workbook-semantics-fixtures.js'
 
+export * from './macos-excel-oracle.js'
+export * from './macos-excel-oracle-config.js'
+export * from './oracle-harness.js'
+
 export const excelFixtureFamilies = [
   'arithmetic',
   'comparison',

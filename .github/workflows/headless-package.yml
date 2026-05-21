@@ -745,6 +745,18 @@ jobs:
           console.log(`Repository runtime package manifest baseline v${versions[0]}`);
           NODE
 
+      - name: Wait for github-ci success before release mutation
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+
+          node scripts/wait-for-github-ci-green.mjs \
+            --repo "${GITHUB_REPOSITORY}" \
+            --sha "$(git rev-parse HEAD)" \
+            --workflow github-ci \
+            --branch main
+
       - name: Sync and commit runtime release metadata
         env:
           TARGET_VERSION: ${{ needs.plan_release.outputs.target_version }}
@@ -892,18 +904,6 @@ jobs:
 
           test "${origin_sha}" = "${head_sha}"
           test "${github_sha}" = "${head_sha}"
-
-      - name: Wait for github-ci success before publishing
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          set -euo pipefail
-
-          node scripts/wait-for-github-ci-green.mjs \
-            --repo "${GITHUB_REPOSITORY}" \
-            --sha "$(git rev-parse HEAD)" \
-            --workflow github-ci \
-            --branch main
 
       - name: Build runtime package chain
         run: |
