@@ -206,6 +206,56 @@ describe('formula cache roundtrip', () => {
     expect(cells.get('B3')).toMatchObject({ value: 6 })
     expect(reimported.snapshot.workbook.metadata?.spills).toEqual([{ sheetName: 'Sheet1', address: 'B1', rows: 3, cols: 1 }])
   })
+
+  it('keeps inserted native spill cache rows sorted before later worksheet rows', () => {
+    const snapshot = attachRuntimeImage(
+      {
+        version: 1,
+        workbook: {
+          name: 'native-spill-row-order',
+          metadata: {
+            spills: [{ sheetName: 'Sheet1', address: 'H2', rows: 3, cols: 1 }],
+          },
+        },
+        sheets: [
+          {
+            id: 1,
+            name: 'Sheet1',
+            order: 0,
+            cells: [
+              { address: 'A1', value: 'a' },
+              { address: 'C1', value: 100 },
+              { address: 'A2', value: 'b' },
+              { address: 'C2', value: 200 },
+              { address: 'A3', value: 'c' },
+              { address: 'C3', value: 300 },
+              { address: 'H2', formula: 'CHOOSE(2,A1:A3,C1:C3)' },
+              { address: 'H6', formula: 'SUM(CHOOSE(2,B1:B3,C1:C3))', value: 600 },
+              { address: 'H7', formula: 'XLOOKUP("b",A1:A3,C1:C3,"missing",0)', value: 200 },
+            ],
+          },
+        ],
+      } satisfies WorkbookSnapshot,
+      {
+        version: 1,
+        templateBank: [],
+        formulaInstances: [],
+        formulaValues: [],
+        cellValues: [
+          { sheetName: 'Sheet1', row: 1, col: 7, value: { tag: ValueTag.Number, value: 100 } },
+          { sheetName: 'Sheet1', row: 2, col: 7, value: { tag: ValueTag.Number, value: 200 } },
+          { sheetName: 'Sheet1', row: 3, col: 7, value: { tag: ValueTag.Number, value: 300 } },
+        ],
+      },
+    )
+
+    const exported = exportXlsx(snapshot)
+    const sheetXml = strFromU8(unzipSync(exported)['xl/worksheets/sheet1.xml'] ?? new Uint8Array())
+
+    expect(rowNumbers(sheetXml)).toEqual([1, 2, 3, 4, 6, 7])
+    expect(cellXml(sheetXml, 'H2')).toContain('<f t="array" ref="H2:H4">CHOOSE(2,A1:A3,C1:C3)</f>')
+    expect(cellXml(sheetXml, 'H4')).toContain('<v>300</v>')
+  })
 })
 
 function buildFormulaCacheWorkbookBytes(): Uint8Array {
@@ -289,4 +339,8 @@ function replaceCellXml(sheetXml: string, address: string, replacement: string):
     throw new Error(`Missing fixture cell ${address}`)
   }
   return sheetXml.replace(pattern, replacement)
+}
+
+function rowNumbers(sheetXml: string): number[] {
+  return [...sheetXml.matchAll(/<row\b[^>]*\br="([0-9]+)"/gu)].map((match) => Number(match[1]))
 }

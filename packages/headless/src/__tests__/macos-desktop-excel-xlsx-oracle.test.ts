@@ -41,6 +41,21 @@ const expectedDynamicSpillOracleValues = [
   { address: 'B2', value: { kind: 'number', value: 4 } },
   { address: 'B3', value: { kind: 'number', value: 6 } },
 ] as const
+const chooseArrayIndexOracleAddresses = ['E1', 'F1', 'E2', 'F2', 'E3', 'F3', 'H1', 'H2', 'H3', 'H4', 'H6', 'H7'] as const
+const expectedChooseArrayIndexOracleValues = [
+  { address: 'E1', value: { kind: 'string', value: 'a' } },
+  { address: 'F1', value: { kind: 'number', value: 10 } },
+  { address: 'E2', value: { kind: 'string', value: 'b' } },
+  { address: 'F2', value: { kind: 'number', value: 20 } },
+  { address: 'E3', value: { kind: 'string', value: 'c' } },
+  { address: 'F3', value: { kind: 'number', value: 30 } },
+  { address: 'H1', value: { kind: 'number', value: 660 } },
+  { address: 'H2', value: { kind: 'number', value: 100 } },
+  { address: 'H3', value: { kind: 'number', value: 200 } },
+  { address: 'H4', value: { kind: 'number', value: 300 } },
+  { address: 'H6', value: { kind: 'number', value: 600 } },
+  { address: 'H7', value: { kind: 'number', value: 20 } },
+] as const
 const structuralMoveColumnFormulaOracleCell = {
   address: 'F1',
   formula: '=SUM(B1:B1)',
@@ -728,6 +743,54 @@ describe('macOS Desktop Excel XLSX oracle for WorkPaper', () => {
   )
 
   it.runIf(process.env.BILIG_EXCEL_ORACLE_RUN === '1')(
+    'matches Desktop Excel CHOOSE array-index virtual table semantics',
+    () => {
+      if (!isMacosExcelInstalled()) {
+        throw new Error('BILIG_EXCEL_ORACLE_RUN=1 requires /Applications/Microsoft Excel.app')
+      }
+
+      const tempDir = mkdtempSync(join(tmpdir(), 'bilig-headless-excel-choose-array-index-oracle-'))
+      try {
+        const workbookPath = join(tempDir, 'headless-choose-array-index-oracle.xlsx')
+        const workbook = buildChooseArrayIndexOracleWorkbook()
+        try {
+          writeFileSync(workbookPath, exportXlsx(workbook.exportSnapshot()))
+        } finally {
+          workbook.dispose()
+        }
+
+        const excelResult = runMacosExcelInspectionOracle({
+          workbookPath,
+          worksheetName: 'ChooseRef',
+          formulaCells: [],
+          inspectCells: chooseArrayIndexOracleAddresses,
+          saveWorkbook: true,
+        })
+
+        expect(excelResult.cells.map(({ address, value }) => ({ address, value }))).toEqual(expectedChooseArrayIndexOracleValues)
+        expect(excelResult.cells[0]?.formula).toBe('=CHOOSE({1,2},A1:A3,B1:B3)')
+
+        const imported = importXlsx(new Uint8Array(readFileSync(workbookPath)), 'headless-choose-array-index-oracle-recalculated.xlsx')
+        const reimported = WorkPaper.buildFromSnapshot(imported.snapshot, workbookConfig)
+        try {
+          expect(
+            chooseArrayIndexOracleAddresses.map((address) => normalizedCellValue(reimported.getCellValue(addressToCell(address)))),
+          ).toEqual(expectedChooseArrayIndexOracleValues.map((expected) => expected.value))
+          expect(imported.snapshot.workbook.metadata?.spills).toEqual([
+            { sheetName: 'ChooseRef', address: 'E1', rows: 3, cols: 2 },
+            { sheetName: 'ChooseRef', address: 'H2', rows: 3, cols: 1 },
+          ])
+        } finally {
+          reimported.dispose()
+        }
+      } finally {
+        rmSync(tempDir, { recursive: true, force: true })
+      }
+    },
+    60_000,
+  )
+
+  it.runIf(process.env.BILIG_EXCEL_ORACLE_RUN === '1')(
     'matches Desktop Excel column-move formula rewrite semantics',
     () => {
       if (!isMacosExcelInstalled()) {
@@ -1114,6 +1177,23 @@ function buildDynamicSpillOracleWorkbook(): WorkPaper {
   return WorkPaper.buildFromSheets(
     {
       Cases: [[1, '=MAP(A1:A3,LAMBDA(x,x*2))'], [2], [3]],
+    },
+    workbookConfig,
+  )
+}
+
+function buildChooseArrayIndexOracleWorkbook(): WorkPaper {
+  return WorkPaper.buildFromSheets(
+    {
+      ChooseRef: [
+        ['a', 10, 100, null, '=CHOOSE({1,2},A1:A3,B1:B3)', null, null, '=SUM(CHOOSE({1,2},B1:B3,C1:C3))'],
+        ['b', 20, 200, null, null, null, null, '=CHOOSE(2,A1:A3,C1:C3)'],
+        ['c', 30, 300],
+        [],
+        [],
+        [null, null, null, null, null, null, null, '=SUM(CHOOSE(2,B1:B3,C1:C3))'],
+        [null, null, null, null, null, null, null, '=XLOOKUP("b",CHOOSE(1,A1:A3,C1:C3),CHOOSE(1,B1:B3,C1:C3),"missing",0)'],
+      ],
     },
     workbookConfig,
   )

@@ -113,7 +113,7 @@ export function producesSpillResult(node: FormulaNode): boolean {
       return producesSpillResult(node.left) || producesSpillResult(node.right)
     case 'CallExpr':
       if (node.callee.toUpperCase() === 'CHOOSE') {
-        return node.args.slice(1).some((arg) => producesSpillResult(arg))
+        return node.args.some((arg) => producesSpillResult(arg))
       }
       if (node.callee.toUpperCase() === 'XLOOKUP') {
         return xlookupProducesSpill(node.args)

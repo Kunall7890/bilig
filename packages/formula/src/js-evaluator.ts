@@ -166,6 +166,7 @@ function evaluateSpecialCall(
           stringValue,
           stackScalar,
           cloneStackValue,
+          matrixFromStackValue,
           toNumber,
           toStringValue,
           isSingleCellValue,

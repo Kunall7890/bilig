@@ -781,6 +781,8 @@ describe('formula', () => {
     expect(compileFormula('TEXTAFTER(A1,"-")').mode).toBe(1)
     expect(compileFormula('CHOOSE(2,"red","blue","green")').mode).toBe(1)
     expect(compileFormula('CHOOSE(1,A1:B2,C1:D2)')).toMatchObject({ mode: 1, producesSpill: true })
+    expect(compileFormula('CHOOSE({1,2},A1:A3,B1:B3)')).toMatchObject({ mode: 0, producesSpill: true })
+    expect(compileFormula('CHOOSE({1,2},1,2)')).toMatchObject({ mode: 0, producesSpill: true })
     expect(compileFormula('FILTER(A1:A4,A1:A4>2)')).toMatchObject({ mode: 1, producesSpill: true })
     expect(compileFormula('UNIQUE(A1:A4)')).toMatchObject({ mode: 1, producesSpill: true })
     expect(compileFormula('FILTER(A1:A4,B1:B4)')).toMatchObject({ mode: 1, producesSpill: true })

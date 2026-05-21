@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest'
 import { ErrorCode, ValueTag, type CellValue } from '@bilig/protocol'
-import { evaluatePlan, lowerToPlan, parseFormula } from '../index.js'
+import { evaluatePlan, evaluatePlanResult, lowerToPlan, parseFormula } from '../index.js'
 
 const context = {
   sheetName: 'Sheet2',
@@ -50,6 +50,40 @@ describe('js evaluator context special calls', () => {
         workbookName: 'Book.xlsx',
       }),
     ).toEqual(text('Sheet2'))
+  })
+
+  it('evaluates CHOOSE array indexes as virtual horizontal and vertical tables', () => {
+    const rangeContext = {
+      ...context,
+      resolveRange: (_sheetName: string, start: string, end: string): CellValue[] => {
+        if (start === 'A1' && end === 'A3') {
+          return [text('a'), text('b'), text('c')]
+        }
+        if (start === 'B1' && end === 'B3') {
+          return [number(10), number(20), number(30)]
+        }
+        return []
+      },
+    }
+
+    expect(evaluatePlanResult(lowerToPlan(parseFormula('CHOOSE({1,2},A1:A3,B1:B3)')), rangeContext)).toEqual({
+      kind: 'array',
+      rows: 3,
+      cols: 2,
+      values: [text('a'), number(10), text('b'), number(20), text('c'), number(30)],
+    })
+    expect(evaluatePlanResult(lowerToPlan(parseFormula('CHOOSE({1;2},A1:A3,B1:B3)')), rangeContext)).toEqual({
+      kind: 'array',
+      rows: 6,
+      cols: 1,
+      values: [text('a'), text('b'), text('c'), number(10), number(20), number(30)],
+    })
+    expect(evaluatePlanResult(lowerToPlan(parseFormula('CHOOSE({1,2},"x","y")')), rangeContext)).toEqual({
+      kind: 'array',
+      rows: 1,
+      cols: 2,
+      values: [text('x'), text('y')],
+    })
   })
 
   it('preserves validation and NA or REF branches', () => {
