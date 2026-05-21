@@ -2,7 +2,7 @@ import type { CellStyleRecord, SheetMetadataSnapshot, WorkbookSnapshot, Workbook
 import { attachImportedRuntimeImage } from './import-runtime-image.js'
 import { createSheetPreview, normalizeWorkbookName } from './workbook-import-helpers.js'
 import { XLSX_CONTENT_TYPE } from './workbook-import-content-types.js'
-import { createWorkbookPreview, type ImportedWorkbookPreview } from './workbook-import-preview.js'
+import { createWorkbookPreview } from './workbook-import-preview.js'
 import {
   readImportedSheetConditionalFormatArtifactsFromElementXml,
   readImportedSheetConditionalFormatArtifactsFromWorksheetXml,
@@ -21,7 +21,7 @@ import { externalPivotCachesWarning } from './xlsx-import-warnings.js'
 import { buildLargeSimpleCellMetadataReferenceSnapshots } from './xlsx-large-simple-cell-metadata.js'
 import { readWorkbookDefinedNames } from './xlsx-large-simple-defined-names.js'
 import { readLargeSimpleSheetHyperlinks, resolveLargeSimpleSheetHyperlinks } from './xlsx-large-simple-hyperlinks.js'
-import { LargeSimpleXlsxImportPhaseRecorder, type LargeSimpleXlsxImportPhaseTelemetry } from './xlsx-large-simple-import-telemetry.js'
+import { LargeSimpleXlsxImportPhaseRecorder } from './xlsx-large-simple-import-telemetry.js'
 import {
   appendLargeSimpleConditionalFormats,
   normalizeLargeSimpleConditionalFormatIds,
@@ -91,102 +91,24 @@ import {
   releaseLazyXlsxZipSource,
   type XlsxZipEntries,
 } from './xlsx-zip.js'
+import type {
+  LargeSimpleSheetMetadataInput,
+  LargeSimpleXlsxImportOptions,
+  LargeSimpleXlsxImportResult,
+  LargeSimpleXlsxImportSource,
+  LargeSimpleXlsxImportStats,
+  ParsedWorksheet,
+  ScannedWorksheet,
+} from './xlsx-large-simple-import-types.js'
 
-export interface LargeSimpleXlsxImportResult {
-  snapshot: WorkbookSnapshot
-  workbookName: string
-  sheetNames: string[]
-  warnings: string[]
-  preview: ImportedWorkbookPreview
-  stats: LargeSimpleXlsxImportStats
-}
-
-export interface LargeSimpleXlsxImportOptions {
-  minByteLength?: number
-  materializeCells?: boolean
-  materializeMetadata?: boolean
-  releaseArenaAfterMaterialization?: boolean
-  releaseZipSource?: boolean
-  allowUnsupportedFormulaText?: boolean
-  allowUnsupportedCellMetadata?: boolean
-  maxMaterializedLazyPackageArtifactBytes?: number
-  releaseOwnedSourceBytes?: () => LargeSimpleXlsxOwnedSourceReleaseEvidence | undefined
-}
-
-export interface LargeSimpleXlsxImportSource {
-  readonly byteLength: number
-}
-
-export interface LargeSimpleXlsxOwnedSourceReleaseEvidence {
-  readonly ownedSourceBytesBeforeRelease?: number
-  readonly ownedSourceBytesAfterRelease?: number
-}
-
-export interface LargeSimpleXlsxImportStats {
-  readonly sheetCount: number
-  readonly cellCount: number
-  readonly formulaCellCount: number
-  readonly valueCellCount: number
-  readonly definedNameCount: number
-  readonly tableCount: number
-  readonly mergeCount: number
-  readonly conditionalFormatCount: number
-  readonly dataValidationCount: number
-  readonly warningCount: number
-  readonly dimensions: readonly LargeSimpleXlsxSheetDimension[]
-  readonly phaseTelemetry: readonly LargeSimpleXlsxImportPhaseTelemetry[]
-}
-
-export interface LargeSimpleXlsxSheetDimension {
-  readonly sheetName: string
-  readonly rowCount: number
-  readonly columnCount: number
-  readonly nonEmptyCellCount: number
-  readonly usedRange: ImportedWorksheetCellScan['usedRange']
-}
-
-interface ParsedWorksheet {
-  readonly sheet: WorkbookSnapshot['sheets'][number]
-  readonly preview: ReturnType<typeof createSheetPreview>
-  readonly stats: {
-    readonly cellCount: number
-    readonly formulaCellCount: number
-    readonly valueCellCount: number
-    readonly tableCount: number
-    readonly mergeCount: number
-    readonly conditionalFormatCount: number
-    readonly dataValidationCount: number
-    readonly dimension: LargeSimpleXlsxSheetDimension
-  }
-}
-
-interface ScannedWorksheet {
-  readonly name: string
-  readonly order: number
-  readonly cellScan: ImportedWorksheetCellScan
-  readonly worksheetXml: string | undefined
-  readonly metadataScan: LargeSimpleWorksheetScannedMetadata | undefined
-  readonly metadataInput: LargeSimpleSheetMetadataInput
-  readonly sharedStringIndexes: Set<number>
-  readonly sharedStrings?: LargeSimpleSharedStrings
-  readonly hasUnresolvedSharedStringReferences?: boolean
-}
-
-type LargeSimpleSheetMetadataInput = Pick<
-  SheetMetadataSnapshot,
-  | 'conditionalFormatArtifacts'
-  | 'conditionalFormats'
-  | 'controlArtifacts'
-  | 'validations'
-  | 'drawingArtifacts'
-  | 'filters'
-  | 'hyperlinks'
-  | 'legacyCommentVml'
-  | 'pivotArtifacts'
-  | 'printerSettings'
-  | 'printPageSetup'
-  | 'sheetProtection'
->
+export type {
+  LargeSimpleXlsxImportOptions,
+  LargeSimpleXlsxImportResult,
+  LargeSimpleXlsxImportSource,
+  LargeSimpleXlsxImportStats,
+  LargeSimpleXlsxOwnedSourceReleaseEvidence,
+  LargeSimpleXlsxSheetDimension,
+} from './xlsx-large-simple-import-types.js'
 
 const defaultLargeSimpleXlsxByteThreshold = 1_000_000
 const lazySheetCellMaterializationThreshold = 100_000
