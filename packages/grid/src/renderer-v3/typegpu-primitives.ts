@@ -152,9 +152,12 @@ const textVertex = typegpuCore.vertexFn({
     clip: d.location(3, d.vec4f),
   },
 })`{
-  let clipSpacePixel = in.rectOrigin + in.quad * in.rectSize;
-  let panePixel = in.rectOrigin + surface.scrollOffset + in.quad * in.rectSize;
-  let screenPixel = surface.origin + panePixel;
+  let localPixel = in.quad * in.rectSize;
+  let clipSpacePixel = in.rectOrigin + localPixel;
+  let screenOrigin = surface.origin + in.rectOrigin + surface.scrollOffset;
+  let dpr = max(surface.dpr, 1.0);
+  let snappedScreenOrigin = round(screenOrigin * dpr) / dpr;
+  let screenPixel = snappedScreenOrigin + localPixel;
   let ndc = vec2f(
     (screenPixel.x / surface.viewportSize.x) * 2.0 - 1.0,
     1.0 - (screenPixel.y / surface.viewportSize.y) * 2.0,

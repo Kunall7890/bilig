@@ -2843,7 +2843,7 @@ describe('GridRenderTilePaneRuntime', () => {
     expect(hasOpaqueGreenFillRect(refreshed.residentBodyPane?.tile)).toBe(true)
   })
 
-  it('checks resident rendered rows for local text even when the logical visible window is shorter', () => {
+  it('does not localize offscreen resident text when the logical visible window is shorter', () => {
     const runtime = new GridRenderTilePaneRuntime()
     const host = createHost()
     const tileId = host.viewportTileKeys({
@@ -2883,9 +2883,9 @@ describe('GridRenderTilePaneRuntime', () => {
       }),
     )
 
-    expect(refreshed.residentBodyPane?.tile).not.toBe(remoteTile)
+    expect(refreshed.residentBodyPane?.tile).toBe(remoteTile)
     expect(refreshed.residentBodyPane?.tile.textRuns.some((run) => run.row === 24 && run.col === 1 && run.text === 'click-away text')).toBe(
-      true,
+      false,
     )
   })
 

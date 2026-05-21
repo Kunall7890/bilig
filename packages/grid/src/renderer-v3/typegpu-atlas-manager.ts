@@ -70,10 +70,16 @@ export interface TextContextConfigurationTarget {
   textRendering?: WorkbookTextRendering
 }
 
-const ATLAS_SCALE = 3
 const ATLAS_DIRTY_PAGE_SIZE = 32
 const ATLAS_PAGE_ID_STRIDE = 65536
+export const MIN_GLYPH_ATLAS_SCALE = 1
+export const MAX_GLYPH_ATLAS_SCALE = 4
 export const WORKBOOK_ATLAS_TEXT_RENDERING: WorkbookTextRendering = 'optimizeLegibility'
+
+export function resolveGlyphAtlasScale(dpr: number): number {
+  const normalized = Number.isFinite(dpr) && dpr > 0 ? dpr : 1
+  return Math.max(MIN_GLYPH_ATLAS_SCALE, Math.min(MAX_GLYPH_ATLAS_SCALE, Math.ceil(normalized)))
+}
 
 export function configureTextContext(context: TextContextConfigurationTarget): void {
   context.textBaseline = 'alphabetic'
@@ -173,11 +179,13 @@ function measureGlyph(
   }
 }
 
-export function createGlyphAtlas(input: { initialWidth?: number; initialHeight?: number; padding?: number } = {}) {
+export function createGlyphAtlas(input: { initialWidth?: number; initialHeight?: number; padding?: number; scale?: number } = {}) {
   const padding = Math.max(2, input.padding ?? 2)
-  const scale = ATLAS_SCALE
-  let width = Math.max(512, (input.initialWidth ?? 1024) * scale)
-  let height = Math.max(512, (input.initialHeight ?? 1024) * scale)
+  const logicalWidth = Math.max(512, input.initialWidth ?? 1024)
+  const logicalHeight = Math.max(512, input.initialHeight ?? 1024)
+  let scale = resolveGlyphAtlasScale(input.scale ?? 1)
+  let width = logicalWidth * scale
+  let height = logicalHeight * scale
   const canvas = createAtlasCanvas(width, height)
   let context = canvas ? getAtlasContext(canvas) : null
 
@@ -187,8 +195,8 @@ export function createGlyphAtlas(input: { initialWidth?: number; initialHeight?:
 
   const entries = new Map<string, MutableGlyphAtlasEntry>()
   const fontInternIds = new Map<string, number>()
-  const glyphKeys = new GlyphKeyRegistryV3()
-  const atlasPages = new TextAtlasPagesV3()
+  let glyphKeys = new GlyphKeyRegistryV3()
+  let atlasPages = new TextAtlasPagesV3()
   let cursorX = padding
   let cursorY = padding
   let rowHeight = 0
@@ -250,7 +258,7 @@ export function createGlyphAtlas(input: { initialWidth?: number; initialHeight?:
   }
 
   const intern = (font: string, glyph: string): GlyphAtlasEntry => {
-    const key = `${font}:${glyph}`
+    const key = `${scale}:${font}:${glyph}`
     const existing = entries.get(key)
     if (existing) {
       atlasPages.resolveGlyph(existing.glyphId)
@@ -371,6 +379,41 @@ export function createGlyphAtlas(input: { initialWidth?: number; initialHeight?:
     atlasSeq += 1
   }
 
+  const setScale = (nextDpr: number): boolean => {
+    const nextScale = resolveGlyphAtlasScale(nextDpr)
+    if (nextScale === scale) {
+      return false
+    }
+
+    scale = nextScale
+    width = logicalWidth * scale
+    height = logicalHeight * scale
+    if (canvas) {
+      canvas.width = width
+      canvas.height = height
+      context = getAtlasContext(canvas)
+      if (context) {
+        configureAtlasContext(context, scale, width / scale, height / scale)
+      }
+    } else {
+      context = null
+    }
+
+    entries.clear()
+    fontInternIds.clear()
+    glyphKeys = new GlyphKeyRegistryV3()
+    atlasPages = new TextAtlasPagesV3()
+    dirtyPages.clear()
+    cursorX = padding
+    cursorY = padding
+    rowHeight = 0
+    version += 1
+    glyphGeometryVersion += 1
+    atlasSeq += 1
+    markAllPagesDirty()
+    return true
+  }
+
   return {
     drainDirtyPages(): readonly GlyphAtlasDirtyPageUpload[] {
       const pages = Array.from(dirtyPages.values())
@@ -405,6 +448,9 @@ export function createGlyphAtlas(input: { initialWidth?: number; initialHeight?:
     getGlyphGeometryVersion(): number {
       return glyphGeometryVersion
     },
+    getScale(): number {
+      return scale
+    },
     getSize(): { width: number; height: number } {
       return { width, height }
     },
@@ -412,6 +458,7 @@ export function createGlyphAtlas(input: { initialWidth?: number; initialHeight?:
       return atlasPages.resolveGlyph(glyphId)
     },
     intern,
+    setScale,
   }
 }
 

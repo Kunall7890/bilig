@@ -823,7 +823,7 @@ export class GridRenderTilePaneRuntime {
           sheetName: input.sheetName,
           sortedColumnWidthOverrides: input.sortedColumnWidthOverrides,
           sortedRowHeightOverrides: input.sortedRowHeightOverrides,
-          visibleViewport: input.residentViewport,
+          visibleViewport: input.visibleViewport,
         })
       const shouldLocalizeEditingCellText = editingCellTileKey === tileKey
       if (

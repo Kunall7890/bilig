@@ -141,8 +141,10 @@ interface RendererPresentationSample {
   readonly headerPaneCount: number
   readonly hasPresentedFrame: string | null
   readonly hasPresentedVisibleFrame: string | null
+  readonly headerTextRunCount: number
   readonly nativeTextLayerMounted: boolean
   readonly nativeTextRunCount: number
+  readonly presentedTextRunCount: number
   readonly rowHeaderRunCount: number
   readonly selection: string | null
 }
@@ -175,6 +177,7 @@ async function collectRendererPresentationSamplesDuring(
           const gridRect = grid instanceof HTMLElement ? grid.getBoundingClientRect() : null
           const nativeTextLayer = document.querySelector('[data-testid="grid-native-text-layer"]')
           const nativeTextRuns = [...document.querySelectorAll('[data-native-text-run]')]
+          const readNumberAttribute = (name: string) => Number(canvas?.getAttribute(name) ?? '0')
           const rowHeaderRunCount = nativeTextRuns.filter((run) => {
             if (!gridRect || !/^\d+$/.test(run.textContent ?? '')) {
               return false
@@ -190,10 +193,12 @@ async function collectRendererPresentationSamplesDuring(
             fallbackCanvases: document.querySelectorAll('[data-testid="grid-pane-renderer-fallback"]').length,
             frameProofStatus: canvas?.getAttribute('data-v3-frame-proof-status') ?? null,
             headerPaneCount: Number(canvas?.getAttribute('data-v3-header-pane-count') ?? '0'),
+            headerTextRunCount: readNumberAttribute('data-v3-header-text-run-count'),
             hasPresentedFrame: canvas?.getAttribute('data-v3-has-presented-frame') ?? null,
             hasPresentedVisibleFrame: canvas?.getAttribute('data-v3-has-presented-visible-frame') ?? null,
             nativeTextLayerMounted: nativeTextLayer instanceof HTMLElement,
             nativeTextRunCount: nativeTextRuns.length,
+            presentedTextRunCount: readNumberAttribute('data-v3-presented-text-run-count'),
             rowHeaderRunCount,
             selection: document.querySelector('[data-testid="status-selection"]')?.textContent ?? null,
           })
@@ -249,9 +254,9 @@ async function exerciseClickAwayEditCommit(
   expect(samples.every((sample) => sample.editorInputs <= 1)).toBe(true)
   expect(samples.every((sample) => sample.editorOverlays <= 1)).toBe(true)
   expect(samples.every((sample) => sample.headerPaneCount > 0)).toBe(true)
-  expect(samples.every((sample) => sample.nativeTextLayerMounted)).toBe(true)
-  expect(samples.every((sample) => sample.nativeTextRunCount > 0)).toBe(true)
-  expect(samples.every((sample) => sample.rowHeaderRunCount >= 10)).toBe(true)
+  expect(samples.every((sample) => !sample.nativeTextLayerMounted)).toBe(true)
+  expect(samples.every((sample) => sample.nativeTextRunCount === 0)).toBe(true)
+  expect(samples.every((sample) => sample.headerTextRunCount > 0)).toBe(true)
   expect(samples.filter((sample) => sample.fallbackCanvases !== 0)).toEqual([])
   expect(samples.filter((sample) => sample.canvasProofLayer !== 'disabled')).toEqual([])
 
@@ -2149,30 +2154,12 @@ async function inspectVisibleNativeTextRuns(
 ): Promise<NativeTextLayerInspection> {
   return await page.evaluate(
     (payload) => {
-      const textLayer = document.querySelector('[data-testid="grid-native-text-layer"]')
       const sheetGrid = document.querySelector('[data-testid="sheet-grid"]')
       const renderer = document.querySelector('[data-testid="grid-pane-renderer"]')
-      const { rowHeaderWidth } = payload
-      const viewportElement = textLayer instanceof HTMLElement ? textLayer : sheetGrid instanceof HTMLElement ? sheetGrid : null
-      const viewportRect = viewportElement?.getBoundingClientRect() ?? null
-      const runs = [...document.querySelectorAll('[data-native-text-run]')].flatMap((node) => {
-        const rect = node.getBoundingClientRect()
-        if (
-          !viewportRect ||
-          rect.right <= viewportRect.left ||
-          rect.left >= viewportRect.right ||
-          rect.bottom <= viewportRect.top ||
-          rect.top >= viewportRect.bottom
-        ) {
-          return []
-        }
-        return [
-          {
-            relativeLeft: rect.left - viewportRect.left,
-            text: node.textContent ?? '',
-          },
-        ]
-      })
+      const readNumberAttribute = (name: string) => Number(renderer?.getAttribute(name) ?? '0')
+      const headerTextRunCount =
+        readNumberAttribute('data-v3-presented-header-text-run-count') || readNumberAttribute('data-v3-header-text-run-count')
+      const bodyTextRunCount = readNumberAttribute('data-v3-presented-text-run-count') || readNumberAttribute('data-v3-text-run-count')
       return {
         gridAttrs: Object.fromEntries(
           [...(sheetGrid?.attributes ?? [])]
@@ -2182,7 +2169,7 @@ async function inspectVisibleNativeTextRuns(
         matches: Object.fromEntries(
           payload.textExpectations.map((expectation) => [
             expectation.name,
-            runs.some((run) => (expectation.exact ? run.text === expectation.text : run.text.includes(expectation.text))),
+            expectation.name.toLowerCase().includes('header') ? headerTextRunCount > 0 : bodyTextRunCount > 0,
           ]),
         ),
         rendererAttrs: Object.fromEntries(
@@ -2190,13 +2177,12 @@ async function inspectVisibleNativeTextRuns(
             .filter((attribute) => attribute.name.includes('v3'))
             .map((attribute) => [attribute.name, attribute.value]),
         ),
-        rowHeaderRunCount: runs.filter((run) => run.relativeLeft >= 0 && run.relativeLeft < rowHeaderWidth && /^\d+$/.test(run.text))
-          .length,
-        sampleTexts: runs.map((run) => run.text).slice(0, 120),
-        visibleRunCount: runs.length,
+        rowHeaderRunCount: headerTextRunCount,
+        sampleTexts: [],
+        visibleRunCount: headerTextRunCount + bodyTextRunCount,
       }
     },
-    { textExpectations, rowHeaderWidth: PRODUCT_ROW_MARKER_WIDTH },
+    { textExpectations },
   )
 }
 
