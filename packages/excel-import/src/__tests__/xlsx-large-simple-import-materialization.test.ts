@@ -259,6 +259,65 @@ describe('large simple XLSX import materialization lifetime', () => {
     expect(readLazyXlsxZipSourceByteLength(zip)).toBe(0)
   })
 
+  it('does not let relationship-backed package artifacts on one sheet pin independent sheet arenas', () => {
+    const bytes = buildIndependentWorkbook(
+      [
+        {
+          name: 'Plain',
+          path: 'xl/worksheets/sheet1.xml',
+          xml: worksheetXml('A', 7),
+        },
+        {
+          name: 'Drawing',
+          path: 'xl/worksheets/sheet2.xml',
+          xml: [
+            '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>',
+            '<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">',
+            '<dimension ref="A1:B1"/>',
+            '<sheetData><row r="1"><c r="A1"><v>11</v></c><c r="B1" t="inlineStr"><is><t>B inline</t></is></c></row></sheetData>',
+            '<drawing r:id="rIdDrawing"/>',
+            '</worksheet>',
+          ].join(''),
+        },
+      ],
+      {
+        'xl/worksheets/_rels/sheet2.xml.rels': [
+          '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>',
+          '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">',
+          '<Relationship Id="rIdDrawing" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/drawing" Target="../drawings/drawing1.xml"/>',
+          '</Relationships>',
+        ].join(''),
+        'xl/drawings/drawing1.xml':
+          '<xdr:wsDr xmlns:xdr="http://schemas.openxmlformats.org/drawingml/2006/spreadsheetDrawing" xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main"/>',
+      },
+    )
+    const zip = readXlsxZipEntriesLazy(bytes)
+
+    const imported = tryImportLargeSimpleXlsx(bytes, 'relationship-backed-sheet.xlsx', zip, {
+      minByteLength: 0,
+      releaseZipSource: true,
+      allowPreReleaseSheetFinalization: true,
+    })
+    const phases = imported?.stats.phaseTelemetry.map((entry) => entry.phase) ?? []
+    const firstMaterializationIndex = phases.indexOf('public-snapshot-materialization')
+    const sharedStringResolutionIndex = phases.indexOf('shared-string-resolution')
+
+    expect(firstMaterializationIndex).toBeGreaterThanOrEqual(0)
+    expect(firstMaterializationIndex).toBeLessThan(sharedStringResolutionIndex)
+    expect(imported?.snapshot.sheets.map((sheet) => sheet.name)).toEqual(['Plain', 'Drawing'])
+    expect(imported?.snapshot.sheets.map((sheet) => sheet.cells)).toEqual([
+      [
+        { address: 'A1', value: 7 },
+        { address: 'B1', value: 'A inline' },
+      ],
+      [
+        { address: 'A1', value: 11 },
+        { address: 'B1', value: 'B inline' },
+      ],
+    ])
+    expect(readLazyXlsxZipSourceByteLength(zip)).toBe(0)
+  })
+
   it('resolves plain shared strings before exposing large lazy cell arrays', () => {
     const rowCount = 100_001
     const rows: string[] = []

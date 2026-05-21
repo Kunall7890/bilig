@@ -10,6 +10,7 @@ import {
 import { mapStructuralBoundary } from '../../engine-structural-utils.js'
 import { normalizeDefinedName, type WorkbookTableRecord } from '../../workbook-store.js'
 import type { CreateEngineStructureServiceArgs } from './structure-service-types.js'
+import { rewriteFormulaSourceForDeletedStructuredReferences } from './structure-structured-ref-rewrite.js'
 
 type StructureMetadataRewriteArgs = Pick<CreateEngineStructureServiceArgs, 'state' | 'clearOwnedPivot'>
 
@@ -39,17 +40,19 @@ export function rewriteDefinedNamesForStructuralTransform(
   args: StructureMetadataRewriteArgs,
   sheetName: string,
   transform: StructuralAxisTransform,
+  deletedTableColumns: readonly DeletedTableColumnReference[],
 ): Set<string> {
   const workbook = args.state.workbook
   const changedNames = new Set<string>()
   workbook.listDefinedNames().forEach((record) => {
     if (typeof record.value === 'string' && record.value.startsWith('=')) {
-      const nextFormula = rewriteDefinedNameFormulaOrNull(record.value.slice(1), sheetName, transform)
+      const nextFormula = rewriteDefinedNameFormulaOrNull(record.value.slice(1), sheetName, transform, deletedTableColumns)
       if (nextFormula === null) {
         return
       }
       if (`=${nextFormula}` !== record.value) {
         workbook.setDefinedName(record.name, `=${nextFormula}`, record.scopeSheetName)
+        changedNames.add(normalizeDefinedName(record.name))
       }
       return
     }
@@ -62,6 +65,7 @@ export function rewriteDefinedNamesForStructuralTransform(
           record.value.formula.startsWith('=') ? record.value.formula.slice(1) : record.value.formula,
           sheetName,
           transform,
+          deletedTableColumns,
         )
         if (nextFormula === null) {
           return
@@ -74,6 +78,15 @@ export function rewriteDefinedNamesForStructuralTransform(
           workbook.setDefinedName(record.name, nextValue, record.scopeSheetName)
           changedNames.add(normalizeDefinedName(record.name))
         }
+        return
+      }
+      case 'structured-ref': {
+        const value = record.value
+        if (!deletedTableColumns.some((deleted) => tableColumnReferenceMatches(deleted, value.tableName, value.columnName))) {
+          return
+        }
+        workbook.setDefinedName(record.name, { kind: 'formula', formula: '=#REF!' }, record.scopeSheetName)
+        changedNames.add(normalizeDefinedName(record.name))
         return
       }
       case 'cell-ref': {
@@ -116,19 +129,31 @@ export function rewriteDefinedNamesForStructuralTransform(
         return
       }
       case 'scalar':
-      case 'structured-ref':
         return
     }
   })
   return changedNames
 }
 
-function rewriteDefinedNameFormulaOrNull(formula: string, sheetName: string, transform: StructuralAxisTransform): string | null {
+function rewriteDefinedNameFormulaOrNull(
+  formula: string,
+  sheetName: string,
+  transform: StructuralAxisTransform,
+  deletedTableColumns: readonly DeletedTableColumnReference[],
+): string | null {
   try {
-    return rewriteFormulaForStructuralTransform(formula, sheetName, sheetName, transform)
+    const structuralFormula = rewriteFormulaForStructuralTransform(formula, sheetName, sheetName, transform)
+    return rewriteFormulaSourceForDeletedStructuredReferences(structuralFormula, deletedTableColumns) ?? structuralFormula
   } catch {
     return null
   }
+}
+
+function tableColumnReferenceMatches(deleted: DeletedTableColumnReference, tableName: string, columnName: string): boolean {
+  return (
+    normalizeTableColumnName(deleted.tableName) === normalizeTableColumnName(tableName) &&
+    normalizeTableColumnName(deleted.columnName) === normalizeTableColumnName(columnName)
+  )
 }
 
 export function rewriteWorkbookMetadataForStructuralTransform(

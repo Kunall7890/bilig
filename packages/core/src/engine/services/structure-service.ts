@@ -343,12 +343,12 @@ export function createEngineStructureService(args: CreateEngineStructureServiceA
       if (hasPivots) {
         clearPivotOutputsForSheet(args, sheetName)
       }
-      const changedDefinedNames = hasStructuralMetadata
-        ? rewriteDefinedNamesForStructuralTransform(args, sheetName, transform)
-        : EMPTY_STRING_SET
       const { changedTableNames, tableHeaderCellWrites, deletedTableColumns } = hasStructuralMetadata
         ? rewriteWorkbookMetadataForStructuralTransform(args, sheetName, transform)
         : { changedTableNames: EMPTY_STRING_SET, tableHeaderCellWrites: [], deletedTableColumns: EMPTY_DELETED_TABLE_COLUMNS }
+      const changedDefinedNames = hasStructuralMetadata
+        ? rewriteDefinedNamesForStructuralTransform(args, sheetName, transform, deletedTableColumns)
+        : EMPTY_STRING_SET
       const impactedFormulas = collectStructuralFormulaImpacts(args, {
         targetSheetId,
         transform,

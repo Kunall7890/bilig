@@ -1,4 +1,3 @@
-import { Effect, Exit, Cause } from 'effect'
 import { ValueTag, type CellSnapshot, type WorkbookSnapshot } from '@bilig/protocol'
 import { CellFlags } from '../cell-store.js'
 import { createColumnIndexStore } from '../indexes/column-index-store.js'
@@ -47,6 +46,9 @@ import { createEngineTraversalService, type EngineTraversalService } from './ser
 import { getRuntimeFormulaSource } from './runtime-formula-source.js'
 import { deferKernelSyncNow } from './services/live-kernel-sync-state.js'
 import { createEngineFullInvalidationService } from './services/full-invalidation-service.js'
+import { runEngineEffect } from './effect-runtime.js'
+
+export { runEngineEffect, runEngineEffectPromise } from './effect-runtime.js'
 
 export interface EngineServiceRuntime {
   readonly cellState: EngineCellStateService
@@ -992,20 +994,4 @@ export function createEngineServiceRuntime(args: {
       return getSync()
     },
   }
-}
-
-export function runEngineEffect<Success, Failure>(effect: Effect.Effect<Success, Failure>): Success {
-  const exit = Effect.runSyncExit(effect)
-  if (Exit.isSuccess(exit)) {
-    return exit.value
-  }
-  throw Cause.squash(exit.cause)
-}
-
-export async function runEngineEffectPromise<Success, Failure>(effect: Effect.Effect<Success, Failure>): Promise<Success> {
-  const exit = await Effect.runPromiseExit(effect)
-  if (Exit.isSuccess(exit)) {
-    return exit.value
-  }
-  throw Cause.squash(exit.cause)
 }

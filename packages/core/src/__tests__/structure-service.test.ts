@@ -316,6 +316,53 @@ describe('EngineStructureService', () => {
     expect(engine.exportSnapshot()).toEqual(initialSnapshot)
   })
 
+  it('rewrites defined names that reference deleted table columns to #REF!', async () => {
+    const engine = new SpreadsheetEngine({ workbookName: 'structure-table-column-delete-defined-names' })
+    await engine.ready()
+    engine.createSheet('Data')
+    engine.setRangeValues({ sheetName: 'Data', startAddress: 'A1', endAddress: 'C3' }, [
+      ['Region', 'Amount', 'Margin'],
+      ['East', 10, 2],
+      ['West', 20, 3],
+    ])
+    engine.setTable({
+      name: 'Sales',
+      sheetName: 'Data',
+      startAddress: 'A1',
+      endAddress: 'C3',
+      columnNames: ['Region', 'Amount', 'Margin'],
+      headerRow: true,
+      totalsRow: false,
+    })
+    engine.setDefinedName('SalesAmount', { kind: 'structured-ref', tableName: 'Sales', columnName: 'Amount' })
+    engine.setDefinedName('SalesAmountFormula', { kind: 'formula', formula: '=Sales[Amount]' })
+    engine.setCellFormula('Data', 'E1', 'SUM(SalesAmount)')
+    engine.setCellFormula('Data', 'F1', 'SUM(SalesAmountFormula)')
+    const initialSnapshot = engine.exportSnapshot()
+
+    engine.deleteColumns('Data', 1, 1)
+
+    expect(engine.getTable('Sales')).toMatchObject({
+      startAddress: 'A1',
+      endAddress: 'B3',
+      columnNames: ['Region', 'Margin'],
+    })
+    expect(engine.getDefinedName('SalesAmount')).toEqual({
+      name: 'SalesAmount',
+      value: { kind: 'formula', formula: '=#REF!' },
+    })
+    expect(engine.getDefinedName('SalesAmountFormula')).toEqual({
+      name: 'SalesAmountFormula',
+      value: { kind: 'formula', formula: '=#REF!' },
+    })
+    expect(engine.getCell('Data', 'D1').formula).toBe('SUM(SalesAmount)')
+    expect(engine.getCellValue('Data', 'D1')).toEqual({ tag: ValueTag.Error, code: ErrorCode.Ref })
+    expect(engine.getCell('Data', 'E1').formula).toBe('SUM(SalesAmountFormula)')
+    expect(engine.getCellValue('Data', 'E1')).toEqual({ tag: ValueTag.Error, code: ErrorCode.Ref })
+    expect(engine.undo()).toBe(true)
+    expect(engine.exportSnapshot()).toEqual(initialSnapshot)
+  })
+
   it('renames table metadata and structured formula sources when editing a header cell', async () => {
     const engine = new SpreadsheetEngine({ workbookName: 'structure-table-header-rename' })
     await engine.ready()

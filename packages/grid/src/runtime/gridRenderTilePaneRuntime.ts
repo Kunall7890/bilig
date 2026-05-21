@@ -13,8 +13,12 @@ import type { GridTileInterestBatchV3, GridTileReadinessSnapshotV3 } from './gri
 import type { GridRuntimeHost } from './gridRuntimeHost.js'
 import {
   buildRetainedFixedRenderTileDataPanesCompatibility,
+  engineHasLocalProjectionRevision,
+  hasUnacknowledgedVisibleDirtyTileKeys,
   isResidentGridRenderTile,
   matchesRenderTileSheetIdentity,
+  normalizeNonNegativeInteger,
+  resolveAcknowledgedVisibleDirtyPaneTileKeys,
   resolveGridRenderTileInputSheetOrdinal,
   resolveRenderTileInterestTileKeys,
   resolveRenderTileResidentTileKeys,
@@ -25,6 +29,7 @@ import {
   sameRetainedFixedRenderTileDataPanesCompatibility,
   sameWorkbookDeltaConnectionIdentity,
   shouldForceLocalTilesForWorkbookDelta,
+  tileProjectionRevisionIsBehind,
   upsertRenderTileIntoHost,
   type GridRenderTileInterestRuntimeInput,
   type LocalInvalidationConnectionIdentity,
@@ -932,70 +937,6 @@ export class GridRenderTilePaneRuntime {
       listener()
     })
   }
-}
-
-function normalizeNonNegativeInteger(value: number | null | undefined): number | null {
-  return typeof value === 'number' && Number.isInteger(value) && value >= 0 ? value : null
-}
-
-function engineHasLocalProjectionRevision(engine: GridEngineLike): boolean {
-  const revision = engine.getRenderRevisionSnapshot?.()
-  if (!revision) {
-    return false
-  }
-  const localRevision = normalizeNonNegativeInteger(revision.localRevision)
-  if (localRevision !== null && localRevision > 0) {
-    return true
-  }
-  const projectedRevision = normalizeNonNegativeInteger(revision.projectedRevision)
-  if (projectedRevision === null || projectedRevision === 0) {
-    return false
-  }
-  const authoritativeRevision = normalizeNonNegativeInteger(revision.authoritativeRevision)
-  return authoritativeRevision !== null && projectedRevision > authoritativeRevision
-}
-
-function resolveAcknowledgedVisibleDirtyPaneTileKeys(panes: readonly WorkbookRenderTilePaneState[]): readonly TileKey53[] {
-  const keys: number[] = []
-  const seen = new Set<number>()
-  for (const pane of panes) {
-    if (pane.drawVisible === false || (pane.tile.dirtyMasks?.length ?? 0) === 0 || seen.has(pane.tile.tileId)) {
-      continue
-    }
-    seen.add(pane.tile.tileId)
-    keys.push(pane.tile.tileId)
-  }
-  return keys
-}
-
-function hasUnacknowledgedVisibleDirtyTileKeys(
-  readiness: GridTileReadinessSnapshotV3,
-  acknowledgedVisibleTileKeys: readonly TileKey53[],
-): boolean {
-  if (readiness.visibleDirtyTileKeys.length === 0) {
-    return false
-  }
-  const acknowledged = new Set(acknowledgedVisibleTileKeys)
-  return readiness.visibleDirtyTileKeys.some((key) => !acknowledged.has(key))
-}
-
-function tileProjectionRevisionIsBehind(tile: GridRenderTile | null, engine: GridEngineLike): boolean {
-  if (!tile) {
-    return false
-  }
-  const renderRevision = engine.getRenderRevisionSnapshot?.()
-  const projectedRevision = normalizeNonNegativeInteger(renderRevision?.projectedRevision)
-  if (projectedRevision === null) {
-    return false
-  }
-  const authoritativeRevision = normalizeNonNegativeInteger(renderRevision?.authoritativeRevision)
-  const localRevision = normalizeNonNegativeInteger(renderRevision?.localRevision)
-  const hasPendingLocalProjection =
-    localRevision !== null && localRevision > 0 && (authoritativeRevision === null || projectedRevision > authoritativeRevision)
-  if (!hasPendingLocalProjection && (authoritativeRevision === null || projectedRevision <= authoritativeRevision)) {
-    return false
-  }
-  return tile.lastBatchId < projectedRevision || hasPendingLocalProjection
 }
 
 export function getGridRenderTilePaneRuntime(current: unknown): GridRenderTilePaneRuntime {
