@@ -4,6 +4,15 @@ All notable changes to `@bilig/headless` will be documented in this file.
 
 This package is released as part of the aligned bilig library package set.
 
+## 0.40.30
+
+- Release type: patch
+- Previous libraries tag: libraries-v0.40.29
+- Manual override: no
+
+## Fixes
+- perf(xlsx): store rare arena integers sparsely (1a52eb87)
+
 ## 0.40.29
 
 - Release type: patch
