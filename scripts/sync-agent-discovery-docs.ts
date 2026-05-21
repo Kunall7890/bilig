@@ -824,8 +824,13 @@ function syncVersionedStaticReferenceLine(line: string): string {
   const stableSemverPattern = String.raw`\d+\.\d+\.\d+`
   return line
     .replace(new RegExp(`(npm exec --package )@bilig/headless@${stableSemverPattern}`, 'g'), `$1${headlessPackageSpec}`)
+    .replace(new RegExp(`(npm exec --package )@bilig/workpaper@${stableSemverPattern}`, 'g'), `$1${workpaperPackageSpec}`)
     .replace(new RegExp(`("--package",\\s*")@bilig/headless@${stableSemverPattern}(")`, 'g'), `$1${headlessPackageSpec}$2`)
+    .replace(new RegExp(`("--package",\\s*")@bilig/workpaper@${stableSemverPattern}(")`, 'g'), `$1${workpaperPackageSpec}$2`)
+    .replace(new RegExp(`('--package',\\s*')@bilig/headless@${stableSemverPattern}(')`, 'g'), `$1${headlessPackageSpec}$2`)
+    .replace(new RegExp(`('--package',\\s*')@bilig/workpaper@${stableSemverPattern}(')`, 'g'), `$1${workpaperPackageSpec}$2`)
     .replace(new RegExp(`^(\\s*)"@bilig/headless@${stableSemverPattern}"(,?\\s*)$`, 'g'), `$1"${headlessPackageSpec}"$2`)
+    .replace(new RegExp(`^(\\s*)"@bilig/workpaper@${stableSemverPattern}"(,?\\s*)$`, 'g'), `$1"${workpaperPackageSpec}"$2`)
     .replace(
       new RegExp(`(Current checked npm footprint for \`)@bilig/headless@${stableSemverPattern}(\`)`, 'g'),
       `$1${headlessPackageSpec}$2`,

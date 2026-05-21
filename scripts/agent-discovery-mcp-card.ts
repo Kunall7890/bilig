@@ -127,14 +127,24 @@ export function mcpServerCardManifest(options: AgentDiscoveryMcpCardOptions): st
     null,
     2,
   )
-  return `${compactStringOnlyArrays(json)}\n`
+  return `${compactShortStringOnlyArrays(json)}\n`
 }
 
 function npmStdioTransport(headlessPackageSpec: string): JsonObject {
   return {
     type: 'stdio',
     command: 'npm',
-    args: ['exec', '--package', headlessPackageSpec, '--', 'bilig-workpaper-mcp', '--demo-workpaper-tools'],
+    args: [
+      'exec',
+      '--package',
+      headlessPackageSpec,
+      '--',
+      'bilig-workpaper-mcp',
+      '--workpaper',
+      './pricing.workpaper.json',
+      '--init-demo-workpaper',
+      '--writable',
+    ],
   }
 }
 
@@ -402,9 +412,10 @@ function arrayOutput(description: string): JsonObject {
   return { type: 'array', description }
 }
 
-function compactStringOnlyArrays(json: string): string {
+function compactShortStringOnlyArrays(json: string): string {
   return json.replace(/\[\n((?:\s+"(?:[^"\\]|\\.)+"(?:,\n)?)+)\s+\]/g, (match) => {
     const values = [...match.matchAll(/"((?:[^"\\]|\\.)*)"/g)].map(([, value]) => `"${value}"`)
-    return `[${values.join(', ')}]`
+    const compact = `[${values.join(', ')}]`
+    return compact.length <= 120 ? compact : match
   })
 }

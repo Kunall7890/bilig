@@ -75,6 +75,11 @@ const {
   evaluateExcelFormulasInNodeTypescript,
 } = docsDiscoveryContext
 const headlessPackageSpec = `@bilig/headless@${headlessPackageVersion}`
+const workpaperPackageSpec = `@bilig/workpaper@${headlessPackageVersion}`
+const fileBackedMcpArgsNeedles = [
+  `"--package",\n      "${workpaperPackageSpec}",\n      "--",\n      "bilig-workpaper-mcp",\n      "--workpaper",\n      "./pricing.workpaper.json",\n      "--init-demo-workpaper",\n      "--writable"`,
+  `"--package",\n        "${workpaperPackageSpec}",\n        "--",\n        "bilig-workpaper-mcp",\n        "--workpaper",\n        "./pricing.workpaper.json",\n        "--init-demo-workpaper",\n        "--writable"`,
+] as const
 const mcpbReleaseAssetUrl = `https://github.com/proompteng/bilig/releases/download/libraries-v${headlessPackageVersion}/bilig-workpaper.mcpb`
 const mcpbReleaseChecksumUrl = `${mcpbReleaseAssetUrl}.sha256`
 const xlsxRecalcCli = 'npx --package @bilig/xlsx-formula-recalc xlsx-recalc'
@@ -86,6 +91,10 @@ const headlessSpreadsheetEngineNodeServicesAgents = await readFile(
   'utf8',
 )
 const spreadsheetMcpServerComparison = await readFile(join(docsRoot, 'spreadsheet-mcp-server-comparison.md'), 'utf8')
+const mcpWorkpaperToolServerDoc = await readFile(join(docsRoot, 'mcp-workpaper-tool-server.md'), 'utf8')
+const mcpServerCard = await readFile(join(docsRoot, '.well-known', 'mcp', 'server-card.json'), 'utf8')
+const mcpServerCardMcpJson = await readFile(join(docsRoot, '.well-known', 'mcp.json'), 'utf8')
+const mcpServerCardLegacyJson = await readFile(join(docsRoot, '.well-known', 'mcp-server-card.json'), 'utf8')
 const sheetjsFormulaResultNotUpdatingNode = await readFile(join(docsRoot, 'sheetjs-formula-result-not-updating-node.md'), 'utf8')
 const rootSkillNotes = await readFile(join(repoRoot, 'skills', 'bilig-workpaper', 'SKILL.md'), 'utf8')
 const workpaperPackageJson = await readFile(join(repoRoot, 'packages', 'bilig', 'package.json'), 'utf8')
@@ -153,6 +162,23 @@ requireIncludes(
   '<link rel="alternate" type="application/json" href="https://proompteng.github.io/bilig/.well-known/agent.json" title="agent.json" />',
   'docs/index.html',
 )
+for (const [mcpCardPath, mcpCardContent] of [
+  ['docs/.well-known/mcp/server-card.json', mcpServerCard],
+  ['docs/.well-known/mcp.json', mcpServerCardMcpJson],
+  ['docs/.well-known/mcp-server-card.json', mcpServerCardLegacyJson],
+] as const) {
+  for (const needle of fileBackedMcpArgsNeedles) {
+    requireIncludes(mcpCardContent, needle, mcpCardPath)
+  }
+  requireNotIncludes(mcpCardContent, '--demo-workpaper-tools', mcpCardPath)
+}
+requireIncludes(
+  mcpWorkpaperToolServerDoc,
+  `'${workpaperPackageSpec}',\n      '--',\n      'bilig-workpaper-mcp',\n      '--workpaper',\n      './pricing.workpaper.json',\n      '--init-demo-workpaper',\n      '--writable'`,
+  'docs/mcp-workpaper-tool-server.md',
+)
+requireIncludes(mcpWorkpaperToolServerDoc, 'Read Summary!A1:B5 with read_range.', 'docs/mcp-workpaper-tool-server.md')
+requireIncludes(mcpWorkpaperToolServerDoc, 'Then set Inputs!B3 to 0.4 with set_cell_contents.', 'docs/mcp-workpaper-tool-server.md')
 for (const required of homepageRequiredLinks) {
   requireIncludes(index, required, 'docs/index.html')
 }
