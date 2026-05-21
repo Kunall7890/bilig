@@ -1,5 +1,6 @@
 import { readKnownXmlLocalName } from './xlsx-large-simple-xml-name.js'
 import { countLargeSimpleDataValidationsFromBytes } from './xlsx-large-simple-data-validation-byte-scan.js'
+import { rowTagHasMetadataAttribute } from './xlsx-large-simple-row-metadata-scan.js'
 
 const lessThan = 60
 const slash = 47
@@ -16,11 +17,14 @@ const metadataWorksheetTagNames = new Set([
   'colBreaks',
   'cols',
   'conditionalFormatting',
+  'controls',
   'dataValidations',
   'drawing',
   'headerFooter',
   'hyperlinks',
+  'legacyDrawing',
   'mergeCells',
+  'oleObjects',
   'pageMargins',
   'pageSetup',
   'printOptions',
@@ -38,6 +42,7 @@ export interface HeadlessLargeSimpleWorksheetScan {
   readonly mergeCount: number
   readonly conditionalFormatCount: number
   readonly dataValidationCount?: number
+  readonly metadataKeys: readonly string[]
   readonly rowCount: number
   readonly columnCount: number
   readonly usedRange: {
@@ -99,6 +104,7 @@ class HeadlessLargeSimpleWorksheetChunkScanner {
   private cellHasSharedStringType = false
   private activeMetadata: ActiveMetadataCount | null = null
   private activeDataValidations = false
+  private readonly metadataKeys = new Set<string>()
 
   constructor(
     private readonly sheetIndex: number,
@@ -136,6 +142,7 @@ class HeadlessLargeSimpleWorksheetChunkScanner {
           mergeCount: this.mergeCount,
           conditionalFormatCount: this.conditionalFormatCount,
           dataValidationCount: this.dataValidationCount,
+          metadataKeys: [...this.metadataKeys].toSorted(),
           rowCount: this.rowCount,
           columnCount: this.columnCount,
           usedRange:
@@ -275,6 +282,10 @@ class HeadlessLargeSimpleWorksheetChunkScanner {
     this.currentRow = row === null ? this.nextImplicitRow : row - 1
     this.nextImplicitRow = this.currentRow + 1
     this.nextImplicitColumn = 0
+    if (rowTagHasMetadataAttribute(this.buffer, nameEnd, tagEnd)) {
+      this.metadataKeys.add('rowMetadata')
+      this.metadataKeys.add('rows')
+    }
   }
 
   private readCell(nameEnd: number, tagEnd: number, final: boolean): boolean {
@@ -322,6 +333,7 @@ class HeadlessLargeSimpleWorksheetChunkScanner {
   }
 
   private startDataValidations(tagEnd: number, final: boolean): boolean {
+    this.metadataKeys.add('validations')
     if (isSelfClosingTag(this.buffer, tagEnd)) {
       this.index = tagEnd + 1
       return true
@@ -460,6 +472,7 @@ class HeadlessLargeSimpleWorksheetChunkScanner {
   }
 
   private countMetadataElement(localName: string, nameEnd: number, tagEnd: number, final: boolean): boolean {
+    this.recordMetadataKeys(localName)
     if (isSelfClosingTag(this.buffer, tagEnd)) {
       this.finalizeMetadataCount({
         localName,
@@ -615,6 +628,44 @@ class HeadlessLargeSimpleWorksheetChunkScanner {
 
   private reportRetainedBufferLength(): void {
     this.options.onRetainedBufferLength?.(this.buffer.byteLength)
+  }
+
+  private recordMetadataKeys(localName: string): void {
+    for (const key of sheetMetadataKeysForHeadlessElement(localName)) {
+      this.metadataKeys.add(key)
+    }
+  }
+}
+
+function sheetMetadataKeysForHeadlessElement(localName: string): readonly string[] {
+  switch (localName) {
+    case 'autoFilter':
+      return ['filters']
+    case 'colBreaks':
+    case 'headerFooter':
+    case 'pageMargins':
+    case 'pageSetup':
+    case 'printOptions':
+    case 'rowBreaks':
+      return ['printPageSetup']
+    case 'cols':
+      return ['columnMetadata', 'columns']
+    case 'conditionalFormatting':
+      return ['conditionalFormats']
+    case 'controls':
+    case 'legacyDrawing':
+    case 'oleObjects':
+      return ['controlArtifacts']
+    case 'drawing':
+      return ['drawingArtifacts']
+    case 'hyperlinks':
+      return ['hyperlinks']
+    case 'mergeCells':
+      return ['merges']
+    case 'sheetFormatPr':
+      return ['sheetFormatPr']
+    default:
+      return []
   }
 }
 

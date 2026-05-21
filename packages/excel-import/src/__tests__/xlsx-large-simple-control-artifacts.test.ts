@@ -58,6 +58,8 @@ describe('large simple XLSX control artifacts', () => {
 
     expect(inspected?.stats.cellCount).toBe(3)
     expect(inspected?.stats.sheetCount).toBe(2)
+    expect(inspected?.workbookMetadataKeys).toEqual(expect.arrayContaining(['controlArtifacts', 'drawingArtifacts']))
+    expect(inspected?.sheetMetadataKeys).toContain('controlArtifacts')
   })
 
   it('streams controls metadata without forcing SheetJS fallback', () => {
