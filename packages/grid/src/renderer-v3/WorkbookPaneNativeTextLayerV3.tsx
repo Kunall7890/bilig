@@ -452,7 +452,20 @@ export function resolveNativeTextRunInnerStyleV3(input: {
   const fontStyle = resolveNativeTextRunFontStyleV3(input.run)
   const lineBox = resolveNativeTextLineBoxV3({ dpr, run: input.run })
   const baseTop = visibleClip?.innerTop ?? input.run.y - clipY
-  const textTop = input.run.wrap ? baseTop : baseTop + lineBox.topInset
+  const baseLeft = visibleClip?.innerLeft ?? input.run.x - clipX
+  const baseWidth = visibleClip?.innerWidth ?? width
+  const baseHeight = visibleClip?.innerHeight ?? height
+  const outerLeft = visibleClip?.outerLeft ?? 0
+  const outerTop = visibleClip?.outerTop ?? 0
+  const textAlign = input.run.align ?? 'left'
+  const anchorOffset =
+    textAlign === 'right' ? baseWidth - CELL_TEXT_PADDING_X : textAlign === 'center' ? baseWidth / 2 : CELL_TEXT_PADDING_X
+  const anchorDelta = snapCssPixel(outerLeft + baseLeft + anchorOffset, dpr) - (outerLeft + baseLeft + anchorOffset)
+  const paddingLeft = textAlign === 'left' || textAlign === 'center' ? CELL_TEXT_PADDING_X + anchorDelta : CELL_TEXT_PADDING_X
+  const paddingRight = textAlign === 'right' || textAlign === 'center' ? CELL_TEXT_PADDING_X - anchorDelta : CELL_TEXT_PADDING_X
+  const rawTextTop = input.run.wrap ? baseTop : baseTop + lineBox.topInset
+  const textTopDelta = snapCssPixel(outerTop + rawTextTop, dpr) - (outerTop + rawTextTop)
+  const textTop = rawTextTop + textTopDelta
   return {
     ...workbookNativeTextQualityStyle,
     boxSizing: 'border-box',
@@ -464,19 +477,19 @@ export function resolveNativeTextRunInnerStyleV3(input: {
     fontStyle: fontStyle.fontStyle,
     fontVariantNumeric: 'tabular-nums',
     fontWeight: fontStyle.fontWeight,
-    height: input.run.wrap ? (visibleClip?.innerHeight ?? height) : lineBox.height,
+    height: input.run.wrap ? Math.max(0, baseHeight + Math.abs(textTopDelta)) : lineBox.height,
     letterSpacing: 0,
-    left: visibleClip?.innerLeft ?? input.run.x - clipX,
+    left: baseLeft,
     lineHeight: `${lineBox.height}px`,
     overflow: 'hidden',
-    paddingLeft: CELL_TEXT_PADDING_X,
-    paddingRight: CELL_TEXT_PADDING_X,
+    paddingLeft,
+    paddingRight,
     position: 'absolute',
-    textAlign: input.run.align ?? 'left',
+    textAlign,
     textDecorationLine: input.run.underline ? 'underline' : input.run.strike ? 'line-through' : undefined,
     top: textTop,
     whiteSpace: input.run.wrap ? 'pre-wrap' : 'pre',
-    width: visibleClip?.innerWidth ?? width,
+    width: baseWidth,
   }
 }
 

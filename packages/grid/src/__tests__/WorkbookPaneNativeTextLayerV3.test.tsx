@@ -82,10 +82,15 @@ function createPane(
   }
 }
 
+function expectDprAligned(value: number, dpr: number): void {
+  expect(value * dpr).toBeCloseTo(Math.round(value * dpr), 6)
+}
+
 describe('WorkbookPaneNativeTextLayerV3', () => {
-  test('snaps text clip bounds while preserving fractional glyph origin inside the clip', () => {
+  test('snaps text clip bounds and glyph anchor to device pixels', () => {
+    const dpr = 2
     const visibleClip = resolveNativeTextRunVisibleClipV3({
-      dpr: 2,
+      dpr,
       pane: createPane(),
       run: createRun({ clipX: 8.2, clipY: 4.3 }),
       scrollSnapshot: { renderTx: 1.1, renderTy: 2.2, tx: 1.1, ty: 2.2 },
@@ -99,9 +104,10 @@ describe('WorkbookPaneNativeTextLayerV3', () => {
     })
     expect(visibleClip?.innerLeft).toBeCloseTo(-8.1)
     expect(visibleClip?.innerTop).toBeCloseTo(-4.2)
+    expect(visibleClip?.innerWidth).toBeCloseTo(98.2)
     expect(
       resolveNativeTextRunOuterStyleV3({
-        dpr: 2,
+        dpr,
         pane: createPane(),
         run: createRun({ clipX: 8.2, clipY: 4.3 }),
         scrollSnapshot: { renderTx: 1.1, renderTy: 2.2, tx: 1.1, ty: 2.2 },
@@ -114,6 +120,56 @@ describe('WorkbookPaneNativeTextLayerV3', () => {
       top: 26,
       width: 90,
     })
+    const innerStyle = resolveNativeTextRunInnerStyleV3({
+      dpr,
+      run: createRun({ clipX: 8.2, clipY: 4.3 }),
+      visibleClip,
+    })
+    expect(Number(innerStyle.left)).toBeCloseTo(-8.1)
+    expect(Number(innerStyle.paddingLeft)).toBeCloseTo(8.1)
+    expect(Number(innerStyle.top)).toBeCloseTo(-1.5)
+    expectDprAligned(visibleClip!.outerLeft + Number(innerStyle.left) + Number(innerStyle.paddingLeft), dpr)
+    expectDprAligned(visibleClip!.outerTop + Number(innerStyle.top), dpr)
+  })
+
+  test('snaps right and center text anchors without moving clip geometry', () => {
+    const rightClip = resolveNativeTextRunVisibleClipV3({
+      dpr: 2,
+      pane: createPane(),
+      run: createRun({ align: 'right', clipX: 8.2, clipY: 4.3 }),
+      scrollSnapshot: { renderTx: 1.1, renderTy: 2.2, tx: 1.1, ty: 2.2 },
+    })
+    expect(rightClip?.innerLeft).toBeCloseTo(-8.1)
+    expect(rightClip?.innerWidth).toBeCloseTo(98.2)
+
+    const rightStyle = resolveNativeTextRunInnerStyleV3({
+      dpr: 2,
+      run: createRun({ align: 'right', clipX: 8.2, clipY: 4.3 }),
+      visibleClip: rightClip,
+    })
+    expect(Number(rightStyle.left)).toBeCloseTo(-8.1)
+    expect(Number(rightStyle.width)).toBeCloseTo(98.2)
+    expectDprAligned(rightClip!.outerLeft + Number(rightStyle.left) + Number(rightStyle.width) - Number(rightStyle.paddingRight), 2)
+
+    const centerClip = resolveNativeTextRunVisibleClipV3({
+      dpr: 2,
+      pane: createPane(),
+      run: createRun({ align: 'center', clipWidth: 90.2, clipX: 8.2, clipY: 4.3 }),
+      scrollSnapshot: { renderTx: 1.1, renderTy: 2.2, tx: 1.1, ty: 2.2 },
+    })
+    expect(centerClip?.innerWidth).toBeCloseTo(98.4)
+
+    const centerStyle = resolveNativeTextRunInnerStyleV3({
+      dpr: 2,
+      run: createRun({ align: 'center', clipWidth: 90.2, clipX: 8.2, clipY: 4.3 }),
+      visibleClip: centerClip,
+    })
+    const centerAnchor =
+      centerClip!.outerLeft +
+      Number(centerStyle.left) +
+      Number(centerStyle.width) / 2 +
+      (Number(centerStyle.paddingLeft) - Number(centerStyle.paddingRight)) / 2
+    expectDprAligned(centerAnchor, 2)
   })
 
   test('uses native browser font rendering with spreadsheet numeric alignment', () => {
@@ -537,6 +593,10 @@ describe('WorkbookPaneNativeTextLayerV3', () => {
       const run = host.querySelector<HTMLElement>('[data-native-text-run]')
       return run?.style.left ?? null
     }
+    const readInnerLeft = () => {
+      const run = host.querySelector<HTMLElement>('[data-native-text-run] > div')
+      return run?.style.left ?? null
+    }
 
     try {
       Object.defineProperty(window, 'devicePixelRatio', { configurable: true, value: 1 })
@@ -555,6 +615,7 @@ describe('WorkbookPaneNativeTextLayerV3', () => {
       })
 
       expect(readRunLeft()).toBe('54px')
+      expect(readInnerLeft()).toBe('-8px')
 
       Object.defineProperty(window, 'devicePixelRatio', { configurable: true, value: 2 })
       await act(async () => {
@@ -562,6 +623,7 @@ describe('WorkbookPaneNativeTextLayerV3', () => {
       })
 
       expect(readRunLeft()).toBe('54.5px')
+      expect(readInnerLeft()).toBe('-8.5px')
     } finally {
       await act(async () => {
         root.unmount()
