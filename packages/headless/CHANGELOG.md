@@ -4,6 +4,19 @@ All notable changes to `@bilig/headless` will be documented in this file.
 
 This package is released as part of the aligned bilig library package set.
 
+## 0.40.36
+
+- Release type: patch
+- Previous libraries tag: libraries-v0.40.35
+- Manual override: no
+
+## Fixes
+- perf(core): index sliding aggregate dependent collection (e726b7b8)
+
+## Internal runtime changes
+- refactor(excel-import): split style artifact candidates (069bdf62)
+- ci(release): require full ci before npm publish (f191097b)
+
 ## 0.40.35
 
 - Release type: patch
