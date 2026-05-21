@@ -163,8 +163,9 @@ interface ScannedWorksheet {
   readonly worksheetXml: string | undefined
   readonly metadataScan: LargeSimpleWorksheetScannedMetadata | undefined
   readonly metadataInput: LargeSimpleSheetMetadataInput
-  readonly sharedStringIndexes: ReadonlySet<number>
+  readonly sharedStringIndexes: Set<number>
   readonly sharedStrings?: LargeSimpleSharedStrings
+  readonly hasUnresolvedSharedStringReferences?: boolean
 }
 
 const defaultLargeSimpleXlsxByteThreshold = 1_000_000
@@ -175,7 +176,7 @@ const workbookRelationshipsPath = 'xl/_rels/workbook.xml.rels'
 const sharedStringsPath = 'xl/sharedStrings.xml'
 const stylesPath = 'xl/styles.xml'
 const unsupportedPackagePathPattern = /^xl\/(?:ctrlProps|threadedComments|vbaProject\.bin)/u
-const emptySharedStringIndexes: ReadonlySet<number> = new Set()
+const emptySharedStringIndexes: Set<number> = new Set()
 export function tryImportLargeSimpleXlsx(
   source: LargeSimpleXlsxImportSource,
   fileName: string,
@@ -545,6 +546,7 @@ export function tryImportLargeSimpleXlsx(
         if (scanned.cellScan.arena.resolveSharedStrings(sharedStrings) === null) {
           return null
         }
+        releaseSharedStringIndexSet(scanned.sharedStringIndexes)
         scannedWorksheets[index] = {
           ...scanned,
           sharedStringIndexes: emptySharedStringIndexes,
@@ -555,9 +557,12 @@ export function tryImportLargeSimpleXlsx(
       if (sheetSharedStrings === null) {
         return null
       }
+      releaseSharedStringIndexSet(scanned.sharedStringIndexes)
       scannedWorksheets[index] = {
         ...scanned,
         sharedStrings: sheetSharedStrings,
+        sharedStringIndexes: emptySharedStringIndexes,
+        hasUnresolvedSharedStringReferences: true,
       }
     }
     sharedStrings = []
@@ -670,7 +675,7 @@ export function tryImportLargeSimpleXlsx(
     }
     const snapshotMaterializationStart = phaseRecorder.start()
     const resolvedRichTextCells =
-      materializeCells && hasSharedStrings && scanned.sharedStringIndexes.size > 0
+      materializeCells && hasSharedStrings && scanned.hasUnresolvedSharedStringReferences === true
         ? scanned.cellScan.arena.retainSharedStringReferences(scanned.sharedStrings ?? sharedStrings)
         : []
     if (resolvedRichTextCells === null) {
@@ -855,6 +860,13 @@ export function tryImportLargeSimpleXlsx(
   }
 }
 
+function releaseSharedStringIndexSet(indexes: Set<number>): void {
+  if (indexes === emptySharedStringIndexes || indexes.size === 0) {
+    return
+  }
+  indexes.clear()
+}
+
 function buildParsedWorksheet(
   sheetName: string,
   order: number,
@@ -904,6 +916,10 @@ function buildParsedWorksheet(
       : cellScan.arena.materializeSheetCells(cellScan.sheetIndex, cellMaterializationOptions)
     : []
   const cellMetadataRefs = buildLargeSimpleCellMetadataReferenceSnapshots(metadataScan?.cellMetadataRefs, cells, cellScan, useLazyCells)
+  releaseProjectedCellScanStorage(cellScan, {
+    releaseArenaAfterMaterialization: options.releaseArenaAfterMaterialization,
+    useLazyCells,
+  })
   const metadata: SheetMetadataSnapshot = {
     ...(columns.entries.length > 0 ? { columns: columns.entries } : {}),
     ...(rows.entries.length > 0 ? { rows: rows.entries } : {}),
@@ -954,14 +970,25 @@ function buildParsedWorksheet(
       },
     },
   }
-  if (options.releaseArenaAfterMaterialization === true && !useLazyCells) {
-    cellScan.arena.release()
-    cellScan.styleIndexes.release()
-  } else if (options.releaseArenaAfterMaterialization === true) {
-    cellScan.arena.releaseMaterializationScratch()
-    cellScan.styleIndexes.release()
-  }
   return parsed
+}
+
+function releaseProjectedCellScanStorage(
+  cellScan: ImportedWorksheetCellScan,
+  options: {
+    readonly releaseArenaAfterMaterialization: boolean | undefined
+    readonly useLazyCells: boolean
+  },
+): void {
+  if (options.releaseArenaAfterMaterialization !== true) {
+    return
+  }
+  if (options.useLazyCells) {
+    cellScan.arena.releaseMaterializationScratch()
+  } else {
+    cellScan.arena.release()
+  }
+  cellScan.styleIndexes.release()
 }
 
 function sheetPivotArtifactsWithStreamedDefinitions(

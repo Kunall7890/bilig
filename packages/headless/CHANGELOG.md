@@ -4,6 +4,42 @@ All notable changes to `@bilig/headless` will be documented in this file.
 
 This package is released as part of the aligned bilig library package set.
 
+## 0.40.35
+
+- Release type: patch
+- Previous libraries tag: libraries-v0.40.34
+- Manual override: no
+
+## Fixes
+- perf(excel-import): avoid byte-source fallback materialization (c1eb1103)
+
+## 0.40.34
+
+- Release type: patch
+- Previous libraries tag: libraries-v0.40.33
+- Manual override: no
+
+## Fixes
+- perf(core): bind fresh direct formula runs in one pass (9d7c76e5)
+
+## 0.40.33
+
+- Release type: patch
+- Previous libraries tag: libraries-v0.40.32
+- Manual override: no
+
+## Fixes
+- perf(excel-import): release sheet import storage sooner (2dcb5ab3)
+
+## 0.40.32
+
+- Release type: patch
+- Previous libraries tag: libraries-v0.40.31
+- Manual override: no
+
+## Fixes
+- perf(excel-import): avoid verifier source rereads (f64db341)
+
 ## 0.40.31
 
 - Release type: patch

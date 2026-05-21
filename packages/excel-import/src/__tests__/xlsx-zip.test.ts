@@ -10,6 +10,7 @@ import {
   readXlsxZipEntriesLazyFromByteSource,
   readXlsxZipEntries,
   readXlsxZipEntriesLazy,
+  releaseInflatedLazyXlsxZipEntries,
   releaseLazyXlsxZipSource,
   type XlsxZipByteSource,
 } from '../xlsx-zip.js'
@@ -32,6 +33,20 @@ describe('XLSX ZIP reader', () => {
     expect(getZipText(zip, 'xl/workbook.xml')).toBe('<workbook><sheets/></workbook>')
     const descriptorAfter = Object.getOwnPropertyDescriptor(zip, 'xl/workbook.xml')
     expect(descriptorAfter?.value).toBeInstanceOf(Uint8Array)
+  })
+
+  it('releases inflated lazy ZIP entries while keeping them readable from the source', () => {
+    const zip = readXlsxZipEntriesLazy(buildStreamedZip('xl/workbook.xml', '<workbook><sheets/></workbook>'))
+
+    expect(getZipText(zip, 'xl/workbook.xml')).toBe('<workbook><sheets/></workbook>')
+    const inflatedDescriptor = Object.getOwnPropertyDescriptor(zip, 'xl/workbook.xml')
+    expect(inflatedDescriptor?.value).toBeInstanceOf(Uint8Array)
+
+    expect(releaseInflatedLazyXlsxZipEntries(zip)).toBeGreaterThan(0)
+    const releasedDescriptor = Object.getOwnPropertyDescriptor(zip, 'xl/workbook.xml')
+    expect(releasedDescriptor && 'get' in releasedDescriptor && typeof releasedDescriptor.get).toBe('function')
+
+    expect(getZipText(zip, 'xl/workbook.xml')).toBe('<workbook><sheets/></workbook>')
   })
 
   it('releases lazy central-directory source bytes after streamed consumers finish', () => {
