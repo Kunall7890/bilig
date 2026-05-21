@@ -196,7 +196,7 @@ export class GridRenderTilePaneRuntime {
     const preloadResolution = this.resolvePreloadPanes(input, resolution?.tiles ?? [])
     const fixedRenderTileDataPanes = resolution ? this.buildFixedRenderTileDataPanes(input, resolution) : null
     const acknowledgedVisibleTileKeys =
-      fixedRenderTileDataPanes?.source === 'local' ? resolveAcknowledgedVisibleDirtyPaneTileKeys(fixedRenderTileDataPanes.panes) : []
+      fixedRenderTileDataPanes?.source === 'local' ? resolveAcknowledgedVisibleDirtyPaneTileKeys(fixedRenderTileDataPanes.panes, input) : []
     const tileReadiness = this.resolveTileReadiness(input, resolution?.tiles ?? [], preloadResolution.tiles, acknowledgedVisibleTileKeys)
     if (input.sheetId !== undefined && fixedRenderTileDataPanes?.source === 'remote') {
       this.retainedFixedRenderTileDataPanes = {
@@ -669,7 +669,7 @@ export class GridRenderTilePaneRuntime {
       editingCell: input.editingCell ?? null,
       engine: input.engine,
       freezeSeq: input.gridRuntimeHost.snapshot().freezeSeq,
-      generation: input.sceneRevision,
+      generation: resolveLocalRenderGeneration(input),
       gridMetrics: input.gridMetrics,
       reuseStaticGridRectsByTileId: hasCompleteRenderTileGrid(baseTile) ? new Map([[tileKey, baseTile]]) : undefined,
       rowHeights: input.rowHeights,
@@ -745,7 +745,7 @@ export class GridRenderTilePaneRuntime {
         editingCell: input.editingCell ?? null,
         engine: input.engine,
         freezeSeq: input.gridRuntimeHost.snapshot().freezeSeq,
-        generation: input.sceneRevision,
+        generation: resolveLocalRenderGeneration(input),
         gridMetrics: input.gridMetrics,
         rowHeights: input.rowHeights,
         selectedCell: input.selectedCell,
@@ -865,7 +865,7 @@ export class GridRenderTilePaneRuntime {
         dprBucket: input.dprBucket,
         editingCell: input.editingCell ?? null,
         engine: input.engine,
-        generation: input.sceneRevision,
+        generation: resolveLocalRenderGeneration(input),
         gridMetrics: input.gridMetrics,
         rowHeights: input.rowHeights,
         selectedCell: input.selectedCell,
@@ -918,11 +918,18 @@ function normalizeNonNegativeInteger(value: number | null | undefined): number |
   return typeof value === 'number' && Number.isInteger(value) && value >= 0 ? value : null
 }
 
-function resolveAcknowledgedVisibleDirtyPaneTileKeys(panes: readonly WorkbookRenderTilePaneState[]): readonly TileKey53[] {
+function resolveAcknowledgedVisibleDirtyPaneTileKeys(
+  panes: readonly WorkbookRenderTilePaneState[],
+  input: GridRenderTilePaneRuntimeInput,
+): readonly TileKey53[] {
   const keys: number[] = []
   const seen = new Set<number>()
   for (const pane of panes) {
     if (pane.drawVisible === false || (pane.tile.dirtyMasks?.length ?? 0) === 0 || seen.has(pane.tile.tileId)) {
+      continue
+    }
+    const requiredProjectedRevision = input.gridRuntimeHost.tiles.dirtyTiles.getRequiredProjectedRevision(pane.tile.tileId)
+    if (!tileSatisfiesRequiredProjectedRevision(pane.tile, input.engine, requiredProjectedRevision)) {
       continue
     }
     seen.add(pane.tile.tileId)
@@ -956,6 +963,38 @@ function tileProjectionRevisionIsBehind(tile: GridRenderTile | null, engine: Gri
   const hasPendingLocalProjection =
     localRevision !== null && localRevision > 0 && (authoritativeRevision === null || projectedRevision > authoritativeRevision)
   return tile.lastBatchId < projectedRevision || hasPendingLocalProjection
+}
+
+function resolveLocalRenderGeneration(input: GridRenderTilePaneRuntimeInput): number {
+  const renderRevision = input.engine.getRenderRevisionSnapshot?.()
+  return Math.max(
+    input.sceneRevision,
+    normalizeNonNegativeInteger(renderRevision?.localRevision) ?? 0,
+    normalizeNonNegativeInteger(renderRevision?.projectedRevision) ?? 0,
+  )
+}
+
+function tileSatisfiesRequiredProjectedRevision(
+  tile: GridRenderTile,
+  engine: GridEngineLike,
+  requiredProjectedRevision: number | null,
+): boolean {
+  if (requiredProjectedRevision === null) {
+    return true
+  }
+  const renderRevision = engine.getRenderRevisionSnapshot?.()
+  if (!renderRevision) {
+    return true
+  }
+  const projectedRevision = normalizeNonNegativeInteger(renderRevision.projectedRevision)
+  if (projectedRevision === null || projectedRevision < requiredProjectedRevision) {
+    return false
+  }
+  return (
+    tile.version.styles >= requiredProjectedRevision &&
+    tile.version.text >= requiredProjectedRevision &&
+    tile.version.values >= requiredProjectedRevision
+  )
 }
 
 export function getGridRenderTilePaneRuntime(current: unknown): GridRenderTilePaneRuntime {

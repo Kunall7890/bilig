@@ -160,6 +160,86 @@ describe('typegpu v3 resource cache revision keys', () => {
     expect(areGridRectTileRevisionKeysEqualV3(rectRevisionKey(changedWithoutSequenceBump), rectRevisionKey(base))).toBe(false)
   })
 
+  test('forces V3 text upload when payload signature changes despite incomplete dirty masks', () => {
+    const base = createTile({
+      textCount: 1,
+      textRuns: [createTextRun({ text: 'old' })],
+    })
+    const changed = createTile({
+      dirtyMasks: new Uint32Array([DirtyMaskV3.Rect]),
+      textCount: base.textCount,
+      textRuns: [createTextRun({ text: 'new' })],
+      version: { ...base.version, text: 2, values: 2 },
+    })
+
+    expect(
+      shouldSyncGridTextTileResourceV3({
+        content: contentEntry({
+          textHandle: createRecordedTextHandle([]),
+          textRunCount: base.textCount,
+          textRevisionKey: resolveGridTextTileRevisionKeyV3(base),
+        }),
+        textRevisionKey: resolveGridTextTileRevisionKeyV3(changed),
+        tile: changed,
+      }),
+    ).toBe(true)
+  })
+
+  test('forces V3 rect upload when payload signature changes despite incomplete dirty masks', () => {
+    const base = createTile({
+      rectCount: 1,
+      rectSignature: 'fill-red',
+    })
+    const changed = createTile({
+      dirtyMasks: new Uint32Array([DirtyMaskV3.Text]),
+      rectCount: base.rectCount,
+      rectSignature: 'fill-green',
+      version: { ...base.version, styles: 2 },
+    })
+
+    expect(
+      shouldSyncGridRectTileResourceV3({
+        content: contentEntry({
+          rectCount: base.rectCount,
+          rectHandle: createRecordedRectHandle(),
+          rectRevisionKey: rectRevisionKey(base),
+        }),
+        rectRevisionKey: rectRevisionKey(changed),
+        tile: changed,
+      }),
+    ).toBe(true)
+  })
+
+  test('tracks V3 text decoration rect payload changes in rect revision keys', () => {
+    const tile = createTile({ rectCount: 0, rectInstances: new Float32Array() })
+    const redDecorationKey = resolveGridRectTileRevisionKeyV3({
+      decorationRects: [{ color: '#ff0000', height: 1, width: 20, x: 4, y: 18 }],
+      tile,
+    })
+    const greenDecorationKey = resolveGridRectTileRevisionKeyV3({
+      decorationRects: [{ color: '#00aa00', height: 1, width: 20, x: 4, y: 18 }],
+      tile,
+    })
+
+    expect(areGridRectTileRevisionKeysEqualV3(redDecorationKey, greenDecorationKey)).toBe(false)
+    expect(
+      shouldSyncGridRectTileResourceV3({
+        content: contentEntry({
+          decorationCellKeys: new Set(['0:0']),
+          decorationRects: [{ color: '#ff0000', height: 1, width: 20, x: 4, y: 18 }],
+          rectCount: tile.rectCount,
+          rectHandle: createRecordedRectHandle(),
+          rectRevisionKey: redDecorationKey,
+        }),
+        rectRevisionKey: greenDecorationKey,
+        tile: createTile({
+          ...tile,
+          dirtyMasks: new Uint32Array([DirtyMaskV3.Text]),
+        }),
+      }),
+    ).toBe(true)
+  })
+
   test('full-writes V3 rect payloads when same-count fills change without dirty spans', () => {
     expect(
       shouldFullWriteTileRectPayloadV3({
@@ -302,6 +382,30 @@ describe('typegpu v3 resource cache revision keys', () => {
         }),
         textRevisionKey: revisionKey,
         tile,
+      }),
+    ).toBe(true)
+  })
+
+  test('forces V3 text upload when atlas geometry changes despite incomplete dirty masks', () => {
+    const base = createTile({ textCount: 1, textRuns: [createTextRun({ text: 'A' })] })
+    const changed = createTile({
+      dirtyMasks: new Uint32Array([DirtyMaskV3.Rect]),
+      textCount: base.textCount,
+      textRuns: base.textRuns,
+      version: { ...base.version, values: 2 },
+    })
+
+    expect(
+      shouldSyncGridTextTileResourceV3({
+        atlasGeometryVersion: 2,
+        content: contentEntry({
+          textAtlasGeometryVersion: 1,
+          textHandle: createRecordedTextHandle([]),
+          textRunCount: base.textCount,
+          textRevisionKey: resolveGridTextTileRevisionKeyV3(base),
+        }),
+        textRevisionKey: resolveGridTextTileRevisionKeyV3(changed),
+        tile: changed,
       }),
     ).toBe(true)
   })
@@ -1315,6 +1419,18 @@ function createRecordedTextHandle(
     capacityBytes: 4096,
     classId: 4,
     layout: 'textRuns',
+    usedBytes: 0,
+  }
+}
+
+function createRecordedRectHandle(): NonNullable<TypeGpuTileContentResourceEntryV3['rectHandle']> {
+  return {
+    buffer: {
+      write() {},
+    },
+    capacityBytes: 4096,
+    classId: 4,
+    layout: 'rectInstances',
     usedBytes: 0,
   }
 }

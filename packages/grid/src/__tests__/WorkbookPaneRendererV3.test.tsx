@@ -366,6 +366,41 @@ describe('WorkbookPaneRendererV3', () => {
     )
   })
 
+  test('includes pane placement in frame proof identity', () => {
+    const basePane = createTilePane()
+    const movedFramePane: WorkbookRenderTilePaneState = {
+      ...basePane,
+      frame: { ...basePane.frame, x: basePane.frame.x + 12 },
+    }
+    const shiftedViewportPane: WorkbookRenderTilePaneState = {
+      ...basePane,
+      contentOffset: { x: basePane.contentOffset.x + 100, y: basePane.contentOffset.y },
+      scrollAxes: { x: false, y: true },
+      viewport: { ...basePane.viewport, colEnd: basePane.viewport.colEnd + 1, colStart: basePane.viewport.colStart + 1 },
+    }
+
+    const baseSignature = resolveWorkbookPaneFrameProofSignatureV3({
+      headerPanes: [],
+      overlay: null,
+      tilePanes: [basePane],
+    })
+
+    expect(baseSignature).not.toBe(
+      resolveWorkbookPaneFrameProofSignatureV3({
+        headerPanes: [],
+        overlay: null,
+        tilePanes: [movedFramePane],
+      }),
+    )
+    expect(baseSignature).not.toBe(
+      resolveWorkbookPaneFrameProofSignatureV3({
+        headerPanes: [],
+        overlay: null,
+        tilePanes: [shiftedViewportPane],
+      }),
+    )
+  })
+
   test('includes workbook render revisions in frame proof identity', () => {
     const basePane = createTilePane()
     const baseSignature = resolveWorkbookPaneFrameProofSignatureV3({

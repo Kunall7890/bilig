@@ -268,6 +268,73 @@ describe('WorkbookPaneRendererHostRuntimeV3', () => {
     animationFrames.restore()
   })
 
+  test('rejects a submitted frame when props changed during the draw', async () => {
+    const animationFrames = installManualAnimationFrames()
+    const backend = {}
+    const firstPane = createDirtyTilePane()
+    const secondPane = {
+      ...firstPane,
+      tile: {
+        ...firstPane.tile,
+        lastBatchId: 2,
+        version: {
+          ...firstPane.tile.version,
+          styles: 2,
+        },
+      },
+    }
+    const props = {
+      active: true,
+      cameraStore: null,
+      drawText: true,
+      geometry: null,
+      headerPanes: [],
+      host: createHost(640, 360),
+      overlay: null,
+      overlayBuilder: null,
+      preloadTilePanes: [],
+      renderRevisionSnapshot: null,
+      scrollTransformStore: null,
+      tilePanes: [firstPane],
+    }
+    let runtime!: WorkbookPaneRendererHostRuntimeV3
+    let drawCount = 0
+    const drawFrame = vi.fn<WorkbookPaneFrameDrawerV3>(() => {
+      drawCount += 1
+      if (drawCount === 1) {
+        runtime.updateProps({ ...props, tilePanes: [secondPane] })
+      }
+      return true
+    })
+    runtime = new WorkbookPaneRendererHostRuntimeV3({
+      rendererRuntime: new WorkbookPaneRendererRuntimeV3(drawFrame),
+      surfaceRuntime: new WorkbookPaneSurfaceRuntimeV3({
+        createBackend: vi.fn(async () => backend),
+        createResizeObserver: () => null,
+        syncSurface: vi.fn(),
+      }),
+    })
+
+    runtime.updateProps(props)
+    runtime.setCanvas(document.createElement('canvas'))
+    await Promise.resolve()
+
+    animationFrames.flushNextFrame()
+    expect(runtime.getFrameProofStatusSnapshot()).toBe('pending')
+    expect(runtime.getHasPresentedFrameSnapshot()).toBe(false)
+    expect(runtime.getPresentedFrameProofSignatureSnapshot()).toBe('')
+    expect(drawFrame.mock.calls.at(0)?.[0].frameProofSignature).not.toBe(runtime.getFrameProofSignatureSnapshot())
+
+    animationFrames.flushNextFrame()
+    expect(runtime.getFrameProofStatusSnapshot()).toBe('presented')
+    expect(runtime.getHasPresentedFrameSnapshot()).toBe(true)
+    expect(runtime.getPresentedFrameProofSignatureSnapshot()).toBe(runtime.getFrameProofSignatureSnapshot())
+    expect(runtime.getPresentedVisualFrameSnapshot()?.tilePanes.at(0)?.tile.lastBatchId).toBe(2)
+
+    runtime.dispose()
+    animationFrames.restore()
+  })
+
   test('invalidates the presented-frame proof when a dynamic overlay builder moves selection without moving the camera', async () => {
     const runtime = new WorkbookPaneRendererHostRuntimeV3({
       rendererRuntime: new WorkbookPaneRendererRuntimeV3(vi.fn<WorkbookPaneFrameDrawerV3>()),

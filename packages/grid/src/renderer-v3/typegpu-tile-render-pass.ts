@@ -71,6 +71,28 @@ export function hasCompleteTypeGpuBodyTileContentV3(input: {
   return true
 }
 
+export function hasRequiredTypeGpuTextAtlasResourcesV3(input: {
+  readonly atlasTextureReady: boolean
+  readonly drawText?: boolean | undefined
+  readonly headerPanes?: readonly GridHeaderPaneState[] | undefined
+  readonly tilePanes: readonly WorkbookRenderTilePaneState[]
+}): boolean {
+  if (!(input.drawText ?? true) || input.atlasTextureReady) {
+    return true
+  }
+  for (const pane of input.tilePanes) {
+    if (isPaneDrawVisible(pane) && pane.tile.textCount > 0) {
+      return false
+    }
+  }
+  for (const pane of input.headerPanes ?? []) {
+    if (isPaneDrawVisible(pane) && pane.textCount > 0) {
+      return false
+    }
+  }
+  return true
+}
+
 function isPaneDrawVisible(pane: WorkbookRenderTilePaneState | GridHeaderPaneState): boolean {
   return pane.drawVisible !== false
 }
@@ -86,7 +108,16 @@ export function drawTypeGpuTilePanesV3(input: {
   readonly surface: TypeGpuTileDrawSurface
   readonly scrollSnapshot: WorkbookGridScrollSnapshot
 }): boolean {
-  if (!hasCompleteTypeGpuBodyTileContentV3(input) || !hasDrawableTypeGpuBodyPaneFramesV3(input)) {
+  if (
+    !hasCompleteTypeGpuBodyTileContentV3(input) ||
+    !hasRequiredTypeGpuTextAtlasResourcesV3({
+      atlasTextureReady: input.artifacts.atlasTexture !== null,
+      drawText: input.drawText,
+      headerPanes: input.headerPanes,
+      tilePanes: input.tilePanes,
+    }) ||
+    !hasDrawableTypeGpuBodyPaneFramesV3(input)
+  ) {
     return false
   }
 
