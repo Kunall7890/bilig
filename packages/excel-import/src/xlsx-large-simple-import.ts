@@ -47,6 +47,7 @@ import { collectLargeSimpleImportGarbage } from './xlsx-large-simple-garbage.js'
 import { mergeWorkbookRichTextCells } from './xlsx-large-simple-lazy-rich-text-cells.js'
 import { ImportedWorkbookStringPool } from './xlsx-large-simple-string-pool.js'
 import type { ImportedWorksheetCellScan } from './xlsx-large-simple-arena.js'
+import { releaseProjectedCellScanStorage } from './xlsx-large-simple-cell-scan-release.js'
 import { readImportedWorksheetSheetProtection } from './xlsx-sheet-protection.js'
 import {
   largeSimpleControlArtifactSheetSources,
@@ -971,24 +972,6 @@ function buildParsedWorksheet(
     },
   }
   return parsed
-}
-
-function releaseProjectedCellScanStorage(
-  cellScan: ImportedWorksheetCellScan,
-  options: {
-    readonly releaseArenaAfterMaterialization: boolean | undefined
-    readonly useLazyCells: boolean
-  },
-): void {
-  if (options.releaseArenaAfterMaterialization !== true) {
-    return
-  }
-  if (options.useLazyCells) {
-    cellScan.arena.releaseMaterializationScratch()
-  } else {
-    cellScan.arena.release()
-  }
-  cellScan.styleIndexes.release()
 }
 
 function sheetPivotArtifactsWithStreamedDefinitions(
