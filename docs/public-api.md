@@ -271,6 +271,11 @@ or `formulas_mismatch`, plus structured `path`, `target`, `check`, `expected`,
 and `actual` fields where available. Malformed adapter preview, apply, or
 readback output fails as `invalid_runtime_result`; adapter output is not trusted
 just because TypeScript says it has the right shape.
+Readbacks can be scalar (`value`/`formula`), matrix-shaped
+(`values`/`formulas`), or cell-level (`cells`). Cell-level readbacks keep
+addresses, values, and formulas together for inspection; when the target is a
+range and every in-range cell is present, `@bilig/workbook` derives the matrix
+needed for `valuesEqual` and `formulasEqual`.
 If apply succeeded and later proof fails, the failed run result preserves the
 adapter undo ref when one was returned.
 Formula readbacks are exact and should use the normalized no-leading-`=` form

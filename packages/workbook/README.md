@@ -295,6 +295,26 @@ workbook.check.custom({
 The runtime adapter either verifies checks itself or returns readbacks that
 `@bilig/workbook` can compare against the expected values and formulas.
 
+Readbacks can be scalar, matrix-shaped, or cell-level. Cell-level readbacks are
+often easiest for agents to inspect because they keep the target, cell address,
+value, and formula together:
+
+```ts
+read(targets) {
+  return [
+    {
+      target: targets[0],
+      cells: [
+        { sheetName: 'Sheet1', address: 'B2', value: 12, formula: 'A2*B2' },
+      ],
+    },
+  ]
+}
+```
+
+For a range target, `@bilig/workbook` derives the expected value or formula
+matrix from complete in-range cell readbacks.
+
 ## Planning
 
 Use `planWorkbookAction` when an action name or input may come from an agent,
