@@ -77,6 +77,15 @@ export function biligRenderedSurfaceReadiness(state: BiligRenderedSurfaceState |
   if ((canvas.presentedTilePaneCount ?? 0) <= 0 || (canvas.presentedHeaderPaneCount ?? 0) <= 0) {
     gaps.push('presented tile/header pane counts are empty')
   }
+  if (
+    canvas.tilePaneCount > 0 &&
+    canvas.headerPaneCount > 0 &&
+    (canvas.presentedTilePaneCount ?? 0) > 0 &&
+    (canvas.presentedHeaderPaneCount ?? 0) > 0 &&
+    (canvas.presentedTilePaneCount !== canvas.tilePaneCount || canvas.presentedHeaderPaneCount !== canvas.headerPaneCount)
+  ) {
+    gaps.push('presented tile/header pane counts do not cover the current visible panes')
+  }
   if (!canvasPixelsMatchViewport(canvas, state)) {
     gaps.push('TypeGPU canvas backing pixels do not cover the viewport')
   }

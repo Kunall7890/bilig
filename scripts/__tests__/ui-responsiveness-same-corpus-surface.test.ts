@@ -104,4 +104,19 @@ describe('same-corpus Bilig rendered surface proof', () => {
     expect(readiness.ready).toBe(false)
     expect(readiness.gaps).toContain('TypeGPU canvas backing pixels do not cover the viewport')
   })
+
+  it('rejects partially presented pane coverage', () => {
+    const readiness = biligRenderedSurfaceReadiness({
+      ...readyTypeGpuSurface,
+      typeGpu: {
+        ...readyTypeGpuSurface.typeGpu!,
+        presentedHeaderPaneCount: 1,
+        presentedTilePaneCount: 2,
+        tilePaneCount: 3,
+      },
+    })
+
+    expect(readiness.ready).toBe(false)
+    expect(readiness.gaps).toContain('presented tile/header pane counts do not cover the current visible panes')
+  })
 })

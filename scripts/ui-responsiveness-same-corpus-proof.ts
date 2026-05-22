@@ -79,17 +79,31 @@ export function isSameCorpusProductPixelGridProofComplete(proof: SameCorpusProdu
   }
   const gridProjectedRevision = evidence.get('gridProjectedRevision') ?? ''
   const tileSceneRevision = evidence.get('tileSceneRevision') ?? ''
+  const tilePaneCount = numericEvidence(evidence, 'tilePaneCount')
+  const headerPaneCount = numericEvidence(evidence, 'headerPaneCount')
+  const presentedTilePaneCount = numericEvidence(evidence, 'presentedTilePaneCount')
+  const presentedHeaderPaneCount = numericEvidence(evidence, 'presentedHeaderPaneCount')
+  const expectedPixelWidth = numericEvidence(evidence, 'expectedPixelWidth')
+  const expectedPixelHeight = numericEvidence(evidence, 'expectedPixelHeight')
+  const canvasPixelWidth = numericEvidence(evidence, 'canvasPixelWidth')
+  const canvasPixelHeight = numericEvidence(evidence, 'canvasPixelHeight')
   return (
     evidence.get('mode') === 'typegpu-v3' &&
     evidence.get('contractVersion') === sameCorpusUiRenderProofContractVersion &&
     evidence.get('backendStatus') === 'ready' &&
     evidence.get('frameProofStatus') === 'presented' &&
     evidence.get('hasPresentedVisibleFrame') === 'true' &&
-    positiveEvidenceNumber(evidence, 'tilePaneCount') &&
-    positiveEvidenceNumber(evidence, 'headerPaneCount') &&
-    positiveEvidenceNumber(evidence, 'presentedTilePaneCount') &&
-    positiveEvidenceNumber(evidence, 'presentedHeaderPaneCount') &&
+    isPositiveNumber(tilePaneCount) &&
+    isPositiveNumber(headerPaneCount) &&
+    presentedTilePaneCount === tilePaneCount &&
+    presentedHeaderPaneCount === headerPaneCount &&
     evidence.get('canvasCoversViewport') === 'true' &&
+    isPositiveNumber(expectedPixelWidth) &&
+    isPositiveNumber(expectedPixelHeight) &&
+    isPositiveNumber(canvasPixelWidth) &&
+    isPositiveNumber(canvasPixelHeight) &&
+    canvasPixelWidth >= expectedPixelWidth - 2 &&
+    canvasPixelHeight >= expectedPixelHeight - 2 &&
     gridProjectedRevision.length > 0 &&
     evidence.get('typeGpuProjectedRevision') === gridProjectedRevision &&
     evidence.get('visibleProjectedRevision') === gridProjectedRevision &&
@@ -249,14 +263,22 @@ function sameCorpusEvidenceMap(evidence: readonly string[]): ReadonlyMap<string,
   )
 }
 
-function positiveEvidenceNumber(evidence: ReadonlyMap<string, string>, key: string): boolean {
+function numericEvidence(evidence: ReadonlyMap<string, string>, key: string): number | null {
   const value = evidence.get(key)
-  return value !== undefined && Number.isFinite(Number(value)) && Number(value) > 0
+  if (value === undefined) {
+    return null
+  }
+  const numericValue = Number(value)
+  return Number.isFinite(numericValue) ? numericValue : null
+}
+
+function isPositiveNumber(value: number | null): value is number {
+  return value !== null && value > 0
 }
 
 function minimumEvidenceNumber(evidence: ReadonlyMap<string, string>, key: string, minimum: number): boolean {
-  const value = evidence.get(key)
-  return value !== undefined && Number.isFinite(Number(value)) && Number(value) >= minimum
+  const value = numericEvidence(evidence, key)
+  return value !== null && value >= minimum
 }
 
 function hasStrictScreenshotPixelGridEvidence(evidence: ReadonlyMap<string, string>): boolean {
@@ -284,8 +306,12 @@ function ratio(numerator: number, denominator: number): number {
   return numerator / denominator
 }
 
+interface ScreenshotBuffer {
+  toString(encoding: 'base64'): string
+}
+
 interface CapturedProductScreenshot {
-  readonly buffer: Buffer | null
+  readonly buffer: ScreenshotBuffer | null
   readonly captured: boolean
 }
 
@@ -347,7 +373,7 @@ async function captureProductScreenshot(
 async function readProductPixelGridProof(
   page: Page,
   product: UiResponsivenessSameCorpusProduct,
-  screenshotBuffer: Buffer | null,
+  screenshotBuffer: ScreenshotBuffer | null,
 ): Promise<SameCorpusProductPixelGridProof> {
   if (product === 'bilig') {
     return await readBiligPixelGridProof(page, screenshotBuffer)
@@ -361,7 +387,7 @@ async function readProductPixelGridProof(
   return await readScreenshotPixelGridProof(page, product, 'excel-web-visible-grid', screenshotBuffer)
 }
 
-async function readBiligPixelGridProof(page: Page, screenshotBuffer: Buffer | null): Promise<SameCorpusProductPixelGridProof> {
+async function readBiligPixelGridProof(page: Page, screenshotBuffer: ScreenshotBuffer | null): Promise<SameCorpusProductPixelGridProof> {
   const renderedSurface = await readBiligRenderedSurfaceState(page)
   const readiness = biligRenderedSurfaceReadiness(renderedSurface)
   const pixelAnalysis = screenshotBuffer ? await analyzeScreenshotGridPixels(page, screenshotBuffer) : null
@@ -380,7 +406,7 @@ async function readScreenshotPixelGridProof(
   page: Page,
   product: UiResponsivenessSameCorpusProduct,
   method: SameCorpusProductPixelGridProof['method'],
-  screenshotBuffer: Buffer,
+  screenshotBuffer: ScreenshotBuffer,
 ): Promise<SameCorpusProductPixelGridProof> {
   const analysis = await analyzeScreenshotGridPixels(page, screenshotBuffer)
   return {
@@ -407,7 +433,7 @@ function emptyPixelGridProof(
   }
 }
 
-async function analyzeScreenshotGridPixels(page: Page, screenshotBuffer: Buffer): Promise<ScreenshotGridPixelAnalysis> {
+async function analyzeScreenshotGridPixels(page: Page, screenshotBuffer: ScreenshotBuffer): Promise<ScreenshotGridPixelAnalysis> {
   return await page.evaluate(
     async ({ dataUrl }) => {
       const image = await new Promise<HTMLImageElement>((resolveImage, reject) => {
