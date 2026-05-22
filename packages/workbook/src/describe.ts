@@ -24,6 +24,7 @@ import type {
   WorkbookAppliedSummary,
   WorkbookChangeSummary,
   WorkbookCheckExpectation,
+  WorkbookCheckProof,
   WorkbookCheckResult,
   WorkbookCheckStatus,
   WorkbookRunError,
@@ -129,6 +130,7 @@ export interface WorkbookCheckResultDescription {
   readonly refs?: readonly WorkbookRefDescription[]
   readonly message: string
   readonly expectation?: WorkbookCheckExpectationDescription
+  readonly proof?: WorkbookCheckProofDescription
 }
 
 export type WorkbookCheckExpectationDescription =
@@ -149,6 +151,8 @@ export type WorkbookCheckExpectationDescription =
       readonly kind: 'formulasEqual'
       readonly formulas: readonly (readonly (string | null)[])[]
     }
+
+export type WorkbookCheckProofDescription = WorkbookCheckProof
 
 export interface WorkbookActionPlanDescription {
   readonly modelName: string
@@ -334,7 +338,24 @@ function describeCheck(check: WorkbookCheckResult): WorkbookCheckResultDescripti
     ...(check.refs !== undefined ? { refs: check.refs.map(describeRef) } : {}),
     message: check.message,
     ...(check.expectation !== undefined ? { expectation: describeExpectation(check.expectation) } : {}),
+    ...(check.proof !== undefined ? { proof: describeProof(check.proof) } : {}),
   }
+}
+
+function describeProof(proof: WorkbookCheckProof): WorkbookCheckProofDescription {
+  if (proof.kind === 'values') {
+    return {
+      kind: 'values',
+      values: proof.values.map((row) => [...row]),
+    }
+  }
+  if (proof.kind === 'formulas') {
+    return {
+      kind: 'formulas',
+      formulas: proof.formulas.map((row) => [...row]),
+    }
+  }
+  return { ...proof }
 }
 
 function describeExpectation(expectation: WorkbookCheckExpectation): WorkbookCheckExpectationDescription {

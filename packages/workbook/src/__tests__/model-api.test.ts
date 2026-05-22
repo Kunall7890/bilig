@@ -31,6 +31,7 @@ describe('@bilig/workbook model api', () => {
     expect(workbookPlanIssueCodes).toContain('invalid_action_input')
     expect(workbookPlanIssueCodes).toContain('formula_input_not_resolved')
     expect(workbookPlanIssueCodes).toContain('invalid_check_expectation_formula')
+    expect(workbookPlanIssueCodes).toContain('check_proof_not_planned')
     expect(workbookPlanIssueCodes).toContain('missing_workbook_op')
     expect(new Set(workbookPlanIssueCodes).size).toBe(workbookPlanIssueCodes.length)
     expect(isWorkbookPlanIssueCode('check_ref_not_resolved')).toBe(true)
@@ -789,6 +790,57 @@ describe('@bilig/workbook model api', () => {
     expect(isWorkbookRef(incompleteRange)).toBe(false)
     expect(isWorkbookRef(malformedRows)).toBe(false)
     expect(collectWorkbookRefs({ tableDescription, incompleteRange, malformedRows })).toEqual([])
+  })
+
+  it('rejects planned checks that try to carry runtime proof', () => {
+    const output = findRange({ sheetName: 'Sheet1', address: 'B2' })
+    const model = defineModel({
+      name: 'preproved-check-model',
+
+      find() {
+        return { output }
+      },
+
+      checks() {
+        return [
+          {
+            status: 'planned',
+            kind: 'valueEquals',
+            target: output,
+            message: 'Sheet1!B2 equals 12',
+            expectation: {
+              kind: 'valueEquals',
+              value: 12,
+            },
+            proof: {
+              kind: 'value',
+              value: 12,
+            },
+          },
+        ]
+      },
+
+      actions: {
+        inspect({ refs }) {
+          void refs.output
+        },
+      },
+    })
+
+    const plan = buildWorkbookActionPlan(model, 'inspect')
+
+    expect(verifyPlan(plan)).toEqual({
+      status: 'invalid',
+      modelName: 'preproved-check-model',
+      actionName: 'inspect',
+      issues: [
+        {
+          code: 'check_proof_not_planned',
+          path: 'checks[0].proof',
+          message: 'Sheet1!B2 check valueEquals proof must come from runtime verification',
+        },
+      ],
+    })
   })
 
   it('describes plans as JSON-safe agent-readable intent', () => {

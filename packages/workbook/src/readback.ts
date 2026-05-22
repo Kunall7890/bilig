@@ -1,7 +1,7 @@
 import { parseCellAddress } from '@bilig/formula'
 import type { LiteralInput } from '@bilig/protocol'
 import type { WorkbookRef } from './find.js'
-import type { WorkbookCheckResult } from './result.js'
+import type { WorkbookCheckProof, WorkbookCheckResult } from './result.js'
 
 export interface WorkbookRunReadback {
   readonly target: WorkbookRef
@@ -344,10 +344,39 @@ function formulasMismatch(
   })
 }
 
-function checked(check: WorkbookCheckResult, status: WorkbookCheckResult['status']): WorkbookCheckResult {
+function checked(check: WorkbookCheckResult, status: WorkbookCheckResult['status'], proof?: WorkbookCheckProof): WorkbookCheckResult {
   return {
     ...check,
     status,
+    ...(proof !== undefined ? { proof } : {}),
+  }
+}
+
+function valueProof(value: LiteralInput): WorkbookCheckProof {
+  return {
+    kind: 'value',
+    value,
+  }
+}
+
+function valuesProof(values: readonly (readonly LiteralInput[])[]): WorkbookCheckProof {
+  return {
+    kind: 'values',
+    values,
+  }
+}
+
+function formulaProof(formula: string | null): WorkbookCheckProof {
+  return {
+    kind: 'formula',
+    formula,
+  }
+}
+
+function formulasProof(formulas: readonly (readonly (string | null)[])[]): WorkbookCheckProof {
+  return {
+    kind: 'formulas',
+    formulas,
   }
 }
 
@@ -360,61 +389,67 @@ function verifyCheck(
   }
 
   if (check.target === undefined) {
+    const failedCheck = checked(check, 'failed')
     return {
-      check: checked(check, 'failed'),
-      issue: missingReadback(check),
+      check: failedCheck,
+      issue: missingReadback(failedCheck),
     }
   }
 
   const readback = findReadback(readbacks, check.target)
   if (readback === undefined) {
+    const failedCheck = checked(check, 'failed')
     return {
-      check: checked(check, 'failed'),
-      issue: missingReadback(check),
+      check: failedCheck,
+      issue: missingReadback(failedCheck),
     }
   }
 
   if (check.expectation.kind === 'valueEquals') {
     const actual = scalarValue(readback)
     if (actual !== check.expectation.value) {
+      const failedCheck = checked(check, 'failed', actual === undefined ? undefined : valueProof(actual))
       return {
-        check: checked(check, 'failed'),
-        issue: valueMismatch(check, check.expectation.value, actual),
+        check: failedCheck,
+        issue: valueMismatch(failedCheck, check.expectation.value, actual),
       }
     }
-    return { check: checked(check, 'passed') }
+    return { check: checked(check, 'passed', valueProof(actual)) }
   }
 
   if (check.expectation.kind === 'valuesEqual') {
     const actual = valuesMatrix(readback)
     if (actual === undefined || !sameMatrix(actual, check.expectation.values)) {
+      const failedCheck = checked(check, 'failed', actual === undefined ? undefined : valuesProof(actual))
       return {
-        check: checked(check, 'failed'),
-        issue: valuesMismatch(check, check.expectation.values, actual),
+        check: failedCheck,
+        issue: valuesMismatch(failedCheck, check.expectation.values, actual),
       }
     }
-    return { check: checked(check, 'passed') }
+    return { check: checked(check, 'passed', valuesProof(actual)) }
   }
 
   if (check.expectation.kind === 'formulaEquals') {
     const actual = scalarFormula(readback)
     if (actual !== check.expectation.formula) {
+      const failedCheck = checked(check, 'failed', actual === undefined ? undefined : formulaProof(actual))
       return {
-        check: checked(check, 'failed'),
-        issue: formulaMismatch(check, check.expectation.formula, actual),
+        check: failedCheck,
+        issue: formulaMismatch(failedCheck, check.expectation.formula, actual),
       }
     }
-    return { check: checked(check, 'passed') }
+    return { check: checked(check, 'passed', formulaProof(actual)) }
   }
 
   const actual = formulasMatrix(readback)
   if (actual === undefined || !sameMatrix(actual, check.expectation.formulas)) {
+    const failedCheck = checked(check, 'failed', actual === undefined ? undefined : formulasProof(actual))
     return {
-      check: checked(check, 'failed'),
-      issue: formulasMismatch(check, check.expectation.formulas, actual),
+      check: failedCheck,
+      issue: formulasMismatch(failedCheck, check.expectation.formulas, actual),
     }
   }
-  return { check: checked(check, 'passed') }
+  return { check: checked(check, 'passed', formulasProof(actual)) }
 }
 
 export function verifyWorkbookReadbacks(

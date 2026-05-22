@@ -83,6 +83,7 @@ It exposes:
 - `findTable`, `findColumn`, `findRange`, `findName`, and `findRows` through the model workbook context and as top-level helpers
 - `check.exists`, `check.noFormulaErrors`, `check.valueEquals`, `check.valuesEqual`, `check.formulaEquals`, `check.formulasEqual`, and `check.custom` through the model workbook context and as top-level helpers
 - `WorkbookModel`, `WorkbookAction`, `WorkbookActionConfig`, `WorkbookActionDefinition`, `WorkbookActionContext`, `WorkbookCheckContext`, `WorkbookFindWorkbook`, `WorkbookCheckWorkbook`, `WorkbookActionWorkbook`, `WorkbookModelWorkbook`, `WorkbookFindNamespace`, `WorkbookActionInput`, `WorkbookActionInputDescription`, `WorkbookActionInputDescriptionKind`, `WorkbookActionInspection`, `WorkbookAddOpOptions`, `WorkbookActionPlanResult`, `WorkbookModelDescription`, `WorkbookRefDescription`, `WorkbookActionPlanDescription`, `WorkbookActionPlanResultDescription`, `WorkbookRunResultDescription`, `WorkbookUndoRefDescription`, `WorkbookAppliedSummaryDescription`, `WorkbookRuntimeRequirements`, `WorkbookRuntimeRequirement`, `WorkbookRuntimeCapability`, `WorkbookRuntimeMaterialization`, `WorkbookRuntimePreview`, `WorkbookPlanVerification`, `WorkbookPlanIssue`, `WorkbookPlanIssueCode`, `WorkbookModelVerification`, `WorkbookModelActionVerification`, `WorkbookModelVerificationOptions`, `WorkbookRunAdapter`, `WorkbookRunApplyResult`, `WorkbookCellReadback`, `WorkbookRunReadback`, `WorkbookReadbackVerification`, `WorkbookReadbackIssue`, `WorkbookReadbackIssueCode`, `WorkbookCheckExpectation`, `WorkbookCheckExpectationDescription`, `WorkbookCustomCheckOptions`, `WorkbookReadbackCheckOptions`, `WorkbookRawFormulaOptions`, `WorkbookRunResult`, `WorkbookAppliedSummary`, `WorkbookRunError`, `WorkbookRunErrorCode`, and `WorkbookCheckResult`
+- `WorkbookCheckProof` and `WorkbookCheckProofDescription`
 - the existing low-level operation language: `WorkbookOp`, `WorkbookTxn`, `EngineOp`, and `EngineOpBatch`
 
 The package builds portable workbook intent and concrete low-level ops when the
@@ -249,6 +250,9 @@ Formula readback expectation inputs must resolve through `refsUsed`, and
 formula expectation text must be parseable.
 Checks must start as `planned`; consumer model code cannot mark a check passed
 or failed before runtime proof.
+Planned checks also cannot include `proof`. `proof` is runtime evidence and is
+only added after `@bilig/workbook` has compared adapter readbacks with a
+machine-readable expectation.
 Low-level `addOp` commands must contain valid `WorkbookOp` values, must still
 appear in `plan.ops`, and must match their declared `target` when the op exposes
 a concrete address or range.
@@ -271,6 +275,12 @@ or `formulas_mismatch`, plus structured `path`, `target`, `check`, `expected`,
 and `actual` fields where available. Malformed adapter preview, apply, or
 readback output fails as `invalid_runtime_result`; adapter output is not trusted
 just because TypeScript says it has the right shape.
+Successful readback checks keep an inspectable `proof` object on the returned
+check. The proof is deliberately small: `{ kind: "value", value }`,
+`{ kind: "values", values }`, `{ kind: "formula", formula }`, or
+`{ kind: "formulas", formulas }`. Failed readback checks also include proof when
+the adapter supplied an actual observed value or matrix, while mismatch errors
+carry the same actual value in their structured `actual` field.
 Readbacks can be scalar (`value`/`formula`), matrix-shaped
 (`values`/`formulas`), or cell-level (`cells`). Cell-level readbacks keep
 addresses, values, and formulas together for inspection; when the target is a
@@ -297,7 +307,8 @@ drop, replace, or prove checks.
 Adapters can also expose `verifyChecks(checks, plan)` for generic proof of
 non-readback checks such as existence checks, formula-error checks, and
 consumer-defined invariants. `verifyChecks` returns the same checks in the same
-order and may only change `status`; malformed output fails with
+order and may only change `status`; it cannot drop readback `proof` or change
+the check contract. Malformed output fails with
 `invalid_check_verification`, thrown verifier errors fail with
 `check_verification_failed`, and failed checks become `check_failed` run errors.
 If a check remains `planned` after readback and adapter verification,

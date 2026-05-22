@@ -294,6 +294,9 @@ workbook.check.custom({
 
 The runtime adapter either verifies checks itself or returns readbacks that
 `@bilig/workbook` can compare against the expected values and formulas.
+When a readback check is evaluated, the returned check keeps a simple `proof`
+field with the value, values, formula, or formulas that were actually read. A
+passed check is therefore inspectable evidence, not just a status flag.
 
 Readbacks can be scalar, matrix-shaped, or cell-level. Cell-level readbacks are
 often easiest for agents to inspect because they keep the target, cell address,
@@ -416,6 +419,21 @@ type WorkbookRunResult =
 If apply succeeds and proof later fails, the failed result preserves `undo` when
 the adapter supplied it.
 
+Readback checks include runtime evidence on the check itself:
+
+```ts
+{
+  status: 'passed',
+  kind: 'valueEquals',
+  message: 'Sheet1!B2 equals 12',
+  expectation: { kind: 'valueEquals', value: 12 },
+  proof: { kind: 'value', value: 12 },
+}
+```
+
+Model code cannot pre-fill `proof`; `verifyPlan` rejects planned checks that try
+to carry runtime evidence before the adapter has run.
+
 ## Low-Level Ops
 
 The transport-neutral operation language remains public:
@@ -500,6 +518,7 @@ Primary types:
 - `WorkbookCheckResult`
 - `WorkbookRunError`
 - `WorkbookRef`
+- `WorkbookCheckProof`
 - `WorkbookOp`
 - `EngineOpBatch`
 

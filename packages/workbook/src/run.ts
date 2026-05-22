@@ -8,6 +8,7 @@ import type { WorkbookRuntimePreview, WorkbookRuntimeRequirement } from './requi
 import {
   isWorkbookRunErrorCode,
   type WorkbookAppliedSummary,
+  type WorkbookCheckProof,
   type WorkbookCheckResult,
   type WorkbookRunError,
   type WorkbookRunErrorCode,
@@ -153,6 +154,7 @@ function checkContract(check: WorkbookCheckResult): Omit<WorkbookCheckResult, 's
     ...(check.refs !== undefined ? { refs: check.refs } : {}),
     message: check.message,
     ...(check.expectation !== undefined ? { expectation: check.expectation } : {}),
+    ...(check.proof !== undefined ? { proof: check.proof } : {}),
   }
 }
 
@@ -164,6 +166,7 @@ function cloneCheck(check: WorkbookCheckResult): WorkbookCheckResult {
     ...(check.refs !== undefined ? { refs: check.refs } : {}),
     message: check.message,
     ...(check.expectation !== undefined ? { expectation: check.expectation } : {}),
+    ...(check.proof !== undefined ? { proof: check.proof } : {}),
   }
 }
 
@@ -198,6 +201,24 @@ function isLiteralMatrix(value: unknown): value is readonly (readonly LiteralInp
 
 function isFormulaMatrix(value: unknown): value is readonly (readonly (string | null)[])[] {
   return Array.isArray(value) && value.every((row) => Array.isArray(row) && row.every(isStringOrNull)) && isRectangularMatrix(value)
+}
+
+function isWorkbookCheckProof(value: unknown): value is WorkbookCheckProof {
+  if (!isRecord(value)) {
+    return false
+  }
+  switch (value['kind']) {
+    case 'value':
+      return isLiteralInput(value['value'])
+    case 'values':
+      return isLiteralMatrix(value['values'])
+    case 'formula':
+      return isStringOrNull(value['formula'])
+    case 'formulas':
+      return isFormulaMatrix(value['formulas'])
+    default:
+      return false
+  }
 }
 
 function normalizedCellReadback(value: unknown): WorkbookCellReadback | null {
@@ -369,7 +390,13 @@ function validateReadbacks(value: unknown): readonly WorkbookRunReadback[] | Wor
 }
 
 function isWorkbookCheckResult(value: unknown): value is WorkbookCheckResult {
-  return isRecord(value) && isCheckStatus(value['status']) && typeof value['kind'] === 'string' && typeof value['message'] === 'string'
+  return (
+    isRecord(value) &&
+    isCheckStatus(value['status']) &&
+    typeof value['kind'] === 'string' &&
+    typeof value['message'] === 'string' &&
+    (value['proof'] === undefined || isWorkbookCheckProof(value['proof']))
+  )
 }
 
 type CheckValidation =
