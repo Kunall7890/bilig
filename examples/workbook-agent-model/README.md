@@ -4,11 +4,13 @@ This is a runnable consumer model for agents. It shows the public flow:
 
 1. Define a generic model with `defineModel`.
 2. Inspect it with `describeModel`.
-3. Plan an action with `planWorkbookAction`.
-4. Verify the plan with `verifyPlan`.
+3. Build a command bundle with `planWorkbookCommand`.
+4. Verify the embedded plan with `verifyPlan`.
 5. Inspect runtime handoff needs with `describeRuntimeRequirements`.
-6. Execute through a runtime adapter with `runWorkbookAction`.
-7. Read a JSON-safe result and receipt with `describeRunResult`.
+6. Inspect the command with `describeCommandBundle`.
+7. Preview exact runtime materialization with `previewWorkbookCommandBundle`.
+8. Execute the approved command with `runWorkbookCommandBundle`.
+9. Read a JSON-safe result and receipt with `describeRunResult`.
 
 The model is intentionally consumer-owned. Bilig does not ship the table shape as
 a built-in business model; the example only proves how a consumer can define one.

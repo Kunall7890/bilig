@@ -44,6 +44,17 @@ export interface WorkbookRunAdapter<Refs = unknown> {
   ) => MaybePromise<readonly WorkbookCheckResult[]>
 }
 
+export type WorkbookPreviewResult =
+  | {
+      readonly status: 'previewed'
+      readonly preview: WorkbookRuntimePreview
+    }
+  | {
+      readonly status: 'failed'
+      readonly errors: readonly WorkbookRunError[]
+      readonly checks: readonly WorkbookCheckResult[]
+    }
+
 function errorMessage(error: unknown): string {
   return error instanceof Error ? error.message : String(error)
 }
@@ -118,7 +129,7 @@ function readbackTargets(checks: readonly WorkbookCheckResult[]): readonly Workb
   return targets
 }
 
-function failedFromPlanIssues<Refs>(plan: WorkbookActionPlan<Refs>): WorkbookRunResult | null {
+function failedFromPlanIssues<Refs>(plan: WorkbookActionPlan<Refs>): Extract<WorkbookRunResult, { readonly status: 'failed' }> | null {
   const verification = verifyPlan(plan)
   if (verification.status === 'valid') {
     return null
@@ -623,6 +634,46 @@ function failedAfterApply<Refs>(
   }
 }
 
+export async function previewWorkbookPlan<Refs>(
+  plan: WorkbookActionPlan<Refs>,
+  adapter: WorkbookRunAdapter<Refs>,
+  command?: WorkbookCommandBundle<Refs>,
+): Promise<WorkbookPreviewResult> {
+  const invalidPlan = failedFromPlanIssues(plan)
+  if (invalidPlan !== null) {
+    return invalidPlan
+  }
+
+  if (adapter.preview === undefined) {
+    return {
+      status: 'failed',
+      errors: [runError('runtime_rejected', `Workbook runtime cannot preview ${plan.modelName}.${plan.actionName}`)],
+      checks: plan.checks,
+    }
+  }
+
+  try {
+    const previewResult = validatePreviewResult(await adapter.preview(plan, command), plan)
+    if ('code' in previewResult) {
+      return {
+        status: 'failed',
+        errors: [previewResult],
+        checks: plan.checks,
+      }
+    }
+    return {
+      status: 'previewed',
+      preview: previewResult,
+    }
+  } catch (error) {
+    return {
+      status: 'failed',
+      errors: [runError('runtime_rejected', errorMessage(error))],
+      checks: plan.checks,
+    }
+  }
+}
+
 export async function runWorkbookPlan<Refs>(
   plan: WorkbookActionPlan<Refs>,
   adapter: WorkbookRunAdapter<Refs>,
@@ -756,6 +807,21 @@ export async function runWorkbookPlan<Refs>(
     ...(applied !== undefined ? { applied } : {}),
     ...(receipt !== undefined ? { receipt } : {}),
   }
+}
+
+export async function previewWorkbookCommandBundle<Refs>(
+  command: WorkbookCommandBundle<Refs>,
+  adapter: WorkbookRunAdapter<Refs>,
+): Promise<WorkbookPreviewResult> {
+  const verification = verifyWorkbookCommandBundle(command)
+  if (verification.status === 'invalid') {
+    return {
+      status: 'failed',
+      errors: verification.issues.map(commandBundleIssueError),
+      checks: command.plan.checks,
+    }
+  }
+  return previewWorkbookPlan(command.plan, adapter, command)
 }
 
 export async function runWorkbookCommandBundle<Refs>(
