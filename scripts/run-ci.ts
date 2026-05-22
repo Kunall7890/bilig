@@ -71,7 +71,14 @@ function direct(label: string, ...args: string[]): CiTask {
 }
 
 function directPackageScript(label: string, scriptName: string): CiTask {
-  return direct(label, ...packageScriptCommand(scriptName))
+  const commands = packageScriptCommands(scriptName)
+  if (commands.length === 1) {
+    return direct(label, ...commands[0])
+  }
+  return {
+    label,
+    steps: commands.map((command, index) => direct(`${label} ${index + 1}/${commands.length}`, ...command)),
+  }
 }
 
 function bunScript(label: string, script: string, ...args: string[]): CiTask {
@@ -94,12 +101,12 @@ function readPackageScripts(): Readonly<Record<string, string>> {
   return packageJson.scripts
 }
 
-function packageScriptCommand(scriptName: string): readonly string[] {
+function packageScriptCommands(scriptName: string): readonly (readonly string[])[] {
   const command = packageScripts[scriptName]
   if (!command) {
     throw new Error(`missing package script: ${scriptName}`)
   }
-  const unsupportedShellTokens = new Set(['&&', '||', ';', '|', '>', '<'])
+  const unsupportedShellTokens = new Set(['||', ';', '|', '>', '<'])
   const tokens = command
     .trim()
     .split(/\s+/u)
@@ -108,7 +115,21 @@ function packageScriptCommand(scriptName: string): readonly string[] {
   if (unsupportedToken) {
     throw new Error(`package script ${scriptName} uses unsupported shell token ${unsupportedToken}`)
   }
-  return tokens
+  const commands: string[][] = [[]]
+  for (const token of tokens) {
+    if (token === '&&') {
+      if (commands[commands.length - 1]?.length === 0) {
+        throw new Error(`package script ${scriptName} has an empty command before &&`)
+      }
+      commands.push([])
+      continue
+    }
+    commands[commands.length - 1]?.push(token)
+  }
+  if (commands[commands.length - 1]?.length === 0) {
+    throw new Error(`package script ${scriptName} has an empty command after &&`)
+  }
+  return commands
 }
 
 function isStringRecordContainer(value: unknown, key: string): value is Record<string, Record<string, string>> {

@@ -22,6 +22,7 @@ import {
   uiSameCorpusWorkloadRequiresScrollEventEvidence,
   type UiResponsivenessSameCorpusWorkload,
 } from './ui-responsiveness-same-corpus-workloads.ts'
+import { cloneSameCorpusVerification, isSha256Hex, validateSummary } from './ui-responsiveness-same-corpus-validation-helpers.ts'
 
 export type UiResponsivenessSameCorpusProduct = 'bilig' | 'google-sheets' | 'microsoft-excel-web'
 
@@ -887,13 +888,13 @@ function validateSameCorpusMeasurement(
   if (measurement.source.length === 0) {
     throw new Error(`UI responsiveness same-corpus source is missing for ${caseId}`)
   }
-  validateSummary(measurement.operationResponseMs, `${caseId} ${product} operationResponseMs`)
-  validateSummary(measurement.postOperationFrameMs, `${caseId} ${product} postOperationFrameMs`)
+  validateSummary(measurement.operationResponseMs, `${caseId} ${product} operationResponseMs`, sameCorpusSampleCount)
+  validateSummary(measurement.postOperationFrameMs, `${caseId} ${product} postOperationFrameMs`, sameCorpusSampleCount)
   if (measurement.scrollEventResponseMs) {
-    validateSummary(measurement.scrollEventResponseMs, `${caseId} ${product} scrollEventResponseMs`)
+    validateSummary(measurement.scrollEventResponseMs, `${caseId} ${product} scrollEventResponseMs`, sameCorpusSampleCount)
   }
   if (measurement.scrollMovementPx) {
-    validateSummary(measurement.scrollMovementPx, `${caseId} ${product} scrollMovementPx`)
+    validateSummary(measurement.scrollMovementPx, `${caseId} ${product} scrollMovementPx`, sameCorpusSampleCount)
   }
   validateSameCorpusCaptureVerification(measurement.corpusVerification, product, materializedCells, corpusCaseId, caseId)
 }
@@ -983,31 +984,4 @@ function expectedCorpusFingerprint(corpusId: WorkbookBenchmarkCorpusId): SameCor
   const fingerprint = buildSameCorpusFingerprint(buildWorkbookBenchmarkCorpus(corpusId)).corpusFingerprint
   expectedCorpusFingerprintCache.set(corpusId, fingerprint)
   return fingerprint
-}
-
-function isSha256Hex(value: string): boolean {
-  return /^[a-f0-9]{64}$/u.test(value)
-}
-
-function cloneSameCorpusVerification(verification: SameCorpusCaptureCorpusVerification): SameCorpusCaptureCorpusVerification {
-  return {
-    verified: verification.verified,
-    method: verification.method,
-    sheetName: verification.sheetName,
-    materializedCells: verification.materializedCells,
-    corpusFingerprint: { ...verification.corpusFingerprint, primaryViewport: { ...verification.corpusFingerprint.primaryViewport } },
-    sourceWorkbookSha256: verification.sourceWorkbookSha256,
-    checkedCells: verification.checkedCells.map((cell) => ({ ...cell })),
-  }
-}
-
-function validateSummary(summary: NumericSummary, label: string): void {
-  if (summary.samples.length < sameCorpusSampleCount) {
-    throw new Error(`UI responsiveness same-corpus scorecard has too few samples for ${label}`)
-  }
-  for (const value of [summary.min, summary.median, summary.p95, summary.max, summary.mean, ...summary.samples]) {
-    if (!Number.isFinite(value) || value < 0) {
-      throw new Error(`UI responsiveness same-corpus scorecard has invalid numeric summary for ${label}`)
-    }
-  }
 }
