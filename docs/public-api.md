@@ -275,6 +275,12 @@ If apply succeeded and later proof fails, the failed run result preserves the
 adapter undo ref when one was returned.
 Formula readbacks are exact and should use the normalized no-leading-`=` form
 produced by `formula.source`.
+[`examples/workbook-agent-model`](../examples/workbook-agent-model) is the
+small runnable proof for this flow. It defines a consumer-owned table model,
+prints model/plan/runtime-requirement descriptions, executes through
+`createWorkbookRunAdapter`, and returns a JSON-safe proof result. The example
+depends on `@bilig/core` as a runtime choice; `@bilig/workbook` itself remains
+runtime-free.
 Run errors use the stable `WorkbookRunErrorCode` union. Agents and adapters can
 inspect the frozen `workbookRunErrorCodes` list or call
 `isWorkbookRunErrorCode(value)` before branching on a code. Runtime adapters

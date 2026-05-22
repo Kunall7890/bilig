@@ -113,6 +113,11 @@ Agents should use the package in this order:
 The important rule: planned checks are promises, not proof. Runtime proof must
 turn checks into `passed` or `failed`.
 
+Runnable proof lives in
+[`examples/workbook-agent-model`](../../examples/workbook-agent-model). It uses
+`@bilig/workbook` for the public model contract and `@bilig/core` only as one
+runtime adapter choice.
+
 ## Humans Should Know
 
 Use this package when you are designing a stable workbook tool surface for

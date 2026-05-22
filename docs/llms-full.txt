@@ -521,6 +521,7 @@ when handing a workbook task to another agent.
 
 | Example | What it proves |
 | --- | --- |
+| [`examples/workbook-agent-model`](examples/workbook-agent-model) | Consumer-defined `@bilig/workbook` model, plan inspection, runtime requirements, execution, and proof result. |
 | [`examples/headless-workpaper`](examples/headless-workpaper) | Build, edit, recalculate, serialize, and restore a headless workbook. |
 | [`examples/serverless-workpaper-api`](examples/serverless-workpaper-api) | Route-shaped workbook calculation API. |
 | [`examples/xlsx-recalculation-node`](examples/xlsx-recalculation-node) | XLSX import, input edit, recalculation, export, and reimport proof. |
