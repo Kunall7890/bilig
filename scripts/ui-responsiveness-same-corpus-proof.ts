@@ -151,6 +151,8 @@ function biligVisibleFrameInvalidReasons(proof: SameCorpusProductPixelGridProof,
   const gridAuthoritativeRevision = evidence.get('gridAuthoritativeRevision') ?? ''
   const gridLocalRevision = evidence.get('gridLocalRevision') ?? ''
   const tileSceneRevision = evidence.get('tileSceneRevision') ?? ''
+  const frameProofSignature = evidence.get('frameProofSignature') ?? ''
+  const presentedFrameProofSignature = evidence.get('presentedFrameProofSignature') ?? ''
   const tilePaneCount = numericEvidence(evidence, 'tilePaneCount')
   const headerPaneCount = numericEvidence(evidence, 'headerPaneCount')
   const presentedTilePaneCount = numericEvidence(evidence, 'presentedTilePaneCount')
@@ -170,6 +172,18 @@ function biligVisibleFrameInvalidReasons(proof: SameCorpusProductPixelGridProof,
   }
   if (evidence.get('frameProofStatus') !== 'presented') {
     invalidReasons.push(`frame proof is ${evidence.get('frameProofStatus') ?? 'missing'}`)
+  }
+  if (frameProofSignature.length === 0) {
+    invalidReasons.push('frame proof signature is missing')
+  }
+  if (presentedFrameProofSignature.length === 0) {
+    invalidReasons.push('presented frame proof signature is missing')
+  }
+  if (evidence.get('hasPresentedFrame') !== 'true') {
+    invalidReasons.push('current frame signature has not been presented')
+  }
+  if (frameProofSignature.length > 0 && presentedFrameProofSignature.length > 0 && presentedFrameProofSignature !== frameProofSignature) {
+    invalidReasons.push('presented frame proof signature does not match current frame')
   }
   if (evidence.get('hasPresentedVisibleFrame') !== 'true') {
     invalidReasons.push('visible frame has not been presented')

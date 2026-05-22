@@ -18,12 +18,15 @@ const readyTypeGpuSurface: BiligRenderedSurfaceState = {
     authoritativeRenderRevision: 'rev-3',
     backendStatus: 'ready',
     frameProofStatus: 'presented',
+    frameProofSignature: 'frame-current',
     headerPaneCount: 1,
+    hasPresentedFrame: true,
     hasPresentedVisibleFrame: true,
     localRenderRevision: 'rev-local-2',
     mode: 'typegpu-v3',
     pixelHeight: 600,
     pixelWidth: 1000,
+    presentedFrameProofSignature: 'frame-current',
     presentedHeaderPaneCount: 1,
     presentedTilePaneCount: 1,
     projectedRenderRevision: 'rev-3',
@@ -59,7 +62,10 @@ describe('same-corpus Bilig rendered surface proof', () => {
       typeGpu: {
         ...readyTypeGpuSurface.typeGpu!,
         frameProofStatus: 'pending',
+        frameProofSignature: 'frame-next',
+        hasPresentedFrame: false,
         hasPresentedVisibleFrame: false,
+        presentedFrameProofSignature: 'frame-current',
         presentedHeaderPaneCount: 0,
         presentedTilePaneCount: 0,
       },
@@ -69,6 +75,8 @@ describe('same-corpus Bilig rendered surface proof', () => {
     expect(readiness.gaps).toEqual(
       expect.arrayContaining([
         'frame proof is pending',
+        'current frame signature has not been presented',
+        'presented frame proof signature does not match current frame',
         'visible frame has not been presented',
         'presented tile/header pane counts are empty',
       ]),
@@ -103,6 +111,21 @@ describe('same-corpus Bilig rendered surface proof', () => {
         'visible render revision does not match the tile scene revision',
       ]),
     )
+  })
+
+  it('rejects missing or stale presented-frame lineage', () => {
+    const readiness = biligRenderedSurfaceReadiness({
+      ...readyTypeGpuSurface,
+      typeGpu: {
+        ...readyTypeGpuSurface.typeGpu!,
+        frameProofSignature: 'frame-next',
+        hasPresentedFrame: true,
+        presentedFrameProofSignature: 'frame-current',
+      },
+    })
+
+    expect(readiness.ready).toBe(false)
+    expect(readiness.gaps).toContain('presented frame proof signature does not match current frame')
   })
 
   it('rejects a canvas that does not cover the workbook viewport', () => {

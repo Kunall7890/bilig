@@ -2,12 +2,15 @@ export interface BiligRenderedCanvasState {
   readonly authoritativeRenderRevision?: string | null | undefined
   readonly backendStatus?: string | null | undefined
   readonly frameProofStatus?: string | null | undefined
+  readonly frameProofSignature?: string | null | undefined
   readonly headerPaneCount: number
+  readonly hasPresentedFrame?: boolean | undefined
   readonly hasPresentedVisibleFrame?: boolean | undefined
   readonly localRenderRevision?: string | null | undefined
   readonly mode: string | null
   readonly pixelHeight: number
   readonly pixelWidth: number
+  readonly presentedFrameProofSignature?: string | null | undefined
   readonly presentedHeaderPaneCount?: number | undefined
   readonly presentedTilePaneCount?: number | undefined
   readonly projectedRenderRevision?: string | null | undefined
@@ -73,6 +76,22 @@ export function biligRenderedSurfaceReadiness(state: BiligRenderedSurfaceState |
   }
   if (canvas.frameProofStatus !== 'presented') {
     gaps.push(`frame proof is ${canvas.frameProofStatus ?? 'missing'}`)
+  }
+  if (!hasText(canvas.frameProofSignature)) {
+    gaps.push('frame proof signature is missing')
+  }
+  if (!hasText(canvas.presentedFrameProofSignature)) {
+    gaps.push('presented frame proof signature is missing')
+  }
+  if (canvas.hasPresentedFrame !== true) {
+    gaps.push('current frame signature has not been presented')
+  }
+  if (
+    hasText(canvas.frameProofSignature) &&
+    hasText(canvas.presentedFrameProofSignature) &&
+    canvas.presentedFrameProofSignature !== canvas.frameProofSignature
+  ) {
+    gaps.push('presented frame proof signature does not match current frame')
   }
   if (canvas.hasPresentedVisibleFrame !== true) {
     gaps.push('visible frame has not been presented')
@@ -211,7 +230,10 @@ function canvasEvidence(canvas: BiligRenderedCanvasState, state: BiligRenderedSu
     `mode=${canvas.mode ?? ''}`,
     `backendStatus=${canvas.backendStatus ?? ''}`,
     `frameProofStatus=${canvas.frameProofStatus ?? ''}`,
+    `frameProofSignature=${canvas.frameProofSignature ?? ''}`,
+    `hasPresentedFrame=${String(canvas.hasPresentedFrame === true)}`,
     `hasPresentedVisibleFrame=${String(canvas.hasPresentedVisibleFrame === true)}`,
+    `presentedFrameProofSignature=${canvas.presentedFrameProofSignature ?? ''}`,
     `tilePaneCount=${String(canvas.tilePaneCount)}`,
     `headerPaneCount=${String(canvas.headerPaneCount)}`,
     `presentedTilePaneCount=${String(canvas.presentedTilePaneCount ?? 0)}`,
