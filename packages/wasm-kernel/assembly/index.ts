@@ -68,6 +68,7 @@ export {
 export {
   addWorksheetImportFormulaOnlyCell,
   addWorksheetImportFormulaRecord,
+  addWorksheetImportNumberCellFromScratch,
   addWorksheetImportNumberCell,
   addWorksheetImportSharedStringCell,
   addWorksheetImportStyle,
@@ -87,6 +88,8 @@ export {
   getWorksheetImportStyleIdsPtr,
   getWorksheetImportStyleRowsPtr,
   getWorksheetImportValueKindsPtr,
+  prepareWorksheetImportScratch,
+  readWorksheetImportNonNegativeIntegerFromScratch,
   releaseWorksheetImportStorage,
   resetWorksheetImportStorage,
   worksheetImportNoSharedFormulaIndex,

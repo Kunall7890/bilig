@@ -42,6 +42,11 @@ export interface ActiveConditionalFormatting {
   ruleSeen: boolean
 }
 
+export interface ActiveAutoFilter {
+  readonly rootTag: Uint8Array
+  filter: WorkbookAutoFilterSnapshot | null
+}
+
 export function mergeLargeSimpleAutoFilterCriteria(
   filter: WorkbookAutoFilterSnapshot,
   criteria: WorkbookAutoFilterSnapshot['criteria'],

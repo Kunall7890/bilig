@@ -18,6 +18,7 @@ let worksheetImportFormulaColumns = new Uint16Array(16)
 let worksheetImportFormulaTypeCodes = new Uint8Array(16)
 let worksheetImportFormulaSharedIndexes = new Uint32Array(16)
 let worksheetImportFormulaCount = 0
+let worksheetImportScratch = new Uint8Array(64)
 
 export const worksheetImportValueKindFormulaOnly: u8 = 0
 export const worksheetImportValueKindNumber: u8 = 1
@@ -50,6 +51,26 @@ export function resetWorksheetImportStorage(cellCapacity: i32, styleCapacity: i3
 
 export function releaseWorksheetImportStorage(): void {
   resetWorksheetImportStorage(1, 1, 1)
+}
+
+export function prepareWorksheetImportScratch(byteLength: i32): usize {
+  const capacity = positiveCapacity(byteLength)
+  if (capacity > worksheetImportScratch.length) {
+    worksheetImportScratch = new Uint8Array(capacity)
+  }
+  return worksheetImportScratch.dataStart
+}
+
+export function addWorksheetImportNumberCellFromScratch(row: u32, column: u32, byteLength: i32): i32 {
+  const value = parseWorksheetImportNumberScratch(byteLength)
+  if (!isFiniteNumber(value)) {
+    return -1
+  }
+  return addWorksheetImportNumberCell(row, column, value)
+}
+
+export function readWorksheetImportNonNegativeIntegerFromScratch(byteLength: i32): f64 {
+  return parseWorksheetImportNonNegativeIntegerScratch(byteLength)
 }
 
 export function addWorksheetImportNumberCell(row: u32, column: u32, value: f64): i32 {
@@ -196,4 +217,136 @@ function ensureWorksheetImportFormulaCapacity(nextCapacity: i32): void {
 
 function positiveCapacity(value: i32): i32 {
   return value > 1 ? value : 1
+}
+
+function parseWorksheetImportNonNegativeIntegerScratch(byteLength: i32): f64 {
+  let start = 0
+  let end = clampedScratchLength(byteLength)
+  while (start < end && isAsciiWhitespace(worksheetImportScratch[start])) {
+    start += 1
+  }
+  while (end > start && isAsciiWhitespace(worksheetImportScratch[end - 1])) {
+    end -= 1
+  }
+  if (start == end) {
+    return -1.0
+  }
+  let value = 0.0
+  for (let index = start; index < end; index += 1) {
+    const byte = worksheetImportScratch[index]
+    if (byte < 48 || byte > 57) {
+      return -1.0
+    }
+    value = value * 10.0 + <f64>(byte - 48)
+    if (value > 4294967295.0) {
+      return -1.0
+    }
+  }
+  return value
+}
+
+function parseWorksheetImportNumberScratch(byteLength: i32): f64 {
+  let start = 0
+  let end = clampedScratchLength(byteLength)
+  while (start < end && isAsciiWhitespace(worksheetImportScratch[start])) {
+    start += 1
+  }
+  while (end > start && isAsciiWhitespace(worksheetImportScratch[end - 1])) {
+    end -= 1
+  }
+  if (start == end) {
+    return NaN
+  }
+  let index = start
+  let sign = 1.0
+  const first = worksheetImportScratch[index]
+  if (first == 43 || first == 45) {
+    sign = first == 45 ? -1.0 : 1.0
+    index += 1
+  }
+  if (index == end) {
+    return NaN
+  }
+  let significand = 0.0
+  let decimalScale = 1.0
+  let digitCount = 0
+  let sawDigit = false
+  let sawDecimalPoint = false
+  while (index < end) {
+    const byte = worksheetImportScratch[index]
+    if (byte >= 48 && byte <= 57) {
+      if (digitCount >= 15) {
+        return NaN
+      }
+      sawDigit = true
+      digitCount += 1
+      significand = significand * 10.0 + <f64>(byte - 48)
+      if (sawDecimalPoint) {
+        decimalScale *= 10.0
+      }
+      index += 1
+      continue
+    }
+    if (byte == 46 && !sawDecimalPoint) {
+      sawDecimalPoint = true
+      index += 1
+      continue
+    }
+    break
+  }
+  if (!sawDigit) {
+    return NaN
+  }
+  let exponent = 0
+  if (index < end && (worksheetImportScratch[index] == 69 || worksheetImportScratch[index] == 101)) {
+    index += 1
+    let exponentSign = 1
+    if (index < end && (worksheetImportScratch[index] == 43 || worksheetImportScratch[index] == 45)) {
+      exponentSign = worksheetImportScratch[index] == 45 ? -1 : 1
+      index += 1
+    }
+    if (index == end) {
+      return NaN
+    }
+    let exponentDigits = 0
+    while (index < end) {
+      const byte = worksheetImportScratch[index]
+      if (byte < 48 || byte > 57) {
+        return NaN
+      }
+      exponent = exponent * 10 + byte - 48
+      exponentDigits += 1
+      if (exponent > 308) {
+        return NaN
+      }
+      index += 1
+    }
+    if (exponentDigits == 0) {
+      return NaN
+    }
+    exponent *= exponentSign
+  }
+  if (index != end) {
+    return NaN
+  }
+  const value = sign * (significand / decimalScale) * Math.pow(10.0, <f64>exponent)
+  if (!sawDecimalPoint && exponent == 0 && Math.abs(value) > 9007199254740991.0) {
+    return NaN
+  }
+  return value
+}
+
+function clampedScratchLength(byteLength: i32): i32 {
+  if (byteLength <= 0) {
+    return 0
+  }
+  return byteLength < worksheetImportScratch.length ? byteLength : worksheetImportScratch.length
+}
+
+function isAsciiWhitespace(byte: u8): boolean {
+  return byte == 32 || byte == 9 || byte == 10 || byte == 13
+}
+
+function isFiniteNumber(value: f64): boolean {
+  return value == value && value != Infinity && value != -Infinity
 }

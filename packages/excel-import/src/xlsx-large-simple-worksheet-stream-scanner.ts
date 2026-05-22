@@ -1,4 +1,4 @@
-import type { WorkbookAutoFilterSnapshot, WorkbookRichTextCellSnapshot } from '@bilig/protocol'
+import type { WorkbookRichTextCellSnapshot } from '@bilig/protocol'
 import {
   readLargeSimpleAutoFilterRootFromBytes,
   readLargeSimpleAutoFiltersFromBytes,
@@ -20,6 +20,7 @@ import type { ImportedWorkbookStringPool } from './xlsx-large-simple-string-pool
 import { decodeBytes, decodeCellAddress, packedAddressColumn, packedAddressRow } from './xlsx-large-simple-xml-byte-utils.js'
 import {
   cellTypeInlineStringCode,
+  cellTypeNumberCode,
   cellTypeSharedStringCode,
   findClosingTag,
   findTagEnd,
@@ -40,6 +41,7 @@ import {
   readRichTextCellArtifactByTypeCode,
 } from './xlsx-large-simple-worksheet-stream-cell-readers.js'
 import {
+  type ActiveAutoFilter,
   type ActiveConditionalFormatting,
   LargeSimpleWorksheetStreamMetadataCollector,
   mergeLargeSimpleAutoFilterCriteria,
@@ -54,11 +56,6 @@ const emptyBytes = new Uint8Array(0)
 const packedAddressColumnFactor = 16_384
 const maxEagerDenseDimensionCellPreallocation = 6_000_000
 const maxEagerDenseDimensionColumnPreallocation = 1_024
-
-interface ActiveAutoFilter {
-  readonly rootTag: Uint8Array
-  filter: WorkbookAutoFilterSnapshot | null
-}
 
 export interface LargeSimpleWorksheetStreamScan {
   readonly cellScan: ImportedWorksheetCellScan
@@ -468,7 +465,10 @@ class LargeSimpleWorksheetChunkScanner {
     const shouldReadSharedStringIndex = cellType === cellTypeSharedStringCode && (this.retainCells || this.deferSharedStrings)
     const rawValueRange =
       this.retainCells || shouldReadSharedStringIndex ? readElementTextRange(this.buffer, contentStart, closing.start, 'v') : null
-    const sharedStringIndex = shouldReadSharedStringIndex ? readLargeSimpleSharedStringIndexFromTextRange(this.buffer, rawValueRange) : null
+    const sharedStringIndex = shouldReadSharedStringIndex
+      ? (this.scanStorage.readNonNegativeIntegerFromBytes(this.buffer, rawValueRange) ??
+        readLargeSimpleSharedStringIndexFromTextRange(this.buffer, rawValueRange))
+      : null
     if (shouldReadSharedStringIndex && rawValueRange !== null) {
       if (sharedStringIndex === null) {
         this.failed = true
@@ -477,14 +477,20 @@ class LargeSimpleWorksheetChunkScanner {
     }
     const deferSharedStringValue =
       this.retainCells && this.deferSharedStrings && cellType === cellTypeSharedStringCode && sharedStringIndex !== null
+    const wasmNumberCellIndex =
+      this.retainCells && cellType === cellTypeNumberCode
+        ? this.scanStorage.tryAddNumberCellFromBytes(row, column, this.buffer, rawValueRange)
+        : null
     const value =
-      this.retainCells && !deferSharedStringValue
-        ? cellType === cellTypeInlineStringCode
-          ? readInlineStringCellValue(this.buffer, contentStart, closing.start)
-          : readLargeSimpleCellValueFromTextRangeByTypeCode(this.buffer, rawValueRange, cellType, this.sharedStrings)
-        : hasElement(this.buffer, contentStart, closing.start, 'v') || hasElement(this.buffer, contentStart, closing.start, 'is')
-          ? null
-          : undefined
+      wasmNumberCellIndex !== null
+        ? undefined
+        : this.retainCells && !deferSharedStringValue
+          ? cellType === cellTypeInlineStringCode
+            ? readInlineStringCellValue(this.buffer, contentStart, closing.start)
+            : readLargeSimpleCellValueFromTextRangeByTypeCode(this.buffer, rawValueRange, cellType, this.sharedStrings)
+          : hasElement(this.buffer, contentStart, closing.start, 'v') || hasElement(this.buffer, contentStart, closing.start, 'is')
+            ? null
+            : undefined
     const formula = this.retainCells
       ? readFormulaSpec(this.buffer, contentStart, closing.start, this.allowUnsupportedFormulaText)
       : hasElement(this.buffer, contentStart, closing.start, 'f')
@@ -494,7 +500,7 @@ class LargeSimpleWorksheetChunkScanner {
       this.failed = true
       return false
     }
-    const hasValue = deferSharedStringValue || value !== undefined
+    const hasValue = wasmNumberCellIndex !== null || deferSharedStringValue || value !== undefined
     const hasFormula = formula !== undefined
     if (hasValue || hasFormula) {
       this.cellCount += 1
@@ -511,9 +517,10 @@ class LargeSimpleWorksheetChunkScanner {
         this.formulaCellCount += 1
       }
       const cellIndex = this.retainCells
-        ? deferSharedStringValue
-          ? this.scanStorage.addSharedStringCell(row, column, sharedStringIndex)
-          : this.scanStorage.addCell(row, column, value)
+        ? (wasmNumberCellIndex ??
+          (deferSharedStringValue
+            ? this.scanStorage.addSharedStringCell(row, column, sharedStringIndex)
+            : this.scanStorage.addCell(row, column, value)))
         : -1
       if (formula && this.retainCells) {
         if (this.scanStorage.addFormulaRecord(cellIndex, row, column, formula.typeCode, formula.sharedIndex)) {

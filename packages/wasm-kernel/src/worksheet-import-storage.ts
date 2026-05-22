@@ -23,6 +23,8 @@ export interface WorksheetImportStorage {
   readonly noSharedFormulaIndex: number
   reset(cellCapacity: number, styleCapacity: number, formulaCapacity: number): void
   release(): void
+  addNumberCellFromBytes(row: number, column: number, bytes: Uint8Array, start: number, end: number): number | null
+  readNonNegativeIntegerFromBytes(bytes: Uint8Array, start: number, end: number): number | null
   addNumberCell(row: number, column: number, value: number): number
   addFormulaOnlyCell(row: number, column: number): number
   addSharedStringCell(row: number, column: number, sharedStringIndex: number): number
@@ -50,6 +52,18 @@ export class RawWorksheetImportStorage implements WorksheetImportStorage {
 
   release(): void {
     this.raw.releaseWorksheetImportStorage()
+  }
+
+  addNumberCellFromBytes(row: number, column: number, bytes: Uint8Array, start: number, end: number): number | null {
+    const length = this.copyScratch(bytes, start, end)
+    const cellIndex = this.raw.addWorksheetImportNumberCellFromScratch(row, column, length)
+    return cellIndex >= 0 ? cellIndex : null
+  }
+
+  readNonNegativeIntegerFromBytes(bytes: Uint8Array, start: number, end: number): number | null {
+    const length = this.copyScratch(bytes, start, end)
+    const value = this.raw.readWorksheetImportNonNegativeIntegerFromScratch(length)
+    return Number.isSafeInteger(value) && value >= 0 ? value : null
   }
 
   addNumberCell(row: number, column: number, value: number): number {
@@ -98,5 +112,14 @@ export class RawWorksheetImportStorage implements WorksheetImportStorage {
       formulaTypeCodes: new Uint8Array(memory, this.raw.getWorksheetImportFormulaTypeCodesPtr(), formulaCount),
       formulaSharedIndexes: new Uint32Array(memory, this.raw.getWorksheetImportFormulaSharedIndexesPtr(), formulaCount),
     }
+  }
+
+  private copyScratch(bytes: Uint8Array, start: number, end: number): number {
+    const safeStart = Math.max(0, Math.min(bytes.byteLength, Math.trunc(start)))
+    const safeEnd = Math.max(safeStart, Math.min(bytes.byteLength, Math.trunc(end)))
+    const length = safeEnd - safeStart
+    const scratchPtr = this.raw.prepareWorksheetImportScratch(length)
+    new Uint8Array(this.raw.memory.buffer, scratchPtr, length).set(bytes.subarray(safeStart, safeEnd))
+    return length
   }
 }

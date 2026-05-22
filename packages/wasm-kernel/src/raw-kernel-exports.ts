@@ -168,6 +168,9 @@ export interface RawKernelExports {
   getMemberCapacity(): number
   resetWorksheetImportStorage(cellCapacity: number, styleCapacity: number, formulaCapacity: number): void
   releaseWorksheetImportStorage(): void
+  prepareWorksheetImportScratch(byteLength: number): number
+  addWorksheetImportNumberCellFromScratch(row: number, column: number, byteLength: number): number
+  readWorksheetImportNonNegativeIntegerFromScratch(byteLength: number): number
   addWorksheetImportNumberCell(row: number, column: number, value: number): number
   addWorksheetImportFormulaOnlyCell(row: number, column: number): number
   addWorksheetImportSharedStringCell(row: number, column: number, sharedStringIndex: number): number
@@ -266,6 +269,9 @@ export function isRawKernelExports(value: unknown): value is RawKernelExports {
     'getMemberCapacity',
     'resetWorksheetImportStorage',
     'releaseWorksheetImportStorage',
+    'prepareWorksheetImportScratch',
+    'addWorksheetImportNumberCellFromScratch',
+    'readWorksheetImportNonNegativeIntegerFromScratch',
     'addWorksheetImportNumberCell',
     'addWorksheetImportFormulaOnlyCell',
     'addWorksheetImportSharedStringCell',

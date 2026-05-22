@@ -1,6 +1,7 @@
 import { createWorksheetImportStorageSync, type WorksheetImportStorage } from '@bilig/wasm-kernel'
 
 import type { LiteralInput } from '@bilig/protocol'
+import type { LargeSimpleXmlTextRange } from './xlsx-large-simple-cell-value-scan.js'
 import type { LargeSimpleFormulaNumericRecords } from './xlsx-large-simple-formula-records.js'
 import type { ImportedWorkbookArena, ImportedWorksheetStyleIndexArena } from './xlsx-large-simple-arena.js'
 
@@ -39,6 +40,20 @@ export class LargeSimpleWorksheetScanStorageBridge {
       this.flushForFallback()
     }
     return this.arena.addCell({ sheetIndex: this.sheetIndex, row, column, value })
+  }
+
+  tryAddNumberCellFromBytes(row: number, column: number, bytes: Uint8Array, range: LargeSimpleXmlTextRange | null): number | null {
+    if (!this.wasmStorage || !range) {
+      return null
+    }
+    return this.wasmStorage.addNumberCellFromBytes(row, column, bytes, range)
+  }
+
+  readNonNegativeIntegerFromBytes(bytes: Uint8Array, range: LargeSimpleXmlTextRange | null): number | null {
+    if (!this.wasmStorage || !range) {
+      return null
+    }
+    return this.wasmStorage.readNonNegativeIntegerFromBytes(bytes, range)
   }
 
   addSharedStringCell(row: number, column: number, sharedStringIndex: number): number {
@@ -121,6 +136,14 @@ class LargeSimpleWorksheetWasmScanStorage {
 
   addNumberCell(row: number, column: number, value: number): number {
     return this.storage.addNumberCell(row, column, value)
+  }
+
+  addNumberCellFromBytes(row: number, column: number, bytes: Uint8Array, range: LargeSimpleXmlTextRange): number | null {
+    return this.storage.addNumberCellFromBytes(row, column, bytes, range.start, range.end)
+  }
+
+  readNonNegativeIntegerFromBytes(bytes: Uint8Array, range: LargeSimpleXmlTextRange): number | null {
+    return this.storage.readNonNegativeIntegerFromBytes(bytes, range.start, range.end)
   }
 
   addFormulaOnlyCell(row: number, column: number): number {
