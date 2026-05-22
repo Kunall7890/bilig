@@ -43,6 +43,7 @@ import { createEngineSelectionService, type EngineSelectionService } from './ser
 import { createEngineSnapshotService, type EngineSnapshotService } from './services/snapshot-service.js'
 import { createEngineStructureService, type EngineStructureService } from './services/structure-service.js'
 import { createEngineTraversalService, type EngineTraversalService } from './services/traversal-service.js'
+import { rewriteCachedFormulaRuntimeSource } from './services/cached-formula-runtime-source.js'
 import { getRuntimeFormulaSource } from './runtime-formula-source.js'
 import { deferKernelSyncNow } from './services/live-kernel-sync-state.js'
 import { createEngineFullInvalidationService } from './services/full-invalidation-service.js'
@@ -534,46 +535,35 @@ export function createEngineServiceRuntime(args: {
     },
     rebindFormulaCells: (inputs) => {
       const pending = inputs.filter(({ cellIndex }) => args.state.formulas.get(cellIndex))
-      pending.forEach(
-        ({ cellIndex, ownerSheetName, ownerRow, ownerCol, source, compiled, templateId, preservesBinding, preservesValue }) => {
-          const ownerPosition = { sheetName: ownerSheetName, row: ownerRow, col: ownerCol }
-          try {
-            if (compiled) {
-              if (
-                preservesBinding === true &&
-                preservesValue === true &&
-                binding.rewriteFormulaMetadataPreservingRuntimeNow(cellIndex, source, compiled, templateId, ownerPosition)
-              ) {
-                return
-              }
-              if (
-                preservesBinding === true &&
-                binding.rewriteFormulaCompiledPreservingBindingNow(cellIndex, source, compiled, templateId, ownerPosition)
-              ) {
-                return
-              }
-              binding.bindPreparedFormulaNow(cellIndex, ownerSheetName, source, compiled, templateId)
-            } else {
-              const existing = args.state.formulas.get(cellIndex)
-              if (preservesBinding === true && preservesValue === true && existing?.preserveCachedValueOnFullRecalc === true) {
-                existing.source = source
-                existing.plan = { ...existing.plan, source }
-                formulaInstances.upsert({
-                  cellIndex,
-                  sheetName: ownerSheetName,
-                  row: ownerRow,
-                  col: ownerCol,
-                  source,
-                })
-                return
-              }
-              binding.bindFormulaNow(cellIndex, ownerSheetName, source)
+      pending.forEach((input) => {
+        const { cellIndex, ownerSheetName, ownerRow, ownerCol, source, compiled, templateId, preservesBinding } = input
+        const ownerPosition = { sheetName: ownerSheetName, row: ownerRow, col: ownerCol }
+        try {
+          if (compiled) {
+            if (
+              preservesBinding === true &&
+              input.preservesValue === true &&
+              binding.rewriteFormulaMetadataPreservingRuntimeNow(cellIndex, source, compiled, templateId, ownerPosition)
+            ) {
+              return
             }
-          } catch {
-            binding.invalidateFormulaNow(cellIndex)
+            if (
+              preservesBinding === true &&
+              binding.rewriteFormulaCompiledPreservingBindingNow(cellIndex, source, compiled, templateId, ownerPosition)
+            ) {
+              return
+            }
+            binding.bindPreparedFormulaNow(cellIndex, ownerSheetName, source, compiled, templateId)
+          } else {
+            if (rewriteCachedFormulaRuntimeSource(args.state, formulaInstances, input)) {
+              return
+            }
+            binding.bindFormulaNow(cellIndex, ownerSheetName, source)
           }
-        },
-      )
+        } catch {
+          binding.invalidateFormulaNow(cellIndex)
+        }
+      })
     },
   })
   const maintenance = createEngineMaintenanceService({
