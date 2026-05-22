@@ -289,7 +289,7 @@ npm exec --package @bilig/headless@0.48.0 -- bilig-workpaper-mcp --workpaper ./p
   https://proompteng.github.io/bilig/show-hn-formula-workbooks-node-services.html
   https://github.com/proompteng/bilig/blob/main/docs/show-hn-formula-workbooks-node-services.md
   compresses the empty npm project proof, WorkPaper JSON restore check,
-  `94/100` mean-win benchmark claim, `90/100` mean+p95 claim, visible worst-p95 evidence, and adoption-blocker
+  `96/100` mean-win benchmark claim, `95/100` mean+p95 claim, visible worst-p95 evidence, and adoption-blocker
   feedback ask.
 - JavaScript spreadsheet library guide for Node services:
   https://github.com/proompteng/bilig/blob/main/docs/javascript-spreadsheet-library-headless-node.md

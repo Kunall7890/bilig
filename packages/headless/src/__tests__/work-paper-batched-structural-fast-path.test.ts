@@ -285,7 +285,7 @@ describe('work paper batched structural fast path', () => {
       ],
     })
     const sheetId = workbook.getSheetId('Data')!
-    const appendCount = 96
+    const appendCount = 160
     const engine: unknown = Reflect.get(workbook, 'engine')
     if (!hasCellMutationApplySupport(engine)) {
       throw new Error('Expected WorkPaper to expose cell mutation application in tests')
@@ -359,7 +359,10 @@ describe('work paper batched structural fast path', () => {
         calcChainFullScans: 0,
         directAggregateScanEvaluations: 0,
         directFormulaKernelSyncOnlyRecalcSkips: 1,
+        freshDirectAggregateMatrixPlanApplications: 1,
+        freshDirectAggregateMatrixPlanMembers: appendCount,
         kernelSyncOnlyRecalcSkips: 1,
+        nativeDirectAggregatePrefixEvaluations: 0,
         regionQueryIndexBuilds: 0,
         topoRepairs: 0,
       })

@@ -666,9 +666,9 @@ and the public API docs; they include acceptance commands for first patches.
 - For XLSX, run [`examples/xlsx-recalculation-node`](examples/xlsx-recalculation-node)
   and [`examples/recalc-bridge-workflows`](examples/recalc-bridge-workflows).
 - Run `pnpm workpaper:bench:competitive:check`. The checked-in artifact shows
-  [`94/100` comparable WorkPaper mean wins](docs/what-workpaper-benchmark-proves.md)
-  with nine p95 holdouts; the current worst p95 row is
-  `structural-append-formula-rows-large` at `1.421x`.
+  [`96/100` comparable WorkPaper mean wins](docs/what-workpaper-benchmark-proves.md)
+  with five p95 holdouts; the current worst p95 row is
+  `aggregate-overlapping-sliding-window` at `1.468x`.
 - The benchmark card is generated from that artifact:
   [`docs/assets/workpaper-benchmark-card.png`](docs/assets/workpaper-benchmark-card.png).
 - Read the [compatibility limits](docs/where-bilig-is-not-excel-compatible-yet.md)
@@ -1366,9 +1366,9 @@ pnpm workpaper:xlsx-corpus:check -- /path/to/xlsx-corpus
   should be checked against a fresh Microsoft Excel recalculation.
 - Run `pnpm workpaper:bench:competitive:check` from the repository. The
   checked-in artifact shows
-  [`94/100` comparable WorkPaper mean wins](https://github.com/proompteng/bilig/blob/main/docs/what-workpaper-benchmark-proves.md)
-  with nine p95 holdouts; the current worst p95 row is
-  `structural-append-formula-rows-large` at `1.421x`.
+  [`96/100` comparable WorkPaper mean wins](https://github.com/proompteng/bilig/blob/main/docs/what-workpaper-benchmark-proves.md)
+  with five p95 holdouts; the current worst p95 row is
+  `aggregate-overlapping-sliding-window` at `1.468x`.
 - The shareable benchmark card is generated from the checked-in artifact:
   [`workpaper-benchmark-card.png`](https://github.com/proompteng/bilig/blob/main/docs/assets/workpaper-benchmark-card.png).
 - Read the
@@ -4077,7 +4077,7 @@ artifacts:
 - import/export fidelity passes required CSV/XLSX cases, reports no unsupported
   import/export features, and explicitly declines native macro execution in
   [`packages/benchmarks/baselines/import-export-fidelity-scorecard.json`](../packages/benchmarks/baselines/import-export-fidelity-scorecard.json)
-- the headless benchmark claim is `94/100` mean wins against the current
+- the headless benchmark claim is `96/100` mean wins against the current
   HyperFormula-style comparable workload scorecard, with the worst p95 row kept
   visible in
   [`docs/what-workpaper-benchmark-proves.md`](what-workpaper-benchmark-proves.md)

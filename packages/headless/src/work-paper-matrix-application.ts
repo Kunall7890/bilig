@@ -1,5 +1,5 @@
 import type { EngineCellMutationRef, EngineFreshDirectAggregateMatrixPlan } from '@bilig/core/headless-runtime'
-import { translateFormulaReferences } from '@bilig/formula'
+import { columnToIndex, translateFormulaReferences } from '@bilig/formula'
 import { buildMatrixMutationPlan, type MatrixMutationDimensionImpact } from './matrix-mutation-plan.js'
 import { workPaperFormulaMayResizeDynamically } from './work-paper-sheet-inspection.js'
 import { stripLeadingEquals } from './work-paper-runtime-helpers.js'
@@ -202,6 +202,17 @@ function isPotentialDirectAggregateFormulaContent(content: RawCellContent): cont
   )
 }
 
+interface FreshMatrixPrecomputedResultShape {
+  readonly aggregateKind: NonNullable<EngineFreshDirectAggregateMatrixPlan['precomputedFormulaResults']>['aggregateKind']
+  readonly aggregateColStart: number
+  readonly aggregateColEnd: number
+  readonly resultOffset: number | undefined
+}
+
+const FRESH_MATRIX_DIRECT_AGGREGATE_SOURCE_RE =
+  /^=?(SUM|AVERAGE|AVG|COUNT|MIN|MAX)\s*\(\s*([A-Za-z]+)([1-9]\d*):([A-Za-z]+)([1-9]\d*)\s*\)(?:\s*\+\s*([+-]?(?:\d+|\d*\.\d+)))?\s*$/i
+const PRECOMPUTED_FRESH_DIRECT_AGGREGATE_MATRIX_MIN_ROWS = 128
+
 function tryBuildFreshNumericFormulaColumnMatrixPlan(
   args: MatrixMutationPlanInput,
   trustedFreshCells: boolean,
@@ -224,10 +235,14 @@ function tryBuildFreshNumericFormulaColumnMatrixPlan(
   const rowCount = args.content.length
   const valueCount = rowCount * inputColCount
   const values = new Float64Array(valueCount)
+  const canPrecomputeNativeSizedMatrix = trustedFreshCells && rowCount >= PRECOMPUTED_FRESH_DIRECT_AGGREGATE_MATRIX_MIN_ROWS
+  const precomputedResults = canPrecomputeNativeSizedMatrix ? new Float64Array(rowCount) : undefined
   const refs: EngineCellMutationRef[] = []
   refs.length = valueCount + rowCount
   let valueCursor = 0
   let formulaCursor = valueCount
+  let precomputedShape: FreshMatrixPrecomputedResultShape | undefined
+  let canUsePrecomputedResults = canPrecomputeNativeSizedMatrix
   for (let rowOffset = 0; rowOffset < rowCount; rowOffset += 1) {
     const row = args.content[rowOffset]!
     if (row.length !== firstWidth) {
@@ -264,6 +279,24 @@ function tryBuildFreshNumericFormulaColumnMatrixPlan(
     if (workPaperFormulaMayResizeDynamically(rewrittenFormula)) {
       return undefined
     }
+    if (canUsePrecomputedResults && precomputedResults !== undefined) {
+      const precomputed = tryEvaluateFreshMatrixDirectAggregateFormula({
+        formula: rewrittenFormula,
+        formulaCol: destination.col,
+        inputColCount,
+        matrixColStart: args.target.col,
+        row: destination.row,
+        rowOffset,
+        shape: precomputedShape,
+        values,
+      })
+      if (precomputed === undefined) {
+        canUsePrecomputedResults = false
+      } else {
+        precomputedShape = precomputed.shape
+        precomputedResults[rowOffset] = precomputed.result
+      }
+    }
     refs[formulaCursor] = {
       sheetId: args.target.sheet,
       mutation: {
@@ -283,6 +316,17 @@ function tryBuildFreshNumericFormulaColumnMatrixPlan(
       rowCount,
       colStart: args.target.col,
       inputColCount,
+      ...(canUsePrecomputedResults && precomputedShape !== undefined && precomputedResults !== undefined
+        ? {
+            precomputedFormulaResults: {
+              aggregateKind: precomputedShape.aggregateKind,
+              aggregateColStart: precomputedShape.aggregateColStart,
+              aggregateColEnd: precomputedShape.aggregateColEnd,
+              ...(precomputedShape.resultOffset === undefined ? {} : { resultOffset: precomputedShape.resultOffset }),
+              results: precomputedResults,
+            },
+          }
+        : {}),
       ...(trustedFreshCells ? { trustedFreshCells: true } : {}),
       values,
     },
@@ -296,6 +340,117 @@ function tryBuildFreshNumericFormulaColumnMatrixPlan(
       sheetId: args.target.sheet,
     },
   }
+}
+
+function tryEvaluateFreshMatrixDirectAggregateFormula(input: {
+  readonly formula: string
+  readonly formulaCol: number
+  readonly inputColCount: number
+  readonly matrixColStart: number
+  readonly row: number
+  readonly rowOffset: number
+  readonly shape: FreshMatrixPrecomputedResultShape | undefined
+  readonly values: Float64Array
+}): { readonly result: number; readonly shape: FreshMatrixPrecomputedResultShape } | undefined {
+  const match = FRESH_MATRIX_DIRECT_AGGREGATE_SOURCE_RE.exec(input.formula.trim())
+  if (!match) {
+    return undefined
+  }
+  const aggregateKind = directAggregateKindFromSourceCallee(match[1]!)
+  if (aggregateKind === undefined) {
+    return undefined
+  }
+  const aggregateColStart = columnToIndex(match[2]!.toUpperCase())
+  const aggregateRowStart = parseFreshMatrixA1RowIndex(match[3]!)
+  const aggregateColEnd = columnToIndex(match[4]!.toUpperCase())
+  const aggregateRowEnd = parseFreshMatrixA1RowIndex(match[5]!)
+  const resultOffset = match[6] === undefined ? undefined : normalizeFreshMatrixResultOffset(Number(match[6]))
+  if (
+    aggregateRowStart !== input.row ||
+    aggregateRowEnd !== input.row ||
+    aggregateColStart < input.matrixColStart ||
+    aggregateColEnd >= input.formulaCol ||
+    aggregateColStart > aggregateColEnd ||
+    aggregateColEnd - input.matrixColStart >= input.inputColCount
+  ) {
+    return undefined
+  }
+  const shape = {
+    aggregateKind,
+    aggregateColStart,
+    aggregateColEnd,
+    resultOffset,
+  }
+  if (
+    input.shape !== undefined &&
+    (input.shape.aggregateKind !== shape.aggregateKind ||
+      input.shape.aggregateColStart !== shape.aggregateColStart ||
+      input.shape.aggregateColEnd !== shape.aggregateColEnd ||
+      (input.shape.resultOffset ?? 0) !== (shape.resultOffset ?? 0))
+  ) {
+    return undefined
+  }
+  const rowBase = input.rowOffset * input.inputColCount
+  let sum = 0
+  let count = 0
+  let minimum = Number.POSITIVE_INFINITY
+  let maximum = Number.NEGATIVE_INFINITY
+  for (let col = aggregateColStart; col <= aggregateColEnd; col += 1) {
+    const value = input.values[rowBase + col - input.matrixColStart]!
+    sum += value
+    count += 1
+    minimum = Math.min(minimum, value)
+    maximum = Math.max(maximum, value)
+  }
+  const result =
+    aggregateKind === 'sum'
+      ? sum
+      : aggregateKind === 'count'
+        ? count
+        : aggregateKind === 'average'
+          ? count === 0
+            ? undefined
+            : sum / count
+          : aggregateKind === 'min'
+            ? minimum === Number.POSITIVE_INFINITY
+              ? 0
+              : minimum
+            : maximum === Number.NEGATIVE_INFINITY
+              ? 0
+              : maximum
+  return result === undefined ? undefined : { result: result + (resultOffset ?? 0), shape }
+}
+
+function directAggregateKindFromSourceCallee(
+  callee: string,
+): NonNullable<EngineFreshDirectAggregateMatrixPlan['precomputedFormulaResults']>['aggregateKind'] | undefined {
+  switch (callee.toUpperCase()) {
+    case 'SUM':
+      return 'sum'
+    case 'AVERAGE':
+    case 'AVG':
+      return 'average'
+    case 'COUNT':
+      return 'count'
+    case 'MIN':
+      return 'min'
+    case 'MAX':
+      return 'max'
+    default:
+      return undefined
+  }
+}
+
+function normalizeFreshMatrixResultOffset(offset: number): number | undefined {
+  return Object.is(offset, 0) ? undefined : offset
+}
+
+function parseFreshMatrixA1RowIndex(source: string): number {
+  if (!/^[1-9]\d*$/.test(source)) {
+    return -1
+  }
+  const rowNumber = Number(source)
+  return Number.isSafeInteger(rowNumber) ? rowNumber - 1 : -1
 }
 
 function mergeMatrixMutationRefPhases(
