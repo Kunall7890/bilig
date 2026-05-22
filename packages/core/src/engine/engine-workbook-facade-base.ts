@@ -30,6 +30,7 @@ import { buildFormatClearOps, buildFormatPatchOps, buildStyleClearOps, buildStyl
 import { hasEngineStructuralDeleteImpact } from './engine-structural-delete-impact.js'
 import { upsertNumericDefinedNameFast as upsertNumericDefinedNameFastPath } from './engine-numeric-defined-name-fast-path.js'
 import {
+  buildClearFilterOps,
   buildSetConditionalFormatOps,
   buildSetDataValidationOps,
   buildSetFilterOps,
@@ -182,15 +183,24 @@ export abstract class SpreadsheetEngineWorkbookFacadeBase extends SpreadsheetEng
     return this.workbook.getVolatileContext()
   }
 
-  updateRowMetadata(sheetName: string, start: number, count: number, size: number | null, hidden: boolean | null): void {
+  updateRowMetadata(
+    sheetName: string,
+    start: number,
+    count: number,
+    size: number | null,
+    hidden: boolean | null,
+    filtered?: boolean | null,
+  ): void {
     const existing = this.workbook.getRowMetadata(sheetName, start, count)
-    if (existing?.size === size && existing.hidden === hidden) {
+    if (existing?.size === size && existing.hidden === hidden && (filtered === undefined || existing.filtered === filtered)) {
       return
     }
-    if (existing === undefined && size === null && hidden === null) {
+    if (existing === undefined && size === null && hidden === null && (filtered === undefined || filtered === null)) {
       return
     }
-    this.executeLocalTransaction([{ kind: 'updateRowMetadata', sheetName, start, count, size, hidden }])
+    this.executeLocalTransaction([
+      { kind: 'updateRowMetadata', sheetName, start, count, size, hidden, ...(filtered !== undefined ? { filtered } : {}) },
+    ])
   }
 
   getRowMetadata(sheetName: string): WorkbookAxisMetadataRecord[] {
@@ -329,14 +339,15 @@ export abstract class SpreadsheetEngineWorkbookFacadeBase extends SpreadsheetEng
   }
 
   setFilter(sheetName: string, range: WorkbookAutoFilterSnapshot): void {
-    this.executeLocalTransaction(buildSetFilterOps(this.workbook, sheetName, range) ?? [])
+    this.executeLocalTransaction(buildSetFilterOps({ workbook: this.workbook, strings: this.strings }, sheetName, range) ?? [])
   }
 
   clearFilter(sheetName: string, range: CellRangeRef): boolean {
-    if (!this.workbook.getFilter(sheetName, range)) {
+    const ops = buildClearFilterOps({ workbook: this.workbook, strings: this.strings }, sheetName, range)
+    if (!ops) {
       return false
     }
-    this.executeLocalTransaction([{ kind: 'clearFilter', sheetName, range: { ...range } }])
+    this.executeLocalTransaction(ops)
     return true
   }
 

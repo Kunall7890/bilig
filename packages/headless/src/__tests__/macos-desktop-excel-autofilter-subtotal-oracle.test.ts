@@ -57,8 +57,48 @@ describe('macOS Desktop Excel AutoFilter SUBTOTAL oracle', () => {
         expect(engine.getCellValue('Ledger', 'F1')).toEqual({ tag: ValueTag.Number, value: 150 })
         expect(engine.getCellValue('Ledger', 'G1')).toEqual({ tag: ValueTag.Number, value: 90 })
 
+        const localEngine = new SpreadsheetEngine({ workbookName: 'headless-local-autofilter-subtotal-oracle' })
+        await localEngine.ready()
+        localEngine.importSnapshot(ledgerSnapshot())
+        localEngine.setFilter('Ledger', {
+          sheetName: 'Ledger',
+          startAddress: 'A1',
+          endAddress: 'B6',
+          criteria: [
+            {
+              colId: 0,
+              filters: { values: ['East'] },
+            },
+          ],
+        })
+
+        expectRowFiltered(localEngine.getRowMetadata('Ledger'), 2)
+        expectRowFiltered(localEngine.getRowMetadata('Ledger'), 4)
+        expect(localEngine.getCellValue('Ledger', 'D1')).toEqual({ tag: ValueTag.Number, value: 90 })
+        expect(localEngine.getCellValue('Ledger', 'E1')).toEqual({ tag: ValueTag.Number, value: 90 })
+        expect(localEngine.getCellValue('Ledger', 'F1')).toEqual({ tag: ValueTag.Number, value: 150 })
+        expect(localEngine.getCellValue('Ledger', 'G1')).toEqual({ tag: ValueTag.Number, value: 90 })
+
+        localEngine.clearFilter('Ledger', { sheetName: 'Ledger', startAddress: 'A1', endAddress: 'B6' })
+        expect(localEngine.getRowMetadata('Ledger').some((record) => record.filtered === true)).toBe(false)
+        expect(localEngine.getCellValue('Ledger', 'D1')).toEqual({ tag: ValueTag.Number, value: 150 })
+        expect(localEngine.getCellValue('Ledger', 'E1')).toEqual({ tag: ValueTag.Number, value: 150 })
+        expect(localEngine.getCellValue('Ledger', 'F1')).toEqual({ tag: ValueTag.Number, value: 150 })
+        expect(localEngine.getCellValue('Ledger', 'G1')).toEqual({ tag: ValueTag.Number, value: 150 })
+
+        localEngine.setFilter('Ledger', {
+          sheetName: 'Ledger',
+          startAddress: 'A1',
+          endAddress: 'B6',
+          criteria: [
+            {
+              colId: 0,
+              filters: { values: ['East'] },
+            },
+          ],
+        })
         const headlessWorkbookPath = join(tempDir, 'headless-autofilter-subtotal-oracle.xlsx')
-        writeFileSync(headlessWorkbookPath, exportXlsx(engine.exportSnapshot()))
+        writeFileSync(headlessWorkbookPath, exportXlsx(localEngine.exportSnapshot()))
         const headlessExcel = runMacosExcelStructuralOperationOracle({
           workbookPath: headlessWorkbookPath,
           worksheetName: 'Ledger',
@@ -110,4 +150,11 @@ function ledgerSnapshot(): WorkbookSnapshot {
       },
     ],
   }
+}
+
+function expectRowFiltered(
+  records: ReadonlyArray<{ readonly start: number; readonly count: number; readonly filtered?: boolean | null }>,
+  row: number,
+): void {
+  expect(records.some((record) => record.filtered === true && row >= record.start && row < record.start + record.count)).toBe(true)
 }

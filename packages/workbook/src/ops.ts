@@ -92,6 +92,7 @@ export type WorkbookOp =
       count: number
       size: number | null
       hidden: boolean | null
+      filtered?: boolean | null
     }
   | {
       kind: 'updateColumnMetadata'

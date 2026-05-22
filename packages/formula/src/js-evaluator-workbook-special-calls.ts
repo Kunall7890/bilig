@@ -636,9 +636,10 @@ export function evaluateWorkbookSpecialCall(
       if (!aggregate) {
         return undefined
       }
-      const candidates = rawArgs
-        .slice(2)
-        .flatMap((value, index) => collectAggregateCandidates(value, argRefs[index + 2], context, aggregateOptionIgnoresHiddenRows(option)))
+      const candidates = rawArgs.slice(2).flatMap((value, index) => {
+        const ignoreHiddenRows = aggregateOptionIgnoresHiddenRows(option)
+        return collectAggregateCandidates(value, argRefs[index + 2], context, ignoreHiddenRows, ignoreHiddenRows)
+      })
       const nestedFilteredCandidates = aggregateOptionIgnoresNestedRollups(option)
         ? filterNestedRollupCandidates(candidates, context, nestedAggregateCallees)
         : candidates

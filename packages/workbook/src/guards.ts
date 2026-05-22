@@ -722,6 +722,14 @@ export function isWorkbookOp(value: unknown): value is WorkbookOp {
         hasSafeNonNegativeInteger(value, 'target')
       )
     case 'updateRowMetadata':
+      return (
+        hasNonEmptyString(value, 'sheetName') &&
+        hasSafeNonNegativeInteger(value, 'start') &&
+        hasSafePositiveInteger(value, 'count') &&
+        isOptionalNullableSafePositiveInteger(value['size']) &&
+        isOptionalNullableBoolean(value['hidden']) &&
+        isOptionalNullableBoolean(value['filtered'])
+      )
     case 'updateColumnMetadata':
       return (
         hasNonEmptyString(value, 'sheetName') &&
