@@ -194,8 +194,8 @@ console.log({ revenue, savedBytes: saved.length })
 File-backed MCP commands:
 
 ```sh
-npm exec --package @bilig/headless@0.47.0 -- bilig-formula-clinic ./reduced.xlsx --cells "Summary!B7,Inputs!B2"
-npm exec --package @bilig/workpaper@0.47.0 -- bilig-workpaper-mcp --workpaper ./pricing.workpaper.json --init-demo-workpaper --writable
+npm exec --package @bilig/headless@0.48.0 -- bilig-formula-clinic ./reduced.xlsx --cells "Summary!B7,Inputs!B2"
+npm exec --package @bilig/workpaper@0.48.0 -- bilig-workpaper-mcp --workpaper ./pricing.workpaper.json --init-demo-workpaper --writable
 bilig-workpaper-mcp --workpaper ./pricing.workpaper.json --init-demo-workpaper --writable
 ```
 
@@ -457,7 +457,7 @@ uploaded to GitHub code scanning on every `main` update.
 
 <!-- headless-package-footprint:start -->
 
-Current checked npm footprint for `@bilig/headless@0.47.0`:
+Current checked npm footprint for `@bilig/headless@0.48.0`:
 
 - Pack dry run: `739 kB` tarball, `4.51 MB` unpacked, `741` package entries.
 - Boundary: the main import is the WorkPaper formula/JSON runtime; XLSX
