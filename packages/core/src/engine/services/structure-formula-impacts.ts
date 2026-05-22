@@ -420,6 +420,11 @@ export function collectStructuralFormulaImpacts(
       candidateCellIndices.add(cellIndex)
     })
   }
+  args.state.formulas.forEach((formula, cellIndex) => {
+    if (formula.preserveCachedValueOnFullRecalc === true) {
+      candidateCellIndices.add(cellIndex)
+    }
+  })
   if (args.state.counters && candidateCellIndices.size > 0) {
     addEngineCounter(args.state.counters, 'structuralFormulaImpactCandidates', candidateCellIndices.size)
   }

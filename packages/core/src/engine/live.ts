@@ -554,6 +554,19 @@ export function createEngineServiceRuntime(args: {
               }
               binding.bindPreparedFormulaNow(cellIndex, ownerSheetName, source, compiled, templateId)
             } else {
+              const existing = args.state.formulas.get(cellIndex)
+              if (preservesBinding === true && preservesValue === true && existing?.preserveCachedValueOnFullRecalc === true) {
+                existing.source = source
+                existing.plan = { ...existing.plan, source }
+                formulaInstances.upsert({
+                  cellIndex,
+                  sheetName: ownerSheetName,
+                  row: ownerRow,
+                  col: ownerCol,
+                  source,
+                })
+                return
+              }
               binding.bindFormulaNow(cellIndex, ownerSheetName, source)
             }
           } catch {

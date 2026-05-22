@@ -162,6 +162,18 @@ export function createEngineStructureService(args: CreateEngineStructureServiceA
         if (!touchesChangedName && !touchesChangedTable && formula.directAggregate !== undefined) {
           return
         }
+        if (!touchesChangedName && !touchesChangedTable && formula.preserveCachedValueOnFullRecalc === true) {
+          inputs.push({
+            cellIndex,
+            ownerSheetName,
+            ownerRow,
+            ownerCol,
+            source: changedMetadataFormulaSource(),
+            preservesBinding: true,
+            preservesValue: true,
+          })
+          return
+        }
         const canReuseCompiled =
           formula.compiled.symbolicNames.length === 0 &&
           formula.compiled.symbolicTables.length === 0 &&

@@ -259,6 +259,11 @@ export class WorkPaper extends WorkPaperRuntimeLifecycleBase {
     return cloneWorkPaperSnapshotWithRuntimeImage(this.engine.exportSnapshot())
   }
 
+  override rebuildAndRecalculate(): WorkPaperChange[] {
+    this.preservedImportedSnapshot = undefined
+    return super.rebuildAndRecalculate()
+  }
+
   override setCellContents(address: WorkPaperCellAddress, content: RawCellContent | WorkPaperSheet): WorkPaperChange[] {
     this.preservedImportedSnapshot = undefined
     return super.setCellContents(address, content)
