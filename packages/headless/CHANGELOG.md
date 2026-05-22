@@ -4,6 +4,28 @@ All notable changes to `@bilig/headless` will be documented in this file.
 
 This package is released as part of the aligned bilig library package set.
 
+## 0.52.0
+
+- Release type: minor
+- Previous libraries tag: libraries-v0.51.5
+- Manual override: no
+
+## Features
+- feat(workbook): expose action input guards (390bd5e6)
+- feat(workbook): include runtime requirements in model verification (ea3fdc66)
+
+## Fixes
+- fix(excel-import): preserve explicit numeric xlsx cells (99cb4cec)
+- perf(headless): speed up direct aggregate row inserts (baaeac11)
+- perf(headless): preserve simple column delete values (fb32f675)
+- perf(headless): compose deferred column inserts (79773412)
+- perf(headless): keep blank axis inserts sparse (038c7c72)
+- fix(grid): reject stale visible scene state (9223d224)
+
+## Internal runtime changes
+- docs(agent): add framework tool chooser (c286e060)
+- test(ui): tighten same-corpus grid proof (75d8aad7)
+
 ## 0.51.5
 
 - Release type: patch
