@@ -83,7 +83,11 @@ import {
 } from './xlsx-large-simple-worksheet-metadata.js'
 import { readImportedPivotArtifacts } from './xlsx-pivot-artifacts.js'
 import { readImportedWorkbookSlicerConnectionArtifactsFromSheets } from './xlsx-slicer-connection-artifacts.js'
-import { readImportedSheetTablesFromRelationshipIds, readImportedSheetTablesFromWorksheetXml } from './xlsx-tables.js'
+import {
+  readImportedSheetTablesFromRelationshipIds,
+  readImportedSheetTablesFromWorksheetXml,
+  tableAutoFiltersBySheet,
+} from './xlsx-tables.js'
 import { readImportedWorkbookDocumentPropertiesArtifacts, readImportedWorkbookProperties } from './xlsx-workbook-properties.js'
 import {
   forEachInflatedXlsxZipEntryChunk,
@@ -407,6 +411,7 @@ export function tryImportLargeSimpleXlsx(
       if (sheetTables) {
         importedTables.push(...sheetTables)
       }
+      const sheetTableFilters = tableAutoFiltersBySheet(sheetTables).get(entry.name)
       const hasConditionalFormats = /<(?:[A-Za-z_][\w.-]*:)?conditionalFormatting\b/u.test(worksheetXml)
       const conditionalFormats = hasConditionalFormats
         ? readImportedSheetConditionalFormatsFromWorksheetXml(zip, entry.name, worksheetXml)
@@ -426,6 +431,7 @@ export function tryImportLargeSimpleXlsx(
           {
             ...(hyperlinks ? { hyperlinks } : {}),
             ...(filters.length > 0 ? { filters } : {}),
+            ...(sheetTableFilters && sheetTableFilters.length > 0 ? { tableFilters: sheetTableFilters } : {}),
             ...(conditionalFormatArtifacts ? { conditionalFormatArtifacts } : {}),
           },
           conditionalFormats,
@@ -465,6 +471,10 @@ export function tryImportLargeSimpleXlsx(
       const sheetTables = readImportedSheetTablesFromRelationshipIds(zip, entry.name, entry.path, streamedMetadataScan.tableRelationshipIds)
       if (sheetTables) {
         importedTables.push(...sheetTables)
+        const tableFilters = tableAutoFiltersBySheet(sheetTables).get(entry.name)
+        if (tableFilters && tableFilters.length > 0) {
+          metadataInput = { ...metadataInput, tableFilters: [...(metadataInput.tableFilters ?? []), ...tableFilters] }
+        }
       }
     }
     if (materializeCells) {
