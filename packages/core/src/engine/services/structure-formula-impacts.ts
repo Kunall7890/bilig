@@ -419,8 +419,8 @@ export function collectStructuralFormulaImpacts(
       argsForImpact.transform,
       targetSheetStructureVersion,
     )
-    const preservesValue = false
     const preservesBinding = deleteClassification === 'preserves-binding'
+    const preservesValue = preservesBinding
     const becomesRefError = deleteClassification === 'ref-error'
     const dependsOnPrecomputedRefError = formula.dependencyIndices.some((dependencyCellIndex) =>
       precomputedChangedInputCellIndices.has(dependencyCellIndex),

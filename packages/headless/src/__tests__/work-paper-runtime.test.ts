@@ -2281,6 +2281,25 @@ describe('WorkPaper', () => {
     }
   })
 
+  it('keeps simple formula column deletes quiet when dependencies survive', () => {
+    const workbook = WorkPaper.buildFromSheets({
+      Sheet1: [
+        [1, undefined, 2, '=A1+C1'],
+        [3, undefined, 4, '=A2+C2'],
+      ],
+    })
+    const sheetId = workbook.getSheetId('Sheet1')!
+
+    const changes = workbook.removeColumns(sheetId, 1, 1)
+
+    expect(changes).toEqual([])
+    expect(workbook.getSheetDimensions(sheetId)).toEqual({ width: 3, height: 2 })
+    expect(workbook.getCellSerialized(cell(sheetId, 0, 2))).toBe('=A1+B1')
+    expect(workbook.getCellSerialized(cell(sheetId, 1, 2))).toBe('=A2+B2')
+    expect(workbook.getCellValue(cell(sheetId, 0, 2))).toEqual({ tag: ValueTag.Number, value: 3 })
+    expect(workbook.getCellValue(cell(sheetId, 1, 2))).toEqual({ tag: ValueTag.Number, value: 7 })
+  })
+
   it('deletes repeated direct aggregate rows without visibility snapshots or dirty traversal', () => {
     const rowCount = 256
     const deleteRow = 127
@@ -2356,7 +2375,8 @@ describe('WorkPaper', () => {
     }
 
     const undoChanges = workbook.undo()
-    expect(undoChanges).toHaveLength(6)
+    expect(undoChanges).toEqual([])
+    expect(computeTrackedChanges.count).toBe(0)
     expect(workbook.getSheetDimensions(sheetId)).toEqual({ width: 4, height: 3 })
     expect(workbook.getCellSerialized(cell(sheetId, 0, 2))).toBe('=A1+B1')
     expect(workbook.getCellSerialized(cell(sheetId, 0, 3))).toBe('=C1*2')
