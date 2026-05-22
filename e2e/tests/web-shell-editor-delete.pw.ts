@@ -8,7 +8,7 @@ import {
   waitForWorkbookReady,
 } from './web-shell-helpers.js'
 
-test('@browser-ci web app keeps an in-cell Delete clear committed after clicking away', async ({ page }) => {
+test('@browser-webgpu @browser-deep web app keeps an in-cell Delete clear committed after clicking away', async ({ page }) => {
   const staleText = 'editor-delete-clickaway'
   await installTypeGpuCellReadbackHarness(page)
   await page.goto(`/?document=${encodeURIComponent(createTestDocumentId('playwright-editor-delete-click-away'))}&persist=0`)
@@ -44,7 +44,7 @@ test('@browser-ci web app keeps an in-cell Delete clear committed after clicking
   await expectCellRenderedText(page, 1, 1, staleText, 'hidden')
 })
 
-test('@browser-ci web app keeps active in-cell undo and redo local to the draft editor', async ({ page }) => {
+test('@browser-webgpu @browser-deep web app keeps active in-cell undo and redo local to the draft editor', async ({ page }) => {
   const documentId = createTestDocumentId('playwright-editor-local-undo-redo')
   await installTypeGpuCellReadbackHarness(page)
   await page.goto(`/?document=${encodeURIComponent(documentId)}&persist=0&sheet=Sheet1&cell=B2`)

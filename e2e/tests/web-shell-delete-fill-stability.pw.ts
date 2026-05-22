@@ -16,7 +16,7 @@ import {
   waitForWorkbookReady,
 } from './web-shell-helpers.js'
 
-test('@browser-ci web app keeps deleted filled cells stable after click-away and viewport churn', async ({ page }) => {
+test('@browser-webgpu @browser-deep web app keeps deleted filled cells stable after click-away and viewport churn', async ({ page }) => {
   const documentId = createTestDocumentId('playwright-delete-fill-stability')
   const text = 'delete-fill-no-ghost'
   await page.setViewportSize({ width: 1166, height: 820 })
@@ -69,7 +69,9 @@ test('@browser-ci web app keeps deleted filled cells stable after click-away and
   await expect(formulaInput).toHaveValue('')
 })
 
-test('@browser-ci web app preserves filled-cell presentation when formula-bar clear commits as delete', async ({ page }) => {
+test('@browser-webgpu @browser-deep web app preserves filled-cell presentation when formula-bar clear commits as delete', async ({
+  page,
+}) => {
   const documentId = createTestDocumentId('playwright-formula-clear-fill-stability')
   const text = 'formula-clear-keeps-fill'
   await page.setViewportSize({ width: 1166, height: 820 })
@@ -108,7 +110,7 @@ test('@browser-ci web app preserves filled-cell presentation when formula-bar cl
   await expect.poll(() => countGreenFillReadbackPixelsInCell(page, 3, 9)).toBeGreaterThan(120)
 })
 
-test('@browser-ci web app applies fill color after moving text into an empty tile range', async ({ page }) => {
+test('@browser-webgpu @browser-deep web app applies fill color after moving text into an empty tile range', async ({ page }) => {
   const documentId = createTestDocumentId('playwright-move-text-fill-range')
   const text = 'moved-fill-stability'
   await page.setViewportSize({ width: 1166, height: 820 })
@@ -167,7 +169,7 @@ test('@browser-ci web app applies fill color after moving text into an empty til
   await expect.poll(() => countGreenFillReadbackPixelsInCell(page, 3, 4)).toBeGreaterThan(120)
 })
 
-test('@browser-ci web app keeps fill undo and redo visually stable from grid keyboard ownership', async ({ page }) => {
+test('@browser-webgpu @browser-deep web app keeps fill undo and redo visually stable from grid keyboard ownership', async ({ page }) => {
   const documentId = createTestDocumentId('playwright-fill-undo-redo-stability')
   const redoShortcut = PRIMARY_MODIFIER === 'Meta' ? 'Meta+Shift+Z' : 'Control+Y'
   await page.setViewportSize({ width: 1166, height: 820 })

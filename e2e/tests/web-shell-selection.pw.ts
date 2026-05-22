@@ -602,7 +602,7 @@ test('@browser-ci web app starts a fresh area selection from the selected range 
   await expect(page.getByTestId('formula-input')).toHaveValue('')
 })
 
-test('@browser-ci web app clips spilled text before the active selected cell', async ({ page }, testInfo) => {
+test('@browser-webgpu @browser-deep web app clips spilled text before the active selected cell', async ({ page }, testInfo) => {
   await installTypeGpuCellReadbackHarness(page)
   await page.goto(`/?document=${encodeURIComponent(createTestDocumentId('playwright-selection-spill-clip'))}&persist=0`)
   await waitForWorkbookReady(page)
@@ -630,7 +630,7 @@ test('@browser-ci web app clips spilled text before the active selected cell', a
   expect(runBox.x + runBox.width).toBeLessThanOrEqual(selectedColumnLeft + 0.5)
 })
 
-test('@browser-ci web app clips spilled text before far horizontally scrolled selections', async ({ page }, testInfo) => {
+test('@browser-webgpu @browser-deep web app clips spilled text before far horizontally scrolled selections', async ({ page }, testInfo) => {
   await page.setViewportSize({ width: 1166, height: 820 })
   await installTypeGpuCellReadbackHarness(page)
   await page.goto(`/?document=${encodeURIComponent(createTestDocumentId('playwright-far-selection-spill-clip'))}&persist=0`)
@@ -662,7 +662,9 @@ test('@browser-ci web app clips spilled text before far horizontally scrolled se
   expect(runBox.x + runBox.width).toBeLessThanOrEqual(activeBorderBox.x + 0.5)
 })
 
-test('@browser-ci web app clips spilled text before selected whole columns on non-active rows', async ({ page }, testInfo) => {
+test('@browser-webgpu @browser-deep web app clips spilled text before selected whole columns on non-active rows', async ({
+  page,
+}, testInfo) => {
   await installTypeGpuCellReadbackHarness(page)
   await page.goto(`/?document=${encodeURIComponent(createTestDocumentId('playwright-column-selection-spill-clip'))}&persist=0`)
   await waitForWorkbookReady(page)

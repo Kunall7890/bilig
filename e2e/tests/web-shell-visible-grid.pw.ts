@@ -53,7 +53,9 @@ test('@browser-ci web app paints a workbook skeleton before the app bundle mount
   ).toBeGreaterThan(1_000)
 })
 
-test('@browser-ci web app paints deep querystring-selected cell content in the visible grid', async ({ page }, testInfo) => {
+test('@browser-webgpu @browser-deep web app paints deep querystring-selected cell content in the visible grid', async ({
+  page,
+}, testInfo) => {
   const documentId = createTestDocumentId('playwright-visible-deep-cell')
   await page.setViewportSize({ width: 1166, height: 820 })
   await page.goto(`/?document=${encodeURIComponent(documentId)}&sheet=Sheet1&cell=D53`)
@@ -113,7 +115,9 @@ test('@browser-ci web app paints deep querystring-selected cell content in the v
   }
 })
 
-test('@browser-ci web app keeps table gridlines visible through TypeGPU without fallback masking', async ({ page }, testInfo) => {
+test('@browser-webgpu @browser-deep web app keeps table gridlines visible through TypeGPU without fallback masking', async ({
+  page,
+}, testInfo) => {
   const documentId = createTestDocumentId('playwright-visible-gridline-floor')
   await page.setViewportSize({ width: 1000, height: 760 })
   await page.goto(`/?document=${encodeURIComponent(documentId)}&persist=0&sheet=Sheet1&cell=A1`)
@@ -161,7 +165,7 @@ test('@browser-ci web app keeps a user click selection after opening from a deep
   await expect.poll(() => page.evaluate(() => new URL(window.location.href).searchParams.get('cell') ?? '')).not.toBe('D53')
 })
 
-test('@browser-ci web app keeps dense accounting-sheet text payloads complete in the TypeGPU layer', async ({
+test('@browser-webgpu @browser-deep web app keeps dense accounting-sheet text payloads complete in the TypeGPU layer', async ({
   page,
   context,
 }, testInfo) => {
@@ -267,7 +271,7 @@ test('@browser-ci web app keeps the live cell editor above the TypeGPU grid text
     })
 })
 
-test('@browser-ci web app suppresses TypeGPU overflow text while editing a tile-boundary cell', async ({ page }) => {
+test('@browser-webgpu @browser-deep web app suppresses TypeGPU overflow text while editing a tile-boundary cell', async ({ page }) => {
   const documentId = createTestDocumentId('playwright-editor-tile-boundary-overflow')
   const overflowText = 'overflow-editor-ghost '.repeat(8).trim()
   await page.setViewportSize({ width: 1166, height: 820 })
@@ -305,7 +309,9 @@ test('@browser-ci web app suppresses TypeGPU overflow text while editing a tile-
     .toBe(0)
 })
 
-test('@browser-ci web app keeps rendered edits, clears, headers, and fills coherent across click-away and reload', async ({ page }) => {
+test('@browser-webgpu @browser-deep web app keeps rendered edits, clears, headers, and fills coherent across click-away and reload', async ({
+  page,
+}) => {
   const documentId = createTestDocumentId('playwright-rendered-table-stakes')
   const editedText = 'rendered-table-stakes'
   await page.setViewportSize({ width: 1166, height: 820 })
@@ -375,7 +381,7 @@ test('@browser-ci web app keeps rendered edits, clears, headers, and fills coher
     .toBeGreaterThan(120)
 })
 
-test('@browser-ci web app preserves visible fill while Delete clears only cell content', async ({ page }) => {
+test('@browser-webgpu @browser-deep web app preserves visible fill while Delete clears only cell content', async ({ page }) => {
   const documentId = createTestDocumentId('playwright-delete-preserves-fill')
   const text = 'delete-keeps-fill'
   await page.setViewportSize({ width: 1166, height: 820 })
@@ -448,7 +454,7 @@ test('@browser-ci web app preserves visible fill while Delete clears only cell c
     .toBeGreaterThan(120)
 })
 
-test('@browser-ci web app repaints same-size TypeGPU fill color changes without stale tile colors', async ({ page }) => {
+test('@browser-webgpu @browser-deep web app repaints same-size TypeGPU fill color changes without stale tile colors', async ({ page }) => {
   const documentId = createTestDocumentId('playwright-fill-color-repaint')
   await page.setViewportSize({ width: 1166, height: 820 })
   await page.goto(`/?document=${encodeURIComponent(documentId)}&persist=0&sheet=Sheet1&cell=A1`)
@@ -480,7 +486,9 @@ test('@browser-ci web app repaints same-size TypeGPU fill color changes without 
   ).toBeGreaterThan(120)
 })
 
-test('@browser-ci web app paints toolbar fill across a selected range without hiding the range color', async ({ page }) => {
+test('@browser-webgpu @browser-deep web app paints toolbar fill across a selected range without hiding the range color', async ({
+  page,
+}) => {
   const documentId = createTestDocumentId('playwright-range-fill-visible')
   await page.setViewportSize({ width: 1166, height: 820 })
   await page.goto(`/?document=${encodeURIComponent(documentId)}&persist=0&sheet=Sheet1&cell=A1`)
@@ -518,7 +526,9 @@ test('@browser-ci web app paints toolbar fill across a selected range without hi
   await expect.poll(() => countBlueFillReadbackPixelsInCell(page, 5, 10)).toBeGreaterThan(120)
 })
 
-test('@browser-ci web app remaps visible TypeGPU cells exactly while scrolling inside one resident window', async ({ page }) => {
+test('@browser-webgpu @browser-deep web app remaps visible TypeGPU cells exactly while scrolling inside one resident window', async ({
+  page,
+}) => {
   const documentId = createTestDocumentId('playwright-resident-visible-remap')
   await page.setViewportSize({ width: 1166, height: 820 })
   await page.goto(`/?document=${encodeURIComponent(documentId)}&persist=0&sheet=Sheet1&cell=A1`)
@@ -598,7 +608,7 @@ test('@browser-ci web app remaps visible TypeGPU cells exactly while scrolling i
   await expect(formulaInput).toHaveValue('resident-visible-b2')
 })
 
-test('@browser-ci web app repaints moved text cells when a background fill is applied', async ({ page, context }) => {
+test('@browser-webgpu @browser-deep web app repaints moved text cells when a background fill is applied', async ({ page, context }) => {
   const documentId = createTestDocumentId('playwright-moved-cell-fill-repaint')
   const movedText = 'moved-fill-proof'
   await context.grantPermissions(['clipboard-read', 'clipboard-write'])
@@ -656,7 +666,10 @@ test('@browser-ci web app repaints moved text cells when a background fill is ap
   await expect(page.getByTestId('formula-input')).toHaveValue(movedText)
 })
 
-test('@browser-ci web app copies presentation and clears stale target fills in visible tiles', async ({ page, context }) => {
+test('@browser-webgpu @browser-deep web app copies presentation and clears stale target fills in visible tiles', async ({
+  page,
+  context,
+}) => {
   const documentId = createTestDocumentId('playwright-copy-presentation-repaint')
   await context.grantPermissions(['clipboard-read', 'clipboard-write'])
   await page.setViewportSize({ width: 1166, height: 820 })
@@ -719,7 +732,10 @@ test('@browser-ci web app copies presentation and clears stale target fills in v
     .toBeLessThan(12)
 })
 
-test('@browser-ci web app moves background fill presentation without source or target ghosts', async ({ page, context }) => {
+test('@browser-webgpu @browser-deep web app moves background fill presentation without source or target ghosts', async ({
+  page,
+  context,
+}) => {
   const documentId = createTestDocumentId('playwright-move-fill-presentation')
   const movedText = 'move-fill-source'
   await context.grantPermissions(['clipboard-read', 'clipboard-write'])
@@ -799,7 +815,7 @@ test('@browser-ci web app moves background fill presentation without source or t
     .toBeLessThan(12)
 })
 
-test('@browser-ci web app repaints shifted styled survivors after structural row delete', async ({ page }) => {
+test('@browser-webgpu @browser-deep web app repaints shifted styled survivors after structural row delete', async ({ page }) => {
   const documentId = createTestDocumentId('playwright-structural-row-delete-visual-survivor')
   const survivorText = 'row-delete-survivor'
   const survivorRow = 36
