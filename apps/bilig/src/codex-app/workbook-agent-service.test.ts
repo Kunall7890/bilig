@@ -121,6 +121,29 @@ function createPreviewSummary(overrides: Record<string, unknown> = {}) {
   }
 }
 
+function createVisibleSceneProof(revision: number): NonNullable<NonNullable<WorkbookAgentUiContext['rendered']>['visibleSceneProof']> {
+  const revisionText = String(revision)
+  return {
+    rendererMode: 'typegpu-v3',
+    frameProofStatus: 'presented',
+    frameProofSignature: `frame-${revisionText}`,
+    presentedFrameProofSignature: `frame-${revisionText}`,
+    currentSceneOwnershipSignature: `scene-${revisionText}`,
+    presentedSceneOwnershipSignature: `scene-${revisionText}`,
+    gridAuthoritativeRevision: revisionText,
+    typeGpuAuthoritativeRevision: revisionText,
+    visibleAuthoritativeRevision: revisionText,
+    tileSceneRevision: `tile-${revisionText}`,
+    visibleRenderRevision: `tile-${revisionText}`,
+    hasPresentedFrame: true,
+    hasPresentedVisibleFrame: true,
+    frameProofMatchesPresentedFrame: true,
+    visibleSceneOwnershipMatchesPresentedFrame: true,
+    visibleAuthoritativeRevisionMatchesGrid: true,
+    visibleRenderRevisionMatchesTileScene: true,
+  }
+}
+
 function createRenderedContextForServiceTest(input: {
   readonly capturedRevision: number
   readonly stringId: number
@@ -145,6 +168,7 @@ function createRenderedContextForServiceTest(input: {
       capturedAtUnixMs: input.capturedRevision * 100,
       capturedRevision: input.capturedRevision,
       batchId: input.capturedRevision,
+      visibleSceneProof: createVisibleSceneProof(input.capturedRevision),
       selection: null,
       visibleRange: {
         range: {
@@ -4017,6 +4041,7 @@ describe('workbook agent service', () => {
               capturedAtUnixMs: 100,
               capturedRevision: 3,
               batchId: 1,
+              visibleSceneProof: createVisibleSceneProof(3),
               selection: {
                 range: {
                   sheetName: 'Sheet1',

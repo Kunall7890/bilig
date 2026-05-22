@@ -562,6 +562,30 @@ describe('@bilig/contracts', () => {
     )
   })
 
+  it('tracks rendered proof freshness by visible-scene ownership', () => {
+    const firstContext = createRenderedWorkbookAgentContext({
+      value: 'stable value',
+      stringId: 1,
+      capturedAtUnixMs: 100,
+      capturedRevision: 3,
+      batchId: 1,
+      visibleSceneOwnershipSignature: 'scene-1',
+    })
+    const nextSceneContext = createRenderedWorkbookAgentContext({
+      value: 'stable value',
+      stringId: 99,
+      capturedAtUnixMs: 100,
+      capturedRevision: 3,
+      batchId: 1,
+      visibleSceneOwnershipSignature: 'scene-2',
+    })
+
+    expect(stringifyWorkbookAgentUiContextSemanticKey(firstContext)).toBe(stringifyWorkbookAgentUiContextSemanticKey(nextSceneContext))
+    expect(stringifyWorkbookAgentUiContextRenderedProofKey(firstContext)).not.toBe(
+      stringifyWorkbookAgentUiContextRenderedProofKey(nextSceneContext),
+    )
+  })
+
   it('changes workbook agent context keys when rendered visible cell content changes', () => {
     const beforeContext = createRenderedWorkbookAgentContext({
       value: 'before',
@@ -588,7 +612,9 @@ function createRenderedWorkbookAgentContext(input: {
   readonly capturedAtUnixMs: number
   readonly capturedRevision: number
   readonly batchId: number
+  readonly visibleSceneOwnershipSignature?: string
 }): WorkbookAgentUiContext {
+  const visibleSceneOwnershipSignature = input.visibleSceneOwnershipSignature ?? 'scene-1'
   return {
     selection: {
       sheetName: 'Revenue',
@@ -608,6 +634,25 @@ function createRenderedWorkbookAgentContext(input: {
       capturedAtUnixMs: input.capturedAtUnixMs,
       capturedRevision: input.capturedRevision,
       batchId: input.batchId,
+      visibleSceneProof: {
+        rendererMode: 'typegpu-v3',
+        frameProofStatus: 'presented',
+        frameProofSignature: `frame-${String(input.capturedRevision)}`,
+        presentedFrameProofSignature: `frame-${String(input.capturedRevision)}`,
+        currentSceneOwnershipSignature: visibleSceneOwnershipSignature,
+        presentedSceneOwnershipSignature: visibleSceneOwnershipSignature,
+        gridAuthoritativeRevision: String(input.capturedRevision),
+        typeGpuAuthoritativeRevision: String(input.capturedRevision),
+        visibleAuthoritativeRevision: String(input.capturedRevision),
+        tileSceneRevision: `tile-${String(input.capturedRevision)}`,
+        visibleRenderRevision: `tile-${String(input.capturedRevision)}`,
+        hasPresentedFrame: true,
+        hasPresentedVisibleFrame: true,
+        frameProofMatchesPresentedFrame: true,
+        visibleSceneOwnershipMatchesPresentedFrame: true,
+        visibleAuthoritativeRevisionMatchesGrid: true,
+        visibleRenderRevisionMatchesTileScene: true,
+      },
       selection: null,
       visibleRange: {
         range: {

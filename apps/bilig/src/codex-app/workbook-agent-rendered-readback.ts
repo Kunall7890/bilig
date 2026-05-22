@@ -1,6 +1,11 @@
 import { formatAddress } from '@bilig/formula'
 import { formatErrorCode, ValueTag, type CellRangeRef } from '@bilig/protocol'
-import type { WorkbookAgentRenderedCell, WorkbookAgentRenderedContext, WorkbookAgentRenderedRange } from '@bilig/contracts'
+import type {
+  WorkbookAgentRenderedCell,
+  WorkbookAgentRenderedContext,
+  WorkbookAgentRenderedRange,
+  WorkbookAgentRenderedVisibleSceneProof,
+} from '@bilig/contracts'
 import {
   enumerateWorkbookAgentRangeAddresses,
   normalizeWorkbookAgentRange,
@@ -23,6 +28,7 @@ export interface WorkbookRenderedReadbackProof {
   readonly available: boolean
   readonly matched: boolean | null
   readonly stale: boolean
+  readonly visibleSceneProof: WorkbookRenderedVisibleSceneProofStatus
   readonly capturedRange: CellRangeRef | null
   readonly sourceRange: CellRangeRef | null
   readonly capturedAtUnixMs: number | null
@@ -35,6 +41,31 @@ export interface WorkbookRenderedReadbackProof {
   readonly incompleteReason: string | null
   readonly nextChunk: WorkbookAgentRangeChunk | null
   readonly range: WorkbookAgentRenderedRange | null
+}
+
+export interface WorkbookRenderedVisibleSceneProofStatus {
+  readonly requested: boolean
+  readonly available: boolean
+  readonly matched: boolean | null
+  readonly rendererMode: string | null
+  readonly frameProofStatus: string | null
+  readonly frameProofSignature: string | null
+  readonly presentedFrameProofSignature: string | null
+  readonly currentSceneOwnershipSignature: string | null
+  readonly presentedSceneOwnershipSignature: string | null
+  readonly gridAuthoritativeRevision: string | null
+  readonly typeGpuAuthoritativeRevision: string | null
+  readonly visibleAuthoritativeRevision: string | null
+  readonly tileSceneRevision: string | null
+  readonly visibleRenderRevision: string | null
+  readonly hasPresentedFrame: boolean | null
+  readonly hasPresentedVisibleFrame: boolean | null
+  readonly frameProofMatchesPresentedFrame: boolean | null
+  readonly visibleSceneOwnershipMatchesPresentedFrame: boolean | null
+  readonly visibleAuthoritativeRevisionMatchesGrid: boolean | null
+  readonly visibleRenderRevisionMatchesTileScene: boolean | null
+  readonly incompleteReason: string | null
+  readonly invalidReasons: readonly string[]
 }
 
 interface AuthoritativeCellLike {
@@ -85,6 +116,68 @@ function normalizeRenderedValue(value: unknown): unknown {
 
 function renderedCaptureRevision(context: WorkbookAgentRenderedContext | null | undefined): number | null {
   return asNonNegativeSafeInteger(context?.capturedRevision)
+}
+
+function visibleSceneProofInvalidReasons(proof: WorkbookAgentRenderedVisibleSceneProof | null | undefined): string[] {
+  const invalidReasons: string[] = []
+  if (!proof) {
+    return ['No TypeGPU visible-scene proof was attached to the rendered workbook context.']
+  }
+  if (proof.rendererMode !== 'typegpu-v3') {
+    invalidReasons.push(`Renderer mode is ${proof.rendererMode ?? 'missing'}.`)
+  }
+  if (proof.frameProofStatus !== 'presented') {
+    invalidReasons.push(`Frame proof status is ${proof.frameProofStatus ?? 'missing'}.`)
+  }
+  if (!proof.hasPresentedFrame) {
+    invalidReasons.push('Current frame proof has not been presented.')
+  }
+  if (!proof.hasPresentedVisibleFrame) {
+    invalidReasons.push('Current visible scene has not been presented.')
+  }
+  if (!proof.frameProofMatchesPresentedFrame) {
+    invalidReasons.push('Presented frame proof signature does not match the current frame.')
+  }
+  if (!proof.visibleSceneOwnershipMatchesPresentedFrame) {
+    invalidReasons.push('Presented visible-scene ownership does not match the current scene.')
+  }
+  if (!proof.visibleAuthoritativeRevisionMatchesGrid) {
+    invalidReasons.push('Visible authoritative revision does not match the grid authoritative revision.')
+  }
+  if (!proof.visibleRenderRevisionMatchesTileScene) {
+    invalidReasons.push('Visible render revision does not match the tile scene revision.')
+  }
+  return invalidReasons
+}
+
+function buildVisibleSceneProofStatus(
+  proof: WorkbookAgentRenderedVisibleSceneProof | null | undefined,
+): WorkbookRenderedVisibleSceneProofStatus {
+  const invalidReasons = visibleSceneProofInvalidReasons(proof)
+  return {
+    requested: true,
+    available: proof != null,
+    matched: proof == null ? null : invalidReasons.length === 0,
+    rendererMode: proof?.rendererMode ?? null,
+    frameProofStatus: proof?.frameProofStatus ?? null,
+    frameProofSignature: proof?.frameProofSignature ?? null,
+    presentedFrameProofSignature: proof?.presentedFrameProofSignature ?? null,
+    currentSceneOwnershipSignature: proof?.currentSceneOwnershipSignature ?? null,
+    presentedSceneOwnershipSignature: proof?.presentedSceneOwnershipSignature ?? null,
+    gridAuthoritativeRevision: proof?.gridAuthoritativeRevision ?? null,
+    typeGpuAuthoritativeRevision: proof?.typeGpuAuthoritativeRevision ?? null,
+    visibleAuthoritativeRevision: proof?.visibleAuthoritativeRevision ?? null,
+    tileSceneRevision: proof?.tileSceneRevision ?? null,
+    visibleRenderRevision: proof?.visibleRenderRevision ?? null,
+    hasPresentedFrame: proof?.hasPresentedFrame ?? null,
+    hasPresentedVisibleFrame: proof?.hasPresentedVisibleFrame ?? null,
+    frameProofMatchesPresentedFrame: proof?.frameProofMatchesPresentedFrame ?? null,
+    visibleSceneOwnershipMatchesPresentedFrame: proof?.visibleSceneOwnershipMatchesPresentedFrame ?? null,
+    visibleAuthoritativeRevisionMatchesGrid: proof?.visibleAuthoritativeRevisionMatchesGrid ?? null,
+    visibleRenderRevisionMatchesTileScene: proof?.visibleRenderRevisionMatchesTileScene ?? null,
+    incompleteReason: invalidReasons.length === 0 ? null : 'Rendered TypeGPU visible-scene proof is incomplete or stale.',
+    invalidReasons,
+  }
 }
 
 function valuesEqual(left: unknown, right: unknown): boolean {
@@ -286,8 +379,10 @@ function collectRenderedMismatches(input: {
 
 function buildIncompleteReason(input: {
   readonly hasRenderedContext: boolean
+  readonly visibleSceneProof: WorkbookRenderedVisibleSceneProofStatus
   readonly selectedRange: WorkbookAgentRenderedRange | null
-  readonly stale: boolean
+  readonly revisionStale: boolean
+  readonly sceneProofStale: boolean
   readonly missingCells: readonly string[]
   readonly truncated: boolean
   readonly mismatches: readonly WorkbookVerificationMismatch[]
@@ -298,8 +393,11 @@ function buildIncompleteReason(input: {
   if (!input.selectedRange) {
     return 'Requested range was not captured in the rendered selection or visible viewport.'
   }
-  if (input.stale) {
+  if (input.revisionStale) {
     return 'Rendered capture is older than the requested verification revision.'
+  }
+  if (input.sceneProofStale) {
+    return input.visibleSceneProof.incompleteReason ?? 'Rendered TypeGPU visible-scene proof is incomplete or stale.'
   }
   if (input.missingCells.length > 0) {
     return 'Rendered capture was incomplete for the requested range.'
@@ -325,8 +423,11 @@ export function selectWorkbookRenderedReadback(input: {
   const selectedRange = pickRenderedRange(renderedContext, requestedRange)
   const capturedBatchId = asNonNegativeSafeInteger(renderedContext?.batchId)
   const capturedRevision = renderedCaptureRevision(renderedContext)
-  const stale =
+  const visibleSceneProof = buildVisibleSceneProofStatus(renderedContext?.visibleSceneProof)
+  const revisionStale =
     selectedRange === null || capturedRevision === null || (typeof input.minRevision === 'number' && capturedRevision < input.minRevision)
+  const sceneProofStale = visibleSceneProof.matched !== true
+  const stale = revisionStale || sceneProofStale
   const extracted = selectedRange
     ? buildExtractedRenderedRange({
         renderedRange: selectedRange,
@@ -348,8 +449,10 @@ export function selectWorkbookRenderedReadback(input: {
   const sourceTruncated = selectedRange?.truncated === true
   const incompleteReason = buildIncompleteReason({
     hasRenderedContext: renderedContext !== null,
+    visibleSceneProof,
     selectedRange,
-    stale,
+    revisionStale,
+    sceneProofStale,
     missingCells: extracted.missingCells,
     truncated: proofTruncated,
     mismatches,
@@ -361,6 +464,7 @@ export function selectWorkbookRenderedReadback(input: {
     available: selectedRange !== null && extracted.range !== null,
     matched,
     stale,
+    visibleSceneProof,
     capturedRange: extracted.range?.range ?? null,
     sourceRange: selectedRange?.range ?? null,
     capturedAtUnixMs: renderedContext?.capturedAtUnixMs ?? null,
@@ -387,6 +491,7 @@ export function emptyWorkbookRenderedReadbackProof(input: {
     available: false,
     matched: null,
     stale: true,
+    visibleSceneProof: buildVisibleSceneProofStatus(null),
     capturedRange: null,
     sourceRange: null,
     capturedAtUnixMs: null,

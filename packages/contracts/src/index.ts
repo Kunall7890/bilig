@@ -86,10 +86,32 @@ export const WorkbookAgentRenderedRangeSchema = Schema.Struct({
 })
 export type WorkbookAgentRenderedRange = Schema.Schema.Type<typeof WorkbookAgentRenderedRangeSchema>
 
+export const WorkbookAgentRenderedVisibleSceneProofSchema = Schema.Struct({
+  rendererMode: Schema.Union(Schema.String, Schema.Null),
+  frameProofStatus: Schema.Union(Schema.String, Schema.Null),
+  frameProofSignature: Schema.Union(Schema.String, Schema.Null),
+  presentedFrameProofSignature: Schema.Union(Schema.String, Schema.Null),
+  currentSceneOwnershipSignature: Schema.Union(Schema.String, Schema.Null),
+  presentedSceneOwnershipSignature: Schema.Union(Schema.String, Schema.Null),
+  gridAuthoritativeRevision: Schema.Union(Schema.String, Schema.Null),
+  typeGpuAuthoritativeRevision: Schema.Union(Schema.String, Schema.Null),
+  visibleAuthoritativeRevision: Schema.Union(Schema.String, Schema.Null),
+  tileSceneRevision: Schema.Union(Schema.String, Schema.Null),
+  visibleRenderRevision: Schema.Union(Schema.String, Schema.Null),
+  hasPresentedFrame: Schema.Boolean,
+  hasPresentedVisibleFrame: Schema.Boolean,
+  frameProofMatchesPresentedFrame: Schema.Boolean,
+  visibleSceneOwnershipMatchesPresentedFrame: Schema.Boolean,
+  visibleAuthoritativeRevisionMatchesGrid: Schema.Boolean,
+  visibleRenderRevisionMatchesTileScene: Schema.Boolean,
+})
+export type WorkbookAgentRenderedVisibleSceneProof = Schema.Schema.Type<typeof WorkbookAgentRenderedVisibleSceneProofSchema>
+
 export const WorkbookAgentRenderedContextSchema = Schema.Struct({
   capturedAtUnixMs: Schema.Number,
   capturedRevision: Schema.optionalWith(Schema.Union(Schema.Number, Schema.Null), {}),
   batchId: Schema.Union(Schema.Number, Schema.Null),
+  visibleSceneProof: Schema.optionalWith(Schema.Union(WorkbookAgentRenderedVisibleSceneProofSchema, Schema.Null), {}),
   selection: Schema.Union(WorkbookAgentRenderedRangeSchema, Schema.Null),
   visibleRange: Schema.Union(WorkbookAgentRenderedRangeSchema, Schema.Null),
 })

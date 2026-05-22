@@ -36,6 +36,26 @@ const workbookAgentRenderedRangeSchema = z.object({
   ),
 })
 
+const workbookAgentRenderedVisibleSceneProofSchema = z.object({
+  rendererMode: z.string().nullable(),
+  frameProofStatus: z.string().nullable(),
+  frameProofSignature: z.string().nullable(),
+  presentedFrameProofSignature: z.string().nullable(),
+  currentSceneOwnershipSignature: z.string().nullable(),
+  presentedSceneOwnershipSignature: z.string().nullable(),
+  gridAuthoritativeRevision: z.string().nullable(),
+  typeGpuAuthoritativeRevision: z.string().nullable(),
+  visibleAuthoritativeRevision: z.string().nullable(),
+  tileSceneRevision: z.string().nullable(),
+  visibleRenderRevision: z.string().nullable(),
+  hasPresentedFrame: z.boolean(),
+  hasPresentedVisibleFrame: z.boolean(),
+  frameProofMatchesPresentedFrame: z.boolean(),
+  visibleSceneOwnershipMatchesPresentedFrame: z.boolean(),
+  visibleAuthoritativeRevisionMatchesGrid: z.boolean(),
+  visibleRenderRevisionMatchesTileScene: z.boolean(),
+})
+
 const workbookAgentUiContextSchema: z.ZodType<WorkbookAgentUiContext> = z.object({
   selection: z.object({
     sheetName: z.string().min(1),
@@ -58,6 +78,7 @@ const workbookAgentUiContextSchema: z.ZodType<WorkbookAgentUiContext> = z.object
       capturedAtUnixMs: z.number(),
       capturedRevision: z.number().nullable().optional(),
       batchId: z.number().nullable(),
+      visibleSceneProof: workbookAgentRenderedVisibleSceneProofSchema.nullable().optional(),
       selection: workbookAgentRenderedRangeSchema.nullable(),
       visibleRange: workbookAgentRenderedRangeSchema.nullable(),
     })

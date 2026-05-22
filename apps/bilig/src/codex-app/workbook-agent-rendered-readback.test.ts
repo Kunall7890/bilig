@@ -6,12 +6,14 @@ import { selectWorkbookRenderedReadback } from './workbook-agent-rendered-readba
 function renderedContext(input: {
   readonly capturedRevision?: number | null
   readonly batchId: number | null
+  readonly sceneProof?: Partial<NonNullable<WorkbookAgentRenderedContext['visibleSceneProof']>> | null
   readonly value?: string
 }): WorkbookAgentRenderedContext {
   return {
     capturedAtUnixMs: 1_000,
     capturedRevision: input.capturedRevision ?? null,
     batchId: input.batchId,
+    visibleSceneProof: input.sceneProof === null ? null : visibleSceneProof(input.sceneProof ?? {}),
     selection: {
       range: {
         sheetName: 'Sheet1',
@@ -38,6 +40,31 @@ function renderedContext(input: {
       ],
     },
     visibleRange: null,
+  }
+}
+
+function visibleSceneProof(
+  overrides: Partial<NonNullable<WorkbookAgentRenderedContext['visibleSceneProof']>>,
+): NonNullable<WorkbookAgentRenderedContext['visibleSceneProof']> {
+  return {
+    rendererMode: 'typegpu-v3',
+    frameProofStatus: 'presented',
+    frameProofSignature: 'frame-1',
+    presentedFrameProofSignature: 'frame-1',
+    currentSceneOwnershipSignature: 'scene-1',
+    presentedSceneOwnershipSignature: 'scene-1',
+    gridAuthoritativeRevision: '3',
+    typeGpuAuthoritativeRevision: '3',
+    visibleAuthoritativeRevision: '3',
+    tileSceneRevision: 'tile-1',
+    visibleRenderRevision: 'tile-1',
+    hasPresentedFrame: true,
+    hasPresentedVisibleFrame: true,
+    frameProofMatchesPresentedFrame: true,
+    visibleSceneOwnershipMatchesPresentedFrame: true,
+    visibleAuthoritativeRevisionMatchesGrid: true,
+    visibleRenderRevisionMatchesTileScene: true,
+    ...overrides,
   }
 }
 
@@ -77,5 +104,32 @@ describe('selectWorkbookRenderedReadback', () => {
     expect(proof.capturedRevision).toBe(3)
     expect(proof.stale).toBe(true)
     expect(proof.matched).toBeNull()
+  })
+
+  it('rejects stale visible-scene ownership even when rendered cells match', () => {
+    const proof = selectWorkbookRenderedReadback({
+      renderedContext: renderedContext({
+        capturedRevision: 4,
+        batchId: 4,
+        sceneProof: {
+          presentedSceneOwnershipSignature: 'old-scene',
+          visibleSceneOwnershipMatchesPresentedFrame: false,
+        },
+      }),
+      requestedRange: {
+        sheetName: 'Sheet1',
+        startAddress: 'A1',
+        endAddress: 'A1',
+      },
+      authoritativeRows: [[{ address: 'A1', input: 'ok', value: 'ok', formula: null, styleId: null, numberFormatId: null }]],
+      minRevision: 4,
+    })
+
+    expect(proof.capturedRevision).toBe(4)
+    expect(proof.visibleSceneProof.matched).toBe(false)
+    expect(proof.visibleSceneProof.visibleSceneOwnershipMatchesPresentedFrame).toBe(false)
+    expect(proof.stale).toBe(true)
+    expect(proof.matched).toBeNull()
+    expect(proof.incompleteReason).toContain('visible-scene proof')
   })
 })

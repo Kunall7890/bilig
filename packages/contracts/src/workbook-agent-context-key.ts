@@ -62,6 +62,7 @@ export function stringifyWorkbookAgentUiContextRenderedProofKey(context: Workboo
         ? null
         : {
             capturedRevision: rendered.capturedRevision ?? null,
+            visibleSceneProof: rendered.visibleSceneProof ?? null,
           },
   })
 }

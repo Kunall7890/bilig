@@ -219,6 +219,29 @@ function createZeroSyncService(engine: SpreadsheetEngine, input: { readonly revi
   }
 }
 
+function createVisibleSceneProof(revision: number): NonNullable<NonNullable<WorkbookAgentUiContext['rendered']>['visibleSceneProof']> {
+  const revisionText = String(revision)
+  return {
+    rendererMode: 'typegpu-v3',
+    frameProofStatus: 'presented',
+    frameProofSignature: `frame-${revisionText}`,
+    presentedFrameProofSignature: `frame-${revisionText}`,
+    currentSceneOwnershipSignature: `scene-${revisionText}`,
+    presentedSceneOwnershipSignature: `scene-${revisionText}`,
+    gridAuthoritativeRevision: revisionText,
+    typeGpuAuthoritativeRevision: revisionText,
+    visibleAuthoritativeRevision: revisionText,
+    tileSceneRevision: `tile-${revisionText}`,
+    visibleRenderRevision: `tile-${revisionText}`,
+    hasPresentedFrame: true,
+    hasPresentedVisibleFrame: true,
+    frameProofMatchesPresentedFrame: true,
+    visibleSceneOwnershipMatchesPresentedFrame: true,
+    visibleAuthoritativeRevisionMatchesGrid: true,
+    visibleRenderRevisionMatchesTileScene: true,
+  }
+}
+
 function renderedContext(input: { readonly value: string | null; readonly capturedRevision: number }): WorkbookAgentUiContext {
   return {
     selection: {
@@ -239,6 +262,7 @@ function renderedContext(input: { readonly value: string | null; readonly captur
       capturedAtUnixMs: Date.now(),
       capturedRevision: input.capturedRevision,
       batchId: input.capturedRevision,
+      visibleSceneProof: createVisibleSceneProof(input.capturedRevision),
       selection: {
         range: {
           sheetName: 'Sheet1',

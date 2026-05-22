@@ -27,6 +27,29 @@ async function createEngine(): Promise<SpreadsheetEngine> {
   return engine
 }
 
+function createVisibleSceneProof(revision: number): NonNullable<NonNullable<WorkbookAgentUiContext['rendered']>['visibleSceneProof']> {
+  const revisionText = String(revision)
+  return {
+    rendererMode: 'typegpu-v3',
+    frameProofStatus: 'presented',
+    frameProofSignature: `frame-${revisionText}`,
+    presentedFrameProofSignature: `frame-${revisionText}`,
+    currentSceneOwnershipSignature: `scene-${revisionText}`,
+    presentedSceneOwnershipSignature: `scene-${revisionText}`,
+    gridAuthoritativeRevision: revisionText,
+    typeGpuAuthoritativeRevision: revisionText,
+    visibleAuthoritativeRevision: revisionText,
+    tileSceneRevision: `tile-${revisionText}`,
+    visibleRenderRevision: `tile-${revisionText}`,
+    hasPresentedFrame: true,
+    hasPresentedVisibleFrame: true,
+    frameProofMatchesPresentedFrame: true,
+    visibleSceneOwnershipMatchesPresentedFrame: true,
+    visibleAuthoritativeRevisionMatchesGrid: true,
+    visibleRenderRevisionMatchesTileScene: true,
+  }
+}
+
 function createZeroSyncHarness(
   engine: SpreadsheetEngine,
   input?: {
@@ -237,6 +260,7 @@ describe('workbook agent control loop receipts', () => {
         capturedAtUnixMs: 10,
         capturedRevision: 2,
         batchId: 2,
+        visibleSceneProof: createVisibleSceneProof(2),
         selection: {
           range: {
             sheetName: 'Sheet1',
@@ -434,6 +458,7 @@ describe('workbook agent control loop receipts', () => {
         capturedAtUnixMs: 10,
         capturedRevision: 4,
         batchId: 4,
+        visibleSceneProof: createVisibleSceneProof(4),
         selection: {
           range: {
             sheetName: 'Sheet1',
@@ -529,6 +554,7 @@ describe('workbook agent control loop receipts', () => {
         capturedAtUnixMs: 10,
         capturedRevision: 3,
         batchId: 3,
+        visibleSceneProof: createVisibleSceneProof(3),
         selection: null,
         visibleRange: {
           range: {
@@ -818,6 +844,7 @@ describe('workbook agent control loop receipts', () => {
             capturedAtUnixMs: 10,
             capturedRevision: 2,
             batchId: 2,
+            visibleSceneProof: createVisibleSceneProof(2),
             selection: {
               range: {
                 sheetName: 'Sheet1',

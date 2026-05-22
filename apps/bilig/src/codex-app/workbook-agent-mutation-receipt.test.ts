@@ -198,6 +198,7 @@ function createRenderedContext(input: {
   readonly address: string
   readonly value: string | null
   readonly capturedRevision: number
+  readonly sceneProof?: Partial<NonNullable<NonNullable<WorkbookAgentUiContext['rendered']>['visibleSceneProof']>> | null
   readonly styleId?: string | null
   readonly numberFormatId?: string | null
 }): WorkbookAgentUiContext {
@@ -220,6 +221,7 @@ function createRenderedContext(input: {
       capturedAtUnixMs: 10,
       capturedRevision: input.capturedRevision,
       batchId: input.capturedRevision,
+      visibleSceneProof: input.sceneProof === null ? null : createVisibleSceneProof(input.sceneProof ?? {}, input.capturedRevision),
       selection: {
         range: {
           sheetName: 'Sheet1',
@@ -253,6 +255,33 @@ function createRenderedContext(input: {
       },
       visibleRange: null,
     },
+  }
+}
+
+function createVisibleSceneProof(
+  overrides: Partial<NonNullable<NonNullable<WorkbookAgentUiContext['rendered']>['visibleSceneProof']>>,
+  revision: number,
+): NonNullable<NonNullable<WorkbookAgentUiContext['rendered']>['visibleSceneProof']> {
+  const revisionText = String(revision)
+  return {
+    rendererMode: 'typegpu-v3',
+    frameProofStatus: 'presented',
+    frameProofSignature: `frame-${revisionText}`,
+    presentedFrameProofSignature: `frame-${revisionText}`,
+    currentSceneOwnershipSignature: `scene-${revisionText}`,
+    presentedSceneOwnershipSignature: `scene-${revisionText}`,
+    gridAuthoritativeRevision: revisionText,
+    typeGpuAuthoritativeRevision: revisionText,
+    visibleAuthoritativeRevision: revisionText,
+    tileSceneRevision: `tile-${revisionText}`,
+    visibleRenderRevision: `tile-${revisionText}`,
+    hasPresentedFrame: true,
+    hasPresentedVisibleFrame: true,
+    frameProofMatchesPresentedFrame: true,
+    visibleSceneOwnershipMatchesPresentedFrame: true,
+    visibleAuthoritativeRevisionMatchesGrid: true,
+    visibleRenderRevisionMatchesTileScene: true,
+    ...overrides,
   }
 }
 
@@ -942,6 +971,100 @@ describe('workbook agent mutation receipt helpers', () => {
       })
       .parse(parsePayload(result))
     expect(payload.mutationReceipt.warnings).toEqual([])
+  })
+
+  it('rejects applied status when rendered proof comes from a stale TypeGPU scene', async () => {
+    const engine = await createEngine()
+    const command: WorkbookAgentCommand = {
+      kind: 'writeRange',
+      sheetName: 'Sheet1',
+      startAddress: 'B2',
+      values: [['Visible value']],
+    }
+    const bundle = createBundle(command, 'bundle-stale-scene-proof')
+    const undoBundle = applyWorkbookAgentCommandBundleWithUndoCapture(engine, bundle)
+    const { zeroSyncService } = createZeroSyncHarness(engine, {
+      headRevision: 2,
+      calculatedRevision: 2,
+      changes: [
+        {
+          revision: 2,
+          actorUserId: 'alex@example.com',
+          clientMutationId: null,
+          eventKind: 'applyAgentCommandBundle',
+          summary: 'Write cells in Sheet1!B2',
+          sheetId: null,
+          sheetName: 'Sheet1',
+          anchorAddress: 'B2',
+          range: {
+            sheetName: 'Sheet1',
+            startAddress: 'B2',
+            endAddress: 'B2',
+          },
+          rangeInvalid: false,
+          undoBundle,
+          revertedByRevision: null,
+          revertsRevision: null,
+          createdAtUnixMs: 2,
+        },
+      ],
+    })
+
+    const result = await stageWorkbookAgentCommandResult(
+      {
+        documentId: 'doc-1',
+        session: { userID: 'alex@example.com', roles: ['editor'] },
+        uiContext: createRenderedContext({
+          address: 'B2',
+          value: 'Visible value',
+          capturedRevision: 2,
+          sceneProof: {
+            presentedSceneOwnershipSignature: 'scene-1',
+            visibleSceneOwnershipMatchesPresentedFrame: false,
+          },
+        }),
+        zeroSyncService,
+        stageCommand: async () => ({
+          bundle,
+          executionRecord: createExecutionRecord({
+            bundle,
+            appliedRevision: 2,
+            afterInput: 'Visible value',
+          }),
+        }),
+      },
+      command,
+      'writeRange',
+    )
+
+    const payload = z
+      .object({
+        applied: z.literal(false),
+        status: z.literal('verification_incomplete'),
+        summary: z.string(),
+        mutationReceipt: z.object({
+          status: z.literal('verification_incomplete'),
+          authoritativeReadback: z.object({
+            matched: z.literal(true),
+          }),
+          renderedReadback: z.object({
+            matched: z.null(),
+            stale: z.literal(true),
+            visibleSceneProof: z.object({
+              matched: z.literal(false),
+              visibleSceneOwnershipMatchesPresentedFrame: z.literal(false),
+              invalidReasons: z.array(z.string()),
+            }),
+          }),
+          warnings: z.array(z.string()),
+        }),
+      })
+      .parse(parsePayload(result))
+    expect(payload.summary).toContain('Verification incomplete')
+    expect(payload.mutationReceipt.renderedReadback.visibleSceneProof.invalidReasons).toContain(
+      'Presented visible-scene ownership does not match the current scene.',
+    )
+    expect(payload.mutationReceipt.warnings).toContain('Rendered TypeGPU visible-scene proof is incomplete or stale.')
   })
 
   it('builds verification reports with matching rendered readback and optional audits disabled', async () => {

@@ -5,6 +5,7 @@ import {
   stringifyWorkbookAgentUiContextRenderedProofKey,
   stringifyWorkbookAgentUiContextSemanticKey,
   type WorkbookAgentRenderedRange,
+  type WorkbookAgentRenderedVisibleSceneProof,
   type WorkbookAgentUiContext,
 } from '@bilig/contracts'
 import { MAX_COLS, MAX_ROWS, VIEWPORT_TILE_COLUMN_COUNT, VIEWPORT_TILE_ROW_COUNT, type CellRangeRef, type Viewport } from '@bilig/protocol'
@@ -113,6 +114,63 @@ function buildRenderedRangeSnapshot(
   }
 }
 
+function hasText(value: string | null | undefined): value is string {
+  return typeof value === 'string' && value.length > 0
+}
+
+function readVisibleSceneProofAttribute(element: Element, name: string): string | null {
+  const value = element.getAttribute(name)
+  return hasText(value) ? value : null
+}
+
+function readWorkbookAgentVisibleSceneProof(): WorkbookAgentRenderedVisibleSceneProof | null {
+  const grid = document.querySelector('[data-testid="sheet-grid"]')
+  const typeGpu = document.querySelector('[data-testid="grid-pane-renderer"]')
+  if (!(grid instanceof HTMLElement) || !(typeGpu instanceof HTMLCanvasElement)) {
+    return null
+  }
+  const rendererMode = readVisibleSceneProofAttribute(typeGpu, 'data-renderer-mode')
+  const frameProofStatus = readVisibleSceneProofAttribute(typeGpu, 'data-v3-frame-proof-status')
+  const frameProofSignature = readVisibleSceneProofAttribute(typeGpu, 'data-v3-frame-proof-signature')
+  const presentedFrameProofSignature = readVisibleSceneProofAttribute(typeGpu, 'data-v3-presented-frame-proof-signature')
+  const currentSceneOwnershipSignature = readVisibleSceneProofAttribute(typeGpu, 'data-v3-current-scene-ownership-signature')
+  const presentedSceneOwnershipSignature = readVisibleSceneProofAttribute(typeGpu, 'data-v3-presented-scene-ownership-signature')
+  const gridAuthoritativeRevision = readVisibleSceneProofAttribute(grid, 'data-render-authoritative-revision')
+  const typeGpuAuthoritativeRevision = readVisibleSceneProofAttribute(typeGpu, 'data-v3-authoritative-render-revision')
+  const visibleAuthoritativeRevision = readVisibleSceneProofAttribute(typeGpu, 'data-v3-visible-authoritative-render-revision')
+  const tileSceneRevision = readVisibleSceneProofAttribute(typeGpu, 'data-v3-tile-scene-revision')
+  const visibleRenderRevision = readVisibleSceneProofAttribute(typeGpu, 'data-v3-visible-render-revision')
+  return {
+    rendererMode,
+    frameProofStatus,
+    frameProofSignature,
+    presentedFrameProofSignature,
+    currentSceneOwnershipSignature,
+    presentedSceneOwnershipSignature,
+    gridAuthoritativeRevision,
+    typeGpuAuthoritativeRevision,
+    visibleAuthoritativeRevision,
+    tileSceneRevision,
+    visibleRenderRevision,
+    hasPresentedFrame: typeGpu.getAttribute('data-v3-has-presented-frame') === 'true',
+    hasPresentedVisibleFrame: typeGpu.getAttribute('data-v3-has-presented-visible-frame') === 'true',
+    frameProofMatchesPresentedFrame:
+      hasText(frameProofSignature) && hasText(presentedFrameProofSignature) && frameProofSignature === presentedFrameProofSignature,
+    visibleSceneOwnershipMatchesPresentedFrame:
+      hasText(currentSceneOwnershipSignature) &&
+      hasText(presentedSceneOwnershipSignature) &&
+      currentSceneOwnershipSignature === presentedSceneOwnershipSignature,
+    visibleAuthoritativeRevisionMatchesGrid:
+      hasText(gridAuthoritativeRevision) &&
+      hasText(typeGpuAuthoritativeRevision) &&
+      hasText(visibleAuthoritativeRevision) &&
+      typeGpuAuthoritativeRevision === gridAuthoritativeRevision &&
+      visibleAuthoritativeRevision === gridAuthoritativeRevision,
+    visibleRenderRevisionMatchesTileScene:
+      hasText(tileSceneRevision) && hasText(visibleRenderRevision) && visibleRenderRevision === tileSceneRevision,
+  }
+}
+
 export function useWorkerWorkbookAgentContext(input: {
   selection: WorkerRuntimeSelection
   selectionRangeRef: MutableRefObject<CellRangeRef>
@@ -152,6 +210,7 @@ export function useWorkerWorkbookAgentContext(input: {
         capturedAtUnixMs: Date.now(),
         capturedRevision: workerHandleRef.current?.viewportStore.getLastAuthoritativeRevision() ?? null,
         batchId: workerHandleRef.current?.viewportStore.getLastMetrics().batchId ?? null,
+        visibleSceneProof: readWorkbookAgentVisibleSceneProof(),
         selection: buildRenderedRangeSnapshot(workerHandleRef.current?.viewportStore, selectionRangeRef.current),
         visibleRange: buildRenderedRangeSnapshot(workerHandleRef.current?.viewportStore, viewportRange),
       },

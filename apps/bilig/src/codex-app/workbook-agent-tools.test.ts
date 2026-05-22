@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from 'vitest'
 import { SpreadsheetEngine } from '@bilig/core'
 import { createWorkbookAgentCommandBundle, type JsonValue, type WorkbookAgentCommandBundle } from '@bilig/agent-api'
+import type { WorkbookAgentUiContext } from '@bilig/contracts'
 import { buildWorkbookSourceProjectionFromEngine } from '../zero/projection.js'
 import type { ZeroSyncService } from '../zero/service.js'
 import type { WorkbookChangeRecord } from '../zero/workbook-change-store.js'
@@ -42,6 +43,29 @@ async function createEngine(): Promise<SpreadsheetEngine> {
   engine.createSheet('Ops Search')
   engine.setCellValue('Ops Search', 'A1', 'Northwind Import')
   return engine
+}
+
+function createVisibleSceneProof(revision: number): NonNullable<NonNullable<WorkbookAgentUiContext['rendered']>['visibleSceneProof']> {
+  const revisionText = String(revision)
+  return {
+    rendererMode: 'typegpu-v3',
+    frameProofStatus: 'presented',
+    frameProofSignature: `frame-${revisionText}`,
+    presentedFrameProofSignature: `frame-${revisionText}`,
+    currentSceneOwnershipSignature: `scene-${revisionText}`,
+    presentedSceneOwnershipSignature: `scene-${revisionText}`,
+    gridAuthoritativeRevision: revisionText,
+    typeGpuAuthoritativeRevision: revisionText,
+    visibleAuthoritativeRevision: revisionText,
+    tileSceneRevision: `tile-${revisionText}`,
+    visibleRenderRevision: `tile-${revisionText}`,
+    hasPresentedFrame: true,
+    hasPresentedVisibleFrame: true,
+    frameProofMatchesPresentedFrame: true,
+    visibleSceneOwnershipMatchesPresentedFrame: true,
+    visibleAuthoritativeRevisionMatchesGrid: true,
+    visibleRenderRevisionMatchesTileScene: true,
+  }
 }
 
 function createZeroSyncHarness(engine: SpreadsheetEngine) {
@@ -2962,6 +2986,7 @@ describe('workbook agent tools', () => {
         capturedAtUnixMs: 10,
         capturedRevision: 11,
         batchId: 1,
+        visibleSceneProof: createVisibleSceneProof(11),
         selection: {
           range: {
             sheetName: 'Sheet1',
@@ -3038,6 +3063,7 @@ describe('workbook agent tools', () => {
         capturedAtUnixMs: 10,
         capturedRevision: 11,
         batchId: 1,
+        visibleSceneProof: createVisibleSceneProof(11),
         selection: null,
         visibleRange: {
           range: {

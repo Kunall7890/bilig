@@ -7,6 +7,29 @@ import { updateWorkbookAgentDurableUiContextFromUser } from './workbook-agent-du
 import { applyWorkbookAgentStructuralContextHints, stripRenderedWorkbookAgentContext } from './workbook-agent-structural-context-hints.js'
 import { areWorkbookAgentUiContextsSemanticallyEqual } from './workbook-agent-ui-context-semantic-key.js'
 
+function createVisibleSceneProof(revision: number): NonNullable<NonNullable<WorkbookAgentUiContext['rendered']>['visibleSceneProof']> {
+  const revisionText = String(revision)
+  return {
+    rendererMode: 'typegpu-v3',
+    frameProofStatus: 'presented',
+    frameProofSignature: `frame-${revisionText}`,
+    presentedFrameProofSignature: `frame-${revisionText}`,
+    currentSceneOwnershipSignature: `scene-${revisionText}`,
+    presentedSceneOwnershipSignature: `scene-${revisionText}`,
+    gridAuthoritativeRevision: revisionText,
+    typeGpuAuthoritativeRevision: revisionText,
+    visibleAuthoritativeRevision: revisionText,
+    tileSceneRevision: `tile-${revisionText}`,
+    visibleRenderRevision: `tile-${revisionText}`,
+    hasPresentedFrame: true,
+    hasPresentedVisibleFrame: true,
+    frameProofMatchesPresentedFrame: true,
+    visibleSceneOwnershipMatchesPresentedFrame: true,
+    visibleAuthoritativeRevisionMatchesGrid: true,
+    visibleRenderRevisionMatchesTileScene: true,
+  }
+}
+
 function createContext(overrides: Partial<WorkbookAgentUiContext> = {}): WorkbookAgentUiContext {
   return {
     selection: {
@@ -27,6 +50,7 @@ function createContext(overrides: Partial<WorkbookAgentUiContext> = {}): Workboo
       capturedAtUnixMs: 100,
       capturedRevision: 3,
       batchId: 1,
+      visibleSceneProof: createVisibleSceneProof(3),
       selection: null,
       visibleRange: null,
     },
@@ -82,11 +106,13 @@ function createRenderedCell(value: string, stringId: number) {
 }
 
 function createRenderedContext(value: string, overrides: Partial<NonNullable<WorkbookAgentUiContext['rendered']>> = {}) {
+  const capturedRevision = overrides.capturedRevision ?? 3
   return createContext({
     rendered: {
       capturedAtUnixMs: 100,
-      capturedRevision: 3,
+      capturedRevision,
       batchId: 1,
+      visibleSceneProof: createVisibleSceneProof(capturedRevision),
       selection: null,
       visibleRange: {
         range: {
