@@ -327,6 +327,13 @@ function validateSameCorpusCapture(capture: SameCorpusCapture): void {
       }
       validateSameCorpusCaptureVerification(measurement.corpusVerification, measurement.product, entry.materializedCells, entry.id)
     }
+    validateSameCorpusScenarioProof(
+      entry.scenarioProof,
+      entry.id,
+      buildSameCorpusMeasurement(entry.bilig),
+      buildSameCorpusMeasurement(entry.googleSheets),
+      entry.microsoftExcelWeb ? buildSameCorpusMeasurement(entry.microsoftExcelWeb) : undefined,
+    )
   }
 }
 

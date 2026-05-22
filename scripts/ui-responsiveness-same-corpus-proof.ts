@@ -209,8 +209,7 @@ export function validateSameCorpusScenarioProof(
   if (
     proof.pixelGridProof.captured !== expected.pixelGridProof.captured ||
     JSON.stringify(proof.pixelGridProof.requiredProducts) !== JSON.stringify(expected.pixelGridProof.requiredProducts) ||
-    (proof.pixelGridProof.captured &&
-      JSON.stringify(proof.pixelGridProof.missingProducts) !== JSON.stringify(expected.pixelGridProof.missingProducts))
+    JSON.stringify(proof.pixelGridProof.missingProducts) !== JSON.stringify(expected.pixelGridProof.missingProducts)
   ) {
     throw new Error(`UI responsiveness same-corpus pixel grid proof is stale: ${caseId}`)
   }

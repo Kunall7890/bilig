@@ -171,7 +171,7 @@ describe('UI responsiveness live browser scorecard', () => {
     })
   })
 
-  it('downgrades weak Bilig pixel proof before deriving same-corpus pass flags', () => {
+  it('rejects stale capture scenario proof before deriving same-corpus pass flags', () => {
     const capture = buildSameCorpusCapture()
     const weakCases = [...capture.cases]
     const firstCase = weakCases[0]
@@ -187,6 +187,33 @@ describe('UI responsiveness live browser scorecard', () => {
               : productProof,
           ),
           missingProducts: [],
+        }),
+      }),
+    })
+    const weakCapture: SameCorpusCapture = {
+      ...capture,
+      cases: weakCases,
+    }
+
+    expect(() => buildSameCorpusProof(weakCapture)).toThrow('UI responsiveness same-corpus pixel grid proof is stale')
+  })
+
+  it('keeps the same-corpus blocker for honestly reported weak Bilig pixel proof', () => {
+    const capture = buildSameCorpusCapture()
+    const weakCases = [...capture.cases]
+    const firstCase = weakCases[0]
+    weakCases[0] = Object.assign({}, firstCase, {
+      scenarioProof: Object.assign({}, firstCase.scenarioProof, {
+        pixelGridProof: Object.assign({}, firstCase.scenarioProof.pixelGridProof, {
+          captured: false,
+          products: firstCase.scenarioProof.pixelGridProof.products.map((productProof) =>
+            productProof.product === 'bilig'
+              ? Object.assign({}, productProof, {
+                  evidence: ['mode=typegpu-v3', 'tilePaneCount=6', 'headerPaneCount=3'],
+                })
+              : productProof,
+          ),
+          missingProducts: ['bilig'],
         }),
       }),
     })
