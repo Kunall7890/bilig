@@ -22,6 +22,11 @@ export interface EngineMutationService {
     potentialNewCells?: number,
     options?: { readonly returnUndoOps?: boolean; readonly emitTracked?: boolean },
   ) => readonly EngineOp[] | null
+  readonly executeLocalSingleStructuralInsertNow: (
+    op: Extract<EngineOp, { kind: 'insertRows' | 'insertColumns' }>,
+    potentialNewCells?: number,
+    options?: { readonly emitTracked?: boolean },
+  ) => readonly EngineOp[] | null
   readonly executeLocalCellMutationsAtNow: (
     refs: readonly EngineCellMutationRef[],
     potentialNewCells?: number,

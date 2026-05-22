@@ -205,7 +205,7 @@ export abstract class SpreadsheetEngineWorkbookFacadeBase extends SpreadsheetEng
     if (count <= 0 || !this.workbook.getSheet(sheetName)) {
       return
     }
-    this.executeLocalTransaction([{ kind: 'insertRows', sheetName, start, count }], undefined, options)
+    this.runtime.mutation.executeLocalSingleStructuralInsertNow({ kind: 'insertRows', sheetName, start, count }, undefined, options)
   }
 
   deleteRows(sheetName: string, start: number, count: number): void {
@@ -245,7 +245,7 @@ export abstract class SpreadsheetEngineWorkbookFacadeBase extends SpreadsheetEng
     if (count <= 0 || !this.workbook.getSheet(sheetName)) {
       return
     }
-    this.executeLocalTransaction([{ kind: 'insertColumns', sheetName, start, count }], undefined, options)
+    this.runtime.mutation.executeLocalSingleStructuralInsertNow({ kind: 'insertColumns', sheetName, start, count }, undefined, options)
   }
 
   deleteColumns(sheetName: string, start: number, count: number): void {

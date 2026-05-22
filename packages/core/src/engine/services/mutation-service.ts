@@ -326,14 +326,7 @@ export function createEngineMutationService(args: {
       isMutationStructuralInsertOp(ops[0]!)
     ) {
       const op = ops[0]
-      applyForward(potentialNewCells === undefined ? { kind: 'single-op', op } : { kind: 'single-op', op, potentialNewCells })
-      if (args.state.getTransactionReplayDepth() === 0) {
-        args.state.undoStack.push({
-          forward: createLazySingleOpTransactionRecord(canonicalizeStructuralInsertForwardOp(op), potentialNewCells),
-          inverse: createLazySingleOpTransactionRecord(inverseMutationStructuralInsertOp(op)),
-        })
-        args.state.redoStack.length = 0
-      }
+      applyLocalStructuralInsertWithUndo(op, potentialNewCells, applyForward)
       return null
     }
     if (
@@ -640,6 +633,32 @@ export function createEngineMutationService(args: {
     )
   }
 
+  const applyLocalStructuralInsertWithUndo = (
+    op: Extract<EngineOp, { kind: 'insertRows' | 'insertColumns' }>,
+    potentialNewCells: number | undefined,
+    applyForward: (forward: TransactionRecord) => void,
+  ): void => {
+    applyForward(potentialNewCells === undefined ? { kind: 'single-op', op } : { kind: 'single-op', op, potentialNewCells })
+    if (args.state.getTransactionReplayDepth() === 0) {
+      args.state.undoStack.push({
+        forward: createLazySingleOpTransactionRecord(canonicalizeStructuralInsertForwardOp(op), potentialNewCells),
+        inverse: createLazySingleOpTransactionRecord(inverseMutationStructuralInsertOp(op)),
+      })
+      args.state.redoStack.length = 0
+    }
+  }
+
+  const executeLocalSingleStructuralInsertNow = (
+    op: Extract<EngineOp, { kind: 'insertRows' | 'insertColumns' }>,
+    potentialNewCells: number | undefined,
+    options: { readonly emitTracked?: boolean } = {},
+  ): readonly EngineOp[] | null => {
+    applyLocalStructuralInsertWithUndo(op, potentialNewCells, (forward) => {
+      executeTransactionNow(forward, 'local', options.emitTracked === undefined ? {} : { emitTracked: options.emitTracked })
+    })
+    return null
+  }
+
   const executeLocal = (
     ops: EngineOp[],
     potentialNewCells?: number,
@@ -677,6 +696,7 @@ export function createEngineMutationService(args: {
       })
     },
     executeLocalNow: executeLocalNowPublic,
+    executeLocalSingleStructuralInsertNow,
     executeLocalCellMutationsAtNow(refs, potentialNewCells) {
       return executeLocalCellMutationsAtNow(refs, potentialNewCells)
     },
