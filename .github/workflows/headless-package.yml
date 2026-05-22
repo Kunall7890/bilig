@@ -1033,9 +1033,8 @@ jobs:
           TARGET_VERSION: ${{ needs.plan_release.outputs.target_version }}
         run: |
           set -euo pipefail
-          trusted_publish_npmrc="${RUNNER_TEMP:-/tmp}/npm-trusted-publish.npmrc"
-          printf 'registry=https://registry.npmjs.org/\n' > "$trusted_publish_npmrc"
-          export NPM_CONFIG_USERCONFIG="$trusted_publish_npmrc"
+          test -n "${ACTIONS_ID_TOKEN_REQUEST_URL:-}"
+          test -n "${ACTIONS_ID_TOKEN_REQUEST_TOKEN:-}"
           unset NODE_AUTH_TOKEN
           bun scripts/publish-runtime-package-set.ts
 
@@ -1258,9 +1257,8 @@ jobs:
             publish_args+=(--dry-run)
           fi
 
-          trusted_publish_npmrc="${RUNNER_TEMP:-/tmp}/npm-trusted-publish.npmrc"
-          printf 'registry=https://registry.npmjs.org/\n' > "$trusted_publish_npmrc"
-          export NPM_CONFIG_USERCONFIG="$trusted_publish_npmrc"
+          test -n "${ACTIONS_ID_TOKEN_REQUEST_URL:-}"
+          test -n "${ACTIONS_ID_TOKEN_REQUEST_TOKEN:-}"
           unset NODE_AUTH_TOKEN
           npm publish "${publish_args[@]}"
 

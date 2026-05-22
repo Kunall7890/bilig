@@ -160,11 +160,11 @@ describe('headless package workflow', () => {
     expect(runtimePublishStepIndex).toBeGreaterThan(source.indexOf('Check npm package name provisioning'))
     expect(runtimePublishStepIndex).toBeLessThan(source.indexOf('name: Inspect runtime tag state'))
     expect(runtimePublishStepIndex).toBeLessThan(source.indexOf('name: Create GitHub release'))
-    expect(source.indexOf('npm-trusted-publish.npmrc', runtimePublishStepIndex)).toBeLessThan(
+    expect(source.indexOf('test -n "${ACTIONS_ID_TOKEN_REQUEST_URL:-}"', runtimePublishStepIndex)).toBeLessThan(
       source.indexOf('unset NODE_AUTH_TOKEN', runtimePublishStepIndex),
     )
-    expect(source.indexOf('export NPM_CONFIG_USERCONFIG="$trusted_publish_npmrc"', runtimePublishStepIndex)).toBeLessThan(
-      source.indexOf('bun scripts/publish-runtime-package-set.ts', runtimePublishStepIndex),
+    expect(source.indexOf('test -n "${ACTIONS_ID_TOKEN_REQUEST_TOKEN:-}"', runtimePublishStepIndex)).toBeLessThan(
+      source.indexOf('unset NODE_AUTH_TOKEN', runtimePublishStepIndex),
     )
     expect(source.indexOf('unset NODE_AUTH_TOKEN', runtimePublishStepIndex)).toBeLessThan(
       source.indexOf('bun scripts/publish-runtime-package-set.ts', runtimePublishStepIndex),
