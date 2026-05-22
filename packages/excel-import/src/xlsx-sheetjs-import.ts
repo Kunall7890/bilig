@@ -78,7 +78,7 @@ import { mergeStyleRuns, styleRunsToRanges, type HorizontalStyleRun, type Rectan
 import { prepareSheetJsParserXlsxBytes } from './xlsx-style-only-blank-cells.js'
 import { readImportedWorkbookFileStyles, readImportedWorkbookSheetDimensions, readImportedWorkbookStyleArtifacts } from './xlsx-styles.js'
 import { readImportedWorkbookSheetTabColors } from './xlsx-tab-colors.js'
-import { readImportedWorkbookTables } from './xlsx-tables.js'
+import { readImportedWorkbookTables, tableAutoFiltersBySheet } from './xlsx-tables.js'
 import { readImportedWorkbookThreadedCommentArtifacts } from './xlsx-threaded-comment-artifacts.js'
 import { readImportedWorkbookDataValidations } from './xlsx-validations.js'
 import { readImportedWorkbookViewState } from './xlsx-view-state.js'
@@ -323,6 +323,7 @@ function importParsedSheetJsWorkbook(args: {
     : undefined
   const importedCharts = importedChartDrawingArtifacts?.charts
   const importedTables = workbookZip ? readImportedWorkbookTables(workbookZip, workbook.SheetNames) : undefined
+  const importedTableFiltersBySheet = tableAutoFiltersBySheet(importedTables)
   const importedControlArtifacts = workbookZip ? readImportedWorkbookControlArtifacts(workbookZip, workbook.SheetNames) : undefined
   const importedDataModelArtifacts = workbookZip ? readImportedWorkbookDataModelArtifacts(workbookZip) : undefined
   const importedExternalLinkArtifacts = workbookZip ? readImportedWorkbookExternalLinkArtifacts(workbookZip) : undefined
@@ -694,7 +695,13 @@ function importParsedSheetJsWorkbook(args: {
     const importedProtectedRanges = importedProtectedRangesBySheet.get(sheetName)
     const importedSorts = importedSortsBySheet.get(sheetName)
     const importedFilters = importedFiltersBySheet.get(sheetName)
-    const visibleRows = applyImportedAutoFilterVisibility(sheetName, cells, rows, importedFilters)
+    const tableFilters = importedTableFiltersBySheet.get(sheetName)
+    const visibleRows = applyImportedAutoFilterVisibility(
+      sheetName,
+      cells,
+      rows,
+      tableFilters ? [...(importedFilters ?? []), ...tableFilters] : importedFilters,
+    )
     const importedValidations = importedValidationsBySheet.get(sheetName)
     const importedConditionalFormats = importedConditionalFormatsBySheet.get(sheetName)
     const importedConditionalFormatArtifacts = importedConditionalFormatArtifactsBySheet.get(sheetName)

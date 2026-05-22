@@ -65,6 +65,26 @@ describe('workbook run adapter', () => {
       ['valueEquals', 'passed'],
       ['noFormulaErrors', 'passed'],
     ])
+    expect(result.checks).toEqual([
+      expect.objectContaining({
+        kind: 'exists',
+        proof: {
+          kind: 'runtime',
+          message: 'Runtime confirmed the reference exists',
+          data: { exists: true, target: 'Sheet1!C1' },
+        },
+      }),
+      expect.any(Object),
+      expect.any(Object),
+      expect.objectContaining({
+        kind: 'noFormulaErrors',
+        proof: {
+          kind: 'runtime',
+          message: 'Runtime confirmed no formula errors',
+          data: { passed: true, target: 'Sheet1!C1' },
+        },
+      }),
+    ])
     expect(result.applied).toEqual({
       opCount: 1,
       ops: preview?.materializedOps,
@@ -115,6 +135,11 @@ describe('workbook run adapter', () => {
           kind: 'noFormulaErrors',
           target: findRange({ sheetName: 'Sheet1', address: 'B1' }),
           message: 'Sheet1!B1 has no formula errors',
+          proof: {
+            kind: 'runtime',
+            message: 'Runtime found formula errors or could not resolve formulas',
+            data: { passed: false, target: 'Sheet1!B1' },
+          },
         },
       ],
       undo: {

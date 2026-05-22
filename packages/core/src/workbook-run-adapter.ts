@@ -5,6 +5,7 @@ import {
   type EngineOp,
   type WorkbookActionCommand,
   type WorkbookActionPlan,
+  type WorkbookCheckProof,
   type WorkbookCheckResult,
   type WorkbookColumnRef,
   type WorkbookRef,
@@ -76,10 +77,19 @@ function literalFromCellValue(value: CellValue): LiteralInput | undefined {
   }
 }
 
-function checked(check: WorkbookCheckResult, status: WorkbookCheckResult['status']): WorkbookCheckResult {
+function runtimeProof(message: string, data: Record<string, LiteralInput>): WorkbookCheckProof {
+  return {
+    kind: 'runtime',
+    message,
+    data,
+  }
+}
+
+function checked(check: WorkbookCheckResult, status: WorkbookCheckResult['status'], proof?: WorkbookCheckProof): WorkbookCheckResult {
   return {
     ...check,
     status,
+    ...(proof !== undefined ? { proof } : {}),
   }
 }
 
@@ -697,10 +707,31 @@ function verifyCheck(engine: SpreadsheetEngine, check: WorkbookCheckResult): Wor
     return check
   }
   if (check.kind === 'exists') {
-    return checked(check, refExists(engine, check.target) ? 'passed' : 'failed')
+    const exists = refExists(engine, check.target)
+    return checked(
+      check,
+      exists ? 'passed' : 'failed',
+      runtimeProof(exists ? 'Runtime confirmed the reference exists' : 'Runtime could not resolve the reference', {
+        exists,
+        target: check.target.label,
+      }),
+    )
   }
   if (check.kind === 'noFormulaErrors') {
-    return checked(check, verifyNoFormulaErrors(engine, check.target))
+    const status = verifyNoFormulaErrors(engine, check.target)
+    return checked(
+      check,
+      status,
+      status === 'planned'
+        ? undefined
+        : runtimeProof(
+            status === 'passed' ? 'Runtime confirmed no formula errors' : 'Runtime found formula errors or could not resolve formulas',
+            {
+              passed: status === 'passed',
+              target: check.target.label,
+            },
+          ),
+    )
   }
   return check
 }

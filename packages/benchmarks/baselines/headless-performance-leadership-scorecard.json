@@ -13,13 +13,13 @@
     ],
     "unmetRequirements": [
       "competitor-coverage: only HyperFormula is workbook-wide; add at least one more direct workbook-wide headless spreadsheet engine before broad headless leadership claims",
-      "per-workload-mean-and-p95-wins: 93/100 comparable workloads win both mean and p95; p95 holdouts: structural-append-formula-rows, structural-append-formula-rows-small, structural-append-formula-rows-large, structural-move-rows, structural-insert-columns-small, aggregate-overlapping-sliding-window, aggregate-overlapping-sliding-window-wide"
+      "per-workload-mean-and-p95-wins: 96/100 comparable workloads win both mean and p95; p95 holdouts: structural-append-formula-rows, structural-append-formula-rows-large, aggregate-overlapping-sliding-window, lookup-approximate-sorted-after-column-write"
     ]
   },
   "sourceArtifacts": {
     "primaryCompetitiveBenchmark": {
       "comparisonTarget": "HyperFormula",
-      "generatedAt": "2026-05-21T11:06:55.712Z",
+      "generatedAt": "2026-05-22T03:35:00.425Z",
       "hyperFormulaCommit": "9a510a2acb97c3d3490f9e3b9e961a1c4a98b9ad",
       "hyperFormulaVersion": "3.2.0",
       "path": "packages/benchmarks/baselines/workpaper-vs-hyperformula.json"
@@ -91,48 +91,33 @@
       "lookup-text"
     ],
     "excludedFamilies": ["config-toggle", "dynamic-array"],
-    "meanAndP95WinCount": 93,
-    "meanGeomeanRatio": 0.3142595685818306,
-    "meanWinCount": 94,
-    "p95GeomeanRatio": 0.3401955031215613,
+    "meanAndP95WinCount": 96,
+    "meanGeomeanRatio": 0.29358029192125573,
+    "meanWinCount": 99,
+    "p95GeomeanRatio": 0.30456268903585865,
     "p95Holdouts": [
       {
         "comparisonTarget": "HyperFormula",
-        "p95Ratio": 1.2504062828590443,
+        "p95Ratio": 1.0273618323750915,
         "workload": "structural-append-formula-rows"
       },
       {
         "comparisonTarget": "HyperFormula",
-        "p95Ratio": 1.8447085362729236,
-        "workload": "structural-append-formula-rows-small"
-      },
-      {
-        "comparisonTarget": "HyperFormula",
-        "p95Ratio": 1.6224503327096407,
+        "p95Ratio": 1.19563861123766,
         "workload": "structural-append-formula-rows-large"
       },
       {
         "comparisonTarget": "HyperFormula",
-        "p95Ratio": 4.046934276296977,
-        "workload": "structural-move-rows"
-      },
-      {
-        "comparisonTarget": "HyperFormula",
-        "p95Ratio": 1.286876666908815,
-        "workload": "structural-insert-columns-small"
-      },
-      {
-        "comparisonTarget": "HyperFormula",
-        "p95Ratio": 1.040463134418501,
+        "p95Ratio": 1.0307692300932412,
         "workload": "aggregate-overlapping-sliding-window"
       },
       {
         "comparisonTarget": "HyperFormula",
-        "p95Ratio": 1.0442062970902473,
-        "workload": "aggregate-overlapping-sliding-window-wide"
+        "p95Ratio": 1.0048147097935731,
+        "workload": "lookup-approximate-sorted-after-column-write"
       }
     ],
-    "p95WinCount": 93,
+    "p95WinCount": 96,
     "tenXMeanAndP95WorkloadCountAgainstHyperFormula": 5,
     "limitedComparisonEngines": [
       {
@@ -148,10 +133,10 @@
     ],
     "workbookWideComparisonEngineCount": 1,
     "workbookWideComparisonEngines": ["HyperFormula"],
-    "worstMeanRatio": 2.2670751444925408,
-    "worstMeanRatioWorkload": "structural-append-formula-rows-small",
-    "worstP95Ratio": 4.046934276296977,
-    "worstP95RatioWorkload": "structural-move-rows"
+    "worstMeanRatio": 1.0047527772334053,
+    "worstMeanRatioWorkload": "structural-append-formula-rows-large",
+    "worstP95Ratio": 1.19563861123766,
+    "worstP95RatioWorkload": "structural-append-formula-rows-large"
   },
   "completionAudit": {
     "allCriteriaPassed": false,
@@ -159,7 +144,7 @@
       {
         "evidence": [
           "primary artifact: packages/benchmarks/baselines/workpaper-vs-hyperformula.json",
-          "generated at: 2026-05-21T11:06:55.712Z",
+          "generated at: 2026-05-22T03:35:00.425Z",
           "check command: pnpm headless:performance:check",
           "timing refresh command: pnpm workpaper:bench:competitive:generate"
         ],
@@ -192,9 +177,9 @@
         "requirement": "Eligible benchmark families must cover diverse workbook build, recalc, structural, read, aggregate, and lookup shapes."
       },
       {
-        "evidence": ["HyperFormula mean wins: 94/100", "HyperFormula p95 wins: 93/100", "HyperFormula mean+p95 wins: 93/100"],
+        "evidence": ["HyperFormula mean wins: 99/100", "HyperFormula p95 wins: 96/100", "HyperFormula mean+p95 wins: 96/100"],
         "gaps": [
-          "93/100 comparable workloads win both mean and p95; p95 holdouts: structural-append-formula-rows, structural-append-formula-rows-small, structural-append-formula-rows-large, structural-move-rows, structural-insert-columns-small, aggregate-overlapping-sliding-window, aggregate-overlapping-sliding-window-wide"
+          "96/100 comparable workloads win both mean and p95; p95 holdouts: structural-append-formula-rows, structural-append-formula-rows-large, aggregate-overlapping-sliding-window, lookup-approximate-sorted-after-column-write"
         ],
         "id": "per-workload-mean-and-p95-wins",
         "passed": false,
@@ -202,10 +187,10 @@
       },
       {
         "evidence": [
-          "mean geomean ratio: 0.3142595685818306",
-          "p95 geomean ratio: 0.3401955031215613",
-          "worst mean row: structural-append-formula-rows-small (2.2670751444925408)",
-          "worst p95 row: structural-move-rows (4.046934276296977)",
+          "mean geomean ratio: 0.29358029192125573",
+          "p95 geomean ratio: 0.30456268903585865",
+          "worst mean row: structural-append-formula-rows-large (1.0047527772334053)",
+          "worst p95 row: structural-append-formula-rows-large (1.19563861123766)",
           "10x mean+p95 workloads against HyperFormula: 5"
         ],
         "gaps": [],
@@ -216,7 +201,7 @@
     ],
     "unmetRequirements": [
       "competitor-coverage: only HyperFormula is workbook-wide; add at least one more direct workbook-wide headless spreadsheet engine before broad headless leadership claims",
-      "per-workload-mean-and-p95-wins: 93/100 comparable workloads win both mean and p95; p95 holdouts: structural-append-formula-rows, structural-append-formula-rows-small, structural-append-formula-rows-large, structural-move-rows, structural-insert-columns-small, aggregate-overlapping-sliding-window, aggregate-overlapping-sliding-window-wide"
+      "per-workload-mean-and-p95-wins: 96/100 comparable workloads win both mean and p95; p95 holdouts: structural-append-formula-rows, structural-append-formula-rows-large, aggregate-overlapping-sliding-window, lookup-approximate-sorted-after-column-write"
     ]
   }
 }

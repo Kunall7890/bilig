@@ -1,6 +1,6 @@
 import { normalizeFormulaFunctionName, parseFormula } from '@bilig/formula'
 import type { CellRangeRef } from '@bilig/protocol'
-import type { WorkbookRef } from './find.js'
+import { isWorkbookRef, type WorkbookRef } from './find.js'
 
 export interface WorkbookFormulaExpression {
   readonly kind: 'formula'
@@ -25,16 +25,22 @@ function normalizeFormulaSource(source: string): string {
 }
 
 function uniqueRefs(refs: readonly WorkbookRef[]): readonly WorkbookRef[] {
+  if (!Array.isArray(refs)) {
+    throw new Error('Formula inputs must be an array')
+  }
   const seen = new Set<string>()
   const unique: WorkbookRef[] = []
-  for (const ref of refs) {
+  refs.forEach((ref, index) => {
+    if (!isWorkbookRef(ref)) {
+      throw new Error(`Formula input at inputs[${index.toString()}] must be a WorkbookRef`)
+    }
     const key = `${ref.kind}:${ref.id}`
     if (seen.has(key)) {
-      continue
+      return
     }
     seen.add(key)
     unique.push(ref)
-  }
+  })
   return Object.freeze(unique)
 }
 
@@ -46,19 +52,17 @@ function createFormulaExpression(source: string, inputs: readonly WorkbookRef[] 
   })
 }
 
-function isFormulaExpression(value: WorkbookFormulaOperand): value is WorkbookFormulaExpression {
-  return typeof value === 'object' && value !== null && 'kind' in value && value.kind === 'formula'
-}
-
-function isWorkbookRef(value: WorkbookFormulaOperand): value is WorkbookRef {
+function isFormulaExpression(value: unknown): value is WorkbookFormulaExpression {
   return (
     typeof value === 'object' &&
     value !== null &&
     'kind' in value &&
-    typeof value.kind === 'string' &&
-    value.kind !== 'formula' &&
-    'id' in value &&
-    typeof value.id === 'string'
+    value.kind === 'formula' &&
+    'source' in value &&
+    typeof value.source === 'string' &&
+    'inputs' in value &&
+    Array.isArray(value.inputs) &&
+    value.inputs.every(isWorkbookRef)
   )
 }
 
@@ -104,7 +108,10 @@ function operandSource(operand: WorkbookFormulaOperand): string {
   if (typeof operand === 'boolean') {
     return operand ? 'TRUE()' : 'FALSE()'
   }
-  return operand
+  if (typeof operand === 'string') {
+    return operand
+  }
+  throw new Error('Formula operand must be a formula expression, WorkbookRef, string, finite number, or boolean')
 }
 
 function operandInputs(operand: WorkbookFormulaOperand): readonly WorkbookRef[] {
@@ -113,6 +120,9 @@ function operandInputs(operand: WorkbookFormulaOperand): readonly WorkbookRef[] 
   }
   if (isWorkbookRef(operand)) {
     return [operand]
+  }
+  if (typeof operand === 'object' && operand !== null) {
+    throw new Error('Formula operand must be a formula expression, WorkbookRef, string, finite number, or boolean')
   }
   return []
 }

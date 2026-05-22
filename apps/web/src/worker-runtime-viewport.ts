@@ -177,7 +177,6 @@ export function buildViewportPatchFromEngine(input: {
   readonly authoritativeRevision: number
   readonly sheetImpact: SheetViewportImpact | null
   readonly engine: WorkerEngine
-  readonly emptyCellSnapshot: (sheetName: string, address: string) => CellSnapshot
   readonly getStyleRecord: (styleId: string) => CellStyleRecord
   readonly getFormatId: (format: string | undefined) => number
 }): ViewportPatch {
@@ -198,13 +197,36 @@ export function buildViewportPatchFromEngine(input: {
     getFormatId: input.getFormatId,
   }
 
+  if (!hasSheet) {
+    state.lastCellSignatures.clear()
+    state.lastStyleSignatures.clear()
+    state.lastColumnSignatures.clear()
+    state.lastRowSignatures.clear()
+    state.lastMergeSignatures.clear()
+    return {
+      version: state.nextVersion++,
+      authoritativeRevision: input.authoritativeRevision,
+      status: 'sheet-not-found',
+      full: true,
+      freezeRows: 0,
+      freezeCols: 0,
+      viewport,
+      metrics: { ...metrics },
+      styles: [],
+      cells: [],
+      columns: [],
+      rows: [],
+      merges: [],
+    }
+  }
+
   if (full) {
     state.lastCellSignatures.clear()
     state.lastStyleSignatures.clear()
     for (let row = viewport.rowStart; row <= viewport.rowEnd; row += 1) {
       for (let col = viewport.colStart; col <= viewport.colEnd; col += 1) {
         const address = formatAddress(row, col)
-        const snapshot = hasSheet ? engine.getCell(viewport.sheetName, address) : input.emptyCellSnapshot(viewport.sheetName, address)
+        const snapshot = engine.getCell(viewport.sheetName, address)
         appendPatchedCell(context, row, col, snapshot, true)
       }
     }
@@ -217,13 +239,7 @@ export function buildViewportPatchFromEngine(input: {
       invalidatedColumns,
     )
     for (const cell of targetCells) {
-      appendPatchedCell(
-        context,
-        cell.row,
-        cell.col,
-        hasSheet ? engine.getCell(viewport.sheetName, cell.address) : input.emptyCellSnapshot(viewport.sheetName, cell.address),
-        false,
-      )
+      appendPatchedCell(context, cell.row, cell.col, engine.getCell(viewport.sheetName, cell.address), false)
     }
   }
 

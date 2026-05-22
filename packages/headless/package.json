@@ -1,6 +1,6 @@
 {
   "name": "@bilig/headless",
-  "version": "0.42.0",
+  "version": "0.48.0",
   "description": "Formula WorkPaper runtime for Node.js services and agent tools with JSON persistence and formula readback.",
   "keywords": [
     "agent-tools",
@@ -87,7 +87,9 @@
     "access": "public"
   },
   "scripts": {
-    "build": "pnpm --dir ../.. --filter @bilig/excel-import build && rm -rf dist tsconfig.tsbuildinfo && tsc -p tsconfig.json && bun ../../scripts/build-headless-xlsx-subpath.ts"
+    "build": "pnpm --dir ../.. --filter @bilig/excel-import build && rm -rf dist tsconfig.tsbuildinfo && tsc -p tsconfig.json && bun ../../scripts/build-headless-xlsx-subpath.ts",
+    "test:excel-oracle": "vitest run --root ../.. src/__tests__/macos-desktop-excel-*.test.ts --maxWorkers=1",
+    "test:excel-oracle:live": "BILIG_EXCEL_ORACLE_RUN=1 vitest run --root ../.. src/__tests__/macos-desktop-excel-*.test.ts --maxWorkers=1"
   },
   "dependencies": {
     "@bilig/core": "workspace:*",

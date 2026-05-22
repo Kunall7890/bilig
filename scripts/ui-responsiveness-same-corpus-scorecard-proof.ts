@@ -1,4 +1,16 @@
+import { createHash } from 'node:crypto'
+
 import { summarizeNumbers, type NumericSummary } from '../packages/benchmarks/src/stats.js'
+import {
+  buildWorkbookBenchmarkCorpus,
+  isWorkbookBenchmarkCorpusId,
+  type WorkbookBenchmarkCorpusId,
+} from '../packages/benchmarks/src/workbook-corpus.js'
+import {
+  buildSameCorpusFingerprint,
+  sameCorpusFingerprintVersion,
+  type SameCorpusCaptureCorpusFingerprint,
+} from './ui-responsiveness-same-corpus-fingerprint.ts'
 import type { SameCorpusProductVisualProof, SameCorpusScenarioProof } from './ui-responsiveness-same-corpus-proof.ts'
 import {
   buildScorecardScenarioProof,
@@ -47,6 +59,7 @@ export interface UiResponsivenessSameCorpusCase {
   readonly tenXMeanAndP95AgainstMicrosoftExcelWeb?: boolean | undefined
   readonly postOperationFrameGuardrailPassed?: boolean
   readonly scrollMovementGuardrailPassed?: boolean
+  readonly sourceWorkbookFingerprintGuardrailPassed?: boolean
   readonly passed: boolean
 }
 
@@ -69,22 +82,53 @@ export interface UiResponsivenessSameCorpusRunManifest {
   readonly requiredWorkloads: readonly UiResponsivenessSameCorpusWorkload[]
   readonly capturedWorkloads: readonly UiResponsivenessSameCorpusWorkload[]
   readonly corpusCaseIds: readonly string[]
+  readonly corpusFingerprints: readonly SameCorpusCaptureCorpusFingerprint[]
+  readonly productSourceWorkbookFingerprints: readonly SameCorpusProductSourceWorkbookFingerprint[]
   readonly materializedCellCounts: readonly number[]
   readonly sampleCount: number
   readonly caseCount: number
   readonly strictRenderedGridProofCaseCount: number
+  readonly legacyInsufficientRenderedGridProofCaseCount: number
   readonly tenXMeanAndP95CaseCount: number
   readonly currentContractEvidenceComplete: boolean
   readonly googleSheetsTenXRequirementSatisfied: boolean
   readonly invalidReasons: readonly string[]
 }
 
+export interface SameCorpusProductSourceWorkbookFingerprint {
+  readonly product: UiResponsivenessSameCorpusProduct
+  readonly method: SameCorpusCaptureCorpusVerification['method']
+  readonly source: string
+  readonly sourceWorkbookSha256: string | null
+}
+
 export interface SameCorpusCapture {
   readonly schemaVersion: 1
   readonly suite: 'ui-responsiveness-same-corpus-capture'
   readonly sampleCount: number
+  readonly runManifest: SameCorpusCaptureRunManifest
   readonly limitations: string[]
   readonly cases: SameCorpusCaptureCase[]
+}
+
+export interface SameCorpusCaptureRunManifest {
+  readonly artifactGenerator: 'scripts/capture-ui-responsiveness-same-corpus.ts'
+  readonly captureToolVersion: typeof sameCorpusUiCaptureToolVersion
+  readonly contractVersion: typeof sameCorpusUiRenderProofContractVersion
+  readonly requiredProducts: readonly UiResponsivenessSameCorpusProduct[]
+  readonly requiredWorkloads: readonly UiResponsivenessSameCorpusWorkload[]
+  readonly capturedWorkloads: readonly UiResponsivenessSameCorpusWorkload[]
+  readonly corpusCaseIds: readonly string[]
+  readonly corpusFingerprints: readonly SameCorpusCaptureCorpusFingerprint[]
+  readonly productSourceWorkbookFingerprints: readonly SameCorpusProductSourceWorkbookFingerprint[]
+  readonly materializedCellCounts: readonly number[]
+  readonly sampleCount: number
+  readonly caseCount: number
+  readonly strictRenderedGridProofCaseCount: number
+  readonly legacyInsufficientRenderedGridProofCaseCount: number
+  readonly currentContractEvidenceComplete: boolean
+  readonly captureRunSignature: string
+  readonly invalidReasons: readonly string[]
 }
 
 export interface SameCorpusCaptureCase {
@@ -120,13 +164,17 @@ export interface SameCorpusCaptureCorpusVerification {
   readonly method: 'bilig-benchmark-state' | 'google-sheets-xlsx-export' | 'microsoft-excel-web-source-xlsx'
   readonly sheetName: string
   readonly materializedCells: number
+  readonly corpusFingerprint: SameCorpusCaptureCorpusFingerprint
+  readonly sourceWorkbookSha256: string | null
   readonly checkedCells: readonly SameCorpusCaptureVerifiedCell[]
 }
 
 const requiredSameCorpusWorkloads = requiredUiResponsivenessSameCorpusWorkloads
 const sameCorpusSampleCount = 3
+export const sameCorpusUiCaptureToolVersion = 'same-corpus-capture-v1'
 const strictRenderedGridProofLimitation =
   'Some same-corpus cases retain timing evidence but do not satisfy strict rendered-grid proof, so they cannot count toward Google Sheets 10x UI claims.'
+const expectedCorpusFingerprintCache = new Map<WorkbookBenchmarkCorpusId, SameCorpusCaptureCorpusFingerprint>()
 
 export function buildMissingSameCorpusProof(): UiResponsivenessSameCorpusProof {
   return {
@@ -209,13 +257,21 @@ export function validateSameCorpusProof(proof: UiResponsivenessSameCorpusProof):
 function buildSameCorpusRunManifest(cases: readonly UiResponsivenessSameCorpusCase[]): UiResponsivenessSameCorpusRunManifest {
   const capturedWorkloads = cases.map((entry) => entry.workload)
   const corpusCaseIds = [...new Set(cases.map((entry) => entry.corpusCaseId))].toSorted()
+  const corpusFingerprints = uniqueCorpusFingerprints(cases)
+  const productSourceWorkbookFingerprints = uniqueProductSourceWorkbookFingerprints(cases)
   const materializedCellCounts = [...new Set(cases.map((entry) => entry.materializedCells))].toSorted((left, right) => left - right)
   const strictRenderedGridProofCaseCount = cases.filter((entry) => entry.scenarioProof.pixelGridProof.captured).length
+  const legacyInsufficientRenderedGridProofCaseCount = cases.filter((entry) =>
+    entry.scenarioProof.pixelGridProof.productVerdicts.some((verdict) => verdict.evidenceStatus === 'legacy-insufficient'),
+  ).length
   const tenXMeanAndP95CaseCount = cases.filter((entry) => entry.tenXMeanAndP95AgainstGoogleSheets).length
   const invalidReasons = sameCorpusRunManifestInvalidReasons({
     capturedWorkloads,
     caseCount: cases.length,
     corpusCaseIds,
+    corpusFingerprints,
+    productSourceWorkbookFingerprints,
+    legacyInsufficientRenderedGridProofCaseCount,
     materializedCellCounts,
     strictRenderedGridProofCaseCount,
     tenXMeanAndP95CaseCount,
@@ -227,10 +283,13 @@ function buildSameCorpusRunManifest(cases: readonly UiResponsivenessSameCorpusCa
     requiredWorkloads: requiredSameCorpusWorkloads,
     capturedWorkloads,
     corpusCaseIds,
+    corpusFingerprints,
+    productSourceWorkbookFingerprints,
     materializedCellCounts,
     sampleCount: manifestSampleCount(cases),
     caseCount: cases.length,
     strictRenderedGridProofCaseCount,
+    legacyInsufficientRenderedGridProofCaseCount,
     tenXMeanAndP95CaseCount,
     currentContractEvidenceComplete: !invalidReasons.some(
       (reason) => reason !== 'not every required workload is 10x against Google Sheets',
@@ -240,10 +299,57 @@ function buildSameCorpusRunManifest(cases: readonly UiResponsivenessSameCorpusCa
   }
 }
 
+export function buildSameCorpusCaptureRunManifest(
+  cases: readonly SameCorpusCaptureCase[],
+  sampleCount: number,
+): SameCorpusCaptureRunManifest {
+  const capturedWorkloads = cases.map((entry) => entry.workload)
+  const corpusCaseIds = [...new Set(cases.map((entry) => entry.corpusCaseId))].toSorted()
+  const corpusFingerprints = uniqueCaptureCorpusFingerprints(cases)
+  const productSourceWorkbookFingerprints = uniqueCaptureProductSourceWorkbookFingerprints(cases)
+  const materializedCellCounts = [...new Set(cases.map((entry) => entry.materializedCells))].toSorted((left, right) => left - right)
+  const strictRenderedGridProofCaseCount = cases.filter((entry) => entry.scenarioProof.pixelGridProof.captured).length
+  const legacyInsufficientRenderedGridProofCaseCount = cases.filter((entry) =>
+    entry.scenarioProof.pixelGridProof.productVerdicts.some((verdict) => verdict.evidenceStatus === 'legacy-insufficient'),
+  ).length
+  const invalidReasons = sameCorpusCaptureRunManifestInvalidReasons({
+    capturedWorkloads,
+    caseCount: cases.length,
+    corpusCaseIds,
+    corpusFingerprints,
+    productSourceWorkbookFingerprints,
+    legacyInsufficientRenderedGridProofCaseCount,
+    materializedCellCounts,
+    strictRenderedGridProofCaseCount,
+  })
+  return {
+    artifactGenerator: 'scripts/capture-ui-responsiveness-same-corpus.ts',
+    captureToolVersion: sameCorpusUiCaptureToolVersion,
+    contractVersion: sameCorpusUiRenderProofContractVersion,
+    requiredProducts: ['bilig', 'google-sheets'],
+    requiredWorkloads: requiredSameCorpusWorkloads,
+    capturedWorkloads,
+    corpusCaseIds,
+    corpusFingerprints,
+    productSourceWorkbookFingerprints,
+    materializedCellCounts,
+    sampleCount,
+    caseCount: cases.length,
+    strictRenderedGridProofCaseCount,
+    legacyInsufficientRenderedGridProofCaseCount,
+    currentContractEvidenceComplete: invalidReasons.length === 0,
+    captureRunSignature: sameCorpusCaptureRunSignature(cases),
+    invalidReasons,
+  }
+}
+
 function sameCorpusRunManifestInvalidReasons(args: {
   readonly capturedWorkloads: readonly UiResponsivenessSameCorpusWorkload[]
   readonly caseCount: number
   readonly corpusCaseIds: readonly string[]
+  readonly corpusFingerprints: readonly SameCorpusCaptureCorpusFingerprint[]
+  readonly productSourceWorkbookFingerprints: readonly SameCorpusProductSourceWorkbookFingerprint[]
+  readonly legacyInsufficientRenderedGridProofCaseCount: number
   readonly materializedCellCounts: readonly number[]
   readonly strictRenderedGridProofCaseCount: number
   readonly tenXMeanAndP95CaseCount: number
@@ -262,6 +368,12 @@ function sameCorpusRunManifestInvalidReasons(args: {
   if (args.corpusCaseIds.length !== 1) {
     invalidReasons.push('same-corpus evidence must use exactly one corpus case')
   }
+  if (args.corpusFingerprints.length !== 1) {
+    invalidReasons.push('same-corpus evidence must use exactly one benchmark workbook fingerprint')
+  }
+  if (!requiredProductSourceWorkbookFingerprintsPresent(args.productSourceWorkbookFingerprints)) {
+    invalidReasons.push('source workbook fingerprint must be stable for every required product')
+  }
   if (args.materializedCellCounts.length > 1) {
     invalidReasons.push('same-corpus evidence has mixed materialized cell counts')
   }
@@ -270,10 +382,133 @@ function sameCorpusRunManifestInvalidReasons(args: {
       `strict rendered-grid proof covers ${String(args.strictRenderedGridProofCaseCount)}/${String(requiredSameCorpusWorkloads.length)} cases`,
     )
   }
+  if (args.legacyInsufficientRenderedGridProofCaseCount > 0) {
+    invalidReasons.push(
+      `legacy-insufficient rendered-grid proof covers ${String(args.legacyInsufficientRenderedGridProofCaseCount)}/${String(
+        requiredSameCorpusWorkloads.length,
+      )} cases`,
+    )
+  }
   if (args.tenXMeanAndP95CaseCount !== requiredSameCorpusWorkloads.length) {
     invalidReasons.push('not every required workload is 10x against Google Sheets')
   }
   return invalidReasons
+}
+
+function sameCorpusCaptureRunManifestInvalidReasons(args: {
+  readonly capturedWorkloads: readonly UiResponsivenessSameCorpusWorkload[]
+  readonly caseCount: number
+  readonly corpusCaseIds: readonly string[]
+  readonly corpusFingerprints: readonly SameCorpusCaptureCorpusFingerprint[]
+  readonly productSourceWorkbookFingerprints: readonly SameCorpusProductSourceWorkbookFingerprint[]
+  readonly legacyInsufficientRenderedGridProofCaseCount: number
+  readonly materializedCellCounts: readonly number[]
+  readonly strictRenderedGridProofCaseCount: number
+}): string[] {
+  const invalidReasons: string[] = []
+  if (args.caseCount !== requiredSameCorpusWorkloads.length) {
+    invalidReasons.push('required workload count is incomplete')
+  }
+  const missingWorkloads = requiredSameCorpusWorkloads.filter((workload) => !args.capturedWorkloads.includes(workload))
+  if (missingWorkloads.length > 0) {
+    invalidReasons.push(`missing required workloads: ${missingWorkloads.join(', ')}`)
+  }
+  if (new Set(args.capturedWorkloads).size !== args.capturedWorkloads.length) {
+    invalidReasons.push('duplicate workload evidence is present')
+  }
+  if (args.corpusCaseIds.length !== 1) {
+    invalidReasons.push('same-corpus evidence must use exactly one corpus case')
+  }
+  if (args.corpusFingerprints.length !== 1) {
+    invalidReasons.push('same-corpus evidence must use exactly one benchmark workbook fingerprint')
+  }
+  if (!requiredProductSourceWorkbookFingerprintsPresent(args.productSourceWorkbookFingerprints)) {
+    invalidReasons.push('source workbook fingerprint must be stable for every required product')
+  }
+  if (args.materializedCellCounts.length > 1) {
+    invalidReasons.push('same-corpus evidence has mixed materialized cell counts')
+  }
+  if (args.strictRenderedGridProofCaseCount !== requiredSameCorpusWorkloads.length) {
+    invalidReasons.push(
+      `strict rendered-grid proof covers ${String(args.strictRenderedGridProofCaseCount)}/${String(requiredSameCorpusWorkloads.length)} cases`,
+    )
+  }
+  if (args.legacyInsufficientRenderedGridProofCaseCount > 0) {
+    invalidReasons.push(
+      `legacy-insufficient rendered-grid proof covers ${String(args.legacyInsufficientRenderedGridProofCaseCount)}/${String(
+        requiredSameCorpusWorkloads.length,
+      )} cases`,
+    )
+  }
+  return invalidReasons
+}
+
+function uniqueCorpusFingerprints(cases: readonly UiResponsivenessSameCorpusCase[]): readonly SameCorpusCaptureCorpusFingerprint[] {
+  return uniqueByStableJson(
+    cases.flatMap((entry) => sameCorpusCaseMeasurements(entry).map((measurement) => measurement.corpusVerification.corpusFingerprint)),
+  )
+}
+
+function uniqueCaptureCorpusFingerprints(cases: readonly SameCorpusCaptureCase[]): readonly SameCorpusCaptureCorpusFingerprint[] {
+  return uniqueByStableJson(
+    cases.flatMap((entry) =>
+      sameCorpusCaptureCaseMeasurements(entry).map((measurement) => measurement.corpusVerification.corpusFingerprint),
+    ),
+  )
+}
+
+function uniqueProductSourceWorkbookFingerprints(
+  cases: readonly UiResponsivenessSameCorpusCase[],
+): readonly SameCorpusProductSourceWorkbookFingerprint[] {
+  return uniqueByStableJson(
+    cases.flatMap((entry) =>
+      sameCorpusCaseMeasurements(entry).map((measurement) => ({
+        product: measurement.product,
+        method: measurement.corpusVerification.method,
+        source: measurement.source,
+        sourceWorkbookSha256: measurement.corpusVerification.sourceWorkbookSha256,
+      })),
+    ),
+  ).toSorted((left, right) => `${left.product}:${left.source}`.localeCompare(`${right.product}:${right.source}`))
+}
+
+function uniqueCaptureProductSourceWorkbookFingerprints(
+  cases: readonly SameCorpusCaptureCase[],
+): readonly SameCorpusProductSourceWorkbookFingerprint[] {
+  return uniqueByStableJson(
+    cases.flatMap((entry) =>
+      sameCorpusCaptureCaseMeasurements(entry).map((measurement) => ({
+        product: measurement.product,
+        method: measurement.corpusVerification.method,
+        source: measurement.source,
+        sourceWorkbookSha256: measurement.corpusVerification.sourceWorkbookSha256,
+      })),
+    ),
+  ).toSorted((left, right) => `${left.product}:${left.source}`.localeCompare(`${right.product}:${right.source}`))
+}
+
+function sameCorpusCaseMeasurements(
+  entry: Pick<UiResponsivenessSameCorpusCase, 'bilig' | 'googleSheets' | 'microsoftExcelWeb'>,
+): readonly UiResponsivenessSameCorpusMeasurement[] {
+  return [entry.bilig, entry.googleSheets, ...(entry.microsoftExcelWeb ? [entry.microsoftExcelWeb] : [])]
+}
+
+function sameCorpusCaptureCaseMeasurements(entry: SameCorpusCaptureCase): readonly SameCorpusCaptureMeasurement[] {
+  return [entry.bilig, entry.googleSheets, ...(entry.microsoftExcelWeb ? [entry.microsoftExcelWeb] : [])]
+}
+
+function uniqueByStableJson<T>(values: readonly T[]): T[] {
+  const byKey = new Map<string, T>()
+  for (const value of values) {
+    byKey.set(JSON.stringify(value), value)
+  }
+  return [...byKey.values()]
+}
+
+function requiredProductSourceWorkbookFingerprintsPresent(fingerprints: readonly SameCorpusProductSourceWorkbookFingerprint[]): boolean {
+  return (['bilig', 'google-sheets'] as const satisfies readonly UiResponsivenessSameCorpusProduct[]).every(
+    (product) => fingerprints.filter((entry) => entry.product === product && entry.sourceWorkbookSha256 !== null).length === 1,
+  )
 }
 
 function manifestSampleCount(cases: readonly UiResponsivenessSameCorpusCase[]): number {
@@ -305,6 +540,7 @@ function validateSameCorpusCapture(capture: SameCorpusCapture): void {
   if (capture.cases.length === 0) {
     throw new Error('UI responsiveness same-corpus capture must include at least one case')
   }
+  validateSameCorpusCaptureRunManifest(capture)
   for (const entry of capture.cases) {
     const measurements = [entry.bilig, entry.googleSheets, ...(entry.microsoftExcelWeb ? [entry.microsoftExcelWeb] : [])]
     const hasAnyScrollEventSamples = measurements.some(
@@ -325,9 +561,33 @@ function validateSameCorpusCapture(capture: SameCorpusCapture): void {
       ) {
         throw new Error(`UI responsiveness same-corpus capture has too few scroll-event samples for ${entry.id}`)
       }
-      validateSameCorpusCaptureVerification(measurement.corpusVerification, measurement.product, entry.materializedCells, entry.id)
+      validateSameCorpusCaptureVerification(
+        measurement.corpusVerification,
+        measurement.product,
+        entry.materializedCells,
+        entry.corpusCaseId,
+        entry.id,
+      )
     }
+    validateSameCorpusScenarioProof(
+      entry.scenarioProof,
+      entry.id,
+      buildSameCorpusMeasurement(entry.bilig),
+      buildSameCorpusMeasurement(entry.googleSheets),
+      entry.microsoftExcelWeb ? buildSameCorpusMeasurement(entry.microsoftExcelWeb) : undefined,
+    )
   }
+}
+
+function validateSameCorpusCaptureRunManifest(capture: SameCorpusCapture): void {
+  const expected = buildSameCorpusCaptureRunManifest(capture.cases, capture.sampleCount)
+  if (JSON.stringify(capture.runManifest) !== JSON.stringify(expected)) {
+    throw new Error('UI responsiveness same-corpus capture run manifest is stale')
+  }
+}
+
+function sameCorpusCaptureRunSignature(cases: readonly SameCorpusCaptureCase[]): string {
+  return createHash('sha256').update(JSON.stringify(cases)).digest('hex')
 }
 
 function buildSameCorpusCase(captureCase: SameCorpusCaptureCase): UiResponsivenessSameCorpusCase {
@@ -347,6 +607,7 @@ function buildSameCorpusCase(captureCase: SameCorpusCaptureCase): UiResponsivene
   const postOperationFrameGuardrailPassed = comparedProducts.every(
     (entry) => entry.postOperationFrameMs.p95 > 0 && entry.postOperationFrameMs.p95 <= 50,
   )
+  const sourceWorkbookFingerprintGuardrailPassed = comparedProducts.every(hasCapturedSourceWorkbookFingerprint)
   const scrollMovementGuardrailPassed =
     scrollEventMetrics !== null && comparedProducts.every((entry) => (entry.scrollMovementPx?.min ?? 0) >= 1)
   const requiresScrollEventMetric = uiSameCorpusWorkloadRequiresScrollEventEvidence(captureCase.workload)
@@ -373,11 +634,17 @@ function buildSameCorpusCase(captureCase: SameCorpusCaptureCase): UiResponsivene
   })
   const visualProofGuardrailPassed = scenarioProof.screenshotProof.captured && scenarioProof.pixelGridProof.captured
   const tenXMeanAndP95AgainstGoogleSheets =
-    timingMetricPassedAgainstGoogleSheets && postOperationFrameGuardrailPassed && visualProofGuardrailPassed
+    timingMetricPassedAgainstGoogleSheets &&
+    postOperationFrameGuardrailPassed &&
+    visualProofGuardrailPassed &&
+    sourceWorkbookFingerprintGuardrailPassed
   const tenXMeanAndP95AgainstMicrosoftExcelWeb =
     timingMetricPassedAgainstMicrosoftExcelWeb === undefined
       ? undefined
-      : timingMetricPassedAgainstMicrosoftExcelWeb && postOperationFrameGuardrailPassed && visualProofGuardrailPassed
+      : timingMetricPassedAgainstMicrosoftExcelWeb &&
+        postOperationFrameGuardrailPassed &&
+        visualProofGuardrailPassed &&
+        sourceWorkbookFingerprintGuardrailPassed
   return {
     id: captureCase.id,
     corpusCaseId: captureCase.corpusCaseId,
@@ -411,6 +678,7 @@ function buildSameCorpusCase(captureCase: SameCorpusCaptureCase): UiResponsivene
       : { tenXMeanAndP95Metric: 'operationResponseMs' as const }),
     scenarioProof,
     postOperationFrameGuardrailPassed,
+    sourceWorkbookFingerprintGuardrailPassed,
     tenXMeanAndP95AgainstGoogleSheets,
     ...(tenXMeanAndP95AgainstMicrosoftExcelWeb !== undefined ? { tenXMeanAndP95AgainstMicrosoftExcelWeb } : {}),
     passed: tenXMeanAndP95AgainstGoogleSheets,
@@ -479,10 +747,10 @@ function validateSameCorpusCase(entry: UiResponsivenessSameCorpusCase): void {
   if (entry.materializedCells <= 0 || !Number.isInteger(entry.materializedCells)) {
     throw new Error(`UI responsiveness same-corpus case has invalid materialized cell count: ${entry.id}`)
   }
-  validateSameCorpusMeasurement(entry.bilig, 'bilig', entry.id)
-  validateSameCorpusMeasurement(entry.googleSheets, 'google-sheets', entry.id)
+  validateSameCorpusMeasurement(entry.bilig, 'bilig', entry.id, entry.corpusCaseId, entry.materializedCells)
+  validateSameCorpusMeasurement(entry.googleSheets, 'google-sheets', entry.id, entry.corpusCaseId, entry.materializedCells)
   if (entry.microsoftExcelWeb) {
-    validateSameCorpusMeasurement(entry.microsoftExcelWeb, 'microsoft-excel-web', entry.id)
+    validateSameCorpusMeasurement(entry.microsoftExcelWeb, 'microsoft-excel-web', entry.id, entry.corpusCaseId, entry.materializedCells)
   }
   if (
     uiSameCorpusWorkloadRequiresScrollEventEvidence(entry.workload) &&
@@ -521,6 +789,7 @@ function validateSameCorpusCase(entry: UiResponsivenessSameCorpusCase): void {
   const postOperationFrameGuardrailPassed = comparedProducts.every(
     (measurement) => measurement.postOperationFrameMs.p95 > 0 && measurement.postOperationFrameMs.p95 <= 50,
   )
+  const sourceWorkbookFingerprintGuardrailPassed = comparedProducts.every(hasCapturedSourceWorkbookFingerprint)
   const scrollMovementGuardrailPassed =
     scrollEventMetrics !== null && comparedProducts.every((measurement) => (measurement.scrollMovementPx?.min ?? 0) >= 1)
   if (scrollEventMetrics) {
@@ -539,6 +808,12 @@ function validateSameCorpusCase(entry: UiResponsivenessSameCorpusCase): void {
     entry.postOperationFrameGuardrailPassed !== postOperationFrameGuardrailPassed
   ) {
     throw new Error(`UI responsiveness same-corpus post-frame guardrail is stale: ${entry.id}`)
+  }
+  if (
+    entry.sourceWorkbookFingerprintGuardrailPassed !== undefined &&
+    entry.sourceWorkbookFingerprintGuardrailPassed !== sourceWorkbookFingerprintGuardrailPassed
+  ) {
+    throw new Error(`UI responsiveness same-corpus source workbook fingerprint guardrail is stale: ${entry.id}`)
   }
   if (entry.scrollMovementGuardrailPassed !== undefined && entry.scrollMovementGuardrailPassed !== scrollMovementGuardrailPassed) {
     throw new Error(`UI responsiveness same-corpus scroll-movement guardrail is stale: ${entry.id}`)
@@ -564,11 +839,18 @@ function validateSameCorpusCase(entry: UiResponsivenessSameCorpusCase): void {
         scrollMovementGuardrailPassed
       : (microsoftExcelWebMeanRatio ?? Number.POSITIVE_INFINITY) <= 0.1 && (microsoftExcelWebP95Ratio ?? Number.POSITIVE_INFINITY) <= 0.1
     : undefined
-  const tenXAgainstGoogleSheets = timingMetricPassedAgainstGoogleSheets && postOperationFrameGuardrailPassed && visualProofGuardrailPassed
+  const tenXAgainstGoogleSheets =
+    timingMetricPassedAgainstGoogleSheets &&
+    postOperationFrameGuardrailPassed &&
+    visualProofGuardrailPassed &&
+    sourceWorkbookFingerprintGuardrailPassed
   const tenXAgainstMicrosoftExcelWeb =
     timingMetricPassedAgainstMicrosoftExcelWeb === undefined
       ? undefined
-      : timingMetricPassedAgainstMicrosoftExcelWeb && postOperationFrameGuardrailPassed && visualProofGuardrailPassed
+      : timingMetricPassedAgainstMicrosoftExcelWeb &&
+        postOperationFrameGuardrailPassed &&
+        visualProofGuardrailPassed &&
+        sourceWorkbookFingerprintGuardrailPassed
   if (
     entry.tenXMeanAndP95AgainstGoogleSheets !== tenXAgainstGoogleSheets ||
     entry.tenXMeanAndP95AgainstMicrosoftExcelWeb !== tenXAgainstMicrosoftExcelWeb ||
@@ -588,10 +870,16 @@ function hasSameCorpusScrollEvidence(measurement: UiResponsivenessSameCorpusMeas
   )
 }
 
+function hasCapturedSourceWorkbookFingerprint(measurement: UiResponsivenessSameCorpusMeasurement): boolean {
+  return measurement.corpusVerification.sourceWorkbookSha256 !== null && isSha256Hex(measurement.corpusVerification.sourceWorkbookSha256)
+}
+
 function validateSameCorpusMeasurement(
   measurement: UiResponsivenessSameCorpusMeasurement,
   product: UiResponsivenessSameCorpusProduct,
   caseId: string,
+  corpusCaseId: string,
+  materializedCells: number,
 ): void {
   if (measurement.product !== product) {
     throw new Error(`UI responsiveness same-corpus product mismatch for ${caseId}`)
@@ -607,13 +895,14 @@ function validateSameCorpusMeasurement(
   if (measurement.scrollMovementPx) {
     validateSummary(measurement.scrollMovementPx, `${caseId} ${product} scrollMovementPx`)
   }
-  validateSameCorpusCaptureVerification(measurement.corpusVerification, product, null, caseId)
+  validateSameCorpusCaptureVerification(measurement.corpusVerification, product, materializedCells, corpusCaseId, caseId)
 }
 
 function validateSameCorpusCaptureVerification(
   verification: SameCorpusCaptureCorpusVerification,
   product: UiResponsivenessSameCorpusProduct,
   expectedMaterializedCells: number | null,
+  expectedCorpusCaseId: string,
   caseId: string,
 ): void {
   if (!verification.verified) {
@@ -621,6 +910,23 @@ function validateSameCorpusCaptureVerification(
   }
   if (expectedMaterializedCells !== null && verification.materializedCells !== expectedMaterializedCells) {
     throw new Error(`UI responsiveness same-corpus verification materialized cell count mismatch for ${caseId} ${product}`)
+  }
+  validateSameCorpusCaptureCorpusFingerprint(
+    verification.corpusFingerprint,
+    expectedCorpusCaseId,
+    expectedMaterializedCells,
+    caseId,
+    product,
+  )
+  if (verification.sourceWorkbookSha256 !== null && !isSha256Hex(verification.sourceWorkbookSha256)) {
+    throw new Error(`UI responsiveness same-corpus verification source workbook fingerprint is invalid for ${caseId} ${product}`)
+  }
+  if (
+    product === 'bilig' &&
+    verification.sourceWorkbookSha256 !== null &&
+    verification.sourceWorkbookSha256 !== verification.corpusFingerprint.snapshotSha256
+  ) {
+    throw new Error(`UI responsiveness same-corpus Bilig source workbook fingerprint is stale for ${caseId}`)
   }
   if (product === 'bilig' && verification.method !== 'bilig-benchmark-state') {
     throw new Error(`UI responsiveness same-corpus verification method mismatch for ${caseId} ${product}`)
@@ -631,7 +937,7 @@ function validateSameCorpusCaptureVerification(
   if (product === 'microsoft-excel-web' && verification.method !== 'microsoft-excel-web-source-xlsx') {
     throw new Error(`UI responsiveness same-corpus verification method mismatch for ${caseId} ${product}`)
   }
-  if (product !== 'bilig' && verification.checkedCells.length < 3) {
+  if (verification.checkedCells.length < 3) {
     throw new Error(`UI responsiveness same-corpus verification must check at least 3 cells for ${caseId} ${product}`)
   }
   for (const cell of verification.checkedCells) {
@@ -641,12 +947,56 @@ function validateSameCorpusCaptureVerification(
   }
 }
 
+function validateSameCorpusCaptureCorpusFingerprint(
+  fingerprint: SameCorpusCaptureCorpusFingerprint,
+  expectedCorpusCaseId: string,
+  expectedMaterializedCells: number | null,
+  caseId: string,
+  product: UiResponsivenessSameCorpusProduct,
+): void {
+  if (fingerprint.version !== sameCorpusFingerprintVersion) {
+    throw new Error(`UI responsiveness same-corpus verification fingerprint version is stale for ${caseId} ${product}`)
+  }
+  if (fingerprint.corpusCaseId !== expectedCorpusCaseId) {
+    throw new Error(`UI responsiveness same-corpus verification corpus fingerprint mismatch for ${caseId} ${product}`)
+  }
+  if (expectedMaterializedCells !== null && fingerprint.materializedCells !== expectedMaterializedCells) {
+    throw new Error(`UI responsiveness same-corpus verification fingerprint materialized cell count mismatch for ${caseId} ${product}`)
+  }
+  if (!isSha256Hex(fingerprint.snapshotSha256)) {
+    throw new Error(`UI responsiveness same-corpus verification benchmark fingerprint is invalid for ${caseId} ${product}`)
+  }
+  if (!isWorkbookBenchmarkCorpusId(fingerprint.corpusCaseId)) {
+    throw new Error(`UI responsiveness same-corpus verification uses unknown corpus fingerprint for ${caseId} ${product}`)
+  }
+  const expectedFingerprint = expectedCorpusFingerprint(fingerprint.corpusCaseId)
+  if (JSON.stringify(fingerprint) !== JSON.stringify(expectedFingerprint)) {
+    throw new Error(`UI responsiveness same-corpus verification benchmark fingerprint is stale for ${caseId} ${product}`)
+  }
+}
+
+function expectedCorpusFingerprint(corpusId: WorkbookBenchmarkCorpusId): SameCorpusCaptureCorpusFingerprint {
+  const cached = expectedCorpusFingerprintCache.get(corpusId)
+  if (cached) {
+    return cached
+  }
+  const fingerprint = buildSameCorpusFingerprint(buildWorkbookBenchmarkCorpus(corpusId)).corpusFingerprint
+  expectedCorpusFingerprintCache.set(corpusId, fingerprint)
+  return fingerprint
+}
+
+function isSha256Hex(value: string): boolean {
+  return /^[a-f0-9]{64}$/u.test(value)
+}
+
 function cloneSameCorpusVerification(verification: SameCorpusCaptureCorpusVerification): SameCorpusCaptureCorpusVerification {
   return {
     verified: verification.verified,
     method: verification.method,
     sheetName: verification.sheetName,
     materializedCells: verification.materializedCells,
+    corpusFingerprint: { ...verification.corpusFingerprint, primaryViewport: { ...verification.corpusFingerprint.primaryViewport } },
+    sourceWorkbookSha256: verification.sourceWorkbookSha256,
     checkedCells: verification.checkedCells.map((cell) => ({ ...cell })),
   }
 }

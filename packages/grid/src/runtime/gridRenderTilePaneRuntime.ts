@@ -34,8 +34,13 @@ import {
   type RetainedFixedRenderTileDataPanesCompatibility,
   type WorkbookDeltaConnectionIdentity,
 } from './gridRenderTilePaneRuntimeHelpers.js'
-import { hasCompleteRenderTileGrid, hasReadableRenderTileRects, tileSelectedTextNeedsLocalRefresh } from './gridRenderTileTrust.js'
 import { normalizeNonNegativeInteger, resolveLocalRenderGeneration, tileProjectionRevisionIsBehind } from './gridRenderTileRevision.js'
+import {
+  hasCompleteRenderTileGrid,
+  hasReadableRenderTileRects,
+  resolveRenderTileCompletenessProof,
+  tileSelectedTextNeedsLocalRefresh,
+} from './gridRenderTileTrust.js'
 import { GridVisibleTextRefreshCache } from './gridVisibleTextRefreshCache.js'
 
 type SortedAxisOverrides = readonly (readonly [number, number])[]
@@ -627,7 +632,7 @@ export class GridRenderTilePaneRuntime {
       if (!tile || !matchesRenderTileSheetIdentity(tile.coord, { sheetId: input.sheetId, sheetOrdinal })) {
         continue
       }
-      if (input.gridRuntimeHost.tiles.dirtyTiles.getUnconsumedMask(tileKey) !== 0 || !hasCompleteRenderTileGrid(tile)) {
+      if (input.gridRuntimeHost.tiles.dirtyTiles.getUnconsumedMask(tileKey) !== 0 || !hasCompleteResidentRenderTilePayload(tile)) {
         const localTile = this.buildLocalPreloadTile(input, tileKey, tile)
         if (localTile) {
           tiles.push(localTile)
@@ -685,7 +690,7 @@ export class GridRenderTilePaneRuntime {
       freezeSeq: input.gridRuntimeHost.snapshot().freezeSeq,
       generation,
       gridMetrics: input.gridMetrics,
-      reuseStaticGridRectsByTileId: hasCompleteRenderTileGrid(baseTile) ? new Map([[tileKey, baseTile]]) : undefined,
+      reuseStaticGridRectsByTileId: hasCompleteResidentRenderTilePayload(baseTile) ? new Map([[tileKey, baseTile]]) : undefined,
       rowHeights: input.rowHeights,
       selectedCell: input.selectedCell,
       selectedCellSnapshot: input.selectedCellSnapshot,
@@ -825,7 +830,7 @@ export class GridRenderTilePaneRuntime {
       const dirtyMask = input.gridRuntimeHost.tiles.dirtyTiles.getUnconsumedMask(tileKey)
       const isDirty = dirtyMask !== 0
       const isMissingResidentTile = !tile
-      const isMissingGridPayload = tile !== null && !hasCompleteRenderTileGrid(tile)
+      const isMissingGridPayload = tile !== null && !hasCompleteResidentRenderTilePayload(tile)
       const shouldLocalizeDirty = (options.localizeDirtyVisibleTiles ?? true) && isDirty
       const shouldLocalizeDirtyPresentation = isDirty && (dirtyMask & (DirtyMaskV3.Style | DirtyMaskV3.Rect | DirtyMaskV3.Border)) !== 0
       const shouldLocalizeProjectedRevision = tileProjectionRevisionIsBehind(tile, input.engine)
@@ -875,6 +880,8 @@ export class GridRenderTilePaneRuntime {
           !shouldLocalizeDirtyPresentation &&
           !shouldLocalizeProjectedRevision &&
           (!shouldLocalizeVisibleText || canPatchEditingCellTextFromBaseTile) &&
+          tile &&
+          hasCompleteResidentRenderTilePayload(tile) &&
           canReuseTileRects
         ) {
           dirtyBaseTiles.set(tileKey, tile)
@@ -952,4 +959,8 @@ export class GridRenderTilePaneRuntime {
 
 export function getGridRenderTilePaneRuntime(current: unknown): GridRenderTilePaneRuntime {
   return current instanceof GridRenderTilePaneRuntime ? current : new GridRenderTilePaneRuntime()
+}
+
+function hasCompleteResidentRenderTilePayload(tile: GridRenderTile): boolean {
+  return resolveRenderTileCompletenessProof(tile, { requirePacket: tile.packet !== undefined }).complete
 }

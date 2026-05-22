@@ -9,8 +9,14 @@ import type {
 } from '@bilig/protocol'
 import type { EngineOp } from '@bilig/workbook'
 import type { PivotTableInput } from './runtime-state.js'
+import {
+  buildAutoFilterRowMetadataOps,
+  workbookAutoFiltersEqual,
+  type AutoFilterMaterializationState,
+} from './auto-filter-row-materialization.js'
 import { sourcefulPivotToUpsertOp } from './services/pivot-op-helpers.js'
 import type { WorkbookStore } from '../workbook-store.js'
+import { canonicalWorkbookFilterRangeOnSheet } from '../workbook-metadata-service-helpers.js'
 import { canonicalWorkbookRangeRef } from '../workbook-range-records.js'
 
 export function buildSetSheetProtectionOps(workbook: WorkbookStore, protection: WorkbookSheetProtectionSnapshot): EngineOp[] | null {
@@ -26,11 +32,28 @@ export function buildSetSheetProtectionOps(workbook: WorkbookStore, protection: 
   return [{ kind: 'setSheetProtection', protection: normalized }]
 }
 
-export function buildSetFilterOps(workbook: WorkbookStore, sheetName: string, range: WorkbookAutoFilterSnapshot): EngineOp[] | null {
-  if (workbook.getFilter(sheetName, range)) {
+export function buildSetFilterOps(
+  state: AutoFilterMaterializationState,
+  sheetName: string,
+  range: WorkbookAutoFilterSnapshot,
+): EngineOp[] | null {
+  const normalized = canonicalWorkbookFilterRangeOnSheet(sheetName, range)
+  const existing = state.workbook.getFilter(sheetName, normalized)
+  const ops: EngineOp[] = workbookAutoFiltersEqual(existing, normalized)
+    ? []
+    : [{ kind: 'setFilter', sheetName, range: structuredClone(normalized) }]
+  ops.push(...buildAutoFilterRowMetadataOps(state, sheetName, existing?.range, normalized))
+  return ops.length === 0 ? null : ops
+}
+
+export function buildClearFilterOps(state: AutoFilterMaterializationState, sheetName: string, range: CellRangeRef): EngineOp[] | null {
+  const existing = state.workbook.getFilter(sheetName, range)
+  if (!existing) {
     return null
   }
-  return [{ kind: 'setFilter', sheetName, range: structuredClone(range) }]
+  const ops: EngineOp[] = [{ kind: 'clearFilter', sheetName, range: { ...range, sheetName } }]
+  ops.push(...buildAutoFilterRowMetadataOps(state, sheetName, existing.range, undefined))
+  return ops
 }
 
 export function buildSetSortOps(

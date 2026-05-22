@@ -7,7 +7,7 @@ import type {
   SameCorpusCaptureCorpusVerification,
   UiResponsivenessSameCorpusProduct,
 } from './gen-ui-responsiveness-live-browser-scorecard.ts'
-import { verifyXlsxCorpusFingerprint } from './ui-responsiveness-same-corpus-fingerprint.ts'
+import { buildSameCorpusFingerprint, verifyXlsxCorpusFingerprint } from './ui-responsiveness-same-corpus-fingerprint.ts'
 import {
   biligRenderedSurfaceReadiness,
   isBiligRenderedSurfaceReady,
@@ -57,12 +57,19 @@ async function verifyBiligBenchmarkState(page: Page, corpus: WorkbookBenchmarkCo
       })}`,
     )
   }
+  const fingerprint = buildSameCorpusFingerprint(corpus)
   return {
     verified: true,
     method: 'bilig-benchmark-state',
     sheetName: state.fixture.sheetName,
     materializedCells: state.fixture.materializedCellCount,
-    checkedCells: [],
+    corpusFingerprint: fingerprint.corpusFingerprint,
+    sourceWorkbookSha256: fingerprint.corpusFingerprint.snapshotSha256,
+    checkedCells: fingerprint.checkedCells.map((cell) => ({
+      address: cell.address,
+      expected: cell.expected,
+      actual: cell.expected,
+    })),
   }
 }
 

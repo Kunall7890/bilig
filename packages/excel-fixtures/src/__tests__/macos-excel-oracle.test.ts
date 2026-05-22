@@ -27,14 +27,18 @@ describe('macOS Desktop Excel oracle harness', () => {
     })
 
     expect(script).toContain('tell application "Microsoft Excel"')
-    expect(script).toContain('open workbook workbook file name workbookPath update links do not update links')
+    expect(script).toContain('do shell script "open -b com.microsoft.Excel " & quoted form of workbookPath')
+    expect(script).toContain('set targetWorkbook to my openWorkbookForBiligOracle(workbookPath)')
+    expect(script).toContain('set openedWorkbook to my workbookNamed(workbookName)')
+    expect(script).toContain('set firstWorksheetName to name of worksheet 1 of openedWorkbook')
+    expect(script).toContain('repeat with candidateWorkbook in workbooks')
     expect(script).toContain('set formula of range "C1"')
     expect(script).toContain('calculate full rebuild')
     expect(script).toContain('my typedCellValue(value of range "C1"')
     expect(script).toContain('string value of range "C1"')
-    expect(script).toContain('close targetWorkbook saving no')
+    expect(script).toContain('close (targetWorkbook) saving no')
+    expect(script).not.toContain('if targetWorkbook is not missing value')
     expect(script).not.toContain('set display alerts')
-    expect(script).not.toContain('active workbook')
   })
 
   it('can save the opened workbook when a caller needs fresh Excel caches persisted', () => {
@@ -45,7 +49,7 @@ describe('macOS Desktop Excel oracle harness', () => {
       saveWorkbook: true,
     })
 
-    expect(script).toContain('close targetWorkbook saving yes')
+    expect(script).toContain('close (targetWorkbook) saving yes')
   })
 
   it('can open companion workbooks and ask Excel to update external links', () => {
@@ -57,8 +61,8 @@ describe('macOS Desktop Excel oracle harness', () => {
     })
 
     expect(script).toContain('repeat with companionIndex from 2 to count of argv')
-    expect(script).toContain('open workbook workbook file name companionPath update links do not update links')
-    expect(script).toContain('open workbook workbook file name workbookPath update links update external links only')
+    expect(script).toContain('set companionWorkbook to my openWorkbookForBiligOracle(companionPath)')
+    expect(script).toContain('update link (targetWorkbook)')
     expect(script).toContain('repeat with companionWorkbook in companionWorkbooks')
   })
 
@@ -71,12 +75,13 @@ describe('macOS Desktop Excel oracle harness', () => {
     })
 
     expect(script).toContain('set inspectedRange to range "C1"')
-    expect(script).toContain('open workbook workbook file name workbookPath update links do not update links')
+    expect(script).toContain('do shell script "open -b com.microsoft.Excel " & quoted form of workbookPath')
+    expect(script).toContain('set targetWorkbook to my openWorkbookForBiligOracle(workbookPath)')
     expect(script).toContain('my formulaText(formula of inspectedRange)')
     expect(script).toContain('my typedCellValue(value of inspectedRange, string value of inspectedRange)')
-    expect(script).toContain('close targetWorkbook saving yes')
+    expect(script).toContain('close (targetWorkbook) saving yes')
+    expect(script).not.toContain('if targetWorkbook is not missing value')
     expect(script).not.toContain('set display alerts')
-    expect(script).not.toContain('active workbook')
   })
 
   it('builds a structural operation runner that can cut-insert columns before inspection', () => {
@@ -92,16 +97,17 @@ describe('macOS Desktop Excel oracle harness', () => {
     })
 
     expect(script).toContain('set targetWorksheet to worksheet "Cases"')
-    expect(script).toContain('open workbook workbook file name workbookPath update links do not update links')
+    expect(script).toContain('do shell script "open -b com.microsoft.Excel " & quoted form of workbookPath')
+    expect(script).toContain('set targetWorkbook to my openWorkbookForBiligOracle(workbookPath)')
     expect(script).toContain('set value of range "B1" of targetWorksheet to 9')
     expect(script).toContain('clear contents range "B1" of targetWorksheet')
     expect(script).toContain('cut range (range "B:B" of targetWorksheet)')
     expect(script).toContain('insert into range (range "F:F" of targetWorksheet) shift shift to right')
     expect(script).toContain('set inspectedRange to range "F1" of targetWorksheet')
     expect(script).toContain('my typedCellValue(value of inspectedRange, string value of inspectedRange)')
-    expect(script).toContain('close targetWorkbook saving yes')
+    expect(script).toContain('close (targetWorkbook) saving yes')
+    expect(script).not.toContain('if targetWorkbook is not missing value')
     expect(script).not.toContain('set display alerts')
-    expect(script).not.toContain('active workbook')
   })
 
   it('builds one-variable and two-variable data-table structural operations', () => {
@@ -135,6 +141,29 @@ describe('macOS Desktop Excel oracle harness', () => {
     expect(script).toContain('autofilter range (range "A1:D6" of targetWorksheet) field 2 criteria1 "Finance"')
     expect(script).toContain(
       'autofilter range (range "A1:D6" of targetWorksheet) field 3 criteria1 ">0" operator autofilter and criteria2 "<100"',
+    )
+  })
+
+  it('builds range sort structural operations with explicit keys and headers', () => {
+    const script = createMacosExcelStructuralOperationAppleScript({
+      worksheetName: 'Ledger',
+      operations: [
+        {
+          kind: 'applySort',
+          range: 'A1:D6',
+          keys: [
+            { key: 'B1', order: 'descending' },
+            { key: 'A1', order: 'ascending' },
+          ],
+          header: 'yes',
+          orientation: 'rows',
+        },
+      ],
+      inspectCells: ['A2'],
+    })
+
+    expect(script).toContain(
+      'sort (range "A1:D6" of targetWorksheet) key1 (range "B1" of targetWorksheet) order1 sort descending key2 (range "A1" of targetWorksheet) order2 sort ascending header header yes orientation sort columns',
     )
   })
 

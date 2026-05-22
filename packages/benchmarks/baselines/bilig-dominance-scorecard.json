@@ -43,13 +43,19 @@
         "passed": false,
         "evidence": [
           "direct live browser timing passed: true",
-          "same-corpus capture kind: same-corpus-browser-capture",
+          "same-corpus capture kind: not-captured",
           "same-corpus UI 10x cases: 0/9",
           "same-corpus render proof contract: same-corpus-ui-v2",
           "same-corpus strict rendered-grid proof cases: 0/9",
-          "same-corpus run manifest invalid reasons: strict rendered-grid proof covers 0/9 cases; not every required workload is 10x against Google Sheets"
+          "same-corpus legacy-insufficient rendered-grid proof cases: 0/9",
+          "same-corpus run manifest invalid reasons: required workload count is incomplete; missing required workloads: open-workbook, select-cell, edit-visible-cell, scroll-vertical, scroll-horizontal, jump-deep-row, formula-edit, fill-format-change, wide-sheet-navigation; same-corpus evidence must use exactly one corpus case; same-corpus evidence must use exactly one benchmark workbook fingerprint; source workbook fingerprint must be stable for every required product; strict rendered-grid proof covers 0/9 cases; not every required workload is 10x against Google Sheets"
         ],
         "gaps": [
+          "same-corpus UI run manifest: required workload count is incomplete",
+          "same-corpus UI run manifest: missing required workloads: open-workbook, select-cell, edit-visible-cell, scroll-vertical, scroll-horizontal, jump-deep-row, formula-edit, fill-format-change, wide-sheet-navigation",
+          "same-corpus UI run manifest: same-corpus evidence must use exactly one corpus case",
+          "same-corpus UI run manifest: same-corpus evidence must use exactly one benchmark workbook fingerprint",
+          "same-corpus UI run manifest: source workbook fingerprint must be stable for every required product",
           "same-corpus UI run manifest: strict rendered-grid proof covers 0/9 cases",
           "same-corpus UI run manifest: not every required workload is 10x against Google Sheets",
           "live UI browser evidence is not a same-corpus 10x proof against Google Sheets with rendered-grid proof"
@@ -57,7 +63,7 @@
       }
     ],
     "unmetRequirements": [
-      "ui-responsiveness: same-corpus UI run manifest: strict rendered-grid proof covers 0/9 cases; same-corpus UI run manifest: not every required workload is 10x against Google Sheets; live UI browser evidence is not a same-corpus 10x proof against Google Sheets with rendered-grid proof"
+      "ui-responsiveness: same-corpus UI run manifest: required workload count is incomplete; same-corpus UI run manifest: missing required workloads: open-workbook, select-cell, edit-visible-cell, scroll-vertical, scroll-horizontal, jump-deep-row, formula-edit, fill-format-change, wide-sheet-navigation; same-corpus UI run manifest: same-corpus evidence must use exactly one corpus case; same-corpus UI run manifest: same-corpus evidence must use exactly one benchmark workbook fingerprint; same-corpus UI run manifest: source workbook fingerprint must be stable for every required product; same-corpus UI run manifest: strict rendered-grid proof covers 0/9 cases; same-corpus UI run manifest: not every required workload is 10x against Google Sheets; live UI browser evidence is not a same-corpus 10x proof against Google Sheets with rendered-grid proof"
     ],
     "evidenceArtifacts": [
       "packages/benchmarks/baselines/google-sheets-live-recalculation-scorecard.json",
@@ -85,45 +91,45 @@
     "unmetRequirements": ["ui-responsiveness: live UI browser evidence is not a same-corpus 10x proof against incumbents"],
     "workloadSpecificTenXWins": [
       {
+        "workload": "build-from-sheets",
+        "meanRatio": 0.037184619943263324,
+        "p95Ratio": 0.013317294163225237,
+        "comparisonTarget": "HyperFormula"
+      },
+      {
+        "workload": "build-dense-literals",
+        "meanRatio": 0.04778289638819864,
+        "p95Ratio": 0.012151904656079683,
+        "comparisonTarget": "HyperFormula"
+      },
+      {
         "workload": "rebuild-config-toggle",
-        "meanRatio": 0.005522720935696289,
-        "p95Ratio": 0.0077835348299012475,
+        "meanRatio": 0.005147234845960839,
+        "p95Ratio": 0.00679241694021913,
         "comparisonTarget": "HyperFormula"
       },
       {
         "workload": "rebuild-config-toggle-large",
-        "meanRatio": 0.0019107174730757825,
-        "p95Ratio": 0.0028189222891906616,
+        "meanRatio": 0.001723227991496435,
+        "p95Ratio": 0.0019259217919693227,
         "comparisonTarget": "HyperFormula"
       },
       {
         "workload": "structural-move-columns",
-        "meanRatio": 0.05167346263284488,
-        "p95Ratio": 0.07347290552247927,
+        "meanRatio": 0.037870275398825426,
+        "p95Ratio": 0.040706981204803434,
         "comparisonTarget": "HyperFormula"
       },
       {
         "workload": "structural-move-columns-large",
-        "meanRatio": 0.02450000837823447,
-        "p95Ratio": 0.03169602158228242,
-        "comparisonTarget": "HyperFormula"
-      },
-      {
-        "workload": "aggregate-2d-ranges",
-        "meanRatio": 0.09957694496558463,
-        "p95Ratio": 0.09917482486634142,
+        "meanRatio": 0.025845812903914262,
+        "p95Ratio": 0.035209114989267876,
         "comparisonTarget": "HyperFormula"
       },
       {
         "workload": "aggregate-2d-ranges-large",
-        "meanRatio": 0.07659051024073033,
-        "p95Ratio": 0.07757189891940787,
-        "comparisonTarget": "HyperFormula"
-      },
-      {
-        "workload": "lookup-index-match-exact-large",
-        "meanRatio": 0.09858527071589793,
-        "p95Ratio": 0.09362192183690407,
+        "meanRatio": 0.07820447450901441,
+        "p95Ratio": 0.08086407767343003,
         "comparisonTarget": "HyperFormula"
       }
     ]
@@ -269,7 +275,7 @@
     "securityPostureScorecard": "packages/benchmarks/baselines/security-posture-scorecard.json",
     "workpaperCompetitiveBenchmark": {
       "path": "packages/benchmarks/baselines/workpaper-vs-hyperformula.json",
-      "generatedAt": "2026-05-21T11:06:55.712Z",
+      "generatedAt": "2026-05-22T03:35:00.425Z",
       "hyperFormulaVersion": "3.2.0",
       "hyperFormulaCommit": "9a510a2acb97c3d3490f9e3b9e961a1c4a98b9ad"
     }
@@ -501,11 +507,11 @@
     "securityPosturePassed": true,
     "securityUncoveredControls": [],
     "hyperFormulaComparableWorkloads": 100,
-    "hyperFormulaMeanGeomeanRatio": 0.3142595685818306,
-    "hyperFormulaP95GeomeanRatio": 0.3401955031215613,
-    "hyperFormulaWins": 6,
+    "hyperFormulaMeanGeomeanRatio": 0.29358029192125573,
+    "hyperFormulaP95GeomeanRatio": 0.30456268903585865,
+    "hyperFormulaWins": 1,
     "tenXMeanAndP95WorkloadCountAgainstHyperFormula": 7,
-    "workpaperWins": 94
+    "workpaperWins": 99
   },
   "categories": [
     {
@@ -549,10 +555,10 @@
       "target": "10x mean and p95 wins on named recalculation workloads against each comparison target.",
       "status": "repo-proved-lead",
       "currentEvidence": [
-        "dirty-execution: WorkPaper 10/10, HyperFormula 0/10; worst mean ratio 0.5506457456840125 on single-edit-fanout-small; worst p95 ratio 0.586067560898759 on single-edit-fanout-small",
-        "batch-edit: WorkPaper 14/14, HyperFormula 0/14; worst mean ratio 0.5293012838806981 on batch-edit-single-column-small; worst p95 ratio 0.6175126024037375 on batch-edit-single-column-small",
-        "rebuild: WorkPaper 2/2, HyperFormula 0/2; worst mean ratio 0.21275572674257057 on rebuild-and-recalculate; worst p95 ratio 0.27624626379004874 on rebuild-and-recalculate",
-        "HyperFormula proxy scorecard is tracked separately: 94/100 WorkPaper wins",
+        "dirty-execution: WorkPaper 10/10, HyperFormula 0/10; worst mean ratio 0.516691990635037 on single-edit-chain-small; worst p95 ratio 0.5316548307037532 on single-edit-chain-small",
+        "batch-edit: WorkPaper 14/14, HyperFormula 0/14; worst mean ratio 0.5092775301136576 on batch-edit-single-column-small; worst p95 ratio 0.5700646845941506 on batch-edit-single-column-small",
+        "rebuild: WorkPaper 2/2, HyperFormula 0/2; worst mean ratio 0.17415381814860617 on rebuild-and-recalculate; worst p95 ratio 0.17847390819040318 on rebuild-and-recalculate",
+        "HyperFormula proxy scorecard is tracked separately: 99/100 WorkPaper wins",
         "live Microsoft Excel recalculation scorecard passes 4/4 required cases on Excel 16.108.2",
         "live Microsoft Excel recalculation workloads with 10x mean+p95 wins: 4/4",
         "live Google Sheets recalculation scorecard passes 4/4 required cases via native Google Sheets conversion",
@@ -578,8 +584,8 @@
       "target": "10x mean and p95 wins for insert/delete/move rows and columns at workbook scale.",
       "status": "repo-proved-lead",
       "currentEvidence": [
-        "structural-rows: WorkPaper 4/8, HyperFormula 4/8; worst mean ratio 2.2670751444925408 on structural-append-formula-rows-small; worst p95 ratio 4.046934276296977 on structural-move-rows",
-        "structural-columns: WorkPaper 6/7, HyperFormula 1/7; worst mean ratio 1.0347548059939047 on structural-insert-columns-small; worst p95 ratio 1.286876666908815 on structural-insert-columns-small",
+        "structural-rows: WorkPaper 7/8, HyperFormula 1/8; worst mean ratio 1.0047527772334053 on structural-append-formula-rows-large; worst p95 ratio 1.19563861123766 on structural-append-formula-rows-large",
+        "structural-columns: WorkPaper 7/7, HyperFormula 0/7; worst mean ratio 0.7168951462921116 on structural-insert-columns-small; worst p95 ratio 0.74531739840044 on structural-insert-columns-small",
         "live Microsoft Excel structural scorecard passes 6/6 required cases on Excel 16.108.2",
         "live Microsoft Excel structural operations with 10x mean+p95 wins: 6/6",
         "live Google Sheets structural scorecard passes 6/6 required cases via native Google Sheets conversion",
@@ -606,7 +612,7 @@
       "currentEvidence": [
         "local-first worker architecture and Zero-backed sync model are documented",
         "range-read and build families have HyperFormula comparison evidence",
-        "range-read: WorkPaper 6/6, HyperFormula 0/6; worst mean ratio 0.5720303445834087 on range-read-formula-grid; worst p95 ratio 0.44544890007129256 on range-read-formula-grid",
+        "range-read: WorkPaper 6/6, HyperFormula 0/6; worst mean ratio 0.36220224551741653 on range-read-formula-grid; worst p95 ratio 0.34356535747071293 on range-read",
         "large-workbook SLO artifact covers 100000, 250000 materialized-cell sessions",
         "load100k: elapsedMs.p95 160.93233300000003ms against 1500ms SLO (5 samples)",
         "load250k: elapsedMs.p95 446.558541ms against 1500ms SLO (3 samples)",
@@ -656,23 +662,15 @@
         "external Microsoft Excel UI responsiveness evidence: official-docs-comparison-artifact",
         "external UI responsiveness comparison dimensions pass: true",
         "live incumbent browser timing scorecard passes: true",
-        "same-corpus UI 10x proof captured: true",
+        "same-corpus UI 10x proof captured: false",
         "same-corpus UI 10x cases: 0/9",
         "same-corpus UI render proof contract: same-corpus-ui-v2",
         "same-corpus UI strict rendered-grid proof cases: 0/9",
+        "same-corpus UI legacy-insufficient rendered-grid proof cases: 0/9",
         "same-corpus UI current-contract evidence complete: false",
-        "same-corpus UI run manifest invalid reasons: strict rendered-grid proof covers 0/9 cases; not every required workload is 10x against Google Sheets",
+        "same-corpus UI run manifest invalid reasons: required workload count is incomplete; missing required workloads: open-workbook, select-cell, edit-visible-cell, scroll-vertical, scroll-horizontal, jump-deep-row, formula-edit, fill-format-change, wide-sheet-navigation; same-corpus evidence must use exactly one corpus case; same-corpus evidence must use exactly one benchmark workbook fingerprint; source workbook fingerprint must be stable for every required product; strict rendered-grid proof covers 0/9 cases; not every required workload is 10x against Google Sheets",
         "google-sheets: open-public-workbook-and-scroll-viewport scrollResponseMs.p95 130.40370799999982ms and postScrollFrameMs.p95 9.300000000000182ms (3 samples, public-comment-only)",
         "microsoft-excel-web: open-public-workbook-and-scroll-viewport scrollResponseMs.p95 115.86187499999869ms and postScrollFrameMs.p95 9.300000000000182ms (3 samples, public-office-web-viewer)",
-        "wide-mixed-250k: open-workbook bilig p95 ratio 1.8242878750138747 vs Google Sheets and undefined vs Excel Web",
-        "wide-mixed-250k: select-cell bilig p95 ratio 15.41105854113669 vs Google Sheets and undefined vs Excel Web",
-        "wide-mixed-250k: edit-visible-cell bilig p95 ratio 6.99245579821288 vs Google Sheets and undefined vs Excel Web",
-        "wide-mixed-250k: scroll-vertical bilig p95 ratio 0.3795194360262815 vs Google Sheets and undefined vs Excel Web",
-        "wide-mixed-250k: scroll-horizontal bilig p95 ratio 1.0848106541981617 vs Google Sheets and undefined vs Excel Web",
-        "wide-mixed-250k: jump-deep-row bilig p95 ratio 21.33108305923669 vs Google Sheets and undefined vs Excel Web",
-        "wide-mixed-250k: formula-edit bilig p95 ratio 6.0512957307395006 vs Google Sheets and undefined vs Excel Web",
-        "wide-mixed-250k: fill-format-change bilig p95 ratio 5.012837653257029 vs Google Sheets and undefined vs Excel Web",
-        "wide-mixed-250k: wide-sheet-navigation bilig p95 ratio 0.9101903474431454 vs Google Sheets and undefined vs Excel Web",
         "headedWide250kVisibleEditCommit: mutationToVisibleMs.p95 budget 50ms on 250000 materialized cells via pnpm test:browser:full"
       ],
       "evidenceArtifacts": [
@@ -699,6 +697,11 @@
         "pnpm bench:smoke"
       ],
       "blockers": [
+        "same-corpus UI run manifest: required workload count is incomplete",
+        "same-corpus UI run manifest: missing required workloads: open-workbook, select-cell, edit-visible-cell, scroll-vertical, scroll-horizontal, jump-deep-row, formula-edit, fill-format-change, wide-sheet-navigation",
+        "same-corpus UI run manifest: same-corpus evidence must use exactly one corpus case",
+        "same-corpus UI run manifest: same-corpus evidence must use exactly one benchmark workbook fingerprint",
+        "same-corpus UI run manifest: source workbook fingerprint must be stable for every required product",
         "same-corpus UI run manifest: strict rendered-grid proof covers 0/9 cases",
         "same-corpus UI run manifest: not every required workload is 10x against Google Sheets",
         "live UI browser evidence is direct, but it is not a same-corpus 10x proof against incumbents"

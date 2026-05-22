@@ -10,6 +10,7 @@ import {
   TYPEGPU_V3_ACTIVE_RESOURCE_DEFER_MS,
   WorkbookPaneRendererV3,
   resolveWorkbookPaneSelectionOccludedTilePanesV3,
+  resolveWorkbookPanePresentedRenderProofV3,
   resolveWorkbookPanePresentedRevisionV3,
   resolveWorkbookPaneTileSceneCameraSeqV3,
   resolveWorkbookPaneTileSceneRevisionV3,
@@ -332,6 +333,55 @@ describe('WorkbookPaneRendererV3', () => {
     expect(resolveWorkbookPaneTileSceneCameraSeqV3([firstPane, secondPane])).toBe(13)
     expect(resolveWorkbookPaneTileSceneRevisionV3([])).toBeNull()
     expect(resolveWorkbookPaneTileSceneCameraSeqV3([])).toBeNull()
+  })
+
+  test('derives visible proof only from the presented visual frame payload', () => {
+    const firstPresentedPane = createTilePane()
+    const secondPresentedPane = {
+      ...createTilePane(32),
+      tile: {
+        ...createTilePane(32).tile,
+        lastBatchId: 9,
+        lastCameraSeq: 13,
+      },
+    }
+
+    expect(
+      resolveWorkbookPanePresentedRenderProofV3('presented', {
+        renderRevisionSnapshot: {
+          authoritativeRevision: 11,
+          localRevision: 10,
+          projectedRevision: 12,
+          tileSceneCameraSeq: 13,
+          tileSceneRevision: 9,
+        },
+        tilePanes: [firstPresentedPane, secondPresentedPane],
+      }),
+    ).toEqual({
+      authoritativeRevision: 11,
+      localRevision: 10,
+      projectedRevision: 12,
+      tileSceneCameraSeq: 13,
+      tileSceneRevision: 9,
+    })
+    expect(
+      resolveWorkbookPanePresentedRenderProofV3('pending', {
+        renderRevisionSnapshot: {
+          authoritativeRevision: 21,
+          localRevision: 20,
+          projectedRevision: 22,
+          tileSceneCameraSeq: 23,
+          tileSceneRevision: 19,
+        },
+        tilePanes: [secondPresentedPane],
+      }),
+    ).toEqual({
+      authoritativeRevision: null,
+      localRevision: null,
+      projectedRevision: null,
+      tileSceneCameraSeq: null,
+      tileSceneRevision: null,
+    })
   })
 
   test('includes tile payload signatures in frame proof identity', () => {
@@ -820,6 +870,47 @@ describe('WorkbookPaneRendererV3', () => {
     })
 
     expect(requestFrame).toHaveBeenCalledTimes(1)
+    runtime.dispose()
+  })
+
+  test('draw runtime attaches render revisions to the presented visual frame', () => {
+    const drawFrame = vi.fn<WorkbookPaneFrameDrawerV3>().mockReturnValue(true)
+    const runtime = new WorkbookPaneRendererRuntimeV3(drawFrame)
+    const onFrameResult = vi.fn()
+
+    runtime.setFrameResultListener(onFrameResult)
+    runtime.updateState({
+      active: true,
+      backend: {},
+      frameProofSignature: 'frame-1',
+      renderRevisionSnapshot: {
+        authoritativeRevision: 3,
+        localRevision: 4,
+        projectedRevision: 5,
+        tileSceneCameraSeq: 6,
+        tileSceneRevision: 7,
+      },
+      surface: { dpr: 1, height: 360, pixelHeight: 360, pixelWidth: 640, width: 640 },
+      tilePanes: [createTilePane()],
+      webGpuReady: true,
+    })
+    runtime.drawNow()
+
+    expect(onFrameResult).toHaveBeenCalledWith(
+      expect.objectContaining({
+        frameProofSignature: 'frame-1',
+        submitted: true,
+        visualFrame: expect.objectContaining({
+          renderRevisionSnapshot: {
+            authoritativeRevision: 3,
+            localRevision: 4,
+            projectedRevision: 5,
+            tileSceneCameraSeq: 6,
+            tileSceneRevision: 7,
+          },
+        }),
+      }),
+    )
     runtime.dispose()
   })
 })

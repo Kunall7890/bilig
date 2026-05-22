@@ -54,7 +54,9 @@ It exposes:
 
 - `defineModel`
 - `buildWorkbookActionPlan`
+- `buildWorkbookCommandBundle`
 - `planWorkbookAction`
+- `planWorkbookCommand`
 - `inspectModel`
 - `collectWorkbookRefs`
 - `findTable`, `findColumn`, `findRange`, `findName`, and `findRows`
@@ -64,12 +66,15 @@ It exposes:
 - `describeRef`
 - `describePlan`
 - `describePlanResult`
+- `describeCommandBundle`
 - `describeRunResult`
 - `describeRuntimeRequirements`
 - `verifyPlan`
+- `verifyWorkbookCommandBundle`
 - `verifyModel`
 - `runWorkbookPlan`
 - `runWorkbookAction`
+- `runWorkbookCommandBundle`
 - `verifyWorkbookReadbacks`
 - `normalizeWorkbookActionInputDescription`
 - `workbookPlanIssueCodes`
@@ -78,11 +83,14 @@ It exposes:
 - `isWorkbookReadbackIssueCode`
 - `workbookRunErrorCodes`
 - `isWorkbookRunErrorCode`
+- `workbookCommandBundleIssueCodes`
+- `isWorkbookCommandBundleIssueCode`
 - `formula`
 - `workbook.addOp(op, { target?, message? })` inside model actions
 - `findTable`, `findColumn`, `findRange`, `findName`, and `findRows` through the model workbook context and as top-level helpers
 - `check.exists`, `check.noFormulaErrors`, `check.valueEquals`, `check.valuesEqual`, `check.formulaEquals`, `check.formulasEqual`, and `check.custom` through the model workbook context and as top-level helpers
-- `WorkbookModel`, `WorkbookAction`, `WorkbookActionConfig`, `WorkbookActionDefinition`, `WorkbookActionContext`, `WorkbookCheckContext`, `WorkbookFindWorkbook`, `WorkbookCheckWorkbook`, `WorkbookActionWorkbook`, `WorkbookModelWorkbook`, `WorkbookFindNamespace`, `WorkbookActionInput`, `WorkbookActionInputDescription`, `WorkbookActionInputDescriptionKind`, `WorkbookActionInspection`, `WorkbookAddOpOptions`, `WorkbookActionPlanResult`, `WorkbookModelDescription`, `WorkbookRefDescription`, `WorkbookActionPlanDescription`, `WorkbookActionPlanResultDescription`, `WorkbookRunResultDescription`, `WorkbookUndoRefDescription`, `WorkbookAppliedSummaryDescription`, `WorkbookRuntimeRequirements`, `WorkbookRuntimeRequirement`, `WorkbookRuntimeCapability`, `WorkbookRuntimeMaterialization`, `WorkbookRuntimePreview`, `WorkbookPlanVerification`, `WorkbookPlanIssue`, `WorkbookPlanIssueCode`, `WorkbookModelVerification`, `WorkbookModelActionVerification`, `WorkbookModelVerificationOptions`, `WorkbookRunAdapter`, `WorkbookRunApplyResult`, `WorkbookCellReadback`, `WorkbookRunReadback`, `WorkbookReadbackVerification`, `WorkbookReadbackIssue`, `WorkbookReadbackIssueCode`, `WorkbookCheckExpectation`, `WorkbookCheckExpectationDescription`, `WorkbookCustomCheckOptions`, `WorkbookReadbackCheckOptions`, `WorkbookRawFormulaOptions`, `WorkbookRunResult`, `WorkbookAppliedSummary`, `WorkbookRunError`, `WorkbookRunErrorCode`, and `WorkbookCheckResult`
+- `WorkbookModel`, `WorkbookAction`, `WorkbookActionConfig`, `WorkbookActionDefinition`, `WorkbookActionContext`, `WorkbookCheckContext`, `WorkbookFindWorkbook`, `WorkbookCheckWorkbook`, `WorkbookActionWorkbook`, `WorkbookModelWorkbook`, `WorkbookFindNamespace`, `WorkbookActionInput`, `WorkbookActionInputDescription`, `WorkbookActionInputDescriptionKind`, `WorkbookActionInspection`, `WorkbookAddOpOptions`, `WorkbookActionPlanResult`, `WorkbookCommandBundle`, `WorkbookCommandBundleOptions`, `WorkbookCommandBundleResult`, `WorkbookCommandBundleDescription`, `WorkbookCommandBundleVerification`, `WorkbookCommandBundleIssue`, `WorkbookCommandBundleIssueCode`, `WorkbookRevision`, `WorkbookModelDescription`, `WorkbookRefDescription`, `WorkbookActionPlanDescription`, `WorkbookActionPlanResultDescription`, `WorkbookRunResultDescription`, `WorkbookUndoRefDescription`, `WorkbookAppliedSummaryDescription`, `WorkbookRuntimeRequirements`, `WorkbookRuntimeRequirement`, `WorkbookRuntimeCapability`, `WorkbookRuntimeMaterialization`, `WorkbookRuntimePreview`, `WorkbookPlanVerification`, `WorkbookPlanIssue`, `WorkbookPlanIssueCode`, `WorkbookModelVerification`, `WorkbookModelActionVerification`, `WorkbookModelVerificationOptions`, `WorkbookRunAdapter`, `WorkbookRunApplyResult`, `WorkbookCellReadback`, `WorkbookRunReadback`, `WorkbookReadbackVerification`, `WorkbookReadbackIssue`, `WorkbookReadbackIssueCode`, `WorkbookCheckExpectation`, `WorkbookCheckExpectationDescription`, `WorkbookCustomCheckOptions`, `WorkbookReadbackCheckOptions`, `WorkbookRawFormulaOptions`, `WorkbookRunResult`, `WorkbookAppliedSummary`, `WorkbookRunError`, `WorkbookRunErrorCode`, and `WorkbookCheckResult`
+- `WorkbookCheckProof` and `WorkbookCheckProofDescription`
 - the existing low-level operation language: `WorkbookOp`, `WorkbookTxn`, `EngineOp`, and `EngineOpBatch`
 
 The package builds portable workbook intent and concrete low-level ops when the
@@ -131,7 +139,10 @@ actions: {
 This is descriptive metadata, not a schema framework. Input descriptions use
 plain JSON kinds: `json`, `object`, `array`, `string`, `number`, `boolean`, and
 `null`. `object` descriptions may list `fields`; `array` descriptions may list
-`items`; fields and root inputs may be `required`.
+`items`; fields and root inputs may be `required`. When an `object` description
+lists `fields`, undeclared input keys are rejected before model code runs so
+agents do not accidentally execute typoed tool arguments. Use `kind: "object"`
+without `fields`, or `kind: "json"`, for intentionally open consumer payloads.
 `normalizeWorkbookActionInputDescription` trims text, rejects malformed
 metadata, freezes the result, and keeps `@bilig/workbook` independent from
 `zod`, `effect`, and model-specific validators.
@@ -160,7 +171,9 @@ For formulas outside the small helper set, `formula.raw(source, { inputs })`
 keeps arbitrary formula text generic while preserving explicit workbook
 dependencies for inspection and verification. These are declared dependencies,
 not parser-discovered proof that every formula reference has a matching model
-ref.
+ref. Formula helpers validate operands and declared raw-formula inputs at
+runtime, so malformed ref-shaped objects fail before planning instead of leaking
+into opaque runtime handoff data.
 Runtime adapters materialize declared formula inputs as whole formula tokens.
 They do not rewrite a ref token inside a string literal or inside a larger
 identifier, so generic formula text remains predictable for agents.
@@ -232,6 +245,19 @@ classification: `concreteOp`, `providedOp`, or `adapterMaterialization`. Read
 requirements include the machine-readable expectation. This lets agents see
 whether the handoff is already backed by portable ops or needs runtime
 materialization without importing the engine.
+`buildWorkbookCommandBundle(plan, options)` wraps the same plan in one generic
+runtime handoff object. The bundle includes a deterministic `commandId` for the
+exact plan plus optional caller-supplied `idempotencyKey` and `baseRevision`, the
+frozen plan, runtime requirements, and static plan verification.
+`planWorkbookCommand(model, actionName, input, options)` is the
+direct model-to-command path for agents. `describeCommandBundle(command)` gives
+logs and approval systems a JSON-safe version of the handoff, and
+`verifyWorkbookCommandBundle(command)` proves the command still matches its
+embedded plan, requirements, verification, input, model name, action name, and
+command id. A mutated command fails as `invalid_command_bundle` before
+`adapter.apply` is called. Adapter callbacks receive the command as an optional
+extra argument so runtimes can enforce revision checks, idempotency, locks, and
+audit logging without adding business-model assumptions to `@bilig/workbook`.
 
 `verifyPlan` gives agents a runtime-free consistency check before handoff. It
 flags invalid action input, unresolved command targets, unresolved formula
@@ -249,17 +275,23 @@ Formula readback expectation inputs must resolve through `refsUsed`, and
 formula expectation text must be parseable.
 Checks must start as `planned`; consumer model code cannot mark a check passed
 or failed before runtime proof.
+Planned checks also cannot include `proof`. `proof` is runtime evidence and is
+only added after `@bilig/workbook` has compared adapter readbacks with a
+machine-readable expectation, or after the adapter verifier has proven a
+generic runtime-owned check.
 Low-level `addOp` commands must contain valid `WorkbookOp` values, must still
 appear in `plan.ops`, and must match their declared `target` when the op exposes
 a concrete address or range.
 `verifyModel` applies the same planning and verification flow to every action
 in a consumer-defined model, returning one JSON-safe model-level verdict.
-`runWorkbookPlan(plan, adapter)` and
-`runWorkbookAction(model, actionName, adapter, input)` add a transport-neutral
+`runWorkbookPlan(plan, adapter)`,
+`runWorkbookAction(model, actionName, adapter, input)`, and
+`runWorkbookCommandBundle(command, adapter)` add a transport-neutral
 apply-and-prove loop on top of the same contracts. The adapter receives the full
-plan, optionally previews materialized ops, applies it through whatever runtime
-the consumer owns, and optionally returns semantic readbacks for the expectation
-targets. `@bilig/workbook` compares those readbacks against `valueEquals` and
+plan and, when available, the command bundle. It optionally previews
+materialized ops, applies the plan through whatever runtime the consumer owns,
+and optionally returns semantic readbacks for the expectation targets.
+`@bilig/workbook` compares those readbacks against `valueEquals` and
 `formulaEquals` checks, plus the multi-cell `valuesEqual` and `formulasEqual`
 checks, and returns a boring `WorkbookRunResult`. If static
 verification fails, the apply adapter is not called. If preview is available,
@@ -271,6 +303,19 @@ or `formulas_mismatch`, plus structured `path`, `target`, `check`, `expected`,
 and `actual` fields where available. Malformed adapter preview, apply, or
 readback output fails as `invalid_runtime_result`; adapter output is not trusted
 just because TypeScript says it has the right shape.
+Successful readback checks keep an inspectable `proof` object on the returned
+check. The proof is deliberately small: `{ kind: "value", value }`,
+`{ kind: "values", values }`, `{ kind: "formula", formula }`, or
+`{ kind: "formulas", formulas }`. Generic runtime-owned checks may use
+`{ kind: "runtime", message, data? }`, where `data` is JSON-safe evidence for
+agents and logs. Failed readback checks also include proof when the adapter
+supplied an actual observed value or matrix, while mismatch errors carry the
+same actual value in their structured `actual` field.
+Readbacks can be scalar (`value`/`formula`), matrix-shaped
+(`values`/`formulas`), or cell-level (`cells`). Cell-level readbacks keep
+addresses, values, and formulas together for inspection; when the target is a
+range and every in-range cell is present, `@bilig/workbook` derives the matrix
+needed for `valuesEqual` and `formulasEqual`.
 If apply succeeded and later proof fails, the failed run result preserves the
 adapter undo ref when one was returned.
 Formula readbacks are exact and should use the normalized no-leading-`=` form
@@ -289,10 +334,12 @@ intentional runtime refusal with a specific message instead of inventing
 model-specific public error codes.
 `adapter.apply` only applies the plan and may return an undo ref; it cannot
 drop, replace, or prove checks.
-Adapters can also expose `verifyChecks(checks, plan)` for generic proof of
+Adapters can also expose `verifyChecks(checks, plan, command?)` for generic proof of
 non-readback checks such as existence checks, formula-error checks, and
 consumer-defined invariants. `verifyChecks` returns the same checks in the same
-order and may only change `status`; malformed output fails with
+order and may only change `status` or add `{ kind: "runtime", message, data? }`
+proof; it cannot drop readback `proof` or change the check contract. Malformed
+output fails with
 `invalid_check_verification`, thrown verifier errors fail with
 `check_verification_failed`, and failed checks become `check_failed` run errors.
 If a check remains `planned` after readback and adapter verification,

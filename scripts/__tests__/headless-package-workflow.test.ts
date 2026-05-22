@@ -70,6 +70,7 @@ describe('headless package workflow', () => {
     expect(source).toContain('packages/bilig')
     expect(source).toContain('packages/workpaper/package.json')
     expect(source).toContain('packages/workpaper')
+    expect(source).toContain('packages/workpaper/server.json')
     expect(source).toContain('packages/xlsx-formula-recalc/package.json')
     expect(source).toContain('packages/xlsx-formula-recalc')
     expect(source).toContain('packages/bilig-xlsx-formula-recalc/package.json')
@@ -93,6 +94,7 @@ describe('headless package workflow', () => {
     expect(source).toContain('bun scripts/sync-agent-discovery-docs.ts')
     expect(agentDiscoverySource).toContain('syncVersionedStaticReferenceLine')
     expect(agentDiscoverySource).not.toContain('replace(new RegExp(`@bilig/headless@${stableSemverPattern}`')
+    expect(agentDiscoverySource).toContain("^(\\\\s*)'@bilig/workpaper@${stableSemverPattern}'")
     expect(mcpDirectoryDoc).toContain('`io.github.proompteng/bilig-workpaper@0.27.0` with package\n`@bilig/headless@0.27.0`')
     expect(source).toContain('.release-please-manifest.json')
     expect(source).toContain('skills/bilig-workpaper/SKILL.md')
@@ -124,6 +126,9 @@ describe('headless package workflow', () => {
     expect(source).toContain('regenerating on latest main')
     expect(source).toContain('git reset --hard origin/main')
     expect(source).not.toContain('git rebase origin/main')
+    expect(
+      source.indexOf('bun scripts/sync-agent-discovery-docs.ts', source.indexOf('bun scripts/sync-headless-package-footprint.ts')),
+    ).toBeGreaterThan(source.indexOf('bun scripts/sync-headless-package-footprint.ts'))
     expect(source).toContain('GitHub main mirrors release metadata SHA')
     expect(source).toContain('Refusing to push release metadata directly to GitHub main.')
     expect(source).toContain('actions: read')
@@ -149,6 +154,11 @@ describe('headless package workflow', () => {
     expect(source).toContain('Refusing to push runtime tags directly to GitHub.')
     expect(source).not.toContain('git push github')
     expect(source).toContain('git tag -a "${TAG_NAME}" -m "Libraries v${TARGET_VERSION}" HEAD')
+    const runtimePublishStepIndex = source.indexOf('name: Publish runtime package set to npm')
+    expect(runtimePublishStepIndex).toBeGreaterThan(source.indexOf('Check npm package name provisioning'))
+    expect(runtimePublishStepIndex).toBeLessThan(source.indexOf('name: Inspect runtime tag state'))
+    expect(runtimePublishStepIndex).toBeLessThan(source.indexOf('name: Create GitHub release'))
+    expect(source.indexOf('name: Create GitHub release')).toBeLessThan(source.indexOf('name: Upload WorkPaper MCPB release asset'))
     expect(source).toContain('Upload WorkPaper MCPB release asset')
     expect(source).toContain('npm view "@bilig/headless@${TARGET_VERSION}" version')
     expect(source).toContain('pnpm mcpb:workpaper:build -- --package-version "${TARGET_VERSION}"')
@@ -162,7 +172,9 @@ describe('headless package workflow', () => {
     expect(source).toContain('npm run check')
     expect(source).toContain('publish_n8n_node')
     expect(source).toContain('publish_runtime_packages')
-    expect(source).toContain("github.event.inputs.publish_runtime_packages != 'false'")
+    expect(source).toContain(
+      "github.ref == 'refs/heads/main' && github.event_name == 'workflow_dispatch' && github.event.inputs.publish_runtime_packages != 'false'",
+    )
     expect(source).toContain('publish-n8n-workpaper-node')
     expect(source).toContain('id-token: write')
     expect(source).toContain('unset NODE_AUTH_TOKEN')

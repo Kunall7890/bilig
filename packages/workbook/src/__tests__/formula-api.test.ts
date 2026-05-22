@@ -129,4 +129,25 @@ describe('@bilig/workbook formula api', () => {
       ],
     })
   })
+
+  it('rejects malformed formula operands and raw formula inputs before planning', () => {
+    const input = findRange({ sheetName: 'Sheet1', address: 'A1' })
+    const malformedRef: unknown = JSON.parse('{"kind":"range","id":"missing-range-shape","label":"bad ref"}')
+    const malformedOperand: unknown = JSON.parse('{"kind":"table","id":"bad-table","label":"bad table"}')
+
+    expect(() => {
+      // @ts-expect-error exercising runtime validation for plain JS callers
+      formula.raw('Sheet1!A1', { inputs: [malformedRef] })
+    }).toThrowError('Formula input at inputs[0] must be a WorkbookRef')
+
+    expect(() => {
+      // @ts-expect-error exercising runtime validation for plain JS callers
+      formula.raw('Sheet1!A1', { inputs: {} })
+    }).toThrowError('Formula inputs must be an array')
+
+    expect(() => {
+      // @ts-expect-error exercising runtime validation for plain JS callers
+      formula.add(input, malformedOperand)
+    }).toThrowError('Formula operand must be a formula expression, WorkbookRef, string, finite number, or boolean')
+  })
 })

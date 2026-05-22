@@ -220,7 +220,6 @@ function tryBuildFreshNumericFormulaColumnMatrixPlan(args: MatrixMutationPlanInp
   const rowCount = args.content.length
   const valueCount = rowCount * inputColCount
   const values = new Float64Array(valueCount)
-  const formulaSources = Array<string>(rowCount)
   const refs: EngineCellMutationRef[] = []
   refs.length = valueCount + rowCount
   let valueCursor = 0
@@ -261,7 +260,6 @@ function tryBuildFreshNumericFormulaColumnMatrixPlan(args: MatrixMutationPlanInp
     if (workPaperFormulaMayResizeDynamically(rewrittenFormula)) {
       return undefined
     }
-    formulaSources[rowOffset] = rewrittenFormula
     refs[formulaCursor] = {
       sheetId: args.target.sheet,
       mutation: {
@@ -282,7 +280,6 @@ function tryBuildFreshNumericFormulaColumnMatrixPlan(args: MatrixMutationPlanInp
       colStart: args.target.col,
       inputColCount,
       values,
-      formulaSources,
     },
     potentialNewCells: refs.length,
     dimensionImpact: {

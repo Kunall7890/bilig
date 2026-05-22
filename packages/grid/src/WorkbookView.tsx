@@ -76,6 +76,7 @@ interface WorkbookViewProps {
   onSetFreezePane?: ((rows: number, cols: number) => void) | undefined
   onAutofitColumn?: ((columnIndex: number, fallbackWidth: number) => void | Promise<void>) | undefined
   onVisibleViewportChange?: ((viewport: Viewport) => void) | undefined
+  onVisibleRenderProofChange?: React.ComponentProps<typeof WorkbookGridSurface>['onVisibleRenderProofChange'] | undefined
   previewRanges?: readonly WorkbookGridPreviewRange[] | undefined
   restoreViewportTarget?:
     | {
@@ -251,6 +252,7 @@ export function WorkbookView({
   onSetFreezePane,
   onAutofitColumn,
   onVisibleViewportChange,
+  onVisibleRenderProofChange,
   previewRanges,
   restoreViewportTarget,
 }: WorkbookViewProps) {
@@ -416,6 +418,7 @@ export function WorkbookView({
               onSetFreezePane={onSetFreezePane}
               onAutofitColumn={onAutofitColumn}
               onVisibleViewportChange={onVisibleViewportChange}
+              onVisibleRenderProofChange={onVisibleRenderProofChange}
               previewRanges={previewRanges}
               focusApiRef={gridFocusApiRef}
               focusRequestToken={gridFocusRequestToken}

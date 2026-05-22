@@ -56,4 +56,67 @@ describe('summarizeWorkbookAgentVerificationStatus', () => {
     expect(status.recalculationComplete).toBe(false)
     expect(status.missingChecks).toEqual(['recalculationStale'])
   })
+
+  it('requires at least one requested rendered readback when a target range exists', () => {
+    const status = summarizeWorkbookAgentVerificationStatus({
+      renderedReadback: [
+        {
+          requested: false,
+          matched: null,
+        },
+      ],
+      recalculationStatus: {
+        upToDate: true,
+      },
+      formulaIssues: {
+        summary: {
+          actionableIssueCount: 0,
+        },
+      },
+      invariants: {
+        summary: {
+          ok: true,
+        },
+      },
+      requireTargetRange: true,
+      targetRangeCount: 1,
+    })
+
+    expect(status.verificationComplete).toBe(false)
+    expect(status.renderedComplete).toBe(false)
+    expect(status.missingChecks).toEqual(['renderedReadback'])
+  })
+
+  it('requires selected rendered proof when requested by mutation verification', () => {
+    const status = summarizeWorkbookAgentVerificationStatus({
+      renderedReadback: [
+        {
+          requested: true,
+          matched: true,
+          sourceKind: 'visibleRange',
+        },
+      ],
+      recalculationStatus: {
+        upToDate: true,
+      },
+      formulaIssues: {
+        summary: {
+          actionableIssueCount: 0,
+        },
+      },
+      invariants: {
+        summary: {
+          ok: true,
+        },
+      },
+      requireRenderedSelection: true,
+      requireTargetRange: true,
+      targetRangeCount: 1,
+    })
+
+    expect(status.verificationComplete).toBe(false)
+    expect(status.renderedComplete).toBe(true)
+    expect(status.renderedSelectionComplete).toBe(false)
+    expect(status.missingChecks).toEqual(['renderedSelection'])
+  })
 })

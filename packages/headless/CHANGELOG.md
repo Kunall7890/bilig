@@ -4,6 +4,209 @@ All notable changes to `@bilig/headless` will be documented in this file.
 
 This package is released as part of the aligned bilig library package set.
 
+## 0.48.0
+
+- Release type: minor
+- Previous libraries tag: libraries-v0.47.0
+- Manual override: no
+
+## Features
+- feat(workbook): allow runtime check proof (b8140ced)
+
+## 0.47.0
+
+- Release type: minor
+- Previous libraries tag: libraries-v0.42.0
+- Manual override: no
+
+## Features
+- feat(workbook): harden agent handoff contracts (6f526454)
+- feat(workpaper): expose verified agent tool helpers (f20b74f8)
+- feat(workbook): clarify agent-first docs (125d5323)
+- feat(headless): harden shared formula structural parity (f6fe6ebb)
+- feat(headless): add Excel AutoFilter oracle (13fd469f)
+- feat(workbook): verify cell-level readbacks (94efcfee)
+- feat(workbook): expose readback proof on checks (cc23489b)
+- feat(workbook): reject unknown action input fields (180641fe)
+- feat(core): apply Desktop Excel sort semantics (ca019914)
+- feat(core): preserve row metadata during Excel sorts (94efa2d1)
+- feat(core): rewrite sorted formulas like Excel (046d59ae)
+
+## Fixes
+- fix(release): keep metadata retry clean (488ba52c)
+- fix(core): keep live runtime under size gate (dc5bf5e4)
+- fix(ui-proof): expose same-corpus run manifest (657832a9)
+- fix(release): regenerate metadata after push races (ab9b1192)
+- fix(agent): require recalculation proof for mutation receipts (fcb1aa28)
+- perf(headless): trim lookup and aggregate matrix hot paths (d9c20c20)
+- fix(release): stage workpaper mcp metadata (e1191b16)
+- fix(ui-proof): require screenshot pixel grid evidence (880aa7d0)
+- fix(headless): harden Desktop Excel pivot oracle (8bb2dc36)
+- fix(headless): harden Desktop Excel chart oracle (8aab5291)
+- fix(headless): preserve external data provenance (99972a1b)
+- fix(release): refresh discovery docs after footprint (018a8fe9)
+- fix(headless): enforce Excel data validations (aac3babf)
+- fix(headless): materialize Excel AutoFilter rows (324e1f37)
+- fix(headless): preserve Excel table filters (e273e832)
+- fix(workbook): validate formula refs at runtime (6c41a49c)
+- fix(dominance): downgrade legacy same-corpus proof (e7314290)
+
+## Internal runtime changes
+- docs(workbook): add agent model example (fd238c7d)
+- refactor(core): split live runtime config types (0269dbab)
+- chore(agent): refresh Bilig skill docs (9a3af19d)
+- refactor(agent): split mutation proof modules (ed76d7c4)
+- chore(release): runtime packages v0.43.0 (0d98d655)
+- chore(release): runtime packages v0.44.0 (c707128e)
+- chore(release): runtime packages v0.45.0 (955e49d7)
+- refactor(excel-import): split runtime sheet cell builder (7f205db5)
+- chore(release): runtime packages v0.46.0 (1a44a2ff)
+
+## 0.46.0
+
+- Release type: minor
+- Previous libraries tag: libraries-v0.42.0
+- Manual override: no
+
+## Features
+- feat(workbook): harden agent handoff contracts (6f526454)
+- feat(workpaper): expose verified agent tool helpers (f20b74f8)
+- feat(workbook): clarify agent-first docs (125d5323)
+- feat(headless): harden shared formula structural parity (f6fe6ebb)
+- feat(headless): add Excel AutoFilter oracle (13fd469f)
+- feat(workbook): verify cell-level readbacks (94efcfee)
+- feat(workbook): expose readback proof on checks (cc23489b)
+- feat(workbook): reject unknown action input fields (180641fe)
+- feat(core): apply Desktop Excel sort semantics (ca019914)
+
+## Fixes
+- fix(release): keep metadata retry clean (488ba52c)
+- fix(core): keep live runtime under size gate (dc5bf5e4)
+- fix(ui-proof): expose same-corpus run manifest (657832a9)
+- fix(release): regenerate metadata after push races (ab9b1192)
+- fix(agent): require recalculation proof for mutation receipts (fcb1aa28)
+- perf(headless): trim lookup and aggregate matrix hot paths (d9c20c20)
+- fix(release): stage workpaper mcp metadata (e1191b16)
+- fix(ui-proof): require screenshot pixel grid evidence (880aa7d0)
+- fix(headless): harden Desktop Excel pivot oracle (8bb2dc36)
+- fix(headless): harden Desktop Excel chart oracle (8aab5291)
+- fix(headless): preserve external data provenance (99972a1b)
+- fix(release): refresh discovery docs after footprint (018a8fe9)
+- fix(headless): enforce Excel data validations (aac3babf)
+- fix(headless): materialize Excel AutoFilter rows (324e1f37)
+- fix(headless): preserve Excel table filters (e273e832)
+- fix(workbook): validate formula refs at runtime (6c41a49c)
+
+## Internal runtime changes
+- docs(workbook): add agent model example (fd238c7d)
+- refactor(core): split live runtime config types (0269dbab)
+- chore(agent): refresh Bilig skill docs (9a3af19d)
+- refactor(agent): split mutation proof modules (ed76d7c4)
+- chore(release): runtime packages v0.43.0 (0d98d655)
+- chore(release): runtime packages v0.44.0 (c707128e)
+- chore(release): runtime packages v0.45.0 (955e49d7)
+- refactor(excel-import): split runtime sheet cell builder (7f205db5)
+
+## 0.45.0
+
+- Release type: minor
+- Previous libraries tag: libraries-v0.42.0
+- Manual override: no
+
+## Features
+- feat(workbook): harden agent handoff contracts (6f526454)
+- feat(workpaper): expose verified agent tool helpers (f20b74f8)
+- feat(workbook): clarify agent-first docs (125d5323)
+- feat(headless): harden shared formula structural parity (f6fe6ebb)
+- feat(headless): add Excel AutoFilter oracle (13fd469f)
+- feat(workbook): verify cell-level readbacks (94efcfee)
+- feat(workbook): expose readback proof on checks (cc23489b)
+
+## Fixes
+- fix(release): keep metadata retry clean (488ba52c)
+- fix(core): keep live runtime under size gate (dc5bf5e4)
+- fix(ui-proof): expose same-corpus run manifest (657832a9)
+- fix(release): regenerate metadata after push races (ab9b1192)
+- fix(agent): require recalculation proof for mutation receipts (fcb1aa28)
+- perf(headless): trim lookup and aggregate matrix hot paths (d9c20c20)
+- fix(release): stage workpaper mcp metadata (e1191b16)
+- fix(ui-proof): require screenshot pixel grid evidence (880aa7d0)
+- fix(headless): harden Desktop Excel pivot oracle (8bb2dc36)
+- fix(headless): harden Desktop Excel chart oracle (8aab5291)
+- fix(headless): preserve external data provenance (99972a1b)
+- fix(release): refresh discovery docs after footprint (018a8fe9)
+
+## Internal runtime changes
+- docs(workbook): add agent model example (fd238c7d)
+- refactor(core): split live runtime config types (0269dbab)
+- chore(agent): refresh Bilig skill docs (9a3af19d)
+- refactor(agent): split mutation proof modules (ed76d7c4)
+- chore(release): runtime packages v0.43.0 (0d98d655)
+- chore(release): runtime packages v0.44.0 (c707128e)
+
+## 0.44.0
+
+- Release type: minor
+- Previous libraries tag: libraries-v0.42.0
+- Manual override: no
+
+## Features
+- feat(workbook): harden agent handoff contracts (6f526454)
+- feat(workpaper): expose verified agent tool helpers (f20b74f8)
+- feat(workbook): clarify agent-first docs (125d5323)
+- feat(headless): harden shared formula structural parity (f6fe6ebb)
+- feat(headless): add Excel AutoFilter oracle (13fd469f)
+- feat(workbook): verify cell-level readbacks (94efcfee)
+
+## Fixes
+- fix(release): keep metadata retry clean (488ba52c)
+- fix(core): keep live runtime under size gate (dc5bf5e4)
+- fix(ui-proof): expose same-corpus run manifest (657832a9)
+- fix(release): regenerate metadata after push races (ab9b1192)
+- fix(agent): require recalculation proof for mutation receipts (fcb1aa28)
+- perf(headless): trim lookup and aggregate matrix hot paths (d9c20c20)
+- fix(release): stage workpaper mcp metadata (e1191b16)
+- fix(ui-proof): require screenshot pixel grid evidence (880aa7d0)
+- fix(headless): harden Desktop Excel pivot oracle (8bb2dc36)
+- fix(headless): harden Desktop Excel chart oracle (8aab5291)
+
+## Internal runtime changes
+- docs(workbook): add agent model example (fd238c7d)
+- refactor(core): split live runtime config types (0269dbab)
+- chore(agent): refresh Bilig skill docs (9a3af19d)
+- refactor(agent): split mutation proof modules (ed76d7c4)
+- chore(release): runtime packages v0.43.0 (0d98d655)
+
+## 0.43.0
+
+- Release type: minor
+- Previous libraries tag: libraries-v0.42.0
+- Manual override: no
+
+## Features
+
+- feat(workbook): harden agent handoff contracts (6f526454)
+- feat(workpaper): expose verified agent tool helpers (f20b74f8)
+- feat(workbook): clarify agent-first docs (125d5323)
+- feat(headless): harden shared formula structural parity (f6fe6ebb)
+- feat(headless): add Excel AutoFilter oracle (13fd469f)
+
+## Fixes
+
+- fix(release): keep metadata retry clean (488ba52c)
+- fix(core): keep live runtime under size gate (dc5bf5e4)
+- fix(ui-proof): expose same-corpus run manifest (657832a9)
+- fix(release): regenerate metadata after push races (ab9b1192)
+- fix(agent): require recalculation proof for mutation receipts (fcb1aa28)
+- perf(headless): trim lookup and aggregate matrix hot paths (d9c20c20)
+
+## Internal runtime changes
+
+- docs(workbook): add agent model example (fd238c7d)
+- refactor(core): split live runtime config types (0269dbab)
+- chore(agent): refresh Bilig skill docs (9a3af19d)
+- refactor(agent): split mutation proof modules (ed76d7c4)
+
 ## 0.42.0
 
 - Release type: minor

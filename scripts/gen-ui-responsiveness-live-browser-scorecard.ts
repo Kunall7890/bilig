@@ -19,12 +19,16 @@ import {
 
 export { parseSameCorpusCapture, parseUiResponsivenessLiveBrowserScorecard } from './ui-responsiveness-live-browser-scorecard-parse.ts'
 export { buildMissingSameCorpusProof, buildSameCorpusProof } from './ui-responsiveness-same-corpus-scorecard-proof.ts'
+export { buildSameCorpusCaptureRunManifest } from './ui-responsiveness-same-corpus-scorecard-proof.ts'
 export type {
   SameCorpusCapture,
   SameCorpusCaptureCase,
+  SameCorpusCaptureCorpusFingerprint,
   SameCorpusCaptureCorpusVerification,
+  SameCorpusCaptureRunManifest,
   SameCorpusCaptureMeasurement,
   SameCorpusCaptureVerifiedCell,
+  SameCorpusProductSourceWorkbookFingerprint,
   UiResponsivenessSameCorpusCase,
   UiResponsivenessSameCorpusMeasurement,
   UiResponsivenessSameCorpusProduct,

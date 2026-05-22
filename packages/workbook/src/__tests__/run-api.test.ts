@@ -51,6 +51,7 @@ describe('@bilig/workbook run api', () => {
     expect(workbookRunErrorCodes).toContain('formula_input_not_resolved')
     expect(workbookRunErrorCodes).toContain('readback_missing')
     expect(workbookRunErrorCodes).toContain('duplicate_readback')
+    expect(workbookRunErrorCodes).toContain('invalid_command_bundle')
     expect(workbookRunErrorCodes).toContain('invalid_runtime_result')
     expect(workbookRunErrorCodes).toContain('runtime_rejected')
     expect(new Set(workbookRunErrorCodes).size).toBe(workbookRunErrorCodes.length)
@@ -110,9 +111,40 @@ describe('@bilig/workbook run api', () => {
             kind: 'valueEquals',
             value: 12,
           },
+          proof: {
+            kind: 'value',
+            value: 12,
+          },
         },
       ],
       undo: { id: 'undo-1' },
+    })
+  })
+
+  it('accepts adapter cell readbacks as runtime proof', async () => {
+    const model = valueModel()
+
+    const result = await runWorkbookAction(model, 'write', {
+      apply: () => ({ status: 'applied' }),
+      read: (targets) => [
+        {
+          target: first(targets),
+          cells: [{ sheetName: 'Sheet1', address: 'B2', value: 12 }],
+        },
+      ],
+    })
+
+    expect(result).toEqual({
+      status: 'done',
+      changed: [expect.objectContaining({ kind: 'writeValue', message: 'Write value to Sheet1!B2' })],
+      checks: [
+        expect.objectContaining({
+          status: 'passed',
+          kind: 'valueEquals',
+          message: 'Sheet1!B2 equals 12',
+          proof: { kind: 'value', value: 12 },
+        }),
+      ],
     })
   })
 
@@ -154,6 +186,10 @@ describe('@bilig/workbook run api', () => {
             kind: 'valueEquals',
             value: 12,
           },
+          proof: {
+            kind: 'value',
+            value: 12,
+          },
         },
       ],
       applied: {
@@ -167,6 +203,16 @@ describe('@bilig/workbook run api', () => {
         opCount: 1,
         ops: [{ kind: 'setCellValue', sheetName: 'Sheet1', address: 'B2', value: 12 }],
       },
+      checks: [
+        {
+          status: 'passed',
+          kind: 'valueEquals',
+          target: expect.objectContaining({ label: 'Sheet1!B2' }),
+          message: 'Sheet1!B2 equals 12',
+          expectation: { kind: 'valueEquals', value: 12 },
+          proof: { kind: 'value', value: 12 },
+        },
+      ],
     })
   })
 
@@ -271,6 +317,10 @@ describe('@bilig/workbook run api', () => {
           kind: 'formulaEquals',
           formula: source,
           inputs: [expect.objectContaining({ label: 'Sheet1!A2' }), expect.objectContaining({ label: 'Sheet1!B2' })],
+        },
+        proof: {
+          kind: 'formula',
+          formula: source,
         },
       },
     ])
@@ -435,6 +485,40 @@ describe('@bilig/workbook run api', () => {
         expect.objectContaining({ status: 'passed', kind: 'exists', message: 'Inputs exists' }),
         expect.objectContaining({ status: 'passed', kind: 'noFormulaErrors', message: 'Sheet1!C2 has no formula errors' }),
         expect.objectContaining({ status: 'passed', kind: 'consumerInvariant', message: 'Consumer invariant holds' }),
+      ],
+    })
+  })
+
+  it('does not let a generic check verifier drop readback proof', async () => {
+    const model = valueModel()
+
+    const result = await runWorkbookAction(model, 'write', {
+      apply: () => ({ status: 'applied' }),
+      read: (targets) => [
+        {
+          target: first(targets),
+          value: 12,
+        },
+      ],
+      verifyChecks(checks) {
+        return checks.map(({ proof: _proof, ...checkResult }) => checkResult)
+      },
+    })
+
+    expect(result).toEqual({
+      status: 'failed',
+      errors: [
+        {
+          code: 'invalid_check_verification',
+          message: 'Check verifier changed the check contract at index 0 for valueEquals',
+        },
+      ],
+      checks: [
+        expect.objectContaining({
+          status: 'passed',
+          kind: 'valueEquals',
+          proof: { kind: 'value', value: 12 },
+        }),
       ],
     })
   })
@@ -953,6 +1037,10 @@ describe('@bilig/workbook run api', () => {
             kind: 'valueEquals',
             value: 12,
           },
+          proof: {
+            kind: 'value',
+            value: 13,
+          },
         },
       ],
     })
@@ -989,6 +1077,10 @@ describe('@bilig/workbook run api', () => {
             kind: 'formulaEquals',
             formula: 'A2+B2',
             inputs: [],
+          },
+          proof: {
+            kind: 'formula',
+            formula: '=A2+B2',
           },
         },
       ],
@@ -1061,8 +1153,130 @@ describe('@bilig/workbook run api', () => {
     expect(verification).toEqual({
       status: 'passed',
       checks: [
-        expect.objectContaining({ status: 'passed', kind: 'valuesEqual' }),
-        expect.objectContaining({ status: 'passed', kind: 'formulasEqual' }),
+        expect.objectContaining({
+          status: 'passed',
+          kind: 'valuesEqual',
+          proof: {
+            kind: 'values',
+            values: [
+              [6, 8],
+              [10, 12],
+            ],
+          },
+        }),
+        expect.objectContaining({
+          status: 'passed',
+          kind: 'formulasEqual',
+          proof: {
+            kind: 'formulas',
+            formulas: [
+              ['A2+B2', 'A2*B2'],
+              ['A3+B3', 'A3*B3'],
+            ],
+          },
+        }),
+      ],
+      issues: [],
+    })
+  })
+
+  it('verifies scalar and matrix expectations from cell-level readbacks', () => {
+    const scalar = findRange({ sheetName: 'Sheet1', address: 'B2' })
+    const matrix = findRange({ sheetName: 'Sheet1', startAddress: 'C2', endAddress: 'D3' })
+    const verification = verifyWorkbookReadbacks(
+      [
+        {
+          status: 'planned',
+          kind: 'valueEquals',
+          target: scalar,
+          message: 'Scalar value matches',
+          expectation: {
+            kind: 'valueEquals',
+            value: 12,
+          },
+        },
+        {
+          status: 'planned',
+          kind: 'formulaEquals',
+          target: scalar,
+          message: 'Scalar formula matches',
+          expectation: {
+            kind: 'formulaEquals',
+            formula: 'A2*B2',
+            inputs: [],
+          },
+        },
+        {
+          status: 'planned',
+          kind: 'valuesEqual',
+          target: matrix,
+          message: 'Matrix values match',
+          expectation: {
+            kind: 'valuesEqual',
+            values: [
+              [6, 8],
+              [10, 12],
+            ],
+          },
+        },
+        {
+          status: 'planned',
+          kind: 'formulasEqual',
+          target: matrix,
+          message: 'Matrix formulas match',
+          expectation: {
+            kind: 'formulasEqual',
+            formulas: [
+              ['A2+B2', 'A2*B2'],
+              ['A3+B3', 'A3*B3'],
+            ],
+          },
+        },
+      ],
+      [
+        {
+          target: scalar,
+          cells: [{ sheetName: 'Sheet1', address: 'B2', value: 12, formula: 'A2*B2' }],
+        },
+        {
+          target: matrix,
+          cells: [
+            { sheetName: 'Sheet1', address: 'C2', value: 6, formula: 'A2+B2' },
+            { sheetName: 'Sheet1', address: 'D2', value: 8, formula: 'A2*B2' },
+            { sheetName: 'Sheet1', address: 'C3', value: 10, formula: 'A3+B3' },
+            { sheetName: 'Sheet1', address: 'D3', value: 12, formula: 'A3*B3' },
+          ],
+        },
+      ],
+    )
+
+    expect(verification).toEqual({
+      status: 'passed',
+      checks: [
+        expect.objectContaining({ status: 'passed', kind: 'valueEquals', proof: { kind: 'value', value: 12 } }),
+        expect.objectContaining({ status: 'passed', kind: 'formulaEquals', proof: { kind: 'formula', formula: 'A2*B2' } }),
+        expect.objectContaining({
+          status: 'passed',
+          kind: 'valuesEqual',
+          proof: {
+            kind: 'values',
+            values: [
+              [6, 8],
+              [10, 12],
+            ],
+          },
+        }),
+        expect.objectContaining({
+          status: 'passed',
+          kind: 'formulasEqual',
+          proof: {
+            kind: 'formulas',
+            formulas: [
+              ['A2+B2', 'A2*B2'],
+              ['A3+B3', 'A3*B3'],
+            ],
+          },
+        }),
       ],
       issues: [],
     })
@@ -1088,7 +1302,7 @@ describe('@bilig/workbook run api', () => {
 
     expect(verification).toEqual({
       status: 'failed',
-      checks: [expect.objectContaining({ status: 'failed', kind: 'valuesEqual' })],
+      checks: [expect.objectContaining({ status: 'failed', kind: 'valuesEqual', proof: { kind: 'values', values: [[6, 9]] } })],
       issues: [
         {
           code: 'values_mismatch',

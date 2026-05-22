@@ -1,10 +1,7 @@
 import type { WorkbookSnapshot } from '@bilig/protocol'
 import type { ParsedWorksheet } from './xlsx-large-simple-import-types.js'
 
-export function buildLargeSimpleRuntimeSheetCells(
-  sheetStats: readonly ParsedWorksheet['stats'][],
-  sheets: WorkbookSnapshot['sheets'],
-): readonly {
+export interface LargeSimpleRuntimeSheetCells {
   readonly sheetName: string
   readonly coords: readonly []
   readonly coordinateOrder: 'dense-row-major'
@@ -13,7 +10,12 @@ export function buildLargeSimpleRuntimeSheetCells(
     readonly height: number
   }
   readonly cellCount: number
-}[] {
+}
+
+export function buildLargeSimpleRuntimeSheetCells(
+  sheetStats: readonly ParsedWorksheet['stats'][],
+  sheets: WorkbookSnapshot['sheets'],
+): readonly LargeSimpleRuntimeSheetCells[] {
   return sheetStats.flatMap((entry, index) => {
     const sheet = sheets[index]
     const usedRange = entry.dimension.usedRange
@@ -30,7 +32,7 @@ export function buildLargeSimpleRuntimeSheetCells(
     return [
       {
         sheetName: sheet.name,
-        coords: [],
+        coords: [] as const,
         coordinateOrder: 'dense-row-major' as const,
         dimensions: {
           width: entry.dimension.columnCount,

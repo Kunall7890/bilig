@@ -12,6 +12,7 @@ import type {
   GridRenderTileSource,
 } from '../renderer-v3/render-tile-source.js'
 import { GRID_TEXT_METRIC_FLOAT_COUNT_V3 } from '../renderer-v3/text-run-buffer.js'
+import { createGridTilePacketV3, type GridTilePacketV3 } from '../renderer-v3/tile-packet-v3.js'
 import { DirtyMaskV3, type WorkbookDeltaBatchLikeV3 } from '../renderer-v3/tile-damage-index.js'
 import { packTileKey53 } from '../renderer-v3/tile-key.js'
 import { GridRenderTilePaneRuntime, getGridRenderTilePaneRuntime } from '../runtime/gridRenderTilePaneRuntime.js'
@@ -186,6 +187,39 @@ function createRenderTile(tileId: number, sheetId = 7, sheetOrdinal = sheetId): 
       styles: 1,
       text: 1,
       values: 1,
+    },
+  }
+}
+
+function withRenderTilePacket(tile: GridRenderTile, overrides: Partial<GridTilePacketV3> = {}): GridRenderTile {
+  const packet = createGridTilePacketV3({
+    axisSeqX: tile.version.axisX,
+    axisSeqY: tile.version.axisY,
+    cellCount: (tile.bounds.rowEnd - tile.bounds.rowStart + 1) * (tile.bounds.colEnd - tile.bounds.colStart + 1),
+    freezeSeq: tile.version.freeze,
+    glyphAtlasSeq: 0,
+    materializedAtSeq: tile.lastBatchId,
+    packetSeq: tile.lastBatchId,
+    rectInstanceCount: tile.rectCount,
+    rectInstances: tile.rectInstances,
+    rectSeq: tile.version.styles,
+    sheetId: tile.coord.sheetId,
+    styleSeq: tile.version.styles,
+    textRunCount: tile.textCount,
+    textRuns: tile.textMetrics,
+    textSeq: tile.version.text,
+    tileKey: tile.tileId,
+    valueSeq: tile.version.values,
+  })
+  return {
+    ...tile,
+    packet: {
+      ...packet,
+      ...overrides,
+      colEnd: tile.bounds.colEnd,
+      colStart: tile.bounds.colStart,
+      rowEnd: tile.bounds.rowEnd,
+      rowStart: tile.bounds.rowStart,
     },
   }
 }
@@ -3717,6 +3751,46 @@ describe('GridRenderTilePaneRuntime', () => {
 
     expect(refreshed.residentBodyPane?.tile).not.toBe(remoteTile)
     expect(hasOpaqueGreenFillRect(refreshed.residentBodyPane?.tile)).toBe(true)
+  })
+
+  it('rebuilds remote tiles when packet metadata disagrees with the resident tile version', () => {
+    const runtime = new GridRenderTilePaneRuntime()
+    const host = createHost()
+    const tileId = host.viewportTileKeys({
+      dprBucket: 1,
+      sheetOrdinal: 7,
+      viewport: { colEnd: 127, colStart: 0, rowEnd: 31, rowStart: 0 },
+    })[0]
+    if (tileId === undefined) {
+      throw new Error('Expected a visible render tile key for the test viewport')
+    }
+    const remoteTileWithStalePacket = withRenderTilePacket(
+      {
+        ...createRenderTile(tileId),
+        lastBatchId: 7,
+        version: {
+          axisX: 7,
+          axisY: 7,
+          freeze: 7,
+          styles: 7,
+          text: 7,
+          values: 7,
+        },
+      },
+      { styleSeq: 6 },
+    )
+
+    const refreshed = runtime.resolve(
+      createInput({
+        gridRuntimeHost: host,
+        renderTileSource: createRenderTileSource([remoteTileWithStalePacket]),
+        sceneRevision: 7,
+        visibleViewport: { colEnd: 10, colStart: 0, rowEnd: 10, rowStart: 0 },
+      }),
+    )
+
+    expect(refreshed.residentBodyPane?.tile).not.toBe(remoteTileWithStalePacket)
+    expect(refreshed.residentBodyPane?.tile?.packet?.styleSeq).toBe(7)
   })
 
   it('does not localize offscreen resident text when the logical visible window is shorter', () => {

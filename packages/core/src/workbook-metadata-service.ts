@@ -262,6 +262,9 @@ export function createWorkbookMetadataService(metadata: WorkbookMetadataRecord):
     metadata.notes.clear()
     metadata.calculationSettings = defaults.calculationSettings
     metadata.volatileContext = defaults.volatileContext
+    metadata.externalConnections = defaults.externalConnections
+    metadata.externalLinkArtifacts = defaults.externalLinkArtifacts
+    metadata.slicerConnectionArtifacts = defaults.slicerConnectionArtifacts
   }
 
   return {

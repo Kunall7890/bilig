@@ -10,6 +10,11 @@ import type { EngineCellMutationRef, EngineFormulaSourceRefs } from '../../cell-
 import { CellFlags } from '../../cell-store.js'
 import { cloneCellStyleRecord } from '../../engine-style-utils.js'
 import { exportSheetMetadata } from '../../engine-snapshot-utils.js'
+import {
+  cloneExternalConnectionsSnapshot,
+  cloneExternalLinkArtifactsSnapshot,
+  cloneSlicerConnectionArtifactsSnapshot,
+} from '../../workbook-metadata-records.js'
 import type { HydratedPreparedFormulaInitializationRef, PreparedFormulaInitializationRef } from './formula-initialization-service.js'
 import type { FormulaInstanceSnapshot } from '../../formula/formula-instance-table.js'
 import type { FormulaTemplateResolution, FormulaTemplateSnapshot } from '../../formula/template-bank.js'
@@ -93,6 +98,7 @@ export function createEngineSnapshotService(args: {
   ) => void
   readonly initializeCachedFormulaSourcesAt?: (refs: readonly CachedRuntimeFormulaRef[], potentialNewCells?: number) => void
   readonly materializePivot?: (pivot: WorkbookPivotRecord) => number[]
+  readonly claimPivotOutput?: (pivot: WorkbookPivotRecord) => number[]
   readonly emitFullInvalidation?: (options: { readonly incrementMetrics: boolean }) => void
 }): EngineSnapshotService {
   return {
@@ -114,6 +120,15 @@ export function createEngineSnapshotService(args: {
           })
           const calculationSettings = args.state.workbook.getCalculationSettings()
           const volatileContext = args.state.workbook.getVolatileContext()
+          const externalConnections = args.state.workbook.metadata.externalConnections
+            ? cloneExternalConnectionsSnapshot(args.state.workbook.metadata.externalConnections)
+            : undefined
+          const externalLinkArtifacts = args.state.workbook.metadata.externalLinkArtifacts
+            ? cloneExternalLinkArtifactsSnapshot(args.state.workbook.metadata.externalLinkArtifacts)
+            : undefined
+          const slicerConnectionArtifacts = args.state.workbook.metadata.slicerConnectionArtifacts
+            ? cloneSlicerConnectionArtifactsSnapshot(args.state.workbook.metadata.slicerConnectionArtifacts)
+            : undefined
           const tables = args.state.workbook.listTables()
           const spills = args.state.workbook.listSpills().map(({ sheetName, address, rows, cols }) => ({ sheetName, address, rows, cols }))
           const referencedStyleIds = new Set<string>()
@@ -154,7 +169,10 @@ export function createEngineSnapshotService(args: {
             styles.length > 0 ||
             formats.length > 0 ||
             hasNonDefaultCalculationSettings(calculationSettings) ||
-            volatileContext.recalcEpoch !== 0
+            volatileContext.recalcEpoch !== 0 ||
+            externalConnections !== undefined ||
+            externalLinkArtifacts !== undefined ||
+            slicerConnectionArtifacts !== undefined
           ) {
             workbook.metadata = {}
             if (properties.length > 0) {
@@ -198,6 +216,15 @@ export function createEngineSnapshotService(args: {
             }
             if (volatileContext.recalcEpoch !== 0) {
               workbook.metadata.volatileContext = volatileContext
+            }
+            if (externalConnections !== undefined) {
+              workbook.metadata.externalConnections = externalConnections
+            }
+            if (externalLinkArtifacts !== undefined) {
+              workbook.metadata.externalLinkArtifacts = externalLinkArtifacts
+            }
+            if (slicerConnectionArtifacts !== undefined) {
+              workbook.metadata.slicerConnectionArtifacts = slicerConnectionArtifacts
             }
           }
 
@@ -326,10 +353,16 @@ export function createEngineSnapshotService(args: {
               }
               args.state.workbook.listPivots().forEach((pivot) => {
                 args.checkEvaluationBudget?.()
+                args.claimPivotOutput?.(pivot)
                 args.materializePivot!(pivot)
               })
               snapshot.workbook.metadata?.pivots?.forEach((pivot) => {
                 args.checkEvaluationBudget?.()
+                const current = args.state.workbook.getPivot(pivot.sheetName, pivot.address)
+                if (current && pivot.source && !pivot.cacheOnly) {
+                  args.state.workbook.setPivot({ ...pivot, rows: current.rows, cols: current.cols })
+                  return
+                }
                 args.state.workbook.setPivot(pivot)
               })
             }

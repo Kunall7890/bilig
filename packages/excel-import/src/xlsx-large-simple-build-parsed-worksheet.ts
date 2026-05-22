@@ -111,7 +111,10 @@ export function buildParsedWorksheet(
     detachLazyCells,
     useLazyCells,
   })
-  const visibleRows = applyImportedAutoFilterVisibility(sheetName, cells, rows.entries, internedInput.filters)
+  const visibilityFilters = internedInput.tableFilters
+    ? [...(internedInput.filters ?? []), ...internedInput.tableFilters]
+    : internedInput.filters
+  const visibleRows = applyImportedAutoFilterVisibility(sheetName, cells, rows.entries, visibilityFilters)
   const metadata: SheetMetadataSnapshot = {
     ...(columns.entries.length > 0 ? { columns: columns.entries } : {}),
     ...(visibleRows && visibleRows.length > 0 ? { rows: visibleRows } : {}),

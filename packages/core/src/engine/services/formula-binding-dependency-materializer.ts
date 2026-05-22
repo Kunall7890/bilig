@@ -298,7 +298,7 @@ export function createFormulaBindingDependencyMaterializer(
           range.end.row === directLookupBinding.rowEnd
         if (isDirectLookupColumn) {
           const sheet = args.state.workbook.getSheet(sheetName)
-          if (sheet) {
+          if (sheet && materializerArgs.hasFormulaColumnMembers(sheet.id, range.start.col)) {
             for (let row = range.start.row; row <= range.end.row; row += 1) {
               const cellIndex = sheet.grid.get(row, range.start.col)
               if (cellIndex === -1) {

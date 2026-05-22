@@ -62,6 +62,30 @@ export function stringifyWorkbookAgentUiContextRenderedProofKey(context: Workboo
         ? null
         : {
             capturedRevision: rendered.capturedRevision ?? null,
+            surfaceProof:
+              rendered.surfaceProof === undefined || rendered.surfaceProof === null
+                ? null
+                : {
+                    mode: rendered.surfaceProof.mode,
+                    backendStatus: rendered.surfaceProof.backendStatus,
+                    frameProofStatus: rendered.surfaceProof.frameProofStatus,
+                    hasPresentedFrame: rendered.surfaceProof.hasPresentedFrame,
+                    hasPresentedVisibleFrame: rendered.surfaceProof.hasPresentedVisibleFrame,
+                    frameProofSignature: rendered.surfaceProof.frameProofSignature,
+                    presentedFrameProofSignature: rendered.surfaceProof.presentedFrameProofSignature,
+                    authoritativeRevision: rendered.surfaceProof.authoritativeRevision,
+                    projectedRevision: rendered.surfaceProof.projectedRevision,
+                    visibleRenderRevision: rendered.surfaceProof.visibleRenderRevision,
+                    tileSceneRevision: rendered.surfaceProof.tileSceneRevision,
+                    currentTilePaneCount: rendered.surfaceProof.currentTilePaneCount,
+                    currentHeaderPaneCount: rendered.surfaceProof.currentHeaderPaneCount,
+                    presentedTilePaneCount: rendered.surfaceProof.presentedTilePaneCount,
+                    presentedHeaderPaneCount: rendered.surfaceProof.presentedHeaderPaneCount,
+                    surfaceWidth: rendered.surfaceProof.surfaceWidth,
+                    surfaceHeight: rendered.surfaceProof.surfaceHeight,
+                    surfacePixelWidth: rendered.surfaceProof.surfacePixelWidth,
+                    surfacePixelHeight: rendered.surfaceProof.surfacePixelHeight,
+                  },
           },
   })
 }

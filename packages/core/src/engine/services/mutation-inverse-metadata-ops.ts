@@ -60,6 +60,7 @@ export function buildMutationMetadataInverseOps(workbook: WorkbookStore, op: Eng
           count: op.count,
           size: existing?.size ?? null,
           hidden: existing?.hidden ?? null,
+          filtered: existing?.filtered ?? null,
         },
       ]
     }

@@ -103,12 +103,13 @@ Agents should use the package in this order:
 
 1. Inspect the model with `describeModel(model)`.
 2. Plan an action with `planWorkbookAction(model, actionName, input)`.
-3. Read `describePlanResult(planned)` for a compact explanation.
-4. Run `verifyPlan(plan)` before execution.
-5. Hand the plan to a runtime adapter with `runWorkbookPlan` or
-   `runWorkbookAction`.
-6. Inspect `describeRunResult(result)`.
-7. Treat `status: "done"` as success only when checks are returned as proof.
+3. Build a command bundle with `buildWorkbookCommandBundle(plan, options)`, or
+   use `planWorkbookCommand(model, actionName, input, options)` directly.
+4. Read `describeCommandBundle(command)` for the runtime handoff contract.
+5. Run `verifyWorkbookCommandBundle(command)` before execution.
+6. Hand the command to a runtime adapter with `runWorkbookCommandBundle`.
+7. Inspect `describeRunResult(result)`.
+8. Treat `status: "done"` as success only when checks are returned as proof.
 
 The important rule: planned checks are promises, not proof. Runtime proof must
 turn checks into `passed` or `failed`.
@@ -212,6 +213,10 @@ Formula expressions expose:
 - `source`: parseable formula text without the leading `=`;
 - `inputs`: the refs that a runtime adapter must resolve.
 
+Formula helpers validate operands and declared raw-formula inputs at runtime.
+Malformed refs fail before planning, so agents do not hand opaque bad
+dependencies to a runtime adapter.
+
 Runtime adapters materialize formula inputs by replacing whole tokens only. Text
 inside a quoted string or a larger identifier is left alone.
 
@@ -259,6 +264,12 @@ actions: {
 }
 ```
 
+When an object input declares `fields`, those fields are the whole accepted
+shape. Unknown keys are rejected before model code runs, which catches typoed
+agent tool arguments instead of silently carrying them into an action. Use
+`{ kind: "object" }` without `fields`, or `{ kind: "json" }`, when the consumer
+really wants an open payload.
+
 Supported action commands:
 
 - `workbook.writeFormula(ref, formulaExpression)`
@@ -294,6 +305,50 @@ workbook.check.custom({
 
 The runtime adapter either verifies checks itself or returns readbacks that
 `@bilig/workbook` can compare against the expected values and formulas.
+When a readback check is evaluated, the returned check keeps a simple `proof`
+field with the value, values, formula, or formulas that were actually read. A
+passed check is therefore inspectable evidence, not just a status flag.
+
+For non-readback checks such as `exists`, `noFormulaErrors`, and custom
+consumer invariants, `verifyChecks` may attach runtime evidence:
+
+```ts
+verifyChecks(checks) {
+  return checks.map((check) => ({
+    ...check,
+    status: 'passed',
+    proof: {
+      kind: 'runtime',
+      message: 'Runtime verifier confirmed the check',
+      data: { check: check.kind },
+    },
+  }))
+}
+```
+
+The verifier must return the same checks in the same order. It may change
+`status` and add runtime proof, but it cannot change the target, message, refs,
+expectation, or remove readback proof.
+
+Readbacks can be scalar, matrix-shaped, or cell-level. Cell-level readbacks are
+often easiest for agents to inspect because they keep the target, cell address,
+value, and formula together:
+
+```ts
+read(targets) {
+  return [
+    {
+      target: targets[0],
+      cells: [
+        { sheetName: 'Sheet1', address: 'B2', value: 12, formula: 'A2*B2' },
+      ],
+    },
+  ]
+}
+```
+
+For a range target, `@bilig/workbook` derives the expected value or formula
+matrix from complete in-range cell readbacks.
 
 ## Planning
 
@@ -331,6 +386,55 @@ A successful plan contains:
 Models and plans are frozen. They are meant to be inspected, passed to a
 runtime, and verified, not mutated after creation.
 
+## Command Bundles
+
+Plans describe intent. Command bundles are the executable handoff object for an
+agent or service runtime.
+
+```ts
+import {
+  describeCommandBundle,
+  planWorkbookCommand,
+  runWorkbookCommandBundle,
+  verifyWorkbookCommandBundle,
+} from '@bilig/workbook'
+
+const planned = planWorkbookCommand(model, 'calculate', undefined, {
+  baseRevision: 'rev-42',
+  idempotencyKey: 'agent-turn-123',
+})
+
+if (planned.status === 'planned') {
+  console.log(describeCommandBundle(planned.command))
+
+  const verification = verifyWorkbookCommandBundle(planned.command)
+  if (verification.status === 'invalid') {
+    throw new Error(JSON.stringify(verification.issues))
+  }
+
+  const result = await runWorkbookCommandBundle(planned.command, adapter)
+}
+```
+
+A command bundle includes:
+
+- `commandId`: deterministic id for the exact plan, optional base revision, and optional idempotency key.
+- `idempotencyKey`: optional retry key supplied by the caller.
+- `baseRevision`: optional runtime precondition supplied by the caller.
+- `plan`: the frozen workbook action plan.
+- `requirements`: the apply/read/verify checklist for the adapter.
+- `verification`: static plan verification captured before runtime execution.
+
+`verifyWorkbookCommandBundle` proves the bundle still matches its embedded
+plan, requirements, verification, input, model name, action name, and command
+id. If someone mutates the bundle between approval and execution, the command
+runner fails before `adapter.apply` is called.
+
+Adapters receive the command as the optional second or third argument to
+`preview`, `apply`, `read`, and `verifyChecks`, so runtimes can enforce
+revision checks, idempotency, locks, and audit logging without changing the
+consumer model.
+
 ## Runtime Handoff
 
 The runtime adapter owns execution. `@bilig/workbook` owns the contract.
@@ -356,10 +460,10 @@ const result = await runWorkbookAction(model, 'calculate', {
 
 Adapter methods:
 
-- `preview(plan)`: optional materialization step for inspection and approval.
-- `apply(plan)`: required execution step.
-- `read(targets, plan)`: optional readback step for value and formula checks.
-- `verifyChecks(checks, plan)`: optional runtime-owned proof step.
+- `preview(plan, command?)`: optional materialization step for inspection and approval.
+- `apply(plan, command?)`: required execution step.
+- `read(targets, plan, command?)`: optional readback step for value and formula checks.
+- `verifyChecks(checks, plan, command?)`: optional runtime-owned proof step.
 
 `@bilig/core` provides the canonical engine adapter:
 
@@ -395,6 +499,36 @@ type WorkbookRunResult =
 
 If apply succeeds and proof later fails, the failed result preserves `undo` when
 the adapter supplied it.
+
+Readback checks include runtime evidence on the check itself:
+
+```ts
+{
+  status: 'passed',
+  kind: 'valueEquals',
+  message: 'Sheet1!B2 equals 12',
+  expectation: { kind: 'valueEquals', value: 12 },
+  proof: { kind: 'value', value: 12 },
+}
+```
+
+Runtime-owned checks can use generic runtime proof:
+
+```ts
+{
+  status: 'passed',
+  kind: 'consumerInvariant',
+  message: 'Consumer invariant holds',
+  proof: {
+    kind: 'runtime',
+    message: 'Runtime verifier confirmed the invariant',
+    data: { verifier: 'core' },
+  },
+}
+```
+
+Model code cannot pre-fill `proof`; `verifyPlan` rejects planned checks that try
+to carry runtime evidence before the adapter has run.
 
 ## Low-Level Ops
 
@@ -442,12 +576,15 @@ Authoring:
 Planning and inspection:
 
 - `planWorkbookAction`
+- `planWorkbookCommand`
 - `buildWorkbookActionPlan`
+- `buildWorkbookCommandBundle`
 - `inspectModel`
 - `describeModel`
 - `describeRef`
 - `describePlan`
 - `describePlanResult`
+- `describeCommandBundle`
 - `describeRuntimeRequirements`
 - `collectWorkbookRefs`
 
@@ -455,8 +592,10 @@ Verification and execution:
 
 - `verifyModel`
 - `verifyPlan`
+- `verifyWorkbookCommandBundle`
 - `runWorkbookAction`
 - `runWorkbookPlan`
+- `runWorkbookCommandBundle`
 - `verifyWorkbookReadbacks`
 - `describeRunResult`
 
@@ -468,6 +607,8 @@ Stable code lists and guards:
 - `isWorkbookReadbackIssueCode`
 - `workbookRunErrorCodes`
 - `isWorkbookRunErrorCode`
+- `workbookCommandBundleIssueCodes`
+- `isWorkbookCommandBundleIssueCode`
 
 Primary types:
 
@@ -475,11 +616,14 @@ Primary types:
 - `WorkbookAction`
 - `WorkbookActionPlan`
 - `WorkbookActionPlanResult`
+- `WorkbookCommandBundle`
+- `WorkbookCommandBundleResult`
 - `WorkbookRunAdapter`
 - `WorkbookRunResult`
 - `WorkbookCheckResult`
 - `WorkbookRunError`
 - `WorkbookRef`
+- `WorkbookCheckProof`
 - `WorkbookOp`
 - `EngineOpBatch`
 

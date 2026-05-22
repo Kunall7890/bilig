@@ -105,7 +105,6 @@ export class WorkerViewportPatchPublisher {
       authoritativeRevision,
       sheetImpact,
       engine: this.options.getProjectionEngine(),
-      emptyCellSnapshot: (sheetName, address) => createEmptyCellSnapshot(sheetName, address),
       getStyleRecord: (styleId) => this.getStyleRecord(styleId),
       getFormatId: (format) => this.getFormatId(format),
     })

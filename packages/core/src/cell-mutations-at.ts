@@ -21,7 +21,6 @@ export interface EngineFreshDirectAggregateMatrixPlan {
   readonly colStart: number
   readonly inputColCount: number
   readonly values: Float64Array
-  readonly formulaSources: readonly string[]
 }
 
 export interface EngineFormulaSourceRef {

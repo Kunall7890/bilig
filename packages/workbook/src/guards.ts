@@ -10,6 +10,14 @@ const BORDER_WEIGHT_VALUES = new Set(['thin', 'medium', 'thick'])
 const NUMBER_FORMAT_KIND_VALUES = new Set(['general', 'number', 'currency', 'accounting', 'percent', 'date', 'time', 'datetime', 'text'])
 const COMPATIBILITY_MODE_VALUES = new Set(['excel-modern', 'odf-1.4'])
 const SORT_DIRECTION_VALUES = new Set(['asc', 'desc'])
+const AUTO_FILTER_CUSTOM_OPERATOR_VALUES = new Set([
+  'equal',
+  'notEqual',
+  'greaterThan',
+  'greaterThanOrEqual',
+  'lessThan',
+  'lessThanOrEqual',
+])
 const PIVOT_AGGREGATION_VALUES = new Set(['sum', 'count', 'countNums', 'average', 'min', 'max', 'product'])
 const VALIDATION_COMPARISON_OPERATOR_VALUES = new Set([
   'between',
@@ -534,7 +542,51 @@ function isWorkbookTableOp(value: unknown): boolean {
     typeof value['totalsRow'] === 'boolean' &&
     (value['columns'] === undefined || isWorkbookTableColumns(value['columns'])) &&
     (value['style'] === undefined || isWorkbookTableStyle(value['style'])) &&
+    (value['autoFilter'] === undefined || isWorkbookAutoFilter(value['autoFilter'])) &&
     isOptionalString(value['sortState'])
+  )
+}
+
+function isWorkbookAutoFilter(value: unknown): boolean {
+  if (!isCellRangeRef(value) || !isRecord(value)) {
+    return false
+  }
+  return (
+    value['criteria'] === undefined ||
+    (Array.isArray(value['criteria']) && value['criteria'].every((entry) => isWorkbookAutoFilterColumn(entry)))
+  )
+}
+
+function isWorkbookAutoFilterColumn(value: unknown): boolean {
+  return (
+    isRecord(value) &&
+    hasSafeNonNegativeInteger(value, 'colId') &&
+    isOptionalBoolean(value['hiddenButton']) &&
+    isOptionalBoolean(value['showButton']) &&
+    (value['filters'] === undefined || isWorkbookAutoFilterValueCriteria(value['filters'])) &&
+    (value['customFilters'] === undefined || isWorkbookAutoFilterCustomCriteria(value['customFilters']))
+  )
+}
+
+function isWorkbookAutoFilterValueCriteria(value: unknown): boolean {
+  return isRecord(value) && isOptionalBoolean(value['blank']) && isStringArray(value['values'])
+}
+
+function isWorkbookAutoFilterCustomCriteria(value: unknown): boolean {
+  return (
+    isRecord(value) &&
+    isOptionalBoolean(value['and']) &&
+    Array.isArray(value['filters']) &&
+    value['filters'].every((entry) => isWorkbookAutoFilterCustomCriterion(entry))
+  )
+}
+
+function isWorkbookAutoFilterCustomCriterion(value: unknown): boolean {
+  return (
+    isRecord(value) &&
+    (value['operator'] === undefined ||
+      (typeof value['operator'] === 'string' && AUTO_FILTER_CUSTOM_OPERATOR_VALUES.has(value['operator']))) &&
+    typeof value['value'] === 'string'
   )
 }
 
@@ -722,6 +774,14 @@ export function isWorkbookOp(value: unknown): value is WorkbookOp {
         hasSafeNonNegativeInteger(value, 'target')
       )
     case 'updateRowMetadata':
+      return (
+        hasNonEmptyString(value, 'sheetName') &&
+        hasSafeNonNegativeInteger(value, 'start') &&
+        hasSafePositiveInteger(value, 'count') &&
+        isOptionalNullableSafePositiveInteger(value['size']) &&
+        isOptionalNullableBoolean(value['hidden']) &&
+        isOptionalNullableBoolean(value['filtered'])
+      )
     case 'updateColumnMetadata':
       return (
         hasNonEmptyString(value, 'sheetName') &&

@@ -281,7 +281,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 15
     needs: verify
-    if: github.ref == 'refs/heads/main' && (github.event_name != 'workflow_dispatch' || github.event.inputs.publish_runtime_packages != 'false')
+    if: github.ref == 'refs/heads/main' && github.event_name == 'workflow_dispatch' && github.event.inputs.publish_runtime_packages != 'false'
     outputs:
       release_needed: ${{ steps.planner.outputs.release_needed }}
       bootstrap_required: ${{ steps.planner.outputs.bootstrap_required }}
@@ -844,6 +844,7 @@ jobs:
             packages/bilig/SKILL.md
             packages/bilig/README.md
             packages/workpaper/AGENTS.md
+            packages/workpaper/server.json
             packages/workpaper/SKILL.md
             packages/workpaper/README.md
             packages/xlsx-formula-recalc/AGENTS.md
@@ -900,6 +901,7 @@ jobs:
             pnpm --filter @bilig/exceljs-formula-recalc build
 
             bun scripts/sync-headless-package-footprint.ts
+            bun scripts/sync-agent-discovery-docs.ts
 
             git config user.name "github-actions[bot]"
             git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
@@ -1023,6 +1025,18 @@ jobs:
             echo "published versions: ${PUBLISHED_VERSIONS}"
           } >> "$GITHUB_STEP_SUMMARY"
 
+      - name: Publish runtime package set to npm
+        if: steps.npm_provisioning.outputs.publish_allowed == 'true'
+        env:
+          NPM_DIST_TAG: ${{ needs.plan_release.outputs.npm_tag }}
+          DRY_RUN: ${{ needs.plan_release.outputs.dry_run }}
+          ALLOW_NEW_NPM_PACKAGES: ${{ needs.plan_release.outputs.allow_new_packages }}
+          SKIP_UNPROVISIONED_NPM_PACKAGES: ${{ needs.plan_release.outputs.skip_unprovisioned_packages }}
+          TARGET_VERSION: ${{ needs.plan_release.outputs.target_version }}
+        run: |
+          set -euo pipefail
+          bun scripts/publish-runtime-package-set.ts
+
       - name: Inspect runtime tag state
         if: steps.npm_provisioning.outputs.publish_allowed == 'true'
         id: tag_state
@@ -1099,18 +1113,6 @@ jobs:
             --verify-tag \
             --title "Libraries v${{ needs.plan_release.outputs.target_version }}" \
             --notes-file build/runtime-release-notes.md
-
-      - name: Publish runtime package set to npm
-        if: steps.npm_provisioning.outputs.publish_allowed == 'true'
-        env:
-          NPM_DIST_TAG: ${{ needs.plan_release.outputs.npm_tag }}
-          DRY_RUN: ${{ needs.plan_release.outputs.dry_run }}
-          ALLOW_NEW_NPM_PACKAGES: ${{ needs.plan_release.outputs.allow_new_packages }}
-          SKIP_UNPROVISIONED_NPM_PACKAGES: ${{ needs.plan_release.outputs.skip_unprovisioned_packages }}
-          TARGET_VERSION: ${{ needs.plan_release.outputs.target_version }}
-        run: |
-          set -euo pipefail
-          bun scripts/publish-runtime-package-set.ts
 
       - name: Upload WorkPaper MCPB release asset
         if: steps.npm_provisioning.outputs.publish_allowed == 'true' && needs.plan_release.outputs.dry_run != 'true'

@@ -64,77 +64,87 @@ function createSubscriptionState(): ViewportSubscriptionState {
   }
 }
 
+function createWorkerEngine(
+  input: {
+    readonly getCell?: () => CellSnapshot
+    readonly getCellStyle?: () => CellStyleRecord
+    readonly hasSheet?: boolean
+  } = {},
+): WorkerEngine {
+  return {
+    workbook: {
+      workbookName: 'viewport-style-proof',
+      cellStore: {
+        sheetIds: new Uint16Array(),
+        rows: new Uint32Array(),
+        cols: new Uint16Array(),
+      },
+      sheetsByName: new Map(),
+      getSheet: () => (input.hasSheet === false ? undefined : { name: 'Sheet1', order: 0, grid: { forEachCellEntry: () => undefined } }),
+      getSheetNameById: () => 'Sheet1',
+      getQualifiedAddress: () => 'Sheet1!B2',
+    },
+    ready: async () => undefined,
+    createSheet: () => undefined,
+    subscribe: () => () => undefined,
+    subscribeBatches: () => () => undefined,
+    getLastMetrics: () => TEST_METRICS,
+    getSyncState: () => 'local-only',
+    getCell: input.getCell ?? (() => CELL),
+    getCellStyle: input.getCellStyle ?? (() => createStyle('#00ff00')),
+    setRangeNumberFormat: () => undefined,
+    clearRangeNumberFormat: () => undefined,
+    clearRange: () => undefined,
+    setCellValue: () => undefined,
+    setCellFormula: () => undefined,
+    setRangeStyle: () => undefined,
+    clearRangeStyle: () => undefined,
+    clearCell: () => undefined,
+    undo: () => false,
+    redo: () => false,
+    canUndo: () => false,
+    canRedo: () => false,
+    renderCommit: () => undefined,
+    fillRange: () => undefined,
+    copyRange: () => undefined,
+    moveRange: () => undefined,
+    insertRows: () => undefined,
+    deleteRows: () => undefined,
+    insertColumns: () => undefined,
+    deleteColumns: () => undefined,
+    updateRowMetadata: () => undefined,
+    updateColumnMetadata: () => undefined,
+    setFreezePane: () => undefined,
+    getFreezePane: () => undefined,
+    mergeCells: () => undefined,
+    unmergeCells: () => false,
+    getMergeRange: () => undefined,
+    listMergeRanges: () => [],
+    exportSnapshot: () => ({
+      version: 1,
+      workbook: { name: 'viewport-style-proof' },
+      sheets: [{ name: 'Sheet1', order: 0, cells: [] }],
+    }),
+    exportReplicaSnapshot: () => ({
+      replica: {
+        replicaId: 'viewport-style-proof',
+        counter: 0,
+        appliedBatchIds: [],
+      },
+      entityVersions: [],
+      sheetDeleteVersions: [],
+    }),
+    importSnapshot: () => undefined,
+    importReplicaSnapshot: () => undefined,
+    getColumnAxisEntries: () => [],
+    getRowAxisEntries: () => [],
+  }
+}
+
 describe('worker runtime viewport patches', () => {
   it('includes affected cells when a referenced style record changes under the same style id', () => {
     let currentStyle = createStyle('#00ff00')
-    const engine: WorkerEngine = {
-      workbook: {
-        workbookName: 'viewport-style-proof',
-        cellStore: {
-          sheetIds: new Uint16Array(),
-          rows: new Uint32Array(),
-          cols: new Uint16Array(),
-        },
-        sheetsByName: new Map(),
-        getSheet: () => ({ name: 'Sheet1', order: 0, grid: { forEachCellEntry: () => undefined } }),
-        getSheetNameById: () => 'Sheet1',
-        getQualifiedAddress: () => 'Sheet1!B2',
-      },
-      ready: async () => undefined,
-      createSheet: () => undefined,
-      subscribe: () => () => undefined,
-      subscribeBatches: () => () => undefined,
-      getLastMetrics: () => TEST_METRICS,
-      getSyncState: () => 'local-only',
-      getCell: () => CELL,
-      getCellStyle: () => currentStyle,
-      setRangeNumberFormat: () => undefined,
-      clearRangeNumberFormat: () => undefined,
-      clearRange: () => undefined,
-      setCellValue: () => undefined,
-      setCellFormula: () => undefined,
-      setRangeStyle: () => undefined,
-      clearRangeStyle: () => undefined,
-      clearCell: () => undefined,
-      undo: () => false,
-      redo: () => false,
-      canUndo: () => false,
-      canRedo: () => false,
-      renderCommit: () => undefined,
-      fillRange: () => undefined,
-      copyRange: () => undefined,
-      moveRange: () => undefined,
-      insertRows: () => undefined,
-      deleteRows: () => undefined,
-      insertColumns: () => undefined,
-      deleteColumns: () => undefined,
-      updateRowMetadata: () => undefined,
-      updateColumnMetadata: () => undefined,
-      setFreezePane: () => undefined,
-      getFreezePane: () => undefined,
-      mergeCells: () => undefined,
-      unmergeCells: () => false,
-      getMergeRange: () => undefined,
-      listMergeRanges: () => [],
-      exportSnapshot: () => ({
-        version: 1,
-        workbook: { name: 'viewport-style-proof' },
-        sheets: [{ name: 'Sheet1', order: 0, cells: [] }],
-      }),
-      exportReplicaSnapshot: () => ({
-        replica: {
-          replicaId: 'viewport-style-proof',
-          counter: 0,
-          appliedBatchIds: [],
-        },
-        entityVersions: [],
-        sheetDeleteVersions: [],
-      }),
-      importSnapshot: () => undefined,
-      importReplicaSnapshot: () => undefined,
-      getColumnAxisEntries: () => [],
-      getRowAxisEntries: () => [],
-    }
+    const engine = createWorkerEngine({ getCellStyle: () => currentStyle })
     const publisher = new WorkerViewportPatchPublisher({
       buildPatch: () => {
         throw new Error('test uses publisher.buildPatch directly')
@@ -170,5 +180,37 @@ describe('worker runtime viewport patches', () => {
         styleId: STYLE_ID,
       }),
     ])
+  })
+
+  it('returns a typed missing-sheet patch instead of fabricating an empty grid', () => {
+    const getCell = vi.fn(() => {
+      throw new Error('missing sheets must not read cell snapshots')
+    })
+    const engine = createWorkerEngine({ getCell, hasSheet: false })
+    const publisher = new WorkerViewportPatchPublisher({
+      buildPatch: () => {
+        throw new Error('test uses publisher.buildPatch directly')
+      },
+      getAuthoritativeRevision: () => 17,
+      getCurrentMetrics: () => TEST_METRICS,
+      getProjectionEngine: () => engine,
+      hasProjectionEngine: () => true,
+    })
+
+    const patch = publisher.buildPatch(createSubscriptionState(), null, TEST_METRICS, 17, null)
+
+    expect(patch).toMatchObject({
+      authoritativeRevision: 17,
+      status: 'sheet-not-found',
+      full: true,
+      freezeRows: 0,
+      freezeCols: 0,
+      cells: [],
+      styles: [],
+      columns: [],
+      rows: [],
+      merges: [],
+    })
+    expect(getCell).not.toHaveBeenCalled()
   })
 })

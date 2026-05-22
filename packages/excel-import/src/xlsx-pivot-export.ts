@@ -93,6 +93,31 @@ function addWorksheetPivotTableDefinition(sheetXml: string, relationshipId: stri
   return withNamespace.replace('</worksheet>', `<pivotTableDefinition r:id="${escapeXml(relationshipId)}"/></worksheet>`)
 }
 
+function insertWorkbookXmlAfterLastPredecessor(workbookXml: string, xml: string): string {
+  const predecessorPatterns = [
+    /<\/customWorkbookViews>/u,
+    /<oleSize\b[^>]*\/>/u,
+    /<oleSize\b[^>]*>[\s\S]*?<\/oleSize>/u,
+    /<calcPr\b[^>]*\/>/u,
+    /<calcPr\b[^>]*>[\s\S]*?<\/calcPr>/u,
+    /<\/definedNames>/u,
+    /<\/externalReferences>/u,
+    /<\/functionGroups>/u,
+    /<\/sheets>/u,
+  ]
+  let insertAt = -1
+  for (const pattern of predecessorPatterns) {
+    const match = pattern.exec(workbookXml)
+    if (match?.index !== undefined) {
+      insertAt = Math.max(insertAt, match.index + match[0].length)
+    }
+  }
+  if (insertAt >= 0) {
+    return `${workbookXml.slice(0, insertAt)}${xml}${workbookXml.slice(insertAt)}`
+  }
+  return workbookXml.replace('</workbook>', `${xml}</workbook>`)
+}
+
 function addWorkbookPivotCache(workbookXml: string, cacheId: number, relationshipId: string): string {
   const withNamespace = ensureRelationshipNamespace(workbookXml)
   const entry = `<pivotCache cacheId="${String(cacheId)}" r:id="${escapeXml(relationshipId)}"/>`
@@ -100,13 +125,7 @@ function addWorkbookPivotCache(workbookXml: string, cacheId: number, relationshi
     return withNamespace.replace('</pivotCaches>', `${entry}</pivotCaches>`)
   }
   const pivotCaches = `<pivotCaches>${entry}</pivotCaches>`
-  if (withNamespace.includes('</definedNames>')) {
-    return withNamespace.replace('</definedNames>', `</definedNames>${pivotCaches}`)
-  }
-  if (withNamespace.includes('</sheets>')) {
-    return withNamespace.replace('</sheets>', `</sheets>${pivotCaches}`)
-  }
-  return withNamespace.replace('</workbook>', `${pivotCaches}</workbook>`)
+  return insertWorkbookXmlAfterLastPredecessor(withNamespace, pivotCaches)
 }
 
 function buildCellValueMap(sheet: WorkbookSnapshot['sheets'][number]): Map<string, LiteralInput> {
@@ -180,6 +199,16 @@ function literalValueKey(value: LiteralInput): string {
   return `${typeof value}:${String(value)}`
 }
 
+function numericCacheValues(values: readonly LiteralInput[]): readonly number[] | null {
+  const numbers = values.filter((value): value is number => typeof value === 'number' && Number.isFinite(value))
+  const nonBlankValues = values.filter((value) => value !== null)
+  return numbers.length > 0 && numbers.length === nonBlankValues.length ? numbers : null
+}
+
+function cacheFieldUsesSharedIndexes(field: PivotCacheField): boolean {
+  return numericCacheValues(field.values) === null
+}
+
 function cacheSharedItemXml(value: LiteralInput): string {
   if (value === null) {
     return '<m/>'
@@ -194,6 +223,17 @@ function cacheSharedItemXml(value: LiteralInput): string {
 }
 
 function buildCacheFieldXml(field: PivotCacheField): string {
+  const numbers = numericCacheValues(field.values)
+  if (numbers) {
+    const containsInteger = numbers.every(Number.isInteger) ? '1' : '0'
+    return [
+      `<cacheField name="${escapeXml(field.name)}" numFmtId="0">`,
+      `<sharedItems containsSemiMixedTypes="0" containsString="0" containsNumber="1" containsInteger="${containsInteger}" minValue="${String(
+        Math.min(...numbers),
+      )}" maxValue="${String(Math.max(...numbers))}"/>`,
+      '</cacheField>',
+    ].join('')
+  }
   const values = uniqueValues(field.values)
   return [
     `<cacheField name="${escapeXml(field.name)}" numFmtId="0">`,
@@ -225,9 +265,9 @@ function buildPivotCacheDefinitionXml(
   ].join('')
 }
 
-function cacheRecordItemXml(value: LiteralInput, sharedValues: readonly LiteralInput[]): string {
-  const sharedIndex = sharedValues.findIndex((candidate) => literalValueKey(candidate) === literalValueKey(value))
-  if (sharedIndex >= 0) {
+function cacheRecordItemXml(value: LiteralInput, sharedValues: readonly LiteralInput[], useSharedIndex: boolean): string {
+  const sharedIndex = useSharedIndex ? sharedValues.findIndex((candidate) => literalValueKey(candidate) === literalValueKey(value)) : -1
+  if (useSharedIndex && sharedIndex >= 0) {
     return `<x v="${String(sharedIndex)}"/>`
   }
   if (value === null) {
@@ -243,12 +283,19 @@ function cacheRecordItemXml(value: LiteralInput, sharedValues: readonly LiteralI
 }
 
 function buildPivotCacheRecordsXml(cacheTable: PivotCacheTable): string {
-  const sharedValuesByField = cacheTable.fields.map((field) => uniqueValues(field.values))
+  const sharedValuesByField = cacheTable.fields.map((field) => (cacheFieldUsesSharedIndexes(field) ? uniqueValues(field.values) : []))
+  const sharedIndexesByField = cacheTable.fields.map(cacheFieldUsesSharedIndexes)
   return [
     '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>',
     `<pivotCacheRecords xmlns="${spreadsheetNamespace}" count="${String(cacheTable.rows.length)}">`,
     ...cacheTable.rows.map((row) =>
-      ['<r>', ...row.map((value, fieldIndex) => cacheRecordItemXml(value, sharedValuesByField[fieldIndex] ?? [])), '</r>'].join(''),
+      [
+        '<r>',
+        ...row.map((value, fieldIndex) =>
+          cacheRecordItemXml(value, sharedValuesByField[fieldIndex] ?? [], sharedIndexesByField[fieldIndex] ?? true),
+        ),
+        '</r>',
+      ].join(''),
     ),
     '</pivotCacheRecords>',
   ].join('')

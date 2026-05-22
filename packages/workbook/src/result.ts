@@ -24,6 +24,29 @@ export type WorkbookCheckExpectation =
       readonly formulas: readonly (readonly (string | null)[])[]
     }
 
+export type WorkbookCheckProof =
+  | {
+      readonly kind: 'value'
+      readonly value: LiteralInput
+    }
+  | {
+      readonly kind: 'values'
+      readonly values: readonly (readonly LiteralInput[])[]
+    }
+  | {
+      readonly kind: 'formula'
+      readonly formula: string | null
+    }
+  | {
+      readonly kind: 'formulas'
+      readonly formulas: readonly (readonly (string | null)[])[]
+    }
+  | {
+      readonly kind: 'runtime'
+      readonly message: string
+      readonly data?: WorkbookActionInput
+    }
+
 export interface WorkbookCheckResult {
   readonly status: WorkbookCheckStatus
   readonly kind: string
@@ -31,6 +54,7 @@ export interface WorkbookCheckResult {
   readonly refs?: readonly WorkbookRef[]
   readonly message: string
   readonly expectation?: WorkbookCheckExpectation
+  readonly proof?: WorkbookCheckProof
 }
 
 export interface WorkbookChangeSummary {
@@ -61,6 +85,7 @@ export type WorkbookRunErrorCode =
   | 'invalid_formula'
   | 'change_target_not_resolved'
   | 'check_status_not_planned'
+  | 'check_proof_not_planned'
   | 'check_target_not_resolved'
   | 'check_ref_not_resolved'
   | 'check_expectation_input_not_resolved'
@@ -81,6 +106,7 @@ export type WorkbookRunErrorCode =
   | 'check_verification_failed'
   | 'check_failed'
   | 'check_not_verified'
+  | 'invalid_command_bundle'
   | 'invalid_runtime_result'
   | 'runtime_rejected'
 
@@ -96,6 +122,7 @@ export const workbookRunErrorCodes = Object.freeze([
   'invalid_formula',
   'change_target_not_resolved',
   'check_status_not_planned',
+  'check_proof_not_planned',
   'check_target_not_resolved',
   'check_ref_not_resolved',
   'check_expectation_input_not_resolved',
@@ -116,6 +143,7 @@ export const workbookRunErrorCodes = Object.freeze([
   'check_verification_failed',
   'check_failed',
   'check_not_verified',
+  'invalid_command_bundle',
   'invalid_runtime_result',
   'runtime_rejected',
 ] satisfies readonly WorkbookRunErrorCode[])

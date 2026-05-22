@@ -418,6 +418,7 @@ export function WorkbookGridSurface(props: WorkbookGridSurfaceProps) {
           suppressedTextCell={suppressedEditorTextCell}
           tilePanes={renderState.renderTilePanes}
           preloadTilePanes={renderState.preloadDataPanes}
+          onVisibleRenderProofChange={props.onVisibleRenderProofChange}
         />
         <GridSelectionVisualOverlay
           geometry={v2Geometry}

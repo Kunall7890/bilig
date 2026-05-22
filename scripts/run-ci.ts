@@ -308,7 +308,7 @@ const parallelFocusedCorrectnessLanes: readonly CiTask[] = [
   directPackageScript('correctness server', 'test:correctness:server'),
   directPackageScript('correctness browser runtime', 'test:correctness:browser'),
 ]
-const corpusCorrectnessLane = withEnv(directPackageScript('correctness public workbook corpus', 'test:correctness:corpus'), {
+const corpusCorrectnessLane = withEnv(pnpm('correctness public workbook corpus', 'test:correctness:corpus'), {
   BILIG_VITEST_FILE_CHUNK_SIZE: '10',
 })
 const generatedSourceChecks: readonly CiTask[] = [

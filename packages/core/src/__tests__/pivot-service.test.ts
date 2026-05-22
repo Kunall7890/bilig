@@ -1,6 +1,6 @@
 import { Effect } from 'effect'
 import { describe, expect, it, vi } from 'vitest'
-import { ValueTag } from '@bilig/protocol'
+import { ValueTag, type WorkbookSnapshot } from '@bilig/protocol'
 import { SpreadsheetEngine } from '../engine.js'
 import { EnginePivotError } from '../engine/errors.js'
 import type { EnginePivotService } from '../engine/services/pivot-service.js'
@@ -157,6 +157,167 @@ describe('EnginePivotService', () => {
     expect(engine.getCellValue('Report', 'A3')).toEqual({ tag: ValueTag.Number, value: 20 })
     expect(engine.getCellValue('Report', 'A4')).toEqual({ tag: ValueTag.Number, value: 2 })
     expect(engine.getCellValue('Report', 'A5')).toEqual({ tag: ValueTag.Number, value: 6 })
+  })
+
+  it('uses worksheet source instead of stale imported cache records for source-backed pivots', async () => {
+    const snapshot: WorkbookSnapshot = {
+      version: 1,
+      workbook: {
+        name: 'stale-source-backed-pivot-cache',
+        metadata: {
+          pivots: [
+            {
+              name: 'SalesByRegion',
+              sheetName: 'Pivot',
+              address: 'B2',
+              source: { sheetName: 'Data', startAddress: 'A1', endAddress: 'B4' },
+              sourceKind: 'worksheet',
+              cacheFields: ['Region', 'Sales'],
+              cachedRecords: [
+                ['East', 999],
+                ['West', 7],
+                ['East', 1],
+              ],
+              groupBy: ['Region'],
+              values: [{ sourceColumn: 'Sales', summarizeBy: 'sum', outputLabel: 'Sales Total' }],
+              rows: 3,
+              cols: 2,
+            },
+          ],
+        },
+      },
+      sheets: [
+        {
+          id: 1,
+          name: 'Data',
+          order: 0,
+          cells: [
+            { address: 'A1', value: 'Region' },
+            { address: 'B1', value: 'Sales' },
+            { address: 'A2', value: 'East' },
+            { address: 'B2', value: 10 },
+            { address: 'A3', value: 'West' },
+            { address: 'B3', value: 7 },
+            { address: 'A4', value: 'East' },
+            { address: 'B4', value: 5 },
+          ],
+        },
+        { id: 2, name: 'Pivot', order: 1, cells: [] },
+        { id: 3, name: 'Report', order: 2, cells: [] },
+      ],
+    }
+
+    const engine = new SpreadsheetEngine({ workbookName: 'stale-source-backed-pivot-cache' })
+    await engine.ready()
+    engine.importSnapshot(snapshot)
+    engine.setCellFormula('Report', 'A1', 'GETPIVOTDATA("Sales Total",Pivot!B2,"Region","East")')
+
+    expect(engine.getCellValue('Pivot', 'C3')).toEqual({ tag: ValueTag.Number, value: 15 })
+    expect(engine.getCellValue('Report', 'A1')).toEqual({ tag: ValueTag.Number, value: 15 })
+
+    engine.setCellValue('Data', 'B2', 100)
+
+    expect(engine.getCellValue('Pivot', 'C3')).toEqual({ tag: ValueTag.Number, value: 105 })
+    expect(engine.getCellValue('Report', 'A1')).toEqual({ tag: ValueTag.Number, value: 105 })
+    expect(engine.exportSnapshot().workbook.metadata?.pivots?.[0]).toMatchObject({ rows: 3, cols: 2 })
+  })
+
+  it('claims imported pivot output cells before refreshing source-backed pivots', async () => {
+    const snapshot: WorkbookSnapshot = {
+      version: 1,
+      workbook: {
+        name: 'excel-authored-source-backed-pivot-output',
+        metadata: {
+          styles: [{ id: 'xlsx-style-1', font: { bold: true } }],
+          pivots: [
+            {
+              name: 'SalesByRegionQuarter',
+              sheetName: 'Pivot',
+              address: 'B2',
+              source: { sheetName: 'Data', startAddress: 'A1', endAddress: 'C5' },
+              sourceKind: 'worksheet',
+              cacheFields: ['Region', 'Quarter', 'Sales'],
+              cachedRecords: [
+                ['East', 'Q1', 10],
+                ['East', 'Q2', 5],
+                ['West', 'Q2', 7],
+                ['East', 'Q3', 9],
+              ],
+              groupBy: ['Region'],
+              columnFields: ['Quarter'],
+              values: [{ sourceColumn: 'Sales', summarizeBy: 'sum', outputLabel: 'Sales Total' }],
+              rows: 4,
+              cols: 4,
+            },
+          ],
+        },
+      },
+      sheets: [
+        {
+          id: 1,
+          name: 'Data',
+          order: 0,
+          cells: [
+            { address: 'A1', value: 'Region' },
+            { address: 'B1', value: 'Quarter' },
+            { address: 'C1', value: 'Sales' },
+            { address: 'A2', value: 'East' },
+            { address: 'B2', value: 'Q1' },
+            { address: 'C2', value: 10 },
+            { address: 'A3', value: 'East' },
+            { address: 'B3', value: 'Q2' },
+            { address: 'C3', value: 5 },
+            { address: 'A4', value: 'West' },
+            { address: 'B4', value: 'Q2' },
+            { address: 'C4', value: 7 },
+            { address: 'A5', value: 'East' },
+            { address: 'B5', value: 'Q3' },
+            { address: 'C5', value: 9 },
+          ],
+        },
+        {
+          id: 2,
+          name: 'Pivot',
+          order: 1,
+          metadata: {
+            styleRanges: [{ range: { sheetName: 'Pivot', startAddress: 'B4', endAddress: 'B5' }, styleId: 'xlsx-style-1' }],
+          },
+          cells: [
+            { address: 'B2', value: 'Region' },
+            { address: 'C2', value: 'Q1' },
+            { address: 'D2', value: 'Q2' },
+            { address: 'E2', value: 'Q3' },
+            { address: 'B3', value: 'East' },
+            { address: 'C3', value: 10 },
+            { address: 'D3', value: 5 },
+            { address: 'E3', value: 9 },
+            { address: 'B4', value: 'West' },
+            { address: 'D4', value: 7 },
+            { address: 'B5', value: 'Grand Total' },
+            { address: 'C5', value: 10 },
+            { address: 'D5', value: 12 },
+            { address: 'E5', value: 9 },
+          ],
+        },
+      ],
+    }
+
+    const engine = new SpreadsheetEngine({ workbookName: 'excel-authored-source-backed-pivot-output' })
+    await engine.ready()
+    engine.importSnapshot(snapshot)
+
+    expect(engine.getCellValue('Pivot', 'B2').tag).not.toBe(ValueTag.Error)
+    expect(engine.getCellValue('Pivot', 'B5')).toEqual({ tag: ValueTag.Empty })
+    expect(engine.exportSnapshot().sheets.find((sheet) => sheet.name === 'Pivot')?.metadata?.styleRanges).toBeUndefined()
+    expect(engine.exportSnapshot().workbook.metadata?.pivots?.[0]).toMatchObject({ rows: 3, cols: 4 })
+
+    engine.setCellFormula('Pivot', 'H1', 'GETPIVOTDATA("Sales Total",B2,"Region","East","Quarter","Q1")')
+    engine.setCellFormula('Pivot', 'H2', 'GETPIVOTDATA("Sales Total",B2,"Region","East","Quarter","Q3")')
+    engine.setCellValue('Data', 'C2', 100)
+
+    expect(engine.getCellValue('Pivot', 'H1')).toEqual({ tag: ValueTag.Number, value: 100 })
+    expect(engine.getCellValue('Pivot', 'H2')).toEqual({ tag: ValueTag.Number, value: 9 })
+    expect(engine.exportSnapshot().workbook.metadata?.pivots?.[0]).toMatchObject({ rows: 3, cols: 4 })
   })
 
   it('clears pivot ownership for one cell and rematerializes through the service boundary', async () => {

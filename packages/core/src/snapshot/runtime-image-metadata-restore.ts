@@ -5,15 +5,23 @@ import type {
   WorkbookCalculationSettingsSnapshot,
   WorkbookChartSnapshot,
   WorkbookDefinedNameValueSnapshot,
+  WorkbookExternalConnectionsSnapshot,
+  WorkbookExternalLinkArtifactsSnapshot,
   WorkbookImageSnapshot,
   WorkbookMacroPayloadSnapshot,
   WorkbookPivotSnapshot,
   WorkbookProtectionSnapshot,
+  WorkbookSlicerConnectionArtifactsSnapshot,
   WorkbookSnapshot,
   WorkbookSortSnapshot,
   WorkbookVolatileContextSnapshot,
 } from '@bilig/protocol'
 import { axisGeometryKeys, syncAxisMetadataBucket } from '../workbook-axis-records.js'
+import {
+  cloneExternalConnectionsSnapshot,
+  cloneExternalLinkArtifactsSnapshot,
+  cloneSlicerConnectionArtifactsSnapshot,
+} from '../workbook-metadata-records.js'
 import type { WorkbookAxisEntryRecord, WorkbookAxisMetadataRecord, WorkbookStore } from '../workbook-store.js'
 
 function restoreWorkbookMetadata(args: {
@@ -26,6 +34,9 @@ function restoreWorkbookMetadata(args: {
         definedNames?: Array<{ name: string; scopeSheetName?: string; value: WorkbookDefinedNameValueSnapshot }>
         calculationSettings?: WorkbookCalculationSettingsSnapshot
         volatileContext?: WorkbookVolatileContextSnapshot
+        externalConnections?: WorkbookExternalConnectionsSnapshot
+        externalLinkArtifacts?: WorkbookExternalLinkArtifactsSnapshot
+        slicerConnectionArtifacts?: WorkbookSlicerConnectionArtifactsSnapshot
         tables?: readonly Parameters<WorkbookStore['setTable']>[0][]
         spills?: Array<{ sheetName: string; address: string; rows: number; cols: number }>
         pivots?: WorkbookPivotSnapshot[]
@@ -51,6 +62,17 @@ function restoreWorkbookMetadata(args: {
   }
   if (args.workbookMetadata?.volatileContext) {
     args.workbook.setVolatileContext(args.workbookMetadata.volatileContext)
+  }
+  if (args.workbookMetadata?.externalConnections) {
+    args.workbook.metadata.externalConnections = cloneExternalConnectionsSnapshot(args.workbookMetadata.externalConnections)
+  }
+  if (args.workbookMetadata?.externalLinkArtifacts) {
+    args.workbook.metadata.externalLinkArtifacts = cloneExternalLinkArtifactsSnapshot(args.workbookMetadata.externalLinkArtifacts)
+  }
+  if (args.workbookMetadata?.slicerConnectionArtifacts) {
+    args.workbook.metadata.slicerConnectionArtifacts = cloneSlicerConnectionArtifactsSnapshot(
+      args.workbookMetadata.slicerConnectionArtifacts,
+    )
   }
   args.workbookMetadata?.styles?.forEach((style) => {
     args.workbook.upsertCellStyle(style)

@@ -780,6 +780,7 @@ export function createEngineServiceRuntime(args: {
       initializeCachedFormulaSourcesAt: (refs, potentialNewCells) =>
         requireService(formulaInitialization, 'formulaInitialization').initializeCachedFormulaSourcesAtNow(refs, potentialNewCells),
       materializePivot: (pivotRecord) => getPivot().materializePivotNow(pivotRecord),
+      claimPivotOutput: (pivotRecord) => getPivot().claimPivotOutputNow(pivotRecord),
       emitFullInvalidation: fullInvalidation.emitFullSnapshotInvalidation,
     })
     return snapshot

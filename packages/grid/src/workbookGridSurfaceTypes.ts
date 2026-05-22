@@ -2,6 +2,7 @@ import type { CellSnapshot, Viewport } from '@bilig/protocol'
 import type { GridEngineLike } from './grid-engine.js'
 import type { GridSelectionSnapshot } from './gridTypes.js'
 import type { GridRenderTileSource } from './renderer-v3/render-tile-source.js'
+import type { WorkbookVisibleRenderProof } from './workbookVisibleRenderProof.js'
 
 export type { GridSelectionSnapshot } from './gridTypes.js'
 
@@ -65,6 +66,7 @@ export interface WorkbookGridSurfaceProps {
   onSetFreezePane?: ((rows: number, cols: number) => void) | undefined
   onAutofitColumn?: ((columnIndex: number, fallbackWidth: number) => void | Promise<void>) | undefined
   onVisibleViewportChange?: ((viewport: Viewport) => void) | undefined
+  onVisibleRenderProofChange?: ((proof: WorkbookVisibleRenderProof | null) => void) | undefined
   previewRanges?: readonly WorkbookGridPreviewRange[] | undefined
   focusRequestToken?: number | undefined
   focusApiRef?: { current: (() => void) | null } | undefined

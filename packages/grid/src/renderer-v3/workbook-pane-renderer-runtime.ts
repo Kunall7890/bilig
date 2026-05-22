@@ -1,4 +1,5 @@
 import type { GridGeometrySnapshot } from '../gridGeometry.js'
+import type { GridRenderRevisionSnapshot } from '../grid-engine.js'
 import type { GridHeaderPaneState } from '../gridHeaderPanes.js'
 import type { GridCameraStore } from '../runtime/gridCameraStore.js'
 import type { WorkbookGridScrollSnapshot, WorkbookGridScrollStore } from '../workbookGridScrollStore.js'
@@ -26,6 +27,7 @@ export interface WorkbookPaneRendererRuntimeStateV3 {
   readonly overlay: DynamicGridOverlayBatchV3 | null
   readonly overlayBuilder: ((geometry: GridGeometrySnapshot) => DynamicGridOverlayBatchV3 | null | undefined) | null
   readonly preloadTilePanes: readonly WorkbookRenderTilePaneState[]
+  readonly renderRevisionSnapshot: GridRenderRevisionSnapshot | null
   readonly scrollTransformStore: WorkbookGridScrollStore | null
   readonly surface: TypeGpuSurfaceSizeV3
   readonly tilePanes: readonly WorkbookRenderTilePaneState[]
@@ -53,6 +55,7 @@ export interface WorkbookPanePresentedVisualFrameV3 {
   readonly overlayRectCount: number
   readonly overlayRectSignature: string | null
   readonly overlaySeq: number | null
+  readonly renderRevisionSnapshot: GridRenderRevisionSnapshot | null
   readonly scrollSnapshot: WorkbookGridScrollSnapshot
   readonly surface: TypeGpuSurfaceSizeV3
   readonly tilePanes: readonly WorkbookRenderTilePaneState[]
@@ -99,6 +102,7 @@ const EMPTY_RUNTIME_STATE: WorkbookPaneRendererRuntimeStateV3 = Object.freeze({
   overlay: null,
   overlayBuilder: null,
   preloadTilePanes: [],
+  renderRevisionSnapshot: null,
   scrollTransformStore: null,
   surface: EMPTY_SURFACE_SIZE,
   tilePanes: [],
@@ -259,6 +263,7 @@ export class WorkbookPaneRendererRuntimeV3 {
             overlayRectCount: overlayBatch?.rectCount ?? 0,
             overlayRectSignature: overlayBatch?.rectSignature ?? null,
             overlaySeq: overlayBatch?.seq ?? null,
+            renderRevisionSnapshot: state.renderRevisionSnapshot ? { ...state.renderRevisionSnapshot } : null,
             scrollSnapshot: { ...scrollSnapshot },
             surface: { ...state.surface },
             tilePanes: [...state.tilePanes],

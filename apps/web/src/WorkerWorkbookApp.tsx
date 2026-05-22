@@ -366,6 +366,7 @@ function WorkerWorkbookAppInner({
                   reportAsyncError(app.invokeSetFreezePaneMutation(visibleSelection.sheetName, rows, cols))
                 }}
                 onVisibleViewportChange={app.handleVisibleViewportChange}
+                onVisibleRenderProofChange={app.handleVisibleRenderProofChange}
                 onCommitEdit={app.commitEditor}
                 onCopyRange={app.copySelectionRange}
                 onCreateSheet={app.writesAllowed ? app.createSheet : undefined}

@@ -40,11 +40,18 @@ import { isMutationStructuralInsertOp } from './mutation-cell-content-helpers.js
 import { createMutationCellRestoreHistoryHelpers, tryMutationCellRefsFromOps } from './mutation-cell-restore-history.js'
 import { createMutationStructuralDeleteInverseHelpers } from './mutation-structural-delete-inverse.js'
 import type { CellStateRestoreOptions } from './cell-state-service.js'
+import { mutationErrorMessage } from './operation-change-helpers.js'
 import type { EngineMutationService } from './mutation-service-types.js'
 import { tryExecuteMutationRenderCommitFastPath } from './mutation-render-commit-fast-path.js'
 import { createMutationRangeOperations } from './mutation-range-operations.js'
 import { createMutationCoreInverseOps } from './mutation-core-inverse-ops.js'
 import { isTableHeaderCell } from './operation-table-header-rename.js'
+import {
+  assertLocalDataValidationForExistingLiteralCellMutation,
+  assertLocalDataValidationForExistingNumericCellMutation,
+  assertLocalDataValidationsForCellMutationRefs,
+  assertLocalDataValidationsForEngineOps,
+} from './data-validation-enforcement.js'
 
 export type { EngineMutationService } from './mutation-service-types.js'
 
@@ -65,6 +72,7 @@ export function createEngineMutationService(args: {
     EngineRuntimeState,
     | 'replicaState'
     | 'batchListeners'
+    | 'strings'
     | 'formulas'
     | 'undoStack'
     | 'redoStack'
@@ -295,6 +303,9 @@ export function createEngineMutationService(args: {
     ) {
       return
     }
+    if (source === 'local') {
+      assertLocalDataValidationsForEngineOps(args.state, transactionRecordOps(args.state.workbook, record))
+    }
     if (record.kind === 'single-existing-numeric-cell-mutation') {
       const ref = singleExistingNumericCellMutationRecordToRef(record)
       const refs = [ref]
@@ -373,6 +384,7 @@ export function createEngineMutationService(args: {
     if (ops.length === 0) {
       return null
     }
+    assertLocalDataValidationsForEngineOps(args.state, ops)
     if (
       options.returnUndoOps === false &&
       ops.length === 1 &&
@@ -526,6 +538,7 @@ export function createEngineMutationService(args: {
     if (refs.length === 0) {
       return null
     }
+    assertLocalDataValidationsForCellMutationRefs(args.state, refs)
     const nextRefs = options.reuseRefs ? refs : refs.map((ref) => cloneCellMutationRef(ref))
     const nextPotentialNewCells = potentialNewCells ?? countPotentialNewCellsForMutationRefs(nextRefs)
     const shouldCreateBatch = shouldCreateLocalBatch()
@@ -595,6 +608,7 @@ export function createEngineMutationService(args: {
     if (options.returnUndoOps !== false || shouldCreateLocalBatch()) {
       return null
     }
+    assertLocalDataValidationForExistingNumericCellMutation(args.state, request)
     const cellStore = args.state.workbook.cellStore
     const cellIndex = request.cellIndex
     const oldNumericValue =
@@ -646,6 +660,7 @@ export function createEngineMutationService(args: {
     if (options.returnUndoOps !== false || shouldCreateLocalBatch()) {
       return null
     }
+    assertLocalDataValidationForExistingLiteralCellMutation(args.state, request)
     const ref: EngineCellMutationRef = {
       sheetId: request.sheetId,
       cellIndex: request.cellIndex,
@@ -706,6 +721,9 @@ export function createEngineMutationService(args: {
     if (refs.length === 0) {
       return null
     }
+    if (source === 'local') {
+      assertLocalDataValidationsForCellMutationRefs(args.state, refs)
+    }
     const nextRefs = options.reuseRefs ? refs : refs.map((ref) => cloneCellMutationRef(ref))
     const nextPotentialNewCells = options.potentialNewCells ?? countPotentialNewCellsForMutationRefs(nextRefs)
     const forwardOps = source === 'restore' ? emptyBatchOps : nextRefs.map((ref) => cellMutationRefToEngineOp(args.state.workbook, ref))
@@ -758,7 +776,7 @@ export function createEngineMutationService(args: {
       try: () => executeLocalNowPublic(ops, potentialNewCells, options),
       catch: (cause) =>
         new EngineMutationError({
-          message: 'Failed to execute local transaction',
+          message: mutationErrorMessage('Failed to execute local transaction', cause),
           cause,
         }),
     })
@@ -781,7 +799,7 @@ export function createEngineMutationService(args: {
         },
         catch: (cause) =>
           new EngineMutationError({
-            message: `Failed to execute ${source} transaction`,
+            message: mutationErrorMessage(`Failed to execute ${source} transaction`, cause),
             cause,
           }),
       })
@@ -804,7 +822,7 @@ export function createEngineMutationService(args: {
         try: () => applyCellMutationsAtNow(refs, options),
         catch: (cause) =>
           new EngineMutationError({
-            message: 'Failed to apply cell mutations',
+            message: mutationErrorMessage('Failed to apply cell mutations', cause),
             cause,
           }),
       })
@@ -833,7 +851,7 @@ export function createEngineMutationService(args: {
         try: () => this.applyOpsNow(ops, options),
         catch: (cause) =>
           new EngineMutationError({
-            message: 'Failed to apply engine operations',
+            message: mutationErrorMessage('Failed to apply engine operations', cause),
             cause,
           }),
       })
@@ -860,7 +878,7 @@ export function createEngineMutationService(args: {
         },
         catch: (cause) =>
           new EngineMutationError({
-            message: 'Failed to capture undo ops',
+            message: mutationErrorMessage('Failed to capture undo ops', cause),
             cause,
           }),
       })

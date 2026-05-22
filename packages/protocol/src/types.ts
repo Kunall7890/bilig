@@ -404,6 +404,7 @@ export interface WorkbookTableSnapshot {
   headerRow: boolean
   totalsRow: boolean
   style?: WorkbookTableStyleSnapshot
+  autoFilter?: WorkbookAutoFilterSnapshot
   sortState?: string
 }
 

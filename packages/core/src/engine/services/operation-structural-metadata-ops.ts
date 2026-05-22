@@ -116,7 +116,14 @@ export function applyOperationStructuralMetadataOp(args: {
 
   switch (args.op.kind) {
     case 'updateRowMetadata':
-      args.workbook.setRowMetadata(args.op.sheetName, args.op.start, args.op.count, args.op.size, args.op.hidden)
+      args.workbook.setRowMetadata(
+        args.op.sheetName,
+        args.op.start,
+        args.op.count,
+        args.op.size,
+        args.op.hidden,
+        args.op.filtered !== undefined ? { filtered: args.op.filtered } : undefined,
+      )
       change.invalidatedRows.push({
         sheetName: args.op.sheetName,
         startIndex: args.op.start,

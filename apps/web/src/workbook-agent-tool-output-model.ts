@@ -116,6 +116,8 @@ export function formatMissingCheckLabel(check: string): string {
       return 'Invariant Audit Clean'
     case 'renderedReadback':
       return 'Rendered Readback'
+    case 'renderedSelection':
+      return 'Rendered Selection'
     case 'targetRange':
       return 'Target Range'
     default:

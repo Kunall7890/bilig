@@ -93,7 +93,7 @@ export interface ScannedWorksheet {
   readonly hasUnresolvedSharedStringReferences?: boolean
 }
 
-export type LargeSimpleSheetMetadataInput = Pick<
+export interface LargeSimpleSheetMetadataInput extends Pick<
   SheetMetadataSnapshot,
   | 'conditionalFormatArtifacts'
   | 'conditionalFormats'
@@ -107,4 +107,6 @@ export type LargeSimpleSheetMetadataInput = Pick<
   | 'printerSettings'
   | 'printPageSetup'
   | 'sheetProtection'
->
+> {
+  readonly tableFilters?: SheetMetadataSnapshot['filters']
+}

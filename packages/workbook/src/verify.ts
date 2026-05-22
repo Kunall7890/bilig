@@ -24,6 +24,7 @@ export type WorkbookPlanIssueCode =
   | 'invalid_formula'
   | 'change_target_not_resolved'
   | 'check_status_not_planned'
+  | 'check_proof_not_planned'
   | 'check_target_not_resolved'
   | 'check_ref_not_resolved'
   | 'check_expectation_input_not_resolved'
@@ -41,6 +42,7 @@ export const workbookPlanIssueCodes = Object.freeze([
   'invalid_formula',
   'change_target_not_resolved',
   'check_status_not_planned',
+  'check_proof_not_planned',
   'check_target_not_resolved',
   'check_ref_not_resolved',
   'check_expectation_input_not_resolved',
@@ -468,6 +470,14 @@ export function verifyPlan<Refs>(plan: WorkbookActionPlan<Refs>): WorkbookPlanVe
         code: 'check_status_not_planned',
         path: `checks[${checkIndex}].status`,
         message: `${check.target?.label ?? check.kind} check ${check.kind} must start planned before runtime proof`,
+      })
+    }
+
+    if (check.proof !== undefined) {
+      issues.push({
+        code: 'check_proof_not_planned',
+        path: `checks[${checkIndex}].proof`,
+        message: `${check.target?.label ?? check.kind} check ${check.kind} proof must come from runtime verification`,
       })
     }
 

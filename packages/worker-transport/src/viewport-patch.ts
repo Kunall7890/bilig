@@ -36,9 +36,12 @@ export interface ViewportAxisPatch {
   hidden: boolean
 }
 
+export type ViewportPatchStatus = 'ok' | 'sheet-not-found'
+
 export interface ViewportPatch {
   version: number
   authoritativeRevision?: number
+  status?: ViewportPatchStatus
   full: boolean
   freezeRows?: number
   freezeCols?: number
@@ -52,9 +55,29 @@ export interface ViewportPatch {
 }
 
 const VIEWPORT_PATCH_MAGIC = 0x56505450
-const VIEWPORT_PATCH_CODEC_VERSION = 4
+const VIEWPORT_PATCH_CODEC_VERSION = 5
 const MIN_VIEWPORT_PATCH_CODEC_VERSION = 2
 const OPTIONAL_ABSENT = 0xff
+
+function encodeViewportPatchStatus(status: ViewportPatchStatus | undefined): number {
+  switch (status ?? 'ok') {
+    case 'ok':
+      return 0
+    case 'sheet-not-found':
+      return 1
+  }
+}
+
+function decodeViewportPatchStatus(value: number): ViewportPatchStatus | undefined {
+  switch (value) {
+    case 0:
+      return undefined
+    case 1:
+      return 'sheet-not-found'
+    default:
+      throw new BinaryProtocolError(`Unknown viewport patch status ${value}`)
+  }
+}
 
 function encodeColumn(index: number): string {
   let value = index
@@ -588,6 +611,7 @@ export function encodeViewportPatch(patch: ViewportPatch): Uint8Array {
   writer.u32(patch.version)
   writer.u32(Math.max(0, Math.trunc(patch.authoritativeRevision ?? 0)))
   writer.bool(patch.full)
+  writer.u8(encodeViewportPatchStatus(patch.status))
   writer.u32(patch.freezeRows ?? 0)
   writer.u32(patch.freezeCols ?? 0)
   writer.string(patch.viewport.sheetName)
@@ -634,6 +658,7 @@ export function decodeViewportPatch(bytes: Uint8Array): ViewportPatch {
   const version = reader.u32()
   const authoritativeRevision = reader.u32()
   const full = reader.bool()
+  const status = codecVersion >= 5 ? decodeViewportPatchStatus(reader.u8()) : undefined
   const freezeRows = reader.u32()
   const freezeCols = reader.u32()
   const viewport: ViewportPatchSubscription = {
@@ -646,6 +671,7 @@ export function decodeViewportPatch(bytes: Uint8Array): ViewportPatch {
   const patch: ViewportPatch = {
     version,
     authoritativeRevision,
+    ...(status !== undefined ? { status } : {}),
     full,
     freezeRows,
     freezeCols,

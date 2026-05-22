@@ -83,6 +83,7 @@ export function internLargeSimpleSheetMetadataInput(
   internDataValidationsInPlace(input.validations, intern)
   internSheetDrawingArtifactsInPlace(input.drawingArtifacts, intern)
   internFiltersInPlace(input.filters, intern)
+  internFiltersInPlace(input.tableFilters, intern)
   internWorkbookHyperlinksInPlace(input.hyperlinks, intern)
   internLegacyCommentVmlInPlace(input.legacyCommentVml, intern)
   internSheetPivotArtifactsInPlace(input.pivotArtifacts, intern)

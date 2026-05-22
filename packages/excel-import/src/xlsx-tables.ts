@@ -1,9 +1,16 @@
 import { strFromU8, strToU8, unzipSync, zipSync } from 'fflate'
 import { XMLParser } from 'fast-xml-parser'
 
-import type { WorkbookSnapshot, WorkbookTableColumnSnapshot, WorkbookTableSnapshot, WorkbookTableStyleSnapshot } from '@bilig/protocol'
+import type {
+  WorkbookAutoFilterSnapshot,
+  WorkbookSnapshot,
+  WorkbookTableColumnSnapshot,
+  WorkbookTableSnapshot,
+  WorkbookTableStyleSnapshot,
+} from '@bilig/protocol'
 import { decodeA1CellRef, decodeA1RangeRef, encodeA1CellRef, encodeA1RangeRef } from './xlsx-a1-utils.js'
 import { decodeExcelEscapedText, encodeExcelEscapedText } from './xlsx-escaped-text.js'
+import { buildAutoFilterXml, readImportedTableAutoFiltersFromXml } from './xlsx-filters.js'
 import { readSortStateXml } from './xlsx-sorts.js'
 import { readXlsxZipEntries, type XlsxZipSource } from './xlsx-zip.js'
 
@@ -272,7 +279,16 @@ function buildTableXml(table: WorkbookTableSnapshot, tableId: number): string {
     `<table xmlns="${spreadsheetNamespace}" id="${String(tableId)}" name="${escapeXml(displayName)}" displayName="${escapeXml(
       displayName,
     )}" ref="${escapeXml(ref)}" headerRowCount="${table.headerRow ? '1' : '0'}" totalsRowShown="${table.totalsRow ? '1' : '0'}">`,
-    table.headerRow ? `<autoFilter ref="${escapeXml(ref)}"/>` : '',
+    table.headerRow
+      ? buildAutoFilterXml(
+          table.autoFilter ?? {
+            sheetName: table.sheetName,
+            startAddress: table.startAddress,
+            endAddress: table.endAddress,
+          },
+          ref,
+        )
+      : '',
     table.sortState ?? '',
     `<tableColumns count="${String(columns.length)}">`,
     ...columns.map(buildTableColumnXml),
@@ -370,6 +386,9 @@ function parseTableXml(sheetName: string, xml: string): WorkbookTableSnapshot | 
     return [column]
   })
   const style = parseTableStyle(recordChild(table, 'tableStyleInfo'))
+  const autoFilter = readImportedTableAutoFiltersFromXml(sheetName, xml).find(
+    (filter) => filter.startAddress === ref.startAddress && filter.endAddress === ref.endAddress,
+  )
   const sortState = readSortStateXml(xml)
   const hasColumnMetadata = columns.some(
     (column) =>
@@ -393,8 +412,22 @@ function parseTableXml(sheetName: string, xml: string): WorkbookTableSnapshot | 
           ? totalsRowCount === '1'
           : inferredTotalsRow || hasTotalsRowFormula,
     ...(style ? { style } : {}),
+    ...(autoFilter?.criteria && autoFilter.criteria.length > 0 ? { autoFilter } : {}),
     ...(sortState ? { sortState } : {}),
   }
+}
+
+export function tableAutoFiltersBySheet(tables: readonly WorkbookTableSnapshot[] | undefined): Map<string, WorkbookAutoFilterSnapshot[]> {
+  const filtersBySheet = new Map<string, WorkbookAutoFilterSnapshot[]>()
+  for (const table of tables ?? []) {
+    if (!table.autoFilter?.criteria || table.autoFilter.criteria.length === 0) {
+      continue
+    }
+    const filters = filtersBySheet.get(table.sheetName) ?? []
+    filters.push(table.autoFilter)
+    filtersBySheet.set(table.sheetName, filters)
+  }
+  return filtersBySheet
 }
 
 function parseTableStyle(style: Record<string, unknown> | null): WorkbookTableStyleSnapshot | undefined {

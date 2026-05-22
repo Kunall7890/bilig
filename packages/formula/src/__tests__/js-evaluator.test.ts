@@ -233,6 +233,32 @@ describe('js evaluator', () => {
     })
   })
 
+  it('applies AGGREGATE hidden-row options to AutoFilter rows', () => {
+    const aggregateContext = {
+      ...context,
+      isRowFiltered: (_sheetName: string, rowIndex: number) => rowIndex === 1,
+      resolveRange: (_sheetName: string, start: string, end: string): CellValue[] => {
+        if (start === 'A1' && end === 'A3') {
+          return [
+            { tag: ValueTag.Number, value: 10 },
+            { tag: ValueTag.Number, value: 20 },
+            { tag: ValueTag.Number, value: 30 },
+          ]
+        }
+        return []
+      },
+    }
+
+    expect(evaluatePlan(lowerToPlan(parseFormula('AGGREGATE(9,5,A1:A3)')), aggregateContext)).toEqual({
+      tag: ValueTag.Number,
+      value: 40,
+    })
+    expect(evaluatePlan(lowerToPlan(parseFormula('AGGREGATE(9,4,A1:A3)')), aggregateContext)).toEqual({
+      tag: ValueTag.Number,
+      value: 60,
+    })
+  })
+
   it('excludes nested rollups from SUBTOTAL ranges', () => {
     const nestedSubtotalContext = {
       ...context,

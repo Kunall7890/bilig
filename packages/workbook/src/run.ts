@@ -1,13 +1,15 @@
 import { isLiteralInput, type LiteralInput } from '@bilig/protocol'
+import { verifyWorkbookCommandBundle, type WorkbookCommandBundle, type WorkbookCommandBundleIssue } from './command.js'
 import { isWorkbookRef, type WorkbookRef } from './find.js'
 import { isWorkbookOp } from './guards.js'
-import type { WorkbookActionInput } from './input.js'
+import { normalizeWorkbookActionInput, type WorkbookActionInput } from './input.js'
 import { planWorkbookAction, type WorkbookActionMap, type WorkbookActionPlan, type WorkbookModel } from './model.js'
 import { verifyWorkbookReadbacks, type WorkbookCellReadback, type WorkbookReadbackIssue, type WorkbookRunReadback } from './readback.js'
 import type { WorkbookRuntimePreview, WorkbookRuntimeRequirement } from './requirements.js'
 import {
   isWorkbookRunErrorCode,
   type WorkbookAppliedSummary,
+  type WorkbookCheckProof,
   type WorkbookCheckResult,
   type WorkbookRunError,
   type WorkbookRunErrorCode,
@@ -25,12 +27,17 @@ export interface WorkbookRunApplyResult {
 }
 
 export interface WorkbookRunAdapter<Refs = unknown> {
-  readonly preview?: (plan: WorkbookActionPlan<Refs>) => MaybePromise<WorkbookRuntimePreview>
-  readonly apply: (plan: WorkbookActionPlan<Refs>) => MaybePromise<WorkbookRunApplyResult>
-  readonly read?: (targets: readonly WorkbookRef[], plan: WorkbookActionPlan<Refs>) => MaybePromise<readonly WorkbookRunReadback[]>
+  readonly preview?: (plan: WorkbookActionPlan<Refs>, command?: WorkbookCommandBundle<Refs>) => MaybePromise<WorkbookRuntimePreview>
+  readonly apply: (plan: WorkbookActionPlan<Refs>, command?: WorkbookCommandBundle<Refs>) => MaybePromise<WorkbookRunApplyResult>
+  readonly read?: (
+    targets: readonly WorkbookRef[],
+    plan: WorkbookActionPlan<Refs>,
+    command?: WorkbookCommandBundle<Refs>,
+  ) => MaybePromise<readonly WorkbookRunReadback[]>
   readonly verifyChecks?: (
     checks: readonly WorkbookCheckResult[],
     plan: WorkbookActionPlan<Refs>,
+    command?: WorkbookCommandBundle<Refs>,
   ) => MaybePromise<readonly WorkbookCheckResult[]>
 }
 
@@ -70,6 +77,14 @@ function readbackIssueError(issue: WorkbookReadbackIssue): WorkbookRunError {
     check: issue.check,
     ...(issue.expected !== undefined ? { expected: issue.expected } : {}),
     ...(issue.actual !== undefined ? { actual: issue.actual } : {}),
+  }
+}
+
+function commandBundleIssueError(issue: WorkbookCommandBundleIssue): WorkbookRunError {
+  return {
+    code: 'invalid_command_bundle',
+    message: issue.message,
+    path: issue.path,
   }
 }
 
@@ -146,7 +161,7 @@ function canonicalValue(value: unknown): unknown {
   return value
 }
 
-function checkContract(check: WorkbookCheckResult): Omit<WorkbookCheckResult, 'status'> {
+function checkContract(check: WorkbookCheckResult): Omit<WorkbookCheckResult, 'status' | 'proof'> {
   return {
     kind: check.kind,
     ...(check.target !== undefined ? { target: check.target } : {}),
@@ -164,11 +179,16 @@ function cloneCheck(check: WorkbookCheckResult): WorkbookCheckResult {
     ...(check.refs !== undefined ? { refs: check.refs } : {}),
     message: check.message,
     ...(check.expectation !== undefined ? { expectation: check.expectation } : {}),
+    ...(check.proof !== undefined ? { proof: check.proof } : {}),
   }
 }
 
 function checkContractMatches(expectedContract: string, actual: WorkbookCheckResult): boolean {
   return expectedContract === canonicalJson(checkContract(actual))
+}
+
+function proofMatches(expectedProof: WorkbookCheckProof, actualProof: WorkbookCheckProof | undefined): boolean {
+  return actualProof !== undefined && canonicalJson(expectedProof) === canonicalJson(actualProof)
 }
 
 function isCheckStatus(value: unknown): value is WorkbookCheckResult['status'] {
@@ -198,6 +218,37 @@ function isLiteralMatrix(value: unknown): value is readonly (readonly LiteralInp
 
 function isFormulaMatrix(value: unknown): value is readonly (readonly (string | null)[])[] {
   return Array.isArray(value) && value.every((row) => Array.isArray(row) && row.every(isStringOrNull)) && isRectangularMatrix(value)
+}
+
+function isWorkbookCheckProof(value: unknown): value is WorkbookCheckProof {
+  if (!isRecord(value)) {
+    return false
+  }
+  switch (value['kind']) {
+    case 'value':
+      return isLiteralInput(value['value'])
+    case 'values':
+      return isLiteralMatrix(value['values'])
+    case 'formula':
+      return isStringOrNull(value['formula'])
+    case 'formulas':
+      return isFormulaMatrix(value['formulas'])
+    case 'runtime':
+      if (typeof value['message'] !== 'string' || value['message'].trim() === '') {
+        return false
+      }
+      if (value['data'] === undefined) {
+        return true
+      }
+      try {
+        normalizeWorkbookActionInput(value['data'])
+        return true
+      } catch {
+        return false
+      }
+    default:
+      return false
+  }
 }
 
 function normalizedCellReadback(value: unknown): WorkbookCellReadback | null {
@@ -369,7 +420,13 @@ function validateReadbacks(value: unknown): readonly WorkbookRunReadback[] | Wor
 }
 
 function isWorkbookCheckResult(value: unknown): value is WorkbookCheckResult {
-  return isRecord(value) && isCheckStatus(value['status']) && typeof value['kind'] === 'string' && typeof value['message'] === 'string'
+  return (
+    isRecord(value) &&
+    isCheckStatus(value['status']) &&
+    typeof value['kind'] === 'string' &&
+    typeof value['message'] === 'string' &&
+    (value['proof'] === undefined || isWorkbookCheckProof(value['proof']))
+  )
 }
 
 type CheckValidation =
@@ -385,6 +442,7 @@ type CheckValidation =
 function validateVerifiedChecks(
   originalContracts: readonly string[],
   originalKinds: readonly string[],
+  originalProofs: readonly (WorkbookCheckProof | undefined)[],
   verified: unknown,
 ): CheckValidation {
   if (!Array.isArray(verified)) {
@@ -436,6 +494,16 @@ function validateVerifiedChecks(
         ),
       }
     }
+    const expectedProof = originalProofs[index]
+    if (expectedProof !== undefined && !proofMatches(expectedProof, actual.proof)) {
+      return {
+        status: 'invalid',
+        error: runError(
+          'invalid_check_verification',
+          `Check verifier changed the check contract at index ${String(index)} for ${expectedKind}`,
+        ),
+      }
+    }
     verifiedChecks.push(actual)
   }
 
@@ -449,6 +517,7 @@ async function verifyChecksWithAdapter<Refs>(
   checks: readonly WorkbookCheckResult[],
   plan: WorkbookActionPlan<Refs>,
   adapter: WorkbookRunAdapter<Refs>,
+  command?: WorkbookCommandBundle<Refs>,
 ): Promise<{ readonly checks: readonly WorkbookCheckResult[]; readonly errors: readonly WorkbookRunError[] }> {
   if (adapter.verifyChecks === undefined) {
     return { checks, errors: [] }
@@ -457,10 +526,11 @@ async function verifyChecksWithAdapter<Refs>(
   const originalChecks = checks.map(cloneCheck)
   const originalContracts = originalChecks.map((check) => canonicalJson(checkContract(check)))
   const originalKinds = originalChecks.map((check) => check.kind)
+  const originalProofs = originalChecks.map((check) => check.proof)
   const verifierInput = originalChecks.map(cloneCheck)
   let verified: unknown
   try {
-    verified = await adapter.verifyChecks(verifierInput, plan)
+    verified = await adapter.verifyChecks(verifierInput, plan, command)
   } catch (error) {
     return {
       checks: originalChecks,
@@ -468,7 +538,7 @@ async function verifyChecksWithAdapter<Refs>(
     }
   }
 
-  const validation = validateVerifiedChecks(originalContracts, originalKinds, verified)
+  const validation = validateVerifiedChecks(originalContracts, originalKinds, originalProofs, verified)
   if (validation.status === 'invalid') {
     return {
       checks: originalChecks,
@@ -509,7 +579,11 @@ function failedAfterApply(
   }
 }
 
-export async function runWorkbookPlan<Refs>(plan: WorkbookActionPlan<Refs>, adapter: WorkbookRunAdapter<Refs>): Promise<WorkbookRunResult> {
+export async function runWorkbookPlan<Refs>(
+  plan: WorkbookActionPlan<Refs>,
+  adapter: WorkbookRunAdapter<Refs>,
+  command?: WorkbookCommandBundle<Refs>,
+): Promise<WorkbookRunResult> {
   const invalidPlan = failedFromPlanIssues(plan)
   if (invalidPlan !== null) {
     return invalidPlan
@@ -518,7 +592,7 @@ export async function runWorkbookPlan<Refs>(plan: WorkbookActionPlan<Refs>, adap
   let preview: WorkbookRuntimePreview | undefined
   if (adapter.preview !== undefined) {
     try {
-      const previewResult = validatePreviewResult(await adapter.preview(plan), plan)
+      const previewResult = validatePreviewResult(await adapter.preview(plan, command), plan)
       if ('code' in previewResult) {
         return {
           status: 'failed',
@@ -538,7 +612,7 @@ export async function runWorkbookPlan<Refs>(plan: WorkbookActionPlan<Refs>, adap
 
   let applyResult: WorkbookRunApplyResult
   try {
-    const rawApplyResult = validateApplyResult(await adapter.apply(plan))
+    const rawApplyResult = validateApplyResult(await adapter.apply(plan, command))
     if ('code' in rawApplyResult) {
       return {
         status: 'failed',
@@ -569,7 +643,7 @@ export async function runWorkbookPlan<Refs>(plan: WorkbookActionPlan<Refs>, adap
 
     let readbacks: readonly WorkbookRunReadback[]
     try {
-      const rawReadbacks = validateReadbacks(await adapter.read(targets, plan))
+      const rawReadbacks = validateReadbacks(await adapter.read(targets, plan, command))
       if ('code' in rawReadbacks) {
         return failedAfterApply(applyResult, [rawReadbacks], checks)
       }
@@ -585,7 +659,7 @@ export async function runWorkbookPlan<Refs>(plan: WorkbookActionPlan<Refs>, adap
     }
   }
 
-  const checkVerification = await verifyChecksWithAdapter(checks, plan, adapter)
+  const checkVerification = await verifyChecksWithAdapter(checks, plan, adapter, command)
   checks = checkVerification.checks
   if (checkVerification.errors.length > 0) {
     return failedAfterApply(applyResult, checkVerification.errors, checks)
@@ -604,6 +678,21 @@ export async function runWorkbookPlan<Refs>(plan: WorkbookActionPlan<Refs>, adap
     ...(applyResult.undo !== undefined ? { undo: applyResult.undo } : {}),
     ...(applied !== undefined ? { applied } : {}),
   }
+}
+
+export async function runWorkbookCommandBundle<Refs>(
+  command: WorkbookCommandBundle<Refs>,
+  adapter: WorkbookRunAdapter<Refs>,
+): Promise<WorkbookRunResult> {
+  const verification = verifyWorkbookCommandBundle(command)
+  if (verification.status === 'invalid') {
+    return {
+      status: 'failed',
+      errors: verification.issues.map(commandBundleIssueError),
+      checks: command.plan.checks,
+    }
+  }
+  return runWorkbookPlan(command.plan, adapter, command)
 }
 
 export async function runWorkbookAction<Refs, Actions extends WorkbookActionMap<Refs>>(
