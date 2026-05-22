@@ -199,6 +199,7 @@ formula.sum(refs.amount, refs.tax, refs.fee)
 formula.call('ROUND', [refs.amount, 2])
 formula.text('ready')
 formula.raw('SUM(Items[Amount])', { inputs: [refs.amount] })
+formula.inspect(formula.multiply(refs.base, refs.rate))
 ```
 
 The rule is:
@@ -213,6 +214,12 @@ Formula expressions expose:
 
 - `source`: parseable formula text without the leading `=`;
 - `inputs`: the refs that a runtime adapter must resolve.
+
+For agent-readable inspection, use `formula.inspect(expression)`. It returns
+the normalized source, declared workbook inputs, parser-discovered cell/range
+dependencies, symbolic names, tables, spill refs, volatility, and whether the
+formula can produce a spill. Use `formula.dependencies(expression)` when only
+the parsed cell/range references are needed.
 
 Formula helpers validate operands and declared raw-formula inputs at runtime.
 Malformed refs fail before planning, so agents do not hand opaque bad

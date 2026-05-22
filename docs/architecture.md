@@ -33,6 +33,7 @@ flowchart LR
   - JSON-safe action input planning and verification
   - action-object metadata and plain input descriptions for agent manifests
   - token-safe formula input materialization through runtime adapters
+  - runtime-free formula inspection for declared inputs and parsed dependencies
   - machine-readable readback checks for runtime proof
   - inspectable readback proof on passed and failed checks
   - failed apply-and-prove results preserve runtime undo refs when available
