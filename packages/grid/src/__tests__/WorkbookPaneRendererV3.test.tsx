@@ -563,6 +563,42 @@ describe('WorkbookPaneRendererV3', () => {
     runtime.dispose()
   })
 
+  test('draw runtime retries a missed frame instead of leaving the canvas blank', () => {
+    const frameCallbacks: FrameRequestCallback[] = []
+    const requestFrame = vi.fn((callback: FrameRequestCallback) => {
+      frameCallbacks.push(callback)
+      return frameCallbacks.length
+    })
+    const scheduler = new GridDrawSchedulerV3(
+      () => 1,
+      () => undefined,
+      () => 1_000,
+      new GridRenderLoop(requestFrame, () => undefined),
+    )
+    const drawFrame = vi.fn<WorkbookPaneFrameDrawerV3>(() => drawFrame.mock.calls.length >= 2)
+    const runtime = new WorkbookPaneRendererRuntimeV3(drawFrame, scheduler)
+
+    runtime.updateState({
+      active: true,
+      backend: {},
+      surface: { dpr: 1, height: 720, pixelHeight: 720, pixelWidth: 1280, width: 1280 },
+      tilePanes: [createTextTilePane()],
+      webGpuReady: true,
+    })
+    runtime.requestDraw()
+
+    expect(frameCallbacks).toHaveLength(1)
+    frameCallbacks.shift()?.(1_000)
+    expect(drawFrame).toHaveBeenCalledTimes(1)
+    expect(frameCallbacks).toHaveLength(1)
+
+    frameCallbacks.shift()?.(1_016)
+    expect(drawFrame).toHaveBeenCalledTimes(2)
+    expect(frameCallbacks).toHaveLength(0)
+
+    runtime.dispose()
+  })
+
   test('draw runtime prefers fresher geometry props over stale camera store snapshots', () => {
     const metrics = getGridMetrics()
     const axes = {

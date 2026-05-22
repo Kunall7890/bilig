@@ -296,9 +296,12 @@ export function shouldSyncGridRectTileResourceV3(input: {
   if (input.tile.rectCount > 0 && !input.content.rectHandle) {
     return true
   }
+  if (!areGridRectTilePayloadsEqualV3(input.content.rectRevisionKey, input.rectRevisionKey)) {
+    return true
+  }
   const dirtyMask = resolveGridTileDirtyContentMaskV3(input.tile)
   if (dirtyMask === null) {
-    return !areGridRectTilePayloadsEqualV3(input.content.rectRevisionKey, input.rectRevisionKey)
+    return false
   }
   if ((dirtyMask & RECT_DIRTY_MASK_V3) !== 0) {
     return true

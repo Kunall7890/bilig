@@ -31,6 +31,17 @@ export interface TypeGpuTextPayloadCounterInput {
   readonly textWriteMs?: number | undefined
 }
 
+export interface TypeGpuFrameRejectCounterInput {
+  readonly expectedRectCount?: number | undefined
+  readonly expectedTextRunCount?: number | undefined
+  readonly paneId?: string | undefined
+  readonly reason: string
+  readonly resourceRectCount?: number | undefined
+  readonly resourceTextCount?: number | undefined
+  readonly resourceTextRunCount?: number | undefined
+  readonly tileId?: number | undefined
+}
+
 type ScrollPerfCounterSink = Partial<{
   noteTypeGpuConfigure: () => void
   noteTypeGpuSubmit: () => void
@@ -47,6 +58,7 @@ type ScrollPerfCounterSink = Partial<{
   noteTypeGpuTileCacheEviction: (count: number) => void
   noteTypeGpuTileCacheStaleLookups: (input: TypeGpuTileCacheStaleLookupCounterInput) => void
   noteTypeGpuTileCacheVisibleMark: (count: number) => void
+  noteTypeGpuFrameReject: (input: TypeGpuFrameRejectCounterInput) => void
   noteTypeGpuTextPayload: (input: TypeGpuTextPayloadCounterInput) => void
   noteRendererTileReadiness: (input: RendererTileReadinessCounterInput) => void
   noteGridScrollInput: (timestamp: number) => void
@@ -117,6 +129,10 @@ export function noteTypeGpuTileCacheStaleLookups(input: TypeGpuTileCacheStaleLoo
 
 export function noteTypeGpuTileCacheVisibleMark(count: number): void {
   getCounterSink()?.noteTypeGpuTileCacheVisibleMark?.(count)
+}
+
+export function noteTypeGpuFrameReject(input: TypeGpuFrameRejectCounterInput): void {
+  getCounterSink()?.noteTypeGpuFrameReject?.(input)
 }
 
 export function noteTypeGpuTextPayload(input: TypeGpuTextPayloadCounterInput): void {

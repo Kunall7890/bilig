@@ -27,12 +27,8 @@ import {
   shouldBypassLargeSimpleByteThresholdForPackageArtifacts,
 } from './xlsx-large-simple-package-artifact-threshold.js'
 import { releaseOwnedXlsxSourceBytes, type OwnedXlsxSourceBytes } from './xlsx-owned-source-release.js'
-import {
-  attachImportedXlsxSourceBytes,
-  attachImportedXlsxSourceReader,
-  createTempFileImportedXlsxSourceReader,
-  type ImportedXlsxSourceReader,
-} from './xlsx-source-bytes.js'
+import { attachImportedXlsxSourceBytes, attachImportedXlsxSourceReader, type ImportedXlsxSourceReader } from './xlsx-source-bytes.js'
+import { createTempFileImportedXlsxSourceReader } from './xlsx-source-bytes-node.js'
 import {
   readLazyXlsxZipSource,
   readXlsxZipEntries,
@@ -69,8 +65,8 @@ export type { ExcelWorkbookImportContentType, WorkbookImportContentType } from '
 
 const largeCalcChainStreamingByteThreshold = 5_000_000
 const largeSimpleInMemoryUntouchedExportSourceLimit = 8 * 1024 * 1024
-const requireModule = createRequire(import.meta.url)
-const vitestEagerModules = readVitestEagerModules()
+let requireModule: ReturnType<typeof createRequire> | undefined
+const bundledEagerModules = readBundledEagerModules()
 
 type ImportMetaGlob = (patterns: readonly string[], options: { readonly eager: true }) => Readonly<Record<string, unknown>>
 
@@ -123,40 +119,37 @@ let largeSimpleImportModule: LargeSimpleImportModule | undefined
 let largeSimpleInspectModule: LargeSimpleInspectModule | undefined
 
 function loadXlsxExportModule(): XlsxExportModule {
-  xlsxExportModule ??= readXlsxExportModule(readVitestEagerModule('./xlsx-export.js') ?? requireLocalModule('./xlsx-export.js'))
+  xlsxExportModule ??= readXlsxExportModule(readBundledEagerModule('./xlsx-export.js') ?? requireLocalModule('./xlsx-export.js'))
   return xlsxExportModule
 }
 
 function loadCsvImportModule(): CsvImportModule {
-  csvImportModule ??= readCsvImportModule(readVitestEagerModule('./csv-import.js') ?? requireLocalModule('./csv-import.js'))
+  csvImportModule ??= readCsvImportModule(readBundledEagerModule('./csv-import.js') ?? requireLocalModule('./csv-import.js'))
   return csvImportModule
 }
 
 function loadSheetJsImportModule(): SheetJsImportModule {
   sheetJsImportModule ??= readSheetJsImportModule(
-    readVitestEagerModule('./xlsx-sheetjs-import.js') ?? requireLocalModule('./xlsx-sheetjs-import.js'),
+    readBundledEagerModule('./xlsx-sheetjs-import.js') ?? requireLocalModule('./xlsx-sheetjs-import.js'),
   )
   return sheetJsImportModule
 }
 
 function loadLargeSimpleImportModule(): LargeSimpleImportModule {
   largeSimpleImportModule ??= readLargeSimpleImportModule(
-    readVitestEagerModule('./xlsx-large-simple-import.js') ?? requireLocalModule('./xlsx-large-simple-import.js'),
+    readBundledEagerModule('./xlsx-large-simple-import.js') ?? requireLocalModule('./xlsx-large-simple-import.js'),
   )
   return largeSimpleImportModule
 }
 
 function loadLargeSimpleInspectModule(): LargeSimpleInspectModule {
   largeSimpleInspectModule ??= readLargeSimpleInspectModule(
-    readVitestEagerModule('./xlsx-large-simple-headless-inspect.js') ?? requireLocalModule('./xlsx-large-simple-headless-inspect.js'),
+    readBundledEagerModule('./xlsx-large-simple-headless-inspect.js') ?? requireLocalModule('./xlsx-large-simple-headless-inspect.js'),
   )
   return largeSimpleInspectModule
 }
 
-function readVitestEagerModules(): Readonly<Record<string, unknown>> {
-  if (process.env['VITEST'] !== 'true') {
-    return {}
-  }
+function readBundledEagerModules(): Readonly<Record<string, unknown>> {
   if (!isImportMetaGlob(import.meta.glob)) {
     return {}
   }
@@ -172,8 +165,8 @@ function readVitestEagerModules(): Readonly<Record<string, unknown>> {
   )
 }
 
-function readVitestEagerModule(path: string): unknown {
-  return vitestEagerModules[path] ?? vitestEagerModules[path.replace(/\.js$/u, '.ts')]
+function readBundledEagerModule(path: string): unknown {
+  return bundledEagerModules[path] ?? bundledEagerModules[path.replace(/\.js$/u, '.ts')]
 }
 
 function isImportMetaGlob(value: unknown): value is ImportMetaGlob {
@@ -181,6 +174,7 @@ function isImportMetaGlob(value: unknown): value is ImportMetaGlob {
 }
 
 function requireLocalModule(jsPath: string): unknown {
+  requireModule ??= createRequire(import.meta.url)
   try {
     return requireModule(jsPath)
   } catch (error) {

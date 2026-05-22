@@ -110,6 +110,53 @@ describe('typegpu v3 tile text patches', () => {
     expect(writes.some((write) => write.bytes === fullPayloadBytes && write.startOffset === undefined)).toBe(false)
     expect(totalWriteBytes).toBeLessThan(fullPayloadBytes)
   })
+
+  test('rebuilds text resources when an unrelated dirty span changes the visible text-run key set', () => {
+    const writes: RecordedBufferWrite[] = []
+    const artifacts = createRecordedArtifacts(writes)
+    const tileResources = new TypeGpuTileResourceCacheV3(artifacts)
+    const atlas = createGlyphAtlas()
+    const baseTile = createTile()
+    const pane = createPane(baseTile)
+
+    syncTypeGpuTilePaneResourcesV3({
+      atlas,
+      panes: [pane],
+      tileResources,
+    })
+    writes.length = 0
+
+    const nextRuns = createTextRuns(['editor-z-order'])
+    const nextTile = createTile({
+      dirty: {
+        glyphSpans: [],
+        rectSpans: [],
+        textSpans: [{ offset: 0, length: 1 }],
+      },
+      dirtyLocalCols: new Uint32Array([2, 2]),
+      dirtyLocalRows: new Uint32Array([1, 1]),
+      dirtyMasks: new Uint32Array([DirtyMaskV3.Value | DirtyMaskV3.Text]),
+      lastBatchId: 2,
+      textCount: nextRuns.length,
+      textRuns: nextRuns,
+      version: {
+        ...baseTile.version,
+        text: 2,
+        values: 2,
+      },
+    })
+
+    syncTypeGpuTilePaneResourcesV3({
+      atlas,
+      panes: [createPane(nextTile)],
+      tileResources,
+    })
+
+    const content = tileResources.getContent(nextTile.tileId)
+    expect(content.textRunCount).toBe(nextRuns.length)
+    expect(content.textCount).toBeGreaterThan(0)
+    expect(writes.length).toBeGreaterThan(0)
+  })
 })
 
 function createTile(overrides: Partial<GridRenderTile> = {}): GridRenderTile {

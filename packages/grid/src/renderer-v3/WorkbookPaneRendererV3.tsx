@@ -11,7 +11,7 @@ import type { DynamicGridOverlayBatchV3 } from './dynamic-overlay-batch.js'
 import type { WorkbookRenderTilePaneState } from './render-tile-pane-state.js'
 import { WorkbookPaneNativeRectLayerV3 } from './WorkbookPaneNativeRectLayerV3.js'
 import { WorkbookPaneNativeTextLayerV3, type SuppressedNativeTextCellV3 } from './WorkbookPaneNativeTextLayerV3.js'
-import { WorkbookPaneRendererHostRuntimeV3 } from './workbook-pane-renderer-host-runtime.js'
+import { WorkbookPaneRendererHostRuntimeV3, resolveWorkbookPaneFrameProofSignatureV3 } from './workbook-pane-renderer-host-runtime.js'
 
 export interface WorkbookPaneRendererV3Props {
   readonly active: boolean
@@ -103,6 +103,13 @@ export const WorkbookPaneRendererV3 = memo(function WorkbookPaneRendererV3({
   const nativeTileTextRunCount = countTilePaneTextRunsV3(nativeTilePanes)
   const hasNativeTextLayerRuns = nativeHeaderTextRunCount + nativeTileTextRunCount > 0
   const showNativeTextLayer = active && hasNativeTextLayerRuns
+  const semanticFrameInputSignature = resolveWorkbookPaneFrameProofSignatureV3({
+    drawText: true,
+    headerPanes,
+    overlay: overlay ?? null,
+    renderRevisionSnapshot,
+    tilePanes,
+  })
 
   useLayoutEffect(() => {
     hostRuntime.updateProps({
@@ -130,6 +137,7 @@ export const WorkbookPaneRendererV3 = memo(function WorkbookPaneRendererV3({
     overlayBuilder,
     preloadTilePanes,
     renderRevisionSnapshot,
+    semanticFrameInputSignature,
     scrollTransformStore,
     tilePanes,
   ])

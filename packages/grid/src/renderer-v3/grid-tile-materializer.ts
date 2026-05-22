@@ -538,6 +538,10 @@ function canReuseStaticGridRectsForTile(input: MaterializeGridRenderTileInputV3,
   if (!baseTile || baseTile.tileId !== tileId) {
     return false
   }
+  const contentRevision = resolveMaterializerContentRevision(input.engine)
+  if (contentRevision !== null && baseTile.lastBatchId < contentRevision) {
+    return false
+  }
   if (
     baseTile.bounds.rowStart !== input.viewport.rowStart ||
     baseTile.bounds.rowEnd !== input.viewport.rowEnd ||
@@ -558,6 +562,21 @@ function canReuseStaticGridRectsForTile(input: MaterializeGridRenderTileInputV3,
     }
   }
   return true
+}
+
+function resolveMaterializerContentRevision(engine: GridEngineLike): number | null {
+  const revision = engine.getRenderRevisionSnapshot?.()
+  if (!revision) {
+    return null
+  }
+  let result: number | null = null
+  for (const value of [revision.authoritativeRevision, revision.localRevision, revision.projectedRevision]) {
+    if (value === null || value === undefined || !Number.isFinite(value)) {
+      continue
+    }
+    result = result === null ? value : Math.max(result, value)
+  }
+  return result
 }
 
 export function createTileCellBoundsResolverV3(

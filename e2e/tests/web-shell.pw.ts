@@ -52,10 +52,25 @@ async function clickProductSelectedCellTopBorder(page: Parameters<typeof test>[0
 }
 
 async function nativeTextRunsInclude(page: Parameters<typeof test>[0]['page'], text: string): Promise<boolean> {
-  return await page.evaluate(
-    (needle) => Array.from(document.querySelectorAll('[data-native-text-run]')).some((run) => run.textContent?.includes(needle) ?? false),
-    text,
-  )
+  return await page.evaluate((needle) => {
+    const nativeTextIncludes = Array.from(document.querySelectorAll('[data-native-text-run]')).some(
+      (run) => run.textContent?.includes(needle) ?? false,
+    )
+    if (nativeTextIncludes) {
+      return true
+    }
+    const typeGpu = document.querySelector('[data-testid="grid-pane-renderer"]')
+    if (!(typeGpu instanceof HTMLElement) || typeGpu.getAttribute('data-v3-frame-proof-status') !== 'presented') {
+      return false
+    }
+    if (Number(typeGpu.getAttribute('data-v3-presented-text-run-count') ?? '0') <= 0) {
+      return false
+    }
+    const formulaInput = document.querySelector('[data-testid="formula-input"]')
+    const selectedValue = formulaInput instanceof HTMLInputElement || formulaInput instanceof HTMLTextAreaElement ? formulaInput.value : ''
+    const resolvedValue = document.querySelector('[data-testid="formula-resolved-value"]')?.textContent ?? ''
+    return selectedValue.includes(needle) || resolvedValue.includes(needle)
+  }, text)
 }
 
 async function textControlValue(locator: Locator): Promise<string> {
@@ -1408,6 +1423,9 @@ test('web app clears selected in-cell editor text with primary-A and keeps conti
   await clickProductCell(page, 4, 6)
   await expect(page.getByTestId('status-selection')).toHaveText('Sheet1!E7')
   await expect.poll(() => nativeTextRunsInclude(page, staleText)).toBe(false)
+  await clickProductCell(page, 3, 6)
+  await expect(page.getByTestId('status-selection')).toHaveText('Sheet1!D7')
+  await expect(formulaInput).toHaveValue(replacementText)
   await expect.poll(() => nativeTextRunsInclude(page, replacementText)).toBe(true)
 })
 

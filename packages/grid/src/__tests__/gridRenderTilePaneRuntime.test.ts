@@ -103,6 +103,38 @@ function hasOpaqueGreenFillRect(tile: GridRenderTile | undefined): boolean {
   return false
 }
 
+function hasOpaqueGreenFillRectCovering(tile: GridRenderTile | undefined, x: number, y: number): boolean {
+  if (!tile) {
+    return false
+  }
+  for (let index = 0; index < tile.rectCount; index += 1) {
+    const offset = index * GRID_RECT_INSTANCE_FLOAT_COUNT_V3
+    const rectX = tile.rectInstances[offset] ?? 0
+    const rectY = tile.rectInstances[offset + 1] ?? 0
+    const rectWidth = tile.rectInstances[offset + 2] ?? 0
+    const rectHeight = tile.rectInstances[offset + 3] ?? 0
+    const red = tile.rectInstances[offset + 4] ?? 1
+    const green = tile.rectInstances[offset + 5] ?? 0
+    const blue = tile.rectInstances[offset + 6] ?? 1
+    const alpha = tile.rectInstances[offset + 7] ?? 0
+    const instanceKind = tile.rectInstances[offset + 13] ?? -1
+    if (
+      instanceKind === 0 &&
+      x >= rectX &&
+      x < rectX + rectWidth &&
+      y >= rectY &&
+      y < rectY + rectHeight &&
+      red < 0.05 &&
+      green > 0.95 &&
+      blue < 0.05 &&
+      alpha > 0.95
+    ) {
+      return true
+    }
+  }
+  return false
+}
+
 function getResidentGridRenderTile(host: GridRuntimeHost, tileId: number): GridRenderTile | undefined {
   const packet = host.tiles.residency.getExact(tileId)?.packet
   if (typeof packet !== 'object' || packet === null) {
@@ -2288,6 +2320,102 @@ describe('GridRenderTilePaneRuntime', () => {
     expect(resolved.residentBodyPane?.tile.version.styles).toBe(50)
   })
 
+  it('does not reuse stale rects when selection text refresh follows a structural projection change', () => {
+    const runtime = new GridRenderTilePaneRuntime()
+    const host = createHost()
+    const viewport = { colEnd: 127, colStart: 0, rowEnd: 63, rowStart: 32 }
+    const tileId = host.viewportTileKeys({
+      dprBucket: 1,
+      sheetOrdinal: 7,
+      viewport,
+    })[0]
+    if (tileId === undefined) {
+      throw new Error('Expected a visible render tile key for the test viewport')
+    }
+    const greenStyle: CellStyleRecord = { id: 'style-green', fill: { backgroundColor: '#00ff00' } }
+    const staleEngine: GridEngineLike = {
+      getCell: (_sheetName, address) =>
+        address === 'B37'
+          ? createStyledStringCellSnapshot(address, 'row-delete-survivor', greenStyle.id)
+          : createEmptyCellSnapshot(address),
+      getCellStyle: (styleId) => (styleId === greenStyle.id ? greenStyle : undefined),
+      getRenderRevisionSnapshot: () => ({
+        authoritativeRevision: 3,
+        localRevision: 3,
+        projectedRevision: 3,
+        tileSceneCameraSeq: 3,
+        tileSceneRevision: 3,
+      }),
+      subscribeCells: () => () => {},
+      workbook: {
+        getSheet: () => undefined,
+      },
+    }
+    const staleRemoteTile = materializeGridRenderTileV3({
+      axisSeqX: 1,
+      axisSeqY: 1,
+      cameraSeq: 3,
+      columnWidths: {},
+      dprBucket: 1,
+      engine: staleEngine,
+      freezeSeq: 0,
+      glyphAtlasSeq: 0,
+      gridMetrics: getGridMetrics(),
+      materializedAtSeq: 3,
+      packetSeq: 3,
+      rectSeq: 3,
+      rowHeights: {},
+      sheetId: 7,
+      sheetOrdinal: 7,
+      sheetName: 'Sheet1',
+      sortedColumnWidthOverrides: [],
+      sortedRowHeightOverrides: [],
+      styleSeq: 3,
+      textSeq: 3,
+      valueSeq: 3,
+      viewport,
+    })
+    const currentEngine: GridEngineLike = {
+      getCell: (_sheetName, address) =>
+        address === 'B36'
+          ? createStyledStringCellSnapshot(address, 'row-delete-survivor', greenStyle.id)
+          : createEmptyCellSnapshot(address),
+      getCellStyle: (styleId) => (styleId === greenStyle.id ? greenStyle : undefined),
+      getRenderRevisionSnapshot: () => ({
+        authoritativeRevision: 4,
+        localRevision: 4,
+        projectedRevision: 4,
+        tileSceneCameraSeq: 4,
+        tileSceneRevision: 4,
+      }),
+      subscribeCells: () => () => {},
+      workbook: {
+        getSheet: () => undefined,
+      },
+    }
+
+    const refreshed = runtime.resolve(
+      createInput({
+        engine: currentEngine,
+        gridRuntimeHost: host,
+        renderTileSource: createRenderTileSource([staleRemoteTile]),
+        renderTileViewport: viewport,
+        residentViewport: viewport,
+        sceneRevision: 4,
+        selectedCell: [1, 36],
+        selectedCellSnapshot: createEmptyCellSnapshot('B37'),
+        visibleViewport: viewport,
+      }),
+    )
+
+    const tile = refreshed.residentBodyPane?.tile
+    expect(tile).not.toBe(staleRemoteTile)
+    expect(hasOpaqueGreenFillRectCovering(tile, 110, 70)).toBe(true)
+    expect(hasOpaqueGreenFillRectCovering(tile, 110, 90)).toBe(false)
+    expect(tile?.lastBatchId).toBe(4)
+    expect(tile?.version.styles).toBe(4)
+  })
+
   it('keeps local tiles through stale render tile deltas until the renderer batch catches up', () => {
     const runtime = new GridRenderTilePaneRuntime()
     const host = createHost()
@@ -3649,6 +3777,48 @@ describe('GridRenderTilePaneRuntime', () => {
     expect(localized.renderTilePanes[0]?.tile.rectInstances).toBe(rectInstances)
     expect(localized.renderTilePanes[0]?.tile.dirtyMasks).toEqual(new Uint32Array([DirtyMaskV3.Value | DirtyMaskV3.Text]))
     expect(localized.renderTilePanes[0]?.tile.dirty?.rectSpans).toEqual([])
+  })
+
+  it('keeps text-only editing localization on the base-tile patch path when visible text is stale', () => {
+    const runtime = new GridRenderTilePaneRuntime()
+    const host = createHost()
+    const tileId = host.viewportTileKeys({
+      dprBucket: 1,
+      sheetOrdinal: 7,
+      viewport: { colEnd: 127, colStart: 0, rowEnd: 31, rowStart: 0 },
+    })[0]
+    if (tileId === undefined) {
+      throw new Error('Expected a visible render tile key for the test viewport')
+    }
+    const rectInstances = createGridBorderRectInstances(64)
+    const remoteTile: GridRenderTile = {
+      ...createRenderTile(tileId),
+      rectCount: 64,
+      rectInstances,
+      textCount: 0,
+      textRuns: [],
+    }
+    const editAddress = 'F7'
+
+    const localized = runtime.resolve(
+      createInput({
+        editingCell: [5, 6],
+        engine: {
+          ...LOCAL_EMPTY_ENGINE,
+          getCell: (_sheetName, address) =>
+            address === editAddress ? createStringCellSnapshot(editAddress, 'editing draft') : createEmptyCellSnapshot(address),
+        },
+        gridRuntimeHost: host,
+        renderTileSource: createRenderTileSource([remoteTile]),
+        selectedCell: [5, 6],
+        selectedCellSnapshot: createStringCellSnapshot(editAddress, 'editing draft'),
+      }),
+    )
+
+    expect(localized.renderTilePanes[0]?.tile.tileId).toBe(tileId)
+    expect(localized.renderTilePanes[0]?.tile.rectInstances).toBe(rectInstances)
+    expect(localized.renderTilePanes[0]?.tile.textRuns.map((run) => run.text)).not.toContain('editing draft')
+    expect(localized.renderTilePanes[0]?.tile.dirtyMasks).toEqual(new Uint32Array([DirtyMaskV3.Value | DirtyMaskV3.Text]))
   })
 
   it('applies local optimistic workbook deltas after higher authoritative seqs on the same sheet', () => {

@@ -8,7 +8,13 @@ import {
   type TypeGpuRendererArtifacts,
   updateTypeGpuSurfaceUniform,
 } from './typegpu-primitives.js'
-import { noteGridDrawFrame, noteTypeGpuDrawCall, noteTypeGpuPaneDraw, noteTypeGpuSubmit } from '../grid-render-counters.js'
+import {
+  noteGridDrawFrame,
+  noteTypeGpuDrawCall,
+  noteTypeGpuFrameReject,
+  noteTypeGpuPaneDraw,
+  noteTypeGpuSubmit,
+} from '../grid-render-counters.js'
 import {
   WORKBOOK_DYNAMIC_OVERLAY_CHROME_LAYER_KEY_V3,
   WORKBOOK_DYNAMIC_OVERLAY_FILL_LAYER_KEY_V3,
@@ -19,6 +25,10 @@ import {
 import type { DynamicGridOverlayBatchV3 } from './dynamic-overlay-batch.js'
 import type { WorkbookRenderTilePaneState } from './render-tile-pane-state.js'
 import {
+  areGridRectTileRevisionKeysEqualV3,
+  areGridTextTileRevisionKeysEqualV3,
+  resolveGridRectTileRevisionKeyV3,
+  resolveGridTextTileRevisionKeyV3,
   ensureTilePlacementSurfaceBindingsV3,
   resolveWorkbookTileContentBufferKeyV3,
   resolveWorkbookTilePlacementBufferKeyV3,
@@ -41,8 +51,29 @@ export function hasCompleteTypeGpuBodyTileContentV3(input: {
   readonly tilePanes: readonly WorkbookRenderTilePaneState[]
   readonly tileResources: Pick<TypeGpuTileResourceCacheV3, 'peekContent'>
 }): boolean {
+  return resolveTypeGpuBodyTileContentCompletenessV3(input).complete
+}
+
+export function resolveTypeGpuBodyTileContentCompletenessV3(input: {
+  readonly drawText?: boolean | undefined
+  readonly surface?: TypeGpuTileDrawSurface | undefined
+  readonly tilePanes: readonly WorkbookRenderTilePaneState[]
+  readonly tileResources: Pick<TypeGpuTileResourceCacheV3, 'peekContent'>
+}):
+  | { readonly complete: true }
+  | {
+      readonly complete: false
+      readonly expectedRectCount?: number | undefined
+      readonly expectedTextRunCount?: number | undefined
+      readonly paneId?: string | undefined
+      readonly reason: string
+      readonly resourceRectCount?: number | undefined
+      readonly resourceTextCount?: number | undefined
+      readonly resourceTextRunCount?: number | undefined
+      readonly tileId?: number | undefined
+    } {
   if (input.tilePanes.length === 0) {
-    return false
+    return { complete: false, reason: 'no-tile-panes' }
   }
   for (const pane of input.tilePanes) {
     if (pane.paneId !== 'body' && !pane.paneId.startsWith('body:')) {
@@ -56,19 +87,110 @@ export function hasCompleteTypeGpuBodyTileContentV3(input: {
     }
     const content = input.tileResources.peekContent(resolveWorkbookTileContentBufferKeyV3(pane))
     if (!content) {
-      return false
+      return {
+        complete: false,
+        expectedRectCount: pane.tile.rectCount,
+        expectedTextRunCount: pane.tile.textCount,
+        paneId: pane.paneId,
+        reason: 'missing-content',
+        tileId: pane.tile.tileId,
+      }
     }
     if (content.rectCount === 0 && content.textCount === 0) {
-      return false
+      if (
+        (input.drawText ?? true) &&
+        pane.tile.textCount > 0 &&
+        isCompleteEmptyTypeGpuTileRectContentV3({ content, pane }) &&
+        isCompleteTypeGpuTileTextContentV3({ content, pane })
+      ) {
+        continue
+      }
+      if (!isCompleteEmptyTypeGpuTileContentV3({ content, drawText: input.drawText, pane })) {
+        return {
+          complete: false,
+          expectedRectCount: pane.tile.rectCount,
+          expectedTextRunCount: pane.tile.textCount,
+          paneId: pane.paneId,
+          reason: 'empty-content-stale-or-incomplete',
+          resourceRectCount: content.rectCount,
+          resourceTextCount: content.textCount,
+          resourceTextRunCount: content.textRunCount,
+          tileId: pane.tile.tileId,
+        }
+      }
+      continue
     }
-    if (
-      (pane.tile.rectCount > 0 && (!content.rectHandle || content.rectCount < pane.tile.rectCount)) ||
-      ((input.drawText ?? true) && pane.tile.textCount > 0 && (!content.textHandle || content.textCount === 0))
-    ) {
-      return false
+    if (pane.tile.rectCount > 0 && (!content.rectHandle || content.rectCount < pane.tile.rectCount)) {
+      return {
+        complete: false,
+        expectedRectCount: pane.tile.rectCount,
+        expectedTextRunCount: pane.tile.textCount,
+        paneId: pane.paneId,
+        reason: 'rect-content-incomplete',
+        resourceRectCount: content.rectCount,
+        resourceTextCount: content.textCount,
+        resourceTextRunCount: content.textRunCount,
+        tileId: pane.tile.tileId,
+      }
+    }
+    if ((input.drawText ?? true) && pane.tile.textCount > 0 && !isCompleteTypeGpuTileTextContentV3({ content, pane })) {
+      return {
+        complete: false,
+        expectedRectCount: pane.tile.rectCount,
+        expectedTextRunCount: pane.tile.textCount,
+        paneId: pane.paneId,
+        reason: 'text-content-incomplete',
+        resourceRectCount: content.rectCount,
+        resourceTextCount: content.textCount,
+        resourceTextRunCount: content.textRunCount,
+        tileId: pane.tile.tileId,
+      }
     }
   }
-  return true
+  return { complete: true }
+}
+
+function isCompleteEmptyTypeGpuTileRectContentV3(input: {
+  readonly content: NonNullable<ReturnType<TypeGpuTileResourceCacheV3['peekContent']>>
+  readonly pane: WorkbookRenderTilePaneState
+}): boolean {
+  if (input.pane.tile.rectCount > 0) {
+    return false
+  }
+  const rectRevisionKey = resolveGridRectTileRevisionKeyV3({ tile: input.pane.tile })
+  return areGridRectTileRevisionKeysEqualV3(input.content.rectRevisionKey, rectRevisionKey)
+}
+
+function isCompleteEmptyTypeGpuTileContentV3(input: {
+  readonly content: NonNullable<ReturnType<TypeGpuTileResourceCacheV3['peekContent']>>
+  readonly drawText?: boolean | undefined
+  readonly pane: WorkbookRenderTilePaneState
+}): boolean {
+  if (((input.drawText ?? true) && input.pane.tile.textCount > 0) || !isCompleteEmptyTypeGpuTileRectContentV3(input)) {
+    return false
+  }
+  if (!(input.drawText ?? true)) {
+    return true
+  }
+  const textRevisionKey = resolveGridTextTileRevisionKeyV3(input.pane.tile)
+  return areGridTextTileRevisionKeysEqualV3(input.content.textRevisionKey, textRevisionKey)
+}
+
+function isCompleteTypeGpuTileTextContentV3(input: {
+  readonly content: NonNullable<ReturnType<TypeGpuTileResourceCacheV3['peekContent']>>
+  readonly pane: WorkbookRenderTilePaneState
+}): boolean {
+  const textRevisionKey = resolveGridTextTileRevisionKeyV3(input.pane.tile)
+  if (!areGridTextTileRevisionKeysEqualV3(input.content.textRevisionKey, textRevisionKey)) {
+    return false
+  }
+  if (!input.content.textHandle) {
+    return false
+  }
+  if (input.content.textCount > 0) {
+    return true
+  }
+  return input.content.textRunCount >= input.pane.tile.textCount
 }
 
 function isPaneDrawVisible(pane: WorkbookRenderTilePaneState | GridHeaderPaneState): boolean {
@@ -86,7 +208,13 @@ export function drawTypeGpuTilePanesV3(input: {
   readonly surface: TypeGpuTileDrawSurface
   readonly scrollSnapshot: WorkbookGridScrollSnapshot
 }): boolean {
-  if (!hasCompleteTypeGpuBodyTileContentV3(input) || !hasDrawableTypeGpuBodyPaneFramesV3(input)) {
+  const contentCompleteness = resolveTypeGpuBodyTileContentCompletenessV3(input)
+  if (!contentCompleteness.complete) {
+    noteTypeGpuFrameReject(contentCompleteness)
+    return false
+  }
+  if (!hasDrawableTypeGpuBodyPaneFramesV3(input)) {
+    noteTypeGpuFrameReject({ reason: 'no-drawable-body-pane' })
     return false
   }
 

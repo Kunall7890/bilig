@@ -151,6 +151,7 @@ export function resolveTypeGpuV3DrawScrollSnapshot(input: {
 }
 
 export class WorkbookPaneRendererRuntimeV3 {
+  private failedFrameRetryCount = 0
   private cameraStoreUnsubscribe: (() => void) | null = null
   private scrollStoreUnsubscribe: (() => void) | null = null
   private state: WorkbookPaneRendererRuntimeStateV3 = EMPTY_RUNTIME_STATE
@@ -228,18 +229,18 @@ export class WorkbookPaneRendererRuntimeV3 {
       geometry: latestGeometry,
       panes: state.tilePanes,
     })
-    const submitted =
-      this.drawFrame({
-        backend: state.backend,
-        drawText: state.drawText,
-        headerPanes: state.headerPanes,
-        overlay: overlayBatch ?? null,
-        preloadTilePanes: state.preloadTilePanes,
-        scrollSnapshot,
-        surface: state.surface,
-        syncPreloadPanes: frameDecision.syncPreloadPanes,
-        tilePanes: state.tilePanes,
-      }) === true
+    const drawResult = this.drawFrame({
+      backend: state.backend,
+      drawText: state.drawText,
+      headerPanes: state.headerPanes,
+      overlay: overlayBatch ?? null,
+      preloadTilePanes: state.preloadTilePanes,
+      scrollSnapshot,
+      surface: state.surface,
+      syncPreloadPanes: frameDecision.syncPreloadPanes,
+      tilePanes: state.tilePanes,
+    })
+    const submitted = drawResult === true
     this.frameResultListener?.({
       submitted,
       visualFrame: submitted
@@ -257,6 +258,14 @@ export class WorkbookPaneRendererRuntimeV3 {
           }
         : null,
     })
+    if (submitted) {
+      this.failedFrameRetryCount = 0
+      return
+    }
+    if (drawResult === false && this.failedFrameRetryCount < 3 && hasRetriableWorkbookPaneFrameV3(state)) {
+      this.failedFrameRetryCount += 1
+      this.requestDraw()
+    }
   }
 
   dispose(): void {
@@ -265,6 +274,7 @@ export class WorkbookPaneRendererRuntimeV3 {
     this.frameResultListener = null
     this.inputSignalListener = null
     this.state = EMPTY_RUNTIME_STATE
+    this.failedFrameRetryCount = 0
   }
 
   private syncStoreSubscriptions(): void {
@@ -297,6 +307,10 @@ export class WorkbookPaneRendererRuntimeV3 {
     this.subscribedCameraStore = null
     this.subscribedScrollStore = null
   }
+}
+
+function hasRetriableWorkbookPaneFrameV3(state: WorkbookPaneRendererRuntimeStateV3): boolean {
+  return state.headerPanes.length > 0 || state.tilePanes.some((pane) => pane.drawVisible !== false)
 }
 
 function hasDirtyTilePaneResources(panes: readonly WorkbookRenderTilePaneState[]): boolean {

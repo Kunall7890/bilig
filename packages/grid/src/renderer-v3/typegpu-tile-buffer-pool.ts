@@ -933,9 +933,17 @@ function shouldSkipTextResourceSyncForNonIntersectingDirtyCells(input: {
   return (
     !input.previousTextRunCellKeys.some((key) => isCellKeyDirtyForTile(key, input.tile)) &&
     !input.nextTextRunCellKeys.some((key) => isCellKeyDirtyForTile(key, input.tile)) &&
+    areTextRunCellKeySequencesEqual(input.previousTextRunCellKeys, input.nextTextRunCellKeys) &&
     input.content.textRunCount === input.previousTextRunCellKeys.length &&
     input.textRevisionKey.textRunCount === input.nextTextRunCellKeys.length
   )
+}
+
+function areTextRunCellKeySequencesEqual(left: readonly string[], right: readonly string[]): boolean {
+  if (left.length !== right.length) {
+    return false
+  }
+  return left.every((key, index) => key === right[index])
 }
 
 function hasOnlyLocalTextCellDirtyMasks(tile: GridRenderTile): boolean {

@@ -802,20 +802,24 @@ test('@browser-ci web app moves background fill presentation without source or t
 test('@browser-ci web app repaints shifted styled survivors after structural row delete', async ({ page }) => {
   const documentId = createTestDocumentId('playwright-structural-row-delete-visual-survivor')
   const survivorText = 'row-delete-survivor'
+  const survivorRow = 36
+  const shiftedSurvivorRow = survivorRow - 1
   await page.setViewportSize({ width: 1280, height: 1040 })
   await page.goto(`/?document=${encodeURIComponent(documentId)}&persist=0&sheet=Sheet1&cell=A1`)
   await waitForWorkbookReady(page)
 
   const formulaInput = page.getByTestId('formula-input')
 
-  await clickProductCell(page, 1, 39)
+  await clickProductCell(page, 1, survivorRow)
   await formulaInput.fill(survivorText)
   await formulaInput.press('Enter')
+  await clickProductCell(page, 1, survivorRow)
+  await expect(page.getByTestId('status-selection')).toHaveText('Sheet1!B37')
   await pickToolbarPresetColor(page, 'Fill color', 'green')
   await expect
     .poll(
       async () => {
-        await clickProductCell(page, 1, 39)
+        await clickProductCell(page, 1, survivorRow)
         return await formulaInput.inputValue()
       },
       {
@@ -824,8 +828,10 @@ test('@browser-ci web app repaints shifted styled survivors after structural row
       },
     )
     .toBe(survivorText)
-  await expect.poll(() => countGreenFillReadbackPixelsInCell(page, 1, 39)).toBeGreaterThan(120)
+  await expect.poll(() => countGreenFillReadbackPixelsInCell(page, 1, survivorRow)).toBeGreaterThan(120)
 
+  const preDeleteReadbackSequence = await readCellReadbackSequence(page)
+  const preDeleteRenderRevision = await readVisibleRenderRevision(page)
   await dragProductHeaderSelection(page, 'row', 1, 1)
   await expect(page.getByTestId('status-selection')).toHaveText('Sheet1!2:2')
   await page.keyboard.down(PRIMARY_MODIFIER)
@@ -837,7 +843,7 @@ test('@browser-ci web app repaints shifted styled survivors after structural row
   await expect
     .poll(
       async () => {
-        await clickProductCell(page, 1, 38)
+        await clickProductCell(page, 1, shiftedSurvivorRow)
         return await formulaInput.inputValue()
       },
       {
@@ -849,7 +855,7 @@ test('@browser-ci web app repaints shifted styled survivors after structural row
   await expect
     .poll(
       async () => {
-        await clickProductCell(page, 1, 39)
+        await clickProductCell(page, 1, survivorRow)
         return await formulaInput.inputValue()
       },
       {
@@ -859,13 +865,25 @@ test('@browser-ci web app repaints shifted styled survivors after structural row
     )
     .toBe('')
   await expect
-    .poll(() => countGreenFillReadbackPixelsInCell(page, 1, 38), {
+    .poll(() => readVisibleRenderRevision(page), {
+      message: 'row delete should present a newer TypeGPU frame before fill readback',
+      timeout: 5_000,
+    })
+    .toBeGreaterThan(preDeleteRenderRevision)
+  await expect
+    .poll(() => readCellReadbackSequence(page), {
+      message: 'row delete should produce a fresh canvas readback before shifted-fill assertions',
+      timeout: 5_000,
+    })
+    .toBeGreaterThan(preDeleteReadbackSequence)
+  await expect
+    .poll(() => countGreenFillReadbackPixelsInCell(page, 1, shiftedSurvivorRow), {
       message: 'the shifted survivor should keep its green fill',
       timeout: 5_000,
     })
     .toBeGreaterThan(120)
   await expect
-    .poll(() => countGreenFillReadbackPixelsInCell(page, 1, 39), {
+    .poll(() => countGreenFillReadbackPixelsInCell(page, 1, survivorRow), {
       message: 'the old row tile should not keep stale green fill',
       timeout: 5_000,
     })
@@ -1011,6 +1029,24 @@ function shouldAllowHeadlessWebGpuScreenshotGap(): boolean {
   return process.platform === 'darwin' && process.env['CI'] !== '1' && process.env['CI'] !== 'true'
 }
 
+async function readVisibleRenderRevision(page: Page): Promise<number> {
+  return await page.getByTestId('grid-pane-renderer').evaluate((node) => {
+    const value = Number(node.getAttribute('data-v3-visible-render-revision') ?? 0)
+    return Number.isFinite(value) ? value : 0
+  })
+}
+
+async function readCellReadbackSequence(page: Page): Promise<number> {
+  return await page.evaluate(
+    () =>
+      (
+        window as Window & {
+          __biligCellReadbackInspector?: { readonly getSequence: () => number }
+        }
+      ).__biligCellReadbackInspector?.getSequence() ?? 0,
+  )
+}
+
 function readRenderRevisionState(page: Page): () => Promise<{
   readonly projectedRevision: string
   readonly projectedRevisionPresent: boolean
@@ -1075,20 +1111,39 @@ function readTypeGpuTextRunCount(page: Page): () => Promise<number> {
 }
 
 function readTypeGpuPresentationState(page: Page): () => Promise<{
+  readonly frameProofStatus: string | null
   readonly hasBodyTextPayload: boolean
   readonly hasHeaderTextPayload: boolean
+  readonly hasPresentedAnyFrame: boolean
   readonly hasPresentedBodyTextPayload: boolean
+  readonly hasPresentedVisibleFrame: boolean
   readonly nativeTextLayerMounted: boolean
+  readonly presentedHeaderTextRunCount: number
+  readonly presentedTextRunCount: number
+  readonly presentedTilePaneCount: number
+  readonly textRunCount: number
+  readonly tilePaneCount: number
 }> {
   return async () =>
     await page.evaluate(() => {
       const typeGpu = document.querySelector('[data-testid="grid-pane-renderer"]')
       const readNumberAttribute = (name: string) => (typeGpu instanceof HTMLElement ? Number(typeGpu.getAttribute(name) ?? '0') : 0)
+      const readStringAttribute = (name: string) => (typeGpu instanceof HTMLElement ? typeGpu.getAttribute(name) : null)
+      const textRunCount = readNumberAttribute('data-v3-text-run-count')
+      const presentedTextRunCount = readNumberAttribute('data-v3-presented-text-run-count')
       return {
-        hasBodyTextPayload: readNumberAttribute('data-v3-text-run-count') > 0,
+        frameProofStatus: readStringAttribute('data-v3-frame-proof-status'),
+        hasBodyTextPayload: textRunCount > 0,
         hasHeaderTextPayload: readNumberAttribute('data-v3-header-text-run-count') > 0,
-        hasPresentedBodyTextPayload: readNumberAttribute('data-v3-presented-text-run-count') > 0,
+        hasPresentedAnyFrame: readStringAttribute('data-v3-has-presented-any-frame') === 'true',
+        hasPresentedBodyTextPayload: presentedTextRunCount > 0,
+        hasPresentedVisibleFrame: readStringAttribute('data-v3-has-presented-visible-frame') === 'true',
         nativeTextLayerMounted: document.querySelector('[data-testid="grid-native-text-layer"]') instanceof HTMLElement,
+        presentedHeaderTextRunCount: readNumberAttribute('data-v3-presented-header-text-run-count'),
+        presentedTextRunCount,
+        presentedTilePaneCount: readNumberAttribute('data-v3-presented-tile-pane-count'),
+        textRunCount,
+        tilePaneCount: readNumberAttribute('data-v3-tile-pane-count'),
       }
     })
 }

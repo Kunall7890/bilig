@@ -195,6 +195,7 @@ export function useWorkbookGridPaneRenderRuntime(input: {
   const shouldUseRemoteRenderTileSource = resolveShouldUseRemoteRenderTileSource({ renderTileSource, sheetId })
   const viewportResidency = useWorkbookGridViewportRuntime({
     columnAxis,
+    editingCell,
     engine,
     freezeCols,
     freezeRows,

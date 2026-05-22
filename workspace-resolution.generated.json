@@ -43,6 +43,10 @@
     "packageDir": "packages/excel-import",
     "sourceEntry": "packages/excel-import/src/index.ts"
   },
+  "@bilig/excel-import/browser": {
+    "packageDir": "packages/excel-import",
+    "sourceEntry": "packages/excel-import/src/browser.ts"
+  },
   "@bilig/exceljs-formula-recalc": {
     "packageDir": "packages/bilig-exceljs-formula-recalc",
     "sourceEntry": "packages/bilig-exceljs-formula-recalc/src/index.ts"

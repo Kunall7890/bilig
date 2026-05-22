@@ -852,6 +852,11 @@ export class GridRenderTilePaneRuntime {
         })
       const shouldLocalizeEditingCellText =
         editingCellTileKey === tileKey || (input.editingCell !== null && input.editingCell !== undefined && visibleTileKeys.has(tileKey))
+      const canPatchEditingCellTextFromBaseTile =
+        shouldLocalizeEditingCellText &&
+        editingCellTileKey === tileKey &&
+        !shouldLocalizeDirtyPresentation &&
+        (dirtyMask & ~(DirtyMaskV3.Value | DirtyMaskV3.Text)) === 0
       if (
         shouldLocalizeDirty ||
         isMissingResidentTile ||
@@ -870,7 +875,8 @@ export class GridRenderTilePaneRuntime {
         if (
           (shouldLocalizeDirty || shouldLocalizeSelectedCellText || shouldLocalizeVisibleText || shouldLocalizeEditingCellText) &&
           !shouldLocalizeDirtyPresentation &&
-          !shouldLocalizeVisibleText &&
+          !shouldLocalizeProjectedRevision &&
+          (!shouldLocalizeVisibleText || canPatchEditingCellTextFromBaseTile) &&
           canReuseTileRects
         ) {
           dirtyBaseTiles.set(tileKey, tile)

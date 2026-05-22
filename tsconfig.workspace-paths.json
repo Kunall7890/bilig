@@ -13,6 +13,7 @@
       "@bilig/core/headless-runtime": ["./packages/core/src/headless-runtime.ts"],
       "@bilig/excel-fixtures": ["./packages/excel-fixtures/src/index.ts"],
       "@bilig/excel-import": ["./packages/excel-import/src/index.ts"],
+      "@bilig/excel-import/browser": ["./packages/excel-import/src/browser.ts"],
       "@bilig/exceljs-formula-recalc": ["./packages/bilig-exceljs-formula-recalc/src/index.ts"],
       "@bilig/formula": ["./packages/formula/src/index.ts"],
       "@bilig/formula/external-function-adapter": ["./packages/formula/src/external-function-adapter.ts"],

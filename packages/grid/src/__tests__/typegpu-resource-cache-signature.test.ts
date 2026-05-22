@@ -76,6 +76,20 @@ function contentEntry(overrides: Partial<TypeGpuTileContentResourceEntryV3> = {}
   }
 }
 
+function rectHandle(): NonNullable<TypeGpuTileContentResourceEntryV3['rectHandle']> {
+  return {
+    buffer: {
+      write() {
+        return undefined
+      },
+    },
+    capacityBytes: 256,
+    classId: 8,
+    layout: 'rectInstances',
+    usedBytes: 80,
+  }
+}
+
 describe('typegpu v3 resource cache revision keys', () => {
   test('keeps equivalent V3 text tile revision keys stable without relying on object identity', () => {
     const first = createTile({
@@ -421,6 +435,31 @@ describe('typegpu v3 resource cache revision keys', () => {
         tile: textOnlyUpdate,
       }),
     ).toBe(false)
+  })
+
+  test('resyncs rect resources when text-only dirty masks carry a changed rect payload', () => {
+    const base = createTile({ rectSignature: 'green-fill-at-row-37' })
+    const shiftedFill = createTile({
+      dirtyLocalCols: new Uint32Array([1, 1]),
+      dirtyLocalRows: new Uint32Array([35, 35]),
+      dirtyMasks: new Uint32Array([DirtyMaskV3.Value | DirtyMaskV3.Text]),
+      rectCount: base.rectCount,
+      rectInstances: new Float32Array(base.rectInstances),
+      rectSignature: 'green-fill-at-row-36',
+      version: { ...base.version, text: 2, values: 2 },
+    })
+
+    expect(
+      shouldSyncGridRectTileResourceV3({
+        content: contentEntry({
+          rectCount: base.rectCount,
+          rectHandle: rectHandle(),
+          rectRevisionKey: rectRevisionKey(base),
+        }),
+        rectRevisionKey: rectRevisionKey(shiftedFill),
+        tile: shiftedFill,
+      }),
+    ).toBe(true)
   })
 
   test('reuses clean V3 rect resources when only global batch revisions advance', () => {

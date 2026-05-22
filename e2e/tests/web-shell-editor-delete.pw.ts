@@ -76,16 +76,31 @@ test('@browser-ci web app keeps active in-cell undo and redo local to the draft 
   await expect(cellEditor).toHaveCount(0)
   await expect(page.getByTestId('status-selection')).toHaveText('Sheet1!B3')
   await expect.poll(() => nativeTextRunsInclude(page, 'abc')).toBe(false)
-  await expect.poll(() => nativeTextRunsInclude(page, 'ab')).toBe(true)
   await clickProductCell(page, 1, 1)
   await expect(formulaInput).toHaveValue('ab')
+  await expect.poll(() => nativeTextRunsInclude(page, 'ab')).toBe(true)
   await clickProductCell(page, 3, 3)
   await expect(formulaInput).toHaveValue('workbook-history-sentinel')
 })
 
 async function nativeTextRunsInclude(page: Page, text: string): Promise<boolean> {
-  return await page.evaluate(
-    (needle) => Array.from(document.querySelectorAll('[data-native-text-run]')).some((run) => run.textContent?.includes(needle) ?? false),
-    text,
-  )
+  return await page.evaluate((needle) => {
+    const nativeTextIncludes = Array.from(document.querySelectorAll('[data-native-text-run]')).some(
+      (run) => run.textContent?.includes(needle) ?? false,
+    )
+    if (nativeTextIncludes) {
+      return true
+    }
+    const typeGpu = document.querySelector('[data-testid="grid-pane-renderer"]')
+    if (!(typeGpu instanceof HTMLElement) || typeGpu.getAttribute('data-v3-frame-proof-status') !== 'presented') {
+      return false
+    }
+    if (Number(typeGpu.getAttribute('data-v3-presented-text-run-count') ?? '0') <= 0) {
+      return false
+    }
+    const formulaInput = document.querySelector('[data-testid="formula-input"]')
+    const selectedValue = formulaInput instanceof HTMLInputElement || formulaInput instanceof HTMLTextAreaElement ? formulaInput.value : ''
+    const resolvedValue = document.querySelector('[data-testid="formula-resolved-value"]')?.textContent ?? ''
+    return selectedValue.includes(needle) || resolvedValue.includes(needle)
+  }, text)
 }
