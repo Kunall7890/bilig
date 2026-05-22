@@ -53,32 +53,25 @@ describe('workbook axis records', () => {
     expect(listAxisEntries(entries)).toEqual([{ id: 'column-existing', index: 0, size: 90, hidden: false }])
   })
 
-  it('generates axis identities for default structural inserts', () => {
+  it('keeps default structural inserts sparse until metadata is materialized', () => {
     const entries: Array<WorkbookAxisEntryRecord | undefined> = []
     const createEntry = createEntryFactory('column')
 
     expect(spliceAxisEntries(entries, 1, 0, 2, createEntry)).toEqual([])
 
-    expect(listAxisEntries(entries)).toEqual([
-      { id: 'column-1', index: 1 },
-      { id: 'column-2', index: 2 },
-    ])
+    expect(listAxisEntries(entries)).toEqual([])
   })
 
-  it('splices generated axis entries without requiring provided snapshots', () => {
+  it('splices sparse default inserts while preserving existing suffix entries', () => {
     const entries: Array<WorkbookAxisEntryRecord | undefined> = [{ id: 'column-existing', size: null, hidden: null }]
     const createEntry = createEntryFactory('column')
 
     expect(spliceAxisEntries(entries, 1, 0, 2, createEntry)).toEqual([])
 
-    expect(listAxisEntries(entries)).toEqual([
-      { id: 'column-existing', index: 0 },
-      { id: 'column-1', index: 1 },
-      { id: 'column-2', index: 2 },
-    ])
+    expect(listAxisEntries(entries)).toEqual([{ id: 'column-existing', index: 0 }])
   })
 
-  it('uses the single-entry splice path for generated and provided inserts', () => {
+  it('uses the single-entry splice path for sparse and provided inserts', () => {
     const generatedEntries: Array<WorkbookAxisEntryRecord | undefined> = [
       { id: 'column-existing', size: null, hidden: null },
       { id: 'column-tail', size: null, hidden: null },
@@ -94,7 +87,6 @@ describe('workbook axis records', () => {
 
     expect(listAxisEntries(generatedEntries)).toEqual([
       { id: 'column-existing', index: 0 },
-      { id: 'column-1', index: 1 },
       { id: 'column-tail', index: 2 },
     ])
     expect(listAxisEntries(providedEntries)).toEqual([

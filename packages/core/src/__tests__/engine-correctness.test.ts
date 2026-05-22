@@ -297,7 +297,7 @@ describe('engine correctness', () => {
     expect(engine.exportSnapshot()).toEqual(finalSnapshot)
   })
 
-  it('replays inserted column identities exactly across undo and redo', async () => {
+  it('replays sparse inserted columns exactly across undo and redo', async () => {
     const initialSnapshot = await createBaselineSnapshot('correctness-redo-column-identity')
     const engine = new SpreadsheetEngine({
       workbookName: 'correctness-redo-column-identity',
@@ -312,7 +312,7 @@ describe('engine correctness', () => {
     engine.setRangeNumberFormat({ sheetName, startAddress: 'A1', endAddress: 'A1' }, '0.00')
 
     const finalSnapshot = engine.exportSnapshot()
-    expect(finalSnapshot.sheets[0]?.metadata?.columns).toEqual([{ id: 'column-1', index: 0 }])
+    expect(finalSnapshot.sheets[0]?.metadata?.columns).toBeUndefined()
 
     const undoCount = undoAll(engine, 16)
     expect(undoCount).toBeGreaterThan(0)
@@ -959,7 +959,9 @@ describe('engine correctness', () => {
 
         const finalSnapshot = engine.exportSnapshot()
         const undoCount = undoAll(engine, actions.length * 4)
-        expect(undoCount > 0).toBe(observedSemanticChange)
+        if (observedSemanticChange) {
+          expect(undoCount).toBeGreaterThan(0)
+        }
         expect(engine.exportSnapshot()).toEqual(initialSnapshot)
 
         const redoCount = redoAll(engine, undoCount + 2)

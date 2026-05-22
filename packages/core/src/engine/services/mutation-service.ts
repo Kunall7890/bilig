@@ -215,18 +215,10 @@ export function createEngineMutationService(args: {
   ): Extract<EngineOp, { kind: 'insertRows' | 'insertColumns' }> => {
     if (op.kind === 'insertRows') {
       const entries = args.state.workbook.snapshotRowAxisEntries(op.sheetName, op.start, op.count)
-      return {
-        ...op,
-        entries:
-          entries.length === 0 && op.count > 0 ? args.state.workbook.materializeRowAxisEntries(op.sheetName, op.start, op.count) : entries,
-      }
+      return { ...op, entries }
     }
     const entries = args.state.workbook.snapshotColumnAxisEntries(op.sheetName, op.start, op.count)
-    return {
-      ...op,
-      entries:
-        entries.length === 0 && op.count > 0 ? args.state.workbook.materializeColumnAxisEntries(op.sheetName, op.start, op.count) : entries,
-    }
+    return { ...op, entries }
   }
 
   const executeTransactionNow = (

@@ -186,7 +186,7 @@ export function spliceAxisEntries(
   start: number,
   deleteCount: number,
   insertCount: number,
-  createEntry: () => WorkbookAxisEntryRecord,
+  _createEntry: () => WorkbookAxisEntryRecord,
   providedSnapshots?: readonly WorkbookAxisEntrySnapshot[],
 ): WorkbookAxisEntrySnapshot[] {
   if (insertCount === 0 && axisEntries.length <= start) {
@@ -196,21 +196,34 @@ export function spliceAxisEntries(
     axisEntries.length = start
   }
   if (providedSnapshots === undefined) {
-    if (deleteCount === 0 && insertCount === 1) {
-      axisEntries.splice(start, 0, createEntry())
+    if (deleteCount === 0 && insertCount > 0 && axisEntries.length <= start) {
       return []
     }
     let removed: Array<WorkbookAxisEntryRecord | undefined>
     if (insertCount === 0) {
       removed = axisEntries.splice(start, deleteCount)
     } else if (insertCount === 1) {
-      removed = axisEntries.splice(start, deleteCount, createEntry())
+      removed = axisEntries.splice(start, deleteCount, undefined)
     } else {
-      const inserted: WorkbookAxisEntryRecord[] = []
+      const inserted: Array<WorkbookAxisEntryRecord | undefined> = []
       inserted.length = insertCount
-      for (let index = 0; index < insertCount; index += 1) {
-        inserted[index] = createEntry()
-      }
+      removed = axisEntries.splice(start, deleteCount, ...inserted)
+    }
+    return removed.flatMap((entry, index) => (entry ? [makeAxisEntrySnapshot(entry, start + index)] : []))
+  }
+
+  if (providedSnapshots.length === 0) {
+    if (deleteCount === 0 && insertCount > 0 && axisEntries.length <= start) {
+      return []
+    }
+    let removed: Array<WorkbookAxisEntryRecord | undefined>
+    if (insertCount === 0) {
+      removed = axisEntries.splice(start, deleteCount)
+    } else if (insertCount === 1) {
+      removed = axisEntries.splice(start, deleteCount, undefined)
+    } else {
+      const inserted: Array<WorkbookAxisEntryRecord | undefined> = []
+      inserted.length = insertCount
       removed = axisEntries.splice(start, deleteCount, ...inserted)
     }
     return removed.flatMap((entry, index) => (entry ? [makeAxisEntrySnapshot(entry, start + index)] : []))
@@ -239,10 +252,7 @@ export function spliceAxisEntries(
       if (provided) {
         return makeAxisEntryRecord(provided)
       }
-      if (providedSnapshots) {
-        return undefined
-      }
-      return createEntry()
+      return undefined
     }),
   )
   return removed.flatMap((entry, index) => (entry ? [makeAxisEntrySnapshot(entry, start + index)] : []))

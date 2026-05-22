@@ -1050,10 +1050,11 @@ describe('EngineMutationService', () => {
     }
     expect(latest?.forward.kind).toBe('single-op')
     expect(latest?.forward.op).toMatchObject({ kind: 'insertColumns', sheetName: 'Sheet1', start: 1, count: 1 })
-    expect(latest?.forward.op?.entries).toHaveLength(1)
+    expect(latest?.forward.op?.entries).toEqual([])
     expect(latest?.inverse.kind).toBe('single-op')
     expect(latest?.inverse.op).toMatchObject({ kind: 'deleteColumns', sheetName: 'Sheet1', start: 1, count: 1 })
     expect(engine.getPerformanceCounters().cycleFormulaScans).toBe(0)
+    expect(engine.getColumnAxisEntries('Sheet1')).toEqual([])
     expect(engine.getCellValue('Sheet1', 'D1')).toEqual({ tag: ValueTag.Number, value: 3 })
 
     expect(engine.undo()).toBe(true)

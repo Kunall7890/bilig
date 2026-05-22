@@ -113,6 +113,21 @@ describe('WorkbookStore', () => {
     expect(workbook.listRowAxisEntries('Sheet1')).toEqual([])
   })
 
+  it('keeps default structural inserts sparse until axis metadata exists', () => {
+    const workbook = new WorkbookStore('insert-unmaterialized-axis')
+    workbook.createSheet('Sheet1')
+
+    workbook.insertColumns('Sheet1', 0, 3)
+    workbook.insertRows('Sheet1', 0, 2)
+
+    expect(workbook.listColumnAxisEntries('Sheet1')).toEqual([])
+    expect(workbook.listRowAxisEntries('Sheet1')).toEqual([])
+
+    workbook.setColumnMetadata('Sheet1', 1, 1, 120, false)
+
+    expect(workbook.listColumnAxisEntries('Sheet1')).toEqual([{ id: 'column-1', index: 1, size: 120, hidden: false }])
+  })
+
   it('does not mutate existing style ranges when bulk style restoration includes an unknown style', () => {
     const workbook = new WorkbookStore('style-ranges')
     workbook.createSheet('Sheet1')
