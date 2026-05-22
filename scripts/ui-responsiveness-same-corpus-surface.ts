@@ -1,8 +1,10 @@
 export interface BiligRenderedCanvasState {
+  readonly authoritativeRenderRevision?: string | null | undefined
   readonly backendStatus?: string | null | undefined
   readonly frameProofStatus?: string | null | undefined
   readonly headerPaneCount: number
   readonly hasPresentedVisibleFrame?: boolean | undefined
+  readonly localRenderRevision?: string | null | undefined
   readonly mode: string | null
   readonly pixelHeight: number
   readonly pixelWidth: number
@@ -11,6 +13,8 @@ export interface BiligRenderedCanvasState {
   readonly projectedRenderRevision?: string | null | undefined
   readonly tilePaneCount: number
   readonly tileSceneRevision?: string | null | undefined
+  readonly visibleAuthoritativeRenderRevision?: string | null | undefined
+  readonly visibleLocalRenderRevision?: string | null | undefined
   readonly visibleProjectedRenderRevision?: string | null | undefined
   readonly visibleRenderRevision?: string | null | undefined
   readonly visiblePixelCount?: number | undefined
@@ -19,7 +23,9 @@ export interface BiligRenderedCanvasState {
 export interface BiligRenderedSurfaceState {
   readonly dpr: number
   readonly fallback: BiligRenderedCanvasState | null
+  readonly gridAuthoritativeRenderRevision?: string | null | undefined
   readonly gridHeight: number
+  readonly gridLocalRenderRevision?: string | null | undefined
   readonly gridProjectedRenderRevision?: string | null | undefined
   readonly gridWidth: number
   readonly typeGpu: BiligRenderedCanvasState | null
@@ -89,6 +95,52 @@ export function biligRenderedSurfaceReadiness(state: BiligRenderedSurfaceState |
   if (!canvasPixelsMatchViewport(canvas, state)) {
     gaps.push('TypeGPU canvas backing pixels do not cover the viewport')
   }
+  if (!hasText(state.gridAuthoritativeRenderRevision)) {
+    gaps.push('grid authoritative render revision is missing')
+  }
+  if (!hasText(canvas.authoritativeRenderRevision)) {
+    gaps.push('TypeGPU authoritative render revision is missing')
+  }
+  if (!hasText(canvas.visibleAuthoritativeRenderRevision)) {
+    gaps.push('visible authoritative render revision is missing')
+  }
+  if (
+    hasText(state.gridAuthoritativeRenderRevision) &&
+    hasText(canvas.authoritativeRenderRevision) &&
+    canvas.authoritativeRenderRevision !== state.gridAuthoritativeRenderRevision
+  ) {
+    gaps.push('TypeGPU authoritative render revision does not match the grid revision')
+  }
+  if (
+    hasText(state.gridAuthoritativeRenderRevision) &&
+    hasText(canvas.visibleAuthoritativeRenderRevision) &&
+    canvas.visibleAuthoritativeRenderRevision !== state.gridAuthoritativeRenderRevision
+  ) {
+    gaps.push('visible authoritative render revision does not match the grid revision')
+  }
+  if (!hasText(state.gridLocalRenderRevision)) {
+    gaps.push('grid local render revision is missing')
+  }
+  if (!hasText(canvas.localRenderRevision)) {
+    gaps.push('TypeGPU local render revision is missing')
+  }
+  if (!hasText(canvas.visibleLocalRenderRevision)) {
+    gaps.push('visible local render revision is missing')
+  }
+  if (
+    hasText(state.gridLocalRenderRevision) &&
+    hasText(canvas.localRenderRevision) &&
+    canvas.localRenderRevision !== state.gridLocalRenderRevision
+  ) {
+    gaps.push('TypeGPU local render revision does not match the grid revision')
+  }
+  if (
+    hasText(state.gridLocalRenderRevision) &&
+    hasText(canvas.visibleLocalRenderRevision) &&
+    canvas.visibleLocalRenderRevision !== state.gridLocalRenderRevision
+  ) {
+    gaps.push('visible local render revision does not match the grid revision')
+  }
   if (!hasText(state.gridProjectedRenderRevision)) {
     gaps.push('grid projected render revision is missing')
   }
@@ -147,6 +199,8 @@ function baseSurfaceEvidence(state: BiligRenderedSurfaceState): string[] {
     `devicePixelRatio=${String(state.dpr)}`,
     `expectedPixelWidth=${String(expectedPixelWidth)}`,
     `expectedPixelHeight=${String(expectedPixelHeight)}`,
+    `gridAuthoritativeRevision=${state.gridAuthoritativeRenderRevision ?? ''}`,
+    `gridLocalRevision=${state.gridLocalRenderRevision ?? ''}`,
     `gridProjectedRevision=${state.gridProjectedRenderRevision ?? ''}`,
     `fallbackMounted=${String(Boolean(state.fallback))}`,
   ]
@@ -165,7 +219,11 @@ function canvasEvidence(canvas: BiligRenderedCanvasState, state: BiligRenderedSu
     `canvasPixelWidth=${String(canvas.pixelWidth)}`,
     `canvasPixelHeight=${String(canvas.pixelHeight)}`,
     `canvasCoversViewport=${String(canvasPixelsMatchViewport(canvas, state))}`,
+    `typeGpuAuthoritativeRevision=${canvas.authoritativeRenderRevision ?? ''}`,
+    `typeGpuLocalRevision=${canvas.localRenderRevision ?? ''}`,
     `typeGpuProjectedRevision=${canvas.projectedRenderRevision ?? ''}`,
+    `visibleAuthoritativeRevision=${canvas.visibleAuthoritativeRenderRevision ?? ''}`,
+    `visibleLocalRevision=${canvas.visibleLocalRenderRevision ?? ''}`,
     `visibleProjectedRevision=${canvas.visibleProjectedRenderRevision ?? ''}`,
     `tileSceneRevision=${canvas.tileSceneRevision ?? ''}`,
     `visibleRenderRevision=${canvas.visibleRenderRevision ?? ''}`,

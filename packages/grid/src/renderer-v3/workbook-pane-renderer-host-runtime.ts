@@ -175,6 +175,7 @@ export class WorkbookPaneRendererHostRuntimeV3 {
       overlay: this.props.overlay,
       overlayBuilder: this.props.overlayBuilder,
       preloadTilePanes: this.props.preloadTilePanes,
+      renderRevisionSnapshot: this.props.renderRevisionSnapshot,
       scrollTransformStore: this.props.scrollTransformStore,
       surface: this.surfaceSnapshot.surface,
       tilePanes: this.props.tilePanes,

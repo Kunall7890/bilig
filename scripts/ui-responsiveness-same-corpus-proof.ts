@@ -78,6 +78,8 @@ export function isSameCorpusProductPixelGridProofComplete(proof: SameCorpusProdu
     return false
   }
   const gridProjectedRevision = evidence.get('gridProjectedRevision') ?? ''
+  const gridAuthoritativeRevision = evidence.get('gridAuthoritativeRevision') ?? ''
+  const gridLocalRevision = evidence.get('gridLocalRevision') ?? ''
   const tileSceneRevision = evidence.get('tileSceneRevision') ?? ''
   const tilePaneCount = numericEvidence(evidence, 'tilePaneCount')
   const headerPaneCount = numericEvidence(evidence, 'headerPaneCount')
@@ -104,6 +106,12 @@ export function isSameCorpusProductPixelGridProofComplete(proof: SameCorpusProdu
     isPositiveNumber(canvasPixelHeight) &&
     canvasPixelWidth >= expectedPixelWidth - 2 &&
     canvasPixelHeight >= expectedPixelHeight - 2 &&
+    gridAuthoritativeRevision.length > 0 &&
+    evidence.get('typeGpuAuthoritativeRevision') === gridAuthoritativeRevision &&
+    evidence.get('visibleAuthoritativeRevision') === gridAuthoritativeRevision &&
+    gridLocalRevision.length > 0 &&
+    evidence.get('typeGpuLocalRevision') === gridLocalRevision &&
+    evidence.get('visibleLocalRevision') === gridLocalRevision &&
     gridProjectedRevision.length > 0 &&
     evidence.get('typeGpuProjectedRevision') === gridProjectedRevision &&
     evidence.get('visibleProjectedRevision') === gridProjectedRevision &&

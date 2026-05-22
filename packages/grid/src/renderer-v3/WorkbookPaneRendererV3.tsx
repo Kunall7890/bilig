@@ -164,14 +164,7 @@ export const WorkbookPaneRendererV3 = memo(function WorkbookPaneRendererV3({
   }
   const tileSceneRevision = resolveWorkbookPaneTileSceneRevisionV3(typeGpuTilePanes)
   const tileSceneCameraSeq = resolveWorkbookPaneTileSceneCameraSeqV3(typeGpuTilePanes)
-  const visibleRenderRevision = resolveWorkbookPanePresentedRevisionV3(frameProofStatus, tileSceneRevision)
-  const visibleRenderCameraSeq = resolveWorkbookPanePresentedRevisionV3(frameProofStatus, tileSceneCameraSeq)
-  const visibleProjectedRenderRevision = resolveWorkbookPanePresentedRevisionV3(frameProofStatus, renderRevisionSnapshot?.projectedRevision)
-  const visibleLocalRenderRevision = resolveWorkbookPanePresentedRevisionV3(frameProofStatus, renderRevisionSnapshot?.localRevision)
-  const visibleAuthoritativeRenderRevision = resolveWorkbookPanePresentedRevisionV3(
-    frameProofStatus,
-    renderRevisionSnapshot?.authoritativeRevision,
-  )
+  const visibleProof = resolveWorkbookPanePresentedRenderProofV3(frameProofStatus, presentedVisualFrame)
 
   return (
     <>
@@ -222,11 +215,11 @@ export const WorkbookPaneRendererV3 = memo(function WorkbookPaneRendererV3({
           data-v3-tile-scene-camera-seq={tileSceneCameraSeq ?? ''}
           data-v3-tile-scene-revision={tileSceneRevision ?? ''}
           data-v3-tile-pane-count={typeGpuTilePanes.length}
-          data-v3-visible-authoritative-render-revision={visibleAuthoritativeRenderRevision ?? ''}
-          data-v3-visible-local-render-revision={visibleLocalRenderRevision ?? ''}
-          data-v3-visible-projected-render-revision={visibleProjectedRenderRevision ?? ''}
-          data-v3-visible-render-camera-seq={visibleRenderCameraSeq ?? ''}
-          data-v3-visible-render-revision={visibleRenderRevision ?? ''}
+          data-v3-visible-authoritative-render-revision={visibleProof.authoritativeRevision ?? ''}
+          data-v3-visible-local-render-revision={visibleProof.localRevision ?? ''}
+          data-v3-visible-projected-render-revision={visibleProof.projectedRevision ?? ''}
+          data-v3-visible-render-camera-seq={visibleProof.tileSceneCameraSeq ?? ''}
+          data-v3-visible-render-revision={visibleProof.tileSceneRevision ?? ''}
           ref={setCanvasRef}
           style={{ backgroundColor: 'transparent', contain: 'strict', height: '100%', opacity: 1, width: '100%' }}
         />
@@ -296,9 +289,42 @@ export function resolveWorkbookPanePresentedRevisionV3(
   return frameProofStatus === 'presented' && revision !== null && revision !== undefined ? revision : null
 }
 
+export function resolveWorkbookPanePresentedRenderProofV3(
+  frameProofStatus: 'idle' | 'pending' | 'presented',
+  presentedVisualFrame: {
+    readonly renderRevisionSnapshot?: GridRenderRevisionSnapshot | null | undefined
+    readonly tilePanes: readonly WorkbookRenderTilePaneState[]
+  } | null,
+): {
+  readonly authoritativeRevision: number | null
+  readonly localRevision: number | null
+  readonly projectedRevision: number | null
+  readonly tileSceneCameraSeq: number | null
+  readonly tileSceneRevision: number | null
+} {
+  if (frameProofStatus !== 'presented' || !presentedVisualFrame) {
+    return EMPTY_PRESENTED_RENDER_PROOF_V3
+  }
+  return {
+    authoritativeRevision: presentedVisualFrame.renderRevisionSnapshot?.authoritativeRevision ?? null,
+    localRevision: presentedVisualFrame.renderRevisionSnapshot?.localRevision ?? null,
+    projectedRevision: presentedVisualFrame.renderRevisionSnapshot?.projectedRevision ?? null,
+    tileSceneCameraSeq: resolveWorkbookPaneTileSceneCameraSeqV3(presentedVisualFrame.tilePanes),
+    tileSceneRevision: resolveWorkbookPaneTileSceneRevisionV3(presentedVisualFrame.tilePanes),
+  }
+}
+
 export function resolveWorkbookPaneTileSceneCameraSeqV3(tilePanes: readonly WorkbookRenderTilePaneState[]): number | null {
   return maxTilePaneField(tilePanes, (pane) => pane.tile.lastCameraSeq)
 }
+
+const EMPTY_PRESENTED_RENDER_PROOF_V3 = Object.freeze({
+  authoritativeRevision: null,
+  localRevision: null,
+  projectedRevision: null,
+  tileSceneCameraSeq: null,
+  tileSceneRevision: null,
+})
 
 function maxTilePaneField(
   tilePanes: readonly WorkbookRenderTilePaneState[],
