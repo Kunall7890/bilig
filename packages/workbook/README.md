@@ -106,7 +106,9 @@ Agents should use the package in this order:
 3. Build a command bundle with `buildWorkbookCommandBundle(plan, options)`, or
    use `planWorkbookCommand(model, actionName, input, options)` directly.
 4. Read `describeCommandBundle(command)` for the runtime handoff contract.
-5. Run `verifyWorkbookCommandBundle(command)` before execution.
+5. Run `verifyWorkbookCommandBundle(command)` before execution. If the command
+   came from JSON or a tool call, use `isWorkbookCommandBundle(command)` before
+   treating it as trusted.
 6. Preview exact runtime materialization with `previewWorkbookCommandBundle`.
 7. Hand the approved command to a runtime adapter with `runWorkbookCommandBundle`.
 8. Inspect `describeRunResult(result)`.
@@ -403,6 +405,7 @@ agent or service runtime.
 ```ts
 import {
   describeCommandBundle,
+  isWorkbookCommandBundle,
   planWorkbookCommand,
   previewWorkbookCommandBundle,
   runWorkbookCommandBundle,
@@ -431,6 +434,18 @@ if (planned.status === 'planned') {
 }
 ```
 
+For external input, keep the boundary boring:
+
+```ts
+const payload: unknown = JSON.parse(request.body)
+
+if (!isWorkbookCommandBundle(payload)) {
+  throw new Error(JSON.stringify(verifyWorkbookCommandBundle(payload).issues))
+}
+
+const preview = await previewWorkbookCommandBundle(payload, adapter)
+```
+
 A command bundle includes:
 
 - `commandId`: deterministic id for the exact plan, optional base revision, and optional idempotency key.
@@ -440,10 +455,11 @@ A command bundle includes:
 - `requirements`: the apply/read/verify checklist for the adapter.
 - `verification`: static plan verification captured before runtime execution.
 
-`verifyWorkbookCommandBundle` proves the bundle still matches its embedded
+`verifyWorkbookCommandBundle` accepts `unknown` and never requires callers to
+trust deserialized data first. It proves the bundle still matches its embedded
 plan, requirements, verification, input, model name, action name, and command
 id. If someone mutates the bundle between approval and execution, the command
-runner fails before `adapter.apply` is called.
+runner fails before `adapter.preview` or `adapter.apply` is called.
 
 Adapters receive the command as the optional second or third argument to
 `preview`, `apply`, `read`, and `verifyChecks`, so runtimes can enforce
@@ -655,6 +671,7 @@ Verification and execution:
 - `verifyModel`
 - `verifyPlan`
 - `verifyWorkbookCommandBundle`
+- `isWorkbookCommandBundle`
 - `runWorkbookAction`
 - `runWorkbookPlan`
 - `runWorkbookCommandBundle`

@@ -5,8 +5,10 @@ import {
   defineModel,
   describeCommandBundle,
   findRange,
+  isWorkbookCommandBundle,
   isWorkbookCommandBundleIssueCode,
   planWorkbookCommand,
+  previewWorkbookCommandBundle,
   runWorkbookCommandBundle,
   verifyWorkbookCommandBundle,
   workbookCommandBundleIssueCodes,
@@ -103,6 +105,7 @@ describe('@bilig/workbook command bundle api', () => {
       actionName: 'write',
       issues: [],
     })
+    expect(isWorkbookCommandBundle(result.command)).toBe(true)
 
     const described = describeCommandBundle(result.command)
     expect(described.plan.refsUsed).toEqual([
@@ -154,6 +157,44 @@ describe('@bilig/workbook command bundle api', () => {
       'verification_mismatch',
       'invalid_command_id',
     ])
+  })
+
+  it('verifies unknown command bundle payloads without throwing', () => {
+    expect(verifyWorkbookCommandBundle(null)).toEqual({
+      status: 'invalid',
+      commandId: '',
+      modelName: '',
+      actionName: '',
+      issues: [
+        {
+          code: 'invalid_schema_version',
+          path: 'command',
+          message: 'Workbook command bundle must be an object',
+        },
+      ],
+    })
+
+    expect(
+      verifyWorkbookCommandBundle({
+        schemaVersion: 1,
+        commandId: 'cmd_bad',
+        modelName: 'from-json',
+        actionName: 'write',
+        plan: {
+          modelName: 'from-json',
+          actionName: 'write',
+          refsUsed: [],
+          commands: [{ kind: 'not-a-real-command' }],
+          ops: [],
+          changed: [],
+          checks: [],
+        },
+        verification: { status: 'valid', modelName: 'from-json', actionName: 'write', issues: [] },
+        requirements: { modelName: 'from-json', actionName: 'write', requirements: [] },
+      }).issues.map((issue) => issue.code),
+    ).toContain('plan_invalid')
+
+    expect(isWorkbookCommandBundle({ schemaVersion: 1, commandId: 'cmd_bad' })).toBe(false)
   })
 
   it('marks command bundles invalid when the embedded plan is invalid', () => {
@@ -261,6 +302,52 @@ describe('@bilig/workbook command bundle api', () => {
       ],
       checks: command.plan.checks,
     })
+    expect(apply).not.toHaveBeenCalled()
+  })
+
+  it('rejects unknown command bundle payloads before preview or apply', async () => {
+    const preview = vi.fn<WorkbookRunAdapter['preview']>(() => {
+      throw new Error('preview should not run')
+    })
+    const apply = vi.fn<WorkbookRunAdapter['apply']>(() => {
+      throw new Error('apply should not run')
+    })
+
+    await expect(previewWorkbookCommandBundle({ schemaVersion: 1, commandId: 'cmd_bad' }, { preview, apply })).resolves.toEqual({
+      status: 'failed',
+      errors: [
+        {
+          code: 'invalid_command_bundle',
+          message: 'Workbook command bundle commandId cmd_bad cannot be verified without a valid embedded plan',
+          path: 'commandId',
+        },
+        {
+          code: 'invalid_command_bundle',
+          message:
+            'Workbook command bundle plan must be an object with modelName, actionName, refsUsed, commands, ops, changed, and checks',
+          path: 'plan',
+        },
+      ],
+      checks: [],
+    })
+    await expect(runWorkbookCommandBundle({ schemaVersion: 1, commandId: 'cmd_bad' }, { preview, apply })).resolves.toEqual({
+      status: 'failed',
+      errors: [
+        {
+          code: 'invalid_command_bundle',
+          message: 'Workbook command bundle commandId cmd_bad cannot be verified without a valid embedded plan',
+          path: 'commandId',
+        },
+        {
+          code: 'invalid_command_bundle',
+          message:
+            'Workbook command bundle plan must be an object with modelName, actionName, refsUsed, commands, ops, changed, and checks',
+          path: 'plan',
+        },
+      ],
+      checks: [],
+    })
+    expect(preview).not.toHaveBeenCalled()
     expect(apply).not.toHaveBeenCalled()
   })
 })
