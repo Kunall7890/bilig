@@ -1,4 +1,4 @@
-import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
+import { mkdtempSync, readFileSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 
@@ -17,6 +17,8 @@ import {
 } from '@bilig/excel-fixtures'
 import { ErrorCode, ValueTag, type CellValue, type WorkbookSnapshot } from '@bilig/protocol'
 import { describe, expect, it } from 'vitest'
+
+import { removeMacosExcelTestDir } from './macos-excel-oracle-test-utils.js'
 
 import { WorkPaper, type WorkPaperCellAddress } from '../index.js'
 
@@ -1027,7 +1029,7 @@ describe('macOS Desktop Excel XLSX oracle for WorkPaper', () => {
           reimported.dispose()
         }
       } finally {
-        rmSync(tempDir, { recursive: true, force: true })
+        removeMacosExcelTestDir(tempDir)
       }
     },
     60_000,
@@ -1090,7 +1092,7 @@ describe('macOS Desktop Excel XLSX oracle for WorkPaper', () => {
           reimported.dispose()
         }
       } finally {
-        rmSync(tempDir, { recursive: true, force: true })
+        removeMacosExcelTestDir(tempDir)
       }
     },
     60_000,
@@ -1134,7 +1136,7 @@ describe('macOS Desktop Excel XLSX oracle for WorkPaper', () => {
           reimported.dispose()
         }
       } finally {
-        rmSync(tempDir, { recursive: true, force: true })
+        removeMacosExcelTestDir(tempDir)
       }
     },
     60_000,
@@ -1180,7 +1182,7 @@ describe('macOS Desktop Excel XLSX oracle for WorkPaper', () => {
           reimported.dispose()
         }
       } finally {
-        rmSync(tempDir, { recursive: true, force: true })
+        removeMacosExcelTestDir(tempDir)
       }
     },
     60_000,
@@ -1243,7 +1245,7 @@ describe('macOS Desktop Excel XLSX oracle for WorkPaper', () => {
           reimported.dispose()
         }
       } finally {
-        rmSync(tempDir, { recursive: true, force: true })
+        removeMacosExcelTestDir(tempDir)
       }
     },
     60_000,
@@ -1293,7 +1295,7 @@ describe('macOS Desktop Excel XLSX oracle for WorkPaper', () => {
           reimported.dispose()
         }
       } finally {
-        rmSync(tempDir, { recursive: true, force: true })
+        removeMacosExcelTestDir(tempDir)
       }
     },
     60_000,
@@ -1338,7 +1340,7 @@ describe('macOS Desktop Excel XLSX oracle for WorkPaper', () => {
           reimported.dispose()
         }
       } finally {
-        rmSync(tempDir, { recursive: true, force: true })
+        removeMacosExcelTestDir(tempDir)
       }
     },
     60_000,
@@ -1385,7 +1387,7 @@ describe('macOS Desktop Excel XLSX oracle for WorkPaper', () => {
           reimported.dispose()
         }
       } finally {
-        rmSync(tempDir, { recursive: true, force: true })
+        removeMacosExcelTestDir(tempDir)
       }
     },
     60_000,
@@ -1436,7 +1438,7 @@ describe('macOS Desktop Excel XLSX oracle for WorkPaper', () => {
           reimported.dispose()
         }
       } finally {
-        rmSync(tempDir, { recursive: true, force: true })
+        removeMacosExcelTestDir(tempDir)
       }
     },
     60_000,
@@ -1521,7 +1523,7 @@ describe('macOS Desktop Excel XLSX oracle for WorkPaper', () => {
           unblockedReimported.dispose()
         }
       } finally {
-        rmSync(tempDir, { recursive: true, force: true })
+        removeMacosExcelTestDir(tempDir)
       }
     },
     60_000,
@@ -1577,7 +1579,7 @@ describe('macOS Desktop Excel XLSX oracle for WorkPaper', () => {
           }
         }
       } finally {
-        rmSync(tempDir, { recursive: true, force: true })
+        removeMacosExcelTestDir(tempDir)
       }
     },
     60_000,
@@ -1641,7 +1643,7 @@ describe('macOS Desktop Excel XLSX oracle for WorkPaper', () => {
           }
         }
       } finally {
-        rmSync(tempDir, { recursive: true, force: true })
+        removeMacosExcelTestDir(tempDir)
       }
     },
     60_000,
@@ -1749,7 +1751,7 @@ describe('macOS Desktop Excel XLSX oracle for WorkPaper', () => {
           }
         }
       } finally {
-        rmSync(tempDir, { recursive: true, force: true })
+        removeMacosExcelTestDir(tempDir)
       }
     },
     60_000,
@@ -1793,7 +1795,7 @@ describe('macOS Desktop Excel XLSX oracle for WorkPaper', () => {
           reimported.dispose()
         }
       } finally {
-        rmSync(tempDir, { recursive: true, force: true })
+        removeMacosExcelTestDir(tempDir)
       }
     },
     60_000,
@@ -1841,7 +1843,7 @@ describe('macOS Desktop Excel XLSX oracle for WorkPaper', () => {
           reimported.dispose()
         }
       } finally {
-        rmSync(tempDir, { recursive: true, force: true })
+        removeMacosExcelTestDir(tempDir)
       }
     },
     60_000,
@@ -1882,7 +1884,7 @@ describe('macOS Desktop Excel XLSX oracle for WorkPaper', () => {
           reimported.dispose()
         }
       } finally {
-        rmSync(tempDir, { recursive: true, force: true })
+        removeMacosExcelTestDir(tempDir)
       }
     },
     60_000,
@@ -1919,7 +1921,7 @@ describe('macOS Desktop Excel XLSX oracle for WorkPaper', () => {
           columnNames: ['Region', 'Column1', 'Revenue', 'Margin'],
         })
       } finally {
-        rmSync(tempDir, { recursive: true, force: true })
+        removeMacosExcelTestDir(tempDir)
       }
     },
     60_000,
@@ -1963,7 +1965,7 @@ describe('macOS Desktop Excel XLSX oracle for WorkPaper', () => {
           reimported.dispose()
         }
       } finally {
-        rmSync(tempDir, { recursive: true, force: true })
+        removeMacosExcelTestDir(tempDir)
       }
     },
     60_000,
@@ -2007,7 +2009,7 @@ describe('macOS Desktop Excel XLSX oracle for WorkPaper', () => {
           reimported.dispose()
         }
       } finally {
-        rmSync(tempDir, { recursive: true, force: true })
+        removeMacosExcelTestDir(tempDir)
       }
     },
     60_000,
@@ -2060,7 +2062,7 @@ describe('macOS Desktop Excel XLSX oracle for WorkPaper', () => {
           reimported.dispose()
         }
       } finally {
-        rmSync(tempDir, { recursive: true, force: true })
+        removeMacosExcelTestDir(tempDir)
       }
     },
     60_000,
@@ -2112,7 +2114,7 @@ describe('macOS Desktop Excel XLSX oracle for WorkPaper', () => {
           reimported.dispose()
         }
       } finally {
-        rmSync(tempDir, { recursive: true, force: true })
+        removeMacosExcelTestDir(tempDir)
       }
     },
     60_000,
@@ -2155,7 +2157,7 @@ describe('macOS Desktop Excel XLSX oracle for WorkPaper', () => {
           reimported.dispose()
         }
       } finally {
-        rmSync(tempDir, { recursive: true, force: true })
+        removeMacosExcelTestDir(tempDir)
       }
     },
     60_000,
@@ -2204,7 +2206,7 @@ describe('macOS Desktop Excel XLSX oracle for WorkPaper', () => {
           reimported.dispose()
         }
       } finally {
-        rmSync(tempDir, { recursive: true, force: true })
+        removeMacosExcelTestDir(tempDir)
       }
     },
     60_000,
@@ -2255,7 +2257,7 @@ describe('macOS Desktop Excel XLSX oracle for WorkPaper', () => {
           reimported.dispose()
         }
       } finally {
-        rmSync(tempDir, { recursive: true, force: true })
+        removeMacosExcelTestDir(tempDir)
       }
     },
     60_000,
