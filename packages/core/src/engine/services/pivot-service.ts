@@ -23,7 +23,7 @@ import type { FormulaTable } from '../../formula-table.js'
 import type { RangeRegistry } from '../../range-registry.js'
 import type { StringPool } from '../../string-pool.js'
 import type { WasmKernelFacade } from '../../wasm-facade.js'
-import { pivotKey, type WorkbookPivotRecord, type WorkbookStore } from '../../workbook-store.js'
+import { WorkbookStore, pivotKey, type WorkbookPivotRecord } from '../../workbook-store.js'
 import type { RuntimeFormula } from '../runtime-state.js'
 import { EnginePivotError } from '../errors.js'
 import { sourcefulPivotToUpsertOp } from './pivot-op-helpers.js'
@@ -61,6 +61,7 @@ export interface EnginePivotService {
   ) => CellValue
   readonly clearOwnedPivotNow: (pivot: WorkbookPivotRecord) => number[]
   readonly clearPivotForCellNow: (cellIndex: number) => number[]
+  readonly claimPivotOutputNow: (pivot: WorkbookPivotRecord) => number[]
 }
 
 function toPivotDefinition(pivot: WorkbookPivotRecord): PivotDefinitionInput {
@@ -289,6 +290,21 @@ export function createEnginePivotService(args: {
     return true
   }
 
+  const pivotOutputRangeRef = (pivot: WorkbookPivotRecord): CellRangeRef => {
+    const owner = parseCellAddress(pivot.address, pivot.sheetName)
+    return {
+      sheetName: pivot.sheetName,
+      startAddress: pivot.address,
+      endAddress: formatAddress(owner.row + Math.max(1, pivot.rows) - 1, owner.col + Math.max(1, pivot.cols) - 1),
+    }
+  }
+
+  const clearPivotOutputRangeFormatting = (pivot: WorkbookPivotRecord): void => {
+    const range = pivotOutputRangeRef(pivot)
+    args.state.workbook.setStyleRange(range, WorkbookStore.defaultStyleId)
+    args.state.workbook.setFormatRange(range, WorkbookStore.defaultFormatId)
+  }
+
   const setPivotOutputCellValue = (cellIndex: number, value: CellValue, ownerKey: string): boolean => {
     const currentFlags = args.state.workbook.cellStore.flags[cellIndex] ?? 0
     const currentValue = args.state.workbook.cellStore.getValue(cellIndex, (id) => args.state.strings.get(id))
@@ -307,6 +323,7 @@ export function createEnginePivotService(args: {
     const changedCellIndices: number[] = []
     const ownerKey = pivotKey(pivot.sheetName, pivot.address)
     const owner = parseCellAddress(pivot.address, pivot.sheetName)
+    clearPivotOutputRangeFormatting(pivot)
     for (let rowOffset = 0; rowOffset < pivot.rows; rowOffset += 1) {
       for (let colOffset = 0; colOffset < pivot.cols; colOffset += 1) {
         const cellIndex = args.state.workbook.getCellIndex(pivot.sheetName, formatAddress(owner.row + rowOffset, owner.col + colOffset))
@@ -314,6 +331,29 @@ export function createEnginePivotService(args: {
           continue
         }
         if (clearPivotOutputCell(cellIndex)) {
+          changedCellIndices.push(cellIndex)
+        }
+      }
+    }
+    return changedCellIndices
+  }
+
+  const claimPivotOutputNow = (pivot: WorkbookPivotRecord): number[] => {
+    const changedCellIndices: number[] = []
+    const ownerKey = pivotKey(pivot.sheetName, pivot.address)
+    const owner = parseCellAddress(pivot.address, pivot.sheetName)
+    clearPivotOutputRangeFormatting(pivot)
+    for (let rowOffset = 0; rowOffset < pivot.rows; rowOffset += 1) {
+      for (let colOffset = 0; colOffset < pivot.cols; colOffset += 1) {
+        const cellIndex = args.state.workbook.getCellIndex(pivot.sheetName, formatAddress(owner.row + rowOffset, owner.col + colOffset))
+        if (cellIndex === undefined || args.state.formulas.get(cellIndex)) {
+          continue
+        }
+        const currentFlags = args.state.workbook.cellStore.flags[cellIndex] ?? 0
+        const nextFlags = (currentFlags & ~CellFlags.SpillChild) | CellFlags.PivotOutput
+        args.state.pivotOutputOwners.set(cellIndex, ownerKey)
+        if (nextFlags !== currentFlags) {
+          args.state.workbook.cellStore.flags[cellIndex] = nextFlags
           changedCellIndices.push(cellIndex)
         }
       }
@@ -429,6 +469,9 @@ export function createEnginePivotService(args: {
   }
 
   const readPivotRows = (pivot: WorkbookPivotRecord): CellValue[][] | null => {
+    if (pivot.source && !pivot.cacheOnly && args.state.workbook.getSheet(pivot.source.sheetName)) {
+      return readPivotSourceRows(pivot.source)
+    }
     const cachedRows = readPivotCachedRows(pivot)
     if (cachedRows) {
       return cachedRows
@@ -641,5 +684,6 @@ export function createEnginePivotService(args: {
     resolvePivotDataNow,
     clearOwnedPivotNow,
     clearPivotForCellNow,
+    claimPivotOutputNow,
   }
 }

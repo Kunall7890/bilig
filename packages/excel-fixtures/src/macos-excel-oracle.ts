@@ -1,7 +1,7 @@
 import { execFileSync } from 'node:child_process'
 import { copyFileSync, existsSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs'
 import { homedir } from 'node:os'
-import { basename, join } from 'node:path'
+import { basename, extname, join } from 'node:path'
 
 import { ErrorCode } from '@bilig/protocol'
 
@@ -173,7 +173,10 @@ function createMacosExcelOracleTempDir(prefix: string): string {
 }
 
 function stageWorkbookForMacosExcelOracle(workbookPath: string, tempDir: string): string {
-  const stagedWorkbookPath = join(tempDir, basename(workbookPath))
+  const workbookBasename = basename(workbookPath)
+  const extension = extname(workbookBasename)
+  const baseNameWithoutExtension = extension ? workbookBasename.slice(0, -extension.length) : workbookBasename
+  const stagedWorkbookPath = join(tempDir, `${baseNameWithoutExtension}-${String(process.pid)}-${String(Date.now())}${extension}`)
   copyFileSync(workbookPath, stagedWorkbookPath)
   return stagedWorkbookPath
 }
@@ -190,24 +193,51 @@ function copySavedWorkbookFromMacosExcelOracle(
   }
 }
 
-function macosExcelUpdateLinksModeAppleScript(mode: MacosExcelLinkUpdateMode): string {
+function updateLinksAppleScript(mode: MacosExcelLinkUpdateMode): string {
   switch (mode) {
-    case 'all':
-      return 'update remote and external links'
-    case 'external':
-      return 'update external links only'
     case 'never':
-      return 'do not update links'
+      return ''
+    case 'all':
+    case 'external':
     case 'remote':
-      return 'update remote links only'
+      return `      try
+        update link (targetWorkbook)
+      end try`
   }
+}
+
+function workbookOpenAppleScriptHelpers(): string {
+  return `on workbookNameFromPath(workbookPath)
+  set previousDelimiters to AppleScript's text item delimiters
+  set AppleScript's text item delimiters to "/"
+  set workbookName to last text item of workbookPath
+  set AppleScript's text item delimiters to previousDelimiters
+  return workbookName
+end workbookNameFromPath
+
+on openWorkbookForBiligOracle(workbookPath)
+  set workbookName to my workbookNameFromPath(workbookPath)
+  do shell script "open -b com.microsoft.Excel " & quoted form of workbookPath
+  tell application "Microsoft Excel"
+    repeat with openAttempt from 1 to 100
+      try
+        if (name of active workbook) is workbookName then
+          return active workbook
+        end if
+      end try
+      delay 0.1
+    end repeat
+  end tell
+  error "Microsoft Excel did not open workbook " & workbookName number -1728
+end openWorkbookForBiligOracle
+`
 }
 
 function openCompanionWorkbooksAppleScript(): string {
   return `      if (count of argv) > 1 then
         repeat with companionIndex from 2 to count of argv
           set companionPath to item companionIndex of argv
-          set companionWorkbook to open workbook workbook file name companionPath update links do not update links
+          set companionWorkbook to my openWorkbookForBiligOracle(companionPath)
           set companionWorkbooks to companionWorkbooks & {companionWorkbook}
         end repeat
       end if`
@@ -229,7 +259,7 @@ export function createMacosExcelRecalculationAppleScript(
   }
 
   const closeSavingMode = request.saveWorkbook === true ? 'yes' : 'no'
-  const updateLinksMode = macosExcelUpdateLinksModeAppleScript(request.updateLinks ?? 'never')
+  const updateLinks = updateLinksAppleScript(request.updateLinks ?? 'never')
   const formulaCells = request.formulaCells
     .map(
       (cell) =>
@@ -249,27 +279,27 @@ export function createMacosExcelRecalculationAppleScript(
     )
     .join('\n')
 
-  return `on run argv
+  return `${workbookOpenAppleScriptHelpers()}
+on run argv
   set workbookPath to item 1 of argv
-  set targetWorkbook to missing value
-  set companionWorkbooks to {}
-  set output to ""
   tell application "Microsoft Excel"
+    set targetWorkbook to missing value
+    set companionWorkbooks to {}
+    set output to ""
     try
 ${openCompanionWorkbooksAppleScript()}
-      set targetWorkbook to open workbook workbook file name workbookPath update links ${updateLinksMode}
+      set targetWorkbook to my openWorkbookForBiligOracle(workbookPath)
+${updateLinks}
 ${formulaCells}
       calculate full rebuild
       set output to "version=" & (version as string)
 ${valueReads}
-      close targetWorkbook saving ${closeSavingMode}
+      close (targetWorkbook) saving ${closeSavingMode}
 ${closeCompanionWorkbooksAppleScript()}
     on error errMsg number errNum
-      if targetWorkbook is not missing value then
-        try
-          close targetWorkbook saving no
-        end try
-      end if
+      try
+        close (targetWorkbook) saving no
+      end try
 ${closeCompanionWorkbooksAppleScript()}
       error errMsg number errNum
     end try
@@ -327,8 +357,8 @@ export function createMacosExcelInspectionAppleScript(
   }
 
   const closeSavingMode = request.saveWorkbook === true ? 'yes' : 'no'
-  const updateLinksMode = macosExcelUpdateLinksModeAppleScript(request.updateLinks ?? 'never')
-  const refreshAll = request.refreshAll === true ? '      refresh all targetWorkbook' : ''
+  const updateLinks = updateLinksAppleScript(request.updateLinks ?? 'never')
+  const refreshAll = request.refreshAll === true ? '      refresh all (targetWorkbook)' : ''
   const formulaCells = request.formulaCells
     .map(
       (cell) =>
@@ -346,28 +376,28 @@ export function createMacosExcelInspectionAppleScript(
     })
     .join('\n')
 
-  return `on run argv
+  return `${workbookOpenAppleScriptHelpers()}
+on run argv
   set workbookPath to item 1 of argv
-  set targetWorkbook to missing value
-  set companionWorkbooks to {}
-  set output to ""
   tell application "Microsoft Excel"
+    set targetWorkbook to missing value
+    set companionWorkbooks to {}
+    set output to ""
     try
 ${openCompanionWorkbooksAppleScript()}
-      set targetWorkbook to open workbook workbook file name workbookPath update links ${updateLinksMode}
+      set targetWorkbook to my openWorkbookForBiligOracle(workbookPath)
+${updateLinks}
 ${formulaCells}
 ${refreshAll}
       calculate full rebuild
       set output to "version=" & (version as string)
 ${inspectionReads}
-      close targetWorkbook saving ${closeSavingMode}
+      close (targetWorkbook) saving ${closeSavingMode}
 ${closeCompanionWorkbooksAppleScript()}
     on error errMsg number errNum
-      if targetWorkbook is not missing value then
-        try
-          close targetWorkbook saving no
-        end try
-      end if
+      try
+        close (targetWorkbook) saving no
+      end try
 ${closeCompanionWorkbooksAppleScript()}
       error errMsg number errNum
     end try
@@ -392,8 +422,8 @@ export function createMacosExcelStructuralOperationAppleScript(
   }
 
   const closeSavingMode = request.saveWorkbook === true ? 'yes' : 'no'
-  const updateLinksMode = macosExcelUpdateLinksModeAppleScript(request.updateLinks ?? 'never')
-  const refreshAll = request.refreshAll === true ? '      refresh all targetWorkbook' : ''
+  const updateLinks = updateLinksAppleScript(request.updateLinks ?? 'never')
+  const refreshAll = request.refreshAll === true ? '      refresh all (targetWorkbook)' : ''
   const formulaCells = (request.formulaCells ?? [])
     .map(
       (cell) =>
@@ -409,30 +439,30 @@ export function createMacosExcelStructuralOperationAppleScript(
     })
     .join('\n')
 
-  return `on run argv
+  return `${workbookOpenAppleScriptHelpers()}
+on run argv
   set workbookPath to item 1 of argv
-  set targetWorkbook to missing value
-  set companionWorkbooks to {}
-  set output to ""
   tell application "Microsoft Excel"
+    set targetWorkbook to missing value
+    set companionWorkbooks to {}
+    set output to ""
     try
 ${openCompanionWorkbooksAppleScript()}
-      set targetWorkbook to open workbook workbook file name workbookPath update links ${updateLinksMode}
-      set targetWorksheet to worksheet ${toAppleScriptString(request.worksheetName)} of targetWorkbook
+      set targetWorkbook to my openWorkbookForBiligOracle(workbookPath)
+${updateLinks}
+      set targetWorksheet to worksheet ${toAppleScriptString(request.worksheetName)} of (targetWorkbook)
 ${formulaCells}
 ${operations}
 ${refreshAll}
       calculate full rebuild
       set output to "version=" & (version as string)
 ${inspectionReads}
-      close targetWorkbook saving ${closeSavingMode}
+      close (targetWorkbook) saving ${closeSavingMode}
 ${closeCompanionWorkbooksAppleScript()}
     on error errMsg number errNum
-      if targetWorkbook is not missing value then
-        try
-          close targetWorkbook saving no
-        end try
-      end if
+      try
+        close (targetWorkbook) saving no
+      end try
 ${closeCompanionWorkbooksAppleScript()}
       error errMsg number errNum
     end try

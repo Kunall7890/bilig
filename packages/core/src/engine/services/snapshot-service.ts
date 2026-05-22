@@ -93,6 +93,7 @@ export function createEngineSnapshotService(args: {
   ) => void
   readonly initializeCachedFormulaSourcesAt?: (refs: readonly CachedRuntimeFormulaRef[], potentialNewCells?: number) => void
   readonly materializePivot?: (pivot: WorkbookPivotRecord) => number[]
+  readonly claimPivotOutput?: (pivot: WorkbookPivotRecord) => number[]
   readonly emitFullInvalidation?: (options: { readonly incrementMetrics: boolean }) => void
 }): EngineSnapshotService {
   return {
@@ -326,10 +327,16 @@ export function createEngineSnapshotService(args: {
               }
               args.state.workbook.listPivots().forEach((pivot) => {
                 args.checkEvaluationBudget?.()
+                args.claimPivotOutput?.(pivot)
                 args.materializePivot!(pivot)
               })
               snapshot.workbook.metadata?.pivots?.forEach((pivot) => {
                 args.checkEvaluationBudget?.()
+                const current = args.state.workbook.getPivot(pivot.sheetName, pivot.address)
+                if (current && pivot.source && !pivot.cacheOnly) {
+                  args.state.workbook.setPivot({ ...pivot, rows: current.rows, cols: current.cols })
+                  return
+                }
                 args.state.workbook.setPivot(pivot)
               })
             }

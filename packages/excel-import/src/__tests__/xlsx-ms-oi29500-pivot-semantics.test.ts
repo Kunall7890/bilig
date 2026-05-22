@@ -10,11 +10,13 @@ describe('MS-OI29500 pivot semantic import', () => {
     const exported = exportXlsx(buildPivotExportWorkbookSnapshot())
     const zip = unzipSync(exported)
     const pivotXml = strFromU8(zip['xl/pivotTables/pivotTable1.xml'] ?? new Uint8Array())
+    const cacheXml = strFromU8(zip['xl/pivotCache/pivotCacheDefinition1.xml'] ?? new Uint8Array())
     const recordsXml = strFromU8(zip['xl/pivotCache/pivotCacheRecords1.xml'] ?? new Uint8Array())
 
-    expect(recordsXml).toContain('<r><x v="0"/><x v="0"/><x v="0"/><x v="0"/><x v="0"/></r>')
+    expect(recordsXml).toContain('<r><x v="0"/><x v="0"/><x v="0"/><n v="10"/><n v="2"/></r>')
     expect(recordsXml).not.toContain('<s v="East"/>')
-    expect(recordsXml).not.toContain('<n v="10"/>')
+    expect(cacheXml).toContain('containsNumber="1"')
+    expect(cacheXml).toContain('minValue="5" maxValue="100"')
     expect(pivotXml).toContain('rowGrandTotals="0" colGrandTotals="0"')
     expect(pivotXml).toContain(
       [
@@ -39,6 +41,21 @@ describe('MS-OI29500 pivot semantic import', () => {
         hiddenItems: [{ sourceColumn: 'Status', values: ['Open'] }],
       }),
     )
+  })
+
+  it('places generated pivot caches after workbook calcPr so Desktop Excel accepts the package', () => {
+    const snapshot = buildPivotExportWorkbookSnapshot()
+    snapshot.workbook.metadata = {
+      ...snapshot.workbook.metadata,
+      calculationSettings: { mode: 'automatic', compatibilityMode: 'excel-modern', calcId: 191029 },
+    }
+
+    const exported = exportXlsx(snapshot)
+    const zip = unzipSync(exported)
+    const workbookXml = strFromU8(zip['xl/workbook.xml'] ?? new Uint8Array())
+
+    expect(workbookXml.indexOf('<calcPr ')).toBeGreaterThan(0)
+    expect(workbookXml.indexOf('<pivotCaches>')).toBeGreaterThan(workbookXml.indexOf('<calcPr '))
   })
 
   it('imports row, column, page, hidden item, and aggregate variant semantics from worksheet pivots', () => {
