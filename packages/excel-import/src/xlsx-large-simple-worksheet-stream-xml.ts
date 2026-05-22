@@ -228,6 +228,8 @@ export function readCellTypeCodeFromTag(bytes: Uint8Array, startIndex: number, t
           return cellTypeDateCode
         case 101:
           return cellTypeErrorCode
+        case 110:
+          return cellTypeNumberCode
         case 115:
           return cellTypeSharedStringCode
         default:
@@ -257,6 +259,7 @@ export function readCellTypeCodeFromTag(bytes: Uint8Array, startIndex: number, t
 export function cellTypeCodeFromString(type: string | null): LargeSimpleCellTypeCode {
   switch (type) {
     case null:
+    case 'n':
       return cellTypeNumberCode
     case 's':
       return cellTypeSharedStringCode

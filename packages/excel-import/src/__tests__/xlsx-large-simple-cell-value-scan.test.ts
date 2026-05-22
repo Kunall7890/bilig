@@ -39,11 +39,19 @@ describe('large simple XLSX cell value byte scan', () => {
       expectSameNumber(readNumber(sample), Number(sample.replace('&#46;', '.')))
     }
   })
+
+  it('treats explicit OpenXML numeric cells as numbers', () => {
+    expectSameNumber(readTypedValue('13.5', 'n'), 13.5)
+  })
 })
 
 function readNumber(raw: string): unknown {
+  return readTypedValue(raw, null)
+}
+
+function readTypedValue(raw: string, type: string | null): unknown {
   const bytes = encoder.encode(raw)
-  return readLargeSimpleCellValueFromTextRange(bytes, { start: 0, end: bytes.length }, null, [])
+  return readLargeSimpleCellValueFromTextRange(bytes, { start: 0, end: bytes.length }, type, [])
 }
 
 function nextState(state: number): number {
