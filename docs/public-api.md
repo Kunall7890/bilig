@@ -72,6 +72,7 @@ It exposes:
 - `describeRuntimeRequirements`
 - `verifyPlan`
 - `verifyWorkbookCommandBundle`
+- `isWorkbookCommandBundle`
 - `verifyModel`
 - `previewWorkbookPlan`
 - `previewWorkbookCommandBundle`
@@ -265,12 +266,14 @@ frozen plan, runtime requirements, and static plan verification.
 `planWorkbookCommand(model, actionName, input, options)` is the
 direct model-to-command path for agents. `describeCommandBundle(command)` gives
 logs and approval systems a JSON-safe version of the handoff, and
-`verifyWorkbookCommandBundle(command)` proves the command still matches its
-embedded plan, requirements, verification, input, model name, action name, and
-command id. A mutated command fails as `invalid_command_bundle` before
-`adapter.apply` is called. Adapter callbacks receive the command as an optional
-extra argument so runtimes can enforce revision checks, idempotency, locks, and
-audit logging without adding business-model assumptions to `@bilig/workbook`.
+`verifyWorkbookCommandBundle(command)` accepts unknown input and proves the
+command still matches its embedded plan, requirements, verification, input,
+model name, action name, and command id. `isWorkbookCommandBundle(command)` is
+the type guard for JSON or tool-call payloads. A malformed or mutated command
+fails as `invalid_command_bundle` before `adapter.preview` or `adapter.apply` is
+called. Adapter callbacks receive the command as an optional extra argument so
+runtimes can enforce revision checks, idempotency, locks, and audit logging
+without adding business-model assumptions to `@bilig/workbook`.
 `previewWorkbookCommandBundle(command, adapter)` validates the same command
 bundle and calls only `adapter.preview`; it never calls `adapter.apply`. This
 gives agents a separate approval step for exact runtime materialization before

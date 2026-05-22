@@ -259,15 +259,57 @@ function issue(input: {
   }
 }
 
-function bundleInput(bundle: WorkbookCommandBundle): WorkbookActionInput | undefined {
-  return Object.prototype.hasOwnProperty.call(bundle, 'input') ? bundle.input : undefined
+function bundleInput(bundle: Record<string, unknown>): unknown {
+  return Object.prototype.hasOwnProperty.call(bundle, 'input') ? bundle['input'] : undefined
 }
 
-export function verifyWorkbookCommandBundle<Refs>(bundle: WorkbookCommandBundle<Refs>): WorkbookCommandBundleVerification {
+function isWorkbookActionPlanCandidate(value: unknown): value is WorkbookActionPlan {
+  return (
+    isRecord(value) &&
+    typeof value['modelName'] === 'string' &&
+    typeof value['actionName'] === 'string' &&
+    isRecord(value['refs']) &&
+    Array.isArray(value['refsUsed']) &&
+    Array.isArray(value['commands']) &&
+    Array.isArray(value['ops']) &&
+    Array.isArray(value['changed']) &&
+    Array.isArray(value['checks'])
+  )
+}
+
+function planShapeIssue(): WorkbookCommandBundleIssue {
+  return issue({
+    code: 'plan_invalid',
+    path: 'plan',
+    message: 'Workbook command bundle plan must be an object with modelName, actionName, refsUsed, commands, ops, changed, and checks',
+  })
+}
+
+function commandIdMismatchIssue(commandId: string, message?: string): WorkbookCommandBundleIssue {
+  return issue({
+    code: 'invalid_command_id',
+    path: 'commandId',
+    message:
+      message ??
+      (commandId.trim() === ''
+        ? 'Workbook command bundle commandId must be a non-empty string'
+        : `Workbook command bundle commandId ${commandId} does not match its embedded plan`),
+  })
+}
+
+function planDerivativeIssue(error: unknown): WorkbookCommandBundleIssue {
+  return issue({
+    code: 'plan_invalid',
+    path: 'plan',
+    message: `Workbook command bundle plan could not be verified: ${error instanceof Error ? error.message : String(error)}`,
+  })
+}
+
+export function verifyWorkbookCommandBundle(bundle: unknown): WorkbookCommandBundleVerification {
   const issues: WorkbookCommandBundleIssue[] = []
-  const modelName = isRecord(bundle) && typeof bundle.modelName === 'string' ? bundle.modelName : ''
-  const actionName = isRecord(bundle) && typeof bundle.actionName === 'string' ? bundle.actionName : ''
-  const commandId = isRecord(bundle) && typeof bundle.commandId === 'string' ? bundle.commandId : ''
+  const modelName = isRecord(bundle) && typeof bundle['modelName'] === 'string' ? bundle['modelName'] : ''
+  const actionName = isRecord(bundle) && typeof bundle['actionName'] === 'string' ? bundle['actionName'] : ''
+  const commandId = isRecord(bundle) && typeof bundle['commandId'] === 'string' ? bundle['commandId'] : ''
 
   if (!isRecord(bundle)) {
     return {
@@ -279,7 +321,7 @@ export function verifyWorkbookCommandBundle<Refs>(bundle: WorkbookCommandBundle<
     }
   }
 
-  if (bundle.schemaVersion !== 1) {
+  if (bundle['schemaVersion'] !== 1) {
     issues.push(
       issue({
         code: 'invalid_schema_version',
@@ -289,17 +331,11 @@ export function verifyWorkbookCommandBundle<Refs>(bundle: WorkbookCommandBundle<
     )
   }
 
-  if (typeof bundle.commandId !== 'string' || bundle.commandId.trim() === '') {
-    issues.push(
-      issue({
-        code: 'invalid_command_id',
-        path: 'commandId',
-        message: 'Workbook command bundle commandId must be a non-empty string',
-      }),
-    )
+  if (typeof bundle['commandId'] !== 'string' || bundle['commandId'].trim() === '') {
+    issues.push(commandIdMismatchIssue(commandId))
   }
 
-  if (bundle.idempotencyKey !== undefined && (typeof bundle.idempotencyKey !== 'string' || bundle.idempotencyKey.trim() === '')) {
+  if (bundle['idempotencyKey'] !== undefined && (typeof bundle['idempotencyKey'] !== 'string' || bundle['idempotencyKey'].trim() === '')) {
     issues.push(
       issue({
         code: 'invalid_idempotency_key',
@@ -309,7 +345,7 @@ export function verifyWorkbookCommandBundle<Refs>(bundle: WorkbookCommandBundle<
     )
   }
 
-  if (bundle.baseRevision !== undefined && !isWorkbookRevision(bundle.baseRevision)) {
+  if (bundle['baseRevision'] !== undefined && !isWorkbookRevision(bundle['baseRevision'])) {
     issues.push(
       issue({
         code: 'invalid_base_revision',
@@ -319,27 +355,47 @@ export function verifyWorkbookCommandBundle<Refs>(bundle: WorkbookCommandBundle<
     )
   }
 
-  if (bundle.modelName !== bundle.plan.modelName) {
+  const plan = bundle['plan']
+  if (!isWorkbookActionPlanCandidate(plan)) {
+    if (typeof bundle['commandId'] === 'string' && bundle['commandId'].trim() !== '') {
+      issues.push(
+        commandIdMismatchIssue(
+          bundle['commandId'],
+          `Workbook command bundle commandId ${bundle['commandId']} cannot be verified without a valid embedded plan`,
+        ),
+      )
+    }
+    issues.push(planShapeIssue())
+    return {
+      status: 'invalid',
+      commandId,
+      modelName,
+      actionName,
+      issues,
+    }
+  }
+
+  if (bundle['modelName'] !== plan.modelName) {
     issues.push(
       issue({
         code: 'model_name_mismatch',
         path: 'modelName',
-        message: `Workbook command bundle modelName ${String(bundle.modelName)} does not match plan ${bundle.plan.modelName}`,
+        message: `Workbook command bundle modelName ${String(bundle['modelName'])} does not match plan ${plan.modelName}`,
       }),
     )
   }
 
-  if (bundle.actionName !== bundle.plan.actionName) {
+  if (bundle['actionName'] !== plan.actionName) {
     issues.push(
       issue({
         code: 'action_name_mismatch',
         path: 'actionName',
-        message: `Workbook command bundle actionName ${String(bundle.actionName)} does not match plan ${bundle.plan.actionName}`,
+        message: `Workbook command bundle actionName ${String(bundle['actionName'])} does not match plan ${plan.actionName}`,
       }),
     )
   }
 
-  const expectedInput = hasOwnActionInput(bundle.plan) ? getOwnActionInput(bundle.plan) : undefined
+  const expectedInput = hasOwnActionInput(plan) ? getOwnActionInput(plan) : undefined
   if (canonicalJson(bundleInput(bundle)) !== canonicalJson(expectedInput)) {
     issues.push(
       issue({
@@ -350,8 +406,16 @@ export function verifyWorkbookCommandBundle<Refs>(bundle: WorkbookCommandBundle<
     )
   }
 
-  const expectedRequirements = describeRuntimeRequirements(bundle.plan)
-  if (canonicalJson(bundle.requirements) !== canonicalJson(expectedRequirements)) {
+  let expectedRequirements: WorkbookRuntimeRequirements | null = null
+  let expectedVerification: WorkbookPlanVerification | null = null
+  try {
+    expectedRequirements = describeRuntimeRequirements(plan)
+    expectedVerification = verifyPlan(plan)
+  } catch (error) {
+    issues.push(planDerivativeIssue(error))
+  }
+
+  if (expectedRequirements !== null && canonicalJson(bundle['requirements']) !== canonicalJson(expectedRequirements)) {
     issues.push(
       issue({
         code: 'requirements_mismatch',
@@ -361,40 +425,47 @@ export function verifyWorkbookCommandBundle<Refs>(bundle: WorkbookCommandBundle<
     )
   }
 
-  const expectedVerification = verifyPlan(bundle.plan)
-  if (canonicalJson(bundle.verification) !== canonicalJson(expectedVerification)) {
-    issues.push(
-      issue({
-        code: 'verification_mismatch',
-        path: 'verification',
-        message: 'Workbook command bundle verification does not match the plan',
-      }),
-    )
+  if (expectedVerification !== null) {
+    if (canonicalJson(bundle['verification']) !== canonicalJson(expectedVerification)) {
+      issues.push(
+        issue({
+          code: 'verification_mismatch',
+          path: 'verification',
+          message: 'Workbook command bundle verification does not match the plan',
+        }),
+      )
+    }
+
+    expectedVerification.issues.forEach((planIssue) => {
+      issues.push(
+        issue({
+          code: 'plan_invalid',
+          path: `verification.${planIssue.path}`,
+          message: planIssue.message,
+          planIssue,
+        }),
+      )
+    })
   }
 
-  expectedVerification.issues.forEach((planIssue) => {
-    issues.push(
-      issue({
-        code: 'plan_invalid',
-        path: `verification.${planIssue.path}`,
-        message: planIssue.message,
-        planIssue,
-      }),
-    )
-  })
-
-  if (isWorkbookRevision(bundle.baseRevision) || bundle.baseRevision === undefined) {
-    const expectedCommandId = commandIdFor(bundle.plan, {
-      baseRevision: bundle.baseRevision,
+  if (
+    expectedRequirements !== null &&
+    expectedVerification !== null &&
+    (isWorkbookRevision(bundle['baseRevision']) || bundle['baseRevision'] === undefined)
+  ) {
+    const expectedCommandId = commandIdFor(plan, {
+      baseRevision: bundle['baseRevision'],
       idempotencyKey:
-        typeof bundle.idempotencyKey === 'string' && bundle.idempotencyKey.trim() !== '' ? bundle.idempotencyKey.trim() : undefined,
+        typeof bundle['idempotencyKey'] === 'string' && bundle['idempotencyKey'].trim() !== ''
+          ? bundle['idempotencyKey'].trim()
+          : undefined,
     })
-    if (bundle.commandId !== expectedCommandId) {
+    if (bundle['commandId'] !== expectedCommandId) {
       issues.push(
         issue({
           code: 'invalid_command_id',
           path: 'commandId',
-          message: `Workbook command bundle commandId ${String(bundle.commandId)} does not match ${expectedCommandId}`,
+          message: `Workbook command bundle commandId ${String(bundle['commandId'])} does not match ${expectedCommandId}`,
         }),
       )
     }
@@ -407,6 +478,10 @@ export function verifyWorkbookCommandBundle<Refs>(bundle: WorkbookCommandBundle<
     actionName,
     issues,
   }
+}
+
+export function isWorkbookCommandBundle<Refs = unknown>(value: unknown): value is WorkbookCommandBundle<Refs> {
+  return verifyWorkbookCommandBundle(value).status === 'valid'
 }
 
 export function describeCommandBundle<Refs>(bundle: WorkbookCommandBundle<Refs>): WorkbookCommandBundleDescription {

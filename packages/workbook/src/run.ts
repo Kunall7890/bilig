@@ -1,5 +1,10 @@
 import { isLiteralInput, type LiteralInput } from '@bilig/protocol'
-import { verifyWorkbookCommandBundle, type WorkbookCommandBundle, type WorkbookCommandBundleIssue } from './command.js'
+import {
+  isWorkbookCommandBundle,
+  verifyWorkbookCommandBundle,
+  type WorkbookCommandBundle,
+  type WorkbookCommandBundleIssue,
+} from './command.js'
 import { isWorkbookRef, type WorkbookRef } from './find.js'
 import { isWorkbookOp } from './guards.js'
 import { normalizeWorkbookActionInput, type WorkbookActionInput } from './input.js'
@@ -100,6 +105,18 @@ function commandBundleIssueError(issue: WorkbookCommandBundleIssue): WorkbookRun
     message: issue.message,
     path: issue.path,
   }
+}
+
+function commandBundleChecks(command: unknown): readonly WorkbookCheckResult[] {
+  if (typeof command !== 'object' || command === null || Array.isArray(command)) {
+    return []
+  }
+  const plan = (command as { readonly plan?: unknown }).plan
+  if (typeof plan !== 'object' || plan === null || Array.isArray(plan)) {
+    return []
+  }
+  const checks = (plan as { readonly checks?: unknown }).checks
+  return Array.isArray(checks) ? (checks as readonly WorkbookCheckResult[]) : []
 }
 
 function appliedSummary(preview: WorkbookRuntimePreview | undefined): WorkbookAppliedSummary | undefined {
@@ -812,13 +829,25 @@ export async function runWorkbookPlan<Refs>(
 export async function previewWorkbookCommandBundle<Refs>(
   command: WorkbookCommandBundle<Refs>,
   adapter: WorkbookRunAdapter<Refs>,
+): Promise<WorkbookPreviewResult>
+export async function previewWorkbookCommandBundle(command: unknown, adapter: WorkbookRunAdapter): Promise<WorkbookPreviewResult>
+export async function previewWorkbookCommandBundle<Refs>(
+  command: unknown,
+  adapter: WorkbookRunAdapter<Refs>,
 ): Promise<WorkbookPreviewResult> {
   const verification = verifyWorkbookCommandBundle(command)
   if (verification.status === 'invalid') {
     return {
       status: 'failed',
       errors: verification.issues.map(commandBundleIssueError),
-      checks: command.plan.checks,
+      checks: commandBundleChecks(command),
+    }
+  }
+  if (!isWorkbookCommandBundle<Refs>(command)) {
+    return {
+      status: 'failed',
+      errors: verification.issues.map(commandBundleIssueError),
+      checks: commandBundleChecks(command),
     }
   }
   return previewWorkbookPlan(command.plan, adapter, command)
@@ -827,13 +856,22 @@ export async function previewWorkbookCommandBundle<Refs>(
 export async function runWorkbookCommandBundle<Refs>(
   command: WorkbookCommandBundle<Refs>,
   adapter: WorkbookRunAdapter<Refs>,
-): Promise<WorkbookRunResult> {
+): Promise<WorkbookRunResult>
+export async function runWorkbookCommandBundle(command: unknown, adapter: WorkbookRunAdapter): Promise<WorkbookRunResult>
+export async function runWorkbookCommandBundle<Refs>(command: unknown, adapter: WorkbookRunAdapter<Refs>): Promise<WorkbookRunResult> {
   const verification = verifyWorkbookCommandBundle(command)
   if (verification.status === 'invalid') {
     return {
       status: 'failed',
       errors: verification.issues.map(commandBundleIssueError),
-      checks: command.plan.checks,
+      checks: commandBundleChecks(command),
+    }
+  }
+  if (!isWorkbookCommandBundle<Refs>(command)) {
+    return {
+      status: 'failed',
+      errors: verification.issues.map(commandBundleIssueError),
+      checks: commandBundleChecks(command),
     }
   }
   return runWorkbookPlan(command.plan, adapter, command)
