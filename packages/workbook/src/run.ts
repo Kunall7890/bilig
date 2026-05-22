@@ -496,6 +496,19 @@ function unverifiedCheckErrors(checks: readonly WorkbookCheckResult[]): readonly
     .map((check) => runError('check_not_verified', `${checkLabel(check)} did not verify check ${check.kind}: ${check.message}`))
 }
 
+function failedAfterApply(
+  applyResult: WorkbookRunApplyResult,
+  errors: readonly WorkbookRunError[],
+  checks: readonly WorkbookCheckResult[],
+): WorkbookRunResult {
+  return {
+    status: 'failed',
+    errors,
+    checks,
+    ...(applyResult.undo !== undefined ? { undo: applyResult.undo } : {}),
+  }
+}
+
 export async function runWorkbookPlan<Refs>(plan: WorkbookActionPlan<Refs>, adapter: WorkbookRunAdapter<Refs>): Promise<WorkbookRunResult> {
   const invalidPlan = failedFromPlanIssues(plan)
   if (invalidPlan !== null) {
@@ -551,60 +564,36 @@ export async function runWorkbookPlan<Refs>(plan: WorkbookActionPlan<Refs>, adap
   if (targets.length > 0) {
     if (adapter.read === undefined) {
       const readbackVerification = verifyWorkbookReadbacks(checks, [])
-      return {
-        status: 'failed',
-        errors: readbackVerification.issues.map(readbackIssueError),
-        checks: readbackVerification.checks,
-      }
+      return failedAfterApply(applyResult, readbackVerification.issues.map(readbackIssueError), readbackVerification.checks)
     }
 
     let readbacks: readonly WorkbookRunReadback[]
     try {
       const rawReadbacks = validateReadbacks(await adapter.read(targets, plan))
       if ('code' in rawReadbacks) {
-        return {
-          status: 'failed',
-          errors: [rawReadbacks],
-          checks,
-        }
+        return failedAfterApply(applyResult, [rawReadbacks], checks)
       }
       readbacks = rawReadbacks
     } catch (error) {
-      return {
-        status: 'failed',
-        errors: [runError('readback_failed', errorMessage(error))],
-        checks,
-      }
+      return failedAfterApply(applyResult, [runError('readback_failed', errorMessage(error))], checks)
     }
 
     const readbackVerification = verifyWorkbookReadbacks(checks, readbacks)
     checks = readbackVerification.checks
     if (readbackVerification.status === 'failed') {
-      return {
-        status: 'failed',
-        errors: readbackVerification.issues.map(readbackIssueError),
-        checks,
-      }
+      return failedAfterApply(applyResult, readbackVerification.issues.map(readbackIssueError), checks)
     }
   }
 
   const checkVerification = await verifyChecksWithAdapter(checks, plan, adapter)
   checks = checkVerification.checks
   if (checkVerification.errors.length > 0) {
-    return {
-      status: 'failed',
-      errors: checkVerification.errors,
-      checks,
-    }
+    return failedAfterApply(applyResult, checkVerification.errors, checks)
   }
 
   const unverifiedErrors = unverifiedCheckErrors(checks)
   if (unverifiedErrors.length > 0) {
-    return {
-      status: 'failed',
-      errors: unverifiedErrors,
-      checks,
-    }
+    return failedAfterApply(applyResult, unverifiedErrors, checks)
   }
 
   const applied = appliedSummary(preview)

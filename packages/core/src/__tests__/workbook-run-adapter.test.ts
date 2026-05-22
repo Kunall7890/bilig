@@ -51,10 +51,10 @@ describe('workbook run adapter', () => {
 
     const result = await runWorkbookPlan(plan, adapter)
 
-    expect(result).toMatchObject({ status: 'done' })
     if (result.status !== 'done') {
       throw new Error(result.errors.map((error) => error.message).join('\n'))
     }
+    expect(result).toMatchObject({ status: 'done' })
     expect(engine.getCell('Sheet1', 'C1').formula).toBe('(Sheet1!A1)+(Sheet1!B1)')
     expect(engine.getCellValue('Sheet1', 'C1')).toEqual({ tag: ValueTag.Number, value: 5 })
     expect(result.undo?.id).toMatch(/^generic-calculation\.calculate\.undo\.\d+$/)
@@ -101,7 +101,7 @@ describe('workbook run adapter', () => {
 
     const result = await runWorkbookAction(model, 'calculate', createWorkbookRunAdapter(engine))
 
-    expect(result).toEqual({
+    expect(result).toMatchObject({
       status: 'failed',
       errors: [
         {
@@ -117,7 +117,47 @@ describe('workbook run adapter', () => {
           message: 'Sheet1!B1 has no formula errors',
         },
       ],
+      undo: {
+        id: expect.stringMatching(/^formula-error-check\.calculate\.undo\.\d+$/),
+        ops: [{ kind: 'clearCell', sheetName: 'Sheet1', address: 'B1' }],
+      },
     })
+    expect(engine.getCellValue('Sheet1', 'B1').tag).toBe(ValueTag.Error)
+  })
+
+  it('does not treat engine error cells as null readback values', async () => {
+    const engine = new SpreadsheetEngine({ workbookName: 'workbook-run-adapter-error-readback' })
+    await engine.ready()
+    engine.createSheet('Sheet1')
+    engine.setCellValue('Sheet1', 'A1', 0)
+
+    const model = defineModel({
+      name: 'formula-error-readback',
+      find(workbook) {
+        return {
+          output: workbook.findRange({ sheetName: 'Sheet1', address: 'B1' }),
+        }
+      },
+      checks({ refs, workbook }) {
+        return [workbook.check.valueEquals(refs.output, null), workbook.check.valuesEqual(refs.output, [[null]])]
+      },
+      actions: {
+        calculate({ refs, workbook }) {
+          workbook.writeFormula(refs.output, formula.raw('1/A1'))
+        },
+      },
+    })
+
+    const result = await runWorkbookAction(model, 'calculate', createWorkbookRunAdapter(engine))
+
+    expect(result.status).toBe('failed')
+    if (result.status !== 'failed') {
+      return
+    }
+    expect(result.errors.map((error) => [error.code, error.message])).toEqual([
+      ['value_mismatch', 'Sheet1!B1 has no value readback'],
+      ['values_mismatch', 'Sheet1!B1 has no values readback'],
+    ])
     expect(engine.getCellValue('Sheet1', 'B1').tag).toBe(ValueTag.Error)
   })
 
@@ -170,10 +210,10 @@ describe('workbook run adapter', () => {
 
     const result = await runWorkbookAction(model, 'calculate', createWorkbookRunAdapter(engine))
 
-    expect(result).toMatchObject({ status: 'done' })
     if (result.status !== 'done') {
       throw new Error(result.errors.map((error) => error.message).join('\n'))
     }
+    expect(result).toMatchObject({ status: 'done' })
     expect(engine.getCell('Sheet1', 'C2').formula).toBe('(Sheet1!A2)*(Sheet1!B2)')
     expect(engine.getCellValue('Sheet1', 'C2')).toEqual({ tag: ValueTag.Number, value: 6 })
     expect(engine.getCell('Sheet1', 'C3').formula).toBe('(Sheet1!A3)*(Sheet1!B3)')
@@ -191,6 +231,146 @@ describe('workbook run adapter', () => {
         { kind: 'setCellFormula', sheetName: 'Sheet1', address: 'C3', formula: '(Sheet1!A3)*(Sheet1!B3)' },
       ],
     })
+  })
+
+  it('materializes overlapping placeholder formula inputs without corrupting replacements', async () => {
+    const engine = new SpreadsheetEngine({ workbookName: 'workbook-run-adapter-overlapping-placeholders' })
+    await engine.ready()
+    engine.createSheet('Sheet1')
+    engine.setCellValue('Sheet1', 'A1', 'Key')
+    engine.setCellValue('Sheet1', 'B1', 'A')
+    engine.setCellValue('Sheet1', 'C1', 'A_B')
+    engine.setCellValue('Sheet1', 'D1', 'Result')
+    engine.setCellValue('Sheet1', 'A2', 'row')
+    engine.setCellValue('Sheet1', 'B2', 2)
+    engine.setCellValue('Sheet1', 'C2', 3)
+    engine.setTable({
+      name: 'Inputs',
+      sheetName: 'Sheet1',
+      startAddress: 'A1',
+      endAddress: 'D2',
+      columnNames: ['Key', 'A', 'A_B', 'Result'],
+      headerRow: true,
+      totalsRow: false,
+    })
+
+    const model = defineModel({
+      name: 'generic-overlapping-placeholders',
+      find(workbook) {
+        const table = workbook.findTable({ headers: ['Key', 'A', 'A_B', 'Result'] })
+        return {
+          table,
+          a: table.column('A'),
+          aB: table.column('A_B'),
+          result: table.column('Result'),
+        }
+      },
+      checks({ refs, workbook }) {
+        return [workbook.check.valueEquals(refs.result, 5), workbook.check.formulasEqual(refs.result, [['(Sheet1!B2)+(Sheet1!C2)']])]
+      },
+      actions: {
+        calculate({ refs, workbook }) {
+          workbook.writeFormula(refs.result, formula.add(refs.a, refs.aB))
+        },
+      },
+    })
+
+    const result = await runWorkbookAction(model, 'calculate', createWorkbookRunAdapter(engine))
+
+    if (result.status !== 'done') {
+      throw new Error(result.errors.map((error) => error.message).join('\n'))
+    }
+    expect(result).toMatchObject({ status: 'done' })
+    expect(engine.getCell('Sheet1', 'D2').formula).toBe('(Sheet1!B2)+(Sheet1!C2)')
+    expect(engine.getCellValue('Sheet1', 'D2')).toEqual({ tag: ValueTag.Number, value: 5 })
+  })
+
+  it('materializes formula inputs only at formula token boundaries', async () => {
+    const engine = new SpreadsheetEngine({ workbookName: 'workbook-run-adapter-token-boundaries' })
+    await engine.ready()
+    engine.createSheet('Sheet1')
+    engine.setCellValue('Sheet1', 'A1', 7)
+    engine.setDefinedName('Input', { kind: 'cell-ref', sheetName: 'Sheet1', address: 'A1' })
+
+    const model = defineModel({
+      name: 'generic-token-boundaries',
+      find(workbook) {
+        return {
+          input: workbook.findName('Input'),
+          result: workbook.findRange({ sheetName: 'Sheet1', address: 'B1' }),
+        }
+      },
+      actions: {
+        calculate({ refs, workbook }) {
+          workbook.writeFormula(refs.result, formula.raw('InputValue+Input', { inputs: [refs.input] }))
+        },
+      },
+    })
+
+    const preview = await createWorkbookRunAdapter(engine).preview?.(buildWorkbookActionPlan(model, 'calculate'))
+
+    expect(preview?.materializedOps).toEqual([
+      {
+        kind: 'setCellFormula',
+        sheetName: 'Sheet1',
+        address: 'B1',
+        formula: 'InputValue+Sheet1!A1',
+      },
+    ])
+  })
+
+  it('does not materialize declared formula inputs inside string literals', async () => {
+    const engine = new SpreadsheetEngine({ workbookName: 'workbook-run-adapter-formula-strings' })
+    await engine.ready()
+    engine.createSheet('Sheet1')
+    engine.setCellValue('Sheet1', 'A1', 'Key')
+    engine.setCellValue('Sheet1', 'B1', 'Amount')
+    engine.setCellValue('Sheet1', 'C1', 'Result')
+    engine.setCellValue('Sheet1', 'A2', 'row')
+    engine.setCellValue('Sheet1', 'B2', 7)
+    engine.setTable({
+      name: 'Input',
+      sheetName: 'Sheet1',
+      startAddress: 'A1',
+      endAddress: 'C2',
+      columnNames: ['Key', 'Amount', 'Result'],
+      headerRow: true,
+      totalsRow: false,
+    })
+
+    const model = defineModel({
+      name: 'generic-formula-string-literals',
+      find(workbook) {
+        const table = workbook.findTable({ name: 'Input' })
+        return {
+          amount: table.column('Amount'),
+          result: table.column('Result'),
+        }
+      },
+      checks({ refs, workbook }) {
+        return [
+          workbook.check.noFormulaErrors(refs.result),
+          workbook.check.formulasEqual(refs.result, [['T("Input[Amount]")&"-"&Sheet1!B2']]),
+        ]
+      },
+      actions: {
+        calculate({ refs, workbook }) {
+          const token = formula.source(formula.ref(refs.amount))
+          workbook.writeFormula(refs.result, formula.raw(`T("${token}")&"-"&${token}`, { inputs: [refs.amount] }))
+        },
+      },
+    })
+
+    const result = await runWorkbookAction(model, 'calculate', createWorkbookRunAdapter(engine))
+
+    if (result.status !== 'done') {
+      throw new Error(result.errors.map((error) => error.message).join('\n'))
+    }
+    expect(engine.getCell('Sheet1', 'C2').formula).toBe('T("Input[Amount]")&"-"&Sheet1!B2')
+    expect(result.checks.map((check) => [check.kind, check.status])).toEqual([
+      ['noFormulaErrors', 'passed'],
+      ['formulasEqual', 'passed'],
+    ])
   })
 
   it('applies additional plan ops after command materialization instead of silently ignoring them', async () => {

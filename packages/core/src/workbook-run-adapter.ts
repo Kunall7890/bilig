@@ -262,9 +262,6 @@ function rowValueMatches(actual: LiteralInput | undefined, op: WorkbookRowsRef['
 }
 
 function resolveRows(engine: SpreadsheetEngine, ref: WorkbookRowsRef): ResolvedRows | null {
-  if (ref.table === undefined) {
-    return null
-  }
   const table = findTable(engine, ref.table)
   if (table === undefined) {
     return null
@@ -425,6 +422,7 @@ function readbackForRanges(engine: SpreadsheetEngine, target: WorkbookRef, range
   const values: LiteralInput[][] = []
   const formulas: (string | null)[][] = []
   const cells: WorkbookCellReadback[] = []
+  let hasValueError = false
 
   for (const range of ranges) {
     const bounds = rangeBounds(range)
@@ -435,6 +433,9 @@ function readbackForRanges(engine: SpreadsheetEngine, target: WorkbookRef, range
         const address = formatAddress(row, col)
         const cell = engine.getCell(range.sheetName, address)
         const value = literalFromCellValue(cell.value)
+        if (cell.value.tag === ValueTag.Error) {
+          hasValueError = true
+        }
         valueRow.push(value ?? null)
         formulaRow.push(cell.formula ?? null)
         cells.push({
@@ -452,9 +453,9 @@ function readbackForRanges(engine: SpreadsheetEngine, target: WorkbookRef, range
   const single = cells.length === 1 ? cells[0] : undefined
   return {
     target,
-    ...(single?.value !== undefined ? { value: single.value } : {}),
+    ...(!hasValueError && single?.value !== undefined ? { value: single.value } : {}),
     ...(single !== undefined ? { formula: single.formula ?? null } : {}),
-    values,
+    ...(!hasValueError ? { values } : {}),
     formulas,
     cells,
   }
@@ -496,19 +497,78 @@ function inputReplacementForCell(
   throw new Error(`Cannot align formula input ${input.label} with ${targetCells.length} target cell(s)`)
 }
 
+interface FormulaReplacement {
+  readonly token: string
+  readonly replacement: string
+}
+
+function formulaQuoteEnd(source: string, startIndex: number, quote: '"' | "'"): number {
+  let index = startIndex + 1
+  while (index < source.length) {
+    const current = source[index]
+    if (current === quote) {
+      if (source[index + 1] === quote) {
+        index += 2
+        continue
+      }
+      return index + 1
+    }
+    index += 1
+  }
+  return source.length
+}
+
+function isFormulaIdentifierChar(value: string | undefined): boolean {
+  return value !== undefined && /[A-Za-z0-9_.$]/.test(value)
+}
+
+function isFormulaTokenBoundary(source: string, index: number, token: string): boolean {
+  const previous = source[index - 1]
+  const next = source[index + token.length]
+  return !isFormulaIdentifierChar(previous) && previous !== ']' && !isFormulaIdentifierChar(next) && next !== '['
+}
+
+function materializeFormulaSource(source: string, replacements: readonly FormulaReplacement[]): string {
+  let output = ''
+  let index = 0
+  const orderedReplacements = replacements.toSorted((left, right) => right.token.length - left.token.length)
+
+  while (index < source.length) {
+    const replacement = orderedReplacements.find(
+      (candidate) => source.startsWith(candidate.token, index) && isFormulaTokenBoundary(source, index, candidate.token),
+    )
+    if (replacement !== undefined) {
+      output += replacement.replacement
+      index += replacement.token.length
+      continue
+    }
+
+    const current = source[index]
+    if (current === '"' || current === "'") {
+      const endIndex = formulaQuoteEnd(source, index, current)
+      output += source.slice(index, endIndex)
+      index = endIndex
+      continue
+    }
+
+    output += current
+    index += 1
+  }
+
+  return output
+}
+
 function formulaForCell(
   engine: SpreadsheetEngine,
   command: Extract<WorkbookActionCommand, { readonly kind: 'writeFormula' }>,
   targetCells: readonly CellTarget[],
   cellIndex: number,
 ): string {
-  let source = command.formula
-  command.inputs.forEach((input) => {
-    const token = workbookFormula.source(workbookFormula.ref(input))
-    const replacement = inputReplacementForCell(engine, input, targetCells, cellIndex)
-    source = source.replaceAll(token, replacement)
-  })
-  return source
+  const replacements = command.inputs.map((input) => ({
+    token: workbookFormula.source(workbookFormula.ref(input)),
+    replacement: inputReplacementForCell(engine, input, targetCells, cellIndex),
+  }))
+  return materializeFormulaSource(command.formula, replacements)
 }
 
 function commandTargetRanges(
@@ -599,12 +659,35 @@ function opKey(op: EngineOp): string {
   return JSON.stringify(canonicalValue(op))
 }
 
+function directCommandOps(command: WorkbookActionCommand): readonly EngineOp[] {
+  if (command.kind === 'op') {
+    return [structuredClone(command.op)]
+  }
+  if (command.target.kind !== 'range' || command.target.range.startAddress !== command.target.range.endAddress) {
+    return []
+  }
+  const cell = {
+    sheetName: command.target.range.sheetName,
+    address: command.target.range.startAddress,
+  }
+  switch (command.kind) {
+    case 'writeFormula':
+      return [{ kind: 'setCellFormula', ...cell, formula: command.formula }]
+    case 'writeValue':
+      return [{ kind: 'setCellValue', ...cell, value: command.value }]
+    case 'clear':
+      return [{ kind: 'clearCell', ...cell }]
+    case 'format':
+      return command.numberFormat === undefined ? [] : [{ kind: 'setCellFormat', ...cell, format: command.numberFormat }]
+  }
+}
+
 function materializePlanOps(engine: SpreadsheetEngine, plan: WorkbookActionPlan): readonly EngineOp[] {
   if (plan.commands.length === 0) {
     return plan.ops
   }
   const commandOps = plan.commands.flatMap((command) => materializeCommandOps(engine, command))
-  const commandOpKeys = new Set(commandOps.map(opKey))
+  const commandOpKeys = new Set([...commandOps, ...plan.commands.flatMap(directCommandOps)].map(opKey))
   const additionalOps = plan.ops.filter((op) => !commandOpKeys.has(opKey(op)))
   return [...commandOps, ...additionalOps]
 }

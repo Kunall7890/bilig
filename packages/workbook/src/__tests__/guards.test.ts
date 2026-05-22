@@ -255,6 +255,52 @@ describe('workbook guards', () => {
     ).toBe(false)
   })
 
+  it('rejects malformed public op addresses, ranges, and formulas', () => {
+    const malformedOps: readonly unknown[] = [
+      { kind: 'setCellValue', sheetName: 'Sheet1', address: 'A0', value: 1 },
+      { kind: 'setCellFormula', sheetName: 'Sheet1', address: 'A1', formula: '1+' },
+      {
+        kind: 'setStyleRange',
+        range: { sheetName: 'Sheet1', startAddress: 'B2', endAddress: 'A1' },
+        styleId: 'style-1',
+      },
+      {
+        kind: 'upsertTable',
+        table: {
+          name: 'Table1',
+          sheetName: 'Sheet1',
+          startAddress: 'A1',
+          endAddress: 'A0',
+          columnNames: ['Amount'],
+          headerRow: true,
+          totalsRow: false,
+        },
+      },
+      { kind: 'upsertDefinedName', name: 'Broken', value: { kind: 'formula', formula: '1+' } },
+      {
+        kind: 'upsertCommentThread',
+        thread: {
+          threadId: 'thread-1',
+          sheetName: 'Sheet1',
+          address: 'A0',
+          comments: [{ id: 'comment-1', body: 'Invalid address.' }],
+        },
+      },
+    ]
+
+    malformedOps.forEach((op) => {
+      expect(isEngineOp(op)).toBe(false)
+    })
+    expect(
+      isEngineOpBatch({
+        id: 'batch-1',
+        replicaId: 'replica-1',
+        clock: { counter: 4 },
+        ops: [{ kind: 'upsertWorkbook', name: 'Book' }, malformedOps[0]],
+      }),
+    ).toBe(false)
+  })
+
   it('rejects unsafe engine batch clock counters', () => {
     const validBatch = {
       id: 'batch-1',

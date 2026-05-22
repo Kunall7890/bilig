@@ -71,6 +71,19 @@ describe('@bilig/workbook formula api', () => {
     expect(inputs).toEqual([first, second, first])
   })
 
+  it('freezes formula expressions and inspectable input lists', () => {
+    const first = findRange({ sheetName: 'Sheet1', address: 'A1' })
+    const second = findRange({ sheetName: 'Sheet1', address: 'B1' })
+
+    const expression = formula.add(first, second)
+    const inputs = formula.inputs(first)
+
+    expect(Object.isFrozen(expression)).toBe(true)
+    expect(Object.isFrozen(expression.inputs)).toBe(true)
+    expect(Object.isFrozen(inputs)).toBe(true)
+    expect(inputs).toEqual([first])
+  })
+
   it('flags raw formula inputs that are not part of resolved model refs', () => {
     const hidden = findRange({ sheetName: 'Sheet1', address: 'Z9' })
     const model = defineModel({
@@ -103,7 +116,7 @@ describe('@bilig/workbook formula api', () => {
           path: 'commands[0].inputs[0]',
           ref: {
             kind: 'range',
-            id: 'range_Sheet1_Z9_Z9',
+            id: 'range_p_Sheet1_p_Z9_p_Z9',
             label: 'Sheet1!Z9',
             range: {
               sheetName: 'Sheet1',

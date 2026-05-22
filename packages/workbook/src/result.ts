@@ -146,4 +146,5 @@ export type WorkbookRunResult =
       readonly status: 'failed'
       readonly errors: readonly WorkbookRunError[]
       readonly checks: readonly WorkbookCheckResult[]
+      readonly undo?: WorkbookUndoRef
     }

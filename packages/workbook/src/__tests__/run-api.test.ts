@@ -212,7 +212,7 @@ describe('@bilig/workbook run api', () => {
           kind: 'exists',
           target: {
             kind: 'table',
-            id: 'table_Inputs_Amount',
+            id: 'table_p_Inputs_p_Amount',
             label: 'Inputs',
             name: 'Inputs',
             headers: ['Amount'],
@@ -792,7 +792,7 @@ describe('@bilig/workbook run api', () => {
           kind: 'valueEquals',
           target: {
             kind: 'range',
-            id: 'range_Sheet1_B2_B2',
+            id: 'range_p_Sheet1_p_B2_p_B2',
             label: 'Sheet1!B2',
             range: {
               sheetName: 'Sheet1',
@@ -841,6 +841,47 @@ describe('@bilig/workbook run api', () => {
           },
         },
       ],
+    })
+  })
+
+  it('preserves undo on failed proof after a successful apply', async () => {
+    const model = valueModel()
+
+    const result = await runWorkbookAction(model, 'write', {
+      apply: () => ({
+        status: 'applied',
+        undo: {
+          id: 'undo-after-proof-failure',
+          ops: [{ kind: 'setCellValue', sheetName: 'Sheet1', address: 'B2', value: null }],
+        },
+      }),
+      read: (targets) => [
+        {
+          target: first(targets),
+          value: 7,
+        },
+      ],
+    })
+
+    expect(result).toMatchObject({
+      status: 'failed',
+      undo: {
+        id: 'undo-after-proof-failure',
+        ops: [{ kind: 'setCellValue', sheetName: 'Sheet1', address: 'B2', value: null }],
+      },
+      errors: [
+        {
+          code: 'value_mismatch',
+          message: 'Sheet1!B2 expected value 12 but read 7',
+        },
+      ],
+    })
+    expect(describeRunResult(result)).toMatchObject({
+      status: 'failed',
+      undo: {
+        id: 'undo-after-proof-failure',
+        ops: [{ kind: 'setCellValue', sheetName: 'Sheet1', address: 'B2', value: null }],
+      },
     })
   })
 

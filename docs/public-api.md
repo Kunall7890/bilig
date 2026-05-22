@@ -148,6 +148,9 @@ inspect the handoff without pulling in `@bilig/core`. When a `target` is
 supplied for an address or range op, `verifyPlan` checks that the op touches the
 same range. For op kinds without an inferable range, `target` is descriptive for
 logs and approvals rather than proof of affected cells.
+The public op guards validate finite literal values, parseable formulas, valid
+cell addresses, ordered ranges, non-empty identifiers, and known enum values
+before a low-level op is accepted.
 
 Formula helpers keep referenced workbook inputs separate from formula text.
 Planned `writeFormula` commands expose those inputs directly, which lets agents
@@ -158,6 +161,9 @@ keeps arbitrary formula text generic while preserving explicit workbook
 dependencies for inspection and verification. These are declared dependencies,
 not parser-discovered proof that every formula reference has a matching model
 ref.
+Runtime adapters materialize declared formula inputs as whole formula tokens.
+They do not rewrite a ref token inside a string literal or inside a larger
+identifier, so generic formula text remains predictable for agents.
 
 Action plans also expose `refsUsed`, a flat deduped list of workbook refs found
 inside the consumer-defined `refs` object. This keeps custom models generic
@@ -172,7 +178,10 @@ out of the plan instead of letting an invalid address, blank column, invalid row
 operator, or non-finite predicate value fail later inside an engine adapter.
 `findRows` refs include their predicate value in the stable id, so distinct
 consumer-defined row predicates remain distinct during agent inspection and
-dedupe. Labels stay simple and readable for logs.
+dedupe. `findRows` is table-backed: pass the table plus a predicate, then use
+`rows.column("Amount")` for row-scoped columns. Ref ids are collision-resistant
+and stable but opaque; display labels or `describeRef` output instead of
+parsing ids.
 Refs are frozen data objects. Helper methods such as `table.column()` and
 `rows.column()` remain available for ergonomics, but they are non-enumerable so
 object-key inspection and JSON descriptions stay data-first.
@@ -262,6 +271,8 @@ or `formulas_mismatch`, plus structured `path`, `target`, `check`, `expected`,
 and `actual` fields where available. Malformed adapter preview, apply, or
 readback output fails as `invalid_runtime_result`; adapter output is not trusted
 just because TypeScript says it has the right shape.
+If apply succeeded and later proof fails, the failed run result preserves the
+adapter undo ref when one was returned.
 Formula readbacks are exact and should use the normalized no-leading-`=` form
 produced by `formula.source`.
 Run errors use the stable `WorkbookRunErrorCode` union. Agents and adapters can

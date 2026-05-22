@@ -35,15 +35,15 @@ function uniqueRefs(refs: readonly WorkbookRef[]): readonly WorkbookRef[] {
     seen.add(key)
     unique.push(ref)
   }
-  return unique
+  return Object.freeze(unique)
 }
 
 function createFormulaExpression(source: string, inputs: readonly WorkbookRef[] = []): WorkbookFormulaExpression {
-  return {
+  return Object.freeze({
     kind: 'formula',
     source: normalizeFormulaSource(source),
     inputs: uniqueRefs(inputs),
-  }
+  })
 }
 
 function isFormulaExpression(value: WorkbookFormulaOperand): value is WorkbookFormulaExpression {
@@ -138,7 +138,7 @@ export const formula = {
     return normalizeFormulaSource(operandSource(expression))
   },
   inputs(expression: WorkbookFormulaOperand): readonly WorkbookRef[] {
-    return operandInputs(expression)
+    return Object.freeze([...operandInputs(expression)])
   },
   ref(ref: WorkbookRef): WorkbookFormulaExpression {
     return createFormulaExpression(refSource(ref), [ref])

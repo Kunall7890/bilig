@@ -72,8 +72,7 @@ export interface WorkbookColumnRefDescription extends WorkbookBaseRefDescription
 
 export interface WorkbookRowsRefDescription extends WorkbookBaseRefDescription {
   readonly kind: 'rows'
-  readonly sheetName?: string
-  readonly table?: WorkbookTableRefDescription
+  readonly table: WorkbookTableRefDescription
   readonly where: {
     readonly column: string
     readonly op: WorkbookRowOperator
@@ -193,6 +192,7 @@ export type WorkbookRunResultDescription =
       readonly status: 'failed'
       readonly errors: readonly WorkbookRunErrorDescription[]
       readonly checks: readonly WorkbookCheckResultDescription[]
+      readonly undo?: WorkbookUndoRefDescription
     }
 
 export interface WorkbookRunErrorDescription {
@@ -261,8 +261,7 @@ function describeRowsRef(ref: WorkbookRowsRef): WorkbookRowsRefDescription {
     kind: 'rows',
     id: ref.id,
     label: ref.label,
-    ...(ref.sheetName !== undefined ? { sheetName: ref.sheetName } : {}),
-    ...(ref.table !== undefined ? { table: describeTableRef(ref.table) } : {}),
+    table: describeTableRef(ref.table),
     where: { ...ref.where },
   }
 }
@@ -434,5 +433,6 @@ export function describeRunResult(result: WorkbookRunResult): WorkbookRunResultD
     status: 'failed',
     errors: result.errors.map(describeError),
     checks: result.checks.map(describeCheck),
+    ...(result.undo !== undefined ? { undo: describeUndo(result.undo) } : {}),
   }
 }

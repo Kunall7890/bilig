@@ -38,6 +38,7 @@ export type WorkbookRowOperator = 'eq' | 'neq' | 'contains' | 'startsWith' | 'gt
 
 const WORKBOOK_ROW_OPERATORS: readonly WorkbookRowOperator[] = ['eq', 'neq', 'contains', 'startsWith', 'gt', 'gte', 'lt', 'lte']
 const WORKBOOK_ROW_OPERATOR_SET = new Set<string>(WORKBOOK_ROW_OPERATORS)
+const REF_ID_SEPARATOR = '_p_'
 
 function hasOwnString<Key extends string>(value: object, key: Key): value is Record<Key, string> {
   const descriptor = Object.getOwnPropertyDescriptor(value, key)
@@ -51,8 +52,7 @@ function hasOwnFunction<Key extends string>(value: object, key: Key): value is R
 
 export interface WorkbookRowsRef extends WorkbookBaseRef {
   readonly kind: 'rows'
-  readonly sheetName?: string
-  readonly table?: WorkbookTableRef
+  readonly table: WorkbookTableRef
   readonly where: {
     readonly column: string
     readonly op: WorkbookRowOperator
@@ -117,7 +117,7 @@ function isWorkbookRowsRef(value: unknown): value is WorkbookRowsRef {
     return false
   }
   const table = Object.getOwnPropertyDescriptor(value, 'table')?.value
-  return hasOptionalString(value, 'sheetName') && (table === undefined || isWorkbookTableRef(table))
+  return isWorkbookTableRef(table)
 }
 
 function isWorkbookColumnRef(value: unknown): value is WorkbookColumnRef {
@@ -206,8 +206,7 @@ export interface FindColumnOptions {
 }
 
 export interface FindRowsOptions {
-  readonly sheetName?: string
-  readonly table?: WorkbookTableRef
+  readonly table: WorkbookTableRef
   readonly where: {
     readonly column: string
     readonly op: WorkbookRowOperator
@@ -245,12 +244,23 @@ export interface WorkbookFindNamespace extends WorkbookFindApi {
   readonly rows: (options: FindRowsOptions) => WorkbookRowsRef
 }
 
-function cleanIdPart(value: string): string {
-  const cleaned = value
-    .trim()
-    .replaceAll(/[^A-Za-z0-9_]+/g, '_')
-    .replace(/^_+|_+$/g, '')
-  return cleaned === '' ? 'ref' : cleaned
+function refIdPart(value: string): string {
+  let encoded = ''
+  for (const char of value) {
+    encoded += /^[A-Za-z0-9]$/.test(char) ? char : `_x${char.codePointAt(0)!.toString(16)}_`
+  }
+  return encoded === '' ? 'ref' : encoded
+}
+
+function refId(...parts: readonly (string | undefined)[]): string {
+  return parts
+    .filter((part) => part !== undefined)
+    .map((part) => refIdPart(part))
+    .join(REF_ID_SEPARATOR)
+}
+
+function joinRefId(...parts: readonly string[]): string {
+  return parts.join(REF_ID_SEPARATOR)
 }
 
 function requiredSelectorText(value: unknown, field: string): string {
@@ -333,11 +343,7 @@ function normalizeRowsValue(value: unknown): LiteralInput {
 
 function literalIdPart(value: LiteralInput): string {
   const source = JSON.stringify(value) ?? 'null'
-  let encoded = ''
-  for (const char of source) {
-    encoded += /[A-Za-z0-9]/.test(char) ? char : `_${char.charCodeAt(0).toString(16)}`
-  }
-  return cleanIdPart(`${typeof value}_${encoded}`)
+  return refId(value === null ? 'null' : typeof value, source)
 }
 
 function literalLabel(value: LiteralInput): string {
@@ -387,7 +393,7 @@ export function createWorkbookTableRef(options: FindTableOptions): WorkbookTable
   if (tableName === undefined && sheetName === undefined && headers === undefined) {
     throw new Error('Workbook table selector needs a name, sheet name, or headers')
   }
-  const id = cleanIdPart(['table', sheetName, tableName, ...(headers ?? [])].filter(Boolean).join('_'))
+  const id = refId('table', sheetName, tableName, ...(headers ?? []))
   const label = tableName ?? (headers ? `table with ${headers.join(', ')}` : `${sheetName} table`)
   const table: WorkbookTableRef = {
     kind: 'table',
@@ -410,7 +416,7 @@ export function createWorkbookColumnRef(options: FindColumnOptions): WorkbookCol
   const ownerLabel = options.rows?.label ?? options.table.label
   const column: WorkbookColumnRef = {
     kind: 'column',
-    id: cleanIdPart(`${ownerId}_${name}`),
+    id: joinRefId(ownerId, refIdPart(name)),
     label: `${ownerLabel}.${name}`,
     table: options.table,
     ...(options.rows !== undefined ? { rows: options.rows } : {}),
@@ -423,7 +429,7 @@ export function createWorkbookRangeRef(input: FindRangeInput): WorkbookRangeRef 
   const range = normalizeRangeRef(input)
   return Object.freeze({
     kind: 'range',
-    id: cleanIdPart(`range_${range.sheetName}_${range.startAddress}_${range.endAddress}`),
+    id: refId('range', range.sheetName, range.startAddress, range.endAddress),
     label: rangeLabel(range),
     range: Object.freeze(range),
   })
@@ -433,35 +439,30 @@ export function createWorkbookNameRef(name: string): WorkbookNameRef {
   const normalizedName = requiredSelectorText(name, 'name')
   return Object.freeze({
     kind: 'name',
-    id: cleanIdPart(`name_${normalizedName}`),
+    id: refId('name', normalizedName),
     label: normalizedName,
     name: normalizedName,
   })
 }
 
 export function createWorkbookRowsRef(options: FindRowsOptions): WorkbookRowsRef {
-  const sheetName = optionalSelectorText(options.sheetName, 'sheet name')
-  if (options.table === undefined && sheetName === undefined) {
-    throw new Error('Workbook rows selector requires a table or sheet name')
+  if (!isWorkbookTableRef(options.table)) {
+    throw new Error('Workbook rows selector requires a table')
   }
   const where = {
     column: requiredSelectorText(options.where.column, 'row column'),
     op: normalizeRowOperator(options.where.op),
     value: normalizeRowsValue(options.where.value),
   }
-  const ownerId = options.table?.id ?? sheetName
-  const ownerLabel = options.table?.label ?? sheetName
+  const ownerId = options.table.id
+  const ownerLabel = options.table.label
   const rows: WorkbookRowsRef = {
     kind: 'rows',
-    id: cleanIdPart(`${ownerId}_${where.column}_${where.op}_${literalIdPart(where.value)}`),
+    id: joinRefId(ownerId, refIdPart(where.column), refIdPart(where.op), literalIdPart(where.value)),
     label: `${ownerLabel} rows where ${where.column} ${where.op} ${literalLabel(where.value)}`,
-    ...(sheetName !== undefined ? { sheetName } : {}),
-    ...(options.table !== undefined ? { table: options.table } : {}),
+    table: options.table,
     where: Object.freeze(where),
     column(name) {
-      if (rows.table === undefined) {
-        throw new Error('Rows column selection requires a table-backed row selector')
-      }
       return createWorkbookColumnRef({ table: rows.table, rows, name })
     },
   }

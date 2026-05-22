@@ -1,5 +1,5 @@
 import { isLiteralInput, type LiteralInput } from '@bilig/protocol'
-import type { WorkbookRef } from './find.js'
+import { isWorkbookRef, type WorkbookRef } from './find.js'
 import { formula, type WorkbookFormulaOperand } from './formula.js'
 import type { WorkbookCheckExpectation, WorkbookCheckResult } from './result.js'
 
@@ -59,6 +59,13 @@ function checkedLiteralInput(value: LiteralInput): LiteralInput {
   return value
 }
 
+function checkedRef(value: WorkbookRef, label: string): WorkbookRef {
+  if (!isWorkbookRef(value)) {
+    throw new Error(`Workbook check ${label} must be a WorkbookRef`)
+  }
+  return value
+}
+
 function checkedLiteralMatrix(values: readonly (readonly LiteralInput[])[]): readonly (readonly LiteralInput[])[] {
   if (!Array.isArray(values)) {
     throw new Error('Workbook readback values must be an array of rows')
@@ -112,9 +119,13 @@ function uniqueRefs(refs: readonly WorkbookRef[] | undefined): readonly Workbook
   if (refs === undefined) {
     return undefined
   }
+  if (!Array.isArray(refs)) {
+    throw new Error('Workbook check refs must be an array')
+  }
   const seen = new Set<string>()
   const unique: WorkbookRef[] = []
   for (const ref of refs) {
+    checkedRef(ref, 'ref')
     const key = refKey(ref)
     if (seen.has(key)) {
       continue
@@ -127,10 +138,11 @@ function uniqueRefs(refs: readonly WorkbookRef[] | undefined): readonly Workbook
 
 function createWorkbookCheck(options: WorkbookCheckBuildOptions): WorkbookCheckResult {
   const refs = uniqueRefs(options.refs)
+  const target = options.target === undefined ? undefined : checkedRef(options.target, 'target')
   return {
     status: 'planned',
     kind: requiredText(options.kind, 'kind'),
-    ...(options.target !== undefined ? { target: options.target } : {}),
+    ...(target !== undefined ? { target } : {}),
     ...(refs !== undefined ? { refs } : {}),
     message: requiredText(options.message, 'message'),
     ...(options.expectation !== undefined ? { expectation: options.expectation } : {}),
