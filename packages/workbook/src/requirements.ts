@@ -8,6 +8,16 @@ export type WorkbookRuntimeRequirementKind = 'apply' | 'read' | 'verify'
 
 export type WorkbookRuntimeCapability = 'writeFormula' | 'writeValue' | 'format' | 'clear' | 'applyOp' | 'read' | 'verifyCheck'
 
+export const workbookRuntimeCapabilities = Object.freeze([
+  'writeFormula',
+  'writeValue',
+  'format',
+  'clear',
+  'applyOp',
+  'read',
+  'verifyCheck',
+] satisfies readonly WorkbookRuntimeCapability[])
+
 export type WorkbookRuntimeMaterialization = 'concreteOp' | 'adapterMaterialization' | 'providedOp'
 
 export interface WorkbookRuntimeRequirement {
@@ -38,6 +48,46 @@ export interface WorkbookRuntimePreview {
   readonly actionName: string
   readonly requirements: readonly WorkbookRuntimeRequirement[]
   readonly materializedOps: readonly EngineOp[]
+}
+
+export interface WorkbookRuntimeCapabilityIssue {
+  readonly capability: WorkbookRuntimeCapability
+  readonly path: string
+  readonly message: string
+  readonly requirement: WorkbookRuntimeRequirement
+}
+
+export interface WorkbookRuntimeCapabilityVerification {
+  readonly status: 'supported' | 'unsupported'
+  readonly missing: readonly WorkbookRuntimeCapabilityIssue[]
+}
+
+export function isWorkbookRuntimeCapability(value: unknown): value is WorkbookRuntimeCapability {
+  return typeof value === 'string' && workbookRuntimeCapabilities.some((capability) => capability === value)
+}
+
+export function verifyRuntimeRequirements(
+  requirements: WorkbookRuntimeRequirements,
+  capabilities: readonly WorkbookRuntimeCapability[],
+): WorkbookRuntimeCapabilityVerification {
+  const supported = new Set(capabilities)
+  const missing = requirements.requirements.flatMap((requirement): WorkbookRuntimeCapabilityIssue[] => {
+    if (supported.has(requirement.capability)) {
+      return []
+    }
+    return [
+      {
+        capability: requirement.capability,
+        path: requirement.path,
+        message: `Runtime is missing ${requirement.capability} for ${requirement.path}: ${requirement.message}`,
+        requirement,
+      },
+    ]
+  })
+  return {
+    status: missing.length === 0 ? 'supported' : 'unsupported',
+    missing,
+  }
 }
 
 function describedRef(ref: WorkbookRef | undefined): { readonly target: WorkbookRefDescription } | {} {

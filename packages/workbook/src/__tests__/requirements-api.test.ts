@@ -1,5 +1,15 @@
 import { describe, expect, it } from 'vitest'
-import { buildWorkbookActionPlan, defineModel, describeRuntimeRequirements, findRange, formula, type WorkbookActionPlan } from '../index.js'
+import {
+  buildWorkbookActionPlan,
+  defineModel,
+  describeRuntimeRequirements,
+  findRange,
+  formula,
+  isWorkbookRuntimeCapability,
+  verifyRuntimeRequirements,
+  workbookRuntimeCapabilities,
+  type WorkbookActionPlan,
+} from '../index.js'
 
 function summary(requirement: ReturnType<typeof describeRuntimeRequirements>['requirements'][number]) {
   return {
@@ -209,5 +219,55 @@ describe('@bilig/workbook runtime requirements api', () => {
         message: 'Apply value write to Sheet1!B2',
       },
     ])
+  })
+
+  it('verifies runtime capability coverage before preview or apply', () => {
+    const model = defineModel({
+      name: 'runtime-capability-preflight',
+
+      find(workbook) {
+        return {
+          input: workbook.findRange({ sheetName: 'Sheet1', address: 'A1' }),
+          output: workbook.findRange({ sheetName: 'Sheet1', address: 'B1' }),
+        }
+      },
+
+      checks({ refs, workbook }) {
+        return [workbook.check.valueEquals(refs.output, 10), workbook.check.noFormulaErrors(refs.output)]
+      },
+
+      actions: {
+        calculate({ refs, workbook }) {
+          workbook.writeFormula(refs.output, formula.multiply(refs.input, 2))
+        },
+      },
+    })
+
+    const requirements = describeRuntimeRequirements(buildWorkbookActionPlan(model, 'calculate'))
+
+    expect(Object.isFrozen(workbookRuntimeCapabilities)).toBe(true)
+    expect(isWorkbookRuntimeCapability('writeFormula')).toBe(true)
+    expect(isWorkbookRuntimeCapability('pivotMagic')).toBe(false)
+    expect(verifyRuntimeRequirements(requirements, ['writeFormula', 'read', 'verifyCheck'])).toEqual({
+      status: 'supported',
+      missing: [],
+    })
+    expect(verifyRuntimeRequirements(requirements, ['writeValue', 'read'])).toEqual({
+      status: 'unsupported',
+      missing: [
+        {
+          capability: 'writeFormula',
+          path: 'commands[0]',
+          message: 'Runtime is missing writeFormula for commands[0]: Apply formula write to Sheet1!B1',
+          requirement: requirements.requirements[0],
+        },
+        {
+          capability: 'verifyCheck',
+          path: 'checks[1]',
+          message: 'Runtime is missing verifyCheck for checks[1]: Verify noFormulaErrors for Sheet1!B1',
+          requirement: requirements.requirements[2],
+        },
+      ],
+    })
   })
 })

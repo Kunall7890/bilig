@@ -70,6 +70,7 @@ It exposes:
 - `describePreviewResult`
 - `describeRunResult`
 - `describeRuntimeRequirements`
+- `verifyRuntimeRequirements`
 - `verifyPlan`
 - `verifyWorkbookCommandBundle`
 - `isWorkbookCommandBundle`
@@ -89,6 +90,8 @@ It exposes:
 - `isWorkbookRunErrorCode`
 - `workbookCommandBundleIssueCodes`
 - `isWorkbookCommandBundleIssueCode`
+- `workbookRuntimeCapabilities`
+- `isWorkbookRuntimeCapability`
 - `isWorkbookRevision`
 - `workbookReceiptProofKinds`
 - `isWorkbookReceiptProofKind`
@@ -274,6 +277,10 @@ fails as `invalid_command_bundle` before `adapter.preview` or `adapter.apply` is
 called. Adapter callbacks receive the command as an optional extra argument so
 runtimes can enforce revision checks, idempotency, locks, and audit logging
 without adding business-model assumptions to `@bilig/workbook`.
+`verifyRuntimeRequirements(command.requirements, capabilities)` compares the
+handoff requirements with a runtime's plain capability list and returns exact
+missing `writeFormula`, `writeValue`, `format`, `clear`, `applyOp`, `read`, and
+`verifyCheck` paths before preview or apply.
 `previewWorkbookCommandBundle(command, adapter)` validates the same command
 bundle and calls only `adapter.preview`; it never calls `adapter.apply`. This
 gives agents a separate approval step for exact runtime materialization before
