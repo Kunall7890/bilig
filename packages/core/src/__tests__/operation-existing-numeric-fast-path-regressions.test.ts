@@ -473,4 +473,49 @@ describe('existing numeric mutation fast path regressions', () => {
     expect(engine.getCellValue('Sheet1', 'A6')).toEqual({ tag: ValueTag.Number, value: 104 })
     expect(engine.getCellValue('Sheet1', 'B6')).toEqual({ tag: ValueTag.Number, value: 2 })
   })
+
+  it('applies one numeric literal write to every terminal aggregate touching the edited input', async () => {
+    const engine = new SpreadsheetEngine({
+      workbookName: 'existing-numeric-multiple-terminal-aggregate-deltas',
+      trackReplicaVersions: false,
+    })
+    await engine.ready()
+    engine.createSheet('Sheet1')
+
+    engine.setCellValue('Sheet1', 'A1', 1)
+    engine.setCellValue('Sheet1', 'A2', 2)
+    engine.setCellValue('Sheet1', 'A3', 3)
+    engine.setCellFormula('Sheet1', 'C1', 'SUM(A1:A2)')
+    engine.setCellFormula('Sheet1', 'C2', 'SUM(A1:A3)')
+
+    engine.setCellValue('Sheet1', 'A1', 5)
+
+    expect(engine.getCellValue('Sheet1', 'A1')).toEqual({ tag: ValueTag.Number, value: 5 })
+    expect(engine.getCellValue('Sheet1', 'C1')).toEqual({ tag: ValueTag.Number, value: 7 })
+    expect(engine.getCellValue('Sheet1', 'C2')).toEqual({ tag: ValueTag.Number, value: 10 })
+    expect(engine.getLastMetrics()).toMatchObject({ dirtyFormulaCount: 0, wasmFormulaCount: 0, jsFormulaCount: 0 })
+  })
+
+  it('falls back when a touched aggregate has its own formula dependent', async () => {
+    const engine = new SpreadsheetEngine({
+      workbookName: 'existing-numeric-multiple-aggregate-dependent-fallback',
+      trackReplicaVersions: false,
+    })
+    await engine.ready()
+    engine.createSheet('Sheet1')
+
+    engine.setCellValue('Sheet1', 'A1', 1)
+    engine.setCellValue('Sheet1', 'A2', 2)
+    engine.setCellValue('Sheet1', 'A3', 3)
+    engine.setCellFormula('Sheet1', 'C1', 'SUM(A1:A2)')
+    engine.setCellFormula('Sheet1', 'C2', 'SUM(A1:A3)')
+    engine.setCellFormula('Sheet1', 'D1', 'C1+1')
+
+    engine.setCellValue('Sheet1', 'A1', 5)
+
+    expect(engine.getCellValue('Sheet1', 'C1')).toEqual({ tag: ValueTag.Number, value: 7 })
+    expect(engine.getCellValue('Sheet1', 'C2')).toEqual({ tag: ValueTag.Number, value: 10 })
+    expect(engine.getCellValue('Sheet1', 'D1')).toEqual({ tag: ValueTag.Number, value: 8 })
+    expect(engine.getLastMetrics().dirtyFormulaCount).toBeGreaterThan(0)
+  })
 })
