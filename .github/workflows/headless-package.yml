@@ -1035,6 +1035,7 @@ jobs:
           TARGET_VERSION: ${{ needs.plan_release.outputs.target_version }}
         run: |
           set -euo pipefail
+          unset NODE_AUTH_TOKEN
           bun scripts/publish-runtime-package-set.ts
 
       - name: Inspect runtime tag state

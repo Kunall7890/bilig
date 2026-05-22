@@ -158,6 +158,9 @@ describe('headless package workflow', () => {
     expect(runtimePublishStepIndex).toBeGreaterThan(source.indexOf('Check npm package name provisioning'))
     expect(runtimePublishStepIndex).toBeLessThan(source.indexOf('name: Inspect runtime tag state'))
     expect(runtimePublishStepIndex).toBeLessThan(source.indexOf('name: Create GitHub release'))
+    expect(source.indexOf('unset NODE_AUTH_TOKEN', runtimePublishStepIndex)).toBeLessThan(
+      source.indexOf('bun scripts/publish-runtime-package-set.ts', runtimePublishStepIndex),
+    )
     expect(source.indexOf('name: Create GitHub release')).toBeLessThan(source.indexOf('name: Upload WorkPaper MCPB release asset'))
     expect(source).toContain('Upload WorkPaper MCPB release asset')
     expect(source).toContain('npm view "@bilig/headless@${TARGET_VERSION}" version')
