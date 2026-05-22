@@ -528,11 +528,26 @@ describe('work paper batched structural fast path', () => {
       return [rowNumber, rowNumber * 2, `=SUM(A${rowNumber}:B${rowNumber})`]
     })
 
-    workbook.resetPerformanceCounters()
-    workbook.batch(() => {
-      workbook.addRows(sheetId, 2, appendCount)
-      workbook.setCellContents(cell(sheetId, 2, 0), rows)
-    })
+    const engine: unknown = Reflect.get(workbook, 'engine')
+    if (!hasCellMutationApplySupport(engine)) {
+      throw new Error('Expected WorkPaper to expose cell mutation apply support in tests')
+    }
+    const applyCellMutations = vi.spyOn(engine, 'applyCellMutationsAtWithOptions')
+
+    try {
+      workbook.resetPerformanceCounters()
+      workbook.batch(() => {
+        workbook.addRows(sheetId, 2, appendCount)
+        workbook.setCellContents(cell(sheetId, 2, 0), rows)
+      })
+
+      const applyOptions = applyCellMutations.mock.calls[0]?.[1]
+      const matrixPlan =
+        typeof applyOptions === 'object' && applyOptions !== null ? Reflect.get(applyOptions, 'freshDirectAggregateMatrixPlan') : undefined
+      expect(matrixPlan).toMatchObject({ trustedFreshCells: true })
+    } finally {
+      applyCellMutations.mockRestore()
+    }
 
     const runtimeFormula = getCoreRuntimeFormula(workbook, 'Data', 'C3')
     expect(runtimeFormula.dependencyIndices).toHaveLength(0)
@@ -548,6 +563,45 @@ describe('work paper batched structural fast path', () => {
 
     workbook.setCellContents(cell(sheetId, 2, 0), 10)
     expect(workbook.getCellValue(cell(sheetId, 2, 2))).toEqual({ tag: ValueTag.Number, value: 16 })
+  })
+
+  it('clears fresh tail row trust after an intervening literal write', () => {
+    const workbook = WorkPaper.buildFromSheets({
+      Data: [
+        [1, 2, '=SUM(A1:B1)'],
+        [3, 4, '=SUM(A2:B2)'],
+      ],
+    })
+    const sheetId = workbook.getSheetId('Data')!
+    const rows = [
+      [5, 6, '=SUM(A3:B3)'],
+      [7, 8, '=SUM(A4:B4)'],
+    ]
+    const engine: unknown = Reflect.get(workbook, 'engine')
+    if (!hasCellMutationApplySupport(engine)) {
+      throw new Error('Expected WorkPaper to expose cell mutation apply support in tests')
+    }
+    const applyCellMutations = vi.spyOn(engine, 'applyCellMutationsAtWithOptions')
+
+    try {
+      workbook.batch(() => {
+        workbook.addRows(sheetId, 2, 2)
+        workbook.setCellContents(cell(sheetId, 2, 10), 99)
+        workbook.setCellContents(cell(sheetId, 2, 0), rows)
+      })
+
+      const matrixCall = applyCellMutations.mock.calls.find((call) => Array.isArray(call[0]) && call[0].length === 6)
+      const applyOptions = matrixCall?.[1]
+      const matrixPlan =
+        typeof applyOptions === 'object' && applyOptions !== null ? Reflect.get(applyOptions, 'freshDirectAggregateMatrixPlan') : undefined
+      expect(matrixPlan).toMatchObject({ rowCount: 2 })
+      expect(
+        typeof matrixPlan === 'object' && matrixPlan !== null ? Reflect.get(matrixPlan, 'trustedFreshCells') : undefined,
+      ).toBeUndefined()
+    } finally {
+      applyCellMutations.mockRestore()
+    }
+    expect(workbook.getCellValue(cell(sheetId, 2, 2))).toEqual({ tag: ValueTag.Number, value: 11 })
   })
 
   it('trusts physical tracked changes for fresh appended formula matrices after structural edits', () => {

@@ -20,6 +20,7 @@ export interface EngineFreshDirectAggregateMatrixPlan {
   readonly rowCount: number
   readonly colStart: number
   readonly inputColCount: number
+  readonly trustedFreshCells?: boolean
   readonly values: Float64Array
 }
 

@@ -69,6 +69,13 @@ import {
   largeSimpleLegacyCommentVmlSheetSources,
   largeSimpleSlicerConnectionSheetSources,
 } from './xlsx-large-simple-package-artifact-sources.js'
+import {
+  readLargeSimplePackageFeatureFlags,
+  sharedStringsPath,
+  stylesPath,
+  workbookPath,
+  workbookRelationshipsPath,
+} from './xlsx-large-simple-package-features.js'
 import { parseHeadlessLargeSimpleWorksheetFromChunks } from './xlsx-large-simple-headless-worksheet-scanner.js'
 import { importedWorksheetCellScanFromHeadless } from './xlsx-large-simple-headless-cell-scan.js'
 import {
@@ -122,11 +129,6 @@ export type {
 const defaultLargeSimpleXlsxByteThreshold = 1_000_000
 const maxMultiSheetDimensionCellPreallocation = 1_000_000
 const eagerSharedStringsXmlByteThreshold = 1_000_000
-const workbookPath = 'xl/workbook.xml'
-const workbookRelationshipsPath = 'xl/_rels/workbook.xml.rels'
-const sharedStringsPath = 'xl/sharedStrings.xml'
-const stylesPath = 'xl/styles.xml'
-const unsupportedPackagePathPattern = /^xl\/(?:ctrlProps|threadedComments|vbaProject\.bin)/u
 export function tryImportLargeSimpleXlsx(
   source: LargeSimpleXlsxImportSource,
   fileName: string,
@@ -139,7 +141,8 @@ export function tryImportLargeSimpleXlsx(
   const phaseRecorder = new LargeSimpleXlsxImportPhaseRecorder()
   const zipSetupStart = phaseRecorder.start()
   const packagePaths = Object.keys(zip).map(normalizeZipPath)
-  if (packagePaths.some((path) => unsupportedPackagePathPattern.test(path))) {
+  const packageFeatures = readLargeSimplePackageFeatureFlags(packagePaths)
+  if (packageFeatures.hasUnsupportedPackagePath) {
     return null
   }
 
@@ -172,20 +175,18 @@ export function tryImportLargeSimpleXlsx(
   }
   const materializeCells = options.materializeCells !== false
   const materializeMetadata = options.materializeMetadata !== false
-  const hasSharedStrings = packagePaths.includes(sharedStringsPath)
-  const hasStyles = packagePaths.includes(stylesPath)
-  const hasCalcChain = packagePaths.includes('xl/calcChain.xml')
-  const hasDrawingParts = packagePaths.some((path) => path.startsWith('xl/drawings/') || path.startsWith('xl/media/'))
-  const hasChartParts = packagePaths.some((path) => path.startsWith('xl/charts/') || path.startsWith('xl/chartSheets/'))
-  const hasPivotParts = packagePaths.some((path) => path.startsWith('xl/pivotTables/') || path.startsWith('xl/pivotCache/'))
-  const hasExternalLinkParts = packagePaths.some((path) => path.startsWith('xl/externalLinks/'))
-  const hasLegacyCommentParts = packagePaths.some((path) => path.startsWith('xl/comments') || path.endsWith('.vml'))
-  const hasDataModelParts = packagePaths.some(
-    (path) => path.startsWith('xl/model/') || path.startsWith('xl/customData/') || path.startsWith('customXml/'),
-  )
-  const hasSlicerConnectionParts = packagePaths.some(
-    (path) => path === 'xl/connections.xml' || path.startsWith('xl/slicerCaches/') || path.startsWith('xl/slicers/'),
-  )
+  const {
+    hasSharedStrings,
+    hasStyles,
+    hasCalcChain,
+    hasDrawingParts,
+    hasChartParts,
+    hasPivotParts,
+    hasExternalLinkParts,
+    hasLegacyCommentParts,
+    hasDataModelParts,
+    hasSlicerConnectionParts,
+  } = packageFeatures
   phaseRecorder.finish('zip-setup', zipSetupStart)
   let ownedSourceReleasedForReplacement = false
   if (options.releaseZipSource === true && options.replacementZipSource) {

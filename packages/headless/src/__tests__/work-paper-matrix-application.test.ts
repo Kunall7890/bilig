@@ -145,6 +145,26 @@ describe('work-paper matrix application', () => {
     })
   })
 
+  it('passes trusted fresh-cell hints through aggregate matrix plans', () => {
+    const applied: Array<{ refs: readonly EngineCellMutationRef[]; options: WorkPaperCellMutationApplyOptions }> = []
+
+    applyWorkPaperMatrixContents({
+      address: { sheet: 1, row: 10, col: 0 },
+      content: Array.from({ length: 16 }, (_, row) => [row + 1, row + 2, `=SUM(A${row + 11}:B${row + 11})`]),
+      options: { trustedFreshCells: true },
+      flushPendingBatchOps: () => {},
+      applyCellMutationRefs: (refs, options) => {
+        applied.push({ refs, options })
+      },
+      rewriteFormulaForStorage: (formula) => formula,
+    })
+
+    expect(applied).toHaveLength(1)
+    expect(applied[0]?.options.freshDirectAggregateMatrixPlan).toMatchObject({
+      trustedFreshCells: true,
+    })
+  })
+
   it('does not attach direct-aggregate matrix plans to scalar formula matrices', () => {
     const applied: Array<{ refs: readonly EngineCellMutationRef[]; options: WorkPaperCellMutationApplyOptions }> = []
 

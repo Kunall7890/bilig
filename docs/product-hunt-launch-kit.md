@@ -48,7 +48,7 @@ the value again.
 
 It is for backend and agent workflows where formulas are product logic, not for
 manual spreadsheet editing. The benchmark and compatibility gaps are public:
-99/100 comparable mean-latency rows are faster in the checked WorkPaper vs
+94/100 comparable mean-latency rows are faster in the checked WorkPaper vs
 HyperFormula artifact, the worst p95 row is named, and UI rendering is out of
 scope.
 
@@ -116,8 +116,8 @@ These checks follow Product Hunt's own launch prep guidance:
 - The example is TypeScript: `eval.ts` is maintained in
   `examples/headless-workpaper/npm-eval.ts`.
 - The output must show `verified: true` after save and restore.
-- The public benchmark page documents the narrow `99/100` comparable mean-row
-  claim and the structural-append-formula-rows-large worst p95 row.
+- The public benchmark page documents the narrow `94/100` comparable mean-row
+  claim and the structural-append-formula-rows worst p95 row.
 - The compatibility page says what is not Excel-compatible yet before a user
   tries to import a real workbook.
 
