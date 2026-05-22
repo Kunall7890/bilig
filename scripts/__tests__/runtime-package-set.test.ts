@@ -9,6 +9,11 @@ describe('runtime package set helpers', () => {
         'npm error 403 Forbidden - PUT https://registry.npmjs.org/@bilig%2fprotocol - You cannot publish over the previously published versions: 0.51.2.',
       ),
     ).toBe(true)
+    expect(
+      isNpmDuplicateVersionPublishError(
+        'npm error 403 403 Forbidden - PUT https://registry.npmjs.org/@bilig%2fcore - You cannot publish over the previously published versions: 0.51.3.',
+      ),
+    ).toBe(true)
     expect(isNpmDuplicateVersionPublishError('npm error 404 Not Found - PUT https://registry.npmjs.org/@bilig%2fworkbook')).toBe(false)
   })
 })

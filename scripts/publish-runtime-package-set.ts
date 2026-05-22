@@ -115,12 +115,17 @@ try {
     const publishResult = runCommand('npm', publishArgs, { captureOutput: true })
     if (publishResult.exitCode !== 0) {
       const output = `${publishResult.stdout}\n${publishResult.stderr}`
-      if (!dryRun && isNpmDuplicateVersionPublishError(output) && isVersionPublished(runtimePackage.name, targetVersion)) {
-        results.push({
-          ...resolvePublishedVersionResult(runtimePackage.name, targetVersion),
-          reason: 'version became published during this workflow run',
-        })
-        continue
+      if (!dryRun && isNpmDuplicateVersionPublishError(output)) {
+        if (waitForVersionPublished(runtimePackage.name, targetVersion)) {
+          results.push({
+            ...resolvePublishedVersionResult(runtimePackage.name, targetVersion),
+            reason: 'version became published during this workflow run',
+          })
+          continue
+        }
+        throw new Error(
+          `npm reported ${runtimePackage.name}@${targetVersion} as already published, but registry lookup did not expose it after retrying`,
+        )
       }
       throw new Error(`Command failed: npm ${publishArgs.join(' ')}`)
     }
@@ -234,6 +239,22 @@ function isVersionPublished(packageName: string, version: string) {
     stderr: 'pipe',
   })
   return result.exitCode === 0
+}
+
+function waitForVersionPublished(packageName: string, version: string): boolean {
+  for (const delayMs of [0, 1000, 2500, 5000, 10000, 15000, 30000, 30000]) {
+    if (delayMs > 0) {
+      sleepSync(delayMs)
+    }
+    if (isVersionPublished(packageName, version)) {
+      return true
+    }
+  }
+  return false
+}
+
+function sleepSync(milliseconds: number): void {
+  Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, milliseconds)
 }
 
 function readPublishedRuntimePackageVersions(packageNames: string[]): RuntimePackagePublishedVersion[] {
