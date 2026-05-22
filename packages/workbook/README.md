@@ -109,11 +109,12 @@ Agents should use the package in this order:
 5. Run `verifyWorkbookCommandBundle(command)` before execution. If the command
    came from JSON or a tool call, use `isWorkbookCommandBundle(command)` before
    treating it as trusted.
-6. Preview exact runtime materialization with `previewWorkbookCommandBundle`.
-7. Hand the approved command to a runtime adapter with `runWorkbookCommandBundle`.
-8. Inspect `describeRunResult(result)`.
-9. Inspect `result.receipt` when present for revisions, rendered proof, undo proof, and warnings.
-10. Treat `status: "done"` as success only when checks are returned as proof.
+6. Check `verifyRuntimeRequirements(command.requirements, runtimeCapabilities)`.
+7. Preview exact runtime materialization with `previewWorkbookCommandBundle`.
+8. Hand the approved command to a runtime adapter with `runWorkbookCommandBundle`.
+9. Inspect `describeRunResult(result)`.
+10. Inspect `result.receipt` when present for revisions, rendered proof, undo proof, and warnings.
+11. Treat `status: "done"` as success only when checks are returned as proof.
 
 The important rule: planned checks are promises, not proof. Runtime proof must
 turn checks into `passed` or `failed`.
@@ -410,6 +411,7 @@ import {
   previewWorkbookCommandBundle,
   runWorkbookCommandBundle,
   verifyWorkbookCommandBundle,
+  verifyRuntimeRequirements,
 } from '@bilig/workbook'
 
 const planned = planWorkbookCommand(model, 'calculate', undefined, {
@@ -423,6 +425,11 @@ if (planned.status === 'planned') {
   const verification = verifyWorkbookCommandBundle(planned.command)
   if (verification.status === 'invalid') {
     throw new Error(JSON.stringify(verification.issues))
+  }
+
+  const runtime = verifyRuntimeRequirements(planned.command.requirements, ['writeFormula', 'read', 'verifyCheck'])
+  if (runtime.status === 'unsupported') {
+    throw new Error(JSON.stringify(runtime.missing))
   }
 
   const preview = await previewWorkbookCommandBundle(planned.command, adapter)
@@ -465,6 +472,12 @@ Adapters receive the command as the optional second or third argument to
 `preview`, `apply`, `read`, and `verifyChecks`, so runtimes can enforce
 revision checks, idempotency, locks, and audit logging without changing the
 consumer model.
+
+Use `verifyRuntimeRequirements(command.requirements, capabilities)` before
+preview when a runtime publishes a plain capability list. It returns missing
+`writeFormula`, `writeValue`, `format`, `clear`, `applyOp`, `read`, or
+`verifyCheck` requirements with the exact command/check path that needs the
+capability.
 
 Use `previewWorkbookCommandBundle(command, adapter)` when an agent needs a
 separate approval step. It validates the command bundle, calls only
@@ -664,6 +677,7 @@ Planning and inspection:
 - `describePlanResult`
 - `describeCommandBundle`
 - `describeRuntimeRequirements`
+- `verifyRuntimeRequirements`
 - `collectWorkbookRefs`
 
 Verification and execution:
@@ -691,6 +705,8 @@ Stable code lists and guards:
 - `isWorkbookRunErrorCode`
 - `workbookCommandBundleIssueCodes`
 - `isWorkbookCommandBundleIssueCode`
+- `workbookRuntimeCapabilities`
+- `isWorkbookRuntimeCapability`
 
 Primary types:
 

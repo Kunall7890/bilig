@@ -13,11 +13,14 @@ import {
   planWorkbookCommand,
   previewWorkbookCommandBundle,
   runWorkbookCommandBundle,
+  verifyRuntimeRequirements,
   verifyPlan,
   type WorkbookCommandBundleDescription,
   type WorkbookModelDescription,
   type WorkbookPlanVerification,
   type WorkbookPreviewResultDescription,
+  type WorkbookRuntimeCapability,
+  type WorkbookRuntimeCapabilityVerification,
   type WorkbookRuntimeRequirements,
   type WorkbookActionPlanDescription,
   type WorkbookRunResultDescription,
@@ -35,6 +38,10 @@ export interface WorkbookAgentModelExampleOutput {
     readonly requirements: WorkbookRuntimeRequirements
   }
   readonly preview: WorkbookPreviewResultDescription
+  readonly runtime: {
+    readonly capabilities: readonly WorkbookRuntimeCapability[]
+    readonly verification: WorkbookRuntimeCapabilityVerification
+  }
   readonly run: WorkbookRunResultDescription
   readonly workbook: {
     readonly formulas: Record<string, string | null>
@@ -117,6 +124,7 @@ async function seedWorkbook(): Promise<SpreadsheetEngine> {
 export async function runWorkbookAgentModelExample(): Promise<WorkbookAgentModelExampleOutput> {
   const engine = await seedWorkbook()
   const adapter = createWorkbookRunAdapter(engine)
+  const runtimeCapabilities = ['writeFormula', 'writeValue', 'format', 'clear', 'applyOp', 'read', 'verifyCheck'] as const
 
   const planned = planWorkbookCommand(model, 'calculate', undefined, {
     baseRevision: 'example-rev-1',
@@ -129,6 +137,10 @@ export async function runWorkbookAgentModelExample(): Promise<WorkbookAgentModel
   const verification = verifyPlan(planned.command.plan)
   if (verification.status !== 'valid') {
     throw new Error(verification.issues.map((issue) => issue.message).join('\n'))
+  }
+  const runtimeVerification = verifyRuntimeRequirements(planned.command.requirements, runtimeCapabilities)
+  if (runtimeVerification.status !== 'supported') {
+    throw new Error(runtimeVerification.missing.map((issue) => issue.message).join('\n'))
   }
 
   const preview = await previewWorkbookCommandBundle(planned.command, adapter)
@@ -151,6 +163,10 @@ export async function runWorkbookAgentModelExample(): Promise<WorkbookAgentModel
       requirements: describeRuntimeRequirements(planned.command.plan),
     },
     preview: describePreviewResult(preview),
+    runtime: {
+      capabilities: runtimeCapabilities,
+      verification: runtimeVerification,
+    },
     run: describeRunResult(run),
     workbook: {
       formulas: {

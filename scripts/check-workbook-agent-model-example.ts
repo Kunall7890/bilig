@@ -14,6 +14,10 @@ if (output.preview.status !== 'previewed') {
   throw new Error('expected previewed output')
 }
 assert.equal(output.preview.preview.materializedOps.length, 2)
+assert.deepEqual(output.runtime.verification, {
+  status: 'supported',
+  missing: [],
+})
 assert.equal(output.run.status, 'done')
 if (output.run.status !== 'done') {
   throw new Error('expected done output')
