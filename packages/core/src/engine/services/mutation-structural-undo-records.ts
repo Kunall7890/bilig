@@ -32,6 +32,7 @@ export type StructuralDeletedCellUndoRecord =
       readonly row: number
       readonly col: number
       readonly snapshot: CellSnapshot
+      readonly explicitFormat?: string
     }
   | {
       readonly kind: 'blank'
@@ -101,7 +102,23 @@ export function structuralDeletedCellUndoRecordToOps(
           : [{ kind: 'setCellFormat' as const, sheetName: record.sheetName, address, format: record.explicitFormat }]),
       ]
     case 'snapshot':
-      return toCellStateOps(record.sheetName, address, record.snapshot)
+      if (record.explicitFormat !== undefined) {
+        return toCellStateOps(record.sheetName, address, record.snapshot)
+      }
+      return toCellStateOps(record.sheetName, address, record.snapshot).filter((op) => {
+        if (op.kind === 'setCellFormat' && op.sheetName === record.sheetName && op.address === address) {
+          return false
+        }
+        if (
+          op.kind === 'setFormatRange' &&
+          op.range.sheetName === record.sheetName &&
+          op.range.startAddress === address &&
+          op.range.endAddress === address
+        ) {
+          return false
+        }
+        return true
+      })
     case 'blank':
       return [
         record.restoreExplicitBlank

@@ -353,7 +353,14 @@ export function createMutationStructuralDeleteInverseHelpers(
         } else {
           snapshot.format = explicitFormat
         }
-        return { kind: 'snapshot', sheetName, row, col, snapshot }
+        return {
+          kind: 'snapshot',
+          sheetName,
+          row,
+          col,
+          snapshot,
+          ...(explicitFormat === undefined ? {} : { explicitFormat }),
+        }
       }
       case ValueTag.Empty:
       case ValueTag.Error:

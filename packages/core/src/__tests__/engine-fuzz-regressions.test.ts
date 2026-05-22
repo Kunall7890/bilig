@@ -206,6 +206,45 @@ describe('engine fuzz regressions', () => {
     expect(normalizeSnapshotForSemanticComparison(engine.exportSnapshot())).toEqual(normalizeSnapshotForSemanticComparison(seedSnapshot))
   })
 
+  it('preserves inherited format ranges when undoing deleted string rows', async () => {
+    const seedSnapshot = await createEngineSeedSnapshot('pivot-analytics', 'delete-string-row-format-undo-regression')
+    const engine = new SpreadsheetEngine({
+      workbookName: seedSnapshot.workbook.name,
+      replicaId: 'delete-string-row-format-undo-regression',
+    })
+    await engine.ready()
+    engine.importSnapshot(structuredClone(seedSnapshot))
+
+    engine.setRangeNumberFormat({ sheetName: 'Sheet1', startAddress: 'A3', endAddress: 'A4' }, '0.00')
+    const afterFormat = normalizeSnapshotForSemanticComparison(engine.exportSnapshot())
+
+    engine.deleteRows('Sheet1', 2, 1)
+    expect(engine.undo()).toBe(true)
+
+    expect(normalizeSnapshotForSemanticComparison(engine.exportSnapshot())).toEqual(afterFormat)
+  })
+
+  it('preserves pre-existing range formats when undoing fills from blank cells', async () => {
+    const seedSnapshot = await createEngineSeedSnapshot('formula-graph', 'blank-fill-format-undo-regression')
+    const engine = new SpreadsheetEngine({
+      workbookName: seedSnapshot.workbook.name,
+      replicaId: 'blank-fill-format-undo-regression',
+    })
+    await engine.ready()
+    engine.importSnapshot(structuredClone(seedSnapshot))
+
+    engine.setRangeNumberFormat({ sheetName: 'Sheet1', startAddress: 'A1', endAddress: 'A1' }, '0.00')
+    const afterFormat = normalizeSnapshotForSemanticComparison(engine.exportSnapshot())
+
+    engine.fillRange(
+      { sheetName: 'Sheet1', startAddress: 'D5', endAddress: 'E5' },
+      { sheetName: 'Sheet1', startAddress: 'A1', endAddress: 'B1' },
+    )
+    expect(engine.undo()).toBe(true)
+
+    expect(normalizeSnapshotForSemanticComparison(engine.exportSnapshot())).toEqual(afterFormat)
+  })
+
   it('restores sparse style metadata after undoing coalesced structural deletes', async () => {
     const seedSnapshot = await createEngineSeedSnapshot('sparse-format', 'structural-style-undo-regression')
     const engine = new SpreadsheetEngine({ workbookName: seedSnapshot.workbook.name, replicaId: 'structural-style-undo-regression' })

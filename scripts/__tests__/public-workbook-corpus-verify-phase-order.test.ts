@@ -5,7 +5,11 @@ import { describe, expect, it } from 'vitest'
 
 import { exportXlsx } from '../../packages/excel-import/src/index.js'
 import type { WorkbookSnapshot } from '../../packages/protocol/src/types.js'
-import { roundTripsSupportedSemantics, verifyCachedWorkbookArtifact } from '../public-workbook-corpus-verify.ts'
+import {
+  cloneWorkbookSnapshotForStructuralSmoke,
+  roundTripsSupportedSemantics,
+  verifyCachedWorkbookArtifact,
+} from '../public-workbook-corpus-verify.ts'
 import { sha256HexSync } from '../public-workbook-corpus-workbook.ts'
 
 describe('public workbook corpus verification phase order', () => {
@@ -64,6 +68,56 @@ describe('public workbook corpus verification phase order', () => {
 
     expect(result.passed).toBe(true)
     expect(result.structuralSmokeSnapshot).toBeUndefined()
+  })
+
+  it('strips lazy package artifact closures before structural smoke cloning', () => {
+    const baseSheet = buildSmallWorkbook().sheets[0]
+    if (!baseSheet) {
+      throw new Error('Expected small workbook sheet')
+    }
+    const workbookMetadata: NonNullable<WorkbookSnapshot['workbook']['metadata']> = Object.assign(
+      { definedNames: [{ name: 'Answer', value: '=Sheet1!$A$1' }] },
+      {
+        slicerConnectionArtifacts: {
+          parts: [
+            {
+              path: 'xl/slicerCaches/slicerCache1.xml',
+              readBytes: () => new Uint8Array([1, 2, 3]),
+            },
+          ],
+        },
+      },
+    )
+    const sheetMetadata: NonNullable<WorkbookSnapshot['sheets'][number]['metadata']> = Object.assign(
+      { merges: [{ startRow: 0, startColumn: 0, endRow: 0, endColumn: 1 }] },
+      {
+        drawingArtifacts: {
+          relationshipTarget: '../drawings/drawing1.xml',
+          readBytes: () => new Uint8Array([4, 5, 6]),
+        },
+      },
+    )
+    const snapshot: WorkbookSnapshot = {
+      ...buildSmallWorkbook(),
+      workbook: {
+        name: 'lazy artifact smoke',
+        metadata: workbookMetadata,
+      },
+      sheets: [
+        {
+          ...baseSheet,
+          metadata: sheetMetadata,
+        },
+      ],
+    }
+
+    const clone = cloneWorkbookSnapshotForStructuralSmoke(snapshot)
+
+    expect(() => structuredClone(clone)).not.toThrow()
+    expect(clone.workbook.metadata).toMatchObject({ definedNames: [{ name: 'Answer', value: '=Sheet1!$A$1' }] })
+    expect(clone.workbook.metadata).not.toHaveProperty('slicerConnectionArtifacts')
+    expect(clone.sheets[0]?.metadata).toMatchObject({ merges: [{ startRow: 0, startColumn: 0, endRow: 0, endColumn: 1 }] })
+    expect(clone.sheets[0]?.metadata).not.toHaveProperty('drawingArtifacts')
   })
 })
 

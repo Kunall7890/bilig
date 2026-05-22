@@ -190,17 +190,18 @@ export function createEngineCellStateService(args: {
     const snapshot = args.getCellByIndex(cellIndex)
     const explicitFormat = args.state.workbook.getCellFormat(cellIndex) ?? null
     const explicitStyleId = getStoredStyleId(sheetName, address)
+    const restoreOptions = explicitFormat === null ? { clearExistingFormat: false } : undefined
     if (snapshot.formula !== undefined) {
-      return toCellStateOpsNow(sheetName, address, snapshot, undefined, undefined, explicitFormat, explicitStyleId)
+      return toCellStateOpsNow(sheetName, address, snapshot, undefined, undefined, explicitFormat, explicitStyleId, restoreOptions)
     }
     switch (snapshot.value.tag) {
       case ValueTag.Empty:
       case ValueTag.Error:
-        return toCellStateOpsNow(sheetName, address, snapshot, undefined, undefined, explicitFormat, explicitStyleId)
+        return toCellStateOpsNow(sheetName, address, snapshot, undefined, undefined, explicitFormat, explicitStyleId, restoreOptions)
       case ValueTag.Number:
       case ValueTag.Boolean:
       case ValueTag.String:
-        return toCellStateOpsNow(sheetName, address, snapshot, undefined, undefined, explicitFormat, explicitStyleId)
+        return toCellStateOpsNow(sheetName, address, snapshot, undefined, undefined, explicitFormat, explicitStyleId, restoreOptions)
     }
   }
 

@@ -775,7 +775,7 @@ async function runStructuralSmokeOps(snapshot: WorkbookSnapshot): Promise<boolea
     }
     const { SpreadsheetEngine } = await import('../packages/core/src/engine.js')
     const engine = new SpreadsheetEngine({ workbookName: `${snapshot.workbook.name}-structural-smoke` })
-    engine.importSnapshot(structuredClone(snapshot))
+    engine.importSnapshot(cloneWorkbookSnapshotForStructuralSmoke(snapshot))
     engine.insertRows(sheetName, 0, 1)
     engine.deleteRows(sheetName, 0, 1)
     engine.recalculateNow()
@@ -788,6 +788,70 @@ async function runStructuralSmokeOps(snapshot: WorkbookSnapshot): Promise<boolea
 function findStructuralSmokeSheetName(snapshot: WorkbookSnapshot): string | null {
   const sheet = snapshot.sheets.find((entry) => !entry.metadata?.sheetProtection && (entry.metadata?.protectedRanges?.length ?? 0) === 0)
   return sheet?.name ?? null
+}
+
+export function cloneWorkbookSnapshotForStructuralSmoke(snapshot: WorkbookSnapshot): WorkbookSnapshot {
+  const workbookMetadata = cloneStructuralSmokeWorkbookMetadata(snapshot.workbook.metadata)
+  return {
+    version: snapshot.version,
+    workbook: {
+      name: snapshot.workbook.name,
+      ...(workbookMetadata ? { metadata: workbookMetadata } : {}),
+    },
+    sheets: snapshot.sheets.map((sheet) => {
+      const metadata = cloneStructuralSmokeSheetMetadata(sheet.metadata)
+      return {
+        ...(sheet.id !== undefined ? { id: sheet.id } : {}),
+        name: sheet.name,
+        order: sheet.order,
+        ...(metadata ? { metadata } : {}),
+        cells: sheet.cells.map((cell) => ({
+          address: cell.address,
+          ...(cell.row !== undefined ? { row: cell.row } : {}),
+          ...(cell.col !== undefined ? { col: cell.col } : {}),
+          ...(cell.value !== undefined ? { value: structuredClone(cell.value) } : {}),
+          ...(cell.formula !== undefined ? { formula: cell.formula } : {}),
+          ...(cell.format !== undefined ? { format: cell.format } : {}),
+        })),
+      }
+    }),
+  }
+}
+
+function cloneStructuralSmokeWorkbookMetadata(
+  metadata: WorkbookSnapshot['workbook']['metadata'],
+): WorkbookSnapshot['workbook']['metadata'] {
+  if (!metadata) {
+    return undefined
+  }
+  const cloned: NonNullable<WorkbookSnapshot['workbook']['metadata']> = {}
+  for (const [key, value] of Object.entries(metadata)) {
+    if (isPackageArtifactMetadataKey(key)) {
+      continue
+    }
+    Reflect.set(cloned, key, structuredClone(value))
+  }
+  return Object.keys(cloned).length > 0 ? cloned : undefined
+}
+
+function cloneStructuralSmokeSheetMetadata(
+  metadata: WorkbookSnapshot['sheets'][number]['metadata'],
+): WorkbookSnapshot['sheets'][number]['metadata'] {
+  if (!metadata) {
+    return undefined
+  }
+  const cloned: NonNullable<WorkbookSnapshot['sheets'][number]['metadata']> = {}
+  for (const [key, value] of Object.entries(metadata)) {
+    if (isPackageArtifactMetadataKey(key)) {
+      continue
+    }
+    Reflect.set(cloned, key, structuredClone(value))
+  }
+  return Object.keys(cloned).length > 0 ? cloned : undefined
+}
+
+function isPackageArtifactMetadataKey(key: string): boolean {
+  return key.endsWith('Artifacts')
 }
 
 export function mergeImportedAndFootprintFeatureCounts(
