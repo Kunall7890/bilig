@@ -140,9 +140,28 @@ export type WorkbookActionPlanResult<Refs = unknown> =
       readonly checks: readonly WorkbookCheckResult[]
     }
 
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value)
+}
+
 export function defineModel<Refs, Actions extends WorkbookActionMap<Refs>>(
   config: WorkbookModelConfig<Refs, Actions>,
 ): WorkbookModel<Refs, Actions> {
+  if (!isRecord(config)) {
+    throw new Error('Workbook model config must be an object')
+  }
+  if (typeof config.name !== 'string') {
+    throw new Error('Workbook model name must be a string')
+  }
+  if (typeof config.find !== 'function') {
+    throw new Error(`Workbook model ${config.name} find must be a function`)
+  }
+  if (config.checks !== undefined && typeof config.checks !== 'function') {
+    throw new Error(`Workbook model ${config.name} checks must be a function`)
+  }
+  if (!isRecord(config.actions)) {
+    throw new Error(`Workbook model ${config.name} actions must be an object`)
+  }
   if (config.name.trim() === '') {
     throw new Error('Workbook model name cannot be empty')
   }
@@ -158,7 +177,7 @@ export function defineModel<Refs, Actions extends WorkbookActionMap<Refs>>(
   actionNames.forEach((name) => {
     validateActionDefinition(config.name, name, config.actions[name])
   })
-  return config
+  return deepFreeze(config)
 }
 
 export function inspectModel<Refs, Actions extends WorkbookActionMap<Refs>>(model: WorkbookModel<Refs, Actions>): WorkbookModelInspection {

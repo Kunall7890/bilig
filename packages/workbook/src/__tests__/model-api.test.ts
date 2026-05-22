@@ -153,6 +153,83 @@ describe('@bilig/workbook model api', () => {
     expect(Object.isFrozen(result.plan.refsUsed)).toBe(true)
   })
 
+  it('freezes defined models so agents inspect a stable model contract', () => {
+    const model = defineModel({
+      name: 'frozen-model',
+      description: 'Stable model contract',
+      find(workbook) {
+        return {
+          output: workbook.findRange({ sheetName: 'Sheet1', address: 'A1' }),
+        }
+      },
+      actions: {
+        write: {
+          description: 'Write a value',
+          input: {
+            kind: 'object',
+            fields: {
+              value: { kind: 'number', required: true },
+            },
+          },
+          run({ refs, workbook }) {
+            workbook.writeValue(refs.output, 1)
+          },
+        },
+      },
+    })
+
+    expect(Object.isFrozen(model)).toBe(true)
+    expect(Object.isFrozen(model.actions)).toBe(true)
+    expect(Object.isFrozen(model.actions.write)).toBe(true)
+    if (typeof model.actions.write !== 'function') {
+      expect(Object.isFrozen(model.actions.write.input)).toBe(true)
+      expect(Object.isFrozen(model.actions.write.input?.fields?.value)).toBe(true)
+    }
+    expect(() => Object.defineProperty(model.actions, 'other', { value: () => undefined })).toThrowError(TypeError)
+  })
+
+  it('rejects malformed model configs from JavaScript callers with clear errors', () => {
+    expect(() => Reflect.apply(defineModel, undefined, [null])).toThrowError('Workbook model config must be an object')
+    expect(() =>
+      Reflect.apply(defineModel, undefined, [
+        {
+          name: 7,
+          find() {
+            return {}
+          },
+          actions: {
+            write() {
+              return undefined
+            },
+          },
+        },
+      ]),
+    ).toThrowError('Workbook model name must be a string')
+    expect(() =>
+      Reflect.apply(defineModel, undefined, [
+        {
+          name: 'bad-find',
+          actions: {
+            write() {
+              return undefined
+            },
+          },
+        },
+      ]),
+    ).toThrowError('Workbook model bad-find find must be a function')
+    expect(() =>
+      Reflect.apply(defineModel, undefined, [
+        {
+          name: 'bad-actions',
+          find() {
+            return {}
+          },
+          actions: [],
+        },
+      ]),
+    ).toThrowError('Workbook model bad-actions actions must be an object')
+  })
+
   it('rejects malformed high-level action commands from JavaScript callers', () => {
     const model = defineModel({
       name: 'runtime-guarded-actions',
@@ -509,17 +586,27 @@ describe('@bilig/workbook model api', () => {
   })
 
   it('rejects malformed public find selectors before planning', () => {
+    expect(() => Reflect.apply(findTable, undefined, [null])).toThrowError('Workbook table selector must be an object')
     expect(() => findName('   ')).toThrowError('Workbook selector name cannot be empty')
     expect(() => findTable({})).toThrowError('Workbook table selector needs a name, sheet name, or headers')
     expect(() => findTable({ headers: [] })).toThrowError('Workbook table headers cannot be empty')
     expect(() => findTable({ headers: ['Amount', ' '] })).toThrowError('Workbook selector table header cannot be empty')
 
     const table = findTable({ name: 'Inputs' })
+    const otherTable = findTable({ name: 'OtherInputs' })
+    const otherRows = findRows({ table: otherTable, where: { column: 'Status', op: 'eq', value: 'Active' } })
+    expect(() => Reflect.apply(findColumn, undefined, [null])).toThrowError('Workbook column selector must be an object')
+    expect(() => Reflect.apply(findColumn, undefined, [{ name: 'Amount' }])).toThrowError('Workbook column selector requires a table')
     expect(() => findColumn({ table, name: ' ' })).toThrowError('Workbook selector column name cannot be empty')
+    expect(() => findColumn({ table, rows: otherRows, name: 'Amount' })).toThrowError(
+      'Workbook column selector rows must belong to the table',
+    )
+    expect(() => Reflect.apply(findRange, undefined, [null])).toThrowError('Workbook range selector must be an object')
     expect(() => findRange({ sheetName: 'Sheet1', address: 'not-a-cell' })).toThrowError('Workbook range address is invalid: not-a-cell')
     expect(() => findRange({ sheetName: 'Sheet1', startAddress: 'C2', endAddress: 'A1' })).toThrowError(
       'Workbook range endAddress must not be before startAddress',
     )
+    expect(() => Reflect.apply(findRows, undefined, [null])).toThrowError('Workbook rows selector must be an object')
     expect(() =>
       Reflect.apply(findRows, undefined, [
         {
@@ -531,6 +618,9 @@ describe('@bilig/workbook model api', () => {
         },
       ]),
     ).toThrowError('Workbook rows selector requires a table')
+    expect(() => Reflect.apply(findRows, undefined, [{ table, where: null }])).toThrowError(
+      'Workbook rows selector requires a where object',
+    )
     expect(() =>
       Reflect.apply(findRows, undefined, [
         {
