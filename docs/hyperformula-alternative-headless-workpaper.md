@@ -55,8 +55,8 @@ The current public claim is narrow:
 - `100/100` mean wins on scorecard-eligible comparable workloads
 - `73/73` public-lane mean wins
 - `27/27` holdout-lane mean wins
-- an overall p95 geomean lead with one current comparable p95 holdout
-- a named worst p95 row that remains visible instead of hidden
+- `100/100` mean+p95 wins on scorecard-eligible comparable workloads
+- an overall p95 geomean lead with the named worst p95 row still visible
 
 The verification command is:
 

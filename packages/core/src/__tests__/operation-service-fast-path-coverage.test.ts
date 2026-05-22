@@ -1179,6 +1179,37 @@ describe('operation-service dense mutation fast paths', () => {
     expect(engine.getPerformanceCounters().directAggregateDeltaOnlyRecalcSkips).toBeGreaterThan(0)
   })
 
+  it('skips table metadata listing on no-table trusted aggregate mutations', async () => {
+    const engine = new SpreadsheetEngine({ workbookName: 'trusted-existing-aggregate-no-table-metadata-list' })
+    await engine.ready()
+    engine.createSheet('Sheet1')
+    for (let row = 1; row <= 10; row += 1) {
+      engine.setCellValue('Sheet1', `A${row}`, row)
+    }
+    engine.setCellFormula('Sheet1', 'C1', 'SUM(A1:A10)')
+    const listTables = vi.spyOn(engine.workbook, 'listTables').mockImplementation(() => {
+      throw new Error('no-table fast path should not list table metadata')
+    })
+
+    const sheetId = engine.workbook.getSheet('Sheet1')!.id
+    const cellIndex = engine.workbook.getCellIndex('Sheet1', 'A1')!
+    const result = existingNumericMutationFastPath(engine)({
+      sheetId,
+      row: 0,
+      col: 0,
+      cellIndex,
+      value: 100,
+      trustedExistingNumericLiteral: true,
+      oldNumericValue: 1,
+      emitTracked: false,
+    })
+
+    expect(result).not.toBeNull()
+    expect(listTables).not.toHaveBeenCalled()
+    expect(engine.getCellValue('Sheet1', 'C1')).toEqual({ tag: ValueTag.Number, value: 154 })
+    listTables.mockRestore()
+  })
+
   it('applies trusted existing numeric scalar-closure mutations through the narrow fast path', async () => {
     const engine = new SpreadsheetEngine({ workbookName: 'trusted-existing-scalar-fast-path' })
     await engine.ready()

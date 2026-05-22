@@ -13,7 +13,7 @@ import type { ExactLookupImpactCaches } from './operation-lookup-dirty-markers.j
 import type { OperationLookupPlanner } from './operation-lookup-planner.js'
 import { applyOperationLookupNumericWriteTailPatches, planOperationLookupNumericWrites } from './operation-lookup-write-plans.js'
 import type { CreateEngineOperationServiceArgs } from './operation-service-types.js'
-import { applyTableHeaderRenameForSetCellValue, isTableHeaderCell } from './operation-table-header-rename.js'
+import { applyTableHeaderRenameForSetCellValue, isWorkbookTableHeaderCell } from './operation-table-header-rename.js'
 
 type SetCellValueMutation = Extract<EngineCellMutationRef['mutation'], { kind: 'setCellValue' }>
 
@@ -151,7 +151,7 @@ export function applySetCellValueMutation(request: ApplySetCellValueMutationArgs
     mutation.value === null &&
     !isRestore &&
     (existingIndex === undefined || request.isNullLiteralWriteNoOp(existingIndex)) &&
-    !isTableHeaderCell(args.state.workbook.listTables(), sheetName, mutation.row, mutation.col)
+    !isWorkbookTableHeaderCell(args.state.workbook, sheetName, mutation.row, mutation.col)
   ) {
     return { changedInputCount, formulaChangedCount, explicitChangedCount, topologyChanged }
   }

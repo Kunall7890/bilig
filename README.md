@@ -525,8 +525,8 @@ seven file-backed WorkPaper tools:
   caveat, known limits, and feedback ask together.
 - Run `pnpm workpaper:bench:competitive:check`. The checked-in artifact shows
   [`100/100` comparable WorkPaper mean wins](docs/what-workpaper-benchmark-proves.md)
-  with one p95 holdout; the current worst p95 row is
-  `aggregate-overlapping-sliding-window` at `1.039x`.
+  and `100/100` mean+p95 wins; the current worst p95 row is
+  `structural-insert-columns-small` at `0.913x`.
 - The benchmark card is generated from that artifact:
   [`docs/assets/workpaper-benchmark-card.png`](docs/assets/workpaper-benchmark-card.png).
 - Read the [compatibility limits](docs/where-bilig-is-not-excel-compatible-yet.md)

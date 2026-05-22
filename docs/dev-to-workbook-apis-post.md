@@ -170,7 +170,7 @@ persistence.
 
 The benchmark claim is deliberately narrow. The checked artifact currently
 records `100/100` mean-latency wins against HyperFormula-style comparable
-workloads and `99/100` workloads winning both mean and p95. The worst p95 row
+workloads and `100/100` workloads winning both mean and p95. The worst p95 row
 is called out instead of hidden.
 
 Benchmark note:

@@ -18,7 +18,7 @@ import type { ExactLookupImpactCaches } from './operation-lookup-dirty-markers.j
 import type { OperationLookupPlanner } from './operation-lookup-planner.js'
 import { applyOperationLookupNumericWriteTailPatches, planOperationLookupNumericWrites } from './operation-lookup-write-plans.js'
 import type { CreateEngineOperationServiceArgs, MutationSource } from './operation-service-types.js'
-import { applyTableHeaderRenameForSetCellValue, isTableHeaderCell } from './operation-table-header-rename.js'
+import { applyTableHeaderRenameForSetCellValue, isWorkbookTableHeaderCell } from './operation-table-header-rename.js'
 
 type BatchSetCellValueOp = Extract<EngineOp, { kind: 'setCellValue' }>
 type BatchClearCellOp = Extract<EngineOp, { kind: 'clearCell' }>
@@ -155,7 +155,7 @@ export function applyBatchSetCellValueOp(request: ApplyBatchSetCellValueOpArgs):
     if (
       op.value === null &&
       (existingIndex === undefined || request.isNullLiteralWriteNoOp(existingIndex)) &&
-      !isTableHeaderCell(args.state.workbook.listTables(), op.sheetName, parsedAddress.row, parsedAddress.col)
+      !isWorkbookTableHeaderCell(args.state.workbook, op.sheetName, parsedAddress.row, parsedAddress.col)
     ) {
       return { changedInputCount, formulaChangedCount, explicitChangedCount, topologyChanged, refreshAllPivots }
     }
@@ -374,7 +374,7 @@ export function applyBatchClearCellOp(request: ApplyBatchClearCellOpArgs): Batch
   ) {
     refreshAllPivots = true
   }
-  if (!request.isRestore && isTableHeaderCell(args.state.workbook.listTables(), op.sheetName, parsedAddress.row, parsedAddress.col)) {
+  if (!request.isRestore && isWorkbookTableHeaderCell(args.state.workbook, op.sheetName, parsedAddress.row, parsedAddress.col)) {
     const renamed = applyTableHeaderRenameForSetCellValue({
       serviceArgs: args,
       sheetName: op.sheetName,

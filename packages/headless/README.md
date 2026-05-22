@@ -621,8 +621,8 @@ pnpm workpaper:xlsx-corpus:check -- /path/to/xlsx-corpus
 - Run `pnpm workpaper:bench:competitive:check` from the repository. The
   checked-in artifact shows
   [`100/100` comparable WorkPaper mean wins](https://github.com/proompteng/bilig/blob/main/docs/what-workpaper-benchmark-proves.md)
-  with one p95 holdout; the current worst p95 row is
-  `aggregate-overlapping-sliding-window` at `1.039x`.
+  and `100/100` mean+p95 wins; the current worst p95 row is
+  `structural-insert-columns-small` at `0.913x`.
 - The shareable benchmark card is generated from the checked-in artifact:
   [`workpaper-benchmark-card.png`](https://github.com/proompteng/bilig/blob/main/docs/assets/workpaper-benchmark-card.png).
 - Read the

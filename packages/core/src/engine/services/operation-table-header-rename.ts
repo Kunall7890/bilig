@@ -1,6 +1,6 @@
 import { parseCellAddress } from '@bilig/formula'
 import type { LiteralInput } from '@bilig/protocol'
-import { normalizeDefinedName, type WorkbookTableRecord } from '../../workbook-store.js'
+import { normalizeDefinedName, type WorkbookStore, type WorkbookTableRecord } from '../../workbook-store.js'
 import type { CreateEngineOperationServiceArgs } from './operation-service-types.js'
 import { rewriteFormulaSourceForRenamedStructuredReference, type RenamedTableColumnReference } from './structure-structured-ref-rewrite.js'
 import { excelCompatibleTableColumnName, normalizeTableColumnName } from './table-column-name-helpers.js'
@@ -20,6 +20,9 @@ export function applyTableHeaderRenameForSetCellValue(args: {
   readonly formulaChangedCount: number
   readonly topologyChanged: boolean
 }): TableHeaderRenameCounts {
+  if (!args.serviceArgs.state.workbook.hasTables()) {
+    return { formulaChangedCount: args.formulaChangedCount, topologyChanged: args.topologyChanged, value: args.value }
+  }
   const header = findTableHeaderCell(args.serviceArgs.state.workbook.listTables(), args.sheetName, args.row, args.col)
   if (!header) {
     return { formulaChangedCount: args.formulaChangedCount, topologyChanged: args.topologyChanged, value: args.value }
@@ -82,6 +85,15 @@ export function applyTableHeaderRenameForSetCellValue(args: {
 
 export function isTableHeaderCell(tables: readonly WorkbookTableRecord[], sheetName: string, row: number, col: number): boolean {
   return findTableHeaderCell(tables, sheetName, row, col) !== undefined
+}
+
+export function isWorkbookTableHeaderCell(
+  workbook: Pick<WorkbookStore, 'hasTables' | 'listTables'>,
+  sheetName: string,
+  row: number,
+  col: number,
+): boolean {
+  return workbook.hasTables() && isTableHeaderCell(workbook.listTables(), sheetName, row, col)
 }
 
 function rewriteDefinedNamesForRenamedTableColumn(

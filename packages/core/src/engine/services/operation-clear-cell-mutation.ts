@@ -10,7 +10,7 @@ import { withOptionalLookupStringIds } from './direct-lookup-helpers.js'
 import type { OperationTrackedColumnDependencyFlags } from './operation-column-dependency-tracker.js'
 import type { ExactLookupImpactCaches } from './operation-lookup-dirty-markers.js'
 import type { OperationLookupAccess } from './operation-lookup-access.js'
-import { applyTableHeaderRenameForSetCellValue, isTableHeaderCell } from './operation-table-header-rename.js'
+import { applyTableHeaderRenameForSetCellValue, isWorkbookTableHeaderCell } from './operation-table-header-rename.js'
 
 type ClearCellMutation = Extract<EngineCellMutationRef['mutation'], { kind: 'clearCell' }>
 type OperationCellMutationSource = Exclude<MutationSource, 'remote'>
@@ -109,7 +109,7 @@ export function applyClearCellMutation(request: ApplyClearCellMutationArgs): Cle
   let headerClearValue: string | undefined
 
   const sheetName = request.resolveSheetName(sheetId)
-  if (!isRestore && isTableHeaderCell(args.state.workbook.listTables(), sheetName, mutation.row, mutation.col)) {
+  if (!isRestore && isWorkbookTableHeaderCell(args.state.workbook, sheetName, mutation.row, mutation.col)) {
     const renamed = applyTableHeaderRenameForSetCellValue({
       serviceArgs: args,
       sheetName,
