@@ -1106,6 +1106,9 @@ jobs:
           TARGET_VERSION: ${{ needs.plan_release.outputs.target_version }}
         run: |
           set -euo pipefail
+          test -n "${ACTIONS_ID_TOKEN_REQUEST_URL:-}"
+          test -n "${ACTIONS_ID_TOKEN_REQUEST_TOKEN:-}"
+          unset NODE_AUTH_TOKEN
           bun scripts/publish-runtime-package-set.ts
 
       - name: Upload WorkPaper MCPB release asset
