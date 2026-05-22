@@ -142,12 +142,12 @@ function scalarRuleAllowsLiteral(
   if (rule.kind === 'whole' && !Number.isInteger(scalar)) {
     return false
   }
-  const first = validationScalarValue(rule.kind, rule.values[0] ?? null)
+  const first = validationScalarRuleValue(rule.kind, rule.values[0] ?? null)
   if (first === null) {
     return false
   }
   if (rule.operator === 'between' || rule.operator === 'notBetween') {
-    const second = validationScalarValue(rule.kind, rule.values[1] ?? null)
+    const second = validationScalarRuleValue(rule.kind, rule.values[1] ?? null)
     if (second === null) {
       return false
     }
@@ -318,6 +318,10 @@ function validationScalarValue(kind: 'whole' | 'decimal' | 'date' | 'time' | 'te
     return literalTimeSerial(value)
   }
   return literalNumber(value)
+}
+
+function validationScalarRuleValue(kind: 'whole' | 'decimal' | 'date' | 'time' | 'textLength', value: LiteralInput): number | null {
+  return kind === 'textLength' ? literalNumber(value) : validationScalarValue(kind, value)
 }
 
 function literalNumber(value: LiteralInput): number | null {
