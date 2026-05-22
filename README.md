@@ -254,8 +254,8 @@ when handing a workbook task to another agent.
 File-backed MCP commands:
 
 ```sh
-npm exec --package @bilig/headless@0.43.0 -- bilig-formula-clinic ./reduced.xlsx --cells "Summary!B7,Inputs!B2"
-npm exec --package @bilig/workpaper@0.43.0 -- bilig-workpaper-mcp --workpaper ./pricing.workpaper.json --init-demo-workpaper --writable
+npm exec --package @bilig/headless@0.44.0 -- bilig-formula-clinic ./reduced.xlsx --cells "Summary!B7,Inputs!B2"
+npm exec --package @bilig/workpaper@0.44.0 -- bilig-workpaper-mcp --workpaper ./pricing.workpaper.json --init-demo-workpaper --writable
 bilig-workpaper-mcp --workpaper ./pricing.workpaper.json --init-demo-workpaper --writable
 ```
 
@@ -400,9 +400,9 @@ and the public API docs; they include acceptance commands for first patches.
 
 <!-- headless-package-footprint:start -->
 
-Current checked npm footprint for `@bilig/headless@0.43.0`:
+Current checked npm footprint for `@bilig/headless@0.44.0`:
 
-- Pack dry run: `737 kB` tarball, `4.50 MB` unpacked, `738` package entries.
+- Pack dry run: `738 kB` tarball, `4.51 MB` unpacked, `738` package entries.
 - Boundary: the main import is the WorkPaper formula/JSON runtime; XLSX
   import/export stays behind the `@bilig/headless/xlsx` subpath; MCP is the
   `bilig-workpaper-mcp` binary wrapper; reduced workbook reports use the
