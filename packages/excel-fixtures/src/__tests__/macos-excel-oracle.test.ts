@@ -141,6 +141,29 @@ describe('macOS Desktop Excel oracle harness', () => {
     )
   })
 
+  it('builds range sort structural operations with explicit keys and headers', () => {
+    const script = createMacosExcelStructuralOperationAppleScript({
+      worksheetName: 'Ledger',
+      operations: [
+        {
+          kind: 'applySort',
+          range: 'A1:D6',
+          keys: [
+            { key: 'B1', order: 'descending' },
+            { key: 'A1', order: 'ascending' },
+          ],
+          header: 'yes',
+          orientation: 'rows',
+        },
+      ],
+      inspectCells: ['A2'],
+    })
+
+    expect(script).toContain(
+      'sort (range "A1:D6" of targetWorksheet) key1 (range "B1" of targetWorksheet) order1 sort descending key2 (range "A1" of targetWorksheet) order2 sort ascending header header yes orientation sort columns',
+    )
+  })
+
   it('parses typed Excel oracle values into normalized formula values', () => {
     expect(
       parseMacosExcelRecalculationOutput(

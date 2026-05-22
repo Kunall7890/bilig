@@ -39,6 +39,7 @@ import {
   buildSetSheetProtectionOps,
   buildSetSortOps,
 } from './engine-workbook-metadata-ops.js'
+import { buildSortRangeOps, type SpreadsheetEngineSortRangeOptions } from './engine-sort-range.js'
 import { normalizeEngineCommentThread, normalizeEngineNote, workbookObjectRecordEqual } from './engine-workbook-object-helpers.js'
 import {
   buildDeleteChartOps,
@@ -357,6 +358,20 @@ export abstract class SpreadsheetEngineWorkbookFacadeBase extends SpreadsheetEng
 
   setSort(sheetName: string, range: CellRangeRef, keys: WorkbookSortSnapshot['keys']): void {
     this.executeLocalTransaction(buildSetSortOps(this.workbook, sheetName, range, keys) ?? [])
+  }
+
+  sortRange(
+    sheetName: string,
+    range: CellRangeRef,
+    keys: WorkbookSortSnapshot['keys'],
+    options: SpreadsheetEngineSortRangeOptions = {},
+  ): boolean {
+    const ops = buildSortRangeOps(this.exportSnapshot(), sheetName, range, keys, options)
+    if (ops.length === 0) {
+      return false
+    }
+    this.executeLocalTransaction(ops)
+    return true
   }
 
   clearSort(sheetName: string, range: CellRangeRef): boolean {

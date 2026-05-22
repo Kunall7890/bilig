@@ -16,6 +16,14 @@ export interface MacosExcelOracleFormulaCell {
 
 export type MacosExcelLinkUpdateMode = 'all' | 'external' | 'never' | 'remote'
 export type MacosExcelAutoFilterOperator = 'and' | 'filterByValue' | 'or'
+export type MacosExcelSortHeader = 'guess' | 'no' | 'yes'
+export type MacosExcelSortOrder = 'ascending' | 'descending'
+export type MacosExcelSortOrientation = 'columns' | 'rows'
+
+export interface MacosExcelSortKey {
+  readonly key: string
+  readonly order?: MacosExcelSortOrder
+}
 
 export interface MacosExcelRecalculationOracleRequest {
   readonly workbookPath: string
@@ -58,6 +66,13 @@ export type MacosExcelStructuralOperation =
   | { readonly kind: 'moveRows'; readonly sourceRange: string; readonly destinationRange: string }
   | { readonly kind: 'moveColumns'; readonly sourceRange: string; readonly destinationRange: string }
   | { readonly kind: 'createDataTable'; readonly range: string; readonly rowInput?: string; readonly columnInput?: string }
+  | {
+      readonly kind: 'applySort'
+      readonly range: string
+      readonly keys: readonly MacosExcelSortKey[]
+      readonly header?: MacosExcelSortHeader
+      readonly orientation?: MacosExcelSortOrientation
+    }
   | {
       readonly kind: 'applyAutoFilter'
       readonly range: string
@@ -593,6 +608,24 @@ function structuralOperationAppleScript(operation: MacosExcelStructuralOperation
       ]
         .filter((part) => part.length > 0)
         .join(' ')
+    case 'applySort':
+      if (operation.keys.length === 0 || operation.keys.length > 3) {
+        throw new Error('macOS Excel sort operation requires one to three sort keys')
+      }
+      return [
+        `sort (range ${toAppleScriptString(operation.range)} of targetWorksheet)`,
+        ...operation.keys.flatMap((key, index) => {
+          const position = String(index + 1)
+          return [
+            `key${position} (range ${toAppleScriptString(key.key)} of targetWorksheet)`,
+            `order${position} ${sortOrderAppleScript(key.order ?? 'ascending')}`,
+          ]
+        }),
+        operation.header ? `header ${sortHeaderAppleScript(operation.header)}` : '',
+        operation.orientation ? `orientation ${sortOrientationAppleScript(operation.orientation)}` : '',
+      ]
+        .filter((part) => part.length > 0)
+        .join(' ')
     case 'applyAutoFilter':
       if (!Number.isSafeInteger(operation.field) || operation.field <= 0) {
         throw new Error('macOS Excel AutoFilter operation requires a positive one-based field')
@@ -607,6 +640,35 @@ function structuralOperationAppleScript(operation: MacosExcelStructuralOperation
       ]
         .filter((part) => part.length > 0)
         .join(' ')
+  }
+}
+
+function sortHeaderAppleScript(header: MacosExcelSortHeader): string {
+  switch (header) {
+    case 'guess':
+      return 'header guess'
+    case 'no':
+      return 'header no'
+    case 'yes':
+      return 'header yes'
+  }
+}
+
+function sortOrderAppleScript(order: MacosExcelSortOrder): string {
+  switch (order) {
+    case 'ascending':
+      return 'sort ascending'
+    case 'descending':
+      return 'sort descending'
+  }
+}
+
+function sortOrientationAppleScript(orientation: MacosExcelSortOrientation): string {
+  switch (orientation) {
+    case 'columns':
+      return 'sort rows'
+    case 'rows':
+      return 'sort columns'
   }
 }
 
