@@ -11,9 +11,12 @@ import {
 } from './json-scorecard-helpers.ts'
 import type {
   SameCorpusCapture,
+  SameCorpusCaptureCorpusFingerprint,
   SameCorpusCaptureCase,
   SameCorpusCaptureCorpusVerification,
   SameCorpusCaptureMeasurement,
+  SameCorpusCaptureRunManifest,
+  SameCorpusProductSourceWorkbookFingerprint,
   SameCorpusCaptureVerifiedCell,
   UiResponsivenessLiveBrowserCase,
   UiResponsivenessLiveBrowserScorecard,
@@ -22,6 +25,7 @@ import type {
   UiResponsivenessSameCorpusMeasurement,
   UiResponsivenessSameCorpusProduct,
   UiResponsivenessSameCorpusProof,
+  UiResponsivenessSameCorpusRunManifest,
   UiResponsivenessSameCorpusWorkload,
 } from './gen-ui-responsiveness-live-browser-scorecard.ts'
 import type {
@@ -30,6 +34,8 @@ import type {
   SameCorpusScenarioProof,
   SameCorpusScreenshotProof,
 } from './ui-responsiveness-same-corpus-proof.ts'
+import { sameCorpusUiRenderProofContractVersion } from './ui-responsiveness-same-corpus-proof.ts'
+import { sameCorpusUiCaptureToolVersion } from './ui-responsiveness-same-corpus-scorecard-proof.ts'
 import { isUiResponsivenessSameCorpusWorkload } from './ui-responsiveness-same-corpus-workloads.ts'
 
 export function parseUiResponsivenessLiveBrowserScorecard(value: Record<string, unknown>): UiResponsivenessLiveBrowserScorecard {
@@ -77,6 +83,7 @@ export function parseSameCorpusCapture(value: Record<string, unknown>): SameCorp
     schemaVersion: literalField(value, 'schemaVersion', 1),
     suite: literalField(value, 'suite', 'ui-responsiveness-same-corpus-capture'),
     sampleCount: numberField(value, 'sampleCount'),
+    runManifest: parseSameCorpusCaptureRunManifest(objectField(value, 'runManifest')),
     limitations: stringArrayField(value, 'limitations'),
     cases: arrayField(value, 'cases').map(parseSameCorpusCaptureCase),
   }
@@ -110,8 +117,67 @@ function parseSameCorpusProof(value: Record<string, unknown>): UiResponsivenessS
     requiredCaseCount: numberField(value, 'requiredCaseCount'),
     tenXMeanAndP95CaseCount: numberField(value, 'tenXMeanAndP95CaseCount'),
     coveredCorpusCaseIds: stringArrayField(value, 'coveredCorpusCaseIds'),
+    ...(Object.hasOwn(value, 'runManifest') ? { runManifest: parseSameCorpusRunManifest(objectField(value, 'runManifest')) } : {}),
     limitations: stringArrayField(value, 'limitations'),
     cases: arrayField(value, 'cases').map(parseSameCorpusCase),
+  }
+}
+
+function parseSameCorpusRunManifest(value: Record<string, unknown>): UiResponsivenessSameCorpusRunManifest {
+  return {
+    artifactGenerator: literalField(value, 'artifactGenerator', 'scripts/gen-ui-responsiveness-live-browser-scorecard.ts'),
+    contractVersion: literalField(value, 'contractVersion', sameCorpusUiRenderProofContractVersion),
+    requiredProducts: stringArrayField(value, 'requiredProducts').map(parseSameCorpusProduct),
+    requiredWorkloads: stringArrayField(value, 'requiredWorkloads').map(parseSameCorpusWorkload),
+    capturedWorkloads: stringArrayField(value, 'capturedWorkloads').map(parseSameCorpusWorkload),
+    corpusCaseIds: stringArrayField(value, 'corpusCaseIds'),
+    corpusFingerprints: arrayField(value, 'corpusFingerprints').map(parseSameCorpusCorpusFingerprint),
+    productSourceWorkbookFingerprints: arrayField(value, 'productSourceWorkbookFingerprints').map(
+      parseSameCorpusProductSourceWorkbookFingerprint,
+    ),
+    materializedCellCounts: arrayField(value, 'materializedCellCounts').map((entry) => {
+      if (typeof entry !== 'number' || !Number.isInteger(entry) || entry <= 0) {
+        throw new Error('Expected UI responsiveness same-corpus materialized cell counts to contain positive integers')
+      }
+      return entry
+    }),
+    sampleCount: numberField(value, 'sampleCount'),
+    caseCount: numberField(value, 'caseCount'),
+    strictRenderedGridProofCaseCount: numberField(value, 'strictRenderedGridProofCaseCount'),
+    legacyInsufficientRenderedGridProofCaseCount: numberField(value, 'legacyInsufficientRenderedGridProofCaseCount'),
+    tenXMeanAndP95CaseCount: numberField(value, 'tenXMeanAndP95CaseCount'),
+    currentContractEvidenceComplete: booleanField(value, 'currentContractEvidenceComplete'),
+    googleSheetsTenXRequirementSatisfied: booleanField(value, 'googleSheetsTenXRequirementSatisfied'),
+    invalidReasons: stringArrayField(value, 'invalidReasons'),
+  }
+}
+
+function parseSameCorpusCaptureRunManifest(value: Record<string, unknown>): SameCorpusCaptureRunManifest {
+  return {
+    artifactGenerator: literalField(value, 'artifactGenerator', 'scripts/capture-ui-responsiveness-same-corpus.ts'),
+    captureToolVersion: literalField(value, 'captureToolVersion', sameCorpusUiCaptureToolVersion),
+    contractVersion: literalField(value, 'contractVersion', sameCorpusUiRenderProofContractVersion),
+    requiredProducts: stringArrayField(value, 'requiredProducts').map(parseSameCorpusProduct),
+    requiredWorkloads: stringArrayField(value, 'requiredWorkloads').map(parseSameCorpusWorkload),
+    capturedWorkloads: stringArrayField(value, 'capturedWorkloads').map(parseSameCorpusWorkload),
+    corpusCaseIds: stringArrayField(value, 'corpusCaseIds'),
+    corpusFingerprints: arrayField(value, 'corpusFingerprints').map(parseSameCorpusCorpusFingerprint),
+    productSourceWorkbookFingerprints: arrayField(value, 'productSourceWorkbookFingerprints').map(
+      parseSameCorpusProductSourceWorkbookFingerprint,
+    ),
+    materializedCellCounts: arrayField(value, 'materializedCellCounts').map((entry) => {
+      if (typeof entry !== 'number' || !Number.isInteger(entry) || entry <= 0) {
+        throw new Error('Expected UI responsiveness same-corpus capture materialized cell counts to contain positive integers')
+      }
+      return entry
+    }),
+    sampleCount: numberField(value, 'sampleCount'),
+    caseCount: numberField(value, 'caseCount'),
+    strictRenderedGridProofCaseCount: numberField(value, 'strictRenderedGridProofCaseCount'),
+    legacyInsufficientRenderedGridProofCaseCount: numberField(value, 'legacyInsufficientRenderedGridProofCaseCount'),
+    currentContractEvidenceComplete: booleanField(value, 'currentContractEvidenceComplete'),
+    captureRunSignature: stringField(value, 'captureRunSignature'),
+    invalidReasons: stringArrayField(value, 'invalidReasons'),
   }
 }
 
@@ -129,6 +195,7 @@ function parseSameCorpusCase(value: unknown): UiResponsivenessSameCorpusCase {
   const tenXMeanAndP95Metric = optionalSameCorpusTenXMetric(record, 'tenXMeanAndP95Metric')
   const postOperationFrameGuardrailPassed = optionalBooleanField(record, 'postOperationFrameGuardrailPassed')
   const scrollMovementGuardrailPassed = optionalBooleanField(record, 'scrollMovementGuardrailPassed')
+  const sourceWorkbookFingerprintGuardrailPassed = optionalBooleanField(record, 'sourceWorkbookFingerprintGuardrailPassed')
   return {
     id: stringField(record, 'id'),
     corpusCaseId: stringField(record, 'corpusCaseId'),
@@ -154,6 +221,7 @@ function parseSameCorpusCase(value: unknown): UiResponsivenessSameCorpusCase {
       : {}),
     ...(postOperationFrameGuardrailPassed !== undefined ? { postOperationFrameGuardrailPassed } : {}),
     ...(scrollMovementGuardrailPassed !== undefined ? { scrollMovementGuardrailPassed } : {}),
+    ...(sourceWorkbookFingerprintGuardrailPassed !== undefined ? { sourceWorkbookFingerprintGuardrailPassed } : {}),
     passed: booleanField(record, 'passed'),
   }
 }
@@ -220,7 +288,39 @@ function parseSameCorpusVerification(value: Record<string, unknown>): SameCorpus
     method: parseSameCorpusVerificationMethod(stringField(value, 'method')),
     sheetName: stringField(value, 'sheetName'),
     materializedCells: numberField(value, 'materializedCells'),
+    corpusFingerprint: parseSameCorpusCorpusFingerprint(objectField(value, 'corpusFingerprint')),
+    sourceWorkbookSha256: nullableStringField(value, 'sourceWorkbookSha256'),
     checkedCells: arrayField(value, 'checkedCells').map(parseSameCorpusVerifiedCell),
+  }
+}
+
+function parseSameCorpusCorpusFingerprint(value: unknown): SameCorpusCaptureCorpusFingerprint {
+  const record = asObject(value, 'UI responsiveness same-corpus benchmark fingerprint')
+  const primaryViewport = objectField(record, 'primaryViewport')
+  return {
+    version: literalField(record, 'version', 'same-corpus-fingerprint-v1'),
+    corpusCaseId: stringField(record, 'corpusCaseId'),
+    workbookName: stringField(record, 'workbookName'),
+    sheetCount: numberField(record, 'sheetCount'),
+    materializedCells: numberField(record, 'materializedCells'),
+    primaryViewport: {
+      sheetName: stringField(primaryViewport, 'sheetName'),
+      rowStart: numberField(primaryViewport, 'rowStart'),
+      rowEnd: numberField(primaryViewport, 'rowEnd'),
+      colStart: numberField(primaryViewport, 'colStart'),
+      colEnd: numberField(primaryViewport, 'colEnd'),
+    },
+    snapshotSha256: stringField(record, 'snapshotSha256'),
+  }
+}
+
+function parseSameCorpusProductSourceWorkbookFingerprint(value: unknown): SameCorpusProductSourceWorkbookFingerprint {
+  const record = asObject(value, 'UI responsiveness same-corpus product source workbook fingerprint')
+  return {
+    product: parseSameCorpusProduct(stringField(record, 'product')),
+    method: parseSameCorpusVerificationMethod(stringField(record, 'method')),
+    source: stringField(record, 'source'),
+    sourceWorkbookSha256: nullableStringField(record, 'sourceWorkbookSha256'),
   }
 }
 
@@ -259,6 +359,7 @@ function parseSameCorpusPixelGridProof(value: Record<string, unknown>): SameCorp
     captured: booleanField(value, 'captured'),
     requiredProducts: stringArrayField(value, 'requiredProducts').map(parseSameCorpusProduct),
     products: arrayField(value, 'products').map(parseSameCorpusProductPixelGridProof),
+    productVerdicts: arrayField(value, 'productVerdicts').map(parseSameCorpusProductPixelGridProofVerdict),
     missingProducts: stringArrayField(value, 'missingProducts').map(parseSameCorpusProduct),
   }
 }
@@ -272,6 +373,18 @@ function parseSameCorpusProductPixelGridProof(value: unknown): SameCorpusProduct
     viewportPixelWidth: numberField(record, 'viewportPixelWidth'),
     viewportPixelHeight: numberField(record, 'viewportPixelHeight'),
     evidence: stringArrayField(record, 'evidence'),
+  }
+}
+
+function parseSameCorpusProductPixelGridProofVerdict(value: unknown) {
+  const record = asObject(value, 'UI responsiveness same-corpus product pixel grid proof verdict')
+  return {
+    product: parseSameCorpusProduct(stringField(record, 'product')),
+    evidenceStatus: parseSameCorpusProductPixelGridEvidenceStatus(stringField(record, 'evidenceStatus')),
+    acceptedForCurrentScorecard: booleanField(record, 'acceptedForCurrentScorecard'),
+    contractVersion: nullableStringField(record, 'contractVersion'),
+    requiredContractVersion: literalField(record, 'requiredContractVersion', sameCorpusUiRenderProofContractVersion),
+    invalidReasons: stringArrayField(record, 'invalidReasons'),
   }
 }
 
@@ -321,6 +434,17 @@ function optionalBooleanField(value: Record<string, unknown>, key: string): bool
   return Object.hasOwn(value, key) ? booleanField(value, key) : undefined
 }
 
+function nullableStringField(value: Record<string, unknown>, key: string): string | null {
+  const fieldValue = value[key]
+  if (fieldValue === null) {
+    return null
+  }
+  if (typeof fieldValue !== 'string') {
+    throw new Error(`Expected ${key} to be a string or null`)
+  }
+  return fieldValue
+}
+
 function optionalSameCorpusTenXMetric(
   value: Record<string, unknown>,
   key: string,
@@ -368,6 +492,13 @@ function parseSameCorpusPixelGridMethod(value: string): SameCorpusProductPixelGr
     return value
   }
   throw new Error(`Unexpected UI responsiveness same-corpus pixel grid proof method: ${value}`)
+}
+
+function parseSameCorpusProductPixelGridEvidenceStatus(value: string): 'current-contract' | 'legacy-insufficient' | 'missing' | 'invalid' {
+  if (value === 'current-contract' || value === 'legacy-insufficient' || value === 'missing' || value === 'invalid') {
+    return value
+  }
+  throw new Error(`Unexpected UI responsiveness same-corpus pixel grid proof evidence status: ${value}`)
 }
 
 function parseSameCorpusWorkload(value: string): UiResponsivenessSameCorpusWorkload {

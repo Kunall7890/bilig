@@ -251,6 +251,12 @@ function buildChecklistItem(args: {
               `live same-corpus UI cases missing scroll-event evidence: ${
                 args.liveUiSameCorpus.casesMissingScrollEventEvidence.join(', ') || 'none'
               }`,
+              `live same-corpus UI render proof contract: ${args.liveUiSameCorpus.renderProofContractVersion ?? 'missing'}`,
+              `live same-corpus UI strict rendered-grid proof cases: ${String(
+                args.liveUiSameCorpus.strictRenderedGridProofCaseCount,
+              )}/${String(args.liveUiSameCorpus.requiredCaseCount)}`,
+              `live same-corpus UI current-contract evidence complete: ${String(args.liveUiSameCorpus.currentContractEvidenceComplete)}`,
+              `live same-corpus UI run manifest invalid reasons: ${args.liveUiSameCorpus.runManifestInvalidReasons.join('; ') || 'none'}`,
               `live same-corpus UI missing inputs: ${args.liveUiSameCorpus.missingInputs.join(', ') || 'none'}`,
               `live same-corpus UI Google Sheets URL source: ${args.liveUiSameCorpus.googleSheetsUrlSource}`,
               `live same-corpus UI browser capture guard active: ${String(args.liveUiSameCorpus.browserCaptureGuard.active)}`,
@@ -299,6 +305,12 @@ function uiSameCorpusLiveBlockers(status: BiligDominanceStatus['uiSameCorpus']):
   }
   if (status.casesMissingScrollEventEvidence.length > 0) {
     blockers.push(`same-corpus UI proof missing scroll-event evidence: ${status.casesMissingScrollEventEvidence.join(', ')}`)
+  }
+  if (!status.currentContractEvidenceComplete) {
+    blockers.push('same-corpus UI proof does not satisfy the current render-proof contract')
+  }
+  for (const reason of status.runManifestInvalidReasons) {
+    blockers.push(`same-corpus UI run manifest: ${reason}`)
   }
   if (status.captured && !status.tenXRequirementSatisfied) {
     blockers.push(

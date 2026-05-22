@@ -1,5 +1,6 @@
 import type { BuildScorecardInput, DominanceCompletionAudit, DominanceCompletionCriterion } from './bilig-dominance-scorecard-types.ts'
 import type { UiResponsivenessLiveBrowserScorecard } from './gen-ui-responsiveness-live-browser-scorecard.ts'
+import { validateSameCorpusProof } from './ui-responsiveness-same-corpus-scorecard-proof.ts'
 import { requiredUiResponsivenessSameCorpusWorkloads } from './ui-responsiveness-same-corpus-workloads.ts'
 
 export interface CompletionAuditSignals {
@@ -17,6 +18,7 @@ export interface CompletionAuditSignals {
 }
 
 export function buildBiligDominanceCompletionAudit(input: BuildScorecardInput, signals: CompletionAuditSignals): DominanceCompletionAudit {
+  const uiSameCorpusValidationError = sameCorpusProofValidationError(input.uiResponsivenessLiveBrowserScorecard)
   const uiSameCorpusTenXGap = hasUiResponsivenessSameCorpusTenXGap(input.uiResponsivenessLiveBrowserScorecard)
   const criteria = [
     criterion({
@@ -118,12 +120,17 @@ export function buildBiligDominanceCompletionAudit(input: BuildScorecardInput, s
       evidence: [
         `live browser vendors: ${input.uiResponsivenessLiveBrowserScorecard.summary.capturedVendors.join(', ')}`,
         `headed browser contracts passed: ${String(input.largeWorkbookSloScorecard.summary.headedBrowserFrameP95ContractsPassed)}`,
+        `same-corpus render proof contract: ${input.uiResponsivenessLiveBrowserScorecard.sameCorpusProof.runManifest?.contractVersion ?? 'missing'}`,
+        `same-corpus strict rendered-grid proof cases: ${String(
+          input.uiResponsivenessLiveBrowserScorecard.sameCorpusProof.runManifest?.strictRenderedGridProofCaseCount ?? 0,
+        )}/${String(input.uiResponsivenessLiveBrowserScorecard.sameCorpusProof.requiredCaseCount)}`,
       ],
       gaps: [
         ...(signals.uiResponsivenessLiveBrowserPassed ? [] : ['live incumbent browser timing scorecard is not passing']),
         ...(input.largeWorkbookSloScorecard.summary.headedBrowserFrameP95ContractsPassed
           ? []
           : ['headed browser frame p95 contracts are not all passing']),
+        ...(uiSameCorpusValidationError ? [`same-corpus proof validation failed: ${uiSameCorpusValidationError}`] : []),
         ...(uiSameCorpusTenXGap ? ['live UI browser evidence is not a same-corpus 10x proof against incumbents'] : []),
       ],
     }),
@@ -195,11 +202,20 @@ export function buildBiligDominanceCompletionAudit(input: BuildScorecardInput, s
 }
 
 export function hasUiResponsivenessSameCorpusTenXGap(scorecard: UiResponsivenessLiveBrowserScorecard): boolean {
+  if (sameCorpusProofValidationError(scorecard)) {
+    return true
+  }
+  const runManifest = scorecard.sameCorpusProof.runManifest
   if (
     !scorecard.sameCorpusProof.captured ||
     scorecard.sameCorpusProof.requiredCaseCount === 0 ||
     scorecard.sameCorpusProof.cases.length !== scorecard.sameCorpusProof.requiredCaseCount ||
     scorecard.sameCorpusProof.tenXMeanAndP95CaseCount !== scorecard.sameCorpusProof.requiredCaseCount ||
+    runManifest === undefined ||
+    !runManifest.currentContractEvidenceComplete ||
+    !runManifest.googleSheetsTenXRequirementSatisfied ||
+    runManifest.invalidReasons.length > 0 ||
+    runManifest.strictRenderedGridProofCaseCount !== scorecard.sameCorpusProof.requiredCaseCount ||
     requiredUiResponsivenessSameCorpusWorkloads.some(
       (workload) => !scorecard.sameCorpusProof.cases.some((entry) => entry.workload === workload),
     ) ||
@@ -222,6 +238,15 @@ export function hasUiResponsivenessSameCorpusTenXGap(scorecard: UiResponsiveness
       entry.includes('not live timing') ||
       entry.includes('does not claim bilig is 10x'),
   )
+}
+
+export function sameCorpusProofValidationError(scorecard: UiResponsivenessLiveBrowserScorecard): string | null {
+  try {
+    validateSameCorpusProof(scorecard.sameCorpusProof)
+    return null
+  } catch (error) {
+    return error instanceof Error ? error.message : String(error)
+  }
 }
 
 function requiredControlCriterion(args: {

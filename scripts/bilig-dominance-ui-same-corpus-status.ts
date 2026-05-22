@@ -1,6 +1,9 @@
 import type { BuildScorecardInput } from './bilig-dominance-scorecard-types.ts'
 import { localCiResourceGuardOverrideEnv, type LocalCiResourceGuardStatus } from './ci-local-resource-guard.ts'
-import type { UiResponsivenessSameCorpusWorkload } from './gen-ui-responsiveness-live-browser-scorecard.ts'
+import type {
+  UiResponsivenessSameCorpusRunManifest,
+  UiResponsivenessSameCorpusWorkload,
+} from './gen-ui-responsiveness-live-browser-scorecard.ts'
 import {
   requiredUiResponsivenessSameCorpusWorkloads,
   uiSameCorpusWorkloadRequiresScrollEventEvidence,
@@ -17,6 +20,13 @@ export interface UiSameCorpusStatus {
   readonly requiredCaseCount: number
   readonly tenXMeanAndP95CaseCount: number
   readonly tenXRequirementSatisfied: boolean
+  readonly runManifest: UiResponsivenessSameCorpusRunManifest | null
+  readonly renderProofContractVersion: string | null
+  readonly strictRenderedGridProofCaseCount: number
+  readonly legacyInsufficientRenderedGridProofCaseCount: number
+  readonly currentContractEvidenceComplete: boolean
+  readonly googleSheetsTenXRequirementSatisfied: boolean
+  readonly runManifestInvalidReasons: readonly string[]
   readonly requiredWorkloads: readonly UiResponsivenessSameCorpusWorkload[]
   readonly missingRequiredWorkloads: readonly UiResponsivenessSameCorpusWorkload[]
   readonly scrollEventEvidenceCaseCount: number
@@ -82,6 +92,7 @@ export function buildUiSameCorpusStatus(
   },
 ): UiSameCorpusStatus {
   const proof = input.uiResponsivenessLiveBrowserScorecard.sameCorpusProof
+  const runManifest = proof.runManifest ?? null
   const fixture = uiSameCorpusFixtureStatus(defaultUiSameCorpusId)
   const coveredWorkloads = new Set(proof.cases.map((entry) => entry.workload))
   const missingRequiredWorkloads = requiredUiSameCorpusWorkloads.filter((workload) => !coveredWorkloads.has(workload))
@@ -181,6 +192,15 @@ export function buildUiSameCorpusStatus(
     requiredCaseCount: proof.requiredCaseCount,
     tenXMeanAndP95CaseCount: proof.tenXMeanAndP95CaseCount,
     tenXRequirementSatisfied,
+    runManifest,
+    renderProofContractVersion: runManifest?.contractVersion ?? null,
+    strictRenderedGridProofCaseCount:
+      runManifest?.strictRenderedGridProofCaseCount ?? proof.cases.filter((entry) => entry.scenarioProof.pixelGridProof.captured).length,
+    legacyInsufficientRenderedGridProofCaseCount:
+      runManifest?.legacyInsufficientRenderedGridProofCaseCount ?? proof.cases.filter(hasLegacyInsufficientRenderedGridProof).length,
+    currentContractEvidenceComplete: runManifest?.currentContractEvidenceComplete ?? false,
+    googleSheetsTenXRequirementSatisfied: runManifest?.googleSheetsTenXRequirementSatisfied ?? false,
+    runManifestInvalidReasons: runManifest?.invalidReasons ?? ['same-corpus UI proof is missing a run manifest'],
     requiredWorkloads: requiredUiSameCorpusWorkloads,
     missingRequiredWorkloads,
     scrollEventEvidenceCaseCount,
@@ -337,6 +357,10 @@ function uiSameCorpusTenXRequirementSatisfied(
   return (
     proof.captured &&
     proof.evidenceKind === 'same-corpus-browser-capture' &&
+    proof.runManifest?.currentContractEvidenceComplete === true &&
+    proof.runManifest.googleSheetsTenXRequirementSatisfied &&
+    proof.runManifest.invalidReasons.length === 0 &&
+    proof.runManifest.strictRenderedGridProofCaseCount === proof.requiredCaseCount &&
     proof.requiredProductCount === 2 &&
     proof.requiredCaseCount > 0 &&
     proof.cases.length === proof.requiredCaseCount &&
@@ -357,6 +381,18 @@ function uiSameCorpusCaseHasScrollEventEvidence(
     Boolean(entry.bilig.scrollMovementPx) &&
     Boolean(entry.googleSheets.scrollMovementPx)
   )
+}
+
+function hasLegacyInsufficientRenderedGridProof(entry: {
+  readonly scenarioProof: {
+    readonly pixelGridProof: {
+      readonly productVerdicts?: readonly {
+        readonly evidenceStatus?: string
+      }[]
+    }
+  }
+}): boolean {
+  return entry.scenarioProof.pixelGridProof.productVerdicts?.some((verdict) => verdict.evidenceStatus === 'legacy-insufficient') ?? false
 }
 
 function uiSameCorpusFixtureStatus(corpusCaseId: WorkbookBenchmarkCorpusId): UiSameCorpusFixtureStatus {
