@@ -106,6 +106,7 @@ export type WorkbookRunErrorCode =
   | 'check_verification_failed'
   | 'check_failed'
   | 'check_not_verified'
+  | 'invalid_command_bundle'
   | 'invalid_runtime_result'
   | 'runtime_rejected'
 
@@ -142,6 +143,7 @@ export const workbookRunErrorCodes = Object.freeze([
   'check_verification_failed',
   'check_failed',
   'check_not_verified',
+  'invalid_command_bundle',
   'invalid_runtime_result',
   'runtime_rejected',
 ] satisfies readonly WorkbookRunErrorCode[])

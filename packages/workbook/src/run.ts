@@ -1,4 +1,5 @@
 import { isLiteralInput, type LiteralInput } from '@bilig/protocol'
+import { verifyWorkbookCommandBundle, type WorkbookCommandBundle, type WorkbookCommandBundleIssue } from './command.js'
 import { isWorkbookRef, type WorkbookRef } from './find.js'
 import { isWorkbookOp } from './guards.js'
 import { normalizeWorkbookActionInput, type WorkbookActionInput } from './input.js'
@@ -26,12 +27,17 @@ export interface WorkbookRunApplyResult {
 }
 
 export interface WorkbookRunAdapter<Refs = unknown> {
-  readonly preview?: (plan: WorkbookActionPlan<Refs>) => MaybePromise<WorkbookRuntimePreview>
-  readonly apply: (plan: WorkbookActionPlan<Refs>) => MaybePromise<WorkbookRunApplyResult>
-  readonly read?: (targets: readonly WorkbookRef[], plan: WorkbookActionPlan<Refs>) => MaybePromise<readonly WorkbookRunReadback[]>
+  readonly preview?: (plan: WorkbookActionPlan<Refs>, command?: WorkbookCommandBundle<Refs>) => MaybePromise<WorkbookRuntimePreview>
+  readonly apply: (plan: WorkbookActionPlan<Refs>, command?: WorkbookCommandBundle<Refs>) => MaybePromise<WorkbookRunApplyResult>
+  readonly read?: (
+    targets: readonly WorkbookRef[],
+    plan: WorkbookActionPlan<Refs>,
+    command?: WorkbookCommandBundle<Refs>,
+  ) => MaybePromise<readonly WorkbookRunReadback[]>
   readonly verifyChecks?: (
     checks: readonly WorkbookCheckResult[],
     plan: WorkbookActionPlan<Refs>,
+    command?: WorkbookCommandBundle<Refs>,
   ) => MaybePromise<readonly WorkbookCheckResult[]>
 }
 
@@ -71,6 +77,14 @@ function readbackIssueError(issue: WorkbookReadbackIssue): WorkbookRunError {
     check: issue.check,
     ...(issue.expected !== undefined ? { expected: issue.expected } : {}),
     ...(issue.actual !== undefined ? { actual: issue.actual } : {}),
+  }
+}
+
+function commandBundleIssueError(issue: WorkbookCommandBundleIssue): WorkbookRunError {
+  return {
+    code: 'invalid_command_bundle',
+    message: issue.message,
+    path: issue.path,
   }
 }
 
@@ -503,6 +517,7 @@ async function verifyChecksWithAdapter<Refs>(
   checks: readonly WorkbookCheckResult[],
   plan: WorkbookActionPlan<Refs>,
   adapter: WorkbookRunAdapter<Refs>,
+  command?: WorkbookCommandBundle<Refs>,
 ): Promise<{ readonly checks: readonly WorkbookCheckResult[]; readonly errors: readonly WorkbookRunError[] }> {
   if (adapter.verifyChecks === undefined) {
     return { checks, errors: [] }
@@ -515,7 +530,7 @@ async function verifyChecksWithAdapter<Refs>(
   const verifierInput = originalChecks.map(cloneCheck)
   let verified: unknown
   try {
-    verified = await adapter.verifyChecks(verifierInput, plan)
+    verified = await adapter.verifyChecks(verifierInput, plan, command)
   } catch (error) {
     return {
       checks: originalChecks,
@@ -564,7 +579,11 @@ function failedAfterApply(
   }
 }
 
-export async function runWorkbookPlan<Refs>(plan: WorkbookActionPlan<Refs>, adapter: WorkbookRunAdapter<Refs>): Promise<WorkbookRunResult> {
+export async function runWorkbookPlan<Refs>(
+  plan: WorkbookActionPlan<Refs>,
+  adapter: WorkbookRunAdapter<Refs>,
+  command?: WorkbookCommandBundle<Refs>,
+): Promise<WorkbookRunResult> {
   const invalidPlan = failedFromPlanIssues(plan)
   if (invalidPlan !== null) {
     return invalidPlan
@@ -573,7 +592,7 @@ export async function runWorkbookPlan<Refs>(plan: WorkbookActionPlan<Refs>, adap
   let preview: WorkbookRuntimePreview | undefined
   if (adapter.preview !== undefined) {
     try {
-      const previewResult = validatePreviewResult(await adapter.preview(plan), plan)
+      const previewResult = validatePreviewResult(await adapter.preview(plan, command), plan)
       if ('code' in previewResult) {
         return {
           status: 'failed',
@@ -593,7 +612,7 @@ export async function runWorkbookPlan<Refs>(plan: WorkbookActionPlan<Refs>, adap
 
   let applyResult: WorkbookRunApplyResult
   try {
-    const rawApplyResult = validateApplyResult(await adapter.apply(plan))
+    const rawApplyResult = validateApplyResult(await adapter.apply(plan, command))
     if ('code' in rawApplyResult) {
       return {
         status: 'failed',
@@ -624,7 +643,7 @@ export async function runWorkbookPlan<Refs>(plan: WorkbookActionPlan<Refs>, adap
 
     let readbacks: readonly WorkbookRunReadback[]
     try {
-      const rawReadbacks = validateReadbacks(await adapter.read(targets, plan))
+      const rawReadbacks = validateReadbacks(await adapter.read(targets, plan, command))
       if ('code' in rawReadbacks) {
         return failedAfterApply(applyResult, [rawReadbacks], checks)
       }
@@ -640,7 +659,7 @@ export async function runWorkbookPlan<Refs>(plan: WorkbookActionPlan<Refs>, adap
     }
   }
 
-  const checkVerification = await verifyChecksWithAdapter(checks, plan, adapter)
+  const checkVerification = await verifyChecksWithAdapter(checks, plan, adapter, command)
   checks = checkVerification.checks
   if (checkVerification.errors.length > 0) {
     return failedAfterApply(applyResult, checkVerification.errors, checks)
@@ -659,6 +678,21 @@ export async function runWorkbookPlan<Refs>(plan: WorkbookActionPlan<Refs>, adap
     ...(applyResult.undo !== undefined ? { undo: applyResult.undo } : {}),
     ...(applied !== undefined ? { applied } : {}),
   }
+}
+
+export async function runWorkbookCommandBundle<Refs>(
+  command: WorkbookCommandBundle<Refs>,
+  adapter: WorkbookRunAdapter<Refs>,
+): Promise<WorkbookRunResult> {
+  const verification = verifyWorkbookCommandBundle(command)
+  if (verification.status === 'invalid') {
+    return {
+      status: 'failed',
+      errors: verification.issues.map(commandBundleIssueError),
+      checks: command.plan.checks,
+    }
+  }
+  return runWorkbookPlan(command.plan, adapter, command)
 }
 
 export async function runWorkbookAction<Refs, Actions extends WorkbookActionMap<Refs>>(

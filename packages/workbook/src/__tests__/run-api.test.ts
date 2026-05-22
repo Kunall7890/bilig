@@ -51,6 +51,7 @@ describe('@bilig/workbook run api', () => {
     expect(workbookRunErrorCodes).toContain('formula_input_not_resolved')
     expect(workbookRunErrorCodes).toContain('readback_missing')
     expect(workbookRunErrorCodes).toContain('duplicate_readback')
+    expect(workbookRunErrorCodes).toContain('invalid_command_bundle')
     expect(workbookRunErrorCodes).toContain('invalid_runtime_result')
     expect(workbookRunErrorCodes).toContain('runtime_rejected')
     expect(new Set(workbookRunErrorCodes).size).toBe(workbookRunErrorCodes.length)

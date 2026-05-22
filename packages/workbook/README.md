@@ -103,12 +103,13 @@ Agents should use the package in this order:
 
 1. Inspect the model with `describeModel(model)`.
 2. Plan an action with `planWorkbookAction(model, actionName, input)`.
-3. Read `describePlanResult(planned)` for a compact explanation.
-4. Run `verifyPlan(plan)` before execution.
-5. Hand the plan to a runtime adapter with `runWorkbookPlan` or
-   `runWorkbookAction`.
-6. Inspect `describeRunResult(result)`.
-7. Treat `status: "done"` as success only when checks are returned as proof.
+3. Build a command bundle with `buildWorkbookCommandBundle(plan, options)`, or
+   use `planWorkbookCommand(model, actionName, input, options)` directly.
+4. Read `describeCommandBundle(command)` for the runtime handoff contract.
+5. Run `verifyWorkbookCommandBundle(command)` before execution.
+6. Hand the command to a runtime adapter with `runWorkbookCommandBundle`.
+7. Inspect `describeRunResult(result)`.
+8. Treat `status: "done"` as success only when checks are returned as proof.
 
 The important rule: planned checks are promises, not proof. Runtime proof must
 turn checks into `passed` or `failed`.
@@ -385,6 +386,55 @@ A successful plan contains:
 Models and plans are frozen. They are meant to be inspected, passed to a
 runtime, and verified, not mutated after creation.
 
+## Command Bundles
+
+Plans describe intent. Command bundles are the executable handoff object for an
+agent or service runtime.
+
+```ts
+import {
+  describeCommandBundle,
+  planWorkbookCommand,
+  runWorkbookCommandBundle,
+  verifyWorkbookCommandBundle,
+} from '@bilig/workbook'
+
+const planned = planWorkbookCommand(model, 'calculate', undefined, {
+  baseRevision: 'rev-42',
+  idempotencyKey: 'agent-turn-123',
+})
+
+if (planned.status === 'planned') {
+  console.log(describeCommandBundle(planned.command))
+
+  const verification = verifyWorkbookCommandBundle(planned.command)
+  if (verification.status === 'invalid') {
+    throw new Error(JSON.stringify(verification.issues))
+  }
+
+  const result = await runWorkbookCommandBundle(planned.command, adapter)
+}
+```
+
+A command bundle includes:
+
+- `commandId`: deterministic id for the exact plan, optional base revision, and optional idempotency key.
+- `idempotencyKey`: optional retry key supplied by the caller.
+- `baseRevision`: optional runtime precondition supplied by the caller.
+- `plan`: the frozen workbook action plan.
+- `requirements`: the apply/read/verify checklist for the adapter.
+- `verification`: static plan verification captured before runtime execution.
+
+`verifyWorkbookCommandBundle` proves the bundle still matches its embedded
+plan, requirements, verification, input, model name, action name, and command
+id. If someone mutates the bundle between approval and execution, the command
+runner fails before `adapter.apply` is called.
+
+Adapters receive the command as the optional second or third argument to
+`preview`, `apply`, `read`, and `verifyChecks`, so runtimes can enforce
+revision checks, idempotency, locks, and audit logging without changing the
+consumer model.
+
 ## Runtime Handoff
 
 The runtime adapter owns execution. `@bilig/workbook` owns the contract.
@@ -410,10 +460,10 @@ const result = await runWorkbookAction(model, 'calculate', {
 
 Adapter methods:
 
-- `preview(plan)`: optional materialization step for inspection and approval.
-- `apply(plan)`: required execution step.
-- `read(targets, plan)`: optional readback step for value and formula checks.
-- `verifyChecks(checks, plan)`: optional runtime-owned proof step.
+- `preview(plan, command?)`: optional materialization step for inspection and approval.
+- `apply(plan, command?)`: required execution step.
+- `read(targets, plan, command?)`: optional readback step for value and formula checks.
+- `verifyChecks(checks, plan, command?)`: optional runtime-owned proof step.
 
 `@bilig/core` provides the canonical engine adapter:
 
@@ -526,12 +576,15 @@ Authoring:
 Planning and inspection:
 
 - `planWorkbookAction`
+- `planWorkbookCommand`
 - `buildWorkbookActionPlan`
+- `buildWorkbookCommandBundle`
 - `inspectModel`
 - `describeModel`
 - `describeRef`
 - `describePlan`
 - `describePlanResult`
+- `describeCommandBundle`
 - `describeRuntimeRequirements`
 - `collectWorkbookRefs`
 
@@ -539,8 +592,10 @@ Verification and execution:
 
 - `verifyModel`
 - `verifyPlan`
+- `verifyWorkbookCommandBundle`
 - `runWorkbookAction`
 - `runWorkbookPlan`
+- `runWorkbookCommandBundle`
 - `verifyWorkbookReadbacks`
 - `describeRunResult`
 
@@ -552,6 +607,8 @@ Stable code lists and guards:
 - `isWorkbookReadbackIssueCode`
 - `workbookRunErrorCodes`
 - `isWorkbookRunErrorCode`
+- `workbookCommandBundleIssueCodes`
+- `isWorkbookCommandBundleIssueCode`
 
 Primary types:
 
@@ -559,6 +616,8 @@ Primary types:
 - `WorkbookAction`
 - `WorkbookActionPlan`
 - `WorkbookActionPlanResult`
+- `WorkbookCommandBundle`
+- `WorkbookCommandBundleResult`
 - `WorkbookRunAdapter`
 - `WorkbookRunResult`
 - `WorkbookCheckResult`

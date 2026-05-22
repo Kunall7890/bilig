@@ -36,6 +36,7 @@ flowchart LR
   - inspectable readback proof on passed and failed checks
   - failed apply-and-prove results preserve runtime undo refs when available
   - stable run error code union for predictable agent branching
+  - deterministic command bundles with optional idempotency keys and base revision preconditions
   - transport-neutral run adapters for apply-and-prove receipts
   - generic check verifier handoff for runtime-owned invariants
   - transport-neutral workbook ops and txns
