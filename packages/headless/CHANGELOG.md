@@ -4,6 +4,18 @@ All notable changes to `@bilig/headless` will be documented in this file.
 
 This package is released as part of the aligned bilig library package set.
 
+## 0.51.5
+
+- Release type: patch
+- Previous libraries tag: libraries-v0.51.4
+- Manual override: no
+
+## Fixes
+- perf(headless): route structural inserts directly (22b2556d)
+
+## Internal runtime changes
+- ci(release): prevent runtime release self-trigger (60738a42)
+
 ## 0.51.4
 
 - Release type: patch
