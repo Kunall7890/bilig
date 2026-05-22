@@ -7,6 +7,7 @@ import { describe, expect, it } from 'vitest'
 import { buildWorkbookBenchmarkCorpus } from '../../packages/benchmarks/src/workbook-corpus.js'
 import { hasUiResponsivenessSameCorpusTenXGap } from '../bilig-dominance-completion-audit.ts'
 import {
+  buildSameCorpusCaptureRunManifest,
   buildSameCorpusProof,
   assertUiResponsivenessLiveBrowserRunAllowed,
   parseUiResponsivenessLiveBrowserCliArgs,
@@ -223,12 +224,26 @@ describe('UI responsiveness live browser scorecard', () => {
         }),
       }),
     })
-    const weakCapture: SameCorpusCapture = {
+    const weakCapture = withCaptureRunManifest({
       ...capture,
       cases: weakCases,
-    }
+    })
 
     expect(() => buildSameCorpusProof(weakCapture)).toThrow('UI responsiveness same-corpus pixel grid proof is stale')
+  })
+
+  it('rejects stale raw same-corpus capture run manifests before deriving proof', () => {
+    const capture = buildSameCorpusCapture()
+    const forgedCapture: SameCorpusCapture = {
+      ...capture,
+      runManifest: {
+        ...capture.runManifest,
+        captureRunSignature: '0'.repeat(64),
+        invalidReasons: ['hand-edited capture manifest'],
+      },
+    }
+
+    expect(() => buildSameCorpusProof(forgedCapture)).toThrow('UI responsiveness same-corpus capture run manifest is stale')
   })
 
   it('keeps the same-corpus blocker for honestly reported weak Bilig pixel proof', () => {
@@ -252,10 +267,10 @@ describe('UI responsiveness live browser scorecard', () => {
         pixelGridProof: weakPixelGridProof,
       }),
     })
-    const weakCapture: SameCorpusCapture = {
+    const weakCapture = withCaptureRunManifest({
       ...capture,
       cases: weakCases,
-    }
+    })
 
     const proof = buildSameCorpusProof(weakCapture)
 
@@ -300,7 +315,7 @@ describe('UI responsiveness live browser scorecard', () => {
         }),
       }),
     })
-    const proof = buildSameCorpusProof({ ...capture, cases: driftedCases })
+    const proof = buildSameCorpusProof(withCaptureRunManifest({ ...capture, cases: driftedCases }))
 
     expect(proof.tenXMeanAndP95CaseCount).toBe(requiredUiResponsivenessSameCorpusWorkloads.length)
     expect(proof.runManifest).toMatchObject({
@@ -537,51 +552,60 @@ function buildSameCorpusCapture(
 ): SameCorpusCapture {
   const includeScrollEventSamples = args.includeScrollEventSamples ?? true
   const workloads = args.workloads ?? requiredUiResponsivenessSameCorpusWorkloads
+  const cases = workloads.map((workload) => ({
+    id: `same-corpus-wide-mixed-250k-${workload}`,
+    corpusCaseId: 'wide-mixed-250k',
+    materializedCells: 250000,
+    workload,
+    scenarioProof: sameCorpusScenarioProof(workload),
+    bilig: {
+      product: 'bilig' as const,
+      source: 'e2e/tests/web-shell-scroll-performance.pw.ts',
+      operationResponseMsSamples: [4, 5, 6],
+      postOperationFrameMsSamples: [8, 9, 10],
+      ...(includeScrollEventSamples && uiSameCorpusWorkloadRequiresScrollEventEvidence(workload)
+        ? { scrollEventResponseMsSamples: [4, 5, 6], scrollMovementPxSamples: [720, 720, 720] }
+        : {}),
+      corpusVerification: corpusVerification('bilig-benchmark-state', verifiedCells()),
+      limitations: [],
+    },
+    googleSheets: {
+      product: 'google-sheets' as const,
+      source: 'https://docs.google.com/spreadsheets/d/example',
+      operationResponseMsSamples: [100, 100, 100],
+      postOperationFrameMsSamples: [14, 15, 16],
+      ...(includeScrollEventSamples && uiSameCorpusWorkloadRequiresScrollEventEvidence(workload)
+        ? { scrollEventResponseMsSamples: [100, 100, 100], scrollMovementPxSamples: [720, 720, 720] }
+        : {}),
+      corpusVerification: corpusVerification('google-sheets-xlsx-export', verifiedCells()),
+      limitations: [],
+    },
+    microsoftExcelWeb: {
+      product: 'microsoft-excel-web' as const,
+      source: 'https://view.officeapps.live.com/op/view.aspx?src=example',
+      operationResponseMsSamples: [75, 75, 90],
+      postOperationFrameMsSamples: [14, 15, 16],
+      ...(includeScrollEventSamples && uiSameCorpusWorkloadRequiresScrollEventEvidence(workload)
+        ? { scrollEventResponseMsSamples: [75, 75, 90], scrollMovementPxSamples: [720, 720, 720] }
+        : {}),
+      corpusVerification: corpusVerification('microsoft-excel-web-source-xlsx', verifiedCells()),
+      limitations: [],
+    },
+  }))
   return {
     schemaVersion: 1,
     suite: 'ui-responsiveness-same-corpus-capture',
     sampleCount: 3,
+    runManifest: buildSameCorpusCaptureRunManifest(cases, 3),
     limitations: [],
-    cases: workloads.map((workload) => ({
-      id: `same-corpus-wide-mixed-250k-${workload}`,
-      corpusCaseId: 'wide-mixed-250k',
-      materializedCells: 250000,
-      workload,
-      scenarioProof: sameCorpusScenarioProof(workload),
-      bilig: {
-        product: 'bilig',
-        source: 'e2e/tests/web-shell-scroll-performance.pw.ts',
-        operationResponseMsSamples: [4, 5, 6],
-        postOperationFrameMsSamples: [8, 9, 10],
-        ...(includeScrollEventSamples && uiSameCorpusWorkloadRequiresScrollEventEvidence(workload)
-          ? { scrollEventResponseMsSamples: [4, 5, 6], scrollMovementPxSamples: [720, 720, 720] }
-          : {}),
-        corpusVerification: corpusVerification('bilig-benchmark-state', verifiedCells()),
-        limitations: [],
-      },
-      googleSheets: {
-        product: 'google-sheets',
-        source: 'https://docs.google.com/spreadsheets/d/example',
-        operationResponseMsSamples: [100, 100, 100],
-        postOperationFrameMsSamples: [14, 15, 16],
-        ...(includeScrollEventSamples && uiSameCorpusWorkloadRequiresScrollEventEvidence(workload)
-          ? { scrollEventResponseMsSamples: [100, 100, 100], scrollMovementPxSamples: [720, 720, 720] }
-          : {}),
-        corpusVerification: corpusVerification('google-sheets-xlsx-export', verifiedCells()),
-        limitations: [],
-      },
-      microsoftExcelWeb: {
-        product: 'microsoft-excel-web',
-        source: 'https://view.officeapps.live.com/op/view.aspx?src=example',
-        operationResponseMsSamples: [75, 75, 90],
-        postOperationFrameMsSamples: [14, 15, 16],
-        ...(includeScrollEventSamples && uiSameCorpusWorkloadRequiresScrollEventEvidence(workload)
-          ? { scrollEventResponseMsSamples: [75, 75, 90], scrollMovementPxSamples: [720, 720, 720] }
-          : {}),
-        corpusVerification: corpusVerification('microsoft-excel-web-source-xlsx', verifiedCells()),
-        limitations: [],
-      },
-    })),
+    cases,
+  }
+}
+
+function withCaptureRunManifest(capture: Omit<SameCorpusCapture, 'runManifest'>): SameCorpusCapture {
+  return {
+    ...capture,
+    runManifest: buildSameCorpusCaptureRunManifest(capture.cases, capture.sampleCount),
   }
 }
 

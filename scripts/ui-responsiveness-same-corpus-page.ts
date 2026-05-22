@@ -25,6 +25,7 @@ import {
   captureSameCorpusProductVisualProof,
   type SameCorpusProductVisualProof,
 } from './ui-responsiveness-same-corpus-proof.ts'
+import { buildSameCorpusCaptureRunManifest } from './ui-responsiveness-same-corpus-scorecard-proof.ts'
 import { productLimitations, sameCorpusChromiumLaunchOptions, settleFrames } from './ui-responsiveness-same-corpus-page-utils.ts'
 import {
   measureVisibleScrollResponseWithRetries,
@@ -121,6 +122,7 @@ export async function captureSameCorpusUiResponsiveness(args: CaptureArgs): Prom
       schemaVersion: 1,
       suite: 'ui-responsiveness-same-corpus-capture',
       sampleCount: args.sampleCount,
+      runManifest: buildSameCorpusCaptureRunManifest(cases, args.sampleCount),
       limitations: [
         'Caller must supply a Google Sheets URL for the same exported Bilig benchmark corpus.',
         'Microsoft Excel Web can be supplied as an additional incumbent comparison, but it is not required for the Google Sheets 10x claim.',

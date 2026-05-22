@@ -15,6 +15,7 @@ import type {
   SameCorpusCaptureCase,
   SameCorpusCaptureCorpusVerification,
   SameCorpusCaptureMeasurement,
+  SameCorpusCaptureRunManifest,
   SameCorpusProductSourceWorkbookFingerprint,
   SameCorpusCaptureVerifiedCell,
   UiResponsivenessLiveBrowserCase,
@@ -34,6 +35,7 @@ import type {
   SameCorpusScreenshotProof,
 } from './ui-responsiveness-same-corpus-proof.ts'
 import { sameCorpusUiRenderProofContractVersion } from './ui-responsiveness-same-corpus-proof.ts'
+import { sameCorpusUiCaptureToolVersion } from './ui-responsiveness-same-corpus-scorecard-proof.ts'
 import { isUiResponsivenessSameCorpusWorkload } from './ui-responsiveness-same-corpus-workloads.ts'
 
 export function parseUiResponsivenessLiveBrowserScorecard(value: Record<string, unknown>): UiResponsivenessLiveBrowserScorecard {
@@ -81,6 +83,7 @@ export function parseSameCorpusCapture(value: Record<string, unknown>): SameCorp
     schemaVersion: literalField(value, 'schemaVersion', 1),
     suite: literalField(value, 'suite', 'ui-responsiveness-same-corpus-capture'),
     sampleCount: numberField(value, 'sampleCount'),
+    runManifest: parseSameCorpusCaptureRunManifest(objectField(value, 'runManifest')),
     limitations: stringArrayField(value, 'limitations'),
     cases: arrayField(value, 'cases').map(parseSameCorpusCaptureCase),
   }
@@ -145,6 +148,35 @@ function parseSameCorpusRunManifest(value: Record<string, unknown>): UiResponsiv
     tenXMeanAndP95CaseCount: numberField(value, 'tenXMeanAndP95CaseCount'),
     currentContractEvidenceComplete: booleanField(value, 'currentContractEvidenceComplete'),
     googleSheetsTenXRequirementSatisfied: booleanField(value, 'googleSheetsTenXRequirementSatisfied'),
+    invalidReasons: stringArrayField(value, 'invalidReasons'),
+  }
+}
+
+function parseSameCorpusCaptureRunManifest(value: Record<string, unknown>): SameCorpusCaptureRunManifest {
+  return {
+    artifactGenerator: literalField(value, 'artifactGenerator', 'scripts/capture-ui-responsiveness-same-corpus.ts'),
+    captureToolVersion: literalField(value, 'captureToolVersion', sameCorpusUiCaptureToolVersion),
+    contractVersion: literalField(value, 'contractVersion', sameCorpusUiRenderProofContractVersion),
+    requiredProducts: stringArrayField(value, 'requiredProducts').map(parseSameCorpusProduct),
+    requiredWorkloads: stringArrayField(value, 'requiredWorkloads').map(parseSameCorpusWorkload),
+    capturedWorkloads: stringArrayField(value, 'capturedWorkloads').map(parseSameCorpusWorkload),
+    corpusCaseIds: stringArrayField(value, 'corpusCaseIds'),
+    corpusFingerprints: arrayField(value, 'corpusFingerprints').map(parseSameCorpusCorpusFingerprint),
+    productSourceWorkbookFingerprints: arrayField(value, 'productSourceWorkbookFingerprints').map(
+      parseSameCorpusProductSourceWorkbookFingerprint,
+    ),
+    materializedCellCounts: arrayField(value, 'materializedCellCounts').map((entry) => {
+      if (typeof entry !== 'number' || !Number.isInteger(entry) || entry <= 0) {
+        throw new Error('Expected UI responsiveness same-corpus capture materialized cell counts to contain positive integers')
+      }
+      return entry
+    }),
+    sampleCount: numberField(value, 'sampleCount'),
+    caseCount: numberField(value, 'caseCount'),
+    strictRenderedGridProofCaseCount: numberField(value, 'strictRenderedGridProofCaseCount'),
+    legacyInsufficientRenderedGridProofCaseCount: numberField(value, 'legacyInsufficientRenderedGridProofCaseCount'),
+    currentContractEvidenceComplete: booleanField(value, 'currentContractEvidenceComplete'),
+    captureRunSignature: stringField(value, 'captureRunSignature'),
     invalidReasons: stringArrayField(value, 'invalidReasons'),
   }
 }

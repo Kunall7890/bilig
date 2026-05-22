@@ -1,3 +1,5 @@
+import { createHash } from 'node:crypto'
+
 import { summarizeNumbers, type NumericSummary } from '../packages/benchmarks/src/stats.js'
 import {
   buildWorkbookBenchmarkCorpus,
@@ -104,8 +106,29 @@ export interface SameCorpusCapture {
   readonly schemaVersion: 1
   readonly suite: 'ui-responsiveness-same-corpus-capture'
   readonly sampleCount: number
+  readonly runManifest: SameCorpusCaptureRunManifest
   readonly limitations: string[]
   readonly cases: SameCorpusCaptureCase[]
+}
+
+export interface SameCorpusCaptureRunManifest {
+  readonly artifactGenerator: 'scripts/capture-ui-responsiveness-same-corpus.ts'
+  readonly captureToolVersion: typeof sameCorpusUiCaptureToolVersion
+  readonly contractVersion: typeof sameCorpusUiRenderProofContractVersion
+  readonly requiredProducts: readonly UiResponsivenessSameCorpusProduct[]
+  readonly requiredWorkloads: readonly UiResponsivenessSameCorpusWorkload[]
+  readonly capturedWorkloads: readonly UiResponsivenessSameCorpusWorkload[]
+  readonly corpusCaseIds: readonly string[]
+  readonly corpusFingerprints: readonly SameCorpusCaptureCorpusFingerprint[]
+  readonly productSourceWorkbookFingerprints: readonly SameCorpusProductSourceWorkbookFingerprint[]
+  readonly materializedCellCounts: readonly number[]
+  readonly sampleCount: number
+  readonly caseCount: number
+  readonly strictRenderedGridProofCaseCount: number
+  readonly legacyInsufficientRenderedGridProofCaseCount: number
+  readonly currentContractEvidenceComplete: boolean
+  readonly captureRunSignature: string
+  readonly invalidReasons: readonly string[]
 }
 
 export interface SameCorpusCaptureCase {
@@ -148,6 +171,7 @@ export interface SameCorpusCaptureCorpusVerification {
 
 const requiredSameCorpusWorkloads = requiredUiResponsivenessSameCorpusWorkloads
 const sameCorpusSampleCount = 3
+export const sameCorpusUiCaptureToolVersion = 'same-corpus-capture-v1'
 const strictRenderedGridProofLimitation =
   'Some same-corpus cases retain timing evidence but do not satisfy strict rendered-grid proof, so they cannot count toward Google Sheets 10x UI claims.'
 const expectedCorpusFingerprintCache = new Map<WorkbookBenchmarkCorpusId, SameCorpusCaptureCorpusFingerprint>()
@@ -275,6 +299,50 @@ function buildSameCorpusRunManifest(cases: readonly UiResponsivenessSameCorpusCa
   }
 }
 
+export function buildSameCorpusCaptureRunManifest(
+  cases: readonly SameCorpusCaptureCase[],
+  sampleCount: number,
+): SameCorpusCaptureRunManifest {
+  const capturedWorkloads = cases.map((entry) => entry.workload)
+  const corpusCaseIds = [...new Set(cases.map((entry) => entry.corpusCaseId))].toSorted()
+  const corpusFingerprints = uniqueCaptureCorpusFingerprints(cases)
+  const productSourceWorkbookFingerprints = uniqueCaptureProductSourceWorkbookFingerprints(cases)
+  const materializedCellCounts = [...new Set(cases.map((entry) => entry.materializedCells))].toSorted((left, right) => left - right)
+  const strictRenderedGridProofCaseCount = cases.filter((entry) => entry.scenarioProof.pixelGridProof.captured).length
+  const legacyInsufficientRenderedGridProofCaseCount = cases.filter((entry) =>
+    entry.scenarioProof.pixelGridProof.productVerdicts.some((verdict) => verdict.evidenceStatus === 'legacy-insufficient'),
+  ).length
+  const invalidReasons = sameCorpusCaptureRunManifestInvalidReasons({
+    capturedWorkloads,
+    caseCount: cases.length,
+    corpusCaseIds,
+    corpusFingerprints,
+    productSourceWorkbookFingerprints,
+    legacyInsufficientRenderedGridProofCaseCount,
+    materializedCellCounts,
+    strictRenderedGridProofCaseCount,
+  })
+  return {
+    artifactGenerator: 'scripts/capture-ui-responsiveness-same-corpus.ts',
+    captureToolVersion: sameCorpusUiCaptureToolVersion,
+    contractVersion: sameCorpusUiRenderProofContractVersion,
+    requiredProducts: ['bilig', 'google-sheets'],
+    requiredWorkloads: requiredSameCorpusWorkloads,
+    capturedWorkloads,
+    corpusCaseIds,
+    corpusFingerprints,
+    productSourceWorkbookFingerprints,
+    materializedCellCounts,
+    sampleCount,
+    caseCount: cases.length,
+    strictRenderedGridProofCaseCount,
+    legacyInsufficientRenderedGridProofCaseCount,
+    currentContractEvidenceComplete: invalidReasons.length === 0,
+    captureRunSignature: sameCorpusCaptureRunSignature(cases),
+    invalidReasons,
+  }
+}
+
 function sameCorpusRunManifestInvalidReasons(args: {
   readonly capturedWorkloads: readonly UiResponsivenessSameCorpusWorkload[]
   readonly caseCount: number
@@ -327,9 +395,65 @@ function sameCorpusRunManifestInvalidReasons(args: {
   return invalidReasons
 }
 
+function sameCorpusCaptureRunManifestInvalidReasons(args: {
+  readonly capturedWorkloads: readonly UiResponsivenessSameCorpusWorkload[]
+  readonly caseCount: number
+  readonly corpusCaseIds: readonly string[]
+  readonly corpusFingerprints: readonly SameCorpusCaptureCorpusFingerprint[]
+  readonly productSourceWorkbookFingerprints: readonly SameCorpusProductSourceWorkbookFingerprint[]
+  readonly legacyInsufficientRenderedGridProofCaseCount: number
+  readonly materializedCellCounts: readonly number[]
+  readonly strictRenderedGridProofCaseCount: number
+}): string[] {
+  const invalidReasons: string[] = []
+  if (args.caseCount !== requiredSameCorpusWorkloads.length) {
+    invalidReasons.push('required workload count is incomplete')
+  }
+  const missingWorkloads = requiredSameCorpusWorkloads.filter((workload) => !args.capturedWorkloads.includes(workload))
+  if (missingWorkloads.length > 0) {
+    invalidReasons.push(`missing required workloads: ${missingWorkloads.join(', ')}`)
+  }
+  if (new Set(args.capturedWorkloads).size !== args.capturedWorkloads.length) {
+    invalidReasons.push('duplicate workload evidence is present')
+  }
+  if (args.corpusCaseIds.length !== 1) {
+    invalidReasons.push('same-corpus evidence must use exactly one corpus case')
+  }
+  if (args.corpusFingerprints.length !== 1) {
+    invalidReasons.push('same-corpus evidence must use exactly one benchmark workbook fingerprint')
+  }
+  if (!requiredProductSourceWorkbookFingerprintsPresent(args.productSourceWorkbookFingerprints)) {
+    invalidReasons.push('source workbook fingerprint must be stable for every required product')
+  }
+  if (args.materializedCellCounts.length > 1) {
+    invalidReasons.push('same-corpus evidence has mixed materialized cell counts')
+  }
+  if (args.strictRenderedGridProofCaseCount !== requiredSameCorpusWorkloads.length) {
+    invalidReasons.push(
+      `strict rendered-grid proof covers ${String(args.strictRenderedGridProofCaseCount)}/${String(requiredSameCorpusWorkloads.length)} cases`,
+    )
+  }
+  if (args.legacyInsufficientRenderedGridProofCaseCount > 0) {
+    invalidReasons.push(
+      `legacy-insufficient rendered-grid proof covers ${String(args.legacyInsufficientRenderedGridProofCaseCount)}/${String(
+        requiredSameCorpusWorkloads.length,
+      )} cases`,
+    )
+  }
+  return invalidReasons
+}
+
 function uniqueCorpusFingerprints(cases: readonly UiResponsivenessSameCorpusCase[]): readonly SameCorpusCaptureCorpusFingerprint[] {
   return uniqueByStableJson(
     cases.flatMap((entry) => sameCorpusCaseMeasurements(entry).map((measurement) => measurement.corpusVerification.corpusFingerprint)),
+  )
+}
+
+function uniqueCaptureCorpusFingerprints(cases: readonly SameCorpusCaptureCase[]): readonly SameCorpusCaptureCorpusFingerprint[] {
+  return uniqueByStableJson(
+    cases.flatMap((entry) =>
+      sameCorpusCaptureCaseMeasurements(entry).map((measurement) => measurement.corpusVerification.corpusFingerprint),
+    ),
   )
 }
 
@@ -348,9 +472,28 @@ function uniqueProductSourceWorkbookFingerprints(
   ).toSorted((left, right) => `${left.product}:${left.source}`.localeCompare(`${right.product}:${right.source}`))
 }
 
+function uniqueCaptureProductSourceWorkbookFingerprints(
+  cases: readonly SameCorpusCaptureCase[],
+): readonly SameCorpusProductSourceWorkbookFingerprint[] {
+  return uniqueByStableJson(
+    cases.flatMap((entry) =>
+      sameCorpusCaptureCaseMeasurements(entry).map((measurement) => ({
+        product: measurement.product,
+        method: measurement.corpusVerification.method,
+        source: measurement.source,
+        sourceWorkbookSha256: measurement.corpusVerification.sourceWorkbookSha256,
+      })),
+    ),
+  ).toSorted((left, right) => `${left.product}:${left.source}`.localeCompare(`${right.product}:${right.source}`))
+}
+
 function sameCorpusCaseMeasurements(
   entry: Pick<UiResponsivenessSameCorpusCase, 'bilig' | 'googleSheets' | 'microsoftExcelWeb'>,
 ): readonly UiResponsivenessSameCorpusMeasurement[] {
+  return [entry.bilig, entry.googleSheets, ...(entry.microsoftExcelWeb ? [entry.microsoftExcelWeb] : [])]
+}
+
+function sameCorpusCaptureCaseMeasurements(entry: SameCorpusCaptureCase): readonly SameCorpusCaptureMeasurement[] {
   return [entry.bilig, entry.googleSheets, ...(entry.microsoftExcelWeb ? [entry.microsoftExcelWeb] : [])]
 }
 
@@ -397,6 +540,7 @@ function validateSameCorpusCapture(capture: SameCorpusCapture): void {
   if (capture.cases.length === 0) {
     throw new Error('UI responsiveness same-corpus capture must include at least one case')
   }
+  validateSameCorpusCaptureRunManifest(capture)
   for (const entry of capture.cases) {
     const measurements = [entry.bilig, entry.googleSheets, ...(entry.microsoftExcelWeb ? [entry.microsoftExcelWeb] : [])]
     const hasAnyScrollEventSamples = measurements.some(
@@ -433,6 +577,17 @@ function validateSameCorpusCapture(capture: SameCorpusCapture): void {
       entry.microsoftExcelWeb ? buildSameCorpusMeasurement(entry.microsoftExcelWeb) : undefined,
     )
   }
+}
+
+function validateSameCorpusCaptureRunManifest(capture: SameCorpusCapture): void {
+  const expected = buildSameCorpusCaptureRunManifest(capture.cases, capture.sampleCount)
+  if (JSON.stringify(capture.runManifest) !== JSON.stringify(expected)) {
+    throw new Error('UI responsiveness same-corpus capture run manifest is stale')
+  }
+}
+
+function sameCorpusCaptureRunSignature(cases: readonly SameCorpusCaptureCase[]): string {
+  return createHash('sha256').update(JSON.stringify(cases)).digest('hex')
 }
 
 function buildSameCorpusCase(captureCase: SameCorpusCaptureCase): UiResponsivenessSameCorpusCase {
