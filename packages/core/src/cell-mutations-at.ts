@@ -20,6 +20,13 @@ export interface EngineFreshDirectAggregateMatrixPlan {
   readonly rowCount: number
   readonly colStart: number
   readonly inputColCount: number
+  readonly precomputedFormulaResults?: {
+    readonly aggregateKind: 'sum' | 'average' | 'count' | 'min' | 'max'
+    readonly aggregateColStart: number
+    readonly aggregateColEnd: number
+    readonly resultOffset?: number
+    readonly results: Float64Array
+  }
   readonly trustedFreshCells?: boolean
   readonly values: Float64Array
 }

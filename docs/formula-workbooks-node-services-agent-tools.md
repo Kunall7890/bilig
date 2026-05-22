@@ -119,9 +119,9 @@ and needs formula readback, persistence, and restore proof.
 
 ## Evidence and limits
 
-The current checked benchmark artifact records `94/100` comparable
+The current checked benchmark artifact records `96/100` comparable
 mean-latency wins against HyperFormula-style workloads. The worst p95 row is
-public: `structural-append-formula-rows-large` is a `1.421x`
+public: `aggregate-overlapping-sliding-window` is a `1.468x`
 WorkPaper-to-HyperFormula p95 ratio, and browser UI rendering is outside the
 benchmark.
 

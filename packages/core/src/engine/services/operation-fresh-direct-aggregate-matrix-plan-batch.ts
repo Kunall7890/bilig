@@ -165,12 +165,14 @@ export function collectFreshDirectAggregateMatrixPlanBatch(
       resultOffset: normalizeFreshMatrixDirectAggregateOffset(aggregate.resultOffset),
     })
   }
-  const formulaResults = materializeFreshDirectAggregateFormulaResults(args, {
-    inputColCount: plan.inputColCount,
-    matrixColStart: plan.colStart,
-    seeds: formulaEntrySeeds,
-    values: plan.values,
-  })
+  const formulaResults =
+    tryUsePrecomputedFreshDirectAggregateFormulaResults(plan, formulaEntrySeeds) ??
+    materializeFreshDirectAggregateFormulaResults(args, {
+      inputColCount: plan.inputColCount,
+      matrixColStart: plan.colStart,
+      seeds: formulaEntrySeeds,
+      values: plan.values,
+    })
 
   return {
     sheet,
@@ -212,4 +214,25 @@ function matrixFormulaSource(ref: EngineCellMutationRef | undefined, sheetId: nu
     return ref.mutation.formula
   }
   return undefined
+}
+
+function tryUsePrecomputedFreshDirectAggregateFormulaResults(
+  plan: EngineFreshDirectAggregateMatrixPlan,
+  seeds: readonly FreshDirectAggregateFormulaEntrySeed[],
+): Float64Array | undefined {
+  const precomputed = plan.precomputedFormulaResults
+  if (plan.trustedFreshCells !== true || precomputed === undefined || precomputed.results.length !== seeds.length) {
+    return undefined
+  }
+  for (const seed of seeds) {
+    if (
+      seed.aggregateKind !== precomputed.aggregateKind ||
+      seed.aggregateColStart !== precomputed.aggregateColStart ||
+      seed.aggregateColEnd !== precomputed.aggregateColEnd ||
+      (seed.resultOffset ?? 0) !== (precomputed.resultOffset ?? 0)
+    ) {
+      return undefined
+    }
+  }
+  return precomputed.results
 }

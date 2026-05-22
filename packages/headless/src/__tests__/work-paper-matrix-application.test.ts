@@ -150,7 +150,7 @@ describe('work-paper matrix application', () => {
 
     applyWorkPaperMatrixContents({
       address: { sheet: 1, row: 10, col: 0 },
-      content: Array.from({ length: 16 }, (_, row) => [row + 1, row + 2, `=SUM(A${row + 11}:B${row + 11})`]),
+      content: Array.from({ length: 160 }, (_, row) => [row + 1, row + 2, `=SUM(A${row + 11}:B${row + 11})`]),
       options: { trustedFreshCells: true },
       flushPendingBatchOps: () => {},
       applyCellMutationRefs: (refs, options) => {
@@ -162,7 +162,15 @@ describe('work-paper matrix application', () => {
     expect(applied).toHaveLength(1)
     expect(applied[0]?.options.freshDirectAggregateMatrixPlan).toMatchObject({
       trustedFreshCells: true,
+      precomputedFormulaResults: {
+        aggregateKind: 'sum',
+        aggregateColStart: 0,
+        aggregateColEnd: 1,
+      },
     })
+    expect(Array.from(applied[0]?.options.freshDirectAggregateMatrixPlan?.precomputedFormulaResults?.results ?? [])).toEqual(
+      Array.from({ length: 160 }, (_, row) => row * 2 + 3),
+    )
   })
 
   it('does not attach direct-aggregate matrix plans to scalar formula matrices', () => {
