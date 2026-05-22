@@ -76,6 +76,9 @@ export function rewriteDirectAggregateDescriptorForStructuralTransform(args: {
   if (args.descriptor.sheetName !== args.targetSheetName) {
     return undefined
   }
+  if (args.transform.kind === 'insert' && args.transform.axis === 'row') {
+    return rewriteDirectAggregateDescriptorForRowInsert(args)
+  }
   const nextRows =
     args.transform.axis === 'row'
       ? mapDirectAggregateReferenceInterval(args.descriptor.rowStart, args.descriptor.rowEnd, args.transform)
@@ -104,6 +107,36 @@ export function rewriteDirectAggregateDescriptorForStructuralTransform(args: {
     col: nextCols.start,
     colEnd: nextCols.end,
     length: (nextRows.end - nextRows.start + 1) * (nextCols.end - nextCols.start + 1),
+    ...(args.descriptor.resultOffset !== undefined ? { resultOffset: args.descriptor.resultOffset } : {}),
+  }
+}
+
+function rewriteDirectAggregateDescriptorForRowInsert(args: {
+  readonly descriptor: RuntimeDirectAggregateDescriptor
+  readonly targetSheetName: string
+  readonly transform: StructuralAxisTransform
+  readonly regionGraph: RegionGraph
+}): RuntimeDirectAggregateDescriptor {
+  const rowStart =
+    args.descriptor.rowStart >= args.transform.start ? args.descriptor.rowStart + args.transform.count : args.descriptor.rowStart
+  const rowEnd = args.descriptor.rowEnd >= args.transform.start ? args.descriptor.rowEnd + args.transform.count : args.descriptor.rowEnd
+  const colEnd = args.descriptor.colEnd ?? args.descriptor.col
+  const regionId = internPrimaryDirectAggregateRegion({
+    regionGraph: args.regionGraph,
+    sheetName: args.descriptor.sheetName,
+    rowStart,
+    rowEnd,
+    col: args.descriptor.col,
+  })
+  return {
+    regionId,
+    aggregateKind: args.descriptor.aggregateKind,
+    sheetName: args.descriptor.sheetName,
+    rowStart,
+    rowEnd,
+    col: args.descriptor.col,
+    colEnd,
+    length: (rowEnd - rowStart + 1) * (colEnd - args.descriptor.col + 1),
     ...(args.descriptor.resultOffset !== undefined ? { resultOffset: args.descriptor.resultOffset } : {}),
   }
 }

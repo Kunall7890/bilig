@@ -78,6 +78,75 @@ function tryCollectOwnedFamilyOnlyStructuralImpacts(
   return EMPTY_STRUCTURAL_FORMULA_IMPACTS
 }
 
+function tryCollectOwnedDirectAggregateRowInsertImpacts(
+  args: CreateEngineStructureServiceArgs,
+  argsForImpact: CollectStructuralFormulaImpactsOptions,
+): StructuralFormulaImpacts | undefined {
+  if (
+    argsForImpact.targetSheetId === undefined ||
+    argsForImpact.changedDefinedNames.size > 0 ||
+    argsForImpact.changedTableNames.size > 0 ||
+    argsForImpact.transform.kind !== 'insert' ||
+    argsForImpact.transform.axis !== 'row'
+  ) {
+    return undefined
+  }
+  const ownedFormulaCount = args.countFormulaSheetMembers(argsForImpact.targetSheetId)
+  if (ownedFormulaCount === 0 || ownedFormulaCount !== args.state.formulas.size) {
+    return undefined
+  }
+
+  const directAggregateRetargetCellIndices: number[] = []
+  let ownedFormulaVisitCount = 0
+  let canUseDirectAggregateFastPath = true
+  const targetSheetStructureVersion = args.state.workbook.getSheetById(argsForImpact.targetSheetId)?.structureVersion
+  args.forEachFormulaCellOwnedBySheet(argsForImpact.sheetName, (cellIndex) => {
+    if (!canUseDirectAggregateFastPath) {
+      return
+    }
+    ownedFormulaVisitCount += 1
+    const formula = args.state.formulas.get(cellIndex)
+    const ownerRow =
+      targetSheetStructureVersion === 1
+        ? args.state.workbook.cellStore.rows[cellIndex]
+        : args.state.workbook.getCellPosition(cellIndex)?.row
+    const directAggregate = formula?.directAggregate
+    if (
+      ownerRow === undefined ||
+      !formula ||
+      !directAggregate ||
+      directAggregate.sheetName !== argsForImpact.sheetName ||
+      formula.compiled.symbolicSpills.length > 0
+    ) {
+      canUseDirectAggregateFastPath = false
+      return
+    }
+    const ownerPositionAffected = structuralAxisIndexAffected(ownerRow, argsForImpact.transform)
+    const directRangeAffected = runtimeDirectRangeAxisAffected(
+      argsForImpact.targetSheetId,
+      argsForImpact.sheetName,
+      argsForImpact.transform,
+      directAggregate,
+    )
+    if (ownerPositionAffected || directRangeAffected) {
+      directAggregateRetargetCellIndices.push(cellIndex)
+    }
+  })
+
+  if (!canUseDirectAggregateFastPath || ownedFormulaVisitCount !== ownedFormulaCount) {
+    return undefined
+  }
+  return {
+    formulaCellIndices: [],
+    rebindCellIndices: [],
+    preservedCellIndices: [],
+    precomputedChangedInputCellIndices: [],
+    ownerPositions: EMPTY_OWNER_POSITIONS,
+    precomputedDirectAggregateValueCellIndices: [],
+    directAggregateRetargetCellIndices,
+  }
+}
+
 export function collectStructuralFormulaImpacts(
   args: CreateEngineStructureServiceArgs,
   argsForImpact: CollectStructuralFormulaImpactsOptions,
@@ -85,6 +154,10 @@ export function collectStructuralFormulaImpacts(
   const ownedFamilyOnlyImpacts = tryCollectOwnedFamilyOnlyStructuralImpacts(args, argsForImpact)
   if (ownedFamilyOnlyImpacts) {
     return ownedFamilyOnlyImpacts
+  }
+  const ownedDirectAggregateRowInsertImpacts = tryCollectOwnedDirectAggregateRowInsertImpacts(args, argsForImpact)
+  if (ownedDirectAggregateRowInsertImpacts) {
+    return ownedDirectAggregateRowInsertImpacts
   }
 
   const formulaCellIndices = new Set<number>()

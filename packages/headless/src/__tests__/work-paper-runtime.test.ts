@@ -85,6 +85,24 @@ function readEngineUseColumnIndexEnabled(workbook: WorkPaper): boolean {
   return Reflect.get(engine, 'useColumnIndexEnabled') === true
 }
 
+interface WorkPaperFormulaBindingTestSurface {
+  collectFormulaCellsReferencingSheetNow(sheetName: string): readonly number[]
+}
+
+function hasFormulaBindingTestSurface(value: unknown): value is WorkPaperFormulaBindingTestSurface {
+  return typeof value === 'object' && value !== null && typeof Reflect.get(value, 'collectFormulaCellsReferencingSheetNow') === 'function'
+}
+
+function readFormulaBindingTestSurface(workbook: WorkPaper): WorkPaperFormulaBindingTestSurface {
+  const engine = Reflect.get(workbook, 'engine')
+  const runtime = typeof engine === 'object' && engine !== null ? Reflect.get(engine, 'runtime') : undefined
+  const binding = typeof runtime === 'object' && runtime !== null ? Reflect.get(runtime, 'binding') : undefined
+  if (!hasFormulaBindingTestSurface(binding)) {
+    throw new Error('Expected WorkPaper to expose formula binding internals in tests')
+  }
+  return binding
+}
+
 function expectOnlyCellChanges(changes: WorkPaperChange[]): asserts changes is WorkPaperCellChange[] {
   expect(changes.every((change) => change.kind === 'cell')).toBe(true)
 }
@@ -2238,6 +2256,28 @@ describe('WorkPaper', () => {
     } finally {
       captureVisibilitySnapshot.mockRestore()
       forEachCellEntry.mockRestore()
+    }
+  })
+
+  it('retargets owned direct aggregate row inserts without the generic reference scan', () => {
+    const workbook = WorkPaper.buildFromSheets({
+      Sheet1: Array.from({ length: 16 }, (_value, row) => [row + 1, `=SUM(A1:A${row + 1})`]),
+    })
+    const sheetId = workbook.getSheetId('Sheet1')!
+    const binding = readFormulaBindingTestSurface(workbook)
+    const referenceScan = vi.spyOn(binding, 'collectFormulaCellsReferencingSheetNow')
+
+    try {
+      expect(workbook.addRows(sheetId, 8, 1)).toEqual([])
+      expect(referenceScan).not.toHaveBeenCalled()
+
+      expect(workbook.getCellSerialized(cell(sheetId, 16, 1))).toBe('=SUM(A1:A17)')
+      expect(workbook.getCellValue(cell(sheetId, 16, 1))).toEqual({ tag: ValueTag.Number, value: 136 })
+
+      workbook.setCellContents(cell(sheetId, 8, 0), 1000)
+      expect(workbook.getCellValue(cell(sheetId, 9, 1))).toEqual({ tag: ValueTag.Number, value: 1045 })
+    } finally {
+      referenceScan.mockRestore()
     }
   })
 
