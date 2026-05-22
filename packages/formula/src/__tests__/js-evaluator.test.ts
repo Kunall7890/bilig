@@ -169,6 +169,33 @@ describe('js evaluator', () => {
     })
   })
 
+  it('always excludes AutoFilter-hidden rows from SUBTOTAL ranges', () => {
+    const filteredContext = {
+      ...context,
+      isRowHidden: (_sheetName: string, rowIndex: number) => rowIndex === 0,
+      isRowFiltered: (_sheetName: string, rowIndex: number) => rowIndex === 1,
+      resolveRange: (_sheetName: string, start: string, end: string): CellValue[] => {
+        if (start === 'A1' && end === 'A3') {
+          return [
+            { tag: ValueTag.Number, value: 10 },
+            { tag: ValueTag.Number, value: 20 },
+            { tag: ValueTag.Number, value: 30 },
+          ]
+        }
+        return []
+      },
+    }
+
+    expect(evaluatePlan(lowerToPlan(parseFormula('SUBTOTAL(9,A1:A3)')), filteredContext)).toEqual({
+      tag: ValueTag.Number,
+      value: 40,
+    })
+    expect(evaluatePlan(lowerToPlan(parseFormula('SUBTOTAL(109,A1:A3)')), filteredContext)).toEqual({
+      tag: ValueTag.Number,
+      value: 30,
+    })
+  })
+
   it('applies AGGREGATE options for hidden rows, errors, and nested rollups', () => {
     const aggregateContext = {
       ...context,

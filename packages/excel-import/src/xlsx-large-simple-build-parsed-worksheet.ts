@@ -13,6 +13,7 @@ import type { ImportedWorksheetCellScan } from './xlsx-large-simple-arena.js'
 import type { ImportedWorkbookStringPool } from './xlsx-large-simple-string-pool.js'
 import { buildLargeSimpleStyleRanges } from './xlsx-large-simple-style-ranges.js'
 import { applyLargeSimpleNumberFormatsToCells } from './xlsx-large-simple-number-formats.js'
+import { applyImportedAutoFilterVisibility } from './xlsx-filter-visibility.js'
 import { releaseProjectedCellScanStorage } from './xlsx-large-simple-materialization-helpers.js'
 import {
   readLargeSimpleColumnMetadata,
@@ -100,9 +101,10 @@ export function buildParsedWorksheet(
     detachLazyCells,
     useLazyCells,
   })
+  const visibleRows = applyImportedAutoFilterVisibility(sheetName, cells, rows.entries, internedInput.filters)
   const metadata: SheetMetadataSnapshot = {
     ...(columns.entries.length > 0 ? { columns: columns.entries } : {}),
-    ...(rows.entries.length > 0 ? { rows: rows.entries } : {}),
+    ...(visibleRows && visibleRows.length > 0 ? { rows: visibleRows } : {}),
     ...(columns.metadata.length > 0 ? { columnMetadata: columns.metadata } : {}),
     ...(rows.metadata.length > 0 ? { rowMetadata: rows.metadata } : {}),
     ...(sheetFormatPr ? { sheetFormatPr } : {}),

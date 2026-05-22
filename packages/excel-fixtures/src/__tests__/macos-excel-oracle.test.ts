@@ -122,6 +122,22 @@ describe('macOS Desktop Excel oracle harness', () => {
     )
   })
 
+  it('builds AutoFilter structural operations with value and custom criteria', () => {
+    const script = createMacosExcelStructuralOperationAppleScript({
+      worksheetName: 'Ledger',
+      operations: [
+        { kind: 'applyAutoFilter', range: 'A1:D6', field: 2, criteria1: 'Finance' },
+        { kind: 'applyAutoFilter', range: 'A1:D6', field: 3, criteria1: '>0', operator: 'and', criteria2: '<100' },
+      ],
+      inspectCells: ['E1'],
+    })
+
+    expect(script).toContain('autofilter range (range "A1:D6" of targetWorksheet) field 2 criteria1 "Finance"')
+    expect(script).toContain(
+      'autofilter range (range "A1:D6" of targetWorksheet) field 3 criteria1 ">0" operator autofilter and criteria2 "<100"',
+    )
+  })
+
   it('parses typed Excel oracle values into normalized formula values', () => {
     expect(
       parseMacosExcelRecalculationOutput(

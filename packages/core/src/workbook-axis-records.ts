@@ -43,6 +43,7 @@ function axisEntriesHaveSameMetadata(left: WorkbookAxisEntryRecord, right: Workb
   return (
     left.size === right.size &&
     left.hidden === right.hidden &&
+    left.filtered === right.filtered &&
     axisGeometryKeys.every((key) => axisGeometryValue(left, key) === axisGeometryValue(right, key))
   )
 }
@@ -65,6 +66,9 @@ function makeAxisEntrySnapshot(entry: WorkbookAxisEntryRecord, index: number): W
   if (entry.hidden !== null) {
     snapshot.hidden = entry.hidden
   }
+  if (entry.filtered !== null) {
+    snapshot.filtered = entry.filtered
+  }
   return snapshot
 }
 
@@ -73,6 +77,7 @@ function makeAxisEntryRecord(snapshot: WorkbookAxisEntrySnapshot): WorkbookAxisE
     id: snapshot.id,
     size: snapshot.size ?? null,
     hidden: snapshot.hidden ?? null,
+    filtered: snapshot.filtered ?? null,
     ...copyAxisGeometry(snapshot),
   }
 }
@@ -99,6 +104,7 @@ function makeAxisMetadataRecord(
     count,
     size: entry.size,
     hidden: entry.hidden,
+    filtered: entry.filtered,
     ...copyAxisGeometryToMetadata(
       Object.fromEntries(axisGeometryKeys.map((key) => [key, axisGeometryValue(entry, key)])) as AxisGeometryMap,
     ),
@@ -271,6 +277,7 @@ export function getAxisMetadataRecord(
 ): WorkbookAxisMetadataRecord | undefined {
   let size: number | null | undefined
   let hidden: boolean | null | undefined
+  let filtered: boolean | null | undefined
   const geometry: AxisGeometryMap = {}
   let sawMaterialized = false
   for (let index = start; index < start + count; index += 1) {
@@ -282,6 +289,9 @@ export function getAxisMetadataRecord(
       if (hidden === undefined) {
         hidden = null
       }
+      if (filtered === undefined) {
+        filtered = null
+      }
       for (const key of axisGeometryKeys) {
         geometry[key] ??= null
       }
@@ -290,7 +300,8 @@ export function getAxisMetadataRecord(
     sawMaterialized = true
     size ??= entry.size
     hidden ??= entry.hidden
-    if (size !== entry.size || hidden !== entry.hidden) {
+    filtered ??= entry.filtered
+    if (size !== entry.size || hidden !== entry.hidden || filtered !== entry.filtered) {
       return undefined
     }
     for (const key of axisGeometryKeys) {
@@ -303,7 +314,10 @@ export function getAxisMetadataRecord(
   }
   if (
     !sawMaterialized ||
-    ((size ?? null) === null && (hidden ?? null) === null && axisGeometryKeys.every((key) => (geometry[key] ?? null) === null))
+    ((size ?? null) === null &&
+      (hidden ?? null) === null &&
+      (filtered ?? null) === null &&
+      axisGeometryKeys.every((key) => (geometry[key] ?? null) === null))
   ) {
     return undefined
   }
@@ -313,6 +327,7 @@ export function getAxisMetadataRecord(
     count,
     size: size ?? null,
     hidden: hidden ?? null,
+    filtered: filtered ?? null,
     ...copyAxisGeometryToMetadata(geometry),
   }
 }
@@ -326,7 +341,7 @@ export function syncAxisMetadataBucket(
   let cursor = 0
   while (cursor < entries.length) {
     const entry = entries[cursor]
-    if (!entry || (entry.size === null && entry.hidden === null && !hasAxisGeometry(entry))) {
+    if (!entry || (entry.size === null && entry.hidden === null && entry.filtered === null && !hasAxisGeometry(entry))) {
       cursor += 1
       continue
     }

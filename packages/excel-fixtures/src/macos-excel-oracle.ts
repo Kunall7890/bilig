@@ -15,6 +15,7 @@ export interface MacosExcelOracleFormulaCell {
 }
 
 export type MacosExcelLinkUpdateMode = 'all' | 'external' | 'never' | 'remote'
+export type MacosExcelAutoFilterOperator = 'and' | 'filterByValue' | 'or'
 
 export interface MacosExcelRecalculationOracleRequest {
   readonly workbookPath: string
@@ -57,6 +58,15 @@ export type MacosExcelStructuralOperation =
   | { readonly kind: 'moveRows'; readonly sourceRange: string; readonly destinationRange: string }
   | { readonly kind: 'moveColumns'; readonly sourceRange: string; readonly destinationRange: string }
   | { readonly kind: 'createDataTable'; readonly range: string; readonly rowInput?: string; readonly columnInput?: string }
+  | {
+      readonly kind: 'applyAutoFilter'
+      readonly range: string
+      readonly field: number
+      readonly criteria1?: string | number | boolean
+      readonly operator?: MacosExcelAutoFilterOperator
+      readonly criteria2?: string | number | boolean
+      readonly visibleDropDown?: boolean
+    }
 
 export interface MacosExcelStructuralOperationOracleRequest {
   readonly workbookPath: string
@@ -553,6 +563,31 @@ function structuralOperationAppleScript(operation: MacosExcelStructuralOperation
       ]
         .filter((part) => part.length > 0)
         .join(' ')
+    case 'applyAutoFilter':
+      if (!Number.isSafeInteger(operation.field) || operation.field <= 0) {
+        throw new Error('macOS Excel AutoFilter operation requires a positive one-based field')
+      }
+      return [
+        `autofilter range (range ${toAppleScriptString(operation.range)} of targetWorksheet)`,
+        `field ${String(operation.field)}`,
+        operation.criteria1 !== undefined ? `criteria1 ${toAppleScriptValue(operation.criteria1)}` : '',
+        operation.operator ? `operator ${autoFilterOperatorAppleScript(operation.operator)}` : '',
+        operation.criteria2 !== undefined ? `criteria2 ${toAppleScriptValue(operation.criteria2)}` : '',
+        operation.visibleDropDown !== undefined ? `visible drop down ${toAppleScriptValue(operation.visibleDropDown)}` : '',
+      ]
+        .filter((part) => part.length > 0)
+        .join(' ')
+  }
+}
+
+function autoFilterOperatorAppleScript(operator: MacosExcelAutoFilterOperator): string {
+  switch (operator) {
+    case 'and':
+      return 'autofilter and'
+    case 'or':
+      return 'autofilter or'
+    case 'filterByValue':
+      return 'filter by value'
   }
 }
 

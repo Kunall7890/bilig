@@ -611,7 +611,8 @@ export function evaluateWorkbookSpecialCall(
         return deps.stackScalar(deps.error(ErrorCode.Value))
       }
       const ignoreHiddenRows = functionNum > 100 && context.isRowHidden !== undefined
-      if (!ignoreHiddenRows && !context.resolveFormula) {
+      const ignoreFilteredRows = context.isRowFiltered !== undefined
+      if (!ignoreHiddenRows && !ignoreFilteredRows && !context.resolveFormula) {
         return undefined
       }
       const subtotal = getBuiltin('SUBTOTAL')
@@ -620,7 +621,7 @@ export function evaluateWorkbookSpecialCall(
       }
       const candidates = rawArgs
         .slice(1)
-        .flatMap((value, index) => collectAggregateCandidates(value, argRefs[index + 1], context, ignoreHiddenRows))
+        .flatMap((value, index) => collectAggregateCandidates(value, argRefs[index + 1], context, ignoreHiddenRows, ignoreFilteredRows))
       const values = filterNestedRollupCandidates(candidates, context, nestedSubtotalCallees).map((candidate) => candidate.value)
       const result = subtotal({ tag: ValueTag.Number, value: functionNum }, ...values)
       return isArrayValue(result) ? result : deps.stackScalar(result)

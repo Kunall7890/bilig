@@ -183,6 +183,9 @@ function restoreAxisMetadata(args: {
 function applyAxisMetadataRecord(entry: WorkbookAxisEntryRecord, record: WorkbookAxisMetadataSnapshot): void {
   entry.size = record.size ?? null
   entry.hidden = record.hidden ?? null
+  if ('filtered' in record) {
+    entry.filtered = record.filtered ?? null
+  }
   for (const key of axisGeometryKeys) {
     const value = record[key]
     if (value === undefined) {
@@ -199,6 +202,7 @@ function cloneAxisEntry(entry: WorkbookAxisEntrySnapshot): WorkbookAxisEntrySnap
     index: entry.index,
     ...(entry.size !== undefined ? { size: entry.size } : {}),
     ...(entry.hidden !== undefined ? { hidden: entry.hidden } : {}),
+    ...(entry.filtered !== undefined ? { filtered: entry.filtered } : {}),
     ...cloneAxisGeometry(entry),
   }
 }

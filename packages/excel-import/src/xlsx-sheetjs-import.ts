@@ -37,6 +37,7 @@ import {
   type ImportedRuntimeSheetCells,
 } from './imported-runtime-coordinates.js'
 import { readImportedWorkbookFilters } from './xlsx-filters.js'
+import { applyImportedAutoFilterVisibility } from './xlsx-filter-visibility.js'
 import { readImportedWorkbookFormulaAudit } from './xlsx-formula-audit.js'
 import { normalizeImportedFormulaSource } from './xlsx-formula-translation.js'
 import { readImportedWorksheetFormulaManifests } from './xlsx-formulas.js'
@@ -693,6 +694,7 @@ function importParsedSheetJsWorkbook(args: {
     const importedProtectedRanges = importedProtectedRangesBySheet.get(sheetName)
     const importedSorts = importedSortsBySheet.get(sheetName)
     const importedFilters = importedFiltersBySheet.get(sheetName)
+    const visibleRows = applyImportedAutoFilterVisibility(sheetName, cells, rows, importedFilters)
     const importedValidations = importedValidationsBySheet.get(sheetName)
     const importedConditionalFormats = importedConditionalFormatsBySheet.get(sheetName)
     const importedConditionalFormatArtifacts = importedConditionalFormatArtifactsBySheet.get(sheetName)
@@ -703,7 +705,7 @@ function importParsedSheetJsWorkbook(args: {
     const importedThreadedCommentArtifactsForSheet = importedThreadedCommentArtifacts?.sheetArtifactsByName.get(sheetName)
     const importedViewStateForSheet = importedViewState?.sheetViewStateByName.get(sheetName)
     const metadata = buildImportedSheetMetadata({
-      rows,
+      rows: visibleRows,
       columns,
       rowMetadata,
       columnMetadata,

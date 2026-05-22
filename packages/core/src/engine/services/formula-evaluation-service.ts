@@ -51,7 +51,7 @@ import {
   type NativeDirectCriteriaPredicateLayoutCache,
 } from './formula-evaluation-direct-criteria-native.js'
 import { createDirectCriteriaSharingContext } from './formula-evaluation-direct-criteria-sharing.js'
-import { createRowHiddenResolver } from './formula-evaluation-row-hidden.js'
+import { createRowFilteredResolver, createRowHiddenResolver } from './formula-evaluation-row-hidden.js'
 import type { EngineFormulaEvaluationService } from './formula-evaluation-service-types.js'
 export type { EngineFormulaEvaluationService } from './formula-evaluation-service-types.js'
 
@@ -650,6 +650,7 @@ export function createEngineFormulaEvaluationService(args: {
 
     visiting.add(visitKey)
     const isRowHidden = createRowHiddenResolver(args.state.workbook)
+    const isRowFiltered = createRowFilteredResolver(args.state.workbook)
     const evaluationContext: EvaluationContext = {
       sheetName,
       workbookName: args.state.workbook.workbookName,
@@ -699,6 +700,7 @@ export function createEngineFormulaEvaluationService(args: {
       listSheetNames: () =>
         [...args.state.workbook.sheetsByName.values()].toSorted((left, right) => left.order - right.order).map((sheet) => sheet.name),
       isRowHidden,
+      isRowFiltered,
       checkEvaluationBudget: (stepCost) => args.checkEvaluationBudget(stepCost),
     }
     const compiled = getRuntimeFormulaStructuralCompiled(formula) ?? formula.compiled
@@ -844,6 +846,7 @@ export function createEngineFormulaEvaluationService(args: {
     }
 
     const isRowHidden = createRowHiddenResolver(args.state.workbook)
+    const isRowFiltered = createRowFilteredResolver(args.state.workbook)
     const evaluationContext: EvaluationContext = {
       sheetName,
       workbookName: args.state.workbook.workbookName,
@@ -893,6 +896,7 @@ export function createEngineFormulaEvaluationService(args: {
       listSheetNames: () =>
         [...args.state.workbook.sheetsByName.values()].toSorted((left, right) => left.order - right.order).map((sheet) => sheet.name),
       isRowHidden,
+      isRowFiltered,
       checkEvaluationBudget: (stepCost) => args.checkEvaluationBudget(stepCost),
       resolveExactVectorMatch: (request) => {
         if (
