@@ -86,6 +86,7 @@ export interface UiResponsivenessSameCorpusRunManifest {
   readonly sampleCount: number
   readonly caseCount: number
   readonly strictRenderedGridProofCaseCount: number
+  readonly legacyInsufficientRenderedGridProofCaseCount: number
   readonly tenXMeanAndP95CaseCount: number
   readonly currentContractEvidenceComplete: boolean
   readonly googleSheetsTenXRequirementSatisfied: boolean
@@ -236,6 +237,9 @@ function buildSameCorpusRunManifest(cases: readonly UiResponsivenessSameCorpusCa
   const productSourceWorkbookFingerprints = uniqueProductSourceWorkbookFingerprints(cases)
   const materializedCellCounts = [...new Set(cases.map((entry) => entry.materializedCells))].toSorted((left, right) => left - right)
   const strictRenderedGridProofCaseCount = cases.filter((entry) => entry.scenarioProof.pixelGridProof.captured).length
+  const legacyInsufficientRenderedGridProofCaseCount = cases.filter((entry) =>
+    entry.scenarioProof.pixelGridProof.productVerdicts.some((verdict) => verdict.evidenceStatus === 'legacy-insufficient'),
+  ).length
   const tenXMeanAndP95CaseCount = cases.filter((entry) => entry.tenXMeanAndP95AgainstGoogleSheets).length
   const invalidReasons = sameCorpusRunManifestInvalidReasons({
     capturedWorkloads,
@@ -243,6 +247,7 @@ function buildSameCorpusRunManifest(cases: readonly UiResponsivenessSameCorpusCa
     corpusCaseIds,
     corpusFingerprints,
     productSourceWorkbookFingerprints,
+    legacyInsufficientRenderedGridProofCaseCount,
     materializedCellCounts,
     strictRenderedGridProofCaseCount,
     tenXMeanAndP95CaseCount,
@@ -260,6 +265,7 @@ function buildSameCorpusRunManifest(cases: readonly UiResponsivenessSameCorpusCa
     sampleCount: manifestSampleCount(cases),
     caseCount: cases.length,
     strictRenderedGridProofCaseCount,
+    legacyInsufficientRenderedGridProofCaseCount,
     tenXMeanAndP95CaseCount,
     currentContractEvidenceComplete: !invalidReasons.some(
       (reason) => reason !== 'not every required workload is 10x against Google Sheets',
@@ -275,6 +281,7 @@ function sameCorpusRunManifestInvalidReasons(args: {
   readonly corpusCaseIds: readonly string[]
   readonly corpusFingerprints: readonly SameCorpusCaptureCorpusFingerprint[]
   readonly productSourceWorkbookFingerprints: readonly SameCorpusProductSourceWorkbookFingerprint[]
+  readonly legacyInsufficientRenderedGridProofCaseCount: number
   readonly materializedCellCounts: readonly number[]
   readonly strictRenderedGridProofCaseCount: number
   readonly tenXMeanAndP95CaseCount: number
@@ -305,6 +312,13 @@ function sameCorpusRunManifestInvalidReasons(args: {
   if (args.strictRenderedGridProofCaseCount !== requiredSameCorpusWorkloads.length) {
     invalidReasons.push(
       `strict rendered-grid proof covers ${String(args.strictRenderedGridProofCaseCount)}/${String(requiredSameCorpusWorkloads.length)} cases`,
+    )
+  }
+  if (args.legacyInsufficientRenderedGridProofCaseCount > 0) {
+    invalidReasons.push(
+      `legacy-insufficient rendered-grid proof covers ${String(args.legacyInsufficientRenderedGridProofCaseCount)}/${String(
+        requiredSameCorpusWorkloads.length,
+      )} cases`,
     )
   }
   if (args.tenXMeanAndP95CaseCount !== requiredSameCorpusWorkloads.length) {

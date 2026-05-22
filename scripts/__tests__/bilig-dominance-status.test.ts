@@ -9,6 +9,11 @@ import type { PublicWorkbookCorpusFeatureWitnessPlan } from '../public-workbook-
 import type { PublicWorkbookCorpusStatus } from '../public-workbook-corpus-status.ts'
 import type { SameCorpusPublicAccessCheck } from '../ui-responsiveness-same-corpus-public-access-check.ts'
 import { buildSameCorpusFingerprint } from '../ui-responsiveness-same-corpus-fingerprint.ts'
+import {
+  validateSameCorpusProductPixelGridProof,
+  type SameCorpusPixelGridProof,
+  type SameCorpusProductPixelGridProof,
+} from '../ui-responsiveness-same-corpus-proof.ts'
 import { requiredUiResponsivenessSameCorpusWorkloads } from '../ui-responsiveness-same-corpus-workloads.ts'
 import { buildFixtureInput } from './bilig-dominance-scorecard.fixture.ts'
 
@@ -33,6 +38,7 @@ describe('bilig dominance status', () => {
       tenXMeanAndP95CaseCount: 0,
       renderProofContractVersion: 'same-corpus-ui-v2',
       strictRenderedGridProofCaseCount: 0,
+      legacyInsufficientRenderedGridProofCaseCount: 0,
       currentContractEvidenceComplete: false,
       googleSheetsTenXRequirementSatisfied: false,
       runManifestInvalidReasons: expect.arrayContaining([
@@ -792,6 +798,68 @@ function failingSameCorpusCapture(
 
 function sameCorpusScenarioProof(biligMs: number, googleMs: number) {
   const microsoftExcelWebMs = googleMs
+  const pixelGridProof = withProductPixelGridVerdicts({
+    captured: true,
+    requiredProducts: ['bilig', 'google-sheets'],
+    products: [
+      {
+        product: 'bilig',
+        captured: true,
+        method: 'typegpu-visible-canvas',
+        viewportPixelWidth: 1440,
+        viewportPixelHeight: 900,
+        evidence: [
+          'gridCssWidth=720',
+          'gridCssHeight=450',
+          'devicePixelRatio=2',
+          'expectedPixelWidth=1440',
+          'expectedPixelHeight=900',
+          'contractVersion=same-corpus-ui-v2',
+          'gridAuthoritativeRevision=rev-3',
+          'gridLocalRevision=rev-local-2',
+          'gridProjectedRevision=rev-3',
+          'fallbackMounted=false',
+          'mode=typegpu-v3',
+          'backendStatus=ready',
+          'frameProofStatus=presented',
+          'hasPresentedVisibleFrame=true',
+          'tilePaneCount=6',
+          'headerPaneCount=3',
+          'presentedTilePaneCount=6',
+          'presentedHeaderPaneCount=3',
+          'canvasPixelWidth=1440',
+          'canvasPixelHeight=900',
+          'canvasCoversViewport=true',
+          'typeGpuAuthoritativeRevision=rev-3',
+          'typeGpuLocalRevision=rev-local-2',
+          'typeGpuProjectedRevision=rev-3',
+          'visibleAuthoritativeRevision=rev-3',
+          'visibleLocalRevision=rev-local-2',
+          'visibleProjectedRevision=rev-3',
+          'tileSceneRevision=scene-7',
+          'visibleRenderRevision=scene-7',
+          ...strictPixelGridEvidence(),
+        ],
+      },
+      {
+        product: 'google-sheets',
+        captured: true,
+        method: 'google-sheets-visible-grid',
+        viewportPixelWidth: 1440,
+        viewportPixelHeight: 900,
+        evidence: strictPixelGridEvidence(),
+      },
+      {
+        product: 'microsoft-excel-web',
+        captured: true,
+        method: 'excel-web-visible-grid',
+        viewportPixelWidth: 1440,
+        viewportPixelHeight: 900,
+        evidence: strictPixelGridEvidence(),
+      },
+    ],
+    missingProducts: [],
+  })
   return {
     biligMeanMs: biligMs,
     biligP95Ms: biligMs,
@@ -809,68 +877,14 @@ function sameCorpusScenarioProof(biligMs: number, googleMs: number) {
       artifactPaths: ['tmp/bilig-sample-1.png', 'tmp/google-sheets-sample-1.png', 'tmp/microsoft-excel-web-sample-1.png'],
       missingProducts: [],
     },
-    pixelGridProof: {
-      captured: true,
-      requiredProducts: ['bilig', 'google-sheets'],
-      products: [
-        {
-          product: 'bilig',
-          captured: true,
-          method: 'typegpu-visible-canvas',
-          viewportPixelWidth: 1440,
-          viewportPixelHeight: 900,
-          evidence: [
-            'gridCssWidth=720',
-            'gridCssHeight=450',
-            'devicePixelRatio=2',
-            'expectedPixelWidth=1440',
-            'expectedPixelHeight=900',
-            'contractVersion=same-corpus-ui-v2',
-            'gridAuthoritativeRevision=rev-3',
-            'gridLocalRevision=rev-local-2',
-            'gridProjectedRevision=rev-3',
-            'fallbackMounted=false',
-            'mode=typegpu-v3',
-            'backendStatus=ready',
-            'frameProofStatus=presented',
-            'hasPresentedVisibleFrame=true',
-            'tilePaneCount=6',
-            'headerPaneCount=3',
-            'presentedTilePaneCount=6',
-            'presentedHeaderPaneCount=3',
-            'canvasPixelWidth=1440',
-            'canvasPixelHeight=900',
-            'canvasCoversViewport=true',
-            'typeGpuAuthoritativeRevision=rev-3',
-            'typeGpuLocalRevision=rev-local-2',
-            'typeGpuProjectedRevision=rev-3',
-            'visibleAuthoritativeRevision=rev-3',
-            'visibleLocalRevision=rev-local-2',
-            'visibleProjectedRevision=rev-3',
-            'tileSceneRevision=scene-7',
-            'visibleRenderRevision=scene-7',
-            ...strictPixelGridEvidence(),
-          ],
-        },
-        {
-          product: 'google-sheets',
-          captured: true,
-          method: 'google-sheets-visible-grid',
-          viewportPixelWidth: 1440,
-          viewportPixelHeight: 900,
-          evidence: strictPixelGridEvidence(),
-        },
-        {
-          product: 'microsoft-excel-web',
-          captured: true,
-          method: 'excel-web-visible-grid',
-          viewportPixelWidth: 1440,
-          viewportPixelHeight: 900,
-          evidence: strictPixelGridEvidence(),
-        },
-      ],
-      missingProducts: [],
-    },
+    pixelGridProof,
+  }
+}
+
+function withProductPixelGridVerdicts(proof: Omit<SameCorpusPixelGridProof, 'productVerdicts'>): SameCorpusPixelGridProof {
+  return {
+    ...proof,
+    productVerdicts: proof.products.map((entry: SameCorpusProductPixelGridProof) => validateSameCorpusProductPixelGridProof(entry)),
   }
 }
 

@@ -159,6 +159,11 @@ export function buildBiligDominanceScorecard(input: BuildScorecardInput): BiligD
   const uiSameCorpusStrictRenderedGridProofCaseCount =
     uiSameCorpusRunManifest?.strictRenderedGridProofCaseCount ??
     uiSameCorpusProof.cases.filter((entry) => entry.scenarioProof.pixelGridProof.captured).length
+  const uiSameCorpusLegacyInsufficientRenderedGridProofCaseCount =
+    uiSameCorpusRunManifest?.legacyInsufficientRenderedGridProofCaseCount ??
+    uiSameCorpusProof.cases.filter((entry) =>
+      entry.scenarioProof.pixelGridProof.productVerdicts.some((verdict) => verdict.evidenceStatus === 'legacy-insufficient'),
+    ).length
   const operatorWorkflowEvidence = loadOperatorWorkflowEvidence(rootDir)
   const operatorWorkflowBlockers = operatorWorkflowGaps(operatorWorkflowEvidence)
   const completionAudit = buildBiligDominanceCompletionAudit(input, {
@@ -465,6 +470,9 @@ export function buildBiligDominanceScorecard(input: BuildScorecardInput): BiligD
           `same-corpus UI strict rendered-grid proof cases: ${String(uiSameCorpusStrictRenderedGridProofCaseCount)}/${String(
             input.uiResponsivenessLiveBrowserScorecard.sameCorpusProof.requiredCaseCount,
           )}`,
+          `same-corpus UI legacy-insufficient rendered-grid proof cases: ${String(
+            uiSameCorpusLegacyInsufficientRenderedGridProofCaseCount,
+          )}/${String(input.uiResponsivenessLiveBrowserScorecard.sameCorpusProof.requiredCaseCount)}`,
           `same-corpus UI current-contract evidence complete: ${String(uiSameCorpusRunManifest?.currentContractEvidenceComplete ?? false)}`,
           `same-corpus UI run manifest invalid reasons: ${uiSameCorpusRunManifestInvalidReasons.join('; ') || 'none'}`,
           ...input.uiResponsivenessLiveBrowserScorecard.cases.map(
@@ -796,6 +804,11 @@ function buildOverallGoogleSheets10xStatus(
   const uiSameCorpusStrictRenderedGridProofCaseCount =
     uiSameCorpusRunManifest?.strictRenderedGridProofCaseCount ??
     uiSameCorpusProof.cases.filter((entry) => entry.scenarioProof.pixelGridProof.captured).length
+  const uiSameCorpusLegacyInsufficientRenderedGridProofCaseCount =
+    uiSameCorpusRunManifest?.legacyInsufficientRenderedGridProofCaseCount ??
+    uiSameCorpusProof.cases.filter((entry) =>
+      entry.scenarioProof.pixelGridProof.productVerdicts.some((verdict) => verdict.evidenceStatus === 'legacy-insufficient'),
+    ).length
   const categories = [
     {
       id: 'recalculation-speed',
@@ -852,6 +865,9 @@ function buildOverallGoogleSheets10xStatus(
         `same-corpus strict rendered-grid proof cases: ${String(uiSameCorpusStrictRenderedGridProofCaseCount)}/${String(
           input.uiResponsivenessLiveBrowserScorecard.sameCorpusProof.requiredCaseCount,
         )}`,
+        `same-corpus legacy-insufficient rendered-grid proof cases: ${String(
+          uiSameCorpusLegacyInsufficientRenderedGridProofCaseCount,
+        )}/${String(input.uiResponsivenessLiveBrowserScorecard.sameCorpusProof.requiredCaseCount)}`,
         `same-corpus run manifest invalid reasons: ${uiSameCorpusRunManifestInvalidReasons.join('; ') || 'none'}`,
       ],
       gaps: [

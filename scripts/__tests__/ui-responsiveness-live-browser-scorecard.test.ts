@@ -18,6 +18,11 @@ import {
 import { readJsonObject } from '../json-scorecard-helpers.ts'
 import { buildSameCorpusFingerprint } from '../ui-responsiveness-same-corpus-fingerprint.ts'
 import {
+  validateSameCorpusProductPixelGridProof,
+  type SameCorpusPixelGridProof,
+  type SameCorpusProductPixelGridProof,
+} from '../ui-responsiveness-same-corpus-proof.ts'
+import {
   requiredUiResponsivenessSameCorpusWorkloads,
   uiSameCorpusWorkloadRequiresScrollEventEvidence,
   type UiResponsivenessSameCorpusWorkload,
@@ -58,6 +63,7 @@ describe('UI responsiveness live browser scorecard', () => {
       contractVersion: 'same-corpus-ui-v2',
       caseCount: 0,
       strictRenderedGridProofCaseCount: 0,
+      legacyInsufficientRenderedGridProofCaseCount: 0,
       tenXMeanAndP95CaseCount: 0,
       currentContractEvidenceComplete: false,
       googleSheetsTenXRequirementSatisfied: false,
@@ -157,6 +163,7 @@ describe('UI responsiveness live browser scorecard', () => {
         sampleCount: 3,
         caseCount: requiredUiResponsivenessSameCorpusWorkloads.length,
         strictRenderedGridProofCaseCount: requiredUiResponsivenessSameCorpusWorkloads.length,
+        legacyInsufficientRenderedGridProofCaseCount: 0,
         tenXMeanAndP95CaseCount: requiredUiResponsivenessSameCorpusWorkloads.length,
         currentContractEvidenceComplete: true,
         googleSheetsTenXRequirementSatisfied: true,
@@ -228,19 +235,21 @@ describe('UI responsiveness live browser scorecard', () => {
     const capture = buildSameCorpusCapture()
     const weakCases = [...capture.cases]
     const firstCase = weakCases[0]
+    const weakPixelGridProof = withProductPixelGridVerdicts({
+      ...firstCase.scenarioProof.pixelGridProof,
+      captured: false,
+      products: firstCase.scenarioProof.pixelGridProof.products.map((productProof) =>
+        productProof.product === 'bilig'
+          ? Object.assign({}, productProof, {
+              evidence: ['mode=typegpu-v3', 'tilePaneCount=6', 'headerPaneCount=3'],
+            })
+          : productProof,
+      ),
+      missingProducts: ['bilig'],
+    })
     weakCases[0] = Object.assign({}, firstCase, {
       scenarioProof: Object.assign({}, firstCase.scenarioProof, {
-        pixelGridProof: Object.assign({}, firstCase.scenarioProof.pixelGridProof, {
-          captured: false,
-          products: firstCase.scenarioProof.pixelGridProof.products.map((productProof) =>
-            productProof.product === 'bilig'
-              ? Object.assign({}, productProof, {
-                  evidence: ['mode=typegpu-v3', 'tilePaneCount=6', 'headerPaneCount=3'],
-                })
-              : productProof,
-          ),
-          missingProducts: ['bilig'],
-        }),
+        pixelGridProof: weakPixelGridProof,
       }),
     })
     const weakCapture: SameCorpusCapture = {
@@ -257,6 +266,13 @@ describe('UI responsiveness live browser scorecard', () => {
         pixelGridProof: {
           captured: false,
           missingProducts: ['bilig'],
+          productVerdicts: expect.arrayContaining([
+            expect.objectContaining({
+              product: 'bilig',
+              evidenceStatus: 'legacy-insufficient',
+              acceptedForCurrentScorecard: false,
+            }),
+          ]),
         },
       },
     })
@@ -265,10 +281,12 @@ describe('UI responsiveness live browser scorecard', () => {
     )
     expect(proof.runManifest).toMatchObject({
       strictRenderedGridProofCaseCount: requiredUiResponsivenessSameCorpusWorkloads.length - 1,
+      legacyInsufficientRenderedGridProofCaseCount: 1,
       currentContractEvidenceComplete: false,
       googleSheetsTenXRequirementSatisfied: false,
     })
     expect(proof.runManifest?.invalidReasons).toContain('strict rendered-grid proof covers 8/9 cases')
+    expect(proof.runManifest?.invalidReasons).toContain('legacy-insufficient rendered-grid proof covers 1/9 cases')
   })
 
   it('keeps the same-corpus blocker when product source workbook fingerprints drift across workloads', () => {
@@ -568,6 +586,68 @@ function buildSameCorpusCapture(
 }
 
 function sameCorpusScenarioProof(workload: UiResponsivenessSameCorpusWorkload) {
+  const pixelGridProof = withProductPixelGridVerdicts({
+    captured: true,
+    requiredProducts: ['bilig', 'google-sheets'],
+    products: [
+      {
+        product: 'bilig',
+        captured: true,
+        method: 'typegpu-visible-canvas',
+        viewportPixelWidth: 1440,
+        viewportPixelHeight: 900,
+        evidence: [
+          'gridCssWidth=720',
+          'gridCssHeight=450',
+          'devicePixelRatio=2',
+          'expectedPixelWidth=1440',
+          'expectedPixelHeight=900',
+          'contractVersion=same-corpus-ui-v2',
+          'gridAuthoritativeRevision=rev-3',
+          'gridLocalRevision=rev-local-2',
+          'gridProjectedRevision=rev-3',
+          'fallbackMounted=false',
+          'mode=typegpu-v3',
+          'backendStatus=ready',
+          'frameProofStatus=presented',
+          'hasPresentedVisibleFrame=true',
+          'tilePaneCount=6',
+          'headerPaneCount=3',
+          'presentedTilePaneCount=6',
+          'presentedHeaderPaneCount=3',
+          'canvasPixelWidth=1440',
+          'canvasPixelHeight=900',
+          'canvasCoversViewport=true',
+          'typeGpuAuthoritativeRevision=rev-3',
+          'typeGpuLocalRevision=rev-local-2',
+          'typeGpuProjectedRevision=rev-3',
+          'visibleAuthoritativeRevision=rev-3',
+          'visibleLocalRevision=rev-local-2',
+          'visibleProjectedRevision=rev-3',
+          'tileSceneRevision=scene-7',
+          'visibleRenderRevision=scene-7',
+          ...strictPixelGridEvidence(),
+        ],
+      },
+      {
+        product: 'google-sheets',
+        captured: true,
+        method: 'google-sheets-visible-grid',
+        viewportPixelWidth: 1440,
+        viewportPixelHeight: 900,
+        evidence: strictPixelGridEvidence(),
+      },
+      {
+        product: 'microsoft-excel-web',
+        captured: true,
+        method: 'excel-web-visible-grid',
+        viewportPixelWidth: 1440,
+        viewportPixelHeight: 900,
+        evidence: strictPixelGridEvidence(),
+      },
+    ],
+    missingProducts: [],
+  })
   return {
     biligMeanMs: 5,
     biligP95Ms: 6,
@@ -589,68 +669,14 @@ function sameCorpusScenarioProof(workload: UiResponsivenessSameCorpusWorkload) {
       ],
       missingProducts: [],
     },
-    pixelGridProof: {
-      captured: true,
-      requiredProducts: ['bilig', 'google-sheets'],
-      products: [
-        {
-          product: 'bilig',
-          captured: true,
-          method: 'typegpu-visible-canvas',
-          viewportPixelWidth: 1440,
-          viewportPixelHeight: 900,
-          evidence: [
-            'gridCssWidth=720',
-            'gridCssHeight=450',
-            'devicePixelRatio=2',
-            'expectedPixelWidth=1440',
-            'expectedPixelHeight=900',
-            'contractVersion=same-corpus-ui-v2',
-            'gridAuthoritativeRevision=rev-3',
-            'gridLocalRevision=rev-local-2',
-            'gridProjectedRevision=rev-3',
-            'fallbackMounted=false',
-            'mode=typegpu-v3',
-            'backendStatus=ready',
-            'frameProofStatus=presented',
-            'hasPresentedVisibleFrame=true',
-            'tilePaneCount=6',
-            'headerPaneCount=3',
-            'presentedTilePaneCount=6',
-            'presentedHeaderPaneCount=3',
-            'canvasPixelWidth=1440',
-            'canvasPixelHeight=900',
-            'canvasCoversViewport=true',
-            'typeGpuAuthoritativeRevision=rev-3',
-            'typeGpuLocalRevision=rev-local-2',
-            'typeGpuProjectedRevision=rev-3',
-            'visibleAuthoritativeRevision=rev-3',
-            'visibleLocalRevision=rev-local-2',
-            'visibleProjectedRevision=rev-3',
-            'tileSceneRevision=scene-7',
-            'visibleRenderRevision=scene-7',
-            ...strictPixelGridEvidence(),
-          ],
-        },
-        {
-          product: 'google-sheets',
-          captured: true,
-          method: 'google-sheets-visible-grid',
-          viewportPixelWidth: 1440,
-          viewportPixelHeight: 900,
-          evidence: strictPixelGridEvidence(),
-        },
-        {
-          product: 'microsoft-excel-web',
-          captured: true,
-          method: 'excel-web-visible-grid',
-          viewportPixelWidth: 1440,
-          viewportPixelHeight: 900,
-          evidence: strictPixelGridEvidence(),
-        },
-      ],
-      missingProducts: [],
-    },
+    pixelGridProof,
+  }
+}
+
+function withProductPixelGridVerdicts(proof: Omit<SameCorpusPixelGridProof, 'productVerdicts'>): SameCorpusPixelGridProof {
+  return {
+    ...proof,
+    productVerdicts: proof.products.map((entry: SameCorpusProductPixelGridProof) => validateSameCorpusProductPixelGridProof(entry)),
   }
 }
 

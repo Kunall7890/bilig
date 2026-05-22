@@ -141,6 +141,7 @@ function parseSameCorpusRunManifest(value: Record<string, unknown>): UiResponsiv
     sampleCount: numberField(value, 'sampleCount'),
     caseCount: numberField(value, 'caseCount'),
     strictRenderedGridProofCaseCount: numberField(value, 'strictRenderedGridProofCaseCount'),
+    legacyInsufficientRenderedGridProofCaseCount: numberField(value, 'legacyInsufficientRenderedGridProofCaseCount'),
     tenXMeanAndP95CaseCount: numberField(value, 'tenXMeanAndP95CaseCount'),
     currentContractEvidenceComplete: booleanField(value, 'currentContractEvidenceComplete'),
     googleSheetsTenXRequirementSatisfied: booleanField(value, 'googleSheetsTenXRequirementSatisfied'),
@@ -326,6 +327,7 @@ function parseSameCorpusPixelGridProof(value: Record<string, unknown>): SameCorp
     captured: booleanField(value, 'captured'),
     requiredProducts: stringArrayField(value, 'requiredProducts').map(parseSameCorpusProduct),
     products: arrayField(value, 'products').map(parseSameCorpusProductPixelGridProof),
+    productVerdicts: arrayField(value, 'productVerdicts').map(parseSameCorpusProductPixelGridProofVerdict),
     missingProducts: stringArrayField(value, 'missingProducts').map(parseSameCorpusProduct),
   }
 }
@@ -339,6 +341,18 @@ function parseSameCorpusProductPixelGridProof(value: unknown): SameCorpusProduct
     viewportPixelWidth: numberField(record, 'viewportPixelWidth'),
     viewportPixelHeight: numberField(record, 'viewportPixelHeight'),
     evidence: stringArrayField(record, 'evidence'),
+  }
+}
+
+function parseSameCorpusProductPixelGridProofVerdict(value: unknown) {
+  const record = asObject(value, 'UI responsiveness same-corpus product pixel grid proof verdict')
+  return {
+    product: parseSameCorpusProduct(stringField(record, 'product')),
+    evidenceStatus: parseSameCorpusProductPixelGridEvidenceStatus(stringField(record, 'evidenceStatus')),
+    acceptedForCurrentScorecard: booleanField(record, 'acceptedForCurrentScorecard'),
+    contractVersion: nullableStringField(record, 'contractVersion'),
+    requiredContractVersion: literalField(record, 'requiredContractVersion', sameCorpusUiRenderProofContractVersion),
+    invalidReasons: stringArrayField(record, 'invalidReasons'),
   }
 }
 
@@ -446,6 +460,13 @@ function parseSameCorpusPixelGridMethod(value: string): SameCorpusProductPixelGr
     return value
   }
   throw new Error(`Unexpected UI responsiveness same-corpus pixel grid proof method: ${value}`)
+}
+
+function parseSameCorpusProductPixelGridEvidenceStatus(value: string): 'current-contract' | 'legacy-insufficient' | 'missing' | 'invalid' {
+  if (value === 'current-contract' || value === 'legacy-insufficient' || value === 'missing' || value === 'invalid') {
+    return value
+  }
+  throw new Error(`Unexpected UI responsiveness same-corpus pixel grid proof evidence status: ${value}`)
 }
 
 function parseSameCorpusWorkload(value: string): UiResponsivenessSameCorpusWorkload {

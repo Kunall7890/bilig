@@ -185,6 +185,7 @@
       "sampleCount": 0,
       "caseCount": 0,
       "strictRenderedGridProofCaseCount": 0,
+      "legacyInsufficientRenderedGridProofCaseCount": 0,
       "tenXMeanAndP95CaseCount": 0,
       "currentContractEvidenceComplete": false,
       "googleSheetsTenXRequirementSatisfied": false,

@@ -47,6 +47,7 @@
           "same-corpus UI 10x cases: 0/9",
           "same-corpus render proof contract: same-corpus-ui-v2",
           "same-corpus strict rendered-grid proof cases: 0/9",
+          "same-corpus legacy-insufficient rendered-grid proof cases: 0/9",
           "same-corpus run manifest invalid reasons: required workload count is incomplete; missing required workloads: open-workbook, select-cell, edit-visible-cell, scroll-vertical, scroll-horizontal, jump-deep-row, formula-edit, fill-format-change, wide-sheet-navigation; same-corpus evidence must use exactly one corpus case; same-corpus evidence must use exactly one benchmark workbook fingerprint; source workbook fingerprint must be stable for every required product; strict rendered-grid proof covers 0/9 cases; not every required workload is 10x against Google Sheets"
         ],
         "gaps": [
@@ -665,6 +666,7 @@
         "same-corpus UI 10x cases: 0/9",
         "same-corpus UI render proof contract: same-corpus-ui-v2",
         "same-corpus UI strict rendered-grid proof cases: 0/9",
+        "same-corpus UI legacy-insufficient rendered-grid proof cases: 0/9",
         "same-corpus UI current-contract evidence complete: false",
         "same-corpus UI run manifest invalid reasons: required workload count is incomplete; missing required workloads: open-workbook, select-cell, edit-visible-cell, scroll-vertical, scroll-horizontal, jump-deep-row, formula-edit, fill-format-change, wide-sheet-navigation; same-corpus evidence must use exactly one corpus case; same-corpus evidence must use exactly one benchmark workbook fingerprint; source workbook fingerprint must be stable for every required product; strict rendered-grid proof covers 0/9 cases; not every required workload is 10x against Google Sheets",
         "google-sheets: open-public-workbook-and-scroll-viewport scrollResponseMs.p95 130.40370799999982ms and postScrollFrameMs.p95 9.300000000000182ms (3 samples, public-comment-only)",

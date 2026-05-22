@@ -41,6 +41,7 @@ export interface SameCorpusPixelGridProof {
   readonly captured: boolean
   readonly requiredProducts: readonly UiResponsivenessSameCorpusProduct[]
   readonly products: readonly SameCorpusProductPixelGridProof[]
+  readonly productVerdicts: readonly SameCorpusProductPixelGridProofVerdict[]
   readonly missingProducts: readonly UiResponsivenessSameCorpusProduct[]
 }
 
@@ -60,22 +61,91 @@ export interface SameCorpusProductPixelGridProof {
   readonly evidence: readonly string[]
 }
 
+export type SameCorpusProductPixelGridProofEvidenceStatus = 'current-contract' | 'legacy-insufficient' | 'missing' | 'invalid'
+
+export interface SameCorpusProductPixelGridProofVerdict {
+  readonly product: UiResponsivenessSameCorpusProduct
+  readonly evidenceStatus: SameCorpusProductPixelGridProofEvidenceStatus
+  readonly acceptedForCurrentScorecard: boolean
+  readonly contractVersion: string | null
+  readonly requiredContractVersion: typeof sameCorpusUiRenderProofContractVersion
+  readonly invalidReasons: readonly string[]
+}
+
 export function isSameCorpusProductPixelGridProofComplete(proof: SameCorpusProductPixelGridProof): boolean {
-  if (!proof.captured || proof.viewportPixelWidth <= 0 || proof.viewportPixelHeight <= 0) {
-    return false
-  }
+  return validateSameCorpusProductPixelGridProof(proof).acceptedForCurrentScorecard
+}
+
+export function validateSameCorpusProductPixelGridProof(proof: SameCorpusProductPixelGridProof): SameCorpusProductPixelGridProofVerdict {
   const evidence = sameCorpusEvidenceMap(proof.evidence)
+  const invalidReasons = sameCorpusProductPixelGridInvalidReasons(proof, evidence)
+  const acceptedForCurrentScorecard = invalidReasons.length === 0
+  return {
+    product: proof.product,
+    evidenceStatus: acceptedForCurrentScorecard
+      ? 'current-contract'
+      : isLegacyInsufficientPixelProof(proof, evidence)
+        ? 'legacy-insufficient'
+        : proof.captured
+          ? 'invalid'
+          : 'missing',
+    acceptedForCurrentScorecard,
+    contractVersion: evidence.get('contractVersion') ?? null,
+    requiredContractVersion: sameCorpusUiRenderProofContractVersion,
+    invalidReasons,
+  }
+}
+
+export function validateBiligVisibleFrameProof(proof: SameCorpusProductPixelGridProof): SameCorpusProductPixelGridProofVerdict {
+  if (proof.product !== 'bilig') {
+    return {
+      product: proof.product,
+      evidenceStatus: 'invalid',
+      acceptedForCurrentScorecard: false,
+      contractVersion: sameCorpusEvidenceMap(proof.evidence).get('contractVersion') ?? null,
+      requiredContractVersion: sameCorpusUiRenderProofContractVersion,
+      invalidReasons: ['Bilig visible-frame proof validator received a non-Bilig product proof'],
+    }
+  }
+  return validateSameCorpusProductPixelGridProof(proof)
+}
+
+function sameCorpusProductPixelGridInvalidReasons(proof: SameCorpusProductPixelGridProof, evidence: ReadonlyMap<string, string>): string[] {
+  const invalidReasons: string[] = []
+  if (!proof.captured) {
+    invalidReasons.push('pixel proof is not marked captured')
+  }
+  if (proof.viewportPixelWidth <= 0 || proof.viewportPixelHeight <= 0) {
+    invalidReasons.push('viewport pixel dimensions are missing')
+  }
   if (!hasStrictScreenshotPixelGridEvidence(evidence)) {
-    return false
+    invalidReasons.push('missing strict screenshot grid-pixel proof')
   }
   if (proof.product === 'google-sheets') {
-    return proof.method === 'google-sheets-visible-grid'
+    if (proof.method !== 'google-sheets-visible-grid') {
+      invalidReasons.push('Google Sheets proof method is not google-sheets-visible-grid')
+    }
+    return invalidReasons
   }
   if (proof.product === 'microsoft-excel-web') {
-    return proof.method === 'excel-web-visible-grid'
+    if (proof.method !== 'excel-web-visible-grid') {
+      invalidReasons.push('Excel Web proof method is not excel-web-visible-grid')
+    }
+    return invalidReasons
   }
-  if (proof.method !== 'typegpu-visible-canvas' || proof.evidence.some((entry) => entry.startsWith('gap='))) {
-    return false
+  invalidReasons.push(...biligVisibleFrameInvalidReasons(proof, evidence))
+  return invalidReasons
+}
+
+function biligVisibleFrameInvalidReasons(proof: SameCorpusProductPixelGridProof, evidence: ReadonlyMap<string, string>): string[] {
+  const invalidReasons: string[] = []
+  if (proof.method !== 'typegpu-visible-canvas') {
+    invalidReasons.push('Bilig proof method is not typegpu-visible-canvas')
+  }
+  for (const entry of proof.evidence) {
+    if (entry.startsWith('gap=')) {
+      invalidReasons.push(entry.slice('gap='.length))
+    }
   }
   const gridProjectedRevision = evidence.get('gridProjectedRevision') ?? ''
   const gridAuthoritativeRevision = evidence.get('gridAuthoritativeRevision') ?? ''
@@ -89,35 +159,100 @@ export function isSameCorpusProductPixelGridProofComplete(proof: SameCorpusProdu
   const expectedPixelHeight = numericEvidence(evidence, 'expectedPixelHeight')
   const canvasPixelWidth = numericEvidence(evidence, 'canvasPixelWidth')
   const canvasPixelHeight = numericEvidence(evidence, 'canvasPixelHeight')
-  return (
-    evidence.get('mode') === 'typegpu-v3' &&
-    evidence.get('contractVersion') === sameCorpusUiRenderProofContractVersion &&
-    evidence.get('backendStatus') === 'ready' &&
-    evidence.get('frameProofStatus') === 'presented' &&
-    evidence.get('hasPresentedVisibleFrame') === 'true' &&
+  if (evidence.get('mode') !== 'typegpu-v3') {
+    invalidReasons.push(`renderer mode is ${evidence.get('mode') ?? 'missing'}`)
+  }
+  if (evidence.get('contractVersion') !== sameCorpusUiRenderProofContractVersion) {
+    invalidReasons.push(`missing contractVersion=${sameCorpusUiRenderProofContractVersion}`)
+  }
+  if (evidence.get('backendStatus') !== 'ready') {
+    invalidReasons.push(`TypeGPU backend is ${evidence.get('backendStatus') ?? 'missing'}`)
+  }
+  if (evidence.get('frameProofStatus') !== 'presented') {
+    invalidReasons.push(`frame proof is ${evidence.get('frameProofStatus') ?? 'missing'}`)
+  }
+  if (evidence.get('hasPresentedVisibleFrame') !== 'true') {
+    invalidReasons.push('visible frame has not been presented')
+  }
+  if (!isPositiveNumber(tilePaneCount) || !isPositiveNumber(headerPaneCount)) {
+    invalidReasons.push('current tile/header pane counts are empty')
+  }
+  if (!isPositiveNumber(presentedTilePaneCount) || !isPositiveNumber(presentedHeaderPaneCount)) {
+    invalidReasons.push('presented tile/header pane counts are empty')
+  }
+  if (
     isPositiveNumber(tilePaneCount) &&
     isPositiveNumber(headerPaneCount) &&
-    presentedTilePaneCount === tilePaneCount &&
-    presentedHeaderPaneCount === headerPaneCount &&
-    evidence.get('canvasCoversViewport') === 'true' &&
+    isPositiveNumber(presentedTilePaneCount) &&
+    isPositiveNumber(presentedHeaderPaneCount) &&
+    (presentedTilePaneCount !== tilePaneCount || presentedHeaderPaneCount !== headerPaneCount)
+  ) {
+    invalidReasons.push('presented tile/header pane counts do not cover the current visible panes')
+  }
+  if (evidence.get('canvasCoversViewport') !== 'true') {
+    invalidReasons.push('TypeGPU canvas backing pixels do not cover the viewport')
+  }
+  if (!isPositiveNumber(expectedPixelWidth) || !isPositiveNumber(expectedPixelHeight)) {
+    invalidReasons.push('expected viewport pixel dimensions are missing')
+  }
+  if (!isPositiveNumber(canvasPixelWidth) || !isPositiveNumber(canvasPixelHeight)) {
+    invalidReasons.push('TypeGPU canvas pixel dimensions are missing')
+  }
+  if (
     isPositiveNumber(expectedPixelWidth) &&
     isPositiveNumber(expectedPixelHeight) &&
     isPositiveNumber(canvasPixelWidth) &&
     isPositiveNumber(canvasPixelHeight) &&
-    canvasPixelWidth >= expectedPixelWidth - 2 &&
-    canvasPixelHeight >= expectedPixelHeight - 2 &&
-    gridAuthoritativeRevision.length > 0 &&
-    evidence.get('typeGpuAuthoritativeRevision') === gridAuthoritativeRevision &&
-    evidence.get('visibleAuthoritativeRevision') === gridAuthoritativeRevision &&
-    gridLocalRevision.length > 0 &&
-    evidence.get('typeGpuLocalRevision') === gridLocalRevision &&
-    evidence.get('visibleLocalRevision') === gridLocalRevision &&
-    gridProjectedRevision.length > 0 &&
-    evidence.get('typeGpuProjectedRevision') === gridProjectedRevision &&
-    evidence.get('visibleProjectedRevision') === gridProjectedRevision &&
-    tileSceneRevision.length > 0 &&
-    evidence.get('visibleRenderRevision') === tileSceneRevision
-  )
+    (canvasPixelWidth < expectedPixelWidth - 2 || canvasPixelHeight < expectedPixelHeight - 2)
+  ) {
+    invalidReasons.push('TypeGPU canvas backing pixels do not cover the viewport')
+  }
+  if (gridAuthoritativeRevision.length === 0) {
+    invalidReasons.push('grid authoritative render revision is missing')
+  }
+  if (evidence.get('typeGpuAuthoritativeRevision') !== gridAuthoritativeRevision) {
+    invalidReasons.push('TypeGPU authoritative render revision does not match the grid revision')
+  }
+  if (evidence.get('visibleAuthoritativeRevision') !== gridAuthoritativeRevision) {
+    invalidReasons.push('visible authoritative render revision does not match the grid revision')
+  }
+  if (gridLocalRevision.length === 0) {
+    invalidReasons.push('grid local render revision is missing')
+  }
+  if (evidence.get('typeGpuLocalRevision') !== gridLocalRevision) {
+    invalidReasons.push('TypeGPU local render revision does not match the grid revision')
+  }
+  if (evidence.get('visibleLocalRevision') !== gridLocalRevision) {
+    invalidReasons.push('visible local render revision does not match the grid revision')
+  }
+  if (gridProjectedRevision.length === 0) {
+    invalidReasons.push('grid projected render revision is missing')
+  }
+  if (evidence.get('typeGpuProjectedRevision') !== gridProjectedRevision) {
+    invalidReasons.push('TypeGPU projected render revision does not match the grid revision')
+  }
+  if (evidence.get('visibleProjectedRevision') !== gridProjectedRevision) {
+    invalidReasons.push('visible projected render revision does not match the grid revision')
+  }
+  if (tileSceneRevision.length === 0) {
+    invalidReasons.push('tile scene revision is missing')
+  }
+  if (evidence.get('visibleRenderRevision') !== tileSceneRevision) {
+    invalidReasons.push('visible render revision does not match the tile scene revision')
+  }
+  return invalidReasons
+}
+
+function isLegacyInsufficientPixelProof(proof: SameCorpusProductPixelGridProof, evidence: ReadonlyMap<string, string>): boolean {
+  if (proof.product === 'bilig') {
+    return (
+      evidence.get('mode') === 'typegpu-v3' ||
+      evidence.has('tilePaneCount') ||
+      evidence.has('headerPaneCount') ||
+      proof.evidence.some((entry) => entry.startsWith('expectedPixel'))
+    )
+  }
+  return proof.evidence.length > 0 && !proof.evidence.some((entry) => entry === 'visible workbook grid surface was not found')
 }
 
 export function buildCaptureScenarioProof(args: {
@@ -209,7 +344,8 @@ export function validateSameCorpusScenarioProof(
   if (
     proof.pixelGridProof.captured !== expected.pixelGridProof.captured ||
     JSON.stringify(proof.pixelGridProof.requiredProducts) !== JSON.stringify(expected.pixelGridProof.requiredProducts) ||
-    JSON.stringify(proof.pixelGridProof.missingProducts) !== JSON.stringify(expected.pixelGridProof.missingProducts)
+    JSON.stringify(proof.pixelGridProof.missingProducts) !== JSON.stringify(expected.pixelGridProof.missingProducts) ||
+    JSON.stringify(proof.pixelGridProof.productVerdicts) !== JSON.stringify(expected.pixelGridProof.productVerdicts)
   ) {
     throw new Error(`UI responsiveness same-corpus pixel grid proof is stale: ${caseId}`)
   }
@@ -231,6 +367,7 @@ function buildScenarioProof(args: {
   const pixelProducts = new Set(
     args.visualProofs.filter((entry) => isSameCorpusProductPixelGridProofComplete(entry.pixelGridProof)).map((entry) => entry.product),
   )
+  const productVerdicts = args.visualProofs.map((entry) => validateSameCorpusProductPixelGridProof(entry.pixelGridProof))
   return {
     biligMeanMs: args.biligTiming.mean,
     biligP95Ms: args.biligTiming.p95,
@@ -256,6 +393,7 @@ function buildScenarioProof(args: {
       captured: requiredProducts.every((product) => pixelProducts.has(product)),
       requiredProducts,
       products: args.visualProofs.map((entry) => entry.pixelGridProof),
+      productVerdicts,
       missingProducts: requiredProducts.filter((product) => !pixelProducts.has(product)),
     },
   }

@@ -23,6 +23,7 @@ export interface UiSameCorpusStatus {
   readonly runManifest: UiResponsivenessSameCorpusRunManifest | null
   readonly renderProofContractVersion: string | null
   readonly strictRenderedGridProofCaseCount: number
+  readonly legacyInsufficientRenderedGridProofCaseCount: number
   readonly currentContractEvidenceComplete: boolean
   readonly googleSheetsTenXRequirementSatisfied: boolean
   readonly runManifestInvalidReasons: readonly string[]
@@ -195,6 +196,11 @@ export function buildUiSameCorpusStatus(
     renderProofContractVersion: runManifest?.contractVersion ?? null,
     strictRenderedGridProofCaseCount:
       runManifest?.strictRenderedGridProofCaseCount ?? proof.cases.filter((entry) => entry.scenarioProof.pixelGridProof.captured).length,
+    legacyInsufficientRenderedGridProofCaseCount:
+      runManifest?.legacyInsufficientRenderedGridProofCaseCount ??
+      proof.cases.filter((entry) =>
+        entry.scenarioProof.pixelGridProof.productVerdicts.some((verdict) => verdict.evidenceStatus === 'legacy-insufficient'),
+      ).length,
     currentContractEvidenceComplete: runManifest?.currentContractEvidenceComplete ?? false,
     googleSheetsTenXRequirementSatisfied: runManifest?.googleSheetsTenXRequirementSatisfied ?? false,
     runManifestInvalidReasons: runManifest?.invalidReasons ?? ['same-corpus UI proof is missing a run manifest'],
