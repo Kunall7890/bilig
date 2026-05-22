@@ -346,6 +346,32 @@ describe('same-corpus UI responsiveness capture CLI', () => {
     })
   })
 
+  it('downgrades incumbent grid evidence that only proves a large DOM rectangle exists', () => {
+    const proof = buildCaptureScenarioProof({
+      bilig: sameCorpusCaptureMeasurement('bilig', 'bilig-benchmark-state'),
+      googleSheets: sameCorpusCaptureMeasurement('google-sheets', 'google-sheets-xlsx-export'),
+      visualProofs: [
+        sameCorpusVisualProof('bilig', 'typegpu-visible-canvas'),
+        {
+          ...sameCorpusVisualProof('google-sheets', 'google-sheets-visible-grid'),
+          pixelGridProof: {
+            product: 'google-sheets',
+            captured: true,
+            method: 'google-sheets-visible-grid',
+            viewportPixelWidth: 1440,
+            viewportPixelHeight: 900,
+            evidence: ['selector=.grid-scrollable-wrapper', 'cssWidth=720', 'cssHeight=450'],
+          },
+        },
+      ],
+    })
+
+    expect(proof.pixelGridProof).toMatchObject({
+      captured: false,
+      missingProducts: ['google-sheets'],
+    })
+  })
+
   it('rejects read-only incumbent edit surfaces before timing same-corpus edits', () => {
     expect(
       incumbentEditableWorkloadBlocker(
@@ -523,8 +549,22 @@ function sameCorpusVisualProof(
               'visibleProjectedRevision=rev-3',
               'tileSceneRevision=scene-7',
               'visibleRenderRevision=scene-7',
+              ...strictPixelGridEvidence(),
             ]
-          : ['test visual proof'],
+          : strictPixelGridEvidence(),
     },
   }
+}
+
+function strictPixelGridEvidence(): string[] {
+  return [
+    'pixelGridProofVersion=grid-pixels-v1',
+    'pixelSampleSource=screenshot',
+    'screenshotPixelWidth=1440',
+    'screenshotPixelHeight=900',
+    'nonBlankPixels=10000',
+    'visibleGridLinePixels=4000',
+    'verticalLineRuns=8',
+    'horizontalLineRuns=16',
+  ]
 }

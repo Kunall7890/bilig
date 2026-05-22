@@ -11,6 +11,7 @@ This package is released as part of the aligned bilig library package set.
 - Manual override: no
 
 ## Features
+
 - feat(workbook): harden agent handoff contracts (6f526454)
 - feat(workpaper): expose verified agent tool helpers (f20b74f8)
 - feat(workbook): clarify agent-first docs (125d5323)
@@ -18,6 +19,7 @@ This package is released as part of the aligned bilig library package set.
 - feat(headless): add Excel AutoFilter oracle (13fd469f)
 
 ## Fixes
+
 - fix(release): keep metadata retry clean (488ba52c)
 - fix(core): keep live runtime under size gate (dc5bf5e4)
 - fix(ui-proof): expose same-corpus run manifest (657832a9)
@@ -26,6 +28,7 @@ This package is released as part of the aligned bilig library package set.
 - perf(headless): trim lookup and aggregate matrix hot paths (d9c20c20)
 
 ## Internal runtime changes
+
 - docs(workbook): add agent model example (fd238c7d)
 - refactor(core): split live runtime config types (0269dbab)
 - chore(agent): refresh Bilig skill docs (9a3af19d)

@@ -484,6 +484,7 @@ function sameCorpusScenarioProof(workload: UiResponsivenessSameCorpusWorkload) {
             'visibleProjectedRevision=rev-3',
             'tileSceneRevision=scene-7',
             'visibleRenderRevision=scene-7',
+            ...strictPixelGridEvidence(),
           ],
         },
         {
@@ -492,7 +493,7 @@ function sameCorpusScenarioProof(workload: UiResponsivenessSameCorpusWorkload) {
           method: 'google-sheets-visible-grid',
           viewportPixelWidth: 1440,
           viewportPixelHeight: 900,
-          evidence: ['selector=.grid-scrollable-wrapper'],
+          evidence: strictPixelGridEvidence(),
         },
         {
           product: 'microsoft-excel-web',
@@ -500,7 +501,7 @@ function sameCorpusScenarioProof(workload: UiResponsivenessSameCorpusWorkload) {
           method: 'excel-web-visible-grid',
           viewportPixelWidth: 1440,
           viewportPixelHeight: 900,
-          evidence: ['selector=.ewr-grdcontarea-grid'],
+          evidence: strictPixelGridEvidence(),
         },
       ],
       missingProducts: [],
@@ -526,5 +527,18 @@ function verifiedCells() {
     { address: 'A1', expected: 'metric-1', actual: 'metric-1' },
     { address: 'B1', expected: 'metric-2', actual: 'metric-2' },
     { address: 'F2', expected: 'note-1-5', actual: 'note-1-5' },
+  ]
+}
+
+function strictPixelGridEvidence(): string[] {
+  return [
+    'pixelGridProofVersion=grid-pixels-v1',
+    'pixelSampleSource=screenshot',
+    'screenshotPixelWidth=1440',
+    'screenshotPixelHeight=900',
+    'nonBlankPixels=10000',
+    'visibleGridLinePixels=4000',
+    'verticalLineRuns=8',
+    'horizontalLineRuns=16',
   ]
 }
