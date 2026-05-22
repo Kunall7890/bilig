@@ -8,6 +8,16 @@ export type WorkbookActionInput =
 
 export type WorkbookActionInputDescriptionKind = 'json' | 'object' | 'array' | 'string' | 'number' | 'boolean' | 'null'
 
+export const workbookActionInputDescriptionKinds = Object.freeze([
+  'json',
+  'object',
+  'array',
+  'string',
+  'number',
+  'boolean',
+  'null',
+] satisfies readonly WorkbookActionInputDescriptionKind[])
+
 export interface WorkbookActionInputDescription {
   readonly kind: WorkbookActionInputDescriptionKind
   readonly description?: string
@@ -40,18 +50,14 @@ function isPlainObject(value: unknown): value is Record<string, unknown> {
 }
 
 function inputDescriptionKind(value: unknown, path: string): WorkbookActionInputDescriptionKind {
-  switch (value) {
-    case 'json':
-    case 'object':
-    case 'array':
-    case 'string':
-    case 'number':
-    case 'boolean':
-    case 'null':
-      return value
-    default:
-      throw new WorkbookActionInputError(`Action input description at ${path}.kind must be a supported kind`)
+  if (isWorkbookActionInputDescriptionKind(value)) {
+    return value
   }
+  throw new WorkbookActionInputError(`Action input description at ${path}.kind must be a supported kind`)
+}
+
+export function isWorkbookActionInputDescriptionKind(value: unknown): value is WorkbookActionInputDescriptionKind {
+  return typeof value === 'string' && workbookActionInputDescriptionKinds.some((kind) => kind === value)
 }
 
 function normalizeDescriptionText(value: unknown, path: string): string | undefined {
@@ -146,6 +152,15 @@ export function normalizeWorkbookActionInputDescription(input: unknown): Workboo
   return normalizeInputDescription(input, 'input', new WeakSet())
 }
 
+export function isWorkbookActionInputDescription(input: unknown): input is WorkbookActionInputDescription {
+  try {
+    normalizeWorkbookActionInputDescription(input)
+    return true
+  } catch {
+    return false
+  }
+}
+
 function normalizeInput(value: unknown, path: string, seen: WeakSet<object>): WorkbookActionInput {
   if (value === null || typeof value === 'string' || typeof value === 'boolean') {
     return value
@@ -209,6 +224,15 @@ function normalizeInput(value: unknown, path: string, seen: WeakSet<object>): Wo
 
 export function normalizeWorkbookActionInput(input: unknown): WorkbookActionInput {
   return normalizeInput(input, 'input', new WeakSet())
+}
+
+export function isWorkbookActionInput(input: unknown): input is WorkbookActionInput {
+  try {
+    normalizeWorkbookActionInput(input)
+    return true
+  } catch {
+    return false
+  }
 }
 
 export function normalizeOptionalWorkbookActionInput(input: WorkbookActionInput | undefined): WorkbookActionInput | undefined {

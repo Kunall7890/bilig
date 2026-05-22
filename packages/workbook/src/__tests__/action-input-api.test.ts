@@ -4,9 +4,13 @@ import {
   defineModel,
   describePlan,
   describePlanResult,
+  isWorkbookActionInput,
+  isWorkbookActionInputDescription,
+  isWorkbookActionInputDescriptionKind,
   planWorkbookAction,
   verifyModel,
   verifyPlan,
+  workbookActionInputDescriptionKinds,
   type WorkbookActionInput,
 } from '../index.js'
 
@@ -18,6 +22,29 @@ function inputObject(input: WorkbookActionInput | undefined): Record<string, Wor
 }
 
 describe('@bilig/workbook action input api', () => {
+  it('exports stable action input kind and value guards for agent inspection', () => {
+    expect(Object.isFrozen(workbookActionInputDescriptionKinds)).toBe(true)
+    expect(workbookActionInputDescriptionKinds).toEqual(['json', 'object', 'array', 'string', 'number', 'boolean', 'null'])
+    expect(new Set(workbookActionInputDescriptionKinds).size).toBe(workbookActionInputDescriptionKinds.length)
+    expect(isWorkbookActionInputDescriptionKind('object')).toBe(true)
+    expect(isWorkbookActionInputDescriptionKind('date')).toBe(false)
+    expect(
+      isWorkbookActionInputDescription({
+        kind: 'object',
+        fields: {
+          value: { kind: 'number', required: true },
+        },
+      }),
+    ).toBe(true)
+    expect(isWorkbookActionInputDescription({ kind: 'object', fields: { value: { kind: 'date' } } })).toBe(false)
+    expect(isWorkbookActionInput({ value: 12, label: 'ready', nested: [true, null] })).toBe(true)
+    expect(isWorkbookActionInput({ value: Number.NaN })).toBe(false)
+    expect(isWorkbookActionInput({ value: new Date('2026-05-22T00:00:00Z') })).toBe(false)
+    const sparseInput: unknown[] = ['a', 'b']
+    Reflect.deleteProperty(sparseInput, 1)
+    expect(isWorkbookActionInput(sparseInput)).toBe(false)
+  })
+
   it('plans parameterized actions with cloned JSON-safe input', () => {
     const model = defineModel({
       name: 'parameterized-action-model',

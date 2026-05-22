@@ -68,6 +68,10 @@ It exposes:
 - `describeRuntimeRequirements`
 - `verifyPlan`
 - `verifyModel`
+- `workbookActionInputDescriptionKinds`
+- `isWorkbookActionInputDescriptionKind`
+- `isWorkbookActionInputDescription`
+- `isWorkbookActionInput`
 - `runWorkbookPlan`
 - `runWorkbookAction`
 - `verifyWorkbookReadbacks`
@@ -94,7 +98,12 @@ the action context as `input`. Supported values are strings, finite numbers,
 booleans, `null`, arrays without holes, and plain objects. `@bilig/workbook`
 does not provide schemas or validators for consumer meaning; actions keep that
 validation generic and local. `verifyModel(model, { inputs })` supplies
-per-action inputs for whole-model verification.
+per-action inputs for whole-model verification. The frozen
+`workbookActionInputDescriptionKinds` list plus
+`isWorkbookActionInputDescriptionKind(value)`,
+`isWorkbookActionInputDescription(value)`, and `isWorkbookActionInput(value)` let
+agents validate metadata and JSON-safe tool payloads without importing a schema
+framework or string-matching ad hoc kinds.
 
 When agents need to know what an action expects before running workbook code,
 actions may be declared as action objects:

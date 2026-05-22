@@ -31,6 +31,10 @@ The public surface stays generic:
 - `runWorkbookAction`
 - `verifyWorkbookReadbacks`
 - `normalizeWorkbookActionInputDescription`
+- `workbookActionInputDescriptionKinds`
+- `isWorkbookActionInputDescriptionKind`
+- `isWorkbookActionInputDescription`
+- `isWorkbookActionInput`
 - `workbookRunErrorCodes`
 - `isWorkbookRunErrorCode`
 - `formula`
@@ -165,6 +169,10 @@ They support boring JSON kinds: `json`, `object`, `array`, `string`, `number`,
 descriptions may list `items`. `normalizeWorkbookActionInputDescription` trims
 text, rejects malformed metadata, returns frozen data, and keeps the package
 free of `zod`, `effect`, or model-specific validators.
+`workbookActionInputDescriptionKinds`, `isWorkbookActionInputDescriptionKind`,
+`isWorkbookActionInputDescription`, and `isWorkbookActionInput` expose the same
+contract as stable data so generic tool builders can validate model metadata and
+JSON-safe payloads without ad hoc string matching.
 
 Formula expressions also keep their workbook inputs separate from their formula
 text. A planned `writeFormula` command includes both the parseable formula
