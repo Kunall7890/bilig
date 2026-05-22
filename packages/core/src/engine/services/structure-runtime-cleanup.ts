@@ -21,8 +21,14 @@ export function collectStructuralRangeDependencies(
   return [...rangeIndices]
 }
 
-export function clearSpillArtifactsForSheet(args: CreateEngineStructureServiceArgs, sheetName: string): number[] {
+export interface ClearedStructuralSpillArtifacts {
+  readonly changedCellIndices: number[]
+  readonly ownerCellIndices: number[]
+}
+
+export function clearSpillArtifactsForSheet(args: CreateEngineStructureServiceArgs, sheetName: string): ClearedStructuralSpillArtifacts {
   const changedCellIndices: number[] = []
+  const ownerCellIndices: number[] = []
   args.state.workbook.listSpills().forEach((spill) => {
     if (spill.sheetName !== sheetName) {
       return
@@ -32,9 +38,10 @@ export function clearSpillArtifactsForSheet(args: CreateEngineStructureServiceAr
       args.state.workbook.deleteSpill(spill.sheetName, spill.address)
       return
     }
+    ownerCellIndices.push(ownerCellIndex)
     changedCellIndices.push(...args.clearOwnedSpill(ownerCellIndex))
   })
-  return changedCellIndices
+  return { changedCellIndices, ownerCellIndices }
 }
 
 export function clearPivotOutputsForSheet(args: CreateEngineStructureServiceArgs, sheetName: string): void {

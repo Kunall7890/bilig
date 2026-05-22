@@ -751,14 +751,14 @@ export function createWorkbookMetadataService(metadata: WorkbookMetadataRecord):
     setPivot(record) {
       return metadataEffect('Failed to set pivot metadata', () => {
         const normalizedAddress = canonicalWorkbookAddress(record.sheetName, record.address)
-        const stored: WorkbookPivotRecord = {
+        const stored: WorkbookPivotRecord = structuredClone({
           ...record,
           name: record.name.trim(),
           address: normalizedAddress,
           groupBy: [...record.groupBy],
           values: record.values.map((value) => ({ ...value })),
           ...(record.source ? { source: canonicalWorkbookRangeRef(record.source) } : {}),
-        }
+        })
         metadata.pivots.set(pivotKey(record.sheetName, normalizedAddress), stored)
         return clonePivotRecord(stored)
       })

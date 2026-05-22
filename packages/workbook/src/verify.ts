@@ -23,6 +23,7 @@ export type WorkbookPlanIssueCode =
   | 'formula_input_not_resolved'
   | 'invalid_formula'
   | 'change_target_not_resolved'
+  | 'check_status_not_planned'
   | 'check_target_not_resolved'
   | 'check_ref_not_resolved'
   | 'check_expectation_input_not_resolved'
@@ -31,6 +32,28 @@ export type WorkbookPlanIssueCode =
   | 'op_target_mismatch'
   | 'missing_concrete_op'
   | 'missing_workbook_op'
+
+export const workbookPlanIssueCodes = Object.freeze([
+  'invalid_action_input',
+  'duplicate_ref',
+  'command_target_not_resolved',
+  'formula_input_not_resolved',
+  'invalid_formula',
+  'change_target_not_resolved',
+  'check_status_not_planned',
+  'check_target_not_resolved',
+  'check_ref_not_resolved',
+  'check_expectation_input_not_resolved',
+  'invalid_check_expectation_formula',
+  'invalid_workbook_op',
+  'op_target_mismatch',
+  'missing_concrete_op',
+  'missing_workbook_op',
+] satisfies readonly WorkbookPlanIssueCode[])
+
+export function isWorkbookPlanIssueCode(value: unknown): value is WorkbookPlanIssueCode {
+  return typeof value === 'string' && workbookPlanIssueCodes.some((code) => code === value)
+}
 
 export interface WorkbookPlanIssue {
   readonly code: WorkbookPlanIssueCode
@@ -440,6 +463,14 @@ export function verifyPlan<Refs>(plan: WorkbookActionPlan<Refs>): WorkbookPlanVe
   })
 
   plan.checks.forEach((check, checkIndex) => {
+    if (check.status !== 'planned') {
+      issues.push({
+        code: 'check_status_not_planned',
+        path: `checks[${checkIndex}].status`,
+        message: `${check.target?.label ?? check.kind} check ${check.kind} must start planned before runtime proof`,
+      })
+    }
+
     if (check.target !== undefined && !hasRef(check.target)) {
       issues.push(
         issue({
@@ -486,6 +517,25 @@ export function verifyPlan<Refs>(plan: WorkbookActionPlan<Refs>): WorkbookPlanVe
             }),
           )
         }
+      })
+    }
+
+    if (check.expectation?.kind === 'formulasEqual') {
+      check.expectation.formulas.forEach((row, rowIndex) => {
+        row.forEach((formula, colIndex) => {
+          if (formula === null) {
+            return
+          }
+          try {
+            parseFormula(formula)
+          } catch (error) {
+            issues.push({
+              code: 'invalid_check_expectation_formula',
+              path: `checks[${checkIndex}].expectation.formulas[${rowIndex}][${colIndex}]`,
+              message: `Formula expectation for ${check.target?.label ?? check.kind} is not parseable: ${errorMessage(error)}`,
+            })
+          }
+        })
       })
     }
   })

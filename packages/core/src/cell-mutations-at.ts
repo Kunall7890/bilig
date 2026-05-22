@@ -14,6 +14,16 @@ export interface EngineCellMutationRef {
   cellIndex?: number
 }
 
+export interface EngineFreshDirectAggregateMatrixPlan {
+  readonly sheetId: number
+  readonly rowStart: number
+  readonly rowCount: number
+  readonly colStart: number
+  readonly inputColCount: number
+  readonly values: Float64Array
+  readonly formulaSources: readonly string[]
+}
+
 export interface EngineFormulaSourceRef {
   sheetId: number
   row: number

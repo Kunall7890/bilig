@@ -169,6 +169,7 @@ export class WorkbookPaneRendererHostRuntimeV3 {
       backend: this.surfaceSnapshot.backend,
       cameraStore: this.props.cameraStore,
       drawText: this.props.drawText,
+      frameProofSignature: this.frameProofSignature,
       geometry: this.props.geometry,
       headerPanes: this.props.headerPanes,
       overlay: this.props.overlay,
@@ -194,8 +195,8 @@ export class WorkbookPaneRendererHostRuntimeV3 {
   }
 
   private handleFrameResult(result: WorkbookPaneFrameResultV3): void {
-    const signature = this.frameProofSignature
-    if (!result.submitted || !signature || !result.visualFrame) {
+    const signature = result.frameProofSignature
+    if (!result.submitted || !signature || signature !== this.frameProofSignature || !result.visualFrame) {
       return
     }
     this.setPresentedVisualFrame(result.visualFrame)
@@ -318,6 +319,21 @@ export function resolveWorkbookPaneFrameProofSignatureV3(props: {
       return [
         pane.paneId,
         pane.generation,
+        pane.drawVisible === false ? 'hidden' : 'visible',
+        pane.frame.x,
+        pane.frame.y,
+        pane.frame.width,
+        pane.frame.height,
+        pane.contentOffset.x,
+        pane.contentOffset.y,
+        pane.surfaceSize.width,
+        pane.surfaceSize.height,
+        pane.viewport.rowStart,
+        pane.viewport.rowEnd,
+        pane.viewport.colStart,
+        pane.viewport.colEnd,
+        pane.scrollAxes.x ? 'scroll-x' : 'fixed-x',
+        pane.scrollAxes.y ? 'scroll-y' : 'fixed-y',
         tile.tileId,
         tile.textCount,
         tile.textSignature ?? resolveGridTextTileRevisionKeyV3(tile).textSignature,
@@ -333,7 +349,25 @@ export function resolveWorkbookPaneFrameProofSignatureV3(props: {
     })
     .join('|')
   const headerSignature = props.headerPanes
-    .map((pane) => [pane.paneId, pane.rectSignature, pane.textSignature, pane.rectCount, pane.textCount].join(':'))
+    .map((pane) =>
+      [
+        pane.paneId,
+        pane.frame.x,
+        pane.frame.y,
+        pane.frame.width,
+        pane.frame.height,
+        pane.contentOffset.x,
+        pane.contentOffset.y,
+        pane.surfaceSize.width,
+        pane.surfaceSize.height,
+        pane.scrollAxes.x ? 'scroll-x' : 'fixed-x',
+        pane.scrollAxes.y ? 'scroll-y' : 'fixed-y',
+        pane.rectSignature,
+        pane.textSignature,
+        pane.rectCount,
+        pane.textCount,
+      ].join(':'),
+    )
     .join('|')
   const overlaySignature = props.overlay
     ? [

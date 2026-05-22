@@ -31,14 +31,19 @@ import { shouldAttemptAxisOnlyTileTextGeometryResourceSync, syncAxisOnlyTileText
 import {
   buildSmallDirtyTextPatchPayload,
   buildTextRunCellKeys,
-  isCellKeyDirtyForTile,
   mergeTextRunDirtySpans,
   resolveTextPatchDirtySpans,
   resolveVariableLengthTextPatchReserveCount,
   writeTileTextPayload,
 } from './typegpu-tile-text-patch.js'
+import {
+  buildDecorationCellKeys,
+  shouldSkipTextResourceSyncForNonIntersectingDirtyCells,
+  shouldSyncTextDecorationRects,
+} from './typegpu-tile-text-resource-skip.js'
 import type { WorkbookRenderTilePaneState } from './render-tile-pane-state.js'
 import {
+  areGridRectTileRevisionKeysEqualV3,
   areGridTextTileRevisionKeysEqualV3,
   resolveGridRectTileRevisionKeyV3,
   resolveGridTextTileRevisionKeyV3,
@@ -59,15 +64,17 @@ export {
   shouldSyncGridTextTileResourceV3,
 } from './typegpu-tile-resource-revisions.js'
 export type { TypeGpuTileRectRevisionKeyV3, TypeGpuTileTextRevisionKeyV3 } from './typegpu-tile-resource-revisions.js'
+export { formatDecorationCellKey } from './typegpu-tile-text-resource-skip.js'
 
 const RECT_INSTANCE_FLOAT_COUNT = GRID_RECT_INSTANCE_FLOAT_COUNT_V3
 const TEXT_INSTANCE_FLOAT_COUNT = 16
 const RECT_INSTANCE_BYTE_COUNT = RECT_INSTANCE_FLOAT_COUNT * Float32Array.BYTES_PER_ELEMENT
 const TEXT_INSTANCE_BYTE_COUNT = TEXT_INSTANCE_FLOAT_COUNT * Float32Array.BYTES_PER_ELEMENT
 const MIN_TILE_TEXT_INSTANCE_COUNT = 32
-const TEXT_CELL_SKIP_FORBIDDEN_DIRTY_MASK = DirtyMaskV3.AxisX | DirtyMaskV3.AxisY | DirtyMaskV3.Freeze
 const EMPTY_DECORATION_CELL_KEYS: ReadonlySet<string> = new Set()
 const EMPTY_DECORATION_RECTS: readonly TextDecorationRect[] = Object.freeze([])
+const RECT_PARTIAL_WRITE_UNSAFE_DIRTY_MASK_V3 =
+  DirtyMaskV3.Style | DirtyMaskV3.Rect | DirtyMaskV3.Border | DirtyMaskV3.AxisX | DirtyMaskV3.AxisY | DirtyMaskV3.Freeze
 
 export interface TypeGpuTileContentResourceEntryV3 {
   rectBaseCount: number
@@ -667,6 +674,7 @@ function syncTileRectResource(input: {
   readonly content: TypeGpuTileContentResourceEntryV3
   readonly rectRevisionKey: TypeGpuTileRectRevisionKeyV3
 }): void {
+  const previousRectRevisionKey = input.content.rectRevisionKey
   const decorationRects = input.content.decorationRects ?? []
   const rectPayload = buildRectInstanceDataFromTile({
     decorationRects,
@@ -688,6 +696,11 @@ function syncTileRectResource(input: {
   writeTileRectPayload({
     canWritePartialPayload: canWritePartialPayload && handle === previousHandle,
     content: input.content,
+    forceFullPayloadWrite: shouldForceFullRectPayloadWriteForDirtyRevisionV3({
+      dirtyMask: resolveTileDirtyMaskForPartialRectWriteV3(input.pane.tile),
+      nextRectRevisionKey: input.rectRevisionKey,
+      previousRectRevisionKey,
+    }),
     handle,
     label: `tile-rect:${resolveWorkbookTileContentBufferKeyV3(input.pane)}`,
     rectPayload,
@@ -700,6 +713,7 @@ function syncTileRectResource(input: {
 function writeTileRectPayload(input: {
   readonly canWritePartialPayload: boolean
   readonly content: TypeGpuTileContentResourceEntryV3
+  readonly forceFullPayloadWrite: boolean
   readonly handle: GpuBufferHandleV3<RectInstanceVertexBuffer>
   readonly label: string
   readonly rectPayload: { readonly floats: Float32Array; readonly count: number }
@@ -711,6 +725,7 @@ function writeTileRectPayload(input: {
       canWritePartialPayload: input.canWritePartialPayload,
       contentRectCount: input.content.rectCount,
       dirtySpans,
+      forceFullPayloadWrite: input.forceFullPayloadWrite,
       rectPayloadCount: input.rectPayload.count,
     })
   ) {
@@ -748,14 +763,42 @@ export function shouldFullWriteTileRectPayloadV3(input: {
   readonly canWritePartialPayload: boolean
   readonly contentRectCount: number
   readonly dirtySpans: readonly { readonly offset: number; readonly length: number }[]
+  readonly forceFullPayloadWrite?: boolean | undefined
   readonly rectPayloadCount: number
 }): boolean {
   return (
+    input.forceFullPayloadWrite === true ||
     !input.canWritePartialPayload ||
     input.contentRectCount !== input.rectPayloadCount ||
     input.dirtySpans.length === 0 ||
     input.dirtySpans.some((span) => isFullGridRenderTileDirtySpanV3(span, input.rectPayloadCount))
   )
+}
+
+export function shouldForceFullRectPayloadWriteForDirtyRevisionV3(input: {
+  readonly dirtyMask: number | null
+  readonly nextRectRevisionKey: TypeGpuTileRectRevisionKeyV3
+  readonly previousRectRevisionKey: TypeGpuTileRectRevisionKeyV3 | null
+}): boolean {
+  if (
+    input.previousRectRevisionKey === null ||
+    areGridRectTileRevisionKeysEqualV3(input.previousRectRevisionKey, input.nextRectRevisionKey)
+  ) {
+    return false
+  }
+  return input.dirtyMask !== null && (input.dirtyMask & RECT_PARTIAL_WRITE_UNSAFE_DIRTY_MASK_V3) !== 0
+}
+
+function resolveTileDirtyMaskForPartialRectWriteV3(tile: Pick<GridRenderTile, 'dirtyMasks'>): number | null {
+  const dirtyMasks = tile.dirtyMasks
+  if (!dirtyMasks || dirtyMasks.length === 0) {
+    return null
+  }
+  let mask = 0
+  for (const dirtyMask of dirtyMasks) {
+    mask |= dirtyMask
+  }
+  return mask
 }
 
 function prepareRectBuffer(
@@ -884,86 +927,4 @@ function writeDecorationRect(
   floats[offset + 18] = clipX1
   floats[offset + 19] = clipY1
   return offset + RECT_INSTANCE_FLOAT_COUNT
-}
-
-function buildDecorationCellKeys(textRuns: readonly GridRenderTile['textRuns'][number][]): ReadonlySet<string> {
-  const keys = new Set<string>()
-  for (const run of textRuns) {
-    if (!run.underline && !run.strike) {
-      continue
-    }
-    if (run.row === undefined || run.col === undefined) {
-      return new Set(['*'])
-    }
-    keys.add(formatDecorationCellKey(run.row, run.col))
-  }
-  return keys
-}
-
-function shouldSyncTextDecorationRects(input: {
-  readonly previousDecorationCellKeys: ReadonlySet<string> | null
-  readonly textRuns: readonly GridRenderTile['textRuns'][number][]
-}): boolean {
-  if ((input.previousDecorationCellKeys?.size ?? 0) > 0) {
-    return true
-  }
-  return input.textRuns.some((run) => run.underline || run.strike)
-}
-
-function shouldSkipTextResourceSyncForNonIntersectingDirtyCells(input: {
-  readonly content: TypeGpuTileContentResourceEntryV3
-  readonly missingGlyphRunSpans: readonly TextQuadRunSpan[]
-  readonly nextTextRunCellKeys: readonly string[] | null
-  readonly previousTextRunCellKeys: readonly string[] | null
-  readonly textRevisionKey: TypeGpuTileTextRevisionKeyV3
-  readonly tile: GridRenderTile
-}): boolean {
-  if (
-    input.missingGlyphRunSpans.length > 0 ||
-    input.content.textRevisionKey === null ||
-    input.content.textHandle === null ||
-    !input.previousTextRunCellKeys ||
-    !input.nextTextRunCellKeys
-  ) {
-    return false
-  }
-  if (!hasOnlyLocalTextCellDirtyMasks(input.tile)) {
-    return false
-  }
-  return (
-    !input.previousTextRunCellKeys.some((key) => isCellKeyDirtyForTile(key, input.tile)) &&
-    !input.nextTextRunCellKeys.some((key) => isCellKeyDirtyForTile(key, input.tile)) &&
-    areTextRunCellKeySequencesEqual(input.previousTextRunCellKeys, input.nextTextRunCellKeys) &&
-    input.content.textRunCount === input.previousTextRunCellKeys.length &&
-    input.textRevisionKey.textRunCount === input.nextTextRunCellKeys.length
-  )
-}
-
-function areTextRunCellKeySequencesEqual(left: readonly string[], right: readonly string[]): boolean {
-  if (left.length !== right.length) {
-    return false
-  }
-  return left.every((key, index) => key === right[index])
-}
-
-function hasOnlyLocalTextCellDirtyMasks(tile: GridRenderTile): boolean {
-  const dirtyMasks = tile.dirtyMasks
-  const dirtyLocalRows = tile.dirtyLocalRows
-  const dirtyLocalCols = tile.dirtyLocalCols
-  if (!dirtyMasks || !dirtyLocalRows || !dirtyLocalCols || dirtyMasks.length === 0) {
-    return false
-  }
-  if (dirtyLocalRows.length !== dirtyMasks.length * 2 || dirtyLocalCols.length !== dirtyMasks.length * 2) {
-    return false
-  }
-  for (const mask of dirtyMasks) {
-    if ((mask & TEXT_CELL_SKIP_FORBIDDEN_DIRTY_MASK) !== 0) {
-      return false
-    }
-  }
-  return true
-}
-
-export function formatDecorationCellKey(row: number, col: number): string {
-  return `${row}:${col}`
 }

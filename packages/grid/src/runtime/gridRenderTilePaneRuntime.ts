@@ -11,14 +11,12 @@ import { DirtyMaskV3, type WorkbookDeltaBatchLikeV3 } from '../renderer-v3/tile-
 import type { TileKey53 } from '../renderer-v3/tile-key.js'
 import type { GridTileInterestBatchV3, GridTileReadinessSnapshotV3 } from './gridTileCoordinator.js'
 import type { GridRuntimeHost } from './gridRuntimeHost.js'
+import { hasUnacknowledgedVisibleDirtyTileKeys, resolveAcknowledgedVisibleDirtyPaneTileKeys } from './gridRenderTilePaneRuntimeReadiness.js'
 import {
   buildRetainedFixedRenderTileDataPanesCompatibility,
   engineHasLocalProjectionRevision,
-  hasUnacknowledgedVisibleDirtyTileKeys,
   isResidentGridRenderTile,
   matchesRenderTileSheetIdentity,
-  normalizeNonNegativeInteger,
-  resolveAcknowledgedVisibleDirtyPaneTileKeys,
   resolveGridRenderTileInputSheetOrdinal,
   resolveRenderTileInterestTileKeys,
   resolveRenderTileResidentTileKeys,
@@ -28,9 +26,8 @@ import {
   sameRenderTileDeltaConnectionIdentity,
   sameRetainedFixedRenderTileDataPanesCompatibility,
   sameWorkbookDeltaConnectionIdentity,
-  shouldForceLocalTilesForWorkbookDelta,
-  tileProjectionRevisionIsBehind,
   upsertRenderTileIntoHost,
+  shouldForceLocalTilesForWorkbookDelta,
   type GridRenderTileInterestRuntimeInput,
   type LocalInvalidationConnectionIdentity,
   type RenderTileDeltaConnectionIdentity,
@@ -38,6 +35,7 @@ import {
   type WorkbookDeltaConnectionIdentity,
 } from './gridRenderTilePaneRuntimeHelpers.js'
 import { hasCompleteRenderTileGrid, hasReadableRenderTileRects, tileSelectedTextNeedsLocalRefresh } from './gridRenderTileTrust.js'
+import { normalizeNonNegativeInteger, resolveLocalRenderGeneration, tileProjectionRevisionIsBehind } from './gridRenderTileRevision.js'
 import { GridVisibleTextRefreshCache } from './gridVisibleTextRefreshCache.js'
 
 type SortedAxisOverrides = readonly (readonly [number, number])[]
@@ -202,7 +200,7 @@ export class GridRenderTilePaneRuntime {
     const preloadResolution = this.resolvePreloadPanes(input, resolution?.tiles ?? [])
     const fixedRenderTileDataPanes = resolution ? this.buildFixedRenderTileDataPanes(input, resolution) : null
     const acknowledgedVisibleTileKeys =
-      fixedRenderTileDataPanes?.source === 'local' ? resolveAcknowledgedVisibleDirtyPaneTileKeys(fixedRenderTileDataPanes.panes) : []
+      fixedRenderTileDataPanes?.source === 'local' ? resolveAcknowledgedVisibleDirtyPaneTileKeys(fixedRenderTileDataPanes.panes, input) : []
     const tileReadiness = this.resolveTileReadiness(input, resolution?.tiles ?? [], preloadResolution.tiles, acknowledgedVisibleTileKeys)
     if (input.sheetId !== undefined && fixedRenderTileDataPanes?.source === 'remote') {
       this.retainedFixedRenderTileDataPanes = {
@@ -386,7 +384,7 @@ export class GridRenderTilePaneRuntime {
       }
       this.noteWorkbookDeltaDamage({
         forceLocalTiles: shouldForceLocalTilesForWorkbookDelta(batch),
-        sequence: batch.seq,
+        sequence: batch.source === 'localOptimistic' ? undefined : batch.seq,
       })
       listener?.(batch)
     })
@@ -676,7 +674,7 @@ export class GridRenderTilePaneRuntime {
     tileKey: TileKey53,
     baseTile: GridRenderTile,
   ): GridRenderTile | null {
-    const generation = resolveLocalRenderTileGeneration(input)
+    const generation = resolveLocalRenderGeneration(input)
     const localTiles = buildLocalFixedRenderTiles({
       cameraSeq: input.gridRuntimeHost.snapshot().camera.seq,
       columnWidths: input.columnWidths,
@@ -751,7 +749,7 @@ export class GridRenderTilePaneRuntime {
         return hybrid
       }
     }
-    const generation = resolveLocalRenderTileGeneration(input)
+    const generation = resolveLocalRenderGeneration(input)
     return {
       source: 'local',
       tiles: buildLocalFixedRenderTiles({
@@ -893,7 +891,7 @@ export class GridRenderTilePaneRuntime {
       return { source: 'remote', tiles: tileKeys.map((tileKey) => remoteTiles.get(tileKey)!) }
     }
 
-    const generation = resolveLocalRenderTileGeneration(input)
+    const generation = resolveLocalRenderGeneration(input)
     const localTiles = new Map(
       buildLocalFixedRenderTiles({
         cameraSeq: input.gridRuntimeHost.snapshot().camera.seq,
@@ -902,6 +900,7 @@ export class GridRenderTilePaneRuntime {
         dprBucket: input.dprBucket,
         editingCell: input.editingCell ?? null,
         engine: input.engine,
+        freezeSeq: input.gridRuntimeHost.snapshot().freezeSeq,
         generation,
         gridMetrics: input.gridMetrics,
         rowHeights: input.rowHeights,
@@ -949,18 +948,6 @@ export class GridRenderTilePaneRuntime {
       listener()
     })
   }
-}
-
-function resolveLocalRenderTileGeneration(input: GridRenderTilePaneRuntimeInput): number {
-  const revision = input.engine.getRenderRevisionSnapshot?.()
-  return Math.max(
-    input.sceneRevision,
-    normalizeNonNegativeInteger(revision?.authoritativeRevision) ?? 0,
-    normalizeNonNegativeInteger(revision?.localRevision) ?? 0,
-    normalizeNonNegativeInteger(revision?.projectedRevision) ?? 0,
-    normalizeNonNegativeInteger(revision?.tileSceneCameraSeq) ?? 0,
-    normalizeNonNegativeInteger(revision?.tileSceneRevision) ?? 0,
-  )
 }
 
 export function getGridRenderTilePaneRuntime(current: unknown): GridRenderTilePaneRuntime {

@@ -864,7 +864,8 @@ describe('workbook agent control loop receipts', () => {
     const payload = z
       .object({
         undone: z.literal(true),
-        applied: z.literal(true),
+        applied: z.literal(false),
+        mutationExecuted: z.literal(true),
         staged: z.literal(false),
         queuedForTurnApply: z.literal(false),
         status: z.literal('verification_incomplete'),

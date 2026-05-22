@@ -42,7 +42,8 @@
     "build": "tsc -p tsconfig.json"
   },
   "dependencies": {
-    "@bilig/protocol": "workspace:*"
+    "@bilig/protocol": "workspace:*",
+    "fflate": "0.3.11"
   },
   "engines": {
     "node": ">=24.0.0"

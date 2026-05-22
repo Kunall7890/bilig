@@ -22,7 +22,12 @@ import { buildImportedDataTableFormulaCells, readImportedWorkbookDataTableFormul
 import { readImportedDefinedNames } from './xlsx-defined-names.js'
 import { shouldUseDenseSheetJsParse } from './xlsx-dense-sheetjs-parse.js'
 import { readImportedWorkbookExternalConnections } from './xlsx-external-connections.js'
-import { readImportedExternalLinkCaches, readImportedExternalWorkbookReferences } from './xlsx-external-references.js'
+import {
+  buildImportedExternalCacheSheetPlan,
+  readImportedExternalLinkCaches,
+  readImportedExternalWorkbookReferences,
+  type ImportedExternalCacheSheetSnapshot,
+} from './xlsx-external-references.js'
 import { readImportedWorkbookExternalLinkArtifacts } from './xlsx-external-link-artifacts.js'
 import {
   attachImportedRuntimeCoordinates,
@@ -32,6 +37,7 @@ import {
   type ImportedRuntimeSheetCells,
 } from './imported-runtime-coordinates.js'
 import { readImportedWorkbookFilters } from './xlsx-filters.js'
+import { applyImportedAutoFilterVisibility } from './xlsx-filter-visibility.js'
 import { readImportedWorkbookFormulaAudit } from './xlsx-formula-audit.js'
 import { normalizeImportedFormulaSource } from './xlsx-formula-translation.js'
 import { readImportedWorksheetFormulaManifests } from './xlsx-formulas.js'
@@ -133,6 +139,49 @@ function readImportedMacroCodeNames(workbook: XLSX.WorkBook): PreservedVbaProjec
     ...(workbookCodeName ? { workbookCodeName } : {}),
     ...(sheetCodeNames.length > 0 ? { sheetCodeNames } : {}),
   }
+}
+
+function buildMaterializedExternalCacheSheets(args: {
+  readonly plan: ReadonlyMap<string, ImportedExternalCacheSheetSnapshot>
+  readonly usedKeys: ReadonlySet<string>
+  readonly firstSheetId: number
+  readonly firstSheetOrder: number
+}): WorkbookSnapshot['sheets'] {
+  return [...args.usedKeys].toSorted().flatMap((key, index) => {
+    const sheet = args.plan.get(key)
+    if (!sheet) {
+      return []
+    }
+    return [
+      {
+        id: args.firstSheetId + index,
+        name: sheet.name,
+        order: args.firstSheetOrder + index,
+        metadata: { visibility: 'veryHidden' as const },
+        cells: Array.from(sheet.cells),
+      },
+    ]
+  })
+}
+
+function createMaterializedExternalCacheRuntimeSheetCells(sheet: WorkbookSnapshot['sheets'][number]): ImportedRuntimeSheetCells {
+  const coords: ImportedRuntimeCellCoordinate[] = []
+  let width = 0
+  let height = 0
+  for (const cell of sheet.cells) {
+    const decoded = cell.row === undefined || cell.col === undefined ? XLSX.utils.decode_cell(cell.address) : undefined
+    const row = cell.row ?? decoded?.r ?? 0
+    const col = cell.col ?? decoded?.c ?? 0
+    coords.push({ row, col })
+    width = Math.max(width, col + 1)
+    height = Math.max(height, row + 1)
+  }
+  return createImportedRuntimeSheetCells({
+    sheetName: sheet.name,
+    coords,
+    width,
+    height,
+  })
 }
 
 function buildImportedLegacyCommentVmlSnapshot(
@@ -311,6 +360,7 @@ function importParsedSheetJsWorkbook(args: {
     ? readImportedWorkbookConditionalFormatArtifacts(conditionalFormatArtifactSource, workbook.SheetNames)
     : new Map()
   const importedExternalLinkCaches = workbookZip ? readImportedExternalLinkCaches(workbookZip) : new Map()
+  const importedExternalCacheSheetPlan = buildImportedExternalCacheSheetPlan(importedExternalLinkCaches, workbook.SheetNames)
   const importedExternalWorkbookReferences = workbookZip ? readImportedExternalWorkbookReferences(workbookZip) : new Map()
   const importedExternalConnections = workbookZip ? readImportedWorkbookExternalConnections(workbookZip) : undefined
   const importedRichTextArtifactsBySheet = workbookZip ? readImportedWorkbookRichTextArtifacts(workbookZip, workbook.SheetNames) : new Map()
@@ -336,6 +386,7 @@ function importParsedSheetJsWorkbook(args: {
   let unsupportedDataTableFormulaCount = 0
   const styleCatalog = new Map<string, CellStyleRecord>()
   const unsupportedFormulaDependencies: NonNullable<WorkbookMetadataSnapshot['unsupportedFormulaDependencies']> = []
+  const usedExternalCacheSheetKeys = new Set<string>()
   const importedArrayFormulaSpills: NonNullable<WorkbookMetadataSnapshot['spills']> = []
   const previewSheets: ImportedWorkbookSheetPreview[] = []
   const runtimeSheetCells: ImportedRuntimeSheetCells[] = []
@@ -437,6 +488,9 @@ function importParsedSheetJsWorkbook(args: {
       if (result.unsupportedFormulaDependency) {
         unsupportedFormulaDependencies.push(result.unsupportedFormulaDependency)
       }
+      for (const key of result.materializedExternalCacheSheetKeys) {
+        usedExternalCacheSheetKeys.add(key)
+      }
     }
     const rowCount = range ? range.e.r + 1 : 0
     const columnCount = range ? range.e.c + 1 : 0
@@ -466,6 +520,7 @@ function importParsedSheetJsWorkbook(args: {
           cachedLiteral: xmlTextValue ?? readImportedLiteralCellValue(cell),
           tables: importedTables,
           externalLinkCaches: importedExternalLinkCaches,
+          externalCacheSheetNames: importedExternalCacheSheetPlan.sheetNamesByExternalSheet,
           externalWorkbookReferences: importedExternalWorkbookReferences,
         })
         if (formulaResult) {
@@ -505,6 +560,7 @@ function importParsedSheetJsWorkbook(args: {
         cachedLiteral: importedWorksheetTextValues?.get(address),
         tables: importedTables,
         externalLinkCaches: importedExternalLinkCaches,
+        externalCacheSheetNames: importedExternalCacheSheetPlan.sheetNamesByExternalSheet,
         externalWorkbookReferences: importedExternalWorkbookReferences,
       })
       if (!formulaResult) {
@@ -538,6 +594,7 @@ function importParsedSheetJsWorkbook(args: {
         cachedLiteral: importedWorksheetTextValues?.get(address) ?? (cell ? readImportedLiteralCellValue(cell) : undefined),
         tables: importedTables,
         externalLinkCaches: importedExternalLinkCaches,
+        externalCacheSheetNames: importedExternalCacheSheetPlan.sheetNamesByExternalSheet,
         externalWorkbookReferences: importedExternalWorkbookReferences,
       })
       if (!formulaResult) {
@@ -637,6 +694,7 @@ function importParsedSheetJsWorkbook(args: {
     const importedProtectedRanges = importedProtectedRangesBySheet.get(sheetName)
     const importedSorts = importedSortsBySheet.get(sheetName)
     const importedFilters = importedFiltersBySheet.get(sheetName)
+    const visibleRows = applyImportedAutoFilterVisibility(sheetName, cells, rows, importedFilters)
     const importedValidations = importedValidationsBySheet.get(sheetName)
     const importedConditionalFormats = importedConditionalFormatsBySheet.get(sheetName)
     const importedConditionalFormatArtifacts = importedConditionalFormatArtifactsBySheet.get(sheetName)
@@ -647,7 +705,7 @@ function importParsedSheetJsWorkbook(args: {
     const importedThreadedCommentArtifactsForSheet = importedThreadedCommentArtifacts?.sheetArtifactsByName.get(sheetName)
     const importedViewStateForSheet = importedViewState?.sheetViewStateByName.get(sheetName)
     const metadata = buildImportedSheetMetadata({
-      rows,
+      rows: visibleRows,
       columns,
       rowMetadata,
       columnMetadata,
@@ -757,13 +815,22 @@ function importParsedSheetJsWorkbook(args: {
     cellMetadata: importedCellMetadata?.workbookMetadata,
   })
 
+  const materializedExternalCacheSheets = buildMaterializedExternalCacheSheets({
+    plan: importedExternalCacheSheetPlan.sheetsByExternalSheet,
+    usedKeys: usedExternalCacheSheetKeys,
+    firstSheetId: sheets.length + 1,
+    firstSheetOrder: sheets.length,
+  })
+  const importedSheets = [...sheets, ...materializedExternalCacheSheets]
+  runtimeSheetCells.push(...materializedExternalCacheSheets.map(createMaterializedExternalCacheRuntimeSheetCells))
+
   const snapshot: WorkbookSnapshot = {
     version: 1,
     workbook: {
       name: workbookName,
       ...(workbookMetadata ? { metadata: workbookMetadata } : {}),
     },
-    sheets,
+    sheets: importedSheets,
   }
 
   const restoredSnapshot = attachImportedRuntimeCoordinates(snapshot, runtimeSheetCells)

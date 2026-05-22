@@ -1,6 +1,10 @@
 import { summarizeNumbers, type NumericSummary } from '../packages/benchmarks/src/stats.js'
-import type { SameCorpusScenarioProof } from './ui-responsiveness-same-corpus-proof.ts'
-import { validateSameCorpusScenarioProof } from './ui-responsiveness-same-corpus-proof.ts'
+import type { SameCorpusProductVisualProof, SameCorpusScenarioProof } from './ui-responsiveness-same-corpus-proof.ts'
+import {
+  buildScorecardScenarioProof,
+  sameCorpusUiRenderProofContractVersion,
+  validateSameCorpusScenarioProof,
+} from './ui-responsiveness-same-corpus-proof.ts'
 import {
   requiredUiResponsivenessSameCorpusWorkloads,
   uiSameCorpusWorkloadRequiresScrollEventEvidence,
@@ -53,8 +57,26 @@ export interface UiResponsivenessSameCorpusProof {
   readonly requiredCaseCount: number
   readonly tenXMeanAndP95CaseCount: number
   readonly coveredCorpusCaseIds: string[]
+  readonly runManifest?: UiResponsivenessSameCorpusRunManifest | undefined
   readonly limitations: string[]
   readonly cases: UiResponsivenessSameCorpusCase[]
+}
+
+export interface UiResponsivenessSameCorpusRunManifest {
+  readonly artifactGenerator: 'scripts/gen-ui-responsiveness-live-browser-scorecard.ts'
+  readonly contractVersion: typeof sameCorpusUiRenderProofContractVersion
+  readonly requiredProducts: readonly UiResponsivenessSameCorpusProduct[]
+  readonly requiredWorkloads: readonly UiResponsivenessSameCorpusWorkload[]
+  readonly capturedWorkloads: readonly UiResponsivenessSameCorpusWorkload[]
+  readonly corpusCaseIds: readonly string[]
+  readonly materializedCellCounts: readonly number[]
+  readonly sampleCount: number
+  readonly caseCount: number
+  readonly strictRenderedGridProofCaseCount: number
+  readonly tenXMeanAndP95CaseCount: number
+  readonly currentContractEvidenceComplete: boolean
+  readonly googleSheetsTenXRequirementSatisfied: boolean
+  readonly invalidReasons: readonly string[]
 }
 
 export interface SameCorpusCapture {
@@ -103,6 +125,8 @@ export interface SameCorpusCaptureCorpusVerification {
 
 const requiredSameCorpusWorkloads = requiredUiResponsivenessSameCorpusWorkloads
 const sameCorpusSampleCount = 3
+const strictRenderedGridProofLimitation =
+  'Some same-corpus cases retain timing evidence but do not satisfy strict rendered-grid proof, so they cannot count toward Google Sheets 10x UI claims.'
 
 export function buildMissingSameCorpusProof(): UiResponsivenessSameCorpusProof {
   return {
@@ -112,6 +136,7 @@ export function buildMissingSameCorpusProof(): UiResponsivenessSameCorpusProof {
     requiredCaseCount: requiredSameCorpusWorkloads.length,
     tenXMeanAndP95CaseCount: 0,
     coveredCorpusCaseIds: [],
+    runManifest: buildSameCorpusRunManifest([]),
     limitations: ['Same-corpus live browser timing against Bilig and Google Sheets has not been captured yet.'],
     cases: [],
   }
@@ -127,7 +152,8 @@ export function buildSameCorpusProof(capture: SameCorpusCapture): UiResponsivene
     requiredCaseCount: requiredSameCorpusWorkloads.length,
     tenXMeanAndP95CaseCount: cases.filter((entry) => entry.tenXMeanAndP95AgainstGoogleSheets).length,
     coveredCorpusCaseIds: [...new Set(cases.map((entry) => entry.corpusCaseId))].toSorted(),
-    limitations: [...capture.limitations],
+    runManifest: buildSameCorpusRunManifest(cases),
+    limitations: sameCorpusProofLimitations(capture.limitations, cases),
     cases,
   }
   validateSameCorpusProof(proof)
@@ -148,6 +174,7 @@ export function validateSameCorpusProof(proof: UiResponsivenessSameCorpusProof):
     if (proof.limitations.length === 0) {
       throw new Error('UI responsiveness same-corpus proof must disclose that capture is missing')
     }
+    validateSameCorpusRunManifest(proof)
     return
   }
   if (proof.evidenceKind !== 'same-corpus-browser-capture') {
@@ -169,9 +196,106 @@ export function validateSameCorpusProof(proof: UiResponsivenessSameCorpusProof):
   if (JSON.stringify(proof.coveredCorpusCaseIds) !== JSON.stringify(coveredCorpusCaseIds)) {
     throw new Error('UI responsiveness same-corpus proof covered corpus IDs are stale')
   }
+  const hasMissingStrictGridProof = proof.cases.some((entry) => !entry.scenarioProof.pixelGridProof.captured)
+  if (hasMissingStrictGridProof && !proof.limitations.includes(strictRenderedGridProofLimitation)) {
+    throw new Error('UI responsiveness same-corpus proof must disclose missing strict rendered-grid proof')
+  }
   for (const entry of proof.cases) {
     validateSameCorpusCase(entry)
   }
+  validateSameCorpusRunManifest(proof)
+}
+
+function buildSameCorpusRunManifest(cases: readonly UiResponsivenessSameCorpusCase[]): UiResponsivenessSameCorpusRunManifest {
+  const capturedWorkloads = cases.map((entry) => entry.workload)
+  const corpusCaseIds = [...new Set(cases.map((entry) => entry.corpusCaseId))].toSorted()
+  const materializedCellCounts = [...new Set(cases.map((entry) => entry.materializedCells))].toSorted((left, right) => left - right)
+  const strictRenderedGridProofCaseCount = cases.filter((entry) => entry.scenarioProof.pixelGridProof.captured).length
+  const tenXMeanAndP95CaseCount = cases.filter((entry) => entry.tenXMeanAndP95AgainstGoogleSheets).length
+  const invalidReasons = sameCorpusRunManifestInvalidReasons({
+    capturedWorkloads,
+    caseCount: cases.length,
+    corpusCaseIds,
+    materializedCellCounts,
+    strictRenderedGridProofCaseCount,
+    tenXMeanAndP95CaseCount,
+  })
+  return {
+    artifactGenerator: 'scripts/gen-ui-responsiveness-live-browser-scorecard.ts',
+    contractVersion: sameCorpusUiRenderProofContractVersion,
+    requiredProducts: ['bilig', 'google-sheets'],
+    requiredWorkloads: requiredSameCorpusWorkloads,
+    capturedWorkloads,
+    corpusCaseIds,
+    materializedCellCounts,
+    sampleCount: manifestSampleCount(cases),
+    caseCount: cases.length,
+    strictRenderedGridProofCaseCount,
+    tenXMeanAndP95CaseCount,
+    currentContractEvidenceComplete: !invalidReasons.some(
+      (reason) => reason !== 'not every required workload is 10x against Google Sheets',
+    ),
+    googleSheetsTenXRequirementSatisfied: invalidReasons.length === 0,
+    invalidReasons,
+  }
+}
+
+function sameCorpusRunManifestInvalidReasons(args: {
+  readonly capturedWorkloads: readonly UiResponsivenessSameCorpusWorkload[]
+  readonly caseCount: number
+  readonly corpusCaseIds: readonly string[]
+  readonly materializedCellCounts: readonly number[]
+  readonly strictRenderedGridProofCaseCount: number
+  readonly tenXMeanAndP95CaseCount: number
+}): string[] {
+  const invalidReasons: string[] = []
+  if (args.caseCount !== requiredSameCorpusWorkloads.length) {
+    invalidReasons.push('required workload count is incomplete')
+  }
+  const missingWorkloads = requiredSameCorpusWorkloads.filter((workload) => !args.capturedWorkloads.includes(workload))
+  if (missingWorkloads.length > 0) {
+    invalidReasons.push(`missing required workloads: ${missingWorkloads.join(', ')}`)
+  }
+  if (new Set(args.capturedWorkloads).size !== args.capturedWorkloads.length) {
+    invalidReasons.push('duplicate workload evidence is present')
+  }
+  if (args.corpusCaseIds.length !== 1) {
+    invalidReasons.push('same-corpus evidence must use exactly one corpus case')
+  }
+  if (args.materializedCellCounts.length > 1) {
+    invalidReasons.push('same-corpus evidence has mixed materialized cell counts')
+  }
+  if (args.strictRenderedGridProofCaseCount !== requiredSameCorpusWorkloads.length) {
+    invalidReasons.push(
+      `strict rendered-grid proof covers ${String(args.strictRenderedGridProofCaseCount)}/${String(requiredSameCorpusWorkloads.length)} cases`,
+    )
+  }
+  if (args.tenXMeanAndP95CaseCount !== requiredSameCorpusWorkloads.length) {
+    invalidReasons.push('not every required workload is 10x against Google Sheets')
+  }
+  return invalidReasons
+}
+
+function manifestSampleCount(cases: readonly UiResponsivenessSameCorpusCase[]): number {
+  return cases.length === 0 ? 0 : Math.min(...cases.map((entry) => entry.sampleCount))
+}
+
+function validateSameCorpusRunManifest(proof: UiResponsivenessSameCorpusProof): void {
+  if (!proof.runManifest) {
+    throw new Error('UI responsiveness same-corpus proof is missing run manifest')
+  }
+  const expected = buildSameCorpusRunManifest(proof.cases)
+  if (JSON.stringify(proof.runManifest) !== JSON.stringify(expected)) {
+    throw new Error('UI responsiveness same-corpus run manifest is stale')
+  }
+}
+
+function sameCorpusProofLimitations(captureLimitations: readonly string[], cases: readonly UiResponsivenessSameCorpusCase[]): string[] {
+  const limitations = [...captureLimitations]
+  if (cases.some((entry) => !entry.scenarioProof.pixelGridProof.captured) && !limitations.includes(strictRenderedGridProofLimitation)) {
+    limitations.push(strictRenderedGridProofLimitation)
+  }
+  return limitations
 }
 
 function validateSameCorpusCapture(capture: SameCorpusCapture): void {
@@ -241,7 +365,13 @@ function buildSameCorpusCase(captureCase: SameCorpusCaptureCase): UiResponsivene
       : (biligToMicrosoftExcelWebMeanRatio ?? Number.POSITIVE_INFINITY) <= 0.1 &&
         (biligToMicrosoftExcelWebP95Ratio ?? Number.POSITIVE_INFINITY) <= 0.1
     : undefined
-  const visualProofGuardrailPassed = captureCase.scenarioProof.screenshotProof.captured && captureCase.scenarioProof.pixelGridProof.captured
+  const scenarioProof = buildScorecardScenarioProof({
+    bilig,
+    googleSheets,
+    microsoftExcelWeb,
+    visualProofs: scenarioProofVisualProofs(captureCase.scenarioProof),
+  })
+  const visualProofGuardrailPassed = scenarioProof.screenshotProof.captured && scenarioProof.pixelGridProof.captured
   const tenXMeanAndP95AgainstGoogleSheets =
     timingMetricPassedAgainstGoogleSheets && postOperationFrameGuardrailPassed && visualProofGuardrailPassed
   const tenXMeanAndP95AgainstMicrosoftExcelWeb =
@@ -279,12 +409,21 @@ function buildSameCorpusCase(captureCase: SameCorpusCaptureCase): UiResponsivene
           scrollMovementGuardrailPassed,
         }
       : { tenXMeanAndP95Metric: 'operationResponseMs' as const }),
-    scenarioProof: { ...captureCase.scenarioProof },
+    scenarioProof,
     postOperationFrameGuardrailPassed,
     tenXMeanAndP95AgainstGoogleSheets,
     ...(tenXMeanAndP95AgainstMicrosoftExcelWeb !== undefined ? { tenXMeanAndP95AgainstMicrosoftExcelWeb } : {}),
     passed: tenXMeanAndP95AgainstGoogleSheets,
   }
+}
+
+function scenarioProofVisualProofs(proof: SameCorpusScenarioProof): SameCorpusProductVisualProof[] {
+  return proof.pixelGridProof.products.map((entry) => ({
+    product: entry.product,
+    screenshotPath: proof.screenshotProof.artifactPaths.find((artifact) => artifact.includes(`${entry.product}-`)) ?? null,
+    screenshotCaptured: !proof.screenshotProof.missingProducts.includes(entry.product),
+    pixelGridProof: entry,
+  }))
 }
 
 function buildSameCorpusMeasurement(capture: SameCorpusCaptureMeasurement): UiResponsivenessSameCorpusMeasurement {

@@ -478,6 +478,11 @@ describe('work paper batched structural fast path', () => {
       expect(workbook.getPerformanceCounters()).toMatchObject({
         calcChainFullScans: 0,
         directFormulaKernelSyncOnlyRecalcSkips: 1,
+        freshDirectScalarBulkRunBindings: 1,
+        freshDirectScalarBulkMembers: appendCount,
+        freshDirectScalarBulkFallbacks: 0,
+        freshDirectScalarBulkReverseEdgeSlices: appendCount * 2,
+        freshDirectScalarFormulaObjectsMaterialized: appendCount,
         kernelSyncOnlyRecalcSkips: 1,
         regionQueryIndexBuilds: 0,
         topoRebuilds: 0,
@@ -523,6 +528,7 @@ describe('work paper batched structural fast path', () => {
       return [rowNumber, rowNumber * 2, `=SUM(A${rowNumber}:B${rowNumber})`]
     })
 
+    workbook.resetPerformanceCounters()
     workbook.batch(() => {
       workbook.addRows(sheetId, 2, appendCount)
       workbook.setCellContents(cell(sheetId, 2, 0), rows)
@@ -532,6 +538,12 @@ describe('work paper batched structural fast path', () => {
     expect(runtimeFormula.dependencyIndices).toHaveLength(0)
     expect(runtimeFormula.rangeDependencies).toHaveLength(0)
     expect(workbook.getCellValue(cell(sheetId, 2, 2))).toEqual({ tag: ValueTag.Number, value: 9 })
+    expect(workbook.getPerformanceCounters()).toMatchObject({
+      directFormulaKernelSyncOnlyRecalcSkips: 1,
+      freshDirectAggregateMatrixPlanApplications: 1,
+      freshDirectAggregateMatrixPlanMembers: appendCount,
+      kernelSyncOnlyRecalcSkips: 1,
+    })
 
     workbook.setCellContents(cell(sheetId, 2, 0), 10)
     expect(workbook.getCellValue(cell(sheetId, 2, 2))).toEqual({ tag: ValueTag.Number, value: 16 })

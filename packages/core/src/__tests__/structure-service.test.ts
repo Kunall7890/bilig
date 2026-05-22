@@ -854,7 +854,7 @@ describe('EngineStructureService', () => {
       engine.workbook.getCellIndex('Sheet1', 'B1')!,
       engine.workbook.getCellIndex('Sheet1', 'B4')!,
     ])
-    expect(engine.getPerformanceCounters().structuralFormulaImpactCandidates).toBe(0)
+    expect(engine.getPerformanceCounters().structuralFormulaImpactCandidates).toBe(2)
   })
 
   it('keeps repeated simple column families off the topology and dirty-formula path for inserts', async () => {

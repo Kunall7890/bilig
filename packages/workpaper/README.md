@@ -81,6 +81,30 @@ can install one focused package and still get the MCP stdio server:
 import { createWorkPaperMcpServer } from '@bilig/workpaper/mcp'
 ```
 
+If your agent framework already has a tool-calling loop, use the transport-free
+tool helpers instead of copying workbook code into every integration:
+
+```ts
+import { createWorkPaperAgentTools } from '@bilig/workpaper/agent-tools'
+
+const tools = createWorkPaperAgentTools(workbook, {
+  allowedInputSheets: ['Inputs'],
+  trackedRanges: ['Summary!A1:B5'],
+  writable: true,
+})
+
+const proof = tools.setWorkPaperCell({
+  target: 'Inputs!B3',
+  value: 0.4,
+})
+
+console.log(proof.checks.restoredMatchesAfter)
+```
+
+Writes are read-only by default. Opt into `writable: true`, set an input-sheet
+allowlist, and return the structured proof object to AI SDK, LangChain,
+OpenAI Agents, MCP, or a route handler.
+
 For a runnable starter project with `AGENTS.md`, MCP client config, and an
 `agent:verify` script:
 

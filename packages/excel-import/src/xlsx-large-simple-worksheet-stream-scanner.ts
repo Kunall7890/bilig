@@ -5,7 +5,7 @@ import {
   wrapLargeSimpleAutoFilterColumnBytes,
 } from './xlsx-large-simple-autofilter-byte-scan.js'
 import {
-  readLargeSimpleCellValueFromTextRange,
+  readLargeSimpleCellValueFromTextRangeByTypeCode,
   readLargeSimpleSharedStringIndexFromTextRange,
 } from './xlsx-large-simple-cell-value-scan.js'
 import { LargeSimpleFormulaRecords, readLargeSimpleFormulaTypeCode } from './xlsx-large-simple-formula-records.js'
@@ -19,10 +19,13 @@ import type { LargeSimpleSharedStrings } from './xlsx-large-simple-shared-string
 import type { ImportedWorkbookStringPool } from './xlsx-large-simple-string-pool.js'
 import { decodeBytes, decodeCellAddress, packedAddressColumn, packedAddressRow } from './xlsx-large-simple-xml-byte-utils.js'
 import {
+  cellTypeInlineStringCode,
+  cellTypeSharedStringCode,
   findClosingTag,
   findTagEnd,
   hasElement,
   isSelfClosingTag,
+  readCellTypeCodeFromTag,
   readCellStyleIndexFromTag,
   readElementTextRange,
   readPackedCellAddressAttributeFromTag,
@@ -34,7 +37,7 @@ import {
   readFormulaSpec,
   readInlineStringCellValue,
   readPositiveIntegerAttributeFromTag,
-  readRichTextCellArtifact,
+  readRichTextCellArtifactByTypeCode,
 } from './xlsx-large-simple-worksheet-stream-cell-readers.js'
 import {
   type ActiveConditionalFormatting,
@@ -47,7 +50,8 @@ const lessThan = 60
 const slash = 47
 const emptyBytes = new Uint8Array(0)
 const packedAddressColumnFactor = 16_384
-const maxEagerDenseDimensionCellPreallocation = 1_000_000
+const maxEagerDenseDimensionCellPreallocation = 6_000_000
+const maxEagerDenseDimensionColumnPreallocation = 1_024
 
 interface ActiveAutoFilter {
   readonly rootTag: Uint8Array
@@ -214,7 +218,13 @@ class LargeSimpleWorksheetChunkScanner {
     }
     this.compact()
     this.reportRetainedBufferLength()
-    if (this.failed || (this.formulas.count > 0 && !this.formulas.resolveIntoArena(this.arena))) {
+    if (this.failed) {
+      this.formulas.release()
+      return null
+    }
+    const formulasResolved = this.formulas.count === 0 || this.formulas.resolveIntoArena(this.arena)
+    this.formulas.release()
+    if (!formulasResolved) {
       return null
     }
     return {
@@ -391,17 +401,18 @@ class LargeSimpleWorksheetChunkScanner {
 
   private reserveDimensionCellCapacity(rowCount: number, columnCount: number): void {
     const cellCapacity = rowCount * columnCount
-    if (
-      !this.retainCells ||
-      this.dimensionCellPreallocationApplied ||
-      !Number.isSafeInteger(cellCapacity) ||
-      cellCapacity <= 0 ||
-      cellCapacity > Math.min(this.maxDimensionCellPreallocation, maxEagerDenseDimensionCellPreallocation)
-    ) {
+    if (!this.retainCells || this.dimensionCellPreallocationApplied || !Number.isSafeInteger(cellCapacity) || cellCapacity <= 0) {
       return
     }
     this.dimensionCellPreallocationApplied = true
-    this.arena.reserveDenseRowMajorCellCapacity(this.sheetIndex, columnCount, rowCount)
+    if (
+      columnCount <= maxEagerDenseDimensionColumnPreallocation &&
+      cellCapacity <= Math.min(this.maxDimensionCellPreallocation, maxEagerDenseDimensionCellPreallocation)
+    ) {
+      this.arena.reserveDenseRowMajorCellCapacity(this.sheetIndex, columnCount, rowCount)
+      return
+    }
+    this.arena.trackLinearRowMajorCellCoordinates(this.sheetIndex, columnCount, rowCount)
   }
 
   private readCell(nameEnd: number, tagEnd: number, final: boolean): boolean {
@@ -424,13 +435,13 @@ class LargeSimpleWorksheetChunkScanner {
     this.currentRow = row
     this.nextImplicitColumn = column + 1
     this.metadata.collectCellMetadataRef(this.buffer, row, column, nameEnd, tagEnd)
-    const cellType = readXmlAttributeFromTag(this.buffer, nameEnd, tagEnd, 't')
-    if (!this.hasSharedStrings && cellType === 's') {
+    const cellType = readCellTypeCodeFromTag(this.buffer, nameEnd, tagEnd)
+    if (!this.hasSharedStrings && cellType === cellTypeSharedStringCode) {
       this.failed = true
       return false
     }
     const styleIndex = readCellStyleIndexFromTag(this.buffer, nameEnd, tagEnd)
-    const shouldReadSharedStringIndex = cellType === 's' && (this.retainCells || this.deferSharedStrings)
+    const shouldReadSharedStringIndex = cellType === cellTypeSharedStringCode && (this.retainCells || this.deferSharedStrings)
     const rawValueRange =
       this.retainCells || shouldReadSharedStringIndex ? readElementTextRange(this.buffer, contentStart, closing.start, 'v') : null
     const sharedStringIndex = shouldReadSharedStringIndex ? readLargeSimpleSharedStringIndexFromTextRange(this.buffer, rawValueRange) : null
@@ -440,12 +451,13 @@ class LargeSimpleWorksheetChunkScanner {
         return false
       }
     }
-    const deferSharedStringValue = this.retainCells && this.deferSharedStrings && cellType === 's' && sharedStringIndex !== null
+    const deferSharedStringValue =
+      this.retainCells && this.deferSharedStrings && cellType === cellTypeSharedStringCode && sharedStringIndex !== null
     const value =
       this.retainCells && !deferSharedStringValue
-        ? cellType === 'inlineStr'
+        ? cellType === cellTypeInlineStringCode
           ? readInlineStringCellValue(this.buffer, contentStart, closing.start)
-          : readLargeSimpleCellValueFromTextRange(this.buffer, rawValueRange, cellType, this.sharedStrings)
+          : readLargeSimpleCellValueFromTextRangeByTypeCode(this.buffer, rawValueRange, cellType, this.sharedStrings)
         : hasElement(this.buffer, contentStart, closing.start, 'v') || hasElement(this.buffer, contentStart, closing.start, 'is')
           ? null
           : undefined
@@ -497,7 +509,16 @@ class LargeSimpleWorksheetChunkScanner {
       }
       const richTextCell =
         this.retainCells && !deferSharedStringValue
-          ? readRichTextCellArtifact(this.buffer, contentStart, closing.start, row, column, cellType, sharedStringIndex, this.sharedStrings)
+          ? readRichTextCellArtifactByTypeCode(
+              this.buffer,
+              contentStart,
+              closing.start,
+              row,
+              column,
+              cellType,
+              sharedStringIndex,
+              this.sharedStrings,
+            )
           : undefined
       if (richTextCell) {
         this.richTextCells.push(richTextCell)

@@ -1,8 +1,16 @@
 import { expect, test, type Page } from '@playwright/test'
-import { PRIMARY_MODIFIER, clickProductCell, createTestDocumentId, waitForWorkbookReady } from './web-shell-helpers.js'
+import {
+  PRIMARY_MODIFIER,
+  clickProductCell,
+  countDarkReadbackPixelsInCell,
+  createTestDocumentId,
+  installTypeGpuCellReadbackHarness,
+  waitForWorkbookReady,
+} from './web-shell-helpers.js'
 
 test('@browser-ci web app keeps an in-cell Delete clear committed after clicking away', async ({ page }) => {
   const staleText = 'editor-delete-clickaway'
+  await installTypeGpuCellReadbackHarness(page)
   await page.goto(`/?document=${encodeURIComponent(createTestDocumentId('playwright-editor-delete-click-away'))}&persist=0`)
   await waitForWorkbookReady(page)
 
@@ -14,7 +22,7 @@ test('@browser-ci web app keeps an in-cell Delete clear committed after clicking
   await formulaInput.fill(staleText)
   await formulaInput.press('Enter')
   await expect(formulaInput).toHaveValue(staleText)
-  await expect.poll(() => nativeTextRunsInclude(page, staleText)).toBe(true)
+  await expectCellRenderedText(page, 1, 1, staleText, 'visible')
 
   await page.getByTestId('sheet-grid-focus-target').focus()
   await page.keyboard.press('F2')
@@ -28,16 +36,17 @@ test('@browser-ci web app keeps an in-cell Delete clear committed after clicking
   await clickProductCell(page, 2, 1)
   await expect(cellEditor).toHaveCount(0)
   await expect(formulaInput).toHaveValue('')
-  await expect.poll(() => nativeTextRunsInclude(page, staleText)).toBe(false)
+  await expectCellRenderedText(page, 1, 1, staleText, 'hidden')
 
   await clickProductCell(page, 1, 1)
   await expect(page.getByTestId('status-selection')).toHaveText('Sheet1!B2')
   await expect(formulaInput).toHaveValue('')
-  await expect.poll(() => nativeTextRunsInclude(page, staleText)).toBe(false)
+  await expectCellRenderedText(page, 1, 1, staleText, 'hidden')
 })
 
 test('@browser-ci web app keeps active in-cell undo and redo local to the draft editor', async ({ page }) => {
   const documentId = createTestDocumentId('playwright-editor-local-undo-redo')
+  await installTypeGpuCellReadbackHarness(page)
   await page.goto(`/?document=${encodeURIComponent(documentId)}&persist=0&sheet=Sheet1&cell=B2`)
   await waitForWorkbookReady(page)
 
@@ -76,6 +85,7 @@ test('@browser-ci web app keeps active in-cell undo and redo local to the draft 
   await expect(cellEditor).toHaveCount(0)
   await expect(page.getByTestId('status-selection')).toHaveText('Sheet1!B3')
   await expect.poll(() => nativeTextRunsInclude(page, 'abc')).toBe(false)
+  await expectCellRenderedText(page, 1, 1, 'ab', 'visible')
   await clickProductCell(page, 1, 1)
   await expect(formulaInput).toHaveValue('ab')
   await expect.poll(() => nativeTextRunsInclude(page, 'ab')).toBe(true)
@@ -103,4 +113,26 @@ async function nativeTextRunsInclude(page: Page, text: string): Promise<boolean>
     const resolvedValue = document.querySelector('[data-testid="formula-resolved-value"]')?.textContent ?? ''
     return selectedValue.includes(needle) || resolvedValue.includes(needle)
   }, text)
+}
+
+async function expectCellRenderedText(
+  page: Page,
+  columnIndex: number,
+  rowIndex: number,
+  text: string,
+  expected: 'hidden' | 'visible',
+): Promise<void> {
+  const hasTypeGpuCanvas = (await page.getByTestId('grid-pane-renderer').count()) > 0
+  if (!hasTypeGpuCanvas) {
+    await expect.poll(() => nativeTextRunsInclude(page, text)).toBe(expected === 'visible')
+    return
+  }
+  const darkPixelPoll = expect.poll(async () => await countDarkReadbackPixelsInCell(page, columnIndex, rowIndex), {
+    message: `cell ${columnIndex}:${rowIndex} rendered text should be ${expected}`,
+  })
+  if (expected === 'visible') {
+    await darkPixelPoll.toBeGreaterThan(4)
+    return
+  }
+  await darkPixelPoll.toBeLessThanOrEqual(2)
 }

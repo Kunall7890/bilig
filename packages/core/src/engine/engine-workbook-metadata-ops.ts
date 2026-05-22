@@ -9,6 +9,7 @@ import type {
 } from '@bilig/protocol'
 import type { EngineOp } from '@bilig/workbook'
 import type { PivotTableInput } from './runtime-state.js'
+import { sourcefulPivotToUpsertOp } from './services/pivot-op-helpers.js'
 import type { WorkbookStore } from '../workbook-store.js'
 import { canonicalWorkbookRangeRef } from '../workbook-range-records.js'
 
@@ -92,16 +93,13 @@ export function buildSetRangeProtectionOps(workbook: WorkbookStore, protection: 
 
 export function buildSetPivotTableOps(sheetName: string, address: string, definition: PivotTableInput): EngineOp[] {
   return [
-    {
-      kind: 'upsertPivotTable',
+    sourcefulPivotToUpsertOp({
+      ...definition,
       name: definition.name.trim(),
       sheetName,
       address,
-      source: { ...definition.source },
-      groupBy: [...definition.groupBy],
-      values: definition.values.map((value) => Object.assign({}, value)),
       rows: 1,
       cols: Math.max(definition.groupBy.length + definition.values.length, 1),
-    },
+    }),
   ]
 }

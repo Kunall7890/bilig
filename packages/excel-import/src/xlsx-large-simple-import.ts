@@ -25,7 +25,12 @@ import { appendLargeSimpleConditionalFormats } from './xlsx-large-simple-conditi
 import { internLargeSimpleWorksheetMetadata } from './xlsx-large-simple-metadata-interning.js'
 import { prepareLargeSimplePackageArtifactsForZipRelease } from './xlsx-large-simple-package-artifact-release.js'
 import { readLargeSimpleSheetPrintMetadata, readLargeSimpleSheetPrintPageSetup } from './xlsx-large-simple-printer-settings.js'
-import { readAllLargeSimpleSharedStrings, readReferencedLargeSimpleSharedStrings } from './xlsx-large-simple-referenced-shared-strings.js'
+import { buildLargeSimpleRuntimeSheetCells } from './xlsx-large-simple-runtime-sheet-cells.js'
+import {
+  readAllLargeSimpleSharedStrings,
+  readAllLargeSimpleSharedStringsStreamed,
+  readReferencedLargeSimpleSharedStrings,
+} from './xlsx-large-simple-referenced-shared-strings.js'
 import {
   emptyLargeSimpleSharedStringIndexes,
   LargeSimpleSharedStringIndexCollector,
@@ -49,7 +54,11 @@ import {
   drawingRelationshipIdForScannedWorksheet,
   sheetPivotArtifactsWithStreamedDefinitions,
 } from './xlsx-large-simple-materialization-helpers.js'
-import { buildParsedWorksheet, lazySheetCellMaterializationNumberFormatThreshold } from './xlsx-large-simple-build-parsed-worksheet.js'
+import {
+  buildParsedWorksheet,
+  lazySheetCellMaterializationNumberFormatThreshold,
+  lazySheetCellMaterializationThreshold,
+} from './xlsx-large-simple-build-parsed-worksheet.js'
 import { mergeWorkbookRichTextCells } from './xlsx-large-simple-lazy-rich-text-cells.js'
 import { hasExternalLargeSimplePivotCaches } from './xlsx-large-simple-pivot-warnings.js'
 import { ImportedWorkbookStringPool } from './xlsx-large-simple-string-pool.js'
@@ -82,6 +91,7 @@ import {
   getZipText,
   normalizeZipPath,
   readLazyXlsxZipSourceByteLength,
+  readXlsxZipEntryUncompressedSize,
   releaseLazyXlsxZipSource,
   replaceLazyXlsxZipSource,
   type XlsxZipEntries,
@@ -107,6 +117,8 @@ export type {
 
 const defaultLargeSimpleXlsxByteThreshold = 1_000_000
 const maxPreservedBlankStyleCellCount = 10_000
+const maxMultiSheetDimensionCellPreallocation = 1_000_000
+const eagerSharedStringsXmlByteThreshold = 1_000_000
 const workbookPath = 'xl/workbook.xml'
 const workbookRelationshipsPath = 'xl/_rels/workbook.xml.rels'
 const sharedStringsPath = 'xl/sharedStrings.xml'
@@ -159,6 +171,7 @@ export function tryImportLargeSimpleXlsx(
   const materializeMetadata = options.materializeMetadata !== false
   const hasSharedStrings = packagePaths.includes(sharedStringsPath)
   const hasStyles = packagePaths.includes(stylesPath)
+  const hasCalcChain = packagePaths.includes('xl/calcChain.xml')
   const hasDrawingParts = packagePaths.some((path) => path.startsWith('xl/drawings/') || path.startsWith('xl/media/'))
   const hasChartParts = packagePaths.some((path) => path.startsWith('xl/charts/') || path.startsWith('xl/chartSheets/'))
   const hasPivotParts = packagePaths.some((path) => path.startsWith('xl/pivotTables/') || path.startsWith('xl/pivotCache/'))
@@ -208,6 +221,23 @@ export function tryImportLargeSimpleXlsx(
   const deduplicateInlineStrings = hasSharedStrings ? true : 'bounded'
   const deduplicateFormulaStrings = 'bounded'
   let fallbackSharedStrings: LargeSimpleSharedStrings | null | undefined = hasSharedStrings ? undefined : []
+  if (
+    materializeCells &&
+    hasSharedStrings &&
+    !hasCalcChain &&
+    !hasPivotParts &&
+    (readXlsxZipEntryUncompressedSize(zip, sharedStringsPath) ?? Number.POSITIVE_INFINITY) <= eagerSharedStringsXmlByteThreshold
+  ) {
+    const sharedStringResolutionStart = phaseRecorder.start()
+    fallbackSharedStrings = readAllLargeSimpleSharedStringsStreamed(zip, {
+      deduplicateText: 'bounded',
+      stringPool,
+    })
+    if (fallbackSharedStrings === null) {
+      return null
+    }
+    phaseRecorder.finish('shared-string-resolution', sharedStringResolutionStart)
+  }
   delete zip[workbookPath]
   delete zip[workbookRelationshipsPath]
   const workbookName = stringPool.intern(normalizeWorkbookName(fileName))
@@ -226,7 +256,7 @@ export function tryImportLargeSimpleXlsx(
     materializeCells &&
     worksheetEntries.length > 1 &&
     options.allowPreReleaseSheetFinalization === true &&
-    options.releaseOwnedSourceBytes === undefined
+    (options.releaseOwnedSourceBytes === undefined || options.allowPreReleaseSheetFinalizationWithOwnedSourceRelease === true)
   const sheetHasRelationshipBackedArtifacts = (
     sheetName: string,
     metadataScan: LargeSimpleWorksheetScannedMetadata | undefined,
@@ -249,8 +279,8 @@ export function tryImportLargeSimpleXlsx(
   ): boolean =>
     materializeCells &&
     !sheetHasRelationshipBackedArtifacts(sheetName, metadataScan, worksheetXml) &&
-    cellScan.styleIndexes.hasCoordinateStorage &&
     cellScan.styleIndexes.count === 0 &&
+    !cellScan.styleIndexes.hasRequiredStyleIndexes &&
     (options.releaseZipSource !== true || allowPreReleaseSheetFinalization)
   const emptyStylesByIndex = new Map<number, Omit<CellStyleRecord, 'id'>>()
   const appendParsedWorksheet = (parsed: ParsedWorksheet): void => {
@@ -289,7 +319,7 @@ export function tryImportLargeSimpleXlsx(
           retainStyleIndexes: materializeCells && hasStyles,
           retainStyleCoordinates: materializeCells && hasStyles && !deferStyleCoordinates,
           sharedStrings: fallbackSharedStrings ?? [],
-          deferSharedStrings: materializeCells && hasSharedStrings,
+          deferSharedStrings: materializeCells && hasSharedStrings && fallbackSharedStrings === undefined,
           retainMetadataXml: materializeMetadata,
           sheetName: entry.name,
           stringPool,
@@ -301,7 +331,10 @@ export function tryImportLargeSimpleXlsx(
           ...(options.allowUnsupportedCellMetadata === undefined
             ? {}
             : { allowUnsupportedCellMetadata: options.allowUnsupportedCellMetadata }),
-          maxDimensionCellPreallocation: maxPreallocatedWorksheetCells(zip, entry.path),
+          maxDimensionCellPreallocation:
+            worksheetEntries.length === 1
+              ? maxPreallocatedWorksheetCells(zip, entry.path)
+              : Math.min(maxPreallocatedWorksheetCells(zip, entry.path), maxMultiSheetDimensionCellPreallocation),
         },
       )
       if (!streamed) {
@@ -478,7 +511,10 @@ export function tryImportLargeSimpleXlsx(
       metadataInput = { ...metadataInput, filters: [...streamedMetadataScan.filters] }
     }
     worksheetBytes = undefined
-    if (!hasSharedStrings && canFinalizeSheetBeforeStyleParsing(entry.name, cellScan, retainedMetadataScan, worksheetXml)) {
+    if (
+      (!hasSharedStrings || fallbackSharedStrings !== undefined) &&
+      canFinalizeSheetBeforeStyleParsing(entry.name, cellScan, retainedMetadataScan, worksheetXml)
+    ) {
       phaseRecorder.finish('metadata-parsing', metadataParsingStart)
       const snapshotMaterializationStart = phaseRecorder.start()
       appendParsedWorksheet(
@@ -524,6 +560,15 @@ export function tryImportLargeSimpleXlsx(
   if (materializeCells && hasSharedStrings && referencedSharedStringIndexSet.size > 0) {
     for (const [index, scanned] of scannedWorksheets.entries()) {
       if (!scanned || scanned.sharedStringIndexes.size === 0) {
+        continue
+      }
+      if (scanned.cellScan.cellCount > lazySheetCellMaterializationThreshold) {
+        scannedWorksheets[index] = {
+          ...scanned,
+          sharedStrings,
+          sharedStringIndexes: emptyLargeSimpleSharedStringIndexes,
+          hasUnresolvedSharedStringReferences: true,
+        }
         continue
       }
       const richSharedStringIndexes = collectReferencedLargeSimpleRichSharedStringIndexes(sharedStrings, scanned.sharedStringIndexes)
@@ -901,32 +946,7 @@ export function tryImportLargeSimpleXlsx(
             : {}),
         }
       : undefined
-  const runtimeSheetCells = sheetStats.flatMap((entry, index) => {
-    const sheet = sheets[index]
-    const usedRange = entry.dimension.usedRange
-    if (
-      !sheet ||
-      usedRange === null ||
-      usedRange.startRow !== 0 ||
-      usedRange.startColumn !== 0 ||
-      entry.cellCount !== sheet.cells.length ||
-      entry.cellCount !== entry.dimension.rowCount * entry.dimension.columnCount
-    ) {
-      return []
-    }
-    return [
-      {
-        sheetName: sheet.name,
-        coords: [],
-        coordinateOrder: 'dense-row-major' as const,
-        dimensions: {
-          width: entry.dimension.columnCount,
-          height: entry.dimension.rowCount,
-        },
-        cellCount: entry.cellCount,
-      },
-    ]
-  })
+  const runtimeSheetCells = buildLargeSimpleRuntimeSheetCells(sheetStats, sheets)
   const snapshot: WorkbookSnapshot = {
     version: 1,
     workbook: {

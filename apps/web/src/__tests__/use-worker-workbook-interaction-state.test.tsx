@@ -135,13 +135,15 @@ describe('useWorkerWorkbookInteractionState', () => {
       throw new Error('Expected interaction state capture')
     }
 
+    let commitResult: boolean | undefined
     await act(async () => {
       captured?.beginEditing()
       captured?.handleEditorChange('after')
-      captured?.commitEditor()
+      commitResult = captured?.commitEditor()
       await Promise.resolve()
     })
 
+    expect(commitResult).toBe(true)
     expect(invokeMutation).toHaveBeenCalledWith('setCellValue', 'Sheet1', 'A1', 'after')
 
     await act(async () => {
@@ -255,19 +257,68 @@ describe('useWorkerWorkbookInteractionState', () => {
       throw new Error('Expected interaction state capture')
     }
 
+    let commitResult: boolean | undefined
     await act(async () => {
       captured?.beginEditing('', 'select-all', 'formula')
       workerHandle.viewportStore.setCellSnapshot(stringCell('Sheet1', 'A1', 'stale value'))
-      captured?.commitEditor(undefined, '')
+      commitResult = captured?.commitEditor(undefined, '')
       await Promise.resolve()
     })
 
+    expect(commitResult).toBe(false)
     expect(invokeMutation).not.toHaveBeenCalled()
     expect(captured?.editorConflictBanner).toBeTruthy()
     expect(workerHandle.viewportStore.getCell('Sheet1', 'A1')).toMatchObject({
       input: 'stale value',
       value: { tag: ValueTag.String, value: 'stale value' },
     })
+
+    await act(async () => {
+      harness.root.unmount()
+    })
+  })
+
+  it('blocks click-away selection when compare conflict keeps the editor open', async () => {
+    ;(globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true
+
+    const selectedCell = stringCell('Sheet1', 'A1', 'original')
+    const workerHandle = {
+      viewportStore: createViewportStoreMapStub([selectedCell, stringCell('Sheet1', 'B1', 'next')]),
+    }
+    const invokeMutation = vi.fn(async () => undefined)
+    const sendSelectionChanged = vi.fn()
+    const harness = mountHarness()
+    let captured: ReturnType<typeof useWorkerWorkbookInteractionState> | null = null
+
+    await harness.render({
+      documentId: 'doc-1',
+      selection: { sheetName: 'Sheet1', address: 'A1' },
+      selectedCell,
+      workerHandle,
+      invokeMutation,
+      sendSelectionChanged,
+      capture: (value) => {
+        captured = value
+      },
+    })
+    if (!captured) {
+      throw new Error('Expected interaction state capture')
+    }
+
+    await act(async () => {
+      captured?.beginEditing('', 'select-all', 'formula')
+      captured?.handleEditorChange('local draft')
+      workerHandle.viewportStore.setCellSnapshot(stringCell('Sheet1', 'A1', 'remote change'))
+      captured?.handleSelectionChange(singleCellSnapshot('Sheet1', 'B1'))
+      await Promise.resolve()
+    })
+
+    expect(invokeMutation).not.toHaveBeenCalled()
+    expect(captured?.editorConflictBanner).toBeTruthy()
+    expect(captured?.selectionRef.current).toEqual({ sheetName: 'Sheet1', address: 'A1' })
+    expect(captured?.visibleSelection).toEqual({ sheetName: 'Sheet1', address: 'A1' })
+    expect(captured?.visibleEditorValue).toBe('local draft')
+    expect(sendSelectionChanged).not.toHaveBeenCalledWith({ sheetName: 'Sheet1', address: 'B1' })
 
     await act(async () => {
       harness.root.unmount()

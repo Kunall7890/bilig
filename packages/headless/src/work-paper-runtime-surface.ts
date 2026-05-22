@@ -24,7 +24,7 @@ import {
 } from './work-paper-named-expression-helpers.js'
 import type { WorkPaperEngineEventTracker } from './work-paper-engine-event-tracker.js'
 import type { WorkPaperMutationQueues } from './work-paper-mutation-queues.js'
-import { applyWorkPaperCellMutationRefs } from './work-paper-cell-mutation-refs.js'
+import { applyWorkPaperCellMutationRefs, type WorkPaperCellMutationApplyOptions } from './work-paper-cell-mutation-refs.js'
 import {
   materializeTrackedIndexChangeSourcesWithMetadata,
   materializeTrackedIndexChangesWithMetadata,
@@ -326,16 +326,7 @@ export abstract class WorkPaperRuntimeSurface extends WorkPaperRuntimeMetadataSu
     this.mutationQueues.flushPendingBatchOps()
   }
 
-  protected applyCellMutationRefs(
-    refs: readonly EngineCellMutationRef[],
-    options: {
-      captureUndo?: boolean
-      potentialNewCells?: number
-      source?: 'local' | 'restore'
-      returnUndoOps?: boolean
-      reuseRefs?: boolean
-    },
-  ): void {
+  protected applyCellMutationRefs(refs: readonly EngineCellMutationRef[], options: WorkPaperCellMutationApplyOptions): void {
     applyWorkPaperCellMutationRefs(this.runtimeAdapters.cellMutationApplyRuntime, refs, options)
   }
 

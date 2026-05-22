@@ -26,8 +26,15 @@ flowchart LR
   - snapshot import/export
 - `@bilig/workbook`
   - agent-first public workbook model API
+  - phase-scoped find/check/action contexts
+  - frozen workbook refs with non-enumerable ergonomic helpers
+  - generic selector validation and collision-resistant opaque ref ids before runtime handoff
   - JSON-safe action input planning and verification
+  - action-object metadata and plain input descriptions for agent manifests
+  - token-safe formula input materialization through runtime adapters
   - machine-readable readback checks for runtime proof
+  - failed apply-and-prove results preserve runtime undo refs when available
+  - stable run error code union for predictable agent branching
   - transport-neutral run adapters for apply-and-prove receipts
   - generic check verifier handoff for runtime-owned invariants
   - transport-neutral workbook ops and txns

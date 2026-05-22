@@ -1,217 +1,505 @@
 # @bilig/workbook
 
-Agent-first workbook model API and transport-neutral workbook operation language for bilig.
+Agent-first workbook models and portable workbook intent for Bilig.
 
-Build `@bilig/workbook` so an agent would love using it: simple, generic,
-predictable, inspectable, verifiable, and never dependent on hardcoded business
-models or human spreadsheet UI assumptions.
+The bar is simple: an agent must love this library. It should be simple,
+generic, predictable, inspectable, verifiable, and never depend on hardcoded
+business models or human spreadsheet UI assumptions.
 
-Use this package when a consumer needs to describe workbook work without taking a
-dependency on the engine, app server, transport, or replica-state implementation.
+Use `@bilig/workbook` when you want a consumer-defined workbook model that an
+agent can inspect, plan, verify, and hand to a runtime. The package does not
+calculate formulas, open a grid, or ship built-in business templates. It gives
+you a small public language for saying:
 
-The public surface stays generic:
+- what workbook structure to find;
+- what action to take;
+- what formulas or values to write;
+- what checks prove the action worked;
+- what portable operations a runtime should execute.
 
-- `defineModel`
-- `buildWorkbookActionPlan`
-- `planWorkbookAction`
-- `inspectModel`
-- `collectWorkbookRefs`
-- `findTable`, `findColumn`, `findRange`, `findName`, `findRows`
-- `check`
-- `describeModel`
-- `describeRef`
-- `describePlan`
-- `describePlanResult`
-- `verifyPlan`
-- `verifyModel`
-- `runWorkbookPlan`
-- `runWorkbookAction`
-- `verifyWorkbookReadbacks`
-- `formula`
-- `workbook.addOp(op, { target?, message? })` inside model actions
-- `WorkbookModel`
-- `WorkbookAction`
-- `WorkbookActionInput`
-- `WorkbookAddOpOptions`
-- `WorkbookActionPlanResult`
-- `WorkbookModelDescription`
-- `WorkbookRefDescription`
-- `WorkbookActionPlanDescription`
-- `WorkbookActionPlanResultDescription`
-- `WorkbookPlanVerification`
-- `WorkbookPlanIssue`
-- `WorkbookModelVerification`
-- `WorkbookModelActionVerification`
-- `WorkbookModelVerificationOptions`
-- `WorkbookRunAdapter`
-- `WorkbookRunApplyResult`
-- `WorkbookRunReadback`
-- `WorkbookReadbackVerification`
-- `WorkbookReadbackIssue`
-- `WorkbookReadbackIssueCode`
-- `WorkbookCheckExpectation`
-- `WorkbookCheckExpectationDescription`
-- `WorkbookCustomCheckOptions`
-- `WorkbookReadbackCheckOptions`
-- `WorkbookRawFormulaOptions`
-- `WorkbookRunResult`
-- `WorkbookCheckResult`
+The consumer owns the model. Bilig owns the contracts.
 
-The low-level operation language remains available:
+## Install
 
-- `WorkbookOp`
-- `WorkbookTxn`
-- `EngineOp`
-- `EngineOpBatch`
-- `isEngineOpBatch`
+```sh
+pnpm add @bilig/workbook
+```
 
-Formula helpers create portable formula expressions with `@bilig/formula`.
-Calculation and workbook execution stay in `@bilig/core` and the app runtime.
-Use `planWorkbookAction` when an action name comes from an agent or user input;
-it returns `planned` or structured `failed` results instead of requiring
-exception control flow.
-Actions can also accept a JSON-safe input:
+Runtime dependencies are intentionally small:
+
+- `@bilig/protocol`
+- `@bilig/formula`
+
+This package does not depend on `@bilig/core`, `@bilig/headless`,
+`@bilig/agent-api`, `zod`, or `effect`.
+
+## What It Is
+
+`@bilig/workbook` is a public API package for building workbook intent. A model
+is just a named contract with three parts:
+
+- `find`: create refs to workbook structure.
+- `checks`: declare proof the runtime must return.
+- `actions`: build workbook commands from refs and optional JSON input.
+
+The package returns frozen, JSON-safe plans. A runtime adapter executes those
+plans with `@bilig/core`, `apps/bilig`, or consumer infrastructure.
+
+```text
+consumer model -> @bilig/workbook plan -> runtime adapter -> proof result
+```
+
+## What It Is Not
+
+`@bilig/workbook` is not a workbook engine. It does not own workbook state,
+calculate formulas, render cells, or infer business meaning from sheet names.
+
+Do not add built-in revenue models, prepaid models, financial models, report
+templates, or any other domain assumptions here. If a consumer needs those, they
+define them in their own package using this generic API.
+
+## Quick Start
 
 ```ts
-import { defineModel } from '@bilig/workbook'
+import { defineModel, formula } from '@bilig/workbook'
 
 export const model = defineModel({
-  name: 'custom-writer',
+  name: 'custom-calculation',
+  description: 'Writes Result from Base and Rate.',
 
   find(workbook) {
+    const table = workbook.findTable({
+      headers: ['Base', 'Rate', 'Result'],
+    })
+
     return {
-      output: workbook.findRange({ sheetName: 'Sheet1', address: 'B2' }),
+      table,
+      base: table.column('Base'),
+      rate: table.column('Rate'),
+      result: table.column('Result'),
     }
   },
 
+  checks({ refs, workbook }) {
+    return [workbook.check.exists(refs.table), workbook.check.noFormulaErrors(refs.result)]
+  },
+
   actions: {
-    write({ refs, workbook, input }) {
-      if (typeof input !== 'object' || input === null || Array.isArray(input)) {
-        throw new Error('input object required')
-      }
-      const value = input.value
-      if (typeof value !== 'number') {
-        throw new Error('numeric value required')
-      }
-      workbook.writeValue(refs.output, value)
+    calculate({ refs, workbook }) {
+      workbook.writeFormula(refs.result, formula.multiply(refs.base, refs.rate))
+      workbook.check.noFormulaErrors(refs.result)
     },
   },
 })
 ```
 
-`planWorkbookAction(model, "write", { value: 12 })` clones and canonicalizes
-that input into the plan so an agent can inspect exactly what was requested.
-Inputs must be plain JSON values: strings, finite numbers, booleans, `null`,
-arrays without holes, and plain objects. This package intentionally does not add
-schema dependencies; consumers own their own input validation inside actions.
-Use `verifyModel(model, { inputs: { write: { value: 12 } } })` when whole-model
-verification needs parameters for specific actions.
+This model does not know what the table represents. It only knows how to find
+columns, write a formula, and ask the runtime to prove the result has no formula
+errors.
 
-Formula expressions also keep their workbook inputs separate from their formula
-text. A planned `writeFormula` command includes both the parseable formula
-string and the generic model refs it used, so an agent can inspect what the
-action depends on without reverse-parsing placeholder names.
-For formulas outside the small helper set, use
-`formula.raw(source, { inputs })`; the source stays parseable while the
-declared refs remain inspectable and verifiable. These inputs are a declared
-dependency contract for agents, not parser-discovered proof that every formula
-reference has been mapped to a model ref.
+## Agent Flow
 
-Known single-cell `workbook.format(ref, { numberFormat })` actions compile to
-concrete `setCellFormat` ops. Use `numberFormat: null` to plan an explicit
-format clear. Style patches remain high-level intent until the runtime resolves
-style ids.
-Use `workbook.addOp(op, { target?, message? })` inside model actions when a
-consumer needs the existing low-level workbook operation language directly. The
-op is runtime-guarded with `isWorkbookOp`, cloned into `plan.ops`, and kept in
-the command log so agents can inspect it without depending on `@bilig/core`.
-When a `target` is supplied for an address or range op, `verifyPlan` checks that
-the op touches the same range. For op kinds without an inferable range, `target`
-is still useful for logs and approvals but cannot prove the affected cells by
-itself.
+Agents should use the package in this order:
 
-Action plans expose `refsUsed`, a flat deduped list of workbook refs found in
-the consumer-defined `refs` object. Use `collectWorkbookRefs` directly when an
-agent needs to inspect refs from any nested consumer shape.
-Use `findTable`, `findColumn`, `findRange`, `findName`, and `findRows` directly
-when an agent or test needs the same generic refs outside a model callback.
-`findRows` refs include the predicate value in their stable id and label so two
-consumer-defined row selectors do not collapse during dedupe.
-Use `check.exists(ref)` and `check.noFormulaErrors(ref)` directly when an agent
-or test needs the same generic planned checks outside a model callback.
-Use `check.valueEquals(ref, value)` and `check.formulaEquals(ref, formula)` when
-an action should carry machine-readable readback expectations for runtime
-verification. `formulaEquals` stores normalized formula text plus explicit model
-refs used by that formula, so an agent can inspect the post-action proof target
-without depending on a rendered spreadsheet UI.
-Use `check.custom({ kind, message, target, refs })` for consumer-defined
-invariants; the package does not need to know what the model means. `target`
-names the main ref, and `refs` names any supporting refs the invariant depends
-on so agents can describe and verify the full check contract.
+1. Inspect the model with `describeModel(model)`.
+2. Plan an action with `planWorkbookAction(model, actionName, input)`.
+3. Read `describePlanResult(planned)` for a compact explanation.
+4. Run `verifyPlan(plan)` before execution.
+5. Hand the plan to a runtime adapter with `runWorkbookPlan` or
+   `runWorkbookAction`.
+6. Inspect `describeRunResult(result)`.
+7. Treat `status: "done"` as success only when checks are returned as proof.
 
-Use `describeModel` when an agent needs a JSON-safe manifest of model name,
-action names, and whether model-level checks exist without running `find`,
-checks, or actions.
-Use `describeRef` and `describePlan` when an agent needs JSON-safe intent for
-logs, comparisons, approvals, or runtime handoff. Descriptions keep the same
-generic action input, refs, commands, checks, changes, and ops, but omit
-consumer-private `refs` object shape and helper functions such as
-`table.column()`.
-Use `describePlanResult` when the same JSON-safe handoff is needed for either
-planned or failed action planning.
+The important rule: planned checks are promises, not proof. Runtime proof must
+turn checks into `passed` or `failed`.
 
-Use `verifyPlan` before runtime handoff when an agent needs to prove a planned
-action is internally consistent. It checks for non-JSON-safe action input,
-unresolved refs, unparsable formulas, duplicate resolved refs, and missing
-concrete ops for write, clear, and number-format commands that already target a
-known single cell. Custom check targets and supporting refs must also resolve
-through the model's `refsUsed` contract. Formula readback expectation inputs
-must also resolve through `refsUsed`, and expectation formulas must be parseable.
-Low-level `addOp` commands must contain valid `WorkbookOp` values, must still
-appear in `plan.ops`, and must match their declared `target` when the op exposes
-a concrete address or range.
-Use `verifyModel` to plan and verify every action in a consumer-defined model
-with one JSON-safe result. Pass `inputs` when specific actions require
-parameters.
+Runnable proof lives in
+[`examples/workbook-agent-model`](../../examples/workbook-agent-model). It uses
+`@bilig/workbook` for the public model contract and `@bilig/core` only as one
+runtime adapter choice.
 
-Use `runWorkbookPlan(plan, adapter)` or
-`runWorkbookAction(model, actionName, adapter, input)` when an agent needs a
-generic apply-and-prove loop. The adapter owns runtime execution and semantic
-readback:
+## Humans Should Know
+
+Use this package when you are designing a stable workbook tool surface for
+agents, services, or tests. The model is the documentation. Good models have:
+
+- a clear `name`;
+- action names that are normal verbs;
+- `description` text when the action is not obvious;
+- refs returned from `find` with business meaning owned by the consumer;
+- checks that describe the exact proof expected after runtime execution.
+
+Avoid hiding intent in comments, UI screenshots, or sheet-position assumptions.
+Put the contract in the model.
+
+## Refs
+
+Refs are handles to workbook structure. They are stable enough to pass through a
+plan, describe in logs, and map in a runtime adapter.
 
 ```ts
-const result = await runWorkbookAction(model, 'write', {
-  apply(plan) {
-    return runtime.apply(plan.ops)
+const input = workbook.findRange({ sheetName: 'Inputs', address: 'B2' })
+const total = workbook.findName('Total')
+const table = workbook.findTable({ name: 'Items' })
+const amount = table.column('Amount')
+```
+
+Ref ids are opaque. Do not parse them. Use `label` for display and
+`describeRef(ref)` for structured logging.
+
+## Find API
+
+Use the direct methods inside `find(workbook)`:
+
+```ts
+workbook.findTable({ name: 'Items' })
+workbook.findTable({ sheetName: 'Data', headers: ['Kind', 'Value'] })
+workbook.findColumn({ table, name: 'Value' })
+workbook.findRange({ sheetName: 'Inputs', address: 'B2' })
+workbook.findRange({ sheetName: 'Inputs', startAddress: 'B2', endAddress: 'D8' })
+workbook.findName('Total')
+workbook.findRows({
+  table,
+  where: { column: 'Status', op: 'eq', value: 'Active' },
+})
+```
+
+Convenience methods keep common code short:
+
+```ts
+const table = workbook.findTable({ name: 'Items' })
+const rows = workbook.findRows({
+  table,
+  where: { column: 'Status', op: 'eq', value: 'Active' },
+})
+
+return {
+  rows,
+  amount: rows.column('Amount'),
+  total: table.column('Total'),
+}
+```
+
+Selectors validate their inputs before runtime handoff. Empty names, empty
+headers, unsupported row operators, invalid ranges, non-finite values, and
+malformed objects fail while planning.
+
+## Formulas
+
+Use `formula.*` helpers so formula text and formula inputs stay separate.
+
+```ts
+formula.add(refs.left, refs.right)
+formula.subtract(refs.total, refs.discount)
+formula.multiply(refs.base, refs.rate)
+formula.divide(refs.amount, 12)
+formula.sum(refs.amount, refs.tax, refs.fee)
+formula.call('ROUND', [refs.amount, 2])
+formula.text('ready')
+formula.raw('SUM(Items[Amount])', { inputs: [refs.amount] })
+```
+
+The rule is:
+
+```text
+@bilig/workbook creates formula expressions
+@bilig/formula parses and normalizes formula language
+@bilig/core calculates formulas
+```
+
+Formula expressions expose:
+
+- `source`: parseable formula text without the leading `=`;
+- `inputs`: the refs that a runtime adapter must resolve.
+
+Runtime adapters materialize formula inputs by replacing whole tokens only. Text
+inside a quoted string or a larger identifier is left alone.
+
+## Actions
+
+Actions build intent. They do not execute anything.
+
+```ts
+actions: {
+  calculate({ refs, workbook }) {
+    workbook.writeFormula(refs.result, formula.multiply(refs.base, refs.rate));
+    workbook.check.noFormulaErrors(refs.result);
   },
-  read(targets) {
-    return runtime.read(targets)
+
+  reset({ refs, workbook }) {
+    workbook.clear(refs.result);
+  },
+}
+```
+
+Actions can also declare JSON input for agent tool calls:
+
+```ts
+actions: {
+  setValue: {
+    description: "Writes a provided value into the input ref.",
+    input: {
+      kind: "object",
+      fields: {
+        value: { kind: "number", required: true },
+      },
+    },
+    run({ refs, workbook, input }) {
+      if (typeof input !== "object" || input === null || Array.isArray(input)) {
+        throw new Error("Input object is required");
+      }
+      const value = input.value;
+      if (typeof value !== "number") {
+        throw new Error("Input value must be a number");
+      }
+      workbook.writeValue(refs.input, value);
+      workbook.check.valueEquals(refs.input, value);
+    },
+  },
+}
+```
+
+Supported action commands:
+
+- `workbook.writeFormula(ref, formulaExpression)`
+- `workbook.writeValue(ref, jsonLiteral)`
+- `workbook.format(ref, { style?, numberFormat? })`
+- `workbook.clear(ref)`
+- `workbook.addOp(op, { target?, message? })`
+
+`addOp` is the escape hatch for the transport-neutral operation language. Prefer
+the simple commands when they express the action.
+
+## Checks
+
+Checks are how a model states what must be proven.
+
+```ts
+workbook.check.exists(refs.table)
+workbook.check.noFormulaErrors(refs.result)
+workbook.check.valueEquals(refs.output, 42)
+workbook.check.valuesEqual(refs.range, [
+  [1, 2],
+  [3, 4],
+])
+workbook.check.formulaEquals(refs.output, formula.add(refs.left, refs.right))
+workbook.check.formulasEqual(refs.range, [['SUM(Items[Amount])', null]])
+workbook.check.custom({
+  kind: 'consumerInvariant',
+  target: refs.table,
+  refs: [refs.amount, refs.result],
+  message: 'Consumer-defined invariant passed',
+})
+```
+
+The runtime adapter either verifies checks itself or returns readbacks that
+`@bilig/workbook` can compare against the expected values and formulas.
+
+## Planning
+
+Use `planWorkbookAction` when an action name or input may come from an agent,
+tool call, or user request.
+
+```ts
+import { describePlanResult, planWorkbookAction, verifyPlan } from '@bilig/workbook'
+import { model } from './model.js'
+
+const planned = planWorkbookAction(model, 'calculate')
+
+console.log(describePlanResult(planned))
+
+if (planned.status === 'planned') {
+  const verification = verifyPlan(planned.plan)
+  if (verification.status === 'invalid') {
+    throw new Error(JSON.stringify(verification.issues))
+  }
+}
+```
+
+A successful plan contains:
+
+- `modelName`
+- `actionName`
+- `input`
+- `refs`
+- `refsUsed`
+- `commands`
+- `ops`
+- `changed`
+- `checks`
+
+Models and plans are frozen. They are meant to be inspected, passed to a
+runtime, and verified, not mutated after creation.
+
+## Runtime Handoff
+
+The runtime adapter owns execution. `@bilig/workbook` owns the contract.
+
+```ts
+import { runWorkbookAction } from '@bilig/workbook'
+
+const result = await runWorkbookAction(model, 'calculate', {
+  preview(plan) {
+    return runtime.preview(plan)
+  },
+  apply(plan) {
+    return runtime.apply(plan)
+  },
+  read(targets, plan) {
+    return runtime.read(targets, plan)
+  },
+  verifyChecks(checks, plan) {
+    return runtime.verifyChecks(checks, plan)
   },
 })
 ```
 
-`runWorkbookAction` plans the action, runs `verifyPlan`, calls
-`adapter.apply(plan)`, then evaluates `valueEquals` and `formulaEquals` checks
-against `adapter.read(targets, plan)`. It never imports the engine, headless
-runtime, app server, or UI. If static verification fails, the apply adapter is
-not called. If a readback expectation is missing or mismatched, the returned
-`WorkbookRunResult` is `failed` with deterministic error codes such as
-`readback_missing`, `value_mismatch`, or `formula_mismatch`.
-Formula readbacks are exact: adapters should return formula text in the same
-normalized no-leading-`=` form produced by `formula.source`.
-Adapters can also provide `verifyChecks(checks, plan)` to prove non-readback
-checks such as `exists`, `noFormulaErrors`, and consumer-defined `custom`
-invariants. The verifier must return the same checks in the same order and may
-only change `status`; changing `kind`, `target`, `refs`, `expectation`, or
-`message` fails the run as `invalid_check_verification`. If any verified check
-is `failed`, the run returns `failed` with `check_failed`. Existing adapters
-remain compatible, but agent-facing adapters should provide `verifyChecks` and
-avoid claiming full proof while checks remain `planned`.
+Adapter methods:
 
-When running against Bilig's engine, use `createWorkbookRunAdapter(engine)` from
-`@bilig/core`. The adapter materializes generic `plan.commands` into engine
-operations, falls back to explicit `plan.ops` for low-level plans, reads
-single-cell expectation targets, and verifies generic `exists` and
-`noFormulaErrors` checks without adding workbook-specific business models to
-this package. If the engine captures undo, the run result includes `undo.ops` in
-the same portable operation language.
+- `preview(plan)`: optional materialization step for inspection and approval.
+- `apply(plan)`: required execution step.
+- `read(targets, plan)`: optional readback step for value and formula checks.
+- `verifyChecks(checks, plan)`: optional runtime-owned proof step.
+
+`@bilig/core` provides the canonical engine adapter:
+
+```ts
+import { createWorkbookRunAdapter } from '@bilig/core'
+import { runWorkbookAction } from '@bilig/workbook'
+
+const result = await runWorkbookAction(model, 'calculate', createWorkbookRunAdapter(engine))
+```
+
+`@bilig/workbook` does not import `@bilig/core`; consumers choose their runtime.
+
+## Results
+
+The public result shape is deliberately boring.
+
+```ts
+type WorkbookRunResult =
+  | {
+      status: 'done'
+      changed: readonly WorkbookChangeSummary[]
+      checks: readonly WorkbookCheckResult[]
+      undo?: WorkbookUndoRef
+      applied?: WorkbookAppliedSummary
+    }
+  | {
+      status: 'failed'
+      errors: readonly WorkbookRunError[]
+      checks: readonly WorkbookCheckResult[]
+      undo?: WorkbookUndoRef
+    }
+```
+
+If apply succeeds and proof later fails, the failed result preserves `undo` when
+the adapter supplied it.
+
+## Low-Level Ops
+
+The transport-neutral operation language remains public:
+
+- `WorkbookOp`
+- `WorkbookTxn`
+- `EngineOp`
+- `WorkbookOpBatch`
+- `EngineOpBatch`
+- `isWorkbookOp`
+- `isEngineOp`
+- `isEngineOps`
+- `isEngineOpBatch`
+
+Use low-level ops when a consumer needs exact workbook mutation intent:
+
+```ts
+workbook.addOp(
+  {
+    kind: 'setCellValue',
+    sheetName: 'Sheet1',
+    address: 'B2',
+    value: 42,
+  },
+  {
+    target: refs.output,
+    message: 'Seed output value',
+  },
+)
+```
+
+The guards validate literal values, formula text, cell addresses, ranges,
+identifiers, enum values, and batch shape.
+
+## Public API Map
+
+Authoring:
+
+- `defineModel`
+- `formula`
+- `find`, `findTable`, `findColumn`, `findRange`, `findName`, `findRows`
+- `check`
+
+Planning and inspection:
+
+- `planWorkbookAction`
+- `buildWorkbookActionPlan`
+- `inspectModel`
+- `describeModel`
+- `describeRef`
+- `describePlan`
+- `describePlanResult`
+- `describeRuntimeRequirements`
+- `collectWorkbookRefs`
+
+Verification and execution:
+
+- `verifyModel`
+- `verifyPlan`
+- `runWorkbookAction`
+- `runWorkbookPlan`
+- `verifyWorkbookReadbacks`
+- `describeRunResult`
+
+Stable code lists and guards:
+
+- `workbookPlanIssueCodes`
+- `isWorkbookPlanIssueCode`
+- `workbookReadbackIssueCodes`
+- `isWorkbookReadbackIssueCode`
+- `workbookRunErrorCodes`
+- `isWorkbookRunErrorCode`
+
+Primary types:
+
+- `WorkbookModel`
+- `WorkbookAction`
+- `WorkbookActionPlan`
+- `WorkbookActionPlanResult`
+- `WorkbookRunAdapter`
+- `WorkbookRunResult`
+- `WorkbookCheckResult`
+- `WorkbookRunError`
+- `WorkbookRef`
+- `WorkbookOp`
+- `EngineOpBatch`
+
+## Rules For This Package
+
+- Keep it generic.
+- Keep names normal.
+- Keep dependencies small.
+- Keep refs opaque.
+- Keep checks explicit.
+- Keep runtime execution outside this package.
+- Keep formula calculation in `@bilig/core`.
+- Keep parse and normalization in `@bilig/formula`.
+- Keep consumer business meaning in consumer models.
+
+## Development
+
+```sh
+pnpm --filter @bilig/workbook test
+pnpm --filter @bilig/workbook build
+pnpm typecheck
+pnpm lint
+```

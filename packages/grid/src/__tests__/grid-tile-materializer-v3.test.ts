@@ -141,6 +141,7 @@ describe('renderer-v3 grid tile materializer', () => {
       engine: makeEngine({
         A1: createCellSnapshot('A1', { tag: ValueTag.String, value: 'visible' }),
       }),
+      freezeSeq: 1,
       generation: 21,
       gridMetrics: getGridMetrics(),
       rowHeights: {},
@@ -210,6 +211,7 @@ describe('renderer-v3 grid tile materializer', () => {
       columnWidths: {},
       dprBucket: 1,
       engine: makeEngine({}),
+      freezeSeq: 1,
       generation: 21,
       gridMetrics: getGridMetrics(),
       rowHeights: {},
@@ -238,6 +240,7 @@ describe('renderer-v3 grid tile materializer', () => {
       dprBucket: 1,
       editingCell: [3, 52],
       engine: makeEngine({}),
+      freezeSeq: 1,
       generation: 21,
       gridMetrics: getGridMetrics(),
       rowHeights: {},

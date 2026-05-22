@@ -160,12 +160,49 @@
     "evidenceKind": "same-corpus-browser-capture",
     "requiredProductCount": 2,
     "requiredCaseCount": 9,
-    "tenXMeanAndP95CaseCount": 3,
+    "tenXMeanAndP95CaseCount": 0,
     "coveredCorpusCaseIds": ["wide-mixed-250k"],
+    "runManifest": {
+      "artifactGenerator": "scripts/gen-ui-responsiveness-live-browser-scorecard.ts",
+      "contractVersion": "same-corpus-ui-v2",
+      "requiredProducts": ["bilig", "google-sheets"],
+      "requiredWorkloads": [
+        "open-workbook",
+        "select-cell",
+        "edit-visible-cell",
+        "scroll-vertical",
+        "scroll-horizontal",
+        "jump-deep-row",
+        "formula-edit",
+        "fill-format-change",
+        "wide-sheet-navigation"
+      ],
+      "capturedWorkloads": [
+        "open-workbook",
+        "select-cell",
+        "edit-visible-cell",
+        "scroll-vertical",
+        "scroll-horizontal",
+        "jump-deep-row",
+        "formula-edit",
+        "fill-format-change",
+        "wide-sheet-navigation"
+      ],
+      "corpusCaseIds": ["wide-mixed-250k"],
+      "materializedCellCounts": [250000],
+      "sampleCount": 3,
+      "caseCount": 9,
+      "strictRenderedGridProofCaseCount": 0,
+      "tenXMeanAndP95CaseCount": 0,
+      "currentContractEvidenceComplete": false,
+      "googleSheetsTenXRequirementSatisfied": false,
+      "invalidReasons": ["strict rendered-grid proof covers 0/9 cases", "not every required workload is 10x against Google Sheets"]
+    },
     "limitations": [
       "Caller must supply a Google Sheets URL for the same exported Bilig benchmark corpus.",
       "Microsoft Excel Web can be supplied as an additional incumbent comparison, but it is not required for the Google Sheets 10x claim.",
-      "Edit and format workloads require the supplied incumbent URLs to allow browser-driven editing in the authenticated context."
+      "Edit and format workloads require the supplied incumbent URLs to allow browser-driven editing in the authenticated context.",
+      "Some same-corpus cases retain timing evidence but do not satisfy strict rendered-grid proof, so they cannot count toward Google Sheets 10x UI claims."
     ],
     "cases": [
       {
@@ -306,7 +343,7 @@
             "missingProducts": []
           },
           "pixelGridProof": {
-            "captured": true,
+            "captured": false,
             "requiredProducts": ["bilig", "google-sheets"],
             "products": [
               {
@@ -332,7 +369,7 @@
                 "evidence": ["selector=.grid-scrollable-wrapper", "cssWidth=1424", "cssHeight=680"]
               }
             ],
-            "missingProducts": []
+            "missingProducts": ["bilig"]
           }
         },
         "postOperationFrameGuardrailPassed": true,
@@ -477,7 +514,7 @@
             "missingProducts": []
           },
           "pixelGridProof": {
-            "captured": true,
+            "captured": false,
             "requiredProducts": ["bilig", "google-sheets"],
             "products": [
               {
@@ -503,7 +540,7 @@
                 "evidence": ["selector=.grid-scrollable-wrapper", "cssWidth=1424", "cssHeight=680"]
               }
             ],
-            "missingProducts": []
+            "missingProducts": ["bilig"]
           }
         },
         "postOperationFrameGuardrailPassed": false,
@@ -648,7 +685,7 @@
             "missingProducts": []
           },
           "pixelGridProof": {
-            "captured": true,
+            "captured": false,
             "requiredProducts": ["bilig", "google-sheets"],
             "products": [
               {
@@ -674,7 +711,7 @@
                 "evidence": ["selector=.grid-scrollable-wrapper", "cssWidth=1424", "cssHeight=680"]
               }
             ],
-            "missingProducts": []
+            "missingProducts": ["bilig"]
           }
         },
         "postOperationFrameGuardrailPassed": false,
@@ -882,7 +919,7 @@
             "missingProducts": []
           },
           "pixelGridProof": {
-            "captured": true,
+            "captured": false,
             "requiredProducts": ["bilig", "google-sheets"],
             "products": [
               {
@@ -908,12 +945,12 @@
                 "evidence": ["selector=.grid-scrollable-wrapper", "cssWidth=1424", "cssHeight=680"]
               }
             ],
-            "missingProducts": []
+            "missingProducts": ["bilig"]
           }
         },
         "postOperationFrameGuardrailPassed": true,
-        "tenXMeanAndP95AgainstGoogleSheets": true,
-        "passed": true
+        "tenXMeanAndP95AgainstGoogleSheets": false,
+        "passed": false
       },
       {
         "id": "same-corpus-wide-mixed-250k-scroll-horizontal",
@@ -1116,7 +1153,7 @@
             "missingProducts": []
           },
           "pixelGridProof": {
-            "captured": true,
+            "captured": false,
             "requiredProducts": ["bilig", "google-sheets"],
             "products": [
               {
@@ -1142,12 +1179,12 @@
                 "evidence": ["selector=.grid-scrollable-wrapper", "cssWidth=1424", "cssHeight=680"]
               }
             ],
-            "missingProducts": []
+            "missingProducts": ["bilig"]
           }
         },
         "postOperationFrameGuardrailPassed": true,
-        "tenXMeanAndP95AgainstGoogleSheets": true,
-        "passed": true
+        "tenXMeanAndP95AgainstGoogleSheets": false,
+        "passed": false
       },
       {
         "id": "same-corpus-wide-mixed-250k-jump-deep-row",
@@ -1287,7 +1324,7 @@
             "missingProducts": []
           },
           "pixelGridProof": {
-            "captured": true,
+            "captured": false,
             "requiredProducts": ["bilig", "google-sheets"],
             "products": [
               {
@@ -1313,7 +1350,7 @@
                 "evidence": ["selector=.grid-scrollable-wrapper", "cssWidth=1424", "cssHeight=680"]
               }
             ],
-            "missingProducts": []
+            "missingProducts": ["bilig"]
           }
         },
         "postOperationFrameGuardrailPassed": false,
@@ -1458,7 +1495,7 @@
             "missingProducts": []
           },
           "pixelGridProof": {
-            "captured": true,
+            "captured": false,
             "requiredProducts": ["bilig", "google-sheets"],
             "products": [
               {
@@ -1484,7 +1521,7 @@
                 "evidence": ["selector=.grid-scrollable-wrapper", "cssWidth=1424", "cssHeight=680"]
               }
             ],
-            "missingProducts": []
+            "missingProducts": ["bilig"]
           }
         },
         "postOperationFrameGuardrailPassed": false,
@@ -1629,7 +1666,7 @@
             "missingProducts": []
           },
           "pixelGridProof": {
-            "captured": true,
+            "captured": false,
             "requiredProducts": ["bilig", "google-sheets"],
             "products": [
               {
@@ -1655,7 +1692,7 @@
                 "evidence": ["selector=.grid-scrollable-wrapper", "cssWidth=1424", "cssHeight=680"]
               }
             ],
-            "missingProducts": []
+            "missingProducts": ["bilig"]
           }
         },
         "postOperationFrameGuardrailPassed": false,
@@ -1863,7 +1900,7 @@
             "missingProducts": []
           },
           "pixelGridProof": {
-            "captured": true,
+            "captured": false,
             "requiredProducts": ["bilig", "google-sheets"],
             "products": [
               {
@@ -1889,12 +1926,12 @@
                 "evidence": ["selector=.grid-scrollable-wrapper", "cssWidth=1424", "cssHeight=680"]
               }
             ],
-            "missingProducts": []
+            "missingProducts": ["bilig"]
           }
         },
         "postOperationFrameGuardrailPassed": true,
-        "tenXMeanAndP95AgainstGoogleSheets": true,
-        "passed": true
+        "tenXMeanAndP95AgainstGoogleSheets": false,
+        "passed": false
       }
     ]
   }

@@ -83,6 +83,9 @@ function restoreSheetMetadata(args: { readonly workbook: WorkbookStore; readonly
   if (sheet.metadata?.sheetFormatPr) {
     workbook.setSheetFormatPr(sheet.name, sheet.metadata.sheetFormatPr)
   }
+  if (sheet.metadata?.visibility) {
+    workbook.setSheetVisibility(sheet.name, sheet.metadata.visibility)
+  }
   if (sheet.metadata?.freezePane) {
     workbook.setFreezePane(sheet.name, sheet.metadata.freezePane.rows, sheet.metadata.freezePane.cols, {
       ...(sheet.metadata.freezePane.topLeftCell !== undefined ? { topLeftCell: sheet.metadata.freezePane.topLeftCell } : {}),
@@ -128,6 +131,18 @@ function restoreSheetMetadata(args: { readonly workbook: WorkbookStore; readonly
   sheet.metadata?.notes?.forEach((note) => {
     workbook.setNote(structuredClone(note))
   })
+  if (sheet.metadata?.arrayFormulas && sheet.metadata.arrayFormulas.formulas.length > 0) {
+    const targetSheet = workbook.getSheet(sheet.name)
+    if (targetSheet) {
+      targetSheet.arrayFormulas = structuredClone(sheet.metadata.arrayFormulas)
+    }
+  }
+  if (sheet.metadata?.dataTableFormulas && sheet.metadata.dataTableFormulas.formulas.length > 0) {
+    const targetSheet = workbook.getSheet(sheet.name)
+    if (targetSheet) {
+      targetSheet.dataTableFormulas = structuredClone(sheet.metadata.dataTableFormulas)
+    }
+  }
 }
 
 function restoreAxisMetadata(args: {
@@ -168,6 +183,9 @@ function restoreAxisMetadata(args: {
 function applyAxisMetadataRecord(entry: WorkbookAxisEntryRecord, record: WorkbookAxisMetadataSnapshot): void {
   entry.size = record.size ?? null
   entry.hidden = record.hidden ?? null
+  if ('filtered' in record) {
+    entry.filtered = record.filtered ?? null
+  }
   for (const key of axisGeometryKeys) {
     const value = record[key]
     if (value === undefined) {
@@ -184,6 +202,7 @@ function cloneAxisEntry(entry: WorkbookAxisEntrySnapshot): WorkbookAxisEntrySnap
     index: entry.index,
     ...(entry.size !== undefined ? { size: entry.size } : {}),
     ...(entry.hidden !== undefined ? { hidden: entry.hidden } : {}),
+    ...(entry.filtered !== undefined ? { filtered: entry.filtered } : {}),
     ...cloneAxisGeometry(entry),
   }
 }

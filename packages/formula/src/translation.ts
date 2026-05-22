@@ -153,6 +153,7 @@ export function translateCompiledFormulaWithoutAst(
       symbolicRefs:
         translatedParsedSymbolicRefs?.map((reference) => formatParsedCellReference(reference)) ??
         compiled.symbolicRefs.map((ref) => translateQualifiedCellReference(ref, rowDelta, colDelta)),
+      symbolicSpills: compiled.symbolicSpills.map((ref) => translateQualifiedCellReference(ref, rowDelta, colDelta)),
       symbolicRanges:
         translatedParsedSymbolicRanges?.map((range) => formatCompiledRangeReference(range)) ??
         compiled.symbolicRanges.map((range) => translateQualifiedRangeReference(range, rowDelta, colDelta)),
@@ -200,6 +201,7 @@ export function translateCompiledFormula(
       symbolicRefs:
         translatedParsedSymbolicRefs?.map((reference) => formatParsedCellReference(reference)) ??
         compiled.symbolicRefs.map((ref) => translateQualifiedCellReference(ref, rowDelta, colDelta)),
+      symbolicSpills: compiled.symbolicSpills.map((ref) => translateQualifiedCellReference(ref, rowDelta, colDelta)),
       symbolicRanges:
         translatedParsedSymbolicRanges?.map((range) => formatCompiledRangeReference(range)) ??
         compiled.symbolicRanges.map((range) => translateQualifiedRangeReference(range, rowDelta, colDelta)),

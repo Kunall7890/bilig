@@ -9,20 +9,34 @@ import {
   describePlanResult,
   describeRef,
   findColumn,
+  find,
   findName,
   findRange,
   findRows,
   findTable,
   inspectModel,
+  isWorkbookPlanIssueCode,
   isWorkbookRef,
   planWorkbookAction,
   defineModel,
   formula,
   verifyModel,
   verifyPlan,
+  workbookPlanIssueCodes,
 } from '../index.js'
 
 describe('@bilig/workbook model api', () => {
+  it('exports stable inspectable plan issue codes', () => {
+    expect(Object.isFrozen(workbookPlanIssueCodes)).toBe(true)
+    expect(workbookPlanIssueCodes).toContain('invalid_action_input')
+    expect(workbookPlanIssueCodes).toContain('formula_input_not_resolved')
+    expect(workbookPlanIssueCodes).toContain('invalid_check_expectation_formula')
+    expect(workbookPlanIssueCodes).toContain('missing_workbook_op')
+    expect(new Set(workbookPlanIssueCodes).size).toBe(workbookPlanIssueCodes.length)
+    expect(isWorkbookPlanIssueCode('check_ref_not_resolved')).toBe(true)
+    expect(isWorkbookPlanIssueCode('custom_plan_issue')).toBe(false)
+  })
+
   it('preserves model metadata, refs, checks, commands, and concrete workbook ops', () => {
     const model = defineModel({
       name: 'custom-model',
@@ -60,7 +74,7 @@ describe('@bilig/workbook model api', () => {
       {
         kind: 'writeFormula',
         target: plan.refs.result,
-        formula: '(__bilig_ref_table_Base_Rate_Result_Base)*(__bilig_ref_table_Base_Rate_Result_Rate)',
+        formula: '(__bilig_ref_table_p_Base_p_Rate_p_Result_p_Base)*(__bilig_ref_table_p_Base_p_Rate_p_Result_p_Rate)',
         inputs: [plan.refs.base, plan.refs.rate],
       },
     ])
@@ -69,7 +83,7 @@ describe('@bilig/workbook model api', () => {
         kind: 'setCellFormula',
         sheetName: 'Sheet1',
         address: 'C2',
-        formula: '(__bilig_ref_table_Base_Rate_Result_Base)*(__bilig_ref_table_Base_Rate_Result_Rate)',
+        formula: '(__bilig_ref_table_p_Base_p_Rate_p_Result_p_Base)*(__bilig_ref_table_p_Base_p_Rate_p_Result_p_Rate)',
       },
     ])
     expect(plan.changed).toEqual([
@@ -90,6 +104,246 @@ describe('@bilig/workbook model api', () => {
     expect(op?.kind).toBe('setCellFormula')
     if (op?.kind === 'setCellFormula') {
       parseFormula(op.formula)
+    }
+  })
+
+  it('freezes planned portable intent so agents can trust read-only snapshots', () => {
+    const model = defineModel({
+      name: 'frozen-plan-model',
+      find(workbook) {
+        return {
+          input: workbook.findRange({ sheetName: 'Sheet1', address: 'A1' }),
+          output: workbook.findRange({ sheetName: 'Sheet1', address: 'B1' }),
+        }
+      },
+      checks({ refs, workbook }) {
+        return [workbook.check.valueEquals(refs.output, 2)]
+      },
+      actions: {
+        calculate({ refs, workbook, input }) {
+          workbook.writeFormula(refs.output, formula.add(refs.input, 1))
+          workbook.writeValue(refs.input, input === undefined ? 1 : 2)
+        },
+      },
+    })
+
+    const result = planWorkbookAction(model, 'calculate', { requestId: 'agent-1' })
+
+    expect(result.status).toBe('planned')
+    if (result.status !== 'planned') {
+      return
+    }
+    expect(Object.isFrozen(result.plan)).toBe(true)
+    expect(Object.isFrozen(result.plan.input)).toBe(true)
+    expect(Object.isFrozen(result.plan.refs)).toBe(true)
+    expect(Object.isFrozen(result.plan.commands)).toBe(true)
+    expect(Object.isFrozen(result.plan.commands[0])).toBe(true)
+    const firstCommand = result.plan.commands[0]
+    expect(firstCommand?.kind).toBe('writeFormula')
+    if (firstCommand?.kind !== 'writeFormula') {
+      return
+    }
+    expect(Object.isFrozen(firstCommand.inputs)).toBe(true)
+    expect(Object.isFrozen(result.plan.ops)).toBe(true)
+    expect(Object.isFrozen(result.plan.ops[0])).toBe(true)
+    expect(Object.isFrozen(result.plan.changed)).toBe(true)
+    expect(Object.isFrozen(result.plan.changed[0])).toBe(true)
+    expect(Object.isFrozen(result.plan.checks)).toBe(true)
+    expect(Object.isFrozen(result.plan.checks[0])).toBe(true)
+    expect(Object.isFrozen(result.plan.refsUsed)).toBe(true)
+  })
+
+  it('freezes defined models so agents inspect a stable model contract', () => {
+    const model = defineModel({
+      name: 'frozen-model',
+      description: 'Stable model contract',
+      find(workbook) {
+        return {
+          output: workbook.findRange({ sheetName: 'Sheet1', address: 'A1' }),
+        }
+      },
+      actions: {
+        write: {
+          description: 'Write a value',
+          input: {
+            kind: 'object',
+            fields: {
+              value: { kind: 'number', required: true },
+            },
+          },
+          run({ refs, workbook }) {
+            workbook.writeValue(refs.output, 1)
+          },
+        },
+      },
+    })
+
+    expect(Object.isFrozen(model)).toBe(true)
+    expect(Object.isFrozen(model.actions)).toBe(true)
+    expect(Object.isFrozen(model.actions.write)).toBe(true)
+    if (typeof model.actions.write !== 'function') {
+      expect(Object.isFrozen(model.actions.write.input)).toBe(true)
+      expect(Object.isFrozen(model.actions.write.input?.fields?.value)).toBe(true)
+    }
+    expect(() => Object.defineProperty(model.actions, 'other', { value: () => undefined })).toThrowError(TypeError)
+  })
+
+  it('rejects malformed model configs from JavaScript callers with clear errors', () => {
+    expect(() => Reflect.apply(defineModel, undefined, [null])).toThrowError('Workbook model config must be an object')
+    expect(() =>
+      Reflect.apply(defineModel, undefined, [
+        {
+          name: 7,
+          find() {
+            return {}
+          },
+          actions: {
+            write() {
+              return undefined
+            },
+          },
+        },
+      ]),
+    ).toThrowError('Workbook model name must be a string')
+    expect(() =>
+      Reflect.apply(defineModel, undefined, [
+        {
+          name: 'bad-find',
+          actions: {
+            write() {
+              return undefined
+            },
+          },
+        },
+      ]),
+    ).toThrowError('Workbook model bad-find find must be a function')
+    expect(() =>
+      Reflect.apply(defineModel, undefined, [
+        {
+          name: 'bad-actions',
+          find() {
+            return {}
+          },
+          actions: [],
+        },
+      ]),
+    ).toThrowError('Workbook model bad-actions actions must be an object')
+  })
+
+  it('rejects malformed high-level action commands from JavaScript callers', () => {
+    const model = defineModel({
+      name: 'runtime-guarded-actions',
+      find(workbook) {
+        return {
+          output: workbook.findRange({ sheetName: 'Sheet1', address: 'B1' }),
+        }
+      },
+      actions: {
+        badValue({ refs, workbook }) {
+          Reflect.apply(workbook.writeValue, workbook, [refs.output, Number.NaN])
+        },
+        badTarget({ workbook }) {
+          Reflect.apply(workbook.clear, workbook, [{ kind: 'range' }])
+        },
+        badFormat({ refs, workbook }) {
+          Reflect.apply(workbook.format, workbook, [refs.output, { numberFormat: 7 }])
+        },
+      },
+    })
+
+    expect(planWorkbookAction(model, 'badValue')).toEqual({
+      status: 'failed',
+      modelName: 'runtime-guarded-actions',
+      actionName: 'badValue',
+      checks: [],
+      errors: [
+        {
+          code: 'action_failed',
+          message: 'Workbook write value must be a finite JSON literal',
+        },
+      ],
+    })
+    expect(planWorkbookAction(model, 'badTarget')).toEqual({
+      status: 'failed',
+      modelName: 'runtime-guarded-actions',
+      actionName: 'badTarget',
+      checks: [],
+      errors: [
+        {
+          code: 'action_failed',
+          message: 'Workbook clear target must be a WorkbookRef',
+        },
+      ],
+    })
+    expect(planWorkbookAction(model, 'badFormat')).toEqual({
+      status: 'failed',
+      modelName: 'runtime-guarded-actions',
+      actionName: 'badFormat',
+      checks: [],
+      errors: [
+        {
+          code: 'action_failed',
+          message: 'Workbook number format must be a string or null',
+        },
+      ],
+    })
+  })
+
+  it('keeps find, check, and action workbook phases scoped', () => {
+    const seen: string[][] = []
+    const model = defineModel({
+      name: 'phase-scoped-model',
+
+      find(workbook) {
+        seen.push(Object.keys(workbook).toSorted())
+        expect(Object.isFrozen(workbook)).toBe(true)
+        expect('check' in workbook).toBe(false)
+        expect('writeValue' in workbook).toBe(false)
+        return {
+          table: workbook.findTable({ name: 'Inputs' }),
+          output: workbook.findRange({ sheetName: 'Sheet1', address: 'B2' }),
+        }
+      },
+
+      checks({ refs, workbook }) {
+        seen.push(Object.keys(workbook).toSorted())
+        expect(Object.isFrozen(workbook)).toBe(true)
+        expect('writeValue' in workbook).toBe(false)
+        expect('addOp' in workbook).toBe(false)
+        const hidden = workbook.findRange({ sheetName: 'Sheet1', address: 'A1' })
+        return [
+          workbook.check.exists(refs.table),
+          workbook.check.custom({ kind: 'hiddenSupport', refs: [hidden], message: 'Hidden support ref' }),
+        ]
+      },
+
+      actions: {
+        write({ refs, workbook }) {
+          seen.push(Object.keys(workbook).toSorted())
+          expect(Object.isFrozen(workbook)).toBe(true)
+          workbook.writeValue(refs.output, 12)
+          workbook.check.valueEquals(refs.output, 12)
+        },
+      },
+    })
+
+    const result = planWorkbookAction(model, 'write')
+
+    expect(result.status).toBe('planned')
+    expect(seen).toEqual([
+      ['findColumn', 'findName', 'findRange', 'findRows', 'findTable'],
+      ['check', 'findColumn', 'findName', 'findRange', 'findRows', 'findTable'],
+      ['addOp', 'check', 'clear', 'findColumn', 'findName', 'findRange', 'findRows', 'findTable', 'format', 'writeFormula', 'writeValue'],
+    ])
+    if (result.status === 'planned') {
+      expect(result.plan.commands).toEqual([
+        {
+          kind: 'writeValue',
+          target: result.plan.refs.output,
+          value: 12,
+        },
+      ])
+      expect(verifyPlan(result.plan).issues.map((issue) => issue.code)).toEqual(['check_ref_not_resolved'])
     }
   })
 
@@ -119,17 +373,17 @@ describe('@bilig/workbook model api', () => {
 
     expect(table).toEqual({
       kind: 'table',
-      id: 'table_Model_Inputs_Amount_Rate',
+      id: 'table_p_Model_p_Inputs_p_Amount_p_Rate',
       label: 'Inputs',
       name: 'Inputs',
       sheetName: 'Model',
       headers: ['Amount', 'Rate'],
-      column: expect.any(Function),
     })
+    expect(table.column).toEqual(expect.any(Function))
     expect(amount).toEqual(amountViaTable)
     expect(result).toEqual({
       kind: 'range',
-      id: 'range_Model_C2_C2',
+      id: 'range_p_Model_p_C2_p_C2',
       label: 'Model!C2',
       range: {
         sheetName: 'Model',
@@ -139,14 +393,14 @@ describe('@bilig/workbook model api', () => {
     })
     expect(namedRate).toEqual({
       kind: 'name',
-      id: 'name_Rate',
+      id: 'name_p_Rate',
       label: 'Rate',
       name: 'Rate',
     })
     expect(rows).toEqual({
       kind: 'rows',
-      id: 'table_Model_Inputs_Amount_Rate_Status_eq_string__22Active_22',
-      label: 'table_Model_Inputs_Amount_Rate rows where Status eq "Active"',
+      id: 'table_p_Model_p_Inputs_p_Amount_p_Rate_p_Status_p_eq_p_string_p__x22_Active_x22_',
+      label: 'Inputs rows where Status eq "Active"',
       table,
       where: {
         column: 'Status',
@@ -154,6 +408,46 @@ describe('@bilig/workbook model api', () => {
         value: 'Active',
       },
     })
+    expect(rows.column).toEqual(expect.any(Function))
+    expect(rows.column('Amount')).toEqual({
+      kind: 'column',
+      id: 'table_p_Model_p_Inputs_p_Amount_p_Rate_p_Status_p_eq_p_string_p__x22_Active_x22__p_Amount',
+      label: 'Inputs rows where Status eq "Active".Amount',
+      table,
+      rows,
+      name: 'Amount',
+    })
+  })
+
+  it('exports a frozen find namespace and keeps ref helpers off enumerable data', () => {
+    const table = find.table({ name: 'Inputs', sheetName: 'Model', headers: ['Amount'] })
+    const rows = find.rows({ table, where: { column: 'Status', op: 'eq', value: 'Active' } })
+    const column = rows.column('Amount')
+    const range = find.range({ sheetName: 'Sheet1', address: 'A1' })
+
+    expect(Object.isFrozen(find)).toBe(true)
+    expect(find.findTable).toBe(findTable)
+    expect(find.table).toBe(findTable)
+    expect(Object.keys(table)).toEqual(['kind', 'id', 'label', 'name', 'sheetName', 'headers'])
+    expect(Object.keys(rows)).toEqual(['kind', 'id', 'label', 'table', 'where'])
+    expect(table.column).toEqual(expect.any(Function))
+    expect(rows.column).toEqual(expect.any(Function))
+    expect(Object.isFrozen(table)).toBe(true)
+    expect(Object.isFrozen(table.headers)).toBe(true)
+    expect(Object.isFrozen(rows)).toBe(true)
+    expect(Object.isFrozen(rows.where)).toBe(true)
+    expect(Object.isFrozen(column)).toBe(true)
+    expect(Object.isFrozen(range)).toBe(true)
+    expect(Object.isFrozen(range.range)).toBe(true)
+    expect(JSON.parse(JSON.stringify(table))).toEqual({
+      kind: 'table',
+      id: 'table_p_Model_p_Inputs_p_Amount',
+      label: 'Inputs',
+      name: 'Inputs',
+      sheetName: 'Model',
+      headers: ['Amount'],
+    })
+    expect(() => Object.defineProperty(table, 'label', { value: 'Changed' })).toThrowError(TypeError)
   })
 
   it('keeps row selector refs distinct by predicate value', () => {
@@ -175,11 +469,182 @@ describe('@bilig/workbook model api', () => {
       },
     })
 
-    expect(activeRows.id).toBe('table_Inputs_Status_eq_string__22Active_22')
-    expect(inactiveRows.id).toBe('table_Inputs_Status_eq_string__22Inactive_22')
-    expect(activeRows.label).toBe('table_Inputs rows where Status eq "Active"')
-    expect(inactiveRows.label).toBe('table_Inputs rows where Status eq "Inactive"')
-    expect(collectWorkbookRefs({ activeRows, inactiveRows })).toEqual([activeRows, inactiveRows])
+    expect(activeRows.id).toBe('table_p_Inputs_p_Status_p_eq_p_string_p__x22_Active_x22_')
+    expect(inactiveRows.id).toBe('table_p_Inputs_p_Status_p_eq_p_string_p__x22_Inactive_x22_')
+    expect(activeRows.label).toBe('Inputs rows where Status eq "Active"')
+    expect(inactiveRows.label).toBe('Inputs rows where Status eq "Inactive"')
+    expect(collectWorkbookRefs({ activeRows, inactiveRows })).toEqual([activeRows, table, inactiveRows])
+  })
+
+  it('keeps punctuation-distinct selectors from collapsing to the same ref id', () => {
+    const dashName = findName('A-B')
+    const underscoreName = findName('A_B')
+    const table = findTable({ headers: ['A-B', 'A_B'] })
+    const dashColumn = table.column('A-B')
+    const underscoreColumn = table.column('A_B')
+    const dashRows = findRows({ table, where: { column: 'Kind', op: 'eq', value: 'A-B' } })
+    const underscoreRows = findRows({ table, where: { column: 'Kind', op: 'eq', value: 'A_B' } })
+
+    expect(dashName.id).not.toBe(underscoreName.id)
+    expect(dashColumn.id).not.toBe(underscoreColumn.id)
+    expect(dashRows.id).not.toBe(underscoreRows.id)
+    expect(collectWorkbookRefs({ dashName, underscoreName, dashColumn, underscoreColumn, dashRows, underscoreRows })).toEqual([
+      dashName,
+      underscoreName,
+      dashColumn,
+      table,
+      underscoreColumn,
+      dashRows,
+      underscoreRows,
+    ])
+  })
+
+  it('describes row-filtered columns as JSON-safe dependent refs', () => {
+    const table = findTable({ name: 'Inputs' })
+    const activeRows = findRows({
+      table,
+      where: {
+        column: 'Status',
+        op: 'eq',
+        value: 'Active',
+      },
+    })
+    const activeAmount = activeRows.column('Amount')
+
+    expect(collectWorkbookRefs({ activeAmount })).toEqual([activeAmount, activeRows, table])
+    expect(formula.source(formula.ref(activeAmount))).toBe('__bilig_ref_table_p_Inputs_p_Status_p_eq_p_string_p__x22_Active_x22__p_Amount')
+    expect(describeRef(activeAmount)).toEqual({
+      kind: 'column',
+      id: 'table_p_Inputs_p_Status_p_eq_p_string_p__x22_Active_x22__p_Amount',
+      label: 'Inputs rows where Status eq "Active".Amount',
+      table: {
+        kind: 'table',
+        id: 'table_p_Inputs',
+        label: 'Inputs',
+        name: 'Inputs',
+      },
+      rows: {
+        kind: 'rows',
+        id: 'table_p_Inputs_p_Status_p_eq_p_string_p__x22_Active_x22_',
+        label: 'Inputs rows where Status eq "Active"',
+        table: {
+          kind: 'table',
+          id: 'table_p_Inputs',
+          label: 'Inputs',
+          name: 'Inputs',
+        },
+        where: {
+          column: 'Status',
+          op: 'eq',
+          value: 'Active',
+        },
+      },
+      name: 'Amount',
+    })
+  })
+
+  it('normalizes public find selectors before planning', () => {
+    const table = findTable({ name: ' Inputs ', sheetName: ' Model ', headers: [' Amount ', 'Rate'] })
+    const range = findRange({ sheetName: ' Sheet1 ', address: ' c2 ' })
+    const rows = findRows({
+      table,
+      where: {
+        column: ' Status ',
+        op: 'eq',
+        value: 'Active',
+      },
+    })
+
+    expect(table).toEqual({
+      kind: 'table',
+      id: 'table_p_Model_p_Inputs_p_Amount_p_Rate',
+      label: 'Inputs',
+      name: 'Inputs',
+      sheetName: 'Model',
+      headers: ['Amount', 'Rate'],
+    })
+    expect(table.column).toEqual(expect.any(Function))
+    expect(table.column(' Amount ')).toEqual({
+      kind: 'column',
+      id: 'table_p_Model_p_Inputs_p_Amount_p_Rate_p_Amount',
+      label: 'Inputs.Amount',
+      table,
+      name: 'Amount',
+    })
+    expect(range).toEqual({
+      kind: 'range',
+      id: 'range_p_Sheet1_p_C2_p_C2',
+      label: 'Sheet1!C2',
+      range: {
+        sheetName: 'Sheet1',
+        startAddress: 'C2',
+        endAddress: 'C2',
+      },
+    })
+    expect(rows.where.column).toBe('Status')
+    expect(rows.label).toBe('Inputs rows where Status eq "Active"')
+  })
+
+  it('rejects malformed public find selectors before planning', () => {
+    expect(() => Reflect.apply(findTable, undefined, [null])).toThrowError('Workbook table selector must be an object')
+    expect(() => findName('   ')).toThrowError('Workbook selector name cannot be empty')
+    expect(() => findTable({})).toThrowError('Workbook table selector needs a name, sheet name, or headers')
+    expect(() => findTable({ headers: [] })).toThrowError('Workbook table headers cannot be empty')
+    expect(() => findTable({ headers: ['Amount', ' '] })).toThrowError('Workbook selector table header cannot be empty')
+
+    const table = findTable({ name: 'Inputs' })
+    const otherTable = findTable({ name: 'OtherInputs' })
+    const otherRows = findRows({ table: otherTable, where: { column: 'Status', op: 'eq', value: 'Active' } })
+    expect(() => Reflect.apply(findColumn, undefined, [null])).toThrowError('Workbook column selector must be an object')
+    expect(() => Reflect.apply(findColumn, undefined, [{ name: 'Amount' }])).toThrowError('Workbook column selector requires a table')
+    expect(() => findColumn({ table, name: ' ' })).toThrowError('Workbook selector column name cannot be empty')
+    expect(() => findColumn({ table, rows: otherRows, name: 'Amount' })).toThrowError(
+      'Workbook column selector rows must belong to the table',
+    )
+    expect(() => Reflect.apply(findRange, undefined, [null])).toThrowError('Workbook range selector must be an object')
+    expect(() => findRange({ sheetName: 'Sheet1', address: 'not-a-cell' })).toThrowError('Workbook range address is invalid: not-a-cell')
+    expect(() => findRange({ sheetName: 'Sheet1', startAddress: 'C2', endAddress: 'A1' })).toThrowError(
+      'Workbook range endAddress must not be before startAddress',
+    )
+    expect(() => Reflect.apply(findRows, undefined, [null])).toThrowError('Workbook rows selector must be an object')
+    expect(() =>
+      Reflect.apply(findRows, undefined, [
+        {
+          where: {
+            column: 'Status',
+            op: 'eq',
+            value: 'Active',
+          },
+        },
+      ]),
+    ).toThrowError('Workbook rows selector requires a table')
+    expect(() => Reflect.apply(findRows, undefined, [{ table, where: null }])).toThrowError(
+      'Workbook rows selector requires a where object',
+    )
+    expect(() =>
+      Reflect.apply(findRows, undefined, [
+        {
+          table,
+          where: {
+            column: 'Status',
+            op: 'bad',
+            value: 'Active',
+          },
+        },
+      ]),
+    ).toThrowError('Unsupported workbook row operator: bad')
+    expect(() =>
+      Reflect.apply(findRows, undefined, [
+        {
+          table,
+          where: {
+            column: 'Status',
+            op: 'eq',
+            value: Number.NaN,
+          },
+        },
+      ]),
+    ).toThrowError('Workbook rows selector value must be a finite JSON literal')
   })
 
   it('exports simple top-level check helpers for generic refs', () => {
@@ -286,6 +751,46 @@ describe('@bilig/workbook model api', () => {
     expect(plan.refsUsed).toEqual([plan.refs.result])
   })
 
+  it('does not treat inherited ref-looking properties as workbook refs', () => {
+    const inherited = Object.create({
+      kind: 'range',
+      id: 'range_p_Polluted_p_A1_p_A1',
+      label: 'Polluted!A1',
+    }) as unknown
+
+    expect(isWorkbookRef(inherited)).toBe(false)
+    expect(collectWorkbookRefs({ inherited })).toEqual([])
+  })
+
+  it('does not treat incomplete JSON descriptions as live workbook refs', () => {
+    const table = findTable({ name: 'Inputs' })
+    const tableDescription = describeRef(table)
+    const incompleteRange = {
+      kind: 'range',
+      id: 'range_p_Model_p_A1_p_A1',
+      label: 'Model!A1',
+    }
+    const malformedRows = {
+      kind: 'rows',
+      id: 'rows_bad',
+      label: 'bad rows',
+      where: {
+        column: 'Status',
+        op: 'eq',
+        value: Number.NaN,
+      },
+      column() {
+        return table.column('Status')
+      },
+    }
+
+    expect(isWorkbookRef(table)).toBe(true)
+    expect(isWorkbookRef(tableDescription)).toBe(false)
+    expect(isWorkbookRef(incompleteRange)).toBe(false)
+    expect(isWorkbookRef(malformedRows)).toBe(false)
+    expect(collectWorkbookRefs({ tableDescription, incompleteRange, malformedRows })).toEqual([])
+  })
+
   it('describes plans as JSON-safe agent-readable intent', () => {
     const model = defineModel({
       name: 'described-model',
@@ -316,27 +821,27 @@ describe('@bilig/workbook model api', () => {
     const tableDescription = described.refsUsed[0]
     const table = {
       kind: 'table',
-      id: 'table_Inputs',
+      id: 'table_p_Inputs',
       label: 'Inputs',
       name: 'Inputs',
     } as const
     const amount = {
       kind: 'column',
-      id: 'table_Inputs_Amount',
+      id: 'table_p_Inputs_p_Amount',
       label: 'Inputs.Amount',
       table,
       name: 'Amount',
     } as const
     const rate = {
       kind: 'column',
-      id: 'table_Inputs_Rate',
+      id: 'table_p_Inputs_p_Rate',
       label: 'Inputs.Rate',
       table,
       name: 'Rate',
     } as const
     const result = {
       kind: 'range',
-      id: 'range_Sheet1_D2_D2',
+      id: 'range_p_Sheet1_p_D2_p_D2',
       label: 'Sheet1!D2',
       range: {
         sheetName: 'Sheet1',
@@ -421,7 +926,7 @@ describe('@bilig/workbook model api', () => {
           path: 'commands[0].inputs[0]',
           ref: {
             kind: 'range',
-            id: 'range_Sheet1_B2_B2',
+            id: 'range_p_Sheet1_p_B2_p_B2',
             label: 'Sheet1!B2',
             range: {
               sheetName: 'Sheet1',
@@ -473,7 +978,7 @@ describe('@bilig/workbook model api', () => {
         path: 'commands[0]',
         ref: {
           kind: 'range',
-          id: 'range_Sheet1_D2_D2',
+          id: 'range_p_Sheet1_p_D2_p_D2',
           label: 'Sheet1!D2',
           range: {
             sheetName: 'Sheet1',
@@ -592,6 +1097,7 @@ describe('@bilig/workbook model api', () => {
     expect(inspectModel(model)).toEqual({
       name: 'inspectable-model',
       actions: ['calculate', 'reset'],
+      actionDetails: [{ name: 'calculate' }, { name: 'reset' }],
       hasChecks: true,
     })
   })
@@ -620,6 +1126,7 @@ describe('@bilig/workbook model api', () => {
     expect(description).toEqual({
       name: 'described-model-manifest',
       actions: ['calculate', 'reset'],
+      actionDetails: [{ name: 'calculate' }, { name: 'reset' }],
       hasChecks: true,
     })
     expect(JSON.parse(JSON.stringify(description))).toEqual(description)
@@ -750,7 +1257,7 @@ describe('@bilig/workbook model api', () => {
           kind: 'exists',
           target: {
             kind: 'table',
-            id: 'table_Inputs',
+            id: 'table_p_Inputs',
             label: 'Inputs',
             name: 'Inputs',
           },

@@ -216,6 +216,9 @@ export const WorkbookAgentWorkflowArtifactSchema = Schema.Struct({
 })
 export type WorkbookAgentWorkflowArtifact = Schema.Schema.Type<typeof WorkbookAgentWorkflowArtifactSchema>
 
+export const WorkbookAgentWorkflowMutationStatusSchema = Schema.Literal('applied', 'staged', 'queued', 'failed', 'verification_incomplete')
+export type WorkbookAgentWorkflowMutationStatus = Schema.Schema.Type<typeof WorkbookAgentWorkflowMutationStatusSchema>
+
 export const WorkbookAgentWorkflowRunSchema = Schema.Struct({
   runId: Schema.String,
   threadId: Schema.String,
@@ -230,6 +233,10 @@ export const WorkbookAgentWorkflowRunSchema = Schema.Struct({
   errorMessage: Schema.Union(Schema.String, Schema.Null),
   steps: Schema.Array(WorkbookAgentWorkflowStepSchema),
   artifact: Schema.Union(WorkbookAgentWorkflowArtifactSchema, Schema.Null),
+  mutationExecuted: Schema.optionalWith(Schema.Union(Schema.Boolean, Schema.Null), {}),
+  verificationComplete: Schema.optionalWith(Schema.Union(Schema.Boolean, Schema.Null), {}),
+  mutationStatus: Schema.optionalWith(Schema.Union(WorkbookAgentWorkflowMutationStatusSchema, Schema.Null), {}),
+  mutationReceipt: Schema.optionalWith(Schema.Union(Schema.Unknown, Schema.Null), {}),
 })
 export type WorkbookAgentWorkflowRun = Schema.Schema.Type<typeof WorkbookAgentWorkflowRunSchema>
 

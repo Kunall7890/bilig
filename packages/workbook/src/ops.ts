@@ -18,7 +18,7 @@ import type {
   WorkbookAxisEntrySnapshot,
   WorkbookCalculationSettingsSnapshot,
   WorkbookDefinedNameValueSnapshot,
-  WorkbookPivotValueSnapshot,
+  WorkbookPivotSnapshot,
   WorkbookTableSnapshot,
   WorkbookVolatileContextSnapshot,
 } from '@bilig/protocol'
@@ -55,6 +55,9 @@ export interface WorkbookChartOp extends WorkbookChartSnapshot {}
 export interface WorkbookImageOp extends WorkbookImageSnapshot {}
 export interface WorkbookShapeOp extends WorkbookShapeSnapshot {}
 export interface WorkbookMergeRangeOp extends WorkbookMergeRangeSnapshot {}
+export interface WorkbookPivotOp extends WorkbookPivotSnapshot {
+  source: CellRangeRef
+}
 
 export type WorkbookOp =
   | { kind: 'upsertWorkbook'; name: string }
@@ -139,17 +142,9 @@ export type WorkbookOp =
   | { kind: 'deleteTable'; name: string }
   | { kind: 'upsertSpillRange'; sheetName: string; address: string; rows: number; cols: number }
   | { kind: 'deleteSpillRange'; sheetName: string; address: string }
-  | {
+  | ({
       kind: 'upsertPivotTable'
-      name: string
-      sheetName: string
-      address: string
-      source: CellRangeRef
-      groupBy: string[]
-      values: WorkbookPivotValueSnapshot[]
-      rows: number
-      cols: number
-    }
+    } & WorkbookPivotOp)
   | { kind: 'deletePivotTable'; sheetName: string; address: string }
   | { kind: 'upsertChart'; chart: WorkbookChartOp }
   | { kind: 'deleteChart'; id: string }

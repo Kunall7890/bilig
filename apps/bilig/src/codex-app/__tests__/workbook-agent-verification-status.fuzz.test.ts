@@ -19,6 +19,8 @@ describe('workbook agent verification status fuzz', () => {
         invariantsOk: fc.boolean(),
         includeFormulaReport: fc.boolean(),
         includeInvariantReport: fc.boolean(),
+        includeRecalculationReport: fc.boolean(),
+        recalculationUpToDate: fc.boolean(),
         requireTargetRange: fc.boolean(),
         targetRangeCount: fc.integer({ min: 0, max: 3 }),
       }),
@@ -35,6 +37,11 @@ describe('workbook agent verification status fuzz', () => {
                 summary: { ok: input.invariantsOk },
               }
             : null,
+          recalculationStatus: input.includeRecalculationReport
+            ? {
+                upToDate: input.recalculationUpToDate,
+              }
+            : null,
           requireTargetRange: input.requireTargetRange,
           targetRangeCount: input.targetRangeCount,
         })
@@ -42,13 +49,17 @@ describe('workbook agent verification status fuzz', () => {
         const expectedRendered = input.renderedReadback.every((proof) => !proof.requested || proof.matched === true)
         const expectedFormula = input.includeFormulaReport && input.formulaIssueCount === 0
         const expectedInvariants = input.includeInvariantReport && input.invariantsOk
+        const expectedRecalculation = input.includeRecalculationReport && input.recalculationUpToDate
         const expectedTarget = input.requireTargetRange ? input.targetRangeCount > 0 : true
 
         expect(status.renderedComplete).toBe(expectedRendered)
         expect(status.formulaComplete).toBe(expectedFormula)
         expect(status.invariantsComplete).toBe(expectedInvariants)
+        expect(status.recalculationComplete).toBe(expectedRecalculation)
         expect(status.targetRangeComplete).toBe(expectedTarget)
-        expect(status.verificationComplete).toBe(expectedRendered && expectedFormula && expectedInvariants && expectedTarget)
+        expect(status.verificationComplete).toBe(
+          expectedRendered && expectedFormula && expectedInvariants && expectedRecalculation && expectedTarget,
+        )
       },
       parameters: { numRuns: 120 },
     })

@@ -5,6 +5,7 @@ export type {
   EngineExistingLiteralCellMutationRef,
   EngineExistingNumericCellMutationRef,
   EngineExistingNumericCellMutationResult,
+  EngineFreshDirectAggregateMatrixPlan,
   EngineFormulaSourceRef,
   EngineFormulaSourceRefs,
   EngineFormulaSourceRefTable,

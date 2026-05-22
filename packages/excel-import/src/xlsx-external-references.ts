@@ -1,6 +1,6 @@
 import { XMLParser } from 'fast-xml-parser'
 
-import type { WorkbookExternalWorkbookReferenceSnapshot } from '@bilig/protocol'
+import type { LiteralInput, WorkbookExternalWorkbookReferenceSnapshot, WorkbookSnapshot } from '@bilig/protocol'
 import { getZipText, readXlsxZipEntries, type XlsxZipSource } from './xlsx-zip.js'
 
 interface ExternalCachedNumber {
@@ -25,7 +25,11 @@ interface ExternalCachedError {
 
 type ExternalCachedValue = ExternalCachedNumber | ExternalCachedString | ExternalCachedBoolean | ExternalCachedError
 type ExternalCachedCells = Map<string, ExternalCachedValue>
-type ExternalCachedSheets = Map<string, ExternalCachedCells>
+interface ExternalCachedSheet {
+  readonly sheetName: string
+  readonly cells: ExternalCachedCells
+}
+type ExternalCachedSheets = Map<string, ExternalCachedSheet>
 export type ImportedExternalLinkCaches = Map<number, ExternalCachedSheets>
 
 interface ParsedRelationship {
@@ -39,9 +43,22 @@ export interface ImportedFormulaExternalReferenceTranslation {
   readonly formula: string
   readonly resolvedCount: number
   readonly unresolvedCount: number
+  readonly materializedExternalCacheSheetKeys: readonly string[]
 }
 
 export type ImportedExternalWorkbookReferences = Map<number, WorkbookExternalWorkbookReferenceSnapshot>
+export type ImportedExternalCacheSheetMap = ReadonlyMap<string, string>
+
+export interface ImportedExternalCacheSheetSnapshot {
+  readonly key: string
+  readonly name: string
+  readonly cells: WorkbookSnapshot['sheets'][number]['cells']
+}
+
+export interface ImportedExternalCacheSheetPlan {
+  readonly sheetsByExternalSheet: ReadonlyMap<string, ImportedExternalCacheSheetSnapshot>
+  readonly sheetNamesByExternalSheet: ImportedExternalCacheSheetMap
+}
 
 const xmlParser = new XMLParser({
   ignoreAttributes: false,
@@ -98,6 +115,22 @@ function normalizeSheetName(sheetName: string): string {
 
 function normalizeCellAddress(address: string): string {
   return address.replaceAll('$', '').toUpperCase()
+}
+
+interface ParsedCellAddress {
+  readonly row: number
+  readonly col: number
+}
+
+interface CachedExternalRange {
+  readonly formulaLiteral: string
+  readonly resolvedCount: number
+}
+
+interface MaterializedCachedExternalRange {
+  readonly formulaReference: string
+  readonly resolvedCount: number
+  readonly sheetKey: string
 }
 
 function resolveTargetPath(basePartPath: string, target: string): string {
@@ -205,10 +238,108 @@ function readExternalLinkCache(xml: string): ExternalCachedSheets {
       }
     }
     if (cells.size > 0) {
-      sheetCaches.set(normalizeSheetName(sheetName), cells)
+      sheetCaches.set(normalizeSheetName(sheetName), { sheetName, cells })
     }
   }
   return sheetCaches
+}
+
+function externalCachedValueToLiteralInput(value: ExternalCachedValue): LiteralInput | undefined {
+  switch (value.kind) {
+    case 'number':
+    case 'string':
+    case 'boolean':
+      return value.value
+    case 'error':
+      return undefined
+  }
+}
+
+function sheetNameKey(sheetName: string): string {
+  return sheetName.toLocaleLowerCase('en-US')
+}
+
+function sanitizeWorksheetNamePart(value: string): string {
+  const sanitized = value
+    .replace(/[:\\/?*[\]]/gu, '_')
+    .replace(/'/gu, '_')
+    .replace(/\s+/gu, '_')
+    .replace(/_+/gu, '_')
+    .replace(/^_+|_+$/gu, '')
+  return sanitized.length > 0 ? sanitized : 'Sheet'
+}
+
+function uniqueExternalCacheSheetName(bookIndex: number, sheetName: string, usedSheetNames: Set<string>): string {
+  const prefix = `__bilig_ext_${bookIndex}_`
+  const suffix = sanitizeWorksheetNamePart(sheetName)
+  const base = `${prefix}${suffix}`.slice(0, 31)
+  let candidate = base.length > 0 ? base : '__bilig_ext'
+  let disambiguator = 2
+  while (usedSheetNames.has(sheetNameKey(candidate))) {
+    const suffixText = `_${disambiguator}`
+    candidate = `${base.slice(0, Math.max(0, 31 - suffixText.length))}${suffixText}`
+    disambiguator += 1
+  }
+  usedSheetNames.add(sheetNameKey(candidate))
+  return candidate
+}
+
+function compareExternalCacheCellAddresses(left: string, right: string): number {
+  const leftAddress = parseCachedCellAddress(left)
+  const rightAddress = parseCachedCellAddress(right)
+  if (!leftAddress || !rightAddress) {
+    return left.localeCompare(right)
+  }
+  return leftAddress.row - rightAddress.row || leftAddress.col - rightAddress.col
+}
+
+function externalCacheSheetKey(bookIndex: number, sheetName: string): string {
+  return `${bookIndex}\u0000${normalizeSheetName(sheetName)}`
+}
+
+function buildImportedExternalCacheSheetCells(sheet: ExternalCachedSheet): WorkbookSnapshot['sheets'][number]['cells'] {
+  return [...sheet.cells.entries()]
+    .flatMap(([address, value]) => {
+      const literal = externalCachedValueToLiteralInput(value)
+      const parsed = parseCachedCellAddress(address)
+      if (literal === undefined || !parsed) {
+        return []
+      }
+      return [
+        {
+          address: normalizeCellAddress(address),
+          row: parsed.row,
+          col: parsed.col,
+          value: literal,
+        },
+      ]
+    })
+    .toSorted((left, right) => compareExternalCacheCellAddresses(left.address, right.address))
+}
+
+export function buildImportedExternalCacheSheetPlan(
+  caches: ImportedExternalLinkCaches,
+  existingSheetNames: readonly string[],
+): ImportedExternalCacheSheetPlan {
+  const usedSheetNames = new Set(existingSheetNames.map(sheetNameKey))
+  const sheetsByExternalSheet = new Map<string, ImportedExternalCacheSheetSnapshot>()
+  const sheetNamesByExternalSheet = new Map<string, string>()
+
+  for (const [bookIndex, sheets] of [...caches.entries()].toSorted((left, right) => left[0] - right[0])) {
+    for (const sheet of [...sheets.values()].toSorted((left, right) => left.sheetName.localeCompare(right.sheetName))) {
+      const cells = buildImportedExternalCacheSheetCells(sheet)
+      if (cells.length === 0) {
+        continue
+      }
+      const key = externalCacheSheetKey(bookIndex, sheet.sheetName)
+      const name = uniqueExternalCacheSheetName(bookIndex, sheet.sheetName, usedSheetNames)
+      const snapshot: ImportedExternalCacheSheetSnapshot = { key, name, cells }
+      sheetsByExternalSheet.set(key, snapshot)
+      sheetNamesByExternalSheet.set(key, name)
+    }
+  }
+
+  return { sheetsByExternalSheet, sheetNamesByExternalSheet }
 }
 
 function readWorkbookExternalLinkTargets(zip: Record<string, Uint8Array>): Map<number, string> {
@@ -424,6 +555,19 @@ function readCellAddress(source: string, startIndex: number): { readonly address
   return { address, endIndex }
 }
 
+function parseCachedCellAddress(address: string): ParsedCellAddress | null {
+  const match = /^([A-Z]{1,3})([1-9][0-9]{0,6})$/u.exec(normalizeCellAddress(address))
+  if (!match) {
+    return null
+  }
+  let col = 0
+  for (const character of match[1]!) {
+    col = col * 26 + character.charCodeAt(0) - 64
+  }
+  const row = Number(match[2])
+  return col > 0 && Number.isSafeInteger(row) ? { row: row - 1, col: col - 1 } : null
+}
+
 function readExternalSheetName(value: string): { readonly bookIndex: number; readonly sheetName: string } | null {
   const match = /^\[([1-9][0-9]*)\](.+)$/u.exec(value)
   if (!match) {
@@ -456,6 +600,51 @@ function isRangeOrSpillReference(source: string, addressStartIndex: number, addr
   return source[addressStartIndex - 1] === ':' || source[addressEndIndex] === ':' || source[addressEndIndex] === '#'
 }
 
+function readCachedExternalRange(
+  caches: ImportedExternalLinkCaches,
+  bookIndex: number,
+  sheetName: string,
+  startAddress: string,
+  endAddress: string,
+): CachedExternalRange | null {
+  const start = parseCachedCellAddress(startAddress)
+  const end = parseCachedCellAddress(endAddress)
+  if (!start || !end) {
+    return null
+  }
+  const rowStart = Math.min(start.row, end.row)
+  const rowEnd = Math.max(start.row, end.row)
+  const colStart = Math.min(start.col, end.col)
+  const colEnd = Math.max(start.col, end.col)
+  const rows: string[][] = []
+  for (let row = rowStart; row <= rowEnd; row += 1) {
+    const values: string[] = []
+    for (let col = colStart; col <= colEnd; col += 1) {
+      const value = cachedExternalValue(caches, bookIndex, sheetName, formatA1Address(row, col))
+      if (!value) {
+        return null
+      }
+      values.push(formatFormulaLiteral(value))
+    }
+    rows.push(values)
+  }
+  return {
+    formulaLiteral: `{${rows.map((row) => row.join(',')).join(';')}}`,
+    resolvedCount: (rowEnd - rowStart + 1) * (colEnd - colStart + 1),
+  }
+}
+
+function formatA1Address(row: number, col: number): string {
+  let current = col + 1
+  let column = ''
+  while (current > 0) {
+    const remainder = (current - 1) % 26
+    column = String.fromCharCode(65 + remainder) + column
+    current = Math.floor((current - 1) / 26)
+  }
+  return `${column}${String(row + 1)}`
+}
+
 function formatFormulaLiteral(value: ExternalCachedValue): string {
   switch (value.kind) {
     case 'number':
@@ -475,27 +664,95 @@ function cachedExternalValue(
   sheetName: string,
   address: string,
 ): ExternalCachedValue | null {
-  return caches.get(bookIndex)?.get(normalizeSheetName(sheetName))?.get(normalizeCellAddress(address)) ?? null
+  return caches.get(bookIndex)?.get(normalizeSheetName(sheetName))?.cells.get(normalizeCellAddress(address)) ?? null
+}
+
+function quoteFormulaSheetName(sheetName: string): string {
+  return `'${sheetName.replaceAll("'", "''")}'`
+}
+
+function formatAbsoluteA1Address(row: number, col: number): string {
+  const address = formatA1Address(row, col)
+  const match = /^([A-Z]+)([1-9][0-9]*)$/u.exec(address)
+  return match ? `$${match[1]}$${match[2]}` : address
+}
+
+function readMaterializedCachedExternalRange(
+  caches: ImportedExternalLinkCaches,
+  cacheSheetNames: ImportedExternalCacheSheetMap | undefined,
+  bookIndex: number,
+  sheetName: string,
+  startAddress: string,
+  endAddress: string,
+): MaterializedCachedExternalRange | null {
+  if (!cacheSheetNames) {
+    return null
+  }
+  const start = parseCachedCellAddress(startAddress)
+  const end = parseCachedCellAddress(endAddress)
+  if (!start || !end) {
+    return null
+  }
+  const sheetKey = externalCacheSheetKey(bookIndex, sheetName)
+  const localSheetName = cacheSheetNames.get(sheetKey)
+  if (!localSheetName) {
+    return null
+  }
+  const rowStart = Math.min(start.row, end.row)
+  const rowEnd = Math.max(start.row, end.row)
+  const colStart = Math.min(start.col, end.col)
+  const colEnd = Math.max(start.col, end.col)
+  let resolvedCount = 0
+  for (let row = rowStart; row <= rowEnd; row += 1) {
+    for (let col = colStart; col <= colEnd; col += 1) {
+      const value = cachedExternalValue(caches, bookIndex, sheetName, formatA1Address(row, col))
+      if (!value || externalCachedValueToLiteralInput(value) === undefined) {
+        return null
+      }
+      resolvedCount += 1
+    }
+  }
+  const formulaReference = `${quoteFormulaSheetName(localSheetName)}!${formatAbsoluteA1Address(rowStart, colStart)}:${formatAbsoluteA1Address(
+    rowEnd,
+    colEnd,
+  )}`
+  return { formulaReference, resolvedCount, sheetKey }
 }
 
 function formulaNeedsPivotReferenceContext(formula: string): boolean {
   return /\bGETPIVOTDATA\s*\(/iu.test(formula)
 }
 
+function formulaNeedsCriteriaRangeReferenceContext(formula: string): boolean {
+  return /\b(?:AVERAGEIF|AVERAGEIFS|COUNTIF|COUNTIFS|MAXIFS|MINIFS|SUMIF|SUMIFS)\s*\(/iu.test(formula)
+}
+
 export function translateImportedFormulaExternalReferences(
   formula: string,
   caches: ImportedExternalLinkCaches,
+  cacheSheetNames?: ImportedExternalCacheSheetMap,
 ): ImportedFormulaExternalReferenceTranslation {
+  const unchanged = (): ImportedFormulaExternalReferenceTranslation => ({
+    formula,
+    resolvedCount: 0,
+    unresolvedCount: 0,
+    materializedExternalCacheSheetKeys: [],
+  })
   if (caches.size === 0 || !formula.includes('[')) {
-    return { formula, resolvedCount: 0, unresolvedCount: 0 }
+    return unchanged()
   }
   if (formulaNeedsPivotReferenceContext(formula)) {
-    return { formula, resolvedCount: 0, unresolvedCount: 0 }
+    return unchanged()
+  }
+  const needsCriteriaRangeReferenceContext = formulaNeedsCriteriaRangeReferenceContext(formula)
+  if (needsCriteriaRangeReferenceContext && !cacheSheetNames) {
+    return unchanged()
   }
   let output = ''
   let index = 0
   let resolvedCount = 0
   let unresolvedCount = 0
+  const materializedExternalCacheSheetKeys = new Set<string>()
 
   while (index < formula.length) {
     const character = formula[index]
@@ -515,9 +772,52 @@ export function translateImportedFormulaExternalReferences(
       }
       const externalSheet = readExternalSheetName(quoted.value)
       const address = readCellAddress(formula, quoted.endIndex + 1)
-      if (!externalSheet || !address || isRangeOrSpillReference(formula, quoted.endIndex + 1, address.endIndex)) {
+      if (!externalSheet || !address) {
         output += formula.slice(index, address?.endIndex ?? quoted.endIndex + 1)
         index = address?.endIndex ?? quoted.endIndex + 1
+        continue
+      }
+      if (formula[address.endIndex] === ':') {
+        const endAddress = readCellAddress(formula, address.endIndex + 1)
+        if (endAddress) {
+          const materializedRange = readMaterializedCachedExternalRange(
+            caches,
+            cacheSheetNames,
+            externalSheet.bookIndex,
+            externalSheet.sheetName,
+            address.address,
+            endAddress.address,
+          )
+          if (materializedRange) {
+            output += materializedRange.formulaReference
+            resolvedCount += materializedRange.resolvedCount
+            materializedExternalCacheSheetKeys.add(materializedRange.sheetKey)
+          } else if (!needsCriteriaRangeReferenceContext) {
+            const range = readCachedExternalRange(
+              caches,
+              externalSheet.bookIndex,
+              externalSheet.sheetName,
+              address.address,
+              endAddress.address,
+            )
+            if (range) {
+              output += range.formulaLiteral
+              resolvedCount += range.resolvedCount
+            } else {
+              output += formula.slice(index, endAddress.endIndex)
+              unresolvedCount += 1
+            }
+          } else {
+            output += formula.slice(index, endAddress.endIndex)
+            unresolvedCount += 1
+          }
+          index = endAddress.endIndex
+          continue
+        }
+      }
+      if (isRangeOrSpillReference(formula, quoted.endIndex + 1, address.endIndex)) {
+        output += formula.slice(index, address.endIndex)
+        index = address.endIndex
         continue
       }
       const value = cachedExternalValue(caches, externalSheet.bookIndex, externalSheet.sheetName, address.address)
@@ -534,7 +834,50 @@ export function translateImportedFormulaExternalReferences(
     if (character === '[') {
       const externalSheet = readUnquotedExternalSheetReference(formula, index)
       const address = externalSheet ? readCellAddress(formula, externalSheet.endIndex + 1) : null
-      if (!externalSheet || !address || isRangeOrSpillReference(formula, externalSheet.endIndex + 1, address.endIndex)) {
+      if (!externalSheet || !address) {
+        output += character
+        index += 1
+        continue
+      }
+      if (formula[address.endIndex] === ':') {
+        const endAddress = readCellAddress(formula, address.endIndex + 1)
+        if (endAddress) {
+          const materializedRange = readMaterializedCachedExternalRange(
+            caches,
+            cacheSheetNames,
+            externalSheet.bookIndex,
+            externalSheet.sheetName,
+            address.address,
+            endAddress.address,
+          )
+          if (materializedRange) {
+            output += materializedRange.formulaReference
+            resolvedCount += materializedRange.resolvedCount
+            materializedExternalCacheSheetKeys.add(materializedRange.sheetKey)
+          } else if (!needsCriteriaRangeReferenceContext) {
+            const range = readCachedExternalRange(
+              caches,
+              externalSheet.bookIndex,
+              externalSheet.sheetName,
+              address.address,
+              endAddress.address,
+            )
+            if (range) {
+              output += range.formulaLiteral
+              resolvedCount += range.resolvedCount
+            } else {
+              output += formula.slice(index, endAddress.endIndex)
+              unresolvedCount += 1
+            }
+          } else {
+            output += formula.slice(index, endAddress.endIndex)
+            unresolvedCount += 1
+          }
+          index = endAddress.endIndex
+          continue
+        }
+      }
+      if (isRangeOrSpillReference(formula, externalSheet.endIndex + 1, address.endIndex)) {
         output += character
         index += 1
         continue
@@ -554,5 +897,10 @@ export function translateImportedFormulaExternalReferences(
     index += 1
   }
 
-  return { formula: output, resolvedCount, unresolvedCount }
+  return {
+    formula: output,
+    resolvedCount,
+    unresolvedCount,
+    materializedExternalCacheSheetKeys: [...materializedExternalCacheSheetKeys].toSorted(),
+  }
 }

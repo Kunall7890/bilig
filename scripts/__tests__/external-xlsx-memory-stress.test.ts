@@ -24,10 +24,15 @@ describe('external XLSX memory stress plan', () => {
 
     expect(validateExternalXlsxStressPlan(plan)).toEqual([])
     expect(plan.sourceCount).toBe(externalXlsxStressSources.length)
-    expect(plan.workbookCount).toBeGreaterThanOrEqual(15)
+    expect(plan.workbookCount).toBeGreaterThanOrEqual(19)
     expect(plan.giantWorkbookCount).toBeGreaterThanOrEqual(2)
+    expect(plan.cellHeavyWorkbookCount).toBeGreaterThanOrEqual(3)
     expect(plan.workbooks.map((workbook) => workbook.id)).toEqual(
       expect.arrayContaining([
+        'ons-cpi-mm23-current',
+        'ons-trade-imports-current',
+        'ons-life-expectancy-pivot',
+        'govinfo-fy2027-outlays',
         'powerpivot-tutorial-sample',
         'contoso-sample-dax-formulas',
         'powerbi-adventureworks-sales',
@@ -36,6 +41,7 @@ describe('external XLSX memory stress plan', () => {
       ]),
     )
     expect(plan.sources.some((source) => source.downloadUrl.includes('download.microsoft.com'))).toBe(true)
+    expect(plan.sources.some((source) => source.downloadUrl.includes('ons.gov.uk'))).toBe(true)
     expect(plan.sources.some((source) => source.downloadUrl.includes('raw.githubusercontent.com'))).toBe(true)
   })
 
@@ -49,6 +55,23 @@ describe('external XLSX memory stress plan', () => {
 
     expect(validateExternalXlsxStressPlan(invalidPlan)).toEqual(
       expect.arrayContaining(['plan must include at least two 100 MiB+ workbook stress targets']),
+    )
+  })
+
+  it('rejects plans that do not include visible-cell-heavy public workbook stress targets', () => {
+    const validPlan = buildExternalXlsxStressPlan({ cacheDir: '/repo/.cache/external-xlsx-stress' })
+    const invalidPlan: ExternalXlsxStressPlan = {
+      ...validPlan,
+      cellHeavyWorkbookCount: 0,
+      workbooks: validPlan.workbooks.map((workbook) => {
+        const copy = Object.assign({}, workbook)
+        delete copy.expectedMinCells
+        return copy
+      }),
+    }
+
+    expect(validateExternalXlsxStressPlan(invalidPlan)).toEqual(
+      expect.arrayContaining(['plan must include at least three 1M+ visible-cell workbook stress targets']),
     )
   })
 

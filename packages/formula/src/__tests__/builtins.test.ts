@@ -1053,6 +1053,22 @@ describe('formula builtins', () => {
         { tag: ValueTag.Number, value: 2 },
       ),
     ).toEqual({ tag: ValueTag.Error, code: ErrorCode.Value })
+    expect(
+      getBuiltin('AGGREGATE')?.(
+        { tag: ValueTag.Number, value: 9 },
+        { tag: ValueTag.Number, value: 4 },
+        { tag: ValueTag.Number, value: 2 },
+        { tag: ValueTag.Error, code: ErrorCode.Div0 },
+      ),
+    ).toEqual({ tag: ValueTag.Error, code: ErrorCode.Div0 })
+    expect(
+      getBuiltin('AGGREGATE')?.(
+        { tag: ValueTag.Number, value: 9 },
+        { tag: ValueTag.Number, value: 6 },
+        { tag: ValueTag.Number, value: 2 },
+        { tag: ValueTag.Error, code: ErrorCode.Div0 },
+      ),
+    ).toEqual({ tag: ValueTag.Number, value: 2 })
     expect(getBuiltin('ARABIC')?.({ tag: ValueTag.Number, value: 1 })).toEqual({
       tag: ValueTag.Error,
       code: ErrorCode.Value,

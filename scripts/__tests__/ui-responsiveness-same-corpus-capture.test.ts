@@ -320,6 +320,32 @@ describe('same-corpus UI responsiveness capture CLI', () => {
     })
   })
 
+  it('downgrades legacy Bilig canvas evidence that lacks strict rendered-frame proof', () => {
+    const proof = buildCaptureScenarioProof({
+      bilig: sameCorpusCaptureMeasurement('bilig', 'bilig-benchmark-state'),
+      googleSheets: sameCorpusCaptureMeasurement('google-sheets', 'google-sheets-xlsx-export'),
+      visualProofs: [
+        {
+          ...sameCorpusVisualProof('bilig', 'typegpu-visible-canvas'),
+          pixelGridProof: {
+            product: 'bilig',
+            captured: true,
+            method: 'typegpu-visible-canvas',
+            viewportPixelWidth: 1440,
+            viewportPixelHeight: 900,
+            evidence: ['mode=typegpu-v3', 'tilePaneCount=6', 'headerPaneCount=3'],
+          },
+        },
+        sameCorpusVisualProof('google-sheets', 'google-sheets-visible-grid'),
+      ],
+    })
+
+    expect(proof.pixelGridProof).toMatchObject({
+      captured: false,
+      missingProducts: ['bilig'],
+    })
+  })
+
   it('rejects read-only incumbent edit surfaces before timing same-corpus edits', () => {
     expect(
       incumbentEditableWorkloadBlocker(
@@ -471,7 +497,34 @@ function sameCorpusVisualProof(
       method,
       viewportPixelWidth: 1440,
       viewportPixelHeight: 900,
-      evidence: ['test visual proof'],
+      evidence:
+        product === 'bilig'
+          ? [
+              'gridCssWidth=720',
+              'gridCssHeight=450',
+              'devicePixelRatio=2',
+              'expectedPixelWidth=1440',
+              'expectedPixelHeight=900',
+              'contractVersion=same-corpus-ui-v2',
+              'gridProjectedRevision=rev-3',
+              'fallbackMounted=false',
+              'mode=typegpu-v3',
+              'backendStatus=ready',
+              'frameProofStatus=presented',
+              'hasPresentedVisibleFrame=true',
+              'tilePaneCount=6',
+              'headerPaneCount=3',
+              'presentedTilePaneCount=6',
+              'presentedHeaderPaneCount=3',
+              'canvasPixelWidth=1440',
+              'canvasPixelHeight=900',
+              'canvasCoversViewport=true',
+              'typeGpuProjectedRevision=rev-3',
+              'visibleProjectedRevision=rev-3',
+              'tileSceneRevision=scene-7',
+              'visibleRenderRevision=scene-7',
+            ]
+          : ['test visual proof'],
     },
   }
 }

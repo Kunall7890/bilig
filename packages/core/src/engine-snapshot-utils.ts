@@ -4,6 +4,8 @@ import type {
   WorkbookAxisMetadataSnapshot,
   WorkbookFreezePaneSnapshot,
   WorkbookMergeRangeSnapshot,
+  WorkbookSheetArrayFormulasSnapshot,
+  WorkbookSheetDataTableFormulasSnapshot,
   WorkbookSheetTabColorSnapshot,
 } from '@bilig/protocol'
 import type { EngineOp } from '@bilig/workbook'
@@ -28,6 +30,9 @@ function axisMetadataToSnapshot(records: readonly WorkbookAxisMetadataRecord[]):
     }
     if (record.hidden !== null) {
       snapshot.hidden = record.hidden
+    }
+    if (record.filtered !== null) {
+      snapshot.filtered = record.filtered
     }
     if (record.styleIndex !== undefined && record.styleIndex !== null) {
       snapshot.styleIndex = record.styleIndex
@@ -111,12 +116,30 @@ function sheetTabColorToSnapshot(record: WorkbookSheetTabColorRecord | undefined
   return snapshot
 }
 
+function dataTableFormulasToSnapshot(
+  formulas: WorkbookSheetDataTableFormulasSnapshot | undefined,
+): WorkbookSheetDataTableFormulasSnapshot | undefined {
+  if (!formulas || formulas.formulas.length === 0) {
+    return undefined
+  }
+  return { formulas: formulas.formulas.map((formula) => ({ ...formula })) }
+}
+
+function arrayFormulasToSnapshot(formulas: WorkbookSheetArrayFormulasSnapshot | undefined): WorkbookSheetArrayFormulasSnapshot | undefined {
+  if (!formulas || formulas.formulas.length === 0) {
+    return undefined
+  }
+  return { formulas: formulas.formulas.map((formula) => ({ ...formula })) }
+}
+
 export function exportSheetMetadata(workbook: WorkbookStore, sheetName: string): SheetMetadataSnapshot | undefined {
+  const sheet = workbook.getSheet(sheetName)
   const rows = workbook.listRowAxisEntries(sheetName)
   const columns = workbook.listColumnAxisEntries(sheetName)
   const rowMetadata = axisMetadataToSnapshot(workbook.listRowMetadata(sheetName))
   const columnMetadata = axisMetadataToSnapshot(workbook.listColumnMetadata(sheetName))
   const sheetFormatPr = workbook.getSheetFormatPr(sheetName)
+  const visibility = workbook.getSheetVisibility(sheetName)
   const styleRanges = workbook.listStyleRanges(sheetName).map((record) => ({
     range: cloneSnapshotRangeRef(record.range),
     styleId: record.styleId,
@@ -139,6 +162,8 @@ export function exportSheetMetadata(workbook: WorkbookStore, sheetName: string):
   const protectedRanges = workbook.listRangeProtections(sheetName).map((protection) => structuredClone(protection))
   const commentThreads = workbook.listCommentThreads(sheetName).map((thread) => structuredClone(thread))
   const notes = workbook.listNotes(sheetName).map((note) => structuredClone(note))
+  const arrayFormulas = arrayFormulasToSnapshot(sheet?.arrayFormulas)
+  const dataTableFormulas = dataTableFormulasToSnapshot(sheet?.dataTableFormulas)
 
   if (
     rows.length === 0 &&
@@ -146,6 +171,7 @@ export function exportSheetMetadata(workbook: WorkbookStore, sheetName: string):
     rowMetadata.length === 0 &&
     columnMetadata.length === 0 &&
     sheetFormatPr === undefined &&
+    visibility === undefined &&
     styleRanges.length === 0 &&
     formatRanges.length === 0 &&
     freezePane === undefined &&
@@ -158,7 +184,9 @@ export function exportSheetMetadata(workbook: WorkbookStore, sheetName: string):
     conditionalFormats.length === 0 &&
     protectedRanges.length === 0 &&
     commentThreads.length === 0 &&
-    notes.length === 0
+    notes.length === 0 &&
+    arrayFormulas === undefined &&
+    dataTableFormulas === undefined
   ) {
     return undefined
   }
@@ -178,6 +206,9 @@ export function exportSheetMetadata(workbook: WorkbookStore, sheetName: string):
   }
   if (sheetFormatPr) {
     metadata.sheetFormatPr = sheetFormatPr
+  }
+  if (visibility) {
+    metadata.visibility = visibility
   }
   if (styleRanges.length > 0) {
     metadata.styleRanges = styleRanges
@@ -217,6 +248,12 @@ export function exportSheetMetadata(workbook: WorkbookStore, sheetName: string):
   }
   if (notes.length > 0) {
     metadata.notes = notes
+  }
+  if (arrayFormulas) {
+    metadata.arrayFormulas = arrayFormulas
+  }
+  if (dataTableFormulas) {
+    metadata.dataTableFormulas = dataTableFormulas
   }
   return metadata
 }

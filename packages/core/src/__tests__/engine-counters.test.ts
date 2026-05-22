@@ -58,6 +58,16 @@ const oracleAggregateCounterKeys = [
   'directCriteriaAggregateCacheHits',
 ] as const satisfies readonly EngineCounterKey[]
 
+const oracleFormulaRunCounterKeys = [
+  'freshDirectScalarBulkRunBindings',
+  'freshDirectScalarBulkMembers',
+  'freshDirectScalarBulkFallbacks',
+  'freshDirectScalarBulkReverseEdgeSlices',
+  'freshDirectScalarFormulaObjectsMaterialized',
+  'freshDirectAggregateMatrixPlanApplications',
+  'freshDirectAggregateMatrixPlanMembers',
+] as const satisfies readonly EngineCounterKey[]
+
 describe('engine counters', () => {
   it('initializes every planned performance counter to zero', () => {
     const counters = createEngineCounters()
@@ -66,6 +76,7 @@ describe('engine counters', () => {
     expect(Object.keys(counters).toSorted()).toEqual([...ENGINE_COUNTER_KEYS].toSorted())
     expect(ENGINE_COUNTER_KEYS).toEqual(expect.arrayContaining([...oracleStructuralCounterKeys]))
     expect(ENGINE_COUNTER_KEYS).toEqual(expect.arrayContaining([...oracleAggregateCounterKeys]))
+    expect(ENGINE_COUNTER_KEYS).toEqual(expect.arrayContaining([...oracleFormulaRunCounterKeys]))
     expect(Object.values(counters)).toEqual(zeroValues)
   })
 

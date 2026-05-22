@@ -2060,7 +2060,7 @@ describe('GridRenderTilePaneRuntime', () => {
     unsubscribe?.()
   })
 
-  it('uses local tiles for worker-authoritative damage until fresh render tiles arrive', () => {
+  it('does not render stale local tiles for worker-authoritative damage before fresh render tiles arrive', () => {
     const runtime = new GridRenderTilePaneRuntime()
     const host = createHost()
     const tileId = host.viewportTileKeys({
@@ -2137,8 +2137,8 @@ describe('GridRenderTilePaneRuntime', () => {
       }),
     )
     expect(runtime.snapshotBridgeState()).toEqual({
-      forceLocalTiles: true,
-      localFallbackRevision: 1,
+      forceLocalTiles: false,
+      localFallbackRevision: 0,
       renderTileRevision: 1,
     })
     expect(fallback.residentBodyPane?.tile.textRuns.some((run) => run.text === 'stale remote text')).toBe(false)
@@ -2169,7 +2169,7 @@ describe('GridRenderTilePaneRuntime', () => {
     )
     expect(runtime.snapshotBridgeState()).toEqual({
       forceLocalTiles: false,
-      localFallbackRevision: 1,
+      localFallbackRevision: 0,
       renderTileRevision: 2,
     })
     expect(refreshed.residentBodyPane?.tile.textRuns).toEqual([])
@@ -2225,6 +2225,106 @@ describe('GridRenderTilePaneRuntime', () => {
     expect(hasOpaqueGreenFillRect(refreshed.residentBodyPane?.tile)).toBe(true)
     expect(refreshed.residentBodyPane?.tile.lastBatchId).toBe(1)
     expect(refreshed.residentBodyPane?.tile.version.styles).toBe(1)
+  })
+
+  it('keeps worker-authoritative dirty tiles pending until projected state catches up', () => {
+    const runtime = new GridRenderTilePaneRuntime()
+    const host = createHost()
+    const tileId = host.viewportTileKeys({
+      dprBucket: 1,
+      sheetOrdinal: 7,
+      viewport: { colEnd: 127, colStart: 0, rowEnd: 31, rowStart: 0 },
+    })[0]
+    if (tileId === undefined) {
+      throw new Error('Expected a visible render tile key for the test viewport')
+    }
+    let projectedRevision = 1
+    let greenFillVisible = false
+    const engineWithDelayedProjection: GridEngineLike = {
+      getCell: (_sheetName, address) => ({
+        ...(address === 'B2' && greenFillVisible ? { styleId: 'style-green' } : {}),
+        ...createEmptyCellSnapshot(address),
+      }),
+      getCellStyle: (styleId) => (styleId === 'style-green' ? { id: 'style-green', fill: { backgroundColor: '#00ff00' } } : undefined),
+      getRenderRevisionSnapshot: () => ({
+        authoritativeRevision: 2,
+        projectedRevision,
+        tileSceneCameraSeq: null,
+        tileSceneRevision: null,
+      }),
+      subscribeCells: () => () => {},
+      workbook: {
+        getSheet: () => undefined,
+      },
+    }
+    const renderTileSource = createMutableWorkbookDeltaRenderTileSource([createRenderTile(tileId)])
+
+    runtime.connectWorkbookDeltaDamage(
+      {
+        dprBucket: 1,
+        gridRuntimeHost: host,
+        renderTileSource: renderTileSource.source,
+        sheetId: 7,
+      },
+      () => undefined,
+    )
+    renderTileSource.emitWorkbookDelta({
+      ...createWorkbookDeltaBatch({
+        dirty: {
+          axisX: new Uint32Array(),
+          axisY: new Uint32Array(),
+          cellRanges: new Uint32Array([1, 1, 1, 1, DirtyMaskV3.Value | DirtyMaskV3.Text | DirtyMaskV3.Rect]),
+        },
+        seq: 2,
+      }),
+      source: 'workerAuthoritative',
+    })
+
+    const staleProjection = runtime.resolve(
+      createInput({
+        engine: engineWithDelayedProjection,
+        gridRuntimeHost: host,
+        renderTileSource: renderTileSource.source,
+        sceneRevision: 0,
+      }),
+    )
+    expect(staleProjection.tileReadiness.visibleDirtyTileKeys).toContain(tileId)
+    expect(hasOpaqueGreenFillRect(staleProjection.residentBodyPane?.tile)).toBe(false)
+
+    const stillPending = runtime.resolve(
+      createInput({
+        engine: engineWithDelayedProjection,
+        gridRuntimeHost: host,
+        renderTileSource: renderTileSource.source,
+        sceneRevision: 0,
+      }),
+    )
+    expect(stillPending.tileReadiness.visibleDirtyTileKeys).toContain(tileId)
+
+    projectedRevision = 2
+    greenFillVisible = true
+
+    const caughtUp = runtime.resolve(
+      createInput({
+        engine: engineWithDelayedProjection,
+        gridRuntimeHost: host,
+        renderTileSource: renderTileSource.source,
+        sceneRevision: 0,
+      }),
+    )
+    expect(caughtUp.tileReadiness.visibleDirtyTileKeys).toContain(tileId)
+    expect(hasOpaqueGreenFillRect(caughtUp.residentBodyPane?.tile)).toBe(true)
+
+    const acknowledged = runtime.resolve(
+      createInput({
+        engine: engineWithDelayedProjection,
+        gridRuntimeHost: host,
+        renderTileSource: renderTileSource.source,
+        sceneRevision: 0,
+      }),
+    )
+    expect(acknowledged.tileReadiness.visibleDirtyTileKeys).toEqual([])
+    expect(hasOpaqueGreenFillRect(acknowledged.residentBodyPane?.tile)).toBe(true)
   })
 
   it('rebuilds resident tiles for pending local projections even when the remote batch id is ahead', () => {
@@ -2416,7 +2516,7 @@ describe('GridRenderTilePaneRuntime', () => {
     expect(tile?.version.styles).toBe(4)
   })
 
-  it('keeps local tiles through stale render tile deltas until the renderer batch catches up', () => {
+  it('keeps local tiles through stale render tile deltas until projected tile versions catch up', () => {
     const runtime = new GridRenderTilePaneRuntime()
     const host = createHost()
     const tileId = host.viewportTileKeys({
@@ -2498,13 +2598,23 @@ describe('GridRenderTilePaneRuntime', () => {
     renderTileSource.emitRenderTileDelta({ batchId: 9, cameraSeq: 9, changedTileIds: [tileId] })
 
     expect(runtime.snapshotBridgeState()).toEqual({
-      forceLocalTiles: true,
+      forceLocalTiles: false,
       localFallbackRevision: 1,
       renderTileRevision: 2,
     })
+    const staleProjectionEngine: GridEngineLike = {
+      ...LOCAL_EMPTY_ENGINE,
+      getRenderRevisionSnapshot: () => ({
+        authoritativeRevision: 9,
+        localRevision: 10,
+        projectedRevision: 9,
+        tileSceneCameraSeq: 9,
+        tileSceneRevision: 9,
+      }),
+    }
     const staleDeltaState = runtime.resolve(
       createInput({
-        engine: LOCAL_EMPTY_ENGINE,
+        engine: staleProjectionEngine,
         forceLocalTiles: runtime.snapshotBridgeState().forceLocalTiles,
         gridRuntimeHost: host,
         renderTileSource: renderTileSource.source,
@@ -2512,6 +2622,7 @@ describe('GridRenderTilePaneRuntime', () => {
     )
     expect(staleDeltaState.residentBodyPane?.tile.textRuns.some((run) => run.text === 'deleted text from stale tile')).toBe(false)
     expect(staleDeltaState.residentBodyPane?.tile.textRuns).toEqual([])
+    expect(host.tiles.dirtyTiles.getRequiredProjectedRevision(tileId)).toBe(10)
 
     const freshRemoteTile: GridRenderTile = {
       ...staleRemoteTile,
@@ -2521,6 +2632,7 @@ describe('GridRenderTilePaneRuntime', () => {
       textRuns: [],
       version: {
         ...staleRemoteTile.version,
+        styles: 10,
         text: 10,
         values: 10,
       },
@@ -2533,9 +2645,19 @@ describe('GridRenderTilePaneRuntime', () => {
       localFallbackRevision: 1,
       renderTileRevision: 3,
     })
+    const caughtUpEngine: GridEngineLike = {
+      ...LOCAL_EMPTY_ENGINE,
+      getRenderRevisionSnapshot: () => ({
+        authoritativeRevision: 10,
+        localRevision: 10,
+        projectedRevision: 10,
+        tileSceneCameraSeq: 10,
+        tileSceneRevision: 10,
+      }),
+    }
     const caughtUpState = runtime.resolve(
       createInput({
-        engine: LOCAL_EMPTY_ENGINE,
+        engine: caughtUpEngine,
         forceLocalTiles: runtime.snapshotBridgeState().forceLocalTiles,
         gridRuntimeHost: host,
         renderTileSource: renderTileSource.source,
@@ -3690,6 +3812,50 @@ describe('GridRenderTilePaneRuntime', () => {
     expect(fallback.renderTilePanes[0]?.tile.dirty?.textSpans).toEqual([])
   })
 
+  it('preserves runtime freeze sequence when hybrid dirty tiles are localized', () => {
+    const runtime = new GridRenderTilePaneRuntime()
+    const host = createHost()
+    host.updateCamera({
+      dpr: 1,
+      freezeCols: 1,
+      freezeRows: 1,
+      gridMetrics: getGridMetrics(),
+      scrollLeft: 0,
+      scrollTop: 0,
+      viewportHeight: 400,
+      viewportWidth: 800,
+    })
+    const tileId = host.viewportTileKeys({
+      dprBucket: 1,
+      sheetOrdinal: 7,
+      viewport: { colEnd: 127, colStart: 0, rowEnd: 31, rowStart: 0 },
+    })[0]
+    if (tileId === undefined) {
+      throw new Error('Expected a visible render tile key for the test viewport')
+    }
+
+    host.tiles.applyWorkbookDelta(
+      createWorkbookDeltaBatch({
+        dirty: {
+          axisX: new Uint32Array(),
+          axisY: new Uint32Array(),
+          cellRanges: new Uint32Array([6, 6, 5, 5, DirtyMaskV3.Value | DirtyMaskV3.Text]),
+        },
+      }),
+      { dprBucket: 1 },
+    )
+
+    const resolved = runtime.resolve(
+      createInput({
+        engine: LOCAL_EMPTY_ENGINE,
+        gridRuntimeHost: host,
+        renderTileSource: createRenderTileSource([createRenderTile(tileId)]),
+      }),
+    )
+
+    expect(resolved.renderTilePanes[0]?.tile.version.freeze).toBe(host.snapshot().freezeSeq)
+  })
+
   it('reuses resident static rect buffers for text-only local dirty tiles when source misses', () => {
     const runtime = new GridRenderTilePaneRuntime()
     const host = createHost()
@@ -3821,7 +3987,7 @@ describe('GridRenderTilePaneRuntime', () => {
     expect(localized.renderTilePanes[0]?.tile.dirtyMasks).toEqual(new Uint32Array([DirtyMaskV3.Value | DirtyMaskV3.Text]))
   })
 
-  it('applies local optimistic workbook deltas after higher authoritative seqs on the same sheet', () => {
+  it('applies local optimistic workbook deltas even after higher authoritative seqs on the same sheet', () => {
     const runtime = new GridRenderTilePaneRuntime()
     const host = createHost()
     const renderTileSource = createWorkbookDeltaSource()
@@ -3842,8 +4008,8 @@ describe('GridRenderTilePaneRuntime', () => {
     })
 
     expect(runtime.snapshotBridgeState()).toEqual({
-      forceLocalTiles: true,
-      localFallbackRevision: 1,
+      forceLocalTiles: false,
+      localFallbackRevision: 0,
       renderTileRevision: 1,
     })
 
@@ -3854,7 +4020,7 @@ describe('GridRenderTilePaneRuntime', () => {
 
     expect(runtime.snapshotBridgeState()).toEqual({
       forceLocalTiles: true,
-      localFallbackRevision: 2,
+      localFallbackRevision: 1,
       renderTileRevision: 2,
     })
   })

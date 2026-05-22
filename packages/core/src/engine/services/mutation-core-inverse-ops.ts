@@ -1,9 +1,14 @@
 import type { EngineOp } from '@bilig/workbook'
+import { parseCellAddress } from '@bilig/formula'
+import type { LiteralInput } from '@bilig/protocol'
 import { structuralTransformForOp } from '../../engine-structural-utils.js'
 import { sheetMetadataToOps } from '../../engine-snapshot-utils.js'
 import type { WorkbookStore } from '../../workbook-store.js'
 import { buildMutationMetadataInverseOps } from './mutation-inverse-metadata-ops.js'
 import { captureStructuralWorkbookMetadataOps, clearStructuralSheetMetadataOps } from './mutation-structural-metadata-ops.js'
+import { findTableHeaderCell } from './operation-table-header-rename.js'
+import { sourcefulPivotToUpsertOp } from './pivot-op-helpers.js'
+import { excelCompatibleTableColumnName, normalizeTableColumnName } from './table-column-name-helpers.js'
 
 export type MutationCoreCapturedInverseKind =
   | 'deleteSheet'
@@ -40,6 +45,49 @@ function withHeaderRenameSkip(ops: EngineOp[], skipTableHeaderRename: boolean): 
     }
     return op
   })
+}
+
+function tableColumnNameForLiteral(value: LiteralInput, columnNames: readonly string[], columnIndex: number): string {
+  const requestedName = value === null ? '' : typeof value === 'boolean' ? (value ? 'TRUE' : 'FALSE') : String(value).trim()
+  return excelCompatibleTableColumnName(requestedName, columnNames, columnIndex)
+}
+
+function cellValueForHeaderRestoreOp(op: EngineOp): LiteralInput | undefined {
+  if (op.kind === 'setCellValue') {
+    return op.value
+  }
+  if (op.kind === 'clearCell') {
+    return null
+  }
+  return undefined
+}
+
+function restoreCellValueInverseOps(
+  workbook: WorkbookStore,
+  op: Extract<EngineOp, { kind: 'setCellValue' | 'clearCell' }>,
+  restoreOps: EngineOp[],
+): EngineOp[] {
+  if (op.skipTableHeaderRename === true) {
+    return withHeaderRenameSkip(restoreOps, true)
+  }
+  const address = parseCellAddress(op.address, op.sheetName)
+  const header = findTableHeaderCell(workbook.listTables(), op.sheetName, address.row, address.col)
+  if (!header) {
+    return restoreOps
+  }
+  const previousColumnName = header.table.columnNames[header.columnIndex] ?? ''
+  const restoringValue = restoreOps.map(cellValueForHeaderRestoreOp).find((value) => value !== undefined)
+  if (restoringValue === undefined) {
+    return restoreOps
+  }
+  const restoringColumnName = tableColumnNameForLiteral(restoringValue, header.table.columnNames, header.columnIndex)
+  if (normalizeTableColumnName(restoringColumnName) === normalizeTableColumnName(previousColumnName)) {
+    return restoreOps
+  }
+  return [
+    { kind: 'setCellValue', sheetName: op.sheetName, address: op.address, value: previousColumnName },
+    ...withHeaderRenameSkip(restoreOps, true),
+  ]
 }
 
 function captureDeletedSheetInverseOps(
@@ -81,17 +129,7 @@ function captureDeletedSheetInverseOps(
       if (!pivot.source) {
         return
       }
-      restoredOps.push({
-        kind: 'upsertPivotTable',
-        name: pivot.name,
-        sheetName: pivot.sheetName,
-        address: pivot.address,
-        source: { ...pivot.source },
-        groupBy: [...pivot.groupBy],
-        values: pivot.values.map((value) => Object.assign({}, value)),
-        rows: pivot.rows,
-        cols: pivot.cols,
-      })
+      restoredOps.push(sourcefulPivotToUpsertOp({ ...pivot, source: pivot.source }))
     })
   workbook
     .listCharts()
@@ -210,7 +248,7 @@ export function createMutationCoreInverseOps(args: {
       }
       case 'setCellValue':
       case 'clearCell':
-        return withHeaderRenameSkip(args.restoreCellOps(op.sheetName, op.address), op.skipTableHeaderRename === true)
+        return restoreCellValueInverseOps(args.workbook, op, args.restoreCellOps(op.sheetName, op.address))
       case 'setCellFormula':
         return args.restoreCellOps(op.sheetName, op.address)
       default: {

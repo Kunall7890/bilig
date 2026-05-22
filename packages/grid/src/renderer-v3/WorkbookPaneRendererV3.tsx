@@ -1,4 +1,4 @@
-import { memo, useCallback, useEffect, useLayoutEffect, useRef, useSyncExternalStore } from 'react'
+import { memo, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useSyncExternalStore } from 'react'
 import type { GridRenderRevisionSnapshot } from '../grid-engine.js'
 import type { GridGeometrySnapshot } from '../gridGeometry.js'
 import type { GridHeaderPaneState } from '../gridHeaderPanes.js'
@@ -90,7 +90,16 @@ export const WorkbookPaneRendererV3 = memo(function WorkbookPaneRendererV3({
     [hostRuntime],
   )
   const headerTextRunCount = countHeaderPaneTextRunsV3(headerPanes)
-  const tileTextRunCount = countTilePaneTextRunsV3(tilePanes)
+  const typeGpuTilePanes = useMemo(
+    () =>
+      resolveWorkbookPaneSelectionOccludedTilePanesV3({
+        geometry,
+        selectionOcclusionRanges,
+        tilePanes,
+      }),
+    [geometry, selectionOcclusionRanges, tilePanes],
+  )
+  const tileTextRunCount = countTilePaneTextRunsV3(typeGpuTilePanes)
   const showTypeGpuCanvas = backendStatus !== 'unavailable'
   const nativeLayerSource = showTypeGpuCanvas ? 'none' : 'backend-unavailable-live'
   const presentedHeaderPanes = presentedVisualFrame?.headerPanes ?? []
@@ -124,7 +133,7 @@ export const WorkbookPaneRendererV3 = memo(function WorkbookPaneRendererV3({
       preloadTilePanes,
       renderRevisionSnapshot,
       scrollTransformStore,
-      tilePanes,
+      tilePanes: typeGpuTilePanes,
     })
   }, [
     active,
@@ -139,7 +148,7 @@ export const WorkbookPaneRendererV3 = memo(function WorkbookPaneRendererV3({
     renderRevisionSnapshot,
     semanticFrameInputSignature,
     scrollTransformStore,
-    tilePanes,
+    typeGpuTilePanes,
   ])
 
   useEffect(() => {
@@ -161,8 +170,8 @@ export const WorkbookPaneRendererV3 = memo(function WorkbookPaneRendererV3({
   if (!active || !host) {
     return null
   }
-  const tileSceneRevision = resolveWorkbookPaneTileSceneRevisionV3(tilePanes)
-  const tileSceneCameraSeq = resolveWorkbookPaneTileSceneCameraSeqV3(tilePanes)
+  const tileSceneRevision = resolveWorkbookPaneTileSceneRevisionV3(typeGpuTilePanes)
+  const tileSceneCameraSeq = resolveWorkbookPaneTileSceneCameraSeqV3(typeGpuTilePanes)
   const visibleRenderRevision = resolveWorkbookPanePresentedRevisionV3(frameProofStatus, tileSceneRevision)
   const visibleRenderCameraSeq = resolveWorkbookPanePresentedRevisionV3(frameProofStatus, tileSceneCameraSeq)
   const visibleProjectedRenderRevision = resolveWorkbookPanePresentedRevisionV3(frameProofStatus, renderRevisionSnapshot?.projectedRevision)
@@ -220,7 +229,7 @@ export const WorkbookPaneRendererV3 = memo(function WorkbookPaneRendererV3({
           data-v3-text-run-count={tileTextRunCount}
           data-v3-tile-scene-camera-seq={tileSceneCameraSeq ?? ''}
           data-v3-tile-scene-revision={tileSceneRevision ?? ''}
-          data-v3-tile-pane-count={tilePanes.length}
+          data-v3-tile-pane-count={typeGpuTilePanes.length}
           data-v3-visible-authoritative-render-revision={visibleAuthoritativeRenderRevision ?? ''}
           data-v3-visible-local-render-revision={visibleLocalRenderRevision ?? ''}
           data-v3-visible-projected-render-revision={visibleProjectedRenderRevision ?? ''}
@@ -257,7 +266,7 @@ export const WorkbookPaneRendererV3 = memo(function WorkbookPaneRendererV3({
           headerPanes={nativeHeaderPanes}
           presentedScrollSnapshot={presentedVisualFrame?.scrollSnapshot ?? null}
           scrollTransformStore={scrollTransformStore}
-          selectionOcclusionRanges={selectionOcclusionRanges}
+          selectionOcclusionRanges={null}
           suppressedTextCell={suppressedTextCell}
           tilePanes={nativeTilePanes}
         />
@@ -272,6 +281,16 @@ function countHeaderPaneTextRunsV3(headerPanes: readonly GridHeaderPaneState[]):
 
 function countTilePaneTextRunsV3(tilePanes: readonly WorkbookRenderTilePaneState[]): number {
   return tilePanes.reduce((total, pane) => total + pane.tile.textRuns.length, 0)
+}
+
+export function resolveWorkbookPaneSelectionOccludedTilePanesV3(input: {
+  readonly geometry: GridGeometrySnapshot | null
+  readonly selectionOcclusionRanges?: readonly Pick<Rectangle, 'x' | 'y' | 'width' | 'height'>[] | null | undefined
+  readonly tilePanes: readonly WorkbookRenderTilePaneState[]
+}): readonly WorkbookRenderTilePaneState[] {
+  void input.geometry
+  void input.selectionOcclusionRanges
+  return input.tilePanes
 }
 
 export function resolveWorkbookPaneTileSceneRevisionV3(tilePanes: readonly WorkbookRenderTilePaneState[]): number | null {

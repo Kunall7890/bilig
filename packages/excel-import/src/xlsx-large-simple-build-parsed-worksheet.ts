@@ -1,6 +1,9 @@
 import type { CellStyleRecord, SheetMetadataSnapshot, WorkbookSnapshot } from '@bilig/protocol'
 import { createSheetPreview, toDisplayText } from './workbook-import-helpers.js'
-import { buildLargeSimpleCellMetadataReferenceSnapshots } from './xlsx-large-simple-cell-metadata.js'
+import {
+  buildLargeSimpleCellMetadataReferenceSnapshots,
+  buildLargeSimpleLazyCellMetadataReferenceSnapshots,
+} from './xlsx-large-simple-cell-metadata.js'
 import { internLargeSimpleSheetMetadataInput } from './xlsx-large-simple-metadata-interning.js'
 import {
   normalizeLargeSimpleConditionalFormatIds,
@@ -10,6 +13,7 @@ import type { ImportedWorksheetCellScan } from './xlsx-large-simple-arena.js'
 import type { ImportedWorkbookStringPool } from './xlsx-large-simple-string-pool.js'
 import { buildLargeSimpleStyleRanges } from './xlsx-large-simple-style-ranges.js'
 import { applyLargeSimpleNumberFormatsToCells } from './xlsx-large-simple-number-formats.js'
+import { applyImportedAutoFilterVisibility } from './xlsx-filter-visibility.js'
 import { releaseProjectedCellScanStorage } from './xlsx-large-simple-materialization-helpers.js'
 import {
   readLargeSimpleColumnMetadata,
@@ -71,6 +75,16 @@ export function buildParsedWorksheet(
         ? lazySheetCellMaterializationNumberFormatThreshold
         : lazySheetCellMaterializationThreshold)
   const detachLazyCells = useLazyCells && options.releaseArenaAfterMaterialization !== false && options.includeCellCoordinates !== true
+  const scannedPreview = createSheetPreview({
+    name: sheetName,
+    rowCount: cellScan.rowCount,
+    columnCount: cellScan.columnCount,
+    nonEmptyCellCount: cellScan.cellCount,
+    readCellText: (row, column) => cellScan.arena.readPreviewText(row, column),
+  })
+  const detachedLazyCellMetadataRefs = detachLazyCells
+    ? buildLargeSimpleLazyCellMetadataReferenceSnapshots(metadataScan?.cellMetadataRefs, cellScan)
+    : undefined
   const cells = options.materializeCells
     ? useLazyCells
       ? detachLazyCells
@@ -78,28 +92,29 @@ export function buildParsedWorksheet(
         : cellScan.arena.createLazySheetCells(cellScan.sheetIndex, cellMaterializationOptions)
       : cellScan.arena.materializeSheetCells(cellScan.sheetIndex, cellMaterializationOptions)
     : []
+  const arenaReleasedAfterCellProjection =
+    options.materializeCells && options.releaseArenaAfterMaterialization === true && (!useLazyCells || detachLazyCells)
+  if (arenaReleasedAfterCellProjection) {
+    cellScan.arena.release()
+  }
   if (!useLazyCells && options.numberFormatsByStyleIndex && options.numberFormatsByStyleIndex.size > 0) {
     applyLargeSimpleNumberFormatsToCells(cells, cellScan, options.numberFormatsByStyleIndex)
   }
-  const cellMetadataRefs = buildLargeSimpleCellMetadataReferenceSnapshots(metadataScan?.cellMetadataRefs, cells, cellScan, useLazyCells)
+  const cellMetadataRefs =
+    detachedLazyCellMetadataRefs ??
+    buildLargeSimpleCellMetadataReferenceSnapshots(metadataScan?.cellMetadataRefs, cells, cellScan, useLazyCells)
   const preview =
-    options.materializeCells && !useLazyCells
-      ? createPreviewFromMaterializedCells(sheetName, cellScan, cells)
-      : createSheetPreview({
-          name: sheetName,
-          rowCount: cellScan.rowCount,
-          columnCount: cellScan.columnCount,
-          nonEmptyCellCount: cellScan.cellCount,
-          readCellText: (row, column) => cellScan.arena.readPreviewText(row, column),
-        })
+    options.materializeCells && !useLazyCells ? createPreviewFromMaterializedCells(sheetName, cellScan, cells) : scannedPreview
   releaseProjectedCellScanStorage(cellScan, {
     releaseArenaAfterMaterialization: options.releaseArenaAfterMaterialization,
+    arenaReleased: arenaReleasedAfterCellProjection,
     detachLazyCells,
     useLazyCells,
   })
+  const visibleRows = applyImportedAutoFilterVisibility(sheetName, cells, rows.entries, internedInput.filters)
   const metadata: SheetMetadataSnapshot = {
     ...(columns.entries.length > 0 ? { columns: columns.entries } : {}),
-    ...(rows.entries.length > 0 ? { rows: rows.entries } : {}),
+    ...(visibleRows && visibleRows.length > 0 ? { rows: visibleRows } : {}),
     ...(columns.metadata.length > 0 ? { columnMetadata: columns.metadata } : {}),
     ...(rows.metadata.length > 0 ? { rowMetadata: rows.metadata } : {}),
     ...(sheetFormatPr ? { sheetFormatPr } : {}),

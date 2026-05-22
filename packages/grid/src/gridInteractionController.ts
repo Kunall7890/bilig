@@ -14,6 +14,7 @@ import {
   type GridInteractionStateRefs,
 } from './gridInteractionState.js'
 import type { GridSelection, Item } from './gridTypes.js'
+import type { EditCommitResult } from './workbookGridSurfaceTypes.js'
 
 interface PointerEventLike {
   clientX: number
@@ -36,11 +37,15 @@ interface PointerMoveEventLike {
 interface GridInteractionCommonOptions {
   interactionState: GridInteractionStateRefs
   isEditingCell: boolean
-  onCommitEdit(this: void): void
+  onCommitEdit(this: void): EditCommitResult
   onSelectionChange(this: void, selection: GridSelection): void
   selectedCell: Item
   setGridSelection(this: void, selection: GridSelection): void
   visibleRegion: VisibleRegionState
+}
+
+function commitEditAllowsPointerAction(onCommitEdit: () => EditCommitResult): boolean {
+  return onCommitEdit() !== false
 }
 
 interface HandleGridBodyDoubleClickOptions extends GridInteractionCommonOptions {
@@ -288,7 +293,10 @@ export function handleGridPointerDown({
   }
   const headerSelection = resolveHeaderSelectionAtPointer(event.clientX, event.clientY)
   if (headerSelection) {
-    onCommitEdit()
+    if (!commitEditAllowsPointerAction(onCommitEdit)) {
+      resetGridPointerInteraction(interactionState)
+      return
+    }
     beginGridHeaderDrag(interactionState, headerSelection)
     if (headerSelection.kind === 'row') {
       interactionState.ignoreNextPointerSelectionRef.current = true
@@ -306,19 +314,23 @@ export function handleGridPointerDown({
     return
   }
   const pointerCell = resolvePointerCell(event.clientX, event.clientY)
-  beginGridBodyPointerInteraction(interactionState, pointerCell)
   if (pointerCell) {
+    if (!commitEditAllowsPointerAction(onCommitEdit)) {
+      resetGridPointerInteraction(interactionState)
+      return
+    }
+    beginGridBodyPointerInteraction(interactionState, pointerCell)
     const anchorCell: Item = event.shiftKey ? selectedCell : pointerCell
     interactionState.dragAnchorCellRef.current = anchorCell
     interactionState.dragPointerCellRef.current = pointerCell
     interactionState.ignoreNextPointerSelectionRef.current = true
-    onCommitEdit()
     const nextSelection = event.shiftKey
       ? resolveBodyDragSelection(anchorCell, pointerCell)
       : createGridSelection(pointerCell[0], pointerCell[1])
     setGridSelection(nextSelection)
     onSelectionChange(nextSelection)
   } else {
+    beginGridBodyPointerInteraction(interactionState, pointerCell)
     interactionState.dragAnchorCellRef.current = null
     interactionState.dragPointerCellRef.current = null
   }

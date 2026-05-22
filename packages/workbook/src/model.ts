@@ -1,11 +1,17 @@
-import type { CellStylePatch, LiteralInput } from '@bilig/protocol'
+import { isLiteralInput, type CellStylePatch, type LiteralInput } from '@bilig/protocol'
 import { formula, type WorkbookFormulaOperand } from './formula.js'
-import { collectWorkbookRefs, createWorkbookFindApi, type WorkbookFindApi, type WorkbookRef } from './find.js'
+import { collectWorkbookRefs, createWorkbookFindApi, isWorkbookRef, type WorkbookFindApi, type WorkbookRef } from './find.js'
 import { createWorkbookCheckApi, type WorkbookCheckApi } from './check.js'
-import { normalizeOptionalWorkbookActionInput, type WorkbookActionInput } from './input.js'
+import {
+  normalizeOptionalWorkbookActionInput,
+  normalizeWorkbookActionInputDescription,
+  validateWorkbookActionInput,
+  type WorkbookActionInput,
+  type WorkbookActionInputDescription,
+} from './input.js'
 import { isWorkbookOp } from './guards.js'
 import type { WorkbookOp } from './ops.js'
-import type { WorkbookChangeSummary, WorkbookCheckResult, WorkbookRunError } from './result.js'
+import type { WorkbookChangeSummary, WorkbookCheckResult, WorkbookRunError, WorkbookRunErrorCode } from './result.js'
 
 export type WorkbookActionCommand =
   | {
@@ -41,8 +47,13 @@ export interface WorkbookAddOpOptions {
   readonly message?: string
 }
 
-export interface WorkbookModelWorkbook extends WorkbookFindApi {
+export interface WorkbookFindWorkbook extends WorkbookFindApi {}
+
+export interface WorkbookCheckWorkbook extends WorkbookFindApi {
   readonly check: WorkbookCheckApi
+}
+
+export interface WorkbookActionWorkbook extends WorkbookCheckWorkbook {
   readonly writeFormula: (target: WorkbookRef, value: WorkbookFormulaOperand) => void
   readonly writeValue: (target: WorkbookRef, value: LiteralInput) => void
   readonly format: (target: WorkbookRef, options: { readonly style?: CellStylePatch; readonly numberFormat?: string | null }) => void
@@ -50,20 +61,37 @@ export interface WorkbookModelWorkbook extends WorkbookFindApi {
   readonly addOp: (op: WorkbookOp, options?: WorkbookAddOpOptions) => void
 }
 
+export interface WorkbookModelWorkbook extends WorkbookActionWorkbook {}
+
 export interface WorkbookActionContext<Refs> {
   readonly refs: Refs
-  readonly workbook: WorkbookModelWorkbook
+  readonly workbook: WorkbookActionWorkbook
+  readonly input?: WorkbookActionInput
+}
+
+export interface WorkbookCheckContext<Refs> {
+  readonly refs: Refs
+  readonly workbook: WorkbookCheckWorkbook
   readonly input?: WorkbookActionInput
 }
 
 export type WorkbookAction<Refs> = (context: WorkbookActionContext<Refs>) => void
 
-export type WorkbookActionMap<Refs> = Record<string, WorkbookAction<Refs>>
+export interface WorkbookActionConfig<Refs> {
+  readonly description?: string
+  readonly input?: WorkbookActionInputDescription
+  readonly run: WorkbookAction<Refs>
+}
+
+export type WorkbookActionDefinition<Refs> = WorkbookAction<Refs> | WorkbookActionConfig<Refs>
+
+export type WorkbookActionMap<Refs> = Record<string, WorkbookActionDefinition<Refs>>
 
 export interface WorkbookModelConfig<Refs, Actions extends WorkbookActionMap<Refs>> {
   readonly name: string
-  readonly find: (workbook: WorkbookModelWorkbook) => Refs
-  readonly checks?: (context: WorkbookActionContext<Refs>) => readonly WorkbookCheckResult[]
+  readonly description?: string
+  readonly find: (workbook: WorkbookFindWorkbook) => Refs
+  readonly checks?: (context: WorkbookCheckContext<Refs>) => readonly WorkbookCheckResult[]
   readonly actions: Actions
 }
 
@@ -84,9 +112,17 @@ export interface WorkbookActionPlan<Refs = unknown> {
   readonly checks: readonly WorkbookCheckResult[]
 }
 
+export interface WorkbookActionInspection {
+  readonly name: string
+  readonly description?: string
+  readonly input?: WorkbookActionInputDescription
+}
+
 export interface WorkbookModelInspection {
   readonly name: string
+  readonly description?: string
   readonly actions: readonly string[]
+  readonly actionDetails: readonly WorkbookActionInspection[]
   readonly hasChecks: boolean
 }
 
@@ -104,12 +140,32 @@ export type WorkbookActionPlanResult<Refs = unknown> =
       readonly checks: readonly WorkbookCheckResult[]
     }
 
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value)
+}
+
 export function defineModel<Refs, Actions extends WorkbookActionMap<Refs>>(
   config: WorkbookModelConfig<Refs, Actions>,
 ): WorkbookModel<Refs, Actions> {
+  if (!isRecord(config)) {
+    throw new Error('Workbook model config must be an object')
+  }
+  if (typeof config.name !== 'string') {
+    throw new Error('Workbook model name must be a string')
+  }
+  if (typeof config.find !== 'function') {
+    throw new Error(`Workbook model ${config.name} find must be a function`)
+  }
+  if (config.checks !== undefined && typeof config.checks !== 'function') {
+    throw new Error(`Workbook model ${config.name} checks must be a function`)
+  }
+  if (!isRecord(config.actions)) {
+    throw new Error(`Workbook model ${config.name} actions must be an object`)
+  }
   if (config.name.trim() === '') {
     throw new Error('Workbook model name cannot be empty')
   }
+  normalizeOptionalDescription(config.description, `Workbook model ${config.name} description`)
   const actionNames = Object.keys(config.actions)
   if (actionNames.length === 0) {
     throw new Error(`Workbook model ${config.name} must define at least one action`)
@@ -118,14 +174,70 @@ export function defineModel<Refs, Actions extends WorkbookActionMap<Refs>>(
   if (emptyActionName !== undefined) {
     throw new Error(`Workbook model ${config.name} has an empty action name`)
   }
-  return config
+  actionNames.forEach((name) => {
+    validateActionDefinition(config.name, name, config.actions[name])
+  })
+  return deepFreeze(config)
 }
 
 export function inspectModel<Refs, Actions extends WorkbookActionMap<Refs>>(model: WorkbookModel<Refs, Actions>): WorkbookModelInspection {
+  const actions = Object.keys(model.actions).toSorted()
+  const description = normalizeOptionalDescription(model.description, `Workbook model ${model.name} description`)
   return {
     name: model.name,
-    actions: Object.keys(model.actions).toSorted(),
+    ...(description !== undefined ? { description } : {}),
+    actions,
+    actionDetails: actions.map((actionName) => inspectAction(actionName, model.actions[actionName])),
     hasChecks: model.checks !== undefined,
+  }
+}
+
+function normalizeOptionalDescription(value: string | undefined, label: string): string | undefined {
+  if (value === undefined) {
+    return undefined
+  }
+  const description = value.trim()
+  if (description === '') {
+    throw new Error(`${label} cannot be empty`)
+  }
+  return description
+}
+
+function isActionConfig<Refs>(definition: WorkbookActionDefinition<Refs> | undefined): definition is WorkbookActionConfig<Refs> {
+  return typeof definition === 'object' && definition !== null
+}
+
+function validateActionDefinition<Refs>(
+  modelName: string,
+  actionName: string,
+  definition: WorkbookActionDefinition<Refs> | undefined,
+): void {
+  if (typeof definition === 'function') {
+    return
+  }
+  if (!isActionConfig(definition) || typeof definition.run !== 'function') {
+    throw new Error(`Workbook model ${modelName} action ${actionName} must be a function or action object with run`)
+  }
+  normalizeOptionalDescription(definition.description, `Workbook model ${modelName} action ${actionName} description`)
+  if (definition.input !== undefined) {
+    normalizeWorkbookActionInputDescription(definition.input)
+  }
+}
+
+function actionRunner<Refs>(definition: WorkbookActionDefinition<Refs>): WorkbookAction<Refs> {
+  return typeof definition === 'function' ? definition : definition.run
+}
+
+function inspectAction<Refs>(name: string, definition: WorkbookActionDefinition<Refs> | undefined): WorkbookActionInspection {
+  if (definition === undefined || typeof definition === 'function') {
+    return { name }
+  }
+  const description = normalizeOptionalDescription(definition.description, `Workbook action ${name} description`)
+  const input = definition.input === undefined ? undefined : normalizeWorkbookActionInputDescription(definition.input)
+  return {
+    name,
+    ...(description !== undefined ? { description } : {}),
+    ...(input !== undefined ? { input } : {}),
   }
 }
 
@@ -165,13 +277,62 @@ function cloneWorkbookOp(op: WorkbookOp): WorkbookOp {
   return structuredClone(op)
 }
 
-function createModelWorkbook(input: {
+function checkedTarget(target: WorkbookRef, action: string): WorkbookRef {
+  if (!isWorkbookRef(target)) {
+    throw new Error(`Workbook ${action} target must be a WorkbookRef`)
+  }
+  return target
+}
+
+function checkedWriteValue(value: LiteralInput): LiteralInput {
+  if (!isLiteralInput(value)) {
+    throw new Error('Workbook write value must be a finite JSON literal')
+  }
+  return value
+}
+
+function checkedFormatOptions(options: { readonly style?: CellStylePatch; readonly numberFormat?: string | null }): {
+  readonly style?: CellStylePatch
+  readonly numberFormat?: string | null
+} {
+  if (typeof options !== 'object' || options === null || Array.isArray(options)) {
+    throw new Error('Workbook format options must be an object')
+  }
+  if (options.style !== undefined && (typeof options.style !== 'object' || options.style === null || Array.isArray(options.style))) {
+    throw new Error('Workbook format style must be an object')
+  }
+  if (options.numberFormat !== undefined && options.numberFormat !== null && typeof options.numberFormat !== 'string') {
+    throw new Error('Workbook number format must be a string or null')
+  }
+  return options
+}
+
+function checkedAddOpOptions(options: WorkbookAddOpOptions): WorkbookAddOpOptions {
+  if (typeof options !== 'object' || options === null || Array.isArray(options)) {
+    throw new Error('Workbook addOp options must be an object')
+  }
+  if (options.target !== undefined) {
+    checkedTarget(options.target, 'addOp')
+  }
+  if (options.message !== undefined && typeof options.message !== 'string') {
+    throw new Error('Workbook addOp message must be a string')
+  }
+  return options
+}
+
+function createCheckWorkbook(input: { readonly checks: WorkbookCheckResult[] }): WorkbookCheckWorkbook {
+  return Object.freeze({
+    ...createWorkbookFindApi(),
+    check: createWorkbookCheckApi((entry) => input.checks.push(entry)),
+  })
+}
+
+function createActionWorkbook(input: {
   readonly commands: WorkbookActionCommand[]
   readonly ops: WorkbookOp[]
   readonly checks: WorkbookCheckResult[]
-}): WorkbookModelWorkbook {
-  const find = createWorkbookFindApi()
-  const check = createWorkbookCheckApi((entry) => input.checks.push(entry))
+}): WorkbookActionWorkbook {
+  const checkWorkbook = createCheckWorkbook({ checks: input.checks })
 
   function pushCommand(command: WorkbookActionCommand): void {
     if (command.kind === 'op') {
@@ -230,50 +391,56 @@ function createModelWorkbook(input: {
     }
   }
 
-  return {
-    ...find,
-    check,
-    writeFormula(target, value) {
+  const workbook: WorkbookActionWorkbook = {
+    ...checkWorkbook,
+    writeFormula(target: WorkbookRef, value: WorkbookFormulaOperand) {
+      const checked = checkedTarget(target, 'writeFormula')
       pushCommand({
         kind: 'writeFormula',
-        target,
+        target: checked,
         formula: formula.source(value),
         inputs: formula.inputs(value),
       })
     },
-    writeValue(target, value) {
+    writeValue(target: WorkbookRef, value: LiteralInput) {
+      const checked = checkedTarget(target, 'writeValue')
       pushCommand({
         kind: 'writeValue',
-        target,
-        value,
+        target: checked,
+        value: checkedWriteValue(value),
       })
     },
-    format(target, options) {
+    format(target: WorkbookRef, options: { readonly style?: CellStylePatch; readonly numberFormat?: string | null }) {
+      const checked = checkedTarget(target, 'format')
+      const checkedOptions = checkedFormatOptions(options)
       pushCommand({
         kind: 'format',
-        target,
-        ...(options.style !== undefined ? { style: options.style } : {}),
-        ...(options.numberFormat !== undefined ? { numberFormat: options.numberFormat } : {}),
+        target: checked,
+        ...(checkedOptions.style !== undefined ? { style: checkedOptions.style } : {}),
+        ...(checkedOptions.numberFormat !== undefined ? { numberFormat: checkedOptions.numberFormat } : {}),
       })
     },
-    clear(target) {
+    clear(target: WorkbookRef) {
+      const checked = checkedTarget(target, 'clear')
       pushCommand({
         kind: 'clear',
-        target,
+        target: checked,
       })
     },
-    addOp(op, options = {}) {
+    addOp(op: WorkbookOp, options: WorkbookAddOpOptions = {}) {
       if (!isWorkbookOp(op)) {
         throw new Error('Workbook op is not a valid WorkbookOp')
       }
+      const checkedOptions = checkedAddOpOptions(options)
       pushCommand({
         kind: 'op',
         op,
-        ...(options.target !== undefined ? { target: options.target } : {}),
-        ...(options.message !== undefined ? { message: options.message } : {}),
+        ...(checkedOptions.target !== undefined ? { target: checkedOptions.target } : {}),
+        ...(checkedOptions.message !== undefined ? { message: checkedOptions.message } : {}),
       })
     },
   }
+  return Object.freeze(workbook)
 }
 
 function pushReturnedChecks(target: WorkbookCheckResult[], returned: readonly WorkbookCheckResult[] | undefined): void {
@@ -292,22 +459,40 @@ function inputProperty(input: WorkbookActionInput | undefined): { readonly input
   return input === undefined ? {} : { input }
 }
 
+function deepFreeze<T>(value: T, seen: WeakSet<object> = new WeakSet()): T {
+  if (typeof value !== 'object' || value === null) {
+    return value
+  }
+  if (seen.has(value)) {
+    return value
+  }
+  seen.add(value)
+
+  Reflect.ownKeys(value).forEach((key) => {
+    const descriptor = Object.getOwnPropertyDescriptor(value, key)
+    if (descriptor !== undefined && 'value' in descriptor) {
+      deepFreeze(descriptor.value, seen)
+    }
+  })
+  return Object.freeze(value)
+}
+
 function failedPlan<Refs>(
   modelName: string,
   actionName: string,
-  code: string,
+  code: WorkbookRunErrorCode,
   message: string,
   checks: readonly WorkbookCheckResult[] = [],
   input?: WorkbookActionInput,
 ): WorkbookActionPlanResult<Refs> {
-  return {
+  return deepFreeze({
     status: 'failed',
     modelName,
     actionName,
     ...inputProperty(input),
     checks,
     errors: [{ code, message }],
-  }
+  })
 }
 
 function actionNotFound(modelName: string, actionName: string): WorkbookRunError {
@@ -326,7 +511,7 @@ function createActionPlan<Refs>(
   ops: readonly WorkbookOp[],
   checks: readonly WorkbookCheckResult[],
 ): WorkbookActionPlan<Refs> {
-  return {
+  return deepFreeze({
     modelName,
     actionName,
     ...inputProperty(input),
@@ -343,7 +528,7 @@ function createActionPlan<Refs>(
       }
     }),
     checks,
-  }
+  })
 }
 
 export function planWorkbookAction<Refs, Actions extends WorkbookActionMap<Refs>>(
@@ -358,39 +543,52 @@ export function planWorkbookAction<Refs, Actions extends WorkbookActionMap<Refs>
     return failedPlan<Refs>(model.name, actionName, 'invalid_action_input', errorMessage(error))
   }
 
-  const action: WorkbookAction<Refs> | undefined = model.actions[actionName]
-  if (action === undefined) {
-    return {
+  const actionDefinition = model.actions[actionName]
+  if (actionDefinition === undefined) {
+    return deepFreeze({
       status: 'failed',
       modelName: model.name,
       actionName,
       ...inputProperty(normalizedInput),
       checks: [],
       errors: [actionNotFound(model.name, actionName)],
+    })
+  }
+  if (isActionConfig(actionDefinition) && actionDefinition.input !== undefined) {
+    try {
+      validateWorkbookActionInput(normalizeWorkbookActionInputDescription(actionDefinition.input), normalizedInput)
+    } catch (error) {
+      return failedPlan<Refs>(model.name, actionName, 'invalid_action_input', errorMessage(error), [], normalizedInput)
     }
   }
+  const action = actionRunner(actionDefinition)
 
   const commands: WorkbookActionCommand[] = []
   const ops: WorkbookOp[] = []
   const checks: WorkbookCheckResult[] = []
-  const workbook = createModelWorkbook({ commands, ops, checks })
+  const findWorkbook = Object.freeze(createWorkbookFindApi())
 
   let refs: Refs
   try {
-    refs = model.find(workbook)
+    refs = model.find(findWorkbook)
   } catch (error) {
     return failedPlan<Refs>(model.name, actionName, 'find_failed', errorMessage(error), checks, normalizedInput)
   }
 
-  const context: WorkbookActionContext<Refs> = { refs, workbook, ...inputProperty(normalizedInput) }
+  const checkContext: WorkbookCheckContext<Refs> = { refs, workbook: createCheckWorkbook({ checks }), ...inputProperty(normalizedInput) }
   try {
-    pushReturnedChecks(checks, model.checks?.(context))
+    pushReturnedChecks(checks, model.checks?.(checkContext))
   } catch (error) {
     return failedPlan<Refs>(model.name, actionName, 'checks_failed', errorMessage(error), checks, normalizedInput)
   }
 
+  const actionContext: WorkbookActionContext<Refs> = {
+    refs,
+    workbook: createActionWorkbook({ commands, ops, checks }),
+    ...inputProperty(normalizedInput),
+  }
   try {
-    action(context)
+    action(actionContext)
   } catch (error) {
     return failedPlan<Refs>(model.name, actionName, 'action_failed', errorMessage(error), checks, normalizedInput)
   }

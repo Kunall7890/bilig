@@ -2924,7 +2924,15 @@ describe('workbook agent service', () => {
         expect.objectContaining({
           workflowTemplate: 'createSheet',
           status: 'completed',
-          summary: 'Applied workflow: Create sheet Forecast',
+          summary:
+            'Workflow mutation verification incomplete at revision r8: No target cell range was available for authoritative readback.',
+          mutationExecuted: true,
+          verificationComplete: false,
+          mutationStatus: 'verification_incomplete',
+          mutationReceipt: expect.objectContaining({
+            status: 'verification_incomplete',
+            toolName: 'workflow:createSheet',
+          }),
           artifact: expect.objectContaining({
             title: 'Create Sheet Preview',
           }),
@@ -3325,7 +3333,15 @@ describe('workbook agent service', () => {
         expect.objectContaining({
           workflowTemplate: 'renameCurrentSheet',
           status: 'completed',
-          summary: 'Applied workflow: Rename sheet Revenue to Forecast',
+          summary:
+            'Workflow mutation verification incomplete at revision r9: No target cell range was available for authoritative readback.',
+          mutationExecuted: true,
+          verificationComplete: false,
+          mutationStatus: 'verification_incomplete',
+          mutationReceipt: expect.objectContaining({
+            status: 'verification_incomplete',
+            toolName: 'workflow:renameCurrentSheet',
+          }),
           artifact: expect.objectContaining({
             title: 'Rename Sheet Preview',
           }),
@@ -3687,7 +3703,10 @@ describe('workbook agent service', () => {
       const output = result?.contentItems.find((item) => item.type === 'inputText')
       expect(output?.type).toBe('inputText')
       const text = output && 'text' in output ? output.text : ''
-      expect(text).toContain('"applied": true')
+      expect(text).toContain('"applied": false')
+      expect(text).toContain('"mutationExecuted": true')
+      expect(text).toContain('"verificationComplete": false')
+      expect(text).toContain('"status": "verification_incomplete"')
       expect(text).toContain('"staged": false')
       expect(text).toContain('"reviewQueued": false')
       expect(text).toContain('"queuedForTurnApply": false')

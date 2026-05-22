@@ -90,7 +90,11 @@ export function applyBatchSetCellFormulaOp(request: ApplyBatchSetCellFormulaOpAr
   const oldFormulaNumber = !request.isRestore && priorHadFormula ? request.readExactNumericValueForLookup(cellIndex) : undefined
   args.state.workbook.cellStore.flags[cellIndex] = (args.state.workbook.cellStore.flags[cellIndex] ?? 0) & ~CellFlags.AuthoredBlank
   if (!request.isRestore) {
-    changedInputCount = args.markSpillRootsChanged(args.clearOwnedSpill(cellIndex), changedInputCount)
+    const clearedSpill = args.clearSpillForCell(cellIndex)
+    changedInputCount = args.markSpillRootsChanged(clearedSpill.changedCellIndices, changedInputCount)
+    if (clearedSpill.ownerCellIndex !== undefined) {
+      formulaChangedCount = args.markFormulaChanged(clearedSpill.ownerCellIndex, formulaChangedCount)
+    }
   }
   const compileStarted = request.isRestore ? 0 : performance.now()
   const hasFormulaColumnAggregateDependents = sheetId !== undefined && request.hasTrackedDirectRangeDependents(sheetId, parsedAddress.col)

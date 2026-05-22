@@ -11,10 +11,10 @@ const formulaTypeShared = 1
 
 export class LargeSimpleFormulaRecords {
   private cellIndexes: Uint32Array<ArrayBuffer> = new Uint32Array(initialFormulaCapacity)
-  private rows: Uint32Array<ArrayBuffer> = new Uint32Array(initialFormulaCapacity)
-  private columns: Uint32Array<ArrayBuffer> = new Uint32Array(initialFormulaCapacity)
-  private typeCodes: Uint8Array<ArrayBuffer> = new Uint8Array(initialFormulaCapacity)
-  private sharedIndexes: Uint32Array<ArrayBuffer> = filledUint32Array(initialFormulaCapacity, noPoolId)
+  private rows: Uint32Array<ArrayBuffer> | undefined
+  private columns: Uint32Array<ArrayBuffer> | undefined
+  private typeCodes: Uint8Array<ArrayBuffer> | undefined
+  private sharedIndexes: Uint32Array<ArrayBuffer> | undefined
   private rawFormulaIds: Uint32Array<ArrayBuffer> = filledUint32Array(initialFormulaCapacity, noPoolId)
   private readonly rawFormulas: string[] = []
   private readonly rawFormulaIdsByValue = new Map<string, number>()
@@ -33,43 +33,58 @@ export class LargeSimpleFormulaRecords {
     return this.rawFormulas.length
   }
 
+  retainedStorageByteLength(): number {
+    return (
+      this.cellIndexes.byteLength +
+      (this.rows?.byteLength ?? 0) +
+      (this.columns?.byteLength ?? 0) +
+      (this.typeCodes?.byteLength ?? 0) +
+      (this.sharedIndexes?.byteLength ?? 0) +
+      this.rawFormulaIds.byteLength
+    )
+  }
+
   add(cellIndex: number, row: number, column: number, typeCode: number, sharedIndex: number | null, rawFormulaText: string): void {
     this.ensureCapacity(this.length + 1)
     const index = this.length
     this.length += 1
     this.cellIndexes[index] = cellIndex
-    this.rows[index] = row
-    this.columns[index] = column
-    this.typeCodes[index] = typeCode
-    this.sharedIndexes[index] = sharedIndex ?? noPoolId
     this.rawFormulaIds[index] = this.internRawFormula(rawFormulaText)
+    if (typeCode === formulaTypeShared) {
+      this.ensureSharedFormulaStorage()
+      this.rows![index] = row
+      this.columns![index] = column
+      this.typeCodes![index] = typeCode
+      this.sharedIndexes![index] = sharedIndex ?? noPoolId
+    }
   }
 
   resolveIntoArena(arena: ImportedWorkbookArena): boolean {
+    this.releaseDedupeScratch()
     const sharedBases = new Map<number, SharedFormulaBase>()
     for (let index = 0; index < this.length; index += 1) {
-      if (this.typeCodes[index] !== formulaTypeShared || !this.hasRawFormulaText(index)) {
+      if (!this.isSharedFormula(index) || !this.hasRawFormulaText(index)) {
         continue
       }
       const normalized = this.normalizedFormulaAt(index)
-      const sharedIndex = this.sharedIndexes[index] ?? noPoolId
+      const sharedIndex = this.sharedIndexes?.[index] ?? noPoolId
       if (normalized === null || sharedIndex === noPoolId) {
         return false
       }
       sharedBases.set(sharedIndex, {
-        row: this.rows[index] ?? 0,
-        column: this.columns[index] ?? 0,
+        row: this.rows?.[index] ?? 0,
+        column: this.columns?.[index] ?? 0,
         formula: normalized,
       })
       arena.setFormula(this.cellIndexes[index] ?? 0, normalized)
     }
 
     for (let index = 0; index < this.length; index += 1) {
-      if (this.typeCodes[index] === formulaTypeShared) {
+      if (this.isSharedFormula(index)) {
         if (this.hasRawFormulaText(index)) {
           continue
         }
-        const sharedIndex = this.sharedIndexes[index] ?? noPoolId
+        const sharedIndex = this.sharedIndexes?.[index] ?? noPoolId
         const base = sharedIndex === noPoolId ? undefined : sharedBases.get(sharedIndex)
         if (!base) {
           return false
@@ -77,7 +92,7 @@ export class LargeSimpleFormulaRecords {
         try {
           arena.setFormula(
             this.cellIndexes[index] ?? 0,
-            translateFormulaReferences(base.formula, (this.rows[index] ?? 0) - base.row, (this.columns[index] ?? 0) - base.column),
+            translateFormulaReferences(base.formula, (this.rows?.[index] ?? 0) - base.row, (this.columns?.[index] ?? 0) - base.column),
           )
         } catch {
           return false
@@ -91,6 +106,29 @@ export class LargeSimpleFormulaRecords {
       arena.setFormula(this.cellIndexes[index] ?? 0, normalized)
     }
     return true
+  }
+
+  release(): void {
+    this.cellIndexes = new Uint32Array(0)
+    this.rows = undefined
+    this.columns = undefined
+    this.typeCodes = undefined
+    this.sharedIndexes = undefined
+    this.rawFormulaIds = new Uint32Array(0)
+    this.rawFormulas.length = 0
+    this.normalizedFormulas.length = 0
+    this.length = 0
+    this.releaseDedupeScratch()
+  }
+
+  private releaseDedupeScratch(): void {
+    this.rawFormulaIdsByValue.clear()
+    this.boundedRawFormulaKeys.length = 0
+    this.boundedRawFormulaEvictionIndex = 0
+  }
+
+  private isSharedFormula(index: number): boolean {
+    return (this.typeCodes?.[index] ?? formulaTypeNormal) === formulaTypeShared
   }
 
   private hasRawFormulaText(index: number): boolean {
@@ -123,9 +161,7 @@ export class LargeSimpleFormulaRecords {
     const next = this.rawFormulas.length
     this.rawFormulas.push(value)
     this.rawFormulaIdsByValue.set(value, next)
-    if (this.allowUnsupportedFormulaText) {
-      this.rememberBoundedRawFormulaKey(value)
-    }
+    this.rememberBoundedRawFormulaKey(value)
     return next
   }
 
@@ -156,11 +192,34 @@ export class LargeSimpleFormulaRecords {
       nextCapacity *= 2
     }
     this.cellIndexes = growUint32Array(this.cellIndexes, nextCapacity)
-    this.rows = growUint32Array(this.rows, nextCapacity)
-    this.columns = growUint32Array(this.columns, nextCapacity)
-    this.typeCodes = growUint8Array(this.typeCodes, nextCapacity)
-    this.sharedIndexes = growUint32Array(this.sharedIndexes, nextCapacity, noPoolId)
+    if (this.rows) {
+      this.rows = growUint32Array(this.rows, nextCapacity)
+    }
+    if (this.columns) {
+      this.columns = growUint32Array(this.columns, nextCapacity)
+    }
+    if (this.typeCodes) {
+      this.typeCodes = growUint8Array(this.typeCodes, nextCapacity)
+    }
+    if (this.sharedIndexes) {
+      this.sharedIndexes = growUint32Array(this.sharedIndexes, nextCapacity, noPoolId)
+    }
     this.rawFormulaIds = growUint32Array(this.rawFormulaIds, nextCapacity, noPoolId)
+  }
+
+  private ensureSharedFormulaStorage(): void {
+    if (!this.rows) {
+      this.rows = new Uint32Array(this.cellIndexes.length)
+    }
+    if (!this.columns) {
+      this.columns = new Uint32Array(this.cellIndexes.length)
+    }
+    if (!this.typeCodes) {
+      this.typeCodes = new Uint8Array(this.cellIndexes.length)
+    }
+    if (!this.sharedIndexes) {
+      this.sharedIndexes = filledUint32Array(this.cellIndexes.length, noPoolId)
+    }
   }
 }
 

@@ -15,7 +15,7 @@ import {
   type FormulaCellComparison,
   type NormalizedFormulaValue,
 } from '@bilig/excel-fixtures'
-import { ErrorCode, ValueTag, type CellValue } from '@bilig/protocol'
+import { ErrorCode, ValueTag, type CellValue, type WorkbookSnapshot } from '@bilig/protocol'
 import { describe, expect, it } from 'vitest'
 
 import { WorkPaper, type WorkPaperCellAddress } from '../index.js'
@@ -64,6 +64,64 @@ const expectedSpillReferenceOracleCells = [
   { address: 'D1', formula: '=SUM(B1#)', rawValue: 'number\t6.0', value: { kind: 'number', value: 6 } },
   { address: 'E1', formula: '=ROWS(B1#)', rawValue: 'number\t3.0', value: { kind: 'number', value: 3 } },
   { address: 'F1', formula: '=INDEX(B1#,2)', rawValue: 'number\t2.0', value: { kind: 'number', value: 2 } },
+] as const
+const shrinkingSpillReferenceOracleAddresses = ['B1', 'B2', 'B3', 'D1', 'E1', 'F1'] as const
+const expectedShrinkingSpillReferenceOracleCells = [
+  { address: 'B1', formula: '=SEQUENCE(A1,1,1,1)', rawValue: 'number\t1.0', value: { kind: 'number', value: 1 } },
+  { address: 'B2', rawValue: 'blank\t', value: { kind: 'blank' } },
+  { address: 'B3', rawValue: 'blank\t', value: { kind: 'blank' } },
+  { address: 'D1', formula: '=SUM(B1#)', rawValue: 'number\t1.0', value: { kind: 'number', value: 1 } },
+  { address: 'E1', formula: '=ROWS(B1#)', rawValue: 'number\t1.0', value: { kind: 'number', value: 1 } },
+  {
+    address: 'F1',
+    formula: '=IFERROR(INDEX(B1#,2),"missing")',
+    rawValue: 'string\tmissing',
+    value: { kind: 'string', value: 'missing' },
+  },
+] as const
+const expectedDesktopExcelShrinkingSpillReferenceOracleCells = [
+  expectedShrinkingSpillReferenceOracleCells[0],
+  { address: 'B2', rawValue: 'string\t', value: { kind: 'string', value: '' } },
+  { address: 'B3', rawValue: 'string\t', value: { kind: 'string', value: '' } },
+  ...expectedShrinkingSpillReferenceOracleCells.slice(3),
+] as const
+const blockedSpillReferenceOracleAddresses = ['B1', 'B2', 'B3', 'D1', 'E1', 'F1'] as const
+const expectedBlockedSpillReferenceOracleValues = [
+  { address: 'B1', value: { kind: 'error', value: String(ErrorCode.Spill) } },
+  { address: 'B2', value: { kind: 'number', value: 99 } },
+  { address: 'B3', value: { kind: 'blank' } },
+  { address: 'D1', value: { kind: 'error', value: String(ErrorCode.Spill) } },
+  { address: 'E1', value: { kind: 'number', value: 1 } },
+  { address: 'F1', value: { kind: 'string', value: 'missing' } },
+] as const
+const expectedDesktopExcelBlockedSpillReferenceValues = [
+  expectedBlockedSpillReferenceOracleValues[0],
+  expectedBlockedSpillReferenceOracleValues[1],
+  { address: 'B3', value: { kind: 'string', value: '' } },
+  ...expectedBlockedSpillReferenceOracleValues.slice(3),
+] as const
+const expectedUnblockedSpillReferenceOracleValues = [
+  { address: 'B1', value: { kind: 'number', value: 1 } },
+  { address: 'B2', value: { kind: 'number', value: 2 } },
+  { address: 'B3', value: { kind: 'number', value: 3 } },
+  { address: 'D1', value: { kind: 'number', value: 6 } },
+  { address: 'E1', value: { kind: 'number', value: 3 } },
+  { address: 'F1', value: { kind: 'number', value: 2 } },
+] as const
+const horizontalStructuralSpillOracleAddresses = ['B1', 'C1', 'D1', 'E1', 'A3', 'A4', 'A5'] as const
+const expectedHorizontalStructuralSpillOracleValues = [
+  { address: 'B1', value: { kind: 'number', value: 1 } },
+  { address: 'C1', value: { kind: 'number', value: 2 } },
+  { address: 'D1', value: { kind: 'number', value: 3 } },
+  { address: 'E1', value: { kind: 'blank' } },
+  { address: 'A3', value: { kind: 'number', value: 6 } },
+  { address: 'A4', value: { kind: 'number', value: 3 } },
+  { address: 'A5', value: { kind: 'number', value: 2 } },
+] as const
+const expectedDesktopExcelHorizontalStructuralSpillValues = [
+  ...expectedHorizontalStructuralSpillOracleValues.slice(0, 3),
+  { address: 'E1', value: { kind: 'string', value: '' } },
+  ...expectedHorizontalStructuralSpillOracleValues.slice(4),
 ] as const
 const textsplitErrorOracleAddresses = ['C1', 'D1', 'C2', 'D2'] as const
 const expectedTextsplitErrorOracleCells = [
@@ -185,6 +243,14 @@ const expectedOneVariableDataTableImportedFormulaByAddress = new Map([
   ['B7', '=MULTIPLE.OPERATIONS(B5,A1,A7)'],
   ['B8', '=MULTIPLE.OPERATIONS(B5,A1,A8)'],
 ] as const)
+const aggregateOptionsOracleAddresses = ['B1', 'B2', 'B3', 'B4', 'C1'] as const
+const expectedAggregateOptionsOracleCells = [
+  { address: 'B1', formula: '=AGGREGATE(9,3,A1:A5)', rawValue: 'number\t40.0', value: { kind: 'number', value: 40 } },
+  { address: 'B2', formula: '=AGGREGATE(9,6,A1:A5)', rawValue: 'number\t120.0', value: { kind: 'number', value: 120 } },
+  { address: 'B3', formula: '=AGGREGATE(9,4,A1:A5)', rawValue: 'error\t#DIV/0!', value: { kind: 'error', value: String(ErrorCode.Div0) } },
+  { address: 'B4', formula: '=AGGREGATE(9,7,A1:A5)', rawValue: 'number\t100.0', value: { kind: 'number', value: 100 } },
+  { address: 'C1', formula: '=SUBTOTAL(109,A1:A4)', rawValue: 'number\t40.0', value: { kind: 'number', value: 40 } },
+] as const
 
 describe('macOS Desktop Excel XLSX oracle for WorkPaper', () => {
   it('exports and reimports the oracle fixture through the headless workbook path', () => {
@@ -200,6 +266,27 @@ describe('macOS Desktop Excel XLSX oracle for WorkPaper', () => {
         expect(oracleFormulaAddresses.map((address) => normalizedCellValue(reimported.getCellValue(addressToCell(address))))).toEqual(
           expectedOracleCells.map((expected) => expected.value),
         )
+      } finally {
+        reimported.dispose()
+      }
+    } finally {
+      workbook.dispose()
+    }
+  })
+
+  it('exports and reimports AGGREGATE option semantics through the headless workbook path', () => {
+    const workbook = buildAggregateOptionsOracleWorkbook()
+    try {
+      expect(aggregateOptionsOracleAddresses.map((address) => normalizedCellValue(workbook.getCellValue(addressToCell(address))))).toEqual(
+        expectedAggregateOptionsOracleCells.map((expected) => expected.value),
+      )
+
+      const imported = importXlsx(exportXlsx(workbook.exportSnapshot()), 'headless-aggregate-options-oracle.xlsx')
+      const reimported = WorkPaper.buildFromSnapshot(imported.snapshot, workbookConfig)
+      try {
+        expect(
+          aggregateOptionsOracleAddresses.map((address) => normalizedCellValue(reimported.getCellValue(addressToCell(address)))),
+        ).toEqual(expectedAggregateOptionsOracleCells.map((expected) => expected.value))
       } finally {
         reimported.dispose()
       }
@@ -356,6 +443,75 @@ describe('macOS Desktop Excel XLSX oracle for WorkPaper', () => {
     }
   })
 
+  it('keeps spill-reference consumers valid when a dynamic-array owner shrinks to one cell', () => {
+    const workbook = buildShrinkingSpillReferenceOracleWorkbook()
+    try {
+      workbook.setCellContents(addressToCell('A1'), 1)
+
+      expect(
+        shrinkingSpillReferenceOracleAddresses.map((address) => normalizedCellValue(workbook.getCellValue(addressToCell(address)))),
+      ).toEqual(expectedShrinkingSpillReferenceOracleCells.map((expected) => expected.value))
+      expect(workbook.exportSnapshot().workbook.metadata?.spills).toEqual([{ sheetName: 'Cases', address: 'B1', rows: 1, cols: 1 }])
+
+      const imported = importXlsx(exportXlsx(workbook.exportSnapshot()), 'headless-shrinking-spill-reference-oracle.xlsx')
+      const reimported = WorkPaper.buildFromSnapshot(imported.snapshot, workbookConfig)
+      try {
+        expect(
+          shrinkingSpillReferenceOracleAddresses.map((address) => normalizedCellValue(reimported.getCellValue(addressToCell(address)))),
+        ).toEqual(expectedShrinkingSpillReferenceOracleCells.map((expected) => expected.value))
+        expect(reimported.getCellFormula(addressToCell('D1'))).toBe('=SUM(B1#)')
+        expect(reimported.getCellFormula(addressToCell('E1'))).toBe('=ROWS(B1#)')
+        expect(reimported.getCellFormula(addressToCell('F1'))).toBe('=IFERROR(INDEX(B1#,2),"missing")')
+        expect(imported.snapshot.workbook.metadata?.spills).toEqual([{ sheetName: 'Cases', address: 'B1', rows: 1, cols: 1 }])
+      } finally {
+        reimported.dispose()
+      }
+    } finally {
+      workbook.dispose()
+    }
+  })
+
+  it('blocks spill-reference consumers when a spill child is authored and unblocks after clear', () => {
+    const workbook = buildShrinkingSpillReferenceOracleWorkbook()
+    try {
+      workbook.setCellContents(addressToCell('B2'), 99)
+
+      expect(
+        blockedSpillReferenceOracleAddresses.map((address) => ({
+          address,
+          value: normalizedCellValue(workbook.getCellValue(addressToCell(address))),
+        })),
+      ).toEqual(expectedBlockedSpillReferenceOracleValues)
+      expect(workbook.exportSnapshot().workbook.metadata?.spills).toEqual([{ sheetName: 'Cases', address: 'B1', rows: 1, cols: 1 }])
+
+      const blockedImported = importXlsx(exportXlsx(workbook.exportSnapshot()), 'headless-blocked-spill-reference-oracle.xlsx')
+      const blockedReimported = WorkPaper.buildFromSnapshot(blockedImported.snapshot, workbookConfig)
+      try {
+        expect(
+          blockedSpillReferenceOracleAddresses.map((address) => ({
+            address,
+            value: normalizedCellValue(blockedReimported.getCellValue(addressToCell(address))),
+          })),
+        ).toEqual(expectedBlockedSpillReferenceOracleValues)
+        expect(blockedImported.snapshot.workbook.metadata?.spills).toEqual([{ sheetName: 'Cases', address: 'B1', rows: 1, cols: 1 }])
+      } finally {
+        blockedReimported.dispose()
+      }
+
+      workbook.setCellContents(addressToCell('B2'), null)
+
+      expect(
+        blockedSpillReferenceOracleAddresses.map((address) => ({
+          address,
+          value: normalizedCellValue(workbook.getCellValue(addressToCell(address))),
+        })),
+      ).toEqual(expectedUnblockedSpillReferenceOracleValues)
+      expect(workbook.exportSnapshot().workbook.metadata?.spills).toEqual([{ sheetName: 'Cases', address: 'B1', rows: 3, cols: 1 }])
+    } finally {
+      workbook.dispose()
+    }
+  })
+
   it('exports and reimports TEXTSPLIT error spill children through the headless XLSX path', () => {
     const workbook = buildTextsplitErrorOracleWorkbook()
     try {
@@ -433,6 +589,160 @@ describe('macOS Desktop Excel XLSX oracle for WorkPaper', () => {
       )
       const imported = importXlsx(exportXlsx(workbook.exportSnapshot()), 'headless-structural-dynamic-spill-oracle.xlsx')
       expect(imported.snapshot.workbook.metadata?.spills).toEqual([{ sheetName: 'Cases', address: 'B2', rows: 3, cols: 1 }])
+    } finally {
+      workbook.dispose()
+    }
+  })
+
+  it('rematerializes dynamic-array spill metadata after structural row edits through spill children', () => {
+    const assertVerticalRowEdit = (edit: (workbook: WorkPaper, sheetId: number) => void): void => {
+      const workbook = buildShrinkingSpillReferenceOracleWorkbook()
+      const sheetId = workbook.getSheetId('Cases')!
+      try {
+        edit(workbook, sheetId)
+        expect(
+          blockedSpillReferenceOracleAddresses.map((address) => ({
+            address,
+            value: normalizedCellValue(workbook.getCellValue(addressToCell(address))),
+          })),
+        ).toEqual(expectedUnblockedSpillReferenceOracleValues)
+        expect(workbook.exportSnapshot().workbook.metadata?.spills).toEqual([{ sheetName: 'Cases', address: 'B1', rows: 3, cols: 1 }])
+
+        const imported = importXlsx(exportXlsx(workbook.exportSnapshot()), 'headless-structural-row-edit-spill-oracle.xlsx')
+        const reimported = WorkPaper.buildFromSnapshot(imported.snapshot, workbookConfig)
+        try {
+          expect(
+            blockedSpillReferenceOracleAddresses.map((address) => ({
+              address,
+              value: normalizedCellValue(reimported.getCellValue(addressToCell(address))),
+            })),
+          ).toEqual(expectedUnblockedSpillReferenceOracleValues)
+          expect(imported.snapshot.workbook.metadata?.spills).toEqual([{ sheetName: 'Cases', address: 'B1', rows: 3, cols: 1 }])
+        } finally {
+          reimported.dispose()
+        }
+      } finally {
+        workbook.dispose()
+      }
+    }
+
+    assertVerticalRowEdit((workbook, sheetId) => workbook.addRows(sheetId, 1, 1))
+    assertVerticalRowEdit((workbook, sheetId) => workbook.removeRows(sheetId, 1, 1))
+  })
+
+  it('rematerializes horizontal dynamic-array spill metadata after structural column edits through spill children', () => {
+    const assertHorizontalColumnEdit = (edit: (workbook: WorkPaper, sheetId: number) => void): void => {
+      const workbook = buildHorizontalStructuralSpillOracleWorkbook()
+      const sheetId = workbook.getSheetId('Cases')!
+      try {
+        edit(workbook, sheetId)
+        expect(
+          horizontalStructuralSpillOracleAddresses.map((address) => ({
+            address,
+            value: normalizedCellValue(workbook.getCellValue(addressToCell(address))),
+          })),
+        ).toEqual(expectedHorizontalStructuralSpillOracleValues)
+        expect(workbook.exportSnapshot().workbook.metadata?.spills).toEqual([{ sheetName: 'Cases', address: 'B1', rows: 1, cols: 3 }])
+
+        const imported = importXlsx(exportXlsx(workbook.exportSnapshot()), 'headless-structural-column-edit-spill-oracle.xlsx')
+        const reimported = WorkPaper.buildFromSnapshot(imported.snapshot, workbookConfig)
+        try {
+          expect(
+            horizontalStructuralSpillOracleAddresses.map((address) => ({
+              address,
+              value: normalizedCellValue(reimported.getCellValue(addressToCell(address))),
+            })),
+          ).toEqual(expectedHorizontalStructuralSpillOracleValues)
+          expect(imported.snapshot.workbook.metadata?.spills).toEqual([{ sheetName: 'Cases', address: 'B1', rows: 1, cols: 3 }])
+        } finally {
+          reimported.dispose()
+        }
+      } finally {
+        workbook.dispose()
+      }
+    }
+
+    assertHorizontalColumnEdit((workbook, sheetId) => workbook.addColumns(sheetId, 2, 1))
+    assertHorizontalColumnEdit((workbook, sheetId) => workbook.removeColumns(sheetId, 2, 1))
+  })
+
+  it('rematerializes vertical dynamic-array spill metadata after moving the owner row', () => {
+    const workbook = buildShrinkingSpillReferenceOracleWorkbook()
+    const sheetId = workbook.getSheetId('Cases')!
+    try {
+      workbook.moveRows(sheetId, 0, 1, 2)
+      expect(workbook.getCellFormula(addressToCell('B3'))).toBe('=SEQUENCE(A3,1,1,1)')
+      expect(workbook.getCellFormula(addressToCell('D3'))).toBe('=SUM(B3#)')
+      expect(workbook.getCellFormula(addressToCell('E3'))).toBe('=ROWS(B3#)')
+      expect(workbook.getCellFormula(addressToCell('F3'))).toBe('=IFERROR(INDEX(B3#,2),"missing")')
+      expect(
+        ['B3', 'B4', 'B5', 'D3', 'E3', 'F3'].map((address) => normalizedCellValue(workbook.getCellValue(addressToCell(address)))),
+      ).toEqual([
+        { kind: 'number', value: 1 },
+        { kind: 'number', value: 2 },
+        { kind: 'number', value: 3 },
+        { kind: 'number', value: 6 },
+        { kind: 'number', value: 3 },
+        { kind: 'number', value: 2 },
+      ])
+      expect(workbook.exportSnapshot().workbook.metadata?.spills).toEqual([{ sheetName: 'Cases', address: 'B3', rows: 3, cols: 1 }])
+    } finally {
+      workbook.dispose()
+    }
+  })
+
+  it('rematerializes horizontal dynamic-array spill metadata after moving the owner column', () => {
+    const workbook = buildHorizontalStructuralSpillOracleWorkbook()
+    const sheetId = workbook.getSheetId('Cases')!
+    try {
+      workbook.moveColumns(sheetId, 1, 1, 2)
+      expect(workbook.getCellFormula(addressToCell('C1'))).toBe('=SEQUENCE(1,3,1,1)')
+      expect(workbook.getCellFormula(addressToCell('A3'))).toBe('=SUM(C1#)')
+      expect(workbook.getCellFormula(addressToCell('A4'))).toBe('=COLUMNS(C1#)')
+      expect(workbook.getCellFormula(addressToCell('A5'))).toBe('=IFERROR(INDEX(C1#,1,2),"missing")')
+      expect(
+        ['C1', 'D1', 'E1', 'A3', 'A4', 'A5'].map((address) => normalizedCellValue(workbook.getCellValue(addressToCell(address)))),
+      ).toEqual([
+        { kind: 'number', value: 1 },
+        { kind: 'number', value: 2 },
+        { kind: 'number', value: 3 },
+        { kind: 'number', value: 6 },
+        { kind: 'number', value: 3 },
+        { kind: 'number', value: 2 },
+      ])
+      expect(workbook.exportSnapshot().workbook.metadata?.spills).toEqual([{ sheetName: 'Cases', address: 'C1', rows: 1, cols: 3 }])
+    } finally {
+      workbook.dispose()
+    }
+  })
+
+  it('keeps two-dimensional spill metadata valid after moving the owner column', () => {
+    const workbook = buildTwoDimensionalStructuralSpillOracleWorkbook()
+    const sheetId = workbook.getSheetId('Cases')!
+    try {
+      workbook.moveColumns(sheetId, 1, 1, 3)
+      expect(workbook.getCellFormula(addressToCell('D2'))).toBe('=SEQUENCE(2,3,1,1)')
+      expect(workbook.getCellFormula(addressToCell('G2'))).toBe('=SUM(D2#)')
+      expect(workbook.getCellFormula(addressToCell('G3'))).toBe('=ROWS(D2#)')
+      expect(workbook.getCellFormula(addressToCell('G4'))).toBe('=COLUMNS(D2#)')
+      expect(workbook.getCellFormula(addressToCell('G5'))).toBe('=IFERROR(INDEX(D2#,2,2),"missing")')
+      expect(
+        ['D2', 'E2', 'F2', 'D3', 'E3', 'F3', 'G2', 'G3', 'G4', 'G5'].map((address) =>
+          normalizedCellValue(workbook.getCellValue(addressToCell(address))),
+        ),
+      ).toEqual([
+        { kind: 'number', value: 1 },
+        { kind: 'number', value: 2 },
+        { kind: 'number', value: 3 },
+        { kind: 'number', value: 4 },
+        { kind: 'number', value: 5 },
+        { kind: 'number', value: 6 },
+        { kind: 'number', value: 21 },
+        { kind: 'number', value: 2 },
+        { kind: 'number', value: 3 },
+        { kind: 'number', value: 5 },
+      ])
+      expect(workbook.exportSnapshot().workbook.metadata?.spills).toEqual([{ sheetName: 'Cases', address: 'D2', rows: 2, cols: 3 }])
     } finally {
       workbook.dispose()
     }
@@ -753,6 +1063,69 @@ describe('macOS Desktop Excel XLSX oracle for WorkPaper', () => {
   )
 
   it.runIf(process.env.BILIG_EXCEL_ORACLE_RUN === '1')(
+    'round-trips Desktop Excel AGGREGATE option semantics into headless import',
+    () => {
+      if (!isMacosExcelInstalled()) {
+        throw new Error('BILIG_EXCEL_ORACLE_RUN=1 requires /Applications/Microsoft Excel.app')
+      }
+
+      const tempDir = mkdtempSync(join(tmpdir(), 'bilig-headless-aggregate-options-oracle-'))
+      try {
+        const workbookPath = join(tempDir, 'headless-aggregate-options-oracle.xlsx')
+        const workbook = buildAggregateOptionsOracleWorkbook()
+        try {
+          writeFileSync(workbookPath, exportXlsx(workbook.exportSnapshot()))
+        } finally {
+          workbook.dispose()
+        }
+
+        const excelResult = runMacosExcelInspectionOracle({
+          workbookPath,
+          worksheetName: 'Cases',
+          formulaCells: [],
+          inspectCells: aggregateOptionsOracleAddresses,
+          saveWorkbook: true,
+        })
+
+        expect(excelResult.cells).toEqual(expectedAggregateOptionsOracleCells)
+
+        const imported = importXlsx(new Uint8Array(readFileSync(workbookPath)), 'headless-aggregate-options-oracle-recalculated.xlsx')
+        const reimported = WorkPaper.buildFromSnapshot(imported.snapshot, workbookConfig)
+        try {
+          const comparisons = buildHeadlessExcelComparisons(reimported, excelResult.cells, 'headless-aggregate-options-oracle')
+          const summary = buildReportSummary({
+            workbooks: [
+              {
+                id: 'headless-aggregate-options-oracle',
+                workbook: 'headless-aggregate-options-oracle.xlsx',
+                elapsedMs: 0,
+                formulaCells: comparisons.length,
+                status: 'ok',
+                comparisons,
+              },
+            ],
+          })
+
+          expect(comparisons.map((comparison) => comparison.classification)).toEqual(
+            aggregateOptionsOracleAddresses.map(() => 'bilig_matches_excel'),
+          )
+          expect(summary).toMatchObject({
+            biligVsFreshExcelMatchRate: 1,
+            comparableFormulaCells: aggregateOptionsOracleAddresses.length,
+            realBiligMismatches: 0,
+            totalFormulaCells: aggregateOptionsOracleAddresses.length,
+          })
+        } finally {
+          reimported.dispose()
+        }
+      } finally {
+        rmSync(tempDir, { recursive: true, force: true })
+      }
+    },
+    60_000,
+  )
+
+  it.runIf(process.env.BILIG_EXCEL_ORACLE_RUN === '1')(
     'matches Desktop Excel standalone INDEX implicit-intersection semantics',
     () => {
       if (!isMacosExcelInstalled()) {
@@ -1039,6 +1412,370 @@ describe('macOS Desktop Excel XLSX oracle for WorkPaper', () => {
           expect(imported.snapshot.workbook.metadata?.spills).toEqual([{ sheetName: 'Cases', address: 'B1', rows: 3, cols: 1 }])
         } finally {
           reimported.dispose()
+        }
+      } finally {
+        rmSync(tempDir, { recursive: true, force: true })
+      }
+    },
+    60_000,
+  )
+
+  it.runIf(process.env.BILIG_EXCEL_ORACLE_RUN === '1')(
+    'matches Desktop Excel spill-reference semantics after a dynamic-array shrink to one cell',
+    () => {
+      if (!isMacosExcelInstalled()) {
+        throw new Error('BILIG_EXCEL_ORACLE_RUN=1 requires /Applications/Microsoft Excel.app')
+      }
+
+      const tempDir = mkdtempSync(join(tmpdir(), 'bilig-headless-excel-shrinking-spill-reference-oracle-'))
+      try {
+        const workbookPath = join(tempDir, 'headless-shrinking-spill-reference-oracle.xlsx')
+        const workbook = buildShrinkingSpillReferenceOracleWorkbook()
+        try {
+          workbook.setCellContents(addressToCell('A1'), 1)
+          writeFileSync(workbookPath, exportXlsx(workbook.exportSnapshot()))
+        } finally {
+          workbook.dispose()
+        }
+
+        const excelResult = runMacosExcelInspectionOracle({
+          workbookPath,
+          worksheetName: 'Cases',
+          formulaCells: [],
+          inspectCells: shrinkingSpillReferenceOracleAddresses,
+          saveWorkbook: true,
+        })
+
+        expect(excelResult.cells).toEqual(expectedDesktopExcelShrinkingSpillReferenceOracleCells)
+
+        const imported = importXlsx(
+          new Uint8Array(readFileSync(workbookPath)),
+          'headless-shrinking-spill-reference-oracle-recalculated.xlsx',
+        )
+        const reimported = WorkPaper.buildFromSnapshot(imported.snapshot, workbookConfig)
+        try {
+          expect(
+            shrinkingSpillReferenceOracleAddresses.map((address) => normalizedCellValue(reimported.getCellValue(addressToCell(address)))),
+          ).toEqual(expectedShrinkingSpillReferenceOracleCells.map((expected) => expected.value))
+          expect(reimported.getCellFormula(addressToCell('D1'))).toBe('=SUM(B1#)')
+          expect(reimported.getCellFormula(addressToCell('E1'))).toBe('=ROWS(B1#)')
+          expect(reimported.getCellFormula(addressToCell('F1'))).toBe('=IFERROR(INDEX(B1#,2),"missing")')
+          expect(imported.snapshot.workbook.metadata?.spills).toEqual([{ sheetName: 'Cases', address: 'B1', rows: 1, cols: 1 }])
+        } finally {
+          reimported.dispose()
+        }
+      } finally {
+        rmSync(tempDir, { recursive: true, force: true })
+      }
+    },
+    60_000,
+  )
+
+  it.runIf(process.env.BILIG_EXCEL_ORACLE_RUN === '1')(
+    'matches Desktop Excel spill-reference semantics after authoring and clearing a spill child',
+    () => {
+      if (!isMacosExcelInstalled()) {
+        throw new Error('BILIG_EXCEL_ORACLE_RUN=1 requires /Applications/Microsoft Excel.app')
+      }
+
+      const tempDir = mkdtempSync(join(tmpdir(), 'bilig-headless-excel-blocked-spill-reference-oracle-'))
+      try {
+        const workbookPath = join(tempDir, 'headless-blocked-spill-reference-oracle.xlsx')
+        const workbook = buildShrinkingSpillReferenceOracleWorkbook()
+        try {
+          writeFileSync(workbookPath, exportXlsx(workbook.exportSnapshot()))
+        } finally {
+          workbook.dispose()
+        }
+
+        const blockedExcelResult = runMacosExcelStructuralOperationOracle({
+          workbookPath,
+          worksheetName: 'Cases',
+          operations: [{ kind: 'setCellValue', address: 'B2', value: 99 }],
+          inspectCells: blockedSpillReferenceOracleAddresses,
+          saveWorkbook: true,
+        })
+
+        expect(blockedExcelResult.cells.map(({ address, value }) => ({ address, value }))).toEqual(
+          expectedDesktopExcelBlockedSpillReferenceValues,
+        )
+        expect(blockedExcelResult.cells[0]?.formula).toBe('=SEQUENCE(A1,1,1,1)')
+        expect(blockedExcelResult.cells[3]?.formula).toBe('=SUM(B1#)')
+        expect(blockedExcelResult.cells[4]?.formula).toBe('=ROWS(B1#)')
+        expect(blockedExcelResult.cells[5]?.formula).toBe('=IFERROR(INDEX(B1#,2),"missing")')
+
+        const blockedImported = importXlsx(
+          new Uint8Array(readFileSync(workbookPath)),
+          'headless-blocked-spill-reference-oracle-recalculated.xlsx',
+        )
+        const blockedReimported = WorkPaper.buildFromSnapshot(blockedImported.snapshot, workbookConfig)
+        try {
+          expect(blockedImported.snapshot.workbook.metadata?.spills).toEqual([{ sheetName: 'Cases', address: 'B1', rows: 1, cols: 1 }])
+          expect(normalizedCellValue(blockedReimported.getCellValue(addressToCell('B2')))).toEqual({ kind: 'number', value: 99 })
+          expect(normalizedCellValue(blockedReimported.getCellValue(addressToCell('E1')))).toEqual({ kind: 'number', value: 1 })
+          expect(normalizedCellValue(blockedReimported.getCellValue(addressToCell('F1')))).toEqual({
+            kind: 'string',
+            value: 'missing',
+          })
+        } finally {
+          blockedReimported.dispose()
+        }
+
+        const unblockedExcelResult = runMacosExcelStructuralOperationOracle({
+          workbookPath,
+          worksheetName: 'Cases',
+          operations: [{ kind: 'clearCell', address: 'B2' }],
+          inspectCells: blockedSpillReferenceOracleAddresses,
+          saveWorkbook: true,
+        })
+
+        expect(unblockedExcelResult.cells.map(({ address, value }) => ({ address, value }))).toEqual(
+          expectedUnblockedSpillReferenceOracleValues,
+        )
+
+        const unblockedImported = importXlsx(
+          new Uint8Array(readFileSync(workbookPath)),
+          'headless-unblocked-spill-reference-oracle-recalculated.xlsx',
+        )
+        const unblockedReimported = WorkPaper.buildFromSnapshot(unblockedImported.snapshot, workbookConfig)
+        try {
+          expect(
+            blockedSpillReferenceOracleAddresses.map((address) => ({
+              address,
+              value: normalizedCellValue(unblockedReimported.getCellValue(addressToCell(address))),
+            })),
+          ).toEqual(expectedUnblockedSpillReferenceOracleValues)
+          expect(unblockedImported.snapshot.workbook.metadata?.spills).toEqual([{ sheetName: 'Cases', address: 'B1', rows: 3, cols: 1 }])
+        } finally {
+          unblockedReimported.dispose()
+        }
+      } finally {
+        rmSync(tempDir, { recursive: true, force: true })
+      }
+    },
+    60_000,
+  )
+
+  it.runIf(process.env.BILIG_EXCEL_ORACLE_RUN === '1')(
+    'matches Desktop Excel spill rematerialization after row edits through spill children',
+    () => {
+      if (!isMacosExcelInstalled()) {
+        throw new Error('BILIG_EXCEL_ORACLE_RUN=1 requires /Applications/Microsoft Excel.app')
+      }
+
+      const tempDir = mkdtempSync(join(tmpdir(), 'bilig-headless-excel-structural-delete-spill-oracle-'))
+      try {
+        for (const { fileName, operation } of [
+          { fileName: 'headless-structural-insert-spill-oracle.xlsx', operation: { kind: 'insertRows' as const, range: '2:2' } },
+          { fileName: 'headless-structural-delete-spill-oracle.xlsx', operation: { kind: 'deleteRows' as const, range: '2:2' } },
+        ]) {
+          const workbookPath = join(tempDir, fileName)
+          const workbook = buildShrinkingSpillReferenceOracleWorkbook()
+          try {
+            writeFileSync(workbookPath, exportXlsx(workbook.exportSnapshot()))
+          } finally {
+            workbook.dispose()
+          }
+
+          const excelResult = runMacosExcelStructuralOperationOracle({
+            workbookPath,
+            worksheetName: 'Cases',
+            operations: [operation],
+            inspectCells: blockedSpillReferenceOracleAddresses,
+            saveWorkbook: true,
+          })
+
+          expect(excelResult.cells.map(({ address, value }) => ({ address, value }))).toEqual(expectedUnblockedSpillReferenceOracleValues)
+          expect(excelResult.cells[0]?.formula).toBe('=SEQUENCE(A1,1,1,1)')
+          expect(excelResult.cells[3]?.formula).toBe('=SUM(B1#)')
+          expect(excelResult.cells[4]?.formula).toBe('=ROWS(B1#)')
+          expect(excelResult.cells[5]?.formula).toBe('=IFERROR(INDEX(B1#,2),"missing")')
+
+          const imported = importXlsx(new Uint8Array(readFileSync(workbookPath)), `recalculated-${fileName}`)
+          const reimported = WorkPaper.buildFromSnapshot(imported.snapshot, workbookConfig)
+          try {
+            expect(
+              blockedSpillReferenceOracleAddresses.map((address) => ({
+                address,
+                value: normalizedCellValue(reimported.getCellValue(addressToCell(address))),
+              })),
+            ).toEqual(expectedUnblockedSpillReferenceOracleValues)
+            expect(imported.snapshot.workbook.metadata?.spills).toEqual([{ sheetName: 'Cases', address: 'B1', rows: 3, cols: 1 }])
+          } finally {
+            reimported.dispose()
+          }
+        }
+      } finally {
+        rmSync(tempDir, { recursive: true, force: true })
+      }
+    },
+    60_000,
+  )
+
+  it.runIf(process.env.BILIG_EXCEL_ORACLE_RUN === '1')(
+    'matches Desktop Excel horizontal spill rematerialization after column edits through spill children',
+    () => {
+      if (!isMacosExcelInstalled()) {
+        throw new Error('BILIG_EXCEL_ORACLE_RUN=1 requires /Applications/Microsoft Excel.app')
+      }
+
+      const tempDir = mkdtempSync(join(tmpdir(), 'bilig-headless-excel-structural-column-spill-oracle-'))
+      try {
+        for (const { fileName, operation } of [
+          {
+            fileName: 'headless-structural-insert-horizontal-spill-oracle.xlsx',
+            operation: { kind: 'insertColumns' as const, range: 'C:C' },
+          },
+          {
+            fileName: 'headless-structural-delete-horizontal-spill-oracle.xlsx',
+            operation: { kind: 'deleteColumns' as const, range: 'C:C' },
+          },
+        ]) {
+          const workbookPath = join(tempDir, fileName)
+          const workbook = buildHorizontalStructuralSpillOracleWorkbook()
+          try {
+            writeFileSync(workbookPath, exportXlsx(workbook.exportSnapshot()))
+          } finally {
+            workbook.dispose()
+          }
+
+          const excelResult = runMacosExcelStructuralOperationOracle({
+            workbookPath,
+            worksheetName: 'Cases',
+            operations: [operation],
+            inspectCells: horizontalStructuralSpillOracleAddresses,
+            saveWorkbook: true,
+          })
+
+          expect(excelResult.cells.map(({ address, value }) => ({ address, value }))).toEqual(
+            expectedDesktopExcelHorizontalStructuralSpillValues,
+          )
+          expect(excelResult.cells[0]?.formula).toBe('=SEQUENCE(1,3,1,1)')
+          expect(excelResult.cells[4]?.formula).toBe('=SUM(B1#)')
+          expect(excelResult.cells[5]?.formula).toBe('=COLUMNS(B1#)')
+          expect(excelResult.cells[6]?.formula).toBe('=IFERROR(INDEX(B1#,1,2),"missing")')
+
+          const imported = importXlsx(new Uint8Array(readFileSync(workbookPath)), `recalculated-${fileName}`)
+          const reimported = WorkPaper.buildFromSnapshot(imported.snapshot, workbookConfig)
+          try {
+            expect(
+              horizontalStructuralSpillOracleAddresses.map((address) => ({
+                address,
+                value: normalizedCellValue(reimported.getCellValue(addressToCell(address))),
+              })),
+            ).toEqual(expectedHorizontalStructuralSpillOracleValues)
+            expect(imported.snapshot.workbook.metadata?.spills).toEqual([{ sheetName: 'Cases', address: 'B1', rows: 1, cols: 3 }])
+          } finally {
+            reimported.dispose()
+          }
+        }
+      } finally {
+        rmSync(tempDir, { recursive: true, force: true })
+      }
+    },
+    60_000,
+  )
+
+  it.runIf(process.env.BILIG_EXCEL_ORACLE_RUN === '1')(
+    'matches Desktop Excel spill rematerialization after moving dynamic-array owners',
+    () => {
+      if (!isMacosExcelInstalled()) {
+        throw new Error('BILIG_EXCEL_ORACLE_RUN=1 requires /Applications/Microsoft Excel.app')
+      }
+
+      const cases = [
+        {
+          fileName: 'headless-structural-move-owner-row-spill-oracle.xlsx',
+          buildWorkbook: buildShrinkingSpillReferenceOracleWorkbook,
+          operations: [{ kind: 'moveRows' as const, sourceRange: '1:1', destinationRange: '4:4' }],
+          inspectCells: ['B3', 'B4', 'B5', 'D3', 'E3', 'F3'],
+          expectedCells: [
+            { address: 'B3', formula: '=SEQUENCE(A3,1,1,1)', value: { kind: 'number', value: 1 } },
+            { address: 'B4', value: { kind: 'number', value: 2 } },
+            { address: 'B5', value: { kind: 'number', value: 3 } },
+            { address: 'D3', formula: '=SUM(B3#)', value: { kind: 'number', value: 6 } },
+            { address: 'E3', formula: '=ROWS(B3#)', value: { kind: 'number', value: 3 } },
+            { address: 'F3', formula: '=IFERROR(INDEX(B3#,2),"missing")', value: { kind: 'number', value: 2 } },
+          ],
+          expectedSpills: [{ sheetName: 'Cases', address: 'B3', rows: 3, cols: 1 }],
+        },
+        {
+          fileName: 'headless-structural-move-owner-column-spill-oracle.xlsx',
+          buildWorkbook: buildHorizontalStructuralSpillOracleWorkbook,
+          operations: [{ kind: 'moveColumns' as const, sourceRange: 'B:B', destinationRange: 'D:D' }],
+          inspectCells: ['C1', 'D1', 'E1', 'A3', 'A4', 'A5'],
+          expectedCells: [
+            { address: 'C1', formula: '=SEQUENCE(1,3,1,1)', value: { kind: 'number', value: 1 } },
+            { address: 'D1', value: { kind: 'number', value: 2 } },
+            { address: 'E1', value: { kind: 'number', value: 3 } },
+            { address: 'A3', formula: '=SUM(C1#)', value: { kind: 'number', value: 6 } },
+            { address: 'A4', formula: '=COLUMNS(C1#)', value: { kind: 'number', value: 3 } },
+            { address: 'A5', formula: '=IFERROR(INDEX(C1#,1,2),"missing")', value: { kind: 'number', value: 2 } },
+          ],
+          expectedSpills: [{ sheetName: 'Cases', address: 'C1', rows: 1, cols: 3 }],
+        },
+        {
+          fileName: 'headless-structural-move-2d-owner-column-spill-oracle.xlsx',
+          buildWorkbook: buildTwoDimensionalStructuralSpillOracleWorkbook,
+          operations: [{ kind: 'moveColumns' as const, sourceRange: 'B:B', destinationRange: 'E:E' }],
+          inspectCells: ['D2', 'E2', 'F2', 'D3', 'E3', 'F3', 'G2', 'G3', 'G4', 'G5'],
+          expectedCells: [
+            { address: 'D2', formula: '=SEQUENCE(2,3,1,1)', value: { kind: 'number', value: 1 } },
+            { address: 'E2', value: { kind: 'number', value: 2 } },
+            { address: 'F2', value: { kind: 'number', value: 3 } },
+            { address: 'D3', value: { kind: 'number', value: 4 } },
+            { address: 'E3', value: { kind: 'number', value: 5 } },
+            { address: 'F3', value: { kind: 'number', value: 6 } },
+            { address: 'G2', formula: '=SUM(D2#)', value: { kind: 'number', value: 21 } },
+            { address: 'G3', formula: '=ROWS(D2#)', value: { kind: 'number', value: 2 } },
+            { address: 'G4', formula: '=COLUMNS(D2#)', value: { kind: 'number', value: 3 } },
+            { address: 'G5', formula: '=IFERROR(INDEX(D2#,2,2),"missing")', value: { kind: 'number', value: 5 } },
+          ],
+          expectedSpills: [{ sheetName: 'Cases', address: 'D2', rows: 2, cols: 3 }],
+        },
+      ] as const
+
+      const tempDir = mkdtempSync(join(tmpdir(), 'bilig-headless-excel-structural-owner-move-spill-oracle-'))
+      try {
+        for (const testCase of cases) {
+          const workbookPath = join(tempDir, testCase.fileName)
+          const workbook = testCase.buildWorkbook()
+          try {
+            writeFileSync(workbookPath, exportXlsx(workbook.exportSnapshot()))
+          } finally {
+            workbook.dispose()
+          }
+
+          const excelResult = runMacosExcelStructuralOperationOracle({
+            workbookPath,
+            worksheetName: 'Cases',
+            operations: testCase.operations,
+            inspectCells: testCase.inspectCells,
+            saveWorkbook: true,
+          })
+
+          const actualCells = excelResult.cells.map(({ address, formula, value }) => {
+            const actualCell: { address: string; formula?: string; value: NormalizedFormulaValue } = { address, value }
+            if (formula) {
+              actualCell.formula = formula
+            }
+            return actualCell
+          })
+          expect(actualCells).toEqual(testCase.expectedCells)
+
+          const imported = importXlsx(new Uint8Array(readFileSync(workbookPath)), `recalculated-${testCase.fileName}`)
+          const reimported = WorkPaper.buildFromSnapshot(imported.snapshot, workbookConfig)
+          try {
+            expect(
+              testCase.inspectCells.map((address) => ({
+                address,
+                value: normalizedCellValue(reimported.getCellValue(addressToCell(address))),
+              })),
+            ).toEqual(testCase.expectedCells.map(({ address, value }) => ({ address, value })))
+            expect(imported.snapshot.workbook.metadata?.spills).toEqual(testCase.expectedSpills)
+          } finally {
+            reimported.dispose()
+          }
         }
       } finally {
         rmSync(tempDir, { recursive: true, force: true })
@@ -1609,6 +2346,36 @@ function buildOracleWorkbook(): WorkPaper {
   )
 }
 
+function buildAggregateOptionsOracleWorkbook(): WorkPaper {
+  const snapshot: WorkbookSnapshot = {
+    version: 1,
+    workbook: { name: 'headless-aggregate-options-oracle' },
+    sheets: [
+      {
+        id: 1,
+        name: 'Cases',
+        order: 0,
+        metadata: {
+          rows: [{ id: 'row:1', index: 1, hidden: true }],
+        },
+        cells: [
+          { address: 'A1', value: 10 },
+          { address: 'A2', value: 20 },
+          { address: 'A3', value: 30 },
+          { address: 'A4', formula: 'SUBTOTAL(9,A1:A3)' },
+          { address: 'A5', formula: '1/0' },
+          { address: 'B1', formula: 'AGGREGATE(9,3,A1:A5)' },
+          { address: 'B2', formula: 'AGGREGATE(9,6,A1:A5)' },
+          { address: 'B3', formula: 'AGGREGATE(9,4,A1:A5)' },
+          { address: 'B4', formula: 'AGGREGATE(9,7,A1:A5)' },
+          { address: 'C1', formula: 'SUBTOTAL(109,A1:A4)' },
+        ],
+      },
+    ],
+  }
+  return WorkPaper.buildFromSnapshot(snapshot, workbookConfig)
+}
+
 function buildIndexImplicitIntersectionOracleWorkbook(): WorkPaper {
   return WorkPaper.buildFromSheets(
     {
@@ -1679,6 +2446,39 @@ function buildSpillReferenceOracleWorkbook(): WorkPaper {
   return WorkPaper.buildFromSheets(
     {
       Cases: [[1, '=SEQUENCE(3,1,1,1)', null, '=SUM(B1#)', '=ROWS(B1#)', '=INDEX(B1#,2)'], [2], [3]],
+    },
+    workbookConfig,
+  )
+}
+
+function buildShrinkingSpillReferenceOracleWorkbook(): WorkPaper {
+  return WorkPaper.buildFromSheets(
+    {
+      Cases: [[3, '=SEQUENCE(A1,1,1,1)', null, '=SUM(B1#)', '=ROWS(B1#)', '=IFERROR(INDEX(B1#,2),"missing")'], [], []],
+    },
+    workbookConfig,
+  )
+}
+
+function buildHorizontalStructuralSpillOracleWorkbook(): WorkPaper {
+  return WorkPaper.buildFromSheets(
+    {
+      Cases: [[null, '=SEQUENCE(1,3,1,1)'], [], ['=SUM(B1#)'], ['=COLUMNS(B1#)'], ['=IFERROR(INDEX(B1#,1,2),"missing")']],
+    },
+    workbookConfig,
+  )
+}
+
+function buildTwoDimensionalStructuralSpillOracleWorkbook(): WorkPaper {
+  return WorkPaper.buildFromSheets(
+    {
+      Cases: [
+        [],
+        [null, '=SEQUENCE(2,3,1,1)', null, null, null, null, '=SUM(B2#)'],
+        [null, null, null, null, null, null, '=ROWS(B2#)'],
+        [null, null, null, null, null, null, '=COLUMNS(B2#)'],
+        [null, null, null, null, null, null, '=IFERROR(INDEX(B2#,2,2),"missing")'],
+      ],
     },
     workbookConfig,
   )

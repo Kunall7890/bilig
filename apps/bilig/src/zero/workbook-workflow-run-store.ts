@@ -40,6 +40,10 @@ interface WorkbookWorkflowRunRow extends QueryResultRow {
   readonly updatedAtUnixMs?: unknown
   readonly completedAtUnixMs?: unknown
   readonly errorMessage?: unknown
+  readonly mutationExecuted?: unknown
+  readonly verificationComplete?: unknown
+  readonly mutationStatus?: unknown
+  readonly mutationReceipt?: unknown
 }
 
 interface WorkbookWorkflowStepRow extends QueryResultRow {
@@ -130,6 +134,10 @@ function isWorkflowTemplate(value: unknown): value is WorkbookAgentWorkflowRun['
 
 function isWorkflowStepStatus(value: unknown): value is WorkbookAgentWorkflowStep['status'] {
   return value === 'pending' || value === 'running' || value === 'completed' || value === 'failed' || value === 'cancelled'
+}
+
+function isWorkflowMutationStatus(value: unknown): value is NonNullable<WorkbookAgentWorkflowRun['mutationStatus']> {
+  return value === 'applied' || value === 'staged' || value === 'queued' || value === 'failed' || value === 'verification_incomplete'
 }
 
 function normalizeWorkflowStepRow(row: WorkbookWorkflowStepRow): {
@@ -228,6 +236,10 @@ function normalizeWorkflowRun(
     errorMessage: typeof row.errorMessage === 'string' ? row.errorMessage : null,
     steps,
     artifact,
+    mutationExecuted: typeof row.mutationExecuted === 'boolean' ? row.mutationExecuted : null,
+    verificationComplete: typeof row.verificationComplete === 'boolean' ? row.verificationComplete : null,
+    mutationStatus: isWorkflowMutationStatus(row.mutationStatus) ? row.mutationStatus : null,
+    mutationReceipt: row.mutationReceipt ?? null,
   }
 }
 
@@ -245,6 +257,10 @@ function toWorkflowRunRow(row: ZeroWorkbookWorkflowRunRow): WorkbookWorkflowRunR
     updatedAtUnixMs: row.updatedAtUnixMs,
     completedAtUnixMs: row.completedAtUnixMs,
     errorMessage: row.errorMessage,
+    mutationExecuted: row.mutationExecuted,
+    verificationComplete: row.verificationComplete,
+    mutationStatus: row.mutationStatus,
+    mutationReceipt: row.mutationReceipt,
   }
 }
 
@@ -350,6 +366,10 @@ export async function ensureWorkbookWorkflowRunSchema(db: Queryable): Promise<vo
   await addColumnIfMissing(db, { tableName: 'workbook_workflow_run', columnName: 'completed_at_unix_ms', dataType: 'BIGINT' })
   await addColumnIfMissing(db, { tableName: 'workbook_workflow_run', columnName: 'error_message', dataType: 'TEXT' })
   await addColumnIfMissing(db, { tableName: 'workbook_workflow_run', columnName: 'artifact_json', dataType: 'JSONB' })
+  await addColumnIfMissing(db, { tableName: 'workbook_workflow_run', columnName: 'mutation_executed', dataType: 'BOOLEAN' })
+  await addColumnIfMissing(db, { tableName: 'workbook_workflow_run', columnName: 'verification_complete', dataType: 'BOOLEAN' })
+  await addColumnIfMissing(db, { tableName: 'workbook_workflow_run', columnName: 'mutation_status', dataType: 'TEXT' })
+  await addColumnIfMissing(db, { tableName: 'workbook_workflow_run', columnName: 'mutation_receipt_json', dataType: 'JSONB' })
   await db.query(`
     ALTER TABLE workbook_workflow_artifact
       ADD COLUMN IF NOT EXISTS workbook_id TEXT
@@ -472,10 +492,14 @@ async function persistWorkbookWorkflowRun(
         created_at_unix_ms,
         updated_at_unix_ms,
         completed_at_unix_ms,
-        error_message
+        error_message,
+        mutation_executed,
+        verification_complete,
+        mutation_status,
+        mutation_receipt_json
       )
       VALUES (
-        $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12
+        $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16
       )
       ON CONFLICT (run_id)
       DO UPDATE SET
@@ -489,7 +513,11 @@ async function persistWorkbookWorkflowRun(
         created_at_unix_ms = EXCLUDED.created_at_unix_ms,
         updated_at_unix_ms = EXCLUDED.updated_at_unix_ms,
         completed_at_unix_ms = EXCLUDED.completed_at_unix_ms,
-        error_message = EXCLUDED.error_message
+        error_message = EXCLUDED.error_message,
+        mutation_executed = EXCLUDED.mutation_executed,
+        verification_complete = EXCLUDED.verification_complete,
+        mutation_status = EXCLUDED.mutation_status,
+        mutation_receipt_json = EXCLUDED.mutation_receipt_json
     `,
     [
       input.run.runId,
@@ -504,6 +532,10 @@ async function persistWorkbookWorkflowRun(
       input.run.updatedAtUnixMs,
       input.run.completedAtUnixMs,
       input.run.errorMessage,
+      input.run.mutationExecuted ?? null,
+      input.run.verificationComplete ?? null,
+      input.run.mutationStatus ?? null,
+      input.run.mutationReceipt ?? null,
     ],
   )
   await db.query(

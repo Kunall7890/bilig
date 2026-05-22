@@ -1,6 +1,6 @@
 {
   "name": "@bilig/headless",
-  "version": "0.40.43",
+  "version": "0.42.0",
   "description": "Formula WorkPaper runtime for Node.js services and agent tools with JSON persistence and formula readback.",
   "keywords": [
     "agent-tools",
@@ -71,6 +71,11 @@
       "types": "./dist/mcp.d.ts",
       "import": "./dist/mcp.js",
       "default": "./dist/mcp.js"
+    },
+    "./agent-tools": {
+      "types": "./dist/agent-tools.d.ts",
+      "import": "./dist/agent-tools.js",
+      "default": "./dist/agent-tools.js"
     },
     "./xlsx": {
       "types": "./dist/xlsx.d.ts",

@@ -115,7 +115,7 @@ describe('work-paper matrix application', () => {
 
     applyWorkPaperMatrixContents({
       address: { sheet: 1, row: 10, col: 0 },
-      content: Array.from({ length: 16 }, (_, row) => [row + 1, row + 2, `=A${row + 11}+B${row + 11}`]),
+      content: Array.from({ length: 16 }, (_, row) => [row + 1, row + 2, `=SUM(A${row + 11}:B${row + 11})`]),
       flushPendingBatchOps: () => {},
       applyCellMutationRefs: (refs, options) => {
         applied.push({ refs, options })
@@ -128,6 +128,37 @@ describe('work-paper matrix application', () => {
     expect(applied[0]?.refs).toHaveLength(48)
     expect(applied[0]?.refs.slice(0, 32).every((ref) => ref.mutation.kind === 'setCellValue')).toBe(true)
     expect(applied[0]?.refs.slice(32).every((ref) => ref.mutation.kind === 'setCellFormula')).toBe(true)
+    const matrixPlan = applied[0]?.options.freshDirectAggregateMatrixPlan
+    expect(matrixPlan).toMatchObject({
+      sheetId: 1,
+      rowStart: 10,
+      rowCount: 16,
+      colStart: 0,
+      inputColCount: 2,
+    })
+    expect(Array.from(matrixPlan?.values.slice(0, 4) ?? [])).toEqual([1, 2, 2, 3])
+    expect(matrixPlan?.formulaSources).toHaveLength(16)
+    expect(matrixPlan?.formulaSources[0]).toBe('SUM(A11:B11)')
+  })
+
+  it('does not attach direct-aggregate matrix plans to scalar formula matrices', () => {
+    const applied: Array<{ refs: readonly EngineCellMutationRef[]; options: WorkPaperCellMutationApplyOptions }> = []
+
+    applyWorkPaperMatrixContents({
+      address: { sheet: 1, row: 0, col: 0 },
+      content: [
+        [1, 2, '=A1+B1'],
+        [3, 4, '=A2+B2'],
+      ],
+      flushPendingBatchOps: () => {},
+      applyCellMutationRefs: (refs, options) => {
+        applied.push({ refs, options })
+      },
+      rewriteFormulaForStorage: (formula) => formula,
+    })
+
+    expect(applied).toHaveLength(1)
+    expect(applied[0]?.options.freshDirectAggregateMatrixPlan).toBeUndefined()
   })
 
   it('updates dimensions once after phased formula matrix writes', () => {

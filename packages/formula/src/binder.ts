@@ -14,7 +14,7 @@ import { hasBuiltin } from './builtins.js'
 import { rewriteSpecialCall } from './special-call-rewrites.js'
 import { collectFormulaDependencyMetadata } from './binder-dependencies.js'
 
-const CONTEXTUAL_BUILTINS = new Set(['CELL', 'COLUMN', 'FORMULATEXT', 'OFFSET', 'ROW', 'SHEET', 'SHEETS', 'SUBTOTAL'])
+const CONTEXTUAL_BUILTINS = new Set(['CELL', 'COLUMN', 'FORMULATEXT', 'OFFSET', 'ROW', 'SHEET', 'SHEETS', 'SUBTOTAL', 'AGGREGATE'])
 
 export interface BoundFormula {
   ast: FormulaNode

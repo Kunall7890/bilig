@@ -13,6 +13,23 @@ const slash = 47
 const greaterThan = 62
 const doubleQuote = 34
 const singleQuote = 39
+export const cellTypeNumberCode = 0
+export const cellTypeSharedStringCode = 1
+export const cellTypeInlineStringCode = 2
+export const cellTypeFormulaStringCode = 3
+export const cellTypeBooleanCode = 4
+export const cellTypeErrorCode = 5
+export const cellTypeDateCode = 6
+export const cellTypeUnknownCode = 7
+export type LargeSimpleCellTypeCode =
+  | typeof cellTypeNumberCode
+  | typeof cellTypeSharedStringCode
+  | typeof cellTypeInlineStringCode
+  | typeof cellTypeFormulaStringCode
+  | typeof cellTypeBooleanCode
+  | typeof cellTypeErrorCode
+  | typeof cellTypeDateCode
+  | typeof cellTypeUnknownCode
 
 export function findNextOpeningTag(
   bytes: Uint8Array,
@@ -195,6 +212,67 @@ export function readCellStyleIndexFromTag(bytes: Uint8Array, startIndex: number,
     }
   }
   return value
+}
+
+export function readCellTypeCodeFromTag(bytes: Uint8Array, startIndex: number, tagEnd: number): LargeSimpleCellTypeCode {
+  const range = readXmlAttributeRangeFromTag(bytes, startIndex, tagEnd, 't')
+  if (!range) {
+    return cellTypeNumberCode
+  }
+  switch (range.end - range.start) {
+    case 1:
+      switch (bytes[range.start] ?? 0) {
+        case 98:
+          return cellTypeBooleanCode
+        case 100:
+          return cellTypeDateCode
+        case 101:
+          return cellTypeErrorCode
+        case 115:
+          return cellTypeSharedStringCode
+        default:
+          return cellTypeUnknownCode
+      }
+    case 3:
+      return bytes[range.start] === 115 && bytes[range.start + 1] === 116 && bytes[range.start + 2] === 114
+        ? cellTypeFormulaStringCode
+        : cellTypeUnknownCode
+    case 9:
+      return bytes[range.start] === 105 &&
+        bytes[range.start + 1] === 110 &&
+        bytes[range.start + 2] === 108 &&
+        bytes[range.start + 3] === 105 &&
+        bytes[range.start + 4] === 110 &&
+        bytes[range.start + 5] === 101 &&
+        bytes[range.start + 6] === 83 &&
+        bytes[range.start + 7] === 116 &&
+        bytes[range.start + 8] === 114
+        ? cellTypeInlineStringCode
+        : cellTypeUnknownCode
+    default:
+      return cellTypeUnknownCode
+  }
+}
+
+export function cellTypeCodeFromString(type: string | null): LargeSimpleCellTypeCode {
+  switch (type) {
+    case null:
+      return cellTypeNumberCode
+    case 's':
+      return cellTypeSharedStringCode
+    case 'inlineStr':
+      return cellTypeInlineStringCode
+    case 'str':
+      return cellTypeFormulaStringCode
+    case 'b':
+      return cellTypeBooleanCode
+    case 'e':
+      return cellTypeErrorCode
+    case 'd':
+      return cellTypeDateCode
+    default:
+      return cellTypeUnknownCode
+  }
 }
 
 export function isSelfClosingTag(bytes: Uint8Array, tagEnd: number): boolean {

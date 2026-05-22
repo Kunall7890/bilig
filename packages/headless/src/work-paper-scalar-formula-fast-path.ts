@@ -29,6 +29,7 @@ import type {
 } from './work-paper-types.js'
 
 const scratchRequiredCalls = new Set([
+  'AGGREGATE',
   'CELL',
   'COLUMN',
   'COLUMNS',

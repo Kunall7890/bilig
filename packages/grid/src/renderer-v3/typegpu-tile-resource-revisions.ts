@@ -28,6 +28,7 @@ export interface TypeGpuTileRectRevisionKeyV3 {
   readonly tileId: number
   readonly rectCount: number
   readonly rectSignature: string
+  readonly decorationRectSignature: string
   readonly valueSeq: number
   readonly styleSeq: number
   readonly axisSeqX: number
@@ -62,6 +63,7 @@ export function resolveGridRectTileRevisionKeyV3(input: {
     axisSeqY: input.tile.version.axisY,
     batchSeq: input.tile.lastBatchId,
     decorationRectCount: decorationRects.length,
+    decorationRectSignature: resolveGridTextDecorationRectSignatureV3(decorationRects),
     freezeSeq: input.tile.version.freeze,
     rectCount: input.tile.rectCount,
     rectSignature: input.tile.rectSignature ?? '',
@@ -120,6 +122,19 @@ function resolveGridTextRunSignatureV3(tile: Pick<GridRenderTile, 'textRuns' | '
   return hash.toString(36)
 }
 
+function resolveGridTextDecorationRectSignatureV3(decorationRects: readonly TextDecorationRect[]): string {
+  let hash = 2_166_136_261
+  hash = mixRevisionNumber(hash, decorationRects.length)
+  for (const rect of decorationRects) {
+    hash = mixRevisionNumber(hash, rect.x)
+    hash = mixRevisionNumber(hash, rect.y)
+    hash = mixRevisionNumber(hash, rect.width)
+    hash = mixRevisionNumber(hash, rect.height)
+    hash = mixRevisionString(hash, rect.color)
+  }
+  return hash.toString(36)
+}
+
 function mixRevisionString(hash: number, value: string): number {
   let next = hash
   for (let index = 0; index < value.length; index += 1) {
@@ -148,6 +163,7 @@ export function areGridRectTileRevisionKeysEqualV3(
     left.tileId === right.tileId &&
     left.rectCount === right.rectCount &&
     left.rectSignature === right.rectSignature &&
+    left.decorationRectSignature === right.decorationRectSignature &&
     left.valueSeq === right.valueSeq &&
     left.styleSeq === right.styleSeq &&
     left.axisSeqX === right.axisSeqX &&
@@ -186,10 +202,18 @@ export function shouldSyncGridTextTileResourceV3(input: {
   if (input.missingGlyphDependencies) {
     return true
   }
+  const atlasGeometryChanged =
+    input.atlasGeometryVersion !== undefined && input.content.textAtlasGeometryVersion !== input.atlasGeometryVersion
   if (areGridTextTileRevisionKeysEqualV3(input.content.textRevisionKey, input.textRevisionKey)) {
-    return input.atlasGeometryVersion !== undefined && input.content.textAtlasGeometryVersion !== input.atlasGeometryVersion
+    return atlasGeometryChanged
   }
   if (!input.content.textRevisionKey) {
+    return true
+  }
+  if (atlasGeometryChanged) {
+    return true
+  }
+  if (hasGridTextTileResourcePayloadChangedV3(input.content.textRevisionKey, input.textRevisionKey)) {
     return true
   }
   if (input.content.textRunCount !== input.tile.textCount) {
@@ -290,13 +314,13 @@ export function shouldSyncGridRectTileResourceV3(input: {
   if (!input.content.rectRevisionKey) {
     return true
   }
+  if (hasGridRectTileResourcePayloadChangedV3(input.content.rectRevisionKey, input.rectRevisionKey)) {
+    return true
+  }
   if (input.content.rectCount !== input.tile.rectCount) {
     return true
   }
   if (input.tile.rectCount > 0 && !input.content.rectHandle) {
-    return true
-  }
-  if (!areGridRectTilePayloadsEqualV3(input.content.rectRevisionKey, input.rectRevisionKey)) {
     return true
   }
   const dirtyMask = resolveGridTileDirtyContentMaskV3(input.tile)
@@ -315,19 +339,16 @@ export function shouldSyncGridRectTileResourceV3(input: {
   })
 }
 
-function areGridRectTilePayloadsEqualV3(
-  left: TypeGpuTileRectRevisionKeyV3 | null | undefined,
-  right: TypeGpuTileRectRevisionKeyV3 | null | undefined,
-): boolean {
+function hasGridTextTileResourcePayloadChangedV3(previous: TypeGpuTileTextRevisionKeyV3, next: TypeGpuTileTextRevisionKeyV3): boolean {
+  return previous.textRunCount !== next.textRunCount || previous.textSignature !== next.textSignature
+}
+
+function hasGridRectTileResourcePayloadChangedV3(previous: TypeGpuTileRectRevisionKeyV3, next: TypeGpuTileRectRevisionKeyV3): boolean {
   return (
-    left !== null &&
-    left !== undefined &&
-    right !== null &&
-    right !== undefined &&
-    left.tileId === right.tileId &&
-    left.rectCount === right.rectCount &&
-    left.rectSignature === right.rectSignature &&
-    left.decorationRectCount === right.decorationRectCount
+    previous.rectCount !== next.rectCount ||
+    previous.rectSignature !== next.rectSignature ||
+    previous.decorationRectCount !== next.decorationRectCount ||
+    previous.decorationRectSignature !== next.decorationRectSignature
   )
 }
 

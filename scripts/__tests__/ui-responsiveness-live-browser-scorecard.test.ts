@@ -48,7 +48,19 @@ describe('UI responsiveness live browser scorecard', () => {
     expect(scorecard.sameCorpusProof.tenXMeanAndP95CaseCount).toBe(
       scorecard.sameCorpusProof.cases.filter((entry) => entry.tenXMeanAndP95AgainstGoogleSheets).length,
     )
-    expect(scorecard.sameCorpusProof.tenXMeanAndP95CaseCount).toBeGreaterThan(0)
+    expect(scorecard.sameCorpusProof.tenXMeanAndP95CaseCount).toBe(0)
+    expect(scorecard.sameCorpusProof.runManifest).toMatchObject({
+      contractVersion: 'same-corpus-ui-v2',
+      caseCount: requiredUiResponsivenessSameCorpusWorkloads.length,
+      strictRenderedGridProofCaseCount: 0,
+      tenXMeanAndP95CaseCount: 0,
+      currentContractEvidenceComplete: false,
+      googleSheetsTenXRequirementSatisfied: false,
+    })
+    expect(scorecard.sameCorpusProof.runManifest?.invalidReasons).toContain('strict rendered-grid proof covers 0/9 cases')
+    expect(scorecard.sameCorpusProof.limitations).toContain(
+      'Some same-corpus cases retain timing evidence but do not satisfy strict rendered-grid proof, so they cannot count toward Google Sheets 10x UI claims.',
+    )
     validateUiResponsivenessLiveBrowserScorecard(scorecard)
   })
 
@@ -109,6 +121,21 @@ describe('UI responsiveness live browser scorecard', () => {
       requiredCaseCount: requiredUiResponsivenessSameCorpusWorkloads.length,
       tenXMeanAndP95CaseCount: requiredUiResponsivenessSameCorpusWorkloads.length,
       coveredCorpusCaseIds: ['wide-mixed-250k'],
+      runManifest: {
+        contractVersion: 'same-corpus-ui-v2',
+        requiredProducts: ['bilig', 'google-sheets'],
+        requiredWorkloads: requiredUiResponsivenessSameCorpusWorkloads,
+        capturedWorkloads: requiredUiResponsivenessSameCorpusWorkloads,
+        corpusCaseIds: ['wide-mixed-250k'],
+        materializedCellCounts: [250000],
+        sampleCount: 3,
+        caseCount: requiredUiResponsivenessSameCorpusWorkloads.length,
+        strictRenderedGridProofCaseCount: requiredUiResponsivenessSameCorpusWorkloads.length,
+        tenXMeanAndP95CaseCount: requiredUiResponsivenessSameCorpusWorkloads.length,
+        currentContractEvidenceComplete: true,
+        googleSheetsTenXRequirementSatisfied: true,
+        invalidReasons: [],
+      },
     })
     expect(proof.cases[0]).toMatchObject({
       biligToGoogleSheetsMeanRatio: 0.05,
@@ -142,6 +169,53 @@ describe('UI responsiveness live browser scorecard', () => {
       scrollMovementGuardrailPassed: true,
       passed: true,
     })
+  })
+
+  it('downgrades weak Bilig pixel proof before deriving same-corpus pass flags', () => {
+    const capture = buildSameCorpusCapture()
+    const weakCases = [...capture.cases]
+    const firstCase = weakCases[0]
+    weakCases[0] = Object.assign({}, firstCase, {
+      scenarioProof: Object.assign({}, firstCase.scenarioProof, {
+        pixelGridProof: Object.assign({}, firstCase.scenarioProof.pixelGridProof, {
+          captured: true,
+          products: firstCase.scenarioProof.pixelGridProof.products.map((productProof) =>
+            productProof.product === 'bilig'
+              ? Object.assign({}, productProof, {
+                  evidence: ['mode=typegpu-v3', 'tilePaneCount=6', 'headerPaneCount=3'],
+                })
+              : productProof,
+          ),
+          missingProducts: [],
+        }),
+      }),
+    })
+    const weakCapture: SameCorpusCapture = {
+      ...capture,
+      cases: weakCases,
+    }
+
+    const proof = buildSameCorpusProof(weakCapture)
+
+    expect(proof.cases[0]).toMatchObject({
+      passed: false,
+      tenXMeanAndP95AgainstGoogleSheets: false,
+      scenarioProof: {
+        pixelGridProof: {
+          captured: false,
+          missingProducts: ['bilig'],
+        },
+      },
+    })
+    expect(proof.limitations).toContain(
+      'Some same-corpus cases retain timing evidence but do not satisfy strict rendered-grid proof, so they cannot count toward Google Sheets 10x UI claims.',
+    )
+    expect(proof.runManifest).toMatchObject({
+      strictRenderedGridProofCaseCount: requiredUiResponsivenessSameCorpusWorkloads.length - 1,
+      currentContractEvidenceComplete: false,
+      googleSheetsTenXRequirementSatisfied: false,
+    })
+    expect(proof.runManifest?.invalidReasons).toContain('strict rendered-grid proof covers 8/9 cases')
   })
 
   it('rejects legacy operation-only same-corpus captures before generating proof', () => {
@@ -246,6 +320,27 @@ describe('UI responsiveness live browser scorecard', () => {
     }
 
     expect(() => validateUiResponsivenessLiveBrowserScorecard(staleScorecard)).toThrow('UI responsiveness same-corpus ratio is stale')
+  })
+
+  it('rejects stale same-corpus run manifests', () => {
+    const scorecard = parseUiResponsivenessLiveBrowserScorecard(
+      readJsonObject(resolve(repoRoot, 'packages/benchmarks/baselines/ui-responsiveness-live-browser-scorecard.json')),
+    )
+    const proof = buildSameCorpusProof(buildSameCorpusCapture())
+    const staleScorecard: UiResponsivenessLiveBrowserScorecard = {
+      ...scorecard,
+      sameCorpusProof: {
+        ...proof,
+        runManifest: Object.assign({}, proof.runManifest, {
+          strictRenderedGridProofCaseCount: 0,
+          invalidReasons: ['hand-edited manifest'],
+        }),
+      },
+    }
+
+    expect(() => validateUiResponsivenessLiveBrowserScorecard(staleScorecard)).toThrow(
+      'UI responsiveness same-corpus run manifest is stale',
+    )
   })
 
   it('rejects stale same-corpus visual proof required-product metadata', () => {
@@ -365,7 +460,31 @@ function sameCorpusScenarioProof(workload: UiResponsivenessSameCorpusWorkload) {
           method: 'typegpu-visible-canvas',
           viewportPixelWidth: 1440,
           viewportPixelHeight: 900,
-          evidence: ['mode=typegpu-v3'],
+          evidence: [
+            'gridCssWidth=720',
+            'gridCssHeight=450',
+            'devicePixelRatio=2',
+            'expectedPixelWidth=1440',
+            'expectedPixelHeight=900',
+            'contractVersion=same-corpus-ui-v2',
+            'gridProjectedRevision=rev-3',
+            'fallbackMounted=false',
+            'mode=typegpu-v3',
+            'backendStatus=ready',
+            'frameProofStatus=presented',
+            'hasPresentedVisibleFrame=true',
+            'tilePaneCount=6',
+            'headerPaneCount=3',
+            'presentedTilePaneCount=6',
+            'presentedHeaderPaneCount=3',
+            'canvasPixelWidth=1440',
+            'canvasPixelHeight=900',
+            'canvasCoversViewport=true',
+            'typeGpuProjectedRevision=rev-3',
+            'visibleProjectedRevision=rev-3',
+            'tileSceneRevision=scene-7',
+            'visibleRenderRevision=scene-7',
+          ],
         },
         {
           product: 'google-sheets',

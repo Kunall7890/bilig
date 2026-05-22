@@ -13,6 +13,7 @@ import {
   type EngineExistingLiteralCellMutationRef,
   type EngineExistingNumericCellMutationRef,
   type EngineExistingNumericCellMutationResult,
+  type EngineFreshDirectAggregateMatrixPlan,
 } from '../../cell-mutations-at.js'
 import type {
   EngineRuntimeState,
@@ -43,8 +44,21 @@ import type { EngineMutationService } from './mutation-service-types.js'
 import { tryExecuteMutationRenderCommitFastPath } from './mutation-render-commit-fast-path.js'
 import { createMutationRangeOperations } from './mutation-range-operations.js'
 import { createMutationCoreInverseOps } from './mutation-core-inverse-ops.js'
+import { isTableHeaderCell } from './operation-table-header-rename.js'
 
 export type { EngineMutationService } from './mutation-service-types.js'
+
+function createCellMutationBatchApplyOptions(freshDirectAggregateMatrixPlan: EngineFreshDirectAggregateMatrixPlan | undefined):
+  | {
+      readonly freshDirectAggregateMatrixPlan?: EngineFreshDirectAggregateMatrixPlan
+    }
+  | undefined {
+  return freshDirectAggregateMatrixPlan === undefined
+    ? undefined
+    : {
+        freshDirectAggregateMatrixPlan,
+      }
+}
 
 export function createEngineMutationService(args: {
   readonly state: Pick<
@@ -95,6 +109,9 @@ export function createEngineMutationService(args: {
     batch: EngineOpBatch | null,
     source: 'local' | 'restore' | 'undo' | 'redo',
     potentialNewCells?: number,
+    options?: {
+      readonly freshDirectAggregateMatrixPlan?: EngineFreshDirectAggregateMatrixPlan
+    },
   ) => void
   readonly applyExistingNumericCellMutationsAtBatchNow?: (
     record: Extract<TransactionRecord, { kind: 'existing-numeric-cell-mutations' }>,
@@ -159,6 +176,17 @@ export function createEngineMutationService(args: {
     captureFormulaCellStateForStructuralMoveUndo,
     captureFormulaCellStateForStructuralUndo,
   })
+
+  const isTableHeaderValueMutationOp = (op: EngineOp): boolean => {
+    if (op.kind !== 'setCellValue' && op.kind !== 'clearCell') {
+      return false
+    }
+    if (op.skipTableHeaderRename === true) {
+      return false
+    }
+    const address = parseCellAddress(op.address, op.sheetName)
+    return isTableHeaderCell(args.state.workbook.listTables(), op.sheetName, address.row, address.col)
+  }
 
   const tryBuildSingleCellOpHistoryWithoutSnapshot = (
     ops: readonly EngineOp[],
@@ -460,13 +488,15 @@ export function createEngineMutationService(args: {
           preparedCellAddressesByOpIndex: options.preparedCellAddressesByOpIndex,
         }
       : baseFastHistoryArgs
-    const fastHistory =
-      tryBuildSingleCellOpHistoryWithoutSnapshot(
-        ops,
-        potentialNewCells,
-        options.returnUndoOps !== false,
-        options.reuseForwardOps !== true,
-      ) ?? tryBuildFastMutationHistory(fastHistoryArgs)
+    const canUseFastHistory = !ops.some(isTableHeaderValueMutationOp)
+    const fastHistory = canUseFastHistory
+      ? (tryBuildSingleCellOpHistoryWithoutSnapshot(
+          ops,
+          potentialNewCells,
+          options.returnUndoOps !== false,
+          options.reuseForwardOps !== true,
+        ) ?? tryBuildFastMutationHistory(fastHistoryArgs))
+      : null
     const inverse: TransactionRecord = fastHistory?.inverse ?? buildInverseRecord(ops, options.returnUndoOps !== false)
     applyForward(forward)
     if (args.state.getTransactionReplayDepth() === 0) {
@@ -490,6 +520,7 @@ export function createEngineMutationService(args: {
     options: {
       returnUndoOps?: boolean
       reuseRefs?: boolean
+      freshDirectAggregateMatrixPlan?: EngineFreshDirectAggregateMatrixPlan
     } = {},
   ): readonly EngineOp[] | null => {
     if (refs.length === 0) {
@@ -509,7 +540,13 @@ export function createEngineMutationService(args: {
             nextRefs.map((ref) => cellMutationRefToEngineOp(args.state.workbook, ref)),
           )
         : null
-      args.applyCellMutationsAtBatchNow(nextRefs, batch, 'local', nextPotentialNewCells)
+      args.applyCellMutationsAtBatchNow(
+        nextRefs,
+        batch,
+        'local',
+        nextPotentialNewCells,
+        createCellMutationBatchApplyOptions(options.freshDirectAggregateMatrixPlan),
+      )
       if (args.state.getTransactionReplayDepth() === 0) {
         args.state.undoStack.push({
           forward: createLazyCellMutationTransactionRecord(nextRefs, nextPotentialNewCells),
@@ -528,7 +565,13 @@ export function createEngineMutationService(args: {
     const batch = shouldCreateBatch
       ? createBatch(args.state.replicaState, [...transactionRecordOps(args.state.workbook, fastHistory.forward)])
       : null
-    args.applyCellMutationsAtBatchNow(nextRefs, batch, 'local', nextPotentialNewCells)
+    args.applyCellMutationsAtBatchNow(
+      nextRefs,
+      batch,
+      'local',
+      nextPotentialNewCells,
+      createCellMutationBatchApplyOptions(options.freshDirectAggregateMatrixPlan),
+    )
     if (args.state.getTransactionReplayDepth() === 0) {
       args.state.undoStack.push({
         forward: fastHistory?.forward ?? {
@@ -636,6 +679,7 @@ export function createEngineMutationService(args: {
       source?: 'local' | 'restore'
       returnUndoOps?: boolean
       reuseRefs?: boolean
+      freshDirectAggregateMatrixPlan?: EngineFreshDirectAggregateMatrixPlan
     } = {},
   ): readonly EngineOp[] | null => {
     const source = options.source ?? 'restore'
@@ -644,12 +688,16 @@ export function createEngineMutationService(args: {
       const executeOptions: {
         returnUndoOps?: boolean
         reuseRefs?: boolean
+        freshDirectAggregateMatrixPlan?: EngineFreshDirectAggregateMatrixPlan
       } = {}
       if (options.returnUndoOps !== undefined) {
         executeOptions.returnUndoOps = options.returnUndoOps
       }
       if (options.reuseRefs !== undefined) {
         executeOptions.reuseRefs = options.reuseRefs
+      }
+      if (options.freshDirectAggregateMatrixPlan !== undefined) {
+        executeOptions.freshDirectAggregateMatrixPlan = options.freshDirectAggregateMatrixPlan
       }
       return executeLocalCellMutationsAtNow(refs, options.potentialNewCells, {
         ...executeOptions,
@@ -667,7 +715,13 @@ export function createEngineMutationService(args: {
         : source === 'restore'
           ? null
           : createBatch(args.state.replicaState, forwardOps)
-    args.applyCellMutationsAtBatchNow(nextRefs, batch, source, nextPotentialNewCells)
+    args.applyCellMutationsAtBatchNow(
+      nextRefs,
+      batch,
+      source,
+      nextPotentialNewCells,
+      createCellMutationBatchApplyOptions(options.freshDirectAggregateMatrixPlan),
+    )
     return null
   }
 

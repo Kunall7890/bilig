@@ -20,6 +20,7 @@ export interface WorkbookPaneRendererRuntimeStateV3 {
   readonly backend: unknown
   readonly cameraStore: GridCameraStore | null
   readonly drawText: boolean
+  readonly frameProofSignature: string
   readonly geometry: GridGeometrySnapshot | null
   readonly headerPanes: readonly GridHeaderPaneState[]
   readonly overlay: DynamicGridOverlayBatchV3 | null
@@ -34,6 +35,7 @@ export interface WorkbookPaneRendererRuntimeStateV3 {
 export interface WorkbookPaneFrameInputV3 {
   readonly backend: unknown
   readonly drawText?: boolean | undefined
+  readonly frameProofSignature: string
   readonly headerPanes?: readonly GridHeaderPaneState[] | undefined
   readonly tilePanes: readonly WorkbookRenderTilePaneState[]
   readonly preloadTilePanes?: readonly WorkbookRenderTilePaneState[] | undefined
@@ -57,6 +59,7 @@ export interface WorkbookPanePresentedVisualFrameV3 {
 }
 
 export interface WorkbookPaneFrameResultV3 {
+  readonly frameProofSignature: string
   readonly submitted: boolean
   readonly visualFrame: WorkbookPanePresentedVisualFrameV3 | null
 }
@@ -90,6 +93,7 @@ const EMPTY_RUNTIME_STATE: WorkbookPaneRendererRuntimeStateV3 = Object.freeze({
   backend: null,
   cameraStore: null,
   drawText: true,
+  frameProofSignature: '',
   geometry: null,
   headerPanes: [],
   overlay: null,
@@ -229,9 +233,11 @@ export class WorkbookPaneRendererRuntimeV3 {
       geometry: latestGeometry,
       panes: state.tilePanes,
     })
+    const frameProofSignature = state.frameProofSignature
     const drawResult = this.drawFrame({
       backend: state.backend,
       drawText: state.drawText,
+      frameProofSignature,
       headerPanes: state.headerPanes,
       overlay: overlayBatch ?? null,
       preloadTilePanes: state.preloadTilePanes,
@@ -242,6 +248,7 @@ export class WorkbookPaneRendererRuntimeV3 {
     })
     const submitted = drawResult === true
     this.frameResultListener?.({
+      frameProofSignature,
       submitted,
       visualFrame: submitted
         ? {

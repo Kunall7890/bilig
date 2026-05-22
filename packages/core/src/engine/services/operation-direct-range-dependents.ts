@@ -9,6 +9,7 @@ import {
 } from './direct-formula-recalc-helpers.js'
 import {
   collectIndexedDirectAggregateColumnDependentsForRow,
+  collectSingleIndexedDirectAggregateColumnDependentForRow,
   visitIndexedDirectAggregateColumnDependentsForRow,
 } from './formula-binding-dependency-helpers.js'
 
@@ -197,6 +198,13 @@ export function createOperationDirectRangeDependentService(args: {
     const aggregateDependents = args.reverseAggregateColumnEdges.get(aggregateColumnDependencyKey(sheetId, request.col))
     if (!aggregateDependents || aggregateDependents.size === 0) {
       return singleAggregateDependent
+    }
+    const indexedSingle = collectSingleIndexedDirectAggregateColumnDependentForRow(aggregateDependents, request.row)
+    if (indexedSingle === -1) {
+      return -1
+    }
+    if (indexedSingle !== undefined && indexedSingle >= 0) {
+      return canApplyDirectAggregateLiteralDeltaForRequest(indexedSingle, request) ? indexedSingle : -1
     }
     const usedIndexedDependents = visitIndexedDirectAggregateColumnDependentsForRow(aggregateDependents, request.row, (candidate) => {
       const formula = args.formulas.get(candidate)

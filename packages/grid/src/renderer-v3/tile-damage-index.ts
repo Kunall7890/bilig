@@ -36,6 +36,10 @@ export interface DirtyTileLocalSpanV3 {
   readonly mask: number
 }
 
+interface DirtyTileRevisionInputV3 {
+  readonly requiredProjectedRevision?: number | null | undefined
+}
+
 export class DirtyTileIndexV3 {
   private readonly masks = new Map<TileKey53, number>()
   private readonly spans = new Map<TileKey53, DirtyTileLocalSpanV3[]>()
@@ -43,17 +47,22 @@ export class DirtyTileIndexV3 {
   private readonly axisXSpans = new Map<TileKey53, DirtyTileLocalSpanV3[]>()
   private readonly axisYMasks = new Map<TileKey53, number>()
   private readonly axisYSpans = new Map<TileKey53, DirtyTileLocalSpanV3[]>()
+  private readonly requiredProjectedRevisions = new Map<TileKey53, number>()
+  private readonly axisXRequiredProjectedRevisions = new Map<TileKey53, number>()
+  private readonly axisYRequiredProjectedRevisions = new Map<TileKey53, number>()
   private readonly consumedAxisMasks = new Map<TileKey53, number>()
 
-  markCellRange(input: {
-    readonly sheetOrdinal: number
-    readonly dprBucket: number
-    readonly rowStart: number
-    readonly rowEnd: number
-    readonly colStart: number
-    readonly colEnd: number
-    readonly mask: number
-  }): void {
+  markCellRange(
+    input: {
+      readonly sheetOrdinal: number
+      readonly dprBucket: number
+      readonly rowStart: number
+      readonly rowEnd: number
+      readonly colStart: number
+      readonly colEnd: number
+      readonly mask: number
+    } & DirtyTileRevisionInputV3,
+  ): void {
     const rowStart = Math.max(0, Math.min(MAX_ROWS - 1, input.rowStart))
     const rowEnd = Math.max(rowStart, Math.min(MAX_ROWS - 1, input.rowEnd))
     const colStart = Math.max(0, Math.min(MAX_COLS - 1, input.colStart))
@@ -64,6 +73,7 @@ export class DirtyTileIndexV3 {
         colStart,
         dprBucket: input.dprBucket,
         mask: input.mask,
+        requiredProjectedRevision: input.requiredProjectedRevision,
         sheetOrdinal: input.sheetOrdinal,
       })
       return
@@ -72,6 +82,7 @@ export class DirtyTileIndexV3 {
       this.markAxisY({
         dprBucket: input.dprBucket,
         mask: input.mask,
+        requiredProjectedRevision: input.requiredProjectedRevision,
         rowEnd,
         rowStart,
         sheetOrdinal: input.sheetOrdinal,
@@ -95,6 +106,7 @@ export class DirtyTileIndexV3 {
           dprBucket: input.dprBucket,
         })
         this.markTile(key, input.mask)
+        this.markRequiredProjectedRevision(this.requiredProjectedRevisions, key, input.requiredProjectedRevision)
         this.appendSpan(key, {
           colEnd: Math.min(colEnd, tileColEnd) - tileColStart,
           colStart: Math.max(colStart, tileColStart) - tileColStart,
@@ -106,13 +118,15 @@ export class DirtyTileIndexV3 {
     }
   }
 
-  markAxisX(input: {
-    readonly sheetOrdinal: number
-    readonly dprBucket: number
-    readonly colStart: number
-    readonly colEnd: number
-    readonly mask: number
-  }): void {
+  markAxisX(
+    input: {
+      readonly sheetOrdinal: number
+      readonly dprBucket: number
+      readonly colStart: number
+      readonly colEnd: number
+      readonly mask: number
+    } & DirtyTileRevisionInputV3,
+  ): void {
     this.consumedAxisMasks.clear()
     const colStart = Math.max(0, Math.min(MAX_COLS - 1, input.colStart))
     const colEnd = Math.max(colStart, Math.min(MAX_COLS - 1, input.colEnd))
@@ -129,6 +143,7 @@ export class DirtyTileIndexV3 {
       const tileColStart = colTile * VIEWPORT_TILE_COLUMN_COUNT
       const tileColEnd = Math.min(MAX_COLS - 1, tileColStart + VIEWPORT_TILE_COLUMN_COUNT - 1)
       this.axisXMasks.set(key, (this.axisXMasks.get(key) ?? 0) | mask)
+      this.markRequiredProjectedRevision(this.axisXRequiredProjectedRevisions, key, input.requiredProjectedRevision)
       const localColStart = Math.max(colStart, tileColStart) - tileColStart
       const localColEnd = (input.mask & DirtyMaskV3.AxisX) !== 0 ? tileColEnd - tileColStart : Math.min(colEnd, tileColEnd) - tileColStart
       this.appendSpan(
@@ -145,13 +160,15 @@ export class DirtyTileIndexV3 {
     }
   }
 
-  markAxisY(input: {
-    readonly sheetOrdinal: number
-    readonly dprBucket: number
-    readonly rowStart: number
-    readonly rowEnd: number
-    readonly mask: number
-  }): void {
+  markAxisY(
+    input: {
+      readonly sheetOrdinal: number
+      readonly dprBucket: number
+      readonly rowStart: number
+      readonly rowEnd: number
+      readonly mask: number
+    } & DirtyTileRevisionInputV3,
+  ): void {
     this.consumedAxisMasks.clear()
     const rowStart = Math.max(0, Math.min(MAX_ROWS - 1, input.rowStart))
     const rowEnd = Math.max(rowStart, Math.min(MAX_ROWS - 1, input.rowEnd))
@@ -168,6 +185,7 @@ export class DirtyTileIndexV3 {
       const tileRowStart = rowTile * VIEWPORT_TILE_ROW_COUNT
       const tileRowEnd = Math.min(MAX_ROWS - 1, tileRowStart + VIEWPORT_TILE_ROW_COUNT - 1)
       this.axisYMasks.set(key, (this.axisYMasks.get(key) ?? 0) | mask)
+      this.markRequiredProjectedRevision(this.axisYRequiredProjectedRevisions, key, input.requiredProjectedRevision)
       const localRowStart = Math.max(rowStart, tileRowStart) - tileRowStart
       const localRowEnd = (input.mask & DirtyMaskV3.AxisY) !== 0 ? tileRowEnd - tileRowStart : Math.min(rowEnd, tileRowEnd) - tileRowStart
       this.appendSpan(
@@ -184,12 +202,13 @@ export class DirtyTileIndexV3 {
     }
   }
 
-  markSheet(input: { readonly sheetOrdinal: number; readonly dprBucket: number; readonly mask: number }): void {
+  markSheet(input: { readonly sheetOrdinal: number; readonly dprBucket: number; readonly mask: number } & DirtyTileRevisionInputV3): void {
     this.markCellRange({
       colEnd: MAX_COLS - 1,
       colStart: 0,
       dprBucket: input.dprBucket,
       mask: input.mask,
+      requiredProjectedRevision: input.requiredProjectedRevision,
       rowEnd: MAX_ROWS - 1,
       rowStart: 0,
       sheetOrdinal: input.sheetOrdinal,
@@ -232,6 +251,31 @@ export class DirtyTileIndexV3 {
       ...this.filterUnconsumedAxisSpans(this.axisXSpans.get(axisXKey), consumedAxisMask),
       ...this.filterUnconsumedAxisSpans(this.axisYSpans.get(axisYKey), consumedAxisMask),
     ]
+  }
+
+  getRequiredProjectedRevision(key: TileKey53): number | null {
+    if (this.getUnconsumedMask(key) === 0) {
+      return null
+    }
+    const fields = unpackTileKey53(key)
+    const axisXKey = packTileKey53({
+      colTile: fields.colTile,
+      dprBucket: fields.dprBucket,
+      rowTile: 0,
+      sheetOrdinal: fields.sheetOrdinal,
+    })
+    const axisYKey = packTileKey53({
+      colTile: 0,
+      dprBucket: fields.dprBucket,
+      rowTile: fields.rowTile,
+      sheetOrdinal: fields.sheetOrdinal,
+    })
+    const revisions = [
+      this.requiredProjectedRevisions.get(key),
+      this.axisXRequiredProjectedRevisions.get(axisXKey),
+      this.axisYRequiredProjectedRevisions.get(axisYKey),
+    ].filter((value): value is number => value !== undefined)
+    return revisions.length > 0 ? Math.max(...revisions) : null
   }
 
   peekVisible(visibleKeys: Iterable<TileKey53>): TileKey53[] {
@@ -280,6 +324,7 @@ export class DirtyTileIndexV3 {
       dirty.push(key)
       this.masks.delete(key)
       this.spans.delete(key)
+      this.requiredProjectedRevisions.delete(key)
       this.consumedAxisMasks.set(key, consumedAxisMask | mask)
     }
     return dirty
@@ -300,8 +345,11 @@ export class DirtyTileIndexV3 {
     this.spans.clear()
     this.axisXMasks.clear()
     this.axisXSpans.clear()
+    this.axisXRequiredProjectedRevisions.clear()
     this.axisYMasks.clear()
     this.axisYSpans.clear()
+    this.axisYRequiredProjectedRevisions.clear()
+    this.requiredProjectedRevisions.clear()
     this.consumedAxisMasks.clear()
   }
 
@@ -309,6 +357,17 @@ export class DirtyTileIndexV3 {
     const spans = spansByTile.get(key) ?? []
     spans.push(span)
     spansByTile.set(key, spans)
+  }
+
+  private markRequiredProjectedRevision(
+    revisionsByTile: Map<TileKey53, number>,
+    key: TileKey53,
+    requiredProjectedRevision: number | null | undefined,
+  ): void {
+    if (requiredProjectedRevision === null || requiredProjectedRevision === undefined) {
+      return
+    }
+    revisionsByTile.set(key, Math.max(revisionsByTile.get(key) ?? 0, requiredProjectedRevision))
   }
 
   private filterUnconsumedAxisSpans(
@@ -327,12 +386,15 @@ export function markWorkbookDeltaDirtyTilesV3(
   batch: WorkbookDeltaBatchLikeV3,
   options: { readonly dprBucket: number },
 ): void {
+  const requiredProjectedRevision =
+    batch.source === 'workerAuthoritative' || batch.source === 'localOptimistic' ? normalizeNonNegativeInteger(batch.seq) : null
   forEachDirtyCellRange(batch.dirty.cellRanges, (rowStart, rowEnd, colStart, colEnd, mask) => {
     index.markCellRange({
       colEnd,
       colStart,
       dprBucket: options.dprBucket,
       mask,
+      requiredProjectedRevision,
       rowEnd,
       rowStart,
       sheetOrdinal: batch.sheetOrdinal,
@@ -344,6 +406,7 @@ export function markWorkbookDeltaDirtyTilesV3(
       colStart,
       dprBucket: options.dprBucket,
       mask,
+      requiredProjectedRevision,
       sheetOrdinal: batch.sheetOrdinal,
     })
   })
@@ -351,6 +414,7 @@ export function markWorkbookDeltaDirtyTilesV3(
     index.markAxisY({
       dprBucket: options.dprBucket,
       mask,
+      requiredProjectedRevision,
       rowEnd,
       rowStart,
       sheetOrdinal: batch.sheetOrdinal,
@@ -360,9 +424,14 @@ export function markWorkbookDeltaDirtyTilesV3(
     index.markSheet({
       dprBucket: options.dprBucket,
       mask,
+      requiredProjectedRevision,
       sheetOrdinal,
     })
   })
+}
+
+function normalizeNonNegativeInteger(value: number | null | undefined): number | null {
+  return typeof value === 'number' && Number.isInteger(value) && value >= 0 ? value : null
 }
 
 function forEachDirtyCellRange(

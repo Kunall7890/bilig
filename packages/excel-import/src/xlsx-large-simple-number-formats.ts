@@ -58,6 +58,44 @@ export function applyLargeSimpleNumberFormatsToCells(
   cellScan: ImportedWorksheetCellScan,
   numberFormatsByStyleIndex: ReadonlyMap<number, string>,
 ): void {
+  const packedCellAddresses = sortedPackedCellAddresses(cells)
+  if (!packedCellAddresses) {
+    applyLargeSimpleNumberFormatsToCellsWithMap(cells, cellScan, numberFormatsByStyleIndex)
+    return
+  }
+  let addedCellCount = 0
+  cellScan.styleIndexes.forEach((row, column, styleIndex) => {
+    const format = numberFormatsByStyleIndex.get(styleIndex)
+    if (!format) {
+      return
+    }
+    const packedAddress = packArenaCellAddress(row, column)
+    const existingCellIndex = binarySearchPackedCellAddress(packedCellAddresses, packedAddress)
+    if (existingCellIndex >= 0) {
+      const existingCell = cells[existingCellIndex]
+      if (!existingCell) {
+        return
+      }
+      existingCell.format ??= format
+      return
+    }
+    const cell: WorkbookSnapshot['sheets'][number]['cells'][number] = {
+      address: encodeCellAddress(row, column),
+      format,
+    }
+    cells.push(cell)
+    addedCellCount += 1
+  })
+  if (addedCellCount > 0) {
+    cells.sort(compareLargeSimpleSnapshotCells)
+  }
+}
+
+function applyLargeSimpleNumberFormatsToCellsWithMap(
+  cells: WorkbookSnapshot['sheets'][number]['cells'],
+  cellScan: ImportedWorksheetCellScan,
+  numberFormatsByStyleIndex: ReadonlyMap<number, string>,
+): void {
   const cellsByPackedAddress = new Map<number, WorkbookSnapshot['sheets'][number]['cells'][number]>()
   for (const cell of cells) {
     const decoded = decodeCellAddress(cell.address)
@@ -89,6 +127,42 @@ export function applyLargeSimpleNumberFormatsToCells(
   if (addedCellCount > 0) {
     cells.sort(compareLargeSimpleSnapshotCells)
   }
+}
+
+function sortedPackedCellAddresses(cells: WorkbookSnapshot['sheets'][number]['cells']): Float64Array | null {
+  const packedAddresses = new Float64Array(cells.length)
+  let previousPackedAddress = -1
+  for (let index = 0; index < cells.length; index += 1) {
+    const decoded = decodeCellAddress(cells[index]?.address ?? '')
+    if (!decoded) {
+      return null
+    }
+    const packedAddress = packArenaCellAddress(decoded.row, decoded.column)
+    if (packedAddress < previousPackedAddress) {
+      return null
+    }
+    packedAddresses[index] = packedAddress
+    previousPackedAddress = packedAddress
+  }
+  return packedAddresses
+}
+
+function binarySearchPackedCellAddress(packedAddresses: Float64Array, target: number): number {
+  let low = 0
+  let high = packedAddresses.length - 1
+  while (low <= high) {
+    const mid = Math.floor((low + high) / 2)
+    const value = packedAddresses[mid] ?? 0
+    if (value === target) {
+      return mid
+    }
+    if (value < target) {
+      low = mid + 1
+    } else {
+      high = mid - 1
+    }
+  }
+  return -1
 }
 
 function compareLargeSimpleSnapshotCells(

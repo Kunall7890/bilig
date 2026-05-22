@@ -2,7 +2,7 @@ import type { FormulaNode } from './ast.js'
 import { parseRangeAddress } from './addressing.js'
 import { rewriteSpecialCall } from './special-call-rewrites.js'
 
-const VOLATILE_BUILTINS = new Set(['TODAY', 'NOW', 'RAND', 'RANDBETWEEN', 'RANDARRAY', 'OFFSET', 'INDIRECT', 'SUBTOTAL'])
+const VOLATILE_BUILTINS = new Set(['TODAY', 'NOW', 'RAND', 'RANDBETWEEN', 'RANDARRAY', 'OFFSET', 'INDIRECT', 'SUBTOTAL', 'AGGREGATE'])
 
 export const FORMULA_SPILL_PRODUCING_FUNCTION_NAMES = [
   'SEQUENCE',
@@ -112,6 +112,9 @@ export function producesSpillResult(node: FormulaNode): boolean {
     case 'BinaryExpr':
       return producesSpillResult(node.left) || producesSpillResult(node.right)
     case 'CallExpr':
+      if (node.callee.toUpperCase() === 'INDIRECT') {
+        return true
+      }
       if (node.callee.toUpperCase() === 'CHOOSE') {
         return node.args.some((arg) => producesSpillResult(arg))
       }

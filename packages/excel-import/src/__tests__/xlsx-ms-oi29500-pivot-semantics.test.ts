@@ -6,6 +6,41 @@ import type { WorkbookSnapshot } from '@bilig/protocol'
 import { exportXlsx, importXlsx } from '../index.js'
 
 describe('MS-OI29500 pivot semantic import', () => {
+  it('exports row, column, page, hidden item, and shared cache record pivot semantics', () => {
+    const exported = exportXlsx(buildPivotExportWorkbookSnapshot())
+    const zip = unzipSync(exported)
+    const pivotXml = strFromU8(zip['xl/pivotTables/pivotTable1.xml'] ?? new Uint8Array())
+    const recordsXml = strFromU8(zip['xl/pivotCache/pivotCacheRecords1.xml'] ?? new Uint8Array())
+
+    expect(recordsXml).toContain('<r><x v="0"/><x v="0"/><x v="0"/><x v="0"/><x v="0"/></r>')
+    expect(recordsXml).not.toContain('<s v="East"/>')
+    expect(recordsXml).not.toContain('<n v="10"/>')
+    expect(pivotXml).toContain('rowGrandTotals="0" colGrandTotals="0"')
+    expect(pivotXml).toContain(
+      [
+        '<rowFields count="1"><field x="0"/></rowFields>',
+        '<rowItems count="2"><i><x v="0"/></i><i><x v="1"/></i></rowItems>',
+        '<colFields count="1"><field x="1"/></colFields>',
+        '<colItems count="2"><i><x v="0"/></i><i><x v="1"/></i></colItems>',
+        '<pageFields count="1"><pageField fld="2" item="0"/></pageFields>',
+        '<dataFields count="1"><dataField name="Sales Total" fld="3" subtotal="sum"/></dataFields>',
+      ].join(''),
+    )
+    expect(pivotXml).toContain(
+      '<pivotField axis="axisPage" showAll="0"><items count="3"><item x="0"/><item x="1" h="1"/><item t="default"/></items></pivotField>',
+    )
+
+    const imported = importXlsx(exported, 'exported-ms-oi29500-pivot-semantics.xlsx')
+    expect(imported.snapshot.workbook.metadata?.pivots?.[0]).toEqual(
+      expect.objectContaining({
+        groupBy: ['Region'],
+        columnFields: ['Quarter'],
+        pageFields: [{ sourceColumn: 'Status', selectedValue: 'Closed' }],
+        hiddenItems: [{ sourceColumn: 'Status', values: ['Open'] }],
+      }),
+    )
+  })
+
   it('imports row, column, page, hidden item, and aggregate variant semantics from worksheet pivots', () => {
     const imported = importXlsx(buildPivotSemanticsWorkbookBytes(), 'ms-oi29500-pivot-semantics.xlsx')
 
@@ -169,6 +204,32 @@ function buildExternalCacheOnlyPivotWorkbookBytes(): Uint8Array {
     ].join(''),
   )
   return zipSync(zip)
+}
+
+function buildPivotExportWorkbookSnapshot(): WorkbookSnapshot {
+  return {
+    ...buildPivotWorkbookSnapshot(),
+    workbook: {
+      name: 'pivot-export-semantics',
+      metadata: {
+        pivots: [
+          {
+            name: 'SalesByRegionQuarter',
+            sheetName: 'Pivot',
+            address: 'A1',
+            source: { sheetName: 'Data', startAddress: 'A1', endAddress: 'E5' },
+            groupBy: ['Region'],
+            columnFields: ['Quarter'],
+            pageFields: [{ sourceColumn: 'Status', selectedValue: 'Closed' }],
+            hiddenItems: [{ sourceColumn: 'Status', values: ['Open'] }],
+            values: [{ sourceColumn: 'Sales', summarizeBy: 'sum', outputLabel: 'Sales Total' }],
+            rows: 4,
+            cols: 4,
+          },
+        ],
+      },
+    },
+  }
 }
 
 function buildPivotWorkbookSnapshot(): WorkbookSnapshot {

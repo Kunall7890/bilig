@@ -71,6 +71,10 @@
     "packageDir": "packages/headless",
     "sourceEntry": "packages/headless/src/index.ts"
   },
+  "@bilig/headless/agent-tools": {
+    "packageDir": "packages/headless",
+    "sourceEntry": "packages/headless/src/agent-tools.ts"
+  },
   "@bilig/headless/cli": {
     "packageDir": "packages/headless",
     "sourceEntry": "packages/headless/src/cli.ts"
@@ -123,6 +127,10 @@
     "packageDir": "packages/workpaper",
     "sourceEntry": "packages/workpaper/src/index.ts"
   },
+  "@bilig/workpaper/agent-tools": {
+    "packageDir": "packages/workpaper",
+    "sourceEntry": "packages/workpaper/src/agent-tools.ts"
+  },
   "@bilig/workpaper/mcp": {
     "packageDir": "packages/workpaper",
     "sourceEntry": "packages/workpaper/src/mcp.ts"
@@ -146,6 +154,10 @@
   "bilig-workpaper": {
     "packageDir": "packages/bilig",
     "sourceEntry": "packages/bilig/src/index.ts"
+  },
+  "bilig-workpaper/agent-tools": {
+    "packageDir": "packages/bilig",
+    "sourceEntry": "packages/bilig/src/agent-tools.ts"
   },
   "bilig-workpaper/mcp": {
     "packageDir": "packages/bilig",

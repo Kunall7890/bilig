@@ -2,7 +2,10 @@ import type { WorkbookSnapshot } from '@bilig/protocol'
 import { describe, expect, it } from 'vitest'
 
 import { ImportedWorkbookArena } from '../xlsx-large-simple-arena.js'
-import { buildLargeSimpleCellMetadataReferenceSnapshots } from '../xlsx-large-simple-cell-metadata.js'
+import {
+  buildLargeSimpleCellMetadataReferenceSnapshots,
+  buildLargeSimpleLazyCellMetadataReferenceSnapshots,
+} from '../xlsx-large-simple-cell-metadata.js'
 
 type WorkbookSheetCells = WorkbookSnapshot['sheets'][number]['cells']
 
@@ -45,5 +48,27 @@ describe('large simple XLSX cell metadata', () => {
         cellSignature: 'null',
       },
     ])
+  })
+
+  it('signs lazy metadata before detached pool transfer releases arena strings and formulas', () => {
+    const arena = new ImportedWorkbookArena()
+    const formulaCell = arena.addCell({ sheetIndex: 0, row: 1, column: 1, value: 'Cached label' })
+    arena.setFormula(formulaCell, 'A1&"!"')
+
+    const metadataRefs = buildLargeSimpleLazyCellMetadataReferenceSnapshots([{ address: 'B2', vm: '9' }], {
+      arena,
+      sheetIndex: 0,
+    })
+    const detachedCells = arena.createDetachedLazySheetCells(0)
+    arena.release()
+
+    expect(metadataRefs).toEqual([
+      {
+        address: 'B2',
+        vm: '9',
+        cellSignature: JSON.stringify({ value: 'Cached label', formula: 'A1&"!"', format: null }),
+      },
+    ])
+    expect(detachedCells[0]).toEqual({ address: 'B2', value: 'Cached label', formula: 'A1&"!"' })
   })
 })

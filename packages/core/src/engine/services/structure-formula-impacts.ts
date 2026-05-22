@@ -4,6 +4,7 @@ import { mapStructuralAxisIndex, mapStructuralAxisInterval } from '../../engine-
 import type { RuntimeFormula } from '../runtime-state.js'
 import { normalizeDefinedName } from '../../workbook-store.js'
 import { errorValue } from '../../engine-value-utils.js'
+import { addEngineCounter } from '../../perf/engine-counters.js'
 import { dependencyTouchesSheet, rangeDependencyAxisAffected, runtimeDirectRangeAxisAffected } from './structure-formula-rewrite-guards.js'
 import { canDeferSimpleStructuralFormulaSource, classifySimpleDeleteStructuralFormulaSource } from './structure-formula-source-deferral.js'
 import { isCellIndexMapped, structuralAxisIndexAffected } from './structure-runtime-cleanup.js'
@@ -313,6 +314,9 @@ export function collectStructuralFormulaImpacts(
     if (!directAggregate || directAggregate.sheetName !== argsForImpact.sheetName) {
       return false
     }
+    if (formula.compiled.symbolicSpills.length > 0) {
+      return false
+    }
     const ownerRow = mapStructuralAxisIndex(ownerPosition.row, argsForImpact.transform)
     if (ownerRow === undefined) {
       return false
@@ -448,6 +452,14 @@ export function collectStructuralFormulaImpacts(
     args.collectFormulaCellsForTables([...argsForImpact.changedTableNames]).forEach((cellIndex) => {
       candidateCellIndices.add(cellIndex)
     })
+  }
+  args.state.formulas.forEach((formula, cellIndex) => {
+    if (formula.preserveCachedValueOnFullRecalc === true) {
+      candidateCellIndices.add(cellIndex)
+    }
+  })
+  if (args.state.counters && candidateCellIndices.size > 0) {
+    addEngineCounter(args.state.counters, 'structuralFormulaImpactCandidates', candidateCellIndices.size)
   }
   candidateCellIndices.forEach((cellIndex) => {
     const formula = args.state.formulas.get(cellIndex)

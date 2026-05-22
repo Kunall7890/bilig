@@ -265,6 +265,31 @@ export function visitIndexedDirectAggregateColumnDependentsForRow(
   return true
 }
 
+export function collectSingleIndexedDirectAggregateColumnDependentForRow(dependents: Set<number>, row: number): number | undefined {
+  const index = directAggregateColumnOwnerIndexes.get(dependents)
+  if (index === undefined || !index.orderedByRowStart || index.unindexedFormulaCellIndices.size > 0) {
+    return undefined
+  }
+  const intervals = index.intervalsByRowStart
+  let singleDependent = -1
+  let cursor = firstIntervalStartingAfter(intervals, row) - 1
+  for (; cursor >= 0; cursor -= 1) {
+    if ((index.prefixMaxRowEnd[cursor] ?? Number.NEGATIVE_INFINITY) < row) {
+      break
+    }
+    const interval = intervals[cursor]!
+    const current = index.intervalsByFormulaCellIndex.get(interval.formulaCellIndex)
+    if (current !== interval || interval.rowEnd < row) {
+      continue
+    }
+    if (singleDependent !== -1 && singleDependent !== interval.formulaCellIndex) {
+      return -2
+    }
+    singleDependent = interval.formulaCellIndex
+  }
+  return singleDependent
+}
+
 export function collectIndexedDirectAggregateColumnDependentsForRow(dependents: Set<number>, row: number): number[] | undefined {
   const collected: number[] = []
   const usedIndex = visitIndexedDirectAggregateColumnDependentsForRow(dependents, row, (formulaCellIndex) => {

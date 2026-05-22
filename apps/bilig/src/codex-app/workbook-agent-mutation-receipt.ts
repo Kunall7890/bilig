@@ -14,10 +14,13 @@ import {
   buildWorkbookAgentVerificationReport,
   buildWorkbookAuthoritativeReadbackProof,
   buildWorkbookRenderedReadbackProof,
+  resolveWorkbookMutationRecalculationStatus,
   resolveWorkbookMutationUndoStatus,
   type WorkbookAuthoritativeReadbackProof,
+  type WorkbookMutationRecalculationProof,
   type WorkbookMutationUndoProof,
   type WorkbookSemanticReadbackProof,
+  type WorkbookAgentMutationProofContext,
 } from './workbook-agent-mutation-proof.js'
 import { stringifyJson, textToolResult, type WorkbookAgentStageCommandResult } from './workbook-agent-tool-shared.js'
 
@@ -44,6 +47,7 @@ export interface WorkbookToolMutationReceipt {
   readonly authoritativeReadback: WorkbookAuthoritativeReadbackProof
   readonly renderedReadback: WorkbookRenderedReadbackProof
   readonly semanticReadback: WorkbookSemanticReadbackProof
+  readonly recalculation: WorkbookMutationRecalculationProof
   readonly undo: WorkbookMutationUndoProof
   readonly warnings: readonly string[]
 }
@@ -171,8 +175,8 @@ function buildWorkbookSemanticReadbackProof(input: {
   }
 }
 
-async function buildMutationReceipt(input: {
-  readonly context: WorkbookAgentToolStageContext
+export async function buildMutationReceipt(input: {
+  readonly context: WorkbookAgentMutationProofContext
   readonly toolName: string
   readonly normalized: WorkbookAgentStageCommandResult
 }): Promise<WorkbookToolMutationReceipt> {
@@ -211,6 +215,10 @@ async function buildMutationReceipt(input: {
     context: input.context,
     appliedRevision: executionRecord?.appliedRevision ?? null,
   })
+  const recalculation = await resolveWorkbookMutationRecalculationStatus({
+    context: input.context,
+    appliedRevision: executionRecord?.appliedRevision ?? null,
+  })
   const warnings: string[] = []
   if (!executionRecord && input.normalized.disposition === 'queuedForTurnApply') {
     warnings.push(
@@ -229,8 +237,13 @@ async function buildMutationReceipt(input: {
   if (executionRecord && !undo.available) {
     warnings.push(undo.reasonUnavailable ?? 'Undo status is unavailable.')
   }
+  if (executionRecord && recalculation.upToDate !== true) {
+    warnings.push(recalculation.incompleteReason ?? 'Workbook recalculation proof is incomplete.')
+  }
   const hasAppliedProof =
     executionRecord !== null &&
+    recalculation.requested &&
+    recalculation.upToDate === true &&
     authoritativeReadback.requested &&
     authoritativeReadback.matched === true &&
     renderedReadback.requested &&
@@ -255,6 +268,7 @@ async function buildMutationReceipt(input: {
     authoritativeReadback,
     renderedReadback,
     semanticReadback,
+    recalculation,
     undo,
     warnings,
   }

@@ -91,7 +91,16 @@ describe('workbook guards', () => {
               endAddress: 'C10',
             },
             groupBy: ['Region'],
-            values: [{ sourceColumn: 'Sales', summarizeBy: 'sum', outputLabel: 'Total Sales' }],
+            columnFields: ['Quarter'],
+            pageFields: [{ sourceColumn: 'Segment', selectedValue: 'Enterprise' }],
+            filters: [{ sourceColumn: 'Status', includedValues: ['Closed'] }],
+            hiddenItems: [{ sourceColumn: 'Quarter', values: ['Q2'] }],
+            calculatedFields: [{ name: 'Margin', formula: '=Sales-Cost', clause: '18.10' }],
+            cacheId: 1,
+            sourceKind: 'worksheet',
+            cacheFields: ['Region', 'Quarter', 'Status', 'Segment', 'Sales'],
+            cachedRecords: [['East', 'Q1', 'Closed', 'Enterprise', 10]],
+            values: [{ sourceColumn: 'Sales', summarizeBy: 'average', outputLabel: 'Average Sales' }],
             rows: 10,
             cols: 3,
           },
@@ -242,6 +251,52 @@ describe('workbook guards', () => {
             },
           },
         ],
+      }),
+    ).toBe(false)
+  })
+
+  it('rejects malformed public op addresses, ranges, and formulas', () => {
+    const malformedOps: readonly unknown[] = [
+      { kind: 'setCellValue', sheetName: 'Sheet1', address: 'A0', value: 1 },
+      { kind: 'setCellFormula', sheetName: 'Sheet1', address: 'A1', formula: '1+' },
+      {
+        kind: 'setStyleRange',
+        range: { sheetName: 'Sheet1', startAddress: 'B2', endAddress: 'A1' },
+        styleId: 'style-1',
+      },
+      {
+        kind: 'upsertTable',
+        table: {
+          name: 'Table1',
+          sheetName: 'Sheet1',
+          startAddress: 'A1',
+          endAddress: 'A0',
+          columnNames: ['Amount'],
+          headerRow: true,
+          totalsRow: false,
+        },
+      },
+      { kind: 'upsertDefinedName', name: 'Broken', value: { kind: 'formula', formula: '1+' } },
+      {
+        kind: 'upsertCommentThread',
+        thread: {
+          threadId: 'thread-1',
+          sheetName: 'Sheet1',
+          address: 'A0',
+          comments: [{ id: 'comment-1', body: 'Invalid address.' }],
+        },
+      },
+    ]
+
+    malformedOps.forEach((op) => {
+      expect(isEngineOp(op)).toBe(false)
+    })
+    expect(
+      isEngineOpBatch({
+        id: 'batch-1',
+        replicaId: 'replica-1',
+        clock: { counter: 4 },
+        ops: [{ kind: 'upsertWorkbook', name: 'Book' }, malformedOps[0]],
       }),
     ).toBe(false)
   })

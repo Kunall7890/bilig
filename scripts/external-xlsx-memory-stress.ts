@@ -7,7 +7,7 @@ import { basename, dirname, join, resolve } from 'node:path'
 import { fileURLToPath, pathToFileURL } from 'node:url'
 
 import type { ExternalXlsxStressWorkerSummary } from './external-xlsx-memory-stress-worker.ts'
-import { readNumberArg, readStringArg } from './public-workbook-corpus-cli.ts'
+import { readFlagArg, readNumberArg, readStringArg } from './public-workbook-corpus-cli.ts'
 
 const rootDir = resolve(new URL('..', import.meta.url).pathname)
 const workerScriptPath = fileURLToPath(new URL('./external-xlsx-memory-stress-worker.ts', import.meta.url))
@@ -23,6 +23,7 @@ export interface ExternalXlsxStressWorkbook {
   readonly id: string
   readonly fileName: string
   readonly expectedMinBytes: number
+  readonly expectedMinCells?: number
   readonly sourcePageUrl: string
   readonly downloadUrl: string
   readonly licenseTitle: string
@@ -46,6 +47,7 @@ export interface ExternalXlsxStressPlan {
   readonly sourceCount: number
   readonly workbookCount: number
   readonly giantWorkbookCount: number
+  readonly cellHeavyWorkbookCount: number
   readonly sources: readonly {
     readonly id: string
     readonly sourcePageUrl: string
@@ -57,6 +59,7 @@ export interface ExternalXlsxStressPlan {
   readonly commands: {
     readonly plan: string
     readonly run: string
+    readonly runPublicImport: string
   }
 }
 
@@ -65,6 +68,7 @@ export interface ExternalXlsxStressRunSummary {
   readonly mode: 'external-xlsx-memory-stress-run'
   readonly cacheDir: string
   readonly maxRssBytes: number
+  readonly requestedImportMode: 'auto' | 'public-snapshot'
   readonly results: readonly ExternalXlsxStressResult[]
 }
 
@@ -121,7 +125,77 @@ function powerBiSampleXlsxSource(args: {
   }
 }
 
+function directXlsxSource(args: {
+  readonly id: string
+  readonly workbookId: string
+  readonly sourcePageUrl: string
+  readonly downloadUrl: string
+  readonly fileName: string
+  readonly expectedMinBytes: number
+  readonly expectedMinCells?: number
+  readonly licenseTitle: string
+}): ExternalXlsxStressSource {
+  return {
+    id: args.id,
+    sourcePageUrl: args.sourcePageUrl,
+    downloadUrl: args.downloadUrl,
+    fileName: args.fileName,
+    licenseTitle: args.licenseTitle,
+    workbooks: [
+      {
+        id: args.workbookId,
+        fileName: args.fileName,
+        expectedMinBytes: args.expectedMinBytes,
+        expectedMinCells: args.expectedMinCells,
+      },
+    ],
+  }
+}
+
 export const externalXlsxStressSources: readonly ExternalXlsxStressSource[] = [
+  directXlsxSource({
+    id: 'ons-consumer-price-inflation-current',
+    workbookId: 'ons-cpi-mm23-current',
+    sourcePageUrl: 'https://www.ons.gov.uk/economy/inflationandpriceindices/datasets/consumerpriceindices/current',
+    downloadUrl: 'https://www.ons.gov.uk/file?uri=/economy/inflationandpriceindices/datasets/consumerpriceindices/current/mm23.xlsx',
+    fileName: 'ons-cpi-mm23.xlsx',
+    expectedMinBytes: 15 * mib,
+    expectedMinCells: 4_000_000,
+    licenseTitle: 'Open Government Licence v3.0',
+  }),
+  directXlsxSource({
+    id: 'ons-trade-country-by-commodity-imports-current',
+    workbookId: 'ons-trade-imports-current',
+    sourcePageUrl: 'https://www.ons.gov.uk/economy/nationalaccounts/balanceofpayments/datasets/uktradecountrybycommodityimports/current',
+    downloadUrl:
+      'https://www.ons.gov.uk/file?uri=/economy/nationalaccounts/balanceofpayments/datasets/uktradecountrybycommodityimports/current/countrybycommodityimports.xlsx',
+    fileName: 'ons-trade-imports.xlsx',
+    expectedMinBytes: 15 * mib,
+    expectedMinCells: 4_000_000,
+    licenseTitle: 'Open Government Licence v3.0',
+  }),
+  directXlsxSource({
+    id: 'ons-life-expectancy-estimates-pivot',
+    workbookId: 'ons-life-expectancy-pivot',
+    sourcePageUrl:
+      'https://www.ons.gov.uk/peoplepopulationandcommunity/healthandsocialcare/healthandlifeexpectancies/datasets/lifeexpectancyestimatesallagesuk',
+    downloadUrl:
+      'https://www.ons.gov.uk/file?uri=/peoplepopulationandcommunity/healthandsocialcare/healthandlifeexpectancies/datasets/lifeexpectancyestimatesallagesuk/2001to2003and2018to2020/lebylapivot3.xlsx',
+    fileName: 'ons-life-expectancy-pivot.xlsx',
+    expectedMinBytes: 20 * mib,
+    expectedMinCells: 4_000_000,
+    licenseTitle: 'Open Government Licence v3.0',
+  }),
+  directXlsxSource({
+    id: 'govinfo-fy2027-public-budget-outlays',
+    workbookId: 'govinfo-fy2027-outlays',
+    sourcePageUrl: 'https://www.govinfo.gov/app/details/BUDGET-2027-DB/context',
+    downloadUrl: 'https://www.govinfo.gov/content/pkg/BUDGET-2027-DB/xls/BUDGET-2027-DB-2.xlsx',
+    fileName: 'govinfo-fy2027-outlays.xlsx',
+    expectedMinBytes: 1536 * 1024,
+    expectedMinCells: 400_000,
+    licenseTitle: 'GovInfo public budget database',
+  }),
   {
     id: 'microsoft-powerpivot-excel-2013',
     sourcePageUrl: 'https://www.microsoft.com/en-us/download/details.aspx?id=102',
@@ -263,6 +337,7 @@ export function buildExternalXlsxStressPlan(args: {
     sourceCount: sources.length,
     workbookCount: workbooks.length,
     giantWorkbookCount: workbooks.filter((workbook) => workbook.expectedMinBytes >= 100 * mib).length,
+    cellHeavyWorkbookCount: workbooks.filter((workbook) => (workbook.expectedMinCells ?? 0) >= 1_000_000).length,
     sources: sources.map((source) => ({
       id: source.id,
       sourcePageUrl: source.sourcePageUrl,
@@ -274,6 +349,7 @@ export function buildExternalXlsxStressPlan(args: {
     commands: {
       plan: 'pnpm external-xlsx-memory-stress:plan',
       run: 'pnpm external-xlsx-memory-stress',
+      runPublicImport: 'pnpm external-xlsx-memory-stress -- --public-import --max-rss-mb 768',
     },
   }
 }
@@ -292,10 +368,16 @@ export function validateExternalXlsxStressPlan(plan: ExternalXlsxStressPlan): st
   if (plan.giantWorkbookCount < 2) {
     findings.push('plan must include at least two 100 MiB+ workbook stress targets')
   }
+  if (plan.cellHeavyWorkbookCount < 3) {
+    findings.push('plan must include at least three 1M+ visible-cell workbook stress targets')
+  }
   if (
     !plan.sources.some((source) => source.sourcePageUrl.includes('microsoft.com') && source.downloadUrl.includes('download.microsoft.com'))
   ) {
     findings.push('plan must include Microsoft Download Center PowerPivot or DAX workbook sources')
+  }
+  if (!plan.sources.some((source) => source.sourcePageUrl.includes('ons.gov.uk'))) {
+    findings.push('plan must include ONS public statistics visible-cell workbook sources')
   }
   for (const workbook of plan.workbooks) {
     if (!workbook.id || !workbook.fileName || !workbook.downloadUrl || !workbook.sourcePageUrl) {
@@ -303,6 +385,9 @@ export function validateExternalXlsxStressPlan(plan: ExternalXlsxStressPlan): st
     }
     if (workbook.expectedMinBytes <= 0) {
       findings.push(`workbook expected minimum size must be positive: ${workbook.id}`)
+    }
+    if (workbook.expectedMinCells !== undefined && workbook.expectedMinCells <= 0) {
+      findings.push(`workbook expected minimum cell count must be positive: ${workbook.id}`)
     }
   }
   return findings
@@ -315,6 +400,7 @@ async function runExternalXlsxStress(args: {
   readonly workerTimeoutMs: number
   readonly maxDownloadBytes: number
   readonly limit?: number
+  readonly usePublicImport: boolean
 }): Promise<ExternalXlsxStressRunSummary> {
   const selectedSources = limitSources(externalXlsxStressSources, args.limit)
   const resolvedWorkbooks: ResolvedWorkbook[] = []
@@ -331,13 +417,14 @@ async function runExternalXlsxStress(args: {
   const results: ExternalXlsxStressResult[] = []
   for (const workbook of resolvedWorkbooks) {
     // oxlint-disable-next-line eslint(no-await-in-loop) -- Sequential import workers isolate peak RSS per workbook.
-    results.push(await runStressWorker(workbook, args.maxRssBytes, args.workerTimeoutMs))
+    results.push(await runStressWorker(workbook, args.maxRssBytes, args.workerTimeoutMs, args.usePublicImport))
   }
   return {
     schemaVersion: 1,
     mode: 'external-xlsx-memory-stress-run',
     cacheDir: args.cacheDir,
     maxRssBytes: args.maxRssBytes,
+    requestedImportMode: args.usePublicImport ? 'public-snapshot' : 'auto',
     results,
   }
 }
@@ -471,10 +558,19 @@ function assertResolvedWorkbook(input: { readonly fixture: ExternalXlsxStressWor
   }
 }
 
-async function runStressWorker(workbook: ResolvedWorkbook, maxRssBytes: number, timeoutMs: number): Promise<ExternalXlsxStressResult> {
+async function runStressWorker(
+  workbook: ResolvedWorkbook,
+  maxRssBytes: number,
+  timeoutMs: number,
+  usePublicImport: boolean,
+): Promise<ExternalXlsxStressResult> {
   const { startChildRssWatchdog, terminateChildProcess } = await import('./public-workbook-corpus-process.ts')
   return new Promise((resolvePromise) => {
-    const child = spawn(process.execPath, [workerScriptPath, '--file', workbook.path, '--file-name', workbook.fixture.fileName], {
+    const childArgs = [workerScriptPath, '--file', workbook.path, '--file-name', workbook.fixture.fileName]
+    if (usePublicImport) {
+      childArgs.push('--public-import')
+    }
+    const child = spawn(process.execPath, childArgs, {
       detached: true,
       stdio: ['ignore', 'pipe', 'pipe'],
     })
@@ -541,6 +637,11 @@ async function runStressWorker(workbook: ResolvedWorkbook, maxRssBytes: number, 
       }
       try {
         const parsedWorkerSummary = parseWorkerSummaryJson(stdout)
+        const minCells = workbook.fixture.expectedMinCells
+        if (minCells !== undefined && parsedWorkerSummary.cells < minCells) {
+          fail(`worker reported ${String(parsedWorkerSummary.cells)} cells below expected minimum ${String(minCells)}`)
+          return
+        }
         finish({
           id: workbook.fixture.id,
           fileName: workbook.fixture.fileName,
@@ -648,6 +749,7 @@ async function main(): Promise<void> {
       workerTimeoutMs: readNumberArg('--worker-timeout-ms', defaultWorkerTimeoutMs),
       maxDownloadBytes: readNumberArg('--max-download-bytes', defaultMaxDownloadBytes),
       limit: readOptionalPositiveIntegerArg('--limit'),
+      usePublicImport: readFlagArg('--public-import'),
     })
     process.stdout.write(`${JSON.stringify(summary, null, 2)}\n`)
     if (summary.results.some((result) => result.status === 'failed')) {

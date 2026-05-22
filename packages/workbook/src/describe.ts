@@ -11,6 +11,7 @@ import type {
 } from './find.js'
 import {
   inspectModel,
+  type WorkbookActionInspection,
   type WorkbookActionCommand,
   type WorkbookActionMap,
   type WorkbookActionPlan,
@@ -19,11 +20,23 @@ import {
 } from './model.js'
 import type { WorkbookActionInput } from './input.js'
 import type { WorkbookOp } from './ops.js'
-import type { WorkbookChangeSummary, WorkbookCheckExpectation, WorkbookCheckResult, WorkbookCheckStatus } from './result.js'
+import type {
+  WorkbookAppliedSummary,
+  WorkbookChangeSummary,
+  WorkbookCheckExpectation,
+  WorkbookCheckResult,
+  WorkbookCheckStatus,
+  WorkbookRunError,
+  WorkbookRunErrorCode,
+  WorkbookRunResult,
+  WorkbookUndoRef,
+} from './result.js'
 
 export interface WorkbookModelDescription {
   readonly name: string
+  readonly description?: string
   readonly actions: readonly string[]
+  readonly actionDetails: readonly WorkbookActionInspection[]
   readonly hasChecks: boolean
 }
 
@@ -53,13 +66,13 @@ export interface WorkbookTableRefDescription extends WorkbookBaseRefDescription 
 export interface WorkbookColumnRefDescription extends WorkbookBaseRefDescription {
   readonly kind: 'column'
   readonly table: WorkbookTableRefDescription
+  readonly rows?: WorkbookRowsRefDescription
   readonly name: string
 }
 
 export interface WorkbookRowsRefDescription extends WorkbookBaseRefDescription {
   readonly kind: 'rows'
-  readonly sheetName?: string
-  readonly table?: WorkbookTableRefDescription
+  readonly table: WorkbookTableRefDescription
   readonly where: {
     readonly column: string
     readonly op: WorkbookRowOperator
@@ -124,9 +137,17 @@ export type WorkbookCheckExpectationDescription =
       readonly value: LiteralInput
     }
   | {
+      readonly kind: 'valuesEqual'
+      readonly values: readonly (readonly LiteralInput[])[]
+    }
+  | {
       readonly kind: 'formulaEquals'
       readonly formula: string
       readonly inputs: readonly WorkbookRefDescription[]
+    }
+  | {
+      readonly kind: 'formulasEqual'
+      readonly formulas: readonly (readonly (string | null)[])[]
     }
 
 export interface WorkbookActionPlanDescription {
@@ -154,9 +175,39 @@ export type WorkbookActionPlanResultDescription =
       readonly checks: readonly WorkbookCheckResultDescription[]
     }
 
+export interface WorkbookUndoRefDescription {
+  readonly id: string
+  readonly ops?: readonly WorkbookOp[]
+}
+
+export type WorkbookRunResultDescription =
+  | {
+      readonly status: 'done'
+      readonly changed: readonly WorkbookChangeSummaryDescription[]
+      readonly checks: readonly WorkbookCheckResultDescription[]
+      readonly undo?: WorkbookUndoRefDescription
+      readonly applied?: WorkbookAppliedSummaryDescription
+    }
+  | {
+      readonly status: 'failed'
+      readonly errors: readonly WorkbookRunErrorDescription[]
+      readonly checks: readonly WorkbookCheckResultDescription[]
+      readonly undo?: WorkbookUndoRefDescription
+    }
+
 export interface WorkbookRunErrorDescription {
-  readonly code: string
+  readonly code: WorkbookRunErrorCode
   readonly message: string
+  readonly path?: string
+  readonly target?: WorkbookRefDescription
+  readonly check?: WorkbookCheckResultDescription
+  readonly expected?: WorkbookActionInput
+  readonly actual?: WorkbookActionInput
+}
+
+export interface WorkbookAppliedSummaryDescription {
+  readonly opCount: number
+  readonly ops?: readonly WorkbookOp[]
 }
 
 export function describeModel<Refs, Actions extends WorkbookActionMap<Refs>>(
@@ -200,6 +251,7 @@ function describeColumnRef(ref: WorkbookColumnRef): WorkbookColumnRefDescription
     id: ref.id,
     label: ref.label,
     table: describeTableRef(ref.table),
+    ...(ref.rows !== undefined ? { rows: describeRowsRef(ref.rows) } : {}),
     name: ref.name,
   }
 }
@@ -209,8 +261,7 @@ function describeRowsRef(ref: WorkbookRowsRef): WorkbookRowsRefDescription {
     kind: 'rows',
     id: ref.id,
     label: ref.label,
-    ...(ref.sheetName !== undefined ? { sheetName: ref.sheetName } : {}),
-    ...(ref.table !== undefined ? { table: describeTableRef(ref.table) } : {}),
+    table: describeTableRef(ref.table),
     where: { ...ref.where },
   }
 }
@@ -293,11 +344,21 @@ function describeExpectation(expectation: WorkbookCheckExpectation): WorkbookChe
         kind: 'valueEquals',
         value: expectation.value,
       }
+    case 'valuesEqual':
+      return {
+        kind: 'valuesEqual',
+        values: expectation.values.map((row) => [...row]),
+      }
     case 'formulaEquals':
       return {
         kind: 'formulaEquals',
         formula: expectation.formula,
         inputs: expectation.inputs.map(describeRef),
+      }
+    case 'formulasEqual':
+      return {
+        kind: 'formulasEqual',
+        formulas: expectation.formulas.map((row) => [...row]),
       }
   }
 }
@@ -315,10 +376,29 @@ export function describePlan<Refs>(plan: WorkbookActionPlan<Refs>): WorkbookActi
   }
 }
 
-function describeError(error: WorkbookRunErrorDescription): WorkbookRunErrorDescription {
+function describeError(error: WorkbookRunError): WorkbookRunErrorDescription {
   return {
     code: error.code,
     message: error.message,
+    ...(error.path !== undefined ? { path: error.path } : {}),
+    ...(error.target !== undefined ? { target: describeRef(error.target) } : {}),
+    ...(error.check !== undefined ? { check: describeCheck(error.check) } : {}),
+    ...(error.expected !== undefined ? { expected: error.expected } : {}),
+    ...(error.actual !== undefined ? { actual: error.actual } : {}),
+  }
+}
+
+function describeApplied(applied: WorkbookAppliedSummary): WorkbookAppliedSummaryDescription {
+  return {
+    opCount: applied.opCount,
+    ...(applied.ops !== undefined ? { ops: [...applied.ops] } : {}),
+  }
+}
+
+function describeUndo(undo: WorkbookUndoRef): WorkbookUndoRefDescription {
+  return {
+    id: undo.id,
+    ...(undo.ops !== undefined ? { ops: [...undo.ops] } : {}),
   }
 }
 
@@ -336,5 +416,23 @@ export function describePlanResult<Refs>(result: WorkbookActionPlanResult<Refs>)
     ...(result.input !== undefined ? { input: result.input } : {}),
     errors: result.errors.map(describeError),
     checks: result.checks.map(describeCheck),
+  }
+}
+
+export function describeRunResult(result: WorkbookRunResult): WorkbookRunResultDescription {
+  if (result.status === 'done') {
+    return {
+      status: 'done',
+      changed: result.changed.map(describeChange),
+      checks: result.checks.map(describeCheck),
+      ...(result.undo !== undefined ? { undo: describeUndo(result.undo) } : {}),
+      ...(result.applied !== undefined ? { applied: describeApplied(result.applied) } : {}),
+    }
+  }
+  return {
+    status: 'failed',
+    errors: result.errors.map(describeError),
+    checks: result.checks.map(describeCheck),
+    ...(result.undo !== undefined ? { undo: describeUndo(result.undo) } : {}),
   }
 }

@@ -211,6 +211,61 @@ describe('gridResizeInteractions', () => {
     expect(applyAutofitWidth).toHaveBeenCalledWith(4, 148)
   })
 
+  it('should not resize or autofit when an active edit refuses to close', () => {
+    const event = createResizePointerEvent({ detail: 2 })
+    const applyAutofitWidth = vi.fn()
+    const handledAutofit = handleWorkbookGridColumnAutofitAtPointer({
+      event,
+      visibleRegion: createVisibleRegion(),
+      pointerGeometry: null,
+      columnWidths: { 4: 120 },
+      defaultColumnWidth: 96,
+      isEditingCell: true,
+      commitActiveEdit: vi.fn(() => false),
+      computeAutofitColumnWidth: vi.fn(() => 148),
+      applyAutofitWidth,
+      finishResize: vi.fn(),
+      resetPointerInteraction: vi.fn(),
+      setActiveResizeColumn: vi.fn(),
+      resolveColumnResizeTargetAtPointer: vi.fn(() => 4),
+    })
+
+    expect(handledAutofit).toBe(true)
+    expect(applyAutofitWidth).not.toHaveBeenCalled()
+
+    const beginColumnResize = vi.fn()
+    const focusGrid = vi.fn()
+    const handledPointerDown = handleWorkbookGridResizePointerDown({
+      event: createResizePointerEvent({ detail: 1 }),
+      visibleRegion: createVisibleRegion(),
+      pointerGeometry: null,
+      columnWidths: { 2: 100 },
+      rowHeights: {},
+      defaultColumnWidth: 96,
+      defaultRowHeight: 24,
+      isEditingCell: true,
+      commitActiveEdit: vi.fn(() => false),
+      focusGrid,
+      setActiveHeaderDrag: vi.fn(),
+      setHoverState: createHoverStateSetter().set,
+      lastResizeHandleActivationRef: { current: null },
+      now: () => 1000,
+      computeAutofitColumnWidth: vi.fn(() => 132),
+      applyAutofitWidth,
+      finishResize: vi.fn(),
+      resetPointerInteraction: vi.fn(),
+      setActiveResizeColumn: vi.fn(),
+      beginColumnResize,
+      beginRowResize: vi.fn(),
+      resolveColumnResizeTargetAtPointer: vi.fn(() => 2),
+      resolveRowResizeTargetAtPointer: vi.fn(() => null),
+    })
+
+    expect(handledPointerDown).toBe(true)
+    expect(focusGrid).not.toHaveBeenCalled()
+    expect(beginColumnResize).not.toHaveBeenCalled()
+  })
+
   it('should start column resize on first handle activation and autofit on repeated activation', () => {
     const lastResizeHandleActivationRef = { current: null as { columnIndex: number; at: number } | null }
     const beginColumnResize = vi.fn()

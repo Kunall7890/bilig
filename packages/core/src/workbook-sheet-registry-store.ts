@@ -69,6 +69,8 @@ export class WorkbookSheetRegistryStore {
     sheet.columnAxis.length = 0
     sheet.styleRanges.length = 0
     sheet.formatRanges.length = 0
+    delete sheet.arrayFormulas
+    delete sheet.dataTableFormulas
     this.options.sheetsByName.delete(name)
     this.options.sheetsById.delete(sheet.id)
   }

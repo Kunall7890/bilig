@@ -9,4 +9,5 @@ export const valueKindSharedStringRef = 5
 export const valueKindInteger = 6
 export const valueKindSmallInteger = 7
 export const valueKindTinyInteger = 8
+export const valueKindEmptyString = 9
 export const initialSparseIntegerCapacity = 16

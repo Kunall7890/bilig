@@ -69,12 +69,14 @@ export interface WorkbookAxisMetadataRecord extends WorkbookAxisMetadataSnapshot
   count: number
   size: number | null
   hidden: boolean | null
+  filtered: boolean | null
 }
 
 export interface WorkbookAxisEntryRecord extends Omit<WorkbookAxisEntrySnapshot, 'index'> {
   id: string
   size: number | null
   hidden: boolean | null
+  filtered: boolean | null
 }
 
 export interface WorkbookCellStyleRecord extends CellStyleRecord {}

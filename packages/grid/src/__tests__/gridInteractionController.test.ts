@@ -60,6 +60,93 @@ describe('gridInteractionController', () => {
     expect(order).toEqual(['commit', 'selection'])
   })
 
+  it('does not apply body-click selection when the active edit refuses to close', () => {
+    const interactionState = createInteractionState()
+    const onCommitEdit = vi.fn(() => false)
+    const onSelectionChange = vi.fn()
+    const setGridSelection = vi.fn()
+    const focusGrid = vi.fn()
+
+    handleGridPointerDown({
+      event: {
+        button: 0,
+        clientX: 20,
+        clientY: 30,
+        shiftKey: false,
+        preventDefault: vi.fn(),
+        stopPropagation: vi.fn(),
+      },
+      columnWidths: {},
+      defaultColumnWidth: 120,
+      focusGrid,
+      interactionState,
+      isEditingCell: true,
+      onCommitEdit,
+      onSelectionChange,
+      resolvePointerGeometry: vi.fn(() => null),
+      resolveColumnResizeTargetAtPointer: vi.fn(() => null),
+      resolveHeaderSelectionAtPointer: vi.fn(() => null),
+      resolvePointerCell: vi.fn(() => [3, 4] as const),
+      selectedCell: [1, 1],
+      setGridSelection,
+      visibleRegion: {
+        range: { x: 0, y: 0, width: 10, height: 20 },
+        tx: 0,
+        ty: 0,
+      },
+    })
+
+    expect(onCommitEdit).toHaveBeenCalledTimes(1)
+    expect(setGridSelection).not.toHaveBeenCalled()
+    expect(onSelectionChange).not.toHaveBeenCalled()
+    expect(focusGrid).not.toHaveBeenCalled()
+    expect(interactionState.dragAnchorCellRef.current).toBeNull()
+    expect(interactionState.dragPointerCellRef.current).toBeNull()
+  })
+
+  it('does not apply header selection or drag state when the active edit refuses to close', () => {
+    const interactionState = createInteractionState()
+    const onCommitEdit = vi.fn(() => false)
+    const onSelectionChange = vi.fn()
+    const setGridSelection = vi.fn()
+    const focusGrid = vi.fn()
+
+    handleGridPointerDown({
+      event: {
+        button: 0,
+        clientX: 20,
+        clientY: 10,
+        shiftKey: false,
+        preventDefault: vi.fn(),
+        stopPropagation: vi.fn(),
+      },
+      columnWidths: {},
+      defaultColumnWidth: 120,
+      focusGrid,
+      interactionState,
+      isEditingCell: true,
+      onCommitEdit,
+      onSelectionChange,
+      resolvePointerGeometry: vi.fn(() => null),
+      resolveColumnResizeTargetAtPointer: vi.fn(() => null),
+      resolveHeaderSelectionAtPointer: vi.fn(() => ({ kind: 'row' as const, index: 4 })),
+      resolvePointerCell: vi.fn(() => null),
+      selectedCell: [1, 1],
+      setGridSelection,
+      visibleRegion: {
+        range: { x: 0, y: 0, width: 10, height: 20 },
+        tx: 0,
+        ty: 0,
+      },
+    })
+
+    expect(onCommitEdit).toHaveBeenCalledTimes(1)
+    expect(setGridSelection).not.toHaveBeenCalled()
+    expect(onSelectionChange).not.toHaveBeenCalled()
+    expect(focusGrid).not.toHaveBeenCalled()
+    expect(interactionState.dragHeaderSelectionRef.current).toBeNull()
+  })
+
   it('publishes the live rectangular drag selection instead of keeping it only in local grid state', () => {
     const setGridSelection = vi.fn()
     const onSelectionChange = vi.fn()

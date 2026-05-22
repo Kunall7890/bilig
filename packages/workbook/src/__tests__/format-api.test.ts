@@ -47,7 +47,7 @@ describe('@bilig/workbook format api', () => {
         kind: 'format',
         target: {
           kind: 'range',
-          id: 'range_Model_C2_C2',
+          id: 'range_p_Model_p_C2_p_C2',
           label: 'Model!C2',
           range: {
             sheetName: 'Model',
@@ -119,7 +119,7 @@ describe('@bilig/workbook format api', () => {
           path: 'commands[0]',
           ref: {
             kind: 'range',
-            id: 'range_Model_C2_C2',
+            id: 'range_p_Model_p_C2_p_C2',
             label: 'Model!C2',
             range: {
               sheetName: 'Model',

@@ -1,0 +1,265 @@
+import { describe, expect, it } from 'vitest'
+import {
+  buildWorkbookActionPlan,
+  defineModel,
+  describeModel,
+  inspectModel,
+  normalizeWorkbookActionInputDescription,
+  verifyModel,
+  type WorkbookActionInput,
+} from '../index.js'
+
+function inputObject(input: WorkbookActionInput | undefined): Record<string, WorkbookActionInput> {
+  if (typeof input !== 'object' || input === null || Array.isArray(input)) {
+    throw new Error('action input must be an object')
+  }
+  return input
+}
+
+describe('@bilig/workbook action metadata api', () => {
+  it('describes action objects with plain input metadata and still plans their run function', () => {
+    const model = defineModel({
+      name: 'metadata-model',
+      description: ' Consumer-owned writer ',
+
+      find(workbook) {
+        return {
+          output: workbook.findRange({ sheetName: 'Sheet1', address: 'B2' }),
+        }
+      },
+
+      actions: {
+        reset({ refs, workbook }) {
+          workbook.clear(refs.output)
+        },
+
+        write: {
+          description: ' Write a consumer-provided value ',
+          input: {
+            kind: 'object',
+            description: 'Write request',
+            fields: {
+              value: {
+                kind: 'number',
+                required: true,
+                description: 'Finite value to write',
+              },
+              note: {
+                kind: 'string',
+              },
+            },
+          },
+          run({ refs, workbook, input }) {
+            const value = inputObject(input).value
+            if (typeof value !== 'number') {
+              throw new Error('value input must be numeric')
+            }
+            workbook.writeValue(refs.output, value)
+          },
+        },
+      },
+    })
+
+    const description = describeModel(model)
+
+    expect(description).toEqual({
+      name: 'metadata-model',
+      description: 'Consumer-owned writer',
+      actions: ['reset', 'write'],
+      actionDetails: [
+        {
+          name: 'reset',
+        },
+        {
+          name: 'write',
+          description: 'Write a consumer-provided value',
+          input: {
+            kind: 'object',
+            description: 'Write request',
+            fields: {
+              note: {
+                kind: 'string',
+              },
+              value: {
+                kind: 'number',
+                description: 'Finite value to write',
+                required: true,
+              },
+            },
+          },
+        },
+      ],
+      hasChecks: false,
+    })
+    expect(JSON.parse(JSON.stringify(description))).toEqual(description)
+
+    const plan = buildWorkbookActionPlan(model, 'write', { value: 7, note: 'agent run' })
+    expect(plan.commands).toEqual([
+      {
+        kind: 'writeValue',
+        target: plan.refs.output,
+        value: 7,
+      },
+    ])
+    expect(verifyModel(model, { inputs: { write: { value: 7 } } }).status).toBe('valid')
+    expect(verifyModel(model).actions[1]?.planning).toEqual({
+      status: 'failed',
+      modelName: 'metadata-model',
+      actionName: 'write',
+      checks: [],
+      errors: [
+        {
+          code: 'invalid_action_input',
+          message: 'Action input at input is required',
+        },
+      ],
+    })
+  })
+
+  it('describes action metadata without running find, checks, or actions', () => {
+    const model = defineModel({
+      name: 'metadata-only-model',
+      description: 'Inspectable without workbook access',
+      find() {
+        throw new Error('find should not run during manifest inspection')
+      },
+      checks() {
+        throw new Error('checks should not run during manifest inspection')
+      },
+      actions: {
+        create: {
+          description: 'Create generic workbook intent',
+          input: {
+            kind: 'object',
+            fields: {
+              title: { kind: 'string', required: true },
+            },
+          },
+          run() {
+            throw new Error('action should not run during manifest inspection')
+          },
+        },
+      },
+    })
+
+    expect(inspectModel(model)).toEqual({
+      name: 'metadata-only-model',
+      description: 'Inspectable without workbook access',
+      actions: ['create'],
+      actionDetails: [
+        {
+          name: 'create',
+          description: 'Create generic workbook intent',
+          input: {
+            kind: 'object',
+            fields: {
+              title: { kind: 'string', required: true },
+            },
+          },
+        },
+      ],
+      hasChecks: true,
+    })
+  })
+
+  it('normalizes and freezes standalone input descriptions', () => {
+    const description = normalizeWorkbookActionInputDescription({
+      kind: 'array',
+      description: ' Values ',
+      items: {
+        kind: 'object',
+        fields: {
+          amount: { kind: 'number', required: true },
+        },
+      },
+    })
+
+    expect(description).toEqual({
+      kind: 'array',
+      description: 'Values',
+      items: {
+        kind: 'object',
+        fields: {
+          amount: { kind: 'number', required: true },
+        },
+      },
+    })
+    expect(Object.isFrozen(description)).toBe(true)
+    expect(Object.isFrozen(description.items)).toBe(true)
+    expect(Object.isFrozen(description.items?.fields)).toBe(true)
+  })
+
+  it('rejects malformed action metadata at model definition time', () => {
+    expect(() =>
+      defineModel({
+        name: 'bad-action-description',
+        find() {
+          return {}
+        },
+        actions: {
+          write: {
+            description: ' ',
+            run() {},
+          },
+        },
+      }),
+    ).toThrowError('Workbook model bad-action-description action write description cannot be empty')
+
+    expect(() =>
+      defineModel({
+        name: 'bad-action-input',
+        find() {
+          return {}
+        },
+        actions: {
+          write: {
+            input: {
+              kind: 'string',
+              fields: {
+                value: { kind: 'number' },
+              },
+            },
+            run() {},
+          },
+        },
+      }),
+    ).toThrowError('Action input description at input.fields can only be used when kind is object')
+
+    expect(() =>
+      normalizeWorkbookActionInputDescription({
+        kind: 'object',
+        fields: {
+          ' ': { kind: 'number' },
+        },
+      }),
+    ).toThrowError('Action input description at input.fields cannot contain an empty field name')
+  })
+
+  it('validates action input values against action metadata before model code runs', () => {
+    const model = defineModel({
+      name: 'metadata-input-validation',
+      find() {
+        throw new Error('find should not run for invalid metadata input')
+      },
+      actions: {
+        write: {
+          input: {
+            kind: 'object',
+            fields: {
+              amount: { kind: 'number', required: true },
+              tags: { kind: 'array', items: { kind: 'string' } },
+            },
+          },
+          run() {
+            throw new Error('action should not run for invalid metadata input')
+          },
+        },
+      },
+    })
+
+    expect(() => buildWorkbookActionPlan(model, 'write', { amount: '12' })).toThrowError('Action input at input.amount must be number')
+    expect(() => buildWorkbookActionPlan(model, 'write', { amount: 12, tags: ['ok', 2] })).toThrowError(
+      'Action input at input.tags[1] must be string',
+    )
+  })
+})

@@ -79,6 +79,86 @@ describe('EnginePivotService', () => {
     expect(resolved).toEqual({ tag: ValueTag.Number, value: 15 })
   })
 
+  it('preserves full semantic pivot fields when source edits resize materialized output', async () => {
+    const engine = new SpreadsheetEngine({ workbookName: 'pivot-semantic-preservation' })
+    await engine.ready()
+    engine.createSheet('Data')
+    engine.createSheet('Pivot')
+    engine.setRangeValues({ sheetName: 'Data', startAddress: 'A1', endAddress: 'E5' }, [
+      ['Region', 'Quarter', 'Status', 'Segment', 'Sales'],
+      ['East', 'Q1', 'Closed', 'Enterprise', 10],
+      ['East', 'Q2', 'Closed', 'Enterprise', 5],
+      ['West', 'Q2', 'Closed', 'SMB', 7],
+      ['West', 'Q3', 'Open', 'Enterprise', 100],
+    ])
+
+    engine.setPivotTable('Pivot', 'B2', {
+      name: 'ClosedEnterpriseSalesByQuarter',
+      source: { sheetName: 'Data', startAddress: 'A1', endAddress: 'E6' },
+      groupBy: ['Region'],
+      columnFields: ['Quarter'],
+      pageFields: [{ sourceColumn: 'Segment', selectedValue: 'Enterprise' }],
+      filters: [{ sourceColumn: 'Status', includedValues: ['Closed'] }],
+      hiddenItems: [{ sourceColumn: 'Quarter', values: ['Q2'] }],
+      values: [{ sourceColumn: 'Sales', summarizeBy: 'sum', outputLabel: 'Closed Sales' }],
+    })
+
+    expect(engine.getCellValue('Pivot', 'C2')).toMatchObject({ tag: ValueTag.String, value: 'Q1 Closed Sales' })
+    expect(engine.getCellValue('Pivot', 'C3')).toEqual({ tag: ValueTag.Number, value: 10 })
+
+    engine.setRangeValues({ sheetName: 'Data', startAddress: 'A6', endAddress: 'E6' }, [['East', 'Q3', 'Closed', 'Enterprise', 9]])
+
+    expect(engine.getCellValue('Pivot', 'D2')).toMatchObject({ tag: ValueTag.String, value: 'Q3 Closed Sales' })
+    expect(engine.getCellValue('Pivot', 'D3')).toEqual({ tag: ValueTag.Number, value: 9 })
+    expect(engine.getPivotTables()[0]).toMatchObject({
+      name: 'ClosedEnterpriseSalesByQuarter',
+      columnFields: ['Quarter'],
+      pageFields: [{ sourceColumn: 'Segment', selectedValue: 'Enterprise' }],
+      filters: [{ sourceColumn: 'Status', includedValues: ['Closed'] }],
+      hiddenItems: [{ sourceColumn: 'Quarter', values: ['Q2'] }],
+      rows: 2,
+      cols: 3,
+    })
+  })
+
+  it('resolves GETPIVOTDATA aggregate variants through the materialized pivot reducer', async () => {
+    const engine = new SpreadsheetEngine({ workbookName: 'pivot-getpivotdata-aggregates' })
+    await engine.ready()
+    engine.createSheet('Data')
+    engine.createSheet('Pivot')
+    engine.createSheet('Report')
+    engine.setRangeValues({ sheetName: 'Data', startAddress: 'A1', endAddress: 'C4' }, [
+      ['Region', 'Sales', 'Units'],
+      ['East', 10, 2],
+      ['East', 20, 3],
+      ['West', 7, 5],
+    ])
+    engine.setPivotTable('Pivot', 'B2', {
+      name: 'SalesStats',
+      source: { sheetName: 'Data', startAddress: 'A1', endAddress: 'C4' },
+      groupBy: ['Region'],
+      values: [
+        { sourceColumn: 'Sales', summarizeBy: 'average', outputLabel: 'Avg Sales' },
+        { sourceColumn: 'Sales', summarizeBy: 'min', outputLabel: 'Min Sales' },
+        { sourceColumn: 'Sales', summarizeBy: 'max', outputLabel: 'Max Sales' },
+        { sourceColumn: 'Sales', summarizeBy: 'countNums', outputLabel: 'Numeric Sales' },
+        { sourceColumn: 'Units', summarizeBy: 'product', outputLabel: 'Unit Product' },
+      ],
+    })
+
+    engine.setCellFormula('Report', 'A1', 'GETPIVOTDATA("Avg Sales",Pivot!B2,"Region","East")')
+    engine.setCellFormula('Report', 'A2', 'GETPIVOTDATA("Min Sales",Pivot!B2,"Region","East")')
+    engine.setCellFormula('Report', 'A3', 'GETPIVOTDATA("Max Sales",Pivot!B2,"Region","East")')
+    engine.setCellFormula('Report', 'A4', 'GETPIVOTDATA("Numeric Sales",Pivot!B2,"Region","East")')
+    engine.setCellFormula('Report', 'A5', 'GETPIVOTDATA("Unit Product",Pivot!B2,"Region","East")')
+
+    expect(engine.getCellValue('Report', 'A1')).toEqual({ tag: ValueTag.Number, value: 15 })
+    expect(engine.getCellValue('Report', 'A2')).toEqual({ tag: ValueTag.Number, value: 10 })
+    expect(engine.getCellValue('Report', 'A3')).toEqual({ tag: ValueTag.Number, value: 20 })
+    expect(engine.getCellValue('Report', 'A4')).toEqual({ tag: ValueTag.Number, value: 2 })
+    expect(engine.getCellValue('Report', 'A5')).toEqual({ tag: ValueTag.Number, value: 6 })
+  })
+
   it('clears pivot ownership for one cell and rematerializes through the service boundary', async () => {
     const engine = await buildPivotEngine()
     const service = getPivotService(engine)

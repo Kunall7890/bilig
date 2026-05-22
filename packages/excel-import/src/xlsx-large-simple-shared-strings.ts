@@ -66,6 +66,17 @@ export function readLargeSimpleReferencedSharedStringsFromChunks(
   return scanner.finish()
 }
 
+export function readAllLargeSimpleSharedStringsFromChunks(
+  readChunks: (onChunk: (chunk: Uint8Array) => void) => boolean,
+  options: LargeSimpleReferencedSharedStringScanOptions = {},
+): LargeSimpleSharedStrings | null {
+  const scanner = new LargeSimpleAllSharedStringChunkScanner(options)
+  if (!readChunks((chunk) => scanner.push(chunk))) {
+    return null
+  }
+  return scanner.finish()
+}
+
 export function createLargeSimpleSharedStringSubset(
   sharedStrings: LargeSimpleSharedStrings,
   referencedIndexes: LargeSimpleSharedStringIndexSet,
@@ -299,6 +310,85 @@ class LargeSimpleSharedStringChunkScanner {
       return
     }
     this.sparseEntries?.set(index, entry)
+  }
+}
+
+class LargeSimpleAllSharedStringChunkScanner {
+  private readonly decoder = new TextDecoder()
+  private readonly entries: LargeSimpleSharedStringEntry[] = []
+  private buffer = ''
+  private index = 0
+  private failed = false
+  private readonly readOptions: LargeSimpleSharedStringReadOptions
+
+  constructor(private readonly options: LargeSimpleReferencedSharedStringScanOptions) {
+    this.readOptions = sharedStringReadOptions(options)
+  }
+
+  push(chunk: Uint8Array): void {
+    if (this.failed || chunk.byteLength === 0) {
+      return
+    }
+    this.buffer += this.decoder.decode(chunk, { stream: true })
+    this.process(false)
+    this.compact()
+    this.reportRetainedBufferLength()
+  }
+
+  finish(): LargeSimpleSharedStrings | null {
+    if (this.failed) {
+      return null
+    }
+    this.buffer += this.decoder.decode()
+    this.process(true)
+    this.compact()
+    this.reportRetainedBufferLength()
+    return this.failed ? null : this.entries
+  }
+
+  private process(final: boolean): void {
+    while (!this.failed && this.index < this.buffer.length) {
+      const opening = findNextElementOpening(this.buffer, 'si', this.index)
+      if (!opening) {
+        this.index = final ? this.buffer.length : Math.max(this.index, this.buffer.length - partialSharedStringTagRetainLength)
+        return
+      }
+      const tagEnd = findTagEnd(this.buffer, opening.nameEnd)
+      if (tagEnd === null) {
+        if (final) {
+          this.failed = true
+        }
+        this.index = opening.start
+        return
+      }
+      const xmlEnd = isSelfClosingTag(this.buffer, tagEnd) ? tagEnd + 1 : findClosingElementEnd(this.buffer, opening.name, tagEnd + 1)
+      if (xmlEnd === null) {
+        if (final) {
+          this.failed = true
+        }
+        this.index = opening.start
+        return
+      }
+      this.entries.push(readLargeSimpleSharedStringEntry(this.buffer.slice(opening.start, xmlEnd), this.readOptions))
+      this.index = xmlEnd
+    }
+  }
+
+  private compact(): void {
+    if (this.index === 0) {
+      return
+    }
+    if (this.index >= this.buffer.length) {
+      this.buffer = ''
+      this.index = 0
+      return
+    }
+    this.buffer = this.buffer.slice(this.index)
+    this.index = 0
+  }
+
+  private reportRetainedBufferLength(): void {
+    this.options.onRetainedBufferLength?.(this.buffer.length)
   }
 }
 

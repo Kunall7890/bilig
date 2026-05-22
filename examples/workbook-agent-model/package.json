@@ -1,0 +1,22 @@
+{
+  "name": "bilig-workbook-agent-model-example",
+  "private": true,
+  "description": "Runnable agent-first model example for @bilig/workbook.",
+  "type": "module",
+  "scripts": {
+    "start": "tsx agent-model.ts",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@bilig/core": "latest",
+    "@bilig/workbook": "latest"
+  },
+  "devDependencies": {
+    "@types/node": "25.5.0",
+    "tsx": "4.21.0",
+    "typescript": "6.0.2"
+  },
+  "engines": {
+    "node": ">=22.0.0"
+  }
+}

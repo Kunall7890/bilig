@@ -99,9 +99,6 @@ export function readImportedArrayFormulaSpills(sheetName: string, sheet: XLSX.Wo
     }
     const rows = range.e.r - range.s.r + 1
     const cols = range.e.c - range.s.c + 1
-    if (rows <= 1 && cols <= 1) {
-      continue
-    }
     spills.push({
       sheetName,
       address: XLSX.utils.encode_cell(range.s),
@@ -294,7 +291,7 @@ function readRuntimeCellValuesBySheet(snapshot: WorkbookSnapshot): Map<string, M
 
 function workbookHasNativeDynamicSpills(snapshot: WorkbookSnapshot): boolean {
   const spills = snapshot.workbook.metadata?.spills
-  return spills !== undefined && spills.some((spill) => spill.rows > 1 || spill.cols > 1)
+  return spills !== undefined && spills.length > 0
 }
 
 function cellValueBody(value: CellValue | undefined): { readonly attributes: string; readonly body: string } | undefined {
@@ -427,7 +424,7 @@ function updateWorksheetDimension(sheetXml: string, addresses: readonly string[]
 }
 
 function spillRange(spill: WorkbookSpillSnapshot): { readonly range: string; readonly addresses: readonly string[] } | undefined {
-  if (spill.rows <= 1 && spill.cols <= 1) {
+  if (spill.rows < 1 || spill.cols < 1) {
     return undefined
   }
   try {

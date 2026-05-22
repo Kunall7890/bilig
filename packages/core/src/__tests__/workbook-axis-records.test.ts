@@ -104,18 +104,18 @@ describe('workbook axis records', () => {
 
   it('coalesces contiguous metadata ranges and rejects mixed ranges', () => {
     const entries: Array<WorkbookAxisEntryRecord | undefined> = [
-      { id: 'row-1', size: 30, hidden: false },
-      { id: 'row-2', size: 30, hidden: false },
+      { id: 'row-1', size: 30, hidden: false, filtered: null },
+      { id: 'row-2', size: 30, hidden: false, filtered: null },
       undefined,
-      { id: 'row-3', size: 30, hidden: true },
+      { id: 'row-3', size: 30, hidden: true, filtered: null },
     ]
     const bucket = new Map()
 
     syncAxisMetadataBucket(bucket, 'Sheet1', entries)
 
     expect([...bucket.values()].toSorted((left, right) => left.start - right.start)).toEqual([
-      { sheetName: 'Sheet1', start: 0, count: 2, size: 30, hidden: false },
-      { sheetName: 'Sheet1', start: 3, count: 1, size: 30, hidden: true },
+      { sheetName: 'Sheet1', start: 0, count: 2, size: 30, hidden: false, filtered: null },
+      { sheetName: 'Sheet1', start: 3, count: 1, size: 30, hidden: true, filtered: null },
     ])
     expect(getAxisMetadataRecord(entries, 'Sheet1', 0, 2)).toEqual({
       sheetName: 'Sheet1',
@@ -123,6 +123,7 @@ describe('workbook axis records', () => {
       count: 2,
       size: 30,
       hidden: false,
+      filtered: null,
     })
     expect(getAxisMetadataRecord(entries, 'Sheet1', 0, 4)).toBeUndefined()
   })

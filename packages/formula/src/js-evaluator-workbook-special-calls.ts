@@ -3,7 +3,18 @@ import { formatAddress, parseCellAddress, parseRangeAddress } from './addressing
 import { getBuiltin } from './builtins.js'
 import { getLookupBuiltin, type RangeBuiltinArgument } from './builtins/lookup.js'
 import { evaluateGroupBy, evaluatePivotBy } from './group-pivot-evaluator.js'
+import {
+  aggregateOptionIgnoresErrors,
+  aggregateOptionIgnoresHiddenRows,
+  aggregateOptionIgnoresNestedRollups,
+  collectAggregateCandidates,
+  filterNestedRollupCandidates,
+  firstErrorValue,
+  nestedAggregateCallees,
+  nestedSubtotalCallees,
+} from './js-evaluator-aggregate-special-calls.js'
 import { isArrayValue } from './runtime-values.js'
+import { evaluateIndirectWorkbookSpecialCall, type WorkbookReferenceCallDeps } from './js-evaluator-workbook-reference-calls.js'
 import type { EvaluationContext, ReferenceOperand, StackValue } from './js-evaluator.js'
 
 interface MatrixLikeValue {
@@ -12,7 +23,7 @@ interface MatrixLikeValue {
   values: readonly CellValue[]
 }
 
-interface WorkbookSpecialCallDeps {
+interface WorkbookSpecialCallDeps extends WorkbookReferenceCallDeps {
   error: (code: ErrorCode) => CellValue
   stackScalar: (value: CellValue, blankReference?: boolean) => StackValue
   toStringValue: (value: CellValue) => string
@@ -26,11 +37,6 @@ interface WorkbookSpecialCallDeps {
     context: EvaluationContext,
     totalSet?: readonly CellValue[],
   ) => CellValue
-  referenceTopLeftAddress: (ref: ReferenceOperand | undefined) => string | undefined
-  referenceSheetName: (ref: ReferenceOperand | undefined, context: EvaluationContext) => string | undefined
-  coerceScalarTextArgument: (value: StackValue | undefined) => string | CellValue
-  coerceOptionalBooleanArgument: (value: StackValue | undefined, fallback: boolean) => boolean | CellValue
-  isCellValueError: (value: number | boolean | string | CellValue) => value is CellValue
 }
 
 function valueError(): CellValue {
@@ -99,51 +105,6 @@ function wholeAxisReferenceFromArg(
     }
   } catch {
     return undefined
-  }
-}
-
-function stackReferenceOperand(ref: ReferenceOperand, context: EvaluationContext, deps: WorkbookSpecialCallDeps): StackValue {
-  const sheetName = deps.referenceSheetName(ref, context) ?? context.sheetName
-  if (ref.kind === 'cell') {
-    const address = ref.address ?? deps.referenceTopLeftAddress(ref)
-    if (!address) {
-      return deps.stackScalar(deps.error(ErrorCode.Ref))
-    }
-    const value = context.resolveCell(sheetName, address)
-    return deps.stackScalar(value, value.tag === ValueTag.Empty)
-  }
-
-  const start = ref.start
-  const end = ref.end
-  const refKind = ref.refKind ?? (ref.kind === 'row' ? 'rows' : ref.kind === 'col' ? 'cols' : 'cells')
-  if (!start || !end) {
-    return deps.stackScalar(deps.error(ErrorCode.Ref))
-  }
-
-  const values = context.resolveRange(sheetName, start, end, refKind)
-  let rows = values.length
-  let cols = 1
-  if (refKind === 'cells') {
-    try {
-      const parsed = parseRangeAddress(`${start}:${end}`, sheetName)
-      if (parsed.kind === 'cells') {
-        rows = parsed.end.row - parsed.start.row + 1
-        cols = parsed.end.col - parsed.start.col + 1
-      }
-    } catch {
-      rows = values.length
-      cols = 1
-    }
-  }
-  return {
-    kind: 'range',
-    values,
-    refKind,
-    rows,
-    cols,
-    sheetName,
-    start,
-    end,
   }
 }
 
@@ -623,56 +584,6 @@ function evaluateReferenceOffset(
   )
 }
 
-function hiddenAwareSubtotalValues(value: StackValue, ref: ReferenceOperand | undefined, context: EvaluationContext): CellValue[] {
-  if (value.kind === 'scalar') {
-    if (ref?.kind !== 'cell' || !ref.address) {
-      return [value.value]
-    }
-    const sheetName = ref.sheetName ?? context.sheetName
-    const row = parseCellAddress(ref.address, sheetName).row
-    return context.isRowHidden?.(sheetName, row) === true ? [] : [value.value]
-  }
-  if (value.kind === 'omitted' || value.kind === 'lambda') {
-    return [valueError()]
-  }
-  if (value.kind === 'array') {
-    return [...value.values]
-  }
-  if (value.refKind !== 'cells') {
-    return [...value.values]
-  }
-
-  const sheetName = ref?.sheetName ?? value.sheetName ?? context.sheetName
-  const start = ref?.kind === 'range' ? ref.start : value.start
-  const end = ref?.kind === 'range' ? ref.end : value.end
-  if (!start || !end) {
-    return [...value.values]
-  }
-
-  let startRow = 0
-  let cols = value.cols
-  try {
-    const parsed = parseRangeAddress(`${start}:${end}`, sheetName)
-    if (parsed.kind !== 'cells') {
-      return [...value.values]
-    }
-    startRow = parsed.start.row
-    cols = parsed.end.col - parsed.start.col + 1
-  } catch {
-    return [...value.values]
-  }
-
-  const visibleValues: CellValue[] = []
-  for (let index = 0; index < value.values.length; index += 1) {
-    const row = startRow + Math.floor(index / cols)
-    if (context.isRowHidden?.(sheetName, row) === true) {
-      continue
-    }
-    visibleValues.push(value.values[index]!)
-  }
-  return visibleValues
-}
-
 export function evaluateWorkbookSpecialCall(
   callee: string,
   rawArgs: StackValue[],
@@ -699,15 +610,48 @@ export function evaluateWorkbookSpecialCall(
       if (functionNum === undefined) {
         return deps.stackScalar(deps.error(ErrorCode.Value))
       }
-      if (functionNum <= 100 || !context.isRowHidden) {
+      const ignoreHiddenRows = functionNum > 100 && context.isRowHidden !== undefined
+      const ignoreFilteredRows = context.isRowFiltered !== undefined
+      if (!ignoreHiddenRows && !ignoreFilteredRows && !context.resolveFormula) {
         return undefined
       }
       const subtotal = getBuiltin('SUBTOTAL')
       if (!subtotal) {
         return undefined
       }
-      const values = rawArgs.slice(1).flatMap((value, index) => hiddenAwareSubtotalValues(value, argRefs[index + 1], context))
+      const candidates = rawArgs
+        .slice(1)
+        .flatMap((value, index) => collectAggregateCandidates(value, argRefs[index + 1], context, ignoreHiddenRows, ignoreFilteredRows))
+      const values = filterNestedRollupCandidates(candidates, context, nestedSubtotalCallees).map((candidate) => candidate.value)
       const result = subtotal({ tag: ValueTag.Number, value: functionNum }, ...values)
+      return isArrayValue(result) ? result : deps.stackScalar(result)
+    }
+    case 'AGGREGATE': {
+      const functionNum = deps.scalarIntegerArgument(rawArgs[0])
+      const option = deps.scalarIntegerArgument(rawArgs[1])
+      if (functionNum === undefined || option === undefined || option < 0 || option > 7) {
+        return deps.stackScalar(deps.error(ErrorCode.Value))
+      }
+      const aggregate = getBuiltin('AGGREGATE')
+      if (!aggregate) {
+        return undefined
+      }
+      const candidates = rawArgs
+        .slice(2)
+        .flatMap((value, index) => collectAggregateCandidates(value, argRefs[index + 2], context, aggregateOptionIgnoresHiddenRows(option)))
+      const nestedFilteredCandidates = aggregateOptionIgnoresNestedRollups(option)
+        ? filterNestedRollupCandidates(candidates, context, nestedAggregateCallees)
+        : candidates
+      let values = nestedFilteredCandidates.map((candidate) => candidate.value)
+      if (aggregateOptionIgnoresErrors(option)) {
+        values = values.filter((value) => value.tag !== ValueTag.Error)
+      } else {
+        const error = firstErrorValue(values)
+        if (error) {
+          return deps.stackScalar(error)
+        }
+      }
+      const result = aggregate({ tag: ValueTag.Number, value: functionNum }, { tag: ValueTag.Number, value: option }, ...values)
       return isArrayValue(result) ? result : deps.stackScalar(result)
     }
     case 'GETPIVOTDATA': {
@@ -844,66 +788,8 @@ export function evaluateWorkbookSpecialCall(
         }) ?? deps.error(ErrorCode.Ref),
       )
     }
-    case 'INDIRECT': {
-      if (rawArgs.length < 1 || rawArgs.length > 2) {
-        return deps.stackScalar(deps.error(ErrorCode.Value))
-      }
-      const refText = deps.coerceScalarTextArgument(rawArgs[0])
-      if (deps.isCellValueError(refText)) {
-        return deps.stackScalar(refText)
-      }
-      const a1Mode = deps.coerceOptionalBooleanArgument(rawArgs[1], true)
-      if (deps.isCellValueError(a1Mode)) {
-        return deps.stackScalar(a1Mode)
-      }
-      if (!a1Mode) {
-        return deps.stackScalar(deps.error(ErrorCode.Value))
-      }
-      const normalizedRefText = refText.trim()
-      if (normalizedRefText === '') {
-        return deps.stackScalar(deps.error(ErrorCode.Ref))
-      }
-
-      try {
-        const cell = parseCellAddress(normalizedRefText, context.sheetName)
-        const value = context.resolveCell(cell.sheetName ?? context.sheetName, cell.text)
-        return deps.stackScalar(value, value.tag === ValueTag.Empty)
-      } catch {
-        // fall through
-      }
-
-      try {
-        const range = parseRangeAddress(normalizedRefText, context.sheetName)
-        if (range.kind !== 'cells') {
-          return deps.stackScalar(deps.error(ErrorCode.Ref))
-        }
-        const targetSheetName = range.sheetName ?? context.sheetName
-        const values = context.resolveRange(targetSheetName, range.start.text, range.end.text, 'cells')
-        return {
-          kind: 'range',
-          values,
-          refKind: 'cells',
-          rows: range.end.row - range.start.row + 1,
-          cols: range.end.col - range.start.col + 1,
-          sheetName: targetSheetName,
-          start: range.start.text,
-          end: range.end.text,
-          ...(range.start.row === range.end.row && range.start.col === range.end.col && values[0]?.tag === ValueTag.Empty
-            ? { blankReference: true }
-            : {}),
-        }
-      } catch {
-        // fall through
-      }
-
-      const resolvedReference = context.resolveNameReference?.(normalizedRefText)
-      if (resolvedReference) {
-        return stackReferenceOperand(resolvedReference, context, deps)
-      }
-
-      const resolvedName = context.resolveName?.(normalizedRefText)
-      return deps.stackScalar(resolvedName ?? deps.error(ErrorCode.Ref))
-    }
+    case 'INDIRECT':
+      return evaluateIndirectWorkbookSpecialCall(rawArgs, context, deps)
     default:
       return undefined
   }

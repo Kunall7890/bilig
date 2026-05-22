@@ -17,6 +17,16 @@ describe('@bilig/workbook check api', () => {
         value: 12,
       },
     })
+    expect(check.valuesEqual(output, [[12, 24]])).toEqual({
+      status: 'planned',
+      kind: 'valuesEqual',
+      target: output,
+      message: 'Model!C2 values equal [[12,24]]',
+      expectation: {
+        kind: 'valuesEqual',
+        values: [[12, 24]],
+      },
+    })
     expect(
       check.formulaEquals(output, formula.multiply(amount, 2), {
         message: 'Output formula matches the declared model formula',
@@ -32,7 +42,29 @@ describe('@bilig/workbook check api', () => {
         inputs: [amount],
       },
     })
+    expect(check.formulasEqual(output, [['A2+B2', null]])).toEqual({
+      status: 'planned',
+      kind: 'formulasEqual',
+      target: output,
+      message: 'Model!C2 formulas equal [["A2+B2",null]]',
+      expectation: {
+        kind: 'formulasEqual',
+        formulas: [['A2+B2', null]],
+      },
+    })
     expect(() => check.valueEquals(output, Number.NaN)).toThrowError('Workbook readback value must be a finite JSON literal')
+    expect(() => Reflect.apply(check.exists, undefined, [{ kind: 'range' }])).toThrowError('Workbook check target must be a WorkbookRef')
+    expect(() => check.valuesEqual(output, [[1], [1, 2]])).toThrowError('Workbook readback values must be rectangular')
+    expect(() => check.formulasEqual(output, [['A1'], [null, 'B1']])).toThrowError('Workbook readback formulas must be rectangular')
+    expect(() =>
+      Reflect.apply(check.custom, undefined, [
+        {
+          kind: 'badRefs',
+          refs: [{ kind: 'range' }],
+          message: 'Bad refs are rejected',
+        },
+      ]),
+    ).toThrowError('Workbook check ref must be a WorkbookRef')
   })
 
   it('exports custom planned checks for consumer-defined invariants', () => {
@@ -62,6 +94,16 @@ describe('@bilig/workbook check api', () => {
       status: 'planned',
       kind: 'modelReady',
       message: 'Model has all required inputs',
+    })
+    const prePassedOptions = {
+      kind: 'prePassed',
+      message: 'Consumer code cannot self-prove a check',
+      status: 'passed',
+    }
+    expect(check.custom(prePassedOptions)).toEqual({
+      status: 'planned',
+      kind: 'prePassed',
+      message: 'Consumer code cannot self-prove a check',
     })
     expect(() => check.custom({ kind: ' ', message: 'valid message' })).toThrowError('Workbook check kind cannot be empty')
     expect(() => check.custom({ kind: 'validKind', message: ' ' })).toThrowError('Workbook check message cannot be empty')
@@ -137,7 +179,7 @@ describe('@bilig/workbook check api', () => {
             kind: 'valueEquals',
             target: {
               kind: 'range',
-              id: 'range_Model_C2_C2',
+              id: 'range_p_Model_p_C2_p_C2',
               label: 'Model!C2',
               range: {
                 sheetName: 'Model',
@@ -156,7 +198,7 @@ describe('@bilig/workbook check api', () => {
             kind: 'formulaEquals',
             target: {
               kind: 'range',
-              id: 'range_Model_D2_D2',
+              id: 'range_p_Model_p_D2_p_D2',
               label: 'Model!D2',
               range: {
                 sheetName: 'Model',
@@ -171,11 +213,11 @@ describe('@bilig/workbook check api', () => {
               inputs: [
                 {
                   kind: 'column',
-                  id: 'table_Inputs_Amount',
+                  id: 'table_p_Inputs_p_Amount',
                   label: 'Inputs.Amount',
                   table: {
                     kind: 'table',
-                    id: 'table_Inputs',
+                    id: 'table_p_Inputs',
                     label: 'Inputs',
                     name: 'Inputs',
                   },
@@ -260,14 +302,14 @@ describe('@bilig/workbook check api', () => {
             kind: 'inputContract',
             target: {
               kind: 'table',
-              id: 'table_Inputs',
+              id: 'table_p_Inputs',
               label: 'Inputs',
               name: 'Inputs',
             },
             refs: [
               {
                 kind: 'range',
-                id: 'range_Model_C2_C2',
+                id: 'range_p_Model_p_C2_p_C2',
                 label: 'Model!C2',
                 range: {
                   sheetName: 'Model',
@@ -332,7 +374,7 @@ describe('@bilig/workbook check api', () => {
           path: 'checks[0].refs[0]',
           ref: {
             kind: 'range',
-            id: 'range_Model_A2_A2',
+            id: 'range_p_Model_p_A2_p_A2',
             label: 'Model!A2',
             range: {
               sheetName: 'Model',
@@ -380,7 +422,7 @@ describe('@bilig/workbook check api', () => {
           path: 'checks[0].expectation.inputs[0]',
           ref: {
             kind: 'range',
-            id: 'range_Model_A2_A2',
+            id: 'range_p_Model_p_A2_p_A2',
             label: 'Model!A2',
             range: {
               sheetName: 'Model',

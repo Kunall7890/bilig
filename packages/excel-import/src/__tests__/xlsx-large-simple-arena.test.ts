@@ -70,6 +70,58 @@ describe('large simple XLSX import arena', () => {
     expect(pool.count).toBe(0)
   })
 
+  it('stores empty string cells without allocating string-id storage', () => {
+    const arena = new ImportedWorkbookArena()
+    arena.reserveDenseRowMajorCellCapacity(0, 1, 3)
+    arena.addCell({ sheetIndex: 0, row: 0, column: 0, value: '' })
+    arena.addCell({ sheetIndex: 0, row: 1, column: 0, value: '' })
+
+    expect(arena.snapshot().strings).toEqual([])
+    expect(arena.snapshot().stringIds).toBeUndefined()
+    expect(arena.materializeSheetCells(0)).toEqual([
+      { address: 'A1', value: '' },
+      { address: 'A2', value: '' },
+    ])
+
+    const detachedCells = arena.createDetachedLazySheetCells(0)
+    arena.release()
+
+    expect(detachedCells).toHaveLength(2)
+    expect(detachedCells[0]).toEqual({ address: 'A1', value: '' })
+    expect(detachedCells[1]).toEqual({ address: 'A2', value: '' })
+  })
+
+  it('keeps rare inline string ids sparse in large mostly-empty sheets', () => {
+    const arena = new ImportedWorkbookArena()
+    arena.reserveDenseRowMajorCellCapacity(0, 2_000, 1_000)
+    const retainedAfterReserve = arena.retainedStorageByteLength()
+
+    arena.addCell({ sheetIndex: 0, row: 0, column: 0, value: '' })
+    arena.addCell({ sheetIndex: 0, row: 0, column: 1, value: 'Rare header' })
+    const retainedAfterRareString = arena.retainedStorageByteLength()
+
+    expect(retainedAfterRareString - retainedAfterReserve).toBeLessThan(16_384)
+    expect(arena.materializeSheetCells(0)).toEqual([
+      { address: 'A1', value: '' },
+      { address: 'B1', value: 'Rare header' },
+    ])
+    expect(arena.snapshot().stringIds).toEqual(new Uint32Array([0xffffffff, 0]))
+  })
+
+  it('does not densify string ids from an early header cluster before the large sheet is scanned', () => {
+    const arena = new ImportedWorkbookArena()
+    const baselineArena = new ImportedWorkbookArena()
+    const retainedBaseline = baselineArena.retainedStorageByteLength()
+
+    for (let column = 0; column < 32; column += 1) {
+      arena.addCell({ sheetIndex: 0, row: 0, column, value: `Header ${String(column + 1)}` })
+    }
+
+    expect(arena.retainedStorageByteLength() - retainedBaseline).toBeLessThan(1_024)
+    expect(arena.materializeSheetCells(0)[0]).toEqual({ address: 'A1', value: 'Header 1' })
+    expect(arena.materializeSheetCells(0).at(-1)).toEqual({ address: 'AF1', value: 'Header 32' })
+  })
+
   it('bounds repeated string and formula interning for large import arenas', () => {
     const pool = new ImportedWorkbookStringPool()
     const arena = new ImportedWorkbookArena(pool, {
@@ -133,6 +185,26 @@ describe('large simple XLSX import arena', () => {
     expect(detachedCells[0]).toEqual({ address: 'A1', value: 'Alpha', formula: 'B1' })
     expect(detachedCells.at(-1)).toEqual({ address: 'B2', value: true })
     expect(detachedCells.map((cell) => cell.address)).toEqual(['A1', 'B1', 'A2', 'B2'])
+  })
+
+  it('transfers detached lazy string and formula pools out of the import arena', () => {
+    const arena = new ImportedWorkbookArena()
+    const firstCell = arena.addCell({ sheetIndex: 0, row: 0, column: 0, value: 'Unique inline label' })
+    const secondCell = arena.addCell({ sheetIndex: 0, row: 1, column: 0, value: 'Second inline label' })
+    arena.setFormula(firstCell, 'B1&"!"')
+    arena.setFormula(secondCell, 'B2&"!"')
+
+    const detachedCells = arena.createDetachedLazySheetCells(0)
+    const snapshotAfterTransfer = arena.snapshot()
+
+    expect(snapshotAfterTransfer.strings).toHaveLength(0)
+    expect(snapshotAfterTransfer.formulas).toHaveLength(0)
+
+    arena.release()
+
+    expect(detachedCells).toHaveLength(2)
+    expect(detachedCells[0]).toEqual({ address: 'A1', value: 'Unique inline label', formula: 'B1&"!"' })
+    expect(detachedCells[1]).toEqual({ address: 'A2', value: 'Second inline label', formula: 'B2&"!"' })
   })
 
   it('detaches lazy retained shared-string cells from the import arena', () => {
@@ -466,6 +538,24 @@ describe('large simple XLSX import arena', () => {
     const snapshot = arena.snapshot()
     expect(snapshot.rows).toEqual(new Uint32Array([0, 0, 0, 1]))
     expect(snapshot.columns).toEqual(new Uint16Array([0, 1, 3, 0]))
+  })
+
+  it('tracks large dimension coordinates linearly without row and column arrays', () => {
+    const arena = new ImportedWorkbookArena()
+    arena.trackLinearRowMajorCellCoordinates(0, 100, 100_000)
+    const retainedAfterTracking = arena.retainedStorageByteLength()
+    arena.addCell({ sheetIndex: 0, row: 0, column: 0, value: 'A1' })
+    arena.addCell({ sheetIndex: 0, row: 999, column: 99, value: 'CV1000' })
+    const retainedAfterCells = arena.retainedStorageByteLength()
+    const detachedCells = arena.createDetachedLazySheetCells(0)
+    arena.release()
+
+    expect(retainedAfterTracking).toBeLessThan(10_000)
+    expect(retainedAfterCells).toBeLessThan(20_000)
+    expect(Array.from(detachedCells)).toEqual([
+      { address: 'A1', value: 'A1' },
+      { address: 'CV1000', value: 'CV1000' },
+    ])
   })
 
   it('materializes requested cells by address without expanding the full sheet', () => {

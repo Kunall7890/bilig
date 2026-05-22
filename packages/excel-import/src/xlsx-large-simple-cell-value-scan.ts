@@ -2,6 +2,18 @@ import { strFromU8 } from 'fflate'
 
 import type { LiteralInput } from '@bilig/protocol'
 import type { LargeSimpleSharedStrings } from './xlsx-large-simple-shared-strings.js'
+import {
+  cellTypeBooleanCode,
+  cellTypeCodeFromString,
+  cellTypeDateCode,
+  cellTypeErrorCode,
+  cellTypeFormulaStringCode,
+  cellTypeInlineStringCode,
+  cellTypeNumberCode,
+  cellTypeSharedStringCode,
+  cellTypeUnknownCode,
+  type LargeSimpleCellTypeCode,
+} from './xlsx-large-simple-worksheet-stream-xml.js'
 import { decodeXmlText, normalizeWorksheetText } from './xlsx-large-simple-worksheet-stream-text.js'
 
 export interface LargeSimpleXmlTextRange {
@@ -15,24 +27,33 @@ export function readLargeSimpleCellValueFromTextRange(
   type: string | null,
   sharedStrings: LargeSimpleSharedStrings,
 ): LiteralInput | undefined {
+  return readLargeSimpleCellValueFromTextRangeByTypeCode(bytes, rawValueRange, cellTypeCodeFromString(type), sharedStrings)
+}
+
+export function readLargeSimpleCellValueFromTextRangeByTypeCode(
+  bytes: Uint8Array,
+  rawValueRange: LargeSimpleXmlTextRange | null,
+  type: LargeSimpleCellTypeCode,
+  sharedStrings: LargeSimpleSharedStrings,
+): LiteralInput | undefined {
   switch (type) {
-    case null:
+    case cellTypeNumberCode:
       return rawValueRange ? readNumberValue(bytes, rawValueRange) : undefined
-    case 's': {
+    case cellTypeSharedStringCode: {
       const index = readLargeSimpleSharedStringIndexFromTextRange(bytes, rawValueRange)
       return index === null ? undefined : sharedStrings[index]?.text
     }
-    case 'inlineStr':
+    case cellTypeInlineStringCode:
       return undefined
-    case 'str':
+    case cellTypeFormulaStringCode:
       return rawValueRange ? normalizeWorksheetText(decodeXmlText(decodeBytes(bytes, rawValueRange.start, rawValueRange.end))) : undefined
-    case 'b':
+    case cellTypeBooleanCode:
       return rawValueRange ? readBooleanValue(bytes, rawValueRange) : undefined
-    case 'e':
+    case cellTypeErrorCode:
       return rawValueRange ? decodeXmlText(decodeBytes(bytes, rawValueRange.start, rawValueRange.end)) : undefined
-    case 'd':
+    case cellTypeDateCode:
       return undefined
-    default:
+    case cellTypeUnknownCode:
       return undefined
   }
 }
@@ -64,6 +85,10 @@ function readNumberValue(bytes: Uint8Array, range: LargeSimpleXmlTextRange): num
   const integerValue = readSafeIntegerNumber(bytes, range)
   if (integerValue !== null) {
     return integerValue
+  }
+  const decimalValue = readSimpleDecimalNumber(bytes, range)
+  if (decimalValue !== null) {
+    return decimalValue
   }
   const value = Number(decodeBytes(bytes, range.start, range.end).trim())
   return Number.isFinite(value) ? value : undefined
@@ -132,6 +157,55 @@ function readSafeIntegerNumber(bytes: Uint8Array, range: LargeSimpleXmlTextRange
     index += 1
   }
   return sign * value
+}
+
+function readSimpleDecimalNumber(bytes: Uint8Array, range: LargeSimpleXmlTextRange): number | null {
+  const trimmed = trimmedRange(bytes, range)
+  let index = trimmed.start
+  const end = trimmed.end
+  if (index === end) {
+    return null
+  }
+  let sign = 1
+  const first = bytes[index]
+  if (first === 43 || first === 45) {
+    sign = first === 45 ? -1 : 1
+    index += 1
+  }
+  if (index === end) {
+    return null
+  }
+  let significand = 0
+  let decimalScale = 1
+  let digitCount = 0
+  let sawDigit = false
+  let sawDecimalPoint = false
+  while (index < end) {
+    const byte = bytes[index] ?? 0
+    if (byte >= 48 && byte <= 57) {
+      if (digitCount >= 15) {
+        return null
+      }
+      sawDigit = true
+      digitCount += 1
+      significand = significand * 10 + byte - 48
+      if (sawDecimalPoint) {
+        decimalScale *= 10
+      }
+      index += 1
+      continue
+    }
+    if (byte === 46 && !sawDecimalPoint) {
+      sawDecimalPoint = true
+      index += 1
+      continue
+    }
+    return null
+  }
+  if (!sawDigit || !sawDecimalPoint) {
+    return null
+  }
+  return sign * (significand / decimalScale)
 }
 
 function trimmedRange(bytes: Uint8Array, range: LargeSimpleXmlTextRange): LargeSimpleXmlTextRange {

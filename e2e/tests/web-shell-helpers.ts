@@ -33,6 +33,7 @@ export {
 export {
   countBlueFillPixelsInCell,
   countBlueFillReadbackPixelsInCell,
+  countDarkReadbackPixelsInCell,
   countGreenFillPixelsInCell,
   countGreenFillReadbackPixelsInCell,
   installTypeGpuCellReadbackHarness,

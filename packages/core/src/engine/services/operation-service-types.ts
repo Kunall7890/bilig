@@ -9,6 +9,7 @@ import type {
   EngineExistingLiteralCellMutationRef,
   EngineExistingNumericCellMutationRef,
   EngineExistingNumericCellMutationResult,
+  EngineFreshDirectAggregateMatrixPlan,
 } from '../../cell-mutations-at.js'
 import type { EnginePatch } from '../../patches/patch-types.js'
 import type { FormulaFamilyFreshUniformRunRegistrationArgs, FormulaFamilyRunUpsertArgs } from '../../formula/formula-family-store.js'
@@ -71,12 +72,18 @@ export interface EngineOperationService {
     batch: EngineOpBatch | null,
     source: 'local' | 'restore' | 'undo' | 'redo',
     potentialNewCells?: number,
+    options?: {
+      readonly freshDirectAggregateMatrixPlan?: EngineFreshDirectAggregateMatrixPlan
+    },
   ) => Effect.Effect<void, EngineMutationError>
   readonly applyCellMutationsAtNow: (
     refs: readonly EngineCellMutationRef[],
     batch: EngineOpBatch | null,
     source: 'local' | 'restore' | 'undo' | 'redo',
     potentialNewCells?: number,
+    options?: {
+      readonly freshDirectAggregateMatrixPlan?: EngineFreshDirectAggregateMatrixPlan
+    },
   ) => void
   readonly applyExistingNumericCellMutationsAtNow: (
     record: Extract<TransactionRecord, { kind: 'existing-numeric-cell-mutations' }>,
@@ -147,6 +154,7 @@ export interface CreateEngineOperationServiceArgs {
     graphRefreshRequired: boolean
   }
   readonly clearOwnedSpill: (cellIndex: number) => number[]
+  readonly clearSpillForCell: (cellIndex: number) => { readonly changedCellIndices: number[]; readonly ownerCellIndex: number | undefined }
   readonly clearPivotForCell: (cellIndex: number) => number[]
   readonly clearOwnedPivot: (pivot: WorkbookPivotRecord) => number[]
   readonly materializePivot: (pivot: WorkbookPivotRecord) => number[]

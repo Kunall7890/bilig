@@ -118,6 +118,10 @@ export function buildBiligDominanceCompletionAudit(input: BuildScorecardInput, s
       evidence: [
         `live browser vendors: ${input.uiResponsivenessLiveBrowserScorecard.summary.capturedVendors.join(', ')}`,
         `headed browser contracts passed: ${String(input.largeWorkbookSloScorecard.summary.headedBrowserFrameP95ContractsPassed)}`,
+        `same-corpus render proof contract: ${input.uiResponsivenessLiveBrowserScorecard.sameCorpusProof.runManifest?.contractVersion ?? 'missing'}`,
+        `same-corpus strict rendered-grid proof cases: ${String(
+          input.uiResponsivenessLiveBrowserScorecard.sameCorpusProof.runManifest?.strictRenderedGridProofCaseCount ?? 0,
+        )}/${String(input.uiResponsivenessLiveBrowserScorecard.sameCorpusProof.requiredCaseCount)}`,
       ],
       gaps: [
         ...(signals.uiResponsivenessLiveBrowserPassed ? [] : ['live incumbent browser timing scorecard is not passing']),
@@ -195,11 +199,17 @@ export function buildBiligDominanceCompletionAudit(input: BuildScorecardInput, s
 }
 
 export function hasUiResponsivenessSameCorpusTenXGap(scorecard: UiResponsivenessLiveBrowserScorecard): boolean {
+  const runManifest = scorecard.sameCorpusProof.runManifest
   if (
     !scorecard.sameCorpusProof.captured ||
     scorecard.sameCorpusProof.requiredCaseCount === 0 ||
     scorecard.sameCorpusProof.cases.length !== scorecard.sameCorpusProof.requiredCaseCount ||
     scorecard.sameCorpusProof.tenXMeanAndP95CaseCount !== scorecard.sameCorpusProof.requiredCaseCount ||
+    runManifest === undefined ||
+    !runManifest.currentContractEvidenceComplete ||
+    !runManifest.googleSheetsTenXRequirementSatisfied ||
+    runManifest.invalidReasons.length > 0 ||
+    runManifest.strictRenderedGridProofCaseCount !== scorecard.sameCorpusProof.requiredCaseCount ||
     requiredUiResponsivenessSameCorpusWorkloads.some(
       (workload) => !scorecard.sameCorpusProof.cases.some((entry) => entry.workload === workload),
     ) ||

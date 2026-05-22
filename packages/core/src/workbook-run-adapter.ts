@@ -7,14 +7,14 @@ import {
   type WorkbookActionPlan,
   type WorkbookCheckResult,
   type WorkbookColumnRef,
-  type WorkbookNameRef,
-  type WorkbookRangeRef,
   type WorkbookRef,
   type WorkbookRowsRef,
+  type WorkbookCellReadback,
   type WorkbookRunAdapter,
   type WorkbookRunReadback,
   type WorkbookTableRef,
   type WorkbookUndoRef,
+  describeRuntimeRequirements,
 } from '@bilig/workbook'
 import type { SpreadsheetEngine } from './engine.js'
 import { buildFormatClearOps, buildFormatPatchOps, buildStylePatchOps } from './engine-range-format-ops.js'
@@ -34,6 +34,18 @@ interface RangeBounds {
   readonly endCol: number
   readonly height: number
   readonly width: number
+}
+
+interface CellTarget {
+  readonly sheetName: string
+  readonly address: string
+  readonly row: number
+  readonly col: number
+}
+
+interface ResolvedRows {
+  readonly table: WorkbookTableRecord
+  readonly rows: readonly number[]
 }
 
 function errorMessage(error: unknown): string {
@@ -116,15 +128,20 @@ function cellSource(sheetName: string, row: number, col: number): string {
   return `${quoteSheetName(sheetName)}!${formatAddress(row, col)}`
 }
 
-function rangeOps(range: CellRangeRef, create: (address: string, rowOffset: number, colOffset: number) => EngineOp): readonly EngineOp[] {
+function cellsFromRange(range: CellRangeRef): readonly CellTarget[] {
   const bounds = rangeBounds(range)
-  const ops: EngineOp[] = []
-  for (let rowOffset = 0; rowOffset < bounds.height; rowOffset += 1) {
-    for (let colOffset = 0; colOffset < bounds.width; colOffset += 1) {
-      ops.push(create(formatAddress(bounds.startRow + rowOffset, bounds.startCol + colOffset), rowOffset, colOffset))
+  const cells: CellTarget[] = []
+  for (let row = bounds.startRow; row <= bounds.endRow; row += 1) {
+    for (let col = bounds.startCol; col <= bounds.endCol; col += 1) {
+      cells.push({
+        sheetName: range.sheetName,
+        address: formatAddress(row, col),
+        row,
+        col,
+      })
     }
   }
-  return ops
+  return cells
 }
 
 function tableMatches(ref: WorkbookTableRef, table: WorkbookTableRecord): boolean {
@@ -162,6 +179,23 @@ function tableRange(table: WorkbookTableRecord): CellRangeRef {
   }
 }
 
+function tableDataBounds(table: WorkbookTableRecord): RangeBounds | null {
+  const bounds = rangeBounds(tableRange(table))
+  const startRow = table.headerRow ? bounds.startRow + 1 : bounds.startRow
+  const endRow = table.totalsRow ? bounds.endRow - 1 : bounds.endRow
+  if (endRow < startRow) {
+    return null
+  }
+  return {
+    startRow,
+    startCol: bounds.startCol,
+    endRow,
+    endCol: bounds.endCol,
+    height: endRow - startRow + 1,
+    width: bounds.width,
+  }
+}
+
 function columnRange(table: WorkbookTableRecord, columnName: string): CellRangeRef | null {
   const columnIndex = table.columnNames.indexOf(columnName)
   if (columnIndex < 0) {
@@ -185,6 +219,120 @@ function columnRange(table: WorkbookTableRecord, columnName: string): CellRangeR
   }
 }
 
+function orderedCompare(actual: LiteralInput, expected: LiteralInput): number | null {
+  if (typeof actual === 'number' && typeof expected === 'number') {
+    return actual - expected
+  }
+  if (typeof actual === 'string' && typeof expected === 'string') {
+    return actual.localeCompare(expected)
+  }
+  return null
+}
+
+function rowValueMatches(actual: LiteralInput | undefined, op: WorkbookRowsRef['where']['op'], expected: LiteralInput): boolean {
+  if (actual === undefined) {
+    return false
+  }
+  switch (op) {
+    case 'eq':
+      return Object.is(actual, expected)
+    case 'neq':
+      return !Object.is(actual, expected)
+    case 'contains':
+      return typeof actual === 'string' && typeof expected === 'string' && actual.includes(expected)
+    case 'startsWith':
+      return typeof actual === 'string' && typeof expected === 'string' && actual.startsWith(expected)
+    case 'gt': {
+      const compared = orderedCompare(actual, expected)
+      return compared !== null && compared > 0
+    }
+    case 'gte': {
+      const compared = orderedCompare(actual, expected)
+      return compared !== null && compared >= 0
+    }
+    case 'lt': {
+      const compared = orderedCompare(actual, expected)
+      return compared !== null && compared < 0
+    }
+    case 'lte': {
+      const compared = orderedCompare(actual, expected)
+      return compared !== null && compared <= 0
+    }
+  }
+}
+
+function resolveRows(engine: SpreadsheetEngine, ref: WorkbookRowsRef): ResolvedRows | null {
+  const table = findTable(engine, ref.table)
+  if (table === undefined) {
+    return null
+  }
+  const dataBounds = tableDataBounds(table)
+  if (dataBounds === null) {
+    return {
+      table,
+      rows: [],
+    }
+  }
+  const predicateIndex = table.columnNames.indexOf(ref.where.column)
+  if (predicateIndex < 0) {
+    return null
+  }
+  const predicateCol = dataBounds.startCol + predicateIndex
+  const rows: number[] = []
+  for (let row = dataBounds.startRow; row <= dataBounds.endRow; row += 1) {
+    const value = literalFromCellValue(engine.getCellValue(table.sheetName, formatAddress(row, predicateCol)))
+    if (rowValueMatches(value, ref.where.op, ref.where.value)) {
+      rows.push(row)
+    }
+  }
+  return {
+    table,
+    rows,
+  }
+}
+
+function rowRangesFromRowsRef(engine: SpreadsheetEngine, ref: WorkbookRowsRef): readonly CellRangeRef[] | null {
+  const resolved = resolveRows(engine, ref)
+  if (resolved === null) {
+    return null
+  }
+  const dataBounds = tableDataBounds(resolved.table)
+  if (dataBounds === null) {
+    return []
+  }
+  return resolved.rows.map((row) => ({
+    sheetName: resolved.table.sheetName,
+    startAddress: formatAddress(row, dataBounds.startCol),
+    endAddress: formatAddress(row, dataBounds.endCol),
+  }))
+}
+
+function rangesFromColumnRef(engine: SpreadsheetEngine, ref: WorkbookColumnRef): readonly CellRangeRef[] | null {
+  if (ref.rows === undefined) {
+    const table = findTable(engine, ref.table)
+    const range = table === undefined ? null : columnRange(table, ref.name)
+    return range === null ? null : [range]
+  }
+  const resolved = resolveRows(engine, ref.rows)
+  if (resolved === null) {
+    return null
+  }
+  const dataBounds = tableDataBounds(resolved.table)
+  if (dataBounds === null) {
+    return []
+  }
+  const columnIndex = resolved.table.columnNames.indexOf(ref.name)
+  if (columnIndex < 0) {
+    return null
+  }
+  const col = dataBounds.startCol + columnIndex
+  return resolved.rows.map((row) => ({
+    sheetName: resolved.table.sheetName,
+    startAddress: formatAddress(row, col),
+    endAddress: formatAddress(row, col),
+  }))
+}
+
 function rangeFromDefinedNameValue(value: WorkbookDefinedNameValueSnapshot): CellRangeRef | null {
   if (typeof value !== 'object' || value === null) {
     return null
@@ -206,25 +354,29 @@ function rangeFromDefinedNameValue(value: WorkbookDefinedNameValueSnapshot): Cel
   return null
 }
 
-function rangeFromRef(engine: SpreadsheetEngine, ref: WorkbookRef): CellRangeRef | null {
+function rangesFromRef(engine: SpreadsheetEngine, ref: WorkbookRef): readonly CellRangeRef[] | null {
   switch (ref.kind) {
     case 'range':
-      return ref.range
+      return [ref.range]
     case 'name': {
       const definedName = engine.getDefinedName(ref.name)
-      return definedName === undefined ? null : rangeFromDefinedNameValue(definedName.value)
+      const range = definedName === undefined ? null : rangeFromDefinedNameValue(definedName.value)
+      return range === null ? null : [range]
     }
     case 'table': {
       const table = findTable(engine, ref)
-      return table === undefined ? null : tableRange(table)
+      return table === undefined ? null : [tableRange(table)]
     }
-    case 'column': {
-      const table = findTable(engine, ref.table)
-      return table === undefined ? null : columnRange(table, ref.name)
-    }
+    case 'column':
+      return rangesFromColumnRef(engine, ref)
     case 'rows':
-      return null
+      return rowRangesFromRowsRef(engine, ref)
   }
+}
+
+function cellsFromRef(engine: SpreadsheetEngine, ref: WorkbookRef): readonly CellTarget[] | null {
+  const ranges = rangesFromRef(engine, ref)
+  return ranges === null ? null : ranges.flatMap((range) => cellsFromRange(range))
 }
 
 function refExists(engine: SpreadsheetEngine, ref: WorkbookRef): boolean {
@@ -236,19 +388,18 @@ function refExists(engine: SpreadsheetEngine, ref: WorkbookRef): boolean {
     case 'table':
       return findTable(engine, ref) !== undefined
     case 'column': {
-      const table = findTable(engine, ref.table)
-      return table !== undefined && table.columnNames.includes(ref.name)
+      if (ref.rows === undefined) {
+        const table = findTable(engine, ref.table)
+        return table !== undefined && table.columnNames.includes(ref.name)
+      }
+      const cells = cellsFromRef(engine, ref)
+      return cells !== null && cells.length > 0
     }
-    case 'rows':
-      return rowsOwnerExists(engine, ref)
+    case 'rows': {
+      const cells = cellsFromRef(engine, ref)
+      return cells !== null && cells.length > 0
+    }
   }
-}
-
-function rowsOwnerExists(engine: SpreadsheetEngine, ref: WorkbookRowsRef): boolean {
-  if (ref.table !== undefined) {
-    return findTable(engine, ref.table) !== undefined
-  }
-  return ref.sheetName !== undefined && sheetExists(engine, ref.sheetName)
 }
 
 function rangeHasFormulaErrors(engine: SpreadsheetEngine, range: CellRangeRef): boolean {
@@ -260,115 +411,182 @@ function rangeHasFormulaErrors(engine: SpreadsheetEngine, range: CellRangeRef): 
 }
 
 function verifyNoFormulaErrors(engine: SpreadsheetEngine, ref: WorkbookRef): 'passed' | 'failed' | 'planned' {
-  const range = rangeFromRef(engine, ref)
-  if (range === null) {
+  const ranges = rangesFromRef(engine, ref)
+  if (ranges === null) {
     return 'failed'
   }
-  return rangeHasFormulaErrors(engine, range) ? 'failed' : 'passed'
+  return ranges.some((range) => rangeHasFormulaErrors(engine, range)) ? 'failed' : 'passed'
 }
 
-function readbackForRange(engine: SpreadsheetEngine, target: WorkbookRangeRef): WorkbookRunReadback | null {
-  const range = target.range
-  if (range.startAddress !== range.endAddress || !rangeExists(engine, range)) {
-    return null
-  }
-  const cell = engine.getCell(range.sheetName, range.startAddress)
-  const value = literalFromCellValue(cell.value)
-  return {
-    target,
-    ...(value !== undefined ? { value } : {}),
-    formula: cell.formula ?? null,
-  }
-}
+function readbackForRanges(engine: SpreadsheetEngine, target: WorkbookRef, ranges: readonly CellRangeRef[]): WorkbookRunReadback {
+  const values: LiteralInput[][] = []
+  const formulas: (string | null)[][] = []
+  const cells: WorkbookCellReadback[] = []
+  let hasValueError = false
 
-function readbackForName(engine: SpreadsheetEngine, target: WorkbookNameRef): WorkbookRunReadback | null {
-  const definedName = engine.getDefinedName(target.name)
-  if (definedName === undefined) {
-    return null
+  for (const range of ranges) {
+    const bounds = rangeBounds(range)
+    for (let row = bounds.startRow; row <= bounds.endRow; row += 1) {
+      const valueRow: LiteralInput[] = []
+      const formulaRow: (string | null)[] = []
+      for (let col = bounds.startCol; col <= bounds.endCol; col += 1) {
+        const address = formatAddress(row, col)
+        const cell = engine.getCell(range.sheetName, address)
+        const value = literalFromCellValue(cell.value)
+        if (cell.value.tag === ValueTag.Error) {
+          hasValueError = true
+        }
+        valueRow.push(value ?? null)
+        formulaRow.push(cell.formula ?? null)
+        cells.push({
+          sheetName: range.sheetName,
+          address,
+          ...(value !== undefined ? { value } : {}),
+          formula: cell.formula ?? null,
+        })
+      }
+      values.push(valueRow)
+      formulas.push(formulaRow)
+    }
   }
-  const range = rangeFromDefinedNameValue(definedName.value)
-  if (range === null || range.startAddress !== range.endAddress || !rangeExists(engine, range)) {
-    return null
-  }
-  const cell = engine.getCell(range.sheetName, range.startAddress)
-  const value = literalFromCellValue(cell.value)
-  return {
-    target,
-    ...(value !== undefined ? { value } : {}),
-    formula: cell.formula ?? null,
-  }
-}
 
-function readbackForColumn(engine: SpreadsheetEngine, target: WorkbookColumnRef): WorkbookRunReadback | null {
-  const table = findTable(engine, target.table)
-  const range = table === undefined ? null : columnRange(table, target.name)
-  if (range === null || range.startAddress !== range.endAddress || !rangeExists(engine, range)) {
-    return null
-  }
-  const cell = engine.getCell(range.sheetName, range.startAddress)
-  const value = literalFromCellValue(cell.value)
+  const single = cells.length === 1 ? cells[0] : undefined
   return {
     target,
-    ...(value !== undefined ? { value } : {}),
-    formula: cell.formula ?? null,
+    ...(!hasValueError && single?.value !== undefined ? { value: single.value } : {}),
+    ...(single !== undefined ? { formula: single.formula ?? null } : {}),
+    ...(!hasValueError ? { values } : {}),
+    formulas,
+    cells,
   }
 }
 
 function readbackForTarget(engine: SpreadsheetEngine, target: WorkbookRef): WorkbookRunReadback | null {
-  switch (target.kind) {
-    case 'range':
-      return readbackForRange(engine, target)
-    case 'name':
-      return readbackForName(engine, target)
-    case 'column':
-      return readbackForColumn(engine, target)
-    case 'table':
-    case 'rows':
-      return null
+  const ranges = rangesFromRef(engine, target)
+  if (ranges === null || !ranges.every((range) => rangeExists(engine, range))) {
+    return null
   }
+  return readbackForRanges(engine, target, ranges)
 }
 
 function inputReplacementForCell(
   engine: SpreadsheetEngine,
   input: WorkbookRef,
-  targetBounds: RangeBounds,
-  rowOffset: number,
-  colOffset: number,
+  targetCells: readonly CellTarget[],
+  cellIndex: number,
 ): string {
-  const inputRange = rangeFromRef(engine, input)
-  if (inputRange === null) {
+  const inputCells = cellsFromRef(engine, input)
+  if (inputCells === null) {
     throw new Error(`Cannot resolve formula input ${input.label}`)
   }
-  const inputBounds = rangeBounds(inputRange)
-  if (inputBounds.height === targetBounds.height && inputBounds.width === targetBounds.width) {
-    return cellSource(inputRange.sheetName, inputBounds.startRow + rowOffset, inputBounds.startCol + colOffset)
+  if (inputCells.length === targetCells.length) {
+    const inputCell = inputCells[cellIndex]
+    if (inputCell === undefined) {
+      throw new Error(`Cannot align formula input ${input.label}`)
+    }
+    return cellSource(inputCell.sheetName, inputCell.row, inputCell.col)
   }
-  return rangeSource(inputRange)
+  if (inputCells.length === 1) {
+    const inputCell = inputCells[0]!
+    return cellSource(inputCell.sheetName, inputCell.row, inputCell.col)
+  }
+  const inputRanges = rangesFromRef(engine, input)
+  if (inputRanges !== null && inputRanges.length === 1) {
+    return rangeSource(inputRanges[0]!)
+  }
+  throw new Error(`Cannot align formula input ${input.label} with ${targetCells.length} target cell(s)`)
+}
+
+interface FormulaReplacement {
+  readonly token: string
+  readonly replacement: string
+}
+
+function formulaQuoteEnd(source: string, startIndex: number, quote: '"' | "'"): number {
+  let index = startIndex + 1
+  while (index < source.length) {
+    const current = source[index]
+    if (current === quote) {
+      if (source[index + 1] === quote) {
+        index += 2
+        continue
+      }
+      return index + 1
+    }
+    index += 1
+  }
+  return source.length
+}
+
+function isFormulaIdentifierChar(value: string | undefined): boolean {
+  return value !== undefined && /[A-Za-z0-9_.$]/.test(value)
+}
+
+function isFormulaTokenBoundary(source: string, index: number, token: string): boolean {
+  const previous = source[index - 1]
+  const next = source[index + token.length]
+  return !isFormulaIdentifierChar(previous) && previous !== ']' && !isFormulaIdentifierChar(next) && next !== '['
+}
+
+function materializeFormulaSource(source: string, replacements: readonly FormulaReplacement[]): string {
+  let output = ''
+  let index = 0
+  const orderedReplacements = replacements.toSorted((left, right) => right.token.length - left.token.length)
+
+  while (index < source.length) {
+    const replacement = orderedReplacements.find(
+      (candidate) => source.startsWith(candidate.token, index) && isFormulaTokenBoundary(source, index, candidate.token),
+    )
+    if (replacement !== undefined) {
+      output += replacement.replacement
+      index += replacement.token.length
+      continue
+    }
+
+    const current = source[index]
+    if (current === '"' || current === "'") {
+      const endIndex = formulaQuoteEnd(source, index, current)
+      output += source.slice(index, endIndex)
+      index = endIndex
+      continue
+    }
+
+    output += current
+    index += 1
+  }
+
+  return output
 }
 
 function formulaForCell(
   engine: SpreadsheetEngine,
   command: Extract<WorkbookActionCommand, { readonly kind: 'writeFormula' }>,
-  targetRange: CellRangeRef,
-  rowOffset: number,
-  colOffset: number,
+  targetCells: readonly CellTarget[],
+  cellIndex: number,
 ): string {
-  const targetBounds = rangeBounds(targetRange)
-  let source = command.formula
-  command.inputs.forEach((input) => {
-    const token = workbookFormula.source(workbookFormula.ref(input))
-    const replacement = inputReplacementForCell(engine, input, targetBounds, rowOffset, colOffset)
-    source = source.replaceAll(token, replacement)
-  })
-  return source
+  const replacements = command.inputs.map((input) => ({
+    token: workbookFormula.source(workbookFormula.ref(input)),
+    replacement: inputReplacementForCell(engine, input, targetCells, cellIndex),
+  }))
+  return materializeFormulaSource(command.formula, replacements)
 }
 
-function commandTargetRange(engine: SpreadsheetEngine, command: Exclude<WorkbookActionCommand, { readonly kind: 'op' }>): CellRangeRef {
-  const range = rangeFromRef(engine, command.target)
-  if (range === null) {
+function commandTargetRanges(
+  engine: SpreadsheetEngine,
+  command: Exclude<WorkbookActionCommand, { readonly kind: 'op' }>,
+): readonly CellRangeRef[] {
+  const ranges = rangesFromRef(engine, command.target)
+  if (ranges === null) {
     throw new Error(`Cannot resolve ${command.target.label} for ${command.kind}`)
   }
-  return range
+  return ranges
+}
+
+function commandTargetCells(
+  engine: SpreadsheetEngine,
+  command: Exclude<WorkbookActionCommand, { readonly kind: 'op' }>,
+): readonly CellTarget[] {
+  return commandTargetRanges(engine, command).flatMap((range) => cellsFromRange(range))
 }
 
 function materializeCommandOps(engine: SpreadsheetEngine, command: WorkbookActionCommand): readonly EngineOp[] {
@@ -376,46 +594,91 @@ function materializeCommandOps(engine: SpreadsheetEngine, command: WorkbookActio
     return [structuredClone(command.op)]
   }
 
-  const range = commandTargetRange(engine, command)
   switch (command.kind) {
-    case 'writeFormula':
-      return rangeOps(range, (address, rowOffset, colOffset) => ({
+    case 'writeFormula': {
+      const cells = commandTargetCells(engine, command)
+      return cells.map((cell, index) => ({
         kind: 'setCellFormula',
-        sheetName: range.sheetName,
-        address,
-        formula: formulaForCell(engine, command, range, rowOffset, colOffset),
+        sheetName: cell.sheetName,
+        address: cell.address,
+        formula: formulaForCell(engine, command, cells, index),
       }))
+    }
     case 'writeValue':
-      return rangeOps(range, (address) => ({
+      return commandTargetCells(engine, command).map((cell) => ({
         kind: 'setCellValue',
-        sheetName: range.sheetName,
-        address,
+        sheetName: cell.sheetName,
+        address: cell.address,
         value: command.value,
       }))
     case 'clear':
-      return rangeOps(range, (address) => ({
+      return commandTargetCells(engine, command).map((cell) => ({
         kind: 'clearCell',
-        sheetName: range.sheetName,
-        address,
+        sheetName: cell.sheetName,
+        address: cell.address,
       }))
     case 'format':
       if (command.style === undefined && command.numberFormat === undefined) {
         return []
       }
       {
+        const ranges = commandTargetRanges(engine, command)
         const ops: EngineOp[] = []
-        if (command.style !== undefined) {
-          ops.push(...buildStylePatchOps(engine.workbook, range, command.style))
-        }
-        if (command.numberFormat !== undefined) {
-          ops.push(
-            ...(command.numberFormat === null
-              ? buildFormatClearOps(engine.workbook, range)
-              : buildFormatPatchOps(engine.workbook, range, command.numberFormat)),
-          )
+        for (const range of ranges) {
+          if (command.style !== undefined) {
+            ops.push(...buildStylePatchOps(engine.workbook, range, command.style))
+          }
+          if (command.numberFormat !== undefined) {
+            ops.push(
+              ...(command.numberFormat === null
+                ? buildFormatClearOps(engine.workbook, range)
+                : buildFormatPatchOps(engine.workbook, range, command.numberFormat)),
+            )
+          }
         }
         return ops
       }
+  }
+}
+
+function canonicalValue(value: unknown): unknown {
+  if (Array.isArray(value)) {
+    return value.map(canonicalValue)
+  }
+  if (typeof value === 'object' && value !== null) {
+    return Object.fromEntries(
+      Object.entries(value)
+        .toSorted(([left], [right]) => left.localeCompare(right))
+        .map(([key, entry]) => [key, canonicalValue(entry)]),
+    )
+  }
+  return value
+}
+
+function opKey(op: EngineOp): string {
+  return JSON.stringify(canonicalValue(op))
+}
+
+function directCommandOps(command: WorkbookActionCommand): readonly EngineOp[] {
+  if (command.kind === 'op') {
+    return [structuredClone(command.op)]
+  }
+  if (command.target.kind !== 'range' || command.target.range.startAddress !== command.target.range.endAddress) {
+    return []
+  }
+  const cell = {
+    sheetName: command.target.range.sheetName,
+    address: command.target.range.startAddress,
+  }
+  switch (command.kind) {
+    case 'writeFormula':
+      return [{ kind: 'setCellFormula', ...cell, formula: command.formula }]
+    case 'writeValue':
+      return [{ kind: 'setCellValue', ...cell, value: command.value }]
+    case 'clear':
+      return [{ kind: 'clearCell', ...cell }]
+    case 'format':
+      return command.numberFormat === undefined ? [] : [{ kind: 'setCellFormat', ...cell, format: command.numberFormat }]
   }
 }
 
@@ -423,7 +686,10 @@ function materializePlanOps(engine: SpreadsheetEngine, plan: WorkbookActionPlan)
   if (plan.commands.length === 0) {
     return plan.ops
   }
-  return plan.commands.flatMap((command) => materializeCommandOps(engine, command))
+  const commandOps = plan.commands.flatMap((command) => materializeCommandOps(engine, command))
+  const commandOpKeys = new Set([...commandOps, ...plan.commands.flatMap(directCommandOps)].map(opKey))
+  const additionalOps = plan.ops.filter((op) => !commandOpKeys.has(opKey(op)))
+  return [...commandOps, ...additionalOps]
 }
 
 function verifyCheck(engine: SpreadsheetEngine, check: WorkbookCheckResult): WorkbookCheckResult {
@@ -441,6 +707,14 @@ function verifyCheck(engine: SpreadsheetEngine, check: WorkbookCheckResult): Wor
 
 export function createWorkbookRunAdapter(engine: SpreadsheetEngine, options: WorkbookRunEngineAdapterOptions = {}): WorkbookRunAdapter {
   return {
+    preview(plan: WorkbookActionPlan) {
+      return {
+        modelName: plan.modelName,
+        actionName: plan.actionName,
+        requirements: describeRuntimeRequirements(plan).requirements,
+        materializedOps: materializePlanOps(engine, plan),
+      }
+    },
     apply(plan: WorkbookActionPlan) {
       try {
         const ops = materializePlanOps(engine, plan)
@@ -460,7 +734,7 @@ export function createWorkbookRunAdapter(engine: SpreadsheetEngine, options: Wor
           status: 'failed',
           errors: [
             {
-              code: 'engine_apply_failed',
+              code: 'apply_failed',
               message: errorMessage(error),
             },
           ],

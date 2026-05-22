@@ -312,7 +312,13 @@ function toZeroNumericValue(value: CellValue): number | undefined {
   return toNumber(value)
 }
 
-function aggregateByCode(functionNum: number, values: CellValue[]): CellValue {
+function aggregateByCode(functionNum: number, values: CellValue[], options: { readonly propagateErrors?: boolean } = {}): CellValue {
+  if (options.propagateErrors) {
+    const error = firstError(values)
+    if (error) {
+      return error
+    }
+  }
   const normalized = functionNum > 100 ? functionNum - 100 : functionNum
   const numericValues = collectNumericArgs(values, toNumber)
   switch (normalized) {
@@ -343,6 +349,10 @@ function aggregateByCode(functionNum: number, values: CellValue[]): CellValue {
     default:
       return valueError()
   }
+}
+
+function aggregateOptionIgnoresErrors(option: number): boolean {
+  return option === 2 || option === 3 || option === 6 || option === 7
 }
 
 const scalarPlaceholderBuiltins = createBlockedBuiltinMap(scalarPlaceholderBuiltinNames)
@@ -732,11 +742,17 @@ const scalarBuiltins: Record<string, Builtin> = {
   ...distributionBuiltins,
   SUBTOTAL: (functionNumArg, ...args) => {
     const functionNum = integerValue(functionNumArg)
-    return functionNum === undefined ? valueError() : aggregateByCode(functionNum, args)
+    return functionNum === undefined ? valueError() : aggregateByCode(functionNum, args, { propagateErrors: true })
   },
-  AGGREGATE: (functionNumArg, _optionsArg, ...args) => {
+  AGGREGATE: (functionNumArg, optionsArg, ...args) => {
     const functionNum = integerValue(functionNumArg)
-    return functionNum === undefined ? valueError() : aggregateByCode(functionNum, args)
+    const options = integerValue(optionsArg)
+    if (functionNum === undefined || options === undefined || options < 0 || options > 7) {
+      return valueError()
+    }
+    const ignoreErrors = aggregateOptionIgnoresErrors(options)
+    const values = ignoreErrors ? args.filter((value) => value.tag !== ValueTag.Error) : args
+    return aggregateByCode(functionNum, values, { propagateErrors: !ignoreErrors })
   },
   SEQUENCE: (...args) => sequenceResult(args[0], args[1], args[2], args[3]),
   ...externalScalarBuiltins,

@@ -713,6 +713,21 @@ describe('translateFormulaReferences', () => {
     ])
   })
 
+  it('rewrites compiled spill-reference metadata for structural moves', () => {
+    const compiled = compileFormula('SUM(B1#)')
+    const rewritten = rewriteCompiledFormulaForStructuralTransform(compiled, 'Sheet1', 'Sheet1', {
+      kind: 'move',
+      axis: 'column',
+      start: 1,
+      count: 1,
+      target: 2,
+    })
+
+    expect(rewritten.source).toBe('SUM(C1#)')
+    expect(rewritten.reusedProgram).toBe(true)
+    expect(rewritten.compiled.symbolicSpills).toEqual(['C1'])
+  })
+
   it('rewrites compiled row and column range plans without recompiling', () => {
     const rowCompiled = compileFormula('SUM(5:7)')
     const rowRewritten = rewriteCompiledFormulaForStructuralTransform(rowCompiled, 'Sheet1', 'Sheet1', {
@@ -1089,6 +1104,14 @@ describe('translateFormulaReferences', () => {
       { opcode: 'binary', operator: '+' },
       { opcode: 'return' },
     ])
+  })
+
+  it('translates compiled spill-reference metadata with template instances', () => {
+    const compiled = compileFormula('ROWS(B1#)')
+    const translated = translateCompiledFormula(compiled, 2, 0)
+
+    expect(translated.source).toBe('ROWS(B3#)')
+    expect(translated.compiled.symbolicSpills).toEqual(['B3'])
   })
 
   it('preserves absolute symbolic range anchors when translating compiled formulas', () => {

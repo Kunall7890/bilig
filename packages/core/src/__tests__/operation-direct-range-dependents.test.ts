@@ -6,6 +6,7 @@ import { aggregateColumnDependencyKey } from '../engine/services/direct-formula-
 import {
   appendDirectAggregateColumnReverseEdges,
   appendDirectCriteriaAggregateColumnReverseEdge,
+  collectSingleIndexedDirectAggregateColumnDependentForRow,
 } from '../engine/services/formula-binding-dependency-helpers.js'
 import { createOperationDirectRangeDependentService } from '../engine/services/operation-direct-range-dependents.js'
 
@@ -145,6 +146,34 @@ describe('operation direct range dependents', () => {
     })
 
     expect(service.collectAffectedDirectRangeDependents({ sheetName: 'Sheet1', row: 2, col: 0 })).toEqual([10, 11])
+  })
+
+  it('probes a single indexed aggregate dependent without allocating a visitor', () => {
+    const aggregateEdges = new Map<number, Set<number>>()
+    const workbook = { getSheet: (sheetName: string) => (sheetName === 'Sheet1' ? { id: 7 } : undefined) }
+    appendDirectAggregateColumnReverseEdges(aggregateEdges, workbook, directAggregate({ rowStart: 1, rowEnd: 3 }), 10)
+    appendDirectAggregateColumnReverseEdges(aggregateEdges, workbook, directAggregate({ rowStart: 20, rowEnd: 30 }), 11)
+    const dependents = aggregateEdges.get(aggregateColumnDependencyKey(7, 0))
+    if (dependents === undefined) {
+      throw new Error('expected aggregate dependents')
+    }
+
+    expect(collectSingleIndexedDirectAggregateColumnDependentForRow(dependents, 2)).toBe(10)
+    expect(collectSingleIndexedDirectAggregateColumnDependentForRow(dependents, 10)).toBe(-1)
+    expect(collectSingleIndexedDirectAggregateColumnDependentForRow(dependents, 20)).toBe(11)
+  })
+
+  it('reports indexed aggregate ambiguity when multiple windows own the row', () => {
+    const aggregateEdges = new Map<number, Set<number>>()
+    const workbook = { getSheet: (sheetName: string) => (sheetName === 'Sheet1' ? { id: 7 } : undefined) }
+    appendDirectAggregateColumnReverseEdges(aggregateEdges, workbook, directAggregate({ rowStart: 1, rowEnd: 3 }), 10)
+    appendDirectAggregateColumnReverseEdges(aggregateEdges, workbook, directAggregate({ rowStart: 2, rowEnd: 4 }), 11)
+    const dependents = aggregateEdges.get(aggregateColumnDependencyKey(7, 0))
+    if (dependents === undefined) {
+      throw new Error('expected aggregate dependents')
+    }
+
+    expect(collectSingleIndexedDirectAggregateColumnDependentForRow(dependents, 2)).toBe(-2)
   })
 
   it('collects multi-window criteria aggregate dependents from the row index without scanning unrelated windows', () => {

@@ -12,7 +12,13 @@ import {
   normalizePivotLookupText,
   pivotItemMatches,
 } from '../../engine-value-utils.js'
-import { materializePivotTable, type PivotDefinitionInput } from '../../pivot-engine.js'
+import {
+  accumulatePivotAggregateValue,
+  emptyPivotAggregateState,
+  finalizePivotAggregate,
+  materializePivotTable,
+  type PivotDefinitionInput,
+} from '../../pivot-engine.js'
 import type { FormulaTable } from '../../formula-table.js'
 import type { RangeRegistry } from '../../range-registry.js'
 import type { StringPool } from '../../string-pool.js'
@@ -20,6 +26,7 @@ import type { WasmKernelFacade } from '../../wasm-facade.js'
 import { pivotKey, type WorkbookPivotRecord, type WorkbookStore } from '../../workbook-store.js'
 import type { RuntimeFormula } from '../runtime-state.js'
 import { EnginePivotError } from '../errors.js'
+import { sourcefulPivotToUpsertOp } from './pivot-op-helpers.js'
 
 interface EnginePivotState {
   readonly workbook: WorkbookStore
@@ -342,17 +349,7 @@ export function createEnginePivotService(args: {
 
     if (pivot.rows !== rows || pivot.cols !== cols) {
       if (pivot.source) {
-        args.applyDerivedOp({
-          kind: 'upsertPivotTable',
-          name: pivot.name,
-          sheetName: pivot.sheetName,
-          address: pivot.address,
-          source: { ...pivot.source },
-          groupBy: [...pivot.groupBy],
-          values: pivot.values.map((value) => Object.assign({}, value)),
-          rows,
-          cols,
-        })
+        args.applyDerivedOp(sourcefulPivotToUpsertOp({ ...pivot, source: pivot.source, rows, cols }))
       } else {
         args.state.workbook.setPivot({ ...pivot, rows, cols })
       }
@@ -567,7 +564,7 @@ export function createEnginePivotService(args: {
     }
 
     let matched = filters.length === 0
-    let aggregate = 0
+    const aggregate = emptyPivotAggregateState()
     for (let rowIndex = 1; rowIndex < sourceRows.length; rowIndex += 1) {
       const row = sourceRows[rowIndex] ?? []
       const matches = materializedFilters.every((filter) => pivotItemMatches(row[filter.fieldIndex!] ?? emptyValue(), filter.item))
@@ -576,14 +573,10 @@ export function createEnginePivotService(args: {
       }
       matched = true
       const value = row[valueColumnIndex] ?? emptyValue()
-      if (valueField.summarizeBy === 'count') {
-        aggregate += value.tag === ValueTag.Empty ? 0 : 1
-      } else if (value.tag === ValueTag.Number) {
-        aggregate += value.value
-      }
+      accumulatePivotAggregateValue(aggregate, value)
     }
 
-    return matched ? { tag: ValueTag.Number, value: aggregate } : visibleFallback()
+    return matched ? { tag: ValueTag.Number, value: finalizePivotAggregate(valueField.summarizeBy, aggregate) } : visibleFallback()
   }
 
   const clearPivotForCellNow = (cellIndex: number): number[] => {

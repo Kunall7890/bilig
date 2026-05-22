@@ -934,10 +934,10 @@ export function createEngineOperationService(args: CreateEngineOperationServiceA
           }),
       })
     },
-    applyCellMutationsAt(refs, batch, source, potentialNewCells) {
+    applyCellMutationsAt(refs, batch, source, potentialNewCells, options) {
       return Effect.try({
         try: () => {
-          applyCellMutationsAtNow(refs, batch, source, potentialNewCells)
+          applyCellMutationsAtNow(refs, batch, source, potentialNewCells, options)
         },
         catch: (cause) =>
           new EngineMutationError({

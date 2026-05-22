@@ -62,9 +62,6 @@ export function rewriteCompiledFormulaForStructuralTransform(
       source,
       compiled: compileFormulaAst(source, rewrittenOptimizedAst, {
         originalAst: rewrittenAst,
-        symbolicNames: compiled.symbolicNames,
-        symbolicTables: compiled.symbolicTables,
-        symbolicSpills: compiled.symbolicSpills,
       }),
       reusedProgram: false,
     }
@@ -80,6 +77,7 @@ export function rewriteCompiledFormulaForStructuralTransform(
       astMatchesSource: true,
       deps: compiled.deps.map((dependency) => rewriteQualifiedDependencyReference(dependency, ownerSheetName, targetSheetName, transform)),
       symbolicRefs: compiled.symbolicRefs.map((ref) => rewriteQualifiedCellReference(ref, ownerSheetName, targetSheetName, transform)),
+      symbolicSpills: compiled.symbolicSpills.map((ref) => rewriteQualifiedCellReference(ref, ownerSheetName, targetSheetName, transform)),
       symbolicRanges: compiled.symbolicRanges.map((range) =>
         rewriteQualifiedRangeReference(range, ownerSheetName, targetSheetName, transform),
       ),

@@ -360,6 +360,7 @@ export abstract class SpreadsheetEngineRuntimeBase {
         getSingleEntityDependent: () => -1,
         collectFormulaDependents: () => new Uint32Array(),
         collectFormulaCellsForTables: () => [],
+        clearSpillForCell: () => ({ changedCellIndices: [], ownerCellIndex: undefined }),
         noteExactLookupLiteralWrite: () => {
           return
         },

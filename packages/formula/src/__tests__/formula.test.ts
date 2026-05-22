@@ -153,8 +153,9 @@ describe('formula', () => {
     expect(compileFormula('RAND()').mode).toBe(1)
   })
 
-  it('marks SUBTOTAL as metadata-sensitive for row visibility recalculation', () => {
+  it('marks visibility-aware aggregate calls as metadata-sensitive for row visibility recalculation', () => {
     expect(compileFormula('SUBTOTAL(109,A1:A2)').volatile).toBe(true)
+    expect(compileFormula('AGGREGATE(9,5,A1:A2)').volatile).toBe(true)
     expect(compileFormula('INDIRECT("A1")').volatile).toBe(true)
   })
 
@@ -198,7 +199,8 @@ describe('formula', () => {
 
   it('routes accelerated text-splitting formulas to the wasm path while keeping indirection helpers on JS', () => {
     expect(compileFormula('TEXTSPLIT(A1,",")')).toMatchObject({ mode: 1, producesSpill: true })
-    expect(compileFormula('INDIRECT("A1")').mode).toBe(0)
+    expect(compileFormula('INDIRECT("A1")')).toMatchObject({ mode: 0, producesSpill: true })
+    expect(compileFormula('INDIRECT("A1:A3")')).toMatchObject({ mode: 0, producesSpill: true })
     expect(compileFormula('FORMULA(A1)').mode).toBe(0)
     expect(compileFormula('GETPIVOTDATA("Sales",A1)').mode).toBe(0)
   })

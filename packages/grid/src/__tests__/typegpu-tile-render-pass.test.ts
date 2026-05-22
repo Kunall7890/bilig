@@ -3,7 +3,12 @@ import type { GpuBufferHandleV3 } from '../renderer-v3/gpu-buffer-arena.js'
 import type { GridRenderTile } from '../renderer-v3/render-tile-source.js'
 import type { WorkbookRenderTilePaneState } from '../renderer-v3/render-tile-pane-state.js'
 import { TypeGpuTileResourceCacheV3, resolveWorkbookTileContentBufferKeyV3 } from '../renderer-v3/typegpu-tile-buffer-pool.js'
-import { hasCompleteTypeGpuBodyTileContentV3, hasDrawableTypeGpuBodyPaneFramesV3 } from '../renderer-v3/typegpu-tile-render-pass.js'
+import {
+  hasCompleteTypeGpuBodyTileContentV3,
+  hasDrawableTypeGpuBodyPaneFramesV3,
+  hasRequiredTypeGpuTextAtlasResourcesV3,
+} from '../renderer-v3/typegpu-tile-render-pass.js'
+import { resolveGridTextTileRevisionKeyV3 } from '../renderer-v3/typegpu-tile-resource-revisions.js'
 
 function createRenderTile(
   tileId = 101,
@@ -107,6 +112,7 @@ describe('typegpu tile render pass readiness', () => {
     expect(hasCompleteTypeGpuBodyTileContentV3({ tilePanes: [pane], tileResources })).toBe(false)
 
     Reflect.set(content, 'textHandle', createHandle('textRuns'))
+    Reflect.set(content, 'textRevisionKey', resolveGridTextTileRevisionKeyV3(pane.tile))
     expect(hasCompleteTypeGpuBodyTileContentV3({ tilePanes: [pane], tileResources })).toBe(true)
   })
 
@@ -127,6 +133,54 @@ describe('typegpu tile render pass readiness', () => {
     Reflect.set(content, 'rectHandle', createHandle('rectInstances'))
 
     expect(hasCompleteTypeGpuBodyTileContentV3({ drawText: false, tilePanes: [pane], tileResources })).toBe(true)
+  })
+
+  test('blocks TypeGPU presentation when visible text exists but the atlas texture is missing', () => {
+    const textPane = createPane('body', createRenderTile(101, { rectCount: 1, textCount: 1 }))
+    const headerPane = {
+      borderRectCount: 0,
+      contentOffset: { x: 0, y: 0 },
+      fillRectCount: 0,
+      frame: { height: 24, width: 320, x: 0, y: 0 },
+      paneId: 'top',
+      rectCount: 0,
+      rectInstances: new Float32Array(),
+      rectSignature: '',
+      rects: new Float32Array(),
+      scrollAxes: { x: true, y: false },
+      surfaceSize: { height: 24, width: 320 },
+      textCount: 1,
+      textRuns: [],
+      textSignature: 'header-text',
+    } as const
+
+    expect(
+      hasRequiredTypeGpuTextAtlasResourcesV3({
+        atlasTextureReady: false,
+        headerPanes: [],
+        tilePanes: [textPane],
+      }),
+    ).toBe(false)
+    expect(
+      hasRequiredTypeGpuTextAtlasResourcesV3({
+        atlasTextureReady: false,
+        headerPanes: [headerPane],
+        tilePanes: [createPane('body', createRenderTile(102, { rectCount: 1 }))],
+      }),
+    ).toBe(false)
+    expect(
+      hasRequiredTypeGpuTextAtlasResourcesV3({
+        atlasTextureReady: false,
+        drawText: false,
+        tilePanes: [textPane],
+      }),
+    ).toBe(true)
+    expect(
+      hasRequiredTypeGpuTextAtlasResourcesV3({
+        atlasTextureReady: true,
+        tilePanes: [textPane],
+      }),
+    ).toBe(true)
   })
 
   test('blocks drawing body panes whose content entry has no drawable instances', () => {

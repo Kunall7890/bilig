@@ -383,8 +383,10 @@ describe('EngineOperationService', () => {
 
     expect(engine.getCell('Sheet1', 'E1').formula).toBe('SUM(A1:C1)')
     expect(engine.getCellValue('Sheet1', 'E1')).toEqual({ tag: ValueTag.Number, value: 5 })
-    expect(engine.getRowMetadata('Sheet1')).toEqual([{ sheetName: 'Sheet1', start: 0, count: 1, size: 24, hidden: false }])
-    expect(engine.getColumnMetadata('Sheet1')).toEqual([{ sheetName: 'Sheet1', start: 0, count: 1, size: 90, hidden: true }])
+    expect(engine.getRowMetadata('Sheet1')).toEqual([{ sheetName: 'Sheet1', start: 0, count: 1, size: 24, hidden: false, filtered: null }])
+    expect(engine.getColumnMetadata('Sheet1')).toEqual([
+      { sheetName: 'Sheet1', start: 0, count: 1, size: 90, hidden: true, filtered: null },
+    ])
   })
 
   it('keeps single structural column inserts off the generic potential-cell estimation path', async () => {

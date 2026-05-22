@@ -68,7 +68,11 @@ export function applySetCellFormulaMutation(request: ApplySetCellFormulaMutation
   }
   const cellIndex = args.state.workbook.ensureCellAt(sheetId, mutation.row, mutation.col).cellIndex
   if (!isRestore && existingIndex !== undefined) {
-    changedInputCount = args.markSpillRootsChanged(args.clearOwnedSpill(cellIndex), changedInputCount)
+    const clearedSpill = args.clearSpillForCell(cellIndex)
+    changedInputCount = args.markSpillRootsChanged(clearedSpill.changedCellIndices, changedInputCount)
+    if (clearedSpill.ownerCellIndex !== undefined) {
+      formulaChangedCount = args.markFormulaChanged(clearedSpill.ownerCellIndex, formulaChangedCount)
+    }
   }
   const priorHadFormula = args.state.formulas.get(cellIndex) !== undefined
   const oldFormulaNumber = !isRestore && priorHadFormula ? request.readExactNumericValueForLookup(cellIndex) : undefined
