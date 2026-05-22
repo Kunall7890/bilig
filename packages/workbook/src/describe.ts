@@ -21,6 +21,7 @@ import {
 import type { WorkbookActionInput } from './input.js'
 import type { WorkbookOp } from './ops.js'
 import type { WorkbookReceiptProof, WorkbookRenderedReceipt, WorkbookRunReceipt } from './receipt.js'
+import type { WorkbookRuntimePreview, WorkbookRuntimeRequirement } from './requirements.js'
 import type {
   WorkbookAppliedSummary,
   WorkbookChangeSummary,
@@ -33,6 +34,7 @@ import type {
   WorkbookRunResult,
   WorkbookUndoRef,
 } from './result.js'
+import type { WorkbookPreviewResult } from './run.js'
 
 export interface WorkbookModelDescription {
   readonly name: string
@@ -176,6 +178,26 @@ export type WorkbookActionPlanResultDescription =
       readonly modelName: string
       readonly actionName: string
       readonly input?: WorkbookActionInput
+      readonly errors: readonly WorkbookRunErrorDescription[]
+      readonly checks: readonly WorkbookCheckResultDescription[]
+    }
+
+export interface WorkbookRuntimeRequirementDescription extends WorkbookRuntimeRequirement {}
+
+export interface WorkbookRuntimePreviewDescription {
+  readonly modelName: string
+  readonly actionName: string
+  readonly requirements: readonly WorkbookRuntimeRequirementDescription[]
+  readonly materializedOps: readonly WorkbookOp[]
+}
+
+export type WorkbookPreviewResultDescription =
+  | {
+      readonly status: 'previewed'
+      readonly preview: WorkbookRuntimePreviewDescription
+    }
+  | {
+      readonly status: 'failed'
       readonly errors: readonly WorkbookRunErrorDescription[]
       readonly checks: readonly WorkbookCheckResultDescription[]
     }
@@ -495,6 +517,33 @@ export function describePlanResult<Refs>(result: WorkbookActionPlanResult<Refs>)
     modelName: result.modelName,
     actionName: result.actionName,
     ...(result.input !== undefined ? { input: result.input } : {}),
+    errors: result.errors.map(describeError),
+    checks: result.checks.map(describeCheck),
+  }
+}
+
+function describeRuntimeRequirement(requirement: WorkbookRuntimeRequirement): WorkbookRuntimeRequirementDescription {
+  return structuredClone(requirement)
+}
+
+function describeRuntimePreview(preview: WorkbookRuntimePreview): WorkbookRuntimePreviewDescription {
+  return {
+    modelName: preview.modelName,
+    actionName: preview.actionName,
+    requirements: preview.requirements.map(describeRuntimeRequirement),
+    materializedOps: preview.materializedOps.map((op) => structuredClone(op)),
+  }
+}
+
+export function describePreviewResult(result: WorkbookPreviewResult): WorkbookPreviewResultDescription {
+  if (result.status === 'previewed') {
+    return {
+      status: 'previewed',
+      preview: describeRuntimePreview(result.preview),
+    }
+  }
+  return {
+    status: 'failed',
     errors: result.errors.map(describeError),
     checks: result.checks.map(describeCheck),
   }

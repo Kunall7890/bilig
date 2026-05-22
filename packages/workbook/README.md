@@ -107,10 +107,11 @@ Agents should use the package in this order:
    use `planWorkbookCommand(model, actionName, input, options)` directly.
 4. Read `describeCommandBundle(command)` for the runtime handoff contract.
 5. Run `verifyWorkbookCommandBundle(command)` before execution.
-6. Hand the command to a runtime adapter with `runWorkbookCommandBundle`.
-7. Inspect `describeRunResult(result)`.
-8. Inspect `result.receipt` when present for revisions, rendered proof, undo proof, and warnings.
-9. Treat `status: "done"` as success only when checks are returned as proof.
+6. Preview exact runtime materialization with `previewWorkbookCommandBundle`.
+7. Hand the approved command to a runtime adapter with `runWorkbookCommandBundle`.
+8. Inspect `describeRunResult(result)`.
+9. Inspect `result.receipt` when present for revisions, rendered proof, undo proof, and warnings.
+10. Treat `status: "done"` as success only when checks are returned as proof.
 
 The important rule: planned checks are promises, not proof. Runtime proof must
 turn checks into `passed` or `failed`.
@@ -400,7 +401,13 @@ Plans describe intent. Command bundles are the executable handoff object for an
 agent or service runtime.
 
 ```ts
-import { describeCommandBundle, planWorkbookCommand, runWorkbookCommandBundle, verifyWorkbookCommandBundle } from '@bilig/workbook'
+import {
+  describeCommandBundle,
+  planWorkbookCommand,
+  previewWorkbookCommandBundle,
+  runWorkbookCommandBundle,
+  verifyWorkbookCommandBundle,
+} from '@bilig/workbook'
 
 const planned = planWorkbookCommand(model, 'calculate', undefined, {
   baseRevision: 'rev-42',
@@ -413,6 +420,11 @@ if (planned.status === 'planned') {
   const verification = verifyWorkbookCommandBundle(planned.command)
   if (verification.status === 'invalid') {
     throw new Error(JSON.stringify(verification.issues))
+  }
+
+  const preview = await previewWorkbookCommandBundle(planned.command, adapter)
+  if (preview.status === 'failed') {
+    throw new Error(JSON.stringify(preview.errors))
   }
 
   const result = await runWorkbookCommandBundle(planned.command, adapter)
@@ -437,6 +449,12 @@ Adapters receive the command as the optional second or third argument to
 `preview`, `apply`, `read`, and `verifyChecks`, so runtimes can enforce
 revision checks, idempotency, locks, and audit logging without changing the
 consumer model.
+
+Use `previewWorkbookCommandBundle(command, adapter)` when an agent needs a
+separate approval step. It validates the command bundle, calls only
+`adapter.preview`, returns the exact materialized ops, and never calls
+`adapter.apply`. Use `describePreviewResult(result)` for JSON-safe logs or tool
+output.
 
 ## Runtime Handoff
 
@@ -640,7 +658,10 @@ Verification and execution:
 - `runWorkbookAction`
 - `runWorkbookPlan`
 - `runWorkbookCommandBundle`
+- `previewWorkbookPlan`
+- `previewWorkbookCommandBundle`
 - `verifyWorkbookReadbacks`
+- `describePreviewResult`
 - `describeRunResult`
 
 Stable code lists and guards:
@@ -663,6 +684,7 @@ Primary types:
 - `WorkbookCommandBundle`
 - `WorkbookCommandBundleResult`
 - `WorkbookRunAdapter`
+- `WorkbookPreviewResult`
 - `WorkbookRunResult`
 - `WorkbookCheckResult`
 - `WorkbookRunError`

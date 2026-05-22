@@ -6,7 +6,20 @@ const output = await runWorkbookAgentModelExample()
 assert.equal(output.model.name, 'consumer-table-calculation')
 assert.deepEqual(output.model.actions, ['calculate'])
 assert.equal(output.planning.verification.status, 'valid')
+assert.match(output.planning.command.commandId, /^cmd_[0-9a-f]{16}$/u)
+assert.equal(output.planning.command.baseRevision, 'example-rev-1')
+assert.equal(output.planning.command.idempotencyKey, 'example-calculate')
+assert.equal(output.preview.status, 'previewed')
+if (output.preview.status !== 'previewed') {
+  throw new Error('expected previewed output')
+}
+assert.equal(output.preview.preview.materializedOps.length, 2)
 assert.equal(output.run.status, 'done')
+if (output.run.status !== 'done') {
+  throw new Error('expected done output')
+}
+assert.equal(output.run.receipt?.commandId, output.planning.command.commandId)
+assert.equal(output.run.receipt?.baseRevision, 'example-rev-1')
 assert.deepEqual(output.workbook.formulas, {
   D2: '(Sheet1!B2)*(Sheet1!C2)',
   D3: null,

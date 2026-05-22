@@ -1,6 +1,10 @@
 import { describe, expect, it, vi } from 'vitest'
 import {
   describeRunResult,
+  describePreviewResult,
+  planWorkbookCommand,
+  previewWorkbookCommandBundle,
+  previewWorkbookPlan,
   defineModel,
   findRange,
   formula,
@@ -214,6 +218,97 @@ describe('@bilig/workbook run api', () => {
         },
       ],
     })
+  })
+
+  it('previews command bundles without applying them', async () => {
+    const planned = planWorkbookCommand(valueModel(), 'write', undefined, {
+      baseRevision: 'rev-1',
+      idempotencyKey: 'preview-only',
+    })
+    expect(planned.status).toBe('planned')
+    if (planned.status !== 'planned') {
+      throw new Error('expected command planning to succeed')
+    }
+    const command = planned.command
+    const apply = vi.fn<WorkbookRunAdapter<typeof command.plan.refs>['apply']>(() => ({ status: 'applied' }))
+    const preview = vi.fn<Required<WorkbookRunAdapter<typeof command.plan.refs>>['preview']>((plan, receivedCommand) => {
+      expect(receivedCommand).toBe(command)
+      return {
+        modelName: plan.modelName,
+        actionName: plan.actionName,
+        requirements: command.requirements.requirements,
+        materializedOps: plan.ops,
+      }
+    })
+
+    const result = await previewWorkbookCommandBundle(command, { preview, apply })
+
+    expect(preview).toHaveBeenCalledTimes(1)
+    expect(apply).not.toHaveBeenCalled()
+    expect(result).toEqual({
+      status: 'previewed',
+      preview: {
+        modelName: 'run-value-model',
+        actionName: 'write',
+        requirements: command.requirements.requirements,
+        materializedOps: [{ kind: 'setCellValue', sheetName: 'Sheet1', address: 'B2', value: 12 }],
+      },
+    })
+    expect(JSON.parse(JSON.stringify(describePreviewResult(result)))).toEqual(describePreviewResult(result))
+  })
+
+  it('rejects invalid command bundles before preview or apply', async () => {
+    const planned = planWorkbookCommand(valueModel(), 'write')
+    expect(planned.status).toBe('planned')
+    if (planned.status !== 'planned') {
+      throw new Error('expected command planning to succeed')
+    }
+    const command = {
+      ...planned.command,
+      commandId: 'cmd_bad',
+    }
+    const preview = vi.fn<Required<WorkbookRunAdapter<typeof planned.command.plan.refs>>['preview']>(() => ({
+      modelName: planned.command.modelName,
+      actionName: planned.command.actionName,
+      requirements: [],
+      materializedOps: [],
+    }))
+    const apply = vi.fn<WorkbookRunAdapter<typeof planned.command.plan.refs>['apply']>(() => ({ status: 'applied' }))
+
+    await expect(previewWorkbookCommandBundle(command, { preview, apply })).resolves.toEqual({
+      status: 'failed',
+      errors: [
+        {
+          code: 'invalid_command_bundle',
+          message: expect.stringContaining('does not match'),
+          path: 'commandId',
+        },
+      ],
+      checks: planned.command.plan.checks,
+    })
+    expect(preview).not.toHaveBeenCalled()
+    expect(apply).not.toHaveBeenCalled()
+  })
+
+  it('fails preview plans when a runtime has no preview phase', async () => {
+    const planned = planWorkbookCommand(valueModel(), 'write')
+    expect(planned.status).toBe('planned')
+    if (planned.status !== 'planned') {
+      throw new Error('expected command planning to succeed')
+    }
+    const apply = vi.fn<WorkbookRunAdapter<typeof planned.command.plan.refs>['apply']>(() => ({ status: 'applied' }))
+
+    await expect(previewWorkbookPlan(planned.command.plan, { apply })).resolves.toEqual({
+      status: 'failed',
+      errors: [
+        {
+          code: 'runtime_rejected',
+          message: 'Workbook runtime cannot preview run-value-model.write',
+        },
+      ],
+      checks: planned.command.plan.checks,
+    })
+    expect(apply).not.toHaveBeenCalled()
   })
 
   it('describes successful run results without leaking ref helper functions', async () => {

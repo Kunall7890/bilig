@@ -67,11 +67,14 @@ It exposes:
 - `describePlan`
 - `describePlanResult`
 - `describeCommandBundle`
+- `describePreviewResult`
 - `describeRunResult`
 - `describeRuntimeRequirements`
 - `verifyPlan`
 - `verifyWorkbookCommandBundle`
 - `verifyModel`
+- `previewWorkbookPlan`
+- `previewWorkbookCommandBundle`
 - `runWorkbookPlan`
 - `runWorkbookAction`
 - `runWorkbookCommandBundle`
@@ -92,7 +95,7 @@ It exposes:
 - `workbook.addOp(op, { target?, message? })` inside model actions
 - `findTable`, `findColumn`, `findRange`, `findName`, and `findRows` through the model workbook context and as top-level helpers
 - `check.exists`, `check.noFormulaErrors`, `check.valueEquals`, `check.valuesEqual`, `check.formulaEquals`, `check.formulasEqual`, and `check.custom` through the model workbook context and as top-level helpers
-- `WorkbookModel`, `WorkbookAction`, `WorkbookActionConfig`, `WorkbookActionDefinition`, `WorkbookActionContext`, `WorkbookCheckContext`, `WorkbookFindWorkbook`, `WorkbookCheckWorkbook`, `WorkbookActionWorkbook`, `WorkbookModelWorkbook`, `WorkbookFindNamespace`, `WorkbookActionInput`, `WorkbookActionInputDescription`, `WorkbookActionInputDescriptionKind`, `WorkbookActionInspection`, `WorkbookAddOpOptions`, `WorkbookActionPlanResult`, `WorkbookCommandBundle`, `WorkbookCommandBundleOptions`, `WorkbookCommandBundleResult`, `WorkbookCommandBundleDescription`, `WorkbookCommandBundleVerification`, `WorkbookCommandBundleIssue`, `WorkbookCommandBundleIssueCode`, `WorkbookRevision`, `WorkbookModelDescription`, `WorkbookRefDescription`, `WorkbookActionPlanDescription`, `WorkbookActionPlanResultDescription`, `WorkbookRunResultDescription`, `WorkbookUndoRefDescription`, `WorkbookAppliedSummaryDescription`, `WorkbookRunReceiptDescription`, `WorkbookRenderedReceiptDescription`, `WorkbookReceiptProofDescription`, `WorkbookRuntimeRequirements`, `WorkbookRuntimeRequirement`, `WorkbookRuntimeCapability`, `WorkbookRuntimeMaterialization`, `WorkbookRuntimePreview`, `WorkbookPlanVerification`, `WorkbookPlanIssue`, `WorkbookPlanIssueCode`, `WorkbookModelVerification`, `WorkbookModelActionVerification`, `WorkbookModelVerificationOptions`, `WorkbookRunAdapter`, `WorkbookRunApplyResult`, `WorkbookRuntimeReceipt`, `WorkbookRunReceipt`, `WorkbookRenderedReceipt`, `WorkbookReceiptProof`, `WorkbookReceiptProofKind`, `WorkbookReceiptProofStatus`, `WorkbookCellReadback`, `WorkbookRunReadback`, `WorkbookReadbackVerification`, `WorkbookReadbackIssue`, `WorkbookReadbackIssueCode`, `WorkbookCheckExpectation`, `WorkbookCheckExpectationDescription`, `WorkbookCustomCheckOptions`, `WorkbookReadbackCheckOptions`, `WorkbookRawFormulaOptions`, `WorkbookFormulaDependency`, `WorkbookFormulaInspection`, `WorkbookRunResult`, `WorkbookAppliedSummary`, `WorkbookRunError`, `WorkbookRunErrorCode`, and `WorkbookCheckResult`
+- `WorkbookModel`, `WorkbookAction`, `WorkbookActionConfig`, `WorkbookActionDefinition`, `WorkbookActionContext`, `WorkbookCheckContext`, `WorkbookFindWorkbook`, `WorkbookCheckWorkbook`, `WorkbookActionWorkbook`, `WorkbookModelWorkbook`, `WorkbookFindNamespace`, `WorkbookActionInput`, `WorkbookActionInputDescription`, `WorkbookActionInputDescriptionKind`, `WorkbookActionInspection`, `WorkbookAddOpOptions`, `WorkbookActionPlanResult`, `WorkbookCommandBundle`, `WorkbookCommandBundleOptions`, `WorkbookCommandBundleResult`, `WorkbookCommandBundleDescription`, `WorkbookCommandBundleVerification`, `WorkbookCommandBundleIssue`, `WorkbookCommandBundleIssueCode`, `WorkbookRevision`, `WorkbookModelDescription`, `WorkbookRefDescription`, `WorkbookActionPlanDescription`, `WorkbookActionPlanResultDescription`, `WorkbookPreviewResultDescription`, `WorkbookRuntimePreviewDescription`, `WorkbookRuntimeRequirementDescription`, `WorkbookRunResultDescription`, `WorkbookUndoRefDescription`, `WorkbookAppliedSummaryDescription`, `WorkbookRunReceiptDescription`, `WorkbookRenderedReceiptDescription`, `WorkbookReceiptProofDescription`, `WorkbookRuntimeRequirements`, `WorkbookRuntimeRequirement`, `WorkbookRuntimeCapability`, `WorkbookRuntimeMaterialization`, `WorkbookRuntimePreview`, `WorkbookPlanVerification`, `WorkbookPlanIssue`, `WorkbookPlanIssueCode`, `WorkbookModelVerification`, `WorkbookModelActionVerification`, `WorkbookModelVerificationOptions`, `WorkbookRunAdapter`, `WorkbookPreviewResult`, `WorkbookRunApplyResult`, `WorkbookRuntimeReceipt`, `WorkbookRunReceipt`, `WorkbookRenderedReceipt`, `WorkbookReceiptProof`, `WorkbookReceiptProofKind`, `WorkbookReceiptProofStatus`, `WorkbookCellReadback`, `WorkbookRunReadback`, `WorkbookReadbackVerification`, `WorkbookReadbackIssue`, `WorkbookReadbackIssueCode`, `WorkbookCheckExpectation`, `WorkbookCheckExpectationDescription`, `WorkbookCustomCheckOptions`, `WorkbookReadbackCheckOptions`, `WorkbookRawFormulaOptions`, `WorkbookFormulaDependency`, `WorkbookFormulaInspection`, `WorkbookRunResult`, `WorkbookAppliedSummary`, `WorkbookRunError`, `WorkbookRunErrorCode`, and `WorkbookCheckResult`
 - `WorkbookCheckProof` and `WorkbookCheckProofDescription`
 - the existing low-level operation language: `WorkbookOp`, `WorkbookTxn`, `EngineOp`, and `EngineOpBatch`
 
@@ -268,6 +271,12 @@ command id. A mutated command fails as `invalid_command_bundle` before
 `adapter.apply` is called. Adapter callbacks receive the command as an optional
 extra argument so runtimes can enforce revision checks, idempotency, locks, and
 audit logging without adding business-model assumptions to `@bilig/workbook`.
+`previewWorkbookCommandBundle(command, adapter)` validates the same command
+bundle and calls only `adapter.preview`; it never calls `adapter.apply`. This
+gives agents a separate approval step for exact runtime materialization before
+mutation. `previewWorkbookPlan(plan, adapter, command?)` exposes the same
+preview-only path when the caller already has a plan, and
+`describePreviewResult(result)` returns a JSON-safe approval artifact.
 
 `verifyPlan` gives agents a runtime-free consistency check before handoff. It
 flags invalid action input, unresolved command targets, unresolved formula

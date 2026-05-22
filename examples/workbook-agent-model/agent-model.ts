@@ -3,16 +3,21 @@ import { fileURLToPath } from 'node:url'
 import { createWorkbookRunAdapter, SpreadsheetEngine } from '@bilig/core'
 import {
   defineModel,
+  describeCommandBundle,
   describeModel,
   describePlan,
+  describePreviewResult,
   describeRunResult,
   describeRuntimeRequirements,
   formula,
-  planWorkbookAction,
-  runWorkbookAction,
+  planWorkbookCommand,
+  previewWorkbookCommandBundle,
+  runWorkbookCommandBundle,
   verifyPlan,
+  type WorkbookCommandBundleDescription,
   type WorkbookModelDescription,
   type WorkbookPlanVerification,
+  type WorkbookPreviewResultDescription,
   type WorkbookRuntimeRequirements,
   type WorkbookActionPlanDescription,
   type WorkbookRunResultDescription,
@@ -25,9 +30,11 @@ export interface WorkbookAgentModelExampleOutput {
   readonly planning: {
     readonly status: 'planned'
     readonly plan: WorkbookActionPlanDescription
+    readonly command: WorkbookCommandBundleDescription
     readonly verification: WorkbookPlanVerification
     readonly requirements: WorkbookRuntimeRequirements
   }
+  readonly preview: WorkbookPreviewResultDescription
   readonly run: WorkbookRunResultDescription
   readonly workbook: {
     readonly formulas: Record<string, string | null>
@@ -109,18 +116,27 @@ async function seedWorkbook(): Promise<SpreadsheetEngine> {
 
 export async function runWorkbookAgentModelExample(): Promise<WorkbookAgentModelExampleOutput> {
   const engine = await seedWorkbook()
+  const adapter = createWorkbookRunAdapter(engine)
 
-  const planned = planWorkbookAction(model, 'calculate')
+  const planned = planWorkbookCommand(model, 'calculate', undefined, {
+    baseRevision: 'example-rev-1',
+    idempotencyKey: 'example-calculate',
+  })
   if (planned.status !== 'planned') {
     throw new Error(planned.errors.map((error) => error.message).join('\n'))
   }
 
-  const verification = verifyPlan(planned.plan)
+  const verification = verifyPlan(planned.command.plan)
   if (verification.status !== 'valid') {
     throw new Error(verification.issues.map((issue) => issue.message).join('\n'))
   }
 
-  const run = await runWorkbookAction(model, 'calculate', createWorkbookRunAdapter(engine))
+  const preview = await previewWorkbookCommandBundle(planned.command, adapter)
+  if (preview.status !== 'previewed') {
+    throw new Error(preview.errors.map((error) => error.message).join('\n'))
+  }
+
+  const run = await runWorkbookCommandBundle(planned.command, adapter)
   if (run.status !== 'done') {
     throw new Error(run.errors.map((error) => error.message).join('\n'))
   }
@@ -129,10 +145,12 @@ export async function runWorkbookAgentModelExample(): Promise<WorkbookAgentModel
     model: describeModel(model),
     planning: {
       status: 'planned',
-      plan: describePlan(planned.plan),
+      plan: describePlan(planned.command.plan),
+      command: describeCommandBundle(planned.command),
       verification,
-      requirements: describeRuntimeRequirements(planned.plan),
+      requirements: describeRuntimeRequirements(planned.command.plan),
     },
+    preview: describePreviewResult(preview),
     run: describeRunResult(run),
     workbook: {
       formulas: {
