@@ -4,6 +4,19 @@ All notable changes to `@bilig/headless` will be documented in this file.
 
 This package is released as part of the aligned bilig library package set.
 
+## 0.51.0
+
+- Release type: minor
+- Previous libraries tag: libraries-v0.50.1
+- Manual override: no
+
+## Features
+- feat(excel-import): parse worksheet scalars in wasm (4c0feb4a)
+
+## Fixes
+- fix(core): avoid structural no-op history (1f28239b)
+- fix(ci): use OIDC for runtime npm publishing (401ea159)
+
 ## 0.50.1
 
 - Release type: patch
