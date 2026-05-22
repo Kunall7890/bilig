@@ -46,6 +46,8 @@ function context(
             hasPresentedVisibleFrame: (options.frameProofStatus ?? 'presented') === 'presented',
             frameProofSignature: 'frame:proof',
             presentedFrameProofSignature: 'frame:proof',
+            currentSceneOwnershipSignature: 'scene:proof',
+            presentedSceneOwnershipSignature: 'scene:proof',
             authoritativeRevision: options.surfaceRevision ?? capturedRevision,
             localRevision: null,
             projectedRevision: visibleRenderRevision,
@@ -107,6 +109,17 @@ describe('workbook agent rendered context wait policy', () => {
           surfaceProofOverrides: {
             frameProofSignature: 'frame:current',
             presentedFrameProofSignature: 'frame:presented',
+          },
+        }),
+        5,
+      ),
+    ).toBe(false)
+    expect(
+      hasRenderedContextAtRevision(
+        context(5, {
+          surfaceProofOverrides: {
+            currentSceneOwnershipSignature: 'scene:current',
+            presentedSceneOwnershipSignature: 'scene:presented',
           },
         }),
         5,

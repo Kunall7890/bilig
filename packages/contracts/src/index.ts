@@ -94,6 +94,8 @@ export const WorkbookAgentRenderedSurfaceProofSchema = Schema.Struct({
   hasPresentedVisibleFrame: Schema.Boolean,
   frameProofSignature: Schema.String,
   presentedFrameProofSignature: Schema.String,
+  currentSceneOwnershipSignature: Schema.String,
+  presentedSceneOwnershipSignature: Schema.String,
   authoritativeRevision: Schema.Union(Schema.Number, Schema.Null),
   localRevision: Schema.Union(Schema.Number, Schema.Null),
   projectedRevision: Schema.Union(Schema.Number, Schema.Null),

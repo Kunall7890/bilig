@@ -109,7 +109,7 @@ function normalizeOptionalText(value: string | undefined, label: string): string
   return text
 }
 
-function isWorkbookRevision(value: unknown): value is WorkbookRevision {
+export function isWorkbookRevision(value: unknown): value is WorkbookRevision {
   if (typeof value === 'string') {
     return value.trim() !== ''
   }

@@ -27,6 +27,7 @@ import {
   resolveWorkbookPaneFrameProofSignatureV3,
   resolveWorkbookPaneVisiblePayloadProofV3,
 } from '../renderer-v3/workbook-pane-renderer-host-runtime.js'
+import { resolveWorkbookPaneSceneOwnershipSignatureV3 } from '../renderer-v3/workbook-pane-scene-ownership.js'
 import { WorkbookPaneRendererRuntimeV3, type WorkbookPaneFrameDrawerV3 } from '../renderer-v3/workbook-pane-renderer-runtime.js'
 import { WorkbookGridScrollStore } from '../workbookGridScrollStore.js'
 
@@ -525,6 +526,51 @@ describe('WorkbookPaneRendererV3', () => {
     )
   })
 
+  test('includes authoritative scene ownership in frame proof identity', () => {
+    const basePane = createTilePane()
+    const changedSheetPane: WorkbookRenderTilePaneState = {
+      ...basePane,
+      tile: {
+        ...basePane.tile,
+        coord: {
+          ...basePane.tile.coord,
+          sheetId: 8,
+        },
+      },
+    }
+    const baseScene = resolveWorkbookPaneSceneOwnershipSignatureV3({
+      headerPanes: [],
+      overlay: null,
+      renderRevisionSnapshot: {
+        authoritativeRevision: 1,
+        localRevision: 0,
+        projectedRevision: 1,
+        tileSceneCameraSeq: 3,
+        tileSceneRevision: 2,
+      },
+      tilePanes: [basePane],
+    })
+    const changedSheetScene = resolveWorkbookPaneSceneOwnershipSignatureV3({
+      headerPanes: [],
+      overlay: null,
+      renderRevisionSnapshot: {
+        authoritativeRevision: 1,
+        localRevision: 0,
+        projectedRevision: 1,
+        tileSceneCameraSeq: 3,
+        tileSceneRevision: 2,
+      },
+      tilePanes: [changedSheetPane],
+    })
+
+    expect(baseScene).toContain('tile')
+    expect(baseScene).toContain(':7:7:')
+    expect(baseScene).not.toBe(changedSheetScene)
+    expect(resolveWorkbookPaneFrameProofSignatureV3({ headerPanes: [], overlay: null, tilePanes: [basePane] })).not.toBe(
+      resolveWorkbookPaneFrameProofSignatureV3({ headerPanes: [], overlay: null, tilePanes: [changedSheetPane] }),
+    )
+  })
+
   test('includes dynamic overlay payload signatures in frame proof identity', () => {
     const basePane = createTilePane()
     const baseOverlay = createOverlayBatch()
@@ -911,6 +957,7 @@ describe('WorkbookPaneRendererV3', () => {
       active: true,
       backend: {},
       frameProofSignature: 'frame-1',
+      sceneOwnershipSignature: 'scene-1',
       renderRevisionSnapshot: {
         authoritativeRevision: 3,
         localRevision: 4,
@@ -936,6 +983,7 @@ describe('WorkbookPaneRendererV3', () => {
             tileSceneCameraSeq: 6,
             tileSceneRevision: 7,
           },
+          sceneOwnershipSignature: 'scene-1',
         }),
       }),
     )

@@ -73,6 +73,8 @@ export function stringifyWorkbookAgentUiContextRenderedProofKey(context: Workboo
                     hasPresentedVisibleFrame: rendered.surfaceProof.hasPresentedVisibleFrame,
                     frameProofSignature: rendered.surfaceProof.frameProofSignature,
                     presentedFrameProofSignature: rendered.surfaceProof.presentedFrameProofSignature,
+                    currentSceneOwnershipSignature: rendered.surfaceProof.currentSceneOwnershipSignature,
+                    presentedSceneOwnershipSignature: rendered.surfaceProof.presentedSceneOwnershipSignature,
                     authoritativeRevision: rendered.surfaceProof.authoritativeRevision,
                     projectedRevision: rendered.surfaceProof.projectedRevision,
                     visibleRenderRevision: rendered.surfaceProof.visibleRenderRevision,

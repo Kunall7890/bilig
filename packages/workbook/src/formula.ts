@@ -1,4 +1,4 @@
-import { normalizeFormulaFunctionName, parseFormula } from '@bilig/formula'
+import { compileFormula, normalizeFormulaFunctionName, parseFormula, type ParsedDependencyReference } from '@bilig/formula'
 import type { CellRangeRef } from '@bilig/protocol'
 import { isWorkbookRef, type WorkbookRef } from './find.js'
 
@@ -10,6 +10,47 @@ export interface WorkbookFormulaExpression {
 
 export interface WorkbookRawFormulaOptions {
   readonly inputs?: readonly WorkbookRef[]
+}
+
+export type WorkbookFormulaDependency =
+  | {
+      readonly kind: 'cell'
+      readonly address: string
+      readonly sheetName?: string
+      readonly explicitSheet?: boolean
+      readonly row?: number
+      readonly col?: number
+      readonly rowAbsolute?: boolean
+      readonly colAbsolute?: boolean
+    }
+  | {
+      readonly kind: 'range'
+      readonly address: string
+      readonly refKind: 'cells' | 'rows' | 'cols'
+      readonly sheetName?: string
+      readonly sheetEndName?: string
+      readonly explicitSheet?: boolean
+      readonly startAddress: string
+      readonly endAddress: string
+      readonly startRow: number
+      readonly endRow: number
+      readonly startCol: number
+      readonly endCol: number
+      readonly startRowAbsolute?: boolean
+      readonly endRowAbsolute?: boolean
+      readonly startColAbsolute?: boolean
+      readonly endColAbsolute?: boolean
+    }
+
+export interface WorkbookFormulaInspection {
+  readonly source: string
+  readonly inputs: readonly WorkbookRef[]
+  readonly dependencies: readonly WorkbookFormulaDependency[]
+  readonly names: readonly string[]
+  readonly tables: readonly string[]
+  readonly spills: readonly string[]
+  readonly volatile: boolean
+  readonly producesSpill: boolean
 }
 
 export type WorkbookFormulaOperand = WorkbookFormulaExpression | WorkbookRef | string | number | boolean
@@ -131,6 +172,54 @@ function collectInputs(args: readonly WorkbookFormulaOperand[]): readonly Workbo
   return uniqueRefs(args.flatMap((arg) => operandInputs(arg)))
 }
 
+function cloneFormulaDependency(dependency: ParsedDependencyReference): WorkbookFormulaDependency {
+  if (dependency.kind === 'cell') {
+    return Object.freeze({
+      kind: 'cell',
+      address: dependency.address,
+      ...(dependency.sheetName !== undefined ? { sheetName: dependency.sheetName } : {}),
+      ...(dependency.explicitSheet !== undefined ? { explicitSheet: dependency.explicitSheet } : {}),
+      ...(dependency.row !== undefined ? { row: dependency.row } : {}),
+      ...(dependency.col !== undefined ? { col: dependency.col } : {}),
+      ...(dependency.rowAbsolute !== undefined ? { rowAbsolute: dependency.rowAbsolute } : {}),
+      ...(dependency.colAbsolute !== undefined ? { colAbsolute: dependency.colAbsolute } : {}),
+    })
+  }
+  return Object.freeze({
+    kind: 'range',
+    address: dependency.address,
+    refKind: dependency.refKind,
+    ...(dependency.sheetName !== undefined ? { sheetName: dependency.sheetName } : {}),
+    ...(dependency.sheetEndName !== undefined ? { sheetEndName: dependency.sheetEndName } : {}),
+    ...(dependency.explicitSheet !== undefined ? { explicitSheet: dependency.explicitSheet } : {}),
+    startAddress: dependency.startAddress,
+    endAddress: dependency.endAddress,
+    startRow: dependency.startRow,
+    endRow: dependency.endRow,
+    startCol: dependency.startCol,
+    endCol: dependency.endCol,
+    ...(dependency.startRowAbsolute !== undefined ? { startRowAbsolute: dependency.startRowAbsolute } : {}),
+    ...(dependency.endRowAbsolute !== undefined ? { endRowAbsolute: dependency.endRowAbsolute } : {}),
+    ...(dependency.startColAbsolute !== undefined ? { startColAbsolute: dependency.startColAbsolute } : {}),
+    ...(dependency.endColAbsolute !== undefined ? { endColAbsolute: dependency.endColAbsolute } : {}),
+  })
+}
+
+function inspectFormula(expression: WorkbookFormulaOperand): WorkbookFormulaInspection {
+  const source = normalizeFormulaSource(operandSource(expression))
+  const compiled = compileFormula(source)
+  return Object.freeze({
+    source,
+    inputs: Object.freeze([...operandInputs(expression)]),
+    dependencies: Object.freeze((compiled.parsedDeps ?? []).map(cloneFormulaDependency)),
+    names: Object.freeze([...compiled.symbolicNames]),
+    tables: Object.freeze([...compiled.symbolicTables]),
+    spills: Object.freeze([...compiled.symbolicSpills]),
+    volatile: compiled.volatile,
+    producesSpill: compiled.producesSpill,
+  })
+}
+
 function binary(left: WorkbookFormulaOperand, operator: '+' | '-' | '*' | '/', right: WorkbookFormulaOperand): WorkbookFormulaExpression {
   return createFormulaExpression(`(${operandSource(left)})${operator}(${operandSource(right)})`, collectInputs([left, right]))
 }
@@ -149,6 +238,12 @@ export const formula = {
   },
   inputs(expression: WorkbookFormulaOperand): readonly WorkbookRef[] {
     return Object.freeze([...operandInputs(expression)])
+  },
+  dependencies(expression: WorkbookFormulaOperand): readonly WorkbookFormulaDependency[] {
+    return inspectFormula(expression).dependencies
+  },
+  inspect(expression: WorkbookFormulaOperand): WorkbookFormulaInspection {
+    return inspectFormula(expression)
   },
   ref(ref: WorkbookRef): WorkbookFormulaExpression {
     return createFormulaExpression(refSource(ref), [ref])

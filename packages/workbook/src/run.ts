@@ -5,7 +5,9 @@ import { isWorkbookOp } from './guards.js'
 import { normalizeWorkbookActionInput, type WorkbookActionInput } from './input.js'
 import { planWorkbookAction, type WorkbookActionMap, type WorkbookActionPlan, type WorkbookModel } from './model.js'
 import { verifyWorkbookReadbacks, type WorkbookCellReadback, type WorkbookReadbackIssue, type WorkbookRunReadback } from './readback.js'
+import type { WorkbookRuntimeReceipt } from './receipt.js'
 import type { WorkbookRuntimePreview, WorkbookRuntimeRequirement } from './requirements.js'
+import { maybeBuildRunReceipt, validateRuntimeReceipt } from './run-receipt.js'
 import {
   isWorkbookRunErrorCode,
   type WorkbookAppliedSummary,
@@ -24,6 +26,7 @@ export interface WorkbookRunApplyResult {
   readonly status: 'applied' | 'failed'
   readonly errors?: readonly WorkbookRunError[]
   readonly undo?: WorkbookUndoRef
+  readonly receipt?: WorkbookRuntimeReceipt
 }
 
 export interface WorkbookRunAdapter<Refs = unknown> {
@@ -128,14 +131,31 @@ function failedFromPlanIssues<Refs>(plan: WorkbookActionPlan<Refs>): WorkbookRun
   }
 }
 
-function failedApplyResult(plan: WorkbookActionPlan, result: WorkbookRunApplyResult): WorkbookRunResult {
+function failedApplyResult<Refs>(
+  plan: WorkbookActionPlan<Refs>,
+  result: WorkbookRunApplyResult,
+  preview: WorkbookRuntimePreview | undefined,
+  command: WorkbookCommandBundle<Refs> | undefined,
+): WorkbookRunResult {
+  const errors =
+    result.errors !== undefined && result.errors.length > 0
+      ? result.errors
+      : [runError('apply_failed', `Workbook action ${plan.modelName}.${plan.actionName} failed to apply`)]
+  const receipt = maybeBuildRunReceipt({
+    plan,
+    command,
+    preview,
+    applyResult: result,
+    checks: plan.checks,
+    errors,
+    readbackTargetCount: 0,
+  })
   return {
     status: 'failed',
-    errors:
-      result.errors !== undefined && result.errors.length > 0
-        ? result.errors
-        : [runError('apply_failed', `Workbook action ${plan.modelName}.${plan.actionName} failed to apply`)],
+    errors,
     checks: plan.checks,
+    ...(result.undo !== undefined ? { undo: result.undo } : {}),
+    ...(receipt !== undefined ? { receipt } : {}),
   }
 }
 
@@ -345,10 +365,20 @@ function validateApplyResult(value: unknown): WorkbookRunApplyResult | WorkbookR
       ...(undo['ops'] !== undefined ? { ops: undo['ops'] } : {}),
     }
   }
+  const receipt = value['receipt']
+  let runtimeReceipt: WorkbookRuntimeReceipt | undefined
+  if (receipt !== undefined) {
+    const validatedReceipt = validateRuntimeReceipt(receipt, 'apply.receipt')
+    if ('code' in validatedReceipt) {
+      return validatedReceipt
+    }
+    runtimeReceipt = validatedReceipt
+  }
   return {
     status: value['status'],
     ...(errors !== undefined ? { errors } : {}),
     ...(undoRef !== undefined ? { undo: undoRef } : {}),
+    ...(runtimeReceipt !== undefined ? { receipt: runtimeReceipt } : {}),
   }
 }
 
@@ -566,16 +596,30 @@ function unverifiedCheckErrors(checks: readonly WorkbookCheckResult[]): readonly
     .map((check) => runError('check_not_verified', `${checkLabel(check)} did not verify check ${check.kind}: ${check.message}`))
 }
 
-function failedAfterApply(
+function failedAfterApply<Refs>(
+  plan: WorkbookActionPlan<Refs>,
+  command: WorkbookCommandBundle<Refs> | undefined,
+  preview: WorkbookRuntimePreview | undefined,
   applyResult: WorkbookRunApplyResult,
   errors: readonly WorkbookRunError[],
   checks: readonly WorkbookCheckResult[],
+  readbackTargetCount: number,
 ): WorkbookRunResult {
+  const receipt = maybeBuildRunReceipt({
+    plan,
+    command,
+    preview,
+    applyResult,
+    checks,
+    errors,
+    readbackTargetCount,
+  })
   return {
     status: 'failed',
     errors,
     checks,
     ...(applyResult.undo !== undefined ? { undo: applyResult.undo } : {}),
+    ...(receipt !== undefined ? { receipt } : {}),
   }
 }
 
@@ -630,7 +674,7 @@ export async function runWorkbookPlan<Refs>(
   }
 
   if (applyResult.status === 'failed') {
-    return failedApplyResult(plan, applyResult)
+    return failedApplyResult(plan, applyResult, preview, command)
   }
 
   let checks = plan.checks
@@ -638,45 +682,79 @@ export async function runWorkbookPlan<Refs>(
   if (targets.length > 0) {
     if (adapter.read === undefined) {
       const readbackVerification = verifyWorkbookReadbacks(checks, [])
-      return failedAfterApply(applyResult, readbackVerification.issues.map(readbackIssueError), readbackVerification.checks)
+      return failedAfterApply(
+        plan,
+        command,
+        preview,
+        applyResult,
+        readbackVerification.issues.map(readbackIssueError),
+        readbackVerification.checks,
+        targets.length,
+      )
     }
 
     let readbacks: readonly WorkbookRunReadback[]
     try {
       const rawReadbacks = validateReadbacks(await adapter.read(targets, plan, command))
       if ('code' in rawReadbacks) {
-        return failedAfterApply(applyResult, [rawReadbacks], checks)
+        return failedAfterApply(plan, command, preview, applyResult, [rawReadbacks], checks, targets.length)
       }
       readbacks = rawReadbacks
     } catch (error) {
-      return failedAfterApply(applyResult, [runError('readback_failed', errorMessage(error))], checks)
+      return failedAfterApply(
+        plan,
+        command,
+        preview,
+        applyResult,
+        [runError('readback_failed', errorMessage(error))],
+        checks,
+        targets.length,
+      )
     }
 
     const readbackVerification = verifyWorkbookReadbacks(checks, readbacks)
     checks = readbackVerification.checks
     if (readbackVerification.status === 'failed') {
-      return failedAfterApply(applyResult, readbackVerification.issues.map(readbackIssueError), checks)
+      return failedAfterApply(
+        plan,
+        command,
+        preview,
+        applyResult,
+        readbackVerification.issues.map(readbackIssueError),
+        checks,
+        targets.length,
+      )
     }
   }
 
   const checkVerification = await verifyChecksWithAdapter(checks, plan, adapter, command)
   checks = checkVerification.checks
   if (checkVerification.errors.length > 0) {
-    return failedAfterApply(applyResult, checkVerification.errors, checks)
+    return failedAfterApply(plan, command, preview, applyResult, checkVerification.errors, checks, targets.length)
   }
 
   const unverifiedErrors = unverifiedCheckErrors(checks)
   if (unverifiedErrors.length > 0) {
-    return failedAfterApply(applyResult, unverifiedErrors, checks)
+    return failedAfterApply(plan, command, preview, applyResult, unverifiedErrors, checks, targets.length)
   }
 
   const applied = appliedSummary(preview)
+  const receipt = maybeBuildRunReceipt({
+    plan,
+    command,
+    preview,
+    applyResult,
+    checks,
+    errors: [],
+    readbackTargetCount: targets.length,
+  })
   return {
     status: 'done',
     changed: plan.changed,
     checks,
     ...(applyResult.undo !== undefined ? { undo: applyResult.undo } : {}),
     ...(applied !== undefined ? { applied } : {}),
+    ...(receipt !== undefined ? { receipt } : {}),
   }
 }
 

@@ -19,6 +19,7 @@ export interface WorkPaperMatrixApplyOptions {
   captureUndo?: boolean
   deferLiteralAddresses?: ReadonlySet<string>
   skipNulls?: boolean
+  trustedFreshCells?: boolean
 }
 
 type MatrixMutationPlanInput = Parameters<typeof buildMatrixMutationPlan>[0]
@@ -107,7 +108,7 @@ export function applyWorkPaperMatrixContents(input: {
       updateSheetDimensionsAfterCellMutationRefs?.(refs)
     }
   }
-  const freshNumericFormulaPlan = tryBuildFreshNumericFormulaColumnMatrixPlan(planInput)
+  const freshNumericFormulaPlan = tryBuildFreshNumericFormulaColumnMatrixPlan(planInput, options.trustedFreshCells === true)
   if (freshNumericFormulaPlan !== undefined) {
     const applyOptions = createApplyOptions(freshNumericFormulaPlan.potentialNewCells)
     applyOptions.freshDirectAggregateMatrixPlan = freshNumericFormulaPlan.freshDirectAggregateMatrixPlan
@@ -201,7 +202,10 @@ function isPotentialDirectAggregateFormulaContent(content: RawCellContent): cont
   )
 }
 
-function tryBuildFreshNumericFormulaColumnMatrixPlan(args: MatrixMutationPlanInput):
+function tryBuildFreshNumericFormulaColumnMatrixPlan(
+  args: MatrixMutationPlanInput,
+  trustedFreshCells: boolean,
+):
   | {
       readonly refs: readonly EngineCellMutationRef[]
       readonly freshDirectAggregateMatrixPlan: EngineFreshDirectAggregateMatrixPlan
@@ -279,6 +283,7 @@ function tryBuildFreshNumericFormulaColumnMatrixPlan(args: MatrixMutationPlanInp
       rowCount,
       colStart: args.target.col,
       inputColCount,
+      ...(trustedFreshCells ? { trustedFreshCells: true } : {}),
       values,
     },
     potentialNewCells: refs.length,

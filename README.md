@@ -412,9 +412,10 @@ and the public API docs; they include acceptance commands for first patches.
 - For XLSX, run [`examples/xlsx-recalculation-node`](examples/xlsx-recalculation-node)
   and [`examples/recalc-bridge-workflows`](examples/recalc-bridge-workflows).
 - Run `pnpm workpaper:bench:competitive:check`. The checked-in artifact shows
-  [`99/100` comparable WorkPaper mean wins](docs/what-workpaper-benchmark-proves.md);
-  `structural-append-formula-rows-large` is the current worst p95 row at `1.196x`.
-- The benchmark card is generated as
+  [`94/100` comparable WorkPaper mean wins](docs/what-workpaper-benchmark-proves.md)
+  with nine p95 holdouts; the current worst p95 row is
+  `structural-append-formula-rows-large` at `1.421x`.
+- The benchmark card is generated from that artifact:
   [`docs/assets/workpaper-benchmark-card.png`](docs/assets/workpaper-benchmark-card.png).
 - Read the [compatibility limits](docs/where-bilig-is-not-excel-compatible-yet.md)
   and use the Excel oracle harness when stale cached formula values are not

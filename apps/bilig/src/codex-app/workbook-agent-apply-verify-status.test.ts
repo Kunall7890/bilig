@@ -164,6 +164,8 @@ function renderedContext(capturedRevision: number, source: 'selection' | 'visibl
         hasPresentedVisibleFrame: true,
         frameProofSignature: `frame:${String(capturedRevision)}`,
         presentedFrameProofSignature: `frame:${String(capturedRevision)}`,
+        currentSceneOwnershipSignature: `scene:${String(capturedRevision)}`,
+        presentedSceneOwnershipSignature: `scene:${String(capturedRevision)}`,
         authoritativeRevision: capturedRevision,
         localRevision: null,
         projectedRevision: capturedRevision,

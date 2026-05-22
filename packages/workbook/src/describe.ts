@@ -20,6 +20,7 @@ import {
 } from './model.js'
 import type { WorkbookActionInput } from './input.js'
 import type { WorkbookOp } from './ops.js'
+import type { WorkbookReceiptProof, WorkbookRenderedReceipt, WorkbookRunReceipt } from './receipt.js'
 import type {
   WorkbookAppliedSummary,
   WorkbookChangeSummary,
@@ -191,12 +192,14 @@ export type WorkbookRunResultDescription =
       readonly checks: readonly WorkbookCheckResultDescription[]
       readonly undo?: WorkbookUndoRefDescription
       readonly applied?: WorkbookAppliedSummaryDescription
+      readonly receipt?: WorkbookRunReceiptDescription
     }
   | {
       readonly status: 'failed'
       readonly errors: readonly WorkbookRunErrorDescription[]
       readonly checks: readonly WorkbookCheckResultDescription[]
       readonly undo?: WorkbookUndoRefDescription
+      readonly receipt?: WorkbookRunReceiptDescription
     }
 
 export interface WorkbookRunErrorDescription {
@@ -212,6 +215,20 @@ export interface WorkbookRunErrorDescription {
 export interface WorkbookAppliedSummaryDescription {
   readonly opCount: number
   readonly ops?: readonly WorkbookOp[]
+}
+
+export interface WorkbookReceiptProofDescription extends Omit<WorkbookReceiptProof, 'target'> {
+  readonly target?: WorkbookRefDescription
+}
+
+export interface WorkbookRenderedReceiptDescription extends Omit<WorkbookRenderedReceipt, 'diffs'> {
+  readonly diffs?: readonly WorkbookChangeSummaryDescription[]
+}
+
+export interface WorkbookRunReceiptDescription extends Omit<WorkbookRunReceipt, 'rendered' | 'proof' | 'undo'> {
+  readonly rendered?: WorkbookRenderedReceiptDescription
+  readonly proof: readonly WorkbookReceiptProofDescription[]
+  readonly undo?: WorkbookUndoRefDescription
 }
 
 export function describeModel<Refs, Actions extends WorkbookActionMap<Refs>>(
@@ -416,6 +433,49 @@ function describeApplied(applied: WorkbookAppliedSummary): WorkbookAppliedSummar
   }
 }
 
+function describeReceiptProof(proof: WorkbookReceiptProof): WorkbookReceiptProofDescription {
+  return {
+    kind: proof.kind,
+    status: proof.status,
+    message: proof.message,
+    ...(proof.revision !== undefined ? { revision: proof.revision } : {}),
+    ...(proof.target !== undefined ? { target: describeRef(proof.target) } : {}),
+    ...(proof.data !== undefined ? { data: proof.data } : {}),
+  }
+}
+
+function describeRenderedReceipt(rendered: WorkbookRenderedReceipt): WorkbookRenderedReceiptDescription {
+  return {
+    ...(rendered.revision !== undefined ? { revision: rendered.revision } : {}),
+    ...(rendered.diffs !== undefined ? { diffs: rendered.diffs.map(describeChange) } : {}),
+    ...(rendered.message !== undefined ? { message: rendered.message } : {}),
+  }
+}
+
+function describeRunReceipt(receipt: WorkbookRunReceipt): WorkbookRunReceiptDescription {
+  return {
+    ...(receipt.commandId !== undefined ? { commandId: receipt.commandId } : {}),
+    ...(receipt.idempotencyKey !== undefined ? { idempotencyKey: receipt.idempotencyKey } : {}),
+    modelName: receipt.modelName,
+    actionName: receipt.actionName,
+    ...(receipt.baseRevision !== undefined ? { baseRevision: receipt.baseRevision } : {}),
+    ...(receipt.appliedRevision !== undefined ? { appliedRevision: receipt.appliedRevision } : {}),
+    ...(receipt.calculatedRevision !== undefined ? { calculatedRevision: receipt.calculatedRevision } : {}),
+    ...(receipt.renderedRevision !== undefined ? { renderedRevision: receipt.renderedRevision } : {}),
+    ...(receipt.rendered !== undefined ? { rendered: describeRenderedReceipt(receipt.rendered) } : {}),
+    previewed: receipt.previewed,
+    applied: receipt.applied,
+    verified: receipt.verified,
+    checkCount: receipt.checkCount,
+    passedCheckCount: receipt.passedCheckCount,
+    failedCheckCount: receipt.failedCheckCount,
+    unverifiedCheckCount: receipt.unverifiedCheckCount,
+    proof: receipt.proof.map(describeReceiptProof),
+    ...(receipt.warnings !== undefined ? { warnings: [...receipt.warnings] } : {}),
+    ...(receipt.undo !== undefined ? { undo: describeUndo(receipt.undo) } : {}),
+  }
+}
+
 function describeUndo(undo: WorkbookUndoRef): WorkbookUndoRefDescription {
   return {
     id: undo.id,
@@ -448,6 +508,7 @@ export function describeRunResult(result: WorkbookRunResult): WorkbookRunResultD
       checks: result.checks.map(describeCheck),
       ...(result.undo !== undefined ? { undo: describeUndo(result.undo) } : {}),
       ...(result.applied !== undefined ? { applied: describeApplied(result.applied) } : {}),
+      ...(result.receipt !== undefined ? { receipt: describeRunReceipt(result.receipt) } : {}),
     }
   }
   return {
@@ -455,5 +516,6 @@ export function describeRunResult(result: WorkbookRunResult): WorkbookRunResultD
     errors: result.errors.map(describeError),
     checks: result.checks.map(describeCheck),
     ...(result.undo !== undefined ? { undo: describeUndo(result.undo) } : {}),
+    ...(result.receipt !== undefined ? { receipt: describeRunReceipt(result.receipt) } : {}),
   }
 }

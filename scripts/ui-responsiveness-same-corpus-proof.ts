@@ -153,6 +153,8 @@ function biligVisibleFrameInvalidReasons(proof: SameCorpusProductPixelGridProof,
   const tileSceneRevision = evidence.get('tileSceneRevision') ?? ''
   const frameProofSignature = evidence.get('frameProofSignature') ?? ''
   const presentedFrameProofSignature = evidence.get('presentedFrameProofSignature') ?? ''
+  const currentSceneOwnershipSignature = evidence.get('currentSceneOwnershipSignature') ?? ''
+  const presentedSceneOwnershipSignature = evidence.get('presentedSceneOwnershipSignature') ?? ''
   const currentContentSignature = evidence.get('currentContentSignature') ?? ''
   const presentedContentSignature = evidence.get('presentedContentSignature') ?? ''
   const currentTextSignature = evidence.get('currentTextSignature') ?? ''
@@ -194,6 +196,19 @@ function biligVisibleFrameInvalidReasons(proof: SameCorpusProductPixelGridProof,
   }
   if (frameProofSignature.length > 0 && presentedFrameProofSignature.length > 0 && presentedFrameProofSignature !== frameProofSignature) {
     invalidReasons.push('presented frame proof signature does not match current frame')
+  }
+  if (currentSceneOwnershipSignature.length === 0) {
+    invalidReasons.push('current visible-scene ownership signature is missing')
+  }
+  if (presentedSceneOwnershipSignature.length === 0) {
+    invalidReasons.push('presented visible-scene ownership signature is missing')
+  }
+  if (
+    currentSceneOwnershipSignature.length > 0 &&
+    presentedSceneOwnershipSignature.length > 0 &&
+    presentedSceneOwnershipSignature !== currentSceneOwnershipSignature
+  ) {
+    invalidReasons.push('presented visible-scene ownership does not match current scene')
   }
   if (evidence.get('hasPresentedVisibleFrame') !== 'true') {
     invalidReasons.push('visible frame has not been presented')

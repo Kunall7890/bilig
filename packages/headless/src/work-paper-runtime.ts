@@ -7,7 +7,7 @@ import {
   WorkPaperSheetError,
 } from './work-paper-errors.js'
 import { cloneConfig, DEFAULT_CONFIG, validateWorkPaperConfig, WORKPAPER_PUBLIC_ERROR_NAMES } from './work-paper-config.js'
-import { assertRowAndColumn, makeNamedExpressionKey } from './work-paper-runtime-helpers.js'
+import { assertRowAndColumn, isWorkPaperSheetMatrix, makeNamedExpressionKey } from './work-paper-runtime-helpers.js'
 import { inspectSheetDimensionsWithinLimits, workPaperSheetHasDynamicSpillFormula } from './work-paper-sheet-inspection.js'
 import { WorkPaperSheetDimensionCache } from './work-paper-sheet-dimension-cache.js'
 import type { WorkPaperAxisIntervalEditMode, WorkPaperAxisKind } from './work-paper-axis-helpers.js'
@@ -78,6 +78,11 @@ type SnapshotWithImportedXlsxSource = WorkbookSnapshot & {
 }
 type WorkbookSnapshotWorkbook = WorkbookSnapshot['workbook']
 type WorkbookSnapshotSheetMetadata = NonNullable<WorkbookSnapshot['sheets'][number]['metadata']>
+interface FreshTailRowsReservation {
+  readonly sheetId: number
+  readonly rowStart: number
+  readonly rowEndExclusive: number
+}
 type MetadataRenameEngine = SpreadsheetEngine & {
   readonly renameSheetMetadataOnlyById?: (sheetId: number, newName: string) => boolean
 }
@@ -195,6 +200,7 @@ export class WorkPaper extends WorkPaperRuntimeLifecycleBase {
   protected engineEventsAttached = false
   protected disposed = false
   private preservedImportedSnapshot: WorkbookSnapshot | undefined
+  private freshTailRowsReservation: FreshTailRowsReservation | undefined
   protected readonly mutationQueues = createWorkPaperRuntimeMutationQueues({
     getEngine: () => this.engine,
     getSheetDimensionCache: () => this.sheetDimensionCache,
@@ -265,6 +271,9 @@ export class WorkPaper extends WorkPaperRuntimeLifecycleBase {
 
   override setCellContents(address: WorkPaperCellAddress, content: RawCellContent | WorkPaperSheet): WorkPaperChange[] {
     this.preservedImportedSnapshot = undefined
+    if (!isWorkPaperSheetMatrix(content)) {
+      this.freshTailRowsReservation = undefined
+    }
     return super.setCellContents(address, content)
   }
 
@@ -641,6 +650,7 @@ export class WorkPaper extends WorkPaperRuntimeLifecycleBase {
     options: { readonly emitTracked?: boolean } = {},
   ): void {
     this.preservedImportedSnapshot = undefined
+    const freshTailRowsReservation = this.createFreshTailRowsReservation(axis, mode, sheet, start, amount)
     const sheetName = sheet.name
     const structuralInsertEngine = this.engine as WorkPaperStructuralInsertEngine
     if (axis === 'row') {
@@ -655,6 +665,7 @@ export class WorkPaper extends WorkPaperRuntimeLifecycleBase {
       this.engine.deleteColumns(sheetName, start, amount)
     }
     this.sheetDimensionCache.updateAfterAxisIntervalEdit(axis, mode, sheet.id, start, amount)
+    this.freshTailRowsReservation = freshTailRowsReservation
   }
 
   protected applyAxisMove(axis: WorkPaperAxisKind, sheetId: number, start: number, count: number, target: number): void {
@@ -716,10 +727,11 @@ export class WorkPaper extends WorkPaperRuntimeLifecycleBase {
       skipNulls?: boolean
     } = {},
   ): void {
+    const trustedFreshCells = this.consumeFreshTailRowsReservation(address, content)
     applyWorkPaperMatrixContents({
       address,
       content,
-      options,
+      options: trustedFreshCells ? { ...options, trustedFreshCells } : options,
       flushPendingBatchOps: () => this.flushPendingBatchOps(),
       isEvaluationSuspended: () => this.evaluationSuspended,
       applyCellMutationRefs: (refs, applyOptions) => this.applyCellMutationRefs(refs, applyOptions),
@@ -727,6 +739,36 @@ export class WorkPaper extends WorkPaperRuntimeLifecycleBase {
       updateSheetDimensionsAfterCellMutationRefs: (refs) => this.updateSheetDimensionsAfterCellMutationRefs(refs),
       updateSheetDimensionsAfterMatrixMutationImpact: (impact) => this.sheetDimensionCache.updateAfterMatrixMutationImpact(impact),
     })
+  }
+
+  private createFreshTailRowsReservation(
+    axis: WorkPaperAxisKind,
+    mode: WorkPaperAxisIntervalEditMode,
+    sheet: SheetRecord,
+    start: number,
+    amount: number,
+  ): FreshTailRowsReservation | undefined {
+    if (axis !== 'row' || mode !== 'add' || this.batchDepth === 0 || !this.batchUsesTrackedFastPath || amount <= 0) {
+      return undefined
+    }
+    const dimensions = this.sheetDimensionCache.get(sheet.id)
+    if (dimensions === undefined || start < dimensions.height) {
+      return undefined
+    }
+    return {
+      sheetId: sheet.id,
+      rowStart: start,
+      rowEndExclusive: start + amount,
+    }
+  }
+
+  private consumeFreshTailRowsReservation(address: WorkPaperCellAddress, content: WorkPaperSheet): boolean {
+    const reservation = this.freshTailRowsReservation
+    this.freshTailRowsReservation = undefined
+    if (reservation === undefined || reservation.sheetId !== address.sheet || content.length === 0) {
+      return false
+    }
+    return address.row >= reservation.rowStart && address.row + content.length <= reservation.rowEndExclusive
   }
 
   protected replaceSheetContentInternal(sheetId: number, content: WorkPaperSheet, options: { duringInitialization: boolean }): void {

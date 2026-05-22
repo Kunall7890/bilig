@@ -380,6 +380,8 @@ describe('same-corpus UI responsiveness capture CLI', () => {
         'hasPresentedFrame',
         'hasPresentedVisibleFrame',
         'presentedFrameProofSignature',
+        'currentSceneOwnershipSignature',
+        'presentedSceneOwnershipSignature',
         'currentContentSignature',
         'presentedContentSignature',
         'currentTextRunCount',
@@ -424,6 +426,10 @@ describe('same-corpus UI responsiveness capture CLI', () => {
       {
         label: 'stale presented frame signature',
         evidence: replaceEvidence(baseEvidence, 'presentedFrameProofSignature', 'frame-stale'),
+      },
+      {
+        label: 'stale presented scene ownership',
+        evidence: replaceEvidence(baseEvidence, 'presentedSceneOwnershipSignature', 'scene-stale'),
       },
       { label: 'visible frame not presented', evidence: replaceEvidence(baseEvidence, 'hasPresentedVisibleFrame', 'false') },
       {
@@ -664,6 +670,8 @@ function sameCorpusVisualProof(
               'hasPresentedFrame=true',
               'hasPresentedVisibleFrame=true',
               'presentedFrameProofSignature=frame-current',
+              'currentSceneOwnershipSignature=scene-current',
+              'presentedSceneOwnershipSignature=scene-current',
               'currentContentSignature=content-current',
               'presentedContentSignature=content-current',
               'currentTextRunCount=12',

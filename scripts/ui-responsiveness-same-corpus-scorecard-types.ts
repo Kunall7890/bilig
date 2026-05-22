@@ -1,5 +1,4 @@
 import type { NumericSummary } from '../packages/benchmarks/src/stats.js'
-
 import type { SameCorpusCaptureCorpusFingerprint } from './ui-responsiveness-same-corpus-fingerprint.ts'
 import type { SameCorpusScenarioProof, sameCorpusUiRenderProofContractVersion } from './ui-responsiveness-same-corpus-proof.ts'
 import type { UiResponsivenessSameCorpusWorkload } from './ui-responsiveness-same-corpus-workloads.ts'

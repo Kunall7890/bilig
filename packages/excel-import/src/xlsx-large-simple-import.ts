@@ -24,14 +24,6 @@ import { LargeSimpleXlsxImportPhaseRecorder } from './xlsx-large-simple-import-t
 import { appendLargeSimpleConditionalFormats } from './xlsx-large-simple-conditional-format-helpers.js'
 import { internLargeSimpleWorksheetMetadata } from './xlsx-large-simple-metadata-interning.js'
 import { prepareLargeSimplePackageArtifactsForZipRelease } from './xlsx-large-simple-package-artifact-release.js'
-import {
-  hasUnsupportedLargeSimplePackagePath,
-  readLargeSimplePackageFlags,
-  sharedStringsPath,
-  stylesPath,
-  workbookPath,
-  workbookRelationshipsPath,
-} from './xlsx-large-simple-package-flags.js'
 import { readLargeSimpleSheetPrintMetadata, readLargeSimpleSheetPrintPageSetup } from './xlsx-large-simple-printer-settings.js'
 import { buildLargeSimpleRuntimeSheetCells } from './xlsx-large-simple-runtime-sheet-cells.js'
 import {
@@ -77,6 +69,13 @@ import {
   largeSimpleLegacyCommentVmlSheetSources,
   largeSimpleSlicerConnectionSheetSources,
 } from './xlsx-large-simple-package-artifact-sources.js'
+import {
+  readLargeSimplePackageFeatureFlags,
+  sharedStringsPath,
+  stylesPath,
+  workbookPath,
+  workbookRelationshipsPath,
+} from './xlsx-large-simple-package-features.js'
 import { parseHeadlessLargeSimpleWorksheetFromChunks } from './xlsx-large-simple-headless-worksheet-scanner.js'
 import { importedWorksheetCellScanFromHeadless } from './xlsx-large-simple-headless-cell-scan.js'
 import {
@@ -143,7 +142,8 @@ export function tryImportLargeSimpleXlsx(
   const phaseRecorder = new LargeSimpleXlsxImportPhaseRecorder()
   const zipSetupStart = phaseRecorder.start()
   const packagePaths = Object.keys(zip).map(normalizeZipPath)
-  if (hasUnsupportedLargeSimplePackagePath(packagePaths)) {
+  const packageFeatures = readLargeSimplePackageFeatureFlags(packagePaths)
+  if (packageFeatures.hasUnsupportedPackagePath) {
     return null
   }
 
@@ -187,7 +187,7 @@ export function tryImportLargeSimpleXlsx(
     hasLegacyCommentParts,
     hasDataModelParts,
     hasSlicerConnectionParts,
-  } = readLargeSimplePackageFlags(packagePaths)
+  } = packageFeatures
   phaseRecorder.finish('zip-setup', zipSetupStart)
   const ownedSourceReleasedForReplacement = replaceLargeSimpleZipSourceForImport(zip, options, phaseRecorder)
   const importedExternalLinkArtifacts =

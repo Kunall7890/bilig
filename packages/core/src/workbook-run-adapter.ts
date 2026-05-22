@@ -8,11 +8,13 @@ import {
   type WorkbookCheckProof,
   type WorkbookCheckResult,
   type WorkbookColumnRef,
+  type WorkbookReceiptProof,
   type WorkbookRef,
   type WorkbookRowsRef,
   type WorkbookCellReadback,
   type WorkbookRunAdapter,
   type WorkbookRunReadback,
+  type WorkbookRuntimeReceipt,
   type WorkbookTableRef,
   type WorkbookUndoRef,
   describeRuntimeRequirements,
@@ -61,6 +63,80 @@ function createUndoRef(plan: WorkbookActionPlan, ops: readonly EngineOp[] | null
   return {
     id: `${plan.modelName}.${plan.actionName}.undo.${String(undoRefCounter)}`,
     ops,
+  }
+}
+
+function coreApplyProof(ops: readonly EngineOp[]): WorkbookReceiptProof {
+  return {
+    kind: 'apply',
+    status: 'passed',
+    message: `Core engine applied ${ops.length.toString()} workbook op${ops.length === 1 ? '' : 's'}.`,
+    data: {
+      opCount: ops.length,
+      opKinds: ops.map((op) => op.kind),
+    },
+  }
+}
+
+function coreRecalculationProof(ops: readonly EngineOp[]): WorkbookReceiptProof {
+  return {
+    kind: 'recalculation',
+    status: 'passed',
+    message: 'Core engine completed synchronous workbook mutation propagation before readback.',
+    data: {
+      mode: 'synchronous',
+      opCount: ops.length,
+    },
+  }
+}
+
+function coreUndoProof(captureUndo: boolean, undo: WorkbookUndoRef | undefined): WorkbookReceiptProof {
+  const undoOpCount = undo?.ops?.length ?? 0
+  if (!captureUndo) {
+    return {
+      kind: 'undo',
+      status: 'skipped',
+      message: 'Core adapter applied the action with undo capture disabled.',
+      data: {
+        captureUndo,
+        undoOpCount,
+      },
+    }
+  }
+  if (undo === undefined) {
+    return {
+      kind: 'undo',
+      status: 'skipped',
+      message: 'Core engine applied the action but did not produce undo ops.',
+      data: {
+        captureUndo,
+        undoOpCount,
+      },
+    }
+  }
+  return {
+    kind: 'undo',
+    status: 'passed',
+    message: `Core engine captured ${undoOpCount.toString()} undo op${undoOpCount === 1 ? '' : 's'}.`,
+    data: {
+      captureUndo,
+      undoOpCount,
+      undoId: undo.id,
+    },
+  }
+}
+
+function coreApplyReceipt(ops: readonly EngineOp[], captureUndo: boolean, undo: WorkbookUndoRef | undefined): WorkbookRuntimeReceipt {
+  const warnings: string[] = []
+  if (ops.length === 0) {
+    warnings.push('Core adapter materialized no engine ops; this action may be verification-only.')
+  }
+  if (!captureUndo) {
+    warnings.push('Core adapter applied the action with undo capture disabled.')
+  }
+  return {
+    proof: [coreApplyProof(ops), coreRecalculationProof(ops), coreUndoProof(captureUndo, undo)],
+    ...(warnings.length > 0 ? { warnings } : {}),
   }
 }
 
@@ -749,8 +825,9 @@ export function createWorkbookRunAdapter(engine: SpreadsheetEngine, options: Wor
     apply(plan: WorkbookActionPlan) {
       try {
         const ops = materializePlanOps(engine, plan)
+        const captureUndo = options.captureUndo ?? true
         const undoOps = engine.applyOps(ops, {
-          captureUndo: options.captureUndo ?? true,
+          captureUndo,
           ...(options.potentialNewCells !== undefined ? { potentialNewCells: options.potentialNewCells } : {}),
           source: 'local',
           trusted: true,
@@ -759,6 +836,7 @@ export function createWorkbookRunAdapter(engine: SpreadsheetEngine, options: Wor
         return {
           status: 'applied',
           ...(undo !== undefined ? { undo } : {}),
+          receipt: coreApplyReceipt(ops, captureUndo, undo),
         }
       } catch (error) {
         return {

@@ -2,6 +2,7 @@ import type { LiteralInput } from '@bilig/protocol'
 import type { WorkbookRef } from './find.js'
 import type { WorkbookActionInput } from './input.js'
 import type { EngineOp } from './ops.js'
+import type { WorkbookRunReceipt } from './receipt.js'
 
 export type WorkbookCheckStatus = 'planned' | 'passed' | 'failed'
 
@@ -169,10 +170,12 @@ export type WorkbookRunResult =
       readonly checks: readonly WorkbookCheckResult[]
       readonly undo?: WorkbookUndoRef
       readonly applied?: WorkbookAppliedSummary
+      readonly receipt?: WorkbookRunReceipt
     }
   | {
       readonly status: 'failed'
       readonly errors: readonly WorkbookRunError[]
       readonly checks: readonly WorkbookCheckResult[]
       readonly undo?: WorkbookUndoRef
+      readonly receipt?: WorkbookRunReceipt
     }

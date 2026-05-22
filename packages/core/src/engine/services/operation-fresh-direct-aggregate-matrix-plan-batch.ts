@@ -56,6 +56,7 @@ export function collectFreshDirectAggregateMatrixPlanBatch(
   }
   const totalColCount = plan.inputColCount + 1
   let valueIndex = 0
+  const mustValidateFreshCells = plan.trustedFreshCells !== true
   for (let rowOffset = 0; rowOffset < plan.rowCount; rowOffset += 1) {
     args.checkEvaluationBudget(totalColCount)
     const row = plan.rowStart + rowOffset
@@ -64,12 +65,15 @@ export function collectFreshDirectAggregateMatrixPlanBatch(
       if (!isMatrixValueRef(refs[valueIndex], plan.sheetId, row, col, plan.values[valueIndex]!)) {
         return null
       }
-      if (sheet.grid.getPhysical(row, col) !== -1 || sheet.logical.getVisibleCell(row, col) !== undefined) {
+      if (mustValidateFreshCells && (sheet.grid.getPhysical(row, col) !== -1 || sheet.logical.getVisibleCell(row, col) !== undefined)) {
         return null
       }
       valueIndex += 1
     }
-    if (sheet.grid.getPhysical(row, formulaCol) !== -1 || sheet.logical.getVisibleCell(row, formulaCol) !== undefined) {
+    if (
+      mustValidateFreshCells &&
+      (sheet.grid.getPhysical(row, formulaCol) !== -1 || sheet.logical.getVisibleCell(row, formulaCol) !== undefined)
+    ) {
       return null
     }
   }

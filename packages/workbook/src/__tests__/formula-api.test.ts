@@ -84,6 +84,67 @@ describe('@bilig/workbook formula api', () => {
     expect(inputs).toEqual([first])
   })
 
+  it('inspects declared formula inputs and parser-discovered dependencies separately', () => {
+    const amount = findRange({ sheetName: 'Sheet1', address: 'A1' })
+    const rate = findRange({ sheetName: 'Sheet1', address: 'B1' })
+    const expression = formula.raw('SUM(Sheet1!A1,Data!B2:C4,Total,Items[Amount],A1#)', {
+      inputs: [amount, rate],
+    })
+
+    const inspection = formula.inspect(expression)
+
+    expect(Object.isFrozen(inspection)).toBe(true)
+    expect(Object.isFrozen(inspection.inputs)).toBe(true)
+    expect(Object.isFrozen(inspection.dependencies)).toBe(true)
+    expect(Object.isFrozen(inspection.names)).toBe(true)
+    expect(inspection).toMatchObject({
+      source: 'SUM(Sheet1!A1,Data!B2:C4,Total,Items[Amount],A1#)',
+      inputs: [amount, rate],
+      dependencies: [
+        {
+          kind: 'range',
+          address: 'Sheet1!A1:A1',
+          refKind: 'cells',
+          sheetName: 'Sheet1',
+          explicitSheet: true,
+          startAddress: 'A1',
+          endAddress: 'A1',
+          startRow: 0,
+          endRow: 0,
+          startCol: 0,
+          endCol: 0,
+          startRowAbsolute: false,
+          endRowAbsolute: false,
+          startColAbsolute: false,
+          endColAbsolute: false,
+        },
+        {
+          kind: 'range',
+          address: 'Data!B2:C4',
+          refKind: 'cells',
+          sheetName: 'Data',
+          explicitSheet: true,
+          startAddress: 'B2',
+          endAddress: 'C4',
+          startRow: 1,
+          endRow: 3,
+          startCol: 1,
+          endCol: 2,
+          startRowAbsolute: false,
+          endRowAbsolute: false,
+          startColAbsolute: false,
+          endColAbsolute: false,
+        },
+      ],
+      names: ['Total'],
+      tables: ['Items'],
+      spills: ['A1'],
+      volatile: false,
+      producesSpill: false,
+    })
+    expect(formula.dependencies(expression)).toEqual(inspection.dependencies)
+  })
+
   it('flags raw formula inputs that are not part of resolved model refs', () => {
     const hidden = findRange({ sheetName: 'Sheet1', address: 'Z9' })
     const model = defineModel({

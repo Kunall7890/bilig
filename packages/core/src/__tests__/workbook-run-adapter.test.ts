@@ -1,6 +1,16 @@
 import { describe, expect, it } from 'vitest'
 import { ValueTag } from '@bilig/protocol'
-import { buildWorkbookActionPlan, defineModel, findRange, findTable, formula, runWorkbookAction, runWorkbookPlan } from '@bilig/workbook'
+import {
+  buildWorkbookActionPlan,
+  defineModel,
+  findRange,
+  findTable,
+  formula,
+  planWorkbookCommand,
+  runWorkbookAction,
+  runWorkbookCommandBundle,
+  runWorkbookPlan,
+} from '@bilig/workbook'
 import { SpreadsheetEngine } from '../engine.js'
 import { createWorkbookRunAdapter } from '../workbook-run-adapter.js'
 
@@ -89,11 +99,120 @@ describe('workbook run adapter', () => {
       opCount: 1,
       ops: preview?.materializedOps,
     })
+    expect(result.receipt).toMatchObject({
+      modelName: 'generic-calculation',
+      actionName: 'calculate',
+      previewed: true,
+      applied: true,
+      verified: true,
+      checkCount: 4,
+      passedCheckCount: 4,
+      failedCheckCount: 0,
+      unverifiedCheckCount: 0,
+      undo: result.undo,
+    })
+    expect(result.receipt?.proof).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          kind: 'apply',
+          status: 'passed',
+          message: 'Core engine applied 1 workbook op.',
+          data: {
+            opCount: 1,
+            opKinds: ['setCellFormula'],
+          },
+        }),
+        expect.objectContaining({
+          kind: 'recalculation',
+          status: 'passed',
+          data: {
+            mode: 'synchronous',
+            opCount: 1,
+          },
+        }),
+        expect.objectContaining({
+          kind: 'undo',
+          status: 'passed',
+          data: {
+            captureUndo: true,
+            undoOpCount: result.undo?.ops?.length,
+            undoId: result.undo?.id,
+          },
+        }),
+      ]),
+    )
 
     engine.applyOps(result.undo?.ops ?? [], { trusted: true })
 
     expect(engine.getCell('Sheet1', 'C1').formula).toBeUndefined()
     expect(engine.getCellValue('Sheet1', 'C1')).toEqual({ tag: ValueTag.Empty })
+  })
+
+  it('returns command-aware public receipts without requiring app runtime state', async () => {
+    const engine = new SpreadsheetEngine({ workbookName: 'workbook-run-adapter-command-receipt' })
+    await engine.ready()
+    engine.createSheet('Sheet1')
+
+    const model = defineModel({
+      name: 'generic-command-receipt',
+      find(workbook) {
+        return {
+          output: workbook.findRange({ sheetName: 'Sheet1', address: 'A1' }),
+        }
+      },
+      checks({ refs, workbook }) {
+        return [workbook.check.valueEquals(refs.output, 'ok')]
+      },
+      actions: {
+        write({ refs, workbook }) {
+          workbook.writeValue(refs.output, 'ok')
+        },
+      },
+    })
+    const planned = planWorkbookCommand(model, 'write', undefined, {
+      baseRevision: 7,
+      idempotencyKey: 'core-command-receipt',
+    })
+    if (planned.status !== 'planned') {
+      throw new Error(planned.errors.map((error) => error.message).join('\n'))
+    }
+
+    const result = await runWorkbookCommandBundle(planned.command, createWorkbookRunAdapter(engine))
+
+    if (result.status !== 'done') {
+      throw new Error(result.errors.map((error) => error.message).join('\n'))
+    }
+    expect(result.receipt).toMatchObject({
+      commandId: planned.command.commandId,
+      idempotencyKey: 'core-command-receipt',
+      modelName: 'generic-command-receipt',
+      actionName: 'write',
+      baseRevision: 7,
+      previewed: true,
+      applied: true,
+      verified: true,
+      checkCount: 1,
+      passedCheckCount: 1,
+      failedCheckCount: 0,
+      unverifiedCheckCount: 0,
+    })
+    expect(result.receipt?.proof.map((proof) => proof.kind)).toEqual([
+      'preview',
+      'apply',
+      'authoritativeReadback',
+      'check',
+      'apply',
+      'recalculation',
+      'undo',
+    ])
+    expect(result.receipt?.proof.at(-1)).toMatchObject({
+      kind: 'undo',
+      status: 'passed',
+      data: {
+        captureUndo: true,
+        undoOpCount: 1,
+      },
+    })
   })
 
   it('fails generic noFormulaErrors checks when the engine calculates an error cell', async () => {

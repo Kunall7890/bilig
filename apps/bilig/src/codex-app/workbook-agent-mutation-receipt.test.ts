@@ -234,6 +234,8 @@ function createRenderedContext(input: {
             hasPresentedVisibleFrame: (input.frameProofStatus ?? 'presented') === 'presented',
             frameProofSignature: `frame:${input.capturedRevision}`,
             presentedFrameProofSignature: `frame:${input.capturedRevision}`,
+            currentSceneOwnershipSignature: `scene:${input.capturedRevision}`,
+            presentedSceneOwnershipSignature: `scene:${input.capturedRevision}`,
             authoritativeRevision: input.surfaceRevision ?? input.capturedRevision,
             localRevision: null,
             projectedRevision: input.capturedRevision,

@@ -1,30 +1,7 @@
 import { createHash } from 'node:crypto'
 
 import { summarizeNumbers } from '../packages/benchmarks/src/stats.js'
-import {
-  buildWorkbookBenchmarkCorpus,
-  isWorkbookBenchmarkCorpusId,
-  type WorkbookBenchmarkCorpusId,
-} from '../packages/benchmarks/src/workbook-corpus.js'
-import {
-  buildSameCorpusFingerprint,
-  sameCorpusFingerprintVersion,
-  type SameCorpusCaptureCorpusFingerprint,
-} from './ui-responsiveness-same-corpus-fingerprint.ts'
-import type {
-  SameCorpusCapture,
-  SameCorpusCaptureCase,
-  SameCorpusCaptureCorpusVerification,
-  SameCorpusCaptureMeasurement,
-  SameCorpusCaptureRunManifest,
-  SameCorpusProductSourceWorkbookFingerprint,
-  UiResponsivenessSameCorpusCase,
-  UiResponsivenessSameCorpusMeasurement,
-  UiResponsivenessSameCorpusProduct,
-  UiResponsivenessSameCorpusProof,
-  UiResponsivenessSameCorpusRunManifest,
-} from './ui-responsiveness-same-corpus-scorecard-types.ts'
-import { sameCorpusUiCaptureToolVersion } from './ui-responsiveness-same-corpus-scorecard-types.ts'
+import type { SameCorpusCaptureCorpusFingerprint } from './ui-responsiveness-same-corpus-fingerprint.ts'
 import type { SameCorpusProductVisualProof, SameCorpusScenarioProof } from './ui-responsiveness-same-corpus-proof.ts'
 import {
   buildScorecardScenarioProof,
@@ -32,11 +9,30 @@ import {
   validateSameCorpusScenarioProof,
 } from './ui-responsiveness-same-corpus-proof.ts'
 import {
+  sameCorpusUiCaptureToolVersion,
+  type SameCorpusCapture,
+  type SameCorpusCaptureCase,
+  type SameCorpusCaptureCorpusVerification,
+  type SameCorpusCaptureMeasurement,
+  type SameCorpusCaptureRunManifest,
+  type SameCorpusProductSourceWorkbookFingerprint,
+  type UiResponsivenessSameCorpusCase,
+  type UiResponsivenessSameCorpusMeasurement,
+  type UiResponsivenessSameCorpusProduct,
+  type UiResponsivenessSameCorpusProof,
+  type UiResponsivenessSameCorpusRunManifest,
+} from './ui-responsiveness-same-corpus-scorecard-types.ts'
+import {
   requiredUiResponsivenessSameCorpusWorkloads,
   uiSameCorpusWorkloadRequiresScrollEventEvidence,
   type UiResponsivenessSameCorpusWorkload,
 } from './ui-responsiveness-same-corpus-workloads.ts'
-import { cloneSameCorpusVerification, isSha256Hex, validateSummary } from './ui-responsiveness-same-corpus-validation-helpers.ts'
+import {
+  cloneSameCorpusVerification,
+  isSha256Hex,
+  validateSameCorpusCaptureVerification,
+  validateSummary,
+} from './ui-responsiveness-same-corpus-validation-helpers.ts'
 
 export { sameCorpusUiCaptureToolVersion } from './ui-responsiveness-same-corpus-scorecard-types.ts'
 export type {
@@ -58,7 +54,6 @@ const requiredSameCorpusWorkloads = requiredUiResponsivenessSameCorpusWorkloads
 const sameCorpusSampleCount = 3
 const strictRenderedGridProofLimitation =
   'Some same-corpus cases retain timing evidence but do not satisfy strict rendered-grid proof, so they cannot count toward Google Sheets 10x UI claims.'
-const expectedCorpusFingerprintCache = new Map<WorkbookBenchmarkCorpusId, SameCorpusCaptureCorpusFingerprint>()
 
 export function buildMissingSameCorpusProof(): UiResponsivenessSameCorpusProof {
   return {
@@ -780,91 +775,4 @@ function validateSameCorpusMeasurement(
     validateSummary(measurement.scrollMovementPx, `${caseId} ${product} scrollMovementPx`, sameCorpusSampleCount)
   }
   validateSameCorpusCaptureVerification(measurement.corpusVerification, product, materializedCells, corpusCaseId, caseId)
-}
-
-function validateSameCorpusCaptureVerification(
-  verification: SameCorpusCaptureCorpusVerification,
-  product: UiResponsivenessSameCorpusProduct,
-  expectedMaterializedCells: number | null,
-  expectedCorpusCaseId: string,
-  caseId: string,
-): void {
-  if (!verification.verified) {
-    throw new Error(`UI responsiveness same-corpus verification is not marked verified for ${caseId} ${product}`)
-  }
-  if (expectedMaterializedCells !== null && verification.materializedCells !== expectedMaterializedCells) {
-    throw new Error(`UI responsiveness same-corpus verification materialized cell count mismatch for ${caseId} ${product}`)
-  }
-  validateSameCorpusCaptureCorpusFingerprint(
-    verification.corpusFingerprint,
-    expectedCorpusCaseId,
-    expectedMaterializedCells,
-    caseId,
-    product,
-  )
-  if (verification.sourceWorkbookSha256 !== null && !isSha256Hex(verification.sourceWorkbookSha256)) {
-    throw new Error(`UI responsiveness same-corpus verification source workbook fingerprint is invalid for ${caseId} ${product}`)
-  }
-  if (
-    product === 'bilig' &&
-    verification.sourceWorkbookSha256 !== null &&
-    verification.sourceWorkbookSha256 !== verification.corpusFingerprint.snapshotSha256
-  ) {
-    throw new Error(`UI responsiveness same-corpus Bilig source workbook fingerprint is stale for ${caseId}`)
-  }
-  if (product === 'bilig' && verification.method !== 'bilig-benchmark-state') {
-    throw new Error(`UI responsiveness same-corpus verification method mismatch for ${caseId} ${product}`)
-  }
-  if (product === 'google-sheets' && verification.method !== 'google-sheets-xlsx-export') {
-    throw new Error(`UI responsiveness same-corpus verification method mismatch for ${caseId} ${product}`)
-  }
-  if (product === 'microsoft-excel-web' && verification.method !== 'microsoft-excel-web-source-xlsx') {
-    throw new Error(`UI responsiveness same-corpus verification method mismatch for ${caseId} ${product}`)
-  }
-  if (verification.checkedCells.length < 3) {
-    throw new Error(`UI responsiveness same-corpus verification must check at least 3 cells for ${caseId} ${product}`)
-  }
-  for (const cell of verification.checkedCells) {
-    if (cell.address.trim().length === 0 || cell.expected !== cell.actual) {
-      throw new Error(`UI responsiveness same-corpus verification cell mismatch for ${caseId} ${product}`)
-    }
-  }
-}
-
-function validateSameCorpusCaptureCorpusFingerprint(
-  fingerprint: SameCorpusCaptureCorpusFingerprint,
-  expectedCorpusCaseId: string,
-  expectedMaterializedCells: number | null,
-  caseId: string,
-  product: UiResponsivenessSameCorpusProduct,
-): void {
-  if (fingerprint.version !== sameCorpusFingerprintVersion) {
-    throw new Error(`UI responsiveness same-corpus verification fingerprint version is stale for ${caseId} ${product}`)
-  }
-  if (fingerprint.corpusCaseId !== expectedCorpusCaseId) {
-    throw new Error(`UI responsiveness same-corpus verification corpus fingerprint mismatch for ${caseId} ${product}`)
-  }
-  if (expectedMaterializedCells !== null && fingerprint.materializedCells !== expectedMaterializedCells) {
-    throw new Error(`UI responsiveness same-corpus verification fingerprint materialized cell count mismatch for ${caseId} ${product}`)
-  }
-  if (!isSha256Hex(fingerprint.snapshotSha256)) {
-    throw new Error(`UI responsiveness same-corpus verification benchmark fingerprint is invalid for ${caseId} ${product}`)
-  }
-  if (!isWorkbookBenchmarkCorpusId(fingerprint.corpusCaseId)) {
-    throw new Error(`UI responsiveness same-corpus verification uses unknown corpus fingerprint for ${caseId} ${product}`)
-  }
-  const expectedFingerprint = expectedCorpusFingerprint(fingerprint.corpusCaseId)
-  if (JSON.stringify(fingerprint) !== JSON.stringify(expectedFingerprint)) {
-    throw new Error(`UI responsiveness same-corpus verification benchmark fingerprint is stale for ${caseId} ${product}`)
-  }
-}
-
-function expectedCorpusFingerprint(corpusId: WorkbookBenchmarkCorpusId): SameCorpusCaptureCorpusFingerprint {
-  const cached = expectedCorpusFingerprintCache.get(corpusId)
-  if (cached) {
-    return cached
-  }
-  const fingerprint = buildSameCorpusFingerprint(buildWorkbookBenchmarkCorpus(corpusId)).corpusFingerprint
-  expectedCorpusFingerprintCache.set(corpusId, fingerprint)
-  return fingerprint
 }

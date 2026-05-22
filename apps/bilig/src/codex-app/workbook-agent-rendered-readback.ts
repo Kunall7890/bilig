@@ -368,6 +368,12 @@ function buildSurfaceProofIncompleteReason(input: {
   if (proof.frameProofSignature !== proof.presentedFrameProofSignature) {
     return 'Presented TypeGPU frame proof does not match the current frame lineage signature.'
   }
+  if (proof.currentSceneOwnershipSignature.trim().length === 0 || proof.presentedSceneOwnershipSignature.trim().length === 0) {
+    return 'Presented TypeGPU frame proof did not include a non-empty visible-scene ownership signature.'
+  }
+  if (proof.currentSceneOwnershipSignature !== proof.presentedSceneOwnershipSignature) {
+    return 'Presented TypeGPU frame proof does not match the current visible-scene ownership signature.'
+  }
   if (proof.currentTilePaneCount <= 0 || proof.currentHeaderPaneCount <= 0) {
     return 'Current TypeGPU frame proof did not include visible grid tiles and headers.'
   }
