@@ -516,19 +516,18 @@ jobs:
           test "${origin_sha}" = "${github_sha}"
 
           if [[ "${origin_sha}" != "${GITHUB_SHA}" ]]; then
-            echo "current=false" >> "$GITHUB_OUTPUT"
-            echo "reason=stale workflow SHA; newer main exists" >> "$GITHUB_OUTPUT"
+            echo "Workflow started from an older SHA; planning against current aligned main ${origin_sha}."
             {
-              echo "### runtime release planning skipped"
+              echo "### runtime release planning advanced to current main"
               echo
-              echo "A newer main commit exists, so this stale workflow run will not plan or publish runtime packages."
+              echo "A newer main commit exists, so this workflow will plan runtime packages from the current aligned main instead of skipping."
               echo
               echo "- workflow SHA: ${GITHUB_SHA}"
               echo "- current main: ${origin_sha}"
             } >> "$GITHUB_STEP_SUMMARY"
-            exit 0
           fi
 
+          git checkout -B main origin/main
           echo "current=true" >> "$GITHUB_OUTPUT"
           echo "reason=" >> "$GITHUB_OUTPUT"
 
@@ -704,23 +703,22 @@ jobs:
           fi
 
           if [[ "${origin_sha}" != "${GITHUB_SHA}" ]]; then
-            echo "current=false" >> "$GITHUB_OUTPUT"
-            echo "reason=stale workflow SHA; newer main exists" >> "$GITHUB_OUTPUT"
+            echo "Workflow started from an older SHA; publishing from current aligned main ${origin_sha}."
             {
-              echo "### runtime release skipped"
+              echo "### runtime release publishing advanced to current main"
               echo
-              echo "A newer main commit exists, so this stale workflow run will not mutate release metadata or publish packages."
+              echo "A newer main commit exists, so this workflow will continue from the current aligned main instead of skipping."
               echo
               echo "- workflow SHA: ${GITHUB_SHA}"
               echo "- current main: ${origin_sha}"
             } >> "$GITHUB_STEP_SUMMARY"
-            exit 0
           fi
 
+          git checkout -B main origin/main
           echo "current=true" >> "$GITHUB_OUTPUT"
           echo "reason=" >> "$GITHUB_OUTPUT"
 
-      - name: Report skipped stale runtime release
+      - name: Report skipped runtime release
         if: steps.publish_release_alignment.outputs.current != 'true'
         env:
           REASON: ${{ steps.publish_release_alignment.outputs.reason }}
