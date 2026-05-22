@@ -8,14 +8,19 @@ describe('SpreadsheetEngine sortRange', () => {
     const engine = new SpreadsheetEngine({ workbookName: 'sort-range' })
     await engine.ready()
     engine.createSheet('Ledger')
-    engine.setRangeValues({ sheetName: 'Ledger', startAddress: 'A1', endAddress: 'C6' }, [
-      ['Region', 'Amount', 'Memo'],
-      ['East', 10, 'e10'],
-      ['West', 5, 'w5a'],
-      ['West', 20, 'w20'],
-      ['East', 30, 'e30'],
-      ['West', 5, 'w5b'],
+    engine.setRangeValues({ sheetName: 'Ledger', startAddress: 'A1', endAddress: 'D6' }, [
+      ['Region', 'Amount', 'Memo', 'Double'],
+      ['East', 10, 'e10', null],
+      ['West', 5, 'w5a', null],
+      ['West', 20, 'w20', null],
+      ['East', 30, 'e30', null],
+      ['West', 5, 'w5b', null],
     ])
+    engine.setCellFormula('Ledger', 'D2', 'B2*2')
+    engine.setCellFormula('Ledger', 'D3', 'B3*2')
+    engine.setCellFormula('Ledger', 'D4', 'B4*2')
+    engine.setCellFormula('Ledger', 'D5', 'B5*2')
+    engine.setCellFormula('Ledger', 'D6', 'B6*2')
     engine.setCellFormula('Ledger', 'E1', 'B2')
     engine.setCommentThread({
       threadId: 'thread-largest-invoice',
@@ -30,7 +35,7 @@ describe('SpreadsheetEngine sortRange', () => {
     expect(
       engine.sortRange(
         'Ledger',
-        { sheetName: 'Ledger', startAddress: 'A1', endAddress: 'C6' },
+        { sheetName: 'Ledger', startAddress: 'A1', endAddress: 'D6' },
         [
           { keyAddress: 'A1', direction: 'asc' },
           { keyAddress: 'B1', direction: 'desc' },
@@ -39,13 +44,18 @@ describe('SpreadsheetEngine sortRange', () => {
       ),
     ).toBe(true)
 
-    expect(displayRows(engine, 'A2', 'C6')).toEqual([
-      ['East', 30, 'e30'],
-      ['East', 10, 'e10'],
-      ['West', 20, 'w20'],
-      ['West', 5, 'w5a'],
-      ['West', 5, 'w5b'],
+    expect(displayRows(engine, 'A2', 'D6')).toEqual([
+      ['East', 30, 'e30', 60],
+      ['East', 10, 'e10', 20],
+      ['West', 20, 'w20', 40],
+      ['West', 5, 'w5a', 10],
+      ['West', 5, 'w5b', 10],
     ])
+    expect(engine.getCell('Ledger', 'D2').formula).toBe('B2*2')
+    expect(engine.getCell('Ledger', 'D3').formula).toBe('B3*2')
+    expect(engine.getCell('Ledger', 'D4').formula).toBe('B4*2')
+    expect(engine.getCell('Ledger', 'D5').formula).toBe('B5*2')
+    expect(engine.getCell('Ledger', 'D6').formula).toBe('B6*2')
     expect(engine.getCellValue('Ledger', 'E1')).toEqual({ tag: ValueTag.Number, value: 30 })
     expect(engine.getCommentThread('Ledger', 'C2')).toEqual({
       threadId: 'thread-largest-invoice',
@@ -63,7 +73,7 @@ describe('SpreadsheetEngine sortRange', () => {
     expect(engine.getSorts('Ledger')).toEqual([
       {
         sheetName: 'Ledger',
-        range: { sheetName: 'Ledger', startAddress: 'A2', endAddress: 'C6' },
+        range: { sheetName: 'Ledger', startAddress: 'A2', endAddress: 'D6' },
         keys: [
           { keyAddress: 'A1', direction: 'asc' },
           { keyAddress: 'B1', direction: 'desc' },

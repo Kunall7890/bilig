@@ -11,6 +11,7 @@ import type {
 import { formatAddress, parseCellAddress } from '@bilig/formula'
 import type { EngineOp } from '@bilig/workbook'
 import { WORKBOOK_DEFAULT_FORMAT_ID, WORKBOOK_DEFAULT_STYLE_ID } from '../workbook-default-style-format.js'
+import { translateMutationFormulaForTarget } from './services/mutation-cell-content-helpers.js'
 
 export interface SpreadsheetEngineSortRangeOptions {
   readonly header?: boolean
@@ -86,7 +87,7 @@ export function buildSortRangeOps(
   for (const rewrite of rewrites) {
     const source = cellsByAddress.get(rewrite.sourceAddress)
     const existing = cellsByAddress.get(rewrite.targetAddress)
-    appendCellReplacementOps(ops, sheetName, rewrite.targetAddress, existing, source)
+    appendCellReplacementOps(ops, sheetName, rewrite, existing, source)
   }
   appendRowBundleMetadataSortOps(ops, sheet.metadata, rewrites, sheetName)
 
@@ -372,10 +373,11 @@ function sortValueRank(value: LiteralInput | undefined): number {
 function appendCellReplacementOps(
   ops: EngineOp[],
   sheetName: string,
-  address: string,
+  rewrite: SortCellRewrite,
   existing: SortCell | undefined,
   source: SortCell | undefined,
 ): void {
+  const address = rewrite.targetAddress
   if (!source) {
     if (existing) {
       ops.push({ kind: 'clearCell', sheetName, address })
@@ -387,8 +389,9 @@ function appendCellReplacementOps(
   }
 
   if (source.formula !== undefined) {
-    if (existing?.formula !== source.formula) {
-      ops.push({ kind: 'setCellFormula', sheetName, address, formula: source.formula })
+    const formula = translateSortedFormula(source.formula, sheetName, rewrite)
+    if (existing?.formula !== formula) {
+      ops.push({ kind: 'setCellFormula', sheetName, address, formula })
     }
   } else if (source.value !== undefined) {
     if (existing?.formula !== undefined || existing?.value !== source.value) {
@@ -401,4 +404,11 @@ function appendCellReplacementOps(
   if (existing?.format !== source.format) {
     ops.push({ kind: 'setCellFormat', sheetName, address, format: source.format ?? null })
   }
+}
+
+function translateSortedFormula(formula: string, sheetName: string, rewrite: SortCellRewrite): string {
+  if (rewrite.sourceAddress === rewrite.targetAddress) {
+    return formula
+  }
+  return translateMutationFormulaForTarget(formula, sheetName, rewrite.sourceAddress, sheetName, rewrite.targetAddress)
 }
