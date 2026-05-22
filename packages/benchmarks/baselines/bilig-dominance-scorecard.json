@@ -651,8 +651,8 @@
         "same-corpus UI legacy-insufficient rendered-grid proof cases: 0/9",
         "same-corpus UI current-contract evidence complete: false",
         "same-corpus UI run manifest invalid reasons: required workload count is incomplete; missing required workloads: open-workbook, select-cell, edit-visible-cell, scroll-vertical, scroll-horizontal, jump-deep-row, formula-edit, fill-format-change, wide-sheet-navigation; same-corpus evidence must use exactly one corpus case; same-corpus evidence must use exactly one benchmark workbook fingerprint; source workbook fingerprint must be stable for every required product; strict rendered-grid proof covers 0/9 cases; not every required workload is 10x against Google Sheets",
-        "google-sheets: open-public-workbook-and-scroll-viewport scrollResponseMs.p95 130.40370799999982ms and postScrollFrameMs.p95 9.300000000000182ms (3 samples, public-comment-only)",
-        "microsoft-excel-web: open-public-workbook-and-scroll-viewport scrollResponseMs.p95 115.86187499999869ms and postScrollFrameMs.p95 9.300000000000182ms (3 samples, public-office-web-viewer)",
+        "google-sheets: open-public-workbook-and-scroll-viewport scrollResponseMs.p95 140.94279199999983ms and postScrollFrameMs.p95 9.5ms (3 samples, public-comment-only)",
+        "microsoft-excel-web: open-public-workbook-and-scroll-viewport scrollResponseMs.p95 100.82908300000054ms and postScrollFrameMs.p95 10.300000000000182ms (3 samples, public-office-web-viewer)",
         "headedWide250kVisibleEditCommit: mutationToVisibleMs.p95 budget 50ms on 250000 materialized cells via pnpm test:browser:full"
       ],
       "evidenceArtifacts": [

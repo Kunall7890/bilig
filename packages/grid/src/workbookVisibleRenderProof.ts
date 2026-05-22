@@ -9,6 +9,8 @@ export interface WorkbookVisibleRenderProof {
   readonly hasPresentedVisibleFrame: boolean
   readonly frameProofSignature: string
   readonly presentedFrameProofSignature: string
+  readonly currentSceneOwnershipSignature: string
+  readonly presentedSceneOwnershipSignature: string
   readonly authoritativeRevision: number | null
   readonly localRevision: number | null
   readonly projectedRevision: number | null

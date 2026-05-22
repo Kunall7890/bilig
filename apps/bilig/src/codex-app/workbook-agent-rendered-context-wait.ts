@@ -36,6 +36,9 @@ function surfaceProofRevision(context: WorkbookAgentUiContext): number | null {
     surfaceProof.frameProofSignature.trim().length > 0 &&
     surfaceProof.presentedFrameProofSignature.trim().length > 0 &&
     surfaceProof.frameProofSignature === surfaceProof.presentedFrameProofSignature &&
+    surfaceProof.currentSceneOwnershipSignature.trim().length > 0 &&
+    surfaceProof.presentedSceneOwnershipSignature.trim().length > 0 &&
+    surfaceProof.currentSceneOwnershipSignature === surfaceProof.presentedSceneOwnershipSignature &&
     surfaceProof.currentTilePaneCount > 0 &&
     surfaceProof.currentHeaderPaneCount > 0 &&
     surfaceProof.presentedTilePaneCount > 0 &&

@@ -68,6 +68,11 @@ export const WorkbookPaneRendererV3 = memo(function WorkbookPaneRendererV3({
     hostRuntime.getFrameProofSignatureSnapshot,
     hostRuntime.getFrameProofSignatureSnapshot,
   )
+  const currentSceneOwnershipSignature = useSyncExternalStore(
+    hostRuntime.subscribeFrameProofStatus,
+    hostRuntime.getFrameSceneOwnershipSignatureSnapshot,
+    hostRuntime.getFrameSceneOwnershipSignatureSnapshot,
+  )
   const hasPresentedFrame = useSyncExternalStore(
     hostRuntime.subscribeFrameProofStatus,
     hostRuntime.getHasPresentedFrameSnapshot,
@@ -107,6 +112,7 @@ export const WorkbookPaneRendererV3 = memo(function WorkbookPaneRendererV3({
   const nativeLayerSource = showTypeGpuCanvas ? 'none' : 'backend-unavailable-live'
   const presentedHeaderPanes = presentedVisualFrame?.headerPanes ?? EMPTY_HEADER_PANES_V3
   const presentedTilePanes = presentedVisualFrame?.tilePanes ?? EMPTY_TILE_PANES_V3
+  const presentedSceneOwnershipSignature = presentedVisualFrame?.sceneOwnershipSignature ?? ''
   const nativeHeaderPanes = showTypeGpuCanvas ? EMPTY_HEADER_PANES_V3 : headerPanes
   const nativeTilePanes = showTypeGpuCanvas ? EMPTY_TILE_PANES_V3 : tilePanes
   const presentedHeaderTextRunCount = countHeaderPaneTextRunsV3(presentedHeaderPanes)
@@ -194,6 +200,8 @@ export const WorkbookPaneRendererV3 = memo(function WorkbookPaneRendererV3({
       hasPresentedVisibleFrame,
       frameProofSignature,
       presentedFrameProofSignature,
+      currentSceneOwnershipSignature,
+      presentedSceneOwnershipSignature,
       authoritativeRevision: visibleProof.authoritativeRevision,
       localRevision: visibleProof.localRevision,
       projectedRevision: visibleProof.projectedRevision,
@@ -218,12 +226,14 @@ export const WorkbookPaneRendererV3 = memo(function WorkbookPaneRendererV3({
     frameProofStatus,
     hasPresentedFrame,
     hasPresentedVisibleFrame,
+    currentSceneOwnershipSignature,
     headerPanes.length,
     host,
     presentedFrameProofSignature,
     presentedHeaderPanes.length,
     presentedTilePanes.length,
     presentedVisualFrame?.surface,
+    presentedSceneOwnershipSignature,
     showTypeGpuCanvas,
     tileSceneCameraSeq,
     tileSceneRevision,
@@ -268,6 +278,7 @@ export const WorkbookPaneRendererV3 = memo(function WorkbookPaneRendererV3({
           data-v3-header-pane-count={headerPanes.length}
           data-v3-header-text-run-count={headerTextRunCount}
           data-v3-current-content-signature={currentPayloadProof.contentSignature}
+          data-v3-current-scene-ownership-signature={currentSceneOwnershipSignature}
           data-v3-current-rect-count={currentPayloadProof.rectCount}
           data-v3-current-rect-signature={currentPayloadProof.rectSignature}
           data-v3-current-text-run-count={currentPayloadProof.textRunCount}
@@ -275,6 +286,7 @@ export const WorkbookPaneRendererV3 = memo(function WorkbookPaneRendererV3({
           data-v3-authoritative-render-revision={renderRevisionSnapshot?.authoritativeRevision ?? ''}
           data-v3-local-render-revision={renderRevisionSnapshot?.localRevision ?? ''}
           data-v3-presented-frame-proof-signature={presentedFrameProofSignature}
+          data-v3-presented-scene-ownership-signature={presentedSceneOwnershipSignature}
           data-v3-presented-camera-seq={presentedVisualFrame?.cameraSeq ?? ''}
           data-v3-presented-draw-text={presentedVisualFrame ? (presentedVisualFrame.drawText ? 'true' : 'false') : ''}
           data-v3-presented-header-pane-count={presentedHeaderPanes.length}

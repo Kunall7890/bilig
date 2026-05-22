@@ -638,6 +638,8 @@ function sameCorpusScenarioProof(workload: UiResponsivenessSameCorpusWorkload) {
           'hasPresentedFrame=true',
           'hasPresentedVisibleFrame=true',
           'presentedFrameProofSignature=frame-current',
+          'currentSceneOwnershipSignature=scene-current',
+          'presentedSceneOwnershipSignature=scene-current',
           'currentContentSignature=content-current',
           'presentedContentSignature=content-current',
           'currentTextRunCount=12',

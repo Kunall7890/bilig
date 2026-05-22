@@ -2,6 +2,7 @@ export interface BiligRenderedCanvasState {
   readonly authoritativeRenderRevision?: string | null | undefined
   readonly backendStatus?: string | null | undefined
   readonly currentContentSignature?: string | null | undefined
+  readonly currentSceneOwnershipSignature?: string | null | undefined
   readonly currentRectCount?: number | undefined
   readonly currentRectSignature?: string | null | undefined
   readonly currentTextRunCount?: number | undefined
@@ -16,6 +17,7 @@ export interface BiligRenderedCanvasState {
   readonly pixelHeight: number
   readonly pixelWidth: number
   readonly presentedContentSignature?: string | null | undefined
+  readonly presentedSceneOwnershipSignature?: string | null | undefined
   readonly presentedFrameProofSignature?: string | null | undefined
   readonly presentedHeaderPaneCount?: number | undefined
   readonly presentedRectCount?: number | undefined
@@ -102,6 +104,19 @@ export function biligRenderedSurfaceReadiness(state: BiligRenderedSurfaceState |
     canvas.presentedFrameProofSignature !== canvas.frameProofSignature
   ) {
     gaps.push('presented frame proof signature does not match current frame')
+  }
+  if (!hasText(canvas.currentSceneOwnershipSignature)) {
+    gaps.push('current visible-scene ownership signature is missing')
+  }
+  if (!hasText(canvas.presentedSceneOwnershipSignature)) {
+    gaps.push('presented visible-scene ownership signature is missing')
+  }
+  if (
+    hasText(canvas.currentSceneOwnershipSignature) &&
+    hasText(canvas.presentedSceneOwnershipSignature) &&
+    canvas.presentedSceneOwnershipSignature !== canvas.currentSceneOwnershipSignature
+  ) {
+    gaps.push('presented visible-scene ownership does not match current scene')
   }
   if (canvas.hasPresentedVisibleFrame !== true) {
     gaps.push('visible frame has not been presented')
@@ -292,6 +307,8 @@ function canvasEvidence(canvas: BiligRenderedCanvasState, state: BiligRenderedSu
     `hasPresentedFrame=${String(canvas.hasPresentedFrame === true)}`,
     `hasPresentedVisibleFrame=${String(canvas.hasPresentedVisibleFrame === true)}`,
     `presentedFrameProofSignature=${canvas.presentedFrameProofSignature ?? ''}`,
+    `currentSceneOwnershipSignature=${canvas.currentSceneOwnershipSignature ?? ''}`,
+    `presentedSceneOwnershipSignature=${canvas.presentedSceneOwnershipSignature ?? ''}`,
     `currentContentSignature=${canvas.currentContentSignature ?? ''}`,
     `presentedContentSignature=${canvas.presentedContentSignature ?? ''}`,
     `currentTextRunCount=${String(canvas.currentTextRunCount ?? 0)}`,

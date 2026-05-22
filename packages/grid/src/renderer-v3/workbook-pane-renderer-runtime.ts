@@ -22,6 +22,7 @@ export interface WorkbookPaneRendererRuntimeStateV3 {
   readonly cameraStore: GridCameraStore | null
   readonly drawText: boolean
   readonly frameProofSignature: string
+  readonly sceneOwnershipSignature: string
   readonly geometry: GridGeometrySnapshot | null
   readonly headerPanes: readonly GridHeaderPaneState[]
   readonly overlay: DynamicGridOverlayBatchV3 | null
@@ -38,6 +39,7 @@ export interface WorkbookPaneFrameInputV3 {
   readonly backend: unknown
   readonly drawText?: boolean | undefined
   readonly frameProofSignature: string
+  readonly sceneOwnershipSignature: string
   readonly headerPanes?: readonly GridHeaderPaneState[] | undefined
   readonly tilePanes: readonly WorkbookRenderTilePaneState[]
   readonly preloadTilePanes?: readonly WorkbookRenderTilePaneState[] | undefined
@@ -56,6 +58,7 @@ export interface WorkbookPanePresentedVisualFrameV3 {
   readonly overlayRectSignature: string | null
   readonly overlaySeq: number | null
   readonly renderRevisionSnapshot: GridRenderRevisionSnapshot | null
+  readonly sceneOwnershipSignature: string
   readonly scrollSnapshot: WorkbookGridScrollSnapshot
   readonly surface: TypeGpuSurfaceSizeV3
   readonly tilePanes: readonly WorkbookRenderTilePaneState[]
@@ -97,6 +100,7 @@ const EMPTY_RUNTIME_STATE: WorkbookPaneRendererRuntimeStateV3 = Object.freeze({
   cameraStore: null,
   drawText: true,
   frameProofSignature: '',
+  sceneOwnershipSignature: '',
   geometry: null,
   headerPanes: [],
   overlay: null,
@@ -236,11 +240,13 @@ export class WorkbookPaneRendererRuntimeV3 {
       panes: state.tilePanes,
     })
     const frameProofSignature = state.frameProofSignature
+    const sceneOwnershipSignature = state.sceneOwnershipSignature
     const submitted =
       this.drawFrame({
         backend: state.backend,
         drawText: state.drawText,
         frameProofSignature,
+        sceneOwnershipSignature,
         headerPanes: state.headerPanes,
         overlay: overlayBatch ?? null,
         preloadTilePanes: state.preloadTilePanes,
@@ -262,6 +268,7 @@ export class WorkbookPaneRendererRuntimeV3 {
             overlayRectSignature: overlayBatch?.rectSignature ?? null,
             overlaySeq: overlayBatch?.seq ?? null,
             renderRevisionSnapshot: state.renderRevisionSnapshot ? { ...state.renderRevisionSnapshot } : null,
+            sceneOwnershipSignature,
             scrollSnapshot: { ...scrollSnapshot },
             surface: { ...state.surface },
             tilePanes: [...state.tilePanes],

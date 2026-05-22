@@ -51,6 +51,8 @@ function renderedContext(input: {
           hasPresentedVisibleFrame: true,
           frameProofSignature: 'frame:proof',
           presentedFrameProofSignature: 'frame:proof',
+          currentSceneOwnershipSignature: 'scene:proof',
+          presentedSceneOwnershipSignature: 'scene:proof',
           authoritativeRevision: input.surfaceRevision ?? input.capturedRevision ?? null,
           localRevision: null,
           projectedRevision: input.capturedRevision ?? null,
@@ -216,6 +218,30 @@ describe('selectWorkbookRenderedReadback', () => {
     expect(proof.stale).toBe(false)
     expect(proof.surfaceProofMatched).toBe(false)
     expect(proof.incompleteReason).toContain('does not match the current frame lineage signature')
+  })
+
+  it('rejects presented proof when current and presented scene ownership diverge', () => {
+    const proof = selectWorkbookRenderedReadback({
+      renderedContext: renderedContext({
+        capturedRevision: 4,
+        batchId: 4,
+        surfaceRevision: 4,
+        surfaceProofOverrides: {
+          currentSceneOwnershipSignature: 'scene:current',
+          presentedSceneOwnershipSignature: 'scene:presented',
+        },
+      }),
+      requestedRange: {
+        sheetName: 'Sheet1',
+        startAddress: 'A1',
+        endAddress: 'A1',
+      },
+      minRevision: 4,
+    })
+
+    expect(proof.stale).toBe(false)
+    expect(proof.surfaceProofMatched).toBe(false)
+    expect(proof.incompleteReason).toContain('does not match the current visible-scene ownership signature')
   })
 
   it('rejects presented proof without current visible tile and header panes', () => {
