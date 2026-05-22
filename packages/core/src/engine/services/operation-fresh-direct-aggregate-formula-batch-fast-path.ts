@@ -519,6 +519,10 @@ function collectFreshDirectAggregateMatrixBatch(
   }
 
   const formulaCol = firstMutation.col + inputColCount
+  const hasFormulaColumnDependents =
+    args.hasTrackedExactLookupDependents(firstRef.sheetId, formulaCol) ||
+    args.hasTrackedSortedLookupDependents(firstRef.sheetId, formulaCol) ||
+    args.hasTrackedDirectRangeDependents(firstRef.sheetId, formulaCol)
   const formulaEntrySeeds: FreshDirectAggregateFormulaEntrySeed[] = []
   let directAggregateTemplate: FreshMatrixDirectAggregateTemplate | undefined
   for (let refIndex = firstFormulaRefIndex; refIndex < refs.length; refIndex += 1) {
@@ -538,9 +542,7 @@ function collectFreshDirectAggregateMatrixBatch(
     if (
       sheet.grid.getPhysical(mutation.row, mutation.col) !== -1 ||
       sheet.logical.getVisibleCell(mutation.row, mutation.col) !== undefined ||
-      args.hasTrackedExactLookupDependents(ref.sheetId, mutation.col) ||
-      args.hasTrackedSortedLookupDependents(ref.sheetId, mutation.col) ||
-      args.hasTrackedDirectRangeDependents(ref.sheetId, mutation.col)
+      hasFormulaColumnDependents
     ) {
       return null
     }

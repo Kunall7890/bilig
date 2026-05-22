@@ -29,7 +29,6 @@ export function collectFreshDirectAggregateMatrixPlanBatch(
     plan.rowCount < 2 ||
     plan.inputColCount < 2 ||
     plan.values.length !== valueCount ||
-    plan.formulaSources.length !== plan.rowCount ||
     refs.length !== valueCount + plan.rowCount
   ) {
     return null
@@ -46,14 +45,8 @@ export function collectFreshDirectAggregateMatrixPlanBatch(
   const firstFormulaRef = refs[valueCount]
   const lastFormulaRef = refs[refs.length - 1]
   if (
-    !isMatrixBoundaryFormulaRef(firstFormulaRef, plan.sheetId, plan.rowStart, formulaCol, plan.formulaSources[0]) ||
-    !isMatrixBoundaryFormulaRef(
-      lastFormulaRef,
-      plan.sheetId,
-      plan.rowStart + plan.rowCount - 1,
-      formulaCol,
-      plan.formulaSources[plan.rowCount - 1],
-    )
+    matrixFormulaSource(firstFormulaRef, plan.sheetId, plan.rowStart, formulaCol) === undefined ||
+    matrixFormulaSource(lastFormulaRef, plan.sheetId, plan.rowStart + plan.rowCount - 1, formulaCol) === undefined
   ) {
     return null
   }
@@ -85,21 +78,19 @@ export function collectFreshDirectAggregateMatrixPlanBatch(
       return null
     }
   }
+  const hasFormulaColumnDependents =
+    args.hasTrackedExactLookupDependents(plan.sheetId, formulaCol) ||
+    args.hasTrackedSortedLookupDependents(plan.sheetId, formulaCol) ||
+    args.hasTrackedDirectRangeDependents(plan.sheetId, formulaCol)
 
   const formulaEntrySeeds: FreshDirectAggregateFormulaEntrySeed[] = []
   let directAggregateTemplate: FreshMatrixDirectAggregateTemplate | undefined
   for (let rowOffset = 0; rowOffset < plan.rowCount; rowOffset += 1) {
     args.checkEvaluationBudget()
-    const source = plan.formulaSources[rowOffset]
     const formulaRef = refs[valueCount + rowOffset]
     const row = plan.rowStart + rowOffset
-    if (
-      typeof source !== 'string' ||
-      !isMatrixBoundaryFormulaRef(formulaRef, plan.sheetId, row, formulaCol, source) ||
-      args.hasTrackedExactLookupDependents(plan.sheetId, formulaCol) ||
-      args.hasTrackedSortedLookupDependents(plan.sheetId, formulaCol) ||
-      args.hasTrackedDirectRangeDependents(plan.sheetId, formulaCol)
-    ) {
+    const source = matrixFormulaSource(formulaRef, plan.sheetId, row, formulaCol)
+    if (source === undefined || hasFormulaColumnDependents) {
       return null
     }
     let compiled: CompiledFormula
@@ -205,20 +196,16 @@ function isMatrixValueRef(ref: EngineCellMutationRef | undefined, sheetId: numbe
   )
 }
 
-function isMatrixBoundaryFormulaRef(
-  ref: EngineCellMutationRef | undefined,
-  sheetId: number,
-  row: number,
-  col: number,
-  formula: string | undefined,
-): boolean {
-  return (
+function matrixFormulaSource(ref: EngineCellMutationRef | undefined, sheetId: number, row: number, col: number): string | undefined {
+  if (
     ref !== undefined &&
     ref.sheetId === sheetId &&
     ref.cellIndex === undefined &&
     ref.mutation.kind === 'setCellFormula' &&
     ref.mutation.row === row &&
-    ref.mutation.col === col &&
-    ref.mutation.formula === formula
-  )
+    ref.mutation.col === col
+  ) {
+    return ref.mutation.formula
+  }
+  return undefined
 }

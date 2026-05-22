@@ -705,6 +705,7 @@ describe('operation-service dense mutation fast paths', () => {
       directAggregateScanEvaluations: 0,
       directFormulaKernelSyncOnlyRecalcSkips: 1,
       formulasBound: 0,
+      nativeDirectAggregatePrefixEvaluations: 0,
       topoRepairs: 0,
     })
 
@@ -948,7 +949,6 @@ describe('operation-service dense mutation fast paths', () => {
     const valueRefs: EngineCellMutationRef[] = []
     const formulaRefs: EngineCellMutationRef[] = []
     const values = new Float64Array(rowCount * inputCols)
-    const formulaSources: string[] = []
     let valueIndex = 0
     for (let row = 0; row < rowCount; row += 1) {
       const rowNumber = row + 1
@@ -962,7 +962,6 @@ describe('operation-service dense mutation fast paths', () => {
         valueIndex += 1
       }
       const formula = `SUM(A${rowNumber}:B${rowNumber})`
-      formulaSources.push(formula)
       formulaRefs.push({
         sheetId,
         mutation: { kind: 'setCellFormula', row, col: inputCols, formula },
@@ -977,7 +976,6 @@ describe('operation-service dense mutation fast paths', () => {
       colStart: 0,
       inputColCount: inputCols,
       values,
-      formulaSources,
     }
 
     engine.resetPerformanceCounters()

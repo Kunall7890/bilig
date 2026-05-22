@@ -543,6 +543,7 @@ describe('work paper batched structural fast path', () => {
       freshDirectAggregateMatrixPlanApplications: 1,
       freshDirectAggregateMatrixPlanMembers: appendCount,
       kernelSyncOnlyRecalcSkips: 1,
+      nativeDirectAggregatePrefixEvaluations: 0,
     })
 
     workbook.setCellContents(cell(sheetId, 2, 0), 10)

@@ -137,8 +137,12 @@ describe('work-paper matrix application', () => {
       inputColCount: 2,
     })
     expect(Array.from(matrixPlan?.values.slice(0, 4) ?? [])).toEqual([1, 2, 2, 3])
-    expect(matrixPlan?.formulaSources).toHaveLength(16)
-    expect(matrixPlan?.formulaSources[0]).toBe('SUM(A11:B11)')
+    expect(applied[0]?.refs[32]?.mutation).toEqual({
+      kind: 'setCellFormula',
+      row: 10,
+      col: 2,
+      formula: 'SUM(A11:B11)',
+    })
   })
 
   it('does not attach direct-aggregate matrix plans to scalar formula matrices', () => {

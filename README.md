@@ -297,10 +297,32 @@ alongside read and write tools.
 
 ## Proof You Can Reproduce
 
-- The 90-second quickstart above edits one input and verifies the dependent formula result.
-- Run `pnpm workpaper:bench:competitive:check` to check benchmark artifacts
-  locally.
-- The benchmark card is generated from
+- The 90-second TypeScript check above edits one input, restores the saved JSON
+  document, and verifies the dependent formula result.
+- For a production-shaped evaluator path, run the
+  [quote approval WorkPaper API proof](docs/quote-approval-workpaper-api.md).
+  It starts from an empty Node directory, downloads one maintained TypeScript
+  route smoke, writes quote inputs, recalculates an approval decision, persists
+  JSON, and verifies restored readback.
+- For an XLSX formula recalculation example, run
+  [`examples/xlsx-recalculation-node`](examples/xlsx-recalculation-node). It
+  imports a generated XLSX pricing workbook, edits input cells, reads the
+  recalculated approval decision, exports XLSX, reimports it, and verifies the
+  formulas survived the round trip. The public decision page is
+  [XLSX formula recalculation in Node.js](docs/xlsx-formula-recalculation-node.md).
+- For a shorter public decision page, read
+  [formula workbooks for Node services and agent tools](docs/formula-workbooks-node-services-agent-tools.md).
+  It compresses the WorkPaper boundary, MCP file-backed mode, benchmark caveat,
+  and alternative-tool guidance into one shareable evaluator path.
+- For HN, Lobsters, Reddit, or newsletter review, use the
+  [Show HN maintainer note](docs/show-hn-formula-workbooks-node-services.md).
+  It keeps the empty npm-project command, `verified: true` output, benchmark
+  caveat, known limits, and feedback ask together.
+- Run `pnpm workpaper:bench:competitive:check`. The checked-in artifact shows
+  [`99/100` comparable WorkPaper mean wins](docs/what-workpaper-benchmark-proves.md)
+  with four p95 holdouts; the current worst p95 row is
+  `structural-append-formula-rows-large` at `1.196x`.
+- The benchmark card is generated from that artifact:
   [`docs/assets/workpaper-benchmark-card.png`](docs/assets/workpaper-benchmark-card.png).
 - Read the [compatibility limits](docs/where-bilig-is-not-excel-compatible-yet.md)
   and use the Excel oracle harness when stale cached formula values are not
@@ -433,8 +455,8 @@ Start with these docs when evaluating adoption:
 
 Checked benchmark evidence is file-backed. The current WorkPaper vs
 HyperFormula artifact shows
-[`94/100` comparable WorkPaper mean wins](docs/what-workpaper-benchmark-proves.md).
-The current worst p95 row is `structural-move-rows` at `4.047x`, so do not make
+[`99/100` comparable WorkPaper mean wins](docs/what-workpaper-benchmark-proves.md).
+The current worst p95 row is `structural-append-formula-rows-large` at `1.196x`, so do not make
 blanket performance claims beyond the checked evidence.
 
 For first-time contributors, [`docs/why-use-bilig.md`](docs/why-use-bilig.md)
