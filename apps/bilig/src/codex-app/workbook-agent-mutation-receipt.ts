@@ -211,6 +211,9 @@ export async function buildMutationReceipt(input: {
   if (executionRecord && renderedReadback.matched !== true) {
     warnings.push(renderedReadback.incompleteReason ?? 'Rendered readback did not prove the mutation.')
   }
+  if (executionRecord && renderedReadback.matched === true && renderedReadback.sourceKind !== 'selection') {
+    warnings.push('Rendered readback matched from the visible viewport, but the active browser selection did not prove the target range.')
+  }
   if (executionRecord && !undo.available) {
     warnings.push(undo.reasonUnavailable ?? 'Undo status is unavailable.')
   }
@@ -225,6 +228,7 @@ export async function buildMutationReceipt(input: {
     authoritativeReadback.matched === true &&
     renderedReadback.requested &&
     renderedReadback.matched === true &&
+    renderedReadback.sourceKind === 'selection' &&
     semanticReadback.requested &&
     semanticReadback.matched === true &&
     undo.available

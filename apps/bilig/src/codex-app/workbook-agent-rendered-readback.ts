@@ -24,6 +24,7 @@ export interface WorkbookRenderedReadbackProof {
   readonly matched: boolean | null
   readonly stale: boolean
   readonly capturedRange: CellRangeRef | null
+  readonly sourceKind: 'selection' | 'visibleRange' | null
   readonly sourceRange: CellRangeRef | null
   readonly capturedAtUnixMs: number | null
   readonly capturedRevision: number | null
@@ -121,25 +122,37 @@ function rangeContains(container: CellRangeRef, requested: CellRangeRef): boolea
   )
 }
 
-function renderedCandidates(context: WorkbookAgentRenderedContext | null | undefined): WorkbookAgentRenderedRange[] {
+interface RenderedRangeCandidate {
+  readonly sourceKind: 'selection' | 'visibleRange'
+  readonly range: WorkbookAgentRenderedRange
+}
+
+function renderedCandidates(context: WorkbookAgentRenderedContext | null | undefined): RenderedRangeCandidate[] {
   if (!context) {
     return []
   }
-  return [context.selection, context.visibleRange].filter((entry): entry is WorkbookAgentRenderedRange => entry !== null)
+  const candidates: RenderedRangeCandidate[] = []
+  if (context.selection) {
+    candidates.push({ sourceKind: 'selection', range: context.selection })
+  }
+  if (context.visibleRange) {
+    candidates.push({ sourceKind: 'visibleRange', range: context.visibleRange })
+  }
+  return candidates
 }
 
 function pickRenderedRange(
   context: WorkbookAgentRenderedContext | null | undefined,
   requestedRange: CellRangeRef,
-): WorkbookAgentRenderedRange | null {
+): RenderedRangeCandidate | null {
   const candidates = renderedCandidates(context)
   return (
     candidates.find((entry) => {
-      const source = toWorkbookAgentRangeRef(entry.range)
+      const source = toWorkbookAgentRangeRef(entry.range.range)
       const target = toWorkbookAgentRangeRef(requestedRange)
       return source.sheetName === target.sheetName && source.startAddress === target.startAddress && source.endAddress === target.endAddress
     }) ??
-    candidates.find((entry) => rangeContains(entry.range, requestedRange)) ??
+    candidates.find((entry) => rangeContains(entry.range.range, requestedRange)) ??
     null
   )
 }
@@ -322,7 +335,8 @@ export function selectWorkbookRenderedReadback(input: {
 }): WorkbookRenderedReadbackProof {
   const requestedRange = toWorkbookAgentRangeRef(input.requestedRange)
   const renderedContext = input.renderedContext ?? null
-  const selectedRange = pickRenderedRange(renderedContext, requestedRange)
+  const selectedRangeCandidate = pickRenderedRange(renderedContext, requestedRange)
+  const selectedRange = selectedRangeCandidate?.range ?? null
   const capturedBatchId = asNonNegativeSafeInteger(renderedContext?.batchId)
   const capturedRevision = renderedCaptureRevision(renderedContext)
   const stale =
@@ -362,6 +376,7 @@ export function selectWorkbookRenderedReadback(input: {
     matched,
     stale,
     capturedRange: extracted.range?.range ?? null,
+    sourceKind: selectedRangeCandidate?.sourceKind ?? null,
     sourceRange: selectedRange?.range ?? null,
     capturedAtUnixMs: renderedContext?.capturedAtUnixMs ?? null,
     capturedRevision,
@@ -388,6 +403,7 @@ export function emptyWorkbookRenderedReadbackProof(input: {
     matched: null,
     stale: true,
     capturedRange: null,
+    sourceKind: null,
     sourceRange: null,
     capturedAtUnixMs: null,
     capturedRevision: null,

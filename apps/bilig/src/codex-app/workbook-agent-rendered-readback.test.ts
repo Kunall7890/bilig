@@ -6,38 +6,40 @@ import { selectWorkbookRenderedReadback } from './workbook-agent-rendered-readba
 function renderedContext(input: {
   readonly capturedRevision?: number | null
   readonly batchId: number | null
+  readonly useVisibleRangeOnly?: boolean
   readonly value?: string
 }): WorkbookAgentRenderedContext {
+  const renderedRange = {
+    range: {
+      sheetName: 'Sheet1',
+      startAddress: 'A1',
+      endAddress: 'A1',
+    },
+    rowCount: 1,
+    columnCount: 1,
+    cellCount: 1,
+    truncated: false,
+    rows: [
+      [
+        {
+          address: 'A1',
+          input: input.value ?? 'ok',
+          value: { tag: ValueTag.String, value: input.value ?? 'ok' },
+          formula: null,
+          displayFormat: input.value ?? 'ok',
+          styleId: null,
+          numberFormatId: null,
+          style: null,
+        },
+      ],
+    ],
+  }
   return {
     capturedAtUnixMs: 1_000,
     capturedRevision: input.capturedRevision ?? null,
     batchId: input.batchId,
-    selection: {
-      range: {
-        sheetName: 'Sheet1',
-        startAddress: 'A1',
-        endAddress: 'A1',
-      },
-      rowCount: 1,
-      columnCount: 1,
-      cellCount: 1,
-      truncated: false,
-      rows: [
-        [
-          {
-            address: 'A1',
-            input: input.value ?? 'ok',
-            value: { tag: ValueTag.String, value: input.value ?? 'ok' },
-            formula: null,
-            displayFormat: input.value ?? 'ok',
-            styleId: null,
-            numberFormatId: null,
-            style: null,
-          },
-        ],
-      ],
-    },
-    visibleRange: null,
+    selection: input.useVisibleRangeOnly ? null : renderedRange,
+    visibleRange: input.useVisibleRangeOnly ? renderedRange : null,
   }
 }
 
@@ -77,5 +79,29 @@ describe('selectWorkbookRenderedReadback', () => {
     expect(proof.capturedRevision).toBe(3)
     expect(proof.stale).toBe(true)
     expect(proof.matched).toBeNull()
+  })
+
+  it('records whether rendered proof came from selection or visible viewport', () => {
+    const selectionProof = selectWorkbookRenderedReadback({
+      renderedContext: renderedContext({ capturedRevision: 3, batchId: 1 }),
+      requestedRange: {
+        sheetName: 'Sheet1',
+        startAddress: 'A1',
+        endAddress: 'A1',
+      },
+      minRevision: 3,
+    })
+    const visibleRangeProof = selectWorkbookRenderedReadback({
+      renderedContext: renderedContext({ capturedRevision: 3, batchId: 1, useVisibleRangeOnly: true }),
+      requestedRange: {
+        sheetName: 'Sheet1',
+        startAddress: 'A1',
+        endAddress: 'A1',
+      },
+      minRevision: 3,
+    })
+
+    expect(selectionProof.sourceKind).toBe('selection')
+    expect(visibleRangeProof.sourceKind).toBe('visibleRange')
   })
 })

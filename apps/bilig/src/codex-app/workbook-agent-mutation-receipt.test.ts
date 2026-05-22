@@ -957,6 +957,104 @@ describe('workbook agent mutation receipt helpers', () => {
     expect(payload.summary).not.toContain('Applied workbook change set')
   })
 
+  it('does not report applied when rendered proof comes from viewport instead of the active selection', async () => {
+    const engine = await createEngine()
+    const appliedValue = 'Visible but not selected'
+    const command: WorkbookAgentCommand = {
+      kind: 'writeRange',
+      sheetName: 'Sheet1',
+      startAddress: 'B2',
+      values: [[appliedValue]],
+    }
+    const bundle = createBundle(command, 'bundle-visible-range-only')
+    const undoBundle = applyWorkbookAgentCommandBundleWithUndoCapture(engine, bundle)
+    const { zeroSyncService } = createZeroSyncHarness(engine, {
+      headRevision: 2,
+      calculatedRevision: 2,
+      changes: [
+        {
+          revision: 2,
+          actorUserId: 'alex@example.com',
+          clientMutationId: null,
+          eventKind: 'applyAgentCommandBundle',
+          summary: 'Write cells in Sheet1!B2',
+          sheetId: null,
+          sheetName: 'Sheet1',
+          anchorAddress: 'B2',
+          range: {
+            sheetName: 'Sheet1',
+            startAddress: 'B2',
+            endAddress: 'B2',
+          },
+          rangeInvalid: false,
+          undoBundle,
+          revertedByRevision: null,
+          revertsRevision: null,
+          createdAtUnixMs: 2,
+        },
+      ],
+    })
+    const renderedContext = createRenderedContext({
+      address: 'B2',
+      value: appliedValue,
+      capturedRevision: 2,
+    })
+
+    const result = await stageWorkbookAgentCommandResult(
+      {
+        documentId: 'doc-1',
+        session: { userID: 'alex@example.com', roles: ['editor'] },
+        uiContext: {
+          ...renderedContext,
+          selection: {
+            sheetName: 'Sheet1',
+            address: 'A1',
+            range: {
+              startAddress: 'A1',
+              endAddress: 'A1',
+            },
+          },
+          rendered: renderedContext.rendered
+            ? {
+                ...renderedContext.rendered,
+                selection: null,
+                visibleRange: renderedContext.rendered.selection,
+              }
+            : undefined,
+        },
+        zeroSyncService,
+        stageCommand: async () => ({
+          bundle,
+          executionRecord: createExecutionRecord({
+            bundle,
+            appliedRevision: 2,
+            afterInput: appliedValue,
+          }),
+        }),
+      },
+      command,
+      'writeRange',
+    )
+
+    const payload = z
+      .object({
+        applied: z.literal(false),
+        status: z.literal('verification_incomplete'),
+        mutationReceipt: z.object({
+          status: z.literal('verification_incomplete'),
+          renderedReadback: z.object({
+            matched: z.literal(true),
+            sourceKind: z.literal('visibleRange'),
+          }),
+          warnings: z.array(z.string()),
+        }),
+      })
+      .parse(parsePayload(result))
+    expect(payload.mutationReceipt.warnings).toContain(
+      'Rendered readback matched from the visible viewport, but the active browser selection did not prove the target range.',
+    )
+  })
+
   it('reports applied for format mutations when authoritative and rendered proof agree', async () => {
     const engine = await createEngine()
     const command: WorkbookAgentCommand = {

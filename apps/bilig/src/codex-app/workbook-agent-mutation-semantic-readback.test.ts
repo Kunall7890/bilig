@@ -29,6 +29,7 @@ function renderedReadback(overrides: Partial<WorkbookRenderedReadbackProof> = {}
     matched: true,
     stale: false,
     capturedRange: range,
+    sourceKind: 'selection',
     sourceRange: range,
     capturedAtUnixMs: 1,
     capturedRevision: 2,
