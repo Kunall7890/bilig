@@ -221,9 +221,9 @@ npx --package @bilig/exceljs-formula-recalc exceljs-recalc --demo --json
 
 <!-- headless-package-footprint:start -->
 
-Current checked npm footprint for `@bilig/headless@0.42.0`:
+Current checked npm footprint for `@bilig/headless@0.43.0`:
 
-- Pack dry run: `730 kB` tarball, `4.47 MB` unpacked, `732` package entries.
+- Pack dry run: `737 kB` tarball, `4.50 MB` unpacked, `738` package entries.
 - Boundary: the main import is the WorkPaper formula/JSON runtime; XLSX
   import/export stays behind the `@bilig/headless/xlsx` subpath; MCP is the
   `bilig-workpaper-mcp` binary wrapper; reduced workbook reports use the
@@ -288,7 +288,7 @@ For MCP and agent handoff flows, see:
 MCP and reduced-case commands:
 
 ```sh
-npm exec --package @bilig/headless@0.42.0 -- bilig-formula-clinic ./reduced.xlsx --cells "Summary!B7,Inputs!B2"
+npm exec --package @bilig/headless@0.43.0 -- bilig-formula-clinic ./reduced.xlsx --cells "Summary!B7,Inputs!B2"
 bilig-workpaper-mcp --workpaper ./pricing.workpaper.json --init-demo-workpaper --writable
 ```
 
@@ -360,7 +360,7 @@ Discovery links that must remain easy for humans and agents to find:
 - `openai-responses-workpaper-tool-call`
 - `ai-sdk-generate-text-tool-smoke.ts`
 - `ai-sdk-stream-text-tool-smoke.ts`
-- `npm exec --package @bilig/headless@0.42.0 -- bilig-agent-challenge`
+- `npm exec --package @bilig/headless@0.43.0 -- bilig-agent-challenge`
 - <https://registry.modelcontextprotocol.io/v0.1/servers?search=io.github.proompteng%2Fbilig-workpaper>
 - [AI SDK and LangChain tools](docs/vercel-ai-sdk-langchain-spreadsheet-tool.md)
 - [MCP tool server](docs/mcp-workpaper-tool-server.md)
