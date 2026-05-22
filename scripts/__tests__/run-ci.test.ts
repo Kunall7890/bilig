@@ -71,7 +71,7 @@ describe('run-ci', () => {
 
     expect(packageJson).toContain('"ci": "BILIG_CI_PROFILE=fast BILIG_CI_SKIP_BROWSER=1 tsx scripts/run-ci.ts"')
     expect(packageJson).toContain('"ci:core": "BILIG_CI_PROFILE=fast BILIG_CI_SKIP_BROWSER=1 tsx scripts/run-ci.ts"')
-    expect(packageJson).toContain('"ci:github": "BILIG_CI_PROFILE=fast tsx scripts/run-ci.ts"')
+    expect(packageJson).toContain('"ci:github": "BILIG_CI_PROFILE=fast BILIG_CI_SKIP_BROWSER=1 tsx scripts/run-ci.ts"')
     expect(packageJson).toContain('"ci:full": "BILIG_CI_PROFILE=full tsx scripts/run-ci.ts"')
     expect(packageJson).toContain(
       '"public-workbook-corpus:memory-gate": "bun scripts/public-workbook-corpus-memory-gate.ts --require-public"',
