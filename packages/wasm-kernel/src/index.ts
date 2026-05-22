@@ -16,8 +16,10 @@ import { materializePivotTableRaw } from './raw-kernel-pivot-bridge.js'
 import { isRawKernelExports, type RawKernelExports } from './raw-kernel-exports.js'
 import { evalBatchRaw } from './raw-kernel-vm-bridge.js'
 import type { SpreadsheetKernel } from './kernel-types.js'
+import { RawWorksheetImportStorage, type WorksheetImportStorage } from './worksheet-import-storage.js'
 
 export type { SpreadsheetKernel } from './kernel-types.js'
+export type { WorksheetImportStorage, WorksheetImportStorageSnapshot } from './worksheet-import-storage.js'
 
 type TypedArrayValue = Uint8Array | Uint16Array | Uint32Array | Float64Array
 
@@ -853,4 +855,12 @@ export function createKernelSync(): SpreadsheetKernel {
     throw new Error('WASM exports did not match the kernel contract')
   }
   return new KernelHandle(instance.exports)
+}
+
+export function createWorksheetImportStorageSync(): WorksheetImportStorage {
+  const { instance } = loadWasmModuleSync()
+  if (!isRawKernelExports(instance.exports)) {
+    throw new Error('WASM exports did not match the kernel contract')
+  }
+  return new RawWorksheetImportStorage(instance.exports)
 }

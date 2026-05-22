@@ -1,5 +1,6 @@
 import type { WorkbookRichTextCellSnapshot } from '@bilig/protocol'
 import type { ImportedWorkbookArena, ImportedWorksheetStyleIndexArena } from './xlsx-large-simple-arena.js'
+import type { LargeSimpleWorksheetScanStorageKind } from './xlsx-large-simple-wasm-scan-storage.js'
 
 export interface ImportedWorksheetCellScan {
   readonly arena: ImportedWorkbookArena
@@ -22,4 +23,5 @@ export interface ImportedWorksheetCellScan {
     readonly endRow: number
     readonly endColumn: number
   } | null
+  readonly scanStorageKind?: LargeSimpleWorksheetScanStorageKind
 }

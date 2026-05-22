@@ -42,6 +42,13 @@ export interface ActiveConditionalFormatting {
   ruleSeen: boolean
 }
 
+export function mergeLargeSimpleAutoFilterCriteria(
+  filter: WorkbookAutoFilterSnapshot,
+  criteria: WorkbookAutoFilterSnapshot['criteria'],
+): WorkbookAutoFilterSnapshot {
+  return criteria && criteria.length > 0 ? { ...filter, criteria: [...(filter.criteria ?? []), ...criteria] } : filter
+}
+
 interface ConditionalFormattingScan {
   readonly ruleCount: number
   readonly conditionalFormats?: readonly WorkbookConditionalFormatSnapshot[]

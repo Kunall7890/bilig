@@ -5,7 +5,8 @@
     "outDir": "dist",
     "paths": {
       "@bilig/core": ["../core/src/index.ts"],
-      "@bilig/protocol": ["../protocol/src/index.ts"]
+      "@bilig/protocol": ["../protocol/src/index.ts"],
+      "@bilig/wasm-kernel": ["../wasm-kernel/src/index.ts"]
     }
   },
   "references": [
@@ -14,6 +15,9 @@
     },
     {
       "path": "../protocol"
+    },
+    {
+      "path": "../wasm-kernel"
     }
   ],
   "include": ["src/**/*"],

@@ -42,9 +42,11 @@ import {
 import {
   type ActiveConditionalFormatting,
   LargeSimpleWorksheetStreamMetadataCollector,
+  mergeLargeSimpleAutoFilterCriteria,
   type StreamedMetadataElement,
 } from './xlsx-large-simple-worksheet-stream-metadata.js'
 import type { LargeSimpleWorksheetScannedMetadata } from './xlsx-large-simple-worksheet-metadata.js'
+import { LargeSimpleWorksheetScanStorageBridge } from './xlsx-large-simple-wasm-scan-storage.js'
 
 const lessThan = 60
 const slash = 47
@@ -83,6 +85,7 @@ export function parseLargeSimpleWorksheetCellsFromChunks(
     readonly preserveBlankStyleCells?: boolean
     readonly retainStyleIndexes?: boolean
     readonly retainStyleCoordinates?: boolean
+    readonly useWasmScanStorage?: boolean
     readonly maxDimensionCellPreallocation?: number
     readonly onRetainedBufferLength?: (length: number) => void
   },
@@ -105,6 +108,7 @@ export function parseLargeSimpleWorksheetCellsFromChunks(
     preserveBlankStyleCells: options.preserveBlankStyleCells !== false,
     retainStyleIndexes,
     retainStyleCoordinates: options.retainStyleCoordinates ?? retainStyleIndexes,
+    useWasmScanStorage: options.useWasmScanStorage,
     maxDimensionCellPreallocation: options.maxDimensionCellPreallocation,
     onRetainedBufferLength: options.onRetainedBufferLength,
   })
@@ -123,6 +127,7 @@ class LargeSimpleWorksheetChunkScanner {
   private readonly richTextCells: WorkbookRichTextCellSnapshot[] = []
   private readonly styleIndexes = new ImportedWorksheetStyleIndexArena()
   private readonly metadata: LargeSimpleWorksheetStreamMetadataCollector
+  private readonly scanStorage: LargeSimpleWorksheetScanStorageBridge
   private rowCount = 0
   private columnCount = 0
   private cellCount = 0
@@ -173,6 +178,7 @@ class LargeSimpleWorksheetChunkScanner {
       readonly preserveBlankStyleCells: boolean
       readonly retainStyleIndexes: boolean
       readonly retainStyleCoordinates: boolean
+      readonly useWasmScanStorage: boolean | undefined
       readonly maxDimensionCellPreallocation: number | undefined
       readonly onRetainedBufferLength: ((length: number) => void) | undefined
     },
@@ -195,6 +201,11 @@ class LargeSimpleWorksheetChunkScanner {
     this.retainMetadataXml = options.retainMetadataXml
     this.sheetName = options.sheetName
     this.metadata = new LargeSimpleWorksheetStreamMetadataCollector(this.sheetName, this.retainMetadataXml)
+    this.scanStorage = new LargeSimpleWorksheetScanStorageBridge(this.sheetIndex, this.arena, this.styleIndexes, {
+      retainCells: this.retainCells,
+      ...(options.useWasmScanStorage === undefined ? {} : { useWasmScanStorage: options.useWasmScanStorage }),
+      onWasmFormulaRecordsBeforeRelease: (records) => this.formulas.hydrateNumericRecords(records),
+    })
     this.reportRetainedBufferLength = () => options.onRetainedBufferLength?.(this.buffer.byteLength)
   }
 
@@ -225,9 +236,12 @@ class LargeSimpleWorksheetChunkScanner {
     this.reportRetainedBufferLength()
     if (this.failed) {
       this.formulas.release()
+      this.scanStorage.release()
       return null
     }
-    const formulasResolved = this.formulas.count === 0 || this.formulas.resolveIntoArena(this.arena)
+    this.scanStorage.flushCellsAndStyles()
+    const formulasResolved = this.formulas.count === 0 || this.formulas.resolveIntoArena(this.arena, this.scanStorage.formulaRecords())
+    this.scanStorage.release()
     this.formulas.release()
     if (!formulasResolved) {
       return null
@@ -257,6 +271,7 @@ class LargeSimpleWorksheetChunkScanner {
                 endColumn: this.maxColumn,
               }
             : null,
+        scanStorageKind: this.scanStorage.kind,
       },
       metadataXml: undefined,
       metadata: this.metadata.buildMetadataScan(),
@@ -497,21 +512,15 @@ class LargeSimpleWorksheetChunkScanner {
       }
       const cellIndex = this.retainCells
         ? deferSharedStringValue
-          ? this.arena.addSharedStringCell({
-              sheetIndex: this.sheetIndex,
-              row,
-              column,
-              sharedStringIndex,
-            })
-          : this.arena.addCell({
-              sheetIndex: this.sheetIndex,
-              row,
-              column,
-              value,
-            })
+          ? this.scanStorage.addSharedStringCell(row, column, sharedStringIndex)
+          : this.scanStorage.addCell(row, column, value)
         : -1
       if (formula && this.retainCells) {
-        this.formulas.add(cellIndex, row, column, formula.typeCode, formula.sharedIndex, formula.rawFormula)
+        if (this.scanStorage.addFormulaRecord(cellIndex, row, column, formula.typeCode, formula.sharedIndex)) {
+          this.formulas.addRawFormula(formula.rawFormula)
+        } else {
+          this.formulas.add(cellIndex, row, column, formula.typeCode, formula.sharedIndex, formula.rawFormula)
+        }
       }
       if (styleIndex !== null) {
         this.recordStyleIndex(row, column, styleIndex)
@@ -557,7 +566,7 @@ class LargeSimpleWorksheetChunkScanner {
       return
     }
     if (this.retainStyleCoordinates) {
-      this.styleIndexes.add(row, column, styleIndex)
+      this.scanStorage.addStyle(row, column, styleIndex)
       return
     }
     this.styleIndexes.addRequiredStyleIndex(styleIndex)
@@ -735,7 +744,7 @@ class LargeSimpleWorksheetChunkScanner {
       const wrapped = wrapLargeSimpleAutoFilterColumnBytes(active.rootTag, this.buffer, startIndex, endIndex)
       const parsed = readLargeSimpleAutoFiltersFromBytes(this.sheetName, wrapped, 0, wrapped.byteLength)[0]
       if (parsed) {
-        active.filter = mergeAutoFilterCriteria(active.filter ?? parsed, parsed.criteria)
+        active.filter = mergeLargeSimpleAutoFilterCriteria(active.filter ?? parsed, parsed.criteria)
       }
     }
     this.index = endIndex
@@ -979,11 +988,4 @@ class LargeSimpleWorksheetChunkScanner {
   }
 
   private reportRetainedBufferLength: () => void = () => {}
-}
-
-function mergeAutoFilterCriteria(
-  filter: WorkbookAutoFilterSnapshot,
-  criteria: WorkbookAutoFilterSnapshot['criteria'],
-): WorkbookAutoFilterSnapshot {
-  return criteria && criteria.length > 0 ? { ...filter, criteria: [...(filter.criteria ?? []), ...criteria] } : filter
 }

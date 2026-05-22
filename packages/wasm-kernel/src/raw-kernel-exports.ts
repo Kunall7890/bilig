@@ -166,6 +166,33 @@ export interface RawKernelExports {
   getConstantCapacity(): number
   getRangeCapacity(): number
   getMemberCapacity(): number
+  resetWorksheetImportStorage(cellCapacity: number, styleCapacity: number, formulaCapacity: number): void
+  releaseWorksheetImportStorage(): void
+  addWorksheetImportNumberCell(row: number, column: number, value: number): number
+  addWorksheetImportFormulaOnlyCell(row: number, column: number): number
+  addWorksheetImportSharedStringCell(row: number, column: number, sharedStringIndex: number): number
+  addWorksheetImportStyle(row: number, column: number, styleId: number): void
+  addWorksheetImportFormulaRecord(cellIndex: number, row: number, column: number, typeCode: number, sharedIndex: number): void
+  getWorksheetImportCellCount(): number
+  getWorksheetImportRowsPtr(): number
+  getWorksheetImportColumnsPtr(): number
+  getWorksheetImportValueKindsPtr(): number
+  getWorksheetImportNumbersPtr(): number
+  getWorksheetImportSharedStringIdsPtr(): number
+  getWorksheetImportStyleCount(): number
+  getWorksheetImportStyleRowsPtr(): number
+  getWorksheetImportStyleColumnsPtr(): number
+  getWorksheetImportStyleIdsPtr(): number
+  getWorksheetImportFormulaCount(): number
+  getWorksheetImportFormulaCellIndexesPtr(): number
+  getWorksheetImportFormulaRowsPtr(): number
+  getWorksheetImportFormulaColumnsPtr(): number
+  getWorksheetImportFormulaTypeCodesPtr(): number
+  getWorksheetImportFormulaSharedIndexesPtr(): number
+  worksheetImportNoSharedFormulaIndex: { value: number }
+  worksheetImportValueKindFormulaOnly: { value: number }
+  worksheetImportValueKindNumber: { value: number }
+  worksheetImportValueKindSharedString: { value: number }
 }
 
 export function isRawKernelExports(value: unknown): value is RawKernelExports {
@@ -237,6 +264,33 @@ export function isRawKernelExports(value: unknown): value is RawKernelExports {
     'getConstantCapacity',
     'getRangeCapacity',
     'getMemberCapacity',
+    'resetWorksheetImportStorage',
+    'releaseWorksheetImportStorage',
+    'addWorksheetImportNumberCell',
+    'addWorksheetImportFormulaOnlyCell',
+    'addWorksheetImportSharedStringCell',
+    'addWorksheetImportStyle',
+    'addWorksheetImportFormulaRecord',
+    'getWorksheetImportCellCount',
+    'getWorksheetImportRowsPtr',
+    'getWorksheetImportColumnsPtr',
+    'getWorksheetImportValueKindsPtr',
+    'getWorksheetImportNumbersPtr',
+    'getWorksheetImportSharedStringIdsPtr',
+    'getWorksheetImportStyleCount',
+    'getWorksheetImportStyleRowsPtr',
+    'getWorksheetImportStyleColumnsPtr',
+    'getWorksheetImportStyleIdsPtr',
+    'getWorksheetImportFormulaCount',
+    'getWorksheetImportFormulaCellIndexesPtr',
+    'getWorksheetImportFormulaRowsPtr',
+    'getWorksheetImportFormulaColumnsPtr',
+    'getWorksheetImportFormulaTypeCodesPtr',
+    'getWorksheetImportFormulaSharedIndexesPtr',
+    'worksheetImportNoSharedFormulaIndex',
+    'worksheetImportValueKindFormulaOnly',
+    'worksheetImportValueKindNumber',
+    'worksheetImportValueKindSharedString',
   ] as const
   return requiredKeys.every((key) => key in value)
 }

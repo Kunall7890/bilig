@@ -384,6 +384,9 @@ importers:
       '@bilig/protocol':
         specifier: workspace:*
         version: link:../protocol
+      '@bilig/wasm-kernel':
+        specifier: workspace:*
+        version: link:../wasm-kernel
       fast-xml-parser:
         specifier: 5.7.3
         version: 5.7.3
