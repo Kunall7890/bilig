@@ -119,6 +119,8 @@ describe('headless package workflow', () => {
       "if: steps.publish_release_alignment.outputs.current == 'true' && steps.npm_provisioning.outputs.publish_allowed != 'true'",
     )
     expect(source).toContain('git push origin HEAD:main')
+    expect(source).toContain('SKIP_SIMPLE_GIT_HOOKS=1 git commit')
+    expect(source).toContain('git reset --hard HEAD')
     expect(source).toContain('git rebase origin/main')
     expect(source).toContain('GitHub main mirrors release metadata SHA')
     expect(source).toContain('Refusing to push release metadata directly to GitHub main.')
