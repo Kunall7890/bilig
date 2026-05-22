@@ -10,23 +10,26 @@ import type { SessionIdentity } from '../http/session.js'
 import type { ZeroSyncService } from '../zero/service.js'
 import { toWorkbookAgentRangeRef } from './workbook-agent-range-chunks.js'
 import { emptyWorkbookRenderedReadbackProof, type WorkbookRenderedReadbackProof } from './workbook-agent-rendered-readback.js'
+import { buildWorkbookAuthoritativeReadbackProof } from './workbook-agent-mutation-proof.js'
 import {
   buildWorkbookAgentVerificationReport,
-  buildWorkbookAuthoritativeReadbackProof,
   buildWorkbookRenderedReadbackProof,
   resolveWorkbookMutationRecalculationStatus,
   resolveWorkbookMutationUndoStatus,
-  type WorkbookAuthoritativeReadbackProof,
-  type WorkbookMutationRecalculationProof,
-  type WorkbookMutationUndoProof,
-  type WorkbookSemanticReadbackProof,
-  type WorkbookAgentMutationProofContext,
-} from './workbook-agent-mutation-proof.js'
+} from './workbook-agent-mutation-runtime-proof.js'
+import { buildWorkbookSemanticReadbackProof } from './workbook-agent-mutation-semantic-readback.js'
+import type {
+  WorkbookAuthoritativeReadbackProof,
+  WorkbookMutationRecalculationProof,
+  WorkbookMutationUndoProof,
+  WorkbookSemanticReadbackProof,
+  WorkbookAgentMutationProofContext,
+} from './workbook-agent-mutation-proof-types.js'
 import { stringifyJson, textToolResult, type WorkbookAgentStageCommandResult } from './workbook-agent-tool-shared.js'
 
 const MAX_VERIFICATION_RANGES = 3
 
-export { buildWorkbookAgentVerificationReport } from './workbook-agent-mutation-proof.js'
+export { buildWorkbookAgentVerificationReport } from './workbook-agent-mutation-runtime-proof.js'
 
 export interface WorkbookAgentMutationReceiptRange {
   readonly sheetName: string
@@ -147,32 +150,6 @@ function buildAppliedMutationSummary(input: {
   }
   const primaryWarning = input.mutationReceipt.warnings[0] ?? 'Mutation proof is incomplete.'
   return `Verification incomplete for workbook change set at revision r${String(input.appliedRevision)}: ${primaryWarning}`
-}
-
-function buildWorkbookSemanticReadbackProof(input: {
-  readonly authoritativeReadback: WorkbookAuthoritativeReadbackProof
-  readonly renderedReadback: WorkbookRenderedReadbackProof
-}): WorkbookSemanticReadbackProof {
-  const requested = input.authoritativeReadback.requested || input.renderedReadback.requested
-  if (!requested) {
-    return {
-      requested: false,
-      matched: null,
-      incompleteReason: input.authoritativeReadback.incompleteReason ?? input.renderedReadback.incompleteReason,
-    }
-  }
-  const matched =
-    input.authoritativeReadback.matched === true && (!input.renderedReadback.requested || input.renderedReadback.matched === true)
-  return {
-    requested,
-    matched,
-    incompleteReason:
-      input.authoritativeReadback.matched !== true
-        ? (input.authoritativeReadback.incompleteReason ?? 'Authoritative semantic readback did not match.')
-        : input.renderedReadback.requested && input.renderedReadback.matched !== true
-          ? (input.renderedReadback.incompleteReason ?? 'Rendered semantic readback did not match.')
-          : null,
-  }
 }
 
 export async function buildMutationReceipt(input: {
