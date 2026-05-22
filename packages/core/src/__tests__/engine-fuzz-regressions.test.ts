@@ -185,6 +185,27 @@ describe('engine fuzz regressions', () => {
     expect(engine.undo()).toBe(false)
   })
 
+  it('does not record history for structural deletes that only revisit resolved defined-name refs', async () => {
+    const seedSnapshot = await createEngineSeedSnapshot('named-structures', 'defined-name-ref-structural-noop-history-regression')
+    const engine = new SpreadsheetEngine({
+      workbookName: seedSnapshot.workbook.name,
+      replicaId: 'defined-name-ref-structural-noop-history-regression',
+    })
+    await engine.ready()
+    engine.importSnapshot(structuredClone(seedSnapshot))
+
+    engine.deleteColumns('Sheet1', 0, 2)
+    engine.deleteRows('Sheet1', 0, 1)
+    const beforeNoOp = engine.exportSnapshot()
+    engine.deleteColumns('Sheet1', 0, 1)
+
+    expect(engine.exportSnapshot()).toEqual(beforeNoOp)
+    expect(engine.undo()).toBe(true)
+    expect(engine.undo()).toBe(true)
+    expect(engine.undo()).toBe(false)
+    expect(normalizeSnapshotForSemanticComparison(engine.exportSnapshot())).toEqual(normalizeSnapshotForSemanticComparison(seedSnapshot))
+  })
+
   it('restores sparse style metadata after undoing coalesced structural deletes', async () => {
     const seedSnapshot = await createEngineSeedSnapshot('sparse-format', 'structural-style-undo-regression')
     const engine = new SpreadsheetEngine({ workbookName: seedSnapshot.workbook.name, replicaId: 'structural-style-undo-regression' })

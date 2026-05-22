@@ -12,14 +12,15 @@ function formulaWouldRewriteForDelete(
   start: number,
   count: number,
 ): boolean {
-  return (
-    rewriteFormulaForStructuralTransform(formula, sheetName, sheetName, {
-      kind: 'delete',
-      axis,
-      start,
-      count,
-    }) !== formula
-  )
+  const hasLeadingEquals = formula.startsWith('=')
+  const source = hasLeadingEquals ? formula.slice(1) : formula
+  const rewritten = rewriteFormulaForStructuralTransform(source, sheetName, sheetName, {
+    kind: 'delete',
+    axis,
+    start,
+    count,
+  })
+  return (hasLeadingEquals ? `=${rewritten}` : rewritten) !== formula
 }
 
 function cellHasSemanticDeleteImpact(args: {
