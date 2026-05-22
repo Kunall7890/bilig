@@ -18,6 +18,7 @@ import {
   createLazyMaterializedCellMutationTransactionRecord,
   createLazySingleOpTransactionRecord,
 } from './mutation-transaction-records.js'
+import { isTableHeaderCell } from './operation-table-header-rename.js'
 
 interface MutationFormulaStore {
   get(cellIndex: number): RuntimeFormula | undefined
@@ -71,7 +72,10 @@ export function createMutationCellRestoreHistoryHelpers(args: MutationCellRestor
       throw new Error(`Unknown sheet id: ${ref.sheetId}`)
     }
     const address = formatAddress(ref.mutation.row, ref.mutation.col)
-    const skipTableHeaderRename = skipsTableHeaderRename(ref)
+    const skipTableHeaderRename =
+      skipsTableHeaderRename(ref) ||
+      (ref.mutation.kind === 'setCellFormula' &&
+        isTableHeaderCell(args.workbook.listTables(), sheet.name, ref.mutation.row, ref.mutation.col))
     const setCellValueOp = (value: LiteralInput): Extract<EngineOp, { kind: 'setCellValue' }> => ({
       kind: 'setCellValue',
       sheetName: sheet.name,
@@ -294,7 +298,18 @@ export function createMutationCellRestoreHistoryHelpers(args: MutationCellRestor
   }
 
   const createLazyInverseCellMutationRecord = (refs: readonly EngineCellMutationRef[]): TransactionRecord => {
-    if (refs.some(skipsTableHeaderRename)) {
+    if (
+      refs.some((ref) => {
+        if (skipsTableHeaderRename(ref)) {
+          return true
+        }
+        if (ref.mutation.kind !== 'setCellFormula') {
+          return false
+        }
+        const sheet = args.workbook.getSheetById(ref.sheetId)
+        return sheet !== undefined && isTableHeaderCell(args.workbook.listTables(), sheet.name, ref.mutation.row, ref.mutation.col)
+      })
+    ) {
       const ops: EngineOp[] = []
       for (let index = refs.length - 1; index >= 0; index -= 1) {
         ops.push(restoreCellOpFromRef(refs[index]!))

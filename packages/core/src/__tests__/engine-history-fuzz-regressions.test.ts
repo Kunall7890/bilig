@@ -68,6 +68,53 @@ describe('engine history fuzz regressions', () => {
     )
   })
 
+  it('does not rename table metadata when undoing a formula written over a structurally preserved header cell', async () => {
+    const seedSnapshot = await createEngineSeedSnapshot('pivot-analytics', 'history-header-formula-undo')
+    const engine = new SpreadsheetEngine({
+      workbookName: seedSnapshot.workbook.name,
+      replicaId: 'history-header-formula-undo',
+    })
+    await engine.ready()
+    engine.importSnapshot(structuredClone(seedSnapshot))
+
+    const applied: CoreAction[] = [{ kind: 'deleteRows', start: 0, count: 1 }]
+    engine.deleteRows('Sheet1', 0, 1)
+    engine.setCellFormula('Sheet1', 'A1', 'A1+A1')
+
+    expect(engine.undo()).toBe(true)
+
+    const expectedSnapshot = await exportReplaySnapshot(seedSnapshot, applied)
+    expect(engine.getTable('QuarterlySales')?.columnNames).toEqual(['Region', 'Quarter', 'Sales'])
+    expect(normalizeSnapshotForSemanticComparison(engine.exportSnapshot())).toEqual(
+      normalizeSnapshotForSemanticComparison(expectedSnapshot),
+    )
+  })
+
+  it('restores table metadata when undoing a range clear over a formula header cell', async () => {
+    const seedSnapshot = await createEngineSeedSnapshot('named-structures', 'history-formula-header-move-undo')
+    const engine = new SpreadsheetEngine({
+      workbookName: seedSnapshot.workbook.name,
+      replicaId: 'history-formula-header-move-undo',
+    })
+    await engine.ready()
+    engine.importSnapshot(structuredClone(seedSnapshot))
+
+    const applied: CoreAction[] = [{ kind: 'formula', address: 'A1', formula: 'A1+A1' }]
+    engine.setCellFormula('Sheet1', 'A1', 'A1+A1')
+    engine.moveRange(
+      { sheetName: 'Sheet1', startAddress: 'C3', endAddress: 'D4' },
+      { sheetName: 'Sheet1', startAddress: 'A1', endAddress: 'B2' },
+    )
+
+    expect(engine.undo()).toBe(true)
+
+    const expectedSnapshot = await exportReplaySnapshot(seedSnapshot, applied)
+    expect(engine.getTable('Sales')?.columnNames).toEqual(['Qty', 'Amount'])
+    expect(normalizeSnapshotForSemanticComparison(engine.exportSnapshot())).toEqual(
+      normalizeSnapshotForSemanticComparison(expectedSnapshot),
+    )
+  })
+
   it('preserves sheet-qualified invalid defined-name refs when undoing column inserts', async () => {
     const seedSnapshot = await createEngineSeedSnapshot('named-structures', 'history-invalid-defined-name-column-insert-undo')
     const engine = new SpreadsheetEngine({

@@ -756,6 +756,14 @@ export function createOperationBatchApplier(input: CreateOperationBatchApplierAr
               refreshDependentRangesAndRebindFormulaDependents,
               collectAffectedDirectRangeDependents,
               clearLookupImpactCaches,
+              queueWasmFormulaDependencyKernelSync: (formulaCellIndex, dependencyIndices) => {
+                for (let dependencyIndex = 0; dependencyIndex < dependencyIndices.length; dependencyIndex += 1) {
+                  precomputedKernelSyncCellIndices.push(dependencyIndices[dependencyIndex]!)
+                }
+                args.forEachFormulaDependencyCell(formulaCellIndex, (dependencyCellIndex) => {
+                  precomputedKernelSyncCellIndices.push(dependencyCellIndex)
+                })
+              },
             })
             changedInputCount = formulaResult.changedInputCount
             formulaChangedCount = formulaResult.formulaChangedCount

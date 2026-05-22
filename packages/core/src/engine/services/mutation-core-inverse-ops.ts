@@ -78,7 +78,10 @@ function restoreCellValueInverseOps(
   const previousColumnName = header.table.columnNames[header.columnIndex] ?? ''
   const restoringValue = restoreOps.map(cellValueForHeaderRestoreOp).find((value) => value !== undefined)
   if (restoringValue === undefined) {
-    return restoreOps
+    const restoresFormula = restoreOps.some((restoreOp) => restoreOp.kind === 'setCellFormula')
+    return restoresFormula
+      ? [{ kind: 'setCellValue', sheetName: op.sheetName, address: op.address, value: previousColumnName }, ...restoreOps]
+      : restoreOps
   }
   const restoringColumnName = tableColumnNameForLiteral(restoringValue, header.table.columnNames, header.columnIndex)
   if (normalizeTableColumnName(restoringColumnName) === normalizeTableColumnName(previousColumnName)) {
@@ -88,6 +91,16 @@ function restoreCellValueInverseOps(
     { kind: 'setCellValue', sheetName: op.sheetName, address: op.address, value: previousColumnName },
     ...withHeaderRenameSkip(restoreOps, true),
   ]
+}
+
+function restoreCellFormulaInverseOps(
+  workbook: WorkbookStore,
+  op: Extract<EngineOp, { kind: 'setCellFormula' }>,
+  restoreOps: EngineOp[],
+): EngineOp[] {
+  const address = parseCellAddress(op.address, op.sheetName)
+  const header = findTableHeaderCell(workbook.listTables(), op.sheetName, address.row, address.col)
+  return header ? withHeaderRenameSkip(restoreOps, true) : restoreOps
 }
 
 function captureDeletedSheetInverseOps(
@@ -250,7 +263,7 @@ export function createMutationCoreInverseOps(args: {
       case 'clearCell':
         return restoreCellValueInverseOps(args.workbook, op, args.restoreCellOps(op.sheetName, op.address))
       case 'setCellFormula':
-        return args.restoreCellOps(op.sheetName, op.address)
+        return restoreCellFormulaInverseOps(args.workbook, op, args.restoreCellOps(op.sheetName, op.address))
       default: {
         const exhaustive: never = op
         return exhaustive

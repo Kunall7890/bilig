@@ -359,6 +359,7 @@ export abstract class SpreadsheetEngineRuntimeBase {
         getEntityDependents: () => new Uint32Array(),
         getSingleEntityDependent: () => -1,
         collectFormulaDependents: () => new Uint32Array(),
+        forEachFormulaDependencyCell: (cellIndex, fn) => this.runtime.traversal.forEachFormulaDependencyCellNow(cellIndex, fn),
         collectFormulaCellsForTables: () => [],
         clearSpillForCell: () => ({ changedCellIndices: [], ownerCellIndex: undefined }),
         noteExactLookupLiteralWrite: () => {

@@ -136,6 +136,30 @@ describe('WorkPaper/core parity fuzz', () => {
     await assertRestoredEngineParity(harness)
   })
 
+  it('replays row-structural visible dependency sync counterexample', async () => {
+    const harness = await createParityHarness()
+    const actions: readonly ParityAction[] = [
+      { kind: 'delete-rows', start: 0, count: 2 },
+      { kind: 'delete-rows', start: 0, count: 2 },
+      { kind: 'insert-rows', start: 0, count: 1 },
+      { kind: 'delete-rows', start: 2, count: 1 },
+      { kind: 'set-cell', row: 1, col: 0, value: 0 },
+      { kind: 'insert-rows', start: 0, count: 1 },
+      { kind: 'delete-rows', start: 0, count: 2 },
+      { kind: 'set-cell', row: 0, col: 2, value: '=A1&"-"&B1' },
+    ]
+
+    actions.forEach((action) => applyParityAction(harness, action))
+
+    assertCoreParity(harness)
+    expect(harness.workPaper.getCellValue({ sheet: harness.sheetId, row: 0, col: 2 })).toMatchObject({
+      tag: ValueTag.String,
+      value: '0-42',
+    })
+    assertRestoredWorkPaperParity(harness)
+    await assertRestoredEngineParity(harness)
+  })
+
   it('keeps headless WorkPaper edits, structural operations, undo/redo, and save/load in core parity', async () => {
     await runProperty({
       suite: 'headless/core-parity/work-paper-engine-action-sequence',

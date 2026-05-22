@@ -1,8 +1,10 @@
 import { ValueTag, type CellSnapshot } from '@bilig/protocol'
 import type { EngineOp } from '@bilig/workbook'
+import { parseCellAddress } from '@bilig/formula'
 import { CellFlags } from '../../cell-store.js'
 import { makeCellKey, type WorkbookStore } from '../../workbook-store.js'
 import type { PreparedCellAddress, TransactionRecord } from '../runtime-state.js'
+import { isTableHeaderCell } from './operation-table-header-rename.js'
 
 type FastHistoryOp = Extract<
   EngineOp,
@@ -199,8 +201,12 @@ function buildFastInverseOp(
       return restoreCellOpFromSnapshot(workbook, getCellByIndex, op.sheetName, op.address, preparedCellAddress, {
         skipTableHeaderRename: op.skipTableHeaderRename === true,
       })
-    case 'setCellFormula':
-      return restoreCellOpFromSnapshot(workbook, getCellByIndex, op.sheetName, op.address, preparedCellAddress)
+    case 'setCellFormula': {
+      const address = parseCellAddress(op.address, op.sheetName)
+      return restoreCellOpFromSnapshot(workbook, getCellByIndex, op.sheetName, op.address, preparedCellAddress, {
+        skipTableHeaderRename: isTableHeaderCell(workbook.listTables(), op.sheetName, address.row, address.col),
+      })
+    }
     case 'setCellFormat': {
       const sheet = workbook.getSheet(op.sheetName)
       const cellIndex =

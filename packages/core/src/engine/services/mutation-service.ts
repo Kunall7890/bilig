@@ -209,8 +209,15 @@ export function createEngineMutationService(args: {
     if (op.kind !== 'setCellValue' && op.kind !== 'setCellFormula' && op.kind !== 'clearCell') {
       return null
     }
+    const skipTableHeaderRename =
+      op.kind === 'setCellFormula'
+        ? (() => {
+            const address = parseCellAddress(op.address, op.sheetName)
+            return isTableHeaderCell(args.state.workbook.listTables(), op.sheetName, address.row, address.col)
+          })()
+        : (op.kind === 'setCellValue' || op.kind === 'clearCell') && op.skipTableHeaderRename === true
     const inverseOp = tryRestoreSimpleCellOpFromStore(op.sheetName, op.address, {
-      skipTableHeaderRename: (op.kind === 'setCellValue' || op.kind === 'clearCell') && op.skipTableHeaderRename === true,
+      skipTableHeaderRename,
     })
     if (inverseOp === null) {
       return null

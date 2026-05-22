@@ -292,6 +292,7 @@ export function createOperationCellMutationApplier(input: CreateOperationCellMut
     let explicitChangedCount = 0
     let topologyChanged = false
     let compileMs = 0
+    const precomputedKernelSyncCellIndices: number[] = []
     const postRecalcDirectFormulaIndices = new DirectFormulaIndexCollection()
     const postRecalcDirectFormulaMetrics: DirectFormulaMetricCounts = {
       wasmFormulaCount: 0,
@@ -424,6 +425,14 @@ export function createOperationCellMutationApplier(input: CreateOperationCellMut
                 applyDirectFormulaCurrentResult,
                 tryApplyFormulaReplacementAsDirectScalarDeltaRoot,
                 collectAffectedDirectRangeDependents,
+                queueWasmFormulaDependencyKernelSync: (formulaCellIndex, dependencyIndices) => {
+                  for (let dependencyIndex = 0; dependencyIndex < dependencyIndices.length; dependencyIndex += 1) {
+                    precomputedKernelSyncCellIndices.push(dependencyIndices[dependencyIndex]!)
+                  }
+                  args.forEachFormulaDependencyCell(formulaCellIndex, (dependencyCellIndex) => {
+                    precomputedKernelSyncCellIndices.push(dependencyCellIndex)
+                  })
+                },
               })
               changedInputCount = formulaResult.changedInputCount
               formulaChangedCount = formulaResult.formulaChangedCount
@@ -515,7 +524,7 @@ export function createOperationCellMutationApplier(input: CreateOperationCellMut
       changedInputCount,
       formulaChangedCount,
       compileMs,
-      precomputedKernelSyncCellIndices: [],
+      precomputedKernelSyncCellIndices,
       postRecalcDirectFormulaIndices,
       postRecalcDirectFormulaMetrics,
       lookupHandledInputCellIndices,

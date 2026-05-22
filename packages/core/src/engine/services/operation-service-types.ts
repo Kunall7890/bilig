@@ -225,6 +225,7 @@ export interface CreateEngineOperationServiceArgs {
   readonly getCellDependents?: (cellIndex: number) => Uint32Array
   readonly getSingleCellDependent?: (cellIndex: number) => number
   readonly collectFormulaDependents: (entityId: number) => Uint32Array
+  readonly forEachFormulaDependencyCell: (cellIndex: number, fn: (dependencyCellIndex: number) => void) => void
   readonly hasRegionFormulaSubscriptionsForColumn: (sheetName: string, col: number) => boolean
   readonly hasRegionFormulaSubscriptionsForColumnAt?: (sheetId: number, col: number) => boolean
   readonly hasRegionFormulaSubscriptionsIntersectingRect?: (

@@ -119,6 +119,24 @@ describe('structural fuzz regressions', () => {
     expect(engine.getCellValue('Sheet1', 'B7')).toEqual({ tag: ValueTag.Number, value: 43 })
   })
 
+  it('syncs visible-cell dependencies before evaluating new WASM formulas after structural edits', async () => {
+    const engine = await createSeededEngine('new-wasm-formula-visible-dependency-sync-regression')
+
+    engine.deleteRows('Sheet1', 0, 2)
+    engine.deleteRows('Sheet1', 0, 2)
+    engine.insertRows('Sheet1', 0, 1)
+    engine.deleteRows('Sheet1', 2, 1)
+    engine.setCellValue('Sheet1', 'A2', 0)
+    engine.insertRows('Sheet1', 0, 1)
+    engine.deleteRows('Sheet1', 0, 2)
+    expect(engine.getCellValue('Sheet1', 'A1')).toEqual({ tag: ValueTag.Number, value: 0 })
+    expect(engine.getCellValue('Sheet1', 'B1')).toEqual({ tag: ValueTag.Number, value: 42 })
+
+    engine.setCellFormula('Sheet1', 'C1', 'A1&"-"&B1')
+
+    expect(engine.getCellValue('Sheet1', 'C1')).toEqual({ tag: ValueTag.String, value: '0-42', stringId: expect.any(Number) })
+  })
+
   it('does not reuse stale template rewrites for copied formulas after undo', async () => {
     const seedSnapshot = await createEngineSeedSnapshot('formula-graph', 'copied-formula-template-rewrite-regression')
     const engine = new SpreadsheetEngine({

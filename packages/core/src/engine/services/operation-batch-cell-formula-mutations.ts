@@ -1,5 +1,6 @@
 import { parseCellAddress } from '@bilig/formula'
 import type { EngineOp } from '@bilig/workbook'
+import { FormulaMode } from '@bilig/protocol'
 import { CellFlags } from '../../cell-store.js'
 import type { OpOrder } from '../../replica-state.js'
 import type { PreparedCellAddress } from '../runtime-state.js'
@@ -52,6 +53,7 @@ interface ApplyBatchSetCellFormulaOpArgs extends BatchCellFormulaMutationCounts 
   readonly refreshDependentRangesAndRebindFormulaDependents: (cellIndex: number, formulaChangedCount: number) => number
   readonly collectAffectedDirectRangeDependents: OperationDirectRangeDependentService['collectAffectedDirectRangeDependents']
   readonly clearLookupImpactCaches: () => void
+  readonly queueWasmFormulaDependencyKernelSync: (cellIndex: number, dependencyIndices: Uint32Array) => void
 }
 
 export function applyBatchSetCellFormulaOp(request: ApplyBatchSetCellFormulaOpArgs): BatchCellFormulaMutationCounts {
@@ -113,6 +115,12 @@ export function applyBatchSetCellFormulaOp(request: ApplyBatchSetCellFormulaOpAr
         ? false
         : args.bindFormula(cellIndex, op.sheetName, op.formula)
       : args.bindFormula(cellIndex, op.sheetName, op.formula)
+    const runtimeFormula = args.state.formulas.get(cellIndex)
+    const queueWasmFormulaDependencyKernelSync = (): void => {
+      if (runtimeFormula?.compiled.mode === FormulaMode.WasmFastPath && args.state.wasm.ready) {
+        request.queueWasmFormulaDependencyKernelSync(cellIndex, runtimeFormula.dependencyIndices)
+      }
+    }
     if (hasFormulaColumnAggregateDependents) {
       args.invalidateAggregateColumn({ sheetName: op.sheetName, col: parsedAddress.col })
     }
@@ -139,7 +147,7 @@ export function applyBatchSetCellFormulaOp(request: ApplyBatchSetCellFormulaOpAr
         ? analyzeFreshDirectAggregateFormula(args, {
             priorHadFormula: false,
             formulaCellIndex: cellIndex,
-            formula: args.state.formulas.get(cellIndex),
+            formula: runtimeFormula,
           }).currentResult
         : undefined
     const evaluatedReplacementDirectAggregate =
@@ -150,6 +158,7 @@ export function applyBatchSetCellFormulaOp(request: ApplyBatchSetCellFormulaOpAr
           })()
         : false
     if (!handledFormulaReplacementAsDirectDelta && !evaluatedReplacementDirectAggregate) {
+      queueWasmFormulaDependencyKernelSync()
       formulaChangedCount = args.markFormulaChanged(cellIndex, formulaChangedCount)
     }
     topologyChanged = topologyChanged || changedTopology

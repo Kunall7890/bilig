@@ -46,11 +46,16 @@ describe('workbook agent verification status fuzz', () => {
           targetRangeCount: input.targetRangeCount,
         })
 
-        const expectedRendered = input.renderedReadback.every((proof) => !proof.requested || proof.matched === true)
+        const expectedTarget = input.requireTargetRange ? input.targetRangeCount > 0 : true
+        const requiredRenderedRangeCount = input.requireTargetRange && expectedTarget ? input.targetRangeCount : 0
+        const expectedRendered =
+          requiredRenderedRangeCount > 0
+            ? input.renderedReadback.length >= requiredRenderedRangeCount &&
+              input.renderedReadback.every((proof) => proof.requested && proof.matched === true)
+            : input.renderedReadback.every((proof) => !proof.requested || proof.matched === true)
         const expectedFormula = input.includeFormulaReport && input.formulaIssueCount === 0
         const expectedInvariants = input.includeInvariantReport && input.invariantsOk
         const expectedRecalculation = input.includeRecalculationReport && input.recalculationUpToDate
-        const expectedTarget = input.requireTargetRange ? input.targetRangeCount > 0 : true
 
         expect(status.renderedComplete).toBe(expectedRendered)
         expect(status.formulaComplete).toBe(expectedFormula)
