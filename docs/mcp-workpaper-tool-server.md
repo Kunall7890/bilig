@@ -302,7 +302,7 @@ const client = await createMCPClient({
     args: [
       'exec',
       '--package',
-      '@bilig/workpaper@0.44.0',
+      '@bilig/workpaper@0.45.0',
       '--',
       'bilig-workpaper-mcp',
       '--workpaper',
