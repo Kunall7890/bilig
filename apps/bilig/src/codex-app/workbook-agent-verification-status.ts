@@ -39,11 +39,16 @@ export interface WorkbookAgentVerificationStatus {
 }
 
 export function summarizeWorkbookAgentVerificationStatus(input: WorkbookAgentVerificationStatusInput): WorkbookAgentVerificationStatus {
-  const renderedComplete = input.renderedReadback.every((proof) => !proof.requested || proof.matched === true)
+  const targetRangeComplete = input.requireTargetRange === true ? (input.targetRangeCount ?? 0) > 0 : true
+  const requiredRenderedRangeCount = input.requireTargetRange === true && targetRangeComplete ? (input.targetRangeCount ?? 0) : 0
+  const renderedComplete =
+    requiredRenderedRangeCount > 0
+      ? input.renderedReadback.length >= requiredRenderedRangeCount &&
+        input.renderedReadback.every((proof) => proof.requested && proof.matched === true)
+      : input.renderedReadback.every((proof) => !proof.requested || proof.matched === true)
   const formulaComplete = input.formulaIssues !== null && input.formulaIssues.summary.actionableIssueCount === 0
   const invariantsComplete = input.invariants !== null && input.invariants.summary.ok
   const recalculationComplete = input.recalculationStatus?.upToDate === true
-  const targetRangeComplete = input.requireTargetRange === true ? (input.targetRangeCount ?? 0) > 0 : true
   const missingChecks = [
     targetRangeComplete ? null : 'targetRange',
     renderedComplete ? null : 'renderedReadback',

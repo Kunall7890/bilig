@@ -13,16 +13,17 @@ export function buildWorkbookSemanticReadbackProof(input: {
       incompleteReason: input.authoritativeReadback.incompleteReason ?? input.renderedReadback.incompleteReason,
     }
   }
-  const matched =
-    input.authoritativeReadback.matched === true && (!input.renderedReadback.requested || input.renderedReadback.matched === true)
+  const incompleteReason =
+    input.authoritativeReadback.matched !== true
+      ? (input.authoritativeReadback.incompleteReason ?? 'Authoritative semantic readback did not match.')
+      : !input.renderedReadback.requested
+        ? (input.renderedReadback.incompleteReason ?? 'Browser-rendered semantic readback was not requested.')
+        : input.renderedReadback.matched !== true
+          ? (input.renderedReadback.incompleteReason ?? 'Rendered semantic readback did not match.')
+          : null
   return {
     requested,
-    matched,
-    incompleteReason:
-      input.authoritativeReadback.matched !== true
-        ? (input.authoritativeReadback.incompleteReason ?? 'Authoritative semantic readback did not match.')
-        : input.renderedReadback.requested && input.renderedReadback.matched !== true
-          ? (input.renderedReadback.incompleteReason ?? 'Rendered semantic readback did not match.')
-          : null,
+    matched: incompleteReason === null,
+    incompleteReason,
   }
 }
