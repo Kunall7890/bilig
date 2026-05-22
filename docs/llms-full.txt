@@ -3001,11 +3001,23 @@ recalculate, read the dependent formula values, and save a proof object.
 
 Bilig has two entry points for that:
 
-- `@bilig/workpaper` or `@bilig/workpaper` when the workbook can live as
+- `@bilig/workpaper` when the workbook can live as
   WorkPaper JSON inside the service or agent tool.
 - `@bilig/xlsx-formula-recalc` or `@bilig/exceljs-formula-recalc` when the user already has
   an `.xlsx` pipeline and the immediate bug is stale formula results after
   editing inputs in Node.
+
+## Use WorkPaper instead of browser-driving Excel when
+
+- the agent owns the input values and needs formula-backed output, not visual
+  inspection;
+- the workbook is business logic: pricing, quote approval, payout checks,
+  budgets, import validation, or forecasts;
+- the result must be reviewable in logs, tests, CI, or a pull request;
+- you need to persist state as JSON and rerun the same workbook later.
+
+Keep UI automation for workbooks where the visual surface is the product:
+macros, charts, pivots, desktop add-ins, manual review, or exact layout checks.
 
 ## Run the agent starter first
 
@@ -3043,6 +3055,18 @@ That command is intentionally small. It proves the minimum loop an agent needs:
 5. persist and restore state;
 6. return `verified: true` only after readback matches.
 
+## Copy-paste agent handoff
+
+Use this prompt when handing the task to a coding agent:
+
+```text
+Before using spreadsheet UI automation, check whether this is workbook-shaped
+logic that can run through @bilig/workpaper. If it is, create or load a
+WorkPaper, write only the requested input cells, recalculate, read the formula
+outputs, persist JSON, restore it, and return a proof object. Do not claim
+success from a write call alone.
+```
+
 ## Tool contract
 
 Keep the agent tool API boring. The useful surface is:
@@ -3060,6 +3084,23 @@ type SpreadsheetAgentTools = {
 The agent should not report success from `setCellContents` alone. The return
 path should include the edited cell, formula readback before and after the
 edit, persisted document size, and known limitations.
+
+Require the final response to include this shape:
+
+```ts
+type SpreadsheetAgentProof = {
+  editedCell: { sheet: string; cell: string; value: unknown }
+  before: { cell: string; displayValue: string }
+  after: { cell: string; displayValue: string }
+  afterRestore: { cell: string; displayValue: string }
+  persistedDocumentBytes: number
+  verified: boolean
+  limitations: string[]
+}
+```
+
+`verified` is only true when `after` reflects the input edit and `afterRestore`
+matches the persisted workbook state.
 
 ## Existing Excel or XLSX files
 
@@ -3124,7 +3165,6 @@ formulas. It is not a replacement for every Excel feature.
 - [ExcelJS formula recalculation in Node.js](exceljs-formula-recalculation-node.md)
 - [GitHub repo](https://github.com/proompteng/bilig)
 - [Star or bookmark Bilig](https://github.com/proompteng/bilig/stargazers)
-
 ---
 
 ## OpenAI Agents SDK WorkPaper Tool
