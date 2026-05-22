@@ -1,16 +1,15 @@
-import {
-  ValueTag,
-  type CellRangeRef,
-  type CellSnapshot,
-  type CellValue,
-  type DependencySnapshot,
-  type EngineEvent,
-  type ExplainCellSnapshot,
-  type LiteralInput,
-  type RecalcMetrics,
-  type SelectionState,
-  type SyncState,
-  type WorkbookSnapshot,
+import type {
+  CellRangeRef,
+  CellSnapshot,
+  CellValue,
+  DependencySnapshot,
+  EngineEvent,
+  ExplainCellSnapshot,
+  LiteralInput,
+  RecalcMetrics,
+  SelectionState,
+  SyncState,
+  WorkbookSnapshot,
 } from '@bilig/protocol'
 import type { CsvParseOptions } from './csv.js'
 import { formatAddress } from '@bilig/formula'
@@ -36,31 +35,6 @@ export type {
   SpreadsheetEngineOptions,
 } from './engine/runtime-state.js'
 export { selectors } from './engine-selectors.js'
-
-function cellStoreValueToLiteralInput(
-  cellStore: {
-    readonly tags: ArrayLike<ValueTag | undefined>
-    readonly numbers: ArrayLike<number | undefined>
-    readonly stringIds: ArrayLike<number | undefined>
-  },
-  strings: { get(stringId: number): string },
-  cellIndex: number,
-): LiteralInput | undefined {
-  switch (cellStore.tags[cellIndex] ?? ValueTag.Empty) {
-    case ValueTag.Empty:
-      return null
-    case ValueTag.Number:
-      return cellStore.numbers[cellIndex] ?? 0
-    case ValueTag.Boolean:
-      return (cellStore.numbers[cellIndex] ?? 0) !== 0
-    case ValueTag.String: {
-      const stringId = cellStore.stringIds[cellIndex] ?? 0
-      return stringId === 0 ? '' : strings.get(stringId)
-    }
-    case ValueTag.Error:
-      return undefined
-  }
-}
 
 export class SpreadsheetEngine extends SpreadsheetEngineWorkbookFacadeBase {
   async ready(): Promise<void> {
@@ -226,92 +200,11 @@ export class SpreadsheetEngine extends SpreadsheetEngineWorkbookFacadeBase {
   }
 
   tryApplyExistingNumericCellMutationAt(request: EngineExistingNumericCellMutationRef): EngineExistingNumericCellMutationResult | null {
-    if (this.state.trackReplicaVersions || this.batchListeners.size > 0 || this.syncClientConnection !== null) {
-      return null
-    }
-    const cellStore = this.workbook.cellStore
-    const cellIndex = request.cellIndex
-    const oldNumericValue =
-      request.trustedExistingNumericLiteral && request.oldNumericValue !== undefined
-        ? request.oldNumericValue
-        : (cellStore.numbers[cellIndex] ?? 0)
-    const result = this.runtime.operations.applyExistingNumericCellMutationAtNow(request)
-    if (!result) {
-      return null
-    }
-    if (this.transactionReplayDepth === 0) {
-      this.undoStack.push({
-        forward: {
-          kind: 'single-existing-numeric-cell-mutation',
-          sheetId: request.sheetId,
-          row: request.row,
-          col: request.col,
-          cellIndex,
-          value: request.value,
-          potentialNewCells: 0,
-        },
-        inverse: {
-          kind: 'single-existing-numeric-cell-mutation',
-          sheetId: request.sheetId,
-          row: request.row,
-          col: request.col,
-          cellIndex,
-          value: oldNumericValue,
-          potentialNewCells: 1,
-        },
-      })
-      this.redoStack.length = 0
-    }
-    return result
+    return this.runtime.mutation.executeLocalExistingNumericCellMutationAtNow(request, { returnUndoOps: false })
   }
 
   tryApplyExistingLiteralCellMutationAt(request: EngineExistingLiteralCellMutationRef): EngineExistingNumericCellMutationResult | null {
-    if (typeof request.value === 'number') {
-      return this.tryApplyExistingNumericCellMutationAt({
-        sheetId: request.sheetId,
-        row: request.row,
-        col: request.col,
-        cellIndex: request.cellIndex,
-        value: request.value,
-        ...(request.emitTracked === undefined ? {} : { emitTracked: request.emitTracked }),
-      })
-    }
-    if (this.state.trackReplicaVersions || this.batchListeners.size > 0 || this.syncClientConnection !== null) {
-      return null
-    }
-    const cellStore = this.workbook.cellStore
-    const oldLiteralValue = cellStoreValueToLiteralInput(cellStore, this.strings, request.cellIndex)
-    if (oldLiteralValue === undefined) {
-      return null
-    }
-    const result = this.runtime.operations.applyExistingLiteralCellMutationAtNow(request)
-    if (!result) {
-      return null
-    }
-    if (this.transactionReplayDepth === 0) {
-      this.undoStack.push({
-        forward: {
-          kind: 'single-existing-literal-cell-mutation',
-          sheetId: request.sheetId,
-          row: request.row,
-          col: request.col,
-          cellIndex: request.cellIndex,
-          value: request.value,
-          potentialNewCells: 0,
-        },
-        inverse: {
-          kind: 'single-existing-literal-cell-mutation',
-          sheetId: request.sheetId,
-          row: request.row,
-          col: request.col,
-          cellIndex: request.cellIndex,
-          value: oldLiteralValue,
-          potentialNewCells: 1,
-        },
-      })
-      this.redoStack.length = 0
-    }
-    return result
+    return this.runtime.mutation.executeLocalExistingLiteralCellMutationAtNow(request, { returnUndoOps: false })
   }
 
   initializeCellFormulasAt(refs: readonly EngineCellMutationRef[], potentialNewCells?: number): void {

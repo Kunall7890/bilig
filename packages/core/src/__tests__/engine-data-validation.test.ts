@@ -1,3 +1,4 @@
+import { ValueTag } from '@bilig/protocol'
 import { describe, expect, it } from 'vitest'
 import { SpreadsheetEngine } from '../engine.js'
 
@@ -184,5 +185,196 @@ describe('SpreadsheetEngine data validations', () => {
         allowBlank: true,
       },
     ])
+  })
+
+  it('rejects local list and scalar validation violations before committing value batches', async () => {
+    const engine = new SpreadsheetEngine({ workbookName: 'validation-local-enforcement' })
+    await engine.ready()
+    engine.createSheet('Sheet1')
+    engine.setCellValue('Sheet1', 'D2', 'Draft')
+    engine.setCellValue('Sheet1', 'D3', 'Final')
+    engine.setDataValidation({
+      range: {
+        sheetName: 'Sheet1',
+        startAddress: 'B2',
+        endAddress: 'B2',
+      },
+      rule: {
+        kind: 'list',
+        source: {
+          kind: 'range-ref',
+          sheetName: 'Sheet1',
+          startAddress: 'D2',
+          endAddress: 'D3',
+        },
+      },
+      allowBlank: false,
+    })
+    engine.setDataValidation({
+      range: {
+        sheetName: 'Sheet1',
+        startAddress: 'C2',
+        endAddress: 'C2',
+      },
+      rule: {
+        kind: 'decimal',
+        operator: 'between',
+        values: [0, 1],
+      },
+      allowBlank: false,
+    })
+
+    engine.setRangeValues(
+      {
+        sheetName: 'Sheet1',
+        startAddress: 'B2',
+        endAddress: 'C2',
+      },
+      [['Draft', 0.25]],
+    )
+
+    expect(() =>
+      engine.setRangeValues(
+        {
+          sheetName: 'Sheet1',
+          startAddress: 'B2',
+          endAddress: 'C2',
+        },
+        [['Bogus', 0.75]],
+      ),
+    ).toThrow(/Excel data validation/)
+    expect(engine.getCellValue('Sheet1', 'B2')).toEqual({ tag: ValueTag.String, value: 'Draft', stringId: expect.any(Number) })
+    expect(engine.getCellValue('Sheet1', 'C2')).toEqual({ tag: ValueTag.Number, value: 0.25 })
+
+    expect(() =>
+      engine.setRangeValues(
+        {
+          sheetName: 'Sheet1',
+          startAddress: 'B2',
+          endAddress: 'C2',
+        },
+        [['Final', 2]],
+      ),
+    ).toThrow(/Excel data validation/)
+    expect(engine.getCellValue('Sheet1', 'B2')).toEqual({ tag: ValueTag.String, value: 'Draft', stringId: expect.any(Number) })
+    expect(engine.getCellValue('Sheet1', 'C2')).toEqual({ tag: ValueTag.Number, value: 0.25 })
+
+    engine.setRangeValues(
+      {
+        sheetName: 'Sheet1',
+        startAddress: 'B2',
+        endAddress: 'C2',
+      },
+      [['Final', 0.75]],
+    )
+    expect(engine.getCellValue('Sheet1', 'B2')).toEqual({ tag: ValueTag.String, value: 'Final', stringId: expect.any(Number) })
+    expect(engine.getCellValue('Sheet1', 'C2')).toEqual({ tag: ValueTag.Number, value: 0.75 })
+  })
+
+  it('enforces validations on direct coordinate and existing-cell mutation fast paths', async () => {
+    const engine = new SpreadsheetEngine({ workbookName: 'validation-local-fast-paths', trackReplicaVersions: false })
+    await engine.ready()
+    engine.createSheet('Sheet1')
+    const sheetId = engine.workbook.getSheet('Sheet1')!.id
+
+    engine.setCellValue('Sheet1', 'B2', 'Draft')
+    engine.setDataValidation({
+      range: {
+        sheetName: 'Sheet1',
+        startAddress: 'B2',
+        endAddress: 'B2',
+      },
+      rule: {
+        kind: 'list',
+        values: ['Draft', 'Final'],
+      },
+      allowBlank: false,
+    })
+    const b2Index = engine.workbook.getCellIndex('Sheet1', 'B2')!
+
+    expect(() =>
+      engine.tryApplyExistingLiteralCellMutationAt({
+        sheetId,
+        row: 1,
+        col: 1,
+        cellIndex: b2Index,
+        value: 'Bogus',
+      }),
+    ).toThrow(/Excel data validation/)
+    expect(engine.getCellValue('Sheet1', 'B2')).toEqual({ tag: ValueTag.String, value: 'Draft', stringId: expect.any(Number) })
+
+    engine.setCellValue('Sheet1', 'C2', 5)
+    engine.setDataValidation({
+      range: {
+        sheetName: 'Sheet1',
+        startAddress: 'C2',
+        endAddress: 'C2',
+      },
+      rule: {
+        kind: 'whole',
+        operator: 'between',
+        values: [1, 10],
+      },
+      allowBlank: false,
+    })
+    const c2Index = engine.workbook.getCellIndex('Sheet1', 'C2')!
+
+    expect(() =>
+      engine.tryApplyExistingNumericCellMutationAt({
+        sheetId,
+        row: 1,
+        col: 2,
+        cellIndex: c2Index,
+        value: 11,
+      }),
+    ).toThrow(/Excel data validation/)
+    expect(engine.getCellValue('Sheet1', 'C2')).toEqual({ tag: ValueTag.Number, value: 5 })
+
+    expect(() => engine.setCellValueAt(sheetId, 1, 2, 0)).toThrow(/Excel data validation/)
+    expect(engine.getCellValue('Sheet1', 'C2')).toEqual({ tag: ValueTag.Number, value: 5 })
+    expect(engine.setCellValueAt(sheetId, 1, 2, 7)).toEqual({ tag: ValueTag.Number, value: 7 })
+  })
+
+  it('loads existing invalid validated values from snapshots but rejects later invalid local writes', async () => {
+    const engine = new SpreadsheetEngine({ workbookName: 'validation-import-existing-invalid' })
+    await engine.ready()
+    engine.importSnapshot({
+      version: 1,
+      workbook: { name: 'validation-import-existing-invalid' },
+      sheets: [
+        {
+          id: 1,
+          name: 'Sheet1',
+          order: 0,
+          metadata: {
+            validations: [
+              {
+                range: {
+                  sheetName: 'Sheet1',
+                  startAddress: 'B2',
+                  endAddress: 'B2',
+                },
+                rule: {
+                  kind: 'list',
+                  values: ['Draft', 'Final'],
+                },
+                allowBlank: false,
+              },
+            ],
+          },
+          cells: [{ address: 'B2', value: 'Legacy' }],
+        },
+      ],
+    })
+
+    expect(engine.getCellValue('Sheet1', 'B2')).toEqual({ tag: ValueTag.String, value: 'Legacy', stringId: expect.any(Number) })
+    expect(() => engine.setCellValue('Sheet1', 'B2', 'Bogus')).toThrow(/Excel data validation/)
+    expect(engine.getCellValue('Sheet1', 'B2')).toEqual({ tag: ValueTag.String, value: 'Legacy', stringId: expect.any(Number) })
+
+    expect(engine.setCellValue('Sheet1', 'B2', 'Final')).toEqual({
+      tag: ValueTag.String,
+      value: 'Final',
+      stringId: expect.any(Number),
+    })
   })
 })
