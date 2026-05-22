@@ -212,6 +212,10 @@ Formula expressions expose:
 - `source`: parseable formula text without the leading `=`;
 - `inputs`: the refs that a runtime adapter must resolve.
 
+Formula helpers validate operands and declared raw-formula inputs at runtime.
+Malformed refs fail before planning, so agents do not hand opaque bad
+dependencies to a runtime adapter.
+
 Runtime adapters materialize formula inputs by replacing whole tokens only. Text
 inside a quoted string or a larger identifier is left alone.
 

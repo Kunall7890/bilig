@@ -164,7 +164,9 @@ For formulas outside the small helper set, `formula.raw(source, { inputs })`
 keeps arbitrary formula text generic while preserving explicit workbook
 dependencies for inspection and verification. These are declared dependencies,
 not parser-discovered proof that every formula reference has a matching model
-ref.
+ref. Formula helpers validate operands and declared raw-formula inputs at
+runtime, so malformed ref-shaped objects fail before planning instead of leaking
+into opaque runtime handoff data.
 Runtime adapters materialize declared formula inputs as whole formula tokens.
 They do not rewrite a ref token inside a string literal or inside a larger
 identifier, so generic formula text remains predictable for agents.
