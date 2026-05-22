@@ -111,6 +111,56 @@ describe('xlsx chart artifacts roundtrip', () => {
     expect(imported.snapshot.workbook.metadata?.charts?.[0]?.legendPosition).toBeUndefined()
   })
 
+  it('does not read Excel title layout attributes as title text', () => {
+    const snapshot: WorkbookSnapshot = {
+      version: 1,
+      workbook: {
+        name: 'Excel Saved Chart Workbook',
+        metadata: {
+          charts: [
+            {
+              id: 'sales-chart',
+              sheetName: 'Data',
+              address: 'E1',
+              source: { sheetName: 'Data', startAddress: 'A1', endAddress: 'B3' },
+              chartType: 'line',
+              seriesOrientation: 'columns',
+              firstRowAsHeaders: true,
+              firstColumnAsLabels: true,
+              title: 'Revenue trend',
+              legendPosition: 'bottom',
+              rows: 12,
+              cols: 6,
+            },
+          ],
+        },
+      },
+      sheets: [
+        {
+          id: 1,
+          name: 'Data',
+          order: 0,
+          cells: [
+            { address: 'A1', value: 'Month' },
+            { address: 'B1', value: 'Revenue' },
+            { address: 'A2', value: 'Jan' },
+            { address: 'B2', value: 10 },
+            { address: 'A3', value: 'Feb' },
+            { address: 'B3', value: 12 },
+          ],
+        },
+      ],
+    }
+    const zip = unzipSync(exportXlsx(snapshot))
+    zip['xl/charts/chart1.xml'] = strToU8(
+      strFromU8(zip['xl/charts/chart1.xml'] ?? new Uint8Array()).replace('</c:title>', '<c:overlay val="1"/></c:title>'),
+    )
+
+    const [chart] = importXlsx(zipSync(zip), 'excel-saved-chart-workbook.xlsx').snapshot.workbook.metadata?.charts ?? []
+
+    expect(chart?.title).toBe('Revenue trend')
+  })
+
   it('does not infer scatter chart first-column labels from fallback x values', () => {
     const snapshot: WorkbookSnapshot = {
       version: 1,
