@@ -1,6 +1,6 @@
 import { summarizeNumbers, type NumericSummary } from '../packages/benchmarks/src/stats.js'
-import type { SameCorpusScenarioProof } from './ui-responsiveness-same-corpus-proof.ts'
-import { validateSameCorpusScenarioProof } from './ui-responsiveness-same-corpus-proof.ts'
+import type { SameCorpusProductVisualProof, SameCorpusScenarioProof } from './ui-responsiveness-same-corpus-proof.ts'
+import { buildScorecardScenarioProof, validateSameCorpusScenarioProof } from './ui-responsiveness-same-corpus-proof.ts'
 import {
   requiredUiResponsivenessSameCorpusWorkloads,
   uiSameCorpusWorkloadRequiresScrollEventEvidence,
@@ -103,6 +103,8 @@ export interface SameCorpusCaptureCorpusVerification {
 
 const requiredSameCorpusWorkloads = requiredUiResponsivenessSameCorpusWorkloads
 const sameCorpusSampleCount = 3
+const strictRenderedGridProofLimitation =
+  'Some same-corpus cases retain timing evidence but do not satisfy strict rendered-grid proof, so they cannot count toward Google Sheets 10x UI claims.'
 
 export function buildMissingSameCorpusProof(): UiResponsivenessSameCorpusProof {
   return {
@@ -127,7 +129,7 @@ export function buildSameCorpusProof(capture: SameCorpusCapture): UiResponsivene
     requiredCaseCount: requiredSameCorpusWorkloads.length,
     tenXMeanAndP95CaseCount: cases.filter((entry) => entry.tenXMeanAndP95AgainstGoogleSheets).length,
     coveredCorpusCaseIds: [...new Set(cases.map((entry) => entry.corpusCaseId))].toSorted(),
-    limitations: [...capture.limitations],
+    limitations: sameCorpusProofLimitations(capture.limitations, cases),
     cases,
   }
   validateSameCorpusProof(proof)
@@ -169,9 +171,21 @@ export function validateSameCorpusProof(proof: UiResponsivenessSameCorpusProof):
   if (JSON.stringify(proof.coveredCorpusCaseIds) !== JSON.stringify(coveredCorpusCaseIds)) {
     throw new Error('UI responsiveness same-corpus proof covered corpus IDs are stale')
   }
+  const hasMissingStrictGridProof = proof.cases.some((entry) => !entry.scenarioProof.pixelGridProof.captured)
+  if (hasMissingStrictGridProof && !proof.limitations.includes(strictRenderedGridProofLimitation)) {
+    throw new Error('UI responsiveness same-corpus proof must disclose missing strict rendered-grid proof')
+  }
   for (const entry of proof.cases) {
     validateSameCorpusCase(entry)
   }
+}
+
+function sameCorpusProofLimitations(captureLimitations: readonly string[], cases: readonly UiResponsivenessSameCorpusCase[]): string[] {
+  const limitations = [...captureLimitations]
+  if (cases.some((entry) => !entry.scenarioProof.pixelGridProof.captured) && !limitations.includes(strictRenderedGridProofLimitation)) {
+    limitations.push(strictRenderedGridProofLimitation)
+  }
+  return limitations
 }
 
 function validateSameCorpusCapture(capture: SameCorpusCapture): void {
@@ -241,7 +255,13 @@ function buildSameCorpusCase(captureCase: SameCorpusCaptureCase): UiResponsivene
       : (biligToMicrosoftExcelWebMeanRatio ?? Number.POSITIVE_INFINITY) <= 0.1 &&
         (biligToMicrosoftExcelWebP95Ratio ?? Number.POSITIVE_INFINITY) <= 0.1
     : undefined
-  const visualProofGuardrailPassed = captureCase.scenarioProof.screenshotProof.captured && captureCase.scenarioProof.pixelGridProof.captured
+  const scenarioProof = buildScorecardScenarioProof({
+    bilig,
+    googleSheets,
+    microsoftExcelWeb,
+    visualProofs: scenarioProofVisualProofs(captureCase.scenarioProof),
+  })
+  const visualProofGuardrailPassed = scenarioProof.screenshotProof.captured && scenarioProof.pixelGridProof.captured
   const tenXMeanAndP95AgainstGoogleSheets =
     timingMetricPassedAgainstGoogleSheets && postOperationFrameGuardrailPassed && visualProofGuardrailPassed
   const tenXMeanAndP95AgainstMicrosoftExcelWeb =
@@ -279,12 +299,21 @@ function buildSameCorpusCase(captureCase: SameCorpusCaptureCase): UiResponsivene
           scrollMovementGuardrailPassed,
         }
       : { tenXMeanAndP95Metric: 'operationResponseMs' as const }),
-    scenarioProof: { ...captureCase.scenarioProof },
+    scenarioProof,
     postOperationFrameGuardrailPassed,
     tenXMeanAndP95AgainstGoogleSheets,
     ...(tenXMeanAndP95AgainstMicrosoftExcelWeb !== undefined ? { tenXMeanAndP95AgainstMicrosoftExcelWeb } : {}),
     passed: tenXMeanAndP95AgainstGoogleSheets,
   }
+}
+
+function scenarioProofVisualProofs(proof: SameCorpusScenarioProof): SameCorpusProductVisualProof[] {
+  return proof.pixelGridProof.products.map((entry) => ({
+    product: entry.product,
+    screenshotPath: proof.screenshotProof.artifactPaths.find((artifact) => artifact.includes(`${entry.product}-`)) ?? null,
+    screenshotCaptured: !proof.screenshotProof.missingProducts.includes(entry.product),
+    pixelGridProof: entry,
+  }))
 }
 
 function buildSameCorpusMeasurement(capture: SameCorpusCaptureMeasurement): UiResponsivenessSameCorpusMeasurement {

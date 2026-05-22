@@ -4,6 +4,8 @@ import { dirname, relative, resolve } from 'node:path'
 import type { Frame, Page } from '@playwright/test'
 
 import { summarizeNumbers, type NumericSummary } from '../packages/benchmarks/src/stats.js'
+import { biligRenderedSurfaceReadiness } from './ui-responsiveness-same-corpus-surface.ts'
+import { readBiligRenderedSurfaceState } from './ui-responsiveness-same-corpus-surface-page.ts'
 import type {
   SameCorpusCaptureMeasurement,
   UiResponsivenessSameCorpusMeasurement,
@@ -11,6 +13,7 @@ import type {
 } from './ui-responsiveness-same-corpus-scorecard-proof.ts'
 
 const rootDir = resolve(new URL('..', import.meta.url).pathname)
+const sameCorpusUiRenderProofContractVersion = 'same-corpus-ui-v2'
 
 export interface SameCorpusScenarioProof {
   readonly biligMeanMs: number
@@ -55,6 +58,41 @@ export interface SameCorpusProductPixelGridProof {
   readonly viewportPixelWidth: number
   readonly viewportPixelHeight: number
   readonly evidence: readonly string[]
+}
+
+export function isSameCorpusProductPixelGridProofComplete(proof: SameCorpusProductPixelGridProof): boolean {
+  if (!proof.captured || proof.viewportPixelWidth <= 0 || proof.viewportPixelHeight <= 0) {
+    return false
+  }
+  if (proof.product === 'google-sheets') {
+    return proof.method === 'google-sheets-visible-grid'
+  }
+  if (proof.product === 'microsoft-excel-web') {
+    return proof.method === 'excel-web-visible-grid'
+  }
+  if (proof.method !== 'typegpu-visible-canvas' || proof.evidence.some((entry) => entry.startsWith('gap='))) {
+    return false
+  }
+  const evidence = sameCorpusEvidenceMap(proof.evidence)
+  const gridProjectedRevision = evidence.get('gridProjectedRevision') ?? ''
+  const tileSceneRevision = evidence.get('tileSceneRevision') ?? ''
+  return (
+    evidence.get('mode') === 'typegpu-v3' &&
+    evidence.get('contractVersion') === sameCorpusUiRenderProofContractVersion &&
+    evidence.get('backendStatus') === 'ready' &&
+    evidence.get('frameProofStatus') === 'presented' &&
+    evidence.get('hasPresentedVisibleFrame') === 'true' &&
+    positiveEvidenceNumber(evidence, 'tilePaneCount') &&
+    positiveEvidenceNumber(evidence, 'headerPaneCount') &&
+    positiveEvidenceNumber(evidence, 'presentedTilePaneCount') &&
+    positiveEvidenceNumber(evidence, 'presentedHeaderPaneCount') &&
+    evidence.get('canvasCoversViewport') === 'true' &&
+    gridProjectedRevision.length > 0 &&
+    evidence.get('typeGpuProjectedRevision') === gridProjectedRevision &&
+    evidence.get('visibleProjectedRevision') === gridProjectedRevision &&
+    tileSceneRevision.length > 0 &&
+    evidence.get('visibleRenderRevision') === tileSceneRevision
+  )
 }
 
 export function buildCaptureScenarioProof(args: {
@@ -153,9 +191,6 @@ export function validateSameCorpusScenarioProof(
   if (!proof.screenshotProof.captured) {
     throw new Error(`UI responsiveness same-corpus scenario proof is missing screenshot proof: ${caseId}`)
   }
-  if (!proof.pixelGridProof.captured) {
-    throw new Error(`UI responsiveness same-corpus scenario proof is missing pixel grid proof: ${caseId}`)
-  }
 }
 
 function buildScenarioProof(args: {
@@ -168,7 +203,9 @@ function buildScenarioProof(args: {
   const screenshotProducts = new Set(
     args.visualProofs.filter((entry) => entry.screenshotCaptured && entry.screenshotPath).map((entry) => entry.product),
   )
-  const pixelProducts = new Set(args.visualProofs.filter((entry) => entry.pixelGridProof.captured).map((entry) => entry.product))
+  const pixelProducts = new Set(
+    args.visualProofs.filter((entry) => isSameCorpusProductPixelGridProofComplete(entry.pixelGridProof)).map((entry) => entry.product),
+  )
   return {
     biligMeanMs: args.biligTiming.mean,
     biligP95Ms: args.biligTiming.p95,
@@ -197,6 +234,20 @@ function buildScenarioProof(args: {
       missingProducts: requiredProducts.filter((product) => !pixelProducts.has(product)),
     },
   }
+}
+
+function sameCorpusEvidenceMap(evidence: readonly string[]): ReadonlyMap<string, string> {
+  return new Map(
+    evidence.flatMap((entry) => {
+      const separatorIndex = entry.indexOf('=')
+      return separatorIndex > 0 ? [[entry.slice(0, separatorIndex), entry.slice(separatorIndex + 1)]] : []
+    }),
+  )
+}
+
+function positiveEvidenceNumber(evidence: ReadonlyMap<string, string>, key: string): boolean {
+  const value = evidence.get(key)
+  return value !== undefined && Number.isFinite(Number(value)) && Number(value) > 0
 }
 
 function primaryCaptureTimingSamples(measurement: SameCorpusCaptureMeasurement): readonly number[] {
@@ -272,46 +323,16 @@ async function readProductPixelGridProof(page: Page, product: UiResponsivenessSa
 }
 
 async function readBiligPixelGridProof(page: Page): Promise<SameCorpusProductPixelGridProof> {
-  return await page.evaluate(() => {
-    const grid = document.querySelector('[data-testid="sheet-grid"]')
-    const canvas = document.querySelector('[data-testid="grid-pane-renderer"]')
-    if (!(grid instanceof HTMLElement) || !(canvas instanceof HTMLCanvasElement)) {
-      return {
-        product: 'bilig' as const,
-        captured: false,
-        method: 'typegpu-visible-canvas' as const,
-        viewportPixelWidth: 0,
-        viewportPixelHeight: 0,
-        evidence: ['missing sheet grid or TypeGPU canvas'],
-      }
-    }
-    const dpr = Math.max(1, window.devicePixelRatio || 1)
-    const expectedWidth = Math.max(1, Math.floor(grid.clientWidth * dpr))
-    const expectedHeight = Math.max(1, Math.floor(grid.clientHeight * dpr))
-    const tilePaneCount = Number.parseInt(canvas.getAttribute('data-v3-tile-pane-count') ?? '0', 10) || 0
-    const headerPaneCount = Number.parseInt(canvas.getAttribute('data-v3-header-pane-count') ?? '0', 10) || 0
-    const mode = canvas.getAttribute('data-renderer-mode') ?? ''
-    const captured =
-      mode === 'typegpu-v3' &&
-      tilePaneCount > 0 &&
-      headerPaneCount > 0 &&
-      canvas.width >= expectedWidth - 2 &&
-      canvas.height >= expectedHeight - 2
-    return {
-      product: 'bilig' as const,
-      captured,
-      method: 'typegpu-visible-canvas' as const,
-      viewportPixelWidth: canvas.width,
-      viewportPixelHeight: canvas.height,
-      evidence: [
-        `mode=${mode}`,
-        `tilePaneCount=${String(tilePaneCount)}`,
-        `headerPaneCount=${String(headerPaneCount)}`,
-        `expectedPixelWidth=${String(expectedWidth)}`,
-        `expectedPixelHeight=${String(expectedHeight)}`,
-      ],
-    }
-  })
+  const renderedSurface = await readBiligRenderedSurfaceState(page)
+  const readiness = biligRenderedSurfaceReadiness(renderedSurface)
+  return {
+    product: 'bilig',
+    captured: readiness.ready,
+    method: 'typegpu-visible-canvas',
+    viewportPixelWidth: renderedSurface?.typeGpu?.pixelWidth ?? 0,
+    viewportPixelHeight: renderedSurface?.typeGpu?.pixelHeight ?? 0,
+    evidence: [`contractVersion=${sameCorpusUiRenderProofContractVersion}`, ...readiness.evidence],
+  }
 }
 
 async function readDomPixelGridProof(

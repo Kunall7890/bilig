@@ -44,7 +44,7 @@
         "evidence": [
           "direct live browser timing passed: true",
           "same-corpus capture kind: same-corpus-browser-capture",
-          "same-corpus UI 10x cases: 3/9"
+          "same-corpus UI 10x cases: 0/9"
         ],
         "gaps": ["live UI browser evidence is not a same-corpus 10x proof against Google Sheets with rendered-grid proof"]
       }
@@ -645,7 +645,7 @@
         "external UI responsiveness comparison dimensions pass: true",
         "live incumbent browser timing scorecard passes: true",
         "same-corpus UI 10x proof captured: true",
-        "same-corpus UI 10x cases: 3/9",
+        "same-corpus UI 10x cases: 0/9",
         "google-sheets: open-public-workbook-and-scroll-viewport scrollResponseMs.p95 130.40370799999982ms and postScrollFrameMs.p95 9.300000000000182ms (3 samples, public-comment-only)",
         "microsoft-excel-web: open-public-workbook-and-scroll-viewport scrollResponseMs.p95 115.86187499999869ms and postScrollFrameMs.p95 9.300000000000182ms (3 samples, public-office-web-viewer)",
         "wide-mixed-250k: open-workbook bilig p95 ratio 1.8242878750138747 vs Google Sheets and undefined vs Excel Web",
