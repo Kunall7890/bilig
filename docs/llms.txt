@@ -476,6 +476,9 @@ npm exec --package @bilig/headless@0.51.5 -- bilig-workpaper-mcp --workpaper ./p
 - agent framework spreadsheet tool guide:
   https://proompteng.github.io/bilig/vercel-ai-sdk-langchain-spreadsheet-tool.html
   https://github.com/proompteng/bilig/blob/main/docs/vercel-ai-sdk-langchain-spreadsheet-tool.md
+- workbook tools for agent frameworks:
+  https://proompteng.github.io/bilig/agent-framework-workbook-tools.html
+  https://github.com/proompteng/bilig/blob/main/docs/agent-framework-workbook-tools.md
 - framework-specific spreadsheet tool pages:
   https://proompteng.github.io/bilig/mastra-workpaper-spreadsheet-tool.html
   https://proompteng.github.io/bilig/llamaindex-workpaper-spreadsheet-tool.html
