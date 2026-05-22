@@ -4,6 +4,15 @@ All notable changes to `@bilig/headless` will be documented in this file.
 
 This package is released as part of the aligned bilig library package set.
 
+## 0.51.2
+
+- Release type: patch
+- Previous libraries tag: libraries-v0.51.1
+- Manual override: no
+
+## Fixes
+- fix(corpus): preserve structural smoke and undo fidelity (2770b185)
+
 ## 0.51.1
 
 - Release type: patch
