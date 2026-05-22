@@ -392,12 +392,7 @@ Plans describe intent. Command bundles are the executable handoff object for an
 agent or service runtime.
 
 ```ts
-import {
-  describeCommandBundle,
-  planWorkbookCommand,
-  runWorkbookCommandBundle,
-  verifyWorkbookCommandBundle,
-} from '@bilig/workbook'
+import { describeCommandBundle, planWorkbookCommand, runWorkbookCommandBundle, verifyWorkbookCommandBundle } from '@bilig/workbook'
 
 const planned = planWorkbookCommand(model, 'calculate', undefined, {
   baseRevision: 'rev-42',

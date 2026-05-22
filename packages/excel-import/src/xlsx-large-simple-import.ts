@@ -24,6 +24,14 @@ import { LargeSimpleXlsxImportPhaseRecorder } from './xlsx-large-simple-import-t
 import { appendLargeSimpleConditionalFormats } from './xlsx-large-simple-conditional-format-helpers.js'
 import { internLargeSimpleWorksheetMetadata } from './xlsx-large-simple-metadata-interning.js'
 import { prepareLargeSimplePackageArtifactsForZipRelease } from './xlsx-large-simple-package-artifact-release.js'
+import {
+  hasUnsupportedLargeSimplePackagePath,
+  readLargeSimplePackageFlags,
+  sharedStringsPath,
+  stylesPath,
+  workbookPath,
+  workbookRelationshipsPath,
+} from './xlsx-large-simple-package-flags.js'
 import { readLargeSimpleSheetPrintMetadata, readLargeSimpleSheetPrintPageSetup } from './xlsx-large-simple-printer-settings.js'
 import { buildLargeSimpleRuntimeSheetCells } from './xlsx-large-simple-runtime-sheet-cells.js'
 import {
@@ -49,6 +57,7 @@ import {
   releaseLargeSimpleStyleIndexes,
   shouldDeferLargeSimpleStyleCoordinates,
 } from './xlsx-large-simple-style-coordinate-rescan.js'
+import { replaceLargeSimpleZipSourceForImport } from './xlsx-large-simple-source-release.js'
 import { collectLargeSimpleImportGarbage } from './xlsx-large-simple-garbage.js'
 import {
   drawingRelationshipIdForScannedWorksheet,
@@ -97,7 +106,6 @@ import {
   readLazyXlsxZipSourceByteLength,
   readXlsxZipEntryUncompressedSize,
   releaseLazyXlsxZipSource,
-  replaceLazyXlsxZipSource,
   type XlsxZipEntries,
 } from './xlsx-zip.js'
 import type {
@@ -123,11 +131,6 @@ const defaultLargeSimpleXlsxByteThreshold = 1_000_000
 const maxPreservedBlankStyleCellCount = 10_000
 const maxMultiSheetDimensionCellPreallocation = 1_000_000
 const eagerSharedStringsXmlByteThreshold = 1_000_000
-const workbookPath = 'xl/workbook.xml'
-const workbookRelationshipsPath = 'xl/_rels/workbook.xml.rels'
-const sharedStringsPath = 'xl/sharedStrings.xml'
-const stylesPath = 'xl/styles.xml'
-const unsupportedPackagePathPattern = /^xl\/(?:ctrlProps|threadedComments|vbaProject\.bin)/u
 export function tryImportLargeSimpleXlsx(
   source: LargeSimpleXlsxImportSource,
   fileName: string,
@@ -140,7 +143,7 @@ export function tryImportLargeSimpleXlsx(
   const phaseRecorder = new LargeSimpleXlsxImportPhaseRecorder()
   const zipSetupStart = phaseRecorder.start()
   const packagePaths = Object.keys(zip).map(normalizeZipPath)
-  if (packagePaths.some((path) => unsupportedPackagePathPattern.test(path))) {
+  if (hasUnsupportedLargeSimplePackagePath(packagePaths)) {
     return null
   }
 
@@ -173,34 +176,20 @@ export function tryImportLargeSimpleXlsx(
   }
   const materializeCells = options.materializeCells !== false
   const materializeMetadata = options.materializeMetadata !== false
-  const hasSharedStrings = packagePaths.includes(sharedStringsPath)
-  const hasStyles = packagePaths.includes(stylesPath)
-  const hasCalcChain = packagePaths.includes('xl/calcChain.xml')
-  const hasDrawingParts = packagePaths.some((path) => path.startsWith('xl/drawings/') || path.startsWith('xl/media/'))
-  const hasChartParts = packagePaths.some((path) => path.startsWith('xl/charts/') || path.startsWith('xl/chartSheets/'))
-  const hasPivotParts = packagePaths.some((path) => path.startsWith('xl/pivotTables/') || path.startsWith('xl/pivotCache/'))
-  const hasExternalLinkParts = packagePaths.some((path) => path.startsWith('xl/externalLinks/'))
-  const hasLegacyCommentParts = packagePaths.some((path) => path.startsWith('xl/comments') || path.endsWith('.vml'))
-  const hasDataModelParts = packagePaths.some(
-    (path) => path.startsWith('xl/model/') || path.startsWith('xl/customData/') || path.startsWith('customXml/'),
-  )
-  const hasSlicerConnectionParts = packagePaths.some(
-    (path) => path === 'xl/connections.xml' || path.startsWith('xl/slicerCaches/') || path.startsWith('xl/slicers/'),
-  )
+  const {
+    hasSharedStrings,
+    hasStyles,
+    hasCalcChain,
+    hasDrawingParts,
+    hasChartParts,
+    hasPivotParts,
+    hasExternalLinkParts,
+    hasLegacyCommentParts,
+    hasDataModelParts,
+    hasSlicerConnectionParts,
+  } = readLargeSimplePackageFlags(packagePaths)
   phaseRecorder.finish('zip-setup', zipSetupStart)
-  let ownedSourceReleasedForReplacement = false
-  if (options.releaseZipSource === true && options.replacementZipSource) {
-    const zipSourceReleaseStart = phaseRecorder.start()
-    const zipSourceBytesBeforeRelease = readLazyXlsxZipSourceByteLength(zip)
-    const zipSourceReplaced = replaceLazyXlsxZipSource(zip, options.replacementZipSource)
-    const ownedSourceReleaseEvidence = zipSourceReplaced ? options.releaseOwnedSourceBytes?.() : undefined
-    ownedSourceReleasedForReplacement = Boolean(ownedSourceReleaseEvidence)
-    phaseRecorder.finish('zip-source-release', zipSourceReleaseStart, {
-      ...(zipSourceBytesBeforeRelease !== undefined ? { zipSourceBytesBeforeRelease } : {}),
-      ...(zipSourceBytesBeforeRelease !== undefined ? { zipSourceBytesAfterRelease: readLazyXlsxZipSourceByteLength(zip) ?? 0 } : {}),
-      ...ownedSourceReleaseEvidence,
-    })
-  }
+  const ownedSourceReleasedForReplacement = replaceLargeSimpleZipSourceForImport(zip, options, phaseRecorder)
   const importedExternalLinkArtifacts =
     materializeCells && hasExternalLinkParts ? readImportedWorkbookExternalLinkArtifacts(zip) : undefined
   const importedDataModelArtifacts = materializeCells && hasDataModelParts ? readImportedWorkbookDataModelArtifacts(zip) : undefined

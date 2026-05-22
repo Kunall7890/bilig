@@ -11,6 +11,7 @@ This package is released as part of the aligned bilig library package set.
 - Manual override: no
 
 ## Features
+
 - feat(workbook): allow runtime check proof (b8140ced)
 
 ## 0.47.0
@@ -20,6 +21,7 @@ This package is released as part of the aligned bilig library package set.
 - Manual override: no
 
 ## Features
+
 - feat(workbook): harden agent handoff contracts (6f526454)
 - feat(workpaper): expose verified agent tool helpers (f20b74f8)
 - feat(workbook): clarify agent-first docs (125d5323)
@@ -33,6 +35,7 @@ This package is released as part of the aligned bilig library package set.
 - feat(core): rewrite sorted formulas like Excel (046d59ae)
 
 ## Fixes
+
 - fix(release): keep metadata retry clean (488ba52c)
 - fix(core): keep live runtime under size gate (dc5bf5e4)
 - fix(ui-proof): expose same-corpus run manifest (657832a9)
@@ -52,6 +55,7 @@ This package is released as part of the aligned bilig library package set.
 - fix(dominance): downgrade legacy same-corpus proof (e7314290)
 
 ## Internal runtime changes
+
 - docs(workbook): add agent model example (fd238c7d)
 - refactor(core): split live runtime config types (0269dbab)
 - chore(agent): refresh Bilig skill docs (9a3af19d)
@@ -69,6 +73,7 @@ This package is released as part of the aligned bilig library package set.
 - Manual override: no
 
 ## Features
+
 - feat(workbook): harden agent handoff contracts (6f526454)
 - feat(workpaper): expose verified agent tool helpers (f20b74f8)
 - feat(workbook): clarify agent-first docs (125d5323)
@@ -80,6 +85,7 @@ This package is released as part of the aligned bilig library package set.
 - feat(core): apply Desktop Excel sort semantics (ca019914)
 
 ## Fixes
+
 - fix(release): keep metadata retry clean (488ba52c)
 - fix(core): keep live runtime under size gate (dc5bf5e4)
 - fix(ui-proof): expose same-corpus run manifest (657832a9)
@@ -98,6 +104,7 @@ This package is released as part of the aligned bilig library package set.
 - fix(workbook): validate formula refs at runtime (6c41a49c)
 
 ## Internal runtime changes
+
 - docs(workbook): add agent model example (fd238c7d)
 - refactor(core): split live runtime config types (0269dbab)
 - chore(agent): refresh Bilig skill docs (9a3af19d)
@@ -114,6 +121,7 @@ This package is released as part of the aligned bilig library package set.
 - Manual override: no
 
 ## Features
+
 - feat(workbook): harden agent handoff contracts (6f526454)
 - feat(workpaper): expose verified agent tool helpers (f20b74f8)
 - feat(workbook): clarify agent-first docs (125d5323)
@@ -123,6 +131,7 @@ This package is released as part of the aligned bilig library package set.
 - feat(workbook): expose readback proof on checks (cc23489b)
 
 ## Fixes
+
 - fix(release): keep metadata retry clean (488ba52c)
 - fix(core): keep live runtime under size gate (dc5bf5e4)
 - fix(ui-proof): expose same-corpus run manifest (657832a9)
@@ -137,6 +146,7 @@ This package is released as part of the aligned bilig library package set.
 - fix(release): refresh discovery docs after footprint (018a8fe9)
 
 ## Internal runtime changes
+
 - docs(workbook): add agent model example (fd238c7d)
 - refactor(core): split live runtime config types (0269dbab)
 - chore(agent): refresh Bilig skill docs (9a3af19d)
@@ -151,6 +161,7 @@ This package is released as part of the aligned bilig library package set.
 - Manual override: no
 
 ## Features
+
 - feat(workbook): harden agent handoff contracts (6f526454)
 - feat(workpaper): expose verified agent tool helpers (f20b74f8)
 - feat(workbook): clarify agent-first docs (125d5323)
@@ -159,6 +170,7 @@ This package is released as part of the aligned bilig library package set.
 - feat(workbook): verify cell-level readbacks (94efcfee)
 
 ## Fixes
+
 - fix(release): keep metadata retry clean (488ba52c)
 - fix(core): keep live runtime under size gate (dc5bf5e4)
 - fix(ui-proof): expose same-corpus run manifest (657832a9)
@@ -171,6 +183,7 @@ This package is released as part of the aligned bilig library package set.
 - fix(headless): harden Desktop Excel chart oracle (8aab5291)
 
 ## Internal runtime changes
+
 - docs(workbook): add agent model example (fd238c7d)
 - refactor(core): split live runtime config types (0269dbab)
 - chore(agent): refresh Bilig skill docs (9a3af19d)
