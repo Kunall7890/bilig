@@ -1,5 +1,13 @@
 import { describe, expect, it } from 'vitest'
-import { buildWorkbookActionPlan, defineModel, describeRuntimeRequirements, findRange, formula, type WorkbookActionPlan } from '../index.js'
+import {
+  buildWorkbookActionPlan,
+  defineModel,
+  describeRuntimeRequirements,
+  findRange,
+  formula,
+  verifyModel,
+  type WorkbookActionPlan,
+} from '../index.js'
 
 function summary(requirement: ReturnType<typeof describeRuntimeRequirements>['requirements'][number]) {
   return {
@@ -146,5 +154,55 @@ describe('@bilig/workbook runtime requirements api', () => {
         message: 'Apply workbook op setCellValue',
       },
     ])
+  })
+
+  it('includes runtime requirements in whole-model verification for each planned action', () => {
+    const model = defineModel({
+      name: 'verification-requirements-model',
+
+      find(workbook) {
+        return {
+          input: workbook.findRange({ sheetName: 'Sheet1', address: 'A2' }),
+          output: workbook.findRange({ sheetName: 'Sheet1', address: 'B2' }),
+        }
+      },
+
+      actions: {
+        write({ refs, workbook }) {
+          workbook.writeFormula(refs.output, formula.add(refs.input, 1))
+          workbook.check.formulaEquals(refs.output, formula.add(refs.input, 1))
+        },
+      },
+    })
+
+    const verification = verifyModel(model)
+
+    expect(verification.actions[0]?.requirements?.requirements.map(summary)).toEqual([
+      {
+        kind: 'apply',
+        capability: 'writeFormula',
+        commandIndex: 0,
+        checkIndex: undefined,
+        opIndex: undefined,
+        opKind: undefined,
+        checkKind: undefined,
+        target: 'Sheet1!B2',
+        refs: ['Sheet1!A2'],
+        message: 'Apply formula write to Sheet1!B2',
+      },
+      {
+        kind: 'read',
+        capability: 'read',
+        commandIndex: undefined,
+        checkIndex: 0,
+        opIndex: undefined,
+        opKind: undefined,
+        checkKind: 'formulaEquals',
+        target: 'Sheet1!B2',
+        refs: ['Sheet1!A2'],
+        message: 'Read Sheet1!B2 for formulaEquals',
+      },
+    ])
+    expect(JSON.parse(JSON.stringify(verification))).toEqual(verification)
   })
 })

@@ -259,7 +259,10 @@ Use `describeRuntimeRequirements(plan)` before runtime handoff when an agent
 needs to inspect what the adapter must do. It returns a JSON-safe list of
 generic `apply`, `read`, and `verify` requirements with boring capabilities
 such as `writeFormula`, `writeValue`, `format`, `clear`, `applyOp`, `read`, and
-`verifyCheck`. It does not execute anything and it does not import the engine.
+`verifyCheck`. Command-derived concrete single-cell ops are not repeated as
+extra `applyOp` requirements, while explicit or manually assembled ops still
+appear as `applyOp`. It does not execute anything and it does not import the
+engine.
 
 Use `verifyPlan` before runtime handoff when an agent needs to prove a planned
 action is internally consistent. It checks for non-JSON-safe action input,
@@ -275,7 +278,9 @@ appear in `plan.ops`, and must match their declared `target` when the op exposes
 a concrete address or range.
 Use `verifyModel` to plan and verify every action in a consumer-defined model
 with one JSON-safe result. Pass `inputs` when specific actions require
-parameters.
+parameters. Each successfully planned action also includes its runtime
+requirements, so an agent can inspect the action manifest, planned intent,
+static verification result, and adapter handoff checklist from the same object.
 
 Use `runWorkbookPlan(plan, adapter)` or
 `runWorkbookAction(model, actionName, adapter, input)` when an agent needs a

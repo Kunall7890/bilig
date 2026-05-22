@@ -219,7 +219,9 @@ and undo ops while removing ref helper functions from the public result.
 for the same plan: which generic commands must be applied, which readbacks are
 needed, and which checks need proof. It stays generic, with capabilities such
 as `writeFormula`, `writeValue`, `format`, `clear`, `applyOp`, `read`, and
-`verifyCheck`, and it does not import the engine.
+`verifyCheck`. Command-derived concrete single-cell ops are not repeated as
+extra `applyOp` requirements, while explicit or manually assembled ops still
+appear as `applyOp`. It does not import the engine.
 
 `verifyPlan` gives agents a runtime-free consistency check before handoff. It
 flags invalid action input, unresolved command targets, unresolved formula
@@ -236,6 +238,9 @@ appear in `plan.ops`, and must match their declared `target` when the op exposes
 a concrete address or range.
 `verifyModel` applies the same planning and verification flow to every action
 in a consumer-defined model, returning one JSON-safe model-level verdict.
+Successfully planned actions include their runtime requirements in the same
+result, so an agent can inspect the planned intent, static proof, and adapter
+handoff checklist without stitching multiple API calls together.
 `runWorkbookPlan(plan, adapter)` and
 `runWorkbookAction(model, actionName, adapter, input)` add a transport-neutral
 apply-and-prove loop on top of the same contracts. The adapter receives the full

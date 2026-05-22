@@ -11,6 +11,7 @@ import {
   type WorkbookActionPlan,
   type WorkbookModel,
 } from './model.js'
+import { describeRuntimeRequirements, type WorkbookRuntimeRequirements } from './requirements.js'
 import { getOwnActionInput, hasOwnActionInput, normalizeWorkbookActionInput, type WorkbookActionInput } from './input.js'
 import type { WorkbookOp } from './ops.js'
 
@@ -50,6 +51,7 @@ export interface WorkbookPlanVerification {
 export interface WorkbookModelActionVerification {
   readonly actionName: string
   readonly planning: WorkbookActionPlanResultDescription
+  readonly requirements?: WorkbookRuntimeRequirements
   readonly verification?: WorkbookPlanVerification
 }
 
@@ -523,6 +525,7 @@ export function verifyModel<Refs, Actions extends WorkbookActionMap<Refs>>(
     return {
       actionName,
       planning: describedPlanning,
+      requirements: describeRuntimeRequirements(planning.plan),
       verification: verifyPlan(planning.plan),
     }
   })

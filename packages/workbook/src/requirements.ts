@@ -4,6 +4,8 @@ import type { WorkbookActionCommand, WorkbookActionPlan } from './model.js'
 import type { WorkbookOp } from './ops.js'
 import type { WorkbookCheckResult } from './result.js'
 
+type WorkbookConcreteCommandOp = Extract<WorkbookOp, { kind: 'setCellFormula' | 'setCellValue' | 'setCellFormat' | 'clearCell' }>
+
 export type WorkbookRuntimeRequirementKind = 'apply' | 'read' | 'verify'
 
 export type WorkbookRuntimeCapability = 'writeFormula' | 'writeValue' | 'format' | 'clear' | 'applyOp' | 'read' | 'verifyCheck'
@@ -83,6 +85,63 @@ function commandRequirement(command: WorkbookActionCommand, commandIndex: number
   }
 }
 
+function concreteSingleCell(target: WorkbookRef): { readonly sheetName: string; readonly address: string } | null {
+  if (target.kind !== 'range') {
+    return null
+  }
+  const range = target.range
+  return range.startAddress === range.endAddress ? { sheetName: range.sheetName, address: range.startAddress } : null
+}
+
+function commandConcreteOp(command: WorkbookActionCommand): WorkbookConcreteCommandOp | null {
+  if (command.kind === 'op') {
+    return command.op.kind === 'setCellFormula' ||
+      command.op.kind === 'setCellValue' ||
+      command.op.kind === 'setCellFormat' ||
+      command.op.kind === 'clearCell'
+      ? command.op
+      : null
+  }
+
+  const target = concreteSingleCell(command.target)
+  if (target === null) {
+    return null
+  }
+
+  switch (command.kind) {
+    case 'writeFormula':
+      return {
+        kind: 'setCellFormula',
+        sheetName: target.sheetName,
+        address: target.address,
+        formula: command.formula,
+      }
+    case 'writeValue':
+      return {
+        kind: 'setCellValue',
+        sheetName: target.sheetName,
+        address: target.address,
+        value: command.value,
+      }
+    case 'format':
+      if (command.numberFormat === undefined) {
+        return null
+      }
+      return {
+        kind: 'setCellFormat',
+        sheetName: target.sheetName,
+        address: target.address,
+        format: command.numberFormat,
+      }
+    case 'clear':
+      return {
+        kind: 'clearCell',
+        sheetName: target.sheetName,
+        address: target.address,
+      }
+  }
+}
+
 function readRequirement(check: WorkbookCheckResult, checkIndex: number): WorkbookRuntimeRequirement | null {
   if (check.expectation === undefined) {
     return null
@@ -131,11 +190,16 @@ function opKey(op: WorkbookOp): string {
   return JSON.stringify(canonicalValue(op))
 }
 
-function commandOpKeys(commands: readonly WorkbookActionCommand[]): ReadonlySet<string> {
+function commandCoveredOpKeys(commands: readonly WorkbookActionCommand[]): ReadonlySet<string> {
   const keys = new Set<string>()
   commands.forEach((command) => {
     if (command.kind === 'op') {
       keys.add(opKey(command.op))
+      return
+    }
+    const concreteOp = commandConcreteOp(command)
+    if (concreteOp !== null) {
+      keys.add(opKey(concreteOp))
     }
   })
   return keys
@@ -143,10 +207,10 @@ function commandOpKeys(commands: readonly WorkbookActionCommand[]): ReadonlySet<
 
 export function describeRuntimeRequirements<Refs>(plan: WorkbookActionPlan<Refs>): WorkbookRuntimeRequirements {
   const requirements: WorkbookRuntimeRequirement[] = plan.commands.map(commandRequirement)
-  const explicitCommandOps = commandOpKeys(plan.commands)
+  const commandCoveredOps = commandCoveredOpKeys(plan.commands)
 
   plan.ops.forEach((op, opIndex) => {
-    if (explicitCommandOps.has(opKey(op))) {
+    if (commandCoveredOps.has(opKey(op))) {
       return
     }
     requirements.push({

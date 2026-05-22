@@ -315,6 +315,28 @@ describe('@bilig/workbook action input api', () => {
               },
             }),
           },
+          requirements: {
+            modelName: 'parameterized-model-verification',
+            actionName: 'write',
+            requirements: [
+              {
+                kind: 'apply',
+                capability: 'writeValue',
+                commandIndex: 0,
+                target: {
+                  kind: 'range',
+                  id: 'range_Sheet1_B2_B2',
+                  label: 'Sheet1!B2',
+                  range: {
+                    sheetName: 'Sheet1',
+                    startAddress: 'B2',
+                    endAddress: 'B2',
+                  },
+                },
+                message: 'Apply value write to Sheet1!B2',
+              },
+            ],
+          },
           verification: {
             status: 'valid',
             modelName: 'parameterized-model-verification',
