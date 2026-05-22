@@ -1025,6 +1025,18 @@ jobs:
             echo "published versions: ${PUBLISHED_VERSIONS}"
           } >> "$GITHUB_STEP_SUMMARY"
 
+      - name: Publish runtime package set to npm
+        if: steps.npm_provisioning.outputs.publish_allowed == 'true'
+        env:
+          NPM_DIST_TAG: ${{ needs.plan_release.outputs.npm_tag }}
+          DRY_RUN: ${{ needs.plan_release.outputs.dry_run }}
+          ALLOW_NEW_NPM_PACKAGES: ${{ needs.plan_release.outputs.allow_new_packages }}
+          SKIP_UNPROVISIONED_NPM_PACKAGES: ${{ needs.plan_release.outputs.skip_unprovisioned_packages }}
+          TARGET_VERSION: ${{ needs.plan_release.outputs.target_version }}
+        run: |
+          set -euo pipefail
+          bun scripts/publish-runtime-package-set.ts
+
       - name: Inspect runtime tag state
         if: steps.npm_provisioning.outputs.publish_allowed == 'true'
         id: tag_state
@@ -1101,18 +1113,6 @@ jobs:
             --verify-tag \
             --title "Libraries v${{ needs.plan_release.outputs.target_version }}" \
             --notes-file build/runtime-release-notes.md
-
-      - name: Publish runtime package set to npm
-        if: steps.npm_provisioning.outputs.publish_allowed == 'true'
-        env:
-          NPM_DIST_TAG: ${{ needs.plan_release.outputs.npm_tag }}
-          DRY_RUN: ${{ needs.plan_release.outputs.dry_run }}
-          ALLOW_NEW_NPM_PACKAGES: ${{ needs.plan_release.outputs.allow_new_packages }}
-          SKIP_UNPROVISIONED_NPM_PACKAGES: ${{ needs.plan_release.outputs.skip_unprovisioned_packages }}
-          TARGET_VERSION: ${{ needs.plan_release.outputs.target_version }}
-        run: |
-          set -euo pipefail
-          bun scripts/publish-runtime-package-set.ts
 
       - name: Upload WorkPaper MCPB release asset
         if: steps.npm_provisioning.outputs.publish_allowed == 'true' && needs.plan_release.outputs.dry_run != 'true'
