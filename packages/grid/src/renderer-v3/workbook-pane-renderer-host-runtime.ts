@@ -42,6 +42,14 @@ export interface WorkbookPaneRendererHostRuntimeOptionsV3 {
 
 export type WorkbookPaneFrameProofStatusV3 = 'idle' | 'pending' | 'presented'
 
+export interface WorkbookPaneVisiblePayloadProofV3 {
+  readonly contentSignature: string
+  readonly rectCount: number
+  readonly rectSignature: string
+  readonly textRunCount: number
+  readonly textSignature: string
+}
+
 const EMPTY_HOST_PROPS: WorkbookPaneRendererHostPropsV3 = Object.freeze({
   active: false,
   cameraStore: null,
@@ -289,6 +297,127 @@ function resolveWorkbookPaneHostOverlayProofV3(props: WorkbookPaneRendererHostPr
     return props.overlay
   }
   return props.overlayBuilder(geometry) ?? null
+}
+
+export function resolveWorkbookPaneVisiblePayloadProofV3(input: {
+  readonly headerPanes: readonly GridHeaderPaneState[]
+  readonly tilePanes: readonly WorkbookRenderTilePaneState[]
+}): WorkbookPaneVisiblePayloadProofV3 {
+  let rectCount = 0
+  let textRunCount = 0
+  const rectParts: string[] = []
+  const textParts: string[] = []
+
+  for (const pane of input.headerPanes) {
+    rectCount += pane.rectCount
+    textRunCount += pane.textCount
+    rectParts.push(
+      [
+        'header',
+        pane.paneId,
+        pane.frame.x,
+        pane.frame.y,
+        pane.frame.width,
+        pane.frame.height,
+        pane.contentOffset.x,
+        pane.contentOffset.y,
+        pane.rectCount,
+        pane.rectSignature,
+      ].join(':'),
+    )
+    textParts.push(
+      [
+        'header',
+        pane.paneId,
+        pane.frame.x,
+        pane.frame.y,
+        pane.frame.width,
+        pane.frame.height,
+        pane.contentOffset.x,
+        pane.contentOffset.y,
+        pane.textCount,
+        pane.textSignature,
+      ].join(':'),
+    )
+  }
+
+  for (const pane of input.tilePanes) {
+    const tile = pane.tile
+    const textSignature = tile.textSignature ?? resolveGridTextTileRevisionKeyV3(tile).textSignature
+    const rectSignature = tile.rectSignature ?? resolveWorkbookPaneTileRectPayloadSignatureV3(tile)
+    rectCount += tile.rectCount
+    textRunCount += tile.textCount
+    rectParts.push(
+      [
+        'tile',
+        pane.paneId,
+        pane.generation,
+        pane.drawVisible === false ? 'hidden' : 'visible',
+        pane.frame.x,
+        pane.frame.y,
+        pane.frame.width,
+        pane.frame.height,
+        pane.contentOffset.x,
+        pane.contentOffset.y,
+        pane.viewport.rowStart,
+        pane.viewport.rowEnd,
+        pane.viewport.colStart,
+        pane.viewport.colEnd,
+        pane.scrollAxes.x ? 'scroll-x' : 'fixed-x',
+        pane.scrollAxes.y ? 'scroll-y' : 'fixed-y',
+        tile.tileId,
+        tile.rectCount,
+        rectSignature,
+        tile.version.styles,
+        tile.version.values,
+      ].join(':'),
+    )
+    textParts.push(
+      [
+        'tile',
+        pane.paneId,
+        pane.generation,
+        pane.drawVisible === false ? 'hidden' : 'visible',
+        pane.frame.x,
+        pane.frame.y,
+        pane.frame.width,
+        pane.frame.height,
+        pane.contentOffset.x,
+        pane.contentOffset.y,
+        pane.viewport.rowStart,
+        pane.viewport.rowEnd,
+        pane.viewport.colStart,
+        pane.viewport.colEnd,
+        pane.scrollAxes.x ? 'scroll-x' : 'fixed-x',
+        pane.scrollAxes.y ? 'scroll-y' : 'fixed-y',
+        tile.tileId,
+        tile.textCount,
+        textSignature,
+        tile.version.text,
+        tile.version.values,
+      ].join(':'),
+    )
+  }
+
+  const rectSignature = `rect:${rectCount}:${rectParts.join('|')}`
+  const textSignature = `text:${textRunCount}:${textParts.join('|')}`
+  return {
+    contentSignature: `${textSignature}#${rectSignature}`,
+    rectCount,
+    rectSignature,
+    textRunCount,
+    textSignature,
+  }
+}
+
+function resolveWorkbookPaneTileRectPayloadSignatureV3(tile: WorkbookRenderTilePaneState['tile']): string {
+  const length = Math.max(0, Math.min(tile.rectInstances.length, tile.rectCount * 20))
+  let hash = 2166136261
+  for (let index = 0; index < length; index += 1) {
+    hash ^= Math.round(tile.rectInstances[index]! * 1_000_000)
+    hash = Math.imul(hash, 16777619) >>> 0
+  }
+  return `rect-fnv:${tile.rectCount}:${hash.toString(16)}`
 }
 
 export function resolveWorkbookPaneFrameProofSignatureV3(props: {
