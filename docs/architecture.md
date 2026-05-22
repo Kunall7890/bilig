@@ -23,6 +23,7 @@ flowchart LR
   - metadata
   - formula/runtime execution
   - canonical `@bilig/workbook` run adapter for materializing generic commands and proving generic checks
+  - generic runtime receipts for applied op proof, synchronous mutation propagation, and undo capture
   - snapshot import/export
 - `@bilig/workbook`
   - agent-first public workbook model API

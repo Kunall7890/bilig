@@ -316,6 +316,10 @@ counts. Receipt proof kinds are generic (`preview`, `apply`,
 `recalculation`, `undo`, `check`, and `custom`), so app/core runtimes can attach
 authoritative, rendered, semantic, recalculation, and undo proof without adding
 runtime dependencies or business-model assumptions to `@bilig/workbook`.
+The canonical `@bilig/core` adapter returns runtime receipt proof without app
+runtime state: applied op count and kinds, synchronous mutation propagation, and
+undo availability. It leaves persisted revisions and rendered readback proof to
+the app or consumer runtime that owns locks, storage, and UI observation.
 Successful readback checks keep an inspectable `proof` object on the returned
 check. The proof is deliberately small: `{ kind: "value", value }`,
 `{ kind: "values", values }`, `{ kind: "formula", formula }`, or

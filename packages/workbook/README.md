@@ -470,6 +470,11 @@ import { runWorkbookAction } from '@bilig/workbook'
 const result = await runWorkbookAction(model, 'calculate', createWorkbookRunAdapter(engine))
 ```
 
+The core adapter returns generic runtime receipt proof for apply, synchronous
+mutation propagation, and undo capture. It does not invent app revisions or
+rendered proof; `apps/bilig` or a consumer runtime can add those when it owns
+the lock, persistence, and rendered readback path.
+
 `@bilig/workbook` does not import `@bilig/core`; consumers choose their runtime.
 
 ## Results
