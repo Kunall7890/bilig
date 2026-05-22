@@ -66,7 +66,6 @@ export function useWorkbookGridInteractions(
     | 'onToggleBooleanCell'
     | 'selectionSnapshot'
     | 'getCellEditorSeed'
-    | 'getCellResolvedValue'
   > & {
     engine: WorkbookGridSurfaceProps['engine']
     sheetName: string
@@ -109,7 +108,6 @@ export function useWorkbookGridInteractions(
     sheetName,
     selectedAddr,
     getCellEditorSeed,
-    getCellResolvedValue,
     interactionGridSelection,
     interactionSelectionCell,
     interactionSelectionRange,
@@ -138,7 +136,6 @@ export function useWorkbookGridInteractions(
   const interactionState = inputController.interactionState
   const {
     internalClipboardRef,
-    keyboardModifierStateRef,
     pendingClipboardCopySequenceRef,
     pendingKeyboardPasteSequenceRef,
     pendingTypeSeedRef,
@@ -303,14 +300,13 @@ export function useWorkbookGridInteractions(
       return captureGridClipboardSelection({
         engine,
         getCellEditorSeed,
-        getCellResolvedValue,
         gridSelection: getCurrentGridSelection(),
         internalClipboardRef,
         operation: operation ?? 'copy',
         sheetName,
       })
     },
-    [engine, getCellEditorSeed, getCellResolvedValue, getCurrentGridSelection, internalClipboardRef, sheetName],
+    [engine, getCellEditorSeed, getCurrentGridSelection, internalClipboardRef, sheetName],
   )
   const scrollActiveCellIntoView = useCallback(() => {
     gridRuntimeHost.viewportScroll.autoScrollSelectionIntoView({ cell: activeSelectionCell, force: true })
@@ -344,7 +340,6 @@ export function useWorkbookGridInteractions(
     setGridSelection,
     sheetName,
     suppressNextNativePasteRef,
-    keyboardModifierStateRef,
     toggleSelectedBooleanCell: () => {
       toggleBooleanCellAt(activeSelectionCell[0], activeSelectionCell[1])
     },
@@ -487,14 +482,11 @@ export function useWorkbookGridInteractions(
       handleGridKey(event)
     },
     handleHostPasteCapture: (event: ReactClipboardEvent<HTMLDivElement>) => {
-      const pasteValuesOnly = keyboardModifierStateRef.current.primary && keyboardModifierStateRef.current.shift
       handleGridPasteCapture({
         applyClipboardValues,
         event,
         gridSelection: getCurrentGridSelection(),
-        internalClipboardRef,
         pendingKeyboardPasteSequenceRef,
-        pasteValuesOnly,
         selectedCell: activeSelectedCell,
         suppressNextNativePasteRef,
       })

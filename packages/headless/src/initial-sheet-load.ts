@@ -8,9 +8,8 @@ import {
   type SheetRecord,
   type SpreadsheetEngine,
 } from '@bilig/core/headless-runtime'
-import { parseFormula } from '@bilig/formula'
 import { ErrorCode, ValueTag } from '@bilig/protocol'
-import { isBlankRawCellContent, stripLeadingEquals } from './work-paper-runtime-helpers.js'
+import { isBlankRawCellContent } from './work-paper-runtime-helpers.js'
 import type { RawCellContent, WorkPaperSheet } from './work-paper-types.js'
 
 export interface InitialSheetMaterializationInspection extends LiteralSheetLoadInspection {
@@ -361,29 +360,15 @@ function isDenseInitialMixedSheet(content: WorkPaperSheet, materializedCellCount
 }
 
 function readInitialFormulaSource(raw: string): string | undefined {
-  if (!raw.trim().startsWith('=')) {
+  const first = raw.charCodeAt(0)
+  if (first === 61) {
+    return raw.slice(1)
+  }
+  if (first !== 32 && first !== 9 && first !== 10 && first !== 13) {
     return undefined
   }
-  const formula = stripLeadingEquals(raw)
-  if (formula.length === 0) {
-    return undefined
-  }
-  if (isDirectInitialFormulaSource(formula)) {
-    return formula
-  }
-  try {
-    parseFormula(formula)
-    return formula
-  } catch {
-    return undefined
-  }
-}
-
-const DIRECT_INITIAL_FORMULA_SOURCE_PATTERN =
-  /^\s*(?:\$?[A-Za-z]{1,3}\$?\d+|\d+(?:\.\d+)?)(?:\s*[+\-*/^&]\s*(?:\$?[A-Za-z]{1,3}\$?\d+|\d+(?:\.\d+)?))*\s*$/u
-
-function isDirectInitialFormulaSource(formula: string): boolean {
-  return DIRECT_INITIAL_FORMULA_SOURCE_PATTERN.test(formula)
+  const trimmed = raw.trim()
+  return trimmed.charCodeAt(0) === 61 ? trimmed.slice(1) : undefined
 }
 
 function materializeWrittenColumns(writtenColumns: Uint8Array, count: number): Uint32Array {

@@ -50,6 +50,7 @@ export function parseLargeSimpleWorksheetCells(
     readonly stringPool?: ImportedWorkbookStringPool
     readonly deduplicateStrings?: ImportedWorkbookArenaDedupeMode
     readonly deduplicateFormulas?: ImportedWorkbookArenaDedupeMode
+    readonly dedupeMaxEntries?: number
     readonly allowUnsupportedFormulaText?: boolean
     readonly preserveBlankStyleCells?: boolean
   } = {},
@@ -57,6 +58,7 @@ export function parseLargeSimpleWorksheetCells(
   const arena = new ImportedWorkbookArena(options.stringPool, {
     ...(options.deduplicateStrings === undefined ? {} : { deduplicateStrings: options.deduplicateStrings }),
     ...(options.deduplicateFormulas === undefined ? {} : { deduplicateFormulas: options.deduplicateFormulas }),
+    ...(options.dedupeMaxEntries === undefined ? {} : { dedupeMaxEntries: options.dedupeMaxEntries }),
   })
   const richTextCells: WorkbookRichTextCellSnapshot[] = []
   const styleIndexes = new ImportedWorksheetStyleIndexArena()

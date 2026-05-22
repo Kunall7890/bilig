@@ -12,7 +12,6 @@ import {
   isCellRange,
   isDeferredBatchLiteralContent,
   isFormulaContent,
-  isParsableFormulaContent,
   isWorkPaperSheetMatrix,
   makeInternalScopedName,
   makeNamedExpressionKey,
@@ -72,12 +71,9 @@ describe('work paper runtime helpers', () => {
     expect(makeInternalScopedName(4, 'rate')).toBe('__BILIG_WORKPAPER_SCOPE_4_RATE')
     expect(isFormulaContent(' =A1 ')).toBe(true)
     expect(isFormulaContent('A1')).toBe(false)
-    expect(isParsableFormulaContent(' =A1 ')).toBe(true)
-    expect(isParsableFormulaContent('=')).toBe(false)
     expect(isDeferredBatchLiteralContent('=A1')).toBe(true)
     expect(isWorkPaperSheetMatrix([[null]])).toBe(true)
     expect(matrixContainsFormulaContent([[null, '=A1']])).toBe(true)
-    expect(matrixContainsFormulaContent([[null, '=']])).toBe(false)
     expect(stripLeadingEquals(' = A1 ')).toBe(' A1')
   })
 

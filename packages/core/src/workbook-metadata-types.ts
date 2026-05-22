@@ -19,14 +19,11 @@ import type {
   WorkbookConditionalFormatSnapshot,
   WorkbookDataValidationSnapshot,
   WorkbookDefinedNameValueSnapshot,
-  WorkbookExternalConnectionsSnapshot,
-  WorkbookExternalLinkArtifactsSnapshot,
   WorkbookFreezePaneSnapshot,
   WorkbookNoteSnapshot,
   WorkbookRangeProtectionSnapshot,
   WorkbookSheetProtectionSnapshot,
   WorkbookSheetTabColorSnapshot,
-  WorkbookSlicerConnectionArtifactsSnapshot,
   WorkbookPivotSnapshot,
   WorkbookPivotValueSnapshot,
   WorkbookTableSnapshot,
@@ -72,14 +69,12 @@ export interface WorkbookAxisMetadataRecord extends WorkbookAxisMetadataSnapshot
   count: number
   size: number | null
   hidden: boolean | null
-  filtered: boolean | null
 }
 
 export interface WorkbookAxisEntryRecord extends Omit<WorkbookAxisEntrySnapshot, 'index'> {
   id: string
   size: number | null
   hidden: boolean | null
-  filtered: boolean | null
 }
 
 export interface WorkbookCellStyleRecord extends CellStyleRecord {}
@@ -153,9 +148,6 @@ export interface WorkbookMetadataRecord {
   columnMetadata: Map<string, WorkbookAxisMetadataRecord>
   calculationSettings: WorkbookCalculationSettingsRecord
   volatileContext: WorkbookVolatileContextRecord
-  externalConnections: WorkbookExternalConnectionsSnapshot | undefined
-  externalLinkArtifacts: WorkbookExternalLinkArtifactsSnapshot | undefined
-  slicerConnectionArtifacts: WorkbookSlicerConnectionArtifactsSnapshot | undefined
   freezePanes: Map<string, WorkbookFreezePaneRecord>
   sheetTabColors: Map<string, WorkbookSheetTabColorRecord>
   merges: Map<string, WorkbookMergeRangeRecord>
@@ -185,9 +177,6 @@ export function createWorkbookMetadataRecord(): WorkbookMetadataRecord {
     columnMetadata: new Map(),
     calculationSettings: { mode: 'automatic', compatibilityMode: 'excel-modern' },
     volatileContext: { recalcEpoch: 0 },
-    externalConnections: undefined,
-    externalLinkArtifacts: undefined,
-    slicerConnectionArtifacts: undefined,
     freezePanes: new Map(),
     sheetTabColors: new Map(),
     merges: new Map(),

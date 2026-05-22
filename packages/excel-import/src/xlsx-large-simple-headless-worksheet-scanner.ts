@@ -1,13 +1,40 @@
-import { readKnownXmlLocalName } from './xlsx-large-simple-xml-name.js'
+import {
+  cellContentHasRichTextRun,
+  doubleQuote,
+  findClosingTag,
+  findTagEnd,
+  headlessTagCell,
+  headlessTagDimension,
+  headlessTagLocalName,
+  headlessTagRow,
+  headlessTagUnknown,
+  attributeNameMatches,
+  attributeValueMatches,
+  decodePackedCellAddressBytes,
+  isAsciiWhitespace,
+  isSelfClosingTag,
+  isXmlNameByte,
+  lessThan,
+  matchesDimensionTagName,
+  metadataChildName,
+  metadataCountMultiplier,
+  packCellAddress,
+  packedAddressColumnFactor,
+  packedAddressColumn,
+  packedAddressRow,
+  readDimensionAddressRange,
+  readNonNegativeIntegerFromRange,
+  readPositiveIntegerAttributeFromTag,
+  readXmlAttributeRangeFromTag,
+  readXmlTagName,
+  sheetMetadataKeysForHeadlessElement,
+  skipAsciiWhitespace,
+  slash,
+  singleQuote,
+} from './xlsx-large-simple-headless-worksheet-xml.js'
 import { countLargeSimpleDataValidationsFromBytes } from './xlsx-large-simple-data-validation-byte-scan.js'
 import { rowTagHasMetadataAttribute } from './xlsx-large-simple-row-metadata-scan.js'
 
-const lessThan = 60
-const slash = 47
-const greaterThan = 62
-const doubleQuote = 34
-const singleQuote = 39
-const packedAddressColumnFactor = 16_384
 const cellContentHasValue = 1 << 0
 const cellContentHasFormula = 1 << 1
 const emptyBytes = new Uint8Array(0)
@@ -43,6 +70,8 @@ export interface HeadlessLargeSimpleWorksheetScan {
   readonly conditionalFormatCount: number
   readonly dataValidationCount?: number
   readonly metadataKeys: readonly string[]
+  readonly styleIndexes: ReadonlySet<number>
+  readonly usesSharedStrings: boolean
   readonly rowCount: number
   readonly columnCount: number
   readonly usedRange: {
@@ -78,6 +107,18 @@ export function parseHeadlessLargeSimpleWorksheetFromChunks(
   return scanner.finish()
 }
 
+export async function parseHeadlessLargeSimpleWorksheetFromChunksAsync(
+  readChunks: (onChunk: (chunk: Uint8Array) => boolean | void) => Promise<boolean>,
+  sheetIndex: number,
+  options: HeadlessLargeSimpleWorksheetScanOptions,
+): Promise<HeadlessLargeSimpleWorksheetScan | null> {
+  const scanner = new HeadlessLargeSimpleWorksheetChunkScanner(sheetIndex, options)
+  if (!(await readChunks((chunk) => scanner.push(chunk)))) {
+    return null
+  }
+  return scanner.finish()
+}
+
 class HeadlessLargeSimpleWorksheetChunkScanner {
   private buffer: Uint8Array = new Uint8Array()
   private index = 0
@@ -101,10 +142,16 @@ class HeadlessLargeSimpleWorksheetChunkScanner {
   private cellContentFlags = 0
   private cellContentNextIndex = 0
   private cellPackedAddress = -1
+  private cellStyleIndex: number | null = null
   private cellHasSharedStringType = false
+  private cellHasInlineStringType = false
+  private cellHasMetadataReference = false
+  private usesSharedStrings = false
   private activeMetadata: ActiveMetadataCount | null = null
   private activeDataValidations = false
+  private knownTagNameEnd = 0
   private readonly metadataKeys = new Set<string>()
+  private readonly styleIndexes = new Set<number>()
 
   constructor(
     private readonly sheetIndex: number,
@@ -143,6 +190,8 @@ class HeadlessLargeSimpleWorksheetChunkScanner {
           conditionalFormatCount: this.conditionalFormatCount,
           dataValidationCount: this.dataValidationCount,
           metadataKeys: [...this.metadataKeys].toSorted(),
+          styleIndexes: this.styleIndexes,
+          usesSharedStrings: this.usesSharedStrings,
           rowCount: this.rowCount,
           columnCount: this.columnCount,
           usedRange:
@@ -180,7 +229,7 @@ class HeadlessLargeSimpleWorksheetChunkScanner {
       this.index = 0
       return
     }
-    this.buffer = new Uint8Array(this.buffer.subarray(this.index))
+    this.buffer = this.buffer.subarray(this.index)
     this.index = 0
   }
 
@@ -202,66 +251,72 @@ class HeadlessLargeSimpleWorksheetChunkScanner {
         this.index += 1
         continue
       }
-      const tag = readXmlTagName(this.buffer, this.index + 1)
-      if (!tag) {
+      const knownTag = this.readKnownOpeningTagCode(this.index)
+      let localName: string | null = null
+      let nameEnd = this.knownTagNameEnd
+      if (knownTag === headlessTagUnknown) {
+        const tag = readXmlTagName(this.buffer, this.index + 1)
+        if (!tag) {
+          if (!final && this.index + 1 >= this.buffer.byteLength) {
+            return
+          }
+          this.index += 1
+          continue
+        }
+        localName = tag.localName
+        nameEnd = tag.endIndex
+      }
+      if (knownTag !== headlessTagUnknown) {
+        localName = headlessTagLocalName(knownTag)
+      }
+      if (localName === null) {
         if (!final && this.index + 1 >= this.buffer.byteLength) {
           return
         }
         this.index += 1
         continue
       }
-      const tagEnd = findTagEnd(this.buffer, tag.endIndex)
+      const tagEnd = findTagEnd(this.buffer, nameEnd)
       if (tagEnd === null) {
         if (final) {
           this.failed = true
         }
         return
       }
-      if (
-        this.options.allowUnsupportedFeaturesForMetrics !== true &&
-        (unsupportedWorksheetTagNames.has(tag.localName) || this.hasUnsupportedCellMetadata(tag.localName, tag.endIndex, tagEnd))
-      ) {
+      if (this.options.allowUnsupportedFeaturesForMetrics !== true && unsupportedWorksheetTagNames.has(localName)) {
         this.failed = true
         return
       }
-      if (tag.localName === 'dimension') {
-        this.readDimension(tag.endIndex, tagEnd)
+      if (knownTag === headlessTagDimension || localName === 'dimension') {
+        this.readDimension(nameEnd, tagEnd)
         this.index = tagEnd + 1
         continue
       }
-      if (tag.localName === 'row') {
-        this.readRow(tag.endIndex, tagEnd)
+      if (knownTag === headlessTagRow || localName === 'row') {
+        this.readRow(nameEnd, tagEnd)
         this.index = tagEnd + 1
         continue
       }
-      if (tag.localName === 'c') {
-        if (!this.readCell(tag.endIndex, tagEnd, final)) {
+      if (knownTag === headlessTagCell || localName === 'c') {
+        if (!this.readCell(nameEnd, tagEnd, final)) {
           return
         }
         continue
       }
-      if (metadataWorksheetTagNames.has(tag.localName)) {
-        if (tag.localName === 'dataValidations') {
+      if (metadataWorksheetTagNames.has(localName)) {
+        if (localName === 'dataValidations') {
           if (!this.startDataValidations(tagEnd, final)) {
             return
           }
           continue
         }
-        if (!this.countMetadataElement(tag.localName, tag.endIndex, tagEnd, final)) {
+        if (!this.countMetadataElement(localName, nameEnd, tagEnd, final)) {
           return
         }
         continue
       }
       this.index = tagEnd + 1
     }
-  }
-
-  private hasUnsupportedCellMetadata(localName: string, nameEnd: number, tagEnd: number): boolean {
-    return (
-      localName === 'c' &&
-      (readXmlAttributeRangeFromTag(this.buffer, nameEnd, tagEnd, 'cm') ||
-        readXmlAttributeRangeFromTag(this.buffer, nameEnd, tagEnd, 'vm')) !== null
-    )
   }
 
   private readDimension(nameEnd: number, tagEnd: number): void {
@@ -307,8 +362,24 @@ class HeadlessLargeSimpleWorksheetChunkScanner {
       this.failed = true
       return false
     }
+    if (!selfClosing && this.cellHasInlineStringType && cellContentHasRichTextRun(this.buffer, contentStart, contentNextIndex)) {
+      this.metadataKeys.add('richTextArtifacts')
+    }
+    if (this.cellHasMetadataReference) {
+      if (this.options.allowUnsupportedFeaturesForMetrics !== true) {
+        this.failed = true
+        return false
+      }
+      this.metadataKeys.add('cellMetadataRefs')
+    }
     const row = packedAddressRow(this.cellPackedAddress)
     const column = packedAddressColumn(this.cellPackedAddress)
+    if (this.cellStyleIndex !== null) {
+      this.styleIndexes.add(this.cellStyleIndex)
+    }
+    if (this.cellHasSharedStringType) {
+      this.usesSharedStrings = true
+    }
     this.currentRow = row
     this.nextImplicitColumn = column + 1
     const hasValue = (contentFlags & cellContentHasValue) !== 0
@@ -423,7 +494,10 @@ class HeadlessLargeSimpleWorksheetChunkScanner {
   private readCellTagAttributes(startIndex: number, tagEnd: number): boolean {
     let index = startIndex
     let packedAddress: number | null = null
+    let styleIndex: number | null = null
     let hasSharedStringType = false
+    let hasInlineStringType = false
+    let hasMetadataReference = false
     while (index < tagEnd) {
       while (index < tagEnd && isAsciiWhitespace(this.buffer[index] ?? 0)) {
         index += 1
@@ -455,14 +529,57 @@ class HeadlessLargeSimpleWorksheetChunkScanner {
         if (packedAddress === null) {
           return false
         }
+      } else if (attributeNameMatches(this.buffer, nameStart, nameEnd, 's')) {
+        styleIndex = readNonNegativeIntegerFromRange(this.buffer, valueStart, valueEnd)
+        if (styleIndex === null) {
+          return false
+        }
       } else if (attributeNameMatches(this.buffer, nameStart, nameEnd, 't')) {
         hasSharedStringType = valueEnd - valueStart === 1 && this.buffer[valueStart] === 115
+        hasInlineStringType = attributeValueMatches(this.buffer, valueStart, valueEnd, 'inlineStr')
+      } else if (
+        nameEnd - nameStart === 2 &&
+        ((this.buffer[nameStart] === 99 && this.buffer[nameStart + 1] === 109) ||
+          (this.buffer[nameStart] === 118 && this.buffer[nameStart + 1] === 109))
+      ) {
+        hasMetadataReference = true
       }
       index += 1
     }
     this.cellPackedAddress = packedAddress ?? this.readImplicitCellPackedAddress()
+    this.cellStyleIndex = styleIndex
     this.cellHasSharedStringType = hasSharedStringType
+    this.cellHasInlineStringType = hasInlineStringType
+    this.cellHasMetadataReference = hasMetadataReference
     return this.cellPackedAddress !== -1
+  }
+
+  private readKnownOpeningTagCode(tagStart: number): number {
+    const nameStart = tagStart + 1
+    switch (this.buffer[nameStart] ?? 0) {
+      case 99:
+        if (!isXmlNameByte(this.buffer[nameStart + 1] ?? 0)) {
+          this.knownTagNameEnd = nameStart + 1
+          return headlessTagCell
+        }
+        break
+      case 100:
+        if (matchesDimensionTagName(this.buffer, nameStart)) {
+          this.knownTagNameEnd = nameStart + 9
+          return headlessTagDimension
+        }
+        break
+      case 114:
+        if (this.buffer[nameStart + 1] === 111 && this.buffer[nameStart + 2] === 119 && !isXmlNameByte(this.buffer[nameStart + 3] ?? 0)) {
+          this.knownTagNameEnd = nameStart + 3
+          return headlessTagRow
+        }
+        break
+      default:
+        break
+    }
+    this.knownTagNameEnd = 0
+    return headlessTagUnknown
   }
 
   private readImplicitCellPackedAddress(): number {
@@ -635,325 +752,4 @@ class HeadlessLargeSimpleWorksheetChunkScanner {
       this.metadataKeys.add(key)
     }
   }
-}
-
-function sheetMetadataKeysForHeadlessElement(localName: string): readonly string[] {
-  switch (localName) {
-    case 'autoFilter':
-      return ['filters']
-    case 'colBreaks':
-    case 'headerFooter':
-    case 'pageMargins':
-    case 'pageSetup':
-    case 'printOptions':
-    case 'rowBreaks':
-      return ['printPageSetup']
-    case 'cols':
-      return ['columnMetadata', 'columns']
-    case 'conditionalFormatting':
-      return ['conditionalFormats']
-    case 'controls':
-    case 'legacyDrawing':
-    case 'oleObjects':
-      return ['controlArtifacts']
-    case 'drawing':
-      return ['drawingArtifacts']
-    case 'hyperlinks':
-      return ['hyperlinks']
-    case 'mergeCells':
-      return ['merges']
-    case 'sheetFormatPr':
-      return ['sheetFormatPr']
-    default:
-      return []
-  }
-}
-
-function metadataChildName(localName: string): string | null {
-  switch (localName) {
-    case 'conditionalFormatting':
-      return 'cfRule'
-    case 'mergeCells':
-      return 'mergeCell'
-    case 'tableParts':
-      return 'tablePart'
-    default:
-      return null
-  }
-}
-
-function metadataCountMultiplier(localName: string, bytes: Uint8Array, nameEnd: number, tagEnd: number): number {
-  return localName === 'conditionalFormatting' ? countSqrefRangesFromTag(bytes, nameEnd, tagEnd) : 1
-}
-
-function findTagEnd(bytes: Uint8Array, startIndex: number, endIndex: number = bytes.byteLength): number | null {
-  let quote: number | null = null
-  for (let index = startIndex; index < endIndex; index += 1) {
-    const byte = bytes[index] ?? 0
-    if (quote !== null) {
-      if (byte === quote) {
-        quote = null
-      }
-      continue
-    }
-    if (byte === doubleQuote || byte === singleQuote) {
-      quote = byte
-      continue
-    }
-    if (byte === greaterThan) {
-      return index
-    }
-  }
-  return null
-}
-
-function findClosingTag(
-  bytes: Uint8Array,
-  startIndex: number,
-  localName: string,
-  endIndex: number = bytes.byteLength,
-): { readonly start: number; readonly end: number } | null {
-  let index = startIndex
-  while (index < endIndex) {
-    if (bytes[index] !== lessThan || bytes[index + 1] !== slash) {
-      index += 1
-      continue
-    }
-    const tag = readXmlTagName(bytes, index + 2)
-    if (tag?.localName === localName) {
-      const tagEnd = findTagEnd(bytes, tag.endIndex, endIndex)
-      return tagEnd === null ? null : { start: index, end: tagEnd + 1 }
-    }
-    index += 1
-  }
-  return null
-}
-
-function isSelfClosingTag(bytes: Uint8Array, tagEnd: number): boolean {
-  let index = tagEnd - 1
-  while (index >= 0 && isAsciiWhitespace(bytes[index] ?? 0)) {
-    index -= 1
-  }
-  return bytes[index] === slash
-}
-
-function readDimensionAddressRange(
-  bytes: Uint8Array,
-  startIndex: number,
-  endIndex: number,
-): { readonly startRow: number; readonly startColumn: number; readonly endRow: number; readonly endColumn: number } | null {
-  const trimmed = trimAsciiWhitespace(bytes, startIndex, endIndex)
-  if (trimmed.start === trimmed.end) {
-    return null
-  }
-  const separator = findByte(bytes, trimmed.start, trimmed.end, 58)
-  const firstEnd = separator ?? trimmed.end
-  const start = decodePackedCellAddressBytes(bytes, trimmed.start, firstEnd)
-  const end = separator === null ? start : decodePackedCellAddressBytes(bytes, separator + 1, trimmed.end)
-  return start === null || end === null
-    ? null
-    : {
-        startRow: packedAddressRow(start),
-        startColumn: packedAddressColumn(start),
-        endRow: packedAddressRow(end),
-        endColumn: packedAddressColumn(end),
-      }
-}
-
-function countSqrefRangesFromTag(bytes: Uint8Array, nameEnd: number, tagEnd: number): number {
-  const sqref = readXmlAttributeRangeFromTag(bytes, nameEnd, tagEnd, 'sqref')
-  if (!sqref) {
-    return 1
-  }
-  let count = 0
-  let inToken = false
-  for (let index = sqref.start; index < sqref.end; index += 1) {
-    if (isAsciiWhitespace(bytes[index] ?? 0)) {
-      inToken = false
-      continue
-    }
-    if (!inToken) {
-      count += 1
-      inToken = true
-    }
-  }
-  return Math.max(1, count)
-}
-
-function readPositiveIntegerAttributeFromTag(bytes: Uint8Array, nameEnd: number, tagEnd: number, attributeName: string): number | null {
-  const range = readXmlAttributeRangeFromTag(bytes, nameEnd, tagEnd, attributeName)
-  if (!range || range.start === range.end) {
-    return null
-  }
-  let value = 0
-  for (let index = range.start; index < range.end; index += 1) {
-    const byte = bytes[index] ?? 0
-    if (byte < 48 || byte > 57) {
-      return null
-    }
-    value = value * 10 + byte - 48
-  }
-  return value > 0 && Number.isSafeInteger(value) ? value : null
-}
-
-function readXmlTagName(bytes: Uint8Array, startIndex: number): { readonly localName: string; readonly endIndex: number } | null {
-  const first = bytes[startIndex]
-  if (first === undefined || first === 33 || first === slash || first === 63) {
-    return null
-  }
-  let index = startIndex
-  let localNameStart = startIndex
-  while (index < bytes.byteLength && isXmlNameByte(bytes[index] ?? 0)) {
-    if (bytes[index] === 58) {
-      localNameStart = index + 1
-    }
-    index += 1
-  }
-  return index === localNameStart
-    ? null
-    : { localName: readKnownXmlLocalName(bytes, localNameStart, index) ?? decodeAscii(bytes, localNameStart, index), endIndex: index }
-}
-
-function readXmlAttributeRangeFromTag(
-  bytes: Uint8Array,
-  startIndex: number,
-  tagEnd: number,
-  attributeName: string,
-): { readonly start: number; readonly end: number } | null {
-  let index = startIndex
-  while (index < tagEnd) {
-    while (index < tagEnd && isAsciiWhitespace(bytes[index] ?? 0)) {
-      index += 1
-    }
-    const nameStart = index
-    while (index < tagEnd && isXmlNameByte(bytes[index] ?? 0)) {
-      index += 1
-    }
-    const nameEnd = index
-    index = skipAsciiWhitespace(bytes, index, tagEnd)
-    if (bytes[index] !== 61) {
-      index += 1
-      continue
-    }
-    index = skipAsciiWhitespace(bytes, index + 1, tagEnd)
-    const quote = bytes[index]
-    if (quote !== doubleQuote && quote !== singleQuote) {
-      index += 1
-      continue
-    }
-    const valueStart = index + 1
-    index = valueStart
-    while (index < tagEnd && bytes[index] !== quote) {
-      index += 1
-    }
-    const valueEnd = index
-    if (attributeNameMatches(bytes, nameStart, nameEnd, attributeName)) {
-      return { start: valueStart, end: valueEnd }
-    }
-    index += 1
-  }
-  return null
-}
-
-function attributeNameMatches(bytes: Uint8Array, startIndex: number, endIndex: number, attributeName: string): boolean {
-  if (endIndex - startIndex !== attributeName.length) {
-    return false
-  }
-  for (let index = 0; index < attributeName.length; index += 1) {
-    if (bytes[startIndex + index] !== attributeName.charCodeAt(index)) {
-      return false
-    }
-  }
-  return true
-}
-
-function skipAsciiWhitespace(bytes: Uint8Array, startIndex: number, endIndex: number): number {
-  let index = startIndex
-  while (index < endIndex && isAsciiWhitespace(bytes[index] ?? 0)) {
-    index += 1
-  }
-  return index
-}
-
-function trimAsciiWhitespace(bytes: Uint8Array, startIndex: number, endIndex: number): { readonly start: number; readonly end: number } {
-  let start = startIndex
-  let end = endIndex
-  while (start < end && isAsciiWhitespace(bytes[start] ?? 0)) {
-    start += 1
-  }
-  while (end > start && isAsciiWhitespace(bytes[end - 1] ?? 0)) {
-    end -= 1
-  }
-  return { start, end }
-}
-
-function findByte(bytes: Uint8Array, startIndex: number, endIndex: number, target: number): number | null {
-  for (let index = startIndex; index < endIndex; index += 1) {
-    if (bytes[index] === target) {
-      return index
-    }
-  }
-  return null
-}
-
-function decodePackedCellAddressBytes(bytes: Uint8Array, startIndex: number, endIndex: number): number | null {
-  let column = 0
-  let row = 0
-  let letterCount = 0
-  let digitCount = 0
-  for (let index = startIndex; index < endIndex; index += 1) {
-    const byte = bytes[index] ?? 0
-    if (byte === 36) {
-      continue
-    }
-    const upper = byte >= 97 && byte <= 122 ? byte - 32 : byte
-    if (upper >= 65 && upper <= 90 && digitCount === 0) {
-      column = column * 26 + upper - 64
-      letterCount += 1
-      continue
-    }
-    if (byte >= 48 && byte <= 57 && letterCount > 0) {
-      row = row * 10 + byte - 48
-      digitCount += 1
-      continue
-    }
-    return null
-  }
-  return letterCount > 0 && letterCount <= 3 && digitCount > 0 && row > 0 && column > 0 ? packCellAddress(row - 1, column - 1) : null
-}
-
-function packCellAddress(row: number, column: number): number {
-  return row * packedAddressColumnFactor + column
-}
-
-function packedAddressRow(value: number): number {
-  return Math.floor(value / packedAddressColumnFactor)
-}
-
-function packedAddressColumn(value: number): number {
-  return value % packedAddressColumnFactor
-}
-
-function decodeAscii(bytes: Uint8Array, startIndex: number, endIndex: number): string {
-  let output = ''
-  for (let index = startIndex; index < endIndex; index += 1) {
-    output += String.fromCharCode(bytes[index] ?? 0)
-  }
-  return output
-}
-
-function isAsciiWhitespace(byte: number): boolean {
-  return byte === 9 || byte === 10 || byte === 12 || byte === 13 || byte === 32
-}
-
-function isXmlNameByte(byte: number): boolean {
-  return (
-    (byte >= 65 && byte <= 90) ||
-    (byte >= 97 && byte <= 122) ||
-    (byte >= 48 && byte <= 57) ||
-    byte === 45 ||
-    byte === 46 ||
-    byte === 58 ||
-    byte === 95
-  )
 }

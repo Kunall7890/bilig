@@ -1,11 +1,6 @@
 import { formatAddress } from '@bilig/formula'
 import { formatErrorCode, ValueTag, type CellRangeRef } from '@bilig/protocol'
-import type {
-  WorkbookAgentRenderedCell,
-  WorkbookAgentRenderedContext,
-  WorkbookAgentRenderedRange,
-  WorkbookAgentRenderedSurfaceProof,
-} from '@bilig/contracts'
+import type { WorkbookAgentRenderedCell, WorkbookAgentRenderedContext, WorkbookAgentRenderedRange } from '@bilig/contracts'
 import {
   enumerateWorkbookAgentRangeAddresses,
   normalizeWorkbookAgentRange,
@@ -29,14 +24,10 @@ export interface WorkbookRenderedReadbackProof {
   readonly matched: boolean | null
   readonly stale: boolean
   readonly capturedRange: CellRangeRef | null
-  readonly sourceKind: 'selection' | 'visibleRange' | null
   readonly sourceRange: CellRangeRef | null
   readonly capturedAtUnixMs: number | null
   readonly capturedRevision: number | null
   readonly capturedBatchId: number | null
-  readonly surfaceProof: WorkbookAgentRenderedSurfaceProof | null
-  readonly surfaceProofMatched: boolean | null
-  readonly surfaceProofIncompleteReason: string | null
   readonly truncated: boolean
   readonly sourceTruncated: boolean
   readonly missingCells: readonly string[]
@@ -96,10 +87,6 @@ function renderedCaptureRevision(context: WorkbookAgentRenderedContext | null | 
   return asNonNegativeSafeInteger(context?.capturedRevision)
 }
 
-function renderedSurfaceProof(context: WorkbookAgentRenderedContext | null | undefined): WorkbookAgentRenderedSurfaceProof | null {
-  return context?.surfaceProof ?? null
-}
-
 function valuesEqual(left: unknown, right: unknown): boolean {
   if (Object.is(left, right)) {
     return true
@@ -134,37 +121,25 @@ function rangeContains(container: CellRangeRef, requested: CellRangeRef): boolea
   )
 }
 
-interface RenderedRangeCandidate {
-  readonly sourceKind: 'selection' | 'visibleRange'
-  readonly range: WorkbookAgentRenderedRange
-}
-
-function renderedCandidates(context: WorkbookAgentRenderedContext | null | undefined): RenderedRangeCandidate[] {
+function renderedCandidates(context: WorkbookAgentRenderedContext | null | undefined): WorkbookAgentRenderedRange[] {
   if (!context) {
     return []
   }
-  const candidates: RenderedRangeCandidate[] = []
-  if (context.selection) {
-    candidates.push({ sourceKind: 'selection', range: context.selection })
-  }
-  if (context.visibleRange) {
-    candidates.push({ sourceKind: 'visibleRange', range: context.visibleRange })
-  }
-  return candidates
+  return [context.selection, context.visibleRange].filter((entry): entry is WorkbookAgentRenderedRange => entry !== null)
 }
 
 function pickRenderedRange(
   context: WorkbookAgentRenderedContext | null | undefined,
   requestedRange: CellRangeRef,
-): RenderedRangeCandidate | null {
+): WorkbookAgentRenderedRange | null {
   const candidates = renderedCandidates(context)
   return (
     candidates.find((entry) => {
-      const source = toWorkbookAgentRangeRef(entry.range.range)
+      const source = toWorkbookAgentRangeRef(entry.range)
       const target = toWorkbookAgentRangeRef(requestedRange)
       return source.sheetName === target.sheetName && source.startAddress === target.startAddress && source.endAddress === target.endAddress
     }) ??
-    candidates.find((entry) => rangeContains(entry.range.range, requestedRange)) ??
+    candidates.find((entry) => rangeContains(entry.range, requestedRange)) ??
     null
   )
 }
@@ -312,8 +287,7 @@ function collectRenderedMismatches(input: {
 function buildIncompleteReason(input: {
   readonly hasRenderedContext: boolean
   readonly selectedRange: WorkbookAgentRenderedRange | null
-  readonly captureStale: boolean
-  readonly surfaceProofIncompleteReason: string | null
+  readonly stale: boolean
   readonly missingCells: readonly string[]
   readonly truncated: boolean
   readonly mismatches: readonly WorkbookVerificationMismatch[]
@@ -324,11 +298,8 @@ function buildIncompleteReason(input: {
   if (!input.selectedRange) {
     return 'Requested range was not captured in the rendered selection or visible viewport.'
   }
-  if (input.captureStale) {
+  if (input.stale) {
     return 'Rendered capture is older than the requested verification revision.'
-  }
-  if (input.surfaceProofIncompleteReason) {
-    return input.surfaceProofIncompleteReason
   }
   if (input.missingCells.length > 0) {
     return 'Rendered capture was incomplete for the requested range.'
@@ -342,92 +313,6 @@ function buildIncompleteReason(input: {
   return null
 }
 
-function buildSurfaceProofIncompleteReason(input: {
-  readonly minRevision?: number | null | undefined
-  readonly proof: WorkbookAgentRenderedSurfaceProof | null
-}): string | null {
-  if (typeof input.minRevision !== 'number') {
-    return null
-  }
-  const proof = input.proof
-  if (!proof) {
-    return 'No browser-presented TypeGPU frame proof was attached to this rendered readback.'
-  }
-  if (proof.mode !== 'typegpu-v3') {
-    return 'Rendered readback was not proven by the TypeGPU V3 renderer.'
-  }
-  if (proof.backendStatus !== 'ready') {
-    return 'TypeGPU renderer backend was not ready when the rendered readback was captured.'
-  }
-  if (proof.frameProofStatus !== 'presented' || !proof.hasPresentedFrame || !proof.hasPresentedVisibleFrame) {
-    return 'Rendered readback has not been presented in a browser-visible TypeGPU frame.'
-  }
-  if (proof.frameProofSignature.trim().length === 0 || proof.presentedFrameProofSignature.trim().length === 0) {
-    return 'Presented TypeGPU frame proof did not include a non-empty frame lineage signature.'
-  }
-  if (proof.frameProofSignature !== proof.presentedFrameProofSignature) {
-    return 'Presented TypeGPU frame proof does not match the current frame lineage signature.'
-  }
-  if (proof.currentSceneOwnershipSignature.trim().length === 0 || proof.presentedSceneOwnershipSignature.trim().length === 0) {
-    return 'Presented TypeGPU frame proof did not include a non-empty visible-scene ownership signature.'
-  }
-  if (proof.currentSceneOwnershipSignature !== proof.presentedSceneOwnershipSignature) {
-    return 'Presented TypeGPU frame proof does not match the current visible-scene ownership signature.'
-  }
-  if (proof.currentTilePaneCount <= 0 || proof.currentHeaderPaneCount <= 0) {
-    return 'Current TypeGPU frame proof did not include visible grid tiles and headers.'
-  }
-  if (proof.presentedTilePaneCount <= 0 || proof.presentedHeaderPaneCount <= 0) {
-    return 'Presented TypeGPU frame proof did not include visible grid tiles and headers.'
-  }
-  if (proof.surfaceWidth <= 0 || proof.surfaceHeight <= 0 || proof.surfacePixelWidth <= 0 || proof.surfacePixelHeight <= 0) {
-    return 'Presented TypeGPU frame proof did not cover a non-empty visible surface.'
-  }
-  const authoritativeRevision = asNonNegativeSafeInteger(proof.authoritativeRevision)
-  if (authoritativeRevision === null || authoritativeRevision < input.minRevision) {
-    return 'Presented TypeGPU frame proof is older than the requested verification revision.'
-  }
-  const visibleRenderRevision = asNonNegativeSafeInteger(proof.visibleRenderRevision)
-  if (visibleRenderRevision === null) {
-    return 'Presented TypeGPU frame proof did not include a visible render revision.'
-  }
-  if (visibleRenderRevision < input.minRevision) {
-    return 'Presented TypeGPU frame proof visible render revision is older than the requested verification revision.'
-  }
-  const tileSceneRevision = asNonNegativeSafeInteger(proof.tileSceneRevision)
-  if (tileSceneRevision === null) {
-    return 'Presented TypeGPU frame proof did not include a tile scene revision.'
-  }
-  if (tileSceneRevision !== visibleRenderRevision) {
-    return 'Presented TypeGPU frame proof revision does not match the current tile scene revision.'
-  }
-  const projectedRevision = asNonNegativeSafeInteger(proof.projectedRevision)
-  if (projectedRevision === null) {
-    return 'Presented TypeGPU frame proof did not include a projected viewport revision.'
-  }
-  if (projectedRevision !== visibleRenderRevision) {
-    return 'Presented TypeGPU frame proof revision does not match the projected viewport revision.'
-  }
-  return null
-}
-
-function isSurfaceProofStale(input: {
-  readonly minRevision?: number | null | undefined
-  readonly proof: WorkbookAgentRenderedSurfaceProof | null
-}): boolean {
-  if (typeof input.minRevision !== 'number') {
-    return false
-  }
-  const authoritativeRevision = asNonNegativeSafeInteger(input.proof?.authoritativeRevision)
-  const visibleRenderRevision = asNonNegativeSafeInteger(input.proof?.visibleRenderRevision)
-  return (
-    authoritativeRevision === null ||
-    authoritativeRevision < input.minRevision ||
-    visibleRenderRevision === null ||
-    visibleRenderRevision < input.minRevision
-  )
-}
-
 export function selectWorkbookRenderedReadback(input: {
   readonly renderedContext: WorkbookAgentRenderedContext | null | undefined
   readonly requestedRange: CellRangeRef
@@ -437,22 +322,11 @@ export function selectWorkbookRenderedReadback(input: {
 }): WorkbookRenderedReadbackProof {
   const requestedRange = toWorkbookAgentRangeRef(input.requestedRange)
   const renderedContext = input.renderedContext ?? null
-  const selectedRangeCandidate = pickRenderedRange(renderedContext, requestedRange)
-  const selectedRange = selectedRangeCandidate?.range ?? null
+  const selectedRange = pickRenderedRange(renderedContext, requestedRange)
   const capturedBatchId = asNonNegativeSafeInteger(renderedContext?.batchId)
   const capturedRevision = renderedCaptureRevision(renderedContext)
-  const surfaceProof = renderedSurfaceProof(renderedContext)
-  const captureStale =
+  const stale =
     selectedRange === null || capturedRevision === null || (typeof input.minRevision === 'number' && capturedRevision < input.minRevision)
-  const surfaceProofIncompleteReason = buildSurfaceProofIncompleteReason({
-    minRevision: input.minRevision,
-    proof: surfaceProof,
-  })
-  const surfaceProofStale = isSurfaceProofStale({
-    minRevision: input.minRevision,
-    proof: surfaceProof,
-  })
-  const stale = captureStale || surfaceProofStale
   const extracted = selectedRange
     ? buildExtractedRenderedRange({
         renderedRange: selectedRange,
@@ -475,8 +349,7 @@ export function selectWorkbookRenderedReadback(input: {
   const incompleteReason = buildIncompleteReason({
     hasRenderedContext: renderedContext !== null,
     selectedRange,
-    captureStale,
-    surfaceProofIncompleteReason,
+    stale,
     missingCells: extracted.missingCells,
     truncated: proofTruncated,
     mismatches,
@@ -489,15 +362,10 @@ export function selectWorkbookRenderedReadback(input: {
     matched,
     stale,
     capturedRange: extracted.range?.range ?? null,
-    sourceKind: selectedRangeCandidate?.sourceKind ?? null,
     sourceRange: selectedRange?.range ?? null,
     capturedAtUnixMs: renderedContext?.capturedAtUnixMs ?? null,
     capturedRevision,
     capturedBatchId,
-    surfaceProof,
-    surfaceProofMatched:
-      typeof input.minRevision === 'number' ? (surfaceProofIncompleteReason === null ? true : surfaceProof ? false : null) : null,
-    surfaceProofIncompleteReason,
     truncated: proofTruncated,
     sourceTruncated,
     missingCells: extracted.missingCells,
@@ -520,14 +388,10 @@ export function emptyWorkbookRenderedReadbackProof(input: {
     matched: null,
     stale: true,
     capturedRange: null,
-    sourceKind: null,
     sourceRange: null,
     capturedAtUnixMs: null,
     capturedRevision: null,
     capturedBatchId: null,
-    surfaceProof: null,
-    surfaceProofMatched: null,
-    surfaceProofIncompleteReason: input.reason,
     truncated: false,
     sourceTruncated: false,
     missingCells: input.requestedRange

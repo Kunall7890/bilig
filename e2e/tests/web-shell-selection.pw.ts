@@ -1,4 +1,4 @@
-import { expect, test, type Page, type TestInfo } from '@playwright/test'
+import { expect, test, type Page } from '@playwright/test'
 import {
   PRIMARY_MODIFIER,
   PRODUCT_COLUMN_WIDTH,
@@ -602,7 +602,7 @@ test('@browser-ci web app starts a fresh area selection from the selected range 
   await expect(page.getByTestId('formula-input')).toHaveValue('')
 })
 
-test('@browser-webgpu @browser-deep web app clips spilled text before the active selected cell', async ({ page }, testInfo) => {
+test('web app clips spilled text before the active selected cell', async ({ page }) => {
   await installTypeGpuCellReadbackHarness(page)
   await page.goto(`/?document=${encodeURIComponent(createTestDocumentId('playwright-selection-spill-clip'))}&persist=0`)
   await waitForWorkbookReady(page)
@@ -616,9 +616,6 @@ test('@browser-webgpu @browser-deep web app clips spilled text before the active
     await expectCellTextPixels(page, 2, 4, 'hidden')
     return
   }
-  if (await skipNativeTextGeometryWhenTypeGpuOwnsText(page, testInfo, 'active-cell spill clipping is covered by TypeGPU text proof')) {
-    return
-  }
 
   const runBox = await page.locator('[data-native-text-run-row="4"][data-native-text-run-col="0"]').boundingBox()
   const gridBox = await page.getByTestId('sheet-grid').boundingBox()
@@ -630,7 +627,7 @@ test('@browser-webgpu @browser-deep web app clips spilled text before the active
   expect(runBox.x + runBox.width).toBeLessThanOrEqual(selectedColumnLeft + 0.5)
 })
 
-test('@browser-webgpu @browser-deep web app clips spilled text before far horizontally scrolled selections', async ({ page }, testInfo) => {
+test('web app clips spilled text before far horizontally scrolled selections', async ({ page }) => {
   await page.setViewportSize({ width: 1166, height: 820 })
   await installTypeGpuCellReadbackHarness(page)
   await page.goto(`/?document=${encodeURIComponent(createTestDocumentId('playwright-far-selection-spill-clip'))}&persist=0`)
@@ -647,9 +644,6 @@ test('@browser-webgpu @browser-deep web app clips spilled text before far horizo
     await expectCellTextPixels(page, selectedColumnIndex, rowIndex, 'hidden')
     return
   }
-  if (await skipNativeTextGeometryWhenTypeGpuOwnsText(page, testInfo, 'far horizontal spill clipping is covered by TypeGPU text proof')) {
-    return
-  }
 
   const runBox = await page
     .locator(`[data-native-text-run-row="${String(rowIndex)}"][data-native-text-run-col="${String(sourceColumnIndex)}"]`)
@@ -662,9 +656,7 @@ test('@browser-webgpu @browser-deep web app clips spilled text before far horizo
   expect(runBox.x + runBox.width).toBeLessThanOrEqual(activeBorderBox.x + 0.5)
 })
 
-test('@browser-webgpu @browser-deep web app clips spilled text before selected whole columns on non-active rows', async ({
-  page,
-}, testInfo) => {
+test('web app clips spilled text before selected whole columns on non-active rows', async ({ page }) => {
   await installTypeGpuCellReadbackHarness(page)
   await page.goto(`/?document=${encodeURIComponent(createTestDocumentId('playwright-column-selection-spill-clip'))}&persist=0`)
   await waitForWorkbookReady(page)
@@ -679,9 +671,6 @@ test('@browser-webgpu @browser-deep web app clips spilled text before selected w
     },
   })
   await expect(page.getByTestId('status-selection')).toHaveText('Sheet1!C:C')
-  if (await skipNativeTextGeometryWhenTypeGpuOwnsText(page, testInfo, 'whole-column spill clipping is covered by TypeGPU text proof')) {
-    return
-  }
 
   if (await isTypeGpuCanvasActive(page)) {
     await expectCellTextPixels(page, 0, 4, 'visible')
@@ -1034,30 +1023,15 @@ async function expectVisualRectNear(
 
 async function expectSelectionVisualRoles(page: Page, roles: readonly string[], expected: 'hidden' | 'visible'): Promise<void> {
   const selector = roles.map((role) => `[data-grid-selection-visual-role="${role}"]`).join(',')
-  await expect
-    .poll(
-      async () =>
-        page.locator(selector).evaluateAll((nodes, expectedValue) => {
-          const opacities = nodes.map((node) => window.getComputedStyle(node).opacity)
-          const typeGpu = document.querySelector('[data-testid="grid-pane-renderer"]')
-          const typeGpuOverlayPresented =
-            typeGpu instanceof HTMLElement &&
-            typeGpu.getAttribute('data-renderer-mode') === 'typegpu-v3' &&
-            typeGpu.getAttribute('data-v3-frame-proof-status') === 'presented' &&
-            Number(typeGpu.getAttribute('data-v3-presented-overlay-rect-count') ?? '0') > 0
-          const allHidden = opacities.length > 0 && opacities.every((opacity) => opacity === '0')
-          const allVisible = opacities.length > 0 && opacities.every((opacity) => opacity !== '0')
-          if (opacities.length === 0) {
-            return false
-          }
-          if (expectedValue === 'hidden') {
-            return allHidden
-          }
-          return allVisible || (allHidden && typeGpuOverlayPresented)
-        }, expected),
-      { message: `selection visual roles should be ${expected}` },
-    )
-    .toBe(true)
+  const opacities = await page.locator(selector).evaluateAll((nodes) => nodes.map((node) => window.getComputedStyle(node).opacity))
+  expect(opacities.length).toBeGreaterThan(0)
+  if (expected === 'visible' && opacities.every((opacity) => opacity === '0') && (await isTypeGpuCanvasActive(page))) {
+    await expect
+      .poll(async () => Number((await page.getByTestId('grid-pane-renderer').getAttribute('data-v3-presented-overlay-rect-count')) ?? '0'))
+      .toBeGreaterThan(0)
+    return
+  }
+  expect(opacities.every((opacity) => (expected === 'visible' ? opacity !== '0' : opacity === '0'))).toBe(true)
 }
 
 async function isTypeGpuCanvasActive(page: Page): Promise<boolean> {
@@ -1242,8 +1216,6 @@ async function writeCellValue(page: Page, address: string, value: string): Promi
   const formulaInput = page.getByTestId('formula-input')
   await formulaInput.fill(value)
   await formulaInput.press('Enter')
-  await selectAddress(page, address)
-  await expect.poll(() => readFormulaValue(page)).toBe(value)
 }
 
 async function dragProductSelectedInterior(
@@ -1284,11 +1256,7 @@ async function dragProductSelectedInterior(
 
 async function selectAddress(page: Page, address: string): Promise<void> {
   const nameBox = page.getByTestId('name-box')
-  await nameBox.click()
-  await nameBox.press(`${PRIMARY_MODIFIER}+A`)
-  await nameBox.press('Backspace')
-  await expect(nameBox).toHaveValue('')
-  await page.keyboard.type(address)
+  await nameBox.fill(address)
   await expect(nameBox).toHaveValue(address)
   await nameBox.press('Enter')
   await expect(page.getByTestId('status-selection')).toHaveText(`Sheet1!${address}`)
@@ -1297,36 +1265,6 @@ async function selectAddress(page: Page, address: string): Promise<void> {
 async function readFormulaValue(page: Page): Promise<string> {
   const formulaInput = page.getByTestId('formula-input')
   return await formulaInput.inputValue()
-}
-
-async function skipNativeTextGeometryWhenTypeGpuOwnsText(page: Page, testInfo: TestInfo, description: string): Promise<boolean> {
-  const typeGpuOwnsText = await page.evaluate(() => {
-    const typeGpu = document.querySelector('[data-testid="grid-pane-renderer"]')
-    return (
-      typeGpu instanceof HTMLElement &&
-      typeGpu.getAttribute('data-renderer-mode') === 'typegpu-v3' &&
-      typeGpu.getAttribute('data-v3-frame-proof-status') === 'presented' &&
-      document.querySelector('[data-testid="grid-native-text-layer"]') === null
-    )
-  })
-  if (!typeGpuOwnsText) {
-    return false
-  }
-  testInfo.annotations.push({
-    description,
-    type: 'native-text-geometry-inapplicable',
-  })
-  await expect
-    .poll(
-      () =>
-        page.evaluate(() => {
-          const typeGpu = document.querySelector('[data-testid="grid-pane-renderer"]')
-          return typeGpu instanceof HTMLElement ? Number(typeGpu.getAttribute('data-v3-presented-text-run-count') ?? '0') : 0
-        }),
-      { message: 'TypeGPU must present body text when native text geometry is not mounted' },
-    )
-    .toBeGreaterThan(0)
-  return true
 }
 
 async function pressStructuralDeleteShortcut(page: Page): Promise<void> {

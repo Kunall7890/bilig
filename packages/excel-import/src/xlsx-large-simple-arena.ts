@@ -1,9 +1,16 @@
 import type { WorkbookRichTextCellSnapshot, WorkbookSnapshot } from '@bilig/protocol'
 import { toDisplayText } from './workbook-import-helpers.js'
-import { growUint32Array } from './xlsx-large-simple-array-storage.js'
+import { filledUint32Array, growUint32Array } from './xlsx-large-simple-array-storage.js'
 import { ImportedWorkbookArenaBase } from './xlsx-large-simple-arena-base.js'
 import { noPoolId, valueKindEmpty, valueKindSharedStringRef, valueKindString } from './xlsx-large-simple-arena-constants.js'
-import { encodeCellAddress, isPreviewCell, maxSpreadsheetColumnCount, packArenaCellAddress } from './xlsx-large-simple-arena-helpers.js'
+import {
+  encodeCellAddress,
+  isPreviewCell,
+  maxSpreadsheetColumnCount,
+  packArenaCellAddress,
+  previewCellCount,
+  previewIndex,
+} from './xlsx-large-simple-arena-helpers.js'
 import type {
   ImportedWorkbookArenaSnapshot,
   ImportedWorksheetArenaCellInput,
@@ -12,6 +19,12 @@ import type {
 import { createLazyWorkbookRichTextCells } from './xlsx-large-simple-lazy-rich-text-cells.js'
 import { createLazyWorkbookSheetCells } from './xlsx-large-simple-lazy-sheet-cells.js'
 import { createDetachedLazyWorkbookSheetCells } from './xlsx-large-simple-detached-lazy-sheet-cells.js'
+import {
+  lazySheetCellArenaIndex,
+  lazySheetCellIndexCount,
+  type LazySheetCellIndexRange,
+  type LazySheetCellIndexes,
+} from './xlsx-large-simple-lazy-sheet-indexes.js'
 import type { LargeSimpleSharedStringIndexSet, LargeSimpleSharedStringIndexSink } from './xlsx-large-simple-shared-string-indexes.js'
 import type { LargeSimpleSharedStrings } from './xlsx-large-simple-shared-strings.js'
 import { decodeCellAddress } from './xlsx-large-simple-xml-byte-utils.js'
@@ -31,6 +44,8 @@ type WorkbookSheetCells = WorkbookSnapshot['sheets'][number]['cells']
 type WorkbookSheetCell = WorkbookSheetCells[number]
 
 export class ImportedWorkbookArena extends ImportedWorkbookArenaBase {
+  private readonly previewSharedStringIndexes = filledUint32Array(previewCellCount, noPoolId)
+
   addCell(input: ImportedWorksheetArenaCellInput): number {
     this.ensureCapacity(this.length + 1)
     const index = this.appendCell(input.sheetIndex, input.row, input.column)
@@ -49,6 +64,10 @@ export class ImportedWorkbookArena extends ImportedWorkbookArenaBase {
     const index = this.appendCell(input.sheetIndex, input.row, input.column)
     this.valueKinds[index] = valueKindSharedStringRef
     this.storeSharedStringIndex(index, input.sharedStringIndex)
+    const preview = previewIndex(input.row, input.column)
+    if (preview !== -1) {
+      this.previewSharedStringIndexes[preview] = input.sharedStringIndex
+    }
     return index
   }
 
@@ -62,10 +81,7 @@ export class ImportedWorkbookArena extends ImportedWorkbookArenaBase {
     }
   }
 
-  materializeSheetCells(
-    sheetIndex: number,
-    options: { readonly includeCoordinates?: boolean } = {},
-  ): WorkbookSnapshot['sheets'][number]['cells'] {
+  materializeSheetCells(sheetIndex: number): WorkbookSnapshot['sheets'][number]['cells'] {
     if (!this.hasCellsForSheet(sheetIndex)) {
       return []
     }
@@ -76,7 +92,7 @@ export class ImportedWorkbookArena extends ImportedWorkbookArenaBase {
       if (!this.cellBelongsToSheet(index, sheetIndex)) {
         continue
       }
-      const cell = this.materializeCellAtArenaIndex(index, options)
+      const cell = this.materializeCellAtArenaIndex(index)
       if (!cell) {
         continue
       }
@@ -118,20 +134,21 @@ export class ImportedWorkbookArena extends ImportedWorkbookArenaBase {
     return cellsByAddress
   }
 
-  createLazySheetCells(sheetIndex: number, options: { readonly includeCoordinates?: boolean } = {}): WorkbookSheetCells {
+  createLazySheetCells(sheetIndex: number): WorkbookSheetCells {
     const arenaIndexes = this.lazySheetCellIndexes(sheetIndex)
-    const cellCount = typeof arenaIndexes === 'number' ? arenaIndexes : arenaIndexes.length
+    const cellCount = lazySheetCellIndexCount(arenaIndexes)
     return createLazyWorkbookSheetCells(cellCount, (index) => {
       if (!Number.isInteger(index) || index < 0 || index >= cellCount) {
         return undefined
       }
-      return this.materializeCellAtArenaIndex(typeof arenaIndexes === 'number' ? index : (arenaIndexes[index] ?? -1), options)
+      return this.materializeCellAtArenaIndex(lazySheetCellArenaIndex(arenaIndexes, index))
     })
   }
 
   createDetachedLazySheetCells(sheetIndex: number): WorkbookSheetCells {
     const arenaIndexes = this.lazySheetCellIndexes(sheetIndex)
-    const cellCount = typeof arenaIndexes === 'number' ? arenaIndexes : arenaIndexes.length
+    const cellCount = lazySheetCellIndexCount(arenaIndexes)
+    this.compactRowMajorRowCoordinates()
     this.compactSparseStringIds()
     this.compactRetainedStorage()
     const strings = this.strings
@@ -153,11 +170,21 @@ export class ImportedWorkbookArena extends ImportedWorkbookArenaBase {
       linearRowMajorWidth: this.linearRowMajorWidth,
       rows: this.rows,
       columns: this.columns,
+      ...(this.rowRunIndexes ? { rowRunIndexes: this.rowRunIndexes } : {}),
+      ...(this.rowRunRows ? { rowRunRows: this.rowRunRows } : {}),
+      ...(this.rowRunStartColumns ? { rowRunStartColumns: this.rowRunStartColumns } : {}),
+      ...(this.columnPattern ? { columnPattern: this.columnPattern } : {}),
       valueKinds: this.valueKinds,
       ...(this.numberValues ? { numberValues: this.numberValues } : {}),
+      ...(this.sparseNumberCellIndexes ? { sparseNumberCellIndexes: this.sparseNumberCellIndexes } : {}),
+      ...(this.sparseNumberValues ? { sparseNumberValues: this.sparseNumberValues } : {}),
       ...(this.tinyIntegerValues ? { tinyIntegerValues: this.tinyIntegerValues } : {}),
-      ...this.smallIntegers.snapshot(this.length),
-      ...this.integers.snapshot(this.length),
+      ...(this.smallIntegerValues ? { smallIntegerValues: this.smallIntegerValues } : {}),
+      ...(this.sparseSmallIntegerCellIndexes ? { sparseSmallIntegerCellIndexes: this.sparseSmallIntegerCellIndexes } : {}),
+      ...(this.sparseSmallIntegerValues ? { sparseSmallIntegerValues: this.sparseSmallIntegerValues } : {}),
+      ...(this.integerValues ? { integerValues: this.integerValues } : {}),
+      ...(this.sparseIntegerCellIndexes ? { sparseIntegerCellIndexes: this.sparseIntegerCellIndexes } : {}),
+      ...(this.sparseIntegerValues ? { sparseIntegerValues: this.sparseIntegerValues } : {}),
       ...(this.stringIds ? { stringIds: this.stringIds } : {}),
       ...(this.sparseStringCellIndexes ? { sparseStringCellIndexes: this.sparseStringCellIndexes } : {}),
       ...(this.sparseStringIds ? { sparseStringIds: this.sparseStringIds } : {}),
@@ -264,6 +291,23 @@ export class ImportedWorkbookArena extends ImportedWorkbookArenaBase {
     )
   }
 
+  retainPlainSharedStringReferences(sharedStrings: LargeSimpleSharedStrings): boolean {
+    this.sharedStrings = sharedStrings
+    for (let index = 0; index < this.previewSharedStringIndexes.length; index += 1) {
+      const sharedStringIndex = this.previewSharedStringIndexes[index] ?? noPoolId
+      if (sharedStringIndex === noPoolId) {
+        continue
+      }
+      const entry = sharedStrings[sharedStringIndex]
+      if (!entry) {
+        return false
+      }
+      this.previewValues[index] = entry.text
+      this.previewValueSet[index] = 1
+    }
+    return true
+  }
+
   resolveSharedStringsExcept(
     sharedStrings: LargeSimpleSharedStrings,
     retainedSharedStringIndexes: LargeSimpleSharedStringIndexSet,
@@ -306,9 +350,27 @@ export class ImportedWorkbookArena extends ImportedWorkbookArenaBase {
       columns: this.columns.subarray(0, this.length),
       valueKinds: this.valueKinds.subarray(0, this.length),
       ...(this.numberValues ? { numberValues: this.numberValues.subarray(0, this.length) } : {}),
+      ...(this.sparseNumberCount > 0 && this.sparseNumberCellIndexes
+        ? { sparseNumberCellIndexes: this.sparseNumberCellIndexes.subarray(0, this.sparseNumberCount) }
+        : {}),
+      ...(this.sparseNumberCount > 0 && this.sparseNumberValues
+        ? { sparseNumberValues: this.sparseNumberValues.subarray(0, this.sparseNumberCount) }
+        : {}),
       ...(this.tinyIntegerValues ? { tinyIntegerValues: this.tinyIntegerValues.subarray(0, this.length) } : {}),
-      ...this.smallIntegers.snapshot(this.length),
-      ...this.integers.snapshot(this.length),
+      ...(this.smallIntegerValues ? { smallIntegerValues: this.smallIntegerValues.subarray(0, this.length) } : {}),
+      ...(this.sparseSmallIntegerCount > 0 && this.sparseSmallIntegerCellIndexes
+        ? { sparseSmallIntegerCellIndexes: this.sparseSmallIntegerCellIndexes.subarray(0, this.sparseSmallIntegerCount) }
+        : {}),
+      ...(this.sparseSmallIntegerCount > 0 && this.sparseSmallIntegerValues
+        ? { sparseSmallIntegerValues: this.sparseSmallIntegerValues.subarray(0, this.sparseSmallIntegerCount) }
+        : {}),
+      ...(this.integerValues ? { integerValues: this.integerValues.subarray(0, this.length) } : {}),
+      ...(this.sparseIntegerCount > 0 && this.sparseIntegerCellIndexes
+        ? { sparseIntegerCellIndexes: this.sparseIntegerCellIndexes.subarray(0, this.sparseIntegerCount) }
+        : {}),
+      ...(this.sparseIntegerCount > 0 && this.sparseIntegerValues
+        ? { sparseIntegerValues: this.sparseIntegerValues.subarray(0, this.sparseIntegerCount) }
+        : {}),
       ...(stringIds ? { stringIds } : {}),
       ...(this.booleanValues ? { booleanValues: this.booleanValues.subarray(0, this.length) } : {}),
       ...(this.formulaIds ? { formulaIds: this.formulaIds.subarray(0, this.length) } : {}),
@@ -322,11 +384,25 @@ export class ImportedWorkbookArena extends ImportedWorkbookArenaBase {
     this.sheetIndexes = undefined
     this.rows = new Uint32Array(0)
     this.columns = new Uint16Array(0)
+    this.rowRunIndexes = undefined
+    this.rowRunRows = undefined
+    this.rowRunStartColumns = undefined
+    this.columnPattern = undefined
+    this.rowRunCount = 0
     this.valueKinds = new Uint8Array(0)
     this.numberValues = undefined
+    this.sparseNumberCellIndexes = undefined
+    this.sparseNumberValues = undefined
+    this.sparseNumberCount = 0
     this.tinyIntegerValues = undefined
-    this.smallIntegers.release()
-    this.integers.release()
+    this.smallIntegerValues = undefined
+    this.sparseSmallIntegerCellIndexes = undefined
+    this.sparseSmallIntegerValues = undefined
+    this.sparseSmallIntegerCount = 0
+    this.integerValues = undefined
+    this.sparseIntegerCellIndexes = undefined
+    this.sparseIntegerValues = undefined
+    this.sparseIntegerCount = 0
     this.stringIds = undefined
     this.sparseStringCellIndexes = undefined
     this.sparseStringIds = undefined
@@ -337,6 +413,7 @@ export class ImportedWorkbookArena extends ImportedWorkbookArenaBase {
     this.denseRowMajorWidth = null
     this.linearCellIndexes = undefined
     this.linearRowMajorWidth = null
+    this.linearRowMajorCapacityLimit = null
     this.strings.length = 0
     this.stringIdsByValue.clear()
     this.stringDedupeKeys.length = 0
@@ -373,10 +450,20 @@ export class ImportedWorkbookArena extends ImportedWorkbookArenaBase {
     if (this.linearCellIndexes && this.linearCellIndexes.length !== this.length) {
       this.linearCellIndexes = this.linearCellIndexes.slice(0, this.length)
     } else if (this.denseRowMajorWidth === null) {
-      if (this.rows.length !== this.length) {
+      if (this.rowRunRows) {
+        if (this.rowRunIndexes && this.rowRunIndexes.length !== this.rowRunCount) {
+          this.rowRunIndexes = this.rowRunIndexes.slice(0, this.rowRunCount)
+        }
+        if (this.rowRunRows.length !== this.rowRunCount) {
+          this.rowRunRows = this.rowRunRows.slice(0, this.rowRunCount)
+        }
+        if (this.rowRunStartColumns && this.rowRunStartColumns.length !== this.rowRunCount) {
+          this.rowRunStartColumns = this.rowRunStartColumns.slice(0, this.rowRunCount)
+        }
+      } else if (this.rows.length !== this.length) {
         this.rows = this.rows.slice(0, this.length)
       }
-      if (this.columns.length !== this.length) {
+      if (!this.rowRunStartColumns && this.columns.length !== this.length) {
         this.columns = this.columns.slice(0, this.length)
       }
     }
@@ -386,11 +473,21 @@ export class ImportedWorkbookArena extends ImportedWorkbookArenaBase {
     if (this.numberValues && this.numberValues.length !== this.length) {
       this.numberValues = this.numberValues.slice(0, this.length)
     }
+    if (this.sparseNumberCellIndexes && this.sparseNumberCellIndexes.length !== this.sparseNumberCount) {
+      this.sparseNumberCellIndexes = this.sparseNumberCellIndexes.slice(0, this.sparseNumberCount)
+    }
+    if (this.sparseNumberValues && this.sparseNumberValues.length !== this.sparseNumberCount) {
+      this.sparseNumberValues = this.sparseNumberValues.slice(0, this.sparseNumberCount)
+    }
     if (this.tinyIntegerValues && this.tinyIntegerValues.length !== this.length) {
       this.tinyIntegerValues = this.tinyIntegerValues.slice(0, this.length)
     }
-    this.smallIntegers.compact(this.length)
-    this.integers.compact(this.length)
+    if (this.smallIntegerValues && this.smallIntegerValues.length !== this.length) {
+      this.smallIntegerValues = this.smallIntegerValues.slice(0, this.length)
+    }
+    if (this.integerValues && this.integerValues.length !== this.length) {
+      this.integerValues = this.integerValues.slice(0, this.length)
+    }
     if (this.stringIds && this.stringIds.length !== this.length) {
       this.stringIds = this.stringIds.slice(0, this.length)
     }
@@ -405,6 +502,18 @@ export class ImportedWorkbookArena extends ImportedWorkbookArenaBase {
     }
     if (this.formulaIds && this.formulaIds.length !== this.length) {
       this.formulaIds = this.formulaIds.slice(0, this.length)
+    }
+    if (this.sparseSmallIntegerCellIndexes && this.sparseSmallIntegerCellIndexes.length !== this.sparseSmallIntegerCount) {
+      this.sparseSmallIntegerCellIndexes = this.sparseSmallIntegerCellIndexes.slice(0, this.sparseSmallIntegerCount)
+    }
+    if (this.sparseSmallIntegerValues && this.sparseSmallIntegerValues.length !== this.sparseSmallIntegerCount) {
+      this.sparseSmallIntegerValues = this.sparseSmallIntegerValues.slice(0, this.sparseSmallIntegerCount)
+    }
+    if (this.sparseIntegerCellIndexes && this.sparseIntegerCellIndexes.length !== this.sparseIntegerCount) {
+      this.sparseIntegerCellIndexes = this.sparseIntegerCellIndexes.slice(0, this.sparseIntegerCount)
+    }
+    if (this.sparseIntegerValues && this.sparseIntegerValues.length !== this.sparseIntegerCount) {
+      this.sparseIntegerValues = this.sparseIntegerValues.slice(0, this.sparseIntegerCount)
     }
   }
 
@@ -461,11 +570,38 @@ export class ImportedWorkbookArena extends ImportedWorkbookArenaBase {
     }
   }
 
-  private lazySheetCellIndexes(sheetIndex: number): Uint32Array | number {
+  private lazySheetCellIndexes(sheetIndex: number): LazySheetCellIndexes {
     const count = this.countMaterializedSheetCells(sheetIndex)
-    return this.sheetIndexes === undefined && this.sheetIndex === sheetIndex && count === this.length
-      ? count
-      : this.materializedSheetCellIndexesWithCount(sheetIndex, count)
+    if (count === 0 || (this.sheetIndexes === undefined && this.sheetIndex === sheetIndex && count === this.length)) {
+      return count
+    }
+    return this.contiguousLazySheetCellIndexRange(sheetIndex, count) ?? this.materializedSheetCellIndexesWithCount(sheetIndex, count)
+  }
+
+  private contiguousLazySheetCellIndexRange(sheetIndex: number, count: number): LazySheetCellIndexRange | null {
+    let start = -1
+    let previous = -1
+    let seen = 0
+    for (let index = 0; index < this.length; index += 1) {
+      if (!this.cellBelongsToSheet(index, sheetIndex)) {
+        continue
+      }
+      const formulaId = this.formulaIds?.[index] ?? noPoolId
+      if ((this.valueKinds[index] ?? valueKindEmpty) === valueKindEmpty && formulaId === noPoolId) {
+        continue
+      }
+      if (start === -1) {
+        start = index
+      } else if (index !== previous + 1) {
+        return null
+      }
+      previous = index
+      seen += 1
+      if (seen === count) {
+        break
+      }
+    }
+    return start === -1 || seen !== count ? null : { start, length: count }
   }
 
   private materializedSheetCellIndexesWithCount(sheetIndex: number, count: number): Uint32Array {

@@ -1,5 +1,6 @@
 import type { WorkbookRichTextCellSnapshot } from '@bilig/protocol'
 import { decodeExcelEscapedText } from './xlsx-escaped-text.js'
+import { decodeXmlText } from './xlsx-large-simple-xml-text.js'
 import type { ImportedWorkbookArenaDedupeMode } from './xlsx-large-simple-arena-types.js'
 import type { LargeSimpleSharedStringIndexSet } from './xlsx-large-simple-shared-string-indexes.js'
 import type { ImportedWorkbookStringPool } from './xlsx-large-simple-string-pool.js'
@@ -22,6 +23,16 @@ const sharedStringElementPattern =
 const richTextRunPattern = /<(?:[A-Za-z_][\w.-]*:)?r\b/u
 const partialSharedStringTagRetainLength = 256
 const sparseReferencedSharedStringDensityDivisor = 64
+const lessThanByte = 60
+const slashByte = 47
+const greaterThanByte = 62
+const doubleQuoteByte = 34
+const singleQuoteByte = 39
+const richSharedStringTagUnknown = 0
+const richSharedStringTagSi = 1
+const richSharedStringTagRun = 2
+const richSharedStringTagOther = 3
+const emptyBytes = new Uint8Array(0)
 
 export interface LargeSimpleReferencedSharedStringScanOptions {
   readonly onRetainedBufferLength?: (length: number) => void
@@ -29,6 +40,8 @@ export interface LargeSimpleReferencedSharedStringScanOptions {
   readonly deduplicateText?: ImportedWorkbookArenaDedupeMode
   readonly dedupeMaxEntries?: number
 }
+
+type LargeSimpleChunkConsumer = (chunk: Uint8Array) => boolean | void
 
 interface LargeSimpleSharedStringReadOptions extends LargeSimpleReferencedSharedStringScanOptions {
   readonly plainEntryPool?: LargeSimpleSharedStringEntryPool
@@ -52,7 +65,7 @@ export function readLargeSimpleSharedStrings(
 }
 
 export function readLargeSimpleReferencedSharedStringsFromChunks(
-  readChunks: (onChunk: (chunk: Uint8Array) => void) => boolean,
+  readChunks: (onChunk: LargeSimpleChunkConsumer) => boolean,
   referencedIndexes: LargeSimpleSharedStringIndexSet,
   options: LargeSimpleReferencedSharedStringScanOptions = {},
 ): LargeSimpleSharedStrings | null {
@@ -67,11 +80,33 @@ export function readLargeSimpleReferencedSharedStringsFromChunks(
 }
 
 export function readAllLargeSimpleSharedStringsFromChunks(
-  readChunks: (onChunk: (chunk: Uint8Array) => void) => boolean,
+  readChunks: (onChunk: LargeSimpleChunkConsumer) => boolean,
   options: LargeSimpleReferencedSharedStringScanOptions = {},
 ): LargeSimpleSharedStrings | null {
   const scanner = new LargeSimpleAllSharedStringChunkScanner(options)
   if (!readChunks((chunk) => scanner.push(chunk))) {
+    return null
+  }
+  return scanner.finish()
+}
+
+export function hasAnyLargeSimpleRichSharedStringFromChunks(
+  readChunks: (onChunk: LargeSimpleChunkConsumer) => boolean,
+  options: Pick<LargeSimpleReferencedSharedStringScanOptions, 'onRetainedBufferLength'> = {},
+): boolean | null {
+  const scanner = new LargeSimpleRichSharedStringPresenceScanner(options)
+  if (!readChunks((chunk) => scanner.push(chunk))) {
+    return null
+  }
+  return scanner.finish()
+}
+
+export async function hasAnyLargeSimpleRichSharedStringFromChunksAsync(
+  readChunks: (onChunk: LargeSimpleChunkConsumer) => Promise<boolean>,
+  options: Pick<LargeSimpleReferencedSharedStringScanOptions, 'onRetainedBufferLength'> = {},
+): Promise<boolean | null> {
+  const scanner = new LargeSimpleRichSharedStringPresenceScanner(options)
+  if (!(await readChunks((chunk) => scanner.push(chunk)))) {
     return null
   }
   return scanner.finish()
@@ -165,6 +200,7 @@ class LargeSimpleSharedStringChunkScanner {
   private buffer = ''
   private index = 0
   private sharedStringIndex = 0
+  private foundReferencedCount = 0
   private failed = false
   private skippingUnreferencedElementName: string | null = null
   private readonly maxReferencedIndex: number
@@ -190,24 +226,27 @@ class LargeSimpleSharedStringChunkScanner {
     }
   }
 
-  push(chunk: Uint8Array): void {
-    if (this.failed || chunk.byteLength === 0) {
-      return
+  push(chunk: Uint8Array): boolean {
+    if (this.failed || this.isComplete() || chunk.byteLength === 0) {
+      return !this.failed && !this.isComplete()
     }
     this.buffer += this.decoder.decode(chunk, { stream: true })
     this.process(false)
     this.compact()
     this.reportRetainedBufferLength()
+    return !this.failed && !this.isComplete()
   }
 
   finish(): LargeSimpleSharedStrings | null {
     if (this.failed) {
       return null
     }
-    this.buffer += this.decoder.decode()
-    this.process(true)
-    this.compact()
-    this.reportRetainedBufferLength()
+    if (!this.isComplete()) {
+      this.buffer += this.decoder.decode()
+      this.process(true)
+      this.compact()
+      this.reportRetainedBufferLength()
+    }
     if (this.failed) {
       return null
     }
@@ -251,7 +290,10 @@ class LargeSimpleSharedStringChunkScanner {
         return
       }
       if (this.referencedIndexes.has(this.sharedStringIndex)) {
-        this.setEntry(this.sharedStringIndex, readLargeSimpleSharedStringEntry(this.buffer.slice(opening.start, xmlEnd), this.readOptions))
+        this.setEntry(
+          this.sharedStringIndex,
+          readLargeSimpleSharedStringEntryFromRange(this.buffer, opening.start, xmlEnd, this.readOptions),
+        )
       }
       this.sharedStringIndex += 1
       this.index = xmlEnd
@@ -305,12 +347,229 @@ class LargeSimpleSharedStringChunkScanner {
   }
 
   private setEntry(index: number, entry: LargeSimpleSharedStringEntry): void {
+    if (!this.hasEntry(index)) {
+      this.foundReferencedCount += 1
+    }
     if (this.denseEntries) {
       this.denseEntries[index] = entry
       return
     }
     this.sparseEntries?.set(index, entry)
   }
+
+  private isComplete(): boolean {
+    return this.foundReferencedCount === this.referencedIndexes.size
+  }
+}
+
+class LargeSimpleRichSharedStringPresenceScanner {
+  private buffer: Uint8Array = emptyBytes
+  private index = 0
+  private inSharedString = false
+  private failed = false
+  private found = false
+  private tagNameEnd = 0
+
+  constructor(private readonly options: Pick<LargeSimpleReferencedSharedStringScanOptions, 'onRetainedBufferLength'>) {}
+
+  push(chunk: Uint8Array): boolean {
+    if (this.failed || this.found || chunk.byteLength === 0) {
+      return !this.failed && !this.found
+    }
+    this.append(chunk)
+    this.process(false)
+    this.compact()
+    this.reportRetainedBufferLength()
+    return !this.failed && !this.found
+  }
+
+  finish(): boolean | null {
+    if (this.failed) {
+      return null
+    }
+    this.process(true)
+    this.compact()
+    this.reportRetainedBufferLength()
+    return this.failed ? null : this.found
+  }
+
+  private append(chunk: Uint8Array): void {
+    if (this.index === this.buffer.byteLength) {
+      this.buffer = chunk
+      this.index = 0
+      return
+    }
+    const retained = this.buffer.subarray(this.index)
+    const next = new Uint8Array(retained.byteLength + chunk.byteLength)
+    next.set(retained)
+    next.set(chunk, retained.byteLength)
+    this.buffer = next
+    this.index = 0
+  }
+
+  private process(final: boolean): void {
+    while (!this.failed && !this.found && this.index < this.buffer.byteLength) {
+      const tagStart = findByteInRange(this.buffer, this.index, this.buffer.byteLength, lessThanByte)
+      if (tagStart === null) {
+        this.index = this.buffer.byteLength
+        return
+      }
+      if (!final && tagStart + 1 >= this.buffer.byteLength) {
+        this.index = tagStart
+        return
+      }
+      const closing = this.buffer[tagStart + 1] === slashByte
+      const tagNameStart = tagStart + (closing ? 2 : 1)
+      const tagCode = this.readElementNameCode(tagNameStart)
+      if (tagCode === richSharedStringTagUnknown) {
+        if (!final && tagNameStart >= this.buffer.byteLength) {
+          this.index = tagStart
+          return
+        }
+        this.index = tagStart + 1
+        continue
+      }
+      const tagEnd = findByteTagEnd(this.buffer, this.tagNameEnd)
+      if (tagEnd === null) {
+        if (final) {
+          this.failed = true
+        }
+        this.index = tagStart
+        return
+      }
+      if (!this.inSharedString) {
+        if (!closing && tagCode === richSharedStringTagSi) {
+          this.inSharedString = !isSelfClosingByteTag(this.buffer, tagEnd)
+        }
+        this.index = tagEnd + 1
+        continue
+      }
+      if (closing && tagCode === richSharedStringTagSi) {
+        this.inSharedString = false
+        this.index = tagEnd + 1
+        continue
+      }
+      if (!closing && tagCode === richSharedStringTagRun) {
+        this.found = true
+        return
+      }
+      this.index = tagEnd + 1
+    }
+    if (final && this.inSharedString) {
+      this.failed = true
+    }
+  }
+
+  private compact(): void {
+    if (this.found) {
+      this.buffer = emptyBytes
+      this.index = 0
+      this.inSharedString = false
+      return
+    }
+    if (this.index === 0) {
+      return
+    }
+    const retainLength = this.inSharedString ? partialSharedStringTagRetainLength : 0
+    if (this.index >= this.buffer.byteLength) {
+      this.buffer = retainLength > 0 ? this.buffer.subarray(Math.max(0, this.buffer.byteLength - retainLength)) : emptyBytes
+      this.index = 0
+      return
+    }
+    const startIndex = retainLength > 0 ? Math.max(0, this.index - retainLength) : this.index
+    this.buffer = this.buffer.subarray(startIndex)
+    this.index -= startIndex
+  }
+
+  private reportRetainedBufferLength(): void {
+    this.options.onRetainedBufferLength?.(this.buffer.byteLength)
+  }
+
+  private readElementNameCode(startIndex: number): number {
+    const first = this.buffer[startIndex]
+    if (first === undefined || first === 33 || first === slashByte || first === 63) {
+      this.tagNameEnd = 0
+      return richSharedStringTagUnknown
+    }
+    let index = startIndex
+    let localNameStart = startIndex
+    while (index < this.buffer.byteLength && isXmlNameByte(this.buffer[index] ?? 0)) {
+      if (this.buffer[index] === 58) {
+        localNameStart = index + 1
+      }
+      index += 1
+    }
+    this.tagNameEnd = index
+    if (index === localNameStart) {
+      return richSharedStringTagUnknown
+    }
+    if (localNameMatches(this.buffer, localNameStart, index, 'si')) {
+      return richSharedStringTagSi
+    }
+    return localNameMatches(this.buffer, localNameStart, index, 'r') ? richSharedStringTagRun : richSharedStringTagOther
+  }
+}
+
+function findByteTagEnd(bytes: Uint8Array, startIndex: number): number | null {
+  let quote: number | null = null
+  for (let index = startIndex; index < bytes.byteLength; index += 1) {
+    const byte = bytes[index] ?? 0
+    if (quote !== null) {
+      if (byte === quote) {
+        quote = null
+      }
+      continue
+    }
+    if (byte === doubleQuoteByte || byte === singleQuoteByte) {
+      quote = byte
+      continue
+    }
+    if (byte === greaterThanByte) {
+      return index
+    }
+  }
+  return null
+}
+
+function isSelfClosingByteTag(bytes: Uint8Array, tagEnd: number): boolean {
+  let index = tagEnd - 1
+  while (index >= 0 && isAsciiWhitespace(bytes[index] ?? 0)) {
+    index -= 1
+  }
+  return bytes[index] === slashByte
+}
+
+function findByteInRange(bytes: Uint8Array, startIndex: number, endIndex: number, target: number): number | null {
+  for (let index = startIndex; index < endIndex; index += 1) {
+    if (bytes[index] === target) {
+      return index
+    }
+  }
+  return null
+}
+
+function isXmlNameByte(byte: number): boolean {
+  return (
+    (byte >= 65 && byte <= 90) ||
+    (byte >= 97 && byte <= 122) ||
+    (byte >= 48 && byte <= 57) ||
+    byte === 45 ||
+    byte === 46 ||
+    byte === 58 ||
+    byte === 95
+  )
+}
+
+function localNameMatches(bytes: Uint8Array, startIndex: number, endIndex: number, localName: string): boolean {
+  if (endIndex - startIndex !== localName.length) {
+    return false
+  }
+  for (let index = 0; index < localName.length; index += 1) {
+    if (bytes[startIndex + index] !== localName.charCodeAt(index)) {
+      return false
+    }
+  }
+  return true
 }
 
 class LargeSimpleAllSharedStringChunkScanner {
@@ -369,7 +628,7 @@ class LargeSimpleAllSharedStringChunkScanner {
         this.index = opening.start
         return
       }
-      this.entries.push(readLargeSimpleSharedStringEntry(this.buffer.slice(opening.start, xmlEnd), this.readOptions))
+      this.entries.push(readLargeSimpleSharedStringEntryFromRange(this.buffer, opening.start, xmlEnd, this.readOptions))
       this.index = xmlEnd
     }
   }
@@ -440,6 +699,18 @@ function readLargeSimpleSharedStringEntry(xml: string, options: LargeSimpleShare
     return internPlainSharedStringEntry(internSharedStringText(stringItemText(xml), options), options)
   }
   return lazyRichSharedStringEntry(xml, options)
+}
+
+function readLargeSimpleSharedStringEntryFromRange(
+  xml: string,
+  startIndex: number,
+  endIndex: number,
+  options: LargeSimpleSharedStringReadOptions,
+): LargeSimpleSharedStringEntry {
+  if (hasRichTextRunInRange(xml, startIndex, endIndex)) {
+    return lazyRichSharedStringEntry(xml.slice(startIndex, endIndex), options)
+  }
+  return internPlainSharedStringEntry(internSharedStringText(stringItemTextInRange(xml, startIndex, endIndex), options), options)
 }
 
 function lazyRichSharedStringEntry(xml: string, options: LargeSimpleSharedStringReadOptions): LargeSimpleSharedStringEntry {
@@ -629,38 +900,69 @@ function stringItemText(xml: string): string {
     .join('')
 }
 
-function decodeXmlText(value: string): string {
-  if (!value.includes('&')) {
-    return value
+function stringItemTextInRange(xml: string, startIndex: number, endIndex: number): string {
+  const parts: string[] = []
+  let index = startIndex
+  while (index < endIndex) {
+    const opening = findNextElementOpening(xml, 't', index)
+    if (!opening || opening.start >= endIndex) {
+      break
+    }
+    const tagEnd = findTagEnd(xml, opening.nameEnd)
+    if (tagEnd === null || tagEnd >= endIndex) {
+      break
+    }
+    if (isSelfClosingTag(xml, tagEnd)) {
+      index = tagEnd + 1
+      continue
+    }
+    const closingStart = findClosingElementStart(xml, opening.name, tagEnd + 1, endIndex)
+    if (closingStart === null) {
+      break
+    }
+    parts.push(decodeExcelEscapedText(decodeXmlText(xml.slice(tagEnd + 1, closingStart))))
+    const closingEnd = findTagEnd(xml, closingStart + opening.name.length + 2)
+    index = closingEnd === null ? endIndex : closingEnd + 1
   }
-  return value.replace(/&(#x[0-9a-fA-F]+|#[0-9]+|amp|lt|gt|quot|apos);/gu, (_match, entity: string) => {
-    if (entity.startsWith('#x')) {
-      const codePoint = Number.parseInt(entity.slice(2), 16)
-      return isValidXmlCodePoint(codePoint) ? String.fromCodePoint(codePoint) : ''
-    }
-    if (entity.startsWith('#')) {
-      const codePoint = Number.parseInt(entity.slice(1), 10)
-      return isValidXmlCodePoint(codePoint) ? String.fromCodePoint(codePoint) : ''
-    }
-    switch (entity) {
-      case 'amp':
-        return '&'
-      case 'lt':
-        return '<'
-      case 'gt':
-        return '>'
-      case 'quot':
-        return '"'
-      case 'apos':
-        return "'"
-      default:
-        return ''
-    }
-  })
+  return parts.join('')
 }
 
-function isValidXmlCodePoint(value: number): boolean {
-  return Number.isInteger(value) && value >= 0 && value <= 0x10ffff
+function hasRichTextRunInRange(xml: string, startIndex: number, endIndex: number): boolean {
+  let index = startIndex
+  while (index < endIndex) {
+    const openingStart = xml.indexOf('<', index)
+    if (openingStart === -1 || openingStart >= endIndex) {
+      return false
+    }
+    const name = readElementName(xml, openingStart + 1)
+    if (!name) {
+      index = openingStart + 1
+      continue
+    }
+    if (name.end <= endIndex && readLocalName(name.name) === 'r') {
+      return true
+    }
+    index = name.end
+  }
+  return false
+}
+
+function findClosingElementStart(xml: string, name: string, startIndex: number, endIndex: number): number | null {
+  const closingPrefix = `</${name}`
+  let searchIndex = startIndex
+  while (searchIndex < endIndex) {
+    const closingStart = xml.indexOf(closingPrefix, searchIndex)
+    if (closingStart === -1 || closingStart >= endIndex) {
+      return null
+    }
+    const closingNameEnd = closingStart + name.length + 2
+    const next = xml[closingNameEnd]
+    if (closingNameEnd < endIndex && (next === '>' || isAsciiWhitespace(next?.charCodeAt(0) ?? 0))) {
+      return closingStart
+    }
+    searchIndex = closingNameEnd
+  }
+  return null
 }
 
 function isAsciiWhitespace(value: number): boolean {

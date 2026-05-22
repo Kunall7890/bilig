@@ -1,4 +1,4 @@
-import { mkdtempSync, readFileSync, writeFileSync } from 'node:fs'
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 
@@ -12,8 +12,6 @@ import {
 } from '@bilig/excel-fixtures'
 import { ErrorCode, ValueTag, type CellValue } from '@bilig/protocol'
 import { describe, expect, it } from 'vitest'
-
-import { removeMacosExcelTestDir } from './macos-excel-oracle-test-utils.js'
 
 import { WorkPaper, type WorkPaperCellAddress } from '../index.js'
 
@@ -33,9 +31,9 @@ const spacedHeaderRenameOracleCells = [
 ] as const
 const spacedHeaderDeleteOracleCells = [
   { address: 'A1', formula: 'Units Sold', rawValue: 'string\tUnits Sold', value: { kind: 'string', value: 'Units Sold' } },
-  { address: 'C1', formula: '=SUM(#REF!)', rawValue: 'error\t#REF!', value: { kind: 'error', value: String(ErrorCode.Ref) } },
+  { address: 'C1', formula: '=SUM(#REF!)', rawValue: 'blank\t', value: { kind: 'blank' } },
   { address: 'D1', formula: '=SUM(Sales[Units Sold])', rawValue: 'number\t5.0', value: { kind: 'number', value: 5 } },
-  { address: 'E1', formula: '=SUM(SalesQ1)', rawValue: 'error\t#REF!', value: { kind: 'error', value: String(ErrorCode.Ref) } },
+  { address: 'E1', formula: '=SUM(SalesQ1)', rawValue: 'blank\t', value: { kind: 'blank' } },
   { address: 'F1', formula: '=SUM(SalesUnitsFormula)', rawValue: 'number\t5.0', value: { kind: 'number', value: 5 } },
 ] as const
 const spacedHeaderDeleteImportedCells = [
@@ -116,7 +114,7 @@ describe('macOS Desktop Excel structured-reference syntax oracle', () => {
         const imported = importXlsx(new Uint8Array(readFileSync(workbookPath)), 'headless-structured-reference-spaced-headers-saved.xlsx')
         expectImportedValues(imported.snapshot, spacedHeaderOracleCells)
       } finally {
-        removeMacosExcelTestDir(tempDir)
+        rmSync(tempDir, { recursive: true, force: true })
       }
     },
     60_000,
@@ -147,7 +145,7 @@ describe('macOS Desktop Excel structured-reference syntax oracle', () => {
         const imported = importXlsx(new Uint8Array(readFileSync(workbookPath)), 'headless-structured-reference-special-headers-saved.xlsx')
         expectImportedValues(imported.snapshot, specialHeaderOracleCells)
       } finally {
-        removeMacosExcelTestDir(tempDir)
+        rmSync(tempDir, { recursive: true, force: true })
       }
     },
     60_000,
@@ -288,7 +286,7 @@ async function expectExcelStructuralScenario(args: {
     expect(imported.snapshot.workbook.metadata?.definedNames).toEqual(args.expectedDefinedNames)
     expectImportedValues(imported.snapshot, args.expectedImportedCells ?? args.expectedCells)
   } finally {
-    removeMacosExcelTestDir(tempDir)
+    rmSync(tempDir, { recursive: true, force: true })
   }
 }
 

@@ -7,14 +7,12 @@ import { buildLocalFixedRenderTiles } from '../renderer-v3/local-render-tile-mat
 import { buildFixedRenderTilePaneStates } from '../renderer-v3/render-tile-pane-builder.js'
 import type { GridRenderTile, GridRenderTileSceneChange, GridRenderTileSource } from '../renderer-v3/render-tile-source.js'
 import type { WorkbookRenderTilePaneState } from '../renderer-v3/render-tile-pane-state.js'
-import { DirtyMaskV3, type WorkbookDeltaBatchLikeV3 } from '../renderer-v3/tile-damage-index.js'
+import type { WorkbookDeltaBatchLikeV3 } from '../renderer-v3/tile-damage-index.js'
 import type { TileKey53 } from '../renderer-v3/tile-key.js'
 import type { GridTileInterestBatchV3, GridTileReadinessSnapshotV3 } from './gridTileCoordinator.js'
 import type { GridRuntimeHost } from './gridRuntimeHost.js'
-import { hasUnacknowledgedVisibleDirtyTileKeys, resolveAcknowledgedVisibleDirtyPaneTileKeys } from './gridRenderTilePaneRuntimeReadiness.js'
 import {
   buildRetainedFixedRenderTileDataPanesCompatibility,
-  engineHasLocalProjectionRevision,
   isResidentGridRenderTile,
   matchesRenderTileSheetIdentity,
   resolveGridRenderTileInputSheetOrdinal,
@@ -26,21 +24,21 @@ import {
   sameRenderTileDeltaConnectionIdentity,
   sameRetainedFixedRenderTileDataPanesCompatibility,
   sameWorkbookDeltaConnectionIdentity,
-  upsertRenderTileIntoHost,
   shouldForceLocalTilesForWorkbookDelta,
+  upsertRenderTileIntoHost,
   type GridRenderTileInterestRuntimeInput,
   type LocalInvalidationConnectionIdentity,
   type RenderTileDeltaConnectionIdentity,
   type RetainedFixedRenderTileDataPanesCompatibility,
   type WorkbookDeltaConnectionIdentity,
 } from './gridRenderTilePaneRuntimeHelpers.js'
-import { normalizeNonNegativeInteger, resolveLocalRenderGeneration, tileProjectionRevisionIsBehind } from './gridRenderTileRevision.js'
 import {
-  hasCompleteRenderTileGrid,
-  hasReadableRenderTileRects,
-  resolveRenderTileCompletenessProof,
-  tileSelectedTextNeedsLocalRefresh,
-} from './gridRenderTileTrust.js'
+  normalizeNonNegativeInteger,
+  resolveLocalRenderGeneration,
+  tileProjectionRevisionIsBehind,
+  tileSatisfiesRequiredProjectedRevision,
+} from './gridRenderTileRevision.js'
+import { hasCompleteRenderTileGrid, tileSelectedTextNeedsLocalRefresh } from './gridRenderTileTrust.js'
 import { GridVisibleTextRefreshCache } from './gridVisibleTextRefreshCache.js'
 
 type SortedAxisOverrides = readonly (readonly [number, number])[]
@@ -195,7 +193,6 @@ export class GridRenderTilePaneRuntime {
   private localInvalidationConnection: RuntimeConnection<LocalInvalidationConnectionIdentity> | null = null
   private readonly visibleTextRefreshCache = new GridVisibleTextRefreshCache()
   private forceLocalTilesUntilRenderBatchId: number | null = null
-  private lastRenderTileBatchId: number | null = null
 
   resolve(input: GridRenderTilePaneRuntimeInput): GridRenderTilePaneRuntimeState {
     if (!input.hostReady) {
@@ -257,9 +254,6 @@ export class GridRenderTilePaneRuntime {
   noteRenderTileDelta(input: { readonly batchId?: number | null | undefined } = {}): GridRenderTilePaneBridgeState {
     const previous = this.bridgeState
     const renderBatchId = normalizeNonNegativeInteger(input.batchId)
-    if (renderBatchId !== null) {
-      this.lastRenderTileBatchId = Math.max(this.lastRenderTileBatchId ?? 0, renderBatchId)
-    }
     const remoteBatchCaughtUp =
       this.forceLocalTilesUntilRenderBatchId === null || (renderBatchId !== null && renderBatchId >= this.forceLocalTilesUntilRenderBatchId)
     if (previous.forceLocalTiles && remoteBatchCaughtUp) {
@@ -279,12 +273,7 @@ export class GridRenderTilePaneRuntime {
   ): GridRenderTilePaneBridgeState {
     const previous = this.bridgeState
     const forceLocalTiles = input.forceLocalTiles ?? false
-    const workbookSequence = forceLocalTiles ? normalizeNonNegativeInteger(input.sequence) : null
-    const nextRenderBatchId = this.lastRenderTileBatchId === null ? null : this.lastRenderTileBatchId + 1
-    const forceUntilBatchId =
-      forceLocalTiles && (workbookSequence !== null || nextRenderBatchId !== null)
-        ? Math.max(workbookSequence ?? 0, nextRenderBatchId ?? 0)
-        : null
+    const forceUntilBatchId = forceLocalTiles ? normalizeNonNegativeInteger(input.sequence) : null
     if (forceLocalTiles && forceUntilBatchId !== null) {
       this.forceLocalTilesUntilRenderBatchId = Math.max(this.forceLocalTilesUntilRenderBatchId ?? 0, forceUntilBatchId)
     }
@@ -389,7 +378,7 @@ export class GridRenderTilePaneRuntime {
       }
       this.noteWorkbookDeltaDamage({
         forceLocalTiles: shouldForceLocalTilesForWorkbookDelta(batch),
-        sequence: batch.source === 'localOptimistic' ? undefined : batch.seq,
+        sequence: batch.seq,
       })
       listener?.(batch)
     })
@@ -472,7 +461,6 @@ export class GridRenderTilePaneRuntime {
       return
     }
     this.renderTileDeltaConnection?.unsubscribe?.()
-    this.lastRenderTileBatchId = null
     this.renderTileDeltaConnection = {
       identity,
       unsubscribe: this.connectRenderTileDeltas({
@@ -632,7 +620,7 @@ export class GridRenderTilePaneRuntime {
       if (!tile || !matchesRenderTileSheetIdentity(tile.coord, { sheetId: input.sheetId, sheetOrdinal })) {
         continue
       }
-      if (input.gridRuntimeHost.tiles.dirtyTiles.getUnconsumedMask(tileKey) !== 0 || !hasCompleteResidentRenderTilePayload(tile)) {
+      if (input.gridRuntimeHost.tiles.dirtyTiles.getUnconsumedMask(tileKey) !== 0 || !hasCompleteRenderTileGrid(tile)) {
         const localTile = this.buildLocalPreloadTile(input, tileKey, tile)
         if (localTile) {
           tiles.push(localTile)
@@ -679,7 +667,6 @@ export class GridRenderTilePaneRuntime {
     tileKey: TileKey53,
     baseTile: GridRenderTile,
   ): GridRenderTile | null {
-    const generation = resolveLocalRenderGeneration(input)
     const localTiles = buildLocalFixedRenderTiles({
       cameraSeq: input.gridRuntimeHost.snapshot().camera.seq,
       columnWidths: input.columnWidths,
@@ -688,9 +675,9 @@ export class GridRenderTilePaneRuntime {
       editingCell: input.editingCell ?? null,
       engine: input.engine,
       freezeSeq: input.gridRuntimeHost.snapshot().freezeSeq,
-      generation,
+      generation: resolveLocalRenderGeneration(input),
       gridMetrics: input.gridMetrics,
-      reuseStaticGridRectsByTileId: hasCompleteResidentRenderTilePayload(baseTile) ? new Map([[tileKey, baseTile]]) : undefined,
+      reuseStaticGridRectsByTileId: hasCompleteRenderTileGrid(baseTile) ? new Map([[tileKey, baseTile]]) : undefined,
       rowHeights: input.rowHeights,
       selectedCell: input.selectedCell,
       selectedCellSnapshot: input.selectedCellSnapshot,
@@ -734,7 +721,7 @@ export class GridRenderTilePaneRuntime {
 
   private resolveTiles(input: GridRenderTilePaneRuntimeInput): GridRenderTileResolution | null {
     if (input.forceLocalTiles) {
-      return this.buildLocalTiles(input, { mergeCleanRemoteTiles: true })
+      return this.buildLocalTiles(input, { mergeCleanRemoteTiles: this.forceLocalTilesUntilRenderBatchId === null })
     }
 
     if (input.renderTileSource && input.sheetId !== undefined) {
@@ -754,7 +741,6 @@ export class GridRenderTilePaneRuntime {
         return hybrid
       }
     }
-    const generation = resolveLocalRenderGeneration(input)
     return {
       source: 'local',
       tiles: buildLocalFixedRenderTiles({
@@ -765,7 +751,7 @@ export class GridRenderTilePaneRuntime {
         editingCell: input.editingCell ?? null,
         engine: input.engine,
         freezeSeq: input.gridRuntimeHost.snapshot().freezeSeq,
-        generation,
+        generation: resolveLocalRenderGeneration(input),
         gridMetrics: input.gridMetrics,
         rowHeights: input.rowHeights,
         selectedCell: input.selectedCell,
@@ -827,24 +813,18 @@ export class GridRenderTilePaneRuntime {
         sourceTile && sourceTile.coord.sheetId === sheetId && sourceTile.coord.sheetOrdinal === sheetOrdinal
           ? sourceTile
           : this.resolveResidentRenderTile(input, tileKey, sheetId, sheetOrdinal)
-      const dirtyMask = input.gridRuntimeHost.tiles.dirtyTiles.getUnconsumedMask(tileKey)
-      const isDirty = dirtyMask !== 0
+      const isDirty = input.gridRuntimeHost.tiles.dirtyTiles.getUnconsumedMask(tileKey) !== 0
       const isMissingResidentTile = !tile
-      const isMissingGridPayload = tile !== null && !hasCompleteResidentRenderTilePayload(tile)
+      const isMissingGridPayload = tile !== null && !hasCompleteRenderTileGrid(tile)
       const shouldLocalizeDirty = (options.localizeDirtyVisibleTiles ?? true) && isDirty
-      const shouldLocalizeDirtyPresentation = isDirty && (dirtyMask & (DirtyMaskV3.Style | DirtyMaskV3.Rect | DirtyMaskV3.Border)) !== 0
-      const shouldLocalizeProjectedRevision = tileProjectionRevisionIsBehind(tile, input.engine)
-      const hasPendingDirtyRenderTilePatch = isDirty && tile !== null && hasCompleteRenderTileGrid(tile)
       const shouldLocalizeSelectedCellText =
-        !hasPendingDirtyRenderTilePatch &&
-        selectedCellTileKey === tileKey &&
-        tileSelectedTextNeedsLocalRefresh(tile, input.selectedCell, input.selectedCellSnapshot)
+        selectedCellTileKey === tileKey && tileSelectedTextNeedsLocalRefresh(tile, input.selectedCell, input.selectedCellSnapshot)
+      const shouldLocalizeProjectedRevision = tileProjectionRevisionIsBehind(tile, input.engine)
       const shouldLocalizeVisibleText =
         visibleTileKeys.has(tileKey) &&
         this.visibleTextRefreshCache.needsLocalRefresh(tileKey, tile, {
           columnWidths: input.columnWidths,
           engine: input.engine,
-          revisionSensitive: isDirty || engineHasLocalProjectionRevision(input.engine),
           gridMetrics: input.gridMetrics,
           rowHeights: input.rowHeights,
           sceneRevision: input.sceneRevision,
@@ -855,34 +835,19 @@ export class GridRenderTilePaneRuntime {
         })
       const shouldLocalizeEditingCellText =
         editingCellTileKey === tileKey || (input.editingCell !== null && input.editingCell !== undefined && visibleTileKeys.has(tileKey))
-      const canPatchEditingCellTextFromBaseTile =
-        shouldLocalizeEditingCellText &&
-        editingCellTileKey === tileKey &&
-        !shouldLocalizeDirtyPresentation &&
-        (dirtyMask & ~(DirtyMaskV3.Value | DirtyMaskV3.Text)) === 0
       if (
         shouldLocalizeDirty ||
         isMissingResidentTile ||
         isMissingGridPayload ||
-        shouldLocalizeDirtyPresentation ||
         shouldLocalizeProjectedRevision ||
         shouldLocalizeSelectedCellText ||
         shouldLocalizeVisibleText ||
         shouldLocalizeEditingCellText
       ) {
-        const canReuseTileRects =
-          tile &&
-          (hasCompleteRenderTileGrid(tile) ||
-            ((shouldLocalizeSelectedCellText || shouldLocalizeVisibleText || shouldLocalizeEditingCellText) &&
-              hasReadableRenderTileRects(tile)))
         if (
           (shouldLocalizeDirty || shouldLocalizeSelectedCellText || shouldLocalizeVisibleText || shouldLocalizeEditingCellText) &&
-          !shouldLocalizeDirtyPresentation &&
-          !shouldLocalizeProjectedRevision &&
-          (!shouldLocalizeVisibleText || canPatchEditingCellTextFromBaseTile) &&
           tile &&
-          hasCompleteResidentRenderTilePayload(tile) &&
-          canReuseTileRects
+          hasCompleteRenderTileGrid(tile)
         ) {
           dirtyBaseTiles.set(tileKey, tile)
         }
@@ -898,7 +863,6 @@ export class GridRenderTilePaneRuntime {
       return { source: 'remote', tiles: tileKeys.map((tileKey) => remoteTiles.get(tileKey)!) }
     }
 
-    const generation = resolveLocalRenderGeneration(input)
     const localTiles = new Map(
       buildLocalFixedRenderTiles({
         cameraSeq: input.gridRuntimeHost.snapshot().camera.seq,
@@ -907,8 +871,7 @@ export class GridRenderTilePaneRuntime {
         dprBucket: input.dprBucket,
         editingCell: input.editingCell ?? null,
         engine: input.engine,
-        freezeSeq: input.gridRuntimeHost.snapshot().freezeSeq,
-        generation,
+        generation: resolveLocalRenderGeneration(input),
         gridMetrics: input.gridMetrics,
         rowHeights: input.rowHeights,
         selectedCell: input.selectedCell,
@@ -957,10 +920,37 @@ export class GridRenderTilePaneRuntime {
   }
 }
 
-export function getGridRenderTilePaneRuntime(current: unknown): GridRenderTilePaneRuntime {
-  return current instanceof GridRenderTilePaneRuntime ? current : new GridRenderTilePaneRuntime()
+function resolveAcknowledgedVisibleDirtyPaneTileKeys(
+  panes: readonly WorkbookRenderTilePaneState[],
+  input: GridRenderTilePaneRuntimeInput,
+): readonly TileKey53[] {
+  const keys: number[] = []
+  const seen = new Set<number>()
+  for (const pane of panes) {
+    if (pane.drawVisible === false || (pane.tile.dirtyMasks?.length ?? 0) === 0 || seen.has(pane.tile.tileId)) {
+      continue
+    }
+    const requiredProjectedRevision = input.gridRuntimeHost.tiles.dirtyTiles.getRequiredProjectedRevision(pane.tile.tileId)
+    if (!tileSatisfiesRequiredProjectedRevision(pane.tile, input.engine, requiredProjectedRevision)) {
+      continue
+    }
+    seen.add(pane.tile.tileId)
+    keys.push(pane.tile.tileId)
+  }
+  return keys
 }
 
-function hasCompleteResidentRenderTilePayload(tile: GridRenderTile): boolean {
-  return resolveRenderTileCompletenessProof(tile, { requirePacket: tile.packet !== undefined }).complete
+function hasUnacknowledgedVisibleDirtyTileKeys(
+  readiness: GridTileReadinessSnapshotV3,
+  acknowledgedVisibleTileKeys: readonly TileKey53[],
+): boolean {
+  if (readiness.visibleDirtyTileKeys.length === 0) {
+    return false
+  }
+  const acknowledged = new Set(acknowledgedVisibleTileKeys)
+  return readiness.visibleDirtyTileKeys.some((key) => !acknowledged.has(key))
+}
+
+export function getGridRenderTilePaneRuntime(current: unknown): GridRenderTilePaneRuntime {
+  return current instanceof GridRenderTilePaneRuntime ? current : new GridRenderTilePaneRuntime()
 }

@@ -34,7 +34,7 @@ export function tryEvaluateDirectIndexOffset(args: {
   readonly directCriteria: RuntimeDirectCriteriaDescriptor
   readonly runtimeColumnStore: EngineRuntimeColumnStoreService
   readonly readCellValueByIndex: (cellIndex: number | undefined) => CellValue
-  readonly ownerRow?: number | undefined
+  readonly ownerRow: number | undefined
 }): CellValue | undefined {
   if (args.directCriteria.offsetOperand === undefined || args.directCriteria.criteriaPairs.length !== 0) {
     return undefined
@@ -56,7 +56,7 @@ export function tryEvaluateDirectIndexOffset(args: {
   const rowOffset = Math.trunc(offset.value)
   if (rowOffset === 0) {
     if (args.ownerRow === undefined) {
-      return directErrorResult(ErrorCode.Ref)
+      return undefined
     }
     const implicitOffset = args.ownerRow - aggregateRange.rowStart
     if (implicitOffset < 0 || implicitOffset >= aggregateRange.length) {

@@ -1,11 +1,6 @@
 import type { EngineCellMutationRef } from '@bilig/core/headless-runtime'
 import type { LiteralInput } from '@bilig/protocol'
-import {
-  isBlankRawCellContent,
-  isDeferredBatchLiteralContent,
-  isParsableFormulaContent,
-  stripLeadingEquals,
-} from './work-paper-runtime-helpers.js'
+import { isBlankRawCellContent, isDeferredBatchLiteralContent, isFormulaContent, stripLeadingEquals } from './work-paper-runtime-helpers.js'
 import type { RawCellContent } from './work-paper-types.js'
 
 export function buildWorkPaperRawCellMutation(args: {
@@ -17,7 +12,7 @@ export function buildWorkPaperRawCellMutation(args: {
   if (isBlankRawCellContent(args.content)) {
     return { kind: 'clearCell', row: args.row, col: args.col }
   }
-  if (isParsableFormulaContent(args.content)) {
+  if (isFormulaContent(args.content)) {
     return {
       kind: 'setCellFormula',
       row: args.row,
@@ -59,7 +54,7 @@ export function tryEnqueueWorkPaperLiteralMutation(args: {
   readonly cellIndex: number | undefined
   readonly addPotentialNewCell: () => void
 }): boolean {
-  if (!args.enabled || !isDeferredBatchLiteralContent(args.content) || isParsableFormulaContent(args.content)) {
+  if (!args.enabled || !isDeferredBatchLiteralContent(args.content) || isFormulaContent(args.content)) {
     return false
   }
   args.queue.push({

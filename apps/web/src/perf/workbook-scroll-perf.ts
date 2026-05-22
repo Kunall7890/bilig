@@ -28,7 +28,6 @@ interface WorkbookScrollPerfCounters {
   canvasPaints: Record<string, number>
   surfaceCommits: Record<string, number>
   typeGpuBufferWriteBytesByKind: Record<string, number>
-  typeGpuBufferWriteBytesByLabel: Record<string, number>
   typeGpuConfigures: number
   typeGpuSubmits: number
   typeGpuDrawCalls: number
@@ -61,10 +60,6 @@ interface WorkbookScrollPerfCounters {
   typeGpuTextAxisOnlySyncAuthoritativeFullTile: number
   typeGpuTextRunPayloadRebuilds: number
   typeGpuTextRunPayloadReuses: number
-  typeGpuTextBuildMs: number
-  typeGpuTextDecorationMs: number
-  typeGpuTextSyncMs: number
-  typeGpuTextWriteMs: number
 }
 
 interface WorkbookScrollPerfSamples {
@@ -72,12 +67,6 @@ interface WorkbookScrollPerfSamples {
   readonly longTasksMs: number[]
   readonly inputToDrawMs: number[]
   readonly mutationToVisibleMs: number[]
-}
-
-interface WorkbookLongTaskSample {
-  readonly durationMs: number
-  readonly name: string
-  readonly startTimeMs: number
 }
 
 interface WorkbookScrollPerfSummary {
@@ -91,7 +80,6 @@ interface WorkbookScrollPerfSummary {
 export interface WorkbookScrollPerfReport {
   readonly workload: string
   readonly fixture: WorkbookScrollPerfFixture | null
-  readonly longTasks: readonly WorkbookLongTaskSample[]
   readonly samples: WorkbookScrollPerfSamples
   readonly summary: {
     readonly frameMs: WorkbookScrollPerfSummary
@@ -130,7 +118,6 @@ class WorkbookScrollPerfCollector {
     canvasPaints: {},
     surfaceCommits: {},
     typeGpuBufferWriteBytesByKind: {},
-    typeGpuBufferWriteBytesByLabel: {},
     typeGpuAtlasUploadBytes: 0,
     typeGpuAtlasDirtyPages: 0,
     typeGpuAtlasDirtyPageUploadBytes: 0,
@@ -160,10 +147,6 @@ class WorkbookScrollPerfCollector {
     typeGpuTextAxisOnlySyncSignatureRejects: 0,
     typeGpuTextRunPayloadRebuilds: 0,
     typeGpuTextRunPayloadReuses: 0,
-    typeGpuTextBuildMs: 0,
-    typeGpuTextDecorationMs: 0,
-    typeGpuTextSyncMs: 0,
-    typeGpuTextWriteMs: 0,
     typeGpuUniformWriteBytes: 0,
     typeGpuVertexUploadBytes: 0,
     typeGpuOverlayUploadBytes: 0,
@@ -171,7 +154,6 @@ class WorkbookScrollPerfCollector {
   private baselineCounters: WorkbookScrollPerfCounters | null = null
   private frameSamples: number[] = []
   private longTaskSamples: number[] = []
-  private longTasks: WorkbookLongTaskSample[] = []
   private inputToDrawSamples: number[] = []
   private mutationToVisibleSamples: number[] = []
   private workload = 'idle'
@@ -295,7 +277,6 @@ class WorkbookScrollPerfCollector {
     this.totalCounters.typeGpuVertexUploadBytes += bytes
     const kind = classifyTypeGpuBufferWrite(label)
     this.totalCounters.typeGpuBufferWriteBytesByKind[kind] = (this.totalCounters.typeGpuBufferWriteBytesByKind[kind] ?? 0) + bytes
-    this.totalCounters.typeGpuBufferWriteBytesByLabel[label] = (this.totalCounters.typeGpuBufferWriteBytesByLabel[label] ?? 0) + bytes
   }
 
   noteTypeGpuOverlayWrite(bytes: number): void {
@@ -345,10 +326,6 @@ class WorkbookScrollPerfCollector {
     readonly atlasGeometryResyncs?: number | undefined
     readonly glyphDependencies: number
     readonly pageDependencies: number
-    readonly textBuildMs?: number | undefined
-    readonly textDecorationMs?: number | undefined
-    readonly textSyncMs?: number | undefined
-    readonly textWriteMs?: number | undefined
     readonly axisOnlySyncAccepts?: number | undefined
     readonly axisOnlySyncRejects?: number | undefined
     readonly axisOnlySyncMissingGlyphRejects?: number | undefined
@@ -358,10 +335,6 @@ class WorkbookScrollPerfCollector {
   }): void {
     this.totalCounters.typeGpuTextRunPayloadReuses += input.reusedRunPayloads
     this.totalCounters.typeGpuTextRunPayloadRebuilds += input.rebuiltRunPayloads
-    this.totalCounters.typeGpuTextBuildMs += input.textBuildMs ?? 0
-    this.totalCounters.typeGpuTextDecorationMs += input.textDecorationMs ?? 0
-    this.totalCounters.typeGpuTextSyncMs += input.textSyncMs ?? 0
-    this.totalCounters.typeGpuTextWriteMs += input.textWriteMs ?? 0
     this.totalCounters.typeGpuTextAtlasGeometryRetries += input.atlasGeometryRetries
     this.totalCounters.typeGpuTextAtlasGeometryResyncs += input.atlasGeometryResyncs ?? 0
     this.totalCounters.typeGpuTextGlyphDependencies += input.glyphDependencies
@@ -424,7 +397,6 @@ class WorkbookScrollPerfCollector {
     const report: WorkbookScrollPerfReport = {
       workload: this.workload,
       fixture: this.fixture,
-      longTasks: [...this.longTasks],
       samples: {
         frameMs: [...this.frameSamples],
         inputToDrawMs: [...this.inputToDrawSamples],
@@ -442,7 +414,6 @@ class WorkbookScrollPerfCollector {
     this.baselineCounters = null
     this.frameSamples = []
     this.longTaskSamples = []
-    this.longTasks = []
     this.inputToDrawSamples = []
     this.mutationToVisibleSamples = []
     this.lastFrameAt = null
@@ -461,7 +432,6 @@ class WorkbookScrollPerfCollector {
             this.baselineCounters = cloneCounters(this.totalCounters)
             this.frameSamples = []
             this.longTaskSamples = []
-            this.longTasks = []
             this.inputToDrawSamples = []
             this.mutationToVisibleSamples = []
             this.lastScrollInputAt = null
@@ -487,11 +457,6 @@ class WorkbookScrollPerfCollector {
         }
         for (const entry of list.getEntries()) {
           this.longTaskSamples.push(entry.duration)
-          this.longTasks.push({
-            durationMs: entry.duration,
-            name: entry.name,
-            startTimeMs: entry.startTime,
-          })
         }
       })
       this.observer.observe({ entryTypes: ['longtask'] })
@@ -512,7 +477,6 @@ function cloneCounters(counters: WorkbookScrollPerfCounters): WorkbookScrollPerf
     fullPatchBroadcasts: { ...counters.fullPatchBroadcasts },
     surfaceCommits: { ...counters.surfaceCommits },
     typeGpuBufferWriteBytesByKind: { ...counters.typeGpuBufferWriteBytesByKind },
-    typeGpuBufferWriteBytesByLabel: { ...counters.typeGpuBufferWriteBytesByLabel },
   }
 }
 
@@ -541,10 +505,6 @@ function subtractCounters(counters: WorkbookScrollPerfCounters, baseline: Workbo
     canvasPaints: subtractRecordCounters(counters.canvasPaints, baseline.canvasPaints),
     surfaceCommits: subtractRecordCounters(counters.surfaceCommits, baseline.surfaceCommits),
     typeGpuBufferWriteBytesByKind: subtractRecordCounters(counters.typeGpuBufferWriteBytesByKind, baseline.typeGpuBufferWriteBytesByKind),
-    typeGpuBufferWriteBytesByLabel: subtractRecordCounters(
-      counters.typeGpuBufferWriteBytesByLabel,
-      baseline.typeGpuBufferWriteBytesByLabel,
-    ),
     typeGpuAtlasUploadBytes: counters.typeGpuAtlasUploadBytes - baseline.typeGpuAtlasUploadBytes,
     typeGpuAtlasDirtyPages: counters.typeGpuAtlasDirtyPages - baseline.typeGpuAtlasDirtyPages,
     typeGpuAtlasDirtyPageUploadBytes: counters.typeGpuAtlasDirtyPageUploadBytes - baseline.typeGpuAtlasDirtyPageUploadBytes,
@@ -578,10 +538,6 @@ function subtractCounters(counters: WorkbookScrollPerfCounters, baseline: Workbo
       counters.typeGpuTextAxisOnlySyncAuthoritativeFullTile - baseline.typeGpuTextAxisOnlySyncAuthoritativeFullTile,
     typeGpuTextRunPayloadRebuilds: counters.typeGpuTextRunPayloadRebuilds - baseline.typeGpuTextRunPayloadRebuilds,
     typeGpuTextRunPayloadReuses: counters.typeGpuTextRunPayloadReuses - baseline.typeGpuTextRunPayloadReuses,
-    typeGpuTextBuildMs: counters.typeGpuTextBuildMs - baseline.typeGpuTextBuildMs,
-    typeGpuTextDecorationMs: counters.typeGpuTextDecorationMs - baseline.typeGpuTextDecorationMs,
-    typeGpuTextSyncMs: counters.typeGpuTextSyncMs - baseline.typeGpuTextSyncMs,
-    typeGpuTextWriteMs: counters.typeGpuTextWriteMs - baseline.typeGpuTextWriteMs,
     typeGpuUniformWriteBytes: counters.typeGpuUniformWriteBytes - baseline.typeGpuUniformWriteBytes,
     typeGpuVertexUploadBytes: counters.typeGpuVertexUploadBytes - baseline.typeGpuVertexUploadBytes,
     typeGpuOverlayUploadBytes: counters.typeGpuOverlayUploadBytes - baseline.typeGpuOverlayUploadBytes,
@@ -602,19 +558,7 @@ function subtractRecordCounters(
 
 function classifyTypeGpuBufferWrite(label: string): string {
   if (label.startsWith('tile-text:')) {
-    if (label.endsWith(':span')) {
-      return 'tileTextSpan'
-    }
-    if (label.endsWith(':axis-span')) {
-      return 'tileTextAxisSpan'
-    }
-    if (label.includes(':text-run-')) {
-      return 'tileTextRunPatch'
-    }
-    if (label.includes(':full-')) {
-      return label.slice(label.lastIndexOf(':') + 1)
-    }
-    return 'tileTextFull'
+    return label.endsWith(':span') ? 'tileTextSpan' : 'tileTextFull'
   }
   if (label.startsWith('tile-rect:')) {
     if (label.endsWith(':span')) {

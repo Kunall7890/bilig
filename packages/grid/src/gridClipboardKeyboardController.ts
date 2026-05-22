@@ -72,7 +72,6 @@ interface ApplyGridClipboardValuesOptions {
 interface CaptureGridClipboardSelectionOptions {
   engine: GridEngineLike
   getCellEditorSeed?: ((sheetName: string, address: string) => string | undefined) | undefined
-  getCellResolvedValue?: ((sheetName: string, address: string) => string | undefined) | undefined
   gridSelection: GridSelection
   internalClipboardRef: MutableRefObject<InternalClipboardRange | null>
   operation?: InternalClipboardRange['operation']
@@ -115,12 +114,10 @@ interface HandleGridKeyOptions {
 }
 
 interface HandleGridPasteCaptureOptions {
-  applyClipboardValues(this: void, target: Item, values: readonly (readonly string[])[], options?: ApplyClipboardValuesOptions): void
+  applyClipboardValues(this: void, target: Item, values: readonly (readonly string[])[]): void
   event: GridClipboardEventLike
   gridSelection: GridSelection
-  internalClipboardRef?: MutableRefObject<InternalClipboardRange | null> | undefined
   pendingKeyboardPasteSequenceRef: MutableRefObject<number>
-  pasteValuesOnly?: boolean | undefined
   selectedCell: SelectedCellLike
   suppressNextNativePasteRef: MutableRefObject<boolean>
 }
@@ -230,7 +227,6 @@ function resolveSystemClipboardValues(
 export function captureGridClipboardSelection({
   engine,
   getCellEditorSeed,
-  getCellResolvedValue,
   gridSelection,
   internalClipboardRef,
   operation = 'copy',
@@ -253,14 +249,12 @@ export function captureGridClipboardSelection({
       const editorSeed = getCellEditorSeed?.(sheetName, address)
       if (editorSeed !== undefined) {
         rowValues.push(editorSeed)
-        rowValuesOnly.push(getCellResolvedValue?.(sheetName, address) ?? editorSeed)
+        rowValuesOnly.push(editorSeed)
         continue
       }
       const snapshot = engine.getCell(sheetName, address)
       rowValues.push(cellToEditorSeed(snapshot))
-      rowValuesOnly.push(
-        getCellResolvedValue?.(sheetName, address) ?? snapshotToRenderCell(snapshot, engine.getCellStyle(snapshot.styleId)).displayText,
-      )
+      rowValuesOnly.push(snapshotToRenderCell(snapshot, engine.getCellStyle(snapshot.styleId)).displayText)
     }
     values.push(rowValues)
     valuesOnly.push(rowValuesOnly)
@@ -292,19 +286,6 @@ function writeClipboardPlainTextFromKeyboard(
       pendingClipboardCopySequenceRef.current = 0
     }
   })()
-}
-
-function clearSuppressedNativePasteAfterDuplicateWindow(suppressNextNativePasteRef: MutableRefObject<boolean>): void {
-  const clearIfStillArmed = () => {
-    if (suppressNextNativePasteRef.current) {
-      suppressNextNativePasteRef.current = false
-    }
-  }
-  if (typeof window !== 'undefined') {
-    window.setTimeout(clearIfStillArmed, 250)
-    return
-  }
-  globalThis.setTimeout(clearIfStillArmed, 250)
 }
 
 export function handleGridKey({
@@ -450,7 +431,6 @@ export function handleGridKey({
       pendingKeyboardPasteSequenceRef.current += 1
       const sequence = pendingKeyboardPasteSequenceRef.current
       if (pendingClipboardCopySequenceRef.current !== 0 && internalClipboardRef.current) {
-        suppressNextNativePasteRef.current = true
         if (pendingKeyboardPasteSequenceRef.current !== sequence) {
           return
         }
@@ -458,12 +438,10 @@ export function handleGridKey({
         applyClipboardValues(action.target, resolveKeyboardClipboardValues(internalClipboardRef.current, action.valuesOnly), {
           pasteValuesOnly: action.valuesOnly,
         })
+        suppressNextNativePasteRef.current = true
         return
       }
       if (typeof navigator !== 'undefined' && navigator.clipboard?.readText) {
-        if (action.valuesOnly) {
-          suppressNextNativePasteRef.current = true
-        }
         void (async () => {
           try {
             const rawText = await navigator.clipboard.readText()
@@ -473,17 +451,10 @@ export function handleGridKey({
             pendingKeyboardPasteSequenceRef.current = 0
             const values = resolveSystemClipboardValues(rawText, internalClipboardRef.current, action.valuesOnly)
             applyClipboardValues(action.target, values, { pasteValuesOnly: action.valuesOnly })
-            if (!action.valuesOnly) {
-              suppressNextNativePasteRef.current = true
-            } else {
-              clearSuppressedNativePasteAfterDuplicateWindow(suppressNextNativePasteRef)
-            }
+            suppressNextNativePasteRef.current = true
           } catch {
             if (pendingKeyboardPasteSequenceRef.current === sequence) {
               pendingKeyboardPasteSequenceRef.current = 0
-            }
-            if (action.valuesOnly) {
-              clearSuppressedNativePasteAfterDuplicateWindow(suppressNextNativePasteRef)
             }
           }
         })()
@@ -566,8 +537,6 @@ export function handleGridPasteCapture({
   applyClipboardValues,
   event,
   gridSelection,
-  internalClipboardRef,
-  pasteValuesOnly = false,
   pendingKeyboardPasteSequenceRef,
   selectedCell,
   suppressNextNativePasteRef,
@@ -580,16 +549,7 @@ export function handleGridPasteCapture({
   }
   const rawText = event.clipboardData?.getData('text/plain') ?? ''
   const rawHtml = event.clipboardData?.getData('text/html') ?? ''
-  const internalClipboard = internalClipboardRef?.current ?? null
-  const shouldPasteValuesOnly =
-    pasteValuesOnly ||
-    (rawHtml.length === 0 &&
-      internalClipboard !== null &&
-      rawText === internalClipboard.plainText &&
-      internalClipboard.valuesOnlyPlainText !== internalClipboard.plainText)
-  const values = shouldPasteValuesOnly
-    ? resolveSystemClipboardValues(rawText, internalClipboard, true)
-    : parseClipboardContent(rawText, rawHtml)
+  const values = parseClipboardContent(rawText, rawHtml)
   if (values.length === 0 || values[0]?.length === 0) {
     return
   }
@@ -598,11 +558,7 @@ export function handleGridPasteCapture({
   }
 
   const target = gridSelection.current?.cell ?? [selectedCell.col, selectedCell.row]
-  if (shouldPasteValuesOnly) {
-    applyClipboardValues(target, values, { pasteValuesOnly: true })
-  } else {
-    applyClipboardValues(target, values)
-  }
+  applyClipboardValues(target, values)
   event.preventDefault()
   event.stopPropagation()
 }

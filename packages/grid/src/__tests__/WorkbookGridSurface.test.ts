@@ -1,4 +1,5 @@
 import { describe, expect, test } from 'vitest'
+import { MAX_COLS, MAX_ROWS } from '@bilig/protocol'
 import {
   hasSelectionTargetChanged,
   resolveWorkbookGridSurfaceDisplayCell,
@@ -315,7 +316,7 @@ describe('WorkbookGridSurface selection autoscroll', () => {
     ).toBe(rowSelection)
   })
 
-  test('keeps regular range selections as overlay-only state', () => {
+  test('passes the visible range to native text occlusion for regular range selections', () => {
     const selection = createRangeSelection(createGridSelection(1, 1), [1, 1], [3, 4])
 
     expect(
@@ -323,22 +324,22 @@ describe('WorkbookGridSurface selection autoscroll', () => {
         gridSelection: selection,
         selectionRange: selection.current?.range ?? null,
       }),
-    ).toEqual([])
+    ).toEqual([{ x: 1, y: 1, width: 3, height: 4 }])
   })
 
-  test('keeps column and row selections from mutating tile text payloads', () => {
+  test('expands column and row selections for native text occlusion instead of only clipping the active cell slice', () => {
     expect(
       resolveWorkbookGridSurfaceTextOcclusionRanges({
         gridSelection: createColumnSliceSelection(2, 4, 1),
         selectionRange: { x: 2, y: 1, width: 3, height: 1 },
       }),
-    ).toEqual([])
+    ).toEqual([{ x: 2, y: 0, width: 3, height: MAX_ROWS }])
 
     expect(
       resolveWorkbookGridSurfaceTextOcclusionRanges({
         gridSelection: createRowSliceSelection(1, 4, 6),
         selectionRange: { x: 1, y: 4, width: 1, height: 3 },
       }),
-    ).toEqual([])
+    ).toEqual([{ x: 0, y: 4, width: MAX_COLS, height: 3 }])
   })
 })

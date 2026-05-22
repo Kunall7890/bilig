@@ -1,10 +1,8 @@
 import { Effect } from 'effect'
 import type { EngineOp, EngineOpBatch } from '@bilig/workbook'
 import type { CellRangeRef, CellSnapshot } from '@bilig/protocol'
-import { formatAddress, parseCellAddress, rewriteFormulaForStructuralTransform } from '@bilig/formula'
 import { createBatch } from '../../replica-state.js'
 import type { WorkbookStore } from '../../workbook-store.js'
-import { mapStructuralAxisIndex, structuralTransformForOp } from '../../engine-structural-utils.js'
 import {
   cellMutationRefToEngineOp,
   cloneCellMutationRef,
@@ -13,7 +11,6 @@ import {
   type EngineExistingLiteralCellMutationRef,
   type EngineExistingNumericCellMutationRef,
   type EngineExistingNumericCellMutationResult,
-  type EngineFreshDirectAggregateMatrixPlan,
 } from '../../cell-mutations-at.js'
 import type {
   EngineRuntimeState,
@@ -36,43 +33,21 @@ import {
   transactionRecordOps,
 } from './mutation-transaction-records.js'
 import { normalizeRenderCommitOps } from './mutation-render-commit-normalizer.js'
-import { isMutationStructuralInsertOp } from './mutation-cell-content-helpers.js'
+import { inverseMutationStructuralInsertOp, isMutationStructuralInsertOp } from './mutation-cell-content-helpers.js'
 import { createMutationCellRestoreHistoryHelpers, tryMutationCellRefsFromOps } from './mutation-cell-restore-history.js'
 import { createMutationStructuralDeleteInverseHelpers } from './mutation-structural-delete-inverse.js'
-import type { CellStateRestoreOptions } from './cell-state-service.js'
-import { mutationErrorMessage } from './operation-change-helpers.js'
 import type { EngineMutationService } from './mutation-service-types.js'
 import { tryExecuteMutationRenderCommitFastPath } from './mutation-render-commit-fast-path.js'
 import { createMutationRangeOperations } from './mutation-range-operations.js'
 import { createMutationCoreInverseOps } from './mutation-core-inverse-ops.js'
-import { isTableHeaderCell } from './operation-table-header-rename.js'
-import {
-  assertLocalDataValidationForExistingLiteralCellMutation,
-  assertLocalDataValidationForExistingNumericCellMutation,
-  assertLocalDataValidationsForCellMutationRefs,
-  assertLocalDataValidationsForEngineOps,
-} from './data-validation-enforcement.js'
 
 export type { EngineMutationService } from './mutation-service-types.js'
-
-function createCellMutationBatchApplyOptions(freshDirectAggregateMatrixPlan: EngineFreshDirectAggregateMatrixPlan | undefined):
-  | {
-      readonly freshDirectAggregateMatrixPlan?: EngineFreshDirectAggregateMatrixPlan
-    }
-  | undefined {
-  return freshDirectAggregateMatrixPlan === undefined
-    ? undefined
-    : {
-        freshDirectAggregateMatrixPlan,
-      }
-}
 
 export function createEngineMutationService(args: {
   readonly state: Pick<
     EngineRuntimeState,
     | 'replicaState'
     | 'batchListeners'
-    | 'strings'
     | 'formulas'
     | 'undoStack'
     | 'redoStack'
@@ -99,7 +74,6 @@ export function createEngineMutationService(args: {
     snapshot: CellSnapshot,
     sourceSheetName?: string,
     sourceAddress?: string,
-    options?: CellStateRestoreOptions,
   ) => EngineOp[]
   readonly applyBatchNow: (
     batch: EngineOpBatch,
@@ -117,9 +91,6 @@ export function createEngineMutationService(args: {
     batch: EngineOpBatch | null,
     source: 'local' | 'restore' | 'undo' | 'redo',
     potentialNewCells?: number,
-    options?: {
-      readonly freshDirectAggregateMatrixPlan?: EngineFreshDirectAggregateMatrixPlan
-    },
   ) => void
   readonly applyExistingNumericCellMutationsAtBatchNow?: (
     record: Extract<TransactionRecord, { kind: 'existing-numeric-cell-mutations' }>,
@@ -132,7 +103,6 @@ export function createEngineMutationService(args: {
   readonly applyExistingLiteralCellMutationAtNow?: (
     request: EngineExistingLiteralCellMutationRef,
   ) => EngineExistingNumericCellMutationResult | null
-  readonly settleImportedFormulas?: () => void
   readonly hasExternallyVisibleLocalMutationObservers?: () => boolean
 }): EngineMutationService {
   const emptyBatchOps: EngineOp[] = []
@@ -162,42 +132,25 @@ export function createEngineMutationService(args: {
       ? { hasFormulaFamilyStructuralSourceTransforms: args.hasFormulaFamilyStructuralSourceTransforms }
       : {}),
   })
-  const { captureFormulaCellStateForStructuralMoveUndo, captureFormulaCellStateForStructuralUndo, buildStructuralDeleteInverseRecord } =
-    createMutationStructuralDeleteInverseHelpers({
-      state: args.state,
-      getCellByIndex: args.getCellByIndex,
-      toCellStateOps: (sheetName, address, snapshot, options) =>
-        args.toCellStateOps(sheetName, address, snapshot, undefined, undefined, options),
-      ...(args.getFormulaFamilyStructuralSourceTransform
-        ? { getFormulaFamilyStructuralSourceTransform: args.getFormulaFamilyStructuralSourceTransform }
-        : {}),
-      ...(args.hasFormulaFamilyStructuralSourceTransforms
-        ? { hasFormulaFamilyStructuralSourceTransforms: args.hasFormulaFamilyStructuralSourceTransforms }
-        : {}),
-    })
+  const { captureFormulaCellStateForStructuralUndo, buildStructuralDeleteInverseRecord } = createMutationStructuralDeleteInverseHelpers({
+    state: args.state,
+    getCellByIndex: args.getCellByIndex,
+    toCellStateOps: (sheetName, address, snapshot) => args.toCellStateOps(sheetName, address, snapshot),
+    ...(args.getFormulaFamilyStructuralSourceTransform
+      ? { getFormulaFamilyStructuralSourceTransform: args.getFormulaFamilyStructuralSourceTransform }
+      : {}),
+    ...(args.hasFormulaFamilyStructuralSourceTransforms
+      ? { hasFormulaFamilyStructuralSourceTransforms: args.hasFormulaFamilyStructuralSourceTransforms }
+      : {}),
+  })
   const { buildInverseOps } = createMutationCoreInverseOps({
     workbook: args.state.workbook,
     captureSheetCellState: args.captureSheetCellState,
     captureRowRangeCellState: args.captureRowRangeCellState,
     captureColumnRangeCellState: args.captureColumnRangeCellState,
     restoreCellOps: args.restoreCellOps,
-    captureFormulaCellStateForStructuralMoveUndo,
     captureFormulaCellStateForStructuralUndo,
   })
-
-  const isTableHeaderValueMutationOp = (op: EngineOp): boolean => {
-    if (op.kind !== 'setCellValue' && op.kind !== 'clearCell') {
-      return false
-    }
-    if (op.skipTableHeaderRename === true) {
-      return false
-    }
-    if (!args.state.workbook.hasTables()) {
-      return false
-    }
-    const address = parseCellAddress(op.address, op.sheetName)
-    return isTableHeaderCell(args.state.workbook.listTables(), op.sheetName, address.row, address.col)
-  }
 
   const tryBuildSingleCellOpHistoryWithoutSnapshot = (
     ops: readonly EngineOp[],
@@ -212,19 +165,7 @@ export function createEngineMutationService(args: {
     if (op.kind !== 'setCellValue' && op.kind !== 'setCellFormula' && op.kind !== 'clearCell') {
       return null
     }
-    const skipTableHeaderRename =
-      op.kind === 'setCellFormula'
-        ? (() => {
-            if (!args.state.workbook.hasTables()) {
-              return false
-            }
-            const address = parseCellAddress(op.address, op.sheetName)
-            return isTableHeaderCell(args.state.workbook.listTables(), op.sheetName, address.row, address.col)
-          })()
-        : (op.kind === 'setCellValue' || op.kind === 'clearCell') && op.skipTableHeaderRename === true
-    const inverseOp = tryRestoreSimpleCellOpFromStore(op.sheetName, op.address, {
-      skipTableHeaderRename,
-    })
+    const inverseOp = tryRestoreSimpleCellOpFromStore(op.sheetName, op.address)
     if (inverseOp === null) {
       return null
     }
@@ -247,61 +188,45 @@ export function createEngineMutationService(args: {
   }
 
   const canonicalizeForwardOps = (ops: readonly EngineOp[]): EngineOp[] =>
-    ops.flatMap((op) => {
+    ops.map((op) => {
       if (op.kind === 'insertRows') {
-        const entries = op.entries?.map((entry) => ({ ...entry })) ?? args.state.workbook.createRowAxisEntries(op.start, op.count)
-        return [{ ...op, entries }]
+        return op.entries
+          ? { ...op, entries: op.entries.map((entry) => ({ ...entry })) }
+          : {
+              ...op,
+              entries: args.state.workbook.snapshotRowAxisEntries(op.sheetName, op.start, op.count),
+            }
       }
 
       if (op.kind === 'insertColumns') {
-        const entries = op.entries?.map((entry) => ({ ...entry })) ?? args.state.workbook.createColumnAxisEntries(op.start, op.count)
-        return [{ ...op, entries }]
+        return op.entries
+          ? { ...op, entries: op.entries.map((entry) => ({ ...entry })) }
+          : {
+              ...op,
+              entries: args.state.workbook.snapshotColumnAxisEntries(op.sheetName, op.start, op.count),
+            }
       }
 
-      if (op.kind === 'moveRows') {
-        return [structuredClone(op), ...captureFormulaCellStateForStructuralMoveUndo(op.sheetName, 'row', op.start, op.count, op.target)]
-      }
-
-      if (op.kind === 'moveColumns') {
-        return [structuredClone(op), ...captureFormulaCellStateForStructuralMoveUndo(op.sheetName, 'column', op.start, op.count, op.target)]
-      }
-
-      return [structuredClone(op)]
+      return structuredClone(op)
     })
 
-  const structuralFormulaForwardCorrections = (
+  const canonicalizeStructuralInsertForwardOp = (
     op: Extract<EngineOp, { kind: 'insertRows' | 'insertColumns' }>,
-    beforeFormulaOps: readonly EngineOp[],
-    afterFormulaOps: readonly EngineOp[],
-  ): EngineOp[] => {
-    if (beforeFormulaOps.length === 0 || afterFormulaOps.length === 0) {
-      return emptyBatchOps
+  ): Extract<EngineOp, { kind: 'insertRows' | 'insertColumns' }> => {
+    if (op.kind === 'insertRows') {
+      const entries = args.state.workbook.snapshotRowAxisEntries(op.sheetName, op.start, op.count)
+      return {
+        ...op,
+        entries:
+          entries.length === 0 && op.count > 0 ? args.state.workbook.materializeRowAxisEntries(op.sheetName, op.start, op.count) : entries,
+      }
     }
-    const transform = structuralTransformForOp(op)
-    const expectedFormulaByCell = new Map<string, string>()
-    beforeFormulaOps.forEach((beforeOp) => {
-      if (beforeOp.kind !== 'setCellFormula') {
-        return
-      }
-      const owner = parseCellAddress(beforeOp.address, beforeOp.sheetName)
-      const ownerRow =
-        beforeOp.sheetName === op.sheetName && transform.axis === 'row' ? mapStructuralAxisIndex(owner.row, transform) : owner.row
-      const ownerCol =
-        beforeOp.sheetName === op.sheetName && transform.axis === 'column' ? mapStructuralAxisIndex(owner.col, transform) : owner.col
-      if (ownerRow === undefined || ownerCol === undefined) {
-        return
-      }
-      const address = formatAddress(ownerRow, ownerCol)
-      const formula = rewriteFormulaForStructuralTransform(beforeOp.formula, beforeOp.sheetName, op.sheetName, transform)
-      expectedFormulaByCell.set(`${beforeOp.sheetName}\0${address}`, formula)
-    })
-    return afterFormulaOps.flatMap((afterOp) => {
-      if (afterOp.kind !== 'setCellFormula') {
-        return emptyBatchOps
-      }
-      const expected = expectedFormulaByCell.get(`${afterOp.sheetName}\0${afterOp.address}`)
-      return expected === afterOp.formula ? emptyBatchOps : [afterOp]
-    })
+    const entries = args.state.workbook.snapshotColumnAxisEntries(op.sheetName, op.start, op.count)
+    return {
+      ...op,
+      entries:
+        entries.length === 0 && op.count > 0 ? args.state.workbook.materializeColumnAxisEntries(op.sheetName, op.start, op.count) : entries,
+    }
   }
 
   const executeTransactionNow = (
@@ -315,9 +240,6 @@ export function createEngineMutationService(args: {
       (record.kind === 'existing-numeric-cell-mutations' && record.sheetIds.length === 0)
     ) {
       return
-    }
-    if (source === 'local') {
-      assertLocalDataValidationsForEngineOps(args.state, transactionRecordOps(args.state.workbook, record))
     }
     if (record.kind === 'single-existing-numeric-cell-mutation') {
       const ref = singleExistingNumericCellMutationRecordToRef(record)
@@ -397,7 +319,6 @@ export function createEngineMutationService(args: {
     if (ops.length === 0) {
       return null
     }
-    assertLocalDataValidationsForEngineOps(args.state, ops)
     if (
       options.returnUndoOps === false &&
       ops.length === 1 &&
@@ -405,40 +326,11 @@ export function createEngineMutationService(args: {
       isMutationStructuralInsertOp(ops[0]!)
     ) {
       const op = ops[0]
-      const appliedForwardOp = canonicalizeForwardOps([op])[0]!
-      const inverseOps = buildInverseOps([op])
-      const inverse =
-        inverseOps.length === 1
-          ? createLazySingleOpTransactionRecord(inverseOps[0]!, ops.length)
-          : createOpsTransactionRecord(inverseOps, ops.length)
-      const beforeFormulaForwardOps = captureFormulaCellStateForStructuralMoveUndo(
-        op.sheetName,
-        op.kind === 'insertRows' ? 'row' : 'column',
-        op.start,
-        op.count,
-        op.start,
-      )
-      applyForward(
-        potentialNewCells === undefined
-          ? { kind: 'single-op', op: appliedForwardOp }
-          : { kind: 'single-op', op: appliedForwardOp, potentialNewCells },
-      )
+      applyForward(potentialNewCells === undefined ? { kind: 'single-op', op } : { kind: 'single-op', op, potentialNewCells })
       if (args.state.getTransactionReplayDepth() === 0) {
-        const afterFormulaForwardOps = captureFormulaCellStateForStructuralMoveUndo(
-          op.sheetName,
-          op.kind === 'insertRows' ? 'row' : 'column',
-          op.start,
-          op.count,
-          op.start,
-        )
-        const structuralFormulaForwardOps = structuralFormulaForwardCorrections(op, beforeFormulaForwardOps, afterFormulaForwardOps)
-        const forwardOps = [appliedForwardOp, ...structuralFormulaForwardOps]
         args.state.undoStack.push({
-          forward:
-            forwardOps.length === 1
-              ? createLazySingleOpTransactionRecord(forwardOps[0]!, potentialNewCells)
-              : createOpsTransactionRecord(forwardOps, potentialNewCells),
-          inverse,
+          forward: createLazySingleOpTransactionRecord(canonicalizeStructuralInsertForwardOp(op), potentialNewCells),
+          inverse: createLazySingleOpTransactionRecord(inverseMutationStructuralInsertOp(op)),
         })
         args.state.redoStack.length = 0
       }
@@ -513,15 +405,13 @@ export function createEngineMutationService(args: {
           preparedCellAddressesByOpIndex: options.preparedCellAddressesByOpIndex,
         }
       : baseFastHistoryArgs
-    const canUseFastHistory = !ops.some(isTableHeaderValueMutationOp)
-    const fastHistory = canUseFastHistory
-      ? (tryBuildSingleCellOpHistoryWithoutSnapshot(
-          ops,
-          potentialNewCells,
-          options.returnUndoOps !== false,
-          options.reuseForwardOps !== true,
-        ) ?? tryBuildFastMutationHistory(fastHistoryArgs))
-      : null
+    const fastHistory =
+      tryBuildSingleCellOpHistoryWithoutSnapshot(
+        ops,
+        potentialNewCells,
+        options.returnUndoOps !== false,
+        options.reuseForwardOps !== true,
+      ) ?? tryBuildFastMutationHistory(fastHistoryArgs)
     const inverse: TransactionRecord = fastHistory?.inverse ?? buildInverseRecord(ops, options.returnUndoOps !== false)
     applyForward(forward)
     if (args.state.getTransactionReplayDepth() === 0) {
@@ -545,13 +435,11 @@ export function createEngineMutationService(args: {
     options: {
       returnUndoOps?: boolean
       reuseRefs?: boolean
-      freshDirectAggregateMatrixPlan?: EngineFreshDirectAggregateMatrixPlan
     } = {},
   ): readonly EngineOp[] | null => {
     if (refs.length === 0) {
       return null
     }
-    assertLocalDataValidationsForCellMutationRefs(args.state, refs)
     const nextRefs = options.reuseRefs ? refs : refs.map((ref) => cloneCellMutationRef(ref))
     const nextPotentialNewCells = potentialNewCells ?? countPotentialNewCellsForMutationRefs(nextRefs)
     const shouldCreateBatch = shouldCreateLocalBatch()
@@ -566,13 +454,7 @@ export function createEngineMutationService(args: {
             nextRefs.map((ref) => cellMutationRefToEngineOp(args.state.workbook, ref)),
           )
         : null
-      args.applyCellMutationsAtBatchNow(
-        nextRefs,
-        batch,
-        'local',
-        nextPotentialNewCells,
-        createCellMutationBatchApplyOptions(options.freshDirectAggregateMatrixPlan),
-      )
+      args.applyCellMutationsAtBatchNow(nextRefs, batch, 'local', nextPotentialNewCells)
       if (args.state.getTransactionReplayDepth() === 0) {
         args.state.undoStack.push({
           forward: createLazyCellMutationTransactionRecord(nextRefs, nextPotentialNewCells),
@@ -591,13 +473,7 @@ export function createEngineMutationService(args: {
     const batch = shouldCreateBatch
       ? createBatch(args.state.replicaState, [...transactionRecordOps(args.state.workbook, fastHistory.forward)])
       : null
-    args.applyCellMutationsAtBatchNow(
-      nextRefs,
-      batch,
-      'local',
-      nextPotentialNewCells,
-      createCellMutationBatchApplyOptions(options.freshDirectAggregateMatrixPlan),
-    )
+    args.applyCellMutationsAtBatchNow(nextRefs, batch, 'local', nextPotentialNewCells)
     if (args.state.getTransactionReplayDepth() === 0) {
       args.state.undoStack.push({
         forward: fastHistory?.forward ?? {
@@ -621,7 +497,6 @@ export function createEngineMutationService(args: {
     if (options.returnUndoOps !== false || shouldCreateLocalBatch()) {
       return null
     }
-    assertLocalDataValidationForExistingNumericCellMutation(args.state, request)
     const cellStore = args.state.workbook.cellStore
     const cellIndex = request.cellIndex
     const oldNumericValue =
@@ -673,7 +548,6 @@ export function createEngineMutationService(args: {
     if (options.returnUndoOps !== false || shouldCreateLocalBatch()) {
       return null
     }
-    assertLocalDataValidationForExistingLiteralCellMutation(args.state, request)
     const ref: EngineCellMutationRef = {
       sheetId: request.sheetId,
       cellIndex: request.cellIndex,
@@ -707,7 +581,6 @@ export function createEngineMutationService(args: {
       source?: 'local' | 'restore'
       returnUndoOps?: boolean
       reuseRefs?: boolean
-      freshDirectAggregateMatrixPlan?: EngineFreshDirectAggregateMatrixPlan
     } = {},
   ): readonly EngineOp[] | null => {
     const source = options.source ?? 'restore'
@@ -716,7 +589,6 @@ export function createEngineMutationService(args: {
       const executeOptions: {
         returnUndoOps?: boolean
         reuseRefs?: boolean
-        freshDirectAggregateMatrixPlan?: EngineFreshDirectAggregateMatrixPlan
       } = {}
       if (options.returnUndoOps !== undefined) {
         executeOptions.returnUndoOps = options.returnUndoOps
@@ -724,18 +596,12 @@ export function createEngineMutationService(args: {
       if (options.reuseRefs !== undefined) {
         executeOptions.reuseRefs = options.reuseRefs
       }
-      if (options.freshDirectAggregateMatrixPlan !== undefined) {
-        executeOptions.freshDirectAggregateMatrixPlan = options.freshDirectAggregateMatrixPlan
-      }
       return executeLocalCellMutationsAtNow(refs, options.potentialNewCells, {
         ...executeOptions,
       })
     }
     if (refs.length === 0) {
       return null
-    }
-    if (source === 'local') {
-      assertLocalDataValidationsForCellMutationRefs(args.state, refs)
     }
     const nextRefs = options.reuseRefs ? refs : refs.map((ref) => cloneCellMutationRef(ref))
     const nextPotentialNewCells = options.potentialNewCells ?? countPotentialNewCellsForMutationRefs(nextRefs)
@@ -746,13 +612,7 @@ export function createEngineMutationService(args: {
         : source === 'restore'
           ? null
           : createBatch(args.state.replicaState, forwardOps)
-    args.applyCellMutationsAtBatchNow(
-      nextRefs,
-      batch,
-      source,
-      nextPotentialNewCells,
-      createCellMutationBatchApplyOptions(options.freshDirectAggregateMatrixPlan),
-    )
+    args.applyCellMutationsAtBatchNow(nextRefs, batch, source, nextPotentialNewCells)
     return null
   }
 
@@ -789,7 +649,7 @@ export function createEngineMutationService(args: {
       try: () => executeLocalNowPublic(ops, potentialNewCells, options),
       catch: (cause) =>
         new EngineMutationError({
-          message: mutationErrorMessage('Failed to execute local transaction', cause),
+          message: 'Failed to execute local transaction',
           cause,
         }),
     })
@@ -800,7 +660,6 @@ export function createEngineMutationService(args: {
     readRangeCells: args.readRangeCells,
     toCellStateOps: args.toCellStateOps,
     executeLocal,
-    ...(args.settleImportedFormulas === undefined ? {} : { settleImportedFormulas: args.settleImportedFormulas }),
   })
 
   return {
@@ -812,7 +671,7 @@ export function createEngineMutationService(args: {
         },
         catch: (cause) =>
           new EngineMutationError({
-            message: mutationErrorMessage(`Failed to execute ${source} transaction`, cause),
+            message: `Failed to execute ${source} transaction`,
             cause,
           }),
       })
@@ -835,7 +694,7 @@ export function createEngineMutationService(args: {
         try: () => applyCellMutationsAtNow(refs, options),
         catch: (cause) =>
           new EngineMutationError({
-            message: mutationErrorMessage('Failed to apply cell mutations', cause),
+            message: 'Failed to apply cell mutations',
             cause,
           }),
       })
@@ -864,7 +723,7 @@ export function createEngineMutationService(args: {
         try: () => this.applyOpsNow(ops, options),
         catch: (cause) =>
           new EngineMutationError({
-            message: mutationErrorMessage('Failed to apply engine operations', cause),
+            message: 'Failed to apply engine operations',
             cause,
           }),
       })
@@ -891,7 +750,7 @@ export function createEngineMutationService(args: {
         },
         catch: (cause) =>
           new EngineMutationError({
-            message: mutationErrorMessage('Failed to capture undo ops', cause),
+            message: 'Failed to capture undo ops',
             cause,
           }),
       })

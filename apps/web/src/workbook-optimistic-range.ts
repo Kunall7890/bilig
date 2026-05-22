@@ -11,7 +11,7 @@ export interface OptimisticViewportStore {
   peekBaseCell?(sheetName: string, address: string): CellSnapshot | undefined
   peekCell?(sheetName: string, address: string): CellSnapshot | undefined
   getCell(sheetName: string, address: string): CellSnapshot
-  setCellSnapshot(snapshot: CellSnapshot, options?: { readonly localDeltaDirtyMask?: number }): void
+  setCellSnapshot(snapshot: CellSnapshot): void
 }
 
 const MAX_MATERIALIZED_OPTIMISTIC_CLEAR_CELLS = 10_000

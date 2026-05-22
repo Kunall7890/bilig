@@ -151,19 +151,6 @@ export function buildBiligDominanceScorecard(input: BuildScorecardInput): BiligD
     input.surfaceSnapshot.classSurface.instanceMethods.length
   const securityUncoveredControls = new Set(input.securityPostureScorecard.summary.uncoveredControls)
   const uiSameCorpusTenXGap = hasUiResponsivenessSameCorpusTenXGap(input.uiResponsivenessLiveBrowserScorecard)
-  const uiSameCorpusProof = input.uiResponsivenessLiveBrowserScorecard.sameCorpusProof
-  const uiSameCorpusRunManifest = uiSameCorpusProof.runManifest
-  const uiSameCorpusRunManifestInvalidReasons = uiSameCorpusRunManifest?.invalidReasons ?? [
-    'same-corpus UI proof is missing a run manifest',
-  ]
-  const uiSameCorpusStrictRenderedGridProofCaseCount =
-    uiSameCorpusRunManifest?.strictRenderedGridProofCaseCount ??
-    uiSameCorpusProof.cases.filter((entry) => entry.scenarioProof.pixelGridProof.captured).length
-  const uiSameCorpusLegacyInsufficientRenderedGridProofCaseCount =
-    uiSameCorpusRunManifest?.legacyInsufficientRenderedGridProofCaseCount ??
-    uiSameCorpusProof.cases.filter((entry) =>
-      entry.scenarioProof.pixelGridProof.productVerdicts.some((verdict) => verdict.evidenceStatus === 'legacy-insufficient'),
-    ).length
   const operatorWorkflowEvidence = loadOperatorWorkflowEvidence(rootDir)
   const operatorWorkflowBlockers = operatorWorkflowGaps(operatorWorkflowEvidence)
   const completionAudit = buildBiligDominanceCompletionAudit(input, {
@@ -466,15 +453,6 @@ export function buildBiligDominanceScorecard(input: BuildScorecardInput): BiligD
           `same-corpus UI 10x cases: ${String(
             input.uiResponsivenessLiveBrowserScorecard.sameCorpusProof.tenXMeanAndP95CaseCount,
           )}/${String(input.uiResponsivenessLiveBrowserScorecard.sameCorpusProof.requiredCaseCount)}`,
-          `same-corpus UI render proof contract: ${uiSameCorpusRunManifest?.contractVersion ?? 'missing'}`,
-          `same-corpus UI strict rendered-grid proof cases: ${String(uiSameCorpusStrictRenderedGridProofCaseCount)}/${String(
-            input.uiResponsivenessLiveBrowserScorecard.sameCorpusProof.requiredCaseCount,
-          )}`,
-          `same-corpus UI legacy-insufficient rendered-grid proof cases: ${String(
-            uiSameCorpusLegacyInsufficientRenderedGridProofCaseCount,
-          )}/${String(input.uiResponsivenessLiveBrowserScorecard.sameCorpusProof.requiredCaseCount)}`,
-          `same-corpus UI current-contract evidence complete: ${String(uiSameCorpusRunManifest?.currentContractEvidenceComplete ?? false)}`,
-          `same-corpus UI run manifest invalid reasons: ${uiSameCorpusRunManifestInvalidReasons.join('; ') || 'none'}`,
           ...input.uiResponsivenessLiveBrowserScorecard.cases.map(
             (entry) =>
               `${entry.vendor}: ${entry.workload} scrollResponseMs.p95 ${entry.scrollResponseMs.p95}ms and postScrollFrameMs.p95 ${entry.postScrollFrameMs.p95}ms (${entry.sampleCount} samples, ${entry.accessMode})`,
@@ -512,7 +490,6 @@ export function buildBiligDominanceScorecard(input: BuildScorecardInput): BiligD
           ...(uiResponsivenessLiveBrowserPassed
             ? []
             : ['no direct Sheets or Excel browser responsiveness live timing artifact exists in the repo']),
-          ...uiSameCorpusRunManifestInvalidReasons.map((reason) => `same-corpus UI run manifest: ${reason}`),
           ...(uiSameCorpusTenXGap ? ['live UI browser evidence is direct, but it is not a same-corpus 10x proof against incumbents'] : []),
         ],
       },
@@ -703,7 +680,7 @@ export function buildBiligDominanceScorecard(input: BuildScorecardInput): BiligD
           'pnpm reliability:check',
           'pnpm exec vitest run apps/web/src/__tests__/worker-runtime-reconnect.test.ts apps/web/src/__tests__/worker-runtime-authoritative-bootstrap.test.ts apps/web/src/__tests__/worker-runtime-mutation-journal.test.ts packages/zero-sync/src/__tests__/workbook-events.test.ts',
           'pnpm test:browser e2e/tests/web-shell-remote-sync.pw.ts -g "restores persisted workbook state after a full reload"',
-          'pnpm test:fuzz',
+          'pnpm test:fuzz:main',
           'pnpm test:correctness:browser',
           'pnpm test:correctness:server',
         ],
@@ -796,19 +773,6 @@ function buildOverallGoogleSheets10xStatus(
     readonly uiSameCorpusTenXGap: boolean
   },
 ): OverallGoogleSheets10xStatus {
-  const uiSameCorpusProof = input.uiResponsivenessLiveBrowserScorecard.sameCorpusProof
-  const uiSameCorpusRunManifest = uiSameCorpusProof.runManifest
-  const uiSameCorpusRunManifestInvalidReasons = uiSameCorpusRunManifest?.invalidReasons ?? [
-    'same-corpus UI proof is missing a run manifest',
-  ]
-  const uiSameCorpusStrictRenderedGridProofCaseCount =
-    uiSameCorpusRunManifest?.strictRenderedGridProofCaseCount ??
-    uiSameCorpusProof.cases.filter((entry) => entry.scenarioProof.pixelGridProof.captured).length
-  const uiSameCorpusLegacyInsufficientRenderedGridProofCaseCount =
-    uiSameCorpusRunManifest?.legacyInsufficientRenderedGridProofCaseCount ??
-    uiSameCorpusProof.cases.filter((entry) =>
-      entry.scenarioProof.pixelGridProof.productVerdicts.some((verdict) => verdict.evidenceStatus === 'legacy-insufficient'),
-    ).length
   const categories = [
     {
       id: 'recalculation-speed',
@@ -861,18 +825,9 @@ function buildOverallGoogleSheets10xStatus(
         `same-corpus UI 10x cases: ${String(
           input.uiResponsivenessLiveBrowserScorecard.sameCorpusProof.tenXMeanAndP95CaseCount,
         )}/${String(input.uiResponsivenessLiveBrowserScorecard.sameCorpusProof.requiredCaseCount)}`,
-        `same-corpus render proof contract: ${uiSameCorpusRunManifest?.contractVersion ?? 'missing'}`,
-        `same-corpus strict rendered-grid proof cases: ${String(uiSameCorpusStrictRenderedGridProofCaseCount)}/${String(
-          input.uiResponsivenessLiveBrowserScorecard.sameCorpusProof.requiredCaseCount,
-        )}`,
-        `same-corpus legacy-insufficient rendered-grid proof cases: ${String(
-          uiSameCorpusLegacyInsufficientRenderedGridProofCaseCount,
-        )}/${String(input.uiResponsivenessLiveBrowserScorecard.sameCorpusProof.requiredCaseCount)}`,
-        `same-corpus run manifest invalid reasons: ${uiSameCorpusRunManifestInvalidReasons.join('; ') || 'none'}`,
       ],
       gaps: [
         ...(signals.uiResponsivenessLiveBrowserPassed ? [] : ['live incumbent browser timing scorecard is not passing']),
-        ...uiSameCorpusRunManifestInvalidReasons.map((reason) => `same-corpus UI run manifest: ${reason}`),
         ...(signals.uiSameCorpusTenXGap
           ? ['live UI browser evidence is not a same-corpus 10x proof against Google Sheets with rendered-grid proof']
           : []),

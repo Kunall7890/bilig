@@ -2,7 +2,7 @@ import { Effect } from 'effect'
 import { describe, expect, it, vi } from 'vitest'
 import { ErrorCode, ValueTag } from '@bilig/protocol'
 import { SpreadsheetEngine } from '../engine.js'
-import type { EngineStructureService } from '../engine/services/structure-service.js'
+import type { EngineStructureService, StructuralAxisOp } from '../engine/services/structure-service.js'
 
 interface FormulaBindingServiceForStructureTest {
   readonly collectFormulaCellsReferencingSheetNow: (sheetName: string) => readonly number[]
@@ -53,7 +53,7 @@ function getStructureService(engine: SpreadsheetEngine): EngineStructureService 
 
 interface EngineStructureServiceWithSyncPath extends EngineStructureService {
   readonly materializeDeferredStructuralFormulaSourcesNow: () => void
-  readonly applyStructuralAxisOpNow: EngineStructureService['applyStructuralAxisOpNow']
+  readonly applyStructuralAxisOpNow: (op: StructuralAxisOp) => unknown
 }
 
 function getStructureServiceWithSyncPath(engine: SpreadsheetEngine): EngineStructureServiceWithSyncPath {
@@ -842,19 +842,16 @@ describe('EngineStructureService', () => {
 
     expect(result.topologyChanged).toBe(false)
     expect(result.graphRefreshRequired).toBe(false)
-    expect(engine.getCell('Sheet1', 'B1').formula).toBe('SUM(A2:A3)')
+    expect(engine.getCell('Sheet1', 'B1').formula).toBe('SUM(A1:A3)')
     expect(engine.getCell('Sheet1', 'B2').formula).toBe('SUM(A2:A2)')
     expect(engine.getCell('Sheet1', 'B3').formula).toBe('SUM(A2:A3)')
-    expect(engine.getCell('Sheet1', 'B4').formula).toBe('SUM(A2:A4)')
+    expect(engine.getCell('Sheet1', 'B4').formula).toBe('SUM(A1:A4)')
     expect(engine.getCellValue('Sheet1', 'B1')).toEqual({ tag: ValueTag.Number, value: 6 })
     expect(engine.getCellValue('Sheet1', 'B2')).toEqual({ tag: ValueTag.Number, value: 1 })
     expect(engine.getCellValue('Sheet1', 'B3')).toEqual({ tag: ValueTag.Number, value: 3 })
     expect(engine.getCellValue('Sheet1', 'B4')).toEqual({ tag: ValueTag.Number, value: 10 })
-    expect(result.formulaCellIndices).toEqual([
-      engine.workbook.getCellIndex('Sheet1', 'B1')!,
-      engine.workbook.getCellIndex('Sheet1', 'B4')!,
-    ])
-    expect(engine.getPerformanceCounters().structuralFormulaImpactCandidates).toBe(2)
+    expect(result.formulaCellIndices).toEqual([])
+    expect(engine.getPerformanceCounters().structuralFormulaImpactCandidates).toBe(0)
   })
 
   it('keeps repeated simple column families off the topology and dirty-formula path for inserts', async () => {

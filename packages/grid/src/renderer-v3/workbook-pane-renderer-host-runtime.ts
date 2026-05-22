@@ -13,7 +13,6 @@ import {
   type WorkbookPaneFrameResultV3,
   type WorkbookPanePresentedVisualFrameV3,
 } from './workbook-pane-renderer-runtime.js'
-import { resolveWorkbookPaneSceneOwnershipSignatureV3 } from './workbook-pane-scene-ownership.js'
 import {
   EMPTY_WORKBOOK_PANE_SURFACE_SNAPSHOT_V3,
   WorkbookPaneSurfaceRuntimeV3,
@@ -43,14 +42,6 @@ export interface WorkbookPaneRendererHostRuntimeOptionsV3 {
 
 export type WorkbookPaneFrameProofStatusV3 = 'idle' | 'pending' | 'presented'
 
-export interface WorkbookPaneVisiblePayloadProofV3 {
-  readonly contentSignature: string
-  readonly rectCount: number
-  readonly rectSignature: string
-  readonly textRunCount: number
-  readonly textSignature: string
-}
-
 const EMPTY_HOST_PROPS: WorkbookPaneRendererHostPropsV3 = Object.freeze({
   active: false,
   cameraStore: null,
@@ -73,7 +64,6 @@ export class WorkbookPaneRendererHostRuntimeV3 {
   private readonly frameProofListeners = new Set<() => void>()
   private frameProofSignature = ''
   private frameProofStatus: WorkbookPaneFrameProofStatusV3 = 'idle'
-  private frameSceneOwnershipSignature = ''
   private hasPresentedFrame = false
   private presentedFrameProofSignature = ''
   private presentedVisualFrame: WorkbookPanePresentedVisualFrameV3 | null = null
@@ -108,7 +98,6 @@ export class WorkbookPaneRendererHostRuntimeV3 {
   readonly getBackendStatusSnapshot = (): WorkbookPaneSurfaceBackendStatusV3 => this.surfaceBackendStatus
   readonly getFrameProofSignatureSnapshot = (): string => this.frameProofSignature
   readonly getFrameProofStatusSnapshot = (): WorkbookPaneFrameProofStatusV3 => this.frameProofStatus
-  readonly getFrameSceneOwnershipSignatureSnapshot = (): string => this.frameSceneOwnershipSignature
   readonly getHasPresentedFrameSnapshot = (): boolean => this.hasPresentedFrame
   readonly getPresentedFrameProofSignatureSnapshot = (): string => this.presentedFrameProofSignature
   readonly getPresentedVisualFrameSnapshot = (): WorkbookPanePresentedVisualFrameV3 | null => this.presentedVisualFrame
@@ -181,13 +170,11 @@ export class WorkbookPaneRendererHostRuntimeV3 {
       cameraStore: this.props.cameraStore,
       drawText: this.props.drawText,
       frameProofSignature: this.frameProofSignature,
-      sceneOwnershipSignature: this.frameSceneOwnershipSignature,
       geometry: this.props.geometry,
       headerPanes: this.props.headerPanes,
       overlay: this.props.overlay,
       overlayBuilder: this.props.overlayBuilder,
       preloadTilePanes: this.props.preloadTilePanes,
-      renderRevisionSnapshot: this.props.renderRevisionSnapshot,
       scrollTransformStore: this.props.scrollTransformStore,
       surface: this.surfaceSnapshot.surface,
       tilePanes: this.props.tilePanes,
@@ -209,13 +196,7 @@ export class WorkbookPaneRendererHostRuntimeV3 {
 
   private handleFrameResult(result: WorkbookPaneFrameResultV3): void {
     const signature = result.frameProofSignature
-    if (
-      !result.submitted ||
-      !signature ||
-      signature !== this.frameProofSignature ||
-      !result.visualFrame ||
-      result.visualFrame.sceneOwnershipSignature !== this.frameSceneOwnershipSignature
-    ) {
+    if (!result.submitted || !signature || signature !== this.frameProofSignature || !result.visualFrame) {
       return
     }
     this.setPresentedVisualFrame(result.visualFrame)
@@ -266,21 +247,14 @@ export class WorkbookPaneRendererHostRuntimeV3 {
 
   private syncFrameProofSignature(props: WorkbookPaneRendererHostPropsV3): void {
     const overlay = resolveWorkbookPaneHostOverlayProofV3(props)
-    const sceneOwnershipSignature = resolveWorkbookPaneSceneOwnershipSignatureV3({
-      ...props,
-      overlay,
-      surface: this.surfaceSnapshot.surface,
-    })
     const signature = resolveWorkbookPaneFrameProofSignatureV3({
       ...props,
       overlay,
-      sceneOwnershipSignature,
       surface: this.surfaceSnapshot.surface,
     })
-    if (this.frameProofSignature === signature && this.frameSceneOwnershipSignature === sceneOwnershipSignature) {
+    if (this.frameProofSignature === signature) {
       return
     }
-    this.frameSceneOwnershipSignature = sceneOwnershipSignature
     this.frameProofSignature = signature
     if (!signature) {
       this.setPresentedFrameProofSignature('')
@@ -316,146 +290,14 @@ function resolveWorkbookPaneHostOverlayProofV3(props: WorkbookPaneRendererHostPr
   return props.overlayBuilder(geometry) ?? null
 }
 
-export function resolveWorkbookPaneVisiblePayloadProofV3(input: {
-  readonly headerPanes: readonly GridHeaderPaneState[]
-  readonly tilePanes: readonly WorkbookRenderTilePaneState[]
-}): WorkbookPaneVisiblePayloadProofV3 {
-  let rectCount = 0
-  let textRunCount = 0
-  const rectParts: string[] = []
-  const textParts: string[] = []
-
-  for (const pane of input.headerPanes) {
-    rectCount += pane.rectCount
-    textRunCount += pane.textCount
-    rectParts.push(
-      [
-        'header',
-        pane.paneId,
-        pane.frame.x,
-        pane.frame.y,
-        pane.frame.width,
-        pane.frame.height,
-        pane.contentOffset.x,
-        pane.contentOffset.y,
-        pane.rectCount,
-        pane.rectSignature,
-      ].join(':'),
-    )
-    textParts.push(
-      [
-        'header',
-        pane.paneId,
-        pane.frame.x,
-        pane.frame.y,
-        pane.frame.width,
-        pane.frame.height,
-        pane.contentOffset.x,
-        pane.contentOffset.y,
-        pane.textCount,
-        pane.textSignature,
-      ].join(':'),
-    )
-  }
-
-  for (const pane of input.tilePanes) {
-    const tile = pane.tile
-    const textSignature = tile.textSignature ?? resolveGridTextTileRevisionKeyV3(tile).textSignature
-    const rectSignature = tile.rectSignature ?? resolveWorkbookPaneTileRectPayloadSignatureV3(tile)
-    rectCount += tile.rectCount
-    textRunCount += tile.textCount
-    rectParts.push(
-      [
-        'tile',
-        pane.paneId,
-        pane.generation,
-        pane.drawVisible === false ? 'hidden' : 'visible',
-        pane.frame.x,
-        pane.frame.y,
-        pane.frame.width,
-        pane.frame.height,
-        pane.contentOffset.x,
-        pane.contentOffset.y,
-        pane.viewport.rowStart,
-        pane.viewport.rowEnd,
-        pane.viewport.colStart,
-        pane.viewport.colEnd,
-        pane.scrollAxes.x ? 'scroll-x' : 'fixed-x',
-        pane.scrollAxes.y ? 'scroll-y' : 'fixed-y',
-        tile.tileId,
-        tile.rectCount,
-        rectSignature,
-        tile.version.styles,
-        tile.version.values,
-      ].join(':'),
-    )
-    textParts.push(
-      [
-        'tile',
-        pane.paneId,
-        pane.generation,
-        pane.drawVisible === false ? 'hidden' : 'visible',
-        pane.frame.x,
-        pane.frame.y,
-        pane.frame.width,
-        pane.frame.height,
-        pane.contentOffset.x,
-        pane.contentOffset.y,
-        pane.viewport.rowStart,
-        pane.viewport.rowEnd,
-        pane.viewport.colStart,
-        pane.viewport.colEnd,
-        pane.scrollAxes.x ? 'scroll-x' : 'fixed-x',
-        pane.scrollAxes.y ? 'scroll-y' : 'fixed-y',
-        tile.tileId,
-        tile.textCount,
-        textSignature,
-        tile.version.text,
-        tile.version.values,
-      ].join(':'),
-    )
-  }
-
-  const rectSignature = `rect:${rectCount}:${rectParts.join('|')}`
-  const textSignature = `text:${textRunCount}:${textParts.join('|')}`
-  return {
-    contentSignature: `${textSignature}#${rectSignature}`,
-    rectCount,
-    rectSignature,
-    textRunCount,
-    textSignature,
-  }
-}
-
-function resolveWorkbookPaneTileRectPayloadSignatureV3(tile: WorkbookRenderTilePaneState['tile']): string {
-  const length = Math.max(0, Math.min(tile.rectInstances.length, tile.rectCount * 20))
-  let hash = 2166136261
-  for (let index = 0; index < length; index += 1) {
-    hash ^= Math.round(tile.rectInstances[index]! * 1_000_000)
-    hash = Math.imul(hash, 16777619) >>> 0
-  }
-  return `rect-fnv:${tile.rectCount}:${hash.toString(16)}`
-}
-
 export function resolveWorkbookPaneFrameProofSignatureV3(props: {
   readonly drawText?: boolean | undefined
   readonly headerPanes: readonly GridHeaderPaneState[]
   readonly overlay: DynamicGridOverlayBatchV3 | null
   readonly renderRevisionSnapshot?: GridRenderRevisionSnapshot | null | undefined
-  readonly sceneOwnershipSignature?: string | undefined
   readonly surface?: TypeGpuSurfaceSizeV3 | null | undefined
   readonly tilePanes: readonly WorkbookRenderTilePaneState[]
 }): string {
-  const sceneOwnershipSignature =
-    props.sceneOwnershipSignature ??
-    resolveWorkbookPaneSceneOwnershipSignatureV3({
-      drawText: props.drawText,
-      headerPanes: props.headerPanes,
-      overlay: props.overlay,
-      renderRevisionSnapshot: props.renderRevisionSnapshot,
-      surface: props.surface,
-      tilePanes: props.tilePanes,
-    })
   const textOwnershipSignature = `drawText:${props.drawText === false ? 'gpu-text-off' : 'gpu-text-on'}`
   const surfaceSignature = props.surface
     ? ['surface', props.surface.width, props.surface.height, props.surface.pixelWidth, props.surface.pixelHeight, props.surface.dpr].join(
@@ -540,15 +382,7 @@ export function resolveWorkbookPaneFrameProofSignatureV3(props: {
         props.overlay.rectSignature,
       ].join(':')
     : ''
-  return [
-    `scene:${sceneOwnershipSignature}`,
-    textOwnershipSignature,
-    surfaceSignature,
-    tileSignature,
-    headerSignature,
-    overlaySignature,
-    renderRevisionSignature,
-  ]
+  return [textOwnershipSignature, surfaceSignature, tileSignature, headerSignature, overlaySignature, renderRevisionSignature]
     .filter(Boolean)
     .join('#')
 }

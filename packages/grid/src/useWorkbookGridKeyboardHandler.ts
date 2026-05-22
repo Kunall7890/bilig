@@ -132,7 +132,6 @@ export function useWorkbookGridKeyboardHandler(input: {
   getGridSelection?: (() => GridSelection) | undefined
   hostRef: MutableRefObject<HTMLDivElement | null>
   internalClipboardRef: MutableRefObject<InternalClipboardRange | null>
-  keyboardModifierStateRef: MutableRefObject<{ readonly primary: boolean; readonly shift: boolean }>
   isEditingCell: boolean
   onCancelEdit: () => void
   onClearCell: (selection?: GridSelectionSnapshot) => void
@@ -152,11 +151,6 @@ export function useWorkbookGridKeyboardHandler(input: {
   suppressNextNativePasteRef: MutableRefObject<boolean>
   toggleSelectedBooleanCell: () => void
 }) {
-  const inputRef = useRef(input)
-  useLayoutEffect(() => {
-    inputRef.current = input
-  }, [input])
-
   const beginSelectedEditRef = useRef(input.beginSelectedEdit)
   useLayoutEffect(() => {
     beginSelectedEditRef.current = input.beginSelectedEdit
@@ -178,33 +172,28 @@ export function useWorkbookGridKeyboardHandler(input: {
 
   const handleGridKey = useCallback(
     (event: GridKeyboardEventLike) => {
-      const currentInput = inputRef.current
-      currentInput.keyboardModifierStateRef.current = {
-        primary: event.ctrlKey || event.metaKey,
-        shift: event.shiftKey === true,
-      }
       const pendingTypedEdit = resolvePendingTypedEdit(event)
-      if (!currentInput.isEditingCell && pendingTypedEdit) {
+      if (!input.isEditingCell && pendingTypedEdit) {
         const pendingEdit = deferredBeginEditScheduler.consume()
         if (pendingEdit) {
-          currentInput.pendingTypeSeedRef.current = null
+          input.pendingTypeSeedRef.current = null
           event.preventDefault()
           event.cancel?.()
           if (pendingTypedEdit.kind === 'commit') {
-            currentInput.onCommitEdit(pendingTypedEdit.movement, pendingEdit.seed)
+            input.onCommitEdit(pendingTypedEdit.movement, pendingEdit.seed)
           } else if (pendingTypedEdit.kind === 'cancel') {
-            currentInput.onCancelEdit()
+            input.onCancelEdit()
           } else {
             deferredBeginEditScheduler.beginImmediate(pendingTypedEdit.seed(pendingEdit.seed), pendingEdit.selectionBehavior)
           }
           return
         }
       }
-      const gridSelection = currentInput.getGridSelection?.() ?? currentInput.gridSelection
-      const selectedCell = gridSelection.current?.cell ?? [currentInput.selectedCell.col, currentInput.selectedCell.row]
-      const visibleRegion = currentInput.getVisibleRegion?.()
+      const gridSelection = input.getGridSelection?.() ?? input.gridSelection
+      const selectedCell = gridSelection.current?.cell ?? [input.selectedCell.col, input.selectedCell.row]
+      const visibleRegion = input.getVisibleRegion?.()
       dispatchGridKey({
-        applyClipboardValues: currentInput.applyClipboardValues,
+        applyClipboardValues: input.applyClipboardValues,
         beginSelectedEdit: (seed, selectionBehavior = 'caret-end') => {
           if (seed === undefined) {
             deferredBeginEditScheduler.beginImmediate(seed, selectionBehavior)
@@ -212,69 +201,61 @@ export function useWorkbookGridKeyboardHandler(input: {
           }
           deferredBeginEditScheduler.schedule(seed, selectionBehavior)
         },
-        captureInternalClipboardSelection: currentInput.captureInternalClipboardSelection,
-        editorValue: currentInput.editorValue,
+        captureInternalClipboardSelection: input.captureInternalClipboardSelection,
+        editorValue: input.editorValue,
         event,
         gridSelection,
-        internalClipboardRef: currentInput.internalClipboardRef,
+        internalClipboardRef: input.internalClipboardRef,
         isSelectedCellBoolean: () =>
-          isToggleableBooleanCellSnapshot(
-            currentInput.engine.getCell(currentInput.sheetName, formatAddress(selectedCell[1], selectedCell[0])),
-          ),
-        isEditingCell: currentInput.isEditingCell,
-        onCancelEdit: currentInput.onCancelEdit,
-        onClearCell: currentInput.onClearCell,
-        onCommitEdit: currentInput.onCommitEdit,
-        onDeleteColumns: currentInput.onDeleteColumns,
-        onDeleteRows: currentInput.onDeleteRows,
-        onEditorChange: currentInput.onEditorChange,
-        onFillRange: currentInput.onFillRange,
-        onSelectionChange: currentInput.onSelectionChange,
+          isToggleableBooleanCellSnapshot(input.engine.getCell(input.sheetName, formatAddress(selectedCell[1], selectedCell[0]))),
+        isEditingCell: input.isEditingCell,
+        onCancelEdit: input.onCancelEdit,
+        onClearCell: input.onClearCell,
+        onCommitEdit: input.onCommitEdit,
+        onDeleteColumns: input.onDeleteColumns,
+        onDeleteRows: input.onDeleteRows,
+        onEditorChange: input.onEditorChange,
+        onFillRange: input.onFillRange,
+        onSelectionChange: input.onSelectionChange,
         navigation: createGridNavigationResolver({
-          engine: currentInput.engine,
-          sheetName: currentInput.sheetName,
+          engine: input.engine,
+          sheetName: input.sheetName,
         }),
         pageJumpRows: visibleRegion ? Math.max(1, visibleRegion.range.height - 1) : null,
-        scrollActiveCellIntoView: currentInput.scrollActiveCellIntoView,
-        pendingClipboardCopySequenceRef: currentInput.pendingClipboardCopySequenceRef,
-        pendingKeyboardPasteSequenceRef: currentInput.pendingKeyboardPasteSequenceRef,
-        pendingTypeSeedRef: currentInput.pendingTypeSeedRef,
+        scrollActiveCellIntoView: input.scrollActiveCellIntoView,
+        pendingClipboardCopySequenceRef: input.pendingClipboardCopySequenceRef,
+        pendingKeyboardPasteSequenceRef: input.pendingKeyboardPasteSequenceRef,
+        pendingTypeSeedRef: input.pendingTypeSeedRef,
         selectedCell: { col: selectedCell[0], row: selectedCell[1] },
-        setGridSelection: currentInput.setGridSelection,
-        sheetName: currentInput.sheetName,
-        suppressNextNativePasteRef: currentInput.suppressNextNativePasteRef,
-        toggleSelectedBooleanCell: currentInput.toggleSelectedBooleanCell,
+        setGridSelection: input.setGridSelection,
+        sheetName: input.sheetName,
+        suppressNextNativePasteRef: input.suppressNextNativePasteRef,
+        toggleSelectedBooleanCell: input.toggleSelectedBooleanCell,
       })
     },
-    [deferredBeginEditScheduler],
+    [deferredBeginEditScheduler, input],
   )
 
   useEffect(() => {
     const commitPendingTypedEditBeforePointerSelection = () => {
-      const currentInput = inputRef.current
-      if (currentInput.isEditingCell) {
+      if (input.isEditingCell) {
         return
       }
       const pendingEdit = deferredBeginEditScheduler.consume()
       if (!pendingEdit) {
         return
       }
-      currentInput.pendingTypeSeedRef.current = null
-      currentInput.onCommitEdit(undefined, pendingEdit.seed)
+      input.pendingTypeSeedRef.current = null
+      input.onCommitEdit(undefined, pendingEdit.seed)
     }
     window.addEventListener('pointerdown', commitPendingTypedEditBeforePointerSelection, true)
     return () => {
       window.removeEventListener('pointerdown', commitPendingTypedEditBeforePointerSelection, true)
     }
-  }, [deferredBeginEditScheduler])
+  }, [deferredBeginEditScheduler, input])
 
   useEffect(() => {
     const handleWindowKeyDown = (event: KeyboardEvent) => {
-      const currentInput = inputRef.current
-      currentInput.keyboardModifierStateRef.current = {
-        primary: event.ctrlKey || event.metaKey,
-        shift: event.shiftKey,
-      }
       if (
         event.defaultPrevented ||
         (event as KeyboardEvent & { __biligGridHandled?: boolean }).__biligGridHandled === true ||
@@ -294,7 +275,7 @@ export function useWorkbookGridKeyboardHandler(input: {
             shiftKey: event.shiftKey,
           },
           activeElement,
-          currentInput.hostRef.current,
+          input.hostRef.current,
         )
       ) {
         event.preventDefault()
@@ -312,7 +293,7 @@ export function useWorkbookGridKeyboardHandler(input: {
             shiftKey: event.shiftKey,
           },
           activeElement,
-          currentInput.hostRef.current,
+          input.hostRef.current,
         )
       ) {
         return
@@ -336,11 +317,6 @@ export function useWorkbookGridKeyboardHandler(input: {
 
     window.addEventListener('keydown', handleWindowKeyDown, true)
     const handleWindowKeyUp = (event: KeyboardEvent) => {
-      const currentInput = inputRef.current
-      currentInput.keyboardModifierStateRef.current = {
-        primary: event.ctrlKey || event.metaKey,
-        shift: event.shiftKey,
-      }
       if (event.defaultPrevented || isGridKeyboardEditableTarget(event.target)) {
         return
       }
@@ -355,7 +331,7 @@ export function useWorkbookGridKeyboardHandler(input: {
             shiftKey: event.shiftKey,
           },
           document.activeElement,
-          currentInput.hostRef.current,
+          input.hostRef.current,
         )
       ) {
         return
@@ -368,7 +344,7 @@ export function useWorkbookGridKeyboardHandler(input: {
       window.removeEventListener('keydown', handleWindowKeyDown, true)
       window.removeEventListener('keyup', handleWindowKeyUp, true)
     }
-  }, [handleGridKey])
+  }, [handleGridKey, input.hostRef])
 
   return {
     handleGridKey,

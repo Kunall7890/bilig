@@ -281,7 +281,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 15
     needs: verify
-    if: github.ref == 'refs/heads/main' && github.event_name == 'workflow_dispatch' && github.event.inputs.publish_runtime_packages != 'false'
+    if: github.ref == 'refs/heads/main' && (github.event_name != 'workflow_dispatch' || github.event.inputs.publish_runtime_packages != 'false')
     outputs:
       release_needed: ${{ steps.planner.outputs.release_needed }}
       bootstrap_required: ${{ steps.planner.outputs.bootstrap_required }}
@@ -516,18 +516,19 @@ jobs:
           test "${origin_sha}" = "${github_sha}"
 
           if [[ "${origin_sha}" != "${GITHUB_SHA}" ]]; then
-            echo "Workflow started from an older SHA; planning against current aligned main ${origin_sha}."
+            echo "current=false" >> "$GITHUB_OUTPUT"
+            echo "reason=stale workflow SHA; newer main exists" >> "$GITHUB_OUTPUT"
             {
-              echo "### runtime release planning advanced to current main"
+              echo "### runtime release planning skipped"
               echo
-              echo "A newer main commit exists, so this workflow will plan runtime packages from the current aligned main instead of skipping."
+              echo "A newer main commit exists, so this stale workflow run will not plan or publish runtime packages."
               echo
               echo "- workflow SHA: ${GITHUB_SHA}"
               echo "- current main: ${origin_sha}"
             } >> "$GITHUB_STEP_SUMMARY"
+            exit 0
           fi
 
-          git checkout -B main origin/main
           echo "current=true" >> "$GITHUB_OUTPUT"
           echo "reason=" >> "$GITHUB_OUTPUT"
 
@@ -703,22 +704,23 @@ jobs:
           fi
 
           if [[ "${origin_sha}" != "${GITHUB_SHA}" ]]; then
-            echo "Workflow started from an older SHA; publishing from current aligned main ${origin_sha}."
+            echo "current=false" >> "$GITHUB_OUTPUT"
+            echo "reason=stale workflow SHA; newer main exists" >> "$GITHUB_OUTPUT"
             {
-              echo "### runtime release publishing advanced to current main"
+              echo "### runtime release skipped"
               echo
-              echo "A newer main commit exists, so this workflow will continue from the current aligned main instead of skipping."
+              echo "A newer main commit exists, so this stale workflow run will not mutate release metadata or publish packages."
               echo
               echo "- workflow SHA: ${GITHUB_SHA}"
               echo "- current main: ${origin_sha}"
             } >> "$GITHUB_STEP_SUMMARY"
+            exit 0
           fi
 
-          git checkout -B main origin/main
           echo "current=true" >> "$GITHUB_OUTPUT"
           echo "reason=" >> "$GITHUB_OUTPUT"
 
-      - name: Report skipped runtime release
+      - name: Report skipped stale runtime release
         if: steps.publish_release_alignment.outputs.current != 'true'
         env:
           REASON: ${{ steps.publish_release_alignment.outputs.reason }}
@@ -812,6 +814,13 @@ jobs:
             exit 1
           fi
 
+          bun scripts/sync-runtime-release-metadata.ts \
+            --version "${TARGET_VERSION}" \
+            --notes-file build/runtime-release-notes.md
+
+          bun scripts/sync-public-evidence.ts
+          bun scripts/sync-agent-discovery-docs.ts
+
           release_paths=(
             .release-please-manifest.json
             docs
@@ -842,7 +851,6 @@ jobs:
             packages/bilig/SKILL.md
             packages/bilig/README.md
             packages/workpaper/AGENTS.md
-            packages/workpaper/server.json
             packages/workpaper/SKILL.md
             packages/workpaper/README.md
             packages/xlsx-formula-recalc/AGENTS.md
@@ -861,53 +869,41 @@ jobs:
             skills/bilig-workpaper/SKILL.md
           )
 
-          prepare_release_metadata_commit() {
-            bun scripts/sync-runtime-release-metadata.ts \
-              --version "${TARGET_VERSION}" \
-              --notes-file build/runtime-release-notes.md
+          if [[ "${DRY_RUN}" == "true" ]]; then
+            git diff --stat -- "${release_paths[@]}" || true
+            exit 0
+          fi
 
-            bun scripts/sync-public-evidence.ts
-            bun scripts/sync-agent-discovery-docs.ts
+          if git diff --quiet -- "${release_paths[@]}"; then
+            echo "Runtime release metadata is already at ${TARGET_VERSION}"
+            exit 0
+          fi
 
-            if [[ "${DRY_RUN}" == "true" ]]; then
-              git diff --stat -- "${release_paths[@]}" || true
-              exit 0
-            fi
+          # The release metadata commit runs repository git hooks. Type-aware lint
+          # resolves workspace packages through package exports, so a clean
+          # runner needs runtime d.ts outputs rebuilt after the version sync and
+          # before pushing.
+          pnpm --filter @bilig/protocol build
+          pnpm --filter @bilig/workbook build
+          pnpm --filter @bilig/wasm-kernel build
+          pnpm --filter @bilig/formula build
+          pnpm --filter @bilig/core build
+          pnpm --filter @bilig/headless build
+          pnpm --filter bilig-workpaper build
+          pnpm --filter @bilig/workpaper build
+          pnpm --filter xlsx-formula-recalc build
+          pnpm --filter @bilig/xlsx-formula-recalc build
+          pnpm --filter sheetjs-formula-recalc build
+          pnpm --filter @bilig/sheetjs-formula-recalc build
+          pnpm --filter exceljs-formula-recalc build
+          pnpm --filter @bilig/exceljs-formula-recalc build
 
-            if git diff --quiet -- "${release_paths[@]}"; then
-              echo "Runtime release metadata is already at ${TARGET_VERSION}"
-              exit 0
-            fi
+          bun scripts/sync-headless-package-footprint.ts
 
-            # The release metadata commit runs repository git hooks. Type-aware lint
-            # resolves workspace packages through package exports, so a clean
-            # runner needs runtime d.ts outputs rebuilt after the version sync and
-            # before pushing.
-            pnpm --filter @bilig/protocol build
-            pnpm --filter @bilig/workbook build
-            pnpm --filter @bilig/wasm-kernel build
-            pnpm --filter @bilig/formula build
-            pnpm --filter @bilig/core build
-            pnpm --filter @bilig/headless build
-            pnpm --filter bilig-workpaper build
-            pnpm --filter @bilig/workpaper build
-            pnpm --filter xlsx-formula-recalc build
-            pnpm --filter @bilig/xlsx-formula-recalc build
-            pnpm --filter sheetjs-formula-recalc build
-            pnpm --filter @bilig/sheetjs-formula-recalc build
-            pnpm --filter exceljs-formula-recalc build
-            pnpm --filter @bilig/exceljs-formula-recalc build
-
-            bun scripts/sync-headless-package-footprint.ts
-            bun scripts/sync-agent-discovery-docs.ts
-
-            git config user.name "github-actions[bot]"
-            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-            git add "${release_paths[@]}"
-            SKIP_SIMPLE_GIT_HOOKS=1 git commit -m "chore(release): runtime packages v${TARGET_VERSION}"
-          }
-
-          prepare_release_metadata_commit
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add "${release_paths[@]}"
+          git commit -m "chore(release): runtime packages v${TARGET_VERSION}"
 
           for attempt in 1 2 3; do
             if SKIP_SIMPLE_GIT_HOOKS=1 git push origin HEAD:main; then
@@ -918,10 +914,9 @@ jobs:
               exit 1
             fi
 
-            echo "Release metadata push raced with a newer main; regenerating on latest main for attempt ${attempt}"
+            echo "Release metadata push raced with a newer main; rebasing attempt ${attempt}"
             git fetch --force origin main
-            git reset --hard origin/main
-            prepare_release_metadata_commit
+            git rebase origin/main
           done
 
           for attempt in $(seq 1 30); do
@@ -1023,21 +1018,6 @@ jobs:
             echo "published versions: ${PUBLISHED_VERSIONS}"
           } >> "$GITHUB_STEP_SUMMARY"
 
-      - name: Publish runtime package set to npm
-        if: steps.npm_provisioning.outputs.publish_allowed == 'true'
-        env:
-          NPM_DIST_TAG: ${{ needs.plan_release.outputs.npm_tag }}
-          DRY_RUN: ${{ needs.plan_release.outputs.dry_run }}
-          ALLOW_NEW_NPM_PACKAGES: ${{ needs.plan_release.outputs.allow_new_packages }}
-          SKIP_UNPROVISIONED_NPM_PACKAGES: ${{ needs.plan_release.outputs.skip_unprovisioned_packages }}
-          TARGET_VERSION: ${{ needs.plan_release.outputs.target_version }}
-        run: |
-          set -euo pipefail
-          test -n "${ACTIONS_ID_TOKEN_REQUEST_URL:-}"
-          test -n "${ACTIONS_ID_TOKEN_REQUEST_TOKEN:-}"
-          unset NODE_AUTH_TOKEN
-          bun scripts/publish-runtime-package-set.ts
-
       - name: Inspect runtime tag state
         if: steps.npm_provisioning.outputs.publish_allowed == 'true'
         id: tag_state
@@ -1114,6 +1094,18 @@ jobs:
             --verify-tag \
             --title "Libraries v${{ needs.plan_release.outputs.target_version }}" \
             --notes-file build/runtime-release-notes.md
+
+      - name: Publish runtime package set to npm
+        if: steps.npm_provisioning.outputs.publish_allowed == 'true'
+        env:
+          NPM_DIST_TAG: ${{ needs.plan_release.outputs.npm_tag }}
+          DRY_RUN: ${{ needs.plan_release.outputs.dry_run }}
+          ALLOW_NEW_NPM_PACKAGES: ${{ needs.plan_release.outputs.allow_new_packages }}
+          SKIP_UNPROVISIONED_NPM_PACKAGES: ${{ needs.plan_release.outputs.skip_unprovisioned_packages }}
+          TARGET_VERSION: ${{ needs.plan_release.outputs.target_version }}
+        run: |
+          set -euo pipefail
+          bun scripts/publish-runtime-package-set.ts
 
       - name: Upload WorkPaper MCPB release asset
         if: steps.npm_provisioning.outputs.publish_allowed == 'true' && needs.plan_release.outputs.dry_run != 'true'
@@ -1257,8 +1249,6 @@ jobs:
             publish_args+=(--dry-run)
           fi
 
-          test -n "${ACTIONS_ID_TOKEN_REQUEST_URL:-}"
-          test -n "${ACTIONS_ID_TOKEN_REQUEST_TOKEN:-}"
           unset NODE_AUTH_TOKEN
           npm publish "${publish_args[@]}"
 

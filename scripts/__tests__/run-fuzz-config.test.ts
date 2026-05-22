@@ -1,12 +1,14 @@
 import { describe, expect, it } from 'vitest'
-import { buildVitestFuzzCommand, parseFuzzMode, resolveVitestFuzzMaxWorkers } from '../run-fuzz-config.js'
+import { buildVitestFuzzCommand, parseFuzzMode, resolveSkipBrowserFuzz, resolveVitestFuzzMaxWorkers } from '../run-fuzz-config.js'
 
 describe('run fuzz config', () => {
   it('resolves explicit fuzz modes without silently downgrading unknown values', () => {
-    expect(parseFuzzMode(undefined)).toBe('fuzz')
-    expect(parseFuzzMode('fuzz')).toBe('fuzz')
+    expect(parseFuzzMode(undefined)).toBe('default')
+    expect(parseFuzzMode('default')).toBe('default')
+    expect(parseFuzzMode('main')).toBe('main')
+    expect(parseFuzzMode('nightly')).toBe('nightly')
     expect(parseFuzzMode('replay')).toBe('replay')
-    expect(() => parseFuzzMode('main')).toThrow('Fuzz mode must be "fuzz" or "replay", got main')
+    expect(() => parseFuzzMode('mainn')).toThrow('Fuzz mode must be "default", "main", "nightly", or "replay", got mainn')
   })
 
   it('caps vitest fuzz workers to a conservative subset of host parallelism', () => {
@@ -27,5 +29,16 @@ describe('run fuzz config', () => {
       '--maxWorkers',
       '2',
     ])
+  })
+
+  it('resolves the browser fuzz skip flag strictly', () => {
+    expect(resolveSkipBrowserFuzz({})).toBe(false)
+    expect(resolveSkipBrowserFuzz({ BILIG_FUZZ_SKIP_BROWSER: '1' })).toBe(true)
+    expect(resolveSkipBrowserFuzz({ BILIG_FUZZ_SKIP_BROWSER: 'true' })).toBe(true)
+    expect(resolveSkipBrowserFuzz({ BILIG_FUZZ_SKIP_BROWSER: '0' })).toBe(false)
+    expect(resolveSkipBrowserFuzz({ BILIG_FUZZ_SKIP_BROWSER: 'false' })).toBe(false)
+    expect(() => resolveSkipBrowserFuzz({ BILIG_FUZZ_SKIP_BROWSER: 'yes' })).toThrow(
+      'BILIG_FUZZ_SKIP_BROWSER must be "1", "true", "0", or "false" when set, got yes',
+    )
   })
 })

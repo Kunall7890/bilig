@@ -1,23 +1,12 @@
 import type { LiteralInput } from '@bilig/protocol'
-import {
-  filledUint32Array,
-  growFloat64Array,
-  growInt8Array,
-  growUint8Array,
-  growUint16Array,
-  growUint32Array,
-} from './xlsx-large-simple-array-storage.js'
+import { filledUint32Array, growFloat64Array, growInt16Array, growInt32Array, growUint32Array } from './xlsx-large-simple-array-storage.js'
 import {
   binarySearchUint32Prefix,
   canStoreInt8Number,
   canStoreInt16Number,
   canStoreInt32Number,
-  canStoreLinearCoordinate,
-  previewCellCount,
-  previewIndex,
 } from './xlsx-large-simple-arena-helpers.js'
 import {
-  initialCellCapacity,
   initialSparseIntegerCapacity,
   noPoolId,
   valueKindBoolean,
@@ -31,179 +20,22 @@ import {
   valueKindString,
   valueKindTinyInteger,
 } from './xlsx-large-simple-arena-constants.js'
-import type { ImportedWorkbookArenaDedupeMode, ImportedWorkbookArenaOptions } from './xlsx-large-simple-arena-types.js'
-import { SparseInt16ArenaValues, SparseInt32ArenaValues } from './xlsx-large-simple-integer-values.js'
-import type { LargeSimpleSharedStrings } from './xlsx-large-simple-shared-strings.js'
-import type { ImportedWorkbookStringPool } from './xlsx-large-simple-string-pool.js'
+import {
+  canStoreStringIdInStorage,
+  createStringIdStorage,
+  growStringIdStorage,
+  ImportedWorkbookArenaCoordinateBase,
+  maxNarrowStringId,
+  normalizeStoredStringId,
+  stringNoPoolIdForStorage,
+  type StringIdStorage,
+  widenStringIdStorage,
+} from './xlsx-large-simple-arena-coordinate-base.js'
+import type { ImportedWorkbookArenaDedupeMode } from './xlsx-large-simple-arena-types.js'
 
-const denseRowMajorEarlyMismatchCapacityDivisor = 4
 const sparseStringDenseThresholdFloor = 1_000_000
 
-export abstract class ImportedWorkbookArenaBase {
-  protected sheetIndex: number | null = null
-  protected sheetIndexes: Uint32Array<ArrayBuffer> | undefined
-  protected rows: Uint32Array<ArrayBuffer> = new Uint32Array(initialCellCapacity)
-  protected columns: Uint16Array<ArrayBuffer> = new Uint16Array(initialCellCapacity)
-  protected valueKinds: Uint8Array<ArrayBuffer> = new Uint8Array(initialCellCapacity)
-  protected numberValues: Float64Array<ArrayBuffer> | undefined
-  protected tinyIntegerValues: Int8Array<ArrayBuffer> | undefined
-  protected readonly smallIntegers = new SparseInt16ArenaValues()
-  protected readonly integers = new SparseInt32ArenaValues()
-  protected stringIds: Uint32Array<ArrayBuffer> | undefined
-  protected sparseStringCellIndexes: Uint32Array<ArrayBuffer> | undefined
-  protected sparseStringIds: Uint32Array<ArrayBuffer> | undefined
-  protected sparseStringCount = 0
-  protected booleanValues: Uint8Array<ArrayBuffer> | undefined
-  protected formulaIds: Uint32Array<ArrayBuffer> | undefined
-  protected length = 0
-  protected denseRowMajorWidth: number | null = null
-  protected linearCellIndexes: Uint32Array<ArrayBuffer> | undefined
-  protected linearRowMajorWidth: number | null = null
-  protected strings: string[] = []
-  protected readonly stringIdsByValue = new Map<string, number>()
-  protected formulas: string[] = []
-  protected readonly formulaIdsByValue = new Map<string, number>()
-  protected sharedStrings: LargeSimpleSharedStrings | undefined
-  protected stringValueCount = 0
-  protected sharedStringRefCount = 0
-  protected sharedStringRefsInNumberValues = false
-  protected readonly previewValues: (LiteralInput | undefined)[] = Array.from({ length: previewCellCount })
-  protected readonly previewValueSet = new Uint8Array(previewCellCount)
-  protected readonly stringDedupeMode: ImportedWorkbookArenaDedupeMode
-  protected readonly formulaDedupeMode: ImportedWorkbookArenaDedupeMode
-  protected readonly dedupeMaxEntries: number
-  protected readonly stringDedupeKeys: string[] = []
-  protected stringDedupeEvictionIndex = 0
-  protected readonly formulaDedupeKeys: string[] = []
-  protected formulaDedupeEvictionIndex = 0
-
-  constructor(
-    protected readonly stringPool?: ImportedWorkbookStringPool,
-    options: ImportedWorkbookArenaOptions = {},
-  ) {
-    this.stringDedupeMode = options.deduplicateStrings ?? true
-    this.formulaDedupeMode = options.deduplicateFormulas ?? true
-    this.dedupeMaxEntries = Math.max(0, Math.trunc(options.dedupeMaxEntries ?? 8192))
-  }
-
-  get cellCount(): number {
-    return this.length
-  }
-
-  retainedStorageByteLength(): number {
-    return (
-      (this.sheetIndexes?.byteLength ?? 0) +
-      this.rows.byteLength +
-      this.columns.byteLength +
-      this.valueKinds.byteLength +
-      (this.numberValues?.byteLength ?? 0) +
-      (this.tinyIntegerValues?.byteLength ?? 0) +
-      this.smallIntegers.retainedStorageByteLength() +
-      this.integers.retainedStorageByteLength() +
-      (this.stringIds?.byteLength ?? 0) +
-      (this.sparseStringCellIndexes?.byteLength ?? 0) +
-      (this.sparseStringIds?.byteLength ?? 0) +
-      (this.booleanValues?.byteLength ?? 0) +
-      (this.formulaIds?.byteLength ?? 0) +
-      (this.linearCellIndexes?.byteLength ?? 0)
-    )
-  }
-
-  reserveCellCapacity(capacity: number): void {
-    if (!Number.isSafeInteger(capacity) || capacity <= this.valueKinds.length) {
-      return
-    }
-    this.resizeStorage(capacity)
-  }
-
-  reserveDenseRowMajorCellCapacity(sheetIndex: number, width: number, height: number): void {
-    const capacity = width * height
-    if (!Number.isSafeInteger(capacity) || width <= 0 || height <= 0) {
-      return
-    }
-    if (this.length !== 0 || this.sheetIndexes || (this.sheetIndex !== null && this.sheetIndex !== sheetIndex)) {
-      this.reserveCellCapacity(capacity)
-      return
-    }
-    this.sheetIndex = sheetIndex
-    this.denseRowMajorWidth = width
-    this.rows = new Uint32Array(0)
-    this.columns = new Uint16Array(0)
-    this.reserveCellCapacity(capacity)
-  }
-
-  trackLinearRowMajorCellCoordinates(sheetIndex: number, width: number, height: number): void {
-    if (
-      this.length !== 0 ||
-      this.sheetIndexes ||
-      (this.sheetIndex !== null && this.sheetIndex !== sheetIndex) ||
-      !canStoreLinearCoordinate(width, height - 1, width - 1)
-    ) {
-      return
-    }
-    this.sheetIndex = sheetIndex
-    this.linearRowMajorWidth = width
-    this.linearCellIndexes = new Uint32Array(this.valueKinds.length)
-    this.rows = new Uint32Array(0)
-    this.columns = new Uint16Array(0)
-  }
-
-  protected appendCell(sheetIndex: number, row: number, column: number): number {
-    const index = this.length
-    this.length += 1
-    this.recordSheetIndex(index, sheetIndex)
-    if (this.denseRowMajorWidth !== null) {
-      const expectedRow = Math.floor(index / this.denseRowMajorWidth)
-      if (
-        this.sheetIndexes === undefined &&
-        this.sheetIndex === sheetIndex &&
-        row === expectedRow &&
-        column === index % this.denseRowMajorWidth
-      ) {
-        return index
-      }
-      if (this.shouldAbandonDenseRowMajorPreallocation(index)) {
-        this.shrinkDenseRowMajorPreallocationToCoordinateStorage(index)
-      } else if (canStoreLinearCoordinate(this.denseRowMajorWidth, row, column)) {
-        this.materializeLinearCoordinateStorage(index)
-      } else {
-        this.materializeCoordinateStorage(index)
-      }
-    }
-    if (this.linearCellIndexes && this.linearRowMajorWidth !== null) {
-      if (canStoreLinearCoordinate(this.linearRowMajorWidth, row, column)) {
-        this.linearCellIndexes[index] = row * this.linearRowMajorWidth + column
-        return index
-      }
-      this.materializeCoordinateStorage(index)
-    }
-    this.rows[index] = row
-    this.columns[index] = column
-    return index
-  }
-
-  private shouldAbandonDenseRowMajorPreallocation(mismatchIndex: number): boolean {
-    return mismatchIndex < initialCellCapacity || mismatchIndex * denseRowMajorEarlyMismatchCapacityDivisor < this.valueKinds.length
-  }
-
-  protected recordSheetIndex(index: number, sheetIndex: number): void {
-    if (this.sheetIndexes) {
-      this.sheetIndexes[index] = sheetIndex
-      return
-    }
-    if (this.sheetIndex === null) {
-      this.sheetIndex = sheetIndex
-      return
-    }
-    if (this.sheetIndex === sheetIndex) {
-      return
-    }
-    const sheetIndexes = new Uint32Array(this.valueKinds.length)
-    sheetIndexes.fill(this.sheetIndex, 0, index)
-    sheetIndexes[index] = sheetIndex
-    this.sheetIndexes = sheetIndexes
-  }
-
+export abstract class ImportedWorkbookArenaBase extends ImportedWorkbookArenaCoordinateBase {
   protected addValue(index: number, value: LiteralInput | undefined): void {
     if (value === undefined) {
       this.valueKinds[index] = valueKindEmpty
@@ -221,16 +53,16 @@ export abstract class ImportedWorkbookArenaBase {
       }
       if (canStoreInt16Number(value)) {
         this.valueKinds[index] = valueKindSmallInteger
-        this.smallIntegers.store(index, value, this.valueKinds.length, this.sparseIntegerDenseThreshold())
+        this.storeSmallIntegerValue(index, value)
         return
       }
       if (canStoreInt32Number(value)) {
         this.valueKinds[index] = valueKindInteger
-        this.integers.store(index, value, this.valueKinds.length, this.sparseIntegerDenseThreshold())
+        this.storeIntegerValue(index, value)
         return
       }
       this.valueKinds[index] = valueKindNumber
-      this.ensureNumberValueStorage()[index] = value
+      this.storeNumberValue(index, value)
       return
     }
     if (typeof value === 'boolean') {
@@ -251,13 +83,13 @@ export abstract class ImportedWorkbookArenaBase {
     const valueKind = this.valueKinds[index] ?? valueKindEmpty
     switch (valueKind) {
       case valueKindNumber:
-        return this.numberValues?.[index]
+        return this.numberValueAt(index)
       case valueKindTinyInteger:
         return this.tinyIntegerValues?.[index]
       case valueKindSmallInteger:
-        return this.smallIntegers.valueAt(index)
+        return this.smallIntegerValueAt(index)
       case valueKindInteger:
-        return this.integers.valueAt(index)
+        return this.integerValueAt(index)
       case valueKindString: {
         const stringId = this.stringIdAt(index)
         return stringId === noPoolId ? undefined : this.strings[stringId]
@@ -285,16 +117,16 @@ export abstract class ImportedWorkbookArenaBase {
     return this.sheetIndexes ? this.sheetIndexes[index] === sheetIndex : this.sheetIndex === sheetIndex
   }
 
-  protected ensureStringIdStorage(): Uint32Array<ArrayBuffer> {
+  protected ensureStringIdStorage(): StringIdStorage {
     if (this.stringIds) {
       return this.stringIds
     }
     if (this.sparseStringCellIndexes && this.sparseStringIds) {
-      const output = filledUint32Array(this.valueKinds.length, noPoolId)
+      const output = createStringIdStorage(this.valueKinds.length, this.sparseStringIds instanceof Uint32Array)
       for (let index = 0; index < this.sparseStringCount; index += 1) {
         const cellIndex = this.sparseStringCellIndexes[index] ?? -1
         if (cellIndex >= 0 && cellIndex < output.length) {
-          output[cellIndex] = this.sparseStringIds[index] ?? noPoolId
+          output[cellIndex] = this.sparseStringIds[index] ?? stringNoPoolIdForStorage(output)
         }
       }
       this.sparseStringCellIndexes = undefined
@@ -303,7 +135,7 @@ export abstract class ImportedWorkbookArenaBase {
       this.stringIds = output
       return this.stringIds
     }
-    this.stringIds = filledUint32Array(this.valueKinds.length, noPoolId)
+    this.stringIds = createStringIdStorage(this.valueKinds.length)
     return this.stringIds
   }
 
@@ -313,8 +145,57 @@ export abstract class ImportedWorkbookArenaBase {
     }
     this.numberValues = new Float64Array(this.valueKinds.length)
     this.numberValues.fill(Number.NaN)
+    const sparseIndexes = this.sparseNumberCellIndexes
+    const sparseValues = this.sparseNumberValues
+    if (sparseIndexes && sparseValues) {
+      for (let offset = 0; offset < this.sparseNumberCount; offset += 1) {
+        const cellIndex = sparseIndexes[offset] ?? -1
+        if (cellIndex >= 0 && cellIndex < this.numberValues.length) {
+          this.numberValues[cellIndex] = sparseValues[offset] ?? Number.NaN
+        }
+      }
+    }
+    this.sparseNumberCellIndexes = undefined
+    this.sparseNumberValues = undefined
+    this.sparseNumberCount = 0
     this.moveSharedStringIndexesToNumberValues()
     return this.numberValues
+  }
+
+  protected storeNumberValue(index: number, value: number): void {
+    if (this.numberValues) {
+      this.numberValues[index] = value
+      return
+    }
+    if (this.sparseNumberCount >= this.sparseNumberDenseThreshold()) {
+      this.ensureNumberValueStorage()[index] = value
+      return
+    }
+    if (!this.sparseNumberCellIndexes || !this.sparseNumberValues) {
+      this.sparseNumberCellIndexes = new Uint32Array(initialSparseIntegerCapacity)
+      this.sparseNumberValues = new Float64Array(initialSparseIntegerCapacity)
+      this.sparseNumberValues.fill(Number.NaN)
+    } else if (this.sparseNumberCount >= this.sparseNumberCellIndexes.length) {
+      const nextCapacity = this.sparseNumberCellIndexes.length * 2
+      this.sparseNumberCellIndexes = growUint32Array(this.sparseNumberCellIndexes, nextCapacity)
+      this.sparseNumberValues = growFloat64Array(this.sparseNumberValues, nextCapacity)
+    }
+    this.sparseNumberCellIndexes[this.sparseNumberCount] = index
+    this.sparseNumberValues[this.sparseNumberCount] = value
+    this.sparseNumberCount += 1
+  }
+
+  protected numberValueAt(index: number): number | undefined {
+    if (this.numberValues) {
+      return this.numberValues[index]
+    }
+    const sparseIndexes = this.sparseNumberCellIndexes
+    const sparseValues = this.sparseNumberValues
+    if (!sparseIndexes || !sparseValues || this.sparseNumberCount === 0) {
+      return undefined
+    }
+    const offset = binarySearchUint32Prefix(sparseIndexes, this.sparseNumberCount, index)
+    return offset === -1 ? undefined : sparseValues[offset]
   }
 
   protected ensureTinyIntegerValueStorage(): Int8Array<ArrayBuffer> {
@@ -325,8 +206,124 @@ export abstract class ImportedWorkbookArenaBase {
     return this.tinyIntegerValues
   }
 
+  protected storeSmallIntegerValue(index: number, value: number): void {
+    if (this.smallIntegerValues) {
+      this.smallIntegerValues[index] = value
+      return
+    }
+    if (this.sparseSmallIntegerCount >= this.sparseIntegerDenseThreshold()) {
+      this.ensureSmallIntegerValueStorage()[index] = value
+      return
+    }
+    if (!this.sparseSmallIntegerCellIndexes || !this.sparseSmallIntegerValues) {
+      this.sparseSmallIntegerCellIndexes = new Uint32Array(initialSparseIntegerCapacity)
+      this.sparseSmallIntegerValues = new Int16Array(initialSparseIntegerCapacity)
+    } else if (this.sparseSmallIntegerCount >= this.sparseSmallIntegerCellIndexes.length) {
+      const nextCapacity = this.sparseSmallIntegerCellIndexes.length * 2
+      this.sparseSmallIntegerCellIndexes = growUint32Array(this.sparseSmallIntegerCellIndexes, nextCapacity)
+      this.sparseSmallIntegerValues = growInt16Array(this.sparseSmallIntegerValues, nextCapacity)
+    }
+    this.sparseSmallIntegerCellIndexes[this.sparseSmallIntegerCount] = index
+    this.sparseSmallIntegerValues[this.sparseSmallIntegerCount] = value
+    this.sparseSmallIntegerCount += 1
+  }
+
+  protected ensureSmallIntegerValueStorage(): Int16Array<ArrayBuffer> {
+    if (this.smallIntegerValues) {
+      return this.smallIntegerValues
+    }
+    this.smallIntegerValues = new Int16Array(this.valueKinds.length)
+    const sparseIndexes = this.sparseSmallIntegerCellIndexes
+    const sparseValues = this.sparseSmallIntegerValues
+    if (sparseIndexes && sparseValues) {
+      for (let offset = 0; offset < this.sparseSmallIntegerCount; offset += 1) {
+        const cellIndex = sparseIndexes[offset] ?? -1
+        if (cellIndex >= 0 && cellIndex < this.smallIntegerValues.length) {
+          this.smallIntegerValues[cellIndex] = sparseValues[offset] ?? 0
+        }
+      }
+    }
+    this.sparseSmallIntegerCellIndexes = undefined
+    this.sparseSmallIntegerValues = undefined
+    this.sparseSmallIntegerCount = 0
+    return this.smallIntegerValues
+  }
+
+  protected smallIntegerValueAt(index: number): number | undefined {
+    if (this.smallIntegerValues) {
+      return this.smallIntegerValues[index]
+    }
+    const sparseIndexes = this.sparseSmallIntegerCellIndexes
+    const sparseValues = this.sparseSmallIntegerValues
+    if (!sparseIndexes || !sparseValues || this.sparseSmallIntegerCount === 0) {
+      return undefined
+    }
+    const offset = binarySearchUint32Prefix(sparseIndexes, this.sparseSmallIntegerCount, index)
+    return offset === -1 ? undefined : sparseValues[offset]
+  }
+
+  protected storeIntegerValue(index: number, value: number): void {
+    if (this.integerValues) {
+      this.integerValues[index] = value
+      return
+    }
+    if (this.sparseIntegerCount >= this.sparseIntegerDenseThreshold()) {
+      this.ensureIntegerValueStorage()[index] = value
+      return
+    }
+    if (!this.sparseIntegerCellIndexes || !this.sparseIntegerValues) {
+      this.sparseIntegerCellIndexes = new Uint32Array(initialSparseIntegerCapacity)
+      this.sparseIntegerValues = new Int32Array(initialSparseIntegerCapacity)
+    } else if (this.sparseIntegerCount >= this.sparseIntegerCellIndexes.length) {
+      const nextCapacity = this.sparseIntegerCellIndexes.length * 2
+      this.sparseIntegerCellIndexes = growUint32Array(this.sparseIntegerCellIndexes, nextCapacity)
+      this.sparseIntegerValues = growInt32Array(this.sparseIntegerValues, nextCapacity)
+    }
+    this.sparseIntegerCellIndexes[this.sparseIntegerCount] = index
+    this.sparseIntegerValues[this.sparseIntegerCount] = value
+    this.sparseIntegerCount += 1
+  }
+
+  protected ensureIntegerValueStorage(): Int32Array<ArrayBuffer> {
+    if (this.integerValues) {
+      return this.integerValues
+    }
+    this.integerValues = new Int32Array(this.valueKinds.length)
+    const sparseIndexes = this.sparseIntegerCellIndexes
+    const sparseValues = this.sparseIntegerValues
+    if (sparseIndexes && sparseValues) {
+      for (let offset = 0; offset < this.sparseIntegerCount; offset += 1) {
+        const cellIndex = sparseIndexes[offset] ?? -1
+        if (cellIndex >= 0 && cellIndex < this.integerValues.length) {
+          this.integerValues[cellIndex] = sparseValues[offset] ?? 0
+        }
+      }
+    }
+    this.sparseIntegerCellIndexes = undefined
+    this.sparseIntegerValues = undefined
+    this.sparseIntegerCount = 0
+    return this.integerValues
+  }
+
+  protected integerValueAt(index: number): number | undefined {
+    if (this.integerValues) {
+      return this.integerValues[index]
+    }
+    const sparseIndexes = this.sparseIntegerCellIndexes
+    const sparseValues = this.sparseIntegerValues
+    if (!sparseIndexes || !sparseValues || this.sparseIntegerCount === 0) {
+      return undefined
+    }
+    const offset = binarySearchUint32Prefix(sparseIndexes, this.sparseIntegerCount, index)
+    return offset === -1 ? undefined : sparseValues[offset]
+  }
+
   protected sparseIntegerDenseThreshold(): number {
     return Math.max(initialSparseIntegerCapacity, this.valueKinds.length >>> 2)
+  }
+
+  protected sparseNumberDenseThreshold(): number {
+    return Math.max(initialSparseIntegerCapacity, Math.floor((this.valueKinds.length * 2) / 3))
   }
 
   protected sparseStringDenseThreshold(): number {
@@ -376,7 +373,7 @@ export abstract class ImportedWorkbookArenaBase {
     if (this.stringIds) {
       for (let index = 0; index < this.length; index += 1) {
         if ((this.valueKinds[index] ?? valueKindEmpty) === valueKindSharedStringRef) {
-          this.numberValues[index] = this.stringIds[index] ?? noPoolId
+          this.numberValues[index] = normalizeStoredStringId(this.stringIds[index], this.stringIds)
         }
       }
       this.stringIds = undefined
@@ -391,7 +388,7 @@ export abstract class ImportedWorkbookArenaBase {
     for (let offset = 0; offset < this.sparseStringCount; offset += 1) {
       const index = sparseIndexes[offset] ?? -1
       if (index >= 0 && index < this.length && (this.valueKinds[index] ?? valueKindEmpty) === valueKindSharedStringRef) {
-        this.numberValues[index] = sparseIds[offset] ?? noPoolId
+        this.numberValues[index] = normalizeStoredStringId(sparseIds[offset], sparseIds)
       }
     }
     this.sparseStringCellIndexes = undefined
@@ -402,27 +399,43 @@ export abstract class ImportedWorkbookArenaBase {
 
   protected storeStringId(index: number, stringId: number): void {
     if (this.stringIds) {
+      if (!canStoreStringIdInStorage(this.stringIds, stringId)) {
+        this.stringIds = widenStringIdStorage(this.stringIds)
+      }
       this.stringIds[index] = stringId
       return
     }
     if (this.sparseStringCellIndexes && this.sparseStringIds) {
       const existingOffset = binarySearchUint32Prefix(this.sparseStringCellIndexes, this.sparseStringCount, index)
       if (existingOffset !== -1) {
+        if (!canStoreStringIdInStorage(this.sparseStringIds, stringId)) {
+          this.sparseStringIds = widenStringIdStorage(this.sparseStringIds)
+        }
         this.sparseStringIds[existingOffset] = stringId
         return
       }
     }
     if (this.sparseStringCount >= this.sparseStringDenseThreshold()) {
-      this.ensureStringIdStorage()[index] = stringId
+      let stringIds = this.ensureStringIdStorage()
+      if (!canStoreStringIdInStorage(stringIds, stringId)) {
+        stringIds = widenStringIdStorage(stringIds)
+        this.stringIds = stringIds
+      }
+      stringIds[index] = stringId
       return
     }
     if (!this.sparseStringCellIndexes || !this.sparseStringIds) {
       this.sparseStringCellIndexes = new Uint32Array(initialSparseIntegerCapacity)
-      this.sparseStringIds = new Uint32Array(initialSparseIntegerCapacity)
-    } else if (this.sparseStringCount >= this.sparseStringCellIndexes.length) {
-      const nextCapacity = this.sparseStringCellIndexes.length * 2
-      this.sparseStringCellIndexes = growUint32Array(this.sparseStringCellIndexes, nextCapacity)
-      this.sparseStringIds = growUint32Array(this.sparseStringIds, nextCapacity)
+      this.sparseStringIds = createStringIdStorage(initialSparseIntegerCapacity, stringId > maxNarrowStringId)
+    } else {
+      if (!canStoreStringIdInStorage(this.sparseStringIds, stringId)) {
+        this.sparseStringIds = widenStringIdStorage(this.sparseStringIds)
+      }
+      if (this.sparseStringCount >= this.sparseStringCellIndexes.length) {
+        const nextCapacity = this.sparseStringCellIndexes.length * 2
+        this.sparseStringCellIndexes = growUint32Array(this.sparseStringCellIndexes, nextCapacity)
+        this.sparseStringIds = growStringIdStorage(this.sparseStringIds, nextCapacity)
+      }
     }
     const insertOffset = this.sparseStringInsertOffset(index)
     if (insertOffset < this.sparseStringCount) {
@@ -454,7 +467,7 @@ export abstract class ImportedWorkbookArenaBase {
 
   protected stringIdAt(index: number): number {
     if (this.stringIds) {
-      return this.stringIds[index] ?? noPoolId
+      return normalizeStoredStringId(this.stringIds[index], this.stringIds)
     }
     const sparseIndexes = this.sparseStringCellIndexes
     const sparseIds = this.sparseStringIds
@@ -462,7 +475,7 @@ export abstract class ImportedWorkbookArenaBase {
       return noPoolId
     }
     const offset = binarySearchUint32Prefix(sparseIndexes, this.sparseStringCount, index)
-    return offset === -1 ? noPoolId : (sparseIds[offset] ?? noPoolId)
+    return offset === -1 ? noPoolId : normalizeStoredStringId(sparseIds[offset], sparseIds)
   }
 
   protected internString(value: string): number {
@@ -536,181 +549,6 @@ export abstract class ImportedWorkbookArenaBase {
     }
   }
 
-  protected rowAt(index: number): number {
-    if (this.denseRowMajorWidth !== null) {
-      return Math.floor(index / this.denseRowMajorWidth)
-    }
-    if (this.linearCellIndexes && this.linearRowMajorWidth !== null) {
-      return Math.floor((this.linearCellIndexes[index] ?? 0) / this.linearRowMajorWidth)
-    }
-    return this.rows[index] ?? 0
-  }
-
-  protected columnAt(index: number): number {
-    if (this.denseRowMajorWidth !== null) {
-      return index % this.denseRowMajorWidth
-    }
-    if (this.linearCellIndexes && this.linearRowMajorWidth !== null) {
-      return (this.linearCellIndexes[index] ?? 0) % this.linearRowMajorWidth
-    }
-    return this.columns[index] ?? 0
-  }
-
-  protected materializeCoordinateStorage(upToIndex: number): void {
-    const width = this.denseRowMajorWidth ?? this.linearRowMajorWidth
-    if (width === null) {
-      return
-    }
-    this.rows = new Uint32Array(this.valueKinds.length)
-    this.columns = new Uint16Array(this.valueKinds.length)
-    const linearCellIndexes = this.linearCellIndexes
-    if (linearCellIndexes) {
-      for (let index = 0; index < upToIndex; index += 1) {
-        const linearCellIndex = linearCellIndexes[index] ?? 0
-        this.rows[index] = Math.floor(linearCellIndex / width)
-        this.columns[index] = linearCellIndex % width
-      }
-    } else {
-      for (let index = 0; index < upToIndex; index += 1) {
-        this.rows[index] = Math.floor(index / width)
-        this.columns[index] = index % width
-      }
-    }
-    this.denseRowMajorWidth = null
-    this.linearCellIndexes = undefined
-    this.linearRowMajorWidth = null
-  }
-
-  private shrinkDenseRowMajorPreallocationToCoordinateStorage(upToIndex: number): void {
-    const width = this.denseRowMajorWidth
-    if (width === null) {
-      return
-    }
-    const nextCapacity = Math.max(initialCellCapacity, this.length)
-    const copyLength = Math.min(upToIndex, nextCapacity)
-    const previousValueKinds = this.valueKinds
-    const previousSheetIndexes = this.sheetIndexes
-    const previousNumberValues = this.numberValues
-    const previousTinyIntegerValues = this.tinyIntegerValues
-    const previousStringIds = this.stringIds
-    const previousBooleanValues = this.booleanValues
-    const previousFormulaIds = this.formulaIds
-
-    this.rows = new Uint32Array(nextCapacity)
-    this.columns = new Uint16Array(nextCapacity)
-    for (let index = 0; index < copyLength; index += 1) {
-      this.rows[index] = Math.floor(index / width)
-      this.columns[index] = index % width
-    }
-    if (previousSheetIndexes) {
-      this.sheetIndexes = new Uint32Array(nextCapacity)
-      this.sheetIndexes.set(previousSheetIndexes.subarray(0, copyLength))
-    }
-    this.valueKinds = new Uint8Array(nextCapacity)
-    this.valueKinds.set(previousValueKinds.subarray(0, copyLength))
-    if (previousNumberValues) {
-      this.numberValues = new Float64Array(nextCapacity)
-      this.numberValues.fill(Number.NaN)
-      this.numberValues.set(previousNumberValues.subarray(0, copyLength))
-    }
-    if (previousTinyIntegerValues) {
-      this.tinyIntegerValues = new Int8Array(nextCapacity)
-      this.tinyIntegerValues.set(previousTinyIntegerValues.subarray(0, copyLength))
-    }
-    this.smallIntegers.compact(nextCapacity)
-    this.integers.compact(nextCapacity)
-    if (previousStringIds) {
-      this.stringIds = filledUint32Array(nextCapacity, noPoolId)
-      this.stringIds.set(previousStringIds.subarray(0, copyLength))
-    }
-    if (previousBooleanValues) {
-      this.booleanValues = new Uint8Array(nextCapacity)
-      this.booleanValues.set(previousBooleanValues.subarray(0, copyLength))
-    }
-    if (previousFormulaIds) {
-      this.formulaIds = filledUint32Array(nextCapacity, noPoolId)
-      this.formulaIds.set(previousFormulaIds.subarray(0, copyLength))
-    }
-    this.denseRowMajorWidth = null
-    this.linearCellIndexes = undefined
-    this.linearRowMajorWidth = null
-  }
-
-  protected materializeLinearCoordinateStorage(upToIndex: number): void {
-    const width = this.denseRowMajorWidth
-    if (width === null) {
-      return
-    }
-    this.linearCellIndexes = new Uint32Array(this.valueKinds.length)
-    for (let index = 0; index < upToIndex; index += 1) {
-      this.linearCellIndexes[index] = index
-    }
-    this.linearRowMajorWidth = width
-    this.denseRowMajorWidth = null
-    this.rows = new Uint32Array(0)
-    this.columns = new Uint16Array(0)
-  }
-
-  protected setPreviewValue(row: number, column: number, value: LiteralInput): void {
-    const index = previewIndex(row, column)
-    if (index === -1) {
-      return
-    }
-    this.previewValues[index] = value
-    this.previewValueSet[index] = 1
-  }
-
-  protected hasPreviewValue(row: number, column: number): boolean {
-    const index = previewIndex(row, column)
-    return index !== -1 && this.previewValueSet[index] === 1
-  }
-
-  protected readPreviewValue(row: number, column: number): LiteralInput | undefined {
-    const index = previewIndex(row, column)
-    return index === -1 || this.previewValueSet[index] !== 1 ? undefined : this.previewValues[index]
-  }
-
-  protected ensureCapacity(nextLength: number): void {
-    if (nextLength <= this.valueKinds.length) {
-      return
-    }
-    let nextCapacity = this.valueKinds.length
-    while (nextCapacity < nextLength) {
-      nextCapacity *= 2
-    }
-    this.resizeStorage(nextCapacity)
-  }
-
-  protected resizeStorage(nextCapacity: number): void {
-    if (this.sheetIndexes) {
-      this.sheetIndexes = growUint32Array(this.sheetIndexes, nextCapacity)
-    }
-    if (this.linearCellIndexes) {
-      this.linearCellIndexes = growUint32Array(this.linearCellIndexes, nextCapacity)
-    } else if (this.denseRowMajorWidth === null) {
-      this.rows = growUint32Array(this.rows, nextCapacity)
-      this.columns = growUint16Array(this.columns, nextCapacity)
-    }
-    this.valueKinds = growUint8Array(this.valueKinds, nextCapacity)
-    if (this.numberValues) {
-      this.numberValues = growFloat64Array(this.numberValues, nextCapacity)
-    }
-    if (this.tinyIntegerValues) {
-      this.tinyIntegerValues = growInt8Array(this.tinyIntegerValues, nextCapacity)
-    }
-    this.smallIntegers.resize(nextCapacity)
-    this.integers.resize(nextCapacity)
-    if (this.stringIds) {
-      this.stringIds = growUint32Array(this.stringIds, nextCapacity, noPoolId)
-    }
-    if (this.booleanValues) {
-      this.booleanValues = growUint8Array(this.booleanValues, nextCapacity)
-    }
-    if (this.formulaIds) {
-      this.formulaIds = growUint32Array(this.formulaIds, nextCapacity, noPoolId)
-    }
-  }
-
   protected compactSparseStringIds(): void {
     if (this.sparseStringCellIndexes && this.sparseStringIds) {
       if (this.sparseStringCount === 0) {
@@ -732,7 +570,7 @@ export abstract class ImportedWorkbookArenaBase {
     }
     let retainedCount = 0
     for (let index = 0; index < this.length; index += 1) {
-      if ((denseStringIds[index] ?? noPoolId) !== noPoolId) {
+      if (normalizeStoredStringId(denseStringIds[index], denseStringIds) !== noPoolId) {
         retainedCount += 1
       }
     }
@@ -747,10 +585,10 @@ export abstract class ImportedWorkbookArenaBase {
       return
     }
     const indexes = new Uint32Array(retainedCount)
-    const ids = new Uint32Array(retainedCount)
+    const ids = createStringIdStorage(retainedCount, denseStringIds instanceof Uint32Array)
     let outputIndex = 0
     for (let index = 0; index < this.length; index += 1) {
-      const stringId = denseStringIds[index] ?? noPoolId
+      const stringId = normalizeStoredStringId(denseStringIds[index], denseStringIds)
       if (stringId === noPoolId) {
         continue
       }
@@ -764,7 +602,7 @@ export abstract class ImportedWorkbookArenaBase {
     this.sparseStringCount = retainedCount
   }
 
-  protected snapshotStringIds(): Uint32Array | undefined {
+  protected snapshotStringIds(): StringIdStorage | undefined {
     if (this.stringIds) {
       return this.stringIds.subarray(0, this.length)
     }
@@ -773,11 +611,11 @@ export abstract class ImportedWorkbookArenaBase {
     if (!sparseIndexes || !sparseIds || this.sparseStringCount === 0) {
       return undefined
     }
-    const output = filledUint32Array(this.length, noPoolId)
+    const output = createStringIdStorage(this.length, sparseIds instanceof Uint32Array)
     for (let index = 0; index < this.sparseStringCount; index += 1) {
       const cellIndex = sparseIndexes[index] ?? -1
       if (cellIndex >= 0 && cellIndex < output.length) {
-        output[cellIndex] = sparseIds[index] ?? noPoolId
+        output[cellIndex] = sparseIds[index] ?? stringNoPoolIdForStorage(output)
       }
     }
     return output

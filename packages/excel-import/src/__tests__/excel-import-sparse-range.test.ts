@@ -5,8 +5,6 @@ import * as XLSX from 'xlsx'
 import { readBenchToleranceMultiplier } from '../../../../scripts/bench-tolerance.js'
 import { importXlsx } from '../index.js'
 
-const isCoverageRun = process.env['BILIG_VITEST_COVERAGE'] === '1'
-
 describe('XLSX sparse ranges', () => {
   it('imports actual cells without scanning every coordinate in a broad sparse ref', () => {
     const imported = importXlsx(buildBroadSparseWorkbookBytes(), 'broad-sparse.xlsx')
@@ -33,7 +31,7 @@ describe('XLSX sparse ranges', () => {
     )
     const sheet = imported.snapshot.sheets[0]
 
-    expect(sheet?.cells).toEqual([{ address: 'A1', row: 0, col: 0, value: 123 }])
+    expect(sheet?.cells).toEqual([{ address: 'A1', value: 123 }])
     expect(imported.preview.sheets[0]).toMatchObject({
       rowCount: styledBlankRowCount,
       columnCount: styledBlankColumnCount,
@@ -48,10 +46,8 @@ describe('XLSX sparse ranges', () => {
     expect(imported.snapshot.workbook.metadata?.styles?.[0]).toMatchObject({
       fill: { backgroundColor: '#ffcc00' },
     })
-    if (!isCoverageRun) {
-      const tolerance = readBenchmarkTolerance()
-      expect(denseMs).toBeLessThan(Math.max(1_500 * tolerance, sparseMs * 12 * tolerance))
-    }
+    const tolerance = readBenchmarkTolerance()
+    expect(denseMs).toBeLessThan(Math.max(1_500 * tolerance, sparseMs * 12 * tolerance))
   }, 15_000)
 
   it('imports style-metadata-heavy workbooks without retaining inert style collections', () => {
@@ -67,10 +63,8 @@ describe('XLSX sparse ranges', () => {
     expect(imported.snapshot.sheets[0]?.cells).toEqual([{ address: 'A1', row: 0, col: 0, value: 123 }])
     expect(imported.snapshot.workbook.metadata?.styles).toHaveLength(1)
     expect(imported.snapshot.sheets[0]?.metadata?.conditionalFormats).toHaveLength(1)
-    if (!isCoverageRun) {
-      expect(durationMs).toBeLessThan(1_500 * readBenchmarkTolerance())
-      expect(rssDelta).toBeLessThan(256 * 1024 * 1024)
-    }
+    expect(durationMs).toBeLessThan(1_500 * readBenchmarkTolerance())
+    expect(rssDelta).toBeLessThan(256 * 1024 * 1024)
   }, 15_000)
 
   it('does not expand whole-worksheet column metadata into per-column snapshot entries', () => {

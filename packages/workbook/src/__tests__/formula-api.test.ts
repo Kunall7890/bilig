@@ -71,80 +71,6 @@ describe('@bilig/workbook formula api', () => {
     expect(inputs).toEqual([first, second, first])
   })
 
-  it('freezes formula expressions and inspectable input lists', () => {
-    const first = findRange({ sheetName: 'Sheet1', address: 'A1' })
-    const second = findRange({ sheetName: 'Sheet1', address: 'B1' })
-
-    const expression = formula.add(first, second)
-    const inputs = formula.inputs(first)
-
-    expect(Object.isFrozen(expression)).toBe(true)
-    expect(Object.isFrozen(expression.inputs)).toBe(true)
-    expect(Object.isFrozen(inputs)).toBe(true)
-    expect(inputs).toEqual([first])
-  })
-
-  it('inspects declared formula inputs and parser-discovered dependencies separately', () => {
-    const amount = findRange({ sheetName: 'Sheet1', address: 'A1' })
-    const rate = findRange({ sheetName: 'Sheet1', address: 'B1' })
-    const expression = formula.raw('SUM(Sheet1!A1,Data!B2:C4,Total,Items[Amount],A1#)', {
-      inputs: [amount, rate],
-    })
-
-    const inspection = formula.inspect(expression)
-
-    expect(Object.isFrozen(inspection)).toBe(true)
-    expect(Object.isFrozen(inspection.inputs)).toBe(true)
-    expect(Object.isFrozen(inspection.dependencies)).toBe(true)
-    expect(Object.isFrozen(inspection.names)).toBe(true)
-    expect(inspection).toMatchObject({
-      source: 'SUM(Sheet1!A1,Data!B2:C4,Total,Items[Amount],A1#)',
-      inputs: [amount, rate],
-      dependencies: [
-        {
-          kind: 'range',
-          address: 'Sheet1!A1:A1',
-          refKind: 'cells',
-          sheetName: 'Sheet1',
-          explicitSheet: true,
-          startAddress: 'A1',
-          endAddress: 'A1',
-          startRow: 0,
-          endRow: 0,
-          startCol: 0,
-          endCol: 0,
-          startRowAbsolute: false,
-          endRowAbsolute: false,
-          startColAbsolute: false,
-          endColAbsolute: false,
-        },
-        {
-          kind: 'range',
-          address: 'Data!B2:C4',
-          refKind: 'cells',
-          sheetName: 'Data',
-          explicitSheet: true,
-          startAddress: 'B2',
-          endAddress: 'C4',
-          startRow: 1,
-          endRow: 3,
-          startCol: 1,
-          endCol: 2,
-          startRowAbsolute: false,
-          endRowAbsolute: false,
-          startColAbsolute: false,
-          endColAbsolute: false,
-        },
-      ],
-      names: ['Total'],
-      tables: ['Items'],
-      spills: ['A1'],
-      volatile: false,
-      producesSpill: false,
-    })
-    expect(formula.dependencies(expression)).toEqual(inspection.dependencies)
-  })
-
   it('flags raw formula inputs that are not part of resolved model refs', () => {
     const hidden = findRange({ sheetName: 'Sheet1', address: 'Z9' })
     const model = defineModel({
@@ -177,7 +103,7 @@ describe('@bilig/workbook formula api', () => {
           path: 'commands[0].inputs[0]',
           ref: {
             kind: 'range',
-            id: 'range_p_Sheet1_p_Z9_p_Z9',
+            id: 'range_Sheet1_Z9_Z9',
             label: 'Sheet1!Z9',
             range: {
               sheetName: 'Sheet1',
@@ -189,26 +115,5 @@ describe('@bilig/workbook formula api', () => {
         },
       ],
     })
-  })
-
-  it('rejects malformed formula operands and raw formula inputs before planning', () => {
-    const input = findRange({ sheetName: 'Sheet1', address: 'A1' })
-    const malformedRef: unknown = JSON.parse('{"kind":"range","id":"missing-range-shape","label":"bad ref"}')
-    const malformedOperand: unknown = JSON.parse('{"kind":"table","id":"bad-table","label":"bad table"}')
-
-    expect(() => {
-      // @ts-expect-error exercising runtime validation for plain JS callers
-      formula.raw('Sheet1!A1', { inputs: [malformedRef] })
-    }).toThrowError('Formula input at inputs[0] must be a WorkbookRef')
-
-    expect(() => {
-      // @ts-expect-error exercising runtime validation for plain JS callers
-      formula.raw('Sheet1!A1', { inputs: {} })
-    }).toThrowError('Formula inputs must be an array')
-
-    expect(() => {
-      // @ts-expect-error exercising runtime validation for plain JS callers
-      formula.add(input, malformedOperand)
-    }).toThrowError('Formula operand must be a formula expression, WorkbookRef, string, finite number, or boolean')
   })
 })

@@ -103,12 +103,8 @@ export class TileResidencyV3<Packet = unknown, Resources = unknown> {
         textSeq: input.textSeq,
         valueSeq: input.valueSeq,
       })
-      if (input.packet !== undefined) {
-        existing.packet = input.packet
-      }
-      if (input.resources !== undefined) {
-        existing.resources = input.resources
-      }
+      existing.packet = input.packet ?? existing.packet
+      existing.resources = input.resources ?? existing.resources
       existing.dirtyMask = input.dirtyMask ?? existing.dirtyMask
       existing.state = input.state ?? existing.state
       existing.byteSizeCpu = input.byteSizeCpu ?? existing.byteSizeCpu

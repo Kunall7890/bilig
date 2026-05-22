@@ -10,7 +10,6 @@ import {
   TYPEGPU_V3_ACTIVE_RESOURCE_DEFER_MS,
   WorkbookPaneRendererV3,
   resolveWorkbookPaneSelectionOccludedTilePanesV3,
-  resolveWorkbookPanePresentedRenderProofV3,
   resolveWorkbookPanePresentedRevisionV3,
   resolveWorkbookPaneTileSceneCameraSeqV3,
   resolveWorkbookPaneTileSceneRevisionV3,
@@ -23,11 +22,7 @@ import { buildNativeRectLayerRectsForPaneV3 } from '../renderer-v3/WorkbookPaneN
 import { GridRenderLoop } from '../renderer-v3/gridRenderLoop.js'
 import type { GridRenderTile } from '../renderer-v3/render-tile-source.js'
 import type { WorkbookRenderTilePaneState } from '../renderer-v3/render-tile-pane-state.js'
-import {
-  resolveWorkbookPaneFrameProofSignatureV3,
-  resolveWorkbookPaneVisiblePayloadProofV3,
-} from '../renderer-v3/workbook-pane-renderer-host-runtime.js'
-import { resolveWorkbookPaneSceneOwnershipSignatureV3 } from '../renderer-v3/workbook-pane-scene-ownership.js'
+import { resolveWorkbookPaneFrameProofSignatureV3 } from '../renderer-v3/workbook-pane-renderer-host-runtime.js'
 import { WorkbookPaneRendererRuntimeV3, type WorkbookPaneFrameDrawerV3 } from '../renderer-v3/workbook-pane-renderer-runtime.js'
 import { WorkbookGridScrollStore } from '../workbookGridScrollStore.js'
 
@@ -272,21 +267,6 @@ describe('WorkbookPaneRendererV3', () => {
     ])
   })
 
-  test('keeps resident native rects visible when tile interest marks the pane hidden', () => {
-    const rects = buildNativeRectLayerRectsForPaneV3({
-      pane: { ...createRectTilePane(), drawVisible: false },
-      scrollSnapshot: { tx: 0, ty: 0 },
-    })
-
-    expect(rects).toHaveLength(1)
-    expect(rects[0]).toMatchObject({
-      color: 'rgba(221, 216, 204, 1.0000)',
-      left: 10,
-      top: 12,
-      width: 80,
-    })
-  })
-
   test('exposes visible workbook revisions only after frame proof is presented', () => {
     expect(resolveWorkbookPanePresentedRevisionV3('presented', 14)).toBe(14)
     expect(resolveWorkbookPanePresentedRevisionV3('presented', 0)).toBe(0)
@@ -339,55 +319,6 @@ describe('WorkbookPaneRendererV3', () => {
     expect(resolveWorkbookPaneTileSceneCameraSeqV3([])).toBeNull()
   })
 
-  test('derives visible proof only from the presented visual frame payload', () => {
-    const firstPresentedPane = createTilePane()
-    const secondPresentedPane = {
-      ...createTilePane(32),
-      tile: {
-        ...createTilePane(32).tile,
-        lastBatchId: 9,
-        lastCameraSeq: 13,
-      },
-    }
-
-    expect(
-      resolveWorkbookPanePresentedRenderProofV3('presented', {
-        renderRevisionSnapshot: {
-          authoritativeRevision: 11,
-          localRevision: 10,
-          projectedRevision: 12,
-          tileSceneCameraSeq: 13,
-          tileSceneRevision: 9,
-        },
-        tilePanes: [firstPresentedPane, secondPresentedPane],
-      }),
-    ).toEqual({
-      authoritativeRevision: 11,
-      localRevision: 10,
-      projectedRevision: 12,
-      tileSceneCameraSeq: 13,
-      tileSceneRevision: 9,
-    })
-    expect(
-      resolveWorkbookPanePresentedRenderProofV3('pending', {
-        renderRevisionSnapshot: {
-          authoritativeRevision: 21,
-          localRevision: 20,
-          projectedRevision: 22,
-          tileSceneCameraSeq: 23,
-          tileSceneRevision: 19,
-        },
-        tilePanes: [secondPresentedPane],
-      }),
-    ).toEqual({
-      authoritativeRevision: null,
-      localRevision: null,
-      projectedRevision: null,
-      tileSceneCameraSeq: null,
-      tileSceneRevision: null,
-    })
-  })
-
   test('includes tile payload signatures in frame proof identity', () => {
     const basePane = createTilePane()
     const changedTextPane: WorkbookRenderTilePaneState = {
@@ -433,31 +364,6 @@ describe('WorkbookPaneRendererV3', () => {
     expect(resolveWorkbookPaneFrameProofSignatureV3({ headerPanes: [], overlay: null, tilePanes: [basePane] })).not.toBe(
       resolveWorkbookPaneFrameProofSignatureV3({ headerPanes: [], overlay: null, tilePanes: [changedRectPane] }),
     )
-  })
-
-  test('separates visible text and rect payload proof for same-corpus evidence', () => {
-    const basePane = createRectTilePane()
-    const changedTextPane = createTextTilePane()
-    const changedRectPane: WorkbookRenderTilePaneState = {
-      ...basePane,
-      tile: {
-        ...basePane.tile,
-        rectCount: 2,
-        rectSignature: 'changed-fill-rects',
-      },
-    }
-
-    const baseProof = resolveWorkbookPaneVisiblePayloadProofV3({ headerPanes: [], tilePanes: [basePane] })
-    const textProof = resolveWorkbookPaneVisiblePayloadProofV3({ headerPanes: [], tilePanes: [changedTextPane] })
-    const rectProof = resolveWorkbookPaneVisiblePayloadProofV3({ headerPanes: [], tilePanes: [changedRectPane] })
-
-    expect(baseProof.rectCount).toBe(1)
-    expect(baseProof.textRunCount).toBe(0)
-    expect(textProof.textRunCount).toBe(1)
-    expect(textProof.textSignature).not.toBe(baseProof.textSignature)
-    expect(rectProof.rectCount).toBe(2)
-    expect(rectProof.rectSignature).not.toBe(baseProof.rectSignature)
-    expect(new Set([baseProof.contentSignature, textProof.contentSignature, rectProof.contentSignature]).size).toBe(3)
   })
 
   test('includes pane placement in frame proof identity', () => {
@@ -526,51 +432,6 @@ describe('WorkbookPaneRendererV3', () => {
     )
   })
 
-  test('includes authoritative scene ownership in frame proof identity', () => {
-    const basePane = createTilePane()
-    const changedSheetPane: WorkbookRenderTilePaneState = {
-      ...basePane,
-      tile: {
-        ...basePane.tile,
-        coord: {
-          ...basePane.tile.coord,
-          sheetId: 8,
-        },
-      },
-    }
-    const baseScene = resolveWorkbookPaneSceneOwnershipSignatureV3({
-      headerPanes: [],
-      overlay: null,
-      renderRevisionSnapshot: {
-        authoritativeRevision: 1,
-        localRevision: 0,
-        projectedRevision: 1,
-        tileSceneCameraSeq: 3,
-        tileSceneRevision: 2,
-      },
-      tilePanes: [basePane],
-    })
-    const changedSheetScene = resolveWorkbookPaneSceneOwnershipSignatureV3({
-      headerPanes: [],
-      overlay: null,
-      renderRevisionSnapshot: {
-        authoritativeRevision: 1,
-        localRevision: 0,
-        projectedRevision: 1,
-        tileSceneCameraSeq: 3,
-        tileSceneRevision: 2,
-      },
-      tilePanes: [changedSheetPane],
-    })
-
-    expect(baseScene).toContain('tile')
-    expect(baseScene).toContain(':7:7:')
-    expect(baseScene).not.toBe(changedSheetScene)
-    expect(resolveWorkbookPaneFrameProofSignatureV3({ headerPanes: [], overlay: null, tilePanes: [basePane] })).not.toBe(
-      resolveWorkbookPaneFrameProofSignatureV3({ headerPanes: [], overlay: null, tilePanes: [changedSheetPane] }),
-    )
-  })
-
   test('includes dynamic overlay payload signatures in frame proof identity', () => {
     const basePane = createTilePane()
     const baseOverlay = createOverlayBatch()
@@ -635,7 +496,7 @@ describe('WorkbookPaneRendererV3', () => {
     })
   })
 
-  test('keeps selection overlays from rewriting TypeGPU tile text payloads', () => {
+  test('clips TypeGPU text runs against full-column selection occlusion', () => {
     const metrics = getGridMetrics()
     const geometry = createGridGeometrySnapshotFromAxes({
       columns: createGridAxisWorldIndex({ axisLength: 1024, defaultSize: metrics.columnWidth }),
@@ -685,12 +546,11 @@ describe('WorkbookPaneRendererV3', () => {
       tilePanes: [textPane],
     })
 
-    expect(occludedPanes[0]).toBe(textPane)
+    expect(occludedPanes[0]).not.toBe(textPane)
     const occludedRun = occludedPanes[0]?.tile.textRuns[0]
-    expect(occludedRun).toBe(textRun)
-    expect(occludedRun?.clipWidth).toBe(metrics.columnWidth * 4)
+    expect(occludedRun?.clipWidth).toBe(metrics.columnWidth * 2)
     expect(occludedPanes[0]?.tile.textCount).toBe(1)
-    expect(occludedPanes[0]?.tile.textSignature).toBe('remote-spill')
+    expect(occludedPanes[0]?.tile.textSignature).toBeUndefined()
   })
 
   test('defers V3 preload resource sync only while scroll input or camera velocity is fresh', () => {
@@ -777,42 +637,6 @@ describe('WorkbookPaneRendererV3', () => {
 
     expect(drawFrame).toHaveBeenCalledTimes(1)
     expect(drawFrame.mock.calls[0]?.[0].drawText).toBe(false)
-
-    runtime.dispose()
-  })
-
-  test('draw runtime retries a missed frame instead of leaving the canvas blank', () => {
-    const frameCallbacks: FrameRequestCallback[] = []
-    const requestFrame = vi.fn((callback: FrameRequestCallback) => {
-      frameCallbacks.push(callback)
-      return frameCallbacks.length
-    })
-    const scheduler = new GridDrawSchedulerV3(
-      () => 1,
-      () => undefined,
-      () => 1_000,
-      new GridRenderLoop(requestFrame, () => undefined),
-    )
-    const drawFrame = vi.fn<WorkbookPaneFrameDrawerV3>(() => drawFrame.mock.calls.length >= 2)
-    const runtime = new WorkbookPaneRendererRuntimeV3(drawFrame, scheduler)
-
-    runtime.updateState({
-      active: true,
-      backend: {},
-      surface: { dpr: 1, height: 720, pixelHeight: 720, pixelWidth: 1280, width: 1280 },
-      tilePanes: [createTextTilePane()],
-      webGpuReady: true,
-    })
-    runtime.requestDraw()
-
-    expect(frameCallbacks).toHaveLength(1)
-    frameCallbacks.shift()?.(1_000)
-    expect(drawFrame).toHaveBeenCalledTimes(1)
-    expect(frameCallbacks).toHaveLength(1)
-
-    frameCallbacks.shift()?.(1_016)
-    expect(drawFrame).toHaveBeenCalledTimes(2)
-    expect(frameCallbacks).toHaveLength(0)
 
     runtime.dispose()
   })
@@ -944,49 +768,6 @@ describe('WorkbookPaneRendererV3', () => {
     })
 
     expect(requestFrame).toHaveBeenCalledTimes(1)
-    runtime.dispose()
-  })
-
-  test('draw runtime attaches render revisions to the presented visual frame', () => {
-    const drawFrame = vi.fn<WorkbookPaneFrameDrawerV3>().mockReturnValue(true)
-    const runtime = new WorkbookPaneRendererRuntimeV3(drawFrame)
-    const onFrameResult = vi.fn()
-
-    runtime.setFrameResultListener(onFrameResult)
-    runtime.updateState({
-      active: true,
-      backend: {},
-      frameProofSignature: 'frame-1',
-      sceneOwnershipSignature: 'scene-1',
-      renderRevisionSnapshot: {
-        authoritativeRevision: 3,
-        localRevision: 4,
-        projectedRevision: 5,
-        tileSceneCameraSeq: 6,
-        tileSceneRevision: 7,
-      },
-      surface: { dpr: 1, height: 360, pixelHeight: 360, pixelWidth: 640, width: 640 },
-      tilePanes: [createTilePane()],
-      webGpuReady: true,
-    })
-    runtime.drawNow()
-
-    expect(onFrameResult).toHaveBeenCalledWith(
-      expect.objectContaining({
-        frameProofSignature: 'frame-1',
-        submitted: true,
-        visualFrame: expect.objectContaining({
-          renderRevisionSnapshot: {
-            authoritativeRevision: 3,
-            localRevision: 4,
-            projectedRevision: 5,
-            tileSceneCameraSeq: 6,
-            tileSceneRevision: 7,
-          },
-          sceneOwnershipSignature: 'scene-1',
-        }),
-      }),
-    )
     runtime.dispose()
   })
 })

@@ -217,8 +217,6 @@ export function createWorkPaperRuntimeAdapters(args: CreateWorkPaperRuntimeAdapt
     applyCellMutationsAtWithOptions: (refs, options) => {
       args.getEngine().applyCellMutationsAtWithOptions(refs, options)
     },
-    canSkipSheetDimensionUpdateAfterLiteralMutationRefs: (refs, potentialNewCells) =>
-      args.getSheetDimensionCache().canSkipUpdateAfterLiteralMutationRefs(refs, potentialNewCells),
     updateSheetDimensionsAfterCellMutationRefs: (refs) => args.getSheetDimensionCache().updateAfterCellMutationRefs(refs),
   }
 
@@ -300,13 +298,6 @@ export function createWorkPaperRuntimeAdapters(args: CreateWorkPaperRuntimeAdapt
     emitValuesUpdated: (changes) => {
       args.emitter.emitDetailed({ eventName: 'valuesUpdated', payload: { changes } })
     },
-    canSkipSheetDimensionUpdateAfterLiteralMutationRefs: (refs, potentialNewCells) =>
-      args.getSheetDimensionCache().canSkipUpdateAfterLiteralMutationRefs(refs, potentialNewCells),
-    canSkipSheetDimensionUpdateAfterExistingLiteralCell: (sheetId, row, col, value, potentialNewCells) =>
-      args.getSheetDimensionCache().canSkipUpdateAfterExistingLiteralCell(sheetId, row, col, value, potentialNewCells),
-    updateSheetDimensionsAfterCellMutationRefs: (refs) => args.getSheetDimensionCache().updateAfterCellMutationRefs(refs),
-    updateSheetDimensionsAfterExistingLiteralCell: (sheetId, row, col) =>
-      args.getSheetDimensionCache().updateAfterExistingLiteralCell(sheetId, row, col),
   }
 
   const setCellContentsRuntime: WorkPaperSetCellContentsRuntime = {
@@ -319,8 +310,6 @@ export function createWorkPaperRuntimeAdapters(args: CreateWorkPaperRuntimeAdapt
     getBatchDepth: args.getBatchDepth,
     enqueueSuspendedLiteralMutation: args.enqueueSuspendedLiteralMutation,
     enqueueDeferredBatchLiteral: args.enqueueDeferredBatchLiteral,
-    getCellSerialized: (address) =>
-      args.cellSnapshotToRawContent(args.getEngine().getCell(args.sheetName(address.sheet), args.a1(address)), address.sheet),
     trySetExistingNumericCellContentsWithTrackedFastPath: (request) =>
       trySetExistingNumericWorkPaperCellContentsWithTrackedFastPath(existingNumericFastPathRuntime, request),
     trySetExistingLiteralCellContentsWithTrackedFastPath: (request) =>

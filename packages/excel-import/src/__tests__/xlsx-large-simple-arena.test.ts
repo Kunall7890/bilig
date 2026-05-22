@@ -2,7 +2,35 @@ import { describe, expect, it } from 'vitest'
 
 import { ImportedWorkbookArena, ImportedWorksheetStyleIndexArena } from '../xlsx-large-simple-arena.js'
 import { createLazyWorkbookRichTextCells, mergeWorkbookRichTextCells } from '../xlsx-large-simple-lazy-rich-text-cells.js'
+import {
+  isLazySheetCellIndexRange,
+  type LazySheetCellIndexRange,
+  type LazySheetCellIndexes,
+} from '../xlsx-large-simple-lazy-sheet-indexes.js'
 import { ImportedWorkbookStringPool } from '../xlsx-large-simple-string-pool.js'
+
+function readLazySheetCellIndexes(arena: ImportedWorkbookArena, sheetIndex: number): LazySheetCellIndexes {
+  const method = Reflect.get(arena, 'lazySheetCellIndexes')
+  if (typeof method !== 'function') {
+    throw new Error('Expected arena to expose lazy sheet index reader for tests.')
+  }
+  const value: unknown = method.call(arena, sheetIndex)
+  if (typeof value === 'number' || value instanceof Uint32Array || isLazySheetCellIndexRangeRecord(value)) {
+    return value
+  }
+  throw new Error('Expected lazy sheet indexes to be a count, range, or Uint32Array.')
+}
+
+function isLazySheetCellIndexRangeRecord(value: unknown): value is LazySheetCellIndexRange {
+  if (!isRecord(value)) {
+    return false
+  }
+  return Number.isInteger(value['start']) && Number.isInteger(value['length'])
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null
+}
 
 describe('large simple XLSX import arena', () => {
   it('releases typed storage and pools after materialization', () => {
@@ -25,6 +53,8 @@ describe('large simple XLSX import arena', () => {
     expect(snapshot.rows).toHaveLength(0)
     expect(snapshot.columns).toBeInstanceOf(Uint16Array)
     expect(snapshot.numberValues).toBeUndefined()
+    expect(snapshot.sparseNumberCellIndexes).toBeUndefined()
+    expect(snapshot.sparseNumberValues).toBeUndefined()
     expect(snapshot.tinyIntegerValues).toBeUndefined()
     expect(snapshot.smallIntegerValues).toBeUndefined()
     expect(snapshot.sparseSmallIntegerCellIndexes).toBeUndefined()
@@ -105,7 +135,7 @@ describe('large simple XLSX import arena', () => {
       { address: 'A1', value: '' },
       { address: 'B1', value: 'Rare header' },
     ])
-    expect(arena.snapshot().stringIds).toEqual(new Uint32Array([0xffffffff, 0]))
+    expect(arena.snapshot().stringIds).toEqual(new Uint16Array([0xffff, 0]))
   })
 
   it('does not densify string ids from an early header cluster before the large sheet is scanned', () => {
@@ -187,6 +217,50 @@ describe('large simple XLSX import arena', () => {
     expect(detachedCells.map((cell) => cell.address)).toEqual(['A1', 'B1', 'A2', 'B2'])
   })
 
+  it('compresses row-major row coordinates for detached lazy cells with sparse columns', () => {
+    const arena = new ImportedWorkbookArena()
+    for (let row = 0; row < 100; row += 1) {
+      for (let column = 0; column < 20; column += 2) {
+        arena.addCell({ sheetIndex: 0, row, column, value: `R${String(row)}C${String(column)}` })
+      }
+    }
+    const retainedBeforeDetach = arena.retainedStorageByteLength()
+
+    const detachedCells = arena.createDetachedLazySheetCells(0)
+    const retainedAfterDetach = arena.retainedStorageByteLength()
+    arena.release()
+
+    expect(retainedAfterDetach).toBeLessThan(retainedBeforeDetach)
+    expect(detachedCells).toHaveLength(1000)
+    expect(detachedCells[0]).toEqual({ address: 'A1', value: 'R0C0' })
+    expect(detachedCells[9]).toEqual({ address: 'S1', value: 'R0C18' })
+    expect(detachedCells[10]).toEqual({ address: 'A2', value: 'R1C0' })
+    expect(detachedCells.at(-1)).toEqual({ address: 'S100', value: 'R99C18' })
+  })
+
+  it('compresses contiguous per-row column coordinates for detached lazy cells', () => {
+    const arena = new ImportedWorkbookArena()
+    for (let row = 0; row < 100; row += 1) {
+      const startColumn = row % 3
+      for (let offset = 0; offset < 10; offset += 1) {
+        const column = startColumn + offset
+        arena.addCell({ sheetIndex: 0, row, column, value: `R${String(row)}C${String(column)}` })
+      }
+    }
+    const retainedBeforeDetach = arena.retainedStorageByteLength()
+
+    const detachedCells = arena.createDetachedLazySheetCells(0)
+    const retainedAfterDetach = arena.retainedStorageByteLength()
+    arena.release()
+
+    expect(retainedAfterDetach).toBeLessThan(retainedBeforeDetach - 1_000)
+    expect(detachedCells).toHaveLength(1000)
+    expect(detachedCells[0]).toEqual({ address: 'A1', value: 'R0C0' })
+    expect(detachedCells[10]).toEqual({ address: 'B2', value: 'R1C1' })
+    expect(detachedCells[20]).toEqual({ address: 'C3', value: 'R2C2' })
+    expect(detachedCells.at(-1)).toEqual({ address: 'J100', value: 'R99C9' })
+  })
+
   it('transfers detached lazy string and formula pools out of the import arena', () => {
     const arena = new ImportedWorkbookArena()
     const firstCell = arena.addCell({ sheetIndex: 0, row: 0, column: 0, value: 'Unique inline label' })
@@ -235,6 +309,28 @@ describe('large simple XLSX import arena', () => {
     expect(detachedCells[1]).toEqual({ address: 'B1', value: 42 })
   })
 
+  it('retains plain shared-string cells without a full rich-text scan', () => {
+    const arena = new ImportedWorkbookArena()
+    arena.addSharedStringCell({ sheetIndex: 0, row: 0, column: 0, sharedStringIndex: 1 })
+    arena.addSharedStringCell({ sheetIndex: 0, row: 100_000, column: 0, sharedStringIndex: 2 })
+
+    expect(
+      arena.retainPlainSharedStringReferences([
+        { text: 'unused', rich: false },
+        { text: 'Preview label', rich: false },
+        { text: 'Far label', rich: false },
+      ]),
+    ).toBe(true)
+    expect(arena.readPreviewText(0, 0)).toBe('Preview label')
+
+    const detachedCells = arena.createDetachedLazySheetCells(0)
+    arena.release()
+
+    expect(detachedCells).toHaveLength(2)
+    expect(detachedCells[0]).toEqual({ address: 'A1', value: 'Preview label' })
+    expect(detachedCells[1]).toEqual({ address: 'A100001', value: 'Far label' })
+  })
+
   it('shrinks dense dimension preallocation when early cells prove sparse', () => {
     const arena = new ImportedWorkbookArena()
     arena.reserveDenseRowMajorCellCapacity(0, 1_000, 1_000)
@@ -251,7 +347,7 @@ describe('large simple XLSX import arena', () => {
       { address: 'A1', value: 'Alpha' },
       { address: 'K11', value: 'Sparse' },
     ])
-    expect(arena.snapshot().stringIds).toEqual(new Uint32Array([0, 1]))
+    expect(arena.snapshot().stringIds).toEqual(new Uint16Array([0, 1]))
   })
 
   it('keeps lazy shared-string cells readable without duplicating shared strings into arena pools', () => {
@@ -341,7 +437,7 @@ describe('large simple XLSX import arena', () => {
     expect(lazyCells).toHaveLength(1000)
     expect(lazyCells[0]).toEqual({ address: 'A1', value: 'Header' })
     expect(lazyCells[999]).toEqual({ address: 'J100', value: 999 })
-    expect(arena.snapshot().stringIds).toEqual(Uint32Array.from(Array.from({ length: 1000 }, (_, index) => (index === 0 ? 1 : 0xffffffff))))
+    expect(arena.snapshot().stringIds).toEqual(Uint16Array.from(Array.from({ length: 1000 }, (_, index) => (index === 0 ? 1 : 0xffff))))
   })
 
   it('eagerly materializes retained shared strings without duplicating them into arena pools', () => {
@@ -444,7 +540,7 @@ describe('large simple XLSX import arena', () => {
     expect(materialized).toBe(1)
   })
 
-  it('packs deferred shared-string indexes into float storage when a mixed sheet needs doubles', () => {
+  it('keeps deferred shared-string indexes readable when doubles stay sparse', () => {
     const arena = new ImportedWorkbookArena()
     arena.addSharedStringCell({ sheetIndex: 0, row: 0, column: 0, sharedStringIndex: 1 })
     arena.addCell({ sheetIndex: 0, row: 0, column: 1, value: 42 })
@@ -453,7 +549,9 @@ describe('large simple XLSX import arena', () => {
     expect(arena.snapshot().tinyIntegerValues).toEqual(new Int8Array([0, 42, 0]))
     expect(arena.snapshot().smallIntegerValues).toBeUndefined()
     expect(arena.snapshot().integerValues).toBeUndefined()
-    expect(arena.snapshot().numberValues).toEqual(new Float64Array([1, Number.NaN, 42.5]))
+    expect(arena.snapshot().numberValues).toBeUndefined()
+    expect(arena.snapshot().sparseNumberCellIndexes).toEqual(new Uint32Array([2]))
+    expect(arena.snapshot().sparseNumberValues).toEqual(new Float64Array([42.5]))
 
     expect(
       arena.retainSharedStringReferences([
@@ -490,6 +588,26 @@ describe('large simple XLSX import arena', () => {
     ])
   })
 
+  it('widens string-id storage only when shared-string indexes exceed narrow storage', () => {
+    const narrowArena = new ImportedWorkbookArena()
+    narrowArena.addSharedStringCell({ sheetIndex: 0, row: 0, column: 0, sharedStringIndex: 65534 })
+    expect(narrowArena.snapshot().stringIds).toEqual(new Uint16Array([65534]))
+
+    const wideArena = new ImportedWorkbookArena()
+    wideArena.addSharedStringCell({ sheetIndex: 0, row: 0, column: 0, sharedStringIndex: 65534 })
+    wideArena.addSharedStringCell({ sheetIndex: 0, row: 0, column: 1, sharedStringIndex: 65535 })
+    expect(wideArena.snapshot().stringIds).toEqual(new Uint32Array([65534, 65535]))
+
+    const sharedStrings = []
+    sharedStrings[65534] = { text: 'Narrow max', rich: false }
+    sharedStrings[65535] = { text: 'Wide first', rich: false }
+    expect(wideArena.retainSharedStringReferences(sharedStrings)).toEqual([])
+    expect(wideArena.materializeSheetCells(0)).toEqual([
+      { address: 'A1', value: 'Narrow max' },
+      { address: 'B1', value: 'Wide first' },
+    ])
+  })
+
   it('uses scalar sheet ownership for single-sheet arenas and falls back only for mixed ownership', () => {
     const arena = new ImportedWorkbookArena()
     arena.addCell({ sheetIndex: 4, row: 0, column: 0, value: 1 })
@@ -512,6 +630,54 @@ describe('large simple XLSX import arena', () => {
     expect(arena.snapshot().sheetIndexes).toEqual(new Uint32Array([4, 5]))
     expect(arena.materializeSheetCells(4)).toEqual([{ address: 'A1', value: 1 }])
     expect(arena.materializeSheetCells(5)).toEqual([{ address: 'A2', value: 2 }])
+  })
+
+  it('uses compact range indexes for contiguous multi-sheet lazy cells', () => {
+    const arena = new ImportedWorkbookArena()
+    for (let row = 0; row < 3; row += 1) {
+      arena.addCell({ sheetIndex: 0, row, column: 0, value: `s0-${String(row)}` })
+    }
+    for (let row = 0; row < 5; row += 1) {
+      arena.addCell({ sheetIndex: 1, row, column: 1, value: `s1-${String(row)}` })
+    }
+    for (let row = 0; row < 2; row += 1) {
+      arena.addCell({ sheetIndex: 2, row, column: 2, value: `s2-${String(row)}` })
+    }
+
+    const indexes = readLazySheetCellIndexes(arena, 1)
+    expect(isLazySheetCellIndexRange(indexes)).toBe(true)
+    expect(indexes).toEqual({ start: 3, length: 5 })
+
+    const lazyCells = arena.createLazySheetCells(1)
+
+    expect(lazyCells).toHaveLength(5)
+    expect(lazyCells[0]).toEqual({ address: 'B1', value: 's1-0' })
+    expect(lazyCells.at(-1)).toEqual({ address: 'B5', value: 's1-4' })
+
+    const detachedCells = arena.createDetachedLazySheetCells(1)
+    arena.release()
+
+    expect(detachedCells).toHaveLength(5)
+    expect(detachedCells.map((cell) => cell.value)).toEqual(['s1-0', 's1-1', 's1-2', 's1-3', 's1-4'])
+  })
+
+  it('keeps explicit lazy indexes when same-sheet materialized cells contain gaps', () => {
+    const arena = new ImportedWorkbookArena()
+    arena.addCell({ sheetIndex: 0, row: 0, column: 0, value: 'A1' })
+    arena.addCell({ sheetIndex: 0, row: 0, column: 1, value: undefined })
+    arena.addCell({ sheetIndex: 0, row: 0, column: 2, value: 'C1' })
+
+    const indexes = readLazySheetCellIndexes(arena, 0)
+
+    expect(indexes).toBeInstanceOf(Uint32Array)
+    if (!(indexes instanceof Uint32Array)) {
+      throw new Error('Expected explicit lazy sheet indexes.')
+    }
+    expect(Array.from(indexes)).toEqual([0, 2])
+    expect(Array.from(arena.createLazySheetCells(0))).toEqual([
+      { address: 'A1', value: 'A1' },
+      { address: 'C1', value: 'C1' },
+    ])
   })
 
   it('keeps near-dense row-major coordinates readable after sparse cells break the dense path', () => {
@@ -558,6 +724,86 @@ describe('large simple XLSX import arena', () => {
     ])
   })
 
+  it('streams row-run coordinates without retaining per-cell row and column arrays', () => {
+    const arena = new ImportedWorkbookArena()
+    arena.trackRowRunCellCoordinates(0)
+    for (let row = 0; row < 1_000; row += 1) {
+      for (let column = 0; column < 20; column += 1) {
+        arena.addCell({ sheetIndex: 0, row, column, value: true })
+      }
+    }
+    const retainedAfterCells = arena.retainedStorageByteLength()
+    const detachedCells = arena.createDetachedLazySheetCells(0)
+    arena.release()
+
+    expect(retainedAfterCells).toBeLessThan(80_000)
+    expect(detachedCells).toHaveLength(20_000)
+    expect(detachedCells[0]).toEqual({ address: 'A1', value: true })
+    expect(detachedCells[20]).toEqual({ address: 'A2', value: true })
+    expect(detachedCells.at(-1)).toEqual({ address: 'T1000', value: true })
+  })
+
+  it('compresses linear row-major coordinates to row runs for detached lazy cells', () => {
+    const arena = new ImportedWorkbookArena()
+    arena.trackLinearRowMajorCellCoordinates(0, 20, 1_000)
+    for (let row = 0; row < 1_000; row += 1) {
+      for (let column = 0; column < 20; column += 1) {
+        arena.addCell({ sheetIndex: 0, row, column, value: true })
+      }
+    }
+    const retainedBeforeDetach = arena.retainedStorageByteLength()
+
+    const detachedCells = arena.createDetachedLazySheetCells(0)
+    const retainedAfterDetach = arena.retainedStorageByteLength()
+    arena.release()
+
+    expect(retainedAfterDetach).toBeLessThan(retainedBeforeDetach - 60_000)
+    expect(detachedCells).toHaveLength(20_000)
+    expect(detachedCells[0]).toEqual({ address: 'A1', value: true })
+    expect(detachedCells[20]).toEqual({ address: 'A2', value: true })
+    expect(detachedCells.at(-1)).toEqual({ address: 'T1000', value: true })
+  })
+
+  it('compresses repeated sparse column patterns for detached lazy cells', () => {
+    const arena = new ImportedWorkbookArena()
+    arena.trackLinearRowMajorCellCoordinates(0, 10, 10_000)
+    const columns = [0, 2, 5, 9]
+    for (let row = 0; row < 10_000; row += 1) {
+      for (const column of columns) {
+        arena.addCell({ sheetIndex: 0, row, column, value: true })
+      }
+    }
+    const retainedBeforeDetach = arena.retainedStorageByteLength()
+
+    const detachedCells = arena.createDetachedLazySheetCells(0)
+    const retainedAfterDetach = arena.retainedStorageByteLength()
+    arena.release()
+
+    expect(retainedAfterDetach).toBeLessThan(retainedBeforeDetach - 70_000)
+    expect(detachedCells).toHaveLength(40_000)
+    expect(detachedCells[0]).toEqual({ address: 'A1', value: true })
+    expect(detachedCells[1]).toEqual({ address: 'C1', value: true })
+    expect(detachedCells[4]).toEqual({ address: 'A2', value: true })
+    expect(detachedCells.at(-1)).toEqual({ address: 'J10000', value: true })
+  })
+
+  it('caps linear row-major growth at the declared dimension instead of doubling past it', () => {
+    const arena = new ImportedWorkbookArena()
+    arena.trackLinearRowMajorCellCoordinates(0, 11, 100)
+
+    for (let index = 0; index < 1025; index += 1) {
+      arena.addCell({
+        sheetIndex: 0,
+        row: Math.floor(index / 11),
+        column: index % 11,
+        value: true,
+      })
+    }
+
+    expect(arena.retainedStorageByteLength()).toBeLessThan(9_000)
+    expect(arena.materializeSheetCells(0).at(-1)).toEqual({ address: 'B94', value: true })
+  })
+
   it('materializes requested cells by address without expanding the full sheet', () => {
     const arena = new ImportedWorkbookArena()
     arena.reserveDenseRowMajorCellCapacity(0, 4, 3)
@@ -578,6 +824,8 @@ describe('large simple XLSX import arena', () => {
     const stringOnlyArena = new ImportedWorkbookArena()
     stringOnlyArena.addCell({ sheetIndex: 0, row: 0, column: 0, value: 'Only text' })
     expect(stringOnlyArena.snapshot().numberValues).toBeUndefined()
+    expect(stringOnlyArena.snapshot().sparseNumberCellIndexes).toBeUndefined()
+    expect(stringOnlyArena.snapshot().sparseNumberValues).toBeUndefined()
     expect(stringOnlyArena.snapshot().tinyIntegerValues).toBeUndefined()
     expect(stringOnlyArena.snapshot().smallIntegerValues).toBeUndefined()
     expect(stringOnlyArena.snapshot().sparseSmallIntegerCellIndexes).toBeUndefined()
@@ -598,6 +846,8 @@ describe('large simple XLSX import arena', () => {
     expect(arena.snapshot().sparseIntegerCellIndexes).toBeUndefined()
     expect(arena.snapshot().sparseIntegerValues).toBeUndefined()
     expect(arena.snapshot().numberValues).toBeUndefined()
+    expect(arena.snapshot().sparseNumberCellIndexes).toBeUndefined()
+    expect(arena.snapshot().sparseNumberValues).toBeUndefined()
     expect(arena.snapshot().stringIds).toBeUndefined()
     expect(arena.snapshot().booleanValues).toBeUndefined()
     expect(arena.snapshot().formulaIds).toBeUndefined()
@@ -605,10 +855,12 @@ describe('large simple XLSX import arena', () => {
     arena.addCell({ sheetIndex: 0, row: 1, column: 0, value: 42.25 })
     expect(arena.snapshot().tinyIntegerValues).toEqual(new Int8Array([42, 0]))
     expect(arena.snapshot().smallIntegerValues).toBeUndefined()
-    expect(arena.snapshot().numberValues).toEqual(new Float64Array([Number.NaN, 42.25]))
+    expect(arena.snapshot().numberValues).toBeUndefined()
+    expect(arena.snapshot().sparseNumberCellIndexes).toEqual(new Uint32Array([1]))
+    expect(arena.snapshot().sparseNumberValues).toEqual(new Float64Array([42.25]))
 
     arena.addCell({ sheetIndex: 0, row: 2, column: 0, value: 'Label' })
-    expect(arena.snapshot().stringIds).toEqual(new Uint32Array([0xffffffff, 0xffffffff, 0]))
+    expect(arena.snapshot().stringIds).toEqual(new Uint16Array([0xffff, 0xffff, 0]))
     expect(arena.snapshot().booleanValues).toBeUndefined()
     expect(arena.snapshot().formulaIds).toBeUndefined()
 
@@ -628,7 +880,9 @@ describe('large simple XLSX import arena', () => {
     arena.addCell({ sheetIndex: 0, row: 0, column: 4, value: 32767 })
     arena.addCell({ sheetIndex: 0, row: 0, column: 5, value: 32768 })
 
-    expect(arena.snapshot().numberValues).toEqual(new Float64Array([-0, 2147483648, -2147483649, Number.NaN, Number.NaN, Number.NaN]))
+    expect(arena.snapshot().numberValues).toBeUndefined()
+    expect(arena.snapshot().sparseNumberCellIndexes).toEqual(new Uint32Array([0, 1, 2]))
+    expect(arena.snapshot().sparseNumberValues).toEqual(new Float64Array([-0, 2147483648, -2147483649]))
     expect(arena.snapshot().smallIntegerValues).toBeUndefined()
     expect(arena.snapshot().sparseSmallIntegerCellIndexes).toEqual(new Uint32Array([4]))
     expect(arena.snapshot().sparseSmallIntegerValues).toEqual(new Int16Array([32767]))
@@ -644,6 +898,34 @@ describe('large simple XLSX import arena', () => {
       { address: 'F1', value: 32768 },
     ])
     expect(Object.is(arena.materializeSheetCells(0)[0]?.value, -0)).toBe(true)
+  })
+
+  it('densifies floating number storage when double values dominate the arena', () => {
+    const arena = new ImportedWorkbookArena()
+
+    for (let index = 0; index < 700; index += 1) {
+      arena.addCell({ sheetIndex: 0, row: index, column: 0, value: index + 0.5 })
+    }
+
+    expect(arena.snapshot().numberValues).toBeInstanceOf(Float64Array)
+    expect(arena.snapshot().sparseNumberCellIndexes).toBeUndefined()
+    expect(arena.snapshot().sparseNumberValues).toBeUndefined()
+    expect(arena.materializeSheetCells(0).at(-1)).toEqual({ address: 'A700', value: 699.5 })
+  })
+
+  it('keeps sparse floating numbers readable after detached lazy transfer', () => {
+    const arena = new ImportedWorkbookArena()
+    arena.trackLinearRowMajorCellCoordinates(0, 2, 3)
+    arena.addCell({ sheetIndex: 0, row: 0, column: 0, value: 1.25 })
+    arena.addCell({ sheetIndex: 0, row: 2, column: 1, value: 9.75 })
+
+    const detachedCells = arena.createDetachedLazySheetCells(0)
+    arena.release()
+
+    expect(Array.from(detachedCells)).toEqual([
+      { address: 'A1', value: 1.25 },
+      { address: 'B3', value: 9.75 },
+    ])
   })
 
   it('keeps tiny integers dense while rarer wider integers stay sparse', () => {

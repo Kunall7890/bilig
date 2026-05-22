@@ -1,10 +1,9 @@
 #!/usr/bin/env bun
 
-import { existsSync, mkdirSync, readdirSync, rmSync } from 'node:fs'
+import { existsSync, readFileSync, readdirSync } from 'node:fs'
 import { availableParallelism } from 'node:os'
-import { join, relative, resolve } from 'node:path'
-import { BYTE_FUZZ_DICTIONARY_PATH, BYTE_FUZZ_TARGETS_DIR } from '@bilig/test-fuzz'
-import { buildVitestFuzzCommand, parseFuzzMode, type FuzzMode } from './run-fuzz-config.js'
+import { join, resolve } from 'node:path'
+import { buildVitestFuzzCommand, parseFuzzMode, resolveSkipBrowserFuzz, type FuzzMode } from './run-fuzz-config.js'
 
 function runCommand(command: string[], extraEnv: Record<string, string>): void {
   const result = Bun.spawnSync(command, {
@@ -21,14 +20,43 @@ function runCommand(command: string[], extraEnv: Record<string, string>): void {
   }
 }
 
+const DEFAULT_FUZZ_PATTERNS = [
+  /^packages\/formula\/src\/__tests__\/.+\.fuzz\.test\.ts$/,
+  /^packages\/core\/src\/__tests__\/(engine-history|engine-structure|engine-replica|engine-snapshot|engine-import-export|snapshot-wire-parity|literal-loader-parity|formula-runtime-differential)\.fuzz\.test\.ts$/,
+  /^packages\/(storage-server|excel-import|headless|binary-protocol|runtime-kernel|workbook)\/src\/__tests__\/.+\.fuzz\.test\.ts$/,
+  /^packages\/grid\/src\/__tests__\/gridSelection\.fuzz\.test\.ts$/,
+  /^packages\/renderer\/src\/__tests__\/commit-log\.fuzz\.test\.ts$/,
+  /^packages\/wasm-kernel\/src\/__tests__\/kernel-bridge\.fuzz\.test\.ts$/,
+  /^packages\/zero-sync\/src\/__tests__\/.+\.fuzz\.test\.ts$/,
+  /^apps\/bilig\/src\/zero\/__tests__\/(projection|reconnect-replay|sync-relay|sync-relay-scheduled)\.fuzz\.test\.ts$/,
+  /^apps\/web\/src\/__tests__\/(projected-viewport|runtime-sync|runtime-sync-scheduled|selection-command-parity|worker-workbook-app-model)\.fuzz\.test\.ts$/,
+  /^packages\/worker-transport\/src\/__tests__\/.+\.fuzz\.test\.ts$/,
+]
+
 function listVitestFuzzFiles(): string[] {
   return ['packages', 'apps'].flatMap((root) => walkFuzzFiles(root)).toSorted((left, right) => left.localeCompare(right))
 }
 
-function assertReplayFixtureExists(filePath: string): void {
+function selectVitestFuzzFiles(mode: FuzzMode, files: readonly string[]): string[] {
+  if (mode !== 'default') {
+    return [...files]
+  }
+  return files.filter((filePath) => DEFAULT_FUZZ_PATTERNS.some((pattern) => pattern.test(filePath)))
+}
+
+function shouldRunBrowserFuzz(mode: FuzzMode, replayKind: string | null, hasReplayFixture: boolean): boolean {
+  if (hasReplayFixture) {
+    return replayKind === 'browser'
+  }
+  return mode === 'main' || mode === 'nightly'
+}
+
+function parseReplayKind(filePath: string): string | null {
   if (!existsSync(filePath)) {
     throw new Error(`Replay fixture does not exist: ${filePath}`)
   }
+  const parsed = JSON.parse(readFileSync(filePath, 'utf8')) as unknown
+  return typeof parsed === 'object' && parsed !== null && typeof parsed['kind'] === 'string' ? parsed['kind'] : null
 }
 
 const args = process.argv.slice(2)
@@ -36,72 +64,27 @@ const mode = parseFuzzModeOrExit(args[0])
 const replayFixture = mode === 'replay' ? args.slice(1).find((value) => value !== '--') : undefined
 
 if (mode === 'replay' && !replayFixture) {
-  console.error('Usage: pnpm test:fuzz -- replay <fixture-path>')
+  console.error('Usage: pnpm test:fuzz:replay -- <fixture-path>')
   process.exit(1)
 }
 
 const resolvedReplayFixture = replayFixture ? resolve(replayFixture) : null
-if (resolvedReplayFixture) {
-  assertReplayFixtureExists(resolvedReplayFixture)
-}
+const replayKind = resolvedReplayFixture ? parseReplayKind(resolvedReplayFixture) : null
 const env = {
   BILIG_FUZZ_PROFILE: mode,
   BILIG_FUZZ_CAPTURE: '1',
   ...(resolvedReplayFixture ? { BILIG_FUZZ_REPLAY: resolvedReplayFixture } : {}),
 }
+const skipBrowserFuzz = resolveSkipBrowserFuzzOrExit()
 
-const vitestFuzzFiles = listVitestFuzzFiles()
-if (vitestFuzzFiles.length === 0) {
-  console.error('No Vitest fuzz files were discovered.')
-  process.exit(1)
-}
+const vitestFuzzFiles = selectVitestFuzzFiles(mode, listVitestFuzzFiles())
+runCommand(buildVitestFuzzCommand(vitestFuzzFiles, availableParallelism()), env)
 
-const replayHitFile = resolvedReplayFixture
-  ? resolve('artifacts/fuzz/replay-hit', `${String(process.pid)}-${Date.now().toString(36)}.json`)
-  : null
-if (replayHitFile) {
-  rmSync(replayHitFile, { force: true })
-}
-
-runCommand(buildVitestFuzzCommand(vitestFuzzFiles, availableParallelism()), {
-  ...env,
-  ...(replayHitFile ? { BILIG_FUZZ_REPLAY_HIT_FILE: replayHitFile } : {}),
-})
-
-if (replayHitFile && !existsSync(replayHitFile)) {
-  console.error(`Replay fixture did not match any executed fuzz suite: ${resolvedReplayFixture ?? ''}`)
-  process.exit(1)
-}
-
-if (mode === 'fuzz') {
-  const byteTargets = listByteFuzzTargets()
-  if (byteTargets.length > 0) {
-    mkdirSync(resolve('artifacts/fuzz/jazzer-corpus'), { recursive: true })
-    runCommand(['pnpm', '--filter', '@bilig/app^...', 'run', 'build'], {})
-    for (const target of byteTargets) {
-      const targetName = relative(BYTE_FUZZ_TARGETS_DIR, target)
-      const corpusDir = resolve('artifacts/fuzz/jazzer-corpus', targetName.replace(/[^A-Za-z0-9_.-]/gu, '_'))
-      mkdirSync(corpusDir, { recursive: true })
-      runCommand(
-        [
-          'pnpm',
-          'exec',
-          'jazzer',
-          target,
-          corpusDir,
-          '-i',
-          'packages/',
-          '-i',
-          'apps/',
-          '--',
-          `-dict=${BYTE_FUZZ_DICTIONARY_PATH}`,
-          '-runs=2048',
-          '-max_total_time=10',
-        ],
-        {},
-      )
-    }
-  }
+if (!skipBrowserFuzz && shouldRunBrowserFuzz(mode, replayKind, resolvedReplayFixture !== null)) {
+  runCommand(['bun', 'scripts/run-browser-tests.ts', '--grep', '@fuzz-browser'], {
+    ...env,
+    BILIG_FUZZ_BROWSER: '1',
+  })
 }
 
 function walkFuzzFiles(root: string): string[] {
@@ -121,45 +104,26 @@ function walkFuzzFiles(root: string): string[] {
       continue
     }
 
-    if (entry.isFile() && (relativePath.endsWith('.fuzz.test.ts') || relativePath.endsWith('.fuzz.test.tsx'))) {
+    if (entry.isFile() && relativePath.endsWith('.fuzz.test.ts')) {
       files.push(relativePath)
     }
   }
 
-  return files
-}
-
-function listByteFuzzTargets(): string[] {
-  return walkByteFuzzTargets(BYTE_FUZZ_TARGETS_DIR).toSorted((left, right) => left.localeCompare(right))
-}
-
-function walkByteFuzzTargets(root: string): string[] {
-  if (!existsSync(root)) {
-    return []
-  }
-
-  const files: string[] = []
-  for (const entry of readdirSync(root, { withFileTypes: true })) {
-    if (entry.name === 'node_modules' || entry.name.startsWith('.')) {
-      continue
-    }
-
-    const relativePath = join(root, entry.name)
-    if (entry.isDirectory()) {
-      files.push(...walkByteFuzzTargets(relativePath))
-      continue
-    }
-
-    if (entry.isFile() && relativePath.endsWith('.mjs')) {
-      files.push(relativePath)
-    }
-  }
   return files
 }
 
 function parseFuzzModeOrExit(value: string | undefined): FuzzMode {
   try {
     return parseFuzzMode(value)
+  } catch (error) {
+    console.error(error instanceof Error ? error.message : String(error))
+    process.exit(1)
+  }
+}
+
+function resolveSkipBrowserFuzzOrExit(): boolean {
+  try {
+    return resolveSkipBrowserFuzz(process.env)
   } catch (error) {
     console.error(error instanceof Error ? error.message : String(error))
     process.exit(1)

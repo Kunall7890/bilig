@@ -56,15 +56,15 @@ export function createOperationColumnDependencyTrackerService(args: {
   }
 
   const hasTrackedDirectRangeDependents = (sheetId: number, col: number): boolean => {
-    if ((args.reverseState.reverseAggregateColumnEdges.get(aggregateColumnDependencyKey(sheetId, col))?.size ?? 0) > 0) {
-      return true
-    }
     let hasRegionSubscriptions = args.hasRegionFormulaSubscriptionsForColumnAt?.(sheetId, col)
     if (hasRegionSubscriptions === undefined) {
       const sheetName = args.workbook.getSheetNameById(sheetId)
       hasRegionSubscriptions = sheetName ? args.hasRegionFormulaSubscriptionsForColumn(sheetName, col) : false
     }
-    return hasRegionSubscriptions
+    return (
+      hasRegionSubscriptions ||
+      (args.reverseState.reverseAggregateColumnEdges.get(aggregateColumnDependencyKey(sheetId, col))?.size ?? 0) > 0
+    )
   }
 
   const hasTrackedColumnDependents = (sheetId: number, col: number): boolean =>

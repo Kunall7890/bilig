@@ -201,7 +201,7 @@ function writeCellValue(cellIndex: i32, tag: u8, value: f64): void {
   }
 }
 
-export function scalarText(tag: u8, value: f64): string | null {
+function scalarText(tag: u8, value: f64): string | null {
   return decodeScalarText(
     tag,
     value,

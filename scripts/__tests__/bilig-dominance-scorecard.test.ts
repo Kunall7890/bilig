@@ -16,7 +16,9 @@ describe('bilig dominance scorecard', () => {
     expect(scorecard.overallGoogleSheets10xStatus).toMatchObject({
       passed: false,
       status: 'blocked',
-      unmetRequirements: [expect.stringContaining('strict rendered-grid proof covers 0/9 cases')],
+      unmetRequirements: [
+        'ui-responsiveness: live UI browser evidence is not a same-corpus 10x proof against Google Sheets with rendered-grid proof',
+      ],
     })
     expect(scorecard.overallGoogleSheets10xStatus.categories.map((entry) => entry.id)).toEqual([
       'recalculation-speed',
@@ -29,7 +31,7 @@ describe('bilig dominance scorecard', () => {
       expect.arrayContaining([
         expect.stringContaining('calculation-correctness:'),
         expect.stringContaining('large-workbook-scale:'),
-        expect.stringContaining('ui-responsiveness: live UI browser evidence is not a same-corpus 10x proof against incumbents'),
+        'ui-responsiveness: live UI browser evidence is not a same-corpus 10x proof against incumbents',
         expect.stringContaining('security:'),
       ]),
     )
@@ -220,10 +222,7 @@ describe('bilig dominance scorecard', () => {
         'pnpm ui:browser-live:generate -- --capture <capture.json>',
         'pnpm ui:browser-live:check',
       ]),
-      blockers: expect.arrayContaining([
-        'same-corpus UI run manifest: strict rendered-grid proof covers 0/9 cases',
-        'live UI browser evidence is direct, but it is not a same-corpus 10x proof against incumbents',
-      ]),
+      blockers: ['live UI browser evidence is direct, but it is not a same-corpus 10x proof against incumbents'],
     })
     expect(scorecard.categories.find((category) => category.id === 'collaboration')).toMatchObject({
       status: 'partial-repo-evidence',

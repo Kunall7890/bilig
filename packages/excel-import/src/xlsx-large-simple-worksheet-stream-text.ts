@@ -1,4 +1,3 @@
-import { toLiteralInput } from './workbook-import-helpers.js'
 import { decodeExcelEscapedText } from './xlsx-escaped-text.js'
 
 export function decodeXmlText(value: string): string {
@@ -40,8 +39,44 @@ export function stringItemText(xml: string): string {
 }
 
 export function normalizeWorksheetText(value: string): string {
-  const literal = toLiteralInput(decodeExcelEscapedText(value))
-  return typeof literal === 'string' ? literal : value
+  const hasCarriageReturn = value.includes('\r')
+  const hasExcelEscape = maybeContainsExcelEscapedText(value)
+  if (!hasCarriageReturn && !hasExcelEscape) {
+    return value
+  }
+  const decoded = hasExcelEscape ? decodeExcelEscapedText(value) : value
+  return hasCarriageReturn ? decoded.replace(/\r\n?/gu, '\n') : decoded
+}
+
+function maybeContainsExcelEscapedText(value: string): boolean {
+  let index = value.indexOf('_x')
+  while (index !== -1) {
+    if (index + 6 < value.length && value[index + 6] === '_' && isFourHexDigits(value, index + 2)) {
+      return true
+    }
+    index = value.indexOf('_x', index + 2)
+  }
+  index = value.indexOf('_X')
+  while (index !== -1) {
+    if (index + 6 < value.length && value[index + 6] === '_' && isFourHexDigits(value, index + 2)) {
+      return true
+    }
+    index = value.indexOf('_X', index + 2)
+  }
+  return false
+}
+
+function isFourHexDigits(value: string, startIndex: number): boolean {
+  return (
+    isHexDigit(value.charCodeAt(startIndex)) &&
+    isHexDigit(value.charCodeAt(startIndex + 1)) &&
+    isHexDigit(value.charCodeAt(startIndex + 2)) &&
+    isHexDigit(value.charCodeAt(startIndex + 3))
+  )
+}
+
+function isHexDigit(code: number): boolean {
+  return (code >= 48 && code <= 57) || (code >= 65 && code <= 70) || (code >= 97 && code <= 102)
 }
 
 function isValidXmlCodePoint(value: number): boolean {

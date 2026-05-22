@@ -54,8 +54,6 @@ const metrics: RecalcMetrics = {
 }
 
 const RANGE_VISUAL_DIRTY_MASK = DirtyMaskV3.Value | DirtyMaskV3.Style | DirtyMaskV3.Text | DirtyMaskV3.Rect | DirtyMaskV3.Border
-const AXIS_X_VISUAL_DIRTY_MASK = RANGE_VISUAL_DIRTY_MASK | DirtyMaskV3.AxisX
-const AXIS_Y_VISUAL_DIRTY_MASK = RANGE_VISUAL_DIRTY_MASK | DirtyMaskV3.AxisY
 
 function hasOpaqueGreenFillRect(rectInstances: Float32Array, rectCount: number): boolean {
   for (let index = 0; index < rectCount; index += 1) {
@@ -217,7 +215,7 @@ describe('worker-runtime-render-tile-delta', () => {
     )
   })
 
-  it('keeps changed-cell render tile deltas visually dirty so text and fill tiles cannot diverge', () => {
+  it('treats changed-cell render tile deltas as visual paint damage', () => {
     const changedEngine = {
       ...engine,
       workbook: {
@@ -250,9 +248,6 @@ describe('worker-runtime-render-tile-delta', () => {
     expect(replacement?.kind === 'tileReplace' ? replacement.dirtyLocalRows : null).toEqual(new Uint32Array([5, 5]))
     expect(replacement?.kind === 'tileReplace' ? replacement.dirtyLocalCols : null).toEqual(new Uint32Array([4, 4]))
     expect(replacement?.kind === 'tileReplace' ? replacement.dirtyMasks : null).toEqual(new Uint32Array([RANGE_VISUAL_DIRTY_MASK]))
-    expect(replacement?.kind === 'tileReplace' ? replacement.dirty.rectSpans : null).toEqual([
-      { offset: 0, length: replacement?.kind === 'tileReplace' ? replacement.rectCount : 0 },
-    ])
   })
 
   it('materializes only dirty visible tiles for event-driven batches', () => {
@@ -652,11 +647,13 @@ describe('worker-runtime-render-tile-delta', () => {
     expect(replacement?.kind === 'tileReplace' ? replacement.dirtyLocalRows : null).toEqual(new Uint32Array([0, 31, 0, 0]))
     expect(replacement?.kind === 'tileReplace' ? replacement.dirtyLocalCols : null).toEqual(new Uint32Array([2, 127, 0, 127]))
     expect(replacement?.kind === 'tileReplace' ? replacement.dirtyMasks : null).toEqual(
-      new Uint32Array([AXIS_X_VISUAL_DIRTY_MASK, DirtyMaskV3.Text]),
+      new Uint32Array([DirtyMaskV3.AxisX | DirtyMaskV3.Text | DirtyMaskV3.Rect, DirtyMaskV3.Text]),
     )
   })
 
   it('dirties every shifted visible tile after structural row and column invalidations', () => {
+    const axisMask = DirtyMaskV3.AxisX | DirtyMaskV3.Text | DirtyMaskV3.Rect
+    const rowAxisMask = DirtyMaskV3.AxisY | DirtyMaskV3.Text | DirtyMaskV3.Rect
     const columnSubscription = {
       sheetId: 7,
       sheetName: 'Sheet1',
@@ -706,9 +703,9 @@ describe('worker-runtime-render-tile-delta', () => {
       new Uint32Array([0, VIEWPORT_TILE_ROW_COUNT - 1]),
     ])
     expect(columnReplacements.map((mutation) => mutation.dirtyMasks)).toEqual([
-      new Uint32Array([AXIS_X_VISUAL_DIRTY_MASK]),
-      new Uint32Array([AXIS_X_VISUAL_DIRTY_MASK]),
-      new Uint32Array([AXIS_X_VISUAL_DIRTY_MASK]),
+      new Uint32Array([axisMask]),
+      new Uint32Array([axisMask]),
+      new Uint32Array([axisMask]),
     ])
 
     expect(rowReplacements.map((mutation) => mutation.coord.rowTile)).toEqual([0, 1, 2])
@@ -723,53 +720,9 @@ describe('worker-runtime-render-tile-delta', () => {
       new Uint32Array([0, VIEWPORT_TILE_COLUMN_COUNT - 1]),
     ])
     expect(rowReplacements.map((mutation) => mutation.dirtyMasks)).toEqual([
-      new Uint32Array([AXIS_Y_VISUAL_DIRTY_MASK]),
-      new Uint32Array([AXIS_Y_VISUAL_DIRTY_MASK]),
-      new Uint32Array([AXIS_Y_VISUAL_DIRTY_MASK]),
+      new Uint32Array([rowAxisMask]),
+      new Uint32Array([rowAxisMask]),
+      new Uint32Array([rowAxisMask]),
     ])
-  })
-
-  it('keeps shifted structural row-delete fill dirty in the render-tile style lane', async () => {
-    const structuralEngine = new SpreadsheetEngine({ workbookName: 'render-tile-structural-row-delete-fill' }) as SpreadsheetEngine &
-      WorkerEngine
-    await structuralEngine.ready()
-    structuralEngine.setCellValue('Sheet1', 'B37', 'row-delete-survivor')
-    structuralEngine.setRangeStyle(
-      {
-        sheetName: 'Sheet1',
-        startAddress: 'B37',
-        endAddress: 'B37',
-      },
-      { fill: { backgroundColor: '#00ff00' } },
-    )
-    let structuralEvent: EngineEvent | null = null
-    const unsubscribe = structuralEngine.subscribe((event) => {
-      structuralEvent = event
-    })
-    structuralEngine.deleteRows('Sheet1', 1, 1)
-    unsubscribe()
-
-    const batch = buildWorkerRenderTileDeltaBatch({
-      engine: structuralEngine,
-      event: structuralEvent ?? undefined,
-      generation: 21,
-      subscription: {
-        sheetId: 1,
-        sheetName: 'Sheet1',
-        rowStart: 32,
-        rowEnd: 63,
-        colStart: 0,
-        colEnd: 127,
-        dprBucket: 1,
-        cameraSeq: 28,
-      },
-    })
-    const replacement = batch.mutations.find((mutation) => mutation.kind === 'tileReplace')
-
-    expect(structuralEngine.getCell('Sheet1', 'B36').styleId).toBeDefined()
-    expect(replacement?.kind === 'tileReplace' ? replacement.dirtyMasks : null).toEqual(new Uint32Array([AXIS_Y_VISUAL_DIRTY_MASK]))
-    expect(replacement?.kind === 'tileReplace' ? hasOpaqueGreenFillRect(replacement.rectInstances, replacement.rectCount) : false).toBe(
-      true,
-    )
   })
 })

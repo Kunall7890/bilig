@@ -223,25 +223,7 @@ export function shouldSyncGridTextTileResourceV3(input: {
     return true
   }
   const dirtyMask = resolveGridTileDirtyContentMaskV3(input.tile)
-  if (dirtyMask === null && areGridTextTilePayloadsEqualV3(input.content.textRevisionKey, input.textRevisionKey)) {
-    return input.atlasGeometryVersion !== undefined && input.content.textAtlasGeometryVersion !== input.atlasGeometryVersion
-  }
   return dirtyMask === null || (dirtyMask & TEXT_DIRTY_MASK_V3) !== 0
-}
-
-function areGridTextTilePayloadsEqualV3(
-  left: TypeGpuTileTextRevisionKeyV3 | null | undefined,
-  right: TypeGpuTileTextRevisionKeyV3 | null | undefined,
-): boolean {
-  return (
-    left !== null &&
-    left !== undefined &&
-    right !== null &&
-    right !== undefined &&
-    left.tileId === right.tileId &&
-    left.textRunCount === right.textRunCount &&
-    left.textSignature === right.textSignature
-  )
 }
 
 export function resolveMissingTextGlyphRunSpansV3(input: {
@@ -325,7 +307,7 @@ export function shouldSyncGridRectTileResourceV3(input: {
   }
   const dirtyMask = resolveGridTileDirtyContentMaskV3(input.tile)
   if (dirtyMask === null) {
-    return false
+    return true
   }
   if ((dirtyMask & RECT_DIRTY_MASK_V3) !== 0) {
     return true

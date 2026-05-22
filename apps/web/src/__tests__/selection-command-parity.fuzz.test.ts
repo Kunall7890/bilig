@@ -99,7 +99,7 @@ describe('selection command parity fuzz', () => {
         root.unmount()
       })
     }
-  }, 300_000)
+  }, 30_000)
 })
 
 const selectionRangeArbitrary = fc.constantFrom<CellRangeRef>(

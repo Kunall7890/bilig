@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState, type MutableRefObject } from 'react'
-import type { GridSelectionSnapshot, WorkbookVisibleRenderProof } from '@bilig/grid'
+import type { GridSelectionSnapshot } from '@bilig/grid'
 import { formatAddress, parseCellAddress } from '@bilig/formula'
 import {
   stringifyWorkbookAgentUiContextRenderedProofKey,
@@ -125,7 +125,6 @@ export function useWorkerWorkbookAgentContext(input: {
   const [renderedAgentContextVersion, setRenderedAgentContextVersion] = useState(0)
   const [renderedAgentContextProofVersion, setRenderedAgentContextProofVersion] = useState(0)
   const visibleViewportRef = useRef<Viewport>(selectionViewport(selection))
-  const visibleRenderProofRef = useRef<WorkbookVisibleRenderProof | null>(null)
   const visibleViewportSubscriptionRef = useRef<{
     readonly cleanup: () => void
     readonly sheetName: string
@@ -153,7 +152,6 @@ export function useWorkerWorkbookAgentContext(input: {
         capturedAtUnixMs: Date.now(),
         capturedRevision: workerHandleRef.current?.viewportStore.getLastAuthoritativeRevision() ?? null,
         batchId: workerHandleRef.current?.viewportStore.getLastMetrics().batchId ?? null,
-        surfaceProof: visibleRenderProofRef.current,
         selection: buildRenderedRangeSnapshot(workerHandleRef.current?.viewportStore, selectionRangeRef.current),
         visibleRange: buildRenderedRangeSnapshot(workerHandleRef.current?.viewportStore, viewportRange),
       },
@@ -236,14 +234,6 @@ export function useWorkerWorkbookAgentContext(input: {
     [selectionRef, syncVisibleViewportProjection],
   )
 
-  const handleVisibleRenderProofChange = useCallback(
-    (proof: WorkbookVisibleRenderProof | null) => {
-      visibleRenderProofRef.current = proof
-      notifyRenderedAgentContextChanged()
-    },
-    [notifyRenderedAgentContextChanged],
-  )
-
   const getAgentContext = buildCurrentAgentContext
 
   const resetVisibleViewportForSheet = useCallback((nextSelection: WorkerRuntimeSelection) => {
@@ -260,7 +250,6 @@ export function useWorkerWorkbookAgentContext(input: {
     ].join(':'),
     agentContextProofVersion: renderedAgentContextProofVersion,
     getAgentContext,
-    handleVisibleRenderProofChange,
     handleVisibleViewportChange,
     resetVisibleViewportForSheet,
   }

@@ -24,8 +24,6 @@ describe('CellStore', () => {
   it('allocates dense row-major cells with repeated physical column coordinates', () => {
     const store = new CellStore(1)
 
-    expect(store.allocateDenseRowMajorAtReserved(3, 4, 0, 30, 4)).toBe(0)
-
     const first = store.allocateDenseRowMajorAtReserved(3, 4, 3, 30, 4)
 
     expect(first).toBe(0)
@@ -68,13 +66,6 @@ describe('CellStore', () => {
     expect(Array.from(store.tags.slice(0, store.capacity))).toEqual(Array.from({ length: store.capacity }, () => 0))
     expect(Array.from(store.stringIds.slice(0, store.capacity))).toEqual(Array.from({ length: store.capacity }, () => 0))
     expect(Array.from(store.cycleGroupIds.slice(0, store.capacity))).toEqual(Array.from({ length: store.capacity }, () => -1))
-  })
-
-  it('keeps size stable for empty dense single-column allocations', () => {
-    const store = new CellStore(1)
-
-    expect(store.allocateDenseSingleColumnReserved(2, 5, 0, 3)).toBe(0)
-    expect(store.size).toBe(0)
   })
 
   it('returns an empty cell for unknown stored tags', () => {

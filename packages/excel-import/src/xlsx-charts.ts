@@ -645,30 +645,18 @@ function inferFirstColumnAsLabels(
   return candidates.some((range) => isFirstColumnLabelRange(source, range)) ? true : undefined
 }
 
-function textElementValues(value: unknown): string[] {
+function textValues(value: unknown): string[] {
+  if (typeof value === 'string') {
+    return [value]
+  }
   if (!isRecord(value)) {
     return []
   }
-  return Object.entries(value).flatMap(([key, child]) => {
-    if (key === 't' || key === 'v') {
-      return chartTitleScalarValues(child)
-    }
-    return textElementValues(child)
-  })
-}
-
-function chartTitleScalarValues(value: unknown): string[] {
-  if (typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean') {
-    return [String(value)]
-  }
-  if (Array.isArray(value)) {
-    return value.flatMap(chartTitleScalarValues)
-  }
-  return textElementValues(value)
+  return Object.entries(value).flatMap(([key, child]) => (key === 't' ? textValues(child) : textValues(child)))
 }
 
 function readChartTitle(chart: Record<string, unknown>): string | undefined {
-  const values = textElementValues(recordChild(chart, 'title'))
+  const values = textValues(recordChild(chart, 'title'))
   const title = values.join('').trim()
   return title.length > 0 ? title : undefined
 }

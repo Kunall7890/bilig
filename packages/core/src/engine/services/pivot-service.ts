@@ -12,21 +12,14 @@ import {
   normalizePivotLookupText,
   pivotItemMatches,
 } from '../../engine-value-utils.js'
-import {
-  accumulatePivotAggregateValue,
-  emptyPivotAggregateState,
-  finalizePivotAggregate,
-  materializePivotTable,
-  type PivotDefinitionInput,
-} from '../../pivot-engine.js'
+import { materializePivotTable, type PivotDefinitionInput } from '../../pivot-engine.js'
 import type { FormulaTable } from '../../formula-table.js'
 import type { RangeRegistry } from '../../range-registry.js'
 import type { StringPool } from '../../string-pool.js'
 import type { WasmKernelFacade } from '../../wasm-facade.js'
-import { WorkbookStore, pivotKey, type WorkbookPivotRecord } from '../../workbook-store.js'
+import { pivotKey, type WorkbookPivotRecord, type WorkbookStore } from '../../workbook-store.js'
 import type { RuntimeFormula } from '../runtime-state.js'
 import { EnginePivotError } from '../errors.js'
-import { sourcefulPivotToUpsertOp } from './pivot-op-helpers.js'
 
 interface EnginePivotState {
   readonly workbook: WorkbookStore
@@ -61,7 +54,6 @@ export interface EnginePivotService {
   ) => CellValue
   readonly clearOwnedPivotNow: (pivot: WorkbookPivotRecord) => number[]
   readonly clearPivotForCellNow: (cellIndex: number) => number[]
-  readonly claimPivotOutputNow: (pivot: WorkbookPivotRecord) => number[]
 }
 
 function toPivotDefinition(pivot: WorkbookPivotRecord): PivotDefinitionInput {
@@ -290,21 +282,6 @@ export function createEnginePivotService(args: {
     return true
   }
 
-  const pivotOutputRangeRef = (pivot: WorkbookPivotRecord): CellRangeRef => {
-    const owner = parseCellAddress(pivot.address, pivot.sheetName)
-    return {
-      sheetName: pivot.sheetName,
-      startAddress: pivot.address,
-      endAddress: formatAddress(owner.row + Math.max(1, pivot.rows) - 1, owner.col + Math.max(1, pivot.cols) - 1),
-    }
-  }
-
-  const clearPivotOutputRangeFormatting = (pivot: WorkbookPivotRecord): void => {
-    const range = pivotOutputRangeRef(pivot)
-    args.state.workbook.setStyleRange(range, WorkbookStore.defaultStyleId)
-    args.state.workbook.setFormatRange(range, WorkbookStore.defaultFormatId)
-  }
-
   const setPivotOutputCellValue = (cellIndex: number, value: CellValue, ownerKey: string): boolean => {
     const currentFlags = args.state.workbook.cellStore.flags[cellIndex] ?? 0
     const currentValue = args.state.workbook.cellStore.getValue(cellIndex, (id) => args.state.strings.get(id))
@@ -323,7 +300,6 @@ export function createEnginePivotService(args: {
     const changedCellIndices: number[] = []
     const ownerKey = pivotKey(pivot.sheetName, pivot.address)
     const owner = parseCellAddress(pivot.address, pivot.sheetName)
-    clearPivotOutputRangeFormatting(pivot)
     for (let rowOffset = 0; rowOffset < pivot.rows; rowOffset += 1) {
       for (let colOffset = 0; colOffset < pivot.cols; colOffset += 1) {
         const cellIndex = args.state.workbook.getCellIndex(pivot.sheetName, formatAddress(owner.row + rowOffset, owner.col + colOffset))
@@ -331,29 +307,6 @@ export function createEnginePivotService(args: {
           continue
         }
         if (clearPivotOutputCell(cellIndex)) {
-          changedCellIndices.push(cellIndex)
-        }
-      }
-    }
-    return changedCellIndices
-  }
-
-  const claimPivotOutputNow = (pivot: WorkbookPivotRecord): number[] => {
-    const changedCellIndices: number[] = []
-    const ownerKey = pivotKey(pivot.sheetName, pivot.address)
-    const owner = parseCellAddress(pivot.address, pivot.sheetName)
-    clearPivotOutputRangeFormatting(pivot)
-    for (let rowOffset = 0; rowOffset < pivot.rows; rowOffset += 1) {
-      for (let colOffset = 0; colOffset < pivot.cols; colOffset += 1) {
-        const cellIndex = args.state.workbook.getCellIndex(pivot.sheetName, formatAddress(owner.row + rowOffset, owner.col + colOffset))
-        if (cellIndex === undefined || args.state.formulas.get(cellIndex)) {
-          continue
-        }
-        const currentFlags = args.state.workbook.cellStore.flags[cellIndex] ?? 0
-        const nextFlags = (currentFlags & ~CellFlags.SpillChild) | CellFlags.PivotOutput
-        args.state.pivotOutputOwners.set(cellIndex, ownerKey)
-        if (nextFlags !== currentFlags) {
-          args.state.workbook.cellStore.flags[cellIndex] = nextFlags
           changedCellIndices.push(cellIndex)
         }
       }
@@ -389,7 +342,17 @@ export function createEnginePivotService(args: {
 
     if (pivot.rows !== rows || pivot.cols !== cols) {
       if (pivot.source) {
-        args.applyDerivedOp(sourcefulPivotToUpsertOp({ ...pivot, source: pivot.source, rows, cols }))
+        args.applyDerivedOp({
+          kind: 'upsertPivotTable',
+          name: pivot.name,
+          sheetName: pivot.sheetName,
+          address: pivot.address,
+          source: { ...pivot.source },
+          groupBy: [...pivot.groupBy],
+          values: pivot.values.map((value) => Object.assign({}, value)),
+          rows,
+          cols,
+        })
       } else {
         args.state.workbook.setPivot({ ...pivot, rows, cols })
       }
@@ -469,9 +432,6 @@ export function createEnginePivotService(args: {
   }
 
   const readPivotRows = (pivot: WorkbookPivotRecord): CellValue[][] | null => {
-    if (pivot.source && !pivot.cacheOnly && args.state.workbook.getSheet(pivot.source.sheetName)) {
-      return readPivotSourceRows(pivot.source)
-    }
     const cachedRows = readPivotCachedRows(pivot)
     if (cachedRows) {
       return cachedRows
@@ -607,7 +567,7 @@ export function createEnginePivotService(args: {
     }
 
     let matched = filters.length === 0
-    const aggregate = emptyPivotAggregateState()
+    let aggregate = 0
     for (let rowIndex = 1; rowIndex < sourceRows.length; rowIndex += 1) {
       const row = sourceRows[rowIndex] ?? []
       const matches = materializedFilters.every((filter) => pivotItemMatches(row[filter.fieldIndex!] ?? emptyValue(), filter.item))
@@ -616,10 +576,14 @@ export function createEnginePivotService(args: {
       }
       matched = true
       const value = row[valueColumnIndex] ?? emptyValue()
-      accumulatePivotAggregateValue(aggregate, value)
+      if (valueField.summarizeBy === 'count') {
+        aggregate += value.tag === ValueTag.Empty ? 0 : 1
+      } else if (value.tag === ValueTag.Number) {
+        aggregate += value.value
+      }
     }
 
-    return matched ? { tag: ValueTag.Number, value: finalizePivotAggregate(valueField.summarizeBy, aggregate) } : visibleFallback()
+    return matched ? { tag: ValueTag.Number, value: aggregate } : visibleFallback()
   }
 
   const clearPivotForCellNow = (cellIndex: number): number[] => {
@@ -684,6 +648,5 @@ export function createEnginePivotService(args: {
     resolvePivotDataNow,
     clearOwnedPivotNow,
     clearPivotForCellNow,
-    claimPivotOutputNow,
   }
 }

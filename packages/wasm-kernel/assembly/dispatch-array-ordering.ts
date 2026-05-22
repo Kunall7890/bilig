@@ -17,43 +17,6 @@ function coerceBoolean(tag: u8, value: f64): i32 {
   return -1
 }
 
-function isSortNumberLike(tag: u8): bool {
-  return tag == ValueTag.Number || tag == ValueTag.Boolean
-}
-
-function compareSortScalarValues(
-  leftTag: u8,
-  leftValue: f64,
-  rightTag: u8,
-  rightValue: f64,
-  stringOffsets: Uint32Array,
-  stringLengths: Uint32Array,
-  stringData: Uint16Array,
-  outputStringOffsets: Uint32Array,
-  outputStringLengths: Uint32Array,
-  outputStringData: Uint16Array,
-): i32 {
-  if (leftTag == ValueTag.String && isSortNumberLike(rightTag)) {
-    return 1
-  }
-  if (isSortNumberLike(leftTag) && rightTag == ValueTag.String) {
-    return -1
-  }
-  return compareScalarValues(
-    leftTag,
-    leftValue,
-    rightTag,
-    rightValue,
-    null,
-    stringOffsets,
-    stringLengths,
-    stringData,
-    outputStringOffsets,
-    outputStringLengths,
-    outputStringData,
-  )
-}
-
 function resolveOneBasedIndex(rawIndex: i32, length: i32): i32 {
   if (rawIndex == i32.MIN_VALUE || rawIndex == 0 || length <= 0) {
     return i32.MIN_VALUE
@@ -168,11 +131,12 @@ function compareInputCells(
     cellStringIds,
     cellErrors,
   )
-  return compareSortScalarValues(
+  return compareScalarValues(
     leftTag,
     leftValue,
     rightTag,
     rightValue,
+    null,
     stringOffsets,
     stringLengths,
     stringData,
@@ -820,11 +784,12 @@ export function tryApplyArrayOrderingBuiltin(
             cellStringIds,
             cellErrors,
           )
-          const criterionComparison = compareSortScalarValues(
+          const criterionComparison = compareScalarValues(
             currentCriterionTag,
             currentCriterionValue,
             previousCriterionTag,
             previousCriterionValue,
+            null,
             stringOffsets,
             stringLengths,
             stringData,

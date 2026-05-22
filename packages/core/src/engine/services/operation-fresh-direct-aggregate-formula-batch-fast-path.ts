@@ -2,7 +2,7 @@ import { ErrorCode, ValueTag, type EngineChangedCell } from '@bilig/protocol'
 import type { EngineOpBatch } from '@bilig/workbook'
 import { formatAddress, type CompiledFormula } from '@bilig/formula'
 import { CellFlags } from '../../cell-store.js'
-import type { EngineCellMutationRef, EngineFreshDirectAggregateMatrixPlan } from '../../cell-mutations-at.js'
+import type { EngineCellMutationRef } from '../../cell-mutations-at.js'
 import { addEngineCounter } from '../../perf/engine-counters.js'
 import { batchOpOrder, markBatchApplied, type OpOrder } from '../../replica-state.js'
 import type { EngineRuntimeState, U32 } from '../runtime-state.js'
@@ -16,6 +16,8 @@ import {
   attachFreshDenseDirectAggregateMatrixCells,
   createFreshFormulaCellAttacher,
   createFreshMatrixDirectAggregateTemplate,
+  evaluateFreshDirectAggregateMatrixNumericRow,
+  evaluateFreshDirectAggregateMatrixRow,
   materializeFreshMatrixAxisIds,
   normalizeFreshMatrixDirectAggregateOffset,
   tryTranslateFreshMatrixDirectAggregateTemplate,
@@ -28,8 +30,7 @@ import {
   type FreshDirectAggregateFormulaEntry,
   type FreshDirectAggregateFormulaEntrySeed,
 } from './operation-fresh-direct-aggregate-formula-batch-records.js'
-import { collectFreshDirectAggregateMatrixPlanBatch } from './operation-fresh-direct-aggregate-matrix-plan-batch.js'
-import { materializeFreshDirectAggregateFormulaResults } from './operation-fresh-direct-aggregate-matrix-results.js'
+import { tryEvaluateNativeFreshDirectAggregateMatrixResults } from './operation-fresh-direct-aggregate-native-batch.js'
 
 const EMPTY_CHANGED_CELLS = new Uint32Array(0)
 const FRESH_DIRECT_AGGREGATE_FORMULA_BATCH_MIN_SIZE = 32
@@ -50,7 +51,7 @@ type FastPathState = Pick<
   | 'trackReplicaVersions'
 >
 
-export interface FreshDirectAggregateMatrixBatch {
+interface FreshDirectAggregateMatrixBatch {
   readonly sheet: NonNullable<ReturnType<FastPathState['workbook']['getSheetById']>>
   readonly sheetId: number
   readonly rowStart: number
@@ -115,7 +116,6 @@ export function createOperationFreshDirectAggregateFormulaBatchFastPath(args: Op
     batch: EngineOpBatch | null,
     source: 'local' | 'restore' | 'undo' | 'redo',
     potentialNewCells?: number,
-    freshDirectAggregateMatrixPlan?: EngineFreshDirectAggregateMatrixPlan,
   ) => boolean
 } {
   const tryApplyFreshDirectAggregateFormulaMatrixBatch = (
@@ -123,7 +123,6 @@ export function createOperationFreshDirectAggregateFormulaBatchFastPath(args: Op
     batch: EngineOpBatch | null,
     source: 'local' | 'restore' | 'undo' | 'redo',
     potentialNewCells?: number,
-    freshDirectAggregateMatrixPlan?: EngineFreshDirectAggregateMatrixPlan,
   ): boolean => {
     const firstRef = refs[0]
     if (
@@ -139,16 +138,9 @@ export function createOperationFreshDirectAggregateFormulaBatchFastPath(args: Op
       return false
     }
     args.checkEvaluationBudget()
-    const matrix =
-      freshDirectAggregateMatrixPlan === undefined
-        ? collectFreshDirectAggregateMatrixBatch(args, refs, firstRef)
-        : collectFreshDirectAggregateMatrixPlanBatch(args, refs, firstRef, freshDirectAggregateMatrixPlan)
+    const matrix = collectFreshDirectAggregateMatrixBatch(args, refs, firstRef)
     if (matrix === null || freshMatrixOverlapsFormulaDependencies(args, matrix)) {
       return false
-    }
-    if (freshDirectAggregateMatrixPlan !== undefined) {
-      addEngineCounter(args.state.counters, 'freshDirectAggregateMatrixPlanApplications')
-      addEngineCounter(args.state.counters, 'freshDirectAggregateMatrixPlanMembers', matrix.rowCount)
     }
 
     args.materializeDeferredStructuralFormulaSources()
@@ -519,10 +511,6 @@ function collectFreshDirectAggregateMatrixBatch(
   }
 
   const formulaCol = firstMutation.col + inputColCount
-  const hasFormulaColumnDependents =
-    args.hasTrackedExactLookupDependents(firstRef.sheetId, formulaCol) ||
-    args.hasTrackedSortedLookupDependents(firstRef.sheetId, formulaCol) ||
-    args.hasTrackedDirectRangeDependents(firstRef.sheetId, formulaCol)
   const formulaEntrySeeds: FreshDirectAggregateFormulaEntrySeed[] = []
   let directAggregateTemplate: FreshMatrixDirectAggregateTemplate | undefined
   for (let refIndex = firstFormulaRefIndex; refIndex < refs.length; refIndex += 1) {
@@ -542,7 +530,9 @@ function collectFreshDirectAggregateMatrixBatch(
     if (
       sheet.grid.getPhysical(mutation.row, mutation.col) !== -1 ||
       sheet.logical.getVisibleCell(mutation.row, mutation.col) !== undefined ||
-      hasFormulaColumnDependents
+      args.hasTrackedExactLookupDependents(ref.sheetId, mutation.col) ||
+      args.hasTrackedSortedLookupDependents(ref.sheetId, mutation.col) ||
+      args.hasTrackedDirectRangeDependents(ref.sheetId, mutation.col)
     ) {
       return null
     }
@@ -633,6 +623,73 @@ function collectFreshDirectAggregateMatrixBatch(
     formulaEntries: formulaEntrySeeds,
     formulaResults,
   }
+}
+
+function materializeFreshDirectAggregateFormulaResults(
+  args: OperationFreshDirectAggregateFormulaBatchFastPathArgs,
+  input: {
+    readonly inputColCount: number
+    readonly matrixColStart: number
+    readonly seeds: readonly FreshDirectAggregateFormulaEntrySeed[]
+    readonly values: Float64Array
+  },
+): Float64Array | DirectScalarCurrentOperand[] {
+  args.checkEvaluationBudget(input.seeds.length * Math.max(1, input.inputColCount))
+  const nativeResults = tryEvaluateNativeFreshDirectAggregateMatrixResults(args, input)
+  if (nativeResults !== undefined) {
+    return nativeResults
+  }
+  const numericResults = new Float64Array(input.seeds.length)
+  for (let rowOffset = 0; rowOffset < input.seeds.length; rowOffset += 1) {
+    const seed = input.seeds[rowOffset]!
+    args.checkEvaluationBudget(input.inputColCount)
+    const result = evaluateFreshDirectAggregateMatrixNumericRow({
+      aggregateKind: seed.aggregateKind,
+      colEnd: seed.aggregateColEnd,
+      colStart: seed.aggregateColStart,
+      inputColCount: input.inputColCount,
+      matrixColStart: input.matrixColStart,
+      resultOffset: seed.resultOffset,
+      rowOffset,
+      values: input.values,
+    })
+    if (result === undefined) {
+      return materializeFreshDirectAggregateFormulaObjectResults(args, input, rowOffset)
+    }
+    numericResults[rowOffset] = result
+  }
+  return numericResults
+}
+
+function materializeFreshDirectAggregateFormulaObjectResults(
+  args: OperationFreshDirectAggregateFormulaBatchFastPathArgs,
+  input: {
+    readonly inputColCount: number
+    readonly matrixColStart: number
+    readonly seeds: readonly FreshDirectAggregateFormulaEntrySeed[]
+    readonly values: Float64Array
+  },
+  startRowOffset: number,
+): DirectScalarCurrentOperand[] {
+  const results: DirectScalarCurrentOperand[] = []
+  results.length = input.seeds.length
+  for (let rowOffset = 0; rowOffset < input.seeds.length; rowOffset += 1) {
+    const seed = input.seeds[rowOffset]!
+    if (rowOffset > startRowOffset) {
+      args.checkEvaluationBudget(input.inputColCount)
+    }
+    results[rowOffset] = evaluateFreshDirectAggregateMatrixRow({
+      aggregateKind: seed.aggregateKind,
+      colEnd: seed.aggregateColEnd,
+      colStart: seed.aggregateColStart,
+      inputColCount: input.inputColCount,
+      matrixColStart: input.matrixColStart,
+      resultOffset: seed.resultOffset,
+      rowOffset,
+      values: input.values,
+    })
+  }
+  return results
 }
 
 function writeFreshNumericLiteralToCellStore(

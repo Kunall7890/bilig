@@ -10,7 +10,9 @@ import { DirtyMaskV3, DirtyTileIndexV3 } from '../../../../packages/grid/src/ren
 import { OPTIMISTIC_CELL_SNAPSHOT_FLAG } from '../workbook-optimistic-cell-flags.js'
 import { ProjectedTileSceneStore } from '../projected-tile-scene-store.js'
 import { ProjectedViewportStore } from '../projected-viewport-store.js'
-import { LOCAL_CELL_TEXT_DIRTY_MASK, LOCAL_CELL_VISUAL_DIRTY_MASK } from '../projected-workbook-local-delta.js'
+
+const LOCAL_OPTIMISTIC_CELL_VISUAL_DIRTY_MASK =
+  DirtyMaskV3.Value | DirtyMaskV3.Style | DirtyMaskV3.Text | DirtyMaskV3.Rect | DirtyMaskV3.Border
 
 function createTileReplace(tileId: number, valuesVersion: number, sheetOrdinal = 7, sheetId = 7): RenderTileReplaceMutation {
   return {
@@ -350,7 +352,7 @@ describe('ProjectedViewportStore render delta source bridge', () => {
 
     expect(listener).toHaveBeenCalledWith(
       expect.objectContaining({
-        dirty: expect.objectContaining({ cellRanges: new Uint32Array([1, 1, 1, 1, LOCAL_CELL_TEXT_DIRTY_MASK]) }),
+        dirty: expect.objectContaining({ cellRanges: new Uint32Array([1, 1, 1, 1, LOCAL_OPTIMISTIC_CELL_VISUAL_DIRTY_MASK]) }),
         seq: 1,
         sheetId: 7,
         sheetOrdinal: 3,
@@ -463,7 +465,7 @@ describe('ProjectedViewportStore render delta source bridge', () => {
 
     expect(listener).toHaveBeenCalledWith(
       expect.objectContaining({
-        dirty: expect.objectContaining({ cellRanges: new Uint32Array([52, 52, 3, 3, LOCAL_CELL_TEXT_DIRTY_MASK]) }),
+        dirty: expect.objectContaining({ cellRanges: new Uint32Array([52, 52, 3, 3, LOCAL_OPTIMISTIC_CELL_VISUAL_DIRTY_MASK]) }),
         seq: 43,
         sheetId: 7,
         sheetOrdinal: 3,
@@ -517,7 +519,7 @@ describe('ProjectedViewportStore render delta source bridge', () => {
 
     expect(listener).toHaveBeenCalledWith(
       expect.objectContaining({
-        dirty: expect.objectContaining({ cellRanges: new Uint32Array([52, 52, 3, 3, LOCAL_CELL_TEXT_DIRTY_MASK]) }),
+        dirty: expect.objectContaining({ cellRanges: new Uint32Array([52, 52, 3, 3, LOCAL_OPTIMISTIC_CELL_VISUAL_DIRTY_MASK]) }),
         sheetId: 7,
         sheetOrdinal: 3,
         source: 'localOptimistic',
@@ -527,7 +529,7 @@ describe('ProjectedViewportStore render delta source bridge', () => {
     unsubscribe()
   })
 
-  it('publishes visual local optimistic workbook deltas for explicit presentation dirty snapshots', () => {
+  it('publishes style-aware local optimistic workbook deltas for styled projected cell snapshots', () => {
     const store = new ProjectedViewportStore({
       subscribeRenderTileDeltas: () => () => undefined,
       subscribeViewportPatches: () => () => undefined,
@@ -548,21 +550,18 @@ describe('ProjectedViewportStore render delta source bridge', () => {
       () => undefined,
     )
     const unsubscribe = store.subscribeWorkbookDeltas(listener)
-    store.setCellSnapshot(
-      {
-        address: 'B2',
-        flags: 0,
-        sheetName: 'Sheet1',
-        styleId: 'bold',
-        value: { tag: ValueTag.Number, value: 17 },
-        version: 12,
-      },
-      { localDeltaDirtyMask: LOCAL_CELL_VISUAL_DIRTY_MASK },
-    )
+    store.setCellSnapshot({
+      address: 'B2',
+      flags: 0,
+      sheetName: 'Sheet1',
+      styleId: 'bold',
+      value: { tag: ValueTag.Number, value: 17 },
+      version: 12,
+    })
 
     expect(listener).toHaveBeenCalledWith(
       expect.objectContaining({
-        dirty: expect.objectContaining({ cellRanges: new Uint32Array([1, 1, 1, 1, LOCAL_CELL_VISUAL_DIRTY_MASK]) }),
+        dirty: expect.objectContaining({ cellRanges: new Uint32Array([1, 1, 1, 1, LOCAL_OPTIMISTIC_CELL_VISUAL_DIRTY_MASK]) }),
       }),
     )
 

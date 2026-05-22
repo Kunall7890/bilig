@@ -107,6 +107,10 @@ export function resolveNativeTextLayerDrawScrollSnapshotV3(input: {
   })
 }
 
+function isPaneDrawVisible(pane: TextLayerPane): boolean {
+  return pane.drawVisible !== false
+}
+
 function getPaneTextRuns(pane: TextLayerPane): readonly TextQuadRun[] {
   return 'tile' in pane ? pane.tile.textRuns : pane.textRuns
 }
@@ -531,6 +535,9 @@ export const WorkbookPaneNativeTextLayerV3 = memo(function WorkbookPaneNativeTex
     () =>
       active
         ? panes.flatMap((pane) => {
+            if (!isPaneDrawVisible(pane)) {
+              return []
+            }
             return getPaneTextRuns(pane).flatMap((run) => {
               if (isNativeTextRunSuppressed(pane, run, suppressedTextCell)) {
                 return []

@@ -2,6 +2,7 @@ import type * as XLSX from 'xlsx'
 
 export const externalWorkbookReferencesWarning = 'External workbook links were preserved but not recalculated during XLSX import.'
 export const externalPivotCachesWarning = 'External pivot caches were detected but not semantically imported during XLSX import.'
+export const unsupportedCellStylesWarning = 'Some cell styles were ignored during XLSX import.'
 export const macroExecutionDeclinedWarning = 'Macros were preserved but not executed during XLSX import.'
 export const dataTableFormulasWarning = 'Excel data table formulas were preserved but not recalculated during XLSX import.'
 export const volatileFormulasWarning =

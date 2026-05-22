@@ -3,7 +3,7 @@ import { dirname, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { describe, expect, it } from 'vitest'
 
-import { buildVitestArgBatches, buildVitestArgs, buildVitestEnv, isBroadCorpusVitestRun, readVitestBatchCooldownMs } from '../run-vitest.ts'
+import { buildVitestArgBatches, buildVitestArgs, isBroadCorpusVitestRun, readVitestBatchCooldownMs } from '../run-vitest.ts'
 
 const repoRoot = resolve(dirname(fileURLToPath(import.meta.url)), '../..')
 
@@ -128,11 +128,6 @@ describe('run-vitest wrapper arguments', () => {
     expect(readVitestBatchCooldownMs({ BILIG_CI_PROFILE: 'fast', BILIG_VITEST_BATCH_COOLDOWN_MS: '2500ms' })).toBe(1000)
   })
 
-  it('marks coverage runs for tests that must avoid instrumented stopwatch assertions', () => {
-    expect(buildVitestEnv(['--run', '--coverage'], { BILIG_CI_PROFILE: 'full' })['BILIG_VITEST_COVERAGE']).toBe('1')
-    expect(buildVitestEnv(['--run'], { BILIG_CI_PROFILE: 'full' })['BILIG_VITEST_COVERAGE']).toBeUndefined()
-  })
-
   it('classifies the public workbook corpus correctness lane as broad', () => {
     expect(
       isBroadCorpusVitestRun([
@@ -164,9 +159,7 @@ describe('run-vitest wrapper arguments', () => {
     const runVitestSource = readFileSync(resolve(repoRoot, 'scripts/run-vitest.ts'), 'utf8')
 
     expect(packageJson).toContain('"test": "tsx scripts/run-vitest.ts --run"')
-    expect(packageJson).toContain(
-      '"coverage": "BILIG_FUZZ_PROFILE=fuzz BILIG_FUZZ_NUM_RUNS=20 BILIG_FUZZ_MAX_MS=60000 BILIG_VITEST_TEST_TIMEOUT_MS=300000 tsx scripts/run-vitest.ts --run packages/core/src packages/formula/src packages/renderer/src packages/headless/src --coverage',
-    )
+    expect(packageJson).toContain('"coverage": "tsx scripts/run-vitest.ts --run --coverage')
     expect(packageJson).toContain('"test:watch": "tsx scripts/run-vitest.ts"')
     expect(packageJson).not.toContain('bun scripts/run-vitest.ts')
     expect(runVitestSource).toContain('process.stderr.write(`${error instanceof Error ? error.message : String(error)}\\n`)')

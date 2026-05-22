@@ -8,7 +8,6 @@ import type { WorkbookMutationMethod } from './workbook-sync.js'
 import { OPTIMISTIC_CELL_SNAPSHOT_FLAG } from './workbook-optimistic-cell-flags.js'
 import { parseEditorInput, parsedEditorInputFromSnapshot, type EditingMode, type ParsedEditorInput } from './worker-workbook-app-model.js'
 import { createOptimisticCellSnapshot, createSupersedingCellSnapshot, evaluateOptimisticFormula } from './workbook-optimistic-cell.js'
-import { LOCAL_CELL_VISUAL_DIRTY_MASK } from './projected-workbook-local-delta.js'
 import {
   createContentClearedOptimisticSnapshot,
   createEmptyOptimisticSnapshot,
@@ -20,7 +19,6 @@ export { applyOptimisticClearRange } from './workbook-optimistic-range.js'
 
 type RangeMutationMethod = 'fillRange' | 'copyRange' | 'moveRange'
 const MAX_MATERIALIZED_OPTIMISTIC_RANGE_CELLS = 10_000
-const PRESENTATION_DIRTY_CELL_WRITE = { localDeltaDirtyMask: LOCAL_CELL_VISUAL_DIRTY_MASK } as const
 
 export function buildPasteCommitOps(sheetName: string, startAddr: string, values: readonly (readonly string[])[]): CommitOp[] {
   const start = parseCellAddress(startAddr, sheetName)
@@ -121,13 +119,13 @@ export function applyOptimisticMoveRange(
     }
   }
 
-  nextSourceSnapshots.forEach((snapshot) => setPresentationDirtyCellSnapshot(viewportStore, snapshot))
-  nextTargetSnapshots.forEach((snapshot) => setPresentationDirtyCellSnapshot(viewportStore, snapshot))
+  nextSourceSnapshots.forEach((snapshot) => viewportStore.setCellSnapshot(snapshot))
+  nextTargetSnapshots.forEach((snapshot) => viewportStore.setCellSnapshot(snapshot))
 
   return () => {
     previousSnapshots.forEach((snapshot) => {
       rollbackVersion += 1
-      setPresentationDirtyCellSnapshot(viewportStore, createSupersedingCellSnapshot(snapshot, rollbackVersion))
+      viewportStore.setCellSnapshot(createSupersedingCellSnapshot(snapshot, rollbackVersion))
     })
   }
 }
@@ -190,12 +188,12 @@ export function applyOptimisticCopyRange(
     }
   }
 
-  nextSnapshots.forEach((snapshot) => setPresentationDirtyCellSnapshot(viewportStore, snapshot))
+  nextSnapshots.forEach((snapshot) => viewportStore.setCellSnapshot(snapshot))
 
   return () => {
     previousSnapshots.forEach((snapshot) => {
       rollbackVersion += 1
-      setPresentationDirtyCellSnapshot(viewportStore, createSupersedingCellSnapshot(snapshot, rollbackVersion))
+      viewportStore.setCellSnapshot(createSupersedingCellSnapshot(snapshot, rollbackVersion))
     })
   }
 }
@@ -277,12 +275,12 @@ export function applyOptimisticFillRange(
     return null
   }
 
-  nextSnapshots.forEach((snapshot) => setPresentationDirtyCellSnapshot(viewportStore, snapshot))
+  nextSnapshots.forEach((snapshot) => viewportStore.setCellSnapshot(snapshot))
 
   return () => {
     previousSnapshots.forEach((snapshot) => {
       rollbackVersion += 1
-      setPresentationDirtyCellSnapshot(viewportStore, createSupersedingCellSnapshot(snapshot, rollbackVersion))
+      viewportStore.setCellSnapshot(createSupersedingCellSnapshot(snapshot, rollbackVersion))
     })
   }
 }
@@ -387,13 +385,13 @@ function applyVisibleOptimisticMoveRange(
     return null
   }
 
-  nextSourceSnapshots.forEach((snapshot) => setPresentationDirtyCellSnapshot(viewportStore, snapshot))
-  nextTargetSnapshots.forEach((snapshot) => setPresentationDirtyCellSnapshot(viewportStore, snapshot))
+  nextSourceSnapshots.forEach((snapshot) => viewportStore.setCellSnapshot(snapshot))
+  nextTargetSnapshots.forEach((snapshot) => viewportStore.setCellSnapshot(snapshot))
 
   return () => {
     previousSnapshots.forEach((snapshot) => {
       rollbackVersion += 1
-      setPresentationDirtyCellSnapshot(viewportStore, createSupersedingCellSnapshot(snapshot, rollbackVersion))
+      viewportStore.setCellSnapshot(createSupersedingCellSnapshot(snapshot, rollbackVersion))
     })
   }
 }
@@ -594,12 +592,12 @@ function applyVisibleOptimisticTargetRange(
     return null
   }
 
-  nextSnapshots.forEach((snapshot) => setPresentationDirtyCellSnapshot(viewportStore, snapshot))
+  nextSnapshots.forEach((snapshot) => viewportStore.setCellSnapshot(snapshot))
 
   return () => {
     previousSnapshots.forEach((snapshot) => {
       rollbackVersion += 1
-      setPresentationDirtyCellSnapshot(viewportStore, createSupersedingCellSnapshot(snapshot, rollbackVersion))
+      viewportStore.setCellSnapshot(createSupersedingCellSnapshot(snapshot, rollbackVersion))
     })
   }
 }
@@ -639,10 +637,6 @@ function createCopiedOptimisticSnapshot(
   })
   applyCopiedSnapshotPresentation(next, sourceSnapshot)
   return next
-}
-
-function setPresentationDirtyCellSnapshot(viewportStore: OptimisticViewportStore, snapshot: CellSnapshot): void {
-  viewportStore.setCellSnapshot(snapshot, PRESENTATION_DIRTY_CELL_WRITE)
 }
 
 function parsedInputForCopiedSnapshot(

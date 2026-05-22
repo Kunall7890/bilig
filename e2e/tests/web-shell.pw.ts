@@ -1,4 +1,6 @@
 import { expect, test, type Locator } from '@playwright/test'
+import * as fc from 'fast-check'
+import { runProperty, shouldRunFuzzSuite } from '../../packages/test-fuzz/src/index.ts'
 import {
   PRIMARY_MODIFIER,
   PRODUCT_HEADER_HEIGHT,
@@ -16,7 +18,14 @@ import {
   waitForProductColumnWidthChange,
   waitForWorkbookReady,
 } from './web-shell-helpers.js'
+const fuzzBrowserEnabled = process.env['BILIG_FUZZ_BROWSER'] === '1'
 const remoteSyncTest = remoteSyncEnabled ? test : test.skip.bind(test)
+const fuzzBrowserTest = fuzzBrowserEnabled && shouldRunFuzzSuite('browser/grid-selection-focus', 'browser') ? test : test.skip.bind(test)
+
+type BrowserSelectionAction =
+  | { kind: 'click'; row: number; col: number }
+  | { kind: 'shiftClick'; row: number; col: number }
+  | { kind: 'key'; key: 'ArrowLeft' | 'ArrowRight' | 'ArrowUp' | 'ArrowDown'; shift: boolean }
 
 async function dragProductFillHandle(
   page: Parameters<typeof test>[0]['page'],
@@ -33,6 +42,85 @@ async function dragProductFillHandle(
     steps: 10,
   })
   await page.mouse.up()
+}
+
+async function clickSelectionFuzzCell(page: Parameters<typeof test>[0]['page'], columnIndex: number, rowIndex: number, shift = false) {
+  const gridLocator = page.getByTestId('sheet-grid')
+  await expect(gridLocator).toBeVisible()
+  const grid = await gridLocator.boundingBox()
+  if (!grid) {
+    throw new Error('sheet grid is not visible')
+  }
+  const columnLeft = await getProductColumnLeft(page, columnIndex)
+  const columnWidth = await getProductColumnWidth(page, columnIndex)
+  const scrollLeft = await gridLocator.evaluate(
+    (node, target) => {
+      const scrollViewport = node.querySelector('[aria-hidden="true"]')
+      if (!(scrollViewport instanceof HTMLElement)) {
+        return 0
+      }
+      const targetCenter = target.columnLeft + target.columnWidth / 2
+      const visibleStart = scrollViewport.scrollLeft
+      const visibleEnd = visibleStart + scrollViewport.clientWidth
+      if (targetCenter < visibleStart || targetCenter > visibleEnd) {
+        scrollViewport.scrollLeft = Math.max(0, targetCenter - scrollViewport.clientWidth / 2)
+      }
+      return scrollViewport.scrollLeft
+    },
+    {
+      columnLeft,
+      columnWidth,
+    },
+  )
+  const point = {
+    x: grid.x + columnLeft - scrollLeft + columnWidth / 2,
+    y: grid.y + PRODUCT_HEADER_HEIGHT + rowIndex * PRODUCT_ROW_HEIGHT + PRODUCT_ROW_HEIGHT / 2,
+  }
+  if (shift) {
+    await page.keyboard.down('Shift')
+  }
+  try {
+    await page.mouse.click(point.x, point.y)
+  } finally {
+    if (shift) {
+      await page.keyboard.up('Shift')
+    }
+  }
+}
+
+async function runSelectionFuzzActions(
+  page: Parameters<typeof test>[0]['page'],
+  grid: Locator,
+  actions: readonly BrowserSelectionAction[],
+  index = 0,
+): Promise<void> {
+  const action = actions[index]
+  if (!action) {
+    return
+  }
+
+  if (action.kind === 'click') {
+    await clickSelectionFuzzCell(page, action.col, action.row)
+  } else if (action.kind === 'shiftClick') {
+    await clickSelectionFuzzCell(page, action.col, action.row, true)
+  } else {
+    await grid.press(action.shift ? `Shift+${action.key}` : action.key)
+  }
+
+  const selection = await page.getByTestId('status-selection').textContent()
+  expect(selection).toMatch(/^Sheet1!(?:[A-Z]+[0-9]+(?::[A-Z]+[0-9]+)?|[A-Z]+:[A-Z]+|[0-9]+:[0-9]+|All)$/)
+
+  const focusInsideShell = await page.evaluate(() => {
+    const active = document.activeElement
+    return Boolean(
+      active?.closest('[data-testid="sheet-grid"]') ||
+      active?.closest('[data-testid="formula-bar"]') ||
+      active?.closest('[role="toolbar"]'),
+    )
+  })
+  expect(focusInsideShell).toBe(true)
+
+  await runSelectionFuzzActions(page, grid, actions, index + 1)
 }
 
 async function clickProductSelectedCellTopBorder(page: Parameters<typeof test>[0]['page'], columnIndex: number, rowIndex: number) {
@@ -52,25 +140,10 @@ async function clickProductSelectedCellTopBorder(page: Parameters<typeof test>[0
 }
 
 async function nativeTextRunsInclude(page: Parameters<typeof test>[0]['page'], text: string): Promise<boolean> {
-  return await page.evaluate((needle) => {
-    const nativeTextIncludes = Array.from(document.querySelectorAll('[data-native-text-run]')).some(
-      (run) => run.textContent?.includes(needle) ?? false,
-    )
-    if (nativeTextIncludes) {
-      return true
-    }
-    const typeGpu = document.querySelector('[data-testid="grid-pane-renderer"]')
-    if (!(typeGpu instanceof HTMLElement) || typeGpu.getAttribute('data-v3-frame-proof-status') !== 'presented') {
-      return false
-    }
-    if (Number(typeGpu.getAttribute('data-v3-presented-text-run-count') ?? '0') <= 0) {
-      return false
-    }
-    const formulaInput = document.querySelector('[data-testid="formula-input"]')
-    const selectedValue = formulaInput instanceof HTMLInputElement || formulaInput instanceof HTMLTextAreaElement ? formulaInput.value : ''
-    const resolvedValue = document.querySelector('[data-testid="formula-resolved-value"]')?.textContent ?? ''
-    return selectedValue.includes(needle) || resolvedValue.includes(needle)
-  }, text)
+  return await page.evaluate(
+    (needle) => Array.from(document.querySelectorAll('[data-native-text-run]')).some((run) => run.textContent?.includes(needle) ?? false),
+    text,
+  )
 }
 
 async function textControlValue(locator: Locator): Promise<string> {
@@ -1423,9 +1496,6 @@ test('web app clears selected in-cell editor text with primary-A and keeps conti
   await clickProductCell(page, 4, 6)
   await expect(page.getByTestId('status-selection')).toHaveText('Sheet1!E7')
   await expect.poll(() => nativeTextRunsInclude(page, staleText)).toBe(false)
-  await clickProductCell(page, 3, 6)
-  await expect(page.getByTestId('status-selection')).toHaveText('Sheet1!D7')
-  await expect(formulaInput).toHaveValue(replacementText)
   await expect.poll(() => nativeTextRunsInclude(page, replacementText)).toBe(true)
 })
 
@@ -1745,18 +1815,7 @@ test('web app returns grid focus after toolbar formatting commands and keeps sho
 
   await boldButton.click()
   await expect(boldButton).not.toBeFocused()
-  await expect(boldButton).toHaveClass(/bg-\[var\(--wb-accent-soft\)\]/)
-  await boldButton.focus()
-  await expect(boldButton).toBeFocused()
-  await page.keyboard.press('Delete')
-  await expect(formulaInput).toHaveValue('clear-after-toolbar-focus')
-  await expect(boldButton).toBeFocused()
-
-  await page.keyboard.press('Backspace')
-  await expect(formulaInput).toHaveValue('clear-after-toolbar-focus')
-  await expect(boldButton).toBeFocused()
-
-  await clickProductCell(page, 2, 2)
+  await expect(page.getByLabel('Bold')).toHaveClass(/bg-\[var\(--wb-accent-soft\)\]/)
 
   await page.keyboard.press(`${PRIMARY_MODIFIER}+B`)
   await expect(page.getByLabel('Bold')).not.toHaveClass(/bg-\[var\(--wb-accent-soft\)\]/)
@@ -1764,12 +1823,6 @@ test('web app returns grid focus after toolbar formatting commands and keeps sho
   await expect(page.getByTestId('status-selection')).toHaveText('Sheet1!C3')
   await page.keyboard.press('Delete')
   await expect(formulaInput).toHaveValue('')
-
-  await boldButton.focus()
-  await expect(boldButton).toBeFocused()
-  await page.keyboard.press('Enter')
-  await expect(formulaInput).toHaveValue('')
-  await expect(boldButton).toBeFocused()
 })
 
 test('web app routes row, column, and full-sheet selection shortcuts from toolbar focus', async ({ page }) => {
@@ -1781,8 +1834,6 @@ test('web app routes row, column, and full-sheet selection shortcuts from toolba
   await clickProductCell(page, 2, 2)
   await expect(page.getByTestId('status-selection')).toHaveText('Sheet1!C3')
 
-  await boldButton.click()
-  await expect(boldButton).toHaveClass(/bg-\[var\(--wb-accent-soft\)\]/)
   await boldButton.focus()
   await expect(boldButton).toBeFocused()
   await boldButton.evaluate((button) => {
@@ -2358,3 +2409,47 @@ test('web app ignores right gutter clicks', async ({ page }) => {
   await clickGridRightEdge(page, 3)
   await expect(page.getByTestId('status-selection')).toHaveText('Sheet1!A1')
 })
+
+fuzzBrowserTest(
+  '@fuzz-browser web app preserves valid selection geometry and focus under generated selection actions',
+  async ({ page }) => {
+    await runProperty({
+      suite: 'browser/grid-selection-focus',
+      kind: 'browser',
+      arbitrary: fc.array(
+        fc.oneof<BrowserSelectionAction>(
+          fc.record({
+            kind: fc.constant<'click'>('click'),
+            row: fc.integer({ min: 0, max: 8 }),
+            col: fc.integer({ min: 0, max: 8 }),
+          }),
+          fc.record({
+            kind: fc.constant<'shiftClick'>('shiftClick'),
+            row: fc.integer({ min: 0, max: 8 }),
+            col: fc.integer({ min: 0, max: 8 }),
+          }),
+          fc.record({
+            kind: fc.constant<'key'>('key'),
+            key: fc.constantFrom('ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown'),
+            shift: fc.boolean(),
+          }),
+        ),
+        { minLength: 6, maxLength: 10 },
+      ),
+      parameters: {
+        interruptAfterTimeLimit: 40_000,
+      },
+      predicate: async (actions) => {
+        await gotoWorkbookShell(page)
+        await waitForWorkbookReady(page)
+        const grid = page.getByTestId('sheet-grid')
+        const nameBox = page.getByTestId('name-box')
+        await expect(grid).toBeVisible({ timeout: 15_000 })
+        await nameBox.fill('C5')
+        await nameBox.press('Enter')
+        await expect(page.getByTestId('status-selection')).toHaveText('Sheet1!C5')
+        await runSelectionFuzzActions(page, grid, actions)
+      },
+    })
+  },
+)

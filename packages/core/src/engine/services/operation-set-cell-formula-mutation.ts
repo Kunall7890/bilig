@@ -1,5 +1,4 @@
 import { formatAddress } from '@bilig/formula'
-import { FormulaMode } from '@bilig/protocol'
 import type { EngineCellMutationRef } from '../../cell-mutations-at.js'
 import type { OpOrder } from '../../replica-state.js'
 import type { DirectFormulaIndexCollection, DirectScalarCurrentOperand } from './direct-formula-index-collection.js'
@@ -46,7 +45,6 @@ interface ApplySetCellFormulaMutationArgs extends SetCellFormulaMutationCounts {
   readonly collectAffectedDirectRangeDependents: OperationDirectRangeDependentService['collectAffectedDirectRangeDependents']
   readonly clearTrackedColumnDependencyFlagCache: () => void
   readonly applyDirectFormulaCurrentResult: (cellIndex: number, result: DirectScalarCurrentOperand) => boolean
-  readonly queueWasmFormulaDependencyKernelSync: (cellIndex: number, dependencyIndices: Uint32Array) => void
 }
 
 export function applySetCellFormulaMutation(request: ApplySetCellFormulaMutationArgs): SetCellFormulaMutationCounts {
@@ -104,11 +102,6 @@ export function applySetCellFormulaMutation(request: ApplySetCellFormulaMutation
         ? bindFreshTemplateFormula(args, cellIndex, sheetName, mutation)
         : args.bindFormula(cellIndex, sheetName, mutation.formula)
     const runtimeFormula = args.state.formulas.get(cellIndex)
-    const queueWasmFormulaDependencyKernelSync = (): void => {
-      if (runtimeFormula?.compiled.mode === FormulaMode.WasmFastPath && args.state.wasm.ready) {
-        request.queueWasmFormulaDependencyKernelSync(cellIndex, runtimeFormula.dependencyIndices)
-      }
-    }
     if (hasAggregateDependents) {
       args.invalidateAggregateColumn({ sheetName, col: mutation.col })
     }
@@ -150,23 +143,7 @@ export function applySetCellFormulaMutation(request: ApplySetCellFormulaMutation
         changedTopology,
         postRecalcDirectFormulaIndices: request.postRecalcDirectFormulaIndices,
       })
-    const replacementDirectAggregateResult =
-      !handledFormulaReplacementAsDirectDelta && !evaluatedFreshDirectFormula && priorHadFormula
-        ? analyzeFreshDirectAggregateFormula(args, {
-            priorHadFormula: false,
-            formulaCellIndex: cellIndex,
-            formula: runtimeFormula,
-          }).currentResult
-        : undefined
-    const evaluatedReplacementDirectAggregate =
-      replacementDirectAggregateResult !== undefined
-        ? (() => {
-            request.postRecalcDirectFormulaIndices.addCurrentResult(cellIndex, replacementDirectAggregateResult)
-            return request.applyDirectFormulaCurrentResult(cellIndex, replacementDirectAggregateResult)
-          })()
-        : false
-    if (!handledFormulaReplacementAsDirectDelta && !evaluatedFreshDirectFormula && !evaluatedReplacementDirectAggregate) {
-      queueWasmFormulaDependencyKernelSync()
+    if (!handledFormulaReplacementAsDirectDelta && !evaluatedFreshDirectFormula) {
       formulaChangedCount = args.markFormulaChanged(cellIndex, formulaChangedCount)
     }
     topologyChanged = topologyChanged || (changedTopology && !canSkipTopoRepair)

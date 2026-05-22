@@ -52,7 +52,6 @@ type WorkbookSyncRuntimeController = Pick<WorkerRuntimeSessionController, 'invok
 type ViewportStore = WorkerHandle['viewportStore']
 
 const AUTHORITATIVE_REFRESH_PROBE_DELAYS_MS = [400, 1_200, 3_000] as const
-const VIEWPORT_AXIS_PERSISTENCE_DELAY_MS = 320
 
 type ViewportAxisSizeMutationOptions = {
   deferLocalApplication?: boolean
@@ -67,12 +66,6 @@ function deferViewportAxisSizeFrame(): Promise<void> {
       return
     }
     setTimeout(resolve, 0)
-  })
-}
-
-function deferViewportAxisSizePersistence(): Promise<void> {
-  return new Promise((resolve) => {
-    setTimeout(resolve, VIEWPORT_AXIS_PERSISTENCE_DELAY_MS)
   })
 }
 
@@ -647,7 +640,7 @@ export function useWorkbookSync(input: {
         }
       }
       if (options?.deferPersistence) {
-        await deferViewportAxisSizePersistence()
+        await deferViewportAxisSizeFrame()
       }
       try {
         await invokeMutation('updateColumnMetadata', sheetName, columnIndex, 1, width, null)
@@ -680,7 +673,7 @@ export function useWorkbookSync(input: {
         }
       }
       if (options?.deferPersistence) {
-        await deferViewportAxisSizePersistence()
+        await deferViewportAxisSizeFrame()
       }
       try {
         await invokeMutation('updateRowMetadata', sheetName, rowIndex, 1, height, null)

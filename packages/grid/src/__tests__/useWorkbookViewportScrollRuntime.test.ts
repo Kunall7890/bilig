@@ -61,35 +61,6 @@ describe('shouldCommitWorkbookVisibleRegion', () => {
     ).toBe(true)
   })
 
-  it('commits when scroll brings the selected cell into the visible window', () => {
-    const current = region({ x: 0, y: 0 })
-    const next = region({ x: 0, y: 32 })
-
-    expect(
-      shouldCommitWorkbookVisibleRegion({
-        current,
-        next,
-        requiresLiveViewportState: false,
-        selectedCell: [1, 36],
-      }),
-    ).toBe(true)
-  })
-
-  it('keeps active editing scroll out of selection-driven visible commits', () => {
-    const current = region({ x: 0, y: 0 })
-    const next = region({ x: 0, y: 32 })
-
-    expect(
-      shouldCommitWorkbookVisibleRegion({
-        current,
-        editingCell: [1, 36],
-        next,
-        requiresLiveViewportState: false,
-        selectedCell: [1, 36],
-      }),
-    ).toBe(false)
-  })
-
   it('commits every visible window movement while a live overlay needs viewport state', () => {
     const current = region({ x: 0, y: 0 })
     const next = region({ x: 8, y: 8, tx: 22, ty: 11 })
@@ -164,11 +135,11 @@ describe('WorkbookViewportScrollRuntime', () => {
     runtime.syncVisibleRegion()
     expect(onVisibleViewportChange).toHaveBeenCalledTimes(1)
 
-    scrollViewport.scrollLeft = 2 * metrics.columnWidth
-    scrollViewport.scrollTop = 2 * metrics.rowHeight
+    scrollViewport.scrollLeft = 8 * metrics.columnWidth
+    scrollViewport.scrollTop = 8 * metrics.rowHeight
     runtime.syncVisibleRegion()
 
-    expect(liveVisibleRegionRef.current.range).toMatchObject({ x: 2, y: 2 })
+    expect(liveVisibleRegionRef.current.range).toMatchObject({ x: 8, y: 8 })
     expect(onVisibleViewportChange).toHaveBeenCalledTimes(1)
     expect(committedRegion.range).toMatchObject({ x: 0, y: 0 })
   })

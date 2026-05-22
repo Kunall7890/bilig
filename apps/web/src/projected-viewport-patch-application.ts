@@ -160,75 +160,12 @@ function addMergeDamage(
   }
 }
 
-function deleteSheetMapEntry<T>(map: Map<string, T>, sheetName: string): boolean {
-  const existed = map.has(sheetName)
-  map.delete(sheetName)
-  return existed
-}
-
-function anyDeleted(entries: readonly boolean[]): boolean {
-  return entries.some(Boolean)
-}
-
-function applyMissingSheetPatch(state: ProjectedViewportPatchState, patch: ViewportPatch): ProjectedViewportPatchApplicationResult {
-  const sheetName = patch.viewport.sheetName
-  const wasKnown = state.knownSheets.has(sheetName)
-  const changedKeys = new Set<string>()
-  const damagedCellKeys = new Set<string>()
-  const damage: { cell: ProjectedViewportCellItem }[] = []
-  const sheetCellKeys = state.cellKeysBySheet.get(sheetName)
-  sheetCellKeys?.forEach((key) => {
-    const snapshot = state.cellSnapshots.get(key)
-    state.cellSnapshots.delete(key)
-    changedKeys.add(key)
-    if (!snapshot || !isCellInsideViewport(snapshot, patch.viewport) || damagedCellKeys.has(key)) {
-      return
-    }
-    const parsed = parseCellAddress(snapshot.address, snapshot.sheetName)
-    damage.push({ cell: [parsed.col, parsed.row] })
-    damagedCellKeys.add(key)
-  })
-  state.cellKeysBySheet.delete(sheetName)
-  state.knownSheets.delete(sheetName)
-  const columnsChanged = anyDeleted([
-    deleteSheetMapEntry(state.columnSizesBySheet, sheetName),
-    deleteSheetMapEntry(state.columnWidthsBySheet, sheetName),
-    deleteSheetMapEntry(state.pendingColumnWidthsBySheet, sheetName),
-    deleteSheetMapEntry(state.pendingHiddenColumnsBySheet, sheetName),
-    deleteSheetMapEntry(state.hiddenColumnsBySheet, sheetName),
-  ])
-  const rowsChanged = anyDeleted([
-    deleteSheetMapEntry(state.rowSizesBySheet, sheetName),
-    deleteSheetMapEntry(state.rowHeightsBySheet, sheetName),
-    deleteSheetMapEntry(state.pendingRowHeightsBySheet, sheetName),
-    deleteSheetMapEntry(state.pendingHiddenRowsBySheet, sheetName),
-    deleteSheetMapEntry(state.hiddenRowsBySheet, sheetName),
-  ])
-  const freezeChanged = anyDeleted([
-    deleteSheetMapEntry(state.freezeRowsBySheet, sheetName),
-    deleteSheetMapEntry(state.freezeColsBySheet, sheetName),
-  ])
-  const mergesChanged = deleteSheetMapEntry(state.mergeRangesBySheet, sheetName)
-  return {
-    damage,
-    changedKeys,
-    axisChanged: wasKnown || columnsChanged || rowsChanged,
-    columnsChanged,
-    rowsChanged,
-    freezeChanged,
-    mergesChanged,
-  }
-}
-
 export function applyProjectedViewportPatch(input: {
   state: ProjectedViewportPatchState
   patch: ViewportPatch
   touchCellKey?: (key: string) => void
 }): ProjectedViewportPatchApplicationResult {
   const { state, patch, touchCellKey } = input
-  if (patch.status === 'sheet-not-found') {
-    return applyMissingSheetPatch(state, patch)
-  }
   state.knownSheets.add(patch.viewport.sheetName)
 
   const currentFreezeRows = state.freezeRowsBySheet.get(patch.viewport.sheetName) ?? 0

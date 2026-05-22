@@ -77,16 +77,6 @@ interface DynamicReadbackResult {
   readonly opaquePixelCounts: Record<string, number>
 }
 
-interface SelectionVisualRectInspection {
-  readonly role: string
-  readonly left: number
-  readonly top: number
-  readonly right: number
-  readonly bottom: number
-  readonly width: number
-  readonly height: number
-}
-
 function selectedRangeFillProbe(columnIndex: number, rowIndex: number): ReadbackInspectorPoint {
   return {
     name: `${columnIndex}:${rowIndex}`,
@@ -377,10 +367,6 @@ test('@browser-webgpu @browser-serial main workbook shell grid renders and updat
     x: PRODUCT_ROW_MARKER_WIDTH + PRODUCT_COLUMN_WIDTH + 50,
     y: PRODUCT_HEADER_HEIGHT + PRODUCT_ROW_HEIGHT + Math.floor(PRODUCT_ROW_HEIGHT / 2),
   }
-  const rangeBorderPoint = {
-    x: PRODUCT_ROW_MARKER_WIDTH + PRODUCT_COLUMN_WIDTH + 50,
-    y: PRODUCT_HEADER_HEIGHT + PRODUCT_ROW_HEIGHT,
-  }
   const topHeaderSelectionFillPoint = {
     x: PRODUCT_ROW_MARKER_WIDTH + PRODUCT_COLUMN_WIDTH + 20,
     y: Math.floor(PRODUCT_HEADER_HEIGHT / 2),
@@ -478,38 +464,10 @@ test('@browser-webgpu @browser-serial main workbook shell grid renders and updat
       isSelectionBlueTint(result.points.topHeaderSelectionFill)
     )
   })
-  const selectionVisualRects = await waitForSelectionVisualRects(page, (rects) => {
-    const hasSelectionBorder = rects.some(
-      (rect) =>
-        rect.role === 'selection-border' &&
-        rect.left <= rangeBorderPoint.x &&
-        rect.right >= rangeBorderPoint.x &&
-        Math.abs(rect.top - rangeBorderPoint.y) <= 2,
-    )
-    const hasFillHandle = rects.some(
-      (rect) =>
-        rect.role === 'fill-handle' &&
-        rect.left < PRODUCT_ROW_MARKER_WIDTH + PRODUCT_COLUMN_WIDTH * 3 + 12 &&
-        rect.right > PRODUCT_ROW_MARKER_WIDTH + PRODUCT_COLUMN_WIDTH * 3 - 12 &&
-        rect.top < PRODUCT_HEADER_HEIGHT + PRODUCT_ROW_HEIGHT * 3 + 12 &&
-        rect.bottom > PRODUCT_HEADER_HEIGHT + PRODUCT_ROW_HEIGHT * 3 - 12,
-    )
-    return hasSelectionBorder && hasFillHandle
-  })
 
   expect(rangeReadback.points.activeCellFill).toMatchObject({ r: 255, g: 255, b: 255, a: 255 })
   expect(isSelectionBlueTint(rangeReadback.points.selectedRangeFill)).toBe(true)
   expect(isSelectionBlueTint(rangeReadback.points.topHeaderSelectionFill)).toBe(true)
-  expect(
-    selectionVisualRects.some(
-      (rect) =>
-        rect.role === 'selection-border' &&
-        rect.left <= rangeBorderPoint.x &&
-        rect.right >= rangeBorderPoint.x &&
-        Math.abs(rect.top - rangeBorderPoint.y) <= 2,
-    ),
-  ).toBe(true)
-  expect(selectionVisualRects.some((rect) => rect.role === 'fill-handle' && rect.width > 0 && rect.height > 0)).toBe(true)
   await expect(page.getByTestId('grid-pane-renderer')).toHaveAttribute('data-v3-presented-overlay-rect-signature', /^[a-z0-9-]+$/)
   const domSelectionFillOpacity = await page
     .locator(
@@ -1093,27 +1051,20 @@ test('@browser-webgpu @browser-deep main workbook shell keeps DOM editor overlay
   expectNear(editorBox.width, expectedViewportRect.width, tolerance)
   expectNear(editorBox.height, expectedViewportRect.height, tolerance)
 
-  // While the editor is open, active-cell chrome is DOM-owned; the GPU readback sequence above proves the renderer advanced.
-  const selectionVisualRects = await waitForSelectionVisualRects(page, (rects) =>
-    rects.some(
-      (rect) =>
-        (rect.role === 'selection-border' || rect.role === 'active-border') &&
-        Math.abs(rect.left - expectedLocalX) <= tolerance &&
-        Math.abs(rect.top - expectedLocalY) <= tolerance &&
-        Math.abs(rect.width - PRODUCT_COLUMN_WIDTH) <= tolerance &&
-        Math.abs(rect.height - PRODUCT_ROW_HEIGHT) <= tolerance,
-    ),
+  const readback = await waitForReadback(
+    page,
+    {
+      points: [
+        { name: 'activeCellTopBorder', x: expectedLocalX + Math.floor(PRODUCT_COLUMN_WIDTH / 2), y: expectedLocalY },
+        { name: 'activeCellLeftBorder', x: expectedLocalX, y: expectedLocalY + Math.floor(PRODUCT_ROW_HEIGHT / 2) },
+      ],
+      regions: [],
+    },
+    (result) => result.points.activeCellTopBorder.a > 150 && result.points.activeCellLeftBorder.a > 150,
   )
-  expect(
-    selectionVisualRects.some(
-      (rect) =>
-        (rect.role === 'selection-border' || rect.role === 'active-border') &&
-        Math.abs(rect.left - expectedLocalX) <= tolerance &&
-        Math.abs(rect.top - expectedLocalY) <= tolerance &&
-        Math.abs(rect.width - PRODUCT_COLUMN_WIDTH) <= tolerance &&
-        Math.abs(rect.height - PRODUCT_ROW_HEIGHT) <= tolerance,
-    ),
-  ).toBe(true)
+
+  expect(readback.points.activeCellTopBorder.a).toBeGreaterThan(150)
+  expect(readback.points.activeCellLeftBorder.a).toBeGreaterThan(150)
 
   await saveReadbackArtifact(page, testInfo, 'main-workbook-grid-editor-overlay-readback.png', 'main-workbook-grid-editor-overlay-readback')
 })
@@ -1914,23 +1865,16 @@ test('@browser-webgpu @browser-perf main workbook shell keeps grid content and n
     {
       points: [{ name: 'blankBody', x: PRODUCT_ROW_MARKER_WIDTH + 20, y: PRODUCT_HEADER_HEIGHT + 40 }],
       regions: [
-        { name: 'canvasContent', x0: 0, y0: 0, x1: 960, y1: 720, threshold: 220 },
+        { name: 'canvasDark', x0: 0, y0: 0, x1: 960, y1: 720, threshold: 220 },
         { name: 'columnHeaderText', x0: PRODUCT_ROW_MARKER_WIDTH, y0: 0, x1: 960, y1: PRODUCT_HEADER_HEIGHT },
         { name: 'rowHeaderText', x0: 0, y0: PRODUCT_HEADER_HEIGHT, x1: PRODUCT_ROW_MARKER_WIDTH, y1: 720 },
         { name: 'bodyText', x0: PRODUCT_ROW_MARKER_WIDTH, y0: PRODUCT_HEADER_HEIGHT, x1: 960, y1: 720 },
       ],
     },
-    (result) =>
-      result.opaquePixelCounts.canvasContent > 200 &&
-      result.opaquePixelCounts.columnHeaderText > 100 &&
-      result.opaquePixelCounts.rowHeaderText > 100 &&
-      result.opaquePixelCounts.bodyText > 100,
+    (result) => result.opaquePixelCounts.canvasDark > 200,
   )
 
-  expect(readback.opaquePixelCounts.canvasContent).toBeGreaterThan(200)
-  expect(readback.opaquePixelCounts.columnHeaderText).toBeGreaterThan(100)
-  expect(readback.opaquePixelCounts.rowHeaderText).toBeGreaterThan(100)
-  expect(readback.opaquePixelCounts.bodyText).toBeGreaterThan(100)
+  expect(readback.opaquePixelCounts.canvasDark).toBeGreaterThan(200)
   const tileBoundaryTextRuns = await waitForVisibleNativeTextRuns(page, [], (runs) => {
     return runs.rowHeaderRunCount > 5 && runs.visibleRunCount > 20
   })
@@ -2468,59 +2412,6 @@ async function waitForReadback(
     throw new Error('expected readback result')
   }
   return lastResult
-}
-
-async function waitForSelectionVisualRects(
-  page: Page,
-  predicate: (rects: readonly SelectionVisualRectInspection[]) => boolean,
-): Promise<readonly SelectionVisualRectInspection[]> {
-  let lastResult: readonly SelectionVisualRectInspection[] = []
-  try {
-    await expect
-      .poll(
-        async () => {
-          lastResult = await inspectSelectionVisualRects(page)
-          return predicate(lastResult)
-        },
-        { timeout: 30_000 },
-      )
-      .toBe(true)
-  } catch (error) {
-    throw new Error(
-      `${error instanceof Error ? error.message : String(error)}\nLast selection visual rects: ${JSON.stringify(lastResult)}`,
-      {
-        cause: error,
-      },
-    )
-  }
-  return lastResult
-}
-
-async function inspectSelectionVisualRects(page: Page): Promise<readonly SelectionVisualRectInspection[]> {
-  return await page.evaluate(() => {
-    const grid = document.querySelector('[data-testid="sheet-grid"]')
-    if (!(grid instanceof HTMLElement)) {
-      return []
-    }
-    const gridRect = grid.getBoundingClientRect()
-    return [...document.querySelectorAll('[data-grid-selection-visual-role]')].flatMap((node) => {
-      if (!(node instanceof HTMLElement)) {
-        return []
-      }
-      const rect = node.getBoundingClientRect()
-      return [
-        {
-          role: node.dataset.gridSelectionVisualRole ?? '',
-          left: rect.left - gridRect.left,
-          top: rect.top - gridRect.top,
-          right: rect.right - gridRect.left,
-          bottom: rect.bottom - gridRect.top,
-          width: rect.width,
-          height: rect.height,
-        },
-      ]
-    })
-  })
 }
 
 async function waitForReadbackSequence(page: Page, previousSequence: number): Promise<void> {

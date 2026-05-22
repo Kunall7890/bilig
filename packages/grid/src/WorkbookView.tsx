@@ -38,7 +38,6 @@ interface WorkbookViewProps {
   onExternalSelectionSync?: ((selection: GridSelectionSnapshot) => void) | undefined
   onAddressCommit(this: void, addr: string): boolean
   getCellEditorSeed?: ((sheetName: string, address: string) => string | undefined) | undefined
-  getCellResolvedValue?: ((sheetName: string, address: string) => string | undefined) | undefined
   onBeginEdit(this: void, seed?: string, selectionBehavior?: EditSelectionBehavior, targetSelection?: EditTargetSelection): void
   onBeginFormulaEdit(this: void, seed?: string): void
   onEditorChange(this: void, next: string): void
@@ -76,7 +75,6 @@ interface WorkbookViewProps {
   onSetFreezePane?: ((rows: number, cols: number) => void) | undefined
   onAutofitColumn?: ((columnIndex: number, fallbackWidth: number) => void | Promise<void>) | undefined
   onVisibleViewportChange?: ((viewport: Viewport) => void) | undefined
-  onVisibleRenderProofChange?: React.ComponentProps<typeof WorkbookGridSurface>['onVisibleRenderProofChange'] | undefined
   previewRanges?: readonly WorkbookGridPreviewRange[] | undefined
   restoreViewportTarget?:
     | {
@@ -214,7 +212,6 @@ export function WorkbookView({
   onExternalSelectionSync,
   onAddressCommit,
   getCellEditorSeed,
-  getCellResolvedValue,
   onBeginEdit,
   onBeginFormulaEdit,
   onEditorChange,
@@ -252,7 +249,6 @@ export function WorkbookView({
   onSetFreezePane,
   onAutofitColumn,
   onVisibleViewportChange,
-  onVisibleRenderProofChange,
   previewRanges,
   restoreViewportTarget,
 }: WorkbookViewProps) {
@@ -384,7 +380,6 @@ export function WorkbookView({
               engine={engine}
               isEditingCell={isEditingCell}
               getCellEditorSeed={getCellEditorSeed}
-              getCellResolvedValue={getCellResolvedValue}
               onBeginEdit={onBeginEdit}
               onCancelEdit={onCancelEdit}
               onClearCell={onClearCell}
@@ -418,7 +413,6 @@ export function WorkbookView({
               onSetFreezePane={onSetFreezePane}
               onAutofitColumn={onAutofitColumn}
               onVisibleViewportChange={onVisibleViewportChange}
-              onVisibleRenderProofChange={onVisibleRenderProofChange}
               previewRanges={previewRanges}
               focusApiRef={gridFocusApiRef}
               focusRequestToken={gridFocusRequestToken}

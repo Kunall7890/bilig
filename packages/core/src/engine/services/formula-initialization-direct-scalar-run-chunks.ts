@@ -14,7 +14,6 @@ import {
 
 interface InitialDirectScalarRunChunkState {
   readonly workbook: EngineRuntimeState['workbook']
-  readonly strings: EngineRuntimeState['strings']
   readonly wasm: EngineRuntimeState['wasm']
   readonly counters: EngineRuntimeState['counters']
 }

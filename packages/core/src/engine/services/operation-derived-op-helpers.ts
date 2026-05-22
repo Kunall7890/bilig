@@ -4,7 +4,6 @@ import { batchOpOrder, createBatch, type OpOrder, type ReplicaState } from '../.
 import type { WorkbookPivotRecord, WorkbookSpillRecord } from '../../workbook-store.js'
 import { collectTrackedDependents } from './direct-formula-recalc-helpers.js'
 import { assertNever } from './operation-change-helpers.js'
-import { pivotUpsertOpToRecord } from './pivot-op-helpers.js'
 
 type OperationSpillRangeOp = Extract<EngineOp, { kind: 'upsertSpillRange' | 'deleteSpillRange' }>
 type OperationPivotUpsertOp = Extract<EngineOp, { kind: 'upsertPivotTable' }>
@@ -49,7 +48,16 @@ export function createOperationDerivedOpApplier(args: {
   }
 
   const applyPivotUpsertOp = (op: OperationPivotUpsertOp, order: OpOrder): number[] => {
-    const pivot = pivotUpsertOpToRecord(op)
+    const pivot = {
+      name: op.name,
+      sheetName: op.sheetName,
+      address: op.address,
+      source: op.source,
+      groupBy: op.groupBy,
+      values: op.values,
+      rows: op.rows,
+      cols: op.cols,
+    } satisfies WorkbookPivotRecord
     args.state.workbook.setPivot(pivot)
     args.setEntityVersionForOp(op, order)
     return args.materializePivot(pivot)

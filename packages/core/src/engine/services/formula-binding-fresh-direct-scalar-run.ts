@@ -299,8 +299,8 @@ function materializeFreshDirectScalarDependencies(
   ) {
     return undefined
   }
-  const dependencyIndices = new Uint32Array(Math.min(compiled.symbolicRefs.length, 2))
-  const dependencyEntities = new Uint32Array(compiled.symbolicRefs.length)
+  const dependencyIndices = new Uint32Array(2)
+  const dependencyEntities = new Uint32Array(2)
   let dependencyIndexCount = 0
   let dependencyEntityCount = 0
   const appendOperand = (operand: RuntimeDirectScalarOperand): boolean => {
@@ -322,18 +322,8 @@ function materializeFreshDirectScalarDependencies(
       dependencyIndices[dependencyIndexCount] = cellIndex
       dependencyIndexCount += 1
     }
-    const entity = makeCellEntity(cellIndex)
-    let seenEntity = false
-    for (let existingIndex = 0; existingIndex < dependencyEntityCount; existingIndex += 1) {
-      if (dependencyEntities[existingIndex] === entity) {
-        seenEntity = true
-        break
-      }
-    }
-    if (!seenEntity) {
-      dependencyEntities[dependencyEntityCount] = entity
-      dependencyEntityCount += 1
-    }
+    dependencyEntities[dependencyEntityCount] = makeCellEntity(cellIndex)
+    dependencyEntityCount += 1
     return true
   }
   const matched =

@@ -155,13 +155,6 @@ export abstract class WorkPaperRuntimeFastPathBase extends WorkPaperRuntimeSurfa
       messageOf: (error, fallback) => this.messageOf(error, fallback),
       readSingleTrackedCellChange: (cellIndex) => this.readSingleTrackedCellChange(cellIndex),
       trackedA1: (row, col) => this.trackedA1(row, col),
-      canSkipSheetDimensionUpdateAfterLiteralMutationRefs: (refs, potentialNewCells) =>
-        this.sheetDimensionCache.canSkipUpdateAfterLiteralMutationRefs(refs, potentialNewCells),
-      canSkipSheetDimensionUpdateAfterExistingLiteralCell: (sheetId, row, col, value, potentialNewCells) =>
-        this.sheetDimensionCache.canSkipUpdateAfterExistingLiteralCell(sheetId, row, col, value, potentialNewCells),
-      updateSheetDimensionsAfterCellMutationRefs: (refs) => this.sheetDimensionCache.updateAfterCellMutationRefs(refs),
-      updateSheetDimensionsAfterExistingLiteralCell: (sheetId, row, col) =>
-        this.sheetDimensionCache.updateAfterExistingLiteralCell(sheetId, row, col),
     }
     return this.existingLiteralDirectFastPathRuntimeCache
   }
@@ -179,8 +172,6 @@ export abstract class WorkPaperRuntimeFastPathBase extends WorkPaperRuntimeSurfa
         this.enqueueSuspendedLiteralMutation(sheetId, row, col, content, cellIndex),
       enqueueDeferredBatchLiteral: (sheetId, row, col, content, cellIndex) =>
         this.enqueueDeferredBatchLiteral(sheetId, row, col, content, cellIndex),
-      getCellSerialized: (address) =>
-        this.cellSnapshotToRawContent(this.engine.getCell(this.sheetName(address.sheet), this.a1(address)), address.sheet),
       trySetExistingNumericCellContentsWithTrackedFastPath: (request) =>
         trySetExistingNumericWorkPaperCellContentsWithTrackedFastPath(this.getExistingNumericFastPathRuntime(), request),
       trySetExistingLiteralCellContentsWithTrackedFastPath: (request) =>
@@ -280,9 +271,6 @@ export abstract class WorkPaperRuntimeFastPathBase extends WorkPaperRuntimeSurfa
     }
     if (!result) {
       return null
-    }
-    if (!this.sheetDimensionCache.canSkipUpdateAfterExistingLiteralCell(address.sheet, address.row, address.col, content, 0)) {
-      this.sheetDimensionCache.updateAfterExistingLiteralCell(address.sheet, address.row, address.col)
     }
     if (this.engineEvents.hasTrackedEvents) {
       this.engineEvents.clearEvents()
@@ -566,13 +554,6 @@ export abstract class WorkPaperRuntimeFastPathBase extends WorkPaperRuntimeSurfa
       emitValuesUpdated: (changes) => {
         this.emitter.emitDetailed({ eventName: 'valuesUpdated', payload: { changes } })
       },
-      canSkipSheetDimensionUpdateAfterLiteralMutationRefs: (refs, potentialNewCells) =>
-        this.sheetDimensionCache.canSkipUpdateAfterLiteralMutationRefs(refs, potentialNewCells),
-      canSkipSheetDimensionUpdateAfterExistingLiteralCell: (sheetId, row, col, value, potentialNewCells) =>
-        this.sheetDimensionCache.canSkipUpdateAfterExistingLiteralCell(sheetId, row, col, value, potentialNewCells),
-      updateSheetDimensionsAfterCellMutationRefs: (refs) => this.sheetDimensionCache.updateAfterCellMutationRefs(refs),
-      updateSheetDimensionsAfterExistingLiteralCell: (sheetId, row, col) =>
-        this.sheetDimensionCache.updateAfterExistingLiteralCell(sheetId, row, col),
     }
     return this.existingNumericFastPathRuntimeCache
   }

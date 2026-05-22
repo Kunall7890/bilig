@@ -14,7 +14,6 @@ import {
   sloMeasurement,
   structuralCase,
 } from './bilig-dominance-scorecard.fixture-helpers.ts'
-import { buildMissingSameCorpusProof } from '../ui-responsiveness-same-corpus-scorecard-proof.ts'
 
 export function buildFixtureInput(): BuildScorecardInput {
   return {
@@ -894,7 +893,16 @@ export function buildFixtureInput(): BuildScorecardInput {
           'public-office-web-viewer',
         ),
       ],
-      sameCorpusProof: buildMissingSameCorpusProof(),
+      sameCorpusProof: {
+        captured: false,
+        evidenceKind: 'not-captured',
+        requiredProductCount: 2,
+        requiredCaseCount: 9,
+        tenXMeanAndP95CaseCount: 0,
+        coveredCorpusCaseIds: [],
+        limitations: ['Same-corpus live browser timing against Bilig and Google Sheets has not been captured yet.'],
+        cases: [],
+      },
     },
     competitiveArtifact: {
       generatedAt: '2026-05-05T19:00:09.455Z',

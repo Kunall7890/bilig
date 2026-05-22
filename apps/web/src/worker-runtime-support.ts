@@ -240,11 +240,10 @@ export function collectViewportCells(
   for (let index = 0; index < invalidatedRows.length; index += 1) {
     const rowInvalidation = invalidatedRows[index]!
     const rowStart = Math.max(viewport.rowStart, rowInvalidation.startIndex)
-    const rowEnd = viewport.rowEnd
-    if (rowStart > rowEnd) {
+    if (rowStart > viewport.rowEnd) {
       continue
     }
-    for (let row = rowStart; row <= rowEnd; row += 1) {
+    for (let row = rowStart; row <= viewport.rowEnd; row += 1) {
       for (let col = viewport.colStart; col <= viewport.colEnd; col += 1) {
         pushCell(row, col)
       }
@@ -254,12 +253,11 @@ export function collectViewportCells(
   for (let index = 0; index < invalidatedColumns.length; index += 1) {
     const columnInvalidation = invalidatedColumns[index]!
     const colStart = Math.max(viewport.colStart, columnInvalidation.startIndex)
-    const colEnd = viewport.colEnd
-    if (colStart > colEnd) {
+    if (colStart > viewport.colEnd) {
       continue
     }
     for (let row = viewport.rowStart; row <= viewport.rowEnd; row += 1) {
-      for (let col = colStart; col <= colEnd; col += 1) {
+      for (let col = colStart; col <= viewport.colEnd; col += 1) {
         pushCell(row, col)
       }
     }

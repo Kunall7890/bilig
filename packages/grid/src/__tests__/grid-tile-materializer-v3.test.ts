@@ -7,7 +7,6 @@ import { buildLocalFixedRenderTiles } from '../renderer-v3/local-render-tile-mat
 import { materializeGridRenderTileV3 } from '../renderer-v3/grid-tile-materializer.js'
 import { GRID_RECT_INSTANCE_FLOAT_COUNT_V3 } from '../renderer-v3/rect-instance-buffer.js'
 import { GRID_TILE_PACKET_V3_MAGIC } from '../renderer-v3/tile-packet-v3.js'
-import { DirtyMaskV3 } from '../renderer-v3/tile-damage-index.js'
 
 function createCellSnapshot(address: string, value: CellSnapshot['value'], styleId: string | undefined = 'style-1'): CellSnapshot {
   return {
@@ -141,7 +140,6 @@ describe('renderer-v3 grid tile materializer', () => {
       engine: makeEngine({
         A1: createCellSnapshot('A1', { tag: ValueTag.String, value: 'visible' }),
       }),
-      freezeSeq: 1,
       generation: 21,
       gridMetrics: getGridMetrics(),
       rowHeights: {},
@@ -211,7 +209,6 @@ describe('renderer-v3 grid tile materializer', () => {
       columnWidths: {},
       dprBucket: 1,
       engine: makeEngine({}),
-      freezeSeq: 1,
       generation: 21,
       gridMetrics: getGridMetrics(),
       rowHeights: {},
@@ -240,7 +237,6 @@ describe('renderer-v3 grid tile materializer', () => {
       dprBucket: 1,
       editingCell: [3, 52],
       engine: makeEngine({}),
-      freezeSeq: 1,
       generation: 21,
       gridMetrics: getGridMetrics(),
       rowHeights: {},
@@ -260,174 +256,6 @@ describe('renderer-v3 grid tile materializer', () => {
     })
 
     expect(tiles.flatMap((tile) => tile.textRuns.map((run) => run.text))).not.toContain('Month 1')
-  })
-
-  test('small text-only dirty tiles reuse base text runs and read only dirty cells', () => {
-    const gridMetrics = getGridMetrics()
-    const viewport = {
-      colEnd: VIEWPORT_TILE_COLUMN_COUNT - 1,
-      colStart: 0,
-      rowEnd: VIEWPORT_TILE_ROW_COUNT - 1,
-      rowStart: 0,
-    }
-    const baseTile = materializeGridRenderTileV3({
-      axisSeqX: 5,
-      axisSeqY: 6,
-      cameraSeq: 7,
-      columnWidths: {},
-      dprBucket: 1,
-      engine: makeEngine({
-        B2: createCellSnapshot('B2', { tag: ValueTag.String, value: 'unchanged' }),
-        F6: createCellSnapshot('F6', { tag: ValueTag.Number, value: 1 }),
-        G6: createCellSnapshot('G6', { tag: ValueTag.Number, value: 2 }),
-      }),
-      freezeSeq: 8,
-      glyphAtlasSeq: 9,
-      gridMetrics,
-      materializedAtSeq: 10,
-      packetSeq: 11,
-      rectSeq: 12,
-      rowHeights: {},
-      sheetId: 3,
-      sheetOrdinal: 1,
-      sheetName: 'Sheet1',
-      sortedColumnWidthOverrides: [],
-      sortedRowHeightOverrides: [],
-      styleSeq: 13,
-      textSeq: 14,
-      valueSeq: 15,
-      viewport,
-    })
-    const getCellCalls: string[] = []
-    const patchEngine = makeEngine({
-      B2: createCellSnapshot('B2', { tag: ValueTag.String, value: 'unchanged' }),
-      F6: createCellSnapshot('F6', { tag: ValueTag.String, value: '7777777' }),
-      G6: createCellSnapshot('G6', { tag: ValueTag.Number, value: 2 }),
-    })
-    const countingPatchEngine: GridEngineLike = {
-      ...patchEngine,
-      getCell: (sheetName, address) => {
-        getCellCalls.push(address)
-        return patchEngine.getCell(sheetName, address)
-      },
-    }
-
-    const patchedTile = materializeGridRenderTileV3({
-      axisSeqX: 5,
-      axisSeqY: 6,
-      cameraSeq: 8,
-      columnWidths: {},
-      dirtyLocalCols: new Uint32Array([5, 5]),
-      dirtyLocalRows: new Uint32Array([5, 5]),
-      dirtyMasks: new Uint32Array([DirtyMaskV3.Value | DirtyMaskV3.Text]),
-      dprBucket: 1,
-      engine: countingPatchEngine,
-      freezeSeq: 8,
-      glyphAtlasSeq: 9,
-      gridMetrics,
-      materializedAtSeq: 16,
-      packetSeq: 17,
-      rectSeq: 16,
-      reuseStaticGridRectsFrom: baseTile,
-      rowHeights: {},
-      selectedCell: [5, 5],
-      selectedCellSnapshot: createCellSnapshot('F6', { tag: ValueTag.String, value: '7777777' }),
-      sheetId: 3,
-      sheetOrdinal: 1,
-      sheetName: 'Sheet1',
-      sortedColumnWidthOverrides: [],
-      sortedRowHeightOverrides: [],
-      styleSeq: 16,
-      textSeq: 16,
-      valueSeq: 16,
-      viewport,
-    })
-
-    expect(getCellCalls).toEqual(['F6', 'G6'])
-    expect(patchedTile.rectInstances).toBe(baseTile.rectInstances)
-    expect(patchedTile.rectCount).toBe(baseTile.rectCount)
-    expect(patchedTile.textRuns).toContainEqual(expect.objectContaining({ col: 1, row: 1, text: 'unchanged' }))
-    expect(patchedTile.textRuns).toContainEqual(expect.objectContaining({ col: 5, row: 5, text: '7777777' }))
-    expect(patchedTile.textRuns).not.toContainEqual(expect.objectContaining({ col: 5, row: 5, text: '1' }))
-    expect(patchedTile.dirty?.textSpans).toEqual([{ offset: 1, length: 1 }])
-  })
-
-  test('editing-cell localization removes only the edited text run from a reused tile', () => {
-    const gridMetrics = getGridMetrics()
-    const viewport = {
-      colEnd: VIEWPORT_TILE_COLUMN_COUNT - 1,
-      colStart: 0,
-      rowEnd: VIEWPORT_TILE_ROW_COUNT - 1,
-      rowStart: 0,
-    }
-    const baseTile = materializeGridRenderTileV3({
-      axisSeqX: 5,
-      axisSeqY: 6,
-      cameraSeq: 7,
-      columnWidths: {},
-      dprBucket: 1,
-      engine: makeEngine({
-        B2: createCellSnapshot('B2', { tag: ValueTag.String, value: 'unchanged' }),
-        F6: createCellSnapshot('F6', { tag: ValueTag.String, value: 'editing text' }),
-      }),
-      freezeSeq: 8,
-      glyphAtlasSeq: 9,
-      gridMetrics,
-      materializedAtSeq: 10,
-      packetSeq: 11,
-      rectSeq: 12,
-      rowHeights: {},
-      sheetId: 3,
-      sheetOrdinal: 1,
-      sheetName: 'Sheet1',
-      sortedColumnWidthOverrides: [],
-      sortedRowHeightOverrides: [],
-      styleSeq: 13,
-      textSeq: 14,
-      valueSeq: 15,
-      viewport,
-    })
-    const getCellCalls: string[] = []
-    const patchEngine = makeEngine({
-      B2: createCellSnapshot('B2', { tag: ValueTag.String, value: 'unchanged' }),
-      F6: createCellSnapshot('F6', { tag: ValueTag.String, value: 'editing text' }),
-    })
-    const countingPatchEngine: GridEngineLike = {
-      ...patchEngine,
-      getCell: (sheetName, address) => {
-        getCellCalls.push(address)
-        return patchEngine.getCell(sheetName, address)
-      },
-    }
-
-    const tiles = buildLocalFixedRenderTiles({
-      cameraSeq: 8,
-      columnWidths: {},
-      dprBucket: 1,
-      editingCell: [5, 5],
-      engine: countingPatchEngine,
-      generation: 16,
-      gridMetrics,
-      reuseStaticGridRectsByTileId: new Map([[baseTile.tileId, baseTile]]),
-      rowHeights: {},
-      selectedCell: [5, 5],
-      selectedCellSnapshot: createCellSnapshot('F6', { tag: ValueTag.String, value: 'draft text' }),
-      sheetId: 3,
-      sheetOrdinal: 1,
-      sheetName: 'Sheet1',
-      sortedColumnWidthOverrides: [],
-      sortedRowHeightOverrides: [],
-      tileKeys: [baseTile.tileId],
-      viewport,
-    })
-    const localizedTile = tiles[0]
-
-    expect(getCellCalls).toEqual([])
-    expect(localizedTile?.rectInstances).toBe(baseTile.rectInstances)
-    expect(localizedTile?.textRuns).toContainEqual(expect.objectContaining({ col: 1, row: 1, text: 'unchanged' }))
-    expect(localizedTile?.textRuns).toContainEqual(expect.objectContaining({ col: 5, row: 5, text: '' }))
-    expect(localizedTile?.textRuns).not.toContainEqual(expect.objectContaining({ col: 5, row: 5, text: 'editing text' }))
-    expect(localizedTile?.dirty?.textSpans).toEqual([{ offset: 1, length: 1 }])
   })
 
   test('local fixed tile generation preserves runtime freeze sequence', () => {

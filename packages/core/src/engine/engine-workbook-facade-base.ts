@@ -30,7 +30,6 @@ import { buildFormatClearOps, buildFormatPatchOps, buildStyleClearOps, buildStyl
 import { hasEngineStructuralDeleteImpact } from './engine-structural-delete-impact.js'
 import { upsertNumericDefinedNameFast as upsertNumericDefinedNameFastPath } from './engine-numeric-defined-name-fast-path.js'
 import {
-  buildClearFilterOps,
   buildSetConditionalFormatOps,
   buildSetDataValidationOps,
   buildSetFilterOps,
@@ -39,7 +38,6 @@ import {
   buildSetSheetProtectionOps,
   buildSetSortOps,
 } from './engine-workbook-metadata-ops.js'
-import { buildSortRangeOps, type SpreadsheetEngineSortRangeOptions } from './engine-sort-range.js'
 import { normalizeEngineCommentThread, normalizeEngineNote, workbookObjectRecordEqual } from './engine-workbook-object-helpers.js'
 import {
   buildDeleteChartOps,
@@ -184,24 +182,15 @@ export abstract class SpreadsheetEngineWorkbookFacadeBase extends SpreadsheetEng
     return this.workbook.getVolatileContext()
   }
 
-  updateRowMetadata(
-    sheetName: string,
-    start: number,
-    count: number,
-    size: number | null,
-    hidden: boolean | null,
-    filtered?: boolean | null,
-  ): void {
+  updateRowMetadata(sheetName: string, start: number, count: number, size: number | null, hidden: boolean | null): void {
     const existing = this.workbook.getRowMetadata(sheetName, start, count)
-    if (existing?.size === size && existing.hidden === hidden && (filtered === undefined || existing.filtered === filtered)) {
+    if (existing?.size === size && existing.hidden === hidden) {
       return
     }
-    if (existing === undefined && size === null && hidden === null && (filtered === undefined || filtered === null)) {
+    if (existing === undefined && size === null && hidden === null) {
       return
     }
-    this.executeLocalTransaction([
-      { kind: 'updateRowMetadata', sheetName, start, count, size, hidden, ...(filtered !== undefined ? { filtered } : {}) },
-    ])
+    this.executeLocalTransaction([{ kind: 'updateRowMetadata', sheetName, start, count, size, hidden }])
   }
 
   getRowMetadata(sheetName: string): WorkbookAxisMetadataRecord[] {
@@ -340,15 +329,14 @@ export abstract class SpreadsheetEngineWorkbookFacadeBase extends SpreadsheetEng
   }
 
   setFilter(sheetName: string, range: WorkbookAutoFilterSnapshot): void {
-    this.executeLocalTransaction(buildSetFilterOps({ workbook: this.workbook, strings: this.strings }, sheetName, range) ?? [])
+    this.executeLocalTransaction(buildSetFilterOps(this.workbook, sheetName, range) ?? [])
   }
 
   clearFilter(sheetName: string, range: CellRangeRef): boolean {
-    const ops = buildClearFilterOps({ workbook: this.workbook, strings: this.strings }, sheetName, range)
-    if (!ops) {
+    if (!this.workbook.getFilter(sheetName, range)) {
       return false
     }
-    this.executeLocalTransaction(ops)
+    this.executeLocalTransaction([{ kind: 'clearFilter', sheetName, range: { ...range } }])
     return true
   }
 
@@ -358,20 +346,6 @@ export abstract class SpreadsheetEngineWorkbookFacadeBase extends SpreadsheetEng
 
   setSort(sheetName: string, range: CellRangeRef, keys: WorkbookSortSnapshot['keys']): void {
     this.executeLocalTransaction(buildSetSortOps(this.workbook, sheetName, range, keys) ?? [])
-  }
-
-  sortRange(
-    sheetName: string,
-    range: CellRangeRef,
-    keys: WorkbookSortSnapshot['keys'],
-    options: SpreadsheetEngineSortRangeOptions = {},
-  ): boolean {
-    const ops = buildSortRangeOps(this.exportSnapshot(), sheetName, range, keys, options)
-    if (ops.length === 0) {
-      return false
-    }
-    this.executeLocalTransaction(ops)
-    return true
   }
 
   clearSort(sheetName: string, range: CellRangeRef): boolean {

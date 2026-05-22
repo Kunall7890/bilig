@@ -10,7 +10,6 @@ import { canonicalWorkbookSemanticsFixtures } from './workbook-semantics-fixture
 export * from './macos-excel-oracle.js'
 export * from './macos-excel-oracle-config.js'
 export * from './oracle-harness.js'
-export * from './shared-formula-fixtures.js'
 
 export const excelFixtureFamilies = [
   'arithmetic',

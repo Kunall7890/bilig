@@ -1,7 +1,7 @@
 import { execFileSync } from 'node:child_process'
-import { copyFileSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, statSync, writeFileSync } from 'node:fs'
+import { copyFileSync, existsSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs'
 import { homedir } from 'node:os'
-import { basename, extname, join } from 'node:path'
+import { basename, join } from 'node:path'
 
 import { ErrorCode } from '@bilig/protocol'
 
@@ -9,26 +9,12 @@ import type { NormalizedFormulaValue } from './oracle-harness.js'
 
 export const defaultMacosExcelAppPath = '/Applications/Microsoft Excel.app' as const
 
-const macosExcelOracleLockStaleMs = 10 * 60_000
-const macosExcelOracleLockPollMs = 250
-const macosExcelOracleCleanupRetryMs = 100
-const macosExcelOracleAutomationRetryMs = 500
-
 export interface MacosExcelOracleFormulaCell {
   readonly address: string
   readonly formula: string
 }
 
 export type MacosExcelLinkUpdateMode = 'all' | 'external' | 'never' | 'remote'
-export type MacosExcelAutoFilterOperator = 'and' | 'filterByValue' | 'or'
-export type MacosExcelSortHeader = 'guess' | 'no' | 'yes'
-export type MacosExcelSortOrder = 'ascending' | 'descending'
-export type MacosExcelSortOrientation = 'columns' | 'rows'
-
-export interface MacosExcelSortKey {
-  readonly key: string
-  readonly order?: MacosExcelSortOrder
-}
 
 export interface MacosExcelRecalculationOracleRequest {
   readonly workbookPath: string
@@ -58,7 +44,6 @@ export interface MacosExcelInspectionOracleRequest {
   readonly saveWorkbook?: boolean
   readonly timeoutMs?: number
   readonly updateLinks?: MacosExcelLinkUpdateMode
-  readonly refreshAll?: boolean
 }
 
 export type MacosExcelStructuralOperation =
@@ -71,22 +56,6 @@ export type MacosExcelStructuralOperation =
   | { readonly kind: 'moveRows'; readonly sourceRange: string; readonly destinationRange: string }
   | { readonly kind: 'moveColumns'; readonly sourceRange: string; readonly destinationRange: string }
   | { readonly kind: 'createDataTable'; readonly range: string; readonly rowInput?: string; readonly columnInput?: string }
-  | {
-      readonly kind: 'applySort'
-      readonly range: string
-      readonly keys: readonly MacosExcelSortKey[]
-      readonly header?: MacosExcelSortHeader
-      readonly orientation?: MacosExcelSortOrientation
-    }
-  | {
-      readonly kind: 'applyAutoFilter'
-      readonly range: string
-      readonly field: number
-      readonly criteria1?: string | number | boolean
-      readonly operator?: MacosExcelAutoFilterOperator
-      readonly criteria2?: string | number | boolean
-      readonly visibleDropDown?: boolean
-    }
 
 export interface MacosExcelStructuralOperationOracleRequest {
   readonly workbookPath: string
@@ -99,7 +68,6 @@ export interface MacosExcelStructuralOperationOracleRequest {
   readonly saveWorkbook?: boolean
   readonly timeoutMs?: number
   readonly updateLinks?: MacosExcelLinkUpdateMode
-  readonly refreshAll?: boolean
 }
 
 export interface MacosExcelCellInspection {
@@ -124,25 +92,20 @@ export function runMacosExcelRecalculationOracle(request: MacosExcelRecalculatio
     throw new Error(`Microsoft Excel app is not installed at ${appPath}`)
   }
 
-  return runWithMacosExcelOracleLock(request.timeoutMs, () =>
-    runRetriableMacosExcelOracleAttempt(() => {
-      prepareMacosExcelOracleApp()
-      const tempDir = createMacosExcelOracleTempDir('bilig-macos-excel-oracle-')
-      const scriptPath = join(tempDir, 'recalculate.scpt')
-      try {
-        const stagedWorkbookPath = stageWorkbookForMacosExcelOracle(request.workbookPath, tempDir)
-        writeFileSync(scriptPath, createMacosExcelRecalculationAppleScript(request))
-        const rawOutput = execFileSync('osascript', [scriptPath, stagedWorkbookPath, ...(request.companionWorkbookPaths ?? [])], {
-          encoding: 'utf8',
-          timeout: request.timeoutMs ?? 60_000,
-        }).trim()
-        copySavedWorkbookFromMacosExcelOracle(request, stagedWorkbookPath)
-        return parseMacosExcelRecalculationOutput(rawOutput, request.valueCells.length)
-      } finally {
-        removeMacosExcelOracleDir(tempDir)
-      }
-    }),
-  )
+  const tempDir = createMacosExcelOracleTempDir('bilig-macos-excel-oracle-')
+  const scriptPath = join(tempDir, 'recalculate.scpt')
+  try {
+    const stagedWorkbookPath = stageWorkbookForMacosExcelOracle(request.workbookPath, tempDir)
+    writeFileSync(scriptPath, createMacosExcelRecalculationAppleScript(request))
+    const rawOutput = execFileSync('osascript', [scriptPath, stagedWorkbookPath, ...(request.companionWorkbookPaths ?? [])], {
+      encoding: 'utf8',
+      timeout: request.timeoutMs ?? 60_000,
+    }).trim()
+    copySavedWorkbookFromMacosExcelOracle(request, stagedWorkbookPath)
+    return parseMacosExcelRecalculationOutput(rawOutput, request.valueCells.length)
+  } finally {
+    rmSync(tempDir, { recursive: true, force: true })
+  }
 }
 
 export function runMacosExcelInspectionOracle(request: MacosExcelInspectionOracleRequest): MacosExcelInspectionOracleResult {
@@ -151,25 +114,20 @@ export function runMacosExcelInspectionOracle(request: MacosExcelInspectionOracl
     throw new Error(`Microsoft Excel app is not installed at ${appPath}`)
   }
 
-  return runWithMacosExcelOracleLock(request.timeoutMs, () =>
-    runRetriableMacosExcelOracleAttempt(() => {
-      prepareMacosExcelOracleApp()
-      const tempDir = createMacosExcelOracleTempDir('bilig-macos-excel-oracle-inspect-')
-      const scriptPath = join(tempDir, 'inspect.scpt')
-      try {
-        const stagedWorkbookPath = stageWorkbookForMacosExcelOracle(request.workbookPath, tempDir)
-        writeFileSync(scriptPath, createMacosExcelInspectionAppleScript(request))
-        const rawOutput = execFileSync('osascript', [scriptPath, stagedWorkbookPath, ...(request.companionWorkbookPaths ?? [])], {
-          encoding: 'utf8',
-          timeout: request.timeoutMs ?? 60_000,
-        }).trim()
-        copySavedWorkbookFromMacosExcelOracle(request, stagedWorkbookPath)
-        return parseMacosExcelInspectionOutput(rawOutput, request.inspectCells)
-      } finally {
-        removeMacosExcelOracleDir(tempDir)
-      }
-    }),
-  )
+  const tempDir = createMacosExcelOracleTempDir('bilig-macos-excel-oracle-inspect-')
+  const scriptPath = join(tempDir, 'inspect.scpt')
+  try {
+    const stagedWorkbookPath = stageWorkbookForMacosExcelOracle(request.workbookPath, tempDir)
+    writeFileSync(scriptPath, createMacosExcelInspectionAppleScript(request))
+    const rawOutput = execFileSync('osascript', [scriptPath, stagedWorkbookPath, ...(request.companionWorkbookPaths ?? [])], {
+      encoding: 'utf8',
+      timeout: request.timeoutMs ?? 60_000,
+    }).trim()
+    copySavedWorkbookFromMacosExcelOracle(request, stagedWorkbookPath)
+    return parseMacosExcelInspectionOutput(rawOutput, request.inspectCells)
+  } finally {
+    rmSync(tempDir, { recursive: true, force: true })
+  }
 }
 
 export function runMacosExcelStructuralOperationOracle(
@@ -180,223 +138,30 @@ export function runMacosExcelStructuralOperationOracle(
     throw new Error(`Microsoft Excel app is not installed at ${appPath}`)
   }
 
-  return runWithMacosExcelOracleLock(request.timeoutMs, () =>
-    runRetriableMacosExcelOracleAttempt(() => {
-      prepareMacosExcelOracleApp()
-      const tempDir = createMacosExcelOracleTempDir('bilig-macos-excel-oracle-structure-')
-      const scriptPath = join(tempDir, 'structure.scpt')
-      try {
-        const stagedWorkbookPath = stageWorkbookForMacosExcelOracle(request.workbookPath, tempDir)
-        writeFileSync(scriptPath, createMacosExcelStructuralOperationAppleScript(request))
-        const rawOutput = execFileSync('osascript', [scriptPath, stagedWorkbookPath, ...(request.companionWorkbookPaths ?? [])], {
-          encoding: 'utf8',
-          timeout: request.timeoutMs ?? 60_000,
-        }).trim()
-        copySavedWorkbookFromMacosExcelOracle(request, stagedWorkbookPath)
-        return parseMacosExcelInspectionOutput(rawOutput, request.inspectCells)
-      } finally {
-        removeMacosExcelOracleDir(tempDir)
-      }
-    }),
-  )
-}
-
-function macosExcelOracleRootDir(): string {
-  return join(homedir(), 'Library/Containers/com.microsoft.Excel/Data/tmp/bilig-excel-oracle')
+  const tempDir = createMacosExcelOracleTempDir('bilig-macos-excel-oracle-structure-')
+  const scriptPath = join(tempDir, 'structure.scpt')
+  try {
+    const stagedWorkbookPath = stageWorkbookForMacosExcelOracle(request.workbookPath, tempDir)
+    writeFileSync(scriptPath, createMacosExcelStructuralOperationAppleScript(request))
+    const rawOutput = execFileSync('osascript', [scriptPath, stagedWorkbookPath, ...(request.companionWorkbookPaths ?? [])], {
+      encoding: 'utf8',
+      timeout: request.timeoutMs ?? 60_000,
+    }).trim()
+    copySavedWorkbookFromMacosExcelOracle(request, stagedWorkbookPath)
+    return parseMacosExcelInspectionOutput(rawOutput, request.inspectCells)
+  } finally {
+    rmSync(tempDir, { recursive: true, force: true })
+  }
 }
 
 function createMacosExcelOracleTempDir(prefix: string): string {
-  const root = macosExcelOracleRootDir()
+  const root = join(homedir(), 'Library/Containers/com.microsoft.Excel/Data/tmp/bilig-excel-oracle')
   mkdirSync(root, { recursive: true })
   return mkdtempSync(join(root, prefix))
 }
 
-function runRetriableMacosExcelOracleAttempt<T>(runAttempt: () => T): T {
-  let lastError: unknown
-  for (let attempt = 0; attempt < 2; attempt += 1) {
-    try {
-      return runAttempt()
-    } catch (error) {
-      if (!isRetriableMacosExcelAutomationError(error) || attempt === 1) {
-        throw error
-      }
-      lastError = error
-      prepareMacosExcelOracleApp()
-      sleepSync(macosExcelOracleAutomationRetryMs)
-    }
-  }
-  throw lastError
-}
-
-function removeMacosExcelOracleDir(dirPath: string): void {
-  const retriableCodes = new Set(['EBUSY', 'EINTR', 'ENOTEMPTY'])
-  for (let attempt = 0; attempt < 5; attempt += 1) {
-    try {
-      rmSync(dirPath, { recursive: true, force: true })
-      return
-    } catch (error) {
-      if (error instanceof Error && isRecord(error) && retriableCodes.has(String(error['code']))) {
-        sleepSync(macosExcelOracleCleanupRetryMs)
-        continue
-      }
-      throw error
-    }
-  }
-  rmSync(dirPath, { recursive: true, force: true })
-}
-
-function runWithMacosExcelOracleLock<T>(timeoutMs: number | undefined, run: () => T): T {
-  const root = macosExcelOracleRootDir()
-  mkdirSync(root, { recursive: true })
-  const lockDir = join(root, '.lock')
-  const deadline = Date.now() + Math.max(timeoutMs ?? 60_000, 60_000)
-  let acquired = false
-  while (!acquired) {
-    try {
-      mkdirSync(lockDir)
-      writeFileSync(join(lockDir, 'owner'), `pid=${String(process.pid)}\nstartedAt=${new Date().toISOString()}\n`)
-      acquired = true
-    } catch (error) {
-      if (!isNodeErrorWithCode(error, 'EEXIST')) {
-        throw error
-      }
-      removeStaleMacosExcelOracleLock(lockDir)
-      if (Date.now() >= deadline) {
-        throw new Error(`Timed out waiting for macOS Desktop Excel oracle lock: ${lockDir}`, { cause: error })
-      }
-      sleepSync(macosExcelOracleLockPollMs)
-    }
-  }
-
-  try {
-    return run()
-  } finally {
-    removeMacosExcelOracleDir(lockDir)
-  }
-}
-
-function removeStaleMacosExcelOracleLock(lockDir: string): void {
-  try {
-    const ownerPid = readMacosExcelOracleLockOwnerPid(lockDir)
-    if (ownerPid !== undefined && !processIsRunning(ownerPid)) {
-      removeMacosExcelOracleDir(lockDir)
-      return
-    }
-    const ageMs = Date.now() - statSync(lockDir).mtimeMs
-    if (ageMs > macosExcelOracleLockStaleMs) {
-      removeMacosExcelOracleDir(lockDir)
-    }
-  } catch (error) {
-    if (!isNodeErrorWithCode(error, 'ENOENT')) {
-      throw error
-    }
-  }
-}
-
-function readMacosExcelOracleLockOwnerPid(lockDir: string): number | undefined {
-  const owner = readFileSync(join(lockDir, 'owner'), 'utf8')
-  const match = /^pid=([1-9]\d*)$/mu.exec(owner)
-  if (!match) {
-    return undefined
-  }
-  const pid = Number(match[1])
-  return Number.isSafeInteger(pid) ? pid : undefined
-}
-
-function processIsRunning(pid: number): boolean {
-  try {
-    process.kill(pid, 0)
-    return true
-  } catch {
-    return false
-  }
-}
-
-function isRetriableMacosExcelAutomationError(error: unknown): boolean {
-  const message = error instanceof Error ? error.message : String(error)
-  const stderr = isRecord(error) ? error['stderr'] : undefined
-  const stderrText = typeof stderr === 'string' ? stderr : Buffer.isBuffer(stderr) ? stderr.toString('utf8') : ''
-  return message.includes('Parameter error. (-50)') || stderrText.includes('Parameter error. (-50)')
-}
-
-function sleepSync(ms: number): void {
-  Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, ms)
-}
-
-function isNodeErrorWithCode(error: unknown, code: string): boolean {
-  return error instanceof Error && isRecord(error) && error['code'] === code
-}
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === 'object' && value !== null
-}
-
-function prepareMacosExcelOracleApp(): void {
-  dismissMacosExcelBlockingAlerts()
-  closeStaleMacosExcelOracleWorkbooks()
-}
-
-function dismissMacosExcelBlockingAlerts(): void {
-  execFileSync(
-    'osascript',
-    [
-      '-e',
-      'tell application "System Events"',
-      '-e',
-      'if exists process "Microsoft Excel" then',
-      '-e',
-      'tell process "Microsoft Excel"',
-      '-e',
-      'repeat with candidateWindow in windows',
-      '-e',
-      'try',
-      '-e',
-      'if exists button "OK" of candidateWindow then click button "OK" of candidateWindow',
-      '-e',
-      'end try',
-      '-e',
-      'end repeat',
-      '-e',
-      'end tell',
-      '-e',
-      'end if',
-      '-e',
-      'end tell',
-    ],
-    { stdio: 'ignore', timeout: 10_000 },
-  )
-}
-
-function closeStaleMacosExcelOracleWorkbooks(): void {
-  execFileSync(
-    'osascript',
-    [
-      '-e',
-      'tell application "Microsoft Excel"',
-      '-e',
-      'repeat with candidateWorkbook in (workbooks as list)',
-      '-e',
-      'try',
-      '-e',
-      'set candidatePath to full name of candidateWorkbook as string',
-      '-e',
-      'if candidatePath contains "bilig-excel-oracle" or candidatePath contains "bilig-headless-oracle" then close candidateWorkbook saving no',
-      '-e',
-      'end try',
-      '-e',
-      'end repeat',
-      '-e',
-      'end tell',
-    ],
-    { stdio: 'ignore', timeout: 10_000 },
-  )
-}
-
 function stageWorkbookForMacosExcelOracle(workbookPath: string, tempDir: string): string {
-  const workbookBasename = basename(workbookPath)
-  const extension = extname(workbookBasename)
-  const baseNameWithoutExtension = extension ? workbookBasename.slice(0, -extension.length) : workbookBasename
-  const stagedWorkbookPath = join(tempDir, `${baseNameWithoutExtension}-${String(process.pid)}-${String(Date.now())}${extension}`)
+  const stagedWorkbookPath = join(tempDir, basename(workbookPath))
   copyFileSync(workbookPath, stagedWorkbookPath)
   return stagedWorkbookPath
 }
@@ -413,67 +178,24 @@ function copySavedWorkbookFromMacosExcelOracle(
   }
 }
 
-function updateLinksAppleScript(mode: MacosExcelLinkUpdateMode): string {
+function macosExcelUpdateLinksModeAppleScript(mode: MacosExcelLinkUpdateMode): string {
   switch (mode) {
-    case 'never':
-      return ''
     case 'all':
+      return 'update remote and external links'
     case 'external':
+      return 'update external links only'
+    case 'never':
+      return 'do not update links'
     case 'remote':
-      return `      try
-        update link (targetWorkbook)
-      end try`
+      return 'update remote links only'
   }
-}
-
-function workbookOpenAppleScriptHelpers(): string {
-  return `on workbookNameFromPath(workbookPath)
-  set previousDelimiters to AppleScript's text item delimiters
-  set AppleScript's text item delimiters to "/"
-  set workbookName to last text item of workbookPath
-  set AppleScript's text item delimiters to previousDelimiters
-  return workbookName
-end workbookNameFromPath
-
-on openWorkbookForBiligOracle(workbookPath)
-  set workbookName to my workbookNameFromPath(workbookPath)
-  do shell script "open -b com.microsoft.Excel " & quoted form of workbookPath
-  tell application "Microsoft Excel"
-    repeat with openAttempt from 1 to 100
-      set openedWorkbook to my workbookNamed(workbookName)
-      if openedWorkbook is not missing value then
-        try
-          set firstWorksheetName to name of worksheet 1 of openedWorkbook
-          return openedWorkbook
-        end try
-      end if
-      delay 0.1
-    end repeat
-  end tell
-  error "Microsoft Excel did not open workbook " & workbookName number -1728
-end openWorkbookForBiligOracle
-
-on workbookNamed(workbookName)
-  tell application "Microsoft Excel"
-    try
-      return workbook workbookName
-    end try
-    repeat with candidateWorkbook in workbooks
-      try
-        if (name of candidateWorkbook) is workbookName then return workbook workbookName
-      end try
-    end repeat
-  end tell
-  return missing value
-end workbookNamed
-`
 }
 
 function openCompanionWorkbooksAppleScript(): string {
   return `      if (count of argv) > 1 then
         repeat with companionIndex from 2 to count of argv
           set companionPath to item companionIndex of argv
-          set companionWorkbook to my openWorkbookForBiligOracle(companionPath)
+          set companionWorkbook to open workbook workbook file name companionPath update links do not update links
           set companionWorkbooks to companionWorkbooks & {companionWorkbook}
         end repeat
       end if`
@@ -495,7 +217,7 @@ export function createMacosExcelRecalculationAppleScript(
   }
 
   const closeSavingMode = request.saveWorkbook === true ? 'yes' : 'no'
-  const updateLinks = updateLinksAppleScript(request.updateLinks ?? 'never')
+  const updateLinksMode = macosExcelUpdateLinksModeAppleScript(request.updateLinks ?? 'never')
   const formulaCells = request.formulaCells
     .map(
       (cell) =>
@@ -515,27 +237,27 @@ export function createMacosExcelRecalculationAppleScript(
     )
     .join('\n')
 
-  return `${workbookOpenAppleScriptHelpers()}
-on run argv
+  return `on run argv
   set workbookPath to item 1 of argv
+  set targetWorkbook to missing value
+  set companionWorkbooks to {}
+  set output to ""
   tell application "Microsoft Excel"
-    set targetWorkbook to missing value
-    set companionWorkbooks to {}
-    set output to ""
     try
 ${openCompanionWorkbooksAppleScript()}
-      set targetWorkbook to my openWorkbookForBiligOracle(workbookPath)
-${updateLinks}
+      set targetWorkbook to open workbook workbook file name workbookPath update links ${updateLinksMode}
 ${formulaCells}
       calculate full rebuild
       set output to "version=" & (version as string)
 ${valueReads}
-      close (targetWorkbook) saving ${closeSavingMode}
+      close targetWorkbook saving ${closeSavingMode}
 ${closeCompanionWorkbooksAppleScript()}
     on error errMsg number errNum
-      try
-        close (targetWorkbook) saving no
-      end try
+      if targetWorkbook is not missing value then
+        try
+          close targetWorkbook saving no
+        end try
+      end if
 ${closeCompanionWorkbooksAppleScript()}
       error errMsg number errNum
     end try
@@ -583,18 +305,14 @@ end isExcelErrorDisplayText
 }
 
 export function createMacosExcelInspectionAppleScript(
-  request: Pick<
-    MacosExcelInspectionOracleRequest,
-    'formulaCells' | 'inspectCells' | 'refreshAll' | 'saveWorkbook' | 'updateLinks' | 'worksheetName'
-  >,
+  request: Pick<MacosExcelInspectionOracleRequest, 'formulaCells' | 'inspectCells' | 'saveWorkbook' | 'updateLinks' | 'worksheetName'>,
 ): string {
   if (request.inspectCells.length === 0) {
     throw new Error('macOS Excel inspection oracle request must inspect at least one cell')
   }
 
   const closeSavingMode = request.saveWorkbook === true ? 'yes' : 'no'
-  const updateLinks = updateLinksAppleScript(request.updateLinks ?? 'never')
-  const refreshAll = request.refreshAll === true ? '      refresh all (targetWorkbook)' : ''
+  const updateLinksMode = macosExcelUpdateLinksModeAppleScript(request.updateLinks ?? 'never')
   const formulaCells = request.formulaCells
     .map(
       (cell) =>
@@ -612,28 +330,27 @@ export function createMacosExcelInspectionAppleScript(
     })
     .join('\n')
 
-  return `${workbookOpenAppleScriptHelpers()}
-on run argv
+  return `on run argv
   set workbookPath to item 1 of argv
+  set targetWorkbook to missing value
+  set companionWorkbooks to {}
+  set output to ""
   tell application "Microsoft Excel"
-    set targetWorkbook to missing value
-    set companionWorkbooks to {}
-    set output to ""
     try
 ${openCompanionWorkbooksAppleScript()}
-      set targetWorkbook to my openWorkbookForBiligOracle(workbookPath)
-${updateLinks}
+      set targetWorkbook to open workbook workbook file name workbookPath update links ${updateLinksMode}
 ${formulaCells}
-${refreshAll}
       calculate full rebuild
       set output to "version=" & (version as string)
 ${inspectionReads}
-      close (targetWorkbook) saving ${closeSavingMode}
+      close targetWorkbook saving ${closeSavingMode}
 ${closeCompanionWorkbooksAppleScript()}
     on error errMsg number errNum
-      try
-        close (targetWorkbook) saving no
-      end try
+      if targetWorkbook is not missing value then
+        try
+          close targetWorkbook saving no
+        end try
+      end if
 ${closeCompanionWorkbooksAppleScript()}
       error errMsg number errNum
     end try
@@ -647,7 +364,7 @@ ${cellValueAppleScriptHelpers()}`
 export function createMacosExcelStructuralOperationAppleScript(
   request: Pick<
     MacosExcelStructuralOperationOracleRequest,
-    'formulaCells' | 'inspectCells' | 'operations' | 'refreshAll' | 'saveWorkbook' | 'worksheetName' | 'updateLinks'
+    'formulaCells' | 'inspectCells' | 'operations' | 'saveWorkbook' | 'worksheetName' | 'updateLinks'
   >,
 ): string {
   if (request.operations.length === 0) {
@@ -658,8 +375,7 @@ export function createMacosExcelStructuralOperationAppleScript(
   }
 
   const closeSavingMode = request.saveWorkbook === true ? 'yes' : 'no'
-  const updateLinks = updateLinksAppleScript(request.updateLinks ?? 'never')
-  const refreshAll = request.refreshAll === true ? '      refresh all (targetWorkbook)' : ''
+  const updateLinksMode = macosExcelUpdateLinksModeAppleScript(request.updateLinks ?? 'never')
   const formulaCells = (request.formulaCells ?? [])
     .map(
       (cell) =>
@@ -675,30 +391,29 @@ export function createMacosExcelStructuralOperationAppleScript(
     })
     .join('\n')
 
-  return `${workbookOpenAppleScriptHelpers()}
-on run argv
+  return `on run argv
   set workbookPath to item 1 of argv
+  set targetWorkbook to missing value
+  set companionWorkbooks to {}
+  set output to ""
   tell application "Microsoft Excel"
-    set targetWorkbook to missing value
-    set companionWorkbooks to {}
-    set output to ""
     try
 ${openCompanionWorkbooksAppleScript()}
-      set targetWorkbook to my openWorkbookForBiligOracle(workbookPath)
-${updateLinks}
-      set targetWorksheet to worksheet ${toAppleScriptString(request.worksheetName)} of (targetWorkbook)
+      set targetWorkbook to open workbook workbook file name workbookPath update links ${updateLinksMode}
+      set targetWorksheet to worksheet ${toAppleScriptString(request.worksheetName)} of targetWorkbook
 ${formulaCells}
 ${operations}
-${refreshAll}
       calculate full rebuild
       set output to "version=" & (version as string)
 ${inspectionReads}
-      close (targetWorkbook) saving ${closeSavingMode}
+      close targetWorkbook saving ${closeSavingMode}
 ${closeCompanionWorkbooksAppleScript()}
     on error errMsg number errNum
-      try
-        close (targetWorkbook) saving no
-      end try
+      if targetWorkbook is not missing value then
+        try
+          close targetWorkbook saving no
+        end try
+      end if
 ${closeCompanionWorkbooksAppleScript()}
       error errMsg number errNum
     end try
@@ -829,78 +544,6 @@ function structuralOperationAppleScript(operation: MacosExcelStructuralOperation
       ]
         .filter((part) => part.length > 0)
         .join(' ')
-    case 'applySort':
-      if (operation.keys.length === 0 || operation.keys.length > 3) {
-        throw new Error('macOS Excel sort operation requires one to three sort keys')
-      }
-      return [
-        `sort (range ${toAppleScriptString(operation.range)} of targetWorksheet)`,
-        ...operation.keys.flatMap((key, index) => {
-          const position = String(index + 1)
-          return [
-            `key${position} (range ${toAppleScriptString(key.key)} of targetWorksheet)`,
-            `order${position} ${sortOrderAppleScript(key.order ?? 'ascending')}`,
-          ]
-        }),
-        operation.header ? `header ${sortHeaderAppleScript(operation.header)}` : '',
-        operation.orientation ? `orientation ${sortOrientationAppleScript(operation.orientation)}` : '',
-      ]
-        .filter((part) => part.length > 0)
-        .join(' ')
-    case 'applyAutoFilter':
-      if (!Number.isSafeInteger(operation.field) || operation.field <= 0) {
-        throw new Error('macOS Excel AutoFilter operation requires a positive one-based field')
-      }
-      return [
-        `autofilter range (range ${toAppleScriptString(operation.range)} of targetWorksheet)`,
-        `field ${String(operation.field)}`,
-        operation.criteria1 !== undefined ? `criteria1 ${toAppleScriptValue(operation.criteria1)}` : '',
-        operation.operator ? `operator ${autoFilterOperatorAppleScript(operation.operator)}` : '',
-        operation.criteria2 !== undefined ? `criteria2 ${toAppleScriptValue(operation.criteria2)}` : '',
-        operation.visibleDropDown !== undefined ? `visible drop down ${toAppleScriptValue(operation.visibleDropDown)}` : '',
-      ]
-        .filter((part) => part.length > 0)
-        .join(' ')
-  }
-}
-
-function sortHeaderAppleScript(header: MacosExcelSortHeader): string {
-  switch (header) {
-    case 'guess':
-      return 'header guess'
-    case 'no':
-      return 'header no'
-    case 'yes':
-      return 'header yes'
-  }
-}
-
-function sortOrderAppleScript(order: MacosExcelSortOrder): string {
-  switch (order) {
-    case 'ascending':
-      return 'sort ascending'
-    case 'descending':
-      return 'sort descending'
-  }
-}
-
-function sortOrientationAppleScript(orientation: MacosExcelSortOrientation): string {
-  switch (orientation) {
-    case 'columns':
-      return 'sort rows'
-    case 'rows':
-      return 'sort columns'
-  }
-}
-
-function autoFilterOperatorAppleScript(operator: MacosExcelAutoFilterOperator): string {
-  switch (operator) {
-    case 'and':
-      return 'autofilter and'
-    case 'or':
-      return 'autofilter or'
-    case 'filterByValue':
-      return 'filter by value'
   }
 }
 

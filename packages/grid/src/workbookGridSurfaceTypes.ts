@@ -2,7 +2,6 @@ import type { CellSnapshot, Viewport } from '@bilig/protocol'
 import type { GridEngineLike } from './grid-engine.js'
 import type { GridSelectionSnapshot } from './gridTypes.js'
 import type { GridRenderTileSource } from './renderer-v3/render-tile-source.js'
-import type { WorkbookVisibleRenderProof } from './workbookVisibleRenderProof.js'
 
 export type { GridSelectionSnapshot } from './gridTypes.js'
 
@@ -35,7 +34,6 @@ export interface WorkbookGridSurfaceProps {
   onExternalSelectionSync?: ((selection: GridSelectionSnapshot) => void) | undefined
   onSelectionLabelChange?: ((label: string) => void) | undefined
   getCellEditorSeed?: ((sheetName: string, address: string) => string | undefined) | undefined
-  getCellResolvedValue?: ((sheetName: string, address: string) => string | undefined) | undefined
   onBeginEdit(this: void, seed?: string, selectionBehavior?: EditSelectionBehavior, targetSelection?: EditTargetSelection): void
   onEditorChange(this: void, next: string): void
   onCommitEdit(this: void, movement?: EditMovement, valueOverride?: string, targetSelectionOverride?: EditTargetSelection): EditCommitResult
@@ -66,7 +64,6 @@ export interface WorkbookGridSurfaceProps {
   onSetFreezePane?: ((rows: number, cols: number) => void) | undefined
   onAutofitColumn?: ((columnIndex: number, fallbackWidth: number) => void | Promise<void>) | undefined
   onVisibleViewportChange?: ((viewport: Viewport) => void) | undefined
-  onVisibleRenderProofChange?: ((proof: WorkbookVisibleRenderProof | null) => void) | undefined
   previewRanges?: readonly WorkbookGridPreviewRange[] | undefined
   focusRequestToken?: number | undefined
   focusApiRef?: { current: (() => void) | null } | undefined

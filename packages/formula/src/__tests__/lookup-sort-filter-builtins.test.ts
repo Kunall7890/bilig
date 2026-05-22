@@ -24,12 +24,6 @@ describe('lookup sort/filter builtins', () => {
       cols: 1,
       values: [num(1), num(2), num(3)],
     })
-    expect(SORT(cellRange([text(''), num(2), num(1)], 3, 1))).toEqual({
-      kind: 'array',
-      rows: 3,
-      cols: 1,
-      values: [num(1), num(2), text('')],
-    })
     expect(SORTBY(cellRange([text('b'), text('a'), text('c')], 3, 1), cellRange([num(2), num(1), num(3)], 3, 1))).toEqual({
       kind: 'array',
       rows: 3,

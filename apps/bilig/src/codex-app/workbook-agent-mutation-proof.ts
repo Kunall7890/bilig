@@ -7,20 +7,61 @@ import type {
 } from '@bilig/agent-api'
 import { formatAddress, parseCellAddress } from '@bilig/formula'
 import { buildCellNumberFormatCode, type CellRangeRef, type CellStylePatch, type LiteralInput } from '@bilig/protocol'
-import { inspectWorkbookRange } from './workbook-agent-inspection.js'
-import { collectSemanticReadbackMismatches } from './workbook-agent-mutation-authoritative-semantic.js'
-import type { WorkbookAgentMutationProofContext, WorkbookAuthoritativeReadbackProof } from './workbook-agent-mutation-proof-types.js'
-import type { WorkbookVerificationMismatch } from './workbook-agent-rendered-readback.js'
+import type { WorkbookAgentUiContext } from '@bilig/contracts'
+import type { SessionIdentity } from '../http/session.js'
+import type { ZeroSyncService } from '../zero/service.js'
+import { verifyWorkbookInvariants } from './workbook-agent-audit.js'
+import { findWorkbookFormulaIssues } from './workbook-agent-comprehension.js'
+import { inspectWorkbookRange, normalizeWorkbookAgentUiContext } from './workbook-agent-inspection.js'
+import { countWorkbookAgentRangeCells, createWorkbookAgentRangeChunkPlan, toWorkbookAgentRangeRef } from './workbook-agent-range-chunks.js'
+import {
+  emptyWorkbookRenderedReadbackProof,
+  selectWorkbookRenderedReadback,
+  type WorkbookRenderedReadbackProof,
+  type WorkbookVerificationMismatch,
+} from './workbook-agent-rendered-readback.js'
+import { collectSemanticReadbackMismatches } from './workbook-agent-mutation-semantic-proof.js'
 
-export type {
-  WorkbookAgentMutationProofContext,
-  WorkbookAuthoritativeReadbackProof,
-  WorkbookMutationRecalculationProof,
-  WorkbookMutationUndoProof,
-  WorkbookSemanticReadbackProof,
-} from './workbook-agent-mutation-proof-types.js'
+const MAX_RECEIPT_READBACK_CELLS = 4000
 
-export const MAX_RECEIPT_READBACK_CELLS = 4000
+export interface WorkbookAgentMutationProofContext {
+  readonly documentId: string
+  readonly session?: SessionIdentity
+  readonly uiContext: WorkbookAgentUiContext | null
+  readonly zeroSyncService: ZeroSyncService
+  readonly stageCommand?: unknown
+}
+
+export interface WorkbookAuthoritativeReadbackProof {
+  readonly requested: boolean
+  readonly matched: boolean | null
+  readonly ranges: readonly unknown[]
+  readonly mismatches: readonly WorkbookVerificationMismatch[]
+  readonly incompleteReason: string | null
+}
+
+export interface WorkbookSemanticReadbackProof {
+  readonly requested: boolean
+  readonly matched: boolean | null
+  readonly incompleteReason: string | null
+}
+
+export interface WorkbookMutationUndoProof {
+  readonly available: boolean
+  readonly token: string | null
+  readonly reasonUnavailable: string | null
+  readonly lookupFailed: boolean
+}
+
+function describeUnknownError(error: unknown): string {
+  if (error instanceof Error && error.message.trim().length > 0) {
+    return error.message
+  }
+  if (typeof error === 'string' && error.trim().length > 0) {
+    return error
+  }
+  return 'unknown error'
+}
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null
@@ -330,6 +371,46 @@ function collectComparablePreviewMismatches(input: {
   }
 }
 
+export async function resolveWorkbookMutationUndoStatus(input: {
+  readonly context: WorkbookAgentMutationProofContext
+  readonly appliedRevision: number | null
+}): Promise<WorkbookMutationUndoProof> {
+  if (input.appliedRevision === null) {
+    return {
+      available: false,
+      token: null,
+      reasonUnavailable: 'Workbook mutation has not been applied yet.',
+      lookupFailed: false,
+    }
+  }
+  let changes: Awaited<ReturnType<ZeroSyncService['listWorkbookChanges']>>
+  try {
+    changes = await input.context.zeroSyncService.listWorkbookChanges(input.context.documentId, 25)
+  } catch (error) {
+    return {
+      available: false,
+      token: null,
+      reasonUnavailable: `Undo metadata lookup failed for applied revision r${String(input.appliedRevision)}: ${describeUnknownError(error)}`,
+      lookupFailed: true,
+    }
+  }
+  const matchingChange = changes.find((change) => change.revision === input.appliedRevision) ?? null
+  if (matchingChange?.undoBundle) {
+    return {
+      available: true,
+      token: `revision:${String(input.appliedRevision)}`,
+      reasonUnavailable: null,
+      lookupFailed: false,
+    }
+  }
+  return {
+    available: false,
+    token: null,
+    reasonUnavailable: 'No persisted undo metadata was returned for the applied revision.',
+    lookupFailed: false,
+  }
+}
+
 export async function buildWorkbookAuthoritativeReadbackProof(input: {
   readonly context: WorkbookAgentMutationProofContext
   readonly bundle: WorkbookAgentCommandBundle
@@ -389,10 +470,87 @@ export async function buildWorkbookAuthoritativeReadbackProof(input: {
   }
 }
 
-export function firstAuthoritativeRows(readback: WorkbookAuthoritativeReadbackProof): readonly (readonly unknown[])[] | undefined {
+function firstAuthoritativeRows(readback: WorkbookAuthoritativeReadbackProof): readonly (readonly unknown[])[] | undefined {
   const first = readback.ranges[0]
   if (!isRecord(first) || !Array.isArray(first['rows'])) {
     return undefined
   }
   return first['rows'].filter((row): row is readonly unknown[] => Array.isArray(row))
+}
+
+function asReadonlyRows(rows: readonly unknown[]): readonly (readonly unknown[])[] {
+  return rows.filter((row): row is unknown[] => Array.isArray(row))
+}
+
+export async function buildWorkbookRenderedReadbackProof(input: {
+  readonly context: WorkbookAgentMutationProofContext
+  readonly appliedRevision: number | null
+  readonly ranges: readonly CellRangeRef[]
+  readonly authoritativeReadback: WorkbookAuthoritativeReadbackProof
+}): Promise<WorkbookRenderedReadbackProof> {
+  const range = input.ranges[0] ?? null
+  if (!range) {
+    return emptyWorkbookRenderedReadbackProof({
+      requested: false,
+      reason: 'No target cell range was available for rendered readback.',
+    })
+  }
+  const nextChunk =
+    countWorkbookAgentRangeCells(range) > MAX_RECEIPT_READBACK_CELLS
+      ? (createWorkbookAgentRangeChunkPlan(range, MAX_RECEIPT_READBACK_CELLS).chunks[1] ?? null)
+      : null
+  const uiContext = await input.context.zeroSyncService.inspectWorkbook(input.context.documentId, (runtime) =>
+    normalizeWorkbookAgentUiContext(runtime, input.context.uiContext),
+  )
+  const authoritativeRows = firstAuthoritativeRows(input.authoritativeReadback)
+  return selectWorkbookRenderedReadback({
+    renderedContext: uiContext?.rendered,
+    requestedRange: range,
+    minRevision: input.appliedRevision,
+    nextChunk,
+    ...(authoritativeRows !== undefined ? { authoritativeRows } : {}),
+  })
+}
+
+export async function buildWorkbookAgentVerificationReport(input: {
+  readonly context: WorkbookAgentMutationProofContext
+  readonly revision: number | null
+  readonly ranges: readonly CellRangeRef[]
+  readonly includeFormulaIssues?: boolean
+  readonly includeInvariants?: boolean
+}) {
+  return await input.context.zeroSyncService.inspectWorkbook(input.context.documentId, async (runtime) => {
+    const uiContext = normalizeWorkbookAgentUiContext(runtime, input.context.uiContext)
+    const normalizedRanges = input.ranges.map((range) => toWorkbookAgentRangeRef(range))
+    const authoritativeReadback = normalizedRanges.map((range) => inspectWorkbookRange(runtime, range))
+    const renderedReadback = normalizedRanges.map((range) => {
+      const authoritativeRange = inspectWorkbookRange(runtime, range)
+      return selectWorkbookRenderedReadback({
+        renderedContext: uiContext?.rendered,
+        requestedRange: range,
+        authoritativeRows: asReadonlyRows(authoritativeRange.rows),
+        minRevision: input.revision,
+      })
+    })
+    const formulaIssues =
+      input.includeFormulaIssues === false
+        ? null
+        : findWorkbookFormulaIssues(runtime, {
+            limit: 100,
+          })
+    const invariants = input.includeInvariants === false ? null : await verifyWorkbookInvariants(runtime, { roundTrip: true })
+    return {
+      appliedRevision: input.revision,
+      recalculationStatus: {
+        headRevision: runtime.headRevision,
+        calculatedRevision: runtime.calculatedRevision,
+        upToDate: runtime.calculatedRevision >= runtime.headRevision,
+        lastMetrics: runtime.engine.getLastMetrics(),
+      },
+      authoritativeReadback,
+      renderedReadback,
+      formulaIssues,
+      invariants,
+    }
+  })
 }

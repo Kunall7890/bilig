@@ -353,9 +353,6 @@ export function createWorkerRuntimeMachine() {
             return
           }
           controller = createdController
-          if (sameWorkerRuntimeSelection(pendingSelection, input.initialSelection)) {
-            pendingSelection = createdController.selection
-          }
           sendBack({ type: 'session.ready', controller: createdController, requestedSelection: input.initialSelection })
           try {
             await applyExternalSyncState()

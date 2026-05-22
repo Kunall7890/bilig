@@ -5,19 +5,16 @@ import {
   type EngineOp,
   type WorkbookActionCommand,
   type WorkbookActionPlan,
-  type WorkbookCheckProof,
   type WorkbookCheckResult,
   type WorkbookColumnRef,
-  type WorkbookReceiptProof,
+  type WorkbookNameRef,
+  type WorkbookRangeRef,
   type WorkbookRef,
   type WorkbookRowsRef,
-  type WorkbookCellReadback,
   type WorkbookRunAdapter,
   type WorkbookRunReadback,
-  type WorkbookRuntimeReceipt,
   type WorkbookTableRef,
   type WorkbookUndoRef,
-  describeRuntimeRequirements,
 } from '@bilig/workbook'
 import type { SpreadsheetEngine } from './engine.js'
 import { buildFormatClearOps, buildFormatPatchOps, buildStylePatchOps } from './engine-range-format-ops.js'
@@ -66,80 +63,6 @@ function createUndoRef(plan: WorkbookActionPlan, ops: readonly EngineOp[] | null
   }
 }
 
-function coreApplyProof(ops: readonly EngineOp[]): WorkbookReceiptProof {
-  return {
-    kind: 'apply',
-    status: 'passed',
-    message: `Core engine applied ${ops.length.toString()} workbook op${ops.length === 1 ? '' : 's'}.`,
-    data: {
-      opCount: ops.length,
-      opKinds: ops.map((op) => op.kind),
-    },
-  }
-}
-
-function coreRecalculationProof(ops: readonly EngineOp[]): WorkbookReceiptProof {
-  return {
-    kind: 'recalculation',
-    status: 'passed',
-    message: 'Core engine completed synchronous workbook mutation propagation before readback.',
-    data: {
-      mode: 'synchronous',
-      opCount: ops.length,
-    },
-  }
-}
-
-function coreUndoProof(captureUndo: boolean, undo: WorkbookUndoRef | undefined): WorkbookReceiptProof {
-  const undoOpCount = undo?.ops?.length ?? 0
-  if (!captureUndo) {
-    return {
-      kind: 'undo',
-      status: 'skipped',
-      message: 'Core adapter applied the action with undo capture disabled.',
-      data: {
-        captureUndo,
-        undoOpCount,
-      },
-    }
-  }
-  if (undo === undefined) {
-    return {
-      kind: 'undo',
-      status: 'skipped',
-      message: 'Core engine applied the action but did not produce undo ops.',
-      data: {
-        captureUndo,
-        undoOpCount,
-      },
-    }
-  }
-  return {
-    kind: 'undo',
-    status: 'passed',
-    message: `Core engine captured ${undoOpCount.toString()} undo op${undoOpCount === 1 ? '' : 's'}.`,
-    data: {
-      captureUndo,
-      undoOpCount,
-      undoId: undo.id,
-    },
-  }
-}
-
-function coreApplyReceipt(ops: readonly EngineOp[], captureUndo: boolean, undo: WorkbookUndoRef | undefined): WorkbookRuntimeReceipt {
-  const warnings: string[] = []
-  if (ops.length === 0) {
-    warnings.push('Core adapter materialized no engine ops; this action may be verification-only.')
-  }
-  if (!captureUndo) {
-    warnings.push('Core adapter applied the action with undo capture disabled.')
-  }
-  return {
-    proof: [coreApplyProof(ops), coreRecalculationProof(ops), coreUndoProof(captureUndo, undo)],
-    ...(warnings.length > 0 ? { warnings } : {}),
-  }
-}
-
 function literalFromCellValue(value: CellValue): LiteralInput | undefined {
   switch (value.tag) {
     case ValueTag.Empty:
@@ -153,19 +76,10 @@ function literalFromCellValue(value: CellValue): LiteralInput | undefined {
   }
 }
 
-function runtimeProof(message: string, data: Record<string, LiteralInput>): WorkbookCheckProof {
-  return {
-    kind: 'runtime',
-    message,
-    data,
-  }
-}
-
-function checked(check: WorkbookCheckResult, status: WorkbookCheckResult['status'], proof?: WorkbookCheckProof): WorkbookCheckResult {
+function checked(check: WorkbookCheckResult, status: WorkbookCheckResult['status']): WorkbookCheckResult {
   return {
     ...check,
     status,
-    ...(proof !== undefined ? { proof } : {}),
   }
 }
 
@@ -348,6 +262,9 @@ function rowValueMatches(actual: LiteralInput | undefined, op: WorkbookRowsRef['
 }
 
 function resolveRows(engine: SpreadsheetEngine, ref: WorkbookRowsRef): ResolvedRows | null {
+  if (ref.table === undefined) {
+    return null
+  }
   const table = findTable(engine, ref.table)
   if (table === undefined) {
     return null
@@ -504,55 +421,65 @@ function verifyNoFormulaErrors(engine: SpreadsheetEngine, ref: WorkbookRef): 'pa
   return ranges.some((range) => rangeHasFormulaErrors(engine, range)) ? 'failed' : 'passed'
 }
 
-function readbackForRanges(engine: SpreadsheetEngine, target: WorkbookRef, ranges: readonly CellRangeRef[]): WorkbookRunReadback {
-  const values: LiteralInput[][] = []
-  const formulas: (string | null)[][] = []
-  const cells: WorkbookCellReadback[] = []
-  let hasValueError = false
-
-  for (const range of ranges) {
-    const bounds = rangeBounds(range)
-    for (let row = bounds.startRow; row <= bounds.endRow; row += 1) {
-      const valueRow: LiteralInput[] = []
-      const formulaRow: (string | null)[] = []
-      for (let col = bounds.startCol; col <= bounds.endCol; col += 1) {
-        const address = formatAddress(row, col)
-        const cell = engine.getCell(range.sheetName, address)
-        const value = literalFromCellValue(cell.value)
-        if (cell.value.tag === ValueTag.Error) {
-          hasValueError = true
-        }
-        valueRow.push(value ?? null)
-        formulaRow.push(cell.formula ?? null)
-        cells.push({
-          sheetName: range.sheetName,
-          address,
-          ...(value !== undefined ? { value } : {}),
-          formula: cell.formula ?? null,
-        })
-      }
-      values.push(valueRow)
-      formulas.push(formulaRow)
-    }
+function readbackForRange(engine: SpreadsheetEngine, target: WorkbookRangeRef): WorkbookRunReadback | null {
+  const range = target.range
+  if (range.startAddress !== range.endAddress || !rangeExists(engine, range)) {
+    return null
   }
-
-  const single = cells.length === 1 ? cells[0] : undefined
+  const cell = engine.getCell(range.sheetName, range.startAddress)
+  const value = literalFromCellValue(cell.value)
   return {
     target,
-    ...(!hasValueError && single?.value !== undefined ? { value: single.value } : {}),
-    ...(single !== undefined ? { formula: single.formula ?? null } : {}),
-    ...(!hasValueError ? { values } : {}),
-    formulas,
-    cells,
+    ...(value !== undefined ? { value } : {}),
+    formula: cell.formula ?? null,
+  }
+}
+
+function readbackForName(engine: SpreadsheetEngine, target: WorkbookNameRef): WorkbookRunReadback | null {
+  const definedName = engine.getDefinedName(target.name)
+  if (definedName === undefined) {
+    return null
+  }
+  const range = rangeFromDefinedNameValue(definedName.value)
+  if (range === null || range.startAddress !== range.endAddress || !rangeExists(engine, range)) {
+    return null
+  }
+  const cell = engine.getCell(range.sheetName, range.startAddress)
+  const value = literalFromCellValue(cell.value)
+  return {
+    target,
+    ...(value !== undefined ? { value } : {}),
+    formula: cell.formula ?? null,
+  }
+}
+
+function readbackForColumn(engine: SpreadsheetEngine, target: WorkbookColumnRef): WorkbookRunReadback | null {
+  const cells = cellsFromRef(engine, target)
+  if (cells === null || cells.length !== 1) {
+    return null
+  }
+  const targetCell = cells[0]!
+  const cell = engine.getCell(targetCell.sheetName, targetCell.address)
+  const value = literalFromCellValue(cell.value)
+  return {
+    target,
+    ...(value !== undefined ? { value } : {}),
+    formula: cell.formula ?? null,
   }
 }
 
 function readbackForTarget(engine: SpreadsheetEngine, target: WorkbookRef): WorkbookRunReadback | null {
-  const ranges = rangesFromRef(engine, target)
-  if (ranges === null || !ranges.every((range) => rangeExists(engine, range))) {
-    return null
+  switch (target.kind) {
+    case 'range':
+      return readbackForRange(engine, target)
+    case 'name':
+      return readbackForName(engine, target)
+    case 'column':
+      return readbackForColumn(engine, target)
+    case 'table':
+    case 'rows':
+      return null
   }
-  return readbackForRanges(engine, target, ranges)
 }
 
 function inputReplacementForCell(
@@ -583,78 +510,19 @@ function inputReplacementForCell(
   throw new Error(`Cannot align formula input ${input.label} with ${targetCells.length} target cell(s)`)
 }
 
-interface FormulaReplacement {
-  readonly token: string
-  readonly replacement: string
-}
-
-function formulaQuoteEnd(source: string, startIndex: number, quote: '"' | "'"): number {
-  let index = startIndex + 1
-  while (index < source.length) {
-    const current = source[index]
-    if (current === quote) {
-      if (source[index + 1] === quote) {
-        index += 2
-        continue
-      }
-      return index + 1
-    }
-    index += 1
-  }
-  return source.length
-}
-
-function isFormulaIdentifierChar(value: string | undefined): boolean {
-  return value !== undefined && /[A-Za-z0-9_.$]/.test(value)
-}
-
-function isFormulaTokenBoundary(source: string, index: number, token: string): boolean {
-  const previous = source[index - 1]
-  const next = source[index + token.length]
-  return !isFormulaIdentifierChar(previous) && previous !== ']' && !isFormulaIdentifierChar(next) && next !== '['
-}
-
-function materializeFormulaSource(source: string, replacements: readonly FormulaReplacement[]): string {
-  let output = ''
-  let index = 0
-  const orderedReplacements = replacements.toSorted((left, right) => right.token.length - left.token.length)
-
-  while (index < source.length) {
-    const replacement = orderedReplacements.find(
-      (candidate) => source.startsWith(candidate.token, index) && isFormulaTokenBoundary(source, index, candidate.token),
-    )
-    if (replacement !== undefined) {
-      output += replacement.replacement
-      index += replacement.token.length
-      continue
-    }
-
-    const current = source[index]
-    if (current === '"' || current === "'") {
-      const endIndex = formulaQuoteEnd(source, index, current)
-      output += source.slice(index, endIndex)
-      index = endIndex
-      continue
-    }
-
-    output += current
-    index += 1
-  }
-
-  return output
-}
-
 function formulaForCell(
   engine: SpreadsheetEngine,
   command: Extract<WorkbookActionCommand, { readonly kind: 'writeFormula' }>,
   targetCells: readonly CellTarget[],
   cellIndex: number,
 ): string {
-  const replacements = command.inputs.map((input) => ({
-    token: workbookFormula.source(workbookFormula.ref(input)),
-    replacement: inputReplacementForCell(engine, input, targetCells, cellIndex),
-  }))
-  return materializeFormulaSource(command.formula, replacements)
+  let source = command.formula
+  command.inputs.forEach((input) => {
+    const token = workbookFormula.source(workbookFormula.ref(input))
+    const replacement = inputReplacementForCell(engine, input, targetCells, cellIndex)
+    source = source.replaceAll(token, replacement)
+  })
+  return source
 }
 
 function commandTargetRanges(
@@ -727,55 +595,11 @@ function materializeCommandOps(engine: SpreadsheetEngine, command: WorkbookActio
   }
 }
 
-function canonicalValue(value: unknown): unknown {
-  if (Array.isArray(value)) {
-    return value.map(canonicalValue)
-  }
-  if (typeof value === 'object' && value !== null) {
-    return Object.fromEntries(
-      Object.entries(value)
-        .toSorted(([left], [right]) => left.localeCompare(right))
-        .map(([key, entry]) => [key, canonicalValue(entry)]),
-    )
-  }
-  return value
-}
-
-function opKey(op: EngineOp): string {
-  return JSON.stringify(canonicalValue(op))
-}
-
-function directCommandOps(command: WorkbookActionCommand): readonly EngineOp[] {
-  if (command.kind === 'op') {
-    return [structuredClone(command.op)]
-  }
-  if (command.target.kind !== 'range' || command.target.range.startAddress !== command.target.range.endAddress) {
-    return []
-  }
-  const cell = {
-    sheetName: command.target.range.sheetName,
-    address: command.target.range.startAddress,
-  }
-  switch (command.kind) {
-    case 'writeFormula':
-      return [{ kind: 'setCellFormula', ...cell, formula: command.formula }]
-    case 'writeValue':
-      return [{ kind: 'setCellValue', ...cell, value: command.value }]
-    case 'clear':
-      return [{ kind: 'clearCell', ...cell }]
-    case 'format':
-      return command.numberFormat === undefined ? [] : [{ kind: 'setCellFormat', ...cell, format: command.numberFormat }]
-  }
-}
-
 function materializePlanOps(engine: SpreadsheetEngine, plan: WorkbookActionPlan): readonly EngineOp[] {
   if (plan.commands.length === 0) {
     return plan.ops
   }
-  const commandOps = plan.commands.flatMap((command) => materializeCommandOps(engine, command))
-  const commandOpKeys = new Set([...commandOps, ...plan.commands.flatMap(directCommandOps)].map(opKey))
-  const additionalOps = plan.ops.filter((op) => !commandOpKeys.has(opKey(op)))
-  return [...commandOps, ...additionalOps]
+  return plan.commands.flatMap((command) => materializeCommandOps(engine, command))
 }
 
 function verifyCheck(engine: SpreadsheetEngine, check: WorkbookCheckResult): WorkbookCheckResult {
@@ -783,51 +607,21 @@ function verifyCheck(engine: SpreadsheetEngine, check: WorkbookCheckResult): Wor
     return check
   }
   if (check.kind === 'exists') {
-    const exists = refExists(engine, check.target)
-    return checked(
-      check,
-      exists ? 'passed' : 'failed',
-      runtimeProof(exists ? 'Runtime confirmed the reference exists' : 'Runtime could not resolve the reference', {
-        exists,
-        target: check.target.label,
-      }),
-    )
+    return checked(check, refExists(engine, check.target) ? 'passed' : 'failed')
   }
   if (check.kind === 'noFormulaErrors') {
-    const status = verifyNoFormulaErrors(engine, check.target)
-    return checked(
-      check,
-      status,
-      status === 'planned'
-        ? undefined
-        : runtimeProof(
-            status === 'passed' ? 'Runtime confirmed no formula errors' : 'Runtime found formula errors or could not resolve formulas',
-            {
-              passed: status === 'passed',
-              target: check.target.label,
-            },
-          ),
-    )
+    return checked(check, verifyNoFormulaErrors(engine, check.target))
   }
   return check
 }
 
 export function createWorkbookRunAdapter(engine: SpreadsheetEngine, options: WorkbookRunEngineAdapterOptions = {}): WorkbookRunAdapter {
   return {
-    preview(plan: WorkbookActionPlan) {
-      return {
-        modelName: plan.modelName,
-        actionName: plan.actionName,
-        requirements: describeRuntimeRequirements(plan).requirements,
-        materializedOps: materializePlanOps(engine, plan),
-      }
-    },
     apply(plan: WorkbookActionPlan) {
       try {
         const ops = materializePlanOps(engine, plan)
-        const captureUndo = options.captureUndo ?? true
         const undoOps = engine.applyOps(ops, {
-          captureUndo,
+          captureUndo: options.captureUndo ?? true,
           ...(options.potentialNewCells !== undefined ? { potentialNewCells: options.potentialNewCells } : {}),
           source: 'local',
           trusted: true,
@@ -836,7 +630,6 @@ export function createWorkbookRunAdapter(engine: SpreadsheetEngine, options: Wor
         return {
           status: 'applied',
           ...(undo !== undefined ? { undo } : {}),
-          receipt: coreApplyReceipt(ops, captureUndo, undo),
         }
       } catch (error) {
         return {

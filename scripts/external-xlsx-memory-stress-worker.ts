@@ -1,13 +1,16 @@
 #!/usr/bin/env bun
 
-import { readFileSync } from 'node:fs'
+import { readFileSync, statSync } from 'node:fs'
 import { createRequire } from 'node:module'
 import { basename, resolve } from 'node:path'
 import { pathToFileURL } from 'node:url'
 
 import type { ImportedWorkbook } from '../packages/excel-import/src/workbook-import-result.js'
 import type { XlsxByteSourceImportOptions } from '../packages/excel-import/src/xlsx-byte-source-import.js'
-import type { tryInspectLargeSimpleXlsxHeadless } from '../packages/excel-import/src/xlsx-large-simple-headless-inspect.js'
+import type {
+  tryInspectLargeSimpleXlsxHeadless,
+  tryInspectLargeSimpleXlsxHeadlessAsync,
+} from '../packages/excel-import/src/xlsx-large-simple-headless-inspect.js'
 import type { XlsxZipEntries } from '../packages/excel-import/src/xlsx-zip.js'
 import { readFlagArg, readStringArg } from './public-workbook-corpus-cli.ts'
 import { FileBackedXlsxZipByteSource } from './public-workbook-corpus-xlsx-byte-source.ts'
@@ -25,9 +28,11 @@ interface XlsxByteSourceImportModule {
 }
 
 type TryInspectLargeSimpleXlsxHeadless = typeof tryInspectLargeSimpleXlsxHeadless
+type TryInspectLargeSimpleXlsxHeadlessAsync = typeof tryInspectLargeSimpleXlsxHeadlessAsync
 
 interface LargeSimpleInspectModule {
   readonly tryInspectLargeSimpleXlsxHeadless: TryInspectLargeSimpleXlsxHeadless
+  readonly tryInspectLargeSimpleXlsxHeadlessAsync?: TryInspectLargeSimpleXlsxHeadlessAsync
 }
 
 interface XlsxZipModule {
@@ -46,17 +51,29 @@ export interface ExternalXlsxStressWorkerSummary {
 
 const requireModule = createRequire(import.meta.url)
 const headlessInspectCellThreshold = 1_000_000
+const headlessInspectFormulaFreeCellThreshold = 10_000
+const headlessInspectFormulaFreeByteThreshold = 100 * 1024 * 1024
+const headlessInspectMetadataRichKeyThreshold = 4
+const headlessInspectMetadataRichKeys = new Set([
+  'cellMetadataRefs',
+  'drawingArtifacts',
+  'hyperlinks',
+  'pivotArtifacts',
+  'printerSettings',
+  'richTextArtifacts',
+  'styleRanges',
+])
 let xlsxByteSourceImportModule: XlsxByteSourceImportModule | undefined
 let largeSimpleInspectModule: LargeSimpleInspectModule | undefined
 let xlsxZipModule: XlsxZipModule | undefined
 
-export function runExternalXlsxStressWorker(): void {
+export async function runExternalXlsxStressWorker(): Promise<void> {
   const filePath = resolve(readStringArg('--file', ''))
   const fileName = readStringArg('--file-name', basename(filePath))
   const usePublicImport = readFlagArg('--public-import')
   const summary = usePublicImport
     ? summarizeExternalXlsxImportedWorkbook(importPublicXlsx(readFileSync(filePath), fileName))
-    : summarizeFileBackedXlsx(filePath, fileName)
+    : await summarizeFileBackedXlsx(filePath, fileName)
   collectGarbage()
   process.stdout.write(`${JSON.stringify(summary)}\n`)
 }
@@ -89,9 +106,9 @@ export function summarizeExternalXlsxImportedWorkbook(imported: ImportedWorkbook
   }
 }
 
-function summarizeFileBackedXlsx(filePath: string, fileName: string): ExternalXlsxStressWorkerSummary {
-  const headless = inspectFileBackedXlsxHeadless(filePath, fileName)
-  if (headless && headless.stats.cellCount >= headlessInspectCellThreshold) {
+async function summarizeFileBackedXlsx(filePath: string, fileName: string): Promise<ExternalXlsxStressWorkerSummary> {
+  const headless = await inspectFileBackedXlsxHeadless(filePath, fileName)
+  if (headless && shouldSummarizeFileBackedHeadlessInspect(headless, statSync(filePath).size)) {
     return {
       importMode: 'headless-inspect',
       sheets: headless.sheetNames.length,
@@ -105,17 +122,50 @@ function summarizeFileBackedXlsx(filePath: string, fileName: string): ExternalXl
   return summarizeExternalXlsxImportedWorkbook(importFileBackedXlsx(filePath, fileName))
 }
 
-function inspectFileBackedXlsxHeadless(filePath: string, fileName: string): ReturnType<TryInspectLargeSimpleXlsxHeadless> {
+export function shouldSummarizeFileBackedHeadlessInspect(
+  inspected: ReturnType<TryInspectLargeSimpleXlsxHeadless>,
+  sourceByteLength = 0,
+): boolean {
+  return (
+    inspected !== null &&
+    inspected.stats.cellCount > 0 &&
+    (inspected.stats.cellCount >= headlessInspectCellThreshold ||
+      (inspected.stats.formulaCellCount === 0 &&
+        (inspected.stats.cellCount >= headlessInspectFormulaFreeCellThreshold ||
+          sourceByteLength >= headlessInspectFormulaFreeByteThreshold ||
+          hasMetadataRichHeadlessVisitorEvidence(inspected))))
+  )
+}
+
+function hasMetadataRichHeadlessVisitorEvidence(inspected: NonNullable<ReturnType<TryInspectLargeSimpleXlsxHeadless>>): boolean {
+  if (inspected.sheetMetadataKeys.includes('conditionalFormats')) {
+    return false
+  }
+  let coveredKeyCount = 0
+  for (const key of inspected.sheetMetadataKeys) {
+    if (headlessInspectMetadataRichKeys.has(key)) {
+      coveredKeyCount += 1
+    }
+  }
+  return coveredKeyCount >= headlessInspectMetadataRichKeyThreshold
+}
+
+async function inspectFileBackedXlsxHeadless(filePath: string, fileName: string): Promise<ReturnType<TryInspectLargeSimpleXlsxHeadless>> {
   const source = new FileBackedXlsxZipByteSource(filePath)
   try {
     const zip = loadXlsxZipModule().readXlsxZipEntriesLazyFromByteSource(source)
-    return zip
-      ? loadLargeSimpleInspectModule().tryInspectLargeSimpleXlsxHeadless({ byteLength: source.byteLength }, fileName, zip, {
-          allowUnsupportedWorksheetFeaturesForMetrics: true,
-          minByteLength: 0,
-          releaseZipSource: true,
-        })
-      : null
+    if (!zip) {
+      return null
+    }
+    const inspectModule = loadLargeSimpleInspectModule()
+    const inspect = inspectModule.tryInspectLargeSimpleXlsxHeadlessAsync ?? inspectModule.tryInspectLargeSimpleXlsxHeadless
+    return await inspect({ byteLength: source.byteLength }, fileName, zip, {
+      allowUnsupportedWorksheetFeaturesForMetrics: true,
+      afterWorksheetChunkBatch: collectGarbage,
+      afterWorksheetScan: collectGarbage,
+      minByteLength: 0,
+      releaseZipSource: true,
+    })
   } finally {
     source.release()
   }
@@ -170,7 +220,12 @@ function readXlsxByteSourceImportModule(value: unknown): XlsxByteSourceImportMod
 
 function readLargeSimpleInspectModule(value: unknown): LargeSimpleInspectModule {
   if (isRecord(value) && typeof value['tryInspectLargeSimpleXlsxHeadless'] === 'function') {
-    return { tryInspectLargeSimpleXlsxHeadless: value['tryInspectLargeSimpleXlsxHeadless'] }
+    return {
+      tryInspectLargeSimpleXlsxHeadless: value['tryInspectLargeSimpleXlsxHeadless'],
+      ...(typeof value['tryInspectLargeSimpleXlsxHeadlessAsync'] === 'function'
+        ? { tryInspectLargeSimpleXlsxHeadlessAsync: value['tryInspectLargeSimpleXlsxHeadlessAsync'] }
+        : {}),
+    }
   }
   throw new Error('Large-simple XLSX inspect module is missing required exports')
 }
@@ -199,7 +254,7 @@ function collectGarbage(): void {
 
 if (process.argv[1] && pathToFileURL(resolve(process.argv[1])).href === import.meta.url) {
   try {
-    runExternalXlsxStressWorker()
+    await runExternalXlsxStressWorker()
   } catch (error) {
     process.stderr.write(`${error instanceof Error ? error.message : String(error)}\n`)
     process.exit(1)

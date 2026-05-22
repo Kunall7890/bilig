@@ -14,6 +14,7 @@ import { EngineTraversalError } from '../errors.js'
 import type { RegionGraph } from '../../deps/region-graph.js'
 import { CellFlags } from '../../cell-store.js'
 import { ErrorCode, ValueTag, type CellValue } from '@bilig/protocol'
+import { aggregateColumnDependencyKey, collectIndexedDirectAggregateColumnDependentsForRow } from './formula-binding-dependency-helpers.js'
 
 const INITIAL_TRAVERSAL_SCRATCH_CAPACITY = 16
 const DIRECT_CRITERIA_AGGREGATE_FORMULA_DEPENDENCY_CACHE_LIMIT = 16_384
@@ -55,6 +56,7 @@ export function createEngineTraversalService(args: {
   readonly reverseState: {
     reverseCellEdges: Array<EdgeSlice | undefined>
     reverseRangeEdges: Array<EdgeSlice | undefined>
+    reverseAggregateColumnEdges: Map<number, Set<number>>
     reverseExactLookupColumnEdges: Map<number, EdgeSlice>
     reverseSortedLookupColumnEdges: Map<number, EdgeSlice>
   }
@@ -521,6 +523,15 @@ export function createEngineTraversalService(args: {
     let entityQueueLength = 1
     let formulaCount = 0
     topoEntityQueue[0] = entityId
+    const pushFormulaDependent = (formulaCellIndex: number): void => {
+      if (topoFormulaSeen[formulaCellIndex] === topoFormulaSeenEpoch) {
+        return
+      }
+      topoFormulaSeen[formulaCellIndex] = topoFormulaSeenEpoch
+      ensureFormulaBufferCapacity(formulaCount + 1)
+      topoFormulaBuffer[formulaCount] = formulaCellIndex
+      formulaCount += 1
+    }
 
     for (let queueIndex = 0; queueIndex < entityQueueLength; queueIndex += 1) {
       const currentEntity = topoEntityQueue[queueIndex]!
@@ -531,17 +542,21 @@ export function createEngineTraversalService(args: {
         if (sheetId !== undefined && position) {
           const regionDependents = args.regionGraph.collectFormulaDependentsForCell(sheetId, position.row, position.col)
           for (let index = 0; index < regionDependents.length; index += 1) {
-            const formulaCellIndex = regionDependents[index]!
-            if (topoFormulaSeen[formulaCellIndex] === topoFormulaSeenEpoch) {
-              continue
-            }
-            topoFormulaSeen[formulaCellIndex] = topoFormulaSeenEpoch
-            ensureFormulaBufferCapacity(formulaCount + 1)
-            topoFormulaBuffer[formulaCount] = formulaCellIndex
-            formulaCount += 1
+            pushFormulaDependent(regionDependents[index]!)
           }
         }
         if (sheetId !== undefined && position) {
+          const aggregateDependents = args.reverseState.reverseAggregateColumnEdges.get(aggregateColumnDependencyKey(sheetId, position.col))
+          if (aggregateDependents) {
+            const indexedAggregateDependents = collectIndexedDirectAggregateColumnDependentsForRow(aggregateDependents, position.row)
+            if (indexedAggregateDependents) {
+              for (let index = 0; index < indexedAggregateDependents.length; index += 1) {
+                pushFormulaDependent(indexedAggregateDependents[index]!)
+              }
+            } else {
+              aggregateDependents.forEach((formulaCellIndex) => pushFormulaDependent(formulaCellIndex))
+            }
+          }
           const exactLookupEntity = makeExactLookupColumnEntity(sheetId, position.col)
           const sortedLookupEntity = makeSortedLookupColumnEntity(sheetId, position.col)
           ensureEntityQueueCapacity(entityQueueLength + 2)
@@ -555,14 +570,7 @@ export function createEngineTraversalService(args: {
       for (let index = 0; index < dependents.length; index += 1) {
         const dependent = dependents[index]!
         if (!(isRangeEntity(dependent) || isExactLookupColumnEntity(dependent) || isSortedLookupColumnEntity(dependent))) {
-          const formulaCellIndex = entityPayload(dependent)
-          if (topoFormulaSeen[formulaCellIndex] === topoFormulaSeenEpoch) {
-            continue
-          }
-          topoFormulaSeen[formulaCellIndex] = topoFormulaSeenEpoch
-          ensureFormulaBufferCapacity(formulaCount + 1)
-          topoFormulaBuffer[formulaCount] = formulaCellIndex
-          formulaCount += 1
+          pushFormulaDependent(entityPayload(dependent))
           continue
         }
         if (isRangeEntity(dependent)) {

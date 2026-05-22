@@ -55,35 +55,6 @@ describe('operation column dependency tracker', () => {
     expect(createTracker().hasTrackedColumnDependents(7, 3)).toBe(false)
   })
 
-  it('uses aggregate reverse edges before probing region subscriptions', () => {
-    let regionProbeCount = 0
-    const aggregateEdges = new Map([[aggregateColumnDependencyKey(7, 3), new Set([20])]])
-    const tracker = createOperationColumnDependencyTrackerService({
-      reverseState: {
-        reverseCellEdges: [],
-        reverseExactLookupColumnEdges: new Map(),
-        reverseSortedLookupColumnEdges: new Map(),
-        reverseAggregateColumnEdges: aggregateEdges,
-      },
-      workbook: {
-        getSheetNameById: () => {
-          throw new Error('aggregate edges should avoid sheet-name lookup')
-        },
-      },
-      hasRegionFormulaSubscriptionsForColumnAt: () => {
-        regionProbeCount += 1
-        return false
-      },
-      hasRegionFormulaSubscriptionsForColumn: () => {
-        throw new Error('aggregate edges should avoid region subscription lookup')
-      },
-      hasRegionFormulaSubscriptions: () => false,
-    })
-
-    expect(tracker.hasTrackedDirectRangeDependents(7, 3)).toBe(true)
-    expect(regionProbeCount).toBe(0)
-  })
-
   it('detects whether any tracked column dependencies exist globally', () => {
     expect(createTracker().hasTrackedColumnDependentsAnywhere()).toBe(false)
     expect(createTracker({ exact: true }).hasTrackedColumnDependentsAnywhere()).toBe(true)

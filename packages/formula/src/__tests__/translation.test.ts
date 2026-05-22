@@ -231,7 +231,7 @@ describe('translateFormulaReferences', () => {
         count: 1,
         target: 1,
       }),
-    ).toEqual({ startAddress: 'E1', endAddress: 'E1' })
+    ).toEqual({ startAddress: 'B1', endAddress: 'E1' })
     expect(
       rewriteRangeForStructuralTransform('B1', 'D1', {
         kind: 'move',
@@ -490,7 +490,7 @@ describe('translateFormulaReferences', () => {
         count: 2,
         target: 1,
       }),
-    ).toBe('SUM(7:7)')
+    ).toBe('SUM(2:7)')
     expect(
       rewriteFormulaForStructuralTransform('SUM(5:6)', 'Sheet1', 'Sheet1', {
         kind: 'delete',
@@ -737,17 +737,17 @@ describe('translateFormulaReferences', () => {
       count: 2,
       target: 1,
     })
-    expect(rowRewritten.source).toBe('SUM(7:7)')
+    expect(rowRewritten.source).toBe('SUM(2:7)')
     expect(rowRewritten.reusedProgram).toBe(true)
-    expect(rowRewritten.compiled.deps).toEqual(['7:7'])
-    expect(rowRewritten.compiled.symbolicRanges).toEqual(['7:7'])
+    expect(rowRewritten.compiled.deps).toEqual(['2:7'])
+    expect(rowRewritten.compiled.symbolicRanges).toEqual(['2:7'])
     expect(rowRewritten.compiled.jsPlan).toEqual([
-      { opcode: 'push-range', start: '7', end: '7', refKind: 'rows' },
+      { opcode: 'push-range', start: '2', end: '7', refKind: 'rows' },
       {
         opcode: 'call',
         callee: 'SUM',
         argc: 1,
-        argRefs: [{ kind: 'range', start: '7', end: '7', refKind: 'rows' }],
+        argRefs: [{ kind: 'range', start: '2', end: '7', refKind: 'rows' }],
       },
       { opcode: 'return' },
     ])

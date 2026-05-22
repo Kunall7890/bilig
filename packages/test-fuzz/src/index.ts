@@ -4,25 +4,34 @@ import { dirname, resolve } from 'node:path'
 import * as fc from 'fast-check'
 import type { AsyncCommand, IAsyncProperty, IProperty, Parameters, RunDetails, Scheduler } from 'fast-check'
 
-export * from './workbook-arbitraries.js'
-export * from './paths.js'
-
-export type FuzzProfile = 'fuzz' | 'replay'
-export type FuzzSuiteKind = 'property' | 'model' | 'scheduled' | 'byte'
+export type FuzzProfile = 'default' | 'main' | 'nightly' | 'replay'
+export type FuzzSuiteKind = 'property' | 'model' | 'scheduled' | 'browser'
 
 interface BudgetProfile {
   property: { numRuns: number; maxMs: number }
   model: { numRuns: number; maxMs: number }
   scheduled: { numRuns: number; maxMs: number }
-  byte: { numRuns: number; maxMs: number }
+  browser: { numRuns: number; maxMs: number }
 }
 
 const BUDGETS: Record<Exclude<FuzzProfile, 'replay'>, BudgetProfile> = {
-  fuzz: {
-    property: { numRuns: 1_000, maxMs: 300_000 },
-    model: { numRuns: 160, maxMs: 300_000 },
-    scheduled: { numRuns: 80, maxMs: 180_000 },
-    byte: { numRuns: 20_000, maxMs: 120_000 },
+  default: {
+    property: { numRuns: 50, maxMs: 10_000 },
+    model: { numRuns: 10, maxMs: 15_000 },
+    scheduled: { numRuns: 4, maxMs: 4_000 },
+    browser: { numRuns: 5, maxMs: 20_000 },
+  },
+  main: {
+    property: { numRuns: 200, maxMs: 30_000 },
+    model: { numRuns: 40, maxMs: 30_000 },
+    scheduled: { numRuns: 12, maxMs: 12_000 },
+    browser: { numRuns: 15, maxMs: 30_000 },
+  },
+  nightly: {
+    property: { numRuns: 2_000, maxMs: 120_000 },
+    model: { numRuns: 200, maxMs: 120_000 },
+    scheduled: { numRuns: 60, maxMs: 60_000 },
+    browser: { numRuns: 75, maxMs: 120_000 },
   },
 }
 
@@ -148,19 +157,16 @@ function serializeArtifactValue(value: unknown): unknown {
 
 function resolveFuzzProfile(): FuzzProfile {
   const raw = process.env['BILIG_FUZZ_PROFILE']
-  if (raw === undefined || raw === 'fuzz') {
-    return 'fuzz'
-  }
-  if (raw === 'replay') {
+  if (raw === 'main' || raw === 'nightly' || raw === 'replay') {
     return raw
   }
-  throw new Error(`BILIG_FUZZ_PROFILE must be "fuzz" or "replay" when set, got ${raw}`)
+  return 'default'
 }
 
 function resolveBudget(kind: FuzzSuiteKind): { numRuns: number; maxMs: number } {
   const profile = resolveFuzzProfile()
-  const baseProfile = profile === 'replay' ? 'fuzz' : profile
-  return BUDGETS[baseProfile][kind]
+  const baseProfile = profile === 'replay' ? 'main' : profile
+  return BUDGETS[baseProfile][kind === 'browser' ? 'browser' : kind]
 }
 
 function resolveReplayFixturePath(): string | null {
@@ -258,26 +264,7 @@ export function shouldRunFuzzSuite(suite: string, kind?: string): boolean {
   if (kind && selector.kind && selector.kind !== kind) {
     return false
   }
-  markReplaySuiteHit(selector, suite, kind ?? null)
   return true
-}
-
-function markReplaySuiteHit(selector: ReplaySelector, suite: string, kind: string | null): void {
-  const hitFile = process.env['BILIG_FUZZ_REPLAY_HIT_FILE']
-  if (!selector.enabled || !hitFile) {
-    return
-  }
-  mkdirSync(dirname(resolve(hitFile)), { recursive: true })
-  writeFileSync(
-    resolve(hitFile),
-    `${JSON.stringify({
-      suite,
-      kind,
-      replayFilePath: selector.filePath,
-      matchedAt: new Date().toISOString(),
-    })}\n`,
-    'utf8',
-  )
 }
 
 function resolveParameters<Ts extends unknown[]>(suite: string, kind: FuzzSuiteKind, overrides?: FuzzParameters<Ts>): FuzzParameters<Ts> {
@@ -340,7 +327,7 @@ export function captureCounterexample<Ts extends unknown[]>(options: CaptureCoun
     counterexample: serializeArtifactValue(options.details.counterexample ?? null),
     failures: serializeArtifactValue(options.details.failures ?? null),
     error: serializeArtifactValue(options.details.errorInstance ?? null),
-    reproductionCommand: `pnpm test:fuzz -- replay ${artifactPath}`,
+    reproductionCommand: `pnpm test:fuzz:replay -- ${artifactPath}`,
     createdAt: new Date().toISOString(),
   }
   mkdirSync(dirname(artifactPath), { recursive: true })
@@ -421,10 +408,6 @@ async function runChecked<Ts extends unknown[]>(
     throw new Error(
       `Fuzz suite ${suite} failed with seed=${details.seed} path=${details.counterexamplePath ?? 'n/a'}${artifactPath ? ` artifact=${artifactPath}` : ''}`,
     )
-  }
-
-  if (details.numRuns <= 0) {
-    throw new Error(`Fuzz suite ${suite} ran zero cases; check generators, replay selector, or fuzz parameters.`)
   }
 
   return true

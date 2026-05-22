@@ -288,6 +288,7 @@ describe('runtime release helpers', () => {
     expect(manifest.exports['./xlsx']).toEqual({
       types: './dist/xlsx.d.ts',
       import: './dist/xlsx.js',
+      default: './dist/xlsx.js',
     })
     expect(manifest.dependencies).not.toHaveProperty('@bilig/excel-import')
     expect(manifest.dependencies).toMatchObject({

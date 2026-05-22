@@ -12,7 +12,7 @@ import {
   validateExternalXlsxStressPlan,
   type ExternalXlsxStressPlan,
 } from '../external-xlsx-memory-stress.ts'
-import { summarizeExternalXlsxImportedWorkbook } from '../external-xlsx-memory-stress-worker.ts'
+import { shouldSummarizeFileBackedHeadlessInspect, summarizeExternalXlsxImportedWorkbook } from '../external-xlsx-memory-stress-worker.ts'
 import { asRecord } from '../public-workbook-corpus-json.ts'
 
 describe('external XLSX memory stress plan', () => {
@@ -150,6 +150,162 @@ describe('external XLSX memory stress plan', () => {
       workbookMetadataKeys: ['tables'],
       sheetMetadataKeys: ['columns'],
     })
+  })
+
+  it('uses the file-backed headless summary for formula-free large-simple workbooks even below the cell-heavy threshold', () => {
+    expect(
+      shouldSummarizeFileBackedHeadlessInspect(
+        {
+          workbookName: 'metadata-heavy.xlsx',
+          sheetNames: ['Data'],
+          warnings: ['External pivot caches were detected but not semantically imported during XLSX import.'],
+          workbookMetadataKeys: ['pivotArtifacts'],
+          sheetMetadataKeys: ['printPageSetup'],
+          stats: {
+            sheetCount: 1,
+            cellCount: 37_062,
+            formulaCellCount: 0,
+            valueCellCount: 37_062,
+            definedNameCount: 0,
+            tableCount: 0,
+            mergeCount: 0,
+            conditionalFormatCount: 0,
+            dataValidationCount: 0,
+            warningCount: 1,
+            dimensions: [],
+            phaseTelemetry: [],
+          },
+        },
+        512 * 1024,
+      ),
+    ).toBe(true)
+    expect(
+      shouldSummarizeFileBackedHeadlessInspect({
+        workbookName: 'formula-small.xlsx',
+        sheetNames: ['Data'],
+        warnings: [],
+        workbookMetadataKeys: [],
+        sheetMetadataKeys: [],
+        stats: {
+          sheetCount: 1,
+          cellCount: 37_062,
+          formulaCellCount: 12,
+          valueCellCount: 37_062,
+          definedNameCount: 0,
+          tableCount: 0,
+          mergeCount: 0,
+          conditionalFormatCount: 0,
+          dataValidationCount: 0,
+          warningCount: 0,
+          dimensions: [],
+          phaseTelemetry: [],
+        },
+      }),
+    ).toBe(false)
+    expect(
+      shouldSummarizeFileBackedHeadlessInspect(
+        {
+          workbookName: 'tiny-complex.xlsx',
+          sheetNames: ['Data'],
+          warnings: ['External pivot caches were detected but not semantically imported during XLSX import.'],
+          workbookMetadataKeys: ['pivotArtifacts'],
+          sheetMetadataKeys: [],
+          stats: {
+            sheetCount: 1,
+            cellCount: 597,
+            formulaCellCount: 0,
+            valueCellCount: 597,
+            definedNameCount: 0,
+            tableCount: 0,
+            mergeCount: 0,
+            conditionalFormatCount: 0,
+            dataValidationCount: 0,
+            warningCount: 1,
+            dimensions: [],
+            phaseTelemetry: [],
+          },
+        },
+        5 * 1024 * 1024,
+      ),
+    ).toBe(false)
+    expect(
+      shouldSummarizeFileBackedHeadlessInspect(
+        {
+          workbookName: 'tiny-metadata-rich.xlsx',
+          sheetNames: ['Data'],
+          warnings: [],
+          workbookMetadataKeys: ['dataModelArtifacts', 'styles'],
+          sheetMetadataKeys: ['drawingArtifacts', 'hyperlinks', 'printerSettings', 'richTextArtifacts', 'styleRanges'],
+          stats: {
+            sheetCount: 1,
+            cellCount: 12,
+            formulaCellCount: 0,
+            valueCellCount: 12,
+            definedNameCount: 0,
+            tableCount: 0,
+            mergeCount: 0,
+            conditionalFormatCount: 0,
+            dataValidationCount: 0,
+            warningCount: 0,
+            dimensions: [],
+            phaseTelemetry: [],
+          },
+        },
+        2 * 1024 * 1024,
+      ),
+    ).toBe(true)
+    expect(
+      shouldSummarizeFileBackedHeadlessInspect(
+        {
+          workbookName: 'tiny-conditional-format-artifacts.xlsx',
+          sheetNames: ['Data'],
+          warnings: [],
+          workbookMetadataKeys: [],
+          sheetMetadataKeys: ['conditionalFormats', 'drawingArtifacts', 'printerSettings', 'richTextArtifacts', 'styleRanges'],
+          stats: {
+            sheetCount: 1,
+            cellCount: 12,
+            formulaCellCount: 0,
+            valueCellCount: 12,
+            definedNameCount: 0,
+            tableCount: 0,
+            mergeCount: 0,
+            conditionalFormatCount: 1,
+            dataValidationCount: 0,
+            warningCount: 0,
+            dimensions: [],
+            phaseTelemetry: [],
+          },
+        },
+        2 * 1024 * 1024,
+      ),
+    ).toBe(false)
+    expect(
+      shouldSummarizeFileBackedHeadlessInspect(
+        {
+          workbookName: 'giant-package.xlsx',
+          sheetNames: ['Data'],
+          warnings: ['External pivot caches were detected but not semantically imported during XLSX import.'],
+          workbookMetadataKeys: ['pivotArtifacts'],
+          sheetMetadataKeys: [],
+          stats: {
+            sheetCount: 1,
+            cellCount: 735,
+            formulaCellCount: 0,
+            valueCellCount: 735,
+            definedNameCount: 0,
+            tableCount: 0,
+            mergeCount: 0,
+            conditionalFormatCount: 0,
+            dataValidationCount: 0,
+            warningCount: 1,
+            dimensions: [],
+            phaseTelemetry: [],
+          },
+        },
+        221 * 1024 * 1024,
+      ),
+    ).toBe(true)
   })
 })
 

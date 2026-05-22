@@ -57,7 +57,6 @@ export interface EvaluationContext {
   noteExactLookupDirect?: () => void
   noteExactLookupFallback?: () => void
   isRowHidden?: (sheetName: string, rowIndex: number) => boolean
-  isRowFiltered?: (sheetName: string, rowIndex: number) => boolean
   listSheetNames?: () => string[]
   resolveBuiltin?: (name: string) => ((...args: CellValue[]) => EvaluationResult) | undefined
   resolveLookupBuiltin?: (name: string) => LookupBuiltin | undefined

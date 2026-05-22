@@ -91,13 +91,7 @@ export function countOperationPostRecalcDirectFormulaMetric(input: {
   readonly counts: DirectFormulaMetricCounts
 }): void {
   const formula = input.formulas.get(input.cellIndex)
-  if (
-    !formula ||
-    (formula.directScalar === undefined &&
-      formula.directAggregate === undefined &&
-      formula.directCriteria === undefined &&
-      formula.directLookup === undefined)
-  ) {
+  if (!formula || (formula.directScalar === undefined && formula.directAggregate === undefined && formula.directCriteria === undefined)) {
     return
   }
   if (formula.compiled.mode === FormulaMode.WasmFastPath) {
@@ -118,10 +112,6 @@ export function tryApplySinglePostRecalcDirectFormula(
   if (isCycleFormulaCell(args, cellIndex)) {
     return undefined
   }
-  const formula = args.state.formulas.get(cellIndex)
-  if (!isActivePostRecalcDirectFormula(formula)) {
-    return undefined
-  }
   const currentResult = args.collection.getCurrentResultAt(0)
   if (currentResult !== undefined) {
     return args.applyDirectFormulaCurrentResult(cellIndex, currentResult)
@@ -129,6 +119,10 @@ export function tryApplySinglePostRecalcDirectFormula(
         ? Uint32Array.of(cellIndex)
         : EMPTY_CHANGED_CELLS
       : undefined
+  }
+  const formula = args.state.formulas.get(cellIndex)
+  if (!isActivePostRecalcDirectFormula(formula)) {
+    return undefined
   }
   const delta = args.collection.getDeltaAt(0)
   if (delta !== undefined) {
@@ -162,7 +156,7 @@ function applyDirectFormulaFallbacks(args: ApplyPostRecalcDirectFormulaChangesAr
         return
       }
       const formula = args.state.formulas.get(cellIndex)
-      if (!isActivePostRecalcDirectFormula(formula)) {
+      if (formula === undefined) {
         return
       }
       const currentResult = args.collection.getCurrentResultAt(directIndex)

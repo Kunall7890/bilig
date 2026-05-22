@@ -42,54 +42,6 @@ describe('table totals and style import/export', () => {
       '<tableStyleInfo name="TableStyleMedium9" showFirstColumn="0" showLastColumn="1" showRowStripes="1" showColumnStripes="0"/>',
     )
   })
-
-  it('does not infer a visible totals row from hidden totals-column metadata alone', () => {
-    const snapshot: WorkbookSnapshot = {
-      version: 1,
-      workbook: {
-        name: 'hidden-totals-metadata',
-        metadata: {
-          tables: [
-            {
-              name: 'HiddenTotalsTable',
-              sheetName: 'Revenue',
-              startAddress: 'A1',
-              endAddress: 'C3',
-              columnNames: ['Account', 'Amount', 'Notes'],
-              columns: [{ name: 'Account' }, { name: 'Amount', totalsRowFunction: 'sum' }, { name: 'Notes', totalsRowLabel: 'Reviewed' }],
-              headerRow: true,
-              totalsRow: false,
-            },
-          ],
-        },
-      },
-      sheets: [
-        {
-          id: 1,
-          name: 'Revenue',
-          order: 0,
-          cells: [
-            { address: 'A1', value: 'Account' },
-            { address: 'B1', value: 'Amount' },
-            { address: 'C1', value: 'Notes' },
-            { address: 'A2', value: 'Services' },
-            { address: 'B2', value: 1200 },
-            { address: 'C2', value: 'Open' },
-            { address: 'A3', value: 'Licenses' },
-            { address: 'B3', value: 900 },
-            { address: 'C3', value: 'Reviewed' },
-          ],
-        },
-      ],
-    }
-
-    const imported = importXlsx(exportXlsx(snapshot), 'hidden-totals-metadata.xlsx')
-
-    expect(imported.snapshot.workbook.metadata?.tables?.[0]).toMatchObject({
-      columns: [{ name: 'Account' }, { name: 'Amount', totalsRowFunction: 'sum' }, { name: 'Notes', totalsRowLabel: 'Reviewed' }],
-      totalsRow: false,
-    })
-  })
 })
 
 function buildTableTotalsStyleWorkbookBytes(): Uint8Array {

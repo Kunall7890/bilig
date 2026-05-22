@@ -4,19 +4,18 @@ import type { GridGeometrySnapshot } from '../gridGeometry.js'
 import type { GridHeaderPaneState } from '../gridHeaderPanes.js'
 import type { Rectangle } from '../gridTypes.js'
 import type { GridCameraStore } from '../runtime/gridCameraStore.js'
-import type { WorkbookVisibleRenderProof } from '../workbookVisibleRenderProof.js'
 import type { WorkbookGridScrollStore } from '../workbookGridScrollStore.js'
 export { TYPEGPU_V3_ACTIVE_RESOURCE_DEFER_MS, GridDrawSchedulerV3, shouldDeferTypeGpuV3PreloadSync } from './draw-scheduler.js'
 export { resolveTypeGpuV3DrawScrollSnapshot } from './workbook-pane-renderer-runtime.js'
 import type { DynamicGridOverlayBatchV3 } from './dynamic-overlay-batch.js'
 import type { WorkbookRenderTilePaneState } from './render-tile-pane-state.js'
 import { WorkbookPaneNativeRectLayerV3 } from './WorkbookPaneNativeRectLayerV3.js'
-import { WorkbookPaneNativeTextLayerV3, type SuppressedNativeTextCellV3 } from './WorkbookPaneNativeTextLayerV3.js'
 import {
-  WorkbookPaneRendererHostRuntimeV3,
-  resolveWorkbookPaneFrameProofSignatureV3,
-  resolveWorkbookPaneVisiblePayloadProofV3,
-} from './workbook-pane-renderer-host-runtime.js'
+  WorkbookPaneNativeTextLayerV3,
+  resolveNativeTextRunSelectionOccludedClipV3,
+  type SuppressedNativeTextCellV3,
+} from './WorkbookPaneNativeTextLayerV3.js'
+import { WorkbookPaneRendererHostRuntimeV3 } from './workbook-pane-renderer-host-runtime.js'
 
 export interface WorkbookPaneRendererV3Props {
   readonly active: boolean
@@ -32,7 +31,6 @@ export interface WorkbookPaneRendererV3Props {
   readonly scrollTransformStore?: WorkbookGridScrollStore | null
   readonly selectionOcclusionRanges?: readonly Pick<Rectangle, 'x' | 'y' | 'width' | 'height'>[] | null | undefined
   readonly suppressedTextCell?: SuppressedNativeTextCellV3 | null | undefined
-  readonly onVisibleRenderProofChange?: ((proof: WorkbookVisibleRenderProof | null) => void) | undefined
 }
 
 export const WorkbookPaneRendererV3 = memo(function WorkbookPaneRendererV3({
@@ -43,7 +41,6 @@ export const WorkbookPaneRendererV3 = memo(function WorkbookPaneRendererV3({
   host,
   overlay,
   overlayBuilder,
-  onVisibleRenderProofChange,
   preloadTilePanes = [],
   renderRevisionSnapshot = null,
   scrollTransformStore = null,
@@ -71,11 +68,6 @@ export const WorkbookPaneRendererV3 = memo(function WorkbookPaneRendererV3({
     hostRuntime.subscribeFrameProofStatus,
     hostRuntime.getFrameProofSignatureSnapshot,
     hostRuntime.getFrameProofSignatureSnapshot,
-  )
-  const currentSceneOwnershipSignature = useSyncExternalStore(
-    hostRuntime.subscribeFrameProofStatus,
-    hostRuntime.getFrameSceneOwnershipSignatureSnapshot,
-    hostRuntime.getFrameSceneOwnershipSignatureSnapshot,
   )
   const hasPresentedFrame = useSyncExternalStore(
     hostRuntime.subscribeFrameProofStatus,
@@ -114,40 +106,16 @@ export const WorkbookPaneRendererV3 = memo(function WorkbookPaneRendererV3({
   const tileTextRunCount = countTilePaneTextRunsV3(typeGpuTilePanes)
   const showTypeGpuCanvas = backendStatus !== 'unavailable'
   const nativeLayerSource = showTypeGpuCanvas ? 'none' : 'backend-unavailable-live'
-  const presentedHeaderPanes = presentedVisualFrame?.headerPanes ?? EMPTY_HEADER_PANES_V3
-  const presentedTilePanes = presentedVisualFrame?.tilePanes ?? EMPTY_TILE_PANES_V3
-  const presentedSceneOwnershipSignature = presentedVisualFrame?.sceneOwnershipSignature ?? ''
-  const nativeHeaderPanes = showTypeGpuCanvas ? EMPTY_HEADER_PANES_V3 : headerPanes
-  const nativeTilePanes = showTypeGpuCanvas ? EMPTY_TILE_PANES_V3 : tilePanes
+  const presentedHeaderPanes = presentedVisualFrame?.headerPanes ?? []
+  const presentedTilePanes = presentedVisualFrame?.tilePanes ?? []
+  const nativeHeaderPanes = showTypeGpuCanvas ? [] : headerPanes
+  const nativeTilePanes = showTypeGpuCanvas ? [] : tilePanes
   const presentedHeaderTextRunCount = countHeaderPaneTextRunsV3(presentedHeaderPanes)
   const presentedTileTextRunCount = countTilePaneTextRunsV3(presentedTilePanes)
   const nativeHeaderTextRunCount = countHeaderPaneTextRunsV3(nativeHeaderPanes)
   const nativeTileTextRunCount = countTilePaneTextRunsV3(nativeTilePanes)
   const hasNativeTextLayerRuns = nativeHeaderTextRunCount + nativeTileTextRunCount > 0
   const showNativeTextLayer = active && hasNativeTextLayerRuns
-  const semanticFrameInputSignature = resolveWorkbookPaneFrameProofSignatureV3({
-    drawText: true,
-    headerPanes,
-    overlay: overlay ?? null,
-    renderRevisionSnapshot,
-    tilePanes,
-  })
-  const currentPayloadProof = useMemo(
-    () =>
-      resolveWorkbookPaneVisiblePayloadProofV3({
-        headerPanes,
-        tilePanes: typeGpuTilePanes,
-      }),
-    [headerPanes, typeGpuTilePanes],
-  )
-  const presentedPayloadProof = useMemo(
-    () =>
-      resolveWorkbookPaneVisiblePayloadProofV3({
-        headerPanes: presentedHeaderPanes,
-        tilePanes: presentedTilePanes,
-      }),
-    [presentedHeaderPanes, presentedTilePanes],
-  )
 
   useLayoutEffect(() => {
     hostRuntime.updateProps({
@@ -175,7 +143,6 @@ export const WorkbookPaneRendererV3 = memo(function WorkbookPaneRendererV3({
     overlayBuilder,
     preloadTilePanes,
     renderRevisionSnapshot,
-    semanticFrameInputSignature,
     scrollTransformStore,
     typeGpuTilePanes,
   ])
@@ -196,77 +163,19 @@ export const WorkbookPaneRendererV3 = memo(function WorkbookPaneRendererV3({
     }
   }, [hostRuntime])
 
-  const tileSceneRevision = resolveWorkbookPaneTileSceneRevisionV3(typeGpuTilePanes)
-  const tileSceneCameraSeq = resolveWorkbookPaneTileSceneCameraSeqV3(typeGpuTilePanes)
-  const visibleProof = resolveWorkbookPanePresentedRenderProofV3(frameProofStatus, presentedVisualFrame)
-  const visibleRenderProof = useMemo<WorkbookVisibleRenderProof | null>(() => {
-    if (!active || !host) {
-      return null
-    }
-    const surface = presentedVisualFrame?.surface ?? null
-    return {
-      mode: showTypeGpuCanvas ? 'typegpu-v3' : 'typegpu-v3-unavailable',
-      backendStatus,
-      frameProofStatus,
-      hasPresentedFrame,
-      hasPresentedVisibleFrame,
-      frameProofSignature,
-      presentedFrameProofSignature,
-      currentSceneOwnershipSignature,
-      presentedSceneOwnershipSignature,
-      authoritativeRevision: visibleProof.authoritativeRevision,
-      localRevision: visibleProof.localRevision,
-      projectedRevision: visibleProof.projectedRevision,
-      visibleRenderRevision: visibleProof.tileSceneRevision,
-      tileSceneRevision,
-      tileSceneCameraSeq,
-      currentTilePaneCount: typeGpuTilePanes.length,
-      currentHeaderPaneCount: headerPanes.length,
-      presentedTilePaneCount: presentedTilePanes.length,
-      presentedHeaderPaneCount: presentedHeaderPanes.length,
-      surfaceWidth: surface?.width ?? 0,
-      surfaceHeight: surface?.height ?? 0,
-      surfacePixelWidth: surface?.pixelWidth ?? 0,
-      surfacePixelHeight: surface?.pixelHeight ?? 0,
-      devicePixelRatio: surface?.dpr ?? 1,
-      capturedAtUnixMs: Date.now(),
-    }
-  }, [
-    active,
-    backendStatus,
-    frameProofSignature,
-    frameProofStatus,
-    hasPresentedFrame,
-    hasPresentedVisibleFrame,
-    currentSceneOwnershipSignature,
-    headerPanes.length,
-    host,
-    presentedFrameProofSignature,
-    presentedHeaderPanes.length,
-    presentedTilePanes.length,
-    presentedVisualFrame?.surface,
-    presentedSceneOwnershipSignature,
-    showTypeGpuCanvas,
-    tileSceneCameraSeq,
-    tileSceneRevision,
-    typeGpuTilePanes.length,
-    visibleProof.authoritativeRevision,
-    visibleProof.localRevision,
-    visibleProof.projectedRevision,
-    visibleProof.tileSceneRevision,
-  ])
-  useEffect(() => {
-    onVisibleRenderProofChange?.(visibleRenderProof)
-  }, [onVisibleRenderProofChange, visibleRenderProof])
-  useEffect(() => {
-    return () => {
-      onVisibleRenderProofChange?.(null)
-    }
-  }, [onVisibleRenderProofChange])
-
   if (!active || !host) {
     return null
   }
+  const tileSceneRevision = resolveWorkbookPaneTileSceneRevisionV3(typeGpuTilePanes)
+  const tileSceneCameraSeq = resolveWorkbookPaneTileSceneCameraSeqV3(typeGpuTilePanes)
+  const visibleRenderRevision = resolveWorkbookPanePresentedRevisionV3(frameProofStatus, tileSceneRevision)
+  const visibleRenderCameraSeq = resolveWorkbookPanePresentedRevisionV3(frameProofStatus, tileSceneCameraSeq)
+  const visibleProjectedRenderRevision = resolveWorkbookPanePresentedRevisionV3(frameProofStatus, renderRevisionSnapshot?.projectedRevision)
+  const visibleLocalRenderRevision = resolveWorkbookPanePresentedRevisionV3(frameProofStatus, renderRevisionSnapshot?.localRevision)
+  const visibleAuthoritativeRenderRevision = resolveWorkbookPanePresentedRevisionV3(
+    frameProofStatus,
+    renderRevisionSnapshot?.authoritativeRevision,
+  )
 
   return (
     <>
@@ -289,16 +198,9 @@ export const WorkbookPaneRendererV3 = memo(function WorkbookPaneRendererV3({
           data-v3-has-presented-visible-frame={hasPresentedVisibleFrame ? 'true' : 'false'}
           data-v3-header-pane-count={headerPanes.length}
           data-v3-header-text-run-count={headerTextRunCount}
-          data-v3-current-content-signature={currentPayloadProof.contentSignature}
-          data-v3-current-scene-ownership-signature={currentSceneOwnershipSignature}
-          data-v3-current-rect-count={currentPayloadProof.rectCount}
-          data-v3-current-rect-signature={currentPayloadProof.rectSignature}
-          data-v3-current-text-run-count={currentPayloadProof.textRunCount}
-          data-v3-current-text-signature={currentPayloadProof.textSignature}
           data-v3-authoritative-render-revision={renderRevisionSnapshot?.authoritativeRevision ?? ''}
           data-v3-local-render-revision={renderRevisionSnapshot?.localRevision ?? ''}
           data-v3-presented-frame-proof-signature={presentedFrameProofSignature}
-          data-v3-presented-scene-ownership-signature={presentedSceneOwnershipSignature}
           data-v3-presented-camera-seq={presentedVisualFrame?.cameraSeq ?? ''}
           data-v3-presented-draw-text={presentedVisualFrame ? (presentedVisualFrame.drawText ? 'true' : 'false') : ''}
           data-v3-presented-header-pane-count={presentedHeaderPanes.length}
@@ -310,16 +212,11 @@ export const WorkbookPaneRendererV3 = memo(function WorkbookPaneRendererV3({
           data-v3-presented-overlay-rect-count={presentedVisualFrame?.overlayRectCount ?? ''}
           data-v3-presented-overlay-rect-signature={presentedVisualFrame?.overlayRectSignature ?? ''}
           data-v3-presented-overlay-seq={presentedVisualFrame?.overlaySeq ?? ''}
-          data-v3-presented-content-signature={presentedPayloadProof.contentSignature}
-          data-v3-presented-rect-count={presentedPayloadProof.rectCount}
-          data-v3-presented-rect-signature={presentedPayloadProof.rectSignature}
           data-v3-presented-render-tx={presentedVisualFrame?.scrollSnapshot.renderTx ?? presentedVisualFrame?.scrollSnapshot.tx ?? ''}
           data-v3-presented-render-ty={presentedVisualFrame?.scrollSnapshot.renderTy ?? presentedVisualFrame?.scrollSnapshot.ty ?? ''}
           data-v3-presented-scroll-left={presentedVisualFrame?.scrollSnapshot.scrollLeft ?? ''}
           data-v3-presented-scroll-top={presentedVisualFrame?.scrollSnapshot.scrollTop ?? ''}
           data-v3-presented-text-run-count={presentedTileTextRunCount}
-          data-v3-presented-visible-text-run-count={presentedPayloadProof.textRunCount}
-          data-v3-presented-text-signature={presentedPayloadProof.textSignature}
           data-v3-presented-tile-pane-count={presentedTilePanes.length}
           data-v3-native-text-run-count={nativeTileTextRunCount}
           data-v3-native-tile-pane-count={nativeTilePanes.length}
@@ -329,11 +226,11 @@ export const WorkbookPaneRendererV3 = memo(function WorkbookPaneRendererV3({
           data-v3-tile-scene-camera-seq={tileSceneCameraSeq ?? ''}
           data-v3-tile-scene-revision={tileSceneRevision ?? ''}
           data-v3-tile-pane-count={typeGpuTilePanes.length}
-          data-v3-visible-authoritative-render-revision={visibleProof.authoritativeRevision ?? ''}
-          data-v3-visible-local-render-revision={visibleProof.localRevision ?? ''}
-          data-v3-visible-projected-render-revision={visibleProof.projectedRevision ?? ''}
-          data-v3-visible-render-camera-seq={visibleProof.tileSceneCameraSeq ?? ''}
-          data-v3-visible-render-revision={visibleProof.tileSceneRevision ?? ''}
+          data-v3-visible-authoritative-render-revision={visibleAuthoritativeRenderRevision ?? ''}
+          data-v3-visible-local-render-revision={visibleLocalRenderRevision ?? ''}
+          data-v3-visible-projected-render-revision={visibleProjectedRenderRevision ?? ''}
+          data-v3-visible-render-camera-seq={visibleRenderCameraSeq ?? ''}
+          data-v3-visible-render-revision={visibleRenderRevision ?? ''}
           ref={setCanvasRef}
           style={{ backgroundColor: 'transparent', contain: 'strict', height: '100%', opacity: 1, width: '100%' }}
         />
@@ -365,7 +262,7 @@ export const WorkbookPaneRendererV3 = memo(function WorkbookPaneRendererV3({
           headerPanes={nativeHeaderPanes}
           presentedScrollSnapshot={presentedVisualFrame?.scrollSnapshot ?? null}
           scrollTransformStore={scrollTransformStore}
-          selectionOcclusionRanges={null}
+          selectionOcclusionRanges={selectionOcclusionRanges}
           suppressedTextCell={suppressedTextCell}
           tilePanes={nativeTilePanes}
         />
@@ -387,9 +284,66 @@ export function resolveWorkbookPaneSelectionOccludedTilePanesV3(input: {
   readonly selectionOcclusionRanges?: readonly Pick<Rectangle, 'x' | 'y' | 'width' | 'height'>[] | null | undefined
   readonly tilePanes: readonly WorkbookRenderTilePaneState[]
 }): readonly WorkbookRenderTilePaneState[] {
-  void input.geometry
-  void input.selectionOcclusionRanges
-  return input.tilePanes
+  const ranges = input.selectionOcclusionRanges ?? []
+  if (!input.geometry || ranges.length === 0) {
+    return input.tilePanes
+  }
+
+  let panesChanged = false
+  const nextPanes = input.tilePanes.map((pane) => {
+    if (pane.tile.textRuns.length === 0) {
+      return pane
+    }
+
+    let textRunsChanged = false
+    const nextTextRuns: (typeof pane.tile.textRuns)[number][] = []
+    for (const run of pane.tile.textRuns) {
+      const clip = resolveNativeTextRunSelectionOccludedClipV3({
+        clipHeight: run.clipHeight,
+        clipWidth: run.clipWidth,
+        clipX: run.clipX,
+        clipY: run.clipY,
+        geometry: input.geometry,
+        pane,
+        run,
+        selectionOcclusionRanges: ranges,
+      })
+      if (!clip) {
+        textRunsChanged = true
+        continue
+      }
+      if (clip.clipX !== run.clipX || clip.clipY !== run.clipY || clip.clipWidth !== run.clipWidth || clip.clipHeight !== run.clipHeight) {
+        textRunsChanged = true
+        nextTextRuns.push({
+          ...run,
+          clipHeight: clip.clipHeight,
+          clipWidth: clip.clipWidth,
+          clipX: clip.clipX,
+          clipY: clip.clipY,
+        })
+        continue
+      }
+      nextTextRuns.push(run)
+    }
+
+    if (!textRunsChanged) {
+      return pane
+    }
+
+    panesChanged = true
+    return {
+      ...pane,
+      tile: {
+        ...pane.tile,
+        dirty: undefined,
+        textCount: nextTextRuns.length,
+        textRuns: nextTextRuns,
+        textSignature: undefined,
+      },
+    }
+  })
+
+  return panesChanged ? nextPanes : input.tilePanes
 }
 
 export function resolveWorkbookPaneTileSceneRevisionV3(tilePanes: readonly WorkbookRenderTilePaneState[]): number | null {
@@ -403,44 +357,9 @@ export function resolveWorkbookPanePresentedRevisionV3(
   return frameProofStatus === 'presented' && revision !== null && revision !== undefined ? revision : null
 }
 
-export function resolveWorkbookPanePresentedRenderProofV3(
-  frameProofStatus: 'idle' | 'pending' | 'presented',
-  presentedVisualFrame: {
-    readonly renderRevisionSnapshot?: GridRenderRevisionSnapshot | null | undefined
-    readonly tilePanes: readonly WorkbookRenderTilePaneState[]
-  } | null,
-): {
-  readonly authoritativeRevision: number | null
-  readonly localRevision: number | null
-  readonly projectedRevision: number | null
-  readonly tileSceneCameraSeq: number | null
-  readonly tileSceneRevision: number | null
-} {
-  if (frameProofStatus !== 'presented' || !presentedVisualFrame) {
-    return EMPTY_PRESENTED_RENDER_PROOF_V3
-  }
-  return {
-    authoritativeRevision: presentedVisualFrame.renderRevisionSnapshot?.authoritativeRevision ?? null,
-    localRevision: presentedVisualFrame.renderRevisionSnapshot?.localRevision ?? null,
-    projectedRevision: presentedVisualFrame.renderRevisionSnapshot?.projectedRevision ?? null,
-    tileSceneCameraSeq: resolveWorkbookPaneTileSceneCameraSeqV3(presentedVisualFrame.tilePanes),
-    tileSceneRevision: resolveWorkbookPaneTileSceneRevisionV3(presentedVisualFrame.tilePanes),
-  }
-}
-
 export function resolveWorkbookPaneTileSceneCameraSeqV3(tilePanes: readonly WorkbookRenderTilePaneState[]): number | null {
   return maxTilePaneField(tilePanes, (pane) => pane.tile.lastCameraSeq)
 }
-
-const EMPTY_PRESENTED_RENDER_PROOF_V3 = Object.freeze({
-  authoritativeRevision: null,
-  localRevision: null,
-  projectedRevision: null,
-  tileSceneCameraSeq: null,
-  tileSceneRevision: null,
-})
-const EMPTY_HEADER_PANES_V3: readonly GridHeaderPaneState[] = Object.freeze([])
-const EMPTY_TILE_PANES_V3: readonly WorkbookRenderTilePaneState[] = Object.freeze([])
 
 function maxTilePaneField(
   tilePanes: readonly WorkbookRenderTilePaneState[],

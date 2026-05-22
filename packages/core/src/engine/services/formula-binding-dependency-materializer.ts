@@ -17,6 +17,7 @@ import {
   collectDynamicIndexDependencyPlan,
   formulaMayNeedDynamicIndexDependencyPlan,
 } from './formula-binding-dynamic-index-dependencies.js'
+import { getFormulaBindingReverseEdgeSlice } from './formula-binding-reverse-edges.js'
 import type { CreateEngineFormulaBindingServiceArgs } from './formula-binding-service-types.js'
 
 const EMPTY_DEPENDENCY_BUFFER = new Uint32Array(0)
@@ -31,7 +32,6 @@ interface FormulaBindingDependencyMaterializerArgs {
     symbolicRefCapacity?: number,
     symbolicRangeCapacity?: number,
   ) => void
-  readonly refreshRangeDependencies?: (rangeIndices: readonly number[]) => void
 }
 
 export interface FormulaBindingDependencyMaterializer {
@@ -196,6 +196,22 @@ export function createFormulaBindingDependencyMaterializer(
       dependencyEntityCount += 1
     }
 
+    const rangeDependencySourceEdgesNeedSync = (rangeIndex: number): boolean => {
+      const rangeEntity = makeRangeEntity(rangeIndex)
+      const dependencySources = args.state.ranges.getDependencySourceEntities(rangeIndex)
+      for (let sourceIndex = 0; sourceIndex < dependencySources.length; sourceIndex += 1) {
+        const dependencyEntity = dependencySources[sourceIndex]!
+        const slice = getFormulaBindingReverseEdgeSlice(args.reverseState, dependencyEntity)
+        if (!slice) {
+          return true
+        }
+        if (!args.edgeArena.readView(slice).includes(rangeEntity)) {
+          return true
+        }
+      }
+      return false
+    }
+
     const appendRuntimeRangeDependency = (rangeIndex: number, needsSourceEdgeSync: boolean): void => {
       args.getDependencyBuildRanges()[rangeDependencyCount] = rangeIndex
       rangeDependencyCount += 1
@@ -228,10 +244,8 @@ export function createFormulaBindingDependencyMaterializer(
         forEachSheetCell: (sheetId, fn) => args.forEachSheetCell(sheetId, fn),
         isFormulaCell,
       })
-      if (!registered.materialized) {
-        materializerArgs.refreshRangeDependencies?.([registered.rangeIndex])
-      }
-      appendRuntimeRangeDependency(registered.rangeIndex, true)
+      const needsSourceEdgeSync = registered.materialized || rangeDependencySourceEdgesNeedSync(registered.rangeIndex)
+      appendRuntimeRangeDependency(registered.rangeIndex, needsSourceEdgeSync)
       appendGraphRangeDependency(registered.rangeIndex)
       const memberIndices = args.state.ranges.getFormulaMembersView(registered.rangeIndex)
       for (let memberIndex = 0; memberIndex < memberIndices.length; memberIndex += 1) {
@@ -298,7 +312,7 @@ export function createFormulaBindingDependencyMaterializer(
           range.end.row === directLookupBinding.rowEnd
         if (isDirectLookupColumn) {
           const sheet = args.state.workbook.getSheet(sheetName)
-          if (sheet && materializerArgs.hasFormulaColumnMembers(sheet.id, range.start.col)) {
+          if (sheet) {
             for (let row = range.start.row; row <= range.end.row; row += 1) {
               const cellIndex = sheet.grid.get(row, range.start.col)
               if (cellIndex === -1) {
@@ -389,10 +403,8 @@ export function createFormulaBindingDependencyMaterializer(
           appendRuntimeRangeDependency(registered.rangeIndex, false)
           continue
         }
-        if (!registered.materialized) {
-          materializerArgs.refreshRangeDependencies?.([registered.rangeIndex])
-        }
-        appendRuntimeRangeDependency(registered.rangeIndex, true)
+        const needsSourceEdgeSync = registered.materialized || rangeDependencySourceEdgesNeedSync(registered.rangeIndex)
+        appendRuntimeRangeDependency(registered.rangeIndex, needsSourceEdgeSync)
         appendGraphRangeDependency(registered.rangeIndex)
         const memberIndices = args.state.ranges.getFormulaMembersView(registered.rangeIndex)
         for (let memberIndex = 0; memberIndex < memberIndices.length; memberIndex += 1) {

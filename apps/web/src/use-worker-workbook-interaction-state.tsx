@@ -72,17 +72,6 @@ function readMountedCellEditorValue(): string | null {
   return editor?.value ?? null
 }
 
-function readRenderedCellText(sheetName: string, address: string, visibleSheetName: string): string | undefined {
-  if (typeof document === 'undefined' || sheetName !== visibleSheetName) {
-    return undefined
-  }
-  const parsed = parseCellAddress(address, sheetName)
-  const textRun = document.querySelector<HTMLElement>(
-    `[data-native-text-run-col="${String(parsed.col)}"][data-native-text-run-row="${String(parsed.row)}"]`,
-  )
-  return textRun?.textContent ?? undefined
-}
-
 function resolveDetachedOptimisticValue(
   targetSelection: EditTargetSelection,
   selectedCell: CellSnapshot,
@@ -227,29 +216,6 @@ export function useWorkerWorkbookInteractionState(input: {
   const getCellEditorSeed = useCallback((sheetName: string, address: string) => {
     return optimisticCellSeedsRef.current.get(optimisticCellKey(sheetName, address))
   }, [])
-
-  const getCellResolvedValue = useCallback(
-    (sheetName: string, address: string) => {
-      const key = optimisticCellKey(sheetName, address)
-      const optimisticResolvedValue = optimisticCellResolvedValuesRef.current.get(key)
-      if (optimisticResolvedValue !== undefined) {
-        return optimisticResolvedValue
-      }
-      const active = workerHandleRef.current
-      if (active) {
-        const snapshot = active.viewportStore.getCell(sheetName, address)
-        if (!snapshot.formula) {
-          return undefined
-        }
-        return readRenderedCellText(sheetName, address, selectionRef.current.sheetName) ?? toResolvedValue(snapshot)
-      }
-      if (selectedCell.sheetName === sheetName && selectedCell.address === address && selectedCell.formula) {
-        return toResolvedValue(selectedCell)
-      }
-      return undefined
-    },
-    [selectedCell, selectionRef, workerHandleRef],
-  )
 
   const clearOptimisticCellSeed = useCallback((sheetName: string, address: string, seed: string) => {
     const key = optimisticCellKey(sheetName, address)
@@ -869,7 +835,6 @@ export function useWorkerWorkbookInteractionState(input: {
     editorTargetSelection,
     fillSelectionRange,
     getCellEditorSeed,
-    getCellResolvedValue,
     acknowledgeExternalSelectionSync,
     handleEditorChange,
     handleSelectionChange,

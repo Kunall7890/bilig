@@ -1,11 +1,7 @@
 import type { ImportedWorksheetCellScan } from './xlsx-large-simple-arena.js'
+import { forEachLargeSimpleInflatedZipEntryChunk } from './xlsx-large-simple-stream-garbage.js'
 import { parseLargeSimpleWorksheetCellsFromChunks } from './xlsx-large-simple-worksheet-stream-scanner.js'
-import {
-  forEachInflatedXlsxZipEntryChunk,
-  readLazyXlsxZipSourceByteLength,
-  readXlsxZipEntryUncompressedSize,
-  type XlsxZipEntries,
-} from './xlsx-zip.js'
+import { readLazyXlsxZipSourceByteLength, readXlsxZipEntryUncompressedSize, type XlsxZipEntries } from './xlsx-zip.js'
 
 interface LargeSimpleStyleCoordinateWorksheetEntry {
   readonly path: string
@@ -92,7 +88,7 @@ export function prepareLargeSimpleStyleIndexForWorksheet(
     return null
   }
   const streamed = parseLargeSimpleWorksheetCellsFromChunks(
-    (onChunk) => forEachInflatedXlsxZipEntryChunk(zip, entry.path, onChunk),
+    (onChunk) => forEachLargeSimpleInflatedZipEntryChunk(zip, entry.path, onChunk),
     scanned.cellScan.sheetIndex,
     {
       hasSharedStrings: options.hasSharedStrings,

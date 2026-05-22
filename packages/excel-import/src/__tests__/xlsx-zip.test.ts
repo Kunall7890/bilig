@@ -1,10 +1,11 @@
-import { deflateRawSync } from 'node:zlib'
+import { deflateRawSync, inflateRawSync } from 'node:zlib'
 import { createHash } from 'node:crypto'
 
 import { describe, expect, it } from 'vitest'
 
 import {
   forEachInflatedXlsxZipEntryChunk,
+  forEachInflatedXlsxZipEntryChunkAsync,
   getZipText,
   readLazyXlsxZipSource,
   readLazyXlsxZipSourceByteLength,
@@ -92,6 +93,128 @@ describe('XLSX ZIP reader', () => {
     expect(chunks.length).toBeGreaterThan(1)
     expect(source.readIntoCount).toBeGreaterThan(0)
     expect(source.maxReadLength).toBeLessThan(16 * 1024)
+  })
+
+  it('can force streaming inflation for small deflated entries', () => {
+    const path = 'xl/worksheets/sheet1.xml'
+    const payload = semiCompressibleBytes(128 * 1024)
+    const source = new CountingZipByteSource(buildStreamedZip(path, payload))
+    const zip = readXlsxZipEntriesLazyFromByteSource(source)
+    const hash = createHash('sha256')
+    let streamedByteLength = 0
+
+    expect(zip).not.toBeNull()
+    source.resetCounts()
+    expect(
+      forEachInflatedXlsxZipEntryChunk(
+        zip!,
+        path,
+        (chunk) => {
+          streamedByteLength += chunk.byteLength
+          hash.update(chunk)
+        },
+        {
+          chunkSize: 4096,
+          forceStreamingInflate: true,
+        },
+      ),
+    ).toBe(true)
+
+    expect(streamedByteLength).toBe(payload.byteLength)
+    expect(hash.digest('hex')).toBe(createHash('sha256').update(payload).digest('hex'))
+    expect(source.readIntoCount).toBeGreaterThan(0)
+    expect(source.maxReadLength).toBeLessThanOrEqual(4096)
+  })
+
+  it('stops streaming compressed entries when the consumer returns false', () => {
+    const path = 'xl/worksheets/sheet1.xml'
+    const payload = semiCompressibleBytes(2 * 1024 * 1024)
+    const source = new CountingZipByteSource(buildStreamedZip(path, payload))
+    const zip = readXlsxZipEntriesLazyFromByteSource(source)
+    let emittedChunks = 0
+
+    expect(zip).not.toBeNull()
+    source.resetCounts()
+    expect(
+      forEachInflatedXlsxZipEntryChunk(
+        zip!,
+        path,
+        () => {
+          emittedChunks += 1
+          return false
+        },
+        {
+          chunkSize: 4096,
+          forceStreamingInflate: true,
+        },
+      ),
+    ).toBe(true)
+
+    expect(emittedChunks).toBe(1)
+    expect(source.readIntoCount).toBeGreaterThan(0)
+    expect(source.readIntoCount).toBeLessThan(8)
+    expect(source.maxReadLength).toBeLessThanOrEqual(4096)
+  })
+
+  it('async-streams compressed entries with native backpressure', async () => {
+    const path = 'xl/worksheets/sheet1.xml'
+    const payload = semiCompressibleBytes(512 * 1024)
+    const source = new CountingZipByteSource(buildStreamedZip(path, payload))
+    const zip = readXlsxZipEntriesLazyFromByteSource(source)
+    let emittedByteLength = 0
+    let emittedChunks = 0
+
+    expect(zip).not.toBeNull()
+    source.resetCounts()
+    expect(
+      await forEachInflatedXlsxZipEntryChunkAsync(
+        zip!,
+        path,
+        (chunk) => {
+          emittedChunks += 1
+          emittedByteLength += chunk.byteLength
+          return emittedChunks < 2
+        },
+        {
+          chunkSize: 4096,
+          forceStreamingInflate: true,
+        },
+      ),
+    ).toBe(true)
+
+    expect(emittedChunks).toBe(2)
+    expect(emittedByteLength).toBeLessThan(payload.byteLength)
+    expect(source.maxReadLength).toBeLessThanOrEqual(4096)
+  })
+
+  it('prefers byte-source native async inflation hooks when available', async () => {
+    const path = 'xl/worksheets/sheet1.xml'
+    const payload = semiCompressibleBytes(512 * 1024)
+    const source = new NativeInflateZipByteSource(buildStreamedZip(path, payload))
+    const zip = readXlsxZipEntriesLazyFromByteSource(source)
+    let emittedChunks = 0
+    let emittedByteLength = 0
+
+    expect(zip).not.toBeNull()
+    expect(
+      await forEachInflatedXlsxZipEntryChunkAsync(
+        zip!,
+        path,
+        (chunk) => {
+          emittedChunks += 1
+          emittedByteLength += chunk.byteLength
+          return emittedChunks < 3
+        },
+        {
+          chunkSize: 4096,
+          forceStreamingInflate: true,
+        },
+      ),
+    ).toBe(true)
+
+    expect(source.nativeInflateCount).toBe(1)
+    expect(emittedChunks).toBe(3)
+    expect(emittedByteLength).toBeLessThan(payload.byteLength)
   })
 
   it('streams stored entries through reusable readRangeInto scratch buffers', () => {
@@ -222,6 +345,27 @@ class CountingZipByteSource implements XlsxZipByteSource {
     this.maxReadLength = 0
     this.rangeCount = 0
     this.readIntoCount = 0
+  }
+}
+
+class NativeInflateZipByteSource extends CountingZipByteSource {
+  nativeInflateCount = 0
+
+  async inflateRawRangeChunksAsync(
+    start: number,
+    end: number,
+    onChunk: (chunk: Uint8Array) => boolean | void,
+    options: { readonly chunkSize: number },
+  ): Promise<boolean> {
+    this.nativeInflateCount += 1
+    const inflated = inflateRawSync(this.readRange(start, end))
+    const chunkSize = Math.max(1, Math.trunc(options.chunkSize))
+    for (let offset = 0; offset < inflated.byteLength; offset += chunkSize) {
+      if (onChunk(inflated.subarray(offset, Math.min(inflated.byteLength, offset + chunkSize))) === false) {
+        return true
+      }
+    }
+    return true
   }
 }
 

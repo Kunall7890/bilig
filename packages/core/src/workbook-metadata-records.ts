@@ -1,16 +1,8 @@
 import type {
   CellRangeRef,
-  WorkbookContentTypeDefaultSnapshot,
-  WorkbookContentTypeOverrideSnapshot,
   WorkbookConditionalFormatRuleSnapshot,
   WorkbookDataValidationRuleSnapshot,
   WorkbookDefinedNameValueSnapshot,
-  WorkbookExternalConnectionsSnapshot,
-  WorkbookExternalLinkArtifactsSnapshot,
-  WorkbookPackageRelationshipSnapshot,
-  WorkbookPreservedPackagePartSnapshot,
-  WorkbookSlicerConnectionArtifactsSnapshot,
-  WorkbookSlicerConnectionSheetArtifactsSnapshot,
   WorkbookValidationListSourceSnapshot,
 } from '@bilig/protocol'
 import { canonicalWorkbookAddress, canonicalWorkbookRangeRef } from './workbook-range-records.js'
@@ -94,83 +86,6 @@ export function cloneWorkbookProtectionRecord(record: WorkbookProtectionRecord):
 
 export function cloneMacroPayloadRecord(record: WorkbookMacroPayloadRecord): WorkbookMacroPayloadRecord {
   return structuredClone(record)
-}
-
-export function cloneExternalConnectionsSnapshot(record: WorkbookExternalConnectionsSnapshot): WorkbookExternalConnectionsSnapshot {
-  return structuredClone(record)
-}
-
-export function cloneExternalLinkArtifactsSnapshot(record: WorkbookExternalLinkArtifactsSnapshot): WorkbookExternalLinkArtifactsSnapshot {
-  return {
-    parts: record.parts.map(clonePreservedPackagePartSnapshot),
-    ...(record.workbookExternalReferencesXml !== undefined ? { workbookExternalReferencesXml: record.workbookExternalReferencesXml } : {}),
-    ...(record.workbookRelationships !== undefined
-      ? { workbookRelationships: record.workbookRelationships.map(clonePackageRelationshipSnapshot) }
-      : {}),
-    ...(record.contentTypeDefaults !== undefined
-      ? { contentTypeDefaults: record.contentTypeDefaults.map(cloneContentTypeDefaultSnapshot) }
-      : {}),
-    ...(record.contentTypeOverrides !== undefined
-      ? { contentTypeOverrides: record.contentTypeOverrides.map(cloneContentTypeOverrideSnapshot) }
-      : {}),
-  }
-}
-
-export function cloneSlicerConnectionArtifactsSnapshot(
-  record: WorkbookSlicerConnectionArtifactsSnapshot,
-): WorkbookSlicerConnectionArtifactsSnapshot {
-  return {
-    parts: record.parts.map(clonePreservedPackagePartSnapshot),
-    ...(record.workbookSlicerCachesExtXml !== undefined ? { workbookSlicerCachesExtXml: record.workbookSlicerCachesExtXml } : {}),
-    ...(record.workbookRelationships !== undefined
-      ? { workbookRelationships: record.workbookRelationships.map(clonePackageRelationshipSnapshot) }
-      : {}),
-    ...(record.sheetArtifacts !== undefined
-      ? { sheetArtifacts: record.sheetArtifacts.map(cloneSlicerConnectionSheetArtifactsSnapshot) }
-      : {}),
-    ...(record.contentTypeDefaults !== undefined
-      ? { contentTypeDefaults: record.contentTypeDefaults.map(cloneContentTypeDefaultSnapshot) }
-      : {}),
-    ...(record.contentTypeOverrides !== undefined
-      ? { contentTypeOverrides: record.contentTypeOverrides.map(cloneContentTypeOverrideSnapshot) }
-      : {}),
-  }
-}
-
-function clonePreservedPackagePartSnapshot(record: WorkbookPreservedPackagePartSnapshot): WorkbookPreservedPackagePartSnapshot {
-  return {
-    path: record.path,
-    storage: record.storage,
-    dataBase64: record.dataBase64,
-    byteLength: record.byteLength,
-  }
-}
-
-function clonePackageRelationshipSnapshot(record: WorkbookPackageRelationshipSnapshot): WorkbookPackageRelationshipSnapshot {
-  return {
-    id: record.id,
-    type: record.type,
-    target: record.target,
-    ...(record.targetMode !== undefined ? { targetMode: record.targetMode } : {}),
-  }
-}
-
-function cloneContentTypeDefaultSnapshot(record: WorkbookContentTypeDefaultSnapshot): WorkbookContentTypeDefaultSnapshot {
-  return { extension: record.extension, contentType: record.contentType }
-}
-
-function cloneContentTypeOverrideSnapshot(record: WorkbookContentTypeOverrideSnapshot): WorkbookContentTypeOverrideSnapshot {
-  return { partName: record.partName, contentType: record.contentType }
-}
-
-function cloneSlicerConnectionSheetArtifactsSnapshot(
-  record: WorkbookSlicerConnectionSheetArtifactsSnapshot,
-): WorkbookSlicerConnectionSheetArtifactsSnapshot {
-  return {
-    sheetName: record.sheetName,
-    ...(record.sheetSlicerListExtXml !== undefined ? { sheetSlicerListExtXml: record.sheetSlicerListExtXml } : {}),
-    ...(record.relationships !== undefined ? { relationships: record.relationships.map(clonePackageRelationshipSnapshot) } : {}),
-  }
 }
 
 export function cloneTableRecord(record: WorkbookTableRecord): WorkbookTableRecord {

@@ -99,7 +99,6 @@ describe('direct lookup helpers', () => {
     expect(exactUniformLookupNumericResult(exactUniform(), 3)).toBe(3)
     expect(exactUniformLookupNumericResult(exactUniform(), 3.5)).toBeUndefined()
     expect(exactUniformLookupNumericResult(exactUniform({ step: -1, start: 5 }), 3)).toBe(3)
-    expect(exactUniformLookupNumericResult(exactUniform({ step: -1, start: 5 }), 3.5)).toBeUndefined()
     expect(exactUniformLookupNumericResult(exactUniform({ step: 2, start: 2 }), 8)).toBe(4)
     expect(exactUniformLookupNumericResult(exactUniform({ step: 2, start: 2 }), 9)).toBeUndefined()
     expect(exactUniformLookupNumericResult(exactUniform({ start: 2374.28, step: 0.01 }), 2374.2799999999997)).toBe(1)
@@ -109,21 +108,6 @@ describe('direct lookup helpers', () => {
     expect(
       exactUniformLookupNumericResult(exactUniform({ tailPatch: { row: 4, oldNumeric: 5, newNumeric: 9, columnVersion: 4 } }), 5),
     ).toBeUndefined()
-    expect(
-      exactUniformLookupNumericResult(exactUniform({ tailPatch: { row: 4, oldNumeric: 5, newNumeric: 9, columnVersion: 4 } }), 3.5),
-    ).toBeUndefined()
-    expect(
-      exactUniformLookupNumericResult(
-        exactUniform({ start: 5, step: -1, tailPatch: { row: 4, oldNumeric: 1, newNumeric: 9, columnVersion: 4 } }),
-        3.5,
-      ),
-    ).toBeUndefined()
-    expect(
-      exactUniformLookupNumericResult(
-        exactUniform({ start: 5, step: -1, tailPatch: { row: 4, oldNumeric: 1, newNumeric: 9, columnVersion: 4 } }),
-        3,
-      ),
-    ).toBe(3)
     expect(exactUniformLookupCurrentResult(exactUniform(), 8)).toEqual({ kind: 'error', code: ErrorCode.NA })
 
     expect(approximateUniformLookupNumericResult(approximateUniform(), 3.2)).toBe(3)
@@ -135,9 +119,6 @@ describe('direct lookup helpers', () => {
     expect(approximateUniformLookupNumericResult(approximateUniform({ length: 6, repeatedRunLength: 2 }), 0)).toBeUndefined()
     expect(approximateRepeatedUniformLookupNumericResult(6, 1, 1, 2, 1, 3)).toBe(6)
     expect(approximateRepeatedUniformLookupNumericResult(5, 5, -1, 2, -1, 3.5)).toBe(4)
-    expect(approximateRepeatedUniformLookupNumericResult(5, 5, -1, 2, -1, 6)).toBeUndefined()
-    expect(approximateRepeatedUniformLookupNumericResult(5, 5, -1, 2, -1, 1)).toBe(5)
-    expect(approximateRepeatedUniformLookupNumericResult(5, 5, 1, 2, -1, 6)).toBeUndefined()
     expect(
       approximateUniformLookupNumericResult(
         approximateUniform({ tailPatch: { row: 4, oldNumeric: 5, newNumeric: 9, columnVersion: 4 } }),
@@ -173,17 +154,11 @@ describe('direct lookup helpers', () => {
 
     expect(canSkipUniformApproximateNumericTailWrite(approximate, 4, 2, 5, 6)).toBe(true)
     expect(canSkipUniformApproximateNumericTailWrite(approximate, 3, 2, 5, 6)).toBe(false)
-    expect(canSkipUniformApproximateNumericTailWrite(approximateUniform({ repeatedRunLength: 2 }), 4, 2, 5, 6)).toBe(false)
-    expect(canSkipUniformApproximateNumericTailWrite(approximateUniform({ step: 0 }), 4, 2, 5, 6)).toBe(false)
     expect(canSkipUniformApproximateNumericTailWrite(approximateUniform({ start: 5, step: -1, matchMode: -1 }), 4, 3, 1, 0)).toBe(true)
     expect(canSkipUniformApproximateNumericTailWriteFromCurrentResult(cellStore, 1, approximate, 4, 5, 6)).toBe(true)
     expect(canSkipUniformApproximateNumericTailWriteFromCurrentResult(cellStore, 1, approximate, 4, 6, 5)).toBe(false)
-    expect(
-      canSkipUniformApproximateNumericTailWriteFromCurrentResult(cellStore, 1, approximateUniform({ repeatedRunLength: 2 }), 4, 5, 6),
-    ).toBe(false)
     expect(canSkipUniformExactNumericTailWriteFromCurrentResult(cellStore, 1, exact, 4, 5, 6)).toBe(true)
     expect(canSkipUniformExactNumericTailWriteFromCurrentResult(cellStore, 1, exact, 3, 5, 6)).toBe(false)
-    expect(canSkipUniformExactNumericTailWriteFromCurrentResult(cellStore, 1, exact, 4, 4, 6)).toBe(false)
 
     expect(directLookupRowBounds(exact)).toEqual({ rowStart: 0, rowEnd: 4 })
     expect(
@@ -220,27 +195,6 @@ describe('direct lookup helpers', () => {
         13,
       ),
     ).toEqual({ kind: 'number', value: 4 })
-    expect(
-      approximateRepeatedUniformLookupCurrentResult(
-        { length: 6, repeatedUniformStart: 10, repeatedUniformStep: 2, repeatedUniformRunLength: 2 },
-        1,
-        9,
-      ),
-    ).toEqual({ kind: 'error', code: ErrorCode.NA })
-    expect(
-      approximateRepeatedUniformLookupCurrentResult(
-        { length: 6, repeatedUniformStart: 10, repeatedUniformStep: -2, repeatedUniformRunLength: 2 },
-        -1,
-        11,
-      ),
-    ).toEqual({ kind: 'error', code: ErrorCode.NA })
-    expect(
-      approximateRepeatedUniformLookupCurrentResult(
-        { length: 6, repeatedUniformStart: 10, repeatedUniformStep: 2, repeatedUniformRunLength: 2 },
-        -1,
-        9,
-      ),
-    ).toBeUndefined()
 
     expect(
       withOptionalLookupStringIds({

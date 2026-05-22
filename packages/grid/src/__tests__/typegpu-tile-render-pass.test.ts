@@ -8,7 +8,6 @@ import {
   hasDrawableTypeGpuBodyPaneFramesV3,
   hasRequiredTypeGpuTextAtlasResourcesV3,
 } from '../renderer-v3/typegpu-tile-render-pass.js'
-import { resolveGridTextTileRevisionKeyV3 } from '../renderer-v3/typegpu-tile-resource-revisions.js'
 
 function createRenderTile(
   tileId = 101,
@@ -112,7 +111,6 @@ describe('typegpu tile render pass readiness', () => {
     expect(hasCompleteTypeGpuBodyTileContentV3({ tilePanes: [pane], tileResources })).toBe(false)
 
     Reflect.set(content, 'textHandle', createHandle('textRuns'))
-    Reflect.set(content, 'textRevisionKey', resolveGridTextTileRevisionKeyV3(pane.tile))
     expect(hasCompleteTypeGpuBodyTileContentV3({ tilePanes: [pane], tileResources })).toBe(true)
   })
 

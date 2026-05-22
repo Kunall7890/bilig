@@ -1,5 +1,4 @@
 import type { GridGeometrySnapshot } from '../gridGeometry.js'
-import type { GridRenderRevisionSnapshot } from '../grid-engine.js'
 import type { GridHeaderPaneState } from '../gridHeaderPanes.js'
 import type { GridCameraStore } from '../runtime/gridCameraStore.js'
 import type { WorkbookGridScrollSnapshot, WorkbookGridScrollStore } from '../workbookGridScrollStore.js'
@@ -22,13 +21,11 @@ export interface WorkbookPaneRendererRuntimeStateV3 {
   readonly cameraStore: GridCameraStore | null
   readonly drawText: boolean
   readonly frameProofSignature: string
-  readonly sceneOwnershipSignature: string
   readonly geometry: GridGeometrySnapshot | null
   readonly headerPanes: readonly GridHeaderPaneState[]
   readonly overlay: DynamicGridOverlayBatchV3 | null
   readonly overlayBuilder: ((geometry: GridGeometrySnapshot) => DynamicGridOverlayBatchV3 | null | undefined) | null
   readonly preloadTilePanes: readonly WorkbookRenderTilePaneState[]
-  readonly renderRevisionSnapshot: GridRenderRevisionSnapshot | null
   readonly scrollTransformStore: WorkbookGridScrollStore | null
   readonly surface: TypeGpuSurfaceSizeV3
   readonly tilePanes: readonly WorkbookRenderTilePaneState[]
@@ -39,7 +36,6 @@ export interface WorkbookPaneFrameInputV3 {
   readonly backend: unknown
   readonly drawText?: boolean | undefined
   readonly frameProofSignature: string
-  readonly sceneOwnershipSignature: string
   readonly headerPanes?: readonly GridHeaderPaneState[] | undefined
   readonly tilePanes: readonly WorkbookRenderTilePaneState[]
   readonly preloadTilePanes?: readonly WorkbookRenderTilePaneState[] | undefined
@@ -57,8 +53,6 @@ export interface WorkbookPanePresentedVisualFrameV3 {
   readonly overlayRectCount: number
   readonly overlayRectSignature: string | null
   readonly overlaySeq: number | null
-  readonly renderRevisionSnapshot: GridRenderRevisionSnapshot | null
-  readonly sceneOwnershipSignature: string
   readonly scrollSnapshot: WorkbookGridScrollSnapshot
   readonly surface: TypeGpuSurfaceSizeV3
   readonly tilePanes: readonly WorkbookRenderTilePaneState[]
@@ -100,13 +94,11 @@ const EMPTY_RUNTIME_STATE: WorkbookPaneRendererRuntimeStateV3 = Object.freeze({
   cameraStore: null,
   drawText: true,
   frameProofSignature: '',
-  sceneOwnershipSignature: '',
   geometry: null,
   headerPanes: [],
   overlay: null,
   overlayBuilder: null,
   preloadTilePanes: [],
-  renderRevisionSnapshot: null,
   scrollTransformStore: null,
   surface: EMPTY_SURFACE_SIZE,
   tilePanes: [],
@@ -163,7 +155,6 @@ export function resolveTypeGpuV3DrawScrollSnapshot(input: {
 }
 
 export class WorkbookPaneRendererRuntimeV3 {
-  private failedFrameRetryCount = 0
   private cameraStoreUnsubscribe: (() => void) | null = null
   private scrollStoreUnsubscribe: (() => void) | null = null
   private state: WorkbookPaneRendererRuntimeStateV3 = EMPTY_RUNTIME_STATE
@@ -180,13 +171,12 @@ export class WorkbookPaneRendererRuntimeV3 {
   updateState(state: Partial<WorkbookPaneRendererRuntimeStateV3>): void {
     const previousTilePanes = this.state.tilePanes
     const nextTilePanes = state.tilePanes ?? previousTilePanes
-    const hasDirtyTileUpdate = Boolean(state.tilePanes && state.tilePanes !== previousTilePanes && hasDirtyTilePaneResources(nextTilePanes))
     this.state = {
       ...this.state,
       ...state,
     }
-    if (hasDirtyTileUpdate) {
-      this.scheduler.noteTileMutationSignal()
+    if (state.tilePanes && state.tilePanes !== previousTilePanes && hasDirtyTilePaneResources(nextTilePanes)) {
+      this.scheduler.noteInputSignal()
     }
     this.syncStoreSubscriptions()
   }
@@ -242,21 +232,19 @@ export class WorkbookPaneRendererRuntimeV3 {
       panes: state.tilePanes,
     })
     const frameProofSignature = state.frameProofSignature
-    const sceneOwnershipSignature = state.sceneOwnershipSignature
-    const drawResult = this.drawFrame({
-      backend: state.backend,
-      drawText: state.drawText,
-      frameProofSignature,
-      sceneOwnershipSignature,
-      headerPanes: state.headerPanes,
-      overlay: overlayBatch ?? null,
-      preloadTilePanes: state.preloadTilePanes,
-      scrollSnapshot,
-      surface: state.surface,
-      syncPreloadPanes: frameDecision.syncPreloadPanes,
-      tilePanes: state.tilePanes,
-    })
-    const submitted = drawResult === true
+    const submitted =
+      this.drawFrame({
+        backend: state.backend,
+        drawText: state.drawText,
+        frameProofSignature,
+        headerPanes: state.headerPanes,
+        overlay: overlayBatch ?? null,
+        preloadTilePanes: state.preloadTilePanes,
+        scrollSnapshot,
+        surface: state.surface,
+        syncPreloadPanes: frameDecision.syncPreloadPanes,
+        tilePanes: state.tilePanes,
+      }) === true
     this.frameResultListener?.({
       frameProofSignature,
       submitted,
@@ -269,22 +257,12 @@ export class WorkbookPaneRendererRuntimeV3 {
             overlayRectCount: overlayBatch?.rectCount ?? 0,
             overlayRectSignature: overlayBatch?.rectSignature ?? null,
             overlaySeq: overlayBatch?.seq ?? null,
-            renderRevisionSnapshot: state.renderRevisionSnapshot ? { ...state.renderRevisionSnapshot } : null,
-            sceneOwnershipSignature,
             scrollSnapshot: { ...scrollSnapshot },
             surface: { ...state.surface },
             tilePanes: [...state.tilePanes],
           }
         : null,
     })
-    if (submitted) {
-      this.failedFrameRetryCount = 0
-      return
-    }
-    if (drawResult === false && this.failedFrameRetryCount < 3 && hasRetriableWorkbookPaneFrameV3(state)) {
-      this.failedFrameRetryCount += 1
-      this.requestDraw()
-    }
   }
 
   dispose(): void {
@@ -293,7 +271,6 @@ export class WorkbookPaneRendererRuntimeV3 {
     this.frameResultListener = null
     this.inputSignalListener = null
     this.state = EMPTY_RUNTIME_STATE
-    this.failedFrameRetryCount = 0
   }
 
   private syncStoreSubscriptions(): void {
@@ -326,10 +303,6 @@ export class WorkbookPaneRendererRuntimeV3 {
     this.subscribedCameraStore = null
     this.subscribedScrollStore = null
   }
-}
-
-function hasRetriableWorkbookPaneFrameV3(state: WorkbookPaneRendererRuntimeStateV3): boolean {
-  return state.headerPanes.length > 0 || state.tilePanes.some((pane) => pane.drawVisible !== false)
 }
 
 function hasDirtyTilePaneResources(panes: readonly WorkbookRenderTilePaneState[]): boolean {

@@ -1,4 +1,4 @@
-import { mkdtempSync, readFileSync, writeFileSync } from 'node:fs'
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 
@@ -17,8 +17,6 @@ import {
 } from '@bilig/excel-fixtures'
 import { ErrorCode, ValueTag, type CellValue, type WorkbookSnapshot } from '@bilig/protocol'
 import { describe, expect, it } from 'vitest'
-
-import { removeMacosExcelTestDir } from './macos-excel-oracle-test-utils.js'
 
 import { WorkPaper, type WorkPaperCellAddress } from '../index.js'
 
@@ -152,12 +150,6 @@ const structuralMoveColumnFormulaOracleCell = {
   formula: '=SUM(B1:B1)',
   rawValue: 'number\t3.0',
   value: { kind: 'number', value: 3 },
-} as const
-const structuralBackwardMoveColumnFormulaOracleCell = {
-  address: 'D1',
-  formula: '=SUM(C1:C1)',
-  rawValue: 'number\t2.0',
-  value: { kind: 'number', value: 2 },
 } as const
 const tableColumnInsertOracleCells = [
   { address: 'B1', formula: 'Column1', rawValue: 'string\tColumn1', value: { kind: 'string', value: 'Column1' } },
@@ -549,29 +541,6 @@ describe('macOS Desktop Excel XLSX oracle for WorkPaper', () => {
       try {
         expect(reimported.getCellFormula(addressToCell('F1'))).toBe('=SUM(B1:B1)')
         expect(normalizedCellValue(reimported.getCellValue(addressToCell('F1')))).toEqual(structuralMoveColumnFormulaOracleCell.value)
-      } finally {
-        reimported.dispose()
-      }
-    } finally {
-      workbook.dispose()
-    }
-  })
-
-  it('rewrites backward moved-out column ranges like Desktop Excel', () => {
-    const workbook = buildStructuralBackwardMoveColumnOracleWorkbook()
-    const sheetId = workbook.getSheetId('Cases')!
-    try {
-      workbook.moveColumns(sheetId, 2, 1, 1)
-      expect(workbook.getCellFormula(addressToCell('D1'))).toBe('=SUM(C1:C1)')
-      expect(normalizedCellValue(workbook.getCellValue(addressToCell('D1')))).toEqual(structuralBackwardMoveColumnFormulaOracleCell.value)
-
-      const imported = importXlsx(exportXlsx(workbook.exportSnapshot()), 'headless-structural-backward-move-column-oracle.xlsx')
-      const reimported = WorkPaper.buildFromSnapshot(imported.snapshot, workbookConfig)
-      try {
-        expect(reimported.getCellFormula(addressToCell('D1'))).toBe('=SUM(C1:C1)')
-        expect(normalizedCellValue(reimported.getCellValue(addressToCell('D1')))).toEqual(
-          structuralBackwardMoveColumnFormulaOracleCell.value,
-        )
       } finally {
         reimported.dispose()
       }
@@ -1058,7 +1027,7 @@ describe('macOS Desktop Excel XLSX oracle for WorkPaper', () => {
           reimported.dispose()
         }
       } finally {
-        removeMacosExcelTestDir(tempDir)
+        rmSync(tempDir, { recursive: true, force: true })
       }
     },
     60_000,
@@ -1121,7 +1090,7 @@ describe('macOS Desktop Excel XLSX oracle for WorkPaper', () => {
           reimported.dispose()
         }
       } finally {
-        removeMacosExcelTestDir(tempDir)
+        rmSync(tempDir, { recursive: true, force: true })
       }
     },
     60_000,
@@ -1165,7 +1134,7 @@ describe('macOS Desktop Excel XLSX oracle for WorkPaper', () => {
           reimported.dispose()
         }
       } finally {
-        removeMacosExcelTestDir(tempDir)
+        rmSync(tempDir, { recursive: true, force: true })
       }
     },
     60_000,
@@ -1211,7 +1180,7 @@ describe('macOS Desktop Excel XLSX oracle for WorkPaper', () => {
           reimported.dispose()
         }
       } finally {
-        removeMacosExcelTestDir(tempDir)
+        rmSync(tempDir, { recursive: true, force: true })
       }
     },
     60_000,
@@ -1274,7 +1243,7 @@ describe('macOS Desktop Excel XLSX oracle for WorkPaper', () => {
           reimported.dispose()
         }
       } finally {
-        removeMacosExcelTestDir(tempDir)
+        rmSync(tempDir, { recursive: true, force: true })
       }
     },
     60_000,
@@ -1324,7 +1293,7 @@ describe('macOS Desktop Excel XLSX oracle for WorkPaper', () => {
           reimported.dispose()
         }
       } finally {
-        removeMacosExcelTestDir(tempDir)
+        rmSync(tempDir, { recursive: true, force: true })
       }
     },
     60_000,
@@ -1369,7 +1338,7 @@ describe('macOS Desktop Excel XLSX oracle for WorkPaper', () => {
           reimported.dispose()
         }
       } finally {
-        removeMacosExcelTestDir(tempDir)
+        rmSync(tempDir, { recursive: true, force: true })
       }
     },
     60_000,
@@ -1416,7 +1385,7 @@ describe('macOS Desktop Excel XLSX oracle for WorkPaper', () => {
           reimported.dispose()
         }
       } finally {
-        removeMacosExcelTestDir(tempDir)
+        rmSync(tempDir, { recursive: true, force: true })
       }
     },
     60_000,
@@ -1467,7 +1436,7 @@ describe('macOS Desktop Excel XLSX oracle for WorkPaper', () => {
           reimported.dispose()
         }
       } finally {
-        removeMacosExcelTestDir(tempDir)
+        rmSync(tempDir, { recursive: true, force: true })
       }
     },
     60_000,
@@ -1552,7 +1521,7 @@ describe('macOS Desktop Excel XLSX oracle for WorkPaper', () => {
           unblockedReimported.dispose()
         }
       } finally {
-        removeMacosExcelTestDir(tempDir)
+        rmSync(tempDir, { recursive: true, force: true })
       }
     },
     60_000,
@@ -1608,7 +1577,7 @@ describe('macOS Desktop Excel XLSX oracle for WorkPaper', () => {
           }
         }
       } finally {
-        removeMacosExcelTestDir(tempDir)
+        rmSync(tempDir, { recursive: true, force: true })
       }
     },
     60_000,
@@ -1672,7 +1641,7 @@ describe('macOS Desktop Excel XLSX oracle for WorkPaper', () => {
           }
         }
       } finally {
-        removeMacosExcelTestDir(tempDir)
+        rmSync(tempDir, { recursive: true, force: true })
       }
     },
     60_000,
@@ -1780,7 +1749,7 @@ describe('macOS Desktop Excel XLSX oracle for WorkPaper', () => {
           }
         }
       } finally {
-        removeMacosExcelTestDir(tempDir)
+        rmSync(tempDir, { recursive: true, force: true })
       }
     },
     60_000,
@@ -1824,7 +1793,7 @@ describe('macOS Desktop Excel XLSX oracle for WorkPaper', () => {
           reimported.dispose()
         }
       } finally {
-        removeMacosExcelTestDir(tempDir)
+        rmSync(tempDir, { recursive: true, force: true })
       }
     },
     60_000,
@@ -1872,7 +1841,7 @@ describe('macOS Desktop Excel XLSX oracle for WorkPaper', () => {
           reimported.dispose()
         }
       } finally {
-        removeMacosExcelTestDir(tempDir)
+        rmSync(tempDir, { recursive: true, force: true })
       }
     },
     60_000,
@@ -1912,39 +1881,8 @@ describe('macOS Desktop Excel XLSX oracle for WorkPaper', () => {
         } finally {
           reimported.dispose()
         }
-
-        const backwardWorkbookPath = join(tempDir, 'headless-structural-backward-move-column-oracle.xlsx')
-        const backwardWorkbook = buildStructuralBackwardMoveColumnOracleWorkbook()
-        try {
-          writeFileSync(backwardWorkbookPath, exportXlsx(backwardWorkbook.exportSnapshot()))
-        } finally {
-          backwardWorkbook.dispose()
-        }
-
-        const backwardExcelResult = runMacosExcelStructuralOperationOracle({
-          workbookPath: backwardWorkbookPath,
-          worksheetName: 'Cases',
-          operations: [{ kind: 'moveColumns', sourceRange: 'C:C', destinationRange: 'B:B' }],
-          inspectCells: ['D1'],
-          saveWorkbook: true,
-        })
-        expect(backwardExcelResult.cells).toEqual([structuralBackwardMoveColumnFormulaOracleCell])
-
-        const backwardImported = importXlsx(
-          new Uint8Array(readFileSync(backwardWorkbookPath)),
-          'headless-structural-backward-move-column-oracle-recalculated.xlsx',
-        )
-        const backwardReimported = WorkPaper.buildFromSnapshot(backwardImported.snapshot, workbookConfig)
-        try {
-          expect(backwardReimported.getCellFormula(addressToCell('D1'))).toBe('=SUM(C1:C1)')
-          expect(normalizedCellValue(backwardReimported.getCellValue(addressToCell('D1')))).toEqual(
-            structuralBackwardMoveColumnFormulaOracleCell.value,
-          )
-        } finally {
-          backwardReimported.dispose()
-        }
       } finally {
-        removeMacosExcelTestDir(tempDir)
+        rmSync(tempDir, { recursive: true, force: true })
       }
     },
     60_000,
@@ -1981,7 +1919,7 @@ describe('macOS Desktop Excel XLSX oracle for WorkPaper', () => {
           columnNames: ['Region', 'Column1', 'Revenue', 'Margin'],
         })
       } finally {
-        removeMacosExcelTestDir(tempDir)
+        rmSync(tempDir, { recursive: true, force: true })
       }
     },
     60_000,
@@ -2025,7 +1963,7 @@ describe('macOS Desktop Excel XLSX oracle for WorkPaper', () => {
           reimported.dispose()
         }
       } finally {
-        removeMacosExcelTestDir(tempDir)
+        rmSync(tempDir, { recursive: true, force: true })
       }
     },
     60_000,
@@ -2069,7 +2007,7 @@ describe('macOS Desktop Excel XLSX oracle for WorkPaper', () => {
           reimported.dispose()
         }
       } finally {
-        removeMacosExcelTestDir(tempDir)
+        rmSync(tempDir, { recursive: true, force: true })
       }
     },
     60_000,
@@ -2122,7 +2060,7 @@ describe('macOS Desktop Excel XLSX oracle for WorkPaper', () => {
           reimported.dispose()
         }
       } finally {
-        removeMacosExcelTestDir(tempDir)
+        rmSync(tempDir, { recursive: true, force: true })
       }
     },
     60_000,
@@ -2174,7 +2112,7 @@ describe('macOS Desktop Excel XLSX oracle for WorkPaper', () => {
           reimported.dispose()
         }
       } finally {
-        removeMacosExcelTestDir(tempDir)
+        rmSync(tempDir, { recursive: true, force: true })
       }
     },
     60_000,
@@ -2217,7 +2155,7 @@ describe('macOS Desktop Excel XLSX oracle for WorkPaper', () => {
           reimported.dispose()
         }
       } finally {
-        removeMacosExcelTestDir(tempDir)
+        rmSync(tempDir, { recursive: true, force: true })
       }
     },
     60_000,
@@ -2266,7 +2204,7 @@ describe('macOS Desktop Excel XLSX oracle for WorkPaper', () => {
           reimported.dispose()
         }
       } finally {
-        removeMacosExcelTestDir(tempDir)
+        rmSync(tempDir, { recursive: true, force: true })
       }
     },
     60_000,
@@ -2317,7 +2255,7 @@ describe('macOS Desktop Excel XLSX oracle for WorkPaper', () => {
           reimported.dispose()
         }
       } finally {
-        removeMacosExcelTestDir(tempDir)
+        rmSync(tempDir, { recursive: true, force: true })
       }
     },
     60_000,
@@ -2516,15 +2454,6 @@ function buildStructuralMoveColumnOracleWorkbook(): WorkPaper {
   return WorkPaper.buildFromSheets(
     {
       Cases: [[1, 2, 3, 4, 5, '=SUM(B1:C1)']],
-    },
-    workbookConfig,
-  )
-}
-
-function buildStructuralBackwardMoveColumnOracleWorkbook(): WorkPaper {
-  return WorkPaper.buildFromSheets(
-    {
-      Cases: [[1, 2, 3, '=SUM(B1:C1)']],
     },
     workbookConfig,
   )

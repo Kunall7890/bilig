@@ -145,6 +145,7 @@ export function compareScalars(left: CellValue, right: CellValue): number | unde
     }
     return normalizedLeft < normalizedRight ? -1 : 1
   }
+
   const leftNum = toNumber(left)
   const rightNum = toNumber(right)
   if (leftNum === undefined || rightNum === undefined) {

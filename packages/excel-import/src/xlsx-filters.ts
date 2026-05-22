@@ -221,14 +221,6 @@ export function readImportedSheetAutoFiltersFromElementXml(sheetName: string, el
   return readParsedWorksheetAutoFilters(sheetName, recordChild(parsed, 'worksheet'))
 }
 
-export function readImportedTableAutoFiltersFromXml(sheetName: string, tableXml: string): WorkbookAutoFilterSnapshot[] {
-  if (!/<(?:[A-Za-z_][\w.-]*:)?autoFilter\b/u.test(tableXml)) {
-    return []
-  }
-  const parsed: unknown = xmlParser.parse(tableXml)
-  return readParsedWorksheetAutoFilters(sheetName, recordChild(parsed, 'table'))
-}
-
 function readParsedWorksheetAutoFilters(sheetName: string, worksheet: Record<string, unknown> | null): WorkbookAutoFilterSnapshot[] {
   return asArray(worksheet?.['autoFilter']).flatMap((entry) => {
     const filter = parseAutoFilter(sheetName, entry)
@@ -266,13 +258,13 @@ function autoFilterColumnXml(criteria: WorkbookAutoFilterColumnSnapshot): string
   return children ? `<filterColumn ${attributes}>${children}</filterColumn>` : `<filterColumn ${attributes}/>`
 }
 
-export function buildAutoFilterXml(filter: WorkbookAutoFilterSnapshot, ref: string): string {
+function autoFilterXml(filter: WorkbookAutoFilterSnapshot, ref: string): string {
   const criteria = filter.criteria?.map(autoFilterColumnXml).join('') ?? ''
   return criteria ? `<autoFilter ref="${escapeXml(ref)}">${criteria}</autoFilter>` : `<autoFilter ref="${escapeXml(ref)}"/>`
 }
 
 function insertWorksheetAutoFilter(sheetXml: string, filter: WorkbookAutoFilterSnapshot, ref: string): string {
-  const autoFilter = buildAutoFilterXml(filter, ref)
+  const autoFilter = autoFilterXml(filter, ref)
   if (/<autoFilter\b/u.test(sheetXml)) {
     return sheetXml.replace(/<autoFilter\b[^>]*(?:\/>|>[\s\S]*?<\/autoFilter>)/u, autoFilter)
   }

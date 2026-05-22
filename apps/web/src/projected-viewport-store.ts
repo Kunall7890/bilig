@@ -25,7 +25,6 @@ import { DEFAULT_MAX_CACHED_CELLS_PER_SHEET, ProjectedViewportCellCache } from '
 import { ProjectedViewportPatchCoordinator, type ProjectedViewportPatchApplied } from './projected-viewport-patch-coordinator.js'
 import type { ProjectedRenderTile, ProjectedTileSceneChange, ProjectedTileSceneStore } from './projected-tile-scene-store.js'
 import { normalizeWorkbookMergeRange } from './worker-runtime-support.js'
-import { LOCAL_CELL_VISUAL_DIRTY_MASK } from './projected-workbook-local-delta.js'
 import { ProjectedWorkbookLocalDeltaPublisher } from './projected-workbook-local-delta-publisher.js'
 import { ProjectedViewportPatchRevisionGate } from './projected-viewport-patch-revision-gate.js'
 import {
@@ -45,7 +44,6 @@ interface ProjectedCellSnapshotWriteOptions {
   readonly forceOptimistic?: boolean
   readonly allowOptimisticClearResurrection?: boolean
   readonly emitLocalDelta?: boolean
-  readonly localDeltaDirtyMask?: number
   readonly suppressRangeOverlays?: boolean
 }
 type CellItem = readonly [number, number]
@@ -90,20 +88,10 @@ export class ProjectedViewportStore implements GridEngineLike {
       getCell: (sheetName, address) => this.cellCache.getCell(sheetName, address),
       hasCellSnapshot: (sheetName, address) => this.cellCache.hasCellSnapshot(sheetName, address),
       setCellSnapshot: (snapshot) => {
-        this.setCellSnapshot(snapshot, {
-          force: true,
-          forceOptimistic: true,
-          localDeltaDirtyMask: LOCAL_CELL_VISUAL_DIRTY_MASK,
-          suppressRangeOverlays: false,
-        })
+        this.setCellSnapshot(snapshot, { force: true, forceOptimistic: true, suppressRangeOverlays: false })
       },
       setCellSnapshots: (snapshots) => {
-        this.setCellSnapshots(snapshots, {
-          force: true,
-          forceOptimistic: true,
-          localDeltaDirtyMask: LOCAL_CELL_VISUAL_DIRTY_MASK,
-          suppressRangeOverlays: false,
-        })
+        this.setCellSnapshots(snapshots, { force: true, forceOptimistic: true, suppressRangeOverlays: false })
       },
     })
     this.axisStore = new ProjectedViewportAxisStore({
@@ -268,11 +256,10 @@ export class ProjectedViewportStore implements GridEngineLike {
   }
 
   getRenderRevisionSnapshot(): GridRenderRevisionSnapshot {
-    const lastBatchId = this.patchRevisionGate.getLastBatchId()
     return {
       authoritativeRevision: this.patchRevisionGate.getLastAuthoritativeRevision(),
       localRevision: this.localRevision,
-      projectedRevision: Math.max(lastBatchId, this.localDeltaPublisher.getLastLocalWorkbookDeltaSeq()),
+      projectedRevision: this.patchRevisionGate.getLastBatchId(),
       tileSceneCameraSeq: this.tileSceneStore?.getLastCameraSeq() ?? null,
       tileSceneRevision: this.tileSceneStore?.getLastBatchId() ?? null,
     }
@@ -298,7 +285,7 @@ export class ProjectedViewportStore implements GridEngineLike {
     if (acceptedSnapshotsBySheet.size > 0) {
       this.localRevision += 1
       acceptedSnapshotsBySheet.forEach((acceptedSnapshots, sheetName) => {
-        this.localDeltaPublisher.emitCellSnapshots(sheetName, acceptedSnapshots, options.localDeltaDirtyMask)
+        this.localDeltaPublisher.emitCellSnapshots(sheetName, acceptedSnapshots)
       })
     }
   }
@@ -308,7 +295,7 @@ export class ProjectedViewportStore implements GridEngineLike {
     const changedSnapshots = this.cellCache.clearOptimisticCellFlagsForSheet(sheetName)
     if (changedSnapshots.length > 0) {
       this.localRevision += 1
-      this.localDeltaPublisher.emitCellSnapshots(sheetName, changedSnapshots, LOCAL_CELL_VISUAL_DIRTY_MASK)
+      this.localDeltaPublisher.emitCellSnapshots(sheetName, changedSnapshots)
     }
   }
 
@@ -624,7 +611,7 @@ export class ProjectedViewportStore implements GridEngineLike {
           overlaySuppressionCutoff: this.rangeOverlayStore.getSuppressedOverlayMaxId(snapshot.sheetName, snapshot.address),
           snapshot: structuredClone(snapshot),
         })
-        this.setCellSnapshot(nextSnapshot, { force: true, forceOptimistic: true, localDeltaDirtyMask: LOCAL_CELL_VISUAL_DIRTY_MASK })
+        this.setCellSnapshot(nextSnapshot, { force: true, forceOptimistic: true })
       }
     }
     if (previousSnapshots.length === 0) {
@@ -633,12 +620,7 @@ export class ProjectedViewportStore implements GridEngineLike {
     return () => {
       previousSnapshots.forEach(({ existed, overlaySuppressionCutoff, snapshot }) => {
         this.rangeOverlayStore.restoreOverlaySuppression(snapshot.sheetName, snapshot.address, overlaySuppressionCutoff)
-        this.setCellSnapshot(snapshot, {
-          force: true,
-          forceOptimistic: true,
-          localDeltaDirtyMask: LOCAL_CELL_VISUAL_DIRTY_MASK,
-          suppressRangeOverlays: false,
-        })
+        this.setCellSnapshot(snapshot, { force: true, forceOptimistic: true, suppressRangeOverlays: false })
         if (!existed) {
           this.cellCache.deleteCellSnapshot(snapshot.sheetName, snapshot.address)
         }

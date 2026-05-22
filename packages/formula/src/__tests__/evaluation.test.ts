@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { ErrorCode, ValueTag, type CellValue } from '@bilig/protocol'
-import { getBuiltin, getBuiltinId, getDateSystemBuiltin } from '../builtins.js'
+import { getBuiltin, getBuiltinId } from '../builtins.js'
 import { evaluateAst, evaluateAstResult } from '../js-evaluator.js'
 import { parseFormula } from '../parser.js'
 
@@ -48,20 +48,6 @@ describe('formula builtins and JS evaluator', () => {
       value: true,
     })
     expect(NOT({ tag: ValueTag.Empty })).toEqual({ tag: ValueTag.Boolean, value: true })
-  })
-
-  it('uses date-system scoped builtin lookup and cache for 1904 workbooks', () => {
-    const DATE_1900 = getDateSystemBuiltin('DATE', '1900')!
-    const DATE_1904 = getDateSystemBuiltin('date', '1904')!
-    const DATE_1904_AGAIN = getDateSystemBuiltin('DATE', '1904')!
-
-    expect(DATE_1900).toBe(getBuiltin('DATE'))
-    expect(DATE_1904_AGAIN).toBe(DATE_1904)
-    expect(getDateSystemBuiltin('SUM', '1904')).toBe(getBuiltin('SUM'))
-    expect(getDateSystemBuiltin('missing', '1904')).toBeUndefined()
-    expect(
-      DATE_1904({ tag: ValueTag.Number, value: 1904 }, { tag: ValueTag.Number, value: 1 }, { tag: ValueTag.Number, value: 2 }),
-    ).toEqual({ tag: ValueTag.Number, value: 1 })
   })
 
   it('coerces numeric text produced by expressions without summing referenced text cells', () => {

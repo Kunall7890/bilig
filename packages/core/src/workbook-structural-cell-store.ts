@@ -129,12 +129,7 @@ export class WorkbookStructuralCellStore {
       }
       if (entry.toRow === undefined || entry.toCol === undefined) {
         if (entry.fromRowId && entry.fromColId) {
-          const hasTombstonedIdentity =
-            sheet.logical.getCellVisiblePosition(entry.cellIndex) === undefined &&
-            sheet.logical.getCellIdentity(entry.cellIndex) !== undefined
-          if (!hasTombstonedIdentity) {
-            sheet.logical.deleteVisibleCellByIds(entry.fromRowId, entry.fromColId)
-          }
+          sheet.logical.deleteVisibleCellByIds(entry.fromRowId, entry.fromColId)
         } else {
           sheet.logical.deleteVisibleCell(entry.fromRow, entry.fromCol)
         }

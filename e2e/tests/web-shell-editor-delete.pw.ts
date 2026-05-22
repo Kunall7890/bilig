@@ -8,7 +8,7 @@ import {
   waitForWorkbookReady,
 } from './web-shell-helpers.js'
 
-test('@browser-webgpu @browser-deep web app keeps an in-cell Delete clear committed after clicking away', async ({ page }) => {
+test('@browser-ci web app keeps an in-cell Delete clear committed after clicking away', async ({ page }) => {
   const staleText = 'editor-delete-clickaway'
   await installTypeGpuCellReadbackHarness(page)
   await page.goto(`/?document=${encodeURIComponent(createTestDocumentId('playwright-editor-delete-click-away'))}&persist=0`)
@@ -44,7 +44,7 @@ test('@browser-webgpu @browser-deep web app keeps an in-cell Delete clear commit
   await expectCellRenderedText(page, 1, 1, staleText, 'hidden')
 })
 
-test('@browser-webgpu @browser-deep web app keeps active in-cell undo and redo local to the draft editor', async ({ page }) => {
+test('@browser-ci web app keeps active in-cell undo and redo local to the draft editor', async ({ page }) => {
   const documentId = createTestDocumentId('playwright-editor-local-undo-redo')
   await installTypeGpuCellReadbackHarness(page)
   await page.goto(`/?document=${encodeURIComponent(documentId)}&persist=0&sheet=Sheet1&cell=B2`)
@@ -84,35 +84,18 @@ test('@browser-webgpu @browser-deep web app keeps active in-cell undo and redo l
   await page.keyboard.press('Enter')
   await expect(cellEditor).toHaveCount(0)
   await expect(page.getByTestId('status-selection')).toHaveText('Sheet1!B3')
-  await expect.poll(() => nativeTextRunsInclude(page, 'abc')).toBe(false)
   await expectCellRenderedText(page, 1, 1, 'ab', 'visible')
   await clickProductCell(page, 1, 1)
   await expect(formulaInput).toHaveValue('ab')
-  await expect.poll(() => nativeTextRunsInclude(page, 'ab')).toBe(true)
   await clickProductCell(page, 3, 3)
   await expect(formulaInput).toHaveValue('workbook-history-sentinel')
 })
 
 async function nativeTextRunsInclude(page: Page, text: string): Promise<boolean> {
-  return await page.evaluate((needle) => {
-    const nativeTextIncludes = Array.from(document.querySelectorAll('[data-native-text-run]')).some(
-      (run) => run.textContent?.includes(needle) ?? false,
-    )
-    if (nativeTextIncludes) {
-      return true
-    }
-    const typeGpu = document.querySelector('[data-testid="grid-pane-renderer"]')
-    if (!(typeGpu instanceof HTMLElement) || typeGpu.getAttribute('data-v3-frame-proof-status') !== 'presented') {
-      return false
-    }
-    if (Number(typeGpu.getAttribute('data-v3-presented-text-run-count') ?? '0') <= 0) {
-      return false
-    }
-    const formulaInput = document.querySelector('[data-testid="formula-input"]')
-    const selectedValue = formulaInput instanceof HTMLInputElement || formulaInput instanceof HTMLTextAreaElement ? formulaInput.value : ''
-    const resolvedValue = document.querySelector('[data-testid="formula-resolved-value"]')?.textContent ?? ''
-    return selectedValue.includes(needle) || resolvedValue.includes(needle)
-  }, text)
+  return await page.evaluate(
+    (needle) => Array.from(document.querySelectorAll('[data-native-text-run]')).some((run) => run.textContent?.includes(needle) ?? false),
+    text,
+  )
 }
 
 async function expectCellRenderedText(

@@ -156,15 +156,14 @@ export function rewriteFormulaFromTemplate(
   if (formula.directAggregate !== undefined || formula.directCriteria !== undefined) {
     return undefined
   }
-  if (formula.compiled.astMatchesSource === false) {
-    return undefined
-  }
   const cacheKey =
     `${representative.templateId}:${representative.ownerSheetName}:${targetSheetName}:${transform.kind}:${transform.axis}:${transform.start}:${transform.count}:` +
-    `${transform.kind === 'move' ? transform.target : ''}` +
-    (transform.kind === 'delete' ? `:${representative.representativeRow}:${representative.representativeCol}:${formula.source}` : '')
+    `${transform.kind === 'move' ? transform.target : ''}`
   let rewrittenTemplate = cache.get(cacheKey)
   if (rewrittenTemplate === undefined) {
+    if (formula.compiled.astMatchesSource === false) {
+      return undefined
+    }
     rewrittenTemplate =
       rewriteTemplateForStructuralTransform({
         template: {

@@ -28,16 +28,6 @@ export function readVitestBatchCooldownMs(env: NodeJS.ProcessEnv = process.env):
   return readNonNegativeInt(env['BILIG_VITEST_BATCH_COOLDOWN_MS']) ?? DEFAULT_CI_BATCH_COOLDOWN_MS
 }
 
-export function buildVitestEnv(args: readonly string[], env: NodeJS.ProcessEnv = process.env): NodeJS.ProcessEnv {
-  if (!hasArg(args, '--coverage')) {
-    return { ...env }
-  }
-  return {
-    ...env,
-    BILIG_VITEST_COVERAGE: '1',
-  }
-}
-
 export function isBroadCorpusVitestRun(args: readonly string[]): boolean {
   const runIndex = args.indexOf('--run')
   if (runIndex < 0) {
@@ -137,7 +127,7 @@ function main(): never {
     }
     const result = spawnSync(vitestBin, args, {
       cwd: process.cwd(),
-      env: buildVitestEnv(args),
+      env: process.env,
       stdio: 'inherit',
     })
 

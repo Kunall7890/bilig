@@ -64,8 +64,6 @@ function createMarkers(input: {
       cellStore: {
         flags: [],
         tags,
-        stringIds: [],
-        errors: [],
         getValue: (cellIndex: number) => numberValue(input.numbers.get(cellIndex) ?? 0),
       },
     },

@@ -84,28 +84,6 @@ describe('DirtyTileIndexV3', () => {
     expect(index.getSpans(axisY)).toEqual([])
   })
 
-  it('keeps local optimistic dirty ranges behind their projected revision barrier', () => {
-    const index = new DirtyTileIndexV3()
-    markWorkbookDeltaDirtyTilesV3(
-      index,
-      {
-        sheetOrdinal: 2,
-        dirty: {
-          axisX: new Uint32Array(),
-          axisY: new Uint32Array(),
-          cellRanges: Uint32Array.from([0, 0, 0, 0, DirtyMaskV3.Value | DirtyMaskV3.Text | DirtyMaskV3.Rect]),
-        },
-        seq: 42,
-        source: 'localOptimistic',
-      },
-      { dprBucket: 1 },
-    )
-
-    const origin = tileKeyFromCell({ sheetOrdinal: 2, dprBucket: 1, row: 0, col: 0 })
-
-    expect(index.getRequiredProjectedRevision(origin)).toBe(42)
-  })
-
   it('marks visible and warm tiles for full-sheet dirty deltas', () => {
     const index = new DirtyTileIndexV3()
     const sheetMask = DirtyMaskV3.Value | DirtyMaskV3.Style | DirtyMaskV3.Text | DirtyMaskV3.Rect | DirtyMaskV3.Border

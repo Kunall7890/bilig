@@ -1,14 +1,12 @@
 # Fuzz Correctness Critical And Beyond Program
-
 ## Date: 2026-04-13
-
 ## Status: implemented
 
 ## Why this document exists
 
 The April 12 program is done:
 
-- [/Users/gregkonush/github.com/bilig/docs/fuzz-correctness-expansion-program-2026-04-12.md](/Users/gregkonush/github.com/bilig/docs/fuzz-correctness-expansion-program-2026-04-12.md)
+- [/Users/gregkonush/github.com/bilig/docs/fuzz-correctness-expansion-program-2026-04-12.md](</Users/gregkonush/github.com/bilig/docs/fuzz-correctness-expansion-program-2026-04-12.md>)
 
 That work fixed the largest weakness in the repo’s fuzzing story:
 
@@ -87,15 +85,15 @@ The implementation also fixed product bugs exposed while executing this program,
 - live/browser selection command targeting drift
 - projection/runtime parity and metadata roundtrip defects found by the new suites
 
-The repo’s unified fuzz lane now exercises these workstreams through the single `pnpm test:fuzz` entrypoint.
+The repo’s `default`, `main`, and browser fuzz lanes now exercise these workstreams through the existing `pnpm test:fuzz`, `pnpm test:fuzz:main`, and `pnpm test:fuzz:nightly` entrypoints.
 
 ## Relationship to existing correctness docs
 
 This document extends, not replaces:
 
-- [/Users/gregkonush/github.com/bilig/docs/correctness-gates-program-2026-04-09.md](/Users/gregkonush/github.com/bilig/docs/correctness-gates-program-2026-04-09.md)
-- [/Users/gregkonush/github.com/bilig/docs/fuzz-correctness-expansion-program-2026-04-12.md](/Users/gregkonush/github.com/bilig/docs/fuzz-correctness-expansion-program-2026-04-12.md)
-- [/Users/gregkonush/github.com/bilig/docs/testing-and-benchmarks.md](/Users/gregkonush/github.com/bilig/docs/testing-and-benchmarks.md)
+- [/Users/gregkonush/github.com/bilig/docs/correctness-gates-program-2026-04-09.md](</Users/gregkonush/github.com/bilig/docs/correctness-gates-program-2026-04-09.md>)
+- [/Users/gregkonush/github.com/bilig/docs/fuzz-correctness-expansion-program-2026-04-12.md](</Users/gregkonush/github.com/bilig/docs/fuzz-correctness-expansion-program-2026-04-12.md>)
+- [/Users/gregkonush/github.com/bilig/docs/testing-and-benchmarks.md](</Users/gregkonush/github.com/bilig/docs/testing-and-benchmarks.md>)
 
 The repo already has correctness tiers:
 
@@ -107,6 +105,8 @@ The repo already has correctness tiers:
 - `pnpm test:correctness:medium`
 - `pnpm test:correctness:deep`
 - `pnpm test:fuzz`
+- `pnpm test:fuzz:main`
+- `pnpm test:fuzz:nightly`
 
 This program uses those tiers and expands them. It does not introduce a parallel test universe.
 

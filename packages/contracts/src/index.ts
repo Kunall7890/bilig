@@ -86,40 +86,10 @@ export const WorkbookAgentRenderedRangeSchema = Schema.Struct({
 })
 export type WorkbookAgentRenderedRange = Schema.Schema.Type<typeof WorkbookAgentRenderedRangeSchema>
 
-export const WorkbookAgentRenderedSurfaceProofSchema = Schema.Struct({
-  mode: Schema.Literal('typegpu-v3', 'typegpu-v3-unavailable'),
-  backendStatus: Schema.Literal('idle', 'initializing', 'ready', 'unavailable'),
-  frameProofStatus: Schema.Literal('idle', 'pending', 'presented'),
-  hasPresentedFrame: Schema.Boolean,
-  hasPresentedVisibleFrame: Schema.Boolean,
-  frameProofSignature: Schema.String,
-  presentedFrameProofSignature: Schema.String,
-  currentSceneOwnershipSignature: Schema.String,
-  presentedSceneOwnershipSignature: Schema.String,
-  authoritativeRevision: Schema.Union(Schema.Number, Schema.Null),
-  localRevision: Schema.Union(Schema.Number, Schema.Null),
-  projectedRevision: Schema.Union(Schema.Number, Schema.Null),
-  visibleRenderRevision: Schema.Union(Schema.Number, Schema.Null),
-  tileSceneRevision: Schema.Union(Schema.Number, Schema.Null),
-  tileSceneCameraSeq: Schema.Union(Schema.Number, Schema.Null),
-  currentTilePaneCount: Schema.Number,
-  currentHeaderPaneCount: Schema.Number,
-  presentedTilePaneCount: Schema.Number,
-  presentedHeaderPaneCount: Schema.Number,
-  surfaceWidth: Schema.Number,
-  surfaceHeight: Schema.Number,
-  surfacePixelWidth: Schema.Number,
-  surfacePixelHeight: Schema.Number,
-  devicePixelRatio: Schema.Number,
-  capturedAtUnixMs: Schema.Number,
-})
-export type WorkbookAgentRenderedSurfaceProof = Schema.Schema.Type<typeof WorkbookAgentRenderedSurfaceProofSchema>
-
 export const WorkbookAgentRenderedContextSchema = Schema.Struct({
   capturedAtUnixMs: Schema.Number,
   capturedRevision: Schema.optionalWith(Schema.Union(Schema.Number, Schema.Null), {}),
   batchId: Schema.Union(Schema.Number, Schema.Null),
-  surfaceProof: Schema.optionalWith(Schema.Union(WorkbookAgentRenderedSurfaceProofSchema, Schema.Null), {}),
   selection: Schema.Union(WorkbookAgentRenderedRangeSchema, Schema.Null),
   visibleRange: Schema.Union(WorkbookAgentRenderedRangeSchema, Schema.Null),
 })

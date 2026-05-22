@@ -5832,30 +5832,6 @@ describe('wasm kernel', () => {
     expect(kernel.readNumbers()[cellIndex(1, 3, width)]).toBe(2)
   })
 
-  it('truncates negative NETWORKDAYS.INTL serial arguments toward zero on the wasm path', async () => {
-    const kernel = await createKernel()
-    const width = 4
-    kernel.init(8, 4, 10, 4, 4)
-    kernel.writeCells(new Uint8Array(8), new Float64Array(8), new Uint32Array(8), new Uint16Array(8))
-
-    const packed = packPrograms([
-      [
-        encodePushNumber(0),
-        encodePushNumber(1),
-        encodePushNumber(2),
-        encodePushNumber(3),
-        encodeCall(BUILTIN.NETWORKDAYS_INTL, 4),
-        encodeRet(),
-      ],
-    ])
-    const constants = packConstants([[-3, 2, 7, 2]])
-    kernel.uploadPrograms(packed.programs, packed.offsets, packed.lengths, Uint32Array.from([cellIndex(1, 0, width)]))
-    kernel.uploadConstants(constants.constants, constants.offsets, constants.lengths)
-    kernel.evalBatch(Uint32Array.from([cellIndex(1, 0, width)]))
-
-    expect(kernel.readNumbers()[cellIndex(1, 0, width)]).toBe(2)
-  })
-
   it('evaluates logical and rounding builtins with parity-safe scalar semantics', async () => {
     const kernel = await createKernel()
     kernel.init(8, 8, 4, 4, 4)

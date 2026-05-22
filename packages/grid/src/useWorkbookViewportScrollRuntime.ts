@@ -16,7 +16,6 @@ type MutableRef<T> = {
 
 export function useWorkbookViewportScrollRuntime(input: {
   readonly columnAxis: GridAxisWorldIndex
-  readonly editingCell?: Item | null | undefined
   readonly freezeCols: number
   readonly freezeRows: number
   readonly gridCameraStore: GridCameraStore

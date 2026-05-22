@@ -163,28 +163,20 @@ export function readImportedWorkbookSheetProtections(
 
   sheetNames.forEach((sheetName, sheetIndex) => {
     const sheetXml = getZipText(zip, `xl/worksheets/sheet${String(sheetIndex + 1)}.xml`)
-    const sheetProtection = sheetXml ? readImportedWorksheetSheetProtection(sheetName, sheetXml) : null
-    if (!sheetProtection) {
+    if (!sheetXml || !/<sheetProtection\b/u.test(sheetXml)) {
       return
     }
-    protectionsBySheet.set(sheetName, sheetProtection)
+    const parsed: unknown = xmlParser.parse(sheetXml)
+    const sheetProtection = recordChild(recordChild(parsed, 'worksheet'), 'sheetProtection')
+    if (!sheetProtection || isFalseAttribute(sheetProtection['sheet'])) {
+      return
+    }
+    const xmlAttributes = readSheetProtectionXmlAttributes(sheetXml)
+    protectionsBySheet.set(sheetName, {
+      sheetName,
+      ...(xmlAttributes ? { xmlAttributes } : {}),
+    })
   })
 
   return protectionsBySheet
-}
-
-export function readImportedWorksheetSheetProtection(sheetName: string, sheetXml: string): WorkbookSheetProtectionSnapshot | null {
-  if (!/<sheetProtection\b/u.test(sheetXml)) {
-    return null
-  }
-  const parsed: unknown = xmlParser.parse(sheetXml)
-  const sheetProtection = recordChild(recordChild(parsed, 'worksheet'), 'sheetProtection')
-  if (!sheetProtection || isFalseAttribute(sheetProtection['sheet'])) {
-    return null
-  }
-  const xmlAttributes = readSheetProtectionXmlAttributes(sheetXml)
-  return {
-    sheetName,
-    ...(xmlAttributes ? { xmlAttributes } : {}),
-  }
 }

@@ -219,43 +219,7 @@ function createZeroSyncService(engine: SpreadsheetEngine, input: { readonly revi
   }
 }
 
-function renderedContext(input: {
-  readonly value: string | null
-  readonly capturedRevision: number
-  readonly sourceKind?: 'selection' | 'visibleRange'
-}): WorkbookAgentUiContext {
-  const renderedRange = {
-    range: {
-      sheetName: 'Sheet1',
-      startAddress: 'K14',
-      endAddress: 'K14',
-    },
-    rowCount: 1,
-    columnCount: 1,
-    cellCount: 1,
-    truncated: false,
-    rows: [
-      [
-        {
-          address: 'K14',
-          input: input.value,
-          value:
-            input.value === null
-              ? { tag: ValueTag.Empty }
-              : {
-                  tag: ValueTag.String,
-                  value: input.value,
-                },
-          formula: null,
-          displayFormat: input.value,
-          styleId: null,
-          numberFormatId: null,
-          style: null,
-        },
-      ],
-    ],
-  }
-  const sourceKind = input.sourceKind ?? 'selection'
+function renderedContext(input: { readonly value: string | null; readonly capturedRevision: number }): WorkbookAgentUiContext {
   return {
     selection: {
       sheetName: 'Sheet1',
@@ -275,8 +239,38 @@ function renderedContext(input: {
       capturedAtUnixMs: Date.now(),
       capturedRevision: input.capturedRevision,
       batchId: input.capturedRevision,
-      selection: sourceKind === 'selection' ? renderedRange : null,
-      visibleRange: sourceKind === 'visibleRange' ? renderedRange : null,
+      selection: {
+        range: {
+          sheetName: 'Sheet1',
+          startAddress: 'K14',
+          endAddress: 'K14',
+        },
+        rowCount: 1,
+        columnCount: 1,
+        cellCount: 1,
+        truncated: false,
+        rows: [
+          [
+            {
+              address: 'K14',
+              input: input.value,
+              value:
+                input.value === null
+                  ? { tag: ValueTag.Empty }
+                  : {
+                      tag: ValueTag.String,
+                      value: input.value,
+                    },
+              formula: null,
+              displayFormat: input.value,
+              styleId: null,
+              numberFormatId: null,
+              style: null,
+            },
+          ],
+        ],
+      },
+      visibleRange: null,
     },
   }
 }
@@ -438,120 +432,6 @@ describe('workbook agent rendered freshness', () => {
         expect.objectContaining({
           renderedReadback: expect.objectContaining({
             matched: true,
-            sourceKind: 'selection',
-            stale: false,
-            capturedRevision: 3,
-            incompleteReason: null,
-          }),
-        }),
-      )
-    } finally {
-      await service.close()
-    }
-  })
-
-  it('does not satisfy mutation verification from visible-range proof without selected rendered proof', async () => {
-    vi.useRealTimers()
-    const engine = await createEngine()
-    const revisionRef = { current: 2 }
-    const fakeCodex = new FakeCodexTransport()
-    const capturedOptions: { current: CodexAppServerClientOptions | null } = { current: null }
-    const service = createWorkbookAgentService(createZeroSyncService(engine, { revisionRef }), {
-      codexClientFactory: (options: CodexAppServerClientOptions): CodexAppServerTransport => {
-        capturedOptions.current = options
-        fakeCodex.currentOptions = options
-        return fakeCodex
-      },
-    })
-
-    try {
-      const snapshot = await service.createSession({
-        documentId: 'doc-1',
-        session: {
-          userID: 'alex@example.com',
-          roles: ['editor'],
-        },
-        body: {
-          threadId: 'thr-rendered-selected-proof',
-          context: renderedContext({
-            value: null,
-            capturedRevision: 2,
-          }),
-        },
-      })
-      await service.startTurn({
-        documentId: 'doc-1',
-        threadId: snapshot.threadId,
-        session: {
-          userID: 'alex@example.com',
-          roles: ['editor'],
-        },
-        body: {
-          prompt: 'Write and verify selected rendered state',
-          context: renderedContext({
-            value: null,
-            capturedRevision: 2,
-          }),
-        },
-      })
-
-      const callPromise = capturedOptions.current?.handleDynamicToolCall({
-        threadId: snapshot.threadId,
-        turnId: 'turn-1',
-        callId: 'call-write-k14-selected-proof',
-        tool: 'write_range',
-        arguments: {
-          sheetName: 'Sheet1',
-          startAddress: 'K14',
-          values: [['tool-check-freshness']],
-        },
-      })
-      if (!callPromise) {
-        throw new Error('Expected dynamic tool handler to be captured')
-      }
-
-      setTimeout(() => {
-        void service.updateContext({
-          documentId: 'doc-1',
-          threadId: snapshot.threadId,
-          session: {
-            userID: 'alex@example.com',
-            roles: ['editor'],
-          },
-          body: {
-            context: renderedContext({
-              value: 'tool-check-freshness',
-              capturedRevision: 3,
-              sourceKind: 'visibleRange',
-            }),
-          },
-        })
-      }, 20)
-      setTimeout(() => {
-        void service.updateContext({
-          documentId: 'doc-1',
-          threadId: snapshot.threadId,
-          session: {
-            userID: 'alex@example.com',
-            roles: ['editor'],
-          },
-          body: {
-            context: renderedContext({
-              value: 'tool-check-freshness',
-              capturedRevision: 3,
-              sourceKind: 'selection',
-            }),
-          },
-        })
-      }, 120)
-
-      const payload = readDynamicToolJson(await callPromise)
-      expect(payload['status']).toBe('applied')
-      expect(payload['mutationReceipt']).toEqual(
-        expect.objectContaining({
-          renderedReadback: expect.objectContaining({
-            matched: true,
-            sourceKind: 'selection',
             stale: false,
             capturedRevision: 3,
             incompleteReason: null,

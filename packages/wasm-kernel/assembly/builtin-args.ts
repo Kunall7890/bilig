@@ -208,7 +208,9 @@ export function collectStatValuesFromArgs(
           statCollectionErrorCode = <i32>raw
           return null
         }
-        if (tag == ValueTag.Number || tag == ValueTag.Boolean) {
+        if (tag == ValueTag.Number) {
+          values.push(raw)
+        } else if (tag == ValueTag.Boolean && includeStringsAsZero) {
           values.push(raw)
         } else if (tag == ValueTag.String && includeStringsAsZero) {
           values.push(0.0)

@@ -18,15 +18,9 @@ import {
   createLazyMaterializedCellMutationTransactionRecord,
   createLazySingleOpTransactionRecord,
 } from './mutation-transaction-records.js'
-import { isTableHeaderCell } from './operation-table-header-rename.js'
 
 interface MutationFormulaStore {
   get(cellIndex: number): RuntimeFormula | undefined
-}
-
-function skipsTableHeaderRename(ref: EngineCellMutationRef): boolean {
-  const mutation = ref.mutation
-  return (mutation.kind === 'setCellValue' || mutation.kind === 'clearCell') && mutation.skipTableHeaderRename === true
 }
 
 export interface MutationCellRestoreHistoryRuntime {
@@ -42,7 +36,6 @@ export interface MutationCellRestoreHistoryHelpers {
   readonly tryRestoreSimpleCellOpFromStore: (
     sheetName: string,
     address: string,
-    options?: { readonly skipTableHeaderRename?: boolean },
   ) => Extract<EngineOp, { kind: 'setCellValue' | 'setCellFormula' | 'clearCell' }> | null
   readonly createLazyInverseCellMutationRecord: (refs: readonly EngineCellMutationRef[]) => TransactionRecord
   readonly tryCreateSingleExistingNumericInverseCellMutationRecord: (refs: readonly EngineCellMutationRef[]) => TransactionRecord | null
@@ -72,43 +65,36 @@ export function createMutationCellRestoreHistoryHelpers(args: MutationCellRestor
       throw new Error(`Unknown sheet id: ${ref.sheetId}`)
     }
     const address = formatAddress(ref.mutation.row, ref.mutation.col)
-    const skipTableHeaderRename =
-      skipsTableHeaderRename(ref) ||
-      (ref.mutation.kind === 'setCellFormula' &&
-        isTableHeaderCell(args.workbook.listTables(), sheet.name, ref.mutation.row, ref.mutation.col))
-    const setCellValueOp = (value: LiteralInput): Extract<EngineOp, { kind: 'setCellValue' }> => ({
-      kind: 'setCellValue',
-      sheetName: sheet.name,
-      address,
-      value,
-      ...(skipTableHeaderRename ? { skipTableHeaderRename: true } : {}),
-    })
-    const clearCellOp = (): Extract<EngineOp, { kind: 'clearCell' }> => ({
-      kind: 'clearCell',
-      sheetName: sheet.name,
-      address,
-      ...(skipTableHeaderRename ? { skipTableHeaderRename: true } : {}),
-    })
     const existingCellIndex =
       sheet.structureVersion === 1
         ? sheet.grid.getPhysical(ref.mutation.row, ref.mutation.col)
         : sheet.grid.get(ref.mutation.row, ref.mutation.col)
     const cellIndex = existingCellIndex === -1 ? undefined : existingCellIndex
     if (cellIndex === undefined) {
-      return clearCellOp()
+      return { kind: 'clearCell', sheetName: sheet.name, address }
     }
     const cellStore = args.workbook.cellStore
     const formulaId = cellStore.formulaIds[cellIndex] ?? 0
     if (formulaId === 0) {
       const tag = cellStore.tags[cellIndex]
       if (tag === ValueTag.Number) {
-        return setCellValueOp(cellStore.numbers[cellIndex] ?? 0)
+        return {
+          kind: 'setCellValue',
+          sheetName: sheet.name,
+          address,
+          value: cellStore.numbers[cellIndex] ?? 0,
+        }
       }
       if (tag === ValueTag.Boolean) {
-        return setCellValueOp((cellStore.numbers[cellIndex] ?? 0) !== 0)
+        return {
+          kind: 'setCellValue',
+          sheetName: sheet.name,
+          address,
+          value: (cellStore.numbers[cellIndex] ?? 0) !== 0,
+        }
       }
       if (tag === ValueTag.Empty || tag === ValueTag.Error || tag === undefined) {
-        return clearCellOp()
+        return { kind: 'clearCell', sheetName: sheet.name, address }
       }
     }
     const runtimeFormula = args.formulas.get(cellIndex)
@@ -132,49 +118,46 @@ export function createMutationCellRestoreHistoryHelpers(args: MutationCellRestor
     switch (snapshot.value.tag) {
       case ValueTag.Empty:
       case ValueTag.Error:
-        return (snapshot.flags & CellFlags.AuthoredBlank) !== 0 ? setCellValueOp(null) : clearCellOp()
+        return (snapshot.flags & CellFlags.AuthoredBlank) !== 0
+          ? {
+              kind: 'setCellValue',
+              sheetName: sheet.name,
+              address,
+              value: null,
+            }
+          : { kind: 'clearCell', sheetName: sheet.name, address }
       case ValueTag.Number:
       case ValueTag.Boolean:
       case ValueTag.String:
-        return setCellValueOp(snapshot.value.value)
+        return {
+          kind: 'setCellValue',
+          sheetName: sheet.name,
+          address,
+          value: snapshot.value.value,
+        }
     }
   }
 
   const tryRestoreSimpleCellOpFromStore = (
     sheetName: string,
     address: string,
-    options: { readonly skipTableHeaderRename?: boolean } = {},
   ): Extract<EngineOp, { kind: 'setCellValue' | 'setCellFormula' | 'clearCell' }> | null => {
-    const skipTableHeaderRename = options.skipTableHeaderRename === true
-    const setCellValueOp = (value: LiteralInput): Extract<EngineOp, { kind: 'setCellValue' }> => ({
-      kind: 'setCellValue',
-      sheetName,
-      address,
-      value,
-      ...(skipTableHeaderRename ? { skipTableHeaderRename: true } : {}),
-    })
-    const clearCellOp = (): Extract<EngineOp, { kind: 'clearCell' }> => ({
-      kind: 'clearCell',
-      sheetName,
-      address,
-      ...(skipTableHeaderRename ? { skipTableHeaderRename: true } : {}),
-    })
     const cellIndex = args.workbook.getCellIndex(sheetName, address)
     if (cellIndex === undefined) {
-      return clearCellOp()
+      return { kind: 'clearCell', sheetName, address }
     }
     const cellStore = args.workbook.cellStore
     const formulaId = cellStore.formulaIds[cellIndex] ?? 0
     if (formulaId === 0) {
       const tag = cellStore.tags[cellIndex]
       if (tag === ValueTag.Number) {
-        return setCellValueOp(cellStore.numbers[cellIndex] ?? 0)
+        return { kind: 'setCellValue', sheetName, address, value: cellStore.numbers[cellIndex] ?? 0 }
       }
       if (tag === ValueTag.Boolean) {
-        return setCellValueOp((cellStore.numbers[cellIndex] ?? 0) !== 0)
+        return { kind: 'setCellValue', sheetName, address, value: (cellStore.numbers[cellIndex] ?? 0) !== 0 }
       }
       if (tag === ValueTag.Empty || tag === ValueTag.Error || tag === undefined) {
-        return clearCellOp()
+        return { kind: 'clearCell', sheetName, address }
       }
       return null
     }
@@ -298,24 +281,6 @@ export function createMutationCellRestoreHistoryHelpers(args: MutationCellRestor
   }
 
   const createLazyInverseCellMutationRecord = (refs: readonly EngineCellMutationRef[]): TransactionRecord => {
-    if (
-      refs.some((ref) => {
-        if (skipsTableHeaderRename(ref)) {
-          return true
-        }
-        if (ref.mutation.kind !== 'setCellFormula') {
-          return false
-        }
-        const sheet = args.workbook.getSheetById(ref.sheetId)
-        return sheet !== undefined && isTableHeaderCell(args.workbook.listTables(), sheet.name, ref.mutation.row, ref.mutation.col)
-      })
-    ) {
-      const ops: EngineOp[] = []
-      for (let index = refs.length - 1; index >= 0; index -= 1) {
-        ops.push(restoreCellOpFromRef(refs[index]!))
-      }
-      return { kind: 'ops', ops, potentialNewCells: refs.length }
-    }
     const captured = captureInverseCellMutationRestores(refs)
     return createLazyMaterializedCellMutationTransactionRecord(
       () => materializeCapturedCellMutationRestores(captured),
@@ -329,7 +294,7 @@ export function createMutationCellRestoreHistoryHelpers(args: MutationCellRestor
     }
     const ref = refs[0]!
     const { mutation, sheetId } = ref
-    if (mutation.kind !== 'setCellValue' || typeof mutation.value !== 'number' || mutation.skipTableHeaderRename === true) {
+    if (mutation.kind !== 'setCellValue' || typeof mutation.value !== 'number') {
       return null
     }
 
@@ -391,7 +356,7 @@ export function createMutationCellRestoreHistoryHelpers(args: MutationCellRestor
     for (let index = 0; index < count; index += 1) {
       const ref = refs[index]!
       const { mutation, sheetId } = ref
-      if (mutation.kind !== 'setCellValue' || typeof mutation.value !== 'number' || mutation.skipTableHeaderRename === true) {
+      if (mutation.kind !== 'setCellValue' || typeof mutation.value !== 'number') {
         return null
       }
       if (sheetId !== cachedSheetId) {
@@ -504,21 +469,10 @@ export function tryMutationCellRefsFromOps(workbook: WorkbookStore, ops: readonl
       ...(cellIndex === undefined ? {} : { cellIndex }),
       mutation:
         op.kind === 'setCellValue'
-          ? {
-              kind: 'setCellValue',
-              row: parsed.row,
-              col: parsed.col,
-              value: op.value,
-              ...(op.skipTableHeaderRename === true ? { skipTableHeaderRename: true } : {}),
-            }
+          ? { kind: 'setCellValue', row: parsed.row, col: parsed.col, value: op.value }
           : op.kind === 'setCellFormula'
             ? { kind: 'setCellFormula', row: parsed.row, col: parsed.col, formula: op.formula }
-            : {
-                kind: 'clearCell',
-                row: parsed.row,
-                col: parsed.col,
-                ...(op.skipTableHeaderRename === true ? { skipTableHeaderRename: true } : {}),
-              },
+            : { kind: 'clearCell', row: parsed.row, col: parsed.col },
     }
   }
   return refs

@@ -182,8 +182,6 @@ describe('worker runtime machine', () => {
         documentId: 'xlsx:imported',
         replicaId: 'browser:test',
         persistState: true,
-        authoritativeSyncEnabled: true,
-        authoritativeEventSyncEnabled: false,
         connectionStateName: 'closed',
         initialSelection: { sheetName: 'Sheet1', address: 'A1' },
         createSession,

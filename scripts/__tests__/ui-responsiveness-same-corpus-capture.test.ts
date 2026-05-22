@@ -16,20 +16,10 @@ import {
   verifyXlsxCorpusFingerprint,
 } from '../capture-ui-responsiveness-same-corpus.ts'
 import { requiredUiResponsivenessSameCorpusWorkloads } from '../ui-responsiveness-same-corpus-workloads.ts'
-import {
-  buildCaptureScenarioProof,
-  isSameCorpusProductPixelGridProofComplete,
-  type SameCorpusProductVisualProof,
-} from '../ui-responsiveness-same-corpus-proof.ts'
+import { buildCaptureScenarioProof, type SameCorpusProductVisualProof } from '../ui-responsiveness-same-corpus-proof.ts'
 import { sameCorpusChromiumLaunchOptions } from '../ui-responsiveness-same-corpus-page-utils.ts'
 import { sameCorpusScrollProbeSelectorsForProduct } from '../ui-responsiveness-same-corpus-scroll-page.ts'
 import { incumbentEditableWorkloadBlocker, sameCorpusKeyboardOperations } from '../ui-responsiveness-same-corpus-workload-runner.ts'
-
-const sameCorpusFixtureCheckedCells = [
-  { address: 'A1', expected: 'metric-1', actual: 'metric-1' },
-  { address: 'B1', expected: 'metric-2', actual: 'metric-2' },
-  { address: 'F2', expected: 'note-1-5', actual: 'note-1-5' },
-] as const
 
 describe('same-corpus UI responsiveness capture CLI', () => {
   it('builds a default Bilig benchmark URL from the selected corpus', () => {
@@ -330,182 +320,6 @@ describe('same-corpus UI responsiveness capture CLI', () => {
     })
   })
 
-  it('downgrades legacy Bilig canvas evidence that lacks strict rendered-frame proof', () => {
-    const proof = buildCaptureScenarioProof({
-      bilig: sameCorpusCaptureMeasurement('bilig', 'bilig-benchmark-state'),
-      googleSheets: sameCorpusCaptureMeasurement('google-sheets', 'google-sheets-xlsx-export'),
-      visualProofs: [
-        {
-          ...sameCorpusVisualProof('bilig', 'typegpu-visible-canvas'),
-          pixelGridProof: {
-            product: 'bilig',
-            captured: true,
-            method: 'typegpu-visible-canvas',
-            viewportPixelWidth: 1440,
-            viewportPixelHeight: 900,
-            evidence: ['mode=typegpu-v3', 'tilePaneCount=6', 'headerPaneCount=3'],
-          },
-        },
-        sameCorpusVisualProof('google-sheets', 'google-sheets-visible-grid'),
-      ],
-    })
-
-    expect(proof.pixelGridProof).toMatchObject({
-      captured: false,
-      missingProducts: ['bilig'],
-    })
-  })
-
-  it('rejects each missing Bilig visible-frame proof field and revision mismatch', () => {
-    const baseProof = sameCorpusVisualProof('bilig', 'typegpu-visible-canvas').pixelGridProof
-    const baseEvidence = baseProof.evidence
-
-    expect(isSameCorpusProductPixelGridProofComplete(baseProof)).toBe(true)
-
-    const invalidEvidenceCases: readonly {
-      readonly label: string
-      readonly evidence: readonly string[]
-    }[] = [
-      ...[
-        'pixelGridProofVersion',
-        'pixelSampleSource',
-        'visibleGridLinePixels',
-        'verticalLineRuns',
-        'horizontalLineRuns',
-        'mode',
-        'contractVersion',
-        'backendStatus',
-        'frameProofStatus',
-        'frameProofSignature',
-        'hasPresentedFrame',
-        'hasPresentedVisibleFrame',
-        'presentedFrameProofSignature',
-        'currentSceneOwnershipSignature',
-        'presentedSceneOwnershipSignature',
-        'currentContentSignature',
-        'presentedContentSignature',
-        'currentTextRunCount',
-        'presentedTextRunCount',
-        'currentTextSignature',
-        'presentedTextSignature',
-        'currentRectCount',
-        'presentedRectCount',
-        'currentRectSignature',
-        'presentedRectSignature',
-        'tilePaneCount',
-        'headerPaneCount',
-        'presentedTilePaneCount',
-        'presentedHeaderPaneCount',
-        'expectedPixelWidth',
-        'expectedPixelHeight',
-        'canvasPixelWidth',
-        'canvasPixelHeight',
-        'canvasCoversViewport',
-        'gridAuthoritativeRevision',
-        'typeGpuAuthoritativeRevision',
-        'visibleAuthoritativeRevision',
-        'gridLocalRevision',
-        'typeGpuLocalRevision',
-        'visibleLocalRevision',
-        'gridProjectedRevision',
-        'typeGpuProjectedRevision',
-        'visibleProjectedRevision',
-        'tileSceneRevision',
-        'visibleRenderRevision',
-      ].map((key) => ({ label: `missing ${key}`, evidence: evidenceWithoutKey(baseEvidence, key) })),
-      { label: 'wrong pixel proof contract', evidence: replaceEvidence(baseEvidence, 'pixelGridProofVersion', 'legacy-grid-pixels') },
-      { label: 'wrong pixel proof source', evidence: replaceEvidence(baseEvidence, 'pixelSampleSource', 'dom-rectangle') },
-      { label: 'too few gridline pixels', evidence: replaceEvidence(baseEvidence, 'visibleGridLinePixels', '23') },
-      { label: 'too few vertical line runs', evidence: replaceEvidence(baseEvidence, 'verticalLineRuns', '2') },
-      { label: 'too few horizontal line runs', evidence: replaceEvidence(baseEvidence, 'horizontalLineRuns', '2') },
-      { label: 'wrong renderer mode', evidence: replaceEvidence(baseEvidence, 'mode', 'canvas2d') },
-      { label: 'wrong render proof contract', evidence: replaceEvidence(baseEvidence, 'contractVersion', 'same-corpus-ui-v1') },
-      { label: 'backend not ready', evidence: replaceEvidence(baseEvidence, 'backendStatus', 'pending') },
-      { label: 'frame not presented', evidence: replaceEvidence(baseEvidence, 'frameProofStatus', 'pending') },
-      { label: 'missing current frame presentation', evidence: replaceEvidence(baseEvidence, 'hasPresentedFrame', 'false') },
-      {
-        label: 'stale presented frame signature',
-        evidence: replaceEvidence(baseEvidence, 'presentedFrameProofSignature', 'frame-stale'),
-      },
-      {
-        label: 'stale presented scene ownership',
-        evidence: replaceEvidence(baseEvidence, 'presentedSceneOwnershipSignature', 'scene-stale'),
-      },
-      { label: 'visible frame not presented', evidence: replaceEvidence(baseEvidence, 'hasPresentedVisibleFrame', 'false') },
-      {
-        label: 'stale presented content signature',
-        evidence: replaceEvidence(baseEvidence, 'presentedContentSignature', 'content-stale'),
-      },
-      { label: 'stale presented text signature', evidence: replaceEvidence(baseEvidence, 'presentedTextSignature', 'text-stale') },
-      { label: 'stale presented rect signature', evidence: replaceEvidence(baseEvidence, 'presentedRectSignature', 'rect-stale') },
-      { label: 'stale presented text run count', evidence: replaceEvidence(baseEvidence, 'presentedTextRunCount', '11') },
-      { label: 'stale presented rect count', evidence: replaceEvidence(baseEvidence, 'presentedRectCount', '87') },
-      { label: 'empty current rect payload', evidence: replaceEvidence(baseEvidence, 'currentRectCount', '0') },
-      { label: 'empty presented rect payload', evidence: replaceEvidence(baseEvidence, 'presentedRectCount', '0') },
-      { label: 'empty tile panes', evidence: replaceEvidence(baseEvidence, 'tilePaneCount', '0') },
-      { label: 'empty header panes', evidence: replaceEvidence(baseEvidence, 'headerPaneCount', '0') },
-      { label: 'empty presented tile panes', evidence: replaceEvidence(baseEvidence, 'presentedTilePaneCount', '0') },
-      { label: 'empty presented header panes', evidence: replaceEvidence(baseEvidence, 'presentedHeaderPaneCount', '0') },
-      { label: 'partial presented tile panes', evidence: replaceEvidence(baseEvidence, 'presentedTilePaneCount', '5') },
-      { label: 'partial presented header panes', evidence: replaceEvidence(baseEvidence, 'presentedHeaderPaneCount', '2') },
-      { label: 'undersized canvas width', evidence: replaceEvidence(baseEvidence, 'canvasPixelWidth', '1437') },
-      { label: 'undersized canvas height', evidence: replaceEvidence(baseEvidence, 'canvasPixelHeight', '897') },
-      { label: 'canvas does not cover viewport', evidence: replaceEvidence(baseEvidence, 'canvasCoversViewport', 'false') },
-      {
-        label: 'TypeGPU authoritative revision differs from grid',
-        evidence: replaceEvidence(baseEvidence, 'typeGpuAuthoritativeRevision', 'rev-2'),
-      },
-      {
-        label: 'visible authoritative revision differs from grid',
-        evidence: replaceEvidence(baseEvidence, 'visibleAuthoritativeRevision', 'rev-2'),
-      },
-      { label: 'TypeGPU local revision differs from grid', evidence: replaceEvidence(baseEvidence, 'typeGpuLocalRevision', 'rev-local-1') },
-      { label: 'visible local revision differs from grid', evidence: replaceEvidence(baseEvidence, 'visibleLocalRevision', 'rev-local-1') },
-      { label: 'TypeGPU revision differs from grid', evidence: replaceEvidence(baseEvidence, 'typeGpuProjectedRevision', 'rev-2') },
-      { label: 'visible revision differs from grid', evidence: replaceEvidence(baseEvidence, 'visibleProjectedRevision', 'rev-2') },
-      {
-        label: 'visible render revision differs from tile scene',
-        evidence: replaceEvidence(baseEvidence, 'visibleRenderRevision', 'scene-6'),
-      },
-    ]
-
-    for (const entry of invalidEvidenceCases) {
-      expect(
-        isSameCorpusProductPixelGridProofComplete({
-          ...baseProof,
-          evidence: entry.evidence,
-        }),
-        entry.label,
-      ).toBe(false)
-    }
-  })
-
-  it('downgrades incumbent grid evidence that only proves a large DOM rectangle exists', () => {
-    const proof = buildCaptureScenarioProof({
-      bilig: sameCorpusCaptureMeasurement('bilig', 'bilig-benchmark-state'),
-      googleSheets: sameCorpusCaptureMeasurement('google-sheets', 'google-sheets-xlsx-export'),
-      visualProofs: [
-        sameCorpusVisualProof('bilig', 'typegpu-visible-canvas'),
-        {
-          ...sameCorpusVisualProof('google-sheets', 'google-sheets-visible-grid'),
-          pixelGridProof: {
-            product: 'google-sheets',
-            captured: true,
-            method: 'google-sheets-visible-grid',
-            viewportPixelWidth: 1440,
-            viewportPixelHeight: 900,
-            evidence: ['selector=.grid-scrollable-wrapper', 'cssWidth=720', 'cssHeight=450'],
-          },
-        },
-      ],
-    })
-
-    expect(proof.pixelGridProof).toMatchObject({
-      captured: false,
-      missingProducts: ['google-sheets'],
-    })
-  })
-
   it('rejects read-only incumbent edit surfaces before timing same-corpus edits', () => {
     expect(
       incumbentEditableWorkloadBlocker(
@@ -630,7 +444,14 @@ function sameCorpusCaptureMeasurement(
       method,
       sheetName: 'WideGrid',
       materializedCells: 250_000,
-      checkedCells: sameCorpusFixtureCheckedCells,
+      checkedCells:
+        product === 'bilig'
+          ? []
+          : [
+              { address: 'A1', expected: 'metric-1', actual: 'metric-1' },
+              { address: 'B1', expected: 'metric-2', actual: 'metric-2' },
+              { address: 'F2', expected: 'note-1-5', actual: 'note-1-5' },
+            ],
     },
     limitations: [],
   }
@@ -650,77 +471,7 @@ function sameCorpusVisualProof(
       method,
       viewportPixelWidth: 1440,
       viewportPixelHeight: 900,
-      evidence:
-        product === 'bilig'
-          ? [
-              'gridCssWidth=720',
-              'gridCssHeight=450',
-              'devicePixelRatio=2',
-              'expectedPixelWidth=1440',
-              'expectedPixelHeight=900',
-              'contractVersion=same-corpus-ui-v2',
-              'gridAuthoritativeRevision=rev-3',
-              'gridLocalRevision=rev-local-2',
-              'gridProjectedRevision=rev-3',
-              'fallbackMounted=false',
-              'mode=typegpu-v3',
-              'backendStatus=ready',
-              'frameProofStatus=presented',
-              'frameProofSignature=frame-current',
-              'hasPresentedFrame=true',
-              'hasPresentedVisibleFrame=true',
-              'presentedFrameProofSignature=frame-current',
-              'currentSceneOwnershipSignature=scene-current',
-              'presentedSceneOwnershipSignature=scene-current',
-              'currentContentSignature=content-current',
-              'presentedContentSignature=content-current',
-              'currentTextRunCount=12',
-              'presentedTextRunCount=12',
-              'currentTextSignature=text-current',
-              'presentedTextSignature=text-current',
-              'currentRectCount=88',
-              'presentedRectCount=88',
-              'currentRectSignature=rect-current',
-              'presentedRectSignature=rect-current',
-              'tilePaneCount=6',
-              'headerPaneCount=3',
-              'presentedTilePaneCount=6',
-              'presentedHeaderPaneCount=3',
-              'canvasPixelWidth=1440',
-              'canvasPixelHeight=900',
-              'canvasCoversViewport=true',
-              'typeGpuAuthoritativeRevision=rev-3',
-              'typeGpuLocalRevision=rev-local-2',
-              'typeGpuProjectedRevision=rev-3',
-              'visibleAuthoritativeRevision=rev-3',
-              'visibleLocalRevision=rev-local-2',
-              'visibleProjectedRevision=rev-3',
-              'tileSceneRevision=scene-7',
-              'visibleRenderRevision=scene-7',
-              ...strictPixelGridEvidence(),
-            ]
-          : strictPixelGridEvidence(),
+      evidence: ['test visual proof'],
     },
   }
-}
-
-function strictPixelGridEvidence(): string[] {
-  return [
-    'pixelGridProofVersion=grid-pixels-v1',
-    'pixelSampleSource=screenshot',
-    'screenshotPixelWidth=1440',
-    'screenshotPixelHeight=900',
-    'nonBlankPixels=10000',
-    'visibleGridLinePixels=4000',
-    'verticalLineRuns=8',
-    'horizontalLineRuns=16',
-  ]
-}
-
-function evidenceWithoutKey(evidence: readonly string[], key: string): string[] {
-  return evidence.filter((entry) => !entry.startsWith(`${key}=`))
-}
-
-function replaceEvidence(evidence: readonly string[], key: string, value: string): string[] {
-  return evidence.map((entry) => (entry.startsWith(`${key}=`) ? `${key}=${value}` : entry))
 }

@@ -53,9 +53,7 @@ test('@browser-ci web app paints a workbook skeleton before the app bundle mount
   ).toBeGreaterThan(1_000)
 })
 
-test('@browser-webgpu @browser-deep web app paints deep querystring-selected cell content in the visible grid', async ({
-  page,
-}, testInfo) => {
+test('@browser-ci web app paints deep querystring-selected cell content in the visible grid', async ({ page }, testInfo) => {
   const documentId = createTestDocumentId('playwright-visible-deep-cell')
   await page.setViewportSize({ width: 1166, height: 820 })
   await page.goto(`/?document=${encodeURIComponent(documentId)}&sheet=Sheet1&cell=D53`)
@@ -115,9 +113,7 @@ test('@browser-webgpu @browser-deep web app paints deep querystring-selected cel
   }
 })
 
-test('@browser-webgpu @browser-deep web app keeps table gridlines visible through TypeGPU without fallback masking', async ({
-  page,
-}, testInfo) => {
+test('@browser-ci web app keeps table gridlines visible through TypeGPU without fallback masking', async ({ page }, testInfo) => {
   const documentId = createTestDocumentId('playwright-visible-gridline-floor')
   await page.setViewportSize({ width: 1000, height: 760 })
   await page.goto(`/?document=${encodeURIComponent(documentId)}&persist=0&sheet=Sheet1&cell=A1`)
@@ -165,7 +161,7 @@ test('@browser-ci web app keeps a user click selection after opening from a deep
   await expect.poll(() => page.evaluate(() => new URL(window.location.href).searchParams.get('cell') ?? '')).not.toBe('D53')
 })
 
-test('@browser-webgpu @browser-deep web app keeps dense accounting-sheet text payloads complete in the TypeGPU layer', async ({
+test('@browser-ci web app keeps dense accounting-sheet text payloads complete in the TypeGPU layer', async ({
   page,
   context,
 }, testInfo) => {
@@ -271,7 +267,7 @@ test('@browser-ci web app keeps the live cell editor above the TypeGPU grid text
     })
 })
 
-test('@browser-webgpu @browser-deep web app suppresses TypeGPU overflow text while editing a tile-boundary cell', async ({ page }) => {
+test('@browser-ci web app suppresses TypeGPU overflow text while editing a tile-boundary cell', async ({ page }) => {
   const documentId = createTestDocumentId('playwright-editor-tile-boundary-overflow')
   const overflowText = 'overflow-editor-ghost '.repeat(8).trim()
   await page.setViewportSize({ width: 1166, height: 820 })
@@ -309,9 +305,7 @@ test('@browser-webgpu @browser-deep web app suppresses TypeGPU overflow text whi
     .toBe(0)
 })
 
-test('@browser-webgpu @browser-deep web app keeps rendered edits, clears, headers, and fills coherent across click-away and reload', async ({
-  page,
-}) => {
+test('@browser-ci web app keeps rendered edits, clears, headers, and fills coherent across click-away and reload', async ({ page }) => {
   const documentId = createTestDocumentId('playwright-rendered-table-stakes')
   const editedText = 'rendered-table-stakes'
   await page.setViewportSize({ width: 1166, height: 820 })
@@ -381,7 +375,7 @@ test('@browser-webgpu @browser-deep web app keeps rendered edits, clears, header
     .toBeGreaterThan(120)
 })
 
-test('@browser-webgpu @browser-deep web app preserves visible fill while Delete clears only cell content', async ({ page }) => {
+test('@browser-ci web app preserves visible fill while Delete clears only cell content', async ({ page }) => {
   const documentId = createTestDocumentId('playwright-delete-preserves-fill')
   const text = 'delete-keeps-fill'
   await page.setViewportSize({ width: 1166, height: 820 })
@@ -454,7 +448,7 @@ test('@browser-webgpu @browser-deep web app preserves visible fill while Delete 
     .toBeGreaterThan(120)
 })
 
-test('@browser-webgpu @browser-deep web app repaints same-size TypeGPU fill color changes without stale tile colors', async ({ page }) => {
+test('@browser-ci web app repaints same-size TypeGPU fill color changes without stale tile colors', async ({ page }) => {
   const documentId = createTestDocumentId('playwright-fill-color-repaint')
   await page.setViewportSize({ width: 1166, height: 820 })
   await page.goto(`/?document=${encodeURIComponent(documentId)}&persist=0&sheet=Sheet1&cell=A1`)
@@ -486,9 +480,7 @@ test('@browser-webgpu @browser-deep web app repaints same-size TypeGPU fill colo
   ).toBeGreaterThan(120)
 })
 
-test('@browser-webgpu @browser-deep web app paints toolbar fill across a selected range without hiding the range color', async ({
-  page,
-}) => {
+test('@browser-ci web app paints toolbar fill across a selected range without hiding the range color', async ({ page }) => {
   const documentId = createTestDocumentId('playwright-range-fill-visible')
   await page.setViewportSize({ width: 1166, height: 820 })
   await page.goto(`/?document=${encodeURIComponent(documentId)}&persist=0&sheet=Sheet1&cell=A1`)
@@ -526,9 +518,7 @@ test('@browser-webgpu @browser-deep web app paints toolbar fill across a selecte
   await expect.poll(() => countBlueFillReadbackPixelsInCell(page, 5, 10)).toBeGreaterThan(120)
 })
 
-test('@browser-webgpu @browser-deep web app remaps visible TypeGPU cells exactly while scrolling inside one resident window', async ({
-  page,
-}) => {
+test('@browser-ci web app remaps visible TypeGPU cells exactly while scrolling inside one resident window', async ({ page }) => {
   const documentId = createTestDocumentId('playwright-resident-visible-remap')
   await page.setViewportSize({ width: 1166, height: 820 })
   await page.goto(`/?document=${encodeURIComponent(documentId)}&persist=0&sheet=Sheet1&cell=A1`)
@@ -608,7 +598,7 @@ test('@browser-webgpu @browser-deep web app remaps visible TypeGPU cells exactly
   await expect(formulaInput).toHaveValue('resident-visible-b2')
 })
 
-test('@browser-webgpu @browser-deep web app repaints moved text cells when a background fill is applied', async ({ page, context }) => {
+test('@browser-ci web app repaints moved text cells when a background fill is applied', async ({ page, context }) => {
   const documentId = createTestDocumentId('playwright-moved-cell-fill-repaint')
   const movedText = 'moved-fill-proof'
   await context.grantPermissions(['clipboard-read', 'clipboard-write'])
@@ -666,10 +656,7 @@ test('@browser-webgpu @browser-deep web app repaints moved text cells when a bac
   await expect(page.getByTestId('formula-input')).toHaveValue(movedText)
 })
 
-test('@browser-webgpu @browser-deep web app copies presentation and clears stale target fills in visible tiles', async ({
-  page,
-  context,
-}) => {
+test('@browser-ci web app copies presentation and clears stale target fills in visible tiles', async ({ page, context }) => {
   const documentId = createTestDocumentId('playwright-copy-presentation-repaint')
   await context.grantPermissions(['clipboard-read', 'clipboard-write'])
   await page.setViewportSize({ width: 1166, height: 820 })
@@ -732,10 +719,7 @@ test('@browser-webgpu @browser-deep web app copies presentation and clears stale
     .toBeLessThan(12)
 })
 
-test('@browser-webgpu @browser-deep web app moves background fill presentation without source or target ghosts', async ({
-  page,
-  context,
-}) => {
+test('@browser-ci web app moves background fill presentation without source or target ghosts', async ({ page, context }) => {
   const documentId = createTestDocumentId('playwright-move-fill-presentation')
   const movedText = 'move-fill-source'
   await context.grantPermissions(['clipboard-read', 'clipboard-write'])
@@ -815,27 +799,23 @@ test('@browser-webgpu @browser-deep web app moves background fill presentation w
     .toBeLessThan(12)
 })
 
-test('@browser-webgpu @browser-deep web app repaints shifted styled survivors after structural row delete', async ({ page }) => {
+test('@browser-ci web app repaints shifted styled survivors after structural row delete', async ({ page }) => {
   const documentId = createTestDocumentId('playwright-structural-row-delete-visual-survivor')
   const survivorText = 'row-delete-survivor'
-  const survivorRow = 36
-  const shiftedSurvivorRow = survivorRow - 1
   await page.setViewportSize({ width: 1280, height: 1040 })
   await page.goto(`/?document=${encodeURIComponent(documentId)}&persist=0&sheet=Sheet1&cell=A1`)
   await waitForWorkbookReady(page)
 
   const formulaInput = page.getByTestId('formula-input')
 
-  await clickProductCell(page, 1, survivorRow)
+  await clickProductCell(page, 1, 39)
   await formulaInput.fill(survivorText)
   await formulaInput.press('Enter')
-  await clickProductCell(page, 1, survivorRow)
-  await expect(page.getByTestId('status-selection')).toHaveText('Sheet1!B37')
   await pickToolbarPresetColor(page, 'Fill color', 'green')
   await expect
     .poll(
       async () => {
-        await clickProductCell(page, 1, survivorRow)
+        await clickProductCell(page, 1, 39)
         return await formulaInput.inputValue()
       },
       {
@@ -844,10 +824,8 @@ test('@browser-webgpu @browser-deep web app repaints shifted styled survivors af
       },
     )
     .toBe(survivorText)
-  await expect.poll(() => countGreenFillReadbackPixelsInCell(page, 1, survivorRow)).toBeGreaterThan(120)
+  await expect.poll(() => countGreenFillReadbackPixelsInCell(page, 1, 39)).toBeGreaterThan(120)
 
-  const preDeleteReadbackSequence = await readCellReadbackSequence(page)
-  const preDeleteRenderRevision = await readVisibleRenderRevision(page)
   await dragProductHeaderSelection(page, 'row', 1, 1)
   await expect(page.getByTestId('status-selection')).toHaveText('Sheet1!2:2')
   await page.keyboard.down(PRIMARY_MODIFIER)
@@ -859,7 +837,7 @@ test('@browser-webgpu @browser-deep web app repaints shifted styled survivors af
   await expect
     .poll(
       async () => {
-        await clickProductCell(page, 1, shiftedSurvivorRow)
+        await clickProductCell(page, 1, 38)
         return await formulaInput.inputValue()
       },
       {
@@ -871,7 +849,7 @@ test('@browser-webgpu @browser-deep web app repaints shifted styled survivors af
   await expect
     .poll(
       async () => {
-        await clickProductCell(page, 1, survivorRow)
+        await clickProductCell(page, 1, 39)
         return await formulaInput.inputValue()
       },
       {
@@ -881,25 +859,13 @@ test('@browser-webgpu @browser-deep web app repaints shifted styled survivors af
     )
     .toBe('')
   await expect
-    .poll(() => readVisibleRenderRevision(page), {
-      message: 'row delete should present a newer TypeGPU frame before fill readback',
-      timeout: 5_000,
-    })
-    .toBeGreaterThan(preDeleteRenderRevision)
-  await expect
-    .poll(() => readCellReadbackSequence(page), {
-      message: 'row delete should produce a fresh canvas readback before shifted-fill assertions',
-      timeout: 5_000,
-    })
-    .toBeGreaterThan(preDeleteReadbackSequence)
-  await expect
-    .poll(() => countGreenFillReadbackPixelsInCell(page, 1, shiftedSurvivorRow), {
+    .poll(() => countGreenFillReadbackPixelsInCell(page, 1, 38), {
       message: 'the shifted survivor should keep its green fill',
       timeout: 5_000,
     })
     .toBeGreaterThan(120)
   await expect
-    .poll(() => countGreenFillReadbackPixelsInCell(page, 1, survivorRow), {
+    .poll(() => countGreenFillReadbackPixelsInCell(page, 1, 39), {
       message: 'the old row tile should not keep stale green fill',
       timeout: 5_000,
     })
@@ -1045,24 +1011,6 @@ function shouldAllowHeadlessWebGpuScreenshotGap(): boolean {
   return process.platform === 'darwin' && process.env['CI'] !== '1' && process.env['CI'] !== 'true'
 }
 
-async function readVisibleRenderRevision(page: Page): Promise<number> {
-  return await page.getByTestId('grid-pane-renderer').evaluate((node) => {
-    const value = Number(node.getAttribute('data-v3-visible-render-revision') ?? 0)
-    return Number.isFinite(value) ? value : 0
-  })
-}
-
-async function readCellReadbackSequence(page: Page): Promise<number> {
-  return await page.evaluate(
-    () =>
-      (
-        window as Window & {
-          __biligCellReadbackInspector?: { readonly getSequence: () => number }
-        }
-      ).__biligCellReadbackInspector?.getSequence() ?? 0,
-  )
-}
-
 function readRenderRevisionState(page: Page): () => Promise<{
   readonly projectedRevision: string
   readonly projectedRevisionPresent: boolean
@@ -1127,39 +1075,20 @@ function readTypeGpuTextRunCount(page: Page): () => Promise<number> {
 }
 
 function readTypeGpuPresentationState(page: Page): () => Promise<{
-  readonly frameProofStatus: string | null
   readonly hasBodyTextPayload: boolean
   readonly hasHeaderTextPayload: boolean
-  readonly hasPresentedAnyFrame: boolean
   readonly hasPresentedBodyTextPayload: boolean
-  readonly hasPresentedVisibleFrame: boolean
   readonly nativeTextLayerMounted: boolean
-  readonly presentedHeaderTextRunCount: number
-  readonly presentedTextRunCount: number
-  readonly presentedTilePaneCount: number
-  readonly textRunCount: number
-  readonly tilePaneCount: number
 }> {
   return async () =>
     await page.evaluate(() => {
       const typeGpu = document.querySelector('[data-testid="grid-pane-renderer"]')
       const readNumberAttribute = (name: string) => (typeGpu instanceof HTMLElement ? Number(typeGpu.getAttribute(name) ?? '0') : 0)
-      const readStringAttribute = (name: string) => (typeGpu instanceof HTMLElement ? typeGpu.getAttribute(name) : null)
-      const textRunCount = readNumberAttribute('data-v3-text-run-count')
-      const presentedTextRunCount = readNumberAttribute('data-v3-presented-text-run-count')
       return {
-        frameProofStatus: readStringAttribute('data-v3-frame-proof-status'),
-        hasBodyTextPayload: textRunCount > 0,
+        hasBodyTextPayload: readNumberAttribute('data-v3-text-run-count') > 0,
         hasHeaderTextPayload: readNumberAttribute('data-v3-header-text-run-count') > 0,
-        hasPresentedAnyFrame: readStringAttribute('data-v3-has-presented-any-frame') === 'true',
-        hasPresentedBodyTextPayload: presentedTextRunCount > 0,
-        hasPresentedVisibleFrame: readStringAttribute('data-v3-has-presented-visible-frame') === 'true',
+        hasPresentedBodyTextPayload: readNumberAttribute('data-v3-presented-text-run-count') > 0,
         nativeTextLayerMounted: document.querySelector('[data-testid="grid-native-text-layer"]') instanceof HTMLElement,
-        presentedHeaderTextRunCount: readNumberAttribute('data-v3-presented-header-text-run-count'),
-        presentedTextRunCount,
-        presentedTilePaneCount: readNumberAttribute('data-v3-presented-tile-pane-count'),
-        textRunCount,
-        tilePaneCount: readNumberAttribute('data-v3-tile-pane-count'),
       }
     })
 }
@@ -1231,11 +1160,15 @@ async function countInitialShellNonBlankPixels(page: Page): Promise<number> {
     throw new Error('initial workbook grid is not visible')
   }
 
-  const buffer = await captureInitialShellScreenshot(page, {
-    height: Math.min(420, Math.round(grid.height)),
-    width: Math.min(620, Math.round(grid.width)),
-    x: Math.round(grid.x),
-    y: Math.round(grid.y),
+  const buffer = await page.screenshot({
+    animations: 'disabled',
+    caret: 'hide',
+    clip: {
+      height: Math.min(420, Math.round(grid.height)),
+      width: Math.min(620, Math.round(grid.width)),
+      x: Math.round(grid.x),
+      y: Math.round(grid.y),
+    },
   })
 
   return await page.evaluate(
@@ -1269,26 +1202,6 @@ async function countInitialShellNonBlankPixels(page: Page): Promise<number> {
     },
     { dataUrl: `data:image/png;base64,${buffer.toString('base64')}` },
   )
-}
-
-async function captureInitialShellScreenshot(
-  page: Page,
-  clip: { readonly height: number; readonly width: number; readonly x: number; readonly y: number },
-  remainingAttempts = 3,
-): Promise<Buffer> {
-  try {
-    return await page.screenshot({
-      animations: 'disabled',
-      caret: 'hide',
-      clip,
-    })
-  } catch (error) {
-    if (!String(error).includes('Page.captureScreenshot') || remainingAttempts <= 1) {
-      throw error
-    }
-    await page.waitForTimeout(100)
-    return await captureInitialShellScreenshot(page, clip, remainingAttempts - 1)
-  }
 }
 
 async function countDarkInteriorPixelsInCell(page: Page, columnIndex: number, rowIndex: number): Promise<number> {

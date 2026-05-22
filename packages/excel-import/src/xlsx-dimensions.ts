@@ -13,7 +13,6 @@ interface ExportRowMetadata {
   readonly rowNumber: number
   readonly size?: number
   readonly hidden?: boolean
-  readonly filtered?: boolean
   readonly styleIndex?: number
   readonly xlsxHeight?: number
   readonly customFormat?: boolean
@@ -138,7 +137,6 @@ function expandExportRowMetadataRecord(row: WorkbookAxisMetadataSnapshot): Expor
   const xlsxHeight = finitePositiveNumber(row.xlsxHeight ?? undefined)
   const size = finitePositiveNumber(row.size ?? undefined)
   const hidden = optionalBoolean(row.hidden)
-  const filtered = optionalBoolean(row.filtered)
   const styleIndex = finiteNonNegativeInteger(row.styleIndex ?? undefined)
   const customFormat = optionalBoolean(row.customFormat)
   const customHeight = optionalBoolean(row.customHeight)
@@ -150,7 +148,6 @@ function expandExportRowMetadataRecord(row: WorkbookAxisMetadataSnapshot): Expor
     rowNumber: row.start + offset + 1,
     ...(size !== undefined ? { size } : {}),
     ...(hidden !== undefined ? { hidden } : {}),
-    ...(filtered !== undefined ? { filtered } : {}),
     ...(styleIndex !== undefined ? { styleIndex } : {}),
     ...(xlsxHeight !== undefined ? { xlsxHeight } : {}),
     ...(customFormat !== undefined ? { customFormat } : {}),
@@ -182,15 +179,14 @@ function normalizeExportRowMetadata(
       return []
     }
     const size = finitePositiveNumber(row.size ?? undefined)
-    if (size === undefined && row.hidden !== true && row.filtered !== true) {
+    if (size === undefined && row.hidden !== true) {
       return []
     }
     return [
       {
         rowNumber,
         ...(size !== undefined ? { size } : {}),
-        ...(row.hidden === true || row.filtered === true ? { hidden: true } : {}),
-        ...(row.filtered === true ? { filtered: true } : {}),
+        ...(row.hidden === true ? { hidden: true } : {}),
         exact: false,
       },
     ]

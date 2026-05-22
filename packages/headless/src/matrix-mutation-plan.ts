@@ -1,7 +1,7 @@
 import type { EngineCellMutationRef } from '@bilig/core/headless-runtime'
-import { isBlankRawCellContent, isParsableFormulaContent } from './work-paper-runtime-helpers.js'
+import { isBlankRawCellContent } from './work-paper-runtime-helpers.js'
 import { workPaperFormulaMayResizeDynamically } from './work-paper-sheet-inspection.js'
-import type { WorkPaperCellAddress, WorkPaperSheet } from './work-paper-types.js'
+import type { WorkPaperCellAddress, WorkPaperSheet, RawCellContent } from './work-paper-types.js'
 
 export type MatrixMutationRef = EngineCellMutationRef
 
@@ -36,6 +36,10 @@ interface BuildMatrixMutationPlanArgs {
   deferLiteralAddresses?: ReadonlySet<string>
   includeCombinedRefs?: boolean
   skipNulls?: boolean
+}
+
+function isFormulaContent(content: RawCellContent): content is string {
+  return typeof content === 'string' && content.trim().startsWith('=')
 }
 
 export function buildMatrixMutationPlan(args: BuildMatrixMutationPlanArgs): MatrixMutationPlan {
@@ -99,7 +103,7 @@ export function buildMatrixMutationPlan(args: BuildMatrixMutationPlanArgs): Matr
       maxSetRow = Math.max(maxSetRow, destinationRow)
       maxSetCol = Math.max(maxSetCol, destinationCol)
 
-      if (isParsableFormulaContent(raw)) {
+      if (isFormulaContent(raw)) {
         formulaPotentialNewCells += 1
         if (freshNumericAggregateMatrixCandidate) {
           if (rowHasFreshAggregateFormula || rowFreshNumericValueCount < 2 || columnOffset !== rowFreshNumericValueCount) {

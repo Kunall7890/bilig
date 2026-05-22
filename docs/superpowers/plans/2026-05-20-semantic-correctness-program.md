@@ -807,7 +807,7 @@ Modify `package.json`:
 ```json
 "test:semantic:fast": "pnpm source-size:check && pnpm calculation:semantics:check && pnpm import-export:fidelity:check && tsx scripts/run-vitest.ts --run packages/core/src/__tests__/workbook-semantic-projection.test.ts packages/core/src/__tests__/engine-semantic-invariants.test.ts",
 "test:semantic:medium": "pnpm test:semantic:fast && pnpm test:correctness:formula && pnpm test:correctness:core",
-"test:semantic:deep": "pnpm test:semantic:medium && pnpm test:correctness:corpus && pnpm test:fuzz"
+"test:semantic:deep": "pnpm test:semantic:medium && pnpm test:correctness:corpus && pnpm test:fuzz:main"
 ```
 
 - [ ] **Step 3: Run semantic fast gate**

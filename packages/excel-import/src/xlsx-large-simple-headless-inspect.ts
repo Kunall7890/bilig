@@ -1,13 +1,28 @@
 import { normalizeWorkbookName } from './workbook-import-helpers.js'
+import { externalPivotCachesWarning, unsupportedCellStylesWarning } from './xlsx-import-warnings.js'
 import type {
   LargeSimpleXlsxImportStats,
   LargeSimpleXlsxOwnedSourceReleaseEvidence,
   LargeSimpleXlsxSheetDimension,
 } from './xlsx-large-simple-import.js'
 import { LargeSimpleXlsxImportPhaseRecorder } from './xlsx-large-simple-import-telemetry.js'
-import { parseHeadlessLargeSimpleWorksheetFromChunks } from './xlsx-large-simple-headless-worksheet-scanner.js'
+import { hasExternalLargeSimplePivotCaches } from './xlsx-large-simple-pivot-warnings.js'
+import {
+  hasAnyLargeSimpleRichSharedStringFromChunks,
+  hasAnyLargeSimpleRichSharedStringFromChunksAsync,
+} from './xlsx-large-simple-shared-strings.js'
+import {
+  inspectLargeSimpleWorkbookStyleSupportFromChunks,
+  inspectLargeSimpleWorkbookStyleSupportFromChunksAsync,
+} from './xlsx-large-simple-styles.js'
+import {
+  type HeadlessLargeSimpleWorksheetScanOptions,
+  parseHeadlessLargeSimpleWorksheetFromChunks,
+  parseHeadlessLargeSimpleWorksheetFromChunksAsync,
+} from './xlsx-large-simple-headless-worksheet-scanner.js'
 import {
   forEachInflatedXlsxZipEntryChunk,
+  forEachInflatedXlsxZipEntryChunkAsync,
   getZipText,
   normalizeZipPath,
   readLazyXlsxZipSourceByteLength,
@@ -39,8 +54,13 @@ const defaultLargeSimpleXlsxByteThreshold = 1_000_000
 const workbookPath = 'xl/workbook.xml'
 const workbookRelationshipsPath = 'xl/_rels/workbook.xml.rels'
 const sharedStringsPath = 'xl/sharedStrings.xml'
+const stylesPath = 'xl/styles.xml'
 const worksheetRelationshipType = 'http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet'
+const printerSettingsRelationshipType = 'http://schemas.openxmlformats.org/officeDocument/2006/relationships/printerSettings'
+const pivotTableRelationshipType = 'http://schemas.openxmlformats.org/officeDocument/2006/relationships/pivotTable'
 const headlessZipEntryChunkSize = 8 * 1024
+const headlessNativeZipEntryChunkSize = 4 * 1024
+const headlessWorksheetReleaseChunkInterval = 128
 const definedNameElementPattern =
   /<(?:[A-Za-z_][\w.-]*:)?definedName\b(?:[^>"']|"[^"]*"|'[^']*')*\/>|<((?:[A-Za-z_][\w.-]*:)?definedName)\b(?:[^>"']|"[^"]*"|'[^']*')*>[\s\S]*?<\/\1>/gu
 const unsupportedPackagePathPattern =
@@ -52,6 +72,7 @@ export function tryInspectLargeSimpleXlsxHeadless(
   zip: XlsxZipEntries,
   options: {
     readonly afterWorksheetScan?: () => void
+    readonly afterWorksheetChunkBatch?: () => void
     readonly allowUnsupportedWorksheetFeaturesForMetrics?: boolean
     readonly minByteLength?: number
     readonly releaseZipSource?: boolean
@@ -92,6 +113,11 @@ export function tryInspectLargeSimpleXlsxHeadless(
     return null
   }
   const hasSharedStrings = packagePaths.includes(sharedStringsPath)
+  const hasStyles = packagePaths.includes(stylesPath)
+  const warnings = definedNames.ignoredCount > 0 ? ['Some defined names were ignored during XLSX import.'] : []
+  if (hasExternalLargeSimplePivotCaches(zip)) {
+    warnings.push(externalPivotCachesWarning)
+  }
   delete zip[workbookPath]
   delete zip[workbookRelationshipsPath]
   phaseRecorder.finish('zip-setup', zipSetupStart)
@@ -104,16 +130,27 @@ export function tryInspectLargeSimpleXlsxHeadless(
   let mergeCount = 0
   let conditionalFormatCount = 0
   let dataValidationCount = 0
+  let usesSharedStrings = false
   const sheetMetadataKeys = new Set<string>()
+  const requiredStyleIndexes = new Set<number>()
   for (const [order, entry] of worksheetEntries.entries()) {
+    const worksheetRelsPath = worksheetRelationshipsPath(entry.path)
+    collectWorksheetRelationshipMetadataKeys(getZipText(zip, worksheetRelsPath), sheetMetadataKeys)
+    delete zip[worksheetRelsPath]
     const worksheetScanStart = phaseRecorder.start()
+    const worksheetScanOptions = createHeadlessWorksheetScanOptions(
+      hasSharedStrings,
+      options.allowUnsupportedWorksheetFeaturesForMetrics === true,
+      options.afterWorksheetChunkBatch,
+    )
     const scan = parseHeadlessLargeSimpleWorksheetFromChunks(
-      (onChunk) => forEachInflatedXlsxZipEntryChunk(zip, entry.path, onChunk, { chunkSize: headlessZipEntryChunkSize }),
+      (onChunk) =>
+        forEachInflatedXlsxZipEntryChunk(zip, entry.path, onChunk, {
+          chunkSize: headlessZipEntryChunkSize,
+          forceStreamingInflate: true,
+        }),
       order,
-      {
-        hasSharedStrings,
-        ...(options.allowUnsupportedWorksheetFeaturesForMetrics === true ? { allowUnsupportedFeaturesForMetrics: true } : {}),
-      },
+      worksheetScanOptions,
     )
     if (!scan || (!hasSharedStrings && scan.valueCellCount === 0)) {
       return null
@@ -129,6 +166,10 @@ export function tryInspectLargeSimpleXlsxHeadless(
     for (const key of scan.metadataKeys) {
       sheetMetadataKeys.add(key)
     }
+    usesSharedStrings ||= scan.usesSharedStrings
+    for (const styleIndex of scan.styleIndexes) {
+      requiredStyleIndexes.add(styleIndex)
+    }
     dimensions.push({
       sheetName: entry.name,
       rowCount: scan.rowCount,
@@ -139,6 +180,46 @@ export function tryInspectLargeSimpleXlsxHeadless(
     options.afterWorksheetScan?.()
     phaseRecorder.finish('worksheet-scan', worksheetScanStart)
   }
+  if (hasStyles && requiredStyleIndexes.size > 0) {
+    const styleParsingStart = phaseRecorder.start()
+    const styleSupport = inspectLargeSimpleWorkbookStyleSupportFromChunks(
+      (onChunk) =>
+        forEachInflatedXlsxZipEntryChunk(zip, stylesPath, onChunk, {
+          chunkSize: headlessZipEntryChunkSize,
+          forceStreamingInflate: true,
+        }),
+      requiredStyleIndexes,
+    )
+    if (styleSupport === null) {
+      return null
+    }
+    if (styleSupport.hasUnsupportedStyles) {
+      warnings.push(unsupportedCellStylesWarning)
+    }
+    if (!styleSupport.hasUnsupportedStyles && styleSupport.hasPotentialVisualStyles) {
+      sheetMetadataKeys.add('styleRanges')
+    }
+    options.afterWorksheetScan?.()
+    phaseRecorder.finish('style-parsing', styleParsingStart)
+  }
+  if (options.allowUnsupportedWorksheetFeaturesForMetrics === true && hasSharedStrings && usesSharedStrings) {
+    const sharedStringMetadataStart = phaseRecorder.start()
+    const hasRichSharedStrings = hasAnyLargeSimpleRichSharedStringFromChunks((onChunk) =>
+      forEachInflatedXlsxZipEntryChunk(zip, sharedStringsPath, onChunk, {
+        chunkSize: headlessZipEntryChunkSize,
+        forceStreamingInflate: true,
+      }),
+    )
+    if (hasRichSharedStrings === null) {
+      return null
+    }
+    if (hasRichSharedStrings) {
+      sheetMetadataKeys.add('richTextArtifacts')
+    }
+    options.afterWorksheetScan?.()
+    phaseRecorder.finish('shared-string-metadata', sharedStringMetadataStart)
+  }
+  delete zip[stylesPath]
   delete zip[sharedStringsPath]
   if (options.releaseZipSource === true) {
     const zipSourceReleaseStart = phaseRecorder.start()
@@ -154,7 +235,7 @@ export function tryInspectLargeSimpleXlsxHeadless(
   return {
     workbookName: normalizeWorkbookName(fileName),
     sheetNames: workbookSheets.map((entry) => entry.name),
-    warnings: definedNames.ignoredCount > 0 ? ['Some defined names were ignored during XLSX import.'] : [],
+    warnings,
     workbookMetadataKeys: workbookMetadataKeysForHeadlessPackage(packagePaths, definedNames.count),
     sheetMetadataKeys: [...sheetMetadataKeys].toSorted(),
     stats: {
@@ -167,10 +248,223 @@ export function tryInspectLargeSimpleXlsxHeadless(
       mergeCount,
       conditionalFormatCount,
       dataValidationCount,
-      warningCount: definedNames.ignoredCount > 0 ? 1 : 0,
+      warningCount: warnings.length,
       dimensions,
       phaseTelemetry: phaseRecorder.entries(),
     },
+  }
+}
+
+export async function tryInspectLargeSimpleXlsxHeadlessAsync(
+  source: { readonly byteLength: number },
+  fileName: string,
+  zip: XlsxZipEntries,
+  options: {
+    readonly afterWorksheetScan?: () => void
+    readonly afterWorksheetChunkBatch?: () => void
+    readonly allowUnsupportedWorksheetFeaturesForMetrics?: boolean
+    readonly minByteLength?: number
+    readonly releaseZipSource?: boolean
+    readonly releaseOwnedSourceBytes?: () => LargeSimpleXlsxOwnedSourceReleaseEvidence | undefined
+  } = {},
+): Promise<LargeSimpleXlsxHeadlessInspectResult | null> {
+  if (source.byteLength < (options.minByteLength ?? defaultLargeSimpleXlsxByteThreshold)) {
+    return null
+  }
+  const phaseRecorder = new LargeSimpleXlsxImportPhaseRecorder()
+  const zipSetupStart = phaseRecorder.start()
+  const packagePaths = Object.keys(zip).map(normalizeZipPath)
+  if (
+    options.allowUnsupportedWorksheetFeaturesForMetrics !== true &&
+    packagePaths.some((path) => unsupportedPackagePathPattern.test(path))
+  ) {
+    return null
+  }
+  const workbookXml = getZipText(zip, workbookPath)
+  const workbookRelationshipsXml = getZipText(zip, workbookRelationshipsPath)
+  if (!workbookXml || !workbookRelationshipsXml) {
+    return null
+  }
+  const workbookSheets = readWorkbookSheets(workbookXml)
+  const worksheetPathsByRelationshipId = readWorksheetPathsByRelationshipId(workbookRelationshipsXml)
+  const definedNames = inspectWorkbookDefinedNames(
+    workbookXml,
+    workbookSheets.map((entry) => entry.name),
+  )
+  if (workbookSheets.length === 0 || worksheetPathsByRelationshipId.size === 0 || definedNames.externalWorkbookReferenceSeen) {
+    return null
+  }
+  const worksheetEntries = workbookSheets.flatMap((entry) => {
+    const path = worksheetPathsByRelationshipId.get(entry.relationshipId)
+    return path ? [{ name: entry.name, path }] : []
+  })
+  if (worksheetEntries.length !== workbookSheets.length) {
+    return null
+  }
+  const hasSharedStrings = packagePaths.includes(sharedStringsPath)
+  const hasStyles = packagePaths.includes(stylesPath)
+  const warnings = definedNames.ignoredCount > 0 ? ['Some defined names were ignored during XLSX import.'] : []
+  if (hasExternalLargeSimplePivotCaches(zip)) {
+    warnings.push(externalPivotCachesWarning)
+  }
+  delete zip[workbookPath]
+  delete zip[workbookRelationshipsPath]
+  phaseRecorder.finish('zip-setup', zipSetupStart)
+
+  const dimensions: LargeSimpleXlsxSheetDimension[] = []
+  let cellCount = 0
+  let formulaCellCount = 0
+  let valueCellCount = 0
+  let tableCount = 0
+  let mergeCount = 0
+  let conditionalFormatCount = 0
+  let dataValidationCount = 0
+  let usesSharedStrings = false
+  const sheetMetadataKeys = new Set<string>()
+  const requiredStyleIndexes = new Set<number>()
+  for (const [order, entry] of worksheetEntries.entries()) {
+    const worksheetRelsPath = worksheetRelationshipsPath(entry.path)
+    collectWorksheetRelationshipMetadataKeys(getZipText(zip, worksheetRelsPath), sheetMetadataKeys)
+    delete zip[worksheetRelsPath]
+    const worksheetScanStart = phaseRecorder.start()
+    const worksheetScanOptions = createHeadlessWorksheetScanOptions(
+      hasSharedStrings,
+      options.allowUnsupportedWorksheetFeaturesForMetrics === true,
+      options.afterWorksheetChunkBatch,
+    )
+    // oxlint-disable-next-line eslint(no-await-in-loop) -- Worksheets must stream sequentially so each sheet's inflater and scratch state can be released before the next one starts.
+    const scan = await parseHeadlessLargeSimpleWorksheetFromChunksAsync(
+      (onChunk) =>
+        forEachInflatedXlsxZipEntryChunkAsync(zip, entry.path, onChunk, {
+          chunkSize: headlessNativeZipEntryChunkSize,
+          forceStreamingInflate: true,
+        }),
+      order,
+      worksheetScanOptions,
+    )
+    if (!scan || (!hasSharedStrings && scan.valueCellCount === 0)) {
+      return null
+    }
+    delete zip[entry.path]
+    cellCount += scan.cellCount
+    formulaCellCount += scan.formulaCellCount
+    valueCellCount += scan.valueCellCount
+    tableCount += scan.tableCount ?? 0
+    mergeCount += scan.mergeCount ?? 0
+    conditionalFormatCount += scan.conditionalFormatCount ?? 0
+    dataValidationCount += scan.dataValidationCount ?? 0
+    for (const key of scan.metadataKeys) {
+      sheetMetadataKeys.add(key)
+    }
+    usesSharedStrings ||= scan.usesSharedStrings
+    for (const styleIndex of scan.styleIndexes) {
+      requiredStyleIndexes.add(styleIndex)
+    }
+    dimensions.push({
+      sheetName: entry.name,
+      rowCount: scan.rowCount,
+      columnCount: scan.columnCount,
+      nonEmptyCellCount: scan.cellCount,
+      usedRange: scan.usedRange,
+    })
+    options.afterWorksheetScan?.()
+    phaseRecorder.finish('worksheet-scan', worksheetScanStart)
+  }
+  if (hasStyles && requiredStyleIndexes.size > 0) {
+    const styleParsingStart = phaseRecorder.start()
+    const styleSupport = await inspectLargeSimpleWorkbookStyleSupportFromChunksAsync(
+      (onChunk) =>
+        forEachInflatedXlsxZipEntryChunkAsync(zip, stylesPath, onChunk, {
+          chunkSize: headlessNativeZipEntryChunkSize,
+          forceStreamingInflate: true,
+        }),
+      requiredStyleIndexes,
+    )
+    if (styleSupport === null) {
+      return null
+    }
+    if (styleSupport.hasUnsupportedStyles) {
+      warnings.push(unsupportedCellStylesWarning)
+    }
+    if (!styleSupport.hasUnsupportedStyles && styleSupport.hasPotentialVisualStyles) {
+      sheetMetadataKeys.add('styleRanges')
+    }
+    options.afterWorksheetScan?.()
+    phaseRecorder.finish('style-parsing', styleParsingStart)
+  }
+  if (options.allowUnsupportedWorksheetFeaturesForMetrics === true && hasSharedStrings && usesSharedStrings) {
+    const sharedStringMetadataStart = phaseRecorder.start()
+    const hasRichSharedStrings = await hasAnyLargeSimpleRichSharedStringFromChunksAsync((onChunk) =>
+      forEachInflatedXlsxZipEntryChunkAsync(zip, sharedStringsPath, onChunk, {
+        chunkSize: headlessNativeZipEntryChunkSize,
+        forceStreamingInflate: true,
+      }),
+    )
+    if (hasRichSharedStrings === null) {
+      return null
+    }
+    if (hasRichSharedStrings) {
+      sheetMetadataKeys.add('richTextArtifacts')
+    }
+    options.afterWorksheetScan?.()
+    phaseRecorder.finish('shared-string-metadata', sharedStringMetadataStart)
+  }
+  delete zip[stylesPath]
+  delete zip[sharedStringsPath]
+  if (options.releaseZipSource === true) {
+    const zipSourceReleaseStart = phaseRecorder.start()
+    const zipSourceBytesBeforeRelease = readLazyXlsxZipSourceByteLength(zip)
+    releaseLazyXlsxZipSource(zip)
+    const ownedSourceReleaseEvidence = options.releaseOwnedSourceBytes?.()
+    phaseRecorder.finish('zip-source-release', zipSourceReleaseStart, {
+      ...(zipSourceBytesBeforeRelease !== undefined ? { zipSourceBytesBeforeRelease } : {}),
+      ...(zipSourceBytesBeforeRelease !== undefined ? { zipSourceBytesAfterRelease: readLazyXlsxZipSourceByteLength(zip) ?? 0 } : {}),
+      ...ownedSourceReleaseEvidence,
+    })
+  }
+  return {
+    workbookName: normalizeWorkbookName(fileName),
+    sheetNames: workbookSheets.map((entry) => entry.name),
+    warnings,
+    workbookMetadataKeys: workbookMetadataKeysForHeadlessPackage(packagePaths, definedNames.count),
+    sheetMetadataKeys: [...sheetMetadataKeys].toSorted(),
+    stats: {
+      sheetCount: workbookSheets.length,
+      cellCount,
+      formulaCellCount,
+      valueCellCount,
+      definedNameCount: definedNames.count,
+      tableCount,
+      mergeCount,
+      conditionalFormatCount,
+      dataValidationCount,
+      warningCount: warnings.length,
+      dimensions,
+      phaseTelemetry: phaseRecorder.entries(),
+    },
+  }
+}
+
+function createHeadlessWorksheetScanOptions(
+  hasSharedStrings: boolean,
+  allowUnsupportedFeaturesForMetrics: boolean,
+  afterWorksheetChunkBatch: (() => void) | undefined,
+): HeadlessLargeSimpleWorksheetScanOptions {
+  let retainedBufferReportCount = 0
+  return {
+    hasSharedStrings,
+    ...(allowUnsupportedFeaturesForMetrics ? { allowUnsupportedFeaturesForMetrics: true } : {}),
+    ...(afterWorksheetChunkBatch
+      ? {
+          onRetainedBufferLength() {
+            retainedBufferReportCount += 1
+            if (retainedBufferReportCount >= headlessWorksheetReleaseChunkInterval) {
+              retainedBufferReportCount = 0
+              afterWorksheetChunkBatch()
+            }
+          },
+        }
+      : {}),
   }
 }
 
@@ -202,6 +496,25 @@ function readRelationships(relationshipsXml: string): WorkbookRelationship[] {
     const target = readXmlAttribute(tag, 'Target')
     return id && type && target ? [{ id, type, target }] : []
   })
+}
+
+function collectWorksheetRelationshipMetadataKeys(relationshipsXml: string | null, keys: Set<string>): void {
+  if (!relationshipsXml) {
+    return
+  }
+  for (const relationship of readRelationships(relationshipsXml)) {
+    if (relationship.type === printerSettingsRelationshipType || relationship.type.endsWith('/printerSettings')) {
+      keys.add('printerSettings')
+    } else if (relationship.type === pivotTableRelationshipType || relationship.type.endsWith('/pivotTable')) {
+      keys.add('pivotArtifacts')
+    }
+  }
+}
+
+function worksheetRelationshipsPath(worksheetPath: string): string {
+  const directory = worksheetPath.slice(0, worksheetPath.lastIndexOf('/'))
+  const fileName = worksheetPath.slice(worksheetPath.lastIndexOf('/') + 1)
+  return `${directory}/_rels/${fileName}.rels`
 }
 
 function inspectWorkbookDefinedNames(
@@ -265,6 +578,13 @@ function workbookMetadataKeysForHeadlessPackage(packagePaths: readonly string[],
       keys.add('controlArtifacts')
     } else if (path.startsWith('docProps/')) {
       keys.add('documentPropertyArtifacts')
+      if (path === 'docProps/custom.xml') {
+        keys.add('properties')
+      }
+    } else if (path === 'xl/styles.xml') {
+      keys.add('styles')
+    } else if (path.startsWith('xl/tables/')) {
+      keys.add('tables')
     }
   }
   return [...keys].toSorted()

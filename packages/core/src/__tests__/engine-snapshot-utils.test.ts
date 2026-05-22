@@ -17,31 +17,14 @@ describe('engine snapshot utils', () => {
     workbook.createSheet('Sheet1')
     workbook.insertRows('Sheet1', 0, 1, [{ id: 'row-1', index: 0, size: 24, hidden: true }])
     workbook.insertColumns('Sheet1', 1, 1, [{ id: 'column-2', index: 1, size: 140, hidden: false }])
-    workbook.setRowMetadata('Sheet1', 2, 2, 30, true, {
-      styleIndex: 7,
-      xlsxHeight: 30,
-      customFormat: true,
-      customHeight: true,
-      outlineLevel: 1,
-      collapsed: false,
-      thickTop: true,
-      thickBottom: false,
-    })
-    workbook.setColumnMetadata('Sheet1', 3, 1, 160, false, {
-      styleIndex: 9,
-      xlsxWidth: 22,
-      customFormat: true,
-      customWidth: true,
-      bestFit: true,
-      outlineLevel: 2,
-      collapsed: true,
-    })
+    workbook.setRowMetadata('Sheet1', 2, 2, 30, true, { styleIndex: 7, customFormat: true })
+    workbook.setColumnMetadata('Sheet1', 3, 1, 160, false, { styleIndex: 9, customFormat: true })
     workbook.upsertCellStyle({ id: 'style-bold', font: { bold: true } })
     workbook.setStyleRange({ sheetName: 'Sheet1', startAddress: 'A1', endAddress: 'B2' }, 'style-bold')
     workbook.upsertCellNumberFormat(createCellNumberFormatRecord('format-decimal', '0.00'))
     workbook.setFormatRange({ sheetName: 'Sheet1', startAddress: 'C1', endAddress: 'C3' }, 'format-decimal')
-    workbook.setFreezePane('Sheet1', 1, 2, { topLeftCell: 'C2', activePane: 'bottomRight' })
-    workbook.setSheetTabColor('Sheet1', { rgb: 'FF00AA00', theme: '8', tint: '-0.25', indexed: '64', auto: '1' })
+    workbook.setFreezePane('Sheet1', 1, 2)
+    workbook.setSheetTabColor('Sheet1', { theme: '8', tint: '-0.25' })
     workbook.setMergeRange({ sheetName: 'Sheet1', startAddress: 'D1', endAddress: 'E2' })
     workbook.setFilter('Sheet1', {
       sheetName: 'Sheet1',
@@ -58,83 +41,20 @@ describe('engine snapshot utils', () => {
     expect(metadata).toEqual({
       rows: [
         { id: 'row-1', index: 0, size: 24, hidden: true },
-        {
-          id: 'row-1',
-          index: 2,
-          size: 30,
-          hidden: true,
-          styleIndex: 7,
-          xlsxHeight: 30,
-          customFormat: true,
-          outlineLevel: 1,
-          collapsed: false,
-          customHeight: true,
-          thickTop: true,
-          thickBottom: false,
-        },
-        {
-          id: 'row-2',
-          index: 3,
-          size: 30,
-          hidden: true,
-          styleIndex: 7,
-          xlsxHeight: 30,
-          customFormat: true,
-          outlineLevel: 1,
-          collapsed: false,
-          customHeight: true,
-          thickTop: true,
-          thickBottom: false,
-        },
+        { id: 'row-1', index: 2, size: 30, hidden: true, styleIndex: 7, customFormat: true },
+        { id: 'row-2', index: 3, size: 30, hidden: true, styleIndex: 7, customFormat: true },
       ],
       columns: [
         { id: 'column-2', index: 1, size: 140, hidden: false },
-        {
-          id: 'column-1',
-          index: 3,
-          size: 160,
-          hidden: false,
-          styleIndex: 9,
-          xlsxWidth: 22,
-          customFormat: true,
-          customWidth: true,
-          bestFit: true,
-          outlineLevel: 2,
-          collapsed: true,
-        },
+        { id: 'column-1', index: 3, size: 160, hidden: false, styleIndex: 9, customFormat: true },
       ],
       rowMetadata: [
         { start: 0, count: 1, size: 24, hidden: true },
-        {
-          start: 2,
-          count: 2,
-          size: 30,
-          hidden: true,
-          styleIndex: 7,
-          xlsxHeight: 30,
-          customFormat: true,
-          outlineLevel: 1,
-          collapsed: false,
-          customHeight: true,
-          thickTop: true,
-          thickBottom: false,
-        },
+        { start: 2, count: 2, size: 30, hidden: true, styleIndex: 7, customFormat: true },
       ],
       columnMetadata: [
         { start: 1, count: 1, size: 140, hidden: false },
-        {
-          start: 3,
-          count: 1,
-          size: 160,
-          hidden: false,
-          styleIndex: 9,
-          xlsxWidth: 22,
-          customFormat: true,
-          customWidth: true,
-          bestFit: true,
-          outlineLevel: 2,
-          collapsed: true,
-        },
+        { start: 3, count: 1, size: 160, hidden: false, styleIndex: 9, customFormat: true },
       ],
       styleRanges: [
         {
@@ -148,8 +68,8 @@ describe('engine snapshot utils', () => {
           formatId: 'format-decimal',
         },
       ],
-      freezePane: { rows: 1, cols: 2, topLeftCell: 'C2', activePane: 'bottomRight' },
-      tabColor: { rgb: 'FF00AA00', theme: '8', tint: '-0.25', indexed: '64', auto: '1' },
+      freezePane: { rows: 1, cols: 2 },
+      tabColor: { theme: '8', tint: '-0.25' },
       merges: [{ sheetName: 'Sheet1', startAddress: 'D1', endAddress: 'E2' }],
       filters: [
         {

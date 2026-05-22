@@ -1,10 +1,8 @@
 import { ValueTag, type CellSnapshot } from '@bilig/protocol'
 import type { EngineOp } from '@bilig/workbook'
-import { parseCellAddress } from '@bilig/formula'
 import { CellFlags } from '../../cell-store.js'
 import { makeCellKey, type WorkbookStore } from '../../workbook-store.js'
 import type { PreparedCellAddress, TransactionRecord } from '../runtime-state.js'
-import { isTableHeaderCell } from './operation-table-header-rename.js'
 
 type FastHistoryOp = Extract<
   EngineOp,
@@ -72,7 +70,6 @@ function cloneFastHistoryForwardOp(op: FastHistoryOp): FastHistoryOp {
         sheetName: op.sheetName,
         address: op.address,
         value: op.value,
-        ...(op.skipTableHeaderRename === true ? { skipTableHeaderRename: true } : {}),
       }
     case 'setCellFormula':
       return {
@@ -86,7 +83,6 @@ function cloneFastHistoryForwardOp(op: FastHistoryOp): FastHistoryOp {
         kind: 'clearCell',
         sheetName: op.sheetName,
         address: op.address,
-        ...(op.skipTableHeaderRename === true ? { skipTableHeaderRename: true } : {}),
       }
     case 'setCellFormat':
       return {
@@ -114,31 +110,14 @@ function restoreCellOpFromSnapshot(
   sheetName: string,
   address: string,
   preparedCellAddress: PreparedCellAddress | null,
-  options: { readonly skipTableHeaderRename?: boolean } = {},
 ): Extract<FastHistoryOp, { kind: 'setCellValue' | 'setCellFormula' | 'clearCell' }> {
-  const skipTableHeaderRename = options.skipTableHeaderRename === true
-  const setCellValueOp = (
-    value: Extract<EngineOp, { kind: 'setCellValue' }>['value'],
-  ): Extract<FastHistoryOp, { kind: 'setCellValue' }> => ({
-    kind: 'setCellValue',
-    sheetName,
-    address,
-    value,
-    ...(skipTableHeaderRename ? { skipTableHeaderRename: true } : {}),
-  })
-  const clearCellOp = (): Extract<FastHistoryOp, { kind: 'clearCell' }> => ({
-    kind: 'clearCell',
-    sheetName,
-    address,
-    ...(skipTableHeaderRename ? { skipTableHeaderRename: true } : {}),
-  })
   const sheet = workbook.getSheet(sheetName)
   const cellIndex =
     preparedCellAddress && sheet
       ? workbook.cellKeyToIndex.get(makeCellKey(sheet.id, preparedCellAddress.row, preparedCellAddress.col))
       : workbook.getCellIndex(sheetName, address)
   if (cellIndex === undefined) {
-    return clearCellOp()
+    return { kind: 'clearCell', sheetName, address }
   }
 
   const snapshot = getCellByIndex(cellIndex)
@@ -154,11 +133,18 @@ function restoreCellOpFromSnapshot(
   switch (snapshot.value.tag) {
     case ValueTag.Empty:
     case ValueTag.Error:
-      return (snapshot.flags & CellFlags.AuthoredBlank) !== 0 ? setCellValueOp(null) : clearCellOp()
+      return (snapshot.flags & CellFlags.AuthoredBlank) !== 0
+        ? { kind: 'setCellValue', sheetName, address, value: null }
+        : { kind: 'clearCell', sheetName, address }
     case ValueTag.Number:
     case ValueTag.Boolean:
     case ValueTag.String:
-      return setCellValueOp(snapshot.value.value)
+      return {
+        kind: 'setCellValue',
+        sheetName,
+        address,
+        value: snapshot.value.value,
+      }
   }
 }
 
@@ -197,16 +183,9 @@ function buildFastInverseOp(
       }
     }
     case 'setCellValue':
+    case 'setCellFormula':
     case 'clearCell':
-      return restoreCellOpFromSnapshot(workbook, getCellByIndex, op.sheetName, op.address, preparedCellAddress, {
-        skipTableHeaderRename: op.skipTableHeaderRename === true,
-      })
-    case 'setCellFormula': {
-      const address = parseCellAddress(op.address, op.sheetName)
-      return restoreCellOpFromSnapshot(workbook, getCellByIndex, op.sheetName, op.address, preparedCellAddress, {
-        skipTableHeaderRename: workbook.hasTables() && isTableHeaderCell(workbook.listTables(), op.sheetName, address.row, address.col),
-      })
-    }
+      return restoreCellOpFromSnapshot(workbook, getCellByIndex, op.sheetName, op.address, preparedCellAddress)
     case 'setCellFormat': {
       const sheet = workbook.getSheet(op.sheetName)
       const cellIndex =

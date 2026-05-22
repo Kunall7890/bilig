@@ -11,7 +11,6 @@ import {
   type EvaluationContext,
   type EvaluationResult,
   type FormulaNode,
-  type JsPlanInstruction,
   type RangeBuiltinArgument,
   parseCellAddress,
   parseRangeAddress,
@@ -21,7 +20,6 @@ import { definedNameValueToCellValue, definedNameValueToReferenceOperand } from 
 import { emptyValue, errorValue } from '../../engine-value-utils.js'
 import { addEngineCounter } from '../../perf/engine-counters.js'
 import type { EngineRuntimeState, RuntimeFormula, SpillMaterialization } from '../runtime-state.js'
-import { getRuntimeFormulaSource, getRuntimeFormulaStructuralCompiled } from '../runtime-formula-source.js'
 import { EngineFormulaEvaluationError } from '../errors.js'
 import type { CriterionRangeCacheService, CriterionRangeMatch } from './criterion-range-cache-service.js'
 import type { ExactColumnIndexService } from './exact-column-index-service.js'
@@ -38,6 +36,7 @@ import {
 import { tryEvaluateDirectVectorLookup } from './formula-evaluation-direct-lookup.js'
 import { tryEvaluateDirectIndexExactMatch, tryEvaluateDirectIndexOffset } from './formula-evaluation-direct-index.js'
 import { tryEvaluateDirectScalar } from './formula-evaluation-direct-scalar.js'
+import { getRuntimeFormulaStructuralCompiled } from '../runtime-formula-source.js'
 import {
   cellValuesEqual,
   directErrorResult,
@@ -46,14 +45,13 @@ import {
   referenceReplacementKey,
 } from './formula-evaluation-helpers.js'
 import { tryEvaluateDirectAggregate } from './formula-evaluation-direct-aggregate.js'
-import { firstMatchedAggregateError } from './formula-evaluation-direct-criteria-aggregate.js'
 import {
   tryEvaluateNativeDirectCriteriaMatchedAggregate,
   tryEvaluateNativeDirectCriteriaPredicateAggregate,
   type NativeDirectCriteriaPredicateLayoutCache,
 } from './formula-evaluation-direct-criteria-native.js'
 import { createDirectCriteriaSharingContext } from './formula-evaluation-direct-criteria-sharing.js'
-import { createRowFilteredResolver, createRowHiddenResolver } from './formula-evaluation-row-hidden.js'
+import { createRowHiddenResolver } from './formula-evaluation-row-hidden.js'
 import type { EngineFormulaEvaluationService } from './formula-evaluation-service-types.js'
 export type { EngineFormulaEvaluationService } from './formula-evaluation-service-types.js'
 
@@ -563,6 +561,20 @@ export function createEngineFormulaEvaluationService(args: {
     )
   }
 
+  const firstMatchedAggregateError = (
+    view: ReturnType<EngineRuntimeColumnStoreService['getColumnView']>,
+    rows: ArrayLike<number>,
+    length: number,
+  ): CellValue | undefined => {
+    for (let index = 0; index < length; index += 1) {
+      const row = rows[index]!
+      if ((view.readTagAt(row) as ValueTag) === ValueTag.Error) {
+        return directErrorResult(view.readErrorAt(row) as ErrorCode)
+      }
+    }
+    return undefined
+  }
+
   const resolveStructuredReferenceNow = (tableName: string, columnName: string): FormulaNode | undefined => {
     const table = args.state.workbook.getTable(tableName)
     if (!table) {
@@ -638,7 +650,6 @@ export function createEngineFormulaEvaluationService(args: {
 
     visiting.add(visitKey)
     const isRowHidden = createRowHiddenResolver(args.state.workbook)
-    const isRowFiltered = createRowFilteredResolver(args.state.workbook)
     const evaluationContext: EvaluationContext = {
       sheetName,
       workbookName: args.state.workbook.workbookName,
@@ -688,7 +699,6 @@ export function createEngineFormulaEvaluationService(args: {
       listSheetNames: () =>
         [...args.state.workbook.sheetsByName.values()].toSorted((left, right) => left.order - right.order).map((sheet) => sheet.name),
       isRowHidden,
-      isRowFiltered,
       checkEvaluationBudget: (stepCost) => args.checkEvaluationBudget(stepCost),
     }
     const compiled = getRuntimeFormulaStructuralCompiled(formula) ?? formula.compiled
@@ -731,15 +741,10 @@ export function createEngineFormulaEvaluationService(args: {
     return evaluateCellWithReferenceReplacements(request.formulaSheetName, request.formulaAddress, replacements, new Set<string>())
   }
 
-  const storeFormulaResult = (
-    cellIndex: number,
-    formula: RuntimeFormula,
-    result: EvaluationResult,
-    options: { readonly allowDynamicArraySpill?: boolean } = {},
-  ): number[] => {
+  const storeFormulaResult = (cellIndex: number, formula: RuntimeFormula, result: EvaluationResult): number[] => {
     const beforeValue = args.state.workbook.cellStore.getValue(cellIndex, (id) => (id === 0 ? '' : args.state.strings.get(id)))
     const materialization = isArrayValue(result)
-      ? formula.compiled.producesSpill || options.allowDynamicArraySpill === true
+      ? formula.compiled.producesSpill
         ? args.materializeSpill(cellIndex, result)
         : {
             changedCellIndices: args.clearOwnedSpill(cellIndex),
@@ -822,7 +827,6 @@ export function createEngineFormulaEvaluationService(args: {
     if (!formula || !sheetName) {
       return []
     }
-    const compiled = getRuntimeFormulaStructuralCompiled(formula) ?? formula.compiled
 
     const directResult =
       tryEvaluateDirectVectorLookup(directVectorLookupContext, formula) ??
@@ -840,7 +844,6 @@ export function createEngineFormulaEvaluationService(args: {
     }
 
     const isRowHidden = createRowHiddenResolver(args.state.workbook)
-    const isRowFiltered = createRowFilteredResolver(args.state.workbook)
     const evaluationContext: EvaluationContext = {
       sheetName,
       workbookName: args.state.workbook.workbookName,
@@ -862,8 +865,7 @@ export function createEngineFormulaEvaluationService(args: {
       },
       resolveFormula: (targetSheetName: string, address: string) => {
         const targetCellIndex = args.state.workbook.getCellIndex(targetSheetName, address)
-        const targetFormula = targetCellIndex === undefined ? undefined : args.state.formulas.get(targetCellIndex)
-        return targetFormula === undefined ? undefined : getRuntimeFormulaSource(targetFormula)
+        return targetCellIndex === undefined ? undefined : args.state.formulas.get(targetCellIndex)?.source
       },
       resolvePivotData: ({
         dataField,
@@ -891,7 +893,6 @@ export function createEngineFormulaEvaluationService(args: {
       listSheetNames: () =>
         [...args.state.workbook.sheetsByName.values()].toSorted((left, right) => left.order - right.order).map((sheet) => sheet.name),
       isRowHidden,
-      isRowFiltered,
       checkEvaluationBudget: (stepCost) => args.checkEvaluationBudget(stepCost),
       resolveExactVectorMatch: (request) => {
         if (
@@ -917,12 +918,11 @@ export function createEngineFormulaEvaluationService(args: {
       },
       resolveLookupBuiltin: lookupBuiltinResolver,
     }
-    const jsPlan = compiled.jsPlan.length > 0 ? compiled.jsPlan : lowerToPlan(compiled.ast)
-    const allowDynamicArraySpill = compiled.producesSpill || planMayProduceRuntimeSpill(jsPlan)
-    const result = allowDynamicArraySpill
+    const jsPlan = formula.compiled.jsPlan.length > 0 ? formula.compiled.jsPlan : lowerToPlan(formula.compiled.ast)
+    const result = formula.compiled.producesSpill
       ? evaluatePlanResult(jsPlan, evaluationContext)
       : evaluatePlanScalarResult(jsPlan, evaluationContext)
-    return storeFormulaResult(cellIndex, formula, result, { allowDynamicArraySpill })
+    return storeFormulaResult(cellIndex, formula, result)
   }
 
   const effectWithEngineError = <A>(tryFn: () => A, message: string) =>
@@ -936,10 +936,6 @@ export function createEngineFormulaEvaluationService(args: {
     })
 
   return {
-    clearCachesNow() {
-      directCriteriaAggregateCache.clear()
-      directCriteriaMatchCache.clear()
-    },
     evaluateDirectLookupFormulaNow: evaluateDirectLookupFormulaNow,
     evaluateDirectLookupFormula(cellIndex) {
       return effectWithEngineError(() => evaluateDirectLookupFormulaNow(cellIndex), `Failed to evaluate direct lookup formula ${cellIndex}`)
@@ -964,13 +960,4 @@ export function createEngineFormulaEvaluationService(args: {
       return effectWithEngineError(() => resolveMultipleOperationsNow(request), 'Failed to resolve MULTIPLE.OPERATIONS')
     },
   }
-}
-
-function planMayProduceRuntimeSpill(plan: readonly JsPlanInstruction[]): boolean {
-  return plan.some((instruction) => {
-    if (instruction.opcode === 'call' && instruction.callee.toUpperCase() === 'INDIRECT') {
-      return true
-    }
-    return instruction.opcode === 'push-lambda' && planMayProduceRuntimeSpill(instruction.body)
-  })
 }

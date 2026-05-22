@@ -9,7 +9,6 @@ import type { EngineRuntimeState, U32 } from '../runtime-state.js'
 import { EngineFormulaGraphError } from '../errors.js'
 import type { Float64Arena, Uint32Arena } from '@bilig/formula'
 import { addEngineCounter, type EngineCounters } from '../../perf/engine-counters.js'
-import { dominantScalarErrorForCycleFormula } from './recalc-cycle-error-dominance.js'
 
 export interface EngineFormulaGraphService {
   readonly rebuildTopoRanks: () => Effect.Effect<void, EngineFormulaGraphError>
@@ -206,9 +205,7 @@ export function createEngineFormulaGraphService(args: {
       if (iterationEnabled) {
         continue
       }
-      const formula = args.state.formulas.get(cellIndex)
-      const dominantError = formula === undefined ? undefined : dominantScalarErrorForCycleFormula(formula.compiled.optimizedAst)
-      args.state.workbook.cellStore.setValue(cellIndex, errorValue(dominantError ?? ErrorCode.Cycle))
+      args.state.workbook.cellStore.setValue(cellIndex, errorValue(ErrorCode.Cycle))
       args.notifyCellValueWritten(cellIndex)
     }
   }

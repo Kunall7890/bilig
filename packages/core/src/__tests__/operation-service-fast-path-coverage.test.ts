@@ -4,7 +4,6 @@ import type {
   EngineCellMutationRef,
   EngineExistingNumericCellMutationRef,
   EngineExistingNumericCellMutationResult,
-  EngineFreshDirectAggregateMatrixPlan,
 } from '../cell-mutations-at.js'
 import { SpreadsheetEngine } from '../engine.js'
 import { EngineEvaluationTimeoutError } from '../engine/errors.js'
@@ -705,7 +704,6 @@ describe('operation-service dense mutation fast paths', () => {
       directAggregateScanEvaluations: 0,
       directFormulaKernelSyncOnlyRecalcSkips: 1,
       formulasBound: 0,
-      nativeDirectAggregatePrefixEvaluations: 0,
       topoRepairs: 0,
     })
 
@@ -936,63 +934,6 @@ describe('operation-service dense mutation fast paths', () => {
     expect(engine.getCellValue('Sheet1', 'A1')).toEqual({ tag: ValueTag.Empty })
     expect(engine.getCellValue('Sheet1', 'E1')).toEqual({ tag: ValueTag.Empty })
     expect(engine.getPerformanceCounters().kernelSyncOnlyRecalcSkips).toBe(0)
-  })
-
-  it('rejects stale compact aggregate matrix plans before trusting planned values', async () => {
-    const engine = new SpreadsheetEngine({ workbookName: 'fresh-row-aggregate-stale-compact-plan' })
-    await engine.ready()
-    engine.createSheet('Sheet1')
-
-    const rowCount = 40
-    const inputCols = 2
-    const sheetId = engine.workbook.getSheet('Sheet1')!.id
-    const valueRefs: EngineCellMutationRef[] = []
-    const formulaRefs: EngineCellMutationRef[] = []
-    const values = new Float64Array(rowCount * inputCols)
-    let valueIndex = 0
-    for (let row = 0; row < rowCount; row += 1) {
-      const rowNumber = row + 1
-      for (let col = 0; col < inputCols; col += 1) {
-        const value = rowNumber * (col + 1)
-        valueRefs.push({
-          sheetId,
-          mutation: { kind: 'setCellValue', row, col, value },
-        })
-        values[valueIndex] = value
-        valueIndex += 1
-      }
-      const formula = `SUM(A${rowNumber}:B${rowNumber})`
-      formulaRefs.push({
-        sheetId,
-        mutation: { kind: 'setCellFormula', row, col: inputCols, formula },
-      })
-    }
-    const refs = [...valueRefs, ...formulaRefs]
-    values[20] = 999
-    const stalePlan: EngineFreshDirectAggregateMatrixPlan = {
-      sheetId,
-      rowStart: 0,
-      rowCount,
-      colStart: 0,
-      inputColCount: inputCols,
-      values,
-    }
-
-    engine.resetPerformanceCounters()
-    engine.applyCellMutationsAtWithOptions(refs, {
-      captureUndo: false,
-      freshDirectAggregateMatrixPlan: stalePlan,
-      potentialNewCells: refs.length,
-      returnUndoOps: false,
-      reuseRefs: true,
-      source: 'local',
-    })
-
-    expect(engine.getCellValue('Sheet1', 'C11')).toEqual({ tag: ValueTag.Number, value: 33 })
-    expect(engine.getPerformanceCounters()).toMatchObject({
-      freshDirectAggregateMatrixPlanApplications: 0,
-      freshDirectAggregateMatrixPlanMembers: 0,
-    })
   })
 
   it('replaces same-dependency direct scalar formulas without graph rebuilds', async () => {

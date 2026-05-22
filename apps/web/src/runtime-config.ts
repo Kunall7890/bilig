@@ -2,10 +2,10 @@ import type { BiligRuntimeConfig, BiligZeroQueryContext } from '@bilig/zero-sync
 
 export interface RuntimeConfig {
   documentId: string
-  serverUrl?: string
   persistState: boolean
   currentUserId: string
   workbookAgentEnabled: boolean
+  serverUrl?: string
 }
 
 export function createLocalOnlyRuntimeConfig(currentUserId = 'local:user'): BiligRuntimeConfig {

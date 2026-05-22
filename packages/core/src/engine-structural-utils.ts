@@ -27,22 +27,6 @@ export function structuralTransformForOp(
   }
 }
 
-export function normalizeStructuralAxisTransformForAxisLength(
-  transform: StructuralAxisTransform,
-  axisLength: number,
-): StructuralAxisTransform {
-  if (transform.kind !== 'move') {
-    return transform
-  }
-  if (transform.start >= axisLength) {
-    return transform.target === transform.start ? transform : { ...transform, target: transform.start }
-  }
-  const materializedLength = Math.max(axisLength, transform.start + transform.count)
-  const maxTarget = Math.max(0, materializedLength - transform.count)
-  const target = Math.min(Math.max(0, transform.target), maxTarget)
-  return target === transform.target ? transform : { ...transform, target }
-}
-
 export function mapStructuralAxisIndex(index: number, transform: StructuralAxisTransform): number | undefined {
   switch (transform.kind) {
     case 'insert':

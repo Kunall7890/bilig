@@ -1,12 +1,7 @@
 import { describe, expect, it, vi } from 'vitest'
 import { FormulaMode, ValueTag, type ErrorCode } from '@bilig/protocol'
 import { createEngineCounters } from '../perf/engine-counters.js'
-import type {
-  RuntimeDirectCriteriaDescriptor,
-  RuntimeDirectLookupDescriptor,
-  RuntimeDirectScalarDescriptor,
-  U32,
-} from '../engine/runtime-state.js'
+import type { RuntimeDirectCriteriaDescriptor, RuntimeDirectScalarDescriptor, U32 } from '../engine/runtime-state.js'
 import { DirectFormulaIndexCollection } from '../engine/services/direct-formula-index-collection.js'
 import {
   applyPostRecalcDirectFormulaChanges,
@@ -20,23 +15,6 @@ import {
 const directScalar: RuntimeDirectScalarDescriptor = {
   kind: 'abs',
   operand: { kind: 'literal-number', value: 1 },
-}
-
-const directLookup: RuntimeDirectLookupDescriptor = {
-  kind: 'exact-uniform-numeric',
-  operandCellIndex: 1,
-  sheetName: 'Sheet1',
-  sheetId: 1,
-  rowStart: 0,
-  rowEnd: 4,
-  col: 0,
-  length: 5,
-  columnVersion: 1,
-  structureVersion: 1,
-  sheetColumnVersions: new Uint32Array(),
-  start: 1,
-  step: 1,
-  searchMode: 1,
 }
 
 function formula(overrides: Partial<OperationPostRecalcFormula> = {}): OperationPostRecalcFormula {
@@ -93,7 +71,6 @@ describe('operation post-recalc direct formula helpers', () => {
     collection.addCurrentResult(7, { kind: 'number', value: 42 })
     const applyCurrent = vi.fn(() => true)
     const args = makeArgs({
-      state: makeState(new Map([[7, formula({ directScalar })]])),
       collection,
       applyDirectFormulaCurrentResult: applyCurrent,
     })
@@ -102,21 +79,6 @@ describe('operation post-recalc direct formula helpers', () => {
 
     expect(Array.from(changed ?? [])).toEqual([])
     expect(applyCurrent).toHaveBeenCalledWith(7, { kind: 'number', value: 42 })
-  })
-
-  it('rejects a single current result when the formula target is stale', () => {
-    const collection = new DirectFormulaIndexCollection()
-    collection.addCurrentResult(7, { kind: 'number', value: 42 })
-    const applyCurrent = vi.fn(() => true)
-    const args = makeArgs({
-      collection,
-      applyDirectFormulaCurrentResult: applyCurrent,
-    })
-
-    const changed = tryApplySinglePostRecalcDirectFormula(args, false)
-
-    expect(changed).toBeUndefined()
-    expect(applyCurrent).not.toHaveBeenCalled()
   })
 
   it('uses complete delta application before falling back to per-formula evaluation', () => {
@@ -161,7 +123,6 @@ describe('operation post-recalc direct formula helpers', () => {
         3,
         formula({
           compiled: { mode: FormulaMode.JsOnly, producesSpill: false },
-          directLookup,
         }),
       ],
     ])
@@ -174,7 +135,7 @@ describe('operation post-recalc direct formula helpers', () => {
       })
     })
 
-    expect(counts).toEqual({ wasmFormulaCount: 1, jsFormulaCount: 2 })
+    expect(counts).toEqual({ wasmFormulaCount: 1, jsFormulaCount: 1 })
   })
 
   it('evaluates remaining direct formulas in a batched column-version update', () => {
@@ -183,8 +144,8 @@ describe('operation post-recalc direct formula helpers', () => {
     collection.add(3)
     const withBatchedColumnVersionUpdates = vi.fn((apply: () => void): void => apply())
     const formulas = new Map([
-      [2, formula({ directScalar })],
-      [3, formula({ directScalar })],
+      [2, formula({ cellIndex: 2 })],
+      [3, formula({ cellIndex: 3 })],
     ])
     const evaluateDirectFormula = vi.fn((cellIndex: number) => [cellIndex + 100])
 

@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 
 import { readInlineStringCellValue, readRichTextCellArtifact } from '../xlsx-large-simple-worksheet-stream-cell-readers.js'
+import { normalizeWorksheetText } from '../xlsx-large-simple-worksheet-stream-text.js'
 
 const encoder = new TextEncoder()
 
@@ -15,6 +16,13 @@ describe('large simple worksheet stream cell readers', () => {
     expect(readInlineString('<is><t>Food &amp; tobacco</t></is>')).toBe('Food & tobacco')
     expect(readInlineString('<is><r><t>A</t></r><r><t>1</t></r></is>')).toBe('A1')
     expect(readInlineString('<is><t>_x005F_</t></is>')).toBe('_')
+  })
+
+  it('keeps worksheet text normalization exact on fast-path and escaped strings', () => {
+    const plain = 'Plain text_ without escape'
+    expect(normalizeWorksheetText(plain)).toBe(plain)
+    expect(normalizeWorksheetText('Line 1\r\nLine 2\rLine 3')).toBe('Line 1\nLine 2\nLine 3')
+    expect(normalizeWorksheetText('_x0041__x005F_')).toBe('A_')
   })
 
   it('detects rich inline text only when rich runs are present', () => {

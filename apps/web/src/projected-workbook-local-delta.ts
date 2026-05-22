@@ -17,17 +17,14 @@ export interface ProjectedWorkbookLocalDeltaRange {
 
 const LOCAL_AXIS_X_DIRTY_MASK = DirtyMaskV3.AxisX | DirtyMaskV3.Text | DirtyMaskV3.Rect
 const LOCAL_AXIS_Y_DIRTY_MASK = DirtyMaskV3.AxisY | DirtyMaskV3.Text | DirtyMaskV3.Rect
-export const LOCAL_CELL_TEXT_DIRTY_MASK = DirtyMaskV3.Value | DirtyMaskV3.Text
-export const LOCAL_CELL_VISUAL_DIRTY_MASK = DirtyMaskV3.Value | DirtyMaskV3.Style | DirtyMaskV3.Text | DirtyMaskV3.Rect | DirtyMaskV3.Border
+const LOCAL_CELL_VISUAL_DIRTY_MASK = DirtyMaskV3.Value | DirtyMaskV3.Style | DirtyMaskV3.Text | DirtyMaskV3.Rect | DirtyMaskV3.Border
 
 export function buildLocalCellSnapshotWorkbookDelta(input: {
-  readonly dirtyMask?: number | undefined
   readonly identity: ProjectedWorkbookLocalDeltaSheetIdentity
   readonly seq: number
   readonly snapshot: CellSnapshot
 }): WorkbookDeltaBatchV3 {
   return buildLocalCellSnapshotsWorkbookDelta({
-    dirtyMask: input.dirtyMask,
     identity: input.identity,
     seq: input.seq,
     snapshots: [input.snapshot],
@@ -35,7 +32,6 @@ export function buildLocalCellSnapshotWorkbookDelta(input: {
 }
 
 export function buildLocalCellSnapshotsWorkbookDelta(input: {
-  readonly dirtyMask?: number | undefined
   readonly identity: ProjectedWorkbookLocalDeltaSheetIdentity
   readonly seq: number
   readonly snapshots: readonly CellSnapshot[]
@@ -45,7 +41,7 @@ export function buildLocalCellSnapshotsWorkbookDelta(input: {
   input.snapshots.forEach((snapshot) => {
     const parsed = parseCellAddress(snapshot.address, snapshot.sheetName)
     valueSeq = Math.max(valueSeq, snapshot.version, 0)
-    cellRanges.push(parsed.row, parsed.row, parsed.col, parsed.col, input.dirtyMask ?? LOCAL_CELL_TEXT_DIRTY_MASK)
+    cellRanges.push(parsed.row, parsed.row, parsed.col, parsed.col, resolveCellSnapshotDirtyMask())
   })
   return {
     axisSeqX: 0,
@@ -131,4 +127,8 @@ function clampAxisIndex(index: number, axisLength: number): number {
     return 0
   }
   return Math.max(0, Math.min(axisLength - 1, Math.trunc(index)))
+}
+
+function resolveCellSnapshotDirtyMask(): number {
+  return LOCAL_CELL_VISUAL_DIRTY_MASK
 }

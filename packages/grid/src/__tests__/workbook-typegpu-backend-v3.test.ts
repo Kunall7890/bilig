@@ -16,30 +16,21 @@ import {
   WORKBOOK_DYNAMIC_OVERLAY_FILL_LAYER_KEY_V3,
   WORKBOOK_DYNAMIC_OVERLAY_LAYER_KEY_V3,
   resolveWorkbookHeaderLayerKeyV3,
-  syncTypeGpuHeaderResourcesV3,
   syncTypeGpuOverlayResourcesV3,
 } from '../renderer-v3/typegpu-layer-buffer-pool.js'
-import type { GpuBufferHandleV3 } from '../renderer-v3/gpu-buffer-arena.js'
-import {
-  syncTypeGpuAtlasResources,
-  type RectInstanceVertexBuffer,
-  type TextInstanceVertexBuffer,
-  type TypeGpuAtlasResourceArtifacts,
-} from '../renderer-v3/typegpu-primitives.js'
+import { syncTypeGpuAtlasResources, type TypeGpuAtlasResourceArtifacts } from '../renderer-v3/typegpu-primitives.js'
 import {
   TypeGpuTileResourceCacheV3,
   resolveGridRectTileRevisionKeyV3,
   resolveGridTextTileRevisionKeyV3,
   resolveWorkbookTileContentBufferKeyV3,
   resolveWorkbookTilePlacementBufferKeyV3,
-  syncTypeGpuTilePaneResourcesV3,
 } from '../renderer-v3/typegpu-tile-buffer-pool.js'
 import {
   hasTransientEmptyTypeGpuBodyFrameV3,
   resolveTypeGpuDrawTilePanesV3,
   syncRenderTileResidencyFromPanesV3,
 } from '../renderer-v3/typegpu-workbook-backend-v3.js'
-import { hasCompleteTypeGpuBodyTileContentV3 } from '../renderer-v3/typegpu-tile-render-pass.js'
 import { TileResidencyV3 } from '../renderer-v3/tile-residency.js'
 
 function createRenderTile(valueVersion: number, tileId = 101): GridRenderTile {
@@ -69,32 +60,6 @@ function createRenderTile(valueVersion: number, tileId = 101): GridRenderTile {
       text: valueVersion,
       values: valueVersion,
     },
-  }
-}
-
-function createTextRenderTile(valueVersion: number, tileId = 101): GridRenderTile {
-  return {
-    ...createRenderTile(valueVersion, tileId),
-    textCount: 1,
-    textMetrics: new Float32Array(GRID_TEXT_METRIC_FLOAT_COUNT_V3),
-    textRuns: [
-      {
-        clipHeight: 18,
-        clipWidth: 92,
-        clipX: 0,
-        clipY: 0,
-        color: '#111111',
-        font: 'Inter',
-        fontSize: 12,
-        height: 18,
-        strike: false,
-        text: 'metric-1',
-        underline: false,
-        width: 92,
-        x: 4,
-        y: 3,
-      },
-    ],
   }
 }
 
@@ -177,26 +142,6 @@ function createBufferStub() {
   return buffer
 }
 
-function createTextBufferHandleStub(): GpuBufferHandleV3<TextInstanceVertexBuffer> {
-  return {
-    buffer: createBufferStub(),
-    capacityBytes: 256,
-    classId: 8,
-    layout: 'textRuns',
-    usedBytes: 80,
-  }
-}
-
-function createRectBufferHandleStub(): GpuBufferHandleV3<RectInstanceVertexBuffer> {
-  return {
-    buffer: createBufferStub(),
-    capacityBytes: 256,
-    classId: 8,
-    layout: 'rectInstances',
-    usedBytes: 80,
-  }
-}
-
 function upsertRenderTile(residency: TileResidencyV3<GridRenderTile, null>, tile: GridRenderTile): void {
   residency.upsert({
     axisSeqX: tile.version.axisX,
@@ -277,100 +222,6 @@ describe('workbook typegpu backend v3 tile path', () => {
     expect(preloadEntry).not.toBeNull()
     expect(visibleEntry && residency.isVisible(visibleEntry)).toBe(true)
     expect(preloadEntry && residency.isVisible(preloadEntry)).toBe(false)
-  })
-
-  test('skips tile text GPU resource sync when text is rendered natively', () => {
-    const tile = createTextRenderTile(2)
-    const pane = createTilePane(tile)
-    const tileResources = new TypeGpuTileResourceCacheV3()
-
-    expect(() =>
-      syncTypeGpuTilePaneResourcesV3({
-        panes: [pane],
-        syncText: false,
-        tileResources,
-      }),
-    ).not.toThrow()
-
-    const content = tileResources.getContent(resolveWorkbookTileContentBufferKeyV3(pane))
-    expect(content.textRevisionKey).toBeNull()
-    expect(content.textHandle).toBeNull()
-    expect(content.rectRevisionKey).toEqual(resolveGridRectTileRevisionKeyV3({ decorationRects: [], tile }))
-  })
-
-  test('treats authoritative empty visible panes as complete when their revision keys are current', () => {
-    const emptyTile = createRenderTile(2)
-    const emptyPane = createTilePane(emptyTile)
-    const tileResources = new TypeGpuTileResourceCacheV3()
-    const content = tileResources.getContent(resolveWorkbookTileContentBufferKeyV3(emptyPane))
-    content.rectRevisionKey = resolveGridRectTileRevisionKeyV3({ tile: emptyTile })
-    content.textRevisionKey = resolveGridTextTileRevisionKeyV3(emptyTile)
-
-    expect(
-      hasCompleteTypeGpuBodyTileContentV3({
-        surface: { dpr: 1, height: 220, pixelHeight: 220, pixelWidth: 480, width: 480 },
-        tilePanes: [emptyPane],
-        tileResources,
-      }),
-    ).toBe(true)
-  })
-
-  test('does not treat stale empty visible panes as complete', () => {
-    const emptyTile = createRenderTile(2)
-    const emptyPane = createTilePane(emptyTile)
-    const staleTile = createRenderTile(1)
-    const tileResources = new TypeGpuTileResourceCacheV3()
-    const content = tileResources.getContent(resolveWorkbookTileContentBufferKeyV3(emptyPane))
-    content.rectRevisionKey = resolveGridRectTileRevisionKeyV3({ tile: staleTile })
-    content.textRevisionKey = resolveGridTextTileRevisionKeyV3(staleTile)
-
-    expect(
-      hasCompleteTypeGpuBodyTileContentV3({
-        surface: { dpr: 1, height: 220, pixelHeight: 220, pixelWidth: 480, width: 480 },
-        tilePanes: [emptyPane],
-        tileResources,
-      }),
-    ).toBe(false)
-  })
-
-  test('treats current zero-quad text resources as complete instead of blocking frame presentation', () => {
-    const textTile = createTextRenderTile(2)
-    const textPane = createTilePane(textTile)
-    const tileResources = new TypeGpuTileResourceCacheV3()
-    const content = tileResources.getContent(resolveWorkbookTileContentBufferKeyV3(textPane))
-    content.rectRevisionKey = resolveGridRectTileRevisionKeyV3({ tile: textTile })
-    content.textRevisionKey = resolveGridTextTileRevisionKeyV3(textTile)
-    content.textHandle = createTextBufferHandleStub()
-    content.textCount = 0
-    content.textRunCount = textTile.textCount
-
-    expect(
-      hasCompleteTypeGpuBodyTileContentV3({
-        surface: { dpr: 1, height: 220, pixelHeight: 220, pixelWidth: 480, width: 480 },
-        tilePanes: [textPane],
-        tileResources,
-      }),
-    ).toBe(true)
-  })
-
-  test('does not treat unsynced zero-quad text resources as complete', () => {
-    const textTile = createTextRenderTile(2)
-    const textPane = createTilePane(textTile)
-    const tileResources = new TypeGpuTileResourceCacheV3()
-    const content = tileResources.getContent(resolveWorkbookTileContentBufferKeyV3(textPane))
-    content.rectRevisionKey = resolveGridRectTileRevisionKeyV3({ tile: textTile })
-    content.textRevisionKey = resolveGridTextTileRevisionKeyV3(textTile)
-    content.textHandle = createTextBufferHandleStub()
-    content.textCount = 0
-    content.textRunCount = 0
-
-    expect(
-      hasCompleteTypeGpuBodyTileContentV3({
-        surface: { dpr: 1, height: 220, pixelHeight: 220, pixelWidth: 480, width: 480 },
-        tilePanes: [textPane],
-        tileResources,
-      }),
-    ).toBe(false)
   })
 
   test('reports V3 tile residency cache marks and byte-budget evictions', () => {
@@ -482,35 +333,6 @@ describe('workbook typegpu backend v3 tile path', () => {
     }
   })
 
-  test('skips V3 header text GPU resource sync when text is rendered natively', () => {
-    const createBuffer = vi.fn(() => createBufferStub())
-    const cache = new TypeGpuLayerResourceCacheV3({
-      root: {
-        createBuffer,
-      },
-    })
-    const pane: GridHeaderPaneState = {
-      ...createHeaderPane('top-body'),
-      rectCount: 1,
-      rectInstances: new Float32Array(GRID_RECT_INSTANCE_FLOAT_COUNT_V3),
-      textCount: 1,
-      textSignature: 'native-header-text',
-    }
-
-    syncTypeGpuHeaderResourcesV3({
-      headerPanes: [pane],
-      layerResources: cache,
-      syncText: false,
-    })
-
-    const entry = cache.peek(resolveWorkbookHeaderLayerKeyV3(pane))
-    expect(entry?.rectHandle).not.toBeNull()
-    expect(entry?.rectCount).toBe(1)
-    expect(entry?.textHandle).toBeNull()
-    expect(entry?.textCount).toBe(0)
-    expect(createBuffer).toHaveBeenCalledTimes(1)
-  })
-
   test('splits dynamic overlay fill and chrome buffers for layered drawing', () => {
     const cache = new TypeGpuLayerResourceCacheV3({
       root: {
@@ -564,21 +386,6 @@ describe('workbook typegpu backend v3 tile path', () => {
     residentContent.textCount = 4
 
     expect(hasTransientEmptyTypeGpuBodyFrameV3({ tilePanes: [pane], tileResources })).toBe(true)
-
-    const textUpdateTile = createTextRenderTile(2)
-
-    expect(
-      hasTransientEmptyTypeGpuBodyFrameV3({
-        tilePanes: [createTilePane(textUpdateTile)],
-        tileResources,
-      }),
-    ).toBe(false)
-    expect(
-      hasTransientEmptyTypeGpuBodyFrameV3({
-        tilePanes: [pane, createTilePane(createTextRenderTile(2, 202))],
-        tileResources,
-      }),
-    ).toBe(false)
 
     const contentOnlyClearTile: GridRenderTile = {
       ...baseTile,
@@ -644,41 +451,6 @@ describe('workbook typegpu backend v3 tile path', () => {
       })[0]?.tile,
     ).toBe(clearTile)
     expect(onTileMiss).toHaveBeenCalledWith(clearTile.tileId)
-  })
-
-  test('does not substitute a stale resident packet when current content resources are ready', () => {
-    const staleTile: GridRenderTile = {
-      ...createRenderTile(2),
-      rectCount: 1,
-      rectInstances: new Float32Array(GRID_RECT_INSTANCE_FLOAT_COUNT_V3),
-      rectSignature: 'old-fill',
-    }
-    const currentTile: GridRenderTile = {
-      ...createRenderTile(3, staleTile.tileId),
-      rectCount: 1,
-      rectInstances: new Float32Array(GRID_RECT_INSTANCE_FLOAT_COUNT_V3),
-      rectSignature: 'shifted-fill',
-    }
-    const currentPane = createTilePane(currentTile)
-    const tileResources = new TypeGpuTileResourceCacheV3()
-    const residency = new TileResidencyV3<GridRenderTile, null>()
-    const onTileMiss = vi.fn()
-    upsertRenderTile(residency, staleTile)
-    const content = tileResources.getContent(resolveWorkbookTileContentBufferKeyV3(currentPane))
-    content.rectCount = currentTile.rectCount
-    content.rectHandle = createRectBufferHandleStub()
-    content.rectRevisionKey = resolveGridRectTileRevisionKeyV3({ tile: currentTile })
-    content.textRevisionKey = resolveGridTextTileRevisionKeyV3(currentTile)
-
-    expect(
-      resolveTypeGpuDrawTilePanesV3({
-        onTileMiss,
-        panes: [currentPane],
-        residency,
-        tileResources,
-      })[0]?.tile,
-    ).toBe(currentTile)
-    expect(onTileMiss).not.toHaveBeenCalled()
   })
 
   test('uploads full V3 atlas refreshes into a COPY_DST WebGPU texture', () => {

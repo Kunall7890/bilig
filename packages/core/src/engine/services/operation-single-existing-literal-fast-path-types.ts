@@ -56,8 +56,6 @@ export interface OperationSingleExistingLiteralFastPathArgs {
     readonly rangeEntityDependent: number
     readonly sheet: SheetRecord
     readonly sheetId: number
-    readonly sheetName: string
-    readonly row: number
     readonly col: number
     readonly value: number
     readonly delta: number

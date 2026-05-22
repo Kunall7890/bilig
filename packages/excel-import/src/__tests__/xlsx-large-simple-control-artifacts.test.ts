@@ -1,8 +1,8 @@
 import { strFromU8, strToU8, unzipSync, zipSync } from 'fflate'
 import { describe, expect, it } from 'vitest'
 
-import { exportXlsx } from '../index.js'
-import { tryInspectLargeSimpleXlsxHeadless } from '../xlsx-large-simple-headless-inspect.js'
+import { exportXlsx, externalPivotCachesWarning, unsupportedCellStylesWarning } from '../index.js'
+import { tryInspectLargeSimpleXlsxHeadless, tryInspectLargeSimpleXlsxHeadlessAsync } from '../xlsx-large-simple-headless-inspect.js'
 import { tryImportLargeSimpleXlsx } from '../xlsx-large-simple-import.js'
 import { readXlsxZipEntriesLazy } from '../xlsx-zip.js'
 
@@ -12,6 +12,8 @@ const vmlDrawingRelationshipType = 'http://schemas.openxmlformats.org/officeDocu
 const controlRelationshipType = 'http://schemas.openxmlformats.org/officeDocument/2006/relationships/control'
 const oleObjectRelationshipType = 'http://schemas.openxmlformats.org/officeDocument/2006/relationships/oleObject'
 const imageRelationshipType = 'http://schemas.openxmlformats.org/officeDocument/2006/relationships/image'
+const printerSettingsRelationshipType = 'http://schemas.openxmlformats.org/officeDocument/2006/relationships/printerSettings'
+const pivotTableRelationshipType = 'http://schemas.openxmlformats.org/officeDocument/2006/relationships/pivotTable'
 
 describe('large simple XLSX control artifacts', () => {
   it('streams OLE object metadata without inflating worksheet XML', () => {
@@ -60,6 +62,85 @@ describe('large simple XLSX control artifacts', () => {
     expect(inspected?.stats.sheetCount).toBe(2)
     expect(inspected?.workbookMetadataKeys).toEqual(expect.arrayContaining(['controlArtifacts', 'drawingArtifacts']))
     expect(inspected?.sheetMetadataKeys).toContain('controlArtifacts')
+  })
+
+  it('preserves headless package metadata keys and external pivot warnings', () => {
+    const bytes = buildHeadlessMetadataPackageWorkbook()
+    const inspected = tryInspectLargeSimpleXlsxHeadless(bytes, 'headless-metadata-package.xlsx', readXlsxZipEntriesLazy(bytes), {
+      allowUnsupportedWorksheetFeaturesForMetrics: true,
+      minByteLength: 0,
+      releaseZipSource: true,
+    })
+
+    expect(inspected?.warnings).toContain(externalPivotCachesWarning)
+    expect(inspected?.stats.warningCount).toBe(1)
+    expect(inspected?.workbookMetadataKeys).toEqual(
+      expect.arrayContaining(['documentPropertyArtifacts', 'pivotArtifacts', 'properties', 'styles', 'tables']),
+    )
+  })
+
+  it('preserves headless unsupported style warnings for styled cells', () => {
+    const bytes = buildHeadlessUnsupportedStylesWorkbook()
+    const imported = tryImportLargeSimpleXlsx(bytes, 'headless-unsupported-styles.xlsx', readXlsxZipEntriesLazy(bytes), {
+      minByteLength: 0,
+      releaseZipSource: true,
+    })
+    const inspected = tryInspectLargeSimpleXlsxHeadless(bytes, 'headless-unsupported-styles.xlsx', readXlsxZipEntriesLazy(bytes), {
+      minByteLength: 0,
+      releaseZipSource: true,
+    })
+
+    expect(imported?.warnings).toContain(unsupportedCellStylesWarning)
+    expect(inspected?.warnings).toEqual(imported?.warnings)
+    expect(inspected?.stats.warningCount).toBe(1)
+  })
+
+  it('matches async headless unsupported style warnings for styled cells', async () => {
+    const bytes = buildHeadlessUnsupportedStylesWorkbook()
+    const inspected = await tryInspectLargeSimpleXlsxHeadlessAsync(
+      bytes,
+      'headless-unsupported-styles.xlsx',
+      readXlsxZipEntriesLazy(bytes),
+      {
+        minByteLength: 0,
+        releaseZipSource: true,
+      },
+    )
+
+    expect(inspected?.warnings).toContain(unsupportedCellStylesWarning)
+    expect(inspected?.stats.warningCount).toBe(1)
+    expect(inspected?.stats.cellCount).toBe(1)
+  })
+
+  it('lets async headless callers release scanner scratch during large worksheet streaming', async () => {
+    const bytes = buildLargeHeadlessWorksheetWorkbook(30_000)
+    let releaseCount = 0
+    const inspected = await tryInspectLargeSimpleXlsxHeadlessAsync(bytes, 'headless-large-release.xlsx', readXlsxZipEntriesLazy(bytes), {
+      afterWorksheetChunkBatch: () => {
+        releaseCount += 1
+      },
+      minByteLength: 0,
+      releaseZipSource: true,
+    })
+
+    expect(inspected?.stats.cellCount).toBe(30_000)
+    expect(inspected?.stats.sheetCount).toBe(1)
+    expect(releaseCount).toBeGreaterThan(0)
+  })
+
+  it('visits headless worksheet relationship and cell metadata without public snapshot materialization', () => {
+    const bytes = buildHeadlessWorksheetMetadataVisitorWorkbook()
+    const inspected = tryInspectLargeSimpleXlsxHeadless(bytes, 'headless-metadata-visitor.xlsx', readXlsxZipEntriesLazy(bytes), {
+      allowUnsupportedWorksheetFeaturesForMetrics: true,
+      minByteLength: 0,
+      releaseZipSource: true,
+    })
+
+    expect(inspected?.stats.cellCount).toBe(1)
+    expect(inspected?.workbookMetadataKeys).toEqual(expect.arrayContaining(['pivotArtifacts']))
+    expect(inspected?.sheetMetadataKeys).toEqual(
+      expect.arrayContaining(['cellMetadataRefs', 'pivotArtifacts', 'printPageSetup', 'printerSettings', 'richTextArtifacts']),
+    )
   })
 
   it('streams controls metadata without forcing SheetJS fallback', () => {
@@ -119,6 +200,133 @@ function buildWorkbookWithControls(): Uint8Array {
     'xl/worksheets/_rels/sheet1.xml.rels': strToU8(controlsWorksheetRelationshipsXml),
     'xl/drawings/vmlDrawing1.vml': strToU8(vmlDrawingXml),
     'xl/activeX/activeX1.xml': strToU8(activeXControlXml),
+  })
+}
+
+function buildHeadlessUnsupportedStylesWorkbook(): Uint8Array {
+  return zipSync({
+    '[Content_Types].xml': strToU8(
+      [
+        '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>',
+        '<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">',
+        '<Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>',
+        '<Default Extension="xml" ContentType="application/xml"/>',
+        '<Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/>',
+        '<Override PartName="/xl/worksheets/sheet1.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/>',
+        '</Types>',
+      ].join(''),
+    ),
+    'xl/workbook.xml': strToU8(
+      '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><sheets><sheet name="Data" sheetId="1" r:id="rIdSheet1"/></sheets></workbook>',
+    ),
+    'xl/_rels/workbook.xml.rels': strToU8(
+      `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="${relationshipNamespace}"><Relationship Id="rIdSheet1" Type="${worksheetRelationshipType}" Target="worksheets/sheet1.xml"/></Relationships>`,
+    ),
+    'xl/worksheets/sheet1.xml': strToU8(
+      '<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><sheetData><row r="1"><c r="A1" s="1"><v>1</v></c></row></sheetData></worksheet>',
+    ),
+    'xl/styles.xml': strToU8(
+      '<styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><cellXfs count="2"><xf/><xf applyBorder="1" borderId="1"/></cellXfs></styleSheet>',
+    ),
+  })
+}
+
+function buildHeadlessMetadataPackageWorkbook(): Uint8Array {
+  return zipSync({
+    '[Content_Types].xml': strToU8(contentTypesXml),
+    'docProps/custom.xml': strToU8('<Properties xmlns="http://schemas.openxmlformats.org/officeDocument/2006/custom-properties"/>'),
+    'xl/workbook.xml': strToU8(
+      [
+        '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>',
+        '<workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">',
+        '<sheets><sheet name="Data" sheetId="1" r:id="rIdSheet1"/></sheets>',
+        '<pivotCaches><pivotCache cacheId="1" r:id="rIdPivotCache1"/></pivotCaches>',
+        '</workbook>',
+      ].join(''),
+    ),
+    'xl/_rels/workbook.xml.rels': strToU8(
+      [
+        `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="${relationshipNamespace}">`,
+        `<Relationship Id="rIdSheet1" Type="${worksheetRelationshipType}" Target="worksheets/sheet1.xml"/>`,
+        '<Relationship Id="rIdPivotCache1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/pivotCacheDefinition" Target="pivotCache/pivotCacheDefinition1.xml"/>',
+        '</Relationships>',
+      ].join(''),
+    ),
+    'xl/worksheets/sheet1.xml': strToU8(
+      '<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><sheetData><row r="1"><c r="A1"><v>1</v></c></row></sheetData><tableParts count="1"><tablePart r:id="rIdTable1"/></tableParts></worksheet>',
+    ),
+    'xl/pivotCache/pivotCacheDefinition1.xml': strToU8(
+      '<pivotCacheDefinition xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><cacheSource type="external"/></pivotCacheDefinition>',
+    ),
+    'xl/styles.xml': strToU8('<styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"/>'),
+    'xl/tables/table1.xml': strToU8(
+      '<table xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" id="1" name="Table1" ref="A1:A1"/>',
+    ),
+  })
+}
+
+function buildLargeHeadlessWorksheetWorkbook(rowCount: number): Uint8Array {
+  const rows: string[] = []
+  for (let row = 1; row <= rowCount; row += 1) {
+    rows.push(`<row r="${String(row)}"><c r="A${String(row)}"><v>${String(row)}</v></c></row>`)
+  }
+  return zipSync({
+    '[Content_Types].xml': strToU8(
+      [
+        '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>',
+        '<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">',
+        '<Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>',
+        '<Default Extension="xml" ContentType="application/xml"/>',
+        '<Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/>',
+        '<Override PartName="/xl/worksheets/sheet1.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/>',
+        '</Types>',
+      ].join(''),
+    ),
+    'xl/workbook.xml': strToU8(
+      '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><sheets><sheet name="Data" sheetId="1" r:id="rIdSheet1"/></sheets></workbook>',
+    ),
+    'xl/_rels/workbook.xml.rels': strToU8(
+      `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="${relationshipNamespace}"><Relationship Id="rIdSheet1" Type="${worksheetRelationshipType}" Target="worksheets/sheet1.xml"/></Relationships>`,
+    ),
+    'xl/worksheets/sheet1.xml': strToU8(
+      `<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><sheetData>${rows.join('')}</sheetData></worksheet>`,
+    ),
+  })
+}
+
+function buildHeadlessWorksheetMetadataVisitorWorkbook(): Uint8Array {
+  return zipSync({
+    '[Content_Types].xml': strToU8(contentTypesXml),
+    'xl/workbook.xml': strToU8(
+      '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><sheets><sheet name="Data" sheetId="1" r:id="rIdSheet1"/></sheets></workbook>',
+    ),
+    'xl/_rels/workbook.xml.rels': strToU8(
+      `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="${relationshipNamespace}"><Relationship Id="rIdSheet1" Type="${worksheetRelationshipType}" Target="worksheets/sheet1.xml"/></Relationships>`,
+    ),
+    'xl/worksheets/sheet1.xml': strToU8(
+      [
+        '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>',
+        '<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">',
+        '<sheetData><row r="1"><c r="A1" cm="1" t="s"><v>0</v></c></row></sheetData>',
+        '<pageSetup r:id="rIdPrinterSettings1"/>',
+        '</worksheet>',
+      ].join(''),
+    ),
+    'xl/sharedStrings.xml': strToU8(
+      '<sst xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><si><r><t>Rich</t></r></si></sst>',
+    ),
+    'xl/worksheets/_rels/sheet1.xml.rels': strToU8(
+      [
+        `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="${relationshipNamespace}">`,
+        `<Relationship Id="rIdPrinterSettings1" Type="${printerSettingsRelationshipType}" Target="../printerSettings/printerSettings1.bin"/>`,
+        `<Relationship Id="rIdPivotTable1" Type="${pivotTableRelationshipType}" Target="../pivotTables/pivotTable1.xml"/>`,
+        '</Relationships>',
+      ].join(''),
+    ),
+    'xl/printerSettings/printerSettings1.bin': Uint8Array.from([1, 2, 3, 4]),
+    'xl/pivotTables/pivotTable1.xml': strToU8(
+      '<pivotTableDefinition xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" name="PivotTable1"/>',
+    ),
   })
 }
 

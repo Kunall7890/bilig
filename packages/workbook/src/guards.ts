@@ -1,6 +1,4 @@
-import { parseCellAddress, parseFormula } from '@bilig/formula'
-import { isCellRangeRef as isProtocolCellRangeRef, isLiteralInput } from '@bilig/protocol'
-import type { CellRangeRef } from '@bilig/protocol'
+import { isCellRangeRef, isLiteralInput } from '@bilig/protocol'
 import type { EngineOp, EngineOpBatch, WorkbookOp } from './ops.js'
 
 const HORIZONTAL_ALIGNMENT_VALUES = new Set(['general', 'left', 'center', 'right', 'fill', 'justify', 'centerContinuous', 'distributed'])
@@ -10,15 +8,7 @@ const BORDER_WEIGHT_VALUES = new Set(['thin', 'medium', 'thick'])
 const NUMBER_FORMAT_KIND_VALUES = new Set(['general', 'number', 'currency', 'accounting', 'percent', 'date', 'time', 'datetime', 'text'])
 const COMPATIBILITY_MODE_VALUES = new Set(['excel-modern', 'odf-1.4'])
 const SORT_DIRECTION_VALUES = new Set(['asc', 'desc'])
-const AUTO_FILTER_CUSTOM_OPERATOR_VALUES = new Set([
-  'equal',
-  'notEqual',
-  'greaterThan',
-  'greaterThanOrEqual',
-  'lessThan',
-  'lessThanOrEqual',
-])
-const PIVOT_AGGREGATION_VALUES = new Set(['sum', 'count', 'countNums', 'average', 'min', 'max', 'product'])
+const PIVOT_AGGREGATION_VALUES = new Set(['sum', 'count'])
 const VALIDATION_COMPARISON_OPERATOR_VALUES = new Set([
   'between',
   'notBetween',
@@ -49,10 +39,6 @@ function isSafePositiveInteger(value: unknown): value is number {
 
 function isStringArray(value: unknown): value is string[] {
   return Array.isArray(value) && value.every((entry) => typeof entry === 'string')
-}
-
-function isNonEmptyStringArray(value: unknown): value is string[] {
-  return Array.isArray(value) && value.length > 0 && value.every((entry) => typeof entry === 'string' && entry.trim() !== '')
 }
 
 function isOptionalString(value: unknown): value is string | undefined {
@@ -95,10 +81,6 @@ function hasString(value: Record<string, unknown>, key: string): boolean {
   return typeof value[key] === 'string'
 }
 
-function hasNonEmptyString(value: Record<string, unknown>, key: string): boolean {
-  return typeof value[key] === 'string' && value[key].trim() !== ''
-}
-
 function hasFiniteNumber(value: Record<string, unknown>, key: string): boolean {
   return isFiniteNumber(value[key])
 }
@@ -109,46 +91,6 @@ function hasSafeNonNegativeInteger(value: Record<string, unknown>, key: string):
 
 function hasSafePositiveInteger(value: Record<string, unknown>, key: string): boolean {
   return isSafePositiveInteger(value[key])
-}
-
-function isCellAddressText(value: unknown): value is string {
-  if (typeof value !== 'string' || value.trim() === '') {
-    return false
-  }
-  try {
-    return parseCellAddress(value).sheetName === undefined
-  } catch {
-    return false
-  }
-}
-
-function hasCellAddress(value: Record<string, unknown>, key: string): boolean {
-  return isCellAddressText(value[key])
-}
-
-function isFormulaText(value: unknown): value is string {
-  if (typeof value !== 'string' || value.trim() === '') {
-    return false
-  }
-  try {
-    parseFormula(value)
-    return true
-  } catch {
-    return false
-  }
-}
-
-function isCellRangeRef(value: unknown): value is CellRangeRef {
-  if (!isProtocolCellRangeRef(value) || value.sheetName.trim() === '') {
-    return false
-  }
-  try {
-    const start = parseCellAddress(value.startAddress)
-    const end = parseCellAddress(value.endAddress)
-    return start.sheetName === undefined && end.sheetName === undefined && end.row >= start.row && end.col >= start.col
-  } catch {
-    return false
-  }
 }
 
 function isWorkbookAxisEntry(value: unknown): boolean {
@@ -267,7 +209,7 @@ function isWorkbookVolatileContext(value: unknown): boolean {
 function isWorkbookSortKey(value: unknown): boolean {
   return (
     isRecord(value) &&
-    hasCellAddress(value, 'keyAddress') &&
+    hasString(value, 'keyAddress') &&
     typeof value['direction'] === 'string' &&
     SORT_DIRECTION_VALUES.has(value['direction'])
   )
@@ -279,13 +221,13 @@ function isWorkbookValidationListSource(value: unknown): boolean {
   }
   switch (value['kind']) {
     case 'named-range':
-      return hasNonEmptyString(value, 'name')
+      return hasString(value, 'name')
     case 'cell-ref':
-      return hasNonEmptyString(value, 'sheetName') && hasCellAddress(value, 'address')
+      return hasString(value, 'sheetName') && hasString(value, 'address')
     case 'range-ref':
       return isCellRangeRef(value)
     case 'structured-ref':
-      return hasNonEmptyString(value, 'tableName') && hasNonEmptyString(value, 'columnName')
+      return hasString(value, 'tableName') && hasString(value, 'columnName')
     default:
       return false
   }
@@ -444,7 +386,7 @@ function isWorkbookConditionalFormatRule(value: unknown): boolean {
     case 'textContains':
       return hasString(value, 'text') && isOptionalBoolean(value['caseSensitive'])
     case 'formula':
-      return isFormulaText(value['formula'])
+      return hasString(value, 'formula')
     case 'blanks':
     case 'notBlanks':
       return true
@@ -456,7 +398,7 @@ function isWorkbookConditionalFormatRule(value: unknown): boolean {
 function isWorkbookConditionalFormat(value: unknown): boolean {
   return (
     isRecord(value) &&
-    hasNonEmptyString(value, 'id') &&
+    hasString(value, 'id') &&
     isCellRangeRef(value['range']) &&
     isWorkbookConditionalFormatRule(value['rule']) &&
     isCellStylePatch(value['style']) &&
@@ -466,17 +408,17 @@ function isWorkbookConditionalFormat(value: unknown): boolean {
 }
 
 function isWorkbookSheetProtection(value: unknown): boolean {
-  return isRecord(value) && hasNonEmptyString(value, 'sheetName') && isOptionalBoolean(value['hideFormulas'])
+  return isRecord(value) && hasString(value, 'sheetName') && isOptionalBoolean(value['hideFormulas'])
 }
 
 function isWorkbookRangeProtection(value: unknown): boolean {
-  return isRecord(value) && hasNonEmptyString(value, 'id') && isCellRangeRef(value['range']) && isOptionalBoolean(value['hideFormulas'])
+  return isRecord(value) && hasString(value, 'id') && isCellRangeRef(value['range']) && isOptionalBoolean(value['hideFormulas'])
 }
 
 function isWorkbookCommentEntry(value: unknown): boolean {
   return (
     isRecord(value) &&
-    hasNonEmptyString(value, 'id') &&
+    hasString(value, 'id') &&
     hasString(value, 'body') &&
     isOptionalString(value['authorUserId']) &&
     isOptionalString(value['authorDisplayName']) &&
@@ -487,9 +429,9 @@ function isWorkbookCommentEntry(value: unknown): boolean {
 function isWorkbookCommentThread(value: unknown): boolean {
   return (
     isRecord(value) &&
-    hasNonEmptyString(value, 'threadId') &&
-    hasNonEmptyString(value, 'sheetName') &&
-    hasCellAddress(value, 'address') &&
+    hasString(value, 'threadId') &&
+    hasString(value, 'sheetName') &&
+    hasString(value, 'address') &&
     Array.isArray(value['comments']) &&
     value['comments'].length > 0 &&
     value['comments'].every((entry) => isWorkbookCommentEntry(entry)) &&
@@ -500,7 +442,7 @@ function isWorkbookCommentThread(value: unknown): boolean {
 }
 
 function isWorkbookNote(value: unknown): boolean {
-  return isRecord(value) && hasNonEmptyString(value, 'sheetName') && hasCellAddress(value, 'address') && hasString(value, 'text')
+  return isRecord(value) && hasString(value, 'sheetName') && hasString(value, 'address') && hasString(value, 'text')
 }
 
 function isWorkbookDefinedNameValue(value: unknown): boolean {
@@ -516,13 +458,13 @@ function isWorkbookDefinedNameValue(value: unknown): boolean {
     case 'scalar':
       return isLiteralInput(value['value'])
     case 'cell-ref':
-      return hasNonEmptyString(value, 'sheetName') && hasCellAddress(value, 'address')
+      return hasString(value, 'sheetName') && hasString(value, 'address')
     case 'range-ref':
       return isCellRangeRef(value)
     case 'structured-ref':
-      return hasNonEmptyString(value, 'tableName') && hasNonEmptyString(value, 'columnName')
+      return hasString(value, 'tableName') && hasString(value, 'columnName')
     case 'formula':
-      return isFormulaText(value['formula'])
+      return hasString(value, 'formula')
     default:
       return false
   }
@@ -531,62 +473,16 @@ function isWorkbookDefinedNameValue(value: unknown): boolean {
 function isWorkbookTableOp(value: unknown): boolean {
   return (
     isRecord(value) &&
-    hasNonEmptyString(value, 'name') &&
-    isCellRangeRef({
-      sheetName: value['sheetName'],
-      startAddress: value['startAddress'],
-      endAddress: value['endAddress'],
-    }) &&
-    isNonEmptyStringArray(value['columnNames']) &&
+    hasString(value, 'name') &&
+    hasString(value, 'sheetName') &&
+    hasString(value, 'startAddress') &&
+    hasString(value, 'endAddress') &&
+    isStringArray(value['columnNames']) &&
     typeof value['headerRow'] === 'boolean' &&
     typeof value['totalsRow'] === 'boolean' &&
     (value['columns'] === undefined || isWorkbookTableColumns(value['columns'])) &&
     (value['style'] === undefined || isWorkbookTableStyle(value['style'])) &&
-    (value['autoFilter'] === undefined || isWorkbookAutoFilter(value['autoFilter'])) &&
     isOptionalString(value['sortState'])
-  )
-}
-
-function isWorkbookAutoFilter(value: unknown): boolean {
-  if (!isCellRangeRef(value) || !isRecord(value)) {
-    return false
-  }
-  return (
-    value['criteria'] === undefined ||
-    (Array.isArray(value['criteria']) && value['criteria'].every((entry) => isWorkbookAutoFilterColumn(entry)))
-  )
-}
-
-function isWorkbookAutoFilterColumn(value: unknown): boolean {
-  return (
-    isRecord(value) &&
-    hasSafeNonNegativeInteger(value, 'colId') &&
-    isOptionalBoolean(value['hiddenButton']) &&
-    isOptionalBoolean(value['showButton']) &&
-    (value['filters'] === undefined || isWorkbookAutoFilterValueCriteria(value['filters'])) &&
-    (value['customFilters'] === undefined || isWorkbookAutoFilterCustomCriteria(value['customFilters']))
-  )
-}
-
-function isWorkbookAutoFilterValueCriteria(value: unknown): boolean {
-  return isRecord(value) && isOptionalBoolean(value['blank']) && isStringArray(value['values'])
-}
-
-function isWorkbookAutoFilterCustomCriteria(value: unknown): boolean {
-  return (
-    isRecord(value) &&
-    isOptionalBoolean(value['and']) &&
-    Array.isArray(value['filters']) &&
-    value['filters'].every((entry) => isWorkbookAutoFilterCustomCriterion(entry))
-  )
-}
-
-function isWorkbookAutoFilterCustomCriterion(value: unknown): boolean {
-  return (
-    isRecord(value) &&
-    (value['operator'] === undefined ||
-      (typeof value['operator'] === 'string' && AUTO_FILTER_CUSTOM_OPERATOR_VALUES.has(value['operator']))) &&
-    typeof value['value'] === 'string'
   )
 }
 
@@ -624,60 +520,6 @@ function isWorkbookPivotValue(value: unknown): boolean {
   )
 }
 
-function isOptionalLiteralInputArray(value: unknown): boolean {
-  return value === undefined || (Array.isArray(value) && value.every((entry) => isLiteralInput(entry)))
-}
-
-function isWorkbookPivotFilter(value: unknown): boolean {
-  return (
-    isRecord(value) &&
-    hasString(value, 'sourceColumn') &&
-    isOptionalLiteralInputArray(value['includedValues']) &&
-    isOptionalLiteralInputArray(value['hiddenValues'])
-  )
-}
-
-function isWorkbookPivotPageField(value: unknown): boolean {
-  return isRecord(value) && hasString(value, 'sourceColumn') && isOptionalLiteralInput(value['selectedValue'])
-}
-
-function isWorkbookPivotHiddenItems(value: unknown): boolean {
-  return isRecord(value) && hasString(value, 'sourceColumn') && Array.isArray(value['values']) && value['values'].every(isLiteralInput)
-}
-
-function isWorkbookPivotCalculatedFormula(value: unknown): boolean {
-  return (
-    isRecord(value) &&
-    hasString(value, 'name') &&
-    hasString(value, 'formula') &&
-    (value['clause'] === '18.10' || value['clause'] === '3.2.3.1')
-  )
-}
-
-function isOptionalStringArray(value: unknown): boolean {
-  return value === undefined || isStringArray(value)
-}
-
-function isOptionalPivotFilterArray(value: unknown): boolean {
-  return value === undefined || (Array.isArray(value) && value.every(isWorkbookPivotFilter))
-}
-
-function isOptionalPivotPageFieldArray(value: unknown): boolean {
-  return value === undefined || (Array.isArray(value) && value.every(isWorkbookPivotPageField))
-}
-
-function isOptionalPivotHiddenItemsArray(value: unknown): boolean {
-  return value === undefined || (Array.isArray(value) && value.every(isWorkbookPivotHiddenItems))
-}
-
-function isOptionalPivotCalculatedFormulaArray(value: unknown): boolean {
-  return value === undefined || (Array.isArray(value) && value.every(isWorkbookPivotCalculatedFormula))
-}
-
-function isOptionalCachedRecords(value: unknown): boolean {
-  return value === undefined || (Array.isArray(value) && value.every((row) => Array.isArray(row) && row.every(isLiteralInput)))
-}
-
 const CHART_TYPE_VALUES = new Set(['column', 'bar', 'line', 'area', 'pie', 'scatter'])
 const CHART_SERIES_ORIENTATION_VALUES = new Set(['rows', 'columns'])
 const CHART_LEGEND_POSITION_VALUES = new Set(['top', 'right', 'bottom', 'left', 'hidden'])
@@ -686,9 +528,9 @@ const SHAPE_TYPE_VALUES = new Set(['rectangle', 'roundedRectangle', 'ellipse', '
 function isWorkbookChart(value: unknown): boolean {
   return (
     isRecord(value) &&
-    hasNonEmptyString(value, 'id') &&
-    hasNonEmptyString(value, 'sheetName') &&
-    hasCellAddress(value, 'address') &&
+    hasString(value, 'id') &&
+    hasString(value, 'sheetName') &&
+    hasString(value, 'address') &&
     isCellRangeRef(value['source']) &&
     typeof value['chartType'] === 'string' &&
     CHART_TYPE_VALUES.has(value['chartType']) &&
@@ -707,10 +549,10 @@ function isWorkbookChart(value: unknown): boolean {
 function isWorkbookImage(value: unknown): boolean {
   return (
     isRecord(value) &&
-    hasNonEmptyString(value, 'id') &&
-    hasNonEmptyString(value, 'sheetName') &&
-    hasCellAddress(value, 'address') &&
-    hasNonEmptyString(value, 'sourceUrl') &&
+    hasString(value, 'id') &&
+    hasString(value, 'sheetName') &&
+    hasString(value, 'address') &&
+    hasString(value, 'sourceUrl') &&
     hasSafePositiveInteger(value, 'rows') &&
     hasSafePositiveInteger(value, 'cols') &&
     isOptionalString(value['altText'])
@@ -720,9 +562,9 @@ function isWorkbookImage(value: unknown): boolean {
 function isWorkbookShape(value: unknown): boolean {
   return (
     isRecord(value) &&
-    hasNonEmptyString(value, 'id') &&
-    hasNonEmptyString(value, 'sheetName') &&
-    hasCellAddress(value, 'address') &&
+    hasString(value, 'id') &&
+    hasString(value, 'sheetName') &&
+    hasString(value, 'address') &&
     typeof value['shapeType'] === 'string' &&
     SHAPE_TYPE_VALUES.has(value['shapeType']) &&
     hasSafePositiveInteger(value, 'rows') &&
@@ -740,23 +582,23 @@ export function isWorkbookOp(value: unknown): value is WorkbookOp {
 
   switch (value['kind']) {
     case 'upsertWorkbook':
-      return hasNonEmptyString(value, 'name')
+      return hasString(value, 'name')
     case 'setWorkbookMetadata':
-      return hasNonEmptyString(value, 'key') && isLiteralInput(value['value'])
+      return hasString(value, 'key') && isLiteralInput(value['value'])
     case 'setCalculationSettings':
       return isWorkbookCalculationSettings(value['settings'])
     case 'setVolatileContext':
       return isWorkbookVolatileContext(value['context'])
     case 'upsertSheet':
-      return hasNonEmptyString(value, 'name') && hasSafeNonNegativeInteger(value, 'order') && isOptionalSafePositiveInteger(value['id'])
+      return hasString(value, 'name') && hasSafeNonNegativeInteger(value, 'order') && isOptionalSafePositiveInteger(value['id'])
     case 'renameSheet':
-      return hasNonEmptyString(value, 'oldName') && hasNonEmptyString(value, 'newName')
+      return hasString(value, 'oldName') && hasString(value, 'newName')
     case 'deleteSheet':
-      return hasNonEmptyString(value, 'name')
+      return hasString(value, 'name')
     case 'insertRows':
     case 'insertColumns':
       return (
-        hasNonEmptyString(value, 'sheetName') &&
+        hasString(value, 'sheetName') &&
         hasSafeNonNegativeInteger(value, 'start') &&
         hasSafePositiveInteger(value, 'count') &&
         (value['entries'] === undefined ||
@@ -764,50 +606,42 @@ export function isWorkbookOp(value: unknown): value is WorkbookOp {
       )
     case 'deleteRows':
     case 'deleteColumns':
-      return hasNonEmptyString(value, 'sheetName') && hasSafeNonNegativeInteger(value, 'start') && hasSafePositiveInteger(value, 'count')
+      return hasString(value, 'sheetName') && hasSafeNonNegativeInteger(value, 'start') && hasSafePositiveInteger(value, 'count')
     case 'moveRows':
     case 'moveColumns':
       return (
-        hasNonEmptyString(value, 'sheetName') &&
+        hasString(value, 'sheetName') &&
         hasSafeNonNegativeInteger(value, 'start') &&
         hasSafePositiveInteger(value, 'count') &&
         hasSafeNonNegativeInteger(value, 'target')
       )
     case 'updateRowMetadata':
-      return (
-        hasNonEmptyString(value, 'sheetName') &&
-        hasSafeNonNegativeInteger(value, 'start') &&
-        hasSafePositiveInteger(value, 'count') &&
-        isOptionalNullableSafePositiveInteger(value['size']) &&
-        isOptionalNullableBoolean(value['hidden']) &&
-        isOptionalNullableBoolean(value['filtered'])
-      )
     case 'updateColumnMetadata':
       return (
-        hasNonEmptyString(value, 'sheetName') &&
+        hasString(value, 'sheetName') &&
         hasSafeNonNegativeInteger(value, 'start') &&
         hasSafePositiveInteger(value, 'count') &&
         isOptionalNullableSafePositiveInteger(value['size']) &&
         isOptionalNullableBoolean(value['hidden'])
       )
     case 'setFreezePane':
-      return hasNonEmptyString(value, 'sheetName') && hasSafeNonNegativeInteger(value, 'rows') && hasSafeNonNegativeInteger(value, 'cols')
+      return hasString(value, 'sheetName') && hasSafeNonNegativeInteger(value, 'rows') && hasSafeNonNegativeInteger(value, 'cols')
     case 'clearFreezePane':
-      return hasNonEmptyString(value, 'sheetName')
+      return hasString(value, 'sheetName')
     case 'mergeCells':
     case 'unmergeCells':
       return isCellRangeRef(value['range'])
     case 'setSheetProtection':
       return isWorkbookSheetProtection(value['protection'])
     case 'clearSheetProtection':
-      return hasNonEmptyString(value, 'sheetName')
+      return hasString(value, 'sheetName')
     case 'setFilter':
     case 'clearFilter':
     case 'clearSort':
-      return hasNonEmptyString(value, 'sheetName') && isCellRangeRef(value['range'])
+      return hasString(value, 'sheetName') && isCellRangeRef(value['range'])
     case 'setSort':
       return (
-        hasNonEmptyString(value, 'sheetName') &&
+        hasString(value, 'sheetName') &&
         isCellRangeRef(value['range']) &&
         Array.isArray(value['keys']) &&
         value['keys'].every((entry) => isWorkbookSortKey(entry))
@@ -815,91 +649,69 @@ export function isWorkbookOp(value: unknown): value is WorkbookOp {
     case 'setDataValidation':
       return isWorkbookDataValidation(value['validation'])
     case 'clearDataValidation':
-      return hasNonEmptyString(value, 'sheetName') && isCellRangeRef(value['range'])
+      return hasString(value, 'sheetName') && isCellRangeRef(value['range'])
     case 'upsertConditionalFormat':
       return isWorkbookConditionalFormat(value['format'])
     case 'deleteConditionalFormat':
-      return hasNonEmptyString(value, 'id') && hasNonEmptyString(value, 'sheetName')
+      return hasString(value, 'id') && hasString(value, 'sheetName')
     case 'upsertRangeProtection':
       return isWorkbookRangeProtection(value['protection'])
     case 'deleteRangeProtection':
-      return hasNonEmptyString(value, 'id') && hasNonEmptyString(value, 'sheetName')
+      return hasString(value, 'id') && hasString(value, 'sheetName')
     case 'upsertCommentThread':
       return isWorkbookCommentThread(value['thread'])
     case 'deleteCommentThread':
     case 'deleteNote':
-      return hasNonEmptyString(value, 'sheetName') && hasCellAddress(value, 'address')
+      return hasString(value, 'sheetName') && hasString(value, 'address')
     case 'upsertNote':
       return isWorkbookNote(value['note'])
     case 'setCellValue':
       return (
-        hasNonEmptyString(value, 'sheetName') &&
-        hasCellAddress(value, 'address') &&
+        hasString(value, 'sheetName') &&
+        hasString(value, 'address') &&
         isLiteralInput(value['value']) &&
-        (value['authoredBlank'] === undefined || typeof value['authoredBlank'] === 'boolean') &&
-        (value['skipTableHeaderRename'] === undefined || typeof value['skipTableHeaderRename'] === 'boolean')
+        (value['authoredBlank'] === undefined || typeof value['authoredBlank'] === 'boolean')
       )
     case 'setCellFormula':
-      return hasNonEmptyString(value, 'sheetName') && hasCellAddress(value, 'address') && isFormulaText(value['formula'])
+      return hasString(value, 'sheetName') && hasString(value, 'address') && hasString(value, 'formula')
     case 'setCellFormat':
       return (
-        hasNonEmptyString(value, 'sheetName') &&
-        hasCellAddress(value, 'address') &&
-        (value['format'] === null || typeof value['format'] === 'string')
+        hasString(value, 'sheetName') && hasString(value, 'address') && (value['format'] === null || typeof value['format'] === 'string')
       )
     case 'upsertCellStyle':
       return isCellStyleRecord(value['style'])
     case 'upsertCellNumberFormat':
       return isCellNumberFormatRecord(value['format'])
     case 'setStyleRange':
-      return isCellRangeRef(value['range']) && hasNonEmptyString(value, 'styleId')
+      return isCellRangeRef(value['range']) && hasString(value, 'styleId')
     case 'setFormatRange':
-      return isCellRangeRef(value['range']) && hasNonEmptyString(value, 'formatId')
+      return isCellRangeRef(value['range']) && hasString(value, 'formatId')
     case 'clearCell':
-      return (
-        hasNonEmptyString(value, 'sheetName') &&
-        hasCellAddress(value, 'address') &&
-        (value['skipTableHeaderRename'] === undefined || typeof value['skipTableHeaderRename'] === 'boolean')
-      )
+      return hasString(value, 'sheetName') && hasString(value, 'address')
     case 'upsertDefinedName':
-      return hasNonEmptyString(value, 'name') && isWorkbookDefinedNameValue(value['value'])
+      return hasString(value, 'name') && isWorkbookDefinedNameValue(value['value'])
     case 'deleteDefinedName':
     case 'deleteTable':
-      return hasNonEmptyString(value, 'name')
+      return hasString(value, 'name')
     case 'upsertTable':
       return isWorkbookTableOp(value['table'])
     case 'upsertSpillRange':
       return (
-        hasNonEmptyString(value, 'sheetName') &&
-        hasCellAddress(value, 'address') &&
+        hasString(value, 'sheetName') &&
+        hasString(value, 'address') &&
         hasSafePositiveInteger(value, 'rows') &&
         hasSafePositiveInteger(value, 'cols')
       )
     case 'deleteSpillRange':
     case 'deletePivotTable':
-      return hasNonEmptyString(value, 'sheetName') && hasCellAddress(value, 'address')
+      return hasString(value, 'sheetName') && hasString(value, 'address')
     case 'upsertPivotTable':
       return (
-        hasNonEmptyString(value, 'name') &&
-        hasNonEmptyString(value, 'sheetName') &&
-        hasCellAddress(value, 'address') &&
+        hasString(value, 'name') &&
+        hasString(value, 'sheetName') &&
+        hasString(value, 'address') &&
         isCellRangeRef(value['source']) &&
         isStringArray(value['groupBy']) &&
-        isOptionalStringArray(value['columnFields']) &&
-        isOptionalPivotPageFieldArray(value['pageFields']) &&
-        isOptionalPivotFilterArray(value['filters']) &&
-        isOptionalPivotHiddenItemsArray(value['hiddenItems']) &&
-        isOptionalPivotCalculatedFormulaArray(value['calculatedFields']) &&
-        isOptionalPivotCalculatedFormulaArray(value['calculatedItems']) &&
-        (value['sourceKind'] === undefined ||
-          value['sourceKind'] === 'worksheet' ||
-          value['sourceKind'] === 'table' ||
-          value['sourceKind'] === 'named-range' ||
-          value['sourceKind'] === 'external-cache-only') &&
-        (value['cacheOnly'] === undefined || typeof value['cacheOnly'] === 'boolean') &&
-        (value['cacheId'] === undefined || isSafeNonNegativeInteger(value['cacheId'])) &&
-        isOptionalStringArray(value['cacheFields']) &&
-        isOptionalCachedRecords(value['cachedRecords']) &&
         Array.isArray(value['values']) &&
         value['values'].every((entry) => isWorkbookPivotValue(entry)) &&
         hasSafePositiveInteger(value, 'rows') &&
@@ -908,15 +720,15 @@ export function isWorkbookOp(value: unknown): value is WorkbookOp {
     case 'upsertChart':
       return isWorkbookChart(value['chart'])
     case 'deleteChart':
-      return hasNonEmptyString(value, 'id')
+      return hasString(value, 'id')
     case 'upsertImage':
       return isWorkbookImage(value['image'])
     case 'deleteImage':
-      return hasNonEmptyString(value, 'id')
+      return hasString(value, 'id')
     case 'upsertShape':
       return isWorkbookShape(value['shape'])
     case 'deleteShape':
-      return hasNonEmptyString(value, 'id')
+      return hasString(value, 'id')
     default:
       return false
   }
@@ -933,8 +745,8 @@ export function isEngineOps(value: unknown): value is EngineOp[] {
 export function isEngineOpBatch(value: unknown): value is EngineOpBatch {
   return (
     isRecord(value) &&
-    hasNonEmptyString(value, 'id') &&
-    hasNonEmptyString(value, 'replicaId') &&
+    hasString(value, 'id') &&
+    hasString(value, 'replicaId') &&
     isRecord(value['clock']) &&
     hasSafeNonNegativeInteger(value['clock'], 'counter') &&
     isEngineOps(value['ops'])

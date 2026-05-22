@@ -22,14 +22,6 @@ export function tryEvaluateDirectAggregate(input: {
   if (!directAggregate) {
     return undefined
   }
-  if (input.formula.dependencyIndices.length > 0) {
-    for (let index = 0; index < input.formula.dependencyIndices.length; index += 1) {
-      const dependencyValue = input.readCellValueByIndex(input.formula.dependencyIndices[index])
-      if (dependencyValue.tag === ValueTag.Error && dependencyValue.code === ErrorCode.Cycle) {
-        return directErrorResult(ErrorCode.Cycle)
-      }
-    }
-  }
   const columnCount = directAggregate.colEnd - directAggregate.col + 1
   const pageStats = directAggregatePageStats(directAggregate.rowStart, directAggregate.rowEnd)
   const canUsePageSummary =

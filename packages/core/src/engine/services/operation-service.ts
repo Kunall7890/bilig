@@ -256,8 +256,6 @@ export function createEngineOperationService(args: CreateEngineOperationServiceA
     collectRegionFormulaDependentsForCell: args.collectRegionFormulaDependentsForCell,
     collectSingleRegionFormulaDependentForCell: args.collectSingleRegionFormulaDependentForCell,
     collectSingleRegionFormulaDependentForCellAt: args.collectSingleRegionFormulaDependentForCellAt,
-    hasRegionFormulaSubscriptionsForColumn: args.hasRegionFormulaSubscriptionsForColumn,
-    hasRegionFormulaSubscriptionsForColumnAt: args.hasRegionFormulaSubscriptionsForColumnAt,
     hasNoCellDependents,
     getSingleEntityDependent: args.getSingleEntityDependent,
     markFormulaChanged: args.markFormulaChanged,
@@ -359,7 +357,6 @@ export function createEngineOperationService(args: CreateEngineOperationServiceA
         state: args.state,
         directRangePostRecalcLimit: DIRECT_RANGE_POST_RECALC_LIMIT,
         getSingleEntityDependent: args.getSingleEntityDependent,
-        collectSingleAffectedDirectRangeDependent,
         collectAffectedDirectRangeDependents,
         collectSingleApplicableDirectAggregateDependent,
         canApplyDirectAggregateLiteralDeltaForRequest,
@@ -382,8 +379,6 @@ export function createEngineOperationService(args: CreateEngineOperationServiceA
     rangeEntityDependent: number
     sheet: SheetRecord
     sheetId: number
-    sheetName: string
-    row: number
     col: number
     value: number
     delta: number
@@ -395,7 +390,6 @@ export function createEngineOperationService(args: CreateEngineOperationServiceA
         state: args.state,
         directRangePostRecalcLimit: DIRECT_RANGE_POST_RECALC_LIMIT,
         getSingleEntityDependent: args.getSingleEntityDependent,
-        collectSingleAffectedDirectRangeDependent,
         collectAffectedDirectRangeDependents,
         collectSingleApplicableDirectAggregateDependent,
         canApplyDirectAggregateLiteralDeltaForRequest,
@@ -430,7 +424,6 @@ export function createEngineOperationService(args: CreateEngineOperationServiceA
         state: args.state,
         directRangePostRecalcLimit: DIRECT_RANGE_POST_RECALC_LIMIT,
         getSingleEntityDependent: args.getSingleEntityDependent,
-        collectSingleAffectedDirectRangeDependent,
         collectAffectedDirectRangeDependents,
         collectSingleApplicableDirectAggregateDependent,
         canApplyDirectAggregateLiteralDeltaForRequest,
@@ -936,10 +929,10 @@ export function createEngineOperationService(args: CreateEngineOperationServiceA
           }),
       })
     },
-    applyCellMutationsAt(refs, batch, source, potentialNewCells, options) {
+    applyCellMutationsAt(refs, batch, source, potentialNewCells) {
       return Effect.try({
         try: () => {
-          applyCellMutationsAtNow(refs, batch, source, potentialNewCells, options)
+          applyCellMutationsAtNow(refs, batch, source, potentialNewCells)
         },
         catch: (cause) =>
           new EngineMutationError({

@@ -27,8 +27,6 @@ export interface LargeSimpleXlsxImportOptions {
   allowPreReleaseSheetFinalizationWithOwnedSourceRelease?: boolean
   allowUnsupportedFormulaText?: boolean
   allowUnsupportedCellMetadata?: boolean
-  skipBroadBlankStyleCells?: boolean
-  includeCellCoordinates?: boolean
   maxMaterializedLazyPackageArtifactBytes?: number
   replacementZipSource?: XlsxZipByteSource
   releaseOwnedSourceBytes?: () => LargeSimpleXlsxOwnedSourceReleaseEvidence | undefined
@@ -91,9 +89,10 @@ export interface ScannedWorksheet {
   readonly sharedStringIndexes: LargeSimpleSharedStringIndexSet
   readonly sharedStrings?: LargeSimpleSharedStrings
   readonly hasUnresolvedSharedStringReferences?: boolean
+  readonly hasRichSharedStringReferences?: boolean
 }
 
-export interface LargeSimpleSheetMetadataInput extends Pick<
+export type LargeSimpleSheetMetadataInput = Pick<
   SheetMetadataSnapshot,
   | 'conditionalFormatArtifacts'
   | 'conditionalFormats'
@@ -107,6 +106,4 @@ export interface LargeSimpleSheetMetadataInput extends Pick<
   | 'printerSettings'
   | 'printPageSetup'
   | 'sheetProtection'
-> {
-  readonly tableFilters?: SheetMetadataSnapshot['filters']
-}
+>

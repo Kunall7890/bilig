@@ -27,8 +27,6 @@ export interface OperationTrustedRangeDirectAggregateExistingNumericMutationRequ
   readonly rangeEntityDependent: number
   readonly sheet: SheetRecord
   readonly sheetId: number
-  readonly sheetName: string
-  readonly row: number
   readonly col: number
   readonly value: number
   readonly delta: number
@@ -53,12 +51,6 @@ export interface OperationDirectAggregateLiteralFastPathArgs {
   readonly state: Pick<CreateEngineOperationServiceArgs['state'], 'workbook' | 'counters' | 'events' | 'setLastMetrics'>
   readonly directRangePostRecalcLimit: number
   readonly getSingleEntityDependent: (entityId: number) => number
-  readonly collectSingleAffectedDirectRangeDependent: (request: {
-    readonly sheetName: string
-    readonly sheetId?: number
-    readonly row: number
-    readonly col: number
-  }) => number
   readonly collectAffectedDirectRangeDependents: (request: {
     readonly sheetName: string
     readonly row: number
@@ -92,31 +84,24 @@ export function tryApplySingleDirectAggregateLiteralMutationFastPath(
 ): EngineExistingNumericCellMutationResult | null {
   let singleAffected = -2
   if (request.singleRangeEntityDependent !== undefined) {
-    const rangeDependent = resolveSingleRangeEntityAggregateCandidate(args, {
-      rangeEntityDependent: request.singleRangeEntityDependent,
-      sheetName: request.sheetName,
-      ...(request.sheetId === undefined ? {} : { sheetId: request.sheetId }),
-      row: request.row,
-      col: request.col,
-    })
-    if (rangeDependent === null) {
+    const rangeDependent = args.getSingleEntityDependent(request.singleRangeEntityDependent)
+    if (rangeDependent < -1) {
       return null
     }
-    singleAffected = rangeDependent
+    if (rangeDependent >= 0) {
+      singleAffected = rangeDependent
+    }
   }
   if (singleAffected >= 0 && !args.canApplyDirectAggregateLiteralDeltaForRequest(singleAffected, request)) {
     return null
   }
   if (singleAffected < -1) {
-    singleAffected = args.collectSingleAffectedDirectRangeDependent({
+    singleAffected = args.collectSingleApplicableDirectAggregateDependent({
       sheetName: request.sheetName,
       ...(request.sheetId === undefined ? {} : { sheetId: request.sheetId }),
       row: request.row,
       col: request.col,
     })
-  }
-  if (singleAffected >= 0 && !args.canApplyDirectAggregateLiteralDeltaForRequest(singleAffected, request)) {
-    return null
   }
   if (singleAffected === -1) {
     args.writeFastPathLiteralToExistingCell(request.existingIndex, request.value)
@@ -232,55 +217,6 @@ export function tryApplySingleDirectAggregateLiteralMutationFastPath(
   return makeExistingNumericMutationResult(changed, 1)
 }
 
-function resolveSingleRangeEntityAggregateCandidate(
-  args: Pick<
-    OperationDirectAggregateLiteralFastPathArgs,
-    | 'collectAffectedDirectRangeDependents'
-    | 'collectSingleAffectedDirectRangeDependent'
-    | 'collectSingleApplicableDirectAggregateDependent'
-    | 'getSingleEntityDependent'
-  >,
-  request: {
-    readonly rangeEntityDependent: number
-    readonly sheetName: string
-    readonly sheetId?: number
-    readonly row: number
-    readonly col: number
-  },
-): number | null {
-  const rangeDependent = args.getSingleEntityDependent(request.rangeEntityDependent)
-  if (rangeDependent < -1) {
-    return null
-  }
-  if (rangeDependent < 0) {
-    return rangeDependent
-  }
-  const singleAffected = args.collectSingleAffectedDirectRangeDependent({
-    sheetName: request.sheetName,
-    ...(request.sheetId === undefined ? {} : { sheetId: request.sheetId }),
-    row: request.row,
-    col: request.col,
-  })
-  if (singleAffected !== -1 && singleAffected !== rangeDependent) {
-    return null
-  }
-  const affected = args.collectAffectedDirectRangeDependents({
-    sheetName: request.sheetName,
-    row: request.row,
-    col: request.col,
-  })
-  if (affected.length > 0 && (affected.length !== 1 || affected[0] !== rangeDependent)) {
-    return null
-  }
-  const indexedDependent = args.collectSingleApplicableDirectAggregateDependent({
-    sheetName: request.sheetName,
-    ...(request.sheetId === undefined ? {} : { sheetId: request.sheetId }),
-    row: request.row,
-    col: request.col,
-  })
-  return indexedDependent === -1 || indexedDependent === rangeDependent ? rangeDependent : null
-}
-
 export function tryApplyTrustedSingleRangeDirectAggregateExistingNumericMutation(
   args: OperationDirectAggregateLiteralFastPathArgs,
   request: OperationTrustedRangeDirectAggregateExistingNumericMutationRequest,
@@ -288,14 +224,8 @@ export function tryApplyTrustedSingleRangeDirectAggregateExistingNumericMutation
   if (request.hasExactLookupDependents || request.hasSortedLookupDependents) {
     return null
   }
-  const formulaCellIndex = resolveSingleRangeEntityAggregateCandidate(args, {
-    rangeEntityDependent: request.rangeEntityDependent,
-    sheetName: request.sheetName,
-    sheetId: request.sheetId,
-    row: request.row,
-    col: request.col,
-  })
-  if (formulaCellIndex === null || formulaCellIndex < 0 || !args.canApplyDirectAggregateLiteralDelta(formulaCellIndex)) {
+  const formulaCellIndex = args.getSingleEntityDependent(request.rangeEntityDependent)
+  if (formulaCellIndex < 0 || !args.canApplyDirectAggregateLiteralDelta(formulaCellIndex)) {
     return null
   }
   args.writeTrustedExistingNumericLiteralToCell(request.existingIndex, request.sheet, request.col, request.value)

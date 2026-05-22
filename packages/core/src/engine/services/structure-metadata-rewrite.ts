@@ -360,9 +360,6 @@ function rewriteDefinedNameFormulaOrNull(
 ): string | null {
   try {
     const structuralFormula = rewriteFormulaForStructuralTransform(formula, sheetName, sheetName, transform)
-    if (formula === `${quoteFormulaSheetName(sheetName)}!#REF!` && structuralFormula === '#REF!') {
-      return formula
-    }
     return rewriteFormulaSourceForDeletedStructuredReferences(structuralFormula, deletedTableColumns) ?? structuralFormula
   } catch {
     return null

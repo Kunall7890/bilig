@@ -1,7 +1,7 @@
 import type { LiteralInput } from '@bilig/protocol'
 import { WorkPaper } from './work-paper.js'
 import { WorkPaperPersistenceError } from './work-paper-errors.js'
-import { isParsableFormulaContent } from './work-paper-runtime-helpers.js'
+import { isFormulaContent } from './work-paper-runtime-helpers.js'
 import type {
   RawCellContent,
   SerializedWorkPaperNamedExpression,
@@ -384,7 +384,7 @@ function serializeSheetContentForDocument(workbook: WorkPaper, sheetId: number):
     .map((row, rowIndex) =>
       row.map((cellContent, colIndex) =>
         cellContent !== null &&
-        !isParsableFormulaContent(cellContent) &&
+        !isFormulaContent(cellContent) &&
         workbook.isCellPartOfArray({ sheet: sheetId, row: rowIndex, col: colIndex })
           ? null
           : cellContent,

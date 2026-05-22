@@ -58,7 +58,7 @@ describe('wasm kernel bridge fuzz', () => {
         expect(Array.from(kernel.readErrors().slice(0, spec.errors.length))).toEqual(spec.errors)
       },
     })
-  }, 300_000)
+  }, 20_000)
 })
 
 // Helpers

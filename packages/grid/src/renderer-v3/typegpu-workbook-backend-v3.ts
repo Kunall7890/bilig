@@ -89,20 +89,14 @@ export function drawWorkbookTypeGpuTileFrameV3(input: {
   readonly scrollSnapshot: WorkbookGridScrollSnapshot
   readonly surface: TypeGpuTileDrawSurface
 }): boolean {
-  const visibleTilePanes = input.tilePanes.filter(isTypeGpuTilePaneDrawVisibleV3)
   const retainPanes = input.preloadTilePanes?.length ? [...input.preloadTilePanes, ...input.tilePanes] : input.tilePanes
-  const resourcePanes =
-    input.syncPreloadPanes === false
-      ? visibleTilePanes
-      : input.preloadTilePanes?.length
-        ? [...input.preloadTilePanes, ...visibleTilePanes]
-        : visibleTilePanes
+  const resourcePanes = input.syncPreloadPanes === false ? input.tilePanes : retainPanes
   const headerPanes = input.headerPanes ?? []
   const atlasScaleChanged = input.backend.atlas.setScale(input.surface.dpr)
   const preserveResidentBodyTiles =
     !atlasScaleChanged &&
     hasTransientEmptyTypeGpuBodyFrameV3({
-      tilePanes: visibleTilePanes,
+      tilePanes: input.tilePanes,
       tileResources: input.backend.tileResources,
     })
   if (preserveResidentBodyTiles) {
@@ -114,10 +108,10 @@ export function drawWorkbookTypeGpuTileFrameV3(input: {
       visiblePanes: input.tilePanes,
     })
     syncTypeGpuTilePaneResourcesV3({
+      artifacts: input.backend.artifacts,
       atlas: input.backend.atlas,
       panes: resourcePanes,
       retainPanes,
-      syncText: input.drawText ?? true,
       tileResources: input.backend.tileResources,
     })
   }
@@ -127,10 +121,10 @@ export function drawWorkbookTypeGpuTileFrameV3(input: {
     overlay: input.overlay ?? null,
   })
   syncTypeGpuHeaderResourcesV3({
+    artifacts: input.backend.artifacts,
     atlas: input.backend.atlas,
     headerPanes,
     layerResources: input.backend.layerResources,
-    syncText: input.drawText ?? true,
   })
   syncTypeGpuOverlayResourcesV3({
     layerResources: input.backend.layerResources,
@@ -140,7 +134,7 @@ export function drawWorkbookTypeGpuTileFrameV3(input: {
   const drawPanes = resolveTypeGpuDrawTilePanesV3({
     drawText: input.drawText ?? true,
     onTileMiss: (tileKey) => noteTypeGpuTileMiss(String(tileKey)),
-    panes: visibleTilePanes,
+    panes: input.tilePanes,
     residency: input.backend.tileResidency,
     tileResources: input.backend.tileResources,
   })
@@ -157,24 +151,16 @@ export function drawWorkbookTypeGpuTileFrameV3(input: {
   })
 }
 
-function isTypeGpuTilePaneDrawVisibleV3(pane: WorkbookRenderTilePaneState): boolean {
-  return pane.drawVisible !== false
-}
-
 export function hasTransientEmptyTypeGpuBodyFrameV3(input: {
   readonly tilePanes: readonly WorkbookRenderTilePaneState[]
   readonly tileResources: Pick<TypeGpuTileResourceCacheV3, 'peekContent'>
 }): boolean {
-  let hasTransientEmptyBodyPane = false
   for (const pane of input.tilePanes) {
     if (pane.paneId !== 'body' && !pane.paneId.startsWith('body:')) {
       continue
     }
     if (pane.tile.dirtyMasks && pane.tile.dirtyMasks.length > 0) {
-      return false
-    }
-    if (pane.tile.textCount > 0) {
-      return false
+      continue
     }
     const content = input.tileResources.peekContent(resolveWorkbookTileContentBufferKeyV3(pane))
     if (!content) {
@@ -189,10 +175,10 @@ export function hasTransientEmptyTypeGpuBodyFrameV3(input: {
         residentRectRevisionKey: content.rectRevisionKey,
       })
     ) {
-      hasTransientEmptyBodyPane = true
+      return true
     }
   }
-  return hasTransientEmptyBodyPane
+  return false
 }
 
 function isTransientMissingRectPayloadV3(input: {
@@ -267,36 +253,12 @@ export function resolveTypeGpuDrawTilePanesV3(input: {
   return input.panes.map((pane) => {
     const entry = input.residency.getExact(pane.tile.tileId)
     const exact = input.tileResources.peekContent(resolveWorkbookTileContentBufferKeyV3(pane))
-    const contentReady = exact ? isTileContentDrawReady(exact, pane, input.drawText ?? true) : false
-    if (entry?.packet && contentReady && isResidentTilePacketCurrent(entry.packet, pane, input.drawText ?? true)) {
+    if (entry?.packet && exact && isTileContentDrawReady(exact, pane, input.drawText ?? true)) {
       return { ...pane, tile: entry.packet }
     }
-    if (!contentReady) {
-      input.onTileMiss?.(pane.tile.tileId)
-    }
+    input.onTileMiss?.(pane.tile.tileId)
     return pane
   })
-}
-
-function isResidentTilePacketCurrent(packet: GridRenderTile, pane: WorkbookRenderTilePaneState, drawText: boolean): boolean {
-  const tile = pane.tile
-  if (
-    packet.tileId !== tile.tileId ||
-    packet.lastBatchId !== tile.lastBatchId ||
-    packet.lastCameraSeq !== tile.lastCameraSeq ||
-    packet.version.axisX !== tile.version.axisX ||
-    packet.version.axisY !== tile.version.axisY ||
-    packet.version.freeze !== tile.version.freeze ||
-    packet.version.styles !== tile.version.styles ||
-    packet.version.text !== tile.version.text ||
-    packet.version.values !== tile.version.values
-  ) {
-    return false
-  }
-  if (!areGridRectTileRevisionKeysEqualV3(resolveGridRectTileRevisionKeyV3({ tile: packet }), resolveGridRectTileRevisionKeyV3({ tile }))) {
-    return false
-  }
-  return !drawText || areGridTextTileRevisionKeysEqualV3(resolveGridTextTileRevisionKeyV3(packet), resolveGridTextTileRevisionKeyV3(tile))
 }
 
 function isTileContentDrawReady(entry: TypeGpuTileContentResourceEntryV3, pane: WorkbookRenderTilePaneState, drawText: boolean): boolean {

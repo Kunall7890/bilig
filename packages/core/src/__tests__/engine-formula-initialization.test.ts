@@ -7,7 +7,7 @@ import type { FormulaFamilyStore } from '../formula/formula-family-store.js'
 import { INITIAL_DIRECT_FORMULA_EVALUATION_LIMIT } from '../engine/services/formula-initialization-direct-formulas.js'
 import { findErrorByName, getFormulaBindingNowService } from './operation-service-test-helpers.js'
 
-const OVER_DIRECT_LIMIT_TEST_TIMEOUT_MS = 30_000
+const OVER_DIRECT_LIMIT_TEST_TIMEOUT_MS = 10_000
 
 function readRuntimeTemplateId(engine: SpreadsheetEngine, address: string): number | undefined {
   const cellIndex = engine.workbook.getCellIndex('Sheet1', address)

@@ -15,7 +15,6 @@ import type { GridRenderTile } from '../renderer-v3/render-tile-source.js'
 interface VisibleTextRefreshCacheInput {
   readonly columnWidths: Readonly<Record<number, number>>
   readonly engine: GridEngineLike
-  readonly revisionSensitive?: boolean | undefined
   readonly gridMetrics: GridMetrics
   readonly rowHeights: Readonly<Record<number, number>>
   readonly sceneRevision: number
@@ -77,7 +76,6 @@ export class GridVisibleTextRefreshCache {
 
     const renderRevisionKey = resolveRenderRevisionKey(input.engine)
     const layoutKey = resolveVisibleTextLayoutKey(input)
-    const hasAuthoredPaintRects = tileHasAuthoredPaintRects(tile)
     const cached = this.entries.get(tileKey)
     if (
       cached &&
@@ -85,9 +83,8 @@ export class GridVisibleTextRefreshCache {
       cached.engine === input.engine &&
       cached.layoutKey === layoutKey &&
       cached.sheetName === input.sheetName &&
-      !hasAuthoredPaintRects &&
-      (input.revisionSensitive === false ||
-        (cached.sceneRevision === input.sceneRevision && cached.renderRevisionKey === renderRevisionKey)) &&
+      cached.sceneRevision === input.sceneRevision &&
+      cached.renderRevisionKey === renderRevisionKey &&
       cached.visibleRowStart === visibleRowStart &&
       cached.visibleRowEnd === visibleRowEnd &&
       cached.visibleColStart === visibleColStart &&

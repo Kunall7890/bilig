@@ -397,7 +397,6 @@ describe('useWorkbookSync', () => {
 
   it('persists deferred axis resizes once while avoiding stale viewport store writes', async () => {
     ;(globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true
-    vi.useFakeTimers()
     const frames = installAnimationFrameQueue()
     const initialStore = new ProjectedViewportStore()
     const replacementStore = new ProjectedViewportStore()
@@ -471,7 +470,7 @@ describe('useWorkbookSync', () => {
     expect(replacementSetColumnWidth).not.toHaveBeenCalled()
 
     await act(async () => {
-      await vi.advanceTimersByTimeAsync(320)
+      frames.flushNext()
       await staleStorePromise
     })
     expect(runtimeController.invoke).toHaveBeenCalledWith('enqueuePendingMutation', {
@@ -490,7 +489,7 @@ describe('useWorkbookSync', () => {
     expect(replacementSetRowHeight).toHaveBeenCalledTimes(1)
     expect(replacementSetRowHeight).toHaveBeenCalledWith('SheetB', 6, 44)
     await act(async () => {
-      await vi.advanceTimersByTimeAsync(320)
+      frames.flushNext()
       await stableStorePromise
     })
     expect(runtimeController.invoke).toHaveBeenCalledWith('enqueuePendingMutation', {

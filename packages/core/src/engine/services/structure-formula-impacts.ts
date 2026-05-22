@@ -1,9 +1,9 @@
 import { ErrorCode, ValueTag } from '@bilig/protocol'
 import type { StructuralAxisTransform } from '@bilig/formula'
+import { errorValue } from '../../engine-value-utils.js'
 import { mapStructuralAxisIndex, mapStructuralAxisInterval } from '../../engine-structural-utils.js'
 import type { RuntimeFormula } from '../runtime-state.js'
 import { normalizeDefinedName } from '../../workbook-store.js'
-import { errorValue } from '../../engine-value-utils.js'
 import { addEngineCounter } from '../../perf/engine-counters.js'
 import { dependencyTouchesSheet, rangeDependencyAxisAffected, runtimeDirectRangeAxisAffected } from './structure-formula-rewrite-guards.js'
 import { canDeferSimpleStructuralFormulaSource, classifySimpleDeleteStructuralFormulaSource } from './structure-formula-source-deferral.js'
@@ -94,9 +94,7 @@ export function collectStructuralFormulaImpacts(
   const candidateCellIndices = new Set<number>()
   const ownerPositions = new Map<number, { sheetName: string; row: number; col: number }>()
   const precomputedDirectAggregateValueCellIndices = new Set<number>()
-  const precomputedRefErrorCellIndices = new Set<number>()
   const directAggregateRetargetCellIndices = new Set<number>()
-  const skippedOwnedDirectAggregateCellIndices = new Set<number>()
   let sharedOwnedPreservingSourceTransform: RuntimeFormula['structuralSourceTransform']
   let deferredOwnedFormulaFamilyMemberCount = 0
   const targetSheetStructureVersion =
@@ -243,9 +241,6 @@ export function collectStructuralFormulaImpacts(
     if (overlapStart > overlapEnd) {
       return false
     }
-    if (!mapStructuralAxisInterval(directAggregate.rowStart, directAggregate.rowEnd, argsForImpact.transform)) {
-      return false
-    }
     const aggregateSheet = args.state.workbook.getSheet(argsForImpact.sheetName)
     if (!aggregateSheet) {
       return false
@@ -254,40 +249,28 @@ export function collectStructuralFormulaImpacts(
     if (currentValue.tag !== ValueTag.Number) {
       return false
     }
-    for (let col = directAggregate.col; col <= directAggregate.colEnd; col += 1) {
-      for (let row = directAggregate.rowStart; row <= directAggregate.rowEnd; row += 1) {
-        if (row >= overlapStart && row <= overlapEnd) {
-          continue
-        }
-        const memberCellIndex =
-          aggregateSheet.structureVersion === 1 ? aggregateSheet.grid.getPhysical(row, col) : aggregateSheet.grid.get(row, col)
-        if (memberCellIndex !== -1 && (args.state.workbook.cellStore.formulaIds[memberCellIndex] ?? 0) !== 0) {
-          return false
-        }
-      }
-    }
     let deletedContribution = 0
-    for (let col = directAggregate.col; col <= directAggregate.colEnd; col += 1) {
-      for (let row = overlapStart; row <= overlapEnd; row += 1) {
-        const memberCellIndex =
-          aggregateSheet.structureVersion === 1 ? aggregateSheet.grid.getPhysical(row, col) : aggregateSheet.grid.get(row, col)
-        if (memberCellIndex === -1) {
-          continue
-        }
-        const memberValue = args.state.workbook.cellStore.getValue(memberCellIndex, () => '')
-        switch (memberValue.tag) {
-          case ValueTag.Number:
-            deletedContribution += memberValue.value
-            break
-          case ValueTag.Boolean:
-            deletedContribution += memberValue.value ? 1 : 0
-            break
-          case ValueTag.Empty:
-          case ValueTag.String:
-            break
-          case ValueTag.Error:
-            return false
-        }
+    for (let row = overlapStart; row <= overlapEnd; row += 1) {
+      const memberCellIndex =
+        aggregateSheet.structureVersion === 1
+          ? aggregateSheet.grid.getPhysical(row, directAggregate.col)
+          : aggregateSheet.grid.get(row, directAggregate.col)
+      if (memberCellIndex === -1) {
+        continue
+      }
+      const memberValue = args.state.workbook.cellStore.getValue(memberCellIndex, () => '')
+      switch (memberValue.tag) {
+        case ValueTag.Number:
+          deletedContribution += memberValue.value
+          break
+        case ValueTag.Boolean:
+          deletedContribution += memberValue.value ? 1 : 0
+          break
+        case ValueTag.Empty:
+        case ValueTag.String:
+          break
+        case ValueTag.Error:
+          return false
       }
     }
     args.state.workbook.cellStore.setValue(cellIndex, {
@@ -317,21 +300,10 @@ export function collectStructuralFormulaImpacts(
     if (formula.compiled.symbolicSpills.length > 0) {
       return false
     }
-    const ownerRow = mapStructuralAxisIndex(ownerPosition.row, argsForImpact.transform)
-    if (ownerRow === undefined) {
+    if (mapStructuralAxisIndex(ownerPosition.row, argsForImpact.transform) === undefined) {
       return false
     }
-    const nextRows = mapStructuralAxisInterval(directAggregate.rowStart, directAggregate.rowEnd, argsForImpact.transform)
-    if (!nextRows) {
-      return false
-    }
-    if (argsForImpact.transform.kind === 'move' && nextRows.end - nextRows.start !== directAggregate.rowEnd - directAggregate.rowStart) {
-      return false
-    }
-    if (nextRows.start === directAggregate.rowStart && nextRows.end === directAggregate.rowEnd) {
-      return false
-    }
-    return ownerPosition.col !== directAggregate.col || ownerRow < nextRows.start || ownerRow > nextRows.end
+    return mapStructuralAxisInterval(directAggregate.rowStart, directAggregate.rowEnd, argsForImpact.transform) !== undefined
   }
   const tryQueueDirectAggregateStructuralRetarget = (
     cellIndex: number,
@@ -378,11 +350,8 @@ export function collectStructuralFormulaImpacts(
     const preservesBinding = deleteClassification === 'preserves-binding'
     const becomesRefError = deleteClassification === 'ref-error'
     const dependsOnPrecomputedRefError = formula.dependencyIndices.some((dependencyCellIndex) =>
-      precomputedRefErrorCellIndices.has(dependencyCellIndex),
+      precomputedChangedInputCellIndices.has(dependencyCellIndex),
     )
-    if (becomesRefError) {
-      return false
-    }
     if (!preservesBinding && !becomesRefError && !dependsOnPrecomputedRefError) {
       return false
     }
@@ -398,7 +367,6 @@ export function collectStructuralFormulaImpacts(
     } else if (becomesRefError || dependsOnPrecomputedRefError) {
       args.state.workbook.cellStore.setValue(cellIndex, errorValue(ErrorCode.Ref))
       precomputedChangedInputCellIndices.add(cellIndex)
-      precomputedRefErrorCellIndices.add(cellIndex)
     } else {
       formulaCellIndices.add(cellIndex)
     }
@@ -420,7 +388,6 @@ export function collectStructuralFormulaImpacts(
         return
       }
       if (canSkipOwnedDirectAggregateCandidate(cellIndex, ownerPosition)) {
-        skippedOwnedDirectAggregateCellIndices.add(cellIndex)
         return
       }
       if (formula && ownerPosition && tryQueueDirectAggregateStructuralRetarget(cellIndex, formula, ownerPosition)) {
@@ -433,7 +400,7 @@ export function collectStructuralFormulaImpacts(
     deferredOwnedFormulaFamilies && deferredOwnedFormulaFamilyMemberCount === args.state.formulas.size
   if (!ownedFamilyDeferralCoversEveryFormula) {
     args.collectFormulaCellsReferencingSheet(argsForImpact.sheetName).forEach((cellIndex) => {
-      if (directAggregateRetargetCellIndices.has(cellIndex) || skippedOwnedDirectAggregateCellIndices.has(cellIndex)) {
+      if (directAggregateRetargetCellIndices.has(cellIndex)) {
         return
       }
       const formula = args.state.formulas.get(cellIndex)
@@ -453,11 +420,6 @@ export function collectStructuralFormulaImpacts(
       candidateCellIndices.add(cellIndex)
     })
   }
-  args.state.formulas.forEach((formula, cellIndex) => {
-    if (formula.preserveCachedValueOnFullRecalc === true) {
-      candidateCellIndices.add(cellIndex)
-    }
-  })
   if (args.state.counters && candidateCellIndices.size > 0) {
     addEngineCounter(args.state.counters, 'structuralFormulaImpactCandidates', candidateCellIndices.size)
   }
@@ -512,14 +474,13 @@ export function collectStructuralFormulaImpacts(
     const dependencyPositionAffected =
       !ownerPositionAffected &&
       argsForImpact.targetSheetId !== undefined &&
-      (formula.dependencyIndices.some((dependencyCellIndex) => precomputedChangedInputCellIndices.has(dependencyCellIndex)) ||
-        formula.dependencyIndices.some((dependencyCellIndex) => {
-          if (args.state.workbook.cellStore.sheetIds[dependencyCellIndex] !== argsForImpact.targetSheetId) {
-            return false
-          }
-          const dependencyAxisIndex = args.state.workbook.getCellAxisIndex(dependencyCellIndex, argsForImpact.transform.axis)
-          return dependencyAxisIndex !== undefined && structuralAxisIndexAffected(dependencyAxisIndex, argsForImpact.transform)
-        }) ||
+      (formula.dependencyIndices.some((dependencyCellIndex) => {
+        if (args.state.workbook.cellStore.sheetIds[dependencyCellIndex] !== argsForImpact.targetSheetId) {
+          return false
+        }
+        const dependencyAxisIndex = args.state.workbook.getCellAxisIndex(dependencyCellIndex, argsForImpact.transform.axis)
+        return dependencyAxisIndex !== undefined && structuralAxisIndexAffected(dependencyAxisIndex, argsForImpact.transform)
+      }) ||
         formula.rangeDependencies.some((rangeIndex) =>
           rangeDependencyAxisAffected(args.state.ranges.getDescriptor(rangeIndex), argsForImpact.targetSheetId!, argsForImpact.transform),
         ) ||

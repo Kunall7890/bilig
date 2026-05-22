@@ -90,7 +90,6 @@ function buildReconciliationSheets(rowCount: number): Record<string, TestCell[][
 
 describe('guarded SUMIFS workpaper performance', () => {
   const reconciliationEvaluationTimeoutMs = 15_000
-  const perfIt = process.env['BILIG_VITEST_COVERAGE'] === '1' ? it.skip : it
 
   it('evaluates blank-key guards without leaving the direct criteria path', () => {
     const workbook = WorkPaper.buildFromSheets(
@@ -117,7 +116,7 @@ describe('guarded SUMIFS workpaper performance', () => {
     expect(workbook.getPerformanceCounters().directFormulaInitialEvaluations).toBe(3)
   })
 
-  perfIt(
+  it(
     'builds repeated reconciliation SUMIFS formulas within a bounded budget',
     () => {
       const rowCount = 1_500

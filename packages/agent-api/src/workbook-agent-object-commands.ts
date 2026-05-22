@@ -37,15 +37,6 @@ const WORKBOOK_SCOPE_OBJECT_COMMAND_KINDS = new Set<WorkbookAgentObjectCommand['
   'deleteTable',
 ])
 
-const AUTO_FILTER_CUSTOM_OPERATOR_VALUES = new Set([
-  'equal',
-  'notEqual',
-  'greaterThan',
-  'greaterThanOrEqual',
-  'lessThan',
-  'lessThanOrEqual',
-])
-
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null
 }
@@ -108,57 +99,7 @@ function isWorkbookTableSnapshot(value: unknown): value is WorkbookTableSnapshot
     typeof value['totalsRow'] === 'boolean' &&
     (value['columns'] === undefined || isWorkbookTableColumns(value['columns'])) &&
     (value['style'] === undefined || isWorkbookTableStyle(value['style'])) &&
-    (value['autoFilter'] === undefined || isWorkbookAutoFilter(value['autoFilter'])) &&
     isOptionalString(value['sortState'])
-  )
-}
-
-function isWorkbookAutoFilter(value: unknown): boolean {
-  if (!isCellRangeRef(value) || !isRecord(value)) {
-    return false
-  }
-  return (
-    value['criteria'] === undefined ||
-    (Array.isArray(value['criteria']) && value['criteria'].every((entry) => isWorkbookAutoFilterColumn(entry)))
-  )
-}
-
-function isWorkbookAutoFilterColumn(value: unknown): boolean {
-  return (
-    isRecord(value) &&
-    Number.isSafeInteger(value['colId']) &&
-    Number(value['colId']) >= 0 &&
-    isOptionalBoolean(value['hiddenButton']) &&
-    isOptionalBoolean(value['showButton']) &&
-    (value['filters'] === undefined || isWorkbookAutoFilterValueCriteria(value['filters'])) &&
-    (value['customFilters'] === undefined || isWorkbookAutoFilterCustomCriteria(value['customFilters']))
-  )
-}
-
-function isWorkbookAutoFilterValueCriteria(value: unknown): boolean {
-  return (
-    isRecord(value) &&
-    isOptionalBoolean(value['blank']) &&
-    Array.isArray(value['values']) &&
-    value['values'].every((entry) => typeof entry === 'string')
-  )
-}
-
-function isWorkbookAutoFilterCustomCriteria(value: unknown): boolean {
-  return (
-    isRecord(value) &&
-    isOptionalBoolean(value['and']) &&
-    Array.isArray(value['filters']) &&
-    value['filters'].every((entry) => isWorkbookAutoFilterCustomCriterion(entry))
-  )
-}
-
-function isWorkbookAutoFilterCustomCriterion(value: unknown): boolean {
-  return (
-    isRecord(value) &&
-    (value['operator'] === undefined ||
-      (typeof value['operator'] === 'string' && AUTO_FILTER_CUSTOM_OPERATOR_VALUES.has(value['operator']))) &&
-    typeof value['value'] === 'string'
   )
 }
 

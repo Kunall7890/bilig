@@ -13,7 +13,6 @@ describe('defined name value helpers', () => {
   it('classifies formula snapshots by whether the parsed expression is scalar-only', () => {
     expect(isScalarOnlyDefinedNameValue('=1')).toBe(true)
     expect(isScalarOnlyDefinedNameValue('="x"')).toBe(true)
-    expect(isScalarOnlyDefinedNameValue('=')).toBe(false)
     expect(isScalarOnlyDefinedNameValue({ kind: 'formula', formula: '=TRUE' })).toBe(true)
     expect(isScalarOnlyDefinedNameValue({ kind: 'formula', formula: '=SUM(A1:A2)' })).toBe(false)
     expect(isScalarOnlyDefinedNameValue({ kind: 'formula', formula: '=A1' })).toBe(false)

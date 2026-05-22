@@ -650,13 +650,11 @@ export function applyActionAndCaptureResult(
   action: CoreAction,
 ): { accepted: boolean; before: WorkbookSnapshot; after: WorkbookSnapshot } {
   const before = engine.exportSnapshot()
-  const undoDepthBefore = readUndoDepth(engine)
   try {
     applyCoreAction(engine, action)
     const after = engine.exportSnapshot()
-    const undoDepthAfter = readUndoDepth(engine)
     return {
-      accepted: undoDepthAfter > undoDepthBefore || hasSemanticChange(before, after),
+      accepted: hasSemanticChange(before, after),
       before,
       after,
     }
@@ -672,14 +670,6 @@ export function applyActionAndCaptureResult(
       after,
     }
   }
-}
-
-function readUndoDepth(engine: SpreadsheetEngine): number {
-  const stack = Reflect.get(engine, 'undoStack')
-  if (Array.isArray(stack)) {
-    return stack.length
-  }
-  return engine.canUndo() ? 1 : 0
 }
 
 export async function exportReplaySnapshot(initialSnapshot: WorkbookSnapshot, actions: readonly CoreAction[]): Promise<WorkbookSnapshot> {

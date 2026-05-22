@@ -7,18 +7,53 @@ import type {
   CellVerticalAlignment,
 } from '@bilig/protocol'
 import { builtinNumberFormatCode, LargeSimpleNumberFormatCollector } from './xlsx-large-simple-number-formats.js'
+import {
+  asciiByteRangeEquals,
+  closingStringTagRetainLength,
+  findByteInRange,
+  findByteTagEnd,
+  findClosingStringElementEnd,
+  findNextOpeningTag,
+  findNextParentBoundaryOrChild,
+  findStringTagEnd,
+  inspectRequiredXfOpeningTag,
+  isApplied,
+  isSelfClosingByteTag,
+  isSelfClosingStringTag,
+  isXmlNameByte,
+  readAttribute,
+  readBooleanAttribute,
+  readNonNegativeIntegerAttribute,
+  readNumberAttribute,
+} from './xlsx-large-simple-style-xml-utils.js'
 
 type ImportedCellStyle = Omit<CellStyleRecord, 'id'>
 
 const elementTextCache = new Map<string, RegExp>()
+const lessThan = 60
+const slash = 47
+const styleSupportTagUnknown = 0
+const styleSupportTagCellXfs = 1
+const styleSupportTagXf = 2
+const styleSupportTagOther = 3
+const xfSupportUnsupported = 1 << 0
+const xfSupportPotentialVisual = 1 << 1
+const emptyBytes = new Uint8Array(0)
 
 export interface LargeSimpleWorkbookStylesScanOptions {
   readonly onRetainedBufferLength?: (length: number) => void
 }
 
+type LargeSimpleChunkConsumer = (chunk: Uint8Array) => boolean | void
+
 export interface LargeSimpleWorkbookStyleArtifacts {
   readonly stylesByIndex: Map<number, ImportedCellStyle> | null
   readonly numberFormatsByStyleIndex: Map<number, string> | null
+}
+
+export interface LargeSimpleWorkbookStyleSupportScan {
+  readonly hasUnsupportedStyles: boolean
+  readonly hasPotentialVisualStyles: boolean
 }
 
 export function readLargeSimpleWorkbookStyles(
@@ -77,7 +112,7 @@ export function readLargeSimpleWorkbookStyles(
 }
 
 export function readLargeSimpleWorkbookStyleArtifactsFromChunks(
-  readChunks: (onChunk: (chunk: Uint8Array) => void) => boolean,
+  readChunks: (onChunk: LargeSimpleChunkConsumer) => boolean,
   requiredStyleIndexes: ReadonlySet<number>,
   options: LargeSimpleWorkbookStylesScanOptions = {},
 ): LargeSimpleWorkbookStyleArtifacts {
@@ -151,8 +186,47 @@ export function readLargeSimpleWorkbookStyleArtifactsFromChunks(
   }
 }
 
+export function hasUnsupportedLargeSimpleWorkbookStylesFromChunks(
+  readChunks: (onChunk: LargeSimpleChunkConsumer) => boolean,
+  requiredStyleIndexes: ReadonlySet<number>,
+  options: LargeSimpleWorkbookStylesScanOptions = {},
+): boolean | null {
+  const scan = inspectLargeSimpleWorkbookStyleSupportFromChunks(readChunks, requiredStyleIndexes, options)
+  return scan?.hasUnsupportedStyles ?? null
+}
+
+export function inspectLargeSimpleWorkbookStyleSupportFromChunks(
+  readChunks: (onChunk: LargeSimpleChunkConsumer) => boolean,
+  requiredStyleIndexes: ReadonlySet<number>,
+  options: LargeSimpleWorkbookStylesScanOptions = {},
+): LargeSimpleWorkbookStyleSupportScan | null {
+  if (requiredStyleIndexes.size === 0) {
+    return { hasUnsupportedStyles: false, hasPotentialVisualStyles: false }
+  }
+  const scanner = new RequiredXfUnsupportedStyleScanner(requiredStyleIndexes, options)
+  if (!readChunks((chunk) => scanner.push(chunk))) {
+    return null
+  }
+  return scanner.finish()
+}
+
+export async function inspectLargeSimpleWorkbookStyleSupportFromChunksAsync(
+  readChunks: (onChunk: LargeSimpleChunkConsumer) => Promise<boolean>,
+  requiredStyleIndexes: ReadonlySet<number>,
+  options: LargeSimpleWorkbookStylesScanOptions = {},
+): Promise<LargeSimpleWorkbookStyleSupportScan | null> {
+  if (requiredStyleIndexes.size === 0) {
+    return { hasUnsupportedStyles: false, hasPotentialVisualStyles: false }
+  }
+  const scanner = new RequiredXfUnsupportedStyleScanner(requiredStyleIndexes, options)
+  if (!(await readChunks((chunk) => scanner.push(chunk)))) {
+    return null
+  }
+  return scanner.finish()
+}
+
 export function readLargeSimpleWorkbookStylesFromChunks(
-  readChunks: (onChunk: (chunk: Uint8Array) => void) => boolean,
+  readChunks: (onChunk: LargeSimpleChunkConsumer) => boolean,
   requiredStyleIndexes: ReadonlySet<number>,
   options: LargeSimpleWorkbookStylesScanOptions = {},
 ): Map<number, ImportedCellStyle> | null {
@@ -491,7 +565,7 @@ function readVerticalAlignment(value: string | undefined): CellVerticalAlignment
 }
 
 function collectIndexedXmlElementsFromChunks(
-  readChunks: (onChunk: (chunk: Uint8Array) => void) => boolean,
+  readChunks: (onChunk: LargeSimpleChunkConsumer) => boolean,
   parentName: string,
   childName: string,
   requiredIndexes: ReadonlySet<number>,
@@ -508,7 +582,7 @@ function collectIndexedXmlElementsFromChunks(
 }
 
 function collectLargeSimpleWorkbookStyleComponentsFromChunks(
-  readChunks: (onChunk: (chunk: Uint8Array) => void) => boolean,
+  readChunks: (onChunk: LargeSimpleChunkConsumer) => boolean,
   requiredFillIndexes: ReadonlySet<number>,
   requiredFontIndexes: ReadonlySet<number>,
   requiredCustomFormatIds: ReadonlySet<number>,
@@ -715,170 +789,178 @@ class IndexedXmlElementCollector {
   }
 }
 
-function closingStringTagRetainLength(elementName: string): number {
-  return Math.max(256, elementName.length + 4)
-}
+class RequiredXfUnsupportedStyleScanner {
+  private buffer: Uint8Array = emptyBytes
+  private index = 0
+  private inCellXfs = false
+  private childIndex = 0
+  private foundRequiredCount = 0
+  private failed = false
+  private unsupported = false
+  private hasPotentialVisualStyles = false
+  private tagNameEnd = 0
 
-function findNextParentBoundaryOrChild(
-  xml: string,
-  startIndex: number,
-  parentName: string,
-  childName: string,
-): { readonly kind: 'child' | 'parent-close'; readonly start: number; readonly nameEnd: number } | null {
-  let index = startIndex
-  while (index < xml.length) {
-    const tagStart = xml.indexOf('<', index)
-    if (tagStart < 0) {
+  constructor(
+    private readonly requiredIndexes: ReadonlySet<number>,
+    private readonly options: LargeSimpleWorkbookStylesScanOptions,
+  ) {}
+
+  push(chunk: Uint8Array): boolean {
+    if (this.failed || this.unsupported || this.isComplete() || chunk.byteLength === 0) {
+      return !this.failed && !this.unsupported && !this.isComplete()
+    }
+    this.append(chunk)
+    this.process(false)
+    this.compact()
+    this.reportRetainedBufferLength()
+    return !this.failed && !this.unsupported && !this.isComplete()
+  }
+
+  finish(): LargeSimpleWorkbookStyleSupportScan | null {
+    if (this.failed) {
       return null
     }
-    if (xml.charCodeAt(tagStart + 1) === 47) {
-      const tag = readStringTagName(xml, tagStart + 2)
-      if (tag?.localName === parentName) {
-        return { kind: 'parent-close', start: tagStart, nameEnd: tag.endIndex }
+    if (!this.unsupported && !this.isComplete()) {
+      this.process(true)
+    }
+    this.compact()
+    this.reportRetainedBufferLength()
+    if (this.failed) {
+      return null
+    }
+    if (this.unsupported) {
+      return { hasUnsupportedStyles: true, hasPotentialVisualStyles: this.hasPotentialVisualStyles }
+    }
+    return this.isComplete() ? { hasUnsupportedStyles: false, hasPotentialVisualStyles: this.hasPotentialVisualStyles } : null
+  }
+
+  private append(chunk: Uint8Array): void {
+    if (this.index === this.buffer.byteLength) {
+      this.buffer = chunk
+      this.index = 0
+      return
+    }
+    const retained = this.buffer.subarray(this.index)
+    const next = new Uint8Array(retained.byteLength + chunk.byteLength)
+    next.set(retained)
+    next.set(chunk, retained.byteLength)
+    this.buffer = next
+    this.index = 0
+  }
+
+  private process(final: boolean): void {
+    while (!this.failed && !this.unsupported && !this.isComplete() && this.index < this.buffer.byteLength) {
+      const tagStart = findByteInRange(this.buffer, this.index, this.buffer.byteLength, lessThan)
+      if (tagStart === null) {
+        this.index = this.buffer.byteLength
+        return
       }
-      index = tagStart + 1
-      continue
-    }
-    const tag = readStringTagName(xml, tagStart + 1)
-    if (tag?.localName === childName) {
-      return { kind: 'child', start: tagStart, nameEnd: tag.endIndex }
-    }
-    index = tagStart + 1
-  }
-  return null
-}
-
-function findNextOpeningTag(
-  xml: string,
-  startIndex: number,
-  localName: string,
-): { readonly start: number; readonly nameEnd: number } | null {
-  let index = startIndex
-  while (index < xml.length) {
-    const tagStart = xml.indexOf('<', index)
-    if (tagStart < 0) {
-      return null
-    }
-    const tag = readStringTagName(xml, tagStart + 1)
-    if (tag?.localName === localName) {
-      return { start: tagStart, nameEnd: tag.endIndex }
-    }
-    index = tagStart + 1
-  }
-  return null
-}
-
-function findClosingStringElementEnd(xml: string, startIndex: number, localName: string): number | null {
-  let index = startIndex
-  while (index < xml.length) {
-    const tagStart = xml.indexOf('</', index)
-    if (tagStart < 0) {
-      return null
-    }
-    const tag = readStringTagName(xml, tagStart + 2)
-    if (tag?.localName === localName) {
-      const tagEnd = findStringTagEnd(xml, tag.endIndex)
-      return tagEnd === null ? null : tagEnd + 1
-    }
-    index = tagStart + 2
-  }
-  return null
-}
-
-function findStringTagEnd(xml: string, startIndex: number): number | null {
-  let quote: string | null = null
-  for (let index = startIndex; index < xml.length; index += 1) {
-    const char = xml[index]
-    if (quote !== null) {
-      if (char === quote) {
-        quote = null
+      if (!final && tagStart + 1 >= this.buffer.byteLength) {
+        this.index = tagStart
+        return
       }
-      continue
+      const closing = this.buffer[tagStart + 1] === slash
+      const tagNameStart = tagStart + (closing ? 2 : 1)
+      const tagCode = this.readTagCode(tagNameStart)
+      if (tagCode === styleSupportTagUnknown) {
+        if (!final && tagNameStart >= this.buffer.byteLength) {
+          this.index = tagStart
+          return
+        }
+        this.index = tagStart + 1
+        continue
+      }
+      const tagEnd = findByteTagEnd(this.buffer, this.tagNameEnd)
+      if (tagEnd === null) {
+        if (final) {
+          this.failed = true
+        }
+        this.index = tagStart
+        return
+      }
+      if (!this.inCellXfs) {
+        if (!closing && tagCode === styleSupportTagCellXfs) {
+          this.inCellXfs = !isSelfClosingByteTag(this.buffer, tagEnd)
+        }
+        this.index = tagEnd + 1
+        continue
+      }
+      if (closing && tagCode === styleSupportTagCellXfs) {
+        this.inCellXfs = false
+        this.index = tagEnd + 1
+        continue
+      }
+      if (!closing && tagCode === styleSupportTagXf) {
+        if (this.requiredIndexes.has(this.childIndex)) {
+          this.foundRequiredCount += 1
+          const supportFlags = inspectRequiredXfOpeningTag(this.buffer, this.tagNameEnd, tagEnd)
+          if ((supportFlags & xfSupportUnsupported) !== 0) {
+            this.unsupported = true
+            this.buffer = emptyBytes
+            this.index = 0
+            return
+          }
+          if ((supportFlags & xfSupportPotentialVisual) !== 0) {
+            this.hasPotentialVisualStyles = true
+          }
+        }
+        this.childIndex += 1
+      }
+      this.index = tagEnd + 1
     }
-    if (char === '"' || char === "'") {
-      quote = char
-      continue
-    }
-    if (char === '>') {
-      return index
+    if (this.isComplete() || this.unsupported) {
+      this.buffer = emptyBytes
+      this.index = 0
     }
   }
-  return null
-}
 
-function isSelfClosingStringTag(xml: string, tagEnd: number): boolean {
-  let index = tagEnd - 1
-  while (index >= 0 && /\s/u.test(xml[index] ?? '')) {
-    index -= 1
-  }
-  return xml[index] === '/'
-}
-
-function readStringTagName(xml: string, startIndex: number): { readonly localName: string; readonly endIndex: number } | null {
-  const first = xml.charCodeAt(startIndex)
-  if (!Number.isFinite(first) || first === 33 || first === 47 || first === 63) {
-    return null
-  }
-  let index = startIndex
-  let localNameStart = startIndex
-  while (index < xml.length && isXmlNameChar(xml[index] ?? '')) {
-    if (xml[index] === ':') {
-      localNameStart = index + 1
+  private compact(): void {
+    if (this.unsupported || this.isComplete()) {
+      this.buffer = emptyBytes
+      this.index = 0
+      return
     }
-    index += 1
+    if (this.index === 0) {
+      return
+    }
+    if (this.index >= this.buffer.byteLength) {
+      this.buffer = emptyBytes
+      this.index = 0
+      return
+    }
+    this.buffer = this.buffer.subarray(this.index)
+    this.index = 0
   }
-  return index === localNameStart ? null : { localName: xml.slice(localNameStart, index), endIndex: index }
-}
 
-function isXmlNameChar(char: string): boolean {
-  return /[A-Za-z0-9_.:-]/u.test(char)
-}
-
-function isApplied(tag: string, attributeName: string, componentId: number | null): boolean {
-  const value = readAttribute(tag, attributeName)
-  if (value === '1' || value?.toLocaleLowerCase('en-US') === 'true') {
-    return true
+  private isComplete(): boolean {
+    return this.foundRequiredCount === this.requiredIndexes.size
   }
-  if (value === '0' || value?.toLocaleLowerCase('en-US') === 'false') {
-    return false
-  }
-  return componentId !== null && componentId > 0
-}
 
-function readNonNegativeIntegerAttribute(tag: string, attributeName: string): number | null {
-  const value = readAttribute(tag, attributeName)
-  if (!value || !/^[0-9]+$/u.test(value)) {
-    return null
+  private reportRetainedBufferLength(): void {
+    this.options.onRetainedBufferLength?.(this.buffer.byteLength)
   }
-  const number = Number(value)
-  return Number.isSafeInteger(number) ? number : null
-}
 
-function readNumberAttribute(tag: string, attributeName: string): number | null {
-  const value = readAttribute(tag, attributeName)
-  if (value === undefined || value.trim().length === 0) {
-    return null
+  private readTagCode(startIndex: number): number {
+    const first = this.buffer[startIndex]
+    if (first === undefined || first === 33 || first === slash || first === 63) {
+      this.tagNameEnd = 0
+      return styleSupportTagUnknown
+    }
+    let index = startIndex
+    let localNameStart = startIndex
+    while (index < this.buffer.byteLength && isXmlNameByte(this.buffer[index] ?? 0)) {
+      if (this.buffer[index] === 58) {
+        localNameStart = index + 1
+      }
+      index += 1
+    }
+    this.tagNameEnd = index
+    if (index === localNameStart) {
+      return styleSupportTagUnknown
+    }
+    if (asciiByteRangeEquals(this.buffer, localNameStart, index, 'cellXfs')) {
+      return styleSupportTagCellXfs
+    }
+    return asciiByteRangeEquals(this.buffer, localNameStart, index, 'xf') ? styleSupportTagXf : styleSupportTagOther
   }
-  const number = Number(value)
-  return Number.isFinite(number) ? number : null
-}
-
-function readBooleanAttribute(value: string | undefined): boolean | undefined {
-  if (value === '1' || value?.toLocaleLowerCase('en-US') === 'true') {
-    return true
-  }
-  if (value === '0' || value?.toLocaleLowerCase('en-US') === 'false') {
-    return false
-  }
-  return undefined
-}
-
-function readAttribute(tag: string, attributeName: string): string | undefined {
-  const pattern = new RegExp(`\\s${escapeRegExp(attributeName)}=(?:"([^"]*)"|'([^']*)')`, 'u')
-  const match = pattern.exec(tag)
-  return match?.[1] ?? match?.[2]
-}
-
-function escapeRegExp(value: string): string {
-  return value.replace(/[.*+?^${}()|[\]\\]/gu, '\\$&')
 }

@@ -155,26 +155,23 @@ export function applyBatchSetCellValueOp(request: ApplyBatchSetCellValueOpArgs):
     if (
       op.value === null &&
       (existingIndex === undefined || request.isNullLiteralWriteNoOp(existingIndex)) &&
-      (!args.state.workbook.hasTables() ||
-        !isTableHeaderCell(args.state.workbook.listTables(), op.sheetName, parsedAddress.row, parsedAddress.col))
+      !isTableHeaderCell(args.state.workbook.listTables(), op.sheetName, parsedAddress.row, parsedAddress.col)
     ) {
       return { changedInputCount, formulaChangedCount, explicitChangedCount, topologyChanged, refreshAllPivots }
     }
-    if (op.skipTableHeaderRename !== true && args.state.workbook.hasTables()) {
-      ;({
-        formulaChangedCount,
-        topologyChanged,
-        value: effectiveValue,
-      } = applyTableHeaderRenameForSetCellValue({
-        serviceArgs: args,
-        sheetName: op.sheetName,
-        row: parsedAddress.row,
-        col: parsedAddress.col,
-        value: op.value,
-        formulaChangedCount,
-        topologyChanged,
-      }))
-    }
+    ;({
+      formulaChangedCount,
+      topologyChanged,
+      value: effectiveValue,
+    } = applyTableHeaderRenameForSetCellValue({
+      serviceArgs: args,
+      sheetName: op.sheetName,
+      row: parsedAddress.row,
+      col: parsedAddress.col,
+      value: op.value,
+      formulaChangedCount,
+      topologyChanged,
+    }))
     if (existingIndex !== undefined) {
       changedInputCount = args.markPivotRootsChanged(args.clearPivotForCell(existingIndex), changedInputCount)
     }
@@ -377,12 +374,7 @@ export function applyBatchClearCellOp(request: ApplyBatchClearCellOpArgs): Batch
   ) {
     refreshAllPivots = true
   }
-  if (
-    !request.isRestore &&
-    op.skipTableHeaderRename !== true &&
-    args.state.workbook.hasTables() &&
-    isTableHeaderCell(args.state.workbook.listTables(), op.sheetName, parsedAddress.row, parsedAddress.col)
-  ) {
+  if (!request.isRestore && isTableHeaderCell(args.state.workbook.listTables(), op.sheetName, parsedAddress.row, parsedAddress.col)) {
     const renamed = applyTableHeaderRenameForSetCellValue({
       serviceArgs: args,
       sheetName: op.sheetName,

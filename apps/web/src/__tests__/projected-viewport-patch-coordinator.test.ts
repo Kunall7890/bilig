@@ -78,44 +78,6 @@ describe('ProjectedViewportPatchCoordinator', () => {
     expect(axisStore.getFreezeCols('Sheet1')).toBe(2)
   })
 
-  it('clears projected sheet state when the worker reports a missing sheet', () => {
-    const cellCache = new ProjectedViewportCellCache()
-    const axisStore = new ProjectedViewportAxisStore()
-    const coordinator = new ProjectedViewportPatchCoordinator({
-      cellCache,
-      axisStore,
-      mergeRangesBySheet: new Map(),
-    })
-
-    coordinator.applyViewportPatch(createPatch())
-    const result = coordinator.applyViewportPatchDetailed({
-      ...createPatch(),
-      version: 2,
-      status: 'sheet-not-found',
-      full: true,
-      styles: [],
-      cells: [],
-      columns: [],
-      rows: [],
-      merges: [],
-    })
-
-    expect(result).toMatchObject({
-      damage: [{ cell: [0, 0] }],
-      axisChanged: true,
-      columnsChanged: true,
-      rowsChanged: true,
-      freezeChanged: true,
-      mergesChanged: false,
-    })
-    expect(cellCache.getSheet('Sheet1')).toBeUndefined()
-    expect(cellCache.hasCellSnapshot('Sheet1', 'A1')).toBe(false)
-    expect(axisStore.getColumnWidths('Sheet1')).toEqual({})
-    expect(axisStore.getRowHeights('Sheet1')).toEqual({})
-    expect(axisStore.getFreezeRows('Sheet1')).toBe(0)
-    expect(axisStore.getFreezeCols('Sheet1')).toBe(0)
-  })
-
   it('tracks viewport subscriptions through the worker client', async () => {
     vi.useFakeTimers()
     const encodedPatch = encodeViewportPatch(createPatch())

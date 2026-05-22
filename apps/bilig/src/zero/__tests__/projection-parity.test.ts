@@ -208,9 +208,8 @@ describe('projection parity', () => {
         // Assert
         expect(fromEngine).toEqual(fromSnapshot)
       },
-      parameters: { numRuns: 100 },
     })
-  }, 20_000)
+  })
 })
 
 // Helpers

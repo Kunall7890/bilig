@@ -1,4 +1,5 @@
-import { readFileSync, writeFileSync } from 'node:fs'
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
+import { homedir } from 'node:os'
 import { join } from 'node:path'
 import { pathToFileURL } from 'node:url'
 
@@ -10,8 +11,6 @@ import { exportXlsx, externalWorkbookReferencesWarning, importXlsx } from '@bili
 import { isMacosExcelInstalled, runMacosExcelInspectionOracle, type NormalizedFormulaValue } from '@bilig/excel-fixtures'
 import { ValueTag, type CellValue } from '@bilig/protocol'
 import { describe, expect, it } from 'vitest'
-
-import { createExcelAccessibleTempDir, removeMacosExcelTestDir } from './macos-excel-oracle-test-utils.js'
 
 const officeRelationshipNamespace = 'http://schemas.openxmlformats.org/officeDocument/2006/relationships'
 const externalLinkContentType = 'application/vnd.openxmlformats-officedocument.spreadsheetml.externalLink+xml'
@@ -110,7 +109,7 @@ describe('macOS Desktop Excel external-link cache oracle', () => {
 
         expect(excelChanged.cells.map(({ address, value }) => ({ address, value }))).toEqual(changedExternalRangeValues)
       } finally {
-        removeMacosExcelTestDir(tempDir)
+        rmSync(tempDir, { recursive: true, force: true })
       }
     },
     60_000,
@@ -151,6 +150,12 @@ function buildExternalSourceWorkbook(): Uint8Array {
   ])
   XLSX.utils.book_append_sheet(workbook, sheet, 'Rates')
   return XLSX.write(workbook, { bookType: 'xlsx', type: 'buffer' })
+}
+
+function createExcelAccessibleTempDir(prefix: string): string {
+  const root = join(homedir(), 'Library/Containers/com.microsoft.Excel/Data/tmp/bilig-headless-oracle')
+  mkdirSync(root, { recursive: true })
+  return mkdtempSync(join(root, prefix))
 }
 
 function buildExternalLinkRangeCacheWorkbook(target = 'file:///tmp/rates.xlsx'): Uint8Array {

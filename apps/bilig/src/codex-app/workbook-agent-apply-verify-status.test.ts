@@ -111,39 +111,14 @@ function createBundle(): WorkbookAgentCommandBundle {
   })
 }
 
-function renderedContext(capturedRevision: number, source: 'selection' | 'visibleRange' = 'selection'): WorkbookAgentUiContext {
-  const renderedRange = {
-    range: {
-      sheetName: 'Sheet1',
-      startAddress: 'B2',
-      endAddress: 'B2',
-    },
-    rowCount: 1,
-    columnCount: 1,
-    cellCount: 1,
-    truncated: false,
-    rows: [
-      [
-        {
-          address: 'B2',
-          input: 'visible value',
-          value: { tag: ValueTag.String, value: 'visible value' },
-          formula: null,
-          displayFormat: 'visible value',
-          styleId: null,
-          numberFormatId: null,
-          style: null,
-        },
-      ],
-    ],
-  }
+function renderedContext(capturedRevision: number): WorkbookAgentUiContext {
   return {
     selection: {
       sheetName: 'Sheet1',
-      address: source === 'selection' ? 'B2' : 'A1',
+      address: 'B2',
       range: {
-        startAddress: source === 'selection' ? 'B2' : 'A1',
-        endAddress: source === 'selection' ? 'B2' : 'A1',
+        startAddress: 'B2',
+        endAddress: 'B2',
       },
     },
     viewport: {
@@ -156,35 +131,32 @@ function renderedContext(capturedRevision: number, source: 'selection' | 'visibl
       capturedAtUnixMs: 10,
       capturedRevision,
       batchId: capturedRevision,
-      surfaceProof: {
-        mode: 'typegpu-v3',
-        backendStatus: 'ready',
-        frameProofStatus: 'presented',
-        hasPresentedFrame: true,
-        hasPresentedVisibleFrame: true,
-        frameProofSignature: `frame:${String(capturedRevision)}`,
-        presentedFrameProofSignature: `frame:${String(capturedRevision)}`,
-        currentSceneOwnershipSignature: `scene:${String(capturedRevision)}`,
-        presentedSceneOwnershipSignature: `scene:${String(capturedRevision)}`,
-        authoritativeRevision: capturedRevision,
-        localRevision: null,
-        projectedRevision: capturedRevision,
-        visibleRenderRevision: capturedRevision,
-        tileSceneRevision: capturedRevision,
-        tileSceneCameraSeq: 1,
-        currentTilePaneCount: 1,
-        currentHeaderPaneCount: 1,
-        presentedTilePaneCount: 1,
-        presentedHeaderPaneCount: 1,
-        surfaceWidth: 800,
-        surfaceHeight: 600,
-        surfacePixelWidth: 1600,
-        surfacePixelHeight: 1200,
-        devicePixelRatio: 2,
-        capturedAtUnixMs: 10,
+      selection: {
+        range: {
+          sheetName: 'Sheet1',
+          startAddress: 'B2',
+          endAddress: 'B2',
+        },
+        rowCount: 1,
+        columnCount: 1,
+        cellCount: 1,
+        truncated: false,
+        rows: [
+          [
+            {
+              address: 'B2',
+              input: 'visible value',
+              value: { tag: ValueTag.String, value: 'visible value' },
+              formula: null,
+              displayFormat: 'visible value',
+              styleId: null,
+              numberFormatId: null,
+              style: null,
+            },
+          ],
+        ],
       },
-      selection: source === 'selection' ? renderedRange : null,
-      visibleRange: source === 'visibleRange' ? renderedRange : null,
+      visibleRange: null,
     },
   }
 }
@@ -249,53 +221,5 @@ describe('apply_and_verify proof status', () => {
       })
       .parse(readToolJson(response))
     expect(payload.verificationMissingChecks).toEqual(['formulaIssues', 'invariants'])
-  })
-
-  it('keeps verification incomplete when rendered readback only comes from the viewport', async () => {
-    const engine = await createEngine()
-    const response = await handleWorkbookAgentToolCall(
-      {
-        documentId: 'doc-1',
-        session: {
-          userID: 'alex@example.com',
-          roles: ['editor'],
-        },
-        uiContext: renderedContext(5, 'visibleRange'),
-        zeroSyncService: createZeroSyncHarness(engine, {
-          headRevision: 5,
-          calculatedRevision: 5,
-        }),
-        awaitRenderedRevision: vi.fn(async () => undefined),
-        stageCommand: vi.fn(async () => createBundle()),
-      },
-      {
-        threadId: 'thr-1',
-        turnId: 'turn-1',
-        callId: 'call-apply-and-verify-viewport-only',
-        tool: 'apply_and_verify',
-        arguments: {
-          range: {
-            sheetName: 'Sheet1',
-            startAddress: 'B2',
-            endAddress: 'B2',
-          },
-        },
-      },
-    )
-
-    const payload = z
-      .object({
-        status: z.literal('verification_incomplete'),
-        verificationComplete: z.literal(false),
-        verificationMissingChecks: z.array(z.string()),
-        renderedReadback: z.array(
-          z.object({
-            matched: z.literal(true),
-            sourceKind: z.literal('visibleRange'),
-          }),
-        ),
-      })
-      .parse(readToolJson(response))
-    expect(payload.verificationMissingChecks).toEqual(['renderedSelection'])
   })
 })

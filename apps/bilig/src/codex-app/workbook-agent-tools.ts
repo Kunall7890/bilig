@@ -392,10 +392,8 @@ export async function handleWorkbookAgentToolCall(
         })
         const verificationStatus = summarizeWorkbookAgentVerificationStatus({
           renderedReadback: report.renderedReadback,
-          recalculationStatus: report.recalculationStatus,
           formulaIssues: report.formulaIssues,
           invariants: report.invariants,
-          requireRenderedSelection: true,
           requireTargetRange: true,
           targetRangeCount: ranges.length,
         })
@@ -458,10 +456,8 @@ export async function handleWorkbookAgentToolCall(
         })
         const verificationStatus = summarizeWorkbookAgentVerificationStatus({
           renderedReadback: verification.renderedReadback,
-          recalculationStatus: verification.recalculationStatus,
           formulaIssues: verification.formulaIssues,
           invariants: verification.invariants,
-          requireRenderedSelection: true,
           requireTargetRange: true,
           targetRangeCount: verificationRange.length,
         })

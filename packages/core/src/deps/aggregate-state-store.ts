@@ -66,7 +66,6 @@ export interface AggregateStateStore {
     readonly newValue: CellValue
   }) => void
   readonly invalidateColumn: (sheetName: string, col: number) => void
-  readonly reset: () => void
 }
 
 interface MutableAggregateColumnWindowSummary {
@@ -676,10 +675,6 @@ export function createAggregateStateStore(args: {
         cache.delete(cacheKey(entry.sheetName, entry.col, entry.rowStart))
       })
       entriesByColumn.delete(key)
-    },
-    reset() {
-      cache.clear()
-      entriesByColumn.clear()
     },
   }
 }

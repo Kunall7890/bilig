@@ -7,13 +7,9 @@ import { resolveCiProfile, resolveCiSkipBrowserGates } from '../run-ci-config.ts
 
 const repoRoot = resolve(dirname(fileURLToPath(import.meta.url)), '../..')
 
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === 'object' && value !== null
-}
-
 describe('run-ci', () => {
-  it('defaults to the full CI profile and accepts explicit profiles', () => {
-    expect(resolveCiProfile({})).toBe('full')
+  it('defaults to the fast CI profile and accepts explicit profiles', () => {
+    expect(resolveCiProfile({})).toBe('fast')
     expect(resolveCiProfile({ BILIG_CI_PROFILE: 'fast' })).toBe('fast')
     expect(resolveCiProfile({ BILIG_CI_PROFILE: 'full' })).toBe('full')
   })
@@ -54,9 +50,6 @@ describe('run-ci', () => {
       "withEnv(directPackageScript('correctness formula', 'test:correctness:formula'), { BILIG_VITEST_FILE_CHUNK_SIZE: '3' })",
     )
     expect(source).toContain("BILIG_VITEST_FILE_CHUNK_SIZE: '10'")
-    expect(source).toContain("withEnv(pnpm('coverage', 'coverage'), {")
-    expect(source).toContain("BILIG_BENCH_TOLERANCE: process.env['BILIG_BENCH_TOLERANCE'] ?? '2'")
-    expect(source).toContain("CI: process.env['CI'] ?? '1'")
     expect(source).toContain(
       "directPackageScript('financial public workbook corpus resume check', 'public-workbook-corpus:resume-financial:check')",
     )
@@ -76,7 +69,7 @@ describe('run-ci', () => {
   it('runs the CI orchestrator through tsx instead of bun', () => {
     const packageJson = readFileSync(resolve(repoRoot, 'package.json'), 'utf8')
 
-    expect(packageJson).toContain('"ci": "BILIG_CI_PROFILE=full tsx scripts/run-ci.ts"')
+    expect(packageJson).toContain('"ci": "BILIG_CI_PROFILE=fast BILIG_CI_SKIP_BROWSER=1 tsx scripts/run-ci.ts"')
     expect(packageJson).toContain('"ci:core": "BILIG_CI_PROFILE=fast BILIG_CI_SKIP_BROWSER=1 tsx scripts/run-ci.ts"')
     expect(packageJson).toContain('"ci:full": "BILIG_CI_PROFILE=full tsx scripts/run-ci.ts"')
     expect(packageJson).toContain(
@@ -85,39 +78,6 @@ describe('run-ci', () => {
     expect(packageJson).toContain(
       '"public-workbook-corpus:memory-gate:synthetic": "bun scripts/public-workbook-corpus-memory-gate.ts --synthetic-only"',
     )
-  })
-
-  it('exposes one fuzz test entrypoint', () => {
-    const packageJson: unknown = JSON.parse(readFileSync(resolve(repoRoot, 'package.json'), 'utf8'))
-    const scripts = isRecord(packageJson) && isRecord(packageJson['scripts']) ? packageJson['scripts'] : {}
-
-    expect(Object.keys(scripts).filter((scriptName) => scriptName === 'test:fuzz' || scriptName.startsWith('test:fuzz:'))).toEqual([
-      'test:fuzz',
-    ])
-  })
-
-  it('keeps the unified fuzz lane in CI profiles', () => {
-    const source = readFileSync(resolve(repoRoot, 'scripts/run-ci.ts'), 'utf8')
-
-    expect(source).toContain("const unifiedFuzzLane = pnpm('unified fuzz', 'test:fuzz')")
-    expect(source).toContain('const headlessGuardedSumifsPerformanceLane = direct(')
-    expect(source).toContain('steps: [headlessGuardedSumifsPerformanceLane, coverageLane, unifiedFuzzLane]')
-    expect(source).toContain("await runSequential('unified fuzz checks', [unifiedFuzzLane])")
-    expect(source).toContain('pnpm run ci uses the full correctness profile')
-  })
-
-  it('validates the production release bundle before the browser preview bundle rewrites dist', () => {
-    const source = readFileSync(resolve(repoRoot, 'scripts/run-ci.ts'), 'utf8')
-    const releaseGateIndex = source.indexOf("await runSequential('release bundle gate', releaseBundleTasks)")
-    const functionalGateIndex = source.indexOf('if (runFullGates) {')
-    const browserGateIndex = source.indexOf("await runSequential('browser gates', [browserLane])")
-
-    expect(source).toContain('const releaseBundleTasks: readonly CiTask[] = [')
-    expect(releaseGateIndex).toBeGreaterThanOrEqual(0)
-    expect(functionalGateIndex).toBeGreaterThanOrEqual(0)
-    expect(browserGateIndex).toBeGreaterThanOrEqual(0)
-    expect(releaseGateIndex).toBeLessThan(functionalGateIndex)
-    expect(releaseGateIndex).toBeLessThan(browserGateIndex)
   })
 
   it('guards broad pre-push lint through the same resource gate', () => {

@@ -4,31 +4,14 @@ import type { EngineOp } from '@bilig/workbook'
 import type { WorkbookStore } from './workbook-store.js'
 
 export type EngineCellMutationAt =
-  | { kind: 'setCellValue'; row: number; col: number; value: LiteralInput; skipTableHeaderRename?: boolean }
+  | { kind: 'setCellValue'; row: number; col: number; value: LiteralInput }
   | { kind: 'setCellFormula'; row: number; col: number; formula: string }
-  | { kind: 'clearCell'; row: number; col: number; skipTableHeaderRename?: boolean }
+  | { kind: 'clearCell'; row: number; col: number }
 
 export interface EngineCellMutationRef {
   sheetId: number
   mutation: EngineCellMutationAt
   cellIndex?: number
-}
-
-export interface EngineFreshDirectAggregateMatrixPlan {
-  readonly sheetId: number
-  readonly rowStart: number
-  readonly rowCount: number
-  readonly colStart: number
-  readonly inputColCount: number
-  readonly precomputedFormulaResults?: {
-    readonly aggregateKind: 'sum' | 'average' | 'count' | 'min' | 'max'
-    readonly aggregateColStart: number
-    readonly aggregateColEnd: number
-    readonly resultOffset?: number
-    readonly results: Float64Array
-  }
-  readonly trustedFreshCells?: boolean
-  readonly values: Float64Array
 }
 
 export interface EngineFormulaSourceRef {
@@ -86,7 +69,6 @@ export function cloneCellMutationAt(mutation: EngineCellMutationAt): EngineCellM
         row: mutation.row,
         col: mutation.col,
         value: mutation.value,
-        ...(mutation.skipTableHeaderRename === true ? { skipTableHeaderRename: true } : {}),
       }
     case 'setCellFormula':
       return {
@@ -100,7 +82,6 @@ export function cloneCellMutationAt(mutation: EngineCellMutationAt): EngineCellM
         kind: 'clearCell',
         row: mutation.row,
         col: mutation.col,
-        ...(mutation.skipTableHeaderRename === true ? { skipTableHeaderRename: true } : {}),
       }
   }
 }
@@ -126,7 +107,6 @@ export function cellMutationRefToEngineOp(workbook: Pick<WorkbookStore, 'getShee
         sheetName: sheet.name,
         address,
         value: ref.mutation.value,
-        ...(ref.mutation.skipTableHeaderRename === true ? { skipTableHeaderRename: true } : {}),
       }
     case 'setCellFormula':
       return {
@@ -140,7 +120,6 @@ export function cellMutationRefToEngineOp(workbook: Pick<WorkbookStore, 'getShee
         kind: 'clearCell',
         sheetName: sheet.name,
         address,
-        ...(ref.mutation.skipTableHeaderRename === true ? { skipTableHeaderRename: true } : {}),
       }
   }
 }

@@ -1,16 +1,9 @@
 import { strFromU8, strToU8, unzipSync, zipSync } from 'fflate'
 import { XMLParser } from 'fast-xml-parser'
 
-import type {
-  WorkbookAutoFilterSnapshot,
-  WorkbookSnapshot,
-  WorkbookTableColumnSnapshot,
-  WorkbookTableSnapshot,
-  WorkbookTableStyleSnapshot,
-} from '@bilig/protocol'
+import type { WorkbookSnapshot, WorkbookTableColumnSnapshot, WorkbookTableSnapshot, WorkbookTableStyleSnapshot } from '@bilig/protocol'
 import { decodeA1CellRef, decodeA1RangeRef, encodeA1CellRef, encodeA1RangeRef } from './xlsx-a1-utils.js'
 import { decodeExcelEscapedText, encodeExcelEscapedText } from './xlsx-escaped-text.js'
-import { buildAutoFilterXml, readImportedTableAutoFiltersFromXml } from './xlsx-filters.js'
 import { readSortStateXml } from './xlsx-sorts.js'
 import { readXlsxZipEntries, type XlsxZipSource } from './xlsx-zip.js'
 
@@ -56,16 +49,6 @@ function recordChild(value: unknown, key: string): Record<string, unknown> | nul
 
 function escapeXml(value: string): string {
   return value.replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;').replaceAll('"', '&quot;').replaceAll("'", '&apos;')
-}
-
-function xmlText(value: unknown): string | undefined {
-  if (typeof value === 'string') {
-    return value
-  }
-  if (isRecord(value) && typeof value['#text'] === 'string') {
-    return value['#text']
-  }
-  return undefined
 }
 
 function escapeExcelXmlTextAttribute(value: string): string {
@@ -234,25 +217,17 @@ function exportTableColumns(table: WorkbookTableSnapshot): WorkbookTableColumnSn
     if (column?.totalsRowFunction !== undefined) {
       exportedColumn.totalsRowFunction = column.totalsRowFunction
     }
-    if (column?.calculatedColumnFormula !== undefined) {
-      exportedColumn.calculatedColumnFormula = column.calculatedColumnFormula
-    }
     return exportedColumn
   })
 }
 
 function buildTableColumnXml(column: WorkbookTableColumnSnapshot, index: number): string {
-  const attributes = [
+  return [
     `<tableColumn id="${String(index + 1)}" name="${escapeExcelXmlTextAttribute(column.name)}"`,
     column.totalsRowLabel !== undefined ? ` totalsRowLabel="${escapeExcelXmlTextAttribute(column.totalsRowLabel)}"` : '',
     column.totalsRowFunction !== undefined ? ` totalsRowFunction="${escapeXml(column.totalsRowFunction)}"` : '',
+    '/>',
   ].join('')
-  const children = [
-    column.calculatedColumnFormula !== undefined
-      ? `<calculatedColumnFormula>${escapeXml(column.calculatedColumnFormula)}</calculatedColumnFormula>`
-      : '',
-  ].join('')
-  return children.length > 0 ? `${attributes}>${children}</tableColumn>` : `${attributes}/>`
 }
 
 function buildTableStyleXml(style: WorkbookTableStyleSnapshot | undefined): string {
@@ -279,16 +254,7 @@ function buildTableXml(table: WorkbookTableSnapshot, tableId: number): string {
     `<table xmlns="${spreadsheetNamespace}" id="${String(tableId)}" name="${escapeXml(displayName)}" displayName="${escapeXml(
       displayName,
     )}" ref="${escapeXml(ref)}" headerRowCount="${table.headerRow ? '1' : '0'}" totalsRowShown="${table.totalsRow ? '1' : '0'}">`,
-    table.headerRow
-      ? buildAutoFilterXml(
-          table.autoFilter ?? {
-            sheetName: table.sheetName,
-            startAddress: table.startAddress,
-            endAddress: table.endAddress,
-          },
-          ref,
-        )
-      : '',
+    table.headerRow ? `<autoFilter ref="${escapeXml(ref)}"/>` : '',
     table.sortState ?? '',
     `<tableColumns count="${String(columns.length)}">`,
     ...columns.map(buildTableColumnXml),
@@ -365,7 +331,6 @@ function parseTableXml(sheetName: string, xml: string): WorkbookTableSnapshot | 
       : typeof table['name'] === 'string' && table['name'].trim().length > 0
         ? table['name'].trim()
         : `Table_${ref.startAddress}`
-  let hasTotalsRowFormula = false
   const columns = asArray(recordChild(table, 'tableColumns')?.['tableColumn']).flatMap((entry) => {
     if (!isRecord(entry) || typeof entry['name'] !== 'string') {
       return []
@@ -376,58 +341,26 @@ function parseTableXml(sheetName: string, xml: string): WorkbookTableSnapshot | 
     }
     const column: WorkbookTableColumnSnapshot = {
       name: columnName,
-      ...(typeof xmlText(entry['calculatedColumnFormula']) === 'string'
-        ? { calculatedColumnFormula: xmlText(entry['calculatedColumnFormula'])! }
-        : {}),
       ...(typeof entry['totalsRowLabel'] === 'string' ? { totalsRowLabel: decodeExcelEscapedText(entry['totalsRowLabel']) } : {}),
       ...(typeof entry['totalsRowFunction'] === 'string' ? { totalsRowFunction: entry['totalsRowFunction'] } : {}),
     }
-    hasTotalsRowFormula = hasTotalsRowFormula || typeof entry['totalsRowFormula'] === 'string' || isRecord(entry['totalsRowFormula'])
     return [column]
   })
   const style = parseTableStyle(recordChild(table, 'tableStyleInfo'))
-  const autoFilter = readImportedTableAutoFiltersFromXml(sheetName, xml).find(
-    (filter) => filter.startAddress === ref.startAddress && filter.endAddress === ref.endAddress,
-  )
   const sortState = readSortStateXml(xml)
-  const hasColumnMetadata = columns.some(
-    (column) =>
-      column.calculatedColumnFormula !== undefined || column.totalsRowLabel !== undefined || column.totalsRowFunction !== undefined,
-  )
-  const totalsRowShown = table['totalsRowShown']
-  const totalsRowCount = table['totalsRowCount']
-  const inferredTotalsRow = columns.some((column) => column.totalsRowLabel !== undefined || column.totalsRowFunction !== undefined)
+  const hasTotalsRowColumnMetadata = columns.some((column) => column.totalsRowLabel !== undefined || column.totalsRowFunction !== undefined)
   return {
     name,
     sheetName,
     startAddress: ref.startAddress,
     endAddress: ref.endAddress,
     columnNames: columns.map((column) => column.name),
-    ...(hasColumnMetadata ? { columns } : {}),
+    ...(hasTotalsRowColumnMetadata ? { columns } : {}),
     headerRow: table['headerRowCount'] !== '0',
-    totalsRow:
-      typeof totalsRowShown === 'string'
-        ? totalsRowShown === '1'
-        : typeof totalsRowCount === 'string'
-          ? totalsRowCount === '1'
-          : inferredTotalsRow || hasTotalsRowFormula,
+    totalsRow: table['totalsRowShown'] === '1' || table['totalsRowCount'] === '1' || hasTotalsRowColumnMetadata,
     ...(style ? { style } : {}),
-    ...(autoFilter?.criteria && autoFilter.criteria.length > 0 ? { autoFilter } : {}),
     ...(sortState ? { sortState } : {}),
   }
-}
-
-export function tableAutoFiltersBySheet(tables: readonly WorkbookTableSnapshot[] | undefined): Map<string, WorkbookAutoFilterSnapshot[]> {
-  const filtersBySheet = new Map<string, WorkbookAutoFilterSnapshot[]>()
-  for (const table of tables ?? []) {
-    if (!table.autoFilter?.criteria || table.autoFilter.criteria.length === 0) {
-      continue
-    }
-    const filters = filtersBySheet.get(table.sheetName) ?? []
-    filters.push(table.autoFilter)
-    filtersBySheet.set(table.sheetName, filters)
-  }
-  return filtersBySheet
 }
 
 function parseTableStyle(style: Record<string, unknown> | null): WorkbookTableStyleSnapshot | undefined {

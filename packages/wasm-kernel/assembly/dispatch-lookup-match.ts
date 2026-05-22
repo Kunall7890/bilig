@@ -1,4 +1,5 @@
 import { BuiltinId, ErrorCode, ValueTag } from './protocol'
+import { compareScalarValues } from './comparison'
 import { inputCellScalarValue, inputCellTag, inputColsFromSlot, inputRowsFromSlot } from './operands'
 import {
   lookupVectorSlotLength,
@@ -8,7 +9,7 @@ import {
   writeLookupInputCellResult,
   writeLookupInputCellToSpill,
 } from './lookup-slot'
-import { compareLookupCell, compareLookupScalars, compareLookupVectorCandidate } from './lookup-candidate-comparison'
+import { compareLookupCell, compareLookupVectorCandidate } from './lookup-candidate-comparison'
 import { truncToInt } from './numeric-core'
 import { STACK_KIND_ARRAY, STACK_KIND_RANGE, STACK_KIND_SCALAR, writeArrayResult, writeResult } from './result-io'
 import { allocateSpillArrayResult } from './vm'
@@ -365,8 +366,17 @@ export function tryApplyLookupMatchBuiltin(
     if (tagStack[base] == ValueTag.Error) {
       return writeResult(base, STACK_KIND_SCALAR, <u8>ValueTag.Error, valueStack[base], rangeIndexStack, valueStack, tagStack, kindStack)
     }
-    if (argc >= 4 && kindStack[base + 3] != STACK_KIND_SCALAR) {
-      return writeResult(base, STACK_KIND_SCALAR, <u8>ValueTag.Error, ErrorCode.Value, rangeIndexStack, valueStack, tagStack, kindStack)
+    if (argc >= 4 && (kindStack[base + 3] != STACK_KIND_SCALAR || tagStack[base + 3] == ValueTag.Error)) {
+      return writeResult(
+        base,
+        STACK_KIND_SCALAR,
+        <u8>ValueTag.Error,
+        argc >= 4 && tagStack[base + 3] == ValueTag.Error ? valueStack[base + 3] : ErrorCode.Value,
+        rangeIndexStack,
+        valueStack,
+        tagStack,
+        kindStack,
+      )
     }
     if (argc >= 5 && (kindStack[base + 4] != STACK_KIND_SCALAR || tagStack[base + 4] == ValueTag.Error)) {
       return writeResult(
@@ -514,11 +524,12 @@ export function tryApplyLookupMatchBuiltin(
           continue
         }
 
-        const bestComparison = compareLookupScalars(
+        const bestComparison = compareScalarValues(
           candidateTag,
           candidateValue,
           bestTag,
           bestValue,
+          null,
           stringOffsets,
           stringLengths,
           stringData,

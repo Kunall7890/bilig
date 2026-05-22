@@ -64,7 +64,7 @@ export function tryTranslateFreshMatrixDirectAggregateTemplate(
 }
 
 export function normalizeFreshMatrixDirectAggregateOffset(offset: number | undefined): number | undefined {
-  return offset === undefined || offset === 0 ? undefined : offset
+  return offset === undefined || Object.is(offset, 0) ? undefined : offset
 }
 
 export function createFreshFormulaCellAttacher(sheet: SheetRecord): FreshFormulaCellAttacher {

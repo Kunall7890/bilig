@@ -44,7 +44,7 @@ interface MaterializedPivotFilter {
   hiddenValues?: readonly LiteralInput[]
 }
 
-export interface PivotAggregateState {
+interface AggregateState {
   sum: number
   count: number
   numericCount: number
@@ -60,7 +60,7 @@ interface ColumnBucket {
 
 interface GroupBucket {
   keyValues: CellValue[]
-  aggregatesByColumnKey: Map<string, PivotAggregateState[]>
+  aggregatesByColumnKey: Map<string, AggregateState[]>
 }
 
 export function materializePivotTable(
@@ -138,13 +138,13 @@ export function materializePivotTable(
     }
     let aggregates = bucket.aggregatesByColumnKey.get(columnKey)
     if (!aggregates) {
-      aggregates = Array.from({ length: materializedValueFields.length }, () => emptyPivotAggregateState())
+      aggregates = Array.from({ length: materializedValueFields.length }, () => emptyAggregateState())
       bucket.aggregatesByColumnKey.set(columnKey, aggregates)
     }
     for (let valueIndex = 0; valueIndex < materializedValueFields.length; valueIndex += 1) {
       const field = materializedValueFields[valueIndex]!
       const cell = row[field.columnIndex] ?? emptyValue()
-      accumulatePivotAggregateValue(aggregates[valueIndex]!, cell)
+      accumulateValue(aggregates[valueIndex]!, cell)
     }
   }
 
@@ -166,7 +166,7 @@ export function materializePivotTable(
     for (const columnBucket of columnBuckets) {
       const aggregates = bucket.aggregatesByColumnKey.get(columnBucket.key)
       for (let valueIndex = 0; valueIndex < materializedValueFields.length; valueIndex += 1) {
-        values.push(numberValue(finalizePivotAggregate(materializedValueFields[valueIndex]!.summarizeBy, aggregates?.[valueIndex])))
+        values.push(numberValue(finalizeAggregate(materializedValueFields[valueIndex]!.summarizeBy, aggregates?.[valueIndex])))
       }
     }
   })
@@ -253,7 +253,7 @@ function rowPassesFilters(row: readonly CellValue[], filters: readonly Materiali
   return true
 }
 
-export function emptyPivotAggregateState(): PivotAggregateState {
+function emptyAggregateState(): AggregateState {
   return {
     sum: 0,
     count: 0,
@@ -264,7 +264,7 @@ export function emptyPivotAggregateState(): PivotAggregateState {
   }
 }
 
-export function accumulatePivotAggregateValue(state: PivotAggregateState, value: CellValue): void {
+function accumulateValue(state: AggregateState, value: CellValue): void {
   if (!isEmptyValue(value)) {
     state.count += 1
   }
@@ -278,7 +278,7 @@ export function accumulatePivotAggregateValue(state: PivotAggregateState, value:
   state.product *= value.value
 }
 
-export function finalizePivotAggregate(mode: PivotAggregation, state: PivotAggregateState | undefined): number {
+function finalizeAggregate(mode: PivotAggregation, state: AggregateState | undefined): number {
   if (!state) {
     return 0
   }

@@ -405,7 +405,7 @@ describe('text builtins', () => {
     expect(LEN({ tag: ValueTag.Boolean, value: false })).toEqual(number(5)) // "FALSE"
 
     // coerceNumber
-    expect(VALUE(text('   '))).toEqual(valueError())
+    expect(VALUE(text('   '))).toEqual(number(0))
     expect(VALUE({ tag: ValueTag.Boolean, value: false })).toEqual(number(0))
 
     // REPT zero count

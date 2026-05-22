@@ -86,7 +86,6 @@ function KeyboardHandlerHarness(props: {
     getGridSelection: props.getGridSelection,
     hostRef,
     internalClipboardRef,
-    keyboardModifierStateRef: { current: { primary: false, shift: false } },
     isEditingCell: false,
     onCancelEdit: props.onCancelEdit ?? vi.fn(),
     onClearCell: props.onClearCell ?? vi.fn(),
@@ -559,60 +558,6 @@ describe('gridClipboardKeyboardController', () => {
     expect(clipboard?.valuesOnlyPlainText).toBe('3\t6')
   })
 
-  test('captures optimistic resolved formula values for paste-values-only', () => {
-    const internalClipboardRef = { current: null }
-
-    const clipboard = captureGridClipboardSelection({
-      engine: createEngine({
-        B2: createCellSnapshot('B2', '3'),
-        C2: {
-          ...createFormulaSnapshot('C2', 'B2*2', 0),
-          value: { tag: ValueTag.String, value: '=B2*2', stringId: 0 },
-        },
-      }),
-      getCellResolvedValue: (_sheetName, address) => (address === 'C2' ? '6' : undefined),
-      gridSelection: {
-        ...createGridSelection(1, 1),
-        current: {
-          cell: [1, 1],
-          range: { x: 1, y: 1, width: 2, height: 1 },
-          rangeStack: [],
-        },
-      },
-      internalClipboardRef,
-      sheetName: 'Sheet1',
-    })
-
-    expect(clipboard?.plainText).toBe('3\t=B2*2')
-    expect(clipboard?.valuesOnlyPlainText).toBe('3\t6')
-  })
-
-  test('keeps optimistic formula seeds out of the paste-values-only clipboard', () => {
-    const internalClipboardRef = { current: null }
-
-    const clipboard = captureGridClipboardSelection({
-      engine: createEngine({
-        B2: createCellSnapshot('B2', '3'),
-        C2: createFormulaSnapshot('C2', 'B2*2', 0),
-      }),
-      getCellEditorSeed: (_sheetName, address) => (address === 'C2' ? '=B2*2' : undefined),
-      getCellResolvedValue: (_sheetName, address) => (address === 'C2' ? '6' : undefined),
-      gridSelection: {
-        ...createGridSelection(1, 1),
-        current: {
-          cell: [1, 1],
-          range: { x: 1, y: 1, width: 2, height: 1 },
-          rangeStack: [],
-        },
-      },
-      internalClipboardRef,
-      sheetName: 'Sheet1',
-    })
-
-    expect(clipboard?.plainText).toBe('3\t=B2*2')
-    expect(clipboard?.valuesOnlyPlainText).toBe('3\t6')
-  })
-
   test('captures optimistic editor seeds before the engine snapshot catches up', () => {
     const internalClipboardRef = { current: null }
 
@@ -764,114 +709,6 @@ describe('gridClipboardKeyboardController', () => {
     )
   })
 
-  test('suppresses the native paste event while paste-values-only resolves the async clipboard', async () => {
-    const applyClipboardValues = vi.fn()
-    const internalClipboardRef = {
-      current: {
-        operation: 'copy' as const,
-        sourceStartAddress: 'B2',
-        sourceEndAddress: 'C3',
-        signature: '3\u001f=B2*2\u001e4\u001f=B3*2',
-        plainText: '3\t=B2*2\n4\t=B3*2',
-        valuesOnlyPlainText: '3\t6\n4\t8',
-        rowCount: 2,
-        colCount: 2,
-      },
-    }
-    const pendingKeyboardPasteSequenceRef = { current: 0 }
-    const suppressNextNativePasteRef = { current: false }
-    let resolveReadText: ((value: string) => void) | null = null
-    const readText = vi.fn(
-      () =>
-        new Promise<string>((resolve) => {
-          resolveReadText = resolve
-        }),
-    )
-    const previousClipboard = Object.getOwnPropertyDescriptor(navigator, 'clipboard')
-    Object.defineProperty(navigator, 'clipboard', {
-      configurable: true,
-      value: { readText },
-    })
-
-    try {
-      handleGridKey({
-        applyClipboardValues,
-        beginSelectedEdit: vi.fn(),
-        captureInternalClipboardSelection: vi.fn(),
-        editorValue: '',
-        event: {
-          key: 'v',
-          ctrlKey: true,
-          metaKey: false,
-          altKey: false,
-          shiftKey: true,
-          preventDefault: vi.fn(),
-        },
-        gridSelection: createGridSelection(3, 1),
-        internalClipboardRef,
-        isSelectedCellBoolean: () => false,
-        isEditingCell: false,
-        onCancelEdit: vi.fn(),
-        onClearCell: vi.fn(),
-        onCommitEdit: vi.fn(),
-        onEditorChange: vi.fn(),
-        onFillRange: vi.fn(),
-        onSelectionChange: vi.fn(),
-        scrollActiveCellIntoView: vi.fn(),
-        pendingClipboardCopySequenceRef: { current: 0 },
-        pendingKeyboardPasteSequenceRef,
-        pendingTypeSeedRef: { current: null },
-        selectedCell: { col: 3, row: 1 },
-        setGridSelection: vi.fn(),
-        suppressNextNativePasteRef,
-        toggleSelectedBooleanCell: vi.fn(),
-      })
-
-      expect(suppressNextNativePasteRef.current).toBe(true)
-
-      const nativePasteEvent = {
-        clipboardData: {
-          getData: (type: string) => (type === 'text/plain' ? '3\t=B2*2\n4\t=B3*2' : ''),
-          setData: vi.fn(),
-        },
-        preventDefault: vi.fn(),
-        stopPropagation: vi.fn(),
-      }
-      handleGridPasteCapture({
-        applyClipboardValues,
-        event: nativePasteEvent,
-        gridSelection: createGridSelection(3, 1),
-        pendingKeyboardPasteSequenceRef,
-        selectedCell: { col: 3, row: 1 },
-        suppressNextNativePasteRef,
-      })
-
-      expect(nativePasteEvent.preventDefault).toHaveBeenCalled()
-      expect(nativePasteEvent.stopPropagation).toHaveBeenCalled()
-      expect(applyClipboardValues).not.toHaveBeenCalled()
-
-      expect(resolveReadText).not.toBeNull()
-      resolveReadText?.('3\t=B2*2\n4\t=B3*2')
-      await Promise.resolve()
-
-      expect(applyClipboardValues).toHaveBeenCalledWith(
-        [3, 1],
-        [
-          ['3', '6'],
-          ['4', '8'],
-        ],
-        { pasteValuesOnly: true },
-      )
-      expect(suppressNextNativePasteRef.current).toBe(false)
-    } finally {
-      if (previousClipboard) {
-        Object.defineProperty(navigator, 'clipboard', previousClipboard)
-      } else {
-        Reflect.deleteProperty(navigator, 'clipboard')
-      }
-    }
-  })
-
   test('captures keyboard cut intent instead of downgrading it to copy', () => {
     const captureInternalClipboardSelection = vi.fn()
     const preventDefault = vi.fn()
@@ -933,52 +770,6 @@ describe('gridClipboardKeyboardController', () => {
     })
 
     expect(applyClipboardValues).toHaveBeenCalledWith([1, 2], [['A', 'B']])
-    expect(event.preventDefault).toHaveBeenCalled()
-    expect(event.stopPropagation).toHaveBeenCalled()
-  })
-
-  test('native paste can resolve copied formulas to values when modifiers request paste-values-only', () => {
-    const applyClipboardValues = vi.fn()
-    const internalClipboardRef = {
-      current: {
-        operation: 'copy' as const,
-        sourceStartAddress: 'B2',
-        sourceEndAddress: 'C3',
-        signature: '3\u001f=B2*2\u001e4\u001f=B3*2',
-        plainText: '3\t=B2*2\n4\t=B3*2',
-        valuesOnlyPlainText: '3\t6\n4\t8',
-        rowCount: 2,
-        colCount: 2,
-      },
-    }
-    const event = {
-      clipboardData: {
-        getData: (type: string) => (type === 'text/plain' ? '3\t=B2*2\n4\t=B3*2' : ''),
-        setData: vi.fn(),
-      },
-      preventDefault: vi.fn(),
-      stopPropagation: vi.fn(),
-    }
-
-    handleGridPasteCapture({
-      applyClipboardValues,
-      event,
-      gridSelection: createGridSelection(3, 1),
-      internalClipboardRef,
-      pasteValuesOnly: true,
-      pendingKeyboardPasteSequenceRef: { current: 0 },
-      selectedCell: { col: 3, row: 1 },
-      suppressNextNativePasteRef: { current: false },
-    })
-
-    expect(applyClipboardValues).toHaveBeenCalledWith(
-      [3, 1],
-      [
-        ['3', '6'],
-        ['4', '8'],
-      ],
-      { pasteValuesOnly: true },
-    )
     expect(event.preventDefault).toHaveBeenCalled()
     expect(event.stopPropagation).toHaveBeenCalled()
   })

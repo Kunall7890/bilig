@@ -1,6 +1,6 @@
 {
   "name": "@bilig/excel-import",
-  "version": "0.48.0",
+  "version": "0.41.0",
   "description": "CSV/XLSX workbook snapshot import and supported XLSX export helpers for bilig.",
   "keywords": [
     "bilig",
@@ -34,11 +34,6 @@
       "types": "./dist/index.d.ts",
       "import": "./dist/index.js",
       "default": "./dist/index.js"
-    },
-    "./browser": {
-      "types": "./dist/browser.d.ts",
-      "import": "./dist/browser.js",
-      "default": "./dist/browser.js"
     }
   },
   "publishConfig": {

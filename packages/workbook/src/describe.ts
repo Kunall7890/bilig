@@ -20,21 +20,15 @@ import {
 } from './model.js'
 import type { WorkbookActionInput } from './input.js'
 import type { WorkbookOp } from './ops.js'
-import type { WorkbookReceiptProof, WorkbookRenderedReceipt, WorkbookRunReceipt } from './receipt.js'
-import type { WorkbookRuntimePreview, WorkbookRuntimeRequirement } from './requirements.js'
 import type {
-  WorkbookAppliedSummary,
   WorkbookChangeSummary,
   WorkbookCheckExpectation,
-  WorkbookCheckProof,
   WorkbookCheckResult,
   WorkbookCheckStatus,
-  WorkbookRunError,
   WorkbookRunErrorCode,
   WorkbookRunResult,
   WorkbookUndoRef,
 } from './result.js'
-import type { WorkbookPreviewResult } from './run.js'
 
 export interface WorkbookModelDescription {
   readonly name: string
@@ -76,7 +70,8 @@ export interface WorkbookColumnRefDescription extends WorkbookBaseRefDescription
 
 export interface WorkbookRowsRefDescription extends WorkbookBaseRefDescription {
   readonly kind: 'rows'
-  readonly table: WorkbookTableRefDescription
+  readonly sheetName?: string
+  readonly table?: WorkbookTableRefDescription
   readonly where: {
     readonly column: string
     readonly op: WorkbookRowOperator
@@ -133,7 +128,6 @@ export interface WorkbookCheckResultDescription {
   readonly refs?: readonly WorkbookRefDescription[]
   readonly message: string
   readonly expectation?: WorkbookCheckExpectationDescription
-  readonly proof?: WorkbookCheckProofDescription
 }
 
 export type WorkbookCheckExpectationDescription =
@@ -142,20 +136,10 @@ export type WorkbookCheckExpectationDescription =
       readonly value: LiteralInput
     }
   | {
-      readonly kind: 'valuesEqual'
-      readonly values: readonly (readonly LiteralInput[])[]
-    }
-  | {
       readonly kind: 'formulaEquals'
       readonly formula: string
       readonly inputs: readonly WorkbookRefDescription[]
     }
-  | {
-      readonly kind: 'formulasEqual'
-      readonly formulas: readonly (readonly (string | null)[])[]
-    }
-
-export type WorkbookCheckProofDescription = WorkbookCheckProof
 
 export interface WorkbookActionPlanDescription {
   readonly modelName: string
@@ -182,26 +166,6 @@ export type WorkbookActionPlanResultDescription =
       readonly checks: readonly WorkbookCheckResultDescription[]
     }
 
-export interface WorkbookRuntimeRequirementDescription extends WorkbookRuntimeRequirement {}
-
-export interface WorkbookRuntimePreviewDescription {
-  readonly modelName: string
-  readonly actionName: string
-  readonly requirements: readonly WorkbookRuntimeRequirementDescription[]
-  readonly materializedOps: readonly WorkbookOp[]
-}
-
-export type WorkbookPreviewResultDescription =
-  | {
-      readonly status: 'previewed'
-      readonly preview: WorkbookRuntimePreviewDescription
-    }
-  | {
-      readonly status: 'failed'
-      readonly errors: readonly WorkbookRunErrorDescription[]
-      readonly checks: readonly WorkbookCheckResultDescription[]
-    }
-
 export interface WorkbookUndoRefDescription {
   readonly id: string
   readonly ops?: readonly WorkbookOp[]
@@ -213,44 +177,16 @@ export type WorkbookRunResultDescription =
       readonly changed: readonly WorkbookChangeSummaryDescription[]
       readonly checks: readonly WorkbookCheckResultDescription[]
       readonly undo?: WorkbookUndoRefDescription
-      readonly applied?: WorkbookAppliedSummaryDescription
-      readonly receipt?: WorkbookRunReceiptDescription
     }
   | {
       readonly status: 'failed'
       readonly errors: readonly WorkbookRunErrorDescription[]
       readonly checks: readonly WorkbookCheckResultDescription[]
-      readonly undo?: WorkbookUndoRefDescription
-      readonly receipt?: WorkbookRunReceiptDescription
     }
 
 export interface WorkbookRunErrorDescription {
   readonly code: WorkbookRunErrorCode
   readonly message: string
-  readonly path?: string
-  readonly target?: WorkbookRefDescription
-  readonly check?: WorkbookCheckResultDescription
-  readonly expected?: WorkbookActionInput
-  readonly actual?: WorkbookActionInput
-}
-
-export interface WorkbookAppliedSummaryDescription {
-  readonly opCount: number
-  readonly ops?: readonly WorkbookOp[]
-}
-
-export interface WorkbookReceiptProofDescription extends Omit<WorkbookReceiptProof, 'target'> {
-  readonly target?: WorkbookRefDescription
-}
-
-export interface WorkbookRenderedReceiptDescription extends Omit<WorkbookRenderedReceipt, 'diffs'> {
-  readonly diffs?: readonly WorkbookChangeSummaryDescription[]
-}
-
-export interface WorkbookRunReceiptDescription extends Omit<WorkbookRunReceipt, 'rendered' | 'proof' | 'undo'> {
-  readonly rendered?: WorkbookRenderedReceiptDescription
-  readonly proof: readonly WorkbookReceiptProofDescription[]
-  readonly undo?: WorkbookUndoRefDescription
 }
 
 export function describeModel<Refs, Actions extends WorkbookActionMap<Refs>>(
@@ -304,7 +240,8 @@ function describeRowsRef(ref: WorkbookRowsRef): WorkbookRowsRefDescription {
     kind: 'rows',
     id: ref.id,
     label: ref.label,
-    table: describeTableRef(ref.table),
+    ...(ref.sheetName !== undefined ? { sheetName: ref.sheetName } : {}),
+    ...(ref.table !== undefined ? { table: describeTableRef(ref.table) } : {}),
     where: { ...ref.where },
   }
 }
@@ -377,24 +314,7 @@ function describeCheck(check: WorkbookCheckResult): WorkbookCheckResultDescripti
     ...(check.refs !== undefined ? { refs: check.refs.map(describeRef) } : {}),
     message: check.message,
     ...(check.expectation !== undefined ? { expectation: describeExpectation(check.expectation) } : {}),
-    ...(check.proof !== undefined ? { proof: describeProof(check.proof) } : {}),
   }
-}
-
-function describeProof(proof: WorkbookCheckProof): WorkbookCheckProofDescription {
-  if (proof.kind === 'values') {
-    return {
-      kind: 'values',
-      values: proof.values.map((row) => [...row]),
-    }
-  }
-  if (proof.kind === 'formulas') {
-    return {
-      kind: 'formulas',
-      formulas: proof.formulas.map((row) => [...row]),
-    }
-  }
-  return { ...proof }
 }
 
 function describeExpectation(expectation: WorkbookCheckExpectation): WorkbookCheckExpectationDescription {
@@ -404,21 +324,11 @@ function describeExpectation(expectation: WorkbookCheckExpectation): WorkbookChe
         kind: 'valueEquals',
         value: expectation.value,
       }
-    case 'valuesEqual':
-      return {
-        kind: 'valuesEqual',
-        values: expectation.values.map((row) => [...row]),
-      }
     case 'formulaEquals':
       return {
         kind: 'formulaEquals',
         formula: expectation.formula,
         inputs: expectation.inputs.map(describeRef),
-      }
-    case 'formulasEqual':
-      return {
-        kind: 'formulasEqual',
-        formulas: expectation.formulas.map((row) => [...row]),
       }
   }
 }
@@ -436,65 +346,10 @@ export function describePlan<Refs>(plan: WorkbookActionPlan<Refs>): WorkbookActi
   }
 }
 
-function describeError(error: WorkbookRunError): WorkbookRunErrorDescription {
+function describeError(error: WorkbookRunErrorDescription): WorkbookRunErrorDescription {
   return {
     code: error.code,
     message: error.message,
-    ...(error.path !== undefined ? { path: error.path } : {}),
-    ...(error.target !== undefined ? { target: describeRef(error.target) } : {}),
-    ...(error.check !== undefined ? { check: describeCheck(error.check) } : {}),
-    ...(error.expected !== undefined ? { expected: error.expected } : {}),
-    ...(error.actual !== undefined ? { actual: error.actual } : {}),
-  }
-}
-
-function describeApplied(applied: WorkbookAppliedSummary): WorkbookAppliedSummaryDescription {
-  return {
-    opCount: applied.opCount,
-    ...(applied.ops !== undefined ? { ops: [...applied.ops] } : {}),
-  }
-}
-
-function describeReceiptProof(proof: WorkbookReceiptProof): WorkbookReceiptProofDescription {
-  return {
-    kind: proof.kind,
-    status: proof.status,
-    message: proof.message,
-    ...(proof.revision !== undefined ? { revision: proof.revision } : {}),
-    ...(proof.target !== undefined ? { target: describeRef(proof.target) } : {}),
-    ...(proof.data !== undefined ? { data: proof.data } : {}),
-  }
-}
-
-function describeRenderedReceipt(rendered: WorkbookRenderedReceipt): WorkbookRenderedReceiptDescription {
-  return {
-    ...(rendered.revision !== undefined ? { revision: rendered.revision } : {}),
-    ...(rendered.diffs !== undefined ? { diffs: rendered.diffs.map(describeChange) } : {}),
-    ...(rendered.message !== undefined ? { message: rendered.message } : {}),
-  }
-}
-
-function describeRunReceipt(receipt: WorkbookRunReceipt): WorkbookRunReceiptDescription {
-  return {
-    ...(receipt.commandId !== undefined ? { commandId: receipt.commandId } : {}),
-    ...(receipt.idempotencyKey !== undefined ? { idempotencyKey: receipt.idempotencyKey } : {}),
-    modelName: receipt.modelName,
-    actionName: receipt.actionName,
-    ...(receipt.baseRevision !== undefined ? { baseRevision: receipt.baseRevision } : {}),
-    ...(receipt.appliedRevision !== undefined ? { appliedRevision: receipt.appliedRevision } : {}),
-    ...(receipt.calculatedRevision !== undefined ? { calculatedRevision: receipt.calculatedRevision } : {}),
-    ...(receipt.renderedRevision !== undefined ? { renderedRevision: receipt.renderedRevision } : {}),
-    ...(receipt.rendered !== undefined ? { rendered: describeRenderedReceipt(receipt.rendered) } : {}),
-    previewed: receipt.previewed,
-    applied: receipt.applied,
-    verified: receipt.verified,
-    checkCount: receipt.checkCount,
-    passedCheckCount: receipt.passedCheckCount,
-    failedCheckCount: receipt.failedCheckCount,
-    unverifiedCheckCount: receipt.unverifiedCheckCount,
-    proof: receipt.proof.map(describeReceiptProof),
-    ...(receipt.warnings !== undefined ? { warnings: [...receipt.warnings] } : {}),
-    ...(receipt.undo !== undefined ? { undo: describeUndo(receipt.undo) } : {}),
   }
 }
 
@@ -522,33 +377,6 @@ export function describePlanResult<Refs>(result: WorkbookActionPlanResult<Refs>)
   }
 }
 
-function describeRuntimeRequirement(requirement: WorkbookRuntimeRequirement): WorkbookRuntimeRequirementDescription {
-  return structuredClone(requirement)
-}
-
-function describeRuntimePreview(preview: WorkbookRuntimePreview): WorkbookRuntimePreviewDescription {
-  return {
-    modelName: preview.modelName,
-    actionName: preview.actionName,
-    requirements: preview.requirements.map(describeRuntimeRequirement),
-    materializedOps: preview.materializedOps.map((op) => structuredClone(op)),
-  }
-}
-
-export function describePreviewResult(result: WorkbookPreviewResult): WorkbookPreviewResultDescription {
-  if (result.status === 'previewed') {
-    return {
-      status: 'previewed',
-      preview: describeRuntimePreview(result.preview),
-    }
-  }
-  return {
-    status: 'failed',
-    errors: result.errors.map(describeError),
-    checks: result.checks.map(describeCheck),
-  }
-}
-
 export function describeRunResult(result: WorkbookRunResult): WorkbookRunResultDescription {
   if (result.status === 'done') {
     return {
@@ -556,15 +384,11 @@ export function describeRunResult(result: WorkbookRunResult): WorkbookRunResultD
       changed: result.changed.map(describeChange),
       checks: result.checks.map(describeCheck),
       ...(result.undo !== undefined ? { undo: describeUndo(result.undo) } : {}),
-      ...(result.applied !== undefined ? { applied: describeApplied(result.applied) } : {}),
-      ...(result.receipt !== undefined ? { receipt: describeRunReceipt(result.receipt) } : {}),
     }
   }
   return {
     status: 'failed',
     errors: result.errors.map(describeError),
     checks: result.checks.map(describeCheck),
-    ...(result.undo !== undefined ? { undo: describeUndo(result.undo) } : {}),
-    ...(result.receipt !== undefined ? { receipt: describeRunReceipt(result.receipt) } : {}),
   }
 }

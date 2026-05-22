@@ -102,18 +102,6 @@ describe('@bilig/workbook action metadata api', () => {
       },
     ])
     expect(verifyModel(model, { inputs: { write: { value: 7 } } }).status).toBe('valid')
-    expect(verifyModel(model).actions[1]?.planning).toEqual({
-      status: 'failed',
-      modelName: 'metadata-model',
-      actionName: 'write',
-      checks: [],
-      errors: [
-        {
-          code: 'invalid_action_input',
-          message: 'Action input at input is required',
-        },
-      ],
-    })
   })
 
   it('describes action metadata without running find, checks, or actions', () => {
@@ -233,33 +221,5 @@ describe('@bilig/workbook action metadata api', () => {
         },
       }),
     ).toThrowError('Action input description at input.fields cannot contain an empty field name')
-  })
-
-  it('validates action input values against action metadata before model code runs', () => {
-    const model = defineModel({
-      name: 'metadata-input-validation',
-      find() {
-        throw new Error('find should not run for invalid metadata input')
-      },
-      actions: {
-        write: {
-          input: {
-            kind: 'object',
-            fields: {
-              amount: { kind: 'number', required: true },
-              tags: { kind: 'array', items: { kind: 'string' } },
-            },
-          },
-          run() {
-            throw new Error('action should not run for invalid metadata input')
-          },
-        },
-      },
-    })
-
-    expect(() => buildWorkbookActionPlan(model, 'write', { amount: '12' })).toThrowError('Action input at input.amount must be number')
-    expect(() => buildWorkbookActionPlan(model, 'write', { amount: 12, tags: ['ok', 2] })).toThrowError(
-      'Action input at input.tags[1] must be string',
-    )
   })
 })

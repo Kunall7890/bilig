@@ -4,14 +4,9 @@ import type {
   SheetRecord,
   SpreadsheetEngine,
 } from '@bilig/core/headless-runtime'
-import { MAX_COLS, MAX_ROWS, ValueTag } from '@bilig/protocol'
+import { MAX_COLS, MAX_ROWS } from '@bilig/protocol'
 import { WorkPaperOperationError } from './work-paper-errors.js'
-import {
-  assertRowAndColumn,
-  isBlankRawCellContent,
-  isParsableFormulaContent,
-  isWorkPaperSheetMatrix,
-} from './work-paper-runtime-helpers.js'
+import { assertRowAndColumn, isBlankRawCellContent, isFormulaContent, isWorkPaperSheetMatrix } from './work-paper-runtime-helpers.js'
 import { buildWorkPaperLiteralCellValueMutation, buildWorkPaperRawCellMutation } from './work-paper-literal-mutation-queue.js'
 import type { WorkPaperCellMutationApplyOptions } from './work-paper-cell-mutation-refs.js'
 import type {
@@ -61,7 +56,6 @@ export interface WorkPaperSetCellContentsRuntime {
     content: RawCellContent,
     cellIndex: number | undefined,
   ) => boolean
-  readonly getCellSerialized: (address: WorkPaperCellAddress) => RawCellContent
   readonly trySetExistingNumericCellContentsWithTrackedFastPath: (args: {
     readonly sheet: SheetRecord
     readonly address: WorkPaperCellAddress
@@ -112,13 +106,6 @@ export function setWorkPaperCellContents(
     }
     const visibleCellIndex = runtime.getVisibleCellIndexInSheet(sheet, address.row, address.col)
     if (
-      !runtime.isEvaluationSuspended() &&
-      runtime.getBatchDepth() === 0 &&
-      rawCellContentsEqual(runtime.getCellSerialized(address), content)
-    ) {
-      return []
-    }
-    if (
       runtime.isEvaluationSuspended() &&
       runtime.enqueueSuspendedLiteralMutation(address.sheet, address.row, address.col, content, visibleCellIndex)
     ) {
@@ -141,7 +128,7 @@ export function setWorkPaperCellContents(
         return fastPathChanges
       }
     }
-    if (content !== null && !isParsableFormulaContent(content) && typeof content !== 'number' && visibleCellIndex !== undefined) {
+    if (content !== null && !isFormulaContent(content) && typeof content !== 'number' && visibleCellIndex !== undefined) {
       const fastPathChanges = runtime.trySetExistingLiteralCellContentsWithTrackedFastPath({
         sheet,
         address,
@@ -154,13 +141,11 @@ export function setWorkPaperCellContents(
     }
     const mutate = () => {
       runtime.flushPendingBatchOps()
-      const engine = runtime.getEngine()
-      const existingNumericMutationEngine = engine as ExistingNumericMutationEngine
+      const existingNumericMutationEngine = runtime.getEngine() as ExistingNumericMutationEngine
       if (
         typeof content === 'number' &&
         visibleCellIndex !== undefined &&
         sheet.structureVersion === 1 &&
-        engine.workbook.cellStore.tags[visibleCellIndex] === ValueTag.Number &&
         existingNumericMutationEngine.tryApplyExistingNumericCellMutationAt?.({
           sheetId: address.sheet,
           row: address.row,
@@ -198,7 +183,7 @@ export function setWorkPaperCellContents(
           value: RawCellContent
         }
       } = {}
-      if (!isParsableFormulaContent(content)) {
+      if (!isFormulaContent(content)) {
         captureOptions.singleLiteralChange = {
           address: { sheet: address.sheet, row: address.row, col: address.col },
           ...(visibleCellIndex === undefined ? {} : { cellIndex: visibleCellIndex }),
@@ -250,7 +235,7 @@ export function setWorkPaperCellValues(
     if (address.row >= (config.maxRows ?? MAX_ROWS) || address.col >= (config.maxColumns ?? MAX_COLS)) {
       throw new WorkPaperOperationError('Cell contents cannot be set')
     }
-    if (isWorkPaperSheetMatrix(value) || isParsableFormulaContent(value)) {
+    if (isWorkPaperSheetMatrix(value) || isFormulaContent(value)) {
       throw new WorkPaperOperationError('Bulk cell value updates require literal values')
     }
     const visibleCellIndex = runtime.getVisibleCellIndexInSheet(currentSheet, address.row, address.col)
@@ -291,7 +276,7 @@ export function setWorkPaperSheetCellValues(
     if (row >= (config.maxRows ?? MAX_ROWS) || col >= (config.maxColumns ?? MAX_COLS)) {
       throw new WorkPaperOperationError('Cell contents cannot be set')
     }
-    if (isWorkPaperSheetMatrix(value) || isParsableFormulaContent(value)) {
+    if (isWorkPaperSheetMatrix(value) || isFormulaContent(value)) {
       throw new WorkPaperOperationError('Bulk cell value updates require literal values')
     }
     const visibleCellIndex = runtime.getVisibleCellIndexInSheet(sheet, row, col)
@@ -366,7 +351,7 @@ export function setWorkPaperSheetRangeValues(
     for (let colOffset = 0; colOffset < row.length; colOffset += 1) {
       const destinationCol = startCol + colOffset
       const value = row[colOffset] ?? null
-      if (Array.isArray(value) || isParsableFormulaContent(value)) {
+      if (Array.isArray(value) || isFormulaContent(value)) {
         throw new WorkPaperOperationError('Bulk cell value updates require literal values')
       }
       const physicalCellIndex = physicalCellIndices === ALL_PHYSICAL_RANGE_CELLS_FRESH ? -1 : physicalCellIndices?.[refIndex]
@@ -459,8 +444,4 @@ function applyBulkWorkPaperCellValueRefs(
     return runtime.captureTrackedChangesWithoutVisibilityCache(mutate, {})
   }
   return runtime.captureChanges(mutate)
-}
-
-function rawCellContentsEqual(left: RawCellContent, right: RawCellContent): boolean {
-  return typeof left === 'number' && typeof right === 'number' ? Object.is(left, right) : left === right
 }

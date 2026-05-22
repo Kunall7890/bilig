@@ -1,4 +1,4 @@
-import { mkdtempSync, readFileSync, writeFileSync } from 'node:fs'
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 
@@ -7,8 +7,6 @@ import { exportXlsx, importXlsx } from '@bilig/excel-import'
 import { isMacosExcelInstalled, runMacosExcelStructuralOperationOracle, type NormalizedFormulaValue } from '@bilig/excel-fixtures'
 import { ValueTag, type CellValue } from '@bilig/protocol'
 import { describe, expect, it } from 'vitest'
-
-import { removeMacosExcelTestDir } from './macos-excel-oracle-test-utils.js'
 
 import { WorkPaper, type WorkPaperCellAddress } from '../index.js'
 
@@ -157,7 +155,7 @@ async function expectExcelScenario(args: {
     expect(imported.snapshot.workbook.metadata?.definedNames).toEqual(args.expectedDefinedNames)
     expectImportedValues(imported.snapshot, args.expectedCells)
   } finally {
-    removeMacosExcelTestDir(tempDir)
+    rmSync(tempDir, { recursive: true, force: true })
   }
 }
 

@@ -58,19 +58,6 @@ export interface WorkPaperExistingNumericFastPathRuntime {
   readonly trackLazyChanges: (changes: WorkPaperCellChange[]) => void
   readonly hasValuesUpdatedListeners: () => boolean
   readonly emitValuesUpdated: (changes: WorkPaperChange[]) => void
-  readonly canSkipSheetDimensionUpdateAfterLiteralMutationRefs: (
-    refs: readonly EngineExistingLiteralCellMutationRef[],
-    potentialNewCells: number | undefined,
-  ) => boolean
-  readonly canSkipSheetDimensionUpdateAfterExistingLiteralCell: (
-    sheetId: number,
-    row: number,
-    col: number,
-    value: LiteralInput,
-    potentialNewCells: number | undefined,
-  ) => boolean
-  readonly updateSheetDimensionsAfterCellMutationRefs: (refs: readonly EngineExistingLiteralCellMutationRef[]) => void
-  readonly updateSheetDimensionsAfterExistingLiteralCell: (sheetId: number, row: number, col: number) => void
 }
 
 export interface ExistingNumericWorkPaperCellContentsRequest {
@@ -146,7 +133,6 @@ export function trySetExistingNumericWorkPaperCellContentsWithTrackedFastPath(
   if (!result) {
     return null
   }
-  updateSheetDimensionsAfterExistingLiteralFastPath(runtime, request)
 
   if (runtime.hasTrackedEngineEvents()) {
     runtime.clearTrackedEngineEvents()
@@ -363,7 +349,6 @@ export function trySetExistingLiteralWorkPaperCellContentsWithTrackedFastPath(
   if (!result) {
     return null
   }
-  updateSheetDimensionsAfterExistingLiteralFastPath(runtime, request)
 
   if (runtime.hasTrackedEngineEvents()) {
     runtime.clearTrackedEngineEvents()
@@ -414,24 +399,6 @@ export function trySetExistingLiteralWorkPaperCellContentsWithTrackedFastPath(
     runtime.emitValuesUpdated(changes)
   }
   return changes
-}
-
-function updateSheetDimensionsAfterExistingLiteralFastPath(
-  runtime: WorkPaperExistingNumericFastPathRuntime,
-  request: ExistingNumericWorkPaperCellContentsRequest | ExistingLiteralWorkPaperCellContentsRequest,
-): void {
-  if (
-    runtime.canSkipSheetDimensionUpdateAfterExistingLiteralCell(
-      request.address.sheet,
-      request.address.row,
-      request.address.col,
-      request.value,
-      0,
-    )
-  ) {
-    return
-  }
-  runtime.updateSheetDimensionsAfterExistingLiteralCell(request.address.sheet, request.address.row, request.address.col)
 }
 
 function tryBuildLazyDirectExistingNumericTrackedChanges(

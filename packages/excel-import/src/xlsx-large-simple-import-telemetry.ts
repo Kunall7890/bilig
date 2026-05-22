@@ -2,6 +2,7 @@ export type LargeSimpleXlsxImportPhase =
   | 'zip-setup'
   | 'worksheet-scan'
   | 'shared-string-resolution'
+  | 'shared-string-metadata'
   | 'metadata-parsing'
   | 'style-parsing'
   | 'zip-source-release'

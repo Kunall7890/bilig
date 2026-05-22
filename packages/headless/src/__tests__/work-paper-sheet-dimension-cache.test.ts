@@ -77,27 +77,6 @@ describe('WorkPaperSheetDimensionCache', () => {
     expect(cache.get(1)).toEqual({ width: 3, height: 3 })
   })
 
-  it('checks and updates existing literal dimensions without mutation ref arrays', () => {
-    const cache = new WorkPaperSheetDimensionCache(engineWithSpills())
-    cache.cache(1, { width: 3, height: 3 })
-
-    expect(cache.canSkipUpdateAfterExistingLiteralCell(1, 1, 1, 9, 0)).toBe(true)
-    expect(cache.canSkipUpdateAfterExistingLiteralCell(1, 4, 2, 9, 0)).toBe(false)
-
-    cache.updateAfterExistingLiteralCell(1, 4, 2)
-    expect(cache.get(1)).toEqual({ width: 3, height: 5 })
-  })
-
-  it('invalidates existing literal dimension writes on known spill sheets', () => {
-    const cache = new WorkPaperSheetDimensionCache(engineWithSpills(['Sheet1']))
-    cache.cache(1, { width: 3, height: 3 })
-
-    expect(cache.canSkipUpdateAfterExistingLiteralCell(1, 1, 1, 9, 0)).toBe(false)
-    cache.updateAfterExistingLiteralCell(1, 1, 1)
-
-    expect(cache.get(1)).toBeUndefined()
-  })
-
   it('expands scalar formulas and invalidates dynamic formulas and known spill sheets', () => {
     const cache = new WorkPaperSheetDimensionCache(engineWithSpills(['Sheet2']))
     cache.cache(1, { width: 3, height: 3 })

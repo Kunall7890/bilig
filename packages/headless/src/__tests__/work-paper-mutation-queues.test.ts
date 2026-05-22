@@ -3,7 +3,7 @@ import type { EngineCellMutationRef } from '@bilig/core'
 import { WorkPaperMutationQueues } from '../work-paper-mutation-queues.js'
 import type { WorkPaperCellMutationApplyOptions } from '../work-paper-cell-mutation-refs.js'
 
-function createRecordedQueues(options: { readonly canSkipDimensionUpdate?: boolean } = {}): {
+function createRecordedQueues(): {
   readonly queues: WorkPaperMutationQueues
   readonly applied: {
     readonly refs: readonly EngineCellMutationRef[]
@@ -17,10 +17,9 @@ function createRecordedQueues(options: { readonly canSkipDimensionUpdate?: boole
   }[] = []
   const dimensionUpdates: EngineCellMutationRef[][] = []
   const queues = new WorkPaperMutationQueues({
-    applyCellMutationsAtWithOptions: (refs, applyOptions) => {
-      applied.push({ refs, options: applyOptions })
+    applyCellMutationsAtWithOptions: (refs, options) => {
+      applied.push({ refs, options })
     },
-    canSkipSheetDimensionUpdateAfterLiteralMutationRefs: () => options.canSkipDimensionUpdate === true,
     updateSheetDimensionsAfterCellMutationRefs: (refs) => {
       dimensionUpdates.push([...refs])
     },
@@ -76,7 +75,7 @@ describe('work paper mutation queues', () => {
   })
 
   it('skips dimension updates for known existing suspended literal mutations', () => {
-    const { queues, dimensionUpdates } = createRecordedQueues({ canSkipDimensionUpdate: true })
+    const { queues, dimensionUpdates } = createRecordedQueues()
     const refs: EngineCellMutationRef[] = [
       {
         sheetId: 2,

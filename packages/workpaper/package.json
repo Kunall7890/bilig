@@ -1,6 +1,6 @@
 {
   "name": "@bilig/workpaper",
-  "version": "0.48.0",
+  "version": "0.41.0",
   "description": "Scoped Bilig WorkPaper runtime for Node.js services, agent tools, and server-side spreadsheet formulas.",
   "keywords": [
     "agent-tools",
@@ -60,11 +60,6 @@
       "types": "./dist/mcp.d.ts",
       "import": "./dist/mcp.js",
       "default": "./dist/mcp.js"
-    },
-    "./agent-tools": {
-      "types": "./dist/agent-tools.d.ts",
-      "import": "./dist/agent-tools.js",
-      "default": "./dist/agent-tools.js"
     },
     "./xlsx": {
       "types": "./dist/xlsx.d.ts",

@@ -1,4 +1,4 @@
-import { VIEWPORT_TILE_COLUMN_COUNT, VIEWPORT_TILE_ROW_COUNT, type Viewport } from '@bilig/protocol'
+import type { Viewport } from '@bilig/protocol'
 import { createGridGeometrySnapshotFromAxes } from './gridGeometry.js'
 import type { GridMetrics } from './gridMetrics.js'
 import type { VisibleRegionState } from './gridPointer.js'
@@ -22,7 +22,6 @@ type SetVisibleRegion = (updater: VisibleRegionUpdater) => void
 
 export interface WorkbookViewportScrollRuntimeInput {
   readonly columnAxis: GridAxisWorldIndex
-  readonly editingCell?: Item | null | undefined
   readonly freezeCols: number
   readonly freezeRows: number
   readonly gridCameraStore: GridCameraStore
@@ -60,23 +59,12 @@ function noteVisibleWindowChange(): void {
 
 export function shouldCommitWorkbookVisibleRegion(input: {
   readonly current: VisibleRegionState
-  readonly editingCell?: Item | null | undefined
   readonly next: VisibleRegionState
   readonly requiresLiveViewportState: boolean
-  readonly selectedCell?: Item | undefined
 }): boolean {
-  const { current, editingCell, next, requiresLiveViewportState, selectedCell } = input
+  const { current, next, requiresLiveViewportState } = input
   if (requiresLiveViewportState) {
     return !sameVisibleRegionWindow(current, next)
-  }
-  if (
-    !editingCell &&
-    selectedCell &&
-    visibleRegionContainsCell(next, selectedCell) &&
-    (!visibleRegionContainsCell(current, selectedCell) ||
-      !sameVisibleRenderTileWindow(viewportFromVisibleRegion(current), viewportFromVisibleRegion(next)))
-  ) {
-    return true
   }
   const currentResidentViewport = resolveResidentViewport(viewportFromVisibleRegion(current))
   const targetResidentViewport = resolveResidentViewport(viewportFromVisibleRegion(next))
@@ -84,25 +72,6 @@ export function shouldCommitWorkbookVisibleRegion(input: {
     current.freezeCols === next.freezeCols &&
     current.freezeRows === next.freezeRows &&
     sameViewportBounds(currentResidentViewport, targetResidentViewport)
-  )
-}
-
-function sameVisibleRenderTileWindow(current: Viewport, next: Viewport): boolean {
-  return (
-    Math.floor(current.colStart / VIEWPORT_TILE_COLUMN_COUNT) === Math.floor(next.colStart / VIEWPORT_TILE_COLUMN_COUNT) &&
-    Math.floor(current.colEnd / VIEWPORT_TILE_COLUMN_COUNT) === Math.floor(next.colEnd / VIEWPORT_TILE_COLUMN_COUNT) &&
-    Math.floor(current.rowStart / VIEWPORT_TILE_ROW_COUNT) === Math.floor(next.rowStart / VIEWPORT_TILE_ROW_COUNT) &&
-    Math.floor(current.rowEnd / VIEWPORT_TILE_ROW_COUNT) === Math.floor(next.rowEnd / VIEWPORT_TILE_ROW_COUNT)
-  )
-}
-
-function visibleRegionContainsCell(region: VisibleRegionState, cell: Item): boolean {
-  const [col, row] = cell
-  return (
-    col >= region.range.x &&
-    col < region.range.x + region.range.width &&
-    row >= region.range.y &&
-    row < region.range.y + region.range.height
   )
 }
 
@@ -201,10 +170,8 @@ export class WorkbookViewportScrollRuntime {
       if (
         !shouldCommitWorkbookVisibleRegion({
           current,
-          editingCell: input.editingCell,
           next,
           requiresLiveViewportState: input.requiresLiveViewportState,
-          selectedCell: input.selectedCell,
         })
       ) {
         return current

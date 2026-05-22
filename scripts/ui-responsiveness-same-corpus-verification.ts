@@ -7,14 +7,12 @@ import type {
   SameCorpusCaptureCorpusVerification,
   UiResponsivenessSameCorpusProduct,
 } from './gen-ui-responsiveness-live-browser-scorecard.ts'
-import { buildSameCorpusFingerprint, verifyXlsxCorpusFingerprint } from './ui-responsiveness-same-corpus-fingerprint.ts'
+import { verifyXlsxCorpusFingerprint } from './ui-responsiveness-same-corpus-fingerprint.ts'
 import {
-  biligRenderedSurfaceReadiness,
   isBiligRenderedSurfaceReady,
+  type BiligRenderedCanvasState,
   type BiligRenderedSurfaceState,
 } from './ui-responsiveness-same-corpus-surface.ts'
-import type { BiligScrollPerfBenchmarkState } from './ui-responsiveness-bilig-scroll-perf-window.ts'
-import { readBiligRenderedSurfaceState } from './ui-responsiveness-same-corpus-surface-page.ts'
 
 export async function verifyProductCorpus(
   page: Page,
@@ -32,8 +30,18 @@ export async function verifyProductCorpus(
 }
 
 async function verifyBiligBenchmarkState(page: Page, corpus: WorkbookBenchmarkCorpusCase): Promise<SameCorpusCaptureCorpusVerification> {
-  const state = await page.evaluate((): BiligScrollPerfBenchmarkState | null => {
-    const collector = window.__biligScrollPerf
+  const state = await page.evaluate(() => {
+    const collector = (
+      window as Window & {
+        __biligScrollPerf?: {
+          getBenchmarkState?: () => {
+            state: string
+            error: string | null
+            fixture: { id: string; materializedCellCount: number; sheetName: string } | null
+          }
+        }
+      }
+    ).__biligScrollPerf
     return collector?.getBenchmarkState?.() ?? null
   })
   if (state?.state !== 'ready' || state.fixture?.id !== corpus.id) {
@@ -47,29 +55,15 @@ async function verifyBiligBenchmarkState(page: Page, corpus: WorkbookBenchmarkCo
     )
   }
   const renderedSurface = await readBiligRenderedSurfaceState(page)
-  const readiness = biligRenderedSurfaceReadiness(renderedSurface)
-  if (!readiness.ready) {
-    throw new Error(
-      `Bilig rendered surface is not ready for same-corpus capture: ${JSON.stringify({
-        evidence: readiness.evidence,
-        gaps: readiness.gaps,
-        state: renderedSurface,
-      })}`,
-    )
+  if (!isBiligRenderedSurfaceReady(renderedSurface)) {
+    throw new Error(`Bilig rendered surface is not ready for same-corpus capture: ${JSON.stringify(renderedSurface)}`)
   }
-  const fingerprint = buildSameCorpusFingerprint(corpus)
   return {
     verified: true,
     method: 'bilig-benchmark-state',
     sheetName: state.fixture.sheetName,
     materializedCells: state.fixture.materializedCellCount,
-    corpusFingerprint: fingerprint.corpusFingerprint,
-    sourceWorkbookSha256: fingerprint.corpusFingerprint.snapshotSha256,
-    checkedCells: fingerprint.checkedCells.map((cell) => ({
-      address: cell.address,
-      expected: cell.expected,
-      actual: cell.expected,
-    })),
+    checkedCells: [],
   }
 }
 
@@ -92,6 +86,44 @@ async function waitForBiligRenderedSurface(
 
 export async function waitForVerifiedBiligRenderedSurface(page: Page, timeoutMs: number): Promise<void> {
   await waitForBiligRenderedSurface(page, timeoutMs)
+}
+
+async function readBiligRenderedSurfaceState(page: Page): Promise<BiligRenderedSurfaceState | null> {
+  return await page.evaluate(() => {
+    const grid = document.querySelector('[data-testid="sheet-grid"]')
+    if (!(grid instanceof HTMLElement)) {
+      return null
+    }
+    const typeGpu = document.querySelector('[data-testid="grid-pane-renderer"]')
+    const fallback = document.querySelector('[data-testid="grid-pane-renderer-fallback"]')
+    const fallbackState: BiligRenderedCanvasState | null =
+      fallback instanceof HTMLCanvasElement
+        ? {
+            headerPaneCount: Number.parseInt(fallback.getAttribute('data-v3-header-pane-count') ?? '0', 10) || 0,
+            mode: fallback.getAttribute('data-renderer-mode'),
+            pixelHeight: fallback.height,
+            pixelWidth: fallback.width,
+            tilePaneCount: Number.parseInt(fallback.getAttribute('data-v3-tile-pane-count') ?? '0', 10) || 0,
+          }
+        : null
+    const typeGpuState: BiligRenderedCanvasState | null =
+      typeGpu instanceof HTMLCanvasElement
+        ? {
+            headerPaneCount: Number.parseInt(typeGpu.getAttribute('data-v3-header-pane-count') ?? '0', 10) || 0,
+            mode: typeGpu.getAttribute('data-renderer-mode'),
+            pixelHeight: typeGpu.height,
+            pixelWidth: typeGpu.width,
+            tilePaneCount: Number.parseInt(typeGpu.getAttribute('data-v3-tile-pane-count') ?? '0', 10) || 0,
+          }
+        : null
+    return {
+      dpr: Math.max(1, window.devicePixelRatio || 1),
+      fallback: fallbackState,
+      gridHeight: Math.max(0, Math.floor(grid.clientHeight)),
+      gridWidth: Math.max(0, Math.floor(grid.clientWidth)),
+      typeGpu: typeGpuState,
+    }
+  })
 }
 
 async function verifyGoogleSheetsXlsxExport(

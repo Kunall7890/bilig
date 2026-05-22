@@ -4498,7 +4498,7 @@ describe('SpreadsheetEngine', () => {
       tag: ValueTag.Error,
       code: ErrorCode.Name,
     })
-    expect(engine.getLastMetrics()).toMatchObject({ wasmFormulaCount: 1, jsFormulaCount: 0 })
+    expect(engine.getLastMetrics()).toMatchObject({ wasmFormulaCount: 0, jsFormulaCount: 1 })
 
     const changed: number[][] = []
     const unsubscribe = engine.subscribe((event) => {
@@ -4513,19 +4513,19 @@ describe('SpreadsheetEngine', () => {
     expect(engine.getDefinedName('taxrate')).toEqual({ name: 'TaxRate', value: 0.085 })
     expect(engine.getDefinedNames()).toEqual([{ name: 'TaxRate', value: 0.085 }])
     expect(engine.getCellValue('Sheet1', 'A2')).toEqual({ tag: ValueTag.Number, value: 8.5 })
-    expect(engine.getLastMetrics()).toMatchObject({ wasmFormulaCount: 1, jsFormulaCount: 0 })
+    expect(engine.getLastMetrics()).toMatchObject({ wasmFormulaCount: 0, jsFormulaCount: 1 })
     expect(changed.at(-1)).toContain(a2Index!)
 
     engine.setDefinedName('TAXRATE', 0.09)
     expect(engine.getCellValue('Sheet1', 'A2')).toEqual({ tag: ValueTag.Number, value: 9 })
-    expect(engine.getLastMetrics()).toMatchObject({ wasmFormulaCount: 1, jsFormulaCount: 0 })
+    expect(engine.getLastMetrics()).toMatchObject({ wasmFormulaCount: 0, jsFormulaCount: 1 })
 
     expect(engine.deleteDefinedName('taxrate')).toBe(true)
     expect(engine.getCellValue('Sheet1', 'A2')).toEqual({
       tag: ValueTag.Error,
       code: ErrorCode.Name,
     })
-    expect(engine.getLastMetrics()).toMatchObject({ wasmFormulaCount: 1, jsFormulaCount: 0 })
+    expect(engine.getLastMetrics()).toMatchObject({ wasmFormulaCount: 0, jsFormulaCount: 1 })
 
     unsubscribe()
   })
@@ -4936,10 +4936,8 @@ describe('SpreadsheetEngine', () => {
     outbound.forEach((batch) => replica.applyRemoteBatch(batch))
 
     expect(replica.getWorkbookMetadataEntries()).toEqual([{ key: 'locale', value: 'en-US' }])
-    expect(replica.getRowMetadata('Sheet1')).toEqual([{ sheetName: 'Sheet1', start: 2, count: 3, size: 24, hidden: false, filtered: null }])
-    expect(replica.getColumnMetadata('Sheet1')).toEqual([
-      { sheetName: 'Sheet1', start: 1, count: 2, size: 120, hidden: true, filtered: null },
-    ])
+    expect(replica.getRowMetadata('Sheet1')).toEqual([{ sheetName: 'Sheet1', start: 2, count: 3, size: 24, hidden: false }])
+    expect(replica.getColumnMetadata('Sheet1')).toEqual([{ sheetName: 'Sheet1', start: 1, count: 2, size: 120, hidden: true }])
     expect(replica.getFreezePane('Sheet1')).toEqual({ sheetName: 'Sheet1', rows: 1, cols: 2 })
     expect(replica.listMergeRanges('Sheet1')).toEqual([{ sheetName: 'Sheet1', startAddress: 'D1', endAddress: 'E2' }])
     expect(replica.getFilters('Sheet1')).toEqual([
@@ -5083,12 +5081,8 @@ describe('SpreadsheetEngine', () => {
       { id: 'row-2', index: 3, size: 24, hidden: false },
     ])
     expect(restored.getColumnAxisEntries('Sheet1')).toEqual([{ id: 'column-1', index: 1, size: 140 }])
-    expect(restored.getRowMetadata('Sheet1')).toEqual([
-      { sheetName: 'Sheet1', start: 2, count: 2, size: 24, hidden: false, filtered: null },
-    ])
-    expect(restored.getColumnMetadata('Sheet1')).toEqual([
-      { sheetName: 'Sheet1', start: 1, count: 1, size: 140, hidden: null, filtered: null },
-    ])
+    expect(restored.getRowMetadata('Sheet1')).toEqual([{ sheetName: 'Sheet1', start: 2, count: 2, size: 24, hidden: false }])
+    expect(restored.getColumnMetadata('Sheet1')).toEqual([{ sheetName: 'Sheet1', start: 1, count: 1, size: 140, hidden: null }])
     expect(restored.getFreezePane('Sheet1')).toEqual({ sheetName: 'Sheet1', rows: 1, cols: 2 })
     expect(restored.getFilters('Sheet1')).toEqual([
       {
@@ -5454,12 +5448,9 @@ describe('SpreadsheetEngine', () => {
 
     engine.moveRows('Data', 2, 1, 0)
 
-    expect(engine.getCell('Summary', 'A1').formula).toBe('INDEX(Data!A2:A4,1)')
-    expect(engine.getCell('Summary', 'A2').formula).toBe('INDEX(Data!A2:A4,2)')
-    expect(engine.getCell('Summary', 'A3').formula).toBe('SUM(Data!A2:A4)')
-    expect(engine.getCellValue('Summary', 'A1')).toEqual({ tag: ValueTag.Number, value: 10 })
-    expect(engine.getCellValue('Summary', 'A2')).toEqual({ tag: ValueTag.Number, value: 20 })
-    expect(engine.getCellValue('Summary', 'A3')).toEqual({ tag: ValueTag.Number, value: 70 })
+    expect(engine.getCellValue('Summary', 'A1')).toEqual({ tag: ValueTag.Number, value: 30 })
+    expect(engine.getCellValue('Summary', 'A2')).toEqual({ tag: ValueTag.Number, value: 10 })
+    expect(engine.getCellValue('Summary', 'A3')).toEqual({ tag: ValueTag.Number, value: 100 })
   })
 
   it('undoes structural row deletes without losing cross-sheet formula correctness', async () => {
@@ -5577,7 +5568,7 @@ describe('SpreadsheetEngine', () => {
     expect(engine.getCellValue('Sheet1', 'D1')).toEqual({ tag: ValueTag.Number, value: 10 })
   })
 
-  it('rebinds deleted-column ref errors to keep compiled dependencies consistent', async () => {
+  it('defers deleted-column ref errors without rebinding simple formulas', async () => {
     const engine = new SpreadsheetEngine({ workbookName: 'structural-column-ref-error-deferral' })
     await engine.ready()
     engine.createSheet('Sheet1')
@@ -5596,8 +5587,8 @@ describe('SpreadsheetEngine', () => {
     expect(engine.getCellValue('Sheet1', 'B1')).toEqual({ tag: ValueTag.Error, code: ErrorCode.Ref })
     expect(engine.getCellValue('Sheet1', 'C1')).toEqual({ tag: ValueTag.Error, code: ErrorCode.Ref })
     expect(engine.getPerformanceCounters()).toMatchObject({
-      structuralFormulaImpactCandidates: 1,
-      structuralFormulaRebindInputs: 1,
+      structuralFormulaImpactCandidates: 0,
+      structuralFormulaRebindInputs: 0,
       structuralUndoCapturedCells: 0,
     })
 
@@ -5697,7 +5688,7 @@ describe('SpreadsheetEngine', () => {
     engine.setDefinedName('FeeRate', 0.015)
 
     expect(engine.getCellValue('Sheet1', 'A1')).toEqual({ tag: ValueTag.Number, value: 0.1 })
-    expect(engine.getLastMetrics()).toMatchObject({ wasmFormulaCount: 1, jsFormulaCount: 0 })
+    expect(engine.getLastMetrics()).toMatchObject({ wasmFormulaCount: 0, jsFormulaCount: 1 })
   })
 
   it('resolves named range formulas through workbook metadata and rebinds dependencies', async () => {
@@ -5711,8 +5702,8 @@ describe('SpreadsheetEngine', () => {
     engine.setCellFormula('Sheet1', 'B1', 'SUM(SalesRange)')
 
     expect(engine.getCellValue('Sheet1', 'B1')).toEqual({ tag: ValueTag.Number, value: 37 })
-    expect(engine.explainCell('Sheet1', 'B1').mode).toBe(FormulaMode.WasmFastPath)
-    expect(engine.getLastMetrics()).toMatchObject({ wasmFormulaCount: 1, jsFormulaCount: 0 })
+    expect(engine.explainCell('Sheet1', 'B1').mode).toBe(FormulaMode.JsOnly)
+    expect(engine.getLastMetrics()).toMatchObject({ wasmFormulaCount: 0, jsFormulaCount: 1 })
 
     engine.setCellValue('Sheet1', 'A2', 20)
     expect(engine.getCellValue('Sheet1', 'B1')).toEqual({ tag: ValueTag.Number, value: 45 })
@@ -5745,8 +5736,8 @@ describe('SpreadsheetEngine', () => {
 
     engine.setCellFormula('Sheet1', 'C1', 'SUM(Sales[Amount])')
     expect(engine.getCellValue('Sheet1', 'C1')).toEqual({ tag: ValueTag.Number, value: 37 })
-    expect(engine.explainCell('Sheet1', 'C1').mode).toBe(FormulaMode.WasmFastPath)
-    expect(engine.getLastMetrics()).toMatchObject({ wasmFormulaCount: 1, jsFormulaCount: 0 })
+    expect(engine.explainCell('Sheet1', 'C1').mode).toBe(FormulaMode.JsOnly)
+    expect(engine.getLastMetrics()).toMatchObject({ wasmFormulaCount: 0, jsFormulaCount: 1 })
 
     engine.setCellValue('Sheet1', 'B3', 20)
     expect(engine.getCellValue('Sheet1', 'C1')).toEqual({ tag: ValueTag.Number, value: 45 })

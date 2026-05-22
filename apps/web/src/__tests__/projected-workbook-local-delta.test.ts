@@ -2,8 +2,6 @@ import { describe, expect, it } from 'vitest'
 import { ValueTag } from '@bilig/protocol'
 import { DirtyMaskV3 } from '../../../../packages/grid/src/renderer-v3/tile-damage-index.js'
 import {
-  LOCAL_CELL_TEXT_DIRTY_MASK,
-  LOCAL_CELL_VISUAL_DIRTY_MASK,
   buildLocalAxisWorkbookDelta,
   buildLocalCellSnapshotWorkbookDelta,
   buildLocalCellSnapshotsWorkbookDelta,
@@ -14,8 +12,10 @@ const identity = {
   sheetId: 7,
   sheetOrdinal: 3,
 }
+const LOCAL_CELL_VISUAL_DIRTY_MASK = DirtyMaskV3.Value | DirtyMaskV3.Style | DirtyMaskV3.Text | DirtyMaskV3.Rect | DirtyMaskV3.Border
+
 describe('projected workbook local delta builders', () => {
-  it('builds text-only cell deltas from plain accepted snapshots', () => {
+  it('builds cell deltas from the accepted snapshot version and visual shape', () => {
     const batch = buildLocalCellSnapshotWorkbookDelta({
       identity,
       seq: 44,
@@ -23,6 +23,7 @@ describe('projected workbook local delta builders', () => {
         address: 'B2',
         flags: 0,
         sheetName: 'Sheet1',
+        styleId: 'accent',
         value: { tag: ValueTag.Number, value: 17 },
         version: 12,
       },
@@ -37,12 +38,11 @@ describe('projected workbook local delta builders', () => {
       styleSeq: 12,
       valueSeq: 12,
     })
-    expect(batch.dirty.cellRanges).toEqual(new Uint32Array([1, 1, 1, 1, LOCAL_CELL_TEXT_DIRTY_MASK]))
+    expect(batch.dirty.cellRanges).toEqual(new Uint32Array([1, 1, 1, 1, LOCAL_CELL_VISUAL_DIRTY_MASK]))
   })
 
-  it('accepts explicit visual damage for presentation-changing local snapshots', () => {
+  it('marks plain local cell writes as full visual damage so moved text cannot retain stale fills', () => {
     const batch = buildLocalCellSnapshotWorkbookDelta({
-      dirtyMask: LOCAL_CELL_VISUAL_DIRTY_MASK,
       identity,
       seq: 47,
       snapshot: {
@@ -59,7 +59,6 @@ describe('projected workbook local delta builders', () => {
 
   it('builds multi-cell deltas for optimistic trust flag clears', () => {
     const batch = buildLocalCellSnapshotsWorkbookDelta({
-      dirtyMask: LOCAL_CELL_VISUAL_DIRTY_MASK,
       identity,
       seq: 48,
       snapshots: [

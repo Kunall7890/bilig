@@ -77,20 +77,6 @@ function contentEntry(overrides: Partial<TypeGpuTileContentResourceEntryV3> = {}
   }
 }
 
-function rectHandle(): NonNullable<TypeGpuTileContentResourceEntryV3['rectHandle']> {
-  return {
-    buffer: {
-      write() {
-        return undefined
-      },
-    },
-    capacityBytes: 256,
-    classId: 8,
-    layout: 'rectInstances',
-    usedBytes: 80,
-  }
-}
-
 describe('typegpu v3 resource cache revision keys', () => {
   test('keeps equivalent V3 text tile revision keys stable without relying on object identity', () => {
     const first = createTile({
@@ -444,54 +430,6 @@ describe('typegpu v3 resource cache revision keys', () => {
     ).toBe(true)
   })
 
-  test('reuses clean V3 text resources when only global batch revisions advance', () => {
-    const base = createTile({ textCount: 0, textRuns: [] })
-    const cleanRevisionBump = createTile({
-      lastBatchId: base.lastBatchId + 1,
-      textCount: base.textCount,
-      textRuns: base.textRuns,
-      version: { ...base.version, values: base.version.values + 1 },
-    })
-
-    expect(
-      shouldSyncGridTextTileResourceV3({
-        atlasGeometryVersion: 1,
-        content: contentEntry({
-          textAtlasGeometryVersion: 1,
-          textCount: base.textCount,
-          textRunCount: base.textCount,
-          textRevisionKey: resolveGridTextTileRevisionKeyV3(base),
-        }),
-        textRevisionKey: resolveGridTextTileRevisionKeyV3(cleanRevisionBump),
-        tile: cleanRevisionBump,
-      }),
-    ).toBe(false)
-  })
-
-  test('resyncs clean V3 text resources when payload signatures change without dirty spans', () => {
-    const base = createTile({ textCount: 0, textRuns: [] })
-    const changed = createTile({
-      lastBatchId: base.lastBatchId + 1,
-      textCount: 1,
-      textRuns: [createTextRun({ text: 'B' })],
-      version: { ...base.version, values: base.version.values + 1 },
-    })
-
-    expect(
-      shouldSyncGridTextTileResourceV3({
-        atlasGeometryVersion: 1,
-        content: contentEntry({
-          textAtlasGeometryVersion: 1,
-          textCount: base.textCount,
-          textRunCount: base.textCount,
-          textRevisionKey: resolveGridTextTileRevisionKeyV3(base),
-        }),
-        textRevisionKey: resolveGridTextTileRevisionKeyV3(changed),
-        tile: changed,
-      }),
-    ).toBe(true)
-  })
-
   test('maps missing glyph dependencies to dirty text runs', () => {
     const atlas = {
       resolveGlyphRecord(glyphId: number) {
@@ -596,74 +534,6 @@ describe('typegpu v3 resource cache revision keys', () => {
         tile: textOnlyUpdate,
       }),
     ).toBe(false)
-  })
-
-  test('resyncs rect resources when text-only dirty masks carry a changed rect payload', () => {
-    const base = createTile({ rectSignature: 'green-fill-at-row-37' })
-    const shiftedFill = createTile({
-      dirtyLocalCols: new Uint32Array([1, 1]),
-      dirtyLocalRows: new Uint32Array([35, 35]),
-      dirtyMasks: new Uint32Array([DirtyMaskV3.Value | DirtyMaskV3.Text]),
-      rectCount: base.rectCount,
-      rectInstances: new Float32Array(base.rectInstances),
-      rectSignature: 'green-fill-at-row-36',
-      version: { ...base.version, text: 2, values: 2 },
-    })
-
-    expect(
-      shouldSyncGridRectTileResourceV3({
-        content: contentEntry({
-          rectCount: base.rectCount,
-          rectHandle: rectHandle(),
-          rectRevisionKey: rectRevisionKey(base),
-        }),
-        rectRevisionKey: rectRevisionKey(shiftedFill),
-        tile: shiftedFill,
-      }),
-    ).toBe(true)
-  })
-
-  test('reuses clean V3 rect resources when only global batch revisions advance', () => {
-    const base = createTile({ rectCount: 0, rectInstances: new Float32Array() })
-    const cleanRevisionBump = createTile({
-      lastBatchId: base.lastBatchId + 1,
-      rectCount: base.rectCount,
-      rectInstances: base.rectInstances,
-      version: { ...base.version, values: base.version.values + 1 },
-    })
-
-    expect(
-      shouldSyncGridRectTileResourceV3({
-        content: contentEntry({
-          rectCount: base.rectCount,
-          rectRevisionKey: rectRevisionKey(base),
-        }),
-        rectRevisionKey: rectRevisionKey(cleanRevisionBump),
-        tile: cleanRevisionBump,
-      }),
-    ).toBe(false)
-  })
-
-  test('resyncs clean V3 rect resources when payload signatures change without dirty spans', () => {
-    const base = createTile({ rectCount: 0, rectInstances: new Float32Array(), rectSignature: 'rect-a' })
-    const changed = createTile({
-      lastBatchId: base.lastBatchId + 1,
-      rectCount: 0,
-      rectInstances: new Float32Array(),
-      rectSignature: 'rect-b',
-      version: { ...base.version, values: base.version.values + 1 },
-    })
-
-    expect(
-      shouldSyncGridRectTileResourceV3({
-        content: contentEntry({
-          rectCount: base.rectCount,
-          rectRevisionKey: rectRevisionKey(base),
-        }),
-        rectRevisionKey: rectRevisionKey(changed),
-        tile: changed,
-      }),
-    ).toBe(true)
   })
 
   test('keeps rect uploads for decorated text updates and decoration removal', () => {

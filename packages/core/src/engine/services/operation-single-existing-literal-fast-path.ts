@@ -18,6 +18,7 @@ import {
   hasCompleteDirectFormulaDeltas,
 } from './direct-formula-recalc-helpers.js'
 import { directScalarLiteralNumericValue } from './direct-scalar-helpers.js'
+import { hasOperationCompactedRangeDependencies } from './operation-cell-lifecycle-helpers.js'
 import {
   canTrustPhysicalTrackedChangeSplit,
   makeExistingNumericMutationResult,
@@ -25,12 +26,7 @@ import {
 } from './operation-change-helpers.js'
 import { recordKernelSyncOnlyLiteralChange } from './operation-kernel-sync-only-literal-change.js'
 import { applyOperationLookupNumericWriteTailPatches, planOperationLookupNumericWrites } from './operation-lookup-write-plans.js'
-import { hasNonAggregateFormulaDependentForCell } from './operation-non-aggregate-formula-dependent.js'
 import { tryApplySinglePostRecalcDirectFormula, type DirectFormulaMetricCounts } from './operation-post-recalc-direct-formulas.js'
-import {
-  collectSingleFormulaLeafRangeDependentForSingleExistingLiteral,
-  hasKnownDynamicFormulaDependentForSingleExistingLiteral,
-} from './operation-single-existing-literal-dependents.js'
 import type { MutationSource, OperationSingleExistingLiteralFastPathArgs } from './operation-single-existing-literal-fast-path-types.js'
 import { isTableHeaderCell } from './operation-table-header-rename.js'
 
@@ -85,6 +81,7 @@ export function createOperationSingleExistingLiteralFastPath(args: OperationSing
     tryApplyDirectScalarDeltas,
     tryApplyDirectFormulaDeltas,
     countPostRecalcDirectFormulaMetric,
+    hasDynamicFormulaDependents,
   } = args
 
   const hasKnownDynamicFormulaDependents = (
@@ -93,14 +90,46 @@ export function createOperationSingleExistingLiteralFastPath(args: OperationSing
     col: number,
     existingIndex: number,
     singleExistingCellDependent: number,
-  ): boolean =>
-    hasKnownDynamicFormulaDependentForSingleExistingLiteral(args, {
-      sheetId,
-      row,
-      col,
-      existingIndex,
-      singleExistingCellDependent,
-    })
+  ): boolean => {
+    if (singleExistingCellDependent === -2) {
+      return hasDynamicFormulaDependents(existingIndex)
+    }
+    if (singleExistingCellDependent >= 0 && !isRangeEntity(singleExistingCellDependent) && args.state.formulas.size === 1) {
+      const formula = args.state.formulas.get(singleExistingCellDependent)
+      return formula !== undefined && hasOperationCompactedRangeDependencies(formula)
+    }
+    const singleRegionFormulaDependent = args.collectSingleRegionFormulaDependentForCellAt?.(sheetId, row, col)
+    if (singleRegionFormulaDependent === undefined || singleRegionFormulaDependent === -2) {
+      return hasDynamicFormulaDependents(existingIndex)
+    }
+
+    let firstFormulaCellIndex = -1
+    let secondFormulaCellIndex = -1
+    const pushFormulaCellIndex = (candidate: number): void => {
+      if (candidate < 0 || isRangeEntity(candidate)) {
+        return
+      }
+      if (firstFormulaCellIndex === -1) {
+        firstFormulaCellIndex = candidate
+        return
+      }
+      if (candidate !== firstFormulaCellIndex) {
+        secondFormulaCellIndex = candidate
+      }
+    }
+
+    pushFormulaCellIndex(singleExistingCellDependent)
+    pushFormulaCellIndex(singleRegionFormulaDependent)
+    if (firstFormulaCellIndex === -1) {
+      return false
+    }
+    const firstFormula = args.state.formulas.get(firstFormulaCellIndex)
+    if (firstFormula !== undefined && hasOperationCompactedRangeDependencies(firstFormula)) {
+      return true
+    }
+    const secondFormula = secondFormulaCellIndex === -1 ? undefined : args.state.formulas.get(secondFormulaCellIndex)
+    return secondFormula !== undefined && hasOperationCompactedRangeDependencies(secondFormula)
+  }
 
   const collectSingleFormulaLeafRangeDependent = (
     existingIndex: number,
@@ -110,19 +139,47 @@ export function createOperationSingleExistingLiteralFastPath(args: OperationSing
     row: number,
     col: number,
   ): number => {
-    return collectSingleFormulaLeafRangeDependentForSingleExistingLiteral(args, {
-      existingIndex,
-      singleExistingCellDependent,
-      sheetId,
-      sheetName,
-      row,
-      col,
-      formulaScanLimit: FORMULA_LEAF_DEPENDENCY_SCAN_LIMIT,
-    })
-  }
-
-  const hasNonAggregateFormulaDependent = (existingIndex: number): boolean => {
-    return hasNonAggregateFormulaDependentForCell(args.state.formulas, existingIndex, FORMULA_LEAF_DEPENDENCY_SCAN_LIMIT)
+    if (isRangeEntity(singleExistingCellDependent)) {
+      const rangeFormulaDependent = args.getSingleEntityDependent(singleExistingCellDependent)
+      if (rangeFormulaDependent !== -1) {
+        return rangeFormulaDependent
+      }
+    }
+    const indexedSingle =
+      args.collectSingleRegionFormulaDependentForCellAt?.(sheetId, row, col) ??
+      args.collectSingleRegionFormulaDependentForCell(sheetName, row, col)
+    if (indexedSingle >= 0 && !isRangeEntity(indexedSingle)) {
+      return indexedSingle
+    }
+    const dependents = args.collectRegionFormulaDependentsForCell(sheetName, row, col)
+    let singleFormulaCellIndex = -1
+    for (let index = 0; index < dependents.length; index += 1) {
+      const candidate = dependents[index]!
+      if (candidate < 0 || isRangeEntity(candidate)) {
+        continue
+      }
+      if (singleFormulaCellIndex !== -1 && singleFormulaCellIndex !== candidate) {
+        return -2
+      }
+      singleFormulaCellIndex = candidate
+    }
+    if (singleFormulaCellIndex !== -1 || args.state.formulas.size > FORMULA_LEAF_DEPENDENCY_SCAN_LIMIT) {
+      return singleFormulaCellIndex
+    }
+    for (const [formulaCellIndex, formula] of args.state.formulas.entries()) {
+      const dependencyIndices = formula.dependencyIndices
+      for (let index = 0; index < dependencyIndices.length; index += 1) {
+        if (dependencyIndices[index] !== existingIndex) {
+          continue
+        }
+        if (singleFormulaCellIndex !== -1 && singleFormulaCellIndex !== formulaCellIndex) {
+          return -2
+        }
+        singleFormulaCellIndex = formulaCellIndex
+        break
+      }
+    }
+    return singleFormulaCellIndex !== -1 ? singleFormulaCellIndex : indexedSingle === -2 ? -2 : -1
   }
 
   const tryApplySingleExistingDirectLiteralMutation = (
@@ -152,7 +209,7 @@ export function createOperationSingleExistingLiteralFastPath(args: OperationSing
     if (!sheet || sheet.structureVersion !== 1) {
       return false
     }
-    if (args.state.workbook.hasTables() && isTableHeaderCell(args.state.workbook.listTables(), sheet.name, mutation.row, mutation.col)) {
+    if (isTableHeaderCell(args.state.workbook.listTables(), sheet.name, mutation.row, mutation.col)) {
       return false
     }
     const existingIndex =
@@ -227,13 +284,8 @@ export function createOperationSingleExistingLiteralFastPath(args: OperationSing
       return formulaLeafResult !== null
     }
 
-    if (hasAggregateDependents && typeof mutation.value !== 'number') {
-      return false
-    }
-
     if (
       hasAggregateDependents &&
-      !hasNonAggregateFormulaDependent(existingIndex) &&
       !hasExactLookupDependents &&
       !hasSortedLookupDependents &&
       (singleExistingCellDependent === -1 || isRangeEntity(singleExistingCellDependent)) &&
@@ -250,9 +302,6 @@ export function createOperationSingleExistingLiteralFastPath(args: OperationSing
       })
     ) {
       return true
-    }
-    if (hasAggregateDependents && isRangeEntity(singleExistingCellDependent) && hasNonAggregateFormulaDependent(existingIndex)) {
-      return false
     }
     const existingTag = (args.state.workbook.cellStore.tags[existingIndex] as ValueTag | undefined) ?? ValueTag.Empty
     const mutationIsNumber = typeof mutation.value === 'number'
@@ -424,9 +473,6 @@ export function createOperationSingleExistingLiteralFastPath(args: OperationSing
     let shouldNoteAggregateLiteralWrite = false
     if (hasAggregateDependents) {
       if (!directDependentsHandled) {
-        if (hasNonAggregateFormulaDependent(existingIndex)) {
-          return false
-        }
         directDependentsHandled = true
       }
       const singleAffected = collectSingleAffectedDirectRangeDependent({
@@ -582,11 +628,7 @@ export function createOperationSingleExistingLiteralFastPath(args: OperationSing
     const cellStore = args.state.workbook.cellStore
     const existingIndex = request.cellIndex
     const trustedExistingNumericLiteral = request.trustedExistingNumericLiteral === true
-    if (
-      sheet &&
-      args.state.workbook.hasTables() &&
-      isTableHeaderCell(args.state.workbook.listTables(), sheet.name, request.row, request.col)
-    ) {
+    if (sheet && isTableHeaderCell(args.state.workbook.listTables(), sheet.name, request.row, request.col)) {
       return null
     }
     if (
@@ -617,17 +659,12 @@ export function createOperationSingleExistingLiteralFastPath(args: OperationSing
     const hasAggregateDependents =
       isRangeEntity(singleExistingCellDependent) ||
       (hasTrackedColumnDependents && hasTrackedDirectRangeDependents(request.sheetId, request.col))
-    if (hasAggregateDependents && hasNonAggregateFormulaDependent(existingIndex)) {
-      return null
-    }
     if (trustedExistingNumericLiteral && request.emitTracked === false && isRangeEntity(singleExistingCellDependent)) {
       const trustedAggregateResult = tryApplyTrustedSingleRangeDirectAggregateExistingNumericMutation({
         existingIndex,
         rangeEntityDependent: singleExistingCellDependent,
         sheet,
         sheetId: request.sheetId,
-        sheetName,
-        row: request.row,
         col: request.col,
         value: request.value,
         delta: request.value - oldNumber,
@@ -893,11 +930,7 @@ export function createOperationSingleExistingLiteralFastPath(args: OperationSing
     const sheet = args.state.workbook.getSheetById(request.sheetId)
     const cellStore = args.state.workbook.cellStore
     const existingIndex = request.cellIndex
-    if (
-      sheet &&
-      args.state.workbook.hasTables() &&
-      isTableHeaderCell(args.state.workbook.listTables(), sheet.name, request.row, request.col)
-    ) {
+    if (sheet && isTableHeaderCell(args.state.workbook.listTables(), sheet.name, request.row, request.col)) {
       return null
     }
     if (

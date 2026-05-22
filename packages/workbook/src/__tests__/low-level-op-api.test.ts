@@ -39,7 +39,7 @@ describe('@bilig/workbook low-level op api', () => {
     } as const
     const output = {
       kind: 'range',
-      id: 'range_p_Sheet1_p_B2_p_B2',
+      id: 'range_Sheet1_B2_B2',
       label: 'Sheet1!B2',
       range: {
         sheetName: 'Sheet1',
@@ -298,7 +298,7 @@ describe('@bilig/workbook low-level op api', () => {
           path: 'commands[0].target',
           ref: {
             kind: 'range',
-            id: 'range_p_Sheet1_p_B2_p_B2',
+            id: 'range_Sheet1_B2_B2',
             label: 'Sheet1!B2',
             range: {
               sheetName: 'Sheet1',
@@ -365,7 +365,7 @@ describe('@bilig/workbook low-level op api', () => {
       path: 'commands[0].target',
       ref: {
         kind: 'range',
-        id: 'range_p_Sheet1_p_B2_p_C3',
+        id: 'range_Sheet1_B2_C3',
         label: 'Sheet1!B2:C3',
         range: {
           sheetName: 'Sheet1',

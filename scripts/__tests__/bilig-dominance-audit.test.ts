@@ -131,31 +131,24 @@ describe('bilig dominance prompt-to-artifact audit', () => {
 
     expect(uiItem).toMatchObject({
       passed: false,
-      liveBlockers: expect.arrayContaining([
+      liveBlockers: [
         'same-corpus UI browser capture has not been recorded',
         `same-corpus UI proof missing required workloads: ${requiredUiSameCorpusWorkloadList}`,
-        'same-corpus UI proof does not satisfy the current render-proof contract',
-        'same-corpus UI run manifest: strict rendered-grid proof covers 0/9 cases',
         `same-corpus UI proof missing inputs: ${requiredUiSameCorpusInputList}`,
         'same-corpus UI browser capture paused by local resource guard: .agent-coordination/20260508T092619Z-codex-memory-pressure-stop.md',
-      ]),
-      gaps: expect.arrayContaining([
+      ],
+      gaps: [
         'live UI browser evidence is not a same-corpus 10x proof against incumbents',
         'same-corpus UI browser capture has not been recorded',
         `same-corpus UI proof missing required workloads: ${requiredUiSameCorpusWorkloadList}`,
-        'same-corpus UI proof does not satisfy the current render-proof contract',
-        'same-corpus UI run manifest: strict rendered-grid proof covers 0/9 cases',
         `same-corpus UI proof missing inputs: ${requiredUiSameCorpusInputList}`,
         'same-corpus UI browser capture paused by local resource guard: .agent-coordination/20260508T092619Z-codex-memory-pressure-stop.md',
-      ]),
+      ],
       evidence: expect.arrayContaining([
         'live same-corpus UI proof captured: false',
         `live same-corpus UI 10x cases: 0/${String(requiredUiResponsivenessSameCorpusWorkloads.length)}`,
         `live same-corpus UI required workloads: ${requiredUiSameCorpusWorkloadList}`,
         `live same-corpus UI missing required workloads: ${requiredUiSameCorpusWorkloadList}`,
-        'live same-corpus UI render proof contract: same-corpus-ui-v2',
-        `live same-corpus UI strict rendered-grid proof cases: 0/${String(requiredUiResponsivenessSameCorpusWorkloads.length)}`,
-        'live same-corpus UI current-contract evidence complete: false',
         `live same-corpus UI missing inputs: ${requiredUiSameCorpusInputList}`,
         'live same-corpus UI browser capture guard active: true',
       ]),

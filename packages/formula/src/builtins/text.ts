@@ -61,6 +61,9 @@ function coerceNumber(value: CellValue): number | undefined {
     case ValueTag.Empty:
       return 0
     case ValueTag.String:
+      if (value.value.trim().length === 0) {
+        return 0
+      }
       return parseArithmeticNumericText(value.value)
     case ValueTag.Error:
       return undefined

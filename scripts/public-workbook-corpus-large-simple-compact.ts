@@ -77,6 +77,7 @@ export function verifyLargeSimpleWorkbookCompactPreflight(args: {
     fileName: args.artifact.fileName,
     zip,
     options: {
+      afterWorksheetScan: collectGarbage,
       minByteLength: 0,
       releaseZipSource: true,
     },
@@ -128,6 +129,7 @@ export async function verifyLargeSimpleWorkbookCompact(args: {
           fileName: args.artifact.fileName,
           zip,
           options: {
+            afterWorksheetScan: collectGarbage,
             minByteLength: 0,
             releaseZipSource: true,
           },
@@ -174,6 +176,7 @@ export function borrowXlsxZipByteSource(source: XlsxZipByteSource): XlsxZipByteS
           readRangeInto: (start: number, end: number, target: Uint8Array) => source.readRangeInto!(start, end, target),
         }
       : {}),
+    ...(source.inflateRawRange ? { inflateRawRange: (start: number, end: number) => source.inflateRawRange!(start, end) } : {}),
   }
 }
 

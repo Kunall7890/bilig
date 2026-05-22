@@ -4,7 +4,6 @@ import {
   mapStructuralAxisInterval,
   mapStructuralAxisIndex,
   mapStructuralBoundary,
-  normalizeStructuralAxisTransformForAxisLength,
   structuralTransformForOp,
 } from '../engine-structural-utils.js'
 
@@ -99,25 +98,6 @@ describe('engine structural utils', () => {
     expect(inverseMapStructuralAxisIndex(2, transform)).toBe(4)
     expect(inverseMapStructuralAxisIndex(8, transform)).toBe(8)
     expect(inverseMapStructuralAxisIndex(3, { kind: 'move', axis: 'column', start: 2, count: 1, target: 2 })).toBe(3)
-  })
-
-  it('normalizes moves from outside materialized axes to no-ops', () => {
-    const insert = { kind: 'insert' as const, axis: 'column' as const, start: 2, count: 1 }
-    expect(normalizeStructuralAxisTransformForAxisLength(insert, 5)).toBe(insert)
-    expect(normalizeStructuralAxisTransformForAxisLength({ kind: 'move', axis: 'column', start: 5, count: 1, target: 0 }, 5)).toEqual({
-      kind: 'move',
-      axis: 'column',
-      start: 5,
-      count: 1,
-      target: 5,
-    })
-    expect(normalizeStructuralAxisTransformForAxisLength({ kind: 'move', axis: 'column', start: 4, count: 1, target: 0 }, 5)).toEqual({
-      kind: 'move',
-      axis: 'column',
-      start: 4,
-      count: 1,
-      target: 0,
-    })
   })
 
   it('maps structural intervals across insert, delete, and move transforms', () => {

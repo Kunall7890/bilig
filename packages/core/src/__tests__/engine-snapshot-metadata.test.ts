@@ -39,76 +39,6 @@ function isRuntimeFormulaWithDirectCriteria(value: unknown): value is RuntimeFor
 }
 
 describe('engine snapshot metadata formula restore', () => {
-  it('clears aggregate prefix caches before importing snapshots into a warm engine', async () => {
-    const engine = new SpreadsheetEngine({ workbookName: 'warm-import-aggregate-cache' })
-    await engine.ready()
-    engine.createSheet('Sheet1')
-    engine.setRangeValues({ sheetName: 'Sheet1', startAddress: 'A1', endAddress: 'F8' }, [
-      [1, 2, 3, 4, 5, 6],
-      [2, null, 4, true, 6, 7],
-      [3, 4, 'x', 6, 7, 8],
-      [4, 5, 6, 7, null, 9],
-      [5, 6, 7, 8, 9, true],
-      [6, 7, 8, 9, 10, 'tail'],
-      [7, null, 9, 10, 11, 12],
-      [8, 9, 10, 11, 12, 13],
-    ])
-    engine.setCellFormula('Sheet1', 'H8', 'AVERAGEIF(A1:A4,">0")')
-    expect(engine.recalculateDifferential().drift).toEqual([])
-
-    engine.setCellValue('Sheet1', 'A1', '')
-    expect(engine.getCellValue('Sheet1', 'H8')).toEqual({ tag: ValueTag.Number, value: 3 })
-
-    engine.importSnapshot(engine.exportSnapshot())
-
-    expect(engine.getCellValue('Sheet1', 'H8')).toEqual({ tag: ValueTag.Number, value: 3 })
-    expect(engine.recalculateDifferential().drift).toEqual([])
-  })
-
-  it('clears criteria match caches before importing snapshots into a warm engine', async () => {
-    const engine = new SpreadsheetEngine({ workbookName: 'warm-import-criteria-cache' })
-    await engine.ready()
-    engine.createSheet('Sheet1')
-    engine.setRangeValues({ sheetName: 'Sheet1', startAddress: 'A1', endAddress: 'B4' }, [
-      [1, 2],
-      [2, null],
-      [3, 4],
-      [4, 5],
-    ])
-    engine.setCellFormula('Sheet1', 'H8', 'SUMIF(A1:A4,">0",B1:B4)')
-    expect(engine.recalculateDifferential().drift).toEqual([])
-
-    engine.setCellValue('Sheet1', 'A1', null)
-    expect(engine.getCellValue('Sheet1', 'H8')).toEqual({ tag: ValueTag.Number, value: 9 })
-    expect(engine.recalculateDifferential().drift).toEqual([])
-
-    engine.importSnapshot(engine.exportSnapshot())
-
-    expect(engine.getCellValue('Sheet1', 'H8')).toEqual({ tag: ValueTag.Number, value: 9 })
-    expect(engine.recalculateDifferential().drift).toEqual([])
-  })
-
-  it('rebinds runtime-image formulas whose defined names resolve to ranges', async () => {
-    const source = new SpreadsheetEngine({ workbookName: 'range-name-runtime-image-restore' })
-    await source.ready()
-    source.createSheet('Sheet1')
-    source.setRangeValues({ sheetName: 'Sheet1', startAddress: 'A1', endAddress: 'A3' }, [[5], [6], [7]])
-    source.setDefinedName('MyRange', { kind: 'range-ref', sheetName: 'Sheet1', startAddress: 'A1', endAddress: 'A3' })
-    source.setDefinedName('TaxRate', { kind: 'scalar', value: 2 })
-    source.setCellFormula('Sheet1', 'B1', 'SUM(MyRange)+TaxRate')
-
-    expect(source.getCellValue('Sheet1', 'B1')).toEqual({ tag: ValueTag.Number, value: 20 })
-    expect(source.recalculateDifferential().drift).toEqual([])
-
-    const restored = new SpreadsheetEngine({ workbookName: 'range-name-runtime-image-restored' })
-    await restored.ready()
-    restored.importSnapshot(source.exportSnapshot())
-
-    expect(restored.getCellValue('Sheet1', 'B1')).toEqual({ tag: ValueTag.Number, value: 20 })
-    expect(restored.explainCell('Sheet1', 'B1').mode).toBe(FormulaMode.WasmFastPath)
-    expect(restored.recalculateDifferential().drift).toEqual([])
-  })
-
   it('binds defined names before evaluating imported snapshot formulas', async () => {
     const snapshot: WorkbookSnapshot = {
       version: 1,
@@ -141,7 +71,7 @@ describe('engine snapshot metadata formula restore', () => {
 
     expect(engine.getCellValue('Constants', 'F9')).toMatchObject({ tag: ValueTag.String, value: 'USD  000s' })
     expect(engine.getCellValue('Constants', 'C12')).toMatchObject({ tag: ValueTag.String, value: 'USD  000s' })
-    expect(engine.explainCell('Constants', 'F9').mode).toBe(FormulaMode.WasmFastPath)
+    expect(engine.explainCell('Constants', 'F9').mode).toBe(FormulaMode.JsOnly)
     expect(engine.explainCell('Constants', 'C12').mode).toBe(FormulaMode.JsOnly)
     expect(engine.explainCell('Constants', 'F9').directPrecedents).toEqual(['Constants!F7'])
     expect(engine.explainCell('Constants', 'C12').directPrecedents).toEqual(['Constants!F9'])

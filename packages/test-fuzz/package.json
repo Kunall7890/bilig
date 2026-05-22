@@ -12,9 +12,6 @@
     "build": "tsc -p tsconfig.json"
   },
   "dependencies": {
-    "@bilig/agent-api": "workspace:*",
-    "@bilig/binary-protocol": "workspace:*",
-    "@bilig/excel-import": "workspace:*",
     "fast-check": "4.6.0"
   },
   "engines": {

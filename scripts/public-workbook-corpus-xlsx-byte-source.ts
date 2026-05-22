@@ -1,13 +1,14 @@
 import { createHash } from 'node:crypto'
-import { closeSync, fstatSync, openSync, readSync } from 'node:fs'
+import { closeSync, createReadStream, fstatSync, openSync, readSync } from 'node:fs'
+import { createInflateRaw, inflateRawSync } from 'node:zlib'
 
-import type { XlsxZipByteSource } from '../packages/excel-import/src/xlsx-zip.js'
+import type { XlsxZipByteSource, XlsxZipChunkConsumer } from '../packages/excel-import/src/xlsx-zip.js'
 
 export class FileBackedXlsxZipByteSource implements XlsxZipByteSource {
   readonly byteLength: number
   private fd: number | null
 
-  constructor(path: string) {
+  constructor(private readonly path: string) {
     this.fd = openSync(path, 'r')
     this.byteLength = fstatSync(this.fd).size
   }
@@ -53,6 +54,52 @@ export class FileBackedXlsxZipByteSource implements XlsxZipByteSource {
     return target.subarray(0, length)
   }
 
+  inflateRawRange(start: number, end: number): Uint8Array {
+    return inflateRawSync(this.readRange(start, end))
+  }
+
+  async inflateRawRangeChunksAsync(
+    start: number,
+    end: number,
+    onChunk: XlsxZipChunkConsumer,
+    options: { readonly chunkSize: number },
+  ): Promise<boolean> {
+    if (this.fd === null) {
+      throw new Error('XLSX ZIP file source has been released')
+    }
+    if (!Number.isSafeInteger(start) || !Number.isSafeInteger(end) || start < 0 || end < start || end > this.byteLength) {
+      throw new Error('Invalid XLSX ZIP file byte range')
+    }
+    const stream =
+      start === end
+        ? null
+        : createReadStream(this.path, {
+            end: end - 1,
+            highWaterMark: Math.max(1, Math.trunc(options.chunkSize)),
+            start,
+          })
+    const inflate = createInflateRaw()
+    try {
+      if (!stream) {
+        inflate.end()
+      } else {
+        stream.pipe(inflate)
+      }
+      for await (const chunk of inflate) {
+        const bytes = chunk instanceof Uint8Array ? chunk : new Uint8Array(chunk)
+        if (!emitInflatedChunks(bytes, options.chunkSize, onChunk)) {
+          stream?.destroy()
+          inflate.destroy()
+          return true
+        }
+      }
+      return true
+    } finally {
+      stream?.destroy()
+      inflate.destroy()
+    }
+  }
+
   release(): void {
     if (this.fd === null) {
       return
@@ -60,6 +107,16 @@ export class FileBackedXlsxZipByteSource implements XlsxZipByteSource {
     closeSync(this.fd)
     this.fd = null
   }
+}
+
+function emitInflatedChunks(chunk: Uint8Array, chunkSize: number, onChunk: XlsxZipChunkConsumer): boolean {
+  const normalizedChunkSize = Math.max(1, Math.trunc(chunkSize))
+  for (let offset = 0; offset < chunk.byteLength; offset += normalizedChunkSize) {
+    if (onChunk(chunk.subarray(offset, Math.min(chunk.byteLength, offset + normalizedChunkSize))) === false) {
+      return false
+    }
+  }
+  return true
 }
 
 export function isZipWorkbookSource(source: XlsxZipByteSource): boolean {

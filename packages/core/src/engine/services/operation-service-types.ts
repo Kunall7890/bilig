@@ -9,7 +9,6 @@ import type {
   EngineExistingLiteralCellMutationRef,
   EngineExistingNumericCellMutationRef,
   EngineExistingNumericCellMutationResult,
-  EngineFreshDirectAggregateMatrixPlan,
 } from '../../cell-mutations-at.js'
 import type { EnginePatch } from '../../patches/patch-types.js'
 import type { FormulaFamilyFreshUniformRunRegistrationArgs, FormulaFamilyRunUpsertArgs } from '../../formula/formula-family-store.js'
@@ -72,18 +71,12 @@ export interface EngineOperationService {
     batch: EngineOpBatch | null,
     source: 'local' | 'restore' | 'undo' | 'redo',
     potentialNewCells?: number,
-    options?: {
-      readonly freshDirectAggregateMatrixPlan?: EngineFreshDirectAggregateMatrixPlan
-    },
   ) => Effect.Effect<void, EngineMutationError>
   readonly applyCellMutationsAtNow: (
     refs: readonly EngineCellMutationRef[],
     batch: EngineOpBatch | null,
     source: 'local' | 'restore' | 'undo' | 'redo',
     potentialNewCells?: number,
-    options?: {
-      readonly freshDirectAggregateMatrixPlan?: EngineFreshDirectAggregateMatrixPlan
-    },
   ) => void
   readonly applyExistingNumericCellMutationsAtNow: (
     record: Extract<TransactionRecord, { kind: 'existing-numeric-cell-mutations' }>,
@@ -142,10 +135,7 @@ export interface CreateEngineOperationServiceArgs {
     sheetName: string,
     explicitChangedCount: number,
   ) => { changedInputCount: number; formulaChangedCount: number; explicitChangedCount: number }
-  readonly applyStructuralAxisOp: (
-    op: StructuralAxisOp,
-    source?: MutationSource,
-  ) => {
+  readonly applyStructuralAxisOp: (op: StructuralAxisOp) => {
     transaction: StructuralTransaction
     changedCellIndices: number[]
     precomputedChangedInputCellIndices: number[]
@@ -225,7 +215,6 @@ export interface CreateEngineOperationServiceArgs {
   readonly getCellDependents?: (cellIndex: number) => Uint32Array
   readonly getSingleCellDependent?: (cellIndex: number) => number
   readonly collectFormulaDependents: (entityId: number) => Uint32Array
-  readonly forEachFormulaDependencyCell: (cellIndex: number, fn: (dependencyCellIndex: number) => void) => void
   readonly hasRegionFormulaSubscriptionsForColumn: (sheetName: string, col: number) => boolean
   readonly hasRegionFormulaSubscriptionsForColumnAt?: (sheetId: number, col: number) => boolean
   readonly hasRegionFormulaSubscriptionsIntersectingRect?: (

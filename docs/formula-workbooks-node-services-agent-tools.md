@@ -93,7 +93,7 @@ For agents, expose small tools:
 The published MCP server can run against a local WorkPaper JSON file:
 
 ```sh
-npm exec --package @bilig/workpaper@0.48.0 -- \
+npm exec --package @bilig/workpaper@0.41.0 -- \
   bilig-workpaper-mcp --workpaper ./pricing.workpaper.json --init-demo-workpaper --writable
 ```
 
@@ -119,11 +119,10 @@ and needs formula readback, persistence, and restore proof.
 
 ## Evidence and limits
 
-The current checked benchmark artifact records `98/100` comparable
+The current checked benchmark artifact records `94/100` comparable
 mean-latency wins against HyperFormula-style workloads. The worst p95 row is
-public: `aggregate-overlapping-sliding-window` is a `1.104x`
-WorkPaper-to-HyperFormula p95 ratio, and browser UI rendering is outside the
-benchmark.
+public: `structural-move-rows` is a `4.047x` WorkPaper-to-HyperFormula p95
+ratio, and browser UI rendering is outside the benchmark.
 
 This page does not claim full Excel compatibility. It does not claim chart,
 macro, formatting, collaborative editing, or complete XLSX fidelity. Start with

@@ -18,7 +18,7 @@ import type {
   WorkbookAxisEntrySnapshot,
   WorkbookCalculationSettingsSnapshot,
   WorkbookDefinedNameValueSnapshot,
-  WorkbookPivotSnapshot,
+  WorkbookPivotValueSnapshot,
   WorkbookTableSnapshot,
   WorkbookVolatileContextSnapshot,
 } from '@bilig/protocol'
@@ -55,9 +55,6 @@ export interface WorkbookChartOp extends WorkbookChartSnapshot {}
 export interface WorkbookImageOp extends WorkbookImageSnapshot {}
 export interface WorkbookShapeOp extends WorkbookShapeSnapshot {}
 export interface WorkbookMergeRangeOp extends WorkbookMergeRangeSnapshot {}
-export interface WorkbookPivotOp extends WorkbookPivotSnapshot {
-  source: CellRangeRef
-}
 
 export type WorkbookOp =
   | { kind: 'upsertWorkbook'; name: string }
@@ -92,7 +89,6 @@ export type WorkbookOp =
       count: number
       size: number | null
       hidden: boolean | null
-      filtered?: boolean | null
     }
   | {
       kind: 'updateColumnMetadata'
@@ -128,7 +124,6 @@ export type WorkbookOp =
       address: string
       value: LiteralInput
       authoredBlank?: boolean
-      skipTableHeaderRename?: boolean
     }
   | { kind: 'setCellFormula'; sheetName: string; address: string; formula: string }
   | { kind: 'setCellFormat'; sheetName: string; address: string; format: string | null }
@@ -136,16 +131,24 @@ export type WorkbookOp =
   | { kind: 'upsertCellNumberFormat'; format: WorkbookCellNumberFormatOp }
   | { kind: 'setStyleRange'; range: CellRangeRef; styleId: string }
   | { kind: 'setFormatRange'; range: CellRangeRef; formatId: string }
-  | { kind: 'clearCell'; sheetName: string; address: string; skipTableHeaderRename?: boolean }
+  | { kind: 'clearCell'; sheetName: string; address: string }
   | { kind: 'upsertDefinedName'; name: string; value: WorkbookDefinedNameValueSnapshot }
   | { kind: 'deleteDefinedName'; name: string }
   | { kind: 'upsertTable'; table: WorkbookTableOp }
   | { kind: 'deleteTable'; name: string }
   | { kind: 'upsertSpillRange'; sheetName: string; address: string; rows: number; cols: number }
   | { kind: 'deleteSpillRange'; sheetName: string; address: string }
-  | ({
+  | {
       kind: 'upsertPivotTable'
-    } & WorkbookPivotOp)
+      name: string
+      sheetName: string
+      address: string
+      source: CellRangeRef
+      groupBy: string[]
+      values: WorkbookPivotValueSnapshot[]
+      rows: number
+      cols: number
+    }
   | { kind: 'deletePivotTable'; sheetName: string; address: string }
   | { kind: 'upsertChart'; chart: WorkbookChartOp }
   | { kind: 'deleteChart'; id: string }

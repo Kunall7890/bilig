@@ -6,7 +6,8 @@ import {
   type LargeSimpleReferencedSharedStringScanOptions,
 } from './xlsx-large-simple-shared-strings.js'
 import type { LargeSimpleSharedStringIndexSet } from './xlsx-large-simple-shared-string-indexes.js'
-import { forEachInflatedXlsxZipEntryChunk, getZipText, type XlsxZipEntries } from './xlsx-zip.js'
+import { forEachLargeSimpleInflatedZipEntryChunk } from './xlsx-large-simple-stream-garbage.js'
+import { getZipText, type XlsxZipEntries } from './xlsx-zip.js'
 
 const sharedStringsPath = 'xl/sharedStrings.xml'
 
@@ -16,7 +17,7 @@ export function readReferencedLargeSimpleSharedStrings(
   options: LargeSimpleReferencedSharedStringScanOptions = {},
 ): LargeSimpleSharedStrings | null {
   const streamed = readLargeSimpleReferencedSharedStringsFromChunks(
-    (onChunk) => forEachInflatedXlsxZipEntryChunk(zip, sharedStringsPath, onChunk),
+    (onChunk) => forEachLargeSimpleInflatedZipEntryChunk(zip, sharedStringsPath, onChunk),
     referencedIndexes,
     options,
   )
@@ -38,5 +39,8 @@ export function readAllLargeSimpleSharedStringsStreamed(
   zip: XlsxZipEntries,
   options: LargeSimpleReferencedSharedStringScanOptions = {},
 ): LargeSimpleSharedStrings | null {
-  return readAllLargeSimpleSharedStringsFromChunks((onChunk) => forEachInflatedXlsxZipEntryChunk(zip, sharedStringsPath, onChunk), options)
+  return readAllLargeSimpleSharedStringsFromChunks(
+    (onChunk) => forEachLargeSimpleInflatedZipEntryChunk(zip, sharedStringsPath, onChunk),
+    options,
+  )
 }

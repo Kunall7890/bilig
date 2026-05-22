@@ -102,7 +102,14 @@ describe('render tile pane builder', () => {
     })
 
     expect(panes).toHaveLength(6)
-    expect(panes.filter((pane) => pane.drawVisible !== false).map((pane) => pane.paneId)).toEqual(['body:2:1'])
+    expect(panes.filter((pane) => pane.drawVisible !== false).map((pane) => pane.paneId)).toEqual([
+      'body',
+      'body:0:1',
+      'body:1:0',
+      'body:1:1',
+      'body:2:0',
+      'body:2:1',
+    ])
     expect(panes.find((pane) => pane.paneId === 'body')?.surfaceSize).toEqual({
       height: gridMetrics.rowHeight * 96,
       width: gridMetrics.columnWidth * 256,

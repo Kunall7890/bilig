@@ -1,4 +1,3 @@
-import { parseArithmeticNumericText } from '@bilig/formula'
 import { ErrorCode, ValueTag } from '@bilig/protocol'
 import type { EngineRuntimeState, RuntimeDirectScalarDescriptor, RuntimeDirectScalarOperand, U32 } from '../runtime-state.js'
 import { addEngineCounter } from '../../perf/engine-counters.js'
@@ -21,7 +20,6 @@ export const MAX_INITIAL_NATIVE_DIRECT_SCALAR_BATCH_SIZE = 65_536
 
 interface InitialNativeDirectScalarBatchState {
   readonly workbook: EngineRuntimeState['workbook']
-  readonly strings: EngineRuntimeState['strings']
   readonly wasm: EngineRuntimeState['wasm']
   readonly counters: EngineRuntimeState['counters']
 }
@@ -86,16 +84,7 @@ export function createInitialNativeDirectScalarBatch(args: {
           return false
         }
         batchRefs[index] = BATCH_REF_NONE
-        const tag = (cellStore.tags[operand.cellIndex] as ValueTag | undefined) ?? ValueTag.Empty
-        if (tag === ValueTag.String) {
-          const stringId = cellStore.stringIds[operand.cellIndex] ?? 0
-          const numeric = parseArithmeticNumericText(stringId === 0 ? '' : args.state.strings.get(stringId))
-          tags[index] = numeric === undefined ? ValueTag.Error : ValueTag.Number
-          values[index] = numeric ?? 0
-          errors[index] = numeric === undefined ? ErrorCode.Value : ErrorCode.None
-          return true
-        }
-        tags[index] = tag
+        tags[index] = (cellStore.tags[operand.cellIndex] as ValueTag | undefined) ?? ValueTag.Empty
         values[index] = cellStore.numbers[operand.cellIndex] ?? 0
         errors[index] = (cellStore.errors[operand.cellIndex] as ErrorCode | undefined) ?? ErrorCode.None
         return true

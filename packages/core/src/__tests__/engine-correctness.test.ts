@@ -966,9 +966,8 @@ describe('engine correctness', () => {
         expect(redoCount).toBe(undoCount)
         expect(engine.exportSnapshot()).toEqual(finalSnapshot)
       },
-      parameters: { numRuns: 100 },
     })
-  }, 20_000)
+  })
 
   it('replays captured local batches into an equivalent replica state', async () => {
     await runProperty({
@@ -1010,7 +1009,6 @@ describe('engine correctness', () => {
           expect(replica.exportSnapshot()).toEqual(primarySnapshot)
         }
       },
-      parameters: { numRuns: 100 },
     })
-  }, 20_000)
+  })
 })

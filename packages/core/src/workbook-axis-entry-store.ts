@@ -84,23 +84,13 @@ export class WorkbookAxisEntryStore {
     return listAxisEntries(axis === 'row' ? sheet.rowAxis : sheet.columnAxis)
   }
 
-  createAxisEntries(axis: WorkbookAxis, start: number, count: number): WorkbookAxisEntrySnapshot[] {
-    if (count <= 0) {
-      return []
-    }
-    return Array.from({ length: count }, (_, offset) => ({
-      id: this.options.createAxisEntry(axis).id,
-      index: start + offset,
-    }))
-  }
-
   materializeAxisEntries(sheet: SheetRecord, axis: WorkbookAxis, start: number, count: number): WorkbookAxisEntrySnapshot[] {
     if (count === 1) {
       const entries = axis === 'row' ? sheet.rowAxis : sheet.columnAxis
       let entry = entries[start]
       if (!entry) {
         const existingId = sheet.axisMap.getId(axis, start)
-        entry = existingId ? { id: existingId, size: null, hidden: null, filtered: null } : this.options.createAxisEntry(axis)
+        entry = existingId ? { id: existingId, size: null, hidden: null } : this.options.createAxisEntry(axis)
         entries[start] = entry
       }
       const snapshot = snapshotAxisEntriesInRange(entries, start, 1)
@@ -191,7 +181,6 @@ export class WorkbookAxisEntryStore {
         id: snapshot.id,
         size: null,
         hidden: null,
-        filtered: null,
       }
     }
   }

@@ -14,6 +14,7 @@ import {
   valueKindTinyInteger,
 } from './xlsx-large-simple-arena-constants.js'
 import { createLazyWorkbookSheetCells } from './xlsx-large-simple-lazy-sheet-cells.js'
+import { lazySheetCellArenaIndex, type LazySheetCellIndexes } from './xlsx-large-simple-lazy-sheet-indexes.js'
 import type { LargeSimpleSharedStrings } from './xlsx-large-simple-shared-strings.js'
 
 type WorkbookSheetCells = WorkbookSnapshot['sheets'][number]['cells']
@@ -21,15 +22,21 @@ type WorkbookSheetCell = WorkbookSheetCells[number]
 
 export interface DetachedLazySheetCellSource {
   readonly cellCount: number
-  readonly arenaIndexes: Uint32Array | number
+  readonly arenaIndexes: LazySheetCellIndexes
   readonly length: number
   readonly denseRowMajorWidth: number | null
   readonly linearCellIndexes?: Uint32Array
   readonly linearRowMajorWidth: number | null
   readonly rows: Uint32Array
   readonly columns: Uint16Array
+  readonly rowRunIndexes?: Uint32Array
+  readonly rowRunRows?: Uint32Array
+  readonly rowRunStartColumns?: Uint16Array
+  readonly columnPattern?: Uint16Array
   readonly valueKinds: Uint8Array
   readonly numberValues?: Float64Array
+  readonly sparseNumberCellIndexes?: Uint32Array
+  readonly sparseNumberValues?: Float64Array
   readonly tinyIntegerValues?: Int8Array
   readonly smallIntegerValues?: Int16Array
   readonly sparseSmallIntegerCellIndexes?: Uint32Array
@@ -37,9 +44,9 @@ export interface DetachedLazySheetCellSource {
   readonly integerValues?: Int32Array
   readonly sparseIntegerCellIndexes?: Uint32Array
   readonly sparseIntegerValues?: Int32Array
-  readonly stringIds?: Uint32Array
+  readonly stringIds?: Uint16Array | Uint32Array
   readonly sparseStringCellIndexes?: Uint32Array
-  readonly sparseStringIds?: Uint32Array
+  readonly sparseStringIds?: Uint16Array | Uint32Array
   readonly booleanValues?: Uint8Array
   readonly formulaIds?: Uint32Array
   readonly strings: readonly string[]
@@ -56,7 +63,7 @@ function materializeDetachedLazyCell(source: DetachedLazySheetCellSource, index:
   if (!Number.isInteger(index) || index < 0 || index >= source.cellCount) {
     return undefined
   }
-  const arenaIndex = typeof source.arenaIndexes === 'number' ? index : (source.arenaIndexes[index] ?? -1)
+  const arenaIndex = lazySheetCellArenaIndex(source.arenaIndexes, index)
   if (arenaIndex < 0 || arenaIndex >= source.length) {
     return undefined
   }
@@ -79,7 +86,7 @@ function materializeDetachedValue(source: DetachedLazySheetCellSource, index: nu
   const valueKind = source.valueKinds[index] ?? valueKindEmpty
   switch (valueKind) {
     case valueKindNumber:
-      return source.numberValues?.[index]
+      return numberValueAt(source, index)
     case valueKindTinyInteger:
       return source.tinyIntegerValues?.[index]
     case valueKindSmallInteger:
@@ -112,6 +119,10 @@ function detachedRowAt(source: DetachedLazySheetCellSource, index: number): numb
   if (source.linearCellIndexes && source.linearRowMajorWidth !== null) {
     return Math.floor((source.linearCellIndexes[index] ?? 0) / source.linearRowMajorWidth)
   }
+  if (source.rowRunIndexes && source.rowRunRows) {
+    const runIndex = findRowRunIndex(source.rowRunIndexes, index)
+    return runIndex === -1 ? 0 : (source.rowRunRows[runIndex] ?? 0)
+  }
   return source.rows[index] ?? 0
 }
 
@@ -122,7 +133,30 @@ function detachedColumnAt(source: DetachedLazySheetCellSource, index: number): n
   if (source.linearCellIndexes && source.linearRowMajorWidth !== null) {
     return (source.linearCellIndexes[index] ?? 0) % source.linearRowMajorWidth
   }
+  if (source.rowRunIndexes && source.rowRunStartColumns) {
+    const runIndex = findRowRunIndex(source.rowRunIndexes, index)
+    const start = runIndex === -1 ? 0 : (source.rowRunIndexes[runIndex] ?? 0)
+    return (runIndex === -1 ? 0 : (source.rowRunStartColumns[runIndex] ?? 0)) + index - start
+  }
+  if (source.rowRunIndexes && source.columnPattern) {
+    const runIndex = findRowRunIndex(source.rowRunIndexes, index)
+    const start = runIndex === -1 ? 0 : (source.rowRunIndexes[runIndex] ?? 0)
+    return source.columnPattern[index - start] ?? 0
+  }
   return source.columns[index] ?? 0
+}
+
+function numberValueAt(source: DetachedLazySheetCellSource, index: number): number | undefined {
+  if (source.numberValues) {
+    return source.numberValues[index]
+  }
+  const sparseIndexes = source.sparseNumberCellIndexes
+  const sparseValues = source.sparseNumberValues
+  if (!sparseIndexes || !sparseValues || sparseIndexes.length === 0) {
+    return undefined
+  }
+  const offset = binarySearchUint32Prefix(sparseIndexes, sparseIndexes.length, index)
+  return offset === -1 ? undefined : sparseValues[offset]
 }
 
 function smallIntegerValueAt(source: DetachedLazySheetCellSource, index: number): number | undefined {
@@ -163,7 +197,7 @@ function sharedStringIndexAt(source: DetachedLazySheetCellSource, index: number)
 
 function stringIdAt(source: DetachedLazySheetCellSource, index: number): number {
   if (source.stringIds) {
-    return source.stringIds[index] ?? noPoolId
+    return normalizeStoredStringId(source.stringIds[index], source.stringIds)
   }
   const sparseIndexes = source.sparseStringCellIndexes
   const sparseIds = source.sparseStringIds
@@ -171,5 +205,29 @@ function stringIdAt(source: DetachedLazySheetCellSource, index: number): number 
     return noPoolId
   }
   const offset = binarySearchUint32Prefix(sparseIndexes, sparseIndexes.length, index)
-  return offset === -1 ? noPoolId : (sparseIds[offset] ?? noPoolId)
+  return offset === -1 ? noPoolId : normalizeStoredStringId(sparseIds[offset], sparseIds)
+}
+
+function normalizeStoredStringId(value: number | undefined, ids: Uint16Array | Uint32Array): number {
+  if (value === undefined) {
+    return noPoolId
+  }
+  return ids instanceof Uint16Array && value === 0xffff ? noPoolId : value
+}
+
+function findRowRunIndex(rowRunIndexes: Uint32Array, cellIndex: number): number {
+  let low = 0
+  let high = rowRunIndexes.length - 1
+  let result = -1
+  while (low <= high) {
+    const mid = (low + high) >>> 1
+    const start = rowRunIndexes[mid] ?? 0
+    if (start <= cellIndex) {
+      result = mid
+      low = mid + 1
+    } else {
+      high = mid - 1
+    }
+  }
+  return result
 }

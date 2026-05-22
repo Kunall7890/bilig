@@ -71,14 +71,7 @@ function direct(label: string, ...args: string[]): CiTask {
 }
 
 function directPackageScript(label: string, scriptName: string): CiTask {
-  const commands = packageScriptCommands(scriptName)
-  if (commands.length === 1) {
-    return direct(label, ...commands[0])
-  }
-  return {
-    label,
-    steps: commands.map((command, index) => direct(`${label} ${index + 1}/${commands.length}`, ...command)),
-  }
+  return direct(label, ...packageScriptCommand(scriptName))
 }
 
 function bunScript(label: string, script: string, ...args: string[]): CiTask {
@@ -101,12 +94,12 @@ function readPackageScripts(): Readonly<Record<string, string>> {
   return packageJson.scripts
 }
 
-function packageScriptCommands(scriptName: string): readonly (readonly string[])[] {
+function packageScriptCommand(scriptName: string): readonly string[] {
   const command = packageScripts[scriptName]
   if (!command) {
     throw new Error(`missing package script: ${scriptName}`)
   }
-  const unsupportedShellTokens = new Set(['||', ';', '|', '>', '<'])
+  const unsupportedShellTokens = new Set(['&&', '||', ';', '|', '>', '<'])
   const tokens = command
     .trim()
     .split(/\s+/u)
@@ -115,21 +108,7 @@ function packageScriptCommands(scriptName: string): readonly (readonly string[])
   if (unsupportedToken) {
     throw new Error(`package script ${scriptName} uses unsupported shell token ${unsupportedToken}`)
   }
-  const commands: string[][] = [[]]
-  for (const token of tokens) {
-    if (token === '&&') {
-      if (commands[commands.length - 1]?.length === 0) {
-        throw new Error(`package script ${scriptName} has an empty command before &&`)
-      }
-      commands.push([])
-      continue
-    }
-    commands[commands.length - 1]?.push(token)
-  }
-  if (commands[commands.length - 1]?.length === 0) {
-    throw new Error(`package script ${scriptName} has an empty command after &&`)
-  }
-  return commands
+  return tokens
 }
 
 function isStringRecordContainer(value: unknown, key: string): value is Record<string, Record<string, string>> {
@@ -276,10 +255,7 @@ async function runSequential(label: string, tasks: readonly CiTask[]): Promise<C
 const coverageLane: CiTask = {
   label: 'coverage + contracts',
   steps: [
-    withEnv(pnpm('coverage', 'coverage'), {
-      BILIG_BENCH_TOLERANCE: process.env['BILIG_BENCH_TOLERANCE'] ?? '2',
-      CI: process.env['CI'] ?? '1',
-    }),
+    pnpm('coverage', 'coverage'),
     {
       label: 'coverage contracts',
       execute: async () => {
@@ -288,21 +264,13 @@ const coverageLane: CiTask = {
     },
   ],
 }
-const headlessGuardedSumifsPerformanceLane = direct(
-  'headless guarded SUMIFS performance',
-  workspaceBin('tsx'),
-  'scripts/run-vitest.ts',
-  '--run',
-  'packages/headless/src/__tests__/guarded-sumifs-workpaper-performance.test.ts',
-)
-const unifiedFuzzLane = pnpm('unified fuzz', 'test:fuzz')
+const fuzzScript = runDeepGates ? 'test:fuzz:main' : 'test:fuzz'
+const vitestFuzzLane = withEnv(pnpm(runDeepGates ? 'vitest fuzz main' : 'vitest fuzz default', fuzzScript), {
+  BILIG_FUZZ_SKIP_BROWSER: '1',
+})
 const browserWebBundleBuild = withEnv(pnpm('browser web bundle build', '--filter', '@bilig/web', 'build:bundle'), {
   VITE_BILIG_REMOTE_SYNC: '0',
 })
-const releaseBundleTasks: readonly CiTask[] = [
-  pnpm('production web bundle build', '--filter', '@bilig/web', 'build:bundle'),
-  pnpm('release check', 'release:check'),
-]
 const appRuntimeDependencyBuild = pnpm('app runtime dependency build', '--filter', '@bilig/app^...', 'run', 'build')
 const wasmBuildTask: CiTask = {
   label: 'wasm build',
@@ -312,14 +280,17 @@ const wasmBuildTask: CiTask = {
   ],
 }
 const browserLane: CiTask = {
-  label: runFullGates ? 'browser tests + perf + deep coverage' : 'browser ci smoke tests',
+  label: runFullGates ? 'browser tests + perf + fuzz' : 'browser ci smoke tests',
   steps: [
     withEnv(pnpm('browser tests', 'test:browser'), {
       BILIG_BROWSER_CI_SMOKE: runFullGates ? '0' : '1',
       BILIG_BROWSER_INCLUDE_PERF: runDeepGates ? '1' : '0',
       BILIG_BROWSER_INCLUDE_DEEP: runDeepGates ? '1' : '0',
+      BILIG_BROWSER_INCLUDE_FUZZ: runDeepGates ? '1' : '0',
       BILIG_DEV_APP_RUNTIME_BUILD: '0',
       BILIG_DEV_WEB_PREVIEW_BUILD: '0',
+      BILIG_FUZZ_PROFILE: 'main',
+      BILIG_FUZZ_CAPTURE: '1',
     }),
   ],
 }
@@ -329,7 +300,7 @@ const parallelFocusedCorrectnessLanes: readonly CiTask[] = [
   directPackageScript('correctness server', 'test:correctness:server'),
   directPackageScript('correctness browser runtime', 'test:correctness:browser'),
 ]
-const corpusCorrectnessLane = withEnv(pnpm('correctness public workbook corpus', 'test:correctness:corpus'), {
+const corpusCorrectnessLane = withEnv(directPackageScript('correctness public workbook corpus', 'test:correctness:corpus'), {
   BILIG_VITEST_FILE_CHUNK_SIZE: '10',
 })
 const generatedSourceChecks: readonly CiTask[] = [
@@ -426,7 +397,6 @@ const generatedSourceChecks: readonly CiTask[] = [
   bunScript('public evidence check', 'scripts/sync-public-evidence.ts', '--check'),
   bunScript('headless package footprint check', 'scripts/sync-headless-package-footprint.ts', '--check'),
   bunScript('create WorkPaper package check', 'scripts/check-create-workpaper-package.ts'),
-  tsxScript('workbook agent model example smoke', 'scripts/check-workbook-agent-model-example.ts'),
   bunScript('agent discovery docs check', 'scripts/sync-agent-discovery-docs.ts', '--check'),
   tsxScript('docs discovery check', 'scripts/check-docs-discovery.ts'),
 ]
@@ -438,7 +408,7 @@ try {
   log(`profile ${ciProfile}`)
   if (!runFullGates) {
     log(
-      'fast profile runs generated checks, static checks, focused correctness tests, unified fuzz, browser smoke, release budgets, perf smoke, and clean-diff checks; pnpm run ci uses the full correctness profile',
+      'fast profile runs generated checks, static checks, focused correctness tests, browser smoke, release budgets, perf smoke, and clean-diff checks; run pnpm run ci:full for coverage, fuzz, full browser, and deep benchmark gates',
     )
   }
   if (skipBrowserGates) {
@@ -475,15 +445,12 @@ try {
     ])),
   )
 
-  // Validate the production-sync bundle before the browser-preview build intentionally rewrites dist for local sync.
-  allCompleted.push(...(await runSequential('release bundle gate', releaseBundleTasks)))
-
   if (runFullGates) {
     allCompleted.push(
-      ...(await runSequential('functional heavy checks', [
+      ...(await runStage('functional heavy checks', [
         {
           label: 'vitest heavy checks',
-          steps: [headlessGuardedSumifsPerformanceLane, coverageLane, unifiedFuzzLane],
+          steps: [coverageLane, vitestFuzzLane],
         },
         ...(skipBrowserGates ? [] : [browserWebBundleBuild]),
       ])),
@@ -493,7 +460,6 @@ try {
     // termination before assertion output on constrained machines.
     allCompleted.push(...(await runSequential('focused correctness checks', parallelFocusedCorrectnessLanes)))
     allCompleted.push(...(await runSequential('corpus correctness benchmark', [corpusCorrectnessLane])))
-    allCompleted.push(...(await runSequential('unified fuzz checks', [unifiedFuzzLane])))
     if (!skipBrowserGates) {
       allCompleted.push(...(await runStage('browser smoke setup', [browserWebBundleBuild])))
     }
@@ -502,6 +468,13 @@ try {
   if (!skipBrowserGates) {
     allCompleted.push(...(await runSequential('browser gates', [browserLane])))
   }
+
+  allCompleted.push(
+    ...(await runSequential('release bundle gate', [
+      pnpm('production web bundle build', '--filter', '@bilig/web', 'build:bundle'),
+      pnpm('release check', 'release:check'),
+    ])),
+  )
 
   allCompleted.push(
     ...(await runSequential('performance and clean-diff gates', [

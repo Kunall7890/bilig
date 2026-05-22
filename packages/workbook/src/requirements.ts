@@ -1,93 +1,30 @@
-import { describeRef, type WorkbookCheckExpectationDescription, type WorkbookRefDescription } from './describe.js'
+import { describeRef, type WorkbookRefDescription } from './describe.js'
 import type { WorkbookRef } from './find.js'
 import type { WorkbookActionCommand, WorkbookActionPlan } from './model.js'
-import type { EngineOp, WorkbookOp } from './ops.js'
-import type { WorkbookCheckExpectation, WorkbookCheckResult } from './result.js'
+import type { WorkbookOp } from './ops.js'
+import type { WorkbookCheckResult } from './result.js'
 
 export type WorkbookRuntimeRequirementKind = 'apply' | 'read' | 'verify'
 
 export type WorkbookRuntimeCapability = 'writeFormula' | 'writeValue' | 'format' | 'clear' | 'applyOp' | 'read' | 'verifyCheck'
 
-export const workbookRuntimeCapabilities = Object.freeze([
-  'writeFormula',
-  'writeValue',
-  'format',
-  'clear',
-  'applyOp',
-  'read',
-  'verifyCheck',
-] satisfies readonly WorkbookRuntimeCapability[])
-
-export type WorkbookRuntimeMaterialization = 'concreteOp' | 'adapterMaterialization' | 'providedOp'
-
 export interface WorkbookRuntimeRequirement {
   readonly kind: WorkbookRuntimeRequirementKind
   readonly capability: WorkbookRuntimeCapability
-  readonly path: string
   readonly message: string
-  readonly materialization?: WorkbookRuntimeMaterialization
   readonly commandIndex?: number
   readonly checkIndex?: number
   readonly opIndex?: number
-  readonly opIndexes?: readonly number[]
   readonly opKind?: string
   readonly checkKind?: string
   readonly target?: WorkbookRefDescription
   readonly refs?: readonly WorkbookRefDescription[]
-  readonly expectation?: WorkbookCheckExpectationDescription
 }
 
 export interface WorkbookRuntimeRequirements {
   readonly modelName: string
   readonly actionName: string
   readonly requirements: readonly WorkbookRuntimeRequirement[]
-}
-
-export interface WorkbookRuntimePreview {
-  readonly modelName: string
-  readonly actionName: string
-  readonly requirements: readonly WorkbookRuntimeRequirement[]
-  readonly materializedOps: readonly EngineOp[]
-}
-
-export interface WorkbookRuntimeCapabilityIssue {
-  readonly capability: WorkbookRuntimeCapability
-  readonly path: string
-  readonly message: string
-  readonly requirement: WorkbookRuntimeRequirement
-}
-
-export interface WorkbookRuntimeCapabilityVerification {
-  readonly status: 'supported' | 'unsupported'
-  readonly missing: readonly WorkbookRuntimeCapabilityIssue[]
-}
-
-export function isWorkbookRuntimeCapability(value: unknown): value is WorkbookRuntimeCapability {
-  return typeof value === 'string' && workbookRuntimeCapabilities.some((capability) => capability === value)
-}
-
-export function verifyRuntimeRequirements(
-  requirements: WorkbookRuntimeRequirements,
-  capabilities: readonly WorkbookRuntimeCapability[],
-): WorkbookRuntimeCapabilityVerification {
-  const supported = new Set(capabilities)
-  const missing = requirements.requirements.flatMap((requirement): WorkbookRuntimeCapabilityIssue[] => {
-    if (supported.has(requirement.capability)) {
-      return []
-    }
-    return [
-      {
-        capability: requirement.capability,
-        path: requirement.path,
-        message: `Runtime is missing ${requirement.capability} for ${requirement.path}: ${requirement.message}`,
-        requirement,
-      },
-    ]
-  })
-  return {
-    status: missing.length === 0 ? 'supported' : 'unsupported',
-    missing,
-  }
 }
 
 function describedRef(ref: WorkbookRef | undefined): { readonly target: WorkbookRefDescription } | {} {
@@ -134,107 +71,11 @@ function commandMessage(command: WorkbookActionCommand): string {
   }
 }
 
-function expectationDescription(expectation: WorkbookCheckExpectation): WorkbookCheckExpectationDescription {
-  if (expectation.kind === 'valueEquals') {
-    return {
-      kind: 'valueEquals',
-      value: expectation.value,
-    }
-  }
-  if (expectation.kind === 'valuesEqual') {
-    return {
-      kind: 'valuesEqual',
-      values: expectation.values.map((row) => [...row]),
-    }
-  }
-  if (expectation.kind === 'formulaEquals') {
-    return {
-      kind: 'formulaEquals',
-      formula: expectation.formula,
-      inputs: expectation.inputs.map(describeRef),
-    }
-  }
-  return {
-    kind: 'formulasEqual',
-    formulas: expectation.formulas.map((row) => [...row]),
-  }
-}
-
-function concreteSingleCell(target: WorkbookRef): { sheetName: string; address: string } | null {
-  if (target.kind !== 'range') {
-    return null
-  }
-  const range = target.range
-  return range.startAddress === range.endAddress ? { sheetName: range.sheetName, address: range.startAddress } : null
-}
-
-function expectedConcreteOp(command: WorkbookActionCommand): WorkbookOp | null {
-  if (command.kind === 'op') {
-    return command.op
-  }
-  const target = concreteSingleCell(command.target)
-  if (target === null) {
-    return null
-  }
-  switch (command.kind) {
-    case 'writeFormula':
-      return {
-        kind: 'setCellFormula',
-        sheetName: target.sheetName,
-        address: target.address,
-        formula: command.formula,
-      }
-    case 'writeValue':
-      return {
-        kind: 'setCellValue',
-        sheetName: target.sheetName,
-        address: target.address,
-        value: command.value,
-      }
-    case 'clear':
-      return {
-        kind: 'clearCell',
-        sheetName: target.sheetName,
-        address: target.address,
-      }
-    case 'format':
-      if (command.numberFormat === undefined) {
-        return null
-      }
-      return {
-        kind: 'setCellFormat',
-        sheetName: target.sheetName,
-        address: target.address,
-        format: command.numberFormat,
-      }
-  }
-}
-
-function opIndexesFor(command: WorkbookActionCommand, ops: readonly WorkbookOp[]): readonly number[] {
-  const expected = expectedConcreteOp(command)
-  if (expected === null) {
-    return []
-  }
-  const expectedKey = opKey(expected)
-  return ops.flatMap((op, index) => (opKey(op) === expectedKey ? [index] : []))
-}
-
-function commandMaterialization(command: WorkbookActionCommand, opIndexes: readonly number[]): WorkbookRuntimeMaterialization {
-  if (command.kind === 'op') {
-    return 'providedOp'
-  }
-  return opIndexes.length === 0 ? 'adapterMaterialization' : 'concreteOp'
-}
-
-function commandRequirement(command: WorkbookActionCommand, commandIndex: number, ops: readonly WorkbookOp[]): WorkbookRuntimeRequirement {
-  const opIndexes = opIndexesFor(command, ops)
+function commandRequirement(command: WorkbookActionCommand, commandIndex: number): WorkbookRuntimeRequirement {
   return {
     kind: 'apply',
     capability: commandCapability(command),
-    path: `commands[${String(commandIndex)}]`,
     commandIndex,
-    materialization: commandMaterialization(command, opIndexes),
-    ...(opIndexes.length > 0 ? { opIndexes } : {}),
     ...(command.kind === 'op' ? { opKind: command.op.kind } : {}),
     ...describedRef(command.target),
     ...describedRefs(commandRefs(command)),
@@ -249,12 +90,10 @@ function readRequirement(check: WorkbookCheckResult, checkIndex: number): Workbo
   return {
     kind: 'read',
     capability: 'read',
-    path: `checks[${String(checkIndex)}]`,
     checkIndex,
     checkKind: check.kind,
     ...describedRef(check.target),
     ...describedRefs(check.expectation.kind === 'formulaEquals' ? check.expectation.inputs : undefined),
-    expectation: expectationDescription(check.expectation),
     message: `Read ${check.target?.label ?? check.kind} for ${check.expectation.kind}`,
   }
 }
@@ -266,7 +105,6 @@ function verifyRequirement(check: WorkbookCheckResult, checkIndex: number): Work
   return {
     kind: 'verify',
     capability: 'verifyCheck',
-    path: `checks[${String(checkIndex)}]`,
     checkIndex,
     checkKind: check.kind,
     ...describedRef(check.target),
@@ -293,22 +131,28 @@ function opKey(op: WorkbookOp): string {
   return JSON.stringify(canonicalValue(op))
 }
 
+function commandOpKeys(commands: readonly WorkbookActionCommand[]): ReadonlySet<string> {
+  const keys = new Set<string>()
+  commands.forEach((command) => {
+    if (command.kind === 'op') {
+      keys.add(opKey(command.op))
+    }
+  })
+  return keys
+}
+
 export function describeRuntimeRequirements<Refs>(plan: WorkbookActionPlan<Refs>): WorkbookRuntimeRequirements {
-  const requirements: WorkbookRuntimeRequirement[] = plan.commands.map((command, commandIndex) =>
-    commandRequirement(command, commandIndex, plan.ops),
-  )
-  const commandBackedOpIndexes = new Set(plan.commands.flatMap((command) => opIndexesFor(command, plan.ops)))
+  const requirements: WorkbookRuntimeRequirement[] = plan.commands.map(commandRequirement)
+  const explicitCommandOps = commandOpKeys(plan.commands)
 
   plan.ops.forEach((op, opIndex) => {
-    if (commandBackedOpIndexes.has(opIndex)) {
+    if (explicitCommandOps.has(opKey(op))) {
       return
     }
     requirements.push({
       kind: 'apply',
       capability: 'applyOp',
-      path: `ops[${String(opIndex)}]`,
       opIndex,
-      materialization: 'providedOp',
       opKind: op.kind,
       message: `Apply workbook op ${op.kind}`,
     })

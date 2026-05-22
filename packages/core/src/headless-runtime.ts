@@ -1,11 +1,9 @@
 export { CellFlags } from './cell-store.js'
 export type {
-  EngineCellMutationAt,
   EngineCellMutationRef,
   EngineExistingLiteralCellMutationRef,
   EngineExistingNumericCellMutationRef,
   EngineExistingNumericCellMutationResult,
-  EngineFreshDirectAggregateMatrixPlan,
   EngineFormulaSourceRef,
   EngineFormulaSourceRefs,
   EngineFormulaSourceRefTable,

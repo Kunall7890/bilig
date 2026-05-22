@@ -1,6 +1,6 @@
 import type { EngineOpBatch } from '@bilig/workbook'
 import type { CellValue } from '@bilig/protocol'
-import type { EngineCellMutationRef, EngineFreshDirectAggregateMatrixPlan } from '../../cell-mutations-at.js'
+import type { EngineCellMutationRef } from '../../cell-mutations-at.js'
 import { batchOpOrder, markBatchApplied, type OpOrder } from '../../replica-state.js'
 import { DirectFormulaIndexCollection } from './direct-formula-index-collection.js'
 import { aggregateColumnDependencyKey } from './direct-formula-recalc-helpers.js'
@@ -244,23 +244,12 @@ export function createOperationCellMutationApplier(input: CreateOperationCellMut
     batch: EngineOpBatch | null,
     source: 'local' | 'restore' | 'undo' | 'redo',
     potentialNewCells?: number,
-    options?: {
-      readonly freshDirectAggregateMatrixPlan?: EngineFreshDirectAggregateMatrixPlan
-    },
   ): void {
     const isRestore = source === 'restore'
     if (tryApplySingleExistingDirectLiteralMutation(refs, batch, source)) {
       return
     }
-    if (
-      freshDirectAggregateFormulaBatchFastPath?.tryApplyFreshDirectAggregateFormulaMatrixBatch(
-        refs,
-        batch,
-        source,
-        potentialNewCells,
-        options?.freshDirectAggregateMatrixPlan,
-      )
-    ) {
+    if (freshDirectAggregateFormulaBatchFastPath?.tryApplyFreshDirectAggregateFormulaMatrixBatch(refs, batch, source, potentialNewCells)) {
       return
     }
     if (freshDirectScalarFormulaBatchFastPath?.tryApplyFreshDirectScalarFormulaMatrixBatch(refs, batch, source, potentialNewCells)) {
@@ -292,7 +281,6 @@ export function createOperationCellMutationApplier(input: CreateOperationCellMut
     let explicitChangedCount = 0
     let topologyChanged = false
     let compileMs = 0
-    const precomputedKernelSyncCellIndices: number[] = []
     const postRecalcDirectFormulaIndices = new DirectFormulaIndexCollection()
     const postRecalcDirectFormulaMetrics: DirectFormulaMetricCounts = {
       wasmFormulaCount: 0,
@@ -425,14 +413,6 @@ export function createOperationCellMutationApplier(input: CreateOperationCellMut
                 applyDirectFormulaCurrentResult,
                 tryApplyFormulaReplacementAsDirectScalarDeltaRoot,
                 collectAffectedDirectRangeDependents,
-                queueWasmFormulaDependencyKernelSync: (formulaCellIndex, dependencyIndices) => {
-                  for (let dependencyIndex = 0; dependencyIndex < dependencyIndices.length; dependencyIndex += 1) {
-                    precomputedKernelSyncCellIndices.push(dependencyIndices[dependencyIndex]!)
-                  }
-                  args.forEachFormulaDependencyCell(formulaCellIndex, (dependencyCellIndex) => {
-                    precomputedKernelSyncCellIndices.push(dependencyCellIndex)
-                  })
-                },
               })
               changedInputCount = formulaResult.changedInputCount
               formulaChangedCount = formulaResult.formulaChangedCount
@@ -524,7 +504,7 @@ export function createOperationCellMutationApplier(input: CreateOperationCellMut
       changedInputCount,
       formulaChangedCount,
       compileMs,
-      precomputedKernelSyncCellIndices,
+      precomputedKernelSyncCellIndices: [],
       postRecalcDirectFormulaIndices,
       postRecalcDirectFormulaMetrics,
       lookupHandledInputCellIndices,

@@ -27,8 +27,12 @@ import {
   shouldBypassLargeSimpleByteThresholdForPackageArtifacts,
 } from './xlsx-large-simple-package-artifact-threshold.js'
 import { releaseOwnedXlsxSourceBytes, type OwnedXlsxSourceBytes } from './xlsx-owned-source-release.js'
-import { attachImportedXlsxSourceBytes, attachImportedXlsxSourceReader, type ImportedXlsxSourceReader } from './xlsx-source-bytes.js'
-import { createTempFileImportedXlsxSourceReader } from './xlsx-source-bytes-node.js'
+import {
+  attachImportedXlsxSourceBytes,
+  attachImportedXlsxSourceReader,
+  createTempFileImportedXlsxSourceReader,
+  type ImportedXlsxSourceReader,
+} from './xlsx-source-bytes.js'
 import {
   readLazyXlsxZipSource,
   readXlsxZipEntries,
@@ -43,6 +47,7 @@ export {
   externalPivotCachesWarning,
   externalWorkbookReferencesWarning,
   macroExecutionDeclinedWarning,
+  unsupportedCellStylesWarning,
   volatileFormulasWarning,
 } from './xlsx-import-warnings.js'
 export { readImportedXlsxCellStyle } from './xlsx-import-cell-styles.js'
@@ -65,8 +70,8 @@ export type { ExcelWorkbookImportContentType, WorkbookImportContentType } from '
 
 const largeCalcChainStreamingByteThreshold = 5_000_000
 const largeSimpleInMemoryUntouchedExportSourceLimit = 8 * 1024 * 1024
-let requireModule: ReturnType<typeof createRequire> | undefined
-const bundledEagerModules = readBundledEagerModules()
+const requireModule = createRequire(import.meta.url)
+const vitestEagerModules = readVitestEagerModules()
 
 type ImportMetaGlob = (patterns: readonly string[], options: { readonly eager: true }) => Readonly<Record<string, unknown>>
 
@@ -119,37 +124,40 @@ let largeSimpleImportModule: LargeSimpleImportModule | undefined
 let largeSimpleInspectModule: LargeSimpleInspectModule | undefined
 
 function loadXlsxExportModule(): XlsxExportModule {
-  xlsxExportModule ??= readXlsxExportModule(readBundledEagerModule('./xlsx-export.js') ?? requireLocalModule('./xlsx-export.js'))
+  xlsxExportModule ??= readXlsxExportModule(readVitestEagerModule('./xlsx-export.js') ?? requireLocalModule('./xlsx-export.js'))
   return xlsxExportModule
 }
 
 function loadCsvImportModule(): CsvImportModule {
-  csvImportModule ??= readCsvImportModule(readBundledEagerModule('./csv-import.js') ?? requireLocalModule('./csv-import.js'))
+  csvImportModule ??= readCsvImportModule(readVitestEagerModule('./csv-import.js') ?? requireLocalModule('./csv-import.js'))
   return csvImportModule
 }
 
 function loadSheetJsImportModule(): SheetJsImportModule {
   sheetJsImportModule ??= readSheetJsImportModule(
-    readBundledEagerModule('./xlsx-sheetjs-import.js') ?? requireLocalModule('./xlsx-sheetjs-import.js'),
+    readVitestEagerModule('./xlsx-sheetjs-import.js') ?? requireLocalModule('./xlsx-sheetjs-import.js'),
   )
   return sheetJsImportModule
 }
 
 function loadLargeSimpleImportModule(): LargeSimpleImportModule {
   largeSimpleImportModule ??= readLargeSimpleImportModule(
-    readBundledEagerModule('./xlsx-large-simple-import.js') ?? requireLocalModule('./xlsx-large-simple-import.js'),
+    readVitestEagerModule('./xlsx-large-simple-import.js') ?? requireLocalModule('./xlsx-large-simple-import.js'),
   )
   return largeSimpleImportModule
 }
 
 function loadLargeSimpleInspectModule(): LargeSimpleInspectModule {
   largeSimpleInspectModule ??= readLargeSimpleInspectModule(
-    readBundledEagerModule('./xlsx-large-simple-headless-inspect.js') ?? requireLocalModule('./xlsx-large-simple-headless-inspect.js'),
+    readVitestEagerModule('./xlsx-large-simple-headless-inspect.js') ?? requireLocalModule('./xlsx-large-simple-headless-inspect.js'),
   )
   return largeSimpleInspectModule
 }
 
-function readBundledEagerModules(): Readonly<Record<string, unknown>> {
+function readVitestEagerModules(): Readonly<Record<string, unknown>> {
+  if (process.env['VITEST'] !== 'true') {
+    return {}
+  }
   if (!isImportMetaGlob(import.meta.glob)) {
     return {}
   }
@@ -165,8 +173,8 @@ function readBundledEagerModules(): Readonly<Record<string, unknown>> {
   )
 }
 
-function readBundledEagerModule(path: string): unknown {
-  return bundledEagerModules[path] ?? bundledEagerModules[path.replace(/\.js$/u, '.ts')]
+function readVitestEagerModule(path: string): unknown {
+  return vitestEagerModules[path] ?? vitestEagerModules[path.replace(/\.js$/u, '.ts')]
 }
 
 function isImportMetaGlob(value: unknown): value is ImportMetaGlob {
@@ -174,7 +182,6 @@ function isImportMetaGlob(value: unknown): value is ImportMetaGlob {
 }
 
 function requireLocalModule(jsPath: string): unknown {
-  requireModule ??= createRequire(import.meta.url)
   try {
     return requireModule(jsPath)
   } catch (error) {
@@ -373,6 +380,7 @@ function borrowXlsxZipByteSource(source: XlsxZipByteSource): XlsxZipByteSource {
           readRangeInto: (start: number, end: number, target: Uint8Array) => source.readRangeInto!(start, end, target),
         }
       : {}),
+    ...(source.inflateRawRange ? { inflateRawRange: (start: number, end: number) => source.inflateRawRange!(start, end) } : {}),
   }
 }
 
@@ -425,8 +433,6 @@ export function importXlsx(bytes: Uint8Array | ArrayBuffer, fileName: string, op
     ...(options.limits || bypassLargeSimpleByteThreshold ? { minByteLength: 0 } : {}),
     allowUnsupportedFormulaText: allowCachedUnsupportedFormulaText,
     allowUnsupportedCellMetadata: allowCachedUnsupportedFormulaText,
-    skipBroadBlankStyleCells: true,
-    includeCellCoordinates: true,
     allowPreReleaseSheetFinalization:
       releaseOwnedSourceBytesForLargeSimpleImport === undefined || spooledUntouchedExportSource !== undefined,
     ...(spooledUntouchedExportSource ? { allowPreReleaseSheetFinalizationWithOwnedSourceRelease: true } : {}),

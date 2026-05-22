@@ -77,6 +77,7 @@ export function parseLargeSimpleWorksheetCellsFromChunks(
     readonly stringPool?: ImportedWorkbookStringPool
     readonly deduplicateStrings?: ImportedWorkbookArenaDedupeMode
     readonly deduplicateFormulas?: ImportedWorkbookArenaDedupeMode
+    readonly dedupeMaxEntries?: number
     readonly allowUnsupportedFormulaText?: boolean
     readonly allowUnsupportedCellMetadata?: boolean
     readonly preserveBlankStyleCells?: boolean
@@ -98,6 +99,7 @@ export function parseLargeSimpleWorksheetCellsFromChunks(
     stringPool: options.stringPool,
     deduplicateStrings: options.deduplicateStrings,
     deduplicateFormulas: options.deduplicateFormulas,
+    dedupeMaxEntries: options.dedupeMaxEntries,
     allowUnsupportedFormulaText: options.allowUnsupportedFormulaText,
     allowUnsupportedCellMetadata: options.allowUnsupportedCellMetadata,
     preserveBlankStyleCells: options.preserveBlankStyleCells !== false,
@@ -146,6 +148,7 @@ class LargeSimpleWorksheetChunkScanner {
   private readonly retainStyleCoordinates: boolean
   private readonly maxDimensionCellPreallocation: number
   private dimensionCellPreallocationApplied = false
+  private dimensionCellCapacity = 0
   private activeMetadataElement: StreamedMetadataElement | null = null
   private activeAutoFilter: ActiveAutoFilter | null = null
   private activeConditionalFormatting: ActiveConditionalFormatting | null = null
@@ -164,6 +167,7 @@ class LargeSimpleWorksheetChunkScanner {
       readonly stringPool: ImportedWorkbookStringPool | undefined
       readonly deduplicateStrings: ImportedWorkbookArenaDedupeMode | undefined
       readonly deduplicateFormulas: ImportedWorkbookArenaDedupeMode | undefined
+      readonly dedupeMaxEntries: number | undefined
       readonly allowUnsupportedFormulaText: boolean | undefined
       readonly allowUnsupportedCellMetadata: boolean | undefined
       readonly preserveBlankStyleCells: boolean
@@ -182,6 +186,7 @@ class LargeSimpleWorksheetChunkScanner {
     this.arena = new ImportedWorkbookArena(options.stringPool, {
       ...(options.deduplicateStrings === undefined ? {} : { deduplicateStrings: options.deduplicateStrings }),
       ...(options.deduplicateFormulas === undefined ? {} : { deduplicateFormulas: options.deduplicateFormulas }),
+      ...(options.dedupeMaxEntries === undefined ? {} : { dedupeMaxEntries: options.dedupeMaxEntries }),
     })
     this.hasSharedStrings = options.hasSharedStrings
     this.retainCells = options.retainCells
@@ -281,7 +286,7 @@ class LargeSimpleWorksheetChunkScanner {
       this.index = 0
       return
     }
-    this.buffer = new Uint8Array(this.buffer.subarray(this.index))
+    this.buffer = this.buffer.subarray(this.index)
     this.index = 0
   }
 
@@ -377,6 +382,9 @@ class LargeSimpleWorksheetChunkScanner {
   }
 
   private readRow(nameEnd: number, tagEnd: number): void {
+    if (this.retainCells && this.cellCount === 0 && (!this.dimensionCellPreallocationApplied || this.dimensionCellCapacity <= 1)) {
+      this.arena.trackRowRunCellCoordinates(this.sheetIndex)
+    }
     const row = readPositiveIntegerAttributeFromTag(this.buffer, nameEnd, tagEnd, 'r')
     this.currentRow = row === null ? this.nextImplicitRow : row - 1
     this.nextImplicitRow = this.currentRow + 1
@@ -405,6 +413,7 @@ class LargeSimpleWorksheetChunkScanner {
       return
     }
     this.dimensionCellPreallocationApplied = true
+    this.dimensionCellCapacity = cellCapacity
     if (
       columnCount <= maxEagerDenseDimensionColumnPreallocation &&
       cellCapacity <= Math.min(this.maxDimensionCellPreallocation, maxEagerDenseDimensionCellPreallocation)
@@ -412,7 +421,7 @@ class LargeSimpleWorksheetChunkScanner {
       this.arena.reserveDenseRowMajorCellCapacity(this.sheetIndex, columnCount, rowCount)
       return
     }
-    this.arena.trackLinearRowMajorCellCoordinates(this.sheetIndex, columnCount, rowCount)
+    this.arena.trackRowRunCellCoordinates(this.sheetIndex)
   }
 
   private readCell(nameEnd: number, tagEnd: number, final: boolean): boolean {

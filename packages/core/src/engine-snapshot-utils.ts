@@ -31,9 +31,6 @@ function axisMetadataToSnapshot(records: readonly WorkbookAxisMetadataRecord[]):
     if (record.hidden !== null) {
       snapshot.hidden = record.hidden
     }
-    if (record.filtered !== null) {
-      snapshot.filtered = record.filtered
-    }
     if (record.styleIndex !== undefined && record.styleIndex !== null) {
       snapshot.styleIndex = record.styleIndex
     }

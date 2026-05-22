@@ -12,14 +12,6 @@ export function createOperationDirectFormulaDeltas(args: {
   readonly canSkipDirectFormulaColumnVersion: (cellIndex: number) => boolean
 }) {
   const hasActiveDirectScalarFormula = (cellIndex: number): boolean => args.state.formulas.get(cellIndex)?.directScalar !== undefined
-  const isWritableDirectScalarNumberFormula = (cellIndex: number): boolean => {
-    const cellStore = args.state.workbook.cellStore
-    return (
-      hasActiveDirectScalarFormula(cellIndex) &&
-      ((cellStore.flags[cellIndex] ?? 0) & CellFlags.InCycle) === 0 &&
-      cellStore.tags[cellIndex] === ValueTag.Number
-    )
-  }
 
   const applyDirectFormulaNumericDelta = (cellIndex: number, delta: number): boolean => {
     const cellStore = args.state.workbook.cellStore
@@ -232,7 +224,7 @@ export function createOperationDirectFormulaDeltas(args: {
       const cellIndices = collection.getCellIndicesForRead()
       if (!hasTrustedDirectScalarFormulas) {
         for (let index = 0; index < cellIndices.length; index += 1) {
-          if (!isWritableDirectScalarNumberFormula(cellIndices[index]!)) {
+          if (!hasActiveDirectScalarFormula(cellIndices[index]!)) {
             return undefined
           }
         }
@@ -256,7 +248,7 @@ export function createOperationDirectFormulaDeltas(args: {
       const cellIndices = collection.getCellIndicesForRead()
       if (!hasTrustedDirectScalarFormulas) {
         for (let index = 0; index < cellIndices.length; index += 1) {
-          if (!isWritableDirectScalarNumberFormula(cellIndices[index]!)) {
+          if (!hasActiveDirectScalarFormula(cellIndices[index]!)) {
             return undefined
           }
         }
@@ -297,7 +289,11 @@ export function createOperationDirectFormulaDeltas(args: {
       canUseTerminalFormulaWrites = true
       for (let index = 0; index < collection.size; index += 1) {
         const cellIndex = collection.getCellIndexAt(index)
-        if (!isWritableDirectScalarNumberFormula(cellIndex)) {
+        if (
+          ((cellStore.flags[cellIndex] ?? 0) & CellFlags.InCycle) !== 0 ||
+          cellStore.tags[cellIndex] !== ValueTag.Number ||
+          !hasActiveDirectScalarFormula(cellIndex)
+        ) {
           return undefined
         }
         if (canUseTerminalFormulaWrites && !args.canSkipDirectFormulaColumnVersion(cellIndex)) {

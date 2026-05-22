@@ -67,6 +67,7 @@ export interface ExternalXlsxStressRunSummary {
   readonly schemaVersion: 1
   readonly mode: 'external-xlsx-memory-stress-run'
   readonly cacheDir: string
+  readonly summaryPath: string
   readonly maxRssBytes: number
   readonly requestedImportMode: 'auto' | 'public-snapshot'
   readonly results: readonly ExternalXlsxStressResult[]
@@ -75,9 +76,15 @@ export interface ExternalXlsxStressRunSummary {
 export interface ExternalXlsxStressResult {
   readonly id: string
   readonly fileName: string
+  readonly sourcePageUrl: string
+  readonly downloadUrl: string
+  readonly licenseTitle: string
+  readonly archiveEntryPath?: string
   readonly filePath: string
   readonly byteSize: number
   readonly sha256: string
+  readonly expectedMinBytes: number
+  readonly expectedMinCells?: number
   readonly peakRssBytes: number | null
   readonly maxRssBytes: number
   readonly status: 'passed' | 'failed'
@@ -395,6 +402,7 @@ export function validateExternalXlsxStressPlan(plan: ExternalXlsxStressPlan): st
 
 async function runExternalXlsxStress(args: {
   readonly cacheDir: string
+  readonly summaryPath: string
   readonly maxRssBytes: number
   readonly fetchTimeoutMs: number
   readonly workerTimeoutMs: number
@@ -423,6 +431,7 @@ async function runExternalXlsxStress(args: {
     schemaVersion: 1,
     mode: 'external-xlsx-memory-stress-run',
     cacheDir: args.cacheDir,
+    summaryPath: args.summaryPath,
     maxRssBytes: args.maxRssBytes,
     requestedImportMode: args.usePublicImport ? 'public-snapshot' : 'auto',
     results,
@@ -558,6 +567,43 @@ function assertResolvedWorkbook(input: { readonly fixture: ExternalXlsxStressWor
   }
 }
 
+function buildStressResultBase(
+  workbook: ResolvedWorkbook,
+  maxRssBytes: number,
+  peakRssBytes: number,
+): Pick<
+  ExternalXlsxStressResult,
+  | 'id'
+  | 'fileName'
+  | 'sourcePageUrl'
+  | 'downloadUrl'
+  | 'licenseTitle'
+  | 'archiveEntryPath'
+  | 'filePath'
+  | 'byteSize'
+  | 'sha256'
+  | 'expectedMinBytes'
+  | 'expectedMinCells'
+  | 'peakRssBytes'
+  | 'maxRssBytes'
+> {
+  return {
+    id: workbook.fixture.id,
+    fileName: workbook.fixture.fileName,
+    sourcePageUrl: workbook.fixture.sourcePageUrl,
+    downloadUrl: workbook.fixture.downloadUrl,
+    licenseTitle: workbook.fixture.licenseTitle,
+    ...(workbook.fixture.archiveEntryPath === undefined ? {} : { archiveEntryPath: workbook.fixture.archiveEntryPath }),
+    filePath: workbook.path,
+    byteSize: workbook.byteSize,
+    sha256: workbook.sha256,
+    expectedMinBytes: workbook.fixture.expectedMinBytes,
+    ...(workbook.fixture.expectedMinCells === undefined ? {} : { expectedMinCells: workbook.fixture.expectedMinCells }),
+    peakRssBytes: peakRssBytes || null,
+    maxRssBytes,
+  }
+}
+
 async function runStressWorker(
   workbook: ResolvedWorkbook,
   maxRssBytes: number,
@@ -590,13 +636,7 @@ async function runStressWorker(
     }
     const fail = (reason: string): void => {
       finish({
-        id: workbook.fixture.id,
-        fileName: workbook.fixture.fileName,
-        filePath: workbook.path,
-        byteSize: workbook.byteSize,
-        sha256: workbook.sha256,
-        peakRssBytes: peakRssBytes || null,
-        maxRssBytes,
+        ...buildStressResultBase(workbook, maxRssBytes, peakRssBytes),
         status: 'failed',
         reason,
       })
@@ -643,13 +683,7 @@ async function runStressWorker(
           return
         }
         finish({
-          id: workbook.fixture.id,
-          fileName: workbook.fixture.fileName,
-          filePath: workbook.path,
-          byteSize: workbook.byteSize,
-          sha256: workbook.sha256,
-          peakRssBytes: peakRssBytes || null,
-          maxRssBytes,
+          ...buildStressResultBase(workbook, maxRssBytes, peakRssBytes),
           status: 'passed',
           importMode: parsedWorkerSummary.importMode,
           sheets: parsedWorkerSummary.sheets,
@@ -722,11 +756,15 @@ function formatByteSize(bytes: number): string {
   return `${(bytes / mib).toFixed(1)} MiB`
 }
 
+function defaultRunSummaryPath(cacheDir: string, usePublicImport: boolean): string {
+  return join(cacheDir, `external-xlsx-memory-stress-${usePublicImport ? 'public-snapshot' : 'auto'}-run.json`)
+}
+
 async function main(): Promise<void> {
   const command = process.argv[2] ?? 'plan'
   if (command === 'worker') {
     const { runExternalXlsxStressWorker } = await import('./external-xlsx-memory-stress-worker.ts')
-    runExternalXlsxStressWorker()
+    await runExternalXlsxStressWorker()
     return
   }
   const cacheDir = resolve(readStringArg('--cache-dir', defaultCacheDir))
@@ -742,15 +780,20 @@ async function main(): Promise<void> {
     return
   }
   if (command === 'run') {
+    const usePublicImport = readFlagArg('--public-import')
+    const summaryPath = resolve(readStringArg('--summary-path', defaultRunSummaryPath(cacheDir, usePublicImport)))
     const summary = await runExternalXlsxStress({
       cacheDir,
+      summaryPath,
       maxRssBytes,
       fetchTimeoutMs: readNumberArg('--fetch-timeout-ms', defaultFetchTimeoutMs),
       workerTimeoutMs: readNumberArg('--worker-timeout-ms', defaultWorkerTimeoutMs),
       maxDownloadBytes: readNumberArg('--max-download-bytes', defaultMaxDownloadBytes),
       limit: readOptionalPositiveIntegerArg('--limit'),
-      usePublicImport: readFlagArg('--public-import'),
+      usePublicImport,
     })
+    mkdirSync(dirname(summaryPath), { recursive: true })
+    writeFileSync(summaryPath, `${JSON.stringify(summary, null, 2)}\n`)
     process.stdout.write(`${JSON.stringify(summary, null, 2)}\n`)
     if (summary.results.some((result) => result.status === 'failed')) {
       process.exitCode = 1

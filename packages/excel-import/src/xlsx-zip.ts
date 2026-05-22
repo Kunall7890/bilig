@@ -8,6 +8,13 @@ export interface XlsxZipByteSource {
   readonly byteLength: number
   readRange(start: number, end: number): Uint8Array
   readRangeInto?(start: number, end: number, target: Uint8Array): Uint8Array
+  inflateRawRange?(start: number, end: number): Uint8Array
+  inflateRawRangeChunksAsync?(
+    start: number,
+    end: number,
+    onChunk: XlsxZipChunkConsumer,
+    options: { readonly chunkSize: number },
+  ): Promise<boolean>
   release?(): void
 }
 
@@ -17,6 +24,8 @@ export interface XlsxZipEntryMetadata {
   readonly uncompressedSize: number
   readonly compressionMethod: number
 }
+
+export type XlsxZipChunkConsumer = (chunk: Uint8Array) => boolean | void
 
 export function readXlsxZipEntries(source: XlsxZipSource): XlsxZipEntries {
   if (!(source instanceof Uint8Array)) {
@@ -73,8 +82,8 @@ export function getZipText(zip: XlsxZipEntries, path: string): string | null {
 export function forEachInflatedXlsxZipEntryChunk(
   zip: XlsxZipEntries,
   path: string,
-  onChunk: (chunk: Uint8Array) => void,
-  options: { readonly chunkSize?: number } = {},
+  onChunk: XlsxZipChunkConsumer,
+  options: { readonly chunkSize?: number; readonly forceStreamingInflate?: boolean } = {},
 ): boolean {
   const metadata = (zip as XlsxZipEntriesWithCentralDirectorySource)[xlsxZipCentralDirectorySourceSymbol]
   const source = metadata?.source
@@ -89,11 +98,37 @@ export function forEachInflatedXlsxZipEntryChunk(
     }
     const chunkSize = options.chunkSize ?? defaultZipEntryChunkSize
     for (let offset = 0; offset < inflated.byteLength; offset += chunkSize) {
-      onChunk(inflated.subarray(offset, Math.min(inflated.byteLength, offset + chunkSize)))
+      if (onChunk(inflated.subarray(offset, Math.min(inflated.byteLength, offset + chunkSize))) === false) {
+        break
+      }
     }
     return true
   }
   inflateCentralDirectoryEntryChunks(source, entry.localHeaderOffset, entry.compressedSize, entry.compressionMethod, onChunk, {
+    forceStreamingInflate: options.forceStreamingInflate === true,
+    chunkSize: options.chunkSize ?? defaultZipEntryChunkSize,
+    uncompressedSize: entry.uncompressedSize,
+  })
+  return true
+}
+
+export async function forEachInflatedXlsxZipEntryChunkAsync(
+  zip: XlsxZipEntries,
+  path: string,
+  onChunk: XlsxZipChunkConsumer,
+  options: { readonly chunkSize?: number; readonly forceStreamingInflate?: boolean } = {},
+): Promise<boolean> {
+  const metadata = (zip as XlsxZipEntriesWithCentralDirectorySource)[xlsxZipCentralDirectorySourceSymbol]
+  const source = metadata?.source
+  const entry = metadata?.entriesByPath.get(normalizeZipPath(path))
+  if (metadata && (!source || !entry)) {
+    return false
+  }
+  if (!metadata || !source || !entry) {
+    return forEachInflatedXlsxZipEntryChunk(zip, path, onChunk, options)
+  }
+  await inflateCentralDirectoryEntryChunksAsync(source, entry.localHeaderOffset, entry.compressedSize, entry.compressionMethod, onChunk, {
+    forceStreamingInflate: options.forceStreamingInflate === true,
     chunkSize: options.chunkSize ?? defaultZipEntryChunkSize,
     uncompressedSize: entry.uncompressedSize,
   })
@@ -315,11 +350,14 @@ function inflateCentralDirectoryEntry(
   if (dataEnd > source.byteLength) {
     throw new Error('Invalid XLSX compressed data range')
   }
-  const compressed = source.readRange(dataStart, dataEnd)
   if (compressionMethod === storedCompressionMethod) {
-    return new Uint8Array(compressed)
+    return new Uint8Array(source.readRange(dataStart, dataEnd))
   }
   if (compressionMethod === deflatedCompressionMethod) {
+    if (source.inflateRawRange) {
+      return source.inflateRawRange(dataStart, dataEnd)
+    }
+    const compressed = source.readRange(dataStart, dataEnd)
     return inflateSync(compressed)
   }
   throw new Error(`Unsupported XLSX compression method: ${String(compressionMethod)}`)
@@ -330,8 +368,8 @@ function inflateCentralDirectoryEntryChunks(
   localHeaderOffset: number,
   compressedSize: number,
   compressionMethod: number,
-  onChunk: (chunk: Uint8Array) => void,
-  options: { readonly chunkSize: number; readonly uncompressedSize: number },
+  onChunk: XlsxZipChunkConsumer,
+  options: { readonly chunkSize: number; readonly forceStreamingInflate: boolean; readonly uncompressedSize: number },
 ): void {
   const localHeader = readLocalFileHeader(source, localHeaderOffset)
   if (readUint32(localHeader, 0) !== localFileHeaderSignature) {
@@ -350,15 +388,21 @@ function inflateCentralDirectoryEntryChunks(
     return
   }
   if (compressionMethod === deflatedCompressionMethod) {
-    if (compressedSize <= syncChunkedInflateCompressedSizeLimit && options.uncompressedSize <= syncChunkedInflateUncompressedSizeLimit) {
+    const wouldUseFullEntryInflate =
+      compressedSize <= syncChunkedInflateCompressedSizeLimit && options.uncompressedSize <= syncChunkedInflateUncompressedSizeLimit
+    if (!options.forceStreamingInflate && wouldUseFullEntryInflate) {
       const inflated = inflateCentralDirectoryEntry(source, localHeaderOffset, compressedSize, compressionMethod)
       for (let offset = 0; offset < inflated.byteLength; offset += options.chunkSize) {
         onChunk(inflated.subarray(offset, Math.min(inflated.byteLength, offset + options.chunkSize)))
       }
       return
     }
+    let stopped = false
     const inflate = new Inflate((chunk) => {
-      onChunk(chunk)
+      if (stopped) {
+        return
+      }
+      stopped = !emitInflatedChunks(chunk, options.chunkSize, onChunk)
     })
     if (compressedSize === 0) {
       inflate.push(source.readRange(dataStart, dataEnd), true)
@@ -368,10 +412,103 @@ function inflateCentralDirectoryEntryChunks(
     for (let offset = 0; offset < compressedSize; offset += options.chunkSize) {
       const end = Math.min(compressedSize, offset + options.chunkSize)
       inflate.push(readSourceRange(source, dataStart + offset, dataStart + end, compressedChunkScratch), end === compressedSize)
+      if (stopped) {
+        return
+      }
     }
     return
   }
   throw new Error(`Unsupported XLSX compression method: ${String(compressionMethod)}`)
+}
+
+async function inflateCentralDirectoryEntryChunksAsync(
+  source: XlsxZipByteSource,
+  localHeaderOffset: number,
+  compressedSize: number,
+  compressionMethod: number,
+  onChunk: XlsxZipChunkConsumer,
+  options: { readonly chunkSize: number; readonly forceStreamingInflate: boolean; readonly uncompressedSize: number },
+): Promise<void> {
+  const localHeader = readLocalFileHeader(source, localHeaderOffset)
+  if (readUint32(localHeader, 0) !== localFileHeaderSignature) {
+    throw new Error('Invalid XLSX local file header')
+  }
+  const fileNameLength = readUint16(localHeader, 26)
+  const extraFieldLength = readUint16(localHeader, 28)
+  const dataStart = localHeaderOffset + 30 + fileNameLength + extraFieldLength
+  const dataEnd = dataStart + compressedSize
+  if (dataEnd > source.byteLength) {
+    throw new Error('Invalid XLSX compressed data range')
+  }
+  if (compressionMethod === storedCompressionMethod) {
+    const storedChunkScratch = source.readRangeInto ? new Uint8Array(Math.max(1, Math.trunc(options.chunkSize))) : undefined
+    forEachSourceChunk(source, dataStart, dataEnd, options.chunkSize, onChunk, storedChunkScratch)
+    return
+  }
+  if (compressionMethod !== deflatedCompressionMethod) {
+    throw new Error(`Unsupported XLSX compression method: ${String(compressionMethod)}`)
+  }
+  if (
+    source.inflateRawRangeChunksAsync &&
+    (await source.inflateRawRangeChunksAsync(dataStart, dataEnd, onChunk, { chunkSize: options.chunkSize }))
+  ) {
+    return
+  }
+  if (await inflateCentralDirectoryEntryChunksWithNodeZlibAsync(source, dataStart, dataEnd, onChunk, options.chunkSize)) {
+    return
+  }
+  inflateCentralDirectoryEntryChunks(source, localHeaderOffset, compressedSize, compressionMethod, onChunk, options)
+}
+
+async function inflateCentralDirectoryEntryChunksWithNodeZlibAsync(
+  source: XlsxZipByteSource,
+  dataStart: number,
+  dataEnd: number,
+  onChunk: XlsxZipChunkConsumer,
+  chunkSize: number,
+): Promise<boolean> {
+  try {
+    const [{ createInflateRaw }, { Readable }] = await Promise.all([import('node:zlib'), import('node:stream')])
+    let offset = dataStart
+    const compressedChunkSize = Math.max(1, Math.trunc(chunkSize))
+    const compressedStream = new Readable({
+      read() {
+        if (offset >= dataEnd) {
+          this.push(null)
+          return
+        }
+        const end = Math.min(dataEnd, offset + compressedChunkSize)
+        this.push(source.readRange(offset, end))
+        offset = end
+      },
+    })
+    const inflate = createInflateRaw()
+    try {
+      for await (const chunk of compressedStream.pipe(inflate)) {
+        const bytes = chunk instanceof Uint8Array ? chunk : new Uint8Array(chunk)
+        if (!emitInflatedChunks(bytes, chunkSize, onChunk)) {
+          compressedStream.destroy()
+          inflate.destroy()
+          return true
+        }
+      }
+    } finally {
+      compressedStream.destroy()
+      inflate.destroy()
+    }
+    return true
+  } catch {
+    return false
+  }
+}
+
+function emitInflatedChunks(chunk: Uint8Array, chunkSize: number, onChunk: XlsxZipChunkConsumer): boolean {
+  for (let offset = 0; offset < chunk.byteLength; offset += chunkSize) {
+    if (onChunk(chunk.subarray(offset, Math.min(chunk.byteLength, offset + chunkSize))) === false) {
+      return false
+    }
+  }
+  return true
 }
 
 function readLocalFileHeader(source: XlsxZipByteSource, localHeaderOffset: number): Uint8Array {
@@ -395,7 +532,7 @@ function forEachSourceChunk(
   start: number,
   end: number,
   chunkSize: number,
-  onChunk: (chunk: Uint8Array) => void,
+  onChunk: XlsxZipChunkConsumer,
   scratch: Uint8Array | undefined = undefined,
 ): void {
   const normalizedChunkSize = Math.max(1, Math.trunc(chunkSize))
@@ -404,7 +541,9 @@ function forEachSourceChunk(
     return
   }
   for (let offset = start; offset < end; offset += normalizedChunkSize) {
-    onChunk(readSourceRange(source, offset, Math.min(end, offset + normalizedChunkSize), scratch))
+    if (onChunk(readSourceRange(source, offset, Math.min(end, offset + normalizedChunkSize), scratch)) === false) {
+      return
+    }
   }
 }
 

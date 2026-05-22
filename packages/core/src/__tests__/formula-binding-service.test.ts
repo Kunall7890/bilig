@@ -1,6 +1,6 @@
 import { Effect } from 'effect'
 import { describe, expect, it, vi } from 'vitest'
-import { ErrorCode, MAX_ROWS, ValueTag } from '@bilig/protocol'
+import { MAX_ROWS, ValueTag } from '@bilig/protocol'
 import { compileFormula } from '@bilig/formula'
 import { SpreadsheetEngine } from '../engine.js'
 import { EngineFormulaBindingError } from '../engine/errors.js'
@@ -456,57 +456,6 @@ describe('EngineFormulaBindingService', () => {
     expect(engine.getDependencies('Sheet1', 'A2').directDependents).toEqual([])
   })
 
-  it('skips formula-member dependency scans for literal direct lookup columns', async () => {
-    const engine = new SpreadsheetEngine({ workbookName: 'binding-direct-lookup-literal-column-scan', useColumnIndex: true })
-    await engine.ready()
-    engine.createSheet('Sheet1')
-
-    const rowCount = 120
-    for (let row = 1; row <= rowCount; row += 1) {
-      engine.setCellValue('Sheet1', `A${row}`, row)
-    }
-    engine.setCellValue('Sheet1', 'C1', 60)
-
-    const sheet = engine.workbook.getSheet('Sheet1')!
-    const gridGet = vi.spyOn(sheet.grid, 'get')
-
-    engine.setCellFormula('Sheet1', 'D1', `MATCH(C1,A1:A${rowCount},0)`)
-
-    const lookupColumnGets = gridGet.mock.calls.filter(([row, col]) => col === 0 && row >= 0 && row < rowCount).length
-    expect(lookupColumnGets).toBeLessThan(rowCount * 2)
-    expect(engine.getCellValue('Sheet1', 'D1')).toEqual({ tag: ValueTag.Number, value: 60 })
-
-    engine.setCellValue('Sheet1', 'A60', 999)
-    expect(engine.getCellValue('Sheet1', 'D1')).toEqual({ tag: ValueTag.Error, code: ErrorCode.NA })
-
-    gridGet.mockRestore()
-  })
-
-  it('keeps formula members in direct lookup columns as dependencies', async () => {
-    const engine = new SpreadsheetEngine({ workbookName: 'binding-direct-lookup-formula-column-member', useColumnIndex: true })
-    await engine.ready()
-    engine.createSheet('Sheet1')
-
-    engine.setCellValue('Sheet1', 'A1', 1)
-    engine.setCellValue('Sheet1', 'B1', 2)
-    engine.setCellFormula('Sheet1', 'A2', 'B1')
-    engine.setCellValue('Sheet1', 'A3', 3)
-    engine.setCellValue('Sheet1', 'C1', 2)
-    engine.setCellFormula('Sheet1', 'D1', 'MATCH(C1,A1:A3,0)')
-
-    const lookupFormulaIndex = engine.workbook.getCellIndex('Sheet1', 'D1')!
-    const lookupColumnFormulaIndex = engine.workbook.getCellIndex('Sheet1', 'A2')!
-    const dependencyIndices = Reflect.get(readRuntimeFormula(engine, lookupFormulaIndex), 'dependencyIndices')
-    if (!(dependencyIndices instanceof Uint32Array)) {
-      throw new Error('Expected lookup formula dependency indices to be materialized')
-    }
-    expect(Array.from(dependencyIndices)).toContain(lookupColumnFormulaIndex)
-    expect(engine.getCellValue('Sheet1', 'D1')).toEqual({ tag: ValueTag.Number, value: 2 })
-
-    engine.setCellValue('Sheet1', 'B1', 4)
-    expect(engine.getCellValue('Sheet1', 'D1')).toEqual({ tag: ValueTag.Error, code: ErrorCode.NA })
-  })
-
   it('binds and invalidates formulas through the public Effect service wrappers', async () => {
     const engine = new SpreadsheetEngine({ workbookName: 'binding-effect-wrappers' })
     await engine.ready()
@@ -829,29 +778,6 @@ describe('EngineFormulaBindingService', () => {
       topoRepairs: 0,
       topoRepairAffectedFormulas: 0,
     })
-  })
-
-  it('rebinds direct scalar dependencies when a formula rewrite changes referenced cells', async () => {
-    const engine = new SpreadsheetEngine({ workbookName: 'binding-direct-scalar-rewrite-dependencies' })
-    await engine.ready()
-    engine.createSheet('Sheet1')
-
-    engine.setCellValue('Sheet1', 'A1', 4)
-    engine.setCellValue('Sheet1', 'B2', 7)
-    engine.setCellValue('Sheet1', 'D4', 10)
-    engine.setCellFormula('Sheet1', 'C1', 'A1+B2')
-    engine.setCellFormula('Sheet1', 'C1', 'A1+D4')
-
-    expect(engine.getCellValue('Sheet1', 'C1')).toEqual({ tag: ValueTag.Number, value: 14 })
-    engine.setCellValue('Sheet1', 'B2', 100)
-    expect(engine.getCellValue('Sheet1', 'C1')).toEqual({ tag: ValueTag.Number, value: 14 })
-    engine.setCellValue('Sheet1', 'D4', 1)
-    expect(engine.getCellValue('Sheet1', 'C1')).toEqual({ tag: ValueTag.Number, value: 5 })
-
-    engine.deleteRows('Sheet1', 3, 1)
-
-    expect(engine.getCell('Sheet1', 'C1').formula).toBe('A1+#REF!')
-    expect(engine.getCellValue('Sheet1', 'C1')).toEqual({ tag: ValueTag.Error, code: ErrorCode.Ref })
   })
 
   it('binds direct criteria descriptors for supported conditional aggregate families', async () => {

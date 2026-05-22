@@ -75,6 +75,32 @@ describe('large simple worksheet stream scanners', () => {
     ])
   })
 
+  it('streams row-run coordinates when dimensions understate the actual sheet', () => {
+    const scan = parseLargeSimpleWorksheetCellsFromChunks(splitAfterTagOpen(understatedContiguousDimensionWorksheetXml()), 0, {
+      hasSharedStrings: false,
+      maxDimensionCellPreallocation: 1_000_000,
+    })
+
+    expect(scan?.cellScan.cellCount).toBe(20_000)
+    expect(scan?.cellScan.arena.retainedStorageByteLength()).toBeLessThan(90_000)
+    expect(scan?.cellScan.arena.materializeSheetCells(0)[0]).toEqual({ address: 'A1', value: 1 })
+    expect(scan?.cellScan.arena.materializeSheetCells(0).at(-1)).toEqual({ address: 'T1000', value: 1 })
+  })
+
+  it('streams row-run coordinates for large stated dimensions that cannot use linear indexes', () => {
+    const scan = parseLargeSimpleWorksheetCellsFromChunks(splitAfterTagOpen(largeStatedDimensionRowRunWorksheetXml()), 0, {
+      hasSharedStrings: false,
+      maxDimensionCellPreallocation: 1_000_000,
+    })
+
+    expect(scan?.cellScan.cellCount).toBe(20_000)
+    expect(scan?.cellScan.rowCount).toBe(300_000)
+    expect(scan?.cellScan.columnCount).toBe(16_384)
+    expect(scan?.cellScan.arena.retainedStorageByteLength()).toBeLessThan(80_000)
+    expect(scan?.cellScan.arena.materializeSheetCells(0)[0]).toEqual({ address: 'A1', value: 1 })
+    expect(scan?.cellScan.arena.materializeSheetCells(0).at(-1)).toEqual({ address: 'T1000', value: 1 })
+  })
+
   it('does not retain dense arena storage for huge dimensions without materialized cells', () => {
     const scan = parseLargeSimpleWorksheetCellsFromChunks(splitAfterTagOpen(largeStyleCoordinateOnlyDimensionWorksheetXml()), 0, {
       hasSharedStrings: false,
@@ -557,6 +583,25 @@ describe('large simple worksheet stream scanners', () => {
     expect(pool.count).toBe(2)
   })
 
+  it('keeps repeated inline strings interned when the bounded window covers the workbook vocabulary', () => {
+    const narrow = parseLargeSimpleWorksheetCellsFromChunks(splitAfterTagOpen(repeatedInlineStringWindowWorksheetXml(5, 2)), 0, {
+      hasSharedStrings: false,
+      stringPool: new ImportedWorkbookStringPool(),
+      deduplicateStrings: 'bounded',
+      dedupeMaxEntries: 4,
+    })
+    const wide = parseLargeSimpleWorksheetCellsFromChunks(splitAfterTagOpen(repeatedInlineStringWindowWorksheetXml(5, 2)), 0, {
+      hasSharedStrings: false,
+      stringPool: new ImportedWorkbookStringPool(),
+      deduplicateStrings: 'bounded',
+      dedupeMaxEntries: 5,
+    })
+
+    expect(narrow?.cellScan.arena.snapshot().strings).toHaveLength(10)
+    expect(wide?.cellScan.arena.snapshot().strings).toEqual(['Label 0', 'Label 1', 'Label 2', 'Label 3', 'Label 4'])
+    expect(wide?.cellScan.arena.materializeSheetCells(0).at(-1)).toEqual({ address: 'A10', value: 'Label 4' })
+  })
+
   it('rejects hyperlink metadata when range expansion would lose fidelity', () => {
     const scan = parseLargeSimpleWorksheetCellsFromChunks(splitAfterTagOpen(oversizedHyperlinkWorksheetXml()), 0, {
       hasSharedStrings: false,
@@ -617,6 +662,54 @@ function sparseDimensionWorksheetXml(): string {
     '</sheetData>',
     '</worksheet>',
   ].join('')
+}
+
+function understatedContiguousDimensionWorksheetXml(): string {
+  const rows: string[] = []
+  for (let row = 1; row <= 1_000; row += 1) {
+    const cells: string[] = []
+    for (let column = 0; column < 20; column += 1) {
+      cells.push(`<c r="${columnName(column)}${String(row)}"><v>1</v></c>`)
+    }
+    rows.push(`<row r="${String(row)}">${cells.join('')}</row>`)
+  }
+  return [
+    '<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">',
+    '<dimension ref="A1"/>',
+    '<sheetData>',
+    rows.join(''),
+    '</sheetData>',
+    '</worksheet>',
+  ].join('')
+}
+
+function largeStatedDimensionRowRunWorksheetXml(): string {
+  const rows: string[] = []
+  for (let row = 1; row <= 1_000; row += 1) {
+    const cells: string[] = []
+    for (let column = 0; column < 20; column += 1) {
+      cells.push(`<c r="${columnName(column)}${String(row)}"><v>1</v></c>`)
+    }
+    rows.push(`<row r="${String(row)}">${cells.join('')}</row>`)
+  }
+  return [
+    '<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">',
+    '<dimension ref="A1:XFD300000"/>',
+    '<sheetData>',
+    rows.join(''),
+    '</sheetData>',
+    '</worksheet>',
+  ].join('')
+}
+
+function columnName(index: number): string {
+  let remaining = index
+  let name = ''
+  do {
+    name = String.fromCharCode(65 + (remaining % 26)) + name
+    remaining = Math.floor(remaining / 26) - 1
+  } while (remaining >= 0)
+  return name
 }
 
 function largeStyleCoordinateOnlyDimensionWorksheetXml(): string {
@@ -922,6 +1015,22 @@ function repeatedStringFormulaWorksheetXml(): string {
     '<c r="A1" t="inlineStr"><is><t>Repeated label</t></is></c>',
     '<c r="B1"><f>A1&amp;&quot;!&quot;</f><v>1</v></c>',
     '</row></sheetData>',
+    '</worksheet>',
+  ].join('')
+}
+
+function repeatedInlineStringWindowWorksheetXml(uniqueCount: number, repeats: number): string {
+  const rows: string[] = []
+  for (let repeat = 0; repeat < repeats; repeat += 1) {
+    for (let index = 0; index < uniqueCount; index += 1) {
+      const row = rows.length + 1
+      rows.push(`<row r="${String(row)}"><c r="A${String(row)}" t="inlineStr"><is><t>Label ${String(index)}</t></is></c></row>`)
+    }
+  }
+  return [
+    '<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">',
+    `<dimension ref="A1:A${String(rows.length)}"/>`,
+    `<sheetData>${rows.join('')}</sheetData>`,
     '</worksheet>',
   ].join('')
 }

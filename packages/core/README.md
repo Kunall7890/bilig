@@ -47,10 +47,9 @@ const result = await runWorkbookAction(model, 'calculate', createWorkbookRunAdap
 engine operations, including range and table-column writes, falls back to
 explicit `plan.ops` for low-level plans, reads single-cell `valueEquals` and
 `formulaEquals` targets, and verifies generic `exists` and `noFormulaErrors`
-checks with runtime proof attached to the returned check. When undo is captured,
-the returned `undo.ops` are portable workbook operations that can be applied by
-the runtime. Consumer-defined model semantics stay in the model; the core
-adapter only handles workbook execution and proof.
+checks. When undo is captured, the returned `undo.ops` are portable workbook
+operations that can be applied by the runtime. Consumer-defined model semantics
+stay in the model; the core adapter only handles workbook execution and proof.
 
 ## Persistence
 

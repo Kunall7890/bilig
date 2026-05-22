@@ -198,7 +198,7 @@ export function makeCompactExistingNumericMutationResult(
   secondChangedCellIndex: number | undefined,
   explicitChangedCount: number,
   secondChangedNumericValue?: number,
-  secondChangedRow?: number,
+  secondChangedRow?: number | { readonly row: number; readonly col: number },
   secondChangedCol?: number,
   secondChangedValue?: CellValue,
 ): EngineExistingNumericCellMutationResult {
@@ -226,7 +226,10 @@ export function makeCompactExistingNumericMutationResult(
   if (secondChangedValue !== undefined) {
     result.secondChangedValue = secondChangedValue
   }
-  if (secondChangedRow !== undefined && secondChangedCol !== undefined) {
+  if (typeof secondChangedRow === 'object') {
+    result.secondChangedRow = secondChangedRow.row
+    result.secondChangedCol = secondChangedRow.col
+  } else if (secondChangedRow !== undefined && secondChangedCol !== undefined) {
     result.secondChangedRow = secondChangedRow
     result.secondChangedCol = secondChangedCol
   }

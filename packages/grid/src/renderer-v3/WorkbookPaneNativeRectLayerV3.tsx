@@ -39,6 +39,10 @@ function getNullSnapshot(): GridGeometrySnapshot | null {
   return null
 }
 
+function isPaneDrawVisible(pane: RectLayerPane): boolean {
+  return pane.drawVisible !== false
+}
+
 function getPaneRectInstances(pane: RectLayerPane): Float32Array {
   return 'tile' in pane ? pane.tile.rectInstances : pane.rectInstances
 }
@@ -100,6 +104,9 @@ export function buildNativeRectLayerRectsForPaneV3(input: {
   readonly pane: RectLayerPane
   readonly scrollSnapshot: WorkbookGridScrollSnapshot
 }): readonly NativeRectLayerRectV3[] {
+  if (!isPaneDrawVisible(input.pane)) {
+    return []
+  }
   const rectCount = getPaneRectCount(input.pane)
   if (rectCount <= 0) {
     return []

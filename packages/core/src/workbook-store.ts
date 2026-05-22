@@ -526,10 +526,6 @@ export class WorkbookStore {
     return runWorkbookMetadataEffect(this.metadataService.deleteTable(name))
   }
 
-  hasTables(): boolean {
-    return this.metadata.tables.size > 0
-  }
-
   listTables(): WorkbookTableRecord[] {
     return runWorkbookMetadataEffect(this.metadataService.listTables())
   }
@@ -630,14 +626,6 @@ export class WorkbookStore {
 
   snapshotColumnAxisEntries(sheetName: string, start: number, count: number): WorkbookAxisEntrySnapshot[] {
     return this.axisEntryStore.snapshotAxisEntriesInRange(this.getSheet(sheetName), 'column', start, count)
-  }
-
-  createRowAxisEntries(start: number, count: number): WorkbookAxisEntrySnapshot[] {
-    return this.axisEntryStore.createAxisEntries('row', start, count)
-  }
-
-  createColumnAxisEntries(start: number, count: number): WorkbookAxisEntrySnapshot[] {
-    return this.axisEntryStore.createAxisEntries('column', start, count)
   }
 
   materializeRowAxisEntries(sheetName: string, start: number, count: number): WorkbookAxisEntrySnapshot[] {
@@ -779,10 +767,6 @@ export class WorkbookStore {
 
   deleteDataValidation(sheetName: string, range: CellRangeRef): boolean {
     return runWorkbookMetadataEffect(this.metadataService.deleteDataValidation(sheetName, range))
-  }
-
-  hasDataValidations(): boolean {
-    return this.metadata.dataValidations.size > 0
   }
 
   listDataValidations(sheetName: string): WorkbookDataValidationRecord[] {

@@ -151,21 +151,6 @@ describe('viewport patch codec', () => {
     expect(decoded.merges).toEqual([])
   })
 
-  it('round-trips missing-sheet status without pretending an empty grid was loaded', () => {
-    const patch: ViewportPatch = {
-      ...createPatch(),
-      status: 'sheet-not-found',
-      full: true,
-      styles: [],
-      cells: [],
-      columns: [],
-      rows: [],
-      merges: [],
-    }
-
-    expect(decodeViewportPatch(encodeViewportPatch(patch))).toEqual(patch)
-  })
-
   it('rejects legacy JSON viewport patch payloads', () => {
     const legacyBytes = new TextEncoder().encode(JSON.stringify(createPatch()))
 

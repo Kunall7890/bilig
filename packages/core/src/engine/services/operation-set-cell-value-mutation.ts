@@ -151,12 +151,12 @@ export function applySetCellValueMutation(request: ApplySetCellValueMutationArgs
     mutation.value === null &&
     !isRestore &&
     (existingIndex === undefined || request.isNullLiteralWriteNoOp(existingIndex)) &&
-    (!args.state.workbook.hasTables() || !isTableHeaderCell(args.state.workbook.listTables(), sheetName, mutation.row, mutation.col))
+    !isTableHeaderCell(args.state.workbook.listTables(), sheetName, mutation.row, mutation.col)
   ) {
     return { changedInputCount, formulaChangedCount, explicitChangedCount, topologyChanged }
   }
 
-  if (!isRestore && mutation.skipTableHeaderRename !== true && args.state.workbook.hasTables()) {
+  if (!isRestore) {
     ;({
       formulaChangedCount,
       topologyChanged,
@@ -204,7 +204,7 @@ export function applySetCellValueMutation(request: ApplySetCellValueMutationArgs
   const sortedLookupDependentsHandled = lookupWritePlans.sortedHandled
   const needsLookupValueRead = lookupWritePlans.needsLookupValueRead
   let directDependentsHandled = false
-  if (!isRestore && canFastOverwriteExisting && !hasAggregateDependents) {
+  if (!isRestore && canFastOverwriteExisting) {
     const oldNumber = request.directScalarCellNumericValue(existingIndex)
     const newNumber = directScalarLiteralNumericValue(effectiveValue)
     if (oldNumber !== undefined && newNumber !== undefined) {

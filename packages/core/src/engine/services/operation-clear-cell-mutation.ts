@@ -109,12 +109,7 @@ export function applyClearCellMutation(request: ApplyClearCellMutationArgs): Cle
   let headerClearValue: string | undefined
 
   const sheetName = request.resolveSheetName(sheetId)
-  if (
-    !isRestore &&
-    mutation.skipTableHeaderRename !== true &&
-    args.state.workbook.hasTables() &&
-    isTableHeaderCell(args.state.workbook.listTables(), sheetName, mutation.row, mutation.col)
-  ) {
+  if (!isRestore && isTableHeaderCell(args.state.workbook.listTables(), sheetName, mutation.row, mutation.col)) {
     const renamed = applyTableHeaderRenameForSetCellValue({
       serviceArgs: args,
       sheetName,

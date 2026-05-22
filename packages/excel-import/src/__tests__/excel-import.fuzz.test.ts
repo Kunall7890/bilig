@@ -2,21 +2,8 @@ import { describe, expect, it } from 'vitest'
 import * as fc from 'fast-check'
 import * as XLSX from 'xlsx'
 import { formatAddress } from '@bilig/formula'
-import type { WorkbookSnapshot } from '@bilig/protocol'
 import { runProperty } from '@bilig/test-fuzz'
-import { exportXlsx, importCsv, importXlsx, InvalidXlsxZipContainerError } from '../index.js'
-import { decodeExcelEscapedText, encodeExcelEscapedText } from '../xlsx-escaped-text.js'
-import {
-  buildMalformedXlsxBytes,
-  buildSemanticXlsxWorkbookSnapshot,
-  csvEdgeWorkbookSpecArbitrary,
-  expectedCsvEdgeCells,
-  expectedCsvEdgePreviewRows,
-  malformedXlsxSpecArbitrary,
-  renderCsvEdgeWorkbook,
-  semanticXlsxWorkbookDigest,
-  semanticXlsxWorkbookSpecArbitrary,
-} from './excel-import-fuzz-helpers.js'
+import { importCsv, importXlsx } from '../index.js'
 
 type CsvCellSpec =
   | { kind: 'empty'; raw: '' }
@@ -31,32 +18,7 @@ type XlsxCellSpec =
   | { kind: 'text'; value: string }
   | { kind: 'formula'; formula: string }
 
-type XlsxEscapedTextCellSpec = {
-  address: string
-  value: string
-}
-
-type XlsxEscapedTextWorkbookSpec = {
-  fileStem: string
-  cells: XlsxEscapedTextCellSpec[]
-  rows: AxisEntrySnapshot[]
-  columns: AxisEntrySnapshot[]
-}
-
-type AxisEntrySnapshot = NonNullable<NonNullable<WorkbookSnapshot['sheets'][number]['metadata']>['rows']>[number]
-
 describe('excel import fuzz', () => {
-  it('should encode generated Excel escaped text literals reversibly', async () => {
-    await runProperty({
-      suite: 'excel-import/xlsx/escaped-text-codec',
-      arbitrary: escapedTextArbitrary,
-      predicate: async (value) => {
-        expect(decodeExcelEscapedText(encodeExcelEscapedText(value))).toBe(value)
-      },
-      parameters: { numRuns: 120 },
-    })
-  })
-
   it('should preserve csv preview and snapshot semantics for generated small tables', async () => {
     await runProperty({
       suite: 'excel-import/csv/generated-tables',
@@ -101,92 +63,6 @@ describe('excel import fuzz', () => {
         expect(imported.preview.sheets[0]?.nonEmptyCellCount).toBe(expectedCells.length)
         expect(imported.snapshot.sheets[0]?.cells).toEqual(expectedCells)
       },
-    })
-  })
-
-  it('should preserve csv edge semantics for separators, quoting, unicode, sparse rows, and accounting values', async () => {
-    await runProperty({
-      suite: 'excel-import/csv/edge-semantics',
-      arbitrary: csvEdgeWorkbookSpecArbitrary,
-      predicate: async (spec) => {
-        const expectedPreviewRows = expectedCsvEdgePreviewRows(spec)
-        const expectedCells = expectedCsvEdgeCells(spec)
-        const imported = importCsv(renderCsvEdgeWorkbook(spec), `${spec.fileStem}.csv`)
-        const expectedColumnCount = expectedPreviewRows[0]?.length ?? 0
-        const hasRaggedRows = spec.rows.some((row) => row.length !== expectedColumnCount)
-
-        expect(imported.workbookName).toBe(spec.fileStem)
-        expect(imported.sheetNames).toEqual([spec.fileStem])
-        expect(imported.warnings).toEqual(
-          hasRaggedRows ? ['CSV rows had inconsistent column counts. Missing cells were treated as blanks.'] : [],
-        )
-        expect(imported.preview.sheets[0]?.rowCount).toBe(expectedPreviewRows.length)
-        expect(imported.preview.sheets[0]?.columnCount).toBe(expectedColumnCount)
-        expect(imported.preview.sheets[0]?.previewRows).toEqual(expectedPreviewRows)
-        expect(imported.preview.sheets[0]?.nonEmptyCellCount).toBe(expectedCells.length)
-        expect(imported.snapshot.sheets[0]?.cells).toEqual(expectedCells)
-      },
-      parameters: { numRuns: 120 },
-    })
-  })
-
-  it('should preserve generated escaped text and axis entries across XLSX export/import cycles', async () => {
-    await runProperty({
-      suite: 'excel-import/xlsx/escaped-text-axis-roundtrip',
-      arbitrary: xlsxEscapedTextWorkbookSpecArbitrary,
-      predicate: async (spec) => {
-        const snapshot = buildEscapedTextWorkbookSnapshot(spec)
-        const imported = importXlsx(exportXlsx(snapshot), `${spec.fileStem}.xlsx`).snapshot
-        const reimported = importXlsx(exportXlsx(imported), `${spec.fileStem}-again.xlsx`).snapshot
-
-        expect(escapedTextWorkbookDigest(imported)).toEqual(escapedTextWorkbookDigest(snapshot))
-        expect(escapedTextWorkbookDigest(reimported)).toEqual(escapedTextWorkbookDigest(imported))
-      },
-      parameters: { numRuns: 80 },
-    })
-  })
-
-  it('should preserve semantic XLSX metadata digests across import-export-import cycles', async () => {
-    await runProperty({
-      suite: 'excel-import/xlsx/semantic-metadata-roundtrip',
-      arbitrary: semanticXlsxWorkbookSpecArbitrary,
-      predicate: async (spec) => {
-        const snapshot = buildSemanticXlsxWorkbookSnapshot(spec)
-        const imported = importXlsx(exportXlsx(snapshot), `${spec.workbookName}.xlsx`).snapshot
-        const reimported = importXlsx(exportXlsx(imported), `${spec.workbookName}-again.xlsx`).snapshot
-
-        expect(semanticXlsxWorkbookDigest(imported)).toEqual(semanticXlsxWorkbookDigest(snapshot))
-        expect(semanticXlsxWorkbookDigest(reimported)).toEqual(semanticXlsxWorkbookDigest(imported))
-      },
-      parameters: { numRuns: 80 },
-    })
-  }, 30_000)
-
-  it('should reject corrupt XLSX containers and avoid crashing on malformed OpenXML parts', async () => {
-    await runProperty({
-      suite: 'excel-import/xlsx/malformed-openxml',
-      arbitrary: malformedXlsxSpecArbitrary,
-      predicate: async (spec) => {
-        const bytes = buildMalformedXlsxBytes(spec)
-
-        if (spec.kind === 'corruptZip') {
-          expect(() => importXlsx(bytes, 'corrupt.xlsx')).toThrow(InvalidXlsxZipContainerError)
-          return
-        }
-
-        try {
-          const imported = importXlsx(bytes, 'malformed-openxml.xlsx')
-          expect(imported.snapshot.sheets).toHaveLength(imported.sheetNames.length)
-          expect(imported.preview.sheetCount).toBe(imported.sheetNames.length)
-          if (imported.snapshot.sheets.length > 0) {
-            expect(() => exportXlsx(imported.snapshot)).not.toThrow()
-          }
-        } catch (error) {
-          expect(error).toBeInstanceOf(Error)
-          expect(error instanceof Error ? error.message.length : 0).toBeGreaterThan(0)
-        }
-      },
-      parameters: { numRuns: 80 },
     })
   })
 
@@ -288,55 +164,6 @@ const csvCellSpecArbitrary = fc.oneof<CsvCellSpec>(
   })),
 )
 
-const escapedTextArbitrary = fc
-  .oneof(
-    fc.constantFrom(
-      'simple',
-      ' leading and trailing ',
-      '<tag attr="value">&text</tag>',
-      'quote " apostrophe \' ampersand &',
-      'line\nbreak',
-      'tab\tseparated',
-      'literal _x000D_ token',
-      '_x000D_',
-      '_x005F_x000D_',
-      '_x0041_',
-      'control \u0001 value',
-    ),
-    fc
-      .array(fc.constantFrom('alpha', '&', '<', '>', '"', "'", '_', '_x0009_', '_x005F_', '\n', '\t', '\u0001'), {
-        minLength: 1,
-        maxLength: 6,
-      })
-      .map((parts) => parts.join('')),
-  )
-  .filter((value) => value.length > 0)
-
-const xlsxEscapedTextWorkbookSpecArbitrary = fc.record({
-  fileStem: fc.constantFrom('Escaped Text', 'Import Fidelity', 'Axis Entries'),
-  cells: fc.uniqueArray(
-    fc.record({
-      address: fc.constantFrom('A1', 'B1', 'C2', 'D3', 'E4', 'B5'),
-      value: escapedTextArbitrary,
-    }),
-    {
-      minLength: 1,
-      maxLength: 6,
-      selector: (cell) => cell.address,
-    },
-  ),
-  rows: fc.uniqueArray(axisEntryArbitrary('row'), {
-    minLength: 0,
-    maxLength: 4,
-    selector: (entry) => entry.index,
-  }),
-  columns: fc.uniqueArray(axisEntryArbitrary('col'), {
-    minLength: 0,
-    maxLength: 4,
-    selector: (entry) => entry.index,
-  }),
-})
-
 const xlsxCellSpecArbitrary = fc.oneof<XlsxCellSpec>(
   fc.constant({ kind: 'empty' }),
   fc.integer({ min: -999, max: 999 }).map((value) => ({ kind: 'number' as const, value })),
@@ -344,92 +171,6 @@ const xlsxCellSpecArbitrary = fc.oneof<XlsxCellSpec>(
   fc.constantFrom('alpha', 'beta', 'gamma', 'delta').map((value) => ({ kind: 'text' as const, value })),
   fc.constantFrom('1+2', 'A1+1', 'B2*2').map((formula) => ({ kind: 'formula' as const, formula })),
 )
-
-function axisEntryArbitrary(idPrefix: 'row' | 'col'): fc.Arbitrary<AxisEntrySnapshot> {
-  return fc
-    .record({
-      index: fc.integer({ min: 0, max: 4 }),
-      metadata: fc.oneof(
-        fc.record({ size: fc.integer({ min: 12, max: 96 }) }),
-        fc.record({ hidden: fc.constant(true) }),
-        fc.record({ size: fc.integer({ min: 12, max: 96 }), hidden: fc.constant(true) }),
-      ),
-    })
-    .map(({ index, metadata }) => generatedAxisEntry(idPrefix, index, metadata))
-}
-
-function buildEscapedTextWorkbookSnapshot(spec: XlsxEscapedTextWorkbookSpec): WorkbookSnapshot {
-  return {
-    version: 1,
-    workbook: { name: spec.fileStem },
-    sheets: [
-      {
-        id: 1,
-        name: 'Data',
-        order: 0,
-        cells: spec.cells.toSorted(compareCellsByAddress),
-        metadata: {
-          rows: spec.rows.toSorted((left, right) => left.index - right.index),
-          columns: spec.columns.toSorted((left, right) => left.index - right.index),
-        },
-      },
-    ],
-  }
-}
-
-function escapedTextWorkbookDigest(snapshot: WorkbookSnapshot): unknown {
-  return snapshot.sheets
-    .toSorted((left, right) => left.order - right.order)
-    .map((sheet) => ({
-      name: sheet.name,
-      order: sheet.order,
-      cells: sheet.cells.map((cell) => ({ address: cell.address, value: cell.value })).toSorted(compareCellsByAddress),
-      rows: normalizeAxisEntries(sheet.metadata?.rows),
-      columns: normalizeAxisEntries(sheet.metadata?.columns),
-    }))
-}
-
-function compareCellsByAddress(left: { address: string }, right: { address: string }): number {
-  const leftCell = XLSX.utils.decode_cell(left.address)
-  const rightCell = XLSX.utils.decode_cell(right.address)
-  return leftCell.r - rightCell.r || leftCell.c - rightCell.c
-}
-
-function normalizeAxisEntries(entries: readonly AxisEntrySnapshot[] | undefined): AxisEntrySnapshot[] {
-  return (entries ?? []).map((entry) => normalizedAxisEntry(entry)).toSorted((left, right) => left.index - right.index)
-}
-
-function generatedAxisEntry(
-  idPrefix: 'row' | 'col',
-  index: number,
-  metadata: { readonly size?: number | undefined; readonly hidden?: boolean | undefined },
-): AxisEntrySnapshot {
-  const entry: AxisEntrySnapshot = {
-    id: `${idPrefix}:${String(index)}`,
-    index,
-  }
-  if (metadata.size !== undefined) {
-    entry.size = metadata.size
-  }
-  if (metadata.hidden !== undefined) {
-    entry.hidden = metadata.hidden
-  }
-  return entry
-}
-
-function normalizedAxisEntry(entry: AxisEntrySnapshot): AxisEntrySnapshot {
-  const normalized: AxisEntrySnapshot = {
-    id: entry.id,
-    index: entry.index,
-  }
-  if (entry.size !== undefined && entry.size !== null) {
-    normalized.size = entry.size
-  }
-  if (entry.hidden !== undefined && entry.hidden !== null) {
-    normalized.hidden = entry.hidden
-  }
-  return normalized
-}
 
 function normalizeImportedCells(
   cells: ReadonlyArray<{ address: string; value?: unknown; formula?: string; format?: string }>,

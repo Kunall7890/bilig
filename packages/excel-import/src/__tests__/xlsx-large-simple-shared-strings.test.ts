@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest'
 import {
   collectReferencedLargeSimpleRichSharedStringIndexes,
   createLargeSimpleSharedStringSubset,
+  hasAnyLargeSimpleRichSharedStringFromChunks,
   readLargeSimpleSharedStrings,
   readLargeSimpleReferencedSharedStringsFromChunks,
 } from '../xlsx-large-simple-shared-strings.js'
@@ -107,6 +108,96 @@ describe('large simple shared string streaming', () => {
     expect(typeof Object.getOwnPropertyDescriptor(entry, 'text')?.get).toBe('function')
     expect(entry?.text).toBe('Rich Text')
     expect(entry?.text).toBe('Rich Text')
+  })
+
+  it('detects rich shared-string metadata without retaining plain shared-string payloads', () => {
+    const retainedBufferLengths: number[] = []
+    const largePlainText = 'x'.repeat(100_000)
+    const chunks = [
+      '<sst xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><si><t>',
+      largePlainText.slice(0, 40_000),
+      largePlainText.slice(40_000, 80_000),
+      largePlainText.slice(80_000),
+      '</t></si><si><r><t>Rich</t></r></si></sst>',
+    ]
+
+    const hasRichText = hasAnyLargeSimpleRichSharedStringFromChunks(
+      (onChunk) => {
+        for (const chunk of chunks) {
+          onChunk(encoder.encode(chunk))
+        }
+        return true
+      },
+      {
+        onRetainedBufferLength: (length) => retainedBufferLengths.push(length),
+      },
+    )
+
+    expect(hasRichText).toBe(true)
+    expect(retainedBufferLengths.length).toBeGreaterThan(0)
+    expect(Math.max(...retainedBufferLengths)).toBeLessThan(1024)
+  })
+
+  it('stops scanning shared strings after the requested references are materialized', () => {
+    let chunksRead = 0
+    const sharedStrings = readLargeSimpleReferencedSharedStringsFromChunks(
+      (onChunk) => {
+        for (const chunk of [
+          '<sst xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><si><t>Keep</t></si>',
+          '<si><t>Unused tail should not be read</t></si></sst>',
+        ]) {
+          chunksRead += 1
+          if (onChunk(encoder.encode(chunk)) === false) {
+            break
+          }
+        }
+        return true
+      },
+      new Set([0]),
+    )
+
+    expect(sharedStrings?.[0]).toEqual({ text: 'Keep', rich: false })
+    expect(chunksRead).toBe(1)
+  })
+
+  it('stops rich shared-string metadata scanning as soon as a rich run is found', () => {
+    let chunksRead = 0
+    const hasRichText = hasAnyLargeSimpleRichSharedStringFromChunks((onChunk) => {
+      for (const chunk of [
+        '<sst xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><si><r><t>Rich</t></r></si>',
+        '<si><t>Unused plain tail should not be read</t></si></sst>',
+      ]) {
+        chunksRead += 1
+        if (onChunk(encoder.encode(chunk)) === false) {
+          break
+        }
+      }
+      return true
+    })
+
+    expect(hasRichText).toBe(true)
+    expect(chunksRead).toBe(1)
+  })
+
+  it('streams plain shared-string text from entry ranges', () => {
+    const sharedStrings = readLargeSimpleReferencedSharedStringsFromChunks(
+      (onChunk) => {
+        onChunk(
+          encoder.encode(
+            '<sst xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">' +
+              '<si><t>Alpha &amp; _x0042_</t><t>eta</t></si>' +
+              '<si><r><t>Rich</t></r><r><t> Text</t></r></si>' +
+              '</sst>',
+          ),
+        )
+        return true
+      },
+      new Set([0, 1]),
+    )
+
+    expect(sharedStrings?.[0]).toEqual({ text: 'Alpha & Beta', rich: false })
+    expect(sharedStrings?.[1]?.rich).toBe(true)
+    expect(sharedStrings?.[1]?.text).toBe('Rich Text')
   })
 
   it('deduplicates repeated referenced shared-string text through the import string pool', () => {

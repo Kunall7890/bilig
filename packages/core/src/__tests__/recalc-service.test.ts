@@ -5,7 +5,6 @@ import { utcDateToExcelSerial } from '@bilig/formula'
 import { SpreadsheetEngine } from '../engine.js'
 import type { EngineTrackedEvent } from '../events.js'
 import type { EngineRecalcService } from '../engine/services/recalc-service.js'
-import { areDifferentialCellValuesEqual, filterSkippedCachedFormulaCells } from '../engine/services/recalc-service-helpers.js'
 import type { RuntimeFormula } from '../engine/runtime-state.js'
 
 function isEngineRecalcService(value: unknown): value is EngineRecalcService {
@@ -44,21 +43,6 @@ function getFormulaTable(engine: SpreadsheetEngine): { get(cellIndex: number): R
 }
 
 describe('EngineRecalcService', () => {
-  it('filters skipped cached formula cells without reordering changed cells', () => {
-    expect(Array.from(filterSkippedCachedFormulaCells(Uint32Array.of(3, 4, 5, 6), 3, undefined))).toEqual([3, 4, 5])
-    expect(Array.from(filterSkippedCachedFormulaCells(Uint32Array.of(3, 4, 5, 6), 4, new Set([4, 6])))).toEqual([3, 5])
-  })
-
-  it('compares differential numeric values with a tight floating-point tolerance', () => {
-    expect(areDifferentialCellValuesEqual({ tag: ValueTag.Number, value: 100 }, { tag: ValueTag.Number, value: 100 + 5e-11 })).toBe(true)
-    expect(
-      areDifferentialCellValuesEqual({ tag: ValueTag.Number, value: Number.POSITIVE_INFINITY }, { tag: ValueTag.Number, value: 1 }),
-    ).toBe(false)
-    expect(areDifferentialCellValuesEqual({ tag: ValueTag.String, value: '100', stringId: 1 }, { tag: ValueTag.Number, value: 100 })).toBe(
-      false,
-    )
-  })
-
   it('performs dirty-region recalculation through the extracted service boundary', async () => {
     const engine = new SpreadsheetEngine({ workbookName: 'recalc-dirty' })
     await engine.ready()

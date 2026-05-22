@@ -65,7 +65,6 @@ export function collectAggregateCandidates(
   ref: ReferenceOperand | undefined,
   context: EvaluationContext,
   ignoreHiddenRows: boolean,
-  ignoreFilteredRows = false,
 ): AggregateCandidateValue[] {
   if (value.kind === 'scalar') {
     if (ref?.kind !== 'cell' || !ref.address) {
@@ -73,18 +72,12 @@ export function collectAggregateCandidates(
     }
     const sheetName = ref.sheetName ?? context.sheetName
     const cell = parseCellAddress(ref.address, sheetName)
-    if (ignoreFilteredRows && context.isRowFiltered?.(sheetName, cell.row) === true) {
-      return []
-    }
     if (ignoreHiddenRows && context.isRowHidden?.(sheetName, cell.row) === true) {
       return []
     }
     return [{ value: value.value, sheetName, address: formatAddress(cell.row, cell.col) }]
   }
-  if (value.kind === 'omitted') {
-    return []
-  }
-  if (value.kind === 'lambda') {
+  if (value.kind === 'omitted' || value.kind === 'lambda') {
     return [{ value: valueError() }]
   }
   if (value.kind === 'array') {
@@ -119,9 +112,6 @@ export function collectAggregateCandidates(
   const candidates: AggregateCandidateValue[] = []
   for (let index = 0; index < value.values.length; index += 1) {
     const row = startRow + Math.floor(index / cols)
-    if (ignoreFilteredRows && context.isRowFiltered?.(sheetName, row) === true) {
-      continue
-    }
     if (ignoreHiddenRows && context.isRowHidden?.(sheetName, row) === true) {
       continue
     }

@@ -1,6 +1,5 @@
 import type { EngineOpBatch } from '@bilig/workbook'
 import type { CellRangeRef, EngineEvent } from '@bilig/protocol'
-import { formatAddress } from '@bilig/formula'
 import { batchOpOrder, compareOpOrder, markBatchApplied } from '../../replica-state.js'
 import { calculationSettingsEqual, normalizeWorkbookCalculationSettings } from '../../engine-metadata-utils.js'
 import { normalizeDefinedName } from '../../workbook-store.js'
@@ -22,30 +21,11 @@ import type { MutationSource, StructuralAxisOp } from './operation-service-types
 import { applyBatchClearCellOp, applyBatchSetCellValueOp } from './operation-batch-cell-value-mutations.js'
 import { canFinalizeStructuralNoValueMutationWithoutRecalc, isStructuralAxisOp } from './operation-structural-no-value-finalization.js'
 import type { CreateOperationBatchApplierArgs } from './operation-batch-applier-types.js'
-import { collectInsertedTableCalculatedColumnFormulaWrites } from './table-calculated-column-formulas.js'
 
 const EMPTY_INVALIDATED_RANGES: CellRangeRef[] = []
 const EMPTY_INVALIDATED_ROWS: NonNullable<EngineEvent['invalidatedRows']> = []
 const EMPTY_INVALIDATED_COLUMNS: NonNullable<EngineEvent['invalidatedColumns']> = []
 const EMPTY_CELL_INDICES: number[] = []
-
-function isHistoryReplaySource(source: MutationSource): boolean {
-  return source === 'undo' || source === 'redo'
-}
-
-function shouldRefreshTopologyAfterHistoryStructuralReplay(args: {
-  readonly source: MutationSource
-  readonly activeFormulaCount: number
-  readonly invalidatedRangeCount: number
-  readonly invalidatedRowCount: number
-  readonly invalidatedColumnCount: number
-}): boolean {
-  return (
-    isHistoryReplaySource(args.source) &&
-    args.activeFormulaCount > 0 &&
-    (args.invalidatedRangeCount > 0 || args.invalidatedRowCount > 0 || args.invalidatedColumnCount > 0)
-  )
-}
 
 export function createOperationBatchApplier(input: CreateOperationBatchApplierArgs) {
   const {
@@ -166,19 +146,13 @@ export function createOperationBatchApplier(input: CreateOperationBatchApplierAr
 
     try {
       const order = batch === undefined ? undefined : batchOpOrder(batch, 0)
-      const structural = args.applyStructuralAxisOp(op, source)
-      const tableCalculatedColumnWrites =
-        op.kind === 'insertRows'
-          ? collectInsertedTableCalculatedColumnFormulaWrites(args.state.workbook.listTables(), op.sheetName, op.start, op.count)
-          : []
+      const structural = args.applyStructuralAxisOp(op)
       if (source === 'local') {
         captureLocalStructuralInsertEntries(batch, 0, op)
       }
       const activeFormulaCount = args.state.formulas.size
       const canFinalizeNoValueWithoutEvents =
         !isRestore &&
-        source !== 'undo' &&
-        source !== 'redo' &&
         options?.emitTracked === false &&
         !hasGeneralEventListeners &&
         !hasTrackedEventListeners &&
@@ -188,7 +162,6 @@ export function createOperationBatchApplier(input: CreateOperationBatchApplierAr
         structural.transaction.removedCellIndices.length === 0 &&
         structural.precomputedChangedInputCellIndices.length === 0 &&
         structural.formulaCellIndices.length === 0 &&
-        tableCalculatedColumnWrites.length === 0 &&
         !args.state.workbook.hasPivots() &&
         (activeFormulaCount === 0 || args.hasVolatileFormulas?.() === false)
       if (canFinalizeNoValueWithoutEvents) {
@@ -200,8 +173,7 @@ export function createOperationBatchApplier(input: CreateOperationBatchApplierAr
         if (
           structural.transaction.removedCellIndices.length > 0 ||
           structural.precomputedChangedInputCellIndices.length > 0 ||
-          structural.formulaCellIndices.length > 0 ||
-          tableCalculatedColumnWrites.length > 0
+          structural.formulaCellIndices.length > 0
         ) {
           beginStructuralMutationCollection()
           args.ensureRecalcScratchCapacity(args.state.workbook.cellStore.size + 1)
@@ -219,14 +191,6 @@ export function createOperationBatchApplier(input: CreateOperationBatchApplierAr
         })
         structural.formulaCellIndices.forEach((cellIndex) => {
           formulaChangedCount = args.markFormulaChanged(cellIndex, formulaChangedCount)
-        })
-        tableCalculatedColumnWrites.forEach((write) => {
-          precomputedKernelSyncCellIndices ??= []
-          const cellIndex = args.ensureCellTracked(write.sheetName, formatAddress(write.row, write.col))
-          topologyChanged = args.bindFormula(cellIndex, write.sheetName, write.source) || topologyChanged
-          formulaChangedCount = args.markFormulaChanged(cellIndex, formulaChangedCount)
-          precomputedKernelSyncCellIndices.push(cellIndex)
-          precomputedKernelSyncCellCount += 1
         })
         structural.transaction.invalidationSpans.forEach((invalidation) => {
           if (invalidation.axis === 'row') {
@@ -249,7 +213,7 @@ export function createOperationBatchApplier(input: CreateOperationBatchApplierAr
             })
           }
         })
-        topologyChanged = topologyChanged || structural.graphRefreshRequired
+        topologyChanged = structural.graphRefreshRequired
         if (order !== undefined) {
           setEntityVersionForOp(op, order)
         }
@@ -288,19 +252,9 @@ export function createOperationBatchApplier(input: CreateOperationBatchApplierAr
       return true
     }
     const activeFormulaCount = args.state.formulas.size
-    const topologyChangedForRecalc =
-      topologyChanged ||
-      shouldRefreshTopologyAfterHistoryStructuralReplay({
-        source,
-        activeFormulaCount,
-        invalidatedRangeCount: 0,
-        invalidatedRowCount,
-        invalidatedColumnCount,
-      })
     const canFinalizeWithoutRecalc = canFinalizeStructuralNoValueMutationWithoutRecalc({
       isRestore,
-      isHistoryReplay: isHistoryReplaySource(source),
-      topologyChanged: topologyChangedForRecalc,
+      topologyChanged,
       formulaChangedCount,
       explicitChangedCount,
       precomputedKernelSyncCellCount,
@@ -378,7 +332,7 @@ export function createOperationBatchApplier(input: CreateOperationBatchApplierAr
     finalizeOperationRecalcAndEvents({
       serviceArgs: args,
       isRestore,
-      topologyChanged: topologyChangedForRecalc,
+      topologyChanged,
       sheetDeleted: false,
       structuralInvalidation: false,
       refreshAllPivots: true,
@@ -577,7 +531,7 @@ export function createOperationBatchApplier(input: CreateOperationBatchApplierAr
           case 'insertColumns':
           case 'deleteColumns':
           case 'moveColumns': {
-            const structural = args.applyStructuralAxisOp(op, source)
+            const structural = args.applyStructuralAxisOp(op)
             if (source === 'local') {
               captureLocalStructuralInsertEntries(batch, opIndex, op)
             }
@@ -590,16 +544,6 @@ export function createOperationBatchApplier(input: CreateOperationBatchApplierAr
             })
             structural.formulaCellIndices.forEach((cellIndex) => {
               formulaChangedCount = args.markFormulaChanged(cellIndex, formulaChangedCount)
-            })
-            const tableCalculatedColumnWrites =
-              op.kind === 'insertRows'
-                ? collectInsertedTableCalculatedColumnFormulaWrites(args.state.workbook.listTables(), op.sheetName, op.start, op.count)
-                : []
-            tableCalculatedColumnWrites.forEach((write) => {
-              const cellIndex = args.ensureCellTracked(write.sheetName, formatAddress(write.row, write.col))
-              topologyChanged = args.bindFormula(cellIndex, write.sheetName, write.source) || topologyChanged
-              formulaChangedCount = args.markFormulaChanged(cellIndex, formulaChangedCount)
-              precomputedKernelSyncCellIndices.push(cellIndex)
             })
             structural.transaction.invalidationSpans.forEach((invalidation) => {
               if (invalidation.axis === 'row') {
@@ -751,19 +695,10 @@ export function createOperationBatchApplier(input: CreateOperationBatchApplierAr
               hasTrackedSortedLookupDependents,
               hasTrackedDirectRangeDependents,
               readExactNumericValueForLookup,
-              applyDirectFormulaCurrentResult,
               tryApplyFormulaReplacementAsDirectScalarDeltaRoot,
               refreshDependentRangesAndRebindFormulaDependents,
               collectAffectedDirectRangeDependents,
               clearLookupImpactCaches,
-              queueWasmFormulaDependencyKernelSync: (formulaCellIndex, dependencyIndices) => {
-                for (let dependencyIndex = 0; dependencyIndex < dependencyIndices.length; dependencyIndex += 1) {
-                  precomputedKernelSyncCellIndices.push(dependencyIndices[dependencyIndex]!)
-                }
-                args.forEachFormulaDependencyCell(formulaCellIndex, (dependencyCellIndex) => {
-                  precomputedKernelSyncCellIndices.push(dependencyCellIndex)
-                })
-              },
             })
             changedInputCount = formulaResult.changedInputCount
             formulaChangedCount = formulaResult.formulaChangedCount
@@ -920,20 +855,10 @@ export function createOperationBatchApplier(input: CreateOperationBatchApplierAr
       return
     }
 
-    const topologyChangedForRecalc =
-      topologyChanged ||
-      shouldRefreshTopologyAfterHistoryStructuralReplay({
-        source,
-        activeFormulaCount: args.state.formulas.size,
-        invalidatedRangeCount: invalidatedRanges.length,
-        invalidatedRowCount: invalidatedRows.length,
-        invalidatedColumnCount: invalidatedColumns.length,
-      })
-
     finalizeOperationRecalcAndEvents({
       serviceArgs: args,
       isRestore,
-      topologyChanged: topologyChangedForRecalc,
+      topologyChanged,
       sheetDeleted,
       structuralInvalidation,
       refreshAllPivots,

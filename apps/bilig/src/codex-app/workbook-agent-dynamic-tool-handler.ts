@@ -116,7 +116,7 @@ export function createWorkbookAgentDynamicToolHandler(input: {
           authoritativeRows,
           minRevision,
         })
-        return renderedReadback.matched === true && renderedReadback.sourceKind === 'selection'
+        return renderedReadback.matched === true
       })
     }
 

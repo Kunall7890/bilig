@@ -124,8 +124,8 @@ describe('large simple XLSX import ZIP ownership', () => {
     const roundTripped = importXlsx(exported, 'roundtrip.xlsx')
 
     expect(imported.snapshot.sheets[0]?.cells).toEqual([
-      { address: 'A1', row: 0, col: 0, value: 'Alpha' },
-      { address: 'B1', row: 0, col: 1, value: 'Beta' },
+      { address: 'A1', value: 'Alpha' },
+      { address: 'B1', value: 'Beta' },
     ])
     expect(releasePhase).toMatchObject({
       zipSourceBytesAfterRelease: 0,
@@ -150,8 +150,8 @@ describe('large simple XLSX import ZIP ownership', () => {
     const exported = exportXlsx(imported.snapshot)
 
     expect(imported.snapshot.sheets[0]?.cells).toEqual([
-      { address: 'A1', col: 0, row: 0, value: 'Alpha' },
-      { address: 'B1', col: 1, row: 0, value: 'Beta' },
+      { address: 'A1', value: 'Alpha' },
+      { address: 'B1', value: 'Beta' },
     ])
     expect(releasePhase?.ownedSourceBytesBeforeRelease).toBeGreaterThan(8 * 1024 * 1024)
     expect(releasePhase?.ownedSourceBytesAfterRelease).toBe(0)

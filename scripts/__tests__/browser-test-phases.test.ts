@@ -7,65 +7,44 @@ describe('browser test phases', () => {
 
     expect(phases.map((phase) => phase.label)).toEqual([
       'parallel browser tests',
-      'browser ci tests',
-      'browser serial tests',
-      'clipboard global tests',
-    ])
-    expect(phases[0]).toEqual({
-      label: 'parallel browser tests',
-      args: ['--workers=2', '--grep-invert', '@clipboard-global|@browser-ci|@browser-serial|@browser-perf|@browser-deep|@browser-webgpu'],
-      env: { BILIG_BROWSER_WEBGPU: '1' },
-    })
-    expect(phases[1]).toEqual({
-      label: 'browser ci tests',
-      args: ['--workers=1', '--grep', '@browser-ci', '--grep-invert', '@browser-perf|@browser-deep|@browser-webgpu'],
-      env: { BILIG_BROWSER_WEBGPU: '1' },
-    })
-    expect(phases[2]).toEqual({
-      label: 'browser serial tests',
-      args: ['--workers=1', '--grep', '@browser-serial', '--grep-invert', '@browser-webgpu'],
-      env: { BILIG_BROWSER_WEBGPU: '1' },
-    })
-  })
-
-  it('adds webgpu tests only for the explicit webgpu browser profile', () => {
-    const phases = resolveBrowserTestPhases({
-      playwrightArgs: [],
-      env: {
-        BILIG_BROWSER_INCLUDE_WEBGPU: '1',
-      },
-    })
-
-    expect(phases.map((phase) => phase.label)).toEqual([
-      'parallel browser tests',
-      'browser ci tests',
       'browser webgpu tests',
       'browser serial tests',
       'clipboard global tests',
     ])
-    expect(phases.find((phase) => phase.label === 'browser webgpu tests')).toEqual({
+    expect(phases[0]?.args).toEqual([
+      '--workers=2',
+      '--grep-invert',
+      '@clipboard-global|@browser-serial|@fuzz-browser|@browser-perf|@browser-deep|@browser-webgpu',
+    ])
+    expect(phases[1]).toEqual({
       label: 'browser webgpu tests',
       args: ['--workers=1', '--grep', '@browser-webgpu', '--grep-invert', '@browser-perf|@browser-deep'],
       env: { BILIG_BROWSER_WEBGPU: '1' },
     })
+    expect(phases[2]?.args).toEqual(['--workers=1', '--grep', '@browser-serial', '--grep-invert', '@browser-webgpu'])
   })
 
-  it('adds perf and deep without implicitly enabling webgpu coverage', () => {
+  it('adds perf, deep, and fuzz only for the deep browser profile', () => {
     const phases = resolveBrowserTestPhases({
       playwrightArgs: [],
       env: {
+        BILIG_BROWSER_INCLUDE_FUZZ: '1',
         BILIG_BROWSER_INCLUDE_PERF: '1',
         BILIG_BROWSER_INCLUDE_DEEP: '1',
+        BILIG_FUZZ_PROFILE: 'nightly',
       },
     })
 
     expect(phases.map((phase) => phase.label)).toEqual([
       'parallel browser tests',
-      'browser ci tests',
+      'browser webgpu tests',
       'browser perf tests',
+      'browser webgpu perf tests',
       'browser deep tests',
+      'browser webgpu deep tests',
       'browser serial tests',
       'clipboard global tests',
+      'browser fuzz tests',
     ])
     expect(phases.find((phase) => phase.label === 'browser perf tests')?.args).toEqual([
       '--workers=1',
@@ -74,6 +53,11 @@ describe('browser test phases', () => {
       '--grep-invert',
       '@browser-webgpu',
     ])
+    expect(phases.find((phase) => phase.label === 'browser webgpu perf tests')).toEqual({
+      label: 'browser webgpu perf tests',
+      args: ['--workers=1', '--grep', '@browser-webgpu.*@browser-perf|@browser-perf.*@browser-webgpu'],
+      env: { BILIG_BROWSER_WEBGPU: '1' },
+    })
     expect(phases.find((phase) => phase.label === 'browser deep tests')?.args).toEqual([
       '--workers=1',
       '--grep',
@@ -82,44 +66,16 @@ describe('browser test phases', () => {
       '@browser-webgpu',
       '--pass-with-no-tests',
     ])
-    expect(phases.find((phase) => phase.label === 'browser webgpu tests')).toBeUndefined()
-    expect(phases.find((phase) => phase.label === 'browser webgpu perf tests')).toBeUndefined()
-    expect(phases.find((phase) => phase.label === 'browser webgpu deep tests')).toBeUndefined()
-    expect(phases.at(-1)?.label).toBe('clipboard global tests')
-  })
-
-  it('adds webgpu perf and deep only when webgpu coverage is explicitly enabled', () => {
-    const phases = resolveBrowserTestPhases({
-      playwrightArgs: [],
-      env: {
-        BILIG_BROWSER_INCLUDE_WEBGPU: '1',
-        BILIG_BROWSER_INCLUDE_PERF: '1',
-        BILIG_BROWSER_INCLUDE_DEEP: '1',
-      },
-    })
-
-    expect(phases.map((phase) => phase.label)).toEqual([
-      'parallel browser tests',
-      'browser ci tests',
-      'browser webgpu tests',
-      'browser perf tests',
-      'browser webgpu perf tests',
-      'browser deep tests',
-      'browser webgpu deep tests',
-      'browser serial tests',
-      'clipboard global tests',
-    ])
-    expect(phases.find((phase) => phase.label === 'browser webgpu perf tests')).toEqual({
-      label: 'browser webgpu perf tests',
-      args: ['--workers=1', '--grep', '@browser-webgpu.*@browser-perf|@browser-perf.*@browser-webgpu'],
-      env: { BILIG_BROWSER_WEBGPU: '1' },
-    })
     expect(phases.find((phase) => phase.label === 'browser webgpu deep tests')).toEqual({
       label: 'browser webgpu deep tests',
       args: ['--workers=1', '--grep', '@browser-webgpu.*@browser-deep|@browser-deep.*@browser-webgpu'],
       env: { BILIG_BROWSER_WEBGPU: '1' },
     })
-    expect(phases.at(-1)?.label).toBe('clipboard global tests')
+    expect(phases.at(-1)?.env).toEqual({
+      BILIG_FUZZ_BROWSER: '1',
+      BILIG_FUZZ_PROFILE: 'nightly',
+      BILIG_FUZZ_CAPTURE: '1',
+    })
   })
 
   it('allows the default parallel browser worker cap to be configured', () => {
@@ -130,23 +86,14 @@ describe('browser test phases', () => {
       },
     })
 
-    expect(phases[0]).toEqual({
-      label: 'parallel browser tests',
-      args: ['--workers=4', '--grep-invert', '@clipboard-global|@browser-ci|@browser-serial|@browser-perf|@browser-deep|@browser-webgpu'],
-      env: { BILIG_BROWSER_WEBGPU: '1' },
-    })
+    expect(phases[0]?.args).toEqual([
+      '--workers=4',
+      '--grep-invert',
+      '@clipboard-global|@browser-serial|@fuzz-browser|@browser-perf|@browser-deep|@browser-webgpu',
+    ])
   })
 
   it('rejects malformed browser phase include flags instead of silently skipping coverage', () => {
-    expect(() =>
-      resolveBrowserTestPhases({
-        playwrightArgs: [],
-        env: {
-          BILIG_BROWSER_INCLUDE_WEBGPU: 'TRUE',
-        },
-      }),
-    ).toThrow('BILIG_BROWSER_INCLUDE_WEBGPU must be "1", "true", "0", or "false" when set, got TRUE')
-
     expect(() =>
       resolveBrowserTestPhases({
         playwrightArgs: [],
@@ -189,7 +136,7 @@ describe('browser test phases', () => {
     expect(phases).toEqual([
       {
         label: 'browser ci smoke tests',
-        args: ['--workers=3', '--grep', '@browser-ci', '--grep-invert', '@browser-perf|@browser-deep|@browser-webgpu'],
+        args: ['--workers=3', '--grep', '@browser-ci', '--grep-invert', '@browser-perf|@browser-deep|@fuzz-browser|@browser-webgpu'],
         env: { BILIG_BROWSER_WEBGPU: '1' },
       },
     ])

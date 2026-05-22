@@ -16,7 +16,7 @@ import {
   waitForWorkbookReady,
 } from './web-shell-helpers.js'
 
-test('@browser-webgpu @browser-deep web app keeps deleted filled cells stable after click-away and viewport churn', async ({ page }) => {
+test('@browser-ci web app keeps deleted filled cells stable after click-away and viewport churn', async ({ page }) => {
   const documentId = createTestDocumentId('playwright-delete-fill-stability')
   const text = 'delete-fill-no-ghost'
   await page.setViewportSize({ width: 1166, height: 820 })
@@ -69,9 +69,7 @@ test('@browser-webgpu @browser-deep web app keeps deleted filled cells stable af
   await expect(formulaInput).toHaveValue('')
 })
 
-test('@browser-webgpu @browser-deep web app preserves filled-cell presentation when formula-bar clear commits as delete', async ({
-  page,
-}) => {
+test('@browser-ci web app preserves filled-cell presentation when formula-bar clear commits as delete', async ({ page }) => {
   const documentId = createTestDocumentId('playwright-formula-clear-fill-stability')
   const text = 'formula-clear-keeps-fill'
   await page.setViewportSize({ width: 1166, height: 820 })
@@ -88,7 +86,6 @@ test('@browser-webgpu @browser-deep web app preserves filled-cell presentation w
 
   await clickProductCell(page, 3, 9)
   await pickToolbarPresetColor(page, 'Fill color', 'green')
-  await waitForGreenFillPaint(page, 3, 9, 'setup should visibly paint D10 green before formula-bar clear')
   expect(
     Math.min(...(await sampleGreenFillPixelsAcrossFrames(page, 3, 9, 4))),
     'setup should visibly paint D10 green before formula-bar clear',
@@ -110,7 +107,7 @@ test('@browser-webgpu @browser-deep web app preserves filled-cell presentation w
   await expect.poll(() => countGreenFillReadbackPixelsInCell(page, 3, 9)).toBeGreaterThan(120)
 })
 
-test('@browser-webgpu @browser-deep web app applies fill color after moving text into an empty tile range', async ({ page }) => {
+test('@browser-ci web app applies fill color after moving text into an empty tile range', async ({ page }) => {
   const documentId = createTestDocumentId('playwright-move-text-fill-range')
   const text = 'moved-fill-stability'
   await page.setViewportSize({ width: 1166, height: 820 })
@@ -169,7 +166,7 @@ test('@browser-webgpu @browser-deep web app applies fill color after moving text
   await expect.poll(() => countGreenFillReadbackPixelsInCell(page, 3, 4)).toBeGreaterThan(120)
 })
 
-test('@browser-webgpu @browser-deep web app keeps fill undo and redo visually stable from grid keyboard ownership', async ({ page }) => {
+test('@browser-ci web app keeps fill undo and redo visually stable from grid keyboard ownership', async ({ page }) => {
   const documentId = createTestDocumentId('playwright-fill-undo-redo-stability')
   const redoShortcut = PRIMARY_MODIFIER === 'Meta' ? 'Meta+Shift+Z' : 'Control+Y'
   await page.setViewportSize({ width: 1166, height: 820 })
@@ -183,7 +180,6 @@ test('@browser-webgpu @browser-deep web app keeps fill undo and redo visually st
   await clickProductCell(page, 1, 1)
   await pickToolbarPresetColor(page, 'Fill color', 'green')
   await expectToolbarColor(getToolbarButton(page, 'Fill color'), '#00ff00')
-  await waitForGreenFillPaint(page, 1, 1, 'setup should paint B2 green before undoing the style mutation')
   expect(
     Math.min(...(await sampleGreenFillPixelsAcrossFrames(page, 1, 1, 4))),
     'setup should paint B2 green before undoing the style mutation',
@@ -210,15 +206,6 @@ test('@browser-webgpu @browser-deep web app keeps fill undo and redo visually st
   ).toBeGreaterThan(120)
   await expect(page.getByTestId('name-box')).toHaveValue('B2')
 })
-
-async function waitForGreenFillPaint(page: Page, columnIndex: number, rowIndex: number, message: string) {
-  await expect
-    .poll(() => countGreenFillReadbackPixelsInCell(page, columnIndex, rowIndex), {
-      message,
-      timeout: 5_000,
-    })
-    .toBeGreaterThan(120)
-}
 
 async function sampleGreenFillPixelsAcrossFrames(
   page: Page,

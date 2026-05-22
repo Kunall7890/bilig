@@ -2395,40 +2395,6 @@ describe('WorkPaper', () => {
     }
   })
 
-  it('keeps serialized dimensions after row moves over a trailing sparse row', () => {
-    const workbook = WorkPaper.buildFromSheets({
-      Sheet1: [
-        [1, 2, 3, 4, 5],
-        [11, 12, 13, 14, 15],
-        [21, 22, 23, 24, 25],
-        [31, 32, 33, 34, 35],
-        [41, 42, 43, 44, 45],
-        ['=SUM(A1:A5)', '=A1+B1'],
-      ],
-    })
-    const sheetId = workbook.getSheetId('Sheet1')!
-
-    workbook.removeRows(sheetId, 0, 1)
-    workbook.removeRows(sheetId, 0, 2)
-    workbook.removeColumns(sheetId, 0, 2)
-    workbook.moveRows(sheetId, 2, 1, 2)
-    workbook.moveRows(sheetId, 0, 1, 2)
-    workbook.addColumns(sheetId, 0, 1)
-
-    expect(workbook.getSheetSerialized(sheetId)).toEqual([
-      [null, 43, 44, 45],
-      [null, null, null, null],
-      [null, 33, 34, 35],
-    ])
-
-    const restored = createWorkPaperFromDocument(
-      parseWorkPaperDocument(serializeWorkPaperDocument(exportWorkPaperDocument(workbook, { includeConfig: true }))),
-    )
-    const restoredSheetId = restored.getSheetId('Sheet1')!
-
-    expect(restored.getSheetSerialized(restoredSheetId)).toEqual(workbook.getSheetSerialized(sheetId))
-  })
-
   it('preserves cached dimensions for safe middle column moves without scanning the grid', () => {
     const workbook = WorkPaper.buildFromSheets({
       Sheet1: [[1, 2, 3, 4]],

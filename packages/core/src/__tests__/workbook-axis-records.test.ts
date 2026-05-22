@@ -53,14 +53,16 @@ describe('workbook axis records', () => {
     expect(listAxisEntries(entries)).toEqual([{ id: 'column-existing', index: 0, size: 90, hidden: false }])
   })
 
-  it('keeps completely sparse default inserts sparse', () => {
+  it('generates axis identities for default structural inserts', () => {
     const entries: Array<WorkbookAxisEntryRecord | undefined> = []
     const createEntry = createEntryFactory('column')
 
     expect(spliceAxisEntries(entries, 1, 0, 2, createEntry)).toEqual([])
 
-    expect(entries.length).toBe(0)
-    expect(listAxisEntries(entries)).toEqual([])
+    expect(listAxisEntries(entries)).toEqual([
+      { id: 'column-1', index: 1 },
+      { id: 'column-2', index: 2 },
+    ])
   })
 
   it('splices generated axis entries without requiring provided snapshots', () => {
@@ -104,18 +106,18 @@ describe('workbook axis records', () => {
 
   it('coalesces contiguous metadata ranges and rejects mixed ranges', () => {
     const entries: Array<WorkbookAxisEntryRecord | undefined> = [
-      { id: 'row-1', size: 30, hidden: false, filtered: null },
-      { id: 'row-2', size: 30, hidden: false, filtered: null },
+      { id: 'row-1', size: 30, hidden: false },
+      { id: 'row-2', size: 30, hidden: false },
       undefined,
-      { id: 'row-3', size: 30, hidden: true, filtered: null },
+      { id: 'row-3', size: 30, hidden: true },
     ]
     const bucket = new Map()
 
     syncAxisMetadataBucket(bucket, 'Sheet1', entries)
 
     expect([...bucket.values()].toSorted((left, right) => left.start - right.start)).toEqual([
-      { sheetName: 'Sheet1', start: 0, count: 2, size: 30, hidden: false, filtered: null },
-      { sheetName: 'Sheet1', start: 3, count: 1, size: 30, hidden: true, filtered: null },
+      { sheetName: 'Sheet1', start: 0, count: 2, size: 30, hidden: false },
+      { sheetName: 'Sheet1', start: 3, count: 1, size: 30, hidden: true },
     ])
     expect(getAxisMetadataRecord(entries, 'Sheet1', 0, 2)).toEqual({
       sheetName: 'Sheet1',
@@ -123,7 +125,6 @@ describe('workbook axis records', () => {
       count: 2,
       size: 30,
       hidden: false,
-      filtered: null,
     })
     expect(getAxisMetadataRecord(entries, 'Sheet1', 0, 4)).toBeUndefined()
   })

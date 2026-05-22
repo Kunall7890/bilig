@@ -19,7 +19,6 @@ describe('workbook cell key index', () => {
 
     expect(index.get(-1)).toBe(17)
     expect(index.has(-1)).toBe(true)
-    expect(index.get(makeCellKey(0, 0, 0))).toBeUndefined()
     expect(index.get(makeCellKey(1, MAX_ROWS, 0))).toBeUndefined()
     expect(index.get(makeCellKey(1, 0, MAX_COLS))).toBeUndefined()
   })

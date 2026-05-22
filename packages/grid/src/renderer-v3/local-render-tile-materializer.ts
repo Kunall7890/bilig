@@ -5,7 +5,7 @@ import type { Item } from '../gridTypes.js'
 import { materializeGridRenderTileV3 } from './grid-tile-materializer.js'
 import { unpackTileKey53, tileKeysForViewport } from './tile-key.js'
 import type { GridRenderTile } from './render-tile-source.js'
-import { DirtyMaskV3, type DirtyTileLocalSpanV3 } from './tile-damage-index.js'
+import type { DirtyTileLocalSpanV3 } from './tile-damage-index.js'
 
 export function buildLocalFixedRenderTiles(input: {
   readonly engine: GridEngineLike
@@ -21,7 +21,7 @@ export function buildLocalFixedRenderTiles(input: {
   readonly dprBucket: number
   readonly generation: number
   readonly cameraSeq: number
-  readonly freezeSeq: number
+  readonly freezeSeq?: number | undefined
   readonly tileKeys?: readonly number[] | undefined
   readonly dirtySpansForTile?: ((tileId: number) => readonly DirtyTileLocalSpanV3[]) | undefined
   readonly editingCell?: Item | null | undefined
@@ -41,17 +41,13 @@ export function buildLocalFixedRenderTiles(input: {
   return tileKeys.map((tileId) => {
     const key = unpackTileKey53(tileId)
     const tileViewport = viewportFromTileKey(key.rowTile, key.colTile)
-    const dirtySpans = addSyntheticTextDirtySpans(input.dirtySpansForTile?.(tileId) ?? [], tileViewport, {
-      editingCell: input.editingCell ?? null,
-      selectedCell: input.selectedCell,
-      selectedCellSnapshot: input.selectedCellSnapshot,
-    })
+    const dirtySpans = input.dirtySpansForTile?.(tileId) ?? []
     const dirty = packDirtyLocalSpans(dirtySpans)
     return materializeGridRenderTileV3({
       ...input,
       axisSeqX: axisVersionX,
       axisSeqY: axisVersionY,
-      freezeSeq: input.freezeSeq,
+      freezeSeq: input.freezeSeq ?? 0,
       glyphAtlasSeq: 0,
       materializedAtSeq: input.generation,
       packetSeq: input.generation,
@@ -64,60 +60,6 @@ export function buildLocalFixedRenderTiles(input: {
       ...dirty,
     })
   })
-}
-
-function addSyntheticTextDirtySpans(
-  spans: readonly DirtyTileLocalSpanV3[],
-  viewport: Viewport,
-  input: {
-    readonly editingCell?: Item | null | undefined
-    readonly selectedCell?: Item | undefined
-    readonly selectedCellSnapshot?: CellSnapshot | null | undefined
-  },
-): readonly DirtyTileLocalSpanV3[] {
-  let next = spans
-  if (input.editingCell) {
-    next = addSyntheticTextDirtySpan(next, viewport, input.editingCell)
-  }
-  if (input.selectedCell && input.selectedCellSnapshot) {
-    next = addSyntheticTextDirtySpan(next, viewport, input.selectedCell)
-  }
-  return next
-}
-
-function addSyntheticTextDirtySpan(
-  spans: readonly DirtyTileLocalSpanV3[],
-  viewport: Viewport,
-  cell: Item,
-): readonly DirtyTileLocalSpanV3[] {
-  const [col, row] = cell
-  if (col < viewport.colStart || col > viewport.colEnd || row < viewport.rowStart || row > viewport.rowEnd) {
-    return spans
-  }
-  const localCol = col - viewport.colStart
-  const localRow = row - viewport.rowStart
-  if (
-    spans.some(
-      (span) =>
-        localRow >= span.rowStart &&
-        localRow <= span.rowEnd &&
-        localCol >= span.colStart &&
-        localCol <= span.colEnd &&
-        (span.mask & (DirtyMaskV3.Value | DirtyMaskV3.Text)) !== 0,
-    )
-  ) {
-    return spans
-  }
-  return [
-    ...spans,
-    {
-      colEnd: localCol,
-      colStart: localCol,
-      mask: DirtyMaskV3.Value | DirtyMaskV3.Text,
-      rowEnd: localRow,
-      rowStart: localRow,
-    },
-  ]
 }
 
 export function viewportFromTileKey(rowTile: number, colTile: number): Viewport {

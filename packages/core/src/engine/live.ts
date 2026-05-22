@@ -43,21 +43,10 @@ import { createEngineSelectionService, type EngineSelectionService } from './ser
 import { createEngineSnapshotService, type EngineSnapshotService } from './services/snapshot-service.js'
 import { createEngineStructureService, type EngineStructureService } from './services/structure-service.js'
 import { createEngineTraversalService, type EngineTraversalService } from './services/traversal-service.js'
-import { rewriteCachedFormulaRuntimeSource } from './services/cached-formula-runtime-source.js'
 import { getRuntimeFormulaSource } from './runtime-formula-source.js'
 import { deferKernelSyncNow } from './services/live-kernel-sync-state.js'
 import { createEngineFullInvalidationService } from './services/full-invalidation-service.js'
 import { runEngineEffect } from './live-effect.js'
-import type {
-  EngineFormulaBindingRuntimeConfig,
-  EngineFormulaGraphRuntimeConfig,
-  EngineMaintenanceRuntimeConfig,
-  EngineMutationSupportRuntimeConfig,
-  EngineOperationRuntimeConfig,
-  EnginePivotRuntimeConfig,
-  EngineRecalcRuntimeConfig,
-  EngineTraversalRuntimeConfig,
-} from './live-runtime-config.js'
 
 export { runEngineEffect, runEngineEffectPromise } from './live-effect.js'
 
@@ -83,6 +72,186 @@ export interface EngineServiceRuntime {
   readonly snapshot: EngineSnapshotService
   readonly sync: EngineReplicaSyncService
 }
+
+type EngineMutationSupportRuntimeConfig = Omit<
+  Parameters<typeof createEngineMutationSupportService>[0],
+  | 'removeFormula'
+  | 'rebindFormulasForSheet'
+  | 'applyDerivedOp'
+  | 'scheduleWasmProgramSync'
+  | 'collectFormulaDependents'
+  | 'ensureRecalcScratchCapacity'
+  | 'getChangedInputEpoch'
+  | 'setChangedInputEpoch'
+  | 'getChangedInputSeen'
+  | 'setChangedInputSeen'
+  | 'getChangedInputBuffer'
+  | 'setChangedInputBuffer'
+  | 'getChangedFormulaEpoch'
+  | 'setChangedFormulaEpoch'
+  | 'getChangedFormulaSeen'
+  | 'setChangedFormulaSeen'
+  | 'getChangedFormulaBuffer'
+  | 'setChangedFormulaBuffer'
+  | 'getChangedUnionEpoch'
+  | 'setChangedUnionEpoch'
+  | 'getChangedUnionSeen'
+  | 'setChangedUnionSeen'
+  | 'getChangedUnion'
+  | 'setChangedUnion'
+  | 'getMutationRoots'
+  | 'setMutationRoots'
+  | 'getMaterializedCellCount'
+  | 'setMaterializedCellCount'
+  | 'getMaterializedCells'
+  | 'setMaterializedCells'
+  | 'getExplicitChangedEpoch'
+  | 'setExplicitChangedEpoch'
+  | 'getExplicitChangedSeen'
+  | 'setExplicitChangedSeen'
+  | 'getExplicitChangedBuffer'
+  | 'setExplicitChangedBuffer'
+  | 'getImpactedFormulaEpoch'
+  | 'setImpactedFormulaEpoch'
+  | 'getImpactedFormulaSeen'
+  | 'setImpactedFormulaSeen'
+  | 'getImpactedFormulaBuffer'
+  | 'setImpactedFormulaBuffer'
+>
+
+type EngineFormulaBindingRuntimeConfig = Omit<
+  Parameters<typeof createEngineFormulaBindingService>[0],
+  | 'compiledPlans'
+  | 'formulaInstances'
+  | 'formulaFamilies'
+  | 'regionGraph'
+  | 'resolveTemplateForCell'
+  | 'exactLookup'
+  | 'sortedLookup'
+  | 'ensureCellTracked'
+  | 'ensureCellTrackedByCoords'
+  | 'markFormulaChanged'
+  | 'forEachSheetCell'
+  | 'lookup'
+  | 'resolveStructuredReference'
+  | 'resolveSpillReference'
+  | 'scheduleWasmProgramSync'
+>
+
+type EngineFormulaGraphRuntimeConfig = Omit<
+  Parameters<typeof createEngineFormulaGraphService>[0],
+  'rebuildCalcChain' | 'notifyCellValueWritten' | 'forEachFormulaDependencyCell' | 'collectFormulaDependents'
+>
+
+type EngineRecalcRuntimeConfig = Omit<
+  Parameters<typeof createEngineRecalcService>[0],
+  | 'beginMutationCollection'
+  | 'markInputChanged'
+  | 'markFormulaChanged'
+  | 'markExplicitChanged'
+  | 'composeMutationRoots'
+  | 'composeEventChanges'
+  | 'captureChangedCells'
+  | 'captureChangedPatches'
+  | 'unionChangedSets'
+  | 'composeChangedRootsAndOrdered'
+  | 'emptyChangedSet'
+  | 'ensureRecalcScratchCapacity'
+  | 'getPendingKernelSync'
+  | 'getDeferredKernelSyncCount'
+  | 'setDeferredKernelSyncCount'
+  | 'getDeferredKernelSyncEpoch'
+  | 'setDeferredKernelSyncEpoch'
+  | 'getDeferredKernelSyncSeen'
+  | 'getWasmBatch'
+  | 'getChangedInputBuffer'
+  | 'flushWasmProgramSync'
+  | 'dirtyScheduler'
+  | 'beginEvaluationBudget'
+  | 'endEvaluationBudget'
+  | 'checkEvaluationBudget'
+  | 'materializeSpill'
+  | 'clearOwnedSpill'
+  | 'evaluateDirectLookupFormula'
+  | 'evaluateUnsupportedFormula'
+  | 'materializePivot'
+>
+
+type EngineMaintenanceRuntimeConfig = Omit<
+  Parameters<typeof createEngineMaintenanceService>[0],
+  | 'captureSheetCellState'
+  | 'captureRowRangeCellState'
+  | 'captureColumnRangeCellState'
+  | 'setMaterializedCellCount'
+  | 'resetFormulaRuntimeCaches'
+  | 'scheduleWasmProgramSync'
+>
+
+type EnginePivotRuntimeConfig = Omit<
+  Parameters<typeof createEnginePivotService>[0],
+  | 'ensureCellTrackedByCoords'
+  | 'forEachSheetCell'
+  | 'flushDeferredKernelSync'
+  | 'scheduleWasmProgramSync'
+  | 'flushWasmProgramSync'
+  | 'applyDerivedOp'
+>
+
+type EngineOperationRuntimeConfig = Omit<
+  Parameters<typeof createEngineOperationService>[0],
+  | 'getSelectionState'
+  | 'setSelection'
+  | 'hasRegionFormulaSubscriptionsForColumn'
+  | 'hasRegionFormulaSubscriptionsOverlappingRange'
+  | 'getRegionFormulaSubscriptionCount'
+  | 'collectRegionFormulaDependentsForCell'
+  | 'collectSingleRegionFormulaDependentForCell'
+  | 'prepareRegionQueryIndices'
+  | 'rewriteDefinedNamesForSheetRename'
+  | 'rewriteCellFormulasForSheetRename'
+  | 'estimatePotentialNewCells'
+  | 'rebindDefinedNameDependents'
+  | 'collectFormulaCellsForDefinedNames'
+  | 'rebindTableDependents'
+  | 'rebindFormulaCells'
+  | 'rebindFormulasForSheet'
+  | 'removeSheetRuntime'
+  | 'applyStructuralAxisOp'
+  | 'clearOwnedSpill'
+  | 'clearPivotForCell'
+  | 'clearOwnedPivot'
+  | 'removeFormula'
+  | 'bindFormula'
+  | 'setInvalidFormulaValue'
+  | 'beginEvaluationBudget'
+  | 'endEvaluationBudget'
+  | 'checkEvaluationBudget'
+  | 'beginMutationCollection'
+  | 'markInputChanged'
+  | 'markFormulaChanged'
+  | 'markVolatileFormulasChanged'
+  | 'markSpillRootsChanged'
+  | 'markPivotRootsChanged'
+  | 'markExplicitChanged'
+  | 'composeMutationRoots'
+  | 'composeEventChanges'
+  | 'composeDisjointEventChanges'
+  | 'captureChangedCells'
+  | 'captureChangedPatches'
+  | 'getChangedInputBuffer'
+  | 'ensureRecalcScratchCapacity'
+  | 'ensureCellTracked'
+  | 'resetMaterializedCellScratch'
+  | 'syncDynamicRanges'
+  | 'rebuildTopoRanks'
+  | 'detectCycles'
+  | 'recalculate'
+  | 'evaluateDirectFormula'
+  | 'evaluateFormulaCell'
+  | 'reconcilePivotOutputs'
+>
+
+type EngineTraversalRuntimeConfig = Omit<Parameters<typeof createEngineTraversalService>[0], 'regionGraph'>
 
 function requireService<Service>(service: Service | undefined, name: string): Service {
   if (service === undefined) {
@@ -365,35 +534,33 @@ export function createEngineServiceRuntime(args: {
     },
     rebindFormulaCells: (inputs) => {
       const pending = inputs.filter(({ cellIndex }) => args.state.formulas.get(cellIndex))
-      pending.forEach((input) => {
-        const { cellIndex, ownerSheetName, ownerRow, ownerCol, source, compiled, templateId, preservesBinding } = input
-        const ownerPosition = { sheetName: ownerSheetName, row: ownerRow, col: ownerCol }
-        try {
-          if (compiled) {
-            if (
-              preservesBinding === true &&
-              input.preservesValue === true &&
-              binding.rewriteFormulaMetadataPreservingRuntimeNow(cellIndex, source, compiled, templateId, ownerPosition)
-            ) {
-              return
+      pending.forEach(
+        ({ cellIndex, ownerSheetName, ownerRow, ownerCol, source, compiled, templateId, preservesBinding, preservesValue }) => {
+          const ownerPosition = { sheetName: ownerSheetName, row: ownerRow, col: ownerCol }
+          try {
+            if (compiled) {
+              if (
+                preservesBinding === true &&
+                preservesValue === true &&
+                binding.rewriteFormulaMetadataPreservingRuntimeNow(cellIndex, source, compiled, templateId, ownerPosition)
+              ) {
+                return
+              }
+              if (
+                preservesBinding === true &&
+                binding.rewriteFormulaCompiledPreservingBindingNow(cellIndex, source, compiled, templateId, ownerPosition)
+              ) {
+                return
+              }
+              binding.bindPreparedFormulaNow(cellIndex, ownerSheetName, source, compiled, templateId)
+            } else {
+              binding.bindFormulaNow(cellIndex, ownerSheetName, source)
             }
-            if (
-              preservesBinding === true &&
-              binding.rewriteFormulaCompiledPreservingBindingNow(cellIndex, source, compiled, templateId, ownerPosition)
-            ) {
-              return
-            }
-            binding.bindPreparedFormulaNow(cellIndex, ownerSheetName, source, compiled, templateId)
-          } else {
-            if (rewriteCachedFormulaRuntimeSource(args.state, formulaInstances, input)) {
-              return
-            }
-            binding.bindFormulaNow(cellIndex, ownerSheetName, source)
+          } catch {
+            binding.invalidateFormulaNow(cellIndex)
           }
-        } catch {
-          binding.invalidateFormulaNow(cellIndex)
-        }
-      })
+        },
+      )
     },
   })
   const maintenance = createEngineMaintenanceService({
@@ -410,9 +577,6 @@ export function createEngineServiceRuntime(args: {
       formulaTemplates.reset()
       formulaInstances.clear()
       formulaFamilies.clear()
-      aggregateStateStore.reset()
-      depPatternStore.clear()
-      evaluation.clearCachesNow()
       binding.clearFormulaBookkeepingNow()
       volatileFormulaCells.clear()
     },
@@ -563,7 +727,7 @@ export function createEngineServiceRuntime(args: {
       binding.rebindFormulasForSheetNow(sheetName, formulaChangedCount, candidates),
     materializeDeferredStructuralFormulaSources: () => structure.materializeDeferredStructuralFormulaSourcesNow(),
     removeSheetRuntime: (sheetName, explicitChangedCount) => support.removeSheetRuntimeNow(sheetName, explicitChangedCount),
-    applyStructuralAxisOp: (op, source) => structure.applyStructuralAxisOpNow(op, source === undefined ? undefined : { source }),
+    applyStructuralAxisOp: (op) => structure.applyStructuralAxisOpNow(op),
     clearOwnedSpill: (cellIndex) => support.clearOwnedSpillNow(cellIndex),
     clearSpillForCell: (cellIndex) => support.clearSpillForCellNow(cellIndex),
     clearPivotForCell: (cellIndex) => getPivot().clearPivotForCellNow(cellIndex),
@@ -624,7 +788,6 @@ export function createEngineServiceRuntime(args: {
     getCellDependents: (cellIndex) => traversal.getCellDependentsNow(cellIndex),
     getSingleCellDependent: (cellIndex) => traversal.getSingleCellDependentNow(cellIndex),
     collectFormulaDependents: (entityId) => traversal.collectFormulaDependentsNow(entityId),
-    forEachFormulaDependencyCell: (cellIndex, fn) => traversal.forEachFormulaDependencyCellNow(cellIndex, fn),
     noteExactLookupLiteralWrite: (request) => exactLookup.recordLiteralWrite(request),
     noteAggregateLiteralWrite: (request) => aggregateStateStore.noteLiteralWrite(request),
     noteSortedLookupLiteralWrite: (request) => sortedLookup.recordLiteralWrite(request),
@@ -646,21 +809,18 @@ export function createEngineServiceRuntime(args: {
       getFormulaFamilyStructuralSourceTransform: (cellIndex) => binding.getFormulaFamilyStructuralSourceTransformNow(cellIndex),
       hasFormulaFamilyStructuralSourceTransforms: () => binding.hasFormulaFamilyStructuralSourceTransformsNow(),
       readRangeCells: (range) => cellState.readRangeCellsNow(range),
-      toCellStateOps: (sheetName, address, snapshot, sourceSheetName, sourceAddress, options) =>
-        cellState.toCellStateOpsNow(sheetName, address, snapshot, sourceSheetName, sourceAddress, undefined, undefined, options),
+      toCellStateOps: (sheetName, address, snapshot, sourceSheetName, sourceAddress) =>
+        cellState.toCellStateOpsNow(sheetName, address, snapshot, sourceSheetName, sourceAddress),
       applyBatchNow: (batch, source, potentialNewCells, preparedCellAddressesByOpIndex) =>
         operations.applyBatchNow(batch, source, potentialNewCells, preparedCellAddressesByOpIndex),
       applyLocalSingleStructuralAxisOpWithoutBatchNow: (op, options) =>
         operations.applyLocalSingleStructuralAxisOpWithoutBatchNow(op, options),
-      applyCellMutationsAtBatchNow: (refs, batch, source, potentialNewCells, options) =>
-        operations.applyCellMutationsAtNow(refs, batch, source, potentialNewCells, options),
+      applyCellMutationsAtBatchNow: (refs, batch, source, potentialNewCells) =>
+        operations.applyCellMutationsAtNow(refs, batch, source, potentialNewCells),
       applyExistingNumericCellMutationsAtBatchNow: (record, batch, source) =>
         operations.applyExistingNumericCellMutationsAtNow(record, batch, source),
       applyExistingNumericCellMutationAtNow: (request) => operations.applyExistingNumericCellMutationAtNow(request),
       applyExistingLiteralCellMutationAtNow: (request) => operations.applyExistingLiteralCellMutationAtNow(request),
-      settleImportedFormulas: () => {
-        runEngineEffect(requireService(recalc, 'recalc').recalculateNow())
-      },
       hasExternallyVisibleLocalMutationObservers: () =>
         args.state.events.hasListeners() ||
         args.state.events.hasTrackedListeners() ||
@@ -723,25 +883,20 @@ export function createEngineServiceRuntime(args: {
           if (!sheetName) {
             return []
           }
-          const source = formula
-            ? getRuntimeFormulaSource(formula, formulaFamilies.getStructuralSourceTransform(record.cellIndex))
-            : record.source
-          const currentTemplateId = formula?.templateId ?? record.templateId
-          const templateResolution =
-            currentTemplateId === undefined
-              ? undefined
-              : formulaTemplates.resolveByTemplateId(currentTemplateId, source, position.row, position.col)
-          const templateId =
-            templateResolution?.templateId ??
-            (currentTemplateId === undefined ? undefined : formulaTemplates.resolveForCell(source, position.row, position.col).templateId)
           return [
             {
               ...record,
               sheetName,
               row: position.row,
               col: position.col,
-              source,
-              ...(templateId === undefined ? {} : { templateId }),
+              source: formula
+                ? getRuntimeFormulaSource(formula, formulaFamilies.getStructuralSourceTransform(record.cellIndex))
+                : record.source,
+              ...(formula?.templateId !== undefined
+                ? { templateId: formula.templateId }
+                : record.templateId !== undefined
+                  ? { templateId: record.templateId }
+                  : {}),
             },
           ]
         }),
@@ -765,7 +920,7 @@ export function createEngineServiceRuntime(args: {
         })
       },
       hydrateTemplateBank: (templates) => formulaTemplates.hydrateTemplates(templates),
-      resolveTemplateById: (templateId, source, row, col) => formulaTemplates.resolveByTemplateId(templateId, source, row, col),
+      resolveTemplateById: (templateId, source, row, col) => formulaTemplates.resolveTrustedByTemplateId(templateId, source, row, col),
       resolveTemplateForCell: (source, row, col) => formulaTemplates.resolveForCell(source, row, col),
       beginEvaluationBudget: (startedAtMs) => args.state.beginEvaluationBudget(startedAtMs),
       endEvaluationBudget: () => args.state.endEvaluationBudget(),
@@ -781,7 +936,6 @@ export function createEngineServiceRuntime(args: {
       initializeCachedFormulaSourcesAt: (refs, potentialNewCells) =>
         requireService(formulaInitialization, 'formulaInitialization').initializeCachedFormulaSourcesAtNow(refs, potentialNewCells),
       materializePivot: (pivotRecord) => getPivot().materializePivotNow(pivotRecord),
-      claimPivotOutput: (pivotRecord) => getPivot().claimPivotOutputNow(pivotRecord),
       emitFullInvalidation: fullInvalidation.emitFullSnapshotInvalidation,
     })
     return snapshot

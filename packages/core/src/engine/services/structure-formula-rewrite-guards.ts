@@ -1,6 +1,5 @@
 import type { CompiledFormula, StructuralAxisTransform } from '@bilig/formula'
 import type { RuntimeFormula } from '../runtime-state.js'
-import { mapStructuralAxisInterval } from '../../engine-structural-utils.js'
 
 export function dependencyTouchesSheet(dependency: string, sheetName: string): boolean {
   if (!dependency.includes('!')) {
@@ -20,30 +19,25 @@ export function rangeDependencyAxisAffected(
   }
   const start = transform.axis === 'row' ? rangeDescriptor.row1 : rangeDescriptor.col1
   const end = transform.axis === 'row' ? rangeDescriptor.row2 : rangeDescriptor.col2
-  if (structuralMovePartiallyExtractsReferencedAxis(start, end, transform)) {
-    return true
-  }
-  const next = mapStructuralAxisInterval(start, end, transform)
-  return next === undefined || next.start !== start || next.end !== end
+  return !(end < transform.start || start >= transform.start + transform.count)
 }
 
 export function runtimeDirectRangeAxisAffected(
   targetSheetId: number | undefined,
   targetSheetName: string,
   transform: StructuralAxisTransform,
-  range: { sheetName: string; rowStart: number; rowEnd: number; col: number; colEnd?: number } | undefined,
+  range: { sheetName: string; rowStart: number; rowEnd: number; col: number } | undefined,
 ): boolean {
   if (!range || targetSheetId === undefined || range.sheetName !== targetSheetName) {
     return false
   }
-  const colEnd = range.colEnd ?? range.col
   return rangeDependencyAxisAffected(
     {
       sheetId: targetSheetId,
       row1: range.rowStart,
       row2: range.rowEnd,
       col1: range.col,
-      col2: colEnd,
+      col2: range.col,
     },
     targetSheetId,
     transform,
@@ -167,18 +161,9 @@ export function structuralDirectAggregateRewritePreservesValue(
   rewritten: { compiled: CompiledFormula; reusedProgram: boolean },
   transform: StructuralAxisTransform,
 ): boolean {
-  const directAggregate = formula.directAggregate
-  const preservesMovedRowAggregateSpan =
-    transform.kind !== 'move' ||
-    directAggregate === undefined ||
-    (() => {
-      const nextRows = mapStructuralAxisInterval(directAggregate.rowStart, directAggregate.rowEnd, transform)
-      return nextRows !== undefined && nextRows.end - nextRows.start === directAggregate.rowEnd - directAggregate.rowStart
-    })()
   return (
-    (transform.kind === 'insert' || (transform.kind === 'move' && transform.axis === 'row')) &&
-    directAggregate !== undefined &&
-    preservesMovedRowAggregateSpan &&
+    (transform.kind === 'insert' || transform.kind === 'move') &&
+    formula.directAggregate !== undefined &&
     rewritten.reusedProgram &&
     !rewritten.compiled.volatile &&
     formula.compiled.symbolicNames.length === 0 &&
@@ -199,21 +184,11 @@ function directAggregateMovePartiallyExtractsReferencedAxis(
   }
   const start = transform.axis === 'row' ? range.rowStart : range.col
   const end = transform.axis === 'row' ? range.rowEnd : (range.colEnd ?? range.col)
-  return structuralMovePartiallyExtractsReferencedAxis(start, end, transform)
-}
-
-function structuralMovePartiallyExtractsReferencedAxis(start: number, end: number, transform: StructuralAxisTransform): boolean {
-  if (transform.kind !== 'move') {
-    return false
-  }
   const movedStart = transform.start
   const movedEnd = transform.start + transform.count - 1
   const overlapsMovedAxis = start <= movedEnd && end >= movedStart
   if (!overlapsMovedAxis) {
     return false
   }
-  if (start >= movedStart && end <= movedEnd) {
-    return false
-  }
-  return true
+  return !(start >= movedStart && end <= movedEnd)
 }

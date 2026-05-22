@@ -25,10 +25,6 @@ export class ProjectedWorkbookLocalDeltaPublisher {
 
   constructor(private readonly options: ProjectedWorkbookLocalDeltaPublisherOptions) {}
 
-  getLastLocalWorkbookDeltaSeq(): number {
-    return this.localWorkbookDeltaSeq
-  }
-
   subscribe(listener: ProjectedWorkbookLocalDeltaListener): () => void {
     this.listeners.add(listener)
     return () => {
@@ -36,16 +32,12 @@ export class ProjectedWorkbookLocalDeltaPublisher {
     }
   }
 
-  emitCellSnapshot(snapshot: CellSnapshot, dirtyMask?: number): void {
-    this.emitCellSnapshots(snapshot.sheetName, [snapshot], dirtyMask)
+  emitCellSnapshot(snapshot: CellSnapshot): void {
+    this.emitCellSnapshots(snapshot.sheetName, [snapshot])
   }
 
-  emitCellSnapshots(sheetName: string, snapshots: readonly CellSnapshot[], dirtyMask?: number): void {
-    if (snapshots.length === 0) {
-      return
-    }
-    const seq = this.nextLocalWorkbookDeltaSeq()
-    if (this.listeners.size === 0) {
+  emitCellSnapshots(sheetName: string, snapshots: readonly CellSnapshot[]): void {
+    if (this.listeners.size === 0 || snapshots.length === 0) {
       return
     }
     const identity = this.options.resolveSheetIdentity(sheetName)
@@ -54,9 +46,8 @@ export class ProjectedWorkbookLocalDeltaPublisher {
     }
     const startedAt = this.now()
     const batch = buildLocalCellSnapshotsWorkbookDelta({
-      dirtyMask,
       identity,
-      seq,
+      seq: this.nextLocalWorkbookDeltaSeq(),
       snapshots,
     })
     this.publish(batch)
@@ -64,7 +55,6 @@ export class ProjectedWorkbookLocalDeltaPublisher {
   }
 
   emitRange(sheetName: string, range: ProjectedWorkbookLocalDeltaRange): void {
-    const seq = this.nextLocalWorkbookDeltaSeq()
     if (this.listeners.size === 0) {
       return
     }
@@ -76,14 +66,13 @@ export class ProjectedWorkbookLocalDeltaPublisher {
     const batch = buildLocalRangeWorkbookDelta({
       identity,
       range,
-      seq,
+      seq: this.nextLocalWorkbookDeltaSeq(),
     })
     this.publish(batch)
     this.noteRendererDeltaApply(startedAt, 1)
   }
 
   emitAxis(sheetName: string, axis: ProjectedWorkbookLocalDeltaAxis, index: number): void {
-    const seq = this.nextLocalWorkbookDeltaSeq()
     if (this.listeners.size === 0) {
       return
     }
@@ -96,7 +85,7 @@ export class ProjectedWorkbookLocalDeltaPublisher {
       axis,
       identity,
       index,
-      seq,
+      seq: this.nextLocalWorkbookDeltaSeq(),
     })
     this.publish(batch)
     this.noteRendererDeltaApply(startedAt, 1)

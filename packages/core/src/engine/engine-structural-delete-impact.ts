@@ -1,7 +1,7 @@
 import type { CellRangeRef, CellSnapshot, WorkbookDefinedNameValueSnapshot } from '@bilig/protocol'
 import { ValueTag } from '@bilig/protocol'
-import { formatAddress, parseCellAddress, rewriteFormulaForStructuralTransform, rewriteRangeForStructuralTransform } from '@bilig/formula'
-import type { WorkbookStore, WorkbookTableRecord } from '../workbook-store.js'
+import { parseCellAddress, rewriteFormulaForStructuralTransform } from '@bilig/formula'
+import type { WorkbookStore } from '../workbook-store.js'
 
 type StructuralDeleteAxis = 'row' | 'column'
 
@@ -108,46 +108,6 @@ function rangeTouchesAxisDelete(range: CellRangeRef, axis: StructuralDeleteAxis,
   return axis === 'row' ? end.row >= start : end.col >= start
 }
 
-function tableRangeAfterStructuralDelete(
-  table: WorkbookTableRecord,
-  axis: StructuralDeleteAxis,
-  start: number,
-  count: number,
-): CellRangeRef | undefined {
-  const rewritten = rewriteRangeForStructuralTransform(table.startAddress, table.endAddress, {
-    kind: 'delete',
-    axis,
-    start,
-    count,
-  })
-  if (!rewritten) {
-    return undefined
-  }
-  const range: CellRangeRef = {
-    sheetName: table.sheetName,
-    startAddress: rewritten.startAddress,
-    endAddress: rewritten.endAddress,
-  }
-  const startCell = parseCellAddress(range.startAddress, range.sheetName)
-  const endCell = parseCellAddress(range.endAddress, range.sheetName)
-  const startRow = Math.min(startCell.row, endCell.row)
-  const endRow = Math.max(startCell.row, endCell.row)
-  const endCol = Math.max(startCell.col, endCell.col)
-  const minimumRowCount = (table.headerRow ? 1 : 0) + (table.totalsRow ? 1 : 0) + 1
-  if (endRow - startRow + 1 >= minimumRowCount) {
-    return range
-  }
-  return {
-    ...range,
-    endAddress: formatAddress(startRow + minimumRowCount - 1, endCol),
-  }
-}
-
-function tableWouldRewriteForDelete(table: WorkbookTableRecord, axis: StructuralDeleteAxis, start: number, count: number): boolean {
-  const rewritten = tableRangeAfterStructuralDelete(table, axis, start, count)
-  return rewritten === undefined || rewritten.startAddress !== table.startAddress || rewritten.endAddress !== table.endAddress
-}
-
 function addressTouchesAxisDelete(sheetName: string, address: string, axis: StructuralDeleteAxis, start: number): boolean {
   const parsed = parseCellAddress(address, sheetName)
   return axis === 'row' ? parsed.row >= start : parsed.col >= start
@@ -228,7 +188,15 @@ export function hasEngineStructuralDeleteImpact(args: {
   if (
     args.workbook
       .listTables()
-      .some((table) => table.sheetName === args.sheetName && tableWouldRewriteForDelete(table, args.axis, args.start, args.count))
+      .some(
+        (table) =>
+          table.sheetName === args.sheetName &&
+          rangeTouchesAxisDelete(
+            { sheetName: args.sheetName, startAddress: table.startAddress, endAddress: table.endAddress },
+            args.axis,
+            args.start,
+          ),
+      )
   ) {
     return true
   }

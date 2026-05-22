@@ -30,7 +30,6 @@ const RECT_INSTANCE_FLOAT_COUNT = GRID_RECT_INSTANCE_FLOAT_COUNT_V3
 const TEXT_INSTANCE_FLOAT_COUNT = 16
 const RECT_INSTANCE_BYTE_COUNT = RECT_INSTANCE_FLOAT_COUNT * Float32Array.BYTES_PER_ELEMENT
 const TEXT_INSTANCE_BYTE_COUNT = TEXT_INSTANCE_FLOAT_COUNT * Float32Array.BYTES_PER_ELEMENT
-const EMPTY_DECORATION_RECTS: readonly TextDecorationRect[] = Object.freeze([])
 
 interface TypeGpuLayerBufferArtifactsV3 {
   readonly root: Pick<TypeGpuRendererArtifacts['root'], 'createBuffer'>
@@ -175,41 +174,28 @@ export class TypeGpuLayerResourceCacheV3 {
 }
 
 export function syncTypeGpuHeaderResourcesV3(input: {
-  readonly atlas?: ReturnType<typeof createGlyphAtlas> | undefined
+  readonly artifacts: TypeGpuRendererArtifacts
+  readonly atlas: ReturnType<typeof createGlyphAtlas>
   readonly layerResources: TypeGpuLayerResourceCacheV3
   readonly headerPanes: readonly GridHeaderPaneState[]
-  readonly syncText?: boolean | undefined
 }): void {
-  const syncText = input.syncText ?? true
   input.headerPanes.forEach((pane) => {
     const entry = input.layerResources.get(resolveWorkbookHeaderLayerKeyV3(pane))
-    if (syncText) {
-      const atlas = input.atlas
-      if (!atlas) {
-        throw new Error('syncTypeGpuHeaderResourcesV3 requires an atlas when text syncing is enabled')
-      }
-      const textSignature = resolveHeaderTextSignatureV3({
-        atlasGeometryVersion: atlas.getGlyphGeometryVersion(),
+    const textSignature = resolveHeaderTextSignatureV3({
+      atlasGeometryVersion: input.atlas.getGlyphGeometryVersion(),
+      pane,
+    })
+    if (entry.textSignature !== textSignature) {
+      syncHeaderTextResource({
+        atlas: input.atlas,
+        entry,
+        layerResources: input.layerResources,
         pane,
+        textSignature,
       })
-      if (entry.textSignature !== textSignature) {
-        syncHeaderTextResource({
-          atlas,
-          entry,
-          layerResources: input.layerResources,
-          pane,
-          textSignature,
-        })
-      }
-    } else {
-      releaseTextBuffer(input.layerResources, entry)
-      entry.decorationRects = EMPTY_DECORATION_RECTS
-      entry.textCount = 0
-      entry.textSignature = null
     }
     const rectSignature = resolveHeaderRectSignatureV3({
       decorationRects: entry.decorationRects ?? [],
-      includeTextSignature: syncText,
       pane,
     })
     if (entry.rectSignature !== rectSignature) {
@@ -420,7 +406,6 @@ function resolveHeaderTextSignatureV3(input: { readonly atlasGeometryVersion: nu
 function resolveHeaderRectSignatureV3(input: {
   readonly pane: GridHeaderPaneState
   readonly decorationRects?: readonly TextDecorationRect[] | undefined
-  readonly includeTextSignature?: boolean | undefined
 }): string {
   const decorationRects = input.decorationRects ?? []
   return [
@@ -430,7 +415,7 @@ function resolveHeaderRectSignatureV3(input: {
     input.pane.fillRectCount,
     input.pane.borderRectCount,
     input.pane.rectSignature,
-    input.includeTextSignature === false ? 'native-text' : input.pane.textSignature,
+    input.pane.textSignature,
     input.pane.frame.width,
     input.pane.frame.height,
     decorationRects.length,

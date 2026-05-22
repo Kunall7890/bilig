@@ -1,5 +1,5 @@
 import type { CellStyleRecord, SheetMetadataSnapshot, WorkbookSnapshot } from '@bilig/protocol'
-import { createSheetPreview, toDisplayText } from './workbook-import-helpers.js'
+import { createSheetPreview } from './workbook-import-helpers.js'
 import {
   buildLargeSimpleCellMetadataReferenceSnapshots,
   buildLargeSimpleLazyCellMetadataReferenceSnapshots,
@@ -13,7 +13,6 @@ import type { ImportedWorksheetCellScan } from './xlsx-large-simple-arena.js'
 import type { ImportedWorkbookStringPool } from './xlsx-large-simple-string-pool.js'
 import { buildLargeSimpleStyleRanges } from './xlsx-large-simple-style-ranges.js'
 import { applyLargeSimpleNumberFormatsToCells } from './xlsx-large-simple-number-formats.js'
-import { applyImportedAutoFilterVisibility } from './xlsx-filter-visibility.js'
 import { releaseProjectedCellScanStorage } from './xlsx-large-simple-materialization-helpers.js'
 import {
   readLargeSimpleColumnMetadata,
@@ -23,8 +22,6 @@ import {
   type LargeSimpleWorksheetScannedMetadata,
 } from './xlsx-large-simple-worksheet-metadata.js'
 import type { LargeSimpleSheetMetadataInput, ParsedWorksheet } from './xlsx-large-simple-import-types.js'
-import { readImportedWorksheetSheetProtection } from './xlsx-sheet-protection.js'
-import { decodeCellAddress } from './xlsx-large-simple-xml-byte-utils.js'
 
 export const lazySheetCellMaterializationThreshold = 65_536
 export const lazySheetCellMaterializationNumberFormatThreshold = 100_000
@@ -39,7 +36,6 @@ export function buildParsedWorksheet(
   options: {
     readonly materializeCells: boolean
     readonly releaseArenaAfterMaterialization?: boolean
-    readonly includeCellCoordinates?: boolean
     readonly numberFormatsByStyleIndex?: ReadonlyMap<number, string>
     readonly styleCatalog?: Map<string, CellStyleRecord>
     readonly stylesByIndex?: ReadonlyMap<number, Omit<CellStyleRecord, 'id'>>
@@ -58,24 +54,19 @@ export function buildParsedWorksheet(
     internedInput.conditionalFormats?.length ??
     (worksheetXml ? readLargeSimpleConditionalFormattingBlockCount(worksheetXml) : (cellScan.conditionalFormatCount ?? 0))
   const conditionalFormats = normalizeLargeSimpleConditionalFormatIds(sheetName, internedInput.conditionalFormats)
-  const sheetProtection =
-    internedInput.sheetProtection ??
-    (worksheetXml ? (readImportedWorksheetSheetProtection(sheetName, worksheetXml) ?? undefined) : undefined)
   const dataValidationCount = internedInput.validations?.length ?? cellScan.dataValidationCount ?? 0
   const styleRanges =
     options.materializeCells && options.styleCatalog && options.stylesByIndex
       ? buildLargeSimpleStyleRanges(sheetName, cellScan, options.stylesByIndex, options.styleCatalog)
       : []
-  const cellMaterializationOptions =
-    options.includeCellCoordinates === undefined ? {} : { includeCoordinates: options.includeCellCoordinates }
   const useLazyCells =
     options.materializeCells &&
     cellScan.cellCount >
       (options.numberFormatsByStyleIndex && options.numberFormatsByStyleIndex.size > 0
         ? lazySheetCellMaterializationNumberFormatThreshold
         : lazySheetCellMaterializationThreshold)
-  const detachLazyCells = useLazyCells && options.releaseArenaAfterMaterialization !== false && options.includeCellCoordinates !== true
-  const scannedPreview = createSheetPreview({
+  const detachLazyCells = useLazyCells && options.releaseArenaAfterMaterialization !== false
+  const preview = createSheetPreview({
     name: sheetName,
     rowCount: cellScan.rowCount,
     columnCount: cellScan.columnCount,
@@ -89,8 +80,8 @@ export function buildParsedWorksheet(
     ? useLazyCells
       ? detachLazyCells
         ? cellScan.arena.createDetachedLazySheetCells(cellScan.sheetIndex)
-        : cellScan.arena.createLazySheetCells(cellScan.sheetIndex, cellMaterializationOptions)
-      : cellScan.arena.materializeSheetCells(cellScan.sheetIndex, cellMaterializationOptions)
+        : cellScan.arena.createLazySheetCells(cellScan.sheetIndex)
+      : cellScan.arena.materializeSheetCells(cellScan.sheetIndex)
     : []
   const arenaReleasedAfterCellProjection =
     options.materializeCells && options.releaseArenaAfterMaterialization === true && (!useLazyCells || detachLazyCells)
@@ -103,21 +94,15 @@ export function buildParsedWorksheet(
   const cellMetadataRefs =
     detachedLazyCellMetadataRefs ??
     buildLargeSimpleCellMetadataReferenceSnapshots(metadataScan?.cellMetadataRefs, cells, cellScan, useLazyCells)
-  const preview =
-    options.materializeCells && !useLazyCells ? createPreviewFromMaterializedCells(sheetName, cellScan, cells) : scannedPreview
   releaseProjectedCellScanStorage(cellScan, {
     releaseArenaAfterMaterialization: options.releaseArenaAfterMaterialization,
     arenaReleased: arenaReleasedAfterCellProjection,
     detachLazyCells,
     useLazyCells,
   })
-  const visibilityFilters = internedInput.tableFilters
-    ? [...(internedInput.filters ?? []), ...internedInput.tableFilters]
-    : internedInput.filters
-  const visibleRows = applyImportedAutoFilterVisibility(sheetName, cells, rows.entries, visibilityFilters)
   const metadata: SheetMetadataSnapshot = {
     ...(columns.entries.length > 0 ? { columns: columns.entries } : {}),
-    ...(visibleRows && visibleRows.length > 0 ? { rows: visibleRows } : {}),
+    ...(rows.entries.length > 0 ? { rows: rows.entries } : {}),
     ...(columns.metadata.length > 0 ? { columnMetadata: columns.metadata } : {}),
     ...(rows.metadata.length > 0 ? { rowMetadata: rows.metadata } : {}),
     ...(sheetFormatPr ? { sheetFormatPr } : {}),
@@ -127,7 +112,7 @@ export function buildParsedWorksheet(
     ...(internedInput.controlArtifacts ? { controlArtifacts: internedInput.controlArtifacts } : {}),
     ...(internedInput.pivotArtifacts ? { pivotArtifacts: internedInput.pivotArtifacts } : {}),
     ...(internedInput.legacyCommentVml ? { legacyCommentVml: internedInput.legacyCommentVml } : {}),
-    ...(sheetProtection ? { sheetProtection } : {}),
+    ...(internedInput.sheetProtection ? { sheetProtection: internedInput.sheetProtection } : {}),
     ...(internedInput.filters ? { filters: internedInput.filters } : {}),
     ...(internedInput.hyperlinks ? { hyperlinks: internedInput.hyperlinks } : {}),
     ...(internedInput.validations ? { validations: internedInput.validations } : {}),
@@ -164,29 +149,5 @@ export function buildParsedWorksheet(
         usedRange: cellScan.usedRange,
       },
     },
-  }
-}
-
-function createPreviewFromMaterializedCells(
-  sheetName: string,
-  cellScan: ImportedWorksheetCellScan,
-  cells: WorkbookSnapshot['sheets'][number]['cells'],
-): ParsedWorksheet['preview'] {
-  const rowLimit = Math.min(cellScan.rowCount, 8)
-  const columnLimit = Math.min(cellScan.columnCount, 6)
-  const previewValues = Array.from({ length: rowLimit }, () => Array.from({ length: columnLimit }, () => ''))
-  for (const cell of cells) {
-    const decoded = decodeCellAddress(cell.address)
-    if (!decoded || decoded.row >= rowLimit || decoded.column >= columnLimit) {
-      continue
-    }
-    previewValues[decoded.row]![decoded.column] = 'value' in cell ? toDisplayText(cell.value) : 'formula' in cell ? `=${cell.formula}` : ''
-  }
-  return {
-    name: sheetName,
-    rowCount: cellScan.rowCount,
-    columnCount: cellScan.columnCount,
-    nonEmptyCellCount: cellScan.cellCount,
-    previewRows: previewValues,
   }
 }

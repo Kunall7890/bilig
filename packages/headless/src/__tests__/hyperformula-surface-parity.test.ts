@@ -25,12 +25,6 @@ const ALLOWED_BILIG_INSTANCE_METHODS = [
   'setSheetCellValues',
   'setSheetRangeValues',
   'transaction',
-  'calculateScalarFormula',
-  'compileScalarFormula',
-  'getRangeValueBlock',
-  'setCellValues',
-  'setSheetCellValues',
-  'setSheetRangeValues',
 ] as const
 const ALLOWED_BILIG_INSTANCE_ACCESSORS = ['internals'] as const
 const ALLOWED_BILIG_STATIC_METHODS = ['buildFromSheetEntries', 'buildFromSnapshot'] as const
@@ -48,7 +42,6 @@ describe('WorkPaper HyperFormula snapshot parity', () => {
         readFileSync(new URL('../work-paper-runtime-metadata-surface.ts', import.meta.url), 'utf8'),
         readFileSync(new URL('../work-paper-public-surface.ts', import.meta.url), 'utf8'),
         readFileSync(new URL('../work-paper-capability-surface.ts', import.meta.url), 'utf8'),
-        readFileSync(new URL('../work-paper-runtime-fast-path-base.ts', import.meta.url), 'utf8'),
       ].join('\n'),
       'WorkPaper',
     )
