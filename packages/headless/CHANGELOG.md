@@ -4,6 +4,15 @@ All notable changes to `@bilig/headless` will be documented in this file.
 
 This package is released as part of the aligned bilig library package set.
 
+## 0.51.3
+
+- Release type: patch
+- Previous libraries tag: libraries-v0.51.2
+- Manual override: no
+
+## Fixes
+- fix(release): tolerate duplicate npm publish races (773dc878)
+
 ## 0.51.2
 
 - Release type: patch
