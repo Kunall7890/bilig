@@ -19,6 +19,49 @@ formulas, computed readback, and JSON persistence. The framework wrapper should
 stay thin. Keep the workbook behavior in ordinary Node functions, then expose
 those functions through the tool shape your agent framework expects.
 
+## Packaged Agent Tool Contract
+
+If you do not want to copy the adapter helper from the example, import the
+transport-free tool contract from the scoped package:
+
+```ts
+import { WorkPaper } from '@bilig/workpaper'
+import { createWorkPaperAgentTools } from '@bilig/workpaper/agent-tools'
+
+const workbook = WorkPaper.buildFromSheets({
+  Inputs: [
+    ['Metric', 'Value'],
+    ['Qualified opportunities', 20],
+    ['Win rate', 0.25],
+    ['Average ARR', 12000],
+  ],
+  Summary: [
+    ['Metric', 'Value'],
+    ['Expected customers', '=Inputs!B2*Inputs!B3'],
+    ['Expected ARR', '=B2*Inputs!B4'],
+  ],
+})
+
+const workpaperTools = createWorkPaperAgentTools(workbook, {
+  allowedInputSheets: ['Inputs'],
+  trackedRanges: ['Summary!A1:B3'],
+  writable: true,
+})
+
+const proof = workpaperTools.setWorkPaperCell({
+  target: 'Inputs!B3',
+  value: 0.4,
+})
+
+console.log(proof.checks)
+```
+
+The helper is not tied to a model provider. Wrap `readWorkPaperRange` and
+`setWorkPaperCell` in AI SDK `tool(...)`, LangChain `tool(...)`, OpenAI
+Agents function tools, MCP tools, or a route handler. Writes are disabled by
+default; opt into `writable: true` only inside a host-controlled boundary, and
+keep `allowedInputSheets` narrow.
+
 ## Real AI SDK `generateText()` Smoke
 
 Run this first if you use the Vercel AI SDK and want to see the complete

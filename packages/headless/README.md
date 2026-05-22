@@ -20,7 +20,7 @@ the search or production bug you actually have:
 | `xlsx-populate` writes formulas but Node reads old values     | `npm install @bilig/xlsx-formula-recalc`                      | `npx --package @bilig/xlsx-formula-recalc xlsx-recalc --demo --json` updates the cached value.                                                |
 | ExcelJS formula cells need recalculated values                | `npm install exceljs @bilig/exceljs-formula-recalc`           | `npx --package @bilig/exceljs-formula-recalc exceljs-recalc --demo --json` mutates the workbook boundary.                                     |
 | An AI agent needs spreadsheet tools instead of UI automation  | `npm create @bilig/workpaper@latest pricing-agent -- --agent` | [AI spreadsheet agent tool](https://proompteng.github.io/bilig/ai-agent-spreadsheet-tool-node.html) shows the write/recalc/read/persist loop. |
-| Formula workbook state belongs in a service or agent tool     | `npm install @bilig/workpaper`                                | `npm exec --package @bilig/workpaper@0.42.0 -- bilig-agent-challenge` prints `verified: true`.                                               |
+| Formula workbook state belongs in a service or agent tool     | `npm install @bilig/workpaper`                                | `npm exec --package @bilig/workpaper@0.42.0 -- bilig-agent-challenge` prints `verified: true`.                                                |
 | You need the lower-level runtime package and subpaths         | `npm install @bilig/headless`                                 | The examples below prove WorkPaper JSON, XLSX import/export, provenance, and package footprint.                                               |
 
 Use `@bilig/headless` when the spreadsheet is the business logic, but
@@ -32,6 +32,12 @@ read the cell value, and save the workbook as JSON. Product code gets
 reviewable workbook-shaped logic without shipping a spreadsheet UI. Coding
 agents get narrow tools such as `readRange` and `setInputCell` instead of
 guessing state from screenshots.
+
+For framework adapters, import the same verified read/write/persist loop from
+`@bilig/headless/agent-tools` or the focused `@bilig/workpaper/agent-tools`
+entrypoint. Writes are disabled until the host passes `writable: true`, and
+the write result includes before/after ranges, restored readback, and formula
+persistence checks.
 
 The npm tarball also includes `AGENTS.md` and `SKILL.md` so coding agents
 inspecting `node_modules/@bilig/headless` can find the write/read/persist loop
