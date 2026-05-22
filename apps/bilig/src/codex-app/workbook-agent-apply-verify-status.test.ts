@@ -111,14 +111,39 @@ function createBundle(): WorkbookAgentCommandBundle {
   })
 }
 
-function renderedContext(capturedRevision: number): WorkbookAgentUiContext {
+function renderedContext(capturedRevision: number, source: 'selection' | 'visibleRange' = 'selection'): WorkbookAgentUiContext {
+  const renderedRange = {
+    range: {
+      sheetName: 'Sheet1',
+      startAddress: 'B2',
+      endAddress: 'B2',
+    },
+    rowCount: 1,
+    columnCount: 1,
+    cellCount: 1,
+    truncated: false,
+    rows: [
+      [
+        {
+          address: 'B2',
+          input: 'visible value',
+          value: { tag: ValueTag.String, value: 'visible value' },
+          formula: null,
+          displayFormat: 'visible value',
+          styleId: null,
+          numberFormatId: null,
+          style: null,
+        },
+      ],
+    ],
+  }
   return {
     selection: {
       sheetName: 'Sheet1',
-      address: 'B2',
+      address: source === 'selection' ? 'B2' : 'A1',
       range: {
-        startAddress: 'B2',
-        endAddress: 'B2',
+        startAddress: source === 'selection' ? 'B2' : 'A1',
+        endAddress: source === 'selection' ? 'B2' : 'A1',
       },
     },
     viewport: {
@@ -131,32 +156,8 @@ function renderedContext(capturedRevision: number): WorkbookAgentUiContext {
       capturedAtUnixMs: 10,
       capturedRevision,
       batchId: capturedRevision,
-      selection: {
-        range: {
-          sheetName: 'Sheet1',
-          startAddress: 'B2',
-          endAddress: 'B2',
-        },
-        rowCount: 1,
-        columnCount: 1,
-        cellCount: 1,
-        truncated: false,
-        rows: [
-          [
-            {
-              address: 'B2',
-              input: 'visible value',
-              value: { tag: ValueTag.String, value: 'visible value' },
-              formula: null,
-              displayFormat: 'visible value',
-              styleId: null,
-              numberFormatId: null,
-              style: null,
-            },
-          ],
-        ],
-      },
-      visibleRange: null,
+      selection: source === 'selection' ? renderedRange : null,
+      visibleRange: source === 'visibleRange' ? renderedRange : null,
     },
   }
 }
@@ -221,5 +222,53 @@ describe('apply_and_verify proof status', () => {
       })
       .parse(readToolJson(response))
     expect(payload.verificationMissingChecks).toEqual(['formulaIssues', 'invariants'])
+  })
+
+  it('keeps verification incomplete when rendered readback only comes from the viewport', async () => {
+    const engine = await createEngine()
+    const response = await handleWorkbookAgentToolCall(
+      {
+        documentId: 'doc-1',
+        session: {
+          userID: 'alex@example.com',
+          roles: ['editor'],
+        },
+        uiContext: renderedContext(5, 'visibleRange'),
+        zeroSyncService: createZeroSyncHarness(engine, {
+          headRevision: 5,
+          calculatedRevision: 5,
+        }),
+        awaitRenderedRevision: vi.fn(async () => undefined),
+        stageCommand: vi.fn(async () => createBundle()),
+      },
+      {
+        threadId: 'thr-1',
+        turnId: 'turn-1',
+        callId: 'call-apply-and-verify-viewport-only',
+        tool: 'apply_and_verify',
+        arguments: {
+          range: {
+            sheetName: 'Sheet1',
+            startAddress: 'B2',
+            endAddress: 'B2',
+          },
+        },
+      },
+    )
+
+    const payload = z
+      .object({
+        status: z.literal('verification_incomplete'),
+        verificationComplete: z.literal(false),
+        verificationMissingChecks: z.array(z.string()),
+        renderedReadback: z.array(
+          z.object({
+            matched: z.literal(true),
+            sourceKind: z.literal('visibleRange'),
+          }),
+        ),
+      })
+      .parse(readToolJson(response))
+    expect(payload.verificationMissingChecks).toEqual(['renderedSelection'])
   })
 })
