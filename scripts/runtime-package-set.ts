@@ -192,6 +192,10 @@ export function missingPublishedRuntimePackageNames(publishedVersions: readonly 
   return publishedVersions.filter((entry) => entry.version === null).map((entry) => entry.packageName)
 }
 
+export function isNpmDuplicateVersionPublishError(output: string): boolean {
+  return /you cannot publish over the previously published versions/i.test(output)
+}
+
 export function planRuntimePackagePublishProvisioning(options: {
   publishedVersions: readonly RuntimePackagePublishedVersion[]
   allowNewNpmPackages: boolean

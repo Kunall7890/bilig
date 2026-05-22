@@ -9,6 +9,7 @@ import {
   formatRuntimePackagePublishedVersions,
   loadRuntimeNpmPackages,
   loadRuntimePackages,
+  isNpmDuplicateVersionPublishError,
   parseStableSemver,
   planRuntimePackagePublishProvisioning,
   parseBooleanEnv,
@@ -103,34 +104,7 @@ try {
     }
 
     if (isVersionPublished(runtimePackage.name, targetVersion)) {
-      const distTags = getDistTags(runtimePackage.name)
-      if (distTags[distTag] === targetVersion) {
-        results.push({
-          package: runtimePackage.name,
-          version: targetVersion,
-          status: 'skipped',
-          reason: `version already published on ${distTag}`,
-        })
-        continue
-      }
-
-      if (dryRun) {
-        results.push({
-          package: runtimePackage.name,
-          version: targetVersion,
-          status: 'would-tag',
-          tag: distTag,
-        })
-        continue
-      }
-
-      runCommand('npm', ['dist-tag', 'add', `${runtimePackage.name}@${targetVersion}`, distTag])
-      results.push({
-        package: runtimePackage.name,
-        version: targetVersion,
-        status: 'tagged',
-        tag: distTag,
-      })
+      results.push(resolvePublishedVersionResult(runtimePackage.name, targetVersion))
       continue
     }
 
@@ -138,7 +112,18 @@ try {
     if (dryRun) {
       publishArgs.push('--dry-run')
     }
-    runCommand('npm', publishArgs)
+    const publishResult = runCommand('npm', publishArgs, { captureOutput: true })
+    if (publishResult.exitCode !== 0) {
+      const output = `${publishResult.stdout}\n${publishResult.stderr}`
+      if (!dryRun && isNpmDuplicateVersionPublishError(output) && isVersionPublished(runtimePackage.name, targetVersion)) {
+        results.push({
+          ...resolvePublishedVersionResult(runtimePackage.name, targetVersion),
+          reason: 'version became published during this workflow run',
+        })
+        continue
+      }
+      throw new Error(`Command failed: npm ${publishArgs.join(' ')}`)
+    }
 
     results.push({
       package: runtimePackage.name,
@@ -162,6 +147,35 @@ try {
   )
 } finally {
   rmSync(stageDir, { recursive: true, force: true })
+}
+
+function resolvePublishedVersionResult(packageName: string, version: string) {
+  const distTags = getDistTags(packageName)
+  if (distTags[distTag] === version) {
+    return {
+      package: packageName,
+      version,
+      status: 'skipped',
+      reason: `version already published on ${distTag}`,
+    }
+  }
+
+  if (dryRun) {
+    return {
+      package: packageName,
+      version,
+      status: 'would-tag',
+      tag: distTag,
+    }
+  }
+
+  runCommand('npm', ['dist-tag', 'add', `${packageName}@${version}`, distTag])
+  return {
+    package: packageName,
+    version,
+    status: 'tagged',
+    tag: distTag,
+  }
 }
 
 function rewriteInternalDependencyRanges(manifest: Record<string, unknown>, internalNames: Set<string>, nextVersion: string) {
@@ -333,15 +347,35 @@ function runTextCommand(command: string, args: string[]): string {
   return textDecoder.decode(result.stdout)
 }
 
-function runCommand(command: string, args: string[], options?: { cwd?: string }) {
+function runCommand(command: string, args: string[], options?: { cwd?: string; captureOutput?: boolean }) {
   const result = Bun.spawnSync([command, ...args], {
     cwd: options?.cwd ?? rootDir,
     env: process.env,
     stdin: 'inherit',
-    stdout: 'inherit',
-    stderr: 'inherit',
+    stdout: options?.captureOutput ? 'pipe' : 'inherit',
+    stderr: options?.captureOutput ? 'pipe' : 'inherit',
   })
+  if (options?.captureOutput) {
+    const stdout = textDecoder.decode(result.stdout)
+    const stderr = textDecoder.decode(result.stderr)
+    if (stdout.length > 0) {
+      process.stdout.write(stdout)
+    }
+    if (stderr.length > 0) {
+      process.stderr.write(stderr)
+    }
+    return {
+      exitCode: result.exitCode,
+      stdout,
+      stderr,
+    }
+  }
   if (result.exitCode !== 0) {
     throw new Error(`Command failed: ${command} ${args.join(' ')}`)
+  }
+  return {
+    exitCode: result.exitCode,
+    stdout: '',
+    stderr: '',
   }
 }
