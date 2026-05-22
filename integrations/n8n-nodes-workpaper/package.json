@@ -63,5 +63,8 @@
     "nodes": [
       "dist/nodes/Workpaper/BiligWorkpaper.node.js"
     ]
+  },
+  "overrides": {
+    "uuid": "11.1.1"
   }
 }
