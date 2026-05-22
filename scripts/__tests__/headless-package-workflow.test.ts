@@ -125,6 +125,9 @@ describe('headless package workflow', () => {
     expect(source).toContain('regenerating on latest main')
     expect(source).toContain('git reset --hard origin/main')
     expect(source).not.toContain('git rebase origin/main')
+    expect(
+      source.indexOf('bun scripts/sync-agent-discovery-docs.ts', source.indexOf('bun scripts/sync-headless-package-footprint.ts')),
+    ).toBeGreaterThan(source.indexOf('bun scripts/sync-headless-package-footprint.ts'))
     expect(source).toContain('GitHub main mirrors release metadata SHA')
     expect(source).toContain('Refusing to push release metadata directly to GitHub main.')
     expect(source).toContain('actions: read')
