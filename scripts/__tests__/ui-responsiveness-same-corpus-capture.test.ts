@@ -25,6 +25,12 @@ import { sameCorpusChromiumLaunchOptions } from '../ui-responsiveness-same-corpu
 import { sameCorpusScrollProbeSelectorsForProduct } from '../ui-responsiveness-same-corpus-scroll-page.ts'
 import { incumbentEditableWorkloadBlocker, sameCorpusKeyboardOperations } from '../ui-responsiveness-same-corpus-workload-runner.ts'
 
+const sameCorpusFixtureCheckedCells = [
+  { address: 'A1', expected: 'metric-1', actual: 'metric-1' },
+  { address: 'B1', expected: 'metric-2', actual: 'metric-2' },
+  { address: 'F2', expected: 'note-1-5', actual: 'note-1-5' },
+] as const
+
 describe('same-corpus UI responsiveness capture CLI', () => {
   it('builds a default Bilig benchmark URL from the selected corpus', () => {
     const args = parseCaptureArgs([
@@ -590,14 +596,7 @@ function sameCorpusCaptureMeasurement(
       method,
       sheetName: 'WideGrid',
       materializedCells: 250_000,
-      checkedCells:
-        product === 'bilig'
-          ? []
-          : [
-              { address: 'A1', expected: 'metric-1', actual: 'metric-1' },
-              { address: 'B1', expected: 'metric-2', actual: 'metric-2' },
-              { address: 'F2', expected: 'note-1-5', actual: 'note-1-5' },
-            ],
+      checkedCells: sameCorpusFixtureCheckedCells,
     },
     limitations: [],
   }

@@ -11,9 +11,11 @@ import {
 } from './json-scorecard-helpers.ts'
 import type {
   SameCorpusCapture,
+  SameCorpusCaptureCorpusFingerprint,
   SameCorpusCaptureCase,
   SameCorpusCaptureCorpusVerification,
   SameCorpusCaptureMeasurement,
+  SameCorpusProductSourceWorkbookFingerprint,
   SameCorpusCaptureVerifiedCell,
   UiResponsivenessLiveBrowserCase,
   UiResponsivenessLiveBrowserScorecard,
@@ -126,6 +128,10 @@ function parseSameCorpusRunManifest(value: Record<string, unknown>): UiResponsiv
     requiredWorkloads: stringArrayField(value, 'requiredWorkloads').map(parseSameCorpusWorkload),
     capturedWorkloads: stringArrayField(value, 'capturedWorkloads').map(parseSameCorpusWorkload),
     corpusCaseIds: stringArrayField(value, 'corpusCaseIds'),
+    corpusFingerprints: arrayField(value, 'corpusFingerprints').map(parseSameCorpusCorpusFingerprint),
+    productSourceWorkbookFingerprints: arrayField(value, 'productSourceWorkbookFingerprints').map(
+      parseSameCorpusProductSourceWorkbookFingerprint,
+    ),
     materializedCellCounts: arrayField(value, 'materializedCellCounts').map((entry) => {
       if (typeof entry !== 'number' || !Number.isInteger(entry) || entry <= 0) {
         throw new Error('Expected UI responsiveness same-corpus materialized cell counts to contain positive integers')
@@ -156,6 +162,7 @@ function parseSameCorpusCase(value: unknown): UiResponsivenessSameCorpusCase {
   const tenXMeanAndP95Metric = optionalSameCorpusTenXMetric(record, 'tenXMeanAndP95Metric')
   const postOperationFrameGuardrailPassed = optionalBooleanField(record, 'postOperationFrameGuardrailPassed')
   const scrollMovementGuardrailPassed = optionalBooleanField(record, 'scrollMovementGuardrailPassed')
+  const sourceWorkbookFingerprintGuardrailPassed = optionalBooleanField(record, 'sourceWorkbookFingerprintGuardrailPassed')
   return {
     id: stringField(record, 'id'),
     corpusCaseId: stringField(record, 'corpusCaseId'),
@@ -181,6 +188,7 @@ function parseSameCorpusCase(value: unknown): UiResponsivenessSameCorpusCase {
       : {}),
     ...(postOperationFrameGuardrailPassed !== undefined ? { postOperationFrameGuardrailPassed } : {}),
     ...(scrollMovementGuardrailPassed !== undefined ? { scrollMovementGuardrailPassed } : {}),
+    ...(sourceWorkbookFingerprintGuardrailPassed !== undefined ? { sourceWorkbookFingerprintGuardrailPassed } : {}),
     passed: booleanField(record, 'passed'),
   }
 }
@@ -247,7 +255,39 @@ function parseSameCorpusVerification(value: Record<string, unknown>): SameCorpus
     method: parseSameCorpusVerificationMethod(stringField(value, 'method')),
     sheetName: stringField(value, 'sheetName'),
     materializedCells: numberField(value, 'materializedCells'),
+    corpusFingerprint: parseSameCorpusCorpusFingerprint(objectField(value, 'corpusFingerprint')),
+    sourceWorkbookSha256: nullableStringField(value, 'sourceWorkbookSha256'),
     checkedCells: arrayField(value, 'checkedCells').map(parseSameCorpusVerifiedCell),
+  }
+}
+
+function parseSameCorpusCorpusFingerprint(value: unknown): SameCorpusCaptureCorpusFingerprint {
+  const record = asObject(value, 'UI responsiveness same-corpus benchmark fingerprint')
+  const primaryViewport = objectField(record, 'primaryViewport')
+  return {
+    version: literalField(record, 'version', 'same-corpus-fingerprint-v1'),
+    corpusCaseId: stringField(record, 'corpusCaseId'),
+    workbookName: stringField(record, 'workbookName'),
+    sheetCount: numberField(record, 'sheetCount'),
+    materializedCells: numberField(record, 'materializedCells'),
+    primaryViewport: {
+      sheetName: stringField(primaryViewport, 'sheetName'),
+      rowStart: numberField(primaryViewport, 'rowStart'),
+      rowEnd: numberField(primaryViewport, 'rowEnd'),
+      colStart: numberField(primaryViewport, 'colStart'),
+      colEnd: numberField(primaryViewport, 'colEnd'),
+    },
+    snapshotSha256: stringField(record, 'snapshotSha256'),
+  }
+}
+
+function parseSameCorpusProductSourceWorkbookFingerprint(value: unknown): SameCorpusProductSourceWorkbookFingerprint {
+  const record = asObject(value, 'UI responsiveness same-corpus product source workbook fingerprint')
+  return {
+    product: parseSameCorpusProduct(stringField(record, 'product')),
+    method: parseSameCorpusVerificationMethod(stringField(record, 'method')),
+    source: stringField(record, 'source'),
+    sourceWorkbookSha256: nullableStringField(record, 'sourceWorkbookSha256'),
   }
 }
 
@@ -346,6 +386,17 @@ function optionalNumberField(value: Record<string, unknown>, key: string): numbe
 
 function optionalBooleanField(value: Record<string, unknown>, key: string): boolean | undefined {
   return Object.hasOwn(value, key) ? booleanField(value, key) : undefined
+}
+
+function nullableStringField(value: Record<string, unknown>, key: string): string | null {
+  const fieldValue = value[key]
+  if (fieldValue === null) {
+    return null
+  }
+  if (typeof fieldValue !== 'string') {
+    throw new Error(`Expected ${key} to be a string or null`)
+  }
+  return fieldValue
 }
 
 function optionalSameCorpusTenXMetric(

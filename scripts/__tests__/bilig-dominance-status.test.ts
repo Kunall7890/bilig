@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
+import { buildWorkbookBenchmarkCorpus } from '../../packages/benchmarks/src/workbook-corpus.js'
 import { buildBiligDominanceStatus, formatBiligDominanceStatusPathForMessage } from '../bilig-dominance-status.ts'
 import { buildSameCorpusProof, type SameCorpusCapture } from '../gen-ui-responsiveness-live-browser-scorecard.ts'
 import type { PublicWorkbookCorpusFetchPlan } from '../public-workbook-corpus-fetch.ts'
@@ -7,8 +8,13 @@ import type { PublicWorkbookCorpusFinancialPlan } from '../public-workbook-corpu
 import type { PublicWorkbookCorpusFeatureWitnessPlan } from '../public-workbook-corpus-feature-witness-plan.ts'
 import type { PublicWorkbookCorpusStatus } from '../public-workbook-corpus-status.ts'
 import type { SameCorpusPublicAccessCheck } from '../ui-responsiveness-same-corpus-public-access-check.ts'
+import { buildSameCorpusFingerprint } from '../ui-responsiveness-same-corpus-fingerprint.ts'
 import { requiredUiResponsivenessSameCorpusWorkloads } from '../ui-responsiveness-same-corpus-workloads.ts'
 import { buildFixtureInput } from './bilig-dominance-scorecard.fixture.ts'
+
+const sameCorpusFixtureFingerprint = buildSameCorpusFingerprint(buildWorkbookBenchmarkCorpus('wide-mixed-250k')).corpusFingerprint
+const googleSheetsSourceWorkbookSha256 = '1'.repeat(64)
+const microsoftExcelWebSourceWorkbookSha256 = '2'.repeat(64)
 
 describe('bilig dominance status', () => {
   it('exposes actionable same-corpus UI proof setup commands', () => {
@@ -813,7 +819,38 @@ function sameCorpusScenarioProof(biligMs: number, googleMs: number) {
           method: 'typegpu-visible-canvas',
           viewportPixelWidth: 1440,
           viewportPixelHeight: 900,
-          evidence: ['mode=typegpu-v3'],
+          evidence: [
+            'gridCssWidth=720',
+            'gridCssHeight=450',
+            'devicePixelRatio=2',
+            'expectedPixelWidth=1440',
+            'expectedPixelHeight=900',
+            'contractVersion=same-corpus-ui-v2',
+            'gridAuthoritativeRevision=rev-3',
+            'gridLocalRevision=rev-local-2',
+            'gridProjectedRevision=rev-3',
+            'fallbackMounted=false',
+            'mode=typegpu-v3',
+            'backendStatus=ready',
+            'frameProofStatus=presented',
+            'hasPresentedVisibleFrame=true',
+            'tilePaneCount=6',
+            'headerPaneCount=3',
+            'presentedTilePaneCount=6',
+            'presentedHeaderPaneCount=3',
+            'canvasPixelWidth=1440',
+            'canvasPixelHeight=900',
+            'canvasCoversViewport=true',
+            'typeGpuAuthoritativeRevision=rev-3',
+            'typeGpuLocalRevision=rev-local-2',
+            'typeGpuProjectedRevision=rev-3',
+            'visibleAuthoritativeRevision=rev-3',
+            'visibleLocalRevision=rev-local-2',
+            'visibleProjectedRevision=rev-3',
+            'tileSceneRevision=scene-7',
+            'visibleRenderRevision=scene-7',
+            ...strictPixelGridEvidence(),
+          ],
         },
         {
           product: 'google-sheets',
@@ -821,7 +858,7 @@ function sameCorpusScenarioProof(biligMs: number, googleMs: number) {
           method: 'google-sheets-visible-grid',
           viewportPixelWidth: 1440,
           viewportPixelHeight: 900,
-          evidence: ['selector=.grid-scrollable-wrapper'],
+          evidence: strictPixelGridEvidence(),
         },
         {
           product: 'microsoft-excel-web',
@@ -829,7 +866,7 @@ function sameCorpusScenarioProof(biligMs: number, googleMs: number) {
           method: 'excel-web-visible-grid',
           viewportPixelWidth: 1440,
           viewportPixelHeight: 900,
-          evidence: ['selector=.ewr-grdcontarea-grid'],
+          evidence: strictPixelGridEvidence(),
         },
       ],
       missingProducts: [],
@@ -837,12 +874,33 @@ function sameCorpusScenarioProof(biligMs: number, googleMs: number) {
   }
 }
 
+function strictPixelGridEvidence(): string[] {
+  return [
+    'pixelGridProofVersion=grid-pixels-v1',
+    'pixelSampleSource=screenshot',
+    'screenshotPixelWidth=1440',
+    'screenshotPixelHeight=900',
+    'nonBlankPixels=10000',
+    'visibleGridLinePixels=4000',
+    'verticalLineRuns=8',
+    'horizontalLineRuns=16',
+  ]
+}
+
 function sameCorpusVerification(method: SameCorpusCapture['cases'][number]['bilig']['corpusVerification']['method']) {
+  const sourceWorkbookSha256 =
+    method === 'bilig-benchmark-state'
+      ? sameCorpusFixtureFingerprint.snapshotSha256
+      : method === 'google-sheets-xlsx-export'
+        ? googleSheetsSourceWorkbookSha256
+        : microsoftExcelWebSourceWorkbookSha256
   return {
     verified: true,
     method,
     sheetName: 'WideGrid',
     materializedCells: 250_000,
+    corpusFingerprint: sameCorpusFixtureFingerprint,
+    sourceWorkbookSha256,
     checkedCells: [
       { address: 'A1', expected: 'metric-1', actual: 'metric-1' },
       { address: 'B1', expected: 'metric-2', actual: 'metric-2' },

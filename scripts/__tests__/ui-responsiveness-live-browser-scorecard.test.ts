@@ -4,6 +4,7 @@ import { dirname, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { describe, expect, it } from 'vitest'
 
+import { buildWorkbookBenchmarkCorpus } from '../../packages/benchmarks/src/workbook-corpus.js'
 import { hasUiResponsivenessSameCorpusTenXGap } from '../bilig-dominance-completion-audit.ts'
 import {
   buildSameCorpusProof,
@@ -15,6 +16,7 @@ import {
   type UiResponsivenessLiveBrowserScorecard,
 } from '../gen-ui-responsiveness-live-browser-scorecard.ts'
 import { readJsonObject } from '../json-scorecard-helpers.ts'
+import { buildSameCorpusFingerprint } from '../ui-responsiveness-same-corpus-fingerprint.ts'
 import {
   requiredUiResponsivenessSameCorpusWorkloads,
   uiSameCorpusWorkloadRequiresScrollEventEvidence,
@@ -22,6 +24,9 @@ import {
 } from '../ui-responsiveness-same-corpus-workloads.ts'
 
 const repoRoot = resolve(dirname(fileURLToPath(import.meta.url)), '../..')
+const sameCorpusFixtureFingerprint = buildSameCorpusFingerprint(buildWorkbookBenchmarkCorpus('wide-mixed-250k')).corpusFingerprint
+const googleSheetsSourceWorkbookSha256 = '1'.repeat(64)
+const microsoftExcelWebSourceWorkbookSha256 = '2'.repeat(64)
 
 describe('UI responsiveness live browser scorecard', () => {
   it('validates the checked-in browser timing artifact', () => {
@@ -38,20 +43,20 @@ describe('UI responsiveness live browser scorecard', () => {
     expect(scorecard.cases.map((entry) => entry.id)).toEqual(['google-sheets-public-grid-scroll', 'microsoft-excel-web-public-xlsx-scroll'])
     expect(scorecard.cases.every((entry) => entry.sampleCount >= 3 && entry.limitations.length > 0)).toBe(true)
     expect(scorecard.sameCorpusProof).toMatchObject({
-      captured: true,
-      evidenceKind: 'same-corpus-browser-capture',
+      captured: false,
+      evidenceKind: 'not-captured',
       requiredProductCount: 2,
       requiredCaseCount: requiredUiResponsivenessSameCorpusWorkloads.length,
-      coveredCorpusCaseIds: ['wide-mixed-250k'],
+      coveredCorpusCaseIds: [],
     })
-    expect(scorecard.sameCorpusProof.cases.map((entry) => entry.workload)).toEqual(requiredUiResponsivenessSameCorpusWorkloads)
+    expect(scorecard.sameCorpusProof.cases).toEqual([])
     expect(scorecard.sameCorpusProof.tenXMeanAndP95CaseCount).toBe(
       scorecard.sameCorpusProof.cases.filter((entry) => entry.tenXMeanAndP95AgainstGoogleSheets).length,
     )
     expect(scorecard.sameCorpusProof.tenXMeanAndP95CaseCount).toBe(0)
     expect(scorecard.sameCorpusProof.runManifest).toMatchObject({
       contractVersion: 'same-corpus-ui-v2',
-      caseCount: requiredUiResponsivenessSameCorpusWorkloads.length,
+      caseCount: 0,
       strictRenderedGridProofCaseCount: 0,
       tenXMeanAndP95CaseCount: 0,
       currentContractEvidenceComplete: false,
@@ -59,7 +64,7 @@ describe('UI responsiveness live browser scorecard', () => {
     })
     expect(scorecard.sameCorpusProof.runManifest?.invalidReasons).toContain('strict rendered-grid proof covers 0/9 cases')
     expect(scorecard.sameCorpusProof.limitations).toContain(
-      'Some same-corpus cases retain timing evidence but do not satisfy strict rendered-grid proof, so they cannot count toward Google Sheets 10x UI claims.',
+      'Same-corpus live browser timing against Bilig and Google Sheets has not been captured yet.',
     )
     validateUiResponsivenessLiveBrowserScorecard(scorecard)
   })
@@ -127,6 +132,27 @@ describe('UI responsiveness live browser scorecard', () => {
         requiredWorkloads: requiredUiResponsivenessSameCorpusWorkloads,
         capturedWorkloads: requiredUiResponsivenessSameCorpusWorkloads,
         corpusCaseIds: ['wide-mixed-250k'],
+        corpusFingerprints: [sameCorpusFixtureFingerprint],
+        productSourceWorkbookFingerprints: [
+          {
+            product: 'bilig',
+            method: 'bilig-benchmark-state',
+            source: 'e2e/tests/web-shell-scroll-performance.pw.ts',
+            sourceWorkbookSha256: sameCorpusFixtureFingerprint.snapshotSha256,
+          },
+          {
+            product: 'google-sheets',
+            method: 'google-sheets-xlsx-export',
+            source: 'https://docs.google.com/spreadsheets/d/example',
+            sourceWorkbookSha256: googleSheetsSourceWorkbookSha256,
+          },
+          {
+            product: 'microsoft-excel-web',
+            method: 'microsoft-excel-web-source-xlsx',
+            source: 'https://view.officeapps.live.com/op/view.aspx?src=example',
+            sourceWorkbookSha256: microsoftExcelWebSourceWorkbookSha256,
+          },
+        ],
         materializedCellCounts: [250000],
         sampleCount: 3,
         caseCount: requiredUiResponsivenessSameCorpusWorkloads.length,
@@ -243,6 +269,27 @@ describe('UI responsiveness live browser scorecard', () => {
       googleSheetsTenXRequirementSatisfied: false,
     })
     expect(proof.runManifest?.invalidReasons).toContain('strict rendered-grid proof covers 8/9 cases')
+  })
+
+  it('keeps the same-corpus blocker when product source workbook fingerprints drift across workloads', () => {
+    const capture = buildSameCorpusCapture()
+    const driftedCases = [...capture.cases]
+    const firstCase = driftedCases[0]
+    driftedCases[0] = Object.assign({}, firstCase, {
+      googleSheets: Object.assign({}, firstCase.googleSheets, {
+        corpusVerification: Object.assign({}, firstCase.googleSheets.corpusVerification, {
+          sourceWorkbookSha256: '3'.repeat(64),
+        }),
+      }),
+    })
+    const proof = buildSameCorpusProof({ ...capture, cases: driftedCases })
+
+    expect(proof.tenXMeanAndP95CaseCount).toBe(requiredUiResponsivenessSameCorpusWorkloads.length)
+    expect(proof.runManifest).toMatchObject({
+      currentContractEvidenceComplete: false,
+      googleSheetsTenXRequirementSatisfied: false,
+    })
+    expect(proof.runManifest?.invalidReasons).toContain('source workbook fingerprint must be stable for every required product')
   })
 
   it('rejects legacy operation-only same-corpus captures before generating proof', () => {
@@ -491,7 +538,7 @@ function buildSameCorpusCapture(
         ...(includeScrollEventSamples && uiSameCorpusWorkloadRequiresScrollEventEvidence(workload)
           ? { scrollEventResponseMsSamples: [4, 5, 6], scrollMovementPxSamples: [720, 720, 720] }
           : {}),
-        corpusVerification: corpusVerification('bilig-benchmark-state', []),
+        corpusVerification: corpusVerification('bilig-benchmark-state', verifiedCells()),
         limitations: [],
       },
       googleSheets: {
@@ -611,11 +658,19 @@ function corpusVerification(
   method: 'bilig-benchmark-state' | 'google-sheets-xlsx-export' | 'microsoft-excel-web-source-xlsx',
   checkedCells: readonly { address: string; expected: string; actual: string }[],
 ) {
+  const sourceWorkbookSha256 =
+    method === 'bilig-benchmark-state'
+      ? sameCorpusFixtureFingerprint.snapshotSha256
+      : method === 'google-sheets-xlsx-export'
+        ? googleSheetsSourceWorkbookSha256
+        : microsoftExcelWebSourceWorkbookSha256
   return {
     verified: true,
     method,
     sheetName: 'WideGrid',
     materializedCells: 250000,
+    corpusFingerprint: sameCorpusFixtureFingerprint,
+    sourceWorkbookSha256,
     checkedCells,
   }
 }

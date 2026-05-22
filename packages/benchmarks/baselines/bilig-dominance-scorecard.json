@@ -43,13 +43,18 @@
         "passed": false,
         "evidence": [
           "direct live browser timing passed: true",
-          "same-corpus capture kind: same-corpus-browser-capture",
+          "same-corpus capture kind: not-captured",
           "same-corpus UI 10x cases: 0/9",
           "same-corpus render proof contract: same-corpus-ui-v2",
           "same-corpus strict rendered-grid proof cases: 0/9",
-          "same-corpus run manifest invalid reasons: strict rendered-grid proof covers 0/9 cases; not every required workload is 10x against Google Sheets"
+          "same-corpus run manifest invalid reasons: required workload count is incomplete; missing required workloads: open-workbook, select-cell, edit-visible-cell, scroll-vertical, scroll-horizontal, jump-deep-row, formula-edit, fill-format-change, wide-sheet-navigation; same-corpus evidence must use exactly one corpus case; same-corpus evidence must use exactly one benchmark workbook fingerprint; source workbook fingerprint must be stable for every required product; strict rendered-grid proof covers 0/9 cases; not every required workload is 10x against Google Sheets"
         ],
         "gaps": [
+          "same-corpus UI run manifest: required workload count is incomplete",
+          "same-corpus UI run manifest: missing required workloads: open-workbook, select-cell, edit-visible-cell, scroll-vertical, scroll-horizontal, jump-deep-row, formula-edit, fill-format-change, wide-sheet-navigation",
+          "same-corpus UI run manifest: same-corpus evidence must use exactly one corpus case",
+          "same-corpus UI run manifest: same-corpus evidence must use exactly one benchmark workbook fingerprint",
+          "same-corpus UI run manifest: source workbook fingerprint must be stable for every required product",
           "same-corpus UI run manifest: strict rendered-grid proof covers 0/9 cases",
           "same-corpus UI run manifest: not every required workload is 10x against Google Sheets",
           "live UI browser evidence is not a same-corpus 10x proof against Google Sheets with rendered-grid proof"
@@ -57,7 +62,7 @@
       }
     ],
     "unmetRequirements": [
-      "ui-responsiveness: same-corpus UI run manifest: strict rendered-grid proof covers 0/9 cases; same-corpus UI run manifest: not every required workload is 10x against Google Sheets; live UI browser evidence is not a same-corpus 10x proof against Google Sheets with rendered-grid proof"
+      "ui-responsiveness: same-corpus UI run manifest: required workload count is incomplete; same-corpus UI run manifest: missing required workloads: open-workbook, select-cell, edit-visible-cell, scroll-vertical, scroll-horizontal, jump-deep-row, formula-edit, fill-format-change, wide-sheet-navigation; same-corpus UI run manifest: same-corpus evidence must use exactly one corpus case; same-corpus UI run manifest: same-corpus evidence must use exactly one benchmark workbook fingerprint; same-corpus UI run manifest: source workbook fingerprint must be stable for every required product; same-corpus UI run manifest: strict rendered-grid proof covers 0/9 cases; same-corpus UI run manifest: not every required workload is 10x against Google Sheets; live UI browser evidence is not a same-corpus 10x proof against Google Sheets with rendered-grid proof"
     ],
     "evidenceArtifacts": [
       "packages/benchmarks/baselines/google-sheets-live-recalculation-scorecard.json",
@@ -656,23 +661,14 @@
         "external Microsoft Excel UI responsiveness evidence: official-docs-comparison-artifact",
         "external UI responsiveness comparison dimensions pass: true",
         "live incumbent browser timing scorecard passes: true",
-        "same-corpus UI 10x proof captured: true",
+        "same-corpus UI 10x proof captured: false",
         "same-corpus UI 10x cases: 0/9",
         "same-corpus UI render proof contract: same-corpus-ui-v2",
         "same-corpus UI strict rendered-grid proof cases: 0/9",
         "same-corpus UI current-contract evidence complete: false",
-        "same-corpus UI run manifest invalid reasons: strict rendered-grid proof covers 0/9 cases; not every required workload is 10x against Google Sheets",
+        "same-corpus UI run manifest invalid reasons: required workload count is incomplete; missing required workloads: open-workbook, select-cell, edit-visible-cell, scroll-vertical, scroll-horizontal, jump-deep-row, formula-edit, fill-format-change, wide-sheet-navigation; same-corpus evidence must use exactly one corpus case; same-corpus evidence must use exactly one benchmark workbook fingerprint; source workbook fingerprint must be stable for every required product; strict rendered-grid proof covers 0/9 cases; not every required workload is 10x against Google Sheets",
         "google-sheets: open-public-workbook-and-scroll-viewport scrollResponseMs.p95 130.40370799999982ms and postScrollFrameMs.p95 9.300000000000182ms (3 samples, public-comment-only)",
         "microsoft-excel-web: open-public-workbook-and-scroll-viewport scrollResponseMs.p95 115.86187499999869ms and postScrollFrameMs.p95 9.300000000000182ms (3 samples, public-office-web-viewer)",
-        "wide-mixed-250k: open-workbook bilig p95 ratio 1.8242878750138747 vs Google Sheets and undefined vs Excel Web",
-        "wide-mixed-250k: select-cell bilig p95 ratio 15.41105854113669 vs Google Sheets and undefined vs Excel Web",
-        "wide-mixed-250k: edit-visible-cell bilig p95 ratio 6.99245579821288 vs Google Sheets and undefined vs Excel Web",
-        "wide-mixed-250k: scroll-vertical bilig p95 ratio 0.3795194360262815 vs Google Sheets and undefined vs Excel Web",
-        "wide-mixed-250k: scroll-horizontal bilig p95 ratio 1.0848106541981617 vs Google Sheets and undefined vs Excel Web",
-        "wide-mixed-250k: jump-deep-row bilig p95 ratio 21.33108305923669 vs Google Sheets and undefined vs Excel Web",
-        "wide-mixed-250k: formula-edit bilig p95 ratio 6.0512957307395006 vs Google Sheets and undefined vs Excel Web",
-        "wide-mixed-250k: fill-format-change bilig p95 ratio 5.012837653257029 vs Google Sheets and undefined vs Excel Web",
-        "wide-mixed-250k: wide-sheet-navigation bilig p95 ratio 0.9101903474431454 vs Google Sheets and undefined vs Excel Web",
         "headedWide250kVisibleEditCommit: mutationToVisibleMs.p95 budget 50ms on 250000 materialized cells via pnpm test:browser:full"
       ],
       "evidenceArtifacts": [
@@ -699,6 +695,11 @@
         "pnpm bench:smoke"
       ],
       "blockers": [
+        "same-corpus UI run manifest: required workload count is incomplete",
+        "same-corpus UI run manifest: missing required workloads: open-workbook, select-cell, edit-visible-cell, scroll-vertical, scroll-horizontal, jump-deep-row, formula-edit, fill-format-change, wide-sheet-navigation",
+        "same-corpus UI run manifest: same-corpus evidence must use exactly one corpus case",
+        "same-corpus UI run manifest: same-corpus evidence must use exactly one benchmark workbook fingerprint",
+        "same-corpus UI run manifest: source workbook fingerprint must be stable for every required product",
         "same-corpus UI run manifest: strict rendered-grid proof covers 0/9 cases",
         "same-corpus UI run manifest: not every required workload is 10x against Google Sheets",
         "live UI browser evidence is direct, but it is not a same-corpus 10x proof against incumbents"

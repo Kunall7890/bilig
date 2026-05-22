@@ -22,9 +22,11 @@ export { buildMissingSameCorpusProof, buildSameCorpusProof } from './ui-responsi
 export type {
   SameCorpusCapture,
   SameCorpusCaptureCase,
+  SameCorpusCaptureCorpusFingerprint,
   SameCorpusCaptureCorpusVerification,
   SameCorpusCaptureMeasurement,
   SameCorpusCaptureVerifiedCell,
+  SameCorpusProductSourceWorkbookFingerprint,
   UiResponsivenessSameCorpusCase,
   UiResponsivenessSameCorpusMeasurement,
   UiResponsivenessSameCorpusProduct,
