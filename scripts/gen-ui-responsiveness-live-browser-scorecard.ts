@@ -29,6 +29,7 @@ export type {
   UiResponsivenessSameCorpusMeasurement,
   UiResponsivenessSameCorpusProduct,
   UiResponsivenessSameCorpusProof,
+  UiResponsivenessSameCorpusRunManifest,
 } from './ui-responsiveness-same-corpus-scorecard-proof.ts'
 export type { UiResponsivenessSameCorpusWorkload } from './ui-responsiveness-same-corpus-workloads.ts'
 

@@ -13,7 +13,7 @@ import type {
 } from './ui-responsiveness-same-corpus-scorecard-proof.ts'
 
 const rootDir = resolve(new URL('..', import.meta.url).pathname)
-const sameCorpusUiRenderProofContractVersion = 'same-corpus-ui-v2'
+export const sameCorpusUiRenderProofContractVersion = 'same-corpus-ui-v2'
 
 export interface SameCorpusScenarioProof {
   readonly biligMeanMs: number

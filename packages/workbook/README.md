@@ -61,39 +61,36 @@ define them in their own package using this generic API.
 ## Quick Start
 
 ```ts
-import { defineModel, formula } from "@bilig/workbook";
+import { defineModel, formula } from '@bilig/workbook'
 
 export const model = defineModel({
-  name: "custom-calculation",
-  description: "Writes Result from Base and Rate.",
+  name: 'custom-calculation',
+  description: 'Writes Result from Base and Rate.',
 
   find(workbook) {
     const table = workbook.findTable({
-      headers: ["Base", "Rate", "Result"],
-    });
+      headers: ['Base', 'Rate', 'Result'],
+    })
 
     return {
       table,
-      base: table.column("Base"),
-      rate: table.column("Rate"),
-      result: table.column("Result"),
-    };
+      base: table.column('Base'),
+      rate: table.column('Rate'),
+      result: table.column('Result'),
+    }
   },
 
   checks({ refs, workbook }) {
-    return [
-      workbook.check.exists(refs.table),
-      workbook.check.noFormulaErrors(refs.result),
-    ];
+    return [workbook.check.exists(refs.table), workbook.check.noFormulaErrors(refs.result)]
   },
 
   actions: {
     calculate({ refs, workbook }) {
-      workbook.writeFormula(refs.result, formula.multiply(refs.base, refs.rate));
-      workbook.check.noFormulaErrors(refs.result);
+      workbook.writeFormula(refs.result, formula.multiply(refs.base, refs.rate))
+      workbook.check.noFormulaErrors(refs.result)
     },
   },
-});
+})
 ```
 
 This model does not know what the table represents. It only knows how to find
@@ -136,10 +133,10 @@ Refs are handles to workbook structure. They are stable enough to pass through a
 plan, describe in logs, and map in a runtime adapter.
 
 ```ts
-const input = workbook.findRange({ sheetName: "Inputs", address: "B2" });
-const total = workbook.findName("Total");
-const table = workbook.findTable({ name: "Items" });
-const amount = table.column("Amount");
+const input = workbook.findRange({ sheetName: 'Inputs', address: 'B2' })
+const total = workbook.findName('Total')
+const table = workbook.findTable({ name: 'Items' })
+const amount = table.column('Amount')
 ```
 
 Ref ids are opaque. Do not parse them. Use `label` for display and
@@ -150,32 +147,32 @@ Ref ids are opaque. Do not parse them. Use `label` for display and
 Use the direct methods inside `find(workbook)`:
 
 ```ts
-workbook.findTable({ name: "Items" });
-workbook.findTable({ sheetName: "Data", headers: ["Kind", "Value"] });
-workbook.findColumn({ table, name: "Value" });
-workbook.findRange({ sheetName: "Inputs", address: "B2" });
-workbook.findRange({ sheetName: "Inputs", startAddress: "B2", endAddress: "D8" });
-workbook.findName("Total");
+workbook.findTable({ name: 'Items' })
+workbook.findTable({ sheetName: 'Data', headers: ['Kind', 'Value'] })
+workbook.findColumn({ table, name: 'Value' })
+workbook.findRange({ sheetName: 'Inputs', address: 'B2' })
+workbook.findRange({ sheetName: 'Inputs', startAddress: 'B2', endAddress: 'D8' })
+workbook.findName('Total')
 workbook.findRows({
   table,
-  where: { column: "Status", op: "eq", value: "Active" },
-});
+  where: { column: 'Status', op: 'eq', value: 'Active' },
+})
 ```
 
 Convenience methods keep common code short:
 
 ```ts
-const table = workbook.findTable({ name: "Items" });
+const table = workbook.findTable({ name: 'Items' })
 const rows = workbook.findRows({
   table,
-  where: { column: "Status", op: "eq", value: "Active" },
-});
+  where: { column: 'Status', op: 'eq', value: 'Active' },
+})
 
 return {
   rows,
-  amount: rows.column("Amount"),
-  total: table.column("Total"),
-};
+  amount: rows.column('Amount'),
+  total: table.column('Total'),
+}
 ```
 
 Selectors validate their inputs before runtime handoff. Empty names, empty
@@ -187,14 +184,14 @@ malformed objects fail while planning.
 Use `formula.*` helpers so formula text and formula inputs stay separate.
 
 ```ts
-formula.add(refs.left, refs.right);
-formula.subtract(refs.total, refs.discount);
-formula.multiply(refs.base, refs.rate);
-formula.divide(refs.amount, 12);
-formula.sum(refs.amount, refs.tax, refs.fee);
-formula.call("ROUND", [refs.amount, 2]);
-formula.text("ready");
-formula.raw("SUM(Items[Amount])", { inputs: [refs.amount] });
+formula.add(refs.left, refs.right)
+formula.subtract(refs.total, refs.discount)
+formula.multiply(refs.base, refs.rate)
+formula.divide(refs.amount, 12)
+formula.sum(refs.amount, refs.tax, refs.fee)
+formula.call('ROUND', [refs.amount, 2])
+formula.text('ready')
+formula.raw('SUM(Items[Amount])', { inputs: [refs.amount] })
 ```
 
 The rule is:
@@ -273,18 +270,21 @@ the simple commands when they express the action.
 Checks are how a model states what must be proven.
 
 ```ts
-workbook.check.exists(refs.table);
-workbook.check.noFormulaErrors(refs.result);
-workbook.check.valueEquals(refs.output, 42);
-workbook.check.valuesEqual(refs.range, [[1, 2], [3, 4]]);
-workbook.check.formulaEquals(refs.output, formula.add(refs.left, refs.right));
-workbook.check.formulasEqual(refs.range, [["SUM(Items[Amount])", null]]);
+workbook.check.exists(refs.table)
+workbook.check.noFormulaErrors(refs.result)
+workbook.check.valueEquals(refs.output, 42)
+workbook.check.valuesEqual(refs.range, [
+  [1, 2],
+  [3, 4],
+])
+workbook.check.formulaEquals(refs.output, formula.add(refs.left, refs.right))
+workbook.check.formulasEqual(refs.range, [['SUM(Items[Amount])', null]])
 workbook.check.custom({
-  kind: "consumerInvariant",
+  kind: 'consumerInvariant',
   target: refs.table,
   refs: [refs.amount, refs.result],
-  message: "Consumer-defined invariant passed",
-});
+  message: 'Consumer-defined invariant passed',
+})
 ```
 
 The runtime adapter either verifies checks itself or returns readbacks that
@@ -296,21 +296,17 @@ Use `planWorkbookAction` when an action name or input may come from an agent,
 tool call, or user request.
 
 ```ts
-import {
-  describePlanResult,
-  planWorkbookAction,
-  verifyPlan,
-} from "@bilig/workbook";
-import { model } from "./model.js";
+import { describePlanResult, planWorkbookAction, verifyPlan } from '@bilig/workbook'
+import { model } from './model.js'
 
-const planned = planWorkbookAction(model, "calculate");
+const planned = planWorkbookAction(model, 'calculate')
 
-console.log(describePlanResult(planned));
+console.log(describePlanResult(planned))
 
-if (planned.status === "planned") {
-  const verification = verifyPlan(planned.plan);
-  if (verification.status === "invalid") {
-    throw new Error(JSON.stringify(verification.issues));
+if (planned.status === 'planned') {
+  const verification = verifyPlan(planned.plan)
+  if (verification.status === 'invalid') {
+    throw new Error(JSON.stringify(verification.issues))
   }
 }
 ```
@@ -335,22 +331,22 @@ runtime, and verified, not mutated after creation.
 The runtime adapter owns execution. `@bilig/workbook` owns the contract.
 
 ```ts
-import { runWorkbookAction } from "@bilig/workbook";
+import { runWorkbookAction } from '@bilig/workbook'
 
-const result = await runWorkbookAction(model, "calculate", {
+const result = await runWorkbookAction(model, 'calculate', {
   preview(plan) {
-    return runtime.preview(plan);
+    return runtime.preview(plan)
   },
   apply(plan) {
-    return runtime.apply(plan);
+    return runtime.apply(plan)
   },
   read(targets, plan) {
-    return runtime.read(targets, plan);
+    return runtime.read(targets, plan)
   },
   verifyChecks(checks, plan) {
-    return runtime.verifyChecks(checks, plan);
+    return runtime.verifyChecks(checks, plan)
   },
-});
+})
 ```
 
 Adapter methods:
@@ -363,14 +359,10 @@ Adapter methods:
 `@bilig/core` provides the canonical engine adapter:
 
 ```ts
-import { createWorkbookRunAdapter } from "@bilig/core";
-import { runWorkbookAction } from "@bilig/workbook";
+import { createWorkbookRunAdapter } from '@bilig/core'
+import { runWorkbookAction } from '@bilig/workbook'
 
-const result = await runWorkbookAction(
-  model,
-  "calculate",
-  createWorkbookRunAdapter(engine),
-);
+const result = await runWorkbookAction(model, 'calculate', createWorkbookRunAdapter(engine))
 ```
 
 `@bilig/workbook` does not import `@bilig/core`; consumers choose their runtime.
@@ -382,18 +374,18 @@ The public result shape is deliberately boring.
 ```ts
 type WorkbookRunResult =
   | {
-      status: "done";
-      changed: readonly WorkbookChangeSummary[];
-      checks: readonly WorkbookCheckResult[];
-      undo?: WorkbookUndoRef;
-      applied?: WorkbookAppliedSummary;
+      status: 'done'
+      changed: readonly WorkbookChangeSummary[]
+      checks: readonly WorkbookCheckResult[]
+      undo?: WorkbookUndoRef
+      applied?: WorkbookAppliedSummary
     }
   | {
-      status: "failed";
-      errors: readonly WorkbookRunError[];
-      checks: readonly WorkbookCheckResult[];
-      undo?: WorkbookUndoRef;
-    };
+      status: 'failed'
+      errors: readonly WorkbookRunError[]
+      checks: readonly WorkbookCheckResult[]
+      undo?: WorkbookUndoRef
+    }
 ```
 
 If apply succeeds and proof later fails, the failed result preserves `undo` when
@@ -418,16 +410,16 @@ Use low-level ops when a consumer needs exact workbook mutation intent:
 ```ts
 workbook.addOp(
   {
-    kind: "setCellValue",
-    sheetName: "Sheet1",
-    address: "B2",
+    kind: 'setCellValue',
+    sheetName: 'Sheet1',
+    address: 'B2',
     value: 42,
   },
   {
     target: refs.output,
-    message: "Seed output value",
+    message: 'Seed output value',
   },
-);
+)
 ```
 
 The guards validate literal values, formula text, cell addresses, ranges,

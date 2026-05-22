@@ -11,6 +11,7 @@ This package is released as part of the aligned bilig library package set.
 - Manual override: no
 
 ## Features
+
 - feat(workbook): publish agent-first workbook API (e2fc16ed)
 - feat(workbook): add structured agent planning (8f14305b)
 - feat(workbook): expose formula inputs in plans (b04ab9ab)
@@ -48,6 +49,7 @@ This package is released as part of the aligned bilig library package set.
 - feat(pivots): preserve Excel pivot semantics (7c141a24)
 
 ## Fixes
+
 - perf(excel-import): finalize simple sheets earlier (c8c573cd)
 - fix(excel-export): preserve dynamic array spill caches (7e7ef8d6)
 - perf(excel-import): reuse streamed zip read buffers (e553d848)
@@ -125,6 +127,7 @@ This package is released as part of the aligned bilig library package set.
 - perf(headless): pass compact aggregate matrix plans (67040529)
 
 ## Internal runtime changes
+
 - chore(release): runtime packages v0.40.43 (4c021baa)
 - docs(agent): align WorkPaper MCP discovery (f9934bbd)
 - refactor(core): split live effect runner (3fe3b47c)
@@ -141,6 +144,7 @@ This package is released as part of the aligned bilig library package set.
 - Manual override: no
 
 ## Features
+
 - feat(workbook): publish agent-first workbook API (e2fc16ed)
 - feat(workbook): add structured agent planning (8f14305b)
 - feat(workbook): expose formula inputs in plans (b04ab9ab)
@@ -175,6 +179,7 @@ This package is released as part of the aligned bilig library package set.
 - feat(workbook): stabilize run error codes (e96bf90c)
 
 ## Fixes
+
 - perf(excel-import): finalize simple sheets earlier (c8c573cd)
 - fix(excel-export): preserve dynamic array spill caches (7e7ef8d6)
 - perf(excel-import): reuse streamed zip read buffers (e553d848)
@@ -247,6 +252,7 @@ This package is released as part of the aligned bilig library package set.
 - fix(array-formulas): preserve native metadata (b9c40823)
 
 ## Internal runtime changes
+
 - chore(release): runtime packages v0.40.43 (4c021baa)
 - docs(agent): align WorkPaper MCP discovery (f9934bbd)
 - refactor(core): split live effect runner (3fe3b47c)

@@ -22,6 +22,7 @@ import type {
   UiResponsivenessSameCorpusMeasurement,
   UiResponsivenessSameCorpusProduct,
   UiResponsivenessSameCorpusProof,
+  UiResponsivenessSameCorpusRunManifest,
   UiResponsivenessSameCorpusWorkload,
 } from './gen-ui-responsiveness-live-browser-scorecard.ts'
 import type {
@@ -30,6 +31,7 @@ import type {
   SameCorpusScenarioProof,
   SameCorpusScreenshotProof,
 } from './ui-responsiveness-same-corpus-proof.ts'
+import { sameCorpusUiRenderProofContractVersion } from './ui-responsiveness-same-corpus-proof.ts'
 import { isUiResponsivenessSameCorpusWorkload } from './ui-responsiveness-same-corpus-workloads.ts'
 
 export function parseUiResponsivenessLiveBrowserScorecard(value: Record<string, unknown>): UiResponsivenessLiveBrowserScorecard {
@@ -110,8 +112,33 @@ function parseSameCorpusProof(value: Record<string, unknown>): UiResponsivenessS
     requiredCaseCount: numberField(value, 'requiredCaseCount'),
     tenXMeanAndP95CaseCount: numberField(value, 'tenXMeanAndP95CaseCount'),
     coveredCorpusCaseIds: stringArrayField(value, 'coveredCorpusCaseIds'),
+    ...(Object.hasOwn(value, 'runManifest') ? { runManifest: parseSameCorpusRunManifest(objectField(value, 'runManifest')) } : {}),
     limitations: stringArrayField(value, 'limitations'),
     cases: arrayField(value, 'cases').map(parseSameCorpusCase),
+  }
+}
+
+function parseSameCorpusRunManifest(value: Record<string, unknown>): UiResponsivenessSameCorpusRunManifest {
+  return {
+    artifactGenerator: literalField(value, 'artifactGenerator', 'scripts/gen-ui-responsiveness-live-browser-scorecard.ts'),
+    contractVersion: literalField(value, 'contractVersion', sameCorpusUiRenderProofContractVersion),
+    requiredProducts: stringArrayField(value, 'requiredProducts').map(parseSameCorpusProduct),
+    requiredWorkloads: stringArrayField(value, 'requiredWorkloads').map(parseSameCorpusWorkload),
+    capturedWorkloads: stringArrayField(value, 'capturedWorkloads').map(parseSameCorpusWorkload),
+    corpusCaseIds: stringArrayField(value, 'corpusCaseIds'),
+    materializedCellCounts: arrayField(value, 'materializedCellCounts').map((entry) => {
+      if (typeof entry !== 'number' || !Number.isInteger(entry) || entry <= 0) {
+        throw new Error('Expected UI responsiveness same-corpus materialized cell counts to contain positive integers')
+      }
+      return entry
+    }),
+    sampleCount: numberField(value, 'sampleCount'),
+    caseCount: numberField(value, 'caseCount'),
+    strictRenderedGridProofCaseCount: numberField(value, 'strictRenderedGridProofCaseCount'),
+    tenXMeanAndP95CaseCount: numberField(value, 'tenXMeanAndP95CaseCount'),
+    currentContractEvidenceComplete: booleanField(value, 'currentContractEvidenceComplete'),
+    googleSheetsTenXRequirementSatisfied: booleanField(value, 'googleSheetsTenXRequirementSatisfied'),
+    invalidReasons: stringArrayField(value, 'invalidReasons'),
   }
 }
 
