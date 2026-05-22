@@ -109,6 +109,9 @@ permissions:
 jobs:
   verify:
     name: verify-runtime-packages
+    if: >-
+      github.event_name != 'push' ||
+      !startsWith(github.event.head_commit.message, 'chore(release): runtime packages v')
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
@@ -281,7 +284,10 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 15
     needs: verify
-    if: github.ref == 'refs/heads/main' && (github.event_name != 'workflow_dispatch' || github.event.inputs.publish_runtime_packages != 'false')
+    if: >-
+      github.ref == 'refs/heads/main' &&
+      (github.event_name != 'push' || !startsWith(github.event.head_commit.message, 'chore(release): runtime packages v')) &&
+      (github.event_name != 'workflow_dispatch' || github.event.inputs.publish_runtime_packages != 'false')
     outputs:
       release_needed: ${{ steps.planner.outputs.release_needed }}
       bootstrap_required: ${{ steps.planner.outputs.bootstrap_required }}

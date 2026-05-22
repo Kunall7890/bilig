@@ -101,6 +101,8 @@ describe('headless package workflow', () => {
     expect(source).toContain('runner needs runtime d.ts outputs rebuilt after the version sync')
     expect(source).toContain("group: runtime-packages-${{ github.event_name == 'workflow_dispatch' && github.run_id || github.sha }}")
     expect(source).toContain('cancel-in-progress: false')
+    expect(source).toContain("!startsWith(github.event.head_commit.message, 'chore(release): runtime packages v')")
+    expect(source).toContain("github.event_name != 'push' ||")
     expect(source).toContain('id: release_remotes')
     expect(source).toContain('runtime release planning skipped after verification')
     expect(source).toContain('release_from_github_mirror')
