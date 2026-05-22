@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { createFormulaFamilyStore } from '../formula/formula-family-store.js'
+import { composeFormulaFamilyStructuralSourceTransform, createFormulaFamilyStore } from '../formula/formula-family-store.js'
 
 describe('FormulaFamilyStore', () => {
   it('groups copied row formulas into one family run', () => {
@@ -470,6 +470,48 @@ describe('FormulaFamilyStore', () => {
     expect(store.getStructuralSourceTransform(1)).toBe(transform)
     expect(store.consumeStructuralSourceTransforms()).toEqual([{ cellIndices: [1, 2], transform }])
     expect(store.getStructuralSourceTransform(1)).toBeUndefined()
+  })
+
+  it('composes compatible family-level column insert source transforms', () => {
+    const store = createFormulaFamilyStore()
+    store.upsertFormula({ cellIndex: 1, sheetId: 1, row: 0, col: 2, templateId: 1, shapeKey: 'a' })
+
+    const family = store.listFamilies()[0]
+    expect(family).toBeDefined()
+    const first = {
+      ownerSheetName: 'Sheet1',
+      targetSheetName: 'Sheet1',
+      transform: { kind: 'insert', axis: 'column', start: 1, count: 1 } as const,
+      preservesValue: true,
+    }
+    const second = {
+      ownerSheetName: 'Sheet1',
+      targetSheetName: 'Sheet1',
+      transform: { kind: 'insert', axis: 'column', start: 1, count: 1 } as const,
+      preservesValue: true,
+    }
+
+    expect(composeFormulaFamilyStructuralSourceTransform(first, second)).toEqual({
+      ownerSheetName: 'Sheet1',
+      targetSheetName: 'Sheet1',
+      transform: { kind: 'insert', axis: 'column', start: 1, count: 2 },
+      preservesValue: true,
+    })
+
+    store.setStructuralSourceTransform(family.id, first)
+    store.setStructuralSourceTransform(family.id, second)
+
+    expect(store.peekStructuralSourceTransforms()).toEqual([
+      {
+        cellIndices: [1],
+        transform: {
+          ownerSheetName: 'Sheet1',
+          targetSheetName: 'Sheet1',
+          transform: { kind: 'insert', axis: 'column', start: 1, count: 2 },
+          preservesValue: true,
+        },
+      },
+    ])
   })
 
   it('invalidates whole sheets and clears all indexed family state', () => {

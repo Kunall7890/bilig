@@ -32,6 +32,7 @@ export interface FormulaBindingFamilyIndexController {
   readonly setStructuralSourceTransformNow: (familyId: number, transform: FormulaFamilyStructuralSourceTransform) => void
   readonly getStructuralSourceTransformNow: (cellIndex: number) => FormulaFamilyStructuralSourceTransform | undefined
   readonly hasStructuralSourceTransformsNow: () => boolean
+  readonly peekStructuralSourceTransformsNow: () => FormulaFamilyStructuralSourceTransformEntry[]
   readonly consumeStructuralSourceTransformsNow: () => FormulaFamilyStructuralSourceTransformEntry[]
 }
 
@@ -155,6 +156,21 @@ export function createFormulaBindingFamilyIndexController(args: {
     return args.formulaFamilies.getStructuralSourceTransform(cellIndex)
   }
 
+  const peekDeferredStructuralSourceTransformsNow = (): FormulaFamilyStructuralSourceTransformEntry[] => {
+    if (!needsRebuild || deferredRuns === undefined || deferredStructuralSourceTransforms === undefined) {
+      return args.formulaFamilies.peekStructuralSourceTransforms()
+    }
+    const entries: FormulaFamilyStructuralSourceTransformEntry[] = []
+    deferredStructuralSourceTransforms.forEach((transform, runIndex) => {
+      const run = deferredRuns?.[runIndex]
+      if (!run) {
+        return
+      }
+      entries.push({ cellIndices: run.cellIndices, transform })
+    })
+    return entries
+  }
+
   return {
     clearNow,
     registerFormulaFamilyNow,
@@ -185,6 +201,7 @@ export function createFormulaBindingFamilyIndexController(args: {
         (deferredStructuralSourceTransforms !== undefined && deferredStructuralSourceTransforms.size > 0)
       )
     },
+    peekStructuralSourceTransformsNow: peekDeferredStructuralSourceTransformsNow,
     consumeStructuralSourceTransformsNow() {
       ensureNow()
       return args.formulaFamilies.consumeStructuralSourceTransforms()

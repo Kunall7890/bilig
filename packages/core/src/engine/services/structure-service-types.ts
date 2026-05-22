@@ -105,6 +105,10 @@ export interface CreateEngineStructureServiceArgs {
     readonly cellIndices: readonly number[]
     readonly transform: NonNullable<RuntimeFormula['structuralSourceTransform']>
   }[]
+  readonly peekFormulaFamilyStructuralSourceTransforms: () => readonly {
+    readonly cellIndices: readonly number[]
+    readonly transform: NonNullable<RuntimeFormula['structuralSourceTransform']>
+  }[]
   readonly collectFormulaCellsReferencingSheet: (sheetName: string) => readonly number[]
   readonly collectFormulaCellsForDefinedNames: (names: readonly string[]) => readonly number[]
   readonly collectFormulaCellsForTables: (tableNames: readonly string[]) => readonly number[]

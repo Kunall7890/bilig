@@ -1,4 +1,7 @@
-import type { FormulaFamilyStructuralSourceTransform } from '../../formula/formula-family-store.js'
+import {
+  composeFormulaFamilyStructuralSourceTransform,
+  type FormulaFamilyStructuralSourceTransform,
+} from '../../formula/formula-family-store.js'
 import type { DeferredInitialFormulaFamilyRun } from './formula-initialization-family-runs.js'
 
 export function queueDeferredFormulaFamilyStructuralSourceTransforms(args: {
@@ -24,8 +27,15 @@ export function queueDeferredFormulaFamilyStructuralSourceTransforms(args: {
       return undefined
     }
     memberCount += run.cellIndices.length
+    const existingTransform = args.existingTransforms?.get(runIndex)
+    const nextTransform = existingTransform
+      ? composeFormulaFamilyStructuralSourceTransform(existingTransform, args.transform)
+      : args.transform
+    if (!nextTransform) {
+      return undefined
+    }
     transforms ??= new Map(args.existingTransforms)
-    transforms.set(runIndex, args.transform)
+    transforms.set(runIndex, nextTransform)
   }
   if (transforms === undefined || memberCount !== args.ownedFormulaCount) {
     return undefined

@@ -501,6 +501,7 @@ export function createEngineServiceRuntime(args: {
     setFormulaFamilyStructuralSourceTransform: (familyId, transform) =>
       binding.setFormulaFamilyStructuralSourceTransformNow(familyId, transform),
     consumeFormulaFamilyStructuralSourceTransforms: () => binding.consumeFormulaFamilyStructuralSourceTransformsNow(),
+    peekFormulaFamilyStructuralSourceTransforms: () => binding.peekFormulaFamilyStructuralSourceTransformsNow(),
     collectFormulaCellsReferencingSheet: (sheetName) => binding.collectFormulaCellsReferencingSheetNow(sheetName),
     collectFormulaCellsForDefinedNames: (names) => binding.collectFormulaCellsForDefinedNamesNow(names),
     collectFormulaCellsForTables: (tableNames) => binding.collectFormulaCellsForTablesNow(tableNames),

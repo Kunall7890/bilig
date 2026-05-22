@@ -964,6 +964,9 @@ export function createEngineFormulaBindingService(args: CreateEngineFormulaBindi
     hasFormulaFamilyStructuralSourceTransformsNow() {
       return formulaFamilyIndex.hasStructuralSourceTransformsNow()
     },
+    peekFormulaFamilyStructuralSourceTransformsNow() {
+      return formulaFamilyIndex.peekStructuralSourceTransformsNow()
+    },
     consumeFormulaFamilyStructuralSourceTransformsNow() {
       return formulaFamilyIndex.consumeStructuralSourceTransformsNow()
     },

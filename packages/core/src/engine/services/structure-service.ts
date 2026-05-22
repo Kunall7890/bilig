@@ -1,6 +1,7 @@
 import { Effect } from 'effect'
 import type { StructuralAxisTransform } from '@bilig/formula'
 import { CellFlags } from '../../cell-store.js'
+import { composeFormulaFamilyStructuralSourceTransform } from '../../formula/formula-family-store.js'
 import { mapStructuralAxisIndex, structuralTransformForOp } from '../../engine-structural-utils.js'
 import type { StructuralTransaction } from '../structural-transaction.js'
 import { EngineStructureError } from '../errors.js'
@@ -234,6 +235,36 @@ export function createEngineStructureService(args: CreateEngineStructureServiceA
   const materializeDeferredStructuralFormulaSources = (): void => {
     hasDeferredStructuralFormulaSources = materializeDeferredStructuralFormulaSourcesNow(args, hasDeferredStructuralFormulaSources)
   }
+  const hasFormulaLocalStructuralSourceTransforms = (): boolean => {
+    let found = false
+    args.state.formulas.forEach((formula) => {
+      if (formula.structuralSourceTransform !== undefined) {
+        found = true
+      }
+    })
+    return found
+  }
+  const canPreserveDeferredStructuralFormulaSourcesForTransform = (sheetName: string, transform: StructuralAxisTransform): boolean => {
+    if (
+      !hasDeferredStructuralFormulaSources ||
+      transform.kind !== 'insert' ||
+      transform.axis !== 'column' ||
+      hasFormulaLocalStructuralSourceTransforms()
+    ) {
+      return false
+    }
+    const nextTransform = {
+      ownerSheetName: sheetName,
+      targetSheetName: sheetName,
+      transform,
+      preservesValue: true,
+    }
+    const pendingFamilyTransforms = args.peekFormulaFamilyStructuralSourceTransforms()
+    return (
+      pendingFamilyTransforms.length > 0 &&
+      pendingFamilyTransforms.every((entry) => composeFormulaFamilyStructuralSourceTransform(entry.transform, nextTransform) !== undefined)
+    )
+  }
 
   const service: EngineStructureService = {
     captureSheetCellState(sheetName) {
@@ -278,9 +309,11 @@ export function createEngineStructureService(args: CreateEngineStructureServiceA
       })
     },
     applyStructuralAxisOpNow(op): StructuralAxisOpResult {
-      materializeDeferredStructuralFormulaSources()
       const transform = structuralTransformForOp(op)
       const sheetName = op.sheetName
+      if (!canPreserveDeferredStructuralFormulaSourcesForTransform(sheetName, transform)) {
+        materializeDeferredStructuralFormulaSources()
+      }
       const targetSheetId = args.state.workbook.getSheet(sheetName)?.id
       const hasStructuralMetadata = args.state.workbook.hasStructuralMetadataForSheet(sheetName)
 

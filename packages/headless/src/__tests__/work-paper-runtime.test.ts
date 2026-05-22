@@ -185,6 +185,7 @@ interface EngineFormulaBindingTarget {
     binding: {
       forEachFormulaFamilyNow: (fn: (...args: unknown[]) => void) => void
       isFormulaFamilyIndexReadyNow: () => boolean
+      rebindFormulaCellsNow: (inputs: readonly unknown[], formulaChangedCount?: number) => unknown
     }
   }
 }
@@ -205,7 +206,8 @@ function isEngineFormulaBindingTarget(value: unknown): value is EngineFormulaBin
     typeof binding === 'object' &&
     binding !== null &&
     typeof Reflect.get(binding, 'forEachFormulaFamilyNow') === 'function' &&
-    typeof Reflect.get(binding, 'isFormulaFamilyIndexReadyNow') === 'function'
+    typeof Reflect.get(binding, 'isFormulaFamilyIndexReadyNow') === 'function' &&
+    typeof Reflect.get(binding, 'rebindFormulaCellsNow') === 'function'
   )
 }
 
@@ -2407,6 +2409,36 @@ describe('WorkPaper', () => {
     } finally {
       scanOwnedFormulas.mockRestore()
       inspectFamilies.mockRestore()
+    }
+  })
+
+  it('composes repeated simple formula column inserts without materializing deferred families', () => {
+    const rows = Array.from({ length: 48 }, (_, index) => {
+      const rowNumber = index + 1
+      return [rowNumber, rowNumber * 2, `=A${rowNumber}+B${rowNumber}`, `=C${rowNumber}*2`]
+    })
+    const workbook = WorkPaper.buildFromSheets({ Sheet1: rows })
+    const sheetId = workbook.getSheetId('Sheet1')!
+    const binding = engineFormulaBindingTarget(workbook)
+    const rebindFormulas = vi.spyOn(binding, 'rebindFormulaCellsNow')
+    const inspectFamilies = vi.spyOn(binding, 'forEachFormulaFamilyNow')
+    const scanOwnedFormulas = vi.spyOn(binding, 'forEachFormulaCellOwnedBySheetNow')
+
+    try {
+      expect(workbook.addColumns(sheetId, 1, 1)).toEqual([])
+      expect(workbook.addColumns(sheetId, 1, 1)).toEqual([])
+
+      expect(rebindFormulas).not.toHaveBeenCalled()
+      expect(inspectFamilies).not.toHaveBeenCalled()
+      expect(scanOwnedFormulas).not.toHaveBeenCalled()
+      expect(workbook.getSheetDimensions(sheetId)).toEqual({ width: 6, height: 48 })
+      expect(workbook.getCellSerialized(cell(sheetId, 47, 4))).toBe('=A48+D48')
+      expect(workbook.getCellSerialized(cell(sheetId, 47, 5))).toBe('=E48*2')
+      expect(workbook.getCellValue(cell(sheetId, 47, 5))).toEqual({ tag: ValueTag.Number, value: 288 })
+    } finally {
+      scanOwnedFormulas.mockRestore()
+      inspectFamilies.mockRestore()
+      rebindFormulas.mockRestore()
     }
   })
 

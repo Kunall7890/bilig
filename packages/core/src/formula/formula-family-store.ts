@@ -94,6 +94,37 @@ export interface FormulaFamilyStructuralSourceTransformEntry {
   readonly transform: FormulaFamilyStructuralSourceTransform
 }
 
+export function composeFormulaFamilyStructuralSourceTransform(
+  existing: FormulaFamilyStructuralSourceTransform,
+  next: FormulaFamilyStructuralSourceTransform,
+): FormulaFamilyStructuralSourceTransform | undefined {
+  if (
+    existing.ownerSheetName !== next.ownerSheetName ||
+    existing.targetSheetName !== next.targetSheetName ||
+    !existing.preservesValue ||
+    !next.preservesValue ||
+    existing.transform.kind !== 'insert' ||
+    next.transform.kind !== 'insert' ||
+    existing.transform.axis !== 'column' ||
+    next.transform.axis !== 'column' ||
+    next.transform.start < existing.transform.start ||
+    next.transform.start > existing.transform.start + existing.transform.count
+  ) {
+    return undefined
+  }
+  return {
+    ownerSheetName: existing.ownerSheetName,
+    targetSheetName: existing.targetSheetName,
+    preservesValue: true,
+    transform: {
+      kind: 'insert',
+      axis: 'column',
+      start: existing.transform.start,
+      count: existing.transform.count + next.transform.count,
+    },
+  }
+}
+
 export interface FormulaFamilyStore {
   readonly upsertFormula: (args: FormulaFamilyKey & FormulaFamilyMember) => FormulaFamilyMembership
   readonly upsertFormulaRun: (args: FormulaFamilyRunUpsertArgs) => FormulaFamilyMembership[]
@@ -106,6 +137,7 @@ export interface FormulaFamilyStore {
   readonly setStructuralSourceTransform: (familyId: FormulaFamilyId, transform: FormulaFamilyStructuralSourceTransform) => void
   readonly getStructuralSourceTransform: (cellIndex: number) => FormulaFamilyStructuralSourceTransform | undefined
   readonly hasStructuralSourceTransforms: () => boolean
+  readonly peekStructuralSourceTransforms: () => FormulaFamilyStructuralSourceTransformEntry[]
   readonly consumeStructuralSourceTransforms: () => FormulaFamilyStructuralSourceTransformEntry[]
   readonly getStats: () => FormulaFamilyStats
   readonly listFamilies: () => FormulaFamily[]
@@ -576,6 +608,21 @@ export function createFormulaFamilyStore(): FormulaFamilyStore {
     }
   }
 
+  const peekStructuralSourceTransforms = (): FormulaFamilyStructuralSourceTransformEntry[] => {
+    const entries: FormulaFamilyStructuralSourceTransformEntry[] = []
+    structuralSourceTransforms.forEach((transform, familyId) => {
+      const family = familiesById.get(familyId)
+      if (!family) {
+        return
+      }
+      entries.push({
+        cellIndices: family.runs.flatMap((run) => run.cellIndices),
+        transform,
+      })
+    })
+    return entries
+  }
+
   return {
     upsertFormula,
     upsertFormulaRun,
@@ -601,7 +648,11 @@ export function createFormulaFamilyStore(): FormulaFamilyStore {
     },
     setStructuralSourceTransform(familyId, transform) {
       if (familiesById.has(familyId)) {
-        structuralSourceTransforms.set(familyId, transform)
+        const existing = structuralSourceTransforms.get(familyId)
+        structuralSourceTransforms.set(
+          familyId,
+          existing ? (composeFormulaFamilyStructuralSourceTransform(existing, transform) ?? transform) : transform,
+        )
       }
     },
     getStructuralSourceTransform(cellIndex) {
@@ -611,18 +662,9 @@ export function createFormulaFamilyStore(): FormulaFamilyStore {
     hasStructuralSourceTransforms() {
       return structuralSourceTransforms.size > 0
     },
+    peekStructuralSourceTransforms,
     consumeStructuralSourceTransforms() {
-      const entries: FormulaFamilyStructuralSourceTransformEntry[] = []
-      structuralSourceTransforms.forEach((transform, familyId) => {
-        const family = familiesById.get(familyId)
-        if (!family) {
-          return
-        }
-        entries.push({
-          cellIndices: family.runs.flatMap((run) => run.cellIndices),
-          transform,
-        })
-      })
+      const entries = peekStructuralSourceTransforms()
       structuralSourceTransforms.clear()
       return entries
     },
