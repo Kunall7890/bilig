@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from 'vitest'
 import { MAX_COLS, ValueTag, createCellNumberFormatRecord } from '@bilig/protocol'
 import type { StructuralAxisTransform } from '@bilig/formula'
 import { writeLiteralToCellStore } from '../engine-value-utils.js'
+import { buildStructuralTransaction } from '../engine/structural-transaction.js'
 import { createEngineCounters } from '../perf/engine-counters.js'
 import { StringPool } from '../string-pool.js'
 import { LogicalSheetStore } from '../storage/logical-sheet-store.js'
@@ -687,6 +688,49 @@ describe('WorkbookStore', () => {
     expect(workbook.cellStore.cols[farCellIndex]).toBe(4)
   })
 
+  it('reports missing structural sheets without mutating counters', () => {
+    const counters = createEngineCounters()
+    const workbook = new WorkbookStore('missing-structural-sheet', counters)
+
+    expect(workbook.remapSheetCells('Missing', 'row', (index) => index + 1)).toEqual({
+      changedCellIndices: [],
+      removedCellIndices: [],
+    })
+    expect(workbook.planStructuralAxisTransform('Missing', { axis: 'row', kind: 'insert', start: 0, count: 1 })).toBeUndefined()
+    expect(workbook.applyStructuralAxisTransform('Missing', { axis: 'column', kind: 'delete', start: 0, count: 1 })).toBeUndefined()
+    expect(
+      workbook.applyPlannedStructuralTransaction(
+        buildStructuralTransaction({
+          sheetName: 'Missing',
+          sheetId: 999,
+          transform: { axis: 'row', kind: 'delete', start: 0, count: 1 },
+          remappedCells: [],
+        }),
+      ),
+    ).toBeUndefined()
+    expect(counters.cellsRemapped).toBe(0)
+    expect(counters.structuralTransactions).toBe(0)
+  })
+
+  it('counts direct remaps that remove cells', () => {
+    const counters = createEngineCounters()
+    const workbook = new WorkbookStore('direct-remap-remove-counter', counters)
+    workbook.createSheet('Sheet1')
+
+    const removedCellIndex = workbook.ensureCell('Sheet1', 'A1')
+    const retainedCellIndex = workbook.ensureCell('Sheet1', 'B1')
+
+    const remapped = workbook.remapSheetCells('Sheet1', 'column', (index) => (index === 0 ? undefined : index))
+
+    expect(remapped).toEqual({
+      changedCellIndices: [],
+      removedCellIndices: [removedCellIndex],
+    })
+    expect(workbook.getCellIndex('Sheet1', 'A1')).toBeUndefined()
+    expect(workbook.getCellIndex('Sheet1', 'B1')).toBe(retainedCellIndex)
+    expect(counters.cellsRemapped).toBe(1)
+  })
+
   it('follows axis-map row inserts through the logical store before physical remap runs', () => {
     const workbook = new WorkbookStore('logical-axis-row-insert')
     workbook.createSheet('Sheet1')
@@ -834,6 +878,52 @@ describe('WorkbookStore', () => {
     expect(workbook.cellStore.cols[shiftedCellIndex]).toBe(2)
     expect(counters.cellsRemapped).toBe(0)
     expect(counters.structuralSurvivorCellsRemapped).toBe(0)
+  })
+
+  it('applies planned survivor remaps when a transaction carries physical destinations', () => {
+    const counters = createEngineCounters()
+    const workbook = new WorkbookStore('planned-delete-physical-survivor-remap', counters)
+    workbook.createSheet('Sheet1')
+
+    const deletedCellIndex = workbook.ensureCell('Sheet1', 'B2')
+    const shiftedCellIndex = workbook.ensureCell('Sheet1', 'C2')
+    const planned = workbook.planStructuralAxisTransform('Sheet1', {
+      axis: 'column',
+      kind: 'delete',
+      start: 1,
+      count: 1,
+    })
+
+    expect(planned?.remappedCells).toHaveLength(1)
+    const removedRemap = planned?.remappedCells[0]
+    if (!removedRemap) {
+      throw new Error('Expected delete plan to include the removed cell remap')
+    }
+    const transaction = buildStructuralTransaction({
+      sheetName: 'Sheet1',
+      sheetId: 1,
+      transform: { axis: 'column', kind: 'delete', start: 1, count: 1 },
+      remappedCells: [
+        removedRemap,
+        {
+          cellIndex: shiftedCellIndex,
+          fromRow: 1,
+          fromCol: 2,
+          toRow: 1,
+          toCol: 1,
+        },
+      ],
+    })
+
+    workbook.deleteColumns('Sheet1', 1, 1)
+
+    expect(workbook.applyPlannedStructuralTransaction(transaction)).toBe(transaction)
+    expect(workbook.getCellIndex('Sheet1', 'B2')).toBe(shiftedCellIndex)
+    expect(workbook.getCellIndex('Sheet1', 'C2')).toBeUndefined()
+    expect(workbook.getCellPosition(deletedCellIndex)).toBeUndefined()
+    expect(workbook.cellStore.cols[shiftedCellIndex]).toBe(1)
+    expect(counters.cellsRemapped).toBe(1)
+    expect(counters.structuralSurvivorCellsRemapped).toBe(1)
   })
 
   it('leaves delete-row survivors on stable identities without physical remaps', () => {

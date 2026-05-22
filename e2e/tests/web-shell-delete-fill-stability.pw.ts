@@ -86,6 +86,7 @@ test('@browser-ci web app preserves filled-cell presentation when formula-bar cl
 
   await clickProductCell(page, 3, 9)
   await pickToolbarPresetColor(page, 'Fill color', 'green')
+  await waitForGreenFillPaint(page, 3, 9, 'setup should visibly paint D10 green before formula-bar clear')
   expect(
     Math.min(...(await sampleGreenFillPixelsAcrossFrames(page, 3, 9, 4))),
     'setup should visibly paint D10 green before formula-bar clear',
@@ -180,6 +181,7 @@ test('@browser-ci web app keeps fill undo and redo visually stable from grid key
   await clickProductCell(page, 1, 1)
   await pickToolbarPresetColor(page, 'Fill color', 'green')
   await expectToolbarColor(getToolbarButton(page, 'Fill color'), '#00ff00')
+  await waitForGreenFillPaint(page, 1, 1, 'setup should paint B2 green before undoing the style mutation')
   expect(
     Math.min(...(await sampleGreenFillPixelsAcrossFrames(page, 1, 1, 4))),
     'setup should paint B2 green before undoing the style mutation',
@@ -206,6 +208,15 @@ test('@browser-ci web app keeps fill undo and redo visually stable from grid key
   ).toBeGreaterThan(120)
   await expect(page.getByTestId('name-box')).toHaveValue('B2')
 })
+
+async function waitForGreenFillPaint(page: Page, columnIndex: number, rowIndex: number, message: string) {
+  await expect
+    .poll(() => countGreenFillReadbackPixelsInCell(page, columnIndex, rowIndex), {
+      message,
+      timeout: 5_000,
+    })
+    .toBeGreaterThan(120)
+}
 
 async function sampleGreenFillPixelsAcrossFrames(
   page: Page,

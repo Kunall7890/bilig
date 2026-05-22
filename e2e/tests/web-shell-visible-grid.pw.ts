@@ -1215,15 +1215,11 @@ async function countInitialShellNonBlankPixels(page: Page): Promise<number> {
     throw new Error('initial workbook grid is not visible')
   }
 
-  const buffer = await page.screenshot({
-    animations: 'disabled',
-    caret: 'hide',
-    clip: {
-      height: Math.min(420, Math.round(grid.height)),
-      width: Math.min(620, Math.round(grid.width)),
-      x: Math.round(grid.x),
-      y: Math.round(grid.y),
-    },
+  const buffer = await captureInitialShellScreenshot(page, {
+    height: Math.min(420, Math.round(grid.height)),
+    width: Math.min(620, Math.round(grid.width)),
+    x: Math.round(grid.x),
+    y: Math.round(grid.y),
   })
 
   return await page.evaluate(
@@ -1257,6 +1253,26 @@ async function countInitialShellNonBlankPixels(page: Page): Promise<number> {
     },
     { dataUrl: `data:image/png;base64,${buffer.toString('base64')}` },
   )
+}
+
+async function captureInitialShellScreenshot(
+  page: Page,
+  clip: { readonly height: number; readonly width: number; readonly x: number; readonly y: number },
+  remainingAttempts = 3,
+): Promise<Buffer> {
+  try {
+    return await page.screenshot({
+      animations: 'disabled',
+      caret: 'hide',
+      clip,
+    })
+  } catch (error) {
+    if (!String(error).includes('Page.captureScreenshot') || remainingAttempts <= 1) {
+      throw error
+    }
+    await page.waitForTimeout(100)
+    return await captureInitialShellScreenshot(page, clip, remainingAttempts - 1)
+  }
 }
 
 async function countDarkInteriorPixelsInCell(page: Page, columnIndex: number, rowIndex: number): Promise<number> {
