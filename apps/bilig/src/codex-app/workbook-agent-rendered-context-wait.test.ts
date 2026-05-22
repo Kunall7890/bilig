@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import type { WorkbookAgentUiContext } from '@bilig/contracts'
+import type { WorkbookAgentRenderedSurfaceProof, WorkbookAgentUiContext } from '@bilig/contracts'
 import {
   hasRenderedContextAtRevision,
   shouldWaitForRenderedTool,
@@ -11,9 +11,12 @@ function context(
   options: {
     readonly omitSurfaceProof?: boolean
     readonly surfaceRevision?: number | null
+    readonly visibleRenderRevision?: number | null
+    readonly surfaceProofOverrides?: Partial<WorkbookAgentRenderedSurfaceProof>
     readonly frameProofStatus?: 'idle' | 'pending' | 'presented'
   } = {},
 ): WorkbookAgentUiContext {
+  const visibleRenderRevision = options.visibleRenderRevision ?? capturedRevision
   return {
     selection: {
       sheetName: 'Sheet1',
@@ -35,7 +38,7 @@ function context(
       batchId: 1,
       surfaceProof: options.omitSurfaceProof
         ? null
-        : {
+        : ({
             mode: 'typegpu-v3',
             backendStatus: 'ready',
             frameProofStatus: options.frameProofStatus ?? 'presented',
@@ -45,9 +48,9 @@ function context(
             presentedFrameProofSignature: 'frame:proof',
             authoritativeRevision: options.surfaceRevision ?? capturedRevision,
             localRevision: null,
-            projectedRevision: 1,
-            visibleRenderRevision: 1,
-            tileSceneRevision: 1,
+            projectedRevision: visibleRenderRevision,
+            visibleRenderRevision,
+            tileSceneRevision: visibleRenderRevision,
             tileSceneCameraSeq: 1,
             currentTilePaneCount: 1,
             currentHeaderPaneCount: 1,
@@ -59,7 +62,8 @@ function context(
             surfacePixelHeight: 1200,
             devicePixelRatio: 2,
             capturedAtUnixMs: 1,
-          },
+            ...options.surfaceProofOverrides,
+          } satisfies WorkbookAgentRenderedSurfaceProof),
       selection: null,
       visibleRange: null,
     },
@@ -96,6 +100,18 @@ describe('workbook agent rendered context wait policy', () => {
     expect(hasRenderedContextAtRevision(context(5, { omitSurfaceProof: true }), 5)).toBe(false)
     expect(hasRenderedContextAtRevision(context(5, { frameProofStatus: 'pending' }), 5)).toBe(false)
     expect(hasRenderedContextAtRevision(context(5, { surfaceRevision: 4 }), 5)).toBe(false)
+    expect(hasRenderedContextAtRevision(context(5, { visibleRenderRevision: 4 }), 5)).toBe(false)
+    expect(
+      hasRenderedContextAtRevision(
+        context(5, {
+          surfaceProofOverrides: {
+            frameProofSignature: 'frame:current',
+            presentedFrameProofSignature: 'frame:presented',
+          },
+        }),
+        5,
+      ),
+    ).toBe(false)
     expect(hasRenderedContextAtRevision(context(5), 5)).toBe(true)
   })
 

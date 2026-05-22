@@ -359,8 +359,17 @@ function buildSurfaceProofIncompleteReason(input: {
   if (proof.backendStatus !== 'ready') {
     return 'TypeGPU renderer backend was not ready when the rendered readback was captured.'
   }
-  if (proof.frameProofStatus !== 'presented' || !proof.hasPresentedVisibleFrame) {
+  if (proof.frameProofStatus !== 'presented' || !proof.hasPresentedFrame || !proof.hasPresentedVisibleFrame) {
     return 'Rendered readback has not been presented in a browser-visible TypeGPU frame.'
+  }
+  if (proof.frameProofSignature.trim().length === 0 || proof.presentedFrameProofSignature.trim().length === 0) {
+    return 'Presented TypeGPU frame proof did not include a non-empty frame lineage signature.'
+  }
+  if (proof.frameProofSignature !== proof.presentedFrameProofSignature) {
+    return 'Presented TypeGPU frame proof does not match the current frame lineage signature.'
+  }
+  if (proof.currentTilePaneCount <= 0 || proof.currentHeaderPaneCount <= 0) {
+    return 'Current TypeGPU frame proof did not include visible grid tiles and headers.'
   }
   if (proof.presentedTilePaneCount <= 0 || proof.presentedHeaderPaneCount <= 0) {
     return 'Presented TypeGPU frame proof did not include visible grid tiles and headers.'
@@ -376,12 +385,21 @@ function buildSurfaceProofIncompleteReason(input: {
   if (visibleRenderRevision === null) {
     return 'Presented TypeGPU frame proof did not include a visible render revision.'
   }
+  if (visibleRenderRevision < input.minRevision) {
+    return 'Presented TypeGPU frame proof visible render revision is older than the requested verification revision.'
+  }
   const tileSceneRevision = asNonNegativeSafeInteger(proof.tileSceneRevision)
-  if (tileSceneRevision !== null && tileSceneRevision !== visibleRenderRevision) {
+  if (tileSceneRevision === null) {
+    return 'Presented TypeGPU frame proof did not include a tile scene revision.'
+  }
+  if (tileSceneRevision !== visibleRenderRevision) {
     return 'Presented TypeGPU frame proof revision does not match the current tile scene revision.'
   }
   const projectedRevision = asNonNegativeSafeInteger(proof.projectedRevision)
-  if (projectedRevision !== null && projectedRevision !== visibleRenderRevision) {
+  if (projectedRevision === null) {
+    return 'Presented TypeGPU frame proof did not include a projected viewport revision.'
+  }
+  if (projectedRevision !== visibleRenderRevision) {
     return 'Presented TypeGPU frame proof revision does not match the projected viewport revision.'
   }
   return null
@@ -395,7 +413,13 @@ function isSurfaceProofStale(input: {
     return false
   }
   const authoritativeRevision = asNonNegativeSafeInteger(input.proof?.authoritativeRevision)
-  return authoritativeRevision === null || authoritativeRevision < input.minRevision
+  const visibleRenderRevision = asNonNegativeSafeInteger(input.proof?.visibleRenderRevision)
+  return (
+    authoritativeRevision === null ||
+    authoritativeRevision < input.minRevision ||
+    visibleRenderRevision === null ||
+    visibleRenderRevision < input.minRevision
+  )
 }
 
 export function selectWorkbookRenderedReadback(input: {

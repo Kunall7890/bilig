@@ -26,23 +26,32 @@ function renderedRevision(context: WorkbookAgentUiContext): number | null {
 function surfaceProofRevision(context: WorkbookAgentUiContext): number | null {
   const surfaceProof = context?.rendered?.surfaceProof
   const revision = surfaceProof?.authoritativeRevision
+  const visibleRenderRevision = surfaceProof?.visibleRenderRevision
   if (
     surfaceProof?.mode === 'typegpu-v3' &&
     surfaceProof.backendStatus === 'ready' &&
     surfaceProof.frameProofStatus === 'presented' &&
+    surfaceProof.hasPresentedFrame &&
     surfaceProof.hasPresentedVisibleFrame &&
+    surfaceProof.frameProofSignature.trim().length > 0 &&
+    surfaceProof.presentedFrameProofSignature.trim().length > 0 &&
+    surfaceProof.frameProofSignature === surfaceProof.presentedFrameProofSignature &&
+    surfaceProof.currentTilePaneCount > 0 &&
+    surfaceProof.currentHeaderPaneCount > 0 &&
     surfaceProof.presentedTilePaneCount > 0 &&
     surfaceProof.presentedHeaderPaneCount > 0 &&
     surfaceProof.surfaceWidth > 0 &&
     surfaceProof.surfaceHeight > 0 &&
-    surfaceProof.visibleRenderRevision !== null &&
-    surfaceProof.visibleRenderRevision === surfaceProof.tileSceneRevision &&
-    surfaceProof.visibleRenderRevision === surfaceProof.projectedRevision &&
+    typeof visibleRenderRevision === 'number' &&
+    Number.isSafeInteger(visibleRenderRevision) &&
+    visibleRenderRevision >= 0 &&
+    visibleRenderRevision === surfaceProof.tileSceneRevision &&
+    visibleRenderRevision === surfaceProof.projectedRevision &&
     typeof revision === 'number' &&
     Number.isSafeInteger(revision) &&
     revision >= 0
   ) {
-    return revision
+    return Math.min(revision, visibleRenderRevision)
   }
   return null
 }

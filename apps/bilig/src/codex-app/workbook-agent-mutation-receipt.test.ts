@@ -6,7 +6,7 @@ import {
   type WorkbookAgentCommandBundle,
   type WorkbookAgentExecutionRecord,
 } from '@bilig/agent-api'
-import type { WorkbookAgentUiContext } from '@bilig/contracts'
+import type { WorkbookAgentRenderedSurfaceProof, WorkbookAgentUiContext } from '@bilig/contracts'
 import { ValueTag } from '@bilig/protocol'
 import type { AuthoritativeWorkbookEventBatch } from '@bilig/zero-sync'
 import { describe, expect, it } from 'vitest'
@@ -200,6 +200,7 @@ function createRenderedContext(input: {
   readonly capturedRevision: number
   readonly omitSurfaceProof?: boolean
   readonly surfaceRevision?: number
+  readonly surfaceProofOverrides?: Partial<WorkbookAgentRenderedSurfaceProof>
   readonly frameProofStatus?: 'idle' | 'pending' | 'presented'
   readonly styleId?: string | null
   readonly numberFormatId?: string | null
@@ -225,7 +226,7 @@ function createRenderedContext(input: {
       batchId: input.capturedRevision,
       surfaceProof: input.omitSurfaceProof
         ? null
-        : {
+        : ({
             mode: 'typegpu-v3',
             backendStatus: 'ready',
             frameProofStatus: input.frameProofStatus ?? 'presented',
@@ -249,7 +250,8 @@ function createRenderedContext(input: {
             surfacePixelHeight: 1200,
             devicePixelRatio: 2,
             capturedAtUnixMs: 10,
-          },
+            ...input.surfaceProofOverrides,
+          } satisfies WorkbookAgentRenderedSurfaceProof),
       selection: {
         range: {
           sheetName: 'Sheet1',
