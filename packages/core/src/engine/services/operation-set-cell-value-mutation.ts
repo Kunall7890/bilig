@@ -151,12 +151,12 @@ export function applySetCellValueMutation(request: ApplySetCellValueMutationArgs
     mutation.value === null &&
     !isRestore &&
     (existingIndex === undefined || request.isNullLiteralWriteNoOp(existingIndex)) &&
-    !isTableHeaderCell(args.state.workbook.listTables(), sheetName, mutation.row, mutation.col)
+    (!args.state.workbook.hasTables() || !isTableHeaderCell(args.state.workbook.listTables(), sheetName, mutation.row, mutation.col))
   ) {
     return { changedInputCount, formulaChangedCount, explicitChangedCount, topologyChanged }
   }
 
-  if (!isRestore && mutation.skipTableHeaderRename !== true) {
+  if (!isRestore && mutation.skipTableHeaderRename !== true && args.state.workbook.hasTables()) {
     ;({
       formulaChangedCount,
       topologyChanged,

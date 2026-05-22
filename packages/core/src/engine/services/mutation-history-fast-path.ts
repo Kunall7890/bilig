@@ -204,7 +204,7 @@ function buildFastInverseOp(
     case 'setCellFormula': {
       const address = parseCellAddress(op.address, op.sheetName)
       return restoreCellOpFromSnapshot(workbook, getCellByIndex, op.sheetName, op.address, preparedCellAddress, {
-        skipTableHeaderRename: isTableHeaderCell(workbook.listTables(), op.sheetName, address.row, address.col),
+        skipTableHeaderRename: workbook.hasTables() && isTableHeaderCell(workbook.listTables(), op.sheetName, address.row, address.col),
       })
     }
     case 'setCellFormat': {

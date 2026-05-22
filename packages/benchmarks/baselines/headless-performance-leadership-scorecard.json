@@ -13,13 +13,13 @@
     ],
     "unmetRequirements": [
       "competitor-coverage: only HyperFormula is workbook-wide; add at least one more direct workbook-wide headless spreadsheet engine before broad headless leadership claims",
-      "per-workload-mean-and-p95-wins: 95/100 comparable workloads win both mean and p95; p95 holdouts: cross-sheet-dashboard-recalc, structural-append-formula-rows-small, aggregate-overlapping-sliding-window, aggregate-overlapping-sliding-window-wide, lookup-approximate-duplicates"
+      "per-workload-mean-and-p95-wins: 97/100 comparable workloads win both mean and p95; p95 holdouts: batch-edit-multi-column-small, aggregate-overlapping-sliding-window, lookup-approximate-duplicates"
     ]
   },
   "sourceArtifacts": {
     "primaryCompetitiveBenchmark": {
       "comparisonTarget": "HyperFormula",
-      "generatedAt": "2026-05-22T10:37:30.274Z",
+      "generatedAt": "2026-05-22T11:57:51.931Z",
       "hyperFormulaCommit": "9a510a2acb97c3d3490f9e3b9e961a1c4a98b9ad",
       "hyperFormulaVersion": "3.2.0",
       "path": "packages/benchmarks/baselines/workpaper-vs-hyperformula.json"
@@ -91,39 +91,29 @@
       "lookup-text"
     ],
     "excludedFamilies": ["config-toggle", "dynamic-array"],
-    "meanAndP95WinCount": 95,
-    "meanGeomeanRatio": 0.3579482606766939,
-    "meanWinCount": 96,
-    "p95GeomeanRatio": 0.37435276723862676,
+    "meanAndP95WinCount": 97,
+    "meanGeomeanRatio": 0.34555023536885676,
+    "meanWinCount": 98,
+    "p95GeomeanRatio": 0.3651670029023592,
     "p95Holdouts": [
       {
         "comparisonTarget": "HyperFormula",
-        "p95Ratio": 1.1972879538175507,
-        "workload": "cross-sheet-dashboard-recalc"
+        "p95Ratio": 1.071147065002307,
+        "workload": "batch-edit-multi-column-small"
       },
       {
         "comparisonTarget": "HyperFormula",
-        "p95Ratio": 1.0775212818439357,
-        "workload": "structural-append-formula-rows-small"
-      },
-      {
-        "comparisonTarget": "HyperFormula",
-        "p95Ratio": 1.468498886759143,
+        "p95Ratio": 1.104121703314786,
         "workload": "aggregate-overlapping-sliding-window"
       },
       {
         "comparisonTarget": "HyperFormula",
-        "p95Ratio": 1.1313302858667118,
-        "workload": "aggregate-overlapping-sliding-window-wide"
-      },
-      {
-        "comparisonTarget": "HyperFormula",
-        "p95Ratio": 1.0521237329038948,
+        "p95Ratio": 1.0458266619299315,
         "workload": "lookup-approximate-duplicates"
       }
     ],
-    "p95WinCount": 95,
-    "tenXMeanAndP95WorkloadCountAgainstHyperFormula": 3,
+    "p95WinCount": 97,
+    "tenXMeanAndP95WorkloadCountAgainstHyperFormula": 4,
     "limitedComparisonEngines": [
       {
         "comparableWorkloadCount": 7,
@@ -138,9 +128,9 @@
     ],
     "workbookWideComparisonEngineCount": 1,
     "workbookWideComparisonEngines": ["HyperFormula"],
-    "worstMeanRatio": 1.198590468067816,
-    "worstMeanRatioWorkload": "aggregate-overlapping-sliding-window-wide",
-    "worstP95Ratio": 1.468498886759143,
+    "worstMeanRatio": 1.1226124807379645,
+    "worstMeanRatioWorkload": "aggregate-overlapping-sliding-window",
+    "worstP95Ratio": 1.104121703314786,
     "worstP95RatioWorkload": "aggregate-overlapping-sliding-window"
   },
   "completionAudit": {
@@ -149,7 +139,7 @@
       {
         "evidence": [
           "primary artifact: packages/benchmarks/baselines/workpaper-vs-hyperformula.json",
-          "generated at: 2026-05-22T10:37:30.274Z",
+          "generated at: 2026-05-22T11:57:51.931Z",
           "check command: pnpm headless:performance:check",
           "timing refresh command: pnpm workpaper:bench:competitive:generate"
         ],
@@ -182,9 +172,9 @@
         "requirement": "Eligible benchmark families must cover diverse workbook build, recalc, structural, read, aggregate, and lookup shapes."
       },
       {
-        "evidence": ["HyperFormula mean wins: 96/100", "HyperFormula p95 wins: 95/100", "HyperFormula mean+p95 wins: 95/100"],
+        "evidence": ["HyperFormula mean wins: 98/100", "HyperFormula p95 wins: 97/100", "HyperFormula mean+p95 wins: 97/100"],
         "gaps": [
-          "95/100 comparable workloads win both mean and p95; p95 holdouts: cross-sheet-dashboard-recalc, structural-append-formula-rows-small, aggregate-overlapping-sliding-window, aggregate-overlapping-sliding-window-wide, lookup-approximate-duplicates"
+          "97/100 comparable workloads win both mean and p95; p95 holdouts: batch-edit-multi-column-small, aggregate-overlapping-sliding-window, lookup-approximate-duplicates"
         ],
         "id": "per-workload-mean-and-p95-wins",
         "passed": false,
@@ -192,11 +182,11 @@
       },
       {
         "evidence": [
-          "mean geomean ratio: 0.3579482606766939",
-          "p95 geomean ratio: 0.37435276723862676",
-          "worst mean row: aggregate-overlapping-sliding-window-wide (1.198590468067816)",
-          "worst p95 row: aggregate-overlapping-sliding-window (1.468498886759143)",
-          "10x mean+p95 workloads against HyperFormula: 3"
+          "mean geomean ratio: 0.34555023536885676",
+          "p95 geomean ratio: 0.3651670029023592",
+          "worst mean row: aggregate-overlapping-sliding-window (1.1226124807379645)",
+          "worst p95 row: aggregate-overlapping-sliding-window (1.104121703314786)",
+          "10x mean+p95 workloads against HyperFormula: 4"
         ],
         "gaps": [],
         "id": "multiple-reporting-integrity",
@@ -206,7 +196,7 @@
     ],
     "unmetRequirements": [
       "competitor-coverage: only HyperFormula is workbook-wide; add at least one more direct workbook-wide headless spreadsheet engine before broad headless leadership claims",
-      "per-workload-mean-and-p95-wins: 95/100 comparable workloads win both mean and p95; p95 holdouts: cross-sheet-dashboard-recalc, structural-append-formula-rows-small, aggregate-overlapping-sliding-window, aggregate-overlapping-sliding-window-wide, lookup-approximate-duplicates"
+      "per-workload-mean-and-p95-wins: 97/100 comparable workloads win both mean and p95; p95 holdouts: batch-edit-multi-column-small, aggregate-overlapping-sliding-window, lookup-approximate-duplicates"
     ]
   }
 }

@@ -192,6 +192,9 @@ export function createEngineMutationService(args: {
     if (op.skipTableHeaderRename === true) {
       return false
     }
+    if (!args.state.workbook.hasTables()) {
+      return false
+    }
     const address = parseCellAddress(op.address, op.sheetName)
     return isTableHeaderCell(args.state.workbook.listTables(), op.sheetName, address.row, address.col)
   }
@@ -212,6 +215,9 @@ export function createEngineMutationService(args: {
     const skipTableHeaderRename =
       op.kind === 'setCellFormula'
         ? (() => {
+            if (!args.state.workbook.hasTables()) {
+              return false
+            }
             const address = parseCellAddress(op.address, op.sheetName)
             return isTableHeaderCell(args.state.workbook.listTables(), op.sheetName, address.row, address.col)
           })()

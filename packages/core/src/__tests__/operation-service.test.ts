@@ -642,6 +642,31 @@ describe('EngineOperationService', () => {
     })
   })
 
+  it('does not clone table metadata on tableless approximate lookup operand updates', async () => {
+    const rowCount = 64
+    const engine = new SpreadsheetEngine({ workbookName: 'operation-direct-approximate-lookup-tableless-hot-path' })
+    await engine.ready()
+    engine.createSheet('Sheet1')
+    for (let row = 1; row <= rowCount; row += 1) {
+      engine.setCellValue('Sheet1', `A${row}`, Math.ceil(row / 2))
+    }
+    engine.setCellValue('Sheet1', 'D1', 20)
+    engine.setCellFormula('Sheet1', 'E1', `MATCH(D1,A1:A${rowCount},1)`)
+    engine.resetPerformanceCounters()
+    const listTables = vi.spyOn(engine.workbook, 'listTables')
+
+    engine.setCellValue('Sheet1', 'D1', 11)
+
+    expect(listTables).not.toHaveBeenCalled()
+    expect(engine.getCellValue('Sheet1', 'E1')).toEqual({ tag: ValueTag.Number, value: 22 })
+    expect(engine.getPerformanceCounters()).toMatchObject({
+      directFormulaKernelSyncOnlyRecalcSkips: 1,
+      approxIndexBuilds: 0,
+      changedCellPayloadsBuilt: 0,
+    })
+    listTables.mockRestore()
+  })
+
   it('skips dirty traversal for exact lookup column writes that cannot match the numeric operand', async () => {
     const rowCount = 64
     const engine = new SpreadsheetEngine({

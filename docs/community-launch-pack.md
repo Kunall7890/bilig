@@ -543,8 +543,8 @@ Latest technical-content action on May 14, 2026:
 - Do not route new evaluator traffic to the older public DEV copy until it is
   edited by the article owner. A Dia check on May 16, 2026 found that public
   article still showing stale `46/46` benchmark evidence while the current
-  checked package evidence is `@bilig/headless@0.48.0`, `96/100` comparable
-  mean wins, and `95/100` mean+p95 wins.
+  checked package evidence is `@bilig/headless@0.48.0`, `98/100` comparable
+  mean wins, and `97/100` mean+p95 wins.
 
 Latest search-intent boundary action on May 14, 2026:
 
@@ -698,7 +698,7 @@ something.
 
 ### 2. Turn Benchmarks Into A Distribution Loop
 
-The `96/100` WorkPaper mean-win claim should become small, quotable artifacts:
+The `98/100` WorkPaper mean-win claim should become small, quotable artifacts:
 
 - one chart image for X, Bluesky, LinkedIn, and README embeds:
   [`docs/assets/workpaper-benchmark-card.png`](assets/workpaper-benchmark-card.png)
@@ -799,7 +799,7 @@ https://github.com/proompteng/bilig#try-it-in-90-seconds
 It edits an input cell, reads the recalculated value, saves WorkPaper JSON,
 restores it, and checks the value again.
 
-3/ Current benchmark artifact: 96/100 comparable mean-latency rows are faster
+3/ Current benchmark artifact: 98/100 comparable mean-latency rows are faster
 than the HyperFormula-style baseline.
 
 The worst p95 row is public too: aggregate-overlapping-sliding-window is the
@@ -841,7 +841,7 @@ are service logic and the code path needs readback plus persisted state.
 Compatibility limits are documented:
 https://github.com/proompteng/bilig/blob/main/docs/where-bilig-is-not-excel-compatible-yet.md
 
-The benchmark claim is intentionally narrow: 96/100 comparable mean-latency
+The benchmark claim is intentionally narrow: 98/100 comparable mean-latency
 wins against HyperFormula-style workloads, aggregate-overlapping-sliding-window
 is the visible worst p95 row, and UI rendering is not part of the benchmark.
 

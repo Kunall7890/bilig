@@ -526,6 +526,10 @@ export class WorkbookStore {
     return runWorkbookMetadataEffect(this.metadataService.deleteTable(name))
   }
 
+  hasTables(): boolean {
+    return this.metadata.tables.size > 0
+  }
+
   listTables(): WorkbookTableRecord[] {
     return runWorkbookMetadataEffect(this.metadataService.listTables())
   }

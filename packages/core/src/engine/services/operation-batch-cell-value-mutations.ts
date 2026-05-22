@@ -155,11 +155,12 @@ export function applyBatchSetCellValueOp(request: ApplyBatchSetCellValueOpArgs):
     if (
       op.value === null &&
       (existingIndex === undefined || request.isNullLiteralWriteNoOp(existingIndex)) &&
-      !isTableHeaderCell(args.state.workbook.listTables(), op.sheetName, parsedAddress.row, parsedAddress.col)
+      (!args.state.workbook.hasTables() ||
+        !isTableHeaderCell(args.state.workbook.listTables(), op.sheetName, parsedAddress.row, parsedAddress.col))
     ) {
       return { changedInputCount, formulaChangedCount, explicitChangedCount, topologyChanged, refreshAllPivots }
     }
-    if (op.skipTableHeaderRename !== true) {
+    if (op.skipTableHeaderRename !== true && args.state.workbook.hasTables()) {
       ;({
         formulaChangedCount,
         topologyChanged,
@@ -379,6 +380,7 @@ export function applyBatchClearCellOp(request: ApplyBatchClearCellOpArgs): Batch
   if (
     !request.isRestore &&
     op.skipTableHeaderRename !== true &&
+    args.state.workbook.hasTables() &&
     isTableHeaderCell(args.state.workbook.listTables(), op.sheetName, parsedAddress.row, parsedAddress.col)
   ) {
     const renamed = applyTableHeaderRenameForSetCellValue({

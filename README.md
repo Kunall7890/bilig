@@ -412,9 +412,9 @@ and the public API docs; they include acceptance commands for first patches.
 - For XLSX, run [`examples/xlsx-recalculation-node`](examples/xlsx-recalculation-node)
   and [`examples/recalc-bridge-workflows`](examples/recalc-bridge-workflows).
 - Run `pnpm workpaper:bench:competitive:check`. The checked-in artifact shows
-  [`96/100` comparable WorkPaper mean wins](docs/what-workpaper-benchmark-proves.md)
-  with five p95 holdouts; the current worst p95 row is
-  `aggregate-overlapping-sliding-window` at `1.468x`.
+  [`98/100` comparable WorkPaper mean wins](docs/what-workpaper-benchmark-proves.md)
+  with three p95 holdouts; the current worst p95 row is
+  `aggregate-overlapping-sliding-window` at `1.104x`.
 - The benchmark card is generated from that artifact:
   [`docs/assets/workpaper-benchmark-card.png`](docs/assets/workpaper-benchmark-card.png).
 - Read the [compatibility limits](docs/where-bilig-is-not-excel-compatible-yet.md)

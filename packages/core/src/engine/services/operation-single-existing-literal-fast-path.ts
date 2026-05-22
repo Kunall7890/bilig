@@ -152,7 +152,7 @@ export function createOperationSingleExistingLiteralFastPath(args: OperationSing
     if (!sheet || sheet.structureVersion !== 1) {
       return false
     }
-    if (isTableHeaderCell(args.state.workbook.listTables(), sheet.name, mutation.row, mutation.col)) {
+    if (args.state.workbook.hasTables() && isTableHeaderCell(args.state.workbook.listTables(), sheet.name, mutation.row, mutation.col)) {
       return false
     }
     const existingIndex =
@@ -582,7 +582,11 @@ export function createOperationSingleExistingLiteralFastPath(args: OperationSing
     const cellStore = args.state.workbook.cellStore
     const existingIndex = request.cellIndex
     const trustedExistingNumericLiteral = request.trustedExistingNumericLiteral === true
-    if (sheet && isTableHeaderCell(args.state.workbook.listTables(), sheet.name, request.row, request.col)) {
+    if (
+      sheet &&
+      args.state.workbook.hasTables() &&
+      isTableHeaderCell(args.state.workbook.listTables(), sheet.name, request.row, request.col)
+    ) {
       return null
     }
     if (
@@ -889,7 +893,11 @@ export function createOperationSingleExistingLiteralFastPath(args: OperationSing
     const sheet = args.state.workbook.getSheetById(request.sheetId)
     const cellStore = args.state.workbook.cellStore
     const existingIndex = request.cellIndex
-    if (sheet && isTableHeaderCell(args.state.workbook.listTables(), sheet.name, request.row, request.col)) {
+    if (
+      sheet &&
+      args.state.workbook.hasTables() &&
+      isTableHeaderCell(args.state.workbook.listTables(), sheet.name, request.row, request.col)
+    ) {
       return null
     }
     if (

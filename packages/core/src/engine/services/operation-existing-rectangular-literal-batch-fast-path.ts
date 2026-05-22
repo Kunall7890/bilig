@@ -126,7 +126,7 @@ function collectExistingDenseNumericRectangle(
   }
 
   const cellStore = args.state.workbook.cellStore
-  const tables = args.state.workbook.listTables()
+  const tables = args.state.workbook.hasTables() ? args.state.workbook.listTables() : []
   const cellIndices = new Uint32Array(refs.length)
   const values = new Float64Array(refs.length)
   const firstRow = firstMutation.row

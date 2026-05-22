@@ -57,6 +57,8 @@ function createService(
       readonly cellIndex: number
       readonly aggregateRange: Pick<NonNullable<RuntimeDirectCriteriaDescriptor['aggregateRange']>, 'rowStart' | 'rowEnd'>
     }[]
+    hasRegionSubscriptions?: boolean
+    onRegionProbe?: () => void
     hasNoCellDependents?: boolean
     entityDependent?: number
     criteriaDelta?: number | undefined
@@ -99,8 +101,20 @@ function createService(
       },
     },
     reverseAggregateColumnEdges: aggregateEdges,
-    collectRegionFormulaDependentsForCell: () => Uint32Array.from(request.regionDependents ?? []),
-    collectSingleRegionFormulaDependentForCell: () => request.singleRegionDependent ?? -1,
+    collectRegionFormulaDependentsForCell: () => {
+      request.onRegionProbe?.()
+      return Uint32Array.from(request.regionDependents ?? [])
+    },
+    collectSingleRegionFormulaDependentForCell: () => {
+      request.onRegionProbe?.()
+      return request.singleRegionDependent ?? -1
+    },
+    collectSingleRegionFormulaDependentForCellAt: () => {
+      request.onRegionProbe?.()
+      return request.singleRegionDependent ?? -1
+    },
+    hasRegionFormulaSubscriptionsForColumn: () => request.hasRegionSubscriptions ?? true,
+    hasRegionFormulaSubscriptionsForColumnAt: () => request.hasRegionSubscriptions ?? true,
     hasNoCellDependents: () => request.hasNoCellDependents ?? true,
     getSingleEntityDependent: () => request.entityDependent ?? -1,
     markFormulaChanged: (cellIndex, count) => count + cellIndex,
@@ -146,6 +160,39 @@ describe('operation direct range dependents', () => {
     })
 
     expect(service.collectAffectedDirectRangeDependents({ sheetName: 'Sheet1', row: 2, col: 0 })).toEqual([10, 11])
+  })
+
+  it('collects a single direct aggregate dependent without region probes when no region subscriptions exist', () => {
+    let regionProbeCount = 0
+    const service = createService({
+      formulas: new Map([[10, { directAggregate: directAggregate({ rowStart: 1, rowEnd: 3 }) }]]),
+      indexedAggregateDependents: [{ cellIndex: 10, aggregate: directAggregate({ rowStart: 1, rowEnd: 3 }) }],
+      hasRegionSubscriptions: false,
+      onRegionProbe: () => {
+        regionProbeCount += 1
+      },
+    })
+
+    expect(service.collectSingleAffectedDirectRangeDependent({ sheetName: 'Sheet1', sheetId: 7, row: 2, col: 0 })).toBe(10)
+    expect(service.collectSingleApplicableDirectAggregateDependent({ sheetName: 'Sheet1', sheetId: 7, row: 2, col: 0 })).toBe(10)
+    expect(regionProbeCount).toBe(0)
+  })
+
+  it('keeps region ambiguity semantics when region subscriptions exist', () => {
+    let regionProbeCount = 0
+    const service = createService({
+      formulas: new Map([[10, { directAggregate: directAggregate({ rowStart: 1, rowEnd: 3 }) }]]),
+      indexedAggregateDependents: [{ cellIndex: 10, aggregate: directAggregate({ rowStart: 1, rowEnd: 3 }) }],
+      singleRegionDependent: -2,
+      hasRegionSubscriptions: true,
+      onRegionProbe: () => {
+        regionProbeCount += 1
+      },
+    })
+
+    expect(service.collectSingleAffectedDirectRangeDependent({ sheetName: 'Sheet1', sheetId: 7, row: 2, col: 0 })).toBe(-2)
+    expect(service.collectSingleApplicableDirectAggregateDependent({ sheetName: 'Sheet1', sheetId: 7, row: 2, col: 0 })).toBe(-2)
+    expect(regionProbeCount).toBe(2)
   })
 
   it('probes a single indexed aggregate dependent without allocating a visitor', () => {

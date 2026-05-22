@@ -256,6 +256,8 @@ export function createEngineOperationService(args: CreateEngineOperationServiceA
     collectRegionFormulaDependentsForCell: args.collectRegionFormulaDependentsForCell,
     collectSingleRegionFormulaDependentForCell: args.collectSingleRegionFormulaDependentForCell,
     collectSingleRegionFormulaDependentForCellAt: args.collectSingleRegionFormulaDependentForCellAt,
+    hasRegionFormulaSubscriptionsForColumn: args.hasRegionFormulaSubscriptionsForColumn,
+    hasRegionFormulaSubscriptionsForColumnAt: args.hasRegionFormulaSubscriptionsForColumnAt,
     hasNoCellDependents,
     getSingleEntityDependent: args.getSingleEntityDependent,
     markFormulaChanged: args.markFormulaChanged,
