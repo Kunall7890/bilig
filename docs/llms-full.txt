@@ -531,7 +531,7 @@ matters.
 
 Current checked npm footprint for `@bilig/headless@0.49.0`:
 
-- Pack dry run: `724 kB` tarball, `4.43 MB` unpacked, `729` package entries.
+- Pack dry run: `755 kB` tarball, `4.66 MB` unpacked, `756` package entries.
 - Boundary: the main import is the WorkPaper formula/JSON runtime; XLSX
   import/export stays behind the `@bilig/headless/xlsx` subpath; MCP is the
   `bilig-workpaper-mcp` binary wrapper; reduced workbook reports use the
@@ -1084,7 +1084,7 @@ configs, `mcp/bilig-workpaper.mcp.json`, `npm run agent:verify`, and
 
 Current checked npm footprint for `@bilig/headless@0.49.0`:
 
-- Pack dry run: `724 kB` tarball, `4.43 MB` unpacked, `729` package entries.
+- Pack dry run: `755 kB` tarball, `4.66 MB` unpacked, `756` package entries.
 - Boundary: the main import is the WorkPaper formula/JSON runtime; XLSX
   import/export stays behind the `@bilig/headless/xlsx` subpath; MCP is the
   `bilig-workpaper-mcp` binary wrapper; reduced workbook reports use the
