@@ -71,6 +71,7 @@ describe('run-ci', () => {
 
     expect(packageJson).toContain('"ci": "BILIG_CI_PROFILE=fast BILIG_CI_SKIP_BROWSER=1 tsx scripts/run-ci.ts"')
     expect(packageJson).toContain('"ci:core": "BILIG_CI_PROFILE=fast BILIG_CI_SKIP_BROWSER=1 tsx scripts/run-ci.ts"')
+    expect(packageJson).toContain('"ci:github": "BILIG_CI_PROFILE=fast tsx scripts/run-ci.ts"')
     expect(packageJson).toContain('"ci:full": "BILIG_CI_PROFILE=full tsx scripts/run-ci.ts"')
     expect(packageJson).toContain(
       '"public-workbook-corpus:memory-gate": "bun scripts/public-workbook-corpus-memory-gate.ts --require-public"',
@@ -87,5 +88,11 @@ describe('run-ci', () => {
     expect(packageJson).toContain('"hooks:pre-push": "tsx scripts/run-pre-push.ts"')
     expect(prePushSource).toContain("assertLocalCiResourceGuardAllowsRun(rootDir, process.env, { runLabel: 'pre-push lint' })")
     expect(prePushSource).toContain("await run('pnpm', ['lint'])")
+  })
+
+  it('uses the deterministic CI profile for the GitHub release gate', () => {
+    const workflow = readFileSync(resolve(repoRoot, '.github/workflows/ci.yml'), 'utf8')
+
+    expect(workflow).toContain('pnpm run ci:github')
   })
 })

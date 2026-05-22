@@ -216,6 +216,7 @@
     "wasm:build": "pnpm --filter @bilig/wasm-kernel build",
     "ci": "BILIG_CI_PROFILE=fast BILIG_CI_SKIP_BROWSER=1 tsx scripts/run-ci.ts",
     "ci:core": "BILIG_CI_PROFILE=fast BILIG_CI_SKIP_BROWSER=1 tsx scripts/run-ci.ts",
+    "ci:github": "BILIG_CI_PROFILE=fast tsx scripts/run-ci.ts",
     "ci:browser": "pnpm --filter @bilig/app^... run build && VITE_BILIG_REMOTE_SYNC=0 pnpm --filter @bilig/web build:bundle && BILIG_BROWSER_CI_SMOKE=1 BILIG_DEV_APP_RUNTIME_BUILD=0 BILIG_DEV_WEB_PREVIEW_BUILD=0 pnpm test:browser",
     "ci:browser:full": "pnpm --filter @bilig/app^... run build && VITE_BILIG_REMOTE_SYNC=0 pnpm --filter @bilig/web build:bundle && BILIG_DEV_APP_RUNTIME_BUILD=0 BILIG_DEV_WEB_PREVIEW_BUILD=0 pnpm test:browser:full",
     "ci:full": "BILIG_CI_PROFILE=full tsx scripts/run-ci.ts"

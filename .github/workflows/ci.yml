@@ -90,7 +90,7 @@ jobs:
       - name: Run repository CI
         run: |
           set -eu
-          pnpm run ci
+          pnpm run ci:github
 
       - name: Upload fuzz and browser artifacts on failure
         if: failure()
