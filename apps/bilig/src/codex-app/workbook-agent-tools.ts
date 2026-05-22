@@ -392,6 +392,7 @@ export async function handleWorkbookAgentToolCall(
         })
         const verificationStatus = summarizeWorkbookAgentVerificationStatus({
           renderedReadback: report.renderedReadback,
+          recalculationStatus: report.recalculationStatus,
           formulaIssues: report.formulaIssues,
           invariants: report.invariants,
           requireTargetRange: true,
@@ -456,6 +457,7 @@ export async function handleWorkbookAgentToolCall(
         })
         const verificationStatus = summarizeWorkbookAgentVerificationStatus({
           renderedReadback: verification.renderedReadback,
+          recalculationStatus: verification.recalculationStatus,
           formulaIssues: verification.formulaIssues,
           invariants: verification.invariants,
           requireTargetRange: true,

@@ -14,8 +14,10 @@ import {
   buildWorkbookAgentVerificationReport,
   buildWorkbookAuthoritativeReadbackProof,
   buildWorkbookRenderedReadbackProof,
+  resolveWorkbookMutationRecalculationStatus,
   resolveWorkbookMutationUndoStatus,
   type WorkbookAuthoritativeReadbackProof,
+  type WorkbookMutationRecalculationProof,
   type WorkbookMutationUndoProof,
   type WorkbookSemanticReadbackProof,
   type WorkbookAgentMutationProofContext,
@@ -45,6 +47,7 @@ export interface WorkbookToolMutationReceipt {
   readonly authoritativeReadback: WorkbookAuthoritativeReadbackProof
   readonly renderedReadback: WorkbookRenderedReadbackProof
   readonly semanticReadback: WorkbookSemanticReadbackProof
+  readonly recalculation: WorkbookMutationRecalculationProof
   readonly undo: WorkbookMutationUndoProof
   readonly warnings: readonly string[]
 }
@@ -212,6 +215,10 @@ export async function buildMutationReceipt(input: {
     context: input.context,
     appliedRevision: executionRecord?.appliedRevision ?? null,
   })
+  const recalculation = await resolveWorkbookMutationRecalculationStatus({
+    context: input.context,
+    appliedRevision: executionRecord?.appliedRevision ?? null,
+  })
   const warnings: string[] = []
   if (!executionRecord && input.normalized.disposition === 'queuedForTurnApply') {
     warnings.push(
@@ -230,8 +237,13 @@ export async function buildMutationReceipt(input: {
   if (executionRecord && !undo.available) {
     warnings.push(undo.reasonUnavailable ?? 'Undo status is unavailable.')
   }
+  if (executionRecord && recalculation.upToDate !== true) {
+    warnings.push(recalculation.incompleteReason ?? 'Workbook recalculation proof is incomplete.')
+  }
   const hasAppliedProof =
     executionRecord !== null &&
+    recalculation.requested &&
+    recalculation.upToDate === true &&
     authoritativeReadback.requested &&
     authoritativeReadback.matched === true &&
     renderedReadback.requested &&
@@ -256,6 +268,7 @@ export async function buildMutationReceipt(input: {
     authoritativeReadback,
     renderedReadback,
     semanticReadback,
+    recalculation,
     undo,
     warnings,
   }

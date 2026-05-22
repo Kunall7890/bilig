@@ -62,6 +62,16 @@ export interface WorkbookMutationUndoProof {
   readonly lookupFailed: boolean
 }
 
+export interface WorkbookMutationRecalculationProof {
+  readonly requested: boolean
+  readonly upToDate: boolean | null
+  readonly appliedRevision: number | null
+  readonly headRevision: number | null
+  readonly calculatedRevision: number | null
+  readonly lastMetrics: unknown
+  readonly incompleteReason: string | null
+}
+
 function describeUnknownError(error: unknown): string {
   if (error instanceof Error && error.message.trim().length > 0) {
     return error.message
@@ -659,6 +669,54 @@ export async function resolveWorkbookMutationUndoStatus(input: {
     token: null,
     reasonUnavailable: 'No persisted undo metadata was returned for the applied revision.',
     lookupFailed: false,
+  }
+}
+
+export async function resolveWorkbookMutationRecalculationStatus(input: {
+  readonly context: WorkbookAgentMutationProofContext
+  readonly appliedRevision: number | null
+}): Promise<WorkbookMutationRecalculationProof> {
+  if (input.appliedRevision === null) {
+    return {
+      requested: false,
+      upToDate: null,
+      appliedRevision: null,
+      headRevision: null,
+      calculatedRevision: null,
+      lastMetrics: null,
+      incompleteReason: 'Workbook mutation has not been applied yet.',
+    }
+  }
+  try {
+    return await input.context.zeroSyncService.inspectWorkbook(input.context.documentId, (runtime) => {
+      const requiredRevision = Math.max(runtime.headRevision, input.appliedRevision ?? 0)
+      const upToDate = runtime.calculatedRevision >= requiredRevision
+      return {
+        requested: true,
+        upToDate,
+        appliedRevision: input.appliedRevision,
+        headRevision: runtime.headRevision,
+        calculatedRevision: runtime.calculatedRevision,
+        lastMetrics: runtime.engine.getLastMetrics(),
+        incompleteReason: upToDate
+          ? null
+          : `Workbook recalculation is stale: calculated revision r${String(runtime.calculatedRevision)} is behind required revision r${String(
+              requiredRevision,
+            )}.`,
+      }
+    })
+  } catch (error) {
+    return {
+      requested: true,
+      upToDate: false,
+      appliedRevision: input.appliedRevision,
+      headRevision: null,
+      calculatedRevision: null,
+      lastMetrics: null,
+      incompleteReason: `Workbook recalculation proof failed for applied revision r${String(input.appliedRevision)}: ${describeUnknownError(
+        error,
+      )}`,
+    }
   }
 }
 

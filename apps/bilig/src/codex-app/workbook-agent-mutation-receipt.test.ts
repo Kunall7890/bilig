@@ -284,6 +284,11 @@ const stagedPayloadSchema = z.object({
       requested: z.literal(false),
       matched: z.null(),
     }),
+    recalculation: z.object({
+      requested: z.literal(false),
+      upToDate: z.null(),
+      incompleteReason: z.string(),
+    }),
     undo: z.object({
       available: z.literal(false),
       reasonUnavailable: z.string(),
@@ -333,6 +338,14 @@ const appliedPayloadSchema = z.object({
       requested: z.literal(true),
       matched: z.literal(false),
       incompleteReason: z.string(),
+    }),
+    recalculation: z.object({
+      requested: z.literal(true),
+      upToDate: z.literal(true),
+      appliedRevision: z.literal(2),
+      headRevision: z.literal(2),
+      calculatedRevision: z.literal(2),
+      incompleteReason: z.null(),
     }),
     undo: z.object({
       available: z.literal(true),
@@ -637,6 +650,104 @@ describe('workbook agent mutation receipt helpers', () => {
     expect(payload.mutationReceipt.semanticReadback.incompleteReason).toContain('Rendered')
   })
 
+  it('does not report applied when recalculation is behind the applied revision', async () => {
+    const engine = await createEngine()
+    const appliedValue = 'Recalculation proof required'
+    const command: WorkbookAgentCommand = {
+      kind: 'writeRange',
+      sheetName: 'Sheet1',
+      startAddress: 'B2',
+      values: [[appliedValue]],
+    }
+    const bundle = createBundle(command, 'bundle-stale-recalculation-proof')
+    const undoBundle = applyWorkbookAgentCommandBundleWithUndoCapture(engine, bundle)
+    const { zeroSyncService } = createZeroSyncHarness(engine, {
+      headRevision: 2,
+      calculatedRevision: 1,
+      changes: [
+        {
+          revision: 2,
+          actorUserId: 'alex@example.com',
+          clientMutationId: null,
+          eventKind: 'applyAgentCommandBundle',
+          summary: 'Write cells in Sheet1!B2',
+          sheetId: null,
+          sheetName: 'Sheet1',
+          anchorAddress: 'B2',
+          range: {
+            sheetName: 'Sheet1',
+            startAddress: 'B2',
+            endAddress: 'B2',
+          },
+          rangeInvalid: false,
+          undoBundle,
+          revertedByRevision: null,
+          revertsRevision: null,
+          createdAtUnixMs: 2,
+        },
+      ],
+    })
+
+    const result = await stageWorkbookAgentCommandResult(
+      {
+        documentId: 'doc-1',
+        session: { userID: 'alex@example.com', roles: ['editor'] },
+        uiContext: createRenderedContext({
+          address: 'B2',
+          value: appliedValue,
+          capturedRevision: 2,
+        }),
+        zeroSyncService,
+        stageCommand: async () => ({
+          bundle,
+          executionRecord: createExecutionRecord({
+            bundle,
+            appliedRevision: 2,
+            afterInput: appliedValue,
+          }),
+        }),
+      },
+      command,
+      'writeRange',
+    )
+
+    const payload = z
+      .object({
+        applied: z.literal(false),
+        mutationExecuted: z.literal(true),
+        verificationComplete: z.literal(false),
+        status: z.literal('verification_incomplete'),
+        mutationReceipt: z.object({
+          status: z.literal('verification_incomplete'),
+          authoritativeReadback: z.object({
+            matched: z.literal(true),
+          }),
+          renderedReadback: z.object({
+            matched: z.literal(true),
+            stale: z.literal(false),
+          }),
+          semanticReadback: z.object({
+            matched: z.literal(true),
+          }),
+          recalculation: z.object({
+            requested: z.literal(true),
+            upToDate: z.literal(false),
+            appliedRevision: z.literal(2),
+            headRevision: z.literal(2),
+            calculatedRevision: z.literal(1),
+            incompleteReason: z.string(),
+          }),
+          undo: z.object({
+            available: z.literal(true),
+          }),
+          warnings: z.array(z.string()),
+        }),
+      })
+      .parse(parsePayload(result))
+    expect(payload.mutationReceipt.recalculation.incompleteReason).toContain('calculated revision r1')
+    expect(payload.mutationReceipt.warnings).toContain(payload.mutationReceipt.recalculation.incompleteReason)
+  })
+
   it('does not report applied when undo proof is missing even if readbacks agree', async () => {
     const engine = await createEngine()
     const appliedValue = 'Undo proof required'
@@ -935,6 +1046,11 @@ describe('workbook agent mutation receipt helpers', () => {
           semanticReadback: z.object({
             requested: z.literal(true),
             matched: z.literal(true),
+            incompleteReason: z.null(),
+          }),
+          recalculation: z.object({
+            requested: z.literal(true),
+            upToDate: z.literal(true),
             incompleteReason: z.null(),
           }),
           warnings: z.array(z.string()),
