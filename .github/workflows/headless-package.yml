@@ -844,6 +844,7 @@ jobs:
             packages/bilig/SKILL.md
             packages/bilig/README.md
             packages/workpaper/AGENTS.md
+            packages/workpaper/server.json
             packages/workpaper/SKILL.md
             packages/workpaper/README.md
             packages/xlsx-formula-recalc/AGENTS.md

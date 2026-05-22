@@ -70,6 +70,7 @@ describe('headless package workflow', () => {
     expect(source).toContain('packages/bilig')
     expect(source).toContain('packages/workpaper/package.json')
     expect(source).toContain('packages/workpaper')
+    expect(source).toContain('packages/workpaper/server.json')
     expect(source).toContain('packages/xlsx-formula-recalc/package.json')
     expect(source).toContain('packages/xlsx-formula-recalc')
     expect(source).toContain('packages/bilig-xlsx-formula-recalc/package.json')
