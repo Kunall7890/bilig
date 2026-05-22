@@ -198,6 +198,9 @@ function createRenderedContext(input: {
   readonly address: string
   readonly value: string | null
   readonly capturedRevision: number
+  readonly omitSurfaceProof?: boolean
+  readonly surfaceRevision?: number
+  readonly frameProofStatus?: 'idle' | 'pending' | 'presented'
   readonly styleId?: string | null
   readonly numberFormatId?: string | null
 }): WorkbookAgentUiContext {
@@ -220,6 +223,33 @@ function createRenderedContext(input: {
       capturedAtUnixMs: 10,
       capturedRevision: input.capturedRevision,
       batchId: input.capturedRevision,
+      surfaceProof: input.omitSurfaceProof
+        ? null
+        : {
+            mode: 'typegpu-v3',
+            backendStatus: 'ready',
+            frameProofStatus: input.frameProofStatus ?? 'presented',
+            hasPresentedFrame: (input.frameProofStatus ?? 'presented') === 'presented',
+            hasPresentedVisibleFrame: (input.frameProofStatus ?? 'presented') === 'presented',
+            frameProofSignature: `frame:${input.capturedRevision}`,
+            presentedFrameProofSignature: `frame:${input.capturedRevision}`,
+            authoritativeRevision: input.surfaceRevision ?? input.capturedRevision,
+            localRevision: null,
+            projectedRevision: input.capturedRevision,
+            visibleRenderRevision: input.capturedRevision,
+            tileSceneRevision: input.capturedRevision,
+            tileSceneCameraSeq: 1,
+            currentTilePaneCount: 1,
+            currentHeaderPaneCount: 1,
+            presentedTilePaneCount: 1,
+            presentedHeaderPaneCount: 1,
+            surfaceWidth: 800,
+            surfaceHeight: 600,
+            surfacePixelWidth: 1600,
+            surfacePixelHeight: 1200,
+            devicePixelRatio: 2,
+            capturedAtUnixMs: 10,
+          },
       selection: {
         range: {
           sheetName: 'Sheet1',
@@ -648,6 +678,166 @@ describe('workbook agent mutation receipt helpers', () => {
     expect(payload.mutationReceipt.status).toBe('verification_incomplete')
     expect(payload.mutationReceipt.semanticReadback.matched).toBe(false)
     expect(payload.mutationReceipt.semanticReadback.incompleteReason).toContain('Rendered')
+  })
+
+  it('does not report applied when rendered cells agree but no presented TypeGPU frame proof exists', async () => {
+    const engine = await createEngine()
+    const appliedValue = 'Rendered cells without frame proof'
+    const command: WorkbookAgentCommand = {
+      kind: 'writeRange',
+      sheetName: 'Sheet1',
+      startAddress: 'B2',
+      values: [[appliedValue]],
+    }
+    const bundle = createBundle(command, 'bundle-missing-surface-proof')
+    const undoBundle = applyWorkbookAgentCommandBundleWithUndoCapture(engine, bundle)
+    const { zeroSyncService } = createZeroSyncHarness(engine, {
+      headRevision: 2,
+      calculatedRevision: 2,
+      changes: [
+        {
+          revision: 2,
+          actorUserId: 'alex@example.com',
+          clientMutationId: null,
+          eventKind: 'applyAgentCommandBundle',
+          summary: 'Write cells in Sheet1!B2',
+          sheetId: null,
+          sheetName: 'Sheet1',
+          anchorAddress: 'B2',
+          range: {
+            sheetName: 'Sheet1',
+            startAddress: 'B2',
+            endAddress: 'B2',
+          },
+          rangeInvalid: false,
+          undoBundle,
+          revertedByRevision: null,
+          revertsRevision: null,
+          createdAtUnixMs: 2,
+        },
+      ],
+    })
+
+    const result = await stageWorkbookAgentCommandResult(
+      {
+        documentId: 'doc-1',
+        session: { userID: 'alex@example.com', roles: ['editor'] },
+        uiContext: createRenderedContext({
+          address: 'B2',
+          value: appliedValue,
+          capturedRevision: 2,
+          omitSurfaceProof: true,
+        }),
+        zeroSyncService,
+        stageCommand: async () => ({
+          bundle,
+          executionRecord: createExecutionRecord({
+            bundle,
+            appliedRevision: 2,
+            afterInput: appliedValue,
+          }),
+        }),
+      },
+      command,
+      'writeRange',
+    )
+
+    const payload = z
+      .object({
+        applied: z.literal(false),
+        status: z.literal('verification_incomplete'),
+        mutationReceipt: z.object({
+          status: z.literal('verification_incomplete'),
+          renderedReadback: z.object({
+            matched: z.null(),
+            surfaceProofMatched: z.null(),
+            incompleteReason: z.string(),
+          }),
+          warnings: z.array(z.string()),
+        }),
+      })
+      .parse(parsePayload(result))
+    expect(payload.mutationReceipt.renderedReadback.incompleteReason).toContain('No browser-presented TypeGPU frame proof')
+    expect(payload.mutationReceipt.warnings).toContain('No browser-presented TypeGPU frame proof was attached to this rendered readback.')
+  })
+
+  it('does not report applied when the TypeGPU frame proof has not been presented', async () => {
+    const engine = await createEngine()
+    const appliedValue = 'Pending frame proof'
+    const command: WorkbookAgentCommand = {
+      kind: 'writeRange',
+      sheetName: 'Sheet1',
+      startAddress: 'B2',
+      values: [[appliedValue]],
+    }
+    const bundle = createBundle(command, 'bundle-pending-surface-proof')
+    const undoBundle = applyWorkbookAgentCommandBundleWithUndoCapture(engine, bundle)
+    const { zeroSyncService } = createZeroSyncHarness(engine, {
+      headRevision: 2,
+      calculatedRevision: 2,
+      changes: [
+        {
+          revision: 2,
+          actorUserId: 'alex@example.com',
+          clientMutationId: null,
+          eventKind: 'applyAgentCommandBundle',
+          summary: 'Write cells in Sheet1!B2',
+          sheetId: null,
+          sheetName: 'Sheet1',
+          anchorAddress: 'B2',
+          range: {
+            sheetName: 'Sheet1',
+            startAddress: 'B2',
+            endAddress: 'B2',
+          },
+          rangeInvalid: false,
+          undoBundle,
+          revertedByRevision: null,
+          revertsRevision: null,
+          createdAtUnixMs: 2,
+        },
+      ],
+    })
+
+    const result = await stageWorkbookAgentCommandResult(
+      {
+        documentId: 'doc-1',
+        session: { userID: 'alex@example.com', roles: ['editor'] },
+        uiContext: createRenderedContext({
+          address: 'B2',
+          value: appliedValue,
+          capturedRevision: 2,
+          frameProofStatus: 'pending',
+        }),
+        zeroSyncService,
+        stageCommand: async () => ({
+          bundle,
+          executionRecord: createExecutionRecord({
+            bundle,
+            appliedRevision: 2,
+            afterInput: appliedValue,
+          }),
+        }),
+      },
+      command,
+      'writeRange',
+    )
+
+    const payload = z
+      .object({
+        applied: z.literal(false),
+        status: z.literal('verification_incomplete'),
+        mutationReceipt: z.object({
+          status: z.literal('verification_incomplete'),
+          renderedReadback: z.object({
+            matched: z.null(),
+            surfaceProofMatched: z.literal(false),
+            incompleteReason: z.string(),
+          }),
+        }),
+      })
+      .parse(parsePayload(result))
+    expect(payload.mutationReceipt.renderedReadback.incompleteReason).toContain('has not been presented')
   })
 
   it('does not report applied when recalculation is behind the applied revision', async () => {

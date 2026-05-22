@@ -331,15 +331,21 @@ export function useWorkerWorkbookAppState(input: {
     [invokeDeleteColumnsMutationBase, invokeSheetStructuralMutation],
   )
   const resolvedValue = visibleResolvedValue
-  const { agentContextProofVersion, agentContextVersion, getAgentContext, handleVisibleViewportChange, resetVisibleViewportForSheet } =
-    useWorkerWorkbookAgentContext({
-      selection,
-      selectionRangeRef,
-      selectionSnapshotRef,
-      selectionRef,
-      workerHandleRef,
-      runtimeControllerRef,
-    })
+  const {
+    agentContextProofVersion,
+    agentContextVersion,
+    getAgentContext,
+    handleVisibleRenderProofChange,
+    handleVisibleViewportChange,
+    resetVisibleViewportForSheet,
+  } = useWorkerWorkbookAgentContext({
+    selection,
+    selectionRangeRef,
+    selectionSnapshotRef,
+    selectionRef,
+    workerHandleRef,
+    runtimeControllerRef,
+  })
   const autofitColumn = useCallback(
     async (sheetName: string, columnIndex: number, fallbackWidth: number) => {
       const nextWidth =
@@ -634,6 +640,7 @@ export function useWorkerWorkbookAppState(input: {
     failedPendingMutation,
     fillSelectionRange,
     handleEditorChange,
+    handleVisibleRenderProofChange,
     handleVisibleViewportChange,
     invokeDeleteColumnsMutation,
     invokeDeleteRowsMutation,

@@ -6,7 +6,14 @@ import {
   waitForWorkbookAgentRenderedContext,
 } from './workbook-agent-rendered-context-wait.js'
 
-function context(capturedRevision: number | null): WorkbookAgentUiContext {
+function context(
+  capturedRevision: number | null,
+  options: {
+    readonly omitSurfaceProof?: boolean
+    readonly surfaceRevision?: number | null
+    readonly frameProofStatus?: 'idle' | 'pending' | 'presented'
+  } = {},
+): WorkbookAgentUiContext {
   return {
     selection: {
       sheetName: 'Sheet1',
@@ -26,6 +33,33 @@ function context(capturedRevision: number | null): WorkbookAgentUiContext {
       capturedAtUnixMs: 1,
       capturedRevision,
       batchId: 1,
+      surfaceProof: options.omitSurfaceProof
+        ? null
+        : {
+            mode: 'typegpu-v3',
+            backendStatus: 'ready',
+            frameProofStatus: options.frameProofStatus ?? 'presented',
+            hasPresentedFrame: (options.frameProofStatus ?? 'presented') === 'presented',
+            hasPresentedVisibleFrame: (options.frameProofStatus ?? 'presented') === 'presented',
+            frameProofSignature: 'frame:proof',
+            presentedFrameProofSignature: 'frame:proof',
+            authoritativeRevision: options.surfaceRevision ?? capturedRevision,
+            localRevision: null,
+            projectedRevision: 1,
+            visibleRenderRevision: 1,
+            tileSceneRevision: 1,
+            tileSceneCameraSeq: 1,
+            currentTilePaneCount: 1,
+            currentHeaderPaneCount: 1,
+            presentedTilePaneCount: 1,
+            presentedHeaderPaneCount: 1,
+            surfaceWidth: 800,
+            surfaceHeight: 600,
+            surfacePixelWidth: 1600,
+            surfacePixelHeight: 1200,
+            devicePixelRatio: 2,
+            capturedAtUnixMs: 1,
+          },
       selection: null,
       visibleRange: null,
     },
@@ -56,6 +90,13 @@ describe('workbook agent rendered context wait policy', () => {
     expect(hasRenderedContextAtRevision(context(4), 5)).toBe(false)
     expect(hasRenderedContextAtRevision(context(5), 5)).toBe(true)
     expect(hasRenderedContextAtRevision(context(null), 5)).toBe(false)
+  })
+
+  it('requires presented TypeGPU surface proof at the requested revision', () => {
+    expect(hasRenderedContextAtRevision(context(5, { omitSurfaceProof: true }), 5)).toBe(false)
+    expect(hasRenderedContextAtRevision(context(5, { frameProofStatus: 'pending' }), 5)).toBe(false)
+    expect(hasRenderedContextAtRevision(context(5, { surfaceRevision: 4 }), 5)).toBe(false)
+    expect(hasRenderedContextAtRevision(context(5), 5)).toBe(true)
   })
 
   it('only waits for tools that claim rendered-browser proof', () => {

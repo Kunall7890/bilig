@@ -4,6 +4,7 @@ import type { GridGeometrySnapshot } from '../gridGeometry.js'
 import type { GridHeaderPaneState } from '../gridHeaderPanes.js'
 import type { Rectangle } from '../gridTypes.js'
 import type { GridCameraStore } from '../runtime/gridCameraStore.js'
+import type { WorkbookVisibleRenderProof } from '../workbookVisibleRenderProof.js'
 import type { WorkbookGridScrollStore } from '../workbookGridScrollStore.js'
 export { TYPEGPU_V3_ACTIVE_RESOURCE_DEFER_MS, GridDrawSchedulerV3, shouldDeferTypeGpuV3PreloadSync } from './draw-scheduler.js'
 export { resolveTypeGpuV3DrawScrollSnapshot } from './workbook-pane-renderer-runtime.js'
@@ -27,6 +28,7 @@ export interface WorkbookPaneRendererV3Props {
   readonly scrollTransformStore?: WorkbookGridScrollStore | null
   readonly selectionOcclusionRanges?: readonly Pick<Rectangle, 'x' | 'y' | 'width' | 'height'>[] | null | undefined
   readonly suppressedTextCell?: SuppressedNativeTextCellV3 | null | undefined
+  readonly onVisibleRenderProofChange?: ((proof: WorkbookVisibleRenderProof | null) => void) | undefined
 }
 
 export const WorkbookPaneRendererV3 = memo(function WorkbookPaneRendererV3({
@@ -37,6 +39,7 @@ export const WorkbookPaneRendererV3 = memo(function WorkbookPaneRendererV3({
   host,
   overlay,
   overlayBuilder,
+  onVisibleRenderProofChange,
   preloadTilePanes = [],
   renderRevisionSnapshot = null,
   scrollTransformStore = null,
@@ -159,12 +162,73 @@ export const WorkbookPaneRendererV3 = memo(function WorkbookPaneRendererV3({
     }
   }, [hostRuntime])
 
-  if (!active || !host) {
-    return null
-  }
   const tileSceneRevision = resolveWorkbookPaneTileSceneRevisionV3(typeGpuTilePanes)
   const tileSceneCameraSeq = resolveWorkbookPaneTileSceneCameraSeqV3(typeGpuTilePanes)
   const visibleProof = resolveWorkbookPanePresentedRenderProofV3(frameProofStatus, presentedVisualFrame)
+  const visibleRenderProof = useMemo<WorkbookVisibleRenderProof | null>(() => {
+    if (!active || !host) {
+      return null
+    }
+    const surface = presentedVisualFrame?.surface ?? null
+    return {
+      mode: showTypeGpuCanvas ? 'typegpu-v3' : 'typegpu-v3-unavailable',
+      backendStatus,
+      frameProofStatus,
+      hasPresentedFrame,
+      hasPresentedVisibleFrame,
+      frameProofSignature,
+      presentedFrameProofSignature,
+      authoritativeRevision: visibleProof.authoritativeRevision,
+      localRevision: visibleProof.localRevision,
+      projectedRevision: visibleProof.projectedRevision,
+      visibleRenderRevision: visibleProof.tileSceneRevision,
+      tileSceneRevision,
+      tileSceneCameraSeq,
+      currentTilePaneCount: typeGpuTilePanes.length,
+      currentHeaderPaneCount: headerPanes.length,
+      presentedTilePaneCount: presentedTilePanes.length,
+      presentedHeaderPaneCount: presentedHeaderPanes.length,
+      surfaceWidth: surface?.width ?? 0,
+      surfaceHeight: surface?.height ?? 0,
+      surfacePixelWidth: surface?.pixelWidth ?? 0,
+      surfacePixelHeight: surface?.pixelHeight ?? 0,
+      devicePixelRatio: surface?.dpr ?? 1,
+      capturedAtUnixMs: Date.now(),
+    }
+  }, [
+    active,
+    backendStatus,
+    frameProofSignature,
+    frameProofStatus,
+    hasPresentedFrame,
+    hasPresentedVisibleFrame,
+    headerPanes.length,
+    host,
+    presentedFrameProofSignature,
+    presentedHeaderPanes.length,
+    presentedTilePanes.length,
+    presentedVisualFrame?.surface,
+    showTypeGpuCanvas,
+    tileSceneCameraSeq,
+    tileSceneRevision,
+    typeGpuTilePanes.length,
+    visibleProof.authoritativeRevision,
+    visibleProof.localRevision,
+    visibleProof.projectedRevision,
+    visibleProof.tileSceneRevision,
+  ])
+  useEffect(() => {
+    onVisibleRenderProofChange?.(visibleRenderProof)
+  }, [onVisibleRenderProofChange, visibleRenderProof])
+  useEffect(() => {
+    return () => {
+      onVisibleRenderProofChange?.(null)
+    }
+  }, [onVisibleRenderProofChange])
+
+  if (!active || !host) {
+    return null
+  }
 
   return (
     <>

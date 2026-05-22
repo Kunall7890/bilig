@@ -6,6 +6,8 @@ import { selectWorkbookRenderedReadback } from './workbook-agent-rendered-readba
 function renderedContext(input: {
   readonly capturedRevision?: number | null
   readonly batchId: number | null
+  readonly omitSurfaceProof?: boolean
+  readonly surfaceRevision?: number | null
   readonly useVisibleRangeOnly?: boolean
   readonly value?: string
 }): WorkbookAgentRenderedContext {
@@ -38,6 +40,33 @@ function renderedContext(input: {
     capturedAtUnixMs: 1_000,
     capturedRevision: input.capturedRevision ?? null,
     batchId: input.batchId,
+    surfaceProof: input.omitSurfaceProof
+      ? null
+      : {
+          mode: 'typegpu-v3',
+          backendStatus: 'ready',
+          frameProofStatus: 'presented',
+          hasPresentedFrame: true,
+          hasPresentedVisibleFrame: true,
+          frameProofSignature: 'frame:proof',
+          presentedFrameProofSignature: 'frame:proof',
+          authoritativeRevision: input.surfaceRevision ?? input.capturedRevision ?? null,
+          localRevision: null,
+          projectedRevision: input.batchId,
+          visibleRenderRevision: input.batchId,
+          tileSceneRevision: input.batchId,
+          tileSceneCameraSeq: 1,
+          currentTilePaneCount: 1,
+          currentHeaderPaneCount: 1,
+          presentedTilePaneCount: 1,
+          presentedHeaderPaneCount: 1,
+          surfaceWidth: 800,
+          surfaceHeight: 600,
+          surfacePixelWidth: 1600,
+          surfacePixelHeight: 1200,
+          devicePixelRatio: 2,
+          capturedAtUnixMs: 1_000,
+        },
     selection: input.useVisibleRangeOnly ? null : renderedRange,
     visibleRange: input.useVisibleRangeOnly ? renderedRange : null,
   }
@@ -103,5 +132,38 @@ describe('selectWorkbookRenderedReadback', () => {
 
     expect(selectionProof.sourceKind).toBe('selection')
     expect(visibleRangeProof.sourceKind).toBe('visibleRange')
+  })
+
+  it('requires a browser-presented TypeGPU frame proof for revision-gated readback', () => {
+    const proof = selectWorkbookRenderedReadback({
+      renderedContext: renderedContext({ capturedRevision: 3, batchId: 3, omitSurfaceProof: true }),
+      requestedRange: {
+        sheetName: 'Sheet1',
+        startAddress: 'A1',
+        endAddress: 'A1',
+      },
+      minRevision: 3,
+    })
+
+    expect(proof.available).toBe(true)
+    expect(proof.matched).toBeNull()
+    expect(proof.surfaceProofMatched).toBeNull()
+    expect(proof.incompleteReason).toContain('No browser-presented TypeGPU frame proof')
+  })
+
+  it('rejects stale presented frame proof even when the rendered cells are fresh', () => {
+    const proof = selectWorkbookRenderedReadback({
+      renderedContext: renderedContext({ capturedRevision: 4, batchId: 4, surfaceRevision: 3 }),
+      requestedRange: {
+        sheetName: 'Sheet1',
+        startAddress: 'A1',
+        endAddress: 'A1',
+      },
+      minRevision: 4,
+    })
+
+    expect(proof.stale).toBe(true)
+    expect(proof.surfaceProofMatched).toBe(false)
+    expect(proof.incompleteReason).toContain('Presented TypeGPU frame proof is older')
   })
 })

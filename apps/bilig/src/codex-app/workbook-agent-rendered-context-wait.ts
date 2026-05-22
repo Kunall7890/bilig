@@ -23,9 +23,34 @@ function renderedRevision(context: WorkbookAgentUiContext): number | null {
   return null
 }
 
+function surfaceProofRevision(context: WorkbookAgentUiContext): number | null {
+  const surfaceProof = context?.rendered?.surfaceProof
+  const revision = surfaceProof?.authoritativeRevision
+  if (
+    surfaceProof?.mode === 'typegpu-v3' &&
+    surfaceProof.backendStatus === 'ready' &&
+    surfaceProof.frameProofStatus === 'presented' &&
+    surfaceProof.hasPresentedVisibleFrame &&
+    surfaceProof.presentedTilePaneCount > 0 &&
+    surfaceProof.presentedHeaderPaneCount > 0 &&
+    surfaceProof.surfaceWidth > 0 &&
+    surfaceProof.surfaceHeight > 0 &&
+    surfaceProof.visibleRenderRevision !== null &&
+    surfaceProof.visibleRenderRevision === surfaceProof.tileSceneRevision &&
+    surfaceProof.visibleRenderRevision === surfaceProof.projectedRevision &&
+    typeof revision === 'number' &&
+    Number.isSafeInteger(revision) &&
+    revision >= 0
+  ) {
+    return revision
+  }
+  return null
+}
+
 export function hasRenderedContextAtRevision(context: WorkbookAgentUiContext, minRevision: number): boolean {
   const revision = renderedRevision(context)
-  return revision !== null && revision >= minRevision
+  const presentedRevision = surfaceProofRevision(context)
+  return revision !== null && revision >= minRevision && presentedRevision !== null && presentedRevision >= minRevision
 }
 
 export function shouldWaitForRenderedTool(toolName: string): boolean {
