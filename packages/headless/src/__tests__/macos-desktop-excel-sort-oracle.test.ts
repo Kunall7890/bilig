@@ -53,6 +53,18 @@ describe('macOS Desktop Excel sort oracle', () => {
 
         const excelTruth = importXlsx(new Uint8Array(readFileSync(excelWorkbookPath)), 'excel-sort-oracle.xlsx')
         expect(importedRows(excelTruth.snapshot)).toEqual(expectedSortedRows)
+        expect(styleIdAt(excelTruth.snapshot, 'Ledger', 'C2')).toBeDefined()
+        expect(styleIdAt(excelTruth.snapshot, 'Ledger', 'C6')).toBeUndefined()
+        expect(numberFormatAt(excelTruth.snapshot, 'Ledger', 'B2')).toBe('0.00')
+        expect(numberFormatAt(excelTruth.snapshot, 'Ledger', 'B6')).toBeUndefined()
+        expect(excelTruth.snapshot.sheets[0]?.metadata?.commentThreads).toEqual([
+          {
+            threadId: 'xlsx-comment:Ledger:C2',
+            sheetName: 'Ledger',
+            address: 'C2',
+            comments: [{ id: 'xlsx-comment:Ledger:C2:1', body: 'Approved largest invoice', authorDisplayName: 'Audit' }],
+          },
+        ])
         expect(excelTruth.snapshot.sheets[0]?.metadata?.sorts?.[0]?.keys.length).toBeGreaterThan(0)
 
         const headless = new SpreadsheetEngine({ workbookName: 'headless-sort-oracle' })
@@ -69,6 +81,18 @@ describe('macOS Desktop Excel sort oracle', () => {
 
         expect(engineRows(headless)).toEqual(expectedSortedRows)
         expect(headless.getCellValue('Ledger', 'E1')).toEqual({ tag: ValueTag.Number, value: 50 })
+        expect(headless.getCellStyle(headless.getCell('Ledger', 'C2').styleId)?.fill?.backgroundColor).toBe('#fef3c7')
+        expect(headless.getCell('Ledger', 'C6').styleId).toBeUndefined()
+        expect(headless.getCell('Ledger', 'B2').format).toBe('0.00')
+        expect(headless.getCell('Ledger', 'B6').format).toBeUndefined()
+        expect(headless.getCommentThreads('Ledger')).toEqual([
+          {
+            threadId: 'thread-largest-invoice',
+            sheetName: 'Ledger',
+            address: 'C2',
+            comments: [{ id: 'comment-largest-invoice', body: 'Approved largest invoice', authorDisplayName: 'Audit' }],
+          },
+        ])
 
         const headlessWorkbookPath = join(tempDir, 'headless-sort-oracle.xlsx')
         writeFileSync(headlessWorkbookPath, exportXlsx(headless.exportSnapshot()))
@@ -84,6 +108,19 @@ describe('macOS Desktop Excel sort oracle', () => {
         expect(headlessExcel.cells.map(({ address, value }) => ({ address, value }))).toEqual(
           excelResult.cells.map(({ address, value }) => ({ address, value })),
         )
+        const headlessExcelTruth = importXlsx(new Uint8Array(readFileSync(headlessWorkbookPath)), 'headless-sort-oracle.xlsx')
+        expect(styleIdAt(headlessExcelTruth.snapshot, 'Ledger', 'C2')).toBeDefined()
+        expect(styleIdAt(headlessExcelTruth.snapshot, 'Ledger', 'C6')).toBeUndefined()
+        expect(numberFormatAt(headlessExcelTruth.snapshot, 'Ledger', 'B2')).toBe('0.00')
+        expect(numberFormatAt(headlessExcelTruth.snapshot, 'Ledger', 'B6')).toBeUndefined()
+        expect(headlessExcelTruth.snapshot.sheets[0]?.metadata?.commentThreads).toEqual([
+          {
+            threadId: 'xlsx-comment:Ledger:C2',
+            sheetName: 'Ledger',
+            address: 'C2',
+            comments: [{ id: 'xlsx-comment:Ledger:C2:1', body: 'Approved largest invoice', authorDisplayName: 'Audit' }],
+          },
+        ])
       } finally {
         rmSync(tempDir, { recursive: true, force: true })
       }
@@ -95,12 +132,30 @@ describe('macOS Desktop Excel sort oracle', () => {
 function ledgerSnapshot(): WorkbookSnapshot {
   return {
     version: 1,
-    workbook: { name: 'Sort oracle' },
+    workbook: {
+      name: 'Sort oracle',
+      metadata: {
+        styles: [{ id: 'style-largest-invoice', fill: { backgroundColor: '#fef3c7' } }],
+        formats: [{ id: 'format-amount-decimal', code: '0.00', kind: 'number' }],
+      },
+    },
     sheets: [
       {
         id: 1,
         name: 'Ledger',
         order: 0,
+        metadata: {
+          styleRanges: [{ range: { sheetName: 'Ledger', startAddress: 'C6', endAddress: 'C6' }, styleId: 'style-largest-invoice' }],
+          formatRanges: [{ range: { sheetName: 'Ledger', startAddress: 'B6', endAddress: 'B6' }, formatId: 'format-amount-decimal' }],
+          commentThreads: [
+            {
+              threadId: 'thread-largest-invoice',
+              sheetName: 'Ledger',
+              address: 'C6',
+              comments: [{ id: 'comment-largest-invoice', body: 'Approved largest invoice', authorDisplayName: 'Audit' }],
+            },
+          ],
+        },
         cells: [
           { address: 'A1', value: 'Region' },
           { address: 'B1', value: 'Amount' },
@@ -124,6 +179,59 @@ function ledgerSnapshot(): WorkbookSnapshot {
         ],
       },
     ],
+  }
+}
+
+function styleIdAt(snapshot: WorkbookSnapshot, sheetName: string, address: string): string | undefined {
+  const sheet = snapshot.sheets.find((candidate) => candidate.name === sheetName)
+  const parsed = parseA1(address)
+  return sheet?.metadata?.styleRanges?.find((record) =>
+    rangeContains(record.range.startAddress, record.range.endAddress, parsed.row, parsed.col),
+  )?.styleId
+}
+
+function formatIdAt(snapshot: WorkbookSnapshot, sheetName: string, address: string): string | undefined {
+  const sheet = snapshot.sheets.find((candidate) => candidate.name === sheetName)
+  const parsed = parseA1(address)
+  return sheet?.metadata?.formatRanges?.find((record) =>
+    rangeContains(record.range.startAddress, record.range.endAddress, parsed.row, parsed.col),
+  )?.formatId
+}
+
+function numberFormatAt(snapshot: WorkbookSnapshot, sheetName: string, address: string): string | undefined {
+  const sheet = snapshot.sheets.find((candidate) => candidate.name === sheetName)
+  const cellFormat = sheet?.cells.find((cell) => cell.address === address)?.format
+  if (cellFormat !== undefined) {
+    return cellFormat
+  }
+  const formatId = formatIdAt(snapshot, sheetName, address)
+  return snapshot.workbook.metadata?.formats?.find((format) => format.id === formatId)?.code
+}
+
+function rangeContains(startAddress: string, endAddress: string, row: number, col: number): boolean {
+  const start = parseA1(startAddress)
+  const end = parseA1(endAddress)
+  return (
+    row >= Math.min(start.row, end.row) &&
+    row <= Math.max(start.row, end.row) &&
+    col >= Math.min(start.col, end.col) &&
+    col <= Math.max(start.col, end.col)
+  )
+}
+
+function parseA1(address: string): { readonly row: number; readonly col: number } {
+  const match = /^([A-Z]+)([1-9]\d*)$/u.exec(address)
+  if (!match) {
+    throw new Error(`Invalid test address: ${address}`)
+  }
+  const colLabel = match[1]
+  let col = 0
+  for (let index = 0; index < colLabel.length; index += 1) {
+    col = col * 26 + colLabel.charCodeAt(index) - 64
+  }
+  return {
+    row: Number.parseInt(match[2], 10),
+    col,
   }
 }
 

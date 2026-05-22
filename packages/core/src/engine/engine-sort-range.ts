@@ -1,6 +1,16 @@
-import type { CellRangeRef, LiteralInput, WorkbookSnapshot, WorkbookSortSnapshot } from '@bilig/protocol'
+import type {
+  CellRangeRef,
+  LiteralInput,
+  SheetFormatRangeSnapshot,
+  SheetStyleRangeSnapshot,
+  WorkbookCommentThreadSnapshot,
+  WorkbookNoteSnapshot,
+  WorkbookSnapshot,
+  WorkbookSortSnapshot,
+} from '@bilig/protocol'
 import { formatAddress, parseCellAddress } from '@bilig/formula'
 import type { EngineOp } from '@bilig/workbook'
+import { WORKBOOK_DEFAULT_FORMAT_ID, WORKBOOK_DEFAULT_STYLE_ID } from '../workbook-default-style-format.js'
 
 export interface SpreadsheetEngineSortRangeOptions {
   readonly header?: boolean
@@ -23,6 +33,16 @@ interface SortRow {
   readonly row: number
   readonly originalIndex: number
 }
+
+interface SortCellRewrite {
+  readonly col: number
+  readonly sourceRow: number
+  readonly targetRow: number
+  readonly sourceAddress: string
+  readonly targetAddress: string
+}
+
+type RangeStyleFormatSnapshot = SheetStyleRangeSnapshot | SheetFormatRangeSnapshot
 
 export function buildSortRangeOps(
   snapshot: WorkbookSnapshot,
@@ -62,16 +82,13 @@ export function buildSortRangeOps(
   const sortedRows = rows.toSorted((left, right) => compareSortRows(cellsByAddress, keyColumns, keys, left, right))
 
   const ops: EngineOp[] = []
-  for (let targetOffset = 0; targetOffset < sortedRows.length; targetOffset += 1) {
-    const sourceRow = sortedRows[targetOffset]!.row
-    const targetRow = bodyStartRow + targetOffset
-    for (let col = bounds.startCol; col <= bounds.endCol; col += 1) {
-      const source = cellsByAddress.get(formatAddress(sourceRow, col))
-      const targetAddress = formatAddress(targetRow, col)
-      const existing = cellsByAddress.get(targetAddress)
-      appendCellReplacementOps(ops, sheetName, targetAddress, existing, source)
-    }
+  const rewrites = buildSortCellRewrites(sortedRows, bounds, bodyStartRow)
+  for (const rewrite of rewrites) {
+    const source = cellsByAddress.get(rewrite.sourceAddress)
+    const existing = cellsByAddress.get(rewrite.targetAddress)
+    appendCellReplacementOps(ops, sheetName, rewrite.targetAddress, existing, source)
   }
+  appendRowBundleMetadataSortOps(ops, sheet.metadata, rewrites, sheetName)
 
   const metadataRange: CellRangeRef = {
     sheetName,
@@ -85,6 +102,201 @@ export function buildSortRangeOps(
     keys: keys.map((key) => ({ keyAddress: key.keyAddress, direction: key.direction })),
   })
   return ops
+}
+
+function buildSortCellRewrites(sortedRows: readonly SortRow[], bounds: SortBounds, bodyStartRow: number): SortCellRewrite[] {
+  return sortedRows.flatMap((sortRow, targetOffset) => {
+    const targetRow = bodyStartRow + targetOffset
+    return Array.from({ length: bounds.endCol - bounds.startCol + 1 }, (_, index): SortCellRewrite => {
+      const col = bounds.startCol + index
+      return {
+        col,
+        sourceRow: sortRow.row,
+        targetRow,
+        sourceAddress: formatAddress(sortRow.row, col),
+        targetAddress: formatAddress(targetRow, col),
+      }
+    })
+  })
+}
+
+function appendRowBundleMetadataSortOps(
+  ops: EngineOp[],
+  metadata: NonNullable<WorkbookSnapshot['sheets'][number]['metadata']> | undefined,
+  rewrites: readonly SortCellRewrite[],
+  sheetName: string,
+): void {
+  if (!metadata) {
+    return
+  }
+  appendStyleRangeSortOps(ops, metadata.styleRanges, rewrites, sheetName)
+  appendFormatRangeSortOps(ops, metadata.formatRanges, rewrites, sheetName)
+  appendCommentThreadSortOps(ops, metadata.commentThreads, rewrites, sheetName)
+  appendNoteSortOps(ops, metadata.notes, rewrites, sheetName)
+}
+
+function appendCommentThreadSortOps(
+  ops: EngineOp[],
+  commentThreads: readonly WorkbookCommentThreadSnapshot[] | undefined,
+  rewrites: readonly SortCellRewrite[],
+  sheetName: string,
+): void {
+  const threadsByAddress = new Map((commentThreads ?? []).map((thread) => [thread.address, thread]))
+  for (const rewrite of rewrites) {
+    const source = threadsByAddress.get(rewrite.sourceAddress)
+    const existing = threadsByAddress.get(rewrite.targetAddress)
+    if (source) {
+      ops.push({
+        kind: 'upsertCommentThread',
+        thread: {
+          ...structuredClone(source),
+          sheetName,
+          address: rewrite.targetAddress,
+        },
+      })
+    } else if (existing) {
+      ops.push({ kind: 'deleteCommentThread', sheetName, address: rewrite.targetAddress })
+    }
+  }
+}
+
+function appendNoteSortOps(
+  ops: EngineOp[],
+  notes: readonly WorkbookNoteSnapshot[] | undefined,
+  rewrites: readonly SortCellRewrite[],
+  sheetName: string,
+): void {
+  const notesByAddress = new Map((notes ?? []).map((note) => [note.address, note]))
+  for (const rewrite of rewrites) {
+    const source = notesByAddress.get(rewrite.sourceAddress)
+    const existing = notesByAddress.get(rewrite.targetAddress)
+    if (source) {
+      ops.push({
+        kind: 'upsertNote',
+        note: {
+          ...structuredClone(source),
+          sheetName,
+          address: rewrite.targetAddress,
+        },
+      })
+    } else if (existing) {
+      ops.push({ kind: 'deleteNote', sheetName, address: rewrite.targetAddress })
+    }
+  }
+}
+
+function appendStyleRangeSortOps(
+  ops: EngineOp[],
+  styleRanges: readonly SheetStyleRangeSnapshot[] | undefined,
+  rewrites: readonly SortCellRewrite[],
+  sheetName: string,
+): void {
+  if ((styleRanges?.length ?? 0) === 0) {
+    return
+  }
+  appendRangeIdSortOps(
+    rewrites,
+    WORKBOOK_DEFAULT_STYLE_ID,
+    (row, col) => rangeStyleIdAt(styleRanges, row, col),
+    (range, styleId) => ops.push({ kind: 'setStyleRange', range: { ...range, sheetName }, styleId }),
+  )
+}
+
+function appendFormatRangeSortOps(
+  ops: EngineOp[],
+  formatRanges: readonly SheetFormatRangeSnapshot[] | undefined,
+  rewrites: readonly SortCellRewrite[],
+  sheetName: string,
+): void {
+  if ((formatRanges?.length ?? 0) === 0) {
+    return
+  }
+  appendRangeIdSortOps(
+    rewrites,
+    WORKBOOK_DEFAULT_FORMAT_ID,
+    (row, col) => rangeFormatIdAt(formatRanges, row, col),
+    (range, formatId) => ops.push({ kind: 'setFormatRange', range: { ...range, sheetName }, formatId }),
+  )
+}
+
+function appendRangeIdSortOps(
+  rewrites: readonly SortCellRewrite[],
+  defaultId: string,
+  idAt: (row: number, col: number) => string | undefined,
+  appendOp: (range: Omit<CellRangeRef, 'sheetName'>, id: string) => void,
+): void {
+  let pending: { targetRow: number; startCol: number; endCol: number; id: string } | undefined
+  const flush = (): void => {
+    if (!pending) {
+      return
+    }
+    appendOp(
+      {
+        startAddress: formatAddress(pending.targetRow, pending.startCol),
+        endAddress: formatAddress(pending.targetRow, pending.endCol),
+      },
+      pending.id,
+    )
+    pending = undefined
+  }
+
+  for (const rewrite of rewrites) {
+    const sourceId = idAt(rewrite.sourceRow, rewrite.col) ?? defaultId
+    const targetId = idAt(rewrite.targetRow, rewrite.col) ?? defaultId
+    if (sourceId === targetId) {
+      flush()
+      continue
+    }
+    if (pending && pending.targetRow === rewrite.targetRow && pending.endCol + 1 === rewrite.col && pending.id === sourceId) {
+      pending = { ...pending, endCol: rewrite.col }
+      continue
+    }
+    flush()
+    pending = {
+      targetRow: rewrite.targetRow,
+      startCol: rewrite.col,
+      endCol: rewrite.col,
+      id: sourceId,
+    }
+  }
+  flush()
+}
+
+function rangeStyleIdAt(styleRanges: readonly SheetStyleRangeSnapshot[] | undefined, row: number, col: number): string | undefined {
+  return rangeRecordAt(styleRanges, row, col, (record) => record.styleId)
+}
+
+function rangeFormatIdAt(formatRanges: readonly SheetFormatRangeSnapshot[] | undefined, row: number, col: number): string | undefined {
+  return rangeRecordAt(formatRanges, row, col, (record) => record.formatId)
+}
+
+function rangeRecordAt<T extends RangeStyleFormatSnapshot>(
+  records: readonly T[] | undefined,
+  row: number,
+  col: number,
+  readId: (record: T) => string,
+): string | undefined {
+  if (!records) {
+    return undefined
+  }
+  for (let index = records.length - 1; index >= 0; index -= 1) {
+    const record = records[index]!
+    if (rangeContainsCell(record.range, row, col)) {
+      return readId(record)
+    }
+  }
+  return undefined
+}
+
+function rangeContainsCell(range: CellRangeRef, row: number, col: number): boolean {
+  const start = parseCellAddress(range.startAddress, range.sheetName)
+  const end = parseCellAddress(range.endAddress, range.sheetName)
+  return (
+    row >= Math.min(start.row, end.row) &&
+    row <= Math.max(start.row, end.row) &&
+    col >= Math.min(start.col, end.col) &&
+    col <= Math.max(start.col, end.col)
+  )
 }
 
 function sortBounds(sheetName: string, range: CellRangeRef): SortBounds {
