@@ -40,6 +40,7 @@ export async function requireAgentPublicSurfaceDiscovery(input: {
     googleSheetsApiBoundaryDoc,
     whyAgentsDoc,
     aiAgentSpreadsheetToolNode,
+    agentFrameworkWorkbookToolsDoc,
     headlessWorkpaperAgentHandbook,
     agentToolCallingDoc,
     aiSdkLangChainDoc,
@@ -190,6 +191,24 @@ export async function requireAgentPublicSurfaceDiscovery(input: {
     'Star or bookmark Bilig',
   ] as const) {
     requireIncludes(aiAgentSpreadsheetToolNode, required, 'docs/ai-agent-spreadsheet-tool-node.md')
+  }
+  for (const required of [
+    'title: Workbook tools for agent frameworks',
+    'description: Pick the Bilig WorkPaper integration path for Codex, Claude, Cursor, OpenAI Agents, Vercel AI SDK, LangChain, LangGraph, LlamaIndex, and MCP clients.',
+    'npm create @bilig/workpaper@latest pricing-agent -- --agent',
+    'npm exec --package @bilig/workpaper@latest -- bilig-agent-challenge',
+    'npm exec --package @bilig/workpaper@latest -- bilig-mcp-challenge',
+    'Codex',
+    'Claude Code and Claude Desktop',
+    'OpenAI Agents SDK',
+    'Vercel AI SDK',
+    'LangGraph.js',
+    'LlamaIndex.TS',
+    'SpreadsheetAgentProof',
+    'Do not claim success from a write call alone.',
+    'Star or bookmark Bilig',
+  ] as const) {
+    requireIncludes(agentFrameworkWorkbookToolsDoc, required, 'docs/agent-framework-workbook-tools.md')
   }
   for (const required of [
     'description: A compact playbook for agents that need workbook formulas without opening Excel',
@@ -543,6 +562,7 @@ export async function requireAgentPublicSurfaceDiscovery(input: {
   )
   for (const [path, content] of [
     ['docs/why-agents-need-workbook-apis.md', whyAgentsDoc],
+    ['docs/agent-framework-workbook-tools.md', agentFrameworkWorkbookToolsDoc],
     ['docs/headless-workpaper-agent-handbook.md', headlessWorkpaperAgentHandbook],
     ['docs/agent-workpaper-tool-calling-recipe.md', agentToolCallingDoc],
     ['docs/openai-agents-sdk-workpaper-tool.md', openAiAgentsSdkDoc],

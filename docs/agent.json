@@ -60,7 +60,10 @@
       "bilig://workpaper/sheets",
       "bilig://workpaper/current-document"
     ],
-    "prompts": ["edit_and_verify_workpaper", "debug_workpaper_formula"]
+    "prompts": [
+      "edit_and_verify_workpaper",
+      "debug_workpaper_formula"
+    ]
   },
   "capabilities": [
     {
@@ -117,7 +120,11 @@
       "agent tools that need deterministic cell addresses and formula readback",
       "service-owned workbook state that can persist as JSON"
     ],
-    "not_a_fit": ["manual spreadsheet editing as the main product", "Office macros or desktop Excel automation", "one-off arithmetic"]
+    "not_a_fit": [
+      "manual spreadsheet editing as the main product",
+      "Office macros or desktop Excel automation",
+      "one-off arithmetic"
+    ]
   },
   "public_entrypoints": [
     "https://proompteng.github.io/bilig/",
@@ -128,6 +135,7 @@
     "https://bilig.proompteng.ai/mcp",
     "https://bilig.proompteng.ai/.well-known/mcp/server-card.json",
     "https://proompteng.github.io/bilig/agent-workpaper-tool-calling-recipe.html",
+    "https://proompteng.github.io/bilig/agent-framework-workbook-tools.html",
     "https://proompteng.github.io/bilig/openai-agents-sdk-workpaper-tool.html",
     "https://proompteng.github.io/bilig/node-framework-workpaper-adapters.html",
     "https://proompteng.github.io/bilig/npm-provenance-package-trust.html"

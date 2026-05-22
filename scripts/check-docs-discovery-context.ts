@@ -64,6 +64,7 @@ export interface DocsDiscoveryContext {
   readonly xlsxCorpusVerifierWalkthrough: string
   readonly whyAgentsDoc: string
   readonly aiAgentSpreadsheetToolNode: string
+  readonly agentFrameworkWorkbookToolsDoc: string
   readonly headlessWorkpaperAgentHandbook: string
   readonly agentToolCallingDoc: string
   readonly aiSdkLangChainDoc: string
@@ -142,6 +143,7 @@ export async function loadDocsDiscoveryContext(): Promise<DocsDiscoveryContext> 
     xlsxCorpusVerifierWalkthrough,
     whyAgentsDoc,
     aiAgentSpreadsheetToolNode,
+    agentFrameworkWorkbookToolsDoc,
     headlessWorkpaperAgentHandbook,
     agentToolCallingDoc,
     aiSdkLangChainDoc,
@@ -211,6 +213,7 @@ export async function loadDocsDiscoveryContext(): Promise<DocsDiscoveryContext> 
     readFile(join(docsRoot, 'xlsx-corpus-verifier-walkthrough.md'), 'utf8'),
     readFile(join(docsRoot, 'why-agents-need-workbook-apis.md'), 'utf8'),
     readFile(join(docsRoot, 'ai-agent-spreadsheet-tool-node.md'), 'utf8'),
+    readFile(join(docsRoot, 'agent-framework-workbook-tools.md'), 'utf8'),
     readFile(join(docsRoot, 'headless-workpaper-agent-handbook.md'), 'utf8'),
     readFile(join(docsRoot, 'agent-workpaper-tool-calling-recipe.md'), 'utf8'),
     readFile(join(docsRoot, 'vercel-ai-sdk-langchain-spreadsheet-tool.md'), 'utf8'),
@@ -289,6 +292,7 @@ export async function loadDocsDiscoveryContext(): Promise<DocsDiscoveryContext> 
     xlsxCorpusVerifierWalkthrough,
     whyAgentsDoc,
     aiAgentSpreadsheetToolNode,
+    agentFrameworkWorkbookToolsDoc,
     headlessWorkpaperAgentHandbook,
     agentToolCallingDoc,
     aiSdkLangChainDoc,

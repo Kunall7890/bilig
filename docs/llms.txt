@@ -80,6 +80,7 @@ restoring it, and confirming the restored value matches. Return `editedCell`,
 - https://proompteng.github.io/bilig/show-hn-formula-workbooks-node-services.html
 - https://proompteng.github.io/bilig/formula-workbooks-node-services-agent-tools.html
 - https://proompteng.github.io/bilig/ai-agent-spreadsheet-tool-node.html
+- https://proompteng.github.io/bilig/agent-framework-workbook-tools.html
 - https://proompteng.github.io/bilig/headless-spreadsheet-engine-node-services-agents.html
 - https://proompteng.github.io/bilig/xlsx-formula-recalculation-node.html
 - https://proompteng.github.io/bilig/sheetjs-formula-result-not-updating-node.html

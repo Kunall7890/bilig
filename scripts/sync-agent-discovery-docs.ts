@@ -40,6 +40,7 @@ const versionedStaticReferenceRoots = [
   'docs/formula-bug-clinic.md',
   'docs/formula-workbooks-node-services-agent-tools.md',
   'docs/ai-agent-spreadsheet-tool-node.md',
+  'docs/agent-framework-workbook-tools.md',
   'docs/headless-workpaper-agent-handbook.md',
   'docs/index.html',
   'docs/llms.txt',
@@ -503,6 +504,11 @@ const llmsFullSources = [
     url: `${repositoryUrl}/blob/main/docs/ai-agent-spreadsheet-tool-node.md`,
   },
   {
+    title: 'Workbook Tools For Agent Frameworks',
+    relativePath: 'docs/agent-framework-workbook-tools.md',
+    url: `${repositoryUrl}/blob/main/docs/agent-framework-workbook-tools.md`,
+  },
+  {
     title: 'OpenAI Agents SDK WorkPaper Tool',
     relativePath: 'docs/openai-agents-sdk-workpaper-tool.md',
     url: `${repositoryUrl}/blob/main/docs/openai-agents-sdk-workpaper-tool.md`,
@@ -700,6 +706,7 @@ function agentJsonManifest(): string {
         remoteMcpEndpoint,
         remoteMcpServerCard,
         `${siteRoot}/agent-workpaper-tool-calling-recipe.html`,
+        `${siteRoot}/agent-framework-workbook-tools.html`,
         `${siteRoot}/openai-agents-sdk-workpaper-tool.html`,
         `${siteRoot}/node-framework-workpaper-adapters.html`,
         `${siteRoot}/npm-provenance-package-trust.html`,

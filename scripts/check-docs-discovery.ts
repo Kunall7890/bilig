@@ -98,6 +98,7 @@ const mcpServerCardLegacyJson = await readFile(join(docsRoot, '.well-known', 'mc
 const sheetjsFormulaResultNotUpdatingNode = await readFile(join(docsRoot, 'sheetjs-formula-result-not-updating-node.md'), 'utf8')
 const rootSkillNotes = await readFile(join(repoRoot, 'skills', 'bilig-workpaper', 'SKILL.md'), 'utf8')
 const workpaperPackageJson = await readFile(join(repoRoot, 'packages', 'bilig', 'package.json'), 'utf8')
+const scopedWorkpaperPackageJson = await readFile(join(repoRoot, 'packages', 'workpaper', 'package.json'), 'utf8')
 const workpaperPackageReadme = await readFile(join(repoRoot, 'packages', 'bilig', 'README.md'), 'utf8')
 const workpaperPackageAgentNotes = await readFile(join(repoRoot, 'packages', 'bilig', 'AGENTS.md'), 'utf8')
 const workpaperPackageSkillNotes = await readFile(join(repoRoot, 'packages', 'bilig', 'SKILL.md'), 'utf8')
@@ -148,6 +149,31 @@ requirePackageKeywords(
     'xlsx',
   ],
   'packages/headless/package.json',
+)
+requirePackageKeywords(
+  scopedWorkpaperPackageJson,
+  [
+    'agent-tools',
+    'ai-agents',
+    'excel-formulas',
+    'exceljs',
+    'formula-recalculation',
+    'formula-engine',
+    'mcp',
+    'mcp-server',
+    'model-context-protocol',
+    'sheetjs',
+    'spreadsheet-agent',
+    'spreadsheet-automation',
+    'spreadsheet-engine',
+    'spreadsheet-formulas',
+    'workbook-agent',
+    'workbook-api',
+    'workpaper',
+    'xlsx',
+    'xlsx-calc',
+  ],
+  'packages/workpaper/package.json',
 )
 requireIncludes(index, '"downloadUrl": "https://www.npmjs.com/package/@bilig/workpaper"', 'docs/index.html')
 requireIncludes(index, '"https://www.npmjs.com/package/@bilig/xlsx-formula-recalc"', 'docs/index.html')
