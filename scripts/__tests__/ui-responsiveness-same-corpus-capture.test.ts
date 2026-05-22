@@ -16,7 +16,11 @@ import {
   verifyXlsxCorpusFingerprint,
 } from '../capture-ui-responsiveness-same-corpus.ts'
 import { requiredUiResponsivenessSameCorpusWorkloads } from '../ui-responsiveness-same-corpus-workloads.ts'
-import { buildCaptureScenarioProof, type SameCorpusProductVisualProof } from '../ui-responsiveness-same-corpus-proof.ts'
+import {
+  buildCaptureScenarioProof,
+  isSameCorpusProductPixelGridProofComplete,
+  type SameCorpusProductVisualProof,
+} from '../ui-responsiveness-same-corpus-proof.ts'
 import { sameCorpusChromiumLaunchOptions } from '../ui-responsiveness-same-corpus-page-utils.ts'
 import { sameCorpusScrollProbeSelectorsForProduct } from '../ui-responsiveness-same-corpus-scroll-page.ts'
 import { incumbentEditableWorkloadBlocker, sameCorpusKeyboardOperations } from '../ui-responsiveness-same-corpus-workload-runner.ts'
@@ -346,6 +350,72 @@ describe('same-corpus UI responsiveness capture CLI', () => {
     })
   })
 
+  it('rejects each missing Bilig visible-frame proof field and revision mismatch', () => {
+    const baseProof = sameCorpusVisualProof('bilig', 'typegpu-visible-canvas').pixelGridProof
+    const baseEvidence = baseProof.evidence
+
+    expect(isSameCorpusProductPixelGridProofComplete(baseProof)).toBe(true)
+
+    const invalidEvidenceCases: readonly {
+      readonly label: string
+      readonly evidence: readonly string[]
+    }[] = [
+      ...[
+        'pixelGridProofVersion',
+        'pixelSampleSource',
+        'visibleGridLinePixels',
+        'verticalLineRuns',
+        'horizontalLineRuns',
+        'mode',
+        'contractVersion',
+        'backendStatus',
+        'frameProofStatus',
+        'hasPresentedVisibleFrame',
+        'tilePaneCount',
+        'headerPaneCount',
+        'presentedTilePaneCount',
+        'presentedHeaderPaneCount',
+        'canvasCoversViewport',
+        'gridProjectedRevision',
+        'typeGpuProjectedRevision',
+        'visibleProjectedRevision',
+        'tileSceneRevision',
+        'visibleRenderRevision',
+      ].map((key) => ({ label: `missing ${key}`, evidence: evidenceWithoutKey(baseEvidence, key) })),
+      { label: 'wrong pixel proof contract', evidence: replaceEvidence(baseEvidence, 'pixelGridProofVersion', 'legacy-grid-pixels') },
+      { label: 'wrong pixel proof source', evidence: replaceEvidence(baseEvidence, 'pixelSampleSource', 'dom-rectangle') },
+      { label: 'too few gridline pixels', evidence: replaceEvidence(baseEvidence, 'visibleGridLinePixels', '23') },
+      { label: 'too few vertical line runs', evidence: replaceEvidence(baseEvidence, 'verticalLineRuns', '2') },
+      { label: 'too few horizontal line runs', evidence: replaceEvidence(baseEvidence, 'horizontalLineRuns', '2') },
+      { label: 'wrong renderer mode', evidence: replaceEvidence(baseEvidence, 'mode', 'canvas2d') },
+      { label: 'wrong render proof contract', evidence: replaceEvidence(baseEvidence, 'contractVersion', 'same-corpus-ui-v1') },
+      { label: 'backend not ready', evidence: replaceEvidence(baseEvidence, 'backendStatus', 'pending') },
+      { label: 'frame not presented', evidence: replaceEvidence(baseEvidence, 'frameProofStatus', 'pending') },
+      { label: 'visible frame not presented', evidence: replaceEvidence(baseEvidence, 'hasPresentedVisibleFrame', 'false') },
+      { label: 'empty tile panes', evidence: replaceEvidence(baseEvidence, 'tilePaneCount', '0') },
+      { label: 'empty header panes', evidence: replaceEvidence(baseEvidence, 'headerPaneCount', '0') },
+      { label: 'empty presented tile panes', evidence: replaceEvidence(baseEvidence, 'presentedTilePaneCount', '0') },
+      { label: 'empty presented header panes', evidence: replaceEvidence(baseEvidence, 'presentedHeaderPaneCount', '0') },
+      { label: 'canvas does not cover viewport', evidence: replaceEvidence(baseEvidence, 'canvasCoversViewport', 'false') },
+      { label: 'TypeGPU revision differs from grid', evidence: replaceEvidence(baseEvidence, 'typeGpuProjectedRevision', 'rev-2') },
+      { label: 'visible revision differs from grid', evidence: replaceEvidence(baseEvidence, 'visibleProjectedRevision', 'rev-2') },
+      {
+        label: 'visible render revision differs from tile scene',
+        evidence: replaceEvidence(baseEvidence, 'visibleRenderRevision', 'scene-6'),
+      },
+    ]
+
+    for (const entry of invalidEvidenceCases) {
+      expect(
+        isSameCorpusProductPixelGridProofComplete({
+          ...baseProof,
+          evidence: entry.evidence,
+        }),
+        entry.label,
+      ).toBe(false)
+    }
+  })
+
   it('downgrades incumbent grid evidence that only proves a large DOM rectangle exists', () => {
     const proof = buildCaptureScenarioProof({
       bilig: sameCorpusCaptureMeasurement('bilig', 'bilig-benchmark-state'),
@@ -567,4 +637,12 @@ function strictPixelGridEvidence(): string[] {
     'verticalLineRuns=8',
     'horizontalLineRuns=16',
   ]
+}
+
+function evidenceWithoutKey(evidence: readonly string[], key: string): string[] {
+  return evidence.filter((entry) => !entry.startsWith(`${key}=`))
+}
+
+function replaceEvidence(evidence: readonly string[], key: string, value: string): string[] {
+  return evidence.map((entry) => (entry.startsWith(`${key}=`) ? `${key}=${value}` : entry))
 }
