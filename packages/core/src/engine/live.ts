@@ -48,6 +48,16 @@ import { getRuntimeFormulaSource } from './runtime-formula-source.js'
 import { deferKernelSyncNow } from './services/live-kernel-sync-state.js'
 import { createEngineFullInvalidationService } from './services/full-invalidation-service.js'
 import { runEngineEffect } from './live-effect.js'
+import type {
+  EngineFormulaBindingRuntimeConfig,
+  EngineFormulaGraphRuntimeConfig,
+  EngineMaintenanceRuntimeConfig,
+  EngineMutationSupportRuntimeConfig,
+  EngineOperationRuntimeConfig,
+  EnginePivotRuntimeConfig,
+  EngineRecalcRuntimeConfig,
+  EngineTraversalRuntimeConfig,
+} from './live-runtime-config.js'
 
 export { runEngineEffect, runEngineEffectPromise } from './live-effect.js'
 
@@ -73,186 +83,6 @@ export interface EngineServiceRuntime {
   readonly snapshot: EngineSnapshotService
   readonly sync: EngineReplicaSyncService
 }
-
-type EngineMutationSupportRuntimeConfig = Omit<
-  Parameters<typeof createEngineMutationSupportService>[0],
-  | 'removeFormula'
-  | 'rebindFormulasForSheet'
-  | 'applyDerivedOp'
-  | 'scheduleWasmProgramSync'
-  | 'collectFormulaDependents'
-  | 'ensureRecalcScratchCapacity'
-  | 'getChangedInputEpoch'
-  | 'setChangedInputEpoch'
-  | 'getChangedInputSeen'
-  | 'setChangedInputSeen'
-  | 'getChangedInputBuffer'
-  | 'setChangedInputBuffer'
-  | 'getChangedFormulaEpoch'
-  | 'setChangedFormulaEpoch'
-  | 'getChangedFormulaSeen'
-  | 'setChangedFormulaSeen'
-  | 'getChangedFormulaBuffer'
-  | 'setChangedFormulaBuffer'
-  | 'getChangedUnionEpoch'
-  | 'setChangedUnionEpoch'
-  | 'getChangedUnionSeen'
-  | 'setChangedUnionSeen'
-  | 'getChangedUnion'
-  | 'setChangedUnion'
-  | 'getMutationRoots'
-  | 'setMutationRoots'
-  | 'getMaterializedCellCount'
-  | 'setMaterializedCellCount'
-  | 'getMaterializedCells'
-  | 'setMaterializedCells'
-  | 'getExplicitChangedEpoch'
-  | 'setExplicitChangedEpoch'
-  | 'getExplicitChangedSeen'
-  | 'setExplicitChangedSeen'
-  | 'getExplicitChangedBuffer'
-  | 'setExplicitChangedBuffer'
-  | 'getImpactedFormulaEpoch'
-  | 'setImpactedFormulaEpoch'
-  | 'getImpactedFormulaSeen'
-  | 'setImpactedFormulaSeen'
-  | 'getImpactedFormulaBuffer'
-  | 'setImpactedFormulaBuffer'
->
-
-type EngineFormulaBindingRuntimeConfig = Omit<
-  Parameters<typeof createEngineFormulaBindingService>[0],
-  | 'compiledPlans'
-  | 'formulaInstances'
-  | 'formulaFamilies'
-  | 'regionGraph'
-  | 'resolveTemplateForCell'
-  | 'exactLookup'
-  | 'sortedLookup'
-  | 'ensureCellTracked'
-  | 'ensureCellTrackedByCoords'
-  | 'markFormulaChanged'
-  | 'forEachSheetCell'
-  | 'lookup'
-  | 'resolveStructuredReference'
-  | 'resolveSpillReference'
-  | 'scheduleWasmProgramSync'
->
-
-type EngineFormulaGraphRuntimeConfig = Omit<
-  Parameters<typeof createEngineFormulaGraphService>[0],
-  'rebuildCalcChain' | 'notifyCellValueWritten' | 'forEachFormulaDependencyCell' | 'collectFormulaDependents'
->
-
-type EngineRecalcRuntimeConfig = Omit<
-  Parameters<typeof createEngineRecalcService>[0],
-  | 'beginMutationCollection'
-  | 'markInputChanged'
-  | 'markFormulaChanged'
-  | 'markExplicitChanged'
-  | 'composeMutationRoots'
-  | 'composeEventChanges'
-  | 'captureChangedCells'
-  | 'captureChangedPatches'
-  | 'unionChangedSets'
-  | 'composeChangedRootsAndOrdered'
-  | 'emptyChangedSet'
-  | 'ensureRecalcScratchCapacity'
-  | 'getPendingKernelSync'
-  | 'getDeferredKernelSyncCount'
-  | 'setDeferredKernelSyncCount'
-  | 'getDeferredKernelSyncEpoch'
-  | 'setDeferredKernelSyncEpoch'
-  | 'getDeferredKernelSyncSeen'
-  | 'getWasmBatch'
-  | 'getChangedInputBuffer'
-  | 'flushWasmProgramSync'
-  | 'dirtyScheduler'
-  | 'beginEvaluationBudget'
-  | 'endEvaluationBudget'
-  | 'checkEvaluationBudget'
-  | 'materializeSpill'
-  | 'clearOwnedSpill'
-  | 'evaluateDirectLookupFormula'
-  | 'evaluateUnsupportedFormula'
-  | 'materializePivot'
->
-
-type EngineMaintenanceRuntimeConfig = Omit<
-  Parameters<typeof createEngineMaintenanceService>[0],
-  | 'captureSheetCellState'
-  | 'captureRowRangeCellState'
-  | 'captureColumnRangeCellState'
-  | 'setMaterializedCellCount'
-  | 'resetFormulaRuntimeCaches'
-  | 'scheduleWasmProgramSync'
->
-
-type EnginePivotRuntimeConfig = Omit<
-  Parameters<typeof createEnginePivotService>[0],
-  | 'ensureCellTrackedByCoords'
-  | 'forEachSheetCell'
-  | 'flushDeferredKernelSync'
-  | 'scheduleWasmProgramSync'
-  | 'flushWasmProgramSync'
-  | 'applyDerivedOp'
->
-
-type EngineOperationRuntimeConfig = Omit<
-  Parameters<typeof createEngineOperationService>[0],
-  | 'getSelectionState'
-  | 'setSelection'
-  | 'hasRegionFormulaSubscriptionsForColumn'
-  | 'hasRegionFormulaSubscriptionsOverlappingRange'
-  | 'getRegionFormulaSubscriptionCount'
-  | 'collectRegionFormulaDependentsForCell'
-  | 'collectSingleRegionFormulaDependentForCell'
-  | 'prepareRegionQueryIndices'
-  | 'rewriteDefinedNamesForSheetRename'
-  | 'rewriteCellFormulasForSheetRename'
-  | 'estimatePotentialNewCells'
-  | 'rebindDefinedNameDependents'
-  | 'collectFormulaCellsForDefinedNames'
-  | 'rebindTableDependents'
-  | 'rebindFormulaCells'
-  | 'rebindFormulasForSheet'
-  | 'removeSheetRuntime'
-  | 'applyStructuralAxisOp'
-  | 'clearOwnedSpill'
-  | 'clearPivotForCell'
-  | 'clearOwnedPivot'
-  | 'removeFormula'
-  | 'bindFormula'
-  | 'setInvalidFormulaValue'
-  | 'beginEvaluationBudget'
-  | 'endEvaluationBudget'
-  | 'checkEvaluationBudget'
-  | 'beginMutationCollection'
-  | 'markInputChanged'
-  | 'markFormulaChanged'
-  | 'markVolatileFormulasChanged'
-  | 'markSpillRootsChanged'
-  | 'markPivotRootsChanged'
-  | 'markExplicitChanged'
-  | 'composeMutationRoots'
-  | 'composeEventChanges'
-  | 'composeDisjointEventChanges'
-  | 'captureChangedCells'
-  | 'captureChangedPatches'
-  | 'getChangedInputBuffer'
-  | 'ensureRecalcScratchCapacity'
-  | 'ensureCellTracked'
-  | 'resetMaterializedCellScratch'
-  | 'syncDynamicRanges'
-  | 'rebuildTopoRanks'
-  | 'detectCycles'
-  | 'recalculate'
-  | 'evaluateDirectFormula'
-  | 'evaluateFormulaCell'
-  | 'reconcilePivotOutputs'
->
-
-type EngineTraversalRuntimeConfig = Omit<Parameters<typeof createEngineTraversalService>[0], 'regionGraph'>
 
 function requireService<Service>(service: Service | undefined, name: string): Service {
   if (service === undefined) {
