@@ -814,13 +814,6 @@ jobs:
             exit 1
           fi
 
-          bun scripts/sync-runtime-release-metadata.ts \
-            --version "${TARGET_VERSION}" \
-            --notes-file build/runtime-release-notes.md
-
-          bun scripts/sync-public-evidence.ts
-          bun scripts/sync-agent-discovery-docs.ts
-
           release_paths=(
             .release-please-manifest.json
             docs
@@ -869,41 +862,52 @@ jobs:
             skills/bilig-workpaper/SKILL.md
           )
 
-          if [[ "${DRY_RUN}" == "true" ]]; then
-            git diff --stat -- "${release_paths[@]}" || true
-            exit 0
-          fi
+          prepare_release_metadata_commit() {
+            bun scripts/sync-runtime-release-metadata.ts \
+              --version "${TARGET_VERSION}" \
+              --notes-file build/runtime-release-notes.md
 
-          if git diff --quiet -- "${release_paths[@]}"; then
-            echo "Runtime release metadata is already at ${TARGET_VERSION}"
-            exit 0
-          fi
+            bun scripts/sync-public-evidence.ts
+            bun scripts/sync-agent-discovery-docs.ts
 
-          # The release metadata commit runs repository git hooks. Type-aware lint
-          # resolves workspace packages through package exports, so a clean
-          # runner needs runtime d.ts outputs rebuilt after the version sync and
-          # before pushing.
-          pnpm --filter @bilig/protocol build
-          pnpm --filter @bilig/workbook build
-          pnpm --filter @bilig/wasm-kernel build
-          pnpm --filter @bilig/formula build
-          pnpm --filter @bilig/core build
-          pnpm --filter @bilig/headless build
-          pnpm --filter bilig-workpaper build
-          pnpm --filter @bilig/workpaper build
-          pnpm --filter xlsx-formula-recalc build
-          pnpm --filter @bilig/xlsx-formula-recalc build
-          pnpm --filter sheetjs-formula-recalc build
-          pnpm --filter @bilig/sheetjs-formula-recalc build
-          pnpm --filter exceljs-formula-recalc build
-          pnpm --filter @bilig/exceljs-formula-recalc build
+            if [[ "${DRY_RUN}" == "true" ]]; then
+              git diff --stat -- "${release_paths[@]}" || true
+              exit 0
+            fi
 
-          bun scripts/sync-headless-package-footprint.ts
+            if git diff --quiet -- "${release_paths[@]}"; then
+              echo "Runtime release metadata is already at ${TARGET_VERSION}"
+              exit 0
+            fi
 
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add "${release_paths[@]}"
-          SKIP_SIMPLE_GIT_HOOKS=1 git commit -m "chore(release): runtime packages v${TARGET_VERSION}"
+            # The release metadata commit runs repository git hooks. Type-aware lint
+            # resolves workspace packages through package exports, so a clean
+            # runner needs runtime d.ts outputs rebuilt after the version sync and
+            # before pushing.
+            pnpm --filter @bilig/protocol build
+            pnpm --filter @bilig/workbook build
+            pnpm --filter @bilig/wasm-kernel build
+            pnpm --filter @bilig/formula build
+            pnpm --filter @bilig/core build
+            pnpm --filter @bilig/headless build
+            pnpm --filter bilig-workpaper build
+            pnpm --filter @bilig/workpaper build
+            pnpm --filter xlsx-formula-recalc build
+            pnpm --filter @bilig/xlsx-formula-recalc build
+            pnpm --filter sheetjs-formula-recalc build
+            pnpm --filter @bilig/sheetjs-formula-recalc build
+            pnpm --filter exceljs-formula-recalc build
+            pnpm --filter @bilig/exceljs-formula-recalc build
+
+            bun scripts/sync-headless-package-footprint.ts
+
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git add "${release_paths[@]}"
+            SKIP_SIMPLE_GIT_HOOKS=1 git commit -m "chore(release): runtime packages v${TARGET_VERSION}"
+          }
+
+          prepare_release_metadata_commit
 
           for attempt in 1 2 3; do
             if SKIP_SIMPLE_GIT_HOOKS=1 git push origin HEAD:main; then
@@ -914,10 +918,10 @@ jobs:
               exit 1
             fi
 
-            echo "Release metadata push raced with a newer main; rebasing attempt ${attempt}"
-            git reset --hard HEAD
+            echo "Release metadata push raced with a newer main; regenerating on latest main for attempt ${attempt}"
             git fetch --force origin main
-            git rebase origin/main
+            git reset --hard origin/main
+            prepare_release_metadata_commit
           done
 
           for attempt in $(seq 1 30); do
