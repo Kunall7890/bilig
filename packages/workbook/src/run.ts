@@ -1,7 +1,7 @@
 import { isLiteralInput, type LiteralInput } from '@bilig/protocol'
 import { isWorkbookRef, type WorkbookRef } from './find.js'
 import { isWorkbookOp } from './guards.js'
-import type { WorkbookActionInput } from './input.js'
+import { normalizeWorkbookActionInput, type WorkbookActionInput } from './input.js'
 import { planWorkbookAction, type WorkbookActionMap, type WorkbookActionPlan, type WorkbookModel } from './model.js'
 import { verifyWorkbookReadbacks, type WorkbookCellReadback, type WorkbookReadbackIssue, type WorkbookRunReadback } from './readback.js'
 import type { WorkbookRuntimePreview, WorkbookRuntimeRequirement } from './requirements.js'
@@ -147,14 +147,13 @@ function canonicalValue(value: unknown): unknown {
   return value
 }
 
-function checkContract(check: WorkbookCheckResult): Omit<WorkbookCheckResult, 'status'> {
+function checkContract(check: WorkbookCheckResult): Omit<WorkbookCheckResult, 'status' | 'proof'> {
   return {
     kind: check.kind,
     ...(check.target !== undefined ? { target: check.target } : {}),
     ...(check.refs !== undefined ? { refs: check.refs } : {}),
     message: check.message,
     ...(check.expectation !== undefined ? { expectation: check.expectation } : {}),
-    ...(check.proof !== undefined ? { proof: check.proof } : {}),
   }
 }
 
@@ -172,6 +171,10 @@ function cloneCheck(check: WorkbookCheckResult): WorkbookCheckResult {
 
 function checkContractMatches(expectedContract: string, actual: WorkbookCheckResult): boolean {
   return expectedContract === canonicalJson(checkContract(actual))
+}
+
+function proofMatches(expectedProof: WorkbookCheckProof, actualProof: WorkbookCheckProof | undefined): boolean {
+  return actualProof !== undefined && canonicalJson(expectedProof) === canonicalJson(actualProof)
 }
 
 function isCheckStatus(value: unknown): value is WorkbookCheckResult['status'] {
@@ -216,6 +219,19 @@ function isWorkbookCheckProof(value: unknown): value is WorkbookCheckProof {
       return isStringOrNull(value['formula'])
     case 'formulas':
       return isFormulaMatrix(value['formulas'])
+    case 'runtime':
+      if (typeof value['message'] !== 'string' || value['message'].trim() === '') {
+        return false
+      }
+      if (value['data'] === undefined) {
+        return true
+      }
+      try {
+        normalizeWorkbookActionInput(value['data'])
+        return true
+      } catch {
+        return false
+      }
     default:
       return false
   }
@@ -412,6 +428,7 @@ type CheckValidation =
 function validateVerifiedChecks(
   originalContracts: readonly string[],
   originalKinds: readonly string[],
+  originalProofs: readonly (WorkbookCheckProof | undefined)[],
   verified: unknown,
 ): CheckValidation {
   if (!Array.isArray(verified)) {
@@ -463,6 +480,16 @@ function validateVerifiedChecks(
         ),
       }
     }
+    const expectedProof = originalProofs[index]
+    if (expectedProof !== undefined && !proofMatches(expectedProof, actual.proof)) {
+      return {
+        status: 'invalid',
+        error: runError(
+          'invalid_check_verification',
+          `Check verifier changed the check contract at index ${String(index)} for ${expectedKind}`,
+        ),
+      }
+    }
     verifiedChecks.push(actual)
   }
 
@@ -484,6 +511,7 @@ async function verifyChecksWithAdapter<Refs>(
   const originalChecks = checks.map(cloneCheck)
   const originalContracts = originalChecks.map((check) => canonicalJson(checkContract(check)))
   const originalKinds = originalChecks.map((check) => check.kind)
+  const originalProofs = originalChecks.map((check) => check.proof)
   const verifierInput = originalChecks.map(cloneCheck)
   let verified: unknown
   try {
@@ -495,7 +523,7 @@ async function verifyChecksWithAdapter<Refs>(
     }
   }
 
-  const validation = validateVerifiedChecks(originalContracts, originalKinds, verified)
+  const validation = validateVerifiedChecks(originalContracts, originalKinds, originalProofs, verified)
   if (validation.status === 'invalid') {
     return {
       checks: originalChecks,

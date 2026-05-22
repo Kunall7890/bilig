@@ -41,6 +41,11 @@ export type WorkbookCheckProof =
       readonly kind: 'formulas'
       readonly formulas: readonly (readonly (string | null)[])[]
     }
+  | {
+      readonly kind: 'runtime'
+      readonly message: string
+      readonly data?: WorkbookActionInput
+    }
 
 export interface WorkbookCheckResult {
   readonly status: WorkbookCheckStatus

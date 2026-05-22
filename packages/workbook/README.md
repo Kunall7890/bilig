@@ -308,6 +308,27 @@ When a readback check is evaluated, the returned check keeps a simple `proof`
 field with the value, values, formula, or formulas that were actually read. A
 passed check is therefore inspectable evidence, not just a status flag.
 
+For non-readback checks such as `exists`, `noFormulaErrors`, and custom
+consumer invariants, `verifyChecks` may attach runtime evidence:
+
+```ts
+verifyChecks(checks) {
+  return checks.map((check) => ({
+    ...check,
+    status: 'passed',
+    proof: {
+      kind: 'runtime',
+      message: 'Runtime verifier confirmed the check',
+      data: { check: check.kind },
+    },
+  }))
+}
+```
+
+The verifier must return the same checks in the same order. It may change
+`status` and add runtime proof, but it cannot change the target, message, refs,
+expectation, or remove readback proof.
+
 Readbacks can be scalar, matrix-shaped, or cell-level. Cell-level readbacks are
 often easiest for agents to inspect because they keep the target, cell address,
 value, and formula together:
@@ -438,6 +459,21 @@ Readback checks include runtime evidence on the check itself:
   message: 'Sheet1!B2 equals 12',
   expectation: { kind: 'valueEquals', value: 12 },
   proof: { kind: 'value', value: 12 },
+}
+```
+
+Runtime-owned checks can use generic runtime proof:
+
+```ts
+{
+  status: 'passed',
+  kind: 'consumerInvariant',
+  message: 'Consumer invariant holds',
+  proof: {
+    kind: 'runtime',
+    message: 'Runtime verifier confirmed the invariant',
+    data: { verifier: 'core' },
+  },
 }
 ```
 
