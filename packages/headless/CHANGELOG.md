@@ -4,6 +4,15 @@ All notable changes to `@bilig/headless` will be documented in this file.
 
 This package is released as part of the aligned bilig library package set.
 
+## 0.50.1
+
+- Release type: patch
+- Previous libraries tag: libraries-v0.50.0
+- Manual override: no
+
+## Fixes
+- perf(headless): keep sliding aggregate edits inline (312d1055)
+
 ## 0.50.0
 
 - Release type: minor
