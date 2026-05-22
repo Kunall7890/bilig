@@ -11,17 +11,21 @@ describe('browser test phases', () => {
       'browser serial tests',
       'clipboard global tests',
     ])
-    expect(phases[0]?.args).toEqual([
-      '--workers=2',
-      '--grep-invert',
-      '@clipboard-global|@browser-serial|@browser-perf|@browser-deep|@browser-webgpu',
-    ])
+    expect(phases[0]).toEqual({
+      label: 'parallel browser tests',
+      args: ['--workers=2', '--grep-invert', '@clipboard-global|@browser-serial|@browser-perf|@browser-deep|@browser-webgpu'],
+      env: { BILIG_BROWSER_WEBGPU: '1' },
+    })
     expect(phases[1]).toEqual({
       label: 'browser webgpu tests',
       args: ['--workers=1', '--grep', '@browser-webgpu', '--grep-invert', '@browser-perf|@browser-deep'],
       env: { BILIG_BROWSER_WEBGPU: '1' },
     })
-    expect(phases[2]?.args).toEqual(['--workers=1', '--grep', '@browser-serial', '--grep-invert', '@browser-webgpu'])
+    expect(phases[2]).toEqual({
+      label: 'browser serial tests',
+      args: ['--workers=1', '--grep', '@browser-serial', '--grep-invert', '@browser-webgpu'],
+      env: { BILIG_BROWSER_WEBGPU: '1' },
+    })
   })
 
   it('adds perf and deep only for the deep browser profile', () => {
@@ -79,11 +83,11 @@ describe('browser test phases', () => {
       },
     })
 
-    expect(phases[0]?.args).toEqual([
-      '--workers=4',
-      '--grep-invert',
-      '@clipboard-global|@browser-serial|@browser-perf|@browser-deep|@browser-webgpu',
-    ])
+    expect(phases[0]).toEqual({
+      label: 'parallel browser tests',
+      args: ['--workers=4', '--grep-invert', '@clipboard-global|@browser-serial|@browser-perf|@browser-deep|@browser-webgpu'],
+      env: { BILIG_BROWSER_WEBGPU: '1' },
+    })
   })
 
   it('rejects malformed browser phase include flags instead of silently skipping coverage', () => {

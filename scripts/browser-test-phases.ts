@@ -90,6 +90,7 @@ export function resolveBrowserTestPhases(input: {
         '--grep-invert',
         defaultExcludedGreps.join('|'),
       ],
+      env: WEBGPU_BROWSER_ENV,
     },
     {
       label: 'browser webgpu tests',
@@ -130,6 +131,7 @@ export function resolveBrowserTestPhases(input: {
     {
       label: 'browser serial tests',
       args: ['--workers=1', '--grep', BROWSER_SERIAL_GREP, '--grep-invert', BROWSER_WEBGPU_GREP],
+      env: WEBGPU_BROWSER_ENV,
     },
     {
       label: 'clipboard global tests',
