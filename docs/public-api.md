@@ -85,11 +85,14 @@ It exposes:
 - `isWorkbookRunErrorCode`
 - `workbookCommandBundleIssueCodes`
 - `isWorkbookCommandBundleIssueCode`
+- `isWorkbookRevision`
+- `workbookReceiptProofKinds`
+- `isWorkbookReceiptProofKind`
 - `formula`
 - `workbook.addOp(op, { target?, message? })` inside model actions
 - `findTable`, `findColumn`, `findRange`, `findName`, and `findRows` through the model workbook context and as top-level helpers
 - `check.exists`, `check.noFormulaErrors`, `check.valueEquals`, `check.valuesEqual`, `check.formulaEquals`, `check.formulasEqual`, and `check.custom` through the model workbook context and as top-level helpers
-- `WorkbookModel`, `WorkbookAction`, `WorkbookActionConfig`, `WorkbookActionDefinition`, `WorkbookActionContext`, `WorkbookCheckContext`, `WorkbookFindWorkbook`, `WorkbookCheckWorkbook`, `WorkbookActionWorkbook`, `WorkbookModelWorkbook`, `WorkbookFindNamespace`, `WorkbookActionInput`, `WorkbookActionInputDescription`, `WorkbookActionInputDescriptionKind`, `WorkbookActionInspection`, `WorkbookAddOpOptions`, `WorkbookActionPlanResult`, `WorkbookCommandBundle`, `WorkbookCommandBundleOptions`, `WorkbookCommandBundleResult`, `WorkbookCommandBundleDescription`, `WorkbookCommandBundleVerification`, `WorkbookCommandBundleIssue`, `WorkbookCommandBundleIssueCode`, `WorkbookRevision`, `WorkbookModelDescription`, `WorkbookRefDescription`, `WorkbookActionPlanDescription`, `WorkbookActionPlanResultDescription`, `WorkbookRunResultDescription`, `WorkbookUndoRefDescription`, `WorkbookAppliedSummaryDescription`, `WorkbookRuntimeRequirements`, `WorkbookRuntimeRequirement`, `WorkbookRuntimeCapability`, `WorkbookRuntimeMaterialization`, `WorkbookRuntimePreview`, `WorkbookPlanVerification`, `WorkbookPlanIssue`, `WorkbookPlanIssueCode`, `WorkbookModelVerification`, `WorkbookModelActionVerification`, `WorkbookModelVerificationOptions`, `WorkbookRunAdapter`, `WorkbookRunApplyResult`, `WorkbookCellReadback`, `WorkbookRunReadback`, `WorkbookReadbackVerification`, `WorkbookReadbackIssue`, `WorkbookReadbackIssueCode`, `WorkbookCheckExpectation`, `WorkbookCheckExpectationDescription`, `WorkbookCustomCheckOptions`, `WorkbookReadbackCheckOptions`, `WorkbookRawFormulaOptions`, `WorkbookRunResult`, `WorkbookAppliedSummary`, `WorkbookRunError`, `WorkbookRunErrorCode`, and `WorkbookCheckResult`
+- `WorkbookModel`, `WorkbookAction`, `WorkbookActionConfig`, `WorkbookActionDefinition`, `WorkbookActionContext`, `WorkbookCheckContext`, `WorkbookFindWorkbook`, `WorkbookCheckWorkbook`, `WorkbookActionWorkbook`, `WorkbookModelWorkbook`, `WorkbookFindNamespace`, `WorkbookActionInput`, `WorkbookActionInputDescription`, `WorkbookActionInputDescriptionKind`, `WorkbookActionInspection`, `WorkbookAddOpOptions`, `WorkbookActionPlanResult`, `WorkbookCommandBundle`, `WorkbookCommandBundleOptions`, `WorkbookCommandBundleResult`, `WorkbookCommandBundleDescription`, `WorkbookCommandBundleVerification`, `WorkbookCommandBundleIssue`, `WorkbookCommandBundleIssueCode`, `WorkbookRevision`, `WorkbookModelDescription`, `WorkbookRefDescription`, `WorkbookActionPlanDescription`, `WorkbookActionPlanResultDescription`, `WorkbookRunResultDescription`, `WorkbookUndoRefDescription`, `WorkbookAppliedSummaryDescription`, `WorkbookRunReceiptDescription`, `WorkbookRenderedReceiptDescription`, `WorkbookReceiptProofDescription`, `WorkbookRuntimeRequirements`, `WorkbookRuntimeRequirement`, `WorkbookRuntimeCapability`, `WorkbookRuntimeMaterialization`, `WorkbookRuntimePreview`, `WorkbookPlanVerification`, `WorkbookPlanIssue`, `WorkbookPlanIssueCode`, `WorkbookModelVerification`, `WorkbookModelActionVerification`, `WorkbookModelVerificationOptions`, `WorkbookRunAdapter`, `WorkbookRunApplyResult`, `WorkbookRuntimeReceipt`, `WorkbookRunReceipt`, `WorkbookRenderedReceipt`, `WorkbookReceiptProof`, `WorkbookReceiptProofKind`, `WorkbookReceiptProofStatus`, `WorkbookCellReadback`, `WorkbookRunReadback`, `WorkbookReadbackVerification`, `WorkbookReadbackIssue`, `WorkbookReadbackIssueCode`, `WorkbookCheckExpectation`, `WorkbookCheckExpectationDescription`, `WorkbookCustomCheckOptions`, `WorkbookReadbackCheckOptions`, `WorkbookRawFormulaOptions`, `WorkbookRunResult`, `WorkbookAppliedSummary`, `WorkbookRunError`, `WorkbookRunErrorCode`, and `WorkbookCheckResult`
 - `WorkbookCheckProof` and `WorkbookCheckProofDescription`
 - the existing low-level operation language: `WorkbookOp`, `WorkbookTxn`, `EngineOp`, and `EngineOpBatch`
 
@@ -235,7 +238,8 @@ consumer-private `refs` object shape and helper methods.
 failed action planning results.
 `describeRunResult` applies the same JSON-safe description layer after
 execution, preserving `done`/`failed` status, changed summaries, checks, errors,
-and undo ops while removing ref helper functions from the public result.
+undo ops, and command receipts while removing ref helper functions from the
+public result.
 `describeRuntimeRequirements(plan)` gives agents a JSON-safe adapter checklist
 for the same plan: which generic commands must be applied, which readbacks are
 needed, and which checks need proof. It stays generic, with capabilities such
@@ -303,6 +307,15 @@ or `formulas_mismatch`, plus structured `path`, `target`, `check`, `expected`,
 and `actual` fields where available. Malformed adapter preview, apply, or
 readback output fails as `invalid_runtime_result`; adapter output is not trusted
 just because TypeScript says it has the right shape.
+When `runWorkbookCommandBundle` is used, or when the adapter returns a runtime
+receipt from `apply`, run results include a `receipt`. The receipt records the
+command id, idempotency key, optional base revision, applied/calculated/rendered
+revisions, rendered diffs, undo metadata, proof entries, warnings, and check
+counts. Receipt proof kinds are generic (`preview`, `apply`,
+`authoritativeReadback`, `renderedReadback`, `semanticReadback`,
+`recalculation`, `undo`, `check`, and `custom`), so app/core runtimes can attach
+authoritative, rendered, semantic, recalculation, and undo proof without adding
+runtime dependencies or business-model assumptions to `@bilig/workbook`.
 Successful readback checks keep an inspectable `proof` object on the returned
 check. The proof is deliberately small: `{ kind: "value", value }`,
 `{ kind: "values", values }`, `{ kind: "formula", formula }`, or

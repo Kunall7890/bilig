@@ -109,7 +109,8 @@ Agents should use the package in this order:
 5. Run `verifyWorkbookCommandBundle(command)` before execution.
 6. Hand the command to a runtime adapter with `runWorkbookCommandBundle`.
 7. Inspect `describeRunResult(result)`.
-8. Treat `status: "done"` as success only when checks are returned as proof.
+8. Inspect `result.receipt` when present for revisions, rendered proof, undo proof, and warnings.
+9. Treat `status: "done"` as success only when checks are returned as proof.
 
 The important rule: planned checks are promises, not proof. Runtime proof must
 turn checks into `passed` or `failed`.
@@ -392,12 +393,7 @@ Plans describe intent. Command bundles are the executable handoff object for an
 agent or service runtime.
 
 ```ts
-import {
-  describeCommandBundle,
-  planWorkbookCommand,
-  runWorkbookCommandBundle,
-  verifyWorkbookCommandBundle,
-} from '@bilig/workbook'
+import { describeCommandBundle, planWorkbookCommand, runWorkbookCommandBundle, verifyWorkbookCommandBundle } from '@bilig/workbook'
 
 const planned = planWorkbookCommand(model, 'calculate', undefined, {
   baseRevision: 'rev-42',
@@ -461,7 +457,7 @@ const result = await runWorkbookAction(model, 'calculate', {
 Adapter methods:
 
 - `preview(plan, command?)`: optional materialization step for inspection and approval.
-- `apply(plan, command?)`: required execution step.
+- `apply(plan, command?)`: required execution step; may return runtime receipt proof.
 - `read(targets, plan, command?)`: optional readback step for value and formula checks.
 - `verifyChecks(checks, plan, command?)`: optional runtime-owned proof step.
 
@@ -488,17 +484,53 @@ type WorkbookRunResult =
       checks: readonly WorkbookCheckResult[]
       undo?: WorkbookUndoRef
       applied?: WorkbookAppliedSummary
+      receipt?: WorkbookRunReceipt
     }
   | {
       status: 'failed'
       errors: readonly WorkbookRunError[]
       checks: readonly WorkbookCheckResult[]
       undo?: WorkbookUndoRef
+      receipt?: WorkbookRunReceipt
     }
 ```
 
 If apply succeeds and proof later fails, the failed result preserves `undo` when
 the adapter supplied it.
+
+Command-bundle runs and adapters that return receipt proof also include a
+`receipt`. Receipts are for agents and audit logs: they tie the run back to the
+command id, idempotency key, optional base revision, runtime-applied revision,
+calculated revision, rendered revision, rendered diffs, proof entries, warnings,
+and undo metadata.
+
+```ts
+type WorkbookRunReceipt = {
+  commandId?: string
+  idempotencyKey?: string
+  modelName: string
+  actionName: string
+  baseRevision?: WorkbookRevision
+  appliedRevision?: WorkbookRevision
+  calculatedRevision?: WorkbookRevision
+  renderedRevision?: WorkbookRevision
+  previewed: boolean
+  applied: boolean
+  verified: boolean
+  checkCount: number
+  passedCheckCount: number
+  failedCheckCount: number
+  unverifiedCheckCount: number
+  proof: readonly WorkbookReceiptProof[]
+  warnings?: readonly string[]
+  undo?: WorkbookUndoRef
+}
+```
+
+Receipt proof kinds are deliberately generic: `preview`, `apply`,
+`authoritativeReadback`, `renderedReadback`, `semanticReadback`,
+`recalculation`, `undo`, `check`, and `custom`. The runtime can attach rendered
+diffs and proof entries without importing `@bilig/core` into this package.
 
 Readback checks include runtime evidence on the check itself:
 
