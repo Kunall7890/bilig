@@ -42,6 +42,7 @@ import {
 } from './xlsx-large-simple-shared-strings.js'
 import { shouldUseSharedStringlessFastPathBytes } from './xlsx-large-simple-shared-stringless-fast-path.js'
 import { readLargeSimpleWorkbookStyleArtifactsFromChunks } from './xlsx-large-simple-styles.js'
+import { buildLargeSimpleRuntimeSheetCells } from './xlsx-large-simple-runtime-sheet-cells.js'
 import {
   maxPreallocatedWorksheetCells,
   prepareLargeSimpleStyleIndexForWorksheet,
@@ -933,32 +934,7 @@ export function tryImportLargeSimpleXlsx(
             : {}),
         }
       : undefined
-  const runtimeSheetCells = sheetStats.flatMap((entry, index) => {
-    const sheet = sheets[index]
-    const usedRange = entry.dimension.usedRange
-    if (
-      !sheet ||
-      usedRange === null ||
-      usedRange.startRow !== 0 ||
-      usedRange.startColumn !== 0 ||
-      entry.cellCount !== sheet.cells.length ||
-      entry.cellCount !== entry.dimension.rowCount * entry.dimension.columnCount
-    ) {
-      return []
-    }
-    return [
-      {
-        sheetName: sheet.name,
-        coords: [],
-        coordinateOrder: 'dense-row-major' as const,
-        dimensions: {
-          width: entry.dimension.columnCount,
-          height: entry.dimension.rowCount,
-        },
-        cellCount: entry.cellCount,
-      },
-    ]
-  })
+  const runtimeSheetCells = buildLargeSimpleRuntimeSheetCells(sheetStats, sheets)
   const snapshot: WorkbookSnapshot = {
     version: 1,
     workbook: {
