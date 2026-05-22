@@ -4,6 +4,94 @@ All notable changes to `@bilig/headless` will be documented in this file.
 
 This package is released as part of the aligned bilig library package set.
 
+## 0.49.0
+
+- Release type: minor
+- Previous libraries tag: libraries-v0.48.0
+- Manual override: no
+
+## Features
+- feat(workbook): add command bundle handoff (cbdb0bca)
+- feat(workbook): add run receipts (3af2a5d2)
+- feat(workbook): emit core runtime receipts (498ccdde)
+- feat(workbook): add formula inspection (fed123c8)
+- feat(workbook): add preview-only commands (4d3c16cd)
+- feat(workbook): harden command handoff (10e32ecb)
+- feat(workbook): add runtime capability preflight (85cdd5df)
+- feat: reduce xlsx import memory footprint (659715c0)
+- feat(excel-import): add wasm worksheet scan storage (62579199)
+
+## Fixes
+- fix(headless): preserve pruned cell history (5cfb183d)
+- fix(core): settle cycle dependents after csv formula import (7c88c8dd)
+- fix(headless): harden fuzz-found formula mutations (a7d6ac5d)
+- fix(core): align fuzz-found formula parity (25ddd7c6)
+- fix(formula): keep lookup criteria semantics (bc5821ed)
+- fix(grid): keep local tile damage precise (b4ca7249)
+- fix(core): isolate delete template rewrites for copied formulas (59bd97e8)
+- fix(wasm): keep sort text ordering in parity (e44e0eea)
+- fix(core): close fuzz-found recalc parity gaps (17024dd7)
+- fix(import): restore merge-time correctness paths (3a9d2174)
+- fix(ci): restore coverage gate after main merge (2191771a)
+- fix(ci): restore coverage assertions and table fast path (9796fda0)
+- fix(excel-import): preserve hidden totals row state (121a2eeb)
+- fix(ci): keep merged source under size limit (540dc32e)
+- fix(core): recalc overlapping aggregate text writes (ed4e2317)
+- fix(core): satisfy aggregate fast path typing (c7b8bdb2)
+- fix(core): validate collected aggregate fast path (f2c05b4d)
+- fix(excel-import): share lazy materialization threshold (32f15f95)
+- fix(core): satisfy direct criteria helper lint (1017f866)
+- fix(core): stabilize direct aggregate structural replay (c6428461)
+- fix(formula): match Excel partial move rewrites (74cc56ca)
+- fix(workbook): harden fuzz regressions and gpu fill proof (638c502c)
+- fix(grid): harden typegpu tile presentation (a0f0b4c8)
+- fix(release): publish npm before release tags (d6a54d2f)
+- fix(release): require dispatch for npm publish (9262aed2)
+- fix(core): preserve structural tombstones in planned remaps (d39eab41)
+- fix(core): enforce text length validation thresholds (9eb63932)
+- fix(release): use oidc for runtime package publish (33d6102c)
+- perf(headless): trust fresh tail append matrices (c4f73631)
+- fix(release): clear npm auth config for oidc (ca8fb9e8)
+- fix(core): preserve fuzz-discovered invariants (29aab55c)
+- perf(headless): precompute fresh aggregate matrix results (9795f4e7)
+- fix(release): publish from current main during runtime release (2e8f08a2)
+- fix(release): preserve setup-node npm config for oidc (e1e19b14)
+- perf(headless): reduce direct mutation metadata probes (ccbc0ea5)
+- perf(headless): skip empty validation and dimension metadata work (09148e11)
+
+## Internal runtime changes
+- test(fuzz): expand unified fuzz coverage (15cfe495)
+- test(fuzz): cover runtime reducer edge cases (09a7ca79)
+- test(formula): fuzz lookup and datetime families (eadbd6f4)
+- test(import): fuzz xlsx escape fidelity (3760b68e)
+- test(fuzz): expand correctness coverage (990b5652)
+- test(import): align csv fuzz snapshot cells (e743c53f)
+- test(ci): repair coverage contract failures (c88724de)
+- test(core): cover inline scalar value helpers (43ab24b8)
+- test(core): cover unsupported formula cache decisions (23c603e1)
+- refactor(excel-import): split macro code name parsing (28262aa5)
+- test(core): expand semantic coverage gate (64d3503b)
+- test(core): cover aggregate fast path validation (b9573092)
+- test(core): cover direct formula helpers (3dfdec29)
+- test(core): cover aggregate post-recalc dependents (d1c87c29)
+- refactor(core): extract oversized import helpers (31f8ba6b)
+- refactor(xlsx): split worksheet stream metadata scanner (63e3b3e7)
+- refactor(xlsx): split large simple arena helpers (b190b6df)
+- chore(docs): refresh agent discovery after merge (3b59163f)
+- chore(docs): refresh agent discovery after latest merge (fa557dc1)
+- chore(docs): refresh agent discovery after merge (0ef96267)
+- test(formula): cover serializer edge cases (89aff8f8)
+- test(formula): cover workbook special calls (cb53c5cc)
+- refactor(excel-import): split large simple cell release helper (c0059b0e)
+- refactor(excel-import): split large simple worksheet materialization (350f4b62)
+- refactor(core): split direct criteria aggregate helper (3b1608b9)
+- test(core): cover structural formula rewrite guards (5d2c6e3e)
+- test(headless): gate Desktop Excel oracle suite (3f42a1fa)
+- test(headless): harden Desktop Excel oracle cleanup (3503a45c)
+- chore(ci): split oversized merged sources (61946495)
+- test(core): assert direct protection rejection (66c77f5b)
+- test(core): cover literal fast paths (d10d0108)
+
 ## 0.41.0
 
 - Release type: minor
