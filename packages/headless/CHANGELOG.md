@@ -4,6 +4,15 @@ All notable changes to `@bilig/headless` will be documented in this file.
 
 This package is released as part of the aligned bilig library package set.
 
+## 0.51.1
+
+- Release type: patch
+- Previous libraries tag: libraries-v0.51.0
+- Manual override: no
+
+## Fixes
+- perf(headless): skip table metadata on no-table edits (bf1bf013)
+
 ## 0.51.0
 
 - Release type: minor
