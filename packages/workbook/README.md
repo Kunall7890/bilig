@@ -259,6 +259,12 @@ actions: {
 }
 ```
 
+When an object input declares `fields`, those fields are the whole accepted
+shape. Unknown keys are rejected before model code runs, which catches typoed
+agent tool arguments instead of silently carrying them into an action. Use
+`{ kind: "object" }` without `fields`, or `{ kind: "json" }`, when the consumer
+really wants an open payload.
+
 Supported action commands:
 
 - `workbook.writeFormula(ref, formulaExpression)`

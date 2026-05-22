@@ -197,6 +197,10 @@ function validateInputAgainstDescription(
     if (!isInputObject(value)) {
       throw new WorkbookActionInputError(`Action input at ${path} must be object`)
     }
+    const unknownKey = Object.keys(value).find((key) => description.fields?.[key] === undefined)
+    if (unknownKey !== undefined) {
+      throw new WorkbookActionInputError(`Action input at ${childPath(path, unknownKey)} is not supported`)
+    }
     Object.entries(description.fields).forEach(([key, field]) => {
       const childValue = Object.hasOwn(value, key) ? value[key] : undefined
       validateInputAgainstDescription(field, childValue, childPath(path, key))

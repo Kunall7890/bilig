@@ -132,7 +132,10 @@ actions: {
 This is descriptive metadata, not a schema framework. Input descriptions use
 plain JSON kinds: `json`, `object`, `array`, `string`, `number`, `boolean`, and
 `null`. `object` descriptions may list `fields`; `array` descriptions may list
-`items`; fields and root inputs may be `required`.
+`items`; fields and root inputs may be `required`. When an `object` description
+lists `fields`, undeclared input keys are rejected before model code runs so
+agents do not accidentally execute typoed tool arguments. Use `kind: "object"`
+without `fields`, or `kind: "json"`, for intentionally open consumer payloads.
 `normalizeWorkbookActionInputDescription` trims text, rejects malformed
 metadata, freezes the result, and keeps `@bilig/workbook` independent from
 `zod`, `effect`, and model-specific validators.
