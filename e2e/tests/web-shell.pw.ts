@@ -5,6 +5,7 @@ import {
   PRIMARY_MODIFIER,
   PRODUCT_HEADER_HEIGHT,
   PRODUCT_ROW_HEIGHT,
+  countDarkReadbackPixelsInCell,
   clickProductCell,
   clickGridRightEdge,
   createTestDocumentId,
@@ -14,6 +15,7 @@ import {
   getProductColumnLeft,
   getProductColumnWidth,
   gotoWorkbookShell,
+  installTypeGpuCellReadbackHarness,
   remoteSyncEnabled,
   waitForProductColumnWidthChange,
   waitForWorkbookReady,
@@ -144,6 +146,28 @@ async function nativeTextRunsInclude(page: Parameters<typeof test>[0]['page'], t
     (needle) => Array.from(document.querySelectorAll('[data-native-text-run]')).some((run) => run.textContent?.includes(needle) ?? false),
     text,
   )
+}
+
+async function expectCellRenderedText(
+  page: Parameters<typeof test>[0]['page'],
+  columnIndex: number,
+  rowIndex: number,
+  text: string,
+  expected: 'hidden' | 'visible',
+): Promise<void> {
+  const hasTypeGpuCanvas = (await page.getByTestId('grid-pane-renderer').count()) > 0
+  if (!hasTypeGpuCanvas) {
+    await expect.poll(() => nativeTextRunsInclude(page, text)).toBe(expected === 'visible')
+    return
+  }
+  const poll = expect.poll(async () => await countDarkReadbackPixelsInCell(page, columnIndex, rowIndex), {
+    message: `cell ${columnIndex}:${rowIndex} rendered text should be ${expected}: ${text}`,
+  })
+  if (expected === 'visible') {
+    await poll.toBeGreaterThan(4)
+    return
+  }
+  await poll.toBeLessThanOrEqual(2)
 }
 
 async function textControlValue(locator: Locator): Promise<string> {
@@ -408,6 +432,7 @@ remoteSyncTest('@browser-ci web app recovers after runtime config failures outli
 
 test('@browser-ci web app keeps an editor clear after click-away selection', async ({ page }) => {
   const documentId = createTestDocumentId('playwright-editor-clear-click-away')
+  await installTypeGpuCellReadbackHarness(page)
   await page.goto(`/?document=${encodeURIComponent(documentId)}&persist=0&sheet=Sheet1&cell=A1`)
   await waitForWorkbookReady(page)
 
@@ -442,12 +467,12 @@ test('@browser-ci web app keeps an editor clear after click-away selection', asy
   await expect(cellEditor).toBeHidden()
   await expect(nameBox).toHaveValue('C4', { timeout: 15_000 })
   await expect(formulaInput).toHaveValue('')
-  await expect.poll(() => nativeTextRunsInclude(page, 'ghost-value')).toBe(false)
+  await expectCellRenderedText(page, 0, 0, 'ghost-value', 'hidden')
 
   await clickProductCell(page, 0, 0)
   await expect(nameBox).toHaveValue('A1', { timeout: 15_000 })
   await expect(formulaInput).toHaveValue('')
-  await expect.poll(() => nativeTextRunsInclude(page, 'ghost-value')).toBe(false)
+  await expectCellRenderedText(page, 0, 0, 'ghost-value', 'hidden')
 })
 
 test('web app keeps formula bar focus when clicking it from an active cell editor', async ({ page }) => {
@@ -1351,6 +1376,7 @@ test('web app commits in-cell string edits when clicking away', async ({ page })
 
 test('web app commits a cleared formula bar draft when clicking away', async ({ page }) => {
   const staleText = 'formula-clear-click-away'
+  await installTypeGpuCellReadbackHarness(page)
   await page.goto(`/?document=${encodeURIComponent(createTestDocumentId('playwright-formula-clear-click-away'))}`)
   await waitForWorkbookReady(page)
 
@@ -1361,7 +1387,7 @@ test('web app commits a cleared formula bar draft when clicking away', async ({ 
   await formulaInput.fill(staleText)
   await formulaInput.press('Enter')
   await expect(formulaInput).toHaveValue(staleText)
-  await expect.poll(() => nativeTextRunsInclude(page, staleText)).toBe(true)
+  await expectCellRenderedText(page, 3, 6, staleText, 'visible')
 
   await formulaInput.fill('')
   await expect(formulaInput).toHaveValue('')
@@ -1369,7 +1395,7 @@ test('web app commits a cleared formula bar draft when clicking away', async ({ 
 
   await expect(page.getByTestId('status-selection')).toHaveText('Sheet1!E7')
   await expect(formulaInput).toHaveValue('')
-  await expect.poll(() => nativeTextRunsInclude(page, staleText)).toBe(false)
+  await expectCellRenderedText(page, 3, 6, staleText, 'hidden')
 
   await clickProductCell(page, 3, 6)
   await expect(page.getByTestId('status-selection')).toHaveText('Sheet1!D7')
@@ -1378,6 +1404,7 @@ test('web app commits a cleared formula bar draft when clicking away', async ({ 
 
 test('@browser-ci web app commits a first formula bar draft when focus leaves immediately', async ({ page }) => {
   const draftText = 'first-formula-blur-commit'
+  await installTypeGpuCellReadbackHarness(page)
   await page.goto(`/?document=${encodeURIComponent(createTestDocumentId('playwright-formula-first-blur'))}`)
   await waitForWorkbookReady(page)
 
@@ -1390,7 +1417,7 @@ test('@browser-ci web app commits a first formula bar draft when focus leaves im
   await page.getByTestId('workbook-agent-input').click()
 
   await expect(formulaInput).toHaveValue(draftText)
-  await expect.poll(() => nativeTextRunsInclude(page, draftText)).toBe(true)
+  await expectCellRenderedText(page, 1, 1, draftText, 'visible')
 
   await clickProductCell(page, 2, 1)
   await clickProductCell(page, 1, 1)
@@ -1399,6 +1426,7 @@ test('@browser-ci web app commits a first formula bar draft when focus leaves im
 
 test('web app commits a cleared formula bar draft with Enter', async ({ page }) => {
   const staleText = 'formula-clear-enter'
+  await installTypeGpuCellReadbackHarness(page)
   await page.goto(`/?document=${encodeURIComponent(createTestDocumentId('playwright-formula-clear-enter'))}`)
   await waitForWorkbookReady(page)
 
@@ -1409,24 +1437,25 @@ test('web app commits a cleared formula bar draft with Enter', async ({ page }) 
   await formulaInput.fill(staleText)
   await formulaInput.press('Enter')
   await expect(formulaInput).toHaveValue(staleText)
-  await expect.poll(() => nativeTextRunsInclude(page, staleText)).toBe(true)
+  await expectCellRenderedText(page, 3, 6, staleText, 'visible')
 
   await formulaInput.fill('')
   await expect(formulaInput).toHaveValue('')
   await formulaInput.press('Enter')
 
   await expect(formulaInput).toHaveValue('')
-  await expect.poll(() => nativeTextRunsInclude(page, staleText)).toBe(false)
+  await expectCellRenderedText(page, 3, 6, staleText, 'hidden')
 
   await clickProductCell(page, 4, 6)
   await clickProductCell(page, 3, 6)
   await expect(page.getByTestId('status-selection')).toHaveText('Sheet1!D7')
   await expect(formulaInput).toHaveValue('')
-  await expect.poll(() => nativeTextRunsInclude(page, staleText)).toBe(false)
+  await expectCellRenderedText(page, 3, 6, staleText, 'hidden')
 })
 
 test('web app does not resurrect a keyboard-cleared cell after click-away', async ({ page }) => {
   const staleText = 'delete-clear-click-away'
+  await installTypeGpuCellReadbackHarness(page)
   await page.goto(`/?document=${encodeURIComponent(createTestDocumentId('playwright-delete-clear-click-away'))}`)
   await waitForWorkbookReady(page)
 
@@ -1437,26 +1466,27 @@ test('web app does not resurrect a keyboard-cleared cell after click-away', asyn
   await formulaInput.fill(staleText)
   await formulaInput.press('Enter')
   await expect(formulaInput).toHaveValue(staleText)
-  await expect.poll(() => nativeTextRunsInclude(page, staleText)).toBe(true)
+  await expectCellRenderedText(page, 3, 6, staleText, 'visible')
 
   await page.keyboard.press('Delete')
   await expect(formulaInput).toHaveValue('')
-  await expect.poll(() => nativeTextRunsInclude(page, staleText)).toBe(false)
+  await expectCellRenderedText(page, 3, 6, staleText, 'hidden')
 
   await clickProductCell(page, 4, 6)
   await expect(page.getByTestId('status-selection')).toHaveText('Sheet1!E7')
   await expect(formulaInput).toHaveValue('')
-  await expect.poll(() => nativeTextRunsInclude(page, staleText)).toBe(false)
+  await expectCellRenderedText(page, 3, 6, staleText, 'hidden')
 
   await clickProductCell(page, 3, 6)
   await expect(page.getByTestId('status-selection')).toHaveText('Sheet1!D7')
   await expect(formulaInput).toHaveValue('')
-  await expect.poll(() => nativeTextRunsInclude(page, staleText)).toBe(false)
+  await expectCellRenderedText(page, 3, 6, staleText, 'hidden')
 })
 
 test('web app clears selected in-cell editor text with primary-A and keeps continued typing anchored', async ({ page }) => {
   const staleText = 'select-all-delete-me'
   const replacementText = 'replacement'
+  await installTypeGpuCellReadbackHarness(page)
   await page.keyboard.up(PRIMARY_MODIFIER)
   await page.goto(`/?document=${encodeURIComponent(createTestDocumentId('playwright-editor-primary-a-delete'))}`)
   await waitForWorkbookReady(page)
@@ -1468,7 +1498,7 @@ test('web app clears selected in-cell editor text with primary-A and keeps conti
   await expect(page.getByTestId('status-selection')).toHaveText('Sheet1!D7')
   await formulaInput.fill(staleText)
   await formulaInput.press('Enter')
-  await expect.poll(() => nativeTextRunsInclude(page, staleText)).toBe(true)
+  await expectCellRenderedText(page, 3, 6, staleText, 'visible')
 
   await clickProductCell(page, 3, 6)
   await page.keyboard.press('F2')
@@ -1485,7 +1515,7 @@ test('web app clears selected in-cell editor text with primary-A and keeps conti
   await cellEditor.press('Backspace')
   await expect(cellEditor).toHaveValue('')
   await expect(formulaInput).toHaveValue('')
-  await expect.poll(() => nativeTextRunsInclude(page, staleText)).toBe(false)
+  await expectCellRenderedText(page, 3, 6, staleText, 'hidden')
 
   await page.keyboard.type(replacementText)
   await expect(cellEditor).toHaveValue(replacementText)
@@ -1495,13 +1525,16 @@ test('web app clears selected in-cell editor text with primary-A and keeps conti
 
   await clickProductCell(page, 4, 6)
   await expect(page.getByTestId('status-selection')).toHaveText('Sheet1!E7')
-  await expect.poll(() => nativeTextRunsInclude(page, staleText)).toBe(false)
-  await expect.poll(() => nativeTextRunsInclude(page, replacementText)).toBe(true)
+  await expectCellRenderedText(page, 3, 6, replacementText, 'visible')
+  await clickProductCell(page, 3, 6)
+  await expect(page.getByTestId('status-selection')).toHaveText('Sheet1!D7')
+  await expect(formulaInput).toHaveValue(replacementText)
 })
 
 test('@browser-ci web app keeps deleted content cleared through viewport churn and reload', async ({ page }) => {
   const staleText = 'delete-clear-viewport-reload'
   const documentId = createTestDocumentId('playwright-delete-clear-viewport-reload')
+  await installTypeGpuCellReadbackHarness(page)
   await page.goto(`/?document=${encodeURIComponent(documentId)}&sheet=Sheet1&cell=D10`)
   await waitForWorkbookReady(page)
 
@@ -1512,32 +1545,32 @@ test('@browser-ci web app keeps deleted content cleared through viewport churn a
   await formulaInput.fill(staleText)
   await formulaInput.press('Enter')
   await expect(formulaInput).toHaveValue(staleText)
-  await expect.poll(() => nativeTextRunsInclude(page, staleText)).toBe(true)
+  await expectCellRenderedText(page, 3, 9, staleText, 'visible')
 
   await page.keyboard.press('Delete')
   await expect(formulaInput).toHaveValue('')
-  await expect.poll(() => nativeTextRunsInclude(page, staleText)).toBe(false)
+  await expectCellRenderedText(page, 3, 9, staleText, 'hidden')
 
   await page.getByTestId('grid-scroll-viewport').evaluate((viewport) => {
     viewport.scrollTop = 900
     viewport.scrollLeft = 220
     viewport.dispatchEvent(new Event('scroll', { bubbles: true }))
   })
-  await expect.poll(() => nativeTextRunsInclude(page, staleText)).toBe(false)
+  await expectCellRenderedText(page, 3, 9, staleText, 'hidden')
 
   await page.getByTestId('grid-scroll-viewport').evaluate((viewport) => {
     viewport.scrollTop = 0
     viewport.scrollLeft = 0
     viewport.dispatchEvent(new Event('scroll', { bubbles: true }))
   })
-  await expect.poll(() => nativeTextRunsInclude(page, staleText)).toBe(false)
+  await expectCellRenderedText(page, 3, 9, staleText, 'hidden')
 
   await page.reload({ waitUntil: 'domcontentloaded' })
   await waitForWorkbookReady(page)
   await clickProductCell(page, 3, 9)
   await expect(page.getByTestId('status-selection')).toHaveText('Sheet1!D10')
   await expect(formulaInput).toHaveValue('')
-  await expect.poll(() => nativeTextRunsInclude(page, staleText)).toBe(false)
+  await expectCellRenderedText(page, 3, 9, staleText, 'hidden')
 })
 
 test('web app keeps delayed in-cell typing anchored and exits cleanly on click-away', async ({ page }) => {
@@ -1590,6 +1623,7 @@ test('web app keeps delayed in-cell typing anchored and exits cleanly on click-a
 })
 
 test('@browser-ci web app commits typed seeds before a same-frame click-away can retarget them', async ({ page }) => {
+  await installTypeGpuCellReadbackHarness(page)
   await page.keyboard.up(PRIMARY_MODIFIER)
   await page.goto(`/?document=${encodeURIComponent(createTestDocumentId('playwright-pending-type-click-away'))}`)
   await waitForWorkbookReady(page)
@@ -1657,7 +1691,7 @@ test('@browser-ci web app commits typed seeds before a same-frame click-away can
 
   await clickProductCell(page, 2, 11)
   await expect(formulaInput).toHaveValue('go')
-  await expect.poll(() => nativeTextRunsInclude(page, 'go')).toBe(true)
+  await expectCellRenderedText(page, 2, 11, 'go', 'visible')
 })
 
 test('web app drags a selected range by its border with a grab cursor', async ({ page }) => {

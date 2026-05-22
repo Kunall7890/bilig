@@ -84,6 +84,66 @@ export const WorkbookPaneRendererV3 = memo(function WorkbookPaneRendererV3({
     hostRuntime.getPresentedVisualFrameSnapshot,
     hostRuntime.getPresentedVisualFrameSnapshot,
   )
+  const currentContentSignature = useSyncExternalStore(
+    hostRuntime.subscribeFrameProofStatus,
+    hostRuntime.getCurrentContentSignatureSnapshot,
+    hostRuntime.getCurrentContentSignatureSnapshot,
+  )
+  const currentRectCount = useSyncExternalStore(
+    hostRuntime.subscribeFrameProofStatus,
+    hostRuntime.getCurrentRectCountSnapshot,
+    hostRuntime.getCurrentRectCountSnapshot,
+  )
+  const currentRectSignature = useSyncExternalStore(
+    hostRuntime.subscribeFrameProofStatus,
+    hostRuntime.getCurrentRectSignatureSnapshot,
+    hostRuntime.getCurrentRectSignatureSnapshot,
+  )
+  const currentSceneOwnershipSignature = useSyncExternalStore(
+    hostRuntime.subscribeFrameProofStatus,
+    hostRuntime.getVisibleSceneOwnershipSignatureSnapshot,
+    hostRuntime.getVisibleSceneOwnershipSignatureSnapshot,
+  )
+  const currentTextRunCount = useSyncExternalStore(
+    hostRuntime.subscribeFrameProofStatus,
+    hostRuntime.getCurrentTextRunCountSnapshot,
+    hostRuntime.getCurrentTextRunCountSnapshot,
+  )
+  const currentTextSignature = useSyncExternalStore(
+    hostRuntime.subscribeFrameProofStatus,
+    hostRuntime.getCurrentTextSignatureSnapshot,
+    hostRuntime.getCurrentTextSignatureSnapshot,
+  )
+  const presentedContentSignature = useSyncExternalStore(
+    hostRuntime.subscribeFrameProofStatus,
+    hostRuntime.getPresentedContentSignatureSnapshot,
+    hostRuntime.getPresentedContentSignatureSnapshot,
+  )
+  const presentedRectCount = useSyncExternalStore(
+    hostRuntime.subscribeFrameProofStatus,
+    hostRuntime.getPresentedRectCountSnapshot,
+    hostRuntime.getPresentedRectCountSnapshot,
+  )
+  const presentedRectSignature = useSyncExternalStore(
+    hostRuntime.subscribeFrameProofStatus,
+    hostRuntime.getPresentedRectSignatureSnapshot,
+    hostRuntime.getPresentedRectSignatureSnapshot,
+  )
+  const presentedSceneOwnershipSignature = useSyncExternalStore(
+    hostRuntime.subscribeFrameProofStatus,
+    hostRuntime.getPresentedVisibleSceneOwnershipSignatureSnapshot,
+    hostRuntime.getPresentedVisibleSceneOwnershipSignatureSnapshot,
+  )
+  const presentedTextRunCount = useSyncExternalStore(
+    hostRuntime.subscribeFrameProofStatus,
+    hostRuntime.getPresentedTextRunCountSnapshot,
+    hostRuntime.getPresentedTextRunCountSnapshot,
+  )
+  const presentedTextSignature = useSyncExternalStore(
+    hostRuntime.subscribeFrameProofStatus,
+    hostRuntime.getPresentedTextSignatureSnapshot,
+    hostRuntime.getPresentedTextSignatureSnapshot,
+  )
   const hasPresentedAnyVisibleFrame = presentedFrameProofSignature.length > 0
   const hasPresentedVisibleFrame = hasPresentedFrame && frameProofStatus === 'presented'
 
@@ -190,6 +250,12 @@ export const WorkbookPaneRendererV3 = memo(function WorkbookPaneRendererV3({
           data-v3-body-world-x={geometry?.camera.bodyWorldX ?? 0}
           data-v3-body-world-y={geometry?.camera.bodyWorldY ?? 0}
           data-v3-canvas-proof-layer="disabled"
+          data-v3-current-content-signature={currentContentSignature}
+          data-v3-current-rect-count={currentRectCount}
+          data-v3-current-rect-signature={currentRectSignature}
+          data-v3-current-scene-ownership-signature={currentSceneOwnershipSignature}
+          data-v3-current-text-run-count={currentTextRunCount}
+          data-v3-current-text-signature={currentTextSignature}
           data-v3-draw-text="true"
           data-v3-frame-proof-status={frameProofStatus}
           data-v3-frame-proof-signature={frameProofSignature}
@@ -202,6 +268,7 @@ export const WorkbookPaneRendererV3 = memo(function WorkbookPaneRendererV3({
           data-v3-local-render-revision={renderRevisionSnapshot?.localRevision ?? ''}
           data-v3-presented-frame-proof-signature={presentedFrameProofSignature}
           data-v3-presented-camera-seq={presentedVisualFrame?.cameraSeq ?? ''}
+          data-v3-presented-content-signature={presentedContentSignature}
           data-v3-presented-draw-text={presentedVisualFrame ? (presentedVisualFrame.drawText ? 'true' : 'false') : ''}
           data-v3-presented-header-pane-count={presentedHeaderPanes.length}
           data-v3-presented-header-text-run-count={presentedHeaderTextRunCount}
@@ -212,12 +279,17 @@ export const WorkbookPaneRendererV3 = memo(function WorkbookPaneRendererV3({
           data-v3-presented-overlay-rect-count={presentedVisualFrame?.overlayRectCount ?? ''}
           data-v3-presented-overlay-rect-signature={presentedVisualFrame?.overlayRectSignature ?? ''}
           data-v3-presented-overlay-seq={presentedVisualFrame?.overlaySeq ?? ''}
+          data-v3-presented-rect-count={presentedRectCount}
+          data-v3-presented-rect-signature={presentedRectSignature}
           data-v3-presented-render-tx={presentedVisualFrame?.scrollSnapshot.renderTx ?? presentedVisualFrame?.scrollSnapshot.tx ?? ''}
           data-v3-presented-render-ty={presentedVisualFrame?.scrollSnapshot.renderTy ?? presentedVisualFrame?.scrollSnapshot.ty ?? ''}
+          data-v3-presented-scene-ownership-signature={presentedSceneOwnershipSignature}
           data-v3-presented-scroll-left={presentedVisualFrame?.scrollSnapshot.scrollLeft ?? ''}
           data-v3-presented-scroll-top={presentedVisualFrame?.scrollSnapshot.scrollTop ?? ''}
+          data-v3-presented-text-signature={presentedTextSignature}
           data-v3-presented-text-run-count={presentedTileTextRunCount}
           data-v3-presented-tile-pane-count={presentedTilePanes.length}
+          data-v3-presented-visible-text-run-count={presentedTextRunCount}
           data-v3-native-text-run-count={nativeTileTextRunCount}
           data-v3-native-tile-pane-count={nativeTilePanes.length}
           data-v3-preload-pane-count={preloadTilePanes.length}

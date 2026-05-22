@@ -1,5 +1,6 @@
 import type { HeaderSelection } from '../gridPointer.js'
 import { clearGridPendingPointerActivation, type GridInteractionStateRefs } from '../gridInteractionState.js'
+import type { PendingKeyboardPasteIntent } from '../gridClipboardKeyboardController.js'
 import type { InternalClipboardRange } from '../gridInternalClipboard.js'
 import { selectionToSnapshot, snapshotToSelection } from '../gridSelection.js'
 import { gridSelectionSnapshotsEqual, resolveGridSelectionPendingSync } from '../gridSelectionPendingSync.js'
@@ -24,6 +25,7 @@ export class GridInputController {
   readonly lastBodyClickCellRef = createRuntimeRef<Item | null>(null)
   readonly internalClipboardRef = createRuntimeRef<InternalClipboardRange | null>(null)
   readonly pendingClipboardCopySequenceRef = createRuntimeRef(0)
+  readonly pendingKeyboardPasteIntentRef = createRuntimeRef<PendingKeyboardPasteIntent | null>(null)
   readonly pendingKeyboardPasteSequenceRef = createRuntimeRef(0)
   readonly suppressNextNativePasteRef = createRuntimeRef(false)
   readonly pendingTypeSeedRef = createRuntimeRef<string | null>(null)
@@ -34,6 +36,7 @@ export class GridInputController {
   readonly fillHandleCleanupRef: CleanupRef = createRuntimeRef(null)
   readonly rangeMoveCleanupRef: CleanupRef = createRuntimeRef(null)
   readonly resizeCleanupRef: CleanupRef = createRuntimeRef(null)
+  readonly lastKeyboardClipboardRef = createRuntimeRef<InternalClipboardRange | null>(null)
   readonly activeSheetRef = createRuntimeRef<string | null>(null)
   readonly interactionState: GridInteractionStateRefs
 

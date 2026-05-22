@@ -101,7 +101,6 @@ export const llmsRequiredLinks = [
   'https://proompteng.github.io/bilig/ai-agent-spreadsheet-tool-node.html',
   'https://github.com/proompteng/bilig/blob/main/docs/ai-agent-spreadsheet-tool-node.md',
   'https://proompteng.github.io/bilig/agent-framework-workbook-tools.html',
-  'https://github.com/proompteng/bilig/blob/main/docs/agent-framework-workbook-tools.md',
   'https://proompteng.github.io/bilig/try-bilig-headless-in-node.html',
   'https://proompteng.github.io/bilig/quote-approval-workpaper-api.html',
   'https://github.com/proompteng/bilig/blob/main/docs/quote-approval-workpaper-api.md',

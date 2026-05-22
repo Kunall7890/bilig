@@ -243,8 +243,14 @@ describe('WorkbookPaneRendererHostRuntimeV3', () => {
     expect(runtime.getFrameProofStatusSnapshot()).toBe('presented')
     expect(runtime.getHasPresentedFrameSnapshot()).toBe(true)
     const firstPresentedSignature = runtime.getPresentedFrameProofSignatureSnapshot()
+    const firstPresentedSceneOwnershipSignature = runtime.getPresentedVisibleSceneOwnershipSignatureSnapshot()
+    const firstPresentedContentSignature = runtime.getPresentedContentSignatureSnapshot()
     const firstPresentedFrame = runtime.getPresentedVisualFrameSnapshot()
     expect(firstPresentedSignature).toBe(runtime.getFrameProofSignatureSnapshot())
+    expect(firstPresentedSceneOwnershipSignature).toBe(runtime.getVisibleSceneOwnershipSignatureSnapshot())
+    expect(firstPresentedSceneOwnershipSignature).toContain('visible-scene-v3')
+    expect(firstPresentedContentSignature).toBe(runtime.getCurrentContentSignatureSnapshot())
+    expect(firstPresentedContentSignature).toContain('content-v3')
     expect(firstPresentedFrame?.tilePanes.at(0)?.tile.lastBatchId).toBe(1)
     expect(firstPresentedFrame?.headerPanes).toEqual([])
 
@@ -253,6 +259,10 @@ describe('WorkbookPaneRendererHostRuntimeV3', () => {
     expect(runtime.getFrameProofStatusSnapshot()).toBe('pending')
     expect(runtime.getHasPresentedFrameSnapshot()).toBe(false)
     expect(runtime.getPresentedFrameProofSignatureSnapshot()).toBe(firstPresentedSignature)
+    expect(runtime.getPresentedVisibleSceneOwnershipSignatureSnapshot()).toBe(firstPresentedSceneOwnershipSignature)
+    expect(runtime.getPresentedVisibleSceneOwnershipSignatureSnapshot()).not.toBe(runtime.getVisibleSceneOwnershipSignatureSnapshot())
+    expect(runtime.getPresentedContentSignatureSnapshot()).toBe(firstPresentedContentSignature)
+    expect(runtime.getPresentedContentSignatureSnapshot()).not.toBe(runtime.getCurrentContentSignatureSnapshot())
     expect(runtime.getPresentedFrameProofSignatureSnapshot()).not.toBe(runtime.getFrameProofSignatureSnapshot())
     expect(runtime.getPresentedVisualFrameSnapshot()).toBe(firstPresentedFrame)
     expect(runtime.getPresentedVisualFrameSnapshot()?.tilePanes.at(0)?.tile.lastBatchId).toBe(1)
@@ -261,6 +271,8 @@ describe('WorkbookPaneRendererHostRuntimeV3', () => {
     expect(runtime.getFrameProofStatusSnapshot()).toBe('presented')
     expect(runtime.getHasPresentedFrameSnapshot()).toBe(true)
     expect(runtime.getPresentedFrameProofSignatureSnapshot()).toBe(runtime.getFrameProofSignatureSnapshot())
+    expect(runtime.getPresentedVisibleSceneOwnershipSignatureSnapshot()).toBe(runtime.getVisibleSceneOwnershipSignatureSnapshot())
+    expect(runtime.getPresentedContentSignatureSnapshot()).toBe(runtime.getCurrentContentSignatureSnapshot())
     expect(runtime.getPresentedVisualFrameSnapshot()).not.toBe(firstPresentedFrame)
     expect(runtime.getPresentedVisualFrameSnapshot()?.tilePanes.at(0)?.tile.lastBatchId).toBe(2)
 
@@ -324,11 +336,14 @@ describe('WorkbookPaneRendererHostRuntimeV3', () => {
     expect(runtime.getHasPresentedFrameSnapshot()).toBe(false)
     expect(runtime.getPresentedFrameProofSignatureSnapshot()).toBe('')
     expect(drawFrame.mock.calls.at(0)?.[0].frameProofSignature).not.toBe(runtime.getFrameProofSignatureSnapshot())
+    expect(drawFrame.mock.calls.at(0)?.[0].visibleSceneOwnershipSignature).not.toBe(runtime.getVisibleSceneOwnershipSignatureSnapshot())
+    expect(runtime.getPresentedVisibleSceneOwnershipSignatureSnapshot()).toBe('')
 
     animationFrames.flushNextFrame()
     expect(runtime.getFrameProofStatusSnapshot()).toBe('presented')
     expect(runtime.getHasPresentedFrameSnapshot()).toBe(true)
     expect(runtime.getPresentedFrameProofSignatureSnapshot()).toBe(runtime.getFrameProofSignatureSnapshot())
+    expect(runtime.getPresentedVisibleSceneOwnershipSignatureSnapshot()).toBe(runtime.getVisibleSceneOwnershipSignatureSnapshot())
     expect(runtime.getPresentedVisualFrameSnapshot()?.tilePanes.at(0)?.tile.lastBatchId).toBe(2)
 
     runtime.dispose()
@@ -595,20 +610,25 @@ describe('WorkbookPaneRendererHostRuntimeV3', () => {
     animationFrames.flushNextFrame()
 
     const firstPresentedFrame = runtime.getPresentedVisualFrameSnapshot()
+    const firstPresentedSceneOwnershipSignature = runtime.getPresentedVisibleSceneOwnershipSignatureSnapshot()
     expect(firstPresentedFrame?.scrollSnapshot).toMatchObject({ scrollLeft: 0, scrollTop: 0 })
     expect(runtime.getFrameProofStatusSnapshot()).toBe('presented')
     expect(runtime.getHasPresentedFrameSnapshot()).toBe(true)
+    expect(firstPresentedSceneOwnershipSignature).toBe(runtime.getVisibleSceneOwnershipSignatureSnapshot())
 
     scrollStore.setSnapshot({ renderTx: 56, renderTy: 18, scrollLeft: 56, scrollTop: 18, tx: 56, ty: 18 })
 
     expect(runtime.getFrameProofStatusSnapshot()).toBe('pending')
     expect(runtime.getHasPresentedFrameSnapshot()).toBe(false)
     expect(runtime.getPresentedVisualFrameSnapshot()).toBe(firstPresentedFrame)
+    expect(runtime.getPresentedVisibleSceneOwnershipSignatureSnapshot()).toBe(firstPresentedSceneOwnershipSignature)
+    expect(runtime.getPresentedVisibleSceneOwnershipSignatureSnapshot()).not.toBe(runtime.getVisibleSceneOwnershipSignatureSnapshot())
 
     animationFrames.flushNextFrame()
 
     expect(runtime.getFrameProofStatusSnapshot()).toBe('presented')
     expect(runtime.getHasPresentedFrameSnapshot()).toBe(true)
+    expect(runtime.getPresentedVisibleSceneOwnershipSignatureSnapshot()).toBe(runtime.getVisibleSceneOwnershipSignatureSnapshot())
     expect(runtime.getPresentedVisualFrameSnapshot()).not.toBe(firstPresentedFrame)
     expect(runtime.getPresentedVisualFrameSnapshot()?.scrollSnapshot).toMatchObject({
       renderTx: 56,

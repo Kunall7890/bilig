@@ -1,3 +1,4 @@
+import { fileURLToPath } from 'node:url'
 import { defineConfig, type Plugin } from 'vite'
 import react from '@vitejs/plugin-react'
 import tailwindcss from '@tailwindcss/vite'
@@ -152,7 +153,9 @@ export default defineConfig({
     },
   },
   resolve: {
-    alias: createViteAliasRecord(),
+    alias: createViteAliasRecord({
+      'node:module': fileURLToPath(new URL('./src/node-module-browser-shim.ts', import.meta.url)),
+    }),
   },
   server: {
     headers: crossOriginIsolationHeaders,

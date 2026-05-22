@@ -56,8 +56,12 @@ function createEngine(cells: Record<string, string | CellSnapshot>): GridEngineL
 }
 
 function KeyboardHandlerHarness(props: {
+  applyClipboardValues?: ReturnType<typeof vi.fn>
   beginSelectedEdit: ReturnType<typeof vi.fn>
+  captureInternalClipboardSelection?: ReturnType<typeof vi.fn>
   getGridSelection?: () => ReturnType<typeof createGridSelection>
+  internalClipboardRef?: { current: ReturnType<typeof captureGridClipboardSelection> }
+  lastKeyboardClipboardRef?: { current: ReturnType<typeof captureGridClipboardSelection> }
   onCancelEdit?: ReturnType<typeof vi.fn>
   onClearCell?: ReturnType<typeof vi.fn>
   onCommitEdit?: ReturnType<typeof vi.fn>
@@ -67,12 +71,12 @@ function KeyboardHandlerHarness(props: {
   onSelectionChange: ReturnType<typeof vi.fn>
 }) {
   const hostRef = { current: null as HTMLDivElement | null }
-  const internalClipboardRef = { current: null }
+  const internalClipboardRef = props.internalClipboardRef ?? { current: null }
 
   useWorkbookGridKeyboardHandler({
-    applyClipboardValues: vi.fn(),
+    applyClipboardValues: props.applyClipboardValues ?? vi.fn(),
     beginSelectedEdit: props.beginSelectedEdit,
-    captureInternalClipboardSelection: vi.fn(),
+    captureInternalClipboardSelection: props.captureInternalClipboardSelection ?? vi.fn(),
     editorValue: '',
     engine: {
       getCell: (_sheetName, address) => createCellSnapshot(address, 'value'),
@@ -94,7 +98,9 @@ function KeyboardHandlerHarness(props: {
     onFillRange: props.onFillRange ?? vi.fn(),
     onSelectionChange: props.onSelectionChange,
     scrollActiveCellIntoView: props.scrollActiveCellIntoView ?? vi.fn(),
+    lastKeyboardClipboardRef: props.lastKeyboardClipboardRef ?? { current: null },
     pendingClipboardCopySequenceRef: { current: 0 },
+    pendingKeyboardPasteIntentRef: { current: null },
     pendingKeyboardPasteSequenceRef: { current: 0 },
     pendingTypeSeedRef: { current: null },
     selectedCell: { col: 1, row: 1 },
@@ -123,6 +129,7 @@ describe('gridClipboardKeyboardController', () => {
       editorValue: 'a',
       gridSelection: createGridSelection(1, 1),
       internalClipboardRef: { current: null },
+      lastKeyboardClipboardRef: { current: null },
       isSelectedCellBoolean: () => false,
       isEditingCell: true,
       onCancelEdit: vi.fn(),
@@ -133,6 +140,7 @@ describe('gridClipboardKeyboardController', () => {
       onSelectionChange: vi.fn(),
       scrollActiveCellIntoView: vi.fn(),
       pendingClipboardCopySequenceRef: { current: 0 },
+      pendingKeyboardPasteIntentRef: { current: null },
       pendingKeyboardPasteSequenceRef: { current: 0 },
       pendingTypeSeedRef,
       selectedCell: { col: 1, row: 1 },
@@ -633,6 +641,7 @@ describe('gridClipboardKeyboardController', () => {
       onSelectionChange: vi.fn(),
       scrollActiveCellIntoView: vi.fn(),
       pendingClipboardCopySequenceRef: { current: 1 },
+      pendingKeyboardPasteIntentRef: { current: null },
       pendingKeyboardPasteSequenceRef: { current: 0 },
       pendingTypeSeedRef: { current: null },
       selectedCell: { col: 3, row: 1 },
@@ -691,6 +700,7 @@ describe('gridClipboardKeyboardController', () => {
       onSelectionChange: vi.fn(),
       scrollActiveCellIntoView: vi.fn(),
       pendingClipboardCopySequenceRef: { current: 1 },
+      pendingKeyboardPasteIntentRef: { current: null },
       pendingKeyboardPasteSequenceRef: { current: 0 },
       pendingTypeSeedRef: { current: null },
       selectedCell: { col: 3, row: 1 },
@@ -727,6 +737,7 @@ describe('gridClipboardKeyboardController', () => {
       },
       gridSelection: createGridSelection(1, 1),
       internalClipboardRef: { current: null },
+      lastKeyboardClipboardRef: { current: null },
       isSelectedCellBoolean: () => false,
       isEditingCell: false,
       onCancelEdit: vi.fn(),
@@ -737,6 +748,7 @@ describe('gridClipboardKeyboardController', () => {
       onSelectionChange: vi.fn(),
       scrollActiveCellIntoView: vi.fn(),
       pendingClipboardCopySequenceRef: { current: 0 },
+      pendingKeyboardPasteIntentRef: { current: null },
       pendingKeyboardPasteSequenceRef: { current: 0 },
       pendingTypeSeedRef: { current: null },
       selectedCell: { col: 1, row: 1 },
@@ -749,8 +761,10 @@ describe('gridClipboardKeyboardController', () => {
     expect(captureInternalClipboardSelection).toHaveBeenCalledWith('cut')
   })
 
-  test('applies parsed paste payloads to the active selection and clears pending keyboard paste state', () => {
+  test('applies parsed native paste payloads to the active selection', () => {
     const applyClipboardValues = vi.fn()
+    const pendingKeyboardPasteIntentRef = { current: null }
+    const pendingKeyboardPasteSequenceRef = { current: 3 }
     const event = {
       clipboardData: {
         getData: (type: string) => (type === 'text/html' ? '<table><tr><td>A</td><td>B</td></tr></table>' : 'ignored'),
@@ -764,14 +778,187 @@ describe('gridClipboardKeyboardController', () => {
       applyClipboardValues,
       event,
       gridSelection: createGridSelection(1, 2),
-      pendingKeyboardPasteSequenceRef: { current: 3 },
+      internalClipboardRef: { current: null },
+      lastKeyboardClipboardRef: { current: null },
+      pendingKeyboardPasteIntentRef,
+      pendingKeyboardPasteSequenceRef,
       selectedCell: { col: 1, row: 2 },
       suppressNextNativePasteRef: { current: false },
     })
 
     expect(applyClipboardValues).toHaveBeenCalledWith([1, 2], [['A', 'B']])
+    expect(pendingKeyboardPasteIntentRef.current).toBeNull()
+    expect(pendingKeyboardPasteSequenceRef.current).toBe(3)
     expect(event.preventDefault).toHaveBeenCalled()
     expect(event.stopPropagation).toHaveBeenCalled()
+  })
+
+  test('resolves pending keyboard paste-values-only native events from the internal clipboard', () => {
+    const applyClipboardValues = vi.fn()
+    const pendingKeyboardPasteIntentRef = {
+      current: {
+        sequence: 7,
+        target: [3, 1] as const,
+        valuesOnly: true,
+      },
+    }
+    const pendingKeyboardPasteSequenceRef = { current: 7 }
+    const internalClipboardRef = {
+      current: {
+        operation: 'copy' as const,
+        sourceStartAddress: 'B2',
+        sourceEndAddress: 'C3',
+        signature: '3\u001f=B2*2\u001e4\u001f=B3*2',
+        plainText: '3\t=B2*2\n4\t=B3*2',
+        valuesOnlyPlainText: '3\t6\n4\t8',
+        rowCount: 2,
+        colCount: 2,
+      },
+    }
+    const event = {
+      clipboardData: {
+        getData: (type: string) => (type === 'text/plain' ? '3\t=B2*2\r\n4\t=B3*2\n' : ''),
+        setData: vi.fn(),
+      },
+      preventDefault: vi.fn(),
+      stopPropagation: vi.fn(),
+    }
+
+    handleGridPasteCapture({
+      applyClipboardValues,
+      event,
+      gridSelection: createGridSelection(0, 0),
+      internalClipboardRef,
+      lastKeyboardClipboardRef: { current: null },
+      pendingKeyboardPasteIntentRef,
+      pendingKeyboardPasteSequenceRef,
+      selectedCell: { col: 0, row: 0 },
+      suppressNextNativePasteRef: { current: false },
+    })
+
+    expect(applyClipboardValues).toHaveBeenCalledWith(
+      [3, 1],
+      [
+        ['3', '6'],
+        ['4', '8'],
+      ],
+      { pasteValuesOnly: true },
+    )
+    expect(pendingKeyboardPasteIntentRef.current).toBeNull()
+    expect(pendingKeyboardPasteSequenceRef.current).toBe(0)
+    expect(event.preventDefault).toHaveBeenCalled()
+    expect(event.stopPropagation).toHaveBeenCalled()
+  })
+
+  test('keeps paste-values-only intent for the native paste fallback when async clipboard read fails first', async () => {
+    vi.useFakeTimers()
+    const originalClipboard = navigator.clipboard
+    Object.defineProperty(navigator, 'clipboard', {
+      configurable: true,
+      value: {
+        readText: vi.fn().mockRejectedValue(new Error('clipboard denied')),
+      },
+    })
+
+    try {
+      const applyClipboardValues = vi.fn()
+      const pendingKeyboardPasteIntentRef = { current: null }
+      const pendingKeyboardPasteSequenceRef = { current: 0 }
+      const internalClipboardRef = {
+        current: {
+          operation: 'copy' as const,
+          sourceStartAddress: 'B2',
+          sourceEndAddress: 'C3',
+          signature: '3\u001f=B2*2\u001e4\u001f=B3*2',
+          plainText: '3\t=B2*2\n4\t=B3*2',
+          valuesOnlyPlainText: '3\t6\n4\t8',
+          rowCount: 2,
+          colCount: 2,
+        },
+      }
+
+      handleGridKey({
+        applyClipboardValues,
+        beginSelectedEdit: vi.fn(),
+        captureInternalClipboardSelection: vi.fn(),
+        editorValue: '',
+        event: {
+          key: 'v',
+          ctrlKey: true,
+          metaKey: false,
+          altKey: false,
+          shiftKey: true,
+          preventDefault: vi.fn(),
+        },
+        gridSelection: createGridSelection(3, 1),
+        internalClipboardRef,
+        isSelectedCellBoolean: () => false,
+        isEditingCell: false,
+        onCancelEdit: vi.fn(),
+        onClearCell: vi.fn(),
+        onCommitEdit: vi.fn(),
+        onEditorChange: vi.fn(),
+        onFillRange: vi.fn(),
+        onSelectionChange: vi.fn(),
+        scrollActiveCellIntoView: vi.fn(),
+        pendingClipboardCopySequenceRef: { current: 0 },
+        pendingKeyboardPasteIntentRef,
+        pendingKeyboardPasteSequenceRef,
+        pendingTypeSeedRef: { current: null },
+        selectedCell: { col: 3, row: 1 },
+        setGridSelection: vi.fn(),
+        suppressNextNativePasteRef: { current: false },
+        toggleSelectedBooleanCell: vi.fn(),
+      })
+      await Promise.resolve()
+
+      expect(applyClipboardValues).not.toHaveBeenCalled()
+      expect(pendingKeyboardPasteIntentRef.current).toEqual({
+        sequence: 1,
+        target: [3, 1],
+        valuesOnly: true,
+      })
+      expect(pendingKeyboardPasteSequenceRef.current).toBe(1)
+
+      const event = {
+        clipboardData: {
+          getData: (type: string) => (type === 'text/plain' ? '3\t=B2*2\n4\t=B3*2' : ''),
+          setData: vi.fn(),
+        },
+        preventDefault: vi.fn(),
+        stopPropagation: vi.fn(),
+      }
+
+      handleGridPasteCapture({
+        applyClipboardValues,
+        event,
+        gridSelection: createGridSelection(0, 0),
+        internalClipboardRef,
+        lastKeyboardClipboardRef: { current: null },
+        pendingKeyboardPasteIntentRef,
+        pendingKeyboardPasteSequenceRef,
+        selectedCell: { col: 0, row: 0 },
+        suppressNextNativePasteRef: { current: false },
+      })
+
+      expect(applyClipboardValues).toHaveBeenCalledWith(
+        [3, 1],
+        [
+          ['3', '6'],
+          ['4', '8'],
+        ],
+        { pasteValuesOnly: true },
+      )
+      vi.runOnlyPendingTimers()
+      expect(pendingKeyboardPasteIntentRef.current).toBeNull()
+      expect(pendingKeyboardPasteSequenceRef.current).toBe(0)
+    } finally {
+      Object.defineProperty(navigator, 'clipboard', {
+        configurable: true,
+        value: originalClipboard,
+      })
+      vi.useRealTimers()
+    }
   })
 
   test('maps keyboard actions into selection updates', () => {
@@ -792,6 +979,7 @@ describe('gridClipboardKeyboardController', () => {
       },
       gridSelection: createGridSelection(2, 4),
       internalClipboardRef: { current: null },
+      lastKeyboardClipboardRef: { current: null },
       isSelectedCellBoolean: () => false,
       isEditingCell: false,
       onCancelEdit: vi.fn(),
@@ -801,6 +989,7 @@ describe('gridClipboardKeyboardController', () => {
       onFillRange: vi.fn(),
       onSelectionChange,
       pendingClipboardCopySequenceRef: { current: 0 },
+      pendingKeyboardPasteIntentRef: { current: null },
       pendingKeyboardPasteSequenceRef: { current: 0 },
       pendingTypeSeedRef: { current: null },
       selectedCell: { col: 2, row: 4 },
@@ -831,6 +1020,7 @@ describe('gridClipboardKeyboardController', () => {
       },
       gridSelection: createGridSelection(1, 1),
       internalClipboardRef: { current: null },
+      lastKeyboardClipboardRef: { current: null },
       isSelectedCellBoolean: () => true,
       isEditingCell: false,
       onCancelEdit: vi.fn(),
@@ -841,6 +1031,7 @@ describe('gridClipboardKeyboardController', () => {
       onSelectionChange: vi.fn(),
       scrollActiveCellIntoView: vi.fn(),
       pendingClipboardCopySequenceRef: { current: 0 },
+      pendingKeyboardPasteIntentRef: { current: null },
       pendingKeyboardPasteSequenceRef: { current: 0 },
       pendingTypeSeedRef: { current: null },
       selectedCell: { col: 1, row: 1 },
@@ -870,6 +1061,7 @@ describe('gridClipboardKeyboardController', () => {
       },
       gridSelection: createRangeSelection(createGridSelection(1, 1), [1, 1], [3, 2]),
       internalClipboardRef: { current: null },
+      lastKeyboardClipboardRef: { current: null },
       isSelectedCellBoolean: () => false,
       isEditingCell: false,
       onCancelEdit: vi.fn(),
@@ -880,6 +1072,7 @@ describe('gridClipboardKeyboardController', () => {
       onSelectionChange: vi.fn(),
       scrollActiveCellIntoView: vi.fn(),
       pendingClipboardCopySequenceRef: { current: 0 },
+      pendingKeyboardPasteIntentRef: { current: null },
       pendingKeyboardPasteSequenceRef: { current: 0 },
       pendingTypeSeedRef: { current: null },
       selectedCell: { col: 1, row: 1 },
@@ -918,6 +1111,7 @@ describe('gridClipboardKeyboardController', () => {
       },
       gridSelection: createGridSelection(3, 7),
       internalClipboardRef: { current: null },
+      lastKeyboardClipboardRef: { current: null },
       isSelectedCellBoolean: () => false,
       isEditingCell: false,
       onCancelEdit: vi.fn(),
@@ -927,6 +1121,7 @@ describe('gridClipboardKeyboardController', () => {
       onFillRange: vi.fn(),
       onSelectionChange,
       pendingClipboardCopySequenceRef: { current: 0 },
+      pendingKeyboardPasteIntentRef: { current: null },
       pendingKeyboardPasteSequenceRef: { current: 0 },
       pendingTypeSeedRef: { current: null },
       selectedCell: { col: 3, row: 7 },
@@ -957,6 +1152,7 @@ describe('gridClipboardKeyboardController', () => {
       },
       gridSelection: createGridSelection(2, 4),
       internalClipboardRef: { current: null },
+      lastKeyboardClipboardRef: { current: null },
       isSelectedCellBoolean: () => false,
       isEditingCell: false,
       navigation: {
@@ -971,6 +1167,7 @@ describe('gridClipboardKeyboardController', () => {
       onSelectionChange,
       scrollActiveCellIntoView: vi.fn(),
       pendingClipboardCopySequenceRef: { current: 0 },
+      pendingKeyboardPasteIntentRef: { current: null },
       pendingKeyboardPasteSequenceRef: { current: 0 },
       pendingTypeSeedRef: { current: null },
       selectedCell: { col: 2, row: 4 },
@@ -1018,6 +1215,7 @@ describe('gridClipboardKeyboardController', () => {
       },
       gridSelection: rangeSelection,
       internalClipboardRef: { current: null },
+      lastKeyboardClipboardRef: { current: null },
       isSelectedCellBoolean: () => false,
       isEditingCell: false,
       onCancelEdit: vi.fn(),
@@ -1027,6 +1225,7 @@ describe('gridClipboardKeyboardController', () => {
       onFillRange: vi.fn(),
       onSelectionChange,
       pendingClipboardCopySequenceRef: { current: 0 },
+      pendingKeyboardPasteIntentRef: { current: null },
       pendingKeyboardPasteSequenceRef: { current: 0 },
       pendingTypeSeedRef: { current: null },
       selectedCell: { col: 1, row: 1 },
@@ -1082,6 +1281,7 @@ describe('gridClipboardKeyboardController', () => {
         event,
         gridSelection: createRangeSelection(createGridSelection(1, 1), [1, 1], [3, 4]),
         internalClipboardRef: { current: null },
+        lastKeyboardClipboardRef: { current: null },
         isSelectedCellBoolean: () => false,
         isEditingCell: false,
         onCancelEdit: vi.fn(),
@@ -1091,6 +1291,7 @@ describe('gridClipboardKeyboardController', () => {
         onFillRange,
         onSelectionChange: vi.fn(),
         pendingClipboardCopySequenceRef: { current: 0 },
+        pendingKeyboardPasteIntentRef: { current: null },
         pendingKeyboardPasteSequenceRef: { current: 0 },
         pendingTypeSeedRef: { current: null },
         selectedCell: { col: 1, row: 1 },
@@ -1135,6 +1336,7 @@ describe('gridClipboardKeyboardController', () => {
       event: rowDeleteEvent,
       gridSelection: createRowSliceSelection(0, 2, 4),
       internalClipboardRef: { current: null },
+      lastKeyboardClipboardRef: { current: null },
       isSelectedCellBoolean: () => false,
       isEditingCell: false,
       onCancelEdit: vi.fn(),
@@ -1145,6 +1347,7 @@ describe('gridClipboardKeyboardController', () => {
       onFillRange: vi.fn(),
       onSelectionChange: vi.fn(),
       pendingClipboardCopySequenceRef: { current: 0 },
+      pendingKeyboardPasteIntentRef: { current: null },
       pendingKeyboardPasteSequenceRef: { current: 0 },
       pendingTypeSeedRef: { current: null },
       selectedCell: { col: 0, row: 2 },
@@ -1162,6 +1365,7 @@ describe('gridClipboardKeyboardController', () => {
       event: columnDeleteEvent,
       gridSelection: createColumnSliceSelection(1, 3, 0),
       internalClipboardRef: { current: null },
+      lastKeyboardClipboardRef: { current: null },
       isSelectedCellBoolean: () => false,
       isEditingCell: false,
       onCancelEdit: vi.fn(),
@@ -1172,6 +1376,7 @@ describe('gridClipboardKeyboardController', () => {
       onFillRange: vi.fn(),
       onSelectionChange: vi.fn(),
       pendingClipboardCopySequenceRef: { current: 0 },
+      pendingKeyboardPasteIntentRef: { current: null },
       pendingKeyboardPasteSequenceRef: { current: 0 },
       pendingTypeSeedRef: { current: null },
       selectedCell: { col: 1, row: 0 },
@@ -1208,6 +1413,7 @@ describe('gridClipboardKeyboardController', () => {
       },
       gridSelection: createGridSelection(3, 7),
       internalClipboardRef: { current: null },
+      lastKeyboardClipboardRef: { current: null },
       isSelectedCellBoolean: () => false,
       isEditingCell: false,
       onCancelEdit: vi.fn(),
@@ -1218,6 +1424,7 @@ describe('gridClipboardKeyboardController', () => {
       onSelectionChange: vi.fn(),
       scrollActiveCellIntoView,
       pendingClipboardCopySequenceRef: { current: 0 },
+      pendingKeyboardPasteIntentRef: { current: null },
       pendingKeyboardPasteSequenceRef: { current: 0 },
       pendingTypeSeedRef: { current: null },
       selectedCell: { col: 3, row: 7 },
@@ -1250,6 +1457,7 @@ describe('gridClipboardKeyboardController', () => {
       },
       gridSelection: createRangeSelection(createGridSelection(1, 1), [1, 1], [3, 1]),
       internalClipboardRef: { current: null },
+      lastKeyboardClipboardRef: { current: null },
       isSelectedCellBoolean: () => false,
       isEditingCell: false,
       onCancelEdit: vi.fn(),
@@ -1260,6 +1468,7 @@ describe('gridClipboardKeyboardController', () => {
       onSelectionChange: vi.fn(),
       scrollActiveCellIntoView: vi.fn(),
       pendingClipboardCopySequenceRef: { current: 0 },
+      pendingKeyboardPasteIntentRef: { current: null },
       pendingKeyboardPasteSequenceRef: { current: 0 },
       pendingTypeSeedRef: { current: null },
       selectedCell: { col: 1, row: 1 },
@@ -1354,6 +1563,82 @@ describe('gridClipboardKeyboardController', () => {
     await act(async () => {
       root.unmount()
     })
+  })
+
+  test('routes macOS clipboard paste-values-only keyup fallback when the browser suppresses V keydown', async () => {
+    ;(globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true
+
+    document.body.innerHTML = ''
+    const originalClipboard = navigator.clipboard
+    Object.defineProperty(navigator, 'clipboard', {
+      configurable: true,
+      value: {
+        readText: vi.fn().mockResolvedValue('3\t=B2*2\n4\t=B3*2'),
+      },
+    })
+
+    const applyClipboardValues = vi.fn()
+    const host = document.createElement('div')
+    document.body.append(host)
+    const root = createRoot(host)
+
+    try {
+      await act(async () => {
+        root.render(
+          createElement(KeyboardHandlerHarness, {
+            applyClipboardValues,
+            beginSelectedEdit: vi.fn(),
+            getGridSelection: () => createGridSelection(3, 1),
+            internalClipboardRef: {
+              current: {
+                operation: 'copy',
+                sourceStartAddress: 'B2',
+                sourceEndAddress: 'C3',
+                signature: '3\u001f=B2*2\u001e4\u001f=B3*2',
+                plainText: '3\t=B2*2\n4\t=B3*2',
+                valuesOnlyPlainText: '3\t6\n4\t8',
+                rowCount: 2,
+                colCount: 2,
+              },
+            },
+            onSelectionChange: vi.fn(),
+            setGridSelection: vi.fn(),
+          }),
+        )
+      })
+
+      const event = new KeyboardEvent('keyup', {
+        bubbles: true,
+        cancelable: true,
+        code: 'KeyV',
+        key: 'V',
+        metaKey: true,
+        shiftKey: true,
+      })
+
+      await act(async () => {
+        window.dispatchEvent(event)
+        await Promise.resolve()
+      })
+
+      expect(event.defaultPrevented).toBe(true)
+      expect(applyClipboardValues).toHaveBeenCalledWith(
+        [3, 1],
+        [
+          ['3', '6'],
+          ['4', '8'],
+        ],
+        { pasteValuesOnly: true },
+      )
+    } finally {
+      await act(async () => {
+        root.unmount()
+      })
+      Object.defineProperty(navigator, 'clipboard', {
+        configurable: true,
+        value: originalClipboard,
+      })
+    }
   })
 
   test('does not route Delete from editable event targets into the grid', async () => {

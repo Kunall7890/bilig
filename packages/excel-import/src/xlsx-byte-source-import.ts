@@ -23,13 +23,13 @@ import { readXlsxZipEntriesLazy, readXlsxZipEntriesLazyFromByteSource, type Xlsx
 const largeCalcChainStreamingByteThreshold = 5_000_000
 const sheetJsBlankStyleStripMinCellCount = 1_000
 const requireModule = createRequire(import.meta.url)
-const vitestEagerModules = readVitestEagerModules()
+const bundledLocalModules = readBundledLocalModules()
 
 type ImportMetaGlob = (patterns: readonly string[], options: { readonly eager: true }) => Readonly<Record<string, unknown>>
 
 declare global {
   interface ImportMeta {
-    readonly glob?: ImportMetaGlob
+    readonly glob: ImportMetaGlob
   }
 }
 
@@ -196,29 +196,29 @@ function loadSheetJsImporterModule(): SheetJsImporterModule {
 
 function loadLargeSimpleImportModule(): LargeSimpleImportModule {
   largeSimpleImportModule ??= readLargeSimpleImportModule(
-    readVitestEagerModule('./xlsx-large-simple-import.js') ?? requireLocalModule('./xlsx-large-simple-import.js'),
+    readBundledLocalModule('./xlsx-large-simple-import.js') ?? requireLocalModule('./xlsx-large-simple-import.js'),
   )
   return largeSimpleImportModule
 }
 
 function loadLargeSimpleInspectModule(): LargeSimpleInspectModule {
   largeSimpleInspectModule ??= readLargeSimpleInspectModule(
-    readVitestEagerModule('./xlsx-large-simple-headless-inspect.js') ?? requireLocalModule('./xlsx-large-simple-headless-inspect.js'),
+    readBundledLocalModule('./xlsx-large-simple-headless-inspect.js') ?? requireLocalModule('./xlsx-large-simple-headless-inspect.js'),
   )
   return largeSimpleInspectModule
 }
 
 function loadStyleOnlyBlankCellsModule(): StyleOnlyBlankCellsModule {
   styleOnlyBlankCellsModule ??= readStyleOnlyBlankCellsModule(
-    readVitestEagerModule('./xlsx-style-only-blank-cells.js') ?? requireLocalModule('./xlsx-style-only-blank-cells.js'),
+    readBundledLocalModule('./xlsx-style-only-blank-cells.js') ?? requireLocalModule('./xlsx-style-only-blank-cells.js'),
   )
   return styleOnlyBlankCellsModule
 }
 
 function requireSheetJsImporterModule(): SheetJsImporterModule {
-  const vitestModule = readVitestEagerModule('./xlsx-sheetjs-import.js')
-  if (vitestModule) {
-    return readSheetJsImporterModule(vitestModule)
+  const bundledModule = readBundledLocalModule('./xlsx-sheetjs-import.js')
+  if (bundledModule) {
+    return readSheetJsImporterModule(bundledModule)
   }
   try {
     return readSheetJsImporterModule(requireModule('./xlsx-sheetjs-import.js'))
@@ -255,30 +255,24 @@ function requireLocalModule(jsPath: string): unknown {
   }
 }
 
-function readVitestEagerModules(): Readonly<Record<string, unknown>> {
-  if (process.env['VITEST'] !== 'true') {
+function readBundledLocalModules(): Readonly<Record<string, unknown>> {
+  try {
+    return import.meta.glob(
+      [
+        './xlsx-sheetjs-import.ts',
+        './xlsx-large-simple-import.ts',
+        './xlsx-large-simple-headless-inspect.ts',
+        './xlsx-style-only-blank-cells.ts',
+      ],
+      { eager: true },
+    )
+  } catch {
     return {}
   }
-  if (!isImportMetaGlob(import.meta.glob)) {
-    return {}
-  }
-  return import.meta.glob(
-    [
-      './xlsx-sheetjs-import.ts',
-      './xlsx-large-simple-import.ts',
-      './xlsx-large-simple-headless-inspect.ts',
-      './xlsx-style-only-blank-cells.ts',
-    ],
-    { eager: true },
-  )
 }
 
-function readVitestEagerModule(path: string): unknown {
-  return vitestEagerModules[path] ?? vitestEagerModules[path.replace(/\.js$/u, '.ts')]
-}
-
-function isImportMetaGlob(value: unknown): value is ImportMetaGlob {
-  return typeof value === 'function'
+function readBundledLocalModule(path: string): unknown {
+  return bundledLocalModules[path] ?? bundledLocalModules[path.replace(/\.js$/u, '.ts')]
 }
 
 function isModuleNotFoundError(error: unknown): boolean {

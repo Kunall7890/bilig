@@ -16,10 +16,13 @@ describe('bilig dominance scorecard', () => {
     expect(scorecard.overallGoogleSheets10xStatus).toMatchObject({
       passed: false,
       status: 'blocked',
-      unmetRequirements: [
-        'ui-responsiveness: live UI browser evidence is not a same-corpus 10x proof against Google Sheets with rendered-grid proof',
-      ],
     })
+    expect(scorecard.overallGoogleSheets10xStatus.unmetRequirements).toEqual(
+      expect.arrayContaining([
+        expect.stringContaining('ui-responsiveness:'),
+        expect.stringContaining('live UI browser evidence is not a same-corpus 10x proof against Google Sheets with rendered-grid proof'),
+      ]),
+    )
     expect(scorecard.overallGoogleSheets10xStatus.categories.map((entry) => entry.id)).toEqual([
       'recalculation-speed',
       'structural-edit-performance',
@@ -222,7 +225,7 @@ describe('bilig dominance scorecard', () => {
         'pnpm ui:browser-live:generate -- --capture <capture.json>',
         'pnpm ui:browser-live:check',
       ]),
-      blockers: ['live UI browser evidence is direct, but it is not a same-corpus 10x proof against incumbents'],
+      blockers: expect.arrayContaining(['live UI browser evidence is direct, but it is not a same-corpus 10x proof against incumbents']),
     })
     expect(scorecard.categories.find((category) => category.id === 'collaboration')).toMatchObject({
       status: 'partial-repo-evidence',

@@ -9,6 +9,7 @@ import {
 } from 'react'
 import { formatAddress, parseCellAddress } from '@bilig/formula'
 import { flushSync } from 'react-dom'
+import { cellToEditorSeed, snapshotToRenderCell } from './gridCells.js'
 import { resetGridPointerInteraction } from './gridInteractionState.js'
 import {
   applyGridClipboardValues,
@@ -33,6 +34,51 @@ import { useWorkbookGridKeyboardHandler } from './useWorkbookGridKeyboardHandler
 import type { useWorkbookGridRenderState } from './useWorkbookGridRenderState.js'
 import { useWorkbookGridPointerResolvers } from './useWorkbookGridPointerResolvers.js'
 import { useWorkbookGridSelectionSummary } from './useWorkbookGridSelectionSummary.js'
+import type { GridEngineLike } from './grid-engine.js'
+
+function resolvePasteValuesOnlyMatrix(
+  engine: GridEngineLike,
+  sheetName: string,
+  values: readonly (readonly string[])[],
+): readonly (readonly string[])[] {
+  const formulas = new Set<string>()
+  for (const row of values) {
+    for (const value of row) {
+      if (value.startsWith('=')) {
+        formulas.add(value)
+      }
+    }
+  }
+  if (formulas.size === 0) {
+    return values
+  }
+
+  const resolvedByFormula = new Map<string, string[]>()
+  engine.workbook.getSheet(sheetName)?.grid.forEachCellEntry((_cellIndex, row, col) => {
+    const snapshot = engine.getCell(sheetName, formatAddress(row, col))
+    const editorSeed = cellToEditorSeed(snapshot)
+    if (!formulas.has(editorSeed)) {
+      return
+    }
+    const displayText = snapshotToRenderCell(snapshot, engine.getCellStyle(snapshot.styleId)).displayText
+    const resolved = resolvedByFormula.get(editorSeed)
+    if (resolved) {
+      resolved.push(displayText)
+    } else {
+      resolvedByFormula.set(editorSeed, [displayText])
+    }
+  })
+
+  return values.map((row) =>
+    row.map((value) => {
+      if (!value.startsWith('=')) {
+        return value
+      }
+      const resolved = resolvedByFormula.get(value)
+      return resolved?.shift() ?? value
+    }),
+  )
+}
 
 export function useWorkbookGridInteractions(
   input: Pick<
@@ -136,7 +182,9 @@ export function useWorkbookGridInteractions(
   const interactionState = inputController.interactionState
   const {
     internalClipboardRef,
+    lastKeyboardClipboardRef,
     pendingClipboardCopySequenceRef,
+    pendingKeyboardPasteIntentRef,
     pendingKeyboardPasteSequenceRef,
     pendingTypeSeedRef,
     suppressNextNativePasteRef,
@@ -282,6 +330,7 @@ export function useWorkbookGridInteractions(
   const getCurrentGridSelection = useCallback(() => gridSelection, [gridSelection])
   const applyClipboardValues = useCallback(
     (target: Item, values: readonly (readonly string[])[], options?: { readonly pasteValuesOnly?: boolean | undefined }) => {
+      const pasteValues = options?.pasteValuesOnly ? resolvePasteValuesOnlyMatrix(engine, sheetName, values) : values
       applyGridClipboardValues({
         internalClipboardRef,
         onCopyRange,
@@ -290,10 +339,10 @@ export function useWorkbookGridInteractions(
         pasteValuesOnly: options?.pasteValuesOnly,
         sheetName,
         target,
-        values,
+        values: pasteValues,
       })
     },
-    [internalClipboardRef, onCopyRange, onMoveRange, onPaste, sheetName],
+    [engine, internalClipboardRef, onCopyRange, onMoveRange, onPaste, sheetName],
   )
   const captureInternalClipboardSelection = useCallback(
     (operation?: 'copy' | 'cut') => {
@@ -333,7 +382,9 @@ export function useWorkbookGridInteractions(
     onFillRange,
     onSelectionChange: emitSelectionChange,
     scrollActiveCellIntoView,
+    lastKeyboardClipboardRef,
     pendingClipboardCopySequenceRef,
+    pendingKeyboardPasteIntentRef,
     pendingKeyboardPasteSequenceRef,
     pendingTypeSeedRef,
     selectedCell: activeSelectedCell,
@@ -486,6 +537,9 @@ export function useWorkbookGridInteractions(
         applyClipboardValues,
         event,
         gridSelection: getCurrentGridSelection(),
+        internalClipboardRef,
+        lastKeyboardClipboardRef,
+        pendingKeyboardPasteIntentRef,
         pendingKeyboardPasteSequenceRef,
         selectedCell: activeSelectedCell,
         suppressNextNativePasteRef,

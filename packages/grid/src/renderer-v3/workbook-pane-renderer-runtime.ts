@@ -29,6 +29,7 @@ export interface WorkbookPaneRendererRuntimeStateV3 {
   readonly scrollTransformStore: WorkbookGridScrollStore | null
   readonly surface: TypeGpuSurfaceSizeV3
   readonly tilePanes: readonly WorkbookRenderTilePaneState[]
+  readonly visibleSceneOwnershipSignature: string
   readonly webGpuReady: boolean
 }
 
@@ -43,6 +44,7 @@ export interface WorkbookPaneFrameInputV3 {
   readonly syncPreloadPanes?: boolean | undefined
   readonly scrollSnapshot: WorkbookGridScrollSnapshot
   readonly surface: TypeGpuSurfaceSizeV3
+  readonly visibleSceneOwnershipSignature: string
 }
 
 export interface WorkbookPanePresentedVisualFrameV3 {
@@ -56,11 +58,13 @@ export interface WorkbookPanePresentedVisualFrameV3 {
   readonly scrollSnapshot: WorkbookGridScrollSnapshot
   readonly surface: TypeGpuSurfaceSizeV3
   readonly tilePanes: readonly WorkbookRenderTilePaneState[]
+  readonly visibleSceneOwnershipSignature: string
 }
 
 export interface WorkbookPaneFrameResultV3 {
   readonly frameProofSignature: string
   readonly submitted: boolean
+  readonly visibleSceneOwnershipSignature: string
   readonly visualFrame: WorkbookPanePresentedVisualFrameV3 | null
 }
 
@@ -102,6 +106,7 @@ const EMPTY_RUNTIME_STATE: WorkbookPaneRendererRuntimeStateV3 = Object.freeze({
   scrollTransformStore: null,
   surface: EMPTY_SURFACE_SIZE,
   tilePanes: [],
+  visibleSceneOwnershipSignature: '',
   webGpuReady: false,
 })
 
@@ -232,6 +237,7 @@ export class WorkbookPaneRendererRuntimeV3 {
       panes: state.tilePanes,
     })
     const frameProofSignature = state.frameProofSignature
+    const visibleSceneOwnershipSignature = state.visibleSceneOwnershipSignature
     const submitted =
       this.drawFrame({
         backend: state.backend,
@@ -244,10 +250,12 @@ export class WorkbookPaneRendererRuntimeV3 {
         surface: state.surface,
         syncPreloadPanes: frameDecision.syncPreloadPanes,
         tilePanes: state.tilePanes,
+        visibleSceneOwnershipSignature,
       }) === true
     this.frameResultListener?.({
       frameProofSignature,
       submitted,
+      visibleSceneOwnershipSignature,
       visualFrame: submitted
         ? {
             cameraSeq: latestGeometry?.camera.seq ?? null,
@@ -260,6 +268,7 @@ export class WorkbookPaneRendererRuntimeV3 {
             scrollSnapshot: { ...scrollSnapshot },
             surface: { ...state.surface },
             tilePanes: [...state.tilePanes],
+            visibleSceneOwnershipSignature,
           }
         : null,
     })

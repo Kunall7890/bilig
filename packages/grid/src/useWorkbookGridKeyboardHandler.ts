@@ -9,6 +9,7 @@ import {
   shouldSuppressWorkbookChromeClearKey,
   shouldSuppressWorkbookChromeSelectionKeyUp,
   type GridKeyboardEventLike,
+  type PendingKeyboardPasteIntent,
 } from './gridClipboardKeyboardController.js'
 import type { GridEngineLike } from './grid-engine.js'
 import { isToggleableBooleanCellSnapshot } from './gridInteractionCommands.js'
@@ -66,6 +67,22 @@ function resolvePendingTypedEdit(event: GridKeyboardEventLike): PendingTypedEdit
     return { kind: 'begin', seed: (pendingSeed) => pendingSeed.slice(0, -1) }
   }
   return { kind: 'begin', seed: (pendingSeed) => pendingSeed }
+}
+
+function resolveMetaClipboardShortcutKey(
+  event: Pick<GridKeyboardEventLike, 'altKey' | 'ctrlKey' | 'key' | 'metaKey' | 'shiftKey'>,
+): string | null {
+  if (!event.metaKey || event.ctrlKey || event.altKey) {
+    return null
+  }
+  const key = event.key.toLowerCase()
+  if ((key === 'c' || key === 'x') && !event.shiftKey) {
+    return `${key}:plain`
+  }
+  if (key === 'v') {
+    return event.shiftKey ? 'v:values-only' : 'v:plain'
+  }
+  return null
 }
 
 export function createDeferredBeginEditScheduler(input: {
@@ -142,7 +159,9 @@ export function useWorkbookGridKeyboardHandler(input: {
   onFillRange: (sourceStartAddr: string, sourceEndAddr: string, targetStartAddr: string, targetEndAddr: string) => void
   onSelectionChange: (selection: GridSelection) => void
   scrollActiveCellIntoView: () => void
+  lastKeyboardClipboardRef: MutableRefObject<InternalClipboardRange | null>
   pendingClipboardCopySequenceRef: MutableRefObject<number>
+  pendingKeyboardPasteIntentRef: MutableRefObject<PendingKeyboardPasteIntent | null>
   pendingKeyboardPasteSequenceRef: MutableRefObject<number>
   pendingTypeSeedRef: MutableRefObject<string | null>
   selectedCell: { col: number; row: number }
@@ -152,6 +171,7 @@ export function useWorkbookGridKeyboardHandler(input: {
   toggleSelectedBooleanCell: () => void
 }) {
   const beginSelectedEditRef = useRef(input.beginSelectedEdit)
+  const handledMetaClipboardKeyUpRef = useRef<string | null>(null)
   useLayoutEffect(() => {
     beginSelectedEditRef.current = input.beginSelectedEdit
   }, [input.beginSelectedEdit])
@@ -192,6 +212,7 @@ export function useWorkbookGridKeyboardHandler(input: {
       const gridSelection = input.getGridSelection?.() ?? input.gridSelection
       const selectedCell = gridSelection.current?.cell ?? [input.selectedCell.col, input.selectedCell.row]
       const visibleRegion = input.getVisibleRegion?.()
+      let didPreventDefault = false
       dispatchGridKey({
         applyClipboardValues: input.applyClipboardValues,
         beginSelectedEdit: (seed, selectionBehavior = 'caret-end') => {
@@ -203,7 +224,13 @@ export function useWorkbookGridKeyboardHandler(input: {
         },
         captureInternalClipboardSelection: input.captureInternalClipboardSelection,
         editorValue: input.editorValue,
-        event,
+        event: {
+          ...event,
+          preventDefault: () => {
+            didPreventDefault = true
+            event.preventDefault()
+          },
+        },
         gridSelection,
         internalClipboardRef: input.internalClipboardRef,
         isSelectedCellBoolean: () =>
@@ -223,7 +250,9 @@ export function useWorkbookGridKeyboardHandler(input: {
         }),
         pageJumpRows: visibleRegion ? Math.max(1, visibleRegion.range.height - 1) : null,
         scrollActiveCellIntoView: input.scrollActiveCellIntoView,
+        lastKeyboardClipboardRef: input.lastKeyboardClipboardRef,
         pendingClipboardCopySequenceRef: input.pendingClipboardCopySequenceRef,
+        pendingKeyboardPasteIntentRef: input.pendingKeyboardPasteIntentRef,
         pendingKeyboardPasteSequenceRef: input.pendingKeyboardPasteSequenceRef,
         pendingTypeSeedRef: input.pendingTypeSeedRef,
         selectedCell: { col: selectedCell[0], row: selectedCell[1] },
@@ -232,6 +261,9 @@ export function useWorkbookGridKeyboardHandler(input: {
         suppressNextNativePasteRef: input.suppressNextNativePasteRef,
         toggleSelectedBooleanCell: input.toggleSelectedBooleanCell,
       })
+      if (didPreventDefault) {
+        handledMetaClipboardKeyUpRef.current = resolveMetaClipboardShortcutKey(event)
+      }
     },
     [deferredBeginEditScheduler, input],
   )
@@ -321,6 +353,50 @@ export function useWorkbookGridKeyboardHandler(input: {
         return
       }
       const normalizedKey = getNormalizedGridKeyboardKey(event.key, event.code)
+      const metaClipboardShortcutKey = resolveMetaClipboardShortcutKey({
+        altKey: event.altKey,
+        ctrlKey: event.ctrlKey,
+        key: normalizedKey,
+        metaKey: event.metaKey,
+        shiftKey: event.shiftKey,
+      })
+      if (metaClipboardShortcutKey) {
+        if (handledMetaClipboardKeyUpRef.current === metaClipboardShortcutKey && metaClipboardShortcutKey !== 'v:values-only') {
+          handledMetaClipboardKeyUpRef.current = null
+          return
+        }
+        handledMetaClipboardKeyUpRef.current = null
+        if (
+          shouldHandleGridWindowKey(
+            {
+              altKey: event.altKey,
+              ctrlKey: event.ctrlKey,
+              key: normalizedKey,
+              metaKey: event.metaKey,
+              shiftKey: event.shiftKey,
+            },
+            document.activeElement,
+            input.hostRef.current,
+          )
+        ) {
+          handleGridKey({
+            altKey: event.altKey,
+            cancel: () => {
+              event.stopPropagation()
+            },
+            ctrlKey: event.ctrlKey,
+            key: normalizedKey,
+            metaKey: event.metaKey,
+            shiftKey: event.shiftKey,
+            preventDefault: () => event.preventDefault(),
+          })
+          if (event.defaultPrevented) {
+            ;(event as KeyboardEvent & { __biligGridHandled?: boolean }).__biligGridHandled = true
+          }
+          return
+        }
+      }
+      handledMetaClipboardKeyUpRef.current = null
       if (
         !shouldSuppressWorkbookChromeSelectionKeyUp(
           {

@@ -82,6 +82,12 @@ interface ApplyClipboardValuesOptions {
   readonly pasteValuesOnly?: boolean | undefined
 }
 
+export interface PendingKeyboardPasteIntent {
+  readonly sequence: number
+  readonly target: Item
+  readonly valuesOnly: boolean
+}
+
 interface HandleGridKeyOptions {
   applyClipboardValues(this: void, target: Item, values: readonly (readonly string[])[], options?: ApplyClipboardValuesOptions): void
   beginSelectedEdit(this: void, seed?: string, selectionBehavior?: EditSelectionBehavior): void
@@ -103,7 +109,9 @@ interface HandleGridKeyOptions {
   navigation?: GridKeyNavigationResolver | null
   pageJumpRows?: number | null
   scrollActiveCellIntoView(this: void): void
+  lastKeyboardClipboardRef: MutableRefObject<InternalClipboardRange | null>
   pendingClipboardCopySequenceRef: MutableRefObject<number>
+  pendingKeyboardPasteIntentRef: MutableRefObject<PendingKeyboardPasteIntent | null>
   pendingKeyboardPasteSequenceRef: MutableRefObject<number>
   pendingTypeSeedRef: MutableRefObject<string | null>
   selectedCell: SelectedCellLike
@@ -114,9 +122,12 @@ interface HandleGridKeyOptions {
 }
 
 interface HandleGridPasteCaptureOptions {
-  applyClipboardValues(this: void, target: Item, values: readonly (readonly string[])[]): void
+  applyClipboardValues(this: void, target: Item, values: readonly (readonly string[])[], options?: ApplyClipboardValuesOptions): void
   event: GridClipboardEventLike
   gridSelection: GridSelection
+  internalClipboardRef: MutableRefObject<InternalClipboardRange | null>
+  lastKeyboardClipboardRef: MutableRefObject<InternalClipboardRange | null>
+  pendingKeyboardPasteIntentRef: MutableRefObject<PendingKeyboardPasteIntent | null>
   pendingKeyboardPasteSequenceRef: MutableRefObject<number>
   selectedCell: SelectedCellLike
   suppressNextNativePasteRef: MutableRefObject<boolean>
@@ -213,15 +224,81 @@ function resolveKeyboardClipboardValues(clipboard: InternalClipboardRange, paste
   return parseClipboardPlainText(pasteValuesOnly ? clipboard.valuesOnlyPlainText : clipboard.plainText)
 }
 
+function parsedClipboardPlainTextMatchesInternalClipboard(rawText: string, internalClipboard: InternalClipboardRange): boolean {
+  const values = parseClipboardPlainText(rawText)
+  return (
+    matchesInternalClipboardPaste(internalClipboard, values) &&
+    values.length === internalClipboard.rowCount &&
+    (values[0]?.length ?? 0) === internalClipboard.colCount
+  )
+}
+
 function resolveSystemClipboardValues(
   rawText: string,
   internalClipboard: InternalClipboardRange | null,
   pasteValuesOnly: boolean,
 ): readonly (readonly string[])[] {
-  if (pasteValuesOnly && internalClipboard && rawText === internalClipboard.plainText) {
+  if (pasteValuesOnly && internalClipboard && parsedClipboardPlainTextMatchesInternalClipboard(rawText, internalClipboard)) {
     return parseClipboardPlainText(internalClipboard.valuesOnlyPlainText)
   }
   return parseClipboardPlainText(rawText)
+}
+
+function resolveNativePasteValues(
+  rawText: string,
+  rawHtml: string,
+  internalClipboard: InternalClipboardRange | null,
+  pasteValuesOnly: boolean,
+): readonly (readonly string[])[] {
+  if (pasteValuesOnly && internalClipboard && parsedClipboardPlainTextMatchesInternalClipboard(rawText, internalClipboard)) {
+    return parseClipboardPlainText(internalClipboard.valuesOnlyPlainText)
+  }
+  return parseClipboardContent(rawText, rawHtml)
+}
+
+function resolveInternalClipboardForSystemPaste(
+  rawText: string,
+  internalClipboardRef: MutableRefObject<InternalClipboardRange | null>,
+  lastKeyboardClipboardRef: MutableRefObject<InternalClipboardRange | null>,
+): InternalClipboardRange | null {
+  const internalClipboard = internalClipboardRef.current
+  if (internalClipboard) {
+    return internalClipboard
+  }
+  const lastKeyboardClipboard = lastKeyboardClipboardRef.current
+  if (!lastKeyboardClipboard || !parsedClipboardPlainTextMatchesInternalClipboard(rawText, lastKeyboardClipboard)) {
+    return null
+  }
+  internalClipboardRef.current = lastKeyboardClipboard
+  return lastKeyboardClipboard
+}
+
+function clearPendingKeyboardPaste(
+  pendingKeyboardPasteSequenceRef: MutableRefObject<number>,
+  pendingKeyboardPasteIntentRef: MutableRefObject<PendingKeyboardPasteIntent | null>,
+  sequence: number,
+): void {
+  if (pendingKeyboardPasteSequenceRef.current === sequence) {
+    pendingKeyboardPasteSequenceRef.current = 0
+  }
+  if (pendingKeyboardPasteIntentRef.current?.sequence === sequence) {
+    pendingKeyboardPasteIntentRef.current = null
+  }
+}
+
+function deferClearPendingKeyboardPaste(
+  pendingKeyboardPasteSequenceRef: MutableRefObject<number>,
+  pendingKeyboardPasteIntentRef: MutableRefObject<PendingKeyboardPasteIntent | null>,
+  sequence: number,
+): void {
+  const clear = () => {
+    clearPendingKeyboardPaste(pendingKeyboardPasteSequenceRef, pendingKeyboardPasteIntentRef, sequence)
+  }
+  if (typeof window === 'undefined') {
+    setTimeout(clear, 0)
+    return
+  }
+  window.setTimeout(clear, 0)
 }
 
 export function captureGridClipboardSelection({
@@ -309,7 +386,9 @@ export function handleGridKey({
   navigation,
   pageJumpRows,
   scrollActiveCellIntoView,
+  lastKeyboardClipboardRef,
   pendingClipboardCopySequenceRef,
+  pendingKeyboardPasteIntentRef,
   pendingKeyboardPasteSequenceRef,
   pendingTypeSeedRef,
   selectedCell,
@@ -420,21 +499,30 @@ export function handleGridKey({
       scrollActiveCellIntoView()
       return
     case 'clipboard-copy': {
-      writeClipboardPlainTextFromKeyboard(captureInternalClipboardSelection('copy'), pendingClipboardCopySequenceRef)
+      const clipboard = captureInternalClipboardSelection('copy')
+      lastKeyboardClipboardRef.current = clipboard
+      writeClipboardPlainTextFromKeyboard(clipboard, pendingClipboardCopySequenceRef)
       return
     }
     case 'clipboard-cut': {
-      writeClipboardPlainTextFromKeyboard(captureInternalClipboardSelection('cut'), pendingClipboardCopySequenceRef)
+      const clipboard = captureInternalClipboardSelection('cut')
+      lastKeyboardClipboardRef.current = clipboard
+      writeClipboardPlainTextFromKeyboard(clipboard, pendingClipboardCopySequenceRef)
       return
     }
     case 'clipboard-paste': {
       pendingKeyboardPasteSequenceRef.current += 1
       const sequence = pendingKeyboardPasteSequenceRef.current
+      pendingKeyboardPasteIntentRef.current = {
+        sequence,
+        target: action.target,
+        valuesOnly: action.valuesOnly,
+      }
       if (pendingClipboardCopySequenceRef.current !== 0 && internalClipboardRef.current) {
-        if (pendingKeyboardPasteSequenceRef.current !== sequence) {
+        if (pendingKeyboardPasteSequenceRef.current !== sequence || pendingKeyboardPasteIntentRef.current?.sequence !== sequence) {
           return
         }
-        pendingKeyboardPasteSequenceRef.current = 0
+        clearPendingKeyboardPaste(pendingKeyboardPasteSequenceRef, pendingKeyboardPasteIntentRef, sequence)
         applyClipboardValues(action.target, resolveKeyboardClipboardValues(internalClipboardRef.current, action.valuesOnly), {
           pasteValuesOnly: action.valuesOnly,
         })
@@ -445,17 +533,16 @@ export function handleGridKey({
         void (async () => {
           try {
             const rawText = await navigator.clipboard.readText()
-            if (pendingKeyboardPasteSequenceRef.current !== sequence) {
+            if (pendingKeyboardPasteSequenceRef.current !== sequence || pendingKeyboardPasteIntentRef.current?.sequence !== sequence) {
               return
             }
-            pendingKeyboardPasteSequenceRef.current = 0
-            const values = resolveSystemClipboardValues(rawText, internalClipboardRef.current, action.valuesOnly)
+            clearPendingKeyboardPaste(pendingKeyboardPasteSequenceRef, pendingKeyboardPasteIntentRef, sequence)
+            const internalClipboard = resolveInternalClipboardForSystemPaste(rawText, internalClipboardRef, lastKeyboardClipboardRef)
+            const values = resolveSystemClipboardValues(rawText, internalClipboard, action.valuesOnly)
             applyClipboardValues(action.target, values, { pasteValuesOnly: action.valuesOnly })
             suppressNextNativePasteRef.current = true
           } catch {
-            if (pendingKeyboardPasteSequenceRef.current === sequence) {
-              pendingKeyboardPasteSequenceRef.current = 0
-            }
+            deferClearPendingKeyboardPaste(pendingKeyboardPasteSequenceRef, pendingKeyboardPasteIntentRef, sequence)
           }
         })()
       }
@@ -537,6 +624,9 @@ export function handleGridPasteCapture({
   applyClipboardValues,
   event,
   gridSelection,
+  internalClipboardRef,
+  lastKeyboardClipboardRef,
+  pendingKeyboardPasteIntentRef,
   pendingKeyboardPasteSequenceRef,
   selectedCell,
   suppressNextNativePasteRef,
@@ -549,16 +639,26 @@ export function handleGridPasteCapture({
   }
   const rawText = event.clipboardData?.getData('text/plain') ?? ''
   const rawHtml = event.clipboardData?.getData('text/html') ?? ''
-  const values = parseClipboardContent(rawText, rawHtml)
+  const pendingKeyboardPasteIntent = pendingKeyboardPasteIntentRef.current
+  const hasPendingKeyboardPaste =
+    pendingKeyboardPasteIntent !== null && pendingKeyboardPasteSequenceRef.current === pendingKeyboardPasteIntent.sequence
+  const internalClipboard = resolveInternalClipboardForSystemPaste(rawText, internalClipboardRef, lastKeyboardClipboardRef)
+  const values = hasPendingKeyboardPaste
+    ? resolveNativePasteValues(rawText, rawHtml, internalClipboard, pendingKeyboardPasteIntent.valuesOnly)
+    : parseClipboardContent(rawText, rawHtml)
   if (values.length === 0 || values[0]?.length === 0) {
     return
   }
-  if (pendingKeyboardPasteSequenceRef.current !== 0) {
-    pendingKeyboardPasteSequenceRef.current = 0
+  if (hasPendingKeyboardPaste) {
+    clearPendingKeyboardPaste(pendingKeyboardPasteSequenceRef, pendingKeyboardPasteIntentRef, pendingKeyboardPasteIntent.sequence)
   }
 
-  const target = gridSelection.current?.cell ?? [selectedCell.col, selectedCell.row]
-  applyClipboardValues(target, values)
+  if (hasPendingKeyboardPaste) {
+    applyClipboardValues(pendingKeyboardPasteIntent.target, values, { pasteValuesOnly: pendingKeyboardPasteIntent.valuesOnly })
+  } else {
+    const target = gridSelection.current?.cell ?? [selectedCell.col, selectedCell.row]
+    applyClipboardValues(target, values)
+  }
   event.preventDefault()
   event.stopPropagation()
 }

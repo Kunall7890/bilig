@@ -9,10 +9,12 @@ import { resolveGridTextTileRevisionKeyV3 } from './typegpu-tile-resource-revisi
 import {
   WorkbookPaneRendererRuntimeV3,
   resolveWorkbookPaneRendererGeometryV3,
+  resolveTypeGpuV3DrawScrollSnapshot,
   type TypeGpuSurfaceSizeV3,
   type WorkbookPaneFrameResultV3,
   type WorkbookPanePresentedVisualFrameV3,
 } from './workbook-pane-renderer-runtime.js'
+import { resolveWorkbookPaneVisibleSceneProofV3, type WorkbookPaneVisiblePayloadProofV3 } from './workbook-pane-visible-scene-proof.js'
 import {
   EMPTY_WORKBOOK_PANE_SURFACE_SNAPSHOT_V3,
   WorkbookPaneSurfaceRuntimeV3,
@@ -57,6 +59,14 @@ const EMPTY_HOST_PROPS: WorkbookPaneRendererHostPropsV3 = Object.freeze({
   tilePanes: [],
 })
 
+const EMPTY_VISIBLE_PAYLOAD_PROOF: WorkbookPaneVisiblePayloadProofV3 = Object.freeze({
+  contentSignature: '',
+  rectCount: 0,
+  rectSignature: '',
+  textRunCount: 0,
+  textSignature: '',
+})
+
 export class WorkbookPaneRendererHostRuntimeV3 {
   private canvas: HTMLCanvasElement | null = null
   private disposed = false
@@ -65,7 +75,10 @@ export class WorkbookPaneRendererHostRuntimeV3 {
   private frameProofSignature = ''
   private frameProofStatus: WorkbookPaneFrameProofStatusV3 = 'idle'
   private hasPresentedFrame = false
+  private payloadProof: WorkbookPaneVisiblePayloadProofV3 = EMPTY_VISIBLE_PAYLOAD_PROOF
   private presentedFrameProofSignature = ''
+  private presentedPayloadProof: WorkbookPaneVisiblePayloadProofV3 = EMPTY_VISIBLE_PAYLOAD_PROOF
+  private presentedVisibleSceneOwnershipSignature = ''
   private presentedVisualFrame: WorkbookPanePresentedVisualFrameV3 | null = null
   private props: WorkbookPaneRendererHostPropsV3 = EMPTY_HOST_PROPS
   private readonly rendererRuntime: WorkbookPaneRendererRuntimeV3
@@ -73,6 +86,7 @@ export class WorkbookPaneRendererHostRuntimeV3 {
   private surfaceSnapshot: WorkbookPaneSurfaceSnapshotV3 = EMPTY_WORKBOOK_PANE_SURFACE_SNAPSHOT_V3
   private readonly surfaceRuntime: WorkbookPaneSurfaceRuntimeV3
   private readonly unsubscribeSurface: () => void
+  private visibleSceneOwnershipSignature = ''
 
   constructor(options: WorkbookPaneRendererHostRuntimeOptionsV3 = {}) {
     this.rendererRuntime = options.rendererRuntime ?? new WorkbookPaneRendererRuntimeV3()
@@ -100,7 +114,19 @@ export class WorkbookPaneRendererHostRuntimeV3 {
   readonly getFrameProofStatusSnapshot = (): WorkbookPaneFrameProofStatusV3 => this.frameProofStatus
   readonly getHasPresentedFrameSnapshot = (): boolean => this.hasPresentedFrame
   readonly getPresentedFrameProofSignatureSnapshot = (): string => this.presentedFrameProofSignature
+  readonly getCurrentContentSignatureSnapshot = (): string => this.payloadProof.contentSignature
+  readonly getCurrentRectCountSnapshot = (): number => this.payloadProof.rectCount
+  readonly getCurrentRectSignatureSnapshot = (): string => this.payloadProof.rectSignature
+  readonly getCurrentTextRunCountSnapshot = (): number => this.payloadProof.textRunCount
+  readonly getCurrentTextSignatureSnapshot = (): string => this.payloadProof.textSignature
+  readonly getPresentedContentSignatureSnapshot = (): string => this.presentedPayloadProof.contentSignature
+  readonly getPresentedRectCountSnapshot = (): number => this.presentedPayloadProof.rectCount
+  readonly getPresentedRectSignatureSnapshot = (): string => this.presentedPayloadProof.rectSignature
+  readonly getPresentedTextRunCountSnapshot = (): number => this.presentedPayloadProof.textRunCount
+  readonly getPresentedTextSignatureSnapshot = (): string => this.presentedPayloadProof.textSignature
+  readonly getPresentedVisibleSceneOwnershipSignatureSnapshot = (): string => this.presentedVisibleSceneOwnershipSignature
   readonly getPresentedVisualFrameSnapshot = (): WorkbookPanePresentedVisualFrameV3 | null => this.presentedVisualFrame
+  readonly getVisibleSceneOwnershipSignatureSnapshot = (): string => this.visibleSceneOwnershipSignature
 
   readonly subscribeBackendStatus = (listener: () => void): (() => void) => {
     if (this.disposed) {
@@ -178,6 +204,7 @@ export class WorkbookPaneRendererHostRuntimeV3 {
       scrollTransformStore: this.props.scrollTransformStore,
       surface: this.surfaceSnapshot.surface,
       tilePanes: this.props.tilePanes,
+      visibleSceneOwnershipSignature: this.visibleSceneOwnershipSignature,
       webGpuReady: this.surfaceSnapshot.webGpuReady,
     })
   }
@@ -196,11 +223,21 @@ export class WorkbookPaneRendererHostRuntimeV3 {
 
   private handleFrameResult(result: WorkbookPaneFrameResultV3): void {
     const signature = result.frameProofSignature
-    if (!result.submitted || !signature || signature !== this.frameProofSignature || !result.visualFrame) {
+    const sceneOwnershipSignature = result.visibleSceneOwnershipSignature
+    if (
+      !result.submitted ||
+      !signature ||
+      signature !== this.frameProofSignature ||
+      !sceneOwnershipSignature ||
+      sceneOwnershipSignature !== this.visibleSceneOwnershipSignature ||
+      !result.visualFrame
+    ) {
       return
     }
     this.setPresentedVisualFrame(result.visualFrame)
     this.setPresentedFrameProofSignature(signature)
+    this.setPresentedVisibleSceneOwnershipSignature(sceneOwnershipSignature)
+    this.setPresentedPayloadProof(this.payloadProof)
     this.setHasPresentedFrame(true)
     this.setFrameProofStatus('presented')
   }
@@ -209,6 +246,8 @@ export class WorkbookPaneRendererHostRuntimeV3 {
     if (this.disposed || !this.frameProofSignature || this.surfaceBackendStatus !== 'ready') {
       return
     }
+    this.syncFrameProofSignature(this.props)
+    this.applyRendererState()
     this.setHasPresentedFrame(false)
     this.setFrameProofStatus('pending')
   }
@@ -237,6 +276,22 @@ export class WorkbookPaneRendererHostRuntimeV3 {
     this.emitFrameProofStatus()
   }
 
+  private setPresentedPayloadProof(payload: WorkbookPaneVisiblePayloadProofV3): void {
+    if (this.presentedPayloadProof === payload || areVisiblePayloadProofsEqual(this.presentedPayloadProof, payload)) {
+      return
+    }
+    this.presentedPayloadProof = payload
+    this.emitFrameProofStatus()
+  }
+
+  private setPresentedVisibleSceneOwnershipSignature(signature: string): void {
+    if (this.presentedVisibleSceneOwnershipSignature === signature) {
+      return
+    }
+    this.presentedVisibleSceneOwnershipSignature = signature
+    this.emitFrameProofStatus()
+  }
+
   private setPresentedVisualFrame(frame: WorkbookPanePresentedVisualFrameV3 | null): void {
     if (this.presentedVisualFrame === frame) {
       return
@@ -247,25 +302,73 @@ export class WorkbookPaneRendererHostRuntimeV3 {
 
   private syncFrameProofSignature(props: WorkbookPaneRendererHostPropsV3): void {
     const overlay = resolveWorkbookPaneHostOverlayProofV3(props)
+    const geometry = resolveWorkbookPaneRendererGeometryV3({
+      cameraStore: props.cameraStore,
+      geometry: props.geometry,
+    })
+    const visibleSceneProof = resolveWorkbookPaneVisibleSceneProofV3({
+      drawText: props.drawText,
+      geometry,
+      headerPanes: props.headerPanes,
+      overlay,
+      renderRevisionSnapshot: props.renderRevisionSnapshot ?? null,
+      scrollSnapshot: resolveTypeGpuV3DrawScrollSnapshot({
+        fallback: props.scrollTransformStore?.getSnapshot() ?? { tx: 0, ty: 0 },
+        geometry,
+        panes: props.tilePanes,
+      }),
+      surface: this.surfaceSnapshot.surface,
+      tilePanes: props.tilePanes,
+    })
+    const visibleSceneChanged = this.setVisibleSceneProof(visibleSceneProof)
     const signature = resolveWorkbookPaneFrameProofSignatureV3({
       ...props,
       overlay,
       surface: this.surfaceSnapshot.surface,
     })
-    if (this.frameProofSignature === signature) {
-      return
+    if (this.frameProofSignature !== signature) {
+      this.frameProofSignature = signature
+      this.emitFrameProofStatus()
     }
-    this.frameProofSignature = signature
     if (!signature) {
       this.setPresentedFrameProofSignature('')
+      this.setPresentedVisibleSceneOwnershipSignature('')
+      this.setPresentedPayloadProof(EMPTY_VISIBLE_PAYLOAD_PROOF)
       this.setPresentedVisualFrame(null)
       this.setHasPresentedFrame(false)
       this.setFrameProofStatus('idle')
       return
     }
-    const hasPresentedCurrentSignature = this.presentedFrameProofSignature === signature
+    const hasPresentedCurrentSignature =
+      this.presentedFrameProofSignature === signature &&
+      this.presentedVisibleSceneOwnershipSignature === this.visibleSceneOwnershipSignature &&
+      areVisiblePayloadProofsEqual(this.presentedPayloadProof, this.payloadProof)
+    if (visibleSceneChanged && !hasPresentedCurrentSignature) {
+      this.setHasPresentedFrame(false)
+      this.setFrameProofStatus('pending')
+      return
+    }
     this.setHasPresentedFrame(hasPresentedCurrentSignature)
     this.setFrameProofStatus(hasPresentedCurrentSignature ? 'presented' : 'pending')
+  }
+
+  private setVisibleSceneProof(proof: {
+    readonly ownershipSignature: string
+    readonly payload: WorkbookPaneVisiblePayloadProofV3
+  }): boolean {
+    let changed = false
+    if (this.visibleSceneOwnershipSignature !== proof.ownershipSignature) {
+      this.visibleSceneOwnershipSignature = proof.ownershipSignature
+      changed = true
+    }
+    if (!areVisiblePayloadProofsEqual(this.payloadProof, proof.payload)) {
+      this.payloadProof = proof.payload
+      changed = true
+    }
+    if (changed) {
+      this.emitFrameProofStatus()
+    }
+    return changed
   }
 
   private syncCanvasTarget(): void {
@@ -385,4 +488,14 @@ export function resolveWorkbookPaneFrameProofSignatureV3(props: {
   return [textOwnershipSignature, surfaceSignature, tileSignature, headerSignature, overlaySignature, renderRevisionSignature]
     .filter(Boolean)
     .join('#')
+}
+
+function areVisiblePayloadProofsEqual(left: WorkbookPaneVisiblePayloadProofV3, right: WorkbookPaneVisiblePayloadProofV3): boolean {
+  return (
+    left.contentSignature === right.contentSignature &&
+    left.rectCount === right.rectCount &&
+    left.rectSignature === right.rectSignature &&
+    left.textRunCount === right.textRunCount &&
+    left.textSignature === right.textSignature
+  )
 }
