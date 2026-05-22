@@ -17,6 +17,7 @@ export interface BrowserTestPhase {
 
 export interface BrowserTestPhaseEnv {
   readonly BILIG_BROWSER_CI_SMOKE?: string | undefined
+  readonly BILIG_BROWSER_INCLUDE_WEBGPU?: string | undefined
   readonly BILIG_BROWSER_INCLUDE_PERF?: string | undefined
   readonly BILIG_BROWSER_INCLUDE_DEEP?: string | undefined
   readonly BILIG_BROWSER_PARALLEL_WORKERS?: string | undefined
@@ -64,6 +65,7 @@ export function resolveBrowserTestPhases(input: {
 
   const includePerf = envFlagEnabled(input.env.BILIG_BROWSER_INCLUDE_PERF, 'BILIG_BROWSER_INCLUDE_PERF')
   const includeDeep = envFlagEnabled(input.env.BILIG_BROWSER_INCLUDE_DEEP, 'BILIG_BROWSER_INCLUDE_DEEP')
+  const includeWebGpu = envFlagEnabled(input.env.BILIG_BROWSER_INCLUDE_WEBGPU, 'BILIG_BROWSER_INCLUDE_WEBGPU') || includePerf || includeDeep
   const ciSmoke = envFlagEnabled(input.env.BILIG_BROWSER_CI_SMOKE, 'BILIG_BROWSER_CI_SMOKE')
   if (ciSmoke) {
     return [
@@ -110,12 +112,15 @@ export function resolveBrowserTestPhases(input: {
       ],
       env: WEBGPU_BROWSER_ENV,
     },
-    {
+  ]
+
+  if (includeWebGpu) {
+    phases.push({
       label: 'browser webgpu tests',
       args: ['--workers=1', '--grep', BROWSER_WEBGPU_GREP, '--grep-invert', [BROWSER_PERF_GREP, BROWSER_DEEP_GREP].join('|')],
       env: WEBGPU_BROWSER_ENV,
-    },
-  ]
+    })
+  }
 
   if (includePerf) {
     phases.push(

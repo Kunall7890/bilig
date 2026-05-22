@@ -8,7 +8,6 @@ describe('browser test phases', () => {
     expect(phases.map((phase) => phase.label)).toEqual([
       'parallel browser tests',
       'browser ci tests',
-      'browser webgpu tests',
       'browser serial tests',
       'clipboard global tests',
     ])
@@ -23,13 +22,30 @@ describe('browser test phases', () => {
       env: { BILIG_BROWSER_WEBGPU: '1' },
     })
     expect(phases[2]).toEqual({
-      label: 'browser webgpu tests',
-      args: ['--workers=1', '--grep', '@browser-webgpu', '--grep-invert', '@browser-perf|@browser-deep'],
-      env: { BILIG_BROWSER_WEBGPU: '1' },
-    })
-    expect(phases[3]).toEqual({
       label: 'browser serial tests',
       args: ['--workers=1', '--grep', '@browser-serial', '--grep-invert', '@browser-webgpu'],
+      env: { BILIG_BROWSER_WEBGPU: '1' },
+    })
+  })
+
+  it('adds webgpu tests only for the explicit webgpu browser profile', () => {
+    const phases = resolveBrowserTestPhases({
+      playwrightArgs: [],
+      env: {
+        BILIG_BROWSER_INCLUDE_WEBGPU: '1',
+      },
+    })
+
+    expect(phases.map((phase) => phase.label)).toEqual([
+      'parallel browser tests',
+      'browser ci tests',
+      'browser webgpu tests',
+      'browser serial tests',
+      'clipboard global tests',
+    ])
+    expect(phases.find((phase) => phase.label === 'browser webgpu tests')).toEqual({
+      label: 'browser webgpu tests',
+      args: ['--workers=1', '--grep', '@browser-webgpu', '--grep-invert', '@browser-perf|@browser-deep'],
       env: { BILIG_BROWSER_WEBGPU: '1' },
     })
   })
@@ -98,6 +114,15 @@ describe('browser test phases', () => {
   })
 
   it('rejects malformed browser phase include flags instead of silently skipping coverage', () => {
+    expect(() =>
+      resolveBrowserTestPhases({
+        playwrightArgs: [],
+        env: {
+          BILIG_BROWSER_INCLUDE_WEBGPU: 'TRUE',
+        },
+      }),
+    ).toThrow('BILIG_BROWSER_INCLUDE_WEBGPU must be "1", "true", "0", or "false" when set, got TRUE')
+
     expect(() =>
       resolveBrowserTestPhases({
         playwrightArgs: [],
