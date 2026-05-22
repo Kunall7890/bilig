@@ -81,7 +81,14 @@ export function resolveBrowserTestPhases(input: {
     ]
   }
 
-  const defaultExcludedGreps = [CLIPBOARD_GLOBAL_GREP, BROWSER_SERIAL_GREP, BROWSER_PERF_GREP, BROWSER_DEEP_GREP, BROWSER_WEBGPU_GREP]
+  const defaultExcludedGreps = [
+    CLIPBOARD_GLOBAL_GREP,
+    BROWSER_CI_GREP,
+    BROWSER_SERIAL_GREP,
+    BROWSER_PERF_GREP,
+    BROWSER_DEEP_GREP,
+    BROWSER_WEBGPU_GREP,
+  ]
   const phases: BrowserTestPhase[] = [
     {
       label: 'parallel browser tests',
@@ -89,6 +96,17 @@ export function resolveBrowserTestPhases(input: {
         '--workers=' + String(resolveParallelBrowserWorkers(input.env.BILIG_BROWSER_PARALLEL_WORKERS)),
         '--grep-invert',
         defaultExcludedGreps.join('|'),
+      ],
+      env: WEBGPU_BROWSER_ENV,
+    },
+    {
+      label: 'browser ci tests',
+      args: [
+        '--workers=1',
+        '--grep',
+        BROWSER_CI_GREP,
+        '--grep-invert',
+        [BROWSER_PERF_GREP, BROWSER_DEEP_GREP, BROWSER_WEBGPU_GREP].join('|'),
       ],
       env: WEBGPU_BROWSER_ENV,
     },
