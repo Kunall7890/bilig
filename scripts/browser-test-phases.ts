@@ -65,7 +65,7 @@ export function resolveBrowserTestPhases(input: {
 
   const includePerf = envFlagEnabled(input.env.BILIG_BROWSER_INCLUDE_PERF, 'BILIG_BROWSER_INCLUDE_PERF')
   const includeDeep = envFlagEnabled(input.env.BILIG_BROWSER_INCLUDE_DEEP, 'BILIG_BROWSER_INCLUDE_DEEP')
-  const includeWebGpu = envFlagEnabled(input.env.BILIG_BROWSER_INCLUDE_WEBGPU, 'BILIG_BROWSER_INCLUDE_WEBGPU') || includePerf || includeDeep
+  const includeWebGpu = envFlagEnabled(input.env.BILIG_BROWSER_INCLUDE_WEBGPU, 'BILIG_BROWSER_INCLUDE_WEBGPU')
   const ciSmoke = envFlagEnabled(input.env.BILIG_BROWSER_CI_SMOKE, 'BILIG_BROWSER_CI_SMOKE')
   if (ciSmoke) {
     return [
@@ -123,31 +123,31 @@ export function resolveBrowserTestPhases(input: {
   }
 
   if (includePerf) {
-    phases.push(
-      {
-        label: 'browser perf tests',
-        args: ['--workers=1', '--grep', BROWSER_PERF_GREP, '--grep-invert', BROWSER_WEBGPU_GREP],
-      },
-      {
+    phases.push({
+      label: 'browser perf tests',
+      args: ['--workers=1', '--grep', BROWSER_PERF_GREP, '--grep-invert', BROWSER_WEBGPU_GREP],
+    })
+    if (includeWebGpu) {
+      phases.push({
         label: 'browser webgpu perf tests',
         args: ['--workers=1', '--grep', WEBGPU_PERF_GREP],
         env: WEBGPU_BROWSER_ENV,
-      },
-    )
+      })
+    }
   }
 
   if (includeDeep) {
-    phases.push(
-      {
-        label: 'browser deep tests',
-        args: ['--workers=1', '--grep', BROWSER_DEEP_GREP, '--grep-invert', BROWSER_WEBGPU_GREP, '--pass-with-no-tests'],
-      },
-      {
+    phases.push({
+      label: 'browser deep tests',
+      args: ['--workers=1', '--grep', BROWSER_DEEP_GREP, '--grep-invert', BROWSER_WEBGPU_GREP, '--pass-with-no-tests'],
+    })
+    if (includeWebGpu) {
+      phases.push({
         label: 'browser webgpu deep tests',
         args: ['--workers=1', '--grep', WEBGPU_DEEP_GREP],
         env: WEBGPU_BROWSER_ENV,
-      },
-    )
+      })
+    }
   }
 
   phases.push(

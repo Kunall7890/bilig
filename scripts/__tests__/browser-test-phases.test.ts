@@ -50,10 +50,49 @@ describe('browser test phases', () => {
     })
   })
 
-  it('adds perf and deep only for the deep browser profile', () => {
+  it('adds perf and deep without implicitly enabling webgpu coverage', () => {
     const phases = resolveBrowserTestPhases({
       playwrightArgs: [],
       env: {
+        BILIG_BROWSER_INCLUDE_PERF: '1',
+        BILIG_BROWSER_INCLUDE_DEEP: '1',
+      },
+    })
+
+    expect(phases.map((phase) => phase.label)).toEqual([
+      'parallel browser tests',
+      'browser ci tests',
+      'browser perf tests',
+      'browser deep tests',
+      'browser serial tests',
+      'clipboard global tests',
+    ])
+    expect(phases.find((phase) => phase.label === 'browser perf tests')?.args).toEqual([
+      '--workers=1',
+      '--grep',
+      '@browser-perf',
+      '--grep-invert',
+      '@browser-webgpu',
+    ])
+    expect(phases.find((phase) => phase.label === 'browser deep tests')?.args).toEqual([
+      '--workers=1',
+      '--grep',
+      '@browser-deep',
+      '--grep-invert',
+      '@browser-webgpu',
+      '--pass-with-no-tests',
+    ])
+    expect(phases.find((phase) => phase.label === 'browser webgpu tests')).toBeUndefined()
+    expect(phases.find((phase) => phase.label === 'browser webgpu perf tests')).toBeUndefined()
+    expect(phases.find((phase) => phase.label === 'browser webgpu deep tests')).toBeUndefined()
+    expect(phases.at(-1)?.label).toBe('clipboard global tests')
+  })
+
+  it('adds webgpu perf and deep only when webgpu coverage is explicitly enabled', () => {
+    const phases = resolveBrowserTestPhases({
+      playwrightArgs: [],
+      env: {
+        BILIG_BROWSER_INCLUDE_WEBGPU: '1',
         BILIG_BROWSER_INCLUDE_PERF: '1',
         BILIG_BROWSER_INCLUDE_DEEP: '1',
       },
@@ -70,26 +109,11 @@ describe('browser test phases', () => {
       'browser serial tests',
       'clipboard global tests',
     ])
-    expect(phases.find((phase) => phase.label === 'browser perf tests')?.args).toEqual([
-      '--workers=1',
-      '--grep',
-      '@browser-perf',
-      '--grep-invert',
-      '@browser-webgpu',
-    ])
     expect(phases.find((phase) => phase.label === 'browser webgpu perf tests')).toEqual({
       label: 'browser webgpu perf tests',
       args: ['--workers=1', '--grep', '@browser-webgpu.*@browser-perf|@browser-perf.*@browser-webgpu'],
       env: { BILIG_BROWSER_WEBGPU: '1' },
     })
-    expect(phases.find((phase) => phase.label === 'browser deep tests')?.args).toEqual([
-      '--workers=1',
-      '--grep',
-      '@browser-deep',
-      '--grep-invert',
-      '@browser-webgpu',
-      '--pass-with-no-tests',
-    ])
     expect(phases.find((phase) => phase.label === 'browser webgpu deep tests')).toEqual({
       label: 'browser webgpu deep tests',
       args: ['--workers=1', '--grep', '@browser-webgpu.*@browser-deep|@browser-deep.*@browser-webgpu'],
