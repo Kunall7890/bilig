@@ -107,7 +107,7 @@ describe('engine fuzz regressions', () => {
         { sheetName: 'Sheet1', startAddress: 'A5', endAddress: 'A6' },
         { sheetName: 'Sheet1', startAddress: 'A1', endAddress: 'A2' },
       ),
-    ).toThrow(/Failed to execute local transaction/)
+    ).toThrow(/Workbook protection blocks this change/)
     expect(engine.exportSnapshot()).toEqual(before)
   })
 
