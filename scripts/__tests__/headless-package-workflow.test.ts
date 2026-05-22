@@ -172,7 +172,9 @@ describe('headless package workflow', () => {
     expect(source).toContain('npm run check')
     expect(source).toContain('publish_n8n_node')
     expect(source).toContain('publish_runtime_packages')
-    expect(source).toContain("github.event.inputs.publish_runtime_packages != 'false'")
+    expect(source).toContain(
+      "github.ref == 'refs/heads/main' && github.event_name == 'workflow_dispatch' && github.event.inputs.publish_runtime_packages != 'false'",
+    )
     expect(source).toContain('publish-n8n-workpaper-node')
     expect(source).toContain('id-token: write')
     expect(source).toContain('unset NODE_AUTH_TOKEN')

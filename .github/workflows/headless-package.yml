@@ -281,7 +281,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 15
     needs: verify
-    if: github.ref == 'refs/heads/main' && (github.event_name != 'workflow_dispatch' || github.event.inputs.publish_runtime_packages != 'false')
+    if: github.ref == 'refs/heads/main' && github.event_name == 'workflow_dispatch' && github.event.inputs.publish_runtime_packages != 'false'
     outputs:
       release_needed: ${{ steps.planner.outputs.release_needed }}
       bootstrap_required: ${{ steps.planner.outputs.bootstrap_required }}
