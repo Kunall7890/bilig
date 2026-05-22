@@ -1,4 +1,4 @@
-import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
+import { mkdtempSync, readFileSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 
@@ -7,6 +7,8 @@ import { exportXlsx, importXlsx } from '@bilig/excel-import'
 import { isMacosExcelInstalled, runMacosExcelStructuralOperationOracle } from '@bilig/excel-fixtures'
 import { ErrorCode, ValueTag } from '@bilig/protocol'
 import { describe, expect, it } from 'vitest'
+
+import { removeMacosExcelTestDir } from './macos-excel-oracle-test-utils.js'
 
 import { WorkPaper, type WorkPaperCellAddress } from '../index.js'
 
@@ -87,7 +89,7 @@ describe('macOS Desktop Excel defined-name structural oracle', () => {
           }
         }
       } finally {
-        rmSync(tempDir, { recursive: true, force: true })
+        removeMacosExcelTestDir(tempDir)
       }
     },
     60_000,

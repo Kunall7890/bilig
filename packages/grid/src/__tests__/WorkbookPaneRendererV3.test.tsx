@@ -23,7 +23,10 @@ import { buildNativeRectLayerRectsForPaneV3 } from '../renderer-v3/WorkbookPaneN
 import { GridRenderLoop } from '../renderer-v3/gridRenderLoop.js'
 import type { GridRenderTile } from '../renderer-v3/render-tile-source.js'
 import type { WorkbookRenderTilePaneState } from '../renderer-v3/render-tile-pane-state.js'
-import { resolveWorkbookPaneFrameProofSignatureV3 } from '../renderer-v3/workbook-pane-renderer-host-runtime.js'
+import {
+  resolveWorkbookPaneFrameProofSignatureV3,
+  resolveWorkbookPaneVisiblePayloadProofV3,
+} from '../renderer-v3/workbook-pane-renderer-host-runtime.js'
 import { WorkbookPaneRendererRuntimeV3, type WorkbookPaneFrameDrawerV3 } from '../renderer-v3/workbook-pane-renderer-runtime.js'
 import { WorkbookGridScrollStore } from '../workbookGridScrollStore.js'
 
@@ -429,6 +432,31 @@ describe('WorkbookPaneRendererV3', () => {
     expect(resolveWorkbookPaneFrameProofSignatureV3({ headerPanes: [], overlay: null, tilePanes: [basePane] })).not.toBe(
       resolveWorkbookPaneFrameProofSignatureV3({ headerPanes: [], overlay: null, tilePanes: [changedRectPane] }),
     )
+  })
+
+  test('separates visible text and rect payload proof for same-corpus evidence', () => {
+    const basePane = createRectTilePane()
+    const changedTextPane = createTextTilePane()
+    const changedRectPane: WorkbookRenderTilePaneState = {
+      ...basePane,
+      tile: {
+        ...basePane.tile,
+        rectCount: 2,
+        rectSignature: 'changed-fill-rects',
+      },
+    }
+
+    const baseProof = resolveWorkbookPaneVisiblePayloadProofV3({ headerPanes: [], tilePanes: [basePane] })
+    const textProof = resolveWorkbookPaneVisiblePayloadProofV3({ headerPanes: [], tilePanes: [changedTextPane] })
+    const rectProof = resolveWorkbookPaneVisiblePayloadProofV3({ headerPanes: [], tilePanes: [changedRectPane] })
+
+    expect(baseProof.rectCount).toBe(1)
+    expect(baseProof.textRunCount).toBe(0)
+    expect(textProof.textRunCount).toBe(1)
+    expect(textProof.textSignature).not.toBe(baseProof.textSignature)
+    expect(rectProof.rectCount).toBe(2)
+    expect(rectProof.rectSignature).not.toBe(baseProof.rectSignature)
+    expect(new Set([baseProof.contentSignature, textProof.contentSignature, rectProof.contentSignature]).size).toBe(3)
   })
 
   test('includes pane placement in frame proof identity', () => {

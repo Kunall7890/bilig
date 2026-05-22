@@ -153,10 +153,20 @@ function biligVisibleFrameInvalidReasons(proof: SameCorpusProductPixelGridProof,
   const tileSceneRevision = evidence.get('tileSceneRevision') ?? ''
   const frameProofSignature = evidence.get('frameProofSignature') ?? ''
   const presentedFrameProofSignature = evidence.get('presentedFrameProofSignature') ?? ''
+  const currentContentSignature = evidence.get('currentContentSignature') ?? ''
+  const presentedContentSignature = evidence.get('presentedContentSignature') ?? ''
+  const currentTextSignature = evidence.get('currentTextSignature') ?? ''
+  const presentedTextSignature = evidence.get('presentedTextSignature') ?? ''
+  const currentRectSignature = evidence.get('currentRectSignature') ?? ''
+  const presentedRectSignature = evidence.get('presentedRectSignature') ?? ''
   const tilePaneCount = numericEvidence(evidence, 'tilePaneCount')
   const headerPaneCount = numericEvidence(evidence, 'headerPaneCount')
   const presentedTilePaneCount = numericEvidence(evidence, 'presentedTilePaneCount')
   const presentedHeaderPaneCount = numericEvidence(evidence, 'presentedHeaderPaneCount')
+  const currentTextRunCount = numericEvidence(evidence, 'currentTextRunCount')
+  const presentedTextRunCount = numericEvidence(evidence, 'presentedTextRunCount')
+  const currentRectCount = numericEvidence(evidence, 'currentRectCount')
+  const presentedRectCount = numericEvidence(evidence, 'presentedRectCount')
   const expectedPixelWidth = numericEvidence(evidence, 'expectedPixelWidth')
   const expectedPixelHeight = numericEvidence(evidence, 'expectedPixelHeight')
   const canvasPixelWidth = numericEvidence(evidence, 'canvasPixelWidth')
@@ -205,6 +215,49 @@ function biligVisibleFrameInvalidReasons(proof: SameCorpusProductPixelGridProof,
   }
   if (evidence.get('canvasCoversViewport') !== 'true') {
     invalidReasons.push('TypeGPU canvas backing pixels do not cover the viewport')
+  }
+  if (currentContentSignature.length === 0) {
+    invalidReasons.push('current visible content signature is missing')
+  }
+  if (presentedContentSignature.length === 0) {
+    invalidReasons.push('presented visible content signature is missing')
+  }
+  if (currentContentSignature.length > 0 && presentedContentSignature.length > 0 && presentedContentSignature !== currentContentSignature) {
+    invalidReasons.push('presented visible content signature does not match current tiles')
+  }
+  if (currentTextSignature.length === 0) {
+    invalidReasons.push('current visible text signature is missing')
+  }
+  if (presentedTextSignature.length === 0) {
+    invalidReasons.push('presented visible text signature is missing')
+  }
+  if (currentTextSignature.length > 0 && presentedTextSignature.length > 0 && presentedTextSignature !== currentTextSignature) {
+    invalidReasons.push('presented visible text signature does not match current tiles')
+  }
+  if (currentRectSignature.length === 0) {
+    invalidReasons.push('current visible rect signature is missing')
+  }
+  if (presentedRectSignature.length === 0) {
+    invalidReasons.push('presented visible rect signature is missing')
+  }
+  if (currentRectSignature.length > 0 && presentedRectSignature.length > 0 && presentedRectSignature !== currentRectSignature) {
+    invalidReasons.push('presented visible rect signature does not match current tiles')
+  }
+  if (!isNonNegativeNumber(currentTextRunCount) || !isNonNegativeNumber(presentedTextRunCount)) {
+    invalidReasons.push('visible text run payload counts are missing')
+  }
+  if (
+    isNonNegativeNumber(currentTextRunCount) &&
+    isNonNegativeNumber(presentedTextRunCount) &&
+    currentTextRunCount !== presentedTextRunCount
+  ) {
+    invalidReasons.push('presented visible text run count does not match current tiles')
+  }
+  if (!isPositiveNumber(currentRectCount) || !isPositiveNumber(presentedRectCount)) {
+    invalidReasons.push('visible rect payload counts are empty')
+  }
+  if (isPositiveNumber(currentRectCount) && isPositiveNumber(presentedRectCount) && currentRectCount !== presentedRectCount) {
+    invalidReasons.push('presented visible rect count does not match current tiles')
   }
   if (!isPositiveNumber(expectedPixelWidth) || !isPositiveNumber(expectedPixelHeight)) {
     invalidReasons.push('expected viewport pixel dimensions are missing')
@@ -433,6 +486,10 @@ function numericEvidence(evidence: ReadonlyMap<string, string>, key: string): nu
 
 function isPositiveNumber(value: number | null): value is number {
   return value !== null && value > 0
+}
+
+function isNonNegativeNumber(value: number | null): value is number {
+  return value !== null && value >= 0
 }
 
 function minimumEvidenceNumber(evidence: ReadonlyMap<string, string>, key: string, minimum: number): boolean {

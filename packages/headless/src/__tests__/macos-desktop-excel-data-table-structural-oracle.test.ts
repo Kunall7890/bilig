@@ -1,4 +1,4 @@
-import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
+import { mkdtempSync, readFileSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 
@@ -13,6 +13,8 @@ import {
 } from '@bilig/excel-fixtures'
 import { ValueTag, type CellValue, type WorkbookSheetDataTableFormulasSnapshot } from '@bilig/protocol'
 import { describe, expect, it } from 'vitest'
+
+import { removeMacosExcelTestDir } from './macos-excel-oracle-test-utils.js'
 
 import { WorkPaper, type WorkPaperCellAddress } from '../index.js'
 
@@ -95,7 +97,7 @@ describe('macOS Desktop Excel data-table structural oracle', () => {
           }
         }
       } finally {
-        rmSync(tempDir, { recursive: true, force: true })
+        removeMacosExcelTestDir(tempDir)
       }
     },
     60_000,

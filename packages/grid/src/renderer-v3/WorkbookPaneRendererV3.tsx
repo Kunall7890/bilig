@@ -12,7 +12,11 @@ import type { DynamicGridOverlayBatchV3 } from './dynamic-overlay-batch.js'
 import type { WorkbookRenderTilePaneState } from './render-tile-pane-state.js'
 import { WorkbookPaneNativeRectLayerV3 } from './WorkbookPaneNativeRectLayerV3.js'
 import { WorkbookPaneNativeTextLayerV3, type SuppressedNativeTextCellV3 } from './WorkbookPaneNativeTextLayerV3.js'
-import { WorkbookPaneRendererHostRuntimeV3, resolveWorkbookPaneFrameProofSignatureV3 } from './workbook-pane-renderer-host-runtime.js'
+import {
+  WorkbookPaneRendererHostRuntimeV3,
+  resolveWorkbookPaneFrameProofSignatureV3,
+  resolveWorkbookPaneVisiblePayloadProofV3,
+} from './workbook-pane-renderer-host-runtime.js'
 
 export interface WorkbookPaneRendererV3Props {
   readonly active: boolean
@@ -105,10 +109,10 @@ export const WorkbookPaneRendererV3 = memo(function WorkbookPaneRendererV3({
   const tileTextRunCount = countTilePaneTextRunsV3(typeGpuTilePanes)
   const showTypeGpuCanvas = backendStatus !== 'unavailable'
   const nativeLayerSource = showTypeGpuCanvas ? 'none' : 'backend-unavailable-live'
-  const presentedHeaderPanes = presentedVisualFrame?.headerPanes ?? []
-  const presentedTilePanes = presentedVisualFrame?.tilePanes ?? []
-  const nativeHeaderPanes = showTypeGpuCanvas ? [] : headerPanes
-  const nativeTilePanes = showTypeGpuCanvas ? [] : tilePanes
+  const presentedHeaderPanes = presentedVisualFrame?.headerPanes ?? EMPTY_HEADER_PANES_V3
+  const presentedTilePanes = presentedVisualFrame?.tilePanes ?? EMPTY_TILE_PANES_V3
+  const nativeHeaderPanes = showTypeGpuCanvas ? EMPTY_HEADER_PANES_V3 : headerPanes
+  const nativeTilePanes = showTypeGpuCanvas ? EMPTY_TILE_PANES_V3 : tilePanes
   const presentedHeaderTextRunCount = countHeaderPaneTextRunsV3(presentedHeaderPanes)
   const presentedTileTextRunCount = countTilePaneTextRunsV3(presentedTilePanes)
   const nativeHeaderTextRunCount = countHeaderPaneTextRunsV3(nativeHeaderPanes)
@@ -122,6 +126,22 @@ export const WorkbookPaneRendererV3 = memo(function WorkbookPaneRendererV3({
     renderRevisionSnapshot,
     tilePanes,
   })
+  const currentPayloadProof = useMemo(
+    () =>
+      resolveWorkbookPaneVisiblePayloadProofV3({
+        headerPanes,
+        tilePanes: typeGpuTilePanes,
+      }),
+    [headerPanes, typeGpuTilePanes],
+  )
+  const presentedPayloadProof = useMemo(
+    () =>
+      resolveWorkbookPaneVisiblePayloadProofV3({
+        headerPanes: presentedHeaderPanes,
+        tilePanes: presentedTilePanes,
+      }),
+    [presentedHeaderPanes, presentedTilePanes],
+  )
 
   useLayoutEffect(() => {
     hostRuntime.updateProps({
@@ -259,6 +279,11 @@ export const WorkbookPaneRendererV3 = memo(function WorkbookPaneRendererV3({
           data-v3-has-presented-visible-frame={hasPresentedVisibleFrame ? 'true' : 'false'}
           data-v3-header-pane-count={headerPanes.length}
           data-v3-header-text-run-count={headerTextRunCount}
+          data-v3-current-content-signature={currentPayloadProof.contentSignature}
+          data-v3-current-rect-count={currentPayloadProof.rectCount}
+          data-v3-current-rect-signature={currentPayloadProof.rectSignature}
+          data-v3-current-text-run-count={currentPayloadProof.textRunCount}
+          data-v3-current-text-signature={currentPayloadProof.textSignature}
           data-v3-authoritative-render-revision={renderRevisionSnapshot?.authoritativeRevision ?? ''}
           data-v3-local-render-revision={renderRevisionSnapshot?.localRevision ?? ''}
           data-v3-presented-frame-proof-signature={presentedFrameProofSignature}
@@ -273,11 +298,16 @@ export const WorkbookPaneRendererV3 = memo(function WorkbookPaneRendererV3({
           data-v3-presented-overlay-rect-count={presentedVisualFrame?.overlayRectCount ?? ''}
           data-v3-presented-overlay-rect-signature={presentedVisualFrame?.overlayRectSignature ?? ''}
           data-v3-presented-overlay-seq={presentedVisualFrame?.overlaySeq ?? ''}
+          data-v3-presented-content-signature={presentedPayloadProof.contentSignature}
+          data-v3-presented-rect-count={presentedPayloadProof.rectCount}
+          data-v3-presented-rect-signature={presentedPayloadProof.rectSignature}
           data-v3-presented-render-tx={presentedVisualFrame?.scrollSnapshot.renderTx ?? presentedVisualFrame?.scrollSnapshot.tx ?? ''}
           data-v3-presented-render-ty={presentedVisualFrame?.scrollSnapshot.renderTy ?? presentedVisualFrame?.scrollSnapshot.ty ?? ''}
           data-v3-presented-scroll-left={presentedVisualFrame?.scrollSnapshot.scrollLeft ?? ''}
           data-v3-presented-scroll-top={presentedVisualFrame?.scrollSnapshot.scrollTop ?? ''}
           data-v3-presented-text-run-count={presentedTileTextRunCount}
+          data-v3-presented-visible-text-run-count={presentedPayloadProof.textRunCount}
+          data-v3-presented-text-signature={presentedPayloadProof.textSignature}
           data-v3-presented-tile-pane-count={presentedTilePanes.length}
           data-v3-native-text-run-count={nativeTileTextRunCount}
           data-v3-native-tile-pane-count={nativeTilePanes.length}
@@ -397,6 +427,8 @@ const EMPTY_PRESENTED_RENDER_PROOF_V3 = Object.freeze({
   tileSceneCameraSeq: null,
   tileSceneRevision: null,
 })
+const EMPTY_HEADER_PANES_V3: readonly GridHeaderPaneState[] = Object.freeze([])
+const EMPTY_TILE_PANES_V3: readonly WorkbookRenderTilePaneState[] = Object.freeze([])
 
 function maxTilePaneField(
   tilePanes: readonly WorkbookRenderTilePaneState[],

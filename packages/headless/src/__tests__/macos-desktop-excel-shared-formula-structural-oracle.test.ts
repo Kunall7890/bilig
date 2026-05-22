@@ -1,4 +1,4 @@
-import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
+import { mkdtempSync, readFileSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 
@@ -6,6 +6,8 @@ import { buildSharedFormulaWorkbookBytes, isMacosExcelInstalled, runMacosExcelSt
 import { exportXlsx, importXlsx } from '@bilig/excel-import'
 import { strFromU8, unzipSync } from 'fflate'
 import { describe, expect, it } from 'vitest'
+
+import { removeMacosExcelTestDir } from './macos-excel-oracle-test-utils.js'
 
 import { WorkPaper, type WorkPaperCellAddress } from '../index.js'
 
@@ -120,7 +122,7 @@ describe('macOS Desktop Excel shared-formula structural oracle', () => {
         const excelTruth = importXlsx(new Uint8Array(readFileSync(excelWorkbookPath)), 'excel-shared-formula-row-insert-oracle.xlsx')
         expect(excelTruth.snapshot.sheets[0]?.cells.find((cell) => cell.address === 'B4')).toMatchObject({ formula: 'A4*2' })
       } finally {
-        rmSync(tempDir, { recursive: true, force: true })
+        removeMacosExcelTestDir(tempDir)
       }
     },
     60_000,

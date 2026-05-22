@@ -1,4 +1,4 @@
-import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
+import { mkdtempSync, readFileSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 
@@ -7,6 +7,8 @@ import { exportXlsx, importXlsx } from '@bilig/excel-import'
 import { isMacosExcelInstalled, runMacosExcelInspectionOracle } from '@bilig/excel-fixtures'
 import { strFromU8, strToU8, unzipSync, zipSync } from 'fflate'
 import { describe, expect, it } from 'vitest'
+
+import { removeMacosExcelTestDir } from './macos-excel-oracle-test-utils.js'
 import * as XLSX from 'xlsx'
 
 const relationshipNamespace = 'http://schemas.openxmlformats.org/package/2006/relationships'
@@ -65,7 +67,7 @@ describe('macOS Desktop Excel external data provenance oracle', () => {
 
         expect(externalDataMetrics(new Uint8Array(readFileSync(workbookPath)))).toEqual(externalDataMetrics(source))
       } finally {
-        rmSync(tempDir, { recursive: true, force: true })
+        removeMacosExcelTestDir(tempDir)
       }
     },
     120_000,

@@ -1,4 +1,4 @@
-import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
+import { mkdtempSync, readFileSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 
@@ -8,6 +8,8 @@ import { isMacosExcelInstalled, runMacosExcelStructuralOperationOracle } from '@
 import { ValueTag, type WorkbookSnapshot } from '@bilig/protocol'
 import { strFromU8, unzipSync } from 'fflate'
 import { describe, expect, it } from 'vitest'
+
+import { removeMacosExcelTestDir } from './macos-excel-oracle-test-utils.js'
 
 const inspectedCells = ['D1', 'E1', 'F1', 'G1'] as const
 
@@ -82,7 +84,7 @@ describe('macOS Desktop Excel table AutoFilter oracle', () => {
           excelResult.cells.map(({ address, value }) => ({ address, value })),
         )
       } finally {
-        rmSync(tempDir, { recursive: true, force: true })
+        removeMacosExcelTestDir(tempDir)
       }
     },
     120_000,

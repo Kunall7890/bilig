@@ -1,4 +1,4 @@
-import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
+import { mkdtempSync, readFileSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 
@@ -12,6 +12,8 @@ import {
 } from '@bilig/excel-fixtures'
 import { ErrorCode, ValueTag, type CellValue } from '@bilig/protocol'
 import { describe, expect, it } from 'vitest'
+
+import { removeMacosExcelTestDir } from './macos-excel-oracle-test-utils.js'
 
 import { WorkPaper, type WorkPaperCellAddress } from '../index.js'
 
@@ -114,7 +116,7 @@ describe('macOS Desktop Excel structured-reference syntax oracle', () => {
         const imported = importXlsx(new Uint8Array(readFileSync(workbookPath)), 'headless-structured-reference-spaced-headers-saved.xlsx')
         expectImportedValues(imported.snapshot, spacedHeaderOracleCells)
       } finally {
-        rmSync(tempDir, { recursive: true, force: true })
+        removeMacosExcelTestDir(tempDir)
       }
     },
     60_000,
@@ -145,7 +147,7 @@ describe('macOS Desktop Excel structured-reference syntax oracle', () => {
         const imported = importXlsx(new Uint8Array(readFileSync(workbookPath)), 'headless-structured-reference-special-headers-saved.xlsx')
         expectImportedValues(imported.snapshot, specialHeaderOracleCells)
       } finally {
-        rmSync(tempDir, { recursive: true, force: true })
+        removeMacosExcelTestDir(tempDir)
       }
     },
     60_000,
@@ -286,7 +288,7 @@ async function expectExcelStructuralScenario(args: {
     expect(imported.snapshot.workbook.metadata?.definedNames).toEqual(args.expectedDefinedNames)
     expectImportedValues(imported.snapshot, args.expectedImportedCells ?? args.expectedCells)
   } finally {
-    rmSync(tempDir, { recursive: true, force: true })
+    removeMacosExcelTestDir(tempDir)
   }
 }
 

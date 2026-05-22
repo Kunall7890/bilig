@@ -17,6 +17,11 @@ const readyTypeGpuSurface: BiligRenderedSurfaceState = {
   typeGpu: {
     authoritativeRenderRevision: 'rev-3',
     backendStatus: 'ready',
+    currentContentSignature: 'content:current',
+    currentRectCount: 88,
+    currentRectSignature: 'rect:current',
+    currentTextRunCount: 12,
+    currentTextSignature: 'text:current',
     frameProofStatus: 'presented',
     frameProofSignature: 'frame-current',
     headerPaneCount: 1,
@@ -26,8 +31,13 @@ const readyTypeGpuSurface: BiligRenderedSurfaceState = {
     mode: 'typegpu-v3',
     pixelHeight: 600,
     pixelWidth: 1000,
+    presentedContentSignature: 'content:current',
     presentedFrameProofSignature: 'frame-current',
     presentedHeaderPaneCount: 1,
+    presentedRectCount: 88,
+    presentedRectSignature: 'rect:current',
+    presentedTextRunCount: 12,
+    presentedTextSignature: 'text:current',
     presentedTilePaneCount: 1,
     projectedRenderRevision: 'rev-3',
     tilePaneCount: 1,
@@ -155,5 +165,30 @@ describe('same-corpus Bilig rendered surface proof', () => {
 
     expect(readiness.ready).toBe(false)
     expect(readiness.gaps).toContain('presented tile/header pane counts do not cover the current visible panes')
+  })
+
+  it('rejects stale visible text and rect payloads even when the frame signature is presented', () => {
+    const readiness = biligRenderedSurfaceReadiness({
+      ...readyTypeGpuSurface,
+      typeGpu: {
+        ...readyTypeGpuSurface.typeGpu!,
+        presentedContentSignature: 'content:stale',
+        presentedRectCount: 77,
+        presentedRectSignature: 'rect:stale',
+        presentedTextRunCount: 11,
+        presentedTextSignature: 'text:stale',
+      },
+    })
+
+    expect(readiness.ready).toBe(false)
+    expect(readiness.gaps).toEqual(
+      expect.arrayContaining([
+        'presented visible content signature does not match current tiles',
+        'presented visible text signature does not match current tiles',
+        'presented visible rect signature does not match current tiles',
+        'presented visible text run count does not match current tiles',
+        'presented visible rect count does not match current tiles',
+      ]),
+    )
   })
 })

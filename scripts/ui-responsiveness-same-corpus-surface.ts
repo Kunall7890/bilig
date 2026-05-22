@@ -1,6 +1,11 @@
 export interface BiligRenderedCanvasState {
   readonly authoritativeRenderRevision?: string | null | undefined
   readonly backendStatus?: string | null | undefined
+  readonly currentContentSignature?: string | null | undefined
+  readonly currentRectCount?: number | undefined
+  readonly currentRectSignature?: string | null | undefined
+  readonly currentTextRunCount?: number | undefined
+  readonly currentTextSignature?: string | null | undefined
   readonly frameProofStatus?: string | null | undefined
   readonly frameProofSignature?: string | null | undefined
   readonly headerPaneCount: number
@@ -10,8 +15,13 @@ export interface BiligRenderedCanvasState {
   readonly mode: string | null
   readonly pixelHeight: number
   readonly pixelWidth: number
+  readonly presentedContentSignature?: string | null | undefined
   readonly presentedFrameProofSignature?: string | null | undefined
   readonly presentedHeaderPaneCount?: number | undefined
+  readonly presentedRectCount?: number | undefined
+  readonly presentedRectSignature?: string | null | undefined
+  readonly presentedTextRunCount?: number | undefined
+  readonly presentedTextSignature?: string | null | undefined
   readonly presentedTilePaneCount?: number | undefined
   readonly projectedRenderRevision?: string | null | undefined
   readonly tilePaneCount: number
@@ -113,6 +123,54 @@ export function biligRenderedSurfaceReadiness(state: BiligRenderedSurfaceState |
   }
   if (!canvasPixelsMatchViewport(canvas, state)) {
     gaps.push('TypeGPU canvas backing pixels do not cover the viewport')
+  }
+  if (!hasText(canvas.currentContentSignature)) {
+    gaps.push('current visible content signature is missing')
+  }
+  if (!hasText(canvas.presentedContentSignature)) {
+    gaps.push('presented visible content signature is missing')
+  }
+  if (
+    hasText(canvas.currentContentSignature) &&
+    hasText(canvas.presentedContentSignature) &&
+    canvas.presentedContentSignature !== canvas.currentContentSignature
+  ) {
+    gaps.push('presented visible content signature does not match current tiles')
+  }
+  if (!hasText(canvas.currentTextSignature)) {
+    gaps.push('current visible text signature is missing')
+  }
+  if (!hasText(canvas.presentedTextSignature)) {
+    gaps.push('presented visible text signature is missing')
+  }
+  if (
+    hasText(canvas.currentTextSignature) &&
+    hasText(canvas.presentedTextSignature) &&
+    canvas.presentedTextSignature !== canvas.currentTextSignature
+  ) {
+    gaps.push('presented visible text signature does not match current tiles')
+  }
+  if (!hasText(canvas.currentRectSignature)) {
+    gaps.push('current visible rect signature is missing')
+  }
+  if (!hasText(canvas.presentedRectSignature)) {
+    gaps.push('presented visible rect signature is missing')
+  }
+  if (
+    hasText(canvas.currentRectSignature) &&
+    hasText(canvas.presentedRectSignature) &&
+    canvas.presentedRectSignature !== canvas.currentRectSignature
+  ) {
+    gaps.push('presented visible rect signature does not match current tiles')
+  }
+  if ((canvas.currentRectCount ?? 0) <= 0 || (canvas.presentedRectCount ?? 0) <= 0) {
+    gaps.push('visible rect payload counts are empty')
+  }
+  if ((canvas.currentTextRunCount ?? 0) !== (canvas.presentedTextRunCount ?? 0)) {
+    gaps.push('presented visible text run count does not match current tiles')
+  }
+  if ((canvas.currentRectCount ?? 0) !== (canvas.presentedRectCount ?? 0)) {
+    gaps.push('presented visible rect count does not match current tiles')
   }
   if (!hasText(state.gridAuthoritativeRenderRevision)) {
     gaps.push('grid authoritative render revision is missing')
@@ -234,6 +292,16 @@ function canvasEvidence(canvas: BiligRenderedCanvasState, state: BiligRenderedSu
     `hasPresentedFrame=${String(canvas.hasPresentedFrame === true)}`,
     `hasPresentedVisibleFrame=${String(canvas.hasPresentedVisibleFrame === true)}`,
     `presentedFrameProofSignature=${canvas.presentedFrameProofSignature ?? ''}`,
+    `currentContentSignature=${canvas.currentContentSignature ?? ''}`,
+    `presentedContentSignature=${canvas.presentedContentSignature ?? ''}`,
+    `currentTextRunCount=${String(canvas.currentTextRunCount ?? 0)}`,
+    `presentedTextRunCount=${String(canvas.presentedTextRunCount ?? 0)}`,
+    `currentTextSignature=${canvas.currentTextSignature ?? ''}`,
+    `presentedTextSignature=${canvas.presentedTextSignature ?? ''}`,
+    `currentRectCount=${String(canvas.currentRectCount ?? 0)}`,
+    `presentedRectCount=${String(canvas.presentedRectCount ?? 0)}`,
+    `currentRectSignature=${canvas.currentRectSignature ?? ''}`,
+    `presentedRectSignature=${canvas.presentedRectSignature ?? ''}`,
     `tilePaneCount=${String(canvas.tilePaneCount)}`,
     `headerPaneCount=${String(canvas.headerPaneCount)}`,
     `presentedTilePaneCount=${String(canvas.presentedTilePaneCount ?? 0)}`,
