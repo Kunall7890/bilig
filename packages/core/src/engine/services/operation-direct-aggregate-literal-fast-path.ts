@@ -64,7 +64,12 @@ export interface OperationDirectAggregateLiteralFastPathArgs {
   }) => number
   readonly canApplyDirectAggregateLiteralDeltaForRequest: (
     formulaCellIndex: number,
-    request: OperationDirectAggregateLiteralMutationRequest,
+    request: {
+      readonly sheetName: string
+      readonly sheetId?: number
+      readonly row: number
+      readonly col: number
+    },
   ) => boolean
   readonly canApplyDirectAggregateLiteralDelta: (formulaCellIndex: number) => boolean
   readonly writeFastPathLiteralToExistingCell: (existingIndex: number, value: LiteralInput) => void

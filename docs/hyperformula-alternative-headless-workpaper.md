@@ -37,7 +37,7 @@ For the broader engine choice, start with the
 | License posture              | GPLv3 or commercial license                                                          | MIT                                                                                                                  |
 | API orientation              | Spreadsheet-engine instance with formula evaluation and workbook operations          | WorkPaper object with formula evaluation, structural edits, persistence helpers, history, and readback               |
 | Agent workflow fit           | Possible, but the project is not specifically packaged around agent writeback proofs | First-class evaluation path includes an agent writeback demo with persistence and restored readback                  |
-| Benchmark claim in this repo | External comparison target                                                           | Checked-in WorkPaper-vs-HyperFormula artifact records `94/100` mean wins on scorecard-eligible comparable workloads |
+| Benchmark claim in this repo | External comparison target                                                           | Checked-in WorkPaper-vs-HyperFormula artifact records `100/100` mean wins on scorecard-eligible comparable workloads |
 | Caveat                       | Strong default engine, with its own licensing and integration model                  | Formula inventory is complete for the tracked Office surface, but arbitrary Excel edge cases remain evidence-scoped  |
 
 ## What The Benchmark Says
@@ -52,10 +52,10 @@ The short benchmark explainer is:
 
 The current public claim is narrow:
 
-- `94/100` mean wins on scorecard-eligible comparable workloads
-- `70/73` public-lane mean wins
-- `24/27` holdout-lane mean wins
-- an overall p95 geomean lead with seven current comparable p95 holdouts
+- `100/100` mean wins on scorecard-eligible comparable workloads
+- `73/73` public-lane mean wins
+- `27/27` holdout-lane mean wins
+- an overall p95 geomean lead with one current comparable p95 holdout
 - a named worst p95 row that remains visible instead of hidden
 
 The verification command is:

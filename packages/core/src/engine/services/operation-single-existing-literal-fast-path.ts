@@ -675,12 +675,7 @@ export function createOperationSingleExistingLiteralFastPath(args: OperationSing
         return trustedAggregateResult
       }
     }
-    if (
-      trustedExistingNumericLiteral &&
-      request.emitTracked === false &&
-      hasAggregateDependents &&
-      !isRangeEntity(singleExistingCellDependent)
-    ) {
+    if (trustedExistingNumericLiteral && request.emitTracked === false && hasAggregateDependents && singleExistingCellDependent === -1) {
       const trustedAggregateResult = tryApplyTrustedColumnDirectAggregateExistingNumericMutation({
         existingIndex,
         sheet,

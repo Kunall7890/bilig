@@ -384,7 +384,7 @@ describe('work paper batched structural fast path', () => {
       ],
     })
     const sheetId = workbook.getSheetId('Data')!
-    const appendCount = 100
+    const appendCount = 250
     const inputCols = 4
     const rows = Array.from({ length: appendCount }, (_entry, index) => {
       const rowNumber = index + 3

@@ -54,6 +54,10 @@ describe('WorkPaper sliding aggregate fast path', () => {
     const changes = workbook.setCellContents(cell(sheetId, 0, 0), 99)
 
     expect(changes.map((change) => (change.kind === 'cell' ? `${change.sheetName}!${change.a1}` : ''))).toEqual(['Bench!A1', 'Bench!B1'])
+    expect(Reflect.get(workbook, 'engineEventsAttached')).toBe(false)
+    expect(Reflect.get(workbook, 'setCellContentsRuntimeCache')).toBeUndefined()
+    expect(Reflect.get(workbook, 'existingLiteralDirectFastPathRuntimeCache')).toBeUndefined()
+    expect(Reflect.get(workbook, 'existingNumericFastPathRuntimeCache')).toBeUndefined()
     expect(workbook.getCellValue(cell(sheetId, 0, 1))).toEqual({ tag: ValueTag.Number, value: 8354 })
     expect(workbook.getCellValue(cell(sheetId, rowCount - 1, 1))).toEqual({ tag: ValueTag.Number, value: rowCount })
     expect(workbook.getStats().lastMetrics).toMatchObject({

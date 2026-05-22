@@ -717,7 +717,7 @@ describe('operation-service dense mutation fast paths', () => {
     engine.createSheet('Sheet1')
 
     const existingRows = 16
-    const appendRows = 160
+    const appendRows = 250
     const inputCols = 4
     for (let row = 1; row <= existingRows; row += 1) {
       for (let col = 0; col < inputCols; col += 1) {
@@ -777,7 +777,7 @@ describe('operation-service dense mutation fast paths', () => {
         directFormulaKernelSyncOnlyRecalcSkips: 1,
         formulasBound: 0,
         kernelSyncOnlyRecalcSkips: 1,
-        nativeDirectAggregatePrefixEvaluations: appendRows,
+        nativeDirectAggregatePrefixEvaluations: 0,
         topoRepairs: 0,
       })
       expect(formulaScan).not.toHaveBeenCalled()
