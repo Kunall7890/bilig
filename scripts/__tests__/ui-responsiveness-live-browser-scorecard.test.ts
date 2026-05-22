@@ -322,6 +322,71 @@ describe('UI responsiveness live browser scorecard', () => {
     expect(() => validateUiResponsivenessLiveBrowserScorecard(staleScorecard)).toThrow('UI responsiveness same-corpus ratio is stale')
   })
 
+  it('keeps the same-corpus blocker when scenario timing proof is hand-edited green', () => {
+    const scorecard = parseUiResponsivenessLiveBrowserScorecard(
+      readJsonObject(resolve(repoRoot, 'packages/benchmarks/baselines/ui-responsiveness-live-browser-scorecard.json')),
+    )
+    const proof = buildSameCorpusProof(buildSameCorpusCapture())
+    const forgedScorecard: UiResponsivenessLiveBrowserScorecard = {
+      ...scorecard,
+      sameCorpusProof: {
+        ...proof,
+        cases: proof.cases.map((entry, index) =>
+          index === 0
+            ? Object.assign({}, entry, {
+                scenarioProof: Object.assign({}, entry.scenarioProof, {
+                  meanRatio: 0.2,
+                  p95Ratio: 0.2,
+                }),
+              })
+            : entry,
+        ),
+      },
+    }
+
+    expect(() => validateUiResponsivenessLiveBrowserScorecard(forgedScorecard)).toThrow(
+      'UI responsiveness same-corpus scenario proof timing is stale',
+    )
+    expect(hasUiResponsivenessSameCorpusTenXGap(forgedScorecard)).toBe(true)
+  })
+
+  it('keeps the same-corpus blocker when TypeGPU pixel proof is hand-edited green', () => {
+    const scorecard = parseUiResponsivenessLiveBrowserScorecard(
+      readJsonObject(resolve(repoRoot, 'packages/benchmarks/baselines/ui-responsiveness-live-browser-scorecard.json')),
+    )
+    const proof = buildSameCorpusProof(buildSameCorpusCapture())
+    const forgedScorecard: UiResponsivenessLiveBrowserScorecard = {
+      ...scorecard,
+      sameCorpusProof: {
+        ...proof,
+        cases: proof.cases.map((entry, index) =>
+          index === 0
+            ? Object.assign({}, entry, {
+                scenarioProof: Object.assign({}, entry.scenarioProof, {
+                  pixelGridProof: Object.assign({}, entry.scenarioProof.pixelGridProof, {
+                    captured: true,
+                    missingProducts: [],
+                    products: entry.scenarioProof.pixelGridProof.products.map((productProof) =>
+                      productProof.product === 'bilig'
+                        ? Object.assign({}, productProof, {
+                            evidence: ['mode=typegpu-v3', 'pixelGridProofVersion=grid-pixels-v1'],
+                          })
+                        : productProof,
+                    ),
+                  }),
+                }),
+              })
+            : entry,
+        ),
+      },
+    }
+
+    expect(() => validateUiResponsivenessLiveBrowserScorecard(forgedScorecard)).toThrow(
+      'UI responsiveness same-corpus pixel grid proof is stale',
+    )
+    expect(hasUiResponsivenessSameCorpusTenXGap(forgedScorecard)).toBe(true)
+  })
+
   it('rejects stale same-corpus run manifests', () => {
     const scorecard = parseUiResponsivenessLiveBrowserScorecard(
       readJsonObject(resolve(repoRoot, 'packages/benchmarks/baselines/ui-responsiveness-live-browser-scorecard.json')),
