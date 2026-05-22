@@ -62,7 +62,15 @@ export interface WorkPaperExistingNumericFastPathRuntime {
     refs: readonly EngineExistingLiteralCellMutationRef[],
     potentialNewCells: number | undefined,
   ) => boolean
+  readonly canSkipSheetDimensionUpdateAfterExistingLiteralCell: (
+    sheetId: number,
+    row: number,
+    col: number,
+    value: LiteralInput,
+    potentialNewCells: number | undefined,
+  ) => boolean
   readonly updateSheetDimensionsAfterCellMutationRefs: (refs: readonly EngineExistingLiteralCellMutationRef[]) => void
+  readonly updateSheetDimensionsAfterExistingLiteralCell: (sheetId: number, row: number, col: number) => void
 }
 
 export interface ExistingNumericWorkPaperCellContentsRequest {
@@ -412,18 +420,18 @@ function updateSheetDimensionsAfterExistingLiteralFastPath(
   runtime: WorkPaperExistingNumericFastPathRuntime,
   request: ExistingNumericWorkPaperCellContentsRequest | ExistingLiteralWorkPaperCellContentsRequest,
 ): void {
-  const refs: EngineExistingLiteralCellMutationRef[] = [
-    {
-      sheetId: request.address.sheet,
-      cellIndex: request.cellIndex,
-      row: request.address.row,
-      col: request.address.col,
-      value: request.value,
-    },
-  ]
-  if (!runtime.canSkipSheetDimensionUpdateAfterLiteralMutationRefs(refs, 0)) {
-    runtime.updateSheetDimensionsAfterCellMutationRefs(refs)
+  if (
+    runtime.canSkipSheetDimensionUpdateAfterExistingLiteralCell(
+      request.address.sheet,
+      request.address.row,
+      request.address.col,
+      request.value,
+      0,
+    )
+  ) {
+    return
   }
+  runtime.updateSheetDimensionsAfterExistingLiteralCell(request.address.sheet, request.address.row, request.address.col)
 }
 
 function tryBuildLazyDirectExistingNumericTrackedChanges(

@@ -781,6 +781,10 @@ export class WorkbookStore {
     return runWorkbookMetadataEffect(this.metadataService.deleteDataValidation(sheetName, range))
   }
 
+  hasDataValidations(): boolean {
+    return this.metadata.dataValidations.size > 0
+  }
+
   listDataValidations(sheetName: string): WorkbookDataValidationRecord[] {
     return runWorkbookMetadataEffect(this.metadataService.listDataValidations(sheetName))
   }

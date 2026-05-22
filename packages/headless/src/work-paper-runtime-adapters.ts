@@ -302,7 +302,11 @@ export function createWorkPaperRuntimeAdapters(args: CreateWorkPaperRuntimeAdapt
     },
     canSkipSheetDimensionUpdateAfterLiteralMutationRefs: (refs, potentialNewCells) =>
       args.getSheetDimensionCache().canSkipUpdateAfterLiteralMutationRefs(refs, potentialNewCells),
+    canSkipSheetDimensionUpdateAfterExistingLiteralCell: (sheetId, row, col, value, potentialNewCells) =>
+      args.getSheetDimensionCache().canSkipUpdateAfterExistingLiteralCell(sheetId, row, col, value, potentialNewCells),
     updateSheetDimensionsAfterCellMutationRefs: (refs) => args.getSheetDimensionCache().updateAfterCellMutationRefs(refs),
+    updateSheetDimensionsAfterExistingLiteralCell: (sheetId, row, col) =>
+      args.getSheetDimensionCache().updateAfterExistingLiteralCell(sheetId, row, col),
   }
 
   const setCellContentsRuntime: WorkPaperSetCellContentsRuntime = {

@@ -60,7 +60,15 @@ export interface WorkPaperExistingLiteralDirectFastPathRuntime {
     refs: readonly EngineExistingLiteralCellMutationRef[],
     potentialNewCells: number | undefined,
   ) => boolean
+  readonly canSkipSheetDimensionUpdateAfterExistingLiteralCell: (
+    sheetId: number,
+    row: number,
+    col: number,
+    value: LiteralInput,
+    potentialNewCells: number | undefined,
+  ) => boolean
   readonly updateSheetDimensionsAfterCellMutationRefs: (refs: readonly EngineExistingLiteralCellMutationRef[]) => void
+  readonly updateSheetDimensionsAfterExistingLiteralCell: (sheetId: number, row: number, col: number) => void
 }
 
 export function trySetExistingLiteralWorkPaperCellContentsDirectFastPath(
@@ -154,17 +162,8 @@ export function trySetExistingLiteralWorkPaperCellContentsDirectFastPath(
   if (!result) {
     return null
   }
-  const dimensionRefs: EngineExistingLiteralCellMutationRef[] = [
-    {
-      sheetId: address.sheet,
-      cellIndex,
-      row: address.row,
-      col: address.col,
-      value: content,
-    },
-  ]
-  if (!runtime.canSkipSheetDimensionUpdateAfterLiteralMutationRefs(dimensionRefs, 0)) {
-    runtime.updateSheetDimensionsAfterCellMutationRefs(dimensionRefs)
+  if (!runtime.canSkipSheetDimensionUpdateAfterExistingLiteralCell(address.sheet, address.row, address.col, content, 0)) {
+    runtime.updateSheetDimensionsAfterExistingLiteralCell(address.sheet, address.row, address.col)
   }
   if (runtime.hasTrackedEngineEvents()) {
     runtime.clearTrackedEngineEvents()

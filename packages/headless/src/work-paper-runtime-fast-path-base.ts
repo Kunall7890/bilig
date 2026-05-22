@@ -1,6 +1,5 @@
 import {
   CellFlags,
-  type EngineExistingLiteralCellMutationRef,
   type EngineExistingNumericCellMutationResult,
   type SheetRecord,
   type SpreadsheetEngine,
@@ -158,7 +157,11 @@ export abstract class WorkPaperRuntimeFastPathBase extends WorkPaperRuntimeSurfa
       trackedA1: (row, col) => this.trackedA1(row, col),
       canSkipSheetDimensionUpdateAfterLiteralMutationRefs: (refs, potentialNewCells) =>
         this.sheetDimensionCache.canSkipUpdateAfterLiteralMutationRefs(refs, potentialNewCells),
+      canSkipSheetDimensionUpdateAfterExistingLiteralCell: (sheetId, row, col, value, potentialNewCells) =>
+        this.sheetDimensionCache.canSkipUpdateAfterExistingLiteralCell(sheetId, row, col, value, potentialNewCells),
       updateSheetDimensionsAfterCellMutationRefs: (refs) => this.sheetDimensionCache.updateAfterCellMutationRefs(refs),
+      updateSheetDimensionsAfterExistingLiteralCell: (sheetId, row, col) =>
+        this.sheetDimensionCache.updateAfterExistingLiteralCell(sheetId, row, col),
     }
     return this.existingLiteralDirectFastPathRuntimeCache
   }
@@ -278,17 +281,8 @@ export abstract class WorkPaperRuntimeFastPathBase extends WorkPaperRuntimeSurfa
     if (!result) {
       return null
     }
-    const dimensionRefs: EngineExistingLiteralCellMutationRef[] = [
-      {
-        sheetId: address.sheet,
-        cellIndex,
-        row: address.row,
-        col: address.col,
-        value: content,
-      },
-    ]
-    if (!this.sheetDimensionCache.canSkipUpdateAfterLiteralMutationRefs(dimensionRefs, 0)) {
-      this.sheetDimensionCache.updateAfterCellMutationRefs(dimensionRefs)
+    if (!this.sheetDimensionCache.canSkipUpdateAfterExistingLiteralCell(address.sheet, address.row, address.col, content, 0)) {
+      this.sheetDimensionCache.updateAfterExistingLiteralCell(address.sheet, address.row, address.col)
     }
     if (this.engineEvents.hasTrackedEvents) {
       this.engineEvents.clearEvents()
@@ -574,7 +568,11 @@ export abstract class WorkPaperRuntimeFastPathBase extends WorkPaperRuntimeSurfa
       },
       canSkipSheetDimensionUpdateAfterLiteralMutationRefs: (refs, potentialNewCells) =>
         this.sheetDimensionCache.canSkipUpdateAfterLiteralMutationRefs(refs, potentialNewCells),
+      canSkipSheetDimensionUpdateAfterExistingLiteralCell: (sheetId, row, col, value, potentialNewCells) =>
+        this.sheetDimensionCache.canSkipUpdateAfterExistingLiteralCell(sheetId, row, col, value, potentialNewCells),
       updateSheetDimensionsAfterCellMutationRefs: (refs) => this.sheetDimensionCache.updateAfterCellMutationRefs(refs),
+      updateSheetDimensionsAfterExistingLiteralCell: (sheetId, row, col) =>
+        this.sheetDimensionCache.updateAfterExistingLiteralCell(sheetId, row, col),
     }
     return this.existingNumericFastPathRuntimeCache
   }

@@ -121,6 +121,42 @@ export class WorkPaperSheetDimensionCache {
     return true
   }
 
+  canSkipUpdateAfterExistingLiteralCell(
+    sheetId: number,
+    row: number,
+    col: number,
+    value: unknown,
+    potentialNewCells: number | undefined,
+  ): boolean {
+    if (potentialNewCells !== 0 || value === null) {
+      return false
+    }
+    const cached = this.dimensions.get(sheetId)
+    if (!cached) {
+      return true
+    }
+    if (this.sheetHasSpills(sheetId)) {
+      return false
+    }
+    return row + 1 <= cached.height && col + 1 <= cached.width
+  }
+
+  updateAfterExistingLiteralCell(sheetId: number, row: number, col: number): void {
+    if (this.dimensions.size === 0) {
+      return
+    }
+    const cached = this.dimensions.get(sheetId)
+    if (!cached) {
+      return
+    }
+    if (this.sheetHasSpills(sheetId)) {
+      this.invalidate(sheetId)
+      return
+    }
+    cached.height = Math.max(cached.height, row + 1)
+    cached.width = Math.max(cached.width, col + 1)
+  }
+
   updateAfterCellMutationRefs(refs: readonly WorkPaperDimensionMutationRef[]): void {
     if (this.dimensions.size === 0) {
       return

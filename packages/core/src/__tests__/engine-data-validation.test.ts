@@ -1,8 +1,42 @@
 import { ValueTag } from '@bilig/protocol'
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import { SpreadsheetEngine } from '../engine.js'
 
 describe('SpreadsheetEngine data validations', () => {
+  it('skips validation metadata scans when no validations exist', async () => {
+    const engine = new SpreadsheetEngine({ workbookName: 'validation-empty-fast-path', trackReplicaVersions: false })
+    await engine.ready()
+    engine.createSheet('Sheet1')
+    const sheetId = engine.workbook.getSheet('Sheet1')!.id
+    engine.setCellValue('Sheet1', 'B2', 5)
+    engine.setCellValue('Sheet1', 'C2', 'Draft')
+    const b2Index = engine.workbook.getCellIndex('Sheet1', 'B2')!
+    const c2Index = engine.workbook.getCellIndex('Sheet1', 'C2')!
+
+    expect(engine.workbook.hasDataValidations()).toBe(false)
+    const listSpy = vi.spyOn(engine.workbook, 'listDataValidations')
+
+    engine.setCellValue('Sheet1', 'A1', 1)
+    engine.setCellValueAt(sheetId, 0, 0, 2)
+    engine.tryApplyExistingNumericCellMutationAt({
+      sheetId,
+      row: 1,
+      col: 1,
+      cellIndex: b2Index,
+      value: 6,
+    })
+    engine.tryApplyExistingLiteralCellMutationAt({
+      sheetId,
+      row: 1,
+      col: 2,
+      cellIndex: c2Index,
+      value: 'Final',
+    })
+
+    expect(listSpy).not.toHaveBeenCalled()
+    listSpy.mockRestore()
+  })
+
   it('roundtrips data validation metadata through snapshots', async () => {
     const engine = new SpreadsheetEngine({ workbookName: 'validation-roundtrip' })
     await engine.ready()

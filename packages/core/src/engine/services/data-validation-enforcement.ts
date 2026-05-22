@@ -17,6 +17,9 @@ export interface DataValidationEnforcementState {
 }
 
 export function assertLocalDataValidationsForEngineOps(state: DataValidationEnforcementState, ops: readonly EngineOp[]): void {
+  if (!state.workbook.hasDataValidations()) {
+    return
+  }
   for (const op of ops) {
     if (op.kind === 'setCellValue') {
       const bounds = normalizeRange({ sheetName: op.sheetName, startAddress: op.address, endAddress: op.address })
@@ -29,6 +32,9 @@ export function assertLocalDataValidationsForCellMutationRefs(
   state: DataValidationEnforcementState,
   refs: readonly EngineCellMutationRef[],
 ): void {
+  if (!state.workbook.hasDataValidations()) {
+    return
+  }
   for (const ref of refs) {
     if (ref.mutation.kind !== 'setCellValue') {
       continue
@@ -45,6 +51,9 @@ export function assertLocalDataValidationForExistingNumericCellMutation(
   state: DataValidationEnforcementState,
   request: EngineExistingNumericCellMutationRef,
 ): void {
+  if (!state.workbook.hasDataValidations()) {
+    return
+  }
   const sheetName = state.workbook.getSheetById(request.sheetId)?.name
   if (sheetName === undefined) {
     throw new Error(`Unknown sheet id: ${String(request.sheetId)}`)
@@ -56,6 +65,9 @@ export function assertLocalDataValidationForExistingLiteralCellMutation(
   state: DataValidationEnforcementState,
   request: EngineExistingLiteralCellMutationRef,
 ): void {
+  if (!state.workbook.hasDataValidations()) {
+    return
+  }
   const sheetName = state.workbook.getSheetById(request.sheetId)?.name
   if (sheetName === undefined) {
     throw new Error(`Unknown sheet id: ${String(request.sheetId)}`)
