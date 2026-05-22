@@ -922,5 +922,5 @@ export function getGridRenderTilePaneRuntime(current: unknown): GridRenderTilePa
 }
 
 function hasCompleteResidentRenderTilePayload(tile: GridRenderTile): boolean {
-  return resolveRenderTileCompletenessProof(tile).complete
+  return resolveRenderTileCompletenessProof(tile, { requirePacket: tile.packet !== undefined }).complete
 }
