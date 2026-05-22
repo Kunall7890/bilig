@@ -93,6 +93,7 @@ describe('headless package workflow', () => {
     expect(source).toContain('bun scripts/sync-runtime-release-metadata.ts')
     expect(source).toContain('bun scripts/sync-agent-discovery-docs.ts')
     expect(agentDiscoverySource).toContain('syncVersionedStaticReferenceLine')
+    expect(agentDiscoverySource).toContain("^(\\\\s*)'@bilig/workpaper@${stableSemverPattern}'")
     expect(agentDiscoverySource).not.toContain('replace(new RegExp(`@bilig/headless@${stableSemverPattern}`')
     expect(mcpDirectoryDoc).toContain('`io.github.proompteng/bilig-workpaper@0.27.0` with package\n`@bilig/headless@0.27.0`')
     expect(source).toContain('.release-please-manifest.json')
