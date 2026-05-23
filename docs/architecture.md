@@ -44,6 +44,8 @@ flowchart LR
   - stable run error code union for predictable agent branching
   - transport-neutral run adapters for preview/apply/readback/check proof
   - runtime adapter capability checks before mutation handoff
+  - structured `checkRuntimeRequirements` diagnostics for transported adapter
+    handoff payloads
   - check-only runtime execution that skips mutation when no apply capability
     is required
   - apply summaries that expose preview ops, applied ops, preview/apply match,

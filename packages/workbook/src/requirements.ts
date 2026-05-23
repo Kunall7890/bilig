@@ -1,5 +1,5 @@
 import { describeRef, type WorkbookRefDescription } from './describe.js'
-import type { WorkbookRef } from './find.js'
+import { isWorkbookRefData, type WorkbookRef } from './find.js'
 import type { WorkbookActionCommand, WorkbookActionPlan } from './model.js'
 import type { WorkbookOp } from './ops.js'
 import { hydratePlanData, isHydratedPlan, type WorkbookExecutablePlan } from './plan-data.js'
@@ -10,6 +10,24 @@ type WorkbookConcreteCommandOp = Extract<WorkbookOp, { kind: 'setCellFormula' | 
 export type WorkbookRuntimeRequirementKind = 'apply' | 'read' | 'verify'
 
 export type WorkbookRuntimeCapability = 'writeFormula' | 'writeValue' | 'format' | 'clear' | 'applyOp' | 'read' | 'verifyCheck'
+
+export const workbookRuntimeRequirementKinds = Object.freeze([
+  'apply',
+  'read',
+  'verify',
+] as const satisfies readonly WorkbookRuntimeRequirementKind[])
+const WORKBOOK_RUNTIME_REQUIREMENT_KIND_SET = new Set<string>(workbookRuntimeRequirementKinds)
+
+export const workbookRuntimeCapabilities = Object.freeze([
+  'writeFormula',
+  'writeValue',
+  'format',
+  'clear',
+  'applyOp',
+  'read',
+  'verifyCheck',
+] as const satisfies readonly WorkbookRuntimeCapability[])
+const WORKBOOK_RUNTIME_CAPABILITY_SET = new Set<string>(workbookRuntimeCapabilities)
 
 export interface WorkbookRuntimeRequirement {
   readonly kind: WorkbookRuntimeRequirementKind
@@ -29,6 +47,25 @@ export interface WorkbookRuntimeRequirements {
   readonly actionName: string
   readonly requirements: readonly WorkbookRuntimeRequirement[]
 }
+
+export type WorkbookRuntimeRequirementsIssueCode = 'invalid_runtime_requirements'
+
+export interface WorkbookRuntimeRequirementsIssue {
+  readonly code: WorkbookRuntimeRequirementsIssueCode
+  readonly path: string
+  readonly message: string
+}
+
+export type WorkbookRuntimeRequirementsCheckResult =
+  | {
+      readonly status: 'valid'
+      readonly requirements: WorkbookRuntimeRequirements
+      readonly issues: readonly []
+    }
+  | {
+      readonly status: 'invalid'
+      readonly issues: readonly WorkbookRuntimeRequirementsIssue[]
+    }
 
 export type WorkbookRuntimeAdapterIssueCode = 'missing_apply' | 'missing_read' | 'missing_check_verifier'
 export type WorkbookRuntimeAdapterMethod = 'apply' | 'read' | 'verifyChecks'
@@ -61,6 +98,14 @@ export interface WorkbookRuntimeAdapterCandidate {
   readonly apply?: unknown
   readonly read?: unknown
   readonly verifyChecks?: unknown
+}
+
+export function isWorkbookRuntimeRequirementKind(value: unknown): value is WorkbookRuntimeRequirementKind {
+  return typeof value === 'string' && WORKBOOK_RUNTIME_REQUIREMENT_KIND_SET.has(value)
+}
+
+export function isWorkbookRuntimeCapability(value: unknown): value is WorkbookRuntimeCapability {
+  return typeof value === 'string' && WORKBOOK_RUNTIME_CAPABILITY_SET.has(value)
 }
 
 function describedRef(ref: WorkbookRef | undefined): { readonly target: WorkbookRefDescription } | {} {
@@ -284,12 +329,215 @@ export function describeRuntimeRequirements<Refs>(plan: WorkbookExecutablePlan<R
   return describeLiveRuntimeRequirements(hydratePlanData(plan))
 }
 
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null
+}
+
+function hasString(value: Record<string, unknown>, key: string): boolean {
+  return typeof value[key] === 'string'
+}
+
+function hasOptionalString(value: Record<string, unknown>, key: string): boolean {
+  const entry = value[key]
+  return entry === undefined || typeof entry === 'string'
+}
+
+function hasOptionalIndex(value: Record<string, unknown>, key: string): boolean {
+  const entry = value[key]
+  return entry === undefined || (Number.isInteger(entry) && typeof entry === 'number' && entry >= 0)
+}
+
+function isWorkbookRefDescription(value: unknown): value is WorkbookRefDescription {
+  return isWorkbookRefData(value)
+}
+
+function isRefDescriptionArray(value: unknown): value is readonly WorkbookRefDescription[] {
+  return Array.isArray(value) && value.every(isWorkbookRefDescription)
+}
+
+function capabilityMatchesKind(kind: WorkbookRuntimeRequirementKind, capability: WorkbookRuntimeCapability): boolean {
+  switch (kind) {
+    case 'apply':
+      return (
+        capability === 'writeFormula' ||
+        capability === 'writeValue' ||
+        capability === 'format' ||
+        capability === 'clear' ||
+        capability === 'applyOp'
+      )
+    case 'read':
+      return capability === 'read'
+    case 'verify':
+      return capability === 'verifyCheck'
+  }
+}
+
+function isRuntimeRequirement(value: unknown): value is WorkbookRuntimeRequirement {
+  if (!isRecord(value) || !isWorkbookRuntimeRequirementKind(value['kind']) || !isWorkbookRuntimeCapability(value['capability'])) {
+    return false
+  }
+  return (
+    capabilityMatchesKind(value['kind'], value['capability']) &&
+    hasString(value, 'message') &&
+    hasOptionalIndex(value, 'commandIndex') &&
+    hasOptionalIndex(value, 'checkIndex') &&
+    hasOptionalIndex(value, 'opIndex') &&
+    hasOptionalString(value, 'opKind') &&
+    hasOptionalString(value, 'checkKind') &&
+    (value['target'] === undefined || isWorkbookRefDescription(value['target'])) &&
+    (value['refs'] === undefined || isRefDescriptionArray(value['refs']))
+  )
+}
+
 function isRuntimeRequirements(value: unknown): value is WorkbookRuntimeRequirements {
-  return typeof value === 'object' && value !== null && Array.isArray((value as { readonly requirements?: unknown }).requirements)
+  return (
+    isRecord(value) &&
+    hasString(value, 'modelName') &&
+    hasString(value, 'actionName') &&
+    Array.isArray(value['requirements']) &&
+    value['requirements'].every(isRuntimeRequirement)
+  )
+}
+
+function isRuntimeRequirementsCandidate<Refs>(
+  value: WorkbookExecutablePlan<Refs> | WorkbookRuntimeRequirements,
+): value is WorkbookRuntimeRequirements {
+  return isRecord(value) && Object.getOwnPropertyDescriptor(value, 'requirements') !== undefined
+}
+
+function runtimeRequirementsIssue(path: string, message: string): WorkbookRuntimeRequirementsIssue {
+  return Object.freeze({
+    code: 'invalid_runtime_requirements',
+    path,
+    message,
+  })
+}
+
+function pushRequiredStringIssue(issues: WorkbookRuntimeRequirementsIssue[], value: Record<string, unknown>, key: string): void {
+  if (typeof value[key] !== 'string') {
+    issues.push(runtimeRequirementsIssue(key, `Workbook runtime requirements ${key} must be a string`))
+  }
+}
+
+function pushOptionalIndexIssue(
+  issues: WorkbookRuntimeRequirementsIssue[],
+  value: Record<string, unknown>,
+  key: 'commandIndex' | 'checkIndex' | 'opIndex',
+  path: string,
+): void {
+  if (!hasOptionalIndex(value, key)) {
+    issues.push(runtimeRequirementsIssue(`${path}.${key}`, `Workbook runtime requirement ${key} must be a non-negative integer`))
+  }
+}
+
+function pushOptionalStringIssue(
+  issues: WorkbookRuntimeRequirementsIssue[],
+  value: Record<string, unknown>,
+  key: 'opKind' | 'checkKind',
+  path: string,
+): void {
+  if (!hasOptionalString(value, key)) {
+    issues.push(runtimeRequirementsIssue(`${path}.${key}`, `Workbook runtime requirement ${key} must be a string`))
+  }
+}
+
+function pushRequirementIssues(issues: WorkbookRuntimeRequirementsIssue[], value: unknown, index: number): void {
+  const path = `requirements[${index}]`
+  if (!isRecord(value)) {
+    issues.push(runtimeRequirementsIssue(path, `Workbook runtime requirement at ${path} must be an object`))
+    return
+  }
+
+  const kind = value['kind']
+  const capability = value['capability']
+  if (!isWorkbookRuntimeRequirementKind(kind)) {
+    issues.push(runtimeRequirementsIssue(`${path}.kind`, 'Workbook runtime requirement kind is invalid'))
+  }
+  if (!isWorkbookRuntimeCapability(capability)) {
+    issues.push(runtimeRequirementsIssue(`${path}.capability`, 'Workbook runtime requirement capability is invalid'))
+  }
+  if (isWorkbookRuntimeRequirementKind(kind) && isWorkbookRuntimeCapability(capability) && !capabilityMatchesKind(kind, capability)) {
+    issues.push(
+      runtimeRequirementsIssue(`${path}.capability`, `Workbook runtime requirement capability ${capability} does not match kind ${kind}`),
+    )
+  }
+  if (!hasString(value, 'message')) {
+    issues.push(runtimeRequirementsIssue(`${path}.message`, 'Workbook runtime requirement message must be a string'))
+  }
+  pushOptionalIndexIssue(issues, value, 'commandIndex', path)
+  pushOptionalIndexIssue(issues, value, 'checkIndex', path)
+  pushOptionalIndexIssue(issues, value, 'opIndex', path)
+  pushOptionalStringIssue(issues, value, 'opKind', path)
+  pushOptionalStringIssue(issues, value, 'checkKind', path)
+  if (value['target'] !== undefined && !isWorkbookRefDescription(value['target'])) {
+    issues.push(runtimeRequirementsIssue(`${path}.target`, 'Workbook runtime requirement target must be workbook ref data'))
+  }
+  const refs = value['refs']
+  if (refs !== undefined) {
+    if (!Array.isArray(refs)) {
+      issues.push(runtimeRequirementsIssue(`${path}.refs`, 'Workbook runtime requirement refs must be an array'))
+      return
+    }
+    refs.forEach((ref, refIndex) => {
+      if (!isWorkbookRefDescription(ref)) {
+        issues.push(runtimeRequirementsIssue(`${path}.refs[${refIndex}]`, 'Workbook runtime requirement ref must be workbook ref data'))
+      }
+    })
+  }
+}
+
+export function checkRuntimeRequirements(value: unknown): WorkbookRuntimeRequirementsCheckResult {
+  if (!isRecord(value)) {
+    return {
+      status: 'invalid',
+      issues: Object.freeze([runtimeRequirementsIssue('requirements', 'Workbook runtime requirements must be an object')]),
+    }
+  }
+
+  const issues: WorkbookRuntimeRequirementsIssue[] = []
+  pushRequiredStringIssue(issues, value, 'modelName')
+  pushRequiredStringIssue(issues, value, 'actionName')
+  const requirements = value['requirements']
+  if (!Array.isArray(requirements)) {
+    issues.push(runtimeRequirementsIssue('requirements', 'Workbook runtime requirements requirements must be an array'))
+  } else {
+    requirements.forEach((requirement, index) => pushRequirementIssues(issues, requirement, index))
+  }
+
+  if (issues.length > 0) {
+    return {
+      status: 'invalid',
+      issues: Object.freeze(issues),
+    }
+  }
+  if (!isRuntimeRequirements(value)) {
+    return {
+      status: 'invalid',
+      issues: Object.freeze([runtimeRequirementsIssue('requirements', 'Workbook runtime requirements are invalid')]),
+    }
+  }
+
+  return {
+    status: 'valid',
+    requirements: value,
+    issues: Object.freeze([]),
+  }
 }
 
 function requirementsFor<Refs>(input: WorkbookExecutablePlan<Refs> | WorkbookRuntimeRequirements): WorkbookRuntimeRequirements {
-  return isRuntimeRequirements(input) ? input : describeRuntimeRequirements(input)
+  if (isRuntimeRequirementsCandidate(input)) {
+    const check = checkRuntimeRequirements(input)
+    if (check.status === 'invalid') {
+      const [firstIssue] = check.issues
+      throw new Error(
+        firstIssue === undefined
+          ? 'Workbook runtime requirements are invalid'
+          : `Workbook runtime requirements are invalid: ${firstIssue.message}`,
+      )
+    }
+    return check.requirements
+  }
+  return describeRuntimeRequirements(input)
 }
 
 function pushCapability(capabilities: WorkbookRuntimeCapability[], capability: WorkbookRuntimeCapability): void {

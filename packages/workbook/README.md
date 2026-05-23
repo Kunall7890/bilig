@@ -99,7 +99,7 @@ The main API is intentionally small:
 - formulas: `formula.add`, `formula.subtract`, `formula.multiply`, `formula.divide`, `formula.sum`, `formula.call`, `formula.raw`, `formula.text`, `formula.labels`
 - input: `checkInput`, `normalizeWorkbookActionInputDescription`
 - proof: `verifyPlan`, `verifyModel`, `verifyWorkbookReadbacks`
-- descriptions: `describeModel`, `describeRef`, `describePlan`, `describePlanResult`, `describeRuntimeRequirements`, `checkRuntimeAdapter`, `describeRunResult`
+- descriptions: `describeModel`, `describeRef`, `describePlan`, `describePlanResult`, `describeRuntimeRequirements`, `checkRuntimeRequirements`, `checkRuntimeAdapter`, `describeRunResult`
 - transport data: `isWorkbookRefData`, `toWorkbookRefData`, `collectWorkbookRefData`, `hydrateWorkbookRef`, `hydrateWorkbookRefs`, `toPlanData`, `isPlanData`, `checkPlanData`, `hydratePlanData`, `verifyPlanData`
 - runtime handoff: `runWorkbookPlan`, `runWorkbookAction`, `WorkbookRunAdapter`
 - low-level language: `WorkbookOp`, `WorkbookTxn`, `EngineOp`, `EngineOpBatch`, `isEngineOpBatch`
@@ -112,6 +112,7 @@ Stable data helpers are exported for generic tool builders:
 - `workbookRowOperators`, `workbookRowOperatorValueTypes`, `isWorkbookRowOperator`, `isWorkbookRowValueCompatible`
 - `builtInWorkbookCheckKinds`, `isBuiltInWorkbookCheckKind`
 - `workbookActionInputDescriptionKinds`, `isWorkbookActionInputDescriptionKind`, `isWorkbookActionInputDescription`, `isWorkbookActionInput`, `checkInput`
+- `workbookRuntimeRequirementKinds`, `isWorkbookRuntimeRequirementKind`, `workbookRuntimeCapabilities`, `isWorkbookRuntimeCapability`, `checkRuntimeRequirements`
 - `workbookRunErrorCodes`, `isWorkbookRunErrorCode`
 
 ## Selectors
@@ -197,7 +198,9 @@ const adapter = {
 
 `runWorkbookPlan` accepts either a live plan or transported plan data and
 refuses to call `apply` if static plan verification fails or if the adapter is
-missing a required method. Use `checkRuntimeAdapter(planOrRequirements,
+missing a required method. Use `checkRuntimeRequirements(data)` when runtime
+requirements crossed a JSON boundary and an agent needs path-based diagnostics
+before trusting the handoff. Use `checkRuntimeAdapter(planOrRequirements,
 adapter)` when an agent wants to check `apply`, `read`, and `verifyChecks`
 coverage before calling the runtime. Check-only plans do not require `apply`;
 when runtime requirements contain only `read` or `verifyCheck`, `runWorkbookPlan`

@@ -1,13 +1,18 @@
 import { describe, expect, it } from 'vitest'
 import {
   buildWorkbookActionPlan,
+  checkRuntimeRequirements,
   checkRuntimeAdapter,
   defineModel,
   describeRuntimeRequirements,
   findRange,
   formula,
+  isWorkbookRuntimeCapability,
+  isWorkbookRuntimeRequirementKind,
   toPlanData,
   verifyModel,
+  workbookRuntimeCapabilities,
+  workbookRuntimeRequirementKinds,
   type WorkbookActionPlan,
 } from '../index.js'
 
@@ -120,6 +125,102 @@ describe('@bilig/workbook runtime requirements api', () => {
       },
     ])
     expect(JSON.parse(JSON.stringify(requirements))).toEqual(requirements)
+  })
+
+  it('validates transported runtime requirements with stable path issues', () => {
+    const target = findRange({ sheetName: 'Sheet1', address: 'A1' })
+    const plan: WorkbookActionPlan<{ readonly target: typeof target }> = {
+      modelName: 'runtime-validation-model',
+      actionName: 'seed',
+      refs: { target },
+      refsUsed: [target],
+      commands: [],
+      ops: [
+        {
+          kind: 'setCellValue',
+          sheetName: 'Sheet1',
+          address: 'A1',
+          value: 1,
+        },
+      ],
+      changed: [],
+      checks: [],
+    }
+    const requirements = JSON.parse(JSON.stringify(describeRuntimeRequirements(plan)))
+
+    expect(checkRuntimeRequirements(requirements)).toEqual({
+      status: 'valid',
+      requirements,
+      issues: [],
+    })
+    expect(workbookRuntimeRequirementKinds).toEqual(['apply', 'read', 'verify'])
+    expect(workbookRuntimeCapabilities).toEqual(['writeFormula', 'writeValue', 'format', 'clear', 'applyOp', 'read', 'verifyCheck'])
+    expect(isWorkbookRuntimeRequirementKind('apply')).toBe(true)
+    expect(isWorkbookRuntimeRequirementKind('other')).toBe(false)
+    expect(isWorkbookRuntimeCapability('read')).toBe(true)
+    expect(isWorkbookRuntimeCapability('other')).toBe(false)
+
+    const result = checkRuntimeRequirements({
+      modelName: 'runtime-validation-model',
+      actionName: 12,
+      requirements: [
+        {
+          kind: 'apply',
+          capability: 'read',
+          commandIndex: -1,
+          target: { kind: 'range' },
+          message: 42,
+        },
+        'not-an-object',
+        {
+          kind: 'verify',
+          capability: 'verifyCheck',
+          refs: [{ kind: 'table', id: 'table-1' }],
+          message: 'Verify custom check',
+        },
+      ],
+    })
+
+    expect(result).toEqual({
+      status: 'invalid',
+      issues: expect.arrayContaining([
+        {
+          code: 'invalid_runtime_requirements',
+          path: 'actionName',
+          message: 'Workbook runtime requirements actionName must be a string',
+        },
+        {
+          code: 'invalid_runtime_requirements',
+          path: 'requirements[0].capability',
+          message: 'Workbook runtime requirement capability read does not match kind apply',
+        },
+        {
+          code: 'invalid_runtime_requirements',
+          path: 'requirements[0].message',
+          message: 'Workbook runtime requirement message must be a string',
+        },
+        {
+          code: 'invalid_runtime_requirements',
+          path: 'requirements[0].commandIndex',
+          message: 'Workbook runtime requirement commandIndex must be a non-negative integer',
+        },
+        {
+          code: 'invalid_runtime_requirements',
+          path: 'requirements[0].target',
+          message: 'Workbook runtime requirement target must be workbook ref data',
+        },
+        {
+          code: 'invalid_runtime_requirements',
+          path: 'requirements[1]',
+          message: 'Workbook runtime requirement at requirements[1] must be an object',
+        },
+        {
+          code: 'invalid_runtime_requirements',
+          path: 'requirements[2].refs[0]',
+          message: 'Workbook runtime requirement ref must be workbook ref data',
+        },
+      ]),
+    })
   })
 
   it('checks runtime adapter capabilities before mutation handoff', () => {
