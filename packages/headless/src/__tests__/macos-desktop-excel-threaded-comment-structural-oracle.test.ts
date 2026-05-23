@@ -20,7 +20,7 @@ const personContentType = 'application/vnd.ms-excel.person+xml'
 const commentsContentType = 'application/vnd.openxmlformats-officedocument.spreadsheetml.comments+xml'
 const vmlDrawingContentType = 'application/vnd.openxmlformats-officedocument.vmlDrawing'
 const excelAuthoredThreadedCommentFixtureUrl = new URL(
-  '../../fixtures/xlsx-corpus/macos-excel-threaded-comments-source.xlsx',
+  '../../fixtures/excel-oracle/macos-excel-threaded-comments-source.xlsx',
   import.meta.url,
 )
 
