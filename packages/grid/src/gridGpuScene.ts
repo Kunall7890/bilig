@@ -6,6 +6,7 @@ import { parseGpuColor, type GridGpuColor, type GridGpuRect, type GridGpuScene }
 import { getVisibleColumnBounds, getVisibleRowBounds, type GridMetrics } from './gridMetrics.js'
 import { buildGridGpuHeaderScene } from './gridGpuHeaderScene.js'
 import type { HeaderSelection } from './gridPointer.js'
+import { selectionFillRangesForRange } from './gridSelectionFillRanges.js'
 import type { GridSelection, Item, Rectangle } from './gridTypes.js'
 import { resolveMergedCell, resolveMergedCellBounds } from './gridMergedRanges.js'
 import { collectVisibleColumnBounds, collectVisibleRowBounds } from './visibleGridAxes.js'
@@ -213,6 +214,7 @@ export function buildGridGpuScene({
   if (selectionOutlineRange) {
     pushSelectionRects({
       borderRects,
+      fillRects,
       getCellBounds,
       hostBounds,
       selectionRange: selectionOutlineRange,
@@ -428,6 +430,7 @@ function pushGridLineRects(
 
 function pushSelectionRects(options: {
   borderRects: GridGpuRect[]
+  fillRects: GridGpuRect[]
   getCellBounds: (col: number, row: number) => Rectangle | undefined
   hostBounds: Pick<DOMRect, 'left' | 'top'>
   outlineColor?: GridGpuColor
@@ -439,6 +442,7 @@ function pushSelectionRects(options: {
 }) {
   const {
     borderRects,
+    fillRects,
     getCellBounds,
     hostBounds,
     outlineColor = SELECTION_OUTLINE_COLOR,
@@ -469,10 +473,35 @@ function pushSelectionRects(options: {
     height: endBounds.y + endBounds.height - startBounds.y,
   }
 
-  // Keep regular body selections as stroke-only. Cell background fills are
-  // authoritative spreadsheet content and must remain visually exact while the
-  // range is selected; row/column slice selections still use their own body
-  // affordance through the axis selection path.
+  if (selectionRange.width > 1 || selectionRange.height > 1) {
+    for (const fillRange of selectionFillRangesForRange(selectionRange)) {
+      const fillStartCol = Math.max(fillRange.x, visibleMinCol)
+      const fillStartRow = Math.max(fillRange.y, visibleMinRow)
+      const fillEndCol = Math.min(fillRange.x + fillRange.width - 1, visibleMaxCol)
+      const fillEndRow = Math.min(fillRange.y + fillRange.height - 1, visibleMaxRow)
+      if (fillStartCol > fillEndCol || fillStartRow > fillEndRow) {
+        continue
+      }
+      const fillStartBounds = getCellBounds(fillStartCol, fillStartRow)
+      const fillEndBounds = getCellBounds(fillEndCol, fillEndRow)
+      if (!fillStartBounds || !fillEndBounds) {
+        continue
+      }
+      const fillRect = {
+        x: fillStartBounds.x - hostBounds.left + 1,
+        y: fillStartBounds.y - hostBounds.top + 1,
+        width: Math.max(0, fillEndBounds.x + fillEndBounds.width - fillStartBounds.x - 2),
+        height: Math.max(0, fillEndBounds.y + fillEndBounds.height - fillStartBounds.y - 2),
+      }
+      if (fillRect.width > 0 && fillRect.height > 0) {
+        fillRects.push({
+          ...fillRect,
+          color: SELECTION_FILL_COLOR,
+        })
+      }
+    }
+  }
+
   const outlineThickness = 2
   borderRects.push(
     {
