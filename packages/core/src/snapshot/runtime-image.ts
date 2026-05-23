@@ -6,8 +6,6 @@ import type {
   EngineFormulaSourceRefs,
   EngineFormulaSourceRefTable,
 } from '../cell-mutations-at.js'
-import { CellFlags } from '../cell-store.js'
-import { writeLiteralToCellStore } from '../engine-value-utils.js'
 import type { DeferredInitialFormulaFamilyRun } from '../engine/services/formula-initialization-family-runs.js'
 import type { InitialFormulaEntryRefSource } from '../engine/services/formula-initialization-refs.js'
 import type { FormulaInstanceSnapshot } from '../formula/formula-instance-table.js'
@@ -23,7 +21,7 @@ import {
 } from '../written-column-tracker.js'
 import { attachRuntimeFormulaFamilyRunHints, selectRuntimeFormulaFamilyRunHints } from './runtime-image-formula-family-run-hints.js'
 import { restoreAlignedRuntimeFormulaFamilyRuns, type RuntimeImageFormulaFamilyRunSnapshot } from './runtime-image-formula-family-runs.js'
-import { formulaCachedLiteralToRestoredValue, restoreLiteralCell } from './runtime-image-literal-restore.js'
+import { formulaCachedLiteralToRestoredValue, restoreFreshRuntimeLiteralCell, restoreLiteralCell } from './runtime-image-literal-restore.js'
 import { restoreVisualMetadata, restoreWorkbookStructure } from './runtime-image-metadata-restore.js'
 
 type WorkbookSnapshotCell = WorkbookSnapshot['sheets'][number]['cells'][number]
@@ -725,16 +723,9 @@ export function restoreWorkbookFromRuntimeImage(args: RuntimeImageRestoreArgs): 
           const restoredFormula =
             candidateFormula && compareFormulaInstanceToRowCol(candidateFormula, row, col) === 0 ? candidateFormula : undefined
           if (cell.formula === undefined && restoredFormula === undefined) {
-            if (cell.value === undefined) {
-              writeLiteralToCellStore(args.workbook.cellStore, cellIndex, null, args.strings)
-            } else {
-              restoreLiteralCell(args.workbook, args.strings, cellIndex, cell.value, restoredStringIds)
-            }
+            restoreFreshRuntimeLiteralCell(args.workbook.cellStore, args.strings, cellIndex, cell.value, restoredStringIds)
             literalColumns ??= createWrittenColumnTracker()
             markWrittenColumn(literalColumns, col)
-            if (cell.value === null) {
-              args.workbook.cellStore.flags[cellIndex] = (args.workbook.cellStore.flags[cellIndex] ?? 0) | CellFlags.AuthoredBlank
-            }
           }
           if (cell.format !== undefined) {
             args.workbook.setCellFormat(cellIndex, cell.format)

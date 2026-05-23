@@ -1,4 +1,5 @@
 import { ErrorCode, ValueTag, type CellValue, type LiteralInput } from '@bilig/protocol'
+import type { CellStore } from '../cell-store.js'
 import { CellFlags } from '../cell-store.js'
 import type { StringPool } from '../string-pool.js'
 import type { WorkbookStore } from '../workbook-store.js'
@@ -61,6 +62,44 @@ export function restoreLiteralCell(
   }
   cellStore.versions[cellIndex] = (cellStore.versions[cellIndex] ?? 0) + 1
   cellStore.onSetValue?.(cellIndex)
+}
+
+export function restoreFreshRuntimeLiteralCell(
+  cellStore: CellStore,
+  strings: StringPool,
+  cellIndex: number,
+  value: LiteralInput | undefined,
+  stringIdCache: Map<string, number>,
+): void {
+  cellStore.errors[cellIndex] = ErrorCode.None
+  if (value === undefined) {
+    cellStore.tags[cellIndex] = ValueTag.Empty
+    cellStore.stringIds[cellIndex] = 0
+    cellStore.numbers[cellIndex] = 0
+  } else if (value === null) {
+    cellStore.tags[cellIndex] = ValueTag.Empty
+    cellStore.stringIds[cellIndex] = 0
+    cellStore.numbers[cellIndex] = 0
+    cellStore.flags[cellIndex] = (cellStore.flags[cellIndex] ?? 0) | CellFlags.AuthoredBlank
+  } else if (typeof value === 'number') {
+    cellStore.tags[cellIndex] = ValueTag.Number
+    cellStore.stringIds[cellIndex] = 0
+    cellStore.numbers[cellIndex] = value
+  } else if (typeof value === 'boolean') {
+    cellStore.tags[cellIndex] = ValueTag.Boolean
+    cellStore.stringIds[cellIndex] = 0
+    cellStore.numbers[cellIndex] = value ? 1 : 0
+  } else {
+    let stringId = stringIdCache.get(value)
+    if (stringId === undefined) {
+      stringId = strings.intern(value)
+      stringIdCache.set(value, stringId)
+    }
+    cellStore.tags[cellIndex] = ValueTag.String
+    cellStore.stringIds[cellIndex] = stringId
+    cellStore.numbers[cellIndex] = 0
+  }
+  cellStore.versions[cellIndex] = 1
 }
 
 export function literalToRestoredValue(input: LiteralInput, stringPool: StringPool, stringIdCache: Map<string, number>): CellValue {
