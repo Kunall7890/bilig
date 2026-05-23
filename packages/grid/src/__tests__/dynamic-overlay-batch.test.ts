@@ -45,14 +45,12 @@ describe('dynamic overlay batch v3', () => {
     expect(overlay.surfaceSize).toEqual({ height: 220, width: 520 })
     expect(readOverlayRects(overlay)).toEqual(
       expect.arrayContaining([
+        expect.objectContaining({ x: 147, y: 45, width: 148, height: 28 }),
         expect.objectContaining({ x: 146, y: 44, width: 150, height: 2 }),
         expect.objectContaining({ x: 146, y: 44, width: 2, height: 30 }),
         expect.objectContaining({ x: 292, y: 70, width: 8, height: 8 }),
         expect.objectContaining({ x: 297, y: 75, width: 98, height: 18 }),
       ]),
-    )
-    expect(readOverlayRects(overlay)).not.toEqual(
-      expect.arrayContaining([expect.objectContaining({ x: 147, y: 45, width: 148, height: 28 })]),
     )
     expect(readOverlayRects(overlay)).toEqual(
       expect.arrayContaining([
@@ -158,7 +156,7 @@ describe('dynamic overlay batch v3', () => {
     )
   })
 
-  test('can leave body selection chrome to the DOM without masking selected cell backgrounds', () => {
+  test('fills-only mode draws TypeGPU body selection fill without border or handle chrome', () => {
     const metrics = getGridMetrics()
     const geometry = createGridGeometrySnapshotFromAxes({
       columns: createGridAxisWorldIndex({ axisLength: 20, defaultSize: 100 }),
@@ -186,9 +184,7 @@ describe('dynamic overlay batch v3', () => {
 
     expect(overlay.fillRectCount).toBeGreaterThan(0)
     expect(overlay.borderRectCount).toBe(0)
-    expect(readOverlayRects(overlay)).not.toEqual(
-      expect.arrayContaining([expect.objectContaining({ x: 147, y: 45, width: 298, height: 58 })]),
-    )
+    expect(readOverlayRects(overlay)).toEqual(expect.arrayContaining([expect.objectContaining({ x: 147, y: 45, width: 298, height: 58 })]))
     expect(readOverlayRects(overlay)).not.toEqual(
       expect.arrayContaining([
         expect.objectContaining({ x: 146, y: 44, width: 300, height: 1 }),

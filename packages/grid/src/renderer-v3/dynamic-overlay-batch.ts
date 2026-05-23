@@ -219,6 +219,7 @@ function appendSelectionOverlay(input: {
   }
   const hasAxisSelection = (input.gridSelection?.columns.length ?? 0) > 0 || (input.gridSelection?.rows.length ?? 0) > 0
   const borderColor = parseGpuColor(workbookThemeColors.selectionAccent)
+  const fillColor = parseGpuColor(workbookThemeColors.selectionFill)
   if (hasAxisSelection) {
     if (!input.showSelectionChrome) {
       return
@@ -231,6 +232,12 @@ function appendSelectionOverlay(input: {
   }
   const isMultiCellSelection = input.selectionRange.width > 1 || input.selectionRange.height > 1
   if (isMultiCellSelection) {
+    appendSelectionFillRects({
+      color: fillColor,
+      fillRects: input.fillRects,
+      geometry: input.geometry,
+      range: input.selectionRange,
+    })
     if (input.showSelectionChrome) {
       for (const rect of input.geometry.rangeScreenRects(input.selectionRange)) {
         appendBorderRects(input.borderRects, rect, borderColor, 2)

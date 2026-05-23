@@ -6,7 +6,7 @@ import { parseGpuColor, type GridGpuColor, type GridGpuRect, type GridGpuScene }
 import { getVisibleColumnBounds, getVisibleRowBounds, type GridMetrics } from './gridMetrics.js'
 import { buildGridGpuHeaderScene } from './gridGpuHeaderScene.js'
 import type { HeaderSelection } from './gridPointer.js'
-import { selectionFillRangesForRangeExcludingCell } from './gridSelectionFillRanges.js'
+import { selectionFillRangesForRange } from './gridSelectionFillRanges.js'
 import type { GridSelection, Item, Rectangle } from './gridTypes.js'
 import { resolveMergedCell, resolveMergedCellBounds } from './gridMergedRanges.js'
 import { collectVisibleColumnBounds, collectVisibleRowBounds } from './visibleGridAxes.js'
@@ -217,7 +217,6 @@ export function buildGridGpuScene({
       fillRects,
       getCellBounds,
       hostBounds,
-      activeCell: selectedCell,
       selectionRange: selectionOutlineRange,
       visibleMaxCol,
       visibleMaxRow,
@@ -430,7 +429,6 @@ function pushGridLineRects(
 }
 
 function pushSelectionRects(options: {
-  activeCell: Item
   borderRects: GridGpuRect[]
   fillRects: GridGpuRect[]
   getCellBounds: (col: number, row: number) => Rectangle | undefined
@@ -443,7 +441,6 @@ function pushSelectionRects(options: {
   visibleMinRow: number
 }) {
   const {
-    activeCell,
     borderRects,
     fillRects,
     getCellBounds,
@@ -477,7 +474,7 @@ function pushSelectionRects(options: {
   }
 
   if (selectionRange.width > 1 || selectionRange.height > 1) {
-    for (const fillRange of selectionFillRangesForRangeExcludingCell(selectionRange, activeCell)) {
+    for (const fillRange of selectionFillRangesForRange(selectionRange)) {
       const fillStartCol = Math.max(fillRange.x, visibleMinCol)
       const fillStartRow = Math.max(fillRange.y, visibleMinRow)
       const fillEndCol = Math.min(fillRange.x + fillRange.width - 1, visibleMaxCol)

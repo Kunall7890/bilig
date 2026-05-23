@@ -464,13 +464,14 @@ test('@browser-webgpu @browser-serial main workbook shell grid renders and updat
   const rangeReadback = await waitForReadback(page, rangeProbe, (result) => {
     return (
       result.sequence > valueReadback.sequence &&
-      isWorkbookWhitePixel(result.points.selectedRangeFill) &&
+      isSelectionGreenTint(result.points.activeCellFill) &&
+      isSelectionGreenTint(result.points.selectedRangeFill) &&
       isSelectionGreenTint(result.points.topHeaderSelectionFill)
     )
   })
 
-  expect(rangeReadback.points.activeCellFill).toMatchObject({ r: 255, g: 255, b: 255, a: 255 })
-  expect(isWorkbookWhitePixel(rangeReadback.points.selectedRangeFill)).toBe(true)
+  expect(isSelectionGreenTint(rangeReadback.points.activeCellFill)).toBe(true)
+  expect(isSelectionGreenTint(rangeReadback.points.selectedRangeFill)).toBe(true)
   expect(isSelectionGreenTint(rangeReadback.points.topHeaderSelectionFill)).toBe(true)
   await expect(page.getByTestId('grid-pane-renderer')).toHaveAttribute('data-v3-presented-overlay-rect-signature', /^[a-z0-9-]+$/)
   const domHiddenSelectionFillOpacity = await page

@@ -269,7 +269,7 @@ test('web app supports rectangular drag selection', async ({ page }) => {
   await expect(page.getByTestId('status-selection')).toHaveText('Sheet1!B2:D4')
 })
 
-test('web app preserves the active cell inside a selected area and collapses on body click', async ({ page }) => {
+test('web app paints selected areas as one continuous body range and collapses on body click', async ({ page }) => {
   await page.goto(`/?document=${encodeURIComponent(createTestDocumentId('playwright-range-active-collapse'))}`)
   await waitForWorkbookReady(page)
 
@@ -277,17 +277,18 @@ test('web app preserves the active cell inside a selected area and collapses on 
   await expect(page.getByTestId('status-selection')).toHaveText('Sheet1!B2:D4')
   await expect(page.getByTestId('name-box')).toHaveValue('B2:D4')
   await expect(page.getByTestId('sheet-grid-focus-target')).toHaveAttribute('aria-label', 'Sheet1 D4')
-  await expect(page.locator('[data-grid-selection-visual-role="selection-fill"]')).toHaveCount(2)
+  await expect(page.locator('[data-grid-selection-visual-role="selection-fill"]')).toHaveCount(1)
   await expect(page.locator('[data-grid-selection-visual-role="selection-border"]')).toHaveCount(1)
   await expect(page.locator('[data-grid-selection-visual-role="active-border"]')).toHaveCount(0)
   await expect(page.locator('[data-grid-selection-visual-role="fill-handle"]')).toHaveCount(1)
   await expectSelectionVisualRoles(page, ['header-fill'], 'hidden')
-  await expectSelectionVisualRoles(page, ['selection-fill', 'selection-border', 'fill-handle'], 'visible')
+  await expectSelectionVisualRoles(page, ['selection-fill'], 'visible')
+  await expectSelectionVisualRoles(page, ['selection-border', 'fill-handle'], 'visible')
   await expect(page.locator('[data-grid-selection-visual-role="selection-fill"]').first()).toHaveCSS(
     'background-color',
     'rgba(33, 115, 70, 0.18)',
   )
-  await expectSelectedRangeActiveCellClear(page, 3, 3)
+  await expectSelectedRangeBodyTint(page, 3, 3)
   await expectSelectedRangeBodyTint(page, 1, 1)
   await expectSelectedRangeBodyTint(page, 1, 2)
 
@@ -353,7 +354,7 @@ test('@browser-ci web app collapses a locally dragged range when the active addr
   await dragProductBodySelection(page, 1, 1, 3, 3)
   await expect(page.getByTestId('status-selection')).toHaveText('Sheet1!B2:D4')
   await expect(page.getByTestId('name-box')).toHaveValue('B2:D4')
-  await expect(page.locator('[data-grid-selection-visual-role="selection-fill"]')).toHaveCount(2)
+  await expect(page.locator('[data-grid-selection-visual-role="selection-fill"]')).toHaveCount(1)
   await expect(page.locator('[data-grid-selection-visual-role="selection-border"]')).toHaveCount(1)
 
   await selectAddress(page, 'B2')
@@ -1005,31 +1006,52 @@ async function expectVisualRectNear(
 
 async function expectSelectionVisualRoles(page: Page, roles: readonly string[], expected: 'hidden' | 'visible'): Promise<void> {
   const selector = roles.map((role) => `[data-grid-selection-visual-role="${role}"]`).join(',')
-  const opacities = await page.locator(selector).evaluateAll((nodes) => nodes.map((node) => window.getComputedStyle(node).opacity))
-  expect(opacities.length).toBeGreaterThan(0)
-  if (expected === 'visible' && opacities.every((opacity) => opacity === '0') && (await isTypeGpuCanvasActive(page))) {
-    await expect
-      .poll(async () => Number((await page.getByTestId('grid-pane-renderer').getAttribute('data-v3-presented-overlay-rect-count')) ?? '0'))
-      .toBeGreaterThan(0)
-    return
-  }
-  expect(opacities.every((opacity) => (expected === 'visible' ? opacity !== '0' : opacity === '0'))).toBe(true)
+  await expect
+    .poll(
+      async () => {
+        const opacities = await page.locator(selector).evaluateAll((nodes) => nodes.map((node) => window.getComputedStyle(node).opacity))
+        if (opacities.length === 0) {
+          return false
+        }
+        const opacityValues = opacities.map((opacity) => Number(opacity))
+        const hiddenInDom = opacityValues.every((opacity) => Number.isFinite(opacity) && opacity <= 0.01)
+        if (expected === 'hidden') {
+          return hiddenInDom
+        }
+        const visibleInDom = opacityValues.every((opacity) => Number.isFinite(opacity) && opacity > 0.01)
+        if (visibleInDom) {
+          return true
+        }
+        if (!(await isTypeGpuCanvasActive(page))) {
+          return false
+        }
+        const overlayRectCount = Number(
+          (await page.getByTestId('grid-pane-renderer').getAttribute('data-v3-presented-overlay-rect-count')) ?? '0',
+        )
+        return Number.isFinite(overlayRectCount) && overlayRectCount > 0
+      },
+      { message: `selection visual roles ${roles.join(', ')} should be ${expected}` },
+    )
+    .toBe(true)
 }
 
 async function expectSelectedRangeBodyTint(page: Page, columnIndex: number, rowIndex: number): Promise<void> {
+  await expect
+    .poll(
+      async () => {
+        const pixel = await sampleCellInteriorPixel(page, columnIndex, rowIndex)
+        return pixel.red < 238 && pixel.green < 242 && pixel.blue < 238 && pixel.green > pixel.red
+      },
+      {
+        message: `cell ${columnIndex}:${rowIndex} should show selected range body tint`,
+      },
+    )
+    .toBe(true)
   const pixel = await sampleCellInteriorPixel(page, columnIndex, rowIndex)
   expect(pixel.red, 'selected range interior should not read as a white hollow rectangle').toBeLessThan(238)
   expect(pixel.green, 'selected range interior should keep a visible spreadsheet selection tint').toBeLessThan(242)
   expect(pixel.blue, 'selected range interior should not read as a white hollow rectangle').toBeLessThan(238)
   expect(pixel.green, 'selected range interior should carry the green Excel-style selection cast').toBeGreaterThan(pixel.red)
-}
-
-async function expectSelectedRangeActiveCellClear(page: Page, columnIndex: number, rowIndex: number): Promise<void> {
-  const pixel = await sampleCellInteriorPixel(page, columnIndex, rowIndex)
-  expect(pixel.red, 'active cell inside a selected range should stay clear').toBeGreaterThan(242)
-  expect(pixel.green, 'active cell inside a selected range should stay clear').toBeGreaterThan(242)
-  expect(pixel.blue, 'active cell inside a selected range should stay clear').toBeGreaterThan(238)
-  expect(Math.abs(pixel.green - pixel.red), 'active cell should not carry the green selection cast').toBeLessThanOrEqual(6)
 }
 
 async function sampleCellInteriorPixel(
