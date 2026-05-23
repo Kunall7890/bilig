@@ -20,6 +20,7 @@ import {
   rewriteConditionalFormatArtifactXmlForStructuralTransform,
   rewriteDataTableFormulasForStructuralTransform,
 } from './structure-data-table-metadata-rewrite.js'
+import { rewriteDrawingArtifactsForStructuralTransform } from './structure-drawing-artifact-rewrite.js'
 import { rewriteFormulaSourceForDeletedStructuredReferences } from './structure-structured-ref-rewrite.js'
 import { chartGeometryFromAnchor, rewriteChartAnchorForStructuralTransform } from './structure-chart-anchor-metadata-rewrite.js'
 import { rewriteControlArtifactsForStructuralTransform } from './structure-control-artifact-rewrite.js'
@@ -466,6 +467,7 @@ export function rewriteWorkbookMetadataForStructuralTransform(
   rewriteLegacyCommentVmlForStructuralTransform({ workbook, sheetName, transform })
   rewriteThreadedCommentArtifactsForStructuralTransform({ workbook, sheetName, transform })
   rewriteControlArtifactsForStructuralTransform({ workbook, sheetName, transform })
+  rewriteDrawingArtifactsForStructuralTransform({ workbook, sheetName, transform })
   const preservedSheetMetadata = workbook.metadata.preservedSheetMetadata.get(sheetName)
   const sheetIndex = workbookSheetIndex(workbook.sheetsByName.values(), sheetName)
   if (sheetIndex !== undefined) {

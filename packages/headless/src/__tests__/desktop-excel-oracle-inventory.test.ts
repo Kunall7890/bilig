@@ -239,9 +239,11 @@ describe('macOS Desktop Excel oracle inventory', () => {
 
     expect(source).toContain("BILIG_EXCEL_ORACLE_RUN === '1'")
     expect(source).toContain('runMacosExcelInspectionOracle')
+    expect(source).toContain('runMacosExcelStructuralOperationOracle')
     expect(source).toContain('drawingArtifacts')
     expect(source).toContain('WorkPaper.buildFromSnapshot')
     expect(source).toContain('preserves Desktop Excel drawing package parts after a headless edit')
+    expect(source).toContain('matches Desktop Excel raw DrawingML anchors after structural row inserts')
   })
 
   it('keeps the sort oracle in both package and corpus gates', () => {

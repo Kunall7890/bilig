@@ -1,8 +1,9 @@
+import { Buffer } from 'node:buffer'
 import { readFileSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 
 import { exportXlsx, importXlsx } from '@bilig/excel-import'
-import { isMacosExcelInstalled, runMacosExcelInspectionOracle } from '@bilig/excel-fixtures'
+import { isMacosExcelInstalled, runMacosExcelInspectionOracle, runMacosExcelStructuralOperationOracle } from '@bilig/excel-fixtures'
 import type { WorkbookPreservedPackagePartSnapshot, WorkbookSnapshot } from '@bilig/protocol'
 import { strFromU8, unzipSync } from 'fflate'
 import { describe, expect, it } from 'vitest'
@@ -33,6 +34,24 @@ describe('macOS Desktop Excel drawing artifact oracle', () => {
       )
       expect(reimported.snapshot.sheets[0]?.metadata?.drawingArtifacts).toEqual({ relationshipTarget: '../drawings/drawing1.xml' })
       expect(strFromU8(unzipSync(exported)['xl/drawings/drawing1.xml'] ?? new Uint8Array())).toContain('<xdr:pic>')
+    } finally {
+      workpaper.dispose()
+    }
+  })
+
+  it('structurally rewrites raw DrawingML anchors after a headless row insert', () => {
+    const imported = importXlsx(exportXlsx(workbookWithEmbeddedImageDrawing()), 'drawing-artifact-structure-source.xlsx')
+    const workpaper = WorkPaper.buildFromSnapshot(imported.snapshot)
+    try {
+      const sheet = workpaper.getSheetId('Sheet1')
+      if (sheet === undefined) {
+        throw new Error('Expected Sheet1 to be available')
+      }
+
+      workpaper.addRows(sheet, 0, 1)
+
+      const headlessSnapshot = workpaper.exportSnapshot()
+      expect(drawingAnchorRows(headlessSnapshot)).toEqual([1, 5])
     } finally {
       workpaper.dispose()
     }
@@ -105,10 +124,78 @@ describe('macOS Desktop Excel drawing artifact oracle', () => {
     },
     120_000,
   )
+
+  it.runIf(process.env.BILIG_EXCEL_ORACLE_RUN === '1')(
+    'matches Desktop Excel raw DrawingML anchors after structural row inserts',
+    () => {
+      if (!isMacosExcelInstalled()) {
+        throw new Error('BILIG_EXCEL_ORACLE_RUN=1 requires /Applications/Microsoft Excel.app')
+      }
+
+      const tempDir = createExcelAccessibleTempDir('bilig-headless-excel-drawing-artifacts-structure-oracle-')
+      try {
+        const sourceBytes = exportXlsx(workbookWithEmbeddedImageDrawing())
+        const excelWorkbookPath = join(tempDir, 'excel-drawing-artifact-structure-source.xlsx')
+        writeFileSync(excelWorkbookPath, sourceBytes)
+
+        runMacosExcelStructuralOperationOracle({
+          workbookPath: excelWorkbookPath,
+          worksheetName: 'Sheet1',
+          operations: [{ kind: 'insertRows', range: '1:1' }],
+          inspectCells: ['A1', 'A2'],
+          saveWorkbook: true,
+          timeoutMs: 90_000,
+        })
+
+        const excelTruth = importXlsx(new Uint8Array(readFileSync(excelWorkbookPath)), 'excel-drawing-artifact-structure-truth.xlsx')
+        const excelRows = drawingAnchorRows(excelTruth.snapshot)
+        expect(excelRows).toEqual([1, 5])
+
+        const workpaper = WorkPaper.buildFromSnapshot(importXlsx(sourceBytes, 'headless-drawing-artifact-structure-source.xlsx').snapshot)
+        try {
+          const sheet = workpaper.getSheetId('Sheet1')
+          if (sheet === undefined) {
+            throw new Error('Expected Sheet1 to be available')
+          }
+          workpaper.addRows(sheet, 0, 1)
+
+          const headlessSnapshot = workpaper.exportSnapshot()
+          expect(drawingAnchorRows(headlessSnapshot)).toEqual(excelRows)
+
+          const headlessPath = join(tempDir, 'headless-drawing-artifact-structure.xlsx')
+          writeFileSync(headlessPath, exportXlsx(headlessSnapshot))
+          runMacosExcelInspectionOracle({
+            workbookPath: headlessPath,
+            worksheetName: 'Sheet1',
+            formulaCells: [],
+            inspectCells: ['A1', 'A2'],
+            saveWorkbook: true,
+            timeoutMs: 90_000,
+          })
+          const headlessTruth = importXlsx(new Uint8Array(readFileSync(headlessPath)), 'headless-drawing-artifact-structure-truth.xlsx')
+          expect(drawingAnchorRows(headlessTruth.snapshot)).toEqual(excelRows)
+        } finally {
+          workpaper.dispose()
+        }
+      } finally {
+        removeMacosExcelTestDir(tempDir)
+      }
+    },
+    120_000,
+  )
 })
 
 function drawingArtifactPaths(snapshot: WorkbookSnapshot): string[] {
   return snapshot.workbook.metadata?.drawingArtifacts?.parts.map((part) => part.path).toSorted() ?? []
+}
+
+function drawingAnchorRows(snapshot: WorkbookSnapshot): number[] {
+  return [...drawingPartXml(snapshot).matchAll(/<xdr:row>(\d+)<\/xdr:row>/gu)].map((match) => Number(match[1]))
+}
+
+function drawingPartXml(snapshot: WorkbookSnapshot): string {
+  const part = snapshot.workbook.metadata?.drawingArtifacts?.parts.find((candidate) => candidate.path === 'xl/drawings/drawing1.xml')
+  return part ? Buffer.from(part.dataBase64, 'base64').toString('utf8') : ''
 }
 
 function workbookWithEmbeddedImageDrawing(): WorkbookSnapshot {
