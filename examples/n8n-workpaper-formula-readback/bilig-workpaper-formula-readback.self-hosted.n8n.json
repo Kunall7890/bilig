@@ -1,0 +1,210 @@
+{
+  "name": "Bilig WorkPaper formula readback self-hosted",
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "d0ad51c5-0e0b-49e8-97a1-4ea12e8a5d32",
+      "name": "Manual Trigger",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [0, 0]
+    },
+    {
+      "parameters": {
+        "jsCode": "return [\n  {\n    json: {\n      baseUrl: 'http://host.docker.internal:4321',\n      fallbackBaseUrl: 'http://localhost:4321',\n      sheetName: 'Inputs',\n      address: 'B3',\n      value: 0.4,\n      note: 'Self-hosted path: run Bilig locally, write one input, then require computed formula readback.'\n    }\n  }\n];"
+      },
+      "id": "146a9b58-ec2d-4e66-b4c7-2327c9300106",
+      "name": "Choose local forecast input",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [260, 0]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $json.baseUrl.replace(/\\/$/, '') + '/api/workpaper/n8n/forecast' }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "content-type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ sheetName: $json.sheetName, address: $json.address, value: $json.value }) }}",
+        "options": {}
+      },
+      "id": "a1ad0d6d-d2ad-42fa-bf27-46c945894904",
+      "name": "Call local Bilig WorkPaper",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [540, 0],
+      "continueOnFail": true
+    },
+    {
+      "parameters": {
+        "jsCode": "const first = $input.first().json;\nconst request = $('Choose local forecast input').first().json;\n\nif (first.error === undefined) {\n  return [{ json: first }];\n}\n\nreturn [\n  {\n    json: {\n      ...request,\n      baseUrl: request.fallbackBaseUrl,\n      localRetryReason: first.error.message || first.error.description || 'First local Bilig request failed'\n    }\n  }\n];"
+      },
+      "id": "29d76d05-5081-438e-89b1-c60a8107d56a",
+      "name": "Retry localhost if needed",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [800, 0]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "4c5c2db0-240e-4d9c-9f58-6459fc52f5af",
+              "leftValue": "={{ $json.verified }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "5745152e-8f13-4d9c-8489-4e0c4b1e6b88",
+      "name": "Already verified?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [1060, 0]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $json.baseUrl.replace(/\\/$/, '') + '/api/workpaper/n8n/forecast' }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "content-type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ sheetName: $json.sheetName, address: $json.address, value: $json.value }) }}",
+        "options": {}
+      },
+      "id": "4173b1c2-4d03-4878-bcd1-b220f5f79c4a",
+      "name": "Call localhost fallback",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1320, 140]
+    },
+    {
+      "parameters": {
+        "jsCode": "const proof = $input.first().json;\n\nif (proof.verified !== true) {\n  throw new Error(`Bilig WorkPaper did not verify the edit: ${JSON.stringify(proof)}`);\n}\n\nif (typeof proof.editedCell !== 'string' || !proof.editedCell.startsWith('Inputs!')) {\n  throw new Error(`Expected an Inputs sheet edit, received ${proof.editedCell}`);\n}\n\nif (!proof.checks?.formulasPersisted || !proof.checks?.restoredMatchesAfter || !proof.checks?.computedOutputChanged) {\n  throw new Error(`Formula proof checks failed: ${JSON.stringify(proof.checks)}`);\n}\n\nif (typeof proof.after?.expectedArr !== 'number' || typeof proof.after?.targetGap !== 'number') {\n  throw new Error(`Unexpected formula output: ${JSON.stringify(proof.after)}`);\n}\n\nreturn [\n  {\n    json: {\n      verdict: 'verified-local',\n      editedCell: proof.editedCell,\n      beforeExpectedArr: proof.before.expectedArr,\n      afterExpectedArr: proof.after.expectedArr,\n      targetGap: proof.after.targetGap,\n      checks: proof.checks,\n      dataBoundary: 'n8n called a local or self-hosted Bilig app route; no workbook data is sent to the public demo endpoint.',\n      github: 'https://github.com/proompteng/bilig'\n    }\n  }\n];"
+      },
+      "id": "28e25b0d-bf42-4cc9-9d04-401b6324d00e",
+      "name": "Verify local formula readback",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1580, 0]
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Manual Trigger": {
+      "main": [
+        [
+          {
+            "node": "Choose local forecast input",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Choose local forecast input": {
+      "main": [
+        [
+          {
+            "node": "Call local Bilig WorkPaper",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Call local Bilig WorkPaper": {
+      "main": [
+        [
+          {
+            "node": "Retry localhost if needed",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Retry localhost if needed": {
+      "main": [
+        [
+          {
+            "node": "Already verified?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Already verified?": {
+      "main": [
+        [
+          {
+            "node": "Verify local formula readback",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Call localhost fallback",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Call localhost fallback": {
+      "main": [
+        [
+          {
+            "node": "Verify local formula readback",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "6a4ec475-28c2-4597-aed7-a95f73409c80",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "0000000000000000000000000000000000000000000000000000000000000000"
+  },
+  "id": "BiligWorkPaperFormulaReadbackSelfHosted",
+  "tags": []
+}
