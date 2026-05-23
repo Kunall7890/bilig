@@ -4,6 +4,15 @@ All notable changes to `@bilig/headless` will be documented in this file.
 
 This package is released as part of the aligned bilig library package set.
 
+## 0.67.13
+
+- Release type: patch
+- Previous libraries tag: libraries-v0.67.12
+- Manual override: no
+
+## Fixes
+- fix(workbook): harden model manifest data (003c6164)
+
 ## 0.67.12
 
 - Release type: patch
