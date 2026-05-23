@@ -199,6 +199,7 @@ function sheetDeletionMetadataContext(sheets: readonly SheetRecord[], sheetName:
   }
   return {
     deletedSheetIndex,
+    deletedSheetId: orderedSheets[deletedSheetIndex]!.id,
     sheetCountBeforeDelete: orderedSheets.length,
   }
 }

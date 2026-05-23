@@ -132,6 +132,21 @@ describe('engine imported package metadata preservation', () => {
     })
   })
 
+  it('drops deleted-sheet preserved calc-chain cells without reindexing sheet ids', async () => {
+    const engine = new SpreadsheetEngine({ workbookName: 'package-metadata-calc-chain-delete-sheet' })
+    await engine.ready()
+
+    engine.importSnapshot(calcChainSheetDeletionSnapshot())
+    engine.deleteSheet('Data')
+
+    const metadata = engine.exportSnapshot().workbook.metadata
+    expect(metadata?.formulaAudit?.formulas.map((entry) => `${entry.sheetName}:${entry.address}`)).toEqual(['Inputs:A1', 'Report:A1'])
+    expect(metadata?.formulaAudit?.calcChain?.cells).toEqual([
+      { sheetIndex: 2, sheetName: 'Inputs', address: 'A1' },
+      { sheetIndex: 3, sheetName: 'Report', address: 'A1' },
+    ])
+  })
+
   it('renames quoted sheet refs in preserved chart package formulas', async () => {
     const engine = new SpreadsheetEngine({ workbookName: 'package-metadata-chart-artifact-quoted-sheet-rename' })
     await engine.ready()
@@ -389,6 +404,73 @@ function workbookViewStateSheetDeletionSnapshot(): WorkbookSnapshot {
         name: 'Report',
         order: 2,
         cells: [{ address: 'A1', value: 'report' }],
+      },
+    ],
+  }
+}
+
+function calcChainSheetDeletionSnapshot(): WorkbookSnapshot {
+  return {
+    version: 1,
+    workbook: {
+      name: 'Calc chain sheet deletion',
+      metadata: {
+        formulaAudit: {
+          formulas: [
+            {
+              context: 'worksheet-cell',
+              clause: '18.3.1.40',
+              formula: '1+1',
+              sheetName: 'Data',
+              address: 'A1',
+              cacheStatus: 'trustedCached',
+            },
+            {
+              context: 'worksheet-cell',
+              clause: '18.3.1.40',
+              formula: '10+1',
+              sheetName: 'Inputs',
+              address: 'A1',
+              cacheStatus: 'trustedCached',
+            },
+            {
+              context: 'worksheet-cell',
+              clause: '18.3.1.40',
+              formula: 'Inputs!A1+1',
+              sheetName: 'Report',
+              address: 'A1',
+              cacheStatus: 'trustedCached',
+            },
+          ],
+          calcChain: {
+            packagePath: 'xl/calcChain.xml',
+            cells: [
+              { sheetIndex: 1, sheetName: 'Data', address: 'A1' },
+              { sheetIndex: 2, sheetName: 'Inputs', address: 'A1' },
+              { sheetIndex: 3, sheetName: 'Report', address: 'A1' },
+            ],
+          },
+        },
+      },
+    },
+    sheets: [
+      {
+        id: 1,
+        name: 'Data',
+        order: 0,
+        cells: [{ address: 'A1', formula: '1+1', value: 2 }],
+      },
+      {
+        id: 2,
+        name: 'Inputs',
+        order: 1,
+        cells: [{ address: 'A1', formula: '10+1', value: 11 }],
+      },
+      {
+        id: 3,
+        name: 'Report',
+        order: 2,
+        cells: [{ address: 'A1', formula: 'Inputs!A1+1', value: 12 }],
       },
     ],
   }

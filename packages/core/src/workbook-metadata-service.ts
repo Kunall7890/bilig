@@ -256,7 +256,11 @@ export function createWorkbookMetadataService(metadata: WorkbookMetadataRecord):
 
   const deleteSheetRecordsNow = (sheetName: string, context?: WorkbookSheetDeletionMetadataContext): void => {
     if (context) {
-      const preservedWorkbookMetadata = rewritePreservedWorkbookMetadataForSheetDeletion(metadata.preservedWorkbookMetadata, context)
+      const preservedWorkbookMetadata = rewritePreservedWorkbookMetadataForSheetDeletion(
+        metadata.preservedWorkbookMetadata,
+        sheetName,
+        context,
+      )
       if (preservedWorkbookMetadata) {
         metadata.preservedWorkbookMetadata = preservedWorkbookMetadata
       }

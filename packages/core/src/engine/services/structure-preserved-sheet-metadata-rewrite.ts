@@ -138,25 +138,35 @@ export function renamePreservedWorkbookMetadataSheetReferences(
 
 export function rewritePreservedWorkbookMetadataForSheetDeletion(
   metadata: WorkbookPreservedMetadataRecord,
+  deletedSheetName: string,
   context: WorkbookSheetDeletionMetadataContext,
 ): WorkbookPreservedMetadataRecord | undefined {
+  let changed = false
+  const next: WorkbookPreservedMetadataRecord = { ...metadata }
+
   const bookViewsXml = metadata.viewState?.bookViewsXml
-  if (!bookViewsXml || context.sheetCountBeforeDelete <= 1) {
-    return undefined
+  if (bookViewsXml && context.sheetCountBeforeDelete > 1) {
+    const rewrittenBookViewsXml = rewriteWorkbookViewIndexesForSheetDeletion(bookViewsXml, context)
+    if (rewrittenBookViewsXml !== bookViewsXml) {
+      changed = true
+      next.viewState = {
+        ...metadata.viewState,
+        bookViewsXml: rewrittenBookViewsXml,
+      }
+    }
   }
 
-  const rewrittenBookViewsXml = rewriteWorkbookViewIndexesForSheetDeletion(bookViewsXml, context)
-  if (rewrittenBookViewsXml === bookViewsXml) {
-    return undefined
+  if (metadata.formulaAudit) {
+    const formulaAudit = rewriteFormulaAuditForSheetDeletion(metadata.formulaAudit, deletedSheetName, context)
+    changed ||= formulaAudit !== metadata.formulaAudit
+    if (formulaAudit) {
+      next.formulaAudit = formulaAudit
+    } else {
+      delete next.formulaAudit
+    }
   }
 
-  return {
-    ...metadata,
-    viewState: {
-      ...metadata.viewState,
-      bookViewsXml: rewrittenBookViewsXml,
-    },
-  }
+  return changed ? next : undefined
 }
 
 export function rewritePreservedPivotPackageArtifactsForStructuralTransform(
@@ -293,6 +303,35 @@ function replaceXmlAttributeValue(element: string, attributeName: 'activeTab' | 
 
 function removeXmlAttribute(element: string, attributeName: 'firstSheet'): string {
   return element.replace(new RegExp(`\\s+${attributeName}=(["'])\\d+\\1`, 'u'), '')
+}
+
+function rewriteFormulaAuditForSheetDeletion(
+  formulaAudit: NonNullable<WorkbookPreservedMetadataRecord['formulaAudit']>,
+  deletedSheetName: string,
+  context: WorkbookSheetDeletionMetadataContext,
+): NonNullable<WorkbookPreservedMetadataRecord['formulaAudit']> | undefined {
+  const formulas = formulaAudit.formulas.filter((entry) => entry.sheetName !== deletedSheetName)
+  const diagnostics = formulaAudit.diagnostics?.filter((entry) => entry.sheetName !== deletedSheetName)
+  const calcChainCells = formulaAudit.calcChain?.cells.filter(
+    (entry) => entry.sheetName !== deletedSheetName && entry.sheetIndex !== context.deletedSheetId,
+  )
+  const formulasChanged = formulas.length !== formulaAudit.formulas.length
+  const diagnosticsChanged = diagnostics !== undefined && diagnostics.length !== formulaAudit.diagnostics?.length
+  const calcChainChanged = calcChainCells !== undefined && calcChainCells.length !== formulaAudit.calcChain?.cells.length
+
+  if (!formulasChanged && !diagnosticsChanged && !calcChainChanged) {
+    return formulaAudit
+  }
+  const calcChain =
+    formulaAudit.calcChain && calcChainCells && calcChainCells.length > 0 ? { ...formulaAudit.calcChain, cells: calcChainCells } : undefined
+  if (formulas.length === 0 && (diagnostics?.length ?? 0) === 0 && !calcChain) {
+    return undefined
+  }
+  return {
+    formulas,
+    ...(diagnostics && diagnostics.length > 0 ? { diagnostics } : {}),
+    ...(calcChain ? { calcChain } : {}),
+  }
 }
 
 function rewriteStyleArtifactsForStructuralTransform(

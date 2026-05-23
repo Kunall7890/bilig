@@ -175,6 +175,57 @@ describe('macOS Desktop Excel preserved package metadata oracle', () => {
   )
 
   it.runIf(process.env.BILIG_EXCEL_ORACLE_RUN === '1')(
+    'matches Desktop Excel calc-chain sheet ids after deleting a prior sheet',
+    () => {
+      if (!isMacosExcelInstalled()) {
+        throw new Error('BILIG_EXCEL_ORACLE_RUN=1 requires /Applications/Microsoft Excel.app')
+      }
+
+      const tempDir = createExcelAccessibleTempDir('bilig-headless-excel-calc-chain-delete-oracle-')
+      try {
+        const sourceBytes = buildCalcChainSheetDeletionXlsx()
+        const importedSource = importXlsx(sourceBytes, 'calc-chain-delete-source.xlsx').snapshot
+        expect(calcChainSummary(importedSource)).toEqual(['1:Data:A1', '2:Inputs:A1', '3:Report:A1'])
+
+        const excelWorkbookPath = join(tempDir, 'excel-calc-chain-delete-source.xlsx')
+        writeFileSync(excelWorkbookPath, sourceBytes)
+        const excelResult = runMacosExcelStructuralOperationOracle({
+          workbookPath: excelWorkbookPath,
+          worksheetName: 'Report',
+          operations: [{ kind: 'deleteSheet', name: 'Data' }],
+          inspectCells: ['A1'],
+          saveWorkbook: true,
+          timeoutMs: 120_000,
+        })
+        expect(excelResult.cells[0]?.value).toEqual({ kind: 'number', value: 12 })
+
+        const excelTruth = importXlsx(new Uint8Array(readFileSync(excelWorkbookPath)), 'excel-calc-chain-delete-truth.xlsx')
+        expect(excelTruth.snapshot.sheets.map((sheet) => sheet.name)).toEqual(['Inputs', 'Report'])
+        const excelCalcChain = calcChainSummary(excelTruth.snapshot)
+        expect(excelCalcChain).toEqual(['2:Inputs:A1', '3:Report:A1'])
+
+        const workpaper = WorkPaper.buildFromSnapshot(importedSource)
+        try {
+          const dataSheet = workpaper.getSheetId('Data')
+          if (dataSheet === undefined) {
+            throw new Error('Expected Data sheet')
+          }
+          workpaper.removeSheet(dataSheet)
+
+          const headlessSnapshot = workpaper.exportSnapshot()
+          expect(headlessSnapshot.sheets.map((sheet) => sheet.name)).toEqual(['Inputs', 'Report'])
+          expect(calcChainSummary(headlessSnapshot)).toEqual(excelCalcChain)
+        } finally {
+          workpaper.dispose()
+        }
+      } finally {
+        removeMacosExcelTestDir(tempDir)
+      }
+    },
+    180_000,
+  )
+
+  it.runIf(process.env.BILIG_EXCEL_ORACLE_RUN === '1')(
     'matches Desktop Excel preserved style artifacts and view refs after structural row inserts',
     () => {
       if (!isMacosExcelInstalled()) {
@@ -617,6 +668,80 @@ function workbookViewSheetDeletionSnapshot(): WorkbookSnapshot {
   }
 }
 
+function calcChainSheetDeletionSnapshot(): WorkbookSnapshot {
+  return {
+    version: 1,
+    workbook: {
+      name: 'Desktop Excel calc chain delete oracle',
+    },
+    sheets: [
+      {
+        id: 1,
+        name: 'Data',
+        order: 0,
+        cells: [{ address: 'A1', formula: '1+1', value: 2 }],
+      },
+      {
+        id: 2,
+        name: 'Inputs',
+        order: 1,
+        cells: [{ address: 'A1', formula: '10+1', value: 11 }],
+      },
+      {
+        id: 3,
+        name: 'Report',
+        order: 2,
+        cells: [{ address: 'A1', formula: 'Inputs!A1+1', value: 12 }],
+      },
+    ],
+  }
+}
+
+function buildCalcChainSheetDeletionXlsx(): Uint8Array {
+  const zip = unzipSync(exportXlsx(calcChainSheetDeletionSnapshot()))
+  zip['xl/calcChain.xml'] = strToU8(
+    [
+      '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>',
+      '<calcChain xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">',
+      '<c r="A1" i="1"/>',
+      '<c r="A1" i="2"/>',
+      '<c r="A1" i="3"/>',
+      '</calcChain>',
+    ].join(''),
+  )
+  addCalcChainWorkbookRelationship(zip)
+  addCalcChainContentType(zip)
+  return zipSync(zip)
+}
+
+function addCalcChainWorkbookRelationship(zip: Record<string, Uint8Array>): void {
+  const path = 'xl/_rels/workbook.xml.rels'
+  const xml = strFromU8(zip[path] ?? new Uint8Array())
+  if (xml.includes('/calcChain')) {
+    return
+  }
+  zip[path] = strToU8(
+    xml.replace(
+      '</Relationships>',
+      '<Relationship Id="rIdCalcChain1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/calcChain" Target="calcChain.xml"/></Relationships>',
+    ),
+  )
+}
+
+function addCalcChainContentType(zip: Record<string, Uint8Array>): void {
+  const path = '[Content_Types].xml'
+  const xml = strFromU8(zip[path] ?? new Uint8Array())
+  if (xml.includes('calcChain+xml')) {
+    return
+  }
+  zip[path] = strToU8(
+    xml.replace(
+      '</Types>',
+      '<Override PartName="/xl/calcChain.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.calcChain+xml"/></Types>',
+    ),
+  )
+}
+
 function structuralPreservedMetadataSnapshot(): WorkbookSnapshot {
   return {
     version: 1,
@@ -743,6 +868,12 @@ function workbookViewTabIndexes(snapshot: WorkbookSnapshot): {
     activeTab: readXmlAttribute(xml, 'activeTab'),
     firstSheet: readXmlAttribute(xml, 'firstSheet'),
   }
+}
+
+function calcChainSummary(snapshot: WorkbookSnapshot): string[] {
+  return (snapshot.workbook.metadata?.formulaAudit?.calcChain?.cells ?? []).map(
+    (cell) => `${String(cell.sheetIndex)}:${cell.sheetName ?? ''}:${cell.address}`,
+  )
 }
 
 function styleArtifactRefs(snapshot: WorkbookSnapshot): { readonly styled: string[]; readonly blank: string[] } {

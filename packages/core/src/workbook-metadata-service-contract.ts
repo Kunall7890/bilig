@@ -268,5 +268,6 @@ export interface WorkbookMetadataService {
 
 export interface WorkbookSheetDeletionMetadataContext {
   readonly deletedSheetIndex: number
+  readonly deletedSheetId: number
   readonly sheetCountBeforeDelete: number
 }

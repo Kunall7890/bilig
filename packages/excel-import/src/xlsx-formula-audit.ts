@@ -236,6 +236,7 @@ function readCalcChain(source: XlsxZipSource, sheetNames: readonly string[]): Wo
   if (!xml) {
     return undefined
   }
+  const sheetNamesByCalcChainSheetId = readCalcChainSheetNamesBySheetId(zip, sheetNames)
   const parsed: unknown = xmlParser.parse(xml)
   let currentSheetIndex = 1
   const cells = asArray(recordChild(parsed, 'calcChain')?.['c']).flatMap((entry) => {
@@ -250,7 +251,7 @@ function readCalcChain(source: XlsxZipSource, sheetNames: readonly string[]): Wo
     if (Number.isSafeInteger(explicitSheetIndex) && explicitSheetIndex > 0) {
       currentSheetIndex = explicitSheetIndex
     }
-    const sheetName = sheetNames[currentSheetIndex - 1]
+    const sheetName = sheetNamesByCalcChainSheetId.get(currentSheetIndex)
     return [
       {
         sheetIndex: currentSheetIndex,
@@ -262,6 +263,34 @@ function readCalcChain(source: XlsxZipSource, sheetNames: readonly string[]): Wo
     ]
   })
   return cells.length > 0 ? { packagePath: 'xl/calcChain.xml', cells } : undefined
+}
+
+function readCalcChainSheetNamesBySheetId(
+  zip: ReturnType<typeof readXlsxZipEntries>,
+  fallbackSheetNames: readonly string[],
+): Map<number, string> {
+  const workbookXml = getZipText(zip, 'xl/workbook.xml')
+  if (!workbookXml) {
+    return fallbackCalcChainSheetNamesBySheetId(fallbackSheetNames)
+  }
+  const parsed: unknown = xmlParser.parse(workbookXml)
+  const sheets = asArray(recordChild(recordChild(parsed, 'workbook'), 'sheets')?.['sheet'])
+  const sheetNamesById = new Map<number, string>()
+  for (const sheet of sheets) {
+    if (!isRecord(sheet)) {
+      continue
+    }
+    const sheetId = Number(stringValue(sheet['sheetId']))
+    const name = stringValue(sheet['name'])
+    if (Number.isSafeInteger(sheetId) && sheetId > 0 && name && name.length > 0) {
+      sheetNamesById.set(sheetId, name)
+    }
+  }
+  return sheetNamesById.size > 0 ? sheetNamesById : fallbackCalcChainSheetNamesBySheetId(fallbackSheetNames)
+}
+
+function fallbackCalcChainSheetNamesBySheetId(sheetNames: readonly string[]): Map<number, string> {
+  return new Map(sheetNames.map((sheetName, index) => [index + 1, sheetName]))
 }
 
 export function readImportedWorkbookFormulaAudit(args: {
