@@ -109,6 +109,8 @@ const OP_TAGS: Record<EngineOp['kind'], number> = {
   deleteShape: 55,
   mergeCells: 56,
   unmergeCells: 57,
+  setConditionalFormatArtifacts: 58,
+  clearConditionalFormatArtifacts: 59,
 }
 
 function encodeEngineOp(writer: BinaryWriter, op: EngineOp): void {
@@ -212,6 +214,13 @@ function encodeEngineOp(writer: BinaryWriter, op: EngineOp): void {
       return
     case 'deleteConditionalFormat':
       writer.string(op.id)
+      writer.string(op.sheetName)
+      return
+    case 'setConditionalFormatArtifacts':
+      writer.string(op.sheetName)
+      writer.string(op.artifacts.xml)
+      return
+    case 'clearConditionalFormatArtifacts':
       writer.string(op.sheetName)
       return
     case 'upsertRangeProtection':
@@ -490,6 +499,17 @@ function decodeEngineOp(reader: BinaryReader): EngineOp {
       return {
         kind: 'deleteConditionalFormat',
         id: reader.string(),
+        sheetName: reader.string(),
+      }
+    case 58:
+      return {
+        kind: 'setConditionalFormatArtifacts',
+        sheetName: reader.string(),
+        artifacts: { xml: reader.string() },
+      }
+    case 59:
+      return {
+        kind: 'clearConditionalFormatArtifacts',
         sheetName: reader.string(),
       }
     case 48:

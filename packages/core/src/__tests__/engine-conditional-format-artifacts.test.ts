@@ -23,7 +23,34 @@ describe('conditional format artifact metadata', () => {
       exported.sheets[0]?.metadata?.conditionalFormatArtifacts,
     )
   })
+
+  it('rewrites advanced conditional format artifact ranges across structural edits', async () => {
+    const engine = new SpreadsheetEngine({ workbookName: 'conditional-format-artifacts-structural' })
+    await engine.ready()
+    engine.importSnapshot(advancedConditionalFormatSnapshot())
+
+    engine.insertRows('Dashboard', 0, 1)
+    expect(exportedConditionalFormatArtifactXml(engine)).toContain('sqref="A2:A4"')
+    expect(exportedConditionalFormatArtifactXml(engine)).toContain('sqref="B2:B4"')
+    expect(exportedConditionalFormatArtifactXml(engine)).toContain('sqref="C2:C4"')
+
+    engine.insertColumns('Dashboard', 0, 1)
+    expect(exportedConditionalFormatArtifactXml(engine)).toContain('sqref="B2:B4"')
+    expect(exportedConditionalFormatArtifactXml(engine)).toContain('sqref="C2:C4"')
+    expect(exportedConditionalFormatArtifactXml(engine)).toContain('sqref="D2:D4"')
+
+    engine.deleteRows('Dashboard', 1, 3)
+    expect(engine.exportSnapshot().sheets[0]?.metadata?.conditionalFormatArtifacts).toBeUndefined()
+  })
 })
+
+function exportedConditionalFormatArtifactXml(engine: SpreadsheetEngine): string {
+  const xml = engine.exportSnapshot().sheets[0]?.metadata?.conditionalFormatArtifacts?.xml
+  if (!xml) {
+    throw new Error('Expected conditional format artifact XML')
+  }
+  return xml
+}
 
 function advancedConditionalFormatSnapshot(): WorkbookSnapshot {
   return {

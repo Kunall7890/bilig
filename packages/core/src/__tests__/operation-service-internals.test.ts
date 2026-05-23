@@ -909,6 +909,15 @@ describe('operation-service internals', () => {
         'conditional-format:cf1',
       ],
       [{ kind: 'deleteConditionalFormat', id: 'cf1', sheetName: 'Sheet1' }, 'conditional-format:cf1'],
+      [
+        {
+          kind: 'setConditionalFormatArtifacts',
+          sheetName: 'Sheet1',
+          artifacts: { xml: '<conditionalFormatting sqref="A1:B2"><cfRule type="dataBar" priority="1"/></conditionalFormatting>' },
+        },
+        'conditional-format-artifacts:Sheet1',
+      ],
+      [{ kind: 'clearConditionalFormatArtifacts', sheetName: 'Sheet1' }, 'conditional-format-artifacts:Sheet1'],
       [{ kind: 'upsertRangeProtection', protection: { id: 'rp1', range } }, 'range-protection:rp1'],
       [{ kind: 'deleteRangeProtection', id: 'rp1', sheetName: 'Sheet1' }, 'range-protection:rp1'],
       [{ kind: 'upsertCommentThread', thread: { threadId: 't1', sheetName: 'Sheet1', address: 'A1', comments: [] } }, 'comment:Sheet1!A1'],

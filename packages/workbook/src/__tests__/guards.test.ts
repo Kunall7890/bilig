@@ -62,6 +62,14 @@ describe('workbook guards', () => {
             },
           },
           {
+            kind: 'setConditionalFormatArtifacts',
+            sheetName: 'Sheet1',
+            artifacts: {
+              xml: '<conditionalFormatting sqref="A1:A2"><cfRule type="dataBar" priority="1"/></conditionalFormatting>',
+            },
+          },
+          { kind: 'clearConditionalFormatArtifacts', sheetName: 'Sheet1' },
+          {
             kind: 'setSheetProtection',
             protection: {
               sheetName: 'Sheet1',

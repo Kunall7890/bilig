@@ -245,6 +245,66 @@ function rewriteDataTableFormulasForStructuralTransform(
   return rewritten && rewritten.length > 0 ? { formulas: rewritten } : undefined
 }
 
+function rewriteConditionalFormatArtifactReference(value: string, transform: StructuralAxisTransform): string | undefined {
+  const [start, end, extra] = value.split(':')
+  if (!start || extra !== undefined) {
+    return undefined
+  }
+  try {
+    if (!end) {
+      return rewriteAddressForStructuralTransform(start, transform)
+    }
+    const rewritten = rewriteRangeForStructuralTransform(start, end, transform)
+    return rewritten ? `${rewritten.startAddress}:${rewritten.endAddress}` : undefined
+  } catch {
+    return undefined
+  }
+}
+
+function rewriteConditionalFormatArtifactSqref(value: string, transform: StructuralAxisTransform): string | undefined {
+  const references = value.trim().split(/\s+/u).filter(Boolean)
+  if (references.length === 0) {
+    return undefined
+  }
+  const rewritten = references.flatMap((reference) => {
+    const nextReference = rewriteConditionalFormatArtifactReference(reference, transform)
+    return nextReference ? [nextReference] : []
+  })
+  return rewritten.length > 0 ? rewritten.join(' ') : undefined
+}
+
+function rewriteConditionalFormatArtifactBlock(block: string, transform: StructuralAxisTransform): string | undefined {
+  const openingTag = /^<conditionalFormatting\b[^>]*>/u.exec(block)?.[0]
+  if (!openingTag) {
+    return block
+  }
+  const sqref = readXmlAttribute(openingTag, 'sqref')
+  if (sqref === null) {
+    return block
+  }
+  const nextSqref = rewriteConditionalFormatArtifactSqref(decodeXmlAttribute(sqref), transform)
+  if (!nextSqref) {
+    return undefined
+  }
+
+  const nextOpeningTag = openingTag.replace(/\bsqref=("|')([\s\S]*?)\1/u, (_source: string, quote: string) => {
+    return `sqref=${quote}${escapeXmlAttribute(nextSqref)}${quote}`
+  })
+  return `${nextOpeningTag}${block.slice(openingTag.length)}`
+}
+
+function rewriteConditionalFormatArtifactXmlForStructuralTransform(xml: string, transform: StructuralAxisTransform): string | undefined {
+  let matchedBlock = false
+  const rewrittenXml = xml.replace(/<conditionalFormatting\b[^>]*>[\s\S]*?<\/conditionalFormatting>/gu, (block) => {
+    matchedBlock = true
+    return rewriteConditionalFormatArtifactBlock(block, transform) ?? ''
+  })
+  if (!matchedBlock) {
+    return xml
+  }
+  return rewrittenXml.trim().length > 0 ? rewrittenXml : undefined
+}
+
 export function rewriteDefinedNamesForStructuralTransform(
   args: StructureMetadataRewriteArgs,
   sheetName: string,
@@ -538,6 +598,14 @@ export function rewriteWorkbookMetadataForStructuralTransform(
     }
     workbook.setConditionalFormat(nextFormat)
   })
+  const conditionalFormatArtifacts = workbook.getConditionalFormatArtifacts(sheetName)
+  if (conditionalFormatArtifacts) {
+    const nextArtifactsXml = rewriteConditionalFormatArtifactXmlForStructuralTransform(conditionalFormatArtifacts.xml, transform)
+    workbook.deleteConditionalFormatArtifacts(sheetName)
+    if (nextArtifactsXml) {
+      workbook.setConditionalFormatArtifacts(sheetName, { xml: nextArtifactsXml })
+    }
+  }
   workbook.listRangeProtections(sheetName).forEach((protection) => {
     const nextProtection = rewriteMetadataRangeRecord(protection, transform)
     workbook.deleteRangeProtection(protection.id)

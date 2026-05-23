@@ -347,6 +347,14 @@ export function sheetMetadataToOps(
       format: structuredClone(record),
     })
   })
+  const conditionalFormatArtifacts = workbook.getConditionalFormatArtifacts(sheetName)
+  if (conditionalFormatArtifacts) {
+    ops.push({
+      kind: 'setConditionalFormatArtifacts',
+      sheetName,
+      artifacts: { xml: conditionalFormatArtifacts.xml },
+    })
+  }
   workbook.listRangeProtections(sheetName).forEach((record) => {
     ops.push({
       kind: 'upsertRangeProtection',

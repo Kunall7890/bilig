@@ -179,6 +179,9 @@ function entityKeyForOp(op: EngineOp): string {
       return `conditional-format:${op.format.id}`
     case 'deleteConditionalFormat':
       return `conditional-format:${op.id}`
+    case 'setConditionalFormatArtifacts':
+    case 'clearConditionalFormatArtifacts':
+      return `conditional-format-artifacts:${op.sheetName}`
     case 'upsertRangeProtection':
       return `range-protection:${op.protection.id}`
     case 'deleteRangeProtection':
@@ -268,6 +271,8 @@ function sheetDeleteBarrierForOp(op: EngineOp, latestSheetDeletes: Map<string, O
     case 'clearSort':
     case 'clearDataValidation':
     case 'deleteConditionalFormat':
+    case 'setConditionalFormatArtifacts':
+    case 'clearConditionalFormatArtifacts':
     case 'deleteRangeProtection':
     case 'deleteCommentThread':
     case 'deleteNote':

@@ -206,6 +206,20 @@ export function buildMutationMetadataInverseOps(workbook: WorkbookStore, op: Eng
       }
       return [{ kind: 'upsertConditionalFormat', format: structuredClone(existing) }]
     }
+    case 'setConditionalFormatArtifacts': {
+      const existing = workbook.getConditionalFormatArtifacts(op.sheetName)
+      if (!existing) {
+        return [{ kind: 'clearConditionalFormatArtifacts', sheetName: op.sheetName }]
+      }
+      return [{ kind: 'setConditionalFormatArtifacts', sheetName: op.sheetName, artifacts: { xml: existing.xml } }]
+    }
+    case 'clearConditionalFormatArtifacts': {
+      const existing = workbook.getConditionalFormatArtifacts(op.sheetName)
+      if (!existing) {
+        return []
+      }
+      return [{ kind: 'setConditionalFormatArtifacts', sheetName: op.sheetName, artifacts: { xml: existing.xml } }]
+    }
     case 'upsertRangeProtection': {
       const existing = workbook.getRangeProtection(op.protection.id)
       if (!existing) {

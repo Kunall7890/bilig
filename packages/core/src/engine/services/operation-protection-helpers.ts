@@ -97,6 +97,8 @@ export function assertProtectionAllowsOp(access: OperationProtectionAccess, op: 
     case 'updateColumnMetadata':
     case 'setFreezePane':
     case 'clearFreezePane':
+    case 'setConditionalFormatArtifacts':
+    case 'clearConditionalFormatArtifacts':
       if (sheetHasProtection(access, op.sheetName)) {
         throwProtectionBlocked(`sheet ${op.sheetName} is protected`)
       }

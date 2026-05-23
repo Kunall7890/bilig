@@ -15,6 +15,7 @@ import type {
   WorkbookRangeProtectionSnapshot,
   WorkbookSheetProtectionSnapshot,
   WorkbookShapeSnapshot,
+  WorkbookSheetConditionalFormatArtifactsSnapshot,
   WorkbookAxisEntrySnapshot,
   WorkbookCalculationSettingsSnapshot,
   WorkbookDefinedNameValueSnapshot,
@@ -47,6 +48,7 @@ export interface WorkbookDataValidationOp extends WorkbookDataValidationSnapshot
 export interface WorkbookConditionalFormatOp extends WorkbookConditionalFormatSnapshot {
   style: CellStylePatch
 }
+export interface WorkbookSheetConditionalFormatArtifactsOp extends WorkbookSheetConditionalFormatArtifactsSnapshot {}
 export interface WorkbookSheetProtectionOp extends WorkbookSheetProtectionSnapshot {}
 export interface WorkbookRangeProtectionOp extends WorkbookRangeProtectionSnapshot {}
 export interface WorkbookCommentThreadOp extends WorkbookCommentThreadSnapshot {}
@@ -114,6 +116,8 @@ export type WorkbookOp =
   | { kind: 'clearDataValidation'; sheetName: string; range: CellRangeRef }
   | { kind: 'upsertConditionalFormat'; format: WorkbookConditionalFormatOp }
   | { kind: 'deleteConditionalFormat'; id: string; sheetName: string }
+  | { kind: 'setConditionalFormatArtifacts'; sheetName: string; artifacts: WorkbookSheetConditionalFormatArtifactsOp }
+  | { kind: 'clearConditionalFormatArtifacts'; sheetName: string }
   | { kind: 'upsertRangeProtection'; protection: WorkbookRangeProtectionOp }
   | { kind: 'deleteRangeProtection'; id: string; sheetName: string }
   | { kind: 'upsertCommentThread'; thread: WorkbookCommentThreadOp }

@@ -206,6 +206,14 @@ describe('binary protocol', () => {
               },
             },
             {
+              kind: 'setConditionalFormatArtifacts',
+              sheetName: 'Sheet1',
+              artifacts: {
+                xml: '<conditionalFormatting sqref="G2:G10"><cfRule type="dataBar" priority="1"/></conditionalFormatting>',
+              },
+            },
+            { kind: 'clearConditionalFormatArtifacts', sheetName: 'Sheet1' },
+            {
               kind: 'upsertRangeProtection',
               protection: {
                 id: 'protect-a1',
@@ -371,6 +379,14 @@ describe('binary protocol', () => {
           priority: 1,
         },
       },
+      {
+        kind: 'setConditionalFormatArtifacts',
+        sheetName: 'Sheet1',
+        artifacts: {
+          xml: '<conditionalFormatting sqref="G2:G10"><cfRule type="dataBar" priority="1"/></conditionalFormatting>',
+        },
+      },
+      { kind: 'clearConditionalFormatArtifacts', sheetName: 'Sheet1' },
       {
         kind: 'upsertRangeProtection',
         protection: {

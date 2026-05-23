@@ -41,6 +41,10 @@ function isStringArray(value: unknown): value is string[] {
   return Array.isArray(value) && value.every((entry) => typeof entry === 'string')
 }
 
+function isConditionalFormatArtifacts(value: unknown): boolean {
+  return isRecord(value) && hasString(value, 'xml')
+}
+
 function isOptionalString(value: unknown): value is string | undefined {
   return value === undefined || typeof value === 'string'
 }
@@ -659,6 +663,10 @@ export function isWorkbookOp(value: unknown): value is WorkbookOp {
       return isWorkbookConditionalFormat(value['format'])
     case 'deleteConditionalFormat':
       return hasString(value, 'id') && hasString(value, 'sheetName')
+    case 'setConditionalFormatArtifacts':
+      return hasString(value, 'sheetName') && isConditionalFormatArtifacts(value['artifacts'])
+    case 'clearConditionalFormatArtifacts':
+      return hasString(value, 'sheetName')
     case 'upsertRangeProtection':
       return isWorkbookRangeProtection(value['protection'])
     case 'deleteRangeProtection':

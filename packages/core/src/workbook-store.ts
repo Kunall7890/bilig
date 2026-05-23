@@ -234,6 +234,7 @@ export class WorkbookStore {
       this.metadata.sorts.size > 0 ||
       this.metadata.dataValidations.size > 0 ||
       this.metadata.conditionalFormats.size > 0 ||
+      this.metadata.conditionalFormatArtifacts.has(sheetName) ||
       this.metadata.rangeProtections.size > 0 ||
       this.metadata.commentThreads.size > 0 ||
       this.metadata.notes.size > 0 ||

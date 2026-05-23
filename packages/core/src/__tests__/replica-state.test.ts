@@ -337,7 +337,15 @@ describe('replica-state', () => {
           style: {},
         },
       },
-      { kind: 'deleteConditionalFormat', id: 'cf-1' },
+      { kind: 'deleteConditionalFormat', id: 'cf-1', sheetName: 'Sheet1' },
+      {
+        kind: 'setConditionalFormatArtifacts',
+        sheetName: 'Sheet1',
+        artifacts: {
+          xml: '<conditionalFormatting sqref="A1:B3"><cfRule type="dataBar" priority="1"/></conditionalFormatting>',
+        },
+      },
+      { kind: 'clearConditionalFormatArtifacts', sheetName: 'Sheet1' },
       {
         kind: 'upsertRangeProtection',
         protection: {
@@ -345,7 +353,7 @@ describe('replica-state', () => {
           range: { sheetName: 'Sheet1', startAddress: 'A1', endAddress: 'B3' },
         },
       },
-      { kind: 'deleteRangeProtection', id: 'protect-1' },
+      { kind: 'deleteRangeProtection', id: 'protect-1', sheetName: 'Sheet1' },
       {
         kind: 'upsertCommentThread',
         thread: {

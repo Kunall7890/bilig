@@ -28,6 +28,8 @@ export type OperationStructuralMetadataOp = Extract<
       | 'clearDataValidation'
       | 'upsertConditionalFormat'
       | 'deleteConditionalFormat'
+      | 'setConditionalFormatArtifacts'
+      | 'clearConditionalFormatArtifacts'
       | 'upsertRangeProtection'
       | 'deleteRangeProtection'
       | 'upsertCommentThread'
@@ -65,6 +67,8 @@ type OperationStructuralMetadataWorkbook = Pick<
   | 'deleteDataValidation'
   | 'setConditionalFormat'
   | 'deleteConditionalFormat'
+  | 'setConditionalFormatArtifacts'
+  | 'deleteConditionalFormatArtifacts'
   | 'setRangeProtection'
   | 'deleteRangeProtection'
   | 'setCommentThread'
@@ -195,6 +199,14 @@ export function applyOperationStructuralMetadataOp(args: {
       break
     case 'deleteConditionalFormat':
       args.workbook.deleteConditionalFormat(args.op.id)
+      change.structuralInvalidation = true
+      break
+    case 'setConditionalFormatArtifacts':
+      args.workbook.setConditionalFormatArtifacts(args.op.sheetName, args.op.artifacts)
+      change.structuralInvalidation = true
+      break
+    case 'clearConditionalFormatArtifacts':
+      args.workbook.deleteConditionalFormatArtifacts(args.op.sheetName)
       change.structuralInvalidation = true
       break
     case 'upsertRangeProtection':

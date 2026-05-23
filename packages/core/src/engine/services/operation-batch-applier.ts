@@ -581,6 +581,8 @@ export function createOperationBatchApplier(input: CreateOperationBatchApplierAr
           case 'clearDataValidation':
           case 'upsertConditionalFormat':
           case 'deleteConditionalFormat':
+          case 'setConditionalFormatArtifacts':
+          case 'clearConditionalFormatArtifacts':
           case 'upsertRangeProtection':
           case 'deleteRangeProtection':
           case 'upsertCommentThread':

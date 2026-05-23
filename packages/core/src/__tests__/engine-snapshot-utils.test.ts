@@ -36,6 +36,9 @@ describe('engine snapshot utils', () => {
       ],
     })
     workbook.setSort('Sheet1', { sheetName: 'Sheet1', startAddress: 'A1', endAddress: 'D8' }, [{ keyAddress: 'B2', direction: 'desc' }])
+    workbook.setConditionalFormatArtifacts('Sheet1', {
+      xml: '<conditionalFormatting sqref="A1:A2"><cfRule type="dataBar" priority="1"/></conditionalFormatting>',
+    })
 
     const metadata = exportSheetMetadata(workbook, 'Sheet1')
     expect(metadata).toEqual({
@@ -88,6 +91,9 @@ describe('engine snapshot utils', () => {
           keys: [{ keyAddress: 'B2', direction: 'desc' }],
         },
       ],
+      conditionalFormatArtifacts: {
+        xml: '<conditionalFormatting sqref="A1:A2"><cfRule type="dataBar" priority="1"/></conditionalFormatting>',
+      },
     })
 
     if (!metadata) {
@@ -100,9 +106,12 @@ describe('engine snapshot utils', () => {
     expect(workbook.listStyleRanges('Sheet1')[0]?.range.startAddress).toBe('A1')
     expect(workbook.listFilters('Sheet1')[0]?.range.criteria?.[0]?.filters?.values[0]).toBe('Finance')
     expect(workbook.listSorts('Sheet1')[0]?.keys[0]?.direction).toBe('desc')
+    expect(workbook.getConditionalFormatArtifacts('Sheet1')?.xml).toBe(
+      '<conditionalFormatting sqref="A1:A2"><cfRule type="dataBar" priority="1"/></conditionalFormatting>',
+    )
 
     const ops = sheetMetadataToOps(workbook, 'Sheet1')
-    expect(ops).toHaveLength(15)
+    expect(ops).toHaveLength(16)
     expect(ops).toMatchObject([
       {
         kind: 'insertRows',
@@ -209,6 +218,13 @@ describe('engine snapshot utils', () => {
         sheetName: 'Sheet1',
         range: { sheetName: 'Sheet1', startAddress: 'A1', endAddress: 'D8' },
         keys: [{ keyAddress: 'B2', direction: 'desc' }],
+      },
+      {
+        kind: 'setConditionalFormatArtifacts',
+        sheetName: 'Sheet1',
+        artifacts: {
+          xml: '<conditionalFormatting sqref="A1:A2"><cfRule type="dataBar" priority="1"/></conditionalFormatting>',
+        },
       },
     ])
   })
