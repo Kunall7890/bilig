@@ -1,8 +1,31 @@
 import type { EngineOp } from '@bilig/workbook'
+import type { WorkbookAxisMetadataSnapshot } from '@bilig/protocol'
 import { cloneCellStyleRecord } from '../../engine-style-utils.js'
 import { restoreFormatRangeOps, restoreStyleRangeOps } from '../../engine-range-format-ops.js'
 import type { WorkbookStore } from '../../workbook-store.js'
 import { rangesIntersect } from '../../workbook-merge-records.js'
+
+type AxisGeometryPatch = Omit<WorkbookAxisMetadataSnapshot, 'start' | 'count' | 'size' | 'hidden' | 'filterHidden'>
+
+function axisGeometryPatch(record: WorkbookAxisMetadataSnapshot | undefined): AxisGeometryPatch | undefined {
+  if (!record) {
+    return undefined
+  }
+  const geometry: AxisGeometryPatch = {
+    ...(record.styleIndex !== undefined ? { styleIndex: record.styleIndex } : {}),
+    ...(record.xlsxWidth !== undefined ? { xlsxWidth: record.xlsxWidth } : {}),
+    ...(record.xlsxHeight !== undefined ? { xlsxHeight: record.xlsxHeight } : {}),
+    ...(record.customFormat !== undefined ? { customFormat: record.customFormat } : {}),
+    ...(record.customWidth !== undefined ? { customWidth: record.customWidth } : {}),
+    ...(record.bestFit !== undefined ? { bestFit: record.bestFit } : {}),
+    ...(record.outlineLevel !== undefined ? { outlineLevel: record.outlineLevel } : {}),
+    ...(record.collapsed !== undefined ? { collapsed: record.collapsed } : {}),
+    ...(record.customHeight !== undefined ? { customHeight: record.customHeight } : {}),
+    ...(record.thickTop !== undefined ? { thickTop: record.thickTop } : {}),
+    ...(record.thickBottom !== undefined ? { thickBottom: record.thickBottom } : {}),
+  }
+  return Object.keys(geometry).length > 0 ? geometry : undefined
+}
 
 export function buildMutationMetadataInverseOps(workbook: WorkbookStore, op: EngineOp): EngineOp[] | undefined {
   switch (op.kind) {
@@ -40,6 +63,7 @@ export function buildMutationMetadataInverseOps(workbook: WorkbookStore, op: Eng
       return [{ kind: 'moveColumns', sheetName: op.sheetName, start: op.target, count: op.count, target: op.start }]
     case 'updateRowMetadata': {
       const existing = workbook.getRowMetadata(op.sheetName, op.start, op.count)
+      const geometry = axisGeometryPatch(existing)
       return [
         {
           kind: 'updateRowMetadata',
@@ -48,6 +72,8 @@ export function buildMutationMetadataInverseOps(workbook: WorkbookStore, op: Eng
           count: op.count,
           size: existing?.size ?? null,
           hidden: existing?.hidden ?? null,
+          filterHidden: existing?.filterHidden ?? null,
+          ...(geometry ? { geometry } : {}),
         },
       ]
     }

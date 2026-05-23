@@ -190,7 +190,7 @@ function parseAutoFilterColumn(entry: unknown): WorkbookAutoFilterColumnSnapshot
   }
 }
 
-function parseAutoFilter(sheetName: string, entry: unknown): WorkbookAutoFilterSnapshot | null {
+export function parseAutoFilter(sheetName: string, entry: unknown): WorkbookAutoFilterSnapshot | null {
   if (!isRecord(entry) || typeof entry['ref'] !== 'string') {
     return null
   }
@@ -258,7 +258,7 @@ function autoFilterColumnXml(criteria: WorkbookAutoFilterColumnSnapshot): string
   return children ? `<filterColumn ${attributes}>${children}</filterColumn>` : `<filterColumn ${attributes}/>`
 }
 
-function autoFilterXml(filter: WorkbookAutoFilterSnapshot, ref: string): string {
+export function autoFilterXml(filter: WorkbookAutoFilterSnapshot, ref: string): string {
   const criteria = filter.criteria?.map(autoFilterColumnXml).join('') ?? ''
   return criteria ? `<autoFilter ref="${escapeXml(ref)}">${criteria}</autoFilter>` : `<autoFilter ref="${escapeXml(ref)}"/>`
 }

@@ -18,6 +18,7 @@ export type MacosExcelLinkUpdateMode = 'all' | 'external' | 'never' | 'remote'
 export type MacosExcelSortHeader = 'guess' | 'no' | 'yes'
 export type MacosExcelSortOrder = 'ascending' | 'descending'
 export type MacosExcelSortOrientation = 'columns' | 'rows'
+export type MacosExcelAutoFilterOperator = 'autofilter and' | 'autofilter or' | 'filter by value'
 
 export interface MacosExcelSortKey {
   readonly key: string
@@ -77,6 +78,15 @@ export type MacosExcelStructuralOperation =
       readonly keys: readonly MacosExcelSortKey[]
       readonly header?: MacosExcelSortHeader
       readonly orientation?: MacosExcelSortOrientation
+    }
+  | {
+      readonly kind: 'applyTableAutoFilter'
+      readonly tableName: string
+      readonly field: number
+      readonly criteria1?: string | number | boolean
+      readonly operator?: MacosExcelAutoFilterOperator
+      readonly criteria2?: string | number | boolean
+      readonly visibleDropDown?: boolean
     }
 
 export interface MacosExcelStructuralOperationOracleRequest {
@@ -628,6 +638,20 @@ function structuralOperationAppleScript(operation: MacosExcelStructuralOperation
       ]
         .filter((part) => part.length > 0)
         .join('\n      ')
+    case 'applyTableAutoFilter':
+      if (!Number.isSafeInteger(operation.field) || operation.field <= 0) {
+        throw new Error('macOS Excel table AutoFilter operation requires a positive one-based field')
+      }
+      return [
+        `autofilter range (range object of autofilter object of list object ${toAppleScriptString(operation.tableName)} of targetWorksheet)`,
+        `field ${String(operation.field)}`,
+        operation.criteria1 !== undefined ? `criteria1 ${toAppleScriptValue(operation.criteria1)}` : '',
+        operation.operator ? `operator ${operation.operator}` : '',
+        operation.criteria2 !== undefined ? `criteria2 ${toAppleScriptValue(operation.criteria2)}` : '',
+        operation.visibleDropDown !== undefined ? `visible drop down ${toAppleScriptValue(operation.visibleDropDown)}` : '',
+      ]
+        .filter((part) => part.length > 0)
+        .join(' ')
   }
 }
 

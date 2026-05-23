@@ -99,6 +99,7 @@ function isWorkbookTableSnapshot(value: unknown): value is WorkbookTableSnapshot
     typeof value['totalsRow'] === 'boolean' &&
     (value['columns'] === undefined || isWorkbookTableColumns(value['columns'])) &&
     (value['style'] === undefined || isWorkbookTableStyle(value['style'])) &&
+    (value['autoFilter'] === undefined || isCellRangeRef(value['autoFilter'])) &&
     isOptionalString(value['sortState'])
   )
 }

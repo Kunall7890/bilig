@@ -1,8 +1,14 @@
 import type { EngineRuntimeState } from '../runtime-state.js'
 
-export function createRowHiddenResolver(workbook: EngineRuntimeState['workbook']): (sheetName: string, rowIndex: number) => boolean {
+export interface RowVisibilityResolvers {
+  readonly isRowHidden: (sheetName: string, rowIndex: number) => boolean
+  readonly isRowFiltered: (sheetName: string, rowIndex: number) => boolean
+}
+
+export function createRowVisibilityResolvers(workbook: EngineRuntimeState['workbook']): RowVisibilityResolvers {
   const hiddenRowsBySheet = new Map<string, Set<number>>()
-  return (sheetName, rowIndex) => {
+  const filteredRowsBySheet = new Map<string, Set<number>>()
+  const isRowHidden = (sheetName: string, rowIndex: number): boolean => {
     if (!Number.isInteger(rowIndex) || rowIndex < 0) {
       return false
     }
@@ -26,4 +32,29 @@ export function createRowHiddenResolver(workbook: EngineRuntimeState['workbook']
     }
     return hiddenRows.has(rowIndex)
   }
+  const isRowFiltered = (sheetName: string, rowIndex: number): boolean => {
+    if (!Number.isInteger(rowIndex) || rowIndex < 0) {
+      return false
+    }
+    let filteredRows = filteredRowsBySheet.get(sheetName)
+    if (filteredRows === undefined) {
+      filteredRows = new Set<number>()
+      for (const entry of workbook.listRowAxisEntries(sheetName)) {
+        if (entry.filterHidden === true) {
+          filteredRows.add(entry.index)
+        }
+      }
+      for (const record of workbook.listRowMetadata(sheetName)) {
+        if (record.filterHidden !== true) {
+          continue
+        }
+        for (let row = record.start; row < record.start + record.count; row += 1) {
+          filteredRows.add(row)
+        }
+      }
+      filteredRowsBySheet.set(sheetName, filteredRows)
+    }
+    return filteredRows.has(rowIndex)
+  }
+  return { isRowHidden, isRowFiltered }
 }

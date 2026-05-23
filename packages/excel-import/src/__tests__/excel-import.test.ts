@@ -1801,6 +1801,10 @@ describe('excel import', () => {
         ],
       },
     ])
+    expect(imported.snapshot.sheets[0]?.metadata?.rowMetadata).toEqual([
+      { start: 2, count: 1, filterHidden: true },
+      { start: 4, count: 1, filterHidden: true },
+    ])
 
     const exportedZip = unzipSync(exportXlsx(imported.snapshot))
     const exportedSheetXml = strFromU8(exportedZip[sheetPath] ?? new Uint8Array())
@@ -1811,6 +1815,8 @@ describe('excel import', () => {
       '<filterColumn colId="2"><customFilters><customFilter operator="lessThan" val="0"/></customFilters></filterColumn>',
     )
     expect(exportedSheetXml).toContain('<filterColumn colId="3"><filters blank="0"><filter val="Approved"/></filters></filterColumn>')
+    expect(exportedSheetXml).toContain('<row r="3" hidden="1"')
+    expect(exportedSheetXml).toContain('<row r="5" hidden="1"')
   })
 
   it('exports range-only number formats on populated and blank cells', () => {

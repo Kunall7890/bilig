@@ -99,7 +99,8 @@ function isWorkbookAxisEntry(value: unknown): boolean {
     hasString(value, 'id') &&
     hasSafeNonNegativeInteger(value, 'index') &&
     isOptionalNullableSafePositiveInteger(value['size']) &&
-    isOptionalNullableBoolean(value['hidden'])
+    isOptionalNullableBoolean(value['hidden']) &&
+    isOptionalNullableBoolean(value['filterHidden'])
   )
 }
 
@@ -482,6 +483,7 @@ function isWorkbookTableOp(value: unknown): boolean {
     typeof value['totalsRow'] === 'boolean' &&
     (value['columns'] === undefined || isWorkbookTableColumns(value['columns'])) &&
     (value['style'] === undefined || isWorkbookTableStyle(value['style'])) &&
+    (value['autoFilter'] === undefined || isCellRangeRef(value['autoFilter'])) &&
     isOptionalString(value['sortState'])
   )
 }
@@ -624,7 +626,8 @@ export function isWorkbookOp(value: unknown): value is WorkbookOp {
         hasSafeNonNegativeInteger(value, 'start') &&
         hasSafePositiveInteger(value, 'count') &&
         isOptionalNullableSafePositiveInteger(value['size']) &&
-        isOptionalNullableBoolean(value['hidden'])
+        isOptionalNullableBoolean(value['hidden']) &&
+        isOptionalNullableBoolean(value['filterHidden'])
       )
     case 'setFreezePane':
       return hasString(value, 'sheetName') && hasSafeNonNegativeInteger(value, 'rows') && hasSafeNonNegativeInteger(value, 'cols')

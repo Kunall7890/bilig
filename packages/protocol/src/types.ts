@@ -404,6 +404,7 @@ export interface WorkbookTableSnapshot {
   headerRow: boolean
   totalsRow: boolean
   style?: WorkbookTableStyleSnapshot
+  autoFilter?: WorkbookAutoFilterSnapshot
   sortState?: string
 }
 
@@ -428,6 +429,7 @@ export interface WorkbookAxisMetadataSnapshot {
   count: number
   size?: number | null
   hidden?: boolean | null
+  filterHidden?: boolean | null
   styleIndex?: number | null
   xlsxWidth?: number | null
   xlsxHeight?: number | null
@@ -446,6 +448,7 @@ export interface WorkbookAxisEntrySnapshot {
   index: number
   size?: number | null
   hidden?: boolean | null
+  filterHidden?: boolean | null
   styleIndex?: number | null
   xlsxWidth?: number | null
   xlsxHeight?: number | null

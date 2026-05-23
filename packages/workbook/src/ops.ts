@@ -89,6 +89,8 @@ export type WorkbookOp =
       count: number
       size: number | null
       hidden: boolean | null
+      filterHidden?: boolean | null
+      geometry?: Omit<WorkbookAxisEntrySnapshot, 'id' | 'index' | 'size' | 'hidden' | 'filterHidden'>
     }
   | {
       kind: 'updateColumnMetadata'

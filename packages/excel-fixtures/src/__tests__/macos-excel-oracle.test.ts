@@ -156,6 +156,28 @@ describe('macOS Desktop Excel oracle harness', () => {
     expect(script).toContain('apply sort tableSort')
   })
 
+  it('builds a structural operation runner that can apply Desktop Excel table AutoFilters', () => {
+    const script = createMacosExcelStructuralOperationAppleScript({
+      worksheetName: 'Cases',
+      operations: [
+        {
+          kind: 'applyTableAutoFilter',
+          tableName: 'Sales',
+          field: 1,
+          criteria1: 'East',
+          visibleDropDown: true,
+        },
+      ],
+      inspectCells: ['A2'],
+      saveWorkbook: true,
+    })
+
+    expect(script).toContain(
+      'autofilter range (range object of autofilter object of list object "Sales" of targetWorksheet) field 1 criteria1 "East" visible drop down true',
+    )
+    expect(script).toContain('close targetWorkbook saving yes')
+  })
+
   it('builds one-variable and two-variable data-table structural operations', () => {
     const script = createMacosExcelStructuralOperationAppleScript({
       worksheetName: 'Cases',

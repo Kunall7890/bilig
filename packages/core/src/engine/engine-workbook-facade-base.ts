@@ -29,11 +29,11 @@ import { calculationSettingsEqual, definedNameValuesEqual, normalizeWorkbookCalc
 import { buildFormatClearOps, buildFormatPatchOps, buildStyleClearOps, buildStylePatchOps } from '../engine-range-format-ops.js'
 import { hasEngineStructuralDeleteImpact } from './engine-structural-delete-impact.js'
 import { buildSortRangeOps, buildSortTableOps, type SpreadsheetEngineSortRangeOptions } from './engine-sort-range.js'
+import { buildApplyTableAutoFilterOps, buildClearWorksheetAutoFilterOps, buildSetWorksheetAutoFilterOps } from './engine-autofilter.js'
 import { upsertNumericDefinedNameFast as upsertNumericDefinedNameFastPath } from './engine-numeric-defined-name-fast-path.js'
 import {
   buildSetConditionalFormatOps,
   buildSetDataValidationOps,
-  buildSetFilterOps,
   buildSetPivotTableOps,
   buildSetRangeProtectionOps,
   buildSetSheetProtectionOps,
@@ -76,6 +76,7 @@ import {
 
 export abstract class SpreadsheetEngineWorkbookFacadeBase extends SpreadsheetEngineRuntimeBase {
   abstract override getCellByIndex(cellIndex: number): CellSnapshot
+  abstract recalculateNow(): number[]
 
   setRangeNumberFormat(range: CellRangeRef, format: CellNumberFormatInput): void {
     const ops = buildFormatPatchOps(this.workbook, range, format)
@@ -330,14 +331,39 @@ export abstract class SpreadsheetEngineWorkbookFacadeBase extends SpreadsheetEng
   }
 
   setFilter(sheetName: string, range: WorkbookAutoFilterSnapshot): void {
-    this.executeLocalTransaction(buildSetFilterOps(this.workbook, sheetName, range) ?? [])
+    const normalizedRange = range.sheetName === sheetName ? range : { ...range, sheetName }
+    const ops = buildSetWorksheetAutoFilterOps(this.exportSnapshot(), normalizedRange)
+    this.executeLocalTransaction(ops)
+    if (ops.some((op) => op.kind === 'updateRowMetadata')) {
+      this.recalculateNow()
+    }
+  }
+
+  applyTableAutoFilter(
+    sheetName: string,
+    tableName: string,
+    criteria: readonly NonNullable<WorkbookAutoFilterSnapshot['criteria']>[number][],
+  ): boolean {
+    const ops = buildApplyTableAutoFilterOps(this.exportSnapshot(), sheetName, tableName, criteria)
+    if (ops.length === 0) {
+      return false
+    }
+    this.executeLocalTransaction(ops)
+    if (ops.some((op) => op.kind === 'updateRowMetadata')) {
+      this.recalculateNow()
+    }
+    return true
   }
 
   clearFilter(sheetName: string, range: CellRangeRef): boolean {
     if (!this.workbook.getFilter(sheetName, range)) {
       return false
     }
-    this.executeLocalTransaction([{ kind: 'clearFilter', sheetName, range: { ...range } }])
+    const ops = buildClearWorksheetAutoFilterOps(this.exportSnapshot(), range)
+    this.executeLocalTransaction(ops)
+    if (ops.some((op) => op.kind === 'updateRowMetadata')) {
+      this.recalculateNow()
+    }
     return true
   }
 

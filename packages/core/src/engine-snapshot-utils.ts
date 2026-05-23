@@ -31,6 +31,9 @@ function axisMetadataToSnapshot(records: readonly WorkbookAxisMetadataRecord[]):
     if (record.hidden !== null) {
       snapshot.hidden = record.hidden
     }
+    if (record.filterHidden !== null) {
+      snapshot.filterHidden = record.filterHidden
+    }
     if (record.styleIndex !== undefined && record.styleIndex !== null) {
       snapshot.styleIndex = record.styleIndex
     }
@@ -286,6 +289,7 @@ export function sheetMetadataToOps(
       count: record.count,
       size: record.size,
       hidden: record.hidden,
+      filterHidden: record.filterHidden,
     })
   })
   workbook.listColumnMetadata(sheetName).forEach((record) => {

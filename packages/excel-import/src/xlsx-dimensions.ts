@@ -101,6 +101,9 @@ function readXmlOptionalBooleanAttribute(tag: string, name: string): boolean | u
 
 function hasExactRowGeometry(row: WorkbookAxisMetadataSnapshot): boolean {
   return (
+    row.hidden !== undefined ||
+    row.filterHidden !== undefined ||
+    row.size !== undefined ||
     row.styleIndex !== undefined ||
     row.xlsxHeight !== undefined ||
     row.customFormat !== undefined ||
@@ -136,7 +139,7 @@ function expandExportRowMetadataRecord(row: WorkbookAxisMetadataSnapshot): Expor
   }
   const xlsxHeight = finitePositiveNumber(row.xlsxHeight ?? undefined)
   const size = finitePositiveNumber(row.size ?? undefined)
-  const hidden = optionalBoolean(row.hidden)
+  const hidden = row.filterHidden === true ? true : optionalBoolean(row.hidden)
   const styleIndex = finiteNonNegativeInteger(row.styleIndex ?? undefined)
   const customFormat = optionalBoolean(row.customFormat)
   const customHeight = optionalBoolean(row.customHeight)
@@ -179,14 +182,14 @@ function normalizeExportRowMetadata(
       return []
     }
     const size = finitePositiveNumber(row.size ?? undefined)
-    if (size === undefined && row.hidden !== true) {
+    if (size === undefined && row.hidden !== true && row.filterHidden !== true) {
       return []
     }
     return [
       {
         rowNumber,
         ...(size !== undefined ? { size } : {}),
-        ...(row.hidden === true ? { hidden: true } : {}),
+        ...(row.hidden === true || row.filterHidden === true ? { hidden: true } : {}),
         exact: false,
       },
     ]

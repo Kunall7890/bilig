@@ -610,8 +610,10 @@ export function evaluateWorkbookSpecialCall(
       if (functionNum === undefined) {
         return deps.stackScalar(deps.error(ErrorCode.Value))
       }
-      const ignoreHiddenRows = functionNum > 100 && context.isRowHidden !== undefined
-      if (!ignoreHiddenRows && !context.resolveFormula) {
+      const visibilityMode = functionNum > 100 ? 'hidden-or-filter' : 'filter'
+      const hasVisibilityFiltering =
+        context.isRowFiltered !== undefined || (visibilityMode === 'hidden-or-filter' && context.isRowHidden !== undefined)
+      if (!hasVisibilityFiltering && !context.resolveFormula) {
         return undefined
       }
       const subtotal = getBuiltin('SUBTOTAL')
@@ -620,7 +622,7 @@ export function evaluateWorkbookSpecialCall(
       }
       const candidates = rawArgs
         .slice(1)
-        .flatMap((value, index) => collectAggregateCandidates(value, argRefs[index + 1], context, ignoreHiddenRows))
+        .flatMap((value, index) => collectAggregateCandidates(value, argRefs[index + 1], context, visibilityMode))
       const values = filterNestedRollupCandidates(candidates, context, nestedSubtotalCallees).map((candidate) => candidate.value)
       const result = subtotal({ tag: ValueTag.Number, value: functionNum }, ...values)
       return isArrayValue(result) ? result : deps.stackScalar(result)
@@ -635,9 +637,10 @@ export function evaluateWorkbookSpecialCall(
       if (!aggregate) {
         return undefined
       }
+      const visibilityMode = aggregateOptionIgnoresHiddenRows(option) ? 'hidden-or-filter' : 'none'
       const candidates = rawArgs
         .slice(2)
-        .flatMap((value, index) => collectAggregateCandidates(value, argRefs[index + 2], context, aggregateOptionIgnoresHiddenRows(option)))
+        .flatMap((value, index) => collectAggregateCandidates(value, argRefs[index + 2], context, visibilityMode))
       const nestedFilteredCandidates = aggregateOptionIgnoresNestedRollups(option)
         ? filterNestedRollupCandidates(candidates, context, nestedAggregateCallees)
         : candidates

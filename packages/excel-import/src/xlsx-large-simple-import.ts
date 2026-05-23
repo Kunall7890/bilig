@@ -3,6 +3,7 @@ import { attachImportedRuntimeImage } from './import-runtime-image.js'
 import { normalizeWorkbookName } from './workbook-import-helpers.js'
 import { XLSX_CONTENT_TYPE } from './workbook-import-content-types.js'
 import { createWorkbookPreview } from './workbook-import-preview.js'
+import { applyImportedAutoFilterRowVisibility } from './xlsx-autofilter-row-visibility.js'
 import {
   readImportedSheetConditionalFormatArtifactsFromElementXml,
   readImportedSheetConditionalFormatArtifactsFromWorksheetXml,
@@ -882,6 +883,7 @@ export function tryImportLargeSimpleXlsx(
   stringPool.release()
   const sortedImportedTables =
     importedTables.length > 0 ? importedTables.toSorted((left, right) => left.name.localeCompare(right.name)) : undefined
+  const importedSheets = sheets.map((sheet) => applyImportedAutoFilterRowVisibility(sheet, sortedImportedTables))
   const hasFormulaCells = sheetStats.some((entry) => entry.formulaCellCount > 0)
   const workbookMetadata =
     workbookDefinedNames.definedNames ||
@@ -937,14 +939,14 @@ export function tryImportLargeSimpleXlsx(
             : {}),
         }
       : undefined
-  const runtimeSheetCells = buildLargeSimpleRuntimeSheetCells(sheetStats, sheets)
+  const runtimeSheetCells = buildLargeSimpleRuntimeSheetCells(sheetStats, importedSheets)
   const snapshot: WorkbookSnapshot = {
     version: 1,
     workbook: {
       name: workbookName,
       ...(workbookMetadata ? { metadata: workbookMetadata } : {}),
     },
-    sheets,
+    sheets: importedSheets,
   }
   const stats: LargeSimpleXlsxImportStats = {
     sheetCount: sheets.length,

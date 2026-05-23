@@ -92,6 +92,7 @@ import { attachImportedXlsxSourceBytes } from './xlsx-source-bytes.js'
 import { worksheetCellAt, worksheetCellEntries, worksheetCellEntriesAtAddresses } from './xlsx-worksheet-cells.js'
 import { readImportedWorksheetTextValues } from './xlsx-worksheet-text-values.js'
 import { releaseInflatedLazyXlsxZipEntries } from './xlsx-zip.js'
+import { applyImportedAutoFilterRowVisibility } from './xlsx-autofilter-row-visibility.js'
 
 const largeWorkbookStyleCandidateThreshold = 100_000
 const sheetJsBlankStyleStripMinCellCount = 1_000
@@ -819,7 +820,10 @@ function importParsedSheetJsWorkbook(args: {
     firstSheetId: sheets.length + 1,
     firstSheetOrder: sheets.length,
   })
-  const importedSheets = [...sheets, ...materializedExternalCacheSheets]
+  const importedSheets = [
+    ...sheets.map((sheet) => applyImportedAutoFilterRowVisibility(sheet, importedTables)),
+    ...materializedExternalCacheSheets,
+  ]
   runtimeSheetCells.push(...materializedExternalCacheSheets.map(createMaterializedExternalCacheRuntimeSheetCells))
 
   const snapshot: WorkbookSnapshot = {

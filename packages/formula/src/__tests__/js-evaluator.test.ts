@@ -169,6 +169,23 @@ describe('js evaluator', () => {
     })
   })
 
+  it('filters AutoFilter-hidden rows for all SUBTOTAL function numbers', () => {
+    const filteredContext = {
+      ...context,
+      isRowHidden: (_sheetName: string, rowIndex: number) => rowIndex === 1,
+      isRowFiltered: (_sheetName: string, rowIndex: number) => rowIndex === 0,
+    }
+
+    expect(evaluatePlan(lowerToPlan(parseFormula('SUBTOTAL(9,A1:B2)')), filteredContext)).toEqual({
+      tag: ValueTag.Number,
+      value: 1,
+    })
+    expect(evaluatePlan(lowerToPlan(parseFormula('SUBTOTAL(109,A1:B2)')), filteredContext)).toEqual({
+      tag: ValueTag.Number,
+      value: 0,
+    })
+  })
+
   it('applies AGGREGATE options for hidden rows, errors, and nested rollups', () => {
     const aggregateContext = {
       ...context,

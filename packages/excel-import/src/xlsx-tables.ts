@@ -4,6 +4,7 @@ import { XMLParser } from 'fast-xml-parser'
 import type { WorkbookSnapshot, WorkbookTableColumnSnapshot, WorkbookTableSnapshot, WorkbookTableStyleSnapshot } from '@bilig/protocol'
 import { decodeA1CellRef, decodeA1RangeRef, encodeA1CellRef, encodeA1RangeRef } from './xlsx-a1-utils.js'
 import { decodeExcelEscapedText, encodeExcelEscapedText } from './xlsx-escaped-text.js'
+import { autoFilterXml, parseAutoFilter } from './xlsx-filters.js'
 import { readSortStateXml } from './xlsx-sorts.js'
 import { readXlsxZipEntries, type XlsxZipSource } from './xlsx-zip.js'
 
@@ -272,12 +273,18 @@ function buildTableXml(table: WorkbookTableSnapshot, tableId: number): string {
   const ref = rangeRefA1(table)
   const displayName = tableDisplayName(table.name, tableId)
   const columns = exportTableColumns(table)
+  const filter = table.autoFilter
+    ? autoFilterXml(
+        { ...table.autoFilter, sheetName: table.sheetName, startAddress: table.startAddress, endAddress: table.endAddress },
+        ref,
+      )
+    : `<autoFilter ref="${escapeXml(ref)}"/>`
   return [
     '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>',
     `<table xmlns="${spreadsheetNamespace}" id="${String(tableId)}" name="${escapeXml(displayName)}" displayName="${escapeXml(
       displayName,
     )}" ref="${escapeXml(ref)}" headerRowCount="${table.headerRow ? '1' : '0'}" totalsRowShown="${table.totalsRow ? '1' : '0'}">`,
-    table.headerRow ? `<autoFilter ref="${escapeXml(ref)}"/>` : '',
+    table.headerRow ? filter : '',
     table.sortState ?? '',
     `<tableColumns count="${String(columns.length)}">`,
     ...columns.map(buildTableColumnXml),
@@ -374,6 +381,7 @@ function parseTableXml(sheetName: string, xml: string): WorkbookTableSnapshot | 
     return [column]
   })
   const style = parseTableStyle(recordChild(table, 'tableStyleInfo'))
+  const parsedAutoFilter = parseAutoFilter(sheetName, recordChild(table, 'autoFilter'))
   const sortState = readSortStateXml(xml)
   const hasTableColumnMetadata = columns.some(
     (column) =>
@@ -395,6 +403,7 @@ function parseTableXml(sheetName: string, xml: string): WorkbookTableSnapshot | 
     headerRow: table['headerRowCount'] !== '0',
     totalsRow: table['totalsRowShown'] === '1' || table['totalsRowCount'] === '1' || hasTotalsRowColumnMetadata,
     ...(style ? { style } : {}),
+    ...(parsedAutoFilter?.criteria && parsedAutoFilter.criteria.length > 0 ? { autoFilter: parsedAutoFilter } : {}),
     ...(sortState ? { sortState } : {}),
   }
 }

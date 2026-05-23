@@ -9,6 +9,8 @@ interface AggregateCandidateValue {
   address?: string
 }
 
+export type AggregateRowVisibilityMode = 'none' | 'filter' | 'hidden-or-filter'
+
 function valueError(): CellValue {
   return { tag: ValueTag.Error, code: ErrorCode.Value }
 }
@@ -64,7 +66,7 @@ export function collectAggregateCandidates(
   value: StackValue,
   ref: ReferenceOperand | undefined,
   context: EvaluationContext,
-  ignoreHiddenRows: boolean,
+  visibilityMode: AggregateRowVisibilityMode,
 ): AggregateCandidateValue[] {
   if (value.kind === 'scalar') {
     if (ref?.kind !== 'cell' || !ref.address) {
@@ -72,7 +74,7 @@ export function collectAggregateCandidates(
     }
     const sheetName = ref.sheetName ?? context.sheetName
     const cell = parseCellAddress(ref.address, sheetName)
-    if (ignoreHiddenRows && context.isRowHidden?.(sheetName, cell.row) === true) {
+    if (aggregateRowIsHidden(context, sheetName, cell.row, visibilityMode)) {
       return []
     }
     return [{ value: value.value, sheetName, address: formatAddress(cell.row, cell.col) }]
@@ -112,11 +114,26 @@ export function collectAggregateCandidates(
   const candidates: AggregateCandidateValue[] = []
   for (let index = 0; index < value.values.length; index += 1) {
     const row = startRow + Math.floor(index / cols)
-    if (ignoreHiddenRows && context.isRowHidden?.(sheetName, row) === true) {
+    if (aggregateRowIsHidden(context, sheetName, row, visibilityMode)) {
       continue
     }
     const col = startCol + (index % cols)
     candidates.push({ value: value.values[index]!, sheetName, address: formatAddress(row, col) })
   }
   return candidates
+}
+
+function aggregateRowIsHidden(
+  context: EvaluationContext,
+  sheetName: string,
+  rowIndex: number,
+  visibilityMode: AggregateRowVisibilityMode,
+): boolean {
+  if (visibilityMode === 'none') {
+    return false
+  }
+  if (context.isRowFiltered?.(sheetName, rowIndex) === true) {
+    return true
+  }
+  return visibilityMode === 'hidden-or-filter' && context.isRowHidden?.(sheetName, rowIndex) === true
 }

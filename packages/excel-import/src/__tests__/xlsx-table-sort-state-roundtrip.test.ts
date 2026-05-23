@@ -19,6 +19,24 @@ describe('table sort state import/export', () => {
     expect(exportedXml).toContain('<sortCondition descending="1" ref="B2:B4"/>')
   })
 
+  it('preserves table-level AutoFilter criteria and imports filter-hidden row visibility', () => {
+    const sourceBytes = buildTableAutoFilterWorkbookBytes()
+    const imported = importXlsx(sourceBytes, 'table-autofilter.xlsx')
+
+    expect(imported.warnings).toEqual([])
+    expect(imported.snapshot.workbook.metadata?.tables?.[0]?.autoFilter).toEqual({
+      sheetName: 'Sales',
+      startAddress: 'A1',
+      endAddress: 'B4',
+      criteria: [{ colId: 0, filters: { values: ['East'] } }],
+    })
+    expect(imported.snapshot.sheets[0]?.metadata?.rowMetadata).toContainEqual({ start: 2, count: 1, filterHidden: true })
+
+    const exported = exportXlsx(imported.snapshot)
+    expect(tableXml(exported)).toContain('<filterColumn colId="0"><filters><filter val="East"/></filters></filterColumn>')
+    expect(sheetXml(exported)).toContain('<row r="3" hidden="1"')
+  })
+
   it('exports engine-produced table sorts as table metadata that reimports with sorted formulas', async () => {
     const engine = new SpreadsheetEngine({ workbookName: 'engine-table-sort-state' })
     await engine.ready()
@@ -112,10 +130,67 @@ function buildTableSortStateWorkbookBytes(): Uint8Array {
   return zipSync(zip)
 }
 
+function buildTableAutoFilterWorkbookBytes(): Uint8Array {
+  const snapshot: WorkbookSnapshot = {
+    version: 1,
+    workbook: {
+      name: 'table-autofilter',
+      metadata: {
+        tables: [
+          {
+            name: 'SalesTable',
+            sheetName: 'Sales',
+            startAddress: 'A1',
+            endAddress: 'B4',
+            columnNames: ['Region', 'Revenue'],
+            headerRow: true,
+            totalsRow: false,
+          },
+        ],
+      },
+    },
+    sheets: [
+      {
+        id: 1,
+        name: 'Sales',
+        order: 0,
+        cells: [
+          { address: 'A1', value: 'Region' },
+          { address: 'B1', value: 'Revenue' },
+          { address: 'A2', value: 'East' },
+          { address: 'B2', value: 30 },
+          { address: 'A3', value: 'West' },
+          { address: 'B3', value: 20 },
+          { address: 'A4', value: 'East' },
+          { address: 'B4', value: 10 },
+        ],
+      },
+    ],
+  }
+  const zip = unzipSync(exportXlsx(snapshot))
+  const tablePath = Object.keys(zip).find((path) => /^xl\/tables\/table\d+\.xml$/u.test(path))
+  if (!tablePath) {
+    throw new Error('Expected exported workbook to include a table part')
+  }
+  const sourceTableXml = strFromU8(zip[tablePath] ?? new Uint8Array())
+  zip[tablePath] = strToU8(
+    sourceTableXml.replace(
+      '<autoFilter ref="A1:B4"/>',
+      '<autoFilter ref="A1:B4"><filterColumn colId="0"><filters><filter val="East"/></filters></filterColumn></autoFilter>',
+    ),
+  )
+  return zipSync(zip)
+}
+
 function tableXml(bytes: Uint8Array): string {
   const zip = unzipSync(bytes)
   const tablePath = Object.keys(zip).find((path) => /^xl\/tables\/table\d+\.xml$/u.test(path))
   return tablePath ? strFromU8(zip[tablePath] ?? new Uint8Array()) : ''
+}
+
+function sheetXml(bytes: Uint8Array): string {
+  const zip = unzipSync(bytes)
+  return strFromU8(zip['xl/worksheets/sheet1.xml'] ?? new Uint8Array())
 }
 
 function tableLedgerSnapshot(): WorkbookSnapshot {

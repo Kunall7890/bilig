@@ -46,6 +46,7 @@ export class WorkbookIdAllocator {
       id: this.createAxisId(axis),
       size: null,
       hidden: null,
+      filterHidden: null,
     }
   }
 

@@ -26,7 +26,8 @@ export function buildSetSheetProtectionOps(workbook: WorkbookStore, protection: 
 }
 
 export function buildSetFilterOps(workbook: WorkbookStore, sheetName: string, range: WorkbookAutoFilterSnapshot): EngineOp[] | null {
-  if (workbook.getFilter(sheetName, range)) {
+  const existing = workbook.getFilter(sheetName, range)
+  if (existing && JSON.stringify(existing.range) === JSON.stringify(range)) {
     return null
   }
   return [{ kind: 'setFilter', sheetName, range: structuredClone(range) }]

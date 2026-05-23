@@ -16,7 +16,7 @@ import { axisMetadataKey } from './workbook-store-records.js'
 import type { WorkbookAxisEntryRecord, WorkbookAxisMetadataRecord } from './workbook-metadata-types.js'
 
 type WorkbookAxis = 'row' | 'column'
-type AxisGeometryPatch = Omit<WorkbookAxisMetadataSnapshot, 'start' | 'count' | 'size' | 'hidden'>
+type AxisGeometryPatch = Omit<WorkbookAxisMetadataSnapshot, 'start' | 'count' | 'size' | 'hidden' | 'filterHidden'>
 
 function applyAxisGeometryPatch(entry: WorkbookAxisEntryRecord, patch: AxisGeometryPatch | undefined): void {
   if (patch) {
@@ -47,11 +47,15 @@ export class WorkbookAxisEntryStore {
     size: number | null,
     hidden: boolean | null,
     geometry?: AxisGeometryPatch,
+    filterHidden?: boolean | null,
   ): WorkbookAxisMetadataRecord | undefined {
     const entries = this.materializeAxisEntryRecords(sheet, axis, start, count)
     entries.forEach((entry) => {
       entry.size = size
       entry.hidden = hidden
+      if (filterHidden !== undefined) {
+        entry.filterHidden = filterHidden
+      }
       applyAxisGeometryPatch(entry, geometry)
     })
     this.syncAxisMetadataBucket(sheetName, sheet, axis, bucket)
@@ -90,7 +94,7 @@ export class WorkbookAxisEntryStore {
       let entry = entries[start]
       if (!entry) {
         const existingId = sheet.axisMap.getId(axis, start)
-        entry = existingId ? { id: existingId, size: null, hidden: null } : this.options.createAxisEntry(axis)
+        entry = existingId ? { id: existingId, size: null, hidden: null, filterHidden: null } : this.options.createAxisEntry(axis)
         entries[start] = entry
       }
       const snapshot = snapshotAxisEntriesInRange(entries, start, 1)
@@ -181,6 +185,7 @@ export class WorkbookAxisEntryStore {
         id: snapshot.id,
         size: null,
         hidden: null,
+        filterHidden: null,
       }
     }
   }

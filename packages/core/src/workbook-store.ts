@@ -540,7 +540,8 @@ export class WorkbookStore {
     count: number,
     size: number | null,
     hidden: boolean | null,
-    geometry?: Omit<WorkbookAxisMetadataSnapshot, 'start' | 'count' | 'size' | 'hidden'>,
+    geometry?: Omit<WorkbookAxisMetadataSnapshot, 'start' | 'count' | 'size' | 'hidden' | 'filterHidden'>,
+    filterHidden?: boolean | null,
   ): WorkbookAxisMetadataRecord | undefined {
     return this.axisEntryStore.setAxisMetadata(
       this.getOrCreateSheet(sheetName),
@@ -552,6 +553,7 @@ export class WorkbookStore {
       size,
       hidden,
       geometry,
+      filterHidden,
     )
   }
 
@@ -570,7 +572,8 @@ export class WorkbookStore {
     count: number,
     size: number | null,
     hidden: boolean | null,
-    geometry?: Omit<WorkbookAxisMetadataSnapshot, 'start' | 'count' | 'size' | 'hidden'>,
+    geometry?: Omit<WorkbookAxisMetadataSnapshot, 'start' | 'count' | 'size' | 'hidden' | 'filterHidden'>,
+    filterHidden?: boolean | null,
   ): WorkbookAxisMetadataRecord | undefined {
     return this.axisEntryStore.setAxisMetadata(
       this.getOrCreateSheet(sheetName),
@@ -582,6 +585,7 @@ export class WorkbookStore {
       size,
       hidden,
       geometry,
+      filterHidden,
     )
   }
 
