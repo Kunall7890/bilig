@@ -102,6 +102,9 @@ must be non-empty and already trimmed, while descriptions and input metadata are
 trimmed into model-owned frozen copies so the manifest an agent inspected cannot
 be mutated later by the caller. The original consumer config remains
 caller-owned data; `defineModel` does not freeze or rewrite it.
+Action-object manifests only read own `run`, `description`, and `input`
+properties. Prototype-inherited metadata is ignored, and an inherited `run`
+function is rejected, so agent-visible manifests stay plain and explicit.
 
 Model actions can accept plain JSON-safe input through
 `planWorkbookAction(model, actionName, input)` and

@@ -189,9 +189,12 @@ function normalizeRequiredName(value: string, label: string): string {
   return name
 }
 
-function normalizeOptionalDescription(value: string | undefined, label: string): string | undefined {
+function normalizeOptionalDescription(value: unknown, label: string): string | undefined {
   if (value === undefined) {
     return undefined
+  }
+  if (typeof value !== 'string') {
+    throw new Error(`${label} must be a string`)
   }
   const description = value.trim()
   if (description === '') {
@@ -204,6 +207,20 @@ function isActionConfig<Refs>(definition: WorkbookActionDefinition<Refs> | undef
   return typeof definition === 'object' && definition !== null
 }
 
+function ownPropertyValue(value: object, key: string): unknown {
+  return Object.getOwnPropertyDescriptor(value, key)?.value
+}
+
+function ownActionRun<Refs>(definition: object): WorkbookAction<Refs> | undefined {
+  const run = ownPropertyValue(definition, 'run')
+  if (typeof run !== 'function') {
+    return undefined
+  }
+  return (context) => {
+    Reflect.apply(run, undefined, [context])
+  }
+}
+
 function normalizeActionDefinition<Refs>(
   modelName: string,
   actionName: string,
@@ -212,15 +229,23 @@ function normalizeActionDefinition<Refs>(
   if (typeof definition === 'function') {
     return definition
   }
-  if (!isActionConfig(definition) || typeof definition.run !== 'function') {
+  if (!isActionConfig(definition)) {
     throw new Error(`Workbook model ${modelName} action ${actionName} must be a function or action object with run`)
   }
-  const description = normalizeOptionalDescription(definition.description, `Workbook model ${modelName} action ${actionName} description`)
-  const input = definition.input === undefined ? undefined : normalizeWorkbookActionInputDescription(definition.input)
+  const run = ownActionRun<Refs>(definition)
+  if (run === undefined) {
+    throw new Error(`Workbook model ${modelName} action ${actionName} must be a function or action object with run`)
+  }
+  const description = normalizeOptionalDescription(
+    ownPropertyValue(definition, 'description'),
+    `Workbook model ${modelName} action ${actionName} description`,
+  )
+  const inputValue = ownPropertyValue(definition, 'input')
+  const input = inputValue === undefined ? undefined : normalizeWorkbookActionInputDescription(inputValue)
   return Object.freeze({
     ...(description !== undefined ? { description } : {}),
     ...(input !== undefined ? { input } : {}),
-    run: definition.run,
+    run,
   })
 }
 
@@ -232,8 +257,9 @@ function inspectAction<Refs>(name: string, definition: WorkbookActionDefinition<
   if (definition === undefined || typeof definition === 'function') {
     return { name }
   }
-  const description = normalizeOptionalDescription(definition.description, `Workbook action ${name} description`)
-  const input = definition.input === undefined ? undefined : normalizeWorkbookActionInputDescription(definition.input)
+  const description = normalizeOptionalDescription(ownPropertyValue(definition, 'description'), `Workbook action ${name} description`)
+  const inputValue = ownPropertyValue(definition, 'input')
+  const input = inputValue === undefined ? undefined : normalizeWorkbookActionInputDescription(inputValue)
   return {
     name,
     ...(description !== undefined ? { description } : {}),

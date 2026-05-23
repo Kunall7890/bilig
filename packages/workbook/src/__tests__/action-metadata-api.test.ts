@@ -206,6 +206,71 @@ describe('@bilig/workbook action metadata api', () => {
     ])
   })
 
+  it('only reads own action-object metadata for stable agent manifests', () => {
+    type CallerRefs = { output: WorkbookRangeRef }
+    const inheritedMetadata = {
+      description: 'Inherited description must not leak',
+      input: {
+        kind: 'object',
+        fields: {
+          leaked: { kind: 'string' },
+        },
+      },
+    }
+    const actionConfig = Object.setPrototypeOf(
+      {
+        run({ refs, workbook }: WorkbookActionContext<CallerRefs>) {
+          workbook.clear(refs.output)
+        },
+      },
+      inheritedMetadata,
+    )
+
+    const model = defineModel({
+      name: 'own-action-metadata-model',
+
+      find(workbook) {
+        return {
+          output: workbook.findRange({ sheetName: 'Sheet1', address: 'B2' }),
+        }
+      },
+
+      actions: {
+        write: actionConfig,
+      },
+    })
+
+    expect(describeModel(model).actionDetails).toEqual([{ name: 'write' }])
+    expect(buildWorkbookActionPlan(model, 'write').commands).toEqual([
+      {
+        kind: 'clear',
+        target: expect.objectContaining({ label: 'Sheet1!B2' }),
+      },
+    ])
+  })
+
+  it('rejects action objects whose run function is inherited', () => {
+    const inheritedRun = Object.setPrototypeOf(
+      {},
+      {
+        run() {},
+      },
+    )
+
+    expect(() =>
+      defineModel({
+        name: 'inherited-run-model',
+        find() {
+          return {}
+        },
+        actions: {
+          // @ts-expect-error exercising the runtime guard for plain JS callers
+          write: inheritedRun,
+        },
+      }),
+    ).toThrowError('Workbook model inherited-run-model action write must be a function or action object with run')
+  })
+
   it('describes action metadata without running find, checks, or actions', () => {
     const model = defineModel({
       name: 'metadata-only-model',
