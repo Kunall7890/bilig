@@ -17,7 +17,8 @@ export function workbookSnapCssPixel(value: number, dpr = 1): number {
 }
 
 export function workbookDisplayFontCssPx(fontSizeCssPx: number, dpr = 1): number {
-  return Math.max(1, workbookSnapCssPixel(fontSizeCssPx, dpr))
+  void dpr
+  return Math.max(1, fontSizeCssPx)
 }
 
 export function workbookDisplayFontPointSizeToCssPx(pointSize: number, dpr = 1): number {
