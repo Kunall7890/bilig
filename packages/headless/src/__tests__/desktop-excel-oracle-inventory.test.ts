@@ -13,6 +13,19 @@ interface PackageManifest {
 
 const existingDesktopExcelOracleFiles = [
   'macos-desktop-excel-array-formula-structural-oracle.test.ts',
+  'macos-desktop-excel-autofilter-oracle.test.ts',
+  'macos-desktop-excel-data-table-structural-oracle.test.ts',
+  'macos-desktop-excel-defined-name-structural-oracle.test.ts',
+  'macos-desktop-excel-external-link-cache.test.ts',
+  'macos-desktop-excel-precision-as-displayed-oracle.test.ts',
+  'macos-desktop-excel-sort-oracle.test.ts',
+  'macos-desktop-excel-structured-reference-syntax.test.ts',
+  'macos-desktop-excel-table-header-canonicalization.test.ts',
+  'macos-desktop-excel-xlsx-oracle.test.ts',
+] as const
+
+const corpusDesktopExcelOracleFiles = [
+  'macos-desktop-excel-array-formula-structural-oracle.test.ts',
   'macos-desktop-excel-data-table-structural-oracle.test.ts',
   'macos-desktop-excel-defined-name-structural-oracle.test.ts',
   'macos-desktop-excel-external-link-cache.test.ts',
@@ -52,7 +65,7 @@ describe('macOS Desktop Excel oracle inventory', () => {
     expect(rootPackageJson.scripts?.['test:correctness:corpus']).toContain(
       'packages/headless/src/__tests__/desktop-excel-oracle-inventory.test.ts',
     )
-    for (const fileName of existingDesktopExcelOracleFiles) {
+    for (const fileName of corpusDesktopExcelOracleFiles) {
       expect(rootPackageJson.scripts?.['test:correctness:corpus']).toContain(`packages/headless/src/__tests__/${fileName}`)
     }
   })

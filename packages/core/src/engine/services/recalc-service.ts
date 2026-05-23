@@ -162,6 +162,7 @@ export function createEngineRecalcService(args: {
         args.state.wasm.syncStringPool(args.state.strings.exportLayout())
       }
 
+      const precisionAsDisplayed = args.state.workbook.getCalculationSettings().fullPrecision === false
       const skippedCachedFormulaCells = options.preserveCachedValuesOnFullRecalc === true ? new Set<number>() : undefined
       const allChangedRoots = [...changedRoots]
       const allOrdered: number[] = []
@@ -694,7 +695,7 @@ export function createEngineRecalcService(args: {
               evaluateFormulaCell(cellIndex, formula, {
                 allowCycleDependencyError: false,
                 treatCycleFormulaAsError: false,
-                forceJs: false,
+                forceJs: precisionAsDisplayed,
               })
             }
           }
@@ -709,7 +710,7 @@ export function createEngineRecalcService(args: {
             evaluateFormulaCell(cellIndex, formula, {
               allowCycleDependencyError: !iterationSettings.enabled,
               treatCycleFormulaAsError: !iterationSettings.enabled,
-              forceJs: false,
+              forceJs: precisionAsDisplayed,
             })
           }
         }

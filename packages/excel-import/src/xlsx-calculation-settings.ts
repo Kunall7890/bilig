@@ -26,7 +26,8 @@ const workbookCalcPrTailElements = [
   'extLst',
 ] as const
 
-export const precisionAsDisplayedCalculationWarning = 'Precision-as-displayed calculation is not supported during XLSX import.'
+export const precisionAsDisplayedCalculationWarning =
+  'Precision-as-displayed calculation supports simple numeric formula-output rounding; complex custom formats may differ during XLSX import.'
 export const manualCalculationModeWarning = 'Manual calculation mode is preserved during XLSX import; cached formula values may be stale.'
 
 function isRecord(value: unknown): value is Record<string, unknown> {

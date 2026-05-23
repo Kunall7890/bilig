@@ -52,6 +52,7 @@ import {
 } from './formula-evaluation-direct-criteria-native.js'
 import { createDirectCriteriaSharingContext } from './formula-evaluation-direct-criteria-sharing.js'
 import { createRowVisibilityResolvers } from './formula-evaluation-row-hidden.js'
+import { readPrecisionAsDisplayedCellValue, roundFormulaResultForPrecisionAsDisplayed } from './precision-as-displayed.js'
 import { resolveStructuredReferenceNow } from './formula-evaluation-structured-reference.js'
 import type { EngineFormulaEvaluationService } from './formula-evaluation-service-types.js'
 export type { EngineFormulaEvaluationService } from './formula-evaluation-service-types.js'
@@ -98,10 +99,7 @@ export function createEngineFormulaEvaluationService(args: {
     return readCellValueAt(sheetName, parsed.row, parsed.col)
   }
   const readCellValueByIndex = (cellIndex: number | undefined): CellValue => {
-    if (cellIndex === undefined) {
-      return emptyValue()
-    }
-    return args.state.workbook.cellStore.getValue(cellIndex, (stringId) => (stringId === 0 ? '' : args.state.strings.get(stringId)))
+    return readPrecisionAsDisplayedCellValue(args.state, cellIndex)
   }
   const readCellValueAt = (sheetName: string, row: number, col: number): CellValue => {
     const sheet = args.state.workbook.getSheet(sheetName)
@@ -738,12 +736,13 @@ export function createEngineFormulaEvaluationService(args: {
 
     args.state.workbook.cellStore.flags[cellIndex] =
       (args.state.workbook.cellStore.flags[cellIndex] ?? 0) & ~(CellFlags.SpillChild | CellFlags.PivotOutput)
+    const ownerValue = roundFormulaResultForPrecisionAsDisplayed(args.state, cellIndex, materialization.ownerValue)
     args.state.workbook.cellStore.setValue(
       cellIndex,
-      materialization.ownerValue,
-      materialization.ownerValue.tag === ValueTag.String ? args.state.strings.intern(materialization.ownerValue.value) : 0,
+      ownerValue,
+      ownerValue.tag === ValueTag.String ? args.state.strings.intern(ownerValue.value) : 0,
     )
-    if (!cellValuesEqual(beforeValue, materialization.ownerValue)) {
+    if (!cellValuesEqual(beforeValue, ownerValue)) {
       args.state.workbook.notifyCellValueWritten(cellIndex)
     }
     for (let index = 0; index < materialization.changedCellIndices.length; index += 1) {
@@ -754,20 +753,21 @@ export function createEngineFormulaEvaluationService(args: {
 
   const storeDirectScalarResult = (cellIndex: number, result: CellValue): number[] => {
     const cellStore = args.state.workbook.cellStore
+    const roundedResult = roundFormulaResultForPrecisionAsDisplayed(args.state, cellIndex, result)
     const beforeTag = cellStore.tags[cellIndex]
     const beforeNumber = cellStore.numbers[cellIndex] ?? 0
     const beforeStringId = cellStore.stringIds[cellIndex] ?? 0
     const beforeError = cellStore.errors[cellIndex] ?? ErrorCode.None
-    const nextStringId = result.tag === ValueTag.String ? args.state.strings.intern(result.value) : 0
+    const nextStringId = roundedResult.tag === ValueTag.String ? args.state.strings.intern(roundedResult.value) : 0
     const changed =
-      beforeTag !== result.tag ||
-      (result.tag === ValueTag.Number && !Object.is(beforeNumber, result.value)) ||
-      (result.tag === ValueTag.Boolean && beforeNumber !== (result.value ? 1 : 0)) ||
-      (result.tag === ValueTag.String && beforeStringId !== nextStringId) ||
-      (result.tag === ValueTag.Error && (beforeError as ErrorCode) !== result.code)
+      beforeTag !== roundedResult.tag ||
+      (roundedResult.tag === ValueTag.Number && !Object.is(beforeNumber, roundedResult.value)) ||
+      (roundedResult.tag === ValueTag.Boolean && beforeNumber !== (roundedResult.value ? 1 : 0)) ||
+      (roundedResult.tag === ValueTag.String && beforeStringId !== nextStringId) ||
+      (roundedResult.tag === ValueTag.Error && (beforeError as ErrorCode) !== roundedResult.code)
     args.state.workbook.cellStore.flags[cellIndex] =
       (args.state.workbook.cellStore.flags[cellIndex] ?? 0) & ~(CellFlags.SpillChild | CellFlags.PivotOutput)
-    args.state.workbook.cellStore.setValue(cellIndex, result, nextStringId)
+    args.state.workbook.cellStore.setValue(cellIndex, roundedResult, nextStringId)
     if (changed) {
       args.state.workbook.notifyCellValueWritten(cellIndex)
     }
