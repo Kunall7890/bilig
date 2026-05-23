@@ -34,28 +34,38 @@ export function captureTrackedRecalcPatchesForCells(input: {
 export function emitRecalcBatchEvents(input: {
   readonly state: Pick<EngineRuntimeState, 'events' | 'workbook'>
   readonly changed: readonly number[] | U32
-  readonly changedCells: readonly EngineChangedCell[]
+  readonly captureChangedCells: (changedCellIndices: readonly number[] | U32) => readonly EngineChangedCell[]
   readonly metrics: RecalcMetrics
   readonly explicitChangedCount: number
   readonly captureChangedPatches: Parameters<typeof captureTrackedRecalcPatchesForCells>[0]['captureChangedPatches']
 }): void {
+  const hasGeneralEventListeners = input.state.events.hasListeners()
+  const hasWatchedCellListeners = input.state.events.hasCellListeners()
+  const hasTrackedEventListeners = input.state.events.hasTrackedListeners()
+  if (!hasGeneralEventListeners && !hasWatchedCellListeners && !hasTrackedEventListeners) {
+    return
+  }
   const changedCellIndices: EngineEvent['changedCellIndices'] =
     input.changed instanceof Uint32Array ? input.changed : Array.from(input.changed)
-  const event: EngineEvent & {
-    explicitChangedCount: number
-  } = {
-    kind: 'batch',
-    invalidation: 'cells',
-    changedCellIndices,
-    changedCells: input.changedCells,
-    invalidatedRanges: [],
-    invalidatedRows: [],
-    invalidatedColumns: [],
-    metrics: input.metrics,
-    explicitChangedCount: input.explicitChangedCount,
+
+  if (hasGeneralEventListeners || hasWatchedCellListeners) {
+    const event: EngineEvent & {
+      explicitChangedCount: number
+    } = {
+      kind: 'batch',
+      invalidation: 'cells',
+      changedCellIndices,
+      changedCells: hasGeneralEventListeners ? input.captureChangedCells(input.changed) : [],
+      invalidatedRanges: [],
+      invalidatedRows: [],
+      invalidatedColumns: [],
+      metrics: input.metrics,
+      explicitChangedCount: input.explicitChangedCount,
+    }
+    input.state.events.emit(event, input.changed, (cellIndex) => input.state.workbook.getQualifiedAddress(cellIndex))
   }
-  input.state.events.emit(event, input.changed, (cellIndex) => input.state.workbook.getQualifiedAddress(cellIndex))
-  if (!input.state.events.hasTrackedListeners()) {
+
+  if (!hasTrackedEventListeners) {
     return
   }
   const patches = captureTrackedRecalcPatchesForCells({

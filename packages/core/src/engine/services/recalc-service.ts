@@ -749,7 +749,7 @@ export function createEngineRecalcService(args: EngineRecalcServiceArgs): Engine
     emitRecalcBatchEvents({
       state: args.state,
       changed,
-      changedCells: args.captureChangedCells(changed),
+      captureChangedCells: args.captureChangedCells,
       metrics: lastMetrics,
       explicitChangedCount,
       captureChangedPatches: args.captureChangedPatches,
@@ -843,7 +843,7 @@ export function createEngineRecalcService(args: EngineRecalcServiceArgs): Engine
           emitRecalcBatchEvents({
             state: args.state,
             changed,
-            changedCells: args.captureChangedCells(changed),
+            captureChangedCells: args.captureChangedCells,
             metrics: lastMetrics,
             explicitChangedCount,
             captureChangedPatches: args.captureChangedPatches,

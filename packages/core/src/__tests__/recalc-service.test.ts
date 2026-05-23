@@ -256,6 +256,68 @@ describe('EngineRecalcService', () => {
     expect(tracked[0]?.patches?.length).toBeGreaterThan(0)
   })
 
+  it('keeps large tracked-only full recalculation events payload-free', async () => {
+    const rowCount = 80
+    const engine = new SpreadsheetEngine({ workbookName: 'recalc-large-tracked-only' })
+    await engine.ready()
+    engine.createSheet('Sheet1')
+
+    for (let row = 1; row <= rowCount; row += 1) {
+      engine.setCellValue('Sheet1', `A${row}`, row)
+      engine.setCellFormula('Sheet1', `B${row}`, `A${row}*2`)
+    }
+
+    const tracked: EngineTrackedEvent[] = []
+    const unsubscribe = engine.events.subscribeTracked((event) => {
+      tracked.push(event)
+    })
+
+    for (let row = 1; row <= rowCount; row += 1) {
+      const cellIndex = engine.workbook.ensureCell('Sheet1', `A${row}`)
+      engine.workbook.cellStore.setValue(cellIndex, { tag: ValueTag.Number, value: row + 10 })
+    }
+
+    engine.resetPerformanceCounters()
+    const changed = Effect.runSync(getRecalcService(engine).recalculateNow())
+    unsubscribe()
+
+    expect(changed).toContain(engine.workbook.getCellIndex('Sheet1', `B${rowCount}`))
+    expect(engine.getCellValue('Sheet1', `B${rowCount}`)).toEqual({ tag: ValueTag.Number, value: (rowCount + 10) * 2 })
+    expect(tracked).toHaveLength(1)
+    expect(tracked[0]).toMatchObject({
+      kind: 'batch',
+      invalidation: 'cells',
+      explicitChangedCount: rowCount,
+    })
+    expect(tracked[0]?.patches).toBeUndefined()
+    expect(engine.getPerformanceCounters().changedCellPayloadsBuilt).toBe(0)
+  })
+
+  it('still materializes public changed cells for general full recalculation listeners', async () => {
+    const engine = new SpreadsheetEngine({ workbookName: 'recalc-general-events' })
+    await engine.ready()
+    engine.createSheet('Sheet1')
+    engine.setCellValue('Sheet1', 'A1', 10)
+    engine.setCellFormula('Sheet1', 'B1', 'A1*2')
+
+    const changedCellCounts: number[] = []
+    const unsubscribe = engine.subscribe((event) => {
+      changedCellCounts.push(event.changedCells.length)
+    })
+
+    const a1Index = engine.workbook.ensureCell('Sheet1', 'A1')
+    engine.workbook.cellStore.setValue(a1Index, { tag: ValueTag.Number, value: 30 })
+
+    engine.resetPerformanceCounters()
+    const changed = Effect.runSync(getRecalcService(engine).recalculateNow())
+    unsubscribe()
+
+    expect(changed).toContain(engine.workbook.getCellIndex('Sheet1', 'B1'))
+    expect(engine.getCellValue('Sheet1', 'B1')).toEqual({ tag: ValueTag.Number, value: 60 })
+    expect(changedCellCounts).toEqual([1])
+    expect(engine.getPerformanceCounters().changedCellPayloadsBuilt).toBe(1)
+  })
+
   it('recalculates volatile formulas from the current clock and random inputs', async () => {
     vi.useFakeTimers()
     const randomSpy = vi.spyOn(Math, 'random')
