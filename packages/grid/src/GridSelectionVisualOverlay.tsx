@@ -165,7 +165,6 @@ function appendBodySelectionVisualRects(
   }
 
   const isMultiCellSelection = input.selectionRange.width > 1 || input.selectionRange.height > 1
-  const activeCell = input.gridSelection.current?.cell ?? null
 
   if (isMultiCellSelection) {
     let fillIndex = 0
@@ -196,12 +195,6 @@ function appendBodySelectionVisualRects(
       'active-border',
       `active-border:cell:${input.selectionRange.x}:${input.selectionRange.y}`,
     )
-  }
-
-  if (activeCell && isMultiCellSelection && cellInRange(activeCell, input.selectionRange)) {
-    appendCellBorderRects(rects, input.geometry, activeCell, 'active-border', `active-border:cell:${activeCell[0]}:${activeCell[1]}`, {
-      strokeWidth: 2,
-    })
   }
 
   if (input.showFillHandle) {

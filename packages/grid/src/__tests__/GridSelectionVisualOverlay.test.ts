@@ -29,11 +29,11 @@ describe('GridSelectionVisualOverlay', () => {
       expect.arrayContaining([
         expect.objectContaining({ role: 'selection-fill', bounds: expect.objectContaining({ x: 147, y: 45, width: 298, height: 58 }) }),
         expect.objectContaining({ role: 'selection-border', bounds: expect.objectContaining({ x: 146, y: 44, width: 300, height: 60 }) }),
-        expect.objectContaining({ role: 'active-border', bounds: expect.objectContaining({ x: 146, y: 44, width: 100, height: 20 }) }),
         expect.objectContaining({ role: 'fill-handle', bounds: expect.objectContaining({ x: 442, y: 100, width: 8, height: 8 }) }),
       ]),
     )
     expect(rects.filter((rect) => rect.role === 'selection-fill')).toHaveLength(1)
+    expect(rects.some((rect) => rect.role === 'active-border')).toBe(false)
   })
 
   test('builds visible header, body, and active-cell rects for axis selections', () => {
@@ -133,30 +133,28 @@ describe('GridSelectionVisualOverlay', () => {
     expect(rects.some((rect) => rect.role === 'selection-fill')).toBe(false)
   })
 
-  test('keeps a complete active cell outline at every selected range edge', () => {
+  test('keeps range selections free of internal active-cell chrome', () => {
     const geometry = createGeometry()
     const topLeftSelection = createRangeSelection(createGridSelection(1, 1), [1, 1], [3, 3])
     const bottomRightSelection = createRangeSelection(createGridSelection(3, 3), [3, 3], [1, 1])
 
-    const topLeftActiveBorder = buildGridSelectionVisualRects({
+    const topLeftRects = buildGridSelectionVisualRects({
       geometry,
       gridSelection: topLeftSelection,
       selectedCell: [1, 1],
       selectionRange: topLeftSelection.current?.range ?? null,
       showFillHandle: true,
-    }).find((rect) => rect.role === 'active-border')
-    const bottomRightActiveBorder = buildGridSelectionVisualRects({
+    })
+    const bottomRightRects = buildGridSelectionVisualRects({
       geometry,
       gridSelection: bottomRightSelection,
       selectedCell: [3, 3],
       selectionRange: bottomRightSelection.current?.range ?? null,
       showFillHandle: true,
-    }).find((rect) => rect.role === 'active-border')
+    })
 
-    expect(topLeftActiveBorder).not.toHaveProperty('borderSides')
-    expect(topLeftActiveBorder?.strokeWidth).toBe(2)
-    expect(bottomRightActiveBorder).not.toHaveProperty('borderSides')
-    expect(bottomRightActiveBorder?.strokeWidth).toBe(2)
+    expect(topLeftRects.some((rect) => rect.role === 'active-border')).toBe(false)
+    expect(bottomRightRects.some((rect) => rect.role === 'active-border')).toBe(false)
   })
 
   test('builds hover chrome in the DOM overlay without covering the selected range', () => {
@@ -221,13 +219,12 @@ describe('GridSelectionVisualOverlay', () => {
     expect(selectionFill).toBeInstanceOf(HTMLElement)
     expect(hoverFill).toBeInstanceOf(HTMLElement)
     expect(selectionBorder).toBeInstanceOf(HTMLElement)
-    expect(activeBorder).toBeInstanceOf(HTMLElement)
+    expect(activeBorder).toBeNull()
     expect(fillHandle).toBeInstanceOf(HTMLElement)
     expect(selectionFill?.style.opacity).toBe('')
     expect(selectionFill?.style.backgroundColor).toBe('rgba(33, 115, 70, 0.18)')
     expect(hoverFill?.style.opacity).toBe('0')
     expect(selectionBorder?.style.opacity).toBe('')
-    expect(activeBorder?.style.opacity).toBe('')
     expect(fillHandle?.style.opacity).toBe('')
 
     await act(async () => {

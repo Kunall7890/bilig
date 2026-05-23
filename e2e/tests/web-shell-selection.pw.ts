@@ -279,10 +279,10 @@ test('web app preserves the active cell inside a selected area and collapses on 
   await expect(page.getByTestId('sheet-grid-focus-target')).toHaveAttribute('aria-label', 'Sheet1 D4')
   await expect(page.locator('[data-grid-selection-visual-role="selection-fill"]')).toHaveCount(1)
   await expect(page.locator('[data-grid-selection-visual-role="selection-border"]')).toHaveCount(1)
-  await expect(page.locator('[data-grid-selection-visual-role="active-border"]')).toHaveCount(1)
+  await expect(page.locator('[data-grid-selection-visual-role="active-border"]')).toHaveCount(0)
   await expect(page.locator('[data-grid-selection-visual-role="fill-handle"]')).toHaveCount(1)
   await expectSelectionVisualRoles(page, ['header-fill'], 'hidden')
-  await expectSelectionVisualRoles(page, ['selection-fill', 'selection-border', 'active-border', 'fill-handle'], 'visible')
+  await expectSelectionVisualRoles(page, ['selection-fill', 'selection-border', 'fill-handle'], 'visible')
   await expect(page.locator('[data-grid-selection-visual-role="selection-fill"]').first()).toHaveCSS(
     'background-color',
     'rgba(33, 115, 70, 0.18)',
@@ -311,7 +311,6 @@ test('@browser-ci web app keeps reverse-drag range selection chrome geometricall
   await expect(page.getByTestId('sheet-grid-focus-target')).toHaveAttribute('aria-label', 'Sheet1 D4')
 
   const expectedRange = await getProductCellRangeBox(page, 1, 1, 3, 3)
-  const expectedActiveCell = await getProductCellRangeBox(page, 3, 3, 3, 3)
   const expectedFillHandle = {
     x: expectedRange.x + expectedRange.width - 4,
     y: expectedRange.y + expectedRange.height - 4,
@@ -320,17 +319,9 @@ test('@browser-ci web app keeps reverse-drag range selection chrome geometricall
   }
 
   await expectVisualRectNear(page.locator('[data-grid-selection-visual-role="selection-border"]'), expectedRange, 'selection border')
-  await expectVisualRectNear(page.locator('[data-grid-selection-visual-role="active-border"]'), expectedActiveCell, 'active cell border')
+  await expect(page.locator('[data-grid-selection-visual-role="active-border"]')).toHaveCount(0)
   await expectVisualRectNear(page.locator('[data-grid-selection-visual-role="fill-handle"]'), expectedFillHandle, 'fill handle')
   await expectBorderStyle(page.locator('[data-grid-selection-visual-role="selection-border"]'), {
-    bottom: '2px',
-    boxShadow: 'none',
-    color: 'rgb(33, 115, 70)',
-    left: '2px',
-    right: '2px',
-    top: '2px',
-  })
-  await expectBorderStyle(page.locator('[data-grid-selection-visual-role="active-border"]'), {
     bottom: '2px',
     boxShadow: 'none',
     color: 'rgb(33, 115, 70)',
@@ -483,12 +474,6 @@ test('@browser-ci web app keeps scrolled selection chrome and hit targets clippe
     width: rangeRight + rangeRightWidth - rangeLeft,
     height: clippedBottom - clippedTop,
   }
-  const expectedActive = {
-    x: grid.x + rangeLeft,
-    y: clippedTop,
-    width: await getProductColumnWidth(page, 1),
-    height: grid.y + PRODUCT_HEADER_HEIGHT + rangeTop + (await getProductRowHeight(page, 1)) - scrollTop - clippedTop,
-  }
   const expectedVisualHandle = {
     x: expectedRange.x + expectedRange.width - 4,
     y: expectedRange.y + expectedRange.height - 4,
@@ -507,11 +492,7 @@ test('@browser-ci web app keeps scrolled selection chrome and hit targets clippe
     expectedRange,
     'clipped selection border',
   )
-  await expectVisualRectNear(
-    page.locator('[data-grid-selection-visual-role="active-border"]'),
-    expectedActive,
-    'clipped active cell border',
-  )
+  await expect(page.locator('[data-grid-selection-visual-role="active-border"]')).toHaveCount(0)
   await expectVisualRectNear(page.locator('[data-grid-selection-visual-role="fill-handle"]'), expectedVisualHandle, 'clipped fill handle')
   await expectVisualRectNear(page.locator('[data-grid-fill-handle="true"]'), expectedHitTarget, 'clipped fill handle hit target')
 
@@ -524,7 +505,7 @@ test('@browser-ci web app keeps scrolled selection chrome and hit targets clippe
   await expect(page.getByTestId('status-selection')).toHaveText('Sheet1!B:B')
 })
 
-test('@browser-ci web app keeps active cell chrome synchronized inside a keyboard-cycled range', async ({ page }) => {
+test('@browser-ci web app keeps clean range chrome synchronized while keyboard-cycling within a range', async ({ page }) => {
   await page.goto(`/?document=${encodeURIComponent(createTestDocumentId('playwright-range-keyboard-visual-geometry'))}&persist=0`)
   await waitForWorkbookReady(page)
 
@@ -547,11 +528,7 @@ test('@browser-ci web app keeps active cell chrome synchronized inside a keyboar
   await expect(page.getByTestId('sheet-grid-focus-target')).toHaveAttribute('aria-label', 'Sheet1 C2')
 
   await expectVisualRectNear(page.locator('[data-grid-selection-visual-role="selection-border"]'), expectedRange, 'selection border')
-  await expectVisualRectNear(
-    page.locator('[data-grid-selection-visual-role="active-border"]'),
-    await getProductCellRangeBox(page, 2, 1, 2, 1),
-    'active cell border',
-  )
+  await expect(page.locator('[data-grid-selection-visual-role="active-border"]')).toHaveCount(0)
   await expectVisualRectNear(page.locator('[data-grid-selection-visual-role="fill-handle"]'), expectedFillHandle, 'fill handle')
 
   await page.getByTestId('sheet-grid-focus-target').press('Enter')
@@ -563,11 +540,7 @@ test('@browser-ci web app keeps active cell chrome synchronized inside a keyboar
     expectedRange,
     'selection border after enter',
   )
-  await expectVisualRectNear(
-    page.locator('[data-grid-selection-visual-role="active-border"]'),
-    await getProductCellRangeBox(page, 2, 2, 2, 2),
-    'active cell border after enter',
-  )
+  await expect(page.locator('[data-grid-selection-visual-role="active-border"]')).toHaveCount(0)
   await expectVisualRectNear(page.locator('[data-grid-selection-visual-role="fill-handle"]'), expectedFillHandle, 'fill handle after enter')
 
   await page.getByTestId('sheet-grid-focus-target').press('ArrowRight')

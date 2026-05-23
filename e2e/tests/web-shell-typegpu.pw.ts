@@ -484,13 +484,7 @@ test('@browser-webgpu @browser-serial main workbook shell grid renders and updat
   expect(domRangeSelectionFillOpacity.length).toBeGreaterThan(0)
   expect(domRangeSelectionFillOpacity.every((opacity) => opacity !== '0')).toBe(true)
   const domSelectionChromeOpacity = await page
-    .locator(
-      [
-        '[data-grid-selection-visual-role="active-border"]',
-        '[data-grid-selection-visual-role="fill-handle"]',
-        '[data-grid-selection-visual-role="selection-border"]',
-      ].join(','),
-    )
+    .locator(['[data-grid-selection-visual-role="fill-handle"]', '[data-grid-selection-visual-role="selection-border"]'].join(','))
     .evaluateAll((nodes) => nodes.map((node) => window.getComputedStyle(node).opacity))
   expect(domSelectionChromeOpacity.length).toBeGreaterThan(0)
   expect(domSelectionChromeOpacity.every((opacity) => opacity !== '0')).toBe(true)

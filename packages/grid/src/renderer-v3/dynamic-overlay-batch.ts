@@ -230,7 +230,6 @@ function appendSelectionOverlay(input: {
     return
   }
   const isMultiCellSelection = input.selectionRange.width > 1 || input.selectionRange.height > 1
-  const activeCell = input.gridSelection?.current?.cell ?? null
   if (isMultiCellSelection) {
     if (input.showSelectionChrome) {
       for (const rect of input.geometry.rangeScreenRects(input.selectionRange)) {
@@ -240,11 +239,6 @@ function appendSelectionOverlay(input: {
   } else if (input.showSelectionChrome) {
     for (const rect of input.geometry.rangeScreenRects(input.selectionRange)) {
       appendBorderRects(input.borderRects, rect, borderColor, 2)
-    }
-  }
-  if (input.showSelectionChrome && activeCell && isMultiCellSelection && cellInRange(activeCell, input.selectionRange)) {
-    for (const activeRect of input.geometry.rangeScreenRects({ x: activeCell[0], y: activeCell[1], width: 1, height: 1 })) {
-      appendBorderRects(input.borderRects, activeRect, borderColor, 2)
     }
   }
   if (input.showFillHandle) {
@@ -631,10 +625,6 @@ function insetRect(rect: Rectangle, insetX: number, insetY: number): Rectangle {
     width: Math.max(0, rect.width - insetX * 2),
     height: Math.max(0, rect.height - insetY * 2),
   }
-}
-
-function cellInRange(cell: Item, range: Pick<Rectangle, 'x' | 'y' | 'width' | 'height'>): boolean {
-  return cell[0] >= range.x && cell[0] < range.x + range.width && cell[1] >= range.y && cell[1] < range.y + range.height
 }
 
 function appendBorderRects(target: GridGpuRect[], rect: Rectangle, color: GridGpuRect['color'], thickness: number): void {
