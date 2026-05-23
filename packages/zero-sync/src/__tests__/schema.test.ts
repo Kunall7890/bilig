@@ -50,18 +50,16 @@ describe('zero sync schema', () => {
   it('keeps workflow child state out of the parent run sync model', () => {
     expect('steps' in schema.tables.workbook_workflow_run.columns).toBe(false)
     expect('artifact' in schema.tables.workbook_workflow_run.columns).toBe(false)
+    expect('mutationExecuted' in schema.tables.workbook_workflow_run.columns).toBe(false)
+    expect('verificationComplete' in schema.tables.workbook_workflow_run.columns).toBe(false)
+    expect('mutationStatus' in schema.tables.workbook_workflow_run.columns).toBe(false)
+    expect('mutationReceipt' in schema.tables.workbook_workflow_run.columns).toBe(false)
     expect('steps_json' in zeroSchemaServerColumnNamesByTable.workbook_workflow_run).toBe(false)
     expect('artifact_json' in zeroSchemaServerColumnNamesByTable.workbook_workflow_run).toBe(false)
-  })
-
-  it('replicates workflow mutation proof fields for schema-version compatibility', () => {
-    expect(schema.tables.workbook_workflow_run.columns.mutationExecuted.serverName).toBe('mutation_executed')
-    expect(schema.tables.workbook_workflow_run.columns.verificationComplete.serverName).toBe('verification_complete')
-    expect(schema.tables.workbook_workflow_run.columns.mutationStatus.serverName).toBe('mutation_status')
-    expect(schema.tables.workbook_workflow_run.columns.mutationReceipt.serverName).toBe('mutation_receipt_json')
-    expect(zeroSchemaServerColumnNamesByTable.workbook_workflow_run).toEqual(
-      expect.arrayContaining(['mutation_executed', 'verification_complete', 'mutation_status', 'mutation_receipt_json']),
-    )
+    expect(zeroSchemaServerColumnNamesByTable.workbook_workflow_run).not.toContain('mutation_executed')
+    expect(zeroSchemaServerColumnNamesByTable.workbook_workflow_run).not.toContain('verification_complete')
+    expect(zeroSchemaServerColumnNamesByTable.workbook_workflow_run).not.toContain('mutation_status')
+    expect(zeroSchemaServerColumnNamesByTable.workbook_workflow_run).not.toContain('mutation_receipt_json')
   })
 
   it('relates durable chat child rows to their parent thread visibility model', () => {

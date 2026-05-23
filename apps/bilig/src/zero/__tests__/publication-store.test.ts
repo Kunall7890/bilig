@@ -54,9 +54,10 @@ function latestQuery(queryable: FakeQueryable): RecordedQuery {
 describe('publication-store', () => {
   it('derives replicated tables from the shared Zero schema model', () => {
     expect(ZERO_PUBLICATION_TABLES).toEqual(zeroSchemaTableNames)
-    expect(ZERO_PUBLICATION_COLUMNS_BY_TABLE.workbook_workflow_run).toEqual(
-      expect.arrayContaining(['mutation_executed', 'verification_complete', 'mutation_status', 'mutation_receipt_json']),
-    )
+    expect(ZERO_PUBLICATION_COLUMNS_BY_TABLE.workbook_workflow_run).not.toContain('mutation_executed')
+    expect(ZERO_PUBLICATION_COLUMNS_BY_TABLE.workbook_workflow_run).not.toContain('verification_complete')
+    expect(ZERO_PUBLICATION_COLUMNS_BY_TABLE.workbook_workflow_run).not.toContain('mutation_status')
+    expect(ZERO_PUBLICATION_COLUMNS_BY_TABLE.workbook_workflow_run).not.toContain('mutation_receipt_json')
   })
 
   it('creates the publication with every replicated table when it is missing', async () => {
@@ -122,7 +123,7 @@ describe('publication-store', () => {
 
   it('repairs stale column-filtered publication tables before Zero clients connect', async () => {
     const workflowColumns = ZERO_PUBLICATION_COLUMNS_BY_TABLE.workbook_workflow_run.filter(
-      (columnName) => !['mutation_executed', 'verification_complete', 'mutation_status', 'mutation_receipt_json'].includes(columnName),
+      (columnName) => !['completed_at_unix_ms', 'error_message'].includes(columnName),
     )
     const queryable = new FakeQueryable([
       (text) => (isPublicationLookup(text) ? [{ present: 1 } satisfies QueryResultRow] : null),
