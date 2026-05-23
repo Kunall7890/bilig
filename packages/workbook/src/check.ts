@@ -85,14 +85,23 @@ function uniqueRefs(refs: readonly WorkbookRef[] | undefined): readonly Workbook
 
 function createWorkbookCheck(options: WorkbookCheckBuildOptions): WorkbookCheckResult {
   const refs = uniqueRefs(options.refs)
-  return {
+  const expectation =
+    options.expectation === undefined
+      ? undefined
+      : options.expectation.kind === 'formulaEquals'
+        ? Object.freeze({
+            ...options.expectation,
+            inputs: Object.freeze([...options.expectation.inputs]),
+          })
+        : Object.freeze({ ...options.expectation })
+  return Object.freeze({
     status: 'planned',
     kind: requiredText(options.kind, 'kind'),
     ...(options.target !== undefined ? { target: options.target } : {}),
-    ...(refs !== undefined ? { refs } : {}),
+    ...(refs !== undefined ? { refs: Object.freeze([...refs]) } : {}),
     message: requiredText(options.message, 'message'),
-    ...(options.expectation !== undefined ? { expectation: options.expectation } : {}),
-  }
+    ...(expectation !== undefined ? { expectation } : {}),
+  })
 }
 
 export function createWorkbookCustomCheck(options: WorkbookCustomCheckOptions): WorkbookCheckResult {

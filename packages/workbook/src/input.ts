@@ -199,7 +199,7 @@ function normalizeInput(value: unknown, path: string, seen: WeakSet<object>): Wo
         }
         output.push(normalizeInput(value[index], `${path}[${index}]`, seen))
       }
-      return output
+      return Object.freeze(output)
     }
 
     if (!isPlainObject(value)) {
@@ -216,7 +216,7 @@ function normalizeInput(value: unknown, path: string, seen: WeakSet<object>): Wo
       .forEach(([key, entry]) => {
         output[key] = normalizeInput(entry, childPath(path, key), seen)
       })
-    return output
+    return Object.freeze(output)
   } finally {
     seen.delete(value)
   }

@@ -237,6 +237,10 @@ For agent logs, approvals, tests, and runtime handoff, `describeRef` and
 `describePlan` produce JSON-safe descriptions of refs and action plans. The
 descriptions preserve generic action input and workbook intent while removing
 consumer-private `refs` object shape and helper methods.
+Plans are frozen handoff objects: action input, refs used, commands, concrete
+ops, changed summaries, and checks cannot be rewritten after planning. That
+lets an agent inspect a plan once and pass the same intent to an adapter without
+caller-side metadata drift.
 `describePlanResult` applies the same description layer to either planned or
 failed action planning results.
 `describeRunResult` applies the same JSON-safe description layer after

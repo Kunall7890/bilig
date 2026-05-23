@@ -59,6 +59,21 @@ describe('@bilig/workbook model api', () => {
 
     expect(plan.modelName).toBe('custom-model')
     expect(plan.actionName).toBe('calculate')
+    expect(Object.isFrozen(plan)).toBe(true)
+    expect(Object.isFrozen(plan.refsUsed)).toBe(true)
+    expect(Object.isFrozen(plan.commands)).toBe(true)
+    expect(Object.isFrozen(plan.commands[0])).toBe(true)
+    const [plannedCommand] = plan.commands
+    if (plannedCommand?.kind !== 'writeFormula') {
+      throw new Error('expected writeFormula command')
+    }
+    expect(Object.isFrozen(plannedCommand.inputs)).toBe(true)
+    expect(Object.isFrozen(plan.ops)).toBe(true)
+    expect(Object.isFrozen(plan.ops[0])).toBe(true)
+    expect(Object.isFrozen(plan.changed)).toBe(true)
+    expect(Object.isFrozen(plan.changed[0])).toBe(true)
+    expect(Object.isFrozen(plan.checks)).toBe(true)
+    expect(Object.isFrozen(plan.checks[0])).toBe(true)
     expect(plan.refs.table.headers).toEqual(['Base', 'Rate', 'Result'])
     expect(plan.refsUsed).toEqual([plan.refs.table, plan.refs.base, plan.refs.rate, plan.refs.result])
     expect(plan.commands).toEqual([

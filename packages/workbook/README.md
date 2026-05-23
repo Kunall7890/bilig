@@ -278,6 +278,10 @@ logs, comparisons, approvals, or runtime handoff. Descriptions keep the same
 generic action input, refs, commands, checks, changes, and ops, but omit
 consumer-private `refs` object shape and helper functions such as
 `table.column()`.
+Plans are frozen handoff objects: action input, refs used, commands, concrete
+ops, changed summaries, and checks cannot be rewritten after planning. That
+lets an agent inspect a plan once and pass the same intent to an adapter without
+caller-side metadata drift.
 Use `describePlanResult` when the same JSON-safe handoff is needed for either
 planned or failed action planning.
 Use `describeRunResult` after execution when an agent needs the same JSON-safe

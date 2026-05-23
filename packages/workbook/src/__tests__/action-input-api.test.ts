@@ -94,6 +94,8 @@ describe('@bilig/workbook action input api', () => {
       },
       value: 42,
     })
+    expect(Object.isFrozen(plan.input)).toBe(true)
+    expect(Object.isFrozen(inputObject(plan.input).nested)).toBe(true)
     expect(JSON.stringify(plan.input)).toBe('{"label":"seed","nested":{"a":"first","z":false},"value":42}')
     input.value = 99
     input.nested.a = 'mutated'

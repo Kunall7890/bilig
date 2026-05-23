@@ -4,6 +4,7 @@ import { collectWorkbookRefs, createWorkbookFindApi, type WorkbookFindApi, type 
 import { createWorkbookCheckApi, type WorkbookCheckApi } from './check.js'
 import {
   normalizeOptionalWorkbookActionInput,
+  normalizeWorkbookActionInput,
   normalizeWorkbookActionInputDescription,
   type WorkbookActionInput,
   type WorkbookActionInputDescription,
@@ -303,6 +304,82 @@ function cloneWorkbookOp(op: WorkbookOp): WorkbookOp {
   return structuredClone(op)
 }
 
+function freezeWorkbookOp(op: WorkbookOp): WorkbookOp {
+  return Object.freeze(cloneWorkbookOp(op))
+}
+
+function freezeActionCommand(command: WorkbookActionCommand): WorkbookActionCommand {
+  switch (command.kind) {
+    case 'writeFormula':
+      return Object.freeze({
+        kind: 'writeFormula',
+        target: command.target,
+        formula: command.formula,
+        inputs: Object.freeze([...command.inputs]),
+      })
+    case 'writeValue':
+      return Object.freeze({
+        kind: 'writeValue',
+        target: command.target,
+        value: command.value,
+      })
+    case 'format':
+      return Object.freeze({
+        kind: 'format',
+        target: command.target,
+        ...(command.style !== undefined ? { style: Object.freeze(structuredClone(command.style)) } : {}),
+        ...(command.numberFormat !== undefined ? { numberFormat: command.numberFormat } : {}),
+      })
+    case 'clear':
+      return Object.freeze({
+        kind: 'clear',
+        target: command.target,
+      })
+    case 'op':
+      return Object.freeze({
+        kind: 'op',
+        op: freezeWorkbookOp(command.op),
+        ...(command.target !== undefined ? { target: command.target } : {}),
+        ...(command.message !== undefined ? { message: command.message } : {}),
+      })
+  }
+}
+
+function freezeCheckExpectation(check: WorkbookCheckResult): WorkbookCheckResult['expectation'] {
+  if (check.expectation === undefined) {
+    return undefined
+  }
+  if (check.expectation.kind === 'formulaEquals') {
+    return Object.freeze({
+      ...check.expectation,
+      inputs: Object.freeze([...check.expectation.inputs]),
+    })
+  }
+  return Object.freeze({ ...check.expectation })
+}
+
+function freezeCheckResult(check: WorkbookCheckResult): WorkbookCheckResult {
+  const expectation = freezeCheckExpectation(check)
+  const proof = check.proof === undefined ? undefined : normalizeWorkbookActionInput(check.proof)
+  return Object.freeze({
+    status: check.status,
+    kind: check.kind,
+    ...(check.target !== undefined ? { target: check.target } : {}),
+    ...(check.refs !== undefined ? { refs: Object.freeze([...check.refs]) } : {}),
+    message: check.message,
+    ...(expectation !== undefined ? { expectation } : {}),
+    ...(proof !== undefined ? { proof } : {}),
+  })
+}
+
+function freezeChangeSummary(change: WorkbookChangeSummary): WorkbookChangeSummary {
+  return Object.freeze({
+    kind: change.kind,
+    ...(change.target !== undefined ? { target: change.target } : {}),
+    message: change.message,
+  })
+}
+
 function createCheckWorkbook(input: { readonly checks: WorkbookCheckResult[] }): WorkbookCheckWorkbook {
   return Object.freeze({
     ...createWorkbookFindApi(),
@@ -470,24 +547,31 @@ function createActionPlan<Refs>(
   ops: readonly WorkbookOp[],
   checks: readonly WorkbookCheckResult[],
 ): WorkbookActionPlan<Refs> {
-  return {
+  const plannedCommands = Object.freeze(commands.map(freezeActionCommand))
+  const plannedOps = Object.freeze(ops.map(freezeWorkbookOp))
+  const plannedChecks = Object.freeze(checks.map(freezeCheckResult))
+  const plannedChanged = Object.freeze(
+    plannedCommands.map((command) => {
+      const target = commandTarget(command)
+      return freezeChangeSummary({
+        kind: command.kind,
+        ...(target !== undefined ? { target } : {}),
+        message: commandMessage(command),
+      })
+    }),
+  )
+
+  return Object.freeze({
     modelName,
     actionName,
     ...inputProperty(input),
     refs,
-    refsUsed: collectWorkbookRefs(refs),
-    commands,
-    ops,
-    changed: commands.map((command) => {
-      const target = commandTarget(command)
-      return {
-        kind: command.kind,
-        ...(target !== undefined ? { target } : {}),
-        message: commandMessage(command),
-      }
-    }),
-    checks,
-  }
+    refsUsed: Object.freeze([...collectWorkbookRefs(refs)]),
+    commands: plannedCommands,
+    ops: plannedOps,
+    changed: plannedChanged,
+    checks: plannedChecks,
+  })
 }
 
 export function planWorkbookAction<Refs, Actions extends WorkbookActionMap<Refs>>(
