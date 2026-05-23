@@ -493,8 +493,10 @@ function isWorkbookTableColumns(value: unknown): boolean {
       (entry) =>
         isRecord(entry) &&
         hasString(entry, 'name') &&
+        isOptionalString(entry['calculatedColumnFormula']) &&
         isOptionalString(entry['totalsRowLabel']) &&
-        isOptionalString(entry['totalsRowFunction']),
+        isOptionalString(entry['totalsRowFunction']) &&
+        isOptionalString(entry['totalsRowFormula']),
     )
   )
 }

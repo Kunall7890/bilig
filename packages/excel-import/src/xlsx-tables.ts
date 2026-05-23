@@ -47,6 +47,17 @@ function recordChild(value: unknown, key: string): Record<string, unknown> | nul
   return isRecord(child) ? child : null
 }
 
+function recordTextChild(value: Record<string, unknown>, key: string): string | undefined {
+  const child = value[key]
+  if (typeof child === 'string') {
+    return child
+  }
+  if (isRecord(child) && typeof child['#text'] === 'string') {
+    return child['#text']
+  }
+  return undefined
+}
+
 function escapeXml(value: string): string {
   return value.replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;').replaceAll('"', '&quot;').replaceAll("'", '&apos;')
 }
@@ -211,23 +222,35 @@ function exportTableColumns(table: WorkbookTableSnapshot): WorkbookTableColumnSn
     const exportedColumn: WorkbookTableColumnSnapshot = {
       name: typeof column?.name === 'string' && column.name.trim().length > 0 ? column.name : columnName,
     }
+    if (column?.calculatedColumnFormula !== undefined) {
+      exportedColumn.calculatedColumnFormula = column.calculatedColumnFormula
+    }
     if (column?.totalsRowLabel !== undefined) {
       exportedColumn.totalsRowLabel = column.totalsRowLabel
     }
     if (column?.totalsRowFunction !== undefined) {
       exportedColumn.totalsRowFunction = column.totalsRowFunction
     }
+    if (column?.totalsRowFormula !== undefined) {
+      exportedColumn.totalsRowFormula = column.totalsRowFormula
+    }
     return exportedColumn
   })
 }
 
 function buildTableColumnXml(column: WorkbookTableColumnSnapshot, index: number): string {
-  return [
+  const openTag = [
     `<tableColumn id="${String(index + 1)}" name="${escapeExcelXmlTextAttribute(column.name)}"`,
     column.totalsRowLabel !== undefined ? ` totalsRowLabel="${escapeExcelXmlTextAttribute(column.totalsRowLabel)}"` : '',
     column.totalsRowFunction !== undefined ? ` totalsRowFunction="${escapeXml(column.totalsRowFunction)}"` : '',
-    '/>',
   ].join('')
+  const children = [
+    column.calculatedColumnFormula !== undefined
+      ? `<calculatedColumnFormula>${escapeXml(column.calculatedColumnFormula)}</calculatedColumnFormula>`
+      : '',
+    column.totalsRowFormula !== undefined ? `<totalsRowFormula>${escapeXml(column.totalsRowFormula)}</totalsRowFormula>` : '',
+  ].join('')
+  return children.length > 0 ? `${openTag}>${children}</tableColumn>` : `${openTag}/>`
 }
 
 function buildTableStyleXml(style: WorkbookTableStyleSnapshot | undefined): string {
@@ -339,23 +362,36 @@ function parseTableXml(sheetName: string, xml: string): WorkbookTableSnapshot | 
     if (columnName.length === 0) {
       return []
     }
+    const calculatedColumnFormula = recordTextChild(entry, 'calculatedColumnFormula')
+    const totalsRowFormula = recordTextChild(entry, 'totalsRowFormula')
     const column: WorkbookTableColumnSnapshot = {
       name: columnName,
+      ...(calculatedColumnFormula !== undefined ? { calculatedColumnFormula } : {}),
       ...(typeof entry['totalsRowLabel'] === 'string' ? { totalsRowLabel: decodeExcelEscapedText(entry['totalsRowLabel']) } : {}),
       ...(typeof entry['totalsRowFunction'] === 'string' ? { totalsRowFunction: entry['totalsRowFunction'] } : {}),
+      ...(totalsRowFormula !== undefined ? { totalsRowFormula } : {}),
     }
     return [column]
   })
   const style = parseTableStyle(recordChild(table, 'tableStyleInfo'))
   const sortState = readSortStateXml(xml)
-  const hasTotalsRowColumnMetadata = columns.some((column) => column.totalsRowLabel !== undefined || column.totalsRowFunction !== undefined)
+  const hasTableColumnMetadata = columns.some(
+    (column) =>
+      column.calculatedColumnFormula !== undefined ||
+      column.totalsRowLabel !== undefined ||
+      column.totalsRowFunction !== undefined ||
+      column.totalsRowFormula !== undefined,
+  )
+  const hasTotalsRowColumnMetadata = columns.some(
+    (column) => column.totalsRowLabel !== undefined || column.totalsRowFunction !== undefined || column.totalsRowFormula !== undefined,
+  )
   return {
     name,
     sheetName,
     startAddress: ref.startAddress,
     endAddress: ref.endAddress,
     columnNames: columns.map((column) => column.name),
-    ...(hasTotalsRowColumnMetadata ? { columns } : {}),
+    ...(hasTableColumnMetadata ? { columns } : {}),
     headerRow: table['headerRowCount'] !== '0',
     totalsRow: table['totalsRowShown'] === '1' || table['totalsRowCount'] === '1' || hasTotalsRowColumnMetadata,
     ...(style ? { style } : {}),

@@ -110,8 +110,10 @@ function isWorkbookTableColumns(value: unknown): boolean {
       (entry) =>
         isRecord(entry) &&
         typeof entry['name'] === 'string' &&
+        isOptionalString(entry['calculatedColumnFormula']) &&
         isOptionalString(entry['totalsRowLabel']) &&
-        isOptionalString(entry['totalsRowFunction']),
+        isOptionalString(entry['totalsRowFunction']) &&
+        isOptionalString(entry['totalsRowFormula']),
     )
   )
 }
