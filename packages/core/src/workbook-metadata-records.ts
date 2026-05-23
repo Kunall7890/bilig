@@ -18,6 +18,7 @@ import {
   type WorkbookSheetConditionalFormatArtifactsRecord,
   type WorkbookDataValidationRecord,
   type WorkbookDrawingArtifactsRecord,
+  type WorkbookExternalLinkArtifactsRecord,
   type WorkbookHyperlinkRecord,
   type WorkbookImageRecord,
   type WorkbookMacroPayloadRecord,
@@ -253,6 +254,10 @@ export function cloneDrawingArtifactsRecord(record: WorkbookDrawingArtifactsReco
     ...(record.contentTypeDefaults !== undefined ? { contentTypeDefaults: structuredClone(record.contentTypeDefaults) } : {}),
     ...(record.contentTypeOverrides !== undefined ? { contentTypeOverrides: structuredClone(record.contentTypeOverrides) } : {}),
   }
+}
+
+export function cloneExternalLinkArtifactsRecord(record: WorkbookExternalLinkArtifactsRecord): WorkbookExternalLinkArtifactsRecord {
+  return structuredClone(record)
 }
 
 export function cloneThreadedCommentArtifactsRecord(

@@ -108,6 +108,17 @@ describe('macOS Desktop Excel oracle inventory', () => {
     expect(source).toContain('matches Desktop Excel hyperlink metadata after structural row inserts')
   })
 
+  it('keeps the external-link oracle anchored to Desktop Excel package artifacts', () => {
+    const source = readFileSync(join(testDir, 'macos-desktop-excel-external-link-cache.test.ts'), 'utf8')
+
+    expect(source).toContain("BILIG_EXCEL_ORACLE_RUN === '1'")
+    expect(source).toContain('runMacosExcelInspectionOracle')
+    expect(source).toContain("updateLinks: 'external'")
+    expect(source).toContain('externalLinkArtifacts')
+    expect(source).toContain('externalLinkPackageSummary')
+    expect(source).toContain('round-trips cached external ranges through Desktop Excel and Bilig recalc')
+  })
+
   it('keeps the pivot oracle anchored to Desktop Excel source-backed pivot refresh semantics', () => {
     const source = readFileSync(join(testDir, 'macos-desktop-excel-pivot-oracle.test.ts'), 'utf8')
 

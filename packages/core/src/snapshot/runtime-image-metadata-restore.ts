@@ -6,6 +6,7 @@ import type {
   WorkbookChartSnapshot,
   WorkbookDefinedNameValueSnapshot,
   WorkbookDrawingArtifactsSnapshot,
+  WorkbookExternalLinkArtifactsSnapshot,
   WorkbookImageSnapshot,
   WorkbookMacroPayloadSnapshot,
   WorkbookPivotSnapshot,
@@ -33,6 +34,7 @@ function restoreWorkbookMetadata(args: {
         pivots?: WorkbookPivotSnapshot[]
         charts?: WorkbookChartSnapshot[]
         drawingArtifacts?: WorkbookDrawingArtifactsSnapshot
+        externalLinkArtifacts?: WorkbookExternalLinkArtifactsSnapshot
         threadedCommentArtifacts?: WorkbookThreadedCommentArtifactsSnapshot
         images?: WorkbookImageSnapshot[]
         shapes?: Array<Parameters<WorkbookStore['setShape']>[0]>
@@ -64,6 +66,9 @@ function restoreWorkbookMetadata(args: {
   })
   if (args.workbookMetadata?.drawingArtifacts) {
     args.workbook.setDrawingArtifacts(args.workbookMetadata.drawingArtifacts)
+  }
+  if (args.workbookMetadata?.externalLinkArtifacts) {
+    args.workbook.setExternalLinkArtifacts(args.workbookMetadata.externalLinkArtifacts)
   }
   if (args.workbookMetadata?.threadedCommentArtifacts) {
     args.workbook.setThreadedCommentArtifacts(args.workbookMetadata.threadedCommentArtifacts)

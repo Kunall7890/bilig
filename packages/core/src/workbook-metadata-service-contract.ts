@@ -15,6 +15,7 @@ import type {
   WorkbookDefinedNameValueSnapshot,
   WorkbookFreezePaneSnapshot,
   WorkbookHyperlinkSnapshot,
+  WorkbookExternalLinkArtifactsSnapshot,
   WorkbookImageSnapshot,
   WorkbookLegacyCommentVmlSnapshot,
   WorkbookMacroPayloadSnapshot,
@@ -37,6 +38,7 @@ import type {
   WorkbookSheetConditionalFormatArtifactsRecord,
   WorkbookDataValidationRecord,
   WorkbookDrawingArtifactsRecord,
+  WorkbookExternalLinkArtifactsRecord,
   WorkbookSheetThreadedCommentArtifactsRecord,
   WorkbookDefinedNameRecord,
   WorkbookFilterRecord,
@@ -101,6 +103,11 @@ export interface WorkbookMetadataService {
   ) => Effect.Effect<WorkbookDrawingArtifactsRecord, WorkbookMetadataError>
   readonly getDrawingArtifacts: () => Effect.Effect<WorkbookDrawingArtifactsRecord | undefined, WorkbookMetadataError>
   readonly clearDrawingArtifacts: () => Effect.Effect<boolean, WorkbookMetadataError>
+  readonly setExternalLinkArtifacts: (
+    artifacts: WorkbookExternalLinkArtifactsSnapshot,
+  ) => Effect.Effect<WorkbookExternalLinkArtifactsRecord, WorkbookMetadataError>
+  readonly getExternalLinkArtifacts: () => Effect.Effect<WorkbookExternalLinkArtifactsRecord | undefined, WorkbookMetadataError>
+  readonly clearExternalLinkArtifacts: () => Effect.Effect<boolean, WorkbookMetadataError>
   readonly setThreadedCommentArtifacts: (
     artifacts: WorkbookThreadedCommentArtifactsSnapshot,
   ) => Effect.Effect<WorkbookThreadedCommentArtifactsRecord, WorkbookMetadataError>

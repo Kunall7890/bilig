@@ -9,6 +9,7 @@ import {
   cloneDefinedNameRecord,
   cloneDefinedNameValue,
   cloneDrawingArtifactsRecord,
+  cloneExternalLinkArtifactsRecord,
   cloneFilterRecord,
   cloneHyperlinkRecord,
   cloneImageRecord,
@@ -49,6 +50,7 @@ import {
   definedNameKey,
   normalizeDefinedNameScope,
   type WorkbookDrawingArtifactsRecord,
+  type WorkbookExternalLinkArtifactsRecord,
   type WorkbookMacroPayloadRecord,
   type WorkbookMergeRangeRecord,
   type WorkbookNoteRecord,
@@ -286,6 +288,7 @@ export function createWorkbookMetadataService(metadata: WorkbookMetadataRecord):
     metadata.images.clear()
     metadata.shapes.clear()
     metadata.drawingArtifacts = defaults.drawingArtifacts
+    metadata.externalLinkArtifacts = defaults.externalLinkArtifacts
     metadata.sheetDrawingArtifacts.clear()
     metadata.threadedCommentArtifacts = defaults.threadedCommentArtifacts
     metadata.sheetThreadedCommentArtifacts.clear()
@@ -385,6 +388,25 @@ export function createWorkbookMetadataService(metadata: WorkbookMetadataRecord):
       return metadataEffect('Failed to clear workbook drawing artifact metadata', () => {
         const hadArtifacts = metadata.drawingArtifacts !== undefined
         metadata.drawingArtifacts = undefined
+        return hadArtifacts
+      })
+    },
+    setExternalLinkArtifacts(artifacts) {
+      return metadataEffect('Failed to set workbook external link artifact metadata', () => {
+        const stored: WorkbookExternalLinkArtifactsRecord = cloneExternalLinkArtifactsRecord(artifacts)
+        metadata.externalLinkArtifacts = stored
+        return cloneExternalLinkArtifactsRecord(stored)
+      })
+    },
+    getExternalLinkArtifacts() {
+      return metadataEffect('Failed to get workbook external link artifact metadata', () =>
+        metadata.externalLinkArtifacts ? cloneExternalLinkArtifactsRecord(metadata.externalLinkArtifacts) : undefined,
+      )
+    },
+    clearExternalLinkArtifacts() {
+      return metadataEffect('Failed to clear workbook external link artifact metadata', () => {
+        const hadArtifacts = metadata.externalLinkArtifacts !== undefined
+        metadata.externalLinkArtifacts = undefined
         return hadArtifacts
       })
     },

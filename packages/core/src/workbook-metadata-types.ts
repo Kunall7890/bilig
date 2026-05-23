@@ -25,6 +25,7 @@ import type {
   WorkbookDefinedNameValueSnapshot,
   WorkbookFreezePaneSnapshot,
   WorkbookHyperlinkSnapshot,
+  WorkbookExternalLinkArtifactsSnapshot,
   WorkbookLegacyCommentVmlSnapshot,
   WorkbookNoteSnapshot,
   WorkbookRangeProtectionSnapshot,
@@ -68,6 +69,7 @@ export interface WorkbookChartRecord extends WorkbookChartSnapshot {}
 export interface WorkbookImageRecord extends WorkbookImageSnapshot {}
 export interface WorkbookShapeRecord extends WorkbookShapeSnapshot {}
 export interface WorkbookDrawingArtifactsRecord extends WorkbookDrawingArtifactsSnapshot {}
+export interface WorkbookExternalLinkArtifactsRecord extends WorkbookExternalLinkArtifactsSnapshot {}
 export interface WorkbookSheetDrawingArtifactsRecord extends WorkbookSheetDrawingArtifactsSnapshot {
   sheetName: string
 }
@@ -169,6 +171,7 @@ export interface WorkbookMetadataRecord {
   images: Map<string, WorkbookImageRecord>
   shapes: Map<string, WorkbookShapeRecord>
   drawingArtifacts: WorkbookDrawingArtifactsRecord | undefined
+  externalLinkArtifacts: WorkbookExternalLinkArtifactsRecord | undefined
   threadedCommentArtifacts: WorkbookThreadedCommentArtifactsRecord | undefined
   sheetThreadedCommentArtifacts: Map<string, WorkbookSheetThreadedCommentArtifactsRecord>
   sheetLegacyCommentVml: Map<string, WorkbookSheetLegacyCommentVmlRecord>
@@ -205,6 +208,7 @@ export function createWorkbookMetadataRecord(): WorkbookMetadataRecord {
     images: new Map(),
     shapes: new Map(),
     drawingArtifacts: undefined,
+    externalLinkArtifacts: undefined,
     threadedCommentArtifacts: undefined,
     sheetThreadedCommentArtifacts: new Map(),
     sheetLegacyCommentVml: new Map(),

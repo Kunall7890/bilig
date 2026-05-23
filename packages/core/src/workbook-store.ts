@@ -18,6 +18,7 @@ import type {
   WorkbookDefinedNameValueSnapshot,
   WorkbookFreezePaneSnapshot,
   WorkbookHyperlinkSnapshot,
+  WorkbookExternalLinkArtifactsSnapshot,
   WorkbookImageSnapshot,
   WorkbookMacroPayloadSnapshot,
   WorkbookNoteSnapshot,
@@ -47,6 +48,7 @@ import {
   type WorkbookSheetConditionalFormatArtifactsRecord,
   type WorkbookDataValidationRecord,
   type WorkbookDrawingArtifactsRecord,
+  type WorkbookExternalLinkArtifactsRecord,
   type WorkbookCellNumberFormatRecord,
   type WorkbookCellStyleRecord,
   type WorkbookDefinedNameRecord,
@@ -462,6 +464,18 @@ export class WorkbookStore extends WorkbookStoreCommentAccessors {
 
   clearDrawingArtifacts(): boolean {
     return runWorkbookMetadataEffect(this.metadataService.clearDrawingArtifacts())
+  }
+
+  setExternalLinkArtifacts(artifacts: WorkbookExternalLinkArtifactsSnapshot): WorkbookExternalLinkArtifactsRecord {
+    return runWorkbookMetadataEffect(this.metadataService.setExternalLinkArtifacts(artifacts))
+  }
+
+  getExternalLinkArtifacts(): WorkbookExternalLinkArtifactsRecord | undefined {
+    return runWorkbookMetadataEffect(this.metadataService.getExternalLinkArtifacts())
+  }
+
+  clearExternalLinkArtifacts(): boolean {
+    return runWorkbookMetadataEffect(this.metadataService.clearExternalLinkArtifacts())
   }
 
   setDefinedName(name: string, value: WorkbookDefinedNameValueSnapshot, scopeSheetName?: string): WorkbookDefinedNameRecord {

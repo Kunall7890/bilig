@@ -15,6 +15,7 @@ export function hasStructuralMetadataForSheetRecord(
     metadata.images.size > 0 ||
     metadata.shapes.size > 0 ||
     metadata.drawingArtifacts !== undefined ||
+    metadata.externalLinkArtifacts !== undefined ||
     metadata.sheetDrawingArtifacts.has(sheetName) ||
     metadata.threadedCommentArtifacts !== undefined ||
     metadata.sheetThreadedCommentArtifacts.has(sheetName) ||

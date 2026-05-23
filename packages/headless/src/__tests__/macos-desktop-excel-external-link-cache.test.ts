@@ -28,10 +28,15 @@ const changedExternalRangeValues = [
 
 describe('macOS Desktop Excel external-link cache oracle', () => {
   it('imports cached external ranges as hidden-sheet references', async () => {
-    const imported = importXlsx(buildExternalLinkRangeCacheWorkbook(), 'external-link-range-cache.xlsx')
+    const source = buildExternalLinkRangeCacheWorkbook()
+    const imported = importXlsx(source, 'external-link-range-cache.xlsx')
     const cells = new Map(imported.snapshot.sheets[0]?.cells.map((cell) => [cell.address, cell]) ?? [])
     const cacheSheet = imported.snapshot.sheets.find((sheet) => sheet.name === '__bilig_ext_1_Rates')
 
+    expect(imported.snapshot.workbook.metadata?.externalLinkArtifacts?.parts.map((part) => part.path).toSorted()).toEqual([
+      'xl/externalLinks/_rels/externalLink5.xml.rels',
+      'xl/externalLinks/externalLink5.xml',
+    ])
     expect(cacheSheet).toMatchObject({ metadata: { visibility: 'veryHidden' } })
     expect(cells.get('C1')).toMatchObject({ formula: "SUM('__bilig_ext_1_Rates'!$B$2:$B$4)*B1", value: 120 })
     expect(cells.get('C2')).toMatchObject({
@@ -55,6 +60,8 @@ describe('macOS Desktop Excel external-link cache oracle', () => {
     expectEngineValues(engine, changedExternalRangeValues)
 
     const exportedZip = unzipSync(exportXlsx(engine.exportSnapshot()))
+    expect(externalLinkPackageSummary(exportedZip)).toEqual(externalLinkPackageSummary(unzipSync(source)))
+
     const modelSheetXml = xmlText(exportedZip, 'xl/worksheets/sheet1.xml')
     const workbookXml = xmlText(exportedZip, 'xl/workbook.xml')
 
@@ -90,6 +97,7 @@ describe('macOS Desktop Excel external-link cache oracle', () => {
         expect(excelInitial.cells.map(({ address, value }) => ({ address, value }))).toEqual(initialExternalRangeValues)
 
         const imported = importXlsx(new Uint8Array(readFileSync(sourceWorkbookPath)), 'external-link-range-cache-saved.xlsx')
+        const sourceExternalLinkSummary = externalLinkPackageSummary(unzipSync(new Uint8Array(readFileSync(sourceWorkbookPath))))
         const engine = new SpreadsheetEngine({ workbookName: 'external-link-range-cache-oracle' })
         await engine.ready()
         engine.importSnapshot(imported.snapshot)
@@ -99,6 +107,8 @@ describe('macOS Desktop Excel external-link cache oracle', () => {
 
         const exportedWorkbookPath = join(tempDir, 'external-link-range-cache-materialized.xlsx')
         writeFileSync(exportedWorkbookPath, exportXlsx(engine.exportSnapshot()))
+        expect(externalLinkPackageSummary(unzipSync(new Uint8Array(readFileSync(exportedWorkbookPath))))).toEqual(sourceExternalLinkSummary)
+
         const excelChanged = runMacosExcelInspectionOracle({
           workbookPath: exportedWorkbookPath,
           worksheetName: 'Model',
@@ -208,6 +218,88 @@ function buildExternalLinkRangeCacheWorkbook(target = 'file:///tmp/rates.xlsx'):
     }),
   )
   return zipSync(zip)
+}
+
+function externalLinkPackageSummary(zip: Record<string, Uint8Array>): {
+  readonly packageParts: readonly (readonly [path: string, xml: string])[]
+  readonly workbookExternalReferenceTargets: readonly string[]
+  readonly externalLinkPathRelationshipParts: readonly (readonly [path: string, xml: string])[]
+  readonly contentTypeOverrides: readonly string[]
+} {
+  const workbookExternalReferencesXml = extractSingleXml(
+    xmlText(zip, 'xl/workbook.xml'),
+    /<(?:[A-Za-z_][\w.-]*:)?externalReferences\b[^>]*>[\s\S]*?<\/(?:[A-Za-z_][\w.-]*:)?externalReferences>/u,
+  )
+  const workbookExternalLinkTargets = workbookExternalLinkTargetsByRelationshipId(xmlText(zip, 'xl/_rels/workbook.xml.rels'))
+  return {
+    packageParts: Object.entries(zip)
+      .filter(([path]) => /^xl\/externalLinks\/externalLink[^/]*\.xml$/u.test(path))
+      .map(([path, bytes]) => [path, strFromU8(bytes)] as const)
+      .toSorted(([left], [right]) => left.localeCompare(right)),
+    workbookExternalReferenceTargets: extractCaptureMatches(workbookExternalReferencesXml, /\br:id="([^"]+)"/gu).map((id) => {
+      const target = workbookExternalLinkTargets.get(id)
+      if (target === undefined) {
+        throw new Error(`Missing workbook external-link relationship target for ${id}`)
+      }
+      return target
+    }),
+    externalLinkPathRelationshipParts: Object.entries(zip)
+      .filter(([path]) => /^xl\/externalLinks\/_rels\/externalLink[^/]*\.xml\.rels$/u.test(path))
+      .map(([path, bytes]) => [path, strFromU8(bytes)] as const)
+      .toSorted(([left], [right]) => left.localeCompare(right)),
+    contentTypeOverrides: extractXmlMatches(
+      xmlText(zip, '[Content_Types].xml'),
+      /<Override\b[^>]*ContentType="application\/vnd\.openxmlformats-officedocument\.spreadsheetml\.externalLink\+xml"[^>]*\/>/gu,
+    ),
+  }
+}
+
+function extractSingleXml(xml: string, pattern: RegExp): string {
+  const match = xml.match(pattern)
+  if (!match) {
+    throw new Error(`Missing expected XLSX XML fragment for pattern ${String(pattern)}`)
+  }
+  return match[0]
+}
+
+function extractXmlMatches(xml: string, pattern: RegExp): readonly string[] {
+  const matches = [...xml.matchAll(pattern)].map((match) => match[0])
+  if (matches.length === 0) {
+    throw new Error(`Missing expected XLSX XML fragment for pattern ${String(pattern)}`)
+  }
+  return matches.toSorted()
+}
+
+function extractCaptureMatches(xml: string, pattern: RegExp): readonly string[] {
+  const matches = [...xml.matchAll(pattern)].flatMap((match) => match[1] ?? [])
+  if (matches.length === 0) {
+    throw new Error(`Missing expected XLSX XML capture for pattern ${String(pattern)}`)
+  }
+  return matches
+}
+
+function workbookExternalLinkTargetsByRelationshipId(workbookRelationshipsXml: string): ReadonlyMap<string, string> {
+  const targetsById = new Map<string, string>()
+  for (const relationship of extractXmlMatches(workbookRelationshipsXml, /<Relationship\b[^>]*\/>/gu)) {
+    if (!relationship.includes('/relationships/externalLink"')) {
+      continue
+    }
+    const id = extractAttribute(relationship, 'Id')
+    const target = extractAttribute(relationship, 'Target')
+    targetsById.set(id, target)
+  }
+  if (targetsById.size === 0) {
+    throw new Error('Missing workbook external-link relationships')
+  }
+  return targetsById
+}
+
+function extractAttribute(xml: string, attributeName: string): string {
+  const match = new RegExp(`\\b${attributeName}="([^"]+)"`, 'u').exec(xml)
+  if (!match) {
+    throw new Error(`Missing ${attributeName} attribute in ${xml}`)
+  }
+  return match[1]
 }
 
 function ensureRelationshipNamespace(xml: string): string {

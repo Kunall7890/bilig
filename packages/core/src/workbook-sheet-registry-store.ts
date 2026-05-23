@@ -188,6 +188,7 @@ export class WorkbookSheetRegistryStore {
       metadata.charts.size > 0 ||
       metadata.images.size > 0 ||
       metadata.shapes.size > 0 ||
+      metadata.externalLinkArtifacts !== undefined ||
       metadata.sheetDrawingArtifacts.size > 0 ||
       metadata.sheetThreadedCommentArtifacts.size > 0 ||
       metadata.sheetLegacyCommentVml.size > 0 ||

@@ -139,6 +139,7 @@ export function createEngineSnapshotService(args: {
           const pivots = args.state.workbook.listPivots().map((pivot) => structuredClone(pivot))
           const charts = args.state.workbook.listCharts().map((chart) => structuredClone(chart))
           const drawingArtifacts = args.state.workbook.getDrawingArtifacts()
+          const externalLinkArtifacts = args.state.workbook.getExternalLinkArtifacts()
           const threadedCommentArtifacts = args.state.workbook.getThreadedCommentArtifacts()
           const images = args.state.workbook.listImages().map((image) => structuredClone(image))
           const shapes = args.state.workbook.listShapes().map((shape) => structuredClone(shape))
@@ -152,6 +153,7 @@ export function createEngineSnapshotService(args: {
             pivots.length > 0 ||
             charts.length > 0 ||
             drawingArtifacts !== undefined ||
+            externalLinkArtifacts !== undefined ||
             threadedCommentArtifacts !== undefined ||
             images.length > 0 ||
             shapes.length > 0 ||
@@ -187,6 +189,9 @@ export function createEngineSnapshotService(args: {
             }
             if (drawingArtifacts) {
               workbook.metadata.drawingArtifacts = drawingArtifacts
+            }
+            if (externalLinkArtifacts) {
+              workbook.metadata.externalLinkArtifacts = externalLinkArtifacts
             }
             if (threadedCommentArtifacts) {
               workbook.metadata.threadedCommentArtifacts = threadedCommentArtifacts
