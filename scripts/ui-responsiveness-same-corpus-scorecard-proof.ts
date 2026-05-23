@@ -399,7 +399,7 @@ function validateSameCorpusRunManifest(proof: UiResponsivenessSameCorpusProof): 
     throw new Error('UI responsiveness same-corpus proof is missing run manifest')
   }
   const expected = buildSameCorpusRunManifest(proof.cases)
-  if (JSON.stringify(proof.runManifest) !== JSON.stringify(expected)) {
+  if (stableJsonString(proof.runManifest) !== stableJsonString(expected)) {
     throw new Error('UI responsiveness same-corpus run manifest is stale')
   }
 }
@@ -458,15 +458,33 @@ function validateSameCorpusCapture(capture: SameCorpusCapture): void {
   }
 }
 
-function validateSameCorpusCaptureRunManifest(capture: SameCorpusCapture): void {
+export function validateSameCorpusCaptureRunManifest(capture: SameCorpusCapture): void {
   const expected = buildSameCorpusCaptureRunManifest(capture.cases, capture.sampleCount)
-  if (JSON.stringify(capture.runManifest) !== JSON.stringify(expected)) {
+  if (stableJsonString(capture.runManifest) !== stableJsonString(expected)) {
     throw new Error('UI responsiveness same-corpus capture run manifest is stale')
   }
 }
 
 function sameCorpusCaptureRunSignature(cases: readonly SameCorpusCaptureCase[]): string {
-  return createHash('sha256').update(JSON.stringify(cases)).digest('hex')
+  return createHash('sha256').update(stableJsonString(cases)).digest('hex')
+}
+
+function stableJsonString(value: unknown): string {
+  return JSON.stringify(stableJsonValue(value))
+}
+
+function stableJsonValue(value: unknown): unknown {
+  if (Array.isArray(value)) {
+    return value.map(stableJsonValue)
+  }
+  if (value && typeof value === 'object') {
+    return Object.fromEntries(
+      Object.entries(value)
+        .toSorted(([left], [right]) => left.localeCompare(right))
+        .map(([key, entry]) => [key, stableJsonValue(entry)]),
+    )
+  }
+  return value
 }
 
 function buildSameCorpusCase(captureCase: SameCorpusCaptureCase): UiResponsivenessSameCorpusCase {

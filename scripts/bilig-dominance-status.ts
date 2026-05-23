@@ -33,9 +33,11 @@ import {
 } from './public-workbook-corpus-feature-witness-plan.ts'
 import {
   buildUiSameCorpusStatus,
+  readUiSameCorpusCaptureArtifactStatus,
   resolveUiSameCorpusGoogleSheetsUrl,
   uiSameCorpusGoogleSheetsUrlEnvVar,
   uiSameCorpusMicrosoftExcelWebUrlEnvVar,
+  type UiSameCorpusCaptureArtifactStatus,
   type UiSameCorpusStatus,
 } from './bilig-dominance-ui-same-corpus-status.ts'
 
@@ -138,6 +140,7 @@ const defaultFinancialScorecardPath = join(defaultFinancialCacheDir, 'scorecard.
 const defaultFinancialVerifyCheckpointPath = join(defaultFinancialCacheDir, 'verification-checkpoint.json')
 const defaultCorpusRunStopMarkerPath = join(rootDir, '.agent-coordination', '20260507T074946Z-codex-stop-interactive-corpus-runs.md')
 const defaultUiSameCorpusPublicAccessCheckPath = join(rootDir, '.cache', 'ui-responsiveness', 'same-corpus-public-access-check.json')
+const defaultUiSameCorpusCapturePath = join(rootDir, '.cache', 'ui-responsiveness', 'same-corpus-capture.json')
 const publicWorkbookCorpusFetchBatchSize = 6
 
 function main(): void {
@@ -157,6 +160,7 @@ export function buildBiligDominanceStatusFromArgs(): BiligDominanceStatus {
   const uiSameCorpusPublicAccessCheckPath = resolve(
     readStringArg('--ui-same-corpus-public-access-check', defaultUiSameCorpusPublicAccessCheckPath),
   )
+  const uiSameCorpusCapturePath = resolve(readStringArg('--ui-same-corpus-capture', defaultUiSameCorpusCapturePath))
   const explicitUiSameCorpusGoogleSheetsUrl =
     readStringArg('--ui-same-corpus-google-sheets-url', process.env[uiSameCorpusGoogleSheetsUrlEnvVar] ?? '') || null
   const explicitUiSameCorpusMicrosoftExcelWebUrl =
@@ -242,6 +246,10 @@ export function buildBiligDominanceStatusFromArgs(): BiligDominanceStatus {
     uiSameCorpusMicrosoftExcelWebUrl: explicitUiSameCorpusMicrosoftExcelWebUrl,
     uiSameCorpusPublicAccessCheck,
     uiSameCorpusPublicAccessCheckPath: formatBiligDominanceStatusPathForMessage(uiSameCorpusPublicAccessCheckPath, rootDir),
+    uiSameCorpusCaptureArtifact: readUiSameCorpusCaptureArtifactStatus({
+      path: uiSameCorpusCapturePath,
+      displayPath: formatBiligDominanceStatusPathForMessage(uiSameCorpusCapturePath, rootDir),
+    }),
   })
 }
 
@@ -260,6 +268,7 @@ export function buildBiligDominanceStatus(args: {
   readonly uiSameCorpusMicrosoftExcelWebUrl?: string | null
   readonly uiSameCorpusPublicAccessCheck?: SameCorpusPublicAccessCheck | null
   readonly uiSameCorpusPublicAccessCheckPath?: string
+  readonly uiSameCorpusCaptureArtifact?: UiSameCorpusCaptureArtifactStatus
 }): BiligDominanceStatus {
   const scorecard = buildBiligDominanceScorecard({
     ...args.input,
@@ -355,6 +364,7 @@ export function buildBiligDominanceStatus(args: {
       localCiResourceGuardStatus,
       microsoftExcelWebEditableUrl: args.uiSameCorpusMicrosoftExcelWebUrl ?? null,
       publicAccessCheckPath: args.uiSameCorpusPublicAccessCheckPath ?? '.cache/ui-responsiveness/same-corpus-public-access-check.json',
+      captureArtifact: args.uiSameCorpusCaptureArtifact,
       ...resolveUiSameCorpusGoogleSheetsUrl({
         explicitGoogleSheetsUrl: args.uiSameCorpusGoogleSheetsUrl ?? null,
         publicAccessCheck: args.uiSameCorpusPublicAccessCheck ?? null,

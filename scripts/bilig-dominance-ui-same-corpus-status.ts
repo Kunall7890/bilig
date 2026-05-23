@@ -1,9 +1,15 @@
+import { existsSync } from 'node:fs'
+
 import type { BuildScorecardInput } from './bilig-dominance-scorecard-types.ts'
 import { localCiResourceGuardOverrideEnv, type LocalCiResourceGuardStatus } from './ci-local-resource-guard.ts'
+import { readJsonObject } from './json-scorecard-helpers.ts'
 import type {
+  SameCorpusCapture,
   UiResponsivenessSameCorpusRunManifest,
   UiResponsivenessSameCorpusWorkload,
 } from './gen-ui-responsiveness-live-browser-scorecard.ts'
+import { parseSameCorpusCapture } from './ui-responsiveness-live-browser-scorecard-parse.ts'
+import { buildSameCorpusProof, validateSameCorpusCaptureRunManifest } from './ui-responsiveness-same-corpus-scorecard-proof.ts'
 import {
   requiredUiResponsivenessSameCorpusWorkloads,
   uiSameCorpusWorkloadRequiresScrollEventEvidence,
@@ -40,6 +46,7 @@ export interface UiSameCorpusStatus {
   readonly microsoftExcelWebEditableUrl: string | null
   readonly microsoftExcelWebEditableUrlEnvVar: string
   readonly publicAccessCheckPath: string
+  readonly captureArtifact: UiSameCorpusCaptureArtifactStatus
   readonly missingInputs: readonly string[]
   readonly nextFixtureCheckCommand: string
   readonly nextPublicAccessCheckCommand: string
@@ -75,6 +82,26 @@ export interface UiSameCorpusBrowserCaptureGuardStatus {
   readonly nextCaptureRequiresOverride: boolean
 }
 
+export interface UiSameCorpusCaptureArtifactStatus {
+  readonly path: string
+  readonly exists: boolean
+  readonly parseable: boolean
+  readonly currentRunManifest: boolean
+  readonly readyForScorecardGeneration: boolean
+  readonly sampleCount: number | null
+  readonly caseCount: number | null
+  readonly strictRenderedGridProofCaseCount: number | null
+  readonly legacyInsufficientRenderedGridProofCaseCount: number | null
+  readonly tenXMeanAndP95CaseCount: number | null
+  readonly currentContractEvidenceComplete: boolean | null
+  readonly googleSheetsTenXRequirementSatisfied: boolean | null
+  readonly capturedWorkloads: readonly UiResponsivenessSameCorpusWorkload[]
+  readonly missingRequiredWorkloads: readonly UiResponsivenessSameCorpusWorkload[]
+  readonly captureRunSignature: string | null
+  readonly readinessErrors: readonly string[]
+  readonly runManifestInvalidReasons: readonly string[]
+}
+
 export const uiSameCorpusGoogleSheetsUrlEnvVar = 'BILIG_UI_SAME_CORPUS_GOOGLE_SHEETS_URL'
 export const uiSameCorpusMicrosoftExcelWebUrlEnvVar = 'BILIG_UI_SAME_CORPUS_MICROSOFT_EXCEL_WEB_URL'
 
@@ -89,6 +116,7 @@ export function buildUiSameCorpusStatus(
     readonly localCiResourceGuardStatus: LocalCiResourceGuardStatus
     readonly microsoftExcelWebEditableUrl: string | null
     readonly publicAccessCheckPath: string
+    readonly captureArtifact?: UiSameCorpusCaptureArtifactStatus
   },
 ): UiSameCorpusStatus {
   const proof = input.uiResponsivenessLiveBrowserScorecard.sameCorpusProof
@@ -214,6 +242,8 @@ export function buildUiSameCorpusStatus(
     microsoftExcelWebEditableUrl: args.microsoftExcelWebEditableUrl,
     microsoftExcelWebEditableUrlEnvVar: uiSameCorpusMicrosoftExcelWebUrlEnvVar,
     publicAccessCheckPath: args.publicAccessCheckPath,
+    captureArtifact:
+      args.captureArtifact ?? buildMissingUiSameCorpusCaptureArtifactStatus('.cache/ui-responsiveness/same-corpus-capture.json'),
     missingInputs,
     nextFixtureCheckCommand: 'pnpm ui:same-corpus:fixture:check',
     nextPublicAccessCheckCommand: [
@@ -251,6 +281,125 @@ export function buildUiSameCorpusStatus(
     browserCaptureGuard,
     nextScorecardGenerateCommand: browserCaptureGuard.active ? null : nextScorecardGenerateCommand,
     nextDominanceCheckCommand: 'pnpm dominance:generate && pnpm dominance:check && pnpm dominance:audit:check',
+  }
+}
+
+export function readUiSameCorpusCaptureArtifactStatus(args: {
+  readonly path: string
+  readonly displayPath?: string
+}): UiSameCorpusCaptureArtifactStatus {
+  const displayPath = args.displayPath ?? args.path
+  if (!existsSync(args.path)) {
+    return buildMissingUiSameCorpusCaptureArtifactStatus(displayPath)
+  }
+  try {
+    const capture = parseSameCorpusCapture(readJsonObject(args.path))
+    return buildUiSameCorpusCaptureArtifactStatus(displayPath, capture)
+  } catch (error) {
+    return buildInvalidUiSameCorpusCaptureArtifactStatus(displayPath, true, false, errorMessage(error))
+  }
+}
+
+export function buildMissingUiSameCorpusCaptureArtifactStatus(path: string): UiSameCorpusCaptureArtifactStatus {
+  return buildInvalidUiSameCorpusCaptureArtifactStatus(path, false, false, 'same-corpus capture artifact is missing')
+}
+
+function buildUiSameCorpusCaptureArtifactStatus(path: string, capture: SameCorpusCapture): UiSameCorpusCaptureArtifactStatus {
+  try {
+    validateSameCorpusCaptureRunManifest(capture)
+  } catch (error) {
+    return buildParsedUiSameCorpusCaptureArtifactStatus(path, capture, false, false, [errorMessage(error)], [])
+  }
+
+  try {
+    const proof = buildSameCorpusProof(capture)
+    const runManifest = proof.runManifest
+    return {
+      path,
+      exists: true,
+      parseable: true,
+      currentRunManifest: true,
+      readyForScorecardGeneration: true,
+      sampleCount: capture.sampleCount,
+      caseCount: capture.cases.length,
+      strictRenderedGridProofCaseCount: runManifest?.strictRenderedGridProofCaseCount ?? null,
+      legacyInsufficientRenderedGridProofCaseCount: runManifest?.legacyInsufficientRenderedGridProofCaseCount ?? null,
+      tenXMeanAndP95CaseCount: proof.tenXMeanAndP95CaseCount,
+      currentContractEvidenceComplete: runManifest?.currentContractEvidenceComplete ?? null,
+      googleSheetsTenXRequirementSatisfied: runManifest?.googleSheetsTenXRequirementSatisfied ?? null,
+      capturedWorkloads: [...capture.runManifest.capturedWorkloads],
+      missingRequiredWorkloads: requiredUiSameCorpusWorkloads.filter(
+        (workload) => !capture.runManifest.capturedWorkloads.includes(workload),
+      ),
+      captureRunSignature: capture.runManifest.captureRunSignature,
+      readinessErrors: [],
+      runManifestInvalidReasons: runManifest?.invalidReasons ?? [],
+    }
+  } catch (error) {
+    return buildParsedUiSameCorpusCaptureArtifactStatus(
+      path,
+      capture,
+      true,
+      false,
+      [errorMessage(error)],
+      [...capture.runManifest.invalidReasons],
+    )
+  }
+}
+
+function buildParsedUiSameCorpusCaptureArtifactStatus(
+  path: string,
+  capture: SameCorpusCapture,
+  currentRunManifest: boolean,
+  readyForScorecardGeneration: boolean,
+  readinessErrors: readonly string[],
+  runManifestInvalidReasons: readonly string[],
+): UiSameCorpusCaptureArtifactStatus {
+  return {
+    path,
+    exists: true,
+    parseable: true,
+    currentRunManifest,
+    readyForScorecardGeneration,
+    sampleCount: capture.sampleCount,
+    caseCount: capture.cases.length,
+    strictRenderedGridProofCaseCount: capture.runManifest.strictRenderedGridProofCaseCount,
+    legacyInsufficientRenderedGridProofCaseCount: capture.runManifest.legacyInsufficientRenderedGridProofCaseCount,
+    tenXMeanAndP95CaseCount: null,
+    currentContractEvidenceComplete: capture.runManifest.currentContractEvidenceComplete,
+    googleSheetsTenXRequirementSatisfied: null,
+    capturedWorkloads: [...capture.runManifest.capturedWorkloads],
+    missingRequiredWorkloads: requiredUiSameCorpusWorkloads.filter((workload) => !capture.runManifest.capturedWorkloads.includes(workload)),
+    captureRunSignature: capture.runManifest.captureRunSignature,
+    readinessErrors,
+    runManifestInvalidReasons,
+  }
+}
+
+function buildInvalidUiSameCorpusCaptureArtifactStatus(
+  path: string,
+  exists: boolean,
+  parseable: boolean,
+  message: string,
+): UiSameCorpusCaptureArtifactStatus {
+  return {
+    path,
+    exists,
+    parseable,
+    currentRunManifest: false,
+    readyForScorecardGeneration: false,
+    sampleCount: null,
+    caseCount: null,
+    strictRenderedGridProofCaseCount: null,
+    legacyInsufficientRenderedGridProofCaseCount: null,
+    tenXMeanAndP95CaseCount: null,
+    currentContractEvidenceComplete: null,
+    googleSheetsTenXRequirementSatisfied: null,
+    capturedWorkloads: [],
+    missingRequiredWorkloads: [...requiredUiSameCorpusWorkloads],
+    captureRunSignature: null,
+    readinessErrors: [message],
+    runManifestInvalidReasons: [],
   }
 }
 
@@ -418,4 +567,8 @@ function localCiResourceGuardOverrideCommand(command: string): string {
     return command
   }
   return `${localCiResourceGuardOverrideEnv}=1 ${command}`
+}
+
+function errorMessage(error: unknown): string {
+  return error instanceof Error ? error.message : String(error)
 }
