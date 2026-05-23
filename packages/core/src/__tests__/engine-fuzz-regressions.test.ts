@@ -261,6 +261,32 @@ describe('engine fuzz regressions', () => {
     expect(engine.exportSnapshot()).toEqual(seedSnapshot)
   })
 
+  it('does not replay stale resolved range style from lazy structural cell undo', async () => {
+    const seedSnapshot = {
+      version: 1 as const,
+      workbook: { name: 'lazy-structural-cell-style-undo-regression' },
+      sheets: [{ id: 1, name: 'Sheet1', order: 0, cells: [] }],
+    }
+    const engine = new SpreadsheetEngine({
+      workbookName: seedSnapshot.workbook.name,
+      replicaId: 'lazy-structural-cell-style-undo-regression',
+    })
+    await engine.ready()
+    engine.importSnapshot(structuredClone(seedSnapshot))
+
+    engine.setRangeValues({ sheetName: 'Sheet1', startAddress: 'A2', endAddress: 'A3' }, [[0], ['north']])
+    engine.deleteRows('Sheet1', 0, 1)
+    engine.setRangeStyle({ sheetName: 'Sheet1', startAddress: 'B3', endAddress: 'B3' }, { fill: { backgroundColor: '#dbeafe' } })
+    engine.setRangeNumberFormat({ sheetName: 'Sheet1', startAddress: 'A1', endAddress: 'A1' }, '0.00')
+    engine.setRangeStyle({ sheetName: 'Sheet1', startAddress: 'A1', endAddress: 'A1' }, { fill: { backgroundColor: '#dbeafe' } })
+    engine.setRangeNumberFormat({ sheetName: 'Sheet1', startAddress: 'A1', endAddress: 'A1' }, '0.00')
+    engine.deleteColumns('Sheet1', 0, 1)
+
+    while (engine.undo()) {}
+
+    expect(engine.exportSnapshot()).toEqual(seedSnapshot)
+  })
+
   it('restores sparse style range shapes after undoing a partial clear', async () => {
     const seedSnapshot = await createEngineSeedSnapshot('sparse-format', 'sparse-style-clear-undo-regression')
     const engine = new SpreadsheetEngine({

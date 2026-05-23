@@ -117,6 +117,14 @@ export function structuralDeletedCellUndoRecordToOps(
         ) {
           return false
         }
+        if (
+          op.kind === 'setStyleRange' &&
+          op.range.sheetName === record.sheetName &&
+          op.range.startAddress === address &&
+          op.range.endAddress === address
+        ) {
+          return false
+        }
         return true
       })
     case 'blank':
