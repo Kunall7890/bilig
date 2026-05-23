@@ -21,6 +21,21 @@ const SIMPLE_SCALAR_EXPRESSION_RE = new RegExp(
 )
 const SCALAR_ONLY_FUNCTION_NAMES = ['CONCATENATE', 'IF', 'LEN', 'MAX', 'MIN', 'PMT', 'POWER', 'ROUND', 'SQRT'] as const
 const SCALAR_ONLY_FUNCTION_MARKERS = SCALAR_ONLY_FUNCTION_NAMES.map((name) => `${name}(`)
+const SCALAR_RANGE_FUNCTION_NAMES = new Set([
+  'SUM',
+  'COUNT',
+  'COUNTA',
+  'COUNTBLANK',
+  'MIN',
+  'MAX',
+  'AVERAGE',
+  'AVG',
+  'SUMIF',
+  'COUNTIF',
+  'SUMIFS',
+  'COUNTIFS',
+  'ABS',
+])
 const FORMULA_SPILL_PRODUCING_FUNCTION_MARKERS = FORMULA_SPILL_PRODUCING_FUNCTION_NAMES.map((name) => `${name}(`)
 
 export interface WorkPaperSheetInspection {
@@ -227,6 +242,9 @@ function isDefinitelyScalarFormulaShape(formula: string): boolean {
   if (normalized.length === 0 || normalized.includes('{') || normalized.includes('#')) {
     return false
   }
+  if (isSimpleScalarExpressionShape(normalized) || isScalarRangeFunctionShape(normalized)) {
+    return true
+  }
   if (SIMPLE_SCALAR_EXPRESSION_RE.test(normalized)) {
     return true
   }
@@ -237,6 +255,106 @@ function isDefinitelyScalarFormulaShape(formula: string): boolean {
     return true
   }
   return !normalized.includes(':') && SCALAR_ONLY_FUNCTION_MARKERS.some((marker) => normalized.includes(marker))
+}
+
+function isSimpleScalarExpressionShape(formula: string): boolean {
+  let index = readSimpleScalarOperand(formula, 0)
+  if (index <= 0) {
+    return false
+  }
+  while (index < formula.length) {
+    const operator = formula.charCodeAt(index)
+    if (operator !== 43 && operator !== 45 && operator !== 42 && operator !== 47) {
+      return false
+    }
+    index = readSimpleScalarOperand(formula, index + 1)
+    if (index <= 0) {
+      return false
+    }
+  }
+  return true
+}
+
+function readSimpleScalarOperand(formula: string, start: number): number {
+  const numberEnd = readSimpleScalarNumber(formula, start)
+  if (numberEnd > start) {
+    return numberEnd
+  }
+  return readSimpleScalarCellRef(formula, start)
+}
+
+function readSimpleScalarNumber(formula: string, start: number): number {
+  let index = start
+  while (index < formula.length && isAsciiDigit(formula.charCodeAt(index))) {
+    index += 1
+  }
+  if (index < formula.length && formula.charCodeAt(index) === 46) {
+    const fractionStart = index + 1
+    index = fractionStart
+    while (index < formula.length && isAsciiDigit(formula.charCodeAt(index))) {
+      index += 1
+    }
+    return index === fractionStart ? start : index
+  }
+  return index
+}
+
+function readSimpleScalarCellRef(formula: string, start: number): number {
+  let index = start
+  if (formula.charCodeAt(index) === 36) {
+    index += 1
+  }
+  const columnStart = index
+  while (index < formula.length && isAsciiUpperAlpha(formula.charCodeAt(index))) {
+    index += 1
+  }
+  if (index === columnStart) {
+    return start
+  }
+  if (formula.charCodeAt(index) === 36) {
+    index += 1
+  }
+  const rowStart = index
+  while (index < formula.length && isAsciiDigit(formula.charCodeAt(index))) {
+    index += 1
+  }
+  return index === rowStart ? start : index
+}
+
+function isScalarRangeFunctionShape(formula: string): boolean {
+  const openIndex = formula.indexOf('(')
+  if (openIndex <= 0) {
+    return false
+  }
+  const callee = stripExcelFunctionPrefix(formula.slice(0, openIndex))
+  if (!SCALAR_RANGE_FUNCTION_NAMES.has(callee)) {
+    return false
+  }
+  const closeIndex = formula.lastIndexOf(')')
+  if (closeIndex <= openIndex) {
+    return false
+  }
+  return closeIndex === formula.length - 1 || isScalarNumericOffset(formula, closeIndex + 1)
+}
+
+function stripExcelFunctionPrefix(callee: string): string {
+  let result = callee
+  if (result.startsWith('_XLFN.')) {
+    result = result.slice(6)
+  }
+  if (result.startsWith('_XLWS.')) {
+    result = result.slice(6)
+  }
+  return result
+}
+
+function isScalarNumericOffset(formula: string, start: number): boolean {
+  const operator = formula.charCodeAt(start)
+  if (operator !== 43 && operator !== 45 && operator !== 42 && operator !== 47) {
+    return false
+  }
+  const end = readSimpleScalarNumber(formula, start + 1)
+  return end === formula.length
 }
 
 function normalizeScalarFormulaShape(formula: string): string {
@@ -251,6 +369,14 @@ function normalizeScalarFormulaShape(formula: string): string {
 
 function isScalarFormulaWhitespace(charCode: number): boolean {
   return charCode === 32 || charCode === 9 || charCode === 10 || charCode === 11 || charCode === 12 || charCode === 13
+}
+
+function isAsciiDigit(charCode: number): boolean {
+  return charCode >= 48 && charCode <= 57
+}
+
+function isAsciiUpperAlpha(charCode: number): boolean {
+  return charCode >= 65 && charCode <= 90
 }
 
 function stripFormulaPrefix(value: string): string {
