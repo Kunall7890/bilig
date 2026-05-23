@@ -139,6 +139,101 @@ describe('data validation roundtrip', () => {
 
     expect(() => engine.importSnapshot(imported.snapshot)).not.toThrow()
   })
+
+  it('keeps engine table-sort validations anchored across XLSX export and reimport', async () => {
+    const engine = new SpreadsheetEngine({ workbookName: 'table-sort-validation-roundtrip' })
+    await engine.ready()
+    engine.importSnapshot({
+      version: 1,
+      workbook: {
+        name: 'Table sort validation roundtrip',
+        metadata: {
+          tables: [
+            {
+              name: 'Sales',
+              sheetName: 'Ledger',
+              startAddress: 'A1',
+              endAddress: 'D6',
+              columnNames: ['Region', 'Amount', 'Invoice', 'Double'],
+              columns: [{ name: 'Region' }, { name: 'Amount' }, { name: 'Invoice' }, { name: 'Double' }],
+              headerRow: true,
+              totalsRow: false,
+            },
+          ],
+        },
+      },
+      sheets: [
+        {
+          id: 1,
+          name: 'Ledger',
+          order: 0,
+          metadata: {
+            validations: [
+              {
+                range: { sheetName: 'Ledger', startAddress: 'B6', endAddress: 'B6' },
+                rule: { kind: 'whole', operator: 'greaterThan', values: [0] },
+              },
+            ],
+          },
+          cells: [
+            { address: 'A1', value: 'Region' },
+            { address: 'B1', value: 'Amount' },
+            { address: 'C1', value: 'Invoice' },
+            { address: 'D1', value: 'Double' },
+            { address: 'A2', value: 'East' },
+            { address: 'B2', value: 10 },
+            { address: 'C2', value: 'invoice-001' },
+            { address: 'D2', formula: 'B2*2', value: 20 },
+            { address: 'A3', value: 'West' },
+            { address: 'B3', value: 40 },
+            { address: 'C3', value: 'invoice-002' },
+            { address: 'D3', formula: 'B3*2', value: 80 },
+            { address: 'A4', value: 'East' },
+            { address: 'B4', value: 30 },
+            { address: 'C4', value: 'invoice-003' },
+            { address: 'D4', formula: 'B4*2', value: 60 },
+            { address: 'A5', value: 'West' },
+            { address: 'B5', value: 20 },
+            { address: 'C5', value: 'invoice-004' },
+            { address: 'D5', formula: 'B5*2', value: 40 },
+            { address: 'A6', value: 'East' },
+            { address: 'B6', value: 50 },
+            { address: 'C6', value: 'invoice-005' },
+            { address: 'D6', formula: 'B6*2', value: 100 },
+          ],
+        },
+      ],
+    })
+
+    expect(engine.sortTable('Ledger', 'Sales', [{ keyAddress: 'B1', direction: 'desc' }])).toBe(true)
+    expect(engine.getDataValidation('Ledger', { sheetName: 'Ledger', startAddress: 'B6', endAddress: 'B6' })).toMatchObject({
+      rule: { kind: 'whole', operator: 'greaterThan', values: [0] },
+    })
+
+    const exported = exportXlsx(engine.exportSnapshot())
+    expect(readDataValidations(exported)).toEqual([
+      {
+        type: 'whole',
+        sqref: 'B6',
+        promptTitle: null,
+        prompt: null,
+        formula1: '0',
+        formula2: '',
+      },
+    ])
+
+    const imported = importXlsx(exported, 'table-sort-validation-roundtrip.xlsx')
+    expect(imported.warnings).toEqual([])
+    expect(imported.snapshot.workbook.metadata?.tables?.[0]?.sortState).toBe(
+      '<sortState ref="A2:D6"><sortCondition descending="1" ref="B2:B6"/></sortState>',
+    )
+    expect(imported.snapshot.sheets[0]?.metadata?.validations).toEqual([
+      {
+        range: { sheetName: 'Ledger', startAddress: 'B6', endAddress: 'B6' },
+        rule: { kind: 'whole', operator: 'greaterThan', values: [0] },
+      },
+    ])
+  })
 })
 
 function buildDataValidationWorkbookBytes(): Uint8Array {

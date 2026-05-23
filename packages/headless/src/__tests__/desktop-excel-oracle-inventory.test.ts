@@ -1,0 +1,76 @@
+import { readdirSync, readFileSync } from 'node:fs'
+import { dirname, join } from 'node:path'
+import { fileURLToPath } from 'node:url'
+
+import { describe, expect, it } from 'vitest'
+
+const testDir = dirname(fileURLToPath(import.meta.url))
+const repoRoot = join(testDir, '..', '..', '..', '..')
+
+interface PackageManifest {
+  readonly scripts?: Record<string, string>
+}
+
+const existingDesktopExcelOracleFiles = [
+  'macos-desktop-excel-array-formula-structural-oracle.test.ts',
+  'macos-desktop-excel-data-table-structural-oracle.test.ts',
+  'macos-desktop-excel-defined-name-structural-oracle.test.ts',
+  'macos-desktop-excel-external-link-cache.test.ts',
+  'macos-desktop-excel-sort-oracle.test.ts',
+  'macos-desktop-excel-structured-reference-syntax.test.ts',
+  'macos-desktop-excel-table-header-canonicalization.test.ts',
+  'macos-desktop-excel-xlsx-oracle.test.ts',
+] as const
+
+describe('macOS Desktop Excel oracle inventory', () => {
+  it('keeps high-value Desktop Excel oracle files under package ownership', () => {
+    const present = new Set(readdirSync(testDir).filter((fileName) => /^macos-desktop-excel-.*\.test\.ts$/u.test(fileName)))
+
+    for (const fileName of existingDesktopExcelOracleFiles) {
+      expect(present.has(fileName), `${fileName} must stay package-owned under packages/headless/src/__tests__`).toBe(true)
+    }
+  })
+
+  it('keeps the sort oracle anchored to live Desktop Excel table sort semantics', () => {
+    const source = readFileSync(join(testDir, 'macos-desktop-excel-sort-oracle.test.ts'), 'utf8')
+
+    expect(source).toContain("BILIG_EXCEL_ORACLE_RUN === '1'")
+    expect(source).toContain('runMacosExcelStructuralOperationOracle')
+    expect(source).toContain("kind: 'applyTableSort'")
+    expect(source).toContain('headless.sortTable')
+    expect(source).toContain('matches Desktop Excel table-body sort row-bundle semantics')
+  })
+
+  it('keeps the sort oracle in both package and corpus gates', () => {
+    const headlessPackageJson = readPackageManifest(join(repoRoot, 'packages/headless/package.json'))
+    const rootPackageJson = readPackageManifest(join(repoRoot, 'package.json'))
+
+    expect(headlessPackageJson.scripts?.['test:excel-oracle']).toContain('src/__tests__/desktop-excel-oracle-inventory.test.ts')
+    expect(headlessPackageJson.scripts?.['test:excel-oracle']).toContain('src/__tests__/macos-desktop-excel-*.test.ts')
+    expect(headlessPackageJson.scripts?.['test:excel-oracle:live']).toContain('src/__tests__/desktop-excel-oracle-inventory.test.ts')
+    expect(headlessPackageJson.scripts?.['test:excel-oracle:live']).toContain('src/__tests__/macos-desktop-excel-*.test.ts')
+    expect(rootPackageJson.scripts?.['test:correctness:corpus']).toContain(
+      'packages/headless/src/__tests__/desktop-excel-oracle-inventory.test.ts',
+    )
+    for (const fileName of existingDesktopExcelOracleFiles) {
+      expect(rootPackageJson.scripts?.['test:correctness:corpus']).toContain(`packages/headless/src/__tests__/${fileName}`)
+    }
+  })
+})
+
+function readPackageManifest(path: string): PackageManifest {
+  const parsed: unknown = JSON.parse(readFileSync(path, 'utf8'))
+  if (!isRecord(parsed)) {
+    return {}
+  }
+  const scripts = parsed['scripts']
+  return isRecord(scripts) ? { scripts: stringRecord(scripts) } : {}
+}
+
+function stringRecord(record: Record<string, unknown>): Record<string, string> {
+  return Object.fromEntries(Object.entries(record).filter((entry): entry is [string, string] => typeof entry[1] === 'string'))
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null
+}

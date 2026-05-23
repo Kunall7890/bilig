@@ -94,7 +94,10 @@ describe('macOS Desktop Excel sort oracle', () => {
           endAddress: 'D6',
           totalsRow: false,
         })
-        expect(excelTruth.snapshot.workbook.metadata?.tables?.[0]?.sortState).toContain('<sortState')
+        const excelSortState = excelTruth.snapshot.workbook.metadata?.tables?.[0]?.sortState
+        expect(excelSortState).toContain('ref="A2:D6"')
+        expect(excelSortState).toContain('descending="1"')
+        expect(excelSortState).toContain('ref="B2:B6"')
         expect(excelTruth.snapshot.sheets[0]?.metadata?.commentThreads?.[0]).toMatchObject({
           address: 'C2',
           comments: [{ body: 'Approved largest invoice' }],
@@ -144,6 +147,12 @@ describe('macOS Desktop Excel sort oracle', () => {
         const headlessExcelTruth = importXlsx(new Uint8Array(readFileSync(headlessWorkbookPath)), 'headless-table-sort-oracle.xlsx')
         expect(snapshotFormulas(headlessExcelTruth.snapshot)).toEqual(expectedSortedFormulas)
         expect(headlessExcelTruth.snapshot.workbook.metadata?.tables?.[0]?.sortState).toContain('<sortState')
+        expect(headlessExcelTruth.snapshot.sheets[0]?.metadata?.validations).toEqual([
+          {
+            range: { sheetName: 'Ledger', startAddress: 'B6', endAddress: 'B6' },
+            rule: { kind: 'whole', operator: 'greaterThan', values: [0] },
+          },
+        ])
         expect(headlessExcelTruth.snapshot.sheets[0]?.metadata?.commentThreads?.[0]).toMatchObject({
           address: 'C2',
           comments: [{ body: 'Approved largest invoice' }],

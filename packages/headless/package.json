@@ -83,8 +83,8 @@
   },
   "scripts": {
     "build": "pnpm --dir ../.. --filter @bilig/excel-import build && rm -rf dist tsconfig.tsbuildinfo && tsc -p tsconfig.json && bun ../../scripts/build-headless-xlsx-subpath.ts",
-    "test:excel-oracle": "vitest run --root ../.. src/__tests__/macos-desktop-excel-*.test.ts --maxWorkers=1",
-    "test:excel-oracle:live": "BILIG_EXCEL_ORACLE_RUN=1 vitest run --root ../.. src/__tests__/macos-desktop-excel-*.test.ts --maxWorkers=1"
+    "test:excel-oracle": "vitest run --root ../.. src/__tests__/desktop-excel-oracle-inventory.test.ts src/__tests__/macos-desktop-excel-*.test.ts --maxWorkers=1",
+    "test:excel-oracle:live": "BILIG_EXCEL_ORACLE_RUN=1 vitest run --root ../.. src/__tests__/desktop-excel-oracle-inventory.test.ts src/__tests__/macos-desktop-excel-*.test.ts --maxWorkers=1"
   },
   "dependencies": {
     "@bilig/core": "workspace:*",
