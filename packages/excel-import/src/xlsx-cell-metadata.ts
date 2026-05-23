@@ -3,6 +3,7 @@ import { strToU8, unzipSync, zipSync } from 'fflate'
 import type { WorkbookCellMetadataReferenceSnapshot, WorkbookCellMetadataSnapshot, WorkbookSnapshot } from '@bilig/protocol'
 import { decodeA1CellRef, decodeA1RangeRef, encodeA1CellRef, encodeA1RangeRef, type A1RangeRef } from './xlsx-a1-utils.js'
 import { getZipText, normalizeZipPath, readXlsxZipEntries, type XlsxZipEntries, type XlsxZipSource } from './xlsx-zip.js'
+import { workbookSheetPathEntriesFromSource } from './xlsx-workbook-sheet-paths.js'
 
 interface ParsedRelationship {
   readonly id: string
@@ -151,10 +152,10 @@ export function readImportedWorkbookCellMetadata(source: XlsxZipSource, sheetNam
   const zip = readXlsxZipEntries(source)
   const refsBySheet = new Map<string, readonly ImportedCellMetadataReference[]>()
 
-  sheetNames.forEach((sheetName, sheetIndex) => {
-    const refs = readWorksheetCellMetadataRefs(getZipText(zip, `xl/worksheets/sheet${String(sheetIndex + 1)}.xml`))
+  workbookSheetPathEntriesFromSource(zip, sheetNames).forEach((sheet) => {
+    const refs = readWorksheetCellMetadataRefs(getZipText(zip, sheet.path))
     if (refs.length > 0) {
-      refsBySheet.set(sheetName, refs)
+      refsBySheet.set(sheet.name, refs)
     }
   })
 

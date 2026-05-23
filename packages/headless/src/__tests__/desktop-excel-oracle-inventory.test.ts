@@ -30,6 +30,7 @@ const existingDesktopExcelOracleFiles = [
   'macos-desktop-excel-pivot-oracle.test.ts',
   'macos-desktop-excel-print-page-setup-oracle.test.ts',
   'macos-desktop-excel-rich-text-oracle.test.ts',
+  'macos-desktop-excel-sheet-move-metadata-topology-oracle.test.ts',
   'macos-desktop-excel-sheet-properties-oracle.test.ts',
   'macos-desktop-excel-sort-oracle.test.ts',
   'macos-desktop-excel-sparklines-oracle.test.ts',
@@ -204,6 +205,18 @@ describe('macOS Desktop Excel oracle inventory', () => {
     expect(source).toContain('moveSheet')
     expect(source).toContain('xl/calcChain.xml')
     expect(source).toContain('matches Desktop Excel calc-chain sheet ids after moving a sheet tab')
+  })
+
+  it('keeps the sheet-move metadata topology oracle anchored to Desktop Excel worksheet ownership', () => {
+    const source = readFileSync(join(testDir, 'macos-desktop-excel-sheet-move-metadata-topology-oracle.test.ts'), 'utf8')
+
+    expect(source).toContain("BILIG_EXCEL_ORACLE_RUN === '1'")
+    expect(source).toContain('runMacosExcelStructuralOperationOracle')
+    expect(source).toContain('runMacosExcelInspectionOracle')
+    expect(source).toContain('WorkPaper.buildFromSnapshot')
+    expect(source).toContain('moveSheet')
+    expect(source).toContain('metadataCodeNames')
+    expect(source).toContain('matches Desktop Excel worksheet metadata ownership after moving a sheet tab')
   })
 
   it('keeps the rich text oracle anchored to Desktop Excel cell run preservation', () => {

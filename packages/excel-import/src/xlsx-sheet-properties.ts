@@ -2,6 +2,7 @@ import { strToU8, unzipSync, zipSync } from 'fflate'
 
 import type { WorkbookSheetPrSnapshot, WorkbookSnapshot } from '@bilig/protocol'
 import { getZipText, normalizeZipPath, readXlsxZipEntries, type XlsxZipEntries, type XlsxZipSource } from './xlsx-zip.js'
+import { workbookSheetPathEntriesFromSource } from './xlsx-workbook-sheet-paths.js'
 
 function setZipText(zip: XlsxZipEntries, path: string, text: string): void {
   zip[normalizeZipPath(path)] = strToU8(text)
@@ -32,8 +33,8 @@ export function readImportedWorkbookSheetProperties(
   const zip = readXlsxZipEntries(source)
   const propertiesBySheet = new Map<string, WorkbookSheetPrSnapshot>()
 
-  sheetNames.forEach((sheetName, sheetIndex) => {
-    const sheetXml = getZipText(zip, `xl/worksheets/sheet${String(sheetIndex + 1)}.xml`)
+  workbookSheetPathEntriesFromSource(zip, sheetNames).forEach((sheet) => {
+    const sheetXml = getZipText(zip, sheet.path)
     if (!sheetXml) {
       return
     }
@@ -43,7 +44,7 @@ export function readImportedWorkbookSheetProperties(
     }
     const preserved = removeTabColor(sheetPrXml)
     if (hasPreservedSheetPrPayload(preserved)) {
-      propertiesBySheet.set(sheetName, { xml: preserved })
+      propertiesBySheet.set(sheet.name, { xml: preserved })
     }
   })
 

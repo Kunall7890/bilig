@@ -2,6 +2,7 @@ import { strToU8, unzipSync, zipSync } from 'fflate'
 
 import type { WorkbookIgnoredErrorsSnapshot, WorkbookSnapshot } from '@bilig/protocol'
 import { getZipText, normalizeZipPath, readXlsxZipEntries, type XlsxZipSource } from './xlsx-zip.js'
+import { workbookSheetPathEntriesFromSource } from './xlsx-workbook-sheet-paths.js'
 
 const ignoredErrorsElementPattern = /<(?:[A-Za-z_][\w.-]*:)?ignoredErrors\b[^>]*(?:\/>|>[\s\S]*?<\/(?:[A-Za-z_][\w.-]*:)?ignoredErrors>)/gu
 
@@ -92,14 +93,14 @@ export function readImportedWorkbookIgnoredErrors(
   const zip = readXlsxZipEntries(source)
   const ignoredErrorsBySheet = new Map<string, WorkbookIgnoredErrorsSnapshot>()
 
-  sheetNames.forEach((sheetName, sheetIndex) => {
-    const sheetXml = getZipText(zip, `xl/worksheets/sheet${String(sheetIndex + 1)}.xml`)
+  workbookSheetPathEntriesFromSource(zip, sheetNames).forEach((sheet) => {
+    const sheetXml = getZipText(zip, sheet.path)
     if (!sheetXml || !/<(?:[A-Za-z_][\w.-]*:)?ignoredErrors\b/u.test(sheetXml)) {
       return
     }
     const ignoredErrorsXml = readIgnoredErrorsXml(sheetXml)
     if (ignoredErrorsXml) {
-      ignoredErrorsBySheet.set(sheetName, { xml: ignoredErrorsXml })
+      ignoredErrorsBySheet.set(sheet.name, { xml: ignoredErrorsXml })
     }
   })
 

@@ -21,6 +21,7 @@ import {
 } from './xlsx-pivot-artifacts.js'
 import { addMissingCellsToSheetXml } from './xlsx-cell-insertion.js'
 import { encodeFormulaForXlsx } from './xlsx-formula-translation.js'
+import { workbookSheetPathEntriesFromSource } from './xlsx-workbook-sheet-paths.js'
 
 const cellElementPattern = /<c\b(?<attributes>[^>]*)>(?<body>[\s\S]*?)<\/c>/gu
 const formulaElementPattern = /<f\b[^>]*(?:\/>|>[\s\S]*?<\/f>)/u
@@ -226,10 +227,10 @@ export function readImportedWorkbookArrayFormulas(
 ): Map<string, WorkbookSheetArrayFormulasSnapshot> {
   const zip = readXlsxZipEntries(source)
   const formulasBySheet = new Map<string, WorkbookSheetArrayFormulasSnapshot>()
-  sheetNames.forEach((sheetName, sheetIndex) => {
-    const formulas = readArrayFormulaSnapshots(getZipText(zip, `xl/worksheets/sheet${String(sheetIndex + 1)}.xml`))
+  workbookSheetPathEntriesFromSource(zip, sheetNames).forEach((sheet) => {
+    const formulas = readArrayFormulaSnapshots(getZipText(zip, sheet.path))
     if (formulas.length > 0) {
-      formulasBySheet.set(sheetName, { formulas })
+      formulasBySheet.set(sheet.name, { formulas })
     }
   })
   return formulasBySheet

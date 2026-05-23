@@ -4,6 +4,7 @@ import * as XLSX from 'xlsx'
 import type { WorkbookSheetDataTableFormulasSnapshot, WorkbookSheetDataTableFormulaSnapshot, WorkbookSnapshot } from '@bilig/protocol'
 import { getZipText, normalizeZipPath, readXlsxZipEntries, type XlsxZipEntries, type XlsxZipSource } from './xlsx-zip.js'
 import { escapeXml, setZipText } from './xlsx-pivot-artifacts.js'
+import { workbookSheetPathEntriesFromSource } from './xlsx-workbook-sheet-paths.js'
 
 const cellElementPattern = /<c\b(?<attributes>[^>]*)>(?<body>[\s\S]*?)<\/c>/gu
 const formulaElementPattern = /<f\b[^>]*(?:\/>|>[\s\S]*?<\/f>)/u
@@ -263,10 +264,10 @@ export function readImportedWorkbookDataTableFormulas(
 ): Map<string, WorkbookSheetDataTableFormulasSnapshot> {
   const zip = readXlsxZipEntries(source)
   const formulasBySheet = new Map<string, WorkbookSheetDataTableFormulasSnapshot>()
-  sheetNames.forEach((sheetName, sheetIndex) => {
-    const formulas = readDataTableFormulaSnapshots(getZipText(zip, `xl/worksheets/sheet${String(sheetIndex + 1)}.xml`))
+  workbookSheetPathEntriesFromSource(zip, sheetNames).forEach((sheet) => {
+    const formulas = readDataTableFormulaSnapshots(getZipText(zip, sheet.path))
     if (formulas.length > 0) {
-      formulasBySheet.set(sheetName, { formulas })
+      formulasBySheet.set(sheet.name, { formulas })
     }
   })
   return formulasBySheet

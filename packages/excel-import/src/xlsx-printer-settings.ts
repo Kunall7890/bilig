@@ -2,6 +2,7 @@ import { strToU8, unzipSync, zipSync } from 'fflate'
 
 import type { WorkbookPrinterSettingsSnapshot, WorkbookSnapshot } from '@bilig/protocol'
 import { getZipText, normalizeZipPath, readXlsxZipEntries, type XlsxZipEntries, type XlsxZipSource } from './xlsx-zip.js'
+import { workbookSheetPathEntriesFromSource } from './xlsx-workbook-sheet-paths.js'
 
 interface ParsedRelationship {
   readonly id: string
@@ -137,6 +138,13 @@ function readSheetRelationshipPath(sheetIndex: number): string {
   return `xl/worksheets/_rels/sheet${String(sheetIndex + 1)}.xml.rels`
 }
 
+function relationshipPathForPart(partPath: string): string {
+  const normalizedPath = normalizeZipPath(partPath)
+  const directory = normalizedPath.slice(0, normalizedPath.lastIndexOf('/'))
+  const fileName = normalizedPath.slice(normalizedPath.lastIndexOf('/') + 1)
+  return `${directory}/_rels/${fileName}.rels`
+}
+
 function readPageSetupXml(sheetXml: string | null, relationshipId: string): string | undefined {
   if (!sheetXml) {
     return undefined
@@ -156,10 +164,10 @@ export function readImportedWorkbookPrinterSettings(
   const zip = readXlsxZipEntries(source)
   const printerSettingsBySheet = new Map<string, WorkbookPrinterSettingsSnapshot[]>()
 
-  sheetNames.forEach((sheetName, sheetIndex) => {
-    const sheetPath = `xl/worksheets/sheet${String(sheetIndex + 1)}.xml`
+  workbookSheetPathEntriesFromSource(zip, sheetNames).forEach((sheet) => {
+    const sheetPath = sheet.path
     const sheetXml = getZipText(zip, sheetPath)
-    const relationships = parseRelationships(getZipText(zip, readSheetRelationshipPath(sheetIndex))).filter(
+    const relationships = parseRelationships(getZipText(zip, relationshipPathForPart(sheetPath))).filter(
       (entry) => entry.type === printerSettingsRelationshipType,
     )
     const settings = relationships.flatMap((relationship): WorkbookPrinterSettingsSnapshot[] => {
@@ -180,7 +188,7 @@ export function readImportedWorkbookPrinterSettings(
       ]
     })
     if (settings.length > 0) {
-      printerSettingsBySheet.set(sheetName, settings)
+      printerSettingsBySheet.set(sheet.name, settings)
     }
   })
 

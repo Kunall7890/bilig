@@ -3,6 +3,7 @@ import { XMLParser } from 'fast-xml-parser'
 
 import type { WorkbookSheetTabColorSnapshot, WorkbookSnapshot } from '@bilig/protocol'
 import { readXlsxZipEntries, type XlsxZipSource } from './xlsx-zip.js'
+import { workbookSheetPathEntriesFromSource } from './xlsx-workbook-sheet-paths.js'
 
 type ZipEntries = Record<string, Uint8Array>
 
@@ -174,8 +175,8 @@ export function readImportedWorkbookSheetTabColors(
   const zip = readXlsxZipEntries(source)
   const tabColorsBySheet = new Map<string, WorkbookSheetTabColorSnapshot>()
 
-  sheetNames.forEach((sheetName, sheetIndex) => {
-    const sheetXml = getZipText(zip, `xl/worksheets/sheet${String(sheetIndex + 1)}.xml`)
+  workbookSheetPathEntriesFromSource(zip, sheetNames).forEach((sheet) => {
+    const sheetXml = getZipText(zip, sheet.path)
     if (!sheetXml || !/<tabColor\b/u.test(sheetXml)) {
       return
     }
@@ -186,7 +187,7 @@ export function readImportedWorkbookSheetTabColors(
     }
     const snapshot = tabColorFromRecord(tabColor)
     if (snapshot) {
-      tabColorsBySheet.set(sheetName, snapshot)
+      tabColorsBySheet.set(sheet.name, snapshot)
     }
   })
 

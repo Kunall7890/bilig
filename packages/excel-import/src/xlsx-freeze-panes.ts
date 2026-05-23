@@ -4,6 +4,7 @@ import * as XLSX from 'xlsx'
 
 import type { WorkbookFreezePaneActivePane, WorkbookFreezePaneSnapshot, WorkbookSnapshot } from '@bilig/protocol'
 import { readXlsxZipEntries, type XlsxZipSource } from './xlsx-zip.js'
+import { workbookSheetPathEntriesFromSource } from './xlsx-workbook-sheet-paths.js'
 
 type ZipEntries = Record<string, Uint8Array>
 
@@ -234,8 +235,8 @@ export function readImportedWorkbookFreezePanes(
   const zip = readXlsxZipEntries(source)
   const freezePanesBySheet = new Map<string, WorkbookFreezePaneSnapshot>()
 
-  sheetNames.forEach((sheetName, sheetIndex) => {
-    const sheetXml = getZipText(zip, `xl/worksheets/sheet${String(sheetIndex + 1)}.xml`)
+  workbookSheetPathEntriesFromSource(zip, sheetNames).forEach((sheet) => {
+    const sheetXml = getZipText(zip, sheet.path)
     if (!sheetXml || !/<pane\b/u.test(sheetXml)) {
       return
     }
@@ -248,7 +249,7 @@ export function readImportedWorkbookFreezePanes(
     }
     const freezePane = parseFreezePane(pane)
     if (freezePane) {
-      freezePanesBySheet.set(sheetName, freezePane)
+      freezePanesBySheet.set(sheet.name, freezePane)
     }
   })
 
