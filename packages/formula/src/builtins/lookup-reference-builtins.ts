@@ -32,6 +32,10 @@ function coerceLookupReturnValue(value: CellValue, deps: LookupReferenceBuiltinD
   return value.tag === ValueTag.Empty ? deps.numberResult(0) : value
 }
 
+function isBlankLookupKey(value: CellValue): boolean {
+  return value.tag === ValueTag.Empty
+}
+
 interface XlookupReturnShape {
   rows: number
   cols: number
@@ -265,9 +269,10 @@ export function createLookupReferenceBuiltins(deps: LookupReferenceBuiltinDeps):
 
       let matchedRow = -1
       for (let row = 0; row < tableArray.rows; row += 1) {
-        const comparison = deps.compareScalars(deps.getRangeValue(tableArray, row, 0), lookupValue)
+        const lookupKey = deps.getRangeValue(tableArray, row, 0)
+        const comparison = deps.compareScalars(lookupKey, lookupValue)
         if (comparison === undefined) {
-          if (!rangeLookup) {
+          if (!rangeLookup || isBlankLookupKey(lookupKey)) {
             continue
           }
           return deps.errorValue(ErrorCode.Value)
@@ -321,9 +326,10 @@ export function createLookupReferenceBuiltins(deps: LookupReferenceBuiltinDeps):
 
       let matchedCol = -1
       for (let col = 0; col < tableArray.cols; col += 1) {
-        const comparison = deps.compareScalars(deps.getRangeValue(tableArray, 0, col), lookupValue)
+        const lookupKey = deps.getRangeValue(tableArray, 0, col)
+        const comparison = deps.compareScalars(lookupKey, lookupValue)
         if (comparison === undefined) {
-          if (!rangeLookup) {
+          if (!rangeLookup || isBlankLookupKey(lookupKey)) {
             continue
           }
           return deps.errorValue(ErrorCode.Value)

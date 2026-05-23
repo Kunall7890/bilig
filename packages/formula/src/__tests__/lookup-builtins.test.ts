@@ -459,6 +459,52 @@ describe('lookup builtins', () => {
     expect(HLOOKUP(text('b'), cellRange([num(1), text('b'), text('ignored'), num(20)], 2, 2), num(2), bool(false))).toEqual(num(20))
   })
 
+  it('skips blank keys during approximate VLOOKUP and HLOOKUP scans', () => {
+    const VLOOKUP = getLookupBuiltin('VLOOKUP')!
+    const HLOOKUP = getLookupBuiltin('HLOOKUP')!
+
+    expect(
+      VLOOKUP(
+        text('United States of America'),
+        cellRange(
+          [
+            text('Country'),
+            num(0),
+            { tag: ValueTag.Empty },
+            num(0),
+            text('United States of America'),
+            num(0.0446),
+            text('Zimbabwe'),
+            num(0.1589),
+          ],
+          4,
+          2,
+        ),
+        num(2),
+      ),
+    ).toEqual(num(0.0446))
+    expect(
+      HLOOKUP(
+        text('United States of America'),
+        cellRange(
+          [
+            text('Country'),
+            { tag: ValueTag.Empty },
+            text('United States of America'),
+            text('Zimbabwe'),
+            num(0),
+            num(0),
+            num(0.0446),
+            num(0.1589),
+          ],
+          2,
+          4,
+        ),
+        num(2),
+      ),
+    ).toEqual(num(0.0446))
+  })
+
   it('coerces blank lookup return cells to zero', () => {
     const LOOKUP = getLookupBuiltin('LOOKUP')!
     const VLOOKUP = getLookupBuiltin('VLOOKUP')!
