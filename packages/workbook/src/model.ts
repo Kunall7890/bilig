@@ -4,6 +4,7 @@ import { collectWorkbookRefs, createWorkbookFindApi, type WorkbookFindApi, type 
 import { createWorkbookCheckApi, type WorkbookCheckApi } from './check.js'
 import {
   checkInput,
+  WorkbookActionInputError,
   normalizeOptionalWorkbookActionInput,
   normalizeWorkbookActionInput,
   normalizeWorkbookActionInputDescription,
@@ -580,6 +581,15 @@ function actionInputError(issue: WorkbookActionInputIssue): WorkbookRunError {
   }
 }
 
+function invalidActionInputError(error: unknown): WorkbookRunError {
+  return {
+    code: 'invalid_action_input',
+    message: errorMessage(error),
+    path: error instanceof WorkbookActionInputError ? error.path : 'input',
+    issueCode: 'invalid_action_input',
+  }
+}
+
 function createActionPlan<Refs>(
   modelName: string,
   actionName: string,
@@ -626,7 +636,13 @@ export function planWorkbookAction<Refs, Actions extends WorkbookActionMap<Refs>
   try {
     normalizedInput = normalizeOptionalWorkbookActionInput(input)
   } catch (error) {
-    return failedPlan<Refs>(model.name, actionName, 'invalid_action_input', errorMessage(error))
+    return {
+      status: 'failed',
+      modelName: model.name,
+      actionName,
+      checks: [],
+      errors: [invalidActionInputError(error)],
+    }
   }
 
   const actionDefinition = model.actions[actionName]

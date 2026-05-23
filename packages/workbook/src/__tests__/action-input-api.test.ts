@@ -95,6 +95,24 @@ describe('@bilig/workbook action input api', () => {
         },
       ],
     })
+
+    expect(
+      checkInput(
+        { kind: 'json' },
+        {
+          tags: ['ready', Number.NaN],
+        },
+      ),
+    ).toEqual({
+      status: 'invalid',
+      issues: [
+        {
+          code: 'invalid_action_input',
+          path: 'input.tags[1]',
+          message: 'Action input at input.tags[1] must be a finite number',
+        },
+      ],
+    })
   })
 
   it('uses top-level required metadata for omitted action inputs', () => {
@@ -290,6 +308,8 @@ describe('@bilig/workbook action input api', () => {
         {
           code: 'invalid_action_input',
           message: 'Action input at input.value must be a finite number',
+          path: 'input.value',
+          issueCode: 'invalid_action_input',
         },
       ],
     })
@@ -304,6 +324,8 @@ describe('@bilig/workbook action input api', () => {
         {
           code: 'invalid_action_input',
           message: 'Action input at input[1] must not be a sparse array hole',
+          path: 'input[1]',
+          issueCode: 'invalid_action_input',
         },
       ],
     })
@@ -468,7 +490,7 @@ describe('@bilig/workbook action input api', () => {
       issues: [
         {
           code: 'invalid_action_input',
-          path: 'input',
+          path: 'input.value',
           message: 'Action input at input.value must be a plain JSON object, not Date',
         },
       ],

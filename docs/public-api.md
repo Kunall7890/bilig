@@ -293,7 +293,9 @@ required omissions return `missing_required_input` instead of pretending
 check before `find`, `checks`, or action code when an action declares input
 metadata. Failed action input checks keep the stable input issue `path` and
 `issueCode` on each run error, so agents can branch on structured diagnostics
-without parsing messages. `verifyModel(model, { inputs })` supplies per-action inputs for
+without parsing messages. JSON-safety failures preserve nested paths like
+`input.items[2].amount` instead of collapsing every issue to `input`.
+`verifyModel(model, { inputs })` supplies per-action inputs for
 whole-model verification. The frozen
 `workbookActionInputDescriptionKinds` list plus
 `isWorkbookActionInputDescriptionKind(value)`,

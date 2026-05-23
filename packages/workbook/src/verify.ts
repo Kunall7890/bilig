@@ -19,7 +19,13 @@ import {
   type WorkbookModel,
 } from './model.js'
 import { describeRuntimeRequirements, type WorkbookRuntimeRequirements } from './requirements.js'
-import { getOwnActionInput, hasOwnActionInput, normalizeWorkbookActionInput, type WorkbookActionInput } from './input.js'
+import {
+  getOwnActionInput,
+  hasOwnActionInput,
+  WorkbookActionInputError,
+  normalizeWorkbookActionInput,
+  type WorkbookActionInput,
+} from './input.js'
 import type { WorkbookOp } from './ops.js'
 import type { WorkbookCheckExpectation } from './result.js'
 import { hydratePlanData } from './plan-data.js'
@@ -360,7 +366,7 @@ export function verifyPlan<Refs>(plan: WorkbookActionPlan<Refs>): WorkbookPlanVe
     } catch (error) {
       issues.push({
         code: 'invalid_action_input',
-        path: 'input',
+        path: error instanceof WorkbookActionInputError ? error.path : 'input',
         message: errorMessage(error),
       })
     }

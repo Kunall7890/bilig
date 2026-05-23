@@ -158,6 +158,8 @@ description sets `required: true`, so agents can distinguish an optional payload
 from a malformed payload. `planWorkbookAction` uses the same check when an action
 declares input metadata and preserves each failed input issue as a run error
 with `path` and `issueCode`, so agents can branch without parsing messages.
+JSON-safety failures keep the nested offending path too, such as
+`input.items[2].amount`.
 
 ## Formulas
 

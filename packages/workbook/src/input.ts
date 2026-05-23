@@ -51,10 +51,17 @@ export type WorkbookActionInputCheckResult =
     }
 
 export class WorkbookActionInputError extends Error {
-  constructor(message: string) {
+  readonly path: string
+
+  constructor(message: string, path = 'input') {
     super(message)
     this.name = 'WorkbookActionInputError'
+    this.path = path
   }
+}
+
+function inputError(path: string, message: string): WorkbookActionInputError {
+  return new WorkbookActionInputError(message, path)
 }
 
 function typeName(value: object): string {
@@ -77,7 +84,7 @@ function inputDescriptionKind(value: unknown, path: string): WorkbookActionInput
   if (isWorkbookActionInputDescriptionKind(value)) {
     return value
   }
-  throw new WorkbookActionInputError(`Action input description at ${path}.kind must be a supported kind`)
+  throw inputError(`${path}.kind`, `Action input description at ${path}.kind must be a supported kind`)
 }
 
 export function isWorkbookActionInputDescriptionKind(value: unknown): value is WorkbookActionInputDescriptionKind {
@@ -89,34 +96,35 @@ function normalizeDescriptionText(value: unknown, path: string): string | undefi
     return undefined
   }
   if (typeof value !== 'string') {
-    throw new WorkbookActionInputError(`Action input description at ${path} must be a string`)
+    throw inputError(path, `Action input description at ${path} must be a string`)
   }
   const text = value.trim()
   if (text === '') {
-    throw new WorkbookActionInputError(`Action input description at ${path} cannot be empty`)
+    throw inputError(path, `Action input description at ${path} cannot be empty`)
   }
   return text
 }
 
 function normalizeInputDescription(value: unknown, path: string, seen: WeakSet<object>): WorkbookActionInputDescription {
   if (!isPlainObject(value)) {
-    throw new WorkbookActionInputError(`Action input description at ${path} must be a plain object`)
+    throw inputError(path, `Action input description at ${path} must be a plain object`)
   }
 
   if (seen.has(value)) {
-    throw new WorkbookActionInputError(`Action input description at ${path} must not contain cycles`)
+    throw inputError(path, `Action input description at ${path} must not contain cycles`)
   }
   seen.add(value)
 
   try {
     if (Object.getOwnPropertySymbols(value).length > 0) {
-      throw new WorkbookActionInputError(`Action input description at ${path} must not contain symbol keys`)
+      throw inputError(path, `Action input description at ${path} must not contain symbol keys`)
     }
 
     const allowedKeys = new Set(['kind', 'description', 'required', 'fields', 'items'])
     const unknownKey = Object.keys(value).find((key) => !allowedKeys.has(key))
     if (unknownKey !== undefined) {
-      throw new WorkbookActionInputError(`Action input description at ${childPath(path, unknownKey)} is not supported`)
+      const unknownPath = childPath(path, unknownKey)
+      throw inputError(unknownPath, `Action input description at ${unknownPath} is not supported`)
     }
 
     const kind = inputDescriptionKind(value['kind'], path)
@@ -135,24 +143,24 @@ function normalizeInputDescription(value: unknown, path: string, seen: WeakSet<o
 
     if (value['required'] !== undefined) {
       if (typeof value['required'] !== 'boolean') {
-        throw new WorkbookActionInputError(`Action input description at ${path}.required must be a boolean`)
+        throw inputError(`${path}.required`, `Action input description at ${path}.required must be a boolean`)
       }
       output.required = value['required']
     }
 
     if (value['fields'] !== undefined) {
       if (kind !== 'object') {
-        throw new WorkbookActionInputError(`Action input description at ${path}.fields can only be used when kind is object`)
+        throw inputError(`${path}.fields`, `Action input description at ${path}.fields can only be used when kind is object`)
       }
       if (!isPlainObject(value['fields'])) {
-        throw new WorkbookActionInputError(`Action input description at ${path}.fields must be a plain object`)
+        throw inputError(`${path}.fields`, `Action input description at ${path}.fields must be a plain object`)
       }
       const fields: Record<string, WorkbookActionInputDescription> = {}
       Object.entries(value['fields'])
         .toSorted(([left], [right]) => left.localeCompare(right))
         .forEach(([key, entry]) => {
           if (key.trim() === '') {
-            throw new WorkbookActionInputError(`Action input description at ${path}.fields cannot contain an empty field name`)
+            throw inputError(`${path}.fields`, `Action input description at ${path}.fields cannot contain an empty field name`)
           }
           fields[key] = normalizeInputDescription(entry, childPath(`${path}.fields`, key), seen)
         })
@@ -161,7 +169,7 @@ function normalizeInputDescription(value: unknown, path: string, seen: WeakSet<o
 
     if (value['items'] !== undefined) {
       if (kind !== 'array') {
-        throw new WorkbookActionInputError(`Action input description at ${path}.items can only be used when kind is array`)
+        throw inputError(`${path}.items`, `Action input description at ${path}.items can only be used when kind is array`)
       }
       output.items = normalizeInputDescription(value['items'], `${path}.items`, seen)
     }
@@ -192,25 +200,25 @@ function normalizeInput(value: unknown, path: string, seen: WeakSet<object>): Wo
 
   if (typeof value === 'number') {
     if (!Number.isFinite(value)) {
-      throw new WorkbookActionInputError(`Action input at ${path} must be a finite number`)
+      throw inputError(path, `Action input at ${path} must be a finite number`)
     }
     return value
   }
 
   if (value === undefined) {
-    throw new WorkbookActionInputError(`Action input at ${path} must not be undefined`)
+    throw inputError(path, `Action input at ${path} must not be undefined`)
   }
 
   if (typeof value === 'bigint' || typeof value === 'function' || typeof value === 'symbol') {
-    throw new WorkbookActionInputError(`Action input at ${path} must be JSON-safe, not ${typeof value}`)
+    throw inputError(path, `Action input at ${path} must be JSON-safe, not ${typeof value}`)
   }
 
   if (typeof value !== 'object') {
-    throw new WorkbookActionInputError(`Action input at ${path} must be JSON-safe`)
+    throw inputError(path, `Action input at ${path} must be JSON-safe`)
   }
 
   if (seen.has(value)) {
-    throw new WorkbookActionInputError(`Action input at ${path} must not contain cycles`)
+    throw inputError(path, `Action input at ${path} must not contain cycles`)
   }
   seen.add(value)
 
@@ -219,7 +227,7 @@ function normalizeInput(value: unknown, path: string, seen: WeakSet<object>): Wo
       const output: WorkbookActionInput[] = []
       for (let index = 0; index < value.length; index += 1) {
         if (!Object.hasOwn(value, index)) {
-          throw new WorkbookActionInputError(`Action input at ${path}[${index}] must not be a sparse array hole`)
+          throw inputError(`${path}[${index}]`, `Action input at ${path}[${index}] must not be a sparse array hole`)
         }
         output.push(normalizeInput(value[index], `${path}[${index}]`, seen))
       }
@@ -227,11 +235,11 @@ function normalizeInput(value: unknown, path: string, seen: WeakSet<object>): Wo
     }
 
     if (!isPlainObject(value)) {
-      throw new WorkbookActionInputError(`Action input at ${path} must be a plain JSON object, not ${typeName(value)}`)
+      throw inputError(path, `Action input at ${path} must be a plain JSON object, not ${typeName(value)}`)
     }
 
     if (Object.getOwnPropertySymbols(value).length > 0) {
-      throw new WorkbookActionInputError(`Action input at ${path} must not contain symbol keys`)
+      throw inputError(path, `Action input at ${path} must not contain symbol keys`)
     }
 
     const output: { [key: string]: WorkbookActionInput } = {}
@@ -342,6 +350,10 @@ function errorMessage(error: unknown): string {
   return error instanceof Error ? error.message : String(error)
 }
 
+function errorPath(error: unknown): string {
+  return error instanceof WorkbookActionInputError ? error.path : 'input'
+}
+
 export function checkInput(description: unknown, input: unknown): WorkbookActionInputCheckResult {
   let normalizedDescription: WorkbookActionInputDescription
   try {
@@ -349,7 +361,7 @@ export function checkInput(description: unknown, input: unknown): WorkbookAction
   } catch (error) {
     return {
       status: 'invalid',
-      issues: Object.freeze([inputIssue('invalid_action_input_description', 'input', errorMessage(error))]),
+      issues: Object.freeze([inputIssue('invalid_action_input_description', errorPath(error), errorMessage(error))]),
     }
   }
 
@@ -374,7 +386,7 @@ export function checkInput(description: unknown, input: unknown): WorkbookAction
   } catch (error) {
     return {
       status: 'invalid',
-      issues: Object.freeze([inputIssue('invalid_action_input', 'input', errorMessage(error))]),
+      issues: Object.freeze([inputIssue('invalid_action_input', errorPath(error), errorMessage(error))]),
     }
   }
 
