@@ -107,6 +107,7 @@
     "large-workbook:slo:generate": "bun scripts/gen-large-workbook-slo-scorecard.ts",
     "large-workbook:slo:check": "bun scripts/gen-large-workbook-slo-scorecard.ts --check",
     "ui:same-corpus:capture": "bun scripts/capture-ui-responsiveness-same-corpus.ts",
+    "ui:same-corpus:capture:production": "bun scripts/capture-ui-responsiveness-same-corpus.ts --serve-bilig-production",
     "ui:same-corpus:fixture:generate": "bun scripts/capture-ui-responsiveness-same-corpus.ts --emit-xlsx packages/benchmarks/baselines/ui-same-corpus",
     "ui:same-corpus:fixture:check": "bun scripts/capture-ui-responsiveness-same-corpus.ts --emit-xlsx packages/benchmarks/baselines/ui-same-corpus --check",
     "ui:same-corpus:public-check": "bun scripts/ui-responsiveness-same-corpus-public-access-check.ts",

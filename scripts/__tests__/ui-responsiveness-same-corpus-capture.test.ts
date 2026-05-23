@@ -8,6 +8,7 @@ import { buildWorkbookBenchmarkCorpus } from '../../packages/benchmarks/src/work
 import {
   assertSameCorpusBrowserRunAllowed,
   assertSameCorpusCaptureEvidenceReady,
+  assertProductionBiligEvidenceSource,
   buildSameCorpusFingerprint,
   buildSameCorpusCaptureArtifact,
   collectSameCorpusProductMeasurements,
@@ -55,7 +56,10 @@ describe('same-corpus UI responsiveness capture CLI', () => {
 
     expect(args).toMatchObject({
       allowIncompleteEvidence: false,
+      biligProductionHost: '127.0.0.1',
+      biligProductionPort: 4180,
       biligUrl: 'http://localhost:5173/?benchmarkCorpus=dense-mixed-250k',
+      biligUrlSource: 'default-dev',
       biligStorageStatePath: null,
       corpusId: 'dense-mixed-250k',
       deltaX: 0,
@@ -103,7 +107,10 @@ describe('same-corpus UI responsiveness capture CLI', () => {
 
     expect(args).toMatchObject({
       allowIncompleteEvidence: false,
+      biligProductionHost: '127.0.0.1',
+      biligProductionPort: 4180,
       biligUrl: 'http://127.0.0.1:4173/?benchmarkCorpus=wide-mixed-250k',
+      biligUrlSource: 'explicit',
       deltaX: 1024,
       deltaY: 0,
       headless: false,
@@ -114,6 +121,64 @@ describe('same-corpus UI responsiveness capture CLI', () => {
     expect(args.googleSheetsStorageStatePath?.endsWith('/tmp/google-state.json')).toBe(true)
     expect(args.microsoftExcelWebStorageStatePath?.endsWith('/tmp/microsoft-state.json')).toBe(true)
     expect(args.biligStorageStatePath?.endsWith('/tmp/bilig-state.json')).toBe(true)
+  })
+
+  it('parses production Bilig preview capture options', () => {
+    const args = parseCaptureArgs([
+      '--output',
+      'tmp/ui-capture.json',
+      '--google-sheets-url',
+      'https://docs.google.com/spreadsheets/d/sheet-id/edit',
+      '--serve-bilig-production',
+      '--bilig-production-host',
+      '0.0.0.0',
+      '--bilig-production-port',
+      '4181',
+    ])
+
+    expect(args).toMatchObject({
+      biligProductionHost: '0.0.0.0',
+      biligProductionPort: 4181,
+      biligUrl: 'http://127.0.0.1:4181/?benchmarkCorpus=wide-mixed-250k&persist=0',
+      biligUrlSource: 'served-production',
+    })
+  })
+
+  it('rejects ambiguous Bilig production serving and explicit URL options', () => {
+    expect(() =>
+      parseCaptureArgs([
+        '--output',
+        'tmp/ui-capture.json',
+        '--google-sheets-url',
+        'https://docs.google.com/spreadsheets/d/sheet-id/edit',
+        '--serve-bilig-production',
+        '--bilig-url',
+        'https://example.test',
+      ]),
+    ).toThrow('Use either --serve-bilig-production or --bilig-url, not both.')
+  })
+
+  it('fails fast before dominance captures use the default dev Bilig URL', () => {
+    const args = parseCaptureArgs([
+      '--output',
+      'tmp/ui-capture.json',
+      '--google-sheets-url',
+      'https://docs.google.com/spreadsheets/d/sheet-id/edit',
+    ])
+
+    expect(() => assertProductionBiligEvidenceSource(args)).toThrow(/needs production Bilig runtime proof/u)
+  })
+
+  it('allows explicit diagnostic captures to use the default dev Bilig URL', () => {
+    const args = parseCaptureArgs([
+      '--output',
+      'tmp/ui-capture.json',
+      '--google-sheets-url',
+      'https://docs.google.com/spreadsheets/d/sheet-id/edit',
+      '--allow-incomplete-evidence',
+    ])
+
+    expect(() => assertProductionBiligEvidenceSource(args)).not.toThrow()
   })
 
   it('rejects missing incumbent URLs because the generated proof must be comparable', () => {

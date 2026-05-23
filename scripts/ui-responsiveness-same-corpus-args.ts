@@ -5,7 +5,10 @@ import type { UiResponsivenessSameCorpusProduct } from './gen-ui-responsiveness-
 
 export interface CaptureArgs {
   readonly allowIncompleteEvidence: boolean
+  readonly biligProductionHost: string
+  readonly biligProductionPort: number
   readonly biligUrl: string
+  readonly biligUrlSource: 'default-dev' | 'explicit' | 'served-production'
   readonly biligStorageStatePath: string | null
   readonly corpusId: WorkbookBenchmarkCorpusId
   readonly deltaX: number
@@ -50,9 +53,16 @@ export interface PreflightArgs {
 
 export const defaultCorpusId: WorkbookBenchmarkCorpusId = 'wide-mixed-250k'
 export const defaultViewport = { width: 1440, height: 900 } as const
+export const defaultBiligProductionPreviewHost = '127.0.0.1'
+export const defaultBiligProductionPreviewPort = 4180
 
 export function defaultBiligSameCorpusUrl(corpusId: WorkbookBenchmarkCorpusId): string {
   return `http://localhost:5173/?benchmarkCorpus=${encodeURIComponent(corpusId)}`
+}
+
+export function productionBiligSameCorpusUrl(host: string, port: number, corpusId: WorkbookBenchmarkCorpusId): string {
+  const browserHost = host === '0.0.0.0' ? '127.0.0.1' : host
+  return `http://${browserHost}:${String(port)}/?benchmarkCorpus=${encodeURIComponent(corpusId)}&persist=0`
 }
 
 export function parsePreflightArgs(argv: readonly string[]): PreflightArgs | null {
@@ -126,6 +136,7 @@ export function parseCaptureArgs(argv: readonly string[]): CaptureArgs {
         '  [--microsoft-excel-web-url <same-corpus-excel-web-url>]',
         '  or: --emit-xlsx <directory>',
         '  [--bilig-url <local-bilig-url>] [--corpus wide-mixed-250k] [--samples 3] [--delta-x 0] [--delta-y 720] [--headed]',
+        '  [--serve-bilig-production] [--bilig-production-port 4180] [--bilig-production-host 127.0.0.1]',
         '  [--storage-state <state.json>]',
         '  [--google-sheets-storage-state <state.json>] [--microsoft-excel-web-storage-state <state.json>] [--bilig-storage-state <state.json>]',
         '  [--allow-incomplete-evidence]',
@@ -135,9 +146,21 @@ export function parseCaptureArgs(argv: readonly string[]): CaptureArgs {
   }
   const sampleCount = parsePositiveInteger(argumentValue(argv, '--samples') ?? '3', '--samples')
   const readyTimeoutMs = parsePositiveInteger(argumentValue(argv, '--ready-timeout-ms') ?? '60000', '--ready-timeout-ms')
+  const serveBiligProduction = argv.includes('--serve-bilig-production')
+  const explicitBiligUrl = argumentValue(argv, '--bilig-url')
+  if (serveBiligProduction && explicitBiligUrl) {
+    throw new Error('Use either --serve-bilig-production or --bilig-url, not both.')
+  }
+  const biligProductionHost = parseHost(argumentValue(argv, '--bilig-production-host') ?? defaultBiligProductionPreviewHost)
+  const biligProductionPort = parsePort(argumentValue(argv, '--bilig-production-port') ?? String(defaultBiligProductionPreviewPort))
   return {
     allowIncompleteEvidence: argv.includes('--allow-incomplete-evidence'),
-    biligUrl: argumentValue(argv, '--bilig-url') ?? defaultBiligSameCorpusUrl(corpusId),
+    biligProductionHost,
+    biligProductionPort,
+    biligUrl: serveBiligProduction
+      ? productionBiligSameCorpusUrl(biligProductionHost, biligProductionPort, corpusId)
+      : (explicitBiligUrl ?? defaultBiligSameCorpusUrl(corpusId)),
+    biligUrlSource: serveBiligProduction ? 'served-production' : explicitBiligUrl ? 'explicit' : 'default-dev',
     biligStorageStatePath: resolveOptionalPath(argumentValue(argv, '--bilig-storage-state')),
     corpusId,
     deltaX: parseNonNegativeNumber(argumentValue(argv, '--delta-x') ?? '0', '--delta-x'),
@@ -184,6 +207,22 @@ function parsePositiveInteger(value: string, flag: string): number {
     throw new Error(`${flag} must be a positive integer`)
   }
   return parsed
+}
+
+function parsePort(value: string): number {
+  const parsed = parsePositiveInteger(value, '--bilig-production-port')
+  if (parsed > 65_535) {
+    throw new Error('--bilig-production-port must be between 1 and 65535')
+  }
+  return parsed
+}
+
+function parseHost(value: string): string {
+  const trimmed = value.trim()
+  if (trimmed.length === 0 || trimmed.includes('/') || trimmed.includes('?') || trimmed.includes('#')) {
+    throw new Error('--bilig-production-host must be a host name or IP address')
+  }
+  return trimmed
 }
 
 function parseNonNegativeNumber(value: string, flag: string): number {

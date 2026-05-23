@@ -13,6 +13,8 @@ import {
   parseEmitXlsxArgs,
   parsePreflightArgs,
   parseSaveStorageStateArgs,
+  productionBiligSameCorpusUrl,
+  type CaptureArgs,
   type EmitXlsxArgs,
 } from './ui-responsiveness-same-corpus-args.ts'
 import type { SameCorpusCapture } from './ui-responsiveness-same-corpus-scorecard-proof.ts'
@@ -69,33 +71,41 @@ async function main(): Promise<void> {
   }
 
   const args = parseCaptureArgs(process.argv.slice(2))
+  assertProductionBiligEvidenceSource(args)
   assertSameCorpusBrowserRunAllowed()
-  const capture = await captureSameCorpusUiResponsiveness(args)
-  mkdirSync(dirname(args.outputPath), { recursive: true })
-  writeFileSync(
-    args.outputPath,
-    formatJsonForRepo({
-      rootDir,
-      serializedJson: `${JSON.stringify(capture, null, 2)}\n`,
-      tempPrefix: 'ui-responsiveness-same-corpus-capture',
-    }),
-  )
-  console.log(
-    JSON.stringify(
-      {
-        outputPath: args.outputPath,
-        corpusCaseId: args.corpusId,
-        sampleCount: args.sampleCount,
-        workloads: capture.cases.map((entry) => entry.workload),
-        currentContractEvidenceComplete: capture.runManifest.currentContractEvidenceComplete,
-        googleSheetsTenXRequirementSatisfied: capture.runManifest.googleSheetsTenXRequirementSatisfied,
-      },
-      null,
-      2,
-    ),
-  )
-  if (!args.allowIncompleteEvidence) {
-    assertSameCorpusCaptureEvidenceReady(capture)
+  const servedBilig = args.biligUrlSource === 'served-production' ? await startServedBiligProductionRuntime(args) : null
+  try {
+    const capture = await captureSameCorpusUiResponsiveness(args)
+    mkdirSync(dirname(args.outputPath), { recursive: true })
+    writeFileSync(
+      args.outputPath,
+      formatJsonForRepo({
+        rootDir,
+        serializedJson: `${JSON.stringify(capture, null, 2)}\n`,
+        tempPrefix: 'ui-responsiveness-same-corpus-capture',
+      }),
+    )
+    console.log(
+      JSON.stringify(
+        {
+          outputPath: args.outputPath,
+          corpusCaseId: args.corpusId,
+          sampleCount: args.sampleCount,
+          workloads: capture.cases.map((entry) => entry.workload),
+          currentContractEvidenceComplete: capture.runManifest.currentContractEvidenceComplete,
+          googleSheetsTenXRequirementSatisfied: capture.runManifest.googleSheetsTenXRequirementSatisfied,
+        },
+        null,
+        2,
+      ),
+    )
+    if (!args.allowIncompleteEvidence) {
+      assertSameCorpusCaptureEvidenceReady(capture)
+    }
+  } finally {
+    if (servedBilig) {
+      await stopServedBiligProductionRuntime(servedBilig)
+    }
   }
 }
 
@@ -121,6 +131,104 @@ export function assertSameCorpusCaptureEvidenceReady(capture: SameCorpusCapture)
       ...blockingReasons.map((reason) => `- ${reason}`),
     ].join('\n'),
   )
+}
+
+export function assertProductionBiligEvidenceSource(args: CaptureArgs): void {
+  if (args.allowIncompleteEvidence || args.biligUrlSource !== 'default-dev') {
+    return
+  }
+  throw new Error(
+    [
+      'Same-corpus UI capture needs production Bilig runtime proof.',
+      'The default Bilig URL is a localhost dev server and cannot satisfy the dominance scorecard.',
+      'Use --serve-bilig-production to build and serve the production web bundle for this capture, or pass --bilig-url <production-bilig-url>.',
+      'Use --allow-incomplete-evidence only for diagnostic captures that must not be fed into a public 10x claim.',
+    ].join('\n'),
+  )
+}
+
+interface ServedBiligProductionRuntime {
+  readonly process: ReturnType<typeof Bun.spawn>
+  readonly url: string
+}
+
+async function startServedBiligProductionRuntime(args: CaptureArgs): Promise<ServedBiligProductionRuntime> {
+  const url = productionBiligSameCorpusUrl(args.biligProductionHost, args.biligProductionPort, args.corpusId)
+  console.log(`Building @bilig/web production bundle for same-corpus capture...`)
+  const build = Bun.spawnSync(['pnpm', '--filter', '@bilig/web', 'build'], {
+    cwd: rootDir,
+    stdin: 'ignore',
+    stdout: 'inherit',
+    stderr: 'inherit',
+  })
+  if (build.exitCode !== 0) {
+    throw new Error(`Failed to build @bilig/web production bundle for same-corpus capture: exit ${String(build.exitCode)}`)
+  }
+
+  console.log(`Serving @bilig/web production bundle for same-corpus capture at ${url}...`)
+  const process = Bun.spawn(
+    [
+      'pnpm',
+      '--dir',
+      join(rootDir, 'apps/web'),
+      'exec',
+      'vite',
+      'preview',
+      '--host',
+      args.biligProductionHost,
+      '--port',
+      String(args.biligProductionPort),
+      '--strictPort',
+    ],
+    {
+      cwd: rootDir,
+      stdin: 'ignore',
+      stdout: 'inherit',
+      stderr: 'inherit',
+    },
+  )
+  await waitForServedBiligProductionRuntime(process, url, args.readyTimeoutMs)
+  return { process, url }
+}
+
+async function waitForServedBiligProductionRuntime(process: ReturnType<typeof Bun.spawn>, url: string, timeoutMs: number): Promise<void> {
+  await pollServedBiligProductionRuntime(process, url, Date.now() + timeoutMs)
+}
+
+async function pollServedBiligProductionRuntime(process: ReturnType<typeof Bun.spawn>, url: string, deadline: number): Promise<void> {
+  if (Date.now() >= deadline) {
+    throw new Error(`Timed out waiting for production Bilig preview at ${url}`)
+  }
+  const exit = await Promise.race([process.exited.then((exitCode) => ({ exitCode })), sleep(250).then(() => null)])
+  if (exit) {
+    throw new Error(`Production Bilig preview exited before it was ready: exit ${String(exit.exitCode)}`)
+  }
+  try {
+    const response = await fetch(url, { signal: AbortSignal.timeout(1_000) })
+    if (response.ok) {
+      return
+    }
+  } catch {
+    // Keep polling until the preview server is ready or the timeout expires.
+  }
+  return pollServedBiligProductionRuntime(process, url, deadline)
+}
+
+async function stopServedBiligProductionRuntime(runtime: ServedBiligProductionRuntime): Promise<void> {
+  try {
+    runtime.process.kill('SIGTERM')
+  } catch {
+    return
+  }
+  const stopped = await Promise.race([runtime.process.exited.then(() => true), sleep(3_000).then(() => false)])
+  if (!stopped) {
+    runtime.process.kill('SIGKILL')
+    await runtime.process.exited
+  }
+}
+
+function sleep(ms: number): Promise<void> {
+  return new Promise((done) => setTimeout(done, ms))
 }
 
 export function emitSameCorpusXlsx(args: EmitXlsxArgs): void {
@@ -157,10 +265,12 @@ export function emitSameCorpusXlsx(args: EmitXlsxArgs): void {
         microsoftExcelWebAuthStateCommand:
           'pnpm ui:same-corpus:capture -- --save-storage-state <state.json> --auth-product microsoft-excel-web --microsoft-excel-web-url <url> [--corpus wide-mixed-250k]',
         biligProductionRuntimeRequirement:
-          'Use --bilig-url <production-bilig-url> for dominance evidence. The default localhost dev URL is only valid with --allow-incomplete-evidence.',
+          'Use --serve-bilig-production or --bilig-url <production-bilig-url> for dominance evidence. The default localhost dev URL is only valid with --allow-incomplete-evidence.',
         preflightCommand:
           'pnpm ui:same-corpus:capture -- --preflight --google-sheets-url <url> --microsoft-excel-web-url <url> [--google-sheets-storage-state <state.json>] [--microsoft-excel-web-storage-state <state.json>]',
         captureCommand:
+          'pnpm ui:same-corpus:capture -- --serve-bilig-production --output <capture.json> --google-sheets-url <url> --microsoft-excel-web-url <url> [--google-sheets-storage-state <state.json>] [--microsoft-excel-web-storage-state <state.json>]',
+        externalProductionCaptureCommand:
           'pnpm ui:same-corpus:capture -- --output <capture.json> --bilig-url <production-bilig-url> --google-sheets-url <url> --microsoft-excel-web-url <url> [--google-sheets-storage-state <state.json>] [--microsoft-excel-web-storage-state <state.json>]',
         diagnosticCaptureCommand:
           'pnpm ui:same-corpus:capture -- --output <capture.json> --google-sheets-url <url> --allow-incomplete-evidence',

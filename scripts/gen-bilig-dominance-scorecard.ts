@@ -497,7 +497,7 @@ export function buildBiligDominanceScorecard(input: BuildScorecardInput): BiligD
           'pnpm ui:same-corpus:fixture:check',
           'pnpm ui:same-corpus:capture -- --save-storage-state <state.json> --auth-product google-sheets --google-sheets-url <url>',
           'pnpm ui:same-corpus:capture -- --preflight --google-sheets-url <url> --microsoft-excel-web-url <url> [--google-sheets-storage-state <state.json>]',
-          'pnpm ui:same-corpus:capture -- --output <capture.json> --bilig-url <production-bilig-url> --google-sheets-url <url> --microsoft-excel-web-url <url>',
+          'pnpm ui:same-corpus:capture:production -- --output <capture.json> --google-sheets-url <url> --microsoft-excel-web-url <url>',
           'pnpm ui:same-corpus:capture -- --output <capture.json> --bilig-url <production-bilig-url> --google-sheets-url <url> --google-sheets-storage-state <state.json> --microsoft-excel-web-url <url>',
           'pnpm ui:browser-live:generate -- --capture <capture.json>',
           'pnpm large-workbook:slo:check',
