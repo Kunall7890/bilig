@@ -70,6 +70,21 @@ describe('conditional format artifact metadata', () => {
     expect(exportedConditionalFormatArtifactXml(engine)).toContain('sqref="B2:B4"')
     expect(exportedConditionalFormatArtifactXml(engine)).toContain('<formula>B2&gt;15</formula>')
   })
+
+  it('rewrites cross-sheet conditional format formulas across target structural edits', async () => {
+    const engine = new SpreadsheetEngine({ workbookName: 'conditional-format-artifacts-cross-sheet-formula-structural' })
+    await engine.ready()
+    engine.importSnapshot(crossSheetFormulaConditionalFormatArtifactSnapshot())
+
+    engine.insertRows('Inputs', 0, 1)
+
+    expect(engine.exportSnapshot().sheets[0]?.metadata?.conditionalFormats?.[0]?.rule).toEqual({
+      kind: 'formula',
+      formula: '=Inputs!A2>15',
+    })
+    expect(exportedConditionalFormatArtifactXml(engine)).toContain('sqref="A1:A3"')
+    expect(exportedConditionalFormatArtifactXml(engine)).toContain('<formula>Inputs!A2&gt;15</formula>')
+  })
 })
 
 function exportedConditionalFormatArtifactXml(engine: SpreadsheetEngine): string {
@@ -174,6 +189,53 @@ function formulaConditionalFormatArtifactSnapshot(): WorkbookSnapshot {
             ].join(''),
           },
         },
+        cells: [
+          { address: 'A1', value: 10 },
+          { address: 'A2', value: 20 },
+          { address: 'A3', value: 30 },
+        ],
+      },
+    ],
+  }
+}
+
+function crossSheetFormulaConditionalFormatArtifactSnapshot(): WorkbookSnapshot {
+  return {
+    version: 1,
+    workbook: { name: 'Cross-sheet formula conditional format artifacts' },
+    sheets: [
+      {
+        id: 1,
+        name: 'Dashboard',
+        order: 0,
+        metadata: {
+          conditionalFormats: [
+            {
+              id: 'cross-sheet-formula-highlight',
+              range: { sheetName: 'Dashboard', startAddress: 'A1', endAddress: 'A3' },
+              rule: { kind: 'formula', formula: '=Inputs!A1>15' },
+              style: { fill: { backgroundColor: '#ffeb84' } },
+              priority: 1,
+            },
+          ],
+          conditionalFormatArtifacts: {
+            xml: [
+              '<conditionalFormatting sqref="A1:A3">',
+              '<cfRule type="expression" dxfId="0" priority="1"><formula>Inputs!A1&gt;15</formula></cfRule>',
+              '</conditionalFormatting>',
+            ].join(''),
+          },
+        },
+        cells: [
+          { address: 'A1', value: 10 },
+          { address: 'A2', value: 20 },
+          { address: 'A3', value: 30 },
+        ],
+      },
+      {
+        id: 2,
+        name: 'Inputs',
+        order: 1,
         cells: [
           { address: 'A1', value: 10 },
           { address: 'A2', value: 20 },

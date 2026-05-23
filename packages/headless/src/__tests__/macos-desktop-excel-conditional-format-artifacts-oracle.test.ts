@@ -299,6 +299,80 @@ describe('macOS Desktop Excel conditional format artifact oracle', () => {
     },
     120_000,
   )
+
+  it.runIf(process.env.BILIG_EXCEL_ORACLE_RUN === '1')(
+    'matches Desktop Excel cross-sheet conditional-format artifact formulas after target sheet row inserts',
+    () => {
+      if (!isMacosExcelInstalled()) {
+        throw new Error('BILIG_EXCEL_ORACLE_RUN=1 requires /Applications/Microsoft Excel.app')
+      }
+
+      const tempDir = createExcelAccessibleTempDir('bilig-headless-excel-cf-cross-sheet-formula-oracle-')
+      try {
+        const sourcePath = join(tempDir, 'excel-cross-sheet-formula-conditional-format-oracle.xlsx')
+        writeFileSync(sourcePath, buildCrossSheetFormulaConditionalFormattingWorkbook())
+
+        const excelResult = runMacosExcelStructuralOperationOracle({
+          workbookPath: sourcePath,
+          worksheetName: 'Inputs',
+          operations: [{ kind: 'insertRows', range: '1:1' }],
+          inspectCells: ['A1', 'A2', 'A3', 'A4'],
+          saveWorkbook: true,
+          timeoutMs: 90_000,
+        })
+        expect(excelResult.cells.map((cell) => cell.value)).toEqual([
+          { kind: 'string', value: '' },
+          { kind: 'number', value: 10 },
+          { kind: 'number', value: 20 },
+          { kind: 'number', value: 30 },
+        ])
+
+        const excelTruth = importXlsx(new Uint8Array(readFileSync(sourcePath)), 'excel-cross-sheet-cf-structural-oracle.xlsx')
+        const excelTruthArtifacts = excelTruth.snapshot.sheets[0]?.metadata?.conditionalFormatArtifacts?.xml
+        expect(extractConditionalFormatSqrefs(excelTruthArtifacts)).toEqual(['A1:A3'])
+        expect(extractConditionalFormatFormulas(excelTruthArtifacts)).toEqual(['Inputs!A2>15'])
+
+        const workpaper = WorkPaper.buildFromSnapshot(
+          importXlsx(buildCrossSheetFormulaConditionalFormattingWorkbook(), 'headless-cross-sheet-formula-cf-source.xlsx').snapshot,
+        )
+        try {
+          const sheet = workpaper.getSheetId('Inputs')
+          if (sheet === undefined) {
+            throw new Error('Expected Inputs sheet to be available')
+          }
+          workpaper.addRows(sheet, 0, 1)
+          const headlessArtifacts = workpaper.exportSnapshot().sheets[0]?.metadata?.conditionalFormatArtifacts?.xml
+          expect(extractConditionalFormatSqrefs(headlessArtifacts)).toEqual(['A1:A3'])
+          expect(extractConditionalFormatFormulas(headlessArtifacts)).toEqual(['Inputs!A2>15'])
+
+          const headlessPath = join(tempDir, 'headless-cross-sheet-formula-conditional-format-oracle.xlsx')
+          writeFileSync(headlessPath, exportXlsx(workpaper.exportSnapshot()))
+          const headlessExcel = runMacosExcelInspectionOracle({
+            workbookPath: headlessPath,
+            worksheetName: 'Inputs',
+            formulaCells: [],
+            inspectCells: ['A1', 'A2', 'A3', 'A4'],
+            saveWorkbook: true,
+            timeoutMs: 90_000,
+          })
+          expect(headlessExcel.cells).toEqual(excelResult.cells)
+
+          const headlessExcelTruth = importXlsx(
+            new Uint8Array(readFileSync(headlessPath)),
+            'headless-cross-sheet-cf-structural-oracle.xlsx',
+          )
+          const headlessExcelArtifacts = headlessExcelTruth.snapshot.sheets[0]?.metadata?.conditionalFormatArtifacts?.xml
+          expect(extractConditionalFormatSqrefs(headlessExcelArtifacts)).toEqual(extractConditionalFormatSqrefs(excelTruthArtifacts))
+          expect(extractConditionalFormatFormulas(headlessExcelArtifacts)).toEqual(extractConditionalFormatFormulas(excelTruthArtifacts))
+        } finally {
+          workpaper.dispose()
+        }
+      } finally {
+        removeMacosExcelTestDir(tempDir)
+      }
+    },
+    120_000,
+  )
 })
 
 function expectConditionalFormatArtifacts(xml: string | undefined): void {
@@ -311,16 +385,21 @@ function extractConditionalFormatSqrefs(xml: string | undefined): string[] {
   if (!xml) {
     throw new Error('Expected conditional format artifact XML')
   }
-  return [...xml.matchAll(/<(?:[A-Za-z_][\w.-]*:)?conditionalFormatting\b[^>]*\bsqref=("|')([\s\S]*?)\1/gu)].map((match) => match[2] ?? '')
+  return [
+    ...[...xml.matchAll(/<(?:[A-Za-z_][\w.-]*:)?conditionalFormatting\b[^>]*\bsqref=("|')([\s\S]*?)\1/gu)].map((match) => match[2] ?? ''),
+    ...[...xml.matchAll(/<(?:[A-Za-z_][\w.-]*:)?sqref\b[^>]*>([\s\S]*?)<\/(?:[A-Za-z_][\w.-]*:)?sqref>/gu)].map((match) =>
+      decodeXmlText(match[1] ?? ''),
+    ),
+  ]
 }
 
 function extractConditionalFormatFormulas(xml: string | undefined): string[] {
   if (!xml) {
     throw new Error('Expected conditional format artifact XML')
   }
-  return [...xml.matchAll(/<(?:[A-Za-z_][\w.-]*:)?formula\b[^>]*>([\s\S]*?)<\/(?:[A-Za-z_][\w.-]*:)?formula>/gu)].map((match) =>
-    decodeXmlText(match[1] ?? ''),
-  )
+  const standardFormulas = [...xml.matchAll(/<(?:[A-Za-z_][\w.-]*:)?formula\b[^>]*>([\s\S]*?)<\/(?:[A-Za-z_][\w.-]*:)?formula>/gu)]
+  const x14Formulas = [...xml.matchAll(/<(?:[A-Za-z_][\w.-]*:)?f\b[^>]*>([\s\S]*?)<\/(?:[A-Za-z_][\w.-]*:)?f>/gu)]
+  return standardFormulas.concat(x14Formulas).map((match) => decodeXmlText(match[1] ?? ''))
 }
 
 function decodeXmlText(value: string): string {
@@ -385,6 +464,46 @@ function buildFormulaConditionalFormattingWorkbook(): Uint8Array {
             },
           ],
         },
+      },
+    ],
+  })
+}
+
+function buildCrossSheetFormulaConditionalFormattingWorkbook(): Uint8Array {
+  return exportXlsx({
+    version: 1,
+    workbook: { name: 'Desktop Excel cross-sheet conditional format formula oracle' },
+    sheets: [
+      {
+        id: 1,
+        name: 'Dashboard',
+        order: 0,
+        cells: [
+          { address: 'A1', value: 10 },
+          { address: 'A2', value: 20 },
+          { address: 'A3', value: 30 },
+        ],
+        metadata: {
+          conditionalFormats: [
+            {
+              id: 'cross-sheet-formula-highlight',
+              range: { sheetName: 'Dashboard', startAddress: 'A1', endAddress: 'A3' },
+              rule: { kind: 'formula', formula: '=Inputs!A1>15' },
+              style: { fill: { backgroundColor: '#ffeb84' } },
+              priority: 1,
+            },
+          ],
+        },
+      },
+      {
+        id: 2,
+        name: 'Inputs',
+        order: 1,
+        cells: [
+          { address: 'A1', value: 10 },
+          { address: 'A2', value: 20 },
+          { address: 'A3', value: 30 },
+        ],
       },
     ],
   })

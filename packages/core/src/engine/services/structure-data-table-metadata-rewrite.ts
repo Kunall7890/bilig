@@ -242,20 +242,30 @@ const conditionalFormattingBlockRegex = new RegExp(
 )
 const conditionalFormattingOpeningTagRegex = new RegExp(`^<${conditionalFormattingElementName}\\b[^>]*\\/?>`, 'u')
 
-function rewriteConditionalFormatFormulaText(text: string, sheetName: string, transform: StructuralAxisTransform): string | undefined {
+function rewriteConditionalFormatFormulaText(
+  text: string,
+  ownerSheetName: string,
+  targetSheetName: string,
+  transform: StructuralAxisTransform,
+): string | undefined {
   try {
-    return rewriteFormulaForStructuralTransform(decodeXmlText(text), sheetName, sheetName, transform)
+    return rewriteFormulaForStructuralTransform(decodeXmlText(text), ownerSheetName, targetSheetName, transform)
   } catch {
     return undefined
   }
 }
 
-function rewriteConditionalFormatFormulaXml(block: string, sheetName: string, transform: StructuralAxisTransform): string | undefined {
+function rewriteConditionalFormatFormulaXml(
+  block: string,
+  ownerSheetName: string,
+  targetSheetName: string,
+  transform: StructuralAxisTransform,
+): string | undefined {
   let dropped = false
   const rewritten = block.replace(
-    /<((?:[A-Za-z_][\w.-]*:)?formula)\b([^>]*?)>([\s\S]*?)<\/\1>/gu,
+    /<((?:[A-Za-z_][\w.-]*:)?(?:formula|f))\b([^>]*?)>([\s\S]*?)<\/\1>/gu,
     (_source: string, tagName: string, attributes: string, text: string) => {
-      const nextFormula = rewriteConditionalFormatFormulaText(text, sheetName, transform)
+      const nextFormula = rewriteConditionalFormatFormulaText(text, ownerSheetName, targetSheetName, transform)
       if (nextFormula === undefined) {
         dropped = true
         return ''
@@ -284,7 +294,7 @@ function rewriteConditionalFormatArtifactBlock(block: string, sheetName: string,
     return `sqref=${quote}${escapeXmlAttribute(nextSqref)}${quote}`
   })
   const withSqref = `${nextOpeningTag}${block.slice(openingTag.length)}`
-  return rewriteConditionalFormatFormulaXml(withSqref, sheetName, transform)
+  return rewriteConditionalFormatFormulaXml(withSqref, sheetName, sheetName, transform)
 }
 
 export function rewriteConditionalFormatArtifactXmlForStructuralTransform(
@@ -301,6 +311,15 @@ export function rewriteConditionalFormatArtifactXmlForStructuralTransform(
     return xml
   }
   return rewrittenXml.trim().length > 0 ? rewrittenXml : undefined
+}
+
+export function rewriteConditionalFormatArtifactFormulaXmlForStructuralTransform(
+  ownerSheetName: string,
+  xml: string,
+  targetSheetName: string,
+  transform: StructuralAxisTransform,
+): string | undefined {
+  return rewriteConditionalFormatFormulaXml(xml, ownerSheetName, targetSheetName, transform)
 }
 
 function parseUnboundedMetadataCellAddress(address: string): [number, number] | undefined {

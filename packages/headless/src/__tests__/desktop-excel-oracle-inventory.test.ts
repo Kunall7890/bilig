@@ -75,6 +75,7 @@ describe('macOS Desktop Excel oracle inventory', () => {
     expect(source).toContain('type="iconSet"')
     expect(source).toContain('WorkPaper.buildFromSnapshot')
     expect(source).toContain('preserves Desktop Excel advanced visual conditional-format rules after a headless edit')
+    expect(source).toContain('matches Desktop Excel cross-sheet conditional-format artifact formulas after target sheet row inserts')
   })
 
   it('keeps the chart drawing anchor oracle anchored to Desktop Excel structural geometry', () => {

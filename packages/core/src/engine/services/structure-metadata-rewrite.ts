@@ -15,6 +15,7 @@ import type { CreateEngineStructureServiceArgs } from './structure-service-types
 import { rewriteArrayFormulasForStructuralTransform } from './structure-array-formula-metadata-rewrite.js'
 import { rewriteLegacyCommentVmlForStructuralTransform } from './structure-legacy-comment-vml-rewrite.js'
 import {
+  rewriteConditionalFormatArtifactFormulaXmlForStructuralTransform,
   rewriteConditionalFormatArtifactXmlForStructuralTransform,
   rewriteDataTableFormulasForStructuralTransform,
 } from './structure-data-table-metadata-rewrite.js'
@@ -173,6 +174,79 @@ function rewriteDefinedNameFormulaOrNull(
     return rewriteFormulaSourceForDeletedStructuredReferences(structuralFormula, deletedTableColumns) ?? structuralFormula
   } catch {
     return null
+  }
+}
+
+function rewriteConditionalFormatRuleFormulaForStructuralTransform(
+  formula: string,
+  ownerSheetName: string,
+  targetSheetName: string,
+  transform: StructuralAxisTransform,
+): string | undefined {
+  const hasFormulaPrefix = formula.startsWith('=')
+  try {
+    const nextFormula = rewriteFormulaForStructuralTransform(
+      hasFormulaPrefix ? formula.slice(1) : formula,
+      ownerSheetName,
+      targetSheetName,
+      transform,
+    )
+    return hasFormulaPrefix ? `=${nextFormula}` : nextFormula
+  } catch {
+    return undefined
+  }
+}
+
+function rewriteConditionalFormatRuleFormulasForStructuralTransform(
+  args: StructureMetadataRewriteArgs,
+  sheetName: string,
+  transform: StructuralAxisTransform,
+): void {
+  const workbook = args.state.workbook
+  for (const ownerSheet of workbook.sheetsByName.values()) {
+    workbook.listConditionalFormats(ownerSheet.name).forEach((format) => {
+      if (format.rule.kind !== 'formula') {
+        return
+      }
+      const nextFormula = rewriteConditionalFormatRuleFormulaForStructuralTransform(
+        format.rule.formula,
+        format.range.sheetName,
+        sheetName,
+        transform,
+      )
+      if (nextFormula === undefined || nextFormula === format.rule.formula) {
+        return
+      }
+      workbook.setConditionalFormat({
+        ...format,
+        rule: {
+          ...format.rule,
+          formula: nextFormula,
+        },
+      })
+    })
+  }
+}
+
+function rewriteConditionalFormatArtifactFormulasForStructuralTransform(
+  args: StructureMetadataRewriteArgs,
+  sheetName: string,
+  transform: StructuralAxisTransform,
+): void {
+  const workbook = args.state.workbook
+  for (const ownerSheet of workbook.sheetsByName.values()) {
+    if (ownerSheet.name === sheetName) {
+      continue
+    }
+    const artifacts = workbook.getConditionalFormatArtifacts(ownerSheet.name)
+    if (!artifacts) {
+      continue
+    }
+    const nextXml = rewriteConditionalFormatArtifactFormulaXmlForStructuralTransform(ownerSheet.name, artifacts.xml, sheetName, transform)
+    if (nextXml === undefined || nextXml === artifacts.xml) {
+      continue
+    }
+    workbook.setConditionalFormatArtifacts(ownerSheet.name, { xml: nextXml })
   }
 }
 
@@ -348,6 +422,7 @@ export function rewriteWorkbookMetadataForStructuralTransform(
     }
     workbook.setConditionalFormat(nextFormat)
   })
+  rewriteConditionalFormatRuleFormulasForStructuralTransform(args, sheetName, transform)
   const conditionalFormatArtifacts = workbook.getConditionalFormatArtifacts(sheetName)
   if (conditionalFormatArtifacts) {
     const nextArtifactsXml = rewriteConditionalFormatArtifactXmlForStructuralTransform(sheetName, conditionalFormatArtifacts.xml, transform)
@@ -356,6 +431,7 @@ export function rewriteWorkbookMetadataForStructuralTransform(
       workbook.setConditionalFormatArtifacts(sheetName, { xml: nextArtifactsXml })
     }
   }
+  rewriteConditionalFormatArtifactFormulasForStructuralTransform(args, sheetName, transform)
   workbook.listRangeProtections(sheetName).forEach((protection) => {
     const nextProtection = rewriteMetadataRangeRecord(protection, transform)
     workbook.deleteRangeProtection(protection.id)
