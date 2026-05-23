@@ -25,6 +25,12 @@ The hosted workflow calls this public demo endpoint:
 POST https://bilig.proompteng.ai/api/workpaper/n8n/forecast
 ```
 
+Start a local formula-readback server from npm; no Bilig checkout is needed:
+
+```sh
+npm exec --package @bilig/workpaper@latest -- bilig-n8n-formula-server --port 4321
+```
+
 The self-hosted workflow calls:
 
 ```text

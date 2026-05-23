@@ -34,7 +34,13 @@ import it and run the proof before deploying Bilig:
 POST https://bilig.proompteng.ai/api/workpaper/n8n/forecast
 ```
 
-The self-hosted workflow defaults to a local Bilig app:
+Start the local formula-readback server from npm; no Bilig checkout is needed:
+
+```sh
+npm exec --package @bilig/workpaper@latest -- bilig-n8n-formula-server --port 4321
+```
+
+The self-hosted workflow defaults to that local Bilig endpoint:
 
 ```text
 POST http://host.docker.internal:4321/api/workpaper/n8n/forecast
