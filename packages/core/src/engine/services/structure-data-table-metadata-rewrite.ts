@@ -235,6 +235,27 @@ function rewriteConditionalFormatArtifactSqref(value: string, transform: Structu
   return rewritten.length > 0 ? rewritten.join(' ') : undefined
 }
 
+function rewriteConditionalFormatSqrefElementXml(
+  block: string,
+  transform: StructuralAxisTransform,
+): { readonly matched: boolean; readonly xml?: string } {
+  let dropped = false
+  let matched = false
+  const xml = block.replace(
+    /<((?:[A-Za-z_][\w.-]*:)?sqref)\b([^>]*?)>([\s\S]*?)<\/\1>/gu,
+    (_source: string, tagName: string, attributes: string, text: string) => {
+      matched = true
+      const nextSqref = rewriteConditionalFormatArtifactSqref(decodeXmlText(text), transform)
+      if (!nextSqref) {
+        dropped = true
+        return ''
+      }
+      return `<${tagName}${attributes}>${escapeXmlText(nextSqref)}</${tagName}>`
+    },
+  )
+  return dropped ? { matched } : { matched, xml }
+}
+
 const conditionalFormattingElementName = '(?:[A-Za-z_][\\w.-]*:)?conditionalFormatting'
 const conditionalFormattingBlockRegex = new RegExp(
   `<${conditionalFormattingElementName}\\b[^>]*>[\\s\\S]*?<\\/${conditionalFormattingElementName}>|<${conditionalFormattingElementName}\\b[^>]*/>`,
@@ -282,19 +303,25 @@ function rewriteConditionalFormatArtifactBlock(block: string, sheetName: string,
     return block
   }
   const sqref = readXmlAttribute(openingTag, 'sqref')
-  if (sqref === null) {
-    return block
+  let nextBlock = block
+  if (sqref !== null) {
+    const nextSqref = rewriteConditionalFormatArtifactSqref(decodeXmlAttribute(sqref), transform)
+    if (!nextSqref) {
+      return undefined
+    }
+    const nextOpeningTag = openingTag.replace(/\bsqref=("|')([\s\S]*?)\1/u, (_source: string, quote: string) => {
+      return `sqref=${quote}${escapeXmlAttribute(nextSqref)}${quote}`
+    })
+    nextBlock = `${nextOpeningTag}${block.slice(openingTag.length)}`
   }
-  const nextSqref = rewriteConditionalFormatArtifactSqref(decodeXmlAttribute(sqref), transform)
-  if (!nextSqref) {
+  const sqrefElements = rewriteConditionalFormatSqrefElementXml(nextBlock, transform)
+  if (sqrefElements.xml === undefined) {
     return undefined
   }
-
-  const nextOpeningTag = openingTag.replace(/\bsqref=("|')([\s\S]*?)\1/u, (_source: string, quote: string) => {
-    return `sqref=${quote}${escapeXmlAttribute(nextSqref)}${quote}`
-  })
-  const withSqref = `${nextOpeningTag}${block.slice(openingTag.length)}`
-  return rewriteConditionalFormatFormulaXml(withSqref, sheetName, sheetName, transform)
+  if (sqref === null && !sqrefElements.matched) {
+    return block
+  }
+  return rewriteConditionalFormatFormulaXml(sqrefElements.xml, sheetName, sheetName, transform)
 }
 
 export function rewriteConditionalFormatArtifactXmlForStructuralTransform(

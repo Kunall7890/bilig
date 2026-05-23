@@ -85,6 +85,20 @@ describe('conditional format artifact metadata', () => {
     expect(exportedConditionalFormatArtifactXml(engine)).toContain('sqref="A1:A3"')
     expect(exportedConditionalFormatArtifactXml(engine)).toContain('<formula>Inputs!A2&gt;15</formula>')
   })
+
+  it('rewrites x14 conditional format sqref elements across owner structural edits', async () => {
+    const engine = new SpreadsheetEngine({ workbookName: 'conditional-format-artifacts-x14-sqref-structural' })
+    await engine.ready()
+    engine.importSnapshot(x14ConditionalFormatArtifactSnapshot())
+
+    engine.insertRows('Dashboard', 0, 1)
+    expect(exportedConditionalFormatArtifactXml(engine)).toContain('<xm:f>A2&gt;15</xm:f>')
+    expect(exportedConditionalFormatArtifactXml(engine)).toContain('<xm:sqref>A2:A4</xm:sqref>')
+
+    engine.insertColumns('Dashboard', 0, 1)
+    expect(exportedConditionalFormatArtifactXml(engine)).toContain('<xm:f>B2&gt;15</xm:f>')
+    expect(exportedConditionalFormatArtifactXml(engine)).toContain('<xm:sqref>B2:B4</xm:sqref>')
+  })
 })
 
 function exportedConditionalFormatArtifactXml(engine: SpreadsheetEngine): string {
@@ -223,6 +237,49 @@ function crossSheetFormulaConditionalFormatArtifactSnapshot(): WorkbookSnapshot 
               '<conditionalFormatting sqref="A1:A3">',
               '<cfRule type="expression" dxfId="0" priority="1"><formula>Inputs!A1&gt;15</formula></cfRule>',
               '</conditionalFormatting>',
+            ].join(''),
+          },
+        },
+        cells: [
+          { address: 'A1', value: 10 },
+          { address: 'A2', value: 20 },
+          { address: 'A3', value: 30 },
+        ],
+      },
+      {
+        id: 2,
+        name: 'Inputs',
+        order: 1,
+        cells: [
+          { address: 'A1', value: 10 },
+          { address: 'A2', value: 20 },
+          { address: 'A3', value: 30 },
+        ],
+      },
+    ],
+  }
+}
+
+function x14ConditionalFormatArtifactSnapshot(): WorkbookSnapshot {
+  return {
+    version: 1,
+    workbook: { name: 'x14 conditional format artifacts' },
+    sheets: [
+      {
+        id: 1,
+        name: 'Dashboard',
+        order: 0,
+        metadata: {
+          conditionalFormatArtifacts: {
+            xml: [
+              '<x14:conditionalFormatting xmlns:x14="http://schemas.microsoft.com/office/spreadsheetml/2009/9/main" ',
+              'xmlns:xm="http://schemas.microsoft.com/office/excel/2006/main">',
+              '<x14:cfRule type="expression" priority="1" id="{00000000-000E-0000-0000-000001000000}">',
+              '<xm:f>A1&gt;15</xm:f>',
+              '<x14:dxf><fill><patternFill patternType="solid"><fgColor rgb="FFFFEB84"/></patternFill></fill></x14:dxf>',
+              '</x14:cfRule>',
+              '<xm:sqref>A1:A3</xm:sqref>',
+              '</x14:conditionalFormatting>',
             ].join(''),
           },
         },

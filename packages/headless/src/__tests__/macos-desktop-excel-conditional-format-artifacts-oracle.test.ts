@@ -373,6 +373,88 @@ describe('macOS Desktop Excel conditional format artifact oracle', () => {
     },
     120_000,
   )
+
+  it.runIf(process.env.BILIG_EXCEL_ORACLE_RUN === '1')(
+    'matches Desktop Excel x14 conditional-format artifact ranges after owner sheet row inserts',
+    () => {
+      if (!isMacosExcelInstalled()) {
+        throw new Error('BILIG_EXCEL_ORACLE_RUN=1 requires /Applications/Microsoft Excel.app')
+      }
+
+      const tempDir = createExcelAccessibleTempDir('bilig-headless-excel-cf-x14-sqref-oracle-')
+      try {
+        const sourcePath = join(tempDir, 'excel-x14-conditional-format-source.xlsx')
+        writeFileSync(sourcePath, buildCrossSheetFormulaConditionalFormattingWorkbook())
+
+        runMacosExcelInspectionOracle({
+          workbookPath: sourcePath,
+          worksheetName: 'Dashboard',
+          formulaCells: [],
+          inspectCells: ['A1', 'A2', 'A3'],
+          saveWorkbook: true,
+          timeoutMs: 90_000,
+        })
+        const x14Source = importXlsx(new Uint8Array(readFileSync(sourcePath)), 'excel-x14-conditional-format-source.xlsx')
+        const x14SourceArtifacts = x14Source.snapshot.sheets[0]?.metadata?.conditionalFormatArtifacts?.xml
+        expect(extractConditionalFormatSqrefs(x14SourceArtifacts)).toEqual(['A1:A3'])
+        expect(extractConditionalFormatFormulas(x14SourceArtifacts)).toEqual(['Inputs!A1>15'])
+
+        const excelResult = runMacosExcelStructuralOperationOracle({
+          workbookPath: sourcePath,
+          worksheetName: 'Dashboard',
+          operations: [{ kind: 'insertRows', range: '1:1' }],
+          inspectCells: ['A1', 'A2', 'A3', 'A4'],
+          saveWorkbook: true,
+          timeoutMs: 90_000,
+        })
+        expect(excelResult.cells.map((cell) => cell.value)).toEqual([
+          { kind: 'string', value: '' },
+          { kind: 'number', value: 10 },
+          { kind: 'number', value: 20 },
+          { kind: 'number', value: 30 },
+        ])
+
+        const excelTruth = importXlsx(new Uint8Array(readFileSync(sourcePath)), 'excel-x14-cf-owner-structural-oracle.xlsx')
+        const excelTruthArtifacts = excelTruth.snapshot.sheets[0]?.metadata?.conditionalFormatArtifacts?.xml
+        expect(extractConditionalFormatSqrefs(excelTruthArtifacts)).toEqual(['A2:A4'])
+        expect(extractConditionalFormatFormulas(excelTruthArtifacts)).toEqual(['Inputs!A1>15'])
+
+        const workpaper = WorkPaper.buildFromSnapshot(x14Source.snapshot)
+        try {
+          const sheet = workpaper.getSheetId('Dashboard')
+          if (sheet === undefined) {
+            throw new Error('Expected Dashboard sheet to be available')
+          }
+          workpaper.addRows(sheet, 0, 1)
+          const headlessArtifacts = workpaper.exportSnapshot().sheets[0]?.metadata?.conditionalFormatArtifacts?.xml
+          expect(extractConditionalFormatSqrefs(headlessArtifacts)).toEqual(['A2:A4'])
+          expect(extractConditionalFormatFormulas(headlessArtifacts)).toEqual(['Inputs!A1>15'])
+
+          const headlessPath = join(tempDir, 'headless-x14-conditional-format-oracle.xlsx')
+          writeFileSync(headlessPath, exportXlsx(workpaper.exportSnapshot()))
+          const headlessExcel = runMacosExcelInspectionOracle({
+            workbookPath: headlessPath,
+            worksheetName: 'Dashboard',
+            formulaCells: [],
+            inspectCells: ['A1', 'A2', 'A3', 'A4'],
+            saveWorkbook: true,
+            timeoutMs: 90_000,
+          })
+          expect(headlessExcel.cells).toEqual(excelResult.cells)
+
+          const headlessExcelTruth = importXlsx(new Uint8Array(readFileSync(headlessPath)), 'headless-x14-cf-owner-oracle.xlsx')
+          const headlessExcelArtifacts = headlessExcelTruth.snapshot.sheets[0]?.metadata?.conditionalFormatArtifacts?.xml
+          expect(extractConditionalFormatSqrefs(headlessExcelArtifacts)).toEqual(extractConditionalFormatSqrefs(excelTruthArtifacts))
+          expect(extractConditionalFormatFormulas(headlessExcelArtifacts)).toEqual(extractConditionalFormatFormulas(excelTruthArtifacts))
+        } finally {
+          workpaper.dispose()
+        }
+      } finally {
+        removeMacosExcelTestDir(tempDir)
+      }
+    },
+    120_000,
+  )
 })
 
 function expectConditionalFormatArtifacts(xml: string | undefined): void {
