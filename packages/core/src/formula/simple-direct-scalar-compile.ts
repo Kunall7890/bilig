@@ -419,6 +419,53 @@ export function translateTrustedSimpleDirectScalarFormula(
   return translatedCompiledFormula(compiled, source, symbolicRefs, parsedDeps, translatedRefs)
 }
 
+export function translateTrustedSimpleDirectScalarFormulaWithResultOffset(
+  compiled: CompiledFormula,
+  rowDelta: number,
+  colDelta: number,
+  source: string,
+  resultOffset: number,
+): CompiledFormula | undefined {
+  if (!Number.isFinite(resultOffset) || !isSimpleDirectScalarOffsetAst(compiled.optimizedAst)) {
+    return undefined
+  }
+  const translated = translateTrustedSimpleDirectScalarFormula(compiled, rowDelta, colDelta, source)
+  if (!translated) {
+    return undefined
+  }
+  const scalarAst = compiled.optimizedAst.left
+  const constants =
+    scalarAst.right.kind === 'CellRef'
+      ? Float64Array.of(resultOffset)
+      : Float64Array.of(compiled.constants[0] ?? scalarAst.right.value, resultOffset)
+  const optimizedAst: SimpleDirectScalarOffsetAst = {
+    ...compiled.optimizedAst,
+    right: {
+      ...compiled.optimizedAst.right,
+      value: resultOffset,
+    },
+  }
+  const ast = isSimpleDirectScalarOffsetAst(translated.ast)
+    ? {
+        ...translated.ast,
+        right: {
+          ...translated.ast.right,
+          value: resultOffset,
+        },
+      }
+    : translated.ast
+  const jsPlan = translated.jsPlan.map((instruction, index) =>
+    instruction.opcode === 'push-number' && index === translated.jsPlan.length - 3 ? { ...instruction, value: resultOffset } : instruction,
+  )
+  return {
+    ...translated,
+    ast,
+    optimizedAst,
+    jsPlan,
+    constants,
+  }
+}
+
 export function tryCompileSimpleDirectScalarFormula(source: string): CompiledFormula | undefined {
   const trimmedSource = source.trim()
   const trimmed = trimmedSource.startsWith('=') ? trimmedSource.slice(1).trim() : trimmedSource

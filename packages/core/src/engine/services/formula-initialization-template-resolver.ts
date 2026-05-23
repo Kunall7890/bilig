@@ -2,6 +2,7 @@ import type { FormulaTemplateResolution } from '../../formula/template-bank.js'
 import {
   translateSimpleDirectScalarFormula,
   translateTrustedSimpleDirectScalarFormula,
+  translateTrustedSimpleDirectScalarFormulaWithResultOffset,
 } from '../../formula/simple-direct-scalar-compile.js'
 import {
   translateInitialPrefixSumFormula,
@@ -22,7 +23,13 @@ export function createInitialTemplateFormulaResolver(
       const anchorRowDelta = row - cached.anchorRow
       const anchorColDelta = col - cached.anchorCol
       const compiled = simpleTemplateKey.usesRowLiteralSuffix
-        ? translateSimpleDirectScalarFormula(cached.anchorCompiled, anchorRowDelta, anchorColDelta, source)
+        ? (translateTrustedSimpleDirectScalarFormulaWithResultOffset(
+            cached.anchorCompiled,
+            anchorRowDelta,
+            anchorColDelta,
+            source,
+            row + 1,
+          ) ?? translateSimpleDirectScalarFormula(cached.anchorCompiled, anchorRowDelta, anchorColDelta, source))
         : translateTrustedSimpleDirectScalarFormula(cached.anchorCompiled, anchorRowDelta, anchorColDelta, source)
       if (compiled) {
         return {

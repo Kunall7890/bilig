@@ -53,6 +53,15 @@ describe('initial template formula resolver', () => {
     expect(second.compiled.source).toBe('E3*2+3')
     expect(Array.from(second.compiled.constants)).toEqual([2, 3])
     expect(second.compiled.deps).toEqual(['E3'])
+    expect(second.compiled.optimizedAst).toMatchObject({
+      kind: 'BinaryExpr',
+      operator: '+',
+      right: { kind: 'NumberLiteral', value: 3 },
+    })
+    expect(second.compiled.jsPlan.filter((instruction) => instruction.opcode === 'push-number')).toEqual([
+      { opcode: 'push-number', value: 2 },
+      { opcode: 'push-number', value: 3 },
+    ])
   })
 
   it('reuses anchored prefix SUM compilation while preserving row-specific ranges', () => {
