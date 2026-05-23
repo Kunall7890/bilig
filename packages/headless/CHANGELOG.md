@@ -4,6 +4,31 @@ All notable changes to `@bilig/headless` will be documented in this file.
 
 This package is released as part of the aligned bilig library package set.
 
+## 0.56.0
+
+- Release type: minor
+- Previous libraries tag: libraries-v0.55.0
+- Manual override: no
+
+## Features
+- feat(formula): preserve native structured references (9e417452)
+- feat(workbook): avoid mutating model configs (5c42661b)
+- feat(workbook): require own action metadata (be1bfc42)
+- feat(workbook): freeze planned action handoffs (c3ac870f)
+- feat(engine): execute excel autofilters (c4994591)
+- feat(engine): support precision as displayed (308415f0)
+- feat(workbook): verify immutable plan refs (55859f20)
+- feat(engine): preserve excel conditional format artifacts (492ebfd0)
+- feat(workbook): validate selector contracts (2c15f1d2)
+
+## Fixes
+- perf(headless): skip empty structural insert planning (ed08fc47)
+- perf(headless): append fresh formula family runs (e2569f4c)
+
+## Internal runtime changes
+- refactor(core): split structured reference resolver (f8e83d75)
+- ci(runtime): fix WorkPaper external smoke contract (3da277b8)
+
 ## 0.55.0
 
 - Release type: minor
