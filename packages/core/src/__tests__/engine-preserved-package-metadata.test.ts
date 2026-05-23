@@ -6,6 +6,7 @@ import type { WorkbookMetadataSnapshot, WorkbookPreservedPackagePartSnapshot, Wo
 import { SpreadsheetEngine } from '../index.js'
 
 const officeRelationshipTypePrefix = 'http://schemas.openxmlformats.org/officeDocument/2006/relationships'
+const microsoftOfficeRelationshipTypePrefix = 'http://schemas.microsoft.com/office/2007/relationships'
 
 describe('engine imported package metadata preservation', () => {
   it('keeps import/export-only workbook and worksheet metadata after engine edits and restore', async () => {
@@ -116,6 +117,35 @@ describe('engine imported package metadata preservation', () => {
     expect(metadata?.formulaAudit?.formulas.map((entry) => entry.sheetName)).toEqual(['Revenue Data'])
     expect(metadata?.formulaAudit?.calcChain?.cells.map((entry) => entry.sheetName)).toEqual(['Revenue Data'])
     expect(metadata?.slicerConnectionArtifacts?.sheetArtifacts?.map((entry) => entry.sheetName)).toEqual(['Revenue Data'])
+  })
+
+  it('prunes preserved slicer sheet topology when deleting its owning sheet', async () => {
+    const engine = new SpreadsheetEngine({ workbookName: 'package-metadata-slicer-artifact-sheet-delete' })
+    await engine.ready()
+
+    engine.importSnapshot(slicerConnectionSheetDeletionSnapshot())
+    engine.deleteSheet('Revenue')
+
+    const exported = engine.exportSnapshot()
+    expect(exported.sheets.map((sheet) => sheet.name)).toEqual(['Keep'])
+    expect(exported.workbook.metadata?.slicerConnectionArtifacts?.sheetArtifacts).toBeUndefined()
+    expect(exported.workbook.metadata?.slicerConnectionArtifacts?.parts.map((part) => part.path).toSorted()).toEqual([
+      'xl/slicerCaches/_rels/slicerCache1.xml.rels',
+      'xl/slicerCaches/slicerCache1.xml',
+    ])
+    expect(exported.workbook.metadata?.slicerConnectionArtifacts?.workbookRelationships).toEqual([
+      {
+        id: 'rIdSlicerCache',
+        type: `${microsoftOfficeRelationshipTypePrefix}/slicerCache`,
+        target: 'slicerCaches/slicerCache1.xml',
+      },
+    ])
+    expect(exported.workbook.metadata?.slicerConnectionArtifacts?.contentTypeOverrides).toEqual([
+      {
+        partName: '/xl/slicerCaches/slicerCache1.xml',
+        contentType: 'application/vnd.ms-excel.slicerCache+xml',
+      },
+    ])
   })
 
   it('rewrites preserved workbook view tab indexes after sheet deletion', async () => {
@@ -434,6 +464,71 @@ function workbookViewStateSheetDeletionSnapshot(): WorkbookSnapshot {
         name: 'Report',
         order: 2,
         cells: [{ address: 'A1', value: 'report' }],
+      },
+    ],
+  }
+}
+
+function slicerConnectionSheetDeletionSnapshot(): WorkbookSnapshot {
+  return {
+    version: 1,
+    workbook: {
+      name: 'Slicer connection sheet deletion',
+      metadata: {
+        slicerConnectionArtifacts: {
+          parts: [
+            encodedPart('xl/slicerCaches/slicerCache1.xml', '<slicerCacheDefinition/>'),
+            encodedPart('xl/slicerCaches/_rels/slicerCache1.xml.rels', '<Relationships/>'),
+            encodedPart('xl/slicers/slicer1.xml', '<slicer/>'),
+          ],
+          workbookSlicerCachesExtXml:
+            '<ext uri="{BBE1A952-AA13-448e-AADC-164F8A28A991}"><x15:slicerCaches><x15:slicerCache r:id="rIdSlicerCache"/></x15:slicerCaches></ext>',
+          workbookRelationships: [
+            {
+              id: 'rIdSlicerCache',
+              type: `${microsoftOfficeRelationshipTypePrefix}/slicerCache`,
+              target: 'slicerCaches/slicerCache1.xml',
+            },
+          ],
+          sheetArtifacts: [
+            {
+              sheetName: 'Revenue',
+              sheetSlicerListExtXml:
+                '<ext uri="{A8765BA9-456A-4DAB-B4F3-ACF838C121DE}"><x14:slicerList><x14:slicer r:id="rIdSlicer"/></x14:slicerList></ext>',
+              relationships: [
+                {
+                  id: 'rIdSlicer',
+                  type: `${microsoftOfficeRelationshipTypePrefix}/slicer`,
+                  target: '../slicers/slicer1.xml',
+                },
+              ],
+            },
+          ],
+          contentTypeOverrides: [
+            {
+              partName: '/xl/slicerCaches/slicerCache1.xml',
+              contentType: 'application/vnd.ms-excel.slicerCache+xml',
+            },
+            {
+              partName: '/xl/slicers/slicer1.xml',
+              contentType: 'application/vnd.ms-excel.slicer+xml',
+            },
+          ],
+        },
+      },
+    },
+    sheets: [
+      {
+        id: 1,
+        name: 'Revenue',
+        order: 0,
+        cells: [{ address: 'A1', value: 'revenue' }],
+      },
+      {
+        id: 2,
+        name: 'Keep',
+        order: 1,
+        cells: [{ address: 'A1', value: 'keep' }],
       },
     ],
   }

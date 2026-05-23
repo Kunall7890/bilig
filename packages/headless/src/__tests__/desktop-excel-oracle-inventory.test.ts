@@ -32,6 +32,7 @@ const existingDesktopExcelOracleFiles = [
   'macos-desktop-excel-rich-text-oracle.test.ts',
   'macos-desktop-excel-sheet-move-metadata-topology-oracle.test.ts',
   'macos-desktop-excel-sheet-properties-oracle.test.ts',
+  'macos-desktop-excel-slicer-connection-delete-oracle.test.ts',
   'macos-desktop-excel-sort-oracle.test.ts',
   'macos-desktop-excel-sparklines-oracle.test.ts',
   'macos-desktop-excel-structured-reference-syntax.test.ts',
@@ -217,6 +218,17 @@ describe('macOS Desktop Excel oracle inventory', () => {
     expect(source).toContain('moveSheet')
     expect(source).toContain('metadataCodeNames')
     expect(source).toContain('matches Desktop Excel worksheet metadata ownership after moving a sheet tab')
+  })
+
+  it('keeps the slicer connection delete oracle anchored to Desktop Excel package cleanup', () => {
+    const source = readFileSync(join(testDir, 'macos-desktop-excel-slicer-connection-delete-oracle.test.ts'), 'utf8')
+
+    expect(source).toContain("BILIG_EXCEL_ORACLE_RUN === '1'")
+    expect(source).toContain('runMacosExcelStructuralOperationOracle')
+    expect(source).toContain('WorkPaper.buildFromSnapshot')
+    expect(source).toContain("kind: 'deleteSheet'")
+    expect(source).toContain('slicerConnectionTopology')
+    expect(source).toContain('matches Desktop Excel slicer package cleanup after deleting the slicer sheet')
   })
 
   it('keeps the rich text oracle anchored to Desktop Excel cell run preservation', () => {

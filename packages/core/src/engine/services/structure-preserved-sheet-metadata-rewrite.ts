@@ -18,7 +18,9 @@ const pivotCacheDefinitionPartPathPattern = /^xl\/pivotCache\/pivotCacheDefiniti
 const worksheetSourcePattern = /<((?:[A-Za-z_][\w.-]*:)?worksheetSource)\b([^>]*\bref=(["'])([^"']+)\3[^>]*)\/?>/gu
 const worksheetSourceElementPattern = /<((?:[A-Za-z_][\w.-]*:)?worksheetSource)\b[^>]*\/?>/gu
 const workbookViewElementPattern = /<((?:[A-Za-z_][\w.-]*:)?workbookView)\b[^>]*\/?>/gu
+const slicerRelationshipType = 'http://schemas.microsoft.com/office/2007/relationships/slicer'
 type WorkbookViewIndexAttribute = 'activeTab' | 'firstSheet'
+type WorkbookSlicerConnectionArtifactsRecord = NonNullable<WorkbookPreservedMetadataRecord['slicerConnectionArtifacts']>
 
 export function rewritePreservedSheetMetadataForStructuralTransform(
   metadata: WorkbookPreservedSheetMetadataRecord | undefined,
@@ -164,6 +166,16 @@ export function rewritePreservedWorkbookMetadataForSheetDeletion(
       next.formulaAudit = formulaAudit
     } else {
       delete next.formulaAudit
+    }
+  }
+
+  if (metadata.slicerConnectionArtifacts) {
+    const slicerConnectionArtifacts = rewriteSlicerConnectionArtifactsForSheetDeletion(metadata.slicerConnectionArtifacts, deletedSheetName)
+    changed ||= slicerConnectionArtifacts !== metadata.slicerConnectionArtifacts
+    if (slicerConnectionArtifacts) {
+      next.slicerConnectionArtifacts = slicerConnectionArtifacts
+    } else {
+      delete next.slicerConnectionArtifacts
     }
   }
 
@@ -395,6 +407,79 @@ function rewriteFormulaAuditForSheetDeletion(
   }
 }
 
+function rewriteSlicerConnectionArtifactsForSheetDeletion(
+  artifacts: WorkbookSlicerConnectionArtifactsRecord,
+  deletedSheetName: string,
+): WorkbookSlicerConnectionArtifactsRecord | undefined {
+  const sourceSheetArtifacts = artifacts.sheetArtifacts ?? []
+  const remainingSheetArtifacts = sourceSheetArtifacts.filter((entry) => entry.sheetName !== deletedSheetName)
+  if (remainingSheetArtifacts.length === sourceSheetArtifacts.length) {
+    return artifacts
+  }
+
+  const deletedSlicerPartPaths = new Set(
+    sourceSheetArtifacts
+      .filter((entry) => entry.sheetName === deletedSheetName)
+      .flatMap((entry) => entry.relationships ?? [])
+      .filter((relationship) => relationship.type === slicerRelationshipType)
+      .map((relationship) => normalizePackagePath(resolvePackageRelationshipTarget('xl/worksheets/sheet1.xml', relationship.target))),
+  )
+  const removedPartPaths = new Set<string>()
+  const parts = artifacts.parts.filter((part) => {
+    const path = normalizePackagePath(part.path)
+    const shouldRemove = deletedSlicerPartPaths.has(path) || deletedSlicerPartPaths.has(packagePartPathFromRelationshipPartPath(path))
+    if (shouldRemove) {
+      removedPartPaths.add(path)
+      return false
+    }
+    return true
+  })
+
+  const contentTypeOverrides = (artifacts.contentTypeOverrides ?? []).filter(
+    (entry) => !removedPartPaths.has(normalizePackagePath(entry.partName)),
+  )
+  const next: WorkbookSlicerConnectionArtifactsRecord = {
+    parts,
+    ...(artifacts.workbookSlicerCachesExtXml ? { workbookSlicerCachesExtXml: artifacts.workbookSlicerCachesExtXml } : {}),
+    ...(artifacts.workbookRelationships ? { workbookRelationships: artifacts.workbookRelationships } : {}),
+    ...(remainingSheetArtifacts.length > 0 ? { sheetArtifacts: remainingSheetArtifacts } : {}),
+    ...(artifacts.contentTypeDefaults ? { contentTypeDefaults: artifacts.contentTypeDefaults } : {}),
+    ...(contentTypeOverrides.length > 0 ? { contentTypeOverrides } : {}),
+  }
+
+  return hasSlicerConnectionArtifacts(next) ? next : undefined
+}
+
+function hasSlicerConnectionArtifacts(artifacts: WorkbookSlicerConnectionArtifactsRecord): boolean {
+  return (
+    artifacts.parts.length > 0 ||
+    artifacts.workbookSlicerCachesExtXml !== undefined ||
+    (artifacts.workbookRelationships?.length ?? 0) > 0 ||
+    (artifacts.sheetArtifacts?.length ?? 0) > 0 ||
+    (artifacts.contentTypeOverrides?.length ?? 0) > 0
+  )
+}
+
+function packagePartPathFromRelationshipPartPath(path: string): string {
+  return path.replace(/\/_rels\/([^/]+)\.rels$/u, '/$1')
+}
+
+function resolvePackageRelationshipTarget(basePartPath: string, target: string): string {
+  if (target.startsWith('/')) {
+    return target.slice(1)
+  }
+  const segments = basePartPath.split('/')
+  segments.pop()
+  for (const segment of target.split('/')) {
+    if (segment === '..') {
+      segments.pop()
+    } else if (segment !== '.' && segment.length > 0) {
+      segments.push(segment)
+    }
+  }
+  return segments.join('/')
+}
+
 function rewriteStyleArtifactsForStructuralTransform(
   styleArtifacts: NonNullable<WorkbookPreservedSheetMetadataRecord['styleArtifacts']>,
   transform: StructuralAxisTransform,
@@ -446,6 +531,10 @@ function resolvePivotRelationshipTarget(basePartPath: string, target: string): s
 
 function normalizePivotPackagePath(path: string): string {
   return path.replace(/^\/+/u, '').replace(/\\/gu, '/')
+}
+
+function normalizePackagePath(path: string): string {
+  return normalizePivotPackagePath(path)
 }
 
 function rewritePivotTableDefinitionLocationRefsForStructuralTransform(
