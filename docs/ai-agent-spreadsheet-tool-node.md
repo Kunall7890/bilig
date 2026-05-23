@@ -12,8 +12,10 @@ If an agent needs to change workbook inputs and trust the formula output, do
 not start with screenshots. Give it a small tool surface that can write cells,
 recalculate, read the dependent formula values, and save a proof object.
 
-Bilig has two entry points for that:
+Bilig has three entry points for that:
 
+- `@bilig/workbook` when a framework integration needs a transport-neutral
+  command, check, and proof model while another runtime owns calculation.
 - `@bilig/workpaper` when the workbook can live as
   WorkPaper JSON inside the service or agent tool.
 - `@bilig/xlsx-formula-recalc` or `@bilig/exceljs-formula-recalc` when the user already has
@@ -170,11 +172,11 @@ formulas. It is not a replacement for every Excel feature.
 ## Links
 
 - [Agent WorkPaper tool-calling recipe](agent-workpaper-tool-calling-recipe.md)
-- [Headless WorkPaper agent handbook](headless-workpaper-agent-handbook.md)
+- [WorkPaper agent handbook](headless-workpaper-agent-handbook.md)
 - [OpenAI Agents SDK WorkPaper tool](openai-agents-sdk-workpaper-tool.md)
 - [OpenAI Responses WorkPaper tool call](openai-responses-workpaper-tool-call.md)
 - [Vercel AI SDK and LangChain spreadsheet tools](vercel-ai-sdk-langchain-spreadsheet-tool.md)
 - [XLSX formula recalculation in Node.js](xlsx-formula-recalculation-node.md)
 - [ExcelJS formula recalculation in Node.js](exceljs-formula-recalculation-node.md)
 - [GitHub repo](https://github.com/proompteng/bilig)
-- [Star or bookmark Bilig](https://github.com/proompteng/bilig/stargazers)
+- [Adoption blocker form](https://github.com/proompteng/bilig/discussions/new?category=general)

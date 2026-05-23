@@ -133,6 +133,6 @@ fixture.
 - [XLSX formula recalculation in Node.js](xlsx-formula-recalculation-node.md)
 - [Where Bilig is not Excel-compatible yet](where-bilig-is-not-excel-compatible-yet.md)
 
-If this helped you reduce a workbook bug, star or bookmark the repository so
-the next backend developer can find the fixture path:
-<https://github.com/proompteng/bilig/stargazers>.
+If this helped you reduce a workbook bug but a gap still blocks adoption,
+open one concrete blocker or fixture note:
+<https://github.com/proompteng/bilig/discussions/new?category=general>.

@@ -1,7 +1,6 @@
 # bilig
 
 [![CI](https://github.com/proompteng/bilig/actions/workflows/ci.yml/badge.svg)](https://github.com/proompteng/bilig/actions/workflows/ci.yml)
-[![GitHub Repo stars](https://img.shields.io/github/stars/proompteng/bilig?style=social)](https://github.com/proompteng/bilig/stargazers)
 [![npm: @bilig/workpaper](https://img.shields.io/npm/v/@bilig/workpaper?label=%40bilig%2Fworkpaper)](https://www.npmjs.com/package/@bilig/workpaper)
 [![npm: @bilig/xlsx-formula-recalc](https://img.shields.io/npm/v/@bilig/xlsx-formula-recalc?label=%40bilig%2Fxlsx-formula-recalc)](https://www.npmjs.com/package/@bilig/xlsx-formula-recalc)
 [![npm weekly downloads](https://img.shields.io/npm/dw/@bilig/headless?label=%40bilig%2Fheadless%20downloads)](https://www.npmjs.com/package/@bilig/headless)
@@ -157,7 +156,7 @@ npm --prefix examples/recalc-bridge-workflows run smoke
 
 ## Choose An Evaluation Path
 
-| If you are evaluating...      | Start here                                                                                                                                                                                                                | What should be true before you star, watch, or adopt                                                    |
+| If you are evaluating...      | Start here                                                                                                                                                                                                                | What should be true before you adopt                                                    |
 | ----------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------- |
 | Basic fit                     | [Why use Bilig?](docs/why-use-bilig.md)                                                                                                                                                                                   | The problem is workbook-shaped business logic that needs API readback and persistence.                  |
 | Published npm package         | [90-second Node quickstart](docs/try-bilig-headless-in-node.md)                                                                                                                                                           | `@bilig/workpaper` edits one input, recalculates, persists JSON, restores, and prints `verified: true`. |
@@ -175,7 +174,7 @@ Reduced workbook already in hand? Generate the paste-ready fixture report in
 one command:
 
 ```sh
-npm exec --package @bilig/headless@0.71.0 -- bilig-formula-clinic ./reduced.xlsx --cells "Summary!B7,Inputs!B2"
+npm exec --package @bilig/workpaper@latest -- bilig-formula-clinic ./reduced.xlsx --cells "Summary!B7,Inputs!B2"
 ```
 
 Handing a spreadsheet task to another coding agent? Start with the
@@ -185,8 +184,8 @@ To prove the package-owned agent loop without cloning the repo or downloading a
 TypeScript file:
 
 ```sh
-npm exec --package @bilig/headless@0.71.0 -- bilig-agent-challenge
-npm exec --package @bilig/headless@0.71.0 -- bilig-mcp-challenge
+npm exec --package @bilig/workpaper@latest -- bilig-agent-challenge
+npm exec --package @bilig/workpaper@latest -- bilig-mcp-challenge
 ```
 
 Agent tools that support skill manifests can start from
@@ -210,14 +209,10 @@ reads the calculated value, saves JSON, restores the workbook, and prints the
 same value again.
 
 ```sh
-mkdir bilig-headless-eval
-cd bilig-headless-eval
-npm init -y
-npm pkg set type=module
-npm install @bilig/workpaper
-npm install -D tsx typescript @types/node
-curl -fsSLo quickstart.ts https://proompteng.github.io/bilig/npm-eval.ts
-npx tsx quickstart.ts
+npm create @bilig/workpaper@latest pricing-workpaper
+cd pricing-workpaper
+npm install
+npm run smoke
 ```
 
 Expected output:
@@ -230,11 +225,11 @@ Expected output:
   "sheets": ["Inputs", "Summary"],
   "bytes": 999,
   "verified": true,
-  "nextStep": "If this proof matches your service or agent workflow, star or bookmark Bilig: https://github.com/proompteng/bilig/stargazers"
+  "nextStep": "If this proof matches your workflow, open a concrete blocker or adoption note: https://github.com/proompteng/bilig/discussions/new?category=general"
 }
 ```
 
-The TypeScript file is maintained in
+The generated starter uses the same maintained WorkPaper proof shape as
 [`examples/headless-workpaper/npm-eval.ts`](examples/headless-workpaper/npm-eval.ts).
 The exact byte count can change between package versions; `verified: true` and
 matching `after`/`afterRestore` values are the check.
@@ -257,9 +252,8 @@ For an agent-ready project with `AGENTS.md`, MCP client configs, and an
 `agent:verify` script, run
 `npm create @bilig/workpaper@latest pricing-agent -- --agent`.
 
-If that proof matches a service or agent workflow you maintain, the useful next
-step is concrete feedback: [star or bookmark the repo](https://github.com/proompteng/bilig/stargazers),
-then open or answer one adoption blocker in
+If that proof almost matches a service or agent workflow you maintain, the useful next
+step is concrete feedback: open or answer one adoption blocker in
 [Discussions](https://github.com/proompteng/bilig/discussions/new?category=general):
 formula coverage, stale XLSX cached values, persistence shape, MCP/agent
 writeback, or benchmark coverage.
@@ -498,9 +492,9 @@ The agent framework guide is
 The package also ships the MCP stdio binary:
 
 ```sh
-npm exec --package @bilig/headless@0.71.0 -- bilig-agent-challenge
-npm exec --package @bilig/headless@0.71.0 -- bilig-formula-clinic ./reduced.xlsx --cells "Summary!B7,Inputs!B2"
-npm exec --package @bilig/headless@0.71.0 -- bilig-mcp-challenge
+npm exec --package @bilig/workpaper@latest -- bilig-agent-challenge
+npm exec --package @bilig/workpaper@latest -- bilig-formula-clinic ./reduced.xlsx --cells "Summary!B7,Inputs!B2"
+npm exec --package @bilig/workpaper@latest -- bilig-mcp-challenge
 npm exec --package @bilig/headless@0.71.0 -- bilig-workpaper-mcp
 npm exec --package @bilig/headless@0.71.0 -- bilig-workpaper-mcp --workpaper ./pricing.workpaper.json --init-demo-workpaper --writable
 docker build --target bilig-workpaper-mcp -t bilig-workpaper-mcp:local .
@@ -594,8 +588,6 @@ seven file-backed WorkPaper tools:
   [OpenAI Responses tool calls](https://github.com/proompteng/bilig/discussions/335),
   and [benchmark critique](https://github.com/proompteng/bilig/discussions/340).
 
-If the 90-second check matches a problem you have, star or bookmark the repo:
-<https://github.com/proompteng/bilig/stargazers>.
 If you are evaluating `@bilig/headless` for production and want release
 notifications, watch releases:
 <https://github.com/proompteng/bilig/subscription>.

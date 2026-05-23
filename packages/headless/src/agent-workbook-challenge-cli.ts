@@ -141,7 +141,7 @@ export function buildAgentWorkbookChallengeProof(): AgentWorkbookChallengeProof 
       'For XLSX-specific behavior, run bilig-formula-clinic or the XLSX recalculation example with a real workbook fixture.',
     ],
     nextStep:
-      'If this proof matches your service or agent workflow, star or bookmark Bilig: https://github.com/proompteng/bilig/stargazers',
+      'If this proof matches your workflow, open a concrete blocker or adoption note: https://github.com/proompteng/bilig/discussions/new?category=general',
   }
 }
 

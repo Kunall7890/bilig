@@ -472,10 +472,6 @@ quote approval rule, budget check, or service-side spreadsheet model and prove
 the formulas reacted. Keep the MCP layer thin, keep the workbook logic
 testable, and make every write return structured verification.
 
-Start with the adapter command above. If it saves you a spreadsheet-tooling
-spike, star the repository so the next person searching for MCP spreadsheet
-tools can find it:
-<https://github.com/proompteng/bilig/stargazers>.
-
-If it almost matches but a gap blocks adoption, use the adoption blocker form:
+Start with the adapter command above. If it almost matches but a gap blocks
+adoption, use the adoption blocker form:
 <https://github.com/proompteng/bilig/discussions/new?category=general>.

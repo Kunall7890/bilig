@@ -188,7 +188,7 @@ export async function requireAgentPublicSurfaceDiscovery(input: {
     'npx --package @bilig/exceljs-formula-recalc exceljs-recalc --demo --json',
     'OpenAI Agents SDK function tools',
     'LangChain.js tools and LangGraph.js `ToolNode`',
-    'Star or bookmark Bilig',
+    'Adoption blocker form',
   ] as const) {
     requireIncludes(aiAgentSpreadsheetToolNode, required, 'docs/ai-agent-spreadsheet-tool-node.md')
   }
@@ -206,7 +206,7 @@ export async function requireAgentPublicSurfaceDiscovery(input: {
     'LlamaIndex.TS',
     'SpreadsheetAgentProof',
     'Do not claim success from a write call alone.',
-    'Star or bookmark Bilig',
+    'Adoption blocker form',
   ] as const) {
     requireIncludes(agentFrameworkWorkbookToolsDoc, required, 'docs/agent-framework-workbook-tools.md')
   }

@@ -20,14 +20,10 @@ No browser UI, account, server, or clone is required.
 ## Quickstart
 
 ```sh
-mkdir bilig-headless-eval
-cd bilig-headless-eval
-npm init -y
-npm pkg set type=module
-npm install @bilig/workpaper
-npm install -D tsx typescript @types/node
-curl -fsSLo quickstart.ts https://proompteng.github.io/bilig/npm-eval.ts
-npx tsx quickstart.ts
+npm create @bilig/workpaper@latest pricing-workpaper
+cd pricing-workpaper
+npm install
+npm run smoke
 ```
 
 Expected output:
@@ -40,14 +36,14 @@ Expected output:
   "sheets": ["Inputs", "Summary"],
   "bytes": 999,
   "verified": true,
-  "nextStep": "If this proof matches your service or agent workflow, star or bookmark Bilig: https://github.com/proompteng/bilig/stargazers"
+  "nextStep": "If this proof matches your workflow, open a concrete blocker or adoption note: https://github.com/proompteng/bilig/discussions/new?category=general"
 }
 ```
 
 The exact byte count can change between package versions. The important part is
 that `verified` is `true` and `afterRestore` matches `after`.
 
-The downloaded file is the maintained TypeScript example at
+The generated starter uses the same maintained TypeScript proof shape as
 [`examples/headless-workpaper/npm-eval.ts`](https://github.com/proompteng/bilig/blob/main/examples/headless-workpaper/npm-eval.ts).
 
 ## Try it in Docker (optional)
@@ -55,16 +51,16 @@ The downloaded file is the maintained TypeScript example at
 > **Note:** pnpm is the primary recommended path. This section is for
 > evaluators who prefer not to change their local Node version.
 
-After completing the **Quickstart** step above you will have a `quickstart.ts` file
-inside `bilig-headless-eval/`. Mount that directory into an official Node 24
-container and run the same script:
+After completing the **Quickstart** step above you will have a generated
+`pricing-workpaper/` project. Mount that directory into an official Node 24
+container and run the same smoke script:
 
 ```sh
 docker run --rm \
   -v "$(pwd)":/eval \
   -w /eval \
   node:24-slim \
-  bash -c "npm install --silent && npx tsx quickstart.ts"
+  bash -c "npm install --silent && npm run smoke"
 ```
 
 Expected output (same as above; `verified` must be `true`):
@@ -77,7 +73,7 @@ Expected output (same as above; `verified` must be `true`):
   "sheets": ["Inputs", "Summary"],
   "bytes": 999,
   "verified": true,
-  "nextStep": "If this proof matches your service or agent workflow, star or bookmark Bilig: https://github.com/proompteng/bilig/stargazers"
+  "nextStep": "If this proof matches your workflow, open a concrete blocker or adoption note: https://github.com/proompteng/bilig/discussions/new?category=general"
 }
 ```
 
@@ -113,10 +109,6 @@ compatibility pages before adopting it.
 - [MCP spreadsheet tool server](mcp-workpaper-tool-server.md)
 - [What the WorkPaper benchmark proves](what-workpaper-benchmark-proves.md)
 - [Where bilig is not Excel-compatible yet](where-bilig-is-not-excel-compatible-yet.md)
-
-If the quickstart matches a backend or agent workflow you are building, star the
-repo so the package is easier to find later:
-<https://github.com/proompteng/bilig/stargazers>.
 
 If it almost matches but a gap blocks adoption, use the adoption blocker form:
 <https://github.com/proompteng/bilig/discussions/new?category=general>.

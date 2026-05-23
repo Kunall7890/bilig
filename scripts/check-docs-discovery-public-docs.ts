@@ -63,7 +63,7 @@ export async function requireSharedPublicDocsDiscovery(args: {
     'serializeWorkPaperDocument(',
     'exportWorkPaperDocument(workbook, { includeConfig: true })',
     '## Proof You Can Reproduce',
-    'https://github.com/proompteng/bilig/stargazers',
+    'https://github.com/proompteng/bilig/discussions/new?category=general',
     'above edits one input',
     'verifies the dependent formula result.',
     'pnpm workpaper:bench:competitive:check',

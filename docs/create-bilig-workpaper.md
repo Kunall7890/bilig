@@ -56,7 +56,7 @@ Expected output includes:
 ```json
 {
   "verified": true,
-  "nextStep": "If this proof matches your service or agent workflow, star or bookmark Bilig: https://github.com/proompteng/bilig/stargazers"
+  "nextStep": "If this proof matches your workflow, open a concrete blocker or adoption note: https://github.com/proompteng/bilig/discussions/new?category=general"
 }
 ```
 
@@ -92,6 +92,6 @@ curl -X POST http://localhost:8788/api/quote/approval \
 - full flagship example:
   [quote approval WorkPaper API](quote-approval-workpaper-api.md)
 
-If this starter matches a service or agent workflow you maintain, star or
-bookmark the repo so the package is easier to find later:
-<https://github.com/proompteng/bilig/stargazers>.
+If this starter almost matches a service or agent workflow you maintain, open
+one concrete adoption blocker so the package becomes easier to evaluate:
+<https://github.com/proompteng/bilig/discussions/new?category=general>.

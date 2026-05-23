@@ -255,7 +255,6 @@ Source: https://github.com/proompteng/bilig/blob/main/README.md
 # bilig
 
 [![CI](https://github.com/proompteng/bilig/actions/workflows/ci.yml/badge.svg)](https://github.com/proompteng/bilig/actions/workflows/ci.yml)
-[![GitHub Repo stars](https://img.shields.io/github/stars/proompteng/bilig?style=social)](https://github.com/proompteng/bilig/stargazers)
 [![npm: @bilig/workpaper](https://img.shields.io/npm/v/@bilig/workpaper?label=%40bilig%2Fworkpaper)](https://www.npmjs.com/package/@bilig/workpaper)
 [![npm: @bilig/xlsx-formula-recalc](https://img.shields.io/npm/v/@bilig/xlsx-formula-recalc?label=%40bilig%2Fxlsx-formula-recalc)](https://www.npmjs.com/package/@bilig/xlsx-formula-recalc)
 [![npm weekly downloads](https://img.shields.io/npm/dw/@bilig/headless?label=%40bilig%2Fheadless%20downloads)](https://www.npmjs.com/package/@bilig/headless)
@@ -411,7 +410,7 @@ npm --prefix examples/recalc-bridge-workflows run smoke
 
 ## Choose An Evaluation Path
 
-| If you are evaluating...      | Start here                                                                                                                                                                                                                | What should be true before you star, watch, or adopt                                                    |
+| If you are evaluating...      | Start here                                                                                                                                                                                                                | What should be true before you adopt                                                    |
 | ----------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------- |
 | Basic fit                     | [Why use Bilig?](docs/why-use-bilig.md)                                                                                                                                                                                   | The problem is workbook-shaped business logic that needs API readback and persistence.                  |
 | Published npm package         | [90-second Node quickstart](docs/try-bilig-headless-in-node.md)                                                                                                                                                           | `@bilig/workpaper` edits one input, recalculates, persists JSON, restores, and prints `verified: true`. |
@@ -429,7 +428,7 @@ Reduced workbook already in hand? Generate the paste-ready fixture report in
 one command:
 
 ```sh
-npm exec --package @bilig/headless@0.71.0 -- bilig-formula-clinic ./reduced.xlsx --cells "Summary!B7,Inputs!B2"
+npm exec --package @bilig/workpaper@latest -- bilig-formula-clinic ./reduced.xlsx --cells "Summary!B7,Inputs!B2"
 ```
 
 Handing a spreadsheet task to another coding agent? Start with the
@@ -439,8 +438,8 @@ To prove the package-owned agent loop without cloning the repo or downloading a
 TypeScript file:
 
 ```sh
-npm exec --package @bilig/headless@0.71.0 -- bilig-agent-challenge
-npm exec --package @bilig/headless@0.71.0 -- bilig-mcp-challenge
+npm exec --package @bilig/workpaper@latest -- bilig-agent-challenge
+npm exec --package @bilig/workpaper@latest -- bilig-mcp-challenge
 ```
 
 Agent tools that support skill manifests can start from
@@ -464,14 +463,10 @@ reads the calculated value, saves JSON, restores the workbook, and prints the
 same value again.
 
 ```sh
-mkdir bilig-headless-eval
-cd bilig-headless-eval
-npm init -y
-npm pkg set type=module
-npm install @bilig/workpaper
-npm install -D tsx typescript @types/node
-curl -fsSLo quickstart.ts https://proompteng.github.io/bilig/npm-eval.ts
-npx tsx quickstart.ts
+npm create @bilig/workpaper@latest pricing-workpaper
+cd pricing-workpaper
+npm install
+npm run smoke
 ```
 
 Expected output:
@@ -484,11 +479,11 @@ Expected output:
   "sheets": ["Inputs", "Summary"],
   "bytes": 999,
   "verified": true,
-  "nextStep": "If this proof matches your service or agent workflow, star or bookmark Bilig: https://github.com/proompteng/bilig/stargazers"
+  "nextStep": "If this proof matches your workflow, open a concrete blocker or adoption note: https://github.com/proompteng/bilig/discussions/new?category=general"
 }
 ```
 
-The TypeScript file is maintained in
+The generated starter uses the same maintained WorkPaper proof shape as
 [`examples/headless-workpaper/npm-eval.ts`](examples/headless-workpaper/npm-eval.ts).
 The exact byte count can change between package versions; `verified: true` and
 matching `after`/`afterRestore` values are the check.
@@ -511,9 +506,8 @@ For an agent-ready project with `AGENTS.md`, MCP client configs, and an
 `agent:verify` script, run
 `npm create @bilig/workpaper@latest pricing-agent -- --agent`.
 
-If that proof matches a service or agent workflow you maintain, the useful next
-step is concrete feedback: [star or bookmark the repo](https://github.com/proompteng/bilig/stargazers),
-then open or answer one adoption blocker in
+If that proof almost matches a service or agent workflow you maintain, the useful next
+step is concrete feedback: open or answer one adoption blocker in
 [Discussions](https://github.com/proompteng/bilig/discussions/new?category=general):
 formula coverage, stale XLSX cached values, persistence shape, MCP/agent
 writeback, or benchmark coverage.
@@ -752,9 +746,9 @@ The agent framework guide is
 The package also ships the MCP stdio binary:
 
 ```sh
-npm exec --package @bilig/headless@0.71.0 -- bilig-agent-challenge
-npm exec --package @bilig/headless@0.71.0 -- bilig-formula-clinic ./reduced.xlsx --cells "Summary!B7,Inputs!B2"
-npm exec --package @bilig/headless@0.71.0 -- bilig-mcp-challenge
+npm exec --package @bilig/workpaper@latest -- bilig-agent-challenge
+npm exec --package @bilig/workpaper@latest -- bilig-formula-clinic ./reduced.xlsx --cells "Summary!B7,Inputs!B2"
+npm exec --package @bilig/workpaper@latest -- bilig-mcp-challenge
 npm exec --package @bilig/headless@0.71.0 -- bilig-workpaper-mcp
 npm exec --package @bilig/headless@0.71.0 -- bilig-workpaper-mcp --workpaper ./pricing.workpaper.json --init-demo-workpaper --writable
 docker build --target bilig-workpaper-mcp -t bilig-workpaper-mcp:local .
@@ -848,8 +842,6 @@ seven file-backed WorkPaper tools:
   [OpenAI Responses tool calls](https://github.com/proompteng/bilig/discussions/335),
   and [benchmark critique](https://github.com/proompteng/bilig/discussions/340).
 
-If the 90-second check matches a problem you have, star or bookmark the repo:
-<https://github.com/proompteng/bilig/stargazers>.
 If you are evaluating `@bilig/headless` for production and want release
 notifications, watch releases:
 <https://github.com/proompteng/bilig/subscription>.
@@ -995,7 +987,6 @@ budget checks, browser smoke, and tracked-file cleanliness checks.
 ## License
 
 MIT.
-
 ---
 
 ## WorkPaper Package README
@@ -1145,7 +1136,6 @@ Source: https://github.com/proompteng/bilig/blob/main/packages/headless/README.m
 [![npm: @bilig/headless](https://img.shields.io/npm/v/@bilig/headless?label=%40bilig%2Fheadless)](https://www.npmjs.com/package/@bilig/headless)
 [![npm weekly downloads](https://img.shields.io/npm/dw/@bilig/headless?label=npm%20downloads)](https://www.npmjs.com/package/@bilig/headless)
 [![GitHub](https://img.shields.io/badge/GitHub-proompteng%2Fbilig-blue)](https://github.com/proompteng/bilig)
-[![GitHub Repo stars](https://img.shields.io/github/stars/proompteng/bilig?style=social)](https://github.com/proompteng/bilig/stargazers)
 [![CodeQL](https://github.com/proompteng/bilig/actions/workflows/codeql.yml/badge.svg)](https://github.com/proompteng/bilig/actions/workflows/codeql.yml)
 [![OpenSSF Scorecard](https://api.scorecard.dev/projects/github.com/proompteng/bilig/badge)](https://scorecard.dev/viewer/?uri=github.com/proompteng/bilig)
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](https://github.com/proompteng/bilig/blob/main/LICENSE)
@@ -1372,7 +1362,7 @@ Expected output:
     "This challenge proves the WorkPaper write/read/persist loop, not full Excel desktop compatibility.",
     "For XLSX-specific behavior, run bilig-formula-clinic or the XLSX recalculation example with a real workbook fixture."
   ],
-  "nextStep": "If this proof matches your service or agent workflow, star or bookmark Bilig: https://github.com/proompteng/bilig/stargazers"
+  "nextStep": "If this proof matches your workflow, open a concrete blocker or adoption note: https://github.com/proompteng/bilig/discussions/new?category=general"
 }
 ```
 
@@ -1780,8 +1770,6 @@ pnpm workpaper:xlsx-corpus:check -- /path/to/xlsx-corpus
 - Open benchmark critique lives in
   [Discussion 340](https://github.com/proompteng/bilig/discussions/340).
 
-If the sanity check matches a problem you have, star or bookmark the project:
-<https://github.com/proompteng/bilig/stargazers>.
 If it almost matches but a gap blocks adoption, use the adoption blocker form:
 <https://github.com/proompteng/bilig/discussions/new?category=general>.
 If a reduced workbook, import/export case, or service workflow would prove the
@@ -1956,7 +1944,7 @@ When the sanity check passes, these are the next useful pages.
 - Website: <https://proompteng.github.io/bilig/>
 - GitHub: <https://github.com/proompteng/bilig>
 - npm: <https://www.npmjs.com/package/@bilig/headless>
-- Star or bookmark: <https://github.com/proompteng/bilig/stargazers>
+- Adoption blockers: <https://github.com/proompteng/bilig/discussions/new?category=general>
 - Watch releases: <https://github.com/proompteng/bilig/subscription>
 - Security policy: <https://github.com/proompteng/bilig/blob/main/SECURITY.md>
 - Support policy: <https://github.com/proompteng/bilig/blob/main/SUPPORT.md>
@@ -1980,7 +1968,6 @@ When the sanity check passes, these are the next useful pages.
 documented public exports as the supported surface, keep integration tests around
 your own workbook corpus, and rerun the validation gates before upgrading in
 production.
-
 ---
 
 ## Headless Package Agent Notes
@@ -3179,8 +3166,10 @@ If an agent needs to change workbook inputs and trust the formula output, do
 not start with screenshots. Give it a small tool surface that can write cells,
 recalculate, read the dependent formula values, and save a proof object.
 
-Bilig has two entry points for that:
+Bilig has three entry points for that:
 
+- `@bilig/workbook` when a framework integration needs a transport-neutral
+  command, check, and proof model while another runtime owns calculation.
 - `@bilig/workpaper` when the workbook can live as
   WorkPaper JSON inside the service or agent tool.
 - `@bilig/xlsx-formula-recalc` or `@bilig/exceljs-formula-recalc` when the user already has
@@ -3337,15 +3326,14 @@ formulas. It is not a replacement for every Excel feature.
 ## Links
 
 - [Agent WorkPaper tool-calling recipe](agent-workpaper-tool-calling-recipe.md)
-- [Headless WorkPaper agent handbook](headless-workpaper-agent-handbook.md)
+- [WorkPaper agent handbook](headless-workpaper-agent-handbook.md)
 - [OpenAI Agents SDK WorkPaper tool](openai-agents-sdk-workpaper-tool.md)
 - [OpenAI Responses WorkPaper tool call](openai-responses-workpaper-tool-call.md)
 - [Vercel AI SDK and LangChain spreadsheet tools](vercel-ai-sdk-langchain-spreadsheet-tool.md)
 - [XLSX formula recalculation in Node.js](xlsx-formula-recalculation-node.md)
 - [ExcelJS formula recalculation in Node.js](exceljs-formula-recalculation-node.md)
 - [GitHub repo](https://github.com/proompteng/bilig)
-- [Star or bookmark Bilig](https://github.com/proompteng/bilig/stargazers)
-
+- [Adoption blocker form](https://github.com/proompteng/bilig/discussions/new?category=general)
 ---
 
 ## Workbook Tools For Agent Frameworks
@@ -3371,6 +3359,9 @@ agent tool, route handler, or MCP server. The tool contract is explicit:
 5. restore it when a file boundary matters;
 6. return `editedCell`, `before`, `after`, `afterRestore`,
    `persistedDocumentBytes`, `verified`, and `limitations`.
+
+Use `@bilig/workbook` when a framework integration needs a transport-neutral
+command, check, and proof model while an existing runtime owns calculation.
 
 Use `@bilig/xlsx-formula-recalc`, `@bilig/sheetjs-formula-recalc`, or
 `@bilig/exceljs-formula-recalc` when the product already owns an `.xlsx`,
@@ -3456,15 +3447,14 @@ Do not claim success from a write call alone.
 ## Links
 
 - [AI spreadsheet agent tool for Node.js](ai-agent-spreadsheet-tool-node.md)
-- [Headless WorkPaper agent handbook](headless-workpaper-agent-handbook.md)
+- [WorkPaper agent handbook](headless-workpaper-agent-handbook.md)
 - [Agent WorkPaper tool-calling recipe](agent-workpaper-tool-calling-recipe.md)
 - [MCP client setup](mcp-client-setup.md)
 - [MCP WorkPaper tool server](mcp-workpaper-tool-server.md)
 - [Node framework WorkPaper adapters](node-framework-workpaper-adapters.md)
 - [XLSX formula recalculation in Node.js](xlsx-formula-recalculation-node.md)
 - [GitHub repo](https://github.com/proompteng/bilig)
-- [Star or bookmark Bilig](https://github.com/proompteng/bilig/stargazers)
-
+- [Adoption blocker form](https://github.com/proompteng/bilig/discussions/new?category=general)
 ---
 
 ## n8n WorkPaper Formula Readback
@@ -4388,14 +4378,9 @@ quote approval rule, budget check, or service-side spreadsheet model and prove
 the formulas reacted. Keep the MCP layer thin, keep the workbook logic
 testable, and make every write return structured verification.
 
-Start with the adapter command above. If it saves you a spreadsheet-tooling
-spike, star the repository so the next person searching for MCP spreadsheet
-tools can find it:
-<https://github.com/proompteng/bilig/stargazers>.
-
-If it almost matches but a gap blocks adoption, use the adoption blocker form:
+Start with the adapter command above. If it almost matches but a gap blocks
+adoption, use the adoption blocker form:
 <https://github.com/proompteng/bilig/discussions/new?category=general>.
-
 ---
 
 ## Agent XLSX Formula Recalculation Without LibreOffice
@@ -4432,11 +4417,11 @@ calculated approval result, exports the edited XLSX, and reimports it.
 ```sh
 mkdir bilig-agent-xlsx-proof
 cd bilig-agent-xlsx-proof
+curl -fsSLO https://proompteng.github.io/bilig/xlsx-recalculation-proof.ts
 npm init -y >/dev/null
 npm pkg set type=module
-npm install @bilig/headless tsx
-curl -fsSLO https://proompteng.github.io/bilig/xlsx-recalculation-proof.ts
-npx tsx xlsx-recalculation-proof.ts
+npm install @bilig/headless@0.71.0 tsx@4.21.0
+npx --no-install tsx xlsx-recalculation-proof.ts
 ```
 
 The run is useful only if it ends with:
@@ -4511,9 +4496,8 @@ Related:
 - [compatibility limits](where-bilig-is-not-excel-compatible-yet.md)
 
 If this is the exact agent spreadsheet loop you are trying to avoid rebuilding,
-star or bookmark Bilig so the next developer can find it:
-<https://github.com/proompteng/bilig/stargazers>.
-
+open one concrete blocker or adoption note so the next developer can evaluate it faster:
+<https://github.com/proompteng/bilig/discussions/new?category=general>.
 ---
 
 ## Formula Bug Clinic
@@ -4645,10 +4629,9 @@ fixture.
 - [XLSX formula recalculation in Node.js](xlsx-formula-recalculation-node.md)
 - [Where Bilig is not Excel-compatible yet](where-bilig-is-not-excel-compatible-yet.md)
 
-If this helped you reduce a workbook bug, star or bookmark the repository so
-the next backend developer can find the fixture path:
-<https://github.com/proompteng/bilig/stargazers>.
-
+If this helped you reduce a workbook bug but a gap still blocks adoption,
+open one concrete blocker or fixture note:
+<https://github.com/proompteng/bilig/discussions/new?category=general>.
 ---
 
 ## Try Bilig Headless In Node
@@ -4667,14 +4650,10 @@ No browser UI, account, server, or clone is required.
 ## Quickstart
 
 ```sh
-mkdir bilig-headless-eval
-cd bilig-headless-eval
-npm init -y
-npm pkg set type=module
-npm install @bilig/workpaper
-npm install -D tsx typescript @types/node
-curl -fsSLo quickstart.ts https://proompteng.github.io/bilig/npm-eval.ts
-npx tsx quickstart.ts
+npm create @bilig/workpaper@latest pricing-workpaper
+cd pricing-workpaper
+npm install
+npm run smoke
 ```
 
 Expected output:
@@ -4687,14 +4666,14 @@ Expected output:
   "sheets": ["Inputs", "Summary"],
   "bytes": 999,
   "verified": true,
-  "nextStep": "If this proof matches your service or agent workflow, star or bookmark Bilig: https://github.com/proompteng/bilig/stargazers"
+  "nextStep": "If this proof matches your workflow, open a concrete blocker or adoption note: https://github.com/proompteng/bilig/discussions/new?category=general"
 }
 ```
 
 The exact byte count can change between package versions. The important part is
 that `verified` is `true` and `afterRestore` matches `after`.
 
-The downloaded file is the maintained TypeScript example at
+The generated starter uses the same maintained TypeScript proof shape as
 [`examples/headless-workpaper/npm-eval.ts`](https://github.com/proompteng/bilig/blob/main/examples/headless-workpaper/npm-eval.ts).
 
 ## Try it in Docker (optional)
@@ -4702,16 +4681,16 @@ The downloaded file is the maintained TypeScript example at
 > **Note:** pnpm is the primary recommended path. This section is for
 > evaluators who prefer not to change their local Node version.
 
-After completing the **Quickstart** step above you will have a `quickstart.ts` file
-inside `bilig-headless-eval/`. Mount that directory into an official Node 24
-container and run the same script:
+After completing the **Quickstart** step above you will have a generated
+`pricing-workpaper/` project. Mount that directory into an official Node 24
+container and run the same smoke script:
 
 ```sh
 docker run --rm \
   -v "$(pwd)":/eval \
   -w /eval \
   node:24-slim \
-  bash -c "npm install --silent && npx tsx quickstart.ts"
+  bash -c "npm install --silent && npm run smoke"
 ```
 
 Expected output (same as above; `verified` must be `true`):
@@ -4724,7 +4703,7 @@ Expected output (same as above; `verified` must be `true`):
   "sheets": ["Inputs", "Summary"],
   "bytes": 999,
   "verified": true,
-  "nextStep": "If this proof matches your service or agent workflow, star or bookmark Bilig: https://github.com/proompteng/bilig/stargazers"
+  "nextStep": "If this proof matches your workflow, open a concrete blocker or adoption note: https://github.com/proompteng/bilig/discussions/new?category=general"
 }
 ```
 
@@ -4761,13 +4740,8 @@ compatibility pages before adopting it.
 - [What the WorkPaper benchmark proves](what-workpaper-benchmark-proves.md)
 - [Where bilig is not Excel-compatible yet](where-bilig-is-not-excel-compatible-yet.md)
 
-If the quickstart matches a backend or agent workflow you are building, star the
-repo so the package is easier to find later:
-<https://github.com/proompteng/bilig/stargazers>.
-
 If it almost matches but a gap blocks adoption, use the adoption blocker form:
 <https://github.com/proompteng/bilig/discussions/new?category=general>.
-
 ---
 
 ## Quote Approval WorkPaper API
@@ -4843,7 +4817,7 @@ Expected shape:
     }
   },
   "verified": true,
-  "nextStep": "If this proof matches your service or agent workflow, star or bookmark Bilig: https://github.com/proompteng/bilig/stargazers"
+  "nextStep": "If this proof matches your workflow, open a concrete blocker or adoption note: https://github.com/proompteng/bilig/discussions/new?category=general"
 }
 ```
 
@@ -4912,12 +4886,8 @@ pnpm --dir examples/serverless-workpaper-api run persistence-adapters
 - [What the WorkPaper benchmark proves](what-workpaper-benchmark-proves.md)
 - [Where bilig is not Excel-compatible yet](where-bilig-is-not-excel-compatible-yet.md)
 
-If this matches a workflow you are evaluating, star the repo as a bookmark:
-<https://github.com/proompteng/bilig/stargazers>.
-
 If it almost matches but a gap blocks adoption, use the adoption blocker form:
 <https://github.com/proompteng/bilig/discussions/new?category=general>.
-
 ---
 
 ## Compatibility Limits

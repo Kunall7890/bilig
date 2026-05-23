@@ -27,6 +27,9 @@ agent tool, route handler, or MCP server. The tool contract is explicit:
 6. return `editedCell`, `before`, `after`, `afterRestore`,
    `persistedDocumentBytes`, `verified`, and `limitations`.
 
+Use `@bilig/workbook` when a framework integration needs a transport-neutral
+command, check, and proof model while an existing runtime owns calculation.
+
 Use `@bilig/xlsx-formula-recalc`, `@bilig/sheetjs-formula-recalc`, or
 `@bilig/exceljs-formula-recalc` when the product already owns an `.xlsx`,
 SheetJS, or ExcelJS file pipeline and only needs fresh formula results before
@@ -111,11 +114,11 @@ Do not claim success from a write call alone.
 ## Links
 
 - [AI spreadsheet agent tool for Node.js](ai-agent-spreadsheet-tool-node.md)
-- [Headless WorkPaper agent handbook](headless-workpaper-agent-handbook.md)
+- [WorkPaper agent handbook](headless-workpaper-agent-handbook.md)
 - [Agent WorkPaper tool-calling recipe](agent-workpaper-tool-calling-recipe.md)
 - [MCP client setup](mcp-client-setup.md)
 - [MCP WorkPaper tool server](mcp-workpaper-tool-server.md)
 - [Node framework WorkPaper adapters](node-framework-workpaper-adapters.md)
 - [XLSX formula recalculation in Node.js](xlsx-formula-recalculation-node.md)
 - [GitHub repo](https://github.com/proompteng/bilig)
-- [Star or bookmark Bilig](https://github.com/proompteng/bilig/stargazers)
+- [Adoption blocker form](https://github.com/proompteng/bilig/discussions/new?category=general)

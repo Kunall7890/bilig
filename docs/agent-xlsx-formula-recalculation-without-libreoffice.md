@@ -38,11 +38,11 @@ calculated approval result, exports the edited XLSX, and reimports it.
 ```sh
 mkdir bilig-agent-xlsx-proof
 cd bilig-agent-xlsx-proof
+curl -fsSLO https://proompteng.github.io/bilig/xlsx-recalculation-proof.ts
 npm init -y >/dev/null
 npm pkg set type=module
-npm install @bilig/headless tsx
-curl -fsSLO https://proompteng.github.io/bilig/xlsx-recalculation-proof.ts
-npx tsx xlsx-recalculation-proof.ts
+npm install @bilig/headless@0.71.0 tsx@4.21.0
+npx --no-install tsx xlsx-recalculation-proof.ts
 ```
 
 The run is useful only if it ends with:
@@ -117,5 +117,5 @@ Related:
 - [compatibility limits](where-bilig-is-not-excel-compatible-yet.md)
 
 If this is the exact agent spreadsheet loop you are trying to avoid rebuilding,
-star or bookmark Bilig so the next developer can find it:
-<https://github.com/proompteng/bilig/stargazers>.
+open one concrete blocker or adoption note so the next developer can evaluate it faster:
+<https://github.com/proompteng/bilig/discussions/new?category=general>.

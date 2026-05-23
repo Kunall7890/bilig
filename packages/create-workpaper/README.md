@@ -13,8 +13,8 @@ The generated starter builds a quote-approval workbook, writes inputs through an
 API-style handler, recalculates formulas, persists JSON, restores the workbook,
 and prints `verified: true`.
 
-After the smoke proof passes, it also prints a star/bookmark link for the GitHub
-repo: <https://github.com/proompteng/bilig/stargazers>.
+After the smoke proof passes, it prints the adoption-feedback URL for concrete
+blockers or integration notes: <https://github.com/proompteng/bilig/discussions/new?category=general>.
 
 Use this when you want to evaluate `@bilig/workpaper` from a blank directory
 without cloning the full monorepo.

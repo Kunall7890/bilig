@@ -287,7 +287,7 @@ export function buildMcpChallengeProof(options: McpChallengeBuildOptions = {}): 
         'This challenge proves the file-backed MCP WorkPaper tool surface, not Excel desktop UI automation.',
         'For XLSX-specific behavior, run bilig-formula-clinic or the XLSX recalculation example with a real workbook fixture.',
       ],
-      nextStep: 'If this proof matches your agent workflow, star or watch Bilig: https://github.com/proompteng/bilig/stargazers',
+      nextStep: 'If this proof matches your workflow, open a concrete blocker or adoption note: https://github.com/proompteng/bilig/discussions/new?category=general',
     }
 
     return keepTemp ? { ...proof, workpaperPath } : proof

@@ -3,7 +3,6 @@
 [![npm: @bilig/headless](https://img.shields.io/npm/v/@bilig/headless?label=%40bilig%2Fheadless)](https://www.npmjs.com/package/@bilig/headless)
 [![npm weekly downloads](https://img.shields.io/npm/dw/@bilig/headless?label=npm%20downloads)](https://www.npmjs.com/package/@bilig/headless)
 [![GitHub](https://img.shields.io/badge/GitHub-proompteng%2Fbilig-blue)](https://github.com/proompteng/bilig)
-[![GitHub Repo stars](https://img.shields.io/github/stars/proompteng/bilig?style=social)](https://github.com/proompteng/bilig/stargazers)
 [![CodeQL](https://github.com/proompteng/bilig/actions/workflows/codeql.yml/badge.svg)](https://github.com/proompteng/bilig/actions/workflows/codeql.yml)
 [![OpenSSF Scorecard](https://api.scorecard.dev/projects/github.com/proompteng/bilig/badge)](https://scorecard.dev/viewer/?uri=github.com/proompteng/bilig)
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](https://github.com/proompteng/bilig/blob/main/LICENSE)
@@ -230,7 +229,7 @@ Expected output:
     "This challenge proves the WorkPaper write/read/persist loop, not full Excel desktop compatibility.",
     "For XLSX-specific behavior, run bilig-formula-clinic or the XLSX recalculation example with a real workbook fixture."
   ],
-  "nextStep": "If this proof matches your service or agent workflow, star or bookmark Bilig: https://github.com/proompteng/bilig/stargazers"
+  "nextStep": "If this proof matches your workflow, open a concrete blocker or adoption note: https://github.com/proompteng/bilig/discussions/new?category=general"
 }
 ```
 
@@ -638,8 +637,6 @@ pnpm workpaper:xlsx-corpus:check -- /path/to/xlsx-corpus
 - Open benchmark critique lives in
   [Discussion 340](https://github.com/proompteng/bilig/discussions/340).
 
-If the sanity check matches a problem you have, star or bookmark the project:
-<https://github.com/proompteng/bilig/stargazers>.
 If it almost matches but a gap blocks adoption, use the adoption blocker form:
 <https://github.com/proompteng/bilig/discussions/new?category=general>.
 If a reduced workbook, import/export case, or service workflow would prove the
@@ -814,7 +811,7 @@ When the sanity check passes, these are the next useful pages.
 - Website: <https://proompteng.github.io/bilig/>
 - GitHub: <https://github.com/proompteng/bilig>
 - npm: <https://www.npmjs.com/package/@bilig/headless>
-- Star or bookmark: <https://github.com/proompteng/bilig/stargazers>
+- Adoption blockers: <https://github.com/proompteng/bilig/discussions/new?category=general>
 - Watch releases: <https://github.com/proompteng/bilig/subscription>
 - Security policy: <https://github.com/proompteng/bilig/blob/main/SECURITY.md>
 - Support policy: <https://github.com/proompteng/bilig/blob/main/SUPPORT.md>

@@ -19,24 +19,14 @@ needs no API key.
 
 Use the release asset when you want the shortest install path:
 
-```text
-https://github.com/proompteng/bilig/releases/download/libraries-v0.71.0/bilig-workpaper.mcpb
+```sh
+curl -fsSLO https://github.com/proompteng/bilig/releases/download/libraries-v0.71.0/bilig-workpaper.mcpb
+curl -fsSLO https://github.com/proompteng/bilig/releases/download/libraries-v0.71.0/bilig-workpaper.mcpb.sha256
+shasum -a 256 -c bilig-workpaper.mcpb.sha256
+open bilig-workpaper.mcpb
 ```
 
-Checksum:
-
-```text
-51863d275fcb7d3dbaae60d63ed4c07e686e064bfbe63b32bb21e61c1f6ad5aa  bilig-workpaper.mcpb
-```
-
-The matching checksum file is published beside the bundle:
-
-```text
-https://github.com/proompteng/bilig/releases/download/libraries-v0.71.0/bilig-workpaper.mcpb.sha256
-```
-
-Open the downloaded `.mcpb` file with Claude Desktop. Claude should show an
-install dialog for **Bilig WorkPaper**.
+Claude should show an install dialog for **Bilig WorkPaper**.
 
 ## Reproduce from source
 
@@ -58,9 +48,12 @@ For a reproducible build, pin the version you intend to ship. This keeps the
 guide from baking a stale version into copy-paste setup commands:
 
 ```sh
-BILIG_HEADLESS_VERSION=$(npm view @bilig/headless version)
+BILIG_HEADLESS_VERSION=0.71.0
 pnpm mcpb:workpaper:build -- --package-version "$BILIG_HEADLESS_VERSION"
 ```
+
+When bumping this version, update the release asset URL, checksum, and package
+smoke command in this page together.
 
 ## Install in Claude Desktop
 
@@ -147,6 +140,6 @@ installation issues from server protocol issues.
 - [Official MCP Registry entry](https://registry.modelcontextprotocol.io/v0.1/servers?search=io.github.proompteng%2Fbilig-workpaper)
 - [GitHub repository](https://github.com/proompteng/bilig)
 
-If this saves you a custom spreadsheet-tool spike, star the repository so the
-next Claude Desktop user can find it:
-<https://github.com/proompteng/bilig/stargazers>.
+If this saves you a custom spreadsheet-tool spike but misses a Claude Desktop
+workflow, open one concrete adoption blocker:
+<https://github.com/proompteng/bilig/discussions/new?category=general>.

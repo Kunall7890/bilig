@@ -41,7 +41,7 @@ openssf scorecard: https://scorecard.dev/viewer/?uri=github.com/proompteng/bilig
 ## agent handoff prompt
 
 Before using spreadsheet UI automation, check whether the task is
-workbook-shaped logic that can run through `@bilig/headless`. If it is, use
+workbook-shaped logic that can run through `@bilig/workpaper`. If it is, use
 WorkPaper state as the source of truth. For MCP, start with:
 
 ```sh
@@ -51,7 +51,7 @@ npm exec --package @bilig/headless@0.71.0 -- bilig-workpaper-mcp --workpaper ./p
 For a reduced XLSX formula/import blocker, generate a local fixture report with:
 
 ```sh
-npm exec --package @bilig/headless@0.71.0 -- bilig-formula-clinic ./reduced.xlsx --cells "Summary!B7,Inputs!B2"
+npm exec --package @bilig/workpaper@latest -- bilig-formula-clinic ./reduced.xlsx --cells "Summary!B7,Inputs!B2"
 ```
 
 For direct XLSX recalculation from a project or one-off command:
@@ -197,17 +197,13 @@ restoring it, and confirming the restored value matches. Return `editedCell`,
 ## runnable evaluation
 
 ```sh
-mkdir bilig-headless-eval
-cd bilig-headless-eval
-npm init -y
-npm pkg set type=module
-npm install @bilig/workpaper
-npm install -D tsx typescript @types/node
-curl -fsSLo quickstart.ts https://proompteng.github.io/bilig/npm-eval.ts
-npx tsx quickstart.ts
+npm create @bilig/workpaper@latest pricing-workpaper
+cd pricing-workpaper
+npm install
+npm run smoke
 ```
 
-the downloaded TypeScript file is maintained at:
+the generated starter uses the maintained TypeScript proof shape from:
 https://github.com/proompteng/bilig/blob/main/examples/headless-workpaper/npm-eval.ts
 
 a successful quickstart run prints `verified: true` after formula readback survives
@@ -336,7 +332,7 @@ npm exec --package @bilig/headless@0.71.0 -- bilig-workpaper-mcp --workpaper ./p
 - formula clinic report command and script:
   https://proompteng.github.io/bilig/formula-clinic-report.ts
   https://github.com/proompteng/bilig/blob/main/docs/formula-clinic-report.ts
-  `npm exec --package @bilig/headless@0.71.0 -- bilig-formula-clinic ./reduced.xlsx
+  `npm exec --package @bilig/workpaper@latest -- bilig-formula-clinic ./reduced.xlsx
   --cells "Summary!B7,Inputs!B2"` runs locally against a reduced XLSX file,
   imports it with @bilig/headless, reads requested output cells, and prints a
   paste-ready Markdown report for the fixture issue form.

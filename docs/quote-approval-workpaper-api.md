@@ -77,7 +77,7 @@ Expected shape:
     }
   },
   "verified": true,
-  "nextStep": "If this proof matches your service or agent workflow, star or bookmark Bilig: https://github.com/proompteng/bilig/stargazers"
+  "nextStep": "If this proof matches your workflow, open a concrete blocker or adoption note: https://github.com/proompteng/bilig/discussions/new?category=general"
 }
 ```
 
@@ -145,9 +145,6 @@ pnpm --dir examples/serverless-workpaper-api run persistence-adapters
 - [Five Node.js workbook automation examples](workbook-automation-examples-node.md)
 - [What the WorkPaper benchmark proves](what-workpaper-benchmark-proves.md)
 - [Where bilig is not Excel-compatible yet](where-bilig-is-not-excel-compatible-yet.md)
-
-If this matches a workflow you are evaluating, star the repo as a bookmark:
-<https://github.com/proompteng/bilig/stargazers>.
 
 If it almost matches but a gap blocks adoption, use the adoption blocker form:
 <https://github.com/proompteng/bilig/discussions/new?category=general>.
