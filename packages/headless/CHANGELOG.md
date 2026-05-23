@@ -4,6 +4,19 @@ All notable changes to `@bilig/headless` will be documented in this file.
 
 This package is released as part of the aligned bilig library package set.
 
+## 0.71.0
+
+- Release type: minor
+- Previous libraries tag: libraries-v0.70.0
+- Manual override: no
+
+## Features
+- feat(workbook): persist agent command proof (a1fcf8b5)
+
+## Fixes
+- fix(workbook): rename raw chart package refs (38f58840)
+- fix(ui): require production same-corpus captures (761dac47)
+
 ## 0.70.0
 
 - Release type: minor
