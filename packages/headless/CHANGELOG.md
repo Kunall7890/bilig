@@ -4,6 +4,36 @@ All notable changes to `@bilig/headless` will be documented in this file.
 
 This package is released as part of the aligned bilig library package set.
 
+## 0.73.0
+
+- Release type: minor
+- Previous libraries tag: libraries-v0.71.0
+- Manual override: no
+
+## Features
+- feat(workbook): bind agent runtime proof (6d3d81cc)
+- feat(workbook): bind command apply receipts (3571060c)
+- feat(workbook): require scoped command ranges (5154145c)
+- feat(workbook): reject duplicate readbacks (027afd87)
+
+## Fixes
+- fix(workbook): rewrite preserved view tabs on sheet delete (572a0edb)
+- fix(xlsx): preserve calc-chain sheet ids (4e137088)
+- fix(ui): serve production same-corpus capture (0e79caba)
+- fix(workbook): move sheet tabs like Excel (38ea9170)
+- fix(xlsx): respect sheet relationship paths after tab moves (78b70177)
+- fix(xlsx): skip zip path lookup for legacy XLS imports (c4f3f80d)
+- fix(xlsx): import sheet metadata by workbook relationships (16168d2d)
+- fix(xlsx): import worksheet policy metadata by relationships (6b9ab90a)
+- fix(xlsx): import table and legacy comment parts by relationships (c59c6e61)
+- fix(xlsx): prune deleted sheet slicer artifacts (59bd2ad3)
+- fix(xlsx): preserve shared slicer parts on sheet delete (21cbb192)
+
+## Internal runtime changes
+- docs(growth): remove proof-output star asks (#23) (d3a0761f)
+- test(headless): update HyperFormula surface snapshot (e536e81d)
+- chore(release): runtime packages v0.72.0 (afc93c29)
+
 ## 0.72.0
 
 - Release type: minor
