@@ -228,11 +228,13 @@ const adapter = {
 refuses to call `apply` if static plan verification fails or if the adapter is
 missing a required method. Use `checkRuntimeRequirements(data)` when runtime
 requirements crossed a JSON boundary and an agent needs path-based diagnostics
-before trusting the handoff. Use `checkRuntimeAdapter(planOrRequirements,
-adapter)` when an agent wants to check `apply`, `read`, and `verifyChecks`
-coverage before calling the runtime. Check-only plans do not require `apply`;
-when runtime requirements contain only `read` or `verifyCheck`, `runWorkbookPlan`
-skips mutation and verifies the declared checks directly.
+before trusting the handoff. Runtime requirement arrays and nested ref arrays
+must be data entries; holes or accessor-backed entries are rejected without
+running getters. Use `checkRuntimeAdapter(planOrRequirements, adapter)` when an
+agent wants to check `apply`, `read`, and `verifyChecks` coverage before calling
+the runtime. Check-only plans do not require `apply`; when runtime requirements
+contain only `read` or `verifyCheck`, `runWorkbookPlan` skips mutation and
+verifies the declared checks directly.
 If an adapter returns both `previewOps` and `appliedOps`, the result reports
 whether they matched. If the adapter returns neither, the run records an
 unverified apply fact. Use `runWorkbookPlan(plan, adapter, { requireApplyProof:

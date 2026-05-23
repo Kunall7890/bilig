@@ -31,6 +31,15 @@ function summary(requirement: ReturnType<typeof describeRuntimeRequirements>['re
   }
 }
 
+function accessorArray(get: () => unknown): unknown[] {
+  const value = Array.from<unknown>({ length: 1 })
+  Object.defineProperty(value, '0', {
+    enumerable: true,
+    get,
+  })
+  return value
+}
+
 describe('@bilig/workbook runtime requirements api', () => {
   it('describes apply, read, and check proof requirements as JSON-safe handoff data', () => {
     const model = defineModel({
@@ -265,6 +274,65 @@ describe('@bilig/workbook runtime requirements api', () => {
         },
       ]),
     })
+  })
+
+  it('rejects accessor-backed runtime requirement arrays without invoking getters', () => {
+    let requirementGetterInvoked = false
+    const requirements = accessorArray(() => {
+      requirementGetterInvoked = true
+      throw new Error('getter must not run')
+    })
+
+    expect(
+      checkRuntimeRequirements({
+        modelName: 'runtime-accessor-array-model',
+        actionName: 'seed',
+        requirements,
+      }),
+    ).toEqual({
+      status: 'invalid',
+      issues: [
+        {
+          code: 'invalid_runtime_requirements',
+          path: 'requirements[0]',
+          message: 'Workbook runtime requirement at requirements[0] must be an object',
+        },
+      ],
+    })
+    expect(requirementGetterInvoked).toBe(false)
+
+    let refGetterInvoked = false
+    const refs = accessorArray(() => {
+      refGetterInvoked = true
+      throw new Error('getter must not run')
+    })
+
+    expect(
+      checkRuntimeRequirements({
+        modelName: 'runtime-accessor-ref-array-model',
+        actionName: 'seed',
+        requirements: [
+          {
+            kind: 'verify',
+            capability: 'verifyCheck',
+            checkIndex: 0,
+            checkKind: 'custom',
+            refs,
+            message: 'Verify custom check',
+          },
+        ],
+      }),
+    ).toEqual({
+      status: 'invalid',
+      issues: [
+        {
+          code: 'invalid_runtime_requirements',
+          path: 'requirements[0].refs[0]',
+          message: 'Workbook runtime requirement ref must be workbook ref data',
+        },
+      ],
+    })
+    expect(refGetterInvoked).toBe(false)
   })
 
   it('checks runtime adapter capabilities before mutation handoff', () => {

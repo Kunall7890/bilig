@@ -506,7 +506,9 @@ and returns boring `{ status, issues }` diagnostics with paths such as
 `requirements[0].capability` or `requirements[2].refs[0]`. That lets agents
 reject malformed adapter handoff data before checking runtime methods or
 starting mutation. Runtime requirement validation also ignores inherited fields;
-the adapter checklist has to be present as explicit payload data.
+the adapter checklist has to be present as explicit payload data. Requirement
+arrays and nested ref arrays are data-only too: holes or accessor-backed entries
+are rejected without invoking getters.
 
 `verifyPlan` gives agents a runtime-free consistency check before handoff. It
 flags invalid action input, unresolved command targets, unresolved formula

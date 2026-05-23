@@ -54,6 +54,8 @@ flowchart LR
   - runtime adapter capability checks before mutation handoff
   - structured `checkRuntimeRequirements` diagnostics for transported adapter
     handoff payloads
+  - accessor-free runtime requirement arrays and nested ref arrays before
+    adapter validation
   - feature command request validation before runtime-owned workbook extension
     dispatch
   - feature command receipt validation before agents trust runtime extension
