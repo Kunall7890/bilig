@@ -17,14 +17,10 @@ export function workbookSnapCssPixel(value: number, dpr = 1): number {
 }
 
 export function workbookDisplayFontCssPx(fontSizeCssPx: number, dpr = 1): number {
-  // Keep workbook point-size semantics in the model, but draw browser-native glyphs on whole CSS pixels.
-  // Fractional glyph sizes such as 10pt => 13.3333px render soft in Chromium/macOS even when the
-  // surrounding layout boxes are physically pixel-aligned.
-  void dpr
   const resolvedFontSize = Number.isFinite(fontSizeCssPx)
     ? Math.max(1, fontSizeCssPx)
     : workbookFontPointSizeToCssPx(WORKBOOK_DEFAULT_FONT_SIZE)
-  return Math.max(1, Math.ceil(resolvedFontSize))
+  return Math.max(1, workbookSnapCssPixel(resolvedFontSize, dpr))
 }
 
 export function workbookDisplayFontPointSizeToCssPx(pointSize: number, dpr = 1): number {

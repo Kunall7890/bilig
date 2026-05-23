@@ -142,7 +142,7 @@ describe('CellEditorOverlay', () => {
     expect(textarea?.style.fontFeatureSettings).toBe('normal')
     expect(textarea?.style.fontVariantNumeric).toBe('tabular-nums')
     expect(textarea?.style.letterSpacing).toBe('0px')
-    expect(textarea?.style.lineHeight).toBe('17px')
+    expect(textarea?.style.lineHeight).toBe('16px')
     expect(textarea?.style.fontOpticalSizing).toBe('none')
     expect(textarea?.style.fontSynthesis).toBe('none')
     expect(textarea?.style.textRendering).toBe('auto')
