@@ -303,6 +303,7 @@ const parallelFocusedCorrectnessLanes: readonly CiTask[] = [
 const corpusCorrectnessLane = withEnv(directPackageScript('correctness public workbook corpus', 'test:correctness:corpus'), {
   BILIG_VITEST_FILE_CHUNK_SIZE: '10',
 })
+const excelOracleCorrectnessLane = directPackageScript('correctness Desktop Excel oracle harness', 'test:correctness:excel-oracle')
 const generatedSourceChecks: readonly CiTask[] = [
   bunScript('protocol check', 'scripts/gen-protocol.ts', '--check'),
   direct('protocol package build for generated-source imports', workspaceBin('tsc'), '-p', 'packages/protocol/tsconfig.json'),
@@ -459,7 +460,7 @@ try {
     // Keep Vitest lanes serialized locally; running four pnpm/vitest processes concurrently is prone to child-process
     // termination before assertion output on constrained machines.
     allCompleted.push(...(await runSequential('focused correctness checks', parallelFocusedCorrectnessLanes)))
-    allCompleted.push(...(await runSequential('corpus correctness benchmark', [corpusCorrectnessLane])))
+    allCompleted.push(...(await runSequential('corpus correctness benchmark', [corpusCorrectnessLane, excelOracleCorrectnessLane])))
     if (!skipBrowserGates) {
       allCompleted.push(...(await runStage('browser smoke setup', [browserWebBundleBuild])))
     }

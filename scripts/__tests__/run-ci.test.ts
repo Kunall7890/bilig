@@ -43,6 +43,8 @@ describe('run-ci', () => {
     )
     expect(source).toContain('const wasmBuildTask: CiTask = {')
     expect(source).toContain("directPackageScript('correctness public workbook corpus', 'test:correctness:corpus')")
+    expect(source).toContain("directPackageScript('correctness Desktop Excel oracle harness', 'test:correctness:excel-oracle')")
+    expect(source).toContain("await runSequential('corpus correctness benchmark', [corpusCorrectnessLane, excelOracleCorrectnessLane])")
     expect(source).toContain(
       "withEnv(directPackageScript('correctness core', 'test:correctness:core'), { BILIG_VITEST_FILE_CHUNK_SIZE: '10' })",
     )
