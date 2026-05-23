@@ -288,6 +288,7 @@ test('web app paints selected areas as one continuous body range and collapses o
     'background-color',
     'rgba(33, 115, 70, 0.18)',
   )
+  await expect(page.locator('[data-grid-selection-visual-role="selection-fill"]').first()).toHaveCSS('opacity', '1')
   await expectSelectedRangeBodyTint(page, 3, 3)
   await expectSelectedRangeBodyTint(page, 1, 1)
   await expectSelectedRangeBodyTint(page, 1, 2)

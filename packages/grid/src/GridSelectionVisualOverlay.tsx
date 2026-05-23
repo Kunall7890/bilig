@@ -446,7 +446,7 @@ function styleForRect(
   const base = {
     height: rect.bounds.height,
     left: rect.bounds.x,
-    opacity: hidden ? 0 : mode === 'chrome-only' && rect.role === 'selection-fill' ? 0.55 : undefined,
+    opacity: hidden ? 0 : undefined,
     top: rect.bounds.y,
     width: rect.bounds.width,
   }
