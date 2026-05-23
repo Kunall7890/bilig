@@ -1,7 +1,7 @@
-import { checkWorkbookCommandBundle } from '@bilig/workbook'
+import { checkWorkbookCommandBundle, checkWorkbookCommandResult } from '@bilig/workbook'
 import { describe, expect, it } from 'vitest'
 import { createWorkbookAgentCommandBundle, type WorkbookAgentCommand, type WorkbookAgentCommandBundle } from '../workbook-agent-bundles.js'
-import { toWorkbookCommandBundle } from '../workbook-agent-command-handoff.js'
+import { toAppliedWorkbookCommandResult, toWorkbookCommandBundle } from '../workbook-agent-command-handoff.js'
 
 function createBundle(commands: readonly WorkbookAgentCommand[]) {
   return createWorkbookAgentCommandBundle({
@@ -158,5 +158,89 @@ describe('workbook agent command handoff', () => {
     }
 
     expect(() => toWorkbookCommandBundle(bundle)).toThrow()
+  })
+
+  it('converts applied agent command handoff into a generic workbook command result', () => {
+    const bundle = createBundle([
+      {
+        kind: 'writeRange',
+        sheetName: 'Sheet1',
+        startAddress: 'B2',
+        values: [
+          [1, 2],
+          [3, 4],
+        ],
+      },
+    ])
+
+    const result = toAppliedWorkbookCommandResult({
+      bundle,
+      revision: 13,
+      undo: {
+        id: 'bundle-1:undo',
+        ops: [
+          {
+            kind: 'clearCell',
+            sheetName: 'Sheet1',
+            address: 'B2',
+          },
+        ],
+      },
+    })
+    const check = checkWorkbookCommandResult(result)
+
+    expect(check.status).toBe('valid')
+    expect(result).toEqual({
+      status: 'applied',
+      bundleId: 'bundle-1',
+      targetRevision: 12,
+      idempotencyKey: 'bundle-1',
+      commandCount: 1,
+      touchedRanges: [
+        {
+          sheetName: 'Sheet1',
+          startAddress: 'B2',
+          endAddress: 'C3',
+        },
+      ],
+      touchedCellCount: 4,
+      revision: 13,
+      receipts: [
+        {
+          status: 'applied',
+          featureId: 'workbook-agent',
+          commandId: 'workbookAgent.writeRange',
+          category: 'mutation',
+          changedRanges: [
+            {
+              sheetName: 'Sheet1',
+              startAddress: 'B2',
+              endAddress: 'C3',
+            },
+          ],
+          proof: {
+            bundleCommandId: 'bundle-1:0:writeRange',
+          },
+        },
+      ],
+      matched: null,
+      changedRanges: [
+        {
+          sheetName: 'Sheet1',
+          startAddress: 'B2',
+          endAddress: 'C3',
+        },
+      ],
+      undo: {
+        id: 'bundle-1:undo',
+        ops: [
+          {
+            kind: 'clearCell',
+            sheetName: 'Sheet1',
+            address: 'B2',
+          },
+        ],
+      },
+    })
   })
 })

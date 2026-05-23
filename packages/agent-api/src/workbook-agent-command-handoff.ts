@@ -1,9 +1,13 @@
 import {
   normalizeWorkbookActionInput,
   normalizeWorkbookCommandBundle,
+  workbookCommandResultForReceipts,
   type WorkbookActionInput,
   type WorkbookCommandBundle,
   type WorkbookCommandBundleCommand,
+  type WorkbookCommandReceipt,
+  type WorkbookCommandResult,
+  type WorkbookUndoRef,
 } from '@bilig/workbook'
 import type { CellRangeRef } from '@bilig/protocol'
 import {
@@ -141,4 +145,43 @@ export function toWorkbookCommandBundle(bundle: WorkbookAgentCommandBundle): Wor
     idempotencyKey: bundle.id,
     commands: bundle.commands.map((command, index) => toWorkbookCommandBundleCommand(bundle, command, index)),
   })
+}
+
+export interface AppliedWorkbookCommandResultInput {
+  readonly bundle: WorkbookAgentCommandBundle
+  readonly revision: number
+  readonly undo?: WorkbookUndoRef
+}
+
+export function toAppliedWorkbookCommandResult(input: AppliedWorkbookCommandResultInput): WorkbookCommandResult {
+  const commandBundle = toWorkbookCommandBundle(input.bundle)
+  return workbookCommandResultForReceipts(
+    commandBundle,
+    commandBundle.commands.map((command) => {
+      if (command.kind !== 'request') {
+        throw new Error('Workbook agent command handoff produced a non-request command')
+      }
+      const receipt: WorkbookCommandReceipt = {
+        status: 'applied' as const,
+        featureId: command.request.featureId,
+        commandId: command.request.commandId,
+        category: command.request.category ?? 'mutation',
+      }
+      if (command.touchedRanges !== undefined) {
+        Object.assign(receipt, { changedRanges: command.touchedRanges })
+      }
+      if (command.id !== undefined) {
+        Object.assign(receipt, {
+          proof: {
+            bundleCommandId: command.id,
+          },
+        })
+      }
+      return receipt
+    }),
+    {
+      revision: input.revision,
+      ...(input.undo !== undefined ? { undo: input.undo } : {}),
+    },
+  )
 }

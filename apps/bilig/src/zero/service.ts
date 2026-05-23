@@ -1,15 +1,18 @@
 import { handleMutateRequest, handleQueryRequest } from '@rocicorp/zero/server'
 import type { WorkbookSnapshot } from '@bilig/protocol'
 import { resolveRequestBaseUrl } from '@bilig/runtime-kernel'
+import { checkWorkbookCommandResult, type WorkbookCommandResult, type WorkbookUndoRef } from '@bilig/workbook'
 import {
   type AuthoritativeWorkbookEventBatch,
   executeZeroQueryTransform,
   isAuthoritativeWorkbookEventBatch,
   schema,
+  type WorkbookChangeUndoBundle,
 } from '@bilig/zero-sync'
 import {
   areWorkbookAgentPreviewSummariesEqual,
   buildWorkbookAgentPreview,
+  toAppliedWorkbookCommandResult,
   toWorkbookCommandBundle,
   type WorkbookAgentCommandBundle,
   type WorkbookAgentExecutionRecord,
@@ -82,7 +85,7 @@ export interface ZeroSyncService {
     bundle: WorkbookAgentCommandBundle,
     preview: WorkbookAgentPreviewSummary,
     session?: SessionIdentity,
-  ): Promise<{ revision: number; preview: WorkbookAgentPreviewSummary }>
+  ): Promise<{ revision: number; preview: WorkbookAgentPreviewSummary; commandResult?: WorkbookCommandResult }>
   listWorkbookChanges(documentId: string, limit?: number): Promise<WorkbookChangeRecord[]>
   listWorkbookAgentRuns(documentId: string, actorUserId: string, limit?: number): Promise<WorkbookAgentExecutionRecord[]>
   listWorkbookAgentThreadRuns(
@@ -347,6 +350,11 @@ class EnabledZeroSyncService implements ZeroSyncService {
             },
             undoBundle,
           })
+          const commandResult = assertAppliedWorkbookCommandResult({
+            bundle,
+            revision: result.revision,
+            ...optionalWorkbookUndoRef(workbookUndoRefForAgentCommandBundle(bundle, undoBundle)),
+          })
           this.runtimeManager.commitMutation(documentId, {
             projectionCommit: result.projectionCommit,
             headRevision: result.revision,
@@ -357,6 +365,7 @@ class EnabledZeroSyncService implements ZeroSyncService {
           return {
             revision: result.revision,
             preview: authoritativePreview,
+            commandResult,
           }
         } catch (error) {
           this.runtimeManager.invalidate(documentId)
@@ -506,6 +515,54 @@ function assertWorkbookCommandBundleHandoff(bundle: WorkbookAgentCommandBundle) 
       retryable: false,
     })
   }
+}
+
+function workbookUndoRefForAgentCommandBundle(
+  bundle: WorkbookAgentCommandBundle,
+  undoBundle: WorkbookChangeUndoBundle | null,
+): WorkbookUndoRef | undefined {
+  if (undoBundle === null) {
+    return undefined
+  }
+  if (undoBundle.kind !== 'engineOps') {
+    return {
+      id: `${bundle.id}:undo`,
+    }
+  }
+  if (undoBundle.ops.length === 0) {
+    return undefined
+  }
+  return {
+    id: `${bundle.id}:undo`,
+    ops: undoBundle.ops,
+  }
+}
+
+function assertAppliedWorkbookCommandResult(input: {
+  readonly bundle: WorkbookAgentCommandBundle
+  readonly revision: number
+  readonly undo?: WorkbookUndoRef
+}): WorkbookCommandResult {
+  try {
+    const commandResult = toAppliedWorkbookCommandResult(input)
+    const check = checkWorkbookCommandResult(commandResult)
+    if (check.status === 'invalid') {
+      const [firstIssue] = check.issues
+      throw new Error(firstIssue === undefined ? 'Workbook command result is invalid' : firstIssue.message)
+    }
+    return check.result
+  } catch (error) {
+    throw createWorkbookAgentServiceError({
+      code: 'WORKBOOK_AGENT_INVALID_COMMAND_RESULT',
+      message: error instanceof Error ? error.message : String(error),
+      statusCode: 500,
+      retryable: false,
+    })
+  }
+}
+
+function optionalWorkbookUndoRef(undo: WorkbookUndoRef | undefined): { readonly undo?: WorkbookUndoRef } {
+  return undo === undefined ? {} : { undo }
 }
 
 export function createZeroSyncService(): ZeroSyncService {

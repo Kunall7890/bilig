@@ -102,7 +102,7 @@ The main API is intentionally small:
 - descriptions: `describeModel`, `describeRef`, `describePlan`, `describePlanResult`, `describeRuntimeRequirements`, `checkRuntimeRequirements`, `checkRuntimeAdapter`, `describeRunResult`
 - transport data: `isWorkbookRefData`, `toWorkbookRefData`, `collectWorkbookRefData`, `hydrateWorkbookRef`, `hydrateWorkbookRefs`, `toPlanData`, `isPlanData`, `checkPlanData`, `hydratePlanData`, `verifyPlanData`
 - runtime handoff: `runWorkbookPlan`, `runWorkbookAction`, `WorkbookRunAdapter`
-- feature handoff: `defineWorkbookFeaturePlugin`, `checkWorkbookFeaturePlugin`, `checkWorkbookCommandRequest`, `normalizeWorkbookCommandRequest`, `checkWorkbookCommandBundle`, `normalizeWorkbookCommandBundle`, `workbookCommandResultFor`, `checkWorkbookCommandReceipt`, `normalizeWorkbookCommandReceipt`, `workbookCommandReceiptOpsMatch`
+- feature handoff: `defineWorkbookFeaturePlugin`, `checkWorkbookFeaturePlugin`, `checkWorkbookCommandRequest`, `normalizeWorkbookCommandRequest`, `checkWorkbookCommandBundle`, `normalizeWorkbookCommandBundle`, `workbookCommandResultFor`, `workbookCommandResultForReceipts`, `checkWorkbookCommandResult`, `normalizeWorkbookCommandResult`, `checkWorkbookCommandReceipt`, `normalizeWorkbookCommandReceipt`, `workbookCommandReceiptOpsMatch`
 - low-level language: `WorkbookOp`, `WorkbookTxn`, `EngineOp`, `EngineOpBatch`, `isEngineOpBatch`
 
 Stable data helpers are exported for generic tool builders:
@@ -114,9 +114,9 @@ Stable data helpers are exported for generic tool builders:
 - `builtInWorkbookCheckKinds`, `isBuiltInWorkbookCheckKind`
 - `workbookActionInputDescriptionKinds`, `isWorkbookActionInputDescriptionKind`, `isWorkbookActionInputDescription`, `isWorkbookActionInput`, `checkInput`
 - `workbookRuntimeRequirementKinds`, `isWorkbookRuntimeRequirementKind`, `workbookRuntimeCapabilities`, `isWorkbookRuntimeCapability`, `checkRuntimeRequirements`
-- `workbookCommandCategories`, `isWorkbookCommandCategory`, `workbookCommandExecutionModes`, `isWorkbookCommandExecutionMode`, `workbookCommandReceiptStatuses`, `isWorkbookCommandReceiptStatus`
+- `workbookCommandCategories`, `isWorkbookCommandCategory`, `workbookCommandExecutionModes`, `isWorkbookCommandExecutionMode`, `workbookCommandReceiptStatuses`, `isWorkbookCommandReceiptStatus`, `workbookCommandResultStatuses`, `isWorkbookCommandResultStatus`
 - `workbookProjectionInterceptorPoints`, `isWorkbookProjectionInterceptorPoint`, `workbookUiContributionSlots`, `isWorkbookUiContributionSlot`, `checkWorkbookCommandRequest`
-- `workbookCommandBundleCommandKinds`, `isWorkbookCommandBundleCommandKind`, `checkWorkbookCommandBundle`, `isWorkbookCommandBundle`, `workbookCommandResultFor`
+- `workbookCommandBundleCommandKinds`, `isWorkbookCommandBundleCommandKind`, `checkWorkbookCommandBundle`, `isWorkbookCommandBundle`, `workbookCommandResultFor`, `workbookCommandResultForReceipts`, `checkWorkbookCommandResult`, `isWorkbookCommandResult`
 - `workbookRunErrorCodes`, `isWorkbookRunErrorCode`
 
 Model action manifests are frozen null-prototype maps. Consumers can use normal
@@ -332,6 +332,14 @@ touched ranges and touched-cell count without importing `@bilig/core`.
 `@bilig/agent-api` uses this same public handoff to validate its richer
 app-owned `WorkbookAgentCommandBundle` before preview and authoritative apply,
 without making `@bilig/workbook` depend on agent runtime code.
+
+After a runtime has previewed or applied a bundle, call
+`workbookCommandResultForReceipts(bundle, receipts, { revision, undo })` to turn
+receipt evidence into the same boring public result shape. The helper validates
+receipt count and request identity, aggregates changed ranges, reports
+preview/apply `matched` proof when ops are present, and carries undo metadata
+without requiring `@bilig/core`. Use `checkWorkbookCommandResult(data)` or
+`normalizeWorkbookCommandResult(data)` before trusting a transported result.
 
 Use `checkWorkbookCommandReceipt(data)` before trusting runtime command evidence.
 It returns the same boring `{ status, issues }` shape for receipt fields such as

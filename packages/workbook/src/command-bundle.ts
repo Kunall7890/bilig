@@ -1,5 +1,6 @@
 import { formatAddress, parseCellAddress } from '@bilig/formula'
 import type { CellRangeRef } from '@bilig/protocol'
+import { workbookCommandResultFor, type WorkbookCommandResult } from './command-result.js'
 import { isWorkbookOp } from './guards.js'
 import type { EngineOp } from './ops.js'
 import { checkWorkbookCommandRequest, normalizeWorkbookCommandRequest, type WorkbookCommandRequest } from './features.js'
@@ -41,16 +42,6 @@ export interface WorkbookCommandBundle {
   readonly idempotencyKey: string
   readonly scope?: WorkbookCommandBundleScope
   readonly commands: readonly WorkbookCommandBundleCommand[]
-}
-
-export interface WorkbookCommandResult {
-  readonly status: 'accepted'
-  readonly bundleId?: string
-  readonly targetRevision: number
-  readonly idempotencyKey: string
-  readonly commandCount: number
-  readonly touchedRanges: readonly CellRangeRef[]
-  readonly touchedCellCount: number
 }
 
 export type WorkbookCommandBundleIssueCode =
@@ -175,28 +166,6 @@ export function normalizeWorkbookCommandBundle(value: unknown): WorkbookCommandB
 
 export function isWorkbookCommandBundle(value: unknown): value is WorkbookCommandBundle {
   return checkWorkbookCommandBundle(value).status === 'valid'
-}
-
-export function workbookCommandResultFor(bundle: WorkbookCommandBundle): WorkbookCommandResult {
-  const touchedRanges: CellRangeRef[] = []
-  let touchedCellCount = 0
-  for (const command of bundle.commands) {
-    for (const range of command.touchedRanges ?? []) {
-      const normalized = normalizeRange(range, 'touchedRanges')
-      touchedRanges.push(normalized.range)
-      touchedCellCount += normalized.cellCount
-    }
-  }
-
-  return Object.freeze({
-    status: 'accepted',
-    ...(bundle.id !== undefined ? { bundleId: bundle.id } : {}),
-    targetRevision: bundle.targetRevision,
-    idempotencyKey: bundle.idempotencyKey,
-    commandCount: bundle.commands.length,
-    touchedRanges: Object.freeze(touchedRanges),
-    touchedCellCount,
-  })
 }
 
 function pushCommandIssues(issues: WorkbookCommandBundleIssue[], value: unknown, path: string): void {
@@ -454,21 +423,21 @@ function normalizeTouchedRanges(value: unknown): readonly CellRangeRef[] {
   return Object.freeze(value.map((range, index) => normalizeRange(range, `touchedRanges[${index}]`).range))
 }
 
-function normalizeRange(value: unknown, path: string): NormalizedRangeWithSize {
+function normalizeRange(value: unknown, path: string, label = 'Workbook command bundle'): NormalizedRangeWithSize {
   if (!isRecord(value)) {
-    throw new Error(`Workbook command bundle ${path} must be an object`)
+    throw new Error(`${label} ${path} must be an object`)
   }
   const sheetName = ownValue(value, 'sheetName')
   const startAddress = ownValue(value, 'startAddress')
   const endAddress = ownValue(value, 'endAddress')
   if (typeof sheetName !== 'string' || typeof startAddress !== 'string' || typeof endAddress !== 'string') {
-    throw new Error(`Workbook command bundle ${path} must include sheetName, startAddress, and endAddress strings`)
+    throw new Error(`${label} ${path} must include sheetName, startAddress, and endAddress strings`)
   }
   const normalizedSheetName = normalizeExactString(sheetName, `${path}.sheetName`)
-  const start = normalizeCellAddress(startAddress, `${path}.startAddress`)
-  const end = normalizeCellAddress(endAddress, `${path}.endAddress`)
+  const start = normalizeCellAddress(startAddress, `${path}.startAddress`, label)
+  const end = normalizeCellAddress(endAddress, `${path}.endAddress`, label)
   if (end.row < start.row || end.col < start.col) {
-    throw new Error(`Workbook command bundle ${path} endAddress must not be before startAddress`)
+    throw new Error(`${label} ${path} endAddress must not be before startAddress`)
   }
   return {
     range: Object.freeze({
@@ -480,7 +449,11 @@ function normalizeRange(value: unknown, path: string): NormalizedRangeWithSize {
   }
 }
 
-function normalizeCellAddress(value: string, path: string): { readonly row: number; readonly col: number; readonly text: string } {
+function normalizeCellAddress(
+  value: string,
+  path: string,
+  label = 'Workbook command bundle',
+): { readonly row: number; readonly col: number; readonly text: string } {
   try {
     const parsed = parseCellAddress(value)
     if (parsed.sheetName !== undefined) {
@@ -492,7 +465,7 @@ function normalizeCellAddress(value: string, path: string): { readonly row: numb
       text: formatAddress(parsed.row, parsed.col),
     }
   } catch {
-    throw new Error(`Workbook command bundle ${path} is invalid: ${value}`)
+    throw new Error(`${label} ${path} is invalid: ${value}`)
   }
 }
 
