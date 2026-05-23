@@ -24,6 +24,7 @@ import { chartGeometryFromAnchor, rewriteChartAnchorForStructuralTransform } fro
 import { rewriteThreadedCommentArtifactsForStructuralTransform } from './structure-threaded-comment-artifact-rewrite.js'
 import { rewriteIgnoredErrorsForStructuralTransform } from './structure-ignored-errors-metadata-rewrite.js'
 import { rewritePrintPageSetupForStructuralTransform } from './structure-print-page-setup-metadata-rewrite.js'
+import { rewriteRichTextArtifactsForStructuralTransform } from './structure-rich-text-artifact-rewrite.js'
 import {
   rewriteSparklineFormulaRefsForStructuralTransform,
   rewriteSparklinesForStructuralTransform,
@@ -519,6 +520,14 @@ export function rewriteWorkbookMetadataForStructuralTransform(
       sheet.sparklines = sparklines
     } else {
       delete sheet.sparklines
+    }
+  }
+  if (sheet?.richTextArtifacts) {
+    const richTextArtifacts = rewriteRichTextArtifactsForStructuralTransform(sheet.richTextArtifacts, transform)
+    if (richTextArtifacts) {
+      sheet.richTextArtifacts = richTextArtifacts
+    } else {
+      delete sheet.richTextArtifacts
     }
   }
   for (const ownerSheet of workbook.sheetsByName.values()) {

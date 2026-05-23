@@ -36,6 +36,7 @@ export function hasStructuralMetadataForSheetRecord(
     sheet?.ignoredErrors !== undefined ||
     sheet?.printPageSetup !== undefined ||
     sheet?.sparklines !== undefined ||
+    sheet?.richTextArtifacts !== undefined ||
     (sheet?.styleRanges.length ?? 0) > 0 ||
     (sheet?.formatRanges.length ?? 0) > 0
   )

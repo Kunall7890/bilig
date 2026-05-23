@@ -11,6 +11,7 @@ import type {
   WorkbookSheetDataTableFormulasSnapshot,
   WorkbookSheetFormatPrSnapshot,
   WorkbookSheetPrintPageSetupSnapshot,
+  WorkbookSheetRichTextArtifactsSnapshot,
   WorkbookSheetVisibilitySnapshot,
   WorkbookIgnoredErrorsSnapshot,
   WorkbookPrinterSettingsSnapshot,
@@ -42,6 +43,7 @@ export interface SheetRecord {
   printPageSetup?: WorkbookSheetPrintPageSetupSnapshot
   printerSettings?: WorkbookPrinterSettingsSnapshot[]
   sparklines?: WorkbookSparklinesSnapshot
+  richTextArtifacts?: WorkbookSheetRichTextArtifactsSnapshot
 }
 
 export function createWorkbookSheetRecord(args: {

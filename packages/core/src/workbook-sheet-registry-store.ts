@@ -75,6 +75,7 @@ export class WorkbookSheetRegistryStore {
     delete sheet.printPageSetup
     delete sheet.printerSettings
     delete sheet.sparklines
+    delete sheet.richTextArtifacts
     this.options.sheetsByName.delete(name)
     this.options.sheetsById.delete(sheet.id)
   }

@@ -25,6 +25,7 @@ const existingDesktopExcelOracleFiles = [
   'macos-desktop-excel-precision-as-displayed-oracle.test.ts',
   'macos-desktop-excel-pivot-oracle.test.ts',
   'macos-desktop-excel-print-page-setup-oracle.test.ts',
+  'macos-desktop-excel-rich-text-oracle.test.ts',
   'macos-desktop-excel-sort-oracle.test.ts',
   'macos-desktop-excel-sparklines-oracle.test.ts',
   'macos-desktop-excel-structured-reference-syntax.test.ts',
@@ -156,6 +157,17 @@ describe('macOS Desktop Excel oracle inventory', () => {
     expect(source).toContain('rowBreaksXml')
     expect(source).toContain('colBreaksXml')
     expect(source).toContain('matches Desktop Excel manual page-break ids after structural inserts')
+  })
+
+  it('keeps the rich text oracle anchored to Desktop Excel cell run preservation', () => {
+    const source = readFileSync(join(testDir, 'macos-desktop-excel-rich-text-oracle.test.ts'), 'utf8')
+
+    expect(source).toContain("BILIG_EXCEL_ORACLE_RUN === '1'")
+    expect(source).toContain('runMacosExcelStructuralOperationOracle')
+    expect(source).toContain('runMacosExcelInspectionOracle')
+    expect(source).toContain('richTextArtifacts')
+    expect(source).toContain('WorkPaper.buildFromSnapshot')
+    expect(source).toContain('matches Desktop Excel rich text movement after structural row inserts')
   })
 
   it('keeps the pivot oracle anchored to Desktop Excel source-backed pivot refresh semantics', () => {

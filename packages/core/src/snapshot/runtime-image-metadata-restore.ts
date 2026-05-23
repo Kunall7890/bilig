@@ -197,6 +197,12 @@ function restoreSheetMetadata(args: { readonly workbook: WorkbookStore; readonly
       targetSheet.sparklines = structuredClone(sheet.metadata.sparklines)
     }
   }
+  if (sheet.metadata?.richTextArtifacts && sheet.metadata.richTextArtifacts.cells.length > 0) {
+    const targetSheet = workbook.getSheet(sheet.name)
+    if (targetSheet) {
+      targetSheet.richTextArtifacts = structuredClone(sheet.metadata.richTextArtifacts)
+    }
+  }
 }
 
 function restoreAxisMetadata(args: {
