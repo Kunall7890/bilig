@@ -4,6 +4,18 @@ All notable changes to `@bilig/headless` will be documented in this file.
 
 This package is released as part of the aligned bilig library package set.
 
+## 0.65.0
+
+- Release type: minor
+- Previous libraries tag: libraries-v0.64.0
+- Manual override: no
+
+## Features
+- feat(workbook): validate feature plugins (f625484d)
+
+## Fixes
+- fix(workbook): preserve rich text artifacts (a07c402a)
+
 ## 0.64.0
 
 - Release type: minor
