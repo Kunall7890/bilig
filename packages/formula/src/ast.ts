@@ -56,7 +56,11 @@ export interface StructuredRefNode {
   kind: 'StructuredRef'
   tableName: string
   columnName: string
+  endColumnName?: string
+  section?: StructuredReferenceSection
 }
+
+export type StructuredReferenceSection = 'all' | 'data' | 'headers' | 'this-row' | 'totals'
 
 export interface CellRefNode {
   kind: 'CellRef'

@@ -239,7 +239,13 @@ function nodeStructuralShapeEqual(left: FormulaNode, right: FormulaNode): boolea
     case 'NameRef':
       return right.kind === 'NameRef' && left.name === right.name
     case 'StructuredRef':
-      return right.kind === 'StructuredRef' && left.tableName === right.tableName && left.columnName === right.columnName
+      return (
+        right.kind === 'StructuredRef' &&
+        left.tableName === right.tableName &&
+        left.columnName === right.columnName &&
+        left.endColumnName === right.endColumnName &&
+        left.section === right.section
+      )
     case 'CellRef':
     case 'SpillRef':
     case 'ColumnRef':

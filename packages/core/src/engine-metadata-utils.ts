@@ -12,6 +12,7 @@ import {
   renameFormulaSheetReferences,
   type FormulaNode,
   type ReferenceOperand,
+  type StructuredReferenceSection,
 } from '@bilig/formula'
 import type { StringPool } from './string-pool.js'
 import { errorValue, literalToValue } from './engine-value-utils.js'
@@ -95,7 +96,11 @@ function unquoteFormulaSheetName(sheetName: string): string {
 
 export interface MetadataResolutionContext {
   resolveName: (name: string, scopeSheetName?: string) => WorkbookDefinedNameValueSnapshot | undefined
-  resolveStructuredReference: (tableName: string, columnName: string) => FormulaNode | undefined
+  resolveStructuredReference: (
+    tableName: string,
+    columnName: string,
+    options?: { readonly endColumnName?: string; readonly section?: StructuredReferenceSection },
+  ) => FormulaNode | undefined
   resolveSpillReference: (sheetName: string | undefined, address: string) => FormulaNode | undefined
 }
 
@@ -509,8 +514,10 @@ export function resolveMetadataReferencesInAst(
     }
     case 'StructuredRef': {
       const replacement =
-        context.resolveStructuredReference(node.tableName, node.columnName) ??
-        ({ kind: 'ErrorLiteral', code: ErrorCode.Ref } satisfies FormulaNode)
+        context.resolveStructuredReference(node.tableName, node.columnName, {
+          ...(node.endColumnName !== undefined ? { endColumnName: node.endColumnName } : {}),
+          ...(node.section !== undefined ? { section: node.section } : {}),
+        }) ?? ({ kind: 'ErrorLiteral', code: ErrorCode.Ref } satisfies FormulaNode)
       return { node: replacement, fullyResolved: true, substituted: true }
     }
     case 'SpillRef': {

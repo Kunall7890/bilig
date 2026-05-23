@@ -1,4 +1,5 @@
 import { compileFormulaAst, serializeFormula } from '@bilig/formula'
+import type { FormulaNode } from '@bilig/formula'
 import { resolveMetadataReferencesInAst, type MetadataFormulaValueContext } from '../../engine-metadata-utils.js'
 import type { FormulaTemplateResolution } from '../../formula/template-bank.js'
 import type { ParsedCompiledFormula } from './formula-binding-direct-descriptors.js'
@@ -18,7 +19,12 @@ export function compileFormulaBindingForCell(args: {
   }
   const templateResolution = args.serviceArgs.resolveTemplateForCell(args.source, position.row, position.col)
   const compiled = args.normalizeLookupCompileMode(templateResolution.compiled as ParsedCompiledFormula)
-  if (compiled.symbolicNames.length === 0 && compiled.symbolicTables.length === 0 && compiled.symbolicSpills.length === 0) {
+  if (
+    compiled.symbolicNames.length === 0 &&
+    compiled.symbolicTables.length === 0 &&
+    compiled.symbolicSpills.length === 0 &&
+    !hasUnqualifiedStructuredReference(compiled.ast)
+  ) {
     return {
       compiled,
       templateResolution,
@@ -30,7 +36,12 @@ export function compileFormulaBindingForCell(args: {
     {
       resolveName: (name, scopeSheetName) =>
         args.serviceArgs.state.workbook.getDefinedName(name, scopeSheetName ?? args.currentSheetName)?.value,
-      resolveStructuredReference: (tableName, columnName) => args.serviceArgs.resolveStructuredReference(tableName, columnName),
+      resolveStructuredReference: (tableName, columnName, options) =>
+        args.serviceArgs.resolveStructuredReference(tableName, columnName, {
+          ...options,
+          ownerSheetName: args.currentSheetName,
+          ownerAddress: args.serviceArgs.state.workbook.getAddress(args.cellIndex),
+        }),
       resolveSpillReference: (sheetName, address) => args.serviceArgs.resolveSpillReference(args.currentSheetName, sheetName, address),
     },
     new Set<string>(),
@@ -50,7 +61,7 @@ export function compileFormulaBindingForCell(args: {
       compileFormulaAst(args.source, resolved.node, {
         originalAst: compiled.ast,
         symbolicNames: compiled.symbolicNames,
-        symbolicTables: compiled.symbolicTables,
+        symbolicTables: compiled.symbolicTables.filter((tableName) => tableName.length > 0),
         symbolicSpills: compiled.symbolicSpills,
       }) as ParsedCompiledFormula,
     )
@@ -59,6 +70,35 @@ export function compileFormulaBindingForCell(args: {
   return {
     compiled: resolvedCompiled,
     templateResolution,
+  }
+}
+
+function hasUnqualifiedStructuredReference(node: FormulaNode): boolean {
+  switch (node.kind) {
+    case 'StructuredRef':
+      return node.tableName.length === 0
+    case 'ArrayConstant':
+      return node.rows.some((row) => row.some(hasUnqualifiedStructuredReference))
+    case 'UnaryExpr':
+      return hasUnqualifiedStructuredReference(node.argument)
+    case 'BinaryExpr':
+      return hasUnqualifiedStructuredReference(node.left) || hasUnqualifiedStructuredReference(node.right)
+    case 'CallExpr':
+      return node.args.some(hasUnqualifiedStructuredReference)
+    case 'InvokeExpr':
+      return hasUnqualifiedStructuredReference(node.callee) || node.args.some(hasUnqualifiedStructuredReference)
+    case 'NumberLiteral':
+    case 'BooleanLiteral':
+    case 'StringLiteral':
+    case 'ErrorLiteral':
+    case 'OmittedArgument':
+    case 'NameRef':
+    case 'CellRef':
+    case 'SpillRef':
+    case 'RowRef':
+    case 'ColumnRef':
+    case 'RangeRef':
+      return false
   }
 }
 

@@ -88,7 +88,7 @@ export function buildRelativeFormulaTemplateAstKey(node: FormulaNode, ownerRow: 
     case 'NameRef':
       return `name:${templateSheetKey(node.sheetName)}:${node.name}`
     case 'StructuredRef':
-      return `table:${node.tableName}[${node.columnName}]`
+      return `table:${node.tableName}[${node.section ?? 'data'}:${node.columnName}${node.endColumnName === undefined ? '' : `:${node.endColumnName}`}]`
     case 'CellRef':
       return `cell:${templateSheetKey(node.sheetName)}:${buildRelativeCellReferenceTextKey(node.ref, ownerRow, ownerCol)}`
     case 'SpillRef':

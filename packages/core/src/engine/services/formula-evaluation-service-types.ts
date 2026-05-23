@@ -3,6 +3,13 @@ import type { CellValue } from '@bilig/protocol'
 import type { FormulaNode } from '@bilig/formula'
 import type { EngineFormulaEvaluationError } from '../errors.js'
 
+export interface StructuredReferenceResolutionOptions {
+  readonly endColumnName?: string
+  readonly ownerAddress?: string
+  readonly ownerSheetName?: string
+  readonly section?: 'all' | 'data' | 'headers' | 'this-row' | 'totals'
+}
+
 export interface EngineFormulaEvaluationService {
   readonly evaluateDirectLookupFormula: (cellIndex: number) => Effect.Effect<number[] | undefined, EngineFormulaEvaluationError>
   readonly evaluateDirectLookupFormulaNow: (cellIndex: number) => number[] | undefined
@@ -11,6 +18,7 @@ export interface EngineFormulaEvaluationService {
   readonly resolveStructuredReference: (
     tableName: string,
     columnName: string,
+    options?: StructuredReferenceResolutionOptions,
   ) => Effect.Effect<FormulaNode | undefined, EngineFormulaEvaluationError>
   readonly resolveSpillReference: (
     currentSheetName: string,

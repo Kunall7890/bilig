@@ -259,6 +259,47 @@ describe('formula parser/compiler edges', () => {
     expect(structuredBound.symbolicTables).toEqual(['Sales'])
     expect(structuredBound.mode).toBe(FormulaMode.JsOnly)
 
+    for (const { source, ast, serialized } of [
+      {
+        source: '[@Amount]',
+        ast: { kind: 'StructuredRef', tableName: '', columnName: 'Amount', section: 'this-row' },
+        serialized: '[@Amount]',
+      },
+      {
+        source: '[@[Amount]:[Discount]]',
+        ast: { kind: 'StructuredRef', tableName: '', columnName: 'Amount', endColumnName: 'Discount', section: 'this-row' },
+        serialized: '[@[Amount]:[Discount]]',
+      },
+      {
+        source: 'Sales[[Amount]:[Discount]]',
+        ast: { kind: 'StructuredRef', tableName: 'Sales', columnName: 'Amount', endColumnName: 'Discount' },
+        serialized: 'Sales[[Amount]:[Discount]]',
+      },
+      {
+        source: 'Sales[[#Headers],[Amount]]',
+        ast: { kind: 'StructuredRef', tableName: 'Sales', columnName: 'Amount', section: 'headers' },
+        serialized: 'Sales[[#Headers],[Amount]]',
+      },
+      {
+        source: 'Sales[[#Totals],[Amount]]',
+        ast: { kind: 'StructuredRef', tableName: 'Sales', columnName: 'Amount', section: 'totals' },
+        serialized: 'Sales[[#Totals],[Amount]]',
+      },
+      {
+        source: 'Sales[[#All],[Amount]:[Discount]]',
+        ast: { kind: 'StructuredRef', tableName: 'Sales', columnName: 'Amount', endColumnName: 'Discount', section: 'all' },
+        serialized: 'Sales[[#All],[Amount]:[Discount]]',
+      },
+      {
+        source: 'Sales[[This Row],[Amount]]',
+        ast: { kind: 'StructuredRef', tableName: 'Sales', columnName: 'Amount', section: 'this-row' },
+        serialized: 'Sales[[#This Row],[Amount]]',
+      },
+    ] as const) {
+      expect(parseFormula(source)).toEqual(ast)
+      expect(serializeFormula(parseFormula(source))).toBe(serialized)
+    }
+
     expect(lexFormula('SUM(Sales[Q1 Sales])').slice(2, 6)).toEqual([
       { kind: 'identifier', value: 'Sales' },
       { kind: 'lbracket', value: '[' },

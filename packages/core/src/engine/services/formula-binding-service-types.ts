@@ -22,6 +22,7 @@ import type { ExactColumnIndexService } from './exact-column-index-service.js'
 import type { DeferredInitialFormulaFamilyRun } from './formula-initialization-family-runs.js'
 import type { FormulaBindingReverseEdgeState } from './formula-binding-reverse-edges.js'
 import type { SortedColumnSearchService } from './sorted-column-search-service.js'
+import type { StructuredReferenceResolutionOptions } from './formula-evaluation-service-types.js'
 
 export interface EngineFormulaBindingService {
   readonly bindFormula: (cellIndex: number, ownerSheetName: string, source: string) => Effect.Effect<boolean, EngineFormulaBindingError>
@@ -228,7 +229,11 @@ export interface CreateEngineFormulaBindingServiceArgs {
   readonly forEachSheetCell: (sheetId: number, fn: (cellIndex: number, row: number, col: number) => void) => void
   readonly scheduleWasmProgramSync: () => void
   readonly markFormulaChanged: (cellIndex: number, count: number) => number
-  readonly resolveStructuredReference: (tableName: string, columnName: string) => FormulaNode | undefined
+  readonly resolveStructuredReference: (
+    tableName: string,
+    columnName: string,
+    options?: StructuredReferenceResolutionOptions,
+  ) => FormulaNode | undefined
   readonly resolveSpillReference: (currentSheetName: string, sheetName: string | undefined, address: string) => FormulaNode | undefined
   readonly getDependencyBuildEpoch: () => number
   readonly setDependencyBuildEpoch: (next: number) => void

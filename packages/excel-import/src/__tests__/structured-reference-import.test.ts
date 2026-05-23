@@ -87,8 +87,8 @@ describe('structured reference XLSX import', () => {
     const imports = imported.snapshot.sheets.find((sheet) => sheet.name === 'Imports')
 
     expect(constants?.cells.find((cell) => cell.address === 'H7')?.formula).not.toContain('tblPFS[#Headers]')
-    expect(imports?.cells.find((cell) => cell.address === 'D7')?.formula).not.toContain('[[#This Row],[Year]]')
-    expect(imports?.cells.find((cell) => cell.address === 'F10')?.formula).not.toContain('tblActuals[Value]')
+    expect(imports?.cells.find((cell) => cell.address === 'D7')?.formula).toBe('tblActuals[[#This Row],[Year]]-Start_Year+1')
+    expect(imports?.cells.find((cell) => cell.address === 'F10')?.formula).toBe('SUM(tblActuals[Value])')
 
     const engine = new SpreadsheetEngine({ workbookName: 'structured-import' })
     await engine.ready()
@@ -222,7 +222,9 @@ describe('structured reference XLSX import', () => {
     const imported = importXlsx(exportXlsx(snapshot), 'structured-cross-sheet-rows.xlsx')
     const ratios = imported.snapshot.sheets.find((sheet) => sheet.name === 'Ratios')
 
-    expect(ratios?.cells.find((cell) => cell.address === 'B3')?.formula).toBe("'Data'!C3/'Data'!B3")
+    expect(ratios?.cells.find((cell) => cell.address === 'B3')?.formula).toBe(
+      'RevenueTable[[#This Row],[2025]]/RevenueTable[[#This Row],[2024]]',
+    )
 
     const engine = new SpreadsheetEngine({ workbookName: 'structured-cross-sheet-rows' })
     await engine.ready()
@@ -306,8 +308,8 @@ describe('structured reference XLSX import', () => {
     const sheet = imported.snapshot.sheets.find((candidate) => candidate.name === 'Local and Regional Initiatives')
 
     expect(table?.columnNames).toEqual(['Year', 'Number of\n people inducted', 'Road show \nvisits'])
-    expect(sheet?.cells.find((cell) => cell.address === 'B4')?.formula).toBe("SUBTOTAL(109,'Local and Regional Initiatives'!B2:B3)")
-    expect(sheet?.cells.find((cell) => cell.address === 'C4')?.formula).toBe("SUBTOTAL(109,'Local and Regional Initiatives'!C2:C3)")
+    expect(sheet?.cells.find((cell) => cell.address === 'B4')?.formula).toBe('SUBTOTAL(109,Table41[Number of\n people inducted])')
+    expect(sheet?.cells.find((cell) => cell.address === 'C4')?.formula).toBe('SUBTOTAL(109,Table41[Road show \nvisits])')
 
     const engine = new SpreadsheetEngine({ workbookName: 'escaped-table-headers' })
     await engine.ready()
@@ -374,11 +376,11 @@ describe('structured reference XLSX import', () => {
     const imported = importXlsx(exportXlsx(snapshot), 'special-structured-headers.xlsx')
     const sheet = imported.snapshot.sheets.find((candidate) => candidate.name === 'Data')
 
-    expect(sheet?.cells.find((cell) => cell.address === 'G1')?.formula).toBe("SUM('Data'!A2:A3)")
-    expect(sheet?.cells.find((cell) => cell.address === 'G2')?.formula).toBe("SUM('Data'!B2:B3)")
-    expect(sheet?.cells.find((cell) => cell.address === 'G3')?.formula).toBe("SUM('Data'!C2:C3)")
-    expect(sheet?.cells.find((cell) => cell.address === 'G4')?.formula).toBe("SUM('Data'!D2:D3)")
-    expect(sheet?.cells.find((cell) => cell.address === 'G5')?.formula).toBe("SUM('Data'!E2:E3)")
+    expect(sheet?.cells.find((cell) => cell.address === 'G1')?.formula).toBe('SUM(Sales[Revenue, Net])')
+    expect(sheet?.cells.find((cell) => cell.address === 'G2')?.formula).toBe('SUM(Sales[A:B])')
+    expect(sheet?.cells.find((cell) => cell.address === 'G3')?.formula).toBe("SUM(Sales['# Units])")
+    expect(sheet?.cells.find((cell) => cell.address === 'G4')?.formula).toBe("SUM(Sales[Owner''s Share])")
+    expect(sheet?.cells.find((cell) => cell.address === 'G5')?.formula).toBe("SUM(Sales[A'[B']])")
 
     const engine = new SpreadsheetEngine({ workbookName: 'special-structured-headers' })
     await engine.ready()
@@ -433,7 +435,7 @@ describe('structured reference XLSX import', () => {
     const imported = importXlsx(exportXlsx(snapshot), 'structured-total-row.xlsx')
     const sheet = imported.snapshot.sheets.find((candidate) => candidate.name === 'Sales')
 
-    expect(sheet?.cells.find((cell) => cell.address === 'D2')?.formula).toBe("'Sales'!B4")
+    expect(sheet?.cells.find((cell) => cell.address === 'D2')?.formula).toBe('SalesTable[[#Total Row],[Amount]]')
   })
 
   it('infers omitted table totals row flags from totals-row column formulas', async () => {
@@ -480,7 +482,7 @@ describe('structured reference XLSX import', () => {
     const sheet = imported.snapshot.sheets.find((candidate) => candidate.name === 'Porosity')
 
     expect(table?.totalsRow).toBe(true)
-    expect(sheet?.cells.find((cell) => cell.address === 'B4')?.formula).toBe("AVERAGE('Porosity'!B2:B3)")
+    expect(sheet?.cells.find((cell) => cell.address === 'B4')?.formula).toBe('AVERAGE(PorosityTable[Average Total Porosity])')
 
     const engine = new SpreadsheetEngine({ workbookName: 'omitted-totals-flag' })
     await engine.ready()
@@ -551,7 +553,7 @@ describe('structured reference XLSX import', () => {
     expect(engine.getCellValue('newsvendor', 'I19')).toEqual({ tag: ValueTag.Number, value: 225 })
   })
 
-  it('translates current-row shorthand and multi-column structured references from imported formulas', async () => {
+  it('preserves native current-row shorthand and multi-column structured references from imported formulas', async () => {
     const snapshot: WorkbookSnapshot = {
       version: 1,
       workbook: {
@@ -602,11 +604,11 @@ describe('structured reference XLSX import', () => {
     const imported = importXlsx(exportXlsx(snapshot), 'structured-span-model.xlsx')
     const playerData = imported.snapshot.sheets.find((sheet) => sheet.name === 'PlayerData')
 
-    expect(playerData?.cells.find((cell) => cell.address === 'C2')?.formula).not.toContain('[@Feet]')
-    expect(playerData?.cells.find((cell) => cell.address === 'D2')?.formula).not.toContain('[@[Feet]:[Inches]]')
-    expect(playerData?.cells.find((cell) => cell.address === 'F1')?.formula).not.toContain('Metrics[[Feet]:[Inches]]')
-    expect(playerData?.cells.find((cell) => cell.address === 'F2')?.formula).not.toContain('[[#Headers],[Feet]:[Inches]]')
-    expect(playerData?.cells.find((cell) => cell.address === 'F4')?.formula).not.toContain('[[#Totals],[Height]:[RowTotal]]')
+    expect(playerData?.cells.find((cell) => cell.address === 'C2')?.formula).toBe('[@Feet]+([@Inches]/12)')
+    expect(playerData?.cells.find((cell) => cell.address === 'D2')?.formula).toBe('SUM([@[Feet]:[Inches]])')
+    expect(playerData?.cells.find((cell) => cell.address === 'F1')?.formula).toBe('SUM(Metrics[[Feet]:[Inches]])')
+    expect(playerData?.cells.find((cell) => cell.address === 'F2')?.formula).toBe('COUNTA(Metrics[[#Headers],[Feet]:[Inches]])')
+    expect(playerData?.cells.find((cell) => cell.address === 'F4')?.formula).toBe('SUM(Metrics[[#Totals],[Height]:[RowTotal]])')
 
     const engine = new SpreadsheetEngine({ workbookName: 'structured-span-import' })
     await engine.ready()

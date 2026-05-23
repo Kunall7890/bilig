@@ -437,7 +437,8 @@ export function createEngineServiceRuntime(args: {
     ensureCellTracked: (sheetName, address) => support.ensureCellTrackedNow(sheetName, address),
     ensureCellTrackedByCoords: (sheetId, row, col) => support.ensureCellTrackedByCoordsNow(sheetId, row, col),
     markFormulaChanged: (cellIndex, count) => support.markFormulaChangedNow(cellIndex, count),
-    resolveStructuredReference: (tableName, columnName) => runEngineEffect(evaluation.resolveStructuredReference(tableName, columnName)),
+    resolveStructuredReference: (tableName, columnName, options) =>
+      runEngineEffect(evaluation.resolveStructuredReference(tableName, columnName, options)),
     resolveSpillReference: (currentSheetName, sheetName, address) =>
       runEngineEffect(evaluation.resolveSpillReference(currentSheetName, sheetName, address)),
     forEachSheetCell: (sheetId, fn) => traversal.forEachSheetCellNow(sheetId, fn),

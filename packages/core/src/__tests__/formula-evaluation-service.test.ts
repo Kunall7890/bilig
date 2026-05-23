@@ -671,6 +671,52 @@ describe('EngineFormulaEvaluationService', () => {
     expect(engine.getCellValue('Data', 'G5')).toEqual({ tag: ValueTag.Number, value: 300 })
   })
 
+  it('evaluates structured reference sections, spans, and current rows with owner context', async () => {
+    const engine = new SpreadsheetEngine({ workbookName: 'evaluation-structured-ref-native-sections' })
+    await engine.ready()
+    engine.createSheet('Data')
+    engine.setRangeValues({ sheetName: 'Data', startAddress: 'A1', endAddress: 'D4' }, [
+      ['Amount', 'Discount', 'Net', 'RowTotal'],
+      [10, 1, 9, 0],
+      [20, 2, 18, 0],
+      [30, 3, 27, 0],
+    ])
+    engine.setRangeValues({ sheetName: 'Data', startAddress: 'F1', endAddress: 'F4' }, [['Total'], [0], [0], [54]])
+    engine.setTable({
+      name: 'Sales',
+      sheetName: 'Data',
+      startAddress: 'A1',
+      endAddress: 'D4',
+      columnNames: ['Amount', 'Discount', 'Net', 'RowTotal'],
+      headerRow: true,
+      totalsRow: false,
+    })
+    engine.setTable({
+      name: 'TotalsTable',
+      sheetName: 'Data',
+      startAddress: 'F1',
+      endAddress: 'F4',
+      columnNames: ['Total'],
+      headerRow: true,
+      totalsRow: true,
+    })
+
+    engine.setCellFormula('Data', 'D2', 'SUM([@[Amount]:[Discount]])')
+    engine.setCellFormula('Data', 'D3', '[@Amount]-[@Discount]')
+    engine.setCellFormula('Data', 'H1', 'SUM(Sales[[Amount]:[Discount]])')
+    engine.setCellFormula('Data', 'H2', 'COUNTA(Sales[[#Headers],[Amount]:[Discount]])')
+    engine.setCellFormula('Data', 'H3', 'SUM(Sales[[#All],[Amount]:[Discount]])')
+    engine.setCellFormula('Data', 'H4', 'SUM(TotalsTable[[#Totals],[Total]])')
+
+    expect(engine.getCell('Data', 'D2').formula).toBe('SUM([@[Amount]:[Discount]])')
+    expect(engine.getCellValue('Data', 'D2')).toEqual({ tag: ValueTag.Number, value: 11 })
+    expect(engine.getCellValue('Data', 'D3')).toEqual({ tag: ValueTag.Number, value: 18 })
+    expect(engine.getCellValue('Data', 'H1')).toEqual({ tag: ValueTag.Number, value: 66 })
+    expect(engine.getCellValue('Data', 'H2')).toEqual({ tag: ValueTag.Number, value: 2 })
+    expect(engine.getCellValue('Data', 'H3')).toEqual({ tag: ValueTag.Number, value: 66 })
+    expect(engine.getCellValue('Data', 'H4')).toEqual({ tag: ValueTag.Number, value: 54 })
+  })
+
   it('resolves MULTIPLE.OPERATIONS through reference replacements and missing formula cells', async () => {
     const engine = new SpreadsheetEngine({ workbookName: 'evaluation-multiple-operations' })
     await engine.ready()
