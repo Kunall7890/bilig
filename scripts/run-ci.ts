@@ -132,6 +132,12 @@ function withEnv(task: CiTask, env: Readonly<Record<string, string>>): CiTask {
   }
 }
 
+function vitestChunkEnv(defaultChunkSize: string): Readonly<Record<string, string>> {
+  return {
+    BILIG_VITEST_FILE_CHUNK_SIZE: process.env['BILIG_VITEST_FILE_CHUNK_SIZE'] ?? defaultChunkSize,
+  }
+}
+
 async function runCoverageTask(task: Omit<CiTask, 'command' | 'steps'>): Promise<CompletedTask> {
   const taskStartedAt = performance.now()
   log(`start ${task.label}`)
@@ -295,14 +301,15 @@ const browserLane: CiTask = {
   ],
 }
 const parallelFocusedCorrectnessLanes: readonly CiTask[] = [
-  withEnv(directPackageScript('correctness core', 'test:correctness:core'), { BILIG_VITEST_FILE_CHUNK_SIZE: '10' }),
-  withEnv(directPackageScript('correctness formula', 'test:correctness:formula'), { BILIG_VITEST_FILE_CHUNK_SIZE: '3' }),
+  withEnv(directPackageScript('correctness core', 'test:correctness:core'), vitestChunkEnv('10')),
+  withEnv(directPackageScript('correctness formula', 'test:correctness:formula'), vitestChunkEnv('3')),
   directPackageScript('correctness server', 'test:correctness:server'),
   directPackageScript('correctness browser runtime', 'test:correctness:browser'),
 ]
-const corpusCorrectnessLane = withEnv(directPackageScript('correctness public workbook corpus', 'test:correctness:corpus'), {
-  BILIG_VITEST_FILE_CHUNK_SIZE: '10',
-})
+const corpusCorrectnessLane = withEnv(
+  directPackageScript('correctness public workbook corpus', 'test:correctness:corpus'),
+  vitestChunkEnv('10'),
+)
 const excelOracleCorrectnessLane = directPackageScript('correctness Desktop Excel oracle harness', 'test:correctness:excel-oracle')
 const generatedSourceChecks: readonly CiTask[] = [
   bunScript('protocol check', 'scripts/gen-protocol.ts', '--check'),

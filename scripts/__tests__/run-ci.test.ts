@@ -45,13 +45,11 @@ describe('run-ci', () => {
     expect(source).toContain("directPackageScript('correctness public workbook corpus', 'test:correctness:corpus')")
     expect(source).toContain("directPackageScript('correctness Desktop Excel oracle harness', 'test:correctness:excel-oracle')")
     expect(source).toContain("await runSequential('corpus correctness benchmark', [corpusCorrectnessLane, excelOracleCorrectnessLane])")
-    expect(source).toContain(
-      "withEnv(directPackageScript('correctness core', 'test:correctness:core'), { BILIG_VITEST_FILE_CHUNK_SIZE: '10' })",
-    )
-    expect(source).toContain(
-      "withEnv(directPackageScript('correctness formula', 'test:correctness:formula'), { BILIG_VITEST_FILE_CHUNK_SIZE: '3' })",
-    )
-    expect(source).toContain("BILIG_VITEST_FILE_CHUNK_SIZE: '10'")
+    expect(source).toContain('function vitestChunkEnv(defaultChunkSize: string): Readonly<Record<string, string>>')
+    expect(source).toContain("BILIG_VITEST_FILE_CHUNK_SIZE: process.env['BILIG_VITEST_FILE_CHUNK_SIZE'] ?? defaultChunkSize")
+    expect(source).toContain("withEnv(directPackageScript('correctness core', 'test:correctness:core'), vitestChunkEnv('10'))")
+    expect(source).toContain("withEnv(directPackageScript('correctness formula', 'test:correctness:formula'), vitestChunkEnv('3'))")
+    expect(source).toContain("vitestChunkEnv('10'),")
     expect(source).toContain(
       "directPackageScript('financial public workbook corpus resume check', 'public-workbook-corpus:resume-financial:check')",
     )
