@@ -362,15 +362,18 @@ After a runtime has previewed or applied a bundle, call
 receipt evidence into the same boring public result shape. The helper validates
 receipt count and request identity, aggregates changed ranges, reports
 preview/apply `matched` proof when ops are present, and carries undo metadata
-without requiring `@bilig/core`. Use `checkWorkbookCommandResult(data)` or
+without requiring `@bilig/core`. If a command declared `touchedRanges`, receipt
+`changedRanges` must stay inside that declared scope. Use
+`checkWorkbookCommandResult(data)` or
 `normalizeWorkbookCommandResult(data)` before trusting a transported result.
 Use `checkWorkbookCommandResultForBundle(bundle, data)` when a stored or
 transported result must be mechanically checked against the bundle it claims to
 settle. It compares bundle id, target revision, idempotency key, command count,
-touched ranges, request or low-level-op receipt identity, and final applied
-revision. It also recomputes result `status`, `matched`, `changedRanges`, and
-`errors` from receipts, so an adapter cannot smuggle a hand-edited summary past
-the public proof boundary. For low-level `op` commands, use
+touched ranges, request or low-level-op receipt identity, receipt changed-range
+scope, and final applied revision. It also recomputes result `status`,
+`matched`, `changedRanges`, and `errors` from receipts, so an adapter cannot
+smuggle a hand-edited summary past the public proof boundary. For low-level `op`
+commands, use
 `workbookOpCommandReceiptIdentity` or `workbookOpCommandReceipt` so adapters do
 not invent receipt ids.
 

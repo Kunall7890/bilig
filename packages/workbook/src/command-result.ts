@@ -1,5 +1,5 @@
-import { formatAddress, parseCellAddress } from '@bilig/formula'
 import type { CellRangeRef } from '@bilig/protocol'
+import { commandRangeBounds, commandRangeContains, commandRangeLabel, normalizeCommandRange } from './command-ranges.js'
 import {
   checkWorkbookCommandReceipt,
   normalizeWorkbookCommandReceipt,
@@ -66,6 +66,7 @@ export type WorkbookCommandResultIssueCode =
   | 'invalid_command_result'
   | 'invalid_receipt'
   | 'bundle_result_mismatch'
+  | 'changed_range_out_of_scope'
   | 'receipt_result_mismatch'
   | 'receipt_count_mismatch'
   | 'receipt_command_mismatch'
@@ -89,11 +90,6 @@ export type WorkbookCommandResultCheckResult =
       readonly issues: readonly WorkbookCommandResultIssue[]
     }
 
-interface NormalizedRangeWithSize {
-  readonly range: CellRangeRef
-  readonly cellCount: number
-}
-
 export function isWorkbookCommandResultStatus(value: unknown): value is WorkbookCommandResultStatus {
   return typeof value === 'string' && WORKBOOK_COMMAND_RESULT_STATUS_SET.has(value)
 }
@@ -103,7 +99,7 @@ export function workbookCommandResultFor(bundle: WorkbookCommandBundle): Workboo
   let touchedCellCount = 0
   for (const command of bundle.commands) {
     for (const range of command.touchedRanges ?? []) {
-      const normalized = normalizeRange(range, 'touchedRanges')
+      const normalized = normalizeCommandRange(range, 'touchedRanges')
       touchedRanges.push(normalized.range)
       touchedCellCount += normalized.cellCount
     }
@@ -132,7 +128,9 @@ export function workbookCommandResultForReceipts(
     )
   }
   normalizedReceipts.forEach((receipt, index) => {
-    assertReceiptMatchesCommand(bundle.commands[index]!, receipt, index)
+    const command = bundle.commands[index]!
+    assertReceiptMatchesCommand(command, receipt, index)
+    assertReceiptChangedRangesInScope(command, receipt, index)
   })
 
   const revision = options.revision
@@ -400,6 +398,7 @@ function pushReceiptBundleIssues(
           ),
         )
       }
+      pushReceiptChangedRangeScopeIssues(issues, command, receipt, index)
       return
     }
     if (receipt.featureId !== command.request.featureId || receipt.commandId !== command.request.commandId) {
@@ -420,8 +419,64 @@ function pushReceiptBundleIssues(
           `Workbook command result receipt ${String(index)} category does not match command request`,
         ),
       )
+      return
     }
+    pushReceiptChangedRangeScopeIssues(issues, command, receipt, index)
   })
+}
+
+function assertReceiptChangedRangesInScope(command: WorkbookCommandBundleCommand, receipt: WorkbookCommandReceipt, index: number): void {
+  const issue = firstReceiptChangedRangeScopeIssue(command, receipt, index)
+  if (issue !== null) {
+    throw new Error(`Workbook command result is invalid: ${issue.message}`)
+  }
+}
+
+function pushReceiptChangedRangeScopeIssues(
+  issues: WorkbookCommandResultIssue[],
+  command: WorkbookCommandBundleCommand,
+  receipt: WorkbookCommandReceipt,
+  index: number,
+): void {
+  const issue = firstReceiptChangedRangeScopeIssue(command, receipt, index)
+  if (issue !== null) {
+    issues.push(issue)
+  }
+}
+
+function firstReceiptChangedRangeScopeIssue(
+  command: WorkbookCommandBundleCommand,
+  receipt: WorkbookCommandReceipt,
+  index: number,
+): WorkbookCommandResultIssue | null {
+  const declaredRanges = command.touchedRanges ?? []
+  const changedRanges = receipt.changedRanges ?? []
+  if (declaredRanges.length === 0 || changedRanges.length === 0) {
+    return null
+  }
+
+  const declared = declaredRanges.map((range, rangeIndex) =>
+    commandRangeBounds(range, `commands[${String(index)}].touchedRanges[${String(rangeIndex)}]`, 'Workbook command result'),
+  )
+  for (let rangeIndex = 0; rangeIndex < changedRanges.length; rangeIndex += 1) {
+    const changedRange = changedRanges[rangeIndex]
+    if (changedRange === undefined) {
+      continue
+    }
+    const changed = commandRangeBounds(
+      changedRange,
+      `receipts[${String(index)}].changedRanges[${String(rangeIndex)}]`,
+      'Workbook command result',
+    )
+    if (!declared.some((candidate) => commandRangeContains(candidate, changed))) {
+      return commandResultIssue(
+        'changed_range_out_of_scope',
+        `receipts[${String(index)}].changedRanges[${String(rangeIndex)}]`,
+        `Workbook command result receipt ${String(index)} changed range ${commandRangeLabel(changed)} is outside commands[${String(index)}].touchedRanges`,
+      )
+    }
+  }
+  return null
 }
 
 function pushReceiptDerivedResultIssues(
@@ -582,7 +637,7 @@ function pushResultRangesIssues(issues: WorkbookCommandResultIssue[], value: unk
       continue
     }
     try {
-      normalizeRange(range, `${path}[${String(index)}]`, 'Workbook command result')
+      normalizeCommandRange(range, `${path}[${String(index)}]`, 'Workbook command result')
     } catch (error) {
       issues.push(commandResultIssue('invalid_command_result', `${path}[${String(index)}]`, errorMessage(error)))
     }
@@ -728,7 +783,7 @@ function normalizeResultRanges(value: unknown, path: string): readonly CellRange
   if (!Array.isArray(value)) {
     throw new Error(`Workbook command result ${path} is invalid`)
   }
-  return value.map((range, index) => normalizeRange(range, `${path}[${String(index)}]`, 'Workbook command result').range)
+  return value.map((range, index) => normalizeCommandRange(range, `${path}[${String(index)}]`, 'Workbook command result').range)
 }
 
 function normalizeResultErrors(errors: readonly unknown[]): readonly string[] {
@@ -773,52 +828,6 @@ function normalizeUndoRef(value: unknown, path: string): WorkbookUndoRef {
   return Object.freeze({
     id: normalizeExactString(id, `${path}.id`),
   })
-}
-
-function normalizeRange(value: unknown, path: string, label = 'Workbook command bundle'): NormalizedRangeWithSize {
-  if (!isRecord(value)) {
-    throw new Error(`${label} ${path} must be an object`)
-  }
-  const sheetName = ownValue(value, 'sheetName')
-  const startAddress = ownValue(value, 'startAddress')
-  const endAddress = ownValue(value, 'endAddress')
-  if (typeof sheetName !== 'string' || typeof startAddress !== 'string' || typeof endAddress !== 'string') {
-    throw new Error(`${label} ${path} must include sheetName, startAddress, and endAddress strings`)
-  }
-  const normalizedSheetName = normalizeExactString(sheetName, `${path}.sheetName`)
-  const start = normalizeCellAddress(startAddress, `${path}.startAddress`, label)
-  const end = normalizeCellAddress(endAddress, `${path}.endAddress`, label)
-  if (end.row < start.row || end.col < start.col) {
-    throw new Error(`${label} ${path} endAddress must not be before startAddress`)
-  }
-  return {
-    range: Object.freeze({
-      sheetName: normalizedSheetName,
-      startAddress: start.text,
-      endAddress: end.text,
-    }),
-    cellCount: (end.row - start.row + 1) * (end.col - start.col + 1),
-  }
-}
-
-function normalizeCellAddress(
-  value: string,
-  path: string,
-  label = 'Workbook command bundle',
-): { readonly row: number; readonly col: number; readonly text: string } {
-  try {
-    const parsed = parseCellAddress(value)
-    if (parsed.sheetName !== undefined) {
-      throw new Error('qualified')
-    }
-    return {
-      row: parsed.row,
-      col: parsed.col,
-      text: formatAddress(parsed.row, parsed.col),
-    }
-  } catch {
-    throw new Error(`${label} ${path} is invalid: ${value}`)
-  }
 }
 
 function normalizeOp(value: unknown): EngineOp {

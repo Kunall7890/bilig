@@ -54,6 +54,7 @@ flowchart LR
   - transport-neutral run adapters for preview/apply/readback/check proof
   - strict run mode for one-flag agent-safe apply and plan proof
   - runtime adapter capability checks before mutation handoff
+  - bundle-scoped receipt changed-range validation for command proof
   - structured `checkRuntimeRequirements` diagnostics for transported adapter
     handoff payloads
   - own-enumerable-data runtime requirement arrays and nested ref arrays before

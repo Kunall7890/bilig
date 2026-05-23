@@ -591,6 +591,54 @@ describe('@bilig/workbook command bundle api', () => {
     })
   })
 
+  it('rejects command result changed ranges outside declared command scope', () => {
+    const bundle = normalizeWorkbookCommandBundle({
+      id: 'bundle-scope',
+      targetRevision: 7,
+      idempotencyKey: 'bundle-scope',
+      commands: [
+        {
+          id: 'bundle-scope:0:write',
+          kind: 'request',
+          destructive: true,
+          request: mutationRequest,
+          touchedRanges: [{ sheetName: 'Sheet1', startAddress: 'A1', endAddress: 'A1' }],
+        },
+      ],
+    })
+    const receipt = {
+      status: 'applied' as const,
+      featureId: 'cells',
+      commandId: 'cells.setValue',
+      category: 'mutation' as const,
+      changedRanges: [{ sheetName: 'Sheet1', startAddress: 'B1', endAddress: 'B1' }],
+    }
+
+    expect(() => workbookCommandResultForReceipts(bundle, [receipt], { revision: 8 })).toThrow(
+      'Workbook command result is invalid: Workbook command result receipt 0 changed range Sheet1!B1 is outside commands[0].touchedRanges',
+    )
+
+    expect(
+      checkWorkbookCommandResultForBundle(bundle, {
+        ...workbookCommandResultFor(bundle),
+        status: 'applied',
+        revision: 8,
+        receipts: [receipt],
+        matched: null,
+        changedRanges: [{ sheetName: 'Sheet1', startAddress: 'B1', endAddress: 'B1' }],
+      }),
+    ).toEqual({
+      status: 'invalid',
+      issues: [
+        {
+          code: 'changed_range_out_of_scope',
+          path: 'receipts[0].changedRanges[0]',
+          message: 'Workbook command result receipt 0 changed range Sheet1!B1 is outside commands[0].touchedRanges',
+        },
+      ],
+    })
+  })
+
   it('requires applied command results to carry a final revision when checked against a bundle', () => {
     const bundle = normalizeWorkbookCommandBundle({
       id: 'bundle-1',

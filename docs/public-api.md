@@ -187,13 +187,15 @@ and UI contributions. The public package still stays data-only.
 - `workbookCommandResultForReceipts(bundle, receipts, { revision, undo })`
   converts runtime receipt evidence into an applied, previewed, rejected, or
   noop `WorkbookCommandResult`. It validates receipt count and request identity,
-  aggregates changed ranges, records preview/apply match status, and carries
-  undo metadata without importing the engine.
+  rejects receipt changed ranges outside declared command `touchedRanges`,
+  aggregates changed ranges, records preview/apply match status, and carries undo
+  metadata without importing the engine.
 - `checkWorkbookCommandResult(data)` and
   `normalizeWorkbookCommandResult(data)` validate transported command results
   before an agent trusts them.
 - `checkWorkbookCommandResultForBundle(bundle, data)` recomputes result
-  `status`, `matched`, `changedRanges`, and `errors` from receipts, so stored
+  `status`, `matched`, `changedRanges`, and `errors` from receipts, and rejects
+  receipt changed ranges outside the command scopes declared by the bundle. Stored
   command proof cannot carry a hand-edited summary that contradicts runtime
   evidence.
 - `checkWorkbookCommandReceipt(data)` validates transported receipt evidence
