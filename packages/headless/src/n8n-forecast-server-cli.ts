@@ -58,8 +58,8 @@ export function parseN8nForecastServerCliArgs(
   argv: string[],
   env: Record<string, string | undefined> = {},
 ): N8nForecastServerCliArgs {
-  let host = env.BILIG_N8N_HOST ?? DEFAULT_HOST
-  let port = readPort(env.PORT ?? env.BILIG_N8N_PORT, DEFAULT_PORT)
+  let host = env['BILIG_N8N_HOST'] ?? DEFAULT_HOST
+  let port = readPort(env['PORT'] ?? env['BILIG_N8N_PORT'], DEFAULT_PORT)
   let help = false
 
   for (let index = 0; index < argv.length; index += 1) {
