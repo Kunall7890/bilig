@@ -4,6 +4,15 @@ All notable changes to `@bilig/headless` will be documented in this file.
 
 This package is released as part of the aligned bilig library package set.
 
+## 0.67.4
+
+- Release type: patch
+- Previous libraries tag: libraries-v0.67.3
+- Manual override: no
+
+## Fixes
+- fix(workbook): canonicalize feature receipt proof (a6d031dd)
+
 ## 0.67.3
 
 - Release type: patch
