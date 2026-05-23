@@ -268,10 +268,6 @@ const workbookWorkflowRun = table('workbook_workflow_run')
     updatedAtUnixMs: number().from('updated_at_unix_ms'),
     completedAtUnixMs: number().from('completed_at_unix_ms').optional(),
     errorMessage: string().from('error_message').optional(),
-    mutationExecuted: boolean().from('mutation_executed').optional(),
-    verificationComplete: boolean().from('verification_complete').optional(),
-    mutationStatus: string().from('mutation_status').optional(),
-    mutationReceipt: json().from('mutation_receipt_json').optional(),
   })
   .primaryKey('runId')
 

@@ -242,7 +242,15 @@ describe('workbook-workflow-run-store', () => {
 
     await ensureWorkbookWorkflowRunSchema(queryable)
 
-    for (const column of ['completed_at_unix_ms', 'error_message', 'artifact_json']) {
+    for (const column of [
+      'completed_at_unix_ms',
+      'error_message',
+      'artifact_json',
+      'mutation_executed',
+      'verification_complete',
+      'mutation_status',
+      'mutation_receipt_json',
+    ]) {
       expect(
         queryable.calls.some(
           (call) => call.text.includes('ALTER TABLE workbook_workflow_run') && call.text.includes(`ADD COLUMN IF NOT EXISTS ${column}`),

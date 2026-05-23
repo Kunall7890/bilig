@@ -257,10 +257,6 @@ function toWorkflowRunRow(row: ZeroWorkbookWorkflowRunRow): WorkbookWorkflowRunR
     updatedAtUnixMs: row.updatedAtUnixMs,
     completedAtUnixMs: row.completedAtUnixMs,
     errorMessage: row.errorMessage,
-    mutationExecuted: row.mutationExecuted,
-    verificationComplete: row.verificationComplete,
-    mutationStatus: row.mutationStatus,
-    mutationReceipt: row.mutationReceipt,
   }
 }
 

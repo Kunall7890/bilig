@@ -54,6 +54,16 @@ describe('zero sync schema', () => {
     expect('artifact_json' in zeroSchemaServerColumnNamesByTable.workbook_workflow_run).toBe(false)
   })
 
+  it('keeps workflow mutation proof out of the replicated run model until every deployment has the columns', () => {
+    expect('mutationExecuted' in schema.tables.workbook_workflow_run.columns).toBe(false)
+    expect('verificationComplete' in schema.tables.workbook_workflow_run.columns).toBe(false)
+    expect('mutationStatus' in schema.tables.workbook_workflow_run.columns).toBe(false)
+    expect('mutationReceipt' in schema.tables.workbook_workflow_run.columns).toBe(false)
+    expect(zeroSchemaServerColumnNamesByTable.workbook_workflow_run).not.toEqual(
+      expect.arrayContaining(['mutation_executed', 'verification_complete', 'mutation_status', 'mutation_receipt_json']),
+    )
+  })
+
   it('relates durable chat child rows to their parent thread visibility model', () => {
     for (const tableName of ['workbook_chat_item', 'workbook_chat_tool_call', 'workbook_review_queue_item'] as const) {
       expect(schema.relationships[tableName].thread).toEqual([
