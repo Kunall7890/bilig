@@ -217,6 +217,7 @@ test('@browser-ci web app keeps dense accounting-sheet text payloads complete in
     gridFontFamilyStartsWithArial: true,
     gridFontSize: DEFAULT_WORKBOOK_CSS_FONT_SIZE,
     nativeTextFontFamilyStartsWithArial: true,
+    nativeTextFontSizeDevicePixelAligned: true,
     nativeTextRendering: 'auto',
     nativeTextSmoothing: 'auto',
   })
@@ -1110,6 +1111,8 @@ function readNativeTextQualityState(page: Page): () => Promise<{
   readonly gridFontFamilyStartsWithArial: boolean
   readonly gridFontSize: string | null
   readonly nativeTextFontFamilyStartsWithArial: boolean
+  readonly nativeTextFontSize: string | null
+  readonly nativeTextFontSizeDevicePixelAligned: boolean
   readonly nativeTextRendering: string | null
   readonly nativeTextSmoothing: string | null
 }> {
@@ -1119,11 +1122,16 @@ function readNativeTextQualityState(page: Page): () => Promise<{
       const nativeTextRun = document.querySelector('[data-native-text-run] > div')
       const gridStyle = grid instanceof HTMLElement ? getComputedStyle(grid) : null
       const nativeTextStyle = nativeTextRun instanceof HTMLElement ? getComputedStyle(nativeTextRun) : null
+      const nativeFontSize = nativeTextStyle ? Number.parseFloat(nativeTextStyle.fontSize) : Number.NaN
+      const dpr = Math.max(1, window.devicePixelRatio || 1)
       return {
         appTextRendering: getComputedStyle(document.body).textRendering,
         gridFontFamilyStartsWithArial: gridStyle?.fontFamily.startsWith('Arial') ?? false,
         gridFontSize: gridStyle?.fontSize ?? null,
         nativeTextFontFamilyStartsWithArial: nativeTextStyle?.fontFamily.startsWith('Arial') ?? false,
+        nativeTextFontSize: nativeTextStyle?.fontSize ?? null,
+        nativeTextFontSizeDevicePixelAligned:
+          Number.isFinite(nativeFontSize) && Math.abs(nativeFontSize * dpr - Math.round(nativeFontSize * dpr)) < 0.000001,
         nativeTextRendering: nativeTextStyle?.textRendering ?? null,
         nativeTextSmoothing: nativeTextStyle?.webkitFontSmoothing ?? null,
       }

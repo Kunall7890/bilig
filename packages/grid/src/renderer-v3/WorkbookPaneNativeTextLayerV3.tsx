@@ -241,13 +241,18 @@ function snapCssPixel(value: number, dpr: number): number {
   return Math.round(value * dpr) / dpr
 }
 
+export function snapNativeTextDisplayFontSizeV3(fontSize: number, dpr: number): number {
+  return Math.max(1, snapCssPixel(fontSize, dpr))
+}
+
 function resolveNativeTextLineBoxV3(input: { readonly run: TextQuadRun; readonly dpr: number }): {
   readonly height: number
   readonly topInset: number
 } {
   const fontStyle = resolveNativeTextRunFontStyleV3(input.run)
+  const displayFontSize = snapNativeTextDisplayFontSizeV3(fontStyle.fontSize, input.dpr)
   const contentHeight = input.run.height ?? 0
-  const lineHeight = snapCssPixel(fontStyle.fontSize * 1.2, input.dpr)
+  const lineHeight = snapCssPixel(displayFontSize * 1.2, input.dpr)
   return {
     height: lineHeight,
     topInset: snapCssPixel(Math.max(0, (contentHeight - lineHeight) / 2), input.dpr),
@@ -454,6 +459,7 @@ export function resolveNativeTextRunInnerStyleV3(input: {
   const clipY = input.run.clipY ?? input.run.y
   const visibleClip = input.visibleClip ?? null
   const fontStyle = resolveNativeTextRunFontStyleV3(input.run)
+  const displayFontSize = snapNativeTextDisplayFontSizeV3(fontStyle.fontSize, dpr)
   const lineBox = resolveNativeTextLineBoxV3({ dpr, run: input.run })
   const baseTop = visibleClip?.innerTop ?? input.run.y - clipY
   const baseLeft = visibleClip?.innerLeft ?? input.run.x - clipX
@@ -477,7 +483,7 @@ export function resolveNativeTextRunInnerStyleV3(input: {
     display: 'block',
     fontFamily: fontStyle.fontFamily,
     fontFeatureSettings: 'normal',
-    fontSize: fontStyle.fontSize,
+    fontSize: displayFontSize,
     fontStyle: fontStyle.fontStyle,
     fontVariantNumeric: 'tabular-nums',
     fontWeight: fontStyle.fontWeight,
