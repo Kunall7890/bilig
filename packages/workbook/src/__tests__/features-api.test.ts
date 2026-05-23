@@ -571,6 +571,75 @@ describe('@bilig/workbook feature api', () => {
     ).toBe(false)
   })
 
+  it('rejects accessor-backed command receipt ops without invoking getters', () => {
+    const previewOp = {
+      kind: 'setCellValue',
+      sheetName: 'Sheet1',
+      address: 'A1',
+      value: 1,
+    }
+    let getterInvoked = false
+    Object.defineProperty(previewOp, 'authoredBlank', {
+      enumerable: true,
+      get() {
+        getterInvoked = true
+        throw new Error('getter must not run')
+      },
+    })
+
+    expect(
+      checkWorkbookCommandReceipt({
+        status: 'applied',
+        featureId: 'tables',
+        commandId: 'tables.createFromSelection',
+        category: 'command',
+        previewOps: [previewOp],
+      }),
+    ).toEqual({
+      status: 'invalid',
+      issues: [
+        {
+          code: 'invalid_command_receipt',
+          path: 'previewOps[0].authoredBlank',
+          message: 'Workbook command receipt preview ops must contain only data properties',
+        },
+      ],
+    })
+    expect(getterInvoked).toBe(false)
+  })
+
+  it('compares command receipt ops without invoking accessor-backed proof data', () => {
+    const previewOp = {
+      kind: 'setCellValue',
+      sheetName: 'Sheet1',
+      address: 'A1',
+      value: 1,
+    }
+    let getterInvoked = false
+    Object.defineProperty(previewOp, 'extra', {
+      enumerable: true,
+      get() {
+        getterInvoked = true
+        throw new Error('getter must not run')
+      },
+    })
+
+    expect(
+      workbookCommandReceiptOpsMatch({
+        previewOps: [previewOp],
+        appliedOps: [
+          {
+            kind: 'setCellValue',
+            sheetName: 'Sheet1',
+            address: 'A1',
+            value: 1,
+          },
+        ],
+      }),
+    ).toBe(false)
+    expect(getterInvoked).toBe(false)
+  })
+
   it('rejects command receipts that contain invalid ops or ranges', () => {
     expect(checkWorkbookCommandReceipt('not-a-receipt')).toEqual({
       status: 'invalid',

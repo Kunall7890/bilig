@@ -56,7 +56,7 @@ flowchart LR
   - feature command receipt validation before agents trust runtime extension
     evidence
   - canonical feature receipt op matching that ignores property order while
-    rejecting invalid op arrays
+    rejecting invalid or accessor-backed op arrays before proof comparison
   - feature plugin manifest validation before consumer-owned extension
     registration
   - frozen feature vocabulary lists for agent tool manifests and UI handoff
@@ -71,6 +71,8 @@ flowchart LR
   - own-field-only runtime proof validation for adapter apply results, undo
     refs, runtime errors, and check verifier output
   - own-field-only feature receipt changed-range validation
+  - accessor-free feature receipt ops, undo ops, ranges, and errors before
+    freezing or runtime proof comparison
   - transport-neutral workbook ops and txns with own-field-only public guards
 - `packages/zero-sync`
   - Zero schema

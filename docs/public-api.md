@@ -170,7 +170,9 @@ and UI contributions. The public package still stays data-only.
   false mismatch and invalid op arrays cannot report a trusted match.
 - Feature manifests, command requests, and command receipts are validated from
   own payload fields only; prototype-inherited fields cannot satisfy the public
-  transport contract. Receipt changed ranges follow the same own-field rule.
+  transport contract. Receipt ops, undo ops, changed ranges, and errors must be
+  data properties; accessor-backed receipt proof is rejected before freezing or
+  preview/apply comparison.
 - Frozen vocabularies such as `workbookCommandCategories`,
   `workbookCommandExecutionModes`, `workbookCommandReceiptStatuses`,
   `workbookProjectionInterceptorPoints`, and `workbookUiContributionSlots` let

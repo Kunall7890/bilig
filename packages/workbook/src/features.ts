@@ -369,6 +369,11 @@ function pushCommandReceiptOpsIssues(issues: WorkbookCommandReceiptIssue[], valu
     issues.push(commandReceiptIssue(path, `Workbook command receipt ${label} ops must be an array`))
     return
   }
+  const accessorPath = firstAccessorPath(value, path)
+  if (accessorPath !== null) {
+    issues.push(commandReceiptIssue(accessorPath, `Workbook command receipt ${label} ops must contain only data properties`))
+    return
+  }
   value.forEach((op, index) => {
     if (!isWorkbookOp(op)) {
       issues.push(commandReceiptIssue(`${path}[${index}]`, `Workbook command receipt ${label} op is invalid`))
@@ -382,6 +387,11 @@ function pushCommandReceiptChangedRangesIssues(issues: WorkbookCommandReceiptIss
   }
   if (!Array.isArray(value)) {
     issues.push(commandReceiptIssue('changedRanges', 'Workbook command receipt changed ranges must be an array'))
+    return
+  }
+  const accessorPath = firstAccessorPath(value, 'changedRanges')
+  if (accessorPath !== null) {
+    issues.push(commandReceiptIssue(accessorPath, 'Workbook command receipt changed ranges must contain only data properties'))
     return
   }
   value.forEach((range, index) => {
@@ -413,6 +423,11 @@ function pushCommandReceiptErrorsIssues(issues: WorkbookCommandReceiptIssue[], v
   }
   if (!Array.isArray(value)) {
     issues.push(commandReceiptIssue('errors', 'Workbook command receipt errors must be an array'))
+    return
+  }
+  const accessorPath = firstAccessorPath(value, 'errors')
+  if (accessorPath !== null) {
+    issues.push(commandReceiptIssue(accessorPath, 'Workbook command receipt errors must contain only data properties'))
     return
   }
   value.forEach((error, index) => {
@@ -567,25 +582,29 @@ export function workbookCommandReceiptOpsMatch(receipt: Pick<WorkbookCommandRece
   if (!isEngineOpArray(receipt.previewOps) || !isEngineOpArray(receipt.appliedOps)) {
     return false
   }
-  return canonicalJson(receipt.previewOps) === canonicalJson(receipt.appliedOps)
+  try {
+    return canonicalJson(receipt.previewOps) === canonicalJson(receipt.appliedOps)
+  } catch {
+    return false
+  }
 }
 
 function normalizeReceiptOp(commandId: string, op: EngineOp, label: string): EngineOp {
   if (!isWorkbookOp(op)) {
     throw new Error(`Workbook command receipt ${commandId} ${label} op is invalid`)
   }
-  return deepFreezeClone(op)
+  return deepFreezeOpClone(op)
 }
 
 function normalizeReceiptRange(commandId: string, range: CellRangeRef): CellRangeRef {
   if (!isCellRangeRefData(range)) {
     throw new Error(`Workbook command receipt ${commandId} changed range is invalid`)
   }
-  return deepFreezeClone(range)
+  return deepFreezeRangeClone(commandId, range)
 }
 
 function isEngineOpArray(value: unknown): value is readonly EngineOp[] {
-  return Array.isArray(value) && value.every((op) => isWorkbookOp(op))
+  return Array.isArray(value) && firstAccessorPath(value, 'ops') === null && value.every((op) => isWorkbookOp(op))
 }
 
 function isCellRangeRefData(value: unknown): value is CellRangeRef {
@@ -603,20 +622,47 @@ function canonicalJson(value: unknown): string {
 
 function canonicalValue(value: unknown): unknown {
   if (Array.isArray(value)) {
-    return value.map(canonicalValue)
+    const entries = Object.getOwnPropertyDescriptors(value)
+    return Array.from({ length: value.length }, (_, index) => {
+      const descriptor = entries[String(index)]
+      if (descriptor === undefined) {
+        return undefined
+      }
+      if (!('value' in descriptor)) {
+        throw new Error('Accessor values cannot be canonicalized')
+      }
+      return canonicalValue(descriptor.value)
+    })
   }
   if (isRecord(value)) {
     return Object.fromEntries(
-      Object.entries(value)
+      Object.entries(Object.getOwnPropertyDescriptors(value))
+        .filter(([, descriptor]) => descriptor.enumerable)
         .toSorted(([left], [right]) => left.localeCompare(right))
-        .map(([key, entry]) => [key, canonicalValue(entry)]),
+        .map(([key, descriptor]) => {
+          if (!('value' in descriptor)) {
+            throw new Error('Accessor values cannot be canonicalized')
+          }
+          return [key, canonicalValue(descriptor.value)]
+        }),
     )
   }
   return value
 }
 
-function deepFreezeClone<T>(value: T): T {
-  const cloned = structuredClone(value)
+function deepFreezeOpClone(value: EngineOp): EngineOp {
+  const cloned = cloneData(value)
+  if (!isWorkbookOp(cloned)) {
+    throw new Error('Workbook command receipt op clone is invalid')
+  }
+  return deepFreeze(cloned, new WeakSet())
+}
+
+function deepFreezeRangeClone(commandId: string, value: CellRangeRef): CellRangeRef {
+  const cloned = cloneData(value)
+  if (!isCellRangeRefData(cloned)) {
+    throw new Error(`Workbook command receipt ${commandId} changed range clone is invalid`)
+  }
   return deepFreeze(cloned, new WeakSet())
 }
 
@@ -628,10 +674,79 @@ function deepFreeze<T>(value: T, seen: WeakSet<object>): T {
     return value
   }
   seen.add(value)
-  Object.values(value).forEach((entry) => {
-    deepFreeze(entry, seen)
+  Object.values(Object.getOwnPropertyDescriptors(value)).forEach((descriptor) => {
+    if ('value' in descriptor) {
+      deepFreeze(descriptor.value, seen)
+    }
   })
   return Object.freeze(value)
+}
+
+function cloneData(value: unknown, seen = new WeakMap<object, unknown>()): unknown {
+  if (typeof value !== 'object' || value === null) {
+    return value
+  }
+  const existing = seen.get(value)
+  if (existing !== undefined) {
+    return existing
+  }
+  if (Array.isArray(value)) {
+    const cloned: unknown[] = []
+    seen.set(value, cloned)
+    const descriptors = Object.getOwnPropertyDescriptors(value)
+    for (let index = 0; index < value.length; index += 1) {
+      const descriptor = descriptors[String(index)]
+      if (descriptor === undefined) {
+        continue
+      }
+      if (!('value' in descriptor)) {
+        throw new Error('Transport data must not contain accessors')
+      }
+      cloned[index] = cloneData(descriptor.value, seen)
+    }
+    return cloned
+  }
+  const cloned: Record<string, unknown> = Object.create(Object.getPrototypeOf(value))
+  seen.set(value, cloned)
+  Object.entries(Object.getOwnPropertyDescriptors(value)).forEach(([key, descriptor]) => {
+    if (!descriptor.enumerable) {
+      return
+    }
+    if (!('value' in descriptor)) {
+      throw new Error('Transport data must not contain accessors')
+    }
+    Object.defineProperty(cloned, key, {
+      configurable: true,
+      enumerable: true,
+      value: cloneData(descriptor.value, seen),
+      writable: true,
+    })
+  })
+  return cloned
+}
+
+function firstAccessorPath(value: unknown, path: string, seen = new WeakSet<object>()): string | null {
+  if (typeof value !== 'object' || value === null) {
+    return null
+  }
+  if (seen.has(value)) {
+    return null
+  }
+  seen.add(value)
+  for (const [key, descriptor] of Object.entries(Object.getOwnPropertyDescriptors(value))) {
+    if (!descriptor.enumerable) {
+      continue
+    }
+    const childPath = Array.isArray(value) && /^\d+$/.test(key) ? `${path}[${key}]` : `${path}.${key}`
+    if (!('value' in descriptor)) {
+      return childPath
+    }
+    const nestedPath = firstAccessorPath(descriptor.value, childPath, seen)
+    if (nestedPath !== null) {
+      return nestedPath
+    }
+  }
+  return null
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
