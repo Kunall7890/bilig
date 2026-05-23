@@ -4,7 +4,7 @@ export const WORKBOOK_HEADER_FONT_POINT_SIZE = WORKBOOK_DEFAULT_FONT_SIZE
 export const WORKBOOK_FONT_POINT_TO_CSS_PX = 4 / 3
 
 export function workbookFontPointSizeToCssPx(pointSize: number): number {
-  return Math.max(1, Math.round(Math.max(1, pointSize) * WORKBOOK_FONT_POINT_TO_CSS_PX))
+  return Math.max(1, Number((Math.max(1, pointSize) * WORKBOOK_FONT_POINT_TO_CSS_PX).toFixed(4)))
 }
 
 export function workbookHeaderFontPointSizeToCssPx(pointSize = WORKBOOK_HEADER_FONT_POINT_SIZE): number {

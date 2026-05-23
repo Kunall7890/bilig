@@ -26,10 +26,10 @@ describe('workbookTheme', () => {
     expect(WORKBOOK_DEFAULT_FONT_SIZE).toBe(10)
   })
 
-  test('renders spreadsheet point sizes as CSS pixels instead of tiny raw pixels', () => {
+  test('renders spreadsheet point sizes as exact CSS pixels instead of tiny raw pixels', () => {
     expect(WORKBOOK_FONT_POINT_TO_CSS_PX).toBe(4 / 3)
-    expect(workbookFontPointSizeToCssPx(10)).toBe(13)
-    expect(workbookFontPointSizeToCssPx(11)).toBe(15)
+    expect(workbookFontPointSizeToCssPx(10)).toBe(13.3333)
+    expect(workbookFontPointSizeToCssPx(11)).toBe(14.6667)
     expect(workbookFontPointSizeToCssPx(12)).toBe(16)
     expect(workbookFontPointSizeToCssPx(15)).toBe(20)
   })
