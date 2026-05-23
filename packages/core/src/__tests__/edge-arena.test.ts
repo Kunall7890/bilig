@@ -66,6 +66,21 @@ describe('EdgeArena', () => {
     expect([...arena.readView(slice)]).toEqual([42])
   })
 
+  it('replaces small slices without materializing an input array', () => {
+    const arena = new EdgeArena()
+    const initial = arena.replaceSmall(arena.empty(), 2, 11, 13)
+
+    expect(initial.len).toBe(2)
+    expect([...arena.readView(initial)]).toEqual([11, 13])
+
+    const smaller = arena.replaceSmall(initial, 1, 17)
+    expect(smaller.ptr).toBe(initial.ptr)
+    expect(smaller.cap).toBe(initial.cap)
+    expect([...arena.readView(smaller)]).toEqual([17])
+
+    expect(arena.replaceSmall(smaller, 0)).toEqual(arena.empty())
+  })
+
   it('leaves slices unchanged when removing a value that is not present', () => {
     const arena = new EdgeArena()
     const slice = arena.replace(arena.empty(), Uint32Array.from([2, 4, 8]))

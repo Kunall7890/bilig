@@ -229,23 +229,29 @@ function bindFreshDirectScalarFormulaMember(
   if (directScalar === undefined) {
     throw new Error('Expected fresh direct scalar formula descriptor')
   }
-  const dependencies = materializeFreshDirectScalarDependencies(member.compiled, directScalar)
+  const dependencies = materializeFreshDirectScalarDependencySlots(member.compiled, directScalar)
   if (dependencies === undefined) {
     throw new Error('Expected fresh direct scalar dependencies')
   }
-  const dependencyEntities = edgeArena.replace(edgeArena.empty(), dependencies.dependencyEntities)
+  const dependencyEntities = edgeArena.replaceSmall(
+    edgeArena.empty(),
+    freshDirectScalarSmallDependencyCount(dependencies.dependencyEntityCount),
+    dependencies.dependencyEntity0,
+    dependencies.dependencyEntity1,
+  )
   const runtimeFormula = makeFreshDirectScalarRuntimeFormula(
     cellIndex,
     member,
     directScalar,
-    dependencies.dependencyIndices,
+    materializeFreshDirectScalarDependencyIndices(dependencies),
     dependencyEntities,
   )
+  const formulaEntity = makeCellEntity(cellIndex)
   const formulaSlotId = serviceArgs.state.formulas.set(cellIndex, runtimeFormula)
   runtimeFormula.formulaSlotId = formulaSlotId
   formulaMemberCounts.increment(sheetId, member.col)
   markFormulaCellBound(serviceArgs.state.workbook.cellStore, cellIndex, member.compiled.mode)
-  appendFreshFormulaDependencyReverseEdges(dependencies.dependencyEntities, makeCellEntity(cellIndex), appendKnownUniqueReverseEdge)
+  appendFreshDirectScalarDependencyReverseEdgeSlots(dependencies, formulaEntity, appendKnownUniqueReverseEdge)
   trackFormulaSheetIndexes(cellIndex, ownerSheetName, member.compiled)
   if (serviceArgs.state.counters) {
     addEngineCounter(serviceArgs.state.counters, 'freshDirectScalarFormulaObjectsMaterialized')
@@ -284,60 +290,6 @@ function makeFreshDirectScalarRuntimeFormula(
     directAggregate: undefined,
     directScalar,
     directCriteria: undefined,
-  }
-}
-
-function materializeFreshDirectScalarDependencies(
-  compiled: FreshDirectScalarFormulaBindingMember['compiled'],
-  directScalar: RuntimeDirectScalarDescriptor,
-): { readonly dependencyIndices: Uint32Array; readonly dependencyEntities: Uint32Array } | undefined {
-  if (
-    compiled.symbolicRanges.length !== 0 ||
-    compiled.symbolicNames.length !== 0 ||
-    compiled.symbolicTables.length !== 0 ||
-    compiled.symbolicSpills.length !== 0
-  ) {
-    return undefined
-  }
-  const dependencyIndices = new Uint32Array(2)
-  const dependencyEntities = new Uint32Array(2)
-  let dependencyIndexCount = 0
-  let dependencyEntityCount = 0
-  const appendOperand = (operand: RuntimeDirectScalarOperand): boolean => {
-    if (operand.kind === 'literal-number') {
-      return true
-    }
-    if (operand.kind === 'error') {
-      return false
-    }
-    const cellIndex = operand.cellIndex
-    let seen = false
-    for (let existingIndex = 0; existingIndex < dependencyIndexCount; existingIndex += 1) {
-      if (dependencyIndices[existingIndex] === cellIndex) {
-        seen = true
-        break
-      }
-    }
-    if (!seen) {
-      dependencyIndices[dependencyIndexCount] = cellIndex
-      dependencyIndexCount += 1
-    }
-    dependencyEntities[dependencyEntityCount] = makeCellEntity(cellIndex)
-    dependencyEntityCount += 1
-    return true
-  }
-  const matched =
-    directScalar.kind === 'abs'
-      ? appendOperand(directScalar.operand)
-      : appendOperand(directScalar.left) && appendOperand(directScalar.right)
-  if (!matched) {
-    return undefined
-  }
-  return {
-    dependencyIndices:
-      dependencyIndexCount === dependencyIndices.length ? dependencyIndices : dependencyIndices.subarray(0, dependencyIndexCount),
-    dependencyEntities:
-      dependencyEntityCount === dependencyEntities.length ? dependencyEntities : dependencyEntities.subarray(0, dependencyEntityCount),
   }
 }
 
@@ -399,6 +351,48 @@ function materializeFreshDirectScalarDependencySlots(
     dependencyEntity0,
     dependencyEntity1,
     dependencyEntityCount,
+  }
+}
+
+function materializeFreshDirectScalarDependencyIndices(slots: FreshDirectScalarDependencySlots): Uint32Array {
+  if (slots.dependencyIndexCount === 0) {
+    return EMPTY_U32
+  }
+  if (slots.dependencyIndexCount === 1) {
+    const dependencyIndices = new Uint32Array(1)
+    dependencyIndices[0] = slots.dependencyIndex0
+    return dependencyIndices
+  }
+  const dependencyIndices = new Uint32Array(2)
+  dependencyIndices[0] = slots.dependencyIndex0
+  dependencyIndices[1] = slots.dependencyIndex1
+  return dependencyIndices
+}
+
+function freshDirectScalarSmallDependencyCount(count: number): 0 | 1 | 2 {
+  if (count === 0) {
+    return 0
+  }
+  if (count === 1) {
+    return 1
+  }
+  if (count === 2) {
+    return 2
+  }
+  throw new Error('Expected fresh direct scalar dependency count to fit a small edge slice')
+}
+
+function appendFreshDirectScalarDependencyReverseEdgeSlots(
+  slots: FreshDirectScalarDependencySlots,
+  formulaEntity: number,
+  appendKnownUniqueReverseEdge: (entityId: number, dependentEntityId: number) => void,
+): void {
+  if (slots.dependencyEntityCount === 0) {
+    return
+  }
+  appendKnownUniqueReverseEdge(slots.dependencyEntity0, formulaEntity)
+  if (slots.dependencyEntityCount > 1 && slots.dependencyEntity1 !== slots.dependencyEntity0) {
+    appendKnownUniqueReverseEdge(slots.dependencyEntity1, formulaEntity)
   }
 }
 

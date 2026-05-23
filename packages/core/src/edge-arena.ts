@@ -67,6 +67,29 @@ export class EdgeArena {
     }
   }
 
+  replaceSmall(slice: EdgeSlice, length: 0 | 1 | 2, value0 = 0, value1 = 0): EdgeSlice {
+    if (length === 0) {
+      this.free(slice)
+      return EMPTY_SLICE
+    }
+
+    let target = slice
+    if (target.cap < length || target.ptr < 0) {
+      this.free(slice)
+      target = this.alloc(length)
+    }
+
+    this.buffer[target.ptr] = value0
+    if (length === 2) {
+      this.buffer[target.ptr + 1] = value1
+    }
+    return {
+      ptr: target.ptr,
+      len: length,
+      cap: target.cap,
+    }
+  }
+
   read(slice: EdgeSlice): Uint32Array {
     if (slice.ptr < 0 || slice.len <= 0) {
       return new Uint32Array()
