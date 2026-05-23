@@ -76,6 +76,8 @@ flowchart LR
   - accessor-free feature receipt ops, undo ops, ranges, and errors before
     freezing or runtime proof comparison
   - transport-neutral workbook ops and txns with own-field-only public guards
+  - accessor-free low-level op fields, nested fields, and op arrays before
+    runtime guard acceptance
 - `packages/zero-sync`
   - Zero schema
   - query registry

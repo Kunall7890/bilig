@@ -7,6 +7,17 @@ function inheritedRecord(fields: Record<string, unknown>): Record<string, unknow
   return value
 }
 
+function accessorRecord(fields: Record<string, unknown>, accessors: Record<string, () => unknown>): Record<string, unknown> {
+  const value: Record<string, unknown> = { ...fields }
+  for (const [key, get] of Object.entries(accessors)) {
+    Object.defineProperty(value, key, {
+      enumerable: true,
+      get,
+    })
+  }
+  return value
+}
+
 describe('workbook guards', () => {
   it('accepts engine op batches with valid workbook ops', () => {
     expect(
@@ -299,6 +310,83 @@ describe('workbook guards', () => {
         ops: [{ kind: 'upsertWorkbook', name: 'Book' }],
       }),
     ).toBe(false)
+  })
+
+  it('rejects accessor-backed low-level op fields without invoking getters', () => {
+    let kindGetterInvoked = false
+    const op = accessorRecord(
+      { name: 'Book' },
+      {
+        kind: () => {
+          kindGetterInvoked = true
+          throw new Error('getter must not run')
+        },
+      },
+    )
+
+    expect(isEngineOp(op)).toBe(false)
+    expect(kindGetterInvoked).toBe(false)
+
+    let valueGetterInvoked = false
+    const cellOp = accessorRecord(
+      {
+        kind: 'setCellValue',
+        sheetName: 'Sheet1',
+        address: 'A1',
+      },
+      {
+        value: () => {
+          valueGetterInvoked = true
+          throw new Error('getter must not run')
+        },
+      },
+    )
+
+    expect(isEngineOp(cellOp)).toBe(false)
+    expect(valueGetterInvoked).toBe(false)
+  })
+
+  it('rejects accessor-backed engine batch fields without invoking getters', () => {
+    let counterGetterInvoked = false
+    const clock = accessorRecord(
+      {},
+      {
+        counter: () => {
+          counterGetterInvoked = true
+          throw new Error('getter must not run')
+        },
+      },
+    )
+
+    expect(
+      isEngineOpBatch({
+        id: 'batch-1',
+        replicaId: 'replica-1',
+        clock,
+        ops: [{ kind: 'upsertWorkbook', name: 'Book' }],
+      }),
+    ).toBe(false)
+    expect(counterGetterInvoked).toBe(false)
+
+    let opGetterInvoked = false
+    const ops = Array.from<unknown>({ length: 1 })
+    Object.defineProperty(ops, '0', {
+      enumerable: true,
+      get: () => {
+        opGetterInvoked = true
+        throw new Error('getter must not run')
+      },
+    })
+
+    expect(
+      isEngineOpBatch({
+        id: 'batch-1',
+        replicaId: 'replica-1',
+        clock: { counter: 4 },
+        ops,
+      }),
+    ).toBe(false)
+    expect(opGetterInvoked).toBe(false)
   })
 
   it('rejects unsafe engine batch clock counters', () => {

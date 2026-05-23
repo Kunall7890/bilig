@@ -202,7 +202,8 @@ generic while still letting advanced runtimes use the lower-level workbook
 language.
 Low-level op guards accept only plain own-field payloads. Prototype-inherited
 op fields, nested ranges, and batch clocks do not satisfy `isWorkbookOp` or
-`isEngineOpBatch`.
+`isEngineOpBatch`. Accessor-backed required fields, nested fields, and op-array
+entries are rejected from descriptors without invoking getters.
 
 The generic runnable example lives in
 [`examples/workbook-agent-model`](../examples/workbook-agent-model). Domain
@@ -386,7 +387,8 @@ same range. For op kinds without an inferable range, `target` is descriptive for
 logs and approvals rather than proof of affected cells.
 Raw `WorkbookOp` and `EngineOpBatch` guards trust own fields only, including
 nested cell ranges and batch clocks, so a runtime can reject prototype-shaped
-payloads before hydration or execution.
+payloads before hydration or execution. They also reject accessor-backed
+required fields, nested fields, and op-array entries without running getters.
 
 Formula helpers keep referenced workbook inputs and formula labels separate from
 formula text. Planned `writeFormula` commands expose `inputs` plus `labels`,
