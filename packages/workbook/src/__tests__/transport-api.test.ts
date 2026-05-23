@@ -203,6 +203,9 @@ describe('@bilig/workbook transport api', () => {
 
     const broken = {
       ...data,
+      input: {
+        rows: [1, Number.NaN],
+      },
       modelName: 12,
       refsUsed: [{ kind: 'range' }],
       commands: [{ kind: 'writeValue', target: data['refsUsed'], value: undefined }],
@@ -217,6 +220,11 @@ describe('@bilig/workbook transport api', () => {
           code: 'invalid_plan_data',
           path: 'modelName',
           message: 'Workbook plan data modelName must be a string',
+        },
+        {
+          code: 'invalid_plan_data',
+          path: 'input.rows[1]',
+          message: 'Workbook plan data input must be JSON-safe: Action input at input.rows[1] must be a finite number',
         },
         {
           code: 'invalid_plan_data',
@@ -235,8 +243,8 @@ describe('@bilig/workbook transport api', () => {
         },
         {
           code: 'invalid_plan_data',
-          path: 'checks[0]',
-          message: 'Workbook plan data check at checks[0] is invalid',
+          path: 'checks[0].proof.when',
+          message: 'Workbook plan data check proof must be JSON-safe: Action input at input.when must be a plain JSON object, not Date',
         },
       ],
     })

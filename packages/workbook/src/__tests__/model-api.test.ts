@@ -14,6 +14,7 @@ import {
   findRange,
   findRows,
   findTable,
+  hydrateWorkbookRefs,
   inspectModel,
   isWorkbookRef,
   isWorkbookRefKind,
@@ -618,6 +619,33 @@ describe('@bilig/workbook model api', () => {
 
     expect(isWorkbookRef(inherited)).toBe(false)
     expect(collectWorkbookRefs({ inherited })).toEqual([])
+  })
+
+  it('hydrates refs inside generic containers without losing magic JSON keys', () => {
+    const range = findRange({ sheetName: 'Sheet1', address: 'A1' })
+    const rangeData = describeRef(range)
+    const input = JSON.parse(
+      `{"__proto__":${JSON.stringify(rangeData)},"constructor":{"nested":${JSON.stringify(rangeData)}},"label":"agent-owned"}`,
+    ) as unknown
+
+    const hydrated = hydrateWorkbookRefs(input)
+
+    expect(Object.getPrototypeOf(hydrated)).toBe(Object.prototype)
+    expect(Object.hasOwn(hydrated ?? {}, '__proto__')).toBe(true)
+    expect(Object.hasOwn(hydrated ?? {}, 'constructor')).toBe(true)
+    if (typeof hydrated !== 'object' || hydrated === null || Array.isArray(hydrated)) {
+      throw new Error('expected hydrated object')
+    }
+    const protoValue = Object.getOwnPropertyDescriptor(hydrated, '__proto__')?.value
+    const constructorValue = Object.getOwnPropertyDescriptor(hydrated, 'constructor')?.value
+    if (typeof constructorValue !== 'object' || constructorValue === null || Array.isArray(constructorValue)) {
+      throw new Error('expected constructor payload object')
+    }
+    expect(isWorkbookRef(protoValue)).toBe(true)
+    expect(isWorkbookRef(Object.getOwnPropertyDescriptor(constructorValue, 'nested')?.value)).toBe(true)
+    expect(JSON.parse(JSON.stringify(hydrated))).toEqual(
+      JSON.parse(`{"__proto__":${JSON.stringify(rangeData)},"constructor":{"nested":${JSON.stringify(rangeData)}},"label":"agent-owned"}`),
+    )
   })
 
   it('does not treat incomplete JSON descriptions as live workbook refs', () => {

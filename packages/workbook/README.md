@@ -143,7 +143,10 @@ For full action handoff, use `toPlanData(plan)` before JSON transport. A runtime
 can call `checkPlanData(data)` to get structured path-based issues before
 hydration, call `hydratePlanData(data)` to regain frozen refs and helper
 methods, or pass the data directly to `describeRuntimeRequirements(data)` and
-`runWorkbookPlan(data, adapter)`. The hydrated plan exposes
+`runWorkbookPlan(data, adapter)`. Invalid transported action input and check
+proof keep nested JSON paths such as `input.rows[1]` and
+`checks[0].proof.when`, so an agent can repair the exact payload field before
+hydration. The hydrated plan exposes
 `refs: { refsUsed }` instead of the consumer's private model-shaped `refs`
 object, so transported execution stays generic.
 
@@ -159,7 +162,9 @@ from a malformed payload. `planWorkbookAction` uses the same check when an actio
 declares input metadata and preserves each failed input issue as a run error
 with `path` and `issueCode`, so agents can branch without parsing messages.
 JSON-safety failures keep the nested offending path too, such as
-`input.items[2].amount`.
+`input.items[2].amount`. Normalized payloads preserve consumer-owned JSON keys
+as data, including names like `__proto__` and `constructor`, instead of letting
+them affect object prototypes.
 
 ## Formulas
 

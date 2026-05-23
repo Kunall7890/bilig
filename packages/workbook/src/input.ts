@@ -80,6 +80,15 @@ function isPlainObject(value: unknown): value is Record<string, unknown> {
   return prototype === Object.prototype || prototype === null
 }
 
+function defineOwnDataProperty(target: object, key: string, value: unknown): void {
+  Object.defineProperty(target, key, {
+    value,
+    enumerable: true,
+    configurable: true,
+    writable: true,
+  })
+}
+
 function inputDescriptionKind(value: unknown, path: string): WorkbookActionInputDescriptionKind {
   if (isWorkbookActionInputDescriptionKind(value)) {
     return value
@@ -162,7 +171,7 @@ function normalizeInputDescription(value: unknown, path: string, seen: WeakSet<o
           if (key.trim() === '') {
             throw inputError(`${path}.fields`, `Action input description at ${path}.fields cannot contain an empty field name`)
           }
-          fields[key] = normalizeInputDescription(entry, childPath(`${path}.fields`, key), seen)
+          defineOwnDataProperty(fields, key, normalizeInputDescription(entry, childPath(`${path}.fields`, key), seen))
         })
       output.fields = Object.freeze(fields)
     }
@@ -246,7 +255,7 @@ function normalizeInput(value: unknown, path: string, seen: WeakSet<object>): Wo
     Object.entries(value)
       .toSorted(([left], [right]) => left.localeCompare(right))
       .forEach(([key, entry]) => {
-        output[key] = normalizeInput(entry, childPath(path, key), seen)
+        defineOwnDataProperty(output, key, normalizeInput(entry, childPath(path, key), seen))
       })
     return Object.freeze(output)
   } finally {

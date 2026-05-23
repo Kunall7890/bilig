@@ -297,6 +297,9 @@ metadata. Failed action input checks keep the stable input issue `path` and
 `issueCode` on each run error, so agents can branch on structured diagnostics
 without parsing messages. JSON-safety failures preserve nested paths like
 `input.items[2].amount` instead of collapsing every issue to `input`.
+Normalized payloads preserve consumer-owned JSON keys as own data properties,
+including names like `__proto__` and `constructor`, so transported tool payloads
+cannot mutate prototypes or disappear during canonicalization.
 `verifyModel(model, { inputs })` supplies per-action inputs for
 whole-model verification. The frozen
 `workbookActionInputDescriptionKinds` list plus
@@ -440,7 +443,9 @@ local helper methods after JSON transport, and `toPlanData` makes a full plan
 JSON-safe for handoff. `isPlanData` validates that payload, `checkPlanData`
 explains invalid payloads with stable paths, `hydratePlanData` restores frozen
 refs and helpers, and `verifyPlanData` verifies transported plan data using only
-`refsUsed`, commands, ops, changes, and checks.
+`refsUsed`, commands, ops, changes, and checks. Invalid transported action input
+and check proof keep nested JSON paths such as `input.rows[1]` and
+`checks[0].proof.when`.
 Plans are frozen handoff objects: action input, refs, refs used, commands,
 concrete ops, changed summaries, and checks cannot be rewritten after planning.
 That lets an agent inspect a plan once and pass the same intent to an adapter

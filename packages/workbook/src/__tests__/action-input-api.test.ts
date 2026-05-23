@@ -8,6 +8,8 @@ import {
   isWorkbookActionInput,
   isWorkbookActionInputDescription,
   isWorkbookActionInputDescriptionKind,
+  normalizeWorkbookActionInput,
+  normalizeWorkbookActionInputDescription,
   planWorkbookAction,
   verifyModel,
   verifyPlan,
@@ -110,6 +112,52 @@ describe('@bilig/workbook action input api', () => {
           code: 'invalid_action_input',
           path: 'input.tags[1]',
           message: 'Action input at input.tags[1] must be a finite number',
+        },
+      ],
+    })
+  })
+
+  it('preserves magic JSON keys in normalized action inputs and descriptions', () => {
+    const payload = JSON.parse('{"__proto__":{"polluted":true},"constructor":{"nested":1},"value":12}') as unknown
+
+    const normalized = normalizeWorkbookActionInput(payload)
+
+    expect(Object.getPrototypeOf(normalized)).toBe(Object.prototype)
+    expect(Object.hasOwn(normalized, '__proto__')).toBe(true)
+    expect(Object.hasOwn(normalized, 'constructor')).toBe(true)
+    expect(JSON.parse(JSON.stringify(normalized))).toEqual(
+      JSON.parse('{"__proto__":{"polluted":true},"constructor":{"nested":1},"value":12}'),
+    )
+
+    const description = normalizeWorkbookActionInputDescription(
+      JSON.parse(
+        '{"kind":"object","fields":{"__proto__":{"kind":"string","required":true},"constructor":{"kind":"number","required":true}}}',
+      ),
+    )
+
+    expect(description.fields).toBeDefined()
+    expect(Object.hasOwn(description.fields ?? {}, '__proto__')).toBe(true)
+    expect(Object.hasOwn(description.fields ?? {}, 'constructor')).toBe(true)
+    expect(checkInput(description, JSON.parse('{"__proto__":"safe","constructor":7}'))).toEqual({
+      status: 'valid',
+      input: JSON.parse('{"__proto__":"safe","constructor":7}'),
+      issues: [],
+    })
+    expect(checkInput(description, JSON.parse('{"constructor":"bad"}'))).toEqual({
+      status: 'invalid',
+      input: {
+        constructor: 'bad',
+      },
+      issues: [
+        {
+          code: 'missing_required_input',
+          path: 'input.__proto__',
+          message: 'Action input at input.__proto__ is required',
+        },
+        {
+          code: 'wrong_input_type',
+          path: 'input.constructor',
+          message: 'Action input at input.constructor must be a number',
         },
       ],
     })

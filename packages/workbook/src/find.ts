@@ -817,6 +817,15 @@ function isHydratableContainer(value: object): boolean {
   return Array.isArray(value) || prototype === Object.prototype || prototype === null
 }
 
+function defineOwnDataProperty(target: object, key: string, value: unknown): void {
+  Object.defineProperty(target, key, {
+    value,
+    enumerable: true,
+    configurable: true,
+    writable: true,
+  })
+}
+
 function hydrateWorkbookRefsValue(value: unknown, seen: WeakMap<object, unknown>): unknown {
   if (value === null || value === undefined || typeof value !== 'object') {
     return value
@@ -842,7 +851,7 @@ function hydrateWorkbookRefsValue(value: unknown, seen: WeakMap<object, unknown>
   const hydrated: Record<string, unknown> = {}
   seen.set(value, hydrated)
   Object.entries(value).forEach(([key, entry]) => {
-    hydrated[key] = hydrateWorkbookRefsValue(entry, seen)
+    defineOwnDataProperty(hydrated, key, hydrateWorkbookRefsValue(entry, seen))
   })
   return Object.freeze(hydrated)
 }

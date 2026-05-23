@@ -12,7 +12,7 @@ import {
 import { hydrateWorkbookRef, isWorkbookRefData, type WorkbookRef } from './find.js'
 import type { WorkbookFormulaLabel } from './formula.js'
 import { isWorkbookOp } from './guards.js'
-import { isWorkbookActionInput, normalizeWorkbookActionInput, type WorkbookActionInput } from './input.js'
+import { WorkbookActionInputError, isWorkbookActionInput, normalizeWorkbookActionInput, type WorkbookActionInput } from './input.js'
 import type { WorkbookActionCommand, WorkbookActionPlan } from './model.js'
 import type { WorkbookOp } from './ops.js'
 import type { WorkbookChangeSummary, WorkbookCheckExpectation, WorkbookCheckResult, WorkbookCheckStatus } from './result.js'
@@ -171,6 +171,26 @@ function planDataIssue(path: string, message: string): WorkbookPlanDataIssue {
   })
 }
 
+function errorMessage(error: unknown): string {
+  return error instanceof Error ? error.message : String(error)
+}
+
+function inputPath(basePath: string, error: unknown): string {
+  if (!(error instanceof WorkbookActionInputError)) {
+    return basePath
+  }
+  if (error.path === 'input') {
+    return basePath
+  }
+  if (error.path.startsWith('input.')) {
+    return `${basePath}${error.path.slice('input'.length)}`
+  }
+  if (error.path.startsWith('input[')) {
+    return `${basePath}${error.path.slice('input'.length)}`
+  }
+  return basePath
+}
+
 function pushRequiredStringIssue(issues: WorkbookPlanDataIssue[], value: Record<string, unknown>, key: string): void {
   if (typeof value[key] !== 'string') {
     issues.push(planDataIssue(key, `Workbook plan data ${key} must be a string`))
@@ -178,8 +198,13 @@ function pushRequiredStringIssue(issues: WorkbookPlanDataIssue[], value: Record<
 }
 
 function pushOptionalInputIssue(issues: WorkbookPlanDataIssue[], value: Record<string, unknown>): void {
-  if (value['input'] !== undefined && !isWorkbookActionInput(value['input'])) {
-    issues.push(planDataIssue('input', 'Workbook plan data input must be JSON-safe'))
+  if (value['input'] === undefined) {
+    return
+  }
+  try {
+    normalizeWorkbookActionInput(value['input'])
+  } catch (error) {
+    issues.push(planDataIssue(inputPath('input', error), `Workbook plan data input must be JSON-safe: ${errorMessage(error)}`))
   }
 }
 
@@ -202,6 +227,50 @@ function pushArrayIssues<T>(
   })
 }
 
+function pushCheckIssues(issues: WorkbookPlanDataIssue[], entry: unknown, index: number): void {
+  const path = `checks[${index}]`
+  if (isCheckData(entry)) {
+    return
+  }
+  if (!isRecord(entry)) {
+    issues.push(planDataIssue(path, `Workbook plan data check at ${path} is invalid`))
+    return
+  }
+  if (
+    !isCheckStatus(entry['status']) ||
+    !hasString(entry, 'kind') ||
+    !hasString(entry, 'message') ||
+    (entry['target'] !== undefined && !isWorkbookRefDescription(entry['target'])) ||
+    (entry['refs'] !== undefined && !isRefDataArray(entry['refs'])) ||
+    (entry['expectation'] !== undefined && !isCheckExpectationData(entry['expectation']))
+  ) {
+    issues.push(planDataIssue(path, `Workbook plan data check at ${path} is invalid`))
+    return
+  }
+  try {
+    if (entry['proof'] !== undefined) {
+      normalizeWorkbookActionInput(entry['proof'])
+    }
+  } catch (error) {
+    issues.push(
+      planDataIssue(inputPath(`${path}.proof`, error), `Workbook plan data check proof must be JSON-safe: ${errorMessage(error)}`),
+    )
+    return
+  }
+  issues.push(planDataIssue(path, `Workbook plan data check at ${path} is invalid`))
+}
+
+function pushCheckArrayIssues(issues: WorkbookPlanDataIssue[], value: Record<string, unknown>): void {
+  const checks = value['checks']
+  if (!Array.isArray(checks)) {
+    issues.push(planDataIssue('checks', 'Workbook plan data checks must be an array'))
+    return
+  }
+  checks.forEach((entry, index) => {
+    pushCheckIssues(issues, entry, index)
+  })
+}
+
 export function checkPlanData(value: unknown): WorkbookPlanDataCheckResult {
   if (!isRecord(value)) {
     return {
@@ -218,7 +287,7 @@ export function checkPlanData(value: unknown): WorkbookPlanDataCheckResult {
   pushArrayIssues(issues, value, 'commands', isWorkbookActionCommandData, 'command')
   pushArrayIssues(issues, value, 'ops', isWorkbookOp, 'op')
   pushArrayIssues(issues, value, 'changed', isChangeData, 'change')
-  pushArrayIssues(issues, value, 'checks', isCheckData, 'check')
+  pushCheckArrayIssues(issues, value)
 
   if (issues.length > 0) {
     return {
