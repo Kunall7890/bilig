@@ -36,6 +36,7 @@ const versionedStaticReferenceRoots = [
   'packages/bilig/SKILL.md',
   'skills/bilig-workpaper/SKILL.md',
   'docs/agent-workbook-challenge.md',
+  'docs/agent-xlsx-formula-recalculation-without-libreoffice.md',
   'docs/claude-desktop-mcpb-workpaper.md',
   'docs/formula-bug-clinic.md',
   'docs/formula-workbooks-node-services-agent-tools.md',
@@ -861,6 +862,8 @@ function syncVersionedStaticReferenceLine(line: string): string {
   return line
     .replace(new RegExp(`(npm exec --package )@bilig/headless@${stableSemverPattern}`, 'g'), `$1${headlessPackageSpec}`)
     .replace(new RegExp(`(npm exec --package )@bilig/workpaper@${stableSemverPattern}`, 'g'), `$1${workpaperPackageSpec}`)
+    .replace(new RegExp(`(npm install )@bilig/headless@${stableSemverPattern}`, 'g'), `$1${headlessPackageSpec}`)
+    .replace(new RegExp(`(npm install )@bilig/workpaper@${stableSemverPattern}`, 'g'), `$1${workpaperPackageSpec}`)
     .replace(new RegExp(`("--package",\\s*")@bilig/headless@${stableSemverPattern}(")`, 'g'), `$1${headlessPackageSpec}$2`)
     .replace(new RegExp(`("--package",\\s*")@bilig/workpaper@${stableSemverPattern}(")`, 'g'), `$1${workpaperPackageSpec}$2`)
     .replace(new RegExp(`('--package',\\s*')@bilig/headless@${stableSemverPattern}(')`, 'g'), `$1${headlessPackageSpec}$2`)
