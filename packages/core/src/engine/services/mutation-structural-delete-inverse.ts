@@ -65,6 +65,16 @@ interface StructuralFormulaUndoCapture {
   readonly source: CapturedRuntimeFormulaSource
 }
 
+interface LazyStructuralDeletedCellUndoCapture {
+  readonly kind: 'lazy-cell'
+  readonly cellIndex: number
+  readonly sheetName: string
+  readonly row: number
+  readonly col: number
+}
+
+type StructuralDeletedCellUndoCapture = StructuralDeletedCellUndoRecord | LazyStructuralDeletedCellUndoCapture
+
 function cloneStructuralSourceTransform(
   transform: RuntimeStructuralFormulaSourceTransform | undefined,
 ): RuntimeStructuralFormulaSourceTransform | undefined {
@@ -393,19 +403,51 @@ export function createMutationStructuralDeleteInverseHelpers(
     return undefined
   }
 
+  const canDeferDeletedCellUndoRecordCapture = (cellIndex: number): boolean => {
+    const flags = args.state.workbook.cellStore.flags[cellIndex] ?? 0
+    if ((flags & (CellFlags.HasFormula | CellFlags.JsOnly | CellFlags.InCycle | CellFlags.SpillChild | CellFlags.PivotOutput)) !== 0) {
+      return false
+    }
+    if (args.state.formulas.has(cellIndex)) {
+      return false
+    }
+    return args.state.workbook.getCellFormat(cellIndex) === undefined
+  }
+
+  const captureDeletedCellUndoHandle = (
+    cellIndex: number,
+    sheetName: string,
+    row: number,
+    col: number,
+  ): StructuralDeletedCellUndoCapture | undefined => {
+    if (canDeferDeletedCellUndoRecordCapture(cellIndex)) {
+      return {
+        kind: 'lazy-cell',
+        cellIndex,
+        sheetName,
+        row,
+        col,
+      }
+    }
+    return captureDeletedCellUndoRecord(cellIndex, sheetName, row, col)
+  }
+
+  const materializeDeletedCellUndoRecord = (capture: StructuralDeletedCellUndoCapture): StructuralDeletedCellUndoRecord | undefined =>
+    capture.kind === 'lazy-cell' ? captureDeletedCellUndoRecord(capture.cellIndex, capture.sheetName, capture.row, capture.col) : capture
+
   const captureDeletedCellUndoRecordsForStructuralUndo = (
     sheetName: string,
     axis: 'row' | 'column',
     start: number,
     count: number,
-  ): StructuralDeletedCellUndoRecord[] => {
+  ): StructuralDeletedCellUndoCapture[] => {
     const sheet = args.state.workbook.getSheet(sheetName)
     if (!sheet) {
       return []
     }
     const readCellPosition = createCellPositionReader()
     const axisIds = sheet.logicalAxisMap.snapshot(axis, start, count).map((entry) => entry.id)
-    const records: StructuralDeletedCellUndoRecord[] = []
+    const records: StructuralDeletedCellUndoCapture[] = []
     sheet.logical.listResidentCellIndicesUnordered(axis, axisIds).forEach((cellIndex) => {
       const position = readCellPosition(cellIndex)
       if (!position || position.sheetId !== sheet.id) {
@@ -415,7 +457,7 @@ export function createMutationStructuralDeleteInverseHelpers(
       if (axisIndex < start || axisIndex >= start + count) {
         return
       }
-      const record = captureDeletedCellUndoRecord(cellIndex, sheetName, position.row, position.col)
+      const record = captureDeletedCellUndoHandle(cellIndex, sheetName, position.row, position.col)
       if (record) {
         records.push(record)
       }
@@ -425,7 +467,7 @@ export function createMutationStructuralDeleteInverseHelpers(
 
   const createLazyStructuralDeleteInverseRecord = (
     prefixOpsBeforeDeletedCells: readonly EngineOp[],
-    deletedCellRecords: readonly StructuralDeletedCellUndoRecord[],
+    deletedCellRecords: readonly StructuralDeletedCellUndoCapture[],
     prefixOpsAfterDeletedCells: readonly EngineOp[],
     formulaRecords: readonly StructuralFormulaUndoCapture[],
     potentialNewCells: number,
@@ -434,15 +476,19 @@ export function createMutationStructuralDeleteInverseHelpers(
       kind: 'ops',
       get ops() {
         if (cachedOps === undefined) {
-          if (deletedCellRecords.length > 0) {
-            addEngineCounter(args.state.counters, 'structuralUndoCapturedCells', deletedCellRecords.length)
-          }
+          const materializedDeletedRecords = deletedCellRecords
+            .map(materializeDeletedCellUndoRecord)
+            .filter((deletedRecord): deletedRecord is StructuralDeletedCellUndoRecord => deletedRecord !== undefined)
+          materializedDeletedRecords.sort((left, right) => left.row - right.row || left.col - right.col)
+          addEngineCounter(args.state.counters, 'structuralUndoCapturedCells', materializedDeletedRecords.length)
           if (formulaRecords.length > 0) {
             addEngineCounter(args.state.counters, 'structuralUndoCapturedFormulas', formulaRecords.length)
           }
           cachedOps = [
             ...prefixOpsBeforeDeletedCells,
-            ...deletedCellRecords.flatMap((deletedRecord) => structuralDeletedCellUndoRecordToOps(deletedRecord, args.toCellStateOps)),
+            ...materializedDeletedRecords.flatMap((deletedRecord) =>
+              structuralDeletedCellUndoRecordToOps(deletedRecord, args.toCellStateOps),
+            ),
             ...prefixOpsAfterDeletedCells,
             ...formulaRecords.map(structuralFormulaUndoCaptureToOp),
           ]

@@ -1116,6 +1116,12 @@ describe('EngineMutationService', () => {
     expect(engine.getCellValue('Sheet1', 'B1')).toEqual({ tag: ValueTag.Number, value: 3 })
     expect(engine.getPerformanceCounters().structuralUndoCapturedCells).toBe(0)
 
+    engine.setCellValue('Sheet1', 'D1', 4)
+    expect(engine.getPerformanceCounters().structuralUndoCapturedCells).toBe(0)
+
+    expect(engine.undo()).toBe(true)
+    expect(engine.getPerformanceCounters().structuralUndoCapturedCells).toBe(0)
+
     expect(engine.undo()).toBe(true)
 
     expect(engine.getCellValue('Sheet1', 'B1')).toEqual({ tag: ValueTag.Number, value: 2 })
