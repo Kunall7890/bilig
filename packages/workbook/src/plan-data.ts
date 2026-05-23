@@ -487,12 +487,12 @@ export function hydratePlanData(data: unknown): WorkbookActionPlan<WorkbookPlanD
   })
 }
 
-export function isHydratedPlan<Refs>(value: WorkbookExecutablePlan<Refs>): value is WorkbookActionPlan<Refs> {
+export function isHydratedPlan<Refs>(value: unknown): value is WorkbookActionPlan<Refs> {
   return isRecord(value) && isRecord(ownValue(value, 'refs'))
 }
 
 export function executablePlan<Refs>(
   plan: WorkbookExecutablePlan<Refs>,
 ): WorkbookActionPlan<Refs> | WorkbookActionPlan<WorkbookPlanDataRefs> {
-  return isHydratedPlan(plan) ? plan : hydratePlanData(plan)
+  return isHydratedPlan<Refs>(plan) ? plan : hydratePlanData(plan)
 }

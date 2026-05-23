@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import {
   buildWorkbookActionPlan,
   checkPlanData,
@@ -356,6 +356,50 @@ describe('@bilig/workbook transport api', () => {
       ],
     })
     expect(() => hydratePlanData(broken)).toThrow('Workbook plan data is invalid: Workbook plan data modelName must be a string')
+  })
+
+  it('returns failed run results for invalid transported plan data without applying', async () => {
+    let commandGetterInvoked = false
+    const commands = accessorArray(() => {
+      commandGetterInvoked = true
+      throw new Error('command getter must not run')
+    })
+    const apply = vi.fn(() => ({ status: 'applied' as const }))
+
+    const result = await runWorkbookPlan(
+      {
+        modelName: 12,
+        actionName: 'write',
+        refsUsed: [],
+        commands,
+        ops: [],
+        changed: [],
+        checks: [],
+      },
+      { apply },
+    )
+
+    expect(apply).not.toHaveBeenCalled()
+    expect(commandGetterInvoked).toBe(false)
+    expect(result).toEqual({
+      status: 'failed',
+      errors: [
+        {
+          code: 'invalid_plan_data',
+          path: 'modelName',
+          issueCode: 'invalid_plan_data',
+          message: 'Workbook plan data modelName must be a string',
+        },
+        {
+          code: 'invalid_plan_data',
+          path: 'commands[0]',
+          issueCode: 'invalid_plan_data',
+          message: 'Workbook plan data command at commands[0] is invalid',
+        },
+      ],
+      changed: [],
+      checks: [],
+    })
   })
 
   it('treats transported plan fields as own data, not inherited prototype data', () => {

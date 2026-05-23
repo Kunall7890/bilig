@@ -94,6 +94,7 @@ describe('@bilig/workbook run api', () => {
   it('exports stable inspectable run error codes', () => {
     expect(Object.isFrozen(workbookRunErrorCodes)).toBe(true)
     expect(workbookRunErrorCodes).toContain('invalid_model')
+    expect(workbookRunErrorCodes).toContain('invalid_plan_data')
     expect(workbookRunErrorCodes).toContain('action_not_found')
     expect(workbookRunErrorCodes).toContain('invalid_action_input')
     expect(workbookRunErrorCodes).toContain('ref_not_in_refs')

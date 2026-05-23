@@ -118,7 +118,8 @@ Runtimes execute plans. `@bilig/workbook` only defines the handoff.
 - `checkRuntimeRequirements(data)` returns structured path-based issues for
   transported runtime requirement payloads before adapter validation.
 - `runWorkbookPlan(planOrData, adapter)` accepts either the in-memory plan or
-  transported plan data, refuses to apply invalid plans, calls the adapter,
+  transported plan data, returns path-based `invalid_plan_data` errors for
+  malformed transported data, refuses to apply invalid plans, calls the adapter,
   verifies readback expectations, verifies generic checks, and returns a boring
   `WorkbookRunResult`.
 - `checkRuntimeAdapter(planOrRequirements, adapter)` checks that the adapter has
@@ -560,8 +561,10 @@ issues. It accepts a live plan, transported plan data, or the output of
 `runWorkbookPlan(planOrData, adapter)` and
 `runWorkbookAction(model, actionName, adapter, input)` add a transport-neutral
 apply-and-prove loop on top of the same contracts. The adapter receives the full
-plan, or a hydrated transported plan with `refs: { refsUsed }`. When the
-requirements include an apply capability, the adapter applies it through
+plan, or a hydrated transported plan with `refs: { refsUsed }`. Malformed
+transported plan data returns `status: "failed"` with `invalid_plan_data`
+errors and never reaches `adapter.apply`. When the requirements include an apply
+capability, the adapter applies it through
 whatever runtime the consumer owns and may return `previewOps`, `appliedOps`,
 apply proof, undo metadata, and semantic readbacks for the expectation targets.
 When the plan only requires readbacks or generic check proof, `@bilig/workbook`

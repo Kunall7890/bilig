@@ -170,7 +170,9 @@ For full action handoff, use `toPlanData(plan)` before JSON transport. A runtime
 can call `checkPlanData(data)` to get structured path-based issues before
 hydration, call `hydratePlanData(data)` to regain frozen refs and helper
 methods, or pass the data directly to `describeRuntimeRequirements(data)` and
-`runWorkbookPlan(data, adapter)`. Invalid transported action input and check
+`runWorkbookPlan(data, adapter)`. `runWorkbookPlan` returns a failed result with
+`invalid_plan_data` errors instead of throwing or calling `apply` when
+transported plan data is malformed. Invalid transported action input and check
 proof keep nested JSON paths such as `input.rows[1]` and
 `checks[0].proof.when`, so an agent can repair the exact payload field before
 hydration. Plan-data guards only trust own payload fields; inherited
@@ -241,8 +243,9 @@ const adapter = {
 ```
 
 `runWorkbookPlan` accepts either a live plan or transported plan data and
-refuses to call `apply` if static plan verification fails or if the adapter is
-missing a required method. Use `checkRuntimeRequirements(data)` when runtime
+refuses to call `apply` if transported plan data is invalid, static plan
+verification fails, or the adapter is missing a required method. Use
+`checkRuntimeRequirements(data)` when runtime
 requirements crossed a JSON boundary and an agent needs path-based diagnostics
 before trusting the handoff. Runtime requirement arrays and nested ref arrays
 must be own enumerable data entries; holes, non-enumerable entries, or

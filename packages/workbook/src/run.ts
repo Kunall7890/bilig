@@ -3,7 +3,14 @@ import { isWorkbookOp } from './guards.js'
 import { normalizeWorkbookActionInput, type WorkbookActionInput } from './input.js'
 import { planWorkbookAction, type WorkbookActionMap, type WorkbookActionPlan, type WorkbookModel } from './model.js'
 import type { EngineOp } from './ops.js'
-import { hydratePlanData, isHydratedPlan, type WorkbookExecutablePlan, type WorkbookPlanDataRefs } from './plan-data.js'
+import {
+  checkPlanData,
+  hydratePlanData,
+  isHydratedPlan,
+  type WorkbookExecutablePlan,
+  type WorkbookPlanDataIssue,
+  type WorkbookPlanDataRefs,
+} from './plan-data.js'
 import { verifyWorkbookReadbacks, type WorkbookRunReadback } from './readback.js'
 import { checkRuntimeAdapter, type WorkbookRuntimeCapability } from './requirements.js'
 import {
@@ -97,6 +104,15 @@ function failedFromPlanIssues<Refs>(plan: WorkbookActionPlan<Refs>): WorkbookRun
     errors: verification.issues.map((issue) => runError(issue.code, issue.message)),
     checks: plan.checks,
   })
+}
+
+function planDataRunError(issue: WorkbookPlanDataIssue): WorkbookRunError {
+  return {
+    code: 'invalid_plan_data',
+    message: issue.message,
+    path: issue.path,
+    issueCode: issue.code,
+  }
 }
 
 function changedAfterApply(
@@ -869,15 +885,21 @@ export function runWorkbookPlan(
   adapter: WorkbookRunAdapter<WorkbookPlanDataRefs>,
   options?: WorkbookRunOptions,
 ): Promise<WorkbookRunResult>
-export function runWorkbookPlan<Refs>(
-  plan: WorkbookExecutablePlan<Refs>,
-  adapter: WorkbookRunAdapter,
-  options: WorkbookRunOptions = {},
-): Promise<WorkbookRunResult> {
+export function runWorkbookPlan(plan: unknown, adapter: WorkbookRunAdapter, options?: WorkbookRunOptions): Promise<WorkbookRunResult>
+export function runWorkbookPlan(plan: unknown, adapter: WorkbookRunAdapter, options: WorkbookRunOptions = {}): Promise<WorkbookRunResult> {
   if (isHydratedPlan(plan)) {
     return runLiveWorkbookPlan<unknown>(plan, adapter, options)
   }
-  return runLiveWorkbookPlan<unknown>(hydratePlanData(plan), adapter, options)
+  const planDataCheck = checkPlanData(plan)
+  if (planDataCheck.status === 'invalid') {
+    return Promise.resolve(
+      failedRun({
+        errors: planDataCheck.issues.map(planDataRunError),
+        checks: [],
+      }),
+    )
+  }
+  return runLiveWorkbookPlan<unknown>(hydratePlanData(planDataCheck.plan), adapter, options)
 }
 
 export async function runWorkbookAction<Refs, Actions extends WorkbookActionMap<Refs>>(
