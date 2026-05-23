@@ -19,7 +19,10 @@ jobs:
       - name: Checkout
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
         with:
-          fetch-depth: 0
+          # The policy job only needs recent branch history for push/PR ranges.
+          # Full-history checkout asks GitHub for every ref/tag and has failed
+          # before tests with credential prompts in the mirror workflow.
+          fetch-depth: 50
 
       - name: Setup Node
         uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e
