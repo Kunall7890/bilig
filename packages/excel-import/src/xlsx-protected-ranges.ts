@@ -3,6 +3,7 @@ import { XMLParser } from 'fast-xml-parser'
 import * as XLSX from 'xlsx'
 
 import type { CellRangeRef, WorkbookRangeProtectionSnapshot, WorkbookSnapshot } from '@bilig/protocol'
+import { workbookSheetPathEntriesFromSource } from './xlsx-workbook-sheet-paths.js'
 import { readXlsxZipEntries, type XlsxZipSource } from './xlsx-zip.js'
 
 type ZipEntries = Record<string, Uint8Array>
@@ -192,8 +193,8 @@ export function readImportedWorkbookProtectedRanges(
   const zip = readXlsxZipEntries(source)
   const protectedRangesBySheet = new Map<string, WorkbookRangeProtectionSnapshot[]>()
 
-  sheetNames.forEach((sheetName, sheetIndex) => {
-    const sheetXml = getZipText(zip, `xl/worksheets/sheet${String(sheetIndex + 1)}.xml`)
+  workbookSheetPathEntriesFromSource(zip, sheetNames).forEach((sheet) => {
+    const sheetXml = getZipText(zip, sheet.path)
     if (!sheetXml || !/<protectedRanges\b/u.test(sheetXml)) {
       return
     }
@@ -201,9 +202,9 @@ export function readImportedWorkbookProtectedRanges(
     const usedIds = new Set<string>()
     const protectedRanges = asArray(
       recordChild(recordChild(recordChild(parsed, 'worksheet'), 'protectedRanges'), 'protectedRange'),
-    ).flatMap((entry) => parseProtectedRangeEntry(sheetName, entry, usedIds))
+    ).flatMap((entry) => parseProtectedRangeEntry(sheet.name, entry, usedIds))
     if (protectedRanges.length > 0) {
-      protectedRangesBySheet.set(sheetName, protectedRanges)
+      protectedRangesBySheet.set(sheet.name, protectedRanges)
     }
   })
 

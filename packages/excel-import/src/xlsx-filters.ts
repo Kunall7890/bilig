@@ -12,6 +12,7 @@ import type {
   WorkbookSnapshot,
 } from '@bilig/protocol'
 import { decodeA1RangeRef, encodeA1CellRef, encodeA1RangeRef } from './xlsx-a1-utils.js'
+import { workbookSheetPathEntriesFromSource } from './xlsx-workbook-sheet-paths.js'
 import { readXlsxZipEntries, type XlsxZipSource } from './xlsx-zip.js'
 
 type ZipEntries = Record<string, Uint8Array>
@@ -319,14 +320,14 @@ export function readImportedWorkbookFilters(
   const zip = readXlsxZipEntries(source)
   const filtersBySheet = new Map<string, WorkbookAutoFilterSnapshot[]>()
 
-  sheetNames.forEach((sheetName, sheetIndex) => {
-    const sheetXml = getZipText(zip, `xl/worksheets/sheet${String(sheetIndex + 1)}.xml`)
+  workbookSheetPathEntriesFromSource(zip, sheetNames).forEach((sheet) => {
+    const sheetXml = getZipText(zip, sheet.path)
     if (!sheetXml || !/<autoFilter\b/u.test(sheetXml)) {
       return
     }
-    const autoFilters = readImportedSheetAutoFilters(sheetName, sheetXml)
+    const autoFilters = readImportedSheetAutoFilters(sheet.name, sheetXml)
     if (autoFilters.length > 0) {
-      filtersBySheet.set(sheetName, autoFilters)
+      filtersBySheet.set(sheet.name, autoFilters)
     }
   })
 

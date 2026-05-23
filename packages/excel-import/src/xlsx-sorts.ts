@@ -3,6 +3,7 @@ import { XMLParser } from 'fast-xml-parser'
 
 import type { CellRangeRef, WorkbookSnapshot, WorkbookSortSnapshot } from '@bilig/protocol'
 import { decodeA1CellRef, decodeA1RangeRef, encodeA1CellRef, encodeA1RangeRef } from './xlsx-a1-utils.js'
+import { workbookSheetPathEntriesFromSource } from './xlsx-workbook-sheet-paths.js'
 import { readXlsxZipEntries, type XlsxZipSource } from './xlsx-zip.js'
 
 type ZipEntries = Record<string, Uint8Array>
@@ -221,18 +222,18 @@ export function readImportedWorkbookSorts(source: XlsxZipSource, sheetNames: rea
   const zip = readXlsxZipEntries(source)
   const sortsBySheet = new Map<string, WorkbookSortSnapshot[]>()
 
-  sheetNames.forEach((sheetName, sheetIndex) => {
-    const sheetXml = getZipText(zip, `xl/worksheets/sheet${String(sheetIndex + 1)}.xml`)
+  workbookSheetPathEntriesFromSource(zip, sheetNames).forEach((sheet) => {
+    const sheetXml = getZipText(zip, sheet.path)
     if (!sheetXml || !/<sortState\b/u.test(sheetXml)) {
       return
     }
     const parsed: unknown = xmlParser.parse(sheetXml)
     const sorts = asArray(recordChild(recordChild(parsed, 'worksheet'), 'sortState')).flatMap((entry) => {
-      const sort = parseSortState(sheetName, entry)
+      const sort = parseSortState(sheet.name, entry)
       return sort ? [sort] : []
     })
     if (sorts.length > 0) {
-      sortsBySheet.set(sheetName, sorts)
+      sortsBySheet.set(sheet.name, sorts)
     }
   })
 

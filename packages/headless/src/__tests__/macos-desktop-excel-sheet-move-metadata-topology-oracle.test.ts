@@ -22,6 +22,11 @@ describe('macOS Desktop Excel sheet move metadata topology oracle', () => {
         const sourceBytes = exportXlsx(sheetMoveMetadataTopologySnapshot())
         const importedSource = importXlsx(sourceBytes, 'sheet-move-metadata-source.xlsx').snapshot
         expect(metadataCodeNames(importedSource)).toEqual(['Data:DataCode', 'Inputs:InputsCode', 'Report:ReportCode'])
+        expect(metadataPolicySummary(importedSource)).toEqual([
+          'Data:filters=0;sorts=0;validations=0;protection=none;ranges=;cf=0;sparkline=none',
+          'Inputs:filters=1;sorts=1;validations=1;protection=formatCells=0;ranges=InputsLock:Inputs!A2:A2;cf=1;sparkline=Inputs!B2:C2',
+          'Report:filters=1;sorts=1;validations=1;protection=formatRows=0;ranges=ReportLock:Report!A2:A2;cf=1;sparkline=Report!B2:C2',
+        ])
 
         const excelWorkbookPath = join(tempDir, 'excel-sheet-move-metadata-source.xlsx')
         writeFileSync(excelWorkbookPath, sourceBytes)
@@ -41,6 +46,11 @@ describe('macOS Desktop Excel sheet move metadata topology oracle', () => {
         const excelTruth = importXlsx(new Uint8Array(readFileSync(excelWorkbookPath)), 'excel-sheet-move-metadata-truth.xlsx')
         expect(excelTruth.snapshot.sheets.map((sheet) => sheet.name)).toEqual(['Data', 'Report', 'Inputs'])
         expect(metadataCodeNames(excelTruth.snapshot)).toEqual(['Data:DataCode', 'Report:ReportCode', 'Inputs:InputsCode'])
+        expect(metadataPolicySummary(excelTruth.snapshot)).toEqual([
+          'Data:filters=0;sorts=0;validations=0;protection=none;ranges=;cf=0;sparkline=none',
+          'Report:filters=1;sorts=1;validations=1;protection=formatRows=0;ranges=ReportLock:Report!A2:A2;cf=1;sparkline=Report!B2:C2',
+          'Inputs:filters=1;sorts=1;validations=1;protection=formatCells=0;ranges=InputsLock:Inputs!A2:A2;cf=1;sparkline=Inputs!B2:C2',
+        ])
 
         const workpaper = WorkPaper.buildFromSnapshot(importedSource)
         try {
@@ -54,6 +64,7 @@ describe('macOS Desktop Excel sheet move metadata topology oracle', () => {
           expect(headlessSnapshot.sheets.map((sheet) => sheet.name)).toEqual(['Data', 'Report', 'Inputs'])
           expect(metadataCodeNames(headlessSnapshot)).toEqual(metadataCodeNames(excelTruth.snapshot))
           expect(metadataTabColors(headlessSnapshot)).toEqual(metadataTabColors(excelTruth.snapshot))
+          expect(metadataPolicySummary(headlessSnapshot)).toEqual(metadataPolicySummary(excelTruth.snapshot))
 
           const headlessPath = join(tempDir, 'headless-sheet-move-metadata.xlsx')
           writeFileSync(headlessPath, exportXlsx(headlessSnapshot))
@@ -69,6 +80,7 @@ describe('macOS Desktop Excel sheet move metadata topology oracle', () => {
 
           const headlessTruth = importXlsx(new Uint8Array(readFileSync(headlessPath)), 'headless-sheet-move-metadata-truth.xlsx')
           expect(metadataCodeNames(headlessTruth.snapshot)).toEqual(metadataCodeNames(excelTruth.snapshot))
+          expect(metadataPolicySummary(headlessTruth.snapshot)).toEqual(metadataPolicySummary(excelTruth.snapshot))
         } finally {
           workpaper.dispose()
         }
@@ -107,10 +119,52 @@ function sheetMoveMetadataTopologySnapshot(): WorkbookSnapshot {
         metadata: {
           sheetPr: { xml: '<sheetPr codeName="InputsCode"><outlinePr summaryRight="0"/></sheetPr>' },
           tabColor: { rgb: 'FFFF0000' },
+          filters: [
+            {
+              sheetName: 'Inputs',
+              startAddress: 'A1',
+              endAddress: 'B3',
+              criteria: [{ colId: 0, filters: { values: ['Inputs'] } }],
+            },
+          ],
+          sorts: [
+            {
+              range: { sheetName: 'Inputs', startAddress: 'A1', endAddress: 'B3' },
+              keys: [{ keyAddress: 'B2', direction: 'asc' }],
+            },
+          ],
+          validations: [
+            {
+              range: { sheetName: 'Inputs', startAddress: 'E2', endAddress: 'E2' },
+              rule: { kind: 'list', values: ['red', 'blue'] },
+            },
+          ],
+          sheetProtection: {
+            sheetName: 'Inputs',
+            xmlAttributes: [
+              { name: 'sheet', value: '1' },
+              { name: 'formatCells', value: '0' },
+            ],
+          },
+          protectedRanges: [{ id: 'InputsLock', range: { sheetName: 'Inputs', startAddress: 'A2', endAddress: 'A2' } }],
+          conditionalFormats: [
+            {
+              id: 'inputs-cf',
+              range: { sheetName: 'Inputs', startAddress: 'B2', endAddress: 'B2' },
+              rule: { kind: 'cellIs', operator: 'greaterThan', values: [20] },
+              style: {},
+            },
+          ],
+          sparklines: { xml: sparklineExtensionXml('Inputs!B2:C2', 'F2') },
         },
         cells: [
           { address: 'A1', value: 'Inputs' },
           { address: 'A2', value: 22 },
+          { address: 'B1', value: 'Metric' },
+          { address: 'B2', value: 24 },
+          { address: 'C2', value: 25 },
+          { address: 'E2', value: 'red' },
+          { address: 'F2', value: '' },
         ],
       },
       {
@@ -120,14 +174,64 @@ function sheetMoveMetadataTopologySnapshot(): WorkbookSnapshot {
         metadata: {
           sheetPr: { xml: '<sheetPr codeName="ReportCode"><pageSetUpPr fitToPage="1"/></sheetPr>' },
           tabColor: { rgb: 'FF00AA00' },
+          filters: [
+            {
+              sheetName: 'Report',
+              startAddress: 'A1',
+              endAddress: 'B3',
+              criteria: [{ colId: 0, filters: { values: ['Report'] } }],
+            },
+          ],
+          sorts: [
+            {
+              range: { sheetName: 'Report', startAddress: 'A1', endAddress: 'B3' },
+              keys: [{ keyAddress: 'B2', direction: 'desc' }],
+            },
+          ],
+          validations: [
+            {
+              range: { sheetName: 'Report', startAddress: 'E2', endAddress: 'E2' },
+              rule: { kind: 'whole', operator: 'greaterThan', values: [30] },
+            },
+          ],
+          sheetProtection: {
+            sheetName: 'Report',
+            xmlAttributes: [
+              { name: 'sheet', value: '1' },
+              { name: 'formatRows', value: '0' },
+            ],
+          },
+          protectedRanges: [{ id: 'ReportLock', range: { sheetName: 'Report', startAddress: 'A2', endAddress: 'A2' } }],
+          conditionalFormats: [
+            {
+              id: 'report-cf',
+              range: { sheetName: 'Report', startAddress: 'B2', endAddress: 'B2' },
+              rule: { kind: 'cellIs', operator: 'greaterThan', values: [30] },
+              style: {},
+            },
+          ],
+          sparklines: { xml: sparklineExtensionXml('Report!B2:C2', 'F2') },
         },
         cells: [
           { address: 'A1', value: 'Report' },
           { address: 'A2', value: 33 },
+          { address: 'B1', value: 'Metric' },
+          { address: 'B2', value: 34 },
+          { address: 'C2', value: 38 },
+          { address: 'E2', value: 31 },
+          { address: 'F2', value: '' },
         ],
       },
     ],
   }
+}
+
+const sparklineExtensionUri = '{05C60535-1F16-4fd2-B633-F4F36F0B64E0}'
+const x14Namespace = 'http://schemas.microsoft.com/office/spreadsheetml/2009/9/main'
+const xmNamespace = 'http://schemas.microsoft.com/office/excel/2006/main'
+
+function sparklineExtensionXml(formula: string, sqref: string): string {
+  return `<ext uri="${sparklineExtensionUri}" xmlns:x14="${x14Namespace}"><x14:sparklineGroups xmlns:xm="${xmNamespace}"><x14:sparklineGroup type="line"><x14:sparklines><x14:sparkline><xm:f>${formula}</xm:f><xm:sqref>${sqref}</xm:sqref></x14:sparkline></x14:sparklines></x14:sparklineGroup></x14:sparklineGroups></ext>`
 }
 
 function metadataCodeNames(snapshot: WorkbookSnapshot): string[] {
@@ -136,6 +240,29 @@ function metadataCodeNames(snapshot: WorkbookSnapshot): string[] {
 
 function metadataTabColors(snapshot: WorkbookSnapshot): string[] {
   return snapshot.sheets.map((sheet) => `${sheet.name}:${JSON.stringify(sheet.metadata?.tabColor ?? null)}`)
+}
+
+function metadataPolicySummary(snapshot: WorkbookSnapshot): string[] {
+  return snapshot.sheets.map((sheet) => {
+    const metadata = sheet.metadata
+    const protection = metadata?.sheetProtection?.xmlAttributes
+      ?.filter((attribute) => attribute.name !== 'sheet')
+      .map((attribute) => `${attribute.name}=${attribute.value}`)
+      .join(',')
+    const ranges = (metadata?.protectedRanges ?? [])
+      .map((range) => `${range.id}:${range.range.sheetName}!${range.range.startAddress}:${range.range.endAddress}`)
+      .join(',')
+    const sparkline = /<xm:f>([\s\S]*?)<\/xm:f>/u.exec(metadata?.sparklines?.xml ?? '')?.[1] ?? 'none'
+    return [
+      `${sheet.name}:filters=${String(metadata?.filters?.length ?? 0)}`,
+      `sorts=${String(metadata?.sorts?.length ?? 0)}`,
+      `validations=${String(metadata?.validations?.length ?? 0)}`,
+      `protection=${protection && protection.length > 0 ? protection : 'none'}`,
+      `ranges=${ranges}`,
+      `cf=${String(metadata?.conditionalFormats?.length ?? 0)}`,
+      `sparkline=${sparkline}`,
+    ].join(';')
+  })
 }
 
 function codeName(sheetPrXml: string | undefined): string | undefined {

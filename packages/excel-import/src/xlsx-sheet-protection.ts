@@ -3,6 +3,7 @@ import { XMLParser } from 'fast-xml-parser'
 
 import type { WorkbookSheetProtectionSnapshot, WorkbookSnapshot } from '@bilig/protocol'
 import { escapeXmlAttribute } from './xlsx-export-xml.js'
+import { workbookSheetPathEntriesFromSource } from './xlsx-workbook-sheet-paths.js'
 import { readXlsxZipEntries, type XlsxZipSource } from './xlsx-zip.js'
 
 type ZipEntries = Record<string, Uint8Array>
@@ -161,8 +162,8 @@ export function readImportedWorkbookSheetProtections(
   const zip = readXlsxZipEntries(source)
   const protectionsBySheet = new Map<string, WorkbookSheetProtectionSnapshot>()
 
-  sheetNames.forEach((sheetName, sheetIndex) => {
-    const sheetXml = getZipText(zip, `xl/worksheets/sheet${String(sheetIndex + 1)}.xml`)
+  workbookSheetPathEntriesFromSource(zip, sheetNames).forEach((sheet) => {
+    const sheetXml = getZipText(zip, sheet.path)
     if (!sheetXml || !/<sheetProtection\b/u.test(sheetXml)) {
       return
     }
@@ -172,8 +173,8 @@ export function readImportedWorkbookSheetProtections(
       return
     }
     const xmlAttributes = readSheetProtectionXmlAttributes(sheetXml)
-    protectionsBySheet.set(sheetName, {
-      sheetName,
+    protectionsBySheet.set(sheet.name, {
+      sheetName: sheet.name,
       ...(xmlAttributes ? { xmlAttributes } : {}),
     })
   })

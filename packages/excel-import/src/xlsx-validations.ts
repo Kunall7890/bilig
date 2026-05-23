@@ -19,6 +19,7 @@ import {
   type WorkbookValidationErrorStyle,
   type WorkbookValidationListSourceSnapshot,
 } from '@bilig/protocol'
+import { workbookSheetPathEntriesFromSource } from './xlsx-workbook-sheet-paths.js'
 import { readXlsxZipEntries, type XlsxZipSource } from './xlsx-zip.js'
 
 type ZipEntries = Record<string, Uint8Array>
@@ -624,22 +625,22 @@ export function readImportedWorkbookDataValidations(
   const zip = readXlsxZipEntries(source)
   const validationsBySheet = new Map<string, WorkbookDataValidationSnapshot[]>()
 
-  sheetNames.forEach((sheetName, sheetIndex) => {
-    const sheetXml = getZipText(zip, `xl/worksheets/sheet${String(sheetIndex + 1)}.xml`)
+  workbookSheetPathEntriesFromSource(zip, sheetNames).forEach((sheet) => {
+    const sheetXml = getZipText(zip, sheet.path)
     if (!sheetXml || !/<dataValidations\b/u.test(sheetXml)) {
       return
     }
     const parsed: unknown = xmlParser.parse(sheetXml)
     const entries = asArray(recordChild(recordChild(parsed, 'worksheet'), 'dataValidations')?.['dataValidation'])
     const validations = entries
-      .flatMap((entry) => parseDataValidationEntry(sheetName, entry))
+      .flatMap((entry) => parseDataValidationEntry(sheet.name, entry))
       .toSorted((left, right) =>
         `${left.range.sheetName}:${left.range.startAddress}:${left.range.endAddress}`.localeCompare(
           `${right.range.sheetName}:${right.range.startAddress}:${right.range.endAddress}`,
         ),
       )
     if (validations.length > 0) {
-      validationsBySheet.set(sheetName, validations)
+      validationsBySheet.set(sheet.name, validations)
     }
   })
 

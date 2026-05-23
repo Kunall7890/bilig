@@ -1,6 +1,7 @@
 import { strToU8, unzipSync, zipSync } from 'fflate'
 
 import type { WorkbookSparklinesSnapshot, WorkbookSnapshot } from '@bilig/protocol'
+import { workbookSheetPathEntriesFromSource } from './xlsx-workbook-sheet-paths.js'
 import { getZipText, normalizeZipPath, readXlsxZipEntries, type XlsxZipSource } from './xlsx-zip.js'
 
 const sparklineExtensionUri = '{05C60535-1F16-4fd2-B633-F4F36F0B64E0}'
@@ -107,14 +108,14 @@ export function readImportedWorkbookSparklines(
   const zip = readXlsxZipEntries(source)
   const sparklinesBySheet = new Map<string, WorkbookSparklinesSnapshot>()
 
-  sheetNames.forEach((sheetName, sheetIndex) => {
-    const sheetXml = getZipText(zip, `xl/worksheets/sheet${String(sheetIndex + 1)}.xml`)
+  workbookSheetPathEntriesFromSource(zip, sheetNames).forEach((sheet) => {
+    const sheetXml = getZipText(zip, sheet.path)
     if (!sheetXml || !extensionContainsSparklines(sheetXml)) {
       return
     }
     const sparklineXml = readSparklineExtensionXml(sheetXml)
     if (sparklineXml) {
-      sparklinesBySheet.set(sheetName, { xml: sparklineXml })
+      sparklinesBySheet.set(sheet.name, { xml: sparklineXml })
     }
   })
 

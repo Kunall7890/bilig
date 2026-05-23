@@ -13,6 +13,7 @@ import type {
 } from '@bilig/protocol'
 import { decodeA1RangeRef, encodeA1CellRef, encodeA1RangeRef } from './xlsx-a1-utils.js'
 import { applyExportWorksheetDimensionsToWorksheetXml } from './xlsx-dimensions.js'
+import { workbookSheetPathEntriesFromSource } from './xlsx-workbook-sheet-paths.js'
 import { readXlsxZipEntries, type XlsxZipSource } from './xlsx-zip.js'
 
 type ZipEntries = Record<string, Uint8Array>
@@ -573,13 +574,7 @@ export function readImportedWorkbookConditionalFormats(
   source: XlsxZipSource,
   sheetNames: readonly string[],
 ): Map<string, WorkbookConditionalFormatSnapshot[]> {
-  return readImportedWorkbookConditionalFormatsFromWorksheetPaths(
-    source,
-    sheetNames.map((sheetName, sheetIndex) => ({
-      name: sheetName,
-      path: `xl/worksheets/sheet${String(sheetIndex + 1)}.xml`,
-    })),
-  )
+  return readImportedWorkbookConditionalFormatsFromWorksheetPaths(source, workbookSheetPathEntriesFromSource(source, sheetNames))
 }
 
 export function readImportedWorkbookConditionalFormatsFromWorksheetPaths(
@@ -667,13 +662,7 @@ export function readImportedWorkbookConditionalFormatArtifacts(
   source: XlsxZipSource,
   sheetNames: readonly string[],
 ): Map<string, WorkbookSheetConditionalFormatArtifactsSnapshot> {
-  return readImportedWorkbookConditionalFormatArtifactsFromWorksheetPaths(
-    source,
-    sheetNames.map((sheetName, sheetIndex) => ({
-      name: sheetName,
-      path: `xl/worksheets/sheet${String(sheetIndex + 1)}.xml`,
-    })),
-  )
+  return readImportedWorkbookConditionalFormatArtifactsFromWorksheetPaths(source, workbookSheetPathEntriesFromSource(source, sheetNames))
 }
 
 export function readImportedWorkbookConditionalFormatArtifactsFromWorksheetPaths(
