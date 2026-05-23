@@ -100,6 +100,23 @@ function failedFromPlanIssues<Refs>(plan: WorkbookActionPlan<Refs>): WorkbookRun
   })
 }
 
+function changedAfterApply(
+  plan: WorkbookActionPlan,
+  result: Pick<WorkbookRunApplyResult, 'appliedOps' | 'undo'>,
+): readonly WorkbookChangeSummary[] {
+  if (result.appliedOps !== undefined) {
+    return result.appliedOps.length > 0 || result.undo !== undefined ? plan.changed : []
+  }
+  return plan.changed
+}
+
+function changedAfterFailedApply(
+  plan: WorkbookActionPlan,
+  result: Pick<WorkbookRunApplyResult, 'appliedOps' | 'undo'>,
+): readonly WorkbookChangeSummary[] {
+  return result.undo !== undefined || (result.appliedOps !== undefined && result.appliedOps.length > 0) ? plan.changed : []
+}
+
 function failedApplyResult(plan: WorkbookActionPlan, result: WorkbookRunApplyResult): WorkbookRunResult {
   const errors =
     result.errors !== undefined && result.errors.length > 0
@@ -110,7 +127,7 @@ function failedApplyResult(plan: WorkbookActionPlan, result: WorkbookRunApplyRes
   return failedRun({
     errors,
     apply,
-    changed: result.appliedOps !== undefined || result.undo !== undefined ? plan.changed : [],
+    changed: changedAfterFailedApply(plan, result),
     checks: plan.checks,
     ...(result.undo !== undefined ? { undo: result.undo } : {}),
   })
@@ -477,7 +494,7 @@ export async function runWorkbookPlan<Refs>(
     return failedRun({
       errors: applyErrors,
       apply,
-      changed: plan.changed,
+      changed: changedAfterApply(plan, validApplyResult),
       checks: plan.checks,
       ...(validApplyResult.undo !== undefined ? { undo: validApplyResult.undo } : {}),
       unverified,
@@ -492,7 +509,7 @@ export async function runWorkbookPlan<Refs>(
       return failedRun({
         errors: readbackVerification.issues.map((issue) => runError(issue.code, issue.message)),
         apply,
-        changed: plan.changed,
+        changed: changedAfterApply(plan, validApplyResult),
         checks: readbackVerification.checks,
         ...(validApplyResult.undo !== undefined ? { undo: validApplyResult.undo } : {}),
         unverified,
@@ -506,7 +523,7 @@ export async function runWorkbookPlan<Refs>(
       return failedRun({
         errors: [runError('readback_failed', errorMessage(error))],
         apply,
-        changed: plan.changed,
+        changed: changedAfterApply(plan, validApplyResult),
         checks,
         ...(validApplyResult.undo !== undefined ? { undo: validApplyResult.undo } : {}),
         unverified,
@@ -519,7 +536,7 @@ export async function runWorkbookPlan<Refs>(
       return failedRun({
         errors: readbackVerification.issues.map((issue) => runError(issue.code, issue.message)),
         apply,
-        changed: plan.changed,
+        changed: changedAfterApply(plan, validApplyResult),
         checks,
         ...(validApplyResult.undo !== undefined ? { undo: validApplyResult.undo } : {}),
         unverified,
@@ -533,7 +550,7 @@ export async function runWorkbookPlan<Refs>(
     return failedRun({
       errors: checkVerification.errors,
       apply,
-      changed: plan.changed,
+      changed: changedAfterApply(plan, validApplyResult),
       checks,
       ...(validApplyResult.undo !== undefined ? { undo: validApplyResult.undo } : {}),
       unverified,
@@ -545,7 +562,7 @@ export async function runWorkbookPlan<Refs>(
     return failedRun({
       errors: unverifiedErrors,
       apply,
-      changed: plan.changed,
+      changed: changedAfterApply(plan, validApplyResult),
       checks,
       ...(validApplyResult.undo !== undefined ? { undo: validApplyResult.undo } : {}),
       unverified,
@@ -555,7 +572,7 @@ export async function runWorkbookPlan<Refs>(
   return {
     status: 'done',
     apply,
-    changed: plan.changed,
+    changed: changedAfterApply(plan, validApplyResult),
     checks,
     ...(validApplyResult.undo !== undefined ? { undo: validApplyResult.undo } : {}),
     ...unverifiedProperty(unverified),

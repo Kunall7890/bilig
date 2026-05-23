@@ -27,6 +27,7 @@ import {
   planWorkbookAction,
   runWorkbookPlan,
   verifyPlan,
+  verifyPlanData,
 } from "@bilig/workbook";
 
 export const model = defineModel({
@@ -69,6 +70,8 @@ if (planned.status === "failed") throw new Error(planned.errors[0]?.message);
 const staticProof = verifyPlan(planned.plan);
 const requirements = describeRuntimeRequirements(planned.plan);
 const planForLogs = describePlan(planned.plan);
+const transportedPlan = JSON.parse(JSON.stringify(planForLogs));
+const transportProof = verifyPlanData(transportedPlan);
 
 const result = await runWorkbookPlan(planned.plan, adapter);
 const resultForLogs = describeRunResult(result);
@@ -94,12 +97,14 @@ The main API is intentionally small:
 - formulas: `formula.add`, `formula.subtract`, `formula.multiply`, `formula.divide`, `formula.sum`, `formula.call`, `formula.raw`, `formula.text`
 - proof: `verifyPlan`, `verifyModel`, `verifyWorkbookReadbacks`
 - descriptions: `describeModel`, `describeRef`, `describePlan`, `describePlanResult`, `describeRuntimeRequirements`, `describeRunResult`
+- transport data: `isWorkbookRefData`, `toWorkbookRefData`, `collectWorkbookRefData`, `hydrateWorkbookRef`, `hydrateWorkbookRefs`, `verifyPlanData`
 - runtime handoff: `runWorkbookPlan`, `runWorkbookAction`, `WorkbookRunAdapter`
 - low-level language: `WorkbookOp`, `WorkbookTxn`, `EngineOp`, `EngineOpBatch`, `isEngineOpBatch`
 
 Stable data helpers are exported for generic tool builders:
 
 - `workbookRefKinds`, `isWorkbookRefKind`, `isWorkbookRef`
+- `isWorkbookRefData`, `toWorkbookRefData`, `collectWorkbookRefData`, `hydrateWorkbookRef`, `hydrateWorkbookRefs`
 - `workbookRowOperators`, `workbookRowOperatorValueTypes`, `isWorkbookRowOperator`, `isWorkbookRowValueCompatible`
 - `builtInWorkbookCheckKinds`, `isBuiltInWorkbookCheckKind`
 - `workbookActionInputDescriptionKinds`, `isWorkbookActionInputDescriptionKind`, `isWorkbookActionInputDescription`, `isWorkbookActionInput`
@@ -121,6 +126,10 @@ agents.
 
 Refs are frozen data. Helpers such as `table.column("Total")` and
 `rows.column("Total")` are non-enumerable, so JSON descriptions stay data-first.
+Use `toWorkbookRefData` or `describeRef` when a ref must cross a JSON boundary.
+Use `hydrateWorkbookRef` or `hydrateWorkbookRefs` after transport to regain the
+local helpers. `verifyPlanData(describePlan(plan))` checks transported plan data
+without requiring the consumer's private `refs` object shape.
 
 ## Formulas
 
@@ -170,8 +179,9 @@ Readback checks attach proof to passed checks, such as
 Generic check verifiers may only change `status` or add JSON-safe `proof`; they
 cannot rewrite the check contract.
 If runtime apply succeeds but readback or check proof fails, the failed result
-still carries `changed` and `undo` when the adapter returned undo metadata. A
-failed result before apply uses `changed: []`.
+still carries `changed` and `undo` when the adapter returned applied ops or undo
+metadata. A failed result before apply, or a failed apply that reports
+`appliedOps: []` without undo metadata, uses `changed: []`.
 
 The result is deliberately plain:
 

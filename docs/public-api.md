@@ -68,11 +68,18 @@ prepaid, or other business models in this package.
   engine.
 - `describeModel`, `describePlan`, and `describePlanResult` return JSON-safe
   objects for logs, approvals, tools, and tests.
+- `verifyPlanData` proves a JSON-transported plan description after it has lost
+  local helper methods and consumer-private `refs` object shape.
 
 The model contract is intentionally data-first. Refs are frozen. Helper methods
 such as `table.column("Amount")` and `rows.column("Amount")` are non-enumerable.
 Action input is plain JSON, cloned into the plan, and described with small
 metadata rather than a schema dependency.
+For transport, `toWorkbookRefData` turns any ref into plain data,
+`isWorkbookRefData` validates that data, `collectWorkbookRefData` discovers refs
+without requiring hidden methods, and `hydrateWorkbookRef` /
+`hydrateWorkbookRefs` restores the ergonomic helpers when local code needs them
+again.
 
 ### Runtime adapter contract
 
@@ -97,7 +104,9 @@ an unverified apply fact. Agents that need fail-closed execution can call
 Failed results include `changed` as a concrete answer, not an implied absence:
 `changed: []` means no runtime apply succeeded before the failure, while
 post-apply proof failures keep the planned change summaries and adapter-provided
-undo metadata.
+undo metadata. If an adapter returns a failed apply with `appliedOps: []` and no
+undo metadata, `changed` stays empty because the runtime proved no ops were
+applied.
 
 Readback-backed checks attach proof to passed checks. A result can therefore
 show the intended action, bound refs, planned commands and ops, adapter
@@ -132,11 +141,16 @@ Full export surface:
 - `planWorkbookAction`
 - `inspectModel`
 - `collectWorkbookRefs`
+- `collectWorkbookRefData`
 - `findTable`, `findColumn`, `findRange`, `findName`, and `findRows`
 - `find`
 - `workbookRefKinds`
 - `isWorkbookRefKind`
 - `isWorkbookRef`
+- `isWorkbookRefData`
+- `toWorkbookRefData`
+- `hydrateWorkbookRef`
+- `hydrateWorkbookRefs`
 - `workbookRowOperators`
 - `workbookRowOperatorValueTypes`
 - `isWorkbookRowOperator`
@@ -149,6 +163,7 @@ Full export surface:
 - `describeRunResult`
 - `describeRuntimeRequirements`
 - `verifyPlan`
+- `verifyPlanData`
 - `verifyModel`
 - `workbookActionInputDescriptionKinds`
 - `isWorkbookActionInputDescriptionKind`
@@ -166,7 +181,7 @@ Full export surface:
 - `workbook.addOp(op, { target?, message? })` inside model actions
 - `findTable`, `findColumn`, `findRange`, `findName`, and `findRows` through the model workbook context and as top-level helpers
 - `check.exists`, `check.noFormulaErrors`, `check.valueEquals`, `check.formulaEquals`, and `check.custom` through the model workbook context and as top-level helpers
-- `WorkbookModel`, `WorkbookAction`, `WorkbookActionConfig`, `WorkbookActionDefinition`, `WorkbookActionContext`, `WorkbookCheckContext`, `WorkbookFindWorkbook`, `WorkbookCheckWorkbook`, `WorkbookActionWorkbook`, `WorkbookModelWorkbook`, `WorkbookFindNamespace`, `WorkbookRef`, `WorkbookRefKind`, `WorkbookRangeRef`, `WorkbookNameRef`, `WorkbookTableRef`, `WorkbookColumnRef`, `WorkbookRowsRef`, `WorkbookRowOperator`, `WorkbookRowValueType`, `WorkbookActionInput`, `WorkbookActionInputDescription`, `WorkbookActionInputDescriptionKind`, `WorkbookActionInspection`, `WorkbookAddOpOptions`, `WorkbookActionPlanResult`, `WorkbookModelDescription`, `WorkbookRefDescription`, `WorkbookActionPlanDescription`, `WorkbookActionPlanResultDescription`, `WorkbookRunResultDescription`, `WorkbookUndoRefDescription`, `WorkbookRunApplySummaryDescription`, `WorkbookRunUnverifiedDescription`, `WorkbookRuntimeRequirements`, `WorkbookRuntimeRequirement`, `WorkbookRuntimeCapability`, `WorkbookPlanVerification`, `WorkbookPlanIssue`, `WorkbookModelVerification`, `WorkbookModelActionVerification`, `WorkbookModelVerificationOptions`, `WorkbookRunAdapter`, `WorkbookRunApplyResult`, `WorkbookRunOptions`, `WorkbookRunApplySummary`, `WorkbookRunUnverified`, `WorkbookRunUnverifiedKind`, `WorkbookRunReadback`, `WorkbookReadbackVerification`, `WorkbookReadbackIssue`, `WorkbookReadbackIssueCode`, `WorkbookCheckExpectation`, `WorkbookCheckExpectationDescription`, `WorkbookBuiltInCheckKind`, `WorkbookCustomCheckOptions`, `WorkbookReadbackCheckOptions`, `WorkbookRawFormulaOptions`, `WorkbookRunResult`, `WorkbookRunError`, `WorkbookRunErrorCode`, and `WorkbookCheckResult`
+- `WorkbookModel`, `WorkbookAction`, `WorkbookActionConfig`, `WorkbookActionDefinition`, `WorkbookActionContext`, `WorkbookCheckContext`, `WorkbookFindWorkbook`, `WorkbookCheckWorkbook`, `WorkbookActionWorkbook`, `WorkbookModelWorkbook`, `WorkbookFindNamespace`, `WorkbookRef`, `WorkbookRefData`, `WorkbookRefKind`, `WorkbookBaseRefData`, `WorkbookRangeRef`, `WorkbookRangeRefData`, `WorkbookNameRef`, `WorkbookNameRefData`, `WorkbookTableRef`, `WorkbookTableRefData`, `WorkbookColumnRef`, `WorkbookColumnRefData`, `WorkbookRowsRef`, `WorkbookRowsRefData`, `WorkbookRowOperator`, `WorkbookRowValueType`, `WorkbookActionInput`, `WorkbookActionInputDescription`, `WorkbookActionInputDescriptionKind`, `WorkbookActionInspection`, `WorkbookAddOpOptions`, `WorkbookActionPlanResult`, `WorkbookModelDescription`, `WorkbookRefDescription`, `WorkbookActionPlanDescription`, `WorkbookActionPlanResultDescription`, `WorkbookRunResultDescription`, `WorkbookUndoRefDescription`, `WorkbookRunApplySummaryDescription`, `WorkbookRunUnverifiedDescription`, `WorkbookRuntimeRequirements`, `WorkbookRuntimeRequirement`, `WorkbookRuntimeCapability`, `WorkbookPlanVerification`, `WorkbookPlanIssue`, `WorkbookModelVerification`, `WorkbookModelActionVerification`, `WorkbookModelVerificationOptions`, `WorkbookRunAdapter`, `WorkbookRunApplyResult`, `WorkbookRunOptions`, `WorkbookRunApplySummary`, `WorkbookRunUnverified`, `WorkbookRunUnverifiedKind`, `WorkbookRunReadback`, `WorkbookReadbackVerification`, `WorkbookReadbackIssue`, `WorkbookReadbackIssueCode`, `WorkbookCheckExpectation`, `WorkbookCheckExpectationDescription`, `WorkbookBuiltInCheckKind`, `WorkbookCustomCheckOptions`, `WorkbookReadbackCheckOptions`, `WorkbookRawFormulaOptions`, `WorkbookRunResult`, `WorkbookRunError`, `WorkbookRunErrorCode`, and `WorkbookCheckResult`
 - the existing low-level operation language: `WorkbookOp`, `WorkbookTxn`, `EngineOp`, and `EngineOpBatch`
 
 The package builds portable workbook intent and concrete low-level ops when the
@@ -323,6 +338,11 @@ For agent logs, approvals, tests, and runtime handoff, `describeRef` and
 `describePlan` produce JSON-safe descriptions of refs and action plans. The
 descriptions preserve generic action input and workbook intent while removing
 consumer-private `refs` object shape and helper methods.
+Those descriptions are real transport data, not screenshots or UI state:
+`isWorkbookRefData` validates ref payloads, `hydrateWorkbookRefs` restores
+local helper methods after JSON transport, and `verifyPlanData` verifies a
+transported plan description using only `refsUsed`, commands, ops, changes, and
+checks.
 Plans are frozen handoff objects: action input, refs, refs used, commands,
 concrete ops, changed summaries, and checks cannot be rewritten after planning.
 That lets an agent inspect a plan once and pass the same intent to an adapter
@@ -377,6 +397,9 @@ such as `readback_missing`, `value_mismatch`, or `formula_mismatch`.
 Failures after an adapter reports `status: "applied"` preserve `changed` and
 `undo`, so an agent can still inspect what was applied and how to reverse it
 when a later proof step rejects the run.
+Failed apply results only preserve `changed` when the adapter reports applied
+ops or undo metadata; an explicit empty `appliedOps` array with no undo keeps
+`changed: []`.
 Runtime readbacks must match the requested target set exactly; surplus
 readbacks fail with `readback_unexpected`. Formula readbacks are exact and
 should use the normalized no-leading-`=` form produced by `formula.source`.

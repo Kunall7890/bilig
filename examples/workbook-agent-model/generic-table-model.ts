@@ -8,6 +8,7 @@ import {
   planWorkbookAction,
   runWorkbookPlan,
   verifyPlan,
+  verifyPlanData,
   type WorkbookActionPlan,
   type WorkbookRunAdapter,
 } from '@bilig/workbook'
@@ -68,6 +69,8 @@ if (planned.status === 'failed') {
 }
 
 const plannedFormula = requiredFormula(planned.plan)
+const describedPlan = describePlan(planned.plan)
+const transportedPlan = JSON.parse(JSON.stringify(describedPlan))
 const adapter: WorkbookRunAdapter<typeof planned.plan.refs> = {
   apply() {
     return { status: 'applied' }
@@ -97,8 +100,9 @@ console.log(
   JSON.stringify(
     {
       model: describeModel(model),
-      plan: describePlan(planned.plan),
+      plan: describedPlan,
       verification: verifyPlan(planned.plan),
+      transportVerification: verifyPlanData(transportedPlan),
       requirements: describeRuntimeRequirements(planned.plan),
       result: describeRunResult(result),
     },

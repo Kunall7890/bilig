@@ -847,6 +847,77 @@ describe('@bilig/workbook run api', () => {
     })
   })
 
+  it('does not report changed when failed apply proof says no ops were applied', async () => {
+    const model = valueModel()
+
+    const result = await runWorkbookAction(model, 'write', {
+      apply: (plan) => ({
+        status: 'failed',
+        previewOps: plan.ops,
+        appliedOps: [],
+        errors: [
+          {
+            code: 'runtime_rejected',
+            message: 'runtime rejected before writing',
+          },
+        ],
+      }),
+    })
+
+    expect(result).toMatchObject({
+      status: 'failed',
+      errors: [
+        {
+          code: 'runtime_rejected',
+          message: 'runtime rejected before writing',
+        },
+      ],
+      apply: {
+        matched: false,
+        appliedOps: [],
+      },
+      changed: [],
+    })
+  })
+
+  it('preserves changed proof when failed apply reports actual applied ops', async () => {
+    const model = valueModel()
+
+    const result = await runWorkbookAction(model, 'write', {
+      apply: (plan) => ({
+        status: 'failed',
+        previewOps: plan.ops,
+        appliedOps: plan.ops,
+        errors: [
+          {
+            code: 'runtime_rejected',
+            message: 'runtime failed after writing',
+          },
+        ],
+      }),
+    })
+
+    expect(result).toMatchObject({
+      status: 'failed',
+      errors: [
+        {
+          code: 'runtime_rejected',
+          message: 'runtime failed after writing',
+        },
+      ],
+      apply: {
+        matched: true,
+      },
+      changed: [
+        {
+          kind: 'writeValue',
+          target: expect.objectContaining({ label: 'Sheet1!B2' }),
+          message: 'Write value to Sheet1!B2',
+        },
+      ],
+    })
+  })
+
   it('describes failed run results as JSON-safe errors and checks', async () => {
     const model = valueModel()
 
