@@ -24,7 +24,7 @@ export function workbookDisplayFontCssPx(fontSizeCssPx: number, _dpr = 1): numbe
   const resolvedFontSize = Number.isFinite(fontSizeCssPx)
     ? Math.max(1, fontSizeCssPx)
     : workbookFontPointSizeToCssPx(WORKBOOK_DEFAULT_FONT_SIZE)
-  return Number(resolvedFontSize.toFixed(4))
+  return workbookSnapTextCssPixel(resolvedFontSize)
 }
 
 export function workbookDisplayFontPointSizeToCssPx(pointSize: number, dpr = 1): number {

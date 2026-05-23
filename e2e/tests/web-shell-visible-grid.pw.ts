@@ -20,7 +20,7 @@ import {
   waitForWorkbookReady,
 } from './web-shell-helpers.js'
 
-const DEFAULT_WORKBOOK_CSS_FONT_SIZE = '13.3333px'
+const DEFAULT_WORKBOOK_CSS_FONT_SIZE = '13px'
 
 test.beforeEach(async ({ page }) => {
   await installTypeGpuCellReadbackHarness(page)
@@ -1137,7 +1137,7 @@ function readNativeTextQualityState(page: Page): () => Promise<{
       const nativePaddingRight = nativeTextStyle ? Number.parseFloat(nativeTextStyle.paddingRight) : Number.NaN
       const nativeTextRect = nativeTextRun instanceof HTMLElement ? nativeTextRun.getBoundingClientRect() : null
       const devicePixelRatio = window.devicePixelRatio || 1
-      const expectedDefaultFontSize = 13.3333
+      const expectedDefaultFontSize = 13
       const viewportX = nativeTextRect?.x ?? Number.NaN
       const viewportY = nativeTextRect?.y ?? Number.NaN
       const glyphAnchorX =
