@@ -26,7 +26,7 @@ shasum -a 256 -c bilig-workpaper.mcpb.sha256
 open bilig-workpaper.mcpb
 ```
 
-Claude should show an install dialog for **Bilig WorkPaper**.
+Open the downloaded `.mcpb` file with Claude Desktop. Claude should show an\ninstall dialog for **Bilig WorkPaper**.
 
 ## Reproduce from source
 
