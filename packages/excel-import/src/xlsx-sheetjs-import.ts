@@ -271,8 +271,9 @@ function importParsedSheetJsWorkbook(args: {
 }): ImportedWorkbook {
   const { workbook, fileName, contentType, workbookZip, fallbackArtifactSource, sourceFileSizeBytes, sourceBytesForUntouchedExport } = args
   const workbookName = normalizeWorkbookName(fileName)
-  const sheetPathsByName = workbookSheetPathsByName(workbook)
-  const fallbackSheetPaths = workbookDirectorySheetPaths(workbook)
+  const artifactPathSource = workbookZip ?? fallbackArtifactSource
+  const sheetPathsByName = workbookSheetPathsByName(workbook, artifactPathSource)
+  const fallbackSheetPaths = workbookDirectorySheetPaths(workbook, artifactPathSource)
   const warnings: string[] = []
   const importedDefinedNames = readImportedDefinedNames(workbook)
   addWorkbookWarnings(workbook, warnings, importedDefinedNames.ignoredCount)

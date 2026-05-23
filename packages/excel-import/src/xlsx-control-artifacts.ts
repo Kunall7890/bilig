@@ -21,6 +21,7 @@ import {
   setZipText,
   type ParsedRelationship,
 } from './xlsx-pivot-artifacts.js'
+import { workbookSheetPathEntriesFromSource } from './xlsx-workbook-sheet-paths.js'
 
 const binaryChunkSize = 0x8000
 const vmlDrawingRelationshipType = 'http://schemas.openxmlformats.org/officeDocument/2006/relationships/vmlDrawing'
@@ -375,9 +376,9 @@ export function readImportedWorkbookControlArtifacts(
   const zip = readXlsxZipEntries(source)
   return readImportedWorkbookControlArtifactsFromSheetSources(
     zip,
-    sheetNames.map((sheetName, sheetIndex) => ({
-      sheetName,
-      sheetPath: `xl/worksheets/sheet${String(sheetIndex + 1)}.xml`,
+    workbookSheetPathEntriesFromSource(zip, sheetNames).map((sheet) => ({
+      sheetName: sheet.name,
+      sheetPath: sheet.path,
     })),
   )
 }

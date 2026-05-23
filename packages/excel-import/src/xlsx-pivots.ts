@@ -22,6 +22,7 @@ import {
 } from './xlsx-pivot-artifacts.js'
 import { readCacheFieldSharedItems } from './xlsx-pivot-cache-items.js'
 import { readPivotCacheRecordsForDefinition } from './xlsx-pivot-cache-records.js'
+import { workbookSheetPathEntriesFromSource } from './xlsx-workbook-sheet-paths.js'
 import { getZipText, readXlsxZipEntries, type XlsxZipEntries, type XlsxZipSource } from './xlsx-zip.js'
 
 type ZipEntries = XlsxZipEntries
@@ -56,6 +57,11 @@ const xmlParser = new XMLParser({
   parseAttributeValue: false,
   removeNSPrefix: true,
 })
+
+function relationshipPathForPart(path: string): string {
+  const slashIndex = path.lastIndexOf('/')
+  return slashIndex >= 0 ? `${path.slice(0, slashIndex)}/_rels/${path.slice(slashIndex + 1)}.rels` : `_rels/${path}.rels`
+}
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null
@@ -482,13 +488,14 @@ export function readImportedWorkbookPivots(
   const { caches, hasExternalPivotCaches, unsupportedCaches } = parsePivotCaches(zip, tables, definedNames)
   const pivots: WorkbookPivotSnapshot[] = []
   const unsupportedPivots: WorkbookUnsupportedPivotSnapshot[] = []
-  sheetNames.forEach((sheetName, sheetIndex) => {
-    const sheetPath = `xl/worksheets/sheet${String(sheetIndex + 1)}.xml`
+  workbookSheetPathEntriesFromSource(zip, sheetNames).forEach((sheet) => {
+    const sheetName = sheet.name
+    const sheetPath = sheet.path
     const sheetXml = getZipText(zip, sheetPath)
     if (!sheetXml) {
       return
     }
-    const sheetRelationships = parseRelationships(getZipText(zip, `xl/worksheets/_rels/sheet${String(sheetIndex + 1)}.xml.rels`))
+    const sheetRelationships = parseRelationships(getZipText(zip, relationshipPathForPart(sheetPath)))
     const parsedSheet: unknown = xmlParser.parse(sheetXml)
     const pivotRefs = asArray(recordChild(parsedSheet, 'worksheet')?.['pivotTableDefinition'])
     const pivotRelationships =

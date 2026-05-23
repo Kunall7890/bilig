@@ -28,6 +28,7 @@ import {
   type ParsedRelationship,
 } from './xlsx-pivot-artifacts.js'
 import { decodedPartBytes, encodedPartSnapshot, lazyEncodedPartSnapshot } from './xlsx-preserved-package-parts.js'
+import { workbookSheetPathEntriesFromSource } from './xlsx-workbook-sheet-paths.js'
 
 const workbookPath = 'xl/workbook.xml'
 const workbookRelationshipsPath = 'xl/_rels/workbook.xml.rels'
@@ -395,9 +396,9 @@ export function readImportedWorkbookSlicerConnectionArtifacts(
 ): WorkbookSlicerConnectionArtifactsSnapshot | undefined {
   return readImportedWorkbookSlicerConnectionArtifactsFromSheets(
     source,
-    sheetNames.map((sheetName, sheetIndex) => ({
-      sheetName,
-      sheetPath: `xl/worksheets/sheet${String(sheetIndex + 1)}.xml`,
+    workbookSheetPathEntriesFromSource(source, sheetNames).map((sheet) => ({
+      sheetName: sheet.name,
+      sheetPath: sheet.path,
     })),
   )
 }

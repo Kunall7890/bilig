@@ -37,6 +37,16 @@ describe('worksheet drawing artifacts roundtrip', () => {
     expect([...readZipBytes(exported, 'xl/media/image1.png')]).toEqual([137, 80, 78, 71, 13, 10, 26, 10])
   })
 
+  it('uses workbook relationships instead of tab order when importing drawing artifacts', () => {
+    const source = reorderWorkbookSheets(buildWorkbookWithEmbeddedImageAndShape(), ['Flows', 'Cover'])
+
+    const imported = importXlsx(source, 'drawing-artifacts-reordered-tabs.xlsx')
+
+    expect(imported.snapshot.sheets.map((sheet) => sheet.name)).toEqual(['Flows', 'Cover'])
+    expect(imported.snapshot.sheets[0]?.metadata?.drawingArtifacts).toEqual({ relationshipTarget: '../drawings/drawing2.xml' })
+    expect(imported.snapshot.sheets[1]?.metadata?.drawingArtifacts).toEqual({ relationshipTarget: '../drawings/drawing1.xml' })
+  })
+
   it('keeps preserved drawings separate from generated chart drawings', () => {
     const exported = exportXlsx(buildSnapshotWithImageArtifactAndGeneratedChart())
     const exportedZip = unzipSync(exported)
@@ -247,6 +257,32 @@ function addWorksheetDrawing(
   if (input.relationshipsXml) {
     zip[drawingRelsPath] = strToU8(input.relationshipsXml)
   }
+}
+
+function reorderWorkbookSheets(bytes: Uint8Array, sheetNames: readonly string[]): Uint8Array {
+  const zip = unzipSync(bytes)
+  const path = 'xl/workbook.xml'
+  const workbookXml = strFromU8(zip[path] ?? new Uint8Array())
+  const sheets = [...workbookXml.matchAll(/<(?:[A-Za-z_][\w.-]*:)?sheet\b[^>]*\/>/gu)].map((match) => match[0])
+  const sheetsByName = new Map(sheets.map((sheetXml) => [readXmlAttribute(sheetXml, 'name'), sheetXml]))
+  const reorderedSheets = sheetNames.map((sheetName) => {
+    const sheetXml = sheetsByName.get(sheetName)
+    if (!sheetXml) {
+      throw new Error(`Missing sheet ${sheetName}`)
+    }
+    return sheetXml
+  })
+  zip[path] = strToU8(
+    workbookXml.replace(
+      /<((?:[A-Za-z_][\w.-]*:)?sheets)\b[^>]*>[\s\S]*?<\/\1>/u,
+      (source, tagName: string) => `<${tagName}>${reorderedSheets.join('')}</${tagName}>`,
+    ),
+  )
+  return zipSync(zip)
+}
+
+function readXmlAttribute(xml: string, name: string): string | undefined {
+  return new RegExp(`\\b${name}="([^"]*)"`, 'u').exec(xml)?.[1]
 }
 
 function ensureOfficeRelationshipNamespace(sheetXml: string): string {

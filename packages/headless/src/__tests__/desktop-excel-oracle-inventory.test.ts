@@ -14,6 +14,7 @@ interface PackageManifest {
 const existingDesktopExcelOracleFiles = [
   'macos-desktop-excel-array-formula-structural-oracle.test.ts',
   'macos-desktop-excel-autofilter-oracle.test.ts',
+  'macos-desktop-excel-calc-chain-reorder-oracle.test.ts',
   'macos-desktop-excel-chart-drawing-anchor-oracle.test.ts',
   'macos-desktop-excel-cell-metadata-oracle.test.ts',
   'macos-desktop-excel-conditional-format-artifacts-oracle.test.ts',
@@ -192,6 +193,17 @@ describe('macOS Desktop Excel oracle inventory', () => {
     expect(source).toContain('matches Desktop Excel preserved pivot cache source sheet after source sheet rename')
     expect(source).toContain('matches Desktop Excel raw worksheet chart package formulas after structural source row inserts')
     expect(source).toContain('matches Desktop Excel raw worksheet chart package formulas after source sheet rename')
+  })
+
+  it('keeps the calc-chain reorder oracle anchored to Desktop Excel sheet moves', () => {
+    const source = readFileSync(join(testDir, 'macos-desktop-excel-calc-chain-reorder-oracle.test.ts'), 'utf8')
+
+    expect(source).toContain("BILIG_EXCEL_ORACLE_RUN === '1'")
+    expect(source).toContain('runMacosExcelStructuralOperationOracle')
+    expect(source).toContain('WorkPaper.buildFromSnapshot')
+    expect(source).toContain('moveSheet')
+    expect(source).toContain('xl/calcChain.xml')
+    expect(source).toContain('matches Desktop Excel calc-chain sheet ids after moving a sheet tab')
   })
 
   it('keeps the rich text oracle anchored to Desktop Excel cell run preservation', () => {

@@ -14,6 +14,7 @@ import type {
 } from '@bilig/protocol'
 import { decodeA1CellRef, decodeA1RangeRef, encodeA1CellRef, encodeA1ColumnRef } from './xlsx-a1-utils.js'
 import { readXlsxZipEntries, type XlsxZipSource } from './xlsx-zip.js'
+import { workbookSheetPathEntriesFromSource } from './xlsx-workbook-sheet-paths.js'
 
 type ZipEntries = Record<string, Uint8Array>
 
@@ -463,6 +464,11 @@ function resolveTargetPath(basePartPath: string, target: string): string {
   return parts.join('/')
 }
 
+function relationshipsPathForPart(path: string): string {
+  const slashIndex = path.lastIndexOf('/')
+  return slashIndex >= 0 ? `${path.slice(0, slashIndex)}/_rels/${path.slice(slashIndex + 1)}.rels` : `_rels/${path}.rels`
+}
+
 export function addExportChartsToXlsxBytes(
   bytes: Uint8Array,
   snapshot: WorkbookSnapshot,
@@ -889,14 +895,14 @@ export function readImportedWorkbookChartReadResult(source: XlsxZipSource, sheet
   const charts: WorkbookChartSnapshot[] = []
   const supportedChartRelationshipIdsBySheet = new Map<string, Set<string>>()
 
-  sheetNames.forEach((sheetName, sheetIndex) => {
-    const sheetPath = `xl/worksheets/sheet${String(sheetIndex + 1)}.xml`
+  workbookSheetPathEntriesFromSource(zip, sheetNames).forEach((sheet) => {
+    const sheetPath = sheet.path
     const sheetXml = getZipText(zip, sheetPath)
     const drawingRelationshipId = /<drawing\b[^>]*\br:id="([^"]+)"/u.exec(sheetXml ?? '')?.[1]
     if (!drawingRelationshipId) {
       return
     }
-    const sheetRelationships = parseRelationships(getZipText(zip, `xl/worksheets/_rels/sheet${String(sheetIndex + 1)}.xml.rels`))
+    const sheetRelationships = parseRelationships(getZipText(zip, relationshipsPathForPart(sheetPath)))
     const drawingRelationship = sheetRelationships.find(
       (relationship) => relationship.id === drawingRelationshipId && relationship.type === worksheetDrawingRelationshipType,
     )
@@ -939,13 +945,13 @@ export function readImportedWorkbookChartReadResult(source: XlsxZipSource, sheet
       if (!chartMetadata) {
         return
       }
-      const supportedIds = supportedChartRelationshipIdsBySheet.get(sheetName) ?? new Set<string>()
+      const supportedIds = supportedChartRelationshipIdsBySheet.get(sheet.name) ?? new Set<string>()
       supportedIds.add(chartRelationshipId)
-      supportedChartRelationshipIdsBySheet.set(sheetName, supportedIds)
+      supportedChartRelationshipIdsBySheet.set(sheet.name, supportedIds)
       const geometry = anchorAddressAndSize(chartAnchor)
       charts.push({
-        id: readAnchorChartId(anchor, `xlsx-chart:${sheetName}:${String(anchorIndex + 1)}`),
-        sheetName,
+        id: readAnchorChartId(anchor, `xlsx-chart:${sheet.name}:${String(anchorIndex + 1)}`),
+        sheetName: sheet.name,
         address: geometry.address,
         rows: geometry.rows,
         cols: geometry.cols,

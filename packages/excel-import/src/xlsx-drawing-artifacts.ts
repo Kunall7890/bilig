@@ -27,6 +27,7 @@ import {
   type ParsedRelationship,
 } from './xlsx-pivot-artifacts.js'
 import { decodedPartBytes, encodedPartSnapshot, lazyEncodedPartSnapshot } from './xlsx-preserved-package-parts.js'
+import { workbookSheetPathEntriesFromSource } from './xlsx-workbook-sheet-paths.js'
 
 const worksheetDrawingRelationshipType = 'http://schemas.openxmlformats.org/officeDocument/2006/relationships/drawing'
 const chartRelationshipType = 'http://schemas.openxmlformats.org/officeDocument/2006/relationships/chart'
@@ -386,14 +387,11 @@ export function readImportedWorkbookDrawingArtifacts(
   const zip = readXlsxZipEntries(source)
   return readImportedWorkbookDrawingArtifactsFromWorksheetRelationships(
     zip,
-    sheetNames.map((sheetName, sheetIndex) => {
-      const sheetPath = `xl/worksheets/sheet${String(sheetIndex + 1)}.xml`
-      return {
-        name: sheetName,
-        path: sheetPath,
-        drawingRelationshipId: readWorksheetDrawingRelationshipId(getZipText(zip, sheetPath)),
-      }
-    }),
+    workbookSheetPathEntriesFromSource(zip, sheetNames).map((sheet) => ({
+      name: sheet.name,
+      path: sheet.path,
+      drawingRelationshipId: readWorksheetDrawingRelationshipId(getZipText(zip, sheet.path)),
+    })),
     options,
   )
 }

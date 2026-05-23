@@ -162,3 +162,29 @@ export function workbookSheetPathEntries(
     return path ? [{ name, index, path }] : []
   })
 }
+
+export function workbookSheetPathEntriesFromSource(source: XlsxZipSource, sheetNames: readonly string[]): WorkbookSheetPathEntry[] {
+  const zip = readXlsxZipEntries(source)
+  const workbookRelationships = parseRelationships(getZipText(zip, workbookRelationshipsPath))
+  const worksheetRelationshipsById = new Map(
+    workbookRelationships
+      .filter((relationship) => relationship.type === worksheetRelationshipType || relationship.target.includes('worksheets/'))
+      .map((relationship) => [relationship.id, normalizeZipPath(resolveTargetPath(workbookPath, relationship.target))]),
+  )
+  const sheetRelationshipsByName = new Map(
+    readWorkbookSheetEntries(getZipText(zip, workbookPath)).map((entry) => [entry.name, entry.relationshipId]),
+  )
+  const fallbackPaths = sortedWorksheetPaths(source)
+  return sheetNames.flatMap((name, index) => {
+    const relationshipId = sheetRelationshipsByName.get(name)
+    const relationshipPath = relationshipId ? worksheetRelationshipsById.get(relationshipId) : undefined
+    if (relationshipPath) {
+      return [{ name, index, path: relationshipPath }]
+    }
+    if (sheetRelationshipsByName.size > 0) {
+      return []
+    }
+    const fallbackPath = fallbackPaths[index]
+    return fallbackPath ? [{ name, index, path: fallbackPath }] : []
+  })
+}

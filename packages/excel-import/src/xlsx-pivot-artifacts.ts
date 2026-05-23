@@ -28,6 +28,9 @@ export const pivotCacheDefinitionContentType = 'application/vnd.openxmlformats-o
 export const pivotCacheRecordsContentType = 'application/vnd.openxmlformats-officedocument.spreadsheetml.pivotCacheRecords+xml'
 
 const relationshipNamespace = 'http://schemas.openxmlformats.org/package/2006/relationships'
+const workbookPath = 'xl/workbook.xml'
+const workbookRelationshipsPath = 'xl/_rels/workbook.xml.rels'
+const worksheetRelationshipType = 'http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet'
 const pivotPackagePartPathPattern = /^xl\/(?:pivotTables|pivotCache)\/.+/u
 const pivotTableDefinitionElementPattern =
   /<(?:[A-Za-z_][\w.-]*:)?pivotTableDefinition\b[^>]*(?:\/>|>[\s\S]*?<\/(?:[A-Za-z_][\w.-]*:)?pivotTableDefinition>)/gu
@@ -132,6 +135,12 @@ export function resolveTargetPath(basePartPath: string, target: string): string 
     }
   }
   return parts.join('/')
+}
+
+function relationshipPathForPart(path: string): string {
+  const normalized = normalizeZipPath(path)
+  const slashIndex = normalized.lastIndexOf('/')
+  return slashIndex >= 0 ? `${normalized.slice(0, slashIndex)}/_rels/${normalized.slice(slashIndex + 1)}.rels` : `_rels/${normalized}.rels`
 }
 
 export function ensureRelationshipNamespace(xml: string): string {
@@ -308,17 +317,15 @@ export function readImportedPivotArtifacts(
   const pivotCachesXml = workbookPivotCachesXml(getZipText(zip, 'xl/workbook.xml'))
   const sheetArtifactsByName = new Map<string, WorkbookSheetPivotArtifactsSnapshot>()
 
-  sheetNames.forEach((sheetName, sheetIndex) => {
-    const relationships = parseRelationships(getZipText(zip, `xl/worksheets/_rels/sheet${String(sheetIndex + 1)}.xml.rels`))
+  pivotWorkbookSheetPathEntries(zip, sheetNames).forEach((sheet) => {
+    const relationships = parseRelationships(getZipText(zip, relationshipPathForPart(sheet.path)))
       .filter((relationship) => relationship.type === pivotTableRelationshipType)
       .map(relationshipSnapshot)
     const pivotTableDefinitionsXml =
-      options.worksheetPivotTableDefinitionsXmlByName?.get(sheetName) ??
-      (options.readWorksheetPivotTableDefinitionsXml === false
-        ? undefined
-        : readPivotTableDefinitionsXml(getZipText(zip, `xl/worksheets/sheet${String(sheetIndex + 1)}.xml`)))
+      options.worksheetPivotTableDefinitionsXmlByName?.get(sheet.name) ??
+      (options.readWorksheetPivotTableDefinitionsXml === false ? undefined : readPivotTableDefinitionsXml(getZipText(zip, sheet.path)))
     if (relationships.length > 0 || pivotTableDefinitionsXml) {
-      sheetArtifactsByName.set(sheetName, {
+      sheetArtifactsByName.set(sheet.name, {
         relationships,
         ...(pivotTableDefinitionsXml ? { pivotTableDefinitionsXml } : {}),
       })
@@ -334,6 +341,49 @@ export function readImportedPivotArtifacts(
         }
       : undefined
   return { artifacts, sheetArtifactsByName }
+}
+
+function pivotWorkbookSheetPathEntries(
+  zip: XlsxZipEntries,
+  sheetNames: readonly string[],
+): Array<{ readonly name: string; readonly index: number; readonly path: string }> {
+  const workbookRelationships = parseRelationships(getZipText(zip, workbookRelationshipsPath))
+  const worksheetRelationshipsById = new Map(
+    workbookRelationships
+      .filter((relationship) => relationship.type === worksheetRelationshipType || relationship.target.includes('worksheets/'))
+      .map((relationship) => [relationship.id, normalizeZipPath(resolveTargetPath(workbookPath, relationship.target))]),
+  )
+  const sheetRelationshipsByName = new Map(
+    [...(getZipText(zip, workbookPath) ?? '').matchAll(/<(?:[A-Za-z_][\w.-]*:)?sheet\b([^>]*)\/?>/gu)].flatMap((match) => {
+      const attributes = match[1] ?? ''
+      const name = readXmlAttribute(attributes, 'name')
+      const relationshipId = readXmlAttribute(attributes, 'r:id') ?? readXmlAttribute(attributes, 'id')
+      return name && relationshipId ? [[name, relationshipId] as const] : []
+    }),
+  )
+  const fallbackPaths = Object.keys(zip)
+    .filter((path) => /^xl\/worksheets\/[^/]+\.xml$/u.test(path))
+    .toSorted((left, right) => {
+      const leftIndex = Number(/^xl\/worksheets\/sheet([0-9]+)\.xml$/u.exec(left)?.[1] ?? Number.MAX_SAFE_INTEGER)
+      const rightIndex = Number(/^xl\/worksheets\/sheet([0-9]+)\.xml$/u.exec(right)?.[1] ?? Number.MAX_SAFE_INTEGER)
+      return leftIndex - rightIndex || left.localeCompare(right)
+    })
+  return sheetNames.flatMap((name, index) => {
+    const relationshipId = sheetRelationshipsByName.get(name)
+    const relationshipPath = relationshipId ? worksheetRelationshipsById.get(relationshipId) : undefined
+    if (relationshipPath) {
+      return [{ name, index, path: relationshipPath }]
+    }
+    if (sheetRelationshipsByName.size > 0) {
+      return []
+    }
+    const fallbackPath = fallbackPaths[index]
+    return fallbackPath ? [{ name, index, path: fallbackPath }] : []
+  })
+}
+
+function readXmlAttribute(attributes: string, attributeName: string): string | undefined {
+  return new RegExp(`\\b${attributeName}=("|')([\\s\\S]*?)\\1`, 'u').exec(attributes)?.[2]
 }
 
 export function addExportPreservedPivotArtifactsToXlsxBytes(bytes: Uint8Array, snapshot: WorkbookSnapshot): Uint8Array {

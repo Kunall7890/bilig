@@ -161,6 +161,22 @@ describe('engine imported package metadata preservation', () => {
     ])
   })
 
+  it('preserves calc-chain sheet ids after sheet reorder', async () => {
+    const engine = new SpreadsheetEngine({ workbookName: 'package-metadata-calc-chain-reorder-sheet' })
+    await engine.ready()
+
+    engine.importSnapshot(calcChainSheetDeletionSnapshot())
+    engine.moveSheet('Report', 1)
+
+    const exported = engine.exportSnapshot()
+    expect(exported.sheets.map((sheet) => sheet.name)).toEqual(['Data', 'Report', 'Inputs'])
+    expect(exported.workbook.metadata?.formulaAudit?.calcChain?.cells).toEqual([
+      { sheetIndex: 1, sheetName: 'Data', address: 'A1' },
+      { sheetIndex: 2, sheetName: 'Inputs', address: 'A1' },
+      { sheetIndex: 3, sheetName: 'Report', address: 'A1' },
+    ])
+  })
+
   it('renames quoted sheet refs in preserved chart package formulas', async () => {
     const engine = new SpreadsheetEngine({ workbookName: 'package-metadata-chart-artifact-quoted-sheet-rename' })
     await engine.ready()
