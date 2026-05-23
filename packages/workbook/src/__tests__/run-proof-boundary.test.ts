@@ -4,9 +4,11 @@ import {
   describeRunResult,
   findRange,
   runWorkbookAction,
+  type WorkbookActionPlan,
   type WorkbookCheckResult,
   type WorkbookModel,
   type WorkbookRunAdapter,
+  type WorkbookRunApplyResult,
 } from '../index.js'
 
 function valueModel(): WorkbookModel<{ readonly output: ReturnType<typeof findRange> }> {
@@ -58,6 +60,14 @@ function first<T>(values: readonly T[]): T {
   return value
 }
 
+function applied<Refs>(plan: WorkbookActionPlan<Refs>): WorkbookRunApplyResult {
+  return {
+    status: 'applied',
+    previewOps: plan.ops,
+    appliedOps: plan.ops,
+  }
+}
+
 function invalidProofCheck(checkResult: WorkbookCheckResult): WorkbookCheckResult {
   const verified = {
     ...checkResult,
@@ -84,6 +94,35 @@ function withUnsupportedField(checkResult: WorkbookCheckResult): WorkbookCheckRe
 }
 
 describe('@bilig/workbook run proof boundary', () => {
+  it('rejects apply proof that is not JSON-safe', async () => {
+    const model = valueModel()
+
+    const result = await runWorkbookAction(model, 'write', {
+      apply: () => ({
+        status: 'applied',
+        proof: { when: new Date(0) },
+      }),
+    })
+
+    expect(result).toEqual({
+      status: 'failed',
+      errors: [
+        {
+          code: 'runtime_rejected',
+          message:
+            'Workbook action run-value-model.write returned invalid apply proof: Action input at input.when must be a plain JSON object, not Date',
+        },
+      ],
+      checks: [
+        expect.objectContaining({
+          status: 'planned',
+          kind: 'valueEquals',
+          message: 'Sheet1!B2 equals 12',
+        }),
+      ],
+    })
+  })
+
   it('rejects applied apply results that include errors', async () => {
     const model = valueModel()
 
@@ -126,7 +165,7 @@ describe('@bilig/workbook run proof boundary', () => {
     }
 
     const result = await runWorkbookAction(model, 'inspect', {
-      apply: () => ({ status: 'applied' }),
+      apply: applied,
       verifyChecks: (checks) =>
         checks.map((checkResult) => ({
           ...checkResult,
@@ -137,6 +176,11 @@ describe('@bilig/workbook run proof boundary', () => {
 
     expect(result).toEqual({
       status: 'done',
+      apply: {
+        matched: true,
+        previewOps: [],
+        appliedOps: [],
+      },
       changed: [],
       checks: [
         expect.objectContaining({
@@ -148,6 +192,11 @@ describe('@bilig/workbook run proof boundary', () => {
     })
     expect(describeRunResult(result)).toEqual({
       status: 'done',
+      apply: {
+        matched: true,
+        previewOps: [],
+        appliedOps: [],
+      },
       changed: [],
       checks: [
         expect.objectContaining({
@@ -163,7 +212,7 @@ describe('@bilig/workbook run proof boundary', () => {
     const model = proofModel()
 
     const result = await runWorkbookAction(model, 'inspect', {
-      apply: () => ({ status: 'applied' }),
+      apply: applied,
       verifyChecks: (checks) => checks.map(invalidProofCheck),
     })
 
@@ -175,6 +224,11 @@ describe('@bilig/workbook run proof boundary', () => {
           message: 'Check verifier returned invalid proof at index 0: Action input at input.when must be a plain JSON object, not Date',
         },
       ],
+      apply: {
+        matched: true,
+        previewOps: [],
+        appliedOps: [],
+      },
       checks: [expect.objectContaining({ status: 'planned', kind: 'exists' })],
     })
   })
@@ -183,7 +237,7 @@ describe('@bilig/workbook run proof boundary', () => {
     const model = proofModel()
 
     const result = await runWorkbookAction(model, 'inspect', {
-      apply: () => ({ status: 'applied' }),
+      apply: applied,
       verifyChecks: (checks) => checks.map(withUnsupportedField),
     })
 
@@ -214,7 +268,7 @@ describe('@bilig/workbook run proof boundary', () => {
     ]
 
     const result = await runWorkbookAction(model, 'write', {
-      apply: () => ({ status: 'applied' }),
+      apply: applied,
       read,
     })
 
@@ -226,6 +280,7 @@ describe('@bilig/workbook run proof boundary', () => {
           message: 'Sheet1!D2 was returned by readback but was not requested',
         },
       ],
+      apply: expect.objectContaining({ matched: true }),
       checks: [
         expect.objectContaining({
           status: 'passed',

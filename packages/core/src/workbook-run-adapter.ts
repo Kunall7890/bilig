@@ -629,6 +629,12 @@ export function createWorkbookRunAdapter(engine: SpreadsheetEngine, options: Wor
         const undo = createUndoRef(plan, undoOps)
         return {
           status: 'applied',
+          previewOps: ops,
+          appliedOps: ops,
+          proof: {
+            source: '@bilig/core',
+            opCount: ops.length,
+          },
           ...(undo !== undefined ? { undo } : {}),
         }
       } catch (error) {

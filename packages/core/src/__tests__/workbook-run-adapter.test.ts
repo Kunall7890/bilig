@@ -42,6 +42,13 @@ describe('workbook run adapter', () => {
     if (result.status !== 'done') {
       throw new Error(result.errors.map((error) => error.message).join('\n'))
     }
+    expect(result.apply).toMatchObject({
+      matched: true,
+      proof: {
+        source: '@bilig/core',
+        opCount: 1,
+      },
+    })
     expect(engine.getCell('Sheet1', 'C1').formula).toBe('(Sheet1!A1)+(Sheet1!B1)')
     expect(engine.getCellValue('Sheet1', 'C1')).toEqual({ tag: ValueTag.Number, value: 5 })
     expect(result.undo?.id).toMatch(/^generic-calculation\.calculate\.undo\.\d+$/)
@@ -84,8 +91,15 @@ describe('workbook run adapter', () => {
 
     const result = await runWorkbookAction(model, 'calculate', createWorkbookRunAdapter(engine))
 
-    expect(result).toEqual({
+    expect(result).toMatchObject({
       status: 'failed',
+      apply: {
+        matched: true,
+        proof: {
+          source: '@bilig/core',
+          opCount: 1,
+        },
+      },
       errors: [
         {
           code: 'check_failed',

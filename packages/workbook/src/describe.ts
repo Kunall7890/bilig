@@ -25,8 +25,11 @@ import type {
   WorkbookCheckExpectation,
   WorkbookCheckResult,
   WorkbookCheckStatus,
+  WorkbookRunApplySummary,
   WorkbookRunErrorCode,
   WorkbookRunResult,
+  WorkbookRunUnverified,
+  WorkbookRunUnverifiedKind,
   WorkbookUndoRef,
 } from './result.js'
 
@@ -172,17 +175,33 @@ export interface WorkbookUndoRefDescription {
   readonly ops?: readonly WorkbookOp[]
 }
 
+export interface WorkbookRunApplySummaryDescription {
+  readonly matched: boolean | null
+  readonly previewOps?: readonly WorkbookOp[]
+  readonly appliedOps?: readonly WorkbookOp[]
+  readonly proof?: WorkbookActionInput
+}
+
+export interface WorkbookRunUnverifiedDescription {
+  readonly kind: WorkbookRunUnverifiedKind
+  readonly message: string
+}
+
 export type WorkbookRunResultDescription =
   | {
       readonly status: 'done'
+      readonly apply?: WorkbookRunApplySummaryDescription
       readonly changed: readonly WorkbookChangeSummaryDescription[]
       readonly checks: readonly WorkbookCheckResultDescription[]
       readonly undo?: WorkbookUndoRefDescription
+      readonly unverified?: readonly WorkbookRunUnverifiedDescription[]
     }
   | {
       readonly status: 'failed'
       readonly errors: readonly WorkbookRunErrorDescription[]
+      readonly apply?: WorkbookRunApplySummaryDescription
       readonly checks: readonly WorkbookCheckResultDescription[]
+      readonly unverified?: readonly WorkbookRunUnverifiedDescription[]
     }
 
 export interface WorkbookRunErrorDescription {
@@ -362,6 +381,22 @@ function describeUndo(undo: WorkbookUndoRef): WorkbookUndoRefDescription {
   }
 }
 
+function describeApply(apply: WorkbookRunApplySummary): WorkbookRunApplySummaryDescription {
+  return {
+    matched: apply.matched,
+    ...(apply.previewOps !== undefined ? { previewOps: [...apply.previewOps] } : {}),
+    ...(apply.appliedOps !== undefined ? { appliedOps: [...apply.appliedOps] } : {}),
+    ...(apply.proof !== undefined ? { proof: apply.proof } : {}),
+  }
+}
+
+function describeUnverified(entry: WorkbookRunUnverified): WorkbookRunUnverifiedDescription {
+  return {
+    kind: entry.kind,
+    message: entry.message,
+  }
+}
+
 export function describePlanResult<Refs>(result: WorkbookActionPlanResult<Refs>): WorkbookActionPlanResultDescription {
   if (result.status === 'planned') {
     return {
@@ -383,14 +418,18 @@ export function describeRunResult(result: WorkbookRunResult): WorkbookRunResultD
   if (result.status === 'done') {
     return {
       status: 'done',
+      ...(result.apply !== undefined ? { apply: describeApply(result.apply) } : {}),
       changed: result.changed.map(describeChange),
       checks: result.checks.map(describeCheck),
       ...(result.undo !== undefined ? { undo: describeUndo(result.undo) } : {}),
+      ...(result.unverified !== undefined ? { unverified: result.unverified.map(describeUnverified) } : {}),
     }
   }
   return {
     status: 'failed',
     errors: result.errors.map(describeError),
+    ...(result.apply !== undefined ? { apply: describeApply(result.apply) } : {}),
     checks: result.checks.map(describeCheck),
+    ...(result.unverified !== undefined ? { unverified: result.unverified.map(describeUnverified) } : {}),
   }
 }

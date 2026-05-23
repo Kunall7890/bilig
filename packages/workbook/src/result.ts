@@ -37,6 +37,20 @@ export interface WorkbookUndoRef {
   readonly ops?: readonly EngineOp[]
 }
 
+export interface WorkbookRunApplySummary {
+  readonly matched: boolean | null
+  readonly previewOps?: readonly EngineOp[]
+  readonly appliedOps?: readonly EngineOp[]
+  readonly proof?: WorkbookActionInput
+}
+
+export type WorkbookRunUnverifiedKind = 'apply'
+
+export interface WorkbookRunUnverified {
+  readonly kind: WorkbookRunUnverifiedKind
+  readonly message: string
+}
+
 export type WorkbookRunErrorCode =
   | 'action_not_found'
   | 'invalid_action_input'
@@ -58,6 +72,8 @@ export type WorkbookRunErrorCode =
   | 'op_target_mismatch'
   | 'missing_concrete_op'
   | 'missing_workbook_op'
+  | 'apply_not_verified'
+  | 'apply_mismatch'
   | 'apply_failed'
   | 'readback_failed'
   | 'readback_missing'
@@ -91,6 +107,8 @@ export const workbookRunErrorCodes = Object.freeze([
   'op_target_mismatch',
   'missing_concrete_op',
   'missing_workbook_op',
+  'apply_not_verified',
+  'apply_mismatch',
   'apply_failed',
   'readback_failed',
   'readback_missing',
@@ -116,12 +134,16 @@ export interface WorkbookRunError {
 export type WorkbookRunResult =
   | {
       readonly status: 'done'
+      readonly apply?: WorkbookRunApplySummary
       readonly changed: readonly WorkbookChangeSummary[]
       readonly checks: readonly WorkbookCheckResult[]
       readonly undo?: WorkbookUndoRef
+      readonly unverified?: readonly WorkbookRunUnverified[]
     }
   | {
       readonly status: 'failed'
       readonly errors: readonly WorkbookRunError[]
+      readonly apply?: WorkbookRunApplySummary
       readonly checks: readonly WorkbookCheckResult[]
+      readonly unverified?: readonly WorkbookRunUnverified[]
     }

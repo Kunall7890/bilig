@@ -9,8 +9,10 @@ import {
   runWorkbookPlan,
   verifyWorkbookReadbacks,
   workbookRunErrorCodes,
+  type WorkbookActionPlan,
   type WorkbookModel,
   type WorkbookRunAdapter,
+  type WorkbookRunApplyResult,
 } from '../index.js'
 
 function valueModel(): WorkbookModel<{ readonly output: ReturnType<typeof findRange> }> {
@@ -40,6 +42,14 @@ function first<T>(values: readonly T[]): T {
   return value
 }
 
+function applied<Refs>(plan: WorkbookActionPlan<Refs>): WorkbookRunApplyResult {
+  return {
+    status: 'applied',
+    previewOps: plan.ops,
+    appliedOps: plan.ops,
+  }
+}
+
 describe('@bilig/workbook run api', () => {
   it('exports stable inspectable run error codes', () => {
     expect(Object.isFrozen(workbookRunErrorCodes)).toBe(true)
@@ -47,6 +57,8 @@ describe('@bilig/workbook run api', () => {
     expect(workbookRunErrorCodes).toContain('invalid_action_input')
     expect(workbookRunErrorCodes).toContain('ref_not_in_refs')
     expect(workbookRunErrorCodes).toContain('formula_input_not_resolved')
+    expect(workbookRunErrorCodes).toContain('apply_not_verified')
+    expect(workbookRunErrorCodes).toContain('apply_mismatch')
     expect(workbookRunErrorCodes).toContain('readback_missing')
     expect(workbookRunErrorCodes).toContain('runtime_rejected')
     expect(new Set(workbookRunErrorCodes).size).toBe(workbookRunErrorCodes.length)
@@ -56,8 +68,10 @@ describe('@bilig/workbook run api', () => {
 
   it('plans, verifies, applies, reads back, and returns done for value checks', async () => {
     const model = valueModel()
-    const apply = vi.fn<WorkbookRunAdapter<{ output: ReturnType<typeof findRange> }>['apply']>(() => ({
+    const apply = vi.fn<WorkbookRunAdapter<{ output: ReturnType<typeof findRange> }>['apply']>((plan) => ({
       status: 'applied',
+      previewOps: plan.ops,
+      appliedOps: plan.ops,
       undo: { id: 'undo-1' },
     }))
     const read = vi.fn<Required<WorkbookRunAdapter<{ output: ReturnType<typeof findRange> }>>['read']>((targets) => [
@@ -72,8 +86,27 @@ describe('@bilig/workbook run api', () => {
     expect(apply).toHaveBeenCalledTimes(1)
     expect(read).toHaveBeenCalledTimes(1)
     expect(read.mock.calls[0]?.[0]).toEqual([expect.objectContaining({ label: 'Sheet1!B2' })])
-    expect(result).toEqual({
+    expect(result).toMatchObject({
       status: 'done',
+      apply: {
+        matched: true,
+        previewOps: [
+          {
+            kind: 'setCellValue',
+            sheetName: 'Sheet1',
+            address: 'B2',
+            value: 12,
+          },
+        ],
+        appliedOps: [
+          {
+            kind: 'setCellValue',
+            sheetName: 'Sheet1',
+            address: 'B2',
+            value: 12,
+          },
+        ],
+      },
       changed: [
         {
           kind: 'writeValue',
@@ -102,6 +135,112 @@ describe('@bilig/workbook run api', () => {
     expect(describeRunResult(result).checks[0]?.proof).toEqual({
       source: 'readback',
       value: 12,
+    })
+  })
+
+  it('reports unverified apply proof when an adapter does not return preview and applied ops', async () => {
+    const model = valueModel()
+
+    const result = await runWorkbookAction(model, 'write', {
+      apply: () => ({ status: 'applied' }),
+      read: (targets) => [
+        {
+          target: first(targets),
+          value: 12,
+        },
+      ],
+    })
+
+    expect(result).toMatchObject({
+      status: 'done',
+      apply: {
+        matched: null,
+      },
+      unverified: [
+        {
+          kind: 'apply',
+          message: 'Adapter did not return both previewOps and appliedOps, so apply match is unverified',
+        },
+      ],
+    })
+  })
+
+  it('can require apply proof before readback and check verification', async () => {
+    const model = valueModel()
+    const read = vi.fn<Required<WorkbookRunAdapter<{ output: ReturnType<typeof findRange> }>>['read']>(() => [
+      {
+        target: findRange({ sheetName: 'Sheet1', address: 'B2' }),
+        value: 12,
+      },
+    ])
+
+    const result = await runWorkbookAction(
+      model,
+      'write',
+      {
+        apply: () => ({ status: 'applied' }),
+        read,
+      },
+      undefined,
+      { requireApplyProof: true },
+    )
+
+    expect(read).not.toHaveBeenCalled()
+    expect(result).toMatchObject({
+      status: 'failed',
+      errors: [
+        {
+          code: 'apply_not_verified',
+          message: 'Adapter did not return both previewOps and appliedOps',
+        },
+      ],
+      apply: {
+        matched: null,
+      },
+      unverified: [
+        {
+          kind: 'apply',
+          message: 'Adapter did not return both previewOps and appliedOps, so apply match is unverified',
+        },
+      ],
+    })
+  })
+
+  it('fails when an adapter applies ops that do not match its preview', async () => {
+    const model = valueModel()
+
+    const result = await runWorkbookAction(model, 'write', {
+      apply: (plan) => ({
+        status: 'applied',
+        previewOps: plan.ops,
+        appliedOps: [
+          {
+            kind: 'setCellValue',
+            sheetName: 'Sheet1',
+            address: 'B2',
+            value: 13,
+          },
+        ],
+      }),
+      read: (targets) => [
+        {
+          target: first(targets),
+          value: 12,
+        },
+      ],
+    })
+
+    expect(result).toMatchObject({
+      status: 'failed',
+      errors: [
+        {
+          code: 'apply_mismatch',
+          message: 'Adapter applied ops do not match its preview ops',
+        },
+      ],
+      apply: {
+        matched: false,
+      },
     })
   })
 
@@ -140,6 +279,9 @@ describe('@bilig/workbook run api', () => {
 
     expect(described).toEqual({
       status: 'done',
+      apply: {
+        matched: null,
+      },
       changed: [],
       checks: [
         {
@@ -159,6 +301,12 @@ describe('@bilig/workbook run api', () => {
         id: 'undo-1',
         ops: [{ kind: 'setCellValue', sheetName: 'Sheet1', address: 'A1', value: 1 }],
       },
+      unverified: [
+        {
+          kind: 'apply',
+          message: 'Adapter did not return both previewOps and appliedOps, so apply match is unverified',
+        },
+      ],
     })
     expect(JSON.parse(JSON.stringify(described))).toEqual(described)
   })
@@ -186,7 +334,7 @@ describe('@bilig/workbook run api', () => {
     const source = '(Sheet1!A2)*(Sheet1!B2)'
 
     const result = await runWorkbookAction(model, 'calculate', {
-      apply: () => ({ status: 'applied' }),
+      apply: applied,
       read: (targets) => [
         {
           target: first(targets),
@@ -237,10 +385,10 @@ describe('@bilig/workbook run api', () => {
     })
 
     const result = await runWorkbookAction(model, 'inspect', {
-      apply: () => ({ status: 'applied' }),
+      apply: applied,
     })
 
-    expect(result).toEqual({
+    expect(result).toMatchObject({
       status: 'failed',
       errors: [
         {
@@ -280,7 +428,7 @@ describe('@bilig/workbook run api', () => {
       }),
     })
 
-    expect(result).toEqual({
+    expect(result).toMatchObject({
       status: 'failed',
       errors: [
         {
@@ -314,11 +462,11 @@ describe('@bilig/workbook run api', () => {
     })
 
     const result = await runWorkbookAction(model, 'inspect', {
-      apply: () => ({ status: 'applied' }),
+      apply: applied,
       verifyChecks: (checks) => checks,
     })
 
-    expect(result).toEqual({
+    expect(result).toMatchObject({
       status: 'failed',
       errors: [
         {
@@ -363,11 +511,11 @@ describe('@bilig/workbook run api', () => {
     })
 
     const result = await runWorkbookAction(model, 'inspect', {
-      apply: () => ({ status: 'applied' }),
+      apply: applied,
       verifyChecks: (checks) => checks.map((checkResult) => ({ ...checkResult, status: 'passed' })),
     })
 
-    expect(result).toEqual({
+    expect(result).toMatchObject({
       status: 'done',
       changed: [],
       checks: [
@@ -406,11 +554,11 @@ describe('@bilig/workbook run api', () => {
     })
 
     const result = await runWorkbookAction(model, 'inspect', {
-      apply: () => ({ status: 'applied' }),
+      apply: applied,
       verifyChecks: (checks) => checks.map((checkResult) => ({ ...checkResult, status: 'failed' })),
     })
 
-    expect(result).toEqual({
+    expect(result).toMatchObject({
       status: 'failed',
       errors: [
         {
@@ -451,10 +599,10 @@ describe('@bilig/workbook run api', () => {
 
     await expect(
       runWorkbookAction(model, 'inspect', {
-        apply: () => ({ status: 'applied' }),
+        apply: applied,
         verifyChecks: () => [],
       }),
-    ).resolves.toEqual({
+    ).resolves.toMatchObject({
       status: 'failed',
       errors: [
         {
@@ -467,10 +615,10 @@ describe('@bilig/workbook run api', () => {
 
     await expect(
       runWorkbookAction(model, 'inspect', {
-        apply: () => ({ status: 'applied' }),
+        apply: applied,
         verifyChecks: (checks) => checks.map((checkResult) => ({ ...checkResult, message: 'Changed message' })),
       }),
-    ).resolves.toEqual({
+    ).resolves.toMatchObject({
       status: 'failed',
       errors: [
         {
@@ -504,14 +652,14 @@ describe('@bilig/workbook run api', () => {
     })
 
     const result = await runWorkbookAction(model, 'inspect', {
-      apply: () => ({ status: 'applied' }),
+      apply: applied,
       verifyChecks(checks) {
         Object.defineProperty(first(checks), 'message', { value: 'Changed message' })
         return checks
       },
     })
 
-    expect(result).toEqual({
+    expect(result).toMatchObject({
       status: 'failed',
       errors: [
         {
@@ -545,13 +693,13 @@ describe('@bilig/workbook run api', () => {
     })
 
     const result = await runWorkbookAction(model, 'inspect', {
-      apply: () => ({ status: 'applied' }),
+      apply: applied,
       verifyChecks() {
         throw new Error('check backend unavailable')
       },
     })
 
-    expect(result).toEqual({
+    expect(result).toMatchObject({
       status: 'failed',
       errors: [
         {
@@ -570,7 +718,7 @@ describe('@bilig/workbook run api', () => {
     const result = await runWorkbookAction(model, 'missing', { apply })
 
     expect(apply).not.toHaveBeenCalled()
-    expect(result).toEqual({
+    expect(result).toMatchObject({
       status: 'failed',
       errors: [
         {
@@ -604,7 +752,7 @@ describe('@bilig/workbook run api', () => {
     const result = await runWorkbookAction(model, 'calculate', { apply })
 
     expect(apply).not.toHaveBeenCalled()
-    expect(result).toEqual({
+    expect(result).toMatchObject({
       status: 'failed',
       errors: [
         {
@@ -642,7 +790,7 @@ describe('@bilig/workbook run api', () => {
     )
 
     expect(apply).not.toHaveBeenCalled()
-    expect(result).toEqual({
+    expect(result).toMatchObject({
       status: 'failed',
       errors: [
         {
@@ -676,7 +824,7 @@ describe('@bilig/workbook run api', () => {
       }),
     })
 
-    expect(result).toEqual({
+    expect(result).toMatchObject({
       status: 'failed',
       errors: [
         {
@@ -723,6 +871,9 @@ describe('@bilig/workbook run api', () => {
           message: 'runtime rejected the plan',
         },
       ],
+      apply: {
+        matched: null,
+      },
       checks: [
         {
           status: 'planned',
@@ -752,10 +903,10 @@ describe('@bilig/workbook run api', () => {
     const model = valueModel()
 
     const result = await runWorkbookAction(model, 'write', {
-      apply: () => ({ status: 'applied' }),
+      apply: applied,
     })
 
-    expect(result).toEqual({
+    expect(result).toMatchObject({
       status: 'failed',
       errors: [
         {
@@ -782,7 +933,7 @@ describe('@bilig/workbook run api', () => {
     const model = valueModel()
 
     const result = await runWorkbookAction(model, 'write', {
-      apply: () => ({ status: 'applied' }),
+      apply: applied,
       read: (targets) => [
         {
           target: first(targets),
@@ -791,7 +942,7 @@ describe('@bilig/workbook run api', () => {
       ],
     })
 
-    expect(result).toEqual({
+    expect(result).toMatchObject({
       status: 'failed',
       errors: [
         {
@@ -864,7 +1015,7 @@ describe('@bilig/workbook run api', () => {
   it('supports async apply and async read adapters', async () => {
     const model = valueModel()
     const planned = await runWorkbookAction(model, 'write', {
-      apply: async () => ({ status: 'applied' }),
+      apply: async (plan) => applied(plan),
       read: async (targets) => [
         {
           target: first(targets),
@@ -895,11 +1046,11 @@ describe('@bilig/workbook run api', () => {
         checks: [],
       },
       {
-        apply: () => ({ status: 'applied' }),
+        apply: applied,
       },
     )
 
-    expect(planResult).toEqual({
+    expect(planResult).toMatchObject({
       status: 'done',
       changed: [],
       checks: [],

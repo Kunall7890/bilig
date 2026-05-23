@@ -12,8 +12,9 @@ npm start
 
 The model finds a table by headers, narrows rows by a generic predicate, writes a
 formula to a result column, and declares checks. The adapter in this folder is a
-tiny stand-in for `@bilig/core` or an app runtime: it applies the plan, reads
-back the formula target, and verifies generic checks.
+tiny handoff stand-in for `@bilig/core` or an app runtime: it reads back the
+formula target and verifies generic checks, but it does not claim engine apply
+proof it cannot produce.
 
 The output answers the questions an agent needs before it trusts a workbook
 mutation:
@@ -22,6 +23,7 @@ mutation:
 - which refs the selectors bound
 - which commands and low-level ops were planned
 - which adapter capabilities are required
+- whether apply matched preview or remains unverified
 - which checks passed
 - what proof supported each check
 

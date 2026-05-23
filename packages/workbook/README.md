@@ -82,7 +82,7 @@ That is the core flow:
 4. An action builds workbook intent.
 5. `verifyPlan` checks the plan without running an engine.
 6. `describeRuntimeRequirements` tells an adapter what it must apply, read, and prove.
-7. `runWorkbookPlan` applies the plan through a runtime-owned adapter and returns a boring result.
+7. `runWorkbookPlan` applies the plan through a runtime-owned adapter and returns a boring result with check proof and apply proof when the adapter provides it.
 
 ## Public Contract
 
@@ -141,7 +141,14 @@ named range, or user text.
 ```ts
 const adapter = {
   apply(plan) {
-    return { status: "applied", undo: { id: "undo-1" } };
+    const ops = materializeForThisRuntime(plan);
+    return {
+      status: "applied",
+      previewOps: ops,
+      appliedOps: ops,
+      proof: { source: "runtime", opCount: ops.length },
+      undo: { id: "undo-1" },
+    };
   },
   read(targets, plan) {
     return targets.map((target) => ({ target, value: 12 }));
@@ -153,6 +160,10 @@ const adapter = {
 ```
 
 `runWorkbookPlan` refuses to call `apply` if static plan verification fails.
+If an adapter returns both `previewOps` and `appliedOps`, the result reports
+whether they matched. If the adapter returns neither, the run records an
+unverified apply fact. Use `runWorkbookPlan(plan, adapter, { requireApplyProof:
+true })` when an agent must fail closed instead of accepting an unproved apply.
 Readback checks attach proof to passed checks, such as
 `{ source: "readback", value: 12 }` or
 `{ source: "readback", formula: "(Table[Quantity])*(Table[Rate])" }`.
@@ -165,14 +176,18 @@ The result is deliberately plain:
 type WorkbookRunResult =
   | {
       status: "done";
+      apply?: WorkbookRunApplySummary;
       changed: WorkbookChangeSummary[];
       checks: WorkbookCheckResult[];
       undo?: WorkbookUndoRef;
+      unverified?: WorkbookRunUnverified[];
     }
   | {
       status: "failed";
       errors: WorkbookRunError[];
+      apply?: WorkbookRunApplySummary;
       checks: WorkbookCheckResult[];
+      unverified?: WorkbookRunUnverified[];
     };
 ```
 

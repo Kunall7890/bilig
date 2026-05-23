@@ -1,13 +1,17 @@
 import type { WorkbookRef } from './find.js'
+import { isWorkbookOp } from './guards.js'
 import { normalizeWorkbookActionInput, type WorkbookActionInput } from './input.js'
 import { planWorkbookAction, type WorkbookActionMap, type WorkbookActionPlan, type WorkbookModel } from './model.js'
+import type { EngineOp } from './ops.js'
 import { verifyWorkbookReadbacks, type WorkbookRunReadback } from './readback.js'
 import {
   isWorkbookRunErrorCode,
+  type WorkbookRunApplySummary,
   type WorkbookCheckResult,
   type WorkbookRunError,
   type WorkbookRunErrorCode,
   type WorkbookRunResult,
+  type WorkbookRunUnverified,
   type WorkbookUndoRef,
 } from './result.js'
 import { verifyPlan } from './verify.js'
@@ -16,8 +20,15 @@ type MaybePromise<T> = T | Promise<T>
 
 export interface WorkbookRunApplyResult {
   readonly status: 'applied' | 'failed'
+  readonly previewOps?: readonly EngineOp[]
+  readonly appliedOps?: readonly EngineOp[]
+  readonly proof?: WorkbookActionInput
   readonly errors?: readonly WorkbookRunError[]
   readonly undo?: WorkbookUndoRef
+}
+
+export interface WorkbookRunOptions {
+  readonly requireApplyProof?: boolean
 }
 
 export interface WorkbookRunAdapter<Refs = unknown> {
@@ -75,10 +86,12 @@ function failedApplyResult(plan: WorkbookActionPlan, result: WorkbookRunApplyRes
     result.errors !== undefined && result.errors.length > 0
       ? result.errors
       : [runError('apply_failed', `Workbook action ${plan.modelName}.${plan.actionName} failed to apply`)]
+  const apply = describeApply(result)
 
   return {
     status: 'failed',
     errors,
+    apply,
     checks: plan.checks,
   }
 }
@@ -180,6 +193,15 @@ function validateApplyResult(plan: WorkbookActionPlan, value: unknown): ApplyVal
     return rejected(`Workbook action ${plan.modelName}.${plan.actionName} returned an invalid apply status`)
   }
 
+  const rawPreviewOps = value['previewOps']
+  if (rawPreviewOps !== undefined && (!Array.isArray(rawPreviewOps) || !rawPreviewOps.every(isWorkbookOp))) {
+    return rejected(`Workbook action ${plan.modelName}.${plan.actionName} returned invalid preview ops`)
+  }
+  const rawAppliedOps = value['appliedOps']
+  if (rawAppliedOps !== undefined && (!Array.isArray(rawAppliedOps) || !rawAppliedOps.every(isWorkbookOp))) {
+    return rejected(`Workbook action ${plan.modelName}.${plan.actionName} returned invalid applied ops`)
+  }
+
   const rawErrors = value['errors']
   if (rawErrors !== undefined && (!Array.isArray(rawErrors) || !rawErrors.every(isWorkbookRunError))) {
     return rejected(`Workbook action ${plan.modelName}.${plan.actionName} returned invalid apply errors`)
@@ -195,14 +217,74 @@ function validateApplyResult(plan: WorkbookActionPlan, value: unknown): ApplyVal
     return rejected(`Workbook action ${plan.modelName}.${plan.actionName} returned invalid undo metadata`)
   }
 
+  let proof: WorkbookActionInput | undefined
+  try {
+    proof = value['proof'] === undefined ? undefined : normalizeWorkbookActionInput(value['proof'])
+  } catch (error) {
+    return rejected(`Workbook action ${plan.modelName}.${plan.actionName} returned invalid apply proof: ${errorMessage(error)}`)
+  }
+
   return {
     status: 'valid',
     result: {
       status,
+      ...(rawPreviewOps !== undefined ? { previewOps: cloneOps(rawPreviewOps as readonly EngineOp[]) } : {}),
+      ...(rawAppliedOps !== undefined ? { appliedOps: cloneOps(rawAppliedOps as readonly EngineOp[]) } : {}),
+      ...(proof !== undefined ? { proof } : {}),
       ...(errors !== undefined ? { errors } : {}),
       ...(undo !== undefined ? { undo } : {}),
     },
   }
+}
+
+function cloneOps(ops: readonly EngineOp[]): readonly EngineOp[] {
+  return ops.map((op) => structuredClone(op))
+}
+
+function opsMatch(left: readonly EngineOp[], right: readonly EngineOp[]): boolean {
+  if (left.length !== right.length) {
+    return false
+  }
+  return left.every((op, index) => {
+    const other = right[index]
+    return other !== undefined && canonicalJson(op) === canonicalJson(other)
+  })
+}
+
+function describeApply(result: WorkbookRunApplyResult): WorkbookRunApplySummary {
+  const matched = result.previewOps === undefined || result.appliedOps === undefined ? null : opsMatch(result.previewOps, result.appliedOps)
+  return {
+    matched,
+    ...(result.previewOps !== undefined ? { previewOps: cloneOps(result.previewOps) } : {}),
+    ...(result.appliedOps !== undefined ? { appliedOps: cloneOps(result.appliedOps) } : {}),
+    ...(result.proof !== undefined ? { proof: normalizeWorkbookActionInput(result.proof) } : {}),
+  }
+}
+
+function applyUnverified(apply: WorkbookRunApplySummary): readonly WorkbookRunUnverified[] {
+  if (apply.matched !== null) {
+    return []
+  }
+  return [
+    {
+      kind: 'apply',
+      message: 'Adapter did not return both previewOps and appliedOps, so apply match is unverified',
+    },
+  ]
+}
+
+function unverifiedProperty(unverified: readonly WorkbookRunUnverified[]): { readonly unverified: readonly WorkbookRunUnverified[] } | {} {
+  return unverified.length === 0 ? {} : { unverified }
+}
+
+function applyProofErrors(apply: WorkbookRunApplySummary, options: WorkbookRunOptions): readonly WorkbookRunError[] {
+  if (apply.matched === false) {
+    return [runError('apply_mismatch', 'Adapter applied ops do not match its preview ops')]
+  }
+  if (options.requireApplyProof === true && apply.matched === null) {
+    return [runError('apply_not_verified', 'Adapter did not return both previewOps and appliedOps')]
+  }
+  return []
 }
 
 type CheckValidation =
@@ -339,7 +421,11 @@ function unverifiedCheckErrors(checks: readonly WorkbookCheckResult[]): readonly
     .map((check) => runError('check_not_verified', `${checkLabel(check)} did not verify check ${check.kind}: ${check.message}`))
 }
 
-export async function runWorkbookPlan<Refs>(plan: WorkbookActionPlan<Refs>, adapter: WorkbookRunAdapter<Refs>): Promise<WorkbookRunResult> {
+export async function runWorkbookPlan<Refs>(
+  plan: WorkbookActionPlan<Refs>,
+  adapter: WorkbookRunAdapter<Refs>,
+  options: WorkbookRunOptions = {},
+): Promise<WorkbookRunResult> {
   const invalidPlan = failedFromPlanIssues(plan)
   if (invalidPlan !== null) {
     return invalidPlan
@@ -366,6 +452,19 @@ export async function runWorkbookPlan<Refs>(plan: WorkbookActionPlan<Refs>, adap
     return failedApplyResult(plan, validApplyResult)
   }
 
+  const apply = describeApply(validApplyResult)
+  const unverified = applyUnverified(apply)
+  const applyErrors = applyProofErrors(apply, options)
+  if (applyErrors.length > 0) {
+    return {
+      status: 'failed',
+      errors: applyErrors,
+      apply,
+      checks: plan.checks,
+      ...unverifiedProperty(unverified),
+    }
+  }
+
   let checks = plan.checks
   const targets = readbackTargets(checks)
   if (targets.length > 0) {
@@ -374,7 +473,9 @@ export async function runWorkbookPlan<Refs>(plan: WorkbookActionPlan<Refs>, adap
       return {
         status: 'failed',
         errors: readbackVerification.issues.map((issue) => runError(issue.code, issue.message)),
+        apply,
         checks: readbackVerification.checks,
+        ...unverifiedProperty(unverified),
       }
     }
 
@@ -385,7 +486,9 @@ export async function runWorkbookPlan<Refs>(plan: WorkbookActionPlan<Refs>, adap
       return {
         status: 'failed',
         errors: [runError('readback_failed', errorMessage(error))],
+        apply,
         checks,
+        ...unverifiedProperty(unverified),
       }
     }
 
@@ -395,7 +498,9 @@ export async function runWorkbookPlan<Refs>(plan: WorkbookActionPlan<Refs>, adap
       return {
         status: 'failed',
         errors: readbackVerification.issues.map((issue) => runError(issue.code, issue.message)),
+        apply,
         checks,
+        ...unverifiedProperty(unverified),
       }
     }
   }
@@ -406,7 +511,9 @@ export async function runWorkbookPlan<Refs>(plan: WorkbookActionPlan<Refs>, adap
     return {
       status: 'failed',
       errors: checkVerification.errors,
+      apply,
       checks,
+      ...unverifiedProperty(unverified),
     }
   }
 
@@ -415,15 +522,19 @@ export async function runWorkbookPlan<Refs>(plan: WorkbookActionPlan<Refs>, adap
     return {
       status: 'failed',
       errors: unverifiedErrors,
+      apply,
       checks,
+      ...unverifiedProperty(unverified),
     }
   }
 
   return {
     status: 'done',
+    apply,
     changed: plan.changed,
     checks,
     ...(validApplyResult.undo !== undefined ? { undo: validApplyResult.undo } : {}),
+    ...unverifiedProperty(unverified),
   }
 }
 
@@ -432,6 +543,7 @@ export async function runWorkbookAction<Refs, Actions extends WorkbookActionMap<
   actionName: string,
   adapter: WorkbookRunAdapter<Refs>,
   input?: WorkbookActionInput,
+  options?: WorkbookRunOptions,
 ): Promise<WorkbookRunResult> {
   const result = planWorkbookAction(model, actionName, input)
   if (result.status === 'failed') {
@@ -441,5 +553,5 @@ export async function runWorkbookAction<Refs, Actions extends WorkbookActionMap<
       checks: result.checks,
     }
   }
-  return runWorkbookPlan(result.plan, adapter)
+  return runWorkbookPlan(result.plan, adapter, options)
 }
