@@ -109,44 +109,7 @@ import { hasStructuralMetadataForSheetRecord } from './workbook-store-metadata-p
 
 export { makeCellKey, makeLogicalCellKey } from './workbook-cell-key-index.js'
 export { normalizeDefinedName, normalizeWorkbookObjectName, imageKey, pivotKey, shapeKey } from './workbook-metadata-types.js'
-export type { EnsuredCell } from './workbook-cell-record-store.js'
-export type { SheetRecord } from './workbook-sheet-record.js'
-export type {
-  WorkbookAxisEntryRecord,
-  WorkbookAxisMetadataRecord,
-  WorkbookCalculationSettingsRecord,
-  WorkbookCommentThreadRecord,
-  WorkbookChartRecord,
-  WorkbookConditionalFormatRecord,
-  WorkbookSheetConditionalFormatArtifactsRecord,
-  WorkbookDataValidationRecord,
-  WorkbookDrawingArtifactsRecord,
-  WorkbookCellNumberFormatRecord,
-  WorkbookCellStyleRecord,
-  WorkbookDefinedNameRecord,
-  WorkbookFilterRecord,
-  WorkbookFormatRangeRecord,
-  WorkbookFreezePaneRecord,
-  WorkbookHyperlinkRecord,
-  WorkbookImageRecord,
-  WorkbookMacroPayloadRecord,
-  WorkbookMergeRangeRecord,
-  WorkbookMetadataRecord,
-  WorkbookPivotRecord,
-  WorkbookPropertyRecord,
-  WorkbookRangeProtectionRecord,
-  WorkbookSheetDrawingArtifactsRecord,
-  WorkbookSheetProtectionRecord,
-  WorkbookSheetTabColorRecord,
-  WorkbookShapeRecord,
-  WorkbookSortKeyRecord,
-  WorkbookSortRecord,
-  WorkbookSpillRecord,
-  WorkbookStyleRangeRecord,
-  WorkbookTableRecord,
-  WorkbookVolatileContextRecord,
-  WorkbookNoteRecord,
-} from './workbook-metadata-types.js'
+export type * from './workbook-store-types.js'
 
 export class WorkbookStore {
   static readonly defaultStyleId = WORKBOOK_DEFAULT_STYLE_ID
