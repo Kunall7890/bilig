@@ -14,6 +14,7 @@ import type {
 } from './gen-ui-responsiveness-live-browser-scorecard.ts'
 import type { CaptureArgs, PreflightArgs, SaveStorageStateArgs } from './ui-responsiveness-same-corpus-args.ts'
 import { defaultViewport } from './ui-responsiveness-same-corpus-args.ts'
+import { buildSameCorpusCaptureRunManifest } from './ui-responsiveness-same-corpus-scorecard-proof.ts'
 import {
   requiredUiResponsivenessSameCorpusWorkloads,
   uiSameCorpusWorkloadRequiresScrollEventEvidence,
@@ -117,20 +118,37 @@ export async function captureSameCorpusUiResponsiveness(args: CaptureArgs): Prom
   const browser = await chromium.launch(sameCorpusChromiumLaunchOptions(args.headless))
   try {
     const cases = await captureSameCorpusWorkloadCases(browser, corpus, args)
-    return {
-      schemaVersion: 1,
-      suite: 'ui-responsiveness-same-corpus-capture',
+    return buildSameCorpusCaptureArtifact({
       sampleCount: args.sampleCount,
-      limitations: [
-        'Caller must supply a Google Sheets URL for the same exported Bilig benchmark corpus.',
-        'Microsoft Excel Web can be supplied as an additional incumbent comparison, but it is not required for the Google Sheets 10x claim.',
-        'Edit and format workloads require the supplied incumbent URLs to allow browser-driven editing in the authenticated context.',
-      ],
+      limitations: defaultSameCorpusCaptureLimitations(),
       cases,
-    }
+    })
   } finally {
     await browser.close()
   }
+}
+
+export function buildSameCorpusCaptureArtifact(args: {
+  readonly sampleCount: number
+  readonly limitations?: readonly string[]
+  readonly cases: readonly SameCorpusCaptureCase[]
+}): SameCorpusCapture {
+  return {
+    schemaVersion: 1,
+    suite: 'ui-responsiveness-same-corpus-capture',
+    sampleCount: args.sampleCount,
+    runManifest: buildSameCorpusCaptureRunManifest(args.cases, args.sampleCount),
+    limitations: [...(args.limitations ?? defaultSameCorpusCaptureLimitations())],
+    cases: [...args.cases],
+  }
+}
+
+function defaultSameCorpusCaptureLimitations(): readonly string[] {
+  return [
+    'Caller must supply a Google Sheets URL for the same exported Bilig benchmark corpus.',
+    'Microsoft Excel Web can be supplied as an additional incumbent comparison, but it is not required for the Google Sheets 10x claim.',
+    'Edit and format workloads require the supplied incumbent URLs to allow browser-driven editing in the authenticated context.',
+  ]
 }
 
 async function captureSameCorpusWorkloadCases(

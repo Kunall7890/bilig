@@ -8,6 +8,7 @@ import { buildWorkbookBenchmarkCorpus } from '../../packages/benchmarks/src/work
 import {
   assertSameCorpusBrowserRunAllowed,
   buildSameCorpusFingerprint,
+  buildSameCorpusCaptureArtifact,
   collectSameCorpusProductMeasurements,
   parseCaptureArgs,
   parseEmitXlsxArgs,
@@ -15,6 +16,7 @@ import {
   parseSaveStorageStateArgs,
   verifyXlsxCorpusFingerprint,
 } from '../capture-ui-responsiveness-same-corpus.ts'
+import { parseSameCorpusCapture } from '../gen-ui-responsiveness-live-browser-scorecard.ts'
 import { requiredUiResponsivenessSameCorpusWorkloads } from '../ui-responsiveness-same-corpus-workloads.ts'
 import {
   buildCaptureScenarioProof,
@@ -330,6 +332,47 @@ describe('same-corpus UI responsiveness capture CLI', () => {
     })
   })
 
+  it('writes same-corpus capture artifacts with a fresh run manifest', () => {
+    const scenarioProof = buildCaptureScenarioProof({
+      bilig: sameCorpusCaptureMeasurement('bilig', 'bilig-benchmark-state'),
+      googleSheets: sameCorpusCaptureMeasurement('google-sheets', 'google-sheets-xlsx-export'),
+      visualProofs: [
+        sameCorpusVisualProof('bilig', 'typegpu-visible-canvas'),
+        sameCorpusVisualProof('google-sheets', 'google-sheets-visible-grid'),
+      ],
+    })
+    const capture = buildSameCorpusCaptureArtifact({
+      sampleCount: 3,
+      limitations: ['test limitation'],
+      cases: [
+        {
+          id: 'same-corpus-wide-mixed-250k-open-workbook',
+          corpusCaseId: 'wide-mixed-250k',
+          materializedCells: 250_000,
+          workload: 'open-workbook',
+          scenarioProof,
+          bilig: sameCorpusCaptureMeasurement('bilig', 'bilig-benchmark-state'),
+          googleSheets: sameCorpusCaptureMeasurement('google-sheets', 'google-sheets-xlsx-export'),
+        },
+      ],
+    })
+
+    expect(capture.runManifest).toMatchObject({
+      artifactGenerator: 'scripts/capture-ui-responsiveness-same-corpus.ts',
+      caseCount: 1,
+      contractVersion: 'same-corpus-ui-v4',
+      currentContractEvidenceComplete: false,
+      requiredProducts: ['bilig', 'google-sheets'],
+      sampleCount: 3,
+      strictRenderedGridProofCaseCount: 1,
+    })
+    expect(capture.runManifest.captureRunSignature).toMatch(/^[a-f0-9]{64}$/u)
+    expect(capture.runManifest.invalidReasons).toContain(
+      'missing required workloads: select-cell, edit-visible-cell, scroll-vertical, scroll-horizontal, jump-deep-row, formula-edit, fill-format-change, wide-sheet-navigation',
+    )
+    expect(parseSameCorpusCapture(capture).runManifest.captureRunSignature).toBe(capture.runManifest.captureRunSignature)
+  })
+
   it('downgrades legacy Bilig canvas evidence that lacks strict rendered-frame proof', () => {
     const proof = buildCaptureScenarioProof({
       bilig: sameCorpusCaptureMeasurement('bilig', 'bilig-benchmark-state'),
@@ -634,6 +677,7 @@ function sameCorpusCaptureMeasurement(
   product: 'bilig' | 'google-sheets' | 'microsoft-excel-web',
   method: 'bilig-benchmark-state' | 'google-sheets-xlsx-export' | 'microsoft-excel-web-source-xlsx',
 ) {
+  const sourceWorkbookSha256 = product === 'bilig' ? 'a'.repeat(64) : product === 'google-sheets' ? 'b'.repeat(64) : 'c'.repeat(64)
   return {
     product,
     source: product === 'bilig' ? 'http://127.0.0.1:5173/?benchmarkCorpus=wide-mixed-250k' : 'https://example.com/sheet',
@@ -644,6 +688,8 @@ function sameCorpusCaptureMeasurement(
       method,
       sheetName: 'WideGrid',
       materializedCells: 250_000,
+      corpusFingerprint: buildSameCorpusFingerprint(buildWorkbookBenchmarkCorpus('wide-mixed-250k')).corpusFingerprint,
+      sourceWorkbookSha256,
       checkedCells: sameCorpusFixtureCheckedCells,
     },
     limitations: [],

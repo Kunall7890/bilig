@@ -24,6 +24,7 @@ import {
 export { parseCaptureArgs, parseEmitXlsxArgs, parsePreflightArgs, parseSaveStorageStateArgs } from './ui-responsiveness-same-corpus-args.ts'
 export { buildSameCorpusFingerprint, verifyXlsxCorpusFingerprint } from './ui-responsiveness-same-corpus-fingerprint.ts'
 export {
+  buildSameCorpusCaptureArtifact,
   captureSameCorpusUiResponsiveness,
   collectSameCorpusProductMeasurements,
   preflightSameCorpusIncumbentAccess,
