@@ -4,6 +4,23 @@ All notable changes to `@bilig/headless` will be documented in this file.
 
 This package is released as part of the aligned bilig library package set.
 
+## 0.69.0
+
+- Release type: minor
+- Previous libraries tag: libraries-v0.68.0
+- Manual override: no
+
+## Features
+- feat(workbook): validate agent command handoff (3249a739)
+
+## Fixes
+- fix(workbook): rewrite preserved style artifacts (cb76bf8e)
+- perf(headless): speed up scalar sheet inspection (a18a7f37)
+- fix(workbook): rewrite preserved pivot artifacts (f657279b)
+
+## Internal runtime changes
+- chore(release): runtime packages v0.68.1 (d2d0fe4f)
+
 ## 0.68.1
 
 - Release type: patch
