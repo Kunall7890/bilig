@@ -24,6 +24,7 @@ const existingDesktopExcelOracleFiles = [
   'macos-desktop-excel-precision-as-displayed-oracle.test.ts',
   'macos-desktop-excel-pivot-oracle.test.ts',
   'macos-desktop-excel-sort-oracle.test.ts',
+  'macos-desktop-excel-sparklines-oracle.test.ts',
   'macos-desktop-excel-structured-reference-syntax.test.ts',
   'macos-desktop-excel-table-header-canonicalization.test.ts',
   'macos-desktop-excel-threaded-comment-structural-oracle.test.ts',
@@ -117,6 +118,17 @@ describe('macOS Desktop Excel oracle inventory', () => {
     expect(source).toContain('externalLinkArtifacts')
     expect(source).toContain('externalLinkPackageSummary')
     expect(source).toContain('round-trips cached external ranges through Desktop Excel and Bilig recalc')
+  })
+
+  it('keeps the sparkline oracle anchored to Desktop Excel extension XML refs', () => {
+    const source = readFileSync(join(testDir, 'macos-desktop-excel-sparklines-oracle.test.ts'), 'utf8')
+
+    expect(source).toContain("BILIG_EXCEL_ORACLE_RUN === '1'")
+    expect(source).toContain('runMacosExcelStructuralOperationOracle')
+    expect(source).toContain('runMacosExcelInspectionOracle')
+    expect(source).toContain('sparklineExtensionUri')
+    expect(source).toContain('metadata?.sparklines')
+    expect(source).toContain('matches Desktop Excel sparkline source and output refs after structural row inserts')
   })
 
   it('keeps the pivot oracle anchored to Desktop Excel source-backed pivot refresh semantics', () => {

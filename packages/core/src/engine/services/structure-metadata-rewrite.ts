@@ -25,6 +25,7 @@ import { rewriteLegacyCommentVmlForStructuralTransform } from './structure-legac
 import { rewriteFormulaSourceForDeletedStructuredReferences } from './structure-structured-ref-rewrite.js'
 import { chartGeometryFromAnchor, rewriteChartAnchorForStructuralTransform } from './structure-chart-anchor-metadata-rewrite.js'
 import { rewriteThreadedCommentArtifactsForStructuralTransform } from './structure-threaded-comment-artifact-rewrite.js'
+import { rewriteSparklinesForStructuralTransform } from './structure-sparkline-metadata-rewrite.js'
 import { nextGeneratedTableColumnName, normalizeTableColumnName } from './table-column-name-helpers.js'
 
 type StructureMetadataRewriteArgs = Pick<CreateEngineStructureServiceArgs, 'state' | 'clearOwnedPivot'>
@@ -666,6 +667,14 @@ export function rewriteWorkbookMetadataForStructuralTransform(
       sheet.dataTableFormulas = dataTableFormulas
     } else {
       delete sheet.dataTableFormulas
+    }
+  }
+  if (sheet?.sparklines) {
+    const sparklines = rewriteSparklinesForStructuralTransform(sheetName, sheet.sparklines, transform)
+    if (sparklines) {
+      sheet.sparklines = sparklines
+    } else {
+      delete sheet.sparklines
     }
   }
   const rewrittenStyleRanges: SheetStyleRangeSnapshot[] = []

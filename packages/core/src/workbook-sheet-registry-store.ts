@@ -71,6 +71,7 @@ export class WorkbookSheetRegistryStore {
     sheet.formatRanges.length = 0
     delete sheet.arrayFormulas
     delete sheet.dataTableFormulas
+    delete sheet.sparklines
     this.options.sheetsByName.delete(name)
     this.options.sheetsById.delete(sheet.id)
   }

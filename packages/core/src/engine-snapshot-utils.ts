@@ -7,6 +7,7 @@ import type {
   WorkbookSheetArrayFormulasSnapshot,
   WorkbookSheetDataTableFormulasSnapshot,
   WorkbookSheetTabColorSnapshot,
+  WorkbookSparklinesSnapshot,
 } from '@bilig/protocol'
 import type { EngineOp } from '@bilig/workbook'
 import type { WorkbookAxisMetadataRecord, WorkbookFreezePaneRecord, WorkbookSheetTabColorRecord, WorkbookStore } from './workbook-store.js'
@@ -132,6 +133,10 @@ function arrayFormulasToSnapshot(formulas: WorkbookSheetArrayFormulasSnapshot | 
   return { formulas: formulas.formulas.map((formula) => ({ ...formula })) }
 }
 
+function sparklinesToSnapshot(sparklines: WorkbookSparklinesSnapshot | undefined): WorkbookSparklinesSnapshot | undefined {
+  return sparklines ? { xml: sparklines.xml } : undefined
+}
+
 export function exportSheetMetadata(workbook: WorkbookStore, sheetName: string): SheetMetadataSnapshot | undefined {
   const sheet = workbook.getSheet(sheetName)
   const rows = workbook.listRowAxisEntries(sheetName)
@@ -169,6 +174,7 @@ export function exportSheetMetadata(workbook: WorkbookStore, sheetName: string):
   const hyperlinks = workbook.listHyperlinks(sheetName).map((hyperlink) => structuredClone(hyperlink))
   const arrayFormulas = arrayFormulasToSnapshot(sheet?.arrayFormulas)
   const dataTableFormulas = dataTableFormulasToSnapshot(sheet?.dataTableFormulas)
+  const sparklines = sparklinesToSnapshot(sheet?.sparklines)
 
   if (
     rows.length === 0 &&
@@ -196,7 +202,8 @@ export function exportSheetMetadata(workbook: WorkbookStore, sheetName: string):
     notes.length === 0 &&
     hyperlinks.length === 0 &&
     arrayFormulas === undefined &&
-    dataTableFormulas === undefined
+    dataTableFormulas === undefined &&
+    sparklines === undefined
   ) {
     return undefined
   }
@@ -294,6 +301,9 @@ export function exportSheetMetadata(workbook: WorkbookStore, sheetName: string):
   }
   if (dataTableFormulas) {
     metadata.dataTableFormulas = dataTableFormulas
+  }
+  if (sparklines) {
+    metadata.sparklines = sparklines
   }
   return metadata
 }
