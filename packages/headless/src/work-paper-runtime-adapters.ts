@@ -374,6 +374,9 @@ export function createWorkPaperRuntimeAdapters(args: CreateWorkPaperRuntimeAdapt
     deleteSheet: (name) => {
       args.getEngine().deleteSheet(name)
     },
+    moveSheet: (name, order) => {
+      args.getEngine().moveSheet(name, order)
+    },
     invalidateSheetDimensions: (sheetId) => args.getSheetDimensionCache().invalidate(sheetId),
     isItPossibleToClearSheet: args.isItPossibleToClearSheet,
     getSheetDimensions: args.getSheetDimensions,

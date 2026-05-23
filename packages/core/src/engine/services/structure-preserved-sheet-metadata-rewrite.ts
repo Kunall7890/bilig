@@ -9,7 +9,7 @@ import {
 } from '@bilig/formula'
 import type { WorkbookPreservedMetadataRecord, WorkbookPreservedSheetMetadataRecord } from '../../workbook-metadata-types.js'
 import { hasPreservedSheetMetadata } from '../../workbook-preserved-metadata.js'
-import type { WorkbookSheetDeletionMetadataContext } from '../../workbook-metadata-service-contract.js'
+import type { WorkbookSheetDeletionMetadataContext, WorkbookSheetReorderMetadataContext } from '../../workbook-metadata-service-contract.js'
 
 const cellReferencePattern = /^\$?([A-Z]+)\$?([1-9]\d*)$/iu
 const pivotTableDefinitionLocationPattern = /<((?:[A-Za-z_][\w.-]*:)?location)\b([^>]*\bref=(["'])([^"']+)\3[^>]*)\/?>/gu
@@ -18,6 +18,7 @@ const pivotCacheDefinitionPartPathPattern = /^xl\/pivotCache\/pivotCacheDefiniti
 const worksheetSourcePattern = /<((?:[A-Za-z_][\w.-]*:)?worksheetSource)\b([^>]*\bref=(["'])([^"']+)\3[^>]*)\/?>/gu
 const worksheetSourceElementPattern = /<((?:[A-Za-z_][\w.-]*:)?worksheetSource)\b[^>]*\/?>/gu
 const workbookViewElementPattern = /<((?:[A-Za-z_][\w.-]*:)?workbookView)\b[^>]*\/?>/gu
+type WorkbookViewIndexAttribute = 'activeTab' | 'firstSheet'
 
 export function rewritePreservedSheetMetadataForStructuralTransform(
   metadata: WorkbookPreservedSheetMetadataRecord | undefined,
@@ -169,6 +170,28 @@ export function rewritePreservedWorkbookMetadataForSheetDeletion(
   return changed ? next : undefined
 }
 
+export function rewritePreservedWorkbookMetadataForSheetReorder(
+  metadata: WorkbookPreservedMetadataRecord,
+  context: WorkbookSheetReorderMetadataContext,
+): WorkbookPreservedMetadataRecord | undefined {
+  const bookViewsXml = metadata.viewState?.bookViewsXml
+  if (!bookViewsXml || context.oldSheetIndex === context.newSheetIndex || context.sheetCount <= 1) {
+    return undefined
+  }
+
+  const rewrittenBookViewsXml = rewriteWorkbookViewIndexesForSheetReorder(bookViewsXml, context)
+  if (rewrittenBookViewsXml === bookViewsXml) {
+    return undefined
+  }
+  return {
+    ...metadata,
+    viewState: {
+      ...metadata.viewState,
+      bookViewsXml: rewrittenBookViewsXml,
+    },
+  }
+}
+
 export function rewritePreservedPivotPackageArtifactsForStructuralTransform(
   workbookMetadata: WorkbookPreservedMetadataRecord | undefined,
   sheetMetadata: WorkbookPreservedSheetMetadataRecord | undefined,
@@ -232,6 +255,28 @@ function rewriteWorkbookViewIndexesForSheetDeletion(xml: string, context: Workbo
   })
 }
 
+function rewriteWorkbookViewIndexesForSheetReorder(xml: string, context: WorkbookSheetReorderMetadataContext): string {
+  return xml.replace(workbookViewElementPattern, (element) => {
+    return rewriteWorkbookViewIndexAttributeForSheetReorder(element, 'activeTab', context)
+  })
+}
+
+function rewriteWorkbookViewIndexAttributeForSheetReorder(
+  element: string,
+  attributeName: WorkbookViewIndexAttribute,
+  context: WorkbookSheetReorderMetadataContext,
+): string {
+  const attribute = readNonNegativeIntegerXmlAttribute(element, attributeName)
+  if (!attribute) {
+    return element
+  }
+  const nextIndex = sheetIndexAfterSheetReorder(attribute.value, context)
+  if (nextIndex === attribute.value) {
+    return element
+  }
+  return replaceXmlAttributeValue(element, attributeName, attribute.quote, String(nextIndex))
+}
+
 function rewriteWorkbookViewIndexAttributeForSheetDeletion(
   element: string,
   attributeName: 'activeTab' | 'firstSheet',
@@ -278,9 +323,25 @@ function sheetIndexAfterFirstVisibleSheetDeletion(index: number, context: Workbo
   return Math.min(shiftedIndex, sheetCountAfterDelete - 1)
 }
 
+function sheetIndexAfterSheetReorder(index: number, context: WorkbookSheetReorderMetadataContext): number {
+  if (index < 0 || index >= context.sheetCount) {
+    return index
+  }
+  if (index === context.oldSheetIndex) {
+    return context.newSheetIndex
+  }
+  if (context.oldSheetIndex < context.newSheetIndex && index > context.oldSheetIndex && index <= context.newSheetIndex) {
+    return index - 1
+  }
+  if (context.oldSheetIndex > context.newSheetIndex && index >= context.newSheetIndex && index < context.oldSheetIndex) {
+    return index + 1
+  }
+  return index
+}
+
 function readNonNegativeIntegerXmlAttribute(
   element: string,
-  attributeName: 'activeTab' | 'firstSheet',
+  attributeName: WorkbookViewIndexAttribute,
 ): { readonly value: number; readonly quote: string } | undefined {
   const match = new RegExp(`\\b${attributeName}=(["'])(\\d+)\\1`, 'u').exec(element)
   if (!match) {
@@ -297,7 +358,7 @@ function readNonNegativeIntegerXmlAttribute(
   return { value, quote }
 }
 
-function replaceXmlAttributeValue(element: string, attributeName: 'activeTab' | 'firstSheet', quote: string, value: string): string {
+function replaceXmlAttributeValue(element: string, attributeName: WorkbookViewIndexAttribute, quote: string, value: string): string {
   return element.replace(new RegExp(`\\b${attributeName}=(["'])\\d+\\1`, 'u'), `${attributeName}=${quote}${value}${quote}`)
 }
 

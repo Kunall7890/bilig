@@ -141,6 +141,14 @@ export class SpreadsheetEngine extends SpreadsheetEngineWorkbookFacadeBase {
     return this.workbook.createSheet(name, this.workbook.sheetsByName.size).id
   }
 
+  moveSheet(name: string, order: number): void {
+    if (!this.workbook.getSheet(name)) {
+      return
+    }
+    const nextOrder = Number.isFinite(order) ? Math.max(0, Math.trunc(order)) : 0
+    this.executeLocalTransaction([{ kind: 'upsertSheet', name, order: nextOrder }])
+  }
+
   renameSheet(oldName: string, newName: string): void {
     const trimmedName = newName.trim()
     if (trimmedName.length === 0 || oldName === trimmedName) {

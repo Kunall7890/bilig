@@ -40,6 +40,7 @@ export interface WorkPaperSheetOperationsRuntime {
   readonly sheetName: (sheetId: number) => string
   readonly captureChanges: (event: SheetOperationEvent | undefined, mutate: () => void) => WorkPaperChange[]
   readonly deleteSheet: (name: string) => void
+  readonly moveSheet: (name: string, order: number) => void
   readonly invalidateSheetDimensions: (sheetId: number) => void
   readonly isItPossibleToClearSheet: (sheetId: number) => boolean
   readonly getSheetDimensions: (sheetId: number) => WorkPaperSheetDimensions
@@ -58,6 +59,7 @@ export interface WorkPaperSheetOperationsRuntime {
 
 export interface WorkPaperSheetOperations {
   readonly addSheet: (sheetName?: string) => string
+  readonly moveSheet: (sheetId: number, order: number) => WorkPaperChange[]
   readonly removeSheet: (sheetId: number) => WorkPaperChange[]
   readonly clearSheet: (sheetId: number) => WorkPaperChange[]
   readonly setSheetContent: (sheetId: number, content: WorkPaperSheet) => WorkPaperChange[]
@@ -91,6 +93,18 @@ export function createWorkPaperSheetOperations(runtime: WorkPaperSheetOperations
         runtime.emitValuesUpdated(changes)
       }
       return name
+    },
+
+    moveSheet(sheetId, order) {
+      const sheet = runtime.sheetRecord(sheetId)
+      const nextOrder = Number.isFinite(order) ? Math.max(0, Math.trunc(order)) : 0
+      if (sheet.order === nextOrder) {
+        return []
+      }
+      return runtime.captureChanges(undefined, () => {
+        runtime.moveSheet(sheet.name, nextOrder)
+        runtime.clearSheetRecordsCache()
+      })
     },
 
     removeSheet(sheetId) {

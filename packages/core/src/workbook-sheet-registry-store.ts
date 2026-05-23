@@ -1,6 +1,6 @@
 import type { EngineCounters } from './perf/engine-counters.js'
 import { makeCellKey } from './workbook-cell-key-index.js'
-import type { WorkbookSheetDeletionMetadataContext } from './workbook-metadata-service-contract.js'
+import type { WorkbookSheetDeletionMetadataContext, WorkbookSheetReorderMetadataContext } from './workbook-metadata-service-contract.js'
 import type { WorkbookMetadataRecord } from './workbook-metadata-types.js'
 import { createWorkbookSheetRecord, type SheetRecord } from './workbook-sheet-record.js'
 
@@ -17,6 +17,7 @@ export class WorkbookSheetRegistryStore {
       readonly cellFormats: Map<number, string>
       readonly getCellPosition: (cellIndex: number) => { sheetId: number; row: number; col: number } | undefined
       readonly deleteSheetRecords: (sheetName: string, context?: WorkbookSheetDeletionMetadataContext) => void
+      readonly reorderSheetRecords: (context: WorkbookSheetReorderMetadataContext) => void
       readonly renameSheetRecords: (oldName: string, nextName: string) => void
     },
   ) {}
@@ -24,7 +25,7 @@ export class WorkbookSheetRegistryStore {
   createSheet(name: string, order = this.options.sheetsByName.size, id?: number): SheetRecord {
     const existing = this.options.sheetsByName.get(name)
     if (existing) {
-      existing.order = order
+      this.moveExistingSheet(existing, order)
       if (id !== undefined && existing.id !== id) {
         this.options.sheetsById.delete(existing.id)
         existing.id = id
@@ -46,6 +47,15 @@ export class WorkbookSheetRegistryStore {
     }
     this.options.sheetsByName.set(name, sheet)
     this.options.sheetsById.set(sheet.id, sheet)
+    return sheet
+  }
+
+  moveSheet(name: string, order: number): SheetRecord | undefined {
+    const sheet = this.options.sheetsByName.get(name)
+    if (!sheet) {
+      return undefined
+    }
+    this.moveExistingSheet(sheet, order)
     return sheet
   }
 
@@ -189,10 +199,36 @@ export class WorkbookSheetRegistryStore {
       this.nextSheetId = id + 1
     }
   }
+
+  private moveExistingSheet(sheet: SheetRecord, order: number): void {
+    const orderedSheets = orderedSheetRecords([...this.options.sheetsByName.values()])
+    const oldSheetIndex = orderedSheets.findIndex((candidate) => candidate.id === sheet.id)
+    if (oldSheetIndex === -1) {
+      return
+    }
+    const newSheetIndex = clampSheetOrder(order, orderedSheets.length)
+    const requiresNormalization = orderedSheets.some((candidate, index) => candidate.order !== index)
+    if (oldSheetIndex === newSheetIndex && !requiresNormalization) {
+      return
+    }
+    orderedSheets.splice(oldSheetIndex, 1)
+    orderedSheets.splice(newSheetIndex, 0, sheet)
+    orderedSheets.forEach((candidate, index) => {
+      candidate.order = index
+    })
+    if (oldSheetIndex !== newSheetIndex) {
+      this.options.reorderSheetRecords({
+        movedSheetName: sheet.name,
+        oldSheetIndex,
+        newSheetIndex,
+        sheetCount: orderedSheets.length,
+      })
+    }
+  }
 }
 
 function sheetDeletionMetadataContext(sheets: readonly SheetRecord[], sheetName: string): WorkbookSheetDeletionMetadataContext | undefined {
-  const orderedSheets = sheets.toSorted((left, right) => left.order - right.order)
+  const orderedSheets = orderedSheetRecords(sheets)
   const deletedSheetIndex = orderedSheets.findIndex((sheet) => sheet.name === sheetName)
   if (deletedSheetIndex === -1) {
     return undefined
@@ -202,4 +238,16 @@ function sheetDeletionMetadataContext(sheets: readonly SheetRecord[], sheetName:
     deletedSheetId: orderedSheets[deletedSheetIndex]!.id,
     sheetCountBeforeDelete: orderedSheets.length,
   }
+}
+
+function orderedSheetRecords(sheets: readonly SheetRecord[]): SheetRecord[] {
+  return [...sheets].toSorted((left, right) => left.order - right.order || left.id - right.id)
+}
+
+function clampSheetOrder(order: number, sheetCount: number): number {
+  if (sheetCount <= 0) {
+    return 0
+  }
+  const normalizedOrder = Number.isFinite(order) ? Math.trunc(order) : 0
+  return Math.max(0, Math.min(normalizedOrder, sheetCount - 1))
 }

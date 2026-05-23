@@ -175,6 +175,73 @@ describe('macOS Desktop Excel preserved package metadata oracle', () => {
   )
 
   it.runIf(process.env.BILIG_EXCEL_ORACLE_RUN === '1')(
+    'matches Desktop Excel workbook view tab indexes after moving a sheet tab',
+    () => {
+      if (!isMacosExcelInstalled()) {
+        throw new Error('BILIG_EXCEL_ORACLE_RUN=1 requires /Applications/Microsoft Excel.app')
+      }
+
+      const tempDir = createExcelAccessibleTempDir('bilig-headless-excel-workbook-view-move-oracle-')
+      try {
+        const sourceBytes = exportXlsx(workbookViewSheetReorderSnapshot())
+        const importedSource = importXlsx(sourceBytes, 'workbook-view-move-source.xlsx').snapshot
+        expect(importedSource.sheets.map((sheet) => sheet.name)).toEqual(['Data', 'Inputs', 'Report'])
+        expect(workbookViewTabIndexes(importedSource)).toEqual({ activeTab: '2', firstSheet: '1' })
+
+        const excelWorkbookPath = join(tempDir, 'excel-workbook-view-move-source.xlsx')
+        writeFileSync(excelWorkbookPath, sourceBytes)
+        const excelResult = runMacosExcelStructuralOperationOracle({
+          workbookPath: excelWorkbookPath,
+          worksheetName: 'Report',
+          operations: [{ kind: 'moveSheet', name: 'Report', before: 'Inputs' }],
+          inspectCells: ['A1'],
+          saveWorkbook: true,
+          timeoutMs: 120_000,
+        })
+        expect(excelResult.cells[0]?.value).toEqual({ kind: 'string', value: 'report' })
+
+        const excelTruth = importXlsx(new Uint8Array(readFileSync(excelWorkbookPath)), 'excel-workbook-view-move-truth.xlsx')
+        expect(excelTruth.snapshot.sheets.map((sheet) => sheet.name)).toEqual(['Data', 'Report', 'Inputs'])
+        const excelTabIndexes = workbookViewTabIndexes(excelTruth.snapshot)
+        expect(excelTabIndexes).toEqual({ activeTab: '1', firstSheet: '1' })
+
+        const workpaper = WorkPaper.buildFromSnapshot(importedSource)
+        try {
+          const reportSheet = workpaper.getSheetId('Report')
+          if (reportSheet === undefined) {
+            throw new Error('Expected Report sheet')
+          }
+          workpaper.moveSheet(reportSheet, 1)
+
+          const headlessSnapshot = workpaper.exportSnapshot()
+          expect(headlessSnapshot.sheets.map((sheet) => sheet.name)).toEqual(['Data', 'Report', 'Inputs'])
+          expect(workbookViewTabIndexes(headlessSnapshot)).toEqual(excelTabIndexes)
+
+          const headlessPath = join(tempDir, 'headless-workbook-view-move.xlsx')
+          writeFileSync(headlessPath, exportXlsx(headlessSnapshot))
+          const headlessExcel = runMacosExcelInspectionOracle({
+            workbookPath: headlessPath,
+            worksheetName: 'Report',
+            formulaCells: [],
+            inspectCells: ['A1'],
+            saveWorkbook: true,
+            timeoutMs: 120_000,
+          })
+          expect(headlessExcel.cells).toEqual(excelResult.cells)
+
+          const headlessTruth = importXlsx(new Uint8Array(readFileSync(headlessPath)), 'headless-workbook-view-move-truth.xlsx')
+          expect(workbookViewTabIndexes(headlessTruth.snapshot)).toEqual(excelTabIndexes)
+        } finally {
+          workpaper.dispose()
+        }
+      } finally {
+        removeMacosExcelTestDir(tempDir)
+      }
+    },
+    180_000,
+  )
+
+  it.runIf(process.env.BILIG_EXCEL_ORACLE_RUN === '1')(
     'matches Desktop Excel calc-chain sheet ids after deleting a prior sheet',
     () => {
       if (!isMacosExcelInstalled()) {
@@ -662,6 +729,40 @@ function workbookViewSheetDeletionSnapshot(): WorkbookSnapshot {
             sheetViewsXml: '<sheetViews><sheetView workbookViewId="0" tabSelected="1"/></sheetViews>',
           },
         },
+        cells: [{ address: 'A1', value: 'report' }],
+      },
+    ],
+  }
+}
+
+function workbookViewSheetReorderSnapshot(): WorkbookSnapshot {
+  return {
+    version: 1,
+    workbook: {
+      name: 'Workbook view sheet reorder',
+      metadata: {
+        viewState: {
+          bookViewsXml: '<bookViews><workbookView activeTab="2" firstSheet="1"/></bookViews>',
+        },
+      },
+    },
+    sheets: [
+      {
+        id: 1,
+        name: 'Data',
+        order: 0,
+        cells: [{ address: 'A1', value: 'data' }],
+      },
+      {
+        id: 2,
+        name: 'Inputs',
+        order: 1,
+        cells: [{ address: 'A1', value: 'inputs' }],
+      },
+      {
+        id: 3,
+        name: 'Report',
+        order: 2,
         cells: [{ address: 'A1', value: 'report' }],
       },
     ],

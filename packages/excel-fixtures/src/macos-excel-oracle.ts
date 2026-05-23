@@ -65,6 +65,7 @@ export type MacosExcelStructuralOperation =
   | { readonly kind: 'clearCell'; readonly address: string }
   | { readonly kind: 'renameSheet'; readonly newName: string }
   | { readonly kind: 'deleteSheet'; readonly name: string }
+  | { readonly kind: 'moveSheet'; readonly name: string; readonly before?: string; readonly after?: string }
   | { readonly kind: 'moveRows'; readonly sourceRange: string; readonly destinationRange: string }
   | { readonly kind: 'moveColumns'; readonly sourceRange: string; readonly destinationRange: string }
   | { readonly kind: 'createDataTable'; readonly range: string; readonly rowInput?: string; readonly columnInput?: string }
@@ -591,6 +592,8 @@ function structuralOperationAppleScript(operation: MacosExcelStructuralOperation
       return `set name of targetWorksheet to ${toAppleScriptString(operation.newName)}`
     case 'deleteSheet':
       return `delete worksheet ${toAppleScriptString(operation.name)} of targetWorkbook`
+    case 'moveSheet':
+      return moveSheetAppleScript(operation)
     case 'moveRows':
       return [
         `cut range (range ${toAppleScriptString(operation.sourceRange)} of targetWorksheet)`,
@@ -676,6 +679,16 @@ function sortHeaderAppleScript(header: MacosExcelSortHeader): string {
     case 'yes':
       return 'header yes'
   }
+}
+
+function moveSheetAppleScript(operation: Extract<MacosExcelStructuralOperation, { readonly kind: 'moveSheet' }>): string {
+  if ((operation.before === undefined) === (operation.after === undefined)) {
+    throw new Error('macOS Excel moveSheet operation requires exactly one before or after anchor')
+  }
+  const anchor = operation.before
+    ? `to before worksheet ${toAppleScriptString(operation.before)} of targetWorkbook`
+    : `to after worksheet ${toAppleScriptString(operation.after!)} of targetWorkbook`
+  return `move worksheet ${toAppleScriptString(operation.name)} of targetWorkbook ${anchor}`
 }
 
 function sortOrderAppleScript(order: MacosExcelSortOrder): string {

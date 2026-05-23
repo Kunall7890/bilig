@@ -458,6 +458,10 @@ export abstract class WorkPaperCapabilitySurface {
     return this.runtimeAdapters.sheetOperations.addSheet(sheetName)
   }
 
+  moveSheet(sheetId: number, order: number): WorkPaperChange[] {
+    return this.runtimeAdapters.sheetOperations.moveSheet(sheetId, order)
+  }
+
   removeSheet(sheetId: number): WorkPaperChange[] {
     return this.runtimeAdapters.sheetOperations.removeSheet(sheetId)
   }

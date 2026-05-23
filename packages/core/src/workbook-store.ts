@@ -121,6 +121,9 @@ export class WorkbookStore extends WorkbookStoreCommentAccessors {
       deleteSheetRecords: (sheetName, context) => {
         runWorkbookMetadataEffect(this.metadataService.deleteSheetRecords(sheetName, context))
       },
+      reorderSheetRecords: (context) => {
+        runWorkbookMetadataEffect(this.metadataService.reorderSheetRecords(context))
+      },
       renameSheetRecords: (oldName, nextName) => {
         runWorkbookMetadataEffect(this.metadataService.renameSheet(oldName, nextName))
       },
@@ -188,6 +191,10 @@ export class WorkbookStore extends WorkbookStoreCommentAccessors {
 
   createSheet(name: string, order = this.sheetsByName.size, id?: number): SheetRecord {
     return this.sheetRegistry.createSheet(name, order, id)
+  }
+
+  moveSheet(name: string, order: number): SheetRecord | undefined {
+    return this.sheetRegistry.moveSheet(name, order)
   }
 
   deleteSheet(name: string): void {

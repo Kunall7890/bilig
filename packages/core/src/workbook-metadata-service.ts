@@ -49,7 +49,11 @@ import {
   type WorkbookFreezePaneRecord,
   type WorkbookMetadataRecord,
 } from './workbook-metadata-types.js'
-import type { WorkbookMetadataService, WorkbookSheetDeletionMetadataContext } from './workbook-metadata-service-contract.js'
+import type {
+  WorkbookMetadataService,
+  WorkbookSheetDeletionMetadataContext,
+  WorkbookSheetReorderMetadataContext,
+} from './workbook-metadata-service-contract.js'
 import { createWorkbookMetadataCellRecordService } from './workbook-metadata-cell-record-service.js'
 import { createWorkbookMetadataDrawingService } from './workbook-metadata-drawing-service.js'
 import { canonicalMergeRangeRef, isSingleCellMergeRange, rangeContainsAddress, rangesIntersect } from './workbook-merge-records.js'
@@ -79,6 +83,7 @@ import {
 import {
   renamePreservedWorkbookMetadataSheetReferences,
   rewritePreservedWorkbookMetadataForSheetDeletion,
+  rewritePreservedWorkbookMetadataForSheetReorder,
 } from './engine/services/structure-preserved-sheet-metadata-rewrite.js'
 
 export { WorkbookMetadataError, type WorkbookMetadataService } from './workbook-metadata-service-contract.js'
@@ -301,6 +306,13 @@ export function createWorkbookMetadataService(metadata: WorkbookMetadataRecord):
     metadata.sheetTabColors.delete(sheetName)
   }
 
+  const reorderSheetRecordsNow = (context: WorkbookSheetReorderMetadataContext): void => {
+    const preservedWorkbookMetadata = rewritePreservedWorkbookMetadataForSheetReorder(metadata.preservedWorkbookMetadata, context)
+    if (preservedWorkbookMetadata) {
+      metadata.preservedWorkbookMetadata = preservedWorkbookMetadata
+    }
+  }
+
   const resetNow = (): void => {
     const defaults = createWorkbookMetadataRecord()
     metadata.properties.clear()
@@ -344,6 +356,9 @@ export function createWorkbookMetadataService(metadata: WorkbookMetadataRecord):
   return {
     renameSheet(oldSheetName, newSheetName) {
       return metadataEffect('Failed to rename workbook sheet metadata', () => renameSheetNow(oldSheetName, newSheetName))
+    },
+    reorderSheetRecords(context) {
+      return metadataEffect('Failed to reorder workbook sheet metadata', () => reorderSheetRecordsNow(context))
     },
     deleteSheetRecords(sheetName, context) {
       return metadataEffect('Failed to delete workbook sheet metadata', () => deleteSheetRecordsNow(sheetName, context))

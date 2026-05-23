@@ -78,6 +78,7 @@ export class WorkbookMetadataError extends Error {
 
 export interface WorkbookMetadataService {
   readonly renameSheet: (oldSheetName: string, newSheetName: string) => Effect.Effect<void, WorkbookMetadataError>
+  readonly reorderSheetRecords: (context: WorkbookSheetReorderMetadataContext) => Effect.Effect<void, WorkbookMetadataError>
   readonly deleteSheetRecords: (
     sheetName: string,
     context?: WorkbookSheetDeletionMetadataContext,
@@ -270,4 +271,11 @@ export interface WorkbookSheetDeletionMetadataContext {
   readonly deletedSheetIndex: number
   readonly deletedSheetId: number
   readonly sheetCountBeforeDelete: number
+}
+
+export interface WorkbookSheetReorderMetadataContext {
+  readonly movedSheetName: string
+  readonly oldSheetIndex: number
+  readonly newSheetIndex: number
+  readonly sheetCount: number
 }

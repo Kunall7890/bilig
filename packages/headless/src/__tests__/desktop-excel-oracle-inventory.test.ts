@@ -186,6 +186,7 @@ describe('macOS Desktop Excel oracle inventory', () => {
     expect(source).toContain('chartArtifacts')
     expect(source).toContain('preserves Desktop Excel workbook and sheet view state after a headless edit')
     expect(source).toContain('matches Desktop Excel workbook view tab indexes after deleting a prior sheet')
+    expect(source).toContain('matches Desktop Excel workbook view tab indexes after moving a sheet tab')
     expect(source).toContain('matches Desktop Excel calc-chain sheet ids after deleting a prior sheet')
     expect(source).toContain('matches Desktop Excel preserved style artifacts and view refs after structural row inserts')
     expect(source).toContain('matches Desktop Excel preserved pivot cache source sheet after source sheet rename')

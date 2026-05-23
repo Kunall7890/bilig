@@ -132,6 +132,20 @@ describe('engine imported package metadata preservation', () => {
     })
   })
 
+  it('rewrites preserved workbook view tab indexes after sheet reorder', async () => {
+    const engine = new SpreadsheetEngine({ workbookName: 'package-metadata-workbook-view-reorder-sheet' })
+    await engine.ready()
+
+    engine.importSnapshot(workbookViewStateSheetReorderSnapshot())
+    engine.moveSheet('Report', 1)
+
+    const exported = engine.exportSnapshot()
+    expect(exported.sheets.map((sheet) => `${sheet.order}:${sheet.name}`)).toEqual(['0:Data', '1:Report', '2:Inputs'])
+    expect(exported.workbook.metadata?.viewState).toEqual({
+      bookViewsXml: '<bookViews><workbookView activeTab="1" firstSheet="1"/></bookViews>',
+    })
+  })
+
   it('drops deleted-sheet preserved calc-chain cells without reindexing sheet ids', async () => {
     const engine = new SpreadsheetEngine({ workbookName: 'package-metadata-calc-chain-delete-sheet' })
     await engine.ready()
@@ -380,6 +394,40 @@ function workbookViewStateSheetDeletionSnapshot(): WorkbookSnapshot {
     version: 1,
     workbook: {
       name: 'Workbook view sheet deletion',
+      metadata: {
+        viewState: {
+          bookViewsXml: '<bookViews><workbookView activeTab="2" firstSheet="1"/></bookViews>',
+        },
+      },
+    },
+    sheets: [
+      {
+        id: 1,
+        name: 'Data',
+        order: 0,
+        cells: [{ address: 'A1', value: 'data' }],
+      },
+      {
+        id: 2,
+        name: 'Inputs',
+        order: 1,
+        cells: [{ address: 'A1', value: 'inputs' }],
+      },
+      {
+        id: 3,
+        name: 'Report',
+        order: 2,
+        cells: [{ address: 'A1', value: 'report' }],
+      },
+    ],
+  }
+}
+
+function workbookViewStateSheetReorderSnapshot(): WorkbookSnapshot {
+  return {
+    version: 1,
+    workbook: {
+      name: 'Workbook view sheet reorder',
       metadata: {
         viewState: {
           bookViewsXml: '<bookViews><workbookView activeTab="2" firstSheet="1"/></bookViews>',
