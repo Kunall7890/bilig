@@ -224,12 +224,12 @@ describe('WorkbookPaneNativeTextLayerV3', () => {
     expect(style).not.toHaveProperty('MozOsxFontSmoothing')
   })
 
-  test('snaps spreadsheet point sizing to crisp browser display pixels at every DPR', () => {
-    expect(resolveNativeTextDisplayFontSizeV3(13.3333)).toBe(13)
-    expect(resolveNativeTextDisplayFontSizeV3(13.3333, 1.25)).toBe(13)
-    expect(resolveNativeTextDisplayFontSizeV3(13.3333, 1.5)).toBe(13)
-    expect(resolveNativeTextDisplayFontSizeV3(13.3333, 2)).toBe(13)
-    expect(resolveNativeTextDisplayFontSizeV3(14.6667)).toBe(15)
+  test('keeps spreadsheet point sizing semantic while snapping line boxes at every DPR', () => {
+    expect(resolveNativeTextDisplayFontSizeV3(13.3333)).toBe(13.3333)
+    expect(resolveNativeTextDisplayFontSizeV3(13.3333, 1.25)).toBe(13.3333)
+    expect(resolveNativeTextDisplayFontSizeV3(13.3333, 1.5)).toBe(13.3333)
+    expect(resolveNativeTextDisplayFontSizeV3(13.3333, 2)).toBe(13.3333)
+    expect(resolveNativeTextDisplayFontSizeV3(14.6667)).toBe(14.6667)
 
     const defaultPointSizeRun = createRun({
       font: '400 13.3333px Arial, sans-serif',
@@ -237,12 +237,12 @@ describe('WorkbookPaneNativeTextLayerV3', () => {
     })
 
     expect(resolveNativeTextRunInnerStyleV3({ dpr: 1, run: defaultPointSizeRun })).toMatchObject({
-      fontSize: 13,
+      fontSize: 13.3333,
       lineHeight: '16px',
       top: -1,
     })
     expect(resolveNativeTextRunInnerStyleV3({ dpr: 2, run: defaultPointSizeRun })).toMatchObject({
-      fontSize: 13,
+      fontSize: 13.3333,
       lineHeight: '16px',
       top: -1,
     })
