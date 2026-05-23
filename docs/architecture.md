@@ -46,6 +46,9 @@ flowchart LR
   - runtime adapter capability checks before mutation handoff
   - structured `checkRuntimeRequirements` diagnostics for transported adapter
     handoff payloads
+  - feature command request validation before runtime-owned workbook extension
+    dispatch
+  - frozen feature vocabulary lists for agent tool manifests and UI handoff
   - check-only runtime execution that skips mutation when no apply capability
     is required
   - apply summaries that expose preview ops, applied ops, preview/apply match,

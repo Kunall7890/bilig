@@ -102,6 +102,7 @@ The main API is intentionally small:
 - descriptions: `describeModel`, `describeRef`, `describePlan`, `describePlanResult`, `describeRuntimeRequirements`, `checkRuntimeRequirements`, `checkRuntimeAdapter`, `describeRunResult`
 - transport data: `isWorkbookRefData`, `toWorkbookRefData`, `collectWorkbookRefData`, `hydrateWorkbookRef`, `hydrateWorkbookRefs`, `toPlanData`, `isPlanData`, `checkPlanData`, `hydratePlanData`, `verifyPlanData`
 - runtime handoff: `runWorkbookPlan`, `runWorkbookAction`, `WorkbookRunAdapter`
+- feature handoff: `defineWorkbookFeaturePlugin`, `checkWorkbookCommandRequest`, `normalizeWorkbookCommandRequest`, `normalizeWorkbookCommandReceipt`, `workbookCommandReceiptOpsMatch`
 - low-level language: `WorkbookOp`, `WorkbookTxn`, `EngineOp`, `EngineOpBatch`, `isEngineOpBatch`
 
 Stable data helpers are exported for generic tool builders:
@@ -113,6 +114,8 @@ Stable data helpers are exported for generic tool builders:
 - `builtInWorkbookCheckKinds`, `isBuiltInWorkbookCheckKind`
 - `workbookActionInputDescriptionKinds`, `isWorkbookActionInputDescriptionKind`, `isWorkbookActionInputDescription`, `isWorkbookActionInput`, `checkInput`
 - `workbookRuntimeRequirementKinds`, `isWorkbookRuntimeRequirementKind`, `workbookRuntimeCapabilities`, `isWorkbookRuntimeCapability`, `checkRuntimeRequirements`
+- `workbookCommandCategories`, `isWorkbookCommandCategory`, `workbookCommandExecutionModes`, `isWorkbookCommandExecutionMode`, `workbookCommandReceiptStatuses`, `isWorkbookCommandReceiptStatus`
+- `workbookProjectionInterceptorPoints`, `isWorkbookProjectionInterceptorPoint`, `workbookUiContributionSlots`, `isWorkbookUiContributionSlot`, `checkWorkbookCommandRequest`
 - `workbookRunErrorCodes`, `isWorkbookRunErrorCode`
 
 ## Selectors
@@ -241,6 +244,17 @@ type WorkbookRunResult =
       unverified?: WorkbookRunUnverified[]
     }
 ```
+
+## Feature Handoff
+
+Feature command requests are plain data for runtimes that expose workbook
+features to agents. Use `checkWorkbookCommandRequest(data)` before dispatching a
+transported request. It returns stable path issues such as `featureId`,
+`commandId`, `category`, `mode`, and `input`, and `normalizeWorkbookCommandRequest`
+returns the frozen request data for the runtime. The exported command category,
+execution-mode, receipt-status, projection-point, and UI-slot lists let tool
+builders present and validate command contracts without importing a schema
+framework.
 
 ## Low-Level Ops
 

@@ -1,12 +1,140 @@
 import { describe, expect, it } from 'vitest'
 import {
+  checkWorkbookCommandRequest,
   defineWorkbookFeaturePlugin,
+  isWorkbookCommandCategory,
+  isWorkbookCommandExecutionMode,
+  isWorkbookCommandReceiptStatus,
+  isWorkbookCommandRequest,
   isWorkbookCommandReceipt,
+  isWorkbookProjectionInterceptorPoint,
+  isWorkbookUiContributionSlot,
+  normalizeWorkbookCommandRequest,
   normalizeWorkbookCommandReceipt,
   workbookCommandReceiptOpsMatch,
+  workbookCommandCategories,
+  workbookCommandExecutionModes,
+  workbookCommandReceiptStatuses,
+  workbookProjectionInterceptorPoints,
+  workbookUiContributionSlots,
 } from '../index.js'
 
 describe('@bilig/workbook feature api', () => {
+  it('exports frozen command vocabulary for agent tools', () => {
+    expect(workbookCommandCategories).toEqual(['command', 'operation', 'mutation'])
+    expect(workbookCommandExecutionModes).toEqual(['preview', 'apply', 'applyAndVerify'])
+    expect(workbookCommandReceiptStatuses).toEqual(['previewed', 'applied', 'rejected', 'noop'])
+    expect(workbookProjectionInterceptorPoints).toEqual([
+      'cellDisplay',
+      'cellStyle',
+      'rangeChrome',
+      'rowVisibility',
+      'beforeCommand',
+      'commandMetadata',
+    ])
+    expect(workbookUiContributionSlots).toEqual(['toolbar', 'sidePanel', 'floatingOverlay', 'status'])
+    expect(Object.isFrozen(workbookCommandCategories)).toBe(true)
+    expect(Object.isFrozen(workbookCommandExecutionModes)).toBe(true)
+    expect(Object.isFrozen(workbookCommandReceiptStatuses)).toBe(true)
+    expect(Object.isFrozen(workbookProjectionInterceptorPoints)).toBe(true)
+    expect(Object.isFrozen(workbookUiContributionSlots)).toBe(true)
+
+    expect(isWorkbookCommandCategory('command')).toBe(true)
+    expect(isWorkbookCommandCategory('other')).toBe(false)
+    expect(isWorkbookCommandExecutionMode('applyAndVerify')).toBe(true)
+    expect(isWorkbookCommandExecutionMode('later')).toBe(false)
+    expect(isWorkbookCommandReceiptStatus('applied')).toBe(true)
+    expect(isWorkbookCommandReceiptStatus('done')).toBe(false)
+    expect(isWorkbookProjectionInterceptorPoint('rangeChrome')).toBe(true)
+    expect(isWorkbookProjectionInterceptorPoint('gridChrome')).toBe(false)
+    expect(isWorkbookUiContributionSlot('toolbar')).toBe(true)
+    expect(isWorkbookUiContributionSlot('menu')).toBe(false)
+  })
+
+  it('checks and normalizes command requests before runtime handoff', () => {
+    const request = normalizeWorkbookCommandRequest({
+      featureId: 'tables',
+      commandId: 'tables.createFromSelection',
+      category: 'command',
+      mode: 'applyAndVerify',
+      input: {
+        tableName: 'Sales',
+        headerRow: true,
+      },
+    })
+
+    expect(Object.isFrozen(request)).toBe(true)
+    expect(isWorkbookCommandRequest(request)).toBe(true)
+    expect(checkWorkbookCommandRequest(request)).toEqual({
+      status: 'valid',
+      request,
+      issues: [],
+    })
+    expect(request).toEqual({
+      featureId: 'tables',
+      commandId: 'tables.createFromSelection',
+      category: 'command',
+      mode: 'applyAndVerify',
+      input: {
+        headerRow: true,
+        tableName: 'Sales',
+      },
+    })
+
+    expect(checkWorkbookCommandRequest('not-a-request')).toEqual({
+      status: 'invalid',
+      issues: [
+        {
+          code: 'invalid_command_request',
+          path: 'request',
+          message: 'Workbook command request must be an object',
+        },
+      ],
+    })
+
+    expect(
+      checkWorkbookCommandRequest({
+        featureId: ' tables ',
+        commandId: '',
+        category: 'bad',
+        mode: 'later',
+        input: () => undefined,
+      }),
+    ).toEqual({
+      status: 'invalid',
+      issues: [
+        {
+          code: 'invalid_command_request',
+          path: 'featureId',
+          message: 'Workbook command request feature id must not have leading or trailing whitespace',
+        },
+        {
+          code: 'invalid_command_request',
+          path: 'commandId',
+          message: 'Workbook command request command id cannot be empty',
+        },
+        {
+          code: 'invalid_command_request',
+          path: 'category',
+          message: 'Workbook command request category is invalid',
+        },
+        {
+          code: 'invalid_command_request',
+          path: 'mode',
+          message: 'Workbook command request mode is invalid',
+        },
+        {
+          code: 'invalid_command_request',
+          path: 'input',
+          message: 'Workbook command request input must be JSON-safe',
+        },
+      ],
+    })
+    expect(() => normalizeWorkbookCommandRequest({ featureId: 'tables' })).toThrowError(
+      'Workbook command request is invalid: Workbook command request command id must be a string',
+    )
+  })
+
   it('defines immutable feature plugins with command, projection, and UI contribution metadata', () => {
     const plugin = defineWorkbookFeaturePlugin({
       id: 'tables',

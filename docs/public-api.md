@@ -50,7 +50,7 @@ Build `@bilig/workbook` so an agent would love using it: simple, generic,
 predictable, inspectable, verifiable, and never dependent on hardcoded business
 models or human spreadsheet UI assumptions.
 
-The stable contract has three layers.
+The stable contract has four layers.
 
 ### Agent model contract
 
@@ -135,6 +135,29 @@ requirements, preview ops, applied ops, preview/apply match, readback values or
 formulas, check statuses, proof objects, undo metadata, and remaining unverified
 facts without relying on rendered spreadsheet state.
 
+### Feature command handoff
+
+Runtimes may expose workbook extensions as commands, projection interceptors,
+and UI contributions. The public package still stays data-only.
+
+- `defineWorkbookFeaturePlugin` freezes extension metadata.
+- `checkWorkbookCommandRequest(data)` validates transported command requests
+  before dispatch and returns path issues such as `featureId`, `commandId`,
+  `category`, `mode`, and `input`.
+- `normalizeWorkbookCommandRequest(data)` returns a frozen request after the
+  same validation.
+- `normalizeWorkbookCommandReceipt(receipt)` and
+  `workbookCommandReceiptOpsMatch(receipt)` give agents boring receipt proof
+  after preview or apply.
+- Frozen vocabularies such as `workbookCommandCategories`,
+  `workbookCommandExecutionModes`, `workbookCommandReceiptStatuses`,
+  `workbookProjectionInterceptorPoints`, and `workbookUiContributionSlots` let
+  tool builders expose exact supported values without a schema framework.
+
+Feature command handoff does not move execution into `@bilig/workbook`. The
+runtime owns command semantics. The package only normalizes the manifest,
+validates transported requests, and describes receipt evidence.
+
 ### Escape hatches
 
 The preferred path is the small model API. Escape hatches stay explicit:
@@ -210,11 +233,29 @@ Full export surface:
 - `isWorkbookRuntimeRequirementKind`
 - `workbookRuntimeCapabilities`
 - `isWorkbookRuntimeCapability`
+- `defineWorkbookFeaturePlugin`
+- `checkWorkbookCommandRequest`
+- `normalizeWorkbookCommandRequest`
+- `isWorkbookCommandRequest`
+- `normalizeWorkbookCommandReceipt`
+- `isWorkbookCommandReceipt`
+- `workbookCommandReceiptOpsMatch`
+- `workbookCommandCategories`
+- `isWorkbookCommandCategory`
+- `workbookCommandExecutionModes`
+- `isWorkbookCommandExecutionMode`
+- `workbookCommandReceiptStatuses`
+- `isWorkbookCommandReceiptStatus`
+- `workbookProjectionInterceptorPoints`
+- `isWorkbookProjectionInterceptorPoint`
+- `workbookUiContributionSlots`
+- `isWorkbookUiContributionSlot`
 - `formula`
 - `workbook.addOp(op, { target?, message? })` inside model actions
 - `findTable`, `findColumn`, `findRange`, `findName`, and `findRows` through the model workbook context and as top-level helpers
 - `check.exists`, `check.noFormulaErrors`, `check.valueEquals`, `check.formulaEquals`, and `check.custom` through the model workbook context and as top-level helpers
 - `WorkbookModel`, `WorkbookAction`, `WorkbookActionConfig`, `WorkbookActionDefinition`, `WorkbookActionContext`, `WorkbookCheckContext`, `WorkbookFindWorkbook`, `WorkbookCheckWorkbook`, `WorkbookActionWorkbook`, `WorkbookModelWorkbook`, `WorkbookFindNamespace`, `WorkbookRef`, `WorkbookRefData`, `WorkbookRefKind`, `WorkbookBaseRefData`, `WorkbookRangeRef`, `WorkbookRangeRefData`, `WorkbookNameRef`, `WorkbookNameRefData`, `WorkbookTableRef`, `WorkbookTableRefData`, `WorkbookColumnRef`, `WorkbookColumnRefData`, `WorkbookRowsRef`, `WorkbookRowsRefData`, `WorkbookRowOperator`, `WorkbookRowValueType`, `WorkbookActionInput`, `WorkbookActionInputDescription`, `WorkbookActionInputDescriptionKind`, `WorkbookActionInputIssueCode`, `WorkbookActionInputIssue`, `WorkbookActionInputCheckResult`, `WorkbookActionInspection`, `WorkbookAddOpOptions`, `WorkbookActionPlanResult`, `WorkbookModelDescription`, `WorkbookRefDescription`, `WorkbookActionPlanDescription`, `WorkbookPlanData`, `WorkbookPlanDataRefs`, `WorkbookPlanDataIssueCode`, `WorkbookPlanDataIssue`, `WorkbookPlanDataCheckResult`, `WorkbookExecutablePlan`, `WorkbookActionPlanResultDescription`, `WorkbookRunResultDescription`, `WorkbookUndoRefDescription`, `WorkbookRunApplySummaryDescription`, `WorkbookRunUnverifiedDescription`, `WorkbookRuntimeRequirements`, `WorkbookRuntimeRequirement`, `WorkbookRuntimeRequirementKind`, `WorkbookRuntimeRequirementsIssueCode`, `WorkbookRuntimeRequirementsIssue`, `WorkbookRuntimeRequirementsCheckResult`, `WorkbookRuntimeCapability`, `WorkbookRuntimeAdapterIssueCode`, `WorkbookRuntimeAdapterMethod`, `WorkbookRuntimeAdapterIssue`, `WorkbookRuntimeAdapterCheckResult`, `WorkbookRuntimeAdapterCandidate`, `WorkbookPlanVerification`, `WorkbookPlanIssue`, `WorkbookModelVerification`, `WorkbookModelActionVerification`, `WorkbookModelVerificationOptions`, `WorkbookRunAdapter`, `WorkbookRunApplyResult`, `WorkbookRunOptions`, `WorkbookRunApplySummary`, `WorkbookRunUnverified`, `WorkbookRunUnverifiedKind`, `WorkbookRunReadback`, `WorkbookReadbackVerification`, `WorkbookReadbackIssue`, `WorkbookReadbackIssueCode`, `WorkbookCheckExpectation`, `WorkbookCheckExpectationDescription`, `WorkbookBuiltInCheckKind`, `WorkbookCustomCheckOptions`, `WorkbookReadbackCheckOptions`, `WorkbookFormulaExpression`, `WorkbookFormulaLabel`, `WorkbookFormulaLabelDescription`, `WorkbookRawFormulaOptions`, `WorkbookRunResult`, `WorkbookRunError`, `WorkbookRunErrorCode`, and `WorkbookCheckResult`
+- `WorkbookFeatureId`, `WorkbookCommandCategory`, `WorkbookCommandExecutionMode`, `WorkbookCommandReceiptStatus`, `WorkbookProjectionInterceptorPoint`, `WorkbookUiContributionSlot`, `WorkbookFeatureLifecycleContext`, `WorkbookCommandDescriptor`, `WorkbookCommandRequest`, `WorkbookCommandRequestIssueCode`, `WorkbookCommandRequestIssue`, `WorkbookCommandRequestCheckResult`, `WorkbookCommandReceipt`, `WorkbookCellDisplayProjection`, `WorkbookCellStyleProjection`, `WorkbookRangeChromeProjection`, `WorkbookRowVisibilityProjection`, `WorkbookCommandMetadataProjection`, `WorkbookProjectionContext`, `WorkbookProjectionInterceptorRegistration`, `WorkbookUiContribution`, `WorkbookFeatureRegistration`, and `WorkbookFeaturePlugin`
 - the existing low-level operation language: `WorkbookOp`, `WorkbookTxn`, `EngineOp`, and `EngineOpBatch`
 
 The package builds portable workbook intent and concrete low-level ops when the
