@@ -18,6 +18,11 @@ The public surface stays generic:
 - `collectWorkbookRefs`
 - `findTable`, `findColumn`, `findRange`, `findName`, `findRows`
 - `find`
+- `workbookRefKinds`
+- `isWorkbookRefKind`
+- `isWorkbookRef`
+- `workbookRowOperators`
+- `isWorkbookRowOperator`
 - `check`
 - `describeModel`
 - `describeRef`
@@ -52,6 +57,14 @@ The public surface stays generic:
 - `WorkbookActionWorkbook`
 - `WorkbookModelWorkbook`
 - `WorkbookFindNamespace`
+- `WorkbookRef`
+- `WorkbookRefKind`
+- `WorkbookRangeRef`
+- `WorkbookNameRef`
+- `WorkbookTableRef`
+- `WorkbookColumnRef`
+- `WorkbookRowsRef`
+- `WorkbookRowOperator`
 - `WorkbookActionInput`
 - `WorkbookActionInputDescription`
 - `WorkbookActionInputDescriptionKind`
@@ -215,6 +228,10 @@ Use `findTable`, `findColumn`, `findRange`, `findName`, and `findRows` directly
 when an agent or test needs the same generic refs outside a model callback. The
 same helpers are also available as a frozen `find` namespace with short aliases
 such as `find.table(...)`, `find.range(...)`, and `find.rows(...)`.
+Use the frozen `workbookRefKinds` and `workbookRowOperators` lists, plus
+`isWorkbookRefKind`, `isWorkbookRef`, and `isWorkbookRowOperator`, when a
+generic agent tool needs to validate model refs or row predicates without
+copying string unions or depending on a schema package.
 Selector helpers trim text, canonicalize cell addresses, and reject empty table
 names, column names, named ranges, headers, invalid range addresses, invalid row
 operators, and non-finite row predicate values before a plan reaches runtime.

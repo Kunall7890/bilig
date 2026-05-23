@@ -16,11 +16,15 @@ import {
   findTable,
   inspectModel,
   isWorkbookRef,
+  isWorkbookRefKind,
+  isWorkbookRowOperator,
   planWorkbookAction,
   defineModel,
   formula,
   verifyModel,
   verifyPlan,
+  workbookRefKinds,
+  workbookRowOperators,
 } from '../index.js'
 
 describe('@bilig/workbook model api', () => {
@@ -263,6 +267,18 @@ describe('@bilig/workbook model api', () => {
       headers: ['Amount'],
     })
     expect(() => Object.defineProperty(table, 'label', { value: 'Changed' })).toThrowError(TypeError)
+  })
+
+  it('exports frozen ref kind and row operator contracts for agent tools', () => {
+    expect(workbookRefKinds).toEqual(['range', 'name', 'table', 'column', 'rows'])
+    expect(workbookRowOperators).toEqual(['eq', 'neq', 'contains', 'startsWith', 'gt', 'gte', 'lt', 'lte'])
+    expect(Object.isFrozen(workbookRefKinds)).toBe(true)
+    expect(Object.isFrozen(workbookRowOperators)).toBe(true)
+
+    expect(isWorkbookRefKind('table')).toBe(true)
+    expect(isWorkbookRefKind('chart')).toBe(false)
+    expect(isWorkbookRowOperator('gte')).toBe(true)
+    expect(isWorkbookRowOperator('between')).toBe(false)
   })
 
   it('keeps row selector refs distinct by predicate value', () => {

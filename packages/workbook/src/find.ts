@@ -36,8 +36,17 @@ export interface WorkbookColumnRef extends WorkbookBaseRef {
 
 export type WorkbookRowOperator = 'eq' | 'neq' | 'contains' | 'startsWith' | 'gt' | 'gte' | 'lt' | 'lte'
 
-const WORKBOOK_ROW_OPERATORS: readonly WorkbookRowOperator[] = ['eq', 'neq', 'contains', 'startsWith', 'gt', 'gte', 'lt', 'lte']
-const WORKBOOK_ROW_OPERATOR_SET = new Set<string>(WORKBOOK_ROW_OPERATORS)
+export const workbookRowOperators = Object.freeze([
+  'eq',
+  'neq',
+  'contains',
+  'startsWith',
+  'gt',
+  'gte',
+  'lt',
+  'lte',
+] as const satisfies readonly WorkbookRowOperator[])
+const WORKBOOK_ROW_OPERATOR_SET = new Set<string>(workbookRowOperators)
 
 function hasOwnString<Key extends string>(value: object, key: Key): value is Record<Key, string> {
   const descriptor = Object.getOwnPropertyDescriptor(value, key)
@@ -63,10 +72,15 @@ export interface WorkbookRowsRef extends WorkbookBaseRef {
 
 export type WorkbookRef = WorkbookRangeRef | WorkbookNameRef | WorkbookTableRef | WorkbookColumnRef | WorkbookRowsRef
 
-const WORKBOOK_REF_KINDS = new Set<string>(['range', 'name', 'table', 'column', 'rows'])
+export const workbookRefKinds = Object.freeze(['range', 'name', 'table', 'column', 'rows'] as const satisfies readonly WorkbookRefKind[])
+const WORKBOOK_REF_KIND_SET = new Set<string>(workbookRefKinds)
+
+export function isWorkbookRefKind(value: unknown): value is WorkbookRefKind {
+  return typeof value === 'string' && WORKBOOK_REF_KIND_SET.has(value)
+}
 
 function hasValidBaseRef(value: object): value is WorkbookBaseRef {
-  return hasOwnString(value, 'kind') && WORKBOOK_REF_KINDS.has(value.kind) && hasOwnString(value, 'id') && hasOwnString(value, 'label')
+  return hasOwnString(value, 'kind') && isWorkbookRefKind(value.kind) && hasOwnString(value, 'id') && hasOwnString(value, 'label')
 }
 
 function hasOptionalString(value: object, key: string): boolean {
@@ -313,7 +327,7 @@ function assertRangeOrder(start: NormalizedCellAddress, end: NormalizedCellAddre
   }
 }
 
-function isWorkbookRowOperator(value: unknown): value is WorkbookRowOperator {
+export function isWorkbookRowOperator(value: unknown): value is WorkbookRowOperator {
   return typeof value === 'string' && WORKBOOK_ROW_OPERATOR_SET.has(value)
 }
 
