@@ -47,11 +47,13 @@ describe('dynamic overlay batch v3', () => {
       expect.arrayContaining([
         expect.objectContaining({ x: 146, y: 44, width: 150, height: 2 }),
         expect.objectContaining({ x: 146, y: 44, width: 2, height: 30 }),
-        expect.objectContaining({ x: 292.5, y: 70.5, width: 7, height: 7 }),
+        expect.objectContaining({ x: 292, y: 70, width: 8, height: 8 }),
         expect.objectContaining({ x: 297, y: 75, width: 98, height: 18 }),
       ]),
     )
-    expect(readOverlayRects(overlay)).toEqual(expect.arrayContaining([expect.objectContaining({ x: 147, y: 45, width: 148, height: 28 })]))
+    expect(readOverlayRects(overlay)).not.toEqual(
+      expect.arrayContaining([expect.objectContaining({ x: 147, y: 45, width: 148, height: 28 })]),
+    )
     expect(readOverlayRects(overlay)).toEqual(
       expect.arrayContaining([
         expect.objectContaining({ x: 295, y: 0, width: 1, height: 220 }),
@@ -60,9 +62,7 @@ describe('dynamic overlay batch v3', () => {
         expect.objectContaining({ x: 0, y: 43, width: 520, height: 1 }),
       ]),
     )
-    expect(readOverlayRects(overlay)).not.toEqual(
-      expect.arrayContaining([expect.objectContaining({ x: 291.5, y: 70.5, width: 1, height: 7 })]),
-    )
+    expect(readOverlayRects(overlay)).not.toEqual(expect.arrayContaining([expect.objectContaining({ x: 291, y: 70, width: 1, height: 8 })]))
   })
 
   test('draws axis selection headers and guides from the live camera without masking cell fills', () => {
@@ -148,10 +148,12 @@ describe('dynamic overlay batch v3', () => {
         expect.objectContaining({ x: 444, y: 84, width: 2, height: 20 }),
       ]),
     )
-    expect(readOverlayRects(overlay)).toEqual(expect.arrayContaining([expect.objectContaining({ x: 147, y: 45, width: 298, height: 58 })]))
+    expect(readOverlayRects(overlay)).not.toEqual(
+      expect.arrayContaining([expect.objectContaining({ x: 147, y: 45, width: 298, height: 58 })]),
+    )
   })
 
-  test('can leave selection chrome to the DOM while keeping TypeGPU range fills authoritative', () => {
+  test('can leave body selection chrome to the DOM without masking selected cell backgrounds', () => {
     const metrics = getGridMetrics()
     const geometry = createGridGeometrySnapshotFromAxes({
       columns: createGridAxisWorldIndex({ axisLength: 20, defaultSize: 100 }),
@@ -179,12 +181,13 @@ describe('dynamic overlay batch v3', () => {
 
     expect(overlay.fillRectCount).toBeGreaterThan(0)
     expect(overlay.borderRectCount).toBe(0)
-    expect(readOverlayRects(overlay).find((rect) => rect.x === 147 && rect.y === 45)?.color.a).toBeGreaterThanOrEqual(0.159)
-    expect(readOverlayRects(overlay)).toEqual(expect.arrayContaining([expect.objectContaining({ x: 147, y: 45, width: 298, height: 58 })]))
+    expect(readOverlayRects(overlay)).not.toEqual(
+      expect.arrayContaining([expect.objectContaining({ x: 147, y: 45, width: 298, height: 58 })]),
+    )
     expect(readOverlayRects(overlay)).not.toEqual(
       expect.arrayContaining([
         expect.objectContaining({ x: 146, y: 44, width: 300, height: 1 }),
-        expect.objectContaining({ x: 442.5, y: 100.5, width: 7, height: 7 }),
+        expect.objectContaining({ x: 442, y: 100, width: 8, height: 8 }),
       ]),
     )
   })

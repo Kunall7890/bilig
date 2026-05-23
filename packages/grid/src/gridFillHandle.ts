@@ -1,6 +1,6 @@
 import type { Item, Rectangle } from './gridTypes.js'
 
-export const GRID_FILL_HANDLE_VISUAL_SIZE = 7
+export const GRID_FILL_HANDLE_VISUAL_SIZE = 8
 export const GRID_FILL_HANDLE_HIT_SIZE = 10
 
 export interface FillHandleOverlayBounds {

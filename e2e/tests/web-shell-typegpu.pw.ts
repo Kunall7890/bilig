@@ -114,8 +114,8 @@ function isCornflowerBlueFill(point: ReadbackPoint): boolean {
   return point.a === 255 && point.b > point.g && point.g > point.r && point.b - point.r > 55
 }
 
-function isSelectionBlueTint(point: ReadbackPoint): boolean {
-  return point.a === 255 && point.b > point.g && point.g >= point.r && point.b - point.r >= 18
+function isSelectionGreenTint(point: ReadbackPoint): boolean {
+  return point.a === 255 && point.g > point.r && point.g > point.b && point.g - point.r >= 8
 }
 
 function isThemeGreenFill(point: ReadbackPoint): boolean {
@@ -403,16 +403,22 @@ test('@browser-webgpu @browser-serial main workbook shell grid renders and updat
   } as const
 
   const initialReadback = await waitForReadback(page, initialProbe, (result) => {
-    return result.darkPixelCounts.columnHeaderText > 0 && result.darkPixelCounts.rowHeaderText > 0
+    return isWorkbookWhitePixel(result.points.bodyBlank) && result.points.unselectedHeaderFill.a === 255
   })
+  await waitForVisibleNativeTextRuns(
+    page,
+    [
+      { name: 'columnHeaderText', text: 'B' },
+      { name: 'rowHeaderText', text: '2' },
+    ],
+    (runs) => runs.rowHeaderRunCount > 0 && runs.visibleRunCount > 0,
+  )
 
   expect(initialReadback.hasGpu).toBe(true)
   expect(initialReadback.width).toBeGreaterThan(400)
   expect(initialReadback.height).toBeGreaterThan(250)
   expect(initialReadback.points.bodyBlank).toMatchObject({ r: 255, g: 255, b: 255, a: 255 })
-  expect(initialReadback.darkPixelCounts.columnHeaderText).toBeGreaterThan(0)
-  expect(initialReadback.darkPixelCounts.rowHeaderText).toBeGreaterThan(0)
-  await expect(page.getByTestId('grid-native-text-layer')).toHaveCount(0)
+  await expect(page.getByTestId('grid-native-text-layer')).toHaveCount(1)
 
   await clickProductCell(page, 2, 3)
   await expect(page.getByTestId('status-selection')).toHaveText('Sheet1!C4')
@@ -436,10 +442,8 @@ test('@browser-webgpu @browser-serial main workbook shell grid renders and updat
     ],
   } as const
 
-  const valueReadback = await waitForReadback(page, valueProbe, (result) => {
-    return result.darkPixelCounts.c4ValueText > 0
-  })
-  expect(valueReadback.darkPixelCounts.c4ValueText).toBeGreaterThan(0)
+  const valueReadback = await waitForReadback(page, valueProbe, (result) => result.sequence > initialReadback.sequence)
+  await waitForNativeTextRunContent(page, '123')
 
   await clickProductCell(page, 1, 1)
   await expect(page.getByTestId('status-selection')).toHaveText('Sheet1!B2')
@@ -460,26 +464,25 @@ test('@browser-webgpu @browser-serial main workbook shell grid renders and updat
   const rangeReadback = await waitForReadback(page, rangeProbe, (result) => {
     return (
       result.sequence > valueReadback.sequence &&
-      isSelectionBlueTint(result.points.selectedRangeFill) &&
-      isSelectionBlueTint(result.points.topHeaderSelectionFill)
+      isWorkbookWhitePixel(result.points.selectedRangeFill) &&
+      isSelectionGreenTint(result.points.topHeaderSelectionFill)
     )
   })
 
   expect(rangeReadback.points.activeCellFill).toMatchObject({ r: 255, g: 255, b: 255, a: 255 })
-  expect(isSelectionBlueTint(rangeReadback.points.selectedRangeFill)).toBe(true)
-  expect(isSelectionBlueTint(rangeReadback.points.topHeaderSelectionFill)).toBe(true)
+  expect(isWorkbookWhitePixel(rangeReadback.points.selectedRangeFill)).toBe(true)
+  expect(isSelectionGreenTint(rangeReadback.points.topHeaderSelectionFill)).toBe(true)
   await expect(page.getByTestId('grid-pane-renderer')).toHaveAttribute('data-v3-presented-overlay-rect-signature', /^[a-z0-9-]+$/)
-  const domSelectionFillOpacity = await page
-    .locator(
-      [
-        '[data-grid-selection-visual-role="header-fill"]',
-        '[data-grid-selection-visual-role="hover-fill"]',
-        '[data-grid-selection-visual-role="selection-fill"]',
-      ].join(','),
-    )
+  const domHiddenSelectionFillOpacity = await page
+    .locator(['[data-grid-selection-visual-role="header-fill"]', '[data-grid-selection-visual-role="hover-fill"]'].join(','))
     .evaluateAll((nodes) => nodes.map((node) => window.getComputedStyle(node).opacity))
-  expect(domSelectionFillOpacity.length).toBeGreaterThan(0)
-  expect(domSelectionFillOpacity.every((opacity) => opacity === '0')).toBe(true)
+  expect(domHiddenSelectionFillOpacity.length).toBeGreaterThan(0)
+  expect(domHiddenSelectionFillOpacity.every((opacity) => opacity === '0')).toBe(true)
+  const domRangeSelectionFillOpacity = await page
+    .locator('[data-grid-selection-visual-role="selection-fill"][data-grid-selection-visual-key^="selection-fill:range"]')
+    .evaluateAll((nodes) => nodes.map((node) => window.getComputedStyle(node).opacity))
+  expect(domRangeSelectionFillOpacity.length).toBeGreaterThan(0)
+  expect(domRangeSelectionFillOpacity.every((opacity) => opacity !== '0')).toBe(true)
   const domSelectionChromeOpacity = await page
     .locator(
       [
@@ -490,7 +493,7 @@ test('@browser-webgpu @browser-serial main workbook shell grid renders and updat
     )
     .evaluateAll((nodes) => nodes.map((node) => window.getComputedStyle(node).opacity))
   expect(domSelectionChromeOpacity.length).toBeGreaterThan(0)
-  expect(domSelectionChromeOpacity.every((opacity) => opacity === '0')).toBe(true)
+  expect(domSelectionChromeOpacity.every((opacity) => opacity !== '0')).toBe(true)
   await expect(page.getByTestId('grid-pane-renderer-floor')).toHaveCount(0)
   await expect(page.getByTestId('grid-pane-renderer-fallback')).toHaveCount(0)
   await expect(page.getByTestId('grid-pane-renderer')).toHaveCSS('opacity', '1')
@@ -1453,7 +1456,7 @@ test('@browser-webgpu @browser-deep axis selections paint atomically over the ty
   await expectSelectionVisualOpacity(
     page.locator('[data-grid-selection-visual-role="active-border"]'),
     'selected column active cell border',
-    'hidden',
+    'visible',
   )
   await expect(page.locator('[data-grid-selection-visual-key="header-fill:column:3"]')).toHaveCount(0)
 
@@ -1476,7 +1479,7 @@ test('@browser-webgpu @browser-deep axis selections paint atomically over the ty
   await expectSelectionVisualOpacity(
     page.locator('[data-grid-selection-visual-role="active-border"]'),
     'selected row active cell border',
-    'hidden',
+    'visible',
   )
   await expect(page.locator('[data-grid-selection-visual-key="header-fill:row:6"]')).toHaveCount(0)
 
@@ -2382,6 +2385,19 @@ async function waitForVisibleNativeTextRuns(
     throw new Error('expected native text run result')
   }
   return lastResult
+}
+
+async function waitForNativeTextRunContent(page: Page, text: string): Promise<void> {
+  await expect
+    .poll(
+      async () =>
+        await page.evaluate(
+          (needle) => [...document.querySelectorAll('[data-native-text-run]')].some((run) => run.textContent?.includes(needle) ?? false),
+          text,
+        ),
+      { timeout: 10_000 },
+    )
+    .toBe(true)
 }
 
 async function waitForReadback(

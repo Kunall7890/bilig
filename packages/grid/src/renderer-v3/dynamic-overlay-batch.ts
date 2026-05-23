@@ -232,12 +232,6 @@ function appendSelectionOverlay(input: {
   const isMultiCellSelection = input.selectionRange.width > 1 || input.selectionRange.height > 1
   const activeCell = input.gridSelection?.current?.cell ?? null
   if (isMultiCellSelection) {
-    appendSelectionFillRects({
-      color: parseGpuColor(workbookThemeColors.selectionFill),
-      fillRects: input.fillRects,
-      geometry: input.geometry,
-      range: input.selectionRange,
-    })
     if (input.showSelectionChrome) {
       for (const rect of input.geometry.rangeScreenRects(input.selectionRange)) {
         appendBorderRects(input.borderRects, rect, borderColor, 2)

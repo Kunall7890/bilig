@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState, type CSSProperties } from 'react'
 import { MAX_COLS, MAX_ROWS } from '@bilig/protocol'
 import type { GridGeometrySnapshot } from './gridGeometry.js'
 import type { GridSelection, Item, Rectangle } from './gridTypes.js'
-import { selectionFillRangesForRange } from './gridSelectionFillRanges.js'
+import { selectionFillRangesForRange, selectionFillRangesForRangeExcludingCell } from './gridSelectionFillRanges.js'
 import type { WorkbookGridScrollStore } from './workbookGridScrollStore.js'
 import { workbookThemeColors } from './workbookTheme.js'
 
@@ -83,19 +83,26 @@ export function GridSelectionVisualOverlay(props: GridSelectionVisualOverlayProp
           data-grid-selection-visual-key={rect.key}
           data-grid-selection-visual-role={rect.role}
           key={keyForRect(rect)}
-          style={styleForRect(rect, shouldHideVisualRect(rect.role, selectionChromeMode))}
+          style={styleForRect(rect, shouldHideVisualRect(rect, selectionChromeMode))}
         />
       ))}
     </div>
   )
 }
 
-function shouldHideVisualRect(role: VisualRectRole, mode: NonNullable<GridSelectionVisualOverlayProps['selectionChromeMode']>): boolean {
+function shouldHideVisualRect(
+  rect: GridSelectionVisualRect,
+  mode: NonNullable<GridSelectionVisualOverlayProps['selectionChromeMode']>,
+): boolean {
   if (mode === 'geometry-only') {
     return true
   }
   if (mode === 'chrome-only') {
-    return role === 'selection-fill' || role === 'header-fill' || role === 'hover-fill'
+    return (
+      rect.role === 'header-fill' ||
+      rect.role === 'hover-fill' ||
+      (rect.role === 'selection-fill' && !rect.key.startsWith('selection-fill:range'))
+    )
   }
   return false
 }
@@ -159,9 +166,10 @@ function appendBodySelectionVisualRects(
 
   const isMultiCellSelection = input.selectionRange.width > 1 || input.selectionRange.height > 1
   const activeCell = input.gridSelection.current?.cell ?? null
+
   if (isMultiCellSelection) {
     let fillIndex = 0
-    for (const fillRange of selectionFillRangesForRange(input.selectionRange)) {
+    for (const fillRange of selectionFillRangesForRangeExcludingCell(input.selectionRange, activeCell)) {
       let segmentIndex = 0
       for (const bounds of input.geometry.rangeScreenRects(fillRange)) {
         appendInsetRect(rects, 'selection-fill', stableRangeKey('selection-fill:range', fillRange, fillIndex, segmentIndex), bounds, 1, 1)
@@ -169,9 +177,7 @@ function appendBodySelectionVisualRects(
       }
       fillIndex += 1
     }
-  }
 
-  if (isMultiCellSelection) {
     let segmentIndex = 0
     for (const bounds of input.geometry.rangeScreenRects(input.selectionRange)) {
       rects.push({
@@ -482,7 +488,9 @@ function styleForRect(rect: GridSelectionVisualRect, geometryOnly = false): CSSP
     return {
       ...base,
       backgroundColor: workbookThemeColors.selectionAccent,
-      boxShadow: `0 0 0 1px ${workbookThemeColors.selectionAccent}`,
+      borderColor: workbookThemeColors.surface,
+      borderWidth: 1,
+      boxSizing: 'border-box',
     }
   }
   if (rect.role === 'header-fill') {

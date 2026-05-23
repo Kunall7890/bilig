@@ -79,7 +79,7 @@ describe('CellEditorOverlay', () => {
     expect(overlay?.getAttribute('class')).not.toContain('rounded-')
     expect(overlay?.getAttribute('class')).not.toContain('shadow-')
     expect(overlay?.getAttribute('class')).not.toContain('border-[var(--wb-accent)]')
-    expect(overlay?.style.borderColor).toBe('rgb(26, 115, 232)')
+    expect(overlay?.style.borderColor).toBe('rgb(33, 115, 70)')
 
     await act(async () => {
       root.unmount()

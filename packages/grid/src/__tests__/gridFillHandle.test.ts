@@ -83,7 +83,7 @@ describe('gridFillHandle', () => {
     expect(
       resolveFillHandleHitTargetBounds({
         hostBounds: { width: 400, height: 300 },
-        visualBounds: { x: 226.5, y: 140.5, width: 7, height: 7 },
+        visualBounds: { x: 226, y: 140, width: 8, height: 8 },
       }),
     ).toEqual({
       x: 225,
@@ -99,7 +99,7 @@ describe('gridFillHandle', () => {
         hostBounds: { width: 400, height: 300 },
         minX: 46,
         minY: 24,
-        visualBounds: { x: 20, y: -20, width: 7, height: 7 },
+        visualBounds: { x: 20, y: -20, width: 8, height: 8 },
       }),
     ).toBeUndefined()
   })
@@ -110,7 +110,7 @@ describe('gridFillHandle', () => {
         hostBounds: { width: 400, height: 300 },
         minX: 46,
         minY: 24,
-        visualBounds: { x: 43.5, y: 22.5, width: 7, height: 7 },
+        visualBounds: { x: 43, y: 22, width: 8, height: 8 },
       }),
     ).toEqual({
       x: 46,
@@ -126,7 +126,7 @@ describe('gridFillHandle', () => {
         hostBounds: { width: 320, height: 100 },
         minX: 46,
         minY: 24,
-        visualBounds: { x: 312.5, y: 92.5, width: 7, height: 7 },
+        visualBounds: { x: 312, y: 92, width: 8, height: 8 },
       }),
     ).toEqual({
       x: 311,
