@@ -153,6 +153,10 @@ Accessors are ignored instead of invoked, so hidden consumer getters cannot run
 while an agent is planning, verifying, logging, or hydrating workbook intent.
 Array entries follow the same rule, and ref cloning copies only known ref fields
 instead of spreading extra enumerable properties.
+Selector creation follows the same data boundary. `findTable`, `findColumn`,
+`findRange`, and `findRows` read option objects, row predicates, and header
+arrays through own data properties, rejecting accessor-backed fields before any
+getter can run.
 
 For full action handoff, use `toPlanData(plan)` before JSON transport. A runtime
 can call `checkPlanData(data)` to get structured path-based issues before

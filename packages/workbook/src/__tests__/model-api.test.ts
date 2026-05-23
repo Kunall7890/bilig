@@ -519,6 +519,84 @@ describe('@bilig/workbook model api', () => {
     ).toThrowError('Workbook rows selector operator gt requires a number or string value')
   })
 
+  it('rejects accessor-backed public find selectors without invoking getters', () => {
+    let tableNameGetterInvoked = false
+    const tableOptions: Record<string, unknown> = {}
+    Object.defineProperty(tableOptions, 'name', {
+      enumerable: true,
+      get() {
+        tableNameGetterInvoked = true
+        throw new Error('table name getter must not run')
+      },
+    })
+
+    expect(() => Reflect.apply(findTable, undefined, [tableOptions])).toThrowError('Workbook table selector name must be a data property')
+    expect(tableNameGetterInvoked).toBe(false)
+
+    let headerGetterInvoked = false
+    const headers: unknown[] = []
+    Object.defineProperty(headers, '0', {
+      enumerable: true,
+      get() {
+        headerGetterInvoked = true
+        throw new Error('header getter must not run')
+      },
+    })
+    headers.length = 1
+
+    expect(() => Reflect.apply(findTable, undefined, [{ headers }])).toThrowError('Workbook table headers[0] must be a data property')
+    expect(headerGetterInvoked).toBe(false)
+
+    let rangeAddressGetterInvoked = false
+    const rangeOptions: Record<string, unknown> = {
+      sheetName: 'Sheet1',
+    }
+    Object.defineProperty(rangeOptions, 'address', {
+      enumerable: true,
+      get() {
+        rangeAddressGetterInvoked = true
+        throw new Error('range address getter must not run')
+      },
+    })
+
+    expect(() => Reflect.apply(findRange, undefined, [rangeOptions])).toThrowError(
+      'Workbook range selector address must be a data property',
+    )
+    expect(rangeAddressGetterInvoked).toBe(false)
+
+    let columnTableGetterInvoked = false
+    const columnOptions: Record<string, unknown> = {
+      name: 'Amount',
+    }
+    Object.defineProperty(columnOptions, 'table', {
+      enumerable: true,
+      get() {
+        columnTableGetterInvoked = true
+        throw new Error('column table getter must not run')
+      },
+    })
+
+    expect(() => Reflect.apply(findColumn, undefined, [columnOptions])).toThrowError(
+      'Workbook column selector table must be a data property',
+    )
+    expect(columnTableGetterInvoked).toBe(false)
+
+    let rowsWhereGetterInvoked = false
+    const rowsOptions: Record<string, unknown> = {
+      sheetName: 'Sheet1',
+    }
+    Object.defineProperty(rowsOptions, 'where', {
+      enumerable: true,
+      get() {
+        rowsWhereGetterInvoked = true
+        throw new Error('rows where getter must not run')
+      },
+    })
+
+    expect(() => Reflect.apply(findRows, undefined, [rowsOptions])).toThrowError('Workbook rows selector where must be a data property')
+    expect(rowsWhereGetterInvoked).toBe(false)
+  })
+
   it('exports simple top-level check helpers for generic refs', () => {
     const result = findRange({ sheetName: 'Model', address: 'C2' })
 
