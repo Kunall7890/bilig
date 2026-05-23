@@ -81,7 +81,12 @@ import { readImportedWorkbookTables } from './xlsx-tables.js'
 import { readImportedWorkbookThreadedCommentArtifacts } from './xlsx-threaded-comment-artifacts.js'
 import { readImportedWorkbookDataValidations } from './xlsx-validations.js'
 import { readImportedWorkbookViewState } from './xlsx-view-state.js'
-import { XLSM_CONTENT_TYPE, XLSX_CONTENT_TYPE, type ExcelWorkbookImportContentType } from './workbook-import-content-types.js'
+import {
+  LEGACY_XLS_CONTENT_TYPE,
+  XLSM_CONTENT_TYPE,
+  XLSX_CONTENT_TYPE,
+  type ExcelWorkbookImportContentType,
+} from './workbook-import-content-types.js'
 import { createSheetPreview, normalizeWorkbookName, toDisplayText, type ImportedWorkbookSheetPreview } from './workbook-import-helpers.js'
 import { createWorkbookPreview } from './workbook-import-preview.js'
 import type { ImportedWorkbook } from './workbook-import-result.js'
@@ -271,7 +276,7 @@ function importParsedSheetJsWorkbook(args: {
 }): ImportedWorkbook {
   const { workbook, fileName, contentType, workbookZip, fallbackArtifactSource, sourceFileSizeBytes, sourceBytesForUntouchedExport } = args
   const workbookName = normalizeWorkbookName(fileName)
-  const artifactPathSource = workbookZip ?? fallbackArtifactSource
+  const artifactPathSource = contentType === LEGACY_XLS_CONTENT_TYPE ? undefined : (workbookZip ?? fallbackArtifactSource)
   const sheetPathsByName = workbookSheetPathsByName(workbook, artifactPathSource)
   const fallbackSheetPaths = workbookDirectorySheetPaths(workbook, artifactPathSource)
   const warnings: string[] = []
