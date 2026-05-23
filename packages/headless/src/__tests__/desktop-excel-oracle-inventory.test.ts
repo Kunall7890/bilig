@@ -26,6 +26,7 @@ const existingDesktopExcelOracleFiles = [
   'macos-desktop-excel-sort-oracle.test.ts',
   'macos-desktop-excel-structured-reference-syntax.test.ts',
   'macos-desktop-excel-table-header-canonicalization.test.ts',
+  'macos-desktop-excel-threaded-comment-structural-oracle.test.ts',
   'macos-desktop-excel-xlsx-oracle.test.ts',
 ] as const
 
@@ -40,6 +41,7 @@ const corpusDesktopExcelOracleFiles = [
   'macos-desktop-excel-sort-oracle.test.ts',
   'macos-desktop-excel-structured-reference-syntax.test.ts',
   'macos-desktop-excel-table-header-canonicalization.test.ts',
+  'macos-desktop-excel-threaded-comment-structural-oracle.test.ts',
   'macos-desktop-excel-xlsx-oracle.test.ts',
 ] as const
 
@@ -82,6 +84,17 @@ describe('macOS Desktop Excel oracle inventory', () => {
     expect(source).toContain('WorkPaper.buildFromSnapshot')
     expect(source).toContain('editAs="oneCell"')
     expect(source).toContain('matches Desktop Excel chart drawing anchors after structural row inserts')
+  })
+
+  it('keeps the threaded comment structural oracle anchored to Desktop Excel package refs', () => {
+    const source = readFileSync(join(testDir, 'macos-desktop-excel-threaded-comment-structural-oracle.test.ts'), 'utf8')
+
+    expect(source).toContain("BILIG_EXCEL_ORACLE_RUN === '1'")
+    expect(source).toContain('runMacosExcelStructuralOperationOracle')
+    expect(source).toContain('WorkPaper.buildFromSnapshot')
+    expect(source).toContain('threadedCommentArtifacts')
+    expect(source).toContain('legacyCommentVml')
+    expect(source).toContain('matches Desktop Excel threaded comment refs after structural row inserts')
   })
 
   it('keeps the hyperlink structural oracle anchored to Desktop Excel metadata movement', () => {

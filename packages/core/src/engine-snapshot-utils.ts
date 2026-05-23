@@ -161,6 +161,8 @@ export function exportSheetMetadata(workbook: WorkbookStore, sheetName: string):
   const conditionalFormats = workbook.listConditionalFormats(sheetName).map((format) => structuredClone(format))
   const conditionalFormatArtifacts = workbook.getConditionalFormatArtifacts(sheetName)
   const drawingArtifacts = workbook.getSheetDrawingArtifacts(sheetName)
+  const threadedCommentArtifacts = workbook.getSheetThreadedCommentArtifacts(sheetName)
+  const legacyCommentVml = workbook.getSheetLegacyCommentVml(sheetName)
   const protectedRanges = workbook.listRangeProtections(sheetName).map((protection) => structuredClone(protection))
   const commentThreads = workbook.listCommentThreads(sheetName).map((thread) => structuredClone(thread))
   const notes = workbook.listNotes(sheetName).map((note) => structuredClone(note))
@@ -187,6 +189,8 @@ export function exportSheetMetadata(workbook: WorkbookStore, sheetName: string):
     conditionalFormats.length === 0 &&
     conditionalFormatArtifacts === undefined &&
     drawingArtifacts === undefined &&
+    threadedCommentArtifacts === undefined &&
+    legacyCommentVml === undefined &&
     protectedRanges.length === 0 &&
     commentThreads.length === 0 &&
     notes.length === 0 &&
@@ -255,6 +259,22 @@ export function exportSheetMetadata(workbook: WorkbookStore, sheetName: string):
       ...(drawingArtifacts.preservedChartRelationshipIds !== undefined
         ? { preservedChartRelationshipIds: [...drawingArtifacts.preservedChartRelationshipIds] }
         : {}),
+    }
+  }
+  if (threadedCommentArtifacts) {
+    metadata.threadedCommentArtifacts = {
+      relationships: structuredClone(threadedCommentArtifacts.relationships),
+    }
+  }
+  if (legacyCommentVml) {
+    metadata.legacyCommentVml = {
+      relationshipTarget: legacyCommentVml.relationshipTarget,
+      vmlXml: legacyCommentVml.vmlXml,
+      ...(legacyCommentVml.commentsRelationshipTarget !== undefined
+        ? { commentsRelationshipTarget: legacyCommentVml.commentsRelationshipTarget }
+        : {}),
+      ...(legacyCommentVml.commentsXml !== undefined ? { commentsXml: legacyCommentVml.commentsXml } : {}),
+      commentSignature: legacyCommentVml.commentSignature,
     }
   }
   if (protectedRanges.length > 0) {

@@ -189,6 +189,8 @@ export class WorkbookSheetRegistryStore {
       metadata.images.size > 0 ||
       metadata.shapes.size > 0 ||
       metadata.sheetDrawingArtifacts.size > 0 ||
+      metadata.sheetThreadedCommentArtifacts.size > 0 ||
+      metadata.sheetLegacyCommentVml.size > 0 ||
       metadata.rowMetadata.size > 0 ||
       metadata.columnMetadata.size > 0 ||
       metadata.freezePanes.size > 0 ||

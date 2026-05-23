@@ -20,10 +20,12 @@ import type {
   WorkbookDrawingArtifactsSnapshot,
   WorkbookSheetConditionalFormatArtifactsSnapshot,
   WorkbookSheetDrawingArtifactsSnapshot,
+  WorkbookSheetThreadedCommentArtifactsSnapshot,
   WorkbookDataValidationSnapshot,
   WorkbookDefinedNameValueSnapshot,
   WorkbookFreezePaneSnapshot,
   WorkbookHyperlinkSnapshot,
+  WorkbookLegacyCommentVmlSnapshot,
   WorkbookNoteSnapshot,
   WorkbookRangeProtectionSnapshot,
   WorkbookSheetProtectionSnapshot,
@@ -31,6 +33,7 @@ import type {
   WorkbookPivotSnapshot,
   WorkbookPivotValueSnapshot,
   WorkbookTableSnapshot,
+  WorkbookThreadedCommentArtifactsSnapshot,
   WorkbookVolatileContextSnapshot,
 } from '@bilig/protocol'
 import { canonicalWorkbookAddress } from './workbook-range-records.js'
@@ -138,6 +141,13 @@ export interface WorkbookConditionalFormatRecord extends WorkbookConditionalForm
 export interface WorkbookSheetConditionalFormatArtifactsRecord extends WorkbookSheetConditionalFormatArtifactsSnapshot {
   sheetName: string
 }
+export interface WorkbookThreadedCommentArtifactsRecord extends WorkbookThreadedCommentArtifactsSnapshot {}
+export interface WorkbookSheetThreadedCommentArtifactsRecord extends WorkbookSheetThreadedCommentArtifactsSnapshot {
+  sheetName: string
+}
+export interface WorkbookSheetLegacyCommentVmlRecord extends WorkbookLegacyCommentVmlSnapshot {
+  sheetName: string
+}
 export interface WorkbookSheetProtectionRecord extends WorkbookSheetProtectionSnapshot {}
 export interface WorkbookRangeProtectionRecord extends WorkbookRangeProtectionSnapshot {}
 export interface WorkbookCommentEntryRecord extends WorkbookCommentEntrySnapshot {}
@@ -159,6 +169,9 @@ export interface WorkbookMetadataRecord {
   images: Map<string, WorkbookImageRecord>
   shapes: Map<string, WorkbookShapeRecord>
   drawingArtifacts: WorkbookDrawingArtifactsRecord | undefined
+  threadedCommentArtifacts: WorkbookThreadedCommentArtifactsRecord | undefined
+  sheetThreadedCommentArtifacts: Map<string, WorkbookSheetThreadedCommentArtifactsRecord>
+  sheetLegacyCommentVml: Map<string, WorkbookSheetLegacyCommentVmlRecord>
   sheetDrawingArtifacts: Map<string, WorkbookSheetDrawingArtifactsRecord>
   rowMetadata: Map<string, WorkbookAxisMetadataRecord>
   columnMetadata: Map<string, WorkbookAxisMetadataRecord>
@@ -192,6 +205,9 @@ export function createWorkbookMetadataRecord(): WorkbookMetadataRecord {
     images: new Map(),
     shapes: new Map(),
     drawingArtifacts: undefined,
+    threadedCommentArtifacts: undefined,
+    sheetThreadedCommentArtifacts: new Map(),
+    sheetLegacyCommentVml: new Map(),
     sheetDrawingArtifacts: new Map(),
     rowMetadata: new Map(),
     columnMetadata: new Map(),

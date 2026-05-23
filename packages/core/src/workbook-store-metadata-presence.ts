@@ -16,6 +16,9 @@ export function hasStructuralMetadataForSheetRecord(
     metadata.shapes.size > 0 ||
     metadata.drawingArtifacts !== undefined ||
     metadata.sheetDrawingArtifacts.has(sheetName) ||
+    metadata.threadedCommentArtifacts !== undefined ||
+    metadata.sheetThreadedCommentArtifacts.has(sheetName) ||
+    metadata.sheetLegacyCommentVml.has(sheetName) ||
     metadata.freezePanes.size > 0 ||
     metadata.merges.size > 0 ||
     metadata.filters.size > 0 ||

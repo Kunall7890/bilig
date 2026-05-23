@@ -19,11 +19,14 @@ import {
   cloneRangeProtectionRecord,
   cloneSheetProtectionRecord,
   cloneSheetDrawingArtifactsRecord,
+  cloneSheetLegacyCommentVmlRecord,
   cloneShapeRecord,
   cloneSortKeyRecord,
   cloneSortRecord,
+  cloneSheetThreadedCommentArtifactsRecord,
   cloneSpillRecord,
   cloneTableRecord,
+  cloneThreadedCommentArtifactsRecord,
   commentThreadKey,
   conditionalFormatKey,
   dataValidationKey,
@@ -51,6 +54,8 @@ import {
   type WorkbookNoteRecord,
   type WorkbookRangeProtectionRecord,
   type WorkbookSheetDrawingArtifactsRecord,
+  type WorkbookSheetLegacyCommentVmlRecord,
+  type WorkbookSheetThreadedCommentArtifactsRecord,
   type WorkbookSheetProtectionRecord,
   pivotKey,
   type WorkbookDataValidationRecord,
@@ -60,6 +65,7 @@ import {
   type WorkbookMetadataRecord,
   type WorkbookPivotRecord,
   type WorkbookSpillRecord,
+  type WorkbookThreadedCommentArtifactsRecord,
 } from './workbook-metadata-types.js'
 import type { WorkbookMetadataService } from './workbook-metadata-service-contract.js'
 import { createWorkbookMetadataDrawingService } from './workbook-metadata-drawing-service.js'
@@ -151,6 +157,16 @@ export function createWorkbookMetadataService(metadata: WorkbookMetadataRecord):
       record.sheetName === oldSheetName
         ? { ...cloneSheetDrawingArtifactsRecord(record), sheetName: newSheetName }
         : cloneSheetDrawingArtifactsRecord(record),
+    )
+    rekeyRecords(metadata.sheetThreadedCommentArtifacts, (record) =>
+      record.sheetName === oldSheetName
+        ? { ...cloneSheetThreadedCommentArtifactsRecord(record), sheetName: newSheetName }
+        : cloneSheetThreadedCommentArtifactsRecord(record),
+    )
+    rekeyRecords(metadata.sheetLegacyCommentVml, (record) =>
+      record.sheetName === oldSheetName
+        ? { ...cloneSheetLegacyCommentVmlRecord(record), sheetName: newSheetName }
+        : cloneSheetLegacyCommentVmlRecord(record),
     )
     rekeyRecords(metadata.rangeProtections, (record) =>
       record.range.sheetName === oldSheetName
@@ -247,6 +263,8 @@ export function createWorkbookMetadataService(metadata: WorkbookMetadataRecord):
     deleteRecordsBySheet(metadata.conditionalFormats, sheetName, (record) => record.range.sheetName)
     metadata.conditionalFormatArtifacts.delete(sheetName)
     metadata.sheetDrawingArtifacts.delete(sheetName)
+    metadata.sheetThreadedCommentArtifacts.delete(sheetName)
+    metadata.sheetLegacyCommentVml.delete(sheetName)
     deleteRecordsBySheet(metadata.rangeProtections, sheetName, (record) => record.range.sheetName)
     deleteRecordsBySheet(metadata.commentThreads, sheetName, (record) => record.sheetName)
     deleteRecordsBySheet(metadata.notes, sheetName, (record) => record.sheetName)
@@ -269,6 +287,9 @@ export function createWorkbookMetadataService(metadata: WorkbookMetadataRecord):
     metadata.shapes.clear()
     metadata.drawingArtifacts = defaults.drawingArtifacts
     metadata.sheetDrawingArtifacts.clear()
+    metadata.threadedCommentArtifacts = defaults.threadedCommentArtifacts
+    metadata.sheetThreadedCommentArtifacts.clear()
+    metadata.sheetLegacyCommentVml.clear()
     metadata.rowMetadata.clear()
     metadata.columnMetadata.clear()
     metadata.freezePanes.clear()
@@ -364,6 +385,25 @@ export function createWorkbookMetadataService(metadata: WorkbookMetadataRecord):
       return metadataEffect('Failed to clear workbook drawing artifact metadata', () => {
         const hadArtifacts = metadata.drawingArtifacts !== undefined
         metadata.drawingArtifacts = undefined
+        return hadArtifacts
+      })
+    },
+    setThreadedCommentArtifacts(artifacts) {
+      return metadataEffect('Failed to set workbook threaded comment artifact metadata', () => {
+        const stored: WorkbookThreadedCommentArtifactsRecord = cloneThreadedCommentArtifactsRecord(artifacts)
+        metadata.threadedCommentArtifacts = stored
+        return cloneThreadedCommentArtifactsRecord(stored)
+      })
+    },
+    getThreadedCommentArtifacts() {
+      return metadataEffect('Failed to get workbook threaded comment artifact metadata', () =>
+        metadata.threadedCommentArtifacts ? cloneThreadedCommentArtifactsRecord(metadata.threadedCommentArtifacts) : undefined,
+      )
+    },
+    clearThreadedCommentArtifacts() {
+      return metadataEffect('Failed to clear workbook threaded comment artifact metadata', () => {
+        const hadArtifacts = metadata.threadedCommentArtifacts !== undefined
+        metadata.threadedCommentArtifacts = undefined
         return hadArtifacts
       })
     },
@@ -711,6 +751,46 @@ export function createWorkbookMetadataService(metadata: WorkbookMetadataRecord):
     },
     deleteSheetDrawingArtifacts(sheetName) {
       return metadataEffect('Failed to delete sheet drawing artifact metadata', () => metadata.sheetDrawingArtifacts.delete(sheetName))
+    },
+    setSheetThreadedCommentArtifacts(sheetName, artifacts) {
+      return metadataEffect('Failed to set sheet threaded comment artifact metadata', () => {
+        const stored: WorkbookSheetThreadedCommentArtifactsRecord = {
+          sheetName,
+          relationships: structuredClone(artifacts.relationships),
+        }
+        metadata.sheetThreadedCommentArtifacts.set(sheetName, stored)
+        return cloneSheetThreadedCommentArtifactsRecord(stored)
+      })
+    },
+    getSheetThreadedCommentArtifacts(sheetName) {
+      return metadataEffect('Failed to get sheet threaded comment artifact metadata', () => {
+        const record = metadata.sheetThreadedCommentArtifacts.get(sheetName)
+        return record ? cloneSheetThreadedCommentArtifactsRecord(record) : undefined
+      })
+    },
+    deleteSheetThreadedCommentArtifacts(sheetName) {
+      return metadataEffect('Failed to delete sheet threaded comment artifact metadata', () =>
+        metadata.sheetThreadedCommentArtifacts.delete(sheetName),
+      )
+    },
+    setSheetLegacyCommentVml(sheetName, legacyCommentVml) {
+      return metadataEffect('Failed to set legacy comment VML metadata', () => {
+        const stored: WorkbookSheetLegacyCommentVmlRecord = {
+          sheetName,
+          ...structuredClone(legacyCommentVml),
+        }
+        metadata.sheetLegacyCommentVml.set(sheetName, stored)
+        return cloneSheetLegacyCommentVmlRecord(stored)
+      })
+    },
+    getSheetLegacyCommentVml(sheetName) {
+      return metadataEffect('Failed to get legacy comment VML metadata', () => {
+        const record = metadata.sheetLegacyCommentVml.get(sheetName)
+        return record ? cloneSheetLegacyCommentVmlRecord(record) : undefined
+      })
+    },
+    deleteSheetLegacyCommentVml(sheetName) {
+      return metadataEffect('Failed to delete legacy comment VML metadata', () => metadata.sheetLegacyCommentVml.delete(sheetName))
     },
     setRangeProtection(record) {
       return metadataEffect('Failed to set range protection metadata', () => {

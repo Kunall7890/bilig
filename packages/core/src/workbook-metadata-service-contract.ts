@@ -10,11 +10,13 @@ import type {
   WorkbookDrawingArtifactsSnapshot,
   WorkbookSheetConditionalFormatArtifactsSnapshot,
   WorkbookSheetDrawingArtifactsSnapshot,
+  WorkbookSheetThreadedCommentArtifactsSnapshot,
   WorkbookDataValidationSnapshot,
   WorkbookDefinedNameValueSnapshot,
   WorkbookFreezePaneSnapshot,
   WorkbookHyperlinkSnapshot,
   WorkbookImageSnapshot,
+  WorkbookLegacyCommentVmlSnapshot,
   WorkbookMacroPayloadSnapshot,
   WorkbookNoteSnapshot,
   WorkbookPivotSnapshot,
@@ -24,6 +26,7 @@ import type {
   WorkbookSheetProtectionSnapshot,
   WorkbookSheetTabColorSnapshot,
   WorkbookTableSnapshot,
+  WorkbookThreadedCommentArtifactsSnapshot,
   WorkbookVolatileContextSnapshot,
 } from '@bilig/protocol'
 import type {
@@ -34,6 +37,7 @@ import type {
   WorkbookSheetConditionalFormatArtifactsRecord,
   WorkbookDataValidationRecord,
   WorkbookDrawingArtifactsRecord,
+  WorkbookSheetThreadedCommentArtifactsRecord,
   WorkbookDefinedNameRecord,
   WorkbookFilterRecord,
   WorkbookFreezePaneRecord,
@@ -46,10 +50,12 @@ import type {
   WorkbookPropertyRecord,
   WorkbookProtectionRecord,
   WorkbookRangeProtectionRecord,
+  WorkbookSheetLegacyCommentVmlRecord,
   WorkbookSheetProtectionRecord,
   WorkbookSheetTabColorRecord,
   WorkbookShapeRecord,
   WorkbookSheetDrawingArtifactsRecord,
+  WorkbookThreadedCommentArtifactsRecord,
   WorkbookSortKeyRecord,
   WorkbookSortRecord,
   WorkbookSpillRecord,
@@ -95,6 +101,11 @@ export interface WorkbookMetadataService {
   ) => Effect.Effect<WorkbookDrawingArtifactsRecord, WorkbookMetadataError>
   readonly getDrawingArtifacts: () => Effect.Effect<WorkbookDrawingArtifactsRecord | undefined, WorkbookMetadataError>
   readonly clearDrawingArtifacts: () => Effect.Effect<boolean, WorkbookMetadataError>
+  readonly setThreadedCommentArtifacts: (
+    artifacts: WorkbookThreadedCommentArtifactsSnapshot,
+  ) => Effect.Effect<WorkbookThreadedCommentArtifactsRecord, WorkbookMetadataError>
+  readonly getThreadedCommentArtifacts: () => Effect.Effect<WorkbookThreadedCommentArtifactsRecord | undefined, WorkbookMetadataError>
+  readonly clearThreadedCommentArtifacts: () => Effect.Effect<boolean, WorkbookMetadataError>
   readonly setDefinedName: (
     name: string,
     value: WorkbookDefinedNameValueSnapshot,
@@ -179,6 +190,22 @@ export interface WorkbookMetadataService {
     sheetName: string,
   ) => Effect.Effect<WorkbookSheetDrawingArtifactsRecord | undefined, WorkbookMetadataError>
   readonly deleteSheetDrawingArtifacts: (sheetName: string) => Effect.Effect<boolean, WorkbookMetadataError>
+  readonly setSheetThreadedCommentArtifacts: (
+    sheetName: string,
+    artifacts: WorkbookSheetThreadedCommentArtifactsSnapshot,
+  ) => Effect.Effect<WorkbookSheetThreadedCommentArtifactsRecord, WorkbookMetadataError>
+  readonly getSheetThreadedCommentArtifacts: (
+    sheetName: string,
+  ) => Effect.Effect<WorkbookSheetThreadedCommentArtifactsRecord | undefined, WorkbookMetadataError>
+  readonly deleteSheetThreadedCommentArtifacts: (sheetName: string) => Effect.Effect<boolean, WorkbookMetadataError>
+  readonly setSheetLegacyCommentVml: (
+    sheetName: string,
+    legacyCommentVml: WorkbookLegacyCommentVmlSnapshot,
+  ) => Effect.Effect<WorkbookSheetLegacyCommentVmlRecord, WorkbookMetadataError>
+  readonly getSheetLegacyCommentVml: (
+    sheetName: string,
+  ) => Effect.Effect<WorkbookSheetLegacyCommentVmlRecord | undefined, WorkbookMetadataError>
+  readonly deleteSheetLegacyCommentVml: (sheetName: string) => Effect.Effect<boolean, WorkbookMetadataError>
   readonly setRangeProtection: (
     record: WorkbookRangeProtectionSnapshot,
   ) => Effect.Effect<WorkbookRangeProtectionRecord, WorkbookMetadataError>

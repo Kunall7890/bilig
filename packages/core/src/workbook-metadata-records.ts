@@ -27,8 +27,11 @@ import {
   type WorkbookNoteRecord,
   type WorkbookProtectionRecord,
   type WorkbookRangeProtectionRecord,
+  type WorkbookSheetLegacyCommentVmlRecord,
   type WorkbookSheetProtectionRecord,
   type WorkbookSheetDrawingArtifactsRecord,
+  type WorkbookSheetThreadedCommentArtifactsRecord,
+  type WorkbookThreadedCommentArtifactsRecord,
   pivotKey,
   type WorkbookAxisMetadataRecord,
   type WorkbookDefinedNameRecord,
@@ -252,7 +255,23 @@ export function cloneDrawingArtifactsRecord(record: WorkbookDrawingArtifactsReco
   }
 }
 
+export function cloneThreadedCommentArtifactsRecord(
+  record: WorkbookThreadedCommentArtifactsRecord,
+): WorkbookThreadedCommentArtifactsRecord {
+  return structuredClone(record)
+}
+
 export function cloneSheetDrawingArtifactsRecord(record: WorkbookSheetDrawingArtifactsRecord): WorkbookSheetDrawingArtifactsRecord {
+  return structuredClone(record)
+}
+
+export function cloneSheetThreadedCommentArtifactsRecord(
+  record: WorkbookSheetThreadedCommentArtifactsRecord,
+): WorkbookSheetThreadedCommentArtifactsRecord {
+  return structuredClone(record)
+}
+
+export function cloneSheetLegacyCommentVmlRecord(record: WorkbookSheetLegacyCommentVmlRecord): WorkbookSheetLegacyCommentVmlRecord {
   return structuredClone(record)
 }
 

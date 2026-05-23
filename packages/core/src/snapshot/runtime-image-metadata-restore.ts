@@ -10,6 +10,7 @@ import type {
   WorkbookMacroPayloadSnapshot,
   WorkbookPivotSnapshot,
   WorkbookProtectionSnapshot,
+  WorkbookThreadedCommentArtifactsSnapshot,
   WorkbookSnapshot,
   WorkbookSortSnapshot,
   WorkbookVolatileContextSnapshot,
@@ -32,6 +33,7 @@ function restoreWorkbookMetadata(args: {
         pivots?: WorkbookPivotSnapshot[]
         charts?: WorkbookChartSnapshot[]
         drawingArtifacts?: WorkbookDrawingArtifactsSnapshot
+        threadedCommentArtifacts?: WorkbookThreadedCommentArtifactsSnapshot
         images?: WorkbookImageSnapshot[]
         shapes?: Array<Parameters<WorkbookStore['setShape']>[0]>
         styles?: Array<Parameters<WorkbookStore['upsertCellStyle']>[0]>
@@ -62,6 +64,9 @@ function restoreWorkbookMetadata(args: {
   })
   if (args.workbookMetadata?.drawingArtifacts) {
     args.workbook.setDrawingArtifacts(args.workbookMetadata.drawingArtifacts)
+  }
+  if (args.workbookMetadata?.threadedCommentArtifacts) {
+    args.workbook.setThreadedCommentArtifacts(args.workbookMetadata.threadedCommentArtifacts)
   }
 }
 
@@ -132,6 +137,12 @@ function restoreSheetMetadata(args: { readonly workbook: WorkbookStore; readonly
   }
   if (sheet.metadata?.drawingArtifacts) {
     workbook.setSheetDrawingArtifacts(sheet.name, sheet.metadata.drawingArtifacts)
+  }
+  if (sheet.metadata?.threadedCommentArtifacts) {
+    workbook.setSheetThreadedCommentArtifacts(sheet.name, sheet.metadata.threadedCommentArtifacts)
+  }
+  if (sheet.metadata?.legacyCommentVml) {
+    workbook.setSheetLegacyCommentVml(sheet.name, sheet.metadata.legacyCommentVml)
   }
   sheet.metadata?.protectedRanges?.forEach((range) => {
     workbook.setRangeProtection(structuredClone(range))

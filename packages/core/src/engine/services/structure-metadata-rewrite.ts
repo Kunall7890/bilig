@@ -21,8 +21,10 @@ import { mapStructuralBoundary } from '../../engine-structural-utils.js'
 import { normalizeDefinedName, type WorkbookTableRecord } from '../../workbook-store.js'
 import type { CreateEngineStructureServiceArgs } from './structure-service-types.js'
 import { rewriteArrayFormulasForStructuralTransform } from './structure-array-formula-metadata-rewrite.js'
+import { rewriteLegacyCommentVmlForStructuralTransform } from './structure-legacy-comment-vml-rewrite.js'
 import { rewriteFormulaSourceForDeletedStructuredReferences } from './structure-structured-ref-rewrite.js'
 import { chartGeometryFromAnchor, rewriteChartAnchorForStructuralTransform } from './structure-chart-anchor-metadata-rewrite.js'
+import { rewriteThreadedCommentArtifactsForStructuralTransform } from './structure-threaded-comment-artifact-rewrite.js'
 import { nextGeneratedTableColumnName, normalizeTableColumnName } from './table-column-name-helpers.js'
 
 type StructureMetadataRewriteArgs = Pick<CreateEngineStructureServiceArgs, 'state' | 'clearOwnedPivot'>
@@ -625,6 +627,8 @@ export function rewriteWorkbookMetadataForStructuralTransform(
       address: nextAddress,
     })
   })
+  rewriteLegacyCommentVmlForStructuralTransform({ workbook, sheetName, transform })
+  rewriteThreadedCommentArtifactsForStructuralTransform({ workbook, sheetName, transform })
   workbook.listNotes(sheetName).forEach((note) => {
     const nextAddress = rewriteMetadataAddressForStructuralTransform(note.address, transform)
     workbook.deleteNote(sheetName, note.address)
