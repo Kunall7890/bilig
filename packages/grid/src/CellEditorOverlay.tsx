@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useLayoutEffect, useRef, useState, type CSSProperties } from 'react'
+import { useCallback, useEffect, useLayoutEffect, useRef, useState, useSyncExternalStore, type CSSProperties } from 'react'
 import type { EditMovement, EditTargetSelection } from './SheetGridView.js'
 import {
   WORKBOOK_DEFAULT_FONT_SIZE,
@@ -9,6 +9,7 @@ import {
 } from './workbookTheme.js'
 import { workbookTextControlProps } from './workbookTextControls.js'
 import { workbookNativeTextQualityStyle } from './workbookTextQuality.js'
+import { getWorkbookDevicePixelRatio, subscribeWorkbookDevicePixelRatioChange } from './workbookDevicePixelRatio.js'
 
 function normalizeNumpadKey(key: string, code: string): string | null {
   if (!code.startsWith('Numpad')) {
@@ -188,8 +189,9 @@ export function CellEditorOverlay({
   const [isCompleting, setIsCompleting] = useState(false)
   const [draftValue, setDraftValue] = useState(value)
   const MAX_EDITOR_HEIGHT = 220
-  const displayFontSize = workbookDisplayFontCssPx(fontSize)
-  const displayLineHeight = workbookDisplayLineHeightCssPx(displayFontSize)
+  const dpr = useSyncExternalStore(subscribeWorkbookDevicePixelRatioChange, getWorkbookDevicePixelRatio, () => 1)
+  const displayFontSize = workbookDisplayFontCssPx(fontSize, dpr)
+  const displayLineHeight = workbookDisplayLineHeightCssPx(fontSize, dpr)
 
   const cancelPendingBlurCommit = () => {
     pendingEarlyBlurCommitRef.current = false

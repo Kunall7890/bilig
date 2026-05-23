@@ -189,18 +189,19 @@ describe('WorkbookPaneNativeTextLayerV3', () => {
       height: 18,
       letterSpacing: 0,
       lineHeight: '18px',
-      MozOsxFontSmoothing: 'auto',
+      MozOsxFontSmoothing: 'grayscale',
       textRendering: 'auto',
       textDecorationLine: 'underline',
       textAlign: 'right',
       top: -2,
-      WebkitFontSmoothing: 'auto',
+      WebkitFontSmoothing: 'antialiased',
       whiteSpace: 'pre',
     })
   })
 
-  test('snaps fractional workbook font sizes before browser glyph rasterization', () => {
+  test('snaps fractional workbook font sizes to physical pixels before browser glyph rasterization', () => {
     expect(snapNativeTextDisplayFontSizeV3(13.3333)).toBe(13)
+    expect(snapNativeTextDisplayFontSizeV3(13.3333, 2)).toBe(13.5)
     expect(snapNativeTextDisplayFontSizeV3(14.6667)).toBe(15)
 
     const defaultPointSizeRun = createRun({
@@ -214,7 +215,7 @@ describe('WorkbookPaneNativeTextLayerV3', () => {
       top: -1,
     })
     expect(resolveNativeTextRunInnerStyleV3({ dpr: 2, run: defaultPointSizeRun })).toMatchObject({
-      fontSize: 13,
+      fontSize: 13.5,
       lineHeight: '16px',
       top: -1,
     })

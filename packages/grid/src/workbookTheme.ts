@@ -11,16 +11,21 @@ export function workbookHeaderFontPointSizeToCssPx(pointSize = WORKBOOK_HEADER_F
   return workbookFontPointSizeToCssPx(pointSize)
 }
 
-export function workbookDisplayFontCssPx(fontSizeCssPx: number): number {
-  return Math.max(1, Math.round(fontSizeCssPx))
+export function workbookSnapCssPixel(value: number, dpr = 1): number {
+  const resolvedDpr = Number.isFinite(dpr) ? Math.max(1, dpr) : 1
+  return Number((Math.round(value * resolvedDpr) / resolvedDpr).toFixed(4))
 }
 
-export function workbookDisplayFontPointSizeToCssPx(pointSize: number): number {
-  return workbookDisplayFontCssPx(workbookFontPointSizeToCssPx(pointSize))
+export function workbookDisplayFontCssPx(fontSizeCssPx: number, dpr = 1): number {
+  return Math.max(1, workbookSnapCssPixel(fontSizeCssPx, dpr))
 }
 
-export function workbookDisplayLineHeightCssPx(fontSizeCssPx: number): number {
-  return Math.max(1, Math.round(workbookDisplayFontCssPx(fontSizeCssPx) * 1.2))
+export function workbookDisplayFontPointSizeToCssPx(pointSize: number, dpr = 1): number {
+  return workbookDisplayFontCssPx(workbookFontPointSizeToCssPx(pointSize), dpr)
+}
+
+export function workbookDisplayLineHeightCssPx(fontSizeCssPx: number, dpr = 1): number {
+  return Math.max(1, workbookSnapCssPixel(workbookDisplayFontCssPx(fontSizeCssPx, dpr) * 1.2, dpr))
 }
 
 export const workbookThemeColors = {

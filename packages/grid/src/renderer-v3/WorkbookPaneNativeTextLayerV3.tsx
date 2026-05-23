@@ -11,8 +11,10 @@ import {
   workbookDisplayFontCssPx,
   workbookDisplayLineHeightCssPx,
   workbookFontPointSizeToCssPx,
+  workbookSnapCssPixel,
 } from '../workbookTheme.js'
 import { workbookNativeTextQualityStyle } from '../workbookTextQuality.js'
+import { getWorkbookDevicePixelRatio, subscribeWorkbookDevicePixelRatioChange } from '../workbookDevicePixelRatio.js'
 import type { TextQuadRun } from './line-text-quad-buffer.js'
 import type { WorkbookRenderTilePaneState } from './render-tile-pane-state.js'
 import { resolveTypeGpuV3DrawScrollSnapshot } from './workbook-pane-renderer-runtime.js'
@@ -180,75 +182,12 @@ function parseNativeTextRunFontSize(font: string): number {
   return match ? Number(match[1]) : workbookFontPointSizeToCssPx(WORKBOOK_DEFAULT_FONT_SIZE)
 }
 
-function getDevicePixelRatio(): number {
-  return typeof window === 'undefined' ? 1 : Math.max(1, window.devicePixelRatio || 1)
-}
-
-function subscribeDevicePixelRatioChange(onStoreChange: () => void): () => void {
-  if (typeof window === 'undefined') {
-    return subscribeNoop()
-  }
-
-  let disposed = false
-  let resolutionQuery: MediaQueryList | null = null
-  const handleChange = () => {
-    if (disposed) {
-      return
-    }
-    onStoreChange()
-    resetResolutionQuery()
-  }
-  const resetResolutionQuery = () => {
-    if (disposed) {
-      return
-    }
-    removeResolutionQueryListener(resolutionQuery, handleChange)
-    resolutionQuery = typeof window.matchMedia === 'function' ? window.matchMedia(`(resolution: ${getDevicePixelRatio()}dppx)`) : null
-    addResolutionQueryListener(resolutionQuery, handleChange)
-  }
-
-  resetResolutionQuery()
-  window.addEventListener('resize', handleChange)
-  window.visualViewport?.addEventListener('resize', handleChange)
-  return () => {
-    disposed = true
-    removeResolutionQueryListener(resolutionQuery, handleChange)
-    resolutionQuery = null
-    window.removeEventListener('resize', handleChange)
-    window.visualViewport?.removeEventListener('resize', handleChange)
-  }
-}
-
-function addResolutionQueryListener(query: MediaQueryList | null, listener: () => void): void {
-  if (!query) {
-    return
-  }
-  if (typeof query.addEventListener === 'function') {
-    query.addEventListener('change', listener)
-    return
-  }
-  const legacyQuery = query as MediaQueryList & { addListener?: (listener: () => void) => void }
-  legacyQuery.addListener?.(listener)
-}
-
-function removeResolutionQueryListener(query: MediaQueryList | null, listener: () => void): void {
-  if (!query) {
-    return
-  }
-  if (typeof query.removeEventListener === 'function') {
-    query.removeEventListener('change', listener)
-    return
-  }
-  const legacyQuery = query as MediaQueryList & { removeListener?: (listener: () => void) => void }
-  legacyQuery.removeListener?.(listener)
-}
-
 function snapCssPixel(value: number, dpr: number): number {
-  return Math.round(value * dpr) / dpr
+  return workbookSnapCssPixel(value, dpr)
 }
 
-export function snapNativeTextDisplayFontSizeV3(fontSize: number): number {
-  return workbookDisplayFontCssPx(fontSize)
+export function snapNativeTextDisplayFontSizeV3(fontSize: number, dpr = 1): number {
+  return workbookDisplayFontCssPx(fontSize, dpr)
 }
 
 function resolveNativeTextLineBoxV3(input: { readonly run: TextQuadRun; readonly dpr: number }): {
@@ -256,9 +195,8 @@ function resolveNativeTextLineBoxV3(input: { readonly run: TextQuadRun; readonly
   readonly topInset: number
 } {
   const fontStyle = resolveNativeTextRunFontStyleV3(input.run)
-  const displayFontSize = snapNativeTextDisplayFontSizeV3(fontStyle.fontSize)
   const contentHeight = input.run.height ?? 0
-  const lineHeight = workbookDisplayLineHeightCssPx(displayFontSize)
+  const lineHeight = workbookDisplayLineHeightCssPx(fontStyle.fontSize, input.dpr)
   return {
     height: lineHeight,
     topInset: snapCssPixel(Math.max(0, (contentHeight - lineHeight) / 2), input.dpr),
@@ -273,7 +211,7 @@ export function resolveNativeTextRunVisibleClipV3(input: {
   readonly selectionOcclusionRanges?: readonly Pick<Rectangle, 'x' | 'y' | 'width' | 'height'>[] | null | undefined
   readonly dpr?: number | undefined
 }): NativeTextRunVisibleClipV3 | null {
-  const dpr = input.dpr ?? getDevicePixelRatio()
+  const dpr = input.dpr ?? getWorkbookDevicePixelRatio()
   const offset = resolvePaneRenderOffset(input.pane, input.scrollSnapshot)
   const width = input.run.width ?? 0
   const height = input.run.height ?? 0
@@ -458,14 +396,14 @@ export function resolveNativeTextRunInnerStyleV3(input: {
   readonly dpr?: number | undefined
   readonly visibleClip?: NativeTextRunVisibleClipV3 | null | undefined
 }): CSSProperties {
-  const dpr = input.dpr ?? getDevicePixelRatio()
+  const dpr = input.dpr ?? getWorkbookDevicePixelRatio()
   const width = input.run.width ?? 0
   const height = input.run.height ?? 0
   const clipX = input.run.clipX ?? input.run.x
   const clipY = input.run.clipY ?? input.run.y
   const visibleClip = input.visibleClip ?? null
   const fontStyle = resolveNativeTextRunFontStyleV3(input.run)
-  const displayFontSize = snapNativeTextDisplayFontSizeV3(fontStyle.fontSize)
+  const displayFontSize = snapNativeTextDisplayFontSizeV3(fontStyle.fontSize, dpr)
   const lineBox = resolveNativeTextLineBoxV3({ dpr, run: input.run })
   const baseTop = visibleClip?.innerTop ?? input.run.y - clipY
   const baseLeft = visibleClip?.innerLeft ?? input.run.x - clipX
@@ -542,7 +480,7 @@ export const WorkbookPaneNativeTextLayerV3 = memo(function WorkbookPaneNativeTex
     [presentedScrollSnapshot, resolvedGeometry, scrollSnapshot, tilePanes],
   )
   const panes = useMemo<readonly TextLayerPane[]>(() => [...tilePanes, ...headerPanes], [headerPanes, tilePanes])
-  const dpr = useSyncExternalStore(subscribeDevicePixelRatioChange, getDevicePixelRatio, () => 1)
+  const dpr = useSyncExternalStore(subscribeWorkbookDevicePixelRatioChange, getWorkbookDevicePixelRatio, () => 1)
   const renderedRuns = useMemo(
     () =>
       active
