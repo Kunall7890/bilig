@@ -7,10 +7,15 @@ import {
   build2dAggregateSheet,
   buildApproxLookupDuplicateSheet,
   buildApproxLookupSheet,
+  buildDenseLiteralSheet,
   buildFormulaChainRow,
   buildFormulaFanoutRow,
   buildLookupSheet,
+  buildMixedContentSheet,
   buildOverlappingAggregateSheet,
+  buildParserCacheMixedTemplateSheet,
+  buildParserCacheTemplateSheet,
+  buildParserCacheUniqueFormulaSheet,
   buildSlidingAggregateSheet,
   buildTextLookupSheet,
   columnLabel,
@@ -24,6 +29,7 @@ import {
   type ComparativeMemorySummary,
 } from './benchmark-workpaper-vs-hyperformula.js'
 import {
+  measureWorkPaperBuildFromSheets,
   measureMutationSample,
   normalizeWorkPaperValue,
   type BenchmarkSample,
@@ -42,6 +48,16 @@ const { UniverSheetsNodeCorePreset } = resolveModuleExports<{
 }>(UniverSheetsNodeCorePresetModule, 'UniverSheetsNodeCorePreset')
 
 export type WorkPaperUniverWorkload =
+  | 'build-from-sheets'
+  | 'build-dense-literals'
+  | 'build-dense-literals-wide'
+  | 'build-dense-literals-tall'
+  | 'build-mixed-content'
+  | 'build-mixed-content-small'
+  | 'build-mixed-content-large'
+  | 'build-parser-cache-row-templates'
+  | 'build-parser-cache-mixed-templates'
+  | 'build-parser-cache-unique-formulas'
   | 'single-edit-chain'
   | 'single-edit-chain-small'
   | 'single-edit-chain-large'
@@ -68,6 +84,7 @@ export type WorkPaperUniverWorkload =
 export type WorkPaperUniverWorkloadFamily =
   | 'aggregate'
   | 'aggregate-2d'
+  | 'build'
   | 'formula-chain'
   | 'formula-fanout'
   | 'lookup-approximate'
@@ -79,7 +96,7 @@ export type UniverEditableValue = boolean | number | string
 type UniverCellValue = UniverEditableValue
 
 export interface WorkPaperUniverFixture {
-  readonly edit: {
+  readonly edit?: {
     readonly address: string
     readonly col: number
     readonly row: number
@@ -88,7 +105,7 @@ export interface WorkPaperUniverFixture {
   }
   readonly family: WorkPaperUniverWorkloadFamily
   readonly formula: string
-  readonly result: {
+  readonly result?: {
     readonly address: string
     readonly col: number
     readonly row: number
@@ -146,6 +163,7 @@ export interface WorkPaperUniverBenchmarkReport {
 }
 
 interface WorkPaperUniverScenario {
+  readonly kind: 'build' | 'mutation'
   readonly fixture: WorkPaperUniverFixture
   readonly buildWorkPaperSheets: () => Record<string, WorkPaperSheet>
   readonly workpaperOptions?: Parameters<typeof WorkPaper.buildFromSheets>[1]
@@ -192,6 +210,16 @@ interface UniverWorkbookFacade {
 }
 
 export const WORKPAPER_UNIVER_WORKLOADS = [
+  'build-from-sheets',
+  'build-dense-literals',
+  'build-dense-literals-wide',
+  'build-dense-literals-tall',
+  'build-mixed-content',
+  'build-mixed-content-small',
+  'build-mixed-content-large',
+  'build-parser-cache-row-templates',
+  'build-parser-cache-mixed-templates',
+  'build-parser-cache-unique-formulas',
   'single-edit-chain',
   'single-edit-chain-small',
   'single-edit-chain-large',
@@ -245,7 +273,7 @@ export function buildWorkPaperVsUniverBenchmarkReport(results: readonly WorkPape
     scorecard: {
       comparableWorkloadCount: results.length,
       coverageNote:
-        'Univer is covered through its documented @univerjs/preset-sheets-node-core headless Node preset. This workbook-wide lane times public Facade API cell edits plus formula recalculation completion on equivalent aggregate, chain, fanout, and lookup workloads.',
+        'Univer is covered through its documented @univerjs/preset-sheets-node-core headless Node preset. This workbook-wide lane times public Facade API workbook construction, cell edits, and formula recalculation completion on equivalent build, aggregate, chain, fanout, and lookup workloads.',
       coverageTier: 'workbook-wide',
       directionalMeanRatioGeomean: geometricMean(results.map((result) => result.comparison.workpaperToUniverMeanRatio)),
       directionalP95RatioGeomean: geometricMean(results.map((result) => result.comparison.workpaperToUniverP95Ratio)),
@@ -269,8 +297,8 @@ async function runUniverScenario(
   scenario: WorkPaperUniverScenario,
   options: ResolvedBenchmarkSuiteOptions,
 ): Promise<WorkPaperUniverBenchmarkResult> {
-  const workpaper = benchmarkSupportedEngine(() => measureWorkPaperRecalcSample(scenario), options)
-  const univer = await benchmarkSupportedEngineAsync(() => measureUniverRecalcSample(scenario), options)
+  const workpaper = benchmarkSupportedEngine(() => measureWorkPaperSample(scenario), options)
+  const univer = await benchmarkSupportedEngineAsync(() => measureUniverSample(scenario), options)
   const workPaperVerification = JSON.stringify(workpaper.verification)
   const univerVerification = JSON.stringify(univer.verification)
   if (workPaperVerification !== univerVerification) {
@@ -305,36 +333,66 @@ async function runUniverScenario(
   }
 }
 
-function measureWorkPaperRecalcSample(scenario: WorkPaperUniverScenario): BenchmarkSample {
+function measureWorkPaperSample(scenario: WorkPaperUniverScenario): BenchmarkSample {
+  if (scenario.kind === 'build') {
+    return measureWorkPaperBuildFromSheets(scenario.buildWorkPaperSheets(), scenario.verifyWorkPaper, scenario.workpaperOptions)
+  }
   const workbook = WorkPaper.buildFromSheets(scenario.buildWorkPaperSheets(), scenario.workpaperOptions)
-  const editSheetId = workbook.getSheetId(scenario.fixture.edit.sheetName)
+  const edit = requireMutationEdit(scenario.fixture)
+  const editSheetId = workbook.getSheetId(edit.sheetName)
   if (editSheetId === undefined) {
     workbook.dispose()
-    throw new Error(`WorkPaper Univer benchmark fixture did not create ${scenario.fixture.edit.sheetName}`)
+    throw new Error(`WorkPaper Univer benchmark fixture did not create ${edit.sheetName}`)
   }
   return measureMutationSample(
     workbook,
-    () =>
-      workbook.setCellContents(
-        { sheet: editSheetId, row: scenario.fixture.edit.row, col: scenario.fixture.edit.col },
-        scenario.fixture.edit.value,
-      ),
+    () => workbook.setCellContents({ sheet: editSheetId, row: edit.row, col: edit.col }, edit.value),
     () => scenario.verifyWorkPaper(workbook),
   )
 }
 
+async function measureUniverSample(scenario: WorkPaperUniverScenario): Promise<BenchmarkSample> {
+  if (scenario.kind === 'build') {
+    return measureUniverBuildSample(scenario)
+  }
+  return measureUniverRecalcSample(scenario)
+}
+
+async function measureUniverBuildSample(scenario: WorkPaperUniverScenario): Promise<BenchmarkSample> {
+  const sheetName = scenario.fixture.result?.sheetName ?? 'Bench'
+  const columnCount = scenario.fixture.columnCount ?? 5
+  const memoryBefore = sampleMemory()
+  const started = performance.now()
+  const runtime = createUniverRuntime(scenario.fixture.rowCount, columnCount, sheetName)
+  try {
+    await scenario.setupUniver(runtime)
+    const elapsedMs = performance.now() - started
+    const memoryAfter = sampleMemory()
+
+    return {
+      elapsedMs,
+      memory: measureMemory(memoryBefore, memoryAfter),
+      verification: scenario.verifyUniver(runtime),
+    }
+  } finally {
+    runtime.workbook.dispose()
+    runtime.univer.dispose()
+  }
+}
+
 async function measureUniverRecalcSample(scenario: WorkPaperUniverScenario): Promise<BenchmarkSample> {
+  const edit = requireMutationEdit(scenario.fixture)
   const runtime = createUniverRuntime(
     scenario.fixture.rowCount,
-    scenario.fixture.columnCount ?? Math.max(scenario.fixture.result.col + 1, scenario.fixture.edit.col + 1, 5),
-    scenario.fixture.edit.sheetName,
+    scenario.fixture.columnCount ?? Math.max((scenario.fixture.result?.col ?? 0) + 1, edit.col + 1, 5),
+    edit.sheetName,
   )
   try {
     await scenario.setupUniver(runtime)
     const completion = waitForUniverCalculation(runtime.formula, scenario.fixture.formula)
     const memoryBefore = sampleMemory()
     const started = performance.now()
-    runtime.sheet.getRange(scenario.fixture.edit.address).setValue(scenario.fixture.edit.value)
+    runtime.sheet.getRange(edit.address).setValue(edit.value)
     await completion
     const elapsedMs = performance.now() - started
     const memoryAfter = sampleMemory()
@@ -348,6 +406,13 @@ async function measureUniverRecalcSample(scenario: WorkPaperUniverScenario): Pro
     runtime.workbook.dispose()
     runtime.univer.dispose()
   }
+}
+
+function requireMutationEdit(fixture: WorkPaperUniverFixture): NonNullable<WorkPaperUniverFixture['edit']> {
+  if (fixture.edit === undefined) {
+    throw new Error('Expected Univer mutation workload fixture to include an edit')
+  }
+  return fixture.edit
 }
 
 function benchmarkSupportedEngine(
@@ -410,6 +475,26 @@ function summarizeMemory(samples: readonly MemoryMeasurement[]): ComparativeMemo
 
 function univerScenario(workload: WorkPaperUniverWorkload): WorkPaperUniverScenario {
   switch (workload) {
+    case 'build-from-sheets':
+      return denseLiteralBuildScenario(workload, 160, 24)
+    case 'build-dense-literals':
+      return denseLiteralBuildScenario(workload, 160, 24)
+    case 'build-dense-literals-wide':
+      return denseLiteralBuildScenario(workload, 96, 96)
+    case 'build-dense-literals-tall':
+      return denseLiteralBuildScenario(workload, 768, 12)
+    case 'build-mixed-content':
+      return mixedContentBuildScenario(workload, 750)
+    case 'build-mixed-content-small':
+      return mixedContentBuildScenario(workload, 250)
+    case 'build-mixed-content-large':
+      return mixedContentBuildScenario(workload, 1_500)
+    case 'build-parser-cache-row-templates':
+      return parserCacheTemplateBuildScenario(workload, buildParserCacheTemplateSheet(1_500), 1_500)
+    case 'build-parser-cache-mixed-templates':
+      return parserCacheTemplateBuildScenario(workload, buildParserCacheMixedTemplateSheet(1_500), 1_500)
+    case 'build-parser-cache-unique-formulas':
+      return parserCacheTemplateBuildScenario(workload, buildParserCacheUniqueFormulaSheet(1_500), 1_500)
     case 'single-edit-chain':
       return formulaChainRowScenario(workload, 2_000)
     case 'single-edit-chain-small':
@@ -455,6 +540,40 @@ function univerScenario(workload: WorkPaperUniverWorkload): WorkPaperUniverScena
     case 'lookup-text-exact-large':
       return textLookupCanonicalScenario(workload, 10_000)
   }
+}
+
+function denseLiteralBuildScenario(workload: WorkPaperUniverWorkload, rows: number, cols: number): WorkPaperUniverScenario {
+  return canonicalSingleSheetBuildScenario({
+    family: 'build',
+    observedCells: [{ col: cols - 1, key: 'terminalValue', row: rows - 1 }],
+    rowCount: rows,
+    sheet: buildDenseLiteralSheet(rows, cols),
+    workload,
+  })
+}
+
+function mixedContentBuildScenario(workload: WorkPaperUniverWorkload, rowCount: number): WorkPaperUniverScenario {
+  return canonicalSingleSheetBuildScenario({
+    family: 'build',
+    observedCells: [{ col: 5, key: 'terminalFormulaValue', row: rowCount - 1 }],
+    rowCount,
+    sheet: buildMixedContentSheet(rowCount),
+    workload,
+  })
+}
+
+function parserCacheTemplateBuildScenario(
+  workload: WorkPaperUniverWorkload,
+  sheet: WorkPaperSheet,
+  rowCount: number,
+): WorkPaperUniverScenario {
+  return canonicalSingleSheetBuildScenario({
+    family: 'build',
+    observedCells: [{ col: 5, key: 'terminalValue', row: rowCount - 1 }],
+    rowCount,
+    sheet,
+    workload,
+  })
 }
 
 function formulaChainRowScenario(workload: WorkPaperUniverWorkload, downstreamCount: number): WorkPaperUniverScenario {
@@ -570,6 +689,62 @@ function textLookupCanonicalScenario(workload: WorkPaperUniverWorkload, rowCount
   })
 }
 
+function canonicalSingleSheetBuildScenario(args: {
+  readonly family: WorkPaperUniverWorkloadFamily
+  readonly observedCells: readonly {
+    readonly col: number
+    readonly key: string
+    readonly row: number
+    readonly value?: number
+  }[]
+  readonly rowCount: number
+  readonly sheet: WorkPaperSheet
+  readonly workbookOptions?: Parameters<typeof WorkPaper.buildFromSheets>[1]
+  readonly workload: WorkPaperUniverWorkload
+}): WorkPaperUniverScenario {
+  const sheetName = 'Bench'
+  const columnCount = Math.max(...args.observedCells.map((cell) => cell.col + 1), ...args.sheet.map((row) => row.length))
+  const formula = firstFormula(args.sheet) ?? args.workload
+  const fixture = {
+    family: args.family,
+    formula,
+    result: {
+      address: formatA1(args.observedCells[0]!.row, args.observedCells[0]!.col),
+      col: args.observedCells[0]!.col,
+      row: args.observedCells[0]!.row,
+      sheetName,
+    },
+    columnCount,
+    rowCount: args.rowCount,
+  } as const satisfies WorkPaperUniverFixture
+  const observeWorkPaper = (workbook: WorkPaper): Record<string, unknown> =>
+    Object.fromEntries(
+      args.observedCells.map((cell) => [
+        cell.key,
+        cell.value ??
+          normalizeBenchmarkValue(
+            normalizeWorkPaperValue(workbook.getCellValue({ sheet: workbook.getSheetId(sheetName)!, row: cell.row, col: cell.col })),
+          ),
+      ]),
+    )
+  const observeUniver = (runtime: UniverRuntime): Record<string, unknown> =>
+    Object.fromEntries(
+      args.observedCells.map((cell) => [
+        cell.key,
+        cell.value ?? normalizeBenchmarkValue(runtime.sheet.getRange(formatA1(cell.row, cell.col)).getValue()),
+      ]),
+    )
+  return {
+    kind: 'build',
+    fixture,
+    buildWorkPaperSheets: () => ({ [sheetName]: args.sheet }),
+    ...(args.workbookOptions ? { workpaperOptions: args.workbookOptions } : {}),
+    setupUniver: (runtime) => setupUniverSheet(runtime, args.sheet, formula),
+    verifyUniver: observeUniver,
+    verifyWorkPaper: observeWorkPaper,
+  }
+}
+
 function canonicalSingleSheetScenario(args: {
   readonly edit: { readonly col: number; readonly row: number; readonly value: UniverEditableValue }
   readonly family: WorkPaperUniverWorkloadFamily
@@ -624,6 +799,7 @@ function canonicalSingleSheetScenario(args: {
       ]),
     )
   return {
+    kind: 'mutation',
     fixture,
     buildWorkPaperSheets: () => ({ [sheetName]: args.sheet }),
     ...(args.workbookOptions ? { workpaperOptions: args.workbookOptions } : {}),

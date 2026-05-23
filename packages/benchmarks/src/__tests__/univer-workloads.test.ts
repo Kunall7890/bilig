@@ -8,6 +8,16 @@ import {
 } from '../benchmark-workpaper-vs-univer.js'
 
 const expectedVerificationByWorkload = {
+  'build-from-sheets': { terminalValue: 3_840 },
+  'build-dense-literals': { terminalValue: 3_840 },
+  'build-dense-literals-wide': { terminalValue: 9_216 },
+  'build-dense-literals-tall': { terminalValue: 9_216 },
+  'build-mixed-content': { terminalFormulaValue: 16_500 },
+  'build-mixed-content-small': { terminalFormulaValue: 5_500 },
+  'build-mixed-content-large': { terminalFormulaValue: 33_000 },
+  'build-parser-cache-row-templates': { terminalValue: 1_134_750 },
+  'build-parser-cache-mixed-templates': { terminalValue: 6_000 },
+  'build-parser-cache-unique-formulas': { terminalValue: 1_142_250 },
   'single-edit-chain': { terminalValue: 2_099 },
   'single-edit-chain-small': { terminalValue: 599 },
   'single-edit-chain-large': { terminalValue: 3_099 },
@@ -30,9 +40,19 @@ const expectedVerificationByWorkload = {
   'lookup-approximate-duplicates': { formulaValue: 2_000 },
   'lookup-text-exact': { formulaValue: 4_999 },
   'lookup-text-exact-large': { formulaValue: 9_999 },
-} as const satisfies Record<WorkPaperUniverWorkload, Record<string, number>>
+} as const satisfies Record<WorkPaperUniverWorkload, Record<string, unknown>>
 
 const expectedWorkloads = [
+  'build-from-sheets',
+  'build-dense-literals',
+  'build-dense-literals-wide',
+  'build-dense-literals-tall',
+  'build-mixed-content',
+  'build-mixed-content-small',
+  'build-mixed-content-large',
+  'build-parser-cache-row-templates',
+  'build-parser-cache-mixed-templates',
+  'build-parser-cache-unique-formulas',
   'single-edit-chain',
   'single-edit-chain-small',
   'single-edit-chain-large',
@@ -102,6 +122,7 @@ describe('WorkPaper vs Univer benchmark', () => {
       expect(report.scorecard.p95WinCount + report.scorecard.univerP95WinCount).toBe(WORKPAPER_UNIVER_WORKLOADS.length)
       expect(report.scorecard.meanAndP95WinCount).toBeLessThanOrEqual(WORKPAPER_UNIVER_WORKLOADS.length)
       expect(report.scorecard.workloadFamilies).toEqual([
+        'build',
         'formula-chain',
         'formula-fanout',
         'aggregate-2d',
