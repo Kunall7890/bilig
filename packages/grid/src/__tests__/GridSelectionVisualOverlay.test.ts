@@ -225,6 +225,7 @@ describe('GridSelectionVisualOverlay', () => {
     expect(activeBorder).toBeInstanceOf(HTMLElement)
     expect(fillHandle).toBeInstanceOf(HTMLElement)
     expect(selectionFill?.style.opacity).toBe('')
+    expect(selectionFill?.style.backgroundColor).toBe('rgba(33, 115, 70, 0.18)')
     expect(hoverFill?.style.opacity).toBe('0')
     expect(selectionBorder?.style.opacity).toBe('')
     expect(activeBorder?.style.opacity).toBe('')

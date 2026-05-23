@@ -283,6 +283,11 @@ test('web app preserves the active cell inside a selected area and collapses on 
   await expect(page.locator('[data-grid-selection-visual-role="fill-handle"]')).toHaveCount(1)
   await expectSelectionVisualRoles(page, ['header-fill'], 'hidden')
   await expectSelectionVisualRoles(page, ['selection-fill', 'selection-border', 'active-border', 'fill-handle'], 'visible')
+  await expect(page.locator('[data-grid-selection-visual-role="selection-fill"]').first()).toHaveCSS(
+    'background-color',
+    'rgba(33, 115, 70, 0.18)',
+  )
+  await expectSelectedRangeBodyTint(page, 1, 2)
 
   await clickProductCell(page, 2, 2)
   await expect(page.getByTestId('status-selection')).toHaveText('Sheet1!C3')
@@ -1034,6 +1039,94 @@ async function expectSelectionVisualRoles(page: Page, roles: readonly string[], 
     return
   }
   expect(opacities.every((opacity) => (expected === 'visible' ? opacity !== '0' : opacity === '0'))).toBe(true)
+}
+
+async function expectSelectedRangeBodyTint(page: Page, columnIndex: number, rowIndex: number): Promise<void> {
+  const pixel = await sampleCellInteriorPixel(page, columnIndex, rowIndex)
+  expect(pixel.red, 'selected range interior should not read as a white hollow rectangle').toBeLessThan(238)
+  expect(pixel.green, 'selected range interior should keep a visible spreadsheet selection tint').toBeLessThan(242)
+  expect(pixel.blue, 'selected range interior should not read as a white hollow rectangle').toBeLessThan(238)
+  expect(pixel.green, 'selected range interior should carry the green Excel-style selection cast').toBeGreaterThan(pixel.red)
+}
+
+async function sampleCellInteriorPixel(
+  page: Page,
+  columnIndex: number,
+  rowIndex: number,
+): Promise<{
+  readonly blue: number
+  readonly green: number
+  readonly red: number
+}> {
+  const gridLocator = page.getByTestId('sheet-grid')
+  await expect(gridLocator).toBeVisible()
+  const grid = await gridLocator.boundingBox()
+  if (!grid) {
+    throw new Error('sheet grid is not visible')
+  }
+  const [columnLeft, columnWidth, rowTop, rowHeight, scroll] = await Promise.all([
+    getProductColumnLeft(page, columnIndex),
+    getProductColumnWidth(page, columnIndex),
+    getProductRowTop(page, rowIndex),
+    getProductRowHeight(page, rowIndex),
+    page.getByTestId('grid-scroll-viewport').evaluate((node) => ({
+      scrollLeft: node.scrollLeft,
+      scrollTop: node.scrollTop,
+    })),
+  ])
+  const sampleSize = 6
+  const buffer = await page.screenshot({
+    animations: 'disabled',
+    caret: 'hide',
+    clip: {
+      height: sampleSize,
+      width: sampleSize,
+      x: Math.round(grid.x + columnLeft - scroll.scrollLeft + columnWidth / 2 - sampleSize / 2),
+      y: Math.round(grid.y + PRODUCT_HEADER_HEIGHT + rowTop - scroll.scrollTop + rowHeight / 2 - sampleSize / 2),
+    },
+  })
+  return await page.evaluate(
+    async ({ dataUrl }) => {
+      const image = await new Promise<HTMLImageElement>((resolve, reject) => {
+        const element = new Image()
+        element.addEventListener('load', () => resolve(element), { once: true })
+        element.addEventListener('error', () => reject(new Error('Failed to decode selected-range screenshot')), { once: true })
+        element.src = dataUrl
+      })
+      const canvas = document.createElement('canvas')
+      canvas.width = image.naturalWidth
+      canvas.height = image.naturalHeight
+      const context = canvas.getContext('2d')
+      if (!context) {
+        throw new Error('Missing 2d context for selected-range screenshot analysis')
+      }
+      context.drawImage(image, 0, 0)
+      const pixels = context.getImageData(0, 0, canvas.width, canvas.height).data
+      let red = 0
+      let green = 0
+      let blue = 0
+      let count = 0
+      for (let index = 0; index < pixels.length; index += 4) {
+        const alpha = pixels[index + 3] ?? 0
+        if (alpha <= 200) {
+          continue
+        }
+        red += pixels[index] ?? 255
+        green += pixels[index + 1] ?? 255
+        blue += pixels[index + 2] ?? 255
+        count += 1
+      }
+      if (count === 0) {
+        throw new Error('No opaque selected-range screenshot pixels sampled')
+      }
+      return {
+        blue: Math.round(blue / count),
+        green: Math.round(green / count),
+        red: Math.round(red / count),
+      }
+    },
+    { dataUrl: `data:image/png;base64,${buffer.toString('base64')}` },
+  )
 }
 
 async function isTypeGpuCanvasActive(page: Page): Promise<boolean> {

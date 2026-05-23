@@ -40,7 +40,7 @@ export const workbookThemeColors = {
   accentDark: '#163f29',
   accentSoft: 'rgba(33, 86, 58, 0.2)',
   selectionAccent: '#217346',
-  selectionFill: 'rgba(82, 96, 109, 0.16)',
+  selectionFill: 'rgba(33, 115, 70, 0.18)',
   selectionHeaderFill: 'rgba(33, 115, 70, 0.14)',
   border: '#ddd8cc',
   borderSubtle: '#e7e2d6',
