@@ -158,10 +158,12 @@ and UI contributions. The public package still stays data-only.
   `metadata` payload paths.
 - `normalizeWorkbookCommandReceipt(receipt)` and
   `workbookCommandReceiptOpsMatch(receipt)` give agents boring receipt proof
-  after preview or apply.
+  after preview or apply. Receipt ops are normalized into frozen data and
+  compared by canonical op content, so property insertion order cannot create a
+  false mismatch and invalid op arrays cannot report a trusted match.
 - Feature manifests, command requests, and command receipts are validated from
   own payload fields only; prototype-inherited fields cannot satisfy the public
-  transport contract.
+  transport contract. Receipt changed ranges follow the same own-field rule.
 - Frozen vocabularies such as `workbookCommandCategories`,
   `workbookCommandExecutionModes`, `workbookCommandReceiptStatuses`,
   `workbookProjectionInterceptorPoints`, and `workbookUiContributionSlots` let

@@ -1,5 +1,4 @@
 import type { CellRangeRef } from '@bilig/protocol'
-import { isCellRangeRef } from '@bilig/protocol'
 import { isWorkbookOp } from './guards.js'
 import { WorkbookActionInputError, isWorkbookActionInput, normalizeWorkbookActionInput, type WorkbookActionInput } from './input.js'
 import type { EngineOp } from './ops.js'
@@ -386,7 +385,7 @@ function pushCommandReceiptChangedRangesIssues(issues: WorkbookCommandReceiptIss
     return
   }
   value.forEach((range, index) => {
-    if (!isCellRangeRef(range)) {
+    if (!isCellRangeRefData(range)) {
       issues.push(commandReceiptIssue(`changedRanges[${index}]`, 'Workbook command receipt changed range is invalid'))
     }
   })
@@ -462,9 +461,9 @@ function normalizedCommandReceipt(value: unknown): WorkbookCommandReceipt | null
   const metadata = ownValue(value, 'metadata')
   const errors = ownValue(value, 'errors')
   if (
-    (previewOps !== undefined && (!Array.isArray(previewOps) || !previewOps.every((op) => isWorkbookOp(op)))) ||
-    (appliedOps !== undefined && (!Array.isArray(appliedOps) || !appliedOps.every((op) => isWorkbookOp(op)))) ||
-    (changedRanges !== undefined && (!Array.isArray(changedRanges) || !changedRanges.every((range) => isCellRangeRef(range)))) ||
+    (previewOps !== undefined && !isEngineOpArray(previewOps)) ||
+    (appliedOps !== undefined && !isEngineOpArray(appliedOps)) ||
+    (changedRanges !== undefined && (!Array.isArray(changedRanges) || !changedRanges.every((range) => isCellRangeRefData(range)))) ||
     (proof !== undefined && !isWorkbookActionInput(proof)) ||
     (metadata !== undefined && !isWorkbookActionInput(metadata)) ||
     (message !== undefined && typeof message !== 'string') ||
@@ -565,21 +564,74 @@ export function workbookCommandReceiptOpsMatch(receipt: Pick<WorkbookCommandRece
   if (receipt.previewOps === undefined || receipt.appliedOps === undefined) {
     return null
   }
-  return JSON.stringify(receipt.previewOps) === JSON.stringify(receipt.appliedOps)
+  if (!isEngineOpArray(receipt.previewOps) || !isEngineOpArray(receipt.appliedOps)) {
+    return false
+  }
+  return canonicalJson(receipt.previewOps) === canonicalJson(receipt.appliedOps)
 }
 
 function normalizeReceiptOp(commandId: string, op: EngineOp, label: string): EngineOp {
   if (!isWorkbookOp(op)) {
     throw new Error(`Workbook command receipt ${commandId} ${label} op is invalid`)
   }
-  return structuredClone(op)
+  return deepFreezeClone(op)
 }
 
 function normalizeReceiptRange(commandId: string, range: CellRangeRef): CellRangeRef {
-  if (!isCellRangeRef(range)) {
+  if (!isCellRangeRefData(range)) {
     throw new Error(`Workbook command receipt ${commandId} changed range is invalid`)
   }
-  return structuredClone(range)
+  return deepFreezeClone(range)
+}
+
+function isEngineOpArray(value: unknown): value is readonly EngineOp[] {
+  return Array.isArray(value) && value.every((op) => isWorkbookOp(op))
+}
+
+function isCellRangeRefData(value: unknown): value is CellRangeRef {
+  return (
+    isRecord(value) &&
+    typeof ownValue(value, 'sheetName') === 'string' &&
+    typeof ownValue(value, 'startAddress') === 'string' &&
+    typeof ownValue(value, 'endAddress') === 'string'
+  )
+}
+
+function canonicalJson(value: unknown): string {
+  return JSON.stringify(canonicalValue(value))
+}
+
+function canonicalValue(value: unknown): unknown {
+  if (Array.isArray(value)) {
+    return value.map(canonicalValue)
+  }
+  if (isRecord(value)) {
+    return Object.fromEntries(
+      Object.entries(value)
+        .toSorted(([left], [right]) => left.localeCompare(right))
+        .map(([key, entry]) => [key, canonicalValue(entry)]),
+    )
+  }
+  return value
+}
+
+function deepFreezeClone<T>(value: T): T {
+  const cloned = structuredClone(value)
+  return deepFreeze(cloned, new WeakSet())
+}
+
+function deepFreeze<T>(value: T, seen: WeakSet<object>): T {
+  if (typeof value !== 'object' || value === null) {
+    return value
+  }
+  if (seen.has(value)) {
+    return value
+  }
+  seen.add(value)
+  Object.values(value).forEach((entry) => {
+    deepFreeze(entry, seen)
+  })
+  return Object.freeze(value)
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {

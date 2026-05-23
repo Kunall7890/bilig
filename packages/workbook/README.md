@@ -278,7 +278,10 @@ It returns the same boring `{ status, issues }` shape for receipt fields such as
 `status`, `featureId`, `commandId`, `previewOps`, `appliedOps`, `undo`,
 `changedRanges`, `proof`, `metadata`, and `errors`. Feature manifests, command
 requests, and command receipts are validated from own payload fields only;
-prototype-inherited fields are ignored.
+prototype-inherited fields are ignored. Receipt ops are frozen after
+normalization, changed ranges must be own-field data, and
+`workbookCommandReceiptOpsMatch` uses canonical op equality instead of object
+property order.
 
 ## Low-Level Ops
 

@@ -525,7 +525,9 @@ describe('@bilig/workbook feature api', () => {
     })
     expect(workbookCommandReceiptOpsMatch(receipt)).toBe(true)
     expect(Object.isFrozen(receipt.previewOps)).toBe(true)
+    expect(Object.isFrozen(receipt.previewOps?.[0])).toBe(true)
     expect(Object.isFrozen(receipt.undo)).toBe(true)
+    expect(Object.isFrozen(receipt.changedRanges?.[0])).toBe(true)
     expect(receipt).toMatchObject({
       status: 'applied',
       featureId: 'tables',
@@ -535,6 +537,38 @@ describe('@bilig/workbook feature api', () => {
       changedRanges: [{ sheetName: 'Sheet1', startAddress: 'A1', endAddress: 'B3' }],
       proof: { tableName: 'Sales' },
     })
+  })
+
+  it('matches command receipt ops by canonical data, not property order', () => {
+    expect(
+      workbookCommandReceiptOpsMatch({
+        previewOps: [
+          {
+            kind: 'setCellValue',
+            sheetName: 'Sheet1',
+            address: 'A1',
+            value: 1,
+          },
+        ],
+        appliedOps: [
+          {
+            value: 1,
+            address: 'A1',
+            sheetName: 'Sheet1',
+            kind: 'setCellValue',
+          },
+        ],
+      }),
+    ).toBe(true)
+
+    expect(
+      workbookCommandReceiptOpsMatch({
+        // @ts-expect-error exercising JS callers that bypass the receipt guard
+        previewOps: [{ kind: 'notARealOp' }],
+        // @ts-expect-error exercising JS callers that bypass the receipt guard
+        appliedOps: [{ kind: 'notARealOp' }],
+      }),
+    ).toBe(false)
   })
 
   it('rejects command receipts that contain invalid ops or ranges', () => {
@@ -675,6 +709,30 @@ describe('@bilig/workbook feature api', () => {
         changedRanges: [{ sheetName: 'Sheet1', startAddress: 'A1' }],
       }),
     ).toBe(false)
+
+    const inheritedRange = Object.create({
+      sheetName: 'Sheet1',
+      startAddress: 'A1',
+      endAddress: 'B3',
+    }) as unknown
+    expect(
+      checkWorkbookCommandReceipt({
+        status: 'applied',
+        featureId: 'tables',
+        commandId: 'tables.createFromSelection',
+        category: 'command',
+        changedRanges: [inheritedRange],
+      }),
+    ).toEqual({
+      status: 'invalid',
+      issues: [
+        {
+          code: 'invalid_command_receipt',
+          path: 'changedRanges[0]',
+          message: 'Workbook command receipt changed range is invalid',
+        },
+      ],
+    })
   })
 
   it('treats command receipt fields as own transport data', () => {
