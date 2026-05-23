@@ -123,6 +123,13 @@ describe('xlsx cell style roundtrip', () => {
     expect(cellXml).toMatch(/^<c\b(?=[^>]*\br="C3")(?=[^>]*\bs="1")[^>]*\/>$/u)
   })
 
+  it('inserts style artifact cells in column order inside existing rows', () => {
+    const exported = exportXlsx(buildOutOfOrderStyleArtifactWorkbook())
+
+    expect(readRowCellAddresses(exported, 'xl/worksheets/sheet1.xml', 7)).toEqual(['A7', 'D7', 'E7'])
+    expect(readRowCellAddresses(exported, 'xl/worksheets/sheet1.xml', 30)).toEqual(['A30', 'B30', 'C30', 'D30', 'E30'])
+  })
+
   it('imports self-closing formatted blank cells as blank format cells', () => {
     const zip = unzipSync(exportXlsx(buildBlankFormattedCellWorkbook()))
     const sheetXml = strFromU8(zip['xl/worksheets/sheet1.xml'] ?? new Uint8Array())
@@ -591,10 +598,53 @@ function buildStyleArtifactBlankCellWorkbook(): WorkbookSnapshot {
   }
 }
 
+function buildOutOfOrderStyleArtifactWorkbook(): WorkbookSnapshot {
+  return {
+    version: 1,
+    workbook: {
+      name: 'Style artifact cell ordering',
+      metadata: {
+        styleArtifacts: {
+          stylesXml: headerStyleReferenceStylesXml,
+        },
+      },
+    },
+    sheets: [
+      {
+        id: 1,
+        name: 'Report',
+        order: 0,
+        cells: [
+          { address: 'D7', formula: '=B7/$B$24' },
+          { address: 'E7', formula: '=C7*D7' },
+          { address: 'A30', formula: '=Inputs!A203' },
+          { address: 'C30', formula: '=Inputs!B203' },
+          { address: 'D30', formula: '=B30/$B$39' },
+          { address: 'E30', formula: '=C30*D30' },
+        ],
+        metadata: {
+          styleArtifacts: {
+            cellStyleIndexes: [
+              { address: 'A7', styleIndex: 1 },
+              { address: 'B30', styleIndex: 1 },
+            ],
+          },
+        },
+      },
+    ],
+  }
+}
+
 function readCellXml(bytes: Uint8Array, cellRef: string): string | undefined {
   const [sheetPath, address] = cellRef.split('!')
   const sheetXml = strFromU8(unzipSync(bytes)[sheetPath ?? ''] ?? new Uint8Array())
   return new RegExp(`<c\\b(?=[^>]*\\br="${address ?? ''}")[^>]*(?:\\/>|>[\\s\\S]*?<\\/c>)`, 'u').exec(sheetXml)?.[0]
+}
+
+function readRowCellAddresses(bytes: Uint8Array, sheetPath: string, rowNumber: number): string[] {
+  const sheetXml = strFromU8(unzipSync(bytes)[sheetPath] ?? new Uint8Array())
+  const rowXml = new RegExp(`<row\\b(?=[^>]*\\br="${String(rowNumber)}")[^>]*>[\\s\\S]*?<\\/row>`, 'u').exec(sheetXml)?.[0] ?? ''
+  return [...rowXml.matchAll(/<c\b[^>]*\br="([^"]+)"/gu)].map((match) => match[1] ?? '')
 }
 
 function countCellElements(bytes: Uint8Array, sheetPath: string, address: string): number {

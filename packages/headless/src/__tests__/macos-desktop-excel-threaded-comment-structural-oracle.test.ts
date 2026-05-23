@@ -2,7 +2,7 @@ import { readFileSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 
 import { exportXlsx, importXlsx } from '@bilig/excel-import'
-import { isMacosExcelInstalled, runMacosExcelStructuralOperationOracle } from '@bilig/excel-fixtures'
+import { isMacosExcelInstalled, runMacosExcelInspectionOracle, runMacosExcelStructuralOperationOracle } from '@bilig/excel-fixtures'
 import { strFromU8, strToU8, unzipSync, zipSync } from 'fflate'
 import { describe, expect, it } from 'vitest'
 import * as XLSX from 'xlsx'
@@ -153,6 +153,15 @@ describe('macOS Desktop Excel threaded comment structural oracle', () => {
           const headlessBytes = exportXlsx(workpaper.exportSnapshot())
           writeFileSync(headlessPath, headlessBytes)
           expect(threadedCommentPackageTopology(headlessBytes)).toEqual(threadedCommentPackageTopology(excelTruthBytes))
+          expect(
+            runMacosExcelInspectionOracle({
+              workbookPath: headlessPath,
+              worksheetName: 'Keep',
+              formulaCells: [],
+              inspectCells: ['A1'],
+              timeoutMs: 120_000,
+            }).cells[0]?.value,
+          ).toEqual({ kind: 'string', value: 'keep' })
         } finally {
           workpaper.dispose()
         }

@@ -9,6 +9,8 @@ interface MissingCellXml {
 
 const worksheetRowElementPattern = /<row\b[^>]*\/>|<row\b[^>]*>[\s\S]*?<\/row>/gu
 const worksheetRowOpeningTagPattern = /^<row\b[^>]*(?:\/>|>)/u
+const worksheetCellElementPattern = /<c\b[^>]*(?:\/>|>[\s\S]*?<\/c>)/gu
+const worksheetCellOpeningTagPattern = /^<c\b[^>]*(?:\/>|>)/u
 
 function rowNumberForAddress(address: string): number {
   return XLSX.utils.decode_cell(address).r + 1
@@ -95,8 +97,34 @@ function rowNumberForRowXml(rowXml: string): number | null {
 }
 
 function appendCellsToRowXml(rowXml: string, cells: readonly MissingCellXml[]): string {
-  const cellsXml = rowCellXml(cells).join('')
-  return rowXml.endsWith('/>') ? rowXml.replace(/\/>$/u, `>${cellsXml}</row>`) : rowXml.replace('</row>', `${cellsXml}</row>`)
+  if (rowXml.endsWith('/>')) {
+    return rowXml.replace(/\/>$/u, `>${rowCellXml(cells).join('')}</row>`)
+  }
+
+  const openingTag = worksheetRowOpeningTagPattern.exec(rowXml)?.[0]
+  if (!openingTag || !rowXml.endsWith('</row>')) {
+    return rowXml.replace('</row>', `${rowCellXml(cells).join('')}</row>`)
+  }
+
+  const body = rowXml.slice(openingTag.length, -'</row>'.length)
+  const existingCells: MissingCellXml[] = []
+  let nonCellXml = ''
+  let lastIndex = 0
+  for (const match of body.matchAll(worksheetCellElementPattern)) {
+    const cellXml = match[0]
+    nonCellXml += body.slice(lastIndex, match.index)
+    lastIndex = match.index + cellXml.length
+    const cellOpeningTag = worksheetCellOpeningTagPattern.exec(cellXml)?.[0]
+    const address = cellOpeningTag ? /\br="([^"]+)"/u.exec(cellOpeningTag)?.[1] : undefined
+    if (!address) {
+      nonCellXml += cellXml
+      continue
+    }
+    existingCells.push({ address, xml: cellXml })
+  }
+  nonCellXml += body.slice(lastIndex)
+
+  return `${openingTag}${rowCellXml([...existingCells, ...cells]).join('')}${nonCellXml}</row>`
 }
 
 function findXmlElement(xml: string, localName: string): { readonly start: number; readonly end: number; readonly xml: string } | null {
