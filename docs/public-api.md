@@ -99,8 +99,9 @@ normalization. Actual calculation and authoritative execution stay in
 
 `defineModel` returns frozen, normalized model metadata. Model and action names
 must be non-empty and already trimmed, while descriptions and input metadata are
-trimmed and frozen so the manifest an agent inspected cannot be mutated later by
-the caller.
+trimmed into model-owned frozen copies so the manifest an agent inspected cannot
+be mutated later by the caller. The original consumer config remains
+caller-owned data; `defineModel` does not freeze or rewrite it.
 
 Model actions can accept plain JSON-safe input through
 `planWorkbookAction(model, actionName, input)` and

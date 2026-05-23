@@ -6,7 +6,10 @@ import {
   inspectModel,
   normalizeWorkbookActionInputDescription,
   verifyModel,
+  type WorkbookActionConfig,
+  type WorkbookActionContext,
   type WorkbookActionInput,
+  type WorkbookRangeRef,
 } from '../index.js'
 
 function inputObject(input: WorkbookActionInput | undefined): Record<string, WorkbookActionInput> {
@@ -143,6 +146,64 @@ describe('@bilig/workbook action metadata api', () => {
     expect(Object.isFrozen(writeAction)).toBe(true)
     expect(Object.isFrozen(writeAction.input)).toBe(true)
     expect(() => Object.defineProperty(writeAction, 'description', { value: 'mutated' })).toThrowError(TypeError)
+  })
+
+  it('does not mutate caller-owned action config while freezing the model manifest', () => {
+    type CallerRefs = { output: WorkbookRangeRef }
+    const required: boolean = true
+    const actionConfig = {
+      description: ' Write a consumer-provided value ',
+      input: {
+        kind: 'object',
+        fields: {
+          value: { kind: 'number', required },
+        },
+      },
+      run({ refs, workbook }: WorkbookActionContext<CallerRefs>) {
+        workbook.writeValue(refs.output, 1)
+      },
+    } satisfies WorkbookActionConfig<CallerRefs>
+
+    const model = defineModel({
+      name: 'caller-owned-config-model',
+
+      find(workbook) {
+        return {
+          output: workbook.findRange({ sheetName: 'Sheet1', address: 'B2' }),
+        }
+      },
+
+      actions: {
+        write: actionConfig,
+      },
+    })
+    const writeAction = model.actions.write
+
+    expect(Object.isFrozen(actionConfig)).toBe(false)
+    expect(Object.isFrozen(actionConfig.input)).toBe(false)
+    expect(actionConfig.description).toBe(' Write a consumer-provided value ')
+    if (typeof writeAction !== 'object' || writeAction === null) {
+      throw new Error('expected action object')
+    }
+    expect(writeAction).not.toBe(actionConfig)
+    expect(writeAction.description).toBe('Write a consumer-provided value')
+    expect(Object.isFrozen(writeAction)).toBe(true)
+    expect(Object.isFrozen(writeAction.input)).toBe(true)
+
+    actionConfig.description = ' Mutated after defineModel '
+    actionConfig.input.fields.value.required = false
+    expect(describeModel(model).actionDetails).toEqual([
+      {
+        name: 'write',
+        description: 'Write a consumer-provided value',
+        input: {
+          kind: 'object',
+          fields: {
+            value: { kind: 'number', required: true },
+          },
+        },
+      },
+    ])
   })
 
   it('describes action metadata without running find, checks, or actions', () => {

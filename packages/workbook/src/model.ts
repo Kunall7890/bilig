@@ -141,7 +141,8 @@ export type WorkbookActionPlanResult<Refs = unknown> =
 
 export function defineModel<Refs, Actions extends WorkbookActionMap<Refs>>(
   config: WorkbookModelConfig<Refs, Actions>,
-): WorkbookModel<Refs, Actions> {
+): WorkbookModel<Refs, Actions>
+export function defineModel<Refs>(config: WorkbookModelConfig<Refs, WorkbookActionMap<Refs>>): WorkbookModel<Refs> {
   const name = normalizeRequiredName(config.name, 'Workbook model name')
   const description = normalizeOptionalDescription(config.description, `Workbook model ${name} description`)
   const actionNames = Object.keys(config.actions)
@@ -149,16 +150,19 @@ export function defineModel<Refs, Actions extends WorkbookActionMap<Refs>>(
     throw new Error(`Workbook model ${name} must define at least one action`)
   }
   actionNames.forEach((actionName) => {
-    const normalizedActionName = normalizeRequiredName(actionName, `Workbook model ${name} action name`)
-    normalizeActionDefinition(name, normalizedActionName, config.actions[actionName])
+    normalizeRequiredName(actionName, `Workbook model ${name} action name`)
   })
-  Object.freeze(config.actions)
+  const actions: WorkbookActionMap<Refs> = {}
+  actionNames.forEach((actionName) => {
+    actions[actionName] = normalizeActionDefinition(name, actionName, config.actions[actionName])
+  })
+  Object.freeze(actions)
   return Object.freeze({
     name,
     ...(description !== undefined ? { description } : {}),
     find: config.find,
     ...(config.checks !== undefined ? { checks: config.checks } : {}),
-    actions: config.actions,
+    actions,
   })
 }
 
@@ -204,32 +208,20 @@ function normalizeActionDefinition<Refs>(
   modelName: string,
   actionName: string,
   definition: WorkbookActionDefinition<Refs> | undefined,
-): void {
+): WorkbookActionDefinition<Refs> {
   if (typeof definition === 'function') {
-    return
+    return definition
   }
   if (!isActionConfig(definition) || typeof definition.run !== 'function') {
     throw new Error(`Workbook model ${modelName} action ${actionName} must be a function or action object with run`)
   }
   const description = normalizeOptionalDescription(definition.description, `Workbook model ${modelName} action ${actionName} description`)
   const input = definition.input === undefined ? undefined : normalizeWorkbookActionInputDescription(definition.input)
-  if (description !== undefined) {
-    Object.defineProperty(definition, 'description', {
-      value: description,
-      enumerable: true,
-      configurable: false,
-      writable: false,
-    })
-  }
-  if (input !== undefined) {
-    Object.defineProperty(definition, 'input', {
-      value: input,
-      enumerable: true,
-      configurable: false,
-      writable: false,
-    })
-  }
-  Object.freeze(definition)
+  return Object.freeze({
+    ...(description !== undefined ? { description } : {}),
+    ...(input !== undefined ? { input } : {}),
+    run: definition.run,
+  })
 }
 
 function actionRunner<Refs>(definition: WorkbookActionDefinition<Refs>): WorkbookAction<Refs> {

@@ -117,8 +117,9 @@ it returns `planned` or structured `failed` results instead of requiring
 exception control flow.
 `defineModel` returns frozen, normalized model metadata. Model and action names
 must be non-empty and already trimmed, while descriptions and input metadata are
-trimmed and frozen so the manifest an agent inspected cannot be mutated later by
-the caller.
+trimmed into model-owned frozen copies so the manifest an agent inspected cannot
+be mutated later by the caller. The original consumer config remains
+caller-owned data; `defineModel` does not freeze or rewrite it.
 Actions can also accept a JSON-safe input:
 
 ```ts
