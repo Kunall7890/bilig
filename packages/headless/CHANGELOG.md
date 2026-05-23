@@ -4,6 +4,27 @@ All notable changes to `@bilig/headless` will be documented in this file.
 
 This package is released as part of the aligned bilig library package set.
 
+## 0.70.0
+
+- Release type: minor
+- Previous libraries tag: libraries-v0.68.0
+- Manual override: no
+
+## Features
+- feat(workbook): validate agent command handoff (3249a739)
+- feat(workbook): add command result proof boundary (9cf062eb)
+
+## Fixes
+- fix(workbook): rewrite preserved style artifacts (cb76bf8e)
+- perf(headless): speed up scalar sheet inspection (a18a7f37)
+- fix(workbook): rewrite preserved pivot artifacts (f657279b)
+- fix(workbook): rewrite raw drawing anchors (2a5127dc)
+- perf(core): skip recalc payloads for tracked listeners (48e3930c)
+
+## Internal runtime changes
+- chore(release): runtime packages v0.68.1 (d2d0fe4f)
+- chore(release): runtime packages v0.69.0 (cd42d69f)
+
 ## 0.69.0
 
 - Release type: minor
