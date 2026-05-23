@@ -4,6 +4,15 @@ All notable changes to `@bilig/headless` will be documented in this file.
 
 This package is released as part of the aligned bilig library package set.
 
+## 0.67.5
+
+- Release type: patch
+- Previous libraries tag: libraries-v0.67.4
+- Manual override: no
+
+## Fixes
+- fix(workbook): ignore inherited model actions (312ade88)
+
 ## 0.67.4
 
 - Release type: patch
