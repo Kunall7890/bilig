@@ -100,6 +100,7 @@ describe('macOS Desktop Excel oracle harness', () => {
         { kind: 'setCellValue', address: 'B1', value: 9 },
         { kind: 'clearCell', address: 'B1' },
         { kind: 'renameSheet', newName: 'Renamed Cases' },
+        { kind: 'deleteSheet', name: 'Archive' },
         { kind: 'moveColumns', sourceRange: 'B:B', destinationRange: 'F:F' },
       ],
       inspectCells: ['F1'],
@@ -111,6 +112,7 @@ describe('macOS Desktop Excel oracle harness', () => {
     expect(script).toContain('set value of range "B1" of targetWorksheet to 9')
     expect(script).toContain('clear contents range "B1" of targetWorksheet')
     expect(script).toContain('set name of targetWorksheet to "Renamed Cases"')
+    expect(script).toContain('delete worksheet "Archive" of targetWorkbook')
     expect(script).toContain('cut range (range "B:B" of targetWorksheet)')
     expect(script).toContain('insert into range (range "F:F" of targetWorksheet) shift shift to right')
     expect(script).toContain('set inspectedRange to range "F1" of targetWorksheet')

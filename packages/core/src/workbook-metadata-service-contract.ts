@@ -78,7 +78,10 @@ export class WorkbookMetadataError extends Error {
 
 export interface WorkbookMetadataService {
   readonly renameSheet: (oldSheetName: string, newSheetName: string) => Effect.Effect<void, WorkbookMetadataError>
-  readonly deleteSheetRecords: (sheetName: string) => Effect.Effect<void, WorkbookMetadataError>
+  readonly deleteSheetRecords: (
+    sheetName: string,
+    context?: WorkbookSheetDeletionMetadataContext,
+  ) => Effect.Effect<void, WorkbookMetadataError>
   readonly reset: () => Effect.Effect<void, WorkbookMetadataError>
   readonly setWorkbookProperty: (
     key: string,
@@ -261,4 +264,9 @@ export interface WorkbookMetadataService {
   readonly getShape: (id: string) => Effect.Effect<WorkbookShapeRecord | undefined, WorkbookMetadataError>
   readonly deleteShape: (id: string) => Effect.Effect<boolean, WorkbookMetadataError>
   readonly listShapes: () => Effect.Effect<WorkbookShapeRecord[], WorkbookMetadataError>
+}
+
+export interface WorkbookSheetDeletionMetadataContext {
+  readonly deletedSheetIndex: number
+  readonly sheetCountBeforeDelete: number
 }

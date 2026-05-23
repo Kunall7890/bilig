@@ -118,8 +118,8 @@ export class WorkbookStore extends WorkbookStoreCommentAccessors {
       cellKeyToIndex: this.cellKeyToIndex,
       cellFormats: this.cellFormats,
       getCellPosition: (cellIndex) => this.getCellPosition(cellIndex),
-      deleteSheetRecords: (sheetName) => {
-        runWorkbookMetadataEffect(this.metadataService.deleteSheetRecords(sheetName))
+      deleteSheetRecords: (sheetName, context) => {
+        runWorkbookMetadataEffect(this.metadataService.deleteSheetRecords(sheetName, context))
       },
       renameSheetRecords: (oldName, nextName) => {
         runWorkbookMetadataEffect(this.metadataService.renameSheet(oldName, nextName))

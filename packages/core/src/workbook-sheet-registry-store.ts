@@ -1,5 +1,6 @@
 import type { EngineCounters } from './perf/engine-counters.js'
 import { makeCellKey } from './workbook-cell-key-index.js'
+import type { WorkbookSheetDeletionMetadataContext } from './workbook-metadata-service-contract.js'
 import type { WorkbookMetadataRecord } from './workbook-metadata-types.js'
 import { createWorkbookSheetRecord, type SheetRecord } from './workbook-sheet-record.js'
 
@@ -15,7 +16,7 @@ export class WorkbookSheetRegistryStore {
       readonly cellKeyToIndex: Map<number, number>
       readonly cellFormats: Map<number, string>
       readonly getCellPosition: (cellIndex: number) => { sheetId: number; row: number; col: number } | undefined
-      readonly deleteSheetRecords: (sheetName: string) => void
+      readonly deleteSheetRecords: (sheetName: string, context?: WorkbookSheetDeletionMetadataContext) => void
       readonly renameSheetRecords: (oldName: string, nextName: string) => void
     },
   ) {}
@@ -64,7 +65,7 @@ export class WorkbookSheetRegistryStore {
         sheet.logical.deleteVisibleCellByIds(identity.rowId, identity.colId)
       }
     })
-    this.options.deleteSheetRecords(name)
+    this.options.deleteSheetRecords(name, sheetDeletionMetadataContext([...this.options.sheetsByName.values()], name))
     sheet.rowAxis.length = 0
     sheet.columnAxis.length = 0
     sheet.styleRanges.length = 0
@@ -187,5 +188,17 @@ export class WorkbookSheetRegistryStore {
     if (Number.isInteger(id) && id >= this.nextSheetId) {
       this.nextSheetId = id + 1
     }
+  }
+}
+
+function sheetDeletionMetadataContext(sheets: readonly SheetRecord[], sheetName: string): WorkbookSheetDeletionMetadataContext | undefined {
+  const orderedSheets = sheets.toSorted((left, right) => left.order - right.order)
+  const deletedSheetIndex = orderedSheets.findIndex((sheet) => sheet.name === sheetName)
+  if (deletedSheetIndex === -1) {
+    return undefined
+  }
+  return {
+    deletedSheetIndex,
+    sheetCountBeforeDelete: orderedSheets.length,
   }
 }

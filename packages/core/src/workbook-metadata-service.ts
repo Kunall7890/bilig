@@ -49,7 +49,7 @@ import {
   type WorkbookFreezePaneRecord,
   type WorkbookMetadataRecord,
 } from './workbook-metadata-types.js'
-import type { WorkbookMetadataService } from './workbook-metadata-service-contract.js'
+import type { WorkbookMetadataService, WorkbookSheetDeletionMetadataContext } from './workbook-metadata-service-contract.js'
 import { createWorkbookMetadataCellRecordService } from './workbook-metadata-cell-record-service.js'
 import { createWorkbookMetadataDrawingService } from './workbook-metadata-drawing-service.js'
 import { canonicalMergeRangeRef, isSingleCellMergeRange, rangeContainsAddress, rangesIntersect } from './workbook-merge-records.js'
@@ -76,7 +76,10 @@ import {
   renameDrawingChartPackageArtifactsSheetReferences,
   renamePreservedChartPackageArtifactsSheetReferences,
 } from './engine/services/structure-chart-artifact-rewrite.js'
-import { renamePreservedWorkbookMetadataSheetReferences } from './engine/services/structure-preserved-sheet-metadata-rewrite.js'
+import {
+  renamePreservedWorkbookMetadataSheetReferences,
+  rewritePreservedWorkbookMetadataForSheetDeletion,
+} from './engine/services/structure-preserved-sheet-metadata-rewrite.js'
 
 export { WorkbookMetadataError, type WorkbookMetadataService } from './workbook-metadata-service-contract.js'
 
@@ -251,7 +254,13 @@ export function createWorkbookMetadataService(metadata: WorkbookMetadataRecord):
     )
   }
 
-  const deleteSheetRecordsNow = (sheetName: string): void => {
+  const deleteSheetRecordsNow = (sheetName: string, context?: WorkbookSheetDeletionMetadataContext): void => {
+    if (context) {
+      const preservedWorkbookMetadata = rewritePreservedWorkbookMetadataForSheetDeletion(metadata.preservedWorkbookMetadata, context)
+      if (preservedWorkbookMetadata) {
+        metadata.preservedWorkbookMetadata = preservedWorkbookMetadata
+      }
+    }
     deleteRecordsBySheet(metadata.definedNames, sheetName, (record) => record.scopeSheetName)
     deleteRecordsBySheet(metadata.tables, sheetName, (record) => record.sheetName)
     deleteRecordsBySheet(metadata.spills, sheetName, (record) => record.sheetName)
@@ -332,8 +341,8 @@ export function createWorkbookMetadataService(metadata: WorkbookMetadataRecord):
     renameSheet(oldSheetName, newSheetName) {
       return metadataEffect('Failed to rename workbook sheet metadata', () => renameSheetNow(oldSheetName, newSheetName))
     },
-    deleteSheetRecords(sheetName) {
-      return metadataEffect('Failed to delete workbook sheet metadata', () => deleteSheetRecordsNow(sheetName))
+    deleteSheetRecords(sheetName, context) {
+      return metadataEffect('Failed to delete workbook sheet metadata', () => deleteSheetRecordsNow(sheetName, context))
     },
     reset() {
       return metadataEffect('Failed to reset workbook metadata', resetNow)

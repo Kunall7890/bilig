@@ -9,6 +9,7 @@ import {
 } from '@bilig/formula'
 import type { WorkbookPreservedMetadataRecord, WorkbookPreservedSheetMetadataRecord } from '../../workbook-metadata-types.js'
 import { hasPreservedSheetMetadata } from '../../workbook-preserved-metadata.js'
+import type { WorkbookSheetDeletionMetadataContext } from '../../workbook-metadata-service-contract.js'
 
 const cellReferencePattern = /^\$?([A-Z]+)\$?([1-9]\d*)$/iu
 const pivotTableDefinitionLocationPattern = /<((?:[A-Za-z_][\w.-]*:)?location)\b([^>]*\bref=(["'])([^"']+)\3[^>]*)\/?>/gu
@@ -16,6 +17,7 @@ const pivotTablePartPathPattern = /^xl\/pivotTables\/pivotTable\d+\.xml$/u
 const pivotCacheDefinitionPartPathPattern = /^xl\/pivotCache\/pivotCacheDefinition\d+\.xml$/u
 const worksheetSourcePattern = /<((?:[A-Za-z_][\w.-]*:)?worksheetSource)\b([^>]*\bref=(["'])([^"']+)\3[^>]*)\/?>/gu
 const worksheetSourceElementPattern = /<((?:[A-Za-z_][\w.-]*:)?worksheetSource)\b[^>]*\/?>/gu
+const workbookViewElementPattern = /<((?:[A-Za-z_][\w.-]*:)?workbookView)\b[^>]*\/?>/gu
 
 export function rewritePreservedSheetMetadataForStructuralTransform(
   metadata: WorkbookPreservedSheetMetadataRecord | undefined,
@@ -134,6 +136,29 @@ export function renamePreservedWorkbookMetadataSheetReferences(
   return changed ? next : undefined
 }
 
+export function rewritePreservedWorkbookMetadataForSheetDeletion(
+  metadata: WorkbookPreservedMetadataRecord,
+  context: WorkbookSheetDeletionMetadataContext,
+): WorkbookPreservedMetadataRecord | undefined {
+  const bookViewsXml = metadata.viewState?.bookViewsXml
+  if (!bookViewsXml || context.sheetCountBeforeDelete <= 1) {
+    return undefined
+  }
+
+  const rewrittenBookViewsXml = rewriteWorkbookViewIndexesForSheetDeletion(bookViewsXml, context)
+  if (rewrittenBookViewsXml === bookViewsXml) {
+    return undefined
+  }
+
+  return {
+    ...metadata,
+    viewState: {
+      ...metadata.viewState,
+      bookViewsXml: rewrittenBookViewsXml,
+    },
+  }
+}
+
 export function rewritePreservedPivotPackageArtifactsForStructuralTransform(
   workbookMetadata: WorkbookPreservedMetadataRecord | undefined,
   sheetMetadata: WorkbookPreservedSheetMetadataRecord | undefined,
@@ -187,6 +212,87 @@ export function preservedSheetMetadataTouchesStructuralDelete(
     return true
   }
   return metadata.pivotArtifacts !== undefined
+}
+
+function rewriteWorkbookViewIndexesForSheetDeletion(xml: string, context: WorkbookSheetDeletionMetadataContext): string {
+  return xml.replace(workbookViewElementPattern, (element) => {
+    let nextElement = rewriteWorkbookViewIndexAttributeForSheetDeletion(element, 'activeTab', context, 'active')
+    nextElement = rewriteWorkbookViewIndexAttributeForSheetDeletion(nextElement, 'firstSheet', context, 'first')
+    return nextElement
+  })
+}
+
+function rewriteWorkbookViewIndexAttributeForSheetDeletion(
+  element: string,
+  attributeName: 'activeTab' | 'firstSheet',
+  context: WorkbookSheetDeletionMetadataContext,
+  mode: 'active' | 'first',
+): string {
+  const attribute = readNonNegativeIntegerXmlAttribute(element, attributeName)
+  if (!attribute) {
+    return element
+  }
+  const nextIndex =
+    mode === 'active'
+      ? sheetIndexAfterActiveSheetDeletion(attribute.value, context)
+      : sheetIndexAfterFirstVisibleSheetDeletion(attribute.value, context)
+  if (attributeName === 'firstSheet' && nextIndex === 0) {
+    return removeXmlAttribute(element, attributeName)
+  }
+  if (nextIndex === attribute.value) {
+    return element
+  }
+  return replaceXmlAttributeValue(element, attributeName, attribute.quote, String(nextIndex))
+}
+
+function sheetIndexAfterActiveSheetDeletion(index: number, context: WorkbookSheetDeletionMetadataContext): number {
+  const sheetCountAfterDelete = Math.max(0, context.sheetCountBeforeDelete - 1)
+  if (sheetCountAfterDelete === 0) {
+    return 0
+  }
+  if (index > context.deletedSheetIndex) {
+    return index - 1
+  }
+  if (index === context.deletedSheetIndex) {
+    return Math.min(index, sheetCountAfterDelete - 1)
+  }
+  return Math.min(index, sheetCountAfterDelete - 1)
+}
+
+function sheetIndexAfterFirstVisibleSheetDeletion(index: number, context: WorkbookSheetDeletionMetadataContext): number {
+  const sheetCountAfterDelete = Math.max(0, context.sheetCountBeforeDelete - 1)
+  if (sheetCountAfterDelete === 0) {
+    return 0
+  }
+  const shiftedIndex = index > context.deletedSheetIndex ? index - 1 : index
+  return Math.min(shiftedIndex, sheetCountAfterDelete - 1)
+}
+
+function readNonNegativeIntegerXmlAttribute(
+  element: string,
+  attributeName: 'activeTab' | 'firstSheet',
+): { readonly value: number; readonly quote: string } | undefined {
+  const match = new RegExp(`\\b${attributeName}=(["'])(\\d+)\\1`, 'u').exec(element)
+  if (!match) {
+    return undefined
+  }
+  const value = Number(match[2])
+  if (!Number.isSafeInteger(value)) {
+    return undefined
+  }
+  const quote = match[1]
+  if (quote !== '"' && quote !== "'") {
+    return undefined
+  }
+  return { value, quote }
+}
+
+function replaceXmlAttributeValue(element: string, attributeName: 'activeTab' | 'firstSheet', quote: string, value: string): string {
+  return element.replace(new RegExp(`\\b${attributeName}=(["'])\\d+\\1`, 'u'), `${attributeName}=${quote}${value}${quote}`)
+}
+
+function removeXmlAttribute(element: string, attributeName: 'firstSheet'): string {
+  return element.replace(new RegExp(`\\s+${attributeName}=(["'])\\d+\\1`, 'u'), '')
 }
 
 function rewriteStyleArtifactsForStructuralTransform(
