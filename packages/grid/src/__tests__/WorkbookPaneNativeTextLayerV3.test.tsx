@@ -200,8 +200,8 @@ describe('WorkbookPaneNativeTextLayerV3', () => {
   })
 
   test('snaps fractional workbook font sizes before browser glyph rasterization', () => {
-    expect(snapNativeTextDisplayFontSizeV3(13.3333, 1)).toBe(13)
-    expect(snapNativeTextDisplayFontSizeV3(13.3333, 2)).toBe(13.5)
+    expect(snapNativeTextDisplayFontSizeV3(13.3333)).toBe(13)
+    expect(snapNativeTextDisplayFontSizeV3(14.6667)).toBe(15)
 
     const defaultPointSizeRun = createRun({
       font: '400 13.3333px Arial, sans-serif',
@@ -214,7 +214,7 @@ describe('WorkbookPaneNativeTextLayerV3', () => {
       top: -1,
     })
     expect(resolveNativeTextRunInnerStyleV3({ dpr: 2, run: defaultPointSizeRun })).toMatchObject({
-      fontSize: 13.5,
+      fontSize: 13,
       lineHeight: '16px',
       top: -1,
     })

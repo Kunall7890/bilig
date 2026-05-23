@@ -11,7 +11,12 @@ import { buildDynamicGridOverlayBatchV3 } from './renderer-v3/dynamic-overlay-ba
 import { resolveResizeGuideColumn, resolveResizeGuideRow } from './useGridResizeState.js'
 import { useWorkbookGridInteractions } from './useWorkbookGridInteractions.js'
 import { useWorkbookGridRenderState } from './useWorkbookGridRenderState.js'
-import { WORKBOOK_DEFAULT_FONT_SIZE, WORKBOOK_FONT_SANS, workbookFontPointSizeToCssPx } from './workbookTheme.js'
+import {
+  WORKBOOK_DEFAULT_FONT_SIZE,
+  WORKBOOK_FONT_SANS,
+  workbookDisplayFontPointSizeToCssPx,
+  workbookDisplayLineHeightCssPx,
+} from './workbookTheme.js'
 import type { GridSelection, Item, Rectangle } from './gridTypes.js'
 import type { WorkbookGridSurfaceProps } from './workbookGridSurfaceTypes.js'
 export { hasSelectionTargetChanged } from './workbookGridViewport.js'
@@ -353,6 +358,7 @@ export function WorkbookGridSurface(props: WorkbookGridSurfaceProps) {
       ? props.editorTargetSelection.address
       : props.selectedAddr
   const displayTargetAddress = props.isEditingCell ? editorTargetAddress : formatAddress(displaySelectionRow, displaySelectionCol)
+  const workbookDisplayFontSize = workbookDisplayFontPointSizeToCssPx(WORKBOOK_DEFAULT_FONT_SIZE)
 
   return (
     <div className="relative flex min-h-0 flex-1 flex-col bg-[var(--wb-surface)]">
@@ -373,8 +379,8 @@ export function WorkbookGridSurface(props: WorkbookGridSurfaceProps) {
         style={{
           cursor: renderState.hoverState.cursor,
           fontFamily: WORKBOOK_FONT_SANS,
-          fontSize: workbookFontPointSizeToCssPx(WORKBOOK_DEFAULT_FONT_SIZE),
-          lineHeight: 1.2,
+          fontSize: workbookDisplayFontSize,
+          lineHeight: `${workbookDisplayLineHeightCssPx(workbookDisplayFontSize)}px`,
         }}
         onFocus={interactions.handleHostFocus}
         onKeyDownCapture={interactions.handleHostKeyDownCapture}

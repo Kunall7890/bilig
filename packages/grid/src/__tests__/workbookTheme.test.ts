@@ -3,6 +3,9 @@ import {
   WORKBOOK_DEFAULT_FONT_SIZE,
   WORKBOOK_FONT_POINT_TO_CSS_PX,
   WORKBOOK_FONT_SANS,
+  workbookDisplayFontCssPx,
+  workbookDisplayFontPointSizeToCssPx,
+  workbookDisplayLineHeightCssPx,
   workbookFontPointSizeToCssPx,
 } from '../workbookTheme.js'
 
@@ -32,5 +35,14 @@ describe('workbookTheme', () => {
     expect(workbookFontPointSizeToCssPx(11)).toBe(14.6667)
     expect(workbookFontPointSizeToCssPx(12)).toBe(16)
     expect(workbookFontPointSizeToCssPx(15)).toBe(20)
+  })
+
+  test('snaps DOM-displayed workbook text onto whole CSS pixels', () => {
+    expect(workbookDisplayFontCssPx(13.3333)).toBe(13)
+    expect(workbookDisplayFontCssPx(14.6667)).toBe(15)
+    expect(workbookDisplayFontPointSizeToCssPx(10)).toBe(13)
+    expect(workbookDisplayFontPointSizeToCssPx(11)).toBe(15)
+    expect(workbookDisplayLineHeightCssPx(13.3333)).toBe(16)
+    expect(workbookDisplayLineHeightCssPx(14.6667)).toBe(18)
   })
 })

@@ -1,6 +1,12 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState, type CSSProperties } from 'react'
 import type { EditMovement, EditTargetSelection } from './SheetGridView.js'
-import { WORKBOOK_DEFAULT_FONT_SIZE, workbookFontPointSizeToCssPx, workbookThemeColors } from './workbookTheme.js'
+import {
+  WORKBOOK_DEFAULT_FONT_SIZE,
+  workbookDisplayFontCssPx,
+  workbookDisplayLineHeightCssPx,
+  workbookFontPointSizeToCssPx,
+  workbookThemeColors,
+} from './workbookTheme.js'
 import { workbookTextControlProps } from './workbookTextControls.js'
 import { workbookNativeTextQualityStyle } from './workbookTextQuality.js'
 
@@ -182,6 +188,8 @@ export function CellEditorOverlay({
   const [isCompleting, setIsCompleting] = useState(false)
   const [draftValue, setDraftValue] = useState(value)
   const MAX_EDITOR_HEIGHT = 220
+  const displayFontSize = workbookDisplayFontCssPx(fontSize)
+  const displayLineHeight = workbookDisplayLineHeightCssPx(displayFontSize)
 
   const cancelPendingBlurCommit = () => {
     pendingEarlyBlurCommitRef.current = false
@@ -644,10 +652,10 @@ export function CellEditorOverlay({
       return
     }
     textarea.style.height = '0px'
-    const measuredHeight = Math.min(Math.max(textarea.scrollHeight, fontSize + 16), MAX_EDITOR_HEIGHT)
+    const measuredHeight = Math.min(Math.max(textarea.scrollHeight, displayFontSize + 16), MAX_EDITOR_HEIGHT)
     textarea.style.height = `${measuredHeight}px`
     textarea.style.overflowY = textarea.scrollHeight > MAX_EDITOR_HEIGHT ? 'auto' : 'hidden'
-  }, [draftValue, fontSize])
+  }, [displayFontSize, draftValue])
 
   const commit = (movement?: EditMovement) => {
     if (movement) {
@@ -710,9 +718,10 @@ export function CellEditorOverlay({
           color,
           font,
           fontFeatureSettings: 'normal',
-          fontSize,
+          fontSize: displayFontSize,
           fontVariantNumeric: 'tabular-nums',
           letterSpacing: 0,
+          lineHeight: `${displayLineHeight}px`,
           minHeight: '100%',
           textAlign,
           textDecorationLine: underline ? 'underline' : undefined,

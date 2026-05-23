@@ -5,7 +5,13 @@ import type { Rectangle } from '../gridTypes.js'
 import type { GridCameraStore } from '../runtime/gridCameraStore.js'
 import { CELL_TEXT_PADDING_X } from '../text/gridTextPacket.js'
 import type { WorkbookGridScrollSnapshot, WorkbookGridScrollStore } from '../workbookGridScrollStore.js'
-import { WORKBOOK_DEFAULT_FONT_SIZE, WORKBOOK_FONT_SANS, workbookFontPointSizeToCssPx } from '../workbookTheme.js'
+import {
+  WORKBOOK_DEFAULT_FONT_SIZE,
+  WORKBOOK_FONT_SANS,
+  workbookDisplayFontCssPx,
+  workbookDisplayLineHeightCssPx,
+  workbookFontPointSizeToCssPx,
+} from '../workbookTheme.js'
 import { workbookNativeTextQualityStyle } from '../workbookTextQuality.js'
 import type { TextQuadRun } from './line-text-quad-buffer.js'
 import type { WorkbookRenderTilePaneState } from './render-tile-pane-state.js'
@@ -241,8 +247,8 @@ function snapCssPixel(value: number, dpr: number): number {
   return Math.round(value * dpr) / dpr
 }
 
-export function snapNativeTextDisplayFontSizeV3(fontSize: number, dpr: number): number {
-  return Math.max(1, snapCssPixel(fontSize, dpr))
+export function snapNativeTextDisplayFontSizeV3(fontSize: number): number {
+  return workbookDisplayFontCssPx(fontSize)
 }
 
 function resolveNativeTextLineBoxV3(input: { readonly run: TextQuadRun; readonly dpr: number }): {
@@ -250,9 +256,9 @@ function resolveNativeTextLineBoxV3(input: { readonly run: TextQuadRun; readonly
   readonly topInset: number
 } {
   const fontStyle = resolveNativeTextRunFontStyleV3(input.run)
-  const displayFontSize = snapNativeTextDisplayFontSizeV3(fontStyle.fontSize, input.dpr)
+  const displayFontSize = snapNativeTextDisplayFontSizeV3(fontStyle.fontSize)
   const contentHeight = input.run.height ?? 0
-  const lineHeight = snapCssPixel(displayFontSize * 1.2, input.dpr)
+  const lineHeight = workbookDisplayLineHeightCssPx(displayFontSize)
   return {
     height: lineHeight,
     topInset: snapCssPixel(Math.max(0, (contentHeight - lineHeight) / 2), input.dpr),
@@ -459,7 +465,7 @@ export function resolveNativeTextRunInnerStyleV3(input: {
   const clipY = input.run.clipY ?? input.run.y
   const visibleClip = input.visibleClip ?? null
   const fontStyle = resolveNativeTextRunFontStyleV3(input.run)
-  const displayFontSize = snapNativeTextDisplayFontSizeV3(fontStyle.fontSize, dpr)
+  const displayFontSize = snapNativeTextDisplayFontSizeV3(fontStyle.fontSize)
   const lineBox = resolveNativeTextLineBoxV3({ dpr, run: input.run })
   const baseTop = visibleClip?.innerTop ?? input.run.y - clipY
   const baseLeft = visibleClip?.innerLeft ?? input.run.x - clipX

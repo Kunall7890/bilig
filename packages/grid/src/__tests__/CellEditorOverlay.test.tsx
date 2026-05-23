@@ -5,7 +5,7 @@ import { createRoot } from 'react-dom/client'
 import type * as ReactDom from 'react-dom'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { CellEditorOverlay } from '../CellEditorOverlay.js'
-import { WORKBOOK_DEFAULT_FONT_SIZE, workbookFontPointSizeToCssPx } from '../workbookTheme.js'
+import { WORKBOOK_DEFAULT_FONT_SIZE, workbookDisplayFontPointSizeToCssPx } from '../workbookTheme.js'
 import { workbookNativeTextQualityStyle } from '../workbookTextQuality.js'
 
 vi.mock('react-dom', async (importOriginal) => {
@@ -138,10 +138,11 @@ describe('CellEditorOverlay', () => {
     })
 
     const textarea = host.querySelector<HTMLTextAreaElement>("[data-testid='cell-editor-input']")
-    expect(textarea?.style.fontSize).toBe(`${workbookFontPointSizeToCssPx(WORKBOOK_DEFAULT_FONT_SIZE)}px`)
+    expect(textarea?.style.fontSize).toBe(`${workbookDisplayFontPointSizeToCssPx(WORKBOOK_DEFAULT_FONT_SIZE)}px`)
     expect(textarea?.style.fontFeatureSettings).toBe('normal')
     expect(textarea?.style.fontVariantNumeric).toBe('tabular-nums')
     expect(textarea?.style.letterSpacing).toBe('0px')
+    expect(textarea?.style.lineHeight).toBe('16px')
     expect(textarea?.style.fontOpticalSizing).toBe('none')
     expect(textarea?.style.fontSynthesis).toBe('none')
     expect(textarea?.style.textRendering).toBe('auto')

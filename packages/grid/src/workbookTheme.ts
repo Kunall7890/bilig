@@ -11,6 +11,18 @@ export function workbookHeaderFontPointSizeToCssPx(pointSize = WORKBOOK_HEADER_F
   return workbookFontPointSizeToCssPx(pointSize)
 }
 
+export function workbookDisplayFontCssPx(fontSizeCssPx: number): number {
+  return Math.max(1, Math.round(fontSizeCssPx))
+}
+
+export function workbookDisplayFontPointSizeToCssPx(pointSize: number): number {
+  return workbookDisplayFontCssPx(workbookFontPointSizeToCssPx(pointSize))
+}
+
+export function workbookDisplayLineHeightCssPx(fontSizeCssPx: number): number {
+  return Math.max(1, Math.round(workbookDisplayFontCssPx(fontSizeCssPx) * 1.2))
+}
+
 export const workbookThemeColors = {
   accent: '#21563a',
   accentDark: '#163f29',

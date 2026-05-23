@@ -4,7 +4,7 @@ import type { Rectangle } from './gridTypes.js'
 import {
   WORKBOOK_DEFAULT_FONT_SIZE,
   WORKBOOK_FONT_SANS,
-  workbookFontPointSizeToCssPx,
+  workbookDisplayFontPointSizeToCssPx,
   workbookHeaderFontPointSizeToCssPx,
   workbookThemeColors,
 } from './workbookTheme.js'
@@ -70,7 +70,7 @@ export function getGridTheme(options?: { gpuSurfaceEnabled?: boolean; textSurfac
     cellHorizontalPadding: 8,
     cellVerticalPadding: 4,
     drilldownBorder: workbookThemeColors.border,
-    editorFontSize: `${workbookFontPointSizeToCssPx(WORKBOOK_DEFAULT_FONT_SIZE)}px`,
+    editorFontSize: `${workbookDisplayFontPointSizeToCssPx(WORKBOOK_DEFAULT_FONT_SIZE)}px`,
     fontFamily,
     headerFontStyle: `600 ${workbookHeaderFontPointSizeToCssPx()}px ${fontFamily}`,
     horizontalBorderColor: workbookThemeColors.gridBorder,
