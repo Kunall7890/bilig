@@ -428,7 +428,7 @@ Reduced workbook already in hand? Generate the paste-ready fixture report in
 one command:
 
 ```sh
-npm exec --package @bilig/workpaper@latest -- bilig-formula-clinic ./reduced.xlsx --cells "Summary!B7,Inputs!B2"
+npm exec --package @bilig/headless@0.72.0 -- bilig-formula-clinic ./reduced.xlsx --cells "Summary!B7,Inputs!B2"
 ```
 
 Handing a spreadsheet task to another coding agent? Start with the

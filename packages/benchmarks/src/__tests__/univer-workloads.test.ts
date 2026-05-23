@@ -18,6 +18,10 @@ const expectedVerificationByWorkload = {
   'build-parser-cache-row-templates': { terminalValue: 1_134_750 },
   'build-parser-cache-mixed-templates': { terminalValue: 6_000 },
   'build-parser-cache-unique-formulas': { terminalValue: 1_142_250 },
+  'build-many-sheets': { terminalValue: 9_216 },
+  'build-many-sheets-wide': { terminalValue: 12_288 },
+  'build-many-sheets-narrow': { terminalValue: 12_288 },
+  'build-cross-sheet-dashboard': { leadingDataTotal: 125_250, terminalDataTotal: 2_500 },
   'single-edit-chain': { terminalValue: 2_099 },
   'single-edit-chain-small': { terminalValue: 599 },
   'single-edit-chain-large': { terminalValue: 3_099 },
@@ -75,6 +79,10 @@ const expectedWorkloads = [
   'lookup-approximate-duplicates',
   'lookup-text-exact',
   'lookup-text-exact-large',
+  'build-many-sheets',
+  'build-many-sheets-wide',
+  'build-many-sheets-narrow',
+  'build-cross-sheet-dashboard',
 ] as const satisfies readonly WorkPaperUniverWorkload[]
 
 const benchmarkTimeoutMs = 60_000
@@ -129,6 +137,7 @@ describe('WorkPaper vs Univer benchmark', () => {
         'overlapping-aggregate',
         'lookup-exact',
         'lookup-approximate',
+        'cross-sheet',
       ])
     },
     benchmarkTimeoutMs,

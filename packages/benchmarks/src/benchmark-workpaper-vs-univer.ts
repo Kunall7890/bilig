@@ -35,6 +35,8 @@ import {
   type BenchmarkSample,
 } from './benchmark-workpaper-vs-hyperformula-expanded-support.js'
 import { normalizeBenchmarkValue } from './benchmark-workpaper-vs-univer-fixtures.js'
+import { crossSheetDashboardBuildScenario, manySheetsBuildScenario } from './benchmark-workpaper-vs-univer-multisheet-workloads.js'
+import { waitForUniverVerification } from './benchmark-workpaper-vs-univer-sync.js'
 import { measureMemory, sampleMemory, type MemoryMeasurement } from './metrics.js'
 import { summarizeNumbers } from './stats.js'
 
@@ -58,6 +60,10 @@ export type WorkPaperUniverWorkload =
   | 'build-parser-cache-row-templates'
   | 'build-parser-cache-mixed-templates'
   | 'build-parser-cache-unique-formulas'
+  | 'build-many-sheets'
+  | 'build-many-sheets-wide'
+  | 'build-many-sheets-narrow'
+  | 'build-cross-sheet-dashboard'
   | 'single-edit-chain'
   | 'single-edit-chain-small'
   | 'single-edit-chain-large'
@@ -87,6 +93,7 @@ export type WorkPaperUniverWorkloadFamily =
   | 'build'
   | 'formula-chain'
   | 'formula-fanout'
+  | 'cross-sheet'
   | 'lookup-approximate'
   | 'lookup-exact'
   | 'overlapping-aggregate'
@@ -162,7 +169,7 @@ export interface WorkPaperUniverBenchmarkReport {
   readonly results: readonly WorkPaperUniverBenchmarkResult[]
 }
 
-interface WorkPaperUniverScenario {
+export interface WorkPaperUniverScenario {
   readonly kind: 'build' | 'mutation'
   readonly fixture: WorkPaperUniverFixture
   readonly buildWorkPaperSheets: () => Record<string, WorkPaperSheet>
@@ -177,14 +184,14 @@ interface ResolvedBenchmarkSuiteOptions {
   readonly warmupCount: number
 }
 
-interface UniverRuntime {
+export interface UniverRuntime {
   readonly formula: UniverFormulaFacade
   readonly sheet: UniverWorksheetFacade
   readonly univer: { dispose(): void }
   readonly workbook: UniverWorkbookFacade
 }
 
-interface UniverFormulaFacade {
+export interface UniverFormulaFacade {
   onCalculationEnd(): Promise<void>
 }
 
@@ -197,16 +204,18 @@ interface UniverRangeFacade {
   setValues(values: UniverCellValue[][]): UniverRangeFacade
 }
 
-interface UniverWorksheetFacade {
+export interface UniverWorksheetFacade {
   getRange(row: number, column: number): UniverRangeFacade
   getRange(row: number, column: number, numRows: number): UniverRangeFacade
   getRange(row: number, column: number, numRows: number, numColumns: number): UniverRangeFacade
   getRange(a1Notation: string): UniverRangeFacade
 }
 
-interface UniverWorkbookFacade {
+export interface UniverWorkbookFacade {
+  create(name: string, rows: number, columns: number): UniverWorksheetFacade
   dispose(): void
   getActiveSheet(): UniverWorksheetFacade
+  getSheetByName(name: string): UniverWorksheetFacade | null
 }
 
 export const WORKPAPER_UNIVER_WORKLOADS = [
@@ -242,6 +251,10 @@ export const WORKPAPER_UNIVER_WORKLOADS = [
   'lookup-approximate-duplicates',
   'lookup-text-exact',
   'lookup-text-exact-large',
+  'build-many-sheets',
+  'build-many-sheets-wide',
+  'build-many-sheets-narrow',
+  'build-cross-sheet-dashboard',
 ] as const satisfies readonly WorkPaperUniverWorkload[]
 
 const univerCalculationTimeoutMs = 10_000
@@ -298,7 +311,7 @@ async function runUniverScenario(
   options: ResolvedBenchmarkSuiteOptions,
 ): Promise<WorkPaperUniverBenchmarkResult> {
   const workpaper = benchmarkSupportedEngine(() => measureWorkPaperSample(scenario), options)
-  const univer = await benchmarkSupportedEngineAsync(() => measureUniverSample(scenario), options)
+  const univer = await benchmarkSupportedEngineAsync(() => measureUniverSample(scenario, workpaper.verification), options)
   const workPaperVerification = JSON.stringify(workpaper.verification)
   const univerVerification = JSON.stringify(univer.verification)
   if (workPaperVerification !== univerVerification) {
@@ -351,14 +364,20 @@ function measureWorkPaperSample(scenario: WorkPaperUniverScenario): BenchmarkSam
   )
 }
 
-async function measureUniverSample(scenario: WorkPaperUniverScenario): Promise<BenchmarkSample> {
+async function measureUniverSample(
+  scenario: WorkPaperUniverScenario,
+  expectedVerification: Record<string, unknown>,
+): Promise<BenchmarkSample> {
   if (scenario.kind === 'build') {
-    return measureUniverBuildSample(scenario)
+    return measureUniverBuildSample(scenario, expectedVerification)
   }
-  return measureUniverRecalcSample(scenario)
+  return measureUniverRecalcSample(scenario, expectedVerification)
 }
 
-async function measureUniverBuildSample(scenario: WorkPaperUniverScenario): Promise<BenchmarkSample> {
+async function measureUniverBuildSample(
+  scenario: WorkPaperUniverScenario,
+  expectedVerification: Record<string, unknown>,
+): Promise<BenchmarkSample> {
   const sheetName = scenario.fixture.result?.sheetName ?? 'Bench'
   const columnCount = scenario.fixture.columnCount ?? 5
   const memoryBefore = sampleMemory()
@@ -366,13 +385,14 @@ async function measureUniverBuildSample(scenario: WorkPaperUniverScenario): Prom
   const runtime = createUniverRuntime(scenario.fixture.rowCount, columnCount, sheetName)
   try {
     await scenario.setupUniver(runtime)
+    const verification = await waitForUniverVerification(runtime, scenario, expectedVerification, univerCalculationTimeoutMs)
     const elapsedMs = performance.now() - started
     const memoryAfter = sampleMemory()
 
     return {
       elapsedMs,
       memory: measureMemory(memoryBefore, memoryAfter),
-      verification: scenario.verifyUniver(runtime),
+      verification,
     }
   } finally {
     runtime.workbook.dispose()
@@ -380,7 +400,10 @@ async function measureUniverBuildSample(scenario: WorkPaperUniverScenario): Prom
   }
 }
 
-async function measureUniverRecalcSample(scenario: WorkPaperUniverScenario): Promise<BenchmarkSample> {
+async function measureUniverRecalcSample(
+  scenario: WorkPaperUniverScenario,
+  expectedVerification: Record<string, unknown>,
+): Promise<BenchmarkSample> {
   const edit = requireMutationEdit(scenario.fixture)
   const runtime = createUniverRuntime(
     scenario.fixture.rowCount,
@@ -389,18 +412,17 @@ async function measureUniverRecalcSample(scenario: WorkPaperUniverScenario): Pro
   )
   try {
     await scenario.setupUniver(runtime)
-    const completion = waitForUniverCalculation(runtime.formula, scenario.fixture.formula)
     const memoryBefore = sampleMemory()
     const started = performance.now()
     runtime.sheet.getRange(edit.address).setValue(edit.value)
-    await completion
+    const verification = await waitForUniverVerification(runtime, scenario, expectedVerification, univerCalculationTimeoutMs)
     const elapsedMs = performance.now() - started
     const memoryAfter = sampleMemory()
 
     return {
       elapsedMs,
       memory: measureMemory(memoryBefore, memoryAfter),
-      verification: scenario.verifyUniver(runtime),
+      verification,
     }
   } finally {
     runtime.workbook.dispose()
@@ -495,6 +517,14 @@ function univerScenario(workload: WorkPaperUniverWorkload): WorkPaperUniverScena
       return parserCacheTemplateBuildScenario(workload, buildParserCacheMixedTemplateSheet(1_500), 1_500)
     case 'build-parser-cache-unique-formulas':
       return parserCacheTemplateBuildScenario(workload, buildParserCacheUniqueFormulaSheet(1_500), 1_500)
+    case 'build-many-sheets':
+      return manySheetsBuildScenario(workload, 6, 96, 16)
+    case 'build-many-sheets-wide':
+      return manySheetsBuildScenario(workload, 4, 64, 48)
+    case 'build-many-sheets-narrow':
+      return manySheetsBuildScenario(workload, 12, 128, 8)
+    case 'build-cross-sheet-dashboard':
+      return crossSheetDashboardBuildScenario(workload, 4, 500)
     case 'single-edit-chain':
       return formulaChainRowScenario(workload, 2_000)
     case 'single-edit-chain-small':
@@ -739,7 +769,7 @@ function canonicalSingleSheetBuildScenario(args: {
     fixture,
     buildWorkPaperSheets: () => ({ [sheetName]: args.sheet }),
     ...(args.workbookOptions ? { workpaperOptions: args.workbookOptions } : {}),
-    setupUniver: (runtime) => setupUniverSheet(runtime, args.sheet, formula),
+    setupUniver: (runtime) => setupUniverSheet(runtime, args.sheet),
     verifyUniver: observeUniver,
     verifyWorkPaper: observeWorkPaper,
   }
@@ -803,13 +833,13 @@ function canonicalSingleSheetScenario(args: {
     fixture,
     buildWorkPaperSheets: () => ({ [sheetName]: args.sheet }),
     ...(args.workbookOptions ? { workpaperOptions: args.workbookOptions } : {}),
-    setupUniver: (runtime) => setupUniverSheet(runtime, args.sheet, formula),
+    setupUniver: (runtime) => setupUniverSheet(runtime, args.sheet),
     verifyUniver: observeUniver,
     verifyWorkPaper: observeWorkPaper,
   }
 }
 
-async function setupUniverSheet(runtime: UniverRuntime, sheet: WorkPaperSheet, label: string): Promise<void> {
+async function setupUniverSheet(runtime: UniverRuntime, sheet: WorkPaperSheet): Promise<void> {
   const rowCount = sheet.length
   const columnCount = Math.max(1, ...sheet.map((row) => row.length))
   const formulaRuns: { readonly formulas: string[]; readonly row: number; readonly startCol: number }[] = []
@@ -847,11 +877,9 @@ async function setupUniverSheet(runtime: UniverRuntime, sheet: WorkPaperSheet, l
     return
   }
 
-  const completion = waitForUniverCalculation(runtime.formula, label)
   for (const run of formulaRuns) {
     runtime.sheet.getRange(run.row, run.startCol, 1, run.formulas.length).setFormulas([run.formulas])
   }
-  await completion
 }
 
 function firstFormula(sheet: WorkPaperSheet): string | undefined {
@@ -896,25 +924,6 @@ function createUniverRuntime(rowCount: number, columnCount: number, sheetName = 
     sheet: workbook.getActiveSheet(),
     univer,
     workbook,
-  }
-}
-
-async function waitForUniverCalculation(formula: UniverFormulaFacade, label: string): Promise<void> {
-  let timeout: ReturnType<typeof setTimeout> | undefined
-  try {
-    await Promise.race([
-      formula.onCalculationEnd(),
-      new Promise<never>((_, reject) => {
-        timeout = setTimeout(
-          () => reject(new Error(`Timed out waiting for Univer formula recalculation for ${label}`)),
-          univerCalculationTimeoutMs,
-        )
-      }),
-    ])
-  } finally {
-    if (timeout) {
-      clearTimeout(timeout)
-    }
   }
 }
 

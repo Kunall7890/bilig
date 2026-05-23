@@ -29,6 +29,9 @@ open bilig-workpaper.mcpb
 Open the downloaded `.mcpb` file with Claude Desktop. Claude should show an
 install dialog for **Bilig WorkPaper**.
 
+Open the downloaded `.mcpb` file with Claude Desktop when you are installing
+from the release asset.
+
 ## Reproduce from source
 
 From the repository root:
