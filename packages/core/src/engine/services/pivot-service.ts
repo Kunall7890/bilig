@@ -1,5 +1,14 @@
 import { Effect } from 'effect'
-import { ErrorCode, MAX_COLS, MAX_ROWS, ValueTag, type CellRangeRef, type CellValue, type LiteralInput } from '@bilig/protocol'
+import {
+  ErrorCode,
+  MAX_COLS,
+  MAX_ROWS,
+  ValueTag,
+  type CellRangeRef,
+  type CellValue,
+  type LiteralInput,
+  type PivotAggregation,
+} from '@bilig/protocol'
 import { formatAddress, parseCellAddress } from '@bilig/formula'
 import type { EngineOp } from '@bilig/workbook'
 import { CellFlags } from '../../cell-store.js'
@@ -82,6 +91,20 @@ function literalToPivotCellValue(value: LiteralInput): CellValue {
 
 type VisiblePivotCellReader = (sheetName: string, row: number, col: number) => CellValue
 
+interface PivotRowsRead {
+  readonly rows: CellValue[][]
+  readonly provenance: 'source' | 'cache'
+}
+
+interface PivotLookupAggregateState {
+  sum: number
+  count: number
+  numericCount: number
+  min: number
+  max: number
+  product: number
+}
+
 function normalizeVisiblePivotText(value: string): string {
   return normalizePivotLookupText(value.replace(/\s+/gu, ' '))
 }
@@ -109,6 +132,103 @@ function visiblePivotTextAliases(value: string): readonly string[] {
 
 function visiblePivotCellAliases(value: CellValue): readonly string[] {
   return visiblePivotTextAliases(cellValueDisplayText(value))
+}
+
+function pivotCacheFieldName(value: CellValue, index: number): string {
+  const label = cellValueDisplayText(value).trim()
+  return label.length > 0 ? label : `Column ${String(index + 1)}`
+}
+
+function cellValueToPivotLiteral(value: CellValue): LiteralInput {
+  switch (value.tag) {
+    case ValueTag.Empty:
+      return null
+    case ValueTag.Number:
+      return value.value
+    case ValueTag.Boolean:
+      return value.value
+    case ValueTag.String:
+      return value.value
+    case ValueTag.Error:
+      return value.code
+  }
+}
+
+function emptyPivotLookupAggregateState(): PivotLookupAggregateState {
+  return {
+    sum: 0,
+    count: 0,
+    numericCount: 0,
+    min: Number.POSITIVE_INFINITY,
+    max: Number.NEGATIVE_INFINITY,
+    product: 1,
+  }
+}
+
+function accumulatePivotLookupValue(state: PivotLookupAggregateState, value: CellValue): void {
+  if (value.tag !== ValueTag.Empty) {
+    state.count += 1
+  }
+  if (value.tag !== ValueTag.Number) {
+    return
+  }
+  state.sum += value.value
+  state.numericCount += 1
+  state.min = Math.min(state.min, value.value)
+  state.max = Math.max(state.max, value.value)
+  state.product *= value.value
+}
+
+function finalizePivotLookupAggregate(mode: PivotAggregation, state: PivotLookupAggregateState): number {
+  switch (mode) {
+    case 'sum':
+      return state.sum
+    case 'count':
+      return state.count
+    case 'countNums':
+      return state.numericCount
+    case 'average':
+      return state.numericCount === 0 ? 0 : state.sum / state.numericCount
+    case 'min':
+      return state.numericCount === 0 ? 0 : state.min
+    case 'max':
+      return state.numericCount === 0 ? 0 : state.max
+    case 'product':
+      return state.numericCount === 0 ? 0 : state.product
+  }
+}
+
+function refreshedSourcePivotCache(sourceRows: readonly (readonly CellValue[])[]):
+  | {
+      cacheFields: string[]
+      cachedRecords: LiteralInput[][]
+    }
+  | undefined {
+  const headerRow = sourceRows[0]
+  if (!headerRow || headerRow.length === 0) {
+    return undefined
+  }
+  const cacheFields = headerRow.map(pivotCacheFieldName)
+  const cachedRecords = sourceRows
+    .slice(1)
+    .map((row) => cacheFields.map((_, columnIndex) => cellValueToPivotLiteral(row[columnIndex] ?? emptyValue())))
+  return { cacheFields, cachedRecords }
+}
+
+function pivotCacheMatches(
+  pivot: WorkbookPivotRecord,
+  cache:
+    | {
+        cacheFields: readonly string[]
+        cachedRecords: readonly (readonly LiteralInput[])[]
+      }
+    | undefined,
+): boolean {
+  return (
+    cache !== undefined &&
+    JSON.stringify(pivot.cacheFields ?? []) === JSON.stringify(cache.cacheFields) &&
+    JSON.stringify(pivot.cachedRecords ?? []) === JSON.stringify(cache.cachedRecords)
+  )
 }
 
 function visiblePivotFilterItemAliases(value: CellValue): readonly string[] {
@@ -341,21 +461,7 @@ export function createEnginePivotService(args: {
     }
 
     if (pivot.rows !== rows || pivot.cols !== cols) {
-      if (pivot.source) {
-        args.applyDerivedOp({
-          kind: 'upsertPivotTable',
-          name: pivot.name,
-          sheetName: pivot.sheetName,
-          address: pivot.address,
-          source: { ...pivot.source },
-          groupBy: [...pivot.groupBy],
-          values: pivot.values.map((value) => Object.assign({}, value)),
-          rows,
-          cols,
-        })
-      } else {
-        args.state.workbook.setPivot({ ...pivot, rows, cols })
-      }
+      args.state.workbook.setPivot({ ...pivot, rows, cols })
     }
     return changedCellIndices
   }
@@ -431,12 +537,35 @@ export function createEnginePivotService(args: {
     ]
   }
 
-  const readPivotRows = (pivot: WorkbookPivotRecord): CellValue[][] | null => {
+  const readPivotRows = (pivot: WorkbookPivotRecord): PivotRowsRead | null => {
+    if (pivot.source && !pivot.cacheOnly && args.state.workbook.getSheet(pivot.source.sheetName)) {
+      return { rows: readPivotSourceRows(pivot.source), provenance: 'source' }
+    }
     const cachedRows = readPivotCachedRows(pivot)
     if (cachedRows) {
-      return cachedRows
+      return { rows: cachedRows, provenance: 'cache' }
     }
-    return pivot.source ? readPivotSourceRows(pivot.source) : null
+    return pivot.source && args.state.workbook.getSheet(pivot.source.sheetName)
+      ? { rows: readPivotSourceRows(pivot.source), provenance: 'source' }
+      : null
+  }
+
+  const refreshPivotCacheFromSourceRows = (
+    pivot: WorkbookPivotRecord,
+    sourceRows: readonly (readonly CellValue[])[],
+  ): WorkbookPivotRecord => {
+    if (!pivot.source || pivot.cacheOnly) {
+      return pivot
+    }
+    const cache = refreshedSourcePivotCache(sourceRows)
+    if (!cache || pivotCacheMatches(pivot, cache)) {
+      return pivot
+    }
+    return args.state.workbook.setPivot({
+      ...pivot,
+      cacheFields: cache.cacheFields,
+      cachedRecords: cache.cachedRecords.map((row) => row.slice()),
+    })
   }
 
   const readVisibleCell = (sheetName: string, row: number, col: number): CellValue => {
@@ -451,22 +580,19 @@ export function createEnginePivotService(args: {
       return writePivotOutput(pivot, 1, 1, [errorValue(ErrorCode.Ref)], changedCellIndices)
     }
 
-    if (pivot.source && !readPivotCachedRows(pivot) && !args.state.workbook.getSheet(pivot.source.sheetName)) {
-      return writePivotOutput(pivot, 1, 1, [errorValue(ErrorCode.Ref)], changedCellIndices)
-    }
-
-    const materialized = materializePivotTable(toPivotDefinition(pivot), sourceRows)
+    const activePivot = sourceRows.provenance === 'source' ? refreshPivotCacheFromSourceRows(pivot, sourceRows.rows) : pivot
+    const materialized = materializePivotTable(toPivotDefinition(activePivot), sourceRows.rows)
     if (materialized.kind === 'error') {
-      return writePivotOutput(pivot, materialized.rows, materialized.cols, materialized.values, changedCellIndices)
+      return writePivotOutput(activePivot, materialized.rows, materialized.cols, materialized.values, changedCellIndices)
     }
 
-    const owner = parseCellAddress(pivot.address, pivot.sheetName)
-    const blockedOutput = guardPivotOutputWrite(pivot, owner.row, owner.col, materialized.rows, materialized.cols, changedCellIndices)
+    const owner = parseCellAddress(activePivot.address, activePivot.sheetName)
+    const blockedOutput = guardPivotOutputWrite(activePivot, owner.row, owner.col, materialized.rows, materialized.cols, changedCellIndices)
     if (blockedOutput) {
       return blockedOutput
     }
 
-    return writePivotOutput(pivot, materialized.rows, materialized.cols, materialized.values, changedCellIndices)
+    return writePivotOutput(activePivot, materialized.rows, materialized.cols, materialized.values, changedCellIndices)
   }
 
   const resolveVisiblePivotDataNow = (
@@ -527,10 +653,11 @@ export function createEnginePivotService(args: {
       return visibleFallback()
     }
 
-    const sourceRows = readPivotRows(pivot)
-    if (!sourceRows) {
+    const pivotRows = readPivotRows(pivot)
+    if (!pivotRows) {
       return visibleFallback()
     }
+    const sourceRows = pivotRows.rows
     const headerRow = sourceRows[0]
     if (!headerRow || headerRow.length === 0) {
       return visibleFallback()
@@ -567,7 +694,7 @@ export function createEnginePivotService(args: {
     }
 
     let matched = filters.length === 0
-    let aggregate = 0
+    const aggregate = emptyPivotLookupAggregateState()
     for (let rowIndex = 1; rowIndex < sourceRows.length; rowIndex += 1) {
       const row = sourceRows[rowIndex] ?? []
       const matches = materializedFilters.every((filter) => pivotItemMatches(row[filter.fieldIndex!] ?? emptyValue(), filter.item))
@@ -576,14 +703,10 @@ export function createEnginePivotService(args: {
       }
       matched = true
       const value = row[valueColumnIndex] ?? emptyValue()
-      if (valueField.summarizeBy === 'count') {
-        aggregate += value.tag === ValueTag.Empty ? 0 : 1
-      } else if (value.tag === ValueTag.Number) {
-        aggregate += value.value
-      }
+      accumulatePivotLookupValue(aggregate, value)
     }
 
-    return matched ? { tag: ValueTag.Number, value: aggregate } : visibleFallback()
+    return matched ? { tag: ValueTag.Number, value: finalizePivotLookupAggregate(valueField.summarizeBy, aggregate) } : visibleFallback()
   }
 
   const clearPivotForCellNow = (cellIndex: number): number[] => {

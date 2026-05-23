@@ -79,6 +79,20 @@ describe('macOS Desktop Excel oracle harness', () => {
     expect(script).not.toContain('active workbook')
   })
 
+  it('can refresh workbook data sources before inspection', () => {
+    const script = createMacosExcelInspectionAppleScript({
+      worksheetName: 'Pivot',
+      formulaCells: [],
+      inspectCells: ['E2'],
+      refreshWorkbook: true,
+      saveWorkbook: true,
+    })
+
+    expect(script).toContain('refresh all targetWorkbook')
+    expect(script.indexOf('refresh all targetWorkbook')).toBeLessThan(script.indexOf('calculate full rebuild'))
+    expect(script).toContain('close targetWorkbook saving yes')
+  })
+
   it('builds a structural operation runner that can cut-insert columns before inspection', () => {
     const script = createMacosExcelStructuralOperationAppleScript({
       worksheetName: 'Cases',

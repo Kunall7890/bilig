@@ -20,6 +20,7 @@ const existingDesktopExcelOracleFiles = [
   'macos-desktop-excel-external-link-cache.test.ts',
   'macos-desktop-excel-hyperlink-structural-oracle.test.ts',
   'macos-desktop-excel-precision-as-displayed-oracle.test.ts',
+  'macos-desktop-excel-pivot-oracle.test.ts',
   'macos-desktop-excel-sort-oracle.test.ts',
   'macos-desktop-excel-structured-reference-syntax.test.ts',
   'macos-desktop-excel-table-header-canonicalization.test.ts',
@@ -32,6 +33,7 @@ const corpusDesktopExcelOracleFiles = [
   'macos-desktop-excel-defined-name-structural-oracle.test.ts',
   'macos-desktop-excel-external-link-cache.test.ts',
   'macos-desktop-excel-hyperlink-structural-oracle.test.ts',
+  'macos-desktop-excel-pivot-oracle.test.ts',
   'macos-desktop-excel-sort-oracle.test.ts',
   'macos-desktop-excel-structured-reference-syntax.test.ts',
   'macos-desktop-excel-table-header-canonicalization.test.ts',
@@ -78,6 +80,18 @@ describe('macOS Desktop Excel oracle inventory', () => {
     expect(source).toContain('metadata?.hyperlinks')
     expect(source).toContain('WorkPaper.buildFromSnapshot')
     expect(source).toContain('matches Desktop Excel hyperlink metadata after structural row inserts')
+  })
+
+  it('keeps the pivot oracle anchored to Desktop Excel source-backed pivot refresh semantics', () => {
+    const source = readFileSync(join(testDir, 'macos-desktop-excel-pivot-oracle.test.ts'), 'utf8')
+
+    expect(source).toContain("BILIG_EXCEL_ORACLE_RUN === '1'")
+    expect(source).toContain('runMacosExcelInspectionOracle')
+    expect(source).toContain('refreshWorkbook: true')
+    expect(source).toContain('invalid="1"')
+    expect(source).toContain('GETPIVOTDATA("Sum of Sales",$B$2,"Region","East")')
+    expect(source).toContain('cachedRecords')
+    expect(source).toContain('matches Desktop Excel GETPIVOTDATA after headless source edits and XLSX export')
   })
 
   it('keeps the sort oracle in both package and corpus gates', () => {
