@@ -163,6 +163,89 @@ describe('@bilig/workbook action input api', () => {
     })
   })
 
+  it('rejects accessor-backed action inputs without executing getters', () => {
+    const payload = {
+      value: 12,
+    }
+    Object.defineProperty(payload, 'hidden', {
+      enumerable: true,
+      get() {
+        throw new Error('input accessor should not run')
+      },
+    })
+
+    expect(() => normalizeWorkbookActionInput(payload)).toThrowError('Action input at input.hidden must be a data property')
+    expect(checkInput({ kind: 'json' }, payload)).toEqual({
+      status: 'invalid',
+      issues: [
+        {
+          code: 'invalid_action_input',
+          path: 'input.hidden',
+          message: 'Action input at input.hidden must be a data property',
+        },
+      ],
+    })
+
+    const arrayPayload: unknown[] = [1]
+    Object.defineProperty(arrayPayload, '0', {
+      configurable: true,
+      enumerable: true,
+      get() {
+        throw new Error('array input accessor should not run')
+      },
+    })
+    expect(checkInput({ kind: 'array', items: { kind: 'number' } }, arrayPayload)).toEqual({
+      status: 'invalid',
+      issues: [
+        {
+          code: 'invalid_action_input',
+          path: 'input[0]',
+          message: 'Action input at input[0] must be a data property',
+        },
+      ],
+    })
+  })
+
+  it('rejects accessor-backed action input descriptions without executing getters', () => {
+    const descriptionWithGetter = {
+      kind: 'object',
+      fields: {
+        value: { kind: 'number' },
+      },
+    }
+    Object.defineProperty(descriptionWithGetter, 'required', {
+      enumerable: true,
+      get() {
+        throw new Error('description accessor should not run')
+      },
+    })
+
+    expect(() => normalizeWorkbookActionInputDescription(descriptionWithGetter)).toThrowError(
+      'Action input description at input.required must be a data property',
+    )
+    expect(checkInput(descriptionWithGetter, { value: 12 })).toEqual({
+      status: 'invalid',
+      issues: [
+        {
+          code: 'invalid_action_input_description',
+          path: 'input.required',
+          message: 'Action input description at input.required must be a data property',
+        },
+      ],
+    })
+
+    const fieldsWithGetter = {}
+    Object.defineProperty(fieldsWithGetter, 'value', {
+      enumerable: true,
+      get() {
+        throw new Error('field description accessor should not run')
+      },
+    })
+    expect(() => normalizeWorkbookActionInputDescription({ kind: 'object', fields: fieldsWithGetter })).toThrowError(
+      'Action input description at input.fields.value must be a data property',
+    )
+  })
+
   it('uses top-level required metadata for omitted action inputs', () => {
     expect(
       checkInput(

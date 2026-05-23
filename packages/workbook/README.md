@@ -175,6 +175,9 @@ JSON-safety failures keep the nested offending path too, such as
 `input.items[2].amount`. Normalized payloads preserve consumer-owned JSON keys
 as data, including names like `__proto__` and `constructor`, instead of letting
 them affect object prototypes.
+Action input payloads and input-description metadata must be enumerable own data
+properties. Accessors are rejected without invoking them, so tool payload
+validation cannot run hidden consumer code while an agent is planning.
 
 ## Formulas
 

@@ -89,6 +89,32 @@ function defineOwnDataProperty(target: object, key: string, value: unknown): voi
   })
 }
 
+function ownDataValue(value: object, key: string, path: string, label: string): unknown {
+  const descriptor = Object.getOwnPropertyDescriptor(value, key)
+  if (descriptor === undefined) {
+    return undefined
+  }
+  if (!('value' in descriptor)) {
+    throw inputError(path, `${label} at ${path} must be a data property`)
+  }
+  return descriptor.value
+}
+
+function sortedOwnEnumerableDataEntries(value: object, path: string, label: string): readonly (readonly [string, unknown])[] {
+  const entries: [string, unknown][] = []
+  Object.entries(Object.getOwnPropertyDescriptors(value)).forEach(([key, descriptor]) => {
+    if (!descriptor.enumerable) {
+      return
+    }
+    const entryPath = childPath(path, key)
+    if (!('value' in descriptor)) {
+      throw inputError(entryPath, `${label} at ${entryPath} must be a data property`)
+    }
+    entries.push([key, descriptor.value])
+  })
+  return entries.toSorted(([left], [right]) => left.localeCompare(right))
+}
+
 function inputDescriptionKind(value: unknown, path: string): WorkbookActionInputDescriptionKind {
   if (isWorkbookActionInputDescriptionKind(value)) {
     return value
@@ -136,7 +162,7 @@ function normalizeInputDescription(value: unknown, path: string, seen: WeakSet<o
       throw inputError(unknownPath, `Action input description at ${unknownPath} is not supported`)
     }
 
-    const kind = inputDescriptionKind(value['kind'], path)
+    const kind = inputDescriptionKind(ownDataValue(value, 'kind', `${path}.kind`, 'Action input description'), path)
     const output: {
       kind: WorkbookActionInputDescriptionKind
       description?: string
@@ -145,42 +171,46 @@ function normalizeInputDescription(value: unknown, path: string, seen: WeakSet<o
       items?: WorkbookActionInputDescription
     } = { kind }
 
-    const description = normalizeDescriptionText(value['description'], `${path}.description`)
+    const description = normalizeDescriptionText(
+      ownDataValue(value, 'description', `${path}.description`, 'Action input description'),
+      `${path}.description`,
+    )
     if (description !== undefined) {
       output.description = description
     }
 
-    if (value['required'] !== undefined) {
-      if (typeof value['required'] !== 'boolean') {
+    const required = ownDataValue(value, 'required', `${path}.required`, 'Action input description')
+    if (required !== undefined) {
+      if (typeof required !== 'boolean') {
         throw inputError(`${path}.required`, `Action input description at ${path}.required must be a boolean`)
       }
-      output.required = value['required']
+      output.required = required
     }
 
-    if (value['fields'] !== undefined) {
+    const fieldsValue = ownDataValue(value, 'fields', `${path}.fields`, 'Action input description')
+    if (fieldsValue !== undefined) {
       if (kind !== 'object') {
         throw inputError(`${path}.fields`, `Action input description at ${path}.fields can only be used when kind is object`)
       }
-      if (!isPlainObject(value['fields'])) {
+      if (!isPlainObject(fieldsValue)) {
         throw inputError(`${path}.fields`, `Action input description at ${path}.fields must be a plain object`)
       }
       const fields: Record<string, WorkbookActionInputDescription> = {}
-      Object.entries(value['fields'])
-        .toSorted(([left], [right]) => left.localeCompare(right))
-        .forEach(([key, entry]) => {
-          if (key.trim() === '') {
-            throw inputError(`${path}.fields`, `Action input description at ${path}.fields cannot contain an empty field name`)
-          }
-          defineOwnDataProperty(fields, key, normalizeInputDescription(entry, childPath(`${path}.fields`, key), seen))
-        })
+      sortedOwnEnumerableDataEntries(fieldsValue, `${path}.fields`, 'Action input description').forEach(([key, entry]) => {
+        if (key.trim() === '') {
+          throw inputError(`${path}.fields`, `Action input description at ${path}.fields cannot contain an empty field name`)
+        }
+        defineOwnDataProperty(fields, key, normalizeInputDescription(entry, childPath(`${path}.fields`, key), seen))
+      })
       output.fields = Object.freeze(fields)
     }
 
-    if (value['items'] !== undefined) {
+    const items = ownDataValue(value, 'items', `${path}.items`, 'Action input description')
+    if (items !== undefined) {
       if (kind !== 'array') {
         throw inputError(`${path}.items`, `Action input description at ${path}.items can only be used when kind is array`)
       }
-      output.items = normalizeInputDescription(value['items'], `${path}.items`, seen)
+      output.items = normalizeInputDescription(items, `${path}.items`, seen)
     }
 
     return Object.freeze(output)
@@ -235,10 +265,15 @@ function normalizeInput(value: unknown, path: string, seen: WeakSet<object>): Wo
     if (Array.isArray(value)) {
       const output: WorkbookActionInput[] = []
       for (let index = 0; index < value.length; index += 1) {
-        if (!Object.hasOwn(value, index)) {
+        const itemPath = `${path}[${index}]`
+        const descriptor = Object.getOwnPropertyDescriptor(value, String(index))
+        if (descriptor === undefined) {
           throw inputError(`${path}[${index}]`, `Action input at ${path}[${index}] must not be a sparse array hole`)
         }
-        output.push(normalizeInput(value[index], `${path}[${index}]`, seen))
+        if (!('value' in descriptor)) {
+          throw inputError(itemPath, `Action input at ${itemPath} must be a data property`)
+        }
+        output.push(normalizeInput(descriptor.value, itemPath, seen))
       }
       return Object.freeze(output)
     }
@@ -252,11 +287,9 @@ function normalizeInput(value: unknown, path: string, seen: WeakSet<object>): Wo
     }
 
     const output: { [key: string]: WorkbookActionInput } = {}
-    Object.entries(value)
-      .toSorted(([left], [right]) => left.localeCompare(right))
-      .forEach(([key, entry]) => {
-        defineOwnDataProperty(output, key, normalizeInput(entry, childPath(path, key), seen))
-      })
+    sortedOwnEnumerableDataEntries(value, path, 'Action input').forEach(([key, entry]) => {
+      defineOwnDataProperty(output, key, normalizeInput(entry, childPath(path, key), seen))
+    })
     return Object.freeze(output)
   } finally {
     seen.delete(value)

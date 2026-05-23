@@ -319,6 +319,10 @@ without parsing messages. JSON-safety failures preserve nested paths like
 Normalized payloads preserve consumer-owned JSON keys as own data properties,
 including names like `__proto__` and `constructor`, so transported tool payloads
 cannot mutate prototypes or disappear during canonicalization.
+Action input payloads and input-description metadata must be enumerable own data
+properties. Accessors are rejected without invocation, which keeps tool payload
+validation inspectable and prevents hidden consumer code from running during
+planning.
 `verifyModel(model, { inputs })` supplies per-action inputs for
 whole-model verification. The frozen
 `workbookActionInputDescriptionKinds` list plus
