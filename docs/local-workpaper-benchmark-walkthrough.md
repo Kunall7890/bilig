@@ -66,18 +66,18 @@ At the time of this walkthrough, that reports:
 
 ```json
 {
-  "generatedAt": "2026-05-16T04:38:47.033Z",
+  "generatedAt": "2026-05-23T17:51:04.599Z",
   "benchmark": {
-    "sampleCount": 5,
+    "sampleCount": 200,
     "warmupCount": 2
   },
   "scorecard": {
-    "comparableCount": 57,
-    "workpaperWins": 46,
-    "hyperformulaWins": 11,
-    "directionalMeanRatioGeomean": 0.6597900373960468,
-    "directionalP95RatioGeomean": 0.6727987664718411,
-    "worstP95RatioWorkload": "structural-insert-rows"
+    "comparableCount": 100,
+    "workpaperWins": 100,
+    "hyperformulaWins": 0,
+    "directionalMeanRatioGeomean": 0.2586071973976171,
+    "directionalP95RatioGeomean": 0.2806672128213908,
+    "worstP95RatioWorkload": "sheet-rename-dependencies"
   }
 }
 ```
@@ -120,7 +120,7 @@ jq '{
 ```
 
 A one-sample run is intentionally noisy. Use it to confirm that the benchmark
-harness runs on your machine, not to replace the checked-in 5-sample artifact.
+harness runs on your machine, not to replace the checked-in 200-sample artifact.
 
 ## Evaluate A Benchmark Change
 

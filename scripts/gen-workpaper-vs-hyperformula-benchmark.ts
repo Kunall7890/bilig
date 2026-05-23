@@ -163,7 +163,14 @@ const results = await runBenchmarkResults({
 })
 
 if (isEmitResultsMode) {
-  console.log(JSON.stringify(results))
+  const workerResultsPath = process.env['BILIG_BENCHMARK_WORKER_RESULTS_PATH']
+  if (workerResultsPath) {
+    mkdirSync(dirname(workerResultsPath), { recursive: true })
+    writeFileSync(workerResultsPath, JSON.stringify(results))
+    console.log(JSON.stringify({ resultsPath: workerResultsPath }))
+  } else {
+    console.log(JSON.stringify(results))
+  }
   process.exit(0)
 }
 
@@ -229,8 +236,9 @@ async function runBenchmarkResults(options: {
 
   const shards = shardWorkloads(workloads, Math.min(options.jobs, workloads.length))
   const shardResults = await Promise.all(
-    shards.map((shard) =>
+    shards.map((shard, index) =>
       runBenchmarkWorker({
+        shardIndex: index,
         sampleCount: options.sampleCount,
         warmupCount: options.warmupCount,
         workloads: shard,
@@ -252,6 +260,7 @@ function shardWorkloads(
 }
 
 async function runBenchmarkWorker(options: {
+  shardIndex: number
   sampleCount: number
   warmupCount: number
   workloads: readonly ExpandedComparativeBenchmarkWorkload[]
@@ -266,8 +275,15 @@ async function runBenchmarkWorker(options: {
     String(options.warmupCount),
     ...options.workloads.flatMap((workload) => ['--workload', workload]),
   ]
-  const { stdout } = await spawnForOutput(process.execPath, args)
-  const parsed = JSON.parse(stdout) as unknown
+  const resultsPath = join(rootDir, '.cache', 'benchmark-workers', `workpaper-vs-hyperformula-${process.pid}-${options.shardIndex}.json`)
+  const { stdout } = await spawnForOutput(process.execPath, args, {
+    BILIG_BENCHMARK_WORKER_RESULTS_PATH: resultsPath,
+  })
+  const workerMessage = JSON.parse(stdout) as unknown
+  const parsed =
+    isRecord(workerMessage) && workerMessage['resultsPath'] === resultsPath
+      ? (JSON.parse(readFileSync(resultsPath, 'utf8')) as unknown)
+      : workerMessage
   if (!Array.isArray(parsed)) {
     throw new Error('Benchmark worker returned a non-array result payload')
   }
@@ -281,11 +297,14 @@ async function runBenchmarkWorker(options: {
   return workerResults
 }
 
-function spawnForOutput(command: string, args: readonly string[]): Promise<{ stdout: string }> {
+function spawnForOutput(command: string, args: readonly string[], env: Readonly<Record<string, string>> = {}): Promise<{ stdout: string }> {
   return new Promise((resolvePromise, reject) => {
     const child = spawn(command, args, {
       cwd: rootDir,
-      env: process.env,
+      env: {
+        ...process.env,
+        ...env,
+      },
       stdio: ['ignore', 'pipe', 'pipe'],
     })
     let stdout = ''

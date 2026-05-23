@@ -99,6 +99,45 @@ describe('initial template formula resolver', () => {
     })
   })
 
+  it('reuses anchored prefix aggregate templates with callee and row-specific offsets', () => {
+    const templateBank = createTemplateBank()
+    const compileTemplateFormula = vi.fn((source: string, row: number, col: number) => templateBank.resolve(source, row, col))
+    const resolve = createInitialTemplateFormulaResolver(compileTemplateFormula)
+
+    const firstAverage = resolve('AVERAGE(A1:A2)', 1, 4)
+    const secondAverage = resolve('AVERAGE(A1:A3)', 2, 4)
+    const firstOffset = resolve('SUM(A1:A1)+1', 0, 5)
+    const secondOffset = resolve('SUM(A1:A2)+2', 1, 5)
+    const firstMax = resolve('MAX(A1:A1)', 0, 6)
+    const secondMax = resolve('MAX(A1:A2)', 1, 6)
+
+    expect(compileTemplateFormula).toHaveBeenCalledTimes(3)
+    expect(secondAverage.templateId).toBe(firstAverage.templateId)
+    expect(secondAverage.compiled.directAggregateCandidate).toEqual({
+      aggregateKind: 'average',
+      callee: 'AVERAGE',
+      symbolicRangeIndex: 0,
+    })
+    expect(secondOffset.templateId).toBe(firstOffset.templateId)
+    expect(secondOffset.compiled.directAggregateCandidate).toEqual({
+      aggregateKind: 'sum',
+      callee: 'SUM',
+      symbolicRangeIndex: 0,
+      resultOffset: 2,
+    })
+    expect(secondOffset.compiled.optimizedAst).toMatchObject({
+      kind: 'BinaryExpr',
+      operator: '+',
+      right: { kind: 'NumberLiteral', value: 2 },
+    })
+    expect(secondMax.templateId).toBe(firstMax.templateId)
+    expect(secondMax.compiled.directAggregateCandidate).toEqual({
+      aggregateKind: 'max',
+      callee: 'MAX',
+      symbolicRangeIndex: 0,
+    })
+  })
+
   it('rejects unsafe row numbers in initial template shortcuts', () => {
     const unsafeRow = String(Number.MAX_SAFE_INTEGER + 1)
 

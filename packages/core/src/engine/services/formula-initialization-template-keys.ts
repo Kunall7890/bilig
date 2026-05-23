@@ -18,9 +18,13 @@ export interface InitialTemplateFormulaCacheEntry {
 }
 
 export interface InitialPrefixSumTemplateKey {
-  readonly key: number
+  readonly aggregateKind: NonNullable<CompiledFormula['directAggregateCandidate']>['aggregateKind']
+  readonly callee: string
+  readonly key: string
   readonly rangeCol: number
   readonly rangeColumn: string
+  readonly resultOffset: number
+  readonly usesRowLiteralSuffix: boolean
 }
 
 export interface InitialSimpleRowRelativeBinaryTemplate {
@@ -33,7 +37,16 @@ export interface InitialSimpleRowRelativeBinaryTemplate {
   readonly usesRowLiteralSuffix: boolean
 }
 
-const INITIAL_PREFIX_SUM_RE = /^SUM\(([A-Z]+)1:\1([1-9]\d*)\)$/
+const INITIAL_PREFIX_AGGREGATE_RE = /^=?(SUM|AVERAGE|AVG|COUNT|MIN|MAX)\(([A-Z]+)1:\2([1-9]\d*)\)(?:\+(\d+(?:\.\d+)?))?$/i
+
+const INITIAL_PREFIX_AGGREGATE_KIND_BY_CALLEE: Record<string, NonNullable<CompiledFormula['directAggregateCandidate']>['aggregateKind']> = {
+  SUM: 'sum',
+  AVERAGE: 'average',
+  AVG: 'average',
+  COUNT: 'count',
+  MIN: 'min',
+  MAX: 'max',
+}
 
 export interface InitialSimpleRowRelativeBinaryTemplateKey {
   readonly key: string
@@ -277,23 +290,40 @@ export function tryBuildInitialPrefixSumTemplateKey(
   ownerRow: number,
   ownerCol: number,
 ): InitialPrefixSumTemplateKey | undefined {
-  const match = INITIAL_PREFIX_SUM_RE.exec(source)
+  const match = INITIAL_PREFIX_AGGREGATE_RE.exec(source)
   if (!match) {
     return undefined
   }
-  const endRow = parseA1RowNumber(match[2]!)
+  const endRow = parseA1RowNumber(match[3]!)
   if (endRow === undefined || endRow !== ownerRow + 1) {
     return undefined
   }
-  const rangeColumn = match[1]!
+  const offsetText = match[4]
+  const usesRowLiteralSuffix = offsetText !== undefined && Number(offsetText) === ownerRow + 1
+  const resultOffset = offsetText === undefined ? 0 : Number(offsetText)
+  if (!Number.isFinite(resultOffset)) {
+    return undefined
+  }
+  const callee = match[1]!.toUpperCase()
+  const aggregateKind = INITIAL_PREFIX_AGGREGATE_KIND_BY_CALLEE[callee]
+  if (aggregateKind === undefined) {
+    return undefined
+  }
+  const rangeColumn = match[2]!.toUpperCase()
   const rangeCol = initialColumnToIndex(rangeColumn)
   if (rangeCol < 0) {
     return undefined
   }
+  const relativeRangeCol = rangeCol - ownerCol
+  const offsetKey = offsetText === undefined ? 'none' : usesRowLiteralSuffix ? 'row' : offsetText
   return {
-    key: rangeCol - ownerCol,
+    aggregateKind,
+    callee,
+    key: `prefix-aggregate:${callee}:c${relativeRangeCol}:offset:${offsetKey}`,
     rangeCol,
     rangeColumn,
+    resultOffset,
+    usesRowLiteralSuffix,
   }
 }
 
@@ -308,6 +338,7 @@ export function translateInitialPrefixSumFormula(
   const startAddress = `${column}1`
   const endAddress = `${column}${ownerRow + 1}`
   const rangeAddress = `${startAddress}:${endAddress}`
+  const resultOffset = templateKey.usesRowLiteralSuffix ? ownerRow + 1 : templateKey.resultOffset
   const range: ParsedRangeReferenceInfo = {
     address: rangeAddress,
     kind: 'range',
@@ -325,11 +356,20 @@ export function translateInitialPrefixSumFormula(
     start: startAddress,
     end: endAddress,
   }
-  const ast: FormulaNode = {
+  const aggregateNode: FormulaNode = {
     kind: 'CallExpr',
-    callee: entry.anchorCompiled.directAggregateCandidate!.callee,
+    callee: templateKey.callee,
     args: [rangeNode],
   }
+  const ast: FormulaNode =
+    resultOffset === 0
+      ? aggregateNode
+      : {
+          kind: 'BinaryExpr',
+          operator: '+',
+          left: aggregateNode,
+          right: { kind: 'NumberLiteral', value: resultOffset },
+        }
   const rowDelta = ownerRow - entry.anchorRow
   const colDelta = ownerCol - entry.anchorCol
   return {
@@ -340,6 +380,12 @@ export function translateInitialPrefixSumFormula(
       ast,
       optimizedAst: ast,
       astMatchesSource: true,
+      directAggregateCandidate: {
+        callee: templateKey.callee,
+        aggregateKind: templateKey.aggregateKind,
+        symbolicRangeIndex: 0,
+        ...(resultOffset !== 0 ? { resultOffset } : {}),
+      },
       deps: [rangeAddress],
       parsedDeps: [range satisfies ParsedDependencyReference],
       symbolicRanges: [rangeAddress],

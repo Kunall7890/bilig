@@ -23,10 +23,10 @@ fastest-engine claim:
 
 The artifact is
 [`packages/benchmarks/baselines/workpaper-vs-hyperformula.json`](../packages/benchmarks/baselines/workpaper-vs-hyperformula.json),
-generated at `2026-05-23T02:55:18.474Z`.
+generated at `2026-05-23T17:51:04.599Z`.
 
-The overall directional mean-ratio geomean is `0.26046643853394114`, and the
-overall directional p95-ratio geomean is `0.2757210371737924`. Ratios below
+The overall directional mean-ratio geomean is `0.2586071973976171`, and the
+overall directional p95-ratio geomean is `0.2806672128213908`. Ratios below
 `1.0` mean WorkPaper is faster on that metric.
 
 The headless leadership scorecard records `100/100` workloads winning both
@@ -60,8 +60,8 @@ HyperFormula.
 It does not prove future p95 rows will stay faster after new workloads are
 added. The current headless leadership scorecard records `100/100` workloads
 winning both mean and p95. The current worst p95 row is
-`lookup-approximate-sorted-after-column-write`, where the current
-WorkPaper-to-HyperFormula p95 ratio is `0.9291607336587918`. The honest claim
+`sheet-rename-dependencies`, where the current WorkPaper-to-HyperFormula p95
+ratio is `0.7917355369127405`. The honest claim
 is the checked headless
 runtime leads this comparable suite today, not that every future workbook shape
 is covered.

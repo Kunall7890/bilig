@@ -18,7 +18,7 @@
   "sourceArtifacts": {
     "primaryCompetitiveBenchmark": {
       "comparisonTarget": "HyperFormula",
-      "generatedAt": "2026-05-23T02:55:18.474Z",
+      "generatedAt": "2026-05-23T17:51:04.599Z",
       "hyperFormulaCommit": "9a510a2acb97c3d3490f9e3b9e961a1c4a98b9ad",
       "hyperFormulaVersion": "3.2.0",
       "path": "packages/benchmarks/baselines/workpaper-vs-hyperformula.json"
@@ -43,7 +43,7 @@
         "coverageNote": "Univer is covered through its documented @univerjs/preset-sheets-node-core headless Node preset. This workbook-wide lane times public Facade API workbook construction, cell edits, and formula recalculation completion on equivalent build, aggregate, chain, fanout, and lookup workloads.",
         "coverageTier": "workbook-wide",
         "engineName": "Univer",
-        "generatedAt": "2026-05-23T15:26:58.876Z",
+        "generatedAt": "2026-05-23T17:56:24.277Z",
         "meanAndP95WinCount": 32,
         "meanWinCount": 32,
         "p95WinCount": 32,
@@ -146,12 +146,12 @@
     ],
     "excludedFamilies": ["config-toggle", "dynamic-array"],
     "meanAndP95WinCount": 100,
-    "meanGeomeanRatio": 0.26046643853394114,
+    "meanGeomeanRatio": 0.2586071973976171,
     "meanWinCount": 100,
-    "p95GeomeanRatio": 0.2757210371737924,
+    "p95GeomeanRatio": 0.2806672128213908,
     "p95Holdouts": [],
     "p95WinCount": 100,
-    "tenXMeanAndP95WorkloadCountAgainstHyperFormula": 8,
+    "tenXMeanAndP95WorkloadCountAgainstHyperFormula": 6,
     "limitedComparisonEngines": [
       {
         "comparableWorkloadCount": 7,
@@ -166,10 +166,10 @@
     ],
     "workbookWideComparisonEngineCount": 2,
     "workbookWideComparisonEngines": ["HyperFormula", "Univer"],
-    "worstMeanRatio": 0.8462291546806624,
+    "worstMeanRatio": 0.8056914279903578,
     "worstMeanRatioWorkload": "sheet-rename-dependencies",
-    "worstP95Ratio": 0.9291607336587918,
-    "worstP95RatioWorkload": "lookup-approximate-sorted-after-column-write"
+    "worstP95Ratio": 0.7917355369127405,
+    "worstP95RatioWorkload": "sheet-rename-dependencies"
   },
   "completionAudit": {
     "allCriteriaPassed": false,
@@ -177,7 +177,7 @@
       {
         "evidence": [
           "primary artifact: packages/benchmarks/baselines/workpaper-vs-hyperformula.json",
-          "generated at: 2026-05-23T02:55:18.474Z",
+          "generated at: 2026-05-23T17:51:04.599Z",
           "check command: pnpm headless:performance:check",
           "timing refresh command: pnpm workpaper:bench:competitive:generate"
         ],
@@ -219,11 +219,11 @@
       },
       {
         "evidence": [
-          "mean geomean ratio: 0.26046643853394114",
-          "p95 geomean ratio: 0.2757210371737924",
-          "worst mean row: sheet-rename-dependencies (0.8462291546806624)",
-          "worst p95 row: lookup-approximate-sorted-after-column-write (0.9291607336587918)",
-          "10x mean+p95 workloads against HyperFormula: 8"
+          "mean geomean ratio: 0.2586071973976171",
+          "p95 geomean ratio: 0.2806672128213908",
+          "worst mean row: sheet-rename-dependencies (0.8056914279903578)",
+          "worst p95 row: sheet-rename-dependencies (0.7917355369127405)",
+          "10x mean+p95 workloads against HyperFormula: 6"
         ],
         "gaps": [],
         "id": "multiple-reporting-integrity",
