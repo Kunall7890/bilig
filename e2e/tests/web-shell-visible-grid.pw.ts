@@ -186,7 +186,7 @@ test('@browser-ci web app keeps dense accounting-sheet text payloads complete in
   await expect(page.getByTestId('status-selection')).toHaveText('Sheet1!B34')
   await expect(nameBox).toHaveValue('B34')
   await expect(formulaInput).toHaveValue('Annual software subscription')
-  await expect(page.getByTestId('sheet-grid')).toHaveCSS('font-family', /^-apple-system/)
+  await expect(page.getByTestId('sheet-grid')).toHaveCSS('font-family', /^Arial/)
   await expect(page.getByTestId('sheet-grid')).toHaveCSS('font-size', DEFAULT_WORKBOOK_CSS_FONT_SIZE)
   expect(
     await page.evaluate(() => [...document.fonts].some((fontFace) => fontFace.family === 'Bilig Sans' || fontFace.family === 'Bilig Mono')),
@@ -214,15 +214,15 @@ test('@browser-ci web app keeps dense accounting-sheet text payloads complete in
   await expect(page.getByTestId('grid-native-text-layer')).toHaveCount(1)
   await expect.poll(readNativeTextQualityState(page), { message: 'workbook text must stay on the crisp native text path' }).toMatchObject({
     appTextRendering: 'auto',
-    gridFontFamilyUsesPlatformStack: true,
+    gridFontFamilyUsesSpreadsheetStack: true,
     gridFontSize: DEFAULT_WORKBOOK_CSS_FONT_SIZE,
-    nativeTextFontFamilyUsesPlatformStack: true,
+    nativeTextFontFamilyUsesSpreadsheetStack: true,
     nativeTextFontSizeUsesCrispDisplaySize: true,
     nativeTextGlyphAnchorXPixelAligned: true,
     nativeTextViewportXPixelAligned: true,
     nativeTextViewportPixelAligned: true,
     nativeTextRendering: 'auto',
-    nativeTextSmoothing: 'subpixel-antialiased',
+    nativeTextSmoothing: 'auto',
   })
 
   const selectedCellTextPixels = await pollDarkInteriorPixelsInCell(page, 1, 33, (pixels) => pixels > 8)
@@ -1113,9 +1113,9 @@ function readNativeTextRunCount(page: Page): () => Promise<number> {
 
 function readNativeTextQualityState(page: Page): () => Promise<{
   readonly appTextRendering: string
-  readonly gridFontFamilyUsesPlatformStack: boolean
+  readonly gridFontFamilyUsesSpreadsheetStack: boolean
   readonly gridFontSize: string | null
-  readonly nativeTextFontFamilyUsesPlatformStack: boolean
+  readonly nativeTextFontFamilyUsesSpreadsheetStack: boolean
   readonly nativeTextFontSize: string | null
   readonly nativeTextFontSizeUsesCrispDisplaySize: boolean
   readonly nativeTextGlyphAnchorXPixelAligned: boolean
@@ -1148,12 +1148,9 @@ function readNativeTextQualityState(page: Page): () => Promise<{
             : viewportX + nativePaddingLeft
       return {
         appTextRendering: getComputedStyle(document.body).textRendering,
-        gridFontFamilyUsesPlatformStack:
-          gridStyle?.fontFamily.startsWith('-apple-system') === true || gridStyle?.fontFamily.includes('BlinkMacSystemFont') === true,
+        gridFontFamilyUsesSpreadsheetStack: gridStyle?.fontFamily.startsWith('Arial') === true,
         gridFontSize: gridStyle?.fontSize ?? null,
-        nativeTextFontFamilyUsesPlatformStack:
-          nativeTextStyle?.fontFamily.startsWith('-apple-system') === true ||
-          nativeTextStyle?.fontFamily.includes('BlinkMacSystemFont') === true,
+        nativeTextFontFamilyUsesSpreadsheetStack: nativeTextStyle?.fontFamily.startsWith('Arial') === true,
         nativeTextFontSize: nativeTextStyle?.fontSize ?? null,
         nativeTextFontSizeUsesCrispDisplaySize:
           Number.isFinite(nativeFontSize) && Math.abs(nativeFontSize - expectedDefaultFontSize) < 0.05,

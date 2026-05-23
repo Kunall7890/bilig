@@ -58,7 +58,7 @@
 
   body {
     @apply bg-[var(--wb-app-bg)] font-sans text-[var(--wb-text)];
-    -webkit-font-smoothing: subpixel-antialiased;
+    -webkit-font-smoothing: auto;
     font-synthesis: none;
     -moz-osx-font-smoothing: auto;
     text-rendering: auto;

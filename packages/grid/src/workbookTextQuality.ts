@@ -5,6 +5,4 @@ export const workbookNativeTextQualityStyle = {
   fontOpticalSizing: 'auto',
   fontSynthesis: 'none',
   textRendering: 'auto',
-  WebkitFontSmoothing: 'subpixel-antialiased',
-  MozOsxFontSmoothing: 'auto',
 } satisfies CSSProperties

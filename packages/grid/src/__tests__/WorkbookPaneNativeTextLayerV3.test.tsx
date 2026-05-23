@@ -214,14 +214,14 @@ describe('WorkbookPaneNativeTextLayerV3', () => {
       height: 18,
       letterSpacing: 0,
       lineHeight: '18px',
-      WebkitFontSmoothing: 'subpixel-antialiased',
-      MozOsxFontSmoothing: 'auto',
       textRendering: 'auto',
       textDecorationLine: 'underline',
       textAlign: 'right',
       top: -2,
       whiteSpace: 'pre',
     })
+    expect(style).not.toHaveProperty('WebkitFontSmoothing')
+    expect(style).not.toHaveProperty('MozOsxFontSmoothing')
   })
 
   test('snaps spreadsheet point sizing to crisp browser display pixels at every DPR', () => {
