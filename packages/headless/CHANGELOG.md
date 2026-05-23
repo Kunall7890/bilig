@@ -4,6 +4,19 @@ All notable changes to `@bilig/headless` will be documented in this file.
 
 This package is released as part of the aligned bilig library package set.
 
+## 0.67.9
+
+- Release type: patch
+- Previous libraries tag: libraries-v0.67.7
+- Manual override: no
+
+## Fixes
+- fix(workbook): harden runtime proof data (0ea4d8c6)
+- fix(workbook): harden low-level op guards (19c8f39c)
+
+## Internal runtime changes
+- chore(release): runtime packages v0.67.8 (9d5e1795)
+
 ## 0.67.8
 
 - Release type: patch
