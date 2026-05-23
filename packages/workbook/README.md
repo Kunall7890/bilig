@@ -147,6 +147,8 @@ without requiring the consumer's private `refs` object shape.
 Ref collection and ref hydration only inspect enumerable own data properties.
 Accessors are ignored instead of invoked, so hidden consumer getters cannot run
 while an agent is planning, verifying, logging, or hydrating workbook intent.
+Array entries follow the same rule, and ref cloning copies only known ref fields
+instead of spreading extra enumerable properties.
 
 For full action handoff, use `toPlanData(plan)` before JSON transport. A runtime
 can call `checkPlanData(data)` to get structured path-based issues before

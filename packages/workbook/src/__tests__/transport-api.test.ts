@@ -136,6 +136,69 @@ describe('@bilig/workbook transport api', () => {
     expect(Object.hasOwn(hydrated, 'hidden')).toBe(false)
     expect(hydrated['result']).toEqual(result)
     expect(collectWorkbookRefs(hydrated)).toEqual([result])
+
+    let arrayGetterInvoked = false
+    const arrayTransport = {
+      refs: accessorArray(() => {
+        arrayGetterInvoked = true
+        throw new Error('array accessor should not run')
+      }),
+    }
+
+    expect(collectWorkbookRefData(arrayTransport)).toEqual([])
+    const hydratedArrayTransport = hydrateWorkbookRefs(arrayTransport)
+    expect(isRecord(hydratedArrayTransport)).toBe(true)
+    if (!isRecord(hydratedArrayTransport) || !Array.isArray(hydratedArrayTransport['refs'])) {
+      throw new Error('expected hydrated array transport shape')
+    }
+    expect(hydratedArrayTransport['refs']).toEqual([])
+    expect(arrayGetterInvoked).toBe(false)
+  })
+
+  it('rejects accessor-backed ref data arrays without invoking getters', () => {
+    let headerGetterInvoked = false
+    const tableData = {
+      kind: 'table',
+      id: 'table_Inputs',
+      label: 'Inputs',
+      headers: accessorArray(() => {
+        headerGetterInvoked = true
+        throw new Error('header getter should not run')
+      }),
+    }
+
+    expect(isWorkbookRefData(tableData)).toBe(false)
+    expect(headerGetterInvoked).toBe(false)
+  })
+
+  it('copies known nested ref fields without invoking extra accessors', () => {
+    const range = findRange({ sheetName: 'Sheet1', address: 'D2' })
+    const data = toWorkbookRefData(range)
+    if (data.kind !== 'range') {
+      throw new Error('expected range ref data')
+    }
+
+    let extraGetterInvoked = false
+    Object.defineProperty(data.range, 'extra', {
+      enumerable: true,
+      get() {
+        extraGetterInvoked = true
+        throw new Error('extra getter should not run')
+      },
+    })
+
+    expect(toWorkbookRefData(data)).toEqual({
+      kind: 'range',
+      id: 'range_Sheet1_D2_D2',
+      label: 'Sheet1!D2',
+      range: {
+        sheetName: 'Sheet1',
+        startAddress: 'D2',
+        endAddress: 'D2',
+      },
+    })
+    expect(hydrateWorkbookRef(data)).toEqual(range)
+    expect(extraGetterInvoked).toBe(false)
   })
 
   it('verifies JSON-safe plan descriptions after transport round-trip', () => {

@@ -31,6 +31,8 @@ flowchart LR
   - JSON-safe ref data plus hydration helpers for agent/runtime transport
   - own-data-only ref discovery and hydration, with accessors ignored instead
     of invoked during planning and transport
+  - data-only ref array traversal and known-field ref cloning without
+    enumerable-property spread
   - frozen plan refs containers with `refsUsed` verification
   - transported plan data through `toPlanData`, `hydratePlanData`, and
     `verifyPlanData`

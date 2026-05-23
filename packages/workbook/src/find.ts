@@ -148,9 +148,53 @@ function hasOptionalString(value: object, key: string): boolean {
   return descriptor === undefined || typeof descriptor.value === 'string'
 }
 
+function isString(value: unknown): value is string {
+  return typeof value === 'string'
+}
+
+function arrayEveryData<T>(value: unknown, predicate: (entry: unknown) => entry is T): value is readonly T[]
+function arrayEveryData(value: unknown, predicate: (entry: unknown) => boolean): boolean
+function arrayEveryData(value: unknown, predicate: (entry: unknown) => boolean): boolean {
+  if (!Array.isArray(value)) {
+    return false
+  }
+
+  for (let index = 0; index < value.length; index += 1) {
+    const descriptor = Object.getOwnPropertyDescriptor(value, String(index))
+    if (descriptor === undefined || !descriptor.enumerable || !('value' in descriptor) || !predicate(descriptor.value)) {
+      return false
+    }
+  }
+
+  return true
+}
+
+function ownArrayDataValues(value: readonly unknown[]): readonly unknown[] {
+  const entries: unknown[] = []
+  for (let index = 0; index < value.length; index += 1) {
+    const descriptor = Object.getOwnPropertyDescriptor(value, String(index))
+    if (descriptor !== undefined && descriptor.enumerable && 'value' in descriptor) {
+      entries.push(descriptor.value)
+    }
+  }
+  return entries
+}
+
+function copyStringArrayData(value: readonly string[]): string[] {
+  const entries: string[] = []
+  for (let index = 0; index < value.length; index += 1) {
+    const descriptor = Object.getOwnPropertyDescriptor(value, String(index))
+    if (descriptor === undefined || !descriptor.enumerable || !('value' in descriptor) || typeof descriptor.value !== 'string') {
+      throw new Error('Workbook string array data is invalid')
+    }
+    entries.push(descriptor.value)
+  }
+  return entries
+}
+
 function hasOptionalStringArray(value: object, key: string): boolean {
   const descriptor = Object.getOwnPropertyDescriptor(value, key)
-  return descriptor === undefined || (Array.isArray(descriptor.value) && descriptor.value.every((entry) => typeof entry === 'string'))
+  return descriptor === undefined || arrayEveryData(descriptor.value, isString)
 }
 
 function ownEnumerableDataValues(value: object): readonly unknown[] {
@@ -310,7 +354,7 @@ export function collectWorkbookRefs(value: unknown): readonly WorkbookRef[] {
     }
 
     if (Array.isArray(current)) {
-      current.forEach(visit)
+      ownArrayDataValues(current).forEach(visit)
       return
     }
 
@@ -331,7 +375,11 @@ export function toWorkbookRefData(ref: WorkbookRef | WorkbookRefData): WorkbookR
         kind: 'range',
         id: ref.id,
         label: ref.label,
-        range: { ...ref.range },
+        range: {
+          sheetName: ref.range.sheetName,
+          startAddress: ref.range.startAddress,
+          endAddress: ref.range.endAddress,
+        },
       }
     case 'name':
       return {
@@ -347,7 +395,7 @@ export function toWorkbookRefData(ref: WorkbookRef | WorkbookRefData): WorkbookR
         label: ref.label,
         ...(ref.name !== undefined ? { name: ref.name } : {}),
         ...(ref.sheetName !== undefined ? { sheetName: ref.sheetName } : {}),
-        ...(ref.headers !== undefined ? { headers: [...ref.headers] } : {}),
+        ...(ref.headers !== undefined ? { headers: copyStringArrayData(ref.headers) } : {}),
       }
     case 'column':
       return {
@@ -365,7 +413,11 @@ export function toWorkbookRefData(ref: WorkbookRef | WorkbookRefData): WorkbookR
         label: ref.label,
         ...(ref.sheetName !== undefined ? { sheetName: ref.sheetName } : {}),
         ...(ref.table !== undefined ? { table: toWorkbookTableRefData(ref.table) } : {}),
-        where: { ...ref.where },
+        where: {
+          column: ref.where.column,
+          op: ref.where.op,
+          value: ref.where.value,
+        },
       }
   }
 }
@@ -422,7 +474,7 @@ export function collectWorkbookRefData(value: unknown): readonly WorkbookRefData
     }
 
     if (Array.isArray(current)) {
-      current.forEach(visit)
+      ownArrayDataValues(current).forEach(visit)
       return
     }
 
@@ -521,9 +573,12 @@ function normalizeHeaders(headers: readonly string[] | undefined): readonly stri
   if (headers.length === 0) {
     throw new Error('Workbook table headers cannot be empty')
   }
-  const normalized = headers
+  const normalized = ownArrayDataValues(headers)
     .map((header) => requiredSelectorText(header, 'table header'))
     .toSorted((left, right) => left.localeCompare(right))
+  if (normalized.length !== headers.length) {
+    throw new Error('Workbook table headers must contain only data strings')
+  }
   for (let index = 1; index < normalized.length; index += 1) {
     if (normalized[index] === normalized[index - 1]) {
       throw new Error(`Workbook table headers cannot contain duplicates: ${normalized[index]}`)
@@ -765,7 +820,7 @@ function hydrateTableRefData(data: WorkbookTableRefData): WorkbookTableRef {
     label: data.label,
     ...(data.name !== undefined ? { name: data.name } : {}),
     ...(data.sheetName !== undefined ? { sheetName: data.sheetName } : {}),
-    ...(data.headers !== undefined ? { headers: Object.freeze([...data.headers]) } : {}),
+    ...(data.headers !== undefined ? { headers: Object.freeze(copyStringArrayData(data.headers)) } : {}),
     column(name) {
       return createWorkbookColumnRef({ table, name })
     },
@@ -782,7 +837,11 @@ function hydrateRowsRefData(data: WorkbookRowsRefData, sharedTable?: WorkbookTab
     label: data.label,
     ...(data.sheetName !== undefined ? { sheetName: data.sheetName } : {}),
     ...(table !== undefined ? { table } : {}),
-    where: Object.freeze({ ...data.where }),
+    where: Object.freeze({
+      column: data.where.column,
+      op: data.where.op,
+      value: data.where.value,
+    }),
     column(name) {
       if (rows.table === undefined) {
         throw new Error('Rows column selection requires a table-backed row selector')
@@ -804,7 +863,11 @@ export function hydrateWorkbookRef(data: WorkbookRefData): WorkbookRef {
         kind: 'range',
         id: data.id,
         label: data.label,
-        range: Object.freeze({ ...data.range }),
+        range: Object.freeze({
+          sheetName: data.range.sheetName,
+          startAddress: data.range.startAddress,
+          endAddress: data.range.endAddress,
+        }),
       })
     case 'name':
       return Object.freeze({
@@ -863,7 +926,7 @@ function hydrateWorkbookRefsValue(value: unknown, seen: WeakMap<object, unknown>
   if (Array.isArray(value)) {
     const hydrated: unknown[] = []
     seen.set(value, hydrated)
-    value.forEach((entry) => {
+    ownArrayDataValues(value).forEach((entry) => {
       hydrated.push(hydrateWorkbookRefsValue(entry, seen))
     })
     return Object.freeze(hydrated)

@@ -92,6 +92,8 @@ again.
 Ref discovery and ref hydration only inspect enumerable own data properties.
 Accessor properties are ignored instead of invoked, so consumer-defined getters
 cannot run during planning, verification, logging, or transport hydration.
+Array entries follow the same data-only rule, and ref cloning copies known ref
+fields rather than spreading extra enumerable properties.
 For full action handoff, `toPlanData(plan)` returns executable JSON-safe plan
 data. Runtimes can call `hydratePlanData(data)`, or pass that data directly to
 `describeRuntimeRequirements(data)` and `runWorkbookPlan(data, adapter)`.
