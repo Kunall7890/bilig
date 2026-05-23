@@ -85,6 +85,7 @@ import {
   rewritePreservedWorkbookMetadataForSheetDeletion,
   rewritePreservedWorkbookMetadataForSheetReorder,
 } from './engine/services/structure-preserved-sheet-metadata-rewrite.js'
+import { rewriteThreadedCommentArtifactsForSheetDeletion } from './engine/services/structure-threaded-comment-artifact-rewrite.js'
 
 export { WorkbookMetadataError, type WorkbookMetadataService } from './workbook-metadata-service-contract.js'
 
@@ -295,6 +296,11 @@ export function createWorkbookMetadataService(metadata: WorkbookMetadataRecord):
     deleteRecordsBySheet(metadata.conditionalFormats, sheetName, (record) => record.range.sheetName)
     metadata.conditionalFormatArtifacts.delete(sheetName)
     metadata.sheetDrawingArtifacts.delete(sheetName)
+    metadata.threadedCommentArtifacts = rewriteThreadedCommentArtifactsForSheetDeletion({
+      workbookArtifacts: metadata.threadedCommentArtifacts,
+      sheetArtifactsByName: metadata.sheetThreadedCommentArtifacts,
+      deletedSheetName: sheetName,
+    })
     metadata.sheetThreadedCommentArtifacts.delete(sheetName)
     metadata.sheetLegacyCommentVml.delete(sheetName)
     metadata.preservedSheetMetadata.delete(sheetName)

@@ -11,12 +11,15 @@ import { WorkPaper } from '../index.js'
 import { createExcelAccessibleTempDir, removeMacosExcelTestDir } from './macos-excel-oracle-test-utils.js'
 
 const relationshipNamespace = 'http://schemas.openxmlformats.org/package/2006/relationships'
+const officeRelationshipNamespace = 'http://schemas.openxmlformats.org/officeDocument/2006/relationships'
+const worksheetRelationshipType = 'http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet'
 const threadedCommentRelationshipType = 'http://schemas.microsoft.com/office/2017/10/relationships/threadedComment'
 const personRelationshipType = 'http://schemas.microsoft.com/office/2017/10/relationships/person'
 const commentsRelationshipType = 'http://schemas.openxmlformats.org/officeDocument/2006/relationships/comments'
 const vmlDrawingRelationshipType = 'http://schemas.openxmlformats.org/officeDocument/2006/relationships/vmlDrawing'
 const threadedCommentContentType = 'application/vnd.ms-excel.threadedcomments+xml'
 const personContentType = 'application/vnd.ms-excel.person+xml'
+const worksheetContentType = 'application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml'
 const commentsContentType = 'application/vnd.openxmlformats-officedocument.spreadsheetml.comments+xml'
 const vmlDrawingContentType = 'application/vnd.openxmlformats-officedocument.vmlDrawing'
 const excelAuthoredThreadedCommentFixtureUrl = new URL(
@@ -102,6 +105,63 @@ describe('macOS Desktop Excel threaded comment structural oracle', () => {
     },
     120_000,
   )
+
+  it.runIf(process.env.BILIG_EXCEL_ORACLE_RUN === '1')(
+    'matches Desktop Excel threaded comment package cleanup after deleting a commented sheet',
+    () => {
+      if (!isMacosExcelInstalled()) {
+        throw new Error('BILIG_EXCEL_ORACLE_RUN=1 requires /Applications/Microsoft Excel.app')
+      }
+
+      const tempDir = createExcelAccessibleTempDir('bilig-headless-excel-threaded-comments-delete-oracle-')
+      try {
+        const sourceBytes = threadedCommentDeleteWorkbookBytes()
+        expect(threadedCommentPackageTopology(sourceBytes)).toMatchObject({
+          packageParts: ['xl/persons/person.xml', 'xl/threadedComments/threadedComment1.xml'],
+          threadedCommentRefs: ['B1'],
+          personNames: ['Microsoft Office User'],
+          sheetThreadedCommentRelationships: 1,
+          workbookPersonRelationships: 1,
+        })
+
+        const excelWorkbookPath = join(tempDir, 'excel-threaded-comment-delete-source.xlsx')
+        writeFileSync(excelWorkbookPath, sourceBytes)
+        const excelResult = runMacosExcelStructuralOperationOracle({
+          workbookPath: excelWorkbookPath,
+          worksheetName: 'Keep',
+          operations: [{ kind: 'deleteSheet', name: 'Country equity risk premiums' }],
+          inspectCells: ['A1'],
+          saveWorkbook: true,
+          timeoutMs: 120_000,
+        })
+        expect(excelResult.cells[0]?.value).toEqual({ kind: 'string', value: 'keep' })
+
+        const excelTruthBytes = new Uint8Array(readFileSync(excelWorkbookPath))
+        const excelTruth = importXlsx(excelTruthBytes, 'excel-threaded-comment-delete-truth.xlsx').snapshot
+        expect(excelTruth.sheets.map((sheet) => sheet.name)).toEqual(['Cost of capital worksheet', 'Keep'])
+        expect(threadedCommentPackageTopology(excelTruthBytes).personNames).toEqual([])
+
+        const workpaper = WorkPaper.buildFromSnapshot(importXlsx(sourceBytes, 'threaded-comment-delete-source.xlsx').snapshot)
+        try {
+          const reviewedSheet = workpaper.getSheetId('Country equity risk premiums')
+          if (reviewedSheet === undefined) {
+            throw new Error('Expected Country equity risk premiums sheet to be available')
+          }
+          workpaper.removeSheet(reviewedSheet)
+
+          const headlessPath = join(tempDir, 'headless-threaded-comment-delete.xlsx')
+          const headlessBytes = exportXlsx(workpaper.exportSnapshot())
+          writeFileSync(headlessPath, headlessBytes)
+          expect(threadedCommentPackageTopology(headlessBytes)).toEqual(threadedCommentPackageTopology(excelTruthBytes))
+        } finally {
+          workpaper.dispose()
+        }
+      } finally {
+        removeMacosExcelTestDir(tempDir)
+      }
+    },
+    180_000,
+  )
 })
 
 function threadedCommentWorkbookBytes(): Uint8Array {
@@ -178,6 +238,61 @@ function threadedCommentWorkbookBytes(): Uint8Array {
   return zipSync(zip)
 }
 
+function threadedCommentDeleteWorkbookBytes(): Uint8Array {
+  const zip = unzipSync(readFileSync(excelAuthoredThreadedCommentFixtureUrl))
+  const keepSheetIndex = nextWorksheetPartIndex(zip)
+  const keepSheetPath = `xl/worksheets/sheet${String(keepSheetIndex)}.xml`
+  const keepRelationshipId = nextWorkbookRelationshipId(readZipTextFromZip(zip, 'xl/_rels/workbook.xml.rels'))
+  const keepSheetId = nextWorkbookSheetId(readZipTextFromZip(zip, 'xl/workbook.xml'))
+
+  zip[keepSheetPath] = strToU8(
+    [
+      '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>',
+      '<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">',
+      '<sheetData><row r="1"><c r="A1" t="inlineStr"><is><t>keep</t></is></c></row></sheetData>',
+      '</worksheet>',
+    ].join(''),
+  )
+  zip['xl/workbook.xml'] = strToU8(
+    ensureRelationshipNamespace(readZipTextFromZip(zip, 'xl/workbook.xml')).replace(
+      '</sheets>',
+      `<sheet name="Keep" sheetId="${String(keepSheetId)}" r:id="${keepRelationshipId}"/></sheets>`,
+    ),
+  )
+  upsertRelationship(zip, 'xl/_rels/workbook.xml.rels', {
+    id: keepRelationshipId,
+    type: worksheetRelationshipType,
+    target: `worksheets/sheet${String(keepSheetIndex)}.xml`,
+  })
+  addContentTypeOverride(zip, `/${keepSheetPath}`, worksheetContentType)
+  return zipSync(zip)
+}
+
+function nextWorksheetPartIndex(zip: Record<string, Uint8Array>): number {
+  const usedIndexes = Object.keys(zip).flatMap((path) => {
+    const match = /^xl\/worksheets\/sheet(\d+)\.xml$/u.exec(path)
+    return match ? [Number(match[1])] : []
+  })
+  return Math.max(0, ...usedIndexes) + 1
+}
+
+function nextWorkbookRelationshipId(workbookRelationshipsXml: string): string {
+  const usedIndexes = [...workbookRelationshipsXml.matchAll(/\bId=(["'])rId(\d+)\1/gu)].map((match) => Number(match[2]))
+  return `rId${String(Math.max(0, ...usedIndexes) + 1)}`
+}
+
+function nextWorkbookSheetId(workbookXml: string): number {
+  const usedSheetIds = [...workbookXml.matchAll(/\bsheetId=(["'])(\d+)\1/gu)].map((match) => Number(match[2]))
+  return Math.max(0, ...usedSheetIds) + 1
+}
+
+function ensureRelationshipNamespace(xml: string): string {
+  if (/xmlns:r=/u.test(xml)) {
+    return xml
+  }
+  return xml.replace(/<([A-Za-z0-9:]+)\b([^>]*)>/u, `<$1$2 xmlns:r="${officeRelationshipNamespace}">`)
+}
+
 function addLegacyDrawingToWorksheet(worksheetXml: string, relationshipId: string): Uint8Array {
   if (worksheetXml.includes('<legacyDrawing')) {
     return strToU8(worksheetXml)
@@ -219,6 +334,50 @@ function addContentTypeDefault(zip: Record<string, Uint8Array>, extension: strin
       ? contentTypesXml
       : contentTypesXml.replace('</Types>', `<Default Extension="${extension}" ContentType="${contentType}"/></Types>`),
   )
+}
+
+function threadedCommentPackageTopology(bytes: Uint8Array): {
+  readonly packageParts: readonly string[]
+  readonly threadedCommentRefs: readonly string[]
+  readonly personNames: readonly string[]
+  readonly sheetThreadedCommentRelationships: number
+  readonly workbookPersonRelationships: number
+  readonly contentTypeOverrides: readonly string[]
+} {
+  const zip = unzipSync(bytes)
+  return {
+    packageParts: Object.keys(zip)
+      .filter((path) => path.startsWith('xl/threadedComments/') || path.startsWith('xl/persons/'))
+      .toSorted(),
+    threadedCommentRefs: readThreadedCommentRefs(bytes),
+    personNames: readPersonNames(bytes),
+    sheetThreadedCommentRelationships: readThreadedCommentRelationshipCount(bytes),
+    workbookPersonRelationships:
+      strFromU8(zip['xl/_rels/workbook.xml.rels'] ?? new Uint8Array()).match(new RegExp(personRelationshipType, 'gu'))?.length ?? 0,
+    contentTypeOverrides: contentTypeOverridesForThreadedCommentParts(readZipTextFromZip(zip, '[Content_Types].xml')),
+  }
+}
+
+function contentTypeOverridesForThreadedCommentParts(contentTypesXml: string): string[] {
+  return [...contentTypesXml.matchAll(/<Override\b([^>]*)\/?>/gu)]
+    .flatMap((match) => {
+      const attributes = match[1] ?? ''
+      const partName = readXmlAttribute(attributes, 'PartName')
+      return partName?.startsWith('/xl/threadedComments/') || partName?.startsWith('/xl/persons/') ? [partName] : []
+    })
+    .toSorted()
+}
+
+function readXmlAttribute(attributes: string, name: string): string | null {
+  return new RegExp(`\\b${name}=("|')([\\s\\S]*?)\\1`, 'u').exec(attributes)?.[2] ?? null
+}
+
+function readZipTextFromZip(zip: Record<string, Uint8Array>, path: string): string {
+  const bytes = zip[path]
+  if (!bytes) {
+    throw new Error(`Missing XLSX part: ${path}`)
+  }
+  return strFromU8(bytes)
 }
 
 function readThreadedCommentRefs(bytes: Uint8Array): string[] {

@@ -7,6 +7,10 @@ import { SpreadsheetEngine } from '../index.js'
 
 const officeRelationshipTypePrefix = 'http://schemas.openxmlformats.org/officeDocument/2006/relationships'
 const microsoftOfficeRelationshipTypePrefix = 'http://schemas.microsoft.com/office/2007/relationships'
+const threadedCommentRelationshipType = 'http://schemas.microsoft.com/office/2017/10/relationships/threadedComment'
+const personRelationshipType = 'http://schemas.microsoft.com/office/2017/10/relationships/person'
+const threadedCommentContentType = 'application/vnd.ms-excel.threadedcomments+xml'
+const personContentType = 'application/vnd.ms-excel.person+xml'
 
 describe('engine imported package metadata preservation', () => {
   it('keeps import/export-only workbook and worksheet metadata after engine edits and restore', async () => {
@@ -187,6 +191,74 @@ describe('engine imported package metadata preservation', () => {
         contentType: 'application/vnd.ms-excel.slicer+xml',
       },
     ])
+  })
+
+  it('prunes deleted sheet threaded comments while keeping surviving person parts', async () => {
+    const engine = new SpreadsheetEngine({ workbookName: 'package-metadata-threaded-comment-artifact-sheet-delete' })
+    await engine.ready()
+
+    engine.importSnapshot(threadedCommentSheetDeletionSnapshot())
+    engine.deleteSheet('Review')
+
+    const exported = engine.exportSnapshot()
+    expect(exported.sheets.map((sheet) => sheet.name)).toEqual(['Keep'])
+    expect(exported.sheets[0]?.metadata?.threadedCommentArtifacts).toEqual({
+      relationships: [
+        {
+          id: 'rIdThreadedKeep',
+          type: threadedCommentRelationshipType,
+          target: '../threadedComments/threadedComment2.xml',
+        },
+      ],
+    })
+    expect(exported.workbook.metadata?.threadedCommentArtifacts?.parts.map((part) => part.path)).toEqual([
+      'xl/persons/person1.xml',
+      'xl/threadedComments/threadedComment2.xml',
+    ])
+    expect(exported.workbook.metadata?.threadedCommentArtifacts?.workbookRelationships).toEqual([
+      {
+        id: 'rIdPerson1',
+        type: personRelationshipType,
+        target: 'persons/person1.xml',
+      },
+    ])
+    expect(exported.workbook.metadata?.threadedCommentArtifacts?.contentTypeOverrides).toEqual([
+      {
+        partName: '/xl/threadedComments/threadedComment2.xml',
+        contentType: threadedCommentContentType,
+      },
+      {
+        partName: '/xl/persons/person1.xml',
+        contentType: personContentType,
+      },
+    ])
+  })
+
+  it('drops workbook threaded comment artifacts after deleting the only commented sheet', async () => {
+    const engine = new SpreadsheetEngine({ workbookName: 'package-metadata-only-threaded-comment-artifact-sheet-delete' })
+    await engine.ready()
+
+    engine.importSnapshot(threadedCommentSheetDeletionSnapshot({ includeSurvivingThreadedComment: false }))
+    engine.deleteSheet('Review')
+
+    const exported = engine.exportSnapshot()
+    expect(exported.sheets.map((sheet) => sheet.name)).toEqual(['Keep'])
+    expect(exported.sheets[0]?.metadata?.threadedCommentArtifacts).toBeUndefined()
+    expect(exported.workbook.metadata?.threadedCommentArtifacts?.parts.map((part) => part.path)).toEqual(['xl/persons/person1.xml'])
+    expect(exported.workbook.metadata?.threadedCommentArtifacts?.workbookRelationships).toEqual([
+      {
+        id: 'rIdPerson1',
+        type: personRelationshipType,
+        target: 'persons/person1.xml',
+      },
+    ])
+    expect(exported.workbook.metadata?.threadedCommentArtifacts?.contentTypeOverrides).toEqual([
+      {
+        partName: '/xl/persons/person1.xml',
+        contentType: personContentType,
+      },
+    ])
+    expect(threadedCommentPartText(exported.workbook.metadata, 'xl/persons/person1.xml')).not.toContain('<person ')
   })
 
   it('rewrites preserved workbook view tab indexes after sheet deletion', async () => {
@@ -600,6 +672,110 @@ function sharedSlicerConnectionSheetDeletionSnapshot(): WorkbookSnapshot {
   return snapshot
 }
 
+function threadedCommentSheetDeletionSnapshot(options?: { readonly includeSurvivingThreadedComment?: boolean }): WorkbookSnapshot {
+  const includeSurvivingThreadedComment = options?.includeSurvivingThreadedComment ?? true
+  return {
+    version: 1,
+    workbook: {
+      name: 'Threaded comment sheet deletion',
+      metadata: {
+        threadedCommentArtifacts: {
+          parts: [
+            encodedPart('xl/threadedComments/threadedComment1.xml', threadedCommentXml('A1', 'Review required')),
+            ...(includeSurvivingThreadedComment
+              ? [encodedPart('xl/threadedComments/threadedComment2.xml', threadedCommentXml('B1', 'Keep follow-up'))]
+              : []),
+            encodedPart('xl/persons/person1.xml', personXml()),
+          ],
+          workbookRelationships: [
+            {
+              id: 'rIdPerson1',
+              type: personRelationshipType,
+              target: 'persons/person1.xml',
+            },
+          ],
+          contentTypeOverrides: [
+            {
+              partName: '/xl/threadedComments/threadedComment1.xml',
+              contentType: threadedCommentContentType,
+            },
+            ...(includeSurvivingThreadedComment
+              ? [
+                  {
+                    partName: '/xl/threadedComments/threadedComment2.xml',
+                    contentType: threadedCommentContentType,
+                  },
+                ]
+              : []),
+            {
+              partName: '/xl/persons/person1.xml',
+              contentType: personContentType,
+            },
+          ],
+        },
+      },
+    },
+    sheets: [
+      {
+        id: 1,
+        name: 'Review',
+        order: 0,
+        metadata: {
+          threadedCommentArtifacts: {
+            relationships: [
+              {
+                id: 'rIdThreadedReview',
+                type: threadedCommentRelationshipType,
+                target: '../threadedComments/threadedComment1.xml',
+              },
+            ],
+          },
+        },
+        cells: [{ address: 'A1', value: 'review' }],
+      },
+      {
+        id: 2,
+        name: 'Keep',
+        order: 1,
+        ...(includeSurvivingThreadedComment
+          ? {
+              metadata: {
+                threadedCommentArtifacts: {
+                  relationships: [
+                    {
+                      id: 'rIdThreadedKeep',
+                      type: threadedCommentRelationshipType,
+                      target: '../threadedComments/threadedComment2.xml',
+                    },
+                  ],
+                },
+              },
+            }
+          : {}),
+        cells: [{ address: 'A1', value: 'keep' }],
+      },
+    ],
+  }
+}
+
+function threadedCommentXml(ref: string, text: string): string {
+  return [
+    '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>',
+    '<ThreadedComments xmlns="http://schemas.microsoft.com/office/spreadsheetml/2018/threadedcomments" xmlns:x="http://schemas.openxmlformats.org/spreadsheetml/2006/main">',
+    `<threadedComment ref="${ref}" dT="2026-05-01T10:00:00Z" personId="{11111111-1111-1111-1111-111111111111}" id="{aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa}"><text><x:r><x:t>${text}</x:t></x:r></text></threadedComment>`,
+    '</ThreadedComments>',
+  ].join('')
+}
+
+function personXml(): string {
+  return [
+    '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>',
+    '<personList xmlns="http://schemas.microsoft.com/office/spreadsheetml/2017/person">',
+    '<person displayName="Finance Reviewer" id="{11111111-1111-1111-1111-111111111111}" userId="finance@example.com" providerId="None"/>',
+    '</personList>',
+  ].join('')
+}
+
 function workbookViewStateSheetReorderSnapshot(): WorkbookSnapshot {
   return {
     version: 1,
@@ -781,6 +957,11 @@ function chartFormulaRefs(metadata: WorkbookMetadataSnapshot | undefined, path: 
   return [...xml.matchAll(/<(?:[A-Za-z_][\w.-]*:)?f\b[^>]*>([\s\S]*?)<\/(?:[A-Za-z_][\w.-]*:)?f>/gu)].map((match) =>
     decodeXmlText(match[1] ?? ''),
   )
+}
+
+function threadedCommentPartText(metadata: WorkbookMetadataSnapshot | undefined, path: string): string {
+  const part = metadata?.threadedCommentArtifacts?.parts.find((candidate) => candidate.path === path)
+  return part ? Buffer.from(part.dataBase64, 'base64').toString('utf8') : ''
 }
 
 function readXmlAttribute(xml: string, name: string): string | undefined {

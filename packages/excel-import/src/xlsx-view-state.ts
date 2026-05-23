@@ -91,7 +91,71 @@ function readElementXml(xml: string | null, localName: 'bookViews' | 'sheetViews
   if (!xml) {
     return undefined
   }
-  return new RegExp(`<((?:[A-Za-z_][\\w.-]*:)?${localName})\\b[^>]*(?:/>|>[\\s\\S]*?</\\1>)`, 'u').exec(xml)?.[0]
+  const elementXml = new RegExp(`<((?:[A-Za-z_][\\w.-]*:)?${localName})\\b[^>]*(?:/>|>[\\s\\S]*?</\\1>)`, 'u').exec(xml)?.[0]
+  return elementXml ? addInheritedNamespaceDeclarations(elementXml, xml) : undefined
+}
+
+function addInheritedNamespaceDeclarations(elementXml: string, documentXml: string): string {
+  const prefixes = prefixedNamesUsedByXml(elementXml)
+  if (prefixes.size === 0) {
+    return elementXml
+  }
+  const rootAttributes = /<[A-Za-z_][\w.-]*\b([^>]*)>/u.exec(documentXml)?.[1] ?? ''
+  const namespaceAttributes = new Map(
+    [...rootAttributes.matchAll(/\s+xmlns:([A-Za-z_][\w.-]*)=(["'])([\s\S]*?)\2/gu)].map((match) => [
+      match[1] ?? '',
+      `xmlns:${match[1] ?? ''}=${match[2] ?? '"'}${match[3] ?? ''}${match[2] ?? '"'}`,
+    ]),
+  )
+  const inheritedAttributes = [...prefixes]
+    .filter((prefix) => !hasNamespaceDeclaration(elementXml, prefix))
+    .flatMap((prefix) => {
+      const attribute = namespaceAttributes.get(prefix)
+      return attribute ? [attribute] : []
+    })
+  const ignorablePrefixes = inheritedIgnorablePrefixes(rootAttributes, prefixes)
+  if (ignorablePrefixes.length > 0) {
+    const mcNamespace = namespaceAttributes.get('mc')
+    if (mcNamespace && !hasNamespaceDeclaration(elementXml, 'mc')) {
+      inheritedAttributes.push(mcNamespace)
+    }
+    if (!/\smc:Ignorable=(["'])/u.test(elementXml)) {
+      inheritedAttributes.push(`mc:Ignorable="${ignorablePrefixes.join(' ')}"`)
+    }
+  }
+  if (inheritedAttributes.length === 0) {
+    return elementXml
+  }
+  return elementXml.replace(/<([A-Za-z_][\w.-]*)(\s|>|\/>)/u, `<$1 ${inheritedAttributes.join(' ')}$2`)
+}
+
+function inheritedIgnorablePrefixes(rootAttributes: string, prefixes: ReadonlySet<string>): string[] {
+  const ignorable = /\smc:Ignorable=(["'])([\s\S]*?)\1/u.exec(rootAttributes)?.[2]
+  if (!ignorable) {
+    return []
+  }
+  return ignorable.split(/\s+/u).filter((prefix) => prefixes.has(prefix))
+}
+
+function prefixedNamesUsedByXml(xml: string): Set<string> {
+  const prefixes = new Set<string>()
+  for (const match of xml.matchAll(/<\/?([A-Za-z_][\w.-]*):[A-Za-z_][\w.-]*/gu)) {
+    prefixes.add(match[1] ?? '')
+  }
+  for (const match of xml.matchAll(/\s([A-Za-z_][\w.-]*):[A-Za-z_][\w.-]*=/gu)) {
+    prefixes.add(match[1] ?? '')
+  }
+  prefixes.delete('')
+  prefixes.delete('xmlns')
+  return prefixes
+}
+
+function hasNamespaceDeclaration(xml: string, prefix: string): boolean {
+  return new RegExp(`\\sxmlns:${escapeRegExp(prefix)}=(["'])`, 'u').test(xml)
+}
+
+function escapeRegExp(value: string): string {
+  return value.replace(/[.*+?^${}()|[\]\\]/gu, '\\$&')
 }
 
 function insertAfterElement(xml: string, elementName: string, insertedXml: string): string | null {

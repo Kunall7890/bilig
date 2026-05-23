@@ -1,9 +1,16 @@
 import { MAX_COLS, MAX_ROWS, type WorkbookPreservedPackagePartSnapshot } from '@bilig/protocol'
 import { columnToIndex, formatAddress, rewriteAddressForStructuralTransform, type StructuralAxisTransform } from '@bilig/formula'
+import type { WorkbookSheetThreadedCommentArtifactsRecord, WorkbookThreadedCommentArtifactsRecord } from '../../workbook-metadata-types.js'
 import type { WorkbookStore } from '../../workbook-store.js'
 
 const METADATA_CELL_REF_RE = /^\$?([A-Z]+)\$?([1-9]\d*)$/i
 const binaryChunkSize = 0x8000
+const workbookPath = 'xl/workbook.xml'
+const worksheetPathForRelationshipResolution = 'xl/worksheets/sheet1.xml'
+const threadedCommentRelationshipTypeFragment = '/relationships/threadedComment'
+const personRelationshipTypeFragment = '/relationships/person'
+const threadedCommentPartPathPattern = /^xl\/threadedComments\/threadedComment[^/]*\.xml$/u
+const personPartPathPattern = /^xl\/persons\/person[^/]*\.xml$/u
 
 export function rewriteThreadedCommentArtifactsForStructuralTransform(args: {
   readonly workbook: WorkbookStore
@@ -51,6 +58,90 @@ export function rewriteThreadedCommentArtifactsForStructuralTransform(args: {
   }
 }
 
+export function rewriteThreadedCommentArtifactsForSheetDeletion(args: {
+  readonly workbookArtifacts: WorkbookThreadedCommentArtifactsRecord | undefined
+  readonly sheetArtifactsByName: ReadonlyMap<string, WorkbookSheetThreadedCommentArtifactsRecord>
+  readonly deletedSheetName: string
+}): WorkbookThreadedCommentArtifactsRecord | undefined {
+  const workbookArtifacts = args.workbookArtifacts
+  const deletedSheetArtifacts = args.sheetArtifactsByName.get(args.deletedSheetName)
+  if (!workbookArtifacts || !deletedSheetArtifacts) {
+    return workbookArtifacts
+  }
+
+  const survivingThreadedCommentPartPaths = new Set<string>()
+  for (const [sheetName, sheetArtifacts] of args.sheetArtifactsByName.entries()) {
+    if (sheetName === args.deletedSheetName) {
+      continue
+    }
+    for (const path of threadedCommentPartPathsReferencedBySheetArtifacts(sheetArtifacts)) {
+      survivingThreadedCommentPartPaths.add(path)
+    }
+  }
+
+  const retainedThreadedCommentParts: WorkbookPreservedPackagePartSnapshot[] = []
+  const removedPartPaths = new Set<string>()
+  for (const part of workbookArtifacts.parts) {
+    const path = normalizeZipPath(part.path)
+    if (!threadedCommentPartPathPattern.test(path)) {
+      continue
+    }
+    if (!survivingThreadedCommentPartPaths.has(path)) {
+      removedPartPaths.add(path)
+      continue
+    }
+    retainedThreadedCommentParts.push(structuredClone(part))
+  }
+
+  const retainedPersonParts = workbookArtifacts.parts.flatMap((part) => {
+    const path = normalizeZipPath(part.path)
+    if (!personPartPathPattern.test(path)) {
+      return []
+    }
+    return [retainedThreadedCommentParts.length === 0 ? clearPersonPartEntries(part) : structuredClone(part)]
+  })
+
+  const retainedOtherParts = workbookArtifacts.parts.flatMap((part) => {
+    const path = normalizeZipPath(part.path)
+    if (threadedCommentPartPathPattern.test(path) || personPartPathPattern.test(path)) {
+      return []
+    }
+    return [structuredClone(part)]
+  })
+
+  const parts = [...retainedThreadedCommentParts, ...retainedPersonParts, ...retainedOtherParts].toSorted((left, right) =>
+    normalizeZipPath(left.path).localeCompare(normalizeZipPath(right.path)),
+  )
+  const retainedPartPaths = new Set(parts.map((part) => normalizeZipPath(part.path)))
+  const workbookRelationships = (workbookArtifacts.workbookRelationships ?? []).filter((relationship) => {
+    if (relationship.targetMode === 'External') {
+      return true
+    }
+    const targetPath = resolveTargetPath(workbookPath, relationship.target)
+    if (relationship.type.includes(personRelationshipTypeFragment) || personPartPathPattern.test(targetPath)) {
+      return retainedPartPaths.has(targetPath)
+    }
+    return true
+  })
+  const contentTypeOverrides = (workbookArtifacts.contentTypeOverrides ?? []).filter((entry) => {
+    const path = normalizeZipPath(entry.partName)
+    if (threadedCommentPartPathPattern.test(path) || personPartPathPattern.test(path)) {
+      return retainedPartPaths.has(path)
+    }
+    return !removedPartPaths.has(path)
+  })
+
+  const next: WorkbookThreadedCommentArtifactsRecord = {
+    parts,
+    ...(workbookRelationships.length > 0 ? { workbookRelationships } : {}),
+    ...(parts.length > 0 && workbookArtifacts.contentTypeDefaults
+      ? { contentTypeDefaults: structuredClone(workbookArtifacts.contentTypeDefaults) }
+      : {}),
+    ...(contentTypeOverrides.length > 0 ? { contentTypeOverrides } : {}),
+  }
+  return hasThreadedCommentArtifacts(next) ? next : undefined
+}
+
 function rewriteThreadedCommentPartForStructuralTransform(
   part: WorkbookPreservedPackagePartSnapshot,
   transform: StructuralAxisTransform,
@@ -70,6 +161,39 @@ function rewriteThreadedCommentPartForStructuralTransform(
     dataBase64: encodeBase64(nextBytes),
     byteLength: nextBytes.byteLength,
   }
+}
+
+function threadedCommentPartPathsReferencedBySheetArtifacts(artifacts: WorkbookSheetThreadedCommentArtifactsRecord): Set<string> {
+  return new Set(
+    artifacts.relationships
+      .filter((relationship) => relationship.targetMode !== 'External')
+      .filter((relationship) => relationship.type.includes(threadedCommentRelationshipTypeFragment))
+      .map((relationship) => resolveTargetPath(worksheetPathForRelationshipResolution, relationship.target)),
+  )
+}
+
+function clearPersonPartEntries(part: WorkbookPreservedPackagePartSnapshot): WorkbookPreservedPackagePartSnapshot {
+  const bytes = decodeBase64(part.dataBase64)
+  if (bytes.byteLength !== part.byteLength) {
+    return structuredClone(part)
+  }
+  const xml = new TextDecoder().decode(bytes)
+  const nextXml = xml.replace(/<personList\b([^>]*)>[\s\S]*?<\/personList>/u, '<personList$1/>')
+  if (nextXml === xml) {
+    return structuredClone(part)
+  }
+  const nextBytes = new TextEncoder().encode(nextXml)
+  return {
+    ...part,
+    dataBase64: encodeBase64(nextBytes),
+    byteLength: nextBytes.byteLength,
+  }
+}
+
+function hasThreadedCommentArtifacts(artifacts: WorkbookThreadedCommentArtifactsRecord): boolean {
+  return (
+    artifacts.parts.length > 0 || (artifacts.workbookRelationships?.length ?? 0) > 0 || (artifacts.contentTypeOverrides?.length ?? 0) > 0
+  )
 }
 
 function rewriteThreadedCommentXmlForStructuralTransform(xml: string, transform: StructuralAxisTransform): string {

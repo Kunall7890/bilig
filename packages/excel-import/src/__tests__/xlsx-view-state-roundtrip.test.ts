@@ -25,6 +25,21 @@ describe('workbook view state roundtrip', () => {
       '<sheetViews><sheetView workbookViewId="0" tabSelected="1" topLeftCell="B7" zoomScale="125" zoomScalePageLayoutView="80" view="pageLayout"><selection pane="topLeft" activeCell="B7" sqref="B7:C9"/></sheetView></sheetViews>',
     ])
   })
+
+  it('preserves inherited namespaces required by prefixed view state attributes', () => {
+    const imported = importXlsx(buildWorkbookWithPrefixedViewState(), 'prefixed-view-state.xlsx')
+    const exported = exportXlsx(imported.snapshot)
+    const exportedSummary = readViewStateSummary(exported)
+
+    expect(exportedSummary.bookViewsXml).toContain('xmlns:xr2="http://schemas.microsoft.com/office/spreadsheetml/2015/revision2"')
+    expect(exportedSummary.bookViewsXml).toContain('mc:Ignorable="xr2"')
+    expect(exportedSummary.bookViewsXml).toContain('xr2:uid="{00000000-000D-0000-FFFF-FFFF00000000}"')
+    expect(exportedSummary.sheetViewsXmlByPath[0]?.[1]).toContain(
+      'xmlns:xr="http://schemas.microsoft.com/office/spreadsheetml/2014/revision"',
+    )
+    expect(exportedSummary.sheetViewsXmlByPath[0]?.[1]).toContain('mc:Ignorable="xr"')
+    expect(exportedSummary.sheetViewsXmlByPath[0]?.[1]).toContain('xr:uid="{00000000-0001-0000-0000-000000000000}"')
+  })
 })
 
 interface ViewStateSummary {
@@ -69,6 +84,37 @@ function buildWorkbookWithViewState(): Uint8Array {
     'xl/worksheets/sheet2.xml',
     'sheetViews',
     '<sheetViews><sheetView workbookViewId="0" tabSelected="1" topLeftCell="B7" zoomScale="125" zoomScalePageLayoutView="80" view="pageLayout"><selection pane="topLeft" activeCell="B7" sqref="B7:C9"/></sheetView></sheetViews>',
+  )
+  return zipSync(zip)
+}
+
+function buildWorkbookWithPrefixedViewState(): Uint8Array {
+  const workbook = XLSX.utils.book_new()
+  XLSX.utils.book_append_sheet(workbook, XLSX.utils.aoa_to_sheet([['Metric'], ['Revenue']]), 'Summary')
+  const zip = unzipSync(XLSX.write(workbook, { bookType: 'xlsx', type: 'buffer' }))
+  zip['xl/workbook.xml'] = strToU8(
+    strFromU8(zip['xl/workbook.xml'] ?? new Uint8Array()).replace(
+      '<workbook ',
+      '<workbook xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" mc:Ignorable="xr2" xmlns:xr2="http://schemas.microsoft.com/office/spreadsheetml/2015/revision2" ',
+    ),
+  )
+  zip['xl/worksheets/sheet1.xml'] = strToU8(
+    strFromU8(zip['xl/worksheets/sheet1.xml'] ?? new Uint8Array()).replace(
+      '<worksheet ',
+      '<worksheet xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" mc:Ignorable="xr" xmlns:xr="http://schemas.microsoft.com/office/spreadsheetml/2014/revision" ',
+    ),
+  )
+  upsertXmlSection(
+    zip,
+    'xl/workbook.xml',
+    'bookViews',
+    '<bookViews><workbookView xWindow="0" yWindow="760" windowWidth="30240" windowHeight="18880" xr2:uid="{00000000-000D-0000-FFFF-FFFF00000000}"/></bookViews>',
+  )
+  upsertXmlSection(
+    zip,
+    'xl/worksheets/sheet1.xml',
+    'sheetViews',
+    '<sheetViews><sheetView workbookViewId="0" xr:uid="{00000000-0001-0000-0000-000000000000}"/></sheetViews>',
   )
   return zipSync(zip)
 }

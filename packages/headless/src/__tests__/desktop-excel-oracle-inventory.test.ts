@@ -119,6 +119,7 @@ describe('macOS Desktop Excel oracle inventory', () => {
     expect(source).toContain('threadedCommentArtifacts')
     expect(source).toContain('legacyCommentVml')
     expect(source).toContain('matches Desktop Excel threaded comment refs after structural row inserts')
+    expect(source).toContain('matches Desktop Excel threaded comment package cleanup after deleting a commented sheet')
   })
 
   it('keeps the hyperlink structural oracle anchored to Desktop Excel metadata movement', () => {
