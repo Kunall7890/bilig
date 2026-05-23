@@ -54,12 +54,12 @@ describe('zero sync schema', () => {
     expect('artifact_json' in zeroSchemaServerColumnNamesByTable.workbook_workflow_run).toBe(false)
   })
 
-  it('keeps workflow mutation proof out of the replicated run model until every deployment has the columns', () => {
-    expect('mutationExecuted' in schema.tables.workbook_workflow_run.columns).toBe(false)
-    expect('verificationComplete' in schema.tables.workbook_workflow_run.columns).toBe(false)
-    expect('mutationStatus' in schema.tables.workbook_workflow_run.columns).toBe(false)
-    expect('mutationReceipt' in schema.tables.workbook_workflow_run.columns).toBe(false)
-    expect(zeroSchemaServerColumnNamesByTable.workbook_workflow_run).not.toEqual(
+  it('replicates workflow mutation proof fields for schema-version compatibility', () => {
+    expect(schema.tables.workbook_workflow_run.columns.mutationExecuted.serverName).toBe('mutation_executed')
+    expect(schema.tables.workbook_workflow_run.columns.verificationComplete.serverName).toBe('verification_complete')
+    expect(schema.tables.workbook_workflow_run.columns.mutationStatus.serverName).toBe('mutation_status')
+    expect(schema.tables.workbook_workflow_run.columns.mutationReceipt.serverName).toBe('mutation_receipt_json')
+    expect(zeroSchemaServerColumnNamesByTable.workbook_workflow_run).toEqual(
       expect.arrayContaining(['mutation_executed', 'verification_complete', 'mutation_status', 'mutation_receipt_json']),
     )
   })

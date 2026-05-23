@@ -3,6 +3,7 @@ import {
   DEFAULT_ZERO_PUBLICATION,
   ensureZeroPublication,
   resolveZeroPublicationName,
+  ZERO_PUBLICATION_COLUMNS_BY_TABLE,
   ZERO_PUBLICATION_TABLES,
 } from '../publication-store.js'
 import type { QueryResultRow, Queryable } from '../store.js'
@@ -53,6 +54,9 @@ function latestQuery(queryable: FakeQueryable): RecordedQuery {
 describe('publication-store', () => {
   it('derives replicated tables from the shared Zero schema model', () => {
     expect(ZERO_PUBLICATION_TABLES).toEqual(zeroSchemaTableNames)
+    expect(ZERO_PUBLICATION_COLUMNS_BY_TABLE.workbook_workflow_run).toEqual(
+      expect.arrayContaining(['mutation_executed', 'verification_complete', 'mutation_status', 'mutation_receipt_json']),
+    )
   })
 
   it('creates the publication with every replicated table when it is missing', async () => {
@@ -114,6 +118,29 @@ describe('publication-store', () => {
     await ensureZeroPublication(queryable)
 
     expect(queryable.calls).toHaveLength(2)
+  })
+
+  it('repairs stale column-filtered publication tables before Zero clients connect', async () => {
+    const workflowColumns = ZERO_PUBLICATION_COLUMNS_BY_TABLE.workbook_workflow_run.filter(
+      (columnName) => !['mutation_executed', 'verification_complete', 'mutation_status', 'mutation_receipt_json'].includes(columnName),
+    )
+    const queryable = new FakeQueryable([
+      (text) => (isPublicationLookup(text) ? [{ present: 1 } satisfies QueryResultRow] : null),
+      (text) =>
+        isPublicationTableLookup(text)
+          ? ZERO_PUBLICATION_TABLES.map((tableName) =>
+              tableName === 'workbook_workflow_run'
+                ? ({ tableName, columnNames: workflowColumns } satisfies QueryResultRow)
+                : ({ tableName } satisfies QueryResultRow),
+            )
+          : null,
+    ])
+
+    await ensureZeroPublication(queryable)
+
+    expect(queryable.calls).toHaveLength(4)
+    expect(queryable.calls[2]?.text).toContain(`ALTER PUBLICATION "${DEFAULT_ZERO_PUBLICATION}" DROP TABLE public."workbook_workflow_run"`)
+    expect(queryable.calls[3]?.text).toContain(`ALTER PUBLICATION "${DEFAULT_ZERO_PUBLICATION}" ADD TABLE public."workbook_workflow_run"`)
   })
 
   it('rejects invalid publication names from the environment', () => {

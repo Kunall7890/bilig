@@ -1,11 +1,17 @@
-import { zeroSchemaTableNames } from '@bilig/zero-sync'
+import { zeroSchemaServerColumnNamesByTable, zeroSchemaTableNames } from '@bilig/zero-sync'
 import type { Queryable } from './store.js'
 
 export const DEFAULT_ZERO_PUBLICATION = 'zero_data_v2'
 
 export const ZERO_PUBLICATION_TABLES = zeroSchemaTableNames
+export const ZERO_PUBLICATION_COLUMNS_BY_TABLE = zeroSchemaServerColumnNamesByTable
 
 const POSTGRES_IDENTIFIER_PATTERN = /^[A-Za-z_][A-Za-z0-9_]*$/
+
+interface PublicationTableState {
+  readonly tableName: string
+  readonly columnNames: readonly string[] | null
+}
 
 function quoteIdentifier(identifier: string): string {
   return `"${identifier.replaceAll('"', '""')}"`
@@ -19,8 +25,41 @@ function formatQualifiedTableList(tableNames: readonly string[]): string {
   return tableNames.map((tableName) => formatQualifiedTable(tableName)).join(', ')
 }
 
-function parsePublicationTableRows(rows: readonly { tableName?: unknown }[]): ReadonlySet<string> {
-  return new Set(rows.flatMap((row) => (typeof row.tableName === 'string' && row.tableName.length > 0 ? [row.tableName] : [])))
+function normalizePublicationColumnNames(value: unknown): readonly string[] | null {
+  if (!Array.isArray(value)) {
+    return null
+  }
+  return value.every((columnName): columnName is string => typeof columnName === 'string') ? value : null
+}
+
+function parsePublicationTableRows(
+  rows: readonly { tableName?: unknown; columnNames?: unknown }[],
+): ReadonlyMap<string, PublicationTableState> {
+  return new Map(
+    rows.flatMap((row): [string, PublicationTableState][] => {
+      if (typeof row.tableName !== 'string' || row.tableName.length === 0) {
+        return []
+      }
+      return [
+        [
+          row.tableName,
+          {
+            tableName: row.tableName,
+            columnNames: normalizePublicationColumnNames(row.columnNames),
+          },
+        ],
+      ]
+    }),
+  )
+}
+
+function publicationTableNeedsColumnRepair(tableName: string, tableState: PublicationTableState): boolean {
+  if (tableState.columnNames === null) {
+    return false
+  }
+  const publishedColumns = new Set(tableState.columnNames)
+  const expectedColumns = ZERO_PUBLICATION_COLUMNS_BY_TABLE[tableName] ?? []
+  return expectedColumns.some((columnName) => !publishedColumns.has(columnName))
 }
 
 export function resolveZeroPublicationName(env: Record<string, string | undefined> = process.env): string {
@@ -44,10 +83,11 @@ async function publicationExists(db: Queryable, publicationName: string): Promis
   return result.rows.length > 0
 }
 
-async function loadPublicationTables(db: Queryable, publicationName: string): Promise<ReadonlySet<string>> {
-  const result = await db.query<{ tableName?: unknown }>(
+async function loadPublicationTables(db: Queryable, publicationName: string): Promise<ReadonlyMap<string, PublicationTableState>> {
+  const result = await db.query<{ tableName?: unknown; columnNames?: unknown }>(
     `
-      SELECT tablename AS "tableName"
+      SELECT tablename AS "tableName",
+        attnames AS "columnNames"
       FROM pg_publication_tables
       WHERE pubname = $1
         AND schemaname = 'public'
@@ -66,9 +106,19 @@ export async function ensureZeroPublication(db: Queryable, publicationName = res
 
   const existingTables = await loadPublicationTables(db, publicationName)
   const missingTables = ZERO_PUBLICATION_TABLES.filter((tableName) => !existingTables.has(tableName))
-  if (missingTables.length === 0) {
+  const columnFilteredTables = ZERO_PUBLICATION_TABLES.filter((tableName) => {
+    const tableState = existingTables.get(tableName)
+    return tableState ? publicationTableNeedsColumnRepair(tableName, tableState) : false
+  })
+  if (missingTables.length === 0 && columnFilteredTables.length === 0) {
     return
   }
 
-  await db.query(`ALTER PUBLICATION ${quotedPublicationName} ADD TABLE ${formatQualifiedTableList(missingTables)}`)
+  if (missingTables.length > 0) {
+    await db.query(`ALTER PUBLICATION ${quotedPublicationName} ADD TABLE ${formatQualifiedTableList(missingTables)}`)
+  }
+  if (columnFilteredTables.length > 0) {
+    await db.query(`ALTER PUBLICATION ${quotedPublicationName} DROP TABLE ${formatQualifiedTableList(columnFilteredTables)}`)
+    await db.query(`ALTER PUBLICATION ${quotedPublicationName} ADD TABLE ${formatQualifiedTableList(columnFilteredTables)}`)
+  }
 }
