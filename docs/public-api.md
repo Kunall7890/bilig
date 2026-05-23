@@ -467,6 +467,10 @@ find helpers only, `checks` gets find helpers and planned-check helpers, and
 actions get find helpers, checks, and mutation-planning methods. Discovery and
 proof declaration cannot accidentally write workbook intent before the action
 phase.
+Checks returned from a consumer `checks()` callback are also treated as a data
+boundary. Returned arrays must contain own enumerable data entries, and returned
+check fields must be own data properties; sparse arrays and accessor-backed
+checks fail planning without invoking hidden getters.
 
 `describeModel` returns a JSON-safe model manifest with the model name, optional
 model description, sorted action names, per-action descriptions, optional input

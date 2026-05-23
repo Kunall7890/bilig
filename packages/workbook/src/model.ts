@@ -1,6 +1,6 @@
-import type { CellStylePatch, LiteralInput } from '@bilig/protocol'
+import { isLiteralInput, type CellStylePatch, type LiteralInput } from '@bilig/protocol'
 import { formula, type WorkbookFormulaLabel, type WorkbookFormulaOperand } from './formula.js'
-import { collectWorkbookRefs, createWorkbookFindApi, type WorkbookFindApi, type WorkbookRef } from './find.js'
+import { collectWorkbookRefs, createWorkbookFindApi, isWorkbookRef, type WorkbookFindApi, type WorkbookRef } from './find.js'
 import { createWorkbookCheckApi, type WorkbookCheckApi } from './check.js'
 import {
   checkInput,
@@ -14,7 +14,13 @@ import {
 } from './input.js'
 import { isWorkbookOp } from './guards.js'
 import type { WorkbookOp } from './ops.js'
-import type { WorkbookChangeSummary, WorkbookCheckResult, WorkbookRunError, WorkbookRunErrorCode } from './result.js'
+import type {
+  WorkbookChangeSummary,
+  WorkbookCheckExpectation,
+  WorkbookCheckResult,
+  WorkbookRunError,
+  WorkbookRunErrorCode,
+} from './result.js'
 
 export type WorkbookActionCommand =
   | {
@@ -217,6 +223,155 @@ function ownPropertyValue(value: object, key: string): unknown {
   return Object.getOwnPropertyDescriptor(value, key)?.value
 }
 
+type OptionalDataValue =
+  | {
+      readonly status: 'missing'
+    }
+  | {
+      readonly status: 'present'
+      readonly value: unknown
+    }
+
+function isObject(value: unknown): value is object {
+  return typeof value === 'object' && value !== null
+}
+
+function optionalDataValue(value: object, key: string, path: string): OptionalDataValue {
+  const descriptor = Object.getOwnPropertyDescriptor(value, key)
+  if (descriptor === undefined) {
+    return { status: 'missing' }
+  }
+  if (!('value' in descriptor)) {
+    throw new Error(`Workbook check at ${path} must be a data property`)
+  }
+  return {
+    status: 'present',
+    value: descriptor.value,
+  }
+}
+
+function requiredDataValue(value: object, key: string, path: string): unknown {
+  const property = optionalDataValue(value, key, path)
+  if (property.status === 'missing') {
+    throw new Error(`Workbook check at ${path} is missing`)
+  }
+  return property.value
+}
+
+function dataArrayEntries(value: unknown, path: string): readonly (readonly [unknown, string])[] {
+  if (!Array.isArray(value)) {
+    throw new Error(`Workbook check at ${path} must be an array`)
+  }
+
+  const entries: (readonly [unknown, string])[] = []
+  for (let index = 0; index < value.length; index += 1) {
+    const entryPath = `${path}[${index}]`
+    const descriptor = Object.getOwnPropertyDescriptor(value, String(index))
+    if (descriptor === undefined || !descriptor.enumerable || !('value' in descriptor)) {
+      throw new Error(`Workbook check at ${entryPath} must be a data property`)
+    }
+    entries.push([descriptor.value, entryPath])
+  }
+  return entries
+}
+
+function checkRef(value: unknown, path: string): WorkbookRef {
+  if (!isWorkbookRef(value)) {
+    throw new Error(`Workbook check at ${path} must be a workbook ref`)
+  }
+  return value
+}
+
+function checkRefArray(value: unknown, path: string): readonly WorkbookRef[] {
+  return Object.freeze(dataArrayEntries(value, path).map(([entry, entryPath]) => checkRef(entry, entryPath)))
+}
+
+function checkFormulaLabel(value: unknown, path: string): WorkbookFormulaLabel {
+  if (!isObject(value)) {
+    throw new Error(`Workbook check at ${path} must be a formula label`)
+  }
+  const name = requiredDataValue(value, 'name', `${path}.name`)
+  if (typeof name !== 'string') {
+    throw new Error(`Workbook check at ${path}.name must be a string`)
+  }
+  const ref = checkRef(requiredDataValue(value, 'ref', `${path}.ref`), `${path}.ref`)
+  return Object.freeze({
+    name,
+    ref,
+  })
+}
+
+function checkFormulaLabels(value: unknown, path: string): readonly WorkbookFormulaLabel[] {
+  return Object.freeze(dataArrayEntries(value, path).map(([entry, entryPath]) => checkFormulaLabel(entry, entryPath)))
+}
+
+function cloneCheckExpectation(value: unknown, path: string): WorkbookCheckExpectation {
+  if (!isObject(value)) {
+    throw new Error(`Workbook check at ${path} must be an expectation`)
+  }
+  const kind = requiredDataValue(value, 'kind', `${path}.kind`)
+  if (kind === 'valueEquals') {
+    const expected = requiredDataValue(value, 'value', `${path}.value`)
+    if (!isLiteralInput(expected)) {
+      throw new Error(`Workbook check at ${path}.value must be a finite JSON literal`)
+    }
+    return Object.freeze({
+      kind: 'valueEquals',
+      value: expected,
+    })
+  }
+  if (kind === 'formulaEquals') {
+    const expectedFormula = requiredDataValue(value, 'formula', `${path}.formula`)
+    if (typeof expectedFormula !== 'string') {
+      throw new Error(`Workbook check at ${path}.formula must be a string`)
+    }
+    return Object.freeze({
+      kind: 'formulaEquals',
+      formula: expectedFormula,
+      inputs: checkRefArray(requiredDataValue(value, 'inputs', `${path}.inputs`), `${path}.inputs`),
+      labels: checkFormulaLabels(requiredDataValue(value, 'labels', `${path}.labels`), `${path}.labels`),
+    })
+  }
+  throw new Error(`Workbook check at ${path}.kind is invalid`)
+}
+
+function cloneCheckResult(check: unknown, path: string): WorkbookCheckResult {
+  if (!isObject(check)) {
+    throw new Error(`Workbook check at ${path} must be an object`)
+  }
+
+  const status = requiredDataValue(check, 'status', `${path}.status`)
+  if (status !== 'planned' && status !== 'passed' && status !== 'failed') {
+    throw new Error(`Workbook check at ${path}.status is invalid`)
+  }
+
+  const kind = requiredDataValue(check, 'kind', `${path}.kind`)
+  if (typeof kind !== 'string') {
+    throw new Error(`Workbook check at ${path}.kind must be a string`)
+  }
+
+  const message = requiredDataValue(check, 'message', `${path}.message`)
+  if (typeof message !== 'string') {
+    throw new Error(`Workbook check at ${path}.message must be a string`)
+  }
+
+  const target = optionalDataValue(check, 'target', `${path}.target`)
+  const refs = optionalDataValue(check, 'refs', `${path}.refs`)
+  const expectation = optionalDataValue(check, 'expectation', `${path}.expectation`)
+  const proof = optionalDataValue(check, 'proof', `${path}.proof`)
+  const proofValue = proof.status === 'present' ? normalizeWorkbookActionInput(proof.value) : undefined
+
+  return Object.freeze({
+    status,
+    kind,
+    ...(target.status === 'present' ? { target: checkRef(target.value, `${path}.target`) } : {}),
+    ...(refs.status === 'present' ? { refs: checkRefArray(refs.value, `${path}.refs`) } : {}),
+    message,
+    ...(expectation.status === 'present' ? { expectation: cloneCheckExpectation(expectation.value, `${path}.expectation`) } : {}),
+    ...(proofValue !== undefined ? { proof: proofValue } : {}),
+  })
+}
+
 function ownActionRun<Refs>(definition: object): WorkbookAction<Refs> | undefined {
   const run = ownPropertyValue(definition, 'run')
   if (typeof run !== 'function') {
@@ -355,32 +510,8 @@ function freezeActionCommand(command: WorkbookActionCommand): WorkbookActionComm
   }
 }
 
-function freezeCheckExpectation(check: WorkbookCheckResult): WorkbookCheckResult['expectation'] {
-  if (check.expectation === undefined) {
-    return undefined
-  }
-  if (check.expectation.kind === 'formulaEquals') {
-    return Object.freeze({
-      ...check.expectation,
-      inputs: Object.freeze([...check.expectation.inputs]),
-      labels: Object.freeze(check.expectation.labels.map((label) => Object.freeze({ ...label }))),
-    })
-  }
-  return Object.freeze({ ...check.expectation })
-}
-
 function freezeCheckResult(check: WorkbookCheckResult): WorkbookCheckResult {
-  const expectation = freezeCheckExpectation(check)
-  const proof = check.proof === undefined ? undefined : normalizeWorkbookActionInput(check.proof)
-  return Object.freeze({
-    status: check.status,
-    kind: check.kind,
-    ...(check.target !== undefined ? { target: check.target } : {}),
-    ...(check.refs !== undefined ? { refs: Object.freeze([...check.refs]) } : {}),
-    message: check.message,
-    ...(expectation !== undefined ? { expectation } : {}),
-    ...(proof !== undefined ? { proof } : {}),
-  })
+  return cloneCheckResult(check, 'check')
 }
 
 function freezeChangeSummary(change: WorkbookChangeSummary): WorkbookChangeSummary {
@@ -533,9 +664,12 @@ function createActionWorkbook(input: {
 }
 
 function pushReturnedChecks(target: WorkbookCheckResult[], returned: readonly WorkbookCheckResult[] | undefined): void {
-  returned?.forEach((entry) => {
-    if (!target.includes(entry)) {
-      target.push(entry)
+  if (returned === undefined) {
+    return
+  }
+  dataArrayEntries(returned, 'checks').forEach(([entry, path]) => {
+    if (!target.some((existing) => existing === entry)) {
+      target.push(cloneCheckResult(entry, path))
     }
   })
 }

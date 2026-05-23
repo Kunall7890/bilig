@@ -252,6 +252,10 @@ Readback checks attach proof to passed checks, such as
 `{ source: "readback", formula: "(Table[Quantity])*(Table[Rate])" }`.
 Generic check verifiers may only change `status` or add JSON-safe `proof`; they
 cannot rewrite the check contract.
+Consumer `checks()` return values are treated as model-output data too: returned
+check arrays must contain own enumerable data entries, and returned check fields
+must be own data properties. Accessor-backed or sparse returned checks fail
+planning without running hidden getters.
 If runtime apply succeeds but readback or check proof fails, the failed result
 still carries `changed` and `undo` when the adapter returned applied ops or undo
 metadata. A failed result before apply, or a failed apply that reports

@@ -1346,6 +1346,87 @@ describe('@bilig/workbook model api', () => {
     }
   })
 
+  it('rejects accessor-backed returned check arrays without invoking getters', () => {
+    let getterInvoked = false
+    const model = defineModel({
+      name: 'returned-check-array-proof-model',
+      find(workbook) {
+        return {
+          table: workbook.findTable({ name: 'Inputs' }),
+        }
+      },
+      checks() {
+        // @ts-expect-error exercising JS callers that bypass the returned check array type
+        return accessorArray(() => {
+          getterInvoked = true
+          throw new Error('getter must not run')
+        })
+      },
+      actions: {
+        inspect() {},
+      },
+    })
+
+    expect(planWorkbookAction(model, 'inspect')).toEqual({
+      status: 'failed',
+      modelName: 'returned-check-array-proof-model',
+      actionName: 'inspect',
+      checks: [],
+      errors: [
+        {
+          code: 'checks_failed',
+          message: 'Workbook check at checks[0] must be a data property',
+        },
+      ],
+    })
+    expect(getterInvoked).toBe(false)
+  })
+
+  it('rejects accessor-backed returned check fields without invoking getters', () => {
+    let getterInvoked = false
+    const model = defineModel({
+      name: 'returned-check-field-proof-model',
+      find(workbook) {
+        return {
+          output: workbook.findRange({ sheetName: 'Sheet1', address: 'B2' }),
+        }
+      },
+      checks({ refs }) {
+        const checkResult = {
+          status: 'planned',
+          target: refs.output,
+          message: 'Output exists',
+        }
+        Object.defineProperty(checkResult, 'kind', {
+          enumerable: true,
+          get() {
+            getterInvoked = true
+            throw new Error('getter must not run')
+          },
+        })
+        // @ts-expect-error exercising JS callers that bypass the returned check type
+        return [checkResult]
+      },
+      actions: {
+        inspect() {},
+      },
+    })
+
+    expect(planWorkbookAction(model, 'inspect')).toEqual({
+      status: 'failed',
+      modelName: 'returned-check-field-proof-model',
+      actionName: 'inspect',
+      checks: [],
+      errors: [
+        {
+          code: 'checks_failed',
+          message: 'Workbook check at checks[0].kind must be a data property',
+        },
+      ],
+    })
+    expect(getterInvoked).toBe(false)
+  })
+
   it('describes failed plan results without raw workbook refs', () => {
     const model = defineModel({
       name: 'described-failure-model',
