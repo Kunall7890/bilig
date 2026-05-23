@@ -4,6 +4,15 @@ All notable changes to `@bilig/headless` will be documented in this file.
 
 This package is released as part of the aligned bilig library package set.
 
+## 0.67.11
+
+- Release type: patch
+- Previous libraries tag: libraries-v0.67.10
+- Manual override: no
+
+## Fixes
+- fix(workbook): harden description data reads (af287709)
+
 ## 0.67.10
 
 - Release type: patch
