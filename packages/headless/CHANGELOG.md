@@ -4,6 +4,23 @@ All notable changes to `@bilig/headless` will be documented in this file.
 
 This package is released as part of the aligned bilig library package set.
 
+## 0.63.0
+
+- Release type: minor
+- Previous libraries tag: libraries-v0.62.0
+- Manual override: no
+
+## Features
+- feat(workbook): report plan data validation issues (359cc188)
+- feat(workbook): validate runtime requirements (d6a6d05c)
+- feat(workpaper): add local n8n formula server (b18fab04)
+
+## Fixes
+- fix(workbook): rewrite cross-sheet conditional formats (d341ce28)
+- fix(workbook): rewrite x14 conditional format ranges (17248b55)
+- fix(workpaper): use indexed env access (6e4d8e53)
+- perf(core): reduce direct scalar dependency allocations (635b96bd)
+
 ## 0.62.0
 
 - Release type: minor
