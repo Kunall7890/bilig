@@ -148,6 +148,127 @@ describe('macOS Desktop Excel preserved package metadata oracle', () => {
     },
     120_000,
   )
+
+  it.runIf(process.env.BILIG_EXCEL_ORACLE_RUN === '1')(
+    'matches Desktop Excel preserved pivot package refs after structural row inserts',
+    () => {
+      if (!isMacosExcelInstalled()) {
+        throw new Error('BILIG_EXCEL_ORACLE_RUN=1 requires /Applications/Microsoft Excel.app')
+      }
+
+      const tempDir = createExcelAccessibleTempDir('bilig-headless-excel-pivot-package-structure-oracle-')
+      try {
+        const sourceBytes = exportXlsx(pivotPackageStructuralSourceSnapshot())
+        const importedSource = importXlsx(sourceBytes, 'pivot-package-structure-source.xlsx').snapshot
+        expect(pivotLocationRefs(importedSource)).toEqual(['B2:C5'])
+
+        const excelWorkbookPath = join(tempDir, 'excel-pivot-package-structure-source.xlsx')
+        writeFileSync(excelWorkbookPath, sourceBytes)
+        runMacosExcelStructuralOperationOracle({
+          workbookPath: excelWorkbookPath,
+          worksheetName: 'Pivot',
+          operations: [{ kind: 'insertRows', range: '1:1' }],
+          inspectCells: ['A1'],
+          saveWorkbook: true,
+          timeoutMs: 120_000,
+        })
+
+        const excelTruth = importXlsx(new Uint8Array(readFileSync(excelWorkbookPath)), 'excel-pivot-package-structure-truth.xlsx')
+        expect(pivotLocationRefs(excelTruth.snapshot)).toEqual(['B3:C6'])
+
+        const workpaper = WorkPaper.buildFromSnapshot(importedSource)
+        try {
+          const pivotSheet = workpaper.getSheetId('Pivot')
+          if (pivotSheet === undefined) {
+            throw new Error('Expected Pivot sheet')
+          }
+          workpaper.addRows(pivotSheet, 0, 1)
+
+          const headlessSnapshot = workpaper.exportSnapshot()
+          expect(pivotLocationRefs(headlessSnapshot)).toEqual(pivotLocationRefs(excelTruth.snapshot))
+
+          const headlessPath = join(tempDir, 'headless-pivot-package-structure.xlsx')
+          writeFileSync(headlessPath, exportXlsx(headlessSnapshot))
+          runMacosExcelInspectionOracle({
+            workbookPath: headlessPath,
+            worksheetName: 'Pivot',
+            formulaCells: [],
+            inspectCells: ['A1'],
+            saveWorkbook: true,
+            timeoutMs: 120_000,
+          })
+          const headlessTruth = importXlsx(new Uint8Array(readFileSync(headlessPath)), 'headless-pivot-package-structure-truth.xlsx')
+          expect(pivotLocationRefs(headlessTruth.snapshot)).toEqual(pivotLocationRefs(excelTruth.snapshot))
+        } finally {
+          workpaper.dispose()
+        }
+      } finally {
+        removeMacosExcelTestDir(tempDir)
+      }
+    },
+    180_000,
+  )
+
+  it.runIf(process.env.BILIG_EXCEL_ORACLE_RUN === '1')(
+    'matches Desktop Excel preserved pivot cache source refs after structural source row inserts',
+    () => {
+      if (!isMacosExcelInstalled()) {
+        throw new Error('BILIG_EXCEL_ORACLE_RUN=1 requires /Applications/Microsoft Excel.app')
+      }
+
+      const tempDir = createExcelAccessibleTempDir('bilig-headless-excel-pivot-cache-source-structure-oracle-')
+      try {
+        const sourceBytes = exportXlsx(pivotPackageStructuralSourceSnapshot())
+        const importedSource = importXlsx(sourceBytes, 'pivot-cache-source-structure-source.xlsx').snapshot
+        expect(pivotCacheSourceRefs(importedSource)).toEqual(['A1:D4'])
+
+        const excelWorkbookPath = join(tempDir, 'excel-pivot-cache-source-structure-source.xlsx')
+        writeFileSync(excelWorkbookPath, sourceBytes)
+        runMacosExcelStructuralOperationOracle({
+          workbookPath: excelWorkbookPath,
+          worksheetName: 'Data',
+          operations: [{ kind: 'insertRows', range: '1:1' }],
+          inspectCells: ['A1'],
+          saveWorkbook: true,
+          timeoutMs: 120_000,
+        })
+
+        const excelTruth = importXlsx(new Uint8Array(readFileSync(excelWorkbookPath)), 'excel-pivot-cache-source-structure-truth.xlsx')
+        const excelSourceRefs = pivotCacheSourceRefs(excelTruth.snapshot)
+        expect(excelSourceRefs).not.toEqual(['A1:D4'])
+
+        const workpaper = WorkPaper.buildFromSnapshot(importedSource)
+        try {
+          const dataSheet = workpaper.getSheetId('Data')
+          if (dataSheet === undefined) {
+            throw new Error('Expected Data sheet')
+          }
+          workpaper.addRows(dataSheet, 0, 1)
+
+          const headlessSnapshot = workpaper.exportSnapshot()
+          expect(pivotCacheSourceRefs(headlessSnapshot)).toEqual(excelSourceRefs)
+
+          const headlessPath = join(tempDir, 'headless-pivot-cache-source-structure.xlsx')
+          writeFileSync(headlessPath, exportXlsx(headlessSnapshot))
+          runMacosExcelInspectionOracle({
+            workbookPath: headlessPath,
+            worksheetName: 'Data',
+            formulaCells: [],
+            inspectCells: ['A1'],
+            saveWorkbook: true,
+            timeoutMs: 120_000,
+          })
+          const headlessTruth = importXlsx(new Uint8Array(readFileSync(headlessPath)), 'headless-pivot-cache-source-structure-truth.xlsx')
+          expect(pivotCacheSourceRefs(headlessTruth.snapshot)).toEqual(excelSourceRefs)
+        } finally {
+          workpaper.dispose()
+        }
+      } finally {
+        removeMacosExcelTestDir(tempDir)
+      }
+    },
+    180_000,
+  )
 })
 
 function viewStateSnapshot(): WorkbookSnapshot {
@@ -218,6 +339,67 @@ function structuralPreservedMetadataSnapshot(): WorkbookSnapshot {
   }
 }
 
+function pivotPackageStructuralSourceSnapshot(): WorkbookSnapshot {
+  return {
+    version: 1,
+    workbook: {
+      name: 'Desktop Excel pivot package structural oracle',
+      metadata: {
+        pivots: [
+          {
+            name: 'SalesByRegion',
+            sheetName: 'Pivot',
+            address: 'B2',
+            source: { sheetName: 'Data', startAddress: 'A1', endAddress: 'D4' },
+            sourceKind: 'worksheet',
+            groupBy: ['Region'],
+            values: [{ sourceColumn: 'Sales', summarizeBy: 'sum' }],
+            cacheFields: ['Region', 'Notes', 'Product', 'Sales'],
+            cachedRecords: [
+              ['East', 'priority', 'Widget', 20],
+              ['West', 'priority', 'Widget', 7],
+              ['East', 'priority', 'Gizmo', 5],
+            ],
+            rows: 4,
+            cols: 2,
+          },
+        ],
+      },
+    },
+    sheets: [
+      {
+        id: 1,
+        name: 'Data',
+        order: 0,
+        cells: [
+          { address: 'A1', value: 'Region' },
+          { address: 'B1', value: 'Notes' },
+          { address: 'C1', value: 'Product' },
+          { address: 'D1', value: 'Sales' },
+          { address: 'A2', value: 'East' },
+          { address: 'B2', value: 'priority' },
+          { address: 'C2', value: 'Widget' },
+          { address: 'D2', value: 20 },
+          { address: 'A3', value: 'West' },
+          { address: 'B3', value: 'priority' },
+          { address: 'C3', value: 'Widget' },
+          { address: 'D3', value: 7 },
+          { address: 'A4', value: 'East' },
+          { address: 'B4', value: 'priority' },
+          { address: 'C4', value: 'Gizmo' },
+          { address: 'D4', value: 5 },
+        ],
+      },
+      {
+        id: 2,
+        name: 'Pivot',
+        order: 1,
+        cells: [],
+      },
+    ],
+  }
+}
+
 function viewStateXml(snapshot: WorkbookSnapshot): { readonly workbook: string | undefined; readonly sheet: string | undefined } {
   return {
     workbook: snapshot.workbook.metadata?.viewState?.bookViewsXml,
@@ -252,6 +434,22 @@ function sheetViewRefs(snapshot: WorkbookSnapshot): {
     activeCell: readXmlAttribute(xml, 'activeCell'),
     sqref: readXmlAttribute(xml, 'sqref'),
   }
+}
+
+function pivotLocationRefs(snapshot: WorkbookSnapshot): string[] {
+  return (snapshot.workbook.metadata?.pivotArtifacts?.parts ?? [])
+    .filter((part) => part.path.startsWith('xl/pivotTables/'))
+    .map((part) => readXmlAttribute(part.xml, 'ref'))
+    .filter((ref): ref is string => ref !== undefined)
+    .toSorted()
+}
+
+function pivotCacheSourceRefs(snapshot: WorkbookSnapshot): string[] {
+  return (snapshot.workbook.metadata?.pivotArtifacts?.parts ?? [])
+    .filter((part) => part.path.startsWith('xl/pivotCache/pivotCacheDefinition'))
+    .map((part) => readXmlAttribute(part.xml, 'ref'))
+    .filter((ref): ref is string => ref !== undefined)
+    .toSorted()
 }
 
 function readXmlAttribute(xml: string, name: string): string | undefined {

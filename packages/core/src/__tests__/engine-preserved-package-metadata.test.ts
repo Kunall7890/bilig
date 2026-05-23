@@ -46,6 +46,19 @@ describe('engine imported package metadata preservation', () => {
     })
   })
 
+  it('structurally rewrites preserved pivot package output and source refs', async () => {
+    const engine = new SpreadsheetEngine({ workbookName: 'package-metadata-pivot-artifact-structural-rewrite' })
+    await engine.ready()
+
+    engine.importSnapshot(packageMetadataSnapshot())
+    engine.insertRows('Data', 0, 1)
+    engine.insertColumns('Data', 0, 1)
+
+    const metadata = engine.exportSnapshot().workbook.metadata
+    expect(pivotLocationRef(metadata, 'xl/pivotTables/pivotTable1.xml')).toBe('C3:D5')
+    expect(pivotCacheSourceRef(metadata, 'xl/pivotCache/pivotCacheDefinition1.xml')).toBe('B2:E5')
+  })
+
   it('drops deleted preserved worksheet style refs without shifting sheet view refs', async () => {
     const engine = new SpreadsheetEngine({ workbookName: 'package-metadata-deleted-structural-rewrite' })
     await engine.ready()
@@ -61,6 +74,18 @@ describe('engine imported package metadata preservation', () => {
       sheetViewsXml:
         '<sheetViews><sheetView workbookViewId="0" topLeftCell="B2" tabSelected="1"><selection activeCell="C3" sqref="C3 D4:E5"/></sheetView></sheetViews>',
     })
+  })
+
+  it('treats preserved pivot package refs as structural delete impact even without cells', async () => {
+    const engine = new SpreadsheetEngine({ workbookName: 'package-metadata-pivot-artifact-delete-impact' })
+    await engine.ready()
+
+    engine.importSnapshot(rawPivotOnlySnapshot())
+    engine.deleteRows('Data', 0, 1)
+
+    const metadata = engine.exportSnapshot().workbook.metadata
+    expect(pivotLocationRef(metadata, 'xl/pivotTables/pivotTable1.xml')).toBe('B1:C3')
+    expect(pivotCacheSourceRef(metadata, 'xl/pivotCache/pivotCacheDefinition1.xml')).toBe('A1:D3')
   })
 })
 
@@ -142,7 +167,16 @@ const preservedWorkbookMetadata = {
     connections: [{ id: 1, name: 'PowerQuery', sourceKind: 'model', refreshOnLoad: true, clause: '18.13' }],
   },
   pivotArtifacts: {
-    parts: [{ path: 'xl/pivotTables/pivotTable1.xml', xml: '<pivotTableDefinition name="PivotTable1"/>' }],
+    parts: [
+      {
+        path: 'xl/pivotTables/pivotTable1.xml',
+        xml: '<pivotTableDefinition name="PivotTable1"><location ref="B2:C4" firstHeaderRow="1" firstDataRow="2" firstDataCol="1"/></pivotTableDefinition>',
+      },
+      {
+        path: 'xl/pivotCache/pivotCacheDefinition1.xml',
+        xml: '<pivotCacheDefinition><cacheSource type="worksheet"><worksheetSource ref="A1:D4" sheet="Data"/></cacheSource></pivotCacheDefinition>',
+      },
+    ],
     workbookPivotCachesXml: '<pivotCaches><pivotCache cacheId="1" r:id="rIdPivotCache1"/></pivotCaches>',
     workbookRelationships: [
       {
@@ -226,6 +260,29 @@ function packageMetadataSnapshot(): WorkbookSnapshot {
   }
 }
 
+function rawPivotOnlySnapshot(): WorkbookSnapshot {
+  return {
+    version: 1,
+    workbook: {
+      name: 'Raw pivot package only',
+      metadata: {
+        pivotArtifacts: preservedWorkbookMetadata.pivotArtifacts,
+      },
+    },
+    sheets: [
+      {
+        id: 1,
+        name: 'Data',
+        order: 0,
+        metadata: {
+          pivotArtifacts: preservedSheetMetadata.pivotArtifacts,
+        },
+        cells: [],
+      },
+    ],
+  }
+}
+
 function encodedPart(path: string, text: string): WorkbookPreservedPackagePartSnapshot {
   const bytes = Buffer.from(text, 'utf8')
   return {
@@ -234,4 +291,20 @@ function encodedPart(path: string, text: string): WorkbookPreservedPackagePartSn
     dataBase64: bytes.toString('base64'),
     byteLength: bytes.byteLength,
   }
+}
+
+function pivotLocationRef(metadata: WorkbookMetadataSnapshot | undefined, path: string): string | undefined {
+  return readXmlAttribute(pivotPartXml(metadata, path), 'ref')
+}
+
+function pivotCacheSourceRef(metadata: WorkbookMetadataSnapshot | undefined, path: string): string | undefined {
+  return readXmlAttribute(pivotPartXml(metadata, path), 'ref')
+}
+
+function pivotPartXml(metadata: WorkbookMetadataSnapshot | undefined, path: string): string {
+  return metadata?.pivotArtifacts?.parts.find((part) => part.path === path)?.xml ?? ''
+}
+
+function readXmlAttribute(xml: string, name: string): string | undefined {
+  return new RegExp(`\\b${name}="([^"]*)"`, 'u').exec(xml)?.[1]
 }

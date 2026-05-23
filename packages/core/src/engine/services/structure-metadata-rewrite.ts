@@ -25,7 +25,10 @@ import { chartGeometryFromAnchor, rewriteChartAnchorForStructuralTransform } fro
 import { rewriteControlArtifactsForStructuralTransform } from './structure-control-artifact-rewrite.js'
 import { rewriteThreadedCommentArtifactsForStructuralTransform } from './structure-threaded-comment-artifact-rewrite.js'
 import { rewriteIgnoredErrorsForStructuralTransform } from './structure-ignored-errors-metadata-rewrite.js'
-import { rewritePreservedSheetMetadataForStructuralTransform } from './structure-preserved-sheet-metadata-rewrite.js'
+import {
+  rewritePreservedPivotPackageArtifactsForStructuralTransform,
+  rewritePreservedSheetMetadataForStructuralTransform,
+} from './structure-preserved-sheet-metadata-rewrite.js'
 import { rewritePrintPageSetupForStructuralTransform } from './structure-print-page-setup-metadata-rewrite.js'
 import { rewriteRichTextArtifactsForStructuralTransform } from './structure-rich-text-artifact-rewrite.js'
 import {
@@ -464,6 +467,19 @@ export function rewriteWorkbookMetadataForStructuralTransform(
   rewriteThreadedCommentArtifactsForStructuralTransform({ workbook, sheetName, transform })
   rewriteControlArtifactsForStructuralTransform({ workbook, sheetName, transform })
   const preservedSheetMetadata = workbook.metadata.preservedSheetMetadata.get(sheetName)
+  const sheetIndex = workbookSheetIndex(workbook.sheetsByName.values(), sheetName)
+  if (sheetIndex !== undefined) {
+    const nextWorkbookMetadata = rewritePreservedPivotPackageArtifactsForStructuralTransform(
+      workbook.metadata.preservedWorkbookMetadata,
+      preservedSheetMetadata,
+      sheetName,
+      sheetIndex,
+      transform,
+    )
+    if (nextWorkbookMetadata) {
+      workbook.metadata.preservedWorkbookMetadata = nextWorkbookMetadata
+    }
+  }
   if (preservedSheetMetadata) {
     const nextPreservedSheetMetadata = rewritePreservedSheetMetadataForStructuralTransform(preservedSheetMetadata, transform)
     if (nextPreservedSheetMetadata) {
@@ -656,6 +672,11 @@ export function rewriteWorkbookMetadataForStructuralTransform(
     })
   })
   return { changedTableNames, tableHeaderCellWrites, deletedTableColumns }
+}
+
+function workbookSheetIndex(sheets: Iterable<{ readonly name: string; readonly order: number }>, sheetName: string): number | undefined {
+  const index = [...sheets].toSorted((left, right) => left.order - right.order).findIndex((sheet) => sheet.name === sheetName)
+  return index === -1 ? undefined : index
 }
 
 function rewriteMetadataRangeForStructuralTransform<T extends MetadataRangeLike>(
