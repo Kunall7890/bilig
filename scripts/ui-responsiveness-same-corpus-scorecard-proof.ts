@@ -11,6 +11,7 @@ import {
 import {
   sameCorpusUiCaptureToolVersion,
   type SameCorpusCapture,
+  type SameCorpusBiligRuntimeProof,
   type SameCorpusCaptureCase,
   type SameCorpusCaptureCorpusVerification,
   type SameCorpusCaptureMeasurement,
@@ -38,6 +39,8 @@ import {
 export { sameCorpusUiCaptureToolVersion } from './ui-responsiveness-same-corpus-scorecard-types.ts'
 export type {
   SameCorpusCapture,
+  SameCorpusBiligRuntimeProof,
+  SameCorpusBiligRuntimeProofSample,
   SameCorpusCaptureCase,
   SameCorpusCaptureCorpusVerification,
   SameCorpusCaptureMeasurement,
@@ -158,6 +161,7 @@ function buildSameCorpusRunManifest(cases: readonly UiResponsivenessSameCorpusCa
   const corpusFingerprints = uniqueCorpusFingerprints(cases)
   const productSourceWorkbookFingerprints = uniqueProductSourceWorkbookFingerprints(cases)
   const materializedCellCounts = [...new Set(cases.map((entry) => entry.materializedCells))].toSorted((left, right) => left - right)
+  const biligProductionRuntimeProofCaseCount = cases.filter((entry) => hasBiligProductionRuntimeProof(entry.bilig)).length
   const strictRenderedGridProofCaseCount = cases.filter((entry) => entry.scenarioProof.pixelGridProof.captured).length
   const legacyInsufficientRenderedGridProofCaseCount = cases.filter((entry) =>
     entry.scenarioProof.pixelGridProof.productVerdicts.some((verdict) => verdict.evidenceStatus === 'legacy-insufficient'),
@@ -169,6 +173,7 @@ function buildSameCorpusRunManifest(cases: readonly UiResponsivenessSameCorpusCa
     corpusCaseIds,
     corpusFingerprints,
     productSourceWorkbookFingerprints,
+    biligProductionRuntimeProofCaseCount,
     legacyInsufficientRenderedGridProofCaseCount,
     materializedCellCounts,
     strictRenderedGridProofCaseCount,
@@ -184,6 +189,7 @@ function buildSameCorpusRunManifest(cases: readonly UiResponsivenessSameCorpusCa
     corpusFingerprints,
     productSourceWorkbookFingerprints,
     materializedCellCounts,
+    biligProductionRuntimeProofCaseCount,
     sampleCount: manifestSampleCount(cases),
     caseCount: cases.length,
     strictRenderedGridProofCaseCount,
@@ -206,6 +212,7 @@ export function buildSameCorpusCaptureRunManifest(
   const corpusFingerprints = uniqueCaptureCorpusFingerprints(cases)
   const productSourceWorkbookFingerprints = uniqueCaptureProductSourceWorkbookFingerprints(cases)
   const materializedCellCounts = [...new Set(cases.map((entry) => entry.materializedCells))].toSorted((left, right) => left - right)
+  const biligProductionRuntimeProofCaseCount = cases.filter((entry) => hasBiligProductionRuntimeProof(entry.bilig)).length
   const strictRenderedGridProofCaseCount = cases.filter((entry) => entry.scenarioProof.pixelGridProof.captured).length
   const legacyInsufficientRenderedGridProofCaseCount = cases.filter((entry) =>
     entry.scenarioProof.pixelGridProof.productVerdicts.some((verdict) => verdict.evidenceStatus === 'legacy-insufficient'),
@@ -217,6 +224,7 @@ export function buildSameCorpusCaptureRunManifest(
     corpusCaseIds,
     corpusFingerprints,
     productSourceWorkbookFingerprints,
+    biligProductionRuntimeProofCaseCount,
     legacyInsufficientRenderedGridProofCaseCount,
     materializedCellCounts,
     strictRenderedGridProofCaseCount,
@@ -233,6 +241,7 @@ export function buildSameCorpusCaptureRunManifest(
     corpusFingerprints,
     productSourceWorkbookFingerprints,
     materializedCellCounts,
+    biligProductionRuntimeProofCaseCount,
     sampleCount,
     caseCount: cases.length,
     strictRenderedGridProofCaseCount,
@@ -253,6 +262,7 @@ function sameCorpusRunManifestInvalidReasons(args: {
   readonly corpusCaseIds: readonly string[]
   readonly corpusFingerprints: readonly SameCorpusCaptureCorpusFingerprint[]
   readonly productSourceWorkbookFingerprints: readonly SameCorpusProductSourceWorkbookFingerprint[]
+  readonly biligProductionRuntimeProofCaseCount: number
   readonly legacyInsufficientRenderedGridProofCaseCount: number
   readonly materializedCellCounts: readonly number[]
   readonly strictRenderedGridProofCaseCount: number
@@ -280,6 +290,13 @@ function sameCorpusRunManifestInvalidReasons(args: {
   }
   if (args.materializedCellCounts.length > 1) {
     invalidReasons.push('same-corpus evidence has mixed materialized cell counts')
+  }
+  if (args.biligProductionRuntimeProofCaseCount !== requiredSameCorpusWorkloads.length) {
+    invalidReasons.push(
+      `Bilig production runtime proof covers ${String(args.biligProductionRuntimeProofCaseCount)}/${String(
+        requiredSameCorpusWorkloads.length,
+      )} cases`,
+    )
   }
   if (args.strictRenderedGridProofCaseCount !== requiredSameCorpusWorkloads.length) {
     invalidReasons.push(
@@ -305,6 +322,7 @@ function sameCorpusCaptureRunManifestInvalidReasons(args: {
   readonly corpusCaseIds: readonly string[]
   readonly corpusFingerprints: readonly SameCorpusCaptureCorpusFingerprint[]
   readonly productSourceWorkbookFingerprints: readonly SameCorpusProductSourceWorkbookFingerprint[]
+  readonly biligProductionRuntimeProofCaseCount: number
   readonly legacyInsufficientRenderedGridProofCaseCount: number
   readonly materializedCellCounts: readonly number[]
   readonly strictRenderedGridProofCaseCount: number
@@ -332,6 +350,13 @@ function sameCorpusCaptureRunManifestInvalidReasons(args: {
   }
   if (args.materializedCellCounts.length > 1) {
     invalidReasons.push('same-corpus evidence has mixed materialized cell counts')
+  }
+  if (args.biligProductionRuntimeProofCaseCount !== requiredSameCorpusWorkloads.length) {
+    invalidReasons.push(
+      `Bilig production runtime proof covers ${String(args.biligProductionRuntimeProofCaseCount)}/${String(
+        requiredSameCorpusWorkloads.length,
+      )} cases`,
+    )
   }
   if (args.strictRenderedGridProofCaseCount !== requiredSameCorpusWorkloads.length) {
     invalidReasons.push(
@@ -476,6 +501,9 @@ function validateSameCorpusCapture(capture: SameCorpusCapture): void {
         entry.corpusCaseId,
         entry.id,
       )
+      if (measurement.product === 'bilig' && measurement.biligRuntimeProof) {
+        validateBiligRuntimeProof(measurement.biligRuntimeProof, measurement.source, entry.id)
+      }
     }
     validateSameCorpusScenarioProof(
       entry.scenarioProof,
@@ -561,6 +589,7 @@ function buildSameCorpusCase(captureCase: SameCorpusCaptureCase): UiResponsivene
     (entry) => entry.postOperationFrameMs.p95 > 0 && entry.postOperationFrameMs.p95 <= 50,
   )
   const sourceWorkbookFingerprintGuardrailPassed = comparedProducts.every(hasCapturedSourceWorkbookFingerprint)
+  const biligRuntimeProofGuardrailPassed = hasBiligProductionRuntimeProof(bilig)
   const scrollMovementGuardrailPassed =
     scrollEventMetrics !== null && comparedProducts.every((entry) => (entry.scrollMovementPx?.min ?? 0) >= 1)
   const requiresScrollEventMetric = uiSameCorpusWorkloadRequiresScrollEventEvidence(captureCase.workload)
@@ -590,6 +619,7 @@ function buildSameCorpusCase(captureCase: SameCorpusCaptureCase): UiResponsivene
     timingMetricPassedAgainstGoogleSheets &&
     postOperationFrameGuardrailPassed &&
     visualProofGuardrailPassed &&
+    biligRuntimeProofGuardrailPassed &&
     sourceWorkbookFingerprintGuardrailPassed
   const tenXMeanAndP95AgainstMicrosoftExcelWeb =
     timingMetricPassedAgainstMicrosoftExcelWeb === undefined
@@ -597,6 +627,7 @@ function buildSameCorpusCase(captureCase: SameCorpusCaptureCase): UiResponsivene
       : timingMetricPassedAgainstMicrosoftExcelWeb &&
         postOperationFrameGuardrailPassed &&
         visualProofGuardrailPassed &&
+        biligRuntimeProofGuardrailPassed &&
         sourceWorkbookFingerprintGuardrailPassed
   return {
     id: captureCase.id,
@@ -632,6 +663,7 @@ function buildSameCorpusCase(captureCase: SameCorpusCaptureCase): UiResponsivene
     ...sameCorpusScenarioCaseFields(scenarioProof),
     scenarioProof,
     postOperationFrameGuardrailPassed,
+    biligRuntimeProofGuardrailPassed,
     sourceWorkbookFingerprintGuardrailPassed,
     tenXMeanAndP95AgainstGoogleSheets,
     ...(tenXMeanAndP95AgainstMicrosoftExcelWeb !== undefined ? { tenXMeanAndP95AgainstMicrosoftExcelWeb } : {}),
@@ -656,6 +688,7 @@ function buildSameCorpusMeasurement(capture: SameCorpusCaptureMeasurement): UiRe
     postOperationFrameMs: summarizeNumbers(capture.postOperationFrameMsSamples),
     ...(capture.scrollEventResponseMsSamples ? { scrollEventResponseMs: summarizeNumbers(capture.scrollEventResponseMsSamples) } : {}),
     ...(capture.scrollMovementPxSamples ? { scrollMovementPx: summarizeNumbers(capture.scrollMovementPxSamples) } : {}),
+    ...(capture.biligRuntimeProof ? { biligRuntimeProof: cloneBiligRuntimeProof(capture.biligRuntimeProof) } : {}),
     corpusVerification: cloneSameCorpusVerification(capture.corpusVerification),
     limitations: [...capture.limitations],
   }
@@ -744,6 +777,7 @@ function validateSameCorpusCase(entry: UiResponsivenessSameCorpusCase): void {
     (measurement) => measurement.postOperationFrameMs.p95 > 0 && measurement.postOperationFrameMs.p95 <= 50,
   )
   const sourceWorkbookFingerprintGuardrailPassed = comparedProducts.every(hasCapturedSourceWorkbookFingerprint)
+  const biligRuntimeProofGuardrailPassed = hasBiligProductionRuntimeProof(entry.bilig)
   const scrollMovementGuardrailPassed =
     scrollEventMetrics !== null && comparedProducts.every((measurement) => (measurement.scrollMovementPx?.min ?? 0) >= 1)
   if (scrollEventMetrics) {
@@ -768,6 +802,9 @@ function validateSameCorpusCase(entry: UiResponsivenessSameCorpusCase): void {
     entry.sourceWorkbookFingerprintGuardrailPassed !== sourceWorkbookFingerprintGuardrailPassed
   ) {
     throw new Error(`UI responsiveness same-corpus source workbook fingerprint guardrail is stale: ${entry.id}`)
+  }
+  if (entry.biligRuntimeProofGuardrailPassed !== undefined && entry.biligRuntimeProofGuardrailPassed !== biligRuntimeProofGuardrailPassed) {
+    throw new Error(`UI responsiveness same-corpus Bilig runtime proof guardrail is stale: ${entry.id}`)
   }
   if (entry.scrollMovementGuardrailPassed !== undefined && entry.scrollMovementGuardrailPassed !== scrollMovementGuardrailPassed) {
     throw new Error(`UI responsiveness same-corpus scroll-movement guardrail is stale: ${entry.id}`)
@@ -798,6 +835,7 @@ function validateSameCorpusCase(entry: UiResponsivenessSameCorpusCase): void {
     timingMetricPassedAgainstGoogleSheets &&
     postOperationFrameGuardrailPassed &&
     visualProofGuardrailPassed &&
+    biligRuntimeProofGuardrailPassed &&
     sourceWorkbookFingerprintGuardrailPassed
   const tenXAgainstMicrosoftExcelWeb =
     timingMetricPassedAgainstMicrosoftExcelWeb === undefined
@@ -805,6 +843,7 @@ function validateSameCorpusCase(entry: UiResponsivenessSameCorpusCase): void {
       : timingMetricPassedAgainstMicrosoftExcelWeb &&
         postOperationFrameGuardrailPassed &&
         visualProofGuardrailPassed &&
+        biligRuntimeProofGuardrailPassed &&
         sourceWorkbookFingerprintGuardrailPassed
   if (
     entry.tenXMeanAndP95AgainstGoogleSheets !== tenXAgainstGoogleSheets ||
@@ -829,6 +868,32 @@ function hasCapturedSourceWorkbookFingerprint(measurement: UiResponsivenessSameC
   return measurement.corpusVerification.sourceWorkbookSha256 !== null && isSha256Hex(measurement.corpusVerification.sourceWorkbookSha256)
 }
 
+function hasBiligProductionRuntimeProof(
+  measurement: Pick<SameCorpusCaptureMeasurement | UiResponsivenessSameCorpusMeasurement, 'product' | 'biligRuntimeProof'>,
+): boolean {
+  const proof = measurement.biligRuntimeProof
+  return (
+    measurement.product === 'bilig' &&
+    proof !== undefined &&
+    proof.product === 'bilig' &&
+    proof.requiredBuildKind === 'production' &&
+    proof.actualBuildKind === 'production' &&
+    proof.prod &&
+    !proof.dev &&
+    proof.verified &&
+    proof.sampleCount >= sameCorpusSampleCount &&
+    proof.samples.length >= sameCorpusSampleCount &&
+    proof.samples.every((sample) => sample.present && sample.buildKind === 'production' && sample.prod && !sample.dev)
+  )
+}
+
+function cloneBiligRuntimeProof(proof: SameCorpusBiligRuntimeProof): SameCorpusBiligRuntimeProof {
+  return {
+    ...proof,
+    samples: proof.samples.map((sample) => ({ ...sample })),
+  }
+}
+
 function validateSameCorpusMeasurement(
   measurement: UiResponsivenessSameCorpusMeasurement,
   product: UiResponsivenessSameCorpusProduct,
@@ -842,6 +907,9 @@ function validateSameCorpusMeasurement(
   if (measurement.source.length === 0) {
     throw new Error(`UI responsiveness same-corpus source is missing for ${caseId}`)
   }
+  if (product === 'bilig' && measurement.biligRuntimeProof) {
+    validateBiligRuntimeProof(measurement.biligRuntimeProof, measurement.source, caseId)
+  }
   validateSummary(measurement.operationResponseMs, `${caseId} ${product} operationResponseMs`, sameCorpusSampleCount)
   validateSummary(measurement.postOperationFrameMs, `${caseId} ${product} postOperationFrameMs`, sameCorpusSampleCount)
   if (measurement.scrollEventResponseMs) {
@@ -851,4 +919,31 @@ function validateSameCorpusMeasurement(
     validateSummary(measurement.scrollMovementPx, `${caseId} ${product} scrollMovementPx`, sameCorpusSampleCount)
   }
   validateSameCorpusCaptureVerification(measurement.corpusVerification, product, materializedCells, corpusCaseId, caseId)
+}
+
+function validateBiligRuntimeProof(proof: SameCorpusBiligRuntimeProof, source: string, caseId: string): void {
+  if (proof.product !== 'bilig' || proof.source !== source || proof.verificationMethod !== 'window.__biligRuntimeBuild') {
+    throw new Error(`UI responsiveness same-corpus Bilig runtime proof identity mismatch for ${caseId}`)
+  }
+  if (proof.requiredBuildKind !== 'production') {
+    throw new Error(`UI responsiveness same-corpus Bilig runtime proof has stale required build kind for ${caseId}`)
+  }
+  if (!['development', 'production', 'unknown'].includes(proof.actualBuildKind)) {
+    throw new Error(`UI responsiveness same-corpus Bilig runtime proof has invalid build kind for ${caseId}`)
+  }
+  if (proof.sampleCount !== proof.samples.length || proof.sampleCount <= 0) {
+    throw new Error(`UI responsiveness same-corpus Bilig runtime proof sample count is stale for ${caseId}`)
+  }
+  for (const sample of proof.samples) {
+    if (!Number.isInteger(sample.sampleIndex) || sample.sampleIndex < 0) {
+      throw new Error(`UI responsiveness same-corpus Bilig runtime proof sample index is invalid for ${caseId}`)
+    }
+    if (!['development', 'production', 'unknown'].includes(sample.buildKind)) {
+      throw new Error(`UI responsiveness same-corpus Bilig runtime proof sample build kind is invalid for ${caseId}`)
+    }
+  }
+  const verified = hasBiligProductionRuntimeProof({ product: 'bilig', biligRuntimeProof: proof })
+  if (proof.verified !== verified) {
+    throw new Error(`UI responsiveness same-corpus Bilig runtime proof verified flag is stale for ${caseId}`)
+  }
 }

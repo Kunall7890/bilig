@@ -2,7 +2,7 @@ import { MAX_COLS, MAX_ROWS } from '@bilig/protocol'
 import type { GridGeometrySnapshot, GridPaneKind } from '../gridGeometry.js'
 import { parseGpuColor, type GridGpuRect } from '../gridGpuPrimitives.js'
 import type { HeaderSelection } from '../gridPointer.js'
-import { splitSelectionFillRangeAroundActiveCell } from '../gridSelectionFillRanges.js'
+import { selectionFillRangesForRange } from '../gridSelectionFillRanges.js'
 import type { CompactSelectionState, GridSelection, Item, Rectangle } from '../gridTypes.js'
 import { workbookThemeColors } from '../workbookTheme.js'
 import { GRID_RECT_FLOAT_COUNT_V3, GRID_RECT_INSTANCE_FLOAT_COUNT_V3, packGridRectBufferV3 } from './rect-instance-buffer.js'
@@ -233,7 +233,6 @@ function appendSelectionOverlay(input: {
   const activeCell = input.gridSelection?.current?.cell ?? null
   if (isMultiCellSelection) {
     appendSelectionFillRects({
-      activeCell,
       color: parseGpuColor(workbookThemeColors.selectionFill),
       fillRects: input.fillRects,
       geometry: input.geometry,
@@ -293,7 +292,6 @@ function appendAxisSelectionOverlay(input: {
   const selectionFillColor = parseGpuColor(workbookThemeColors.selectionFill)
   if ((input.gridSelection?.columns.length ?? 0) > 0) {
     appendAxisBodySelectionFills({
-      activeCell: input.gridSelection?.current?.cell ?? input.selectedCell,
       color: selectionFillColor,
       fillRects: input.fillRects,
       geometry: input.geometry,
@@ -303,7 +301,6 @@ function appendAxisSelectionOverlay(input: {
   }
   if ((input.gridSelection?.rows.length ?? 0) > 0) {
     appendAxisBodySelectionFills({
-      activeCell: input.gridSelection?.current?.cell ?? input.selectedCell,
       color: selectionFillColor,
       fillRects: input.fillRects,
       geometry: input.geometry,
@@ -316,11 +313,10 @@ function appendAxisSelectionOverlay(input: {
 function appendSelectionFillRects(input: {
   readonly geometry: GridGeometrySnapshot
   readonly range: Pick<Rectangle, 'x' | 'y' | 'width' | 'height'>
-  readonly activeCell?: Item | null | undefined
   readonly color: GridGpuRect['color']
   readonly fillRects: GridGpuRect[]
 }): void {
-  for (const fillRange of splitSelectionFillRangeAroundActiveCell(input.range, input.activeCell)) {
+  for (const fillRange of selectionFillRangesForRange(input.range)) {
     for (const rect of input.geometry.rangeScreenRects(fillRange)) {
       const fill = insetRect(rect, 1, 1)
       if (fill.width > 0 && fill.height > 0) {
@@ -334,7 +330,6 @@ function appendAxisBodySelectionFills(input: {
   readonly geometry: GridGeometrySnapshot
   readonly ranges: readonly AxisSelectionRange[]
   readonly axis: 'column' | 'row'
-  readonly activeCell?: Item | null | undefined
   readonly color: GridGpuRect['color']
   readonly fillRects: GridGpuRect[]
 }): void {
@@ -346,7 +341,6 @@ function appendAxisBodySelectionFills(input: {
         ? { x: start, y: 0, width: endExclusive - start, height: MAX_ROWS }
         : { x: 0, y: start, width: MAX_COLS, height: endExclusive - start }
     appendSelectionFillRects({
-      activeCell: input.activeCell,
       color: input.color,
       fillRects: input.fillRects,
       geometry: input.geometry,

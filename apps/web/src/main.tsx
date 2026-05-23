@@ -39,6 +39,31 @@ const LOCAL_ONLY_CONNECTION_STATE: ZeroConnectionState = {
   name: 'closed',
   reason: 'Remote sync disabled for this environment',
 }
+
+declare global {
+  interface Window {
+    __biligRuntimeBuild?: {
+      readonly app: 'bilig-web'
+      readonly buildKind: 'development' | 'production'
+      readonly dev: boolean
+      readonly entryRoute: ReturnType<typeof resolveWebEntryRoute>
+      readonly mode: string
+      readonly prod: boolean
+      readonly remoteSyncEnabled: boolean
+    }
+  }
+}
+
+window.__biligRuntimeBuild = {
+  app: 'bilig-web',
+  buildKind: import.meta.env.PROD ? 'production' : 'development',
+  dev: import.meta.env.DEV,
+  entryRoute,
+  mode: import.meta.env.MODE,
+  prod: import.meta.env.PROD,
+  remoteSyncEnabled,
+}
+
 interface BootstrapConfig {
   readonly rawConfig: BiligRuntimeConfig
   readonly runtimeConfig: RuntimeConfig

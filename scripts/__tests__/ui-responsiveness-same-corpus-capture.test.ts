@@ -388,6 +388,7 @@ describe('same-corpus UI responsiveness capture CLI', () => {
     expect(capture.runManifest.invalidReasons).toContain(
       'missing required workloads: select-cell, edit-visible-cell, scroll-vertical, scroll-horizontal, jump-deep-row, formula-edit, fill-format-change, wide-sheet-navigation',
     )
+    expect(capture.runManifest.invalidReasons).toContain('Bilig production runtime proof covers 0/9 cases')
     expect(capture.runManifest.invalidReasons).toContain('not every required workload is 10x against Google Sheets')
     expect(capture.cases[0]).toMatchObject({
       biligMeanMs: scenarioProof.biligMeanMs,
@@ -400,6 +401,43 @@ describe('same-corpus UI responsiveness capture CLI', () => {
       pixelGridProof: scenarioProof.pixelGridProof,
     })
     expect(parseSameCorpusCapture(capture).runManifest.captureRunSignature).toBe(capture.runManifest.captureRunSignature)
+  })
+
+  it('counts Bilig production-runtime proof in same-corpus capture manifests', () => {
+    const scenarioProof = buildCaptureScenarioProof({
+      bilig: {
+        ...sameCorpusCaptureMeasurement('bilig', 'bilig-benchmark-state'),
+        biligRuntimeProof: sameCorpusBiligRuntimeProof('production'),
+      },
+      googleSheets: sameCorpusCaptureMeasurement('google-sheets', 'google-sheets-xlsx-export'),
+      visualProofs: [
+        sameCorpusVisualProof('bilig', 'typegpu-visible-canvas'),
+        sameCorpusVisualProof('google-sheets', 'google-sheets-visible-grid'),
+      ],
+    })
+    const capture = buildSameCorpusCaptureArtifact({
+      sampleCount: 3,
+      limitations: ['test limitation'],
+      cases: [
+        {
+          id: 'same-corpus-wide-mixed-250k-open-workbook',
+          corpusCaseId: 'wide-mixed-250k',
+          materializedCells: 250_000,
+          workload: 'open-workbook',
+          ...sameCorpusScenarioCaseFields(scenarioProof),
+          scenarioProof,
+          bilig: {
+            ...sameCorpusCaptureMeasurement('bilig', 'bilig-benchmark-state'),
+            biligRuntimeProof: sameCorpusBiligRuntimeProof('production'),
+          },
+          googleSheets: sameCorpusCaptureMeasurement('google-sheets', 'google-sheets-xlsx-export'),
+        },
+      ],
+    })
+
+    expect(capture.runManifest.biligProductionRuntimeProofCaseCount).toBe(1)
+    expect(capture.runManifest.invalidReasons).toContain('Bilig production runtime proof covers 1/9 cases')
+    expect(parseSameCorpusCapture(capture).cases[0]?.bilig.biligRuntimeProof?.verified).toBe(true)
   })
 
   it('downgrades legacy Bilig canvas evidence that lacks strict rendered-frame proof', () => {
@@ -752,6 +790,36 @@ function sameCorpusCaptureMeasurement(
       checkedCells: sameCorpusFixtureCheckedCells,
     },
     limitations: [],
+  }
+}
+
+function sameCorpusBiligRuntimeProof(buildKind: 'development' | 'production' | 'unknown') {
+  const prod = buildKind === 'production'
+  const dev = buildKind === 'development'
+  return {
+    product: 'bilig' as const,
+    source: 'http://127.0.0.1:5173/?benchmarkCorpus=wide-mixed-250k',
+    verificationMethod: 'window.__biligRuntimeBuild' as const,
+    requiredBuildKind: 'production' as const,
+    actualBuildKind: buildKind,
+    mode: prod ? 'production' : buildKind,
+    dev,
+    prod,
+    remoteSyncEnabled: false,
+    entryRoute: 'workbook',
+    sampleCount: 3,
+    verified: prod,
+    samples: [0, 1, 2].map((sampleIndex) => ({
+      sampleIndex,
+      present: true,
+      app: 'bilig-web',
+      buildKind,
+      mode: prod ? 'production' : buildKind,
+      dev,
+      prod,
+      remoteSyncEnabled: false,
+      entryRoute: 'workbook',
+    })),
   }
 }
 

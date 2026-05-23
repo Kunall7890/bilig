@@ -11,6 +11,7 @@ import {
 } from './json-scorecard-helpers.ts'
 import type {
   SameCorpusCapture,
+  SameCorpusBiligRuntimeProof,
   SameCorpusCaptureCorpusFingerprint,
   SameCorpusCaptureCase,
   SameCorpusCaptureCorpusVerification,
@@ -142,6 +143,7 @@ function parseSameCorpusRunManifest(value: Record<string, unknown>): UiResponsiv
       }
       return entry
     }),
+    biligProductionRuntimeProofCaseCount: numberField(value, 'biligProductionRuntimeProofCaseCount'),
     sampleCount: numberField(value, 'sampleCount'),
     caseCount: numberField(value, 'caseCount'),
     strictRenderedGridProofCaseCount: numberField(value, 'strictRenderedGridProofCaseCount'),
@@ -172,6 +174,7 @@ function parseSameCorpusCaptureRunManifest(value: Record<string, unknown>): Same
       }
       return entry
     }),
+    biligProductionRuntimeProofCaseCount: numberField(value, 'biligProductionRuntimeProofCaseCount'),
     sampleCount: numberField(value, 'sampleCount'),
     caseCount: numberField(value, 'caseCount'),
     strictRenderedGridProofCaseCount: numberField(value, 'strictRenderedGridProofCaseCount'),
@@ -197,6 +200,7 @@ function parseSameCorpusCase(value: unknown): UiResponsivenessSameCorpusCase {
   const biligToMicrosoftExcelWebScrollEventP95Ratio = optionalNumberField(record, 'biligToMicrosoftExcelWebScrollEventP95Ratio')
   const tenXMeanAndP95Metric = optionalSameCorpusTenXMetric(record, 'tenXMeanAndP95Metric')
   const postOperationFrameGuardrailPassed = optionalBooleanField(record, 'postOperationFrameGuardrailPassed')
+  const biligRuntimeProofGuardrailPassed = optionalBooleanField(record, 'biligRuntimeProofGuardrailPassed')
   const scrollMovementGuardrailPassed = optionalBooleanField(record, 'scrollMovementGuardrailPassed')
   const sourceWorkbookFingerprintGuardrailPassed = optionalBooleanField(record, 'sourceWorkbookFingerprintGuardrailPassed')
   const scenarioCaseFields = parseSameCorpusScenarioCaseFields(record)
@@ -225,6 +229,7 @@ function parseSameCorpusCase(value: unknown): UiResponsivenessSameCorpusCase {
       ? { tenXMeanAndP95AgainstMicrosoftExcelWeb: booleanField(record, 'tenXMeanAndP95AgainstMicrosoftExcelWeb') }
       : {}),
     ...(postOperationFrameGuardrailPassed !== undefined ? { postOperationFrameGuardrailPassed } : {}),
+    ...(biligRuntimeProofGuardrailPassed !== undefined ? { biligRuntimeProofGuardrailPassed } : {}),
     ...(scrollMovementGuardrailPassed !== undefined ? { scrollMovementGuardrailPassed } : {}),
     ...(sourceWorkbookFingerprintGuardrailPassed !== undefined ? { sourceWorkbookFingerprintGuardrailPassed } : {}),
     passed: booleanField(record, 'passed'),
@@ -234,6 +239,9 @@ function parseSameCorpusCase(value: unknown): UiResponsivenessSameCorpusCase {
 function parseSameCorpusMeasurement(value: Record<string, unknown>): UiResponsivenessSameCorpusMeasurement {
   const scrollEventResponseMs = optionalNumericSummary(value, 'scrollEventResponseMs')
   const scrollMovementPx = optionalNumericSummary(value, 'scrollMovementPx')
+  const biligRuntimeProof = Object.hasOwn(value, 'biligRuntimeProof')
+    ? parseBiligRuntimeProof(objectField(value, 'biligRuntimeProof'))
+    : undefined
   return {
     product: parseSameCorpusProduct(stringField(value, 'product')),
     source: stringField(value, 'source'),
@@ -241,6 +249,7 @@ function parseSameCorpusMeasurement(value: Record<string, unknown>): UiResponsiv
     postOperationFrameMs: parseNumericSummary(objectField(value, 'postOperationFrameMs')),
     ...(scrollEventResponseMs ? { scrollEventResponseMs } : {}),
     ...(scrollMovementPx ? { scrollMovementPx } : {}),
+    ...(biligRuntimeProof ? { biligRuntimeProof } : {}),
     corpusVerification: parseSameCorpusVerification(objectField(value, 'corpusVerification')),
     limitations: stringArrayField(value, 'limitations'),
   }
@@ -305,9 +314,52 @@ function parseSameCorpusCaptureMeasurement(
     ...(Object.hasOwn(value, 'scrollMovementPxSamples')
       ? { scrollMovementPxSamples: numericArrayField(value, 'scrollMovementPxSamples') }
       : {}),
+    ...(Object.hasOwn(value, 'biligRuntimeProof')
+      ? { biligRuntimeProof: parseBiligRuntimeProof(objectField(value, 'biligRuntimeProof')) }
+      : {}),
     corpusVerification: parseSameCorpusVerification(objectField(value, 'corpusVerification')),
     limitations: stringArrayField(value, 'limitations'),
   }
+}
+
+function parseBiligRuntimeProof(value: Record<string, unknown>): SameCorpusBiligRuntimeProof {
+  return {
+    product: literalField(value, 'product', 'bilig'),
+    source: stringField(value, 'source'),
+    verificationMethod: literalField(value, 'verificationMethod', 'window.__biligRuntimeBuild'),
+    requiredBuildKind: literalField(value, 'requiredBuildKind', 'production'),
+    actualBuildKind: parseBiligRuntimeBuildKind(stringField(value, 'actualBuildKind')),
+    mode: stringField(value, 'mode'),
+    dev: booleanField(value, 'dev'),
+    prod: booleanField(value, 'prod'),
+    remoteSyncEnabled: nullableBooleanField(value, 'remoteSyncEnabled'),
+    entryRoute: nullableStringField(value, 'entryRoute'),
+    sampleCount: numberField(value, 'sampleCount'),
+    verified: booleanField(value, 'verified'),
+    samples: arrayField(value, 'samples').map(parseBiligRuntimeProofSample),
+  }
+}
+
+function parseBiligRuntimeProofSample(value: unknown): SameCorpusBiligRuntimeProof['samples'][number] {
+  const record = asObject(value, 'UI responsiveness same-corpus Bilig runtime proof sample')
+  return {
+    sampleIndex: numberField(record, 'sampleIndex'),
+    present: booleanField(record, 'present'),
+    app: nullableStringField(record, 'app'),
+    buildKind: parseBiligRuntimeBuildKind(stringField(record, 'buildKind')),
+    mode: stringField(record, 'mode'),
+    dev: booleanField(record, 'dev'),
+    prod: booleanField(record, 'prod'),
+    remoteSyncEnabled: nullableBooleanField(record, 'remoteSyncEnabled'),
+    entryRoute: nullableStringField(record, 'entryRoute'),
+  }
+}
+
+function parseBiligRuntimeBuildKind(value: string): SameCorpusBiligRuntimeProof['actualBuildKind'] {
+  if (value === 'development' || value === 'production' || value === 'unknown') {
+    return value
+  }
+  throw new Error(`Unexpected UI responsiveness same-corpus Bilig runtime build kind: ${value}`)
 }
 
 function parseSameCorpusVerification(value: Record<string, unknown>): SameCorpusCaptureCorpusVerification {
@@ -469,6 +521,17 @@ function nullableStringField(value: Record<string, unknown>, key: string): strin
   }
   if (typeof fieldValue !== 'string') {
     throw new Error(`Expected ${key} to be a string or null`)
+  }
+  return fieldValue
+}
+
+function nullableBooleanField(value: Record<string, unknown>, key: string): boolean | null {
+  const fieldValue = value[key]
+  if (fieldValue === null) {
+    return null
+  }
+  if (typeof fieldValue !== 'boolean') {
+    throw new Error(`Expected ${key} to be a boolean or null`)
   }
   return fieldValue
 }

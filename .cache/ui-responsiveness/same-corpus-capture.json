@@ -62,15 +62,16 @@
       }
     ],
     "materializedCellCounts": [250000],
+    "biligProductionRuntimeProofCaseCount": 0,
     "sampleCount": 3,
     "caseCount": 9,
     "strictRenderedGridProofCaseCount": 9,
     "legacyInsufficientRenderedGridProofCaseCount": 0,
     "tenXMeanAndP95CaseCount": 0,
-    "currentContractEvidenceComplete": true,
+    "currentContractEvidenceComplete": false,
     "googleSheetsTenXRequirementSatisfied": false,
     "captureRunSignature": "8c2385fe1cde6689205aca02c8f616725c617a558e900b2c2d2dd28b6eff14d9",
-    "invalidReasons": ["not every required workload is 10x against Google Sheets"]
+    "invalidReasons": ["Bilig production runtime proof covers 0/9 cases", "not every required workload is 10x against Google Sheets"]
   },
   "limitations": [
     "Caller must supply a Google Sheets URL for the same exported Bilig benchmark corpus.",

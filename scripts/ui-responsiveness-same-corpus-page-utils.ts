@@ -48,7 +48,10 @@ export async function settleFrames(page: Page, frames: number): Promise<void> {
 export function productLimitations(product: UiResponsivenessSameCorpusProduct, storageStatePath: string | null): string[] {
   const authLimitations = storageStatePath ? ['Browser context used an explicit Playwright storage state for authenticated access.'] : []
   if (product === 'bilig') {
-    return ['Bilig timing is captured from the supplied local app URL and benchmarkCorpus route.', ...authLimitations]
+    return [
+      'Bilig timing is captured from the supplied app URL and benchmarkCorpus route; 10x claims require the page runtime proof to report a production build.',
+      ...authLimitations,
+    ]
   }
   if (product === 'google-sheets') {
     return [

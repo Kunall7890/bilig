@@ -7,6 +7,8 @@ import { chromium, type Browser, type BrowserContextOptions, type Page } from '@
 import { buildWorkbookBenchmarkCorpus, type WorkbookBenchmarkCorpusCase } from '../packages/benchmarks/src/workbook-corpus.js'
 import type {
   SameCorpusCapture,
+  SameCorpusBiligRuntimeProof,
+  SameCorpusBiligRuntimeProofSample,
   SameCorpusCaptureCase,
   SameCorpusCaptureCorpusVerification,
   SameCorpusCaptureMeasurement,
@@ -41,6 +43,7 @@ import {
 
 interface ProductSampleCollection {
   readonly corpusVerification: SameCorpusCaptureCorpusVerification
+  readonly biligRuntimeProof?: SameCorpusBiligRuntimeProof
   readonly samples: readonly ProductOperationSample[]
 }
 
@@ -403,20 +406,21 @@ async function measureProduct(
   caseId?: string,
   visualProofs?: SameCorpusProductVisualProof[],
 ): Promise<SameCorpusCaptureMeasurement> {
-  const { corpusVerification, samples } = await measureProductSamples(browser, product, url, corpus, args, workload, caseId, visualProofs)
+  const collection = await measureProductSamples(browser, product, url, corpus, args, workload, caseId, visualProofs)
 
   return {
     product,
     source: url,
-    operationResponseMsSamples: samples.map((entry) => entry.operationResponseMs),
-    postOperationFrameMsSamples: samples.map((entry) => entry.postOperationFrameMs),
+    operationResponseMsSamples: collection.samples.map((entry) => entry.operationResponseMs),
+    postOperationFrameMsSamples: collection.samples.map((entry) => entry.postOperationFrameMs),
     ...(uiSameCorpusWorkloadRequiresScrollEventEvidence(workload)
       ? {
-          scrollEventResponseMsSamples: samples.map((entry) => entry.scrollEventResponseMs ?? Number.NaN),
-          scrollMovementPxSamples: samples.map((entry) => entry.scrollMovementPx ?? Number.NaN),
+          scrollEventResponseMsSamples: collection.samples.map((entry) => entry.scrollEventResponseMs ?? Number.NaN),
+          scrollMovementPxSamples: collection.samples.map((entry) => entry.scrollMovementPx ?? Number.NaN),
         }
       : {}),
-    corpusVerification,
+    ...(collection.biligRuntimeProof ? { biligRuntimeProof: collection.biligRuntimeProof } : {}),
+    corpusVerification: collection.corpusVerification,
     limitations: productLimitations(product, storageStatePathForProduct(product, args)),
   }
 }
@@ -433,12 +437,17 @@ async function measureProductSamples(
   sampleIndex = 0,
   samples: ProductOperationSample[] = [],
   corpusVerification: SameCorpusCaptureCorpusVerification | null = null,
+  runtimeProofSamples: SameCorpusBiligRuntimeProofSample[] = [],
 ): Promise<ProductSampleCollection> {
   if (sampleIndex >= args.sampleCount) {
     if (!corpusVerification) {
       throw new Error(`Missing same-corpus fingerprint verification for ${product}`)
     }
-    return { corpusVerification, samples }
+    return {
+      corpusVerification,
+      ...(product === 'bilig' ? { biligRuntimeProof: buildBiligRuntimeProof(url, runtimeProofSamples) } : {}),
+      samples,
+    }
   }
   const context = await browser.newContext(browserContextOptionsForProduct(product, args))
   const page = await context.newPage()
@@ -447,6 +456,9 @@ async function measureProductSamples(
     const loadStartedAt = performance.now()
     await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 60_000 })
     await waitForProductReady(page, product, args)
+    if (product === 'bilig') {
+      runtimeProofSamples.push(await readBiligRuntimeProofSample(page, sampleIndex))
+    }
     const loadToReadyMs = performance.now() - loadStartedAt
     nextCorpusVerification ??= await verifyProductCorpus(page, product, url, corpus)
     if (product !== 'microsoft-excel-web' && uiSameCorpusWorkloadRequiresScrollEventEvidence(workload)) {
@@ -488,7 +500,89 @@ async function measureProductSamples(
     sampleIndex + 1,
     samples,
     nextCorpusVerification,
+    runtimeProofSamples,
   )
+}
+
+function buildBiligRuntimeProof(source: string, samples: readonly SameCorpusBiligRuntimeProofSample[]): SameCorpusBiligRuntimeProof {
+  const presentSamples = samples.filter((sample) => sample.present)
+  const firstPresent = presentSamples[0]
+  const actualBuildKind =
+    presentSamples.length === 0
+      ? 'unknown'
+      : presentSamples.every((sample) => sample.buildKind === 'production')
+        ? 'production'
+        : (firstPresent?.buildKind ?? 'unknown')
+  const prod = presentSamples.length > 0 && presentSamples.every((sample) => sample.prod)
+  const dev = presentSamples.some((sample) => sample.dev)
+  const remoteSyncEnabled = firstPresent?.remoteSyncEnabled ?? null
+  const entryRoute = firstPresent?.entryRoute ?? null
+  const verified =
+    samples.length > 0 && samples.every((sample) => sample.present && sample.buildKind === 'production' && sample.prod && !sample.dev)
+  return {
+    product: 'bilig',
+    source,
+    verificationMethod: 'window.__biligRuntimeBuild',
+    requiredBuildKind: 'production',
+    actualBuildKind,
+    mode: firstPresent?.mode ?? 'unknown',
+    dev,
+    prod,
+    remoteSyncEnabled,
+    entryRoute,
+    sampleCount: samples.length,
+    verified,
+    samples: samples.map((sample) => ({ ...sample })),
+  }
+}
+
+async function readBiligRuntimeProofSample(page: Page, sampleIndex: number): Promise<SameCorpusBiligRuntimeProofSample> {
+  const runtimeBuild = await page.evaluate(() => {
+    const value = (window as Window & { __biligRuntimeBuild?: unknown }).__biligRuntimeBuild
+    if (!value || typeof value !== 'object') {
+      return null
+    }
+    const app = Reflect.get(value, 'app')
+    const buildKind = Reflect.get(value, 'buildKind')
+    const mode = Reflect.get(value, 'mode')
+    const dev = Reflect.get(value, 'dev')
+    const prod = Reflect.get(value, 'prod')
+    const remoteSyncEnabled = Reflect.get(value, 'remoteSyncEnabled')
+    const entryRoute = Reflect.get(value, 'entryRoute')
+    return {
+      app: typeof app === 'string' ? app : null,
+      buildKind: buildKind === 'production' || buildKind === 'development' ? buildKind : 'unknown',
+      mode: typeof mode === 'string' ? mode : 'unknown',
+      dev: dev === true,
+      prod: prod === true,
+      remoteSyncEnabled: typeof remoteSyncEnabled === 'boolean' ? remoteSyncEnabled : null,
+      entryRoute: typeof entryRoute === 'string' ? entryRoute : null,
+    }
+  })
+  if (!runtimeBuild) {
+    return {
+      sampleIndex,
+      present: false,
+      app: null,
+      buildKind: 'unknown',
+      mode: 'unknown',
+      dev: false,
+      prod: false,
+      remoteSyncEnabled: null,
+      entryRoute: null,
+    }
+  }
+  return {
+    sampleIndex,
+    present: runtimeBuild.app === 'bilig-web',
+    app: runtimeBuild.app,
+    buildKind: runtimeBuild.buildKind,
+    mode: runtimeBuild.mode,
+    dev: runtimeBuild.dev,
+    prod: runtimeBuild.prod,
+    remoteSyncEnabled: runtimeBuild.remoteSyncEnabled,
+    entryRoute: runtimeBuild.entryRoute,
+  }
 }
 
 function browserContextOptionsForProduct(product: UiResponsivenessSameCorpusProduct, args: CaptureArgs): BrowserContextOptions {

@@ -17,6 +17,7 @@ export interface UiResponsivenessSameCorpusMeasurement {
   readonly postOperationFrameMs: NumericSummary
   readonly scrollEventResponseMs?: NumericSummary
   readonly scrollMovementPx?: NumericSummary
+  readonly biligRuntimeProof?: SameCorpusBiligRuntimeProof
   readonly corpusVerification: SameCorpusCaptureCorpusVerification
   readonly limitations: string[]
 }
@@ -62,6 +63,7 @@ export interface UiResponsivenessSameCorpusCase extends SameCorpusScenarioCaseFi
   readonly tenXMeanAndP95AgainstGoogleSheets: boolean
   readonly tenXMeanAndP95AgainstMicrosoftExcelWeb?: boolean | undefined
   readonly postOperationFrameGuardrailPassed?: boolean
+  readonly biligRuntimeProofGuardrailPassed?: boolean
   readonly scrollMovementGuardrailPassed?: boolean
   readonly sourceWorkbookFingerprintGuardrailPassed?: boolean
   readonly passed: boolean
@@ -89,6 +91,7 @@ export interface UiResponsivenessSameCorpusRunManifest {
   readonly corpusFingerprints: readonly SameCorpusCaptureCorpusFingerprint[]
   readonly productSourceWorkbookFingerprints: readonly SameCorpusProductSourceWorkbookFingerprint[]
   readonly materializedCellCounts: readonly number[]
+  readonly biligProductionRuntimeProofCaseCount: number
   readonly sampleCount: number
   readonly caseCount: number
   readonly strictRenderedGridProofCaseCount: number
@@ -126,6 +129,7 @@ export interface SameCorpusCaptureRunManifest {
   readonly corpusFingerprints: readonly SameCorpusCaptureCorpusFingerprint[]
   readonly productSourceWorkbookFingerprints: readonly SameCorpusProductSourceWorkbookFingerprint[]
   readonly materializedCellCounts: readonly number[]
+  readonly biligProductionRuntimeProofCaseCount: number
   readonly sampleCount: number
   readonly caseCount: number
   readonly strictRenderedGridProofCaseCount: number
@@ -155,8 +159,37 @@ export interface SameCorpusCaptureMeasurement {
   readonly postOperationFrameMsSamples: number[]
   readonly scrollEventResponseMsSamples?: number[]
   readonly scrollMovementPxSamples?: number[]
+  readonly biligRuntimeProof?: SameCorpusBiligRuntimeProof
   readonly corpusVerification: SameCorpusCaptureCorpusVerification
   readonly limitations: string[]
+}
+
+export interface SameCorpusBiligRuntimeProof {
+  readonly product: 'bilig'
+  readonly source: string
+  readonly verificationMethod: 'window.__biligRuntimeBuild'
+  readonly requiredBuildKind: 'production'
+  readonly actualBuildKind: 'development' | 'production' | 'unknown'
+  readonly mode: string
+  readonly dev: boolean
+  readonly prod: boolean
+  readonly remoteSyncEnabled: boolean | null
+  readonly entryRoute: string | null
+  readonly sampleCount: number
+  readonly verified: boolean
+  readonly samples: readonly SameCorpusBiligRuntimeProofSample[]
+}
+
+export interface SameCorpusBiligRuntimeProofSample {
+  readonly sampleIndex: number
+  readonly present: boolean
+  readonly app: string | null
+  readonly buildKind: 'development' | 'production' | 'unknown'
+  readonly mode: string
+  readonly dev: boolean
+  readonly prod: boolean
+  readonly remoteSyncEnabled: boolean | null
+  readonly entryRoute: string | null
 }
 
 export interface SameCorpusCaptureVerifiedCell {

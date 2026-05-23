@@ -23,6 +23,8 @@ export { buildMissingSameCorpusProof, buildSameCorpusProof } from './ui-responsi
 export { buildSameCorpusCaptureRunManifest, sameCorpusScenarioCaseFields } from './ui-responsiveness-same-corpus-scorecard-proof.ts'
 export type {
   SameCorpusCapture,
+  SameCorpusBiligRuntimeProof,
+  SameCorpusBiligRuntimeProofSample,
   SameCorpusCaptureCase,
   SameCorpusCaptureCorpusFingerprint,
   SameCorpusCaptureCorpusVerification,

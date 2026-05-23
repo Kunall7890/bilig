@@ -48,16 +48,17 @@
           "same-corpus render proof contract: same-corpus-ui-v4",
           "same-corpus strict rendered-grid proof cases: 9/9",
           "same-corpus legacy-insufficient rendered-grid proof cases: 0/9",
-          "same-corpus run manifest invalid reasons: not every required workload is 10x against Google Sheets"
+          "same-corpus run manifest invalid reasons: Bilig production runtime proof covers 0/9 cases; not every required workload is 10x against Google Sheets"
         ],
         "gaps": [
+          "same-corpus UI run manifest: Bilig production runtime proof covers 0/9 cases",
           "same-corpus UI run manifest: not every required workload is 10x against Google Sheets",
           "live UI browser evidence is not a same-corpus 10x proof against Google Sheets with rendered-grid proof"
         ]
       }
     ],
     "unmetRequirements": [
-      "ui-responsiveness: same-corpus UI run manifest: not every required workload is 10x against Google Sheets; live UI browser evidence is not a same-corpus 10x proof against Google Sheets with rendered-grid proof"
+      "ui-responsiveness: same-corpus UI run manifest: Bilig production runtime proof covers 0/9 cases; same-corpus UI run manifest: not every required workload is 10x against Google Sheets; live UI browser evidence is not a same-corpus 10x proof against Google Sheets with rendered-grid proof"
     ],
     "evidenceArtifacts": [
       "packages/benchmarks/baselines/google-sheets-live-recalculation-scorecard.json",
@@ -667,8 +668,8 @@
         "same-corpus UI render proof contract: same-corpus-ui-v4",
         "same-corpus UI strict rendered-grid proof cases: 9/9",
         "same-corpus UI legacy-insufficient rendered-grid proof cases: 0/9",
-        "same-corpus UI current-contract evidence complete: true",
-        "same-corpus UI run manifest invalid reasons: not every required workload is 10x against Google Sheets",
+        "same-corpus UI current-contract evidence complete: false",
+        "same-corpus UI run manifest invalid reasons: Bilig production runtime proof covers 0/9 cases; not every required workload is 10x against Google Sheets",
         "google-sheets: open-public-workbook-and-scroll-viewport scrollResponseMs.p95 138.96299999999974ms and postScrollFrameMs.p95 10.300000000000182ms (3 samples, public-comment-only)",
         "microsoft-excel-web: open-public-workbook-and-scroll-viewport scrollResponseMs.p95 112.56075000000055ms and postScrollFrameMs.p95 16.799999999999272ms (3 samples, public-office-web-viewer)",
         "wide-mixed-250k: open-workbook bilig p95 ratio 1.211638724677942 vs Google Sheets and undefined vs Excel Web",
@@ -706,6 +707,7 @@
         "pnpm bench:smoke"
       ],
       "blockers": [
+        "same-corpus UI run manifest: Bilig production runtime proof covers 0/9 cases",
         "same-corpus UI run manifest: not every required workload is 10x against Google Sheets",
         "live UI browser evidence is direct, but it is not a same-corpus 10x proof against incumbents"
       ]

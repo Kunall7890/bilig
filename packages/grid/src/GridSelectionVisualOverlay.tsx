@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState, type CSSProperties } from 'react'
 import { MAX_COLS, MAX_ROWS } from '@bilig/protocol'
 import type { GridGeometrySnapshot } from './gridGeometry.js'
 import type { GridSelection, Item, Rectangle } from './gridTypes.js'
-import { splitSelectionFillRangeAroundActiveCell } from './gridSelectionFillRanges.js'
+import { selectionFillRangesForRange } from './gridSelectionFillRanges.js'
 import type { WorkbookGridScrollStore } from './workbookGridScrollStore.js'
 import { workbookThemeColors } from './workbookTheme.js'
 
@@ -161,7 +161,7 @@ function appendBodySelectionVisualRects(
   const activeCell = input.gridSelection.current?.cell ?? null
   if (isMultiCellSelection) {
     let fillIndex = 0
-    for (const fillRange of splitSelectionFillRangeAroundActiveCell(input.selectionRange, activeCell)) {
+    for (const fillRange of selectionFillRangesForRange(input.selectionRange)) {
       let segmentIndex = 0
       for (const bounds of input.geometry.rangeScreenRects(fillRange)) {
         appendInsetRect(rects, 'selection-fill', stableRangeKey('selection-fill:range', fillRange, fillIndex, segmentIndex), bounds, 1, 1)
@@ -259,16 +259,12 @@ function appendAxisSelectionVisualRects(
     }
   }
 
-  const activeCell = input.gridSelection.current?.cell ?? input.selectedCell
   if (input.gridSelection.columns.length > 0) {
     for (const range of columnRanges) {
       const start = Math.max(0, range.start)
       const endExclusive = Math.max(start + 1, Math.min(MAX_COLS, range.endExclusive))
       let fillIndex = 0
-      for (const fillRange of splitSelectionFillRangeAroundActiveCell(
-        { x: start, y: 0, width: endExclusive - start, height: MAX_ROWS },
-        activeCell,
-      )) {
+      for (const fillRange of selectionFillRangesForRange({ x: start, y: 0, width: endExclusive - start, height: MAX_ROWS })) {
         let segmentIndex = 0
         for (const bounds of input.geometry.rangeScreenRects(fillRange)) {
           appendInsetRect(
@@ -290,10 +286,7 @@ function appendAxisSelectionVisualRects(
       const start = Math.max(0, range.start)
       const endExclusive = Math.max(start + 1, Math.min(MAX_ROWS, range.endExclusive))
       let fillIndex = 0
-      for (const fillRange of splitSelectionFillRangeAroundActiveCell(
-        { x: 0, y: start, width: MAX_COLS, height: endExclusive - start },
-        activeCell,
-      )) {
+      for (const fillRange of selectionFillRangesForRange({ x: 0, y: start, width: MAX_COLS, height: endExclusive - start })) {
         let segmentIndex = 0
         for (const bounds of input.geometry.rangeScreenRects(fillRange)) {
           appendInsetRect(
