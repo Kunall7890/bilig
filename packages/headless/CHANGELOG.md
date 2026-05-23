@@ -4,6 +4,16 @@ All notable changes to `@bilig/headless` will be documented in this file.
 
 This package is released as part of the aligned bilig library package set.
 
+## 0.67.6
+
+- Release type: patch
+- Previous libraries tag: libraries-v0.67.5
+- Manual override: no
+
+## Fixes
+- fix(workbook): ignore ref accessors during planning (bd84fa1e)
+- fix(workbook): reject accessor-backed action input (36350981)
+
 ## 0.67.5
 
 - Release type: patch
