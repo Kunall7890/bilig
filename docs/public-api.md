@@ -445,7 +445,9 @@ explains invalid payloads with stable paths, `hydratePlanData` restores frozen
 refs and helpers, and `verifyPlanData` verifies transported plan data using only
 `refsUsed`, commands, ops, changes, and checks. Invalid transported action input
 and check proof keep nested JSON paths such as `input.rows[1]` and
-`checks[0].proof.when`.
+`checks[0].proof.when`. Plan-data validation treats transport payloads as own
+data only, so prototype-inherited fields cannot make an invalid payload look
+valid.
 Plans are frozen handoff objects: action input, refs, refs used, commands,
 concrete ops, changed summaries, and checks cannot be rewritten after planning.
 That lets an agent inspect a plan once and pass the same intent to an adapter
@@ -466,7 +468,8 @@ appear as `applyOp`. It does not import the engine.
 and returns boring `{ status, issues }` diagnostics with paths such as
 `requirements[0].capability` or `requirements[2].refs[0]`. That lets agents
 reject malformed adapter handoff data before checking runtime methods or
-starting mutation.
+starting mutation. Runtime requirement validation also ignores inherited fields;
+the adapter checklist has to be present as explicit payload data.
 
 `verifyPlan` gives agents a runtime-free consistency check before handoff. It
 flags invalid action input, unresolved command targets, unresolved formula

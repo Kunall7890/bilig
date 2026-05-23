@@ -223,6 +223,50 @@ describe('@bilig/workbook runtime requirements api', () => {
     })
   })
 
+  it('treats transported runtime requirement fields as own data, not inherited prototype data', () => {
+    const target = findRange({ sheetName: 'Sheet1', address: 'A1' })
+    const plan: WorkbookActionPlan<{ readonly target: typeof target }> = {
+      modelName: 'runtime-own-data-model',
+      actionName: 'seed',
+      refs: { target },
+      refsUsed: [target],
+      commands: [],
+      ops: [
+        {
+          kind: 'setCellValue',
+          sheetName: 'Sheet1',
+          address: 'A1',
+          value: 1,
+        },
+      ],
+      changed: [],
+      checks: [],
+    }
+    const requirements = structuredClone(describeRuntimeRequirements(plan))
+    const inheritedRequirements = Object.create(requirements) as unknown
+
+    expect(checkRuntimeRequirements(inheritedRequirements)).toEqual({
+      status: 'invalid',
+      issues: expect.arrayContaining([
+        {
+          code: 'invalid_runtime_requirements',
+          path: 'modelName',
+          message: 'Workbook runtime requirements modelName must be a string',
+        },
+        {
+          code: 'invalid_runtime_requirements',
+          path: 'actionName',
+          message: 'Workbook runtime requirements actionName must be a string',
+        },
+        {
+          code: 'invalid_runtime_requirements',
+          path: 'requirements',
+          message: 'Workbook runtime requirements requirements must be an array',
+        },
+      ]),
+    })
+  })
+
   it('checks runtime adapter capabilities before mutation handoff', () => {
     const model = defineModel({
       name: 'adapter-capability-model',

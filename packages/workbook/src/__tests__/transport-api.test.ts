@@ -251,6 +251,49 @@ describe('@bilig/workbook transport api', () => {
     expect(() => hydratePlanData(broken)).toThrow('Workbook plan data is invalid: Workbook plan data modelName must be a string')
   })
 
+  it('treats transported plan fields as own data, not inherited prototype data', () => {
+    const model = defineModel({
+      name: 'transport-own-data-model',
+
+      find(workbook) {
+        return {
+          result: workbook.findRange({ sheetName: 'Sheet1', address: 'D2' }),
+        }
+      },
+
+      actions: {
+        write({ refs, workbook }) {
+          workbook.writeValue(refs.result, 1)
+        },
+      },
+    })
+    const plan = buildWorkbookActionPlan(model, 'write')
+    const data = structuredClone(toPlanData(plan))
+    const inheritedData = Object.create(data) as unknown
+
+    expect(isPlanData(inheritedData)).toBe(false)
+    expect(checkPlanData(inheritedData)).toEqual({
+      status: 'invalid',
+      issues: expect.arrayContaining([
+        {
+          code: 'invalid_plan_data',
+          path: 'modelName',
+          message: 'Workbook plan data modelName must be a string',
+        },
+        {
+          code: 'invalid_plan_data',
+          path: 'actionName',
+          message: 'Workbook plan data actionName must be a string',
+        },
+        {
+          code: 'invalid_plan_data',
+          path: 'refsUsed',
+          message: 'Workbook plan data refsUsed must be an array',
+        },
+      ]),
+    })
+  })
+
   it('runs transported plan data without the consumer refs object', async () => {
     const model = defineModel({
       name: 'transport-executable-plan-model',

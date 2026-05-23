@@ -146,7 +146,8 @@ methods, or pass the data directly to `describeRuntimeRequirements(data)` and
 `runWorkbookPlan(data, adapter)`. Invalid transported action input and check
 proof keep nested JSON paths such as `input.rows[1]` and
 `checks[0].proof.when`, so an agent can repair the exact payload field before
-hydration. The hydrated plan exposes
+hydration. Plan-data guards only trust own payload fields; inherited
+prototype fields never satisfy the transport contract. The hydrated plan exposes
 `refs: { refsUsed }` instead of the consumer's private model-shaped `refs`
 object, so transported execution stays generic.
 

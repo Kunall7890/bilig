@@ -333,18 +333,27 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null
 }
 
+function ownValue(value: object, key: string): unknown {
+  return Object.getOwnPropertyDescriptor(value, key)?.value
+}
+
+function hasOwnValue(value: object, key: string): boolean {
+  return Object.getOwnPropertyDescriptor(value, key) !== undefined
+}
+
 function hasString(value: Record<string, unknown>, key: string): boolean {
-  return typeof value[key] === 'string'
+  return typeof ownValue(value, key) === 'string'
 }
 
 function hasOptionalString(value: Record<string, unknown>, key: string): boolean {
-  const entry = value[key]
-  return entry === undefined || typeof entry === 'string'
+  const descriptor = Object.getOwnPropertyDescriptor(value, key)
+  return descriptor === undefined || typeof descriptor.value === 'string'
 }
 
 function hasOptionalIndex(value: Record<string, unknown>, key: string): boolean {
-  const entry = value[key]
-  return entry === undefined || (Number.isInteger(entry) && typeof entry === 'number' && entry >= 0)
+  const descriptor = Object.getOwnPropertyDescriptor(value, key)
+  const entry = descriptor?.value
+  return descriptor === undefined || (Number.isInteger(entry) && typeof entry === 'number' && entry >= 0)
 }
 
 function isWorkbookRefDescription(value: unknown): value is WorkbookRefDescription {
@@ -373,29 +382,38 @@ function capabilityMatchesKind(kind: WorkbookRuntimeRequirementKind, capability:
 }
 
 function isRuntimeRequirement(value: unknown): value is WorkbookRuntimeRequirement {
-  if (!isRecord(value) || !isWorkbookRuntimeRequirementKind(value['kind']) || !isWorkbookRuntimeCapability(value['capability'])) {
+  if (!isRecord(value)) {
+    return false
+  }
+  const kind = ownValue(value, 'kind')
+  const capability = ownValue(value, 'capability')
+  if (!isWorkbookRuntimeRequirementKind(kind) || !isWorkbookRuntimeCapability(capability)) {
     return false
   }
   return (
-    capabilityMatchesKind(value['kind'], value['capability']) &&
+    capabilityMatchesKind(kind, capability) &&
     hasString(value, 'message') &&
     hasOptionalIndex(value, 'commandIndex') &&
     hasOptionalIndex(value, 'checkIndex') &&
     hasOptionalIndex(value, 'opIndex') &&
     hasOptionalString(value, 'opKind') &&
     hasOptionalString(value, 'checkKind') &&
-    (value['target'] === undefined || isWorkbookRefDescription(value['target'])) &&
-    (value['refs'] === undefined || isRefDescriptionArray(value['refs']))
+    (!hasOwnValue(value, 'target') || isWorkbookRefDescription(ownValue(value, 'target'))) &&
+    (!hasOwnValue(value, 'refs') || isRefDescriptionArray(ownValue(value, 'refs')))
   )
 }
 
 function isRuntimeRequirements(value: unknown): value is WorkbookRuntimeRequirements {
+  if (!isRecord(value)) {
+    return false
+  }
+  const requirements = ownValue(value, 'requirements')
+
   return (
-    isRecord(value) &&
     hasString(value, 'modelName') &&
     hasString(value, 'actionName') &&
-    Array.isArray(value['requirements']) &&
-    value['requirements'].every(isRuntimeRequirement)
+    Array.isArray(requirements) &&
+    requirements.every(isRuntimeRequirement)
   )
 }
 
@@ -414,7 +432,7 @@ function runtimeRequirementsIssue(path: string, message: string): WorkbookRuntim
 }
 
 function pushRequiredStringIssue(issues: WorkbookRuntimeRequirementsIssue[], value: Record<string, unknown>, key: string): void {
-  if (typeof value[key] !== 'string') {
+  if (typeof ownValue(value, key) !== 'string') {
     issues.push(runtimeRequirementsIssue(key, `Workbook runtime requirements ${key} must be a string`))
   }
 }
@@ -448,8 +466,8 @@ function pushRequirementIssues(issues: WorkbookRuntimeRequirementsIssue[], value
     return
   }
 
-  const kind = value['kind']
-  const capability = value['capability']
+  const kind = ownValue(value, 'kind')
+  const capability = ownValue(value, 'capability')
   if (!isWorkbookRuntimeRequirementKind(kind)) {
     issues.push(runtimeRequirementsIssue(`${path}.kind`, 'Workbook runtime requirement kind is invalid'))
   }
@@ -469,11 +487,11 @@ function pushRequirementIssues(issues: WorkbookRuntimeRequirementsIssue[], value
   pushOptionalIndexIssue(issues, value, 'opIndex', path)
   pushOptionalStringIssue(issues, value, 'opKind', path)
   pushOptionalStringIssue(issues, value, 'checkKind', path)
-  if (value['target'] !== undefined && !isWorkbookRefDescription(value['target'])) {
+  if (hasOwnValue(value, 'target') && !isWorkbookRefDescription(ownValue(value, 'target'))) {
     issues.push(runtimeRequirementsIssue(`${path}.target`, 'Workbook runtime requirement target must be workbook ref data'))
   }
-  const refs = value['refs']
-  if (refs !== undefined) {
+  const refs = ownValue(value, 'refs')
+  if (hasOwnValue(value, 'refs')) {
     if (!Array.isArray(refs)) {
       issues.push(runtimeRequirementsIssue(`${path}.refs`, 'Workbook runtime requirement refs must be an array'))
       return
@@ -497,7 +515,7 @@ export function checkRuntimeRequirements(value: unknown): WorkbookRuntimeRequire
   const issues: WorkbookRuntimeRequirementsIssue[] = []
   pushRequiredStringIssue(issues, value, 'modelName')
   pushRequiredStringIssue(issues, value, 'actionName')
-  const requirements = value['requirements']
+  const requirements = ownValue(value, 'requirements')
   if (!Array.isArray(requirements)) {
     issues.push(runtimeRequirementsIssue('requirements', 'Workbook runtime requirements requirements must be an array'))
   } else {

@@ -47,13 +47,21 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null
 }
 
+function ownValue(value: object, key: string): unknown {
+  return Object.getOwnPropertyDescriptor(value, key)?.value
+}
+
+function hasOwnValue(value: object, key: string): boolean {
+  return Object.getOwnPropertyDescriptor(value, key) !== undefined
+}
+
 function hasString(value: Record<string, unknown>, key: string): boolean {
-  return typeof value[key] === 'string'
+  return typeof ownValue(value, key) === 'string'
 }
 
 function hasOptionalString(value: Record<string, unknown>, key: string): boolean {
-  const entry = value[key]
-  return entry === undefined || typeof entry === 'string'
+  const descriptor = Object.getOwnPropertyDescriptor(value, key)
+  return descriptor === undefined || typeof descriptor.value === 'string'
 }
 
 function isWorkbookRefDescription(value: unknown): value is WorkbookRefDescription {
@@ -61,7 +69,7 @@ function isWorkbookRefDescription(value: unknown): value is WorkbookRefDescripti
 }
 
 function isFormulaLabelData(value: unknown): value is WorkbookFormulaLabelDescription {
-  return isRecord(value) && hasString(value, 'name') && isWorkbookRefDescription(value['ref'])
+  return isRecord(value) && hasString(value, 'name') && isWorkbookRefDescription(ownValue(value, 'ref'))
 }
 
 function isFormulaLabelDataArray(value: unknown): value is readonly WorkbookFormulaLabelDescription[] {
@@ -76,28 +84,30 @@ function isWorkbookActionCommandData(value: unknown): value is WorkbookActionCom
   if (!isRecord(value) || !hasString(value, 'kind')) {
     return false
   }
-  switch (value['kind']) {
+  switch (ownValue(value, 'kind')) {
     case 'writeFormula':
       return (
-        isWorkbookRefDescription(value['target']) &&
-        typeof value['formula'] === 'string' &&
-        isRefDataArray(value['inputs']) &&
-        isFormulaLabelDataArray(value['labels'])
+        isWorkbookRefDescription(ownValue(value, 'target')) &&
+        typeof ownValue(value, 'formula') === 'string' &&
+        isRefDataArray(ownValue(value, 'inputs')) &&
+        isFormulaLabelDataArray(ownValue(value, 'labels'))
       )
     case 'writeValue':
-      return isWorkbookRefDescription(value['target']) && isLiteralInput(value['value'])
+      return isWorkbookRefDescription(ownValue(value, 'target')) && isLiteralInput(ownValue(value, 'value'))
     case 'format':
       return (
-        isWorkbookRefDescription(value['target']) &&
-        (value['style'] === undefined || isRecord(value['style'])) &&
-        (value['numberFormat'] === undefined || typeof value['numberFormat'] === 'string' || value['numberFormat'] === null)
+        isWorkbookRefDescription(ownValue(value, 'target')) &&
+        (!hasOwnValue(value, 'style') || isRecord(ownValue(value, 'style'))) &&
+        (!hasOwnValue(value, 'numberFormat') ||
+          typeof ownValue(value, 'numberFormat') === 'string' ||
+          ownValue(value, 'numberFormat') === null)
       )
     case 'clear':
-      return isWorkbookRefDescription(value['target'])
+      return isWorkbookRefDescription(ownValue(value, 'target'))
     case 'op':
       return (
-        isWorkbookOp(value['op']) &&
-        (value['target'] === undefined || isWorkbookRefDescription(value['target'])) &&
+        isWorkbookOp(ownValue(value, 'op')) &&
+        (!hasOwnValue(value, 'target') || isWorkbookRefDescription(ownValue(value, 'target'))) &&
         hasOptionalString(value, 'message')
       )
     default:
@@ -110,7 +120,7 @@ function isChangeData(value: unknown): value is WorkbookChangeSummaryDescription
     isRecord(value) &&
     hasString(value, 'kind') &&
     hasString(value, 'message') &&
-    (value['target'] === undefined || isWorkbookRefDescription(value['target']))
+    (!hasOwnValue(value, 'target') || isWorkbookRefDescription(ownValue(value, 'target')))
   )
 }
 
@@ -122,11 +132,15 @@ function isCheckExpectationData(value: unknown): value is WorkbookCheckExpectati
   if (!isRecord(value) || !hasString(value, 'kind')) {
     return false
   }
-  switch (value['kind']) {
+  switch (ownValue(value, 'kind')) {
     case 'valueEquals':
-      return isLiteralInput(value['value'])
+      return isLiteralInput(ownValue(value, 'value'))
     case 'formulaEquals':
-      return typeof value['formula'] === 'string' && isRefDataArray(value['inputs']) && isFormulaLabelDataArray(value['labels'])
+      return (
+        typeof ownValue(value, 'formula') === 'string' &&
+        isRefDataArray(ownValue(value, 'inputs')) &&
+        isFormulaLabelDataArray(ownValue(value, 'labels'))
+      )
     default:
       return false
   }
@@ -135,31 +149,40 @@ function isCheckExpectationData(value: unknown): value is WorkbookCheckExpectati
 function isCheckData(value: unknown): value is WorkbookCheckResultDescription {
   return (
     isRecord(value) &&
-    isCheckStatus(value['status']) &&
+    isCheckStatus(ownValue(value, 'status')) &&
     hasString(value, 'kind') &&
     hasString(value, 'message') &&
-    (value['target'] === undefined || isWorkbookRefDescription(value['target'])) &&
-    (value['refs'] === undefined || isRefDataArray(value['refs'])) &&
-    (value['expectation'] === undefined || isCheckExpectationData(value['expectation'])) &&
-    (value['proof'] === undefined || isWorkbookActionInput(value['proof']))
+    (!hasOwnValue(value, 'target') || isWorkbookRefDescription(ownValue(value, 'target'))) &&
+    (!hasOwnValue(value, 'refs') || isRefDataArray(ownValue(value, 'refs'))) &&
+    (!hasOwnValue(value, 'expectation') || isCheckExpectationData(ownValue(value, 'expectation'))) &&
+    (!hasOwnValue(value, 'proof') || isWorkbookActionInput(ownValue(value, 'proof')))
   )
 }
 
 export function isPlanData(value: unknown): value is WorkbookPlanData {
+  if (!isRecord(value)) {
+    return false
+  }
+  const input = ownValue(value, 'input')
+  const refsUsed = ownValue(value, 'refsUsed')
+  const commands = ownValue(value, 'commands')
+  const ops = ownValue(value, 'ops')
+  const changed = ownValue(value, 'changed')
+  const checks = ownValue(value, 'checks')
+
   return (
-    isRecord(value) &&
     hasString(value, 'modelName') &&
     hasString(value, 'actionName') &&
-    (value['input'] === undefined || isWorkbookActionInput(value['input'])) &&
-    isRefDataArray(value['refsUsed']) &&
-    Array.isArray(value['commands']) &&
-    value['commands'].every(isWorkbookActionCommandData) &&
-    Array.isArray(value['ops']) &&
-    value['ops'].every(isWorkbookOp) &&
-    Array.isArray(value['changed']) &&
-    value['changed'].every(isChangeData) &&
-    Array.isArray(value['checks']) &&
-    value['checks'].every(isCheckData)
+    (!hasOwnValue(value, 'input') || isWorkbookActionInput(input)) &&
+    isRefDataArray(refsUsed) &&
+    Array.isArray(commands) &&
+    commands.every(isWorkbookActionCommandData) &&
+    Array.isArray(ops) &&
+    ops.every(isWorkbookOp) &&
+    Array.isArray(changed) &&
+    changed.every(isChangeData) &&
+    Array.isArray(checks) &&
+    checks.every(isCheckData)
   )
 }
 
@@ -192,17 +215,18 @@ function inputPath(basePath: string, error: unknown): string {
 }
 
 function pushRequiredStringIssue(issues: WorkbookPlanDataIssue[], value: Record<string, unknown>, key: string): void {
-  if (typeof value[key] !== 'string') {
+  if (typeof ownValue(value, key) !== 'string') {
     issues.push(planDataIssue(key, `Workbook plan data ${key} must be a string`))
   }
 }
 
 function pushOptionalInputIssue(issues: WorkbookPlanDataIssue[], value: Record<string, unknown>): void {
-  if (value['input'] === undefined) {
+  const input = ownValue(value, 'input')
+  if (!hasOwnValue(value, 'input')) {
     return
   }
   try {
-    normalizeWorkbookActionInput(value['input'])
+    normalizeWorkbookActionInput(input)
   } catch (error) {
     issues.push(planDataIssue(inputPath('input', error), `Workbook plan data input must be JSON-safe: ${errorMessage(error)}`))
   }
@@ -215,7 +239,7 @@ function pushArrayIssues<T>(
   guard: (entry: unknown) => entry is T,
   label: string,
 ): void {
-  const array = value[key]
+  const array = ownValue(value, key)
   if (!Array.isArray(array)) {
     issues.push(planDataIssue(key, `Workbook plan data ${key} must be an array`))
     return
@@ -237,19 +261,19 @@ function pushCheckIssues(issues: WorkbookPlanDataIssue[], entry: unknown, index:
     return
   }
   if (
-    !isCheckStatus(entry['status']) ||
+    !isCheckStatus(ownValue(entry, 'status')) ||
     !hasString(entry, 'kind') ||
     !hasString(entry, 'message') ||
-    (entry['target'] !== undefined && !isWorkbookRefDescription(entry['target'])) ||
-    (entry['refs'] !== undefined && !isRefDataArray(entry['refs'])) ||
-    (entry['expectation'] !== undefined && !isCheckExpectationData(entry['expectation']))
+    (hasOwnValue(entry, 'target') && !isWorkbookRefDescription(ownValue(entry, 'target'))) ||
+    (hasOwnValue(entry, 'refs') && !isRefDataArray(ownValue(entry, 'refs'))) ||
+    (hasOwnValue(entry, 'expectation') && !isCheckExpectationData(ownValue(entry, 'expectation')))
   ) {
     issues.push(planDataIssue(path, `Workbook plan data check at ${path} is invalid`))
     return
   }
   try {
-    if (entry['proof'] !== undefined) {
-      normalizeWorkbookActionInput(entry['proof'])
+    if (hasOwnValue(entry, 'proof')) {
+      normalizeWorkbookActionInput(ownValue(entry, 'proof'))
     }
   } catch (error) {
     issues.push(
@@ -261,7 +285,7 @@ function pushCheckIssues(issues: WorkbookPlanDataIssue[], entry: unknown, index:
 }
 
 function pushCheckArrayIssues(issues: WorkbookPlanDataIssue[], value: Record<string, unknown>): void {
-  const checks = value['checks']
+  const checks = ownValue(value, 'checks')
   if (!Array.isArray(checks)) {
     issues.push(planDataIssue('checks', 'Workbook plan data checks must be an array'))
     return
