@@ -19,9 +19,12 @@ describe('xlsx conditional format roundtrip', () => {
 
     expect(exportedSheetXml.match(/\bdxfId="/gu)).toHaveLength(3)
     expect(exportedSheetXml).toContain(
-      '<cfRule type="cellIs" dxfId="1" priority="2" stopIfTrue="1" operator="equal"><formula>0</formula></cfRule>',
+      '<cfRule type="cellIs" dxfId="0" priority="2" stopIfTrue="1" operator="equal"><formula>0</formula></cfRule>',
     )
-    expect(exportedSheetXml).toContain('<cfRule type="expression" dxfId="2" priority="1"><formula>LEN(B1)&gt;0</formula></cfRule>')
+    expect(exportedSheetXml).toContain('<cfRule type="expression" dxfId="1" priority="1"><formula>LEN(B1)&gt;0</formula></cfRule>')
+    expect(exportedSheetXml).toContain(
+      '<cfRule type="cellIs" dxfId="2" priority="3" operator="notEqual"><formula>&quot;Closed&quot;</formula></cfRule>',
+    )
     expect(exportedStylesXml).toContain('<dxfs count="3">')
     expect(exportedStylesXml).toContain('<color theme="5" tint="-0.249977111117893"/>')
     expect(exportedStylesXml).toContain('<border><bottom style="double"><color indexed="64"/></bottom></border>')
@@ -43,6 +46,21 @@ describe('xlsx conditional format roundtrip', () => {
     expect(exportedSheetXml).toContain('<cfRule type="colorScale" priority="2">')
     expect(exportedSheetXml).toContain('<cfRule type="iconSet" priority="3">')
     expect(exportedSheetXml.match(/<conditionalFormatting\b/gu)).toHaveLength(3)
+  })
+
+  it('keeps differential-format style records needed by preserved conditional-format artifacts', () => {
+    const imported = importXlsx(buildStyledFormulaConditionalFormattingWorkbook(), 'styled-formula-conditional-format.xlsx')
+
+    expect(imported.snapshot.sheets[0]?.metadata?.conditionalFormatArtifacts?.xml).toContain('dxfId="0"')
+
+    const exported = unzipSync(exportXlsx(imported.snapshot))
+    const exportedSheetXml = strFromU8(exported['xl/worksheets/sheet1.xml'] ?? new Uint8Array())
+    const exportedStylesXml = strFromU8(exported['xl/styles.xml'] ?? new Uint8Array())
+
+    expect(exportedSheetXml).toContain('dxfId="0"')
+    expect(exportedSheetXml).toContain('<formula>A1&gt;15</formula>')
+    expect(exportedStylesXml).toContain('<dxfs count="1">')
+    expect(exportedStylesXml).toContain('<fgColor rgb="FFFFEB84"/>')
   })
 
   it('keeps worksheet namespace declarations needed by preserved conditional-format artifacts', () => {
@@ -96,6 +114,36 @@ function buildAdvancedConditionalFormattingWorkbook(): Uint8Array {
   const zip = unzipSync(XLSX.write(workbook, { bookType: 'xlsx', type: 'buffer' }))
   zip['xl/worksheets/sheet1.xml'] = strToU8(advancedConditionalFormattingWorksheetXml)
   return zipSync(zip)
+}
+
+function buildStyledFormulaConditionalFormattingWorkbook(): Uint8Array {
+  return exportXlsx({
+    version: 1,
+    workbook: { name: 'Styled formula conditional format' },
+    sheets: [
+      {
+        id: 1,
+        name: 'Dashboard',
+        order: 0,
+        cells: [
+          { address: 'A1', value: 10 },
+          { address: 'A2', value: 20 },
+          { address: 'A3', value: 30 },
+        ],
+        metadata: {
+          conditionalFormats: [
+            {
+              id: 'formula-highlight',
+              range: { sheetName: 'Dashboard', startAddress: 'A1', endAddress: 'A3' },
+              rule: { kind: 'formula', formula: '=A1>15' },
+              style: { fill: { backgroundColor: '#ffeb84' } },
+              priority: 1,
+            },
+          ],
+        },
+      },
+    ],
+  })
 }
 
 function buildRootNamespacedAdvancedConditionalFormattingWorkbook(): Uint8Array {

@@ -56,6 +56,20 @@ describe('conditional format artifact metadata', () => {
     expect(exportedConditionalFormatArtifactXml(engine)).toContain('<x:conditionalFormatting xmlns:x="urn:test" sqref="B2:B4">')
     expect(exportedConditionalFormatArtifactXml(engine)).toContain('<conditionalFormatting sqref="D2:D4"/>')
   })
+
+  it('rewrites conditional format artifact formulas across structural edits', async () => {
+    const engine = new SpreadsheetEngine({ workbookName: 'conditional-format-artifacts-formula-structural' })
+    await engine.ready()
+    engine.importSnapshot(formulaConditionalFormatArtifactSnapshot())
+
+    engine.insertRows('Dashboard', 0, 1)
+    expect(exportedConditionalFormatArtifactXml(engine)).toContain('sqref="A2:A4"')
+    expect(exportedConditionalFormatArtifactXml(engine)).toContain('<formula>A2&gt;15</formula>')
+
+    engine.insertColumns('Dashboard', 0, 1)
+    expect(exportedConditionalFormatArtifactXml(engine)).toContain('sqref="B2:B4"')
+    expect(exportedConditionalFormatArtifactXml(engine)).toContain('<formula>B2&gt;15</formula>')
+  })
 })
 
 function exportedConditionalFormatArtifactXml(engine: SpreadsheetEngine): string {
@@ -136,6 +150,34 @@ function namespaceQualifiedConditionalFormatSnapshot(): WorkbookSnapshot {
           { address: 'C2', value: 60 },
           { address: 'A3', value: 30 },
           { address: 'C3', value: 90 },
+        ],
+      },
+    ],
+  }
+}
+
+function formulaConditionalFormatArtifactSnapshot(): WorkbookSnapshot {
+  return {
+    version: 1,
+    workbook: { name: 'Formula conditional format artifacts' },
+    sheets: [
+      {
+        id: 1,
+        name: 'Dashboard',
+        order: 0,
+        metadata: {
+          conditionalFormatArtifacts: {
+            xml: [
+              '<conditionalFormatting sqref="A1:A3">',
+              '<cfRule type="expression" dxfId="0" priority="1"><formula>A1&gt;15</formula></cfRule>',
+              '</conditionalFormatting>',
+            ].join(''),
+          },
+        },
+        cells: [
+          { address: 'A1', value: 10 },
+          { address: 'A2', value: 20 },
+          { address: 'A3', value: 30 },
         ],
       },
     ],

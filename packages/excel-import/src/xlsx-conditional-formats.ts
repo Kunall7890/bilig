@@ -277,6 +277,31 @@ function buildDxfXml(style: CellStylePatch): string | null {
   return parts.length > 0 ? `<dxf>${parts.join('')}</dxf>` : null
 }
 
+interface ConditionalFormatArtifactDxfRewrite {
+  readonly xml: string
+  readonly dxfXmls: readonly string[]
+}
+
+function rewriteConditionalFormatArtifactDxfIds(
+  conditionalFormats: readonly WorkbookConditionalFormatSnapshot[],
+  xml: string,
+  firstDxfId: number,
+): ConditionalFormatArtifactDxfRewrite {
+  const candidateDxfXmls = conditionalFormats.map((format) => buildDxfXml(format.style) ?? '<dxf/>')
+  const remappedIds = new Map<string, number>()
+  const dxfXmls: string[] = []
+  const rewrittenXml = xml.replace(/\bdxfId=("|')(\d+)\1/gu, (_source: string, quote: string, sourceId: string) => {
+    let nextId = remappedIds.get(sourceId)
+    if (nextId === undefined) {
+      nextId = firstDxfId + dxfXmls.length
+      remappedIds.set(sourceId, nextId)
+      dxfXmls.push(candidateDxfXmls[dxfXmls.length] ?? '<dxf/>')
+    }
+    return `dxfId=${quote}${String(nextId)}${quote}`
+  })
+  return { xml: rewrittenXml, dxfXmls }
+}
+
 function readDxfStyle(dxf: unknown): CellStylePatch {
   if (!isRecord(dxf)) {
     return {}
@@ -490,8 +515,16 @@ export function addExportConditionalFormatsToXlsxBytes(bytes: Uint8Array, snapsh
   sheets.forEach((sheet, sheetIndex) => {
     const conditionalFormats = sheet.metadata?.conditionalFormats ?? []
     const importedConditionalFormatXml = sheet.metadata?.conditionalFormatArtifacts?.xml.trim()
-    const conditionalFormattingXml: string[] = importedConditionalFormatXml ? [importedConditionalFormatXml] : []
-    if (!importedConditionalFormatXml) {
+    const conditionalFormattingXml: string[] = []
+    if (importedConditionalFormatXml) {
+      const artifactDxfRewrite = rewriteConditionalFormatArtifactDxfIds(
+        conditionalFormats,
+        importedConditionalFormatXml,
+        existingDxfCount + dxfXmls.length,
+      )
+      dxfXmls.push(...artifactDxfRewrite.dxfXmls)
+      conditionalFormattingXml.push(artifactDxfRewrite.xml)
+    } else {
       for (const format of conditionalFormats) {
         const dxfXml = buildDxfXml(format.style)
         let dxfId: number | undefined

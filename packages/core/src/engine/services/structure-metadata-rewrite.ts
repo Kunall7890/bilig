@@ -1,10 +1,4 @@
-import {
-  MAX_COLS,
-  MAX_ROWS,
-  type CellRangeRef,
-  type SheetFormatRangeSnapshot,
-  type SheetStyleRangeSnapshot,
-} from '@bilig/protocol'
+import { MAX_COLS, MAX_ROWS, type CellRangeRef, type SheetFormatRangeSnapshot, type SheetStyleRangeSnapshot } from '@bilig/protocol'
 import {
   columnToIndex,
   formatAddress,
@@ -356,7 +350,7 @@ export function rewriteWorkbookMetadataForStructuralTransform(
   })
   const conditionalFormatArtifacts = workbook.getConditionalFormatArtifacts(sheetName)
   if (conditionalFormatArtifacts) {
-    const nextArtifactsXml = rewriteConditionalFormatArtifactXmlForStructuralTransform(conditionalFormatArtifacts.xml, transform)
+    const nextArtifactsXml = rewriteConditionalFormatArtifactXmlForStructuralTransform(sheetName, conditionalFormatArtifacts.xml, transform)
     workbook.deleteConditionalFormatArtifacts(sheetName)
     if (nextArtifactsXml) {
       workbook.setConditionalFormatArtifacts(sheetName, { xml: nextArtifactsXml })

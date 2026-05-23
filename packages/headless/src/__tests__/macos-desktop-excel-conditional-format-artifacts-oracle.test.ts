@@ -228,6 +228,77 @@ describe('macOS Desktop Excel conditional format artifact oracle', () => {
     },
     120_000,
   )
+
+  it.runIf(process.env.BILIG_EXCEL_ORACLE_RUN === '1')(
+    'matches Desktop Excel conditional-format artifact formulas after structural row inserts',
+    () => {
+      if (!isMacosExcelInstalled()) {
+        throw new Error('BILIG_EXCEL_ORACLE_RUN=1 requires /Applications/Microsoft Excel.app')
+      }
+
+      const tempDir = createExcelAccessibleTempDir('bilig-headless-excel-cf-formula-structural-oracle-')
+      try {
+        const sourcePath = join(tempDir, 'excel-formula-conditional-format-structural-oracle.xlsx')
+        writeFileSync(sourcePath, buildFormulaConditionalFormattingWorkbook())
+
+        const excelResult = runMacosExcelStructuralOperationOracle({
+          workbookPath: sourcePath,
+          worksheetName: 'Dashboard',
+          operations: [{ kind: 'insertRows', range: '1:1' }],
+          inspectCells: ['A1', 'A2', 'A3', 'A4'],
+          saveWorkbook: true,
+          timeoutMs: 90_000,
+        })
+        expect(excelResult.cells.map((cell) => cell.value)).toEqual([
+          { kind: 'string', value: '' },
+          { kind: 'number', value: 10 },
+          { kind: 'number', value: 20 },
+          { kind: 'number', value: 30 },
+        ])
+
+        const excelTruth = importXlsx(new Uint8Array(readFileSync(sourcePath)), 'excel-formula-cf-structural-oracle.xlsx')
+        const excelTruthArtifacts = excelTruth.snapshot.sheets[0]?.metadata?.conditionalFormatArtifacts?.xml
+        expect(extractConditionalFormatSqrefs(excelTruthArtifacts)).toEqual(['A2:A4'])
+        expect(extractConditionalFormatFormulas(excelTruthArtifacts)).toEqual(['A2>15'])
+
+        const workpaper = WorkPaper.buildFromSnapshot(
+          importXlsx(buildFormulaConditionalFormattingWorkbook(), 'headless-formula-cf-source.xlsx').snapshot,
+        )
+        try {
+          const sheet = workpaper.getSheetId('Dashboard')
+          if (sheet === undefined) {
+            throw new Error('Expected Dashboard sheet to be available')
+          }
+          workpaper.addRows(sheet, 0, 1)
+          const headlessArtifacts = workpaper.exportSnapshot().sheets[0]?.metadata?.conditionalFormatArtifacts?.xml
+          expect(extractConditionalFormatSqrefs(headlessArtifacts)).toEqual(['A2:A4'])
+          expect(extractConditionalFormatFormulas(headlessArtifacts)).toEqual(['A2>15'])
+
+          const headlessPath = join(tempDir, 'headless-formula-conditional-format-structural-oracle.xlsx')
+          writeFileSync(headlessPath, exportXlsx(workpaper.exportSnapshot()))
+          const headlessExcel = runMacosExcelInspectionOracle({
+            workbookPath: headlessPath,
+            worksheetName: 'Dashboard',
+            formulaCells: [],
+            inspectCells: ['A1', 'A2', 'A3', 'A4'],
+            saveWorkbook: true,
+            timeoutMs: 90_000,
+          })
+          expect(headlessExcel.cells).toEqual(excelResult.cells)
+
+          const headlessExcelTruth = importXlsx(new Uint8Array(readFileSync(headlessPath)), 'headless-formula-cf-structural-oracle.xlsx')
+          const headlessExcelArtifacts = headlessExcelTruth.snapshot.sheets[0]?.metadata?.conditionalFormatArtifacts?.xml
+          expect(extractConditionalFormatSqrefs(headlessExcelArtifacts)).toEqual(extractConditionalFormatSqrefs(excelTruthArtifacts))
+          expect(extractConditionalFormatFormulas(headlessExcelArtifacts)).toEqual(extractConditionalFormatFormulas(excelTruthArtifacts))
+        } finally {
+          workpaper.dispose()
+        }
+      } finally {
+        removeMacosExcelTestDir(tempDir)
+      }
+    },
+    120_000,
+  )
 })
 
 function expectConditionalFormatArtifacts(xml: string | undefined): void {
@@ -241,6 +312,24 @@ function extractConditionalFormatSqrefs(xml: string | undefined): string[] {
     throw new Error('Expected conditional format artifact XML')
   }
   return [...xml.matchAll(/<(?:[A-Za-z_][\w.-]*:)?conditionalFormatting\b[^>]*\bsqref=("|')([\s\S]*?)\1/gu)].map((match) => match[2] ?? '')
+}
+
+function extractConditionalFormatFormulas(xml: string | undefined): string[] {
+  if (!xml) {
+    throw new Error('Expected conditional format artifact XML')
+  }
+  return [...xml.matchAll(/<(?:[A-Za-z_][\w.-]*:)?formula\b[^>]*>([\s\S]*?)<\/(?:[A-Za-z_][\w.-]*:)?formula>/gu)].map((match) =>
+    decodeXmlText(match[1] ?? ''),
+  )
+}
+
+function decodeXmlText(value: string): string {
+  return value
+    .replace(/&quot;/gu, '"')
+    .replace(/&apos;/gu, "'")
+    .replace(/&lt;/gu, '<')
+    .replace(/&gt;/gu, '>')
+    .replace(/&amp;/gu, '&')
 }
 
 function buildAdvancedConditionalFormattingWorkbook(): Uint8Array {
@@ -269,6 +358,36 @@ function buildPrefixedConditionalFormattingWorkbook(): Uint8Array {
   const zip = unzipSync(XLSX.write(workbook, { bookType: 'xlsx', type: 'buffer' }))
   zip['xl/worksheets/sheet1.xml'] = strToU8(prefixedAdvancedConditionalFormattingWorksheetXml)
   return zipSync(zip)
+}
+
+function buildFormulaConditionalFormattingWorkbook(): Uint8Array {
+  return exportXlsx({
+    version: 1,
+    workbook: { name: 'Desktop Excel conditional format formula oracle' },
+    sheets: [
+      {
+        id: 1,
+        name: 'Dashboard',
+        order: 0,
+        cells: [
+          { address: 'A1', value: 10 },
+          { address: 'A2', value: 20 },
+          { address: 'A3', value: 30 },
+        ],
+        metadata: {
+          conditionalFormats: [
+            {
+              id: 'formula-highlight',
+              range: { sheetName: 'Dashboard', startAddress: 'A1', endAddress: 'A3' },
+              rule: { kind: 'formula', formula: '=A1>15' },
+              style: { fill: { backgroundColor: '#ffeb84' } },
+              priority: 1,
+            },
+          ],
+        },
+      },
+    ],
+  })
 }
 
 function readWorksheetXml(path: string): string {

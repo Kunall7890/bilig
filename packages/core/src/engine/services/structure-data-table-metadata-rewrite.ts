@@ -3,6 +3,7 @@ import {
   columnToIndex,
   formatAddress,
   rewriteAddressForStructuralTransform,
+  rewriteFormulaForStructuralTransform,
   rewriteRangeForStructuralTransform,
   type StructuralAxisTransform,
 } from '@bilig/formula'
@@ -32,6 +33,14 @@ function decodeXmlAttribute(value: string): string {
 
 function escapeXmlAttribute(value: string): string {
   return value.replace(/&/gu, '&amp;').replace(/"/gu, '&quot;').replace(/'/gu, '&apos;').replace(/</gu, '&lt;').replace(/>/gu, '&gt;')
+}
+
+function decodeXmlText(value: string): string {
+  return decodeXmlAttribute(value)
+}
+
+function escapeXmlText(value: string): string {
+  return value.replace(/&/gu, '&amp;').replace(/</gu, '&lt;').replace(/>/gu, '&gt;')
 }
 
 function rewriteDataTableFormulaXmlAttribute(formulaXml: string, attributeName: string, nextValue: string): string | undefined {
@@ -233,7 +242,31 @@ const conditionalFormattingBlockRegex = new RegExp(
 )
 const conditionalFormattingOpeningTagRegex = new RegExp(`^<${conditionalFormattingElementName}\\b[^>]*\\/?>`, 'u')
 
-function rewriteConditionalFormatArtifactBlock(block: string, transform: StructuralAxisTransform): string | undefined {
+function rewriteConditionalFormatFormulaText(text: string, sheetName: string, transform: StructuralAxisTransform): string | undefined {
+  try {
+    return rewriteFormulaForStructuralTransform(decodeXmlText(text), sheetName, sheetName, transform)
+  } catch {
+    return undefined
+  }
+}
+
+function rewriteConditionalFormatFormulaXml(block: string, sheetName: string, transform: StructuralAxisTransform): string | undefined {
+  let dropped = false
+  const rewritten = block.replace(
+    /<((?:[A-Za-z_][\w.-]*:)?formula)\b([^>]*?)>([\s\S]*?)<\/\1>/gu,
+    (_source: string, tagName: string, attributes: string, text: string) => {
+      const nextFormula = rewriteConditionalFormatFormulaText(text, sheetName, transform)
+      if (nextFormula === undefined) {
+        dropped = true
+        return ''
+      }
+      return `<${tagName}${attributes}>${escapeXmlText(nextFormula)}</${tagName}>`
+    },
+  )
+  return dropped ? undefined : rewritten
+}
+
+function rewriteConditionalFormatArtifactBlock(block: string, sheetName: string, transform: StructuralAxisTransform): string | undefined {
   const openingTag = conditionalFormattingOpeningTagRegex.exec(block)?.[0]
   if (!openingTag) {
     return block
@@ -250,17 +283,19 @@ function rewriteConditionalFormatArtifactBlock(block: string, transform: Structu
   const nextOpeningTag = openingTag.replace(/\bsqref=("|')([\s\S]*?)\1/u, (_source: string, quote: string) => {
     return `sqref=${quote}${escapeXmlAttribute(nextSqref)}${quote}`
   })
-  return `${nextOpeningTag}${block.slice(openingTag.length)}`
+  const withSqref = `${nextOpeningTag}${block.slice(openingTag.length)}`
+  return rewriteConditionalFormatFormulaXml(withSqref, sheetName, transform)
 }
 
 export function rewriteConditionalFormatArtifactXmlForStructuralTransform(
+  sheetName: string,
   xml: string,
   transform: StructuralAxisTransform,
 ): string | undefined {
   let matchedBlock = false
   const rewrittenXml = xml.replace(conditionalFormattingBlockRegex, (block) => {
     matchedBlock = true
-    return rewriteConditionalFormatArtifactBlock(block, transform) ?? ''
+    return rewriteConditionalFormatArtifactBlock(block, sheetName, transform) ?? ''
   })
   if (!matchedBlock) {
     return xml
