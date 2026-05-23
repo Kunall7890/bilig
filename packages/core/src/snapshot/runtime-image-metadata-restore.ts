@@ -173,6 +173,12 @@ function restoreSheetMetadata(args: { readonly workbook: WorkbookStore; readonly
       targetSheet.dataTableFormulas = structuredClone(sheet.metadata.dataTableFormulas)
     }
   }
+  if (sheet.metadata?.ignoredErrors) {
+    const targetSheet = workbook.getSheet(sheet.name)
+    if (targetSheet) {
+      targetSheet.ignoredErrors = structuredClone(sheet.metadata.ignoredErrors)
+    }
+  }
   if (sheet.metadata?.sparklines) {
     const targetSheet = workbook.getSheet(sheet.name)
     if (targetSheet) {

@@ -21,6 +21,7 @@ const existingDesktopExcelOracleFiles = [
   'macos-desktop-excel-drawing-artifacts-oracle.test.ts',
   'macos-desktop-excel-external-link-cache.test.ts',
   'macos-desktop-excel-hyperlink-structural-oracle.test.ts',
+  'macos-desktop-excel-ignored-errors-oracle.test.ts',
   'macos-desktop-excel-precision-as-displayed-oracle.test.ts',
   'macos-desktop-excel-pivot-oracle.test.ts',
   'macos-desktop-excel-sort-oracle.test.ts',
@@ -132,6 +133,17 @@ describe('macOS Desktop Excel oracle inventory', () => {
     expect(source).toContain('metadata?.sparklines')
     expect(source).toContain('matches Desktop Excel sparkline source and output refs after structural row inserts')
     expect(source).toContain('matches Desktop Excel cross-sheet sparkline source refs after source sheet row inserts')
+  })
+
+  it('keeps the ignored-errors oracle anchored to Desktop Excel warning-suppression refs', () => {
+    const source = readFileSync(join(testDir, 'macos-desktop-excel-ignored-errors-oracle.test.ts'), 'utf8')
+
+    expect(source).toContain("BILIG_EXCEL_ORACLE_RUN === '1'")
+    expect(source).toContain('runMacosExcelStructuralOperationOracle')
+    expect(source).toContain('runMacosExcelInspectionOracle')
+    expect(source).toContain('ignoredErrors')
+    expect(source).toContain('numberStoredAsText="1"')
+    expect(source).toContain('matches Desktop Excel ignoredErrors sqref movement after structural row inserts')
   })
 
   it('keeps the pivot oracle anchored to Desktop Excel source-backed pivot refresh semantics', () => {

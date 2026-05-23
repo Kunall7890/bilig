@@ -11,6 +11,7 @@ import type {
   WorkbookSheetDataTableFormulasSnapshot,
   WorkbookSheetFormatPrSnapshot,
   WorkbookSheetVisibilitySnapshot,
+  WorkbookIgnoredErrorsSnapshot,
   WorkbookSparklinesSnapshot,
 } from '@bilig/protocol'
 import type { WorkbookAxisEntryRecord, WorkbookFormatRangeRecord, WorkbookStyleRangeRecord } from './workbook-metadata-types.js'
@@ -35,6 +36,7 @@ export interface SheetRecord {
   formatRanges: WorkbookFormatRangeRecord[]
   arrayFormulas?: WorkbookSheetArrayFormulasSnapshot
   dataTableFormulas?: WorkbookSheetDataTableFormulasSnapshot
+  ignoredErrors?: WorkbookIgnoredErrorsSnapshot
   sparklines?: WorkbookSparklinesSnapshot
 }
 

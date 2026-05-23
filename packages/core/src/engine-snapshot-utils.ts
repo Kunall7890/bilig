@@ -174,6 +174,7 @@ export function exportSheetMetadata(workbook: WorkbookStore, sheetName: string):
   const hyperlinks = workbook.listHyperlinks(sheetName).map((hyperlink) => structuredClone(hyperlink))
   const arrayFormulas = arrayFormulasToSnapshot(sheet?.arrayFormulas)
   const dataTableFormulas = dataTableFormulasToSnapshot(sheet?.dataTableFormulas)
+  const ignoredErrors = sheet?.ignoredErrors ? { xml: sheet.ignoredErrors.xml } : undefined
   const sparklines = sparklinesToSnapshot(sheet?.sparklines)
 
   if (
@@ -203,6 +204,7 @@ export function exportSheetMetadata(workbook: WorkbookStore, sheetName: string):
     hyperlinks.length === 0 &&
     arrayFormulas === undefined &&
     dataTableFormulas === undefined &&
+    ignoredErrors === undefined &&
     sparklines === undefined
   ) {
     return undefined
@@ -301,6 +303,9 @@ export function exportSheetMetadata(workbook: WorkbookStore, sheetName: string):
   }
   if (dataTableFormulas) {
     metadata.dataTableFormulas = dataTableFormulas
+  }
+  if (ignoredErrors) {
+    metadata.ignoredErrors = ignoredErrors
   }
   if (sparklines) {
     metadata.sparklines = sparklines
