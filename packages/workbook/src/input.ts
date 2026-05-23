@@ -41,7 +41,7 @@ export interface WorkbookActionInputIssue {
 export type WorkbookActionInputCheckResult =
   | {
       readonly status: 'valid'
-      readonly input: WorkbookActionInput
+      readonly input?: WorkbookActionInput
       readonly issues: readonly []
     }
   | {
@@ -350,6 +350,21 @@ export function checkInput(description: unknown, input: unknown): WorkbookAction
     return {
       status: 'invalid',
       issues: Object.freeze([inputIssue('invalid_action_input_description', 'input', errorMessage(error))]),
+    }
+  }
+
+  if (input === undefined) {
+    const issues: WorkbookActionInputIssue[] = []
+    validateInputDescription(normalizedDescription, undefined, 'input', issues)
+    if (issues.length > 0) {
+      return {
+        status: 'invalid',
+        issues: Object.freeze(issues),
+      }
+    }
+    return {
+      status: 'valid',
+      issues: Object.freeze([]),
     }
   }
 

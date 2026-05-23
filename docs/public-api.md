@@ -224,9 +224,12 @@ booleans, `null`, arrays without holes, and plain objects. `@bilig/workbook`
 does not provide schemas for consumer meaning; actions keep domain validation
 local. `checkInput(description, value)` only checks the package's small generic
 input metadata and returns a plain `{ status, input, issues }` result.
-`planWorkbookAction` runs that same check before `find`, `checks`, or action code
-when an action declares input metadata. `verifyModel(model, { inputs })` supplies
-per-action inputs for whole-model verification. The frozen
+Omitted input is valid unless the top-level description sets `required: true`;
+required omissions return `missing_required_input` instead of pretending
+`undefined` is a malformed JSON payload. `planWorkbookAction` runs that same
+check before `find`, `checks`, or action code when an action declares input
+metadata. `verifyModel(model, { inputs })` supplies per-action inputs for
+whole-model verification. The frozen
 `workbookActionInputDescriptionKinds` list plus
 `isWorkbookActionInputDescriptionKind(value)`,
 `isWorkbookActionInputDescription(value)`, and `isWorkbookActionInput(value)` let

@@ -147,8 +147,10 @@ Action input is JSON-safe data, not a schema-framework object. Action metadata
 can describe generic input with `json`, `object`, `array`, `string`, `number`,
 `boolean`, and `null` kinds. `checkInput(description, value)` returns a plain
 `{ status, input, issues }` result so an agent can reject malformed tool payloads
-before running workbook model code. `planWorkbookAction` uses the same check
-when an action declares input metadata.
+before running workbook model code. Omitted input is valid unless the top-level
+description sets `required: true`, so agents can distinguish an optional payload
+from a malformed payload. `planWorkbookAction` uses the same check when an action
+declares input metadata.
 
 ## Formulas
 

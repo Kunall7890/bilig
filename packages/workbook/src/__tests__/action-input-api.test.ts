@@ -97,6 +97,45 @@ describe('@bilig/workbook action input api', () => {
     })
   })
 
+  it('uses top-level required metadata for omitted action inputs', () => {
+    expect(
+      checkInput(
+        {
+          kind: 'object',
+          fields: {
+            value: { kind: 'number' },
+          },
+        },
+        undefined,
+      ),
+    ).toEqual({
+      status: 'valid',
+      issues: [],
+    })
+
+    expect(
+      checkInput(
+        {
+          kind: 'object',
+          required: true,
+          fields: {
+            value: { kind: 'number' },
+          },
+        },
+        undefined,
+      ),
+    ).toEqual({
+      status: 'invalid',
+      issues: [
+        {
+          code: 'missing_required_input',
+          path: 'input',
+          message: 'Action input at input is required',
+        },
+      ],
+    })
+  })
+
   it('plans parameterized actions with cloned JSON-safe input', () => {
     const model = defineModel({
       name: 'parameterized-action-model',
@@ -307,6 +346,81 @@ describe('@bilig/workbook action input api', () => {
         {
           code: 'invalid_action_input',
           message: 'Action input at input.value must be a number',
+        },
+      ],
+    })
+    expect(findRan).toBe(false)
+  })
+
+  it('allows optional action metadata input to be omitted before model code runs', () => {
+    let actionInput: WorkbookActionInput | undefined
+    const model = defineModel({
+      name: 'optional-metadata-input-model',
+      find(workbook) {
+        return {
+          output: workbook.findRange({ sheetName: 'Sheet1', address: 'B2' }),
+        }
+      },
+      actions: {
+        write: {
+          input: {
+            kind: 'object',
+            fields: {
+              value: { kind: 'number' },
+            },
+          },
+          run({ refs, workbook, input }) {
+            actionInput = input
+            workbook.writeValue(refs.output, 0)
+          },
+        },
+      },
+    })
+
+    const result = planWorkbookAction(model, 'write')
+
+    expect(result.status).toBe('planned')
+    expect(actionInput).toBeUndefined()
+    if (result.status === 'planned') {
+      expect(result.plan).not.toHaveProperty('input')
+    }
+  })
+
+  it('rejects missing required action metadata input before model code runs', () => {
+    let findRan = false
+    const model = defineModel({
+      name: 'required-metadata-input-model',
+      find(workbook) {
+        findRan = true
+        return {
+          output: workbook.findRange({ sheetName: 'Sheet1', address: 'B2' }),
+        }
+      },
+      actions: {
+        write: {
+          input: {
+            kind: 'object',
+            required: true,
+            fields: {
+              value: { kind: 'number' },
+            },
+          },
+          run() {
+            throw new Error('action should not run for missing required input')
+          },
+        },
+      },
+    })
+
+    expect(planWorkbookAction(model, 'write')).toEqual({
+      status: 'failed',
+      modelName: 'required-metadata-input-model',
+      actionName: 'write',
+      checks: [],
+      errors: [
+        {
+          code: 'invalid_action_input',
+          message: 'Action input at input is required',
         },
       ],
     })
