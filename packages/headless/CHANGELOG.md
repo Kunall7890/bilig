@@ -4,6 +4,18 @@ All notable changes to `@bilig/headless` will be documented in this file.
 
 This package is released as part of the aligned bilig library package set.
 
+## 0.54.0
+
+- Release type: minor
+- Previous libraries tag: libraries-v0.53.0
+- Manual override: no
+
+## Features
+- feat(workbook): freeze model definitions (0428554d)
+
+## Internal runtime changes
+- test(headless): lock Desktop Excel sort oracle (991d1115)
+
 ## 0.53.0
 
 - Release type: minor
