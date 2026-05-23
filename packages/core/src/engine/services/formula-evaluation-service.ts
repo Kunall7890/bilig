@@ -1,5 +1,5 @@
 import { Effect } from 'effect'
-import { ErrorCode, MAX_COLS, MAX_ROWS, ValueTag, type CellValue, type WorkbookTableSnapshot } from '@bilig/protocol'
+import { ErrorCode, MAX_COLS, MAX_ROWS, ValueTag, type CellValue } from '@bilig/protocol'
 import {
   createLookupBuiltinResolver,
   evaluatePlanResult,
@@ -52,15 +52,12 @@ import {
 } from './formula-evaluation-direct-criteria-native.js'
 import { createDirectCriteriaSharingContext } from './formula-evaluation-direct-criteria-sharing.js'
 import { createRowHiddenResolver } from './formula-evaluation-row-hidden.js'
-import type { EngineFormulaEvaluationService, StructuredReferenceResolutionOptions } from './formula-evaluation-service-types.js'
+import { resolveStructuredReferenceNow } from './formula-evaluation-structured-reference.js'
+import type { EngineFormulaEvaluationService } from './formula-evaluation-service-types.js'
 export type { EngineFormulaEvaluationService } from './formula-evaluation-service-types.js'
 
 const DIRECT_CRITERIA_MATCH_CACHE_LIMIT = 16_384
 const INDEXED_WHOLE_AXIS_BOUND_LIMIT = 4096
-
-function normalizedTableColumnName(value: string): string {
-  return value.trim().replace(/\s+/gu, ' ').toUpperCase()
-}
 
 export function createEngineFormulaEvaluationService(args: {
   readonly state: Pick<EngineRuntimeState, 'workbook' | 'strings' | 'formulas' | 'counters' | 'wasm' | 'getUseColumnIndex'>
@@ -579,99 +576,6 @@ export function createEngineFormulaEvaluationService(args: {
     return undefined
   }
 
-  const findStructuredReferenceTable = (
-    tableName: string,
-    options: StructuredReferenceResolutionOptions | undefined,
-  ): WorkbookTableSnapshot | undefined => {
-    if (tableName.length > 0) {
-      return args.state.workbook.getTable(tableName)
-    }
-    if (!options?.ownerSheetName || !options.ownerAddress) {
-      return undefined
-    }
-    const owner = parseCellAddress(options.ownerAddress, options.ownerSheetName)
-    return args.state.workbook.listTables().find((table) => {
-      if (table.sheetName !== options.ownerSheetName) {
-        return false
-      }
-      const start = parseCellAddress(table.startAddress, table.sheetName)
-      const end = parseCellAddress(table.endAddress, table.sheetName)
-      return owner.row >= start.row && owner.row <= end.row && owner.col >= start.col && owner.col <= end.col
-    })
-  }
-
-  const resolveStructuredReferenceNow = (
-    tableName: string,
-    columnName: string,
-    options?: StructuredReferenceResolutionOptions,
-  ): FormulaNode | undefined => {
-    const table = findStructuredReferenceTable(tableName, options)
-    if (!table) {
-      return undefined
-    }
-    const columnIndex = table.columnNames.findIndex((name) => normalizedTableColumnName(name) === normalizedTableColumnName(columnName))
-    const endColumnIndex =
-      options?.endColumnName === undefined
-        ? columnIndex
-        : table.columnNames.findIndex((name) => normalizedTableColumnName(name) === normalizedTableColumnName(options.endColumnName ?? ''))
-    if (columnIndex === -1 || endColumnIndex === -1) {
-      return undefined
-    }
-    const start = parseCellAddress(table.startAddress, table.sheetName)
-    const end = parseCellAddress(table.endAddress, table.sheetName)
-    const dataStartRow = start.row + (table.headerRow ? 1 : 0)
-    const dataEndRow = Math.max(dataStartRow, end.row - (table.totalsRow ? 1 : 0))
-    let startRow = dataStartRow
-    let endRow = dataEndRow
-    switch (options?.section) {
-      case 'all':
-        startRow = start.row
-        endRow = end.row
-        break
-      case 'headers':
-        if (!table.headerRow) {
-          return { kind: 'ErrorLiteral', code: ErrorCode.Ref }
-        }
-        startRow = start.row
-        endRow = start.row
-        break
-      case 'this-row': {
-        if (!options.ownerSheetName || !options.ownerAddress) {
-          return { kind: 'ErrorLiteral', code: ErrorCode.Ref }
-        }
-        const owner = parseCellAddress(options.ownerAddress, options.ownerSheetName)
-        if (owner.row < dataStartRow || owner.row > dataEndRow) {
-          return { kind: 'ErrorLiteral', code: ErrorCode.Ref }
-        }
-        startRow = owner.row
-        endRow = owner.row
-        break
-      }
-      case 'totals':
-        if (!table.totalsRow) {
-          return { kind: 'ErrorLiteral', code: ErrorCode.Ref }
-        }
-        startRow = end.row
-        endRow = end.row
-        break
-      case 'data':
-      case undefined:
-        break
-    }
-    if (startRow >= MAX_ROWS || endRow >= MAX_ROWS) {
-      return { kind: 'ErrorLiteral', code: ErrorCode.Ref }
-    }
-    const startColumn = start.col + Math.min(columnIndex, endColumnIndex)
-    const endColumn = start.col + Math.max(columnIndex, endColumnIndex)
-    return {
-      kind: 'RangeRef',
-      refKind: 'cells',
-      sheetName: table.sheetName,
-      start: formatAddress(startRow, startColumn),
-      end: formatAddress(endRow, endColumn),
-    }
-  }
-
   const resolveSpillReferenceNow = (currentSheetName: string, sheetName: string | undefined, address: string): FormulaNode | undefined => {
     const targetSheetName = sheetName ?? currentSheetName
     const spill = args.state.workbook.getSpill(targetSheetName, address)
@@ -1017,7 +921,7 @@ export function createEngineFormulaEvaluationService(args: {
     evaluateUnsupportedFormulaNow,
     resolveStructuredReference(tableName, columnName, options) {
       return effectWithEngineError(
-        () => resolveStructuredReferenceNow(tableName, columnName, options),
+        () => resolveStructuredReferenceNow(args.state.workbook, tableName, columnName, options),
         `Failed to resolve structured reference ${tableName}[${columnName}]`,
       )
     },
