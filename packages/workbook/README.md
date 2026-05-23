@@ -366,8 +366,11 @@ Use `checkWorkbookCommandResultForBundle(bundle, data)` when a stored or
 transported result must be mechanically checked against the bundle it claims to
 settle. It compares bundle id, target revision, idempotency key, command count,
 touched ranges, request or low-level-op receipt identity, and final applied
-revision. For low-level `op` commands, use `workbookOpCommandReceiptIdentity`
-or `workbookOpCommandReceipt` so adapters do not invent receipt ids.
+revision. It also recomputes result `status`, `matched`, `changedRanges`, and
+`errors` from receipts, so an adapter cannot smuggle a hand-edited summary past
+the public proof boundary. For low-level `op` commands, use
+`workbookOpCommandReceiptIdentity` or `workbookOpCommandReceipt` so adapters do
+not invent receipt ids.
 
 Use `checkWorkbookCommandReceipt(data)` before trusting runtime command evidence.
 It returns the same boring `{ status, issues }` shape for receipt fields such as
@@ -379,6 +382,10 @@ normalization, changed ranges must be own-field data, and manifest or receipt
 arrays must contain own enumerable data entries. Holes, non-enumerable entries,
 and accessor-backed ops, undo ops, ranges, or errors are rejected before any
 getter can run.
+Receipt statuses are semantic: `previewed` cannot include applied proof,
+`applied` cannot include errors and must carry applied evidence, `rejected`
+cannot claim changed workbook proof, and `noop` cannot claim changed ranges or
+ops.
 `workbookCommandReceiptOpsMatch` uses canonical op equality instead of object
 property order and refuses accessor-backed proof data.
 

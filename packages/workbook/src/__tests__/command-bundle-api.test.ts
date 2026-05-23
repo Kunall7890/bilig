@@ -504,6 +504,7 @@ describe('@bilig/workbook command bundle api', () => {
             featureId: 'cells',
             commandId: 'cells.other',
             category: 'mutation',
+            changedRanges: [{ sheetName: 'Sheet1', startAddress: 'A1', endAddress: 'A1' }],
           },
         ],
       }),
@@ -519,6 +520,72 @@ describe('@bilig/workbook command bundle api', () => {
           code: 'receipt_command_mismatch',
           path: 'receipts[0]',
           message: 'Workbook command result receipt 0 does not match command request',
+        },
+      ],
+    })
+  })
+
+  it('rejects command results whose summary fields do not match receipts', () => {
+    const bundle = normalizeWorkbookCommandBundle({
+      id: 'bundle-1',
+      targetRevision: 7,
+      idempotencyKey: 'bundle-1',
+      commands: [
+        {
+          id: 'bundle-1:0:write',
+          kind: 'request',
+          destructive: true,
+          request: mutationRequest,
+          touchedRanges: [{ sheetName: 'Sheet1', startAddress: 'A1', endAddress: 'A1' }],
+        },
+      ],
+    })
+    const result = workbookCommandResultForReceipts(
+      bundle,
+      [
+        {
+          status: 'applied',
+          featureId: 'cells',
+          commandId: 'cells.setValue',
+          category: 'mutation',
+          previewOps: [setCellValueOp],
+          appliedOps: [setCellValueOp],
+          changedRanges: [{ sheetName: 'Sheet1', startAddress: 'A1', endAddress: 'A1' }],
+        },
+      ],
+      { revision: 8 },
+    )
+
+    expect(
+      checkWorkbookCommandResultForBundle(bundle, {
+        ...result,
+        status: 'rejected',
+        matched: false,
+        changedRanges: [],
+        errors: ['manually supplied error'],
+      }),
+    ).toEqual({
+      status: 'invalid',
+      issues: [
+        {
+          code: 'receipt_result_mismatch',
+          path: 'status',
+          message: 'Workbook command result status does not match receipts',
+        },
+        {
+          code: 'receipt_result_mismatch',
+          path: 'matched',
+          message: 'Workbook command result matched does not match receipts',
+        },
+        {
+          code: 'receipt_result_mismatch',
+          path: 'changedRanges',
+          message: 'Workbook command result changedRanges do not match receipts',
+        },
+        {
+          code: 'receipt_result_mismatch',
+          path: 'errors',
+          message: 'Workbook command result errors do not match receipts',
         },
       ],
     })
@@ -544,6 +611,7 @@ describe('@bilig/workbook command bundle api', () => {
         featureId: 'cells',
         commandId: 'cells.setValue',
         category: 'mutation',
+        changedRanges: [{ sheetName: 'Sheet1', startAddress: 'A1', endAddress: 'A1' }],
       },
     ])
 
@@ -668,6 +736,7 @@ describe('@bilig/workbook command bundle api', () => {
           featureId: 'other',
           commandId: 'cells.setValue',
           category: 'mutation',
+          changedRanges: [{ sheetName: 'Sheet1', startAddress: 'A1', endAddress: 'A1' }],
         },
       ]),
     ).toThrow('Workbook command result is invalid: receipts[0] does not match commands[0].request')
@@ -695,6 +764,7 @@ describe('@bilig/workbook command bundle api', () => {
           featureId: 'other',
           commandId: 'op-write-a1',
           category: 'operation',
+          changedRanges: [{ sheetName: 'Sheet1', startAddress: 'A1', endAddress: 'A1' }],
         },
       ]),
     ).toThrow('Workbook command result is invalid: receipts[0] does not match commands[0].op')

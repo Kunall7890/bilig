@@ -66,6 +66,7 @@ export type WorkbookCommandResultIssueCode =
   | 'invalid_command_result'
   | 'invalid_receipt'
   | 'bundle_result_mismatch'
+  | 'receipt_result_mismatch'
   | 'receipt_count_mismatch'
   | 'receipt_command_mismatch'
   | 'revision_mismatch'
@@ -272,7 +273,11 @@ export function checkWorkbookCommandResultForBundle(bundle: WorkbookCommandBundl
   const issues: WorkbookCommandResultIssue[] = []
   pushBaseResultMismatchIssues(issues, expected, result)
   if (result.status !== 'accepted') {
+    const receiptIssueStart = issues.length
     pushReceiptBundleIssues(issues, bundle, result)
+    if (issues.length === receiptIssueStart) {
+      pushReceiptDerivedResultIssues(issues, bundle, result)
+    }
     if (result.status === 'applied' && result.revision === undefined) {
       issues.push(commandResultIssue('revision_mismatch', 'revision', 'Applied workbook command result must include a revision'))
     }
@@ -419,7 +424,54 @@ function pushReceiptBundleIssues(
   })
 }
 
+function pushReceiptDerivedResultIssues(
+  issues: WorkbookCommandResultIssue[],
+  bundle: WorkbookCommandBundle,
+  result: WorkbookCommandSettledResult,
+): void {
+  if (result.receipts.length !== bundle.commands.length) {
+    return
+  }
+
+  let derived: WorkbookCommandResult
+  try {
+    derived = workbookCommandResultForReceipts(bundle, result.receipts, {
+      ...(result.revision !== undefined ? { revision: result.revision } : {}),
+      ...(result.undo !== undefined ? { undo: result.undo } : {}),
+    })
+  } catch (error) {
+    issues.push(commandResultIssue('invalid_receipt', 'receipts', errorMessage(error)))
+    return
+  }
+  if (derived.status === 'accepted') {
+    return
+  }
+
+  if (result.status !== derived.status) {
+    issues.push(commandResultIssue('receipt_result_mismatch', 'status', 'Workbook command result status does not match receipts'))
+  }
+  if (result.matched !== derived.matched) {
+    issues.push(commandResultIssue('receipt_result_mismatch', 'matched', 'Workbook command result matched does not match receipts'))
+  }
+  if (!rangesMatch(result.changedRanges, derived.changedRanges)) {
+    issues.push(
+      commandResultIssue('receipt_result_mismatch', 'changedRanges', 'Workbook command result changedRanges do not match receipts'),
+    )
+  }
+  if (!stringArraysMatch(result.errors ?? [], derived.errors ?? [])) {
+    issues.push(commandResultIssue('receipt_result_mismatch', 'errors', 'Workbook command result errors do not match receipts'))
+  }
+}
+
 function rangesMatch(left: readonly CellRangeRef[], right: readonly CellRangeRef[]): boolean {
+  try {
+    return canonicalJson(left) === canonicalJson(right)
+  } catch {
+    return false
+  }
+}
+
+function stringArraysMatch(left: readonly string[], right: readonly string[]): boolean {
   try {
     return canonicalJson(left) === canonicalJson(right)
   } catch {

@@ -61,6 +61,8 @@ flowchart LR
     dispatch
   - feature command receipt validation before agents trust runtime extension
     evidence
+  - semantic receipt-status validation and receipt-derived command result
+    summaries
   - canonical feature receipt op matching that ignores property order while
     rejecting invalid or accessor-backed op arrays before proof comparison
   - feature plugin manifest validation before consumer-owned extension

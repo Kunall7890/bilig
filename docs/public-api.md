@@ -190,6 +190,10 @@ and UI contributions. The public package still stays data-only.
 - `checkWorkbookCommandResult(data)` and
   `normalizeWorkbookCommandResult(data)` validate transported command results
   before an agent trusts them.
+- `checkWorkbookCommandResultForBundle(bundle, data)` recomputes result
+  `status`, `matched`, `changedRanges`, and `errors` from receipts, so stored
+  command proof cannot carry a hand-edited summary that contradicts runtime
+  evidence.
 - `checkWorkbookCommandReceipt(data)` validates transported receipt evidence
   before an agent trusts runtime extension output, including nested `proof` and
   `metadata` payload paths.
@@ -204,6 +208,10 @@ and UI contributions. The public package still stays data-only.
   data entries; receipt ops, undo ops, changed ranges, and errors must be data
   properties. Holes, non-enumerable entries, and accessor-backed receipt proof
   are rejected before freezing or preview/apply comparison.
+- Receipt statuses are semantic: previewed receipts cannot include applied
+  proof, applied receipts cannot include errors and must carry applied
+  evidence, rejected receipts cannot claim changed workbook proof, and noop
+  receipts cannot claim changed ranges or ops.
 - Frozen vocabularies such as `workbookCommandCategories`,
   `workbookCommandExecutionModes`, `workbookCommandReceiptStatuses`,
   `workbookProjectionInterceptorPoints`, and `workbookUiContributionSlots` let
@@ -614,6 +622,9 @@ can inspect which planned command produced which materialized operations.
 receipt preview/apply mismatches, and receipts whose flattened ops do not match
 the apply-level preview or applied ops. With `requireApplyProof: true`, a plan
 with high-level commands fails closed unless those command receipts are present.
+For generic feature-command results, `@bilig/workbook` also derives the settled
+result status, matched flag, changed ranges, and errors from receipts before a
+bundle-bound result can pass validation.
 `runWorkbookPlan(planOrData, adapter)` and
 `runWorkbookAction(model, actionName, adapter, input)` add a transport-neutral
 apply-and-prove loop on top of the same contracts. The adapter receives the full

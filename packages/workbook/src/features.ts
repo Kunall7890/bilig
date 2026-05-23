@@ -471,6 +471,101 @@ function pushCommandReceiptErrorsIssues(issues: WorkbookCommandReceiptIssue[], v
   }
 }
 
+function dataArrayLength(value: unknown): number | null {
+  return Array.isArray(value) && firstAccessorPath(value, 'array') === null ? value.length : null
+}
+
+function pushCommandReceiptStatusInvariantIssues(issues: WorkbookCommandReceiptIssue[], value: Record<string, unknown>): void {
+  const status = ownValue(value, 'status')
+  if (!isWorkbookCommandReceiptStatus(status)) {
+    return
+  }
+
+  const previewOps = ownValue(value, 'previewOps')
+  const appliedOps = ownValue(value, 'appliedOps')
+  const undo = ownValue(value, 'undo')
+  const changedRanges = ownValue(value, 'changedRanges')
+  const proof = ownValue(value, 'proof')
+  const message = ownValue(value, 'message')
+  const errors = ownValue(value, 'errors')
+  const previewOpsLength = dataArrayLength(previewOps)
+  const appliedOpsLength = dataArrayLength(appliedOps)
+  const changedRangesLength = dataArrayLength(changedRanges)
+  const errorsLength = dataArrayLength(errors)
+
+  if (status === 'previewed') {
+    if (previewOpsLength !== null && previewOpsLength === 0) {
+      issues.push(commandReceiptIssue('previewOps', 'Workbook command receipt previewed status must include preview ops'))
+    }
+    if (previewOps === undefined) {
+      issues.push(commandReceiptIssue('previewOps', 'Workbook command receipt previewed status must include preview ops'))
+    }
+    if (appliedOps !== undefined) {
+      issues.push(commandReceiptIssue('appliedOps', 'Workbook command receipt previewed status must not include applied ops'))
+    }
+    if (undo !== undefined) {
+      issues.push(commandReceiptIssue('undo', 'Workbook command receipt previewed status must not include undo metadata'))
+    }
+    if (errors !== undefined) {
+      issues.push(commandReceiptIssue('errors', 'Workbook command receipt previewed status must not include errors'))
+    }
+    return
+  }
+
+  if (status === 'applied') {
+    if (errors !== undefined) {
+      issues.push(commandReceiptIssue('errors', 'Workbook command receipt applied status must not include errors'))
+    }
+    if (appliedOps === undefined && changedRanges === undefined && undo === undefined && proof === undefined) {
+      issues.push(
+        commandReceiptIssue(
+          'appliedOps',
+          'Workbook command receipt applied status must include applied ops, changed ranges, undo metadata, or proof',
+        ),
+      )
+    }
+    return
+  }
+
+  if (status === 'rejected') {
+    if (message === undefined && (errorsLength === null || errorsLength === 0)) {
+      issues.push(commandReceiptIssue('errors', 'Workbook command receipt rejected status must include a message or errors'))
+    }
+    if (previewOps !== undefined) {
+      issues.push(commandReceiptIssue('previewOps', 'Workbook command receipt rejected status must not include preview ops'))
+    }
+    if (appliedOps !== undefined) {
+      issues.push(commandReceiptIssue('appliedOps', 'Workbook command receipt rejected status must not include applied ops'))
+    }
+    if (undo !== undefined) {
+      issues.push(commandReceiptIssue('undo', 'Workbook command receipt rejected status must not include undo metadata'))
+    }
+    if (changedRanges !== undefined) {
+      issues.push(commandReceiptIssue('changedRanges', 'Workbook command receipt rejected status must not include changed ranges'))
+    }
+    if (proof !== undefined) {
+      issues.push(commandReceiptIssue('proof', 'Workbook command receipt rejected status must not include proof'))
+    }
+    return
+  }
+
+  if (previewOpsLength !== null && previewOpsLength > 0) {
+    issues.push(commandReceiptIssue('previewOps', 'Workbook command receipt noop status must not include preview ops'))
+  }
+  if (appliedOpsLength !== null && appliedOpsLength > 0) {
+    issues.push(commandReceiptIssue('appliedOps', 'Workbook command receipt noop status must not include applied ops'))
+  }
+  if (undo !== undefined) {
+    issues.push(commandReceiptIssue('undo', 'Workbook command receipt noop status must not include undo metadata'))
+  }
+  if (changedRangesLength !== null && changedRangesLength > 0) {
+    issues.push(commandReceiptIssue('changedRanges', 'Workbook command receipt noop status must not include changed ranges'))
+  }
+  if (errors !== undefined) {
+    issues.push(commandReceiptIssue('errors', 'Workbook command receipt noop status must not include errors'))
+  }
+}
+
 function normalizeReceiptUndo(value: unknown): WorkbookUndoRef | undefined {
   if (!isRecord(value)) {
     return undefined
@@ -592,6 +687,9 @@ export function checkWorkbookCommandReceipt(value: unknown): WorkbookCommandRece
   pushOptionalCommandReceiptStringIssue(issues, ownValue(value, 'message'), 'message', 'message')
   pushCommandReceiptInputIssue(issues, ownValue(value, 'metadata'), 'metadata', 'metadata')
   pushCommandReceiptErrorsIssues(issues, ownValue(value, 'errors'))
+  if (issues.length === 0) {
+    pushCommandReceiptStatusInvariantIssues(issues, value)
+  }
 
   if (issues.length > 0) {
     return {

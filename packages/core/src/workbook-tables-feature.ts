@@ -286,7 +286,6 @@ function applyTableOps(
       category: request.category ?? 'operation',
       previewOps: [],
       appliedOps: [],
-      changedRanges: details.changedRanges,
       proof: details.proof,
       message: details.message,
     }

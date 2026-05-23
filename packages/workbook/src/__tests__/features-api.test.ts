@@ -703,6 +703,120 @@ describe('@bilig/workbook feature api', () => {
     })
   })
 
+  it('rejects command receipts whose status contradicts their proof fields', () => {
+    expect(
+      checkWorkbookCommandReceipt({
+        status: 'applied',
+        featureId: 'tables',
+        commandId: 'tables.createFromSelection',
+        category: 'command',
+      }),
+    ).toEqual({
+      status: 'invalid',
+      issues: [
+        {
+          code: 'invalid_command_receipt',
+          path: 'appliedOps',
+          message: 'Workbook command receipt applied status must include applied ops, changed ranges, undo metadata, or proof',
+        },
+      ],
+    })
+
+    expect(
+      checkWorkbookCommandReceipt({
+        status: 'previewed',
+        featureId: 'tables',
+        commandId: 'tables.createFromSelection',
+        category: 'command',
+        previewOps: [],
+        appliedOps: [],
+      }),
+    ).toEqual({
+      status: 'invalid',
+      issues: [
+        {
+          code: 'invalid_command_receipt',
+          path: 'previewOps',
+          message: 'Workbook command receipt previewed status must include preview ops',
+        },
+        {
+          code: 'invalid_command_receipt',
+          path: 'appliedOps',
+          message: 'Workbook command receipt previewed status must not include applied ops',
+        },
+      ],
+    })
+
+    expect(
+      checkWorkbookCommandReceipt({
+        status: 'rejected',
+        featureId: 'tables',
+        commandId: 'tables.createFromSelection',
+        category: 'command',
+        appliedOps: [
+          {
+            kind: 'setCellValue',
+            sheetName: 'Sheet1',
+            address: 'A1',
+            value: 1,
+          },
+        ],
+        changedRanges: [{ sheetName: 'Sheet1', startAddress: 'A1', endAddress: 'A1' }],
+      }),
+    ).toEqual({
+      status: 'invalid',
+      issues: [
+        {
+          code: 'invalid_command_receipt',
+          path: 'errors',
+          message: 'Workbook command receipt rejected status must include a message or errors',
+        },
+        {
+          code: 'invalid_command_receipt',
+          path: 'appliedOps',
+          message: 'Workbook command receipt rejected status must not include applied ops',
+        },
+        {
+          code: 'invalid_command_receipt',
+          path: 'changedRanges',
+          message: 'Workbook command receipt rejected status must not include changed ranges',
+        },
+      ],
+    })
+
+    expect(
+      checkWorkbookCommandReceipt({
+        status: 'noop',
+        featureId: 'tables',
+        commandId: 'tables.createFromSelection',
+        category: 'command',
+        previewOps: [
+          {
+            kind: 'setCellValue',
+            sheetName: 'Sheet1',
+            address: 'A1',
+            value: 1,
+          },
+        ],
+        changedRanges: [{ sheetName: 'Sheet1', startAddress: 'A1', endAddress: 'A1' }],
+      }),
+    ).toEqual({
+      status: 'invalid',
+      issues: [
+        {
+          code: 'invalid_command_receipt',
+          path: 'previewOps',
+          message: 'Workbook command receipt noop status must not include preview ops',
+        },
+        {
+          code: 'invalid_command_receipt',
+          path: 'changedRanges',
+          message: 'Workbook command receipt noop status must not include changed ranges',
+        },
+      ],
+    })
+  })
+
   it('rejects accessor-backed command receipt error arrays without invoking getters', () => {
     let getterInvoked = false
 
