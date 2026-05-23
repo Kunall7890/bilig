@@ -1392,6 +1392,12 @@ describe('excel import', () => {
               legendPosition: 'right',
               rows: 12,
               cols: 6,
+              anchor: {
+                kind: 'twoCell',
+                editAs: 'twoCell',
+                from: { row: 0, col: 4, rowOffset: 0, colOffset: 0 },
+                to: { row: 12, col: 10, rowOffset: 0, colOffset: 0 },
+              },
             },
           ],
           pivots: [
