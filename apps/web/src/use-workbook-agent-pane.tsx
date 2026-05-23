@@ -45,6 +45,7 @@ import {
   resolveWorkbookAgentReviewOwnerUserId,
   resolvePrimaryWorkbookAgentReviewItem,
 } from './workbook-agent-review-state.js'
+import { mergeWorkbookAgentWorkflowRuns } from './workbook-agent-workflow-run-merge.js'
 import {
   formatWorkbookAgentContextLabel,
   normalizeWorkbookAgentErrorMessage,
@@ -246,14 +247,10 @@ export function useWorkbookAgentPane(input: {
     return [...merged.values()].toSorted((left, right) => right.updatedAtUnixMs - left.updatedAtUnixMs)
   }, [fetchedThreadSummaries, zeroThreadSummaries])
   const workflowRuns = useMemo<readonly WorkbookAgentWorkflowRun[]>(() => {
-    const merged = new Map<string, WorkbookAgentWorkflowRun>()
-    for (const run of snapshot?.workflowRuns ?? []) {
-      merged.set(run.runId, run)
-    }
-    for (const run of zeroWorkflowRuns) {
-      merged.set(run.runId, run)
-    }
-    return [...merged.values()].toSorted((left, right) => right.updatedAtUnixMs - left.updatedAtUnixMs)
+    return mergeWorkbookAgentWorkflowRuns({
+      snapshotRuns: snapshot?.workflowRuns ?? [],
+      zeroRuns: zeroWorkflowRuns,
+    })
   }, [snapshot?.workflowRuns, zeroWorkflowRuns])
   const activeThreadSummary = useMemo(
     () =>
