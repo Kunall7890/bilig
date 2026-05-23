@@ -17,7 +17,12 @@ export function workbookSnapCssPixel(value: number, dpr = 1): number {
 }
 
 export function workbookDisplayFontCssPx(fontSizeCssPx: number, dpr = 1): number {
-  return Math.max(1, workbookSnapCssPixel(fontSizeCssPx, dpr))
+  // Preserve the workbook-authored glyph size; DPR snapping belongs to layout boxes and anchors.
+  void dpr
+  const resolvedFontSize = Number.isFinite(fontSizeCssPx)
+    ? Math.max(1, fontSizeCssPx)
+    : workbookFontPointSizeToCssPx(WORKBOOK_DEFAULT_FONT_SIZE)
+  return Number(resolvedFontSize.toFixed(4))
 }
 
 export function workbookDisplayFontPointSizeToCssPx(pointSize: number, dpr = 1): number {

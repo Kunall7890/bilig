@@ -197,7 +197,7 @@ function snapCssViewportPixel(value: number, dpr: number, viewportOffset: Native
   return snapCssPixel(value + offset, dpr) - offset
 }
 
-export function snapNativeTextDisplayFontSizeV3(fontSize: number, dpr = 1): number {
+export function resolveNativeTextDisplayFontSizeV3(fontSize: number, dpr = 1): number {
   return workbookDisplayFontCssPx(fontSize, dpr)
 }
 
@@ -418,7 +418,7 @@ export function resolveNativeTextRunInnerStyleV3(input: {
   const clipY = input.run.clipY ?? input.run.y
   const visibleClip = input.visibleClip ?? null
   const fontStyle = resolveNativeTextRunFontStyleV3(input.run)
-  const displayFontSize = snapNativeTextDisplayFontSizeV3(fontStyle.fontSize, dpr)
+  const displayFontSize = resolveNativeTextDisplayFontSizeV3(fontStyle.fontSize, dpr)
   const lineBox = resolveNativeTextLineBoxV3({ dpr, run: input.run })
   const baseTop = visibleClip?.innerTop ?? input.run.y - clipY
   const baseLeft = visibleClip?.innerLeft ?? input.run.x - clipX

@@ -20,7 +20,7 @@ import {
   waitForWorkbookReady,
 } from './web-shell-helpers.js'
 
-const DEFAULT_WORKBOOK_CSS_FONT_SIZE = '13px'
+const DEFAULT_WORKBOOK_CSS_FONT_SIZE = '13.3333px'
 
 test.beforeEach(async ({ page }) => {
   await installTypeGpuCellReadbackHarness(page)
@@ -217,7 +217,7 @@ test('@browser-ci web app keeps dense accounting-sheet text payloads complete in
     gridFontFamilyStartsWithArial: true,
     gridFontSize: DEFAULT_WORKBOOK_CSS_FONT_SIZE,
     nativeTextFontFamilyStartsWithArial: true,
-    nativeTextFontSizeIsDevicePixelAligned: true,
+    nativeTextFontSizeMatchesWorkbookPointSize: true,
     nativeTextGlyphAnchorXPixelAligned: true,
     nativeTextViewportXPixelAligned: true,
     nativeTextViewportPixelAligned: true,
@@ -1117,7 +1117,7 @@ function readNativeTextQualityState(page: Page): () => Promise<{
   readonly gridFontSize: string | null
   readonly nativeTextFontFamilyStartsWithArial: boolean
   readonly nativeTextFontSize: string | null
-  readonly nativeTextFontSizeIsDevicePixelAligned: boolean
+  readonly nativeTextFontSizeMatchesWorkbookPointSize: boolean
   readonly nativeTextGlyphAnchorXPixelAligned: boolean
   readonly nativeTextViewportXPixelAligned: boolean
   readonly nativeTextViewportPixelAligned: boolean
@@ -1151,9 +1151,7 @@ function readNativeTextQualityState(page: Page): () => Promise<{
         gridFontSize: gridStyle?.fontSize ?? null,
         nativeTextFontFamilyStartsWithArial: nativeTextStyle?.fontFamily.startsWith('Arial') ?? false,
         nativeTextFontSize: nativeTextStyle?.fontSize ?? null,
-        nativeTextFontSizeIsDevicePixelAligned:
-          Number.isFinite(nativeFontSize) &&
-          Math.abs(nativeFontSize * devicePixelRatio - Math.round(nativeFontSize * devicePixelRatio)) < 0.05,
+        nativeTextFontSizeMatchesWorkbookPointSize: Number.isFinite(nativeFontSize) && Math.abs(nativeFontSize - 13.3333) < 0.05,
         nativeTextGlyphAnchorXPixelAligned:
           Number.isFinite(glyphAnchorX) && Math.abs(glyphAnchorX * devicePixelRatio - Math.round(glyphAnchorX * devicePixelRatio)) < 0.05,
         nativeTextViewportXPixelAligned:
