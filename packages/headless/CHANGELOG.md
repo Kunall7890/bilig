@@ -4,6 +4,20 @@ All notable changes to `@bilig/headless` will be documented in this file.
 
 This package is released as part of the aligned bilig library package set.
 
+## 0.68.0
+
+- Release type: minor
+- Previous libraries tag: libraries-v0.67.15
+- Manual override: no
+
+## Features
+- feat(workbook): add command bundle validator (044c0177)
+
+## Fixes
+- perf(core): reuse prefix aggregate templates (43253308)
+- fix(workbook): preserve control artifacts (cbec564a)
+- fix(workbook): preserve imported package metadata (3862603f)
+
 ## 0.67.15
 
 - Release type: patch
