@@ -222,7 +222,7 @@ test('@browser-ci web app keeps dense accounting-sheet text payloads complete in
     nativeTextViewportXPixelAligned: true,
     nativeTextViewportPixelAligned: true,
     nativeTextRendering: 'auto',
-    nativeTextSmoothing: 'antialiased',
+    nativeTextSmoothing: 'auto',
   })
 
   const selectedCellTextPixels = await pollDarkInteriorPixelsInCell(page, 1, 33, (pixels) => pixels > 8)

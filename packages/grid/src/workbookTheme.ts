@@ -20,15 +20,11 @@ export function workbookSnapTextCssPixel(value: number): number {
   return Math.max(1, Math.round(Number.isFinite(value) ? value : workbookFontPointSizeToCssPx(WORKBOOK_DEFAULT_FONT_SIZE)))
 }
 
-function workbookRetinaTextCssPixel(value: number): number {
-  return Math.max(1, Number((Number.isFinite(value) ? value : workbookFontPointSizeToCssPx(WORKBOOK_DEFAULT_FONT_SIZE)).toFixed(4)))
-}
-
-export function workbookDisplayFontCssPx(fontSizeCssPx: number, dpr = 1): number {
+export function workbookDisplayFontCssPx(fontSizeCssPx: number, _dpr = 1): number {
   const resolvedFontSize = Number.isFinite(fontSizeCssPx)
     ? Math.max(1, fontSizeCssPx)
     : workbookFontPointSizeToCssPx(WORKBOOK_DEFAULT_FONT_SIZE)
-  return dpr >= 2 ? workbookRetinaTextCssPixel(resolvedFontSize) : workbookSnapTextCssPixel(resolvedFontSize)
+  return workbookSnapTextCssPixel(resolvedFontSize)
 }
 
 export function workbookDisplayFontPointSizeToCssPx(pointSize: number, dpr = 1): number {

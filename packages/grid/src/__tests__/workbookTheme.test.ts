@@ -39,7 +39,7 @@ describe('workbookTheme', () => {
     expect(workbookFontPointSizeToCssPx(15)).toBe(20)
   })
 
-  test('keeps workbook point sizes semantic while snapping low-DPI browser text to whole CSS pixels', () => {
+  test('keeps workbook point sizes semantic while snapping browser text to whole CSS pixels', () => {
     expect(workbookSnapCssPixel(13.3333, 1)).toBe(13)
     expect(workbookSnapCssPixel(13.3333, 2)).toBe(13.5)
     expect(workbookSnapCssPixel(13.3333, 3)).toBe(13.3333)
@@ -48,11 +48,11 @@ describe('workbookTheme', () => {
     expect(workbookDisplayFontCssPx(13.3333)).toBe(13)
     expect(workbookDisplayFontCssPx(13.3333, 1.25)).toBe(13)
     expect(workbookDisplayFontCssPx(13.3333, 1.5)).toBe(13)
-    expect(workbookDisplayFontCssPx(13.3333, 2)).toBe(13.3333)
-    expect(workbookDisplayFontCssPx(13.3333, 3)).toBe(13.3333)
+    expect(workbookDisplayFontCssPx(13.3333, 2)).toBe(13)
+    expect(workbookDisplayFontCssPx(13.3333, 3)).toBe(13)
     expect(workbookDisplayFontCssPx(14.6667)).toBe(15)
     expect(workbookDisplayFontPointSizeToCssPx(10)).toBe(13)
-    expect(workbookDisplayFontPointSizeToCssPx(10, 2)).toBe(13.3333)
+    expect(workbookDisplayFontPointSizeToCssPx(10, 2)).toBe(13)
     expect(workbookDisplayFontPointSizeToCssPx(11)).toBe(15)
     expect(workbookDisplayLineHeightCssPx(13.3333)).toBe(16)
     expect(workbookDisplayLineHeightCssPx(13.3333, 2)).toBe(16)

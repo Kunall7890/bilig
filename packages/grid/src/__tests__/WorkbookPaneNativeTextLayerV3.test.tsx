@@ -205,7 +205,7 @@ describe('WorkbookPaneNativeTextLayerV3', () => {
       display: 'block',
       fontFamily: 'Arial, sans-serif',
       fontFeatureSettings: 'normal',
-      fontOpticalSizing: 'none',
+      fontOpticalSizing: 'auto',
       fontSize: 15,
       fontSynthesis: 'none',
       fontStyle: 'normal',
@@ -214,21 +214,19 @@ describe('WorkbookPaneNativeTextLayerV3', () => {
       height: 18,
       letterSpacing: 0,
       lineHeight: '18px',
-      MozOsxFontSmoothing: 'grayscale',
       textRendering: 'auto',
       textDecorationLine: 'underline',
       textAlign: 'right',
       top: -2,
-      WebkitFontSmoothing: 'antialiased',
       whiteSpace: 'pre',
     })
   })
 
-  test('uses semantic point sizing on high-DPI displays while snapping low-DPI glyphs', () => {
+  test('snaps spreadsheet point sizing to crisp browser display pixels at every DPR', () => {
     expect(resolveNativeTextDisplayFontSizeV3(13.3333)).toBe(13)
     expect(resolveNativeTextDisplayFontSizeV3(13.3333, 1.25)).toBe(13)
     expect(resolveNativeTextDisplayFontSizeV3(13.3333, 1.5)).toBe(13)
-    expect(resolveNativeTextDisplayFontSizeV3(13.3333, 2)).toBe(13.3333)
+    expect(resolveNativeTextDisplayFontSizeV3(13.3333, 2)).toBe(13)
     expect(resolveNativeTextDisplayFontSizeV3(14.6667)).toBe(15)
 
     const defaultPointSizeRun = createRun({
@@ -242,7 +240,7 @@ describe('WorkbookPaneNativeTextLayerV3', () => {
       top: -1,
     })
     expect(resolveNativeTextRunInnerStyleV3({ dpr: 2, run: defaultPointSizeRun })).toMatchObject({
-      fontSize: 13.3333,
+      fontSize: 13,
       lineHeight: '16px',
       top: -1,
     })
