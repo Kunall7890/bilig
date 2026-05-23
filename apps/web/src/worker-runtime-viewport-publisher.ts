@@ -77,11 +77,13 @@ export class WorkerViewportPatchPublisher {
       if (!this.options.hasProjectionEngine()) {
         return () => {}
       }
-      listener(
-        encodeViewportPatch(
-          this.options.buildPatch(state, null, this.options.getCurrentMetrics(), this.options.getAuthoritativeRevision(), null),
-        ),
-      )
+      if (this.hasViewportSheet(state)) {
+        listener(
+          encodeViewportPatch(
+            this.options.buildPatch(state, null, this.options.getCurrentMetrics(), this.options.getAuthoritativeRevision(), null),
+          ),
+        )
+      }
     }
     this.viewportSubscriptions.add(state)
     this.addViewportSubscription(state)
@@ -120,6 +122,9 @@ export class WorkerViewportPatchPublisher {
     const metrics = input.metrics ?? this.options.getCurrentMetrics()
     const impactedSheets = input.impactsBySheet === null ? null : new Set(input.impactsBySheet.keys())
     for (const subscription of this.getViewportSubscriptionsForEvent(input.event, impactedSheets)) {
+      if (!this.hasViewportSheet(subscription)) {
+        continue
+      }
       const sheetImpact = input.impactsBySheet?.get(subscription.subscription.sheetName) ?? null
       if (input.event !== null && !viewportPatchMayBeImpacted(subscription.subscription, input.event, sheetImpact, impactedSheets)) {
         continue
@@ -139,6 +144,13 @@ export class WorkerViewportPatchPublisher {
       }
       subscription.listener(encodeViewportPatch(patch))
     }
+  }
+
+  private hasViewportSheet(state: ViewportSubscriptionState): boolean {
+    if (!this.options.hasProjectionEngine()) {
+      return false
+    }
+    return this.options.getProjectionEngine().workbook.getSheet(state.subscription.sheetName) !== undefined
   }
 
   private addViewportSubscription(state: ViewportSubscriptionState): void {
