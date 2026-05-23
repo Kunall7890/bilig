@@ -4,6 +4,16 @@ All notable changes to `@bilig/headless` will be documented in this file.
 
 This package is released as part of the aligned bilig library package set.
 
+## 0.67.1
+
+- Release type: patch
+- Previous libraries tag: libraries-v0.67.0
+- Manual override: no
+
+## Fixes
+- fix(workbook): require own transport payload fields (2b300cad)
+- fix(workbook): require own feature payload fields (d5e94db0)
+
 ## 0.67.0
 
 - Release type: minor
