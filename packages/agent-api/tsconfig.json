@@ -8,7 +8,8 @@
       "@bilig/contracts": ["../contracts/src/index.ts"],
       "@bilig/core": ["../core/src/index.ts"],
       "@bilig/formula": ["../formula/src/index.ts"],
-      "@bilig/protocol": ["../protocol/src/index.ts"]
+      "@bilig/protocol": ["../protocol/src/index.ts"],
+      "@bilig/workbook": ["../workbook/src/index.ts"]
     }
   },
   "references": [
@@ -26,6 +27,9 @@
     },
     {
       "path": "../protocol"
+    },
+    {
+      "path": "../workbook"
     }
   ],
   "include": ["src/**/*"],

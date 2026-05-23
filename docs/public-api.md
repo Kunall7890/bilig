@@ -203,6 +203,11 @@ and UI contributions. The public package still stays data-only.
 Feature command handoff does not move execution into `@bilig/workbook`. The
 runtime owns command semantics. The package only normalizes the manifest,
 validates transported requests and bundles, and describes receipt evidence.
+The current `@bilig/agent-api` workbook review flow converts its app-specific
+`WorkbookAgentCommandBundle` into this generic `WorkbookCommandBundle` before
+preview and before authoritative apply. That keeps the rich app command set
+outside the public package while forcing the runtime handoff through
+revision-bound, idempotent, destructive, range-normalized data.
 
 ### Escape hatches
 

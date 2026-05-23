@@ -184,6 +184,42 @@ describe('workbook agent preview', () => {
     )
   })
 
+  it('validates the generic workbook command handoff before preview execution', async () => {
+    const bundle: WorkbookAgentCommandBundle = {
+      id: 'bundle-invalid-range',
+      documentId: 'doc-1',
+      threadId: 'thr-1',
+      turnId: 'turn-1',
+      goalText: 'Clear a range',
+      summary: 'Clear a range',
+      scope: 'sheet',
+      riskClass: 'medium',
+      baseRevision: 1,
+      createdAtUnixMs: 1,
+      context: null,
+      commands: [
+        {
+          kind: 'clearRange',
+          range: {
+            sheetName: 'Sheet1',
+            startAddress: 'not-a-cell',
+            endAddress: 'A1',
+          },
+        },
+      ],
+      affectedRanges: [],
+      estimatedAffectedCells: null,
+    }
+
+    await expect(
+      buildWorkbookAgentPreview({
+        snapshot: await createSnapshot(),
+        replicaId: 'preview',
+        bundle,
+      }),
+    ).rejects.toThrow()
+  })
+
   it('adds semantic table targets to object-command previews without mutating the source snapshot', async () => {
     const snapshot = await createSnapshot()
     const preview = await buildWorkbookAgentPreview({

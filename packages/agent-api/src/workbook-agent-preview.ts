@@ -9,6 +9,7 @@ import {
   type WorkbookAgentPreviewSemanticTarget,
   type WorkbookAgentPreviewSummary,
 } from './workbook-agent-bundles.js'
+import { toWorkbookCommandBundle } from './workbook-agent-command-handoff.js'
 import { formatAddress, parseCellAddress } from '@bilig/formula'
 
 const MAX_PREVIEW_DIFFS = 64
@@ -224,6 +225,7 @@ export async function buildWorkbookAgentPreview(input: {
   if (!isWorkbookAgentCommandBundle(input.bundle)) {
     throw new Error('Invalid workbook agent command bundle')
   }
+  toWorkbookCommandBundle(input.bundle)
   const previewEngine = new SpreadsheetEngine({
     workbookName: input.snapshot.workbook.name,
     replicaId: `${input.replicaId}:agent-preview`,

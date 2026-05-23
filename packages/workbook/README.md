@@ -329,6 +329,9 @@ and ops must say `destructive: true`, so broad edits are never implied by a
 generic payload. `scope.maxTouchedCells` lets a caller reject oversized edits
 before execution. The validator returns a `WorkbookCommandResult` with normalized
 touched ranges and touched-cell count without importing `@bilig/core`.
+`@bilig/agent-api` uses this same public handoff to validate its richer
+app-owned `WorkbookAgentCommandBundle` before preview and authoritative apply,
+without making `@bilig/workbook` depend on agent runtime code.
 
 Use `checkWorkbookCommandReceipt(data)` before trusting runtime command evidence.
 It returns the same boring `{ status, issues }` shape for receipt fields such as

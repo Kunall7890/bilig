@@ -10,6 +10,7 @@ import {
 import {
   areWorkbookAgentPreviewSummariesEqual,
   buildWorkbookAgentPreview,
+  toWorkbookCommandBundle,
   type WorkbookAgentCommandBundle,
   type WorkbookAgentExecutionRecord,
   type WorkbookAgentPreviewSummary,
@@ -311,7 +312,8 @@ class EnabledZeroSyncService implements ZeroSyncService {
           await acquireWorkbookMutationLock(client, documentId)
           const transactionRuntimeStore = createWorkbookRuntimeStoreConnection(client, createZeroDbProvider(client))
           const state = await this.runtimeManager.loadRuntime(transactionRuntimeStore, documentId)
-          if (state.headRevision !== bundle.baseRevision) {
+          const commandBundle = assertWorkbookCommandBundleHandoff(bundle)
+          if (state.headRevision !== commandBundle.targetRevision) {
             throw createWorkbookAgentServiceError({
               code: 'WORKBOOK_AGENT_PREVIEW_STALE',
               message: 'Workbook changed while the change set was being prepared. Run the request again to prepare a fresh change set.',
@@ -491,6 +493,19 @@ function resolveOwnerUserId(state: { ownerUserId: string }, session?: SessionIde
     return state.ownerUserId
   }
   return session.userID
+}
+
+function assertWorkbookCommandBundleHandoff(bundle: WorkbookAgentCommandBundle) {
+  try {
+    return toWorkbookCommandBundle(bundle)
+  } catch (error) {
+    throw createWorkbookAgentServiceError({
+      code: 'WORKBOOK_AGENT_INVALID_COMMAND_BUNDLE',
+      message: error instanceof Error ? error.message : String(error),
+      statusCode: 400,
+      retryable: false,
+    })
+  }
 }
 
 export function createZeroSyncService(): ZeroSyncService {

@@ -98,6 +98,8 @@ flowchart LR
   - authoritative write path
   - recalc/materialization
   - agent APIs
+  - authoritative agent apply validates the existing app command bundle through
+    the generic `@bilig/workbook` command-bundle handoff before mutation
 
 ## Removed topology
 
@@ -118,6 +120,8 @@ The following are not current architecture anymore:
 - `@bilig/workbook` plans are inspectable data before runtime execution
 - `@bilig/workbook` command bundles are revision-bound, idempotent, ordered,
   range-scoped, and explicitly destructive before runtime execution
+- app-owned agent command bundles must pass through the generic
+  `@bilig/workbook` command-bundle validator before preview/apply execution
 - `@bilig/workbook` results must expose proof for runtime apply and passed
   checks, preserve changed/undo evidence after post-apply failures, or preserve
   the unverified state instead of hiding it behind a done status

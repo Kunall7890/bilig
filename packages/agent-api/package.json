@@ -44,7 +44,8 @@
     "@bilig/contracts": "workspace:*",
     "@bilig/core": "workspace:*",
     "@bilig/formula": "workspace:*",
-    "@bilig/protocol": "workspace:*"
+    "@bilig/protocol": "workspace:*",
+    "@bilig/workbook": "workspace:*"
   },
   "engines": {
     "node": ">=24.0.0"
