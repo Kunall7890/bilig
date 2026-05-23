@@ -188,14 +188,14 @@ describe('WorkbookPaneNativeTextLayerV3', () => {
       height: 18,
       letterSpacing: 0,
       lineHeight: '18px',
+      MozOsxFontSmoothing: 'grayscale',
+      textRendering: 'geometricPrecision',
       textDecorationLine: 'underline',
       textAlign: 'right',
       top: -2,
+      WebkitFontSmoothing: 'antialiased',
       whiteSpace: 'pre',
     })
-    expect(style).not.toHaveProperty('MozOsxFontSmoothing')
-    expect(style).not.toHaveProperty('textRendering')
-    expect(style).not.toHaveProperty('WebkitFontSmoothing')
   })
 
   test('keeps wrapped text top-aligned while non-wrapped text uses a snapped line box', () => {

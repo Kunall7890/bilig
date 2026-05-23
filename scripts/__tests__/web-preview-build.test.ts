@@ -90,4 +90,15 @@ describe('web preview build gate', () => {
     expect(html).toContain('<link rel="icon" href="/favicon.svg" type="image/svg+xml" />')
     expect(favicon).toContain('<svg')
   })
+
+  it('uses a native app-shell font stack without replacing spreadsheet grid fonts', () => {
+    const css = readFileSync(resolve(repoRoot, 'apps/web/src/index.css'), 'utf8')
+    const workbookTheme = readFileSync(resolve(repoRoot, 'packages/grid/src/workbookTheme.ts'), 'utf8')
+
+    expect(css).toContain('--font-sans:')
+    expect(css).toContain('-apple-system')
+    expect(css).toContain('BlinkMacSystemFont')
+    expect(css).toContain('text-rendering: optimizeLegibility')
+    expect(workbookTheme).toContain("export const WORKBOOK_FONT_SANS = 'Arial,")
+  })
 })

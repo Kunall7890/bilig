@@ -144,11 +144,14 @@ describe('CellEditorOverlay', () => {
     expect(textarea?.style.letterSpacing).toBe('0px')
     expect(textarea?.style.fontOpticalSizing).toBe('auto')
     expect(textarea?.style.fontSynthesis).toBe('none')
+    expect(textarea?.style.textRendering).toBe('geometricprecision')
     expect(textarea?.getAttribute('class')).toContain('py-[3px]')
     expect(textarea?.getAttribute('class')).toContain('leading-[1.2]')
-    expect(workbookNativeTextQualityStyle).not.toHaveProperty('textRendering')
-    expect(workbookNativeTextQualityStyle).not.toHaveProperty('WebkitFontSmoothing')
-    expect(workbookNativeTextQualityStyle).not.toHaveProperty('MozOsxFontSmoothing')
+    expect(workbookNativeTextQualityStyle).toMatchObject({
+      MozOsxFontSmoothing: 'grayscale',
+      textRendering: 'geometricPrecision',
+      WebkitFontSmoothing: 'antialiased',
+    })
 
     await act(async () => {
       root.unmount()

@@ -212,6 +212,14 @@ test('@browser-ci web app keeps dense accounting-sheet text payloads complete in
     })
     .toBeGreaterThan(40)
   await expect(page.getByTestId('grid-native-text-layer')).toHaveCount(1)
+  await expect.poll(readNativeTextQualityState(page), { message: 'workbook text must stay on the crisp native text path' }).toMatchObject({
+    appTextRendering: 'optimizelegibility',
+    gridFontFamilyStartsWithArial: true,
+    gridFontSize: DEFAULT_WORKBOOK_CSS_FONT_SIZE,
+    nativeTextFontFamilyStartsWithArial: true,
+    nativeTextRendering: 'geometricprecision',
+    nativeTextSmoothing: 'antialiased',
+  })
 
   const selectedCellTextPixels = await pollDarkInteriorPixelsInCell(page, 1, 33, (pixels) => pixels > 8)
   if (selectedCellTextPixels <= 8 && shouldAllowHeadlessWebGpuScreenshotGap()) {
@@ -1094,6 +1102,31 @@ function readNativeTextRunCount(page: Page): () => Promise<number> {
     await page.evaluate(() => {
       const nativeLayer = document.querySelector('[data-testid="grid-native-text-layer"]')
       return nativeLayer instanceof HTMLElement ? Number(nativeLayer.getAttribute('data-v3-native-text-run-count') ?? '0') : 0
+    })
+}
+
+function readNativeTextQualityState(page: Page): () => Promise<{
+  readonly appTextRendering: string
+  readonly gridFontFamilyStartsWithArial: boolean
+  readonly gridFontSize: string | null
+  readonly nativeTextFontFamilyStartsWithArial: boolean
+  readonly nativeTextRendering: string | null
+  readonly nativeTextSmoothing: string | null
+}> {
+  return async () =>
+    await page.evaluate(() => {
+      const grid = document.querySelector('[data-testid="sheet-grid"]')
+      const nativeTextRun = document.querySelector('[data-native-text-run] > div')
+      const gridStyle = grid instanceof HTMLElement ? getComputedStyle(grid) : null
+      const nativeTextStyle = nativeTextRun instanceof HTMLElement ? getComputedStyle(nativeTextRun) : null
+      return {
+        appTextRendering: getComputedStyle(document.body).textRendering,
+        gridFontFamilyStartsWithArial: gridStyle?.fontFamily.startsWith('Arial') ?? false,
+        gridFontSize: gridStyle?.fontSize ?? null,
+        nativeTextFontFamilyStartsWithArial: nativeTextStyle?.fontFamily.startsWith('Arial') ?? false,
+        nativeTextRendering: nativeTextStyle?.textRendering ?? null,
+        nativeTextSmoothing: nativeTextStyle?.webkitFontSmoothing ?? null,
+      }
     })
 }
 
