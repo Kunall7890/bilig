@@ -335,7 +335,15 @@ proof workflow:
 examples/n8n-workpaper-formula-readback/bilig-workpaper-formula-readback.n8n.json
 ```
 
-Or hit the hosted proof route directly:
+Run the same proof locally without cloning the repo:
+
+```sh
+npm exec --package @bilig/workpaper@latest -- bilig-n8n-formula-server --port 4321
+```
+
+Then point the self-hosted workflow at `http://host.docker.internal:4321` from
+n8n Docker, or `http://localhost:4321` when n8n and Bilig share the same host
+network. You can also hit the hosted proof route directly:
 
 ```sh
 curl -sS -X POST https://bilig.proompteng.ai/api/workpaper/n8n/forecast \
