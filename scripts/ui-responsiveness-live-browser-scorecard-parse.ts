@@ -18,6 +18,7 @@ import type {
   SameCorpusCaptureRunManifest,
   SameCorpusProductSourceWorkbookFingerprint,
   SameCorpusCaptureVerifiedCell,
+  SameCorpusScenarioCaseFields,
   UiResponsivenessLiveBrowserCase,
   UiResponsivenessLiveBrowserScorecard,
   UiResponsivenessLiveBrowserVendor,
@@ -196,6 +197,7 @@ function parseSameCorpusCase(value: unknown): UiResponsivenessSameCorpusCase {
   const postOperationFrameGuardrailPassed = optionalBooleanField(record, 'postOperationFrameGuardrailPassed')
   const scrollMovementGuardrailPassed = optionalBooleanField(record, 'scrollMovementGuardrailPassed')
   const sourceWorkbookFingerprintGuardrailPassed = optionalBooleanField(record, 'sourceWorkbookFingerprintGuardrailPassed')
+  const scenarioCaseFields = parseSameCorpusScenarioCaseFields(record)
   return {
     id: stringField(record, 'id'),
     corpusCaseId: stringField(record, 'corpusCaseId'),
@@ -214,6 +216,7 @@ function parseSameCorpusCase(value: unknown): UiResponsivenessSameCorpusCase {
     ...(biligToMicrosoftExcelWebScrollEventMeanRatio !== undefined ? { biligToMicrosoftExcelWebScrollEventMeanRatio } : {}),
     ...(biligToMicrosoftExcelWebScrollEventP95Ratio !== undefined ? { biligToMicrosoftExcelWebScrollEventP95Ratio } : {}),
     ...(tenXMeanAndP95Metric ? { tenXMeanAndP95Metric } : {}),
+    ...scenarioCaseFields,
     scenarioProof: parseSameCorpusScenarioProof(objectField(record, 'scenarioProof')),
     tenXMeanAndP95AgainstGoogleSheets: booleanField(record, 'tenXMeanAndP95AgainstGoogleSheets'),
     ...(Object.hasOwn(record, 'tenXMeanAndP95AgainstMicrosoftExcelWeb')
@@ -246,15 +249,38 @@ function parseSameCorpusCaptureCase(value: unknown): SameCorpusCaptureCase {
   const microsoftExcelWeb = Object.hasOwn(record, 'microsoftExcelWeb')
     ? parseSameCorpusCaptureMeasurement(objectField(record, 'microsoftExcelWeb'), 'microsoft-excel-web')
     : undefined
+  const scenarioCaseFields = parseSameCorpusScenarioCaseFields(record)
   return {
     id: stringField(record, 'id'),
     corpusCaseId: stringField(record, 'corpusCaseId'),
     materializedCells: numberField(record, 'materializedCells'),
     workload: parseSameCorpusWorkload(stringField(record, 'workload')),
+    ...scenarioCaseFields,
     scenarioProof: parseSameCorpusScenarioProof(objectField(record, 'scenarioProof')),
     bilig: parseSameCorpusCaptureMeasurement(objectField(record, 'bilig'), 'bilig'),
     googleSheets: parseSameCorpusCaptureMeasurement(objectField(record, 'googleSheets'), 'google-sheets'),
     ...(microsoftExcelWeb ? { microsoftExcelWeb } : {}),
+  }
+}
+
+function parseSameCorpusScenarioCaseFields(value: Record<string, unknown>): SameCorpusScenarioCaseFields {
+  const microsoftExcelWebMeanMs = optionalNumberField(value, 'microsoftExcelWebMeanMs')
+  const microsoftExcelWebP95Ms = optionalNumberField(value, 'microsoftExcelWebP95Ms')
+  const microsoftExcelWebMeanRatio = optionalNumberField(value, 'microsoftExcelWebMeanRatio')
+  const microsoftExcelWebP95Ratio = optionalNumberField(value, 'microsoftExcelWebP95Ratio')
+  return {
+    biligMeanMs: numberField(value, 'biligMeanMs'),
+    biligP95Ms: numberField(value, 'biligP95Ms'),
+    googleMeanMs: numberField(value, 'googleMeanMs'),
+    googleP95Ms: numberField(value, 'googleP95Ms'),
+    ...(microsoftExcelWebMeanMs !== undefined ? { microsoftExcelWebMeanMs } : {}),
+    ...(microsoftExcelWebP95Ms !== undefined ? { microsoftExcelWebP95Ms } : {}),
+    meanRatio: numberField(value, 'meanRatio'),
+    p95Ratio: numberField(value, 'p95Ratio'),
+    ...(microsoftExcelWebMeanRatio !== undefined ? { microsoftExcelWebMeanRatio } : {}),
+    ...(microsoftExcelWebP95Ratio !== undefined ? { microsoftExcelWebP95Ratio } : {}),
+    screenshotProof: parseSameCorpusScreenshotProof(objectField(value, 'screenshotProof')),
+    pixelGridProof: parseSameCorpusPixelGridProof(objectField(value, 'pixelGridProof')),
   }
 }
 

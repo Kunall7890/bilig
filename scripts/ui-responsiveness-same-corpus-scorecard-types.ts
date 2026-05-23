@@ -1,6 +1,11 @@
 import type { NumericSummary } from '../packages/benchmarks/src/stats.js'
 import type { SameCorpusCaptureCorpusFingerprint } from './ui-responsiveness-same-corpus-fingerprint.ts'
-import type { SameCorpusScenarioProof, sameCorpusUiRenderProofContractVersion } from './ui-responsiveness-same-corpus-proof.ts'
+import type {
+  SameCorpusPixelGridProof,
+  SameCorpusScenarioProof,
+  SameCorpusScreenshotProof,
+  sameCorpusUiRenderProofContractVersion,
+} from './ui-responsiveness-same-corpus-proof.ts'
 import type { UiResponsivenessSameCorpusWorkload } from './ui-responsiveness-same-corpus-workloads.ts'
 
 export type UiResponsivenessSameCorpusProduct = 'bilig' | 'google-sheets' | 'microsoft-excel-web'
@@ -16,7 +21,22 @@ export interface UiResponsivenessSameCorpusMeasurement {
   readonly limitations: string[]
 }
 
-export interface UiResponsivenessSameCorpusCase {
+export interface SameCorpusScenarioCaseFields {
+  readonly biligMeanMs: number
+  readonly biligP95Ms: number
+  readonly googleMeanMs: number
+  readonly googleP95Ms: number
+  readonly microsoftExcelWebMeanMs?: number
+  readonly microsoftExcelWebP95Ms?: number
+  readonly meanRatio: number
+  readonly p95Ratio: number
+  readonly microsoftExcelWebMeanRatio?: number
+  readonly microsoftExcelWebP95Ratio?: number
+  readonly screenshotProof: SameCorpusScreenshotProof
+  readonly pixelGridProof: SameCorpusPixelGridProof
+}
+
+export interface UiResponsivenessSameCorpusCase extends SameCorpusScenarioCaseFields {
   readonly id: string
   readonly corpusCaseId: string
   readonly materializedCells: number
@@ -111,7 +131,7 @@ export interface SameCorpusCaptureRunManifest {
   readonly invalidReasons: readonly string[]
 }
 
-export interface SameCorpusCaptureCase {
+export interface SameCorpusCaptureCase extends SameCorpusScenarioCaseFields {
   readonly id: string
   readonly corpusCaseId: string
   readonly materializedCells: number

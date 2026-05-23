@@ -15,6 +15,7 @@ import {
   type SameCorpusCaptureCorpusVerification,
   type SameCorpusCaptureMeasurement,
   type SameCorpusCaptureRunManifest,
+  type SameCorpusScenarioCaseFields,
   type SameCorpusProductSourceWorkbookFingerprint,
   type UiResponsivenessSameCorpusCase,
   type UiResponsivenessSameCorpusMeasurement,
@@ -42,6 +43,7 @@ export type {
   SameCorpusCaptureMeasurement,
   SameCorpusCaptureRunManifest,
   SameCorpusCaptureVerifiedCell,
+  SameCorpusScenarioCaseFields,
   SameCorpusProductSourceWorkbookFingerprint,
   UiResponsivenessSameCorpusCase,
   UiResponsivenessSameCorpusMeasurement,
@@ -85,6 +87,23 @@ export function buildSameCorpusProof(capture: SameCorpusCapture): UiResponsivene
   }
   validateSameCorpusProof(proof)
   return proof
+}
+
+export function sameCorpusScenarioCaseFields(proof: SameCorpusScenarioProof): SameCorpusScenarioCaseFields {
+  return {
+    biligMeanMs: proof.biligMeanMs,
+    biligP95Ms: proof.biligP95Ms,
+    googleMeanMs: proof.googleMeanMs,
+    googleP95Ms: proof.googleP95Ms,
+    ...(proof.microsoftExcelWebMeanMs !== undefined ? { microsoftExcelWebMeanMs: proof.microsoftExcelWebMeanMs } : {}),
+    ...(proof.microsoftExcelWebP95Ms !== undefined ? { microsoftExcelWebP95Ms: proof.microsoftExcelWebP95Ms } : {}),
+    meanRatio: proof.meanRatio,
+    p95Ratio: proof.p95Ratio,
+    ...(proof.microsoftExcelWebMeanRatio !== undefined ? { microsoftExcelWebMeanRatio: proof.microsoftExcelWebMeanRatio } : {}),
+    ...(proof.microsoftExcelWebP95Ratio !== undefined ? { microsoftExcelWebP95Ratio: proof.microsoftExcelWebP95Ratio } : {}),
+    screenshotProof: proof.screenshotProof,
+    pixelGridProof: proof.pixelGridProof,
+  }
 }
 
 export function validateSameCorpusProof(proof: UiResponsivenessSameCorpusProof): void {
@@ -455,6 +474,7 @@ function validateSameCorpusCapture(capture: SameCorpusCapture): void {
       buildSameCorpusMeasurement(entry.googleSheets),
       entry.microsoftExcelWeb ? buildSameCorpusMeasurement(entry.microsoftExcelWeb) : undefined,
     )
+    validateSameCorpusScenarioCaseFields(entry, 'capture')
   }
 }
 
@@ -485,6 +505,32 @@ function stableJsonValue(value: unknown): unknown {
     )
   }
   return value
+}
+
+function sameCorpusScenarioFieldsFromCase(entry: SameCorpusScenarioCaseFields): SameCorpusScenarioCaseFields {
+  return {
+    biligMeanMs: entry.biligMeanMs,
+    biligP95Ms: entry.biligP95Ms,
+    googleMeanMs: entry.googleMeanMs,
+    googleP95Ms: entry.googleP95Ms,
+    ...(entry.microsoftExcelWebMeanMs !== undefined ? { microsoftExcelWebMeanMs: entry.microsoftExcelWebMeanMs } : {}),
+    ...(entry.microsoftExcelWebP95Ms !== undefined ? { microsoftExcelWebP95Ms: entry.microsoftExcelWebP95Ms } : {}),
+    meanRatio: entry.meanRatio,
+    p95Ratio: entry.p95Ratio,
+    ...(entry.microsoftExcelWebMeanRatio !== undefined ? { microsoftExcelWebMeanRatio: entry.microsoftExcelWebMeanRatio } : {}),
+    ...(entry.microsoftExcelWebP95Ratio !== undefined ? { microsoftExcelWebP95Ratio: entry.microsoftExcelWebP95Ratio } : {}),
+    screenshotProof: entry.screenshotProof,
+    pixelGridProof: entry.pixelGridProof,
+  }
+}
+
+function validateSameCorpusScenarioCaseFields(
+  entry: SameCorpusScenarioCaseFields & { readonly id: string; readonly scenarioProof: SameCorpusScenarioProof },
+  label: 'capture' | 'scorecard',
+): void {
+  if (stableJsonString(sameCorpusScenarioFieldsFromCase(entry)) !== stableJsonString(sameCorpusScenarioCaseFields(entry.scenarioProof))) {
+    throw new Error(`UI responsiveness same-corpus ${label} scenario summary fields are stale: ${entry.id}`)
+  }
 }
 
 function buildSameCorpusCase(captureCase: SameCorpusCaptureCase): UiResponsivenessSameCorpusCase {
@@ -573,6 +619,7 @@ function buildSameCorpusCase(captureCase: SameCorpusCaptureCase): UiResponsivene
           scrollMovementGuardrailPassed,
         }
       : { tenXMeanAndP95Metric: 'operationResponseMs' as const }),
+    ...sameCorpusScenarioCaseFields(scenarioProof),
     scenarioProof,
     postOperationFrameGuardrailPassed,
     sourceWorkbookFingerprintGuardrailPassed,
@@ -721,6 +768,7 @@ function validateSameCorpusCase(entry: UiResponsivenessSameCorpusCase): void {
     throw new Error(`UI responsiveness same-corpus metric is stale: ${entry.id}`)
   }
   validateSameCorpusScenarioProof(entry.scenarioProof, entry.id, entry.bilig, entry.googleSheets, entry.microsoftExcelWeb)
+  validateSameCorpusScenarioCaseFields(entry, 'scorecard')
   const visualProofGuardrailPassed = entry.scenarioProof.screenshotProof.captured && entry.scenarioProof.pixelGridProof.captured
   const timingMetricPassedAgainstGoogleSheets = requiresScrollEventMetric
     ? scrollEventMetrics !== null &&

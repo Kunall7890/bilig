@@ -16,7 +16,7 @@ import {
   parseSaveStorageStateArgs,
   verifyXlsxCorpusFingerprint,
 } from '../capture-ui-responsiveness-same-corpus.ts'
-import { parseSameCorpusCapture } from '../gen-ui-responsiveness-live-browser-scorecard.ts'
+import { parseSameCorpusCapture, sameCorpusScenarioCaseFields } from '../gen-ui-responsiveness-live-browser-scorecard.ts'
 import { requiredUiResponsivenessSameCorpusWorkloads } from '../ui-responsiveness-same-corpus-workloads.ts'
 import {
   buildCaptureScenarioProof,
@@ -350,6 +350,7 @@ describe('same-corpus UI responsiveness capture CLI', () => {
           corpusCaseId: 'wide-mixed-250k',
           materializedCells: 250_000,
           workload: 'open-workbook',
+          ...sameCorpusScenarioCaseFields(scenarioProof),
           scenarioProof,
           bilig: sameCorpusCaptureMeasurement('bilig', 'bilig-benchmark-state'),
           googleSheets: sameCorpusCaptureMeasurement('google-sheets', 'google-sheets-xlsx-export'),
@@ -370,6 +371,16 @@ describe('same-corpus UI responsiveness capture CLI', () => {
     expect(capture.runManifest.invalidReasons).toContain(
       'missing required workloads: select-cell, edit-visible-cell, scroll-vertical, scroll-horizontal, jump-deep-row, formula-edit, fill-format-change, wide-sheet-navigation',
     )
+    expect(capture.cases[0]).toMatchObject({
+      biligMeanMs: scenarioProof.biligMeanMs,
+      biligP95Ms: scenarioProof.biligP95Ms,
+      googleMeanMs: scenarioProof.googleMeanMs,
+      googleP95Ms: scenarioProof.googleP95Ms,
+      meanRatio: scenarioProof.meanRatio,
+      p95Ratio: scenarioProof.p95Ratio,
+      screenshotProof: scenarioProof.screenshotProof,
+      pixelGridProof: scenarioProof.pixelGridProof,
+    })
     expect(parseSameCorpusCapture(capture).runManifest.captureRunSignature).toBe(capture.runManifest.captureRunSignature)
   })
 

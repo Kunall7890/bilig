@@ -14,7 +14,7 @@ import type {
 } from './gen-ui-responsiveness-live-browser-scorecard.ts'
 import type { CaptureArgs, PreflightArgs, SaveStorageStateArgs } from './ui-responsiveness-same-corpus-args.ts'
 import { defaultViewport } from './ui-responsiveness-same-corpus-args.ts'
-import { buildSameCorpusCaptureRunManifest } from './ui-responsiveness-same-corpus-scorecard-proof.ts'
+import { buildSameCorpusCaptureRunManifest, sameCorpusScenarioCaseFields } from './ui-responsiveness-same-corpus-scorecard-proof.ts'
 import {
   requiredUiResponsivenessSameCorpusWorkloads,
   uiSameCorpusWorkloadRequiresScrollEventEvidence,
@@ -133,13 +133,17 @@ export function buildSameCorpusCaptureArtifact(args: {
   readonly limitations?: readonly string[]
   readonly cases: readonly SameCorpusCaptureCase[]
 }): SameCorpusCapture {
+  const cases = args.cases.map((entry) => ({
+    ...entry,
+    ...sameCorpusScenarioCaseFields(entry.scenarioProof),
+  }))
   return {
     schemaVersion: 1,
     suite: 'ui-responsiveness-same-corpus-capture',
     sampleCount: args.sampleCount,
-    runManifest: buildSameCorpusCaptureRunManifest(args.cases, args.sampleCount),
+    runManifest: buildSameCorpusCaptureRunManifest(cases, args.sampleCount),
     limitations: [...(args.limitations ?? defaultSameCorpusCaptureLimitations())],
-    cases: [...args.cases],
+    cases,
   }
 }
 
@@ -178,6 +182,7 @@ async function captureSameCorpusWorkloadCases(
     corpusCaseId: args.corpusId,
     materializedCells: corpus.materializedCellCount,
     workload,
+    ...sameCorpusScenarioCaseFields(scenarioProof),
     scenarioProof,
     bilig,
     googleSheets,

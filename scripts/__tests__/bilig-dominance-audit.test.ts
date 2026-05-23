@@ -8,7 +8,13 @@ import type {
   UiResponsivenessSameCorpusProduct,
   UiResponsivenessSameCorpusProof,
 } from '../gen-ui-responsiveness-live-browser-scorecard.ts'
+import { sameCorpusScenarioCaseFields } from '../gen-ui-responsiveness-live-browser-scorecard.ts'
 import { buildBiligDominanceScorecard } from '../gen-bilig-dominance-scorecard.ts'
+import {
+  validateSameCorpusProductPixelGridProof,
+  type SameCorpusPixelGridProof,
+  type SameCorpusProductPixelGridProof,
+} from '../ui-responsiveness-same-corpus-proof.ts'
 import type { PublicWorkbookCorpusStatus } from '../public-workbook-corpus-status.ts'
 import { requiredUiResponsivenessSameCorpusWorkloads } from '../ui-responsiveness-same-corpus-workloads.ts'
 import { buildFixtureInput } from './bilig-dominance-scorecard.fixture.ts'
@@ -397,6 +403,7 @@ function legacyOperationOnlySameCorpusProof(): UiResponsivenessSameCorpusProof {
   const bilig = sameCorpusProofMeasurement('bilig', 'bilig-benchmark-state', [200, 200, 200])
   const googleSheets = sameCorpusProofMeasurement('google-sheets', 'google-sheets-xlsx-export', [100, 100, 100])
   const microsoftExcelWeb = sameCorpusProofMeasurement('microsoft-excel-web', 'microsoft-excel-web-source-xlsx', [100, 100, 100])
+  const scenarioProof = sameCorpusScenarioProof(200, 100)
 
   return {
     captured: true,
@@ -421,7 +428,8 @@ function legacyOperationOnlySameCorpusProof(): UiResponsivenessSameCorpusProof {
         biligToMicrosoftExcelWebMeanRatio: 2,
         biligToMicrosoftExcelWebP95Ratio: 2,
         tenXMeanAndP95Metric: 'operationResponseMs',
-        scenarioProof: sameCorpusScenarioProof(200, 100),
+        ...sameCorpusScenarioCaseFields(scenarioProof),
+        scenarioProof,
         tenXMeanAndP95AgainstGoogleSheets: false,
         tenXMeanAndP95AgainstMicrosoftExcelWeb: false,
         passed: false,
@@ -449,7 +457,7 @@ function sameCorpusScenarioProof(biligMs: number, googleMs: number) {
       artifactPaths: ['tmp/bilig-sample-1.png', 'tmp/google-sheets-sample-1.png', 'tmp/microsoft-excel-web-sample-1.png'],
       missingProducts: [],
     },
-    pixelGridProof: {
+    pixelGridProof: withProductPixelGridVerdicts({
       captured: true,
       requiredProducts: ['bilig', 'google-sheets'],
       products: [
@@ -479,7 +487,14 @@ function sameCorpusScenarioProof(biligMs: number, googleMs: number) {
         },
       ],
       missingProducts: [],
-    },
+    }),
+  }
+}
+
+function withProductPixelGridVerdicts(proof: Omit<SameCorpusPixelGridProof, 'productVerdicts'>): SameCorpusPixelGridProof {
+  return {
+    ...proof,
+    productVerdicts: proof.products.map((entry: SameCorpusProductPixelGridProof) => validateSameCorpusProductPixelGridProof(entry)),
   }
 }
 
