@@ -69,7 +69,7 @@ describe('@bilig/workbook run api', () => {
 
   it('plans, verifies, applies, reads back, and returns done for value checks', async () => {
     const model = valueModel()
-    const apply = vi.fn<WorkbookRunAdapter<{ output: ReturnType<typeof findRange> }>['apply']>((plan) => ({
+    const apply = vi.fn<Required<WorkbookRunAdapter<{ output: ReturnType<typeof findRange> }>>['apply']>((plan) => ({
       status: 'applied',
       previewOps: plan.ops,
       appliedOps: plan.ops,
@@ -266,23 +266,23 @@ describe('@bilig/workbook run api', () => {
       },
     })
 
+    const apply = vi.fn<Required<WorkbookRunAdapter>['apply']>(() => ({
+      status: 'applied',
+      undo: {
+        id: 'undo-1',
+        ops: [{ kind: 'setCellValue', sheetName: 'Sheet1', address: 'A1', value: 1 }],
+      },
+    }))
+
     const result = await runWorkbookAction(model, 'inspect', {
-      apply: () => ({
-        status: 'applied',
-        undo: {
-          id: 'undo-1',
-          ops: [{ kind: 'setCellValue', sheetName: 'Sheet1', address: 'A1', value: 1 }],
-        },
-      }),
+      apply,
       verifyChecks: (checks) => checks.map((checkResult) => ({ ...checkResult, status: 'passed' })),
     })
     const described = describeRunResult(result)
 
+    expect(apply).not.toHaveBeenCalled()
     expect(described).toEqual({
       status: 'done',
-      apply: {
-        matched: null,
-      },
       changed: [],
       checks: [
         {
@@ -298,18 +298,53 @@ describe('@bilig/workbook run api', () => {
           message: 'Inputs exists',
         },
       ],
-      undo: {
-        id: 'undo-1',
-        ops: [{ kind: 'setCellValue', sheetName: 'Sheet1', address: 'A1', value: 1 }],
+    })
+    expect(JSON.parse(JSON.stringify(described))).toEqual(described)
+  })
+
+  it('runs readback-only plans without requiring an apply adapter', async () => {
+    const model = defineModel({
+      name: 'run-readback-only-model',
+
+      find(workbook) {
+        return {
+          result: workbook.findRange({ sheetName: 'Sheet1', address: 'C2' }),
+        }
       },
-      unverified: [
+
+      actions: {
+        inspect({ refs, workbook }) {
+          workbook.check.valueEquals(refs.result, 12)
+        },
+      },
+    })
+    const read = vi.fn<Required<WorkbookRunAdapter<{ result: ReturnType<typeof findRange> }>>['read']>((targets) => [
+      {
+        target: first(targets),
+        value: 12,
+      },
+    ])
+
+    const result = await runWorkbookAction(model, 'inspect', { read })
+
+    expect(read).toHaveBeenCalledTimes(1)
+    expect(result).toMatchObject({
+      status: 'done',
+      changed: [],
+      checks: [
         {
-          kind: 'apply',
-          message: 'Adapter did not return both previewOps and appliedOps, so apply match is unverified',
+          status: 'passed',
+          kind: 'valueEquals',
+          target: expect.objectContaining({ label: 'Sheet1!C2' }),
+          message: 'Sheet1!C2 equals 12',
+          proof: {
+            source: 'readback',
+            value: 12,
+          },
         },
       ],
     })
-    expect(JSON.parse(JSON.stringify(described))).toEqual(described)
+    expect(result).not.toHaveProperty('apply')
   })
 
   it('passes formula readback checks with exact normalized formula text', async () => {
@@ -389,7 +424,7 @@ describe('@bilig/workbook run api', () => {
       },
     })
 
-    const apply = vi.fn<WorkbookRunAdapter<{ result: ReturnType<typeof findRange> }>['apply']>(applied)
+    const apply = vi.fn<Required<WorkbookRunAdapter<{ result: ReturnType<typeof findRange> }>>['apply']>(applied)
 
     const result = await runWorkbookAction(model, 'inspect', { apply })
 
@@ -720,7 +755,7 @@ describe('@bilig/workbook run api', () => {
 
   it('does not apply when action planning fails', async () => {
     const model = valueModel()
-    const apply = vi.fn<WorkbookRunAdapter['apply']>(() => ({ status: 'applied' }))
+    const apply = vi.fn<Required<WorkbookRunAdapter>['apply']>(() => ({ status: 'applied' }))
 
     const result = await runWorkbookAction(model, 'missing', { apply })
 
@@ -754,7 +789,7 @@ describe('@bilig/workbook run api', () => {
         },
       },
     })
-    const apply = vi.fn<WorkbookRunAdapter['apply']>(() => ({ status: 'applied' }))
+    const apply = vi.fn<Required<WorkbookRunAdapter>['apply']>(() => ({ status: 'applied' }))
 
     const result = await runWorkbookAction(model, 'calculate', { apply })
 
@@ -773,7 +808,7 @@ describe('@bilig/workbook run api', () => {
 
   it('does not apply when a plan contains already-proved checks', async () => {
     const target = findRange({ sheetName: 'Sheet1', address: 'C2' })
-    const apply = vi.fn<WorkbookRunAdapter['apply']>(() => ({ status: 'applied' }))
+    const apply = vi.fn<Required<WorkbookRunAdapter>['apply']>(() => ({ status: 'applied' }))
 
     const result = await runWorkbookPlan(
       {
@@ -984,7 +1019,7 @@ describe('@bilig/workbook run api', () => {
 
   it('fails before apply when expected readback requires a missing reader', async () => {
     const model = valueModel()
-    const apply = vi.fn<WorkbookRunAdapter<{ output: ReturnType<typeof findRange> }>['apply']>(applied)
+    const apply = vi.fn<Required<WorkbookRunAdapter<{ output: ReturnType<typeof findRange> }>>['apply']>(applied)
 
     const result = await runWorkbookAction(model, 'write', { apply })
 

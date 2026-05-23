@@ -112,6 +112,9 @@ When `previewOps` and `appliedOps` are both present, `runWorkbookPlan` reports
 whether runtime apply matched preview. When they are missing, the result reports
 an unverified apply fact. Agents that need fail-closed execution can call
 `runWorkbookPlan(plan, adapter, { requireApplyProof: true })`.
+Plans with no apply requirements skip mutation entirely: a readback-only or
+check-only model can run with only `read` or `verifyChecks`, and the result has
+no `apply` summary because nothing was supposed to mutate.
 Failed results include `changed` as a concrete answer, not an implied absence:
 `changed: []` means no runtime apply succeeded before the failure, while
 post-apply proof failures keep the planned change summaries and adapter-provided
@@ -414,12 +417,15 @@ issues. It accepts a live plan, transported plan data, or the output of
 `runWorkbookPlan(planOrData, adapter)` and
 `runWorkbookAction(model, actionName, adapter, input)` add a transport-neutral
 apply-and-prove loop on top of the same contracts. The adapter receives the full
-plan, or a hydrated transported plan with `refs: { refsUsed }`, applies it through whatever runtime the consumer owns, and may return
-`previewOps`, `appliedOps`, apply proof, undo metadata, and semantic readbacks
-for the expectation targets. `@bilig/workbook` compares preview ops to applied
-ops when both are present, compares readbacks against `valueEquals` and
-`formulaEquals` checks, and returns a boring `WorkbookRunResult`. Passed
-readback-backed checks include JSON-safe proof such as
+plan, or a hydrated transported plan with `refs: { refsUsed }`. When the
+requirements include an apply capability, the adapter applies it through
+whatever runtime the consumer owns and may return `previewOps`, `appliedOps`,
+apply proof, undo metadata, and semantic readbacks for the expectation targets.
+When the plan only requires readbacks or generic check proof, `@bilig/workbook`
+skips mutation and runs those proof steps directly. `@bilig/workbook` compares
+preview ops to applied ops when both are present, compares readbacks against
+`valueEquals` and `formulaEquals` checks, and returns a boring
+`WorkbookRunResult`. Passed readback-backed checks include JSON-safe proof such as
 `{ source: "readback", value }` or `{ source: "readback", formula }`, so the
 result says what the runtime actually read back. If static verification fails,
 the apply adapter is not called. If the adapter is missing a required method for

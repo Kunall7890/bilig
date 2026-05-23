@@ -5,7 +5,7 @@ import { planWorkbookAction, type WorkbookActionMap, type WorkbookActionPlan, ty
 import type { EngineOp } from './ops.js'
 import { hydratePlanData, isHydratedPlan, type WorkbookExecutablePlan, type WorkbookPlanDataRefs } from './plan-data.js'
 import { verifyWorkbookReadbacks, type WorkbookRunReadback } from './readback.js'
-import { checkRuntimeAdapter } from './requirements.js'
+import { checkRuntimeAdapter, type WorkbookRuntimeCapability } from './requirements.js'
 import {
   isWorkbookRunErrorCode,
   type WorkbookChangeSummary,
@@ -35,7 +35,7 @@ export interface WorkbookRunOptions {
 }
 
 export interface WorkbookRunAdapter<Refs = unknown> {
-  apply(plan: WorkbookActionPlan<Refs>): MaybePromise<WorkbookRunApplyResult>
+  apply?(plan: WorkbookActionPlan<Refs>): MaybePromise<WorkbookRunApplyResult>
   read?(targets: readonly WorkbookRef[], plan: WorkbookActionPlan<Refs>): MaybePromise<readonly WorkbookRunReadback[]>
   verifyChecks?(checks: readonly WorkbookCheckResult[], plan: WorkbookActionPlan<Refs>): MaybePromise<readonly WorkbookCheckResult[]>
 }
@@ -53,7 +53,7 @@ function runError(code: WorkbookRunErrorCode, message: string): WorkbookRunError
 
 function failedRun(args: {
   readonly errors: readonly WorkbookRunError[]
-  readonly apply?: WorkbookRunApplySummary
+  readonly apply?: WorkbookRunApplySummary | undefined
   readonly changed?: readonly WorkbookChangeSummary[]
   readonly checks: readonly WorkbookCheckResult[]
   readonly undo?: WorkbookUndoRef
@@ -322,6 +322,21 @@ function applyProofErrors(apply: WorkbookRunApplySummary, options: WorkbookRunOp
   return []
 }
 
+function needsApply(capabilities: readonly WorkbookRuntimeCapability[]): boolean {
+  return capabilities.some(
+    (capability) =>
+      capability === 'writeFormula' ||
+      capability === 'writeValue' ||
+      capability === 'format' ||
+      capability === 'clear' ||
+      capability === 'applyOp',
+  )
+}
+
+function changedAfterOptionalApply(plan: WorkbookActionPlan, result: WorkbookRunApplyResult | undefined): readonly WorkbookChangeSummary[] {
+  return result === undefined ? [] : changedAfterApply(plan, result)
+}
+
 type CheckValidation =
   | {
       readonly status: 'valid'
@@ -474,38 +489,43 @@ async function runLiveWorkbookPlan<Refs>(
     })
   }
 
-  let applyResult: unknown
-  try {
-    applyResult = await adapter.apply(plan)
-  } catch (error) {
-    return failedRun({
-      errors: [runError('apply_failed', errorMessage(error))],
-      checks: plan.checks,
-    })
-  }
+  let validApplyResult: WorkbookRunApplyResult | undefined
+  let apply: WorkbookRunApplySummary | undefined
+  let unverified: readonly WorkbookRunUnverified[] = []
+  if (needsApply(adapterCheck.requiredCapabilities)) {
+    let applyResult: unknown
+    try {
+      applyResult = await adapter.apply?.(plan)
+    } catch (error) {
+      return failedRun({
+        errors: [runError('apply_failed', errorMessage(error))],
+        checks: plan.checks,
+      })
+    }
 
-  const applyValidation = validateApplyResult(plan, applyResult)
-  if (applyValidation.status === 'invalid') {
-    return applyValidation.result
-  }
-  const validApplyResult = applyValidation.result
+    const applyValidation = validateApplyResult(plan, applyResult)
+    if (applyValidation.status === 'invalid') {
+      return applyValidation.result
+    }
+    validApplyResult = applyValidation.result
 
-  if (validApplyResult.status === 'failed') {
-    return failedApplyResult(plan, validApplyResult)
-  }
+    if (validApplyResult.status === 'failed') {
+      return failedApplyResult(plan, validApplyResult)
+    }
 
-  const apply = describeApply(validApplyResult)
-  const unverified = applyUnverified(apply)
-  const applyErrors = applyProofErrors(apply, options)
-  if (applyErrors.length > 0) {
-    return failedRun({
-      errors: applyErrors,
-      apply,
-      changed: changedAfterApply(plan, validApplyResult),
-      checks: plan.checks,
-      ...(validApplyResult.undo !== undefined ? { undo: validApplyResult.undo } : {}),
-      unverified,
-    })
+    apply = describeApply(validApplyResult)
+    unverified = applyUnverified(apply)
+    const applyErrors = applyProofErrors(apply, options)
+    if (applyErrors.length > 0) {
+      return failedRun({
+        errors: applyErrors,
+        apply,
+        changed: changedAfterApply(plan, validApplyResult),
+        checks: plan.checks,
+        ...(validApplyResult.undo !== undefined ? { undo: validApplyResult.undo } : {}),
+        unverified,
+      })
+    }
   }
 
   let checks = plan.checks
@@ -516,9 +536,9 @@ async function runLiveWorkbookPlan<Refs>(
       return failedRun({
         errors: readbackVerification.issues.map((issue) => runError(issue.code, issue.message)),
         apply,
-        changed: changedAfterApply(plan, validApplyResult),
+        changed: changedAfterOptionalApply(plan, validApplyResult),
         checks: readbackVerification.checks,
-        ...(validApplyResult.undo !== undefined ? { undo: validApplyResult.undo } : {}),
+        ...(validApplyResult?.undo !== undefined ? { undo: validApplyResult.undo } : {}),
         unverified,
       })
     }
@@ -530,9 +550,9 @@ async function runLiveWorkbookPlan<Refs>(
       return failedRun({
         errors: [runError('readback_failed', errorMessage(error))],
         apply,
-        changed: changedAfterApply(plan, validApplyResult),
+        changed: changedAfterOptionalApply(plan, validApplyResult),
         checks,
-        ...(validApplyResult.undo !== undefined ? { undo: validApplyResult.undo } : {}),
+        ...(validApplyResult?.undo !== undefined ? { undo: validApplyResult.undo } : {}),
         unverified,
       })
     }
@@ -543,9 +563,9 @@ async function runLiveWorkbookPlan<Refs>(
       return failedRun({
         errors: readbackVerification.issues.map((issue) => runError(issue.code, issue.message)),
         apply,
-        changed: changedAfterApply(plan, validApplyResult),
+        changed: changedAfterOptionalApply(plan, validApplyResult),
         checks,
-        ...(validApplyResult.undo !== undefined ? { undo: validApplyResult.undo } : {}),
+        ...(validApplyResult?.undo !== undefined ? { undo: validApplyResult.undo } : {}),
         unverified,
       })
     }
@@ -557,9 +577,9 @@ async function runLiveWorkbookPlan<Refs>(
     return failedRun({
       errors: checkVerification.errors,
       apply,
-      changed: changedAfterApply(plan, validApplyResult),
+      changed: changedAfterOptionalApply(plan, validApplyResult),
       checks,
-      ...(validApplyResult.undo !== undefined ? { undo: validApplyResult.undo } : {}),
+      ...(validApplyResult?.undo !== undefined ? { undo: validApplyResult.undo } : {}),
       unverified,
     })
   }
@@ -569,19 +589,19 @@ async function runLiveWorkbookPlan<Refs>(
     return failedRun({
       errors: unverifiedErrors,
       apply,
-      changed: changedAfterApply(plan, validApplyResult),
+      changed: changedAfterOptionalApply(plan, validApplyResult),
       checks,
-      ...(validApplyResult.undo !== undefined ? { undo: validApplyResult.undo } : {}),
+      ...(validApplyResult?.undo !== undefined ? { undo: validApplyResult.undo } : {}),
       unverified,
     })
   }
 
   return {
     status: 'done',
-    apply,
-    changed: changedAfterApply(plan, validApplyResult),
+    ...(apply !== undefined ? { apply } : {}),
+    changed: changedAfterOptionalApply(plan, validApplyResult),
     checks,
-    ...(validApplyResult.undo !== undefined ? { undo: validApplyResult.undo } : {}),
+    ...(validApplyResult?.undo !== undefined ? { undo: validApplyResult.undo } : {}),
     ...unverifiedProperty(unverified),
   }
 }

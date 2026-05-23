@@ -169,7 +169,6 @@ describe('@bilig/workbook run proof boundary', () => {
     }
 
     const result = await runWorkbookAction(model, 'inspect', {
-      apply: applied,
       verifyChecks: (checks) =>
         checks.map((checkResult) => ({
           ...checkResult,
@@ -180,11 +179,6 @@ describe('@bilig/workbook run proof boundary', () => {
 
     expect(result).toEqual({
       status: 'done',
-      apply: {
-        matched: true,
-        previewOps: [],
-        appliedOps: [],
-      },
       changed: [],
       checks: [
         expect.objectContaining({
@@ -196,11 +190,6 @@ describe('@bilig/workbook run proof boundary', () => {
     })
     expect(describeRunResult(result)).toEqual({
       status: 'done',
-      apply: {
-        matched: true,
-        previewOps: [],
-        appliedOps: [],
-      },
       changed: [],
       checks: [
         expect.objectContaining({
@@ -216,7 +205,6 @@ describe('@bilig/workbook run proof boundary', () => {
     const model = proofModel()
 
     const result = await runWorkbookAction(model, 'inspect', {
-      apply: applied,
       verifyChecks: (checks) => checks.map(invalidProofCheck),
     })
 
@@ -228,11 +216,6 @@ describe('@bilig/workbook run proof boundary', () => {
           message: 'Check verifier returned invalid proof at index 0: Action input at input.when must be a plain JSON object, not Date',
         },
       ],
-      apply: {
-        matched: true,
-        previewOps: [],
-        appliedOps: [],
-      },
       changed: [],
       checks: [expect.objectContaining({ status: 'planned', kind: 'exists' })],
     })

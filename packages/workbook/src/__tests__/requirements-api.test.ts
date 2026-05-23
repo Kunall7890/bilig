@@ -199,6 +199,48 @@ describe('@bilig/workbook runtime requirements api', () => {
     })
   })
 
+  it('does not require apply for check-only runtime handoff', () => {
+    const model = defineModel({
+      name: 'check-only-adapter-model',
+
+      find(workbook) {
+        return {
+          output: workbook.findRange({ sheetName: 'Sheet1', address: 'B2' }),
+        }
+      },
+
+      actions: {
+        inspect({ refs, workbook }) {
+          workbook.check.valueEquals(refs.output, 12)
+        },
+      },
+    })
+
+    const plan = buildWorkbookActionPlan(model, 'inspect')
+
+    expect(describeRuntimeRequirements(plan).requirements.map(summary)).toEqual([
+      {
+        kind: 'read',
+        capability: 'read',
+        commandIndex: undefined,
+        checkIndex: 0,
+        opIndex: undefined,
+        opKind: undefined,
+        checkKind: 'valueEquals',
+        target: 'Sheet1!B2',
+        refs: undefined,
+        message: 'Read Sheet1!B2 for valueEquals',
+      },
+    ])
+    expect(checkRuntimeAdapter(plan, { read: () => [] })).toEqual({
+      status: 'valid',
+      modelName: 'check-only-adapter-model',
+      actionName: 'inspect',
+      requiredCapabilities: ['read'],
+      issues: [],
+    })
+  })
+
   it('describes explicit ops on manually assembled plans', () => {
     const target = findRange({ sheetName: 'Sheet1', address: 'A1' })
     const plan: WorkbookActionPlan<{ readonly target: typeof target }> = {
