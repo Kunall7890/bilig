@@ -10,6 +10,7 @@ import {
   DEFAULT_EXPANDED_COMPETITIVE_SAMPLE_COUNT,
   buildExpandedComparativeBenchmarkReport,
   parseExpandedBenchmarkCliOptions,
+  runWorkPaperVsHyperFormulaExpandedBenchmarkSuite,
   type ExpandedComparativeBenchmarkResult,
   type ExpandedComparativeBenchmarkWorkload,
 } from '../benchmark-workpaper-vs-hyperformula-expanded.js'
@@ -563,10 +564,35 @@ describe('expanded comparative benchmark workloads', () => {
 
   it('parses expanded benchmark CLI sample controls strictly', () => {
     expect(DEFAULT_EXPANDED_COMPETITIVE_SAMPLE_COUNT).toBe(200)
-    expect(parseExpandedBenchmarkCliOptions(['--sample-count', '5', '--warmup-count', '0'])).toEqual({
+    expect(
+      parseExpandedBenchmarkCliOptions([
+        '--sample-count',
+        '5',
+        '--warmup-count',
+        '0',
+        '--jobs',
+        '4',
+        '--workload',
+        'build-from-sheets',
+        '--workload',
+        'dynamic-array-filter',
+      ]),
+    ).toEqual({
+      jobs: 4,
       sampleCount: 5,
       warmupCount: 0,
+      workloads: ['build-from-sheets', 'dynamic-array-filter'],
     })
+  })
+
+  it('runs only selected expanded benchmark workloads', () => {
+    const results = runWorkPaperVsHyperFormulaExpandedBenchmarkSuite({
+      sampleCount: 1,
+      warmupCount: 0,
+      workloads: ['build-from-sheets'],
+    })
+
+    expect(results.map((result) => result.workload)).toEqual(['build-from-sheets'])
   })
 
   it('rejects malformed expanded benchmark CLI sample controls', () => {
@@ -576,6 +602,10 @@ describe('expanded comparative benchmark workloads', () => {
     expect(() => parseExpandedBenchmarkCliOptions(['--sample-count', '0'])).toThrow('--sample-count expects a positive integer, got 0')
     expect(() => parseExpandedBenchmarkCliOptions(['--warmup-count', '3abc'])).toThrow(
       '--warmup-count expects a non-negative integer, got 3abc',
+    )
+    expect(() => parseExpandedBenchmarkCliOptions(['--jobs', '0'])).toThrow('--jobs expects a positive integer, got 0')
+    expect(() => parseExpandedBenchmarkCliOptions(['--workload', 'missing-workload'])).toThrow(
+      'Unknown expanded benchmark workload: missing-workload',
     )
   })
 

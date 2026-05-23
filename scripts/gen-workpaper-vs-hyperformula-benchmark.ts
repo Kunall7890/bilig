@@ -1,8 +1,9 @@
 #!/usr/bin/env bun
 
-import { execFileSync } from 'node:child_process'
+import { execFileSync, spawn } from 'node:child_process'
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { dirname, join, resolve } from 'node:path'
+import { fileURLToPath } from 'node:url'
 import {
   DEFAULT_COMPETITIVE_WARMUP_COUNT,
   DEFAULT_EXPANDED_COMPETITIVE_SAMPLE_COUNT,
@@ -12,6 +13,7 @@ import {
   buildExpandedComparativeBenchmarkReport,
   parseExpandedBenchmarkCliOptions,
   runWorkPaperVsHyperFormulaExpandedBenchmarkSuite,
+  type ExpandedComparativeBenchmarkWorkload,
   type ExpandedComparativeBenchmarkResult,
 } from '../packages/benchmarks/src/benchmark-workpaper-vs-hyperformula-expanded.ts'
 import {
@@ -84,13 +86,19 @@ const outputPath = join(rootDir, 'packages', 'benchmarks', 'baselines', 'workpap
 const localHyperFormulaRoot = '/Users/gregkonush/github.com/hyperformula'
 const rawCliArgs = process.argv.slice(2)
 const isCheckMode = rawCliArgs.includes('--check')
-const benchmarkCliOptions = parseExpandedBenchmarkCliOptions(rawCliArgs.filter((arg) => arg !== '--check'))
+const isEmitResultsMode = rawCliArgs.includes('--emit-results')
+const benchmarkCliOptions = parseExpandedBenchmarkCliOptions(rawCliArgs.filter((arg) => arg !== '--check' && arg !== '--emit-results'))
 const workpaperSourcePath = 'packages/headless'
+const expandedComparativeWorkloadSet: ReadonlySet<string> = new Set(EXPANDED_COMPARATIVE_WORKLOADS)
 
 const sampleCount = benchmarkCliOptions.sampleCount ?? DEFAULT_EXPANDED_COMPETITIVE_SAMPLE_COUNT
 const warmupCount = benchmarkCliOptions.warmupCount ?? DEFAULT_COMPETITIVE_WARMUP_COUNT
+const jobs = benchmarkCliOptions.jobs ?? 1
 
 if (isCheckMode) {
+  if (benchmarkCliOptions.workloads !== undefined) {
+    throw new Error('--workload is only supported when generating benchmark worker results')
+  }
   if (!existsSync(outputPath)) {
     throw new Error('WorkPaper competitive benchmark artifact is missing. Run: bun scripts/gen-workpaper-vs-hyperformula-benchmark.ts')
   }
@@ -141,12 +149,24 @@ if (isCheckMode) {
   process.exit(0)
 }
 
+if (!isEmitResultsMode && benchmarkCliOptions.workloads !== undefined) {
+  throw new Error('--workload is only supported when generating benchmark worker results')
+}
+
 const workpaperVersion = readPackageVersion(join(rootDir, 'packages', 'headless', 'package.json'))
 const hyperformulaMetadata = readHyperFormulaMetadata(localHyperFormulaRoot)
-const results = runWorkPaperVsHyperFormulaExpandedBenchmarkSuite({
+const results = await runBenchmarkResults({
+  jobs,
   sampleCount,
   warmupCount,
+  ...(benchmarkCliOptions.workloads ? { workloads: benchmarkCliOptions.workloads } : {}),
 })
+
+if (isEmitResultsMode) {
+  console.log(JSON.stringify(results))
+  process.exit(0)
+}
+
 const benchmarkReport = buildExpandedComparativeBenchmarkReport(results)
 
 const artifact: ExpandedCompetitiveBenchmarkArtifact = {
@@ -188,6 +208,147 @@ console.log(
     2,
   ),
 )
+
+async function runBenchmarkResults(options: {
+  jobs: number
+  sampleCount: number
+  warmupCount: number
+  workloads?: readonly ExpandedComparativeBenchmarkWorkload[]
+}): Promise<ExpandedComparativeBenchmarkResult[]> {
+  const workloads = options.workloads ?? EXPANDED_COMPARATIVE_WORKLOADS
+  if (workloads.length === 0) {
+    return []
+  }
+  if (options.jobs === 1 || workloads.length === 1) {
+    return runWorkPaperVsHyperFormulaExpandedBenchmarkSuite({
+      sampleCount: options.sampleCount,
+      warmupCount: options.warmupCount,
+      workloads,
+    })
+  }
+
+  const shards = shardWorkloads(workloads, Math.min(options.jobs, workloads.length))
+  const shardResults = await Promise.all(
+    shards.map((shard) =>
+      runBenchmarkWorker({
+        sampleCount: options.sampleCount,
+        warmupCount: options.warmupCount,
+        workloads: shard,
+      }),
+    ),
+  )
+  return orderBenchmarkResults(shardResults.flat(), workloads)
+}
+
+function shardWorkloads(
+  workloads: readonly ExpandedComparativeBenchmarkWorkload[],
+  shardCount: number,
+): readonly (readonly ExpandedComparativeBenchmarkWorkload[])[] {
+  const shards: ExpandedComparativeBenchmarkWorkload[][] = Array.from({ length: shardCount }, () => [])
+  workloads.forEach((workload, index) => {
+    shards[index % shardCount].push(workload)
+  })
+  return shards.filter((shard) => shard.length > 0)
+}
+
+async function runBenchmarkWorker(options: {
+  sampleCount: number
+  warmupCount: number
+  workloads: readonly ExpandedComparativeBenchmarkWorkload[]
+}): Promise<ExpandedComparativeBenchmarkResult[]> {
+  const scriptPath = fileURLToPath(import.meta.url)
+  const args = [
+    scriptPath,
+    '--emit-results',
+    '--sample-count',
+    String(options.sampleCount),
+    '--warmup-count',
+    String(options.warmupCount),
+    ...options.workloads.flatMap((workload) => ['--workload', workload]),
+  ]
+  const { stdout } = await spawnForOutput(process.execPath, args)
+  const parsed = JSON.parse(stdout) as unknown
+  if (!Array.isArray(parsed)) {
+    throw new Error('Benchmark worker returned a non-array result payload')
+  }
+  const workerResults: ExpandedComparativeBenchmarkResult[] = []
+  for (const value of parsed) {
+    if (!isExpandedComparativeBenchmarkResult(value)) {
+      throw new Error('Benchmark worker returned an invalid result payload')
+    }
+    workerResults.push(value)
+  }
+  return workerResults
+}
+
+function spawnForOutput(command: string, args: readonly string[]): Promise<{ stdout: string }> {
+  return new Promise((resolvePromise, reject) => {
+    const child = spawn(command, args, {
+      cwd: rootDir,
+      env: process.env,
+      stdio: ['ignore', 'pipe', 'pipe'],
+    })
+    let stdout = ''
+    let stderr = ''
+    child.stdout.setEncoding('utf8')
+    child.stderr.setEncoding('utf8')
+    child.stdout.on('data', (chunk: string) => {
+      stdout += chunk
+    })
+    child.stderr.on('data', (chunk: string) => {
+      stderr += chunk
+    })
+    child.on('error', reject)
+    child.on('close', (code) => {
+      if (code !== 0) {
+        reject(new Error(`Benchmark worker exited with code ${String(code)}${stderr ? `:\n${stderr}` : ''}`))
+        return
+      }
+      resolvePromise({ stdout })
+    })
+  })
+}
+
+function orderBenchmarkResults(
+  benchmarkResults: readonly ExpandedComparativeBenchmarkResult[],
+  expectedWorkloads: readonly ExpandedComparativeBenchmarkWorkload[],
+): ExpandedComparativeBenchmarkResult[] {
+  const resultsByWorkload = new Map<ExpandedComparativeBenchmarkWorkload, ExpandedComparativeBenchmarkResult>()
+  for (const result of benchmarkResults) {
+    if (resultsByWorkload.has(result.workload)) {
+      throw new Error(`Benchmark worker returned duplicate workload: ${result.workload}`)
+    }
+    resultsByWorkload.set(result.workload, result)
+  }
+  return expectedWorkloads.map((workload) => {
+    const result = resultsByWorkload.get(workload)
+    if (!result) {
+      throw new Error(`Benchmark worker did not return workload: ${workload}`)
+    }
+    return result
+  })
+}
+
+function isExpandedComparativeBenchmarkResult(value: unknown): value is ExpandedComparativeBenchmarkResult {
+  if (!isRecord(value)) {
+    return false
+  }
+  const workload = value.workload
+  const category = value.category
+  return (
+    typeof workload === 'string' &&
+    isExpandedComparativeBenchmarkWorkload(workload) &&
+    (category === 'directly-comparable' || category === 'leadership')
+  )
+}
+
+function isExpandedComparativeBenchmarkWorkload(value: string): value is ExpandedComparativeBenchmarkWorkload {
+  return expandedComparativeWorkloadSet.has(value)
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value)
+}
 
 function comparableShape(workload: string, fixtureKeys: string[], verificationKeys: string[]): ArtifactShapeInput['results'][number] {
   return {

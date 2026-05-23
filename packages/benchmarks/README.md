@@ -42,6 +42,16 @@ pnpm workpaper:bench:competitive:generate
 pnpm workpaper:bench:competitive:check
 ```
 
+For exploratory local refreshes on larger machines, shard independent workloads across worker
+processes:
+
+```bash
+pnpm workpaper:bench:competitive:generate -- --jobs 8
+```
+
+Each workload still runs its warmup and measured samples sequentially; `--jobs` only parallelizes
+different workloads and the checked artifact remains ordered canonically.
+
 ## Named giant-workbook corpus
 
 The package now ships deterministic named workbook cases for giant-data restore and warm-start

@@ -5,6 +5,7 @@ import {
   runLeadershipScenario,
   type ExpandedComparativeBenchmarkResult,
 } from './benchmark-workpaper-vs-hyperformula-expanded-runner.js'
+import type { ExpandedComparativeBenchmarkWorkload } from './expanded-competitive-workloads.js'
 import {
   measureHyperFormulaApproximateLookupSample,
   measureHyperFormulaBatchMultiColumnEditSample,
@@ -128,726 +129,735 @@ import {
   measureWorkPaperReverseSearchLookupSample,
 } from './benchmark-workpaper-vs-hyperformula-expanded-leadership-workloads.js'
 
+export interface ExpandedComparativeBenchmarkSuiteOptions extends ComparativeBenchmarkSuiteOptions {
+  workloads?: readonly ExpandedComparativeBenchmarkWorkload[]
+}
+
+type SelectedWorkloadSet = ReadonlySet<ExpandedComparativeBenchmarkWorkload> | undefined
+
 export function runWorkPaperVsHyperFormulaExpandedBenchmarkSuite(
-  options: ComparativeBenchmarkSuiteOptions = {},
+  options: ExpandedComparativeBenchmarkSuiteOptions = {},
 ): ExpandedComparativeBenchmarkResult[] {
   const runtimeOptions = resolveSuiteOptions(options)
+  const selectedWorkloads = options.workloads ? new Set(options.workloads) : undefined
+  const runComparable = createComparableScenarioSelector(selectedWorkloads)
+  const runLeadership = createLeadershipScenarioSelector(selectedWorkloads)
   return [
-    runComparableScenario(
+    runComparable(
       'build-from-sheets',
       { cols: 24, rows: 160, materializedCells: 160 * 24 },
       runtimeOptions,
       () => measureWorkPaperDenseBuildSample(160, 24),
       () => measureHyperFormulaDenseBuildSample(160, 24),
     ),
-    runComparableScenario(
+    runComparable(
       'build-dense-literals',
       { cols: 24, rows: 160, materializedCells: 160 * 24 },
       runtimeOptions,
       () => measureWorkPaperDenseBuildSample(160, 24),
       () => measureHyperFormulaDenseBuildSample(160, 24),
     ),
-    runComparableScenario(
+    runComparable(
       'build-dense-literals-wide',
       { cols: 96, rows: 96, materializedCells: 96 * 96 },
       runtimeOptions,
       () => measureWorkPaperDenseBuildSample(96, 96),
       () => measureHyperFormulaDenseBuildSample(96, 96),
     ),
-    runComparableScenario(
+    runComparable(
       'build-dense-literals-tall',
       { cols: 12, rows: 768, materializedCells: 768 * 12 },
       runtimeOptions,
       () => measureWorkPaperDenseBuildSample(768, 12),
       () => measureHyperFormulaDenseBuildSample(768, 12),
     ),
-    runComparableScenario(
+    runComparable(
       'build-mixed-content',
       { cols: 6, rows: 750 },
       runtimeOptions,
       () => measureWorkPaperMixedBuildSample(750),
       () => measureHyperFormulaMixedBuildSample(750),
     ),
-    runComparableScenario(
+    runComparable(
       'build-mixed-content-small',
       { cols: 6, rows: 250 },
       runtimeOptions,
       () => measureWorkPaperMixedBuildSample(250),
       () => measureHyperFormulaMixedBuildSample(250),
     ),
-    runComparableScenario(
+    runComparable(
       'build-mixed-content-large',
       { cols: 6, rows: 1_500 },
       runtimeOptions,
       () => measureWorkPaperMixedBuildSample(1_500),
       () => measureHyperFormulaMixedBuildSample(1_500),
     ),
-    runComparableScenario(
+    runComparable(
       'build-parser-cache-row-templates',
       { cols: 6, rows: 1_500 },
       runtimeOptions,
       () => measureWorkPaperParserCacheTemplateSample(1_500),
       () => measureHyperFormulaParserCacheTemplateSample(1_500),
     ),
-    runComparableScenario(
+    runComparable(
       'build-parser-cache-mixed-templates',
       { cols: 6, rows: 1_500, templateShapes: 3 },
       runtimeOptions,
       () => measureWorkPaperParserCacheMixedTemplateSample(1_500),
       () => measureHyperFormulaParserCacheMixedTemplateSample(1_500),
     ),
-    runComparableScenario(
+    runComparable(
       'build-parser-cache-unique-formulas',
       { cols: 6, rows: 1_500, templateShapes: 1_500 },
       runtimeOptions,
       () => measureWorkPaperParserCacheUniqueFormulaSample(1_500),
       () => measureHyperFormulaParserCacheUniqueFormulaSample(1_500),
     ),
-    runComparableScenario(
+    runComparable(
       'build-many-sheets',
       { sheetCount: 8, rowsPerSheet: 120, colsPerSheet: 12 },
       runtimeOptions,
       () => measureWorkPaperManySheetsBuildSample(8, 120, 12),
       () => measureHyperFormulaManySheetsBuildSample(8, 120, 12),
     ),
-    runComparableScenario(
+    runComparable(
       'build-many-sheets-wide',
       { sheetCount: 4, rowsPerSheet: 120, colsPerSheet: 24 },
       runtimeOptions,
       () => measureWorkPaperManySheetsBuildSample(4, 120, 24),
       () => measureHyperFormulaManySheetsBuildSample(4, 120, 24),
     ),
-    runComparableScenario(
+    runComparable(
       'build-many-sheets-narrow',
       { sheetCount: 16, rowsPerSheet: 60, colsPerSheet: 6 },
       runtimeOptions,
       () => measureWorkPaperManySheetsBuildSample(16, 60, 6),
       () => measureHyperFormulaManySheetsBuildSample(16, 60, 6),
     ),
-    runComparableScenario(
+    runComparable(
       'build-cross-sheet-dashboard',
       { sheetCount: 4, rowsPerSheet: 500, summaryFormulas: 12 },
       runtimeOptions,
       () => measureWorkPaperCrossSheetDashboardBuildSample(4, 500),
       () => measureHyperFormulaCrossSheetDashboardBuildSample(4, 500),
     ),
-    runComparableScenario(
+    runComparable(
       'build-cross-sheet-dashboard-small',
       { sheetCount: 2, rowsPerSheet: 250, summaryFormulas: 6 },
       runtimeOptions,
       () => measureWorkPaperCrossSheetDashboardBuildSample(2, 250),
       () => measureHyperFormulaCrossSheetDashboardBuildSample(2, 250),
     ),
-    runComparableScenario(
+    runComparable(
       'build-cross-sheet-dashboard-large',
       { sheetCount: 6, rowsPerSheet: 750, summaryFormulas: 18 },
       runtimeOptions,
       () => measureWorkPaperCrossSheetDashboardBuildSample(6, 750),
       () => measureHyperFormulaCrossSheetDashboardBuildSample(6, 750),
     ),
-    runComparableScenario(
+    runComparable(
       'rebuild-and-recalculate',
       { cols: 6, rows: 1_500 },
       runtimeOptions,
       () => measureWorkPaperRebuildAndRecalculateSample(1_500),
       () => measureHyperFormulaRebuildAndRecalculateSample(1_500),
     ),
-    runComparableScenario(
+    runComparable(
       'rebuild-and-recalculate-large',
       { cols: 6, rows: 3_000 },
       runtimeOptions,
       () => measureWorkPaperRebuildAndRecalculateSample(3_000),
       () => measureHyperFormulaRebuildAndRecalculateSample(3_000),
     ),
-    runComparableScenario(
+    runComparable(
       'rebuild-config-toggle',
       { rowCount: 5_000, config: 'useColumnIndex:false->true' },
       runtimeOptions,
       () => measureWorkPaperConfigToggleSample(5_000),
       () => measureHyperFormulaConfigToggleSample(5_000),
     ),
-    runComparableScenario(
+    runComparable(
       'rebuild-config-toggle-large',
       { rowCount: 20_000, config: 'useColumnIndex:false->true' },
       runtimeOptions,
       () => measureWorkPaperConfigToggleSample(20_000),
       () => measureHyperFormulaConfigToggleSample(20_000),
     ),
-    runComparableScenario(
+    runComparable(
       'rebuild-runtime-from-snapshot',
       { rowCount: 1_500, source: 'serialized-sheets' },
       runtimeOptions,
       () => measureWorkPaperRebuildRuntimeFromSnapshotSample(1_500),
       () => measureHyperFormulaRebuildRuntimeFromSnapshotSample(1_500),
     ),
-    runComparableScenario(
+    runComparable(
       'rebuild-runtime-from-snapshot-large',
       { rowCount: 3_000, source: 'serialized-sheets' },
       runtimeOptions,
       () => measureWorkPaperRebuildRuntimeFromSnapshotSample(3_000),
       () => measureHyperFormulaRebuildRuntimeFromSnapshotSample(3_000),
     ),
-    runComparableScenario(
+    runComparable(
       'sheet-rename-dependencies',
       { sheets: 2, renamedSheet: 'Data->Source', dependentFormulas: 2 },
       runtimeOptions,
       () => measureWorkPaperSheetRenameDependencySample(),
       () => measureHyperFormulaSheetRenameDependencySample(),
     ),
-    runComparableScenario(
+    runComparable(
       'named-expression-change',
       { namedExpression: 'Rate', formulas: 2, mutation: '=2->=3' },
       runtimeOptions,
       () => measureWorkPaperNamedExpressionChangeSample(),
       () => measureHyperFormulaNamedExpressionChangeSample(),
     ),
-    runComparableScenario(
+    runComparable(
       'cross-sheet-scalar-recalc',
       { sheets: 2, rowCount: 1_500, dependents: 1_500, mutation: 'Data!A1' },
       runtimeOptions,
       () => measureWorkPaperCrossSheetScalarFanoutSample(1_500),
       () => measureHyperFormulaCrossSheetScalarFanoutSample(1_500),
     ),
-    runComparableScenario(
+    runComparable(
       'cross-sheet-aggregate-recalc',
       { sheets: 2, rowCount: 1_500, functionName: 'SUM', mutation: 'Data!A1' },
       runtimeOptions,
       () => measureWorkPaperCrossSheetAggregateSample(1_500),
       () => measureHyperFormulaCrossSheetAggregateSample(1_500),
     ),
-    runComparableScenario(
+    runComparable(
       'cross-sheet-dashboard-recalc',
       { sheetCount: 4, rowsPerSheet: 1_000, summaryFormulas: 12, mutation: 'Data1!B1' },
       runtimeOptions,
       () => measureWorkPaperCrossSheetDashboardRecalcSample(4, 1_000),
       () => measureHyperFormulaCrossSheetDashboardRecalcSample(4, 1_000),
     ),
-    runComparableScenario(
+    runComparable(
       'single-edit-recalc',
       { downstreamCount: 2_000 },
       runtimeOptions,
       () => measureWorkPaperLegacySingleEditSample(2_000),
       () => measureHyperFormulaLegacySingleEditSample(2_000),
     ),
-    runComparableScenario(
+    runComparable(
       'single-edit-chain',
       { downstreamCount: 2_000 },
       runtimeOptions,
       () => measureWorkPaperSingleChainEditSample(2_000),
       () => measureHyperFormulaSingleChainEditSample(2_000),
     ),
-    runComparableScenario(
+    runComparable(
       'single-edit-chain-small',
       { downstreamCount: 500 },
       runtimeOptions,
       () => measureWorkPaperSingleChainEditSample(500),
       () => measureHyperFormulaSingleChainEditSample(500),
     ),
-    runComparableScenario(
+    runComparable(
       'single-edit-chain-large',
       { downstreamCount: 3_000 },
       runtimeOptions,
       () => measureWorkPaperSingleChainEditSample(3_000),
       () => measureHyperFormulaSingleChainEditSample(3_000),
     ),
-    runComparableScenario(
+    runComparable(
       'single-edit-fanout',
       { downstreamCount: 2_000 },
       runtimeOptions,
       () => measureWorkPaperSingleFanoutEditSample(2_000),
       () => measureHyperFormulaSingleFanoutEditSample(2_000),
     ),
-    runComparableScenario(
+    runComparable(
       'single-edit-fanout-small',
       { downstreamCount: 500 },
       runtimeOptions,
       () => measureWorkPaperSingleFanoutEditSample(500),
       () => measureHyperFormulaSingleFanoutEditSample(500),
     ),
-    runComparableScenario(
+    runComparable(
       'single-edit-fanout-large',
       { downstreamCount: 3_000 },
       runtimeOptions,
       () => measureWorkPaperSingleFanoutEditSample(3_000),
       () => measureHyperFormulaSingleFanoutEditSample(3_000),
     ),
-    runComparableScenario(
+    runComparable(
       'partial-recompute-mixed-frontier',
       { rowCount: 1_500, graphShape: 'scalar+range+fanout' },
       runtimeOptions,
       () => measureWorkPaperMixedFrontierSample(1_500),
       () => measureHyperFormulaMixedFrontierSample(1_500),
     ),
-    runComparableScenario(
+    runComparable(
       'single-formula-edit-recalc',
       { downstreamCount: 1_500 },
       runtimeOptions,
       () => measureWorkPaperFormulaEditSample(1_500),
       () => measureHyperFormulaFormulaEditSample(1_500),
     ),
-    runComparableScenario(
+    runComparable(
       'single-formula-edit-recalc-large',
       { downstreamCount: 3_000 },
       runtimeOptions,
       () => measureWorkPaperFormulaEditSample(3_000),
       () => measureHyperFormulaFormulaEditSample(3_000),
     ),
-    runComparableScenario(
+    runComparable(
       'batch-edit-recalc',
       { editCount: 500 },
       runtimeOptions,
       () => measureWorkPaperLegacyBatchEditSample(500),
       () => measureHyperFormulaLegacyBatchEditSample(500),
     ),
-    runComparableScenario(
+    runComparable(
       'batch-edit-single-column',
       { editCount: 500 },
       runtimeOptions,
       () => measureWorkPaperBatchSingleColumnEditSample(500),
       () => measureHyperFormulaBatchSingleColumnEditSample(500),
     ),
-    runComparableScenario(
+    runComparable(
       'batch-edit-single-column-small',
       { editCount: 128 },
       runtimeOptions,
       () => measureWorkPaperBatchSingleColumnEditSample(128),
       () => measureHyperFormulaBatchSingleColumnEditSample(128),
     ),
-    runComparableScenario(
+    runComparable(
       'batch-edit-single-column-large',
       { editCount: 1_000 },
       runtimeOptions,
       () => measureWorkPaperBatchSingleColumnEditSample(1_000),
       () => measureHyperFormulaBatchSingleColumnEditSample(1_000),
     ),
-    runComparableScenario(
+    runComparable(
       'batch-edit-multi-column-small',
       { rowCount: 128, editsPerRow: 2 },
       runtimeOptions,
       () => measureWorkPaperBatchMultiColumnEditSample(128),
       () => measureHyperFormulaBatchMultiColumnEditSample(128),
     ),
-    runComparableScenario(
+    runComparable(
       'batch-edit-multi-column',
       { rowCount: 250, editsPerRow: 2 },
       runtimeOptions,
       () => measureWorkPaperBatchMultiColumnEditSample(250),
       () => measureHyperFormulaBatchMultiColumnEditSample(250),
     ),
-    runComparableScenario(
+    runComparable(
       'batch-edit-multi-column-large',
       { rowCount: 500, editsPerRow: 2 },
       runtimeOptions,
       () => measureWorkPaperBatchMultiColumnEditSample(500),
       () => measureHyperFormulaBatchMultiColumnEditSample(500),
     ),
-    runComparableScenario(
+    runComparable(
       'batch-edit-rectangular-block',
       { rowCount: 64, inputCols: 12, editCount: 64 * 12 },
       runtimeOptions,
       () => measureWorkPaperRectangularBatchEditSample(64, 12),
       () => measureHyperFormulaRectangularBatchEditSample(64, 12),
     ),
-    runComparableScenario(
+    runComparable(
       'batch-edit-rectangular-block-wide',
       { rowCount: 96, inputCols: 16, editCount: 96 * 16 },
       runtimeOptions,
       () => measureWorkPaperRectangularBatchEditSample(96, 16),
       () => measureHyperFormulaRectangularBatchEditSample(96, 16),
     ),
-    runComparableScenario(
+    runComparable(
       'batch-clear-rectangular-block',
       { rowCount: 64, inputCols: 12, editCount: 64 * 12 },
       runtimeOptions,
       () => measureWorkPaperBatchClearRectangularBlockSample(64, 12),
       () => measureHyperFormulaBatchClearRectangularBlockSample(64, 12),
     ),
-    runComparableScenario(
+    runComparable(
       'batch-clear-rectangular-block-wide',
       { rowCount: 96, inputCols: 16, editCount: 96 * 16 },
       runtimeOptions,
       () => measureWorkPaperBatchClearRectangularBlockSample(96, 16),
       () => measureHyperFormulaBatchClearRectangularBlockSample(96, 16),
     ),
-    runComparableScenario(
+    runComparable(
       'batch-edit-single-column-with-undo',
       { editCount: 500, includesUndo: true },
       runtimeOptions,
       () => measureWorkPaperBatchSingleColumnUndoSample(500),
       () => measureHyperFormulaBatchSingleColumnUndoSample(500),
     ),
-    runComparableScenario(
+    runComparable(
       'batch-suspended-single-column',
       { editCount: 500, mode: 'suspend-resume' },
       runtimeOptions,
       () => measureWorkPaperSuspendedBatchSingleColumnEditSample(500),
       () => measureHyperFormulaSuspendedBatchSingleColumnEditSample(500),
     ),
-    runComparableScenario(
+    runComparable(
       'batch-suspended-multi-column',
       { rowCount: 250, editsPerRow: 2, mode: 'suspend-resume' },
       runtimeOptions,
       () => measureWorkPaperSuspendedBatchMultiColumnEditSample(250),
       () => measureHyperFormulaSuspendedBatchMultiColumnEditSample(250),
     ),
-    runComparableScenario(
+    runComparable(
       'structural-insert-rows',
       { rowCount: 1_500, insertIndex: 750 },
       runtimeOptions,
       () => measureWorkPaperStructuralInsertRowsSample(1_500),
       () => measureHyperFormulaStructuralInsertRowsSample(1_500),
     ),
-    runComparableScenario(
+    runComparable(
       'structural-insert-rows-small',
       { rowCount: 500, insertIndex: 250 },
       runtimeOptions,
       () => measureWorkPaperStructuralInsertRowsSample(500),
       () => measureHyperFormulaStructuralInsertRowsSample(500),
     ),
-    runComparableScenario(
+    runComparable(
       'structural-insert-rows-large',
       { rowCount: 3_000, insertIndex: 1_500 },
       runtimeOptions,
       () => measureWorkPaperStructuralInsertRowsSample(3_000),
       () => measureHyperFormulaStructuralInsertRowsSample(3_000),
     ),
-    runComparableScenario(
+    runComparable(
       'structural-append-formula-rows',
       { rowCount: 750, appendCount: 250, inputCols: 6 },
       runtimeOptions,
       () => measureWorkPaperAppendFormulaRowsSample(750, 6, 250),
       () => measureHyperFormulaAppendFormulaRowsSample(750, 6, 250),
     ),
-    runComparableScenario(
+    runComparable(
       'structural-append-formula-rows-small',
       { rowCount: 250, appendCount: 100, inputCols: 4 },
       runtimeOptions,
       () => measureWorkPaperAppendFormulaRowsSample(250, 4, 100),
       () => measureHyperFormulaAppendFormulaRowsSample(250, 4, 100),
     ),
-    runComparableScenario(
+    runComparable(
       'structural-append-formula-rows-large',
       { rowCount: 1_000, appendCount: 250, inputCols: 8 },
       runtimeOptions,
       () => measureWorkPaperAppendFormulaRowsSample(1_000, 8, 250),
       () => measureHyperFormulaAppendFormulaRowsSample(1_000, 8, 250),
     ),
-    runComparableScenario(
+    runComparable(
       'structural-delete-rows',
       { rowCount: 1_500, deleteIndex: 750 },
       runtimeOptions,
       () => measureWorkPaperStructuralDeleteRowsSample(1_500),
       () => measureHyperFormulaStructuralDeleteRowsSample(1_500),
     ),
-    runComparableScenario(
+    runComparable(
       'structural-move-rows',
       { rowCount: 1_500, start: 750, target: 0 },
       runtimeOptions,
       () => measureWorkPaperStructuralMoveRowsSample(1_500),
       () => measureHyperFormulaStructuralMoveRowsSample(1_500),
     ),
-    runComparableScenario(
+    runComparable(
       'structural-insert-columns',
       { rowCount: 1_500, insertIndex: 1 },
       runtimeOptions,
       () => measureWorkPaperStructuralInsertColumnsSample(1_500),
       () => measureHyperFormulaStructuralInsertColumnsSample(1_500),
     ),
-    runComparableScenario(
+    runComparable(
       'structural-insert-columns-small',
       { rowCount: 500, insertIndex: 1 },
       runtimeOptions,
       () => measureWorkPaperStructuralInsertColumnsSample(500),
       () => measureHyperFormulaStructuralInsertColumnsSample(500),
     ),
-    runComparableScenario(
+    runComparable(
       'structural-insert-columns-large',
       { rowCount: 3_000, insertIndex: 1 },
       runtimeOptions,
       () => measureWorkPaperStructuralInsertColumnsSample(3_000),
       () => measureHyperFormulaStructuralInsertColumnsSample(3_000),
     ),
-    runComparableScenario(
+    runComparable(
       'structural-delete-columns',
       { rowCount: 1_500, deleteIndex: 1 },
       runtimeOptions,
       () => measureWorkPaperStructuralDeleteColumnsSample(1_500),
       () => measureHyperFormulaStructuralDeleteColumnsSample(1_500),
     ),
-    runComparableScenario(
+    runComparable(
       'structural-delete-columns-large',
       { rowCount: 3_000, deleteIndex: 1 },
       runtimeOptions,
       () => measureWorkPaperStructuralDeleteColumnsSample(3_000),
       () => measureHyperFormulaStructuralDeleteColumnsSample(3_000),
     ),
-    runComparableScenario(
+    runComparable(
       'structural-move-columns',
       { rowCount: 1_500, start: 1, target: 0 },
       runtimeOptions,
       () => measureWorkPaperStructuralMoveColumnsSample(1_500),
       () => measureHyperFormulaStructuralMoveColumnsSample(1_500),
     ),
-    runComparableScenario(
+    runComparable(
       'structural-move-columns-large',
       { rowCount: 3_000, start: 1, target: 0 },
       runtimeOptions,
       () => measureWorkPaperStructuralMoveColumnsSample(3_000),
       () => measureHyperFormulaStructuralMoveColumnsSample(3_000),
     ),
-    runComparableScenario(
+    runComparable(
       'range-read',
       { cols: 24, rows: 240, materializedCells: 240 * 24 },
       runtimeOptions,
       () => measureWorkPaperRangeReadSample(240, 24),
       () => measureHyperFormulaRangeReadSample(240, 24),
     ),
-    runComparableScenario(
+    runComparable(
       'range-read-dense',
       { cols: 24, rows: 240, materializedCells: 240 * 24 },
       runtimeOptions,
       () => measureWorkPaperRangeReadSample(240, 24),
       () => measureHyperFormulaRangeReadSample(240, 24),
     ),
-    runComparableScenario(
+    runComparable(
       'range-read-wide',
       { cols: 96, rows: 128, materializedCells: 128 * 96 },
       runtimeOptions,
       () => measureWorkPaperRangeReadSample(128, 96),
       () => measureHyperFormulaRangeReadSample(128, 96),
     ),
-    runComparableScenario(
+    runComparable(
       'range-read-sparse-wide',
       { cols: 96, rows: 128, populatedCellsPerRow: 3, requestedCells: 128 * 96 },
       runtimeOptions,
       () => measureWorkPaperSparseWideRangeReadSample(128, 96),
       () => measureHyperFormulaSparseWideRangeReadSample(128, 96),
     ),
-    runComparableScenario(
+    runComparable(
       'range-read-formula-grid',
       { rows: 256, inputCols: 4, formulaCols: 8, requestedCells: 256 * 8 },
       runtimeOptions,
       () => measureWorkPaperFormulaGridRangeReadSample(256, 4, 8),
       () => measureHyperFormulaFormulaGridRangeReadSample(256, 4, 8),
     ),
-    runComparableScenario(
+    runComparable(
       'range-read-formula-grid-wide',
       { rows: 128, inputCols: 8, formulaCols: 16, requestedCells: 128 * 16 },
       runtimeOptions,
       () => measureWorkPaperFormulaGridRangeReadSample(128, 8, 16),
       () => measureHyperFormulaFormulaGridRangeReadSample(128, 8, 16),
     ),
-    runComparableScenario(
+    runComparable(
       'aggregate-2d-ranges',
       { rowCount: 1_500, functionName: 'SUM', rangeShape: 'growing-2d' },
       runtimeOptions,
       () => measureWorkPaper2dAggregateSample(1_500),
       () => measureHyperFormula2dAggregateSample(1_500),
     ),
-    runComparableScenario(
+    runComparable(
       'aggregate-2d-ranges-small',
       { rowCount: 500, functionName: 'SUM', rangeShape: 'growing-2d' },
       runtimeOptions,
       () => measureWorkPaper2dAggregateSample(500),
       () => measureHyperFormula2dAggregateSample(500),
     ),
-    runComparableScenario(
+    runComparable(
       'aggregate-2d-ranges-large',
       { rowCount: 3_000, functionName: 'SUM', rangeShape: 'growing-2d' },
       runtimeOptions,
       () => measureWorkPaper2dAggregateSample(3_000),
       () => measureHyperFormula2dAggregateSample(3_000),
     ),
-    runComparableScenario(
+    runComparable(
       'aggregate-overlapping-ranges',
       { rowCount: 1_500, functionName: 'SUM' },
       runtimeOptions,
       () => measureWorkPaperOverlappingAggregateSample(1_500),
       () => measureHyperFormulaOverlappingAggregateSample(1_500),
     ),
-    runComparableScenario(
+    runComparable(
       'aggregate-overlapping-ranges-small',
       { rowCount: 500, functionName: 'SUM' },
       runtimeOptions,
       () => measureWorkPaperOverlappingAggregateSample(500),
       () => measureHyperFormulaOverlappingAggregateSample(500),
     ),
-    runComparableScenario(
+    runComparable(
       'aggregate-overlapping-sliding-window',
       { rowCount: 1_500, functionName: 'SUM', window: 32 },
       runtimeOptions,
       () => measureWorkPaperSlidingAggregateSample(1_500, 32),
       () => measureHyperFormulaSlidingAggregateSample(1_500, 32),
     ),
-    runComparableScenario(
+    runComparable(
       'aggregate-overlapping-sliding-window-wide',
       { rowCount: 1_500, functionName: 'SUM', window: 128 },
       runtimeOptions,
       () => measureWorkPaperSlidingAggregateSample(1_500, 128),
       () => measureHyperFormulaSlidingAggregateSample(1_500, 128),
     ),
-    runComparableScenario(
+    runComparable(
       'conditional-aggregation-reused-ranges',
       { rowCount: 2_000, formulaCopies: 32 },
       runtimeOptions,
       () => measureWorkPaperConditionalAggregationSample(2_000, 32),
       () => measureHyperFormulaConditionalAggregationSample(2_000, 32),
     ),
-    runComparableScenario(
+    runComparable(
       'conditional-aggregation-reused-ranges-large',
       { rowCount: 3_000, formulaCopies: 48 },
       runtimeOptions,
       () => measureWorkPaperConditionalAggregationSample(3_000, 48),
       () => measureHyperFormulaConditionalAggregationSample(3_000, 48),
     ),
-    runComparableScenario(
+    runComparable(
       'conditional-aggregation-criteria-cell-edit',
       { rowCount: 2_000, formulaCopies: 32, mutate: 'criteria-cell' },
       runtimeOptions,
       () => measureWorkPaperConditionalAggregationCriteriaEditSample(2_000, 32),
       () => measureHyperFormulaConditionalAggregationCriteriaEditSample(2_000, 32),
     ),
-    runComparableScenario(
+    runComparable(
       'conditional-aggregation-shared-criteria',
       { rowCount: 2_000, criteriaCount: 32, mutate: 'shared-criteria-cell' },
       runtimeOptions,
       () => measureWorkPaperConditionalAggregationSharedCriteriaSample(2_000, 32),
       () => measureHyperFormulaConditionalAggregationSharedCriteriaSample(2_000, 32),
     ),
-    runComparableScenario(
+    runComparable(
       'conditional-aggregation-mixed-criteria',
       { rowCount: 2_000, formulaCopies: 24, functions: ['COUNTIFS', 'SUMIFS'], mutate: 'threshold-cell' },
       runtimeOptions,
       () => measureWorkPaperConditionalAggregationMixedCriteriaSample(2_000, 24),
       () => measureHyperFormulaConditionalAggregationMixedCriteriaSample(2_000, 24),
     ),
-    runComparableScenario(
+    runComparable(
       'lookup-no-column-index',
       { rowCount: 5_000, useColumnIndex: false },
       runtimeOptions,
       () => measureWorkPaperLookupSample(5_000, false),
       () => measureHyperFormulaLookupSample(5_000, false),
     ),
-    runComparableScenario(
+    runComparable(
       'lookup-no-column-index-small',
       { rowCount: 1_000, useColumnIndex: false },
       runtimeOptions,
       () => measureWorkPaperLookupSample(1_000, false),
       () => measureHyperFormulaLookupSample(1_000, false),
     ),
-    runComparableScenario(
+    runComparable(
       'lookup-with-column-index',
       { rowCount: 5_000, useColumnIndex: true },
       runtimeOptions,
       () => measureWorkPaperLookupSample(5_000, true),
       () => measureHyperFormulaLookupSample(5_000, true),
     ),
-    runComparableScenario(
+    runComparable(
       'lookup-with-column-index-large',
       { rowCount: 10_000, useColumnIndex: true },
       runtimeOptions,
       () => measureWorkPaperLookupSample(10_000, true),
       () => measureHyperFormulaLookupSample(10_000, true),
     ),
-    runComparableScenario(
+    runComparable(
       'lookup-index-match-exact',
       { rowCount: 5_000, functionName: 'INDEX+MATCH', matchMode: 'exact' },
       runtimeOptions,
       () => measureWorkPaperIndexMatchExactSample(5_000),
       () => measureHyperFormulaIndexMatchExactSample(5_000),
     ),
-    runComparableScenario(
+    runComparable(
       'lookup-index-match-exact-large',
       { rowCount: 10_000, functionName: 'INDEX+MATCH', matchMode: 'exact' },
       runtimeOptions,
       () => measureWorkPaperIndexMatchExactSample(10_000),
       () => measureHyperFormulaIndexMatchExactSample(10_000),
     ),
-    runComparableScenario(
+    runComparable(
       'lookup-index-reference',
       { rowCount: 5_000, functionName: 'INDEX', lookupShape: '2d-table-row-index' },
       runtimeOptions,
       () => measureWorkPaperIndexReferenceSample(5_000),
       () => measureHyperFormulaIndexReferenceSample(5_000),
     ),
-    runComparableScenario(
+    runComparable(
       'lookup-index-reference-large',
       { rowCount: 10_000, functionName: 'INDEX', lookupShape: '2d-table-row-index' },
       runtimeOptions,
       () => measureWorkPaperIndexReferenceSample(10_000),
       () => measureHyperFormulaIndexReferenceSample(10_000),
     ),
-    runComparableScenario(
+    runComparable(
       'lookup-with-column-index-after-column-write',
       { rowCount: 5_000, useColumnIndex: true, mutate: 'lookup-column' },
       runtimeOptions,
       () => measureWorkPaperIndexedLookupAfterColumnWriteSample(5_000),
       () => measureHyperFormulaIndexedLookupAfterColumnWriteSample(5_000),
     ),
-    runComparableScenario(
+    runComparable(
       'lookup-with-column-index-after-batch-write',
       { rowCount: 5_000, useColumnIndex: true, mutate: 'lookup-column-batch', editCount: 256 },
       runtimeOptions,
       () => measureWorkPaperIndexedLookupAfterBatchWriteSample(5_000, 256),
       () => measureHyperFormulaIndexedLookupAfterBatchWriteSample(5_000, 256),
     ),
-    runComparableScenario(
+    runComparable(
       'lookup-with-column-index-after-batch-write-large',
       { rowCount: 10_000, useColumnIndex: true, mutate: 'lookup-column-batch', editCount: 512 },
       runtimeOptions,
       () => measureWorkPaperIndexedLookupAfterBatchWriteSample(10_000, 512),
       () => measureHyperFormulaIndexedLookupAfterBatchWriteSample(10_000, 512),
     ),
-    runComparableScenario(
+    runComparable(
       'lookup-approximate-sorted',
       { rowCount: 5_000 },
       runtimeOptions,
       () => measureWorkPaperApproximateLookupSample(5_000),
       () => measureHyperFormulaApproximateLookupSample(5_000),
     ),
-    runComparableScenario(
+    runComparable(
       'lookup-approximate-sorted-large',
       { rowCount: 10_000 },
       runtimeOptions,
       () => measureWorkPaperApproximateLookupSample(10_000),
       () => measureHyperFormulaApproximateLookupSample(10_000),
     ),
-    runComparableScenario(
+    runComparable(
       'lookup-approximate-descending',
       { rowCount: 5_000, matchMode: -1, ordering: 'descending' },
       runtimeOptions,
       () => measureWorkPaperApproximateLookupDescendingSample(5_000),
       () => measureHyperFormulaApproximateLookupDescendingSample(5_000),
     ),
-    runComparableScenario(
+    runComparable(
       'lookup-approximate-duplicates',
       { rowCount: 5_000, matchMode: 1, duplicateKeys: true },
       runtimeOptions,
       () => measureWorkPaperApproximateLookupDuplicateSample(5_000),
       () => measureHyperFormulaApproximateLookupDuplicateSample(5_000),
     ),
-    runComparableScenario(
+    runComparable(
       'lookup-approximate-sorted-after-column-write',
       { rowCount: 5_000, mutate: 'sorted-column-tail' },
       runtimeOptions,
       () => measureWorkPaperApproximateLookupAfterColumnWriteSample(5_000),
       () => measureHyperFormulaApproximateLookupAfterColumnWriteSample(5_000),
     ),
-    runComparableScenario(
+    runComparable(
       'lookup-text-exact',
       { rowCount: 5_000 },
       runtimeOptions,
       () => measureWorkPaperTextLookupSample(5_000),
       () => measureHyperFormulaTextLookupSample(5_000),
     ),
-    runComparableScenario(
+    runComparable(
       'lookup-text-exact-large',
       { rowCount: 10_000 },
       runtimeOptions,
       () => measureWorkPaperTextLookupSample(10_000),
       () => measureHyperFormulaTextLookupSample(10_000),
     ),
-    runLeadershipScenario(
+    runLeadership(
       'lookup-reverse-search',
       { rowCount: 5_000, functionName: 'XMATCH', searchMode: -1 },
       runtimeOptions,
@@ -858,7 +868,7 @@ export function runWorkPaperVsHyperFormulaExpandedBenchmarkSuite(
         reason: 'HyperFormula 3.2.0 does not provide an equivalent XMATCH reverse-search result for this workload.',
       },
     ),
-    runLeadershipScenario(
+    runLeadership(
       'dynamic-array-filter',
       { rowCount: 750, formula: '=FILTER(A2:A751,A2:A751>B1)' },
       runtimeOptions,
@@ -872,7 +882,7 @@ export function runWorkPaperVsHyperFormulaExpandedBenchmarkSuite(
         reason: 'HyperFormula 3.2.0 documents dynamic arrays as unsupported.',
       },
     ),
-    runLeadershipScenario(
+    runLeadership(
       'dynamic-array-sort',
       { rowCount: 750, formula: '=SORT(A2:A751)' },
       runtimeOptions,
@@ -886,7 +896,7 @@ export function runWorkPaperVsHyperFormulaExpandedBenchmarkSuite(
         reason: 'HyperFormula 3.2.0 documents dynamic arrays as unsupported.',
       },
     ),
-    runLeadershipScenario(
+    runLeadership(
       'dynamic-array-unique',
       { rowCount: 750, formula: '=UNIQUE(A2:A751)' },
       runtimeOptions,
@@ -900,7 +910,7 @@ export function runWorkPaperVsHyperFormulaExpandedBenchmarkSuite(
         reason: 'HyperFormula 3.2.0 documents dynamic arrays as unsupported.',
       },
     ),
-  ]
+  ].filter((result): result is ExpandedComparativeBenchmarkResult => result !== undefined)
 }
 
 function resolveSuiteOptions(options: ComparativeBenchmarkSuiteOptions): Required<ComparativeBenchmarkSuiteOptions> {
@@ -908,4 +918,26 @@ function resolveSuiteOptions(options: ComparativeBenchmarkSuiteOptions): Require
     sampleCount: options.sampleCount ?? DEFAULT_EXPANDED_COMPETITIVE_SAMPLE_COUNT,
     warmupCount: options.warmupCount ?? DEFAULT_COMPETITIVE_WARMUP_COUNT,
   }
+}
+
+function createComparableScenarioSelector(selectedWorkloads: SelectedWorkloadSet) {
+  return (...args: Parameters<typeof runComparableScenario>): ReturnType<typeof runComparableScenario> | undefined => {
+    if (!isWorkloadSelected(selectedWorkloads, args[0])) {
+      return undefined
+    }
+    return runComparableScenario(...args)
+  }
+}
+
+function createLeadershipScenarioSelector(selectedWorkloads: SelectedWorkloadSet) {
+  return (...args: Parameters<typeof runLeadershipScenario>): ReturnType<typeof runLeadershipScenario> | undefined => {
+    if (!isWorkloadSelected(selectedWorkloads, args[0])) {
+      return undefined
+    }
+    return runLeadershipScenario(...args)
+  }
+}
+
+function isWorkloadSelected(selectedWorkloads: SelectedWorkloadSet, workload: ExpandedComparativeBenchmarkWorkload): boolean {
+  return selectedWorkloads === undefined || selectedWorkloads.has(workload)
 }
