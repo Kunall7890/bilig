@@ -4,6 +4,26 @@ All notable changes to `@bilig/headless` will be documented in this file.
 
 This package is released as part of the aligned bilig library package set.
 
+## 0.61.0
+
+- Release type: minor
+- Previous libraries tag: libraries-v0.59.0
+- Manual override: no
+
+## Features
+- feat(engine): refresh source-backed pivot caches (229ff9e5)
+- feat(engine): preserve imported drawing artifacts (9d9a24e4)
+- feat(workbook): add transport-safe refs (05cdf0f4)
+- feat(charts): preserve Excel drawing anchors (34ca1ac3)
+
+## Internal runtime changes
+- test(bench): parallelize competitive benchmark generation (942d1782)
+- test(excel): align pivot export cache assertion (d59c936c)
+- chore(release): runtime packages v0.60.0 (8835ff32)
+- refactor(core): split workbook metadata drawing service (377e94a4)
+- refactor(core): split chart anchor metadata rewrite (266825fb)
+- test(excel): expect chart anchors in xlsx roundtrip (ecf549a9)
+
 ## 0.60.0
 
 - Release type: minor
