@@ -182,9 +182,10 @@ for formula source and `formula.text` for spreadsheet string literals, keeping
 agent-authored formulas explicit instead of overloading a string as either code,
 a label, a named range, or user text.
 
-Action plans also expose `refsUsed`, a flat deduped list of workbook refs found
-inside the consumer-defined `refs` object. This keeps custom models generic
-while still letting agents inspect what the model resolved.
+Action plans also freeze the consumer-defined `refs` container graph and expose
+`refsUsed`, a flat deduped list of workbook refs found inside that object. This
+keeps custom models generic while still letting agents inspect what the model
+resolved.
 The same generic refs are available outside model callbacks through top-level
 `findTable`, `findColumn`, `findRange`, `findName`, and `findRows` helpers, or
 through the frozen `find` namespace with short aliases such as
@@ -237,10 +238,10 @@ For agent logs, approvals, tests, and runtime handoff, `describeRef` and
 `describePlan` produce JSON-safe descriptions of refs and action plans. The
 descriptions preserve generic action input and workbook intent while removing
 consumer-private `refs` object shape and helper methods.
-Plans are frozen handoff objects: action input, refs used, commands, concrete
-ops, changed summaries, and checks cannot be rewritten after planning. That
-lets an agent inspect a plan once and pass the same intent to an adapter without
-caller-side metadata drift.
+Plans are frozen handoff objects: action input, refs, refs used, commands,
+concrete ops, changed summaries, and checks cannot be rewritten after planning.
+That lets an agent inspect a plan once and pass the same intent to an adapter
+without caller-side metadata drift.
 `describePlanResult` applies the same description layer to either planned or
 failed action planning results.
 `describeRunResult` applies the same JSON-safe description layer after
@@ -256,10 +257,10 @@ appear as `applyOp`. It does not import the engine.
 
 `verifyPlan` gives agents a runtime-free consistency check before handoff. It
 flags invalid action input, unresolved command targets, unresolved formula
-inputs, duplicate resolved refs, unparsable formulas, and missing concrete ops
-for write, clear, and number-format commands whose target is already known as a
-single cell. Custom check targets and supporting refs must also resolve through
-`refsUsed`.
+inputs, duplicate resolved refs, refs used that are not discoverable from
+`refs`, unparsable formulas, and missing concrete ops for write, clear, and
+number-format commands whose target is already known as a single cell. Custom
+check targets and supporting refs must also resolve through `refsUsed`.
 Formula readback expectation inputs must resolve through `refsUsed`, and
 formula expectation text must be parseable.
 Checks must start as `planned`; consumer model code cannot mark a check passed

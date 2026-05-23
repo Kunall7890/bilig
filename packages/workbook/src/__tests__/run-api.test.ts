@@ -45,6 +45,7 @@ describe('@bilig/workbook run api', () => {
     expect(Object.isFrozen(workbookRunErrorCodes)).toBe(true)
     expect(workbookRunErrorCodes).toContain('action_not_found')
     expect(workbookRunErrorCodes).toContain('invalid_action_input')
+    expect(workbookRunErrorCodes).toContain('ref_not_in_refs')
     expect(workbookRunErrorCodes).toContain('formula_input_not_resolved')
     expect(workbookRunErrorCodes).toContain('readback_missing')
     expect(workbookRunErrorCodes).toContain('runtime_rejected')

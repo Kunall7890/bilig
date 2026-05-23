@@ -43,6 +43,7 @@ export type WorkbookRunErrorCode =
   | 'find_failed'
   | 'checks_failed'
   | 'action_failed'
+  | 'ref_not_in_refs'
   | 'duplicate_ref'
   | 'command_target_not_resolved'
   | 'formula_input_not_resolved'
@@ -75,6 +76,7 @@ export const workbookRunErrorCodes = Object.freeze([
   'find_failed',
   'checks_failed',
   'action_failed',
+  'ref_not_in_refs',
   'duplicate_ref',
   'command_target_not_resolved',
   'formula_input_not_resolved',

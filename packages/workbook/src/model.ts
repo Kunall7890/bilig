@@ -380,6 +380,29 @@ function freezeChangeSummary(change: WorkbookChangeSummary): WorkbookChangeSumma
   })
 }
 
+function isFreezableRefContainer(value: object): boolean {
+  const prototype = Object.getPrototypeOf(value)
+  return Array.isArray(value) || prototype === Object.prototype || prototype === null
+}
+
+function freezeRefs<Refs>(refs: Refs, seen = new WeakSet<object>()): Refs {
+  if (typeof refs !== 'object' || refs === null) {
+    return refs
+  }
+  if (seen.has(refs)) {
+    return refs
+  }
+  seen.add(refs)
+
+  Object.values(Object.getOwnPropertyDescriptors(refs)).forEach((descriptor) => {
+    if ('value' in descriptor) {
+      freezeRefs(descriptor.value, seen)
+    }
+  })
+
+  return isFreezableRefContainer(refs) ? (Object.freeze(refs) as Refs) : refs
+}
+
 function createCheckWorkbook(input: { readonly checks: WorkbookCheckResult[] }): WorkbookCheckWorkbook {
   return Object.freeze({
     ...createWorkbookFindApi(),
@@ -550,6 +573,7 @@ function createActionPlan<Refs>(
   const plannedCommands = Object.freeze(commands.map(freezeActionCommand))
   const plannedOps = Object.freeze(ops.map(freezeWorkbookOp))
   const plannedChecks = Object.freeze(checks.map(freezeCheckResult))
+  const plannedRefs = freezeRefs(refs)
   const plannedChanged = Object.freeze(
     plannedCommands.map((command) => {
       const target = commandTarget(command)
@@ -565,8 +589,8 @@ function createActionPlan<Refs>(
     modelName,
     actionName,
     ...inputProperty(input),
-    refs,
-    refsUsed: Object.freeze([...collectWorkbookRefs(refs)]),
+    refs: plannedRefs,
+    refsUsed: Object.freeze([...collectWorkbookRefs(plannedRefs)]),
     commands: plannedCommands,
     ops: plannedOps,
     changed: plannedChanged,

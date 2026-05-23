@@ -1,7 +1,7 @@
 import type { CellRangeRef } from '@bilig/protocol'
 import { parseFormula } from '@bilig/formula'
 import { describePlanResult, describeRef, type WorkbookActionPlanResultDescription, type WorkbookRefDescription } from './describe.js'
-import type { WorkbookRef } from './find.js'
+import { collectWorkbookRefs, type WorkbookRef } from './find.js'
 import { isWorkbookOp } from './guards.js'
 import {
   inspectModel,
@@ -19,6 +19,7 @@ type WorkbookConcreteCommandOp = Extract<WorkbookOp, { kind: 'setCellFormula' | 
 
 export type WorkbookPlanIssueCode =
   | 'invalid_action_input'
+  | 'ref_not_in_refs'
   | 'duplicate_ref'
   | 'command_target_not_resolved'
   | 'formula_input_not_resolved'
@@ -314,6 +315,7 @@ function errorMessage(error: unknown): string {
 export function verifyPlan<Refs>(plan: WorkbookActionPlan<Refs>): WorkbookPlanVerification {
   const issues: WorkbookPlanIssue[] = []
   const knownRefs = new Set<string>()
+  const refsInShape = new Set(collectWorkbookRefs(plan.refs).map(refKey))
 
   if (hasOwnActionInput(plan)) {
     try {
@@ -341,6 +343,16 @@ export function verifyPlan<Refs>(plan: WorkbookActionPlan<Refs>): WorkbookPlanVe
       return
     }
     knownRefs.add(key)
+    if (!refsInShape.has(key)) {
+      issues.push(
+        issue({
+          code: 'ref_not_in_refs',
+          path: `refsUsed[${index}]`,
+          ref,
+          message: `${ref.label} appears in refsUsed but is not discoverable from refs`,
+        }),
+      )
+    }
   })
 
   function hasRef(ref: WorkbookRef): boolean {

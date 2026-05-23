@@ -225,9 +225,10 @@ the op touches the same range. For op kinds without an inferable range, `target`
 is still useful for logs and approvals but cannot prove the affected cells by
 itself.
 
-Action plans expose `refsUsed`, a flat deduped list of workbook refs found in
-the consumer-defined `refs` object. Use `collectWorkbookRefs` directly when an
-agent needs to inspect refs from any nested consumer shape.
+Action plans freeze the consumer-defined `refs` container graph and expose
+`refsUsed`, a flat deduped list of workbook refs found inside that object. Use
+`collectWorkbookRefs` directly when an agent needs to inspect refs from any
+nested consumer shape.
 Use `findTable`, `findColumn`, `findRange`, `findName`, and `findRows` directly
 when an agent or test needs the same generic refs outside a model callback. The
 same helpers are also available as a frozen `find` namespace with short aliases
@@ -278,10 +279,10 @@ logs, comparisons, approvals, or runtime handoff. Descriptions keep the same
 generic action input, refs, commands, checks, changes, and ops, but omit
 consumer-private `refs` object shape and helper functions such as
 `table.column()`.
-Plans are frozen handoff objects: action input, refs used, commands, concrete
-ops, changed summaries, and checks cannot be rewritten after planning. That
-lets an agent inspect a plan once and pass the same intent to an adapter without
-caller-side metadata drift.
+Plans are frozen handoff objects: action input, refs, refs used, commands,
+concrete ops, changed summaries, and checks cannot be rewritten after planning.
+That lets an agent inspect a plan once and pass the same intent to an adapter
+without caller-side metadata drift.
 Use `describePlanResult` when the same JSON-safe handoff is needed for either
 planned or failed action planning.
 Use `describeRunResult` after execution when an agent needs the same JSON-safe
@@ -305,11 +306,12 @@ engine.
 
 Use `verifyPlan` before runtime handoff when an agent needs to prove a planned
 action is internally consistent. It checks for non-JSON-safe action input,
-unresolved refs, unparsable formulas, duplicate resolved refs, and missing
-concrete ops for write, clear, and number-format commands that already target a
-known single cell. Custom check targets and supporting refs must also resolve
-through the model's `refsUsed` contract. Formula readback expectation inputs
-must also resolve through `refsUsed`, and expectation formulas must be parseable.
+duplicate resolved refs, refs used that are not discoverable from `refs`,
+unresolved refs, unparsable formulas, and missing concrete ops for write, clear,
+and number-format commands that already target a known single cell. Custom check
+targets and supporting refs must also resolve through the model's `refsUsed`
+contract. Formula readback expectation inputs must also resolve through
+`refsUsed`, and expectation formulas must be parseable.
 Checks must start as `planned`; consumer code cannot mark a check passed or
 failed before runtime proof.
 Low-level `addOp` commands must contain valid `WorkbookOp` values, must still
