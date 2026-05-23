@@ -98,7 +98,7 @@ describe('web preview build gate', () => {
     expect(css).toContain('--font-sans:')
     expect(css).toContain('-apple-system')
     expect(css).toContain('BlinkMacSystemFont')
-    expect(css).toContain('text-rendering: optimizeLegibility')
+    expect(css).toContain('text-rendering: auto')
     expect(workbookTheme).toContain("export const WORKBOOK_FONT_SANS = 'Arial,")
   })
 })

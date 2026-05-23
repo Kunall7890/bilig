@@ -142,15 +142,15 @@ describe('CellEditorOverlay', () => {
     expect(textarea?.style.fontFeatureSettings).toBe('normal')
     expect(textarea?.style.fontVariantNumeric).toBe('tabular-nums')
     expect(textarea?.style.letterSpacing).toBe('0px')
-    expect(textarea?.style.fontOpticalSizing).toBe('auto')
+    expect(textarea?.style.fontOpticalSizing).toBe('none')
     expect(textarea?.style.fontSynthesis).toBe('none')
-    expect(textarea?.style.textRendering).toBe('geometricprecision')
+    expect(textarea?.style.textRendering).toBe('auto')
     expect(textarea?.getAttribute('class')).toContain('py-[3px]')
     expect(textarea?.getAttribute('class')).toContain('leading-[1.2]')
     expect(workbookNativeTextQualityStyle).toMatchObject({
-      MozOsxFontSmoothing: 'grayscale',
-      textRendering: 'geometricPrecision',
-      WebkitFontSmoothing: 'antialiased',
+      MozOsxFontSmoothing: 'auto',
+      textRendering: 'auto',
+      WebkitFontSmoothing: 'auto',
     })
 
     await act(async () => {

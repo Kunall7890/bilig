@@ -1,10 +1,10 @@
 import type { CSSProperties } from 'react'
 
 export const workbookNativeTextQualityStyle = {
-  WebkitFontSmoothing: 'antialiased',
-  MozOsxFontSmoothing: 'grayscale',
+  WebkitFontSmoothing: 'auto',
+  MozOsxFontSmoothing: 'auto',
   fontKerning: 'normal',
-  fontOpticalSizing: 'auto',
+  fontOpticalSizing: 'none',
   fontSynthesis: 'none',
-  textRendering: 'geometricPrecision',
+  textRendering: 'auto',
 } satisfies CSSProperties

@@ -213,12 +213,12 @@ test('@browser-ci web app keeps dense accounting-sheet text payloads complete in
     .toBeGreaterThan(40)
   await expect(page.getByTestId('grid-native-text-layer')).toHaveCount(1)
   await expect.poll(readNativeTextQualityState(page), { message: 'workbook text must stay on the crisp native text path' }).toMatchObject({
-    appTextRendering: 'optimizelegibility',
+    appTextRendering: 'auto',
     gridFontFamilyStartsWithArial: true,
     gridFontSize: DEFAULT_WORKBOOK_CSS_FONT_SIZE,
     nativeTextFontFamilyStartsWithArial: true,
-    nativeTextRendering: 'geometricprecision',
-    nativeTextSmoothing: 'antialiased',
+    nativeTextRendering: 'auto',
+    nativeTextSmoothing: 'auto',
   })
 
   const selectedCellTextPixels = await pollDarkInteriorPixelsInCell(page, 1, 33, (pixels) => pixels > 8)
