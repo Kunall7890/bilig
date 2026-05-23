@@ -1,5 +1,6 @@
 import type {
   WorkbookChartSnapshot,
+  WorkbookCellMetadataSnapshot,
   WorkbookImageSnapshot,
   WorkbookMacroPayloadSnapshot,
   WorkbookMergeRangeSnapshot,
@@ -173,6 +174,7 @@ export interface WorkbookMetadataRecord {
   drawingArtifacts: WorkbookDrawingArtifactsRecord | undefined
   externalLinkArtifacts: WorkbookExternalLinkArtifactsRecord | undefined
   threadedCommentArtifacts: WorkbookThreadedCommentArtifactsRecord | undefined
+  cellMetadata: WorkbookCellMetadataSnapshot | undefined
   sheetThreadedCommentArtifacts: Map<string, WorkbookSheetThreadedCommentArtifactsRecord>
   sheetLegacyCommentVml: Map<string, WorkbookSheetLegacyCommentVmlRecord>
   sheetDrawingArtifacts: Map<string, WorkbookSheetDrawingArtifactsRecord>
@@ -210,6 +212,7 @@ export function createWorkbookMetadataRecord(): WorkbookMetadataRecord {
     drawingArtifacts: undefined,
     externalLinkArtifacts: undefined,
     threadedCommentArtifacts: undefined,
+    cellMetadata: undefined,
     sheetThreadedCommentArtifacts: new Map(),
     sheetLegacyCommentVml: new Map(),
     sheetDrawingArtifacts: new Map(),

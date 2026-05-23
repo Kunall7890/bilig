@@ -3,6 +3,7 @@ import type {
   WorkbookAxisEntrySnapshot,
   WorkbookAxisMetadataSnapshot,
   WorkbookCalculationSettingsSnapshot,
+  WorkbookCellMetadataSnapshot,
   WorkbookChartSnapshot,
   WorkbookDefinedNameValueSnapshot,
   WorkbookDrawingArtifactsSnapshot,
@@ -36,6 +37,7 @@ function restoreWorkbookMetadata(args: {
         drawingArtifacts?: WorkbookDrawingArtifactsSnapshot
         externalLinkArtifacts?: WorkbookExternalLinkArtifactsSnapshot
         threadedCommentArtifacts?: WorkbookThreadedCommentArtifactsSnapshot
+        cellMetadata?: WorkbookCellMetadataSnapshot
         images?: WorkbookImageSnapshot[]
         shapes?: Array<Parameters<WorkbookStore['setShape']>[0]>
         styles?: Array<Parameters<WorkbookStore['upsertCellStyle']>[0]>
@@ -72,6 +74,9 @@ function restoreWorkbookMetadata(args: {
   }
   if (args.workbookMetadata?.threadedCommentArtifacts) {
     args.workbook.setThreadedCommentArtifacts(args.workbookMetadata.threadedCommentArtifacts)
+  }
+  if (args.workbookMetadata?.cellMetadata) {
+    args.workbook.metadata.cellMetadata = structuredClone(args.workbookMetadata.cellMetadata)
   }
 }
 
@@ -201,6 +206,12 @@ function restoreSheetMetadata(args: { readonly workbook: WorkbookStore; readonly
     const targetSheet = workbook.getSheet(sheet.name)
     if (targetSheet) {
       targetSheet.richTextArtifacts = structuredClone(sheet.metadata.richTextArtifacts)
+    }
+  }
+  if (sheet.metadata?.cellMetadataRefs && sheet.metadata.cellMetadataRefs.length > 0) {
+    const targetSheet = workbook.getSheet(sheet.name)
+    if (targetSheet) {
+      targetSheet.cellMetadataRefs = structuredClone(sheet.metadata.cellMetadataRefs)
     }
   }
 }

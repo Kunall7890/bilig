@@ -13,6 +13,7 @@ import { mapStructuralBoundary } from '../../engine-structural-utils.js'
 import { normalizeDefinedName, type WorkbookTableRecord } from '../../workbook-store.js'
 import type { CreateEngineStructureServiceArgs } from './structure-service-types.js'
 import { rewriteArrayFormulasForStructuralTransform } from './structure-array-formula-metadata-rewrite.js'
+import { rewriteCellMetadataRefsForStructuralTransform } from './structure-cell-metadata-ref-rewrite.js'
 import { rewriteLegacyCommentVmlForStructuralTransform } from './structure-legacy-comment-vml-rewrite.js'
 import {
   rewriteConditionalFormatArtifactFormulaXmlForStructuralTransform,
@@ -528,6 +529,14 @@ export function rewriteWorkbookMetadataForStructuralTransform(
       sheet.richTextArtifacts = richTextArtifacts
     } else {
       delete sheet.richTextArtifacts
+    }
+  }
+  if (sheet?.cellMetadataRefs) {
+    const cellMetadataRefs = rewriteCellMetadataRefsForStructuralTransform(sheet.cellMetadataRefs, transform)
+    if (cellMetadataRefs) {
+      sheet.cellMetadataRefs = cellMetadataRefs
+    } else {
+      delete sheet.cellMetadataRefs
     }
   }
   for (const ownerSheet of workbook.sheetsByName.values()) {

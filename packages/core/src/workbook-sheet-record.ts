@@ -8,6 +8,7 @@ import type { EngineCounters } from './perf/engine-counters.js'
 import { makeLogicalCellKey } from './workbook-cell-key-index.js'
 import type {
   WorkbookSheetArrayFormulasSnapshot,
+  WorkbookCellMetadataReferenceSnapshot,
   WorkbookSheetDataTableFormulasSnapshot,
   WorkbookSheetFormatPrSnapshot,
   WorkbookSheetPrintPageSetupSnapshot,
@@ -44,6 +45,7 @@ export interface SheetRecord {
   printerSettings?: WorkbookPrinterSettingsSnapshot[]
   sparklines?: WorkbookSparklinesSnapshot
   richTextArtifacts?: WorkbookSheetRichTextArtifactsSnapshot
+  cellMetadataRefs?: WorkbookCellMetadataReferenceSnapshot[]
 }
 
 export function createWorkbookSheetRecord(args: {

@@ -15,6 +15,7 @@ const existingDesktopExcelOracleFiles = [
   'macos-desktop-excel-array-formula-structural-oracle.test.ts',
   'macos-desktop-excel-autofilter-oracle.test.ts',
   'macos-desktop-excel-chart-drawing-anchor-oracle.test.ts',
+  'macos-desktop-excel-cell-metadata-oracle.test.ts',
   'macos-desktop-excel-conditional-format-artifacts-oracle.test.ts',
   'macos-desktop-excel-data-table-structural-oracle.test.ts',
   'macos-desktop-excel-defined-name-structural-oracle.test.ts',
@@ -168,6 +169,18 @@ describe('macOS Desktop Excel oracle inventory', () => {
     expect(source).toContain('richTextArtifacts')
     expect(source).toContain('WorkPaper.buildFromSnapshot')
     expect(source).toContain('matches Desktop Excel rich text movement after structural row inserts')
+  })
+
+  it('keeps the cell metadata oracle anchored to Desktop Excel dynamic-array refs', () => {
+    const source = readFileSync(join(testDir, 'macos-desktop-excel-cell-metadata-oracle.test.ts'), 'utf8')
+
+    expect(source).toContain("BILIG_EXCEL_ORACLE_RUN === '1'")
+    expect(source).toContain('runMacosExcelStructuralOperationOracle')
+    expect(source).toContain('runMacosExcelInspectionOracle')
+    expect(source).toContain('cellMetadataRefs')
+    expect(source).toContain('XLDAPR')
+    expect(source).toContain('WorkPaper.buildFromSnapshot')
+    expect(source).toContain('matches Desktop Excel cell metadata refs after structural row inserts')
   })
 
   it('keeps the pivot oracle anchored to Desktop Excel source-backed pivot refresh semantics', () => {

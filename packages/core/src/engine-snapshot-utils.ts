@@ -179,6 +179,7 @@ export function exportSheetMetadata(workbook: WorkbookStore, sheetName: string):
   const printerSettings = sheet?.printerSettings ? structuredClone(sheet.printerSettings) : undefined
   const sparklines = sparklinesToSnapshot(sheet?.sparklines)
   const richTextArtifacts = sheet?.richTextArtifacts ? structuredClone(sheet.richTextArtifacts) : undefined
+  const cellMetadataRefs = sheet?.cellMetadataRefs ? structuredClone(sheet.cellMetadataRefs) : undefined
 
   if (
     rows.length === 0 &&
@@ -211,7 +212,8 @@ export function exportSheetMetadata(workbook: WorkbookStore, sheetName: string):
     printPageSetup === undefined &&
     printerSettings === undefined &&
     sparklines === undefined &&
-    richTextArtifacts === undefined
+    richTextArtifacts === undefined &&
+    cellMetadataRefs === undefined
   ) {
     return undefined
   }
@@ -324,6 +326,9 @@ export function exportSheetMetadata(workbook: WorkbookStore, sheetName: string):
   }
   if (richTextArtifacts) {
     metadata.richTextArtifacts = richTextArtifacts
+  }
+  if (cellMetadataRefs) {
+    metadata.cellMetadataRefs = cellMetadataRefs
   }
   return metadata
 }
