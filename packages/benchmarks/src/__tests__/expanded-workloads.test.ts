@@ -2,7 +2,7 @@ import { readFileSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { describe, expect, it } from 'vitest'
-import { ENGINE_COUNTER_KEYS } from '../../../core/src/perf/engine-counters.js'
+import { ENGINE_COUNTER_KEYS, type EngineCounterKey } from '../../../core/src/perf/engine-counters.js'
 import { DEFAULT_COMPETITIVE_WARMUP_COUNT } from '../benchmark-workpaper-vs-hyperformula.js'
 import {
   EXPANDED_COMPARATIVE_WORKLOAD_SCORECARD_LANE,
@@ -597,6 +597,33 @@ describe('expanded comparative benchmark workloads', () => {
       expect(sample.engineCounters).toBeDefined()
       expect(Object.keys(sample.engineCounters ?? {}).toSorted()).toEqual([...ENGINE_COUNTER_KEYS].toSorted())
     }
+  })
+
+  it('keeps structural column insert samples on the sparse no-value path', () => {
+    const sample = measureWorkPaperStructuralInsertColumnsSample(64)
+    const zeroCounters: EngineCounterKey[] = [
+      'formulasParsed',
+      'formulasBound',
+      'topoRebuilds',
+      'changedCellPayloadsBuilt',
+      'structuralFormulaImpactCandidates',
+      'structuralFormulaRebindInputs',
+      'structuralRangeRetargets',
+      'structuralPlannedCells',
+      'structuralSurvivorCellsRemapped',
+      'structuralRemovedCells',
+      'sheetGridBlockScans',
+    ]
+
+    expect(sample.verification).toEqual({
+      dimensions: { width: 5, height: 64 },
+      terminalFormula: 384,
+    })
+    for (const key of zeroCounters) {
+      expect(sample.engineCounters?.[key]).toBe(0)
+    }
+    expect(sample.engineCounters?.structuralTransactions).toBe(1)
+    expect(sample.engineCounters?.axisMapSplices).toBe(1)
   })
 
   it('keeps new comparable workload helper verifications equivalent', () => {

@@ -3,7 +3,7 @@ import type { StructuralAxisTransform } from '@bilig/formula'
 import { CellFlags } from '../../cell-store.js'
 import { composeFormulaFamilyStructuralSourceTransform } from '../../formula/formula-family-store.js'
 import { mapStructuralAxisIndex, structuralTransformForOp } from '../../engine-structural-utils.js'
-import type { StructuralTransaction } from '../structural-transaction.js'
+import { buildStructuralTransaction, type StructuralTransaction } from '../structural-transaction.js'
 import { EngineStructureError } from '../errors.js'
 import { normalizeDefinedName } from '../../workbook-store.js'
 import { addEngineCounter } from '../../perf/engine-counters.js'
@@ -339,10 +339,22 @@ export function createEngineStructureService(args: CreateEngineStructureServiceA
       })
 
       const transaction =
-        args.state.workbook.planStructuralAxisTransform(sheetName, transform) ??
-        (() => {
-          throw new Error(`Missing sheet for structural op: ${sheetName}`)
-        })()
+        transform.kind === 'insert' && targetSheetId !== undefined
+          ? (() => {
+              if (args.state.counters) {
+                addEngineCounter(args.state.counters, 'structuralTransactions')
+              }
+              return buildStructuralTransaction({
+                sheetName,
+                sheetId: targetSheetId,
+                transform,
+                remappedCells: [],
+              })
+            })()
+          : (args.state.workbook.planStructuralAxisTransform(sheetName, transform) ??
+            (() => {
+              throw new Error(`Missing sheet for structural op: ${sheetName}`)
+            })())
       const hadSheetSpillMetadata = hasStructuralMetadata && args.state.workbook.listSpills().some((spill) => spill.sheetName === sheetName)
       const preStructuralSpillArtifacts = hadSheetSpillMetadata
         ? clearSpillArtifactsForSheet(args, sheetName)
@@ -369,7 +381,9 @@ export function createEngineStructureService(args: CreateEngineStructureServiceA
           break
       }
 
-      args.state.workbook.applyPlannedStructuralTransaction(transaction)
+      if (transaction.remappedCells.length > 0) {
+        args.state.workbook.applyPlannedStructuralTransaction(transaction)
+      }
 
       const tableHeaderCellChangedIndices = tableHeaderCellWrites.flatMap((write) => {
         const cellIndex = args.writeTableHeaderCell(write.sheetName, write.row, write.col, write.value)

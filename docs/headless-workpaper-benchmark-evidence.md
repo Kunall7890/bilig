@@ -26,9 +26,9 @@ as useful evidence, but they do not satisfy broad coverage alone.
 
 Current checked-in metadata:
 
-- generated at `2026-05-23T00:18:29.895Z`
+- generated at `2026-05-23T01:31:32.365Z`
 - benchmark sampling: `200` measured samples after `2` warmup samples
-- WorkPaper package in the benchmark artifact: `@bilig/headless` `0.51.5`
+- WorkPaper package in the benchmark artifact: `@bilig/headless` `0.52.0`
 - comparison engine: HyperFormula `3.2.0`, local checkout commit
   `9a510a2acb97c3d3490f9e3b9e961a1c4a98b9ad`, GPL-v3 license key
 - scalar formula comparison engine: TrueCalc `0.6.4`, `7` comparable scalar
@@ -52,14 +52,14 @@ tail-latency evidence kept visible. The current checked-in artifact records
 | Public  |                 `73` |                `73` |                    `0` |
 | Holdout |                 `27` |                `27` |                    `0` |
 
-The overall directional mean-ratio geomean is `0.2699602925558648`. The overall
-directional p95-ratio geomean is `0.2961407199584623`. Ratios below `1.0` mean
+The overall directional mean-ratio geomean is `0.26812523367463204`. The overall
+directional p95-ratio geomean is `0.28434890428904197`. Ratios below `1.0` mean
 WorkPaper is faster for that metric.
 
 The current worst mean row is `sheet-rename-dependencies`, with a mean ratio of
-`0.7475629738511365`. The current worst p95 row is
-`structural-insert-columns-small`, with a p95 ratio of
-`0.8427873553627998`. The
+`0.7739971160429691`. The current worst p95 row is
+`sheet-rename-dependencies`, with a p95 ratio of
+`0.8258289847589969`. The
 headless leadership scorecard currently records
 `100/100` workloads winning both mean and p95 against HyperFormula.
 

@@ -572,11 +572,11 @@ describe('EngineStructureService', () => {
     const events: string[] = []
     const originalPlanStructuralAxisTransform = Reflect.get(workbook, 'planStructuralAxisTransform')
     const originalApplyPlannedStructuralTransaction = Reflect.get(workbook, 'applyPlannedStructuralTransaction')
-    const originalInsertRows = Reflect.get(workbook, 'insertRows')
+    const originalDeleteRows = Reflect.get(workbook, 'deleteRows')
     if (
       typeof originalPlanStructuralAxisTransform !== 'function' ||
       typeof originalApplyPlannedStructuralTransaction !== 'function' ||
-      typeof originalInsertRows !== 'function'
+      typeof originalDeleteRows !== 'function'
     ) {
       throw new TypeError('Expected structural workbook methods')
     }
@@ -589,21 +589,59 @@ describe('EngineStructureService', () => {
       events.push('applyPlannedStructuralTransaction')
       return originalApplyPlannedStructuralTransaction.apply(workbook, args)
     })
-    Reflect.set(workbook, 'insertRows', (...args: unknown[]) => {
-      events.push('insertRows')
-      return originalInsertRows.apply(workbook, args)
+    Reflect.set(workbook, 'deleteRows', (...args: unknown[]) => {
+      events.push('deleteRows')
+      return originalDeleteRows.apply(workbook, args)
     })
 
     Effect.runSync(
       getStructureService(engine).applyStructuralAxisOp({
-        kind: 'insertRows',
+        kind: 'deleteRows',
         sheetName: 'Sheet1',
         start: 0,
         count: 1,
       }),
     )
 
-    expect(events).toEqual(['planStructuralAxisTransform', 'insertRows', 'applyPlannedStructuralTransaction'])
+    expect(events).toEqual(['planStructuralAxisTransform', 'deleteRows', 'applyPlannedStructuralTransaction'])
+  })
+
+  it('skips planned transaction application for empty structural inserts', async () => {
+    const engine = new SpreadsheetEngine({ workbookName: 'structure-empty-insert-transaction' })
+    await engine.ready()
+    engine.createSheet('Sheet1')
+    engine.setCellValue('Sheet1', 'A1', 1)
+    engine.setCellFormula('Sheet1', 'B1', 'A1*2')
+
+    const workbook = engine.workbook
+    if (typeof workbook !== 'object' || workbook === null) {
+      throw new TypeError('Expected workbook store')
+    }
+    const originalPlanStructuralAxisTransform = Reflect.get(workbook, 'planStructuralAxisTransform')
+    const originalApplyPlannedStructuralTransaction = Reflect.get(workbook, 'applyPlannedStructuralTransaction')
+    if (typeof originalPlanStructuralAxisTransform !== 'function' || typeof originalApplyPlannedStructuralTransaction !== 'function') {
+      throw new TypeError('Expected structural workbook methods')
+    }
+    const plan = vi.fn(originalPlanStructuralAxisTransform.bind(workbook))
+    const apply = vi.fn(originalApplyPlannedStructuralTransaction.bind(workbook))
+    Reflect.set(workbook, 'planStructuralAxisTransform', plan)
+    Reflect.set(workbook, 'applyPlannedStructuralTransaction', apply)
+
+    engine.resetPerformanceCounters()
+    const result = Effect.runSync(
+      getStructureService(engine).applyStructuralAxisOp({
+        kind: 'insertColumns',
+        sheetName: 'Sheet1',
+        start: 1,
+        count: 1,
+      }),
+    )
+
+    expect(plan).not.toHaveBeenCalled()
+    expect(apply).not.toHaveBeenCalled()
+    expect(result.transaction.remappedCells).toEqual([])
+    expect(engine.getPerformanceCounters().structuralTransactions).toBe(1)
+    expect(engine.getCellValue('Sheet1', 'C1')).toEqual({ tag: ValueTag.Number, value: 2 })
   })
 
   it('short-circuits empty column-insert cleanup after formula family deferral', async () => {
