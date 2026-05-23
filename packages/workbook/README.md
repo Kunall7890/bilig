@@ -123,6 +123,10 @@ business-agnostic action names, including names such as `toString` or
 `constructor`, and `planWorkbookAction` only runs own actions from the manifest.
 Prototype-inherited actions are ignored, so an agent can treat the action list as
 the full executable surface.
+Model config and action objects are read as data too: `defineModel` requires
+own data properties for `actions` entries and for action-object `run`,
+`description`, and `input`. Accessor-backed model metadata is rejected before any
+getter can run.
 
 ## Selectors
 

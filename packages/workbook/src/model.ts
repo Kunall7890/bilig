@@ -154,9 +154,32 @@ export function defineModel<Refs, Actions extends WorkbookActionMap<Refs>>(
   config: WorkbookModelConfig<Refs, Actions>,
 ): WorkbookModel<Refs, Actions>
 export function defineModel<Refs>(config: WorkbookModelConfig<Refs, WorkbookActionMap<Refs>>): WorkbookModel<Refs> {
-  const name = normalizeRequiredName(config.name, 'Workbook model name')
-  const description = normalizeOptionalDescription(config.description, `Workbook model ${name} description`)
-  const actionNames = Object.keys(config.actions)
+  if (!isObject(config)) {
+    throw new Error('Workbook model config must be an object')
+  }
+  const name = normalizeRequiredName(requiredModelConfigValue(config, 'name'), 'Workbook model name')
+  const descriptionValue = optionalModelConfigValue(config, 'description')
+  const description = normalizeOptionalDescription(
+    descriptionValue.status === 'present' ? descriptionValue.value : undefined,
+    `Workbook model ${name} description`,
+  )
+  const find = requiredModelConfigValue(config, 'find')
+  if (!isFindFunction<Refs>(find)) {
+    throw new Error(`Workbook model ${name} find must be a function`)
+  }
+  const checksValue = optionalModelConfigValue(config, 'checks')
+  let checks: ((context: WorkbookCheckContext<Refs>) => readonly WorkbookCheckResult[]) | undefined
+  if (checksValue.status === 'present') {
+    if (!isChecksFunction<Refs>(checksValue.value)) {
+      throw new Error(`Workbook model ${name} checks must be a function`)
+    }
+    checks = checksValue.value
+  }
+  const actionMap = requiredModelConfigValue(config, 'actions')
+  if (!isObject(actionMap) || Array.isArray(actionMap)) {
+    throw new Error(`Workbook model ${name} actions must be an object`)
+  }
+  const actionNames = Object.keys(actionMap)
   if (actionNames.length === 0) {
     throw new Error(`Workbook model ${name} must define at least one action`)
   }
@@ -166,14 +189,22 @@ export function defineModel<Refs>(config: WorkbookModelConfig<Refs, WorkbookActi
   const actions: WorkbookActionMap<Refs> = {}
   Object.setPrototypeOf(actions, null)
   actionNames.forEach((actionName) => {
-    actions[actionName] = normalizeActionDefinition(name, actionName, config.actions[actionName])
+    actions[actionName] = normalizeActionDefinition(
+      name,
+      actionName,
+      requiredDataProperty(actionMap, actionName, `Workbook model ${name} action ${actionName}`),
+    )
   })
   Object.freeze(actions)
   return Object.freeze({
     name,
     ...(description !== undefined ? { description } : {}),
-    find: config.find,
-    ...(config.checks !== undefined ? { checks: config.checks } : {}),
+    find: (workbook: WorkbookFindWorkbook) => Reflect.apply(find, undefined, [workbook]),
+    ...(checks !== undefined
+      ? {
+          checks: (context: WorkbookCheckContext<Refs>) => Reflect.apply(checks, undefined, [context]),
+        }
+      : {}),
     actions,
   })
 }
@@ -190,7 +221,10 @@ export function inspectModel<Refs, Actions extends WorkbookActionMap<Refs>>(mode
   }
 }
 
-function normalizeRequiredName(value: string, label: string): string {
+function normalizeRequiredName(value: unknown, label: string): string {
+  if (typeof value !== 'string') {
+    throw new Error(`${label} must be a string`)
+  }
   const name = value.trim()
   if (name === '') {
     throw new Error(`${label} cannot be empty`)
@@ -215,12 +249,20 @@ function normalizeOptionalDescription(value: unknown, label: string): string | u
   return description
 }
 
-function isActionConfig<Refs>(definition: WorkbookActionDefinition<Refs> | undefined): definition is WorkbookActionConfig<Refs> {
+function isActionConfig<Refs>(definition: unknown): definition is WorkbookActionConfig<Refs> {
   return typeof definition === 'object' && definition !== null
 }
 
-function ownPropertyValue(value: object, key: string): unknown {
-  return Object.getOwnPropertyDescriptor(value, key)?.value
+function isFindFunction<Refs>(value: unknown): value is (workbook: WorkbookFindWorkbook) => Refs {
+  return typeof value === 'function'
+}
+
+function isChecksFunction<Refs>(value: unknown): value is (context: WorkbookCheckContext<Refs>) => readonly WorkbookCheckResult[] {
+  return typeof value === 'function'
+}
+
+function isWorkbookActionFunction<Refs>(value: unknown): value is WorkbookAction<Refs> {
+  return typeof value === 'function'
 }
 
 type OptionalDataValue =
@@ -236,18 +278,30 @@ function isObject(value: unknown): value is object {
   return typeof value === 'object' && value !== null
 }
 
-function optionalDataValue(value: object, key: string, path: string): OptionalDataValue {
+function optionalDataProperty(value: object, key: string, label: string): OptionalDataValue {
   const descriptor = Object.getOwnPropertyDescriptor(value, key)
   if (descriptor === undefined) {
     return { status: 'missing' }
   }
   if (!('value' in descriptor)) {
-    throw new Error(`Workbook check at ${path} must be a data property`)
+    throw new Error(`${label} must be a data property`)
   }
   return {
     status: 'present',
     value: descriptor.value,
   }
+}
+
+function requiredDataProperty(value: object, key: string, label: string): unknown {
+  const property = optionalDataProperty(value, key, label)
+  if (property.status === 'missing') {
+    throw new Error(`${label} must be a data property`)
+  }
+  return property.value
+}
+
+function optionalDataValue(value: object, key: string, path: string): OptionalDataValue {
+  return optionalDataProperty(value, key, `Workbook check at ${path}`)
 }
 
 function requiredDataValue(value: object, key: string, path: string): unknown {
@@ -372,8 +426,24 @@ function cloneCheckResult(check: unknown, path: string): WorkbookCheckResult {
   })
 }
 
-function ownActionRun<Refs>(definition: object): WorkbookAction<Refs> | undefined {
-  const run = ownPropertyValue(definition, 'run')
+function optionalModelConfigValue(value: object, key: string): OptionalDataValue {
+  return optionalDataProperty(value, key, `Workbook model config ${key}`)
+}
+
+function requiredModelConfigValue(value: object, key: string): unknown {
+  return requiredDataProperty(value, key, `Workbook model config ${key}`)
+}
+
+function actionConfigValue(modelName: string, actionName: string, definition: object, key: string): OptionalDataValue {
+  return optionalDataProperty(definition, key, `Workbook model ${modelName} action ${actionName} ${key}`)
+}
+
+function ownActionRun<Refs>(modelName: string, actionName: string, definition: object): WorkbookAction<Refs> | undefined {
+  const runProperty = actionConfigValue(modelName, actionName, definition, 'run')
+  if (runProperty.status === 'missing') {
+    return undefined
+  }
+  const run = runProperty.value
   if (typeof run !== 'function') {
     return undefined
   }
@@ -382,27 +452,24 @@ function ownActionRun<Refs>(definition: object): WorkbookAction<Refs> | undefine
   }
 }
 
-function normalizeActionDefinition<Refs>(
-  modelName: string,
-  actionName: string,
-  definition: WorkbookActionDefinition<Refs> | undefined,
-): WorkbookActionDefinition<Refs> {
-  if (typeof definition === 'function') {
+function normalizeActionDefinition<Refs>(modelName: string, actionName: string, definition: unknown): WorkbookActionDefinition<Refs> {
+  if (isWorkbookActionFunction<Refs>(definition)) {
     return definition
   }
   if (!isActionConfig(definition)) {
     throw new Error(`Workbook model ${modelName} action ${actionName} must be a function or action object with run`)
   }
-  const run = ownActionRun<Refs>(definition)
+  const run = ownActionRun<Refs>(modelName, actionName, definition)
   if (run === undefined) {
     throw new Error(`Workbook model ${modelName} action ${actionName} must be a function or action object with run`)
   }
+  const descriptionValue = actionConfigValue(modelName, actionName, definition, 'description')
   const description = normalizeOptionalDescription(
-    ownPropertyValue(definition, 'description'),
+    descriptionValue.status === 'present' ? descriptionValue.value : undefined,
     `Workbook model ${modelName} action ${actionName} description`,
   )
-  const inputValue = ownPropertyValue(definition, 'input')
-  const input = inputValue === undefined ? undefined : normalizeWorkbookActionInputDescription(inputValue)
+  const inputValue = actionConfigValue(modelName, actionName, definition, 'input')
+  const input = inputValue.status === 'present' ? normalizeWorkbookActionInputDescription(inputValue.value) : undefined
   return Object.freeze({
     ...(description !== undefined ? { description } : {}),
     ...(input !== undefined ? { input } : {}),
@@ -422,9 +489,13 @@ function inspectAction<Refs>(name: string, definition: WorkbookActionDefinition<
   if (definition === undefined || typeof definition === 'function') {
     return { name }
   }
-  const description = normalizeOptionalDescription(ownPropertyValue(definition, 'description'), `Workbook action ${name} description`)
-  const inputValue = ownPropertyValue(definition, 'input')
-  const input = inputValue === undefined ? undefined : normalizeWorkbookActionInputDescription(inputValue)
+  const descriptionValue = optionalDataProperty(definition, 'description', `Workbook action ${name} description`)
+  const description = normalizeOptionalDescription(
+    descriptionValue.status === 'present' ? descriptionValue.value : undefined,
+    `Workbook action ${name} description`,
+  )
+  const inputValue = optionalDataProperty(definition, 'input', `Workbook action ${name} input`)
+  const input = inputValue.status === 'present' ? normalizeWorkbookActionInputDescription(inputValue.value) : undefined
   return {
     name,
     ...(description !== undefined ? { description } : {}),

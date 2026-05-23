@@ -310,6 +310,8 @@ caller-owned data; `defineModel` does not freeze or rewrite it.
 Action-object manifests only read own `run`, `description`, and `input`
 properties. Prototype-inherited metadata is ignored, and an inherited `run`
 function is rejected, so agent-visible manifests stay plain and explicit.
+Accessor-backed model config, action-map entries, and action-object metadata are
+rejected without invoking hidden getters.
 
 Model actions can accept plain JSON-safe input through
 `planWorkbookAction(model, actionName, input)` and
