@@ -54,6 +54,14 @@ describe('worksheet relationship path import', () => {
     ])
     expect(imported.snapshot.sheets[0]?.metadata?.conditionalFormatArtifacts?.xml).toContain('FF00AAFF')
     expect(imported.snapshot.sheets[0]?.metadata?.sparklines?.xml).toContain('Detail!B2:C2')
+    expect(imported.snapshot.sheets[0]?.metadata?.commentThreads).toEqual([
+      expect.objectContaining({
+        address: 'A2',
+        sheetName: 'Detail',
+        comments: [expect.objectContaining({ authorDisplayName: 'DetailAudit', body: 'Detail relationship note' })],
+      }),
+    ])
+    expect(imported.snapshot.sheets[0]?.metadata?.legacyCommentVml?.vmlXml).toContain('DetailVML')
 
     expect(imported.snapshot.sheets[1]?.metadata).toMatchObject({
       sheetPr: { xml: '<sheetPr codeName="SummaryCode"><outlinePr summaryRight="0"/></sheetPr>' },
@@ -94,6 +102,27 @@ describe('worksheet relationship path import', () => {
     ])
     expect(imported.snapshot.sheets[1]?.metadata?.conditionalFormatArtifacts?.xml).toContain('FFFFAA00')
     expect(imported.snapshot.sheets[1]?.metadata?.sparklines?.xml).toContain('Summary!A2:B2')
+    expect(imported.snapshot.sheets[1]?.metadata?.commentThreads).toEqual([
+      expect.objectContaining({
+        address: 'A2',
+        sheetName: 'Summary',
+        comments: [expect.objectContaining({ authorDisplayName: 'SummaryAudit', body: 'Summary relationship note' })],
+      }),
+    ])
+    expect(imported.snapshot.sheets[1]?.metadata?.legacyCommentVml?.vmlXml).toContain('SummaryVML')
+
+    expect(
+      (imported.snapshot.workbook.metadata?.tables ?? []).map((table) => ({
+        columnNames: table.columnNames,
+        endAddress: table.endAddress,
+        name: table.name,
+        sheetName: table.sheetName,
+        startAddress: table.startAddress,
+      })),
+    ).toEqual([
+      { columnNames: ['detail', 'metadata'], endAddress: 'B2', name: 'DetailTable', sheetName: 'Detail', startAddress: 'A1' },
+      { columnNames: ['summary', 'metadata'], endAddress: 'B2', name: 'SummaryTable', sheetName: 'Summary', startAddress: 'A1' },
+    ])
   })
 })
 
@@ -103,8 +132,12 @@ const xmNamespace = 'http://schemas.microsoft.com/office/excel/2006/main'
 
 function buildReorderedWorksheetPathWorkbook(): Uint8Array {
   const workbook = XLSX.utils.book_new()
-  XLSX.utils.book_append_sheet(workbook, XLSX.utils.aoa_to_sheet([['summary', 'metadata', 1, 2, 3], ['001']]), 'Summary')
-  XLSX.utils.book_append_sheet(workbook, XLSX.utils.aoa_to_sheet([['detail', 'metadata', 1, 2, 3], ['002']]), 'Detail')
+  const summarySheet = XLSX.utils.aoa_to_sheet([['summary', 'metadata', 1, 2, 3], ['001']])
+  const detailSheet = XLSX.utils.aoa_to_sheet([['detail', 'metadata', 1, 2, 3], ['002']])
+  addCellComment(summarySheet, 'A2', 'SummaryAudit', 'Summary relationship note')
+  addCellComment(detailSheet, 'A2', 'DetailAudit', 'Detail relationship note')
+  XLSX.utils.book_append_sheet(workbook, summarySheet, 'Summary')
+  XLSX.utils.book_append_sheet(workbook, detailSheet, 'Detail')
 
   const zip = unzipSync(XLSX.write(workbook, { bookType: 'xlsx', type: 'buffer' }))
   updateWorksheet(zip, 1, {
@@ -147,9 +180,33 @@ function buildReorderedWorksheetPathWorkbook(): Uint8Array {
       ['D1', '<c r="D1"><f t="dataTable" ref="D1:E2" r1="A1"/><v>2</v></c>'],
     ]),
   })
+  addWorksheetTable(zip, 1, {
+    columns: ['summary', 'metadata'],
+    name: 'SummaryTable',
+    ref: 'A1:B2',
+    relationshipId: 'rId91',
+    tablePath: 'xl/tables/table91.xml',
+  })
+  addWorksheetTable(zip, 2, {
+    columns: ['detail', 'metadata'],
+    name: 'DetailTable',
+    ref: 'A1:B2',
+    relationshipId: 'rId92',
+    tablePath: 'xl/tables/table92.xml',
+  })
+  markLegacyCommentVml(zip, 1, 'SummaryVML')
+  markLegacyCommentVml(zip, 2, 'DetailVML')
 
   reorderWorkbookSheets(zip, ['Detail', 'Summary'])
   return zipSync(zip)
+}
+
+function addCellComment(sheet: XLSX.WorkSheet, address: string, author: string, body: string): void {
+  const cell = sheet[address]
+  if (!cell) {
+    throw new Error(`Missing fixture cell ${address}`)
+  }
+  cell.c = [{ a: author, t: body }]
 }
 
 function updateWorksheet(
@@ -206,6 +263,134 @@ function insertWorksheetPolicyXml(sheetXml: string, policyXml: readonly string[]
     return sheetXml
   }
   return `${sheetXml.slice(0, insertIndex)}${policyXml.join('')}${sheetXml.slice(insertIndex)}`
+}
+
+function addWorksheetTable(
+  zip: Record<string, Uint8Array>,
+  sheetIndex: number,
+  input: {
+    readonly columns: readonly string[]
+    readonly name: string
+    readonly ref: string
+    readonly relationshipId: string
+    readonly tablePath: string
+  },
+): void {
+  const sheetPath = `xl/worksheets/sheet${String(sheetIndex)}.xml`
+  const relationshipPath = `xl/worksheets/_rels/sheet${String(sheetIndex)}.xml.rels`
+  zip[sheetPath] = strToU8(insertWorksheetTablePart(strFromU8(zip[sheetPath] ?? new Uint8Array()), input.relationshipId))
+  zip[relationshipPath] = strToU8(
+    appendRelationship(strFromU8(zip[relationshipPath] ?? new Uint8Array()), {
+      id: input.relationshipId,
+      target: `../tables/${input.tablePath.slice(input.tablePath.lastIndexOf('/') + 1)}`,
+      type: 'http://schemas.openxmlformats.org/officeDocument/2006/relationships/table',
+    }),
+  )
+  zip[input.tablePath] = strToU8(tableXml(input))
+  zip['[Content_Types].xml'] = strToU8(
+    appendContentTypeOverride(
+      strFromU8(zip['[Content_Types].xml'] ?? new Uint8Array()),
+      `/${input.tablePath}`,
+      'application/vnd.openxmlformats-officedocument.spreadsheetml.table+xml',
+    ),
+  )
+}
+
+function insertWorksheetTablePart(sheetXml: string, relationshipId: string): string {
+  const tablePart = `<tablePart r:id="${relationshipId}"/>`
+  const withNamespace = ensureRelationshipNamespace(sheetXml)
+  const tablePartsMatch = /<tableParts\b[^>]*\bcount="(\d+)"[^>]*>([\s\S]*?)<\/tableParts>/u.exec(withNamespace)
+  if (tablePartsMatch) {
+    const nextCount = Number(tablePartsMatch[1] ?? '0') + 1
+    return withNamespace.replace(
+      tablePartsMatch[0],
+      `<tableParts count="${String(nextCount)}">${tablePartsMatch[2] ?? ''}${tablePart}</tableParts>`,
+    )
+  }
+  const insertIndex = withNamespace.search(/<extLst\b|<\/worksheet>/u)
+  if (insertIndex < 0) {
+    return withNamespace
+  }
+  return `${withNamespace.slice(0, insertIndex)}<tableParts count="1">${tablePart}</tableParts>${withNamespace.slice(insertIndex)}`
+}
+
+function ensureRelationshipNamespace(xml: string): string {
+  return /\sxmlns:r=/u.test(xml)
+    ? xml
+    : xml.replace(/<worksheet\b([^>]*)>/u, '<worksheet$1 xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">')
+}
+
+function appendRelationship(
+  relationshipsXml: string,
+  relationship: { readonly id: string; readonly target: string; readonly type: string },
+): string {
+  const entry = `<Relationship Id="${relationship.id}" Type="${relationship.type}" Target="${relationship.target}"/>`
+  if (!relationshipsXml.trim()) {
+    return `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">${entry}</Relationships>`
+  }
+  if (relationshipsXml.includes(`Id="${relationship.id}"`)) {
+    return relationshipsXml
+  }
+  return relationshipsXml.replace('</Relationships>', `${entry}</Relationships>`)
+}
+
+function appendContentTypeOverride(contentTypesXml: string, partName: string, contentType: string): string {
+  if (contentTypesXml.includes(`PartName="${partName}"`)) {
+    return contentTypesXml
+  }
+  return contentTypesXml.replace('</Types>', `<Override PartName="${partName}" ContentType="${contentType}"/></Types>`)
+}
+
+function tableXml(input: { readonly columns: readonly string[]; readonly name: string; readonly ref: string }): string {
+  return [
+    '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>',
+    `<table xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" id="1" name="${input.name}" displayName="${input.name}" ref="${input.ref}" headerRowCount="1" totalsRowShown="0">`,
+    `<autoFilter ref="${input.ref}"/>`,
+    `<tableColumns count="${String(input.columns.length)}">`,
+    ...input.columns.map((column, index) => `<tableColumn id="${String(index + 1)}" name="${column}"/>`),
+    '</tableColumns>',
+    '<tableStyleInfo name="TableStyleMedium2" showFirstColumn="0" showLastColumn="0" showRowStripes="1" showColumnStripes="0"/>',
+    '</table>',
+  ].join('')
+}
+
+function markLegacyCommentVml(zip: Record<string, Uint8Array>, sheetIndex: number, marker: string): void {
+  const sheetPath = `xl/worksheets/sheet${String(sheetIndex)}.xml`
+  const sheetXml = strFromU8(zip[sheetPath] ?? new Uint8Array())
+  const relationshipId = readXmlAttribute(/<legacyDrawing\b[^>]*>/u.exec(sheetXml)?.[0] ?? '', 'id')
+  if (!relationshipId) {
+    throw new Error(`Missing legacy comment VML relationship for ${sheetPath}`)
+  }
+  const relationshipsPath = `xl/worksheets/_rels/sheet${String(sheetIndex)}.xml.rels`
+  const target = readRelationshipTarget(strFromU8(zip[relationshipsPath] ?? new Uint8Array()), relationshipId, 'vmlDrawing')
+  if (!target) {
+    throw new Error(`Missing legacy comment VML target for ${sheetPath}`)
+  }
+  const vmlPath = resolveTargetPath(sheetPath, target)
+  zip[vmlPath] = strToU8(`${strFromU8(zip[vmlPath] ?? new Uint8Array())}<!--${marker}-->`)
+}
+
+function readRelationshipTarget(relationshipsXml: string, relationshipId: string, relationshipTypeSuffix: string): string | undefined {
+  const relationship = new RegExp(
+    `<Relationship\\b(?=[^>]*\\bId="${escapeRegExp(relationshipId)}")(?=[^>]*\\bType="[^"]*${escapeRegExp(
+      relationshipTypeSuffix,
+    )}")[^>]*\\bTarget="([^"]*)"`,
+    'u',
+  ).exec(relationshipsXml)?.[1]
+  return relationship
+}
+
+function resolveTargetPath(basePartPath: string, target: string): string {
+  const parts = basePartPath.split('/')
+  parts.pop()
+  for (const segment of target.split('/')) {
+    if (segment === '..') {
+      parts.pop()
+    } else if (segment !== '.' && segment.length > 0) {
+      parts.push(segment)
+    }
+  }
+  return parts.join('/')
 }
 
 function addCellMetadata(sheetXml: string, address: string, cm: string, vm: string): string {

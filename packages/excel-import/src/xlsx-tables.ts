@@ -6,6 +6,7 @@ import { decodeA1CellRef, decodeA1RangeRef, encodeA1CellRef, encodeA1RangeRef } 
 import { decodeExcelEscapedText, encodeExcelEscapedText } from './xlsx-escaped-text.js'
 import { autoFilterXml, parseAutoFilter } from './xlsx-filters.js'
 import { readSortStateXml } from './xlsx-sorts.js'
+import { workbookSheetPathEntriesFromSource } from './xlsx-workbook-sheet-paths.js'
 import { readXlsxZipEntries, type XlsxZipSource } from './xlsx-zip.js'
 
 type ZipEntries = Record<string, Uint8Array>
@@ -449,13 +450,7 @@ function isDefaultTableStyle(style: WorkbookTableStyleSnapshot): boolean {
 }
 
 export function readImportedWorkbookTables(source: XlsxZipSource, sheetNames: readonly string[]): WorkbookTableSnapshot[] | undefined {
-  return readImportedWorkbookTablesFromWorksheetPaths(
-    source,
-    sheetNames.map((sheetName, sheetIndex) => ({
-      name: sheetName,
-      path: `xl/worksheets/sheet${String(sheetIndex + 1)}.xml`,
-    })),
-  )
+  return readImportedWorkbookTablesFromWorksheetPaths(source, workbookSheetPathEntriesFromSource(source, sheetNames))
 }
 
 export function readImportedWorkbookTablesFromWorksheetPaths(

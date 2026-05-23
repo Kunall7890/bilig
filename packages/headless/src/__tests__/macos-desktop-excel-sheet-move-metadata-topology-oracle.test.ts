@@ -27,6 +27,11 @@ describe('macOS Desktop Excel sheet move metadata topology oracle', () => {
           'Inputs:filters=1;sorts=1;validations=1;protection=formatCells=0;ranges=InputsLock:Inputs!A2:A2;cf=1;sparkline=Inputs!B2:C2',
           'Report:filters=1;sorts=1;validations=1;protection=formatRows=0;ranges=ReportLock:Report!A2:A2;cf=1;sparkline=Report!B2:C2',
         ])
+        expect(metadataObjectSummary(importedSource)).toEqual([
+          'Data:tables=;comments=;vml=none',
+          'Inputs:tables=InputsTable:Inputs!H1:J3;comments=Inputs!A2:Inputs relationship note;vml=legacy',
+          'Report:tables=ReportTable:Report!H1:J3;comments=Report!A2:Report relationship note;vml=legacy',
+        ])
 
         const excelWorkbookPath = join(tempDir, 'excel-sheet-move-metadata-source.xlsx')
         writeFileSync(excelWorkbookPath, sourceBytes)
@@ -51,6 +56,11 @@ describe('macOS Desktop Excel sheet move metadata topology oracle', () => {
           'Report:filters=1;sorts=1;validations=1;protection=formatRows=0;ranges=ReportLock:Report!A2:A2;cf=1;sparkline=Report!B2:C2',
           'Inputs:filters=1;sorts=1;validations=1;protection=formatCells=0;ranges=InputsLock:Inputs!A2:A2;cf=1;sparkline=Inputs!B2:C2',
         ])
+        expect(metadataObjectSummary(excelTruth.snapshot)).toEqual([
+          'Data:tables=;comments=;vml=none',
+          'Report:tables=ReportTable:Report!H1:J3;comments=Report!A2:Report relationship note;vml=legacy',
+          'Inputs:tables=InputsTable:Inputs!H1:J3;comments=Inputs!A2:Inputs relationship note;vml=legacy',
+        ])
 
         const workpaper = WorkPaper.buildFromSnapshot(importedSource)
         try {
@@ -65,6 +75,7 @@ describe('macOS Desktop Excel sheet move metadata topology oracle', () => {
           expect(metadataCodeNames(headlessSnapshot)).toEqual(metadataCodeNames(excelTruth.snapshot))
           expect(metadataTabColors(headlessSnapshot)).toEqual(metadataTabColors(excelTruth.snapshot))
           expect(metadataPolicySummary(headlessSnapshot)).toEqual(metadataPolicySummary(excelTruth.snapshot))
+          expect(metadataObjectSummary(headlessSnapshot)).toEqual(metadataObjectSummary(excelTruth.snapshot))
 
           const headlessPath = join(tempDir, 'headless-sheet-move-metadata.xlsx')
           writeFileSync(headlessPath, exportXlsx(headlessSnapshot))
@@ -81,6 +92,7 @@ describe('macOS Desktop Excel sheet move metadata topology oracle', () => {
           const headlessTruth = importXlsx(new Uint8Array(readFileSync(headlessPath)), 'headless-sheet-move-metadata-truth.xlsx')
           expect(metadataCodeNames(headlessTruth.snapshot)).toEqual(metadataCodeNames(excelTruth.snapshot))
           expect(metadataPolicySummary(headlessTruth.snapshot)).toEqual(metadataPolicySummary(excelTruth.snapshot))
+          expect(metadataObjectSummary(headlessTruth.snapshot)).toEqual(metadataObjectSummary(excelTruth.snapshot))
         } finally {
           workpaper.dispose()
         }
@@ -97,6 +109,28 @@ function sheetMoveMetadataTopologySnapshot(): WorkbookSnapshot {
     version: 1,
     workbook: {
       name: 'Desktop Excel sheet move metadata topology oracle',
+      metadata: {
+        tables: [
+          {
+            name: 'InputsTable',
+            sheetName: 'Inputs',
+            startAddress: 'H1',
+            endAddress: 'J3',
+            columnNames: ['Kind', 'Metric', 'Trend'],
+            headerRow: true,
+            totalsRow: false,
+          },
+          {
+            name: 'ReportTable',
+            sheetName: 'Report',
+            startAddress: 'H1',
+            endAddress: 'J3',
+            columnNames: ['Kind', 'Metric', 'Trend'],
+            headerRow: true,
+            totalsRow: false,
+          },
+        ],
+      },
     },
     sheets: [
       {
@@ -155,6 +189,20 @@ function sheetMoveMetadataTopologySnapshot(): WorkbookSnapshot {
               style: {},
             },
           ],
+          commentThreads: [
+            {
+              threadId: 'inputs-note',
+              sheetName: 'Inputs',
+              address: 'A2',
+              comments: [
+                {
+                  id: 'inputs-note-1',
+                  authorDisplayName: 'InputsAudit',
+                  body: 'Inputs relationship note',
+                },
+              ],
+            },
+          ],
           sparklines: { xml: sparklineExtensionXml('Inputs!B2:C2', 'F2') },
         },
         cells: [
@@ -165,6 +213,15 @@ function sheetMoveMetadataTopologySnapshot(): WorkbookSnapshot {
           { address: 'C2', value: 25 },
           { address: 'E2', value: 'red' },
           { address: 'F2', value: '' },
+          { address: 'H1', value: 'Kind' },
+          { address: 'I1', value: 'Metric' },
+          { address: 'J1', value: 'Trend' },
+          { address: 'H2', value: 'Inputs' },
+          { address: 'I2', value: 24 },
+          { address: 'J2', value: 25 },
+          { address: 'H3', value: 'Inputs' },
+          { address: 'I3', value: 28 },
+          { address: 'J3', value: 29 },
         ],
       },
       {
@@ -210,6 +267,20 @@ function sheetMoveMetadataTopologySnapshot(): WorkbookSnapshot {
               style: {},
             },
           ],
+          commentThreads: [
+            {
+              threadId: 'report-note',
+              sheetName: 'Report',
+              address: 'A2',
+              comments: [
+                {
+                  id: 'report-note-1',
+                  authorDisplayName: 'ReportAudit',
+                  body: 'Report relationship note',
+                },
+              ],
+            },
+          ],
           sparklines: { xml: sparklineExtensionXml('Report!B2:C2', 'F2') },
         },
         cells: [
@@ -220,6 +291,15 @@ function sheetMoveMetadataTopologySnapshot(): WorkbookSnapshot {
           { address: 'C2', value: 38 },
           { address: 'E2', value: 31 },
           { address: 'F2', value: '' },
+          { address: 'H1', value: 'Kind' },
+          { address: 'I1', value: 'Metric' },
+          { address: 'J1', value: 'Trend' },
+          { address: 'H2', value: 'Report' },
+          { address: 'I2', value: 34 },
+          { address: 'J2', value: 38 },
+          { address: 'H3', value: 'Report' },
+          { address: 'I3', value: 35 },
+          { address: 'J3', value: 39 },
         ],
       },
     ],
@@ -262,6 +342,20 @@ function metadataPolicySummary(snapshot: WorkbookSnapshot): string[] {
       `cf=${String(metadata?.conditionalFormats?.length ?? 0)}`,
       `sparkline=${sparkline}`,
     ].join(';')
+  })
+}
+
+function metadataObjectSummary(snapshot: WorkbookSnapshot): string[] {
+  const tables = snapshot.workbook.metadata?.tables ?? []
+  return snapshot.sheets.map((sheet) => {
+    const sheetTables = tables
+      .filter((table) => table.sheetName === sheet.name)
+      .map((table) => `${table.name}:${table.sheetName}!${table.startAddress}:${table.endAddress}`)
+      .join(',')
+    const comments = (sheet.metadata?.commentThreads ?? [])
+      .map((thread) => `${thread.sheetName}!${thread.address}:${thread.comments.map((comment) => comment.body).join('|')}`)
+      .join(',')
+    return `${sheet.name}:tables=${sheetTables};comments=${comments};vml=${sheet.metadata?.legacyCommentVml ? 'legacy' : 'none'}`
   })
 }
 

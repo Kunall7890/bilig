@@ -2,6 +2,7 @@ import { strToU8, unzipSync, zipSync } from 'fflate'
 
 import type { WorkbookCommentThreadSnapshot, WorkbookLegacyCommentVmlSnapshot, WorkbookSnapshot } from '@bilig/protocol'
 import { decodeA1CellRef, encodeA1CellRef } from './xlsx-a1-utils.js'
+import { workbookSheetPathEntriesFromSource } from './xlsx-workbook-sheet-paths.js'
 import { getZipText, readXlsxZipEntries, type XlsxZipEntries, type XlsxZipSource } from './xlsx-zip.js'
 
 interface ParsedRelationship {
@@ -179,24 +180,23 @@ export function readImportedWorkbookLegacyCommentVml(
   const zip = readXlsxZipEntries(source)
   const legacyCommentVmlBySheet = new Map<string, ImportedLegacyCommentVml>()
 
-  sheetNames.forEach((sheetName, sheetIndex) => {
-    const sheetPath = `xl/worksheets/sheet${String(sheetIndex + 1)}.xml`
-    const relationshipId = readLegacyDrawingRelationshipId(getZipText(zip, sheetPath))
+  workbookSheetPathEntriesFromSource(zip, sheetNames).forEach((sheet) => {
+    const relationshipId = readLegacyDrawingRelationshipId(getZipText(zip, sheet.path))
     if (!relationshipId) {
       return
     }
-    const relationships = parseRelationships(getZipText(zip, readSheetRelationshipPath(sheetIndex)))
+    const relationships = parseRelationships(getZipText(zip, relationshipPathForPart(sheet.path)))
     const relationship = relationships.find((entry) => entry.id === relationshipId && entry.type === vmlDrawingRelationshipType)
     if (!relationship) {
       return
     }
-    const vmlXml = getZipText(zip, resolveTargetPath(sheetPath, relationship.target))
+    const vmlXml = getZipText(zip, resolveTargetPath(sheet.path, relationship.target))
     if (!vmlXml || !isLegacyCommentVmlXml(vmlXml)) {
       return
     }
     const commentsRelationship = relationships.find((entry) => entry.type === commentsRelationshipType)
-    const commentsXml = commentsRelationship ? getZipText(zip, resolveTargetPath(sheetPath, commentsRelationship.target)) : null
-    legacyCommentVmlBySheet.set(sheetName, {
+    const commentsXml = commentsRelationship ? getZipText(zip, resolveTargetPath(sheet.path, commentsRelationship.target)) : null
+    legacyCommentVmlBySheet.set(sheet.name, {
       relationshipTarget: relationship.target,
       vmlXml,
       ...(commentsRelationship && commentsXml
