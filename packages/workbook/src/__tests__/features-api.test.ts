@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import {
+  checkWorkbookFeaturePlugin,
   checkWorkbookCommandRequest,
   checkWorkbookCommandReceipt,
   defineWorkbookFeaturePlugin,
@@ -148,6 +149,13 @@ describe('@bilig/workbook feature api', () => {
           category: 'command',
           label: 'Create table',
           description: 'Create a table from the selected range',
+          input: {
+            kind: 'object',
+            description: ' Create-table options ',
+            fields: {
+              name: { kind: 'string', required: true },
+            },
+          },
         },
       ],
       projectionInterceptors: [
@@ -171,6 +179,12 @@ describe('@bilig/workbook feature api', () => {
 
     expect(Object.isFrozen(plugin)).toBe(true)
     expect(Object.isFrozen(plugin.commands)).toBe(true)
+    expect(Object.isFrozen(plugin.commands[0]?.input)).toBe(true)
+    expect(checkWorkbookFeaturePlugin(plugin)).toEqual({
+      status: 'valid',
+      plugin,
+      issues: [],
+    })
     expect(plugin).toMatchObject({
       id: 'tables',
       version: '1.0.0',
@@ -181,6 +195,13 @@ describe('@bilig/workbook feature api', () => {
           featureId: 'tables',
           category: 'command',
           label: 'Create table',
+          input: {
+            kind: 'object',
+            description: 'Create-table options',
+            fields: {
+              name: { kind: 'string', required: true },
+            },
+          },
         },
       ],
       projectionInterceptors: [
@@ -230,6 +251,151 @@ describe('@bilig/workbook feature api', () => {
         uiContributions: [],
       }),
     ).toThrowError('must not have leading or trailing whitespace')
+  })
+
+  it('checks feature plugin manifests before registration', () => {
+    expect(checkWorkbookFeaturePlugin('not-a-plugin')).toEqual({
+      status: 'invalid',
+      issues: [
+        {
+          code: 'invalid_feature_plugin',
+          path: 'plugin',
+          message: 'Workbook feature plugin must be an object',
+        },
+      ],
+    })
+
+    expect(
+      checkWorkbookFeaturePlugin({
+        id: 'tables',
+        version: '',
+        dependsOn: [' core ', 1],
+        commands: [
+          {
+            id: 'tables.createFromSelection',
+            featureId: 'filters',
+            category: 'bad',
+            label: '',
+            description: ' ',
+            input: { kind: 'wat' },
+          },
+        ],
+        projectionInterceptors: [
+          {
+            id: 'tables.rangeChrome',
+            featureId: 'filters',
+            point: 'gridChrome',
+            priority: 1.5,
+            label: '',
+          },
+        ],
+        uiContributions: [
+          {
+            id: 'tables.toolbar.create',
+            featureId: 'filters',
+            slot: 'menu',
+            label: '',
+            order: 1.5,
+            metadata: () => undefined,
+          },
+        ],
+        register: 'not-a-function',
+      }),
+    ).toEqual({
+      status: 'invalid',
+      issues: [
+        {
+          code: 'invalid_feature_plugin',
+          path: 'version',
+          message: 'Workbook feature version cannot be empty',
+        },
+        {
+          code: 'invalid_feature_plugin',
+          path: 'dependsOn[0]',
+          message: 'Workbook feature dependency must not have leading or trailing whitespace',
+        },
+        {
+          code: 'invalid_feature_plugin',
+          path: 'dependsOn[1]',
+          message: 'Workbook feature dependency must be a string',
+        },
+        {
+          code: 'invalid_feature_plugin',
+          path: 'commands[0].featureId',
+          message: 'Workbook command tables.createFromSelection feature id filters does not match plugin tables',
+        },
+        {
+          code: 'invalid_feature_plugin',
+          path: 'commands[0].category',
+          message: 'Workbook command tables.createFromSelection category is invalid',
+        },
+        {
+          code: 'invalid_feature_plugin',
+          path: 'commands[0].label',
+          message: 'Workbook command tables.createFromSelection label cannot be empty',
+        },
+        {
+          code: 'invalid_feature_plugin',
+          path: 'commands[0].description',
+          message: 'Workbook command tables.createFromSelection description cannot be empty',
+        },
+        {
+          code: 'invalid_feature_plugin',
+          path: 'commands[0].input',
+          message: 'Workbook command tables.createFromSelection input description is invalid',
+        },
+        {
+          code: 'invalid_feature_plugin',
+          path: 'projectionInterceptors[0].featureId',
+          message: 'Workbook projection interceptor tables.rangeChrome feature id filters does not match plugin tables',
+        },
+        {
+          code: 'invalid_feature_plugin',
+          path: 'projectionInterceptors[0].point',
+          message: 'Workbook projection interceptor tables.rangeChrome point is invalid',
+        },
+        {
+          code: 'invalid_feature_plugin',
+          path: 'projectionInterceptors[0].priority',
+          message: 'Workbook projection interceptor tables.rangeChrome priority is invalid',
+        },
+        {
+          code: 'invalid_feature_plugin',
+          path: 'projectionInterceptors[0].label',
+          message: 'Workbook projection interceptor tables.rangeChrome label cannot be empty',
+        },
+        {
+          code: 'invalid_feature_plugin',
+          path: 'uiContributions[0].featureId',
+          message: 'Workbook UI contribution tables.toolbar.create feature id filters does not match plugin tables',
+        },
+        {
+          code: 'invalid_feature_plugin',
+          path: 'uiContributions[0].slot',
+          message: 'Workbook UI contribution tables.toolbar.create slot is invalid',
+        },
+        {
+          code: 'invalid_feature_plugin',
+          path: 'uiContributions[0].label',
+          message: 'Workbook UI contribution tables.toolbar.create label cannot be empty',
+        },
+        {
+          code: 'invalid_feature_plugin',
+          path: 'uiContributions[0].order',
+          message: 'Workbook UI contribution tables.toolbar.create order is invalid',
+        },
+        {
+          code: 'invalid_feature_plugin',
+          path: 'uiContributions[0].metadata',
+          message: 'Workbook UI contribution tables.toolbar.create metadata is invalid',
+        },
+        {
+          code: 'invalid_feature_plugin',
+          path: 'register',
+          message: 'Workbook feature register must be a function',
+        },
+      ],
+    })
   })
 
   it('normalizes and validates command receipts with preview/apply parity', () => {

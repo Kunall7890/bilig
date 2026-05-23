@@ -1,13 +1,7 @@
-import type { CellRangeRef, CellStylePatch, CellStyleRecord, LiteralInput } from '@bilig/protocol'
+import type { CellRangeRef } from '@bilig/protocol'
 import { isCellRangeRef } from '@bilig/protocol'
 import { isWorkbookOp } from './guards.js'
-import {
-  isWorkbookActionInput,
-  isWorkbookActionInputDescription,
-  normalizeWorkbookActionInput,
-  type WorkbookActionInput,
-  type WorkbookActionInputDescription,
-} from './input.js'
+import { isWorkbookActionInput, normalizeWorkbookActionInput, type WorkbookActionInput } from './input.js'
 import type { EngineOp } from './ops.js'
 import type { WorkbookUndoRef } from './result.js'
 
@@ -63,20 +57,6 @@ export const workbookUiContributionSlots = Object.freeze([
   'status',
 ] as const satisfies readonly WorkbookUiContributionSlot[])
 const WORKBOOK_UI_CONTRIBUTION_SLOT_SET = new Set<string>(workbookUiContributionSlots)
-
-export interface WorkbookFeatureLifecycleContext {
-  readonly featureId: WorkbookFeatureId
-  readonly activeFeatures: readonly WorkbookFeatureId[]
-}
-
-export interface WorkbookCommandDescriptor {
-  readonly id: string
-  readonly featureId: WorkbookFeatureId
-  readonly category: WorkbookCommandCategory
-  readonly label: string
-  readonly description?: string
-  readonly input?: WorkbookActionInputDescription
-}
 
 export interface WorkbookCommandRequest {
   readonly featureId: WorkbookFeatureId
@@ -138,75 +118,6 @@ export type WorkbookCommandReceiptCheckResult =
       readonly status: 'invalid'
       readonly issues: readonly WorkbookCommandReceiptIssue[]
     }
-
-export interface WorkbookCellDisplayProjection {
-  readonly value?: LiteralInput
-  readonly text?: string
-  readonly metadata?: WorkbookActionInput
-}
-
-export interface WorkbookCellStyleProjection {
-  readonly style?: CellStylePatch | CellStyleRecord
-  readonly metadata?: WorkbookActionInput
-}
-
-export interface WorkbookRangeChromeProjection {
-  readonly id: string
-  readonly featureId: WorkbookFeatureId
-  readonly source: 'workbook-metadata' | 'command-preview' | 'runtime'
-  readonly range: CellRangeRef
-  readonly role: string
-  readonly label?: string
-  readonly metadata?: WorkbookActionInput
-}
-
-export interface WorkbookRowVisibilityProjection {
-  readonly hidden?: boolean
-  readonly metadata?: WorkbookActionInput
-}
-
-export interface WorkbookCommandMetadataProjection {
-  readonly label?: string
-  readonly changedRanges?: readonly CellRangeRef[]
-  readonly semanticTargets?: readonly WorkbookActionInput[]
-  readonly metadata?: WorkbookActionInput
-}
-
-export interface WorkbookProjectionContext {
-  readonly featureId: WorkbookFeatureId
-}
-
-export interface WorkbookProjectionInterceptorRegistration {
-  readonly id: string
-  readonly featureId: WorkbookFeatureId
-  readonly point: WorkbookProjectionInterceptorPoint
-  readonly priority?: number
-  readonly label?: string
-}
-
-export interface WorkbookUiContribution {
-  readonly id: string
-  readonly featureId: WorkbookFeatureId
-  readonly slot: WorkbookUiContributionSlot
-  readonly label: string
-  readonly order?: number
-  readonly metadata?: WorkbookActionInput
-}
-
-export interface WorkbookFeatureRegistration {
-  readonly commands: readonly WorkbookCommandDescriptor[]
-  readonly projectionInterceptors: readonly WorkbookProjectionInterceptorRegistration[]
-  readonly uiContributions: readonly WorkbookUiContribution[]
-}
-
-export interface WorkbookFeaturePlugin extends WorkbookFeatureRegistration {
-  readonly id: WorkbookFeatureId
-  readonly version: string
-  readonly dependsOn?: readonly WorkbookFeatureId[]
-  readonly register?: (context: WorkbookFeatureLifecycleContext) => void
-  readonly activate?: (context: WorkbookFeatureLifecycleContext) => void
-  readonly dispose?: (context: WorkbookFeatureLifecycleContext) => void
-}
 
 export function normalizeWorkbookFeatureId(value: string, label = 'Workbook feature id'): WorkbookFeatureId {
   const normalized = value.trim()
@@ -572,54 +483,6 @@ export function checkWorkbookCommandReceipt(value: unknown): WorkbookCommandRece
   }
 }
 
-export function defineWorkbookFeaturePlugin(plugin: WorkbookFeaturePlugin): WorkbookFeaturePlugin {
-  const id = normalizeWorkbookFeatureId(plugin.id)
-  const version = normalizeRequiredString(plugin.version, `Workbook feature ${id} version`)
-  const dependsOn = plugin.dependsOn?.map((dependency) => normalizeWorkbookFeatureId(dependency, `Workbook feature ${id} dependency`))
-  const commands = plugin.commands.map((command) => normalizeWorkbookCommandDescriptor(command, id))
-  const projectionInterceptors = plugin.projectionInterceptors.map((interceptor) => normalizeProjectionInterceptor(interceptor, id))
-  const uiContributions = plugin.uiContributions.map((contribution) => normalizeUiContribution(contribution, id))
-  return Object.freeze({
-    id,
-    version,
-    ...(dependsOn !== undefined ? { dependsOn: Object.freeze([...dependsOn]) } : {}),
-    commands: Object.freeze(commands),
-    projectionInterceptors: Object.freeze(projectionInterceptors),
-    uiContributions: Object.freeze(uiContributions),
-    ...(plugin.register !== undefined ? { register: plugin.register } : {}),
-    ...(plugin.activate !== undefined ? { activate: plugin.activate } : {}),
-    ...(plugin.dispose !== undefined ? { dispose: plugin.dispose } : {}),
-  })
-}
-
-export function normalizeWorkbookCommandDescriptor(
-  descriptor: WorkbookCommandDescriptor,
-  expectedFeatureId?: WorkbookFeatureId,
-): WorkbookCommandDescriptor {
-  const featureId = normalizeWorkbookFeatureId(descriptor.featureId, 'Workbook command feature id')
-  if (expectedFeatureId !== undefined && featureId !== expectedFeatureId) {
-    throw new Error(`Workbook command ${descriptor.id} feature id ${featureId} does not match plugin ${expectedFeatureId}`)
-  }
-  const id = normalizeRequiredString(descriptor.id, 'Workbook command id')
-  const label = normalizeRequiredString(descriptor.label, `Workbook command ${id} label`)
-  const description =
-    descriptor.description === undefined ? undefined : normalizeRequiredString(descriptor.description, `Workbook command ${id} description`)
-  if (!isWorkbookCommandCategory(descriptor.category)) {
-    throw new Error(`Workbook command ${id} category is invalid`)
-  }
-  if (descriptor.input !== undefined && !isWorkbookActionInputDescription(descriptor.input)) {
-    throw new Error(`Workbook command ${id} input description is invalid`)
-  }
-  return Object.freeze({
-    id,
-    featureId,
-    category: descriptor.category,
-    label,
-    ...(description !== undefined ? { description } : {}),
-    ...(descriptor.input !== undefined ? { input: descriptor.input } : {}),
-  })
-}
-
 export function normalizeWorkbookCommandReceipt(receipt: unknown): WorkbookCommandReceipt {
   const check = checkWorkbookCommandReceipt(receipt)
   if (check.status === 'invalid') {
@@ -640,58 +503,6 @@ export function workbookCommandReceiptOpsMatch(receipt: Pick<WorkbookCommandRece
     return null
   }
   return JSON.stringify(receipt.previewOps) === JSON.stringify(receipt.appliedOps)
-}
-
-function normalizeProjectionInterceptor(
-  interceptor: WorkbookProjectionInterceptorRegistration,
-  expectedFeatureId: WorkbookFeatureId,
-): WorkbookProjectionInterceptorRegistration {
-  const featureId = normalizeWorkbookFeatureId(interceptor.featureId, 'Workbook projection interceptor feature id')
-  if (featureId !== expectedFeatureId) {
-    throw new Error(`Workbook projection interceptor ${interceptor.id} feature id ${featureId} does not match plugin ${expectedFeatureId}`)
-  }
-  const id = normalizeRequiredString(interceptor.id, 'Workbook projection interceptor id')
-  if (!isWorkbookProjectionInterceptorPoint(interceptor.point)) {
-    throw new Error(`Workbook projection interceptor ${id} point is invalid`)
-  }
-  const label =
-    interceptor.label === undefined ? undefined : normalizeRequiredString(interceptor.label, `Workbook projection interceptor ${id} label`)
-  if (interceptor.priority !== undefined && (!Number.isSafeInteger(interceptor.priority) || !Number.isFinite(interceptor.priority))) {
-    throw new Error(`Workbook projection interceptor ${id} priority is invalid`)
-  }
-  return Object.freeze({
-    id,
-    featureId,
-    point: interceptor.point,
-    ...(interceptor.priority !== undefined ? { priority: interceptor.priority } : {}),
-    ...(label !== undefined ? { label } : {}),
-  })
-}
-
-function normalizeUiContribution(contribution: WorkbookUiContribution, expectedFeatureId: WorkbookFeatureId): WorkbookUiContribution {
-  const featureId = normalizeWorkbookFeatureId(contribution.featureId, 'Workbook UI contribution feature id')
-  if (featureId !== expectedFeatureId) {
-    throw new Error(`Workbook UI contribution ${contribution.id} feature id ${featureId} does not match plugin ${expectedFeatureId}`)
-  }
-  const id = normalizeRequiredString(contribution.id, 'Workbook UI contribution id')
-  const label = normalizeRequiredString(contribution.label, `Workbook UI contribution ${id} label`)
-  if (!isWorkbookUiContributionSlot(contribution.slot)) {
-    throw new Error(`Workbook UI contribution ${id} slot is invalid`)
-  }
-  if (contribution.order !== undefined && (!Number.isSafeInteger(contribution.order) || !Number.isFinite(contribution.order))) {
-    throw new Error(`Workbook UI contribution ${id} order is invalid`)
-  }
-  if (contribution.metadata !== undefined && !isWorkbookActionInput(contribution.metadata)) {
-    throw new Error(`Workbook UI contribution ${id} metadata is invalid`)
-  }
-  return Object.freeze({
-    id,
-    featureId,
-    slot: contribution.slot,
-    label,
-    ...(contribution.order !== undefined ? { order: contribution.order } : {}),
-    ...(contribution.metadata !== undefined ? { metadata: normalizeWorkbookActionInput(contribution.metadata) } : {}),
-  })
 }
 
 function normalizeReceiptOp(commandId: string, op: EngineOp, label: string): EngineOp {

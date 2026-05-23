@@ -50,6 +50,8 @@ flowchart LR
     dispatch
   - feature command receipt validation before agents trust runtime extension
     evidence
+  - feature plugin manifest validation before consumer-owned extension
+    registration
   - frozen feature vocabulary lists for agent tool manifests and UI handoff
   - check-only runtime execution that skips mutation when no apply capability
     is required
