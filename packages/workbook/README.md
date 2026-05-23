@@ -156,7 +156,8 @@ can describe generic input with `json`, `object`, `array`, `string`, `number`,
 before running workbook model code. Omitted input is valid unless the top-level
 description sets `required: true`, so agents can distinguish an optional payload
 from a malformed payload. `planWorkbookAction` uses the same check when an action
-declares input metadata.
+declares input metadata and preserves each failed input issue as a run error
+with `path` and `issueCode`, so agents can branch without parsing messages.
 
 ## Formulas
 

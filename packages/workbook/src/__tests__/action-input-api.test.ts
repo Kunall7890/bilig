@@ -334,7 +334,9 @@ describe('@bilig/workbook action input api', () => {
       },
     })
 
-    expect(planWorkbookAction(model, 'write', { value: '12' })).toEqual({
+    const result = planWorkbookAction(model, 'write', { value: '12' })
+
+    expect(result).toEqual({
       status: 'failed',
       modelName: 'metadata-input-guard-model',
       actionName: 'write',
@@ -346,9 +348,12 @@ describe('@bilig/workbook action input api', () => {
         {
           code: 'invalid_action_input',
           message: 'Action input at input.value must be a number',
+          path: 'input.value',
+          issueCode: 'wrong_input_type',
         },
       ],
     })
+    expect(describePlanResult(result)).toEqual(result)
     expect(findRan).toBe(false)
   })
 
@@ -421,6 +426,8 @@ describe('@bilig/workbook action input api', () => {
         {
           code: 'invalid_action_input',
           message: 'Action input at input is required',
+          path: 'input',
+          issueCode: 'missing_required_input',
         },
       ],
     })

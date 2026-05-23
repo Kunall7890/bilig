@@ -861,6 +861,8 @@ describe('@bilig/workbook run api', () => {
           {
             code: 'runtime_rejected',
             message: 'runtime rejected the plan',
+            path: 'adapter.apply',
+            issueCode: 'runtime_refusal',
           },
         ],
       }),
@@ -873,6 +875,8 @@ describe('@bilig/workbook run api', () => {
         {
           code: 'runtime_rejected',
           message: 'runtime rejected the plan',
+          path: 'adapter.apply',
+          issueCode: 'runtime_refusal',
         },
       ],
       checks: [
@@ -973,6 +977,8 @@ describe('@bilig/workbook run api', () => {
           {
             code: 'runtime_rejected',
             message: 'runtime rejected the plan',
+            path: 'adapter.apply',
+            issueCode: 'runtime_refusal',
           },
         ],
       }),
@@ -986,6 +992,8 @@ describe('@bilig/workbook run api', () => {
         {
           code: 'runtime_rejected',
           message: 'runtime rejected the plan',
+          path: 'adapter.apply',
+          issueCode: 'runtime_refusal',
         },
       ],
       apply: {

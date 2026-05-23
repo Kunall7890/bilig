@@ -8,6 +8,7 @@ import {
   normalizeWorkbookActionInput,
   normalizeWorkbookActionInputDescription,
   type WorkbookActionInput,
+  type WorkbookActionInputIssue,
   type WorkbookActionInputDescription,
 } from './input.js'
 import { isWorkbookOp } from './guards.js'
@@ -570,6 +571,15 @@ function actionNotFound(modelName: string, actionName: string): WorkbookRunError
   }
 }
 
+function actionInputError(issue: WorkbookActionInputIssue): WorkbookRunError {
+  return {
+    code: 'invalid_action_input',
+    message: issue.message,
+    path: issue.path,
+    issueCode: issue.code,
+  }
+}
+
 function createActionPlan<Refs>(
   modelName: string,
   actionName: string,
@@ -641,10 +651,7 @@ export function planWorkbookAction<Refs, Actions extends WorkbookActionMap<Refs>
         actionName,
         ...inputProperty(normalizedInput),
         checks: [],
-        errors: inputCheck.issues.map((entry) => ({
-          code: 'invalid_action_input',
-          message: entry.message,
-        })),
+        errors: inputCheck.issues.map(actionInputError),
       }
     }
     normalizedInput = inputCheck.input

@@ -291,7 +291,9 @@ Omitted input is valid unless the top-level description sets `required: true`;
 required omissions return `missing_required_input` instead of pretending
 `undefined` is a malformed JSON payload. `planWorkbookAction` runs that same
 check before `find`, `checks`, or action code when an action declares input
-metadata. `verifyModel(model, { inputs })` supplies per-action inputs for
+metadata. Failed action input checks keep the stable input issue `path` and
+`issueCode` on each run error, so agents can branch on structured diagnostics
+without parsing messages. `verifyModel(model, { inputs })` supplies per-action inputs for
 whole-model verification. The frozen
 `workbookActionInputDescriptionKinds` list plus
 `isWorkbookActionInputDescriptionKind(value)`,
@@ -516,7 +518,9 @@ inspect the frozen `workbookRunErrorCodes` list or call
 `isWorkbookRunErrorCode(value)` before branching on a code. Runtime adapters
 should use `apply_failed` for apply exceptions and `runtime_rejected` for
 intentional runtime refusal with a specific message instead of inventing
-model-specific public error codes.
+model-specific public error codes. Errors may also include a stable `path` and
+`issueCode` when a generic checker can identify the exact rejected input or
+adapter issue.
 `adapter.apply` only applies the plan and may return apply proof plus an undo
 ref; it cannot drop, replace, or prove checks. Returning `status: "applied"`
 with non-empty `errors` is rejected as `runtime_rejected`. If no apply proof is

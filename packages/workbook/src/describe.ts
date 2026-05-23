@@ -216,6 +216,8 @@ export type WorkbookRunResultDescription =
 export interface WorkbookRunErrorDescription {
   readonly code: WorkbookRunErrorCode
   readonly message: string
+  readonly path?: string
+  readonly issueCode?: string
 }
 
 export function describeModel<Refs, Actions extends WorkbookActionMap<Refs>>(
@@ -389,6 +391,8 @@ function describeError(error: WorkbookRunErrorDescription): WorkbookRunErrorDesc
   return {
     code: error.code,
     message: error.message,
+    ...(error.path !== undefined ? { path: error.path } : {}),
+    ...(error.issueCode !== undefined ? { issueCode: error.issueCode } : {}),
   }
 }
 

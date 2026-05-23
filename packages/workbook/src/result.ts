@@ -145,6 +145,8 @@ export function isWorkbookRunErrorCode(value: unknown): value is WorkbookRunErro
 export interface WorkbookRunError {
   readonly code: WorkbookRunErrorCode
   readonly message: string
+  readonly path?: string
+  readonly issueCode?: string
 }
 
 export type WorkbookRunResult =

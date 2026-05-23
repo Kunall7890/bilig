@@ -189,7 +189,13 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 }
 
 function isWorkbookRunError(value: unknown): value is WorkbookRunError {
-  return isRecord(value) && isWorkbookRunErrorCode(value['code']) && typeof value['message'] === 'string'
+  return (
+    isRecord(value) &&
+    isWorkbookRunErrorCode(value['code']) &&
+    typeof value['message'] === 'string' &&
+    (value['path'] === undefined || typeof value['path'] === 'string') &&
+    (value['issueCode'] === undefined || typeof value['issueCode'] === 'string')
+  )
 }
 
 function isWorkbookUndoRef(value: unknown): value is WorkbookUndoRef {
