@@ -25,6 +25,7 @@ import { chartGeometryFromAnchor, rewriteChartAnchorForStructuralTransform } fro
 import { rewriteControlArtifactsForStructuralTransform } from './structure-control-artifact-rewrite.js'
 import { rewriteThreadedCommentArtifactsForStructuralTransform } from './structure-threaded-comment-artifact-rewrite.js'
 import { rewriteIgnoredErrorsForStructuralTransform } from './structure-ignored-errors-metadata-rewrite.js'
+import { rewritePreservedSheetMetadataForStructuralTransform } from './structure-preserved-sheet-metadata-rewrite.js'
 import { rewritePrintPageSetupForStructuralTransform } from './structure-print-page-setup-metadata-rewrite.js'
 import { rewriteRichTextArtifactsForStructuralTransform } from './structure-rich-text-artifact-rewrite.js'
 import {
@@ -462,6 +463,15 @@ export function rewriteWorkbookMetadataForStructuralTransform(
   rewriteLegacyCommentVmlForStructuralTransform({ workbook, sheetName, transform })
   rewriteThreadedCommentArtifactsForStructuralTransform({ workbook, sheetName, transform })
   rewriteControlArtifactsForStructuralTransform({ workbook, sheetName, transform })
+  const preservedSheetMetadata = workbook.metadata.preservedSheetMetadata.get(sheetName)
+  if (preservedSheetMetadata) {
+    const nextPreservedSheetMetadata = rewritePreservedSheetMetadataForStructuralTransform(preservedSheetMetadata, transform)
+    if (nextPreservedSheetMetadata) {
+      workbook.metadata.preservedSheetMetadata.set(sheetName, nextPreservedSheetMetadata)
+    } else {
+      workbook.metadata.preservedSheetMetadata.delete(sheetName)
+    }
+  }
   workbook.listNotes(sheetName).forEach((note) => {
     const nextAddress = rewriteMetadataAddressForStructuralTransform(note.address, transform)
     workbook.deleteNote(sheetName, note.address)

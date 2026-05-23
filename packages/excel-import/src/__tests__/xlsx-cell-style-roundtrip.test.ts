@@ -115,6 +115,14 @@ describe('xlsx cell style roundtrip', () => {
     expect(cellXml).not.toContain('t="z"')
   })
 
+  it('does not duplicate blank cells that also carry raw style indexes', () => {
+    const exported = exportXlsx(buildStyleArtifactBlankCellWorkbook())
+    const cellXml = readCellXml(exported, 'xl/worksheets/sheet1.xml!C3')
+
+    expect(countCellElements(exported, 'xl/worksheets/sheet1.xml', 'C3')).toBe(1)
+    expect(cellXml).toMatch(/^<c\b(?=[^>]*\br="C3")(?=[^>]*\bs="1")[^>]*\/>$/u)
+  })
+
   it('imports self-closing formatted blank cells as blank format cells', () => {
     const zip = unzipSync(exportXlsx(buildBlankFormattedCellWorkbook()))
     const sheetXml = strFromU8(zip['xl/worksheets/sheet1.xml'] ?? new Uint8Array())
@@ -555,10 +563,43 @@ function buildPartiallyIndexedStyleArtifactWorkbook(): WorkbookSnapshot {
   }
 }
 
+function buildStyleArtifactBlankCellWorkbook(): WorkbookSnapshot {
+  return {
+    version: 1,
+    workbook: {
+      name: 'Style artifact blank cell',
+      metadata: {
+        styleArtifacts: {
+          stylesXml: headerStyleReferenceStylesXml,
+        },
+      },
+    },
+    sheets: [
+      {
+        id: 1,
+        name: 'Report',
+        order: 0,
+        cells: [{ address: 'A1', value: 'Header' }],
+        metadata: {
+          styleArtifacts: {
+            cellStyleIndexes: [{ address: 'C3', styleIndex: 1 }],
+            blankCellAddresses: ['C3'],
+          },
+        },
+      },
+    ],
+  }
+}
+
 function readCellXml(bytes: Uint8Array, cellRef: string): string | undefined {
   const [sheetPath, address] = cellRef.split('!')
   const sheetXml = strFromU8(unzipSync(bytes)[sheetPath ?? ''] ?? new Uint8Array())
   return new RegExp(`<c\\b(?=[^>]*\\br="${address ?? ''}")[^>]*(?:\\/>|>[\\s\\S]*?<\\/c>)`, 'u').exec(sheetXml)?.[0]
+}
+
+function countCellElements(bytes: Uint8Array, sheetPath: string, address: string): number {
+  const sheetXml = strFromU8(unzipSync(bytes)[sheetPath] ?? new Uint8Array())
+  return [...sheetXml.matchAll(new RegExp(`<c\\b(?=[^>]*\\br="${address}")[^>]*(?:\\/>|>[\\s\\S]*?<\\/c>)`, 'gu'))].length
 }
 
 function readCellStyleParts(bytes: Uint8Array, cellRef: string): { border: string; fill: string; font: string } {

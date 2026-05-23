@@ -26,6 +26,42 @@ describe('engine imported package metadata preservation', () => {
     expect(restored.exportSnapshot().workbook.metadata).toMatchObject(preservedWorkbookMetadata)
     expect(restored.exportSnapshot().sheets[0]?.metadata).toMatchObject(preservedSheetMetadata)
   })
+
+  it('structurally rewrites preserved worksheet style artifacts while keeping sheet view refs stable', async () => {
+    const engine = new SpreadsheetEngine({ workbookName: 'package-metadata-structural-rewrite' })
+    await engine.ready()
+
+    engine.importSnapshot(packageMetadataSnapshot())
+    engine.insertRows('Data', 0, 1)
+    engine.insertColumns('Data', 0, 1)
+
+    const metadata = engine.exportSnapshot().sheets[0]?.metadata
+    expect(metadata?.styleArtifacts).toEqual({
+      cellStyleIndexes: [{ address: 'B2', styleIndex: 1 }],
+      blankCellAddresses: ['D4'],
+    })
+    expect(metadata?.viewState).toEqual({
+      sheetViewsXml:
+        '<sheetViews><sheetView workbookViewId="0" topLeftCell="B2" tabSelected="1"><selection activeCell="C3" sqref="C3 D4:E5"/></sheetView></sheetViews>',
+    })
+  })
+
+  it('drops deleted preserved worksheet style refs without shifting sheet view refs', async () => {
+    const engine = new SpreadsheetEngine({ workbookName: 'package-metadata-deleted-structural-rewrite' })
+    await engine.ready()
+
+    engine.importSnapshot(packageMetadataSnapshot())
+    engine.deleteRows('Data', 2, 1)
+
+    const metadata = engine.exportSnapshot().sheets[0]?.metadata
+    expect(metadata?.styleArtifacts).toEqual({
+      cellStyleIndexes: [{ address: 'A1', styleIndex: 1 }],
+    })
+    expect(metadata?.viewState).toEqual({
+      sheetViewsXml:
+        '<sheetViews><sheetView workbookViewId="0" topLeftCell="B2" tabSelected="1"><selection activeCell="C3" sqref="C3 D4:E5"/></sheetView></sheetViews>',
+    })
+  })
 })
 
 const preservedWorkbookMetadata = {
@@ -166,7 +202,8 @@ const preservedSheetMetadata = {
     pivotTableDefinitionsXml: '<pivotTableDefinition name="PivotTable1"/>',
   },
   viewState: {
-    sheetViewsXml: '<sheetViews><sheetView workbookViewId="0" tabSelected="1"/></sheetViews>',
+    sheetViewsXml:
+      '<sheetViews><sheetView workbookViewId="0" topLeftCell="B2" tabSelected="1"><selection activeCell="C3" sqref="C3 D4:E5"/></sheetView></sheetViews>',
   },
 } satisfies NonNullable<WorkbookSnapshot['sheets'][number]['metadata']>
 

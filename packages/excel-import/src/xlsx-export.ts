@@ -452,7 +452,10 @@ function applyStyleArtifactIndexesToSheetXml(
   if (missingCells.length > 0) {
     output = addMissingFormattedCells(output, missingCells)
   }
-  const missingBlankCellAddresses = blankCellAddresses.filter((address) => !handledAddresses.has(address) && !presentAddresses.has(address))
+  const addedStyledCellAddresses = new Set(missingCells.map((cell) => cell.address))
+  const missingBlankCellAddresses = blankCellAddresses.filter(
+    (address) => !handledAddresses.has(address) && !presentAddresses.has(address) && !addedStyledCellAddresses.has(address),
+  )
   return missingBlankCellAddresses.length > 0 ? addMissingBlankCells(output, missingBlankCellAddresses) : output
 }
 

@@ -179,9 +179,12 @@ describe('macOS Desktop Excel oracle inventory', () => {
 
     expect(source).toContain("BILIG_EXCEL_ORACLE_RUN === '1'")
     expect(source).toContain('runMacosExcelInspectionOracle')
+    expect(source).toContain('runMacosExcelStructuralOperationOracle')
     expect(source).toContain('WorkPaper.buildFromSnapshot')
     expect(source).toContain('viewState')
+    expect(source).toContain('styleArtifacts')
     expect(source).toContain('preserves Desktop Excel workbook and sheet view state after a headless edit')
+    expect(source).toContain('matches Desktop Excel preserved style artifacts and view refs after structural row inserts')
   })
 
   it('keeps the rich text oracle anchored to Desktop Excel cell run preservation', () => {
