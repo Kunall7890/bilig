@@ -4,6 +4,15 @@ All notable changes to `@bilig/headless` will be documented in this file.
 
 This package is released as part of the aligned bilig library package set.
 
+## 0.68.1
+
+- Release type: patch
+- Previous libraries tag: libraries-v0.68.0
+- Manual override: no
+
+## Fixes
+- fix(workbook): rewrite preserved style artifacts (cb76bf8e)
+
 ## 0.68.0
 
 - Release type: minor
