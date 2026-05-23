@@ -4,6 +4,16 @@ All notable changes to `@bilig/headless` will be documented in this file.
 
 This package is released as part of the aligned bilig library package set.
 
+## 0.67.15
+
+- Release type: patch
+- Previous libraries tag: libraries-v0.67.14
+- Manual override: no
+
+## Fixes
+- fix(workbook): structure model verification failures (fb51d654)
+- fix(workbook): preserve cell metadata refs (0ea43dd8)
+
 ## 0.67.14
 
 - Release type: patch
