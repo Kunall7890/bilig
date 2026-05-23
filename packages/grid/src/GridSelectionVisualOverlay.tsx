@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState, type CSSProperties } from 'react'
 import { MAX_COLS, MAX_ROWS } from '@bilig/protocol'
 import type { GridGeometrySnapshot } from './gridGeometry.js'
 import type { GridSelection, Item, Rectangle } from './gridTypes.js'
-import { selectionFillRangesForRange, selectionFillRangesForRangeExcludingCell } from './gridSelectionFillRanges.js'
+import { selectionFillRangesForRange } from './gridSelectionFillRanges.js'
 import type { WorkbookGridScrollStore } from './workbookGridScrollStore.js'
 import { workbookThemeColors } from './workbookTheme.js'
 
@@ -169,7 +169,7 @@ function appendBodySelectionVisualRects(
 
   if (isMultiCellSelection) {
     let fillIndex = 0
-    for (const fillRange of selectionFillRangesForRangeExcludingCell(input.selectionRange, activeCell)) {
+    for (const fillRange of selectionFillRangesForRange(input.selectionRange)) {
       let segmentIndex = 0
       for (const bounds of input.geometry.rangeScreenRects(fillRange)) {
         appendInsetRect(rects, 'selection-fill', stableRangeKey('selection-fill:range', fillRange, fillIndex, segmentIndex), bounds, 1, 1)

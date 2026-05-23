@@ -13,7 +13,7 @@ describe('GridSelectionVisualOverlay', () => {
     document.body.innerHTML = ''
   })
 
-  test('builds Excel-style DOM visual rects for body range selections', () => {
+  test('builds continuous Excel-style DOM visual rects for body range selections', () => {
     const geometry = createGeometry()
     const selection = createRangeSelection(createGridSelection(1, 1), [1, 1], [3, 3])
 
@@ -27,14 +27,13 @@ describe('GridSelectionVisualOverlay', () => {
 
     expect(rects).toEqual(
       expect.arrayContaining([
-        expect.objectContaining({ role: 'selection-fill', bounds: expect.objectContaining({ x: 147, y: 65, width: 298, height: 38 }) }),
-        expect.objectContaining({ role: 'selection-fill', bounds: expect.objectContaining({ x: 247, y: 45, width: 198, height: 18 }) }),
+        expect.objectContaining({ role: 'selection-fill', bounds: expect.objectContaining({ x: 147, y: 45, width: 298, height: 58 }) }),
         expect.objectContaining({ role: 'selection-border', bounds: expect.objectContaining({ x: 146, y: 44, width: 300, height: 60 }) }),
         expect.objectContaining({ role: 'active-border', bounds: expect.objectContaining({ x: 146, y: 44, width: 100, height: 20 }) }),
         expect.objectContaining({ role: 'fill-handle', bounds: expect.objectContaining({ x: 442, y: 100, width: 8, height: 8 }) }),
       ]),
     )
-    expect(rects.filter((rect) => rect.role === 'selection-fill')).toHaveLength(2)
+    expect(rects.filter((rect) => rect.role === 'selection-fill')).toHaveLength(1)
   })
 
   test('builds visible header, body, and active-cell rects for axis selections', () => {
