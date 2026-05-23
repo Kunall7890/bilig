@@ -4,7 +4,7 @@ import { existsSync, readFileSync } from 'node:fs'
 import { isAbsolute, join, relative, resolve } from 'node:path'
 import { pathToFileURL } from 'node:url'
 
-import type { BuildScorecardInput } from './bilig-dominance-scorecard-types.ts'
+import type { BuildScorecardInput, OverallGoogleSheets10xStatus } from './bilig-dominance-scorecard-types.ts'
 import { loadBiligDominanceScorecardInput, rootDir } from './bilig-dominance-scorecard-input.ts'
 import {
   localCiResourceGuardOverrideEnv,
@@ -43,6 +43,7 @@ import {
 
 export interface BiligDominanceStatus {
   readonly goalStatus: 'achieved' | 'active-not-achieved'
+  readonly overallGoogleSheets10xStatus: OverallGoogleSheets10xStatus
   readonly blanketTenXClaimAllowed: boolean
   readonly unmetRequirements: readonly string[]
   readonly importExportBlockers: readonly string[]
@@ -307,6 +308,7 @@ export function buildBiligDominanceStatus(args: {
     : []
   return {
     goalStatus: scorecard.goalStatus === 'achieved' && liveStatusBlockers.length === 0 ? 'achieved' : 'active-not-achieved',
+    overallGoogleSheets10xStatus: scorecard.overallGoogleSheets10xStatus,
     blanketTenXClaimAllowed,
     unmetRequirements,
     importExportBlockers: [...(importExportCategory?.blockers ?? []), ...corpusBlockers],

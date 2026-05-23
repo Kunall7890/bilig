@@ -95,6 +95,20 @@ describe('bilig dominance status', () => {
       nextDominanceCheckCommand: 'pnpm dominance:generate && pnpm dominance:check && pnpm dominance:audit:check',
       blockedCommands: [],
     })
+    expect(status.overallGoogleSheets10xStatus).toMatchObject({
+      passed: false,
+      status: 'blocked',
+      categories: expect.arrayContaining([
+        expect.objectContaining({ id: 'ui-responsiveness', passed: false }),
+        expect.objectContaining({ id: 'recalculation-speed', passed: true }),
+        expect.objectContaining({ id: 'structural-edit-performance', passed: true }),
+        expect.objectContaining({ id: 'large-workbook-scale', passed: true }),
+      ]),
+      unmetRequirements: expect.arrayContaining([
+        expect.stringContaining('ui-responsiveness:'),
+        expect.stringContaining('live UI browser evidence is not a same-corpus 10x proof against Google Sheets with rendered-grid proof'),
+      ]),
+    })
     expect(status.uiSameCorpus.fixture.microsoftExcelWebUrl).toContain('view.officeapps.live.com/op/view.aspx')
     expect(status.uiSameCorpus.nextPublicAccessCheckCommand).toContain(
       '--output .cache/ui-responsiveness/same-corpus-public-access-check.json',
