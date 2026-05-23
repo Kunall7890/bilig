@@ -45,7 +45,7 @@ workbook-shaped logic that can run through `@bilig/workpaper`. If it is, use
 WorkPaper state as the source of truth. For MCP, start with:
 
 ```sh
-npm exec --package @bilig/headless@0.71.0 -- bilig-workpaper-mcp --workpaper ./pricing.workpaper.json --init-demo-workpaper --writable
+npm exec --package @bilig/headless@0.72.0 -- bilig-workpaper-mcp --workpaper ./pricing.workpaper.json --init-demo-workpaper --writable
 ```
 
 For a reduced XLSX formula/import blocker, generate a local fixture report with:
@@ -244,7 +244,7 @@ screenshots only for human visual review, not as the source of formula truth.
 The shortest MCP shape is:
 
 ```sh
-npm exec --package @bilig/headless@0.71.0 -- bilig-workpaper-mcp --workpaper ./pricing.workpaper.json --init-demo-workpaper --writable
+npm exec --package @bilig/headless@0.72.0 -- bilig-workpaper-mcp --workpaper ./pricing.workpaper.json --init-demo-workpaper --writable
 ```
 
 ## proof and caveats
@@ -491,7 +491,7 @@ npm exec --package @bilig/headless@0.71.0 -- bilig-workpaper-mcp --workpaper ./p
 - runnable AI SDK streamText WorkPaper tool smoke:
   https://github.com/proompteng/bilig/blob/main/examples/headless-workpaper/ai-sdk-stream-text-tool-smoke.ts
 - low-code agent workflow formula readback:
-  npm exec --package @bilig/workpaper@0.71.0 -- bilig-n8n-formula-server --port 4321
+  npm exec --package @bilig/workpaper@0.72.0 -- bilig-n8n-formula-server --port 4321
   n8n community node package: @bilig/n8n-nodes-workpaper
   https://www.npmjs.com/package/@bilig/n8n-nodes-workpaper
   https://github.com/proompteng/bilig/tree/main/integrations/n8n-nodes-workpaper
@@ -518,7 +518,7 @@ npm exec --package @bilig/headless@0.71.0 -- bilig-workpaper-mcp --workpaper ./p
 - MCP spreadsheet server directory status:
   https://proompteng.github.io/bilig/mcp-spreadsheet-server-directory.html
   https://github.com/proompteng/bilig/blob/main/docs/mcp-spreadsheet-server-directory.md
-  npm exec --package @bilig/headless@0.71.0 -- bilig-workpaper-mcp
+  npm exec --package @bilig/headless@0.72.0 -- bilig-workpaper-mcp
   Directory status currently includes Official MCP Registry, Glama, PulseMCP,
   MCPRepository, and pending maintainer-review submissions without duplicate
   resubmission.
@@ -532,8 +532,8 @@ npm exec --package @bilig/headless@0.71.0 -- bilig-workpaper-mcp --workpaper ./p
 - Claude Desktop MCPB bundle guide:
   https://proompteng.github.io/bilig/claude-desktop-mcpb-workpaper.html
   https://github.com/proompteng/bilig/blob/main/docs/claude-desktop-mcpb-workpaper.md
-  https://github.com/proompteng/bilig/releases/download/libraries-v0.71.0/bilig-workpaper.mcpb
-  https://github.com/proompteng/bilig/releases/download/libraries-v0.71.0/bilig-workpaper.mcpb.sha256
+  https://github.com/proompteng/bilig/releases/download/libraries-v0.72.0/bilig-workpaper.mcpb
+  https://github.com/proompteng/bilig/releases/download/libraries-v0.72.0/bilig-workpaper.mcpb.sha256
   pnpm mcpb:workpaper:build
 - MCP spreadsheet tool server feedback discussion:
   https://github.com/proompteng/bilig/discussions/230
@@ -544,7 +544,7 @@ npm exec --package @bilig/headless@0.71.0 -- bilig-workpaper-mcp --workpaper ./p
   pnpm --dir examples/headless-workpaper run agent:mcp-stdio
   https://github.com/proompteng/bilig/blob/main/examples/headless-workpaper/mcp-stdio-server.ts
 - packaged MCP stdio WorkPaper server:
-  npm exec --package @bilig/headless@0.71.0 -- bilig-workpaper-mcp
+  npm exec --package @bilig/headless@0.72.0 -- bilig-workpaper-mcp
   mcpName: io.github.proompteng/bilig-workpaper
   https://github.com/proompteng/bilig/blob/main/packages/headless/server.json
 - official MCP Registry entry:
