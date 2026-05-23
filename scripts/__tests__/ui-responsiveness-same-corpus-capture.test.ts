@@ -7,6 +7,7 @@ import { exportXlsx } from '../../packages/excel-import/src/index.js'
 import { buildWorkbookBenchmarkCorpus } from '../../packages/benchmarks/src/workbook-corpus.js'
 import {
   assertSameCorpusBrowserRunAllowed,
+  assertSameCorpusCaptureEvidenceReady,
   buildSameCorpusFingerprint,
   buildSameCorpusCaptureArtifact,
   collectSameCorpusProductMeasurements,
@@ -37,6 +38,7 @@ const sameCorpusFixtureCheckedCells = [
   { address: 'B1', expected: 'metric-2', actual: 'metric-2' },
   { address: 'F2', expected: 'note-1-5', actual: 'note-1-5' },
 ] as const
+const wideMixedSameCorpusFingerprint = buildSameCorpusFingerprint(buildWorkbookBenchmarkCorpus('wide-mixed-250k')).corpusFingerprint
 
 describe('same-corpus UI responsiveness capture CLI', () => {
   it('builds a default Bilig benchmark URL from the selected corpus', () => {
@@ -52,6 +54,7 @@ describe('same-corpus UI responsiveness capture CLI', () => {
     ])
 
     expect(args).toMatchObject({
+      allowIncompleteEvidence: false,
       biligUrl: 'http://localhost:5173/?benchmarkCorpus=dense-mixed-250k',
       biligStorageStatePath: null,
       corpusId: 'dense-mixed-250k',
@@ -99,6 +102,7 @@ describe('same-corpus UI responsiveness capture CLI', () => {
     ])
 
     expect(args).toMatchObject({
+      allowIncompleteEvidence: false,
       biligUrl: 'http://127.0.0.1:4173/?benchmarkCorpus=wide-mixed-250k',
       deltaX: 1024,
       deltaY: 0,
@@ -120,6 +124,18 @@ describe('same-corpus UI responsiveness capture CLI', () => {
     expect(() =>
       parseCaptureArgs(['--output', '   ', '--google-sheets-url', 'https://docs.google.com/spreadsheets/d/sheet-id/edit']),
     ).toThrow('Missing value after --output')
+  })
+
+  it('parses incomplete-evidence override for diagnostic captures only', () => {
+    const args = parseCaptureArgs([
+      '--output',
+      'tmp/ui-capture.json',
+      '--google-sheets-url',
+      'https://docs.google.com/spreadsheets/d/sheet-id/edit',
+      '--allow-incomplete-evidence',
+    ])
+
+    expect(args.allowIncompleteEvidence).toBe(true)
   })
 
   it('parses incumbent-only same-corpus preflight options', () => {
@@ -438,6 +454,42 @@ describe('same-corpus UI responsiveness capture CLI', () => {
     expect(capture.runManifest.biligProductionRuntimeProofCaseCount).toBe(1)
     expect(capture.runManifest.invalidReasons).toContain('Bilig production runtime proof covers 1/9 cases')
     expect(parseSameCorpusCapture(capture).cases[0]?.bilig.biligRuntimeProof?.verified).toBe(true)
+  })
+
+  it('rejects capture artifacts with incomplete browser-visible evidence by default', () => {
+    const capture = buildSameCorpusCaptureArtifact({
+      sampleCount: 3,
+      limitations: ['test limitation'],
+      cases: [
+        sameCorpusCaptureCase({
+          workload: 'open-workbook',
+          biligRuntimeProof: null,
+        }),
+      ],
+    })
+
+    expect(() => assertSameCorpusCaptureEvidenceReady(capture)).toThrow(
+      /Same-corpus UI capture artifact is not valid evidence for the dominance scorecard/u,
+    )
+    expect(() => assertSameCorpusCaptureEvidenceReady(capture)).toThrow(/Bilig production runtime proof covers 0\/9 cases/u)
+  })
+
+  it('allows complete current-contract captures even when the measured result is not 10x yet', () => {
+    const capture = buildSameCorpusCaptureArtifact({
+      sampleCount: 3,
+      limitations: ['test limitation'],
+      cases: requiredUiResponsivenessSameCorpusWorkloads.map((workload) =>
+        sameCorpusCaptureCase({
+          workload,
+          biligRuntimeProof: sameCorpusBiligRuntimeProof('production'),
+        }),
+      ),
+    })
+
+    expect(capture.runManifest.currentContractEvidenceComplete).toBe(true)
+    expect(capture.runManifest.googleSheetsTenXRequirementSatisfied).toBe(false)
+    expect(capture.runManifest.invalidReasons).toEqual(['not every required workload is 10x against Google Sheets'])
+    expect(() => assertSameCorpusCaptureEvidenceReady(capture)).not.toThrow()
   })
 
   it('downgrades legacy Bilig canvas evidence that lacks strict rendered-frame proof', () => {
@@ -785,11 +837,40 @@ function sameCorpusCaptureMeasurement(
       method,
       sheetName: 'WideGrid',
       materializedCells: 250_000,
-      corpusFingerprint: buildSameCorpusFingerprint(buildWorkbookBenchmarkCorpus('wide-mixed-250k')).corpusFingerprint,
+      corpusFingerprint: wideMixedSameCorpusFingerprint,
       sourceWorkbookSha256,
       checkedCells: sameCorpusFixtureCheckedCells,
     },
     limitations: [],
+  }
+}
+
+function sameCorpusCaptureCase(args: {
+  readonly workload: (typeof requiredUiResponsivenessSameCorpusWorkloads)[number]
+  readonly biligRuntimeProof: ReturnType<typeof sameCorpusBiligRuntimeProof> | null
+}) {
+  const bilig = {
+    ...sameCorpusCaptureMeasurement('bilig', 'bilig-benchmark-state'),
+    ...(args.biligRuntimeProof ? { biligRuntimeProof: args.biligRuntimeProof } : {}),
+  }
+  const googleSheets = sameCorpusCaptureMeasurement('google-sheets', 'google-sheets-xlsx-export')
+  const scenarioProof = buildCaptureScenarioProof({
+    bilig,
+    googleSheets,
+    visualProofs: [
+      sameCorpusVisualProof('bilig', 'typegpu-visible-canvas'),
+      sameCorpusVisualProof('google-sheets', 'google-sheets-visible-grid'),
+    ],
+  })
+  return {
+    id: `same-corpus-wide-mixed-250k-${args.workload}`,
+    corpusCaseId: 'wide-mixed-250k' as const,
+    materializedCells: 250_000,
+    workload: args.workload,
+    ...sameCorpusScenarioCaseFields(scenarioProof),
+    scenarioProof,
+    bilig,
+    googleSheets,
   }
 }
 

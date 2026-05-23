@@ -293,6 +293,7 @@ export async function preflightSameCorpusIncumbentAccess(args: PreflightArgs): P
 function captureArgsForStorageState(args: SaveStorageStateArgs): CaptureArgs {
   return {
     biligUrl: args.authUrl,
+    allowIncompleteEvidence: true,
     biligStorageStatePath: null,
     corpusId: args.corpusId,
     deltaX: 0,
@@ -380,6 +381,7 @@ function captureArgsForPreflight(
 ): CaptureArgs {
   return {
     biligUrl: url,
+    allowIncompleteEvidence: true,
     biligStorageStatePath: null,
     corpusId: args.corpusId,
     deltaX: 0,

@@ -4,6 +4,7 @@ import { isWorkbookBenchmarkCorpusId, type WorkbookBenchmarkCorpusId } from '../
 import type { UiResponsivenessSameCorpusProduct } from './gen-ui-responsiveness-live-browser-scorecard.ts'
 
 export interface CaptureArgs {
+  readonly allowIncompleteEvidence: boolean
   readonly biligUrl: string
   readonly biligStorageStatePath: string | null
   readonly corpusId: WorkbookBenchmarkCorpusId
@@ -127,6 +128,7 @@ export function parseCaptureArgs(argv: readonly string[]): CaptureArgs {
         '  [--bilig-url <local-bilig-url>] [--corpus wide-mixed-250k] [--samples 3] [--delta-x 0] [--delta-y 720] [--headed]',
         '  [--storage-state <state.json>]',
         '  [--google-sheets-storage-state <state.json>] [--microsoft-excel-web-storage-state <state.json>] [--bilig-storage-state <state.json>]',
+        '  [--allow-incomplete-evidence]',
         '  [--ready-timeout-ms 60000]',
       ].join('\n'),
     )
@@ -134,6 +136,7 @@ export function parseCaptureArgs(argv: readonly string[]): CaptureArgs {
   const sampleCount = parsePositiveInteger(argumentValue(argv, '--samples') ?? '3', '--samples')
   const readyTimeoutMs = parsePositiveInteger(argumentValue(argv, '--ready-timeout-ms') ?? '60000', '--ready-timeout-ms')
   return {
+    allowIncompleteEvidence: argv.includes('--allow-incomplete-evidence'),
     biligUrl: argumentValue(argv, '--bilig-url') ?? defaultBiligSameCorpusUrl(corpusId),
     biligStorageStatePath: resolveOptionalPath(argumentValue(argv, '--bilig-storage-state')),
     corpusId,

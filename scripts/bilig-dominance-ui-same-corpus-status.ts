@@ -149,6 +149,7 @@ export function buildUiSameCorpusStatus(
   const scrollEventEvidenceCaseCount = Math.max(0, scrollEvidenceRequiredProofCases.length - casesMissingScrollEventEvidence.length)
   const tenXRequirementSatisfied = uiSameCorpusTenXRequirementSatisfied(proof, missingRequiredWorkloads, casesMissingScrollEventEvidence)
   const googleSheetsUrlArgument = args.googleSheetsUrl ?? '<google-sheets-url>'
+  const productionBiligUrlArgument = '<production-bilig-url>'
   const microsoftExcelWebUrlArgument = args.microsoftExcelWebEditableUrl ?? '<microsoft-excel-web-editable-url>'
   const browserCaptureGuard = buildBrowserCaptureGuardStatus(args.localCiResourceGuardStatus)
   const missingInputs = args.googleSheetsUrl || tenXRequirementSatisfied ? [] : ['googleSheetsUrlForUploadedSameCorpusWorkbook']
@@ -209,6 +210,8 @@ export function buildUiSameCorpusStatus(
     '--',
     '--output',
     '.cache/ui-responsiveness/same-corpus-capture.json',
+    '--bilig-url',
+    productionBiligUrlArgument,
     '--google-sheets-url',
     googleSheetsUrlArgument,
   ]
@@ -220,6 +223,8 @@ export function buildUiSameCorpusStatus(
     '--',
     '--output',
     '.cache/ui-responsiveness/same-corpus-capture.json',
+    '--bilig-url',
+    productionBiligUrlArgument,
     '--google-sheets-url',
     googleSheetsUrlArgument,
     '--google-sheets-storage-state',

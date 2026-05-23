@@ -15,6 +15,7 @@ import {
   parseSaveStorageStateArgs,
   type EmitXlsxArgs,
 } from './ui-responsiveness-same-corpus-args.ts'
+import type { SameCorpusCapture } from './ui-responsiveness-same-corpus-scorecard-proof.ts'
 import {
   captureSameCorpusUiResponsiveness,
   preflightSameCorpusIncumbentAccess,
@@ -86,11 +87,16 @@ async function main(): Promise<void> {
         corpusCaseId: args.corpusId,
         sampleCount: args.sampleCount,
         workloads: capture.cases.map((entry) => entry.workload),
+        currentContractEvidenceComplete: capture.runManifest.currentContractEvidenceComplete,
+        googleSheetsTenXRequirementSatisfied: capture.runManifest.googleSheetsTenXRequirementSatisfied,
       },
       null,
       2,
     ),
   )
+  if (!args.allowIncompleteEvidence) {
+    assertSameCorpusCaptureEvidenceReady(capture)
+  }
 }
 
 export function assertSameCorpusBrowserRunAllowed(
@@ -98,6 +104,23 @@ export function assertSameCorpusBrowserRunAllowed(
   env: Readonly<Record<string, string | undefined>> = process.env,
 ): void {
   assertLocalCiResourceGuardAllowsRun(rootDirForGuard, env, { runLabel: 'same-corpus UI browser capture' })
+}
+
+export function assertSameCorpusCaptureEvidenceReady(capture: SameCorpusCapture): void {
+  const blockingReasons = capture.runManifest.invalidReasons.filter(
+    (reason) => reason !== 'not every required workload is 10x against Google Sheets',
+  )
+  if (blockingReasons.length === 0) {
+    return
+  }
+  throw new Error(
+    [
+      'Same-corpus UI capture artifact is not valid evidence for the dominance scorecard.',
+      'The artifact was written for diagnosis, but the capture command exits non-zero until browser-visible proof satisfies the current contract.',
+      'Use --allow-incomplete-evidence only for exploratory captures that must not be fed into a public 10x claim.',
+      ...blockingReasons.map((reason) => `- ${reason}`),
+    ].join('\n'),
+  )
 }
 
 export function emitSameCorpusXlsx(args: EmitXlsxArgs): void {
@@ -133,10 +156,14 @@ export function emitSameCorpusXlsx(args: EmitXlsxArgs): void {
           'pnpm ui:same-corpus:capture -- --save-storage-state <state.json> --auth-product google-sheets --google-sheets-url <url> [--corpus wide-mixed-250k]',
         microsoftExcelWebAuthStateCommand:
           'pnpm ui:same-corpus:capture -- --save-storage-state <state.json> --auth-product microsoft-excel-web --microsoft-excel-web-url <url> [--corpus wide-mixed-250k]',
+        biligProductionRuntimeRequirement:
+          'Use --bilig-url <production-bilig-url> for dominance evidence. The default localhost dev URL is only valid with --allow-incomplete-evidence.',
         preflightCommand:
           'pnpm ui:same-corpus:capture -- --preflight --google-sheets-url <url> --microsoft-excel-web-url <url> [--google-sheets-storage-state <state.json>] [--microsoft-excel-web-storage-state <state.json>]',
         captureCommand:
-          'pnpm ui:same-corpus:capture -- --output <capture.json> --google-sheets-url <url> --microsoft-excel-web-url <url> [--google-sheets-storage-state <state.json>] [--microsoft-excel-web-storage-state <state.json>]',
+          'pnpm ui:same-corpus:capture -- --output <capture.json> --bilig-url <production-bilig-url> --google-sheets-url <url> --microsoft-excel-web-url <url> [--google-sheets-storage-state <state.json>] [--microsoft-excel-web-storage-state <state.json>]',
+        diagnosticCaptureCommand:
+          'pnpm ui:same-corpus:capture -- --output <capture.json> --google-sheets-url <url> --allow-incomplete-evidence',
       },
       null,
       2,
