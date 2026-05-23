@@ -13,6 +13,32 @@ import { WorkPaper } from '../index.js'
 import { createExcelAccessibleTempDir, removeMacosExcelTestDir } from './macos-excel-oracle-test-utils.js'
 
 describe('macOS Desktop Excel preserved package metadata oracle', () => {
+  it('renames raw worksheet chart package formulas on the WorkPaper fast path', () => {
+    const importedSource = importXlsx(
+      buildWorksheetChartPackageStructuralSourceXlsx(),
+      'chart-package-rename-fast-path-source.xlsx',
+    ).snapshot
+    const sourceFormulaRefs = normalizedChartFormulaRefs(importedSource)
+    expect(sourceFormulaRefs).toEqual(['Data!$B$1', 'Data!$A$2:$A$3', 'Data!$B$2:$B$3'])
+
+    const workpaper = WorkPaper.buildFromSnapshot(importedSource)
+    try {
+      const dataSheet = workpaper.getSheetId('Data')
+      if (dataSheet === undefined) {
+        throw new Error('Expected Data sheet')
+      }
+      workpaper.renameSheet(dataSheet, 'Revenue Data')
+
+      expect(normalizedChartFormulaRefs(workpaper.exportSnapshot())).toEqual([
+        "'Revenue Data'!$B$1",
+        "'Revenue Data'!$A$2:$A$3",
+        "'Revenue Data'!$B$2:$B$3",
+      ])
+    } finally {
+      workpaper.dispose()
+    }
+  })
+
   it.runIf(process.env.BILIG_EXCEL_ORACLE_RUN === '1')(
     'preserves Desktop Excel workbook and sheet view state after a headless edit',
     () => {
@@ -324,6 +350,68 @@ describe('macOS Desktop Excel preserved package metadata oracle', () => {
             timeoutMs: 120_000,
           })
           const headlessTruth = importXlsx(new Uint8Array(readFileSync(headlessPath)), 'headless-chart-package-structure-truth.xlsx')
+          expect(normalizedChartFormulaRefs(headlessTruth.snapshot)).toEqual(excelFormulaRefs)
+        } finally {
+          workpaper.dispose()
+        }
+      } finally {
+        removeMacosExcelTestDir(tempDir)
+      }
+    },
+    180_000,
+  )
+
+  it.runIf(process.env.BILIG_EXCEL_ORACLE_RUN === '1')(
+    'matches Desktop Excel raw worksheet chart package formulas after source sheet rename',
+    () => {
+      if (!isMacosExcelInstalled()) {
+        throw new Error('BILIG_EXCEL_ORACLE_RUN=1 requires /Applications/Microsoft Excel.app')
+      }
+
+      const tempDir = createExcelAccessibleTempDir('bilig-headless-excel-chart-package-rename-oracle-')
+      try {
+        const sourceBytes = buildWorksheetChartPackageStructuralSourceXlsx()
+        const importedSource = importXlsx(sourceBytes, 'chart-package-rename-source.xlsx').snapshot
+        const sourceFormulaRefs = normalizedChartFormulaRefs(importedSource)
+        expect(sourceFormulaRefs).toEqual(['Data!$B$1', 'Data!$A$2:$A$3', 'Data!$B$2:$B$3'])
+
+        const excelWorkbookPath = join(tempDir, 'excel-chart-package-rename-source.xlsx')
+        writeFileSync(excelWorkbookPath, sourceBytes)
+        runMacosExcelStructuralOperationOracle({
+          workbookPath: excelWorkbookPath,
+          worksheetName: 'Data',
+          operations: [{ kind: 'renameSheet', newName: 'Revenue Data' }],
+          inspectCells: ['A1'],
+          saveWorkbook: true,
+          timeoutMs: 120_000,
+        })
+
+        const excelTruth = importXlsx(new Uint8Array(readFileSync(excelWorkbookPath)), 'excel-chart-package-rename-truth.xlsx')
+        const excelFormulaRefs = normalizedChartFormulaRefs(excelTruth.snapshot)
+        expect(excelFormulaRefs).toEqual(["'Revenue Data'!$B$1", "'Revenue Data'!$A$2:$A$3", "'Revenue Data'!$B$2:$B$3"])
+
+        const workpaper = WorkPaper.buildFromSnapshot(importedSource)
+        try {
+          const dataSheet = workpaper.getSheetId('Data')
+          if (dataSheet === undefined) {
+            throw new Error('Expected Data sheet')
+          }
+          workpaper.renameSheet(dataSheet, 'Revenue Data')
+
+          const headlessSnapshot = workpaper.exportSnapshot()
+          expect(normalizedChartFormulaRefs(headlessSnapshot)).toEqual(excelFormulaRefs)
+
+          const headlessPath = join(tempDir, 'headless-chart-package-rename.xlsx')
+          writeFileSync(headlessPath, exportXlsx(headlessSnapshot))
+          runMacosExcelInspectionOracle({
+            workbookPath: headlessPath,
+            worksheetName: 'Revenue Data',
+            formulaCells: [],
+            inspectCells: ['A1'],
+            saveWorkbook: true,
+            timeoutMs: 120_000,
+          })
+          const headlessTruth = importXlsx(new Uint8Array(readFileSync(headlessPath)), 'headless-chart-package-rename-truth.xlsx')
           expect(normalizedChartFormulaRefs(headlessTruth.snapshot)).toEqual(excelFormulaRefs)
         } finally {
           workpaper.dispose()

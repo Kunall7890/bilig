@@ -1,7 +1,6 @@
 import type { EngineCounters } from './perf/engine-counters.js'
 import { makeCellKey } from './workbook-cell-key-index.js'
 import type { WorkbookMetadataRecord } from './workbook-metadata-types.js'
-import { hasPreservedSheetMetadata } from './workbook-preserved-metadata.js'
 import { createWorkbookSheetRecord, type SheetRecord } from './workbook-sheet-record.js'
 
 export class WorkbookSheetRegistryStore {
@@ -103,9 +102,7 @@ export class WorkbookSheetRegistryStore {
     this.options.sheetsByName.delete(oldName)
     sheet.name = trimmedName
     this.options.sheetsByName.set(trimmedName, sheet)
-    if (this.hasSheetScopedMetadata()) {
-      this.options.renameSheetRecords(oldName, trimmedName)
-    }
+    this.options.renameSheetRecords(oldName, trimmedName)
 
     if (sheet.styleRanges.length > 0) {
       sheet.styleRanges = sheet.styleRanges.map((record) =>
@@ -140,9 +137,7 @@ export class WorkbookSheetRegistryStore {
     this.options.sheetsByName.delete(oldName)
     sheet.name = trimmedName
     this.options.sheetsByName.set(trimmedName, sheet)
-    if (this.hasSheetScopedMetadata()) {
-      this.options.renameSheetRecords(oldName, trimmedName)
-    }
+    this.options.renameSheetRecords(oldName, trimmedName)
 
     if (sheet.styleRanges.length > 0) {
       sheet.styleRanges = sheet.styleRanges.map((record) =>
@@ -186,36 +181,6 @@ export class WorkbookSheetRegistryStore {
     this.options.sheetsByName.clear()
     this.options.sheetsById.clear()
     this.nextSheetId = 1
-  }
-
-  private hasSheetScopedMetadata(): boolean {
-    const metadata = this.options.metadata
-    return (
-      metadata.tables.size > 0 ||
-      metadata.spills.size > 0 ||
-      metadata.pivots.size > 0 ||
-      metadata.charts.size > 0 ||
-      metadata.images.size > 0 ||
-      metadata.shapes.size > 0 ||
-      metadata.externalLinkArtifacts !== undefined ||
-      metadata.sheetDrawingArtifacts.size > 0 ||
-      metadata.sheetThreadedCommentArtifacts.size > 0 ||
-      metadata.sheetLegacyCommentVml.size > 0 ||
-      [...metadata.preservedSheetMetadata.values()].some(hasPreservedSheetMetadata) ||
-      metadata.rowMetadata.size > 0 ||
-      metadata.columnMetadata.size > 0 ||
-      metadata.freezePanes.size > 0 ||
-      metadata.sheetTabColors.size > 0 ||
-      metadata.sheetProtections.size > 0 ||
-      metadata.filters.size > 0 ||
-      metadata.sorts.size > 0 ||
-      metadata.dataValidations.size > 0 ||
-      metadata.conditionalFormats.size > 0 ||
-      metadata.conditionalFormatArtifacts.size > 0 ||
-      metadata.rangeProtections.size > 0 ||
-      metadata.commentThreads.size > 0 ||
-      metadata.notes.size > 0
-    )
   }
 
   private bumpSheetId(id: number): void {

@@ -57,6 +57,17 @@ describe('engine drawing artifact metadata', () => {
     const exported = engine.exportSnapshot()
     expect(chartFormulaRefs(exported)).toEqual(['Data!$B$3:$B$4'])
   })
+
+  it('renames raw worksheet chart package formulas preserved with drawing artifacts', async () => {
+    const engine = new SpreadsheetEngine({ workbookName: 'drawing-chart-artifact-rename-spec' })
+    await engine.ready()
+
+    engine.importSnapshot(importedDrawingChartArtifactSnapshot())
+    engine.renameSheet('Data', 'Revenue Data')
+
+    const exported = engine.exportSnapshot()
+    expect(chartFormulaRefs(exported)).toEqual(["'Revenue Data'!$B$2:$B$3"])
+  })
 })
 
 function importedDrawingArtifactSnapshot(): WorkbookSnapshot {

@@ -1,5 +1,10 @@
-import { rewriteFormulaForStructuralTransform, type StructuralAxisKind, type StructuralAxisTransform } from '@bilig/formula'
-import type { WorkbookPreservedPackagePartSnapshot } from '@bilig/protocol'
+import {
+  renameFormulaSheetReferences,
+  rewriteFormulaForStructuralTransform,
+  type StructuralAxisKind,
+  type StructuralAxisTransform,
+} from '@bilig/formula'
+import type { WorkbookDrawingArtifactsSnapshot, WorkbookPreservedPackagePartSnapshot } from '@bilig/protocol'
 import type { WorkbookPreservedMetadataRecord } from '../../workbook-metadata-types.js'
 import type { WorkbookStore } from '../../workbook-store.js'
 
@@ -112,6 +117,54 @@ export function drawingChartPackageArtifactsTouchStructuralDelete(
   })
 }
 
+export function renamePreservedChartPackageArtifactsSheetReferences(
+  metadata: WorkbookPreservedMetadataRecord,
+  oldSheetName: string,
+  newSheetName: string,
+): WorkbookPreservedMetadataRecord | undefined {
+  const chartArtifacts = metadata.chartArtifacts
+  if (!chartArtifacts || chartArtifacts.parts.length === 0) {
+    return undefined
+  }
+
+  const nextChartArtifacts = renameChartPackageArtifactsSheetReferences(chartArtifacts, oldSheetName, newSheetName)
+  return nextChartArtifacts
+    ? {
+        ...metadata,
+        chartArtifacts: nextChartArtifacts,
+      }
+    : undefined
+}
+
+export function renameDrawingChartPackageArtifactsSheetReferences(
+  drawingArtifacts: WorkbookDrawingArtifactsSnapshot | undefined,
+  oldSheetName: string,
+  newSheetName: string,
+): WorkbookDrawingArtifactsSnapshot | undefined {
+  if (!drawingArtifacts || drawingArtifacts.parts.length === 0) {
+    return undefined
+  }
+  return renameChartPackageArtifactsSheetReferences(drawingArtifacts, oldSheetName, newSheetName)
+}
+
+function renameChartPackageArtifactsSheetReferences(
+  artifacts: WorkbookDrawingArtifactsSnapshot,
+  oldSheetName: string,
+  newSheetName: string,
+): WorkbookDrawingArtifactsSnapshot | undefined {
+  let changed = false
+  const parts = artifacts.parts.map((part) => {
+    if (!chartPartPathPattern.test(normalizeZipPath(part.path))) {
+      return structuredClone(part)
+    }
+    const nextPart = renameChartPackagePartSheetReferences(part, oldSheetName, newSheetName)
+    changed ||= nextPart.dataBase64 !== part.dataBase64 || nextPart.byteLength !== part.byteLength
+    return nextPart
+  })
+
+  return changed ? { ...artifacts, parts } : undefined
+}
+
 function rewriteChartPackagePartForStructuralTransform(
   part: WorkbookPreservedPackagePartSnapshot,
   sheetName: string,
@@ -134,12 +187,45 @@ function rewriteChartPackagePartForStructuralTransform(
   }
 }
 
+function renameChartPackagePartSheetReferences(
+  part: WorkbookPreservedPackagePartSnapshot,
+  oldSheetName: string,
+  newSheetName: string,
+): WorkbookPreservedPackagePartSnapshot {
+  const bytes = decodeBase64(part.dataBase64)
+  if (bytes.byteLength !== part.byteLength) {
+    return structuredClone(part)
+  }
+  const xml = new TextDecoder().decode(bytes)
+  const nextXml = renameChartFormulaXmlSheetReferences(xml, oldSheetName, newSheetName)
+  if (nextXml === xml) {
+    return structuredClone(part)
+  }
+  const nextBytes = new TextEncoder().encode(nextXml)
+  return {
+    ...part,
+    dataBase64: encodeBase64(nextBytes),
+    byteLength: nextBytes.byteLength,
+  }
+}
+
 function rewriteChartFormulaXmlForStructuralTransform(xml: string, sheetName: string, transform: StructuralAxisTransform): string {
   return xml.replace(
     /(<(?:[A-Za-z_][\w.-]*:)?f\b[^>]*>)([\s\S]*?)(<\/(?:[A-Za-z_][\w.-]*:)?f>)/gu,
     (source: string, open: string, text: string, close: string) => {
       const formula = decodeXmlText(text)
       const nextFormula = rewriteChartFormulaForStructuralTransform(formula, sheetName, transform)
+      return nextFormula === undefined || nextFormula === formula ? source : `${open}${escapeXmlText(nextFormula)}${close}`
+    },
+  )
+}
+
+function renameChartFormulaXmlSheetReferences(xml: string, oldSheetName: string, newSheetName: string): string {
+  return xml.replace(
+    /(<(?:[A-Za-z_][\w.-]*:)?f\b[^>]*>)([\s\S]*?)(<\/(?:[A-Za-z_][\w.-]*:)?f>)/gu,
+    (source: string, open: string, text: string, close: string) => {
+      const formula = decodeXmlText(text)
+      const nextFormula = renameChartFormulaSheetReferences(formula, oldSheetName, newSheetName)
       return nextFormula === undefined || nextFormula === formula ? source : `${open}${escapeXmlText(nextFormula)}${close}`
     },
   )
@@ -158,6 +244,14 @@ function rewriteChartFormulaForStructuralTransform(
 ): string | undefined {
   try {
     return rewriteFormulaForStructuralTransform(formula, chartPackageFormulaOwnerSheetName, sheetName, transform)
+  } catch {
+    return undefined
+  }
+}
+
+function renameChartFormulaSheetReferences(formula: string, oldSheetName: string, newSheetName: string): string | undefined {
+  try {
+    return renameFormulaSheetReferences(formula, oldSheetName, newSheetName)
   } catch {
     return undefined
   }

@@ -285,6 +285,7 @@ export class WorkPaper extends WorkPaperRuntimeLifecycleBase {
     }
 
     const oldName = sheet.name
+    this.preservedImportedSnapshot = undefined
     const fastPathChanges = this.tryRenameSheetWithoutRuntimeAdapters(sheet, newName)
     if (fastPathChanges !== null) {
       return fastPathChanges
@@ -402,6 +403,14 @@ export class WorkPaper extends WorkPaperRuntimeLifecycleBase {
       expression,
       scope,
     })
+  }
+
+  protected override tryRenameSheetWithoutVisibilitySnapshots(oldName: string, newName: string): WorkPaperChange[] | null {
+    const changes = super.tryRenameSheetWithoutVisibilitySnapshots(oldName, newName)
+    if (changes !== null) {
+      this.preservedImportedSnapshot = undefined
+    }
+    return changes
   }
 
   private addSingleAxisIntervalWithoutRuntimeAdapters(

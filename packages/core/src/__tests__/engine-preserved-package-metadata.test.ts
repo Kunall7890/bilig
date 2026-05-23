@@ -86,6 +86,33 @@ describe('engine imported package metadata preservation', () => {
     expect(chartFormulaRefs(metadata, 'xl/charts/chart1.xml')).toEqual(["'Owner''s Data'!$B$3:$B$4"])
   })
 
+  it('renames preserved chart package formula sheet refs', async () => {
+    const engine = new SpreadsheetEngine({ workbookName: 'package-metadata-chart-artifact-sheet-rename' })
+    await engine.ready()
+
+    engine.importSnapshot(packageMetadataSnapshot())
+    engine.renameSheet('Data', 'Revenue Data')
+
+    const metadata = engine.exportSnapshot().workbook.metadata
+    expect(chartFormulaRefs(metadata, 'xl/charts/chart1.xml')).toEqual([
+      "'Revenue Data'!$B$1",
+      "'Revenue Data'!$A$2:$A$3",
+      "'Revenue Data'!$B$2:$B$3",
+      "SUM('Revenue Data'!$B$2:$B$3,Other!$B$2:$B$3)",
+    ])
+  })
+
+  it('renames quoted sheet refs in preserved chart package formulas', async () => {
+    const engine = new SpreadsheetEngine({ workbookName: 'package-metadata-chart-artifact-quoted-sheet-rename' })
+    await engine.ready()
+
+    engine.importSnapshot(rawChartOnlySnapshot("Owner's Data", quotedChartFormulaXml()))
+    engine.renameSheet("Owner's Data", 'Renamed Data')
+
+    const metadata = engine.exportSnapshot().workbook.metadata
+    expect(chartFormulaRefs(metadata, 'xl/charts/chart1.xml')).toEqual(["'Renamed Data'!$B$2:$B$3"])
+  })
+
   it('drops deleted preserved worksheet style refs without shifting sheet view refs', async () => {
     const engine = new SpreadsheetEngine({ workbookName: 'package-metadata-deleted-structural-rewrite' })
     await engine.ready()

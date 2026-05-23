@@ -63,6 +63,7 @@ export type MacosExcelStructuralOperation =
   | { readonly kind: 'deleteColumns'; readonly range: string }
   | { readonly kind: 'setCellValue'; readonly address: string; readonly value: string | number | boolean }
   | { readonly kind: 'clearCell'; readonly address: string }
+  | { readonly kind: 'renameSheet'; readonly newName: string }
   | { readonly kind: 'moveRows'; readonly sourceRange: string; readonly destinationRange: string }
   | { readonly kind: 'moveColumns'; readonly sourceRange: string; readonly destinationRange: string }
   | { readonly kind: 'createDataTable'; readonly range: string; readonly rowInput?: string; readonly columnInput?: string }
@@ -585,6 +586,8 @@ function structuralOperationAppleScript(operation: MacosExcelStructuralOperation
       return `set value of range ${toAppleScriptString(operation.address)} of targetWorksheet to ${toAppleScriptValue(operation.value)}`
     case 'clearCell':
       return `clear contents range ${toAppleScriptString(operation.address)} of targetWorksheet`
+    case 'renameSheet':
+      return `set name of targetWorksheet to ${toAppleScriptString(operation.newName)}`
     case 'moveRows':
       return [
         `cut range (range ${toAppleScriptString(operation.sourceRange)} of targetWorksheet)`,

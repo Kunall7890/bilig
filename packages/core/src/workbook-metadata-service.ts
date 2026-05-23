@@ -72,6 +72,10 @@ import {
   setWorkbookProtectionRecord,
 } from './workbook-metadata-workbook-records.js'
 import { clonePreservedSheetMetadata } from './workbook-preserved-metadata.js'
+import {
+  renameDrawingChartPackageArtifactsSheetReferences,
+  renamePreservedChartPackageArtifactsSheetReferences,
+} from './engine/services/structure-chart-artifact-rewrite.js'
 
 export { WorkbookMetadataError, type WorkbookMetadataService } from './workbook-metadata-service-contract.js'
 
@@ -213,6 +217,18 @@ export function createWorkbookMetadataService(metadata: WorkbookMetadataRecord):
           }
         : cloneChartRecord(record),
     )
+    const drawingArtifacts = renameDrawingChartPackageArtifactsSheetReferences(metadata.drawingArtifacts, oldSheetName, newSheetName)
+    if (drawingArtifacts) {
+      metadata.drawingArtifacts = drawingArtifacts
+    }
+    const preservedWorkbookMetadata = renamePreservedChartPackageArtifactsSheetReferences(
+      metadata.preservedWorkbookMetadata,
+      oldSheetName,
+      newSheetName,
+    )
+    if (preservedWorkbookMetadata) {
+      metadata.preservedWorkbookMetadata = preservedWorkbookMetadata
+    }
     rekeyRecords(metadata.images, (record) =>
       record.sheetName === oldSheetName ? { ...cloneImageRecord(record), sheetName: newSheetName } : cloneImageRecord(record),
     )
