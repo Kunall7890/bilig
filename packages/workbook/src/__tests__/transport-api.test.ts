@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import {
   buildWorkbookActionPlan,
+  checkPlanData,
   collectWorkbookRefData,
   collectWorkbookRefs,
   defineModel,
@@ -159,6 +160,87 @@ describe('@bilig/workbook transport api', () => {
         path: 'commands[0].inputs[2]',
       }),
     ])
+  })
+
+  it('returns structured plan data issues before hydration', () => {
+    const model = defineModel({
+      name: 'transport-check-plan-model',
+
+      find(workbook) {
+        return {
+          result: workbook.findRange({ sheetName: 'Sheet1', address: 'D2' }),
+        }
+      },
+
+      actions: {
+        write({ refs, workbook }) {
+          workbook.writeValue(refs.result, 1)
+        },
+      },
+    })
+    const plan = buildWorkbookActionPlan(model, 'write')
+    const parsedData: unknown = JSON.parse(JSON.stringify(toPlanData(plan)))
+    if (!isRecord(parsedData)) {
+      throw new Error('expected plan data object')
+    }
+    const data = parsedData
+
+    expect(checkPlanData(data)).toEqual({
+      status: 'valid',
+      plan: data,
+      issues: [],
+    })
+    expect(checkPlanData(null)).toEqual({
+      status: 'invalid',
+      issues: [
+        {
+          code: 'invalid_plan_data',
+          path: 'plan',
+          message: 'Workbook plan data must be an object',
+        },
+      ],
+    })
+
+    const broken = {
+      ...data,
+      modelName: 12,
+      refsUsed: [{ kind: 'range' }],
+      commands: [{ kind: 'writeValue', target: data['refsUsed'], value: undefined }],
+      changed: [{ kind: 'writeValue' }],
+      checks: [{ status: 'planned', kind: 'exists', message: 'Exists', proof: { when: new Date('2026-05-23T00:00:00Z') } }],
+    }
+
+    expect(checkPlanData(broken)).toEqual({
+      status: 'invalid',
+      issues: [
+        {
+          code: 'invalid_plan_data',
+          path: 'modelName',
+          message: 'Workbook plan data modelName must be a string',
+        },
+        {
+          code: 'invalid_plan_data',
+          path: 'refsUsed[0]',
+          message: 'Workbook plan data ref at refsUsed[0] is invalid',
+        },
+        {
+          code: 'invalid_plan_data',
+          path: 'commands[0]',
+          message: 'Workbook plan data command at commands[0] is invalid',
+        },
+        {
+          code: 'invalid_plan_data',
+          path: 'changed[0]',
+          message: 'Workbook plan data change at changed[0] is invalid',
+        },
+        {
+          code: 'invalid_plan_data',
+          path: 'checks[0]',
+          message: 'Workbook plan data check at checks[0] is invalid',
+        },
+      ],
+    })
+    expect(() => hydratePlanData(broken)).toThrow('Workbook plan data is invalid: Workbook plan data modelName must be a string')
   })
 
   it('runs transported plan data without the consumer refs object', async () => {

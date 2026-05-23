@@ -32,6 +32,7 @@ flowchart LR
   - frozen plan refs containers with `refsUsed` verification
   - transported plan data through `toPlanData`, `hydratePlanData`, and
     `verifyPlanData`
+  - structured `checkPlanData` diagnostics for JSON handoff payloads
   - transported plan execution through `runWorkbookPlan` without requiring the
     consumer's private `refs` object shape
   - generic selector validation before runtime handoff, including canonical table-header selectors and row predicate value contracts

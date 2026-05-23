@@ -24,6 +24,24 @@ export interface WorkbookPlanDataRefs {
 }
 
 export type WorkbookExecutablePlan<Refs = unknown> = WorkbookActionPlan<Refs> | WorkbookPlanData
+export type WorkbookPlanDataIssueCode = 'invalid_plan_data'
+
+export interface WorkbookPlanDataIssue {
+  readonly code: WorkbookPlanDataIssueCode
+  readonly path: string
+  readonly message: string
+}
+
+export type WorkbookPlanDataCheckResult =
+  | {
+      readonly status: 'valid'
+      readonly plan: WorkbookPlanData
+      readonly issues: readonly []
+    }
+  | {
+      readonly status: 'invalid'
+      readonly issues: readonly WorkbookPlanDataIssue[]
+    }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null
@@ -145,6 +163,83 @@ export function isPlanData(value: unknown): value is WorkbookPlanData {
   )
 }
 
+function planDataIssue(path: string, message: string): WorkbookPlanDataIssue {
+  return Object.freeze({
+    code: 'invalid_plan_data',
+    path,
+    message,
+  })
+}
+
+function pushRequiredStringIssue(issues: WorkbookPlanDataIssue[], value: Record<string, unknown>, key: string): void {
+  if (typeof value[key] !== 'string') {
+    issues.push(planDataIssue(key, `Workbook plan data ${key} must be a string`))
+  }
+}
+
+function pushOptionalInputIssue(issues: WorkbookPlanDataIssue[], value: Record<string, unknown>): void {
+  if (value['input'] !== undefined && !isWorkbookActionInput(value['input'])) {
+    issues.push(planDataIssue('input', 'Workbook plan data input must be JSON-safe'))
+  }
+}
+
+function pushArrayIssues<T>(
+  issues: WorkbookPlanDataIssue[],
+  value: Record<string, unknown>,
+  key: string,
+  guard: (entry: unknown) => entry is T,
+  label: string,
+): void {
+  const array = value[key]
+  if (!Array.isArray(array)) {
+    issues.push(planDataIssue(key, `Workbook plan data ${key} must be an array`))
+    return
+  }
+  array.forEach((entry, index) => {
+    if (!guard(entry)) {
+      issues.push(planDataIssue(`${key}[${index}]`, `Workbook plan data ${label} at ${key}[${index}] is invalid`))
+    }
+  })
+}
+
+export function checkPlanData(value: unknown): WorkbookPlanDataCheckResult {
+  if (!isRecord(value)) {
+    return {
+      status: 'invalid',
+      issues: Object.freeze([planDataIssue('plan', 'Workbook plan data must be an object')]),
+    }
+  }
+
+  const issues: WorkbookPlanDataIssue[] = []
+  pushRequiredStringIssue(issues, value, 'modelName')
+  pushRequiredStringIssue(issues, value, 'actionName')
+  pushOptionalInputIssue(issues, value)
+  pushArrayIssues(issues, value, 'refsUsed', isWorkbookRefDescription, 'ref')
+  pushArrayIssues(issues, value, 'commands', isWorkbookActionCommandData, 'command')
+  pushArrayIssues(issues, value, 'ops', isWorkbookOp, 'op')
+  pushArrayIssues(issues, value, 'changed', isChangeData, 'change')
+  pushArrayIssues(issues, value, 'checks', isCheckData, 'check')
+
+  if (issues.length > 0) {
+    return {
+      status: 'invalid',
+      issues: Object.freeze(issues),
+    }
+  }
+  if (!isPlanData(value)) {
+    return {
+      status: 'invalid',
+      issues: Object.freeze([planDataIssue('plan', 'Workbook plan data is invalid')]),
+    }
+  }
+
+  return {
+    status: 'valid',
+    plan: value,
+    issues: Object.freeze([]),
+  }
+}
+
 function hydrateRef(ref: WorkbookRefDescription): WorkbookRef {
   return hydrateWorkbookRef(ref)
 }
@@ -240,22 +335,25 @@ export function toPlanData<Refs>(plan: WorkbookActionPlan<Refs>): WorkbookPlanDa
   return describePlan(plan)
 }
 
-export function hydratePlanData(data: WorkbookPlanData): WorkbookActionPlan<WorkbookPlanDataRefs> {
-  if (!isPlanData(data)) {
-    throw new Error('Workbook plan data is invalid')
+export function hydratePlanData(data: unknown): WorkbookActionPlan<WorkbookPlanDataRefs> {
+  const check = checkPlanData(data)
+  if (check.status === 'invalid') {
+    const [firstIssue] = check.issues
+    throw new Error(firstIssue === undefined ? 'Workbook plan data is invalid' : `Workbook plan data is invalid: ${firstIssue.message}`)
   }
-  const refsUsed = Object.freeze(data.refsUsed.map(hydrateRef))
-  const input = data.input === undefined ? undefined : normalizeWorkbookActionInput(data.input)
+  const plan = check.plan
+  const refsUsed = Object.freeze(plan.refsUsed.map(hydrateRef))
+  const input = plan.input === undefined ? undefined : normalizeWorkbookActionInput(plan.input)
   return Object.freeze({
-    modelName: data.modelName,
-    actionName: data.actionName,
+    modelName: plan.modelName,
+    actionName: plan.actionName,
     ...(input !== undefined ? { input } : {}),
     refs: Object.freeze({ refsUsed }),
     refsUsed,
-    commands: Object.freeze(data.commands.map(hydrateCommand)),
-    ops: Object.freeze(data.ops.map(cloneOp)),
-    changed: Object.freeze(data.changed.map(hydrateChange)),
-    checks: Object.freeze(data.checks.map(hydrateCheck)),
+    commands: Object.freeze(plan.commands.map(hydrateCommand)),
+    ops: Object.freeze(plan.ops.map(cloneOp)),
+    changed: Object.freeze(plan.changed.map(hydrateChange)),
+    checks: Object.freeze(plan.checks.map(hydrateCheck)),
   })
 }
 

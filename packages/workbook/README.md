@@ -100,7 +100,7 @@ The main API is intentionally small:
 - input: `checkInput`, `normalizeWorkbookActionInputDescription`
 - proof: `verifyPlan`, `verifyModel`, `verifyWorkbookReadbacks`
 - descriptions: `describeModel`, `describeRef`, `describePlan`, `describePlanResult`, `describeRuntimeRequirements`, `checkRuntimeAdapter`, `describeRunResult`
-- transport data: `isWorkbookRefData`, `toWorkbookRefData`, `collectWorkbookRefData`, `hydrateWorkbookRef`, `hydrateWorkbookRefs`, `toPlanData`, `isPlanData`, `hydratePlanData`, `verifyPlanData`
+- transport data: `isWorkbookRefData`, `toWorkbookRefData`, `collectWorkbookRefData`, `hydrateWorkbookRef`, `hydrateWorkbookRefs`, `toPlanData`, `isPlanData`, `checkPlanData`, `hydratePlanData`, `verifyPlanData`
 - runtime handoff: `runWorkbookPlan`, `runWorkbookAction`, `WorkbookRunAdapter`
 - low-level language: `WorkbookOp`, `WorkbookTxn`, `EngineOp`, `EngineOpBatch`, `isEngineOpBatch`
 
@@ -108,6 +108,7 @@ Stable data helpers are exported for generic tool builders:
 
 - `workbookRefKinds`, `isWorkbookRefKind`, `isWorkbookRef`
 - `isWorkbookRefData`, `toWorkbookRefData`, `collectWorkbookRefData`, `hydrateWorkbookRef`, `hydrateWorkbookRefs`
+- `isPlanData`, `checkPlanData`
 - `workbookRowOperators`, `workbookRowOperatorValueTypes`, `isWorkbookRowOperator`, `isWorkbookRowValueCompatible`
 - `builtInWorkbookCheckKinds`, `isBuiltInWorkbookCheckKind`
 - `workbookActionInputDescriptionKinds`, `isWorkbookActionInputDescriptionKind`, `isWorkbookActionInputDescription`, `isWorkbookActionInput`, `checkInput`
@@ -135,8 +136,9 @@ local helpers. `verifyPlanData(describePlan(plan))` checks transported plan data
 without requiring the consumer's private `refs` object shape.
 
 For full action handoff, use `toPlanData(plan)` before JSON transport. A runtime
-can call `hydratePlanData(data)` to regain frozen refs and helper methods, or
-pass the data directly to `describeRuntimeRequirements(data)` and
+can call `checkPlanData(data)` to get structured path-based issues before
+hydration, call `hydratePlanData(data)` to regain frozen refs and helper
+methods, or pass the data directly to `describeRuntimeRequirements(data)` and
 `runWorkbookPlan(data, adapter)`. The hydrated plan exposes
 `refs: { refsUsed }` instead of the consumer's private model-shaped `refs`
 object, so transported execution stays generic.

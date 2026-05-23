@@ -12,5 +12,12 @@ export * from './run.js'
 export * from './result.js'
 export * from './requirements.js'
 export * from './features.js'
-export { hydratePlanData, isPlanData, toPlanData } from './plan-data.js'
-export type { WorkbookExecutablePlan, WorkbookPlanData, WorkbookPlanDataRefs } from './plan-data.js'
+export { checkPlanData, hydratePlanData, isPlanData, toPlanData } from './plan-data.js'
+export type {
+  WorkbookExecutablePlan,
+  WorkbookPlanData,
+  WorkbookPlanDataCheckResult,
+  WorkbookPlanDataIssue,
+  WorkbookPlanDataIssueCode,
+  WorkbookPlanDataRefs,
+} from './plan-data.js'
