@@ -2,6 +2,7 @@
 
 import { readdir, readFile } from 'node:fs/promises'
 import { basename, resolve } from 'node:path'
+import { assertNoForbiddenZeroWorkflowRunReplicationColumnReferences } from './release-check-asset-contracts.ts'
 import { measureGzipBytes } from './release-check-helpers.ts'
 
 const budgets = {
@@ -104,6 +105,14 @@ function isWorkerJsAsset(file) {
 
 const { cssAssets, distDir, indexHtml, jsAssets, wasmAssets } = await findAssets()
 const jsMeasurements = await Promise.all(jsAssets.map((file) => measureAsset(file)))
+assertNoForbiddenZeroWorkflowRunReplicationColumnReferences(
+  await Promise.all(
+    jsAssets.map(async (file) => ({
+      file,
+      text: await Bun.file(file).text(),
+    })),
+  ),
+)
 const cssMeasurements = await Promise.all(cssAssets.map((file) => measureAsset(file)))
 const wasmMeasurements = await Promise.all(wasmAssets.map((file) => measureAsset(file)))
 const mainJsMeasurements = jsMeasurements.filter((entry) => !isWorkerJsAsset(entry.file))
