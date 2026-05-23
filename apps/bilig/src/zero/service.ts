@@ -1,7 +1,7 @@
 import { handleMutateRequest, handleQueryRequest } from '@rocicorp/zero/server'
 import type { WorkbookSnapshot } from '@bilig/protocol'
 import { resolveRequestBaseUrl } from '@bilig/runtime-kernel'
-import { checkWorkbookCommandResult, type WorkbookCommandResult, type WorkbookUndoRef } from '@bilig/workbook'
+import { checkWorkbookCommandResultForBundle, type WorkbookCommandResult, type WorkbookUndoRef } from '@bilig/workbook'
 import {
   type AuthoritativeWorkbookEventBatch,
   executeZeroQueryTransform,
@@ -544,8 +544,9 @@ function assertAppliedWorkbookCommandResult(input: {
   readonly undo?: WorkbookUndoRef
 }): WorkbookCommandResult {
   try {
+    const commandBundle = assertWorkbookCommandBundleHandoff(input.bundle)
     const commandResult = toAppliedWorkbookCommandResult(input)
-    const check = checkWorkbookCommandResult(commandResult)
+    const check = checkWorkbookCommandResultForBundle(commandBundle, commandResult)
     if (check.status === 'invalid') {
       const [firstIssue] = check.issues
       throw new Error(firstIssue === undefined ? 'Workbook command result is invalid' : firstIssue.message)

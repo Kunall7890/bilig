@@ -3,6 +3,7 @@ import type { WorkbookFormulaLabel } from './formula.js'
 import type { WorkbookRef } from './find.js'
 import type { WorkbookActionInput } from './input.js'
 import type { EngineOp } from './ops.js'
+import type { WorkbookPlanId } from './plan-data.js'
 
 export type WorkbookCheckStatus = 'planned' | 'passed' | 'failed'
 
@@ -41,12 +42,15 @@ export interface WorkbookUndoRef {
 
 export interface WorkbookRunApplySummary {
   readonly matched: boolean | null
+  readonly planId?: WorkbookPlanId
+  readonly baseRevision?: number
+  readonly revision?: number
   readonly previewOps?: readonly EngineOp[]
   readonly appliedOps?: readonly EngineOp[]
   readonly proof?: WorkbookActionInput
 }
 
-export type WorkbookRunUnverifiedKind = 'apply'
+export type WorkbookRunUnverifiedKind = 'apply' | 'plan'
 
 export interface WorkbookRunUnverified {
   readonly kind: WorkbookRunUnverifiedKind
@@ -84,6 +88,7 @@ export type WorkbookRunErrorCode =
   | 'missing_workbook_op'
   | 'adapter_missing_capability'
   | 'apply_not_verified'
+  | 'plan_not_verified'
   | 'apply_mismatch'
   | 'apply_failed'
   | 'readback_failed'
@@ -129,6 +134,7 @@ export const workbookRunErrorCodes = Object.freeze([
   'missing_workbook_op',
   'adapter_missing_capability',
   'apply_not_verified',
+  'plan_not_verified',
   'apply_mismatch',
   'apply_failed',
   'readback_failed',

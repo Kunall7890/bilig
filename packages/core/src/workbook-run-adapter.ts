@@ -1,19 +1,20 @@
 import { ValueTag, type CellRangeRef, type CellValue, type LiteralInput, type WorkbookDefinedNameValueSnapshot } from '@bilig/protocol'
 import { formatAddress, parseCellAddress } from '@bilig/formula'
-import type {
-  EngineOp,
-  WorkbookActionCommand,
-  WorkbookActionPlan,
-  WorkbookCheckResult,
-  WorkbookColumnRef,
-  WorkbookNameRef,
-  WorkbookRangeRef,
-  WorkbookRef,
-  WorkbookRowsRef,
-  WorkbookRunAdapter,
-  WorkbookRunReadback,
-  WorkbookTableRef,
-  WorkbookUndoRef,
+import {
+  workbookPlanId,
+  type EngineOp,
+  type WorkbookActionCommand,
+  type WorkbookActionPlan,
+  type WorkbookCheckResult,
+  type WorkbookColumnRef,
+  type WorkbookNameRef,
+  type WorkbookRangeRef,
+  type WorkbookRef,
+  type WorkbookRowsRef,
+  type WorkbookRunAdapter,
+  type WorkbookRunReadback,
+  type WorkbookTableRef,
+  type WorkbookUndoRef,
 } from '@bilig/workbook'
 import type { SpreadsheetEngine } from './engine.js'
 import { buildFormatClearOps, buildFormatPatchOps, buildStylePatchOps } from './engine-range-format-ops.js'
@@ -630,6 +631,7 @@ export function createWorkbookRunAdapter(engine: SpreadsheetEngine, options: Wor
         const undo = createUndoRef(plan, undoOps)
         return {
           status: 'applied',
+          planId: workbookPlanId(plan),
           previewOps: ops,
           appliedOps: ops,
           proof: {

@@ -18,6 +18,7 @@ import type { WorkbookOp } from './ops.js'
 import type { WorkbookChangeSummary, WorkbookCheckExpectation, WorkbookCheckResult, WorkbookCheckStatus } from './result.js'
 
 export type WorkbookPlanData = WorkbookActionPlanDescription
+export type WorkbookPlanId = string
 
 export interface WorkbookPlanDataRefs {
   readonly refsUsed: readonly WorkbookRef[]
@@ -45,6 +46,64 @@ export type WorkbookPlanDataCheckResult =
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null
+}
+
+function canonicalJson(value: unknown): string {
+  return JSON.stringify(canonicalValue(value))
+}
+
+function canonicalValue(value: unknown): unknown {
+  if (Array.isArray(value)) {
+    const descriptors = Object.getOwnPropertyDescriptors(value)
+    return Array.from({ length: value.length }, (_entry, index) => {
+      const descriptor = descriptors[String(index)]
+      if (descriptor === undefined) {
+        return undefined
+      }
+      if (!('value' in descriptor)) {
+        throw new Error('Workbook plan data arrays must contain only data properties')
+      }
+      return canonicalValue(descriptor.value)
+    })
+  }
+  if (typeof value === 'object' && value !== null) {
+    return Object.fromEntries(
+      Object.entries(Object.getOwnPropertyDescriptors(value))
+        .filter(([, descriptor]) => descriptor.enumerable)
+        .toSorted(([left], [right]) => left.localeCompare(right))
+        .map(([key, descriptor]) => {
+          if (!('value' in descriptor)) {
+            throw new Error('Workbook plan data objects must contain only data properties')
+          }
+          return [key, canonicalValue(descriptor.value)]
+        }),
+    )
+  }
+  return value
+}
+
+function fnv1a64(input: string, seed: bigint): string {
+  let hash = seed
+  for (let index = 0; index < input.length; index += 1) {
+    hash ^= BigInt(input.charCodeAt(index))
+    hash = BigInt.asUintN(64, hash * 0x100000001b3n)
+  }
+  return hash.toString(16).padStart(16, '0')
+}
+
+function checkedPlanData(value: unknown): WorkbookPlanData {
+  const check = checkPlanData(value)
+  if (check.status === 'invalid') {
+    const [firstIssue] = check.issues
+    throw new Error(firstIssue === undefined ? 'Workbook plan data is invalid' : `Workbook plan data is invalid: ${firstIssue.message}`)
+  }
+  return check.plan
+}
+
+export function workbookPlanId<Refs>(plan: WorkbookExecutablePlan<Refs>): WorkbookPlanId {
+  const data = isHydratedPlan<Refs>(plan) ? describePlan(plan) : checkedPlanData(plan)
+  const json = canonicalJson(data)
+  return `bilig-plan-v1:${fnv1a64(json, 0xcbf29ce484222325n)}${fnv1a64(json, 0x84222325cbf29cen)}`
 }
 
 function ownValue(value: object, key: string): unknown {

@@ -43,7 +43,8 @@ Expected output:
 The exact byte count can change between package versions. The important part is
 that `verified` is `true` and `afterRestore` matches `after`.
 
-The generated starter uses the same maintained TypeScript proof shape as
+The generated starter uses the same maintained TypeScript proof shape as the
+public mirror at <https://proompteng.github.io/bilig/npm-eval.ts> and
 [`examples/headless-workpaper/npm-eval.ts`](https://github.com/proompteng/bilig/blob/main/examples/headless-workpaper/npm-eval.ts).
 
 ## Try it in Docker (optional)

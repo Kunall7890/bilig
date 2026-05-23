@@ -51,8 +51,7 @@ The repository smoke test runs this same example against packed local runtime
 packages through `pnpm workpaper:smoke:external`.
 
 If this example matches a real Node service, agent tool, or workbook automation
-case, the best next action is specific: star or bookmark
-[`proompteng/bilig`](https://github.com/proompteng/bilig/stargazers), then use
+case, use
 [Discussions](https://github.com/proompteng/bilig/discussions/new?category=general)
 to name the missing formula family, XLSX behavior, persistence shape, or agent
 writeback contract that would make adoption easier.
@@ -62,14 +61,14 @@ writeback contract that would make adoption easier.
 Most visitors do not need every example first. Pick the proof that matches the
 job you are evaluating:
 
-| Evaluator question                         | Run                               | Use this when                                                                 |
-| ------------------------------------------ | --------------------------------- | ----------------------------------------------------------------------------- |
-| Does the package work from npm?            | `npm run npm-eval`                | You want the smallest install/edit/recalculate/restore proof.                 |
-| Can an agent safely write workbook inputs? | `npm run agent:tool-call`         | You need before/after computed readback and persisted restore verification.   |
-| Can MCP drive a real WorkPaper tool loop?  | `npm run agent:mcp-transcript`    | You want a JSON-RPC transcript for list tools, set input, and read output.    |
-| Can MCP edit a saved WorkPaper JSON file?  | `npm run agent:mcp-file-transcript` | You want proof that the packaged binary writes a real file-backed workbook. |
-| Does this fit OpenAI Agents SDK?       | `npm run agent:openai-agents-sdk` | You want real `Agent` and `tool()` objects with provider-free invocation proof. |
-| Does this fit framework/server code?       | `npm run agent:framework-adapters` | You want wrapper shapes for AI SDK, LangChain, Mastra, LlamaIndex, and more.  |
+| Evaluator question                         | Run                                 | Use this when                                                                   |
+| ------------------------------------------ | ----------------------------------- | ------------------------------------------------------------------------------- |
+| Does the package work from npm?            | `npm run npm-eval`                  | You want the smallest install/edit/recalculate/restore proof.                   |
+| Can an agent safely write workbook inputs? | `npm run agent:tool-call`           | You need before/after computed readback and persisted restore verification.     |
+| Can MCP drive a real WorkPaper tool loop?  | `npm run agent:mcp-transcript`      | You want a JSON-RPC transcript for list tools, set input, and read output.      |
+| Can MCP edit a saved WorkPaper JSON file?  | `npm run agent:mcp-file-transcript` | You want proof that the packaged binary writes a real file-backed workbook.     |
+| Does this fit OpenAI Agents SDK?           | `npm run agent:openai-agents-sdk`   | You want real `Agent` and `tool()` objects with provider-free invocation proof. |
+| Does this fit framework/server code?       | `npm run agent:framework-adapters`  | You want wrapper shapes for AI SDK, LangChain, Mastra, LlamaIndex, and more.    |
 
 From the repo root, run those scripts as
 `pnpm --dir examples/headless-workpaper run <script>`. Use `npm run <script>`
@@ -82,38 +81,38 @@ expected formula family, persistence requirement, or import/export constraint.
 
 ## Command Index
 
-| Use case                 | Command                              | What it proves                                                                                                    |
-| ------------------------ | ------------------------------------ | ----------------------------------------------------------------------------------------------------------------- |
-| Quick revenue workbook   | `npm start`                          | formulas, named expressions, persistence                                                                          |
-| Agent tool call loop     | `npm run agent:tool-call`            | read, edit, verify, serialize, restore                                                                            |
-| OpenAI Agents SDK tools  | `npm run agent:openai-agents-sdk`    | real `Agent`, `tool()`, and `invokeFunctionTool()` objects with verified WorkPaper readback                       |
-| OpenAI Responses wrapper | `npm run agent:openai-responses`     | `function_call` dispatch, `function_call_output`, verified WorkPaper readback                                     |
-| AI SDK generateText      | `npm run agent:ai-sdk-generate-text` | real `generateText()` and `tool()` calls with verified WorkPaper readback                                         |
-| AI SDK streamText        | `npm run agent:ai-sdk-stream-text`   | real `streamText()` and streamed tool calls with verified WorkPaper readback                                      |
+| Use case                 | Command                              | What it proves                                                                                                            |
+| ------------------------ | ------------------------------------ | ------------------------------------------------------------------------------------------------------------------------- |
+| Quick revenue workbook   | `npm start`                          | formulas, named expressions, persistence                                                                                  |
+| Agent tool call loop     | `npm run agent:tool-call`            | read, edit, verify, serialize, restore                                                                                    |
+| OpenAI Agents SDK tools  | `npm run agent:openai-agents-sdk`    | real `Agent`, `tool()`, and `invokeFunctionTool()` objects with verified WorkPaper readback                               |
+| OpenAI Responses wrapper | `npm run agent:openai-responses`     | `function_call` dispatch, `function_call_output`, verified WorkPaper readback                                             |
+| AI SDK generateText      | `npm run agent:ai-sdk-generate-text` | real `generateText()` and `tool()` calls with verified WorkPaper readback                                                 |
+| AI SDK streamText        | `npm run agent:ai-sdk-stream-text`   | real `streamText()` and streamed tool calls with verified WorkPaper readback                                              |
 | Agent framework adapters | `npm run agent:framework-adapters`   | TypeScript wrappers for AI SDK, LangChain, Mastra, LlamaIndex.TS, LangGraph.js, CopilotKit, Cloudflare Agents, and CrewAI |
-| MCP tool server shape    | `npm run agent:mcp-tools`            | `tools/list`, `tools/call`, verified edits                                                                        |
-| MCP stdio transcript     | `npm run agent:mcp-transcript`       | starts stdio server, sends JSON-RPC, parses verified write/readback                                               |
-| MCP file transcript      | `npm run agent:mcp-file-transcript`  | runs the packaged binary with `--workpaper`, persists an edit, and verifies recalculated readback                  |
-| MCP stdio server         | `npm run agent:mcp-stdio`            | newline-delimited JSON-RPC over stdin/stdout                                                                      |
-| npm package eval         | `npm run npm-eval`                   | the same `.ts` file used by the npm-only smoke test                                                               |
-| Agent writeback check    | `npm run agent:verify`               | exact input edits and formula preservation                                                                        |
-| Budget variance alerts   | `npm run budget-variance`            | budget, actuals, variance, alert formulas                                                                         |
-| Fulfillment capacity     | `npm run fulfillment-capacity`       | orders, labor hours, capacity gap                                                                                 |
-| Quote approval           | `npm run quote-approval`             | quote total, discount, approval threshold                                                                         |
-| Subscription MRR         | `npm run subscription-mrr`           | churn, expansion, ending MRR forecast                                                                             |
-| Revenue scenarios        | `npm run scenarios`                  | multi-sheet formulas and planning edits                                                                           |
-| Persistence round trip   | `npm run persistence`                | save, restore, edit, and export                                                                                   |
-| Named expression update  | `npm run named-expression`           | workbook-scoped names and dependent formulas                                                                      |
-| CSV-shaped input         | `npm run csv-shaped`                 | CSV-shaped data plus formula summary                                                                              |
-| Invoice totals           | `npm run invoice-totals`             | line items, subtotal, tax, total                                                                                  |
-| JSON records input       | `npm run json-records`               | API records to formula-backed workbook                                                                            |
-| JSON file input          | `npm run json-file`                  | disk JSON records to verified summary                                                                             |
-| Formula diagnostics      | `npm run formula-diagnostics`        | display errors and structured diagnostics                                                                         |
-| Markdown report output   | `npm run markdown-report`            | calculated plain-text report generation                                                                           |
-| Snapshot diff            | `npm run snapshot-diff`              | persisted before/after input and outputs                                                                          |
-| Range readback           | `npm run range-readback`             | computed values and serialized formulas                                                                           |
-| Sheet inspection         | `npm run sheet-inspection`           | restored sheet names, IDs, and dimensions                                                                         |
-| HTTP JSON summary        | `npm run http-json-summary`          | no-framework Node HTTP service boundary                                                                           |
+| MCP tool server shape    | `npm run agent:mcp-tools`            | `tools/list`, `tools/call`, verified edits                                                                                |
+| MCP stdio transcript     | `npm run agent:mcp-transcript`       | starts stdio server, sends JSON-RPC, parses verified write/readback                                                       |
+| MCP file transcript      | `npm run agent:mcp-file-transcript`  | runs the packaged binary with `--workpaper`, persists an edit, and verifies recalculated readback                         |
+| MCP stdio server         | `npm run agent:mcp-stdio`            | newline-delimited JSON-RPC over stdin/stdout                                                                              |
+| npm package eval         | `npm run npm-eval`                   | the same `.ts` file used by the npm-only smoke test                                                                       |
+| Agent writeback check    | `npm run agent:verify`               | exact input edits and formula preservation                                                                                |
+| Budget variance alerts   | `npm run budget-variance`            | budget, actuals, variance, alert formulas                                                                                 |
+| Fulfillment capacity     | `npm run fulfillment-capacity`       | orders, labor hours, capacity gap                                                                                         |
+| Quote approval           | `npm run quote-approval`             | quote total, discount, approval threshold                                                                                 |
+| Subscription MRR         | `npm run subscription-mrr`           | churn, expansion, ending MRR forecast                                                                                     |
+| Revenue scenarios        | `npm run scenarios`                  | multi-sheet formulas and planning edits                                                                                   |
+| Persistence round trip   | `npm run persistence`                | save, restore, edit, and export                                                                                           |
+| Named expression update  | `npm run named-expression`           | workbook-scoped names and dependent formulas                                                                              |
+| CSV-shaped input         | `npm run csv-shaped`                 | CSV-shaped data plus formula summary                                                                                      |
+| Invoice totals           | `npm run invoice-totals`             | line items, subtotal, tax, total                                                                                          |
+| JSON records input       | `npm run json-records`               | API records to formula-backed workbook                                                                                    |
+| JSON file input          | `npm run json-file`                  | disk JSON records to verified summary                                                                                     |
+| Formula diagnostics      | `npm run formula-diagnostics`        | display errors and structured diagnostics                                                                                 |
+| Markdown report output   | `npm run markdown-report`            | calculated plain-text report generation                                                                                   |
+| Snapshot diff            | `npm run snapshot-diff`              | persisted before/after input and outputs                                                                                  |
+| Range readback           | `npm run range-readback`             | computed values and serialized formulas                                                                                   |
+| Sheet inspection         | `npm run sheet-inspection`           | restored sheet names, IDs, and dimensions                                                                                 |
+| HTTP JSON summary        | `npm run http-json-summary`          | no-framework Node HTTP service boundary                                                                                   |
 
 For durable service storage, see the docs recipe for
 [plain node-postgres (`pg`) WorkPaper JSON persistence](../../docs/node-service-workpaper-recipe.md#plain-node-postgres-pg-json-persistence).
@@ -141,7 +140,7 @@ Expected output:
   "sheets": ["Inputs", "Summary"],
   "bytes": 1000,
   "verified": true,
-  "nextStep": "If this proof matches your service or agent workflow, star or bookmark Bilig: https://github.com/proompteng/bilig/stargazers"
+  "nextStep": "If this proof matches your workflow, open a concrete blocker or adoption note: https://github.com/proompteng/bilig/discussions/new?category=general"
 }
 ```
 

@@ -87,7 +87,8 @@ That is the core flow:
 5. `verifyPlan` checks the plan without running an engine.
 6. `describeRuntimeRequirements` tells an adapter what it must apply, read, and prove.
 7. `toPlanData` makes the plan JSON-safe for handoff.
-8. `runWorkbookPlan` applies either the in-memory plan or transported plan data through a runtime-owned adapter and returns a boring result with check proof and apply proof when the adapter provides it.
+8. `workbookPlanId` gives that exact plan a stable id for runtime proof.
+9. `runWorkbookPlan` applies either the in-memory plan or transported plan data through a runtime-owned adapter and returns a boring result with check proof and apply proof when the adapter provides it.
 
 ## Public Contract
 
@@ -100,23 +101,23 @@ The main API is intentionally small:
 - input: `checkInput`, `normalizeWorkbookActionInputDescription`
 - proof: `verifyPlan`, `verifyModel`, `verifyWorkbookReadbacks`
 - descriptions: `describeModel`, `describeRef`, `describePlan`, `describePlanResult`, `describeRuntimeRequirements`, `checkRuntimeRequirements`, `checkRuntimeAdapter`, `describeRunResult`
-- transport data: `isWorkbookRefData`, `toWorkbookRefData`, `collectWorkbookRefData`, `hydrateWorkbookRef`, `hydrateWorkbookRefs`, `toPlanData`, `isPlanData`, `checkPlanData`, `hydratePlanData`, `verifyPlanData`
+- transport data: `isWorkbookRefData`, `toWorkbookRefData`, `collectWorkbookRefData`, `hydrateWorkbookRef`, `hydrateWorkbookRefs`, `toPlanData`, `workbookPlanId`, `isPlanData`, `checkPlanData`, `hydratePlanData`, `verifyPlanData`
 - runtime handoff: `runWorkbookPlan`, `runWorkbookAction`, `WorkbookRunAdapter`
-- feature handoff: `defineWorkbookFeaturePlugin`, `checkWorkbookFeaturePlugin`, `checkWorkbookCommandRequest`, `normalizeWorkbookCommandRequest`, `checkWorkbookCommandBundle`, `normalizeWorkbookCommandBundle`, `workbookCommandResultFor`, `workbookCommandResultForReceipts`, `checkWorkbookCommandResult`, `normalizeWorkbookCommandResult`, `checkWorkbookCommandReceipt`, `normalizeWorkbookCommandReceipt`, `workbookCommandReceiptOpsMatch`
+- feature handoff: `defineWorkbookFeaturePlugin`, `checkWorkbookFeaturePlugin`, `checkWorkbookCommandRequest`, `normalizeWorkbookCommandRequest`, `checkWorkbookCommandBundle`, `normalizeWorkbookCommandBundle`, `workbookCommandResultFor`, `workbookCommandResultForReceipts`, `workbookOpCommandReceiptIdentity`, `workbookOpCommandReceipt`, `checkWorkbookCommandResult`, `checkWorkbookCommandResultForBundle`, `normalizeWorkbookCommandResult`, `checkWorkbookCommandReceipt`, `normalizeWorkbookCommandReceipt`, `workbookCommandReceiptOpsMatch`
 - low-level language: `WorkbookOp`, `WorkbookTxn`, `EngineOp`, `EngineOpBatch`, `isEngineOpBatch`
 
 Stable data helpers are exported for generic tool builders:
 
 - `workbookRefKinds`, `isWorkbookRefKind`, `isWorkbookRef`
 - `isWorkbookRefData`, `toWorkbookRefData`, `collectWorkbookRefData`, `hydrateWorkbookRef`, `hydrateWorkbookRefs`
-- `isPlanData`, `checkPlanData`
+- `isPlanData`, `checkPlanData`, `workbookPlanId`
 - `workbookRowOperators`, `workbookRowOperatorValueTypes`, `isWorkbookRowOperator`, `isWorkbookRowValueCompatible`
 - `builtInWorkbookCheckKinds`, `isBuiltInWorkbookCheckKind`
 - `workbookActionInputDescriptionKinds`, `isWorkbookActionInputDescriptionKind`, `isWorkbookActionInputDescription`, `isWorkbookActionInput`, `checkInput`
 - `workbookRuntimeRequirementKinds`, `isWorkbookRuntimeRequirementKind`, `workbookRuntimeCapabilities`, `isWorkbookRuntimeCapability`, `checkRuntimeRequirements`
 - `workbookCommandCategories`, `isWorkbookCommandCategory`, `workbookCommandExecutionModes`, `isWorkbookCommandExecutionMode`, `workbookCommandReceiptStatuses`, `isWorkbookCommandReceiptStatus`, `workbookCommandResultStatuses`, `isWorkbookCommandResultStatus`
 - `workbookProjectionInterceptorPoints`, `isWorkbookProjectionInterceptorPoint`, `workbookUiContributionSlots`, `isWorkbookUiContributionSlot`, `checkWorkbookCommandRequest`
-- `workbookCommandBundleCommandKinds`, `isWorkbookCommandBundleCommandKind`, `checkWorkbookCommandBundle`, `isWorkbookCommandBundle`, `workbookCommandResultFor`, `workbookCommandResultForReceipts`, `checkWorkbookCommandResult`, `isWorkbookCommandResult`
+- `workbookCommandBundleCommandKinds`, `isWorkbookCommandBundleCommandKind`, `checkWorkbookCommandBundle`, `isWorkbookCommandBundle`, `workbookCommandResultFor`, `workbookCommandResultForReceipts`, `workbookOpCommandFeatureId`, `workbookOpCommandReceiptIdentity`, `workbookOpCommandReceipt`, `checkWorkbookCommandResult`, `checkWorkbookCommandResultForBundle`, `isWorkbookCommandResult`, `isWorkbookCommandResultForBundle`
 - `workbookRunErrorCodes`, `isWorkbookRunErrorCode`
 
 Model action manifests are frozen null-prototype maps. Consumers can use normal
@@ -260,6 +261,12 @@ If an adapter returns both `previewOps` and `appliedOps`, the result reports
 whether they matched. If the adapter returns neither, the run records an
 unverified apply fact. Use `runWorkbookPlan(plan, adapter, { requireApplyProof:
 true })` when an agent must fail closed instead of accepting an unproved apply.
+Use `workbookPlanId(plan)` when the runtime needs to bind apply evidence to the
+exact generic plan it received. If an adapter returns `planId`, `@bilig/workbook`
+rejects stale or mismatched ids; `{ requirePlanId: true }` fails closed when the
+adapter omits that binding. Apply summaries may also carry `baseRevision` and
+`revision`, so a later agent can inspect which workbook revision the proof
+claimed to apply against.
 Runtime apply results, undo refs, apply errors, and check verifier output are
 validated from own fields only; prototype-inherited fields are ignored before
 they can become run proof. Adapter-returned ops and verifier proof must be data
@@ -343,6 +350,12 @@ receipt count and request identity, aggregates changed ranges, reports
 preview/apply `matched` proof when ops are present, and carries undo metadata
 without requiring `@bilig/core`. Use `checkWorkbookCommandResult(data)` or
 `normalizeWorkbookCommandResult(data)` before trusting a transported result.
+Use `checkWorkbookCommandResultForBundle(bundle, data)` when a stored or
+transported result must be mechanically checked against the bundle it claims to
+settle. It compares bundle id, target revision, idempotency key, command count,
+touched ranges, request or low-level-op receipt identity, and final applied
+revision. For low-level `op` commands, use `workbookOpCommandReceiptIdentity`
+or `workbookOpCommandReceipt` so adapters do not invent receipt ids.
 
 Use `checkWorkbookCommandReceipt(data)` before trusting runtime command evidence.
 It returns the same boring `{ status, issues }` shape for receipt fields such as

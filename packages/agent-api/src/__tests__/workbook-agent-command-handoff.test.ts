@@ -1,4 +1,4 @@
-import { checkWorkbookCommandBundle, checkWorkbookCommandResult } from '@bilig/workbook'
+import { checkWorkbookCommandBundle, checkWorkbookCommandResult, checkWorkbookCommandResultForBundle } from '@bilig/workbook'
 import { describe, expect, it } from 'vitest'
 import { createWorkbookAgentCommandBundle, type WorkbookAgentCommand, type WorkbookAgentCommandBundle } from '../workbook-agent-bundles.js'
 import { toAppliedWorkbookCommandResult, toWorkbookCommandBundle } from '../workbook-agent-command-handoff.js'
@@ -188,8 +188,10 @@ describe('workbook agent command handoff', () => {
       },
     })
     const check = checkWorkbookCommandResult(result)
+    const commandBundle = toWorkbookCommandBundle(bundle)
 
     expect(check.status).toBe('valid')
+    expect(checkWorkbookCommandResultForBundle(commandBundle, result).status).toBe('valid')
     expect(result).toEqual({
       status: 'applied',
       bundleId: 'bundle-1',

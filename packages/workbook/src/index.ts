@@ -15,9 +15,10 @@ export * from './features.js'
 export * from './feature-plugin.js'
 export * from './command-result.js'
 export * from './command-bundle.js'
-export { checkPlanData, hydratePlanData, isPlanData, toPlanData } from './plan-data.js'
+export { checkPlanData, hydratePlanData, isPlanData, toPlanData, workbookPlanId } from './plan-data.js'
 export type {
   WorkbookExecutablePlan,
+  WorkbookPlanId,
   WorkbookPlanData,
   WorkbookPlanDataCheckResult,
   WorkbookPlanDataIssue,

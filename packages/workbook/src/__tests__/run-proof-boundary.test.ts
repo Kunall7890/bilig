@@ -10,6 +10,7 @@ import {
   type WorkbookModel,
   type WorkbookRunAdapter,
   type WorkbookRunApplyResult,
+  workbookPlanId,
 } from '../index.js'
 
 function valueModel(): WorkbookModel<{ readonly output: ReturnType<typeof findRange> }> {
@@ -173,6 +174,106 @@ describe('@bilig/workbook run proof boundary', () => {
           message: 'Sheet1!B2 equals 12',
         }),
       ],
+    })
+  })
+
+  it('keeps apply proof bound to the exact plan id when requested', async () => {
+    const model = valueModel()
+    let actualPlanId: string | undefined
+
+    const result = await runWorkbookAction(
+      model,
+      'write',
+      {
+        apply: (plan) => {
+          actualPlanId = workbookPlanId(plan)
+          return {
+            status: 'applied',
+            planId: actualPlanId,
+            baseRevision: 7,
+            revision: 8,
+            previewOps: plan.ops,
+            appliedOps: plan.ops,
+          }
+        },
+        read: (targets) => [{ target: first(targets), value: 12 }],
+      },
+      undefined,
+      { requirePlanId: true },
+    )
+
+    expect(result.status).toBe('done')
+    expect(result.apply).toEqual(
+      expect.objectContaining({
+        planId: actualPlanId,
+        baseRevision: 7,
+        revision: 8,
+        matched: true,
+      }),
+    )
+  })
+
+  it('rejects apply proof with a stale plan id', async () => {
+    const model = valueModel()
+
+    const result = await runWorkbookAction(model, 'write', {
+      apply: (plan) => ({
+        status: 'applied',
+        planId: `${workbookPlanId(plan)}-stale`,
+        previewOps: plan.ops,
+        appliedOps: plan.ops,
+      }),
+      read: (targets) => [{ target: first(targets), value: 12 }],
+    })
+
+    expect(result).toEqual({
+      status: 'failed',
+      errors: [
+        {
+          code: 'runtime_rejected',
+          message: 'Workbook action run-value-model.write returned a plan id that does not match the executed plan',
+        },
+      ],
+      changed: [],
+      checks: [expect.objectContaining({ status: 'planned', kind: 'valueEquals' })],
+    })
+  })
+
+  it('can require runtime apply proof to include a plan id', async () => {
+    const model = valueModel()
+
+    const result = await runWorkbookAction(
+      model,
+      'write',
+      {
+        apply: (plan) => ({
+          status: 'applied',
+          previewOps: plan.ops,
+          appliedOps: plan.ops,
+        }),
+        read: (targets) => [{ target: first(targets), value: 12 }],
+      },
+      undefined,
+      { requirePlanId: true },
+    )
+
+    expect(result).toEqual({
+      status: 'failed',
+      errors: [
+        {
+          code: 'plan_not_verified',
+          message: 'Adapter did not bind apply proof to a plan id',
+        },
+      ],
+      apply: expect.objectContaining({ matched: true }),
+      changed: [
+        {
+          kind: 'writeValue',
+          target: expect.objectContaining({ label: 'Sheet1!B2' }),
+          message: 'Write value to Sheet1!B2',
+        },
+      ],
+      checks: [expect.objectContaining({ status: 'planned', kind: 'valueEquals' })],
     })
   })
 

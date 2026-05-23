@@ -20,6 +20,7 @@ import {
 } from './model.js'
 import type { WorkbookActionInput } from './input.js'
 import type { WorkbookOp } from './ops.js'
+import type { WorkbookPlanId } from './plan-data.js'
 import type {
   WorkbookChangeSummary,
   WorkbookCheckExpectation,
@@ -184,6 +185,9 @@ export interface WorkbookUndoRefDescription {
 
 export interface WorkbookRunApplySummaryDescription {
   readonly matched: boolean | null
+  readonly planId?: WorkbookPlanId
+  readonly baseRevision?: number
+  readonly revision?: number
   readonly previewOps?: readonly WorkbookOp[]
   readonly appliedOps?: readonly WorkbookOp[]
   readonly proof?: WorkbookActionInput
@@ -553,11 +557,17 @@ function describeUndo(undo: WorkbookUndoRef): WorkbookUndoRefDescription {
 }
 
 function describeApply(apply: WorkbookRunApplySummary): WorkbookRunApplySummaryDescription {
+  const planId = ownDataValue(apply, 'planId', 'apply.planId')
+  const baseRevision = ownDataValue(apply, 'baseRevision', 'apply.baseRevision')
+  const revision = ownDataValue(apply, 'revision', 'apply.revision')
   const previewOps = ownDataValue(apply, 'previewOps', 'apply.previewOps')
   const appliedOps = ownDataValue(apply, 'appliedOps', 'apply.appliedOps')
   const proof = ownDataValue(apply, 'proof', 'apply.proof')
   return {
     matched: requiredOwnDataValue(apply, 'matched', 'apply.matched'),
+    ...(planId !== undefined ? { planId } : {}),
+    ...(baseRevision !== undefined ? { baseRevision } : {}),
+    ...(revision !== undefined ? { revision } : {}),
     ...(previewOps !== undefined
       ? { previewOps: mapArrayData(previewOps, 'apply.previewOps', (op, _index, entryPath) => cloneDescriptionData(op, entryPath)) }
       : {}),

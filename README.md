@@ -46,11 +46,11 @@ Project site: <https://proompteng.github.io/bilig/>
 
 Pick the path that matches the thing in your hands:
 
-| You have... | Start with | You should see |
-| --- | --- | --- |
-| An `.xlsx` file with stale formula results after editing inputs in Node | `npx --package @bilig/xlsx-formula-recalc xlsx-recalc --demo --json` | A changed input, a recalculated output, and `verified: true` without opening Excel or LibreOffice. |
-| Workbook-shaped business logic that should live in a Node service, test, queue, or route | `npm create @bilig/workpaper@latest pricing-workpaper` | A WorkPaper JSON model that writes inputs, recalculates formulas, restores state, and proves readback. |
-| A coding agent, MCP client, or tool host that needs spreadsheet operations | `npm create @bilig/workpaper@latest pricing-agent -- --agent` | An agent contract with read, write, recalc, persist, restore, and a compact proof object. |
+| You have...                                                                              | Start with                                                           | You should see                                                                                         |
+| ---------------------------------------------------------------------------------------- | -------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------ |
+| An `.xlsx` file with stale formula results after editing inputs in Node                  | `npx --package @bilig/xlsx-formula-recalc xlsx-recalc --demo --json` | A changed input, a recalculated output, and `verified: true` without opening Excel or LibreOffice.     |
+| Workbook-shaped business logic that should live in a Node service, test, queue, or route | `npm create @bilig/workpaper@latest pricing-workpaper`               | A WorkPaper JSON model that writes inputs, recalculates formulas, restores state, and proves readback. |
+| A coding agent, MCP client, or tool host that needs spreadsheet operations               | `npm create @bilig/workpaper@latest pricing-agent -- --agent`        | An agent contract with read, write, recalc, persist, restore, and a compact proof object.              |
 
 If you are not sure which one fits, use the file-level XLSX path when a real
 spreadsheet file is already the source of truth. Use `@bilig/workpaper` when
@@ -156,7 +156,7 @@ npm --prefix examples/recalc-bridge-workflows run smoke
 
 ## Choose An Evaluation Path
 
-| If you are evaluating...      | Start here                                                                                                                                                                                                                | What should be true before you adopt                                                    |
+| If you are evaluating...      | Start here                                                                                                                                                                                                                | What should be true before you adopt                                                                    |
 | ----------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------- |
 | Basic fit                     | [Why use Bilig?](docs/why-use-bilig.md)                                                                                                                                                                                   | The problem is workbook-shaped business logic that needs API readback and persistence.                  |
 | Published npm package         | [90-second Node quickstart](docs/try-bilig-headless-in-node.md)                                                                                                                                                           | `@bilig/workpaper` edits one input, recalculates, persists JSON, restores, and prints `verified: true`. |
@@ -229,7 +229,8 @@ Expected output:
 }
 ```
 
-The generated starter uses the same maintained WorkPaper proof shape as
+The generated starter uses the same maintained WorkPaper proof shape as the
+public mirror at <https://proompteng.github.io/bilig/npm-eval.ts> and
 [`examples/headless-workpaper/npm-eval.ts`](examples/headless-workpaper/npm-eval.ts).
 The exact byte count can change between package versions; `verified: true` and
 matching `after`/`afterRestore` values are the check.

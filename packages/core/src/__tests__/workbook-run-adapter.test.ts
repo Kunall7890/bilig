@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { ValueTag } from '@bilig/protocol'
-import { defineModel, findRange, findTable, formula, runWorkbookAction } from '@bilig/workbook'
+import { defineModel, findRange, findTable, formula, planWorkbookAction, runWorkbookAction, workbookPlanId } from '@bilig/workbook'
 import { SpreadsheetEngine } from '../engine.js'
 import { createWorkbookRunAdapter } from '../workbook-run-adapter.js'
 
@@ -36,7 +36,15 @@ describe('workbook run adapter', () => {
       },
     })
 
-    const result = await runWorkbookAction(model, 'calculate', createWorkbookRunAdapter(engine))
+    const planned = planWorkbookAction(model, 'calculate')
+    if (planned.status !== 'planned') {
+      throw new Error(planned.errors.map((error) => error.message).join('\n'))
+    }
+
+    const result = await runWorkbookAction(model, 'calculate', createWorkbookRunAdapter(engine), undefined, {
+      requireApplyProof: true,
+      requirePlanId: true,
+    })
 
     expect(result).toMatchObject({ status: 'done' })
     if (result.status !== 'done') {
@@ -44,6 +52,7 @@ describe('workbook run adapter', () => {
     }
     expect(result.apply).toMatchObject({
       matched: true,
+      planId: workbookPlanId(planned.plan),
       proof: {
         source: '@bilig/core',
         opCount: 1,

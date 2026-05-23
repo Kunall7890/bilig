@@ -52,11 +52,23 @@ export interface WorkbookCommandResultForReceiptsOptions {
   readonly undo?: WorkbookUndoRef
 }
 
+export const workbookOpCommandFeatureId = 'workbook-op'
+
+export interface WorkbookOpCommandReceiptIdentity {
+  readonly featureId: typeof workbookOpCommandFeatureId
+  readonly commandId: string
+  readonly category: 'operation'
+}
+
+export type WorkbookOpCommandReceiptOptions = Omit<WorkbookCommandReceipt, 'featureId' | 'commandId' | 'category'>
+
 export type WorkbookCommandResultIssueCode =
   | 'invalid_command_result'
   | 'invalid_receipt'
+  | 'bundle_result_mismatch'
   | 'receipt_count_mismatch'
   | 'receipt_command_mismatch'
+  | 'revision_mismatch'
   | 'invalid_undo'
 
 export interface WorkbookCommandResultIssue {
@@ -141,6 +153,28 @@ export function workbookCommandResultForReceipts(
   })
 }
 
+export function workbookOpCommandReceiptIdentity(command: WorkbookCommandBundleCommand, index: number): WorkbookOpCommandReceiptIdentity {
+  if (command.kind !== 'op') {
+    throw new Error(`Workbook command bundle commands[${String(index)}] is not an op command`)
+  }
+  return Object.freeze({
+    featureId: workbookOpCommandFeatureId,
+    commandId: command.id ?? `commands[${String(index)}].op`,
+    category: 'operation',
+  })
+}
+
+export function workbookOpCommandReceipt(
+  command: WorkbookCommandBundleCommand,
+  index: number,
+  options: WorkbookOpCommandReceiptOptions,
+): WorkbookCommandReceipt {
+  return normalizeWorkbookCommandReceipt({
+    ...options,
+    ...workbookOpCommandReceiptIdentity(command, index),
+  })
+}
+
 export function checkWorkbookCommandResult(value: unknown): WorkbookCommandResultCheckResult {
   if (!isRecord(value)) {
     return {
@@ -219,6 +253,44 @@ export function isWorkbookCommandResult(value: unknown): value is WorkbookComman
   return checkWorkbookCommandResult(value).status === 'valid'
 }
 
+export function checkWorkbookCommandResultForBundle(bundle: WorkbookCommandBundle, value: unknown): WorkbookCommandResultCheckResult {
+  const resultCheck = checkWorkbookCommandResult(value)
+  if (resultCheck.status === 'invalid') {
+    return resultCheck
+  }
+
+  let expected: WorkbookCommandResult
+  try {
+    expected = workbookCommandResultFor(bundle)
+  } catch (error) {
+    return invalidCommandResult([
+      commandResultIssue('invalid_command_result', 'bundle', `Workbook command bundle is invalid: ${errorMessage(error)}`),
+    ])
+  }
+
+  const result = resultCheck.result
+  const issues: WorkbookCommandResultIssue[] = []
+  pushBaseResultMismatchIssues(issues, expected, result)
+  if (result.status !== 'accepted') {
+    pushReceiptBundleIssues(issues, bundle, result)
+    if (result.status === 'applied' && result.revision === undefined) {
+      issues.push(commandResultIssue('revision_mismatch', 'revision', 'Applied workbook command result must include a revision'))
+    }
+    if (result.revision !== undefined && result.revision < result.targetRevision) {
+      issues.push(commandResultIssue('revision_mismatch', 'revision', 'Workbook command result revision must not be before targetRevision'))
+    }
+  }
+
+  if (issues.length > 0) {
+    return invalidCommandResult(issues)
+  }
+  return resultCheck
+}
+
+export function isWorkbookCommandResultForBundle(bundle: WorkbookCommandBundle, value: unknown): value is WorkbookCommandResult {
+  return checkWorkbookCommandResultForBundle(bundle, value).status === 'valid'
+}
+
 function normalizeReceiptArrayForResult(receipts: readonly WorkbookCommandReceipt[]): readonly WorkbookCommandReceipt[] {
   if (!Array.isArray(receipts)) {
     throw new Error('Workbook command result is invalid: receipts must be an array')
@@ -244,6 +316,10 @@ function normalizeReceiptArrayForResult(receipts: readonly WorkbookCommandReceip
 
 function assertReceiptMatchesCommand(command: WorkbookCommandBundleCommand, receipt: WorkbookCommandReceipt, index: number): void {
   if (command.kind !== 'request') {
+    const expected = workbookOpCommandReceiptIdentity(command, index)
+    if (receipt.featureId !== expected.featureId || receipt.commandId !== expected.commandId || receipt.category !== expected.category) {
+      throw new Error(`Workbook command result is invalid: receipts[${String(index)}] does not match commands[${String(index)}].op`)
+    }
     return
   }
   if (receipt.featureId !== command.request.featureId || receipt.commandId !== command.request.commandId) {
@@ -254,6 +330,119 @@ function assertReceiptMatchesCommand(command: WorkbookCommandBundleCommand, rece
       `Workbook command result is invalid: receipts[${String(index)}].category does not match commands[${String(index)}].request.category`,
     )
   }
+}
+
+function pushBaseResultMismatchIssues(
+  issues: WorkbookCommandResultIssue[],
+  expected: WorkbookCommandResult,
+  result: WorkbookCommandResult,
+): void {
+  if (result.bundleId !== expected.bundleId) {
+    issues.push(commandResultIssue('bundle_result_mismatch', 'bundleId', 'Workbook command result bundleId does not match bundle'))
+  }
+  if (result.targetRevision !== expected.targetRevision) {
+    issues.push(
+      commandResultIssue('bundle_result_mismatch', 'targetRevision', 'Workbook command result targetRevision does not match bundle'),
+    )
+  }
+  if (result.idempotencyKey !== expected.idempotencyKey) {
+    issues.push(
+      commandResultIssue('bundle_result_mismatch', 'idempotencyKey', 'Workbook command result idempotencyKey does not match bundle'),
+    )
+  }
+  if (result.commandCount !== expected.commandCount) {
+    issues.push(commandResultIssue('bundle_result_mismatch', 'commandCount', 'Workbook command result commandCount does not match bundle'))
+  }
+  if (result.touchedCellCount !== expected.touchedCellCount) {
+    issues.push(
+      commandResultIssue('bundle_result_mismatch', 'touchedCellCount', 'Workbook command result touchedCellCount does not match bundle'),
+    )
+  }
+  if (!rangesMatch(result.touchedRanges, expected.touchedRanges)) {
+    issues.push(commandResultIssue('bundle_result_mismatch', 'touchedRanges', 'Workbook command result touchedRanges do not match bundle'))
+  }
+}
+
+function pushReceiptBundleIssues(
+  issues: WorkbookCommandResultIssue[],
+  bundle: WorkbookCommandBundle,
+  result: WorkbookCommandSettledResult,
+): void {
+  if (result.receipts.length !== bundle.commands.length) {
+    issues.push(
+      commandResultIssue(
+        'receipt_count_mismatch',
+        'receipts',
+        `Workbook command result has ${String(result.receipts.length)} receipts for ${String(bundle.commands.length)} commands`,
+      ),
+    )
+    return
+  }
+
+  result.receipts.forEach((receipt, index) => {
+    const command = bundle.commands[index]
+    if (command === undefined) {
+      return
+    }
+    if (command.kind === 'op') {
+      const expected = workbookOpCommandReceiptIdentity(command, index)
+      if (receipt.featureId !== expected.featureId || receipt.commandId !== expected.commandId || receipt.category !== expected.category) {
+        issues.push(
+          commandResultIssue(
+            'receipt_command_mismatch',
+            `receipts[${String(index)}]`,
+            `Workbook command result receipt ${String(index)} does not match op command`,
+          ),
+        )
+      }
+      return
+    }
+    if (receipt.featureId !== command.request.featureId || receipt.commandId !== command.request.commandId) {
+      issues.push(
+        commandResultIssue(
+          'receipt_command_mismatch',
+          `receipts[${String(index)}]`,
+          `Workbook command result receipt ${String(index)} does not match command request`,
+        ),
+      )
+      return
+    }
+    if (command.request.category !== undefined && receipt.category !== command.request.category) {
+      issues.push(
+        commandResultIssue(
+          'receipt_command_mismatch',
+          `receipts[${String(index)}].category`,
+          `Workbook command result receipt ${String(index)} category does not match command request`,
+        ),
+      )
+    }
+  })
+}
+
+function rangesMatch(left: readonly CellRangeRef[], right: readonly CellRangeRef[]): boolean {
+  try {
+    return canonicalJson(left) === canonicalJson(right)
+  } catch {
+    return false
+  }
+}
+
+function canonicalJson(value: unknown): string {
+  return JSON.stringify(canonicalValue(value))
+}
+
+function canonicalValue(value: unknown): unknown {
+  if (Array.isArray(value)) {
+    return value.map(canonicalValue)
+  }
+  if (typeof value === 'object' && value !== null) {
+    return Object.fromEntries(
+      Object.entries(value)
+        .toSorted(([left], [right]) => left.localeCompare(right))
+        .map(([key, entry]) => [key, canonicalValue(entry)]),
+    )
+  }
+  return value
 }
 
 function commandResultStatusForReceipts(receipts: readonly WorkbookCommandReceipt[]): WorkbookCommandReceiptStatus {
@@ -300,6 +489,13 @@ function commandResultIssue(code: WorkbookCommandResultIssueCode, path: string, 
     path,
     message,
   })
+}
+
+function invalidCommandResult(issues: readonly WorkbookCommandResultIssue[]): WorkbookCommandResultCheckResult {
+  return {
+    status: 'invalid',
+    issues: Object.freeze([...issues]),
+  }
 }
 
 function pushResultReceiptsIssues(issues: WorkbookCommandResultIssue[], value: unknown): void {

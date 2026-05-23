@@ -7,7 +7,9 @@ import {
   checkPlanData,
   hydratePlanData,
   isHydratedPlan,
+  workbookPlanId,
   type WorkbookExecutablePlan,
+  type WorkbookPlanId,
   type WorkbookPlanDataIssue,
   type WorkbookPlanDataRefs,
 } from './plan-data.js'
@@ -30,6 +32,9 @@ type MaybePromise<T> = T | Promise<T>
 
 export interface WorkbookRunApplyResult {
   readonly status: 'applied' | 'failed'
+  readonly planId?: WorkbookPlanId
+  readonly baseRevision?: number
+  readonly revision?: number
   readonly previewOps?: readonly EngineOp[]
   readonly appliedOps?: readonly EngineOp[]
   readonly proof?: WorkbookActionInput
@@ -39,6 +44,7 @@ export interface WorkbookRunApplyResult {
 
 export interface WorkbookRunOptions {
   readonly requireApplyProof?: boolean
+  readonly requirePlanId?: boolean
 }
 
 export interface WorkbookRunAdapter<Refs = unknown> {
@@ -255,6 +261,10 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null
 }
 
+function isSafeNonNegativeInteger(value: unknown): value is number {
+  return typeof value === 'number' && Number.isSafeInteger(value) && value >= 0
+}
+
 function ownValue(value: object, key: string): unknown {
   return Object.getOwnPropertyDescriptor(value, key)?.value
 }
@@ -416,6 +426,28 @@ function validateApplyResult(plan: WorkbookActionPlan, value: unknown): ApplyVal
     return rejected(`Workbook action ${plan.modelName}.${plan.actionName} returned applied with errors`)
   }
 
+  const rawPlanId = ownValue(value, 'planId')
+  if (rawPlanId !== undefined && typeof rawPlanId !== 'string') {
+    return rejected(`Workbook action ${plan.modelName}.${plan.actionName} returned invalid plan id`)
+  }
+  const expectedPlanId = rawPlanId === undefined ? undefined : workbookPlanId(plan)
+  if (rawPlanId !== undefined && rawPlanId !== expectedPlanId) {
+    return rejected(`Workbook action ${plan.modelName}.${plan.actionName} returned a plan id that does not match the executed plan`)
+  }
+
+  const rawBaseRevision = ownValue(value, 'baseRevision')
+  if (rawBaseRevision !== undefined && !isSafeNonNegativeInteger(rawBaseRevision)) {
+    return rejected(`Workbook action ${plan.modelName}.${plan.actionName} returned invalid base revision`)
+  }
+
+  const rawRevision = ownValue(value, 'revision')
+  if (rawRevision !== undefined && !isSafeNonNegativeInteger(rawRevision)) {
+    return rejected(`Workbook action ${plan.modelName}.${plan.actionName} returned invalid revision`)
+  }
+  if (isSafeNonNegativeInteger(rawBaseRevision) && isSafeNonNegativeInteger(rawRevision) && rawRevision < rawBaseRevision) {
+    return rejected(`Workbook action ${plan.modelName}.${plan.actionName} returned a revision before its base revision`)
+  }
+
   const rawUndo = ownValue(value, 'undo')
   let undo: WorkbookUndoRef | undefined
   if (rawUndo !== undefined && !isWorkbookUndoRef(rawUndo)) {
@@ -441,6 +473,9 @@ function validateApplyResult(plan: WorkbookActionPlan, value: unknown): ApplyVal
     status: 'valid',
     result: {
       status,
+      ...(typeof rawPlanId === 'string' ? { planId: rawPlanId } : {}),
+      ...(isSafeNonNegativeInteger(rawBaseRevision) ? { baseRevision: rawBaseRevision } : {}),
+      ...(isSafeNonNegativeInteger(rawRevision) ? { revision: rawRevision } : {}),
       ...(previewOps !== undefined ? { previewOps } : {}),
       ...(appliedOps !== undefined ? { appliedOps } : {}),
       ...(proof !== undefined ? { proof } : {}),
@@ -558,6 +593,9 @@ function describeApply(result: WorkbookRunApplyResult): WorkbookRunApplySummary 
   const matched = result.previewOps === undefined || result.appliedOps === undefined ? null : opsMatch(result.previewOps, result.appliedOps)
   return {
     matched,
+    ...(result.planId !== undefined ? { planId: result.planId } : {}),
+    ...(result.baseRevision !== undefined ? { baseRevision: result.baseRevision } : {}),
+    ...(result.revision !== undefined ? { revision: result.revision } : {}),
     ...(result.previewOps !== undefined ? { previewOps: cloneOps(result.previewOps) } : {}),
     ...(result.appliedOps !== undefined ? { appliedOps: cloneOps(result.appliedOps) } : {}),
     ...(result.proof !== undefined ? { proof: normalizeWorkbookActionInput(result.proof) } : {}),
@@ -586,6 +624,9 @@ function applyProofErrors(apply: WorkbookRunApplySummary, options: WorkbookRunOp
   }
   if (options.requireApplyProof === true && apply.matched === null) {
     return [runError('apply_not_verified', 'Adapter did not return both previewOps and appliedOps')]
+  }
+  if (options.requirePlanId === true && apply.planId === undefined) {
+    return [runError('plan_not_verified', 'Adapter did not bind apply proof to a plan id')]
   }
   return []
 }

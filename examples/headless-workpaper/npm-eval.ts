@@ -30,7 +30,7 @@ const restored = createWorkPaperFromDocument(parseWorkPaperDocument(saved))
 const restoredSummary = requireSheet(restored, 'Summary')
 const afterRestore = numberValue(restored.getCellValue({ sheet: restoredSummary, row: 1, col: 1 }))
 const nextStep =
-  'If this proof matches your service or agent workflow, star or bookmark Bilig: https://github.com/proompteng/bilig/stargazers'
+  'If this proof matches your workflow, open a concrete blocker or adoption note: https://github.com/proompteng/bilig/discussions/new?category=general'
 
 const output = {
   before,

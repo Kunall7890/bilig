@@ -2,12 +2,16 @@ import { describe, expect, it } from 'vitest'
 import {
   checkWorkbookCommandBundle,
   checkWorkbookCommandResult,
+  checkWorkbookCommandResultForBundle,
   isWorkbookCommandBundle,
   isWorkbookCommandBundleCommandKind,
+  isWorkbookCommandResultForBundle,
   isWorkbookCommandResultStatus,
   normalizeWorkbookCommandBundle,
   normalizeWorkbookCommandResult,
   workbookCommandBundleCommandKinds,
+  workbookOpCommandReceipt,
+  workbookOpCommandReceiptIdentity,
   workbookCommandResultFor,
   workbookCommandResultForReceipts,
   workbookCommandResultStatuses,
@@ -414,7 +418,107 @@ describe('@bilig/workbook command bundle api', () => {
       result,
       issues: [],
     })
+    expect(checkWorkbookCommandResultForBundle(bundle, result)).toEqual({
+      status: 'valid',
+      result,
+      issues: [],
+    })
+    expect(isWorkbookCommandResultForBundle(bundle, result)).toBe(true)
     expect(normalizeWorkbookCommandResult(result)).toEqual(result)
+  })
+
+  it('rejects command results that are not bound to the bundle', () => {
+    const bundle = normalizeWorkbookCommandBundle({
+      id: 'bundle-1',
+      targetRevision: 7,
+      idempotencyKey: 'bundle-1',
+      commands: [
+        {
+          id: 'bundle-1:0:write',
+          kind: 'request',
+          destructive: true,
+          request: mutationRequest,
+          touchedRanges: [{ sheetName: 'Sheet1', startAddress: 'A1', endAddress: 'A1' }],
+        },
+      ],
+    })
+    const result = workbookCommandResultForReceipts(
+      bundle,
+      [
+        {
+          status: 'applied',
+          featureId: 'cells',
+          commandId: 'cells.setValue',
+          category: 'mutation',
+          changedRanges: [{ sheetName: 'Sheet1', startAddress: 'A1', endAddress: 'A1' }],
+        },
+      ],
+      { revision: 8 },
+    )
+
+    expect(
+      checkWorkbookCommandResultForBundle(bundle, {
+        ...result,
+        idempotencyKey: 'other-run',
+        receipts: [
+          {
+            status: 'applied',
+            featureId: 'cells',
+            commandId: 'cells.other',
+            category: 'mutation',
+          },
+        ],
+      }),
+    ).toEqual({
+      status: 'invalid',
+      issues: [
+        {
+          code: 'bundle_result_mismatch',
+          path: 'idempotencyKey',
+          message: 'Workbook command result idempotencyKey does not match bundle',
+        },
+        {
+          code: 'receipt_command_mismatch',
+          path: 'receipts[0]',
+          message: 'Workbook command result receipt 0 does not match command request',
+        },
+      ],
+    })
+  })
+
+  it('requires applied command results to carry a final revision when checked against a bundle', () => {
+    const bundle = normalizeWorkbookCommandBundle({
+      id: 'bundle-1',
+      targetRevision: 7,
+      idempotencyKey: 'bundle-1',
+      commands: [
+        {
+          id: 'bundle-1:0:write',
+          kind: 'request',
+          destructive: true,
+          request: mutationRequest,
+        },
+      ],
+    })
+    const result = workbookCommandResultForReceipts(bundle, [
+      {
+        status: 'applied',
+        featureId: 'cells',
+        commandId: 'cells.setValue',
+        category: 'mutation',
+      },
+    ])
+
+    expect(checkWorkbookCommandResultForBundle(bundle, result)).toEqual({
+      status: 'invalid',
+      issues: [
+        {
+          code: 'revision_mismatch',
+          path: 'revision',
+          message: 'Applied workbook command result must include a revision',
+        },
+      ],
+    })
   })
 
   it('builds a rejected command result with inspectable errors', () => {
@@ -464,6 +568,47 @@ describe('@bilig/workbook command bundle api', () => {
     })
   })
 
+  it('builds deterministic receipts for low-level op commands', () => {
+    const bundle = normalizeWorkbookCommandBundle({
+      id: 'bundle-op',
+      targetRevision: 7,
+      idempotencyKey: 'bundle-op',
+      commands: [
+        {
+          id: 'op-write-a1',
+          kind: 'op',
+          destructive: true,
+          op: setCellValueOp,
+          touchedRanges: [{ sheetName: 'Sheet1', startAddress: 'A1', endAddress: 'A1' }],
+        },
+      ],
+    })
+    const [command] = bundle.commands
+    if (command === undefined) {
+      throw new Error('expected command')
+    }
+
+    expect(workbookOpCommandReceiptIdentity(command, 0)).toEqual({
+      featureId: 'workbook-op',
+      commandId: 'op-write-a1',
+      category: 'operation',
+    })
+
+    const receipt = workbookOpCommandReceipt(command, 0, {
+      status: 'applied',
+      previewOps: [setCellValueOp],
+      appliedOps: [setCellValueOp],
+      changedRanges: [{ sheetName: 'Sheet1', startAddress: 'A1', endAddress: 'A1' }],
+    })
+    const result = workbookCommandResultForReceipts(bundle, [receipt], { revision: 8 })
+
+    expect(checkWorkbookCommandResultForBundle(bundle, result)).toEqual({
+      status: 'valid',
+      result,
+      issues: [],
+    })
+  })
+
   it('rejects command result receipts that do not match request commands', () => {
     const bundle = normalizeWorkbookCommandBundle({
       id: 'bundle-3',
@@ -488,6 +633,33 @@ describe('@bilig/workbook command bundle api', () => {
         },
       ]),
     ).toThrow('Workbook command result is invalid: receipts[0] does not match commands[0].request')
+  })
+
+  it('rejects command result receipts that do not match op commands', () => {
+    const bundle = normalizeWorkbookCommandBundle({
+      id: 'bundle-op',
+      targetRevision: 7,
+      idempotencyKey: 'bundle-op',
+      commands: [
+        {
+          id: 'op-write-a1',
+          kind: 'op',
+          destructive: true,
+          op: setCellValueOp,
+        },
+      ],
+    })
+
+    expect(() =>
+      workbookCommandResultForReceipts(bundle, [
+        {
+          status: 'applied',
+          featureId: 'other',
+          commandId: 'op-write-a1',
+          category: 'operation',
+        },
+      ]),
+    ).toThrow('Workbook command result is invalid: receipts[0] does not match commands[0].op')
   })
 
   it('rejects uninspectable command result data without invoking getters', () => {
