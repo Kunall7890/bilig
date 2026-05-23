@@ -17,7 +17,6 @@ Related documents:
 - `docs/workbook-browser-scroll-performance-implementation-design-2026-04-18.md`
 - `docs/glide-removal-renderer-v2.md`
 - `docs/performance-budgets.md`
-- `docs/react-spectrum-ui-philosophy.md`
 - `docs/testing-and-benchmarks.md`
 
 ## Purpose

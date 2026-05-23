@@ -22,8 +22,6 @@ Write strict TypeScript with ESM imports and explicit `.js` suffixes where the c
 
 ## Frontend UI System
 
-For workbook and app-shell UI, React Spectrum's architectural discipline is the source of truth, using the local repo at `~/github.com/react-spectrum` as reference rather than copying ad hoc styles from the web. Follow the distilled guidance in `docs/react-spectrum-ui-philosophy.md`.
-
 Required rules:
 
 - Separate state, behavior, and themed rendering. Do not leave keyboard policy, pointer policy, and visual structure tangled inside giant render components when a controller or hook can own the behavior.
