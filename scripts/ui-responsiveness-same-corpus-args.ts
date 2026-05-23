@@ -50,6 +50,10 @@ export interface PreflightArgs {
 export const defaultCorpusId: WorkbookBenchmarkCorpusId = 'wide-mixed-250k'
 export const defaultViewport = { width: 1440, height: 900 } as const
 
+export function defaultBiligSameCorpusUrl(corpusId: WorkbookBenchmarkCorpusId): string {
+  return `http://localhost:5173/?benchmarkCorpus=${encodeURIComponent(corpusId)}`
+}
+
 export function parsePreflightArgs(argv: readonly string[]): PreflightArgs | null {
   if (!argv.includes('--preflight')) {
     return null
@@ -130,7 +134,7 @@ export function parseCaptureArgs(argv: readonly string[]): CaptureArgs {
   const sampleCount = parsePositiveInteger(argumentValue(argv, '--samples') ?? '3', '--samples')
   const readyTimeoutMs = parsePositiveInteger(argumentValue(argv, '--ready-timeout-ms') ?? '60000', '--ready-timeout-ms')
   return {
-    biligUrl: argumentValue(argv, '--bilig-url') ?? `http://127.0.0.1:5173/?benchmarkCorpus=${encodeURIComponent(corpusId)}`,
+    biligUrl: argumentValue(argv, '--bilig-url') ?? defaultBiligSameCorpusUrl(corpusId),
     biligStorageStatePath: resolveOptionalPath(argumentValue(argv, '--bilig-storage-state')),
     corpusId,
     deltaX: parseNonNegativeNumber(argumentValue(argv, '--delta-x') ?? '0', '--delta-x'),

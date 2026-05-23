@@ -5,7 +5,7 @@ import type { Page } from '@playwright/test'
 import type { CaptureArgs } from './ui-responsiveness-same-corpus-args.ts'
 import type { UiResponsivenessSameCorpusProduct } from './gen-ui-responsiveness-live-browser-scorecard.ts'
 import type { UiResponsivenessSameCorpusWorkload } from './ui-responsiveness-same-corpus-workloads.ts'
-import { collectFrameIntervals, waitForNextFrame } from './ui-responsiveness-same-corpus-page-utils.ts'
+import { collectFrameIntervals, settleFrames, waitForNextFrame } from './ui-responsiveness-same-corpus-page-utils.ts'
 
 export interface ProductOperationSample {
   readonly operationResponseMs: number
@@ -30,6 +30,7 @@ type NonScrollWorkload = Exclude<
 >
 
 type SameCorpusKeyboardOperation = { kind: 'press'; key: string } | { kind: 'type'; text: string }
+type MutatingSameCorpusWorkload = Extract<NonScrollWorkload, 'edit-visible-cell' | 'formula-edit' | 'fill-format-change'>
 
 export async function measureProductWorkload(args: {
   readonly page: Page
@@ -53,6 +54,19 @@ export async function measureProductWorkload(args: {
     return await args.hooks.measureVisibleScrollResponseWithRetries(args.page, args.product, Math.max(args.captureArgs.deltaX, 1440), 0)
   }
   return await measureNonScrollProductWorkload(args.page, args.product, args.workload, args.sampleIndex, args.hooks)
+}
+
+export async function restoreProductWorkbookMutation(
+  page: Page,
+  workload: UiResponsivenessSameCorpusWorkload,
+  platform: NodeJS.Platform = process.platform,
+): Promise<void> {
+  const operations = sameCorpusWorkbookRestoreOperations(workload, platform)
+  if (operations.length === 0) {
+    return
+  }
+  await performSameCorpusKeyboardOperations(page, operations)
+  await settleFrames(page, 30)
 }
 
 async function measureNonScrollProductWorkload(
@@ -109,6 +123,17 @@ export function sameCorpusKeyboardOperations(
     { kind: 'type', text: value },
     { kind: 'press', key: 'Enter' },
   ]
+}
+
+export function sameCorpusWorkbookRestoreOperations(
+  workload: UiResponsivenessSameCorpusWorkload,
+  platform: NodeJS.Platform = process.platform,
+): readonly SameCorpusKeyboardOperation[] {
+  return sameCorpusWorkloadMutatesWorkbook(workload) ? [{ kind: 'press', key: primaryShortcut('Z', platform) }] : []
+}
+
+export function sameCorpusWorkloadMutatesWorkbook(workload: UiResponsivenessSameCorpusWorkload): workload is MutatingSameCorpusWorkload {
+  return workload === 'edit-visible-cell' || workload === 'formula-edit' || workload === 'fill-format-change'
 }
 
 function primaryShortcut(key: string, platform: NodeJS.Platform): string {

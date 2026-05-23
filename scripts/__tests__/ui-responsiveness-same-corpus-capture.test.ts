@@ -25,7 +25,12 @@ import {
 } from '../ui-responsiveness-same-corpus-proof.ts'
 import { sameCorpusChromiumLaunchOptions } from '../ui-responsiveness-same-corpus-page-utils.ts'
 import { sameCorpusScrollProbeSelectorsForProduct } from '../ui-responsiveness-same-corpus-scroll-page.ts'
-import { incumbentEditableWorkloadBlocker, sameCorpusKeyboardOperations } from '../ui-responsiveness-same-corpus-workload-runner.ts'
+import {
+  incumbentEditableWorkloadBlocker,
+  sameCorpusKeyboardOperations,
+  sameCorpusWorkbookRestoreOperations,
+  sameCorpusWorkloadMutatesWorkbook,
+} from '../ui-responsiveness-same-corpus-workload-runner.ts'
 
 const sameCorpusFixtureCheckedCells = [
   { address: 'A1', expected: 'metric-1', actual: 'metric-1' },
@@ -47,7 +52,7 @@ describe('same-corpus UI responsiveness capture CLI', () => {
     ])
 
     expect(args).toMatchObject({
-      biligUrl: 'http://127.0.0.1:5173/?benchmarkCorpus=dense-mixed-250k',
+      biligUrl: 'http://localhost:5173/?benchmarkCorpus=dense-mixed-250k',
       biligStorageStatePath: null,
       corpusId: 'dense-mixed-250k',
       deltaX: 0,
@@ -207,6 +212,7 @@ describe('same-corpus UI responsiveness capture CLI', () => {
       method: 'microsoft-excel-web-source-xlsx',
       sheetName: 'WideGrid',
       materializedCells: 250000,
+      sourceWorkbookSha256: buildSameCorpusFingerprint(corpus).corpusFingerprint.snapshotSha256,
     })
     expect(verification.checkedCells.length).toBeGreaterThanOrEqual(3)
     expect(verification.checkedCells.every((cell) => cell.expected === cell.actual)).toBe(true)
@@ -307,6 +313,15 @@ describe('same-corpus UI responsiveness capture CLI', () => {
       { kind: 'type', text: 'google-sheets-same-corpus-3' },
       { kind: 'press', key: 'Enter' },
     ])
+    expect(sameCorpusWorkbookRestoreOperations('edit-visible-cell', 'darwin')).toEqual([{ kind: 'press', key: 'Meta+Z' }])
+    expect(sameCorpusWorkbookRestoreOperations('formula-edit', 'linux')).toEqual([{ kind: 'press', key: 'Control+Z' }])
+    expect(sameCorpusWorkbookRestoreOperations('fill-format-change', 'darwin')).toEqual([{ kind: 'press', key: 'Meta+Z' }])
+    expect(sameCorpusWorkbookRestoreOperations('select-cell', 'darwin')).toEqual([])
+    expect(sameCorpusWorkbookRestoreOperations('scroll-vertical', 'darwin')).toEqual([])
+    expect(sameCorpusWorkloadMutatesWorkbook('edit-visible-cell')).toBe(true)
+    expect(sameCorpusWorkloadMutatesWorkbook('formula-edit')).toBe(true)
+    expect(sameCorpusWorkloadMutatesWorkbook('fill-format-change')).toBe(true)
+    expect(sameCorpusWorkloadMutatesWorkbook('jump-deep-row')).toBe(false)
   })
 
   it('requires visual proof for Bilig and Google Sheets in each same-corpus scenario', () => {

@@ -359,7 +359,7 @@ export const WorkbookPaneRendererV3 = memo(function WorkbookPaneRendererV3({
         />
       ) : null}
       <WorkbookPaneNativeRectLayerV3
-        active={active && !showTypeGpuCanvas}
+        active={active}
         cameraStore={cameraStore}
         geometry={geometry}
         headerPanes={nativeHeaderPanes}

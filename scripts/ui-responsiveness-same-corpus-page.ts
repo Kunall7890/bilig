@@ -35,6 +35,7 @@ import {
 import {
   incumbentEditableWorkloadBlocker,
   measureProductWorkload,
+  restoreProductWorkbookMutation,
   type ProductOperationSample,
 } from './ui-responsiveness-same-corpus-workload-runner.ts'
 
@@ -469,6 +470,7 @@ async function measureProductSamples(
     if (caseId && visualProofs && sampleIndex === 0) {
       visualProofs.push(await captureSameCorpusProductVisualProof({ caseId, outputPath: args.outputPath, page, product, sampleIndex }))
     }
+    await restoreProductWorkbookMutation(page, workload)
   } catch (error: unknown) {
     throw new Error(await productReadyFailureMessage(page, product, url, sampleIndex, error), { cause: error })
   } finally {

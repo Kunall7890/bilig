@@ -55,29 +55,30 @@ describe('UI responsiveness live browser scorecard', () => {
     expect(scorecard.cases.map((entry) => entry.id)).toEqual(['google-sheets-public-grid-scroll', 'microsoft-excel-web-public-xlsx-scroll'])
     expect(scorecard.cases.every((entry) => entry.sampleCount >= 3 && entry.limitations.length > 0)).toBe(true)
     expect(scorecard.sameCorpusProof).toMatchObject({
-      captured: false,
-      evidenceKind: 'not-captured',
+      captured: true,
+      evidenceKind: 'same-corpus-browser-capture',
       requiredProductCount: 2,
       requiredCaseCount: requiredUiResponsivenessSameCorpusWorkloads.length,
-      coveredCorpusCaseIds: [],
+      coveredCorpusCaseIds: ['wide-mixed-250k'],
     })
-    expect(scorecard.sameCorpusProof.cases).toEqual([])
+    expect(scorecard.sameCorpusProof.cases).toHaveLength(requiredUiResponsivenessSameCorpusWorkloads.length)
     expect(scorecard.sameCorpusProof.tenXMeanAndP95CaseCount).toBe(
       scorecard.sameCorpusProof.cases.filter((entry) => entry.tenXMeanAndP95AgainstGoogleSheets).length,
     )
     expect(scorecard.sameCorpusProof.tenXMeanAndP95CaseCount).toBe(0)
     expect(scorecard.sameCorpusProof.runManifest).toMatchObject({
       contractVersion: 'same-corpus-ui-v4',
-      caseCount: 0,
-      strictRenderedGridProofCaseCount: 0,
+      caseCount: requiredUiResponsivenessSameCorpusWorkloads.length,
+      strictRenderedGridProofCaseCount: requiredUiResponsivenessSameCorpusWorkloads.length,
       legacyInsufficientRenderedGridProofCaseCount: 0,
       tenXMeanAndP95CaseCount: 0,
-      currentContractEvidenceComplete: false,
+      currentContractEvidenceComplete: true,
       googleSheetsTenXRequirementSatisfied: false,
     })
-    expect(scorecard.sameCorpusProof.runManifest?.invalidReasons).toContain('strict rendered-grid proof covers 0/9 cases')
+    expect(scorecard.sameCorpusProof.runManifest?.capturedWorkloads).toEqual(requiredUiResponsivenessSameCorpusWorkloads)
+    expect(scorecard.sameCorpusProof.runManifest?.invalidReasons).toContain('not every required workload is 10x against Google Sheets')
     expect(scorecard.sameCorpusProof.limitations).toContain(
-      'Same-corpus live browser timing against Bilig and Google Sheets has not been captured yet.',
+      'Caller must supply a Google Sheets URL for the same exported Bilig benchmark corpus.',
     )
     validateUiResponsivenessLiveBrowserScorecard(scorecard)
   })

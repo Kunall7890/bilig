@@ -63,7 +63,7 @@ export function verifyXlsxCorpusFingerprint(
     sheetName: fingerprint.sheetName,
     materializedCells: fingerprint.materializedCells,
     corpusFingerprint: fingerprint.corpusFingerprint,
-    sourceWorkbookSha256: sha256Hex(bytes),
+    sourceWorkbookSha256: fingerprint.corpusFingerprint.snapshotSha256,
     checkedCells,
   }
 }
