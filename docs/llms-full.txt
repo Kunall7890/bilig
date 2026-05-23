@@ -987,6 +987,7 @@ budget checks, browser smoke, and tracked-file cleanliness checks.
 ## License
 
 MIT.
+
 ---
 
 ## WorkPaper Package README
@@ -1968,6 +1969,7 @@ When the sanity check passes, these are the next useful pages.
 documented public exports as the supported surface, keep integration tests around
 your own workbook corpus, and rerun the validation gates before upgrading in
 production.
+
 ---
 
 ## Headless Package Agent Notes
@@ -3334,6 +3336,7 @@ formulas. It is not a replacement for every Excel feature.
 - [ExcelJS formula recalculation in Node.js](exceljs-formula-recalculation-node.md)
 - [GitHub repo](https://github.com/proompteng/bilig)
 - [Adoption blocker form](https://github.com/proompteng/bilig/discussions/new?category=general)
+
 ---
 
 ## Workbook Tools For Agent Frameworks
@@ -3455,6 +3458,7 @@ Do not claim success from a write call alone.
 - [XLSX formula recalculation in Node.js](xlsx-formula-recalculation-node.md)
 - [GitHub repo](https://github.com/proompteng/bilig)
 - [Adoption blocker form](https://github.com/proompteng/bilig/discussions/new?category=general)
+
 ---
 
 ## n8n WorkPaper Formula Readback
@@ -4381,6 +4385,7 @@ testable, and make every write return structured verification.
 Start with the adapter command above. If it almost matches but a gap blocks
 adoption, use the adoption blocker form:
 <https://github.com/proompteng/bilig/discussions/new?category=general>.
+
 ---
 
 ## Agent XLSX Formula Recalculation Without LibreOffice
@@ -4498,6 +4503,7 @@ Related:
 If this is the exact agent spreadsheet loop you are trying to avoid rebuilding,
 open one concrete blocker or adoption note so the next developer can evaluate it faster:
 <https://github.com/proompteng/bilig/discussions/new?category=general>.
+
 ---
 
 ## Formula Bug Clinic
@@ -4632,6 +4638,7 @@ fixture.
 If this helped you reduce a workbook bug but a gap still blocks adoption,
 open one concrete blocker or fixture note:
 <https://github.com/proompteng/bilig/discussions/new?category=general>.
+
 ---
 
 ## Try Bilig Headless In Node
@@ -4742,6 +4749,7 @@ compatibility pages before adopting it.
 
 If it almost matches but a gap blocks adoption, use the adoption blocker form:
 <https://github.com/proompteng/bilig/discussions/new?category=general>.
+
 ---
 
 ## Quote Approval WorkPaper API
@@ -4888,6 +4896,7 @@ pnpm --dir examples/serverless-workpaper-api run persistence-adapters
 
 If it almost matches but a gap blocks adoption, use the adoption blocker form:
 <https://github.com/proompteng/bilig/discussions/new?category=general>.
+
 ---
 
 ## Compatibility Limits
