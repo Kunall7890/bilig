@@ -43,6 +43,34 @@ workbook would be ceremony.
 
 Project site: <https://proompteng.github.io/bilig/>
 
+## Start Here
+
+Pick the path that matches the thing in your hands:
+
+| You have... | Start with | You should see |
+| --- | --- | --- |
+| An `.xlsx` file with stale formula results after editing inputs in Node | `npx --package @bilig/xlsx-formula-recalc xlsx-recalc --demo --json` | A changed input, a recalculated output, and `verified: true` without opening Excel or LibreOffice. |
+| Workbook-shaped business logic that should live in a Node service, test, queue, or route | `npm create @bilig/workpaper@latest pricing-workpaper` | A WorkPaper JSON model that writes inputs, recalculates formulas, restores state, and proves readback. |
+| A coding agent, MCP client, or tool host that needs spreadsheet operations | `npm create @bilig/workpaper@latest pricing-agent -- --agent` | An agent contract with read, write, recalc, persist, restore, and a compact proof object. |
+
+If you are not sure which one fits, use the file-level XLSX path when a real
+spreadsheet file is already the source of truth. Use `@bilig/workpaper` when
+the calculation model belongs in code and JSON. Use the agent path when another
+assistant needs a tool it can verify instead of a browser session it has to
+trust.
+
+The shortest no-project checks are:
+
+```sh
+npm exec --package @bilig/xlsx-formula-recalc@latest -- xlsx-recalc --demo --json
+npm exec --package @bilig/workpaper@latest -- bilig-agent-challenge
+npm exec --package @bilig/workpaper@latest -- bilig-mcp-challenge
+```
+
+Those commands are intentionally small. If one matches your workflow, continue
+into the package matrix below; if none match, Bilig is probably not the first
+tool to evaluate.
+
 ## n8n Formula Readback
 
 Need an n8n workflow to write workbook inputs, recalculate formulas, and verify
