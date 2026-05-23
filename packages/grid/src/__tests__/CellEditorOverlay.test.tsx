@@ -150,6 +150,8 @@ describe('CellEditorOverlay', () => {
     expect(textarea?.getAttribute('class')).toContain('leading-[1.2]')
     expect(workbookNativeTextQualityStyle).toMatchObject({
       fontOpticalSizing: 'auto',
+      WebkitFontSmoothing: 'subpixel-antialiased',
+      MozOsxFontSmoothing: 'auto',
       textRendering: 'auto',
     })
 

@@ -214,6 +214,8 @@ describe('WorkbookPaneNativeTextLayerV3', () => {
       height: 18,
       letterSpacing: 0,
       lineHeight: '18px',
+      WebkitFontSmoothing: 'subpixel-antialiased',
+      MozOsxFontSmoothing: 'auto',
       textRendering: 'auto',
       textDecorationLine: 'underline',
       textAlign: 'right',
