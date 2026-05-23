@@ -99,6 +99,7 @@ describe('@bilig/workbook run api', () => {
     expect(workbookRunErrorCodes).toContain('formula_input_not_resolved')
     expect(workbookRunErrorCodes).toContain('apply_not_verified')
     expect(workbookRunErrorCodes).toContain('apply_mismatch')
+    expect(workbookRunErrorCodes).toContain('readback_invalid')
     expect(workbookRunErrorCodes).toContain('readback_missing')
     expect(workbookRunErrorCodes).toContain('adapter_missing_capability')
     expect(workbookRunErrorCodes).toContain('runtime_rejected')
@@ -1242,6 +1243,7 @@ describe('@bilig/workbook run api', () => {
             kind: 'formulaEquals',
             formula: 'A2+B2',
             inputs: [],
+            labels: [],
           },
         },
       ],
@@ -1260,6 +1262,7 @@ describe('@bilig/workbook run api', () => {
             kind: 'formulaEquals',
             formula: 'A2+B2',
             inputs: [],
+            labels: [],
           },
         },
       ],

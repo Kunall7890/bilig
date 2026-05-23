@@ -4,6 +4,7 @@ import {
   describeRunResult,
   findRange,
   runWorkbookAction,
+  verifyWorkbookReadbacks,
   type WorkbookActionPlan,
   type WorkbookCheckResult,
   type WorkbookModel,
@@ -474,5 +475,142 @@ describe('@bilig/workbook run proof boundary', () => {
         }),
       ],
     })
+  })
+
+  it('rejects accessor-backed readback arrays without invoking getters', async () => {
+    const model = valueModel()
+    let getterInvoked = false
+
+    const result = await runWorkbookAction(model, 'write', {
+      apply: applied,
+      read: () =>
+        // @ts-expect-error exercising JS adapters that bypass the readback array type
+        accessorArray(() => {
+          getterInvoked = true
+          throw new Error('getter must not run')
+        }),
+    })
+
+    expect(result).toEqual({
+      status: 'failed',
+      errors: [
+        {
+          code: 'readback_invalid',
+          message: 'Workbook readback proof at readbacks[0] is invalid',
+        },
+      ],
+      apply: expect.objectContaining({ matched: true }),
+      changed: [
+        {
+          kind: 'writeValue',
+          target: expect.objectContaining({ label: 'Sheet1!B2' }),
+          message: 'Write value to Sheet1!B2',
+        },
+      ],
+      checks: [
+        expect.objectContaining({
+          status: 'planned',
+          kind: 'valueEquals',
+          message: 'Sheet1!B2 equals 12',
+        }),
+      ],
+    })
+    expect(getterInvoked).toBe(false)
+  })
+
+  it('rejects accessor-backed readback values without invoking getters', async () => {
+    const model = valueModel()
+    let getterInvoked = false
+
+    const result = await runWorkbookAction(model, 'write', {
+      apply: applied,
+      read: (targets) => {
+        const readback = {
+          target: first(targets),
+        }
+        Object.defineProperty(readback, 'value', {
+          enumerable: true,
+          get() {
+            getterInvoked = true
+            throw new Error('getter must not run')
+          },
+        })
+        return [readback]
+      },
+    })
+
+    expect(result).toEqual({
+      status: 'failed',
+      errors: [
+        {
+          code: 'readback_invalid',
+          message: 'Workbook readback proof at readbacks[0].value must be a data property',
+        },
+      ],
+      apply: expect.objectContaining({ matched: true }),
+      changed: [
+        {
+          kind: 'writeValue',
+          target: expect.objectContaining({ label: 'Sheet1!B2' }),
+          message: 'Write value to Sheet1!B2',
+        },
+      ],
+      checks: [
+        expect.objectContaining({
+          status: 'planned',
+          kind: 'valueEquals',
+          message: 'Sheet1!B2 equals 12',
+        }),
+      ],
+    })
+    expect(getterInvoked).toBe(false)
+  })
+
+  it('rejects accessor-backed public readback arrays without invoking getters', () => {
+    const target = findRange({ sheetName: 'Sheet1', address: 'B2' })
+    let getterInvoked = false
+
+    const verification = verifyWorkbookReadbacks(
+      [
+        {
+          status: 'planned',
+          kind: 'valueEquals',
+          target,
+          message: 'Sheet1!B2 equals 12',
+          expectation: {
+            kind: 'valueEquals',
+            value: 12,
+          },
+        },
+      ],
+      // @ts-expect-error exercising JS callers that bypass the readback array type
+      accessorArray(() => {
+        getterInvoked = true
+        throw new Error('getter must not run')
+      }),
+    )
+
+    expect(verification).toEqual({
+      status: 'failed',
+      checks: [
+        {
+          status: 'planned',
+          kind: 'valueEquals',
+          target,
+          message: 'Sheet1!B2 equals 12',
+          expectation: {
+            kind: 'valueEquals',
+            value: 12,
+          },
+        },
+      ],
+      issues: [
+        {
+          code: 'readback_invalid',
+          message: 'Workbook readback proof at readbacks[0] is invalid',
+        },
+      ],
+    })
+    expect(getterInvoked).toBe(false)
   })
 })

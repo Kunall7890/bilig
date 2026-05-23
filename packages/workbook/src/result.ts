@@ -85,6 +85,7 @@ export type WorkbookRunErrorCode =
   | 'apply_mismatch'
   | 'apply_failed'
   | 'readback_failed'
+  | 'readback_invalid'
   | 'readback_missing'
   | 'readback_unexpected'
   | 'value_mismatch'
@@ -127,6 +128,7 @@ export const workbookRunErrorCodes = Object.freeze([
   'apply_mismatch',
   'apply_failed',
   'readback_failed',
+  'readback_invalid',
   'readback_missing',
   'readback_unexpected',
   'value_mismatch',
