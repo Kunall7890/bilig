@@ -1,7 +1,7 @@
 import type { CellRangeRef } from '@bilig/protocol'
 import { isCellRangeRef } from '@bilig/protocol'
 import { isWorkbookOp } from './guards.js'
-import { isWorkbookActionInput, normalizeWorkbookActionInput, type WorkbookActionInput } from './input.js'
+import { WorkbookActionInputError, isWorkbookActionInput, normalizeWorkbookActionInput, type WorkbookActionInput } from './input.js'
 import type { EngineOp } from './ops.js'
 import type { WorkbookUndoRef } from './result.js'
 
@@ -158,6 +158,37 @@ function commandRequestIssue(path: string, message: string): WorkbookCommandRequ
   })
 }
 
+function errorMessage(error: unknown): string {
+  return error instanceof Error ? error.message : String(error)
+}
+
+function inputPath(basePath: string, error: unknown): string {
+  if (!(error instanceof WorkbookActionInputError)) {
+    return basePath
+  }
+  if (error.path === 'input') {
+    return basePath
+  }
+  if (error.path.startsWith('input.')) {
+    return `${basePath}${error.path.slice('input'.length)}`
+  }
+  if (error.path.startsWith('input[')) {
+    return `${basePath}${error.path.slice('input'.length)}`
+  }
+  return basePath
+}
+
+function pushCommandRequestInputIssue(issues: WorkbookCommandRequestIssue[], value: unknown): void {
+  if (value === undefined) {
+    return
+  }
+  try {
+    normalizeWorkbookActionInput(value)
+  } catch (error) {
+    issues.push(commandRequestIssue(inputPath('input', error), `Workbook command request input is invalid: ${errorMessage(error)}`))
+  }
+}
+
 function pushRequiredCommandRequestStringIssue(
   issues: WorkbookCommandRequestIssue[],
   value: Record<string, unknown>,
@@ -219,9 +250,7 @@ export function checkWorkbookCommandRequest(value: unknown): WorkbookCommandRequ
   if (value['mode'] !== undefined && !isWorkbookCommandExecutionMode(value['mode'])) {
     issues.push(commandRequestIssue('mode', 'Workbook command request mode is invalid'))
   }
-  if (value['input'] !== undefined && !isWorkbookActionInput(value['input'])) {
-    issues.push(commandRequestIssue('input', 'Workbook command request input must be JSON-safe'))
-  }
+  pushCommandRequestInputIssue(issues, value['input'])
 
   if (issues.length > 0) {
     return {
@@ -264,6 +293,22 @@ function commandReceiptIssue(path: string, message: string): WorkbookCommandRece
     path,
     message,
   })
+}
+
+function pushCommandReceiptInputIssue(
+  issues: WorkbookCommandReceiptIssue[],
+  value: unknown,
+  path: 'proof' | 'metadata',
+  label: 'proof' | 'metadata',
+): void {
+  if (value === undefined) {
+    return
+  }
+  try {
+    normalizeWorkbookActionInput(value)
+  } catch (error) {
+    issues.push(commandReceiptIssue(inputPath(path, error), `Workbook command receipt ${label} is invalid: ${errorMessage(error)}`))
+  }
 }
 
 function pushRequiredCommandReceiptStringIssue(
@@ -454,13 +499,9 @@ export function checkWorkbookCommandReceipt(value: unknown): WorkbookCommandRece
   pushCommandReceiptOpsIssues(issues, value['appliedOps'], 'appliedOps', 'applied')
   pushCommandReceiptUndoIssues(issues, value['undo'])
   pushCommandReceiptChangedRangesIssues(issues, value['changedRanges'])
-  if (value['proof'] !== undefined && !isWorkbookActionInput(value['proof'])) {
-    issues.push(commandReceiptIssue('proof', 'Workbook command receipt proof must be JSON-safe'))
-  }
+  pushCommandReceiptInputIssue(issues, value['proof'], 'proof', 'proof')
   pushOptionalCommandReceiptStringIssue(issues, value['message'], 'message', 'message')
-  if (value['metadata'] !== undefined && !isWorkbookActionInput(value['metadata'])) {
-    issues.push(commandReceiptIssue('metadata', 'Workbook command receipt metadata must be JSON-safe'))
-  }
+  pushCommandReceiptInputIssue(issues, value['metadata'], 'metadata', 'metadata')
   pushCommandReceiptErrorsIssues(issues, value['errors'])
 
   if (issues.length > 0) {

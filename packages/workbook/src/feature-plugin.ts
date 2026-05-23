@@ -10,6 +10,7 @@ import {
   type WorkbookUiContributionSlot,
 } from './features.js'
 import {
+  WorkbookActionInputError,
   isWorkbookActionInput,
   isWorkbookActionInputDescription,
   normalizeWorkbookActionInput,
@@ -216,6 +217,48 @@ function featurePluginIssue(path: string, message: string): WorkbookFeaturePlugi
   })
 }
 
+function errorMessage(error: unknown): string {
+  return error instanceof Error ? error.message : String(error)
+}
+
+function inputPath(basePath: string, error: unknown): string {
+  if (!(error instanceof WorkbookActionInputError)) {
+    return basePath
+  }
+  if (error.path === 'input') {
+    return basePath
+  }
+  if (error.path.startsWith('input.')) {
+    return `${basePath}${error.path.slice('input'.length)}`
+  }
+  if (error.path.startsWith('input[')) {
+    return `${basePath}${error.path.slice('input'.length)}`
+  }
+  return basePath
+}
+
+function pushFeaturePluginInputDescriptionIssue(issues: WorkbookFeaturePluginIssue[], value: unknown, path: string, label: string): void {
+  if (value === undefined) {
+    return
+  }
+  try {
+    normalizeWorkbookActionInputDescription(value)
+  } catch (error) {
+    issues.push(featurePluginIssue(inputPath(path, error), `${label} input description is invalid: ${errorMessage(error)}`))
+  }
+}
+
+function pushFeaturePluginInputIssue(issues: WorkbookFeaturePluginIssue[], value: unknown, path: string, label: string): void {
+  if (value === undefined) {
+    return
+  }
+  try {
+    normalizeWorkbookActionInput(value)
+  } catch (error) {
+    issues.push(featurePluginIssue(inputPath(path, error), `${label} metadata is invalid: ${errorMessage(error)}`))
+  }
+}
+
 function pushRequiredFeaturePluginStringIssue(
   issues: WorkbookFeaturePluginIssue[],
   value: unknown,
@@ -298,9 +341,7 @@ function pushFeaturePluginCommandIssues(
     `${path}.description`,
     `Workbook command ${commandId ?? path} description`,
   )
-  if (command['input'] !== undefined && !isWorkbookActionInputDescription(command['input'])) {
-    issues.push(featurePluginIssue(`${path}.input`, `Workbook command ${commandId ?? path} input description is invalid`))
-  }
+  pushFeaturePluginInputDescriptionIssue(issues, command['input'], `${path}.input`, `Workbook command ${commandId ?? path}`)
 }
 
 function pushFeaturePluginProjectionIssues(
@@ -373,9 +414,7 @@ function pushFeaturePluginUiContributionIssues(
   if (contribution['order'] !== undefined && !isSafeInteger(contribution['order'])) {
     issues.push(featurePluginIssue(`${path}.order`, `Workbook UI contribution ${id ?? path} order is invalid`))
   }
-  if (contribution['metadata'] !== undefined && !isWorkbookActionInput(contribution['metadata'])) {
-    issues.push(featurePluginIssue(`${path}.metadata`, `Workbook UI contribution ${id ?? path} metadata is invalid`))
-  }
+  pushFeaturePluginInputIssue(issues, contribution['metadata'], `${path}.metadata`, `Workbook UI contribution ${id ?? path}`)
 }
 
 function pushFeaturePluginLifecycleIssue(

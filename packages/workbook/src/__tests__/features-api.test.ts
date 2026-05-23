@@ -128,7 +128,25 @@ describe('@bilig/workbook feature api', () => {
         {
           code: 'invalid_command_request',
           path: 'input',
-          message: 'Workbook command request input must be JSON-safe',
+          message: 'Workbook command request input is invalid: Action input at input must be JSON-safe, not function',
+        },
+      ],
+    })
+    expect(
+      checkWorkbookCommandRequest({
+        featureId: 'tables',
+        commandId: 'tables.createFromSelection',
+        input: {
+          rows: [1, Number.NaN],
+        },
+      }),
+    ).toEqual({
+      status: 'invalid',
+      issues: [
+        {
+          code: 'invalid_command_request',
+          path: 'input.rows[1]',
+          message: 'Workbook command request input is invalid: Action input at input.rows[1] must be a finite number',
         },
       ],
     })
@@ -341,8 +359,9 @@ describe('@bilig/workbook feature api', () => {
         },
         {
           code: 'invalid_feature_plugin',
-          path: 'commands[0].input',
-          message: 'Workbook command tables.createFromSelection input description is invalid',
+          path: 'commands[0].input.kind',
+          message:
+            'Workbook command tables.createFromSelection input description is invalid: Action input description at input.kind must be a supported kind',
         },
         {
           code: 'invalid_feature_plugin',
@@ -387,7 +406,8 @@ describe('@bilig/workbook feature api', () => {
         {
           code: 'invalid_feature_plugin',
           path: 'uiContributions[0].metadata',
-          message: 'Workbook UI contribution tables.toolbar.create metadata is invalid',
+          message:
+            'Workbook UI contribution tables.toolbar.create metadata is invalid: Action input at input must be JSON-safe, not function',
         },
         {
           code: 'invalid_feature_plugin',
@@ -546,7 +566,7 @@ describe('@bilig/workbook feature api', () => {
         {
           code: 'invalid_command_receipt',
           path: 'proof',
-          message: 'Workbook command receipt proof must be JSON-safe',
+          message: 'Workbook command receipt proof is invalid: Action input at input must be JSON-safe, not function',
         },
         {
           code: 'invalid_command_receipt',
@@ -556,7 +576,7 @@ describe('@bilig/workbook feature api', () => {
         {
           code: 'invalid_command_receipt',
           path: 'metadata',
-          message: 'Workbook command receipt metadata must be JSON-safe',
+          message: 'Workbook command receipt metadata is invalid: Action input at input must be a finite number',
         },
         {
           code: 'invalid_command_receipt',

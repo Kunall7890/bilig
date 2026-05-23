@@ -253,15 +253,16 @@ type WorkbookRunResult =
 Feature command requests are plain data for runtimes that expose workbook
 features to agents. Use `checkWorkbookFeaturePlugin(data)` before registering
 consumer-provided feature metadata. It returns stable path issues for commands,
-projection interceptors, UI contributions, dependencies, and lifecycle hooks.
+projection interceptors, UI contributions, dependencies, lifecycle hooks, and
+nested command input-description or UI metadata fields.
 
 Use `checkWorkbookCommandRequest(data)` before dispatching a transported
 request. It returns stable path issues such as `featureId`, `commandId`,
-`category`, `mode`, and `input`, and `normalizeWorkbookCommandRequest` returns
-the frozen request data for the runtime. The exported command category,
-execution-mode, receipt-status, projection-point, and UI-slot lists let tool
-builders present and validate command contracts without importing a schema
-framework.
+`category`, `mode`, and nested input paths like `input.rows[1]`, and
+`normalizeWorkbookCommandRequest` returns the frozen request data for the
+runtime. The exported command category, execution-mode, receipt-status,
+projection-point, and UI-slot lists let tool builders present and validate
+command contracts without importing a schema framework.
 
 Use `checkWorkbookCommandReceipt(data)` before trusting runtime command evidence.
 It returns the same boring `{ status, issues }` shape for receipt fields such as

@@ -142,14 +142,16 @@ and UI contributions. The public package still stays data-only.
 
 - `defineWorkbookFeaturePlugin` freezes extension metadata.
 - `checkWorkbookFeaturePlugin(data)` validates consumer-provided feature
-  manifests before registration.
+  manifests before registration, including nested command input-description and
+  UI contribution metadata paths.
 - `checkWorkbookCommandRequest(data)` validates transported command requests
   before dispatch and returns path issues such as `featureId`, `commandId`,
-  `category`, `mode`, and `input`.
+  `category`, `mode`, and nested JSON payload paths such as `input.rows[1]`.
 - `normalizeWorkbookCommandRequest(data)` returns a frozen request after the
   same validation.
 - `checkWorkbookCommandReceipt(data)` validates transported receipt evidence
-  before an agent trusts runtime extension output.
+  before an agent trusts runtime extension output, including nested `proof` and
+  `metadata` payload paths.
 - `normalizeWorkbookCommandReceipt(receipt)` and
   `workbookCommandReceiptOpsMatch(receipt)` give agents boring receipt proof
   after preview or apply.
