@@ -6,6 +6,11 @@ import { compiledFormulaRequiresWorkbookMetadataBinding } from './formula-initia
 
 const MIN_INITIAL_FRESH_DIRECT_SCALAR_FAST_BINDINGS = 32
 
+export type InitialFreshDirectScalarFormulaBindingMember = InitialResolvedFormulaEntry &
+  FreshDirectScalarFormulaBindingMember & {
+    readonly templateId: number
+  }
+
 export function canBindInitialFreshDirectScalarFormula(args: {
   readonly bindFreshDirectScalarFormulaRun: EngineFormulaInitializationServiceArgs['bindFreshDirectScalarFormulaRun']
   readonly hadExistingFormulas: boolean
@@ -22,17 +27,10 @@ export function canBindInitialFreshDirectScalarFormula(args: {
   )
 }
 
-export function createInitialFreshDirectScalarFormulaBindingMember(
+export function assertInitialFreshDirectScalarFormulaBindingMember(
   prepared: InitialResolvedFormulaEntry,
-): FreshDirectScalarFormulaBindingMember {
+): asserts prepared is InitialFreshDirectScalarFormulaBindingMember {
   if (prepared.templateId === undefined) {
     throw new Error('Expected initial fresh direct scalar formula template id')
-  }
-  return {
-    row: prepared.row,
-    col: prepared.col,
-    source: prepared.source,
-    compiled: prepared.compiled,
-    templateId: prepared.templateId,
   }
 }

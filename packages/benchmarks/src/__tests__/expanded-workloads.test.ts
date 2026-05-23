@@ -1,3 +1,4 @@
+import { spawnSync } from 'node:child_process'
 import { readFileSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -189,6 +190,7 @@ const expectedExpandedWorkloads: ExpandedComparativeBenchmarkWorkload[] = [
 ]
 
 const benchmarkDir = dirname(fileURLToPath(import.meta.url))
+const repoRoot = join(benchmarkDir, '..', '..', '..', '..')
 const expandedBaselinePath = join(benchmarkDir, '..', '..', 'baselines', 'workpaper-vs-hyperformula.json')
 const emptyConfidenceCounts = {
   decisiveWorkpaperWins: 0,
@@ -593,6 +595,30 @@ describe('expanded comparative benchmark workloads', () => {
     })
 
     expect(results.map((result) => result.workload)).toEqual(['build-from-sheets'])
+  })
+
+  it('runs selected expanded benchmark workloads through the CLI entrypoint', () => {
+    const result = spawnSync(
+      join(repoRoot, 'node_modules', '.bin', 'tsx'),
+      [
+        'packages/benchmarks/src/benchmark-workpaper-vs-hyperformula-expanded.ts',
+        '--workload',
+        'build-from-sheets',
+        '--sample-count',
+        '1',
+        '--warmup-count',
+        '0',
+      ],
+      {
+        cwd: repoRoot,
+        encoding: 'utf8',
+      },
+    )
+
+    expect(result.stderr).toBe('')
+    expect(result.status).toBe(0)
+    const report: { readonly results: readonly { readonly workload: string }[] } = JSON.parse(result.stdout)
+    expect(report.results.map((entry) => entry.workload)).toEqual(['build-from-sheets'])
   })
 
   it('rejects malformed expanded benchmark CLI sample controls', () => {

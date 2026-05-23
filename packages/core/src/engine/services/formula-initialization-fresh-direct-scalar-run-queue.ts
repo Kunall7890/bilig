@@ -1,9 +1,12 @@
 import type { EngineCounters } from '../../perf/engine-counters.js'
 import { addEngineCounter } from '../../perf/engine-counters.js'
 import type { RuntimeFormula } from '../runtime-state.js'
-import type { FreshDirectScalarFormulaBindingInput, FreshDirectScalarFormulaBindingMember } from './formula-binding-service-types.js'
+import type { FreshDirectScalarFormulaBindingInput } from './formula-binding-service-types.js'
 import type { InitialResolvedFormulaEntry } from './formula-initialization-refs.js'
-import { createInitialFreshDirectScalarFormulaBindingMember } from './formula-initialization-fresh-direct-scalar-binding.js'
+import {
+  assertInitialFreshDirectScalarFormulaBindingMember,
+  type InitialFreshDirectScalarFormulaBindingMember,
+} from './formula-initialization-fresh-direct-scalar-binding.js'
 
 export interface InitialFreshDirectScalarFormulaRunQueue {
   readonly flush: () => void
@@ -22,8 +25,7 @@ export function createInitialFreshDirectScalarFormulaRunQueue(args: {
         readonly sheetId: number
         readonly ownerSheetName: string
         readonly cellIndices: number[]
-        readonly members: FreshDirectScalarFormulaBindingMember[]
-        readonly prepared: InitialResolvedFormulaEntry[]
+        readonly members: InitialFreshDirectScalarFormulaBindingMember[]
       }
     | undefined
 
@@ -37,8 +39,8 @@ export function createInitialFreshDirectScalarFormulaRunQueue(args: {
     if (bindFreshDirectScalarFormulaRun === undefined) {
       return
     }
-    if (run.prepared.length === 1) {
-      const prepared = run.prepared[0]!
+    if (run.members.length === 1) {
+      const prepared = run.members[0]!
       bindFreshDirectScalarFormulaRun({
         sheetId: prepared.sheetId,
         ownerSheetName: prepared.ownerSheetName,
@@ -53,8 +55,8 @@ export function createInitialFreshDirectScalarFormulaRunQueue(args: {
         members: run.members,
       })
     }
-    addEngineCounter(args.counters, 'initialFreshDirectScalarFastBindings', run.prepared.length)
-    for (const prepared of run.prepared) {
+    addEngineCounter(args.counters, 'initialFreshDirectScalarFastBindings', run.members.length)
+    for (const prepared of run.members) {
       args.noteInitializedFormula(prepared, args.readRuntimeFormula(prepared.cellIndex))
       args.clearPendingFormulaCell(prepared.cellIndex)
     }
@@ -71,11 +73,11 @@ export function createInitialFreshDirectScalarFormulaRunQueue(args: {
         ownerSheetName: prepared.ownerSheetName,
         cellIndices: [],
         members: [],
-        prepared: [],
       }
-      pending.cellIndices.push(prepared.cellIndex)
-      pending.members.push(createInitialFreshDirectScalarFormulaBindingMember(prepared))
-      pending.prepared.push(prepared)
+      assertInitialFreshDirectScalarFormulaBindingMember(prepared)
+      const member = prepared
+      pending.cellIndices.push(member.cellIndex)
+      pending.members.push(member)
     },
   }
 }

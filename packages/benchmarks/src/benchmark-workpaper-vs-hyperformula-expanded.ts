@@ -40,6 +40,8 @@ export function buildExpandedComparativeBenchmarkReport(
   }
 }
 
+const expandedComparativeWorkloadSet: ReadonlySet<string> = new Set(EXPANDED_COMPARATIVE_WORKLOADS)
+
 if (import.meta.url === `file://${process.argv[1]}`) {
   const cliOptions = parseExpandedBenchmarkCliOptions(process.argv.slice(2))
   const benchmarkResults = runWorkPaperVsHyperFormulaExpandedBenchmarkSuite({
@@ -99,8 +101,6 @@ export function parseExpandedBenchmarkCliOptions(args: readonly string[]): Expan
   }
   return options
 }
-
-const expandedComparativeWorkloadSet: ReadonlySet<string> = new Set(EXPANDED_COMPARATIVE_WORKLOADS)
 
 function parsePositiveDecimalInteger(value: string, option: string): number {
   const parsed = parseNonNegativeDecimalInteger(value, option)

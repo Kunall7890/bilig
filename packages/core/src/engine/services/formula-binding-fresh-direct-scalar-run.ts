@@ -2,6 +2,7 @@ import type { EdgeArena, EdgeSlice } from '../../edge-arena.js'
 import { makeCellEntity } from '../../entity-ids.js'
 import { addEngineCounter } from '../../perf/engine-counters.js'
 import { markFormulaCellBound } from './formula-binding-cell-flags.js'
+import { ensureFormulaBindingDependencyBuildCapacity } from './formula-binding-dependency-build-capacity.js'
 import { buildDirectScalarDescriptor } from './formula-binding-direct-scalar.js'
 import { appendFreshFormulaDependencyReverseEdges } from './formula-binding-install.js'
 import type { FormulaBindingMemberCounts } from './formula-binding-member-counts.js'
@@ -438,15 +439,28 @@ function tryInstallFreshDirectScalarBulkReverseEdges(
   if (packedDependencyEntities.length === 0) {
     return true
   }
-  const seenDependencyEntities = new Set<number>()
-  for (const dependencyEntity of packedDependencyEntities) {
-    if (seenDependencyEntities.has(dependencyEntity)) {
+
+  let epoch = serviceArgs.getDependencyBuildEpoch() + 1
+  let seenDependencyCells = serviceArgs.getDependencyBuildSeen()
+  if (epoch === 0xffff_ffff) {
+    epoch = 1
+    seenDependencyCells.fill(0)
+  }
+  serviceArgs.setDependencyBuildEpoch(epoch)
+
+  for (let offset = 0; offset < packedDependencyEntities.length; offset += 1) {
+    const dependencyEntity = packedDependencyEntities[offset]!
+    if (dependencyEntity >= seenDependencyCells.length) {
+      ensureFormulaBindingDependencyBuildCapacity(serviceArgs, dependencyEntity + 1, 0)
+      seenDependencyCells = serviceArgs.getDependencyBuildSeen()
+    }
+    if (seenDependencyCells[dependencyEntity] === epoch) {
       return false
     }
     if (getFormulaBindingReverseEdgeSlice(serviceArgs.reverseState, dependencyEntity) !== undefined) {
       return false
     }
-    seenDependencyEntities.add(dependencyEntity)
+    seenDependencyCells[dependencyEntity] = epoch
   }
 
   const packedReverseDependents = new Uint32Array(packedDependencyEntities.length)
