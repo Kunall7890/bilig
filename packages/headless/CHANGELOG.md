@@ -4,6 +4,18 @@ All notable changes to `@bilig/headless` will be documented in this file.
 
 This package is released as part of the aligned bilig library package set.
 
+## 0.67.0
+
+- Release type: minor
+- Previous libraries tag: libraries-v0.66.0
+- Manual override: no
+
+## Features
+- feat(workbook): preserve feature handoff issue paths (a25a9cee)
+
+## Fixes
+- perf(core): batch initial direct scalar bindings (50784028)
+
 ## 0.66.0
 
 - Release type: minor
