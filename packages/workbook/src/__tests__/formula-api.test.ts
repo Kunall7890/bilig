@@ -35,12 +35,20 @@ describe('@bilig/workbook formula api', () => {
       kind: 'writeFormula',
       formula: 'SUM(Sheet1!A1,Sheet1!B1)',
       inputs: [result.plan.refs.amount, result.plan.refs.rate],
+      labels: [
+        { name: 'Sheet1!A1', ref: result.plan.refs.amount },
+        { name: 'Sheet1!B1', ref: result.plan.refs.rate },
+      ],
     })
     expect(describePlan(result.plan).commands[0]).toMatchObject({
       kind: 'writeFormula',
       inputs: [
         { kind: 'range', label: 'Sheet1!A1' },
         { kind: 'range', label: 'Sheet1!B1' },
+      ],
+      labels: [
+        { name: 'Sheet1!A1', ref: { kind: 'range', label: 'Sheet1!A1' } },
+        { name: 'Sheet1!B1', ref: { kind: 'range', label: 'Sheet1!B1' } },
       ],
     })
     expect(verifyPlan(result.plan)).toEqual({
@@ -51,11 +59,68 @@ describe('@bilig/workbook formula api', () => {
     })
   })
 
+  it('keeps custom raw formula labels executable and verifiable', () => {
+    const model = defineModel({
+      name: 'raw-formula-label-model',
+      find(workbook) {
+        return {
+          amount: workbook.findRange({ sheetName: 'Sheet1', address: 'A1' }),
+          result: workbook.findRange({ sheetName: 'Sheet1', address: 'C1' }),
+        }
+      },
+      actions: {
+        calculate({ refs, workbook }) {
+          workbook.writeFormula(
+            refs.result,
+            formula.raw('amount_token*2', {
+              labels: [{ name: 'amount_token', ref: refs.amount }],
+            }),
+          )
+        },
+      },
+    })
+
+    const result = planWorkbookAction(model, 'calculate')
+
+    expect(result.status).toBe('planned')
+    if (result.status !== 'planned') {
+      return
+    }
+    const [command] = result.plan.commands
+    expect(command).toMatchObject({
+      kind: 'writeFormula',
+      formula: 'amount_token*2',
+      inputs: [result.plan.refs.amount],
+      labels: [{ name: 'amount_token', ref: result.plan.refs.amount }],
+    })
+    expect(verifyPlan(result.plan).status).toBe('valid')
+    if (command?.kind !== 'writeFormula') {
+      throw new Error('expected writeFormula command')
+    }
+
+    expect(
+      verifyPlan({
+        ...result.plan,
+        commands: [{ ...command, formula: '2' }],
+      }).issues,
+    ).toEqual([
+      expect.objectContaining({
+        code: 'formula_label_not_used',
+        path: 'commands[0].labels[0].name',
+      }),
+      expect.objectContaining({
+        code: 'missing_concrete_op',
+        path: 'commands[0]',
+      }),
+    ])
+  })
+
   it('keeps raw formula source behavior backward compatible', () => {
     expect(formula.raw('=1+1')).toEqual({
       kind: 'formula',
       source: '1+1',
       inputs: [],
+      labels: [],
     })
   })
 

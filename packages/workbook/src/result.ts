@@ -1,4 +1,5 @@
 import type { LiteralInput } from '@bilig/protocol'
+import type { WorkbookFormulaLabel } from './formula.js'
 import type { WorkbookRef } from './find.js'
 import type { WorkbookActionInput } from './input.js'
 import type { EngineOp } from './ops.js'
@@ -14,6 +15,7 @@ export type WorkbookCheckExpectation =
       readonly kind: 'formulaEquals'
       readonly formula: string
       readonly inputs: readonly WorkbookRef[]
+      readonly labels: readonly WorkbookFormulaLabel[]
     }
 
 export interface WorkbookCheckResult {
@@ -61,12 +63,18 @@ export type WorkbookRunErrorCode =
   | 'duplicate_ref'
   | 'command_target_not_resolved'
   | 'formula_input_not_resolved'
+  | 'formula_input_not_labeled'
+  | 'formula_label_not_resolved'
+  | 'formula_label_not_used'
   | 'invalid_formula'
   | 'change_target_not_resolved'
   | 'check_status_not_planned'
   | 'check_target_not_resolved'
   | 'check_ref_not_resolved'
   | 'check_expectation_input_not_resolved'
+  | 'check_expectation_input_not_labeled'
+  | 'check_expectation_label_not_resolved'
+  | 'check_expectation_label_not_used'
   | 'invalid_check_expectation_formula'
   | 'invalid_workbook_op'
   | 'op_target_mismatch'
@@ -96,12 +104,18 @@ export const workbookRunErrorCodes = Object.freeze([
   'duplicate_ref',
   'command_target_not_resolved',
   'formula_input_not_resolved',
+  'formula_input_not_labeled',
+  'formula_label_not_resolved',
+  'formula_label_not_used',
   'invalid_formula',
   'change_target_not_resolved',
   'check_status_not_planned',
   'check_target_not_resolved',
   'check_ref_not_resolved',
   'check_expectation_input_not_resolved',
+  'check_expectation_input_not_labeled',
+  'check_expectation_label_not_resolved',
+  'check_expectation_label_not_used',
   'invalid_check_expectation_formula',
   'invalid_workbook_op',
   'op_target_mismatch',

@@ -1,20 +1,19 @@
 import { ValueTag, type CellRangeRef, type CellValue, type LiteralInput, type WorkbookDefinedNameValueSnapshot } from '@bilig/protocol'
 import { formatAddress, parseCellAddress } from '@bilig/formula'
-import {
-  formula as workbookFormula,
-  type EngineOp,
-  type WorkbookActionCommand,
-  type WorkbookActionPlan,
-  type WorkbookCheckResult,
-  type WorkbookColumnRef,
-  type WorkbookNameRef,
-  type WorkbookRangeRef,
-  type WorkbookRef,
-  type WorkbookRowsRef,
-  type WorkbookRunAdapter,
-  type WorkbookRunReadback,
-  type WorkbookTableRef,
-  type WorkbookUndoRef,
+import type {
+  EngineOp,
+  WorkbookActionCommand,
+  WorkbookActionPlan,
+  WorkbookCheckResult,
+  WorkbookColumnRef,
+  WorkbookNameRef,
+  WorkbookRangeRef,
+  WorkbookRef,
+  WorkbookRowsRef,
+  WorkbookRunAdapter,
+  WorkbookRunReadback,
+  WorkbookTableRef,
+  WorkbookUndoRef,
 } from '@bilig/workbook'
 import type { SpreadsheetEngine } from './engine.js'
 import { buildFormatClearOps, buildFormatPatchOps, buildStylePatchOps } from './engine-range-format-ops.js'
@@ -517,10 +516,12 @@ function formulaForCell(
   cellIndex: number,
 ): string {
   let source = command.formula
-  command.inputs.forEach((input) => {
-    const token = workbookFormula.source(workbookFormula.ref(input))
-    const replacement = inputReplacementForCell(engine, input, targetCells, cellIndex)
-    source = source.replaceAll(token, replacement)
+  if (command.inputs.length > 0 && command.labels.length === 0) {
+    throw new Error(`Formula command for ${command.target.label} has inputs but no labels`)
+  }
+  command.labels.forEach((label) => {
+    const replacement = inputReplacementForCell(engine, label.ref, targetCells, cellIndex)
+    source = source.replaceAll(label.name, replacement)
   })
   return source
 }

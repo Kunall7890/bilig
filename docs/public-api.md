@@ -120,7 +120,8 @@ The preferred path is the small model API. Escape hatches stay explicit:
 
 - `findRange` is available when a consumer really has a concrete range.
 - `formula.raw(source, { inputs })` is available for formulas outside the helper
-  set while keeping dependencies inspectable.
+  set while keeping dependencies inspectable. Add `labels: [{ name, ref }]`
+  when raw formula text uses custom ref tokens.
 - `workbook.addOp(op, { target?, message? })` carries the existing low-level
   workbook operation language through the same plan, description, and
   verification flow.
@@ -181,7 +182,7 @@ Full export surface:
 - `workbook.addOp(op, { target?, message? })` inside model actions
 - `findTable`, `findColumn`, `findRange`, `findName`, and `findRows` through the model workbook context and as top-level helpers
 - `check.exists`, `check.noFormulaErrors`, `check.valueEquals`, `check.formulaEquals`, and `check.custom` through the model workbook context and as top-level helpers
-- `WorkbookModel`, `WorkbookAction`, `WorkbookActionConfig`, `WorkbookActionDefinition`, `WorkbookActionContext`, `WorkbookCheckContext`, `WorkbookFindWorkbook`, `WorkbookCheckWorkbook`, `WorkbookActionWorkbook`, `WorkbookModelWorkbook`, `WorkbookFindNamespace`, `WorkbookRef`, `WorkbookRefData`, `WorkbookRefKind`, `WorkbookBaseRefData`, `WorkbookRangeRef`, `WorkbookRangeRefData`, `WorkbookNameRef`, `WorkbookNameRefData`, `WorkbookTableRef`, `WorkbookTableRefData`, `WorkbookColumnRef`, `WorkbookColumnRefData`, `WorkbookRowsRef`, `WorkbookRowsRefData`, `WorkbookRowOperator`, `WorkbookRowValueType`, `WorkbookActionInput`, `WorkbookActionInputDescription`, `WorkbookActionInputDescriptionKind`, `WorkbookActionInspection`, `WorkbookAddOpOptions`, `WorkbookActionPlanResult`, `WorkbookModelDescription`, `WorkbookRefDescription`, `WorkbookActionPlanDescription`, `WorkbookActionPlanResultDescription`, `WorkbookRunResultDescription`, `WorkbookUndoRefDescription`, `WorkbookRunApplySummaryDescription`, `WorkbookRunUnverifiedDescription`, `WorkbookRuntimeRequirements`, `WorkbookRuntimeRequirement`, `WorkbookRuntimeCapability`, `WorkbookPlanVerification`, `WorkbookPlanIssue`, `WorkbookModelVerification`, `WorkbookModelActionVerification`, `WorkbookModelVerificationOptions`, `WorkbookRunAdapter`, `WorkbookRunApplyResult`, `WorkbookRunOptions`, `WorkbookRunApplySummary`, `WorkbookRunUnverified`, `WorkbookRunUnverifiedKind`, `WorkbookRunReadback`, `WorkbookReadbackVerification`, `WorkbookReadbackIssue`, `WorkbookReadbackIssueCode`, `WorkbookCheckExpectation`, `WorkbookCheckExpectationDescription`, `WorkbookBuiltInCheckKind`, `WorkbookCustomCheckOptions`, `WorkbookReadbackCheckOptions`, `WorkbookRawFormulaOptions`, `WorkbookRunResult`, `WorkbookRunError`, `WorkbookRunErrorCode`, and `WorkbookCheckResult`
+- `WorkbookModel`, `WorkbookAction`, `WorkbookActionConfig`, `WorkbookActionDefinition`, `WorkbookActionContext`, `WorkbookCheckContext`, `WorkbookFindWorkbook`, `WorkbookCheckWorkbook`, `WorkbookActionWorkbook`, `WorkbookModelWorkbook`, `WorkbookFindNamespace`, `WorkbookRef`, `WorkbookRefData`, `WorkbookRefKind`, `WorkbookBaseRefData`, `WorkbookRangeRef`, `WorkbookRangeRefData`, `WorkbookNameRef`, `WorkbookNameRefData`, `WorkbookTableRef`, `WorkbookTableRefData`, `WorkbookColumnRef`, `WorkbookColumnRefData`, `WorkbookRowsRef`, `WorkbookRowsRefData`, `WorkbookRowOperator`, `WorkbookRowValueType`, `WorkbookActionInput`, `WorkbookActionInputDescription`, `WorkbookActionInputDescriptionKind`, `WorkbookActionInspection`, `WorkbookAddOpOptions`, `WorkbookActionPlanResult`, `WorkbookModelDescription`, `WorkbookRefDescription`, `WorkbookActionPlanDescription`, `WorkbookActionPlanResultDescription`, `WorkbookRunResultDescription`, `WorkbookUndoRefDescription`, `WorkbookRunApplySummaryDescription`, `WorkbookRunUnverifiedDescription`, `WorkbookRuntimeRequirements`, `WorkbookRuntimeRequirement`, `WorkbookRuntimeCapability`, `WorkbookPlanVerification`, `WorkbookPlanIssue`, `WorkbookModelVerification`, `WorkbookModelActionVerification`, `WorkbookModelVerificationOptions`, `WorkbookRunAdapter`, `WorkbookRunApplyResult`, `WorkbookRunOptions`, `WorkbookRunApplySummary`, `WorkbookRunUnverified`, `WorkbookRunUnverifiedKind`, `WorkbookRunReadback`, `WorkbookReadbackVerification`, `WorkbookReadbackIssue`, `WorkbookReadbackIssueCode`, `WorkbookCheckExpectation`, `WorkbookCheckExpectationDescription`, `WorkbookBuiltInCheckKind`, `WorkbookCustomCheckOptions`, `WorkbookReadbackCheckOptions`, `WorkbookFormulaExpression`, `WorkbookFormulaLabel`, `WorkbookFormulaLabelDescription`, `WorkbookRawFormulaOptions`, `WorkbookRunResult`, `WorkbookRunError`, `WorkbookRunErrorCode`, and `WorkbookCheckResult`
 - the existing low-level operation language: `WorkbookOp`, `WorkbookTxn`, `EngineOp`, and `EngineOpBatch`
 
 The package builds portable workbook intent and concrete low-level ops when the
@@ -260,15 +261,17 @@ supplied for an address or range op, `verifyPlan` checks that the op touches the
 same range. For op kinds without an inferable range, `target` is descriptive for
 logs and approvals rather than proof of affected cells.
 
-Formula helpers keep referenced workbook inputs separate from formula text.
-Planned `writeFormula` commands expose those inputs directly, which lets agents
-inspect dependencies without relying on human UI coordinates or reverse-parsing
-placeholder formula names.
+Formula helpers keep referenced workbook inputs and formula labels separate from
+formula text. Planned `writeFormula` commands expose `inputs` plus `labels`,
+where each label maps a token in the formula string to the workbook ref it
+represents. Agents can inspect and verify that handoff without relying on human
+UI coordinates, hidden JS helper calls, or reverse-parsing placeholder names.
 For formulas outside the small helper set, `formula.raw(source, { inputs })`
 keeps arbitrary formula text generic while preserving explicit workbook
-dependencies for inspection and verification. These are declared dependencies,
-not parser-discovered proof that every formula reference has a matching model
-ref.
+dependencies for inspection and verification. Use
+`formula.raw(source, { inputs, labels })` when the raw formula uses custom ref
+tokens. These are declared dependencies and token mappings, not a
+parser-discovered model.
 Formula operands intentionally reject bare strings. Consumers use `formula.raw`
 for formula source and `formula.text` for spreadsheet string literals, keeping
 agent-authored formulas explicit instead of overloading a string as either code,
@@ -320,9 +323,9 @@ frozen `builtInWorkbookCheckKinds` list or call `isBuiltInWorkbookCheckKind`
 before accepting consumer-defined check metadata.
 Readback checks add machine-readable expectations to the same generic check
 channel: `valueEquals` stores the expected literal value, and `formulaEquals`
-stores normalized formula text plus explicit formula input refs. Runtime code
-can evaluate those expectations after applying the plan, while agents can
-inspect the proof target without relying on visual spreadsheet state.
+stores normalized formula text plus explicit formula input refs and labels.
+Runtime code can evaluate those expectations after applying the plan, while
+agents can inspect the proof target without relying on visual spreadsheet state.
 
 Model callback phases expose only the API needed for that phase. `find` gets
 find helpers only, `checks` gets find helpers and planned-check helpers, and
@@ -362,12 +365,13 @@ appear as `applyOp`. It does not import the engine.
 
 `verifyPlan` gives agents a runtime-free consistency check before handoff. It
 flags invalid action input, unresolved command targets, unresolved formula
-inputs, duplicate resolved refs, refs used that are not discoverable from
-`refs`, unparsable formulas, and missing concrete ops for write, clear, and
-number-format commands whose target is already known as a single cell. Custom
-check targets and supporting refs must also resolve through `refsUsed`.
-Formula readback expectation inputs must resolve through `refsUsed`, and
-formula expectation text must be parseable.
+inputs, missing formula labels, formula labels that do not point at resolved
+refs or do not appear in formula text, duplicate resolved refs, refs used that
+are not discoverable from `refs`, unparsable formulas, and missing concrete ops
+for write, clear, and number-format commands whose target is already known as a
+single cell. Custom check targets and supporting refs must also resolve through
+`refsUsed`. Formula readback expectation inputs and labels must resolve through
+`refsUsed`, and formula expectation text must be parseable.
 Checks must start as `planned`; consumer model code cannot mark a check passed
 or failed before runtime proof.
 Low-level `addOp` commands must contain valid `WorkbookOp` values, must still

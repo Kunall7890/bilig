@@ -70,6 +70,7 @@ describe('@bilig/workbook model api', () => {
       throw new Error('expected writeFormula command')
     }
     expect(Object.isFrozen(plannedCommand.inputs)).toBe(true)
+    expect(Object.isFrozen(plannedCommand.labels)).toBe(true)
     expect(Object.isFrozen(plan.ops)).toBe(true)
     expect(Object.isFrozen(plan.ops[0])).toBe(true)
     expect(Object.isFrozen(plan.changed)).toBe(true)
@@ -84,6 +85,10 @@ describe('@bilig/workbook model api', () => {
         target: plan.refs.result,
         formula: '(__bilig_ref_table_Base_Rate_Result_Base)*(__bilig_ref_table_Base_Rate_Result_Rate)',
         inputs: [plan.refs.base, plan.refs.rate],
+        labels: [
+          { name: '__bilig_ref_table_Base_Rate_Result_Base', ref: plan.refs.base },
+          { name: '__bilig_ref_table_Base_Rate_Result_Rate', ref: plan.refs.rate },
+        ],
       },
     ])
     expect(plan.ops).toEqual([
@@ -541,6 +546,10 @@ describe('@bilig/workbook model api', () => {
       target: plan.refs.result,
       formula: 'SUM((Inputs[Amount])*(Inputs[Rate]),Inputs[Amount])',
       inputs: [plan.refs.amount, plan.refs.rate],
+      labels: [
+        { name: 'Inputs[Amount]', ref: plan.refs.amount },
+        { name: 'Inputs[Rate]', ref: plan.refs.rate },
+      ],
     })
   })
 
@@ -715,6 +724,10 @@ describe('@bilig/workbook model api', () => {
           target: result,
           formula: '(Inputs[Amount])*(Inputs[Rate])',
           inputs: [amount, rate],
+          labels: [
+            { name: 'Inputs[Amount]', ref: amount },
+            { name: 'Inputs[Rate]', ref: rate },
+          ],
         },
       ],
       ops: [

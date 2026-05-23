@@ -9,9 +9,11 @@ import {
   type WorkbookChangeSummaryDescription,
   type WorkbookCheckExpectationDescription,
   type WorkbookCheckResultDescription,
+  type WorkbookFormulaLabelDescription,
   type WorkbookRefDescription,
 } from './describe.js'
 import { collectWorkbookRefs, hydrateWorkbookRef, type WorkbookRef } from './find.js'
+import type { WorkbookFormulaLabel } from './formula.js'
 import { isWorkbookOp } from './guards.js'
 import {
   inspectModel,
@@ -34,12 +36,18 @@ export type WorkbookPlanIssueCode =
   | 'duplicate_ref'
   | 'command_target_not_resolved'
   | 'formula_input_not_resolved'
+  | 'formula_input_not_labeled'
+  | 'formula_label_not_resolved'
+  | 'formula_label_not_used'
   | 'invalid_formula'
   | 'change_target_not_resolved'
   | 'check_status_not_planned'
   | 'check_target_not_resolved'
   | 'check_ref_not_resolved'
   | 'check_expectation_input_not_resolved'
+  | 'check_expectation_input_not_labeled'
+  | 'check_expectation_label_not_resolved'
+  | 'check_expectation_label_not_used'
   | 'invalid_check_expectation_formula'
   | 'invalid_workbook_op'
   | 'op_target_mismatch'
@@ -332,6 +340,13 @@ function hydratePlanDataRef(ref: WorkbookRefDescription): WorkbookRef {
   return hydrateWorkbookRef(ref)
 }
 
+function hydratePlanDataFormulaLabel(label: WorkbookFormulaLabelDescription): WorkbookFormulaLabel {
+  return {
+    name: label.name,
+    ref: hydratePlanDataRef(label.ref),
+  }
+}
+
 function hydratePlanDataCommand(command: WorkbookActionCommandDescription): WorkbookActionCommand {
   switch (command.kind) {
     case 'writeFormula':
@@ -340,6 +355,9 @@ function hydratePlanDataCommand(command: WorkbookActionCommandDescription): Work
         target: hydratePlanDataRef(command.target),
         formula: command.formula,
         inputs: command.inputs.map(hydratePlanDataRef),
+        labels: ((command as { readonly labels?: readonly WorkbookFormulaLabelDescription[] }).labels ?? []).map(
+          hydratePlanDataFormulaLabel,
+        ),
       }
     case 'writeValue':
       return {
@@ -389,8 +407,28 @@ function hydratePlanDataExpectation(expectation: WorkbookCheckExpectationDescrip
         kind: 'formulaEquals',
         formula: expectation.formula,
         inputs: expectation.inputs.map(hydratePlanDataRef),
+        labels: ((expectation as { readonly labels?: readonly WorkbookFormulaLabelDescription[] }).labels ?? []).map(
+          hydratePlanDataFormulaLabel,
+        ),
       }
   }
+}
+
+function formulaLabelsForCommand(
+  command: Extract<WorkbookActionCommand, { readonly kind: 'writeFormula' }>,
+): readonly WorkbookFormulaLabel[] {
+  return (command as { readonly labels?: readonly WorkbookFormulaLabel[] }).labels ?? []
+}
+
+function formulaLabelsForExpectation(
+  expectation: Extract<WorkbookCheckExpectation, { readonly kind: 'formulaEquals' }>,
+): readonly WorkbookFormulaLabel[] {
+  return (expectation as { readonly labels?: readonly WorkbookFormulaLabel[] }).labels ?? []
+}
+
+function hasLabelForInput(labels: readonly WorkbookFormulaLabel[], input: WorkbookRef): boolean {
+  const inputKey = refKey(input)
+  return labels.some((label) => refKey(label.ref) === inputKey)
 }
 
 function hydratePlanDataCheck(check: WorkbookCheckResultDescription): WorkbookCheckResult {
@@ -467,6 +505,7 @@ export function verifyPlan<Refs>(plan: WorkbookActionPlan<Refs>): WorkbookPlanVe
     }
 
     if (command.kind === 'writeFormula') {
+      const labels = formulaLabelsForCommand(command)
       try {
         parseFormula(command.formula)
       } catch (error) {
@@ -485,6 +524,40 @@ export function verifyPlan<Refs>(plan: WorkbookActionPlan<Refs>): WorkbookPlanVe
               path: `commands[${commandIndex}].inputs[${inputIndex}]`,
               ref: input,
               message: `${input.label} is used as a formula input but is missing from refsUsed`,
+            }),
+          )
+        }
+        if (!hasLabelForInput(labels, input)) {
+          issues.push(
+            issue({
+              code: 'formula_input_not_labeled',
+              path: `commands[${commandIndex}].inputs[${inputIndex}]`,
+              ref: input,
+              message: `${input.label} is used as a formula input but has no formula label`,
+            }),
+          )
+        }
+      })
+
+      const inputKeys = new Set(command.inputs.map(refKey))
+      labels.forEach((label, labelIndex) => {
+        if (!hasRef(label.ref) && !inputKeys.has(refKey(label.ref))) {
+          issues.push(
+            issue({
+              code: 'formula_label_not_resolved',
+              path: `commands[${commandIndex}].labels[${labelIndex}].ref`,
+              ref: label.ref,
+              message: `${label.ref.label} is used as a formula label but is missing from refsUsed`,
+            }),
+          )
+        }
+        if (!command.formula.includes(label.name)) {
+          issues.push(
+            issue({
+              code: 'formula_label_not_used',
+              path: `commands[${commandIndex}].labels[${labelIndex}].name`,
+              ref: label.ref,
+              message: `Formula label ${label.name} for ${label.ref.label} does not appear in the formula`,
             }),
           )
         }
@@ -581,8 +654,10 @@ export function verifyPlan<Refs>(plan: WorkbookActionPlan<Refs>): WorkbookPlanVe
     })
 
     if (check.expectation?.kind === 'formulaEquals') {
+      const expectation = check.expectation
+      const labels = formulaLabelsForExpectation(expectation)
       try {
-        parseFormula(check.expectation.formula)
+        parseFormula(expectation.formula)
       } catch (error) {
         issues.push({
           code: 'invalid_check_expectation_formula',
@@ -591,7 +666,7 @@ export function verifyPlan<Refs>(plan: WorkbookActionPlan<Refs>): WorkbookPlanVe
         })
       }
 
-      check.expectation.inputs.forEach((input, inputIndex) => {
+      expectation.inputs.forEach((input, inputIndex) => {
         if (!hasRef(input)) {
           issues.push(
             issue({
@@ -599,6 +674,40 @@ export function verifyPlan<Refs>(plan: WorkbookActionPlan<Refs>): WorkbookPlanVe
               path: `checks[${checkIndex}].expectation.inputs[${inputIndex}]`,
               ref: input,
               message: `${input.label} appears in a formula expectation but is missing from refsUsed`,
+            }),
+          )
+        }
+        if (!hasLabelForInput(labels, input)) {
+          issues.push(
+            issue({
+              code: 'check_expectation_input_not_labeled',
+              path: `checks[${checkIndex}].expectation.inputs[${inputIndex}]`,
+              ref: input,
+              message: `${input.label} appears in a formula expectation but has no formula label`,
+            }),
+          )
+        }
+      })
+
+      const inputKeys = new Set(expectation.inputs.map(refKey))
+      labels.forEach((label, labelIndex) => {
+        if (!hasRef(label.ref) && !inputKeys.has(refKey(label.ref))) {
+          issues.push(
+            issue({
+              code: 'check_expectation_label_not_resolved',
+              path: `checks[${checkIndex}].expectation.labels[${labelIndex}].ref`,
+              ref: label.ref,
+              message: `${label.ref.label} appears in a formula expectation label but is missing from refsUsed`,
+            }),
+          )
+        }
+        if (!expectation.formula.includes(label.name)) {
+          issues.push(
+            issue({
+              code: 'check_expectation_label_not_used',
+              path: `checks[${checkIndex}].expectation.labels[${labelIndex}].name`,
+              ref: label.ref,
+              message: `Formula expectation label ${label.name} for ${label.ref.label} does not appear in the formula`,
             }),
           )
         }

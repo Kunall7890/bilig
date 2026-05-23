@@ -1,5 +1,5 @@
 import type { CellStylePatch, LiteralInput } from '@bilig/protocol'
-import { formula, type WorkbookFormulaOperand } from './formula.js'
+import { formula, type WorkbookFormulaLabel, type WorkbookFormulaOperand } from './formula.js'
 import { collectWorkbookRefs, createWorkbookFindApi, type WorkbookFindApi, type WorkbookRef } from './find.js'
 import { createWorkbookCheckApi, type WorkbookCheckApi } from './check.js'
 import {
@@ -19,6 +19,7 @@ export type WorkbookActionCommand =
       readonly target: WorkbookRef
       readonly formula: string
       readonly inputs: readonly WorkbookRef[]
+      readonly labels: readonly WorkbookFormulaLabel[]
     }
   | {
       readonly kind: 'writeValue'
@@ -316,6 +317,7 @@ function freezeActionCommand(command: WorkbookActionCommand): WorkbookActionComm
         target: command.target,
         formula: command.formula,
         inputs: Object.freeze([...command.inputs]),
+        labels: Object.freeze(command.labels.map((label) => Object.freeze({ ...label }))),
       })
     case 'writeValue':
       return Object.freeze({
@@ -353,6 +355,7 @@ function freezeCheckExpectation(check: WorkbookCheckResult): WorkbookCheckResult
     return Object.freeze({
       ...check.expectation,
       inputs: Object.freeze([...check.expectation.inputs]),
+      labels: Object.freeze(check.expectation.labels.map((label) => Object.freeze({ ...label }))),
     })
   }
   return Object.freeze({ ...check.expectation })
@@ -482,6 +485,7 @@ function createActionWorkbook(input: {
         target,
         formula: formula.source(value),
         inputs: formula.inputs(value),
+        labels: formula.labels(value),
       })
     },
     writeValue(target: WorkbookRef, value: LiteralInput) {

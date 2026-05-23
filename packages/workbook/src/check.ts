@@ -92,6 +92,7 @@ function createWorkbookCheck(options: WorkbookCheckBuildOptions): WorkbookCheckR
         ? Object.freeze({
             ...options.expectation,
             inputs: Object.freeze([...options.expectation.inputs]),
+            labels: Object.freeze(options.expectation.labels.map((label) => Object.freeze({ ...label }))),
           })
         : Object.freeze({ ...options.expectation })
   return Object.freeze({
@@ -141,6 +142,7 @@ export function createWorkbookCheckApi(record?: (check: WorkbookCheckResult) => 
     formulaEquals(target, value, options = {}) {
       const source = formula.source(value)
       const inputs = formula.inputs(value)
+      const labels = formula.labels(value)
       return planned({
         kind: 'formulaEquals',
         target,
@@ -149,6 +151,7 @@ export function createWorkbookCheckApi(record?: (check: WorkbookCheckResult) => 
           kind: 'formulaEquals',
           formula: source,
           inputs,
+          labels,
         },
       })
     },

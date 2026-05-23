@@ -94,7 +94,7 @@ The main API is intentionally small:
 - model: `defineModel`, `inspectModel`, `planWorkbookAction`, `buildWorkbookActionPlan`
 - selectors: `findTable`, `findColumn`, `findRange`, `findName`, `findRows`, `find`
 - checks: `check.exists`, `check.noFormulaErrors`, `check.valueEquals`, `check.formulaEquals`, `check.custom`
-- formulas: `formula.add`, `formula.subtract`, `formula.multiply`, `formula.divide`, `formula.sum`, `formula.call`, `formula.raw`, `formula.text`
+- formulas: `formula.add`, `formula.subtract`, `formula.multiply`, `formula.divide`, `formula.sum`, `formula.call`, `formula.raw`, `formula.text`, `formula.labels`
 - proof: `verifyPlan`, `verifyModel`, `verifyWorkbookReadbacks`
 - descriptions: `describeModel`, `describeRef`, `describePlan`, `describePlanResult`, `describeRuntimeRequirements`, `describeRunResult`
 - transport data: `isWorkbookRefData`, `toWorkbookRefData`, `collectWorkbookRefData`, `hydrateWorkbookRef`, `hydrateWorkbookRefs`, `verifyPlanData`
@@ -136,12 +136,16 @@ without requiring the consumer's private `refs` object shape.
 `@bilig/workbook` creates formula expressions. `@bilig/formula` parses and
 normalizes formula text. `@bilig/core` or an app runtime calculates it.
 
-Formula helpers keep formula text and workbook dependencies separate. A planned
-formula write includes both the formula string and the refs used to build it.
-For custom formula text, use `formula.raw(source, { inputs })`. For spreadsheet
-string literals, use `formula.text(value)`. Bare strings are not formula
-operands because agents should not guess whether a string is code, a label, a
-named range, or user text.
+Formula helpers keep formula text, workbook dependencies, and formula labels
+separate. A planned formula write includes the formula string, the refs used to
+build it, and a `labels` array mapping each formula token to the workbook ref it
+represents. Runtime adapters use those labels to materialize table columns,
+filtered rows, names, and ranges without reverse-engineering hidden JS helpers.
+For custom formula text, use `formula.raw(source, { inputs })`; pass
+`labels: [{ name, ref }]` when the raw formula uses custom tokens. For
+spreadsheet string literals, use `formula.text(value)`. Bare strings are not
+formula operands because agents should not guess whether a string is code, a
+label, a named range, or user text.
 
 ## Runtime Adapter
 

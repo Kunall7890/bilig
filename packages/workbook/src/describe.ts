@@ -95,6 +95,7 @@ export type WorkbookActionCommandDescription =
       readonly target: WorkbookRefDescription
       readonly formula: string
       readonly inputs: readonly WorkbookRefDescription[]
+      readonly labels: readonly WorkbookFormulaLabelDescription[]
     }
   | {
       readonly kind: 'writeValue'
@@ -143,7 +144,13 @@ export type WorkbookCheckExpectationDescription =
       readonly kind: 'formulaEquals'
       readonly formula: string
       readonly inputs: readonly WorkbookRefDescription[]
+      readonly labels: readonly WorkbookFormulaLabelDescription[]
     }
+
+export interface WorkbookFormulaLabelDescription {
+  readonly name: string
+  readonly ref: WorkbookRefDescription
+}
 
 export interface WorkbookActionPlanDescription {
   readonly modelName: string
@@ -291,6 +298,7 @@ function describeCommand(command: WorkbookActionCommand): WorkbookActionCommandD
         target: describeRef(command.target),
         formula: command.formula,
         inputs: command.inputs.map(describeRef),
+        labels: command.labels.map(describeFormulaLabel),
       }
     case 'writeValue':
       return {
@@ -317,6 +325,13 @@ function describeCommand(command: WorkbookActionCommand): WorkbookActionCommandD
         ...(command.target !== undefined ? { target: describeRef(command.target) } : {}),
         ...(command.message !== undefined ? { message: command.message } : {}),
       }
+  }
+}
+
+function describeFormulaLabel(label: { readonly name: string; readonly ref: WorkbookRef }): WorkbookFormulaLabelDescription {
+  return {
+    name: label.name,
+    ref: describeRef(label.ref),
   }
 }
 
@@ -352,6 +367,7 @@ function describeExpectation(expectation: WorkbookCheckExpectation): WorkbookChe
         kind: 'formulaEquals',
         formula: expectation.formula,
         inputs: expectation.inputs.map(describeRef),
+        labels: expectation.labels.map(describeFormulaLabel),
       }
   }
 }

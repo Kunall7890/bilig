@@ -354,6 +354,10 @@ describe('@bilig/workbook run api', () => {
           kind: 'formulaEquals',
           formula: source,
           inputs: [expect.objectContaining({ label: 'Sheet1!A2' }), expect.objectContaining({ label: 'Sheet1!B2' })],
+          labels: [
+            { name: 'Sheet1!A2', ref: expect.objectContaining({ label: 'Sheet1!A2' }) },
+            { name: 'Sheet1!B2', ref: expect.objectContaining({ label: 'Sheet1!B2' }) },
+          ],
         },
         proof: {
           source: 'readback',

@@ -149,6 +149,10 @@ describe('@bilig/workbook transport api', () => {
         code: 'formula_input_not_resolved',
         path: 'commands[0].inputs[2]',
       }),
+      expect.objectContaining({
+        code: 'formula_input_not_labeled',
+        path: 'commands[0].inputs[2]',
+      }),
     ])
   })
 })

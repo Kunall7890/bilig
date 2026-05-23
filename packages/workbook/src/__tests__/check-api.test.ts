@@ -41,6 +41,7 @@ describe('@bilig/workbook check api', () => {
         kind: 'formulaEquals',
         formula: '(Inputs[Amount])*(2)',
         inputs: [amount],
+        labels: [{ name: 'Inputs[Amount]', ref: amount }],
       },
     })
     expect(() => check.valueEquals(output, Number.NaN)).toThrowError('Workbook readback value must be a finite JSON literal')
@@ -145,6 +146,7 @@ describe('@bilig/workbook check api', () => {
           kind: 'formulaEquals',
           formula: '(Inputs[Amount])+(1)',
           inputs: [result.plan.refs.amount],
+          labels: [{ name: 'Inputs[Amount]', ref: result.plan.refs.amount }],
         },
       },
     ])
@@ -208,6 +210,23 @@ describe('@bilig/workbook check api', () => {
                     name: 'Inputs',
                   },
                   name: 'Amount',
+                },
+              ],
+              labels: [
+                {
+                  name: 'Inputs[Amount]',
+                  ref: {
+                    kind: 'column',
+                    id: 'table_Inputs_Amount',
+                    label: 'Inputs.Amount',
+                    table: {
+                      kind: 'table',
+                      id: 'table_Inputs',
+                      label: 'Inputs',
+                      name: 'Inputs',
+                    },
+                    name: 'Amount',
+                  },
                 },
               ],
             },

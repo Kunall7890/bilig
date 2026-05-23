@@ -44,7 +44,9 @@ const result = await runWorkbookAction(model, 'calculate', createWorkbookRunAdap
 ```
 
 `createWorkbookRunAdapter(engine)` materializes generic `plan.commands` into
-engine operations, including range and table-column writes, falls back to
+engine operations, including range and table-column writes. Formula commands use
+the plan's explicit formula labels to replace table, row-filtered, name, and
+range tokens with concrete cell references. The adapter also falls back to
 explicit `plan.ops` for low-level plans, reads single-cell `valueEquals` and
 `formulaEquals` targets, and verifies generic `exists` and `noFormulaErrors`
 checks. When undo is captured, the returned `undo.ops` are portable workbook
