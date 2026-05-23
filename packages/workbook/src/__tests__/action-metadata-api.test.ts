@@ -5,6 +5,7 @@ import {
   describeModel,
   inspectModel,
   normalizeWorkbookActionInputDescription,
+  planWorkbookAction,
   verifyModel,
   type WorkbookActionContext,
   type WorkbookActionInput,
@@ -28,6 +29,10 @@ function inspectUnknownModel(model: unknown): unknown {
 
 function describeUnknownModel(model: unknown): unknown {
   return Reflect.apply(describeModel, undefined, [model])
+}
+
+function planUnknownModel(model: unknown, actionName: string, input?: WorkbookActionInput): unknown {
+  return Reflect.apply(planWorkbookAction, undefined, [model, actionName, input])
 }
 
 describe('@bilig/workbook action metadata api', () => {
@@ -450,6 +455,110 @@ describe('@bilig/workbook action metadata api', () => {
       }),
     ).toThrowError('Workbook action write description must be a data property')
     expect(actionDescriptionGetterInvoked).toBe(false)
+  })
+
+  it('returns structured planning failures for accessor-backed model manifests without invoking getters', () => {
+    let modelNameGetterInvoked = false
+    const modelWithAccessorName: Record<string, unknown> = {
+      actions: {
+        write() {},
+      },
+    }
+    Object.defineProperty(modelWithAccessorName, 'name', {
+      enumerable: true,
+      get() {
+        modelNameGetterInvoked = true
+        throw new Error('model name getter must not run')
+      },
+    })
+
+    expect(planUnknownModel(modelWithAccessorName, 'write')).toEqual({
+      status: 'failed',
+      modelName: 'unknown-model',
+      actionName: 'write',
+      checks: [],
+      errors: [
+        {
+          code: 'invalid_model',
+          message: 'Workbook model name must be a data property',
+        },
+      ],
+    })
+    expect(modelNameGetterInvoked).toBe(false)
+
+    let actionGetterInvoked = false
+    const actionMap: Record<string, unknown> = {}
+    Object.defineProperty(actionMap, 'write', {
+      enumerable: true,
+      get() {
+        actionGetterInvoked = true
+        throw new Error('action getter must not run')
+      },
+    })
+
+    expect(
+      planUnknownModel(
+        {
+          name: 'planning-accessor-action-model',
+          find() {
+            return {}
+          },
+          actions: actionMap,
+        },
+        'write',
+      ),
+    ).toEqual({
+      status: 'failed',
+      modelName: 'planning-accessor-action-model',
+      actionName: 'write',
+      checks: [],
+      errors: [
+        {
+          code: 'invalid_model',
+          message: 'Workbook model planning-accessor-action-model action write must be a data property',
+        },
+      ],
+    })
+    expect(actionGetterInvoked).toBe(false)
+
+    let actionInputGetterInvoked = false
+    const actionWithAccessorInput: Record<string, unknown> = {
+      run() {},
+    }
+    Object.defineProperty(actionWithAccessorInput, 'input', {
+      enumerable: true,
+      get() {
+        actionInputGetterInvoked = true
+        throw new Error('action input getter must not run')
+      },
+    })
+
+    expect(
+      planUnknownModel(
+        {
+          name: 'planning-accessor-action-input-model',
+          find() {
+            return {}
+          },
+          actions: {
+            write: actionWithAccessorInput,
+          },
+        },
+        'write',
+      ),
+    ).toEqual({
+      status: 'failed',
+      modelName: 'planning-accessor-action-input-model',
+      actionName: 'write',
+      checks: [],
+      errors: [
+        {
+          code: 'invalid_model',
+          message: 'Workbook model planning-accessor-action-input-model action write input must be a data property',
+        },
+      ],
+    })
+    expect(actionInputGetterInvoked).toBe(false)
   })
 
   it('describes action metadata without running find, checks, or actions', () => {

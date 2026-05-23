@@ -54,6 +54,7 @@ export interface WorkbookRunUnverified {
 }
 
 export type WorkbookRunErrorCode =
+  | 'invalid_model'
   | 'action_not_found'
   | 'invalid_action_input'
   | 'find_failed'
@@ -97,6 +98,7 @@ export type WorkbookRunErrorCode =
   | 'runtime_rejected'
 
 export const workbookRunErrorCodes = Object.freeze([
+  'invalid_model',
   'action_not_found',
   'invalid_action_input',
   'find_failed',

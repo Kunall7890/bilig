@@ -63,7 +63,8 @@ prepaid, or other business models in this package.
 - `checks` declares generic facts the runtime must prove.
 - `actions` build portable workbook intent with `writeFormula`, `writeValue`,
   `format`, `clear`, or a guarded low-level op.
-- `planWorkbookAction` returns either a frozen plan or a structured failure.
+- `planWorkbookAction` returns either a frozen plan or a structured failure,
+  including `invalid_model` when the supplied model manifest is not data-safe.
 - `verifyPlan` proves static consistency without importing or starting an
   engine.
 - `describeModel`, `describePlan`, and `describePlanResult` return JSON-safe
@@ -503,6 +504,10 @@ Plans are frozen handoff objects: action input, refs, refs used, commands,
 concrete ops, changed summaries, and checks cannot be rewritten after planning.
 That lets an agent inspect a plan once and pass the same intent to an adapter
 without caller-side metadata drift.
+Planning validates model manifest data before reading action metadata or running
+model code. Accessor-backed model names, action maps, action entries, or action
+metadata return structured `invalid_model` errors without invoking hidden
+getters.
 `describePlanResult` applies the same description layer to either planned or
 failed action planning results.
 `describeRunResult` applies the same JSON-safe description layer after
