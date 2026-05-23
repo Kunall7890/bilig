@@ -50,7 +50,72 @@ Build `@bilig/workbook` so an agent would love using it: simple, generic,
 predictable, inspectable, verifiable, and never dependent on hardcoded business
 models or human spreadsheet UI assumptions.
 
-It exposes:
+The stable contract has three layers.
+
+### Agent model contract
+
+Consumers define models. Bilig does not ship hardcoded revenue, quote, forecast,
+prepaid, or other business models in this package.
+
+- `defineModel` freezes model metadata and action manifests.
+- `find` returns generic workbook refs through `findTable`, `findColumn`,
+  `findRange`, `findName`, and `findRows`.
+- `checks` declares generic facts the runtime must prove.
+- `actions` build portable workbook intent with `writeFormula`, `writeValue`,
+  `format`, `clear`, or a guarded low-level op.
+- `planWorkbookAction` returns either a frozen plan or a structured failure.
+- `verifyPlan` proves static consistency without importing or starting an
+  engine.
+- `describeModel`, `describePlan`, and `describePlanResult` return JSON-safe
+  objects for logs, approvals, tools, and tests.
+
+The model contract is intentionally data-first. Refs are frozen. Helper methods
+such as `table.column("Amount")` and `rows.column("Amount")` are non-enumerable.
+Action input is plain JSON, cloned into the plan, and described with small
+metadata rather than a schema dependency.
+
+### Runtime adapter contract
+
+Runtimes execute plans. `@bilig/workbook` only defines the handoff.
+
+- `describeRuntimeRequirements(plan)` tells an adapter which commands must be
+  applied, which targets must be read back, and which checks need runtime proof.
+- `runWorkbookPlan(plan, adapter)` refuses to apply invalid plans, calls the
+  adapter, verifies readback expectations, verifies generic checks, and returns a
+  boring `WorkbookRunResult`.
+- `adapter.apply(plan)` owns runtime mutation and may return an undo ref.
+- `adapter.read(targets, plan)` returns semantic readbacks for checks such as
+  `valueEquals` and `formulaEquals`.
+- `adapter.verifyChecks(checks, plan)` may only change check `status` or add
+  JSON-safe `proof`; it cannot rewrite the check contract.
+
+Readback-backed checks attach proof to passed checks. A result can therefore
+show the intended action, bound refs, planned commands and ops, adapter
+requirements, readback values or formulas, check statuses, proof objects, undo
+metadata, and remaining unverified checks without relying on rendered
+spreadsheet state.
+
+### Escape hatches
+
+The preferred path is the small model API. Escape hatches stay explicit:
+
+- `findRange` is available when a consumer really has a concrete range.
+- `formula.raw(source, { inputs })` is available for formulas outside the helper
+  set while keeping dependencies inspectable.
+- `workbook.addOp(op, { target?, message? })` carries the existing low-level
+  workbook operation language through the same plan, description, and
+  verification flow.
+
+Escape hatches do not make the package domain-specific. They keep the public API
+generic while still letting advanced runtimes use the lower-level workbook
+language.
+
+The generic runnable example lives in
+[`examples/workbook-agent-model`](../examples/workbook-agent-model). Domain
+examples such as revenue, forecast, and quote approval belong under consumer app
+or WorkPaper examples, not inside `@bilig/workbook` itself.
+
+Full export surface:
 
 - `defineModel`
 - `buildWorkbookActionPlan`
@@ -289,13 +354,15 @@ apply-and-prove loop on top of the same contracts. The adapter receives the full
 plan, applies it through whatever runtime the consumer owns, and optionally
 returns semantic readbacks for the expectation targets. `@bilig/workbook`
 compares those readbacks against `valueEquals` and `formulaEquals` checks and
-returns a boring `WorkbookRunResult`. If static verification fails, the apply
-adapter is not called. If a readback expectation is missing or mismatched, the
-run fails with deterministic codes such as `readback_missing`,
-`value_mismatch`, or `formula_mismatch`. Runtime readbacks must match the
-requested target set exactly; surplus readbacks fail with `readback_unexpected`.
-Formula readbacks are exact and should use the normalized no-leading-`=` form
-produced by `formula.source`.
+returns a boring `WorkbookRunResult`. Passed readback-backed checks include
+JSON-safe proof such as `{ source: "readback", value }` or
+`{ source: "readback", formula }`, so the result says what the runtime actually
+read back. If static verification fails, the apply adapter is not called. If a
+readback expectation is missing or mismatched, the run fails with deterministic
+codes such as `readback_missing`, `value_mismatch`, or `formula_mismatch`.
+Runtime readbacks must match the requested target set exactly; surplus
+readbacks fail with `readback_unexpected`. Formula readbacks are exact and
+should use the normalized no-leading-`=` form produced by `formula.source`.
 Run errors use the stable `WorkbookRunErrorCode` union. Agents and adapters can
 inspect the frozen `workbookRunErrorCodes` list or call
 `isWorkbookRunErrorCode(value)` before branching on a code. Runtime adapters

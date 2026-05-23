@@ -91,9 +91,17 @@ describe('@bilig/workbook run api', () => {
             kind: 'valueEquals',
             value: 12,
           },
+          proof: {
+            source: 'readback',
+            value: 12,
+          },
         },
       ],
       undo: { id: 'undo-1' },
+    })
+    expect(describeRunResult(result).checks[0]?.proof).toEqual({
+      source: 'readback',
+      value: 12,
     })
   })
 
@@ -198,6 +206,10 @@ describe('@bilig/workbook run api', () => {
           kind: 'formulaEquals',
           formula: source,
           inputs: [expect.objectContaining({ label: 'Sheet1!A2' }), expect.objectContaining({ label: 'Sheet1!B2' })],
+        },
+        proof: {
+          source: 'readback',
+          formula: source,
         },
       },
     ])

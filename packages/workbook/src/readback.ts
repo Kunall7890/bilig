@@ -94,10 +94,15 @@ function formulaMismatch(check: WorkbookCheckResult, expected: string, actual: s
   })
 }
 
-function checked(check: WorkbookCheckResult, status: WorkbookCheckResult['status']): WorkbookCheckResult {
+function checked(
+  check: WorkbookCheckResult,
+  status: WorkbookCheckResult['status'],
+  proof?: WorkbookCheckResult['proof'],
+): WorkbookCheckResult {
   return {
     ...check,
     status,
+    ...(proof !== undefined ? { proof } : {}),
   }
 }
 
@@ -132,7 +137,12 @@ function verifyCheck(
         issue: valueMismatch(check, check.expectation.value, actual),
       }
     }
-    return { check: checked(check, 'passed') }
+    return {
+      check: checked(check, 'passed', {
+        source: 'readback',
+        value: actual,
+      }),
+    }
   }
 
   const actual = hasFormula(readback) ? readback.formula : undefined
@@ -142,7 +152,12 @@ function verifyCheck(
       issue: formulaMismatch(check, check.expectation.formula, actual),
     }
   }
-  return { check: checked(check, 'passed') }
+  return {
+    check: checked(check, 'passed', {
+      source: 'readback',
+      formula: actual,
+    }),
+  }
 }
 
 export function verifyWorkbookReadbacks(

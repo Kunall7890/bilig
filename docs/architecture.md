@@ -33,6 +33,7 @@ flowchart LR
   - JSON-safe action input planning and verification
   - action-object metadata and plain input descriptions for agent manifests
   - machine-readable readback checks for runtime proof
+  - readback proof attached to passed value/formula checks
   - stable run error code union for predictable agent branching
   - transport-neutral run adapters for apply-and-prove receipts
   - generic check verifier handoff for runtime-owned invariants
@@ -68,6 +69,10 @@ The following are not current architecture anymore:
 - Zero syncs relational source/eval state rather than whole-workbook snapshots
 - the UI consumes viewport patches, not raw engine internals
 - snapshots remain warm-start artifacts, not the hot synced model
+- `@bilig/workbook` models stay consumer-defined and domain-neutral
+- `@bilig/workbook` plans are inspectable data before runtime execution
+- `@bilig/workbook` results must expose proof for passed checks or preserve the
+  unverified state instead of hiding it behind a done status
 
 ## Recommended next focus
 

@@ -1,0 +1,18 @@
+{
+  "name": "bilig-workbook-agent-model-example",
+  "private": true,
+  "description": "Generic @bilig/workbook model example for agent-first planning and proof.",
+  "type": "module",
+  "scripts": {
+    "start": "tsx generic-table-model.ts",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@bilig/workbook": "file:../../packages/workbook"
+  },
+  "devDependencies": {
+    "@types/node": "25.5.0",
+    "tsx": "4.21.0",
+    "typescript": "6.0.2"
+  }
+}
