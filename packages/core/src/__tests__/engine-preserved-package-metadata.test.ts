@@ -148,6 +148,47 @@ describe('engine imported package metadata preservation', () => {
     ])
   })
 
+  it('keeps shared preserved slicer parts when deleting one referencing sheet', async () => {
+    const engine = new SpreadsheetEngine({ workbookName: 'package-metadata-shared-slicer-artifact-sheet-delete' })
+    await engine.ready()
+
+    engine.importSnapshot(sharedSlicerConnectionSheetDeletionSnapshot())
+    engine.deleteSheet('Revenue')
+
+    const exported = engine.exportSnapshot()
+    expect(exported.sheets.map((sheet) => sheet.name)).toEqual(['Keep'])
+    expect(exported.workbook.metadata?.slicerConnectionArtifacts?.sheetArtifacts).toEqual([
+      {
+        sheetName: 'Keep',
+        sheetSlicerListExtXml:
+          '<ext uri="{A8765BA9-456A-4DAB-B4F3-ACF838C121DE}"><x14:slicerList><x14:slicer r:id="rIdKeepSlicer"/></x14:slicerList></ext>',
+        relationships: [
+          {
+            id: 'rIdKeepSlicer',
+            type: `${microsoftOfficeRelationshipTypePrefix}/slicer`,
+            target: '../slicers/slicer1.xml',
+          },
+        ],
+      },
+    ])
+    expect(exported.workbook.metadata?.slicerConnectionArtifacts?.parts.map((part) => part.path).toSorted()).toEqual([
+      'xl/slicerCaches/_rels/slicerCache1.xml.rels',
+      'xl/slicerCaches/slicerCache1.xml',
+      'xl/slicers/_rels/slicer1.xml.rels',
+      'xl/slicers/slicer1.xml',
+    ])
+    expect(exported.workbook.metadata?.slicerConnectionArtifacts?.contentTypeOverrides).toEqual([
+      {
+        partName: '/xl/slicerCaches/slicerCache1.xml',
+        contentType: 'application/vnd.ms-excel.slicerCache+xml',
+      },
+      {
+        partName: '/xl/slicers/slicer1.xml',
+        contentType: 'application/vnd.ms-excel.slicer+xml',
+      },
+    ])
+  })
+
   it('rewrites preserved workbook view tab indexes after sheet deletion', async () => {
     const engine = new SpreadsheetEngine({ workbookName: 'package-metadata-workbook-view-delete-sheet' })
     await engine.ready()
@@ -480,6 +521,7 @@ function slicerConnectionSheetDeletionSnapshot(): WorkbookSnapshot {
             encodedPart('xl/slicerCaches/slicerCache1.xml', '<slicerCacheDefinition/>'),
             encodedPart('xl/slicerCaches/_rels/slicerCache1.xml.rels', '<Relationships/>'),
             encodedPart('xl/slicers/slicer1.xml', '<slicer/>'),
+            encodedPart('xl/slicers/_rels/slicer1.xml.rels', '<Relationships/>'),
           ],
           workbookSlicerCachesExtXml:
             '<ext uri="{BBE1A952-AA13-448e-AADC-164F8A28A991}"><x15:slicerCaches><x15:slicerCache r:id="rIdSlicerCache"/></x15:slicerCaches></ext>',
@@ -532,6 +574,30 @@ function slicerConnectionSheetDeletionSnapshot(): WorkbookSnapshot {
       },
     ],
   }
+}
+
+function sharedSlicerConnectionSheetDeletionSnapshot(): WorkbookSnapshot {
+  const snapshot = slicerConnectionSheetDeletionSnapshot()
+  const artifacts = snapshot.workbook.metadata?.slicerConnectionArtifacts
+  if (!artifacts) {
+    throw new Error('Expected slicer connection artifacts')
+  }
+  artifacts.sheetArtifacts = [
+    ...(artifacts.sheetArtifacts ?? []),
+    {
+      sheetName: 'Keep',
+      sheetSlicerListExtXml:
+        '<ext uri="{A8765BA9-456A-4DAB-B4F3-ACF838C121DE}"><x14:slicerList><x14:slicer r:id="rIdKeepSlicer"/></x14:slicerList></ext>',
+      relationships: [
+        {
+          id: 'rIdKeepSlicer',
+          type: `${microsoftOfficeRelationshipTypePrefix}/slicer`,
+          target: '../slicers/slicer1.xml',
+        },
+      ],
+    },
+  ]
+  return snapshot
 }
 
 function workbookViewStateSheetReorderSnapshot(): WorkbookSnapshot {

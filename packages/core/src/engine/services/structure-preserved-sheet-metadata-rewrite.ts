@@ -21,6 +21,7 @@ const workbookViewElementPattern = /<((?:[A-Za-z_][\w.-]*:)?workbookView)\b[^>]*
 const slicerRelationshipType = 'http://schemas.microsoft.com/office/2007/relationships/slicer'
 type WorkbookViewIndexAttribute = 'activeTab' | 'firstSheet'
 type WorkbookSlicerConnectionArtifactsRecord = NonNullable<WorkbookPreservedMetadataRecord['slicerConnectionArtifacts']>
+type WorkbookSlicerConnectionSheetArtifactRecord = NonNullable<WorkbookSlicerConnectionArtifactsRecord['sheetArtifacts']>[number]
 
 export function rewritePreservedSheetMetadataForStructuralTransform(
   metadata: WorkbookPreservedSheetMetadataRecord | undefined,
@@ -417,17 +418,16 @@ function rewriteSlicerConnectionArtifactsForSheetDeletion(
     return artifacts
   }
 
-  const deletedSlicerPartPaths = new Set(
-    sourceSheetArtifacts
-      .filter((entry) => entry.sheetName === deletedSheetName)
-      .flatMap((entry) => entry.relationships ?? [])
-      .filter((relationship) => relationship.type === slicerRelationshipType)
-      .map((relationship) => normalizePackagePath(resolvePackageRelationshipTarget('xl/worksheets/sheet1.xml', relationship.target))),
+  const deletedSlicerPartPaths = slicerPartPathsReferencedBySheetArtifacts(
+    sourceSheetArtifacts.filter((entry) => entry.sheetName === deletedSheetName),
   )
+  const remainingSlicerPartPaths = slicerPartPathsReferencedBySheetArtifacts(remainingSheetArtifacts)
   const removedPartPaths = new Set<string>()
   const parts = artifacts.parts.filter((part) => {
     const path = normalizePackagePath(part.path)
-    const shouldRemove = deletedSlicerPartPaths.has(path) || deletedSlicerPartPaths.has(packagePartPathFromRelationshipPartPath(path))
+    const slicerPartPath = packagePartPathFromRelationshipPartPath(path)
+    const shouldRemove =
+      (deletedSlicerPartPaths.has(path) || deletedSlicerPartPaths.has(slicerPartPath)) && !remainingSlicerPartPaths.has(slicerPartPath)
     if (shouldRemove) {
       removedPartPaths.add(path)
       return false
@@ -448,6 +448,15 @@ function rewriteSlicerConnectionArtifactsForSheetDeletion(
   }
 
   return hasSlicerConnectionArtifacts(next) ? next : undefined
+}
+
+function slicerPartPathsReferencedBySheetArtifacts(sheetArtifacts: readonly WorkbookSlicerConnectionSheetArtifactRecord[]): Set<string> {
+  return new Set(
+    sheetArtifacts
+      .flatMap((entry) => entry.relationships ?? [])
+      .filter((relationship) => relationship.type === slicerRelationshipType)
+      .map((relationship) => normalizePackagePath(resolvePackageRelationshipTarget('xl/worksheets/sheet1.xml', relationship.target))),
+  )
 }
 
 function hasSlicerConnectionArtifacts(artifacts: WorkbookSlicerConnectionArtifactsRecord): boolean {
