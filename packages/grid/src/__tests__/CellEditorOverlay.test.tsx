@@ -149,9 +149,9 @@ describe('CellEditorOverlay', () => {
     expect(textarea?.getAttribute('class')).toContain('py-[3px]')
     expect(textarea?.getAttribute('class')).toContain('leading-[1.2]')
     expect(workbookNativeTextQualityStyle).toMatchObject({
-      MozOsxFontSmoothing: 'auto',
+      MozOsxFontSmoothing: 'grayscale',
       textRendering: 'auto',
-      WebkitFontSmoothing: 'auto',
+      WebkitFontSmoothing: 'antialiased',
     })
 
     await act(async () => {
