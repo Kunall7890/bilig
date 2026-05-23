@@ -622,7 +622,7 @@ pnpm workpaper:xlsx-corpus:check -- /path/to/xlsx-corpus
   checked-in artifact shows
   [`100/100` comparable WorkPaper mean wins](https://github.com/proompteng/bilig/blob/main/docs/what-workpaper-benchmark-proves.md)
   and `100/100` mean+p95 wins; the current worst p95 row is
-  `sheet-rename-dependencies` at `0.826x`.
+  `lookup-approximate-sorted-after-column-write` at `0.929x`.
 - The shareable benchmark card is generated from the checked-in artifact:
   [`workpaper-benchmark-card.png`](https://github.com/proompteng/bilig/blob/main/docs/assets/workpaper-benchmark-card.png).
 - Read the

@@ -155,6 +155,69 @@ function keyForFormulaFamily(args: FormulaFamilyKey): string {
   return `${args.sheetId}\t${args.templateId}\t${args.shapeKey}`
 }
 
+function hasConflictingFreshUniformRunCandidate(
+  family: MutableFormulaFamily,
+  row: number,
+  col: number,
+  appendRun: MutableFormulaFamilyMemberRun,
+): boolean {
+  const rowRuns = family.rowRunsByFixedIndex.get(col)
+  if (rowRuns?.some((run) => run !== appendRun)) {
+    return true
+  }
+  const columnRuns = family.columnRunsByFixedIndex.get(row)
+  if (columnRuns?.some((run) => run !== appendRun)) {
+    return true
+  }
+  const singletonRuns = family.singletonRunsByRow.get(row)
+  return singletonRuns?.some((run) => run !== appendRun) ?? false
+}
+
+function findFreshUniformAppendRun(
+  family: MutableFormulaFamily,
+  args: FormulaFamilyFreshUniformRunRegistrationArgs,
+  end: number,
+  step: number,
+): MutableFormulaFamilyMemberRun | undefined {
+  const targetRuns =
+    args.axis === 'row' ? family.rowRunsByFixedIndex.get(args.fixedIndex) : family.columnRunsByFixedIndex.get(args.fixedIndex)
+  let appendRun: MutableFormulaFamilyMemberRun | undefined
+  let appendRunCount = 0
+  targetRuns?.forEach((run) => {
+    if (run.axis !== args.axis || run.fixedIndex !== args.fixedIndex || run.step !== step) {
+      return
+    }
+    if (args.start !== run.end + step && end !== run.start - step) {
+      return
+    }
+    appendRun = run
+    appendRunCount += 1
+  })
+  return appendRunCount === 1 ? appendRun : undefined
+}
+
+function appendFreshUniformRunCellIndices(run: MutableFormulaFamilyMemberRun, cellIndices: readonly number[], prepend: boolean): void {
+  const previousCellIndices = run.cellIndices
+  const nextCellIndices: number[] = []
+  nextCellIndices.length = previousCellIndices.length + cellIndices.length
+  if (prepend) {
+    for (let index = 0; index < cellIndices.length; index += 1) {
+      nextCellIndices[index] = cellIndices[index]!
+    }
+    for (let index = 0; index < previousCellIndices.length; index += 1) {
+      nextCellIndices[cellIndices.length + index] = previousCellIndices[index]!
+    }
+  } else {
+    for (let index = 0; index < previousCellIndices.length; index += 1) {
+      nextCellIndices[index] = previousCellIndices[index]!
+    }
+    for (let index = 0; index < cellIndices.length; index += 1) {
+      nextCellIndices[previousCellIndices.length + index] = cellIndices[index]!
+    }
+  }
+  run.cellIndices = nextCellIndices
+}
+
 export function createFormulaFamilyStore(): FormulaFamilyStore {
   const familiesById = new Map<FormulaFamilyId, MutableFormulaFamily>()
   const familyIdByKey = new Map<string, FormulaFamilyId>()
@@ -483,13 +546,51 @@ export function createFormulaFamilyStore(): FormulaFamilyStore {
     return true
   }
 
+  const tryAppendFreshUniformRun = (
+    family: MutableFormulaFamily,
+    args: FormulaFamilyFreshUniformRunRegistrationArgs,
+    cellIndices: readonly number[],
+    step: number,
+  ): boolean => {
+    const end = args.start + step * (cellIndices.length - 1)
+    const appendRun = findFreshUniformAppendRun(family, args, end, step)
+    if (!appendRun) {
+      return false
+    }
+    for (let index = 0; index < cellIndices.length; index += 1) {
+      const variableIndex = args.start + step * index
+      const row = args.axis === 'row' ? variableIndex : args.fixedIndex
+      const col = args.axis === 'row' ? args.fixedIndex : variableIndex
+      if (hasConflictingFreshUniformRunCandidate(family, row, col, appendRun)) {
+        return false
+      }
+    }
+    if (appendRun.cellIndices.length === 1) {
+      removeMapArrayValue(family.singletonRunsByRow, runRowStart(appendRun), appendRun)
+    }
+    const prepend = end < appendRun.start
+    appendFreshUniformRunCellIndices(appendRun, cellIndices, prepend)
+    if (prepend) {
+      appendRun.start = args.start
+    } else {
+      appendRun.end = end
+    }
+    for (let index = 0; index < cellIndices.length; index += 1) {
+      const cellIndex = cellIndices[index]!
+      const variableIndex = args.start + step * index
+      const row = args.axis === 'row' ? variableIndex : args.fixedIndex
+      const col = args.axis === 'row' ? args.fixedIndex : variableIndex
+      recordFormulaMemberAt(args, cellIndex, row, col)
+      membershipFamilyIds[cellIndex] = family.id
+      membershipRunIds[cellIndex] = appendRun.id
+    }
+    family.recentAppendRun = appendRun
+    return true
+  }
+
   const registerFreshUniformRun = (args: FormulaFamilyFreshUniformRunRegistrationArgs): boolean => {
     const runLength = args.cellIndices.length
     if (runLength === 0 || (runLength > 1 && args.step <= 0)) {
-      return false
-    }
-    const existingFamily = getExistingFamily(args)
-    if (existingFamily && existingFamily.runs.length > 0) {
       return false
     }
     const cellIndices: number[] = []
@@ -501,8 +602,12 @@ export function createFormulaFamilyStore(): FormulaFamilyStore {
       }
       cellIndices[index] = cellIndex
     }
-    const family = existingFamily ?? getOrCreateFamily(args)
     const step = runLength === 1 ? 1 : args.step
+    const existingFamily = getExistingFamily(args)
+    if (existingFamily && existingFamily.runs.length > 0) {
+      return tryAppendFreshUniformRun(existingFamily, args, cellIndices, step)
+    }
+    const family = existingFamily ?? getOrCreateFamily(args)
     const run: MutableFormulaFamilyMemberRun = {
       id: nextRunId++,
       axis: args.axis,

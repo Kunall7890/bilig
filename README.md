@@ -554,7 +554,7 @@ seven file-backed WorkPaper tools:
 - Run `pnpm workpaper:bench:competitive:check`. The checked-in artifact shows
   [`100/100` comparable WorkPaper mean wins](docs/what-workpaper-benchmark-proves.md)
   and `100/100` mean+p95 wins; the current worst p95 row is
-  `sheet-rename-dependencies` at `0.826x`.
+  `lookup-approximate-sorted-after-column-write` at `0.929x`.
 - The benchmark card is generated from that artifact:
   [`docs/assets/workpaper-benchmark-card.png`](docs/assets/workpaper-benchmark-card.png).
 - Read the [compatibility limits](docs/where-bilig-is-not-excel-compatible-yet.md)

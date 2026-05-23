@@ -18,7 +18,7 @@
   "sourceArtifacts": {
     "primaryCompetitiveBenchmark": {
       "comparisonTarget": "HyperFormula",
-      "generatedAt": "2026-05-23T01:31:32.365Z",
+      "generatedAt": "2026-05-23T02:55:18.474Z",
       "hyperFormulaCommit": "9a510a2acb97c3d3490f9e3b9e961a1c4a98b9ad",
       "hyperFormulaVersion": "3.2.0",
       "path": "packages/benchmarks/baselines/workpaper-vs-hyperformula.json"
@@ -91,12 +91,12 @@
     ],
     "excludedFamilies": ["config-toggle", "dynamic-array"],
     "meanAndP95WinCount": 100,
-    "meanGeomeanRatio": 0.26812523367463204,
+    "meanGeomeanRatio": 0.26046643853394114,
     "meanWinCount": 100,
-    "p95GeomeanRatio": 0.28434890428904197,
+    "p95GeomeanRatio": 0.2757210371737924,
     "p95Holdouts": [],
     "p95WinCount": 100,
-    "tenXMeanAndP95WorkloadCountAgainstHyperFormula": 6,
+    "tenXMeanAndP95WorkloadCountAgainstHyperFormula": 8,
     "limitedComparisonEngines": [
       {
         "comparableWorkloadCount": 7,
@@ -111,10 +111,10 @@
     ],
     "workbookWideComparisonEngineCount": 1,
     "workbookWideComparisonEngines": ["HyperFormula"],
-    "worstMeanRatio": 0.7739971160429691,
+    "worstMeanRatio": 0.8462291546806624,
     "worstMeanRatioWorkload": "sheet-rename-dependencies",
-    "worstP95Ratio": 0.8258289847589969,
-    "worstP95RatioWorkload": "sheet-rename-dependencies"
+    "worstP95Ratio": 0.9291607336587918,
+    "worstP95RatioWorkload": "lookup-approximate-sorted-after-column-write"
   },
   "completionAudit": {
     "allCriteriaPassed": false,
@@ -122,7 +122,7 @@
       {
         "evidence": [
           "primary artifact: packages/benchmarks/baselines/workpaper-vs-hyperformula.json",
-          "generated at: 2026-05-23T01:31:32.365Z",
+          "generated at: 2026-05-23T02:55:18.474Z",
           "check command: pnpm headless:performance:check",
           "timing refresh command: pnpm workpaper:bench:competitive:generate"
         ],
@@ -163,11 +163,11 @@
       },
       {
         "evidence": [
-          "mean geomean ratio: 0.26812523367463204",
-          "p95 geomean ratio: 0.28434890428904197",
-          "worst mean row: sheet-rename-dependencies (0.7739971160429691)",
-          "worst p95 row: sheet-rename-dependencies (0.8258289847589969)",
-          "10x mean+p95 workloads against HyperFormula: 6"
+          "mean geomean ratio: 0.26046643853394114",
+          "p95 geomean ratio: 0.2757210371737924",
+          "worst mean row: sheet-rename-dependencies (0.8462291546806624)",
+          "worst p95 row: lookup-approximate-sorted-after-column-write (0.9291607336587918)",
+          "10x mean+p95 workloads against HyperFormula: 8"
         ],
         "gaps": [],
         "id": "multiple-reporting-integrity",

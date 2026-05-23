@@ -76,7 +76,7 @@ The checked benchmark artifact currently says Bilig wins `100/100` comparable
 workloads on mean latency against the HyperFormula-style baseline. It wins
 `100/100` on both mean and p95.
 
-The worst p95 row is not hidden: `sheet-rename-dependencies` is the current worst p95 row at `0.826x`.
+The worst p95 row is not hidden: `lookup-approximate-sorted-after-column-write` is the current worst p95 row at `0.929x`.
 Browser grid rendering is not part of this benchmark.
 
 Read the benchmark note:

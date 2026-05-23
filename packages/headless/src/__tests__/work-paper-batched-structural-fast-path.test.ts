@@ -31,6 +31,7 @@ interface TestEngineCellMutationApplySupport {
 }
 
 interface TestFormulaFamilyStore {
+  registerFreshUniformRun(...args: unknown[]): unknown
   registerFormulaRun(...args: unknown[]): unknown
   upsertFormula(...args: unknown[]): unknown
 }
@@ -95,6 +96,7 @@ function hasFormulaFamilyStore(value: unknown): value is TestFormulaFamilyStore 
   return (
     typeof value === 'object' &&
     value !== null &&
+    typeof Reflect.get(value, 'registerFreshUniformRun') === 'function' &&
     typeof Reflect.get(value, 'registerFormulaRun') === 'function' &&
     typeof Reflect.get(value, 'upsertFormula') === 'function'
   )
@@ -307,6 +309,7 @@ describe('work paper batched structural fast path', () => {
     expect(binding.getFormulaFamilyStatsNow()).toEqual({ familyCount: 1, runCount: 1, memberCount: 2 })
     const formulaInstanceBulkUpsert = vi.spyOn(binding, 'upsertFreshFormulaInstancesNow')
     const formulaFamilies = getCoreFormulaFamilyStore(workbook)
+    const freshFormulaFamilyRunRegistration = vi.spyOn(formulaFamilies, 'registerFreshUniformRun')
     const formulaFamilyRunRegistration = vi.spyOn(formulaFamilies, 'registerFormulaRun')
     const perFormulaFamilyRegistration = vi.spyOn(formulaFamilies, 'upsertFormula')
     const dimensionUpdates = trackSheetDimensionCacheUpdates(workbook)
@@ -348,7 +351,8 @@ describe('work paper batched structural fast path', () => {
       expect(singleIdentityAttach).not.toHaveBeenCalled()
       expect(denseGridAttach).toHaveBeenCalledWith(2, 0, appendCount, 3, expect.any(Number))
       expect(rowMajorSetter).not.toHaveBeenCalled()
-      expect(formulaFamilyRunRegistration).toHaveBeenCalledTimes(1)
+      expect(freshFormulaFamilyRunRegistration).toHaveBeenCalledTimes(1)
+      expect(formulaFamilyRunRegistration).not.toHaveBeenCalled()
       expect(perFormulaFamilyRegistration).not.toHaveBeenCalled()
       expect(formulaInstanceBulkUpsert).toHaveBeenCalledTimes(1)
       expect(formulaInstanceBulkUpsert.mock.calls[0]?.[0]).toHaveLength(appendCount)
@@ -370,6 +374,7 @@ describe('work paper batched structural fast path', () => {
       denseGridAttach.mockRestore()
       rowMajorSetter.mockRestore()
       formulaInstanceBulkUpsert.mockRestore()
+      freshFormulaFamilyRunRegistration.mockRestore()
       formulaFamilyRunRegistration.mockRestore()
       perFormulaFamilyRegistration.mockRestore()
       dimensionUpdates.restore()
@@ -443,6 +448,7 @@ describe('work paper batched structural fast path', () => {
     expect(binding.getFormulaFamilyStatsNow()).toEqual({ familyCount: 1, runCount: 1, memberCount: 2 })
     const formulaInstanceBulkUpsert = vi.spyOn(binding, 'upsertFreshFormulaInstancesNow')
     const formulaFamilies = getCoreFormulaFamilyStore(workbook)
+    const freshFormulaFamilyRunRegistration = vi.spyOn(formulaFamilies, 'registerFreshUniformRun')
     const formulaFamilyRunRegistration = vi.spyOn(formulaFamilies, 'registerFormulaRun')
     const perFormulaFamilyRegistration = vi.spyOn(formulaFamilies, 'upsertFormula')
     const dimensionUpdates = trackSheetDimensionCacheUpdates(workbook)
@@ -468,7 +474,8 @@ describe('work paper batched structural fast path', () => {
       expect(singleIdentityAttach).not.toHaveBeenCalled()
       expect(denseGridAttach).toHaveBeenCalledWith(2, 0, appendCount, 3, expect.any(Number))
       expect(rowMajorSetter).not.toHaveBeenCalled()
-      expect(formulaFamilyRunRegistration).toHaveBeenCalledTimes(1)
+      expect(freshFormulaFamilyRunRegistration).toHaveBeenCalledTimes(1)
+      expect(formulaFamilyRunRegistration).not.toHaveBeenCalled()
       expect(perFormulaFamilyRegistration).not.toHaveBeenCalled()
       expect(formulaInstanceBulkUpsert).toHaveBeenCalledTimes(1)
       expect(formulaInstanceBulkUpsert.mock.calls[0]?.[0]).toHaveLength(appendCount)
@@ -508,6 +515,7 @@ describe('work paper batched structural fast path', () => {
       denseGridAttach.mockRestore()
       rowMajorSetter.mockRestore()
       formulaInstanceBulkUpsert.mockRestore()
+      freshFormulaFamilyRunRegistration.mockRestore()
       formulaFamilyRunRegistration.mockRestore()
       perFormulaFamilyRegistration.mockRestore()
       dimensionUpdates.restore()

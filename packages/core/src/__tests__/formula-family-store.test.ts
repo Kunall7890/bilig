@@ -135,6 +135,87 @@ describe('FormulaFamilyStore', () => {
     ])
   })
 
+  it('appends fresh uniform row runs directly from cell indices', () => {
+    const store = createFormulaFamilyStore()
+
+    const firstRegistered = store.registerFreshUniformRun({
+      sheetId: 1,
+      templateId: 13,
+      shapeKey: 'fresh-direct-uniform-run',
+      axis: 'row',
+      fixedIndex: 5,
+      start: 2,
+      step: 2,
+      cellIndices: Uint32Array.from([300, 301, 302, 303]),
+    })
+    const secondRegistered = store.registerFreshUniformRun({
+      sheetId: 1,
+      templateId: 13,
+      shapeKey: 'fresh-direct-uniform-run',
+      axis: 'row',
+      fixedIndex: 5,
+      start: 10,
+      step: 2,
+      cellIndices: Uint32Array.from([304, 305]),
+    })
+
+    expect(firstRegistered).toBe(true)
+    expect(secondRegistered).toBe(true)
+    expect(store.getStats()).toEqual({ familyCount: 1, runCount: 1, memberCount: 6 })
+    expect(store.getMembership(300)).toEqual(store.getMembership(305))
+    expect(store.listFamilies()[0]?.runs).toEqual([
+      expect.objectContaining({
+        axis: 'row',
+        fixedIndex: 5,
+        start: 2,
+        end: 12,
+        step: 2,
+        cellIndices: [300, 301, 302, 303, 304, 305],
+      }),
+    ])
+  })
+
+  it('rejects direct fresh uniform appends that cross another family run', () => {
+    const store = createFormulaFamilyStore()
+
+    expect(
+      store.registerFreshUniformRun({
+        sheetId: 1,
+        templateId: 13,
+        shapeKey: 'fresh-direct-uniform-run',
+        axis: 'row',
+        fixedIndex: 5,
+        start: 0,
+        step: 1,
+        cellIndices: Uint32Array.from([340, 341]),
+      }),
+    ).toBe(true)
+    store.registerFormulaRun({
+      sheetId: 1,
+      templateId: 13,
+      shapeKey: 'fresh-direct-uniform-run',
+      members: [
+        { cellIndex: 350, row: 2, col: 7 },
+        { cellIndex: 351, row: 2, col: 8 },
+      ],
+    })
+
+    const registered = store.registerFreshUniformRun({
+      sheetId: 1,
+      templateId: 13,
+      shapeKey: 'fresh-direct-uniform-run',
+      axis: 'row',
+      fixedIndex: 5,
+      start: 2,
+      step: 1,
+      cellIndices: Uint32Array.from([342]),
+    })
+
+    expect(registered).toBe(false)
+    expect(store.getMembership(342)).toBeUndefined()
+    expect(store.getStats()).toEqual({ familyCount: 1, runCount: 2, memberCount: 4 })
+  })
+
   it('registers fresh uniform runs with a single pass over caller cell indices', () => {
     const store = createFormulaFamilyStore()
     const sourceCellIndices = [320, 321, 322, 323]
