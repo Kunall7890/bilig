@@ -72,6 +72,8 @@ export class WorkbookSheetRegistryStore {
     delete sheet.arrayFormulas
     delete sheet.dataTableFormulas
     delete sheet.ignoredErrors
+    delete sheet.printPageSetup
+    delete sheet.printerSettings
     delete sheet.sparklines
     this.options.sheetsByName.delete(name)
     this.options.sheetsById.delete(sheet.id)

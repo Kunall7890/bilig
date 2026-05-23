@@ -23,6 +23,7 @@ import { rewriteFormulaSourceForDeletedStructuredReferences } from './structure-
 import { chartGeometryFromAnchor, rewriteChartAnchorForStructuralTransform } from './structure-chart-anchor-metadata-rewrite.js'
 import { rewriteThreadedCommentArtifactsForStructuralTransform } from './structure-threaded-comment-artifact-rewrite.js'
 import { rewriteIgnoredErrorsForStructuralTransform } from './structure-ignored-errors-metadata-rewrite.js'
+import { rewritePrintPageSetupForStructuralTransform } from './structure-print-page-setup-metadata-rewrite.js'
 import {
   rewriteSparklineFormulaRefsForStructuralTransform,
   rewriteSparklinesForStructuralTransform,
@@ -502,6 +503,14 @@ export function rewriteWorkbookMetadataForStructuralTransform(
       sheet.ignoredErrors = ignoredErrors
     } else {
       delete sheet.ignoredErrors
+    }
+  }
+  if (sheet?.printPageSetup) {
+    const printPageSetup = rewritePrintPageSetupForStructuralTransform(sheet.printPageSetup, transform)
+    if (printPageSetup) {
+      sheet.printPageSetup = printPageSetup
+    } else {
+      delete sheet.printPageSetup
     }
   }
   if (sheet?.sparklines) {

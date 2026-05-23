@@ -179,6 +179,18 @@ function restoreSheetMetadata(args: { readonly workbook: WorkbookStore; readonly
       targetSheet.ignoredErrors = structuredClone(sheet.metadata.ignoredErrors)
     }
   }
+  if (sheet.metadata?.printPageSetup) {
+    const targetSheet = workbook.getSheet(sheet.name)
+    if (targetSheet) {
+      targetSheet.printPageSetup = structuredClone(sheet.metadata.printPageSetup)
+    }
+  }
+  if (sheet.metadata?.printerSettings && sheet.metadata.printerSettings.length > 0) {
+    const targetSheet = workbook.getSheet(sheet.name)
+    if (targetSheet) {
+      targetSheet.printerSettings = structuredClone(sheet.metadata.printerSettings)
+    }
+  }
   if (sheet.metadata?.sparklines) {
     const targetSheet = workbook.getSheet(sheet.name)
     if (targetSheet) {

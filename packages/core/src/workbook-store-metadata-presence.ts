@@ -34,6 +34,7 @@ export function hasStructuralMetadataForSheetRecord(
     (sheet?.arrayFormulas?.formulas.length ?? 0) > 0 ||
     (sheet?.dataTableFormulas?.formulas.length ?? 0) > 0 ||
     sheet?.ignoredErrors !== undefined ||
+    sheet?.printPageSetup !== undefined ||
     sheet?.sparklines !== undefined ||
     (sheet?.styleRanges.length ?? 0) > 0 ||
     (sheet?.formatRanges.length ?? 0) > 0

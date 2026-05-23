@@ -175,6 +175,8 @@ export function exportSheetMetadata(workbook: WorkbookStore, sheetName: string):
   const arrayFormulas = arrayFormulasToSnapshot(sheet?.arrayFormulas)
   const dataTableFormulas = dataTableFormulasToSnapshot(sheet?.dataTableFormulas)
   const ignoredErrors = sheet?.ignoredErrors ? { xml: sheet.ignoredErrors.xml } : undefined
+  const printPageSetup = sheet?.printPageSetup ? structuredClone(sheet.printPageSetup) : undefined
+  const printerSettings = sheet?.printerSettings ? structuredClone(sheet.printerSettings) : undefined
   const sparklines = sparklinesToSnapshot(sheet?.sparklines)
 
   if (
@@ -205,6 +207,8 @@ export function exportSheetMetadata(workbook: WorkbookStore, sheetName: string):
     arrayFormulas === undefined &&
     dataTableFormulas === undefined &&
     ignoredErrors === undefined &&
+    printPageSetup === undefined &&
+    printerSettings === undefined &&
     sparklines === undefined
   ) {
     return undefined
@@ -306,6 +310,12 @@ export function exportSheetMetadata(workbook: WorkbookStore, sheetName: string):
   }
   if (ignoredErrors) {
     metadata.ignoredErrors = ignoredErrors
+  }
+  if (printPageSetup) {
+    metadata.printPageSetup = printPageSetup
+  }
+  if (printerSettings) {
+    metadata.printerSettings = printerSettings
   }
   if (sparklines) {
     metadata.sparklines = sparklines
