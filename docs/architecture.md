@@ -70,6 +70,8 @@ flowchart LR
   - generic check verifier handoff for runtime-owned invariants
   - own-field-only runtime proof validation for adapter apply results, undo
     refs, runtime errors, and check verifier output
+  - accessor-free runtime preview ops, applied ops, undo ops, runtime errors,
+    and verifier proof before cloning or preview/apply comparison
   - own-field-only feature receipt changed-range validation
   - accessor-free feature receipt ops, undo ops, ranges, and errors before
     freezing or runtime proof comparison

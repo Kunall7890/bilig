@@ -734,9 +734,6 @@ function firstAccessorPath(value: unknown, path: string, seen = new WeakSet<obje
   }
   seen.add(value)
   for (const [key, descriptor] of Object.entries(Object.getOwnPropertyDescriptors(value))) {
-    if (!descriptor.enumerable) {
-      continue
-    }
     const childPath = Array.isArray(value) && /^\d+$/.test(key) ? `${path}[${key}]` : `${path}.${key}`
     if (!('value' in descriptor)) {
       return childPath

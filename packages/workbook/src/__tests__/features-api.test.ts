@@ -608,6 +608,42 @@ describe('@bilig/workbook feature api', () => {
     expect(getterInvoked).toBe(false)
   })
 
+  it('rejects non-enumerable accessor-backed command receipt ops before op guards read them', () => {
+    const previewOp = {
+      sheetName: 'Sheet1',
+      address: 'A1',
+      value: 1,
+    }
+    let getterInvoked = false
+    Object.defineProperty(previewOp, 'kind', {
+      enumerable: false,
+      get() {
+        getterInvoked = true
+        throw new Error('getter must not run')
+      },
+    })
+
+    expect(
+      checkWorkbookCommandReceipt({
+        status: 'applied',
+        featureId: 'tables',
+        commandId: 'tables.createFromSelection',
+        category: 'command',
+        previewOps: [previewOp],
+      }),
+    ).toEqual({
+      status: 'invalid',
+      issues: [
+        {
+          code: 'invalid_command_receipt',
+          path: 'previewOps[0].kind',
+          message: 'Workbook command receipt preview ops must contain only data properties',
+        },
+      ],
+    })
+    expect(getterInvoked).toBe(false)
+  })
+
   it('compares command receipt ops without invoking accessor-backed proof data', () => {
     const previewOp = {
       kind: 'setCellValue',

@@ -124,7 +124,10 @@ Runtimes execute plans. `@bilig/workbook` only defines the handoff.
 
 Adapter-returned apply results, undo refs, apply errors, and check verifier
 output are accepted from own payload fields only. Prototype-inherited fields do
-not satisfy runtime proof.
+not satisfy runtime proof. Adapter-returned op arrays and verifier proof must be
+plain data properties; accessor-backed fields are rejected before cloning or
+preview/apply comparison, including non-enumerable fields that op guards would
+otherwise read directly.
 
 When `previewOps` and `appliedOps` are both present, `runWorkbookPlan` reports
 whether runtime apply matched preview. When they are missing, the result reports
@@ -568,7 +571,9 @@ required and the adapter omits preview or applied ops, the run can still finish
 but reports an `unverified` apply fact instead of pretending preview/apply match
 was proven.
 Apply result fields, nested runtime errors, and undo metadata are sanitized from
-own fields before they reach `WorkbookRunResult`.
+own fields before they reach `WorkbookRunResult`. Accessor-backed preview ops,
+applied ops, undo ops, runtime errors, and verifier proof are rejected without
+invoking getters.
 If an adapter returns `status: "failed"` with `appliedOps` or `undo`, the failed
 run preserves the planned change summaries and undo ref because the runtime is
 signaling that mutation evidence exists even though the apply step rejected the

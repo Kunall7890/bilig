@@ -160,6 +160,51 @@ describe('@bilig/workbook run proof boundary', () => {
     })
   })
 
+  it('rejects accessor-backed apply ops without invoking getters', async () => {
+    const model = valueModel()
+    const previewOp = {
+      sheetName: 'Sheet1',
+      address: 'B2',
+      value: 12,
+    }
+    let getterInvoked = false
+    Object.defineProperty(previewOp, 'kind', {
+      enumerable: false,
+      get() {
+        getterInvoked = true
+        throw new Error('getter must not run')
+      },
+    })
+
+    const result = await runWorkbookAction(model, 'write', {
+      apply: () => ({
+        status: 'applied',
+        // @ts-expect-error exercising JS adapters that bypass the op type
+        previewOps: [previewOp],
+      }),
+      read: (targets) => [{ target: first(targets), value: 12 }],
+    })
+
+    expect(result).toEqual({
+      status: 'failed',
+      errors: [
+        {
+          code: 'runtime_rejected',
+          message: 'Workbook action run-value-model.write returned invalid preview ops',
+        },
+      ],
+      changed: [],
+      checks: [
+        expect.objectContaining({
+          status: 'planned',
+          kind: 'valueEquals',
+          message: 'Sheet1!B2 equals 12',
+        }),
+      ],
+    })
+    expect(getterInvoked).toBe(false)
+  })
+
   it('allows generic check verifiers to add JSON-safe proof', async () => {
     const model = proofModel()
     const proof = {
@@ -219,6 +264,42 @@ describe('@bilig/workbook run proof boundary', () => {
       changed: [],
       checks: [expect.objectContaining({ status: 'planned', kind: 'exists' })],
     })
+  })
+
+  it('rejects accessor-backed verifier proof without invoking getters', async () => {
+    const model = proofModel()
+    let getterInvoked = false
+
+    const result = await runWorkbookAction(model, 'inspect', {
+      verifyChecks: (checks) =>
+        checks.map((checkResult) => {
+          const verified = {
+            ...checkResult,
+            status: 'passed' as const,
+          }
+          Object.defineProperty(verified, 'proof', {
+            enumerable: true,
+            get() {
+              getterInvoked = true
+              throw new Error('getter must not run')
+            },
+          })
+          return verified
+        }),
+    })
+
+    expect(result).toEqual({
+      status: 'failed',
+      errors: [
+        {
+          code: 'invalid_check_verification',
+          message: 'Check verifier returned invalid proof at index 0: Workbook check result proof must be a data property',
+        },
+      ],
+      changed: [],
+      checks: [expect.objectContaining({ status: 'planned', kind: 'exists' })],
+    })
+    expect(getterInvoked).toBe(false)
   })
 
   it('strips unsupported verifier fields from check results', async () => {
