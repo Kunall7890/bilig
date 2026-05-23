@@ -4,6 +4,24 @@ All notable changes to `@bilig/headless` will be documented in this file.
 
 This package is released as part of the aligned bilig library package set.
 
+## 0.66.0
+
+- Release type: minor
+- Previous libraries tag: libraries-v0.64.0
+- Manual override: no
+
+## Features
+- feat(workbook): validate feature plugins (f625484d)
+- feat(workbook): preserve run error issue paths (3c5e911a)
+
+## Fixes
+- fix(workbook): preserve rich text artifacts (a07c402a)
+- perf(core): defer deleted literal undo capture (ae1586c1)
+
+## Internal runtime changes
+- docs(workpaper): expose agent workflow entrypoints (8f0848a1)
+- chore(release): runtime packages v0.65.0 (580bf991)
+
 ## 0.65.0
 
 - Release type: minor
