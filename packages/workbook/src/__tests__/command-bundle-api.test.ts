@@ -287,6 +287,44 @@ describe('@bilig/workbook command bundle api', () => {
     })
   })
 
+  it('requires touched ranges for scoped destructive commands', () => {
+    expect(
+      checkWorkbookCommandBundle({
+        targetRevision: 1,
+        idempotencyKey: 'agent-run-1',
+        scope: {
+          maxTouchedCells: 10,
+        },
+        commands: [
+          {
+            kind: 'request',
+            destructive: true,
+            request: mutationRequest,
+          },
+          {
+            kind: 'op',
+            destructive: true,
+            op: setCellValueOp,
+          },
+        ],
+      }),
+    ).toEqual({
+      status: 'invalid',
+      issues: [
+        {
+          code: 'missing_touched_ranges',
+          path: 'commands[0].touchedRanges',
+          message: 'Scoped destructive workbook command must declare touchedRanges so scope.maxTouchedCells is enforceable',
+        },
+        {
+          code: 'missing_touched_ranges',
+          path: 'commands[1].touchedRanges',
+          message: 'Scoped destructive workbook command must declare touchedRanges so scope.maxTouchedCells is enforceable',
+        },
+      ],
+    })
+  })
+
   it('normalizes without requiring core runtime execution', () => {
     const bundle = normalizeWorkbookCommandBundle({
       targetRevision: 7,

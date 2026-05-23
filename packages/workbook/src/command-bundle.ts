@@ -54,6 +54,7 @@ export type WorkbookCommandBundleIssueCode =
   | 'unknown_command_kind'
   | 'invalid_command'
   | 'invalid_range'
+  | 'missing_touched_ranges'
   | 'destructive_not_confirmed'
   | 'too_many_touched_cells'
 
@@ -106,7 +107,9 @@ export function checkWorkbookCommandBundle(value: unknown): WorkbookCommandBundl
   pushOptionalStringIssue(issues, ownValue(value, 'id'), 'id', 'bundle id')
   pushTargetRevisionIssue(issues, ownValue(value, 'targetRevision'))
   pushIdempotencyKeyIssue(issues, ownValue(value, 'idempotencyKey'))
-  pushScopeIssues(issues, ownValue(value, 'scope'))
+  const scope = ownValue(value, 'scope')
+  pushScopeIssues(issues, scope)
+  const scopedTouchedRangesRequired = scopeRequiresTouchedRanges(scope)
 
   const commands = ownValue(value, 'commands')
   if (!Array.isArray(commands) || commands.length === 0) {
@@ -118,7 +121,7 @@ export function checkWorkbookCommandBundle(value: unknown): WorkbookCommandBundl
       if (command === undefined) {
         continue
       }
-      pushCommandIssues(issues, command, `commands[${index}]`)
+      pushCommandIssues(issues, command, `commands[${index}]`, scopedTouchedRangesRequired)
     }
   }
 
@@ -168,7 +171,7 @@ export function isWorkbookCommandBundle(value: unknown): value is WorkbookComman
   return checkWorkbookCommandBundle(value).status === 'valid'
 }
 
-function pushCommandIssues(issues: WorkbookCommandBundleIssue[], value: unknown, path: string): void {
+function pushCommandIssues(issues: WorkbookCommandBundleIssue[], value: unknown, path: string, scopedTouchedRangesRequired: boolean): void {
   if (!isRecord(value)) {
     issues.push(commandBundleIssue('invalid_command', path, 'Workbook command bundle command must be an object'))
     return
@@ -192,13 +195,19 @@ function pushCommandIssues(issues: WorkbookCommandBundleIssue[], value: unknown,
   }
 
   if (kind === 'request') {
-    pushRequestCommandIssues(issues, value, path)
+    pushRequestCommandIssues(issues, value, path, touchedRanges, scopedTouchedRangesRequired)
     return
   }
-  pushOpCommandIssues(issues, value, path)
+  pushOpCommandIssues(issues, value, path, touchedRanges, scopedTouchedRangesRequired)
 }
 
-function pushRequestCommandIssues(issues: WorkbookCommandBundleIssue[], value: Record<string, unknown>, path: string): void {
+function pushRequestCommandIssues(
+  issues: WorkbookCommandBundleIssue[],
+  value: Record<string, unknown>,
+  path: string,
+  touchedRanges: unknown,
+  scopedTouchedRangesRequired: boolean,
+): void {
   const request = ownValue(value, 'request')
   const requestCheck = checkWorkbookCommandRequest(request)
   if (requestCheck.status === 'invalid') {
@@ -208,7 +217,8 @@ function pushRequestCommandIssues(issues: WorkbookCommandBundleIssue[], value: R
     return
   }
 
-  if (commandNeedsDestructiveConfirmation(requestCheck.request) && ownValue(value, 'destructive') !== true) {
+  const destructive = commandNeedsDestructiveConfirmation(requestCheck.request)
+  if (destructive && ownValue(value, 'destructive') !== true) {
     issues.push(
       commandBundleIssue(
         'destructive_not_confirmed',
@@ -217,9 +227,18 @@ function pushRequestCommandIssues(issues: WorkbookCommandBundleIssue[], value: R
       ),
     )
   }
+  if (destructive && scopedTouchedRangesRequired) {
+    pushScopedTouchedRangesIssue(issues, touchedRanges, `${path}.touchedRanges`)
+  }
 }
 
-function pushOpCommandIssues(issues: WorkbookCommandBundleIssue[], value: Record<string, unknown>, path: string): void {
+function pushOpCommandIssues(
+  issues: WorkbookCommandBundleIssue[],
+  value: Record<string, unknown>,
+  path: string,
+  touchedRanges: unknown,
+  scopedTouchedRangesRequired: boolean,
+): void {
   if (!isWorkbookOp(ownValue(value, 'op'))) {
     issues.push(commandBundleIssue('invalid_command', `${path}.op`, 'Workbook command bundle op is invalid'))
   }
@@ -232,10 +251,29 @@ function pushOpCommandIssues(issues: WorkbookCommandBundleIssue[], value: Record
       ),
     )
   }
+  if (scopedTouchedRangesRequired) {
+    pushScopedTouchedRangesIssue(issues, touchedRanges, `${path}.touchedRanges`)
+  }
 }
 
 function commandNeedsDestructiveConfirmation(request: WorkbookCommandRequest): boolean {
   return request.category === 'mutation' || request.mode === 'apply' || request.mode === 'applyAndVerify'
+}
+
+function scopeRequiresTouchedRanges(value: unknown): boolean {
+  return isRecord(value) && isSafeNonNegativeInteger(ownValue(value, 'maxTouchedCells'))
+}
+
+function pushScopedTouchedRangesIssue(issues: WorkbookCommandBundleIssue[], value: unknown, path: string): void {
+  if (!Array.isArray(value) || value.length === 0) {
+    issues.push(
+      commandBundleIssue(
+        'missing_touched_ranges',
+        path,
+        'Scoped destructive workbook command must declare touchedRanges so scope.maxTouchedCells is enforceable',
+      ),
+    )
+  }
 }
 
 function pushTouchedRangesIssues(issues: WorkbookCommandBundleIssue[], value: unknown, path: string): void {

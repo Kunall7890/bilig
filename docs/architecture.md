@@ -125,7 +125,8 @@ The following are not current architecture anymore:
 - `@bilig/workbook` runtime proof binds both the whole plan and each planned
   command to the materialized workbook ops before an agent trusts apply results
 - `@bilig/workbook` command bundles are revision-bound, idempotent, ordered,
-  range-scoped, and explicitly destructive before runtime execution
+  range-scoped, explicitly destructive, and require declared touched ranges when
+  a scope cell limit is present before runtime execution
 - app-owned agent command bundles must pass through the generic
   `@bilig/workbook` command-bundle validator before preview/apply execution
 - app-owned agent execution records must carry the validated generic command

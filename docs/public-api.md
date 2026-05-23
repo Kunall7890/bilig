@@ -177,7 +177,8 @@ and UI contributions. The public package still stays data-only.
   before execution. It requires `targetRevision`, `idempotencyKey`, and
   non-empty `commands`; rejects unknown command kinds; canonicalizes declared
   touched ranges; rejects mutation requests and ops unless they set
-  `destructive: true`; rejects bundles over `scope.maxTouchedCells`; and returns
+  `destructive: true`; requires touched ranges for destructive commands when
+  `scope.maxTouchedCells` is present; rejects bundles over that limit; and returns
   a `WorkbookCommandResult` with normalized touched ranges.
 - `normalizeWorkbookCommandBundle(data)` returns the frozen bundle after the
   same validation.

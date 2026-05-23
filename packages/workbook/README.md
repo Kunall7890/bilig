@@ -342,8 +342,9 @@ single ordered set of command requests and low-level ops. A bundle must include
 plain `kind: "request"` or `kind: "op"` data, keeps declared `touchedRanges`
 canonical, and preserves command order after normalization. Mutation requests
 and ops must say `destructive: true`, so broad edits are never implied by a
-generic payload. `scope.maxTouchedCells` lets a caller reject oversized edits
-before execution. The validator returns a `WorkbookCommandResult` with normalized
+generic payload. When `scope.maxTouchedCells` is present, every destructive
+command must also declare `touchedRanges`; otherwise the scope limit would be
+unprovable. The validator returns a `WorkbookCommandResult` with normalized
 touched ranges and touched-cell count without importing `@bilig/core`.
 `@bilig/agent-api` uses this same public handoff to validate its richer
 app-owned `WorkbookAgentCommandBundle` before preview and authoritative apply,
