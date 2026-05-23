@@ -4,6 +4,46 @@ All notable changes to `@bilig/headless` will be documented in this file.
 
 This package is released as part of the aligned bilig library package set.
 
+## 0.62.0
+
+- Release type: minor
+- Previous libraries tag: libraries-v0.59.0
+- Manual override: no
+
+## Features
+- feat(engine): refresh source-backed pivot caches (229ff9e5)
+- feat(engine): preserve imported drawing artifacts (9d9a24e4)
+- feat(workbook): add transport-safe refs (05cdf0f4)
+- feat(charts): preserve Excel drawing anchors (34ca1ac3)
+- feat(comments): preserve threaded comment artifacts (640df570)
+- feat(workbook): expose formula labels in plans (f770ee89)
+- feat(workbook): add feature kernel tables slice (1e7d1ac2)
+- feat(workbook): preserve external link artifacts (b6a2361e)
+- feat(workbook): run transported plan data (137ba1fd)
+- feat(workbook): check action inputs before planning (ff13c823)
+- feat(workbook): preserve sparkline artifacts (5d7f2064)
+- feat(workbook): check runtime adapter capabilities (d00cd647)
+
+## Fixes
+- fix(corpus): keep threaded comment fixture out of parity sweep (46a1a7b7)
+- fix(formula): skip blank keys in approximate lookups (9c95b946)
+- fix(workbook): rewrite prefixed conditional format artifacts (257fde05)
+- fix(formula): build project references (2f476f04)
+- fix(core): build project references (d69a2e22)
+- fix(workbook): honor optional action input metadata (c55399ea)
+
+## Internal runtime changes
+- test(bench): parallelize competitive benchmark generation (942d1782)
+- test(excel): align pivot export cache assertion (d59c936c)
+- chore(release): runtime packages v0.60.0 (8835ff32)
+- refactor(core): split workbook metadata drawing service (377e94a4)
+- refactor(core): split chart anchor metadata rewrite (266825fb)
+- test(excel): expect chart anchors in xlsx roundtrip (ecf549a9)
+- chore(release): runtime packages v0.61.0 (748c3cd8)
+- refactor(core): split metadata artifact service methods (2c6a10d7)
+- refactor(core): split metadata cell record service (a0afa5c0)
+- test(bench): add Univer headless comparison (2ed8ec46)
+
 ## 0.61.0
 
 - Release type: minor
