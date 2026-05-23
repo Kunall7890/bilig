@@ -8,8 +8,6 @@ import {
   cloneDataValidationRecord,
   cloneDefinedNameRecord,
   cloneDefinedNameValue,
-  cloneDrawingArtifactsRecord,
-  cloneExternalLinkArtifactsRecord,
   cloneFilterRecord,
   cloneHyperlinkRecord,
   cloneImageRecord,
@@ -27,7 +25,6 @@ import {
   cloneSheetThreadedCommentArtifactsRecord,
   cloneSpillRecord,
   cloneTableRecord,
-  cloneThreadedCommentArtifactsRecord,
   commentThreadKey,
   conditionalFormatKey,
   dataValidationKey,
@@ -49,15 +46,10 @@ import {
   compareDefinedNameRecords,
   definedNameKey,
   normalizeDefinedNameScope,
-  type WorkbookDrawingArtifactsRecord,
-  type WorkbookExternalLinkArtifactsRecord,
   type WorkbookMacroPayloadRecord,
   type WorkbookMergeRangeRecord,
   type WorkbookNoteRecord,
   type WorkbookRangeProtectionRecord,
-  type WorkbookSheetDrawingArtifactsRecord,
-  type WorkbookSheetLegacyCommentVmlRecord,
-  type WorkbookSheetThreadedCommentArtifactsRecord,
   type WorkbookSheetProtectionRecord,
   pivotKey,
   type WorkbookDataValidationRecord,
@@ -67,7 +59,6 @@ import {
   type WorkbookMetadataRecord,
   type WorkbookPivotRecord,
   type WorkbookSpillRecord,
-  type WorkbookThreadedCommentArtifactsRecord,
 } from './workbook-metadata-types.js'
 import type { WorkbookMetadataService } from './workbook-metadata-service-contract.js'
 import { createWorkbookMetadataDrawingService } from './workbook-metadata-drawing-service.js'
@@ -371,63 +362,6 @@ export function createWorkbookMetadataService(metadata: WorkbookMetadataRecord):
     },
     getVolatileContext() {
       return metadataEffect('Failed to get volatile context', () => ({ ...metadata.volatileContext }))
-    },
-    setDrawingArtifacts(artifacts) {
-      return metadataEffect('Failed to set workbook drawing artifact metadata', () => {
-        const stored: WorkbookDrawingArtifactsRecord = cloneDrawingArtifactsRecord(artifacts)
-        metadata.drawingArtifacts = stored
-        return cloneDrawingArtifactsRecord(stored)
-      })
-    },
-    getDrawingArtifacts() {
-      return metadataEffect('Failed to get workbook drawing artifact metadata', () =>
-        metadata.drawingArtifacts ? cloneDrawingArtifactsRecord(metadata.drawingArtifacts) : undefined,
-      )
-    },
-    clearDrawingArtifacts() {
-      return metadataEffect('Failed to clear workbook drawing artifact metadata', () => {
-        const hadArtifacts = metadata.drawingArtifacts !== undefined
-        metadata.drawingArtifacts = undefined
-        return hadArtifacts
-      })
-    },
-    setExternalLinkArtifacts(artifacts) {
-      return metadataEffect('Failed to set workbook external link artifact metadata', () => {
-        const stored: WorkbookExternalLinkArtifactsRecord = cloneExternalLinkArtifactsRecord(artifacts)
-        metadata.externalLinkArtifacts = stored
-        return cloneExternalLinkArtifactsRecord(stored)
-      })
-    },
-    getExternalLinkArtifacts() {
-      return metadataEffect('Failed to get workbook external link artifact metadata', () =>
-        metadata.externalLinkArtifacts ? cloneExternalLinkArtifactsRecord(metadata.externalLinkArtifacts) : undefined,
-      )
-    },
-    clearExternalLinkArtifacts() {
-      return metadataEffect('Failed to clear workbook external link artifact metadata', () => {
-        const hadArtifacts = metadata.externalLinkArtifacts !== undefined
-        metadata.externalLinkArtifacts = undefined
-        return hadArtifacts
-      })
-    },
-    setThreadedCommentArtifacts(artifacts) {
-      return metadataEffect('Failed to set workbook threaded comment artifact metadata', () => {
-        const stored: WorkbookThreadedCommentArtifactsRecord = cloneThreadedCommentArtifactsRecord(artifacts)
-        metadata.threadedCommentArtifacts = stored
-        return cloneThreadedCommentArtifactsRecord(stored)
-      })
-    },
-    getThreadedCommentArtifacts() {
-      return metadataEffect('Failed to get workbook threaded comment artifact metadata', () =>
-        metadata.threadedCommentArtifacts ? cloneThreadedCommentArtifactsRecord(metadata.threadedCommentArtifacts) : undefined,
-      )
-    },
-    clearThreadedCommentArtifacts() {
-      return metadataEffect('Failed to clear workbook threaded comment artifact metadata', () => {
-        const hadArtifacts = metadata.threadedCommentArtifacts !== undefined
-        metadata.threadedCommentArtifacts = undefined
-        return hadArtifacts
-      })
     },
     setDefinedName(name, value, scopeSheetName) {
       return metadataEffect('Failed to set defined name', () => {
@@ -751,68 +685,6 @@ export function createWorkbookMetadataService(metadata: WorkbookMetadataRecord):
       return metadataEffect('Failed to delete conditional format artifact metadata', () =>
         metadata.conditionalFormatArtifacts.delete(sheetName),
       )
-    },
-    setSheetDrawingArtifacts(sheetName, artifacts) {
-      return metadataEffect('Failed to set sheet drawing artifact metadata', () => {
-        const stored: WorkbookSheetDrawingArtifactsRecord = {
-          sheetName,
-          relationshipTarget: artifacts.relationshipTarget,
-          ...(artifacts.preservedChartRelationshipIds !== undefined
-            ? { preservedChartRelationshipIds: [...artifacts.preservedChartRelationshipIds] }
-            : {}),
-        }
-        metadata.sheetDrawingArtifacts.set(sheetName, stored)
-        return cloneSheetDrawingArtifactsRecord(stored)
-      })
-    },
-    getSheetDrawingArtifacts(sheetName) {
-      return metadataEffect('Failed to get sheet drawing artifact metadata', () => {
-        const record = metadata.sheetDrawingArtifacts.get(sheetName)
-        return record ? cloneSheetDrawingArtifactsRecord(record) : undefined
-      })
-    },
-    deleteSheetDrawingArtifacts(sheetName) {
-      return metadataEffect('Failed to delete sheet drawing artifact metadata', () => metadata.sheetDrawingArtifacts.delete(sheetName))
-    },
-    setSheetThreadedCommentArtifacts(sheetName, artifacts) {
-      return metadataEffect('Failed to set sheet threaded comment artifact metadata', () => {
-        const stored: WorkbookSheetThreadedCommentArtifactsRecord = {
-          sheetName,
-          relationships: structuredClone(artifacts.relationships),
-        }
-        metadata.sheetThreadedCommentArtifacts.set(sheetName, stored)
-        return cloneSheetThreadedCommentArtifactsRecord(stored)
-      })
-    },
-    getSheetThreadedCommentArtifacts(sheetName) {
-      return metadataEffect('Failed to get sheet threaded comment artifact metadata', () => {
-        const record = metadata.sheetThreadedCommentArtifacts.get(sheetName)
-        return record ? cloneSheetThreadedCommentArtifactsRecord(record) : undefined
-      })
-    },
-    deleteSheetThreadedCommentArtifacts(sheetName) {
-      return metadataEffect('Failed to delete sheet threaded comment artifact metadata', () =>
-        metadata.sheetThreadedCommentArtifacts.delete(sheetName),
-      )
-    },
-    setSheetLegacyCommentVml(sheetName, legacyCommentVml) {
-      return metadataEffect('Failed to set legacy comment VML metadata', () => {
-        const stored: WorkbookSheetLegacyCommentVmlRecord = {
-          sheetName,
-          ...structuredClone(legacyCommentVml),
-        }
-        metadata.sheetLegacyCommentVml.set(sheetName, stored)
-        return cloneSheetLegacyCommentVmlRecord(stored)
-      })
-    },
-    getSheetLegacyCommentVml(sheetName) {
-      return metadataEffect('Failed to get legacy comment VML metadata', () => {
-        const record = metadata.sheetLegacyCommentVml.get(sheetName)
-        return record ? cloneSheetLegacyCommentVmlRecord(record) : undefined
-      })
-    },
-    deleteSheetLegacyCommentVml(sheetName) {
-      return metadataEffect('Failed to delete legacy comment VML metadata', () => metadata.sheetLegacyCommentVml.delete(sheetName))
     },
     setRangeProtection(record) {
       return metadataEffect('Failed to set range protection metadata', () => {
