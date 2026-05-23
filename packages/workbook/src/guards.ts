@@ -1,4 +1,4 @@
-import { isCellRangeRef, isLiteralInput } from '@bilig/protocol'
+import { isLiteralInput, type CellRangeRef } from '@bilig/protocol'
 import type { EngineOp, EngineOpBatch, WorkbookOp } from './ops.js'
 
 const HORIZONTAL_ALIGNMENT_VALUES = new Set(['general', 'left', 'center', 'right', 'fill', 'justify', 'centerContinuous', 'distributed'])
@@ -22,7 +22,19 @@ const VALIDATION_COMPARISON_OPERATOR_VALUES = new Set([
 const VALIDATION_ERROR_STYLE_VALUES = new Set(['stop', 'warning', 'information'])
 
 function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === 'object' && value !== null
+  if (typeof value !== 'object' || value === null || Array.isArray(value)) {
+    return false
+  }
+  const prototype = Object.getPrototypeOf(value)
+  return prototype === Object.prototype || prototype === null
+}
+
+function ownValue(value: Record<string, unknown>, key: string): unknown {
+  return Object.getOwnPropertyDescriptor(value, key)?.value
+}
+
+function isCellRangeRef(value: unknown): value is CellRangeRef {
+  return isRecord(value) && hasString(value, 'sheetName') && hasString(value, 'startAddress') && hasString(value, 'endAddress')
 }
 
 function isFiniteNumber(value: unknown): value is number {
@@ -82,19 +94,19 @@ function isOptionalNullableBoolean(value: unknown): value is boolean | null | un
 }
 
 function hasString(value: Record<string, unknown>, key: string): boolean {
-  return typeof value[key] === 'string'
+  return typeof ownValue(value, key) === 'string'
 }
 
 function hasFiniteNumber(value: Record<string, unknown>, key: string): boolean {
-  return isFiniteNumber(value[key])
+  return isFiniteNumber(ownValue(value, key))
 }
 
 function hasSafeNonNegativeInteger(value: Record<string, unknown>, key: string): boolean {
-  return isSafeNonNegativeInteger(value[key])
+  return isSafeNonNegativeInteger(ownValue(value, key))
 }
 
 function hasSafePositiveInteger(value: Record<string, unknown>, key: string): boolean {
-  return isSafePositiveInteger(value[key])
+  return isSafePositiveInteger(ownValue(value, key))
 }
 
 function isWorkbookAxisEntry(value: unknown): boolean {

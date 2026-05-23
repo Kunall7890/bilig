@@ -63,7 +63,7 @@ flowchart LR
   - generic check verifier handoff for runtime-owned invariants
   - own-field-only runtime proof validation for adapter apply results, undo
     refs, runtime errors, and check verifier output
-  - transport-neutral workbook ops and txns
+  - transport-neutral workbook ops and txns with own-field-only public guards
 - `packages/zero-sync`
   - Zero schema
   - query registry

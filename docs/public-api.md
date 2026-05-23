@@ -186,6 +186,9 @@ The preferred path is the small model API. Escape hatches stay explicit:
 Escape hatches do not make the package domain-specific. They keep the public API
 generic while still letting advanced runtimes use the lower-level workbook
 language.
+Low-level op guards accept only plain own-field payloads. Prototype-inherited
+op fields, nested ranges, and batch clocks do not satisfy `isWorkbookOp` or
+`isEngineOpBatch`.
 
 The generic runnable example lives in
 [`examples/workbook-agent-model`](../examples/workbook-agent-model). Domain
@@ -363,6 +366,9 @@ inspect the handoff without pulling in `@bilig/core`. When a `target` is
 supplied for an address or range op, `verifyPlan` checks that the op touches the
 same range. For op kinds without an inferable range, `target` is descriptive for
 logs and approvals rather than proof of affected cells.
+Raw `WorkbookOp` and `EngineOpBatch` guards trust own fields only, including
+nested cell ranges and batch clocks, so a runtime can reject prototype-shaped
+payloads before hydration or execution.
 
 Formula helpers keep referenced workbook inputs and formula labels separate from
 formula text. Planned `writeFormula` commands expose `inputs` plus `labels`,

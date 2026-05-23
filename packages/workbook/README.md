@@ -290,6 +290,9 @@ inside an action.
 The op is guarded with `isWorkbookOp`, cloned into `plan.ops`, and kept in the
 command log. If a target is supplied and the op exposes a concrete range,
 `verifyPlan` checks that the target and op agree.
+Low-level op guards accept plain own-field payloads only. Prototype-inherited
+op fields, nested ranges, and batch clocks are ignored so transported ops cannot
+smuggle proof through object prototypes.
 
 ## Example
 

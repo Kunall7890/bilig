@@ -1,6 +1,12 @@
 import { describe, expect, it } from 'vitest'
 import { isEngineOp, isEngineOpBatch } from '../index.js'
 
+function inheritedRecord(fields: Record<string, unknown>): Record<string, unknown> {
+  const value: Record<string, unknown> = {}
+  Object.setPrototypeOf(value, fields)
+  return value
+}
+
 describe('workbook guards', () => {
   it('accepts engine op batches with valid workbook ops', () => {
     expect(
@@ -269,6 +275,28 @@ describe('workbook guards', () => {
             },
           },
         ],
+      }),
+    ).toBe(false)
+  })
+
+  it('rejects inherited low-level op payload fields', () => {
+    expect(isEngineOp(inheritedRecord({ kind: 'upsertWorkbook', name: 'Book' }))).toBe(false)
+    expect(
+      isEngineOp({
+        kind: 'mergeCells',
+        range: inheritedRecord({
+          sheetName: 'Sheet1',
+          startAddress: 'A1',
+          endAddress: 'B2',
+        }),
+      }),
+    ).toBe(false)
+    expect(
+      isEngineOpBatch({
+        id: 'batch-1',
+        replicaId: 'replica-1',
+        clock: inheritedRecord({ counter: 4 }),
+        ops: [{ kind: 'upsertWorkbook', name: 'Book' }],
       }),
     ).toBe(false)
   })
