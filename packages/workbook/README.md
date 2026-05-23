@@ -144,6 +144,9 @@ Use `toWorkbookRefData` or `describeRef` when a ref must cross a JSON boundary.
 Use `hydrateWorkbookRef` or `hydrateWorkbookRefs` after transport to regain the
 local helpers. `verifyPlanData(describePlan(plan))` checks transported plan data
 without requiring the consumer's private `refs` object shape.
+Ref collection and ref hydration only inspect enumerable own data properties.
+Accessors are ignored instead of invoked, so hidden consumer getters cannot run
+while an agent is planning, verifying, logging, or hydrating workbook intent.
 
 For full action handoff, use `toPlanData(plan)` before JSON transport. A runtime
 can call `checkPlanData(data)` to get structured path-based issues before

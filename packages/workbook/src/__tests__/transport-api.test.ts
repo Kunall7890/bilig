@@ -104,6 +104,31 @@ describe('@bilig/workbook transport api', () => {
     expect(group['table'].column('Amount')).toEqual(table.column('Amount'))
   })
 
+  it('does not execute accessors while collecting or hydrating transported refs', () => {
+    const result = findRange({ sheetName: 'Sheet1', address: 'D2' })
+    const resultData = toWorkbookRefData(result)
+    const transport = {
+      result: resultData,
+    }
+    Object.defineProperty(transport, 'hidden', {
+      enumerable: true,
+      get() {
+        throw new Error('transport accessor should not run')
+      },
+    })
+
+    expect(collectWorkbookRefData(transport)).toEqual([resultData])
+
+    const hydrated = hydrateWorkbookRefs(transport)
+    expect(isRecord(hydrated)).toBe(true)
+    if (!isRecord(hydrated)) {
+      throw new Error('expected hydrated object')
+    }
+    expect(Object.hasOwn(hydrated, 'hidden')).toBe(false)
+    expect(hydrated['result']).toEqual(result)
+    expect(collectWorkbookRefs(hydrated)).toEqual([result])
+  })
+
   it('verifies JSON-safe plan descriptions after transport round-trip', () => {
     const model = defineModel({
       name: 'transport-plan-model',

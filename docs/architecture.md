@@ -29,6 +29,8 @@ flowchart LR
   - phase-scoped find/check/action contexts
   - frozen workbook refs with non-enumerable ergonomic helpers
   - JSON-safe ref data plus hydration helpers for agent/runtime transport
+  - own-data-only ref discovery and hydration, with accessors ignored instead
+    of invoked during planning and transport
   - frozen plan refs containers with `refsUsed` verification
   - transported plan data through `toPlanData`, `hydratePlanData`, and
     `verifyPlanData`

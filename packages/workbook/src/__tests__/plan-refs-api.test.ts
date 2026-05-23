@@ -39,6 +39,46 @@ describe('@bilig/workbook plan refs api', () => {
     expect(plan.refsUsed).toEqual([plan.refs.groups[0]?.table, plan.refs.groups[0]?.amount, plan.refs.result])
   })
 
+  it('does not execute ref container accessors while planning or verifying', () => {
+    type Refs = {
+      readonly result: ReturnType<typeof findRange>
+      readonly hidden?: unknown
+    }
+
+    const model = defineModel({
+      name: 'accessor-refs-model',
+
+      find(workbook): Refs {
+        const refs: Refs = {
+          result: workbook.findRange({ sheetName: 'Sheet1', address: 'D2' }),
+        }
+        Object.defineProperty(refs, 'hidden', {
+          enumerable: true,
+          get() {
+            throw new Error('ref accessor should not run')
+          },
+        })
+        return refs
+      },
+
+      actions: {
+        write({ refs, workbook }) {
+          workbook.writeValue(refs.result, 10)
+        },
+      },
+    })
+
+    const plan = buildWorkbookActionPlan(model, 'write')
+
+    expect(plan.refsUsed).toEqual([plan.refs.result])
+    expect(verifyPlan(plan)).toEqual({
+      status: 'valid',
+      modelName: 'accessor-refs-model',
+      actionName: 'write',
+      issues: [],
+    })
+  })
+
   it('rejects refsUsed entries that are not discoverable from refs', () => {
     const target = findRange({ sheetName: 'Sheet1', address: 'A1' })
     const forged = findRange({ sheetName: 'Sheet1', address: 'Z9' })

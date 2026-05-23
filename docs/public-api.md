@@ -89,6 +89,9 @@ For transport, `toWorkbookRefData` turns any ref into plain data,
 without requiring hidden methods, and `hydrateWorkbookRef` /
 `hydrateWorkbookRefs` restores the ergonomic helpers when local code needs them
 again.
+Ref discovery and ref hydration only inspect enumerable own data properties.
+Accessor properties are ignored instead of invoked, so consumer-defined getters
+cannot run during planning, verification, logging, or transport hydration.
 For full action handoff, `toPlanData(plan)` returns executable JSON-safe plan
 data. Runtimes can call `hydratePlanData(data)`, or pass that data directly to
 `describeRuntimeRequirements(data)` and `runWorkbookPlan(data, adapter)`.

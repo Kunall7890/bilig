@@ -153,6 +153,26 @@ function hasOptionalStringArray(value: object, key: string): boolean {
   return descriptor === undefined || (Array.isArray(descriptor.value) && descriptor.value.every((entry) => typeof entry === 'string'))
 }
 
+function ownEnumerableDataValues(value: object): readonly unknown[] {
+  const values: unknown[] = []
+  Object.values(Object.getOwnPropertyDescriptors(value)).forEach((descriptor) => {
+    if (descriptor.enumerable && 'value' in descriptor) {
+      values.push(descriptor.value)
+    }
+  })
+  return values
+}
+
+function ownEnumerableDataEntries(value: object): readonly (readonly [string, unknown])[] {
+  const entries: [string, unknown][] = []
+  Object.entries(Object.getOwnPropertyDescriptors(value)).forEach(([key, descriptor]) => {
+    if (descriptor.enumerable && 'value' in descriptor) {
+      entries.push([key, descriptor.value])
+    }
+  })
+  return entries
+}
+
 function isCellRangeRef(value: unknown): value is CellRangeRef {
   return (
     typeof value === 'object' &&
@@ -294,7 +314,7 @@ export function collectWorkbookRefs(value: unknown): readonly WorkbookRef[] {
       return
     }
 
-    Object.values(current).forEach(visit)
+    ownEnumerableDataValues(current).forEach(visit)
   }
 
   visit(value)
@@ -406,7 +426,7 @@ export function collectWorkbookRefData(value: unknown): readonly WorkbookRefData
       return
     }
 
-    Object.values(current).forEach(visit)
+    ownEnumerableDataValues(current).forEach(visit)
   }
 
   visit(value)
@@ -850,7 +870,7 @@ function hydrateWorkbookRefsValue(value: unknown, seen: WeakMap<object, unknown>
   }
   const hydrated: Record<string, unknown> = {}
   seen.set(value, hydrated)
-  Object.entries(value).forEach(([key, entry]) => {
+  ownEnumerableDataEntries(value).forEach(([key, entry]) => {
     defineOwnDataProperty(hydrated, key, hydrateWorkbookRefsValue(entry, seen))
   })
   return Object.freeze(hydrated)
