@@ -25,6 +25,7 @@ function runtimeFormulaFixture(): RuntimeFormula {
       transform: { kind: 'insert', axis: 'row', start: 0, count: 1 },
       preservesValue: true,
     },
+    sourceRenameTransform: { oldSheetName: 'Older', newSheetName: 'Newer' },
     sourceRenameTransforms: [{ oldSheetName: 'Old', newSheetName: 'New' }],
     programOffset: 0,
     programLength: 2,
@@ -63,6 +64,7 @@ describe('formula binding runtime update helpers', () => {
       programLength: 3,
       constNumberLength: compiled.constants.length,
       structuralSourceTransform: undefined,
+      sourceRenameTransform: undefined,
       sourceRenameTransforms: undefined,
     })
     expect(formula.runtimeProgram).toBe(runtimeProgram)

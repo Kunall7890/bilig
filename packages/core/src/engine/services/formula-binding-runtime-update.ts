@@ -15,6 +15,7 @@ export interface FormulaRuntimePlanFieldUpdate {
 export function applyFormulaRuntimePlanFields(formula: RuntimeFormula, update: FormulaRuntimePlanFieldUpdate): void {
   formula.source = update.source
   formula.structuralSourceTransform = undefined
+  formula.sourceRenameTransform = undefined
   formula.sourceRenameTransforms = undefined
   delete formula.preserveCachedValueOnFullRecalc
   formula.planId = update.plan.id

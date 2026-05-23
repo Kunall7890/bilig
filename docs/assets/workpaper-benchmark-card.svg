@@ -71,22 +71,22 @@
 
   <g transform="translate(710 196)">
     <rect x="0" y="0" width="462" height="116" rx="18" fill="#ffffff" fill-opacity="0.08" stroke="#36506a"/>
-    <text x="28" y="43" fill="#ffffff" font-family="Inter, Arial, Helvetica, sans-serif" font-size="34" font-weight="840">Mean 0.269x</text>
+    <text x="28" y="43" fill="#ffffff" font-family="Inter, Arial, Helvetica, sans-serif" font-size="34" font-weight="840">Mean 0.27x</text>
     <text x="28" y="82" fill="#7ed894" font-family="Inter, Arial, Helvetica, sans-serif" font-size="24" font-weight="780">73% lower than HyperFormula</text>
   </g>
 
   <g transform="translate(710 340)">
     <rect x="0" y="0" width="462" height="116" rx="18" fill="#ffffff" fill-opacity="0.08" stroke="#36506a"/>
-    <text x="28" y="43" fill="#ffffff" font-family="Inter, Arial, Helvetica, sans-serif" font-size="34" font-weight="840">p95 0.294x</text>
-    <text x="28" y="82" fill="#7ed894" font-family="Inter, Arial, Helvetica, sans-serif" font-size="24" font-weight="780">71% lower geomean lead</text>
+    <text x="28" y="43" fill="#ffffff" font-family="Inter, Arial, Helvetica, sans-serif" font-size="34" font-weight="840">p95 0.296x</text>
+    <text x="28" y="82" fill="#7ed894" font-family="Inter, Arial, Helvetica, sans-serif" font-size="24" font-weight="780">70% lower geomean lead</text>
   </g>
 
   <g transform="translate(710 490)">
     <rect x="0" y="0" width="462" height="92" rx="18" fill="#f4d991" fill-opacity="0.14" stroke="#8a6a23"/>
     <text x="28" y="35" fill="#f3d98b" font-family="Inter, Arial, Helvetica, sans-serif" font-size="22" font-weight="820">Visible caveat</text>
-    <text x="28" y="66" fill="#ffffff" font-family="Inter, Arial, Helvetica, sans-serif" font-size="21" font-weight="650">sheet-rename-dependencies p95: 0.8x</text>
+    <text x="28" y="66" fill="#ffffff" font-family="Inter, Arial, Helvetica, sans-serif" font-size="21" font-weight="650">structural-insert-columns-small p95: 0.843x</text>
   </g>
 
   <text x="64" y="686" fill="#526273" font-family="SFMono-Regular, Menlo, Consolas, monospace" font-size="20">pnpm workpaper:bench:competitive:check</text>
-  <text x="1216" y="686" text-anchor="end" fill="#526273" font-family="Inter, Arial, Helvetica, sans-serif" font-size="18" font-weight="650">artifact 2026-05-22</text>
+  <text x="1216" y="686" text-anchor="end" fill="#526273" font-family="Inter, Arial, Helvetica, sans-serif" font-size="18" font-weight="650">artifact 2026-05-23</text>
 </svg>

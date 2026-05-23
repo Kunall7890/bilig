@@ -8,6 +8,9 @@ import type { RuntimeFormula, RuntimeStructuralFormulaSourceTransform } from './
 
 function getRuntimeFormulaBaseSource(formula: RuntimeFormula): string {
   let source = formula.source
+  if (formula.sourceRenameTransform !== undefined) {
+    source = renameFormulaSheetReferences(source, formula.sourceRenameTransform.oldSheetName, formula.sourceRenameTransform.newSheetName)
+  }
   formula.sourceRenameTransforms?.forEach((transform) => {
     source = renameFormulaSheetReferences(source, transform.oldSheetName, transform.newSheetName)
   })

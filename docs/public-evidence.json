@@ -9,7 +9,7 @@
   },
   "workpaperVsHyperFormula": {
     "artifactPath": "packages/benchmarks/baselines/workpaper-vs-hyperformula.json",
-    "generatedAt": "2026-05-22T23:14:11.130Z",
+    "generatedAt": "2026-05-23T00:18:29.895Z",
     "sampleCount": 200,
     "warmupCount": 2,
     "workpaperPackageVersion": "0.51.5",
@@ -20,36 +20,36 @@
       "comparableCount": 100,
       "workpaperWins": 100,
       "hyperformulaWins": 0,
-      "directionalMeanRatioGeomean": 0.26853658062201924,
-      "directionalP95RatioGeomean": 0.2941666104401811,
-      "worstWorkpaperToHyperFormulaMeanRatio": 0.7965508833595368,
+      "directionalMeanRatioGeomean": 0.2699602925558648,
+      "directionalP95RatioGeomean": 0.2961407199584623,
+      "worstWorkpaperToHyperFormulaMeanRatio": 0.7475629738511365,
       "worstMeanRatioWorkload": "sheet-rename-dependencies",
-      "worstWorkpaperToHyperFormulaP95Ratio": 0.8002421312413311,
-      "worstP95RatioWorkload": "sheet-rename-dependencies"
+      "worstWorkpaperToHyperFormulaP95Ratio": 0.8427873553627998,
+      "worstP95RatioWorkload": "structural-insert-columns-small"
     },
     "publicLane": {
       "lane": "public",
       "comparableCount": 73,
       "workpaperWins": 73,
       "hyperformulaWins": 0,
-      "directionalMeanRatioGeomean": 0.267571176330874,
-      "directionalP95RatioGeomean": 0.2955323748573633,
-      "worstWorkpaperToHyperFormulaMeanRatio": 0.6526319392176277,
-      "worstMeanRatioWorkload": "lookup-approximate-sorted-after-column-write",
-      "worstWorkpaperToHyperFormulaP95Ratio": 0.6888406337391261,
-      "worstP95RatioWorkload": "aggregate-overlapping-sliding-window"
+      "directionalMeanRatioGeomean": 0.2695589200211967,
+      "directionalP95RatioGeomean": 0.2967959017696939,
+      "worstWorkpaperToHyperFormulaMeanRatio": 0.718383971534497,
+      "worstMeanRatioWorkload": "structural-insert-columns-small",
+      "worstWorkpaperToHyperFormulaP95Ratio": 0.8427873553627998,
+      "worstP95RatioWorkload": "structural-insert-columns-small"
     },
     "holdout": {
       "lane": "holdout",
       "comparableCount": 27,
       "workpaperWins": 27,
       "hyperformulaWins": 0,
-      "directionalMeanRatioGeomean": 0.27116422345547064,
-      "directionalP95RatioGeomean": 0.290505507059034,
-      "worstWorkpaperToHyperFormulaMeanRatio": 0.7965508833595368,
+      "directionalMeanRatioGeomean": 0.27104847980777236,
+      "directionalP95RatioGeomean": 0.2943765349367777,
+      "worstWorkpaperToHyperFormulaMeanRatio": 0.7475629738511365,
       "worstMeanRatioWorkload": "sheet-rename-dependencies",
-      "worstWorkpaperToHyperFormulaP95Ratio": 0.8002421312413311,
-      "worstP95RatioWorkload": "sheet-rename-dependencies"
+      "worstWorkpaperToHyperFormulaP95Ratio": 0.6812643979875276,
+      "worstP95RatioWorkload": "build-mixed-content-large"
     },
     "meanAndP95WinCount": 100,
     "p95HoldoutCount": 0

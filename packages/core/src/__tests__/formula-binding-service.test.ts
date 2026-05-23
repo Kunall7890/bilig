@@ -506,7 +506,8 @@ describe('EngineFormulaBindingService', () => {
     const formulaIndex = engine.workbook.getCellIndex('Summary', 'A1')!
     const runtimeFormula = readRuntimeFormula(engine, formulaIndex)
     expect(readRuntimeFormulaProperty(runtimeFormula, 'source')).toBe('Data!A1*2')
-    expect(readRuntimeFormulaProperty(runtimeFormula, 'sourceRenameTransforms')).toEqual([{ oldSheetName: 'Data', newSheetName: 'Source' }])
+    expect(readRuntimeFormulaProperty(runtimeFormula, 'sourceRenameTransform')).toEqual({ oldSheetName: 'Data', newSheetName: 'Source' })
+    expect(readRuntimeFormulaProperty(runtimeFormula, 'sourceRenameTransforms')).toBeUndefined()
     expect(engine.getCell('Summary', 'A1').formula).toBe('Source!A1*2')
     expect(engine.getDependencies('Source', 'A1').directDependents).toContain('Summary!A1')
     expect(engine.getCellValue('Summary', 'A1')).toEqual({ tag: ValueTag.Number, value: 14 })
@@ -526,7 +527,8 @@ describe('EngineFormulaBindingService', () => {
     const formulaIndex = engine.workbook.getCellIndex('Summary', 'A1')!
     const runtimeFormula = readRuntimeFormula(engine, formulaIndex)
     expect(readRuntimeFormulaProperty(runtimeFormula, 'source')).toBe('Data!A1*2')
-    expect(readRuntimeFormulaProperty(runtimeFormula, 'sourceRenameTransforms')).toEqual([{ oldSheetName: 'Data', newSheetName: 'Source' }])
+    expect(readRuntimeFormulaProperty(runtimeFormula, 'sourceRenameTransform')).toEqual({ oldSheetName: 'Data', newSheetName: 'Source' })
+    expect(readRuntimeFormulaProperty(runtimeFormula, 'sourceRenameTransforms')).toBeUndefined()
     expect(engine.getCell('Summary', 'A1').formula).toBe('Source!A1*2')
     expect(engine.getDependencies('Source', 'A1').directDependents).toContain('Summary!A1')
     expect(engine.getCellValue('Summary', 'A1')).toEqual({ tag: ValueTag.Number, value: 14 })

@@ -54,6 +54,7 @@ interface CapturedRuntimeFormulaSource {
   readonly source: string
   readonly structuralSourceTransform?: RuntimeStructuralFormulaSourceTransform
   readonly inheritedStructuralSourceTransform?: RuntimeStructuralFormulaSourceTransform
+  readonly sourceRenameTransform?: RuntimeSheetRenameFormulaSourceTransform
   readonly sourceRenameTransforms?: readonly RuntimeSheetRenameFormulaSourceTransform[]
 }
 
@@ -90,10 +91,23 @@ function captureRuntimeFormulaSourceHandle(
   }
   const withOwnTransform =
     ownStructuralSourceTransform === undefined ? captured : { ...captured, structuralSourceTransform: ownStructuralSourceTransform }
+  const withSingleRenameTransform =
+    formula.sourceRenameTransform === undefined
+      ? withOwnTransform
+      : {
+          ...withOwnTransform,
+          sourceRenameTransform: {
+            oldSheetName: formula.sourceRenameTransform.oldSheetName,
+            newSheetName: formula.sourceRenameTransform.newSheetName,
+          },
+        }
   const withRenameTransforms =
     formula.sourceRenameTransforms === undefined
-      ? withOwnTransform
-      : { ...withOwnTransform, sourceRenameTransforms: formula.sourceRenameTransforms.map((transform) => ({ ...transform })) }
+      ? withSingleRenameTransform
+      : {
+          ...withSingleRenameTransform,
+          sourceRenameTransforms: formula.sourceRenameTransforms.map((transform) => ({ ...transform })),
+        }
   if (ownStructuralSourceTransform !== undefined) {
     return withRenameTransforms
   }
@@ -107,6 +121,9 @@ function captureRuntimeFormulaSourceHandle(
 
 function materializeRuntimeFormulaSource(captured: CapturedRuntimeFormulaSource): string {
   let source = captured.source
+  if (captured.sourceRenameTransform !== undefined) {
+    source = renameFormulaSheetReferences(source, captured.sourceRenameTransform.oldSheetName, captured.sourceRenameTransform.newSheetName)
+  }
   captured.sourceRenameTransforms?.forEach((transform) => {
     source = renameFormulaSheetReferences(source, transform.oldSheetName, transform.newSheetName)
   })

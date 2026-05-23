@@ -367,6 +367,7 @@ export interface RuntimeFormula {
   runtimeProgram: Uint32Array
   constants: Float64Array
   structuralSourceTransform: RuntimeStructuralFormulaSourceTransform | undefined
+  sourceRenameTransform?: RuntimeSheetRenameFormulaSourceTransform | undefined
   sourceRenameTransforms?: RuntimeSheetRenameFormulaSourceTransform[] | undefined
   programOffset: number
   programLength: number

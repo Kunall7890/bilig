@@ -212,14 +212,40 @@ describe('formula binding dependency helpers', () => {
   })
 
   it('appends sheet-rename source transforms', () => {
-    const formula: { sourceRenameTransforms?: Array<{ oldSheetName: string; newSheetName: string }> } = {}
+    const formula: {
+      sourceRenameTransform?: { oldSheetName: string; newSheetName: string }
+      sourceRenameTransforms?: Array<{ oldSheetName: string; newSheetName: string }>
+    } = {}
     appendSheetRenameSourceTransform(formula, 'Old', 'New')
+
+    expect(formula.sourceRenameTransform).toEqual({ oldSheetName: 'Old', newSheetName: 'New' })
+    expect(formula.sourceRenameTransforms).toBeUndefined()
+
     appendSheetRenameSourceTransform(formula, 'Older', 'Newest')
 
+    expect(formula.sourceRenameTransform).toBeUndefined()
     expect(formula.sourceRenameTransforms).toEqual([
       { oldSheetName: 'Old', newSheetName: 'New' },
       { oldSheetName: 'Older', newSheetName: 'Newest' },
     ])
+  })
+
+  it('composes consecutive sheet-rename source transforms', () => {
+    const formula: {
+      sourceRenameTransform?: { oldSheetName: string; newSheetName: string }
+      sourceRenameTransforms?: Array<{ oldSheetName: string; newSheetName: string }>
+    } = {}
+
+    appendSheetRenameSourceTransform(formula, 'Data', 'Source')
+    appendSheetRenameSourceTransform(formula, 'Source', 'Input')
+
+    expect(formula.sourceRenameTransform).toEqual({ oldSheetName: 'Data', newSheetName: 'Input' })
+    expect(formula.sourceRenameTransforms).toBeUndefined()
+
+    appendSheetRenameSourceTransform(formula, 'Input', 'Data')
+
+    expect(formula.sourceRenameTransform).toBeUndefined()
+    expect(formula.sourceRenameTransforms).toBeUndefined()
   })
 
   it('builds column keys and direct lookup column info', () => {

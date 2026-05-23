@@ -8,6 +8,7 @@ export type FormulaBindingSourceRenameTransform = {
 }
 
 interface FormulaBindingSourceTransformRecord {
+  sourceRenameTransform?: FormulaBindingSourceRenameTransform | undefined
   sourceRenameTransforms?: FormulaBindingSourceRenameTransform[] | undefined
 }
 
@@ -117,10 +118,55 @@ export function appendSheetRenameSourceTransformRecord(
 ): void {
   const transforms = formula.sourceRenameTransforms
   if (transforms) {
+    const lastIndex = transforms.length - 1
+    const previous = transforms[lastIndex]
+    const composed = previous === undefined ? null : composeConsecutiveSheetRenameTransform(previous, transform)
+    if (composed === undefined) {
+      transforms.pop()
+      if (transforms.length === 1) {
+        formula.sourceRenameTransform = transforms[0]
+        formula.sourceRenameTransforms = undefined
+      } else if (transforms.length === 0) {
+        formula.sourceRenameTransforms = undefined
+      }
+      return
+    }
+    if (composed !== null) {
+      transforms[lastIndex] = composed
+      return
+    }
     transforms.push(transform)
     return
   }
-  formula.sourceRenameTransforms = [transform]
+  const previous = formula.sourceRenameTransform
+  if (previous === undefined) {
+    formula.sourceRenameTransform = transform
+    return
+  }
+  const composed = composeConsecutiveSheetRenameTransform(previous, transform)
+  if (composed === undefined) {
+    formula.sourceRenameTransform = undefined
+    return
+  }
+  if (composed !== null) {
+    formula.sourceRenameTransform = composed
+    return
+  }
+  formula.sourceRenameTransform = undefined
+  formula.sourceRenameTransforms = [previous, transform]
+}
+
+function composeConsecutiveSheetRenameTransform(
+  previous: FormulaBindingSourceRenameTransform,
+  next: FormulaBindingSourceRenameTransform,
+): FormulaBindingSourceRenameTransform | null | undefined {
+  if (previous.newSheetName !== next.oldSheetName) {
+    return null
+  }
+  if (previous.oldSheetName === next.newSheetName) {
+    return undefined
+  }
+  return { oldSheetName: previous.oldSheetName, newSheetName: next.newSheetName }
 }
 
 export function aggregateColumnDependencyKey(sheetId: number, col: number): number {

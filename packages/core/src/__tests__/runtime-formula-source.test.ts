@@ -80,7 +80,7 @@ describe('runtime formula source helpers', () => {
         count: 1,
       },
     })
-    formula.sourceRenameTransforms = [{ oldSheetName: 'Data', newSheetName: 'Source' }]
+    formula.sourceRenameTransform = { oldSheetName: 'Data', newSheetName: 'Source' }
 
     expect(getRuntimeFormulaSource(formula)).toBe('SUM(Source!A1:A11)')
   })

@@ -121,7 +121,7 @@ and needs formula readback, persistence, and restore proof.
 
 The current checked benchmark artifact records `100/100` comparable
 mean-latency wins against HyperFormula-style workloads. The worst p95 row is
-public: `sheet-rename-dependencies` is a `0.8x`
+public: `structural-insert-columns-small` is a `0.843x`
 WorkPaper-to-HyperFormula p95 ratio, and browser UI rendering is outside the
 benchmark.
 
