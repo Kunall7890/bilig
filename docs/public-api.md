@@ -99,6 +99,8 @@ Runtimes execute plans. `@bilig/workbook` only defines the handoff.
   transported plan data, refuses to apply invalid plans, calls the adapter,
   verifies readback expectations, verifies generic checks, and returns a boring
   `WorkbookRunResult`.
+- `checkRuntimeAdapter(planOrRequirements, adapter)` checks that the adapter has
+  the required `apply`, `read`, and `verifyChecks` methods before mutation.
 - `adapter.apply(plan)` owns runtime mutation and may return `previewOps`,
   `appliedOps`, JSON-safe `proof`, and an undo ref.
 - `adapter.read(targets, plan)` returns semantic readbacks for checks such as
@@ -172,6 +174,7 @@ Full export surface:
 - `describePlanResult`
 - `describeRunResult`
 - `describeRuntimeRequirements`
+- `checkRuntimeAdapter`
 - `toPlanData`
 - `isPlanData`
 - `hydratePlanData`
@@ -195,7 +198,7 @@ Full export surface:
 - `workbook.addOp(op, { target?, message? })` inside model actions
 - `findTable`, `findColumn`, `findRange`, `findName`, and `findRows` through the model workbook context and as top-level helpers
 - `check.exists`, `check.noFormulaErrors`, `check.valueEquals`, `check.formulaEquals`, and `check.custom` through the model workbook context and as top-level helpers
-- `WorkbookModel`, `WorkbookAction`, `WorkbookActionConfig`, `WorkbookActionDefinition`, `WorkbookActionContext`, `WorkbookCheckContext`, `WorkbookFindWorkbook`, `WorkbookCheckWorkbook`, `WorkbookActionWorkbook`, `WorkbookModelWorkbook`, `WorkbookFindNamespace`, `WorkbookRef`, `WorkbookRefData`, `WorkbookRefKind`, `WorkbookBaseRefData`, `WorkbookRangeRef`, `WorkbookRangeRefData`, `WorkbookNameRef`, `WorkbookNameRefData`, `WorkbookTableRef`, `WorkbookTableRefData`, `WorkbookColumnRef`, `WorkbookColumnRefData`, `WorkbookRowsRef`, `WorkbookRowsRefData`, `WorkbookRowOperator`, `WorkbookRowValueType`, `WorkbookActionInput`, `WorkbookActionInputDescription`, `WorkbookActionInputDescriptionKind`, `WorkbookActionInputIssueCode`, `WorkbookActionInputIssue`, `WorkbookActionInputCheckResult`, `WorkbookActionInspection`, `WorkbookAddOpOptions`, `WorkbookActionPlanResult`, `WorkbookModelDescription`, `WorkbookRefDescription`, `WorkbookActionPlanDescription`, `WorkbookPlanData`, `WorkbookPlanDataRefs`, `WorkbookExecutablePlan`, `WorkbookActionPlanResultDescription`, `WorkbookRunResultDescription`, `WorkbookUndoRefDescription`, `WorkbookRunApplySummaryDescription`, `WorkbookRunUnverifiedDescription`, `WorkbookRuntimeRequirements`, `WorkbookRuntimeRequirement`, `WorkbookRuntimeCapability`, `WorkbookPlanVerification`, `WorkbookPlanIssue`, `WorkbookModelVerification`, `WorkbookModelActionVerification`, `WorkbookModelVerificationOptions`, `WorkbookRunAdapter`, `WorkbookRunApplyResult`, `WorkbookRunOptions`, `WorkbookRunApplySummary`, `WorkbookRunUnverified`, `WorkbookRunUnverifiedKind`, `WorkbookRunReadback`, `WorkbookReadbackVerification`, `WorkbookReadbackIssue`, `WorkbookReadbackIssueCode`, `WorkbookCheckExpectation`, `WorkbookCheckExpectationDescription`, `WorkbookBuiltInCheckKind`, `WorkbookCustomCheckOptions`, `WorkbookReadbackCheckOptions`, `WorkbookFormulaExpression`, `WorkbookFormulaLabel`, `WorkbookFormulaLabelDescription`, `WorkbookRawFormulaOptions`, `WorkbookRunResult`, `WorkbookRunError`, `WorkbookRunErrorCode`, and `WorkbookCheckResult`
+- `WorkbookModel`, `WorkbookAction`, `WorkbookActionConfig`, `WorkbookActionDefinition`, `WorkbookActionContext`, `WorkbookCheckContext`, `WorkbookFindWorkbook`, `WorkbookCheckWorkbook`, `WorkbookActionWorkbook`, `WorkbookModelWorkbook`, `WorkbookFindNamespace`, `WorkbookRef`, `WorkbookRefData`, `WorkbookRefKind`, `WorkbookBaseRefData`, `WorkbookRangeRef`, `WorkbookRangeRefData`, `WorkbookNameRef`, `WorkbookNameRefData`, `WorkbookTableRef`, `WorkbookTableRefData`, `WorkbookColumnRef`, `WorkbookColumnRefData`, `WorkbookRowsRef`, `WorkbookRowsRefData`, `WorkbookRowOperator`, `WorkbookRowValueType`, `WorkbookActionInput`, `WorkbookActionInputDescription`, `WorkbookActionInputDescriptionKind`, `WorkbookActionInputIssueCode`, `WorkbookActionInputIssue`, `WorkbookActionInputCheckResult`, `WorkbookActionInspection`, `WorkbookAddOpOptions`, `WorkbookActionPlanResult`, `WorkbookModelDescription`, `WorkbookRefDescription`, `WorkbookActionPlanDescription`, `WorkbookPlanData`, `WorkbookPlanDataRefs`, `WorkbookExecutablePlan`, `WorkbookActionPlanResultDescription`, `WorkbookRunResultDescription`, `WorkbookUndoRefDescription`, `WorkbookRunApplySummaryDescription`, `WorkbookRunUnverifiedDescription`, `WorkbookRuntimeRequirements`, `WorkbookRuntimeRequirement`, `WorkbookRuntimeCapability`, `WorkbookRuntimeAdapterIssueCode`, `WorkbookRuntimeAdapterMethod`, `WorkbookRuntimeAdapterIssue`, `WorkbookRuntimeAdapterCheckResult`, `WorkbookRuntimeAdapterCandidate`, `WorkbookPlanVerification`, `WorkbookPlanIssue`, `WorkbookModelVerification`, `WorkbookModelActionVerification`, `WorkbookModelVerificationOptions`, `WorkbookRunAdapter`, `WorkbookRunApplyResult`, `WorkbookRunOptions`, `WorkbookRunApplySummary`, `WorkbookRunUnverified`, `WorkbookRunUnverifiedKind`, `WorkbookRunReadback`, `WorkbookReadbackVerification`, `WorkbookReadbackIssue`, `WorkbookReadbackIssueCode`, `WorkbookCheckExpectation`, `WorkbookCheckExpectationDescription`, `WorkbookBuiltInCheckKind`, `WorkbookCustomCheckOptions`, `WorkbookReadbackCheckOptions`, `WorkbookFormulaExpression`, `WorkbookFormulaLabel`, `WorkbookFormulaLabelDescription`, `WorkbookRawFormulaOptions`, `WorkbookRunResult`, `WorkbookRunError`, `WorkbookRunErrorCode`, and `WorkbookCheckResult`
 - the existing low-level operation language: `WorkbookOp`, `WorkbookTxn`, `EngineOp`, and `EngineOpBatch`
 
 The package builds portable workbook intent and concrete low-level ops when the
@@ -401,6 +404,10 @@ in a consumer-defined model, returning one JSON-safe model-level verdict.
 Successfully planned actions include their runtime requirements in the same
 result, so an agent can inspect the planned intent, static proof, and adapter
 handoff checklist without stitching multiple API calls together.
+`checkRuntimeAdapter(planOrRequirements, adapter)` compares that checklist to an
+adapter shape and returns a plain valid/invalid result with missing capability
+issues. It accepts a live plan, transported plan data, or the output of
+`describeRuntimeRequirements`.
 `runWorkbookPlan(planOrData, adapter)` and
 `runWorkbookAction(model, actionName, adapter, input)` add a transport-neutral
 apply-and-prove loop on top of the same contracts. The adapter receives the full
@@ -412,11 +419,14 @@ ops when both are present, compares readbacks against `valueEquals` and
 readback-backed checks include JSON-safe proof such as
 `{ source: "readback", value }` or `{ source: "readback", formula }`, so the
 result says what the runtime actually read back. If static verification fails,
-the apply adapter is not called. If preview/apply ops mismatch, the run fails
-with `apply_mismatch`. If `requireApplyProof` is true and the adapter omits
-preview or applied ops, the run fails with `apply_not_verified`. If a readback
-expectation is missing or mismatched, the run fails with deterministic codes
-such as `readback_missing`, `value_mismatch`, or `formula_mismatch`.
+the apply adapter is not called. If the adapter is missing a required method for
+the plan, the apply adapter is not called and the run fails with
+`adapter_missing_capability`. If preview/apply ops mismatch, the run fails with
+`apply_mismatch`. If `requireApplyProof` is true and the adapter omits preview
+or applied ops, the run fails with `apply_not_verified`. If a readback
+expectation is missing or mismatched after a reader runs, the run fails with
+deterministic codes such as `readback_missing`, `value_mismatch`, or
+`formula_mismatch`.
 Failures after an adapter reports `status: "applied"` preserve `changed` and
 `undo`, so an agent can still inspect what was applied and how to reverse it
 when a later proof step rejects the run.

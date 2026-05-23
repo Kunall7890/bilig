@@ -80,6 +80,7 @@ export type WorkbookRunErrorCode =
   | 'op_target_mismatch'
   | 'missing_concrete_op'
   | 'missing_workbook_op'
+  | 'adapter_missing_capability'
   | 'apply_not_verified'
   | 'apply_mismatch'
   | 'apply_failed'
@@ -121,6 +122,7 @@ export const workbookRunErrorCodes = Object.freeze([
   'op_target_mismatch',
   'missing_concrete_op',
   'missing_workbook_op',
+  'adapter_missing_capability',
   'apply_not_verified',
   'apply_mismatch',
   'apply_failed',

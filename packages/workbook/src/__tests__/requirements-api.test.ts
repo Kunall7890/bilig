@@ -1,10 +1,12 @@
 import { describe, expect, it } from 'vitest'
 import {
   buildWorkbookActionPlan,
+  checkRuntimeAdapter,
   defineModel,
   describeRuntimeRequirements,
   findRange,
   formula,
+  toPlanData,
   verifyModel,
   type WorkbookActionPlan,
 } from '../index.js'
@@ -118,6 +120,83 @@ describe('@bilig/workbook runtime requirements api', () => {
       },
     ])
     expect(JSON.parse(JSON.stringify(requirements))).toEqual(requirements)
+  })
+
+  it('checks runtime adapter capabilities before mutation handoff', () => {
+    const model = defineModel({
+      name: 'adapter-capability-model',
+
+      find(workbook) {
+        return {
+          input: workbook.findRange({ sheetName: 'Sheet1', address: 'A2' }),
+          output: workbook.findRange({ sheetName: 'Sheet1', address: 'B2' }),
+        }
+      },
+
+      checks({ refs, workbook }) {
+        return [workbook.check.exists(refs.output)]
+      },
+
+      actions: {
+        write({ refs, workbook }) {
+          workbook.writeFormula(refs.output, formula.add(refs.input, 1))
+          workbook.check.formulaEquals(refs.output, formula.add(refs.input, 1))
+        },
+      },
+    })
+
+    const plan = buildWorkbookActionPlan(model, 'write')
+    const transportedPlan = JSON.parse(JSON.stringify(toPlanData(plan)))
+
+    expect(checkRuntimeAdapter(transportedPlan, {})).toEqual({
+      status: 'invalid',
+      modelName: 'adapter-capability-model',
+      actionName: 'write',
+      requiredCapabilities: ['writeFormula', 'read', 'verifyCheck'],
+      issues: [
+        {
+          code: 'missing_apply',
+          capability: 'writeFormula',
+          method: 'apply',
+          requirementIndexes: [0],
+          message: 'Adapter is missing apply for writeFormula',
+        },
+        {
+          code: 'missing_read',
+          capability: 'read',
+          method: 'read',
+          requirementIndexes: [1],
+          message: 'Adapter is missing read for read',
+        },
+        {
+          code: 'missing_check_verifier',
+          capability: 'verifyCheck',
+          method: 'verifyChecks',
+          requirementIndexes: [2],
+          message: 'Adapter is missing verifyChecks for verifyCheck',
+        },
+      ],
+    })
+
+    expect(
+      checkRuntimeAdapter(describeRuntimeRequirements(plan), {
+        apply() {
+          return { status: 'applied' as const }
+        },
+        read() {
+          return []
+        },
+        verifyChecks(checks: unknown) {
+          return checks
+        },
+      }),
+    ).toEqual({
+      status: 'valid',
+      modelName: 'adapter-capability-model',
+      actionName: 'write',
+      requiredCapabilities: ['writeFormula', 'read', 'verifyCheck'],
+      issues: [],
+    })
   })
 
   it('describes explicit ops on manually assembled plans', () => {

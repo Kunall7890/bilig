@@ -99,7 +99,7 @@ The main API is intentionally small:
 - formulas: `formula.add`, `formula.subtract`, `formula.multiply`, `formula.divide`, `formula.sum`, `formula.call`, `formula.raw`, `formula.text`, `formula.labels`
 - input: `checkInput`, `normalizeWorkbookActionInputDescription`
 - proof: `verifyPlan`, `verifyModel`, `verifyWorkbookReadbacks`
-- descriptions: `describeModel`, `describeRef`, `describePlan`, `describePlanResult`, `describeRuntimeRequirements`, `describeRunResult`
+- descriptions: `describeModel`, `describeRef`, `describePlan`, `describePlanResult`, `describeRuntimeRequirements`, `checkRuntimeAdapter`, `describeRunResult`
 - transport data: `isWorkbookRefData`, `toWorkbookRefData`, `collectWorkbookRefData`, `hydrateWorkbookRef`, `hydrateWorkbookRefs`, `toPlanData`, `isPlanData`, `hydratePlanData`, `verifyPlanData`
 - runtime handoff: `runWorkbookPlan`, `runWorkbookAction`, `WorkbookRunAdapter`
 - low-level language: `WorkbookOp`, `WorkbookTxn`, `EngineOp`, `EngineOpBatch`, `isEngineOpBatch`
@@ -192,7 +192,10 @@ const adapter = {
 ```
 
 `runWorkbookPlan` accepts either a live plan or transported plan data and
-refuses to call `apply` if static plan verification fails.
+refuses to call `apply` if static plan verification fails or if the adapter is
+missing a required method. Use `checkRuntimeAdapter(planOrRequirements,
+adapter)` when an agent wants to check `apply`, `read`, and `verifyChecks`
+coverage before calling the runtime.
 If an adapter returns both `previewOps` and `appliedOps`, the result reports
 whether they matched. If the adapter returns neither, the run records an
 unverified apply fact. Use `runWorkbookPlan(plan, adapter, { requireApplyProof:

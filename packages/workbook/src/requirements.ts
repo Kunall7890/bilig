@@ -30,6 +30,39 @@ export interface WorkbookRuntimeRequirements {
   readonly requirements: readonly WorkbookRuntimeRequirement[]
 }
 
+export type WorkbookRuntimeAdapterIssueCode = 'missing_apply' | 'missing_read' | 'missing_check_verifier'
+export type WorkbookRuntimeAdapterMethod = 'apply' | 'read' | 'verifyChecks'
+
+export interface WorkbookRuntimeAdapterIssue {
+  readonly code: WorkbookRuntimeAdapterIssueCode
+  readonly capability: WorkbookRuntimeCapability
+  readonly method: WorkbookRuntimeAdapterMethod
+  readonly requirementIndexes: readonly number[]
+  readonly message: string
+}
+
+export type WorkbookRuntimeAdapterCheckResult =
+  | {
+      readonly status: 'valid'
+      readonly modelName: string
+      readonly actionName: string
+      readonly requiredCapabilities: readonly WorkbookRuntimeCapability[]
+      readonly issues: readonly []
+    }
+  | {
+      readonly status: 'invalid'
+      readonly modelName: string
+      readonly actionName: string
+      readonly requiredCapabilities: readonly WorkbookRuntimeCapability[]
+      readonly issues: readonly WorkbookRuntimeAdapterIssue[]
+    }
+
+export interface WorkbookRuntimeAdapterCandidate {
+  readonly apply?: unknown
+  readonly read?: unknown
+  readonly verifyChecks?: unknown
+}
+
 function describedRef(ref: WorkbookRef | undefined): { readonly target: WorkbookRefDescription } | {} {
   return ref === undefined ? {} : { target: describeRef(ref) }
 }
@@ -249,4 +282,102 @@ export function describeRuntimeRequirements<Refs>(plan: WorkbookExecutablePlan<R
     return describeLiveRuntimeRequirements(plan)
   }
   return describeLiveRuntimeRequirements(hydratePlanData(plan))
+}
+
+function isRuntimeRequirements(value: unknown): value is WorkbookRuntimeRequirements {
+  return typeof value === 'object' && value !== null && Array.isArray((value as { readonly requirements?: unknown }).requirements)
+}
+
+function requirementsFor<Refs>(input: WorkbookExecutablePlan<Refs> | WorkbookRuntimeRequirements): WorkbookRuntimeRequirements {
+  return isRuntimeRequirements(input) ? input : describeRuntimeRequirements(input)
+}
+
+function pushCapability(capabilities: WorkbookRuntimeCapability[], capability: WorkbookRuntimeCapability): void {
+  if (!capabilities.includes(capability)) {
+    capabilities.push(capability)
+  }
+}
+
+function requirementIndexesFor(
+  requirements: readonly WorkbookRuntimeRequirement[],
+  capability: WorkbookRuntimeCapability,
+): readonly number[] {
+  return requirements.flatMap((requirement, index) => (requirement.capability === capability ? [index] : []))
+}
+
+function hasMethod(adapter: WorkbookRuntimeAdapterCandidate, method: WorkbookRuntimeAdapterMethod): boolean {
+  return typeof adapter[method] === 'function'
+}
+
+function adapterIssue(
+  requirements: readonly WorkbookRuntimeRequirement[],
+  code: WorkbookRuntimeAdapterIssueCode,
+  capability: WorkbookRuntimeCapability,
+  method: WorkbookRuntimeAdapterMethod,
+): WorkbookRuntimeAdapterIssue {
+  return Object.freeze({
+    code,
+    capability,
+    method,
+    requirementIndexes: Object.freeze(requirementIndexesFor(requirements, capability)),
+    message: `Adapter is missing ${method} for ${capability}`,
+  })
+}
+
+export function checkRuntimeAdapter<Refs>(
+  planOrRequirements: WorkbookExecutablePlan<Refs> | WorkbookRuntimeRequirements,
+  adapter: WorkbookRuntimeAdapterCandidate,
+): WorkbookRuntimeAdapterCheckResult {
+  const requirements = requirementsFor(planOrRequirements)
+  const requiredCapabilities: WorkbookRuntimeCapability[] = []
+  requirements.requirements.forEach((requirement) => {
+    pushCapability(requiredCapabilities, requirement.capability)
+  })
+
+  const issues: WorkbookRuntimeAdapterIssue[] = []
+  const needsApply = requiredCapabilities.some(
+    (capability) =>
+      capability === 'writeFormula' ||
+      capability === 'writeValue' ||
+      capability === 'format' ||
+      capability === 'clear' ||
+      capability === 'applyOp',
+  )
+  if (needsApply && !hasMethod(adapter, 'apply')) {
+    const firstApplyCapability = requiredCapabilities.find(
+      (capability) =>
+        capability === 'writeFormula' ||
+        capability === 'writeValue' ||
+        capability === 'format' ||
+        capability === 'clear' ||
+        capability === 'applyOp',
+    )
+    if (firstApplyCapability !== undefined) {
+      issues.push(adapterIssue(requirements.requirements, 'missing_apply', firstApplyCapability, 'apply'))
+    }
+  }
+  if (requiredCapabilities.includes('read') && !hasMethod(adapter, 'read')) {
+    issues.push(adapterIssue(requirements.requirements, 'missing_read', 'read', 'read'))
+  }
+  if (requiredCapabilities.includes('verifyCheck') && !hasMethod(adapter, 'verifyChecks')) {
+    issues.push(adapterIssue(requirements.requirements, 'missing_check_verifier', 'verifyCheck', 'verifyChecks'))
+  }
+
+  const shared = {
+    modelName: requirements.modelName,
+    actionName: requirements.actionName,
+    requiredCapabilities: Object.freeze(requiredCapabilities),
+  }
+  if (issues.length > 0) {
+    return {
+      status: 'invalid',
+      ...shared,
+      issues: Object.freeze(issues),
+    }
+  }
+  return {
+    status: 'valid',
+    ...shared,
+    issues: Object.freeze([]),
+  }
 }

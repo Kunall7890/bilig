@@ -60,6 +60,7 @@ describe('@bilig/workbook run api', () => {
     expect(workbookRunErrorCodes).toContain('apply_not_verified')
     expect(workbookRunErrorCodes).toContain('apply_mismatch')
     expect(workbookRunErrorCodes).toContain('readback_missing')
+    expect(workbookRunErrorCodes).toContain('adapter_missing_capability')
     expect(workbookRunErrorCodes).toContain('runtime_rejected')
     expect(new Set(workbookRunErrorCodes).size).toBe(workbookRunErrorCodes.length)
     expect(isWorkbookRunErrorCode('check_not_verified')).toBe(true)
@@ -367,7 +368,7 @@ describe('@bilig/workbook run api', () => {
     ])
   })
 
-  it('fails non-readback checks that the adapter does not verify', async () => {
+  it('fails before apply when non-readback checks require a missing verifier', async () => {
     const model = defineModel({
       name: 'run-legacy-check-model',
 
@@ -388,16 +389,17 @@ describe('@bilig/workbook run api', () => {
       },
     })
 
-    const result = await runWorkbookAction(model, 'inspect', {
-      apply: applied,
-    })
+    const apply = vi.fn<WorkbookRunAdapter<{ result: ReturnType<typeof findRange> }>['apply']>(applied)
 
+    const result = await runWorkbookAction(model, 'inspect', { apply })
+
+    expect(apply).not.toHaveBeenCalled()
     expect(result).toMatchObject({
       status: 'failed',
       errors: [
         {
-          code: 'check_not_verified',
-          message: 'Sheet1!C2 did not verify check exists: Sheet1!C2 exists',
+          code: 'adapter_missing_capability',
+          message: 'Adapter is missing verifyChecks for verifyCheck',
         },
       ],
       checks: [expect.objectContaining({ status: 'planned', kind: 'exists', message: 'Sheet1!C2 exists' })],
@@ -430,6 +432,7 @@ describe('@bilig/workbook run api', () => {
         status: 'applied',
         checks: [],
       }),
+      verifyChecks: (checks) => checks,
     })
 
     expect(result).toMatchObject({
@@ -826,6 +829,7 @@ describe('@bilig/workbook run api', () => {
           },
         ],
       }),
+      read: () => [],
     })
 
     expect(result).toMatchObject({
@@ -866,6 +870,7 @@ describe('@bilig/workbook run api', () => {
           },
         ],
       }),
+      read: () => [],
     })
 
     expect(result).toMatchObject({
@@ -899,6 +904,7 @@ describe('@bilig/workbook run api', () => {
           },
         ],
       }),
+      read: () => [],
     })
 
     expect(result).toMatchObject({
@@ -935,6 +941,7 @@ describe('@bilig/workbook run api', () => {
           },
         ],
       }),
+      read: () => [],
     })
     const described = describeRunResult(result)
 
@@ -975,24 +982,24 @@ describe('@bilig/workbook run api', () => {
     expect(JSON.parse(JSON.stringify(described))).toEqual(described)
   })
 
-  it('returns failed when an expected readback is missing', async () => {
+  it('fails before apply when expected readback requires a missing reader', async () => {
     const model = valueModel()
+    const apply = vi.fn<WorkbookRunAdapter<{ output: ReturnType<typeof findRange> }>['apply']>(applied)
 
-    const result = await runWorkbookAction(model, 'write', {
-      apply: applied,
-    })
+    const result = await runWorkbookAction(model, 'write', { apply })
 
+    expect(apply).not.toHaveBeenCalled()
     expect(result).toMatchObject({
       status: 'failed',
       errors: [
         {
-          code: 'readback_missing',
-          message: 'Sheet1!B2 has no readback',
+          code: 'adapter_missing_capability',
+          message: 'Adapter is missing read for read',
         },
       ],
       checks: [
         {
-          status: 'failed',
+          status: 'planned',
           kind: 'valueEquals',
           target: expect.objectContaining({ label: 'Sheet1!B2' }),
           message: 'Sheet1!B2 equals 12',

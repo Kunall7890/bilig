@@ -5,6 +5,7 @@ import { planWorkbookAction, type WorkbookActionMap, type WorkbookActionPlan, ty
 import type { EngineOp } from './ops.js'
 import { hydratePlanData, isHydratedPlan, type WorkbookExecutablePlan, type WorkbookPlanDataRefs } from './plan-data.js'
 import { verifyWorkbookReadbacks, type WorkbookRunReadback } from './readback.js'
+import { checkRuntimeAdapter } from './requirements.js'
 import {
   isWorkbookRunErrorCode,
   type WorkbookChangeSummary,
@@ -463,6 +464,14 @@ async function runLiveWorkbookPlan<Refs>(
   const invalidPlan = failedFromPlanIssues(plan)
   if (invalidPlan !== null) {
     return invalidPlan
+  }
+
+  const adapterCheck = checkRuntimeAdapter(plan, adapter)
+  if (adapterCheck.status === 'invalid') {
+    return failedRun({
+      errors: adapterCheck.issues.map((adapterIssue) => runError('adapter_missing_capability', adapterIssue.message)),
+      checks: plan.checks,
+    })
   }
 
   let applyResult: unknown

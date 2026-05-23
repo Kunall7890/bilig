@@ -102,6 +102,7 @@ describe('@bilig/workbook run proof boundary', () => {
         status: 'applied',
         proof: { when: new Date(0) },
       }),
+      read: (targets) => [{ target: first(targets), value: 12 }],
     })
 
     expect(result).toEqual({
@@ -137,6 +138,7 @@ describe('@bilig/workbook run proof boundary', () => {
           },
         ],
       }),
+      read: (targets) => [{ target: first(targets), value: 12 }],
     })
 
     expect(result).toEqual({
