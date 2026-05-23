@@ -97,6 +97,7 @@ The main API is intentionally small:
 - selectors: `findTable`, `findColumn`, `findRange`, `findName`, `findRows`, `find`
 - checks: `check.exists`, `check.noFormulaErrors`, `check.valueEquals`, `check.formulaEquals`, `check.custom`
 - formulas: `formula.add`, `formula.subtract`, `formula.multiply`, `formula.divide`, `formula.sum`, `formula.call`, `formula.raw`, `formula.text`, `formula.labels`
+- input: `checkInput`, `normalizeWorkbookActionInputDescription`
 - proof: `verifyPlan`, `verifyModel`, `verifyWorkbookReadbacks`
 - descriptions: `describeModel`, `describeRef`, `describePlan`, `describePlanResult`, `describeRuntimeRequirements`, `describeRunResult`
 - transport data: `isWorkbookRefData`, `toWorkbookRefData`, `collectWorkbookRefData`, `hydrateWorkbookRef`, `hydrateWorkbookRefs`, `toPlanData`, `isPlanData`, `hydratePlanData`, `verifyPlanData`
@@ -109,7 +110,7 @@ Stable data helpers are exported for generic tool builders:
 - `isWorkbookRefData`, `toWorkbookRefData`, `collectWorkbookRefData`, `hydrateWorkbookRef`, `hydrateWorkbookRefs`
 - `workbookRowOperators`, `workbookRowOperatorValueTypes`, `isWorkbookRowOperator`, `isWorkbookRowValueCompatible`
 - `builtInWorkbookCheckKinds`, `isBuiltInWorkbookCheckKind`
-- `workbookActionInputDescriptionKinds`, `isWorkbookActionInputDescriptionKind`, `isWorkbookActionInputDescription`, `isWorkbookActionInput`
+- `workbookActionInputDescriptionKinds`, `isWorkbookActionInputDescriptionKind`, `isWorkbookActionInputDescription`, `isWorkbookActionInput`, `checkInput`
 - `workbookRunErrorCodes`, `isWorkbookRunErrorCode`
 
 ## Selectors
@@ -139,6 +140,15 @@ pass the data directly to `describeRuntimeRequirements(data)` and
 `runWorkbookPlan(data, adapter)`. The hydrated plan exposes
 `refs: { refsUsed }` instead of the consumer's private model-shaped `refs`
 object, so transported execution stays generic.
+
+## Action Input
+
+Action input is JSON-safe data, not a schema-framework object. Action metadata
+can describe generic input with `json`, `object`, `array`, `string`, `number`,
+`boolean`, and `null` kinds. `checkInput(description, value)` returns a plain
+`{ status, input, issues }` result so an agent can reject malformed tool payloads
+before running workbook model code. `planWorkbookAction` uses the same check
+when an action declares input metadata.
 
 ## Formulas
 

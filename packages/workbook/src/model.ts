@@ -3,6 +3,7 @@ import { formula, type WorkbookFormulaLabel, type WorkbookFormulaOperand } from 
 import { collectWorkbookRefs, createWorkbookFindApi, type WorkbookFindApi, type WorkbookRef } from './find.js'
 import { createWorkbookCheckApi, type WorkbookCheckApi } from './check.js'
 import {
+  checkInput,
   normalizeOptionalWorkbookActionInput,
   normalizeWorkbookActionInput,
   normalizeWorkbookActionInputDescription,
@@ -253,6 +254,10 @@ function normalizeActionDefinition<Refs>(
 
 function actionRunner<Refs>(definition: WorkbookActionDefinition<Refs>): WorkbookAction<Refs> {
   return typeof definition === 'function' ? definition : definition.run
+}
+
+function actionInputDescription<Refs>(definition: WorkbookActionDefinition<Refs>): WorkbookActionInputDescription | undefined {
+  return typeof definition === 'function' ? undefined : definition.input
 }
 
 function inspectAction<Refs>(name: string, definition: WorkbookActionDefinition<Refs> | undefined): WorkbookActionInspection {
@@ -625,6 +630,26 @@ export function planWorkbookAction<Refs, Actions extends WorkbookActionMap<Refs>
       errors: [actionNotFound(model.name, actionName)],
     }
   }
+
+  const inputDescription = actionInputDescription(actionDefinition)
+  if (inputDescription !== undefined) {
+    const inputCheck = checkInput(inputDescription, normalizedInput)
+    if (inputCheck.status === 'invalid') {
+      return {
+        status: 'failed',
+        modelName: model.name,
+        actionName,
+        ...inputProperty(normalizedInput),
+        checks: [],
+        errors: inputCheck.issues.map((entry) => ({
+          code: 'invalid_action_input',
+          message: entry.message,
+        })),
+      }
+    }
+    normalizedInput = inputCheck.input
+  }
+
   const action = actionRunner(actionDefinition)
 
   const commands: WorkbookActionCommand[] = []

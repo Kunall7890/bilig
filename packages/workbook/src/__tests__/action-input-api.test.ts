@@ -4,6 +4,7 @@ import {
   defineModel,
   describePlan,
   describePlanResult,
+  checkInput,
   isWorkbookActionInput,
   isWorkbookActionInputDescription,
   isWorkbookActionInputDescriptionKind,
@@ -43,6 +44,57 @@ describe('@bilig/workbook action input api', () => {
     const sparseInput: unknown[] = ['a', 'b']
     Reflect.deleteProperty(sparseInput, 1)
     expect(isWorkbookActionInput(sparseInput)).toBe(false)
+  })
+
+  it('checks payloads against action input metadata without schema dependencies', () => {
+    const description = {
+      kind: 'object',
+      fields: {
+        note: { kind: 'string' },
+        tags: { kind: 'array', items: { kind: 'string' } },
+        value: { kind: 'number', required: true },
+      },
+    }
+
+    const valid = checkInput(description, {
+      tags: ['ready', 'agent'],
+      value: 12,
+      extra: true,
+    })
+
+    expect(valid).toEqual({
+      status: 'valid',
+      input: {
+        extra: true,
+        tags: ['ready', 'agent'],
+        value: 12,
+      },
+      issues: [],
+    })
+    expect(Object.isFrozen(valid.input)).toBe(true)
+
+    expect(
+      checkInput(description, {
+        tags: ['ready', 3],
+      }),
+    ).toEqual({
+      status: 'invalid',
+      input: {
+        tags: ['ready', 3],
+      },
+      issues: [
+        {
+          code: 'wrong_input_type',
+          path: 'input.tags[1]',
+          message: 'Action input at input.tags[1] must be a string',
+        },
+        {
+          code: 'missing_required_input',
+          path: 'input.value',
+          message: 'Action input at input.value is required',
+        },
+      ],
+    })
   })
 
   it('plans parameterized actions with cloned JSON-safe input', () => {
@@ -216,6 +268,49 @@ describe('@bilig/workbook action input api', () => {
         },
       ],
     })
+  })
+
+  it('rejects action metadata mismatches before workbook model code runs', () => {
+    let findRan = false
+    const model = defineModel({
+      name: 'metadata-input-guard-model',
+      find(workbook) {
+        findRan = true
+        return {
+          output: workbook.findRange({ sheetName: 'Sheet1', address: 'B2' }),
+        }
+      },
+      actions: {
+        write: {
+          input: {
+            kind: 'object',
+            fields: {
+              value: { kind: 'number', required: true },
+            },
+          },
+          run() {
+            throw new Error('action should not run for invalid metadata input')
+          },
+        },
+      },
+    })
+
+    expect(planWorkbookAction(model, 'write', { value: '12' })).toEqual({
+      status: 'failed',
+      modelName: 'metadata-input-guard-model',
+      actionName: 'write',
+      input: {
+        value: '12',
+      },
+      checks: [],
+      errors: [
+        {
+          code: 'invalid_action_input',
+          message: 'Action input at input.value must be a number',
+        },
+      ],
+    })
+    expect(findRan).toBe(false)
   })
 
   it('verifies manually constructed invalid plan inputs', () => {

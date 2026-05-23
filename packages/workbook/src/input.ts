@@ -26,6 +26,30 @@ export interface WorkbookActionInputDescription {
   readonly items?: WorkbookActionInputDescription
 }
 
+export type WorkbookActionInputIssueCode =
+  | 'invalid_action_input_description'
+  | 'invalid_action_input'
+  | 'missing_required_input'
+  | 'wrong_input_type'
+
+export interface WorkbookActionInputIssue {
+  readonly code: WorkbookActionInputIssueCode
+  readonly path: string
+  readonly message: string
+}
+
+export type WorkbookActionInputCheckResult =
+  | {
+      readonly status: 'valid'
+      readonly input: WorkbookActionInput
+      readonly issues: readonly []
+    }
+  | {
+      readonly status: 'invalid'
+      readonly input?: WorkbookActionInput
+      readonly issues: readonly WorkbookActionInputIssue[]
+    }
+
 export class WorkbookActionInputError extends Error {
   constructor(message: string) {
     super(message)
@@ -232,6 +256,127 @@ export function isWorkbookActionInput(input: unknown): input is WorkbookActionIn
     return true
   } catch {
     return false
+  }
+}
+
+function inputIssue(code: WorkbookActionInputIssueCode, path: string, message: string): WorkbookActionInputIssue {
+  return Object.freeze({ code, path, message })
+}
+
+function typeLabel(kind: WorkbookActionInputDescriptionKind): string {
+  switch (kind) {
+    case 'json':
+      return 'JSON-safe value'
+    case 'object':
+      return 'an object'
+    case 'array':
+      return 'an array'
+    case 'string':
+      return 'a string'
+    case 'number':
+      return 'a number'
+    case 'boolean':
+      return 'a boolean'
+    case 'null':
+      return 'null'
+  }
+}
+
+function matchesDescriptionKind(kind: WorkbookActionInputDescriptionKind, value: WorkbookActionInput): boolean {
+  switch (kind) {
+    case 'json':
+      return true
+    case 'object':
+      return typeof value === 'object' && value !== null && !Array.isArray(value)
+    case 'array':
+      return Array.isArray(value)
+    case 'string':
+      return typeof value === 'string'
+    case 'number':
+      return typeof value === 'number'
+    case 'boolean':
+      return typeof value === 'boolean'
+    case 'null':
+      return value === null
+  }
+}
+
+function isInputObject(value: WorkbookActionInput): value is { readonly [key: string]: WorkbookActionInput } {
+  return typeof value === 'object' && value !== null && !Array.isArray(value)
+}
+
+function validateInputDescription(
+  description: WorkbookActionInputDescription,
+  value: WorkbookActionInput | undefined,
+  path: string,
+  issues: WorkbookActionInputIssue[],
+): void {
+  if (value === undefined) {
+    if (description.required === true) {
+      issues.push(inputIssue('missing_required_input', path, `Action input at ${path} is required`))
+    }
+    return
+  }
+
+  if (!matchesDescriptionKind(description.kind, value)) {
+    issues.push(inputIssue('wrong_input_type', path, `Action input at ${path} must be ${typeLabel(description.kind)}`))
+    return
+  }
+
+  if (description.kind === 'object' && description.fields !== undefined && isInputObject(value)) {
+    Object.entries(description.fields).forEach(([key, fieldDescription]) => {
+      const fieldPath = childPath(path, key)
+      validateInputDescription(fieldDescription, Object.hasOwn(value, key) ? value[key] : undefined, fieldPath, issues)
+    })
+  }
+
+  if (description.kind === 'array' && description.items !== undefined && Array.isArray(value)) {
+    const itemDescription = description.items
+    value.forEach((entry, index) => {
+      validateInputDescription(itemDescription, entry, `${path}[${index}]`, issues)
+    })
+  }
+}
+
+function errorMessage(error: unknown): string {
+  return error instanceof Error ? error.message : String(error)
+}
+
+export function checkInput(description: unknown, input: unknown): WorkbookActionInputCheckResult {
+  let normalizedDescription: WorkbookActionInputDescription
+  try {
+    normalizedDescription = normalizeWorkbookActionInputDescription(description)
+  } catch (error) {
+    return {
+      status: 'invalid',
+      issues: Object.freeze([inputIssue('invalid_action_input_description', 'input', errorMessage(error))]),
+    }
+  }
+
+  let normalizedInput: WorkbookActionInput
+  try {
+    normalizedInput = normalizeWorkbookActionInput(input)
+  } catch (error) {
+    return {
+      status: 'invalid',
+      issues: Object.freeze([inputIssue('invalid_action_input', 'input', errorMessage(error))]),
+    }
+  }
+
+  const issues: WorkbookActionInputIssue[] = []
+  validateInputDescription(normalizedDescription, normalizedInput, 'input', issues)
+  if (issues.length > 0) {
+    return {
+      status: 'invalid',
+      input: normalizedInput,
+      issues: Object.freeze(issues),
+    }
+  }
+
+  return {
+    status: 'valid',
+    input: normalizedInput,
+    issues: Object.freeze([]),
   }
 }
 

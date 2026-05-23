@@ -36,7 +36,8 @@ flowchart LR
     consumer's private `refs` object shape
   - generic selector validation before runtime handoff, including canonical table-header selectors and row predicate value contracts
   - JSON-safe action input planning and verification
-  - action-object metadata and plain input descriptions for agent manifests
+  - action-object metadata, plain input descriptions, and `checkInput` payload
+    checks for agent manifests
   - machine-readable readback checks for runtime proof
   - readback proof attached to passed value/formula checks
   - stable run error code union for predictable agent branching
