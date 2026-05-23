@@ -20,7 +20,7 @@ import {
   waitForWorkbookReady,
 } from './web-shell-helpers.js'
 
-const DEFAULT_WORKBOOK_CSS_FONT_SIZE = '13px'
+const DEFAULT_WORKBOOK_CSS_FONT_SIZE = '13.3333px'
 
 test.beforeEach(async ({ page }) => {
   await installTypeGpuCellReadbackHarness(page)
@@ -217,7 +217,7 @@ test('@browser-ci web app keeps dense accounting-sheet text payloads complete in
     gridFontFamilyStartsWithArial: true,
     gridFontSize: DEFAULT_WORKBOOK_CSS_FONT_SIZE,
     nativeTextFontFamilyStartsWithArial: true,
-    nativeTextFontSizeUsesCrispDisplaySize: true,
+    nativeTextFontSizePreservesSpreadsheetPointSize: true,
     nativeTextGlyphAnchorXPixelAligned: true,
     nativeTextViewportXPixelAligned: true,
     nativeTextViewportPixelAligned: true,
@@ -1117,7 +1117,7 @@ function readNativeTextQualityState(page: Page): () => Promise<{
   readonly gridFontSize: string | null
   readonly nativeTextFontFamilyStartsWithArial: boolean
   readonly nativeTextFontSize: string | null
-  readonly nativeTextFontSizeUsesCrispDisplaySize: boolean
+  readonly nativeTextFontSizePreservesSpreadsheetPointSize: boolean
   readonly nativeTextGlyphAnchorXPixelAligned: boolean
   readonly nativeTextViewportXPixelAligned: boolean
   readonly nativeTextViewportPixelAligned: boolean
@@ -1137,7 +1137,7 @@ function readNativeTextQualityState(page: Page): () => Promise<{
       const nativePaddingRight = nativeTextStyle ? Number.parseFloat(nativeTextStyle.paddingRight) : Number.NaN
       const nativeTextRect = nativeTextRun instanceof HTMLElement ? nativeTextRun.getBoundingClientRect() : null
       const devicePixelRatio = window.devicePixelRatio || 1
-      const expectedDefaultFontSize = 13
+      const expectedDefaultFontSize = 13.3333
       const viewportX = nativeTextRect?.x ?? Number.NaN
       const viewportY = nativeTextRect?.y ?? Number.NaN
       const glyphAnchorX =
@@ -1152,7 +1152,7 @@ function readNativeTextQualityState(page: Page): () => Promise<{
         gridFontSize: gridStyle?.fontSize ?? null,
         nativeTextFontFamilyStartsWithArial: nativeTextStyle?.fontFamily.startsWith('Arial') ?? false,
         nativeTextFontSize: nativeTextStyle?.fontSize ?? null,
-        nativeTextFontSizeUsesCrispDisplaySize:
+        nativeTextFontSizePreservesSpreadsheetPointSize:
           Number.isFinite(nativeFontSize) && Math.abs(nativeFontSize - expectedDefaultFontSize) < 0.05,
         nativeTextGlyphAnchorXPixelAligned:
           Number.isFinite(glyphAnchorX) && Math.abs(glyphAnchorX * devicePixelRatio - Math.round(glyphAnchorX * devicePixelRatio)) < 0.05,

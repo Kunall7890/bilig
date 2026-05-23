@@ -16,15 +16,11 @@ export function workbookSnapCssPixel(value: number, dpr = 1): number {
   return Number((Math.round(value * resolvedDpr) / resolvedDpr).toFixed(4))
 }
 
-export function workbookSnapTextCssPixel(value: number): number {
-  return Math.max(1, Math.round(Number.isFinite(value) ? value : workbookFontPointSizeToCssPx(WORKBOOK_DEFAULT_FONT_SIZE)))
-}
-
 export function workbookDisplayFontCssPx(fontSizeCssPx: number, _dpr = 1): number {
   const resolvedFontSize = Number.isFinite(fontSizeCssPx)
     ? Math.max(1, fontSizeCssPx)
     : workbookFontPointSizeToCssPx(WORKBOOK_DEFAULT_FONT_SIZE)
-  return workbookSnapTextCssPixel(resolvedFontSize)
+  return resolvedFontSize
 }
 
 export function workbookDisplayFontPointSizeToCssPx(pointSize: number, dpr = 1): number {
@@ -32,7 +28,7 @@ export function workbookDisplayFontPointSizeToCssPx(pointSize: number, dpr = 1):
 }
 
 export function workbookDisplayLineHeightCssPx(fontSizeCssPx: number, dpr = 1): number {
-  return workbookSnapTextCssPixel(workbookDisplayFontCssPx(fontSizeCssPx, dpr) * 1.2)
+  return Math.max(1, workbookSnapCssPixel(workbookDisplayFontCssPx(fontSizeCssPx, dpr) * 1.2, dpr))
 }
 
 export const workbookThemeColors = {
