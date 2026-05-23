@@ -121,6 +121,41 @@ function extractWorksheetConditionalFormattingXml(sheetXml: string): string[] {
   return Array.from(sheetXml.matchAll(worksheetConditionalFormattingRegex()), (match) => match[0])
 }
 
+function usedNamespacePrefixes(xml: string): Set<string> {
+  const prefixes = new Set<string>()
+  for (const match of xml.matchAll(/\b([A-Za-z_][\w.-]*):[A-Za-z_][\w.-]*\b/gu)) {
+    const prefix = match[1]
+    if (prefix && prefix !== 'xml' && prefix !== 'xmlns') {
+      prefixes.add(prefix)
+    }
+  }
+  return prefixes
+}
+
+function worksheetNamespaceDeclaration(sheetXml: string, prefix: string): string | null {
+  const worksheetOpening = /<(?:[A-Za-z_][\w.-]*:)?worksheet\b([^>]*)>/u.exec(sheetXml)?.[1] ?? ''
+  const declaration = new RegExp(`\\sxmlns:${prefix}=(["'])([\\s\\S]*?)\\1`, 'u').exec(worksheetOpening)
+  return declaration ? `xmlns:${prefix}=${declaration[1]}${declaration[2] ?? ''}${declaration[1]}` : null
+}
+
+function addMissingConditionalFormattingNamespaceDeclarations(sheetXml: string, conditionalFormattingXml: string): string {
+  const missingDeclarations = [...usedNamespacePrefixes(conditionalFormattingXml)].flatMap((prefix) => {
+    if (new RegExp(`\\sxmlns:${prefix}=`, 'u').test(conditionalFormattingXml)) {
+      return []
+    }
+    const declaration = worksheetNamespaceDeclaration(sheetXml, prefix)
+    return declaration ? [declaration] : []
+  })
+  if (missingDeclarations.length === 0) {
+    return conditionalFormattingXml
+  }
+  return conditionalFormattingXml.replace(
+    /<((?:[A-Za-z_][\w.-]*:)?conditionalFormatting)\b([^>]*?)(\/?)>/u,
+    (_match, tagName: string, attributes: string, selfClosing: string) =>
+      `<${tagName}${attributes} ${missingDeclarations.join(' ')}${selfClosing}>`,
+  )
+}
+
 function removeWorksheetConditionalFormattingXml(sheetXml: string): string {
   return sheetXml.replace(worksheetConditionalFormattingRegex(), '')
 }
@@ -632,7 +667,11 @@ export function readImportedWorkbookConditionalFormatArtifactsFromWorksheetPaths
 export function readImportedSheetConditionalFormatArtifactsFromWorksheetXml(
   sheetXml: string,
 ): WorkbookSheetConditionalFormatArtifactsSnapshot | undefined {
-  return readImportedSheetConditionalFormatArtifactsFromElementXml(extractWorksheetConditionalFormattingXml(sheetXml))
+  const xml = extractWorksheetConditionalFormattingXml(sheetXml)
+    .filter(needsConditionalFormatArtifactXml)
+    .map((conditionalFormattingXml) => addMissingConditionalFormattingNamespaceDeclarations(sheetXml, conditionalFormattingXml))
+    .join('')
+  return xml.length > 0 ? { xml } : undefined
 }
 
 export function readImportedSheetConditionalFormatArtifactsFromElementXml(

@@ -45,6 +45,21 @@ describe('xlsx conditional format roundtrip', () => {
     expect(exportedSheetXml.match(/<conditionalFormatting\b/gu)).toHaveLength(3)
   })
 
+  it('keeps worksheet namespace declarations needed by preserved conditional-format artifacts', () => {
+    const source = buildRootNamespacedAdvancedConditionalFormattingWorkbook()
+
+    const imported = importXlsx(source, 'advanced-conditional-formats-root-namespace.xlsx')
+
+    const artifactXml = imported.snapshot.sheets[0]?.metadata?.conditionalFormatArtifacts?.xml
+    const exportedSheetXml = strFromU8(unzipSync(exportXlsx(imported.snapshot))['xl/worksheets/sheet1.xml'] ?? new Uint8Array())
+
+    expect(artifactXml).toContain(`xmlns:x="${spreadsheetMainNamespace}"`)
+    expect(artifactXml).toContain('<x:conditionalFormatting')
+    expect(exportedSheetXml).toContain(`xmlns:x="${spreadsheetMainNamespace}"`)
+    expect(exportedSheetXml).toContain('<x:conditionalFormatting')
+    expect(exportedSheetXml.match(/<(?:[A-Za-z_][\w.-]*:)?conditionalFormatting\b/gu)).toHaveLength(3)
+  })
+
   it('rebuilds simple no-style conditional-format rules without retaining raw artifacts', () => {
     const imported = importXlsx(buildSimpleConditionalFormattingWorkbook(), 'simple-conditional-format.xlsx')
 
@@ -80,6 +95,20 @@ function buildAdvancedConditionalFormattingWorkbook(): Uint8Array {
 
   const zip = unzipSync(XLSX.write(workbook, { bookType: 'xlsx', type: 'buffer' }))
   zip['xl/worksheets/sheet1.xml'] = strToU8(advancedConditionalFormattingWorksheetXml)
+  return zipSync(zip)
+}
+
+function buildRootNamespacedAdvancedConditionalFormattingWorkbook(): Uint8Array {
+  const workbook = XLSX.utils.book_new()
+  const sheet = XLSX.utils.aoa_to_sheet([
+    [10, 20, 30],
+    [20, 40, 60],
+    [30, 60, 90],
+  ])
+  XLSX.utils.book_append_sheet(workbook, sheet, 'Dashboard')
+
+  const zip = unzipSync(XLSX.write(workbook, { bookType: 'xlsx', type: 'buffer' }))
+  zip['xl/worksheets/sheet1.xml'] = strToU8(rootNamespacedAdvancedConditionalFormattingWorksheetXml)
   return zipSync(zip)
 }
 
@@ -162,3 +191,13 @@ const advancedConditionalFormattingWorksheetXml = [
   '</conditionalFormatting>',
   '</worksheet>',
 ].join('')
+
+const spreadsheetMainNamespace = 'http://schemas.openxmlformats.org/spreadsheetml/2006/main'
+
+const rootNamespacedAdvancedConditionalFormattingWorksheetXml = advancedConditionalFormattingWorksheetXml
+  .replace(
+    '<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">',
+    `<worksheet xmlns="${spreadsheetMainNamespace}" xmlns:x="${spreadsheetMainNamespace}">`,
+  )
+  .replaceAll('<conditionalFormatting ', '<x:conditionalFormatting ')
+  .replaceAll('</conditionalFormatting>', '</x:conditionalFormatting>')

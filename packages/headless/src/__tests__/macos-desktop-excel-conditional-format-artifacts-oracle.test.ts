@@ -158,6 +158,76 @@ describe('macOS Desktop Excel conditional format artifact oracle', () => {
     },
     120_000,
   )
+
+  it.runIf(process.env.BILIG_EXCEL_ORACLE_RUN === '1')(
+    'matches Desktop Excel namespace-qualified conditional-format artifact ranges after structural row inserts',
+    () => {
+      if (!isMacosExcelInstalled()) {
+        throw new Error('BILIG_EXCEL_ORACLE_RUN=1 requires /Applications/Microsoft Excel.app')
+      }
+
+      const tempDir = createExcelAccessibleTempDir('bilig-headless-excel-cf-prefixed-structural-oracle-')
+      try {
+        const sourcePath = join(tempDir, 'excel-prefixed-conditional-format-structural-oracle.xlsx')
+        writeFileSync(sourcePath, buildPrefixedConditionalFormattingWorkbook())
+
+        const excelResult = runMacosExcelStructuralOperationOracle({
+          workbookPath: sourcePath,
+          worksheetName: 'Dashboard',
+          operations: [{ kind: 'insertRows', range: '1:1' }],
+          inspectCells: ['A1', 'A2', 'B2', 'C2'],
+          saveWorkbook: true,
+          timeoutMs: 90_000,
+        })
+        expect(excelResult.cells.map((cell) => cell.value)).toEqual([
+          { kind: 'string', value: '' },
+          { kind: 'number', value: 10 },
+          { kind: 'number', value: 20 },
+          { kind: 'number', value: 30 },
+        ])
+
+        const excelTruth = importXlsx(new Uint8Array(readFileSync(sourcePath)), 'excel-prefixed-cf-structural-oracle.xlsx')
+        const excelTruthArtifacts = excelTruth.snapshot.sheets[0]?.metadata?.conditionalFormatArtifacts?.xml
+        expect(extractConditionalFormatSqrefs(excelTruthArtifacts)).toEqual(expectedInsertedRowSqrefs)
+
+        const workpaper = WorkPaper.buildFromSnapshot(
+          importXlsx(buildPrefixedConditionalFormattingWorkbook(), 'headless-prefixed-cf-source.xlsx').snapshot,
+        )
+        try {
+          const sheet = workpaper.getSheetId('Dashboard')
+          if (sheet === undefined) {
+            throw new Error('Expected Dashboard sheet to be available')
+          }
+          workpaper.addRows(sheet, 0, 1)
+          expect(extractConditionalFormatSqrefs(workpaper.exportSnapshot().sheets[0]?.metadata?.conditionalFormatArtifacts?.xml)).toEqual(
+            expectedInsertedRowSqrefs,
+          )
+
+          const headlessPath = join(tempDir, 'headless-prefixed-conditional-format-structural-oracle.xlsx')
+          writeFileSync(headlessPath, exportXlsx(workpaper.exportSnapshot()))
+          const headlessExcel = runMacosExcelInspectionOracle({
+            workbookPath: headlessPath,
+            worksheetName: 'Dashboard',
+            formulaCells: [],
+            inspectCells: ['A1', 'A2', 'B2', 'C2'],
+            saveWorkbook: true,
+            timeoutMs: 90_000,
+          })
+          expect(headlessExcel.cells).toEqual(excelResult.cells)
+
+          const headlessExcelTruth = importXlsx(new Uint8Array(readFileSync(headlessPath)), 'headless-prefixed-cf-structural-oracle.xlsx')
+          expect(extractConditionalFormatSqrefs(headlessExcelTruth.snapshot.sheets[0]?.metadata?.conditionalFormatArtifacts?.xml)).toEqual(
+            extractConditionalFormatSqrefs(excelTruthArtifacts),
+          )
+        } finally {
+          workpaper.dispose()
+        }
+      } finally {
+        removeMacosExcelTestDir(tempDir)
+      }
+    },
+    120_000,
+  )
 })
 
 function expectConditionalFormatArtifacts(xml: string | undefined): void {
@@ -170,7 +240,7 @@ function extractConditionalFormatSqrefs(xml: string | undefined): string[] {
   if (!xml) {
     throw new Error('Expected conditional format artifact XML')
   }
-  return [...xml.matchAll(/<conditionalFormatting\b[^>]*\bsqref=("|')([\s\S]*?)\1/gu)].map((match) => match[2] ?? '')
+  return [...xml.matchAll(/<(?:[A-Za-z_][\w.-]*:)?conditionalFormatting\b[^>]*\bsqref=("|')([\s\S]*?)\1/gu)].map((match) => match[2] ?? '')
 }
 
 function buildAdvancedConditionalFormattingWorkbook(): Uint8Array {
@@ -184,6 +254,20 @@ function buildAdvancedConditionalFormattingWorkbook(): Uint8Array {
 
   const zip = unzipSync(XLSX.write(workbook, { bookType: 'xlsx', type: 'buffer' }))
   zip['xl/worksheets/sheet1.xml'] = strToU8(advancedConditionalFormattingWorksheetXml)
+  return zipSync(zip)
+}
+
+function buildPrefixedConditionalFormattingWorkbook(): Uint8Array {
+  const workbook = XLSX.utils.book_new()
+  const sheet = XLSX.utils.aoa_to_sheet([
+    [10, 20, 30, null],
+    [20, 40, 60, null],
+    [30, 60, 90, null],
+  ])
+  XLSX.utils.book_append_sheet(workbook, sheet, 'Dashboard')
+
+  const zip = unzipSync(XLSX.write(workbook, { bookType: 'xlsx', type: 'buffer' }))
+  zip['xl/worksheets/sheet1.xml'] = strToU8(prefixedAdvancedConditionalFormattingWorksheetXml)
   return zipSync(zip)
 }
 
@@ -219,3 +303,11 @@ const advancedConditionalFormattingWorksheetXml = [
   '</conditionalFormatting>',
   '</worksheet>',
 ].join('')
+
+const prefixedAdvancedConditionalFormattingWorksheetXml = advancedConditionalFormattingWorksheetXml
+  .replace(
+    '<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">',
+    '<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:x="http://schemas.openxmlformats.org/spreadsheetml/2006/main">',
+  )
+  .replaceAll('<conditionalFormatting ', '<x:conditionalFormatting ')
+  .replaceAll('</conditionalFormatting>', '</x:conditionalFormatting>')

@@ -226,8 +226,15 @@ function rewriteConditionalFormatArtifactSqref(value: string, transform: Structu
   return rewritten.length > 0 ? rewritten.join(' ') : undefined
 }
 
+const conditionalFormattingElementName = '(?:[A-Za-z_][\\w.-]*:)?conditionalFormatting'
+const conditionalFormattingBlockRegex = new RegExp(
+  `<${conditionalFormattingElementName}\\b[^>]*>[\\s\\S]*?<\\/${conditionalFormattingElementName}>|<${conditionalFormattingElementName}\\b[^>]*/>`,
+  'gu',
+)
+const conditionalFormattingOpeningTagRegex = new RegExp(`^<${conditionalFormattingElementName}\\b[^>]*\\/?>`, 'u')
+
 function rewriteConditionalFormatArtifactBlock(block: string, transform: StructuralAxisTransform): string | undefined {
-  const openingTag = /^<conditionalFormatting\b[^>]*>/u.exec(block)?.[0]
+  const openingTag = conditionalFormattingOpeningTagRegex.exec(block)?.[0]
   if (!openingTag) {
     return block
   }
@@ -251,7 +258,7 @@ export function rewriteConditionalFormatArtifactXmlForStructuralTransform(
   transform: StructuralAxisTransform,
 ): string | undefined {
   let matchedBlock = false
-  const rewrittenXml = xml.replace(/<conditionalFormatting\b[^>]*>[\s\S]*?<\/conditionalFormatting>/gu, (block) => {
+  const rewrittenXml = xml.replace(conditionalFormattingBlockRegex, (block) => {
     matchedBlock = true
     return rewriteConditionalFormatArtifactBlock(block, transform) ?? ''
   })
