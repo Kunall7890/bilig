@@ -4,6 +4,19 @@ All notable changes to `@bilig/headless` will be documented in this file.
 
 This package is released as part of the aligned bilig library package set.
 
+## 0.60.0
+
+- Release type: minor
+- Previous libraries tag: libraries-v0.59.0
+- Manual override: no
+
+## Features
+- feat(engine): refresh source-backed pivot caches (229ff9e5)
+
+## Internal runtime changes
+- test(bench): parallelize competitive benchmark generation (942d1782)
+- test(excel): align pivot export cache assertion (d59c936c)
+
 ## 0.59.0
 
 - Release type: minor
