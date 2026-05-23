@@ -104,6 +104,58 @@ describe('macOS Desktop Excel oracle harness', () => {
     expect(script).not.toContain('active workbook')
   })
 
+  it('builds a structural operation runner that can apply Desktop Excel range sorts', () => {
+    const script = createMacosExcelStructuralOperationAppleScript({
+      worksheetName: 'Cases',
+      operations: [
+        {
+          kind: 'applySort',
+          range: 'A1:D7',
+          keys: [
+            { key: 'B1', order: 'descending' },
+            { key: 'A1', order: 'ascending' },
+          ],
+          header: 'yes',
+          orientation: 'rows',
+        },
+      ],
+      inspectCells: ['A2'],
+      saveWorkbook: true,
+    })
+
+    expect(script).toContain('sort (range "A1:D7" of targetWorksheet)')
+    expect(script).toContain('key1 (range "B1" of targetWorksheet)')
+    expect(script).toContain('order1 sort descending')
+    expect(script).toContain('key2 (range "A1" of targetWorksheet)')
+    expect(script).toContain('order2 sort ascending')
+    expect(script).toContain('header header yes')
+    expect(script).toContain('orientation sort columns')
+  })
+
+  it('builds a structural operation runner that can apply Desktop Excel table sorts', () => {
+    const script = createMacosExcelStructuralOperationAppleScript({
+      worksheetName: 'Cases',
+      operations: [
+        {
+          kind: 'applyTableSort',
+          tableName: 'Sales',
+          keys: [{ key: 'B2:B6', order: 'descending' }],
+          header: 'yes',
+          orientation: 'rows',
+        },
+      ],
+      inspectCells: ['A2'],
+      saveWorkbook: true,
+    })
+
+    expect(script).toContain('set tableSort to sort object of list object "Sales" of targetWorksheet')
+    expect(script).toContain('clear sortfieldset (sortfieldset of tableSort)')
+    expect(script).toContain('add sortfield (sortfieldset of tableSort) key (range "B2:B6" of targetWorksheet) order sort descending')
+    expect(script).toContain('set sort header of tableSort to header yes')
+    expect(script).toContain('set sort orientation of tableSort to sort columns')
+    expect(script).toContain('apply sort tableSort')
+  })
+
   it('builds one-variable and two-variable data-table structural operations', () => {
     const script = createMacosExcelStructuralOperationAppleScript({
       worksheetName: 'Cases',

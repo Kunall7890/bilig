@@ -31,9 +31,9 @@ const spacedHeaderRenameOracleCells = [
 ] as const
 const spacedHeaderDeleteOracleCells = [
   { address: 'A1', formula: 'Units Sold', rawValue: 'string\tUnits Sold', value: { kind: 'string', value: 'Units Sold' } },
-  { address: 'C1', formula: '=SUM(#REF!)', rawValue: 'blank\t', value: { kind: 'blank' } },
+  { address: 'C1', formula: '=SUM(#REF!)', rawValue: 'error\t#REF!', value: { kind: 'error', value: String(ErrorCode.Ref) } },
   { address: 'D1', formula: '=SUM(Sales[Units Sold])', rawValue: 'number\t5.0', value: { kind: 'number', value: 5 } },
-  { address: 'E1', formula: '=SUM(SalesQ1)', rawValue: 'blank\t', value: { kind: 'blank' } },
+  { address: 'E1', formula: '=SUM(SalesQ1)', rawValue: 'error\t#REF!', value: { kind: 'error', value: String(ErrorCode.Ref) } },
   { address: 'F1', formula: '=SUM(SalesUnitsFormula)', rawValue: 'number\t5.0', value: { kind: 'number', value: 5 } },
 ] as const
 const spacedHeaderDeleteImportedCells = [

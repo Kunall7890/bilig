@@ -15,6 +15,14 @@ export interface MacosExcelOracleFormulaCell {
 }
 
 export type MacosExcelLinkUpdateMode = 'all' | 'external' | 'never' | 'remote'
+export type MacosExcelSortHeader = 'guess' | 'no' | 'yes'
+export type MacosExcelSortOrder = 'ascending' | 'descending'
+export type MacosExcelSortOrientation = 'columns' | 'rows'
+
+export interface MacosExcelSortKey {
+  readonly key: string
+  readonly order?: MacosExcelSortOrder
+}
 
 export interface MacosExcelRecalculationOracleRequest {
   readonly workbookPath: string
@@ -56,6 +64,20 @@ export type MacosExcelStructuralOperation =
   | { readonly kind: 'moveRows'; readonly sourceRange: string; readonly destinationRange: string }
   | { readonly kind: 'moveColumns'; readonly sourceRange: string; readonly destinationRange: string }
   | { readonly kind: 'createDataTable'; readonly range: string; readonly rowInput?: string; readonly columnInput?: string }
+  | {
+      readonly kind: 'applySort'
+      readonly range: string
+      readonly keys: readonly MacosExcelSortKey[]
+      readonly header?: MacosExcelSortHeader
+      readonly orientation?: MacosExcelSortOrientation
+    }
+  | {
+      readonly kind: 'applyTableSort'
+      readonly tableName: string
+      readonly keys: readonly MacosExcelSortKey[]
+      readonly header?: MacosExcelSortHeader
+      readonly orientation?: MacosExcelSortOrientation
+    }
 
 export interface MacosExcelStructuralOperationOracleRequest {
   readonly workbookPath: string
@@ -104,7 +126,7 @@ export function runMacosExcelRecalculationOracle(request: MacosExcelRecalculatio
     copySavedWorkbookFromMacosExcelOracle(request, stagedWorkbookPath)
     return parseMacosExcelRecalculationOutput(rawOutput, request.valueCells.length)
   } finally {
-    rmSync(tempDir, { recursive: true, force: true })
+    removeMacosExcelOracleTempDir(tempDir)
   }
 }
 
@@ -126,7 +148,7 @@ export function runMacosExcelInspectionOracle(request: MacosExcelInspectionOracl
     copySavedWorkbookFromMacosExcelOracle(request, stagedWorkbookPath)
     return parseMacosExcelInspectionOutput(rawOutput, request.inspectCells)
   } finally {
-    rmSync(tempDir, { recursive: true, force: true })
+    removeMacosExcelOracleTempDir(tempDir)
   }
 }
 
@@ -150,8 +172,32 @@ export function runMacosExcelStructuralOperationOracle(
     copySavedWorkbookFromMacosExcelOracle(request, stagedWorkbookPath)
     return parseMacosExcelInspectionOutput(rawOutput, request.inspectCells)
   } finally {
-    rmSync(tempDir, { recursive: true, force: true })
+    removeMacosExcelOracleTempDir(tempDir)
   }
+}
+
+function removeMacosExcelOracleTempDir(dirPath: string): void {
+  for (let attempt = 0; attempt < 5; attempt += 1) {
+    try {
+      rmSync(dirPath, { recursive: true, force: true })
+      return
+    } catch (error) {
+      if (isRecord(error) && ['EBUSY', 'EINTR', 'ENOTEMPTY'].includes(String(error['code']))) {
+        sleepSync(100)
+        continue
+      }
+      throw error
+    }
+  }
+  rmSync(dirPath, { recursive: true, force: true })
+}
+
+function sleepSync(ms: number): void {
+  Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, ms)
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null
 }
 
 function createMacosExcelOracleTempDir(prefix: string): string {
@@ -544,6 +590,73 @@ function structuralOperationAppleScript(operation: MacosExcelStructuralOperation
       ]
         .filter((part) => part.length > 0)
         .join(' ')
+    case 'applySort':
+      if (operation.keys.length === 0 || operation.keys.length > 3) {
+        throw new Error('macOS Excel sort operation requires one to three sort keys')
+      }
+      return [
+        `sort (range ${toAppleScriptString(operation.range)} of targetWorksheet)`,
+        ...operation.keys.flatMap((key, index) => {
+          const position = String(index + 1)
+          return [
+            `key${position} (range ${toAppleScriptString(key.key)} of targetWorksheet)`,
+            `order${position} ${sortOrderAppleScript(key.order ?? 'ascending')}`,
+          ]
+        }),
+        operation.header ? `header ${sortHeaderAppleScript(operation.header)}` : '',
+        operation.orientation ? `orientation ${sortOrientationAppleScript(operation.orientation)}` : '',
+      ]
+        .filter((part) => part.length > 0)
+        .join(' ')
+    case 'applyTableSort':
+      if (operation.keys.length === 0 || operation.keys.length > 3) {
+        throw new Error('macOS Excel table sort operation requires one to three sort keys')
+      }
+      return [
+        `set tableSort to sort object of list object ${toAppleScriptString(operation.tableName)} of targetWorksheet`,
+        `clear sortfieldset (sortfieldset of tableSort)`,
+        ...operation.keys.map((key) =>
+          [
+            `add sortfield (sortfieldset of tableSort)`,
+            `key (range ${toAppleScriptString(key.key)} of targetWorksheet)`,
+            `order ${sortOrderAppleScript(key.order ?? 'ascending')}`,
+          ].join(' '),
+        ),
+        operation.header ? `set sort header of tableSort to ${sortHeaderAppleScript(operation.header)}` : '',
+        operation.orientation ? `set sort orientation of tableSort to ${sortOrientationAppleScript(operation.orientation)}` : '',
+        `apply sort tableSort`,
+      ]
+        .filter((part) => part.length > 0)
+        .join('\n      ')
+  }
+}
+
+function sortHeaderAppleScript(header: MacosExcelSortHeader): string {
+  switch (header) {
+    case 'guess':
+      return 'header guess'
+    case 'no':
+      return 'header no'
+    case 'yes':
+      return 'header yes'
+  }
+}
+
+function sortOrderAppleScript(order: MacosExcelSortOrder): string {
+  switch (order) {
+    case 'ascending':
+      return 'sort ascending'
+    case 'descending':
+      return 'sort descending'
+  }
+}
+
+function sortOrientationAppleScript(orientation: MacosExcelSortOrientation): string {
+  switch (orientation) {
+    case 'columns':
+      return 'sort rows'
+    case 'rows':
+      return 'sort columns'
   }
 }
 

@@ -28,6 +28,7 @@ import type {
 import { calculationSettingsEqual, definedNameValuesEqual, normalizeWorkbookCalculationSettings } from '../engine-metadata-utils.js'
 import { buildFormatClearOps, buildFormatPatchOps, buildStyleClearOps, buildStylePatchOps } from '../engine-range-format-ops.js'
 import { hasEngineStructuralDeleteImpact } from './engine-structural-delete-impact.js'
+import { buildSortRangeOps, buildSortTableOps, type SpreadsheetEngineSortRangeOptions } from './engine-sort-range.js'
 import { upsertNumericDefinedNameFast as upsertNumericDefinedNameFastPath } from './engine-numeric-defined-name-fast-path.js'
 import {
   buildSetConditionalFormatOps,
@@ -346,6 +347,29 @@ export abstract class SpreadsheetEngineWorkbookFacadeBase extends SpreadsheetEng
 
   setSort(sheetName: string, range: CellRangeRef, keys: WorkbookSortSnapshot['keys']): void {
     this.executeLocalTransaction(buildSetSortOps(this.workbook, sheetName, range, keys) ?? [])
+  }
+
+  sortRange(
+    sheetName: string,
+    range: CellRangeRef,
+    keys: WorkbookSortSnapshot['keys'],
+    options: SpreadsheetEngineSortRangeOptions = {},
+  ): boolean {
+    const ops = buildSortRangeOps(this.exportSnapshot(), sheetName, range, keys, options)
+    if (ops.length === 0) {
+      return false
+    }
+    this.executeLocalTransaction(ops)
+    return true
+  }
+
+  sortTable(sheetName: string, tableName: string, keys: WorkbookSortSnapshot['keys']): boolean {
+    const ops = buildSortTableOps(this.exportSnapshot(), sheetName, tableName, keys)
+    if (ops.length === 0) {
+      return false
+    }
+    this.executeLocalTransaction(ops)
+    return true
   }
 
   clearSort(sheetName: string, range: CellRangeRef): boolean {
