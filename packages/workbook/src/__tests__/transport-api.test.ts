@@ -41,6 +41,15 @@ function isPlanDescription(value: unknown): value is WorkbookActionPlanDescripti
   )
 }
 
+function accessorArray(get: () => unknown): unknown[] {
+  const value = Array.from<unknown>({ length: 1 })
+  Object.defineProperty(value, '0', {
+    enumerable: true,
+    get,
+  })
+  return value
+}
+
 describe('@bilig/workbook transport api', () => {
   it('round-trips refs as plain JSON data and hydrates ergonomic helpers back', () => {
     const table = findTable({ name: 'Inputs', sheetName: 'Model', headers: ['Amount', 'Status'] })
@@ -317,6 +326,75 @@ describe('@bilig/workbook transport api', () => {
         },
       ]),
     })
+  })
+
+  it('rejects accessor-backed transported plan arrays without invoking getters', () => {
+    const model = defineModel({
+      name: 'transport-array-data-model',
+
+      find(workbook) {
+        return {
+          result: workbook.findRange({ sheetName: 'Sheet1', address: 'D2' }),
+        }
+      },
+
+      actions: {
+        write({ refs, workbook }) {
+          workbook.writeValue(refs.result, 1)
+        },
+      },
+    })
+    const plan = buildWorkbookActionPlan(model, 'write')
+    const data = structuredClone(toPlanData(plan))
+
+    let commandGetterInvoked = false
+    const accessorCommands = accessorArray(() => {
+      commandGetterInvoked = true
+      throw new Error('getter must not run')
+    })
+    const accessorData = {
+      ...data,
+      commands: accessorCommands,
+    }
+
+    expect(isPlanData(accessorData)).toBe(false)
+    expect(checkPlanData(accessorData)).toEqual({
+      status: 'invalid',
+      issues: [
+        {
+          code: 'invalid_plan_data',
+          path: 'commands[0]',
+          message: 'Workbook plan data command at commands[0] is invalid',
+        },
+      ],
+    })
+    expect(() => hydratePlanData(accessorData)).toThrow(
+      'Workbook plan data is invalid: Workbook plan data command at commands[0] is invalid',
+    )
+    expect(commandGetterInvoked).toBe(false)
+
+    let refGetterInvoked = false
+    const accessorRefs = accessorArray(() => {
+      refGetterInvoked = true
+      throw new Error('getter must not run')
+    })
+
+    expect(
+      checkPlanData({
+        ...data,
+        refsUsed: accessorRefs,
+      }),
+    ).toEqual({
+      status: 'invalid',
+      issues: [
+        {
+          code: 'invalid_plan_data',
+          path: 'refsUsed[0]',
+          message: 'Workbook plan data ref at refsUsed[0] is invalid',
+        },
+      ],
+    })
+    expect(refGetterInvoked).toBe(false)
   })
 
   it('runs transported plan data without the consumer refs object', async () => {

@@ -156,9 +156,11 @@ methods, or pass the data directly to `describeRuntimeRequirements(data)` and
 proof keep nested JSON paths such as `input.rows[1]` and
 `checks[0].proof.when`, so an agent can repair the exact payload field before
 hydration. Plan-data guards only trust own payload fields; inherited
-prototype fields never satisfy the transport contract. The hydrated plan exposes
-`refs: { refsUsed }` instead of the consumer's private model-shaped `refs`
-object, so transported execution stays generic.
+prototype fields never satisfy the transport contract. Transported plan arrays
+must contain data entries too; holes or accessor-backed entries are rejected
+without running getters. The hydrated plan exposes `refs: { refsUsed }` instead
+of the consumer's private model-shaped `refs` object, so transported execution
+stays generic.
 
 ## Action Input
 

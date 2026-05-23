@@ -64,6 +64,39 @@ function hasOptionalString(value: Record<string, unknown>, key: string): boolean
   return descriptor === undefined || typeof descriptor.value === 'string'
 }
 
+function arrayEvery<T>(value: unknown, predicate: (entry: unknown) => entry is T): value is readonly T[]
+function arrayEvery(value: unknown, predicate: (entry: unknown) => boolean): boolean
+function arrayEvery(value: unknown, predicate: (entry: unknown) => boolean): boolean {
+  if (!Array.isArray(value)) {
+    return false
+  }
+
+  for (let index = 0; index < value.length; index += 1) {
+    const descriptor = Object.getOwnPropertyDescriptor(value, String(index))
+    if (descriptor === undefined || !('value' in descriptor) || !predicate(descriptor.value)) {
+      return false
+    }
+  }
+
+  return true
+}
+
+function mapArrayData<T, Result>(
+  value: readonly T[],
+  guard: (entry: unknown) => entry is T,
+  mapper: (entry: T) => Result,
+): readonly Result[] {
+  const mapped: Result[] = []
+  for (let index = 0; index < value.length; index += 1) {
+    const descriptor = Object.getOwnPropertyDescriptor(value, String(index))
+    if (descriptor === undefined || !('value' in descriptor) || !guard(descriptor.value)) {
+      throw new Error('Workbook plan data arrays must contain only data properties')
+    }
+    mapped.push(mapper(descriptor.value))
+  }
+  return mapped
+}
+
 function isWorkbookRefDescription(value: unknown): value is WorkbookRefDescription {
   return isWorkbookRefData(value)
 }
@@ -73,11 +106,11 @@ function isFormulaLabelData(value: unknown): value is WorkbookFormulaLabelDescri
 }
 
 function isFormulaLabelDataArray(value: unknown): value is readonly WorkbookFormulaLabelDescription[] {
-  return Array.isArray(value) && value.every(isFormulaLabelData)
+  return arrayEvery(value, isFormulaLabelData)
 }
 
 function isRefDataArray(value: unknown): value is readonly WorkbookRefDescription[] {
-  return Array.isArray(value) && value.every(isWorkbookRefDescription)
+  return arrayEvery(value, isWorkbookRefDescription)
 }
 
 function isWorkbookActionCommandData(value: unknown): value is WorkbookActionCommandDescription {
@@ -175,14 +208,10 @@ export function isPlanData(value: unknown): value is WorkbookPlanData {
     hasString(value, 'actionName') &&
     (!hasOwnValue(value, 'input') || isWorkbookActionInput(input)) &&
     isRefDataArray(refsUsed) &&
-    Array.isArray(commands) &&
-    commands.every(isWorkbookActionCommandData) &&
-    Array.isArray(ops) &&
-    ops.every(isWorkbookOp) &&
-    Array.isArray(changed) &&
-    changed.every(isChangeData) &&
-    Array.isArray(checks) &&
-    checks.every(isCheckData)
+    arrayEvery(commands, isWorkbookActionCommandData) &&
+    arrayEvery(ops, isWorkbookOp) &&
+    arrayEvery(changed, isChangeData) &&
+    arrayEvery(checks, isCheckData)
   )
 }
 
@@ -244,11 +273,17 @@ function pushArrayIssues<T>(
     issues.push(planDataIssue(key, `Workbook plan data ${key} must be an array`))
     return
   }
-  array.forEach((entry, index) => {
+  for (let index = 0; index < array.length; index += 1) {
+    const descriptor = Object.getOwnPropertyDescriptor(array, String(index))
+    if (descriptor === undefined || !('value' in descriptor)) {
+      issues.push(planDataIssue(`${key}[${index}]`, `Workbook plan data ${label} at ${key}[${index}] is invalid`))
+      continue
+    }
+    const entry = descriptor.value
     if (!guard(entry)) {
       issues.push(planDataIssue(`${key}[${index}]`, `Workbook plan data ${label} at ${key}[${index}] is invalid`))
     }
-  })
+  }
 }
 
 function pushCheckIssues(issues: WorkbookPlanDataIssue[], entry: unknown, index: number): void {
@@ -290,9 +325,11 @@ function pushCheckArrayIssues(issues: WorkbookPlanDataIssue[], value: Record<str
     issues.push(planDataIssue('checks', 'Workbook plan data checks must be an array'))
     return
   }
-  checks.forEach((entry, index) => {
+  for (let index = 0; index < checks.length; index += 1) {
+    const descriptor = Object.getOwnPropertyDescriptor(checks, String(index))
+    const entry = descriptor !== undefined && 'value' in descriptor ? descriptor.value : undefined
     pushCheckIssues(issues, entry, index)
-  })
+  }
 }
 
 export function checkPlanData(value: unknown): WorkbookPlanDataCheckResult {
@@ -351,8 +388,8 @@ function hydrateCommand(command: WorkbookActionCommandDescription): WorkbookActi
         kind: 'writeFormula',
         target: hydrateRef(command.target),
         formula: command.formula,
-        inputs: Object.freeze(command.inputs.map(hydrateRef)),
-        labels: Object.freeze(command.labels.map(hydrateFormulaLabel)),
+        inputs: Object.freeze(mapArrayData(command.inputs, isWorkbookRefDescription, hydrateRef)),
+        labels: Object.freeze(mapArrayData(command.labels, isFormulaLabelData, hydrateFormulaLabel)),
       })
     case 'writeValue':
       return Object.freeze({
@@ -401,8 +438,8 @@ function hydrateExpectation(expectation: WorkbookCheckExpectationDescription): W
       return Object.freeze({
         kind: 'formulaEquals',
         formula: expectation.formula,
-        inputs: Object.freeze(expectation.inputs.map(hydrateRef)),
-        labels: Object.freeze(expectation.labels.map(hydrateFormulaLabel)),
+        inputs: Object.freeze(mapArrayData(expectation.inputs, isWorkbookRefDescription, hydrateRef)),
+        labels: Object.freeze(mapArrayData(expectation.labels, isFormulaLabelData, hydrateFormulaLabel)),
       })
   }
 }
@@ -413,7 +450,7 @@ function hydrateCheck(check: WorkbookCheckResultDescription): WorkbookCheckResul
     status: check.status,
     kind: check.kind,
     ...(check.target !== undefined ? { target: hydrateRef(check.target) } : {}),
-    ...(check.refs !== undefined ? { refs: Object.freeze(check.refs.map(hydrateRef)) } : {}),
+    ...(check.refs !== undefined ? { refs: Object.freeze(mapArrayData(check.refs, isWorkbookRefDescription, hydrateRef)) } : {}),
     message: check.message,
     ...(check.expectation !== undefined ? { expectation: hydrateExpectation(check.expectation) } : {}),
     ...(proof !== undefined ? { proof } : {}),
@@ -435,7 +472,7 @@ export function hydratePlanData(data: unknown): WorkbookActionPlan<WorkbookPlanD
     throw new Error(firstIssue === undefined ? 'Workbook plan data is invalid' : `Workbook plan data is invalid: ${firstIssue.message}`)
   }
   const plan = check.plan
-  const refsUsed = Object.freeze(plan.refsUsed.map(hydrateRef))
+  const refsUsed = Object.freeze(mapArrayData(plan.refsUsed, isWorkbookRefDescription, hydrateRef))
   const input = plan.input === undefined ? undefined : normalizeWorkbookActionInput(plan.input)
   return Object.freeze({
     modelName: plan.modelName,
@@ -443,15 +480,15 @@ export function hydratePlanData(data: unknown): WorkbookActionPlan<WorkbookPlanD
     ...(input !== undefined ? { input } : {}),
     refs: Object.freeze({ refsUsed }),
     refsUsed,
-    commands: Object.freeze(plan.commands.map(hydrateCommand)),
-    ops: Object.freeze(plan.ops.map(cloneOp)),
-    changed: Object.freeze(plan.changed.map(hydrateChange)),
-    checks: Object.freeze(plan.checks.map(hydrateCheck)),
+    commands: Object.freeze(mapArrayData(plan.commands, isWorkbookActionCommandData, hydrateCommand)),
+    ops: Object.freeze(mapArrayData(plan.ops, isWorkbookOp, cloneOp)),
+    changed: Object.freeze(mapArrayData(plan.changed, isChangeData, hydrateChange)),
+    checks: Object.freeze(mapArrayData(plan.checks, isCheckData, hydrateCheck)),
   })
 }
 
 export function isHydratedPlan<Refs>(value: WorkbookExecutablePlan<Refs>): value is WorkbookActionPlan<Refs> {
-  return isRecord(value) && isRecord(value['refs'])
+  return isRecord(value) && isRecord(ownValue(value, 'refs'))
 }
 
 export function executablePlan<Refs>(

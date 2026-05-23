@@ -99,7 +99,9 @@ Hydrated transported plans expose `refs: { refsUsed }`, keeping execution
 generic instead of depending on the consumer's model-shaped `refs` object.
 Agents that receive untrusted JSON can call `checkPlanData(data)` first to get
 boring `{ status, issues }` diagnostics such as `commands[0]` or `refsUsed[2]`
-instead of catching a generic hydration failure.
+instead of catching a generic hydration failure. Transported plan arrays are
+also data-only: holes or accessor-backed entries are rejected without invoking
+getters before hydration or execution.
 
 ### Runtime adapter contract
 
