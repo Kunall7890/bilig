@@ -22,7 +22,10 @@ import {
 import { rewriteFormulaSourceForDeletedStructuredReferences } from './structure-structured-ref-rewrite.js'
 import { chartGeometryFromAnchor, rewriteChartAnchorForStructuralTransform } from './structure-chart-anchor-metadata-rewrite.js'
 import { rewriteThreadedCommentArtifactsForStructuralTransform } from './structure-threaded-comment-artifact-rewrite.js'
-import { rewriteSparklinesForStructuralTransform } from './structure-sparkline-metadata-rewrite.js'
+import {
+  rewriteSparklineFormulaRefsForStructuralTransform,
+  rewriteSparklinesForStructuralTransform,
+} from './structure-sparkline-metadata-rewrite.js'
 import { nextGeneratedTableColumnName, normalizeTableColumnName } from './table-column-name-helpers.js'
 
 type StructureMetadataRewriteArgs = Pick<CreateEngineStructureServiceArgs, 'state' | 'clearOwnedPivot'>
@@ -498,6 +501,15 @@ export function rewriteWorkbookMetadataForStructuralTransform(
       sheet.sparklines = sparklines
     } else {
       delete sheet.sparklines
+    }
+  }
+  for (const ownerSheet of workbook.sheetsByName.values()) {
+    if (ownerSheet.name === sheetName || !ownerSheet.sparklines) {
+      continue
+    }
+    const sparklines = rewriteSparklineFormulaRefsForStructuralTransform(ownerSheet.name, ownerSheet.sparklines, sheetName, transform)
+    if (sparklines && sparklines.xml !== ownerSheet.sparklines.xml) {
+      ownerSheet.sparklines = sparklines
     }
   }
   const rewrittenStyleRanges: SheetStyleRangeSnapshot[] = []

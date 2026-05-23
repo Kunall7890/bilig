@@ -168,7 +168,10 @@ export class WorkbookStore extends WorkbookStoreCommentAccessors {
   }
 
   hasStructuralMetadataForSheet(sheetName: string): boolean {
-    return hasStructuralMetadataForSheetRecord(this.metadata, sheetName, this.getSheet(sheetName))
+    return (
+      hasStructuralMetadataForSheetRecord(this.metadata, sheetName, this.getSheet(sheetName)) ||
+      [...this.sheetsByName.values()].some((sheet) => sheet.sparklines !== undefined)
+    )
   }
 
   hasProtectionMetadataForSheet(sheetName: string): boolean {

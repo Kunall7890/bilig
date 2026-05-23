@@ -4,6 +4,7 @@ import { SpreadsheetEngine } from '../engine.js'
 
 const sparklineExtensionUri = '{05C60535-1F16-4fd2-B633-F4F36F0B64E0}'
 const sparklineXml = `<ext uri="${sparklineExtensionUri}" xmlns:x14="http://schemas.microsoft.com/office/spreadsheetml/2009/9/main"><x14:sparklineGroups xmlns:xm="http://schemas.microsoft.com/office/excel/2006/main"><x14:sparklineGroup type="line"><x14:sparklines><x14:sparkline><xm:f>Data!A2:D2</xm:f><xm:sqref>E2</xm:sqref></x14:sparkline><x14:sparkline><xm:f>Data!A3:D3</xm:f><xm:sqref>E3</xm:sqref></x14:sparkline></x14:sparklines></x14:sparklineGroup></x14:sparklineGroups></ext>`
+const crossSheetSparklineXml = `<ext uri="${sparklineExtensionUri}" xmlns:x14="http://schemas.microsoft.com/office/spreadsheetml/2009/9/main"><x14:sparklineGroups xmlns:xm="http://schemas.microsoft.com/office/excel/2006/main"><x14:sparklineGroup type="line"><x14:sparklines><x14:sparkline><xm:f>Data!A1:D1</xm:f><xm:sqref>E2</xm:sqref></x14:sparkline></x14:sparklines></x14:sparklineGroup></x14:sparklineGroups></ext>`
 
 describe('SpreadsheetEngine sparkline metadata', () => {
   it('roundtrips worksheet sparkline extension XML through runtime snapshots', async () => {
@@ -34,6 +35,16 @@ describe('SpreadsheetEngine sparkline metadata', () => {
       { formula: 'Data!A3:D3', sqref: 'E3' },
       { formula: 'Data!A4:D4', sqref: 'E4' },
     ])
+  })
+
+  it('rewrites cross-sheet sparkline source refs through target-sheet structural row inserts', async () => {
+    const engine = new SpreadsheetEngine({ workbookName: 'sparklines-cross-sheet-structural' })
+    await engine.ready()
+    engine.importSnapshot(crossSheetSparklineSnapshot())
+
+    engine.insertRows('Data', 0, 1)
+
+    expect(sparklineRefs(engine.exportSnapshot().sheets[1]?.metadata?.sparklines?.xml)).toEqual([{ formula: 'Data!A2:D2', sqref: 'E2' }])
   })
 })
 
@@ -76,6 +87,35 @@ function sparklineSnapshot(): WorkbookSnapshot {
         ],
         metadata: {
           sparklines: { xml: sparklineXml },
+        },
+      },
+    ],
+  }
+}
+
+function crossSheetSparklineSnapshot(): WorkbookSnapshot {
+  return {
+    version: 1,
+    workbook: { name: 'Cross-sheet sparklines' },
+    sheets: [
+      {
+        id: 1,
+        name: 'Data',
+        order: 0,
+        cells: [
+          { address: 'A1', value: 10 },
+          { address: 'B1', value: 20 },
+          { address: 'C1', value: 15 },
+          { address: 'D1', value: 30 },
+        ],
+      },
+      {
+        id: 2,
+        name: 'Dashboard',
+        order: 1,
+        cells: [{ address: 'E2', value: '' }],
+        metadata: {
+          sparklines: { xml: crossSheetSparklineXml },
         },
       },
     ],

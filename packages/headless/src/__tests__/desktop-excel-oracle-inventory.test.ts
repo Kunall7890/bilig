@@ -131,6 +131,7 @@ describe('macOS Desktop Excel oracle inventory', () => {
     expect(source).toContain('sparklineExtensionUri')
     expect(source).toContain('metadata?.sparklines')
     expect(source).toContain('matches Desktop Excel sparkline source and output refs after structural row inserts')
+    expect(source).toContain('matches Desktop Excel cross-sheet sparkline source refs after source sheet row inserts')
   })
 
   it('keeps the pivot oracle anchored to Desktop Excel source-backed pivot refresh semantics', () => {

@@ -76,16 +76,39 @@ export function rewriteSparklinesForStructuralTransform(
   if (!sparklines) {
     return undefined
   }
-  const withFormulas = rewriteSparklineElementText(sparklines.xml, 'f', (formula) => {
+  const withFormulas = rewriteSparklineFormulasXml(sparklines.xml, sheetName, sheetName, transform)
+  if (!withFormulas) {
+    return undefined
+  }
+  const withSqrefs = rewriteSparklineElementText(withFormulas, 'sqref', (sqref) => rewriteSparklineSqref(sqref, transform))
+  return withSqrefs.failed ? undefined : { xml: withSqrefs.xml }
+}
+
+export function rewriteSparklineFormulaRefsForStructuralTransform(
+  ownerSheetName: string,
+  sparklines: WorkbookSparklinesSnapshot | undefined,
+  targetSheetName: string,
+  transform: StructuralAxisTransform,
+): WorkbookSparklinesSnapshot | undefined {
+  if (!sparklines) {
+    return undefined
+  }
+  const xml = rewriteSparklineFormulasXml(sparklines.xml, ownerSheetName, targetSheetName, transform)
+  return xml ? { xml } : undefined
+}
+
+function rewriteSparklineFormulasXml(
+  xml: string,
+  ownerSheetName: string,
+  targetSheetName: string,
+  transform: StructuralAxisTransform,
+): string | undefined {
+  const withFormulas = rewriteSparklineElementText(xml, 'f', (formula) => {
     try {
-      return rewriteFormulaForStructuralTransform(formula, sheetName, sheetName, transform)
+      return rewriteFormulaForStructuralTransform(formula, ownerSheetName, targetSheetName, transform)
     } catch {
       return undefined
     }
   })
-  if (withFormulas.failed) {
-    return undefined
-  }
-  const withSqrefs = rewriteSparklineElementText(withFormulas.xml, 'sqref', (sqref) => rewriteSparklineSqref(sqref, transform))
-  return withSqrefs.failed ? undefined : { xml: withSqrefs.xml }
+  return withFormulas.failed ? undefined : withFormulas.xml
 }
