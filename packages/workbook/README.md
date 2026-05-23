@@ -133,6 +133,8 @@ triggering hidden getters.
 `planWorkbookAction` also validates that boundary before reading action metadata
 or running model code. Invalid manifests return a structured `invalid_model`
 failure instead of making the agent catch an accessor side effect.
+`verifyModel` keeps the same behavior at whole-model scope: invalid manifests
+return an invalid verdict with an `invalid_model` error and no actions.
 
 ## Selectors
 

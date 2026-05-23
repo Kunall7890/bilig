@@ -210,7 +210,7 @@ export function defineModel<Refs>(config: WorkbookModelConfig<Refs, WorkbookActi
   })
 }
 
-export function inspectModel<Refs, Actions extends WorkbookActionMap<Refs>>(model: WorkbookModel<Refs, Actions>): WorkbookModelInspection {
+export function inspectModel(model: unknown): WorkbookModelInspection {
   if (!isObject(model)) {
     throw new Error('Workbook model must be an object')
   }
@@ -794,7 +794,7 @@ interface WorkbookPlanningModelData<Refs> {
   readonly actions: object
 }
 
-function readPlanningModelData<Refs>(model: WorkbookModel<Refs, WorkbookActionMap<Refs>>): WorkbookPlanningModelData<Refs> {
+function readPlanningModelData<Refs>(model: unknown): WorkbookPlanningModelData<Refs> {
   if (!isObject(model)) {
     throw new Error('Workbook model must be an object')
   }
@@ -880,7 +880,9 @@ export function planWorkbookAction<Refs, Actions extends WorkbookActionMap<Refs>
   model: WorkbookModel<Refs, Actions>,
   actionName: string,
   input?: WorkbookActionInput,
-): WorkbookActionPlanResult<Refs> {
+): WorkbookActionPlanResult<Refs>
+export function planWorkbookAction(model: unknown, actionName: string, input?: WorkbookActionInput): WorkbookActionPlanResult
+export function planWorkbookAction<Refs>(model: unknown, actionName: string, input?: WorkbookActionInput): WorkbookActionPlanResult<Refs> {
   let modelData: WorkbookPlanningModelData<Refs>
   try {
     modelData = readPlanningModelData(model)

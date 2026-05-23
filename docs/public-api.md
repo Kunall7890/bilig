@@ -342,7 +342,10 @@ properties. Accessors are rejected without invocation, which keeps tool payload
 validation inspectable and prevents hidden consumer code from running during
 planning.
 `verifyModel(model, { inputs })` supplies per-action inputs for
-whole-model verification. The frozen
+whole-model verification. Invalid or accessor-backed model manifests return an
+`invalid_model` verdict with no actions instead of throwing, so agents can audit
+unknown model objects without wrapping the verifier in their own try/catch.
+The frozen
 `workbookActionInputDescriptionKinds` list plus
 `isWorkbookActionInputDescriptionKind(value)`,
 `isWorkbookActionInputDescription(value)`, and `isWorkbookActionInput(value)` let
@@ -545,6 +548,8 @@ appear in `plan.ops`, and must match their declared `target` when the op exposes
 a concrete address or range.
 `verifyModel` applies the same planning and verification flow to every action
 in a consumer-defined model, returning one JSON-safe model-level verdict.
+If the model manifest itself is invalid, the verdict is `invalid` with an
+`invalid_model` error and an empty action list.
 Successfully planned actions include their runtime requirements in the same
 result, so an agent can inspect the planned intent, static proof, and adapter
 handoff checklist without stitching multiple API calls together.

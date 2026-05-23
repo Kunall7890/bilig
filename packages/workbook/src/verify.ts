@@ -14,9 +14,8 @@ import {
   inspectModel,
   planWorkbookAction,
   type WorkbookActionCommand,
-  type WorkbookActionMap,
   type WorkbookActionPlan,
-  type WorkbookModel,
+  type WorkbookModelInspection,
 } from './model.js'
 import { describeRuntimeRequirements, type WorkbookRuntimeRequirements } from './requirements.js'
 import {
@@ -27,7 +26,7 @@ import {
   type WorkbookActionInput,
 } from './input.js'
 import type { WorkbookOp } from './ops.js'
-import type { WorkbookCheckExpectation } from './result.js'
+import type { WorkbookCheckExpectation, WorkbookRunError } from './result.js'
 import { hydratePlanData } from './plan-data.js'
 
 type WorkbookConcreteCommandOp = Extract<WorkbookOp, { kind: 'setCellFormula' | 'setCellValue' | 'setCellFormat' | 'clearCell' }>
@@ -80,6 +79,7 @@ export interface WorkbookModelActionVerification {
 export interface WorkbookModelVerification {
   readonly status: 'valid' | 'invalid'
   readonly modelName: string
+  readonly errors?: readonly WorkbookRunError[]
   readonly actions: readonly WorkbookModelActionVerification[]
 }
 
@@ -639,11 +639,18 @@ export function verifyPlanData(plan: WorkbookActionPlanDescription): WorkbookPla
   return verifyPlan(hydratePlanData(plan))
 }
 
-export function verifyModel<Refs, Actions extends WorkbookActionMap<Refs>>(
-  model: WorkbookModel<Refs, Actions>,
-  options: WorkbookModelVerificationOptions = {},
-): WorkbookModelVerification {
-  const inspection = inspectModel(model)
+export function verifyModel(model: unknown, options: WorkbookModelVerificationOptions = {}): WorkbookModelVerification {
+  let inspection: WorkbookModelInspection
+  try {
+    inspection = inspectModel(model)
+  } catch (error) {
+    return {
+      status: 'invalid',
+      modelName: invalidModelName(model),
+      errors: Object.freeze([invalidModelRunError(error)]),
+      actions: Object.freeze([]),
+    }
+  }
   const actions = inspection.actions.map((actionName): WorkbookModelActionVerification => {
     const planning = planWorkbookAction(model, actionName, options.inputs?.[actionName])
     const describedPlanning = describePlanResult(planning)
@@ -668,4 +675,23 @@ export function verifyModel<Refs, Actions extends WorkbookActionMap<Refs>>(
     modelName: inspection.name,
     actions,
   }
+}
+
+function invalidModelRunError(error: unknown): WorkbookRunError {
+  return {
+    code: 'invalid_model',
+    message: error instanceof Error ? error.message : String(error),
+  }
+}
+
+function invalidModelName(model: unknown): string {
+  if (typeof model !== 'object' || model === null) {
+    return 'unknown-model'
+  }
+  const descriptor = Object.getOwnPropertyDescriptor(model, 'name')
+  if (descriptor === undefined || !('value' in descriptor) || typeof descriptor.value !== 'string') {
+    return 'unknown-model'
+  }
+  const name = descriptor.value.trim()
+  return name !== '' && name === descriptor.value ? name : 'unknown-model'
 }
