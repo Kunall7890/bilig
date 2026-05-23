@@ -159,10 +159,10 @@ proof keep nested JSON paths such as `input.rows[1]` and
 `checks[0].proof.when`, so an agent can repair the exact payload field before
 hydration. Plan-data guards only trust own payload fields; inherited
 prototype fields never satisfy the transport contract. Transported plan arrays
-must contain data entries too; holes or accessor-backed entries are rejected
-without running getters. The hydrated plan exposes `refs: { refsUsed }` instead
-of the consumer's private model-shaped `refs` object, so transported execution
-stays generic.
+must contain own enumerable data entries too; holes, non-enumerable entries, or
+accessor-backed entries are rejected without running getters. The hydrated plan
+exposes `refs: { refsUsed }` instead of the consumer's private model-shaped
+`refs` object, so transported execution stays generic.
 
 ## Action Input
 
@@ -229,10 +229,11 @@ refuses to call `apply` if static plan verification fails or if the adapter is
 missing a required method. Use `checkRuntimeRequirements(data)` when runtime
 requirements crossed a JSON boundary and an agent needs path-based diagnostics
 before trusting the handoff. Runtime requirement arrays and nested ref arrays
-must be data entries; holes or accessor-backed entries are rejected without
-running getters. Use `checkRuntimeAdapter(planOrRequirements, adapter)` when an
-agent wants to check `apply`, `read`, and `verifyChecks` coverage before calling
-the runtime. Check-only plans do not require `apply`; when runtime requirements
+must be own enumerable data entries; holes, non-enumerable entries, or
+accessor-backed entries are rejected without running getters. Use
+`checkRuntimeAdapter(planOrRequirements, adapter)` when an agent wants to check
+`apply`, `read`, and `verifyChecks` coverage before calling the runtime.
+Check-only plans do not require `apply`; when runtime requirements
 contain only `read` or `verifyCheck`, `runWorkbookPlan` skips mutation and
 verifies the declared checks directly.
 If an adapter returns both `previewOps` and `appliedOps`, the result reports
@@ -242,9 +243,10 @@ true })` when an agent must fail closed instead of accepting an unproved apply.
 Runtime apply results, undo refs, apply errors, and check verifier output are
 validated from own fields only; prototype-inherited fields are ignored before
 they can become run proof. Adapter-returned ops and verifier proof must be data
-properties, including non-enumerable guard fields such as `kind`; accessors are
-rejected before any getter can run during validation, cloning, or preview/apply
-comparison.
+properties, including non-enumerable guard fields such as `kind`. Runtime
+evidence arrays must contain own enumerable data entries; holes,
+non-enumerable entries, and accessors are rejected before any getter can run
+during validation, cloning, or preview/apply comparison.
 Readback checks attach proof to passed checks, such as
 `{ source: "readback", value: 12 }` or
 `{ source: "readback", formula: "(Table[Quantity])*(Table[Rate])" }`.
@@ -300,8 +302,10 @@ It returns the same boring `{ status, issues }` shape for receipt fields such as
 `changedRanges`, `proof`, `metadata`, and `errors`. Feature manifests, command
 requests, and command receipts are validated from own payload fields only;
 prototype-inherited fields are ignored. Receipt ops are frozen after
-normalization, changed ranges must be own-field data, and accessor-backed ops,
-undo ops, ranges, or errors are rejected before any getter can run.
+normalization, changed ranges must be own-field data, and manifest or receipt
+arrays must contain own enumerable data entries. Holes, non-enumerable entries,
+and accessor-backed ops, undo ops, ranges, or errors are rejected before any
+getter can run.
 `workbookCommandReceiptOpsMatch` uses canonical op equality instead of object
 property order and refuses accessor-backed proof data.
 

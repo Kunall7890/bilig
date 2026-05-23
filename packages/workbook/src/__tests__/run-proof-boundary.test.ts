@@ -93,6 +93,21 @@ function withUnsupportedField(checkResult: WorkbookCheckResult): WorkbookCheckRe
   return verified
 }
 
+function sparseArray(length = 1): unknown[] {
+  const value: unknown[] = []
+  value.length = length
+  return value
+}
+
+function accessorArray(get: () => unknown): unknown[] {
+  const value = sparseArray()
+  Object.defineProperty(value, '0', {
+    enumerable: true,
+    get,
+  })
+  return value
+}
+
 describe('@bilig/workbook run proof boundary', () => {
   it('rejects apply proof that is not JSON-safe', async () => {
     const model = valueModel()
@@ -205,6 +220,73 @@ describe('@bilig/workbook run proof boundary', () => {
     expect(getterInvoked).toBe(false)
   })
 
+  it('rejects sparse apply evidence arrays as uninspectable runtime proof', async () => {
+    const model = valueModel()
+
+    const result = await runWorkbookAction(model, 'write', {
+      apply: () => ({
+        status: 'applied',
+        // @ts-expect-error exercising JS adapters that bypass the op type
+        previewOps: sparseArray(),
+      }),
+      read: (targets) => [{ target: first(targets), value: 12 }],
+    })
+
+    expect(result).toEqual({
+      status: 'failed',
+      errors: [
+        {
+          code: 'runtime_rejected',
+          message: 'Workbook action run-value-model.write returned invalid preview ops',
+        },
+      ],
+      changed: [],
+      checks: [
+        expect.objectContaining({
+          status: 'planned',
+          kind: 'valueEquals',
+          message: 'Sheet1!B2 equals 12',
+        }),
+      ],
+    })
+  })
+
+  it('rejects accessor-backed apply error arrays without invoking getters', async () => {
+    const model = valueModel()
+    let getterInvoked = false
+
+    const result = await runWorkbookAction(model, 'write', {
+      apply: () => ({
+        status: 'failed',
+        // @ts-expect-error exercising JS adapters that bypass the error type
+        errors: accessorArray(() => {
+          getterInvoked = true
+          throw new Error('getter must not run')
+        }),
+      }),
+      read: (targets) => [{ target: first(targets), value: 12 }],
+    })
+
+    expect(result).toEqual({
+      status: 'failed',
+      errors: [
+        {
+          code: 'runtime_rejected',
+          message: 'Workbook action run-value-model.write returned invalid apply errors',
+        },
+      ],
+      changed: [],
+      checks: [
+        expect.objectContaining({
+          status: 'planned',
+          kind: 'valueEquals',
+          message: 'Sheet1!B2 equals 12',
+        }),
+      ],
+    })
+    expect(getterInvoked).toBe(false)
+  })
+
   it('allows generic check verifiers to add JSON-safe proof', async () => {
     const model = proofModel()
     const proof = {
@@ -294,6 +376,33 @@ describe('@bilig/workbook run proof boundary', () => {
         {
           code: 'invalid_check_verification',
           message: 'Check verifier returned invalid proof at index 0: Workbook check result proof must be a data property',
+        },
+      ],
+      changed: [],
+      checks: [expect.objectContaining({ status: 'planned', kind: 'exists' })],
+    })
+    expect(getterInvoked).toBe(false)
+  })
+
+  it('rejects accessor-backed verifier check arrays without invoking getters', async () => {
+    const model = proofModel()
+    let getterInvoked = false
+
+    const result = await runWorkbookAction(model, 'inspect', {
+      verifyChecks: () =>
+        // @ts-expect-error exercising JS adapters that bypass the check array type
+        accessorArray(() => {
+          getterInvoked = true
+          throw new Error('getter must not run')
+        }),
+    })
+
+    expect(result).toEqual({
+      status: 'failed',
+      errors: [
+        {
+          code: 'invalid_check_verification',
+          message: 'Check verifier returned an invalid check at index 0',
         },
       ],
       changed: [],

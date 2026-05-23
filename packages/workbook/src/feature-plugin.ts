@@ -241,6 +241,22 @@ function ownValue(value: object, key: string): unknown {
   return Object.getOwnPropertyDescriptor(value, key)?.value
 }
 
+function arrayDataValues<T>(value: unknown, guard: (entry: unknown) => entry is T): readonly T[] | null {
+  if (!Array.isArray(value)) {
+    return null
+  }
+
+  const entries: T[] = []
+  for (let index = 0; index < value.length; index += 1) {
+    const descriptor = Object.getOwnPropertyDescriptor(value, String(index))
+    if (descriptor === undefined || !descriptor.enumerable || !('value' in descriptor) || !guard(descriptor.value)) {
+      return null
+    }
+    entries.push(descriptor.value)
+  }
+  return entries
+}
+
 function pushFeaturePluginInputDescriptionIssue(issues: WorkbookFeaturePluginIssue[], value: unknown, path: string, label: string): void {
   if (value === undefined) {
     return
@@ -297,7 +313,16 @@ function readFeaturePluginArray(issues: WorkbookFeaturePluginIssue[], value: unk
     issues.push(featurePluginIssue(path, `${label} must be an array`))
     return []
   }
-  return value
+  const entries: unknown[] = []
+  for (let index = 0; index < value.length; index += 1) {
+    const descriptor = Object.getOwnPropertyDescriptor(value, String(index))
+    if (descriptor === undefined || !descriptor.enumerable || !('value' in descriptor)) {
+      issues.push(featurePluginIssue(`${path}[${index}]`, `${label} must contain only data properties`))
+      continue
+    }
+    entries.push(descriptor.value)
+  }
+  return entries
 }
 
 function pushFeaturePluginDependencyIssues(issues: WorkbookFeaturePluginIssue[], value: unknown): void {
@@ -308,9 +333,14 @@ function pushFeaturePluginDependencyIssues(issues: WorkbookFeaturePluginIssue[],
     issues.push(featurePluginIssue('dependsOn', 'Workbook feature dependencies must be an array'))
     return
   }
-  value.forEach((dependency, index) => {
-    pushRequiredFeaturePluginStringIssue(issues, dependency, `dependsOn[${index}]`, 'Workbook feature dependency')
-  })
+  for (let index = 0; index < value.length; index += 1) {
+    const descriptor = Object.getOwnPropertyDescriptor(value, String(index))
+    if (descriptor === undefined || !descriptor.enumerable || !('value' in descriptor)) {
+      issues.push(featurePluginIssue(`dependsOn[${index}]`, 'Workbook feature dependencies must contain only data properties'))
+      continue
+    }
+    pushRequiredFeaturePluginStringIssue(issues, descriptor.value, `dependsOn[${index}]`, 'Workbook feature dependency')
+  }
 }
 
 function pushFeaturePluginCommandIssues(
@@ -532,13 +562,10 @@ function isWorkbookFeaturePluginRecord(value: unknown): value is WorkbookFeature
   return (
     typeof ownValue(value, 'id') === 'string' &&
     typeof ownValue(value, 'version') === 'string' &&
-    (dependsOn === undefined || (Array.isArray(dependsOn) && dependsOn.every(isString))) &&
-    Array.isArray(commands) &&
-    commands.every(isWorkbookCommandDescriptorRecord) &&
-    Array.isArray(projectionInterceptors) &&
-    projectionInterceptors.every(isWorkbookProjectionInterceptorRecord) &&
-    Array.isArray(uiContributions) &&
-    uiContributions.every(isWorkbookUiContributionRecord) &&
+    (dependsOn === undefined || arrayDataValues(dependsOn, isString) !== null) &&
+    arrayDataValues(commands, isWorkbookCommandDescriptorRecord) !== null &&
+    arrayDataValues(projectionInterceptors, isWorkbookProjectionInterceptorRecord) !== null &&
+    arrayDataValues(uiContributions, isWorkbookUiContributionRecord) !== null &&
     isOptionalLifecycleHook(ownValue(value, 'register')) &&
     isOptionalLifecycleHook(ownValue(value, 'activate')) &&
     isOptionalLifecycleHook(ownValue(value, 'dispose'))

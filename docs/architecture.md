@@ -37,7 +37,7 @@ flowchart LR
   - transported plan data through `toPlanData`, `hydratePlanData`, and
     `verifyPlanData`
   - structured `checkPlanData` diagnostics for JSON handoff payloads
-  - accessor-free transported plan arrays before hydration or execution
+  - own-enumerable-data transported plan arrays before hydration or execution
   - transported plan execution through `runWorkbookPlan` without requiring the
     consumer's private `refs` object shape
   - generic selector validation before runtime handoff, including canonical table-header selectors and row predicate value contracts
@@ -54,7 +54,7 @@ flowchart LR
   - runtime adapter capability checks before mutation handoff
   - structured `checkRuntimeRequirements` diagnostics for transported adapter
     handoff payloads
-  - accessor-free runtime requirement arrays and nested ref arrays before
+  - own-enumerable-data runtime requirement arrays and nested ref arrays before
     adapter validation
   - feature command request validation before runtime-owned workbook extension
     dispatch
@@ -75,11 +75,11 @@ flowchart LR
   - generic check verifier handoff for runtime-owned invariants
   - own-field-only runtime proof validation for adapter apply results, undo
     refs, runtime errors, and check verifier output
-  - accessor-free runtime preview ops, applied ops, undo ops, runtime errors,
-    and verifier proof before cloning or preview/apply comparison
+  - own-enumerable-data runtime preview ops, applied ops, undo ops, runtime
+    errors, and verifier proof before cloning or preview/apply comparison
   - own-field-only feature receipt changed-range validation
-  - accessor-free feature receipt ops, undo ops, ranges, and errors before
-    freezing or runtime proof comparison
+  - own-enumerable-data feature manifest arrays, receipt ops, undo ops, ranges,
+    and errors before freezing or runtime proof comparison
   - transport-neutral workbook ops and txns with own-field-only public guards
   - accessor-free low-level op fields, nested fields, and op arrays before
     runtime guard acceptance

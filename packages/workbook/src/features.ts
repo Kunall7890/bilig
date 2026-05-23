@@ -181,6 +181,25 @@ function ownValue(value: object, key: string): unknown {
   return Object.getOwnPropertyDescriptor(value, key)?.value
 }
 
+function arrayDataValues<T>(value: unknown, guard: (entry: unknown) => entry is T): readonly T[] | null {
+  if (!Array.isArray(value)) {
+    return null
+  }
+  if (firstAccessorPath(value, 'array') !== null) {
+    return null
+  }
+
+  const entries: T[] = []
+  for (let index = 0; index < value.length; index += 1) {
+    const descriptor = Object.getOwnPropertyDescriptor(value, String(index))
+    if (descriptor === undefined || !descriptor.enumerable || !('value' in descriptor) || !guard(descriptor.value)) {
+      return null
+    }
+    entries.push(descriptor.value)
+  }
+  return entries
+}
+
 function pushCommandRequestInputIssue(issues: WorkbookCommandRequestIssue[], value: unknown): void {
   if (value === undefined) {
     return
@@ -374,11 +393,16 @@ function pushCommandReceiptOpsIssues(issues: WorkbookCommandReceiptIssue[], valu
     issues.push(commandReceiptIssue(accessorPath, `Workbook command receipt ${label} ops must contain only data properties`))
     return
   }
-  value.forEach((op, index) => {
-    if (!isWorkbookOp(op)) {
+  for (let index = 0; index < value.length; index += 1) {
+    const descriptor = Object.getOwnPropertyDescriptor(value, String(index))
+    if (descriptor === undefined || !descriptor.enumerable || !('value' in descriptor)) {
+      issues.push(commandReceiptIssue(`${path}[${index}]`, `Workbook command receipt ${label} ops must contain only data properties`))
+      continue
+    }
+    if (!isWorkbookOp(descriptor.value)) {
       issues.push(commandReceiptIssue(`${path}[${index}]`, `Workbook command receipt ${label} op is invalid`))
     }
-  })
+  }
 }
 
 function pushCommandReceiptChangedRangesIssues(issues: WorkbookCommandReceiptIssue[], value: unknown): void {
@@ -394,11 +418,18 @@ function pushCommandReceiptChangedRangesIssues(issues: WorkbookCommandReceiptIss
     issues.push(commandReceiptIssue(accessorPath, 'Workbook command receipt changed ranges must contain only data properties'))
     return
   }
-  value.forEach((range, index) => {
-    if (!isCellRangeRefData(range)) {
+  for (let index = 0; index < value.length; index += 1) {
+    const descriptor = Object.getOwnPropertyDescriptor(value, String(index))
+    if (descriptor === undefined || !descriptor.enumerable || !('value' in descriptor)) {
+      issues.push(
+        commandReceiptIssue(`changedRanges[${index}]`, 'Workbook command receipt changed ranges must contain only data properties'),
+      )
+      continue
+    }
+    if (!isCellRangeRefData(descriptor.value)) {
       issues.push(commandReceiptIssue(`changedRanges[${index}]`, 'Workbook command receipt changed range is invalid'))
     }
-  })
+  }
 }
 
 function pushCommandReceiptUndoIssues(issues: WorkbookCommandReceiptIssue[], value: unknown): void {
@@ -430,9 +461,14 @@ function pushCommandReceiptErrorsIssues(issues: WorkbookCommandReceiptIssue[], v
     issues.push(commandReceiptIssue(accessorPath, 'Workbook command receipt errors must contain only data properties'))
     return
   }
-  value.forEach((error, index) => {
-    pushOptionalCommandReceiptStringIssue(issues, error, `errors[${index}]`, 'error')
-  })
+  for (let index = 0; index < value.length; index += 1) {
+    const descriptor = Object.getOwnPropertyDescriptor(value, String(index))
+    if (descriptor === undefined || !descriptor.enumerable || !('value' in descriptor)) {
+      issues.push(commandReceiptIssue(`errors[${index}]`, 'Workbook command receipt errors must contain only data properties'))
+      continue
+    }
+    pushOptionalCommandReceiptStringIssue(issues, descriptor.value, `errors[${index}]`, 'error')
+  }
 }
 
 function normalizeReceiptUndo(value: unknown): WorkbookUndoRef | undefined {
@@ -444,10 +480,17 @@ function normalizeReceiptUndo(value: unknown): WorkbookUndoRef | undefined {
     return undefined
   }
   const rawOps = ownValue(value, 'ops')
-  const ops = Array.isArray(rawOps) ? rawOps.map((op) => normalizeReceiptOp(id, op, 'undo')) : undefined
+  let ops: readonly EngineOp[] | undefined
+  if (rawOps !== undefined) {
+    const checkedOps = arrayDataValues(rawOps, isWorkbookOp)
+    if (checkedOps === null) {
+      return undefined
+    }
+    ops = checkedOps
+  }
   return Object.freeze({
     id: normalizeRequiredString(id, 'Workbook command receipt undo id'),
-    ...(ops !== undefined ? { ops: Object.freeze(ops) } : {}),
+    ...(ops !== undefined ? { ops: Object.freeze(ops.map((op) => normalizeReceiptOp(id, op, 'undo'))) } : {}),
   })
 }
 
@@ -478,11 +521,11 @@ function normalizedCommandReceipt(value: unknown): WorkbookCommandReceipt | null
   if (
     (previewOps !== undefined && !isEngineOpArray(previewOps)) ||
     (appliedOps !== undefined && !isEngineOpArray(appliedOps)) ||
-    (changedRanges !== undefined && (!Array.isArray(changedRanges) || !changedRanges.every((range) => isCellRangeRefData(range)))) ||
+    (changedRanges !== undefined && arrayDataValues(changedRanges, isCellRangeRefData) === null) ||
     (proof !== undefined && !isWorkbookActionInput(proof)) ||
     (metadata !== undefined && !isWorkbookActionInput(metadata)) ||
     (message !== undefined && typeof message !== 'string') ||
-    (errors !== undefined && (!Array.isArray(errors) || !errors.every((error) => typeof error === 'string')))
+    (errors !== undefined && arrayDataValues(errors, isString) === null)
   ) {
     return null
   }
@@ -496,20 +539,30 @@ function normalizedCommandReceipt(value: unknown): WorkbookCommandReceipt | null
     commandId: normalizeRequiredString(commandId, 'Workbook command receipt command id'),
     category,
     ...(previewOps !== undefined
-      ? { previewOps: Object.freeze(previewOps.map((op) => normalizeReceiptOp(commandId, op, 'preview'))) }
+      ? { previewOps: Object.freeze(arrayDataValues(previewOps, isWorkbookOp)!.map((op) => normalizeReceiptOp(commandId, op, 'preview'))) }
       : {}),
     ...(appliedOps !== undefined
-      ? { appliedOps: Object.freeze(appliedOps.map((op) => normalizeReceiptOp(commandId, op, 'applied'))) }
+      ? { appliedOps: Object.freeze(arrayDataValues(appliedOps, isWorkbookOp)!.map((op) => normalizeReceiptOp(commandId, op, 'applied'))) }
       : {}),
     ...(normalizedUndo !== undefined ? { undo: normalizedUndo } : {}),
     ...(changedRanges !== undefined
-      ? { changedRanges: Object.freeze(changedRanges.map((range) => normalizeReceiptRange(commandId, range))) }
+      ? {
+          changedRanges: Object.freeze(
+            arrayDataValues(changedRanges, isCellRangeRefData)!.map((range) => normalizeReceiptRange(commandId, range)),
+          ),
+        }
       : {}),
     ...(proof !== undefined ? { proof: normalizeWorkbookActionInput(proof) } : {}),
     ...(message !== undefined ? { message: normalizeRequiredString(message, `Workbook command receipt ${commandId} message`) } : {}),
     ...(metadata !== undefined ? { metadata: normalizeWorkbookActionInput(metadata) } : {}),
     ...(errors !== undefined
-      ? { errors: Object.freeze(errors.map((error) => normalizeRequiredString(error, `Workbook command receipt ${commandId} error`))) }
+      ? {
+          errors: Object.freeze(
+            arrayDataValues(errors, isString)!.map((error) =>
+              normalizeRequiredString(error, `Workbook command receipt ${commandId} error`),
+            ),
+          ),
+        }
       : {}),
   })
 }
@@ -604,7 +657,7 @@ function normalizeReceiptRange(commandId: string, range: CellRangeRef): CellRang
 }
 
 function isEngineOpArray(value: unknown): value is readonly EngineOp[] {
-  return Array.isArray(value) && firstAccessorPath(value, 'ops') === null && value.every((op) => isWorkbookOp(op))
+  return arrayDataValues(value, isWorkbookOp) !== null
 }
 
 function isCellRangeRefData(value: unknown): value is CellRangeRef {
@@ -614,6 +667,10 @@ function isCellRangeRefData(value: unknown): value is CellRangeRef {
     typeof ownValue(value, 'startAddress') === 'string' &&
     typeof ownValue(value, 'endAddress') === 'string'
   )
+}
+
+function isString(value: unknown): value is string {
+  return typeof value === 'string'
 }
 
 function canonicalJson(value: unknown): string {

@@ -102,8 +102,8 @@ generic instead of depending on the consumer's model-shaped `refs` object.
 Agents that receive untrusted JSON can call `checkPlanData(data)` first to get
 boring `{ status, issues }` diagnostics such as `commands[0]` or `refsUsed[2]`
 instead of catching a generic hydration failure. Transported plan arrays are
-also data-only: holes or accessor-backed entries are rejected without invoking
-getters before hydration or execution.
+also data-only: holes, non-enumerable entries, or accessor-backed entries are
+rejected without invoking getters before hydration or execution.
 
 ### Runtime adapter contract
 
@@ -129,9 +129,10 @@ Runtimes execute plans. `@bilig/workbook` only defines the handoff.
 Adapter-returned apply results, undo refs, apply errors, and check verifier
 output are accepted from own payload fields only. Prototype-inherited fields do
 not satisfy runtime proof. Adapter-returned op arrays and verifier proof must be
-plain data properties; accessor-backed fields are rejected before cloning or
-preview/apply comparison, including non-enumerable fields that op guards would
-otherwise read directly.
+plain data properties; runtime evidence arrays must contain own enumerable data
+entries. Holes, non-enumerable entries, and accessor-backed fields are rejected
+before cloning or preview/apply comparison, including non-enumerable fields that
+op guards would otherwise read directly.
 
 When `previewOps` and `appliedOps` are both present, `runWorkbookPlan` reports
 whether runtime apply matched preview. When they are missing, the result reports
@@ -177,9 +178,10 @@ and UI contributions. The public package still stays data-only.
   false mismatch and invalid op arrays cannot report a trusted match.
 - Feature manifests, command requests, and command receipts are validated from
   own payload fields only; prototype-inherited fields cannot satisfy the public
-  transport contract. Receipt ops, undo ops, changed ranges, and errors must be
-  data properties; accessor-backed receipt proof is rejected before freezing or
-  preview/apply comparison.
+  transport contract. Manifest and receipt arrays must contain own enumerable
+  data entries; receipt ops, undo ops, changed ranges, and errors must be data
+  properties. Holes, non-enumerable entries, and accessor-backed receipt proof
+  are rejected before freezing or preview/apply comparison.
 - Frozen vocabularies such as `workbookCommandCategories`,
   `workbookCommandExecutionModes`, `workbookCommandReceiptStatuses`,
   `workbookProjectionInterceptorPoints`, and `workbookUiContributionSlots` let
@@ -507,8 +509,8 @@ and returns boring `{ status, issues }` diagnostics with paths such as
 reject malformed adapter handoff data before checking runtime methods or
 starting mutation. Runtime requirement validation also ignores inherited fields;
 the adapter checklist has to be present as explicit payload data. Requirement
-arrays and nested ref arrays are data-only too: holes or accessor-backed entries
-are rejected without invoking getters.
+arrays and nested ref arrays are data-only too: holes, non-enumerable entries,
+or accessor-backed entries are rejected without invoking getters.
 
 `verifyPlan` gives agents a runtime-free consistency check before handoff. It
 flags invalid action input, unresolved command targets, unresolved formula

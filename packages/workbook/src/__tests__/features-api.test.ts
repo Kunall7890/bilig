@@ -21,6 +21,21 @@ import {
   workbookUiContributionSlots,
 } from '../index.js'
 
+function sparseArray(length = 1): unknown[] {
+  const value: unknown[] = []
+  value.length = length
+  return value
+}
+
+function accessorArray(get: () => unknown): unknown[] {
+  const value = sparseArray()
+  Object.defineProperty(value, '0', {
+    enumerable: true,
+    get,
+  })
+  return value
+}
+
 describe('@bilig/workbook feature api', () => {
   it('exports frozen command vocabulary for agent tools', () => {
     expect(workbookCommandCategories).toEqual(['command', 'operation', 'mutation'])
@@ -478,6 +493,53 @@ describe('@bilig/workbook feature api', () => {
     })
   })
 
+  it('rejects sparse or accessor-backed feature manifest arrays without invoking getters', () => {
+    let commandGetterInvoked = false
+
+    expect(
+      checkWorkbookFeaturePlugin({
+        id: 'tables',
+        version: '1.0.0',
+        commands: accessorArray(() => {
+          commandGetterInvoked = true
+          throw new Error('getter must not run')
+        }),
+        projectionInterceptors: [],
+        uiContributions: [],
+      }),
+    ).toEqual({
+      status: 'invalid',
+      issues: [
+        {
+          code: 'invalid_feature_plugin',
+          path: 'commands[0]',
+          message: 'Workbook feature commands must contain only data properties',
+        },
+      ],
+    })
+    expect(commandGetterInvoked).toBe(false)
+
+    expect(
+      checkWorkbookFeaturePlugin({
+        id: 'tables',
+        version: '1.0.0',
+        dependsOn: sparseArray(),
+        commands: [],
+        projectionInterceptors: [],
+        uiContributions: [],
+      }),
+    ).toEqual({
+      status: 'invalid',
+      issues: [
+        {
+          code: 'invalid_feature_plugin',
+          path: 'dependsOn[0]',
+          message: 'Workbook feature dependencies must contain only data properties',
+        },
+      ],
+    })
+  })
+
   it('normalizes and validates command receipts with preview/apply parity', () => {
     const receipt = normalizeWorkbookCommandReceipt({
       status: 'applied',
@@ -602,6 +664,66 @@ describe('@bilig/workbook feature api', () => {
           code: 'invalid_command_receipt',
           path: 'previewOps[0].authoredBlank',
           message: 'Workbook command receipt preview ops must contain only data properties',
+        },
+      ],
+    })
+    expect(getterInvoked).toBe(false)
+  })
+
+  it('rejects sparse command receipt arrays as uninspectable proof', () => {
+    expect(
+      checkWorkbookCommandReceipt({
+        status: 'applied',
+        featureId: 'tables',
+        commandId: 'tables.createFromSelection',
+        category: 'command',
+        previewOps: sparseArray(),
+        changedRanges: sparseArray(),
+        errors: sparseArray(),
+      }),
+    ).toEqual({
+      status: 'invalid',
+      issues: [
+        {
+          code: 'invalid_command_receipt',
+          path: 'previewOps[0]',
+          message: 'Workbook command receipt preview ops must contain only data properties',
+        },
+        {
+          code: 'invalid_command_receipt',
+          path: 'changedRanges[0]',
+          message: 'Workbook command receipt changed ranges must contain only data properties',
+        },
+        {
+          code: 'invalid_command_receipt',
+          path: 'errors[0]',
+          message: 'Workbook command receipt errors must contain only data properties',
+        },
+      ],
+    })
+  })
+
+  it('rejects accessor-backed command receipt error arrays without invoking getters', () => {
+    let getterInvoked = false
+
+    expect(
+      checkWorkbookCommandReceipt({
+        status: 'rejected',
+        featureId: 'tables',
+        commandId: 'tables.createFromSelection',
+        category: 'command',
+        errors: accessorArray(() => {
+          getterInvoked = true
+          throw new Error('getter must not run')
+        }),
+      }),
+    ).toEqual({
+      status: 'invalid',
+      issues: [
+        {
+          code: 'invalid_command_receipt',
+          path: 'errors[0]',
+          message: 'Workbook command receipt errors must contain only data properties',
         },
       ],
     })

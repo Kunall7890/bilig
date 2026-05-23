@@ -50,6 +50,16 @@ function accessorArray(get: () => unknown): unknown[] {
   return value
 }
 
+function nonEnumerableArray(value: unknown): unknown[] {
+  const values: unknown[] = []
+  Object.defineProperty(values, '0', {
+    enumerable: false,
+    value,
+  })
+  values.length = 1
+  return values
+}
+
 describe('@bilig/workbook transport api', () => {
   it('round-trips refs as plain JSON data and hydrates ergonomic helpers back', () => {
     const table = findTable({ name: 'Inputs', sheetName: 'Model', headers: ['Amount', 'Status'] })
@@ -458,6 +468,23 @@ describe('@bilig/workbook transport api', () => {
       ],
     })
     expect(refGetterInvoked).toBe(false)
+
+    const firstChange = (data['changed'] as readonly unknown[])[0]
+    expect(
+      checkPlanData({
+        ...data,
+        changed: nonEnumerableArray(firstChange),
+      }),
+    ).toEqual({
+      status: 'invalid',
+      issues: [
+        {
+          code: 'invalid_plan_data',
+          path: 'changed[0]',
+          message: 'Workbook plan data change at changed[0] is invalid',
+        },
+      ],
+    })
   })
 
   it('runs transported plan data without the consumer refs object', async () => {

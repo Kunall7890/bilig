@@ -73,7 +73,7 @@ function arrayEvery(value: unknown, predicate: (entry: unknown) => boolean): boo
 
   for (let index = 0; index < value.length; index += 1) {
     const descriptor = Object.getOwnPropertyDescriptor(value, String(index))
-    if (descriptor === undefined || !('value' in descriptor) || !predicate(descriptor.value)) {
+    if (descriptor === undefined || !descriptor.enumerable || !('value' in descriptor) || !predicate(descriptor.value)) {
       return false
     }
   }
@@ -89,7 +89,7 @@ function mapArrayData<T, Result>(
   const mapped: Result[] = []
   for (let index = 0; index < value.length; index += 1) {
     const descriptor = Object.getOwnPropertyDescriptor(value, String(index))
-    if (descriptor === undefined || !('value' in descriptor) || !guard(descriptor.value)) {
+    if (descriptor === undefined || !descriptor.enumerable || !('value' in descriptor) || !guard(descriptor.value)) {
       throw new Error('Workbook plan data arrays must contain only data properties')
     }
     mapped.push(mapper(descriptor.value))
@@ -275,7 +275,7 @@ function pushArrayIssues<T>(
   }
   for (let index = 0; index < array.length; index += 1) {
     const descriptor = Object.getOwnPropertyDescriptor(array, String(index))
-    if (descriptor === undefined || !('value' in descriptor)) {
+    if (descriptor === undefined || !descriptor.enumerable || !('value' in descriptor)) {
       issues.push(planDataIssue(`${key}[${index}]`, `Workbook plan data ${label} at ${key}[${index}] is invalid`))
       continue
     }
@@ -327,7 +327,7 @@ function pushCheckArrayIssues(issues: WorkbookPlanDataIssue[], value: Record<str
   }
   for (let index = 0; index < checks.length; index += 1) {
     const descriptor = Object.getOwnPropertyDescriptor(checks, String(index))
-    const entry = descriptor !== undefined && 'value' in descriptor ? descriptor.value : undefined
+    const entry = descriptor !== undefined && descriptor.enumerable && 'value' in descriptor ? descriptor.value : undefined
     pushCheckIssues(issues, entry, index)
   }
 }

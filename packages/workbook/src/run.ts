@@ -243,8 +243,27 @@ function ownValue(value: object, key: string): unknown {
   return Object.getOwnPropertyDescriptor(value, key)?.value
 }
 
+function arrayDataValues<T>(value: unknown, guard: (entry: unknown) => entry is T): readonly T[] | null {
+  if (!Array.isArray(value)) {
+    return null
+  }
+  if (firstAccessorPath(value, 'array') !== null) {
+    return null
+  }
+
+  const entries: T[] = []
+  for (let index = 0; index < value.length; index += 1) {
+    const descriptor = Object.getOwnPropertyDescriptor(value, String(index))
+    if (descriptor === undefined || !descriptor.enumerable || !('value' in descriptor) || !guard(descriptor.value)) {
+      return null
+    }
+    entries.push(descriptor.value)
+  }
+  return entries
+}
+
 function isWorkbookOpArray(value: unknown): value is readonly EngineOp[] {
-  return Array.isArray(value) && firstAccessorPath(value, 'ops') === null && value.every(isWorkbookOp)
+  return arrayDataValues(value, isWorkbookOp) !== null
 }
 
 function isWorkbookRunError(value: unknown): value is WorkbookRunError {
@@ -265,7 +284,7 @@ function isWorkbookRunError(value: unknown): value is WorkbookRunError {
 }
 
 function isWorkbookRunErrorArray(value: unknown): value is readonly WorkbookRunError[] {
-  return Array.isArray(value) && firstAccessorPath(value, 'errors') === null && value.every(isWorkbookRunError)
+  return arrayDataValues(value, isWorkbookRunError) !== null
 }
 
 function cloneRunError(error: WorkbookRunError): WorkbookRunError {
@@ -372,7 +391,7 @@ function validateApplyResult(plan: WorkbookActionPlan, value: unknown): ApplyVal
   }
   let errors: readonly WorkbookRunError[] | undefined
   try {
-    errors = rawErrors === undefined ? undefined : rawErrors.map(cloneRunError)
+    errors = rawErrors === undefined ? undefined : cloneRunErrors(rawErrors)
   } catch {
     return rejected(`Workbook action ${plan.modelName}.${plan.actionName} returned invalid apply errors`)
   }
@@ -416,7 +435,19 @@ function validateApplyResult(plan: WorkbookActionPlan, value: unknown): ApplyVal
 }
 
 function cloneOps(ops: readonly EngineOp[]): readonly EngineOp[] {
-  return ops.map((op) => cloneOp(op))
+  const entries = arrayDataValues(ops, isWorkbookOp)
+  if (entries === null) {
+    throw new Error('invalid workbook op array')
+  }
+  return entries.map((op) => cloneOp(op))
+}
+
+function cloneRunErrors(errors: readonly WorkbookRunError[]): readonly WorkbookRunError[] {
+  const entries = arrayDataValues(errors, isWorkbookRunError)
+  if (entries === null) {
+    throw new Error('invalid run error array')
+  }
+  return entries.map((error) => cloneRunError(error))
 }
 
 function cloneOp(op: EngineOp): EngineOp {
@@ -428,12 +459,14 @@ function cloneOp(op: EngineOp): EngineOp {
 }
 
 function opsMatch(left: readonly EngineOp[], right: readonly EngineOp[]): boolean {
-  if (left.length !== right.length) {
+  const leftOps = arrayDataValues(left, isWorkbookOp)
+  const rightOps = arrayDataValues(right, isWorkbookOp)
+  if (leftOps === null || rightOps === null || leftOps.length !== rightOps.length) {
     return false
   }
   try {
-    return left.every((op, index) => {
-      const other = right[index]
+    return leftOps.every((op, index) => {
+      const other = rightOps[index]
       return other !== undefined && canonicalJson(op) === canonicalJson(other)
     })
   } catch {
@@ -592,7 +625,8 @@ function validateVerifiedChecks(
   for (let index = 0; index < originalContracts.length; index += 1) {
     const expectedContract = originalContracts[index]
     const expectedKind = originalKinds[index] ?? 'check'
-    const actual = verified[index]
+    const descriptor = Object.getOwnPropertyDescriptor(verified, String(index))
+    const actual = descriptor !== undefined && descriptor.enumerable && 'value' in descriptor ? descriptor.value : undefined
     if (expectedContract === undefined || !isRecord(actual)) {
       return {
         status: 'invalid',
