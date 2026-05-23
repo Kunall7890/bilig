@@ -118,6 +118,12 @@ Stable data helpers are exported for generic tool builders:
 - `workbookProjectionInterceptorPoints`, `isWorkbookProjectionInterceptorPoint`, `workbookUiContributionSlots`, `isWorkbookUiContributionSlot`, `checkWorkbookCommandRequest`
 - `workbookRunErrorCodes`, `isWorkbookRunErrorCode`
 
+Model action manifests are frozen null-prototype maps. Consumers can use normal
+business-agnostic action names, including names such as `toString` or
+`constructor`, and `planWorkbookAction` only runs own actions from the manifest.
+Prototype-inherited actions are ignored, so an agent can treat the action list as
+the full executable surface.
+
 ## Selectors
 
 Selectors are not a human spreadsheet UI. They are stable intent for runtimes and

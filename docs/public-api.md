@@ -80,6 +80,10 @@ The model contract is intentionally data-first. Refs are frozen. Helper methods
 such as `table.column("Amount")` and `rows.column("Amount")` are non-enumerable.
 Action input is plain JSON, cloned into the plan, and described with small
 metadata rather than a schema dependency.
+Action manifests are frozen null-prototype maps, and planning only runs own
+manifest actions. Generic action names such as `toString`, `constructor`, or
+`__proto__` can be explicit own actions, but inherited prototype fields are not
+part of the executable surface.
 For transport, `toWorkbookRefData` turns any ref into plain data,
 `isWorkbookRefData` validates that data, `collectWorkbookRefData` discovers refs
 without requiring hidden methods, and `hydrateWorkbookRef` /

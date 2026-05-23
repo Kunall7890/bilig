@@ -42,6 +42,7 @@ flowchart LR
   - machine-readable readback checks for runtime proof
   - readback proof attached to passed value/formula checks
   - stable run error code union for predictable agent branching
+  - null-prototype model action manifests with own-action-only planning
   - transport-neutral run adapters for preview/apply/readback/check proof
   - runtime adapter capability checks before mutation handoff
   - structured `checkRuntimeRequirements` diagnostics for transported adapter

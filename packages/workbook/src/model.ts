@@ -158,6 +158,7 @@ export function defineModel<Refs>(config: WorkbookModelConfig<Refs, WorkbookActi
     normalizeRequiredName(actionName, `Workbook model ${name} action name`)
   })
   const actions: WorkbookActionMap<Refs> = {}
+  Object.setPrototypeOf(actions, null)
   actionNames.forEach((actionName) => {
     actions[actionName] = normalizeActionDefinition(name, actionName, config.actions[actionName])
   })
@@ -645,7 +646,7 @@ export function planWorkbookAction<Refs, Actions extends WorkbookActionMap<Refs>
     }
   }
 
-  const actionDefinition = model.actions[actionName]
+  const actionDefinition = Object.hasOwn(model.actions, actionName) ? model.actions[actionName] : undefined
   if (actionDefinition === undefined) {
     return {
       status: 'failed',

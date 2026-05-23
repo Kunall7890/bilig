@@ -28,6 +28,7 @@ import {
   workbookRefKinds,
   workbookRowOperators,
   workbookRowOperatorValueTypes,
+  type WorkbookAction,
 } from '../index.js'
 
 describe('@bilig/workbook model api', () => {
@@ -1001,6 +1002,104 @@ describe('@bilig/workbook model api', () => {
         },
       }),
     ).toThrowError('Workbook model empty-action-model action name cannot be empty')
+  })
+
+  it('keeps model actions generic without trusting action-map prototypes', () => {
+    type PrototypeRefs = { readonly target: ReturnType<typeof findRange> }
+    const inheritedActions: Record<string, WorkbookAction<PrototypeRefs>> = {}
+    Object.setPrototypeOf(inheritedActions, {
+      inherited({ refs, workbook }: Parameters<WorkbookAction<PrototypeRefs>>[0]) {
+        workbook.writeValue(refs.target, 404)
+      },
+    })
+    inheritedActions.calculate = ({ refs, workbook }) => {
+      workbook.writeValue(refs.target, 12)
+    }
+
+    const model = defineModel({
+      name: 'own-action-model',
+      find(workbook) {
+        return {
+          target: workbook.findRange({ sheetName: 'Sheet1', address: 'A1' }),
+        }
+      },
+      actions: inheritedActions,
+    })
+
+    expect(Object.getPrototypeOf(model.actions)).toBe(null)
+    expect(inspectModel(model).actions).toEqual(['calculate'])
+    expect(planWorkbookAction(model, 'inherited')).toEqual({
+      status: 'failed',
+      modelName: 'own-action-model',
+      actionName: 'inherited',
+      checks: [],
+      errors: [
+        {
+          code: 'action_not_found',
+          message: 'Workbook model own-action-model does not define action inherited',
+        },
+      ],
+    })
+
+    expect(buildWorkbookActionPlan(model, 'calculate').commands).toEqual([
+      {
+        kind: 'writeValue',
+        target: expect.objectContaining({ label: 'Sheet1!A1' }),
+        value: 12,
+      },
+    ])
+  })
+
+  it('allows own action names that look like object prototype fields', () => {
+    type PrototypeNameRefs = { readonly target: ReturnType<typeof findRange> }
+    const actions: Record<string, WorkbookAction<PrototypeNameRefs>> = {}
+    Object.setPrototypeOf(actions, null)
+    actions.toString = ({ refs, workbook }) => {
+      workbook.writeValue(refs.target, 1)
+    }
+    actions.constructor = ({ refs, workbook }) => {
+      workbook.writeValue(refs.target, 2)
+    }
+    Object.defineProperty(actions, '__proto__', {
+      enumerable: true,
+      value({ refs, workbook }: Parameters<WorkbookAction<PrototypeNameRefs>>[0]) {
+        workbook.writeValue(refs.target, 3)
+      },
+    })
+
+    const model = defineModel({
+      name: 'prototype-name-model',
+      find(workbook) {
+        return {
+          target: workbook.findRange({ sheetName: 'Sheet1', address: 'B2' }),
+        }
+      },
+      actions,
+    })
+
+    expect(Object.getPrototypeOf(model.actions)).toBe(null)
+    expect(inspectModel(model).actions).toEqual(['__proto__', 'constructor', 'toString'])
+    expect(buildWorkbookActionPlan(model, 'toString').commands).toEqual([
+      {
+        kind: 'writeValue',
+        target: expect.objectContaining({ label: 'Sheet1!B2' }),
+        value: 1,
+      },
+    ])
+    expect(buildWorkbookActionPlan(model, 'constructor').commands).toEqual([
+      {
+        kind: 'writeValue',
+        target: expect.objectContaining({ label: 'Sheet1!B2' }),
+        value: 2,
+      },
+    ])
+    expect(buildWorkbookActionPlan(model, '__proto__').commands).toEqual([
+      {
+        kind: 'writeValue',
+        target: expect.objectContaining({ label: 'Sheet1!B2' }),
+        value: 3,
+      },
+    ])
   })
 
   it('describes model actions without running find or actions', () => {
