@@ -1,21 +1,10 @@
 import { Effect } from 'effect'
-import {
-  ErrorCode,
-  FormulaMode,
-  ValueTag,
-  type CellSnapshot,
-  type CellValue,
-  type EngineChangedCell,
-  type WorkbookSnapshot,
-} from '@bilig/protocol'
+import { ErrorCode, FormulaMode, ValueTag, type CellValue } from '@bilig/protocol'
 import { makeCellKey } from '../../workbook-store.js'
 import { CellFlags } from '../../cell-store.js'
 import { areCellValuesEqual, emptyValue, errorValue } from '../../engine-value-utils.js'
-import type { EngineRuntimeState, RuntimeFormula, SpillMaterialization, U32 } from '../runtime-state.js'
+import type { RuntimeFormula, U32 } from '../runtime-state.js'
 import { EngineRecalcError } from '../errors.js'
-import type { WorkbookPivotRecord } from '../../workbook-store.js'
-import type { EngineDirtyFrontierSchedulerService } from './dirty-frontier-scheduler-service.js'
-import type { EnginePatch } from '../../patches/patch-types.js'
 import { buildCycleEvaluationNodes, type CycleEvaluationNode } from './recalc-cycle-evaluation.js'
 import { consumeVolatileRandomValues, createRecalcVolatileState, toOrderedUint32 } from './recalc-evaluation-state.js'
 import { emitRecalcBatchEvents } from './recalc-event-emission.js'
@@ -28,39 +17,9 @@ import {
 } from './formula-initialization-native-direct-lookup.js'
 import { refreshPivotOutputsForChangedCells } from './recalc-pivot-refresh.js'
 import { filterSkippedCachedFormulaCells } from './recalc-skipped-cached-formula-cells.js'
+import type { EngineRecalcService, EngineRecalcServiceArgs } from './recalc-service-types.js'
 
-export interface DirtyRegion {
-  readonly sheetName: string
-  readonly rowStart: number
-  readonly rowEnd: number
-  readonly colStart: number
-  readonly colEnd: number
-}
-
-export interface EngineRecalcService {
-  readonly recalculateNow: () => Effect.Effect<number[], EngineRecalcError>
-  readonly recalculateDirty: (dirtyRegions: ReadonlyArray<DirtyRegion>) => Effect.Effect<number[], EngineRecalcError>
-  readonly recalculateDifferential: () => Effect.Effect<{ js: CellSnapshot[]; wasm: CellSnapshot[]; drift: string[] }, EngineRecalcError>
-  readonly recalculatePreordered: (
-    changedRoots: readonly number[] | U32,
-    orderedFormulaCellIndices: readonly number[] | U32,
-    orderedFormulaCount: number,
-    kernelSyncRoots?: readonly number[] | U32,
-  ) => Effect.Effect<U32, EngineRecalcError>
-  readonly recalculate: (
-    changedRoots: readonly number[] | U32,
-    kernelSyncRoots?: readonly number[] | U32,
-  ) => Effect.Effect<U32, EngineRecalcError>
-  readonly reconcilePivotOutputs: (baseChanged: U32, forceAllPivots?: boolean) => Effect.Effect<U32, EngineRecalcError>
-  readonly recalculatePreorderedNowSync: (
-    changedRoots: readonly number[] | U32,
-    orderedFormulaCellIndices: readonly number[] | U32,
-    orderedFormulaCount: number,
-    kernelSyncRoots?: readonly number[] | U32,
-  ) => U32
-  readonly recalculateNowSync: (changedRoots: readonly number[] | U32, kernelSyncRoots?: readonly number[] | U32) => U32
-  readonly reconcilePivotOutputsNow: (baseChanged: U32, forceAllPivots?: boolean) => U32
-}
+export type { DirtyRegion, EngineRecalcService } from './recalc-service-types.js'
 
 interface RecalculateInternalOptions {
   readonly orderedFormulaCellIndices?: readonly number[] | U32
@@ -68,61 +27,7 @@ interface RecalculateInternalOptions {
   readonly preserveCachedValuesOnFullRecalc?: boolean
 }
 
-export function createEngineRecalcService(args: {
-  readonly state: Pick<
-    EngineRuntimeState,
-    'workbook' | 'strings' | 'wasm' | 'formulas' | 'ranges' | 'events' | 'counters' | 'getLastMetrics' | 'setLastMetrics'
-  >
-  readonly getCellByIndex: (cellIndex: number) => CellSnapshot
-  readonly exportSnapshot: () => WorkbookSnapshot
-  readonly importSnapshot: (snapshot: WorkbookSnapshot) => void
-  readonly beginMutationCollection: () => void
-  readonly markInputChanged: (cellIndex: number, count: number) => number
-  readonly markFormulaChanged: (cellIndex: number, count: number) => number
-  readonly markExplicitChanged: (cellIndex: number, count: number) => number
-  readonly composeMutationRoots: (changedInputCount: number, formulaChangedCount: number) => U32
-  readonly composeEventChanges: (recalculated: U32, explicitChangedCount: number) => U32
-  readonly captureChangedCells: (changedCellIndices: readonly number[] | U32) => readonly EngineChangedCell[]
-  readonly captureChangedPatches: (
-    changedCellIndices: readonly number[] | U32,
-    request?: {
-      invalidation?: 'cells' | 'full'
-      invalidatedRanges?: readonly {
-        sheetName: string
-        startAddress: string
-        endAddress: string
-      }[]
-      invalidatedRows?: readonly { sheetName: string; startIndex: number; endIndex: number }[]
-      invalidatedColumns?: readonly { sheetName: string; startIndex: number; endIndex: number }[]
-    },
-  ) => readonly EnginePatch[]
-  readonly unionChangedSets: (...sets: Array<readonly number[] | U32>) => U32
-  readonly composeChangedRootsAndOrdered: (changedRoots: readonly number[] | U32, ordered: U32, orderedCount: number) => U32
-  readonly emptyChangedSet: () => U32
-  readonly ensureRecalcScratchCapacity: (size: number) => void
-  readonly getPendingKernelSync: () => U32
-  readonly getDeferredKernelSyncCount: () => number
-  readonly setDeferredKernelSyncCount: (next: number) => void
-  readonly getDeferredKernelSyncEpoch: () => number
-  readonly setDeferredKernelSyncEpoch: (next: number) => void
-  readonly getDeferredKernelSyncSeen: () => U32
-  readonly getWasmBatch: () => U32
-  readonly getChangedInputBuffer: () => U32
-  readonly flushWasmProgramSync: () => void
-  readonly beginEvaluationBudget: (startedAtMs: number) => void
-  readonly endEvaluationBudget: () => void
-  readonly checkEvaluationBudget: (stepCost?: number) => void
-  readonly now: () => Date
-  readonly random: () => number
-  readonly performanceNow: () => number
-  readonly dirtyScheduler: EngineDirtyFrontierSchedulerService
-  readonly materializeSpill: (cellIndex: number, arrayValue: { values: CellValue[]; rows: number; cols: number }) => SpillMaterialization
-  readonly clearOwnedSpill: (cellIndex: number) => number[]
-  readonly evaluateDirectLookupFormula: (cellIndex: number) => number[] | undefined
-  readonly evaluateUnsupportedFormula: (cellIndex: number) => number[]
-  readonly materializePivot: (pivot: WorkbookPivotRecord) => number[]
-  readonly forEachFormulaDependencyCell: (cellIndex: number, fn: (dependencyCellIndex: number) => void) => void
-}): EngineRecalcService {
+export function createEngineRecalcService(args: EngineRecalcServiceArgs): EngineRecalcService {
   const refreshPivotOutputs = (changed: readonly number[] | U32, forceAll: boolean): U32 =>
     refreshPivotOutputsForChangedCells({
       changed,
@@ -801,6 +706,68 @@ export function createEngineRecalcService(args: {
     return aggregate
   }
 
+  const recalculateAllNow = (): number[] => {
+    args.beginMutationCollection()
+    args.state.workbook.setVolatileContext({
+      recalcEpoch: args.state.workbook.getVolatileContext().recalcEpoch + 1,
+    })
+    let formulaChangedCount = 0
+    let explicitChangedCount = 0
+    let canUseFullFormulaOrder = true
+    args.state.formulas.forEach((formula, cellIndex) => {
+      if (formula.preserveCachedValueOnFullRecalc === true) {
+        return
+      }
+      formulaChangedCount = args.markFormulaChanged(cellIndex, formulaChangedCount)
+      explicitChangedCount = args.markExplicitChanged(cellIndex, explicitChangedCount)
+      if (formula.compiled.producesSpill || formula.directLookup !== undefined || formula.directCriteria !== undefined) {
+        canUseFullFormulaOrder = false
+      }
+    })
+    const mutationRoots = args.composeMutationRoots(0, formulaChangedCount)
+    let recalculatedBase: U32
+    if (canUseFullFormulaOrder) {
+      const fullFormulaOrder = args.dirtyScheduler.collectAll()
+      recalculatedBase = recalculatePreordered(
+        mutationRoots,
+        fullFormulaOrder.orderedFormulaCellIndices,
+        fullFormulaOrder.orderedFormulaCount,
+        args.emptyChangedSet(),
+        { preserveCachedValuesOnFullRecalc: true },
+      )
+    } else {
+      recalculatedBase = recalculateInternal(mutationRoots, args.emptyChangedSet(), {
+        preserveCachedValuesOnFullRecalc: true,
+      })
+    }
+    const recalculated = reconcilePivotOutputs(recalculatedBase, true)
+    const changed = args.composeEventChanges(recalculated, explicitChangedCount)
+    const lastMetrics = { ...args.state.getLastMetrics() }
+    lastMetrics.batchId += 1
+    lastMetrics.changedInputCount = formulaChangedCount
+    args.state.setLastMetrics(lastMetrics)
+    emitRecalcBatchEvents({
+      state: args.state,
+      changed,
+      changedCells: args.captureChangedCells(changed),
+      metrics: lastMetrics,
+      explicitChangedCount,
+      captureChangedPatches: args.captureChangedPatches,
+    })
+    return Array.from(changed)
+  }
+
+  const recalculateAllNowSync = (): number[] => {
+    try {
+      return recalculateAllNow()
+    } catch (cause) {
+      throw new EngineRecalcError({
+        message: 'Failed to recalculate all formulas',
+        cause,
+      })
+    }
+  }
+
   return {
     recalculatePreordered(changedRoots, orderedFormulaCellIndices, orderedFormulaCount, kernelSyncRoots = changedRoots) {
       return Effect.try({
@@ -834,56 +801,7 @@ export function createEngineRecalcService(args: {
     },
     recalculateNow() {
       return Effect.try({
-        try: () => {
-          args.beginMutationCollection()
-          args.state.workbook.setVolatileContext({
-            recalcEpoch: args.state.workbook.getVolatileContext().recalcEpoch + 1,
-          })
-          let formulaChangedCount = 0
-          let explicitChangedCount = 0
-          let canUseFullFormulaOrder = true
-          args.state.formulas.forEach((formula, cellIndex) => {
-            if (formula.preserveCachedValueOnFullRecalc === true) {
-              return
-            }
-            formulaChangedCount = args.markFormulaChanged(cellIndex, formulaChangedCount)
-            explicitChangedCount = args.markExplicitChanged(cellIndex, explicitChangedCount)
-            if (formula.compiled.producesSpill || formula.directLookup !== undefined || formula.directCriteria !== undefined) {
-              canUseFullFormulaOrder = false
-            }
-          })
-          const mutationRoots = args.composeMutationRoots(0, formulaChangedCount)
-          let recalculatedBase: U32
-          if (canUseFullFormulaOrder) {
-            const fullFormulaOrder = args.dirtyScheduler.collectAll()
-            recalculatedBase = recalculatePreordered(
-              mutationRoots,
-              fullFormulaOrder.orderedFormulaCellIndices,
-              fullFormulaOrder.orderedFormulaCount,
-              args.emptyChangedSet(),
-              { preserveCachedValuesOnFullRecalc: true },
-            )
-          } else {
-            recalculatedBase = recalculateInternal(mutationRoots, args.emptyChangedSet(), {
-              preserveCachedValuesOnFullRecalc: true,
-            })
-          }
-          const recalculated = reconcilePivotOutputs(recalculatedBase, true)
-          const changed = args.composeEventChanges(recalculated, explicitChangedCount)
-          const lastMetrics = { ...args.state.getLastMetrics() }
-          lastMetrics.batchId += 1
-          lastMetrics.changedInputCount = formulaChangedCount
-          args.state.setLastMetrics(lastMetrics)
-          emitRecalcBatchEvents({
-            state: args.state,
-            changed,
-            changedCells: args.captureChangedCells(changed),
-            metrics: lastMetrics,
-            explicitChangedCount,
-            captureChangedPatches: args.captureChangedPatches,
-          })
-          return Array.from(changed)
-        },
+        try: recalculateAllNow,
         catch: (cause) =>
           new EngineRecalcError({
             message: 'Failed to recalculate all formulas',
@@ -984,6 +902,7 @@ export function createEngineRecalcService(args: {
       })
     },
     recalculatePreorderedNowSync: recalculatePreordered,
+    recalculateAllNowSync,
     recalculateNowSync: recalculate,
     reconcilePivotOutputsNow: reconcilePivotOutputs,
   }
