@@ -4,6 +4,15 @@ All notable changes to `@bilig/headless` will be documented in this file.
 
 This package is released as part of the aligned bilig library package set.
 
+## 0.58.0
+
+- Release type: minor
+- Previous libraries tag: libraries-v0.57.0
+- Manual override: no
+
+## Features
+- feat(engine): preserve hyperlink metadata structurally (e2f7f148)
+
 ## 0.57.0
 
 - Release type: minor
