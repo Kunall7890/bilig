@@ -154,25 +154,49 @@ function canonicalValue(value: unknown): unknown {
   return value
 }
 
+function ownCheckValue<Key extends keyof WorkbookCheckResult>(check: WorkbookCheckResult, key: Key): WorkbookCheckResult[Key] | undefined {
+  return Object.hasOwn(check, key) ? check[key] : undefined
+}
+
 function checkContract(check: WorkbookCheckResult): Omit<WorkbookCheckResult, 'status'> {
+  const kind = ownCheckValue(check, 'kind')
+  const target = ownCheckValue(check, 'target')
+  const refs = ownCheckValue(check, 'refs')
+  const message = ownCheckValue(check, 'message')
+  const expectation = ownCheckValue(check, 'expectation')
+  if (kind === undefined || message === undefined) {
+    throw new Error('invalid check contract')
+  }
+
   return {
-    kind: check.kind,
-    ...(check.target !== undefined ? { target: check.target } : {}),
-    ...(check.refs !== undefined ? { refs: check.refs } : {}),
-    message: check.message,
-    ...(check.expectation !== undefined ? { expectation: check.expectation } : {}),
+    kind,
+    ...(target !== undefined ? { target } : {}),
+    ...(refs !== undefined ? { refs } : {}),
+    message,
+    ...(expectation !== undefined ? { expectation } : {}),
   }
 }
 
 function cloneCheck(check: WorkbookCheckResult): WorkbookCheckResult {
+  const status = ownCheckValue(check, 'status')
+  const kind = ownCheckValue(check, 'kind')
+  const target = ownCheckValue(check, 'target')
+  const refs = ownCheckValue(check, 'refs')
+  const message = ownCheckValue(check, 'message')
+  const expectation = ownCheckValue(check, 'expectation')
+  const proof = ownCheckValue(check, 'proof')
+  if (status === undefined || kind === undefined || message === undefined) {
+    throw new Error('invalid check result')
+  }
+
   return {
-    status: check.status,
-    kind: check.kind,
-    ...(check.target !== undefined ? { target: check.target } : {}),
-    ...(check.refs !== undefined ? { refs: check.refs } : {}),
-    message: check.message,
-    ...(check.expectation !== undefined ? { expectation: check.expectation } : {}),
-    ...(check.proof !== undefined ? { proof: normalizeWorkbookActionInput(check.proof) } : {}),
+    status,
+    kind,
+    ...(target !== undefined ? { target } : {}),
+    ...(refs !== undefined ? { refs } : {}),
+    message,
+    ...(expectation !== undefined ? { expectation } : {}),
+    ...(proof !== undefined ? { proof: normalizeWorkbookActionInput(proof) } : {}),
   }
 }
 
@@ -188,22 +212,73 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null
 }
 
+function ownValue(value: object, key: string): unknown {
+  return Object.getOwnPropertyDescriptor(value, key)?.value
+}
+
+function isWorkbookOpArray(value: unknown): value is readonly EngineOp[] {
+  return Array.isArray(value) && value.every(isWorkbookOp)
+}
+
 function isWorkbookRunError(value: unknown): value is WorkbookRunError {
+  if (!isRecord(value)) {
+    return false
+  }
+  const code = ownValue(value, 'code')
+  const message = ownValue(value, 'message')
+  const path = ownValue(value, 'path')
+  const issueCode = ownValue(value, 'issueCode')
+
   return (
-    isRecord(value) &&
-    isWorkbookRunErrorCode(value['code']) &&
-    typeof value['message'] === 'string' &&
-    (value['path'] === undefined || typeof value['path'] === 'string') &&
-    (value['issueCode'] === undefined || typeof value['issueCode'] === 'string')
+    isWorkbookRunErrorCode(code) &&
+    typeof message === 'string' &&
+    (path === undefined || typeof path === 'string') &&
+    (issueCode === undefined || typeof issueCode === 'string')
   )
 }
 
+function isWorkbookRunErrorArray(value: unknown): value is readonly WorkbookRunError[] {
+  return Array.isArray(value) && value.every(isWorkbookRunError)
+}
+
+function cloneRunError(error: WorkbookRunError): WorkbookRunError {
+  const path = ownValue(error, 'path')
+  const issueCode = ownValue(error, 'issueCode')
+
+  return {
+    code: error.code,
+    message: error.message,
+    ...(typeof path === 'string' ? { path } : {}),
+    ...(typeof issueCode === 'string' ? { issueCode } : {}),
+  }
+}
+
 function isWorkbookUndoRef(value: unknown): value is WorkbookUndoRef {
-  return isRecord(value) && typeof value['id'] === 'string'
+  if (!isRecord(value)) {
+    return false
+  }
+  const id = ownValue(value, 'id')
+  const ops = ownValue(value, 'ops')
+  return typeof id === 'string' && (ops === undefined || isWorkbookOpArray(ops))
+}
+
+function cloneUndoRef(undo: WorkbookUndoRef): WorkbookUndoRef {
+  const ops = ownValue(undo, 'ops')
+  return {
+    id: undo.id,
+    ...(isWorkbookOpArray(ops) ? { ops: cloneOps(ops) } : {}),
+  }
 }
 
 function isWorkbookCheckResult(value: unknown): value is WorkbookCheckResult {
-  return isRecord(value) && isCheckStatus(value['status']) && typeof value['kind'] === 'string' && typeof value['message'] === 'string'
+  if (!isRecord(value)) {
+    return false
+  }
+  return (
+    isCheckStatus(ownValue(value, 'status')) &&
+    typeof ownValue(value, 'kind') === 'string' &&
+    typeof ownValue(value, 'message') === 'string'
+  )
 }
 
 type ApplyValidation =
@@ -229,38 +304,43 @@ function validateApplyResult(plan: WorkbookActionPlan, value: unknown): ApplyVal
     return rejected(`Workbook action ${plan.modelName}.${plan.actionName} returned an invalid apply result`)
   }
 
-  const status = value['status']
+  const status = ownValue(value, 'status')
   if (status !== 'applied' && status !== 'failed') {
     return rejected(`Workbook action ${plan.modelName}.${plan.actionName} returned an invalid apply status`)
   }
 
-  const rawPreviewOps = value['previewOps']
-  if (rawPreviewOps !== undefined && (!Array.isArray(rawPreviewOps) || !rawPreviewOps.every(isWorkbookOp))) {
+  const rawPreviewOps = ownValue(value, 'previewOps')
+  if (rawPreviewOps !== undefined && !isWorkbookOpArray(rawPreviewOps)) {
     return rejected(`Workbook action ${plan.modelName}.${plan.actionName} returned invalid preview ops`)
   }
-  const rawAppliedOps = value['appliedOps']
-  if (rawAppliedOps !== undefined && (!Array.isArray(rawAppliedOps) || !rawAppliedOps.every(isWorkbookOp))) {
+  const rawAppliedOps = ownValue(value, 'appliedOps')
+  if (rawAppliedOps !== undefined && !isWorkbookOpArray(rawAppliedOps)) {
     return rejected(`Workbook action ${plan.modelName}.${plan.actionName} returned invalid applied ops`)
   }
 
-  const rawErrors = value['errors']
-  if (rawErrors !== undefined && (!Array.isArray(rawErrors) || !rawErrors.every(isWorkbookRunError))) {
+  const rawErrors = ownValue(value, 'errors')
+  if (rawErrors !== undefined && !isWorkbookRunErrorArray(rawErrors)) {
     return rejected(`Workbook action ${plan.modelName}.${plan.actionName} returned invalid apply errors`)
   }
-  const errors = rawErrors as readonly WorkbookRunError[] | undefined
+  const errors = rawErrors === undefined ? undefined : rawErrors.map(cloneRunError)
 
   if (status === 'applied' && errors !== undefined && errors.length > 0) {
     return rejected(`Workbook action ${plan.modelName}.${plan.actionName} returned applied with errors`)
   }
 
-  const undo = value['undo']
-  if (undo !== undefined && !isWorkbookUndoRef(undo)) {
+  const rawUndo = ownValue(value, 'undo')
+  let undo: WorkbookUndoRef | undefined
+  if (rawUndo !== undefined && !isWorkbookUndoRef(rawUndo)) {
     return rejected(`Workbook action ${plan.modelName}.${plan.actionName} returned invalid undo metadata`)
+  }
+  if (rawUndo !== undefined) {
+    undo = cloneUndoRef(rawUndo)
   }
 
   let proof: WorkbookActionInput | undefined
+  const rawProof = ownValue(value, 'proof')
   try {
-    proof = value['proof'] === undefined ? undefined : normalizeWorkbookActionInput(value['proof'])
+    proof = rawProof === undefined ? undefined : normalizeWorkbookActionInput(rawProof)
   } catch (error) {
     return rejected(`Workbook action ${plan.modelName}.${plan.actionName} returned invalid apply proof: ${errorMessage(error)}`)
   }
@@ -269,8 +349,8 @@ function validateApplyResult(plan: WorkbookActionPlan, value: unknown): ApplyVal
     status: 'valid',
     result: {
       status,
-      ...(rawPreviewOps !== undefined ? { previewOps: cloneOps(rawPreviewOps as readonly EngineOp[]) } : {}),
-      ...(rawAppliedOps !== undefined ? { appliedOps: cloneOps(rawAppliedOps as readonly EngineOp[]) } : {}),
+      ...(rawPreviewOps !== undefined ? { previewOps: cloneOps(rawPreviewOps) } : {}),
+      ...(rawAppliedOps !== undefined ? { appliedOps: cloneOps(rawAppliedOps) } : {}),
       ...(proof !== undefined ? { proof } : {}),
       ...(errors !== undefined ? { errors } : {}),
       ...(undo !== undefined ? { undo } : {}),
@@ -386,7 +466,7 @@ function validateVerifiedChecks(
         error: runError('invalid_check_verification', `Check verifier returned an invalid check at index ${String(index)}`),
       }
     }
-    if (!isCheckStatus(actual['status'])) {
+    if (!isCheckStatus(ownValue(actual, 'status'))) {
       return {
         status: 'invalid',
         error: runError('invalid_check_verification', `Check verifier returned an invalid status at index ${String(index)}`),

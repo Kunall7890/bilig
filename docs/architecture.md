@@ -61,6 +61,8 @@ flowchart LR
     runtime apply, but keep `changed: []` when failed apply proof reports no
     applied ops and no undo
   - generic check verifier handoff for runtime-owned invariants
+  - own-field-only runtime proof validation for adapter apply results, undo
+    refs, runtime errors, and check verifier output
   - transport-neutral workbook ops and txns
 - `packages/zero-sync`
   - Zero schema

@@ -10,6 +10,7 @@ import {
   verifyWorkbookReadbacks,
   workbookRunErrorCodes,
   type WorkbookActionPlan,
+  type WorkbookCheckResult,
   type WorkbookModel,
   type WorkbookRunAdapter,
   type WorkbookRunApplyResult,
@@ -48,6 +49,35 @@ function applied<Refs>(plan: WorkbookActionPlan<Refs>): WorkbookRunApplyResult {
     previewOps: plan.ops,
     appliedOps: plan.ops,
   }
+}
+
+function inheritedApplyResult<Refs>(plan: WorkbookActionPlan<Refs>): WorkbookRunApplyResult {
+  const result: WorkbookRunApplyResult = applied(plan)
+  Object.setPrototypeOf(result, {
+    status: result.status,
+    previewOps: result.previewOps,
+    appliedOps: result.appliedOps,
+  })
+  Reflect.deleteProperty(result, 'status')
+  Reflect.deleteProperty(result, 'previewOps')
+  Reflect.deleteProperty(result, 'appliedOps')
+  return result
+}
+
+function inheritedVerifiedCheck(checkResult: WorkbookCheckResult): WorkbookCheckResult {
+  const result: WorkbookCheckResult = {
+    ...checkResult,
+    status: 'passed',
+  }
+  Object.setPrototypeOf(result, { ...result })
+  Reflect.deleteProperty(result, 'status')
+  Reflect.deleteProperty(result, 'kind')
+  Reflect.deleteProperty(result, 'target')
+  Reflect.deleteProperty(result, 'refs')
+  Reflect.deleteProperty(result, 'message')
+  Reflect.deleteProperty(result, 'expectation')
+  Reflect.deleteProperty(result, 'proof')
+  return result
 }
 
 describe('@bilig/workbook run api', () => {
@@ -163,6 +193,26 @@ describe('@bilig/workbook run api', () => {
           message: 'Adapter did not return both previewOps and appliedOps, so apply match is unverified',
         },
       ],
+    })
+  })
+
+  it('rejects inherited adapter apply result fields', async () => {
+    const model = valueModel()
+
+    const result = await runWorkbookAction(model, 'write', {
+      apply: inheritedApplyResult,
+      read: () => [],
+    })
+
+    expect(result).toMatchObject({
+      status: 'failed',
+      errors: [
+        {
+          code: 'runtime_rejected',
+          message: 'Workbook action run-value-model.write returned an invalid apply status',
+        },
+      ],
+      checks: [expect.objectContaining({ status: 'planned', kind: 'valueEquals' })],
     })
   })
 
@@ -615,6 +665,43 @@ describe('@bilig/workbook run api', () => {
           message: 'Consumer invariant holds',
         }),
       ],
+    })
+  })
+
+  it('rejects inherited generic check verifier fields', async () => {
+    const model = defineModel({
+      name: 'run-inherited-check-proof-model',
+
+      find(workbook) {
+        return {
+          result: workbook.findRange({ sheetName: 'Sheet1', address: 'C2' }),
+        }
+      },
+
+      checks({ refs, workbook }) {
+        return [workbook.check.exists(refs.result)]
+      },
+
+      actions: {
+        inspect({ refs }) {
+          void refs.result
+        },
+      },
+    })
+
+    const result = await runWorkbookAction(model, 'inspect', {
+      verifyChecks: (checks) => checks.map(inheritedVerifiedCheck),
+    })
+
+    expect(result).toMatchObject({
+      status: 'failed',
+      errors: [
+        {
+          code: 'invalid_check_verification',
+          message: 'Check verifier returned an invalid status at index 0',
+        },
+      ],
+      checks: [expect.objectContaining({ status: 'planned', kind: 'exists', message: 'Sheet1!C2 exists' })],
     })
   })
 

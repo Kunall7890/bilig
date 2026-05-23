@@ -115,6 +115,10 @@ Runtimes execute plans. `@bilig/workbook` only defines the handoff.
 - `adapter.verifyChecks(checks, plan)` may only change check `status` or add
   JSON-safe `proof`; it cannot rewrite the check contract.
 
+Adapter-returned apply results, undo refs, apply errors, and check verifier
+output are accepted from own payload fields only. Prototype-inherited fields do
+not satisfy runtime proof.
+
 When `previewOps` and `appliedOps` are both present, `runWorkbookPlan` reports
 whether runtime apply matched preview. When they are missing, the result reports
 an unverified apply fact. Agents that need fail-closed execution can call
@@ -542,6 +546,8 @@ with non-empty `errors` is rejected as `runtime_rejected`. If no apply proof is
 required and the adapter omits preview or applied ops, the run can still finish
 but reports an `unverified` apply fact instead of pretending preview/apply match
 was proven.
+Apply result fields, nested runtime errors, and undo metadata are sanitized from
+own fields before they reach `WorkbookRunResult`.
 If an adapter returns `status: "failed"` with `appliedOps` or `undo`, the failed
 run preserves the planned change summaries and undo ref because the runtime is
 signaling that mutation evidence exists even though the apply step rejected the
@@ -557,6 +563,8 @@ Accepted verifier output is sanitized before it reaches `WorkbookRunResult`. If
 a check remains `planned` after readback and adapter verification,
 `runWorkbookPlan` returns `failed` with `check_not_verified`; `status: "done"`
 does not hide unproven checks.
+Verifier output is also own-field only: inherited `status`, `kind`, `message`,
+target, refs, expectation, or proof data is ignored and cannot prove a check.
 `@bilig/core` provides `createWorkbookRunAdapter(engine)` for the canonical
 engine handoff. It materializes generic `plan.commands` into engine operations,
 including range and table-column writes, falls back to explicit `plan.ops` for

@@ -221,6 +221,9 @@ If an adapter returns both `previewOps` and `appliedOps`, the result reports
 whether they matched. If the adapter returns neither, the run records an
 unverified apply fact. Use `runWorkbookPlan(plan, adapter, { requireApplyProof:
 true })` when an agent must fail closed instead of accepting an unproved apply.
+Runtime apply results, undo refs, apply errors, and check verifier output are
+validated from own fields only; prototype-inherited fields are ignored before
+they can become run proof.
 Readback checks attach proof to passed checks, such as
 `{ source: "readback", value: 12 }` or
 `{ source: "readback", formula: "(Table[Quantity])*(Table[Rate])" }`.
