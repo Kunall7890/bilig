@@ -874,6 +874,7 @@ describe('@bilig/workbook run api', () => {
       apply: {
         matched: null,
       },
+      changed: [],
       checks: [
         {
           status: 'planned',
@@ -933,7 +934,10 @@ describe('@bilig/workbook run api', () => {
     const model = valueModel()
 
     const result = await runWorkbookAction(model, 'write', {
-      apply: applied,
+      apply: (plan) => ({
+        ...applied(plan),
+        undo: { id: 'undo-mismatch' },
+      }),
       read: (targets) => [
         {
           target: first(targets),
@@ -950,6 +954,16 @@ describe('@bilig/workbook run api', () => {
           message: 'Sheet1!B2 expected value 12 but read 13',
         },
       ],
+      apply: {
+        matched: true,
+      },
+      changed: [
+        {
+          kind: 'writeValue',
+          target: expect.objectContaining({ label: 'Sheet1!B2' }),
+          message: 'Write value to Sheet1!B2',
+        },
+      ],
       checks: [
         {
           status: 'failed',
@@ -962,6 +976,7 @@ describe('@bilig/workbook run api', () => {
           },
         },
       ],
+      undo: { id: 'undo-mismatch' },
     })
   })
 

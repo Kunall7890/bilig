@@ -94,6 +94,10 @@ When `previewOps` and `appliedOps` are both present, `runWorkbookPlan` reports
 whether runtime apply matched preview. When they are missing, the result reports
 an unverified apply fact. Agents that need fail-closed execution can call
 `runWorkbookPlan(plan, adapter, { requireApplyProof: true })`.
+Failed results include `changed` as a concrete answer, not an implied absence:
+`changed: []` means no runtime apply succeeded before the failure, while
+post-apply proof failures keep the planned change summaries and adapter-provided
+undo metadata.
 
 Readback-backed checks attach proof to passed checks. A result can therefore
 show the intended action, bound refs, planned commands and ops, adapter
@@ -370,6 +374,9 @@ with `apply_mismatch`. If `requireApplyProof` is true and the adapter omits
 preview or applied ops, the run fails with `apply_not_verified`. If a readback
 expectation is missing or mismatched, the run fails with deterministic codes
 such as `readback_missing`, `value_mismatch`, or `formula_mismatch`.
+Failures after an adapter reports `status: "applied"` preserve `changed` and
+`undo`, so an agent can still inspect what was applied and how to reverse it
+when a later proof step rejects the run.
 Runtime readbacks must match the requested target set exactly; surplus
 readbacks fail with `readback_unexpected`. Formula readbacks are exact and
 should use the normalized no-leading-`=` form produced by `formula.source`.
@@ -385,6 +392,10 @@ with non-empty `errors` is rejected as `runtime_rejected`. If no apply proof is
 required and the adapter omits preview or applied ops, the run can still finish
 but reports an `unverified` apply fact instead of pretending preview/apply match
 was proven.
+If an adapter returns `status: "failed"` with `appliedOps` or `undo`, the failed
+run preserves the planned change summaries and undo ref because the runtime is
+signaling that mutation evidence exists even though the apply step rejected the
+overall run.
 Adapters can also expose `verifyChecks(checks, plan)` for generic proof of
 non-readback checks such as existence checks, formula-error checks, and
 consumer-defined invariants. `verifyChecks` returns the same checks in the same

@@ -38,6 +38,8 @@ flowchart LR
   - transport-neutral run adapters for preview/apply/readback/check proof
   - apply summaries that expose preview ops, applied ops, preview/apply match,
     and unverified apply facts
+  - failed run ledgers that preserve changed summaries and undo metadata after
+    runtime apply
   - generic check verifier handoff for runtime-owned invariants
   - transport-neutral workbook ops and txns
 - `packages/zero-sync`
@@ -74,8 +76,8 @@ The following are not current architecture anymore:
 - `@bilig/workbook` models stay consumer-defined and domain-neutral
 - `@bilig/workbook` plans are inspectable data before runtime execution
 - `@bilig/workbook` results must expose proof for runtime apply and passed
-  checks, or preserve the unverified state instead of hiding it behind a done
-  status
+  checks, preserve changed/undo evidence after post-apply failures, or preserve
+  the unverified state instead of hiding it behind a done status
 
 ## Recommended next focus
 

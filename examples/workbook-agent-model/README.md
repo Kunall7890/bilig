@@ -24,6 +24,7 @@ mutation:
 - which commands and low-level ops were planned
 - which adapter capabilities are required
 - whether apply matched preview or remains unverified
+- what changed, and whether undo evidence exists
 - which checks passed
 - what proof supported each check
 

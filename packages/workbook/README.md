@@ -169,6 +169,9 @@ Readback checks attach proof to passed checks, such as
 `{ source: "readback", formula: "(Table[Quantity])*(Table[Rate])" }`.
 Generic check verifiers may only change `status` or add JSON-safe `proof`; they
 cannot rewrite the check contract.
+If runtime apply succeeds but readback or check proof fails, the failed result
+still carries `changed` and `undo` when the adapter returned undo metadata. A
+failed result before apply uses `changed: []`.
 
 The result is deliberately plain:
 
@@ -186,7 +189,9 @@ type WorkbookRunResult =
       status: "failed";
       errors: WorkbookRunError[];
       apply?: WorkbookRunApplySummary;
+      changed: WorkbookChangeSummary[];
       checks: WorkbookCheckResult[];
+      undo?: WorkbookUndoRef;
       unverified?: WorkbookRunUnverified[];
     };
 ```

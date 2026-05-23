@@ -200,7 +200,9 @@ export type WorkbookRunResultDescription =
       readonly status: 'failed'
       readonly errors: readonly WorkbookRunErrorDescription[]
       readonly apply?: WorkbookRunApplySummaryDescription
+      readonly changed: readonly WorkbookChangeSummaryDescription[]
       readonly checks: readonly WorkbookCheckResultDescription[]
+      readonly undo?: WorkbookUndoRefDescription
       readonly unverified?: readonly WorkbookRunUnverifiedDescription[]
     }
 
@@ -429,7 +431,9 @@ export function describeRunResult(result: WorkbookRunResult): WorkbookRunResultD
     status: 'failed',
     errors: result.errors.map(describeError),
     ...(result.apply !== undefined ? { apply: describeApply(result.apply) } : {}),
+    changed: result.changed.map(describeChange),
     checks: result.checks.map(describeCheck),
+    ...(result.undo !== undefined ? { undo: describeUndo(result.undo) } : {}),
     ...(result.unverified !== undefined ? { unverified: result.unverified.map(describeUnverified) } : {}),
   }
 }

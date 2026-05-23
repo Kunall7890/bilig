@@ -113,6 +113,7 @@ describe('@bilig/workbook run proof boundary', () => {
             'Workbook action run-value-model.write returned invalid apply proof: Action input at input.when must be a plain JSON object, not Date',
         },
       ],
+      changed: [],
       checks: [
         expect.objectContaining({
           status: 'planned',
@@ -146,6 +147,7 @@ describe('@bilig/workbook run proof boundary', () => {
           message: 'Workbook action run-value-model.write returned applied with errors',
         },
       ],
+      changed: [],
       checks: [
         expect.objectContaining({
           status: 'planned',
@@ -229,6 +231,7 @@ describe('@bilig/workbook run proof boundary', () => {
         previewOps: [],
         appliedOps: [],
       },
+      changed: [],
       checks: [expect.objectContaining({ status: 'planned', kind: 'exists' })],
     })
   })
@@ -281,6 +284,13 @@ describe('@bilig/workbook run proof boundary', () => {
         },
       ],
       apply: expect.objectContaining({ matched: true }),
+      changed: [
+        {
+          kind: 'writeValue',
+          target: expect.objectContaining({ label: 'Sheet1!B2' }),
+          message: 'Write value to Sheet1!B2',
+        },
+      ],
       checks: [
         expect.objectContaining({
           status: 'passed',

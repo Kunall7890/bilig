@@ -6,6 +6,7 @@ import type { EngineOp } from './ops.js'
 import { verifyWorkbookReadbacks, type WorkbookRunReadback } from './readback.js'
 import {
   isWorkbookRunErrorCode,
+  type WorkbookChangeSummary,
   type WorkbookRunApplySummary,
   type WorkbookCheckResult,
   type WorkbookRunError,
@@ -51,6 +52,25 @@ function runError(code: WorkbookRunErrorCode, message: string): WorkbookRunError
   }
 }
 
+function failedRun(args: {
+  readonly errors: readonly WorkbookRunError[]
+  readonly apply?: WorkbookRunApplySummary
+  readonly changed?: readonly WorkbookChangeSummary[]
+  readonly checks: readonly WorkbookCheckResult[]
+  readonly undo?: WorkbookUndoRef
+  readonly unverified?: readonly WorkbookRunUnverified[]
+}): WorkbookRunResult {
+  return {
+    status: 'failed',
+    errors: args.errors,
+    ...(args.apply !== undefined ? { apply: args.apply } : {}),
+    changed: args.changed ?? [],
+    checks: args.checks,
+    ...(args.undo !== undefined ? { undo: args.undo } : {}),
+    ...(args.unverified !== undefined && args.unverified.length > 0 ? { unverified: args.unverified } : {}),
+  }
+}
+
 function readbackTargets(checks: readonly WorkbookCheckResult[]): readonly WorkbookRef[] {
   const targets: WorkbookRef[] = []
   const seen = new Set<string>()
@@ -74,11 +94,10 @@ function failedFromPlanIssues<Refs>(plan: WorkbookActionPlan<Refs>): WorkbookRun
     return null
   }
 
-  return {
-    status: 'failed',
+  return failedRun({
     errors: verification.issues.map((issue) => runError(issue.code, issue.message)),
     checks: plan.checks,
-  }
+  })
 }
 
 function failedApplyResult(plan: WorkbookActionPlan, result: WorkbookRunApplyResult): WorkbookRunResult {
@@ -88,12 +107,13 @@ function failedApplyResult(plan: WorkbookActionPlan, result: WorkbookRunApplyRes
       : [runError('apply_failed', `Workbook action ${plan.modelName}.${plan.actionName} failed to apply`)]
   const apply = describeApply(result)
 
-  return {
-    status: 'failed',
+  return failedRun({
     errors,
     apply,
+    changed: result.appliedOps !== undefined || result.undo !== undefined ? plan.changed : [],
     checks: plan.checks,
-  }
+    ...(result.undo !== undefined ? { undo: result.undo } : {}),
+  })
 }
 
 function checkLabel(check: WorkbookCheckResult): string {
@@ -177,11 +197,10 @@ type ApplyValidation =
 function validateApplyResult(plan: WorkbookActionPlan, value: unknown): ApplyValidation {
   const rejected = (message: string): ApplyValidation => ({
     status: 'invalid',
-    result: {
-      status: 'failed',
+    result: failedRun({
       errors: [runError('runtime_rejected', message)],
       checks: plan.checks,
-    },
+    }),
   })
 
   if (!isRecord(value)) {
@@ -435,11 +454,10 @@ export async function runWorkbookPlan<Refs>(
   try {
     applyResult = await adapter.apply(plan)
   } catch (error) {
-    return {
-      status: 'failed',
+    return failedRun({
       errors: [runError('apply_failed', errorMessage(error))],
       checks: plan.checks,
-    }
+    })
   }
 
   const applyValidation = validateApplyResult(plan, applyResult)
@@ -456,13 +474,14 @@ export async function runWorkbookPlan<Refs>(
   const unverified = applyUnverified(apply)
   const applyErrors = applyProofErrors(apply, options)
   if (applyErrors.length > 0) {
-    return {
-      status: 'failed',
+    return failedRun({
       errors: applyErrors,
       apply,
+      changed: plan.changed,
       checks: plan.checks,
-      ...unverifiedProperty(unverified),
-    }
+      ...(validApplyResult.undo !== undefined ? { undo: validApplyResult.undo } : {}),
+      unverified,
+    })
   }
 
   let checks = plan.checks
@@ -470,62 +489,67 @@ export async function runWorkbookPlan<Refs>(
   if (targets.length > 0) {
     if (adapter.read === undefined) {
       const readbackVerification = verifyWorkbookReadbacks(checks, [])
-      return {
-        status: 'failed',
+      return failedRun({
         errors: readbackVerification.issues.map((issue) => runError(issue.code, issue.message)),
         apply,
+        changed: plan.changed,
         checks: readbackVerification.checks,
-        ...unverifiedProperty(unverified),
-      }
+        ...(validApplyResult.undo !== undefined ? { undo: validApplyResult.undo } : {}),
+        unverified,
+      })
     }
 
     let readbacks: readonly WorkbookRunReadback[]
     try {
       readbacks = await adapter.read(targets, plan)
     } catch (error) {
-      return {
-        status: 'failed',
+      return failedRun({
         errors: [runError('readback_failed', errorMessage(error))],
         apply,
+        changed: plan.changed,
         checks,
-        ...unverifiedProperty(unverified),
-      }
+        ...(validApplyResult.undo !== undefined ? { undo: validApplyResult.undo } : {}),
+        unverified,
+      })
     }
 
     const readbackVerification = verifyWorkbookReadbacks(checks, readbacks)
     checks = readbackVerification.checks
     if (readbackVerification.status === 'failed') {
-      return {
-        status: 'failed',
+      return failedRun({
         errors: readbackVerification.issues.map((issue) => runError(issue.code, issue.message)),
         apply,
+        changed: plan.changed,
         checks,
-        ...unverifiedProperty(unverified),
-      }
+        ...(validApplyResult.undo !== undefined ? { undo: validApplyResult.undo } : {}),
+        unverified,
+      })
     }
   }
 
   const checkVerification = await verifyChecksWithAdapter(checks, plan, adapter)
   checks = checkVerification.checks
   if (checkVerification.errors.length > 0) {
-    return {
-      status: 'failed',
+    return failedRun({
       errors: checkVerification.errors,
       apply,
+      changed: plan.changed,
       checks,
-      ...unverifiedProperty(unverified),
-    }
+      ...(validApplyResult.undo !== undefined ? { undo: validApplyResult.undo } : {}),
+      unverified,
+    })
   }
 
   const unverifiedErrors = unverifiedCheckErrors(checks)
   if (unverifiedErrors.length > 0) {
-    return {
-      status: 'failed',
+    return failedRun({
       errors: unverifiedErrors,
       apply,
+      changed: plan.changed,
       checks,
-      ...unverifiedProperty(unverified),
-    }
+      ...(validApplyResult.undo !== undefined ? { undo: validApplyResult.undo } : {}),
+      unverified,
+    })
   }
 
   return {
@@ -547,11 +571,10 @@ export async function runWorkbookAction<Refs, Actions extends WorkbookActionMap<
 ): Promise<WorkbookRunResult> {
   const result = planWorkbookAction(model, actionName, input)
   if (result.status === 'failed') {
-    return {
-      status: 'failed',
+    return failedRun({
       errors: result.errors,
       checks: result.checks,
-    }
+    })
   }
   return runWorkbookPlan(result.plan, adapter, options)
 }

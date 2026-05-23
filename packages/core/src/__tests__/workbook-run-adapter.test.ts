@@ -106,6 +106,13 @@ describe('workbook run adapter', () => {
           message: 'Sheet1!B1 failed check noFormulaErrors: Sheet1!B1 has no formula errors',
         },
       ],
+      changed: [
+        {
+          kind: 'writeFormula',
+          target: findRange({ sheetName: 'Sheet1', address: 'B1' }),
+          message: 'Write formula to Sheet1!B1',
+        },
+      ],
       checks: [
         {
           status: 'failed',
@@ -114,7 +121,11 @@ describe('workbook run adapter', () => {
           message: 'Sheet1!B1 has no formula errors',
         },
       ],
+      undo: {
+        id: expect.stringMatching(/^formula-error-check\.calculate\.undo\.\d+$/),
+      },
     })
+    expect(result.undo?.ops?.length).toBeGreaterThan(0)
     expect(engine.getCellValue('Sheet1', 'B1').tag).toBe(ValueTag.Error)
   })
 
