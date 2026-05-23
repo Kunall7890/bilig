@@ -59,6 +59,9 @@ export class WorkerRuntimeRenderTileDeltaPublisher {
         if (disposed) {
           return
         }
+        if (!engine.workbook.getSheet(input.subscription.sheetName)) {
+          return
+        }
         const batch = buildWorkerRenderTileDeltaBatch({
           engine,
           event,
