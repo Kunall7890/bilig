@@ -1,48 +1,38 @@
-import type { EngineCounters } from '../../perf/engine-counters.js'
-import { addEngineCounter } from '../../perf/engine-counters.js'
 import type { EngineFormulaInitializationServiceArgs } from './formula-initialization-service-types.js'
 import type { InitialResolvedFormulaEntry } from './formula-initialization-refs.js'
-import { rethrowFatalFormulaBindingError } from './formula-binding-error-policy.js'
+import type { FreshDirectScalarFormulaBindingMember } from './formula-binding-service-types.js'
 import { canUseFreshDirectScalarFormulaBinding } from './formula-initialization-hydrated-direct-scalar.js'
 import { compiledFormulaRequiresWorkbookMetadataBinding } from './formula-initialization-predicates.js'
 
 const MIN_INITIAL_FRESH_DIRECT_SCALAR_FAST_BINDINGS = 32
 
-export function tryBindInitialFreshDirectScalarFormula(args: {
+export function canBindInitialFreshDirectScalarFormula(args: {
   readonly bindFreshDirectScalarFormulaRun: EngineFormulaInitializationServiceArgs['bindFreshDirectScalarFormulaRun']
-  readonly counters: EngineCounters
   readonly hadExistingFormulas: boolean
   readonly prepared: InitialResolvedFormulaEntry
   readonly refsLength: number
 }): boolean {
-  const { prepared } = args
-  if (
-    args.hadExistingFormulas ||
-    args.refsLength < MIN_INITIAL_FRESH_DIRECT_SCALAR_FAST_BINDINGS ||
-    args.bindFreshDirectScalarFormulaRun === undefined ||
-    prepared.templateId === undefined ||
-    compiledFormulaRequiresWorkbookMetadataBinding(prepared.compiled) ||
-    !canUseFreshDirectScalarFormulaBinding(prepared.compiled)
-  ) {
-    return false
+  return (
+    !args.hadExistingFormulas &&
+    args.refsLength >= MIN_INITIAL_FRESH_DIRECT_SCALAR_FAST_BINDINGS &&
+    args.bindFreshDirectScalarFormulaRun !== undefined &&
+    args.prepared.templateId !== undefined &&
+    !compiledFormulaRequiresWorkbookMetadataBinding(args.prepared.compiled) &&
+    canUseFreshDirectScalarFormulaBinding(args.prepared.compiled)
+  )
+}
+
+export function createInitialFreshDirectScalarFormulaBindingMember(
+  prepared: InitialResolvedFormulaEntry,
+): FreshDirectScalarFormulaBindingMember {
+  if (prepared.templateId === undefined) {
+    throw new Error('Expected initial fresh direct scalar formula template id')
   }
-  try {
-    args.bindFreshDirectScalarFormulaRun({
-      sheetId: prepared.sheetId,
-      ownerSheetName: prepared.ownerSheetName,
-      cellIndex: prepared.cellIndex,
-      member: {
-        row: prepared.row,
-        col: prepared.col,
-        source: prepared.source,
-        compiled: prepared.compiled,
-        templateId: prepared.templateId,
-      },
-    })
-    addEngineCounter(args.counters, 'initialFreshDirectScalarFastBindings')
-    return true
-  } catch (error) {
-    rethrowFatalFormulaBindingError(error)
-    return false
+  return {
+    row: prepared.row,
+    col: prepared.col,
+    source: prepared.source,
+    compiled: prepared.compiled,
+    templateId: prepared.templateId,
   }
 }

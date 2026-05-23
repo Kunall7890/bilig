@@ -97,6 +97,28 @@ describe('initial mixed sheet load', () => {
     }
   })
 
+  it('bulk-binds direct scalar row-template formulas during mixed-sheet initialization', () => {
+    const rowCount = 40
+    const workbook = WorkPaper.buildFromSheets({
+      Bench: Array.from({ length: rowCount }, (_entry, index) => {
+        const rowNumber = index + 1
+        return [rowNumber, rowNumber * 10, `=A${rowNumber}+B${rowNumber}`, `=C${rowNumber}*2`]
+      }),
+    })
+    const sheetId = workbook.getSheetId('Bench')!
+
+    expect(workbook.getCellValue({ sheet: sheetId, row: rowCount - 1, col: 3 })).toEqual({
+      tag: ValueTag.Number,
+      value: rowCount * 11 * 2,
+    })
+    expect(workbook.getPerformanceCounters()).toMatchObject({
+      directFormulaInitialEvaluations: rowCount * 2,
+      freshDirectScalarBulkRunBindings: 1,
+      freshDirectScalarBulkMembers: rowCount * 2,
+      initialFreshDirectScalarFastBindings: rowCount * 2,
+    })
+  })
+
   it('normalizes row-template formulas with row-literal offsets during mixed-sheet initialization', () => {
     const compileSpy = vi.spyOn(formula, 'compileFormulaAst')
     const parseSpy = vi.spyOn(formula, 'parseFormula')

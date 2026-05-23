@@ -1,10 +1,8 @@
-import { Effect } from 'effect'
 import { ValueTag } from '@bilig/protocol'
 import type { EngineCellMutationRef, EngineFormulaSourceRefs } from '../../cell-mutations-at.js'
 import { CellFlags } from '../../cell-store.js'
 import { addEngineCounter } from '../../perf/engine-counters.js'
 import type { RuntimeFormula, U32 } from '../runtime-state.js'
-import { EngineMutationError } from '../errors.js'
 import { evaluateInitialDirectScalar, evaluateInitialDirectScalarNumber } from './formula-initialization-direct-scalar.js'
 import { evaluateInitialDirectFormulas, INITIAL_DIRECT_FORMULA_EVALUATION_LIMIT } from './formula-initialization-direct-formulas.js'
 import { canEvaluateInitialPrefixAggregateGroupsNatively } from './formula-initialization-prefix-aggregates.js'
@@ -35,7 +33,6 @@ import {
   canEvaluateInitialDirectRuntimeFormula,
   compiledFormulaRequiresWorkbookMetadataBinding,
   hasPendingFormulaDependency,
-  mutationErrorMessage,
 } from './formula-initialization-predicates.js'
 import { rethrowFatalFormulaBindingError } from './formula-binding-error-policy.js'
 import {
@@ -67,7 +64,9 @@ import {
 import { tryBindHydratedFreshDirectFormula } from './formula-initialization-hydrated-direct-scalar.js'
 import { tryEvaluateFormulaLeafInlineScalar } from './formula-leaf-inline-scalar-evaluator.js'
 import { initializeCachedFormulaSourcesAtNow as initializeCachedFormulaSourcesAtNowUnchecked } from './formula-initialization-cached-formulas.js'
-import { tryBindInitialFreshDirectScalarFormula } from './formula-initialization-fresh-direct-scalar-binding.js'
+import { canBindInitialFreshDirectScalarFormula } from './formula-initialization-fresh-direct-scalar-binding.js'
+import { createInitialFreshDirectScalarFormulaRunQueue } from './formula-initialization-fresh-direct-scalar-run-queue.js'
+import { formulaInitializationMutationEffect } from './formula-initialization-effect.js'
 export type {
   EngineFormulaInitializationService,
   EngineFormulaInitializationServiceArgs,
@@ -340,6 +339,24 @@ export function createEngineFormulaInitializationService(args: EngineFormulaInit
           }
         }
       }
+      const noteInitializedFormula = (prepared: InitialResolvedFormulaEntry, runtimeFormula: RuntimeFormula | undefined): void => {
+        if (alignedFreshFormulaFamilyRuns === undefined) {
+          noteDeferredFormulaFamilyRunMember(deferredFormulaFamilyRuns, prepared, runtimeFormula)
+        }
+        noteDeferredFormulaInstance(deferredFormulaInstances, prepared, runtimeFormula)
+        noteBoundFormula(prepared, runtimeFormula)
+      }
+      const initialFreshDirectScalarRunQueue = createInitialFreshDirectScalarFormulaRunQueue({
+        bindFreshDirectScalarFormulaRun: args.bindFreshDirectScalarFormulaRun,
+        counters: args.state.counters,
+        noteInitializedFormula,
+        readRuntimeFormula: (cellIndex) => args.state.formulas.get(cellIndex),
+        clearPendingFormulaCell: (cellIndex) => {
+          if (pendingFormulaCells) {
+            pendingFormulaCells[cellIndex] = 0
+          }
+        },
+      })
 
       args.setBatchMutationDepth(args.getBatchMutationDepth() + 1)
       try {
@@ -353,48 +370,46 @@ export function createEngineFormulaInitializationService(args: EngineFormulaInit
               const cellIndex = hadExistingFormulas ? pendingInitialFormulaCellIndices[refIndex]! : targetCellIndices[refIndex]!
               try {
                 const prepared = resolveEntry(ref, cellIndex)
-                const requiresWorkbookMetadataBinding = compiledFormulaRequiresWorkbookMetadataBinding(prepared.compiled)
                 if (
-                  !tryBindInitialFreshDirectScalarFormula({
+                  canBindInitialFreshDirectScalarFormula({
                     bindFreshDirectScalarFormulaRun: args.bindFreshDirectScalarFormulaRun,
-                    counters: args.state.counters,
                     hadExistingFormulas,
                     prepared,
                     refsLength: refs.length,
                   })
                 ) {
-                  if (requiresWorkbookMetadataBinding) {
-                    args.bindFormula(prepared.cellIndex, prepared.ownerSheetName, prepared.source)
-                  } else {
-                    args.bindPreparedFormula(
-                      prepared.cellIndex,
-                      prepared.ownerSheetName,
-                      prepared.source,
-                      prepared.compiled,
-                      prepared.templateId,
-                      {
-                        deferFamilyRegistration:
-                          shouldDeferFormulaFamilyIndex ||
-                          deferredFormulaFamilyRuns !== undefined ||
-                          alignedFreshFormulaFamilyRuns !== undefined,
-                        deferFormulaInstanceRegistration: shouldDeferFormulaInstanceTable,
-                        assumeFreshFormula: !hadExistingFormulas,
-                        resolveWorkbookDateSystem,
-                        ownerPosition: {
-                          sheetName: prepared.ownerSheetName,
-                          row: prepared.row,
-                          col: prepared.col,
-                        },
+                  initialFreshDirectScalarRunQueue.queue(prepared)
+                  continue
+                }
+                initialFreshDirectScalarRunQueue.flush()
+                const requiresWorkbookMetadataBinding = compiledFormulaRequiresWorkbookMetadataBinding(prepared.compiled)
+                if (requiresWorkbookMetadataBinding) {
+                  args.bindFormula(prepared.cellIndex, prepared.ownerSheetName, prepared.source)
+                } else {
+                  args.bindPreparedFormula(
+                    prepared.cellIndex,
+                    prepared.ownerSheetName,
+                    prepared.source,
+                    prepared.compiled,
+                    prepared.templateId,
+                    {
+                      deferFamilyRegistration:
+                        shouldDeferFormulaFamilyIndex ||
+                        deferredFormulaFamilyRuns !== undefined ||
+                        alignedFreshFormulaFamilyRuns !== undefined,
+                      deferFormulaInstanceRegistration: shouldDeferFormulaInstanceTable,
+                      assumeFreshFormula: !hadExistingFormulas,
+                      resolveWorkbookDateSystem,
+                      ownerPosition: {
+                        sheetName: prepared.ownerSheetName,
+                        row: prepared.row,
+                        col: prepared.col,
                       },
-                    )
-                  }
+                    },
+                  )
                 }
                 const runtimeFormula = args.state.formulas.get(prepared.cellIndex)
-                if (alignedFreshFormulaFamilyRuns === undefined) {
-                  noteDeferredFormulaFamilyRunMember(deferredFormulaFamilyRuns, prepared, runtimeFormula)
-                }
-                noteDeferredFormulaInstance(deferredFormulaInstances, prepared, runtimeFormula)
-                noteBoundFormula(prepared, runtimeFormula)
+                noteInitializedFormula(prepared, runtimeFormula)
               } catch (error) {
                 rethrowFatalFormulaBindingError(error)
                 noteSkippedOrderedPreparedCellIndex()
@@ -406,6 +421,7 @@ export function createEngineFormulaInitializationService(args: EngineFormulaInit
                 pendingFormulaCells[cellIndex] = 0
               }
             }
+            initialFreshDirectScalarRunQueue.flush()
             if (args.state.ranges.size > 0) {
               const reboundCount = formulaChangedCount
               formulaChangedCount = args.syncDynamicRanges(formulaChangedCount)
@@ -949,40 +965,19 @@ export function createEngineFormulaInitializationService(args: EngineFormulaInit
 
   return {
     initializeCellFormulasAt(refs, potentialNewCells) {
-      return Effect.try({
-        try: () => {
-          initializeCellFormulasAtNow(refs, potentialNewCells)
-        },
-        catch: (cause) =>
-          new EngineMutationError({
-            message: mutationErrorMessage('Failed to initialize cell formulas', cause),
-            cause,
-          }),
-      })
+      return formulaInitializationMutationEffect('Failed to initialize cell formulas', () =>
+        initializeCellFormulasAtNow(refs, potentialNewCells),
+      )
     },
     initializePreparedCellFormulasAt(refs, potentialNewCells) {
-      return Effect.try({
-        try: () => {
-          initializePreparedCellFormulasAtNow(refs, potentialNewCells)
-        },
-        catch: (cause) =>
-          new EngineMutationError({
-            message: mutationErrorMessage('Failed to initialize prepared cell formulas', cause),
-            cause,
-          }),
-      })
+      return formulaInitializationMutationEffect('Failed to initialize prepared cell formulas', () =>
+        initializePreparedCellFormulasAtNow(refs, potentialNewCells),
+      )
     },
     initializeHydratedPreparedCellFormulasAt(refs, potentialNewCells) {
-      return Effect.try({
-        try: () => {
-          initializeHydratedPreparedCellFormulasAtNow(refs, potentialNewCells)
-        },
-        catch: (cause) =>
-          new EngineMutationError({
-            message: mutationErrorMessage('Failed to initialize hydrated prepared cell formulas', cause),
-            cause,
-          }),
-      })
+      return formulaInitializationMutationEffect('Failed to initialize hydrated prepared cell formulas', () =>
+        initializeHydratedPreparedCellFormulasAtNow(refs, potentialNewCells),
+      )
     },
     initializeCellFormulasAtNow,
     initializeFormulaSourcesAtNow,
