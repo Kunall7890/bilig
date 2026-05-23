@@ -5,6 +5,7 @@ import type {
   WorkbookCalculationSettingsSnapshot,
   WorkbookCellMetadataSnapshot,
   WorkbookChartSnapshot,
+  WorkbookControlArtifactsSnapshot,
   WorkbookDefinedNameValueSnapshot,
   WorkbookDrawingArtifactsSnapshot,
   WorkbookExternalLinkArtifactsSnapshot,
@@ -35,6 +36,7 @@ function restoreWorkbookMetadata(args: {
         pivots?: WorkbookPivotSnapshot[]
         charts?: WorkbookChartSnapshot[]
         drawingArtifacts?: WorkbookDrawingArtifactsSnapshot
+        controlArtifacts?: WorkbookControlArtifactsSnapshot
         externalLinkArtifacts?: WorkbookExternalLinkArtifactsSnapshot
         threadedCommentArtifacts?: WorkbookThreadedCommentArtifactsSnapshot
         cellMetadata?: WorkbookCellMetadataSnapshot
@@ -68,6 +70,9 @@ function restoreWorkbookMetadata(args: {
   })
   if (args.workbookMetadata?.drawingArtifacts) {
     args.workbook.setDrawingArtifacts(args.workbookMetadata.drawingArtifacts)
+  }
+  if (args.workbookMetadata?.controlArtifacts) {
+    args.workbook.metadata.controlArtifacts = structuredClone(args.workbookMetadata.controlArtifacts)
   }
   if (args.workbookMetadata?.externalLinkArtifacts) {
     args.workbook.setExternalLinkArtifacts(args.workbookMetadata.externalLinkArtifacts)
@@ -150,6 +155,12 @@ function restoreSheetMetadata(args: { readonly workbook: WorkbookStore; readonly
   })
   if (sheet.metadata?.conditionalFormatArtifacts) {
     workbook.setConditionalFormatArtifacts(sheet.name, structuredClone(sheet.metadata.conditionalFormatArtifacts))
+  }
+  if (sheet.metadata?.controlArtifacts) {
+    const targetSheet = workbook.getSheet(sheet.name)
+    if (targetSheet) {
+      targetSheet.controlArtifacts = structuredClone(sheet.metadata.controlArtifacts)
+    }
   }
   if (sheet.metadata?.drawingArtifacts) {
     workbook.setSheetDrawingArtifacts(sheet.name, sheet.metadata.drawingArtifacts)

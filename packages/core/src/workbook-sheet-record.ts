@@ -10,6 +10,7 @@ import type {
   WorkbookSheetArrayFormulasSnapshot,
   WorkbookCellMetadataReferenceSnapshot,
   WorkbookSheetDataTableFormulasSnapshot,
+  WorkbookSheetControlArtifactsSnapshot,
   WorkbookSheetFormatPrSnapshot,
   WorkbookSheetPrSnapshot,
   WorkbookSheetPrintPageSetupSnapshot,
@@ -46,6 +47,7 @@ export interface SheetRecord {
   printPageSetup?: WorkbookSheetPrintPageSetupSnapshot
   printerSettings?: WorkbookPrinterSettingsSnapshot[]
   sparklines?: WorkbookSparklinesSnapshot
+  controlArtifacts?: WorkbookSheetControlArtifactsSnapshot
   richTextArtifacts?: WorkbookSheetRichTextArtifactsSnapshot
   cellMetadataRefs?: WorkbookCellMetadataReferenceSnapshot[]
 }

@@ -17,6 +17,7 @@ const existingDesktopExcelOracleFiles = [
   'macos-desktop-excel-chart-drawing-anchor-oracle.test.ts',
   'macos-desktop-excel-cell-metadata-oracle.test.ts',
   'macos-desktop-excel-conditional-format-artifacts-oracle.test.ts',
+  'macos-desktop-excel-control-artifacts-oracle.test.ts',
   'macos-desktop-excel-data-table-structural-oracle.test.ts',
   'macos-desktop-excel-defined-name-structural-oracle.test.ts',
   'macos-desktop-excel-drawing-artifacts-oracle.test.ts',
@@ -92,6 +93,17 @@ describe('macOS Desktop Excel oracle inventory', () => {
     expect(source).toContain('WorkPaper.buildFromSnapshot')
     expect(source).toContain('editAs="oneCell"')
     expect(source).toContain('matches Desktop Excel chart drawing anchors after structural row inserts')
+  })
+
+  it('keeps the control artifact oracle anchored to Desktop Excel form-control geometry', () => {
+    const source = readFileSync(join(testDir, 'macos-desktop-excel-control-artifacts-oracle.test.ts'), 'utf8')
+
+    expect(source).toContain("BILIG_EXCEL_ORACLE_RUN === '1'")
+    expect(source).toContain('runMacosExcelStructuralOperationOracle')
+    expect(source).toContain('runMacosExcelInspectionOracle')
+    expect(source).toContain('controlArtifacts')
+    expect(source).toContain('macro="[0]!WriteHelloWorld"')
+    expect(source).toContain('matches Desktop Excel worksheet form control anchors after structural row inserts')
   })
 
   it('keeps the threaded comment structural oracle anchored to Desktop Excel package refs', () => {

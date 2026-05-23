@@ -18,6 +18,7 @@ import type {
   WorkbookCommentEntrySnapshot,
   WorkbookCommentThreadSnapshot,
   WorkbookConditionalFormatSnapshot,
+  WorkbookControlArtifactsSnapshot,
   WorkbookDrawingArtifactsSnapshot,
   WorkbookSheetConditionalFormatArtifactsSnapshot,
   WorkbookSheetDrawingArtifactsSnapshot,
@@ -144,6 +145,7 @@ export interface WorkbookConditionalFormatRecord extends WorkbookConditionalForm
 export interface WorkbookSheetConditionalFormatArtifactsRecord extends WorkbookSheetConditionalFormatArtifactsSnapshot {
   sheetName: string
 }
+export interface WorkbookControlArtifactsRecord extends WorkbookControlArtifactsSnapshot {}
 export interface WorkbookThreadedCommentArtifactsRecord extends WorkbookThreadedCommentArtifactsSnapshot {}
 export interface WorkbookSheetThreadedCommentArtifactsRecord extends WorkbookSheetThreadedCommentArtifactsSnapshot {
   sheetName: string
@@ -172,6 +174,7 @@ export interface WorkbookMetadataRecord {
   images: Map<string, WorkbookImageRecord>
   shapes: Map<string, WorkbookShapeRecord>
   drawingArtifacts: WorkbookDrawingArtifactsRecord | undefined
+  controlArtifacts: WorkbookControlArtifactsRecord | undefined
   externalLinkArtifacts: WorkbookExternalLinkArtifactsRecord | undefined
   threadedCommentArtifacts: WorkbookThreadedCommentArtifactsRecord | undefined
   cellMetadata: WorkbookCellMetadataSnapshot | undefined
@@ -210,6 +213,7 @@ export function createWorkbookMetadataRecord(): WorkbookMetadataRecord {
     images: new Map(),
     shapes: new Map(),
     drawingArtifacts: undefined,
+    controlArtifacts: undefined,
     externalLinkArtifacts: undefined,
     threadedCommentArtifacts: undefined,
     cellMetadata: undefined,

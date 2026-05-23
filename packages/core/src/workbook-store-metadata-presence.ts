@@ -15,6 +15,7 @@ export function hasStructuralMetadataForSheetRecord(
     metadata.images.size > 0 ||
     metadata.shapes.size > 0 ||
     metadata.drawingArtifacts !== undefined ||
+    metadata.controlArtifacts !== undefined ||
     metadata.externalLinkArtifacts !== undefined ||
     metadata.sheetDrawingArtifacts.has(sheetName) ||
     metadata.threadedCommentArtifacts !== undefined ||
@@ -37,6 +38,7 @@ export function hasStructuralMetadataForSheetRecord(
     sheet?.ignoredErrors !== undefined ||
     sheet?.printPageSetup !== undefined ||
     sheet?.sparklines !== undefined ||
+    sheet?.controlArtifacts !== undefined ||
     sheet?.richTextArtifacts !== undefined ||
     sheet?.cellMetadataRefs !== undefined ||
     (sheet?.styleRanges.length ?? 0) > 0 ||

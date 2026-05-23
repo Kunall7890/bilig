@@ -22,6 +22,7 @@ import {
 } from './structure-data-table-metadata-rewrite.js'
 import { rewriteFormulaSourceForDeletedStructuredReferences } from './structure-structured-ref-rewrite.js'
 import { chartGeometryFromAnchor, rewriteChartAnchorForStructuralTransform } from './structure-chart-anchor-metadata-rewrite.js'
+import { rewriteControlArtifactsForStructuralTransform } from './structure-control-artifact-rewrite.js'
 import { rewriteThreadedCommentArtifactsForStructuralTransform } from './structure-threaded-comment-artifact-rewrite.js'
 import { rewriteIgnoredErrorsForStructuralTransform } from './structure-ignored-errors-metadata-rewrite.js'
 import { rewritePrintPageSetupForStructuralTransform } from './structure-print-page-setup-metadata-rewrite.js'
@@ -460,6 +461,7 @@ export function rewriteWorkbookMetadataForStructuralTransform(
   })
   rewriteLegacyCommentVmlForStructuralTransform({ workbook, sheetName, transform })
   rewriteThreadedCommentArtifactsForStructuralTransform({ workbook, sheetName, transform })
+  rewriteControlArtifactsForStructuralTransform({ workbook, sheetName, transform })
   workbook.listNotes(sheetName).forEach((note) => {
     const nextAddress = rewriteMetadataAddressForStructuralTransform(note.address, transform)
     workbook.deleteNote(sheetName, note.address)

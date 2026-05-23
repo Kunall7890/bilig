@@ -166,6 +166,7 @@ export function exportSheetMetadata(workbook: WorkbookStore, sheetName: string):
   const validations = workbook.listDataValidations(sheetName).map((validation) => structuredClone(validation))
   const conditionalFormats = workbook.listConditionalFormats(sheetName).map((format) => structuredClone(format))
   const conditionalFormatArtifacts = workbook.getConditionalFormatArtifacts(sheetName)
+  const controlArtifacts = sheet?.controlArtifacts ? structuredClone(sheet.controlArtifacts) : undefined
   const drawingArtifacts = workbook.getSheetDrawingArtifacts(sheetName)
   const threadedCommentArtifacts = workbook.getSheetThreadedCommentArtifacts(sheetName)
   const legacyCommentVml = workbook.getSheetLegacyCommentVml(sheetName)
@@ -201,6 +202,7 @@ export function exportSheetMetadata(workbook: WorkbookStore, sheetName: string):
     validations.length === 0 &&
     conditionalFormats.length === 0 &&
     conditionalFormatArtifacts === undefined &&
+    controlArtifacts === undefined &&
     drawingArtifacts === undefined &&
     threadedCommentArtifacts === undefined &&
     legacyCommentVml === undefined &&
@@ -274,6 +276,9 @@ export function exportSheetMetadata(workbook: WorkbookStore, sheetName: string):
   }
   if (conditionalFormatArtifacts) {
     metadata.conditionalFormatArtifacts = { xml: conditionalFormatArtifacts.xml }
+  }
+  if (controlArtifacts) {
+    metadata.controlArtifacts = controlArtifacts
   }
   if (drawingArtifacts) {
     metadata.drawingArtifacts = {

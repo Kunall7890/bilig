@@ -269,6 +269,7 @@ export function createWorkbookMetadataService(metadata: WorkbookMetadataRecord):
     metadata.images.clear()
     metadata.shapes.clear()
     metadata.drawingArtifacts = defaults.drawingArtifacts
+    metadata.controlArtifacts = defaults.controlArtifacts
     metadata.externalLinkArtifacts = defaults.externalLinkArtifacts
     metadata.sheetDrawingArtifacts.clear()
     metadata.threadedCommentArtifacts = defaults.threadedCommentArtifacts

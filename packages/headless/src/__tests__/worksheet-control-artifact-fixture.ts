@@ -1,8 +1,6 @@
 import { strFromU8, strToU8, unzipSync, zipSync } from 'fflate'
-import { describe, expect, it } from 'vitest'
-
+import { exportXlsx } from '@bilig/excel-import'
 import type { WorkbookSnapshot } from '@bilig/protocol'
-import { exportXlsx, importXlsx } from '../index.js'
 
 const relationshipNamespace = 'http://schemas.openxmlformats.org/package/2006/relationships'
 const officeRelationshipNamespace = 'http://schemas.openxmlformats.org/officeDocument/2006/relationships'
@@ -14,36 +12,7 @@ const controlRelationshipType = 'http://schemas.openxmlformats.org/officeDocumen
 const vmlDrawingContentType = 'application/vnd.openxmlformats-officedocument.vmlDrawing'
 const controlPropertiesContentType = 'application/vnd.ms-excel.controlproperties+xml'
 
-describe('xlsx worksheet control artifacts roundtrip', () => {
-  it('preserves worksheet form controls, control properties, and VML drawings', () => {
-    const source = buildWorkbookWithWorksheetControl()
-
-    const imported = importXlsx(source, 'worksheet-control.xlsm')
-    const exported = exportXlsx(imported.snapshot)
-
-    expect(imported.snapshot.workbook.metadata?.controlArtifacts?.parts.map((part) => part.path).toSorted()).toEqual([
-      'xl/ctrlProps/ctrlProp1.xml',
-      'xl/drawings/vmlDrawing1.vml',
-    ])
-    expect(imported.snapshot.sheets[0]?.metadata?.controlArtifacts?.controlsXml).toContain('macro="[0]!WriteHelloWorld"')
-    expect(controlMetrics(exported)).toEqual(controlMetrics(source))
-    expect(readZipText(exported, 'xl/ctrlProps/ctrlProp1.xml')).toBe(controlPropertiesXml)
-    expect(readZipText(exported, 'xl/drawings/vmlDrawing1.vml')).toBe(vmlDrawingXml)
-    expect(readZipText(exported, 'xl/worksheets/sheet1.xml')).toContain('macro="[0]!WriteHelloWorld"')
-    expect(readSheetRelationship(exported, vmlDrawingRelationshipType)).toMatchObject({
-      target: '../drawings/vmlDrawing1.vml',
-      type: vmlDrawingRelationshipType,
-    })
-    expect(readSheetRelationship(exported, controlRelationshipType)).toMatchObject({
-      target: '../ctrlProps/ctrlProp1.xml',
-      type: controlRelationshipType,
-    })
-    expect(readContentTypeDefault(exported, 'vml')).toBe(vmlDrawingContentType)
-    expect(readContentTypeOverride(exported, '/xl/ctrlProps/ctrlProp1.xml')).toBe(controlPropertiesContentType)
-  })
-})
-
-function buildWorkbookWithWorksheetControl(): Uint8Array {
+export function buildWorkbookWithWorksheetControl(): Uint8Array {
   const zip = unzipSync(exportXlsx(buildWorkbook()))
   zip['xl/worksheets/sheet1.xml'] = strToU8(addWorksheetControlXml(readZipTextFromZip(zip, 'xl/worksheets/sheet1.xml')))
   zip['xl/worksheets/_rels/sheet1.xml.rels'] = strToU8(
@@ -110,35 +79,12 @@ function upsertXmlAttribute(rootOpenTag: string, name: string, value: string): s
   return rootOpenTag.replace(/>$/u, ` ${name}="${value}">`)
 }
 
+function readXmlAttribute(xml: string, name: string): string | null {
+  return new RegExp(`\\s${escapeRegExp(name)}=("|')([\\s\\S]*?)\\1`, 'u').exec(xml)?.[2] ?? null
+}
+
 function escapeRegExp(value: string): string {
   return value.replace(/[.*+?^${}()|[\]\\]/gu, '\\$&')
-}
-
-function controlMetrics(bytes: Uint8Array): {
-  controls: number
-  controlPropertyParts: number
-  macroAssignments: string[]
-  vmlDrawingParts: number
-} {
-  const zip = unzipSync(bytes)
-  const controlXml = Object.entries(zip)
-    .filter(([path]) => path.startsWith('xl/worksheets/') && path.endsWith('.xml'))
-    .map(([, content]) => strFromU8(content))
-    .join('')
-  const controls = controlXml.match(/<control\b[^>]*(?:\/>|>[\s\S]*?<\/control>)/gu) ?? []
-  return {
-    controls: controls.length,
-    controlPropertyParts: Object.keys(zip).filter((path) => path.startsWith('xl/ctrlProps/')).length,
-    macroAssignments: controls.flatMap((control) => {
-      const macro = /\bmacro=(["'])([\s\S]*?)\1/u.exec(control)?.[2]
-      return macro ? [macro] : []
-    }),
-    vmlDrawingParts: Object.keys(zip).filter((path) => path.includes('vmlDrawing')).length,
-  }
-}
-
-function readZipText(bytes: Uint8Array, path: string): string {
-  return readZipTextFromZip(unzipSync(bytes), path)
 }
 
 function readZipTextFromZip(zip: Record<string, Uint8Array>, path: string): string {
@@ -147,42 +93,6 @@ function readZipTextFromZip(zip: Record<string, Uint8Array>, path: string): stri
     throw new Error(`Missing XLSX part: ${path}`)
   }
   return strFromU8(bytes)
-}
-
-function readSheetRelationship(bytes: Uint8Array, relationshipType: string): { target: string; type: string } | undefined {
-  const relsXml = readZipText(bytes, 'xl/worksheets/_rels/sheet1.xml.rels')
-  for (const match of relsXml.matchAll(/<Relationship\b([^>]*)\/?>/gu)) {
-    const attributes = match[1] ?? ''
-    if (readXmlAttribute(attributes, 'Type') === relationshipType) {
-      return {
-        target: readXmlAttribute(attributes, 'Target') ?? '',
-        type: readXmlAttribute(attributes, 'Type') ?? '',
-      }
-    }
-  }
-  return undefined
-}
-
-function readContentTypeDefault(bytes: Uint8Array, extension: string): string | undefined {
-  const contentTypesXml = readZipText(bytes, '[Content_Types].xml')
-  for (const match of contentTypesXml.matchAll(/<Default\b([^>]*)\/?>/gu)) {
-    const attributes = match[1] ?? ''
-    if (readXmlAttribute(attributes, 'Extension') === extension) {
-      return readXmlAttribute(attributes, 'ContentType') ?? undefined
-    }
-  }
-  return undefined
-}
-
-function readContentTypeOverride(bytes: Uint8Array, partName: string): string | undefined {
-  const contentTypesXml = readZipText(bytes, '[Content_Types].xml')
-  for (const match of contentTypesXml.matchAll(/<Override\b([^>]*)\/?>/gu)) {
-    const attributes = match[1] ?? ''
-    if (readXmlAttribute(attributes, 'PartName') === partName) {
-      return readXmlAttribute(attributes, 'ContentType') ?? undefined
-    }
-  }
-  return undefined
 }
 
 function addContentTypeDefault(contentTypesXml: string, extension: string, contentType: string): string {
@@ -203,10 +113,6 @@ function upsertContentTypeOverride(
     return contentTypesXml
   }
   return contentTypesXml.replace('</Types>', `<Override PartName="${input.partName}" ContentType="${input.contentType}"/></Types>`)
-}
-
-function readXmlAttribute(attributes: string, name: string): string | null {
-  return new RegExp(`\\b${name}=("|')([\\s\\S]*?)\\1`, 'u').exec(attributes)?.[2] ?? null
 }
 
 const worksheetControlsXml = [
