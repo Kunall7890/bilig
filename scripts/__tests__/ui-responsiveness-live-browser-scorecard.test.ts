@@ -13,6 +13,7 @@ import {
   parseUiResponsivenessLiveBrowserCliArgs,
   parseUiResponsivenessLiveBrowserScorecard,
   sameCorpusScenarioCaseFields,
+  validateSameCorpusCaptureArtifactMatchesScorecard,
   validateSameCorpusScreenshotArtifacts,
   validateUiResponsivenessLiveBrowserScorecard,
   type SameCorpusCapture,
@@ -65,13 +66,13 @@ describe('UI responsiveness live browser scorecard', () => {
     expect(scorecard.sameCorpusProof.tenXMeanAndP95CaseCount).toBe(
       scorecard.sameCorpusProof.cases.filter((entry) => entry.tenXMeanAndP95AgainstGoogleSheets).length,
     )
-    expect(scorecard.sameCorpusProof.tenXMeanAndP95CaseCount).toBe(0)
+    expect(scorecard.sameCorpusProof.tenXMeanAndP95CaseCount).toBe(1)
     expect(scorecard.sameCorpusProof.runManifest).toMatchObject({
       contractVersion: 'same-corpus-ui-v4',
       caseCount: requiredUiResponsivenessSameCorpusWorkloads.length,
       strictRenderedGridProofCaseCount: requiredUiResponsivenessSameCorpusWorkloads.length,
       legacyInsufficientRenderedGridProofCaseCount: 0,
-      tenXMeanAndP95CaseCount: 0,
+      tenXMeanAndP95CaseCount: 1,
       currentContractEvidenceComplete: true,
       googleSheetsTenXRequirementSatisfied: false,
     })
@@ -81,6 +82,7 @@ describe('UI responsiveness live browser scorecard', () => {
       'Caller must supply a Google Sheets URL for the same exported Bilig benchmark corpus.',
     )
     validateUiResponsivenessLiveBrowserScorecard(scorecard)
+    validateSameCorpusCaptureArtifactMatchesScorecard(scorecard)
   })
 
   it('parses live browser scorecard CLI options', () => {
@@ -599,6 +601,34 @@ describe('UI responsiveness live browser scorecard', () => {
     ).not.toThrow()
   })
 
+  it('requires checked-in same-corpus scorecard proof to match the capture artifact', () => {
+    const capture = buildSameCorpusCapture()
+    const proof = buildSameCorpusProof(capture)
+    const rootDir = mkdtempSync(`${tmpdir()}/bilig-same-corpus-capture-artifact-`)
+    const capturePath = '.cache/ui-responsiveness/same-corpus-capture.json'
+    mkdirSync(dirname(resolve(rootDir, capturePath)), { recursive: true })
+    writeFileSync(resolve(rootDir, capturePath), `${JSON.stringify(capture, null, 2)}\n`)
+    const scorecard = parseUiResponsivenessLiveBrowserScorecard(
+      readJsonObject(resolve(repoRoot, 'packages/benchmarks/baselines/ui-responsiveness-live-browser-scorecard.json')),
+    )
+    const matchingScorecard: UiResponsivenessLiveBrowserScorecard = {
+      ...scorecard,
+      sameCorpusProof: proof,
+    }
+    const staleScorecard: UiResponsivenessLiveBrowserScorecard = {
+      ...matchingScorecard,
+      sameCorpusProof: {
+        ...proof,
+        tenXMeanAndP95CaseCount: proof.tenXMeanAndP95CaseCount + 1,
+      },
+    }
+
+    expect(() => validateSameCorpusCaptureArtifactMatchesScorecard(matchingScorecard, { rootDir, capturePath })).not.toThrow()
+    expect(() => validateSameCorpusCaptureArtifactMatchesScorecard(staleScorecard, { rootDir, capturePath })).toThrow(
+      'UI responsiveness same-corpus scorecard proof does not match capture artifact',
+    )
+  })
+
   it('rejects stale same-corpus visual proof required-product metadata', () => {
     const scorecard = parseUiResponsivenessLiveBrowserScorecard(
       readJsonObject(resolve(repoRoot, 'packages/benchmarks/baselines/ui-responsiveness-live-browser-scorecard.json')),
@@ -713,8 +743,37 @@ function sameCorpusCaptureMeasurementFixture(
     ...(requiresScrollEventSamples
       ? { scrollEventResponseMsSamples: operationResponseMsSamples, scrollMovementPxSamples: [720, 720, 720] }
       : {}),
+    ...(product === 'bilig' ? { biligRuntimeProof: biligRuntimeProofFixture(source) } : {}),
     corpusVerification: corpusVerification(method, verifiedCells()),
     limitations: [],
+  }
+}
+
+function biligRuntimeProofFixture(source: string) {
+  return {
+    product: 'bilig' as const,
+    source,
+    verificationMethod: 'window.__biligRuntimeBuild' as const,
+    requiredBuildKind: 'production' as const,
+    actualBuildKind: 'production' as const,
+    mode: 'production',
+    dev: false,
+    prod: true,
+    remoteSyncEnabled: false,
+    entryRoute: '/?benchmarkCorpus=wide-mixed-250k&persist=0',
+    sampleCount: 3,
+    verified: true,
+    samples: [0, 1, 2].map((sampleIndex) => ({
+      sampleIndex,
+      present: true,
+      app: '@bilig/web',
+      buildKind: 'production' as const,
+      mode: 'production',
+      dev: false,
+      prod: true,
+      remoteSyncEnabled: false,
+      entryRoute: '/?benchmarkCorpus=wide-mixed-250k&persist=0',
+    })),
   }
 }
 

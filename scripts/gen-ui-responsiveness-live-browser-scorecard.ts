@@ -104,6 +104,11 @@ export interface SameCorpusScreenshotArtifactValidationOptions {
   readonly trackedArtifactPaths?: readonly string[] | undefined
 }
 
+export interface SameCorpusCaptureArtifactValidationOptions {
+  readonly capturePath?: string | undefined
+  readonly rootDir?: string | undefined
+}
+
 interface BrowserCaseSpec {
   readonly id: string
   readonly vendor: UiResponsivenessLiveBrowserVendor
@@ -123,6 +128,7 @@ interface BrowserCaseSample {
 
 const rootDir = resolve(new URL('..', import.meta.url).pathname)
 const outputPath = join(rootDir, 'packages', 'benchmarks', 'baselines', 'ui-responsiveness-live-browser-scorecard.json')
+const defaultSameCorpusCapturePath = join(rootDir, '.cache', 'ui-responsiveness', 'same-corpus-capture.json')
 const sampleCount = 3
 const viewport = { width: 1440, height: 900 } as const
 const microsoftExcelSourceWorkbook =
@@ -154,6 +160,7 @@ async function main(): Promise<void> {
     }
     const scorecard = parseUiResponsivenessLiveBrowserScorecard(readJsonObject(outputPath))
     validateUiResponsivenessLiveBrowserScorecard(scorecard)
+    validateSameCorpusCaptureArtifactMatchesScorecard(scorecard)
     validateSameCorpusScreenshotArtifacts(scorecard.sameCorpusProof, { requireGitTracked: true })
     logResult('check', scorecard)
     return
@@ -327,6 +334,30 @@ export function validateSameCorpusScreenshotArtifacts(
   }
 }
 
+export function validateSameCorpusCaptureArtifactMatchesScorecard(
+  scorecard: UiResponsivenessLiveBrowserScorecard,
+  options: SameCorpusCaptureArtifactValidationOptions = {},
+): void {
+  if (!scorecard.sameCorpusProof.captured) {
+    return
+  }
+  const validationRootDir = options.rootDir ?? rootDir
+  const capturePath = options.capturePath ?? defaultSameCorpusCapturePath
+  const absolutePath = resolve(validationRootDir, capturePath)
+  const repoRelativePath = relative(validationRootDir, absolutePath)
+  if (repoRelativePath.length === 0 || repoRelativePath.startsWith('..') || repoRelativePath.startsWith('/')) {
+    throw new Error(`UI responsiveness same-corpus capture artifact escapes the repository: ${capturePath}`)
+  }
+  if (!existsSync(absolutePath)) {
+    throw new Error(`UI responsiveness same-corpus capture artifact is missing: ${repoRelativePath}`)
+  }
+  const capture = parseSameCorpusCapture(readJsonObject(absolutePath))
+  const expectedProof = buildSameCorpusProof(capture)
+  if (stableJsonString(scorecard.sameCorpusProof) !== stableJsonString(expectedProof)) {
+    throw new Error(`UI responsiveness same-corpus scorecard proof does not match capture artifact: ${repoRelativePath}`)
+  }
+}
+
 function uniqueScreenshotArtifactPaths(proof: UiResponsivenessSameCorpusProof): string[] {
   return [
     ...new Set(
@@ -335,6 +366,24 @@ function uniqueScreenshotArtifactPaths(proof: UiResponsivenessSameCorpusProof): 
       ),
     ),
   ].toSorted()
+}
+
+function stableJsonString(value: unknown): string {
+  return JSON.stringify(stableJsonValue(value))
+}
+
+function stableJsonValue(value: unknown): unknown {
+  if (Array.isArray(value)) {
+    return value.map(stableJsonValue)
+  }
+  if (value && typeof value === 'object') {
+    return Object.fromEntries(
+      Object.entries(value)
+        .toSorted(([left], [right]) => left.localeCompare(right))
+        .map(([key, entry]) => [key, stableJsonValue(entry)]),
+    )
+  }
+  return value
 }
 
 function validateScreenshotArtifactPath(validationRootDir: string, artifactPath: string): string {

@@ -478,6 +478,7 @@ function parseSameCorpusVerifiedCell(value: unknown): SameCorpusCaptureVerifiedC
 }
 
 function parseNumericSummary(value: Record<string, unknown>): NumericSummary {
+  const confidence95 = objectField(value, 'confidence95')
   return {
     samples: arrayField(value, 'samples').map((entry) => {
       if (typeof entry !== 'number' || !Number.isFinite(entry)) {
@@ -490,6 +491,13 @@ function parseNumericSummary(value: Record<string, unknown>): NumericSummary {
     p95: numberField(value, 'p95'),
     max: numberField(value, 'max'),
     mean: numberField(value, 'mean'),
+    standardDeviation: numberField(value, 'standardDeviation'),
+    relativeStandardDeviation: numberField(value, 'relativeStandardDeviation'),
+    standardError: numberField(value, 'standardError'),
+    confidence95: {
+      low: numberField(confidence95, 'low'),
+      high: numberField(confidence95, 'high'),
+    },
   }
 }
 
