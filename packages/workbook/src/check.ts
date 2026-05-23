@@ -26,8 +26,21 @@ export interface WorkbookCheckApi {
   readonly custom: (options: WorkbookCustomCheckOptions) => WorkbookCheckResult
 }
 
+export type WorkbookBuiltInCheckKind = 'exists' | 'noFormulaErrors' | 'valueEquals' | 'formulaEquals'
+
+export const builtInWorkbookCheckKinds = Object.freeze([
+  'exists',
+  'noFormulaErrors',
+  'valueEquals',
+  'formulaEquals',
+] satisfies readonly WorkbookBuiltInCheckKind[])
+
+export function isBuiltInWorkbookCheckKind(value: unknown): value is WorkbookBuiltInCheckKind {
+  return typeof value === 'string' && builtInWorkbookCheckKinds.some((kind) => kind === value)
+}
+
 export function createWorkbookCheckResult(kind: string, target: WorkbookRef, message: string): WorkbookCheckResult {
-  return createWorkbookCustomCheck({ kind, target, message })
+  return createWorkbookCheck({ kind, target, message })
 }
 
 interface WorkbookCheckBuildOptions extends WorkbookCustomCheckOptions {
@@ -83,7 +96,11 @@ function createWorkbookCheck(options: WorkbookCheckBuildOptions): WorkbookCheckR
 }
 
 export function createWorkbookCustomCheck(options: WorkbookCustomCheckOptions): WorkbookCheckResult {
-  return createWorkbookCheck(options)
+  const kind = requiredText(options.kind, 'kind')
+  if (isBuiltInWorkbookCheckKind(kind)) {
+    throw new Error(`Workbook custom check kind ${kind} is reserved`)
+  }
+  return createWorkbookCheck({ ...options, kind })
 }
 
 export function createWorkbookCheckApi(record?: (check: WorkbookCheckResult) => void): WorkbookCheckApi {
@@ -127,7 +144,9 @@ export function createWorkbookCheckApi(record?: (check: WorkbookCheckResult) => 
       })
     },
     custom(options) {
-      return planned(options)
+      const check = createWorkbookCustomCheck(options)
+      record?.(check)
+      return check
     },
   }
 }

@@ -59,6 +59,25 @@ describe('@bilig/workbook formula api', () => {
     })
   })
 
+  it('rejects bare strings as ambiguous formula operands', () => {
+    const message = 'Formula operands must be formula expressions, workbook refs, finite numbers, booleans, or formula.text/raw wrappers'
+
+    expect(() => {
+      // @ts-expect-error bare strings are intentionally rejected at type and runtime
+      formula.source('Sheet1!A1')
+    }).toThrowError(message)
+    expect(() => {
+      // @ts-expect-error bare strings are intentionally rejected at type and runtime
+      formula.sum('Sheet1!A1')
+    }).toThrowError(message)
+    expect(() => {
+      // @ts-expect-error bare strings are intentionally rejected at type and runtime
+      formula.multiply(2, 'Sheet1!B1')
+    }).toThrowError(message)
+    expect(formula.source(formula.raw('Sheet1!A1'))).toBe('Sheet1!A1')
+    expect(formula.source(formula.text('Sheet1!A1'))).toBe('"Sheet1!A1"')
+  })
+
   it('dedupes raw formula inputs without mutating the caller array', () => {
     const first = findRange({ sheetName: 'Sheet1', address: 'A1' })
     const second = findRange({ sheetName: 'Sheet1', address: 'B1' })

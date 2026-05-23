@@ -1,5 +1,16 @@
 import { describe, expect, it } from 'vitest'
-import { check, defineModel, describePlanResult, findRange, findTable, formula, planWorkbookAction, verifyPlan } from '../index.js'
+import {
+  builtInWorkbookCheckKinds,
+  check,
+  defineModel,
+  describePlanResult,
+  findRange,
+  findTable,
+  formula,
+  isBuiltInWorkbookCheckKind,
+  planWorkbookAction,
+  verifyPlan,
+} from '../index.js'
 
 describe('@bilig/workbook check api', () => {
   it('exports machine-readable readback checks without runtime dependencies', () => {
@@ -75,6 +86,13 @@ describe('@bilig/workbook check api', () => {
     })
     expect(() => check.custom({ kind: ' ', message: 'valid message' })).toThrowError('Workbook check kind cannot be empty')
     expect(() => check.custom({ kind: 'validKind', message: ' ' })).toThrowError('Workbook check message cannot be empty')
+    expect(Object.isFrozen(builtInWorkbookCheckKinds)).toBe(true)
+    expect(builtInWorkbookCheckKinds).toEqual(['exists', 'noFormulaErrors', 'valueEquals', 'formulaEquals'])
+    expect(isBuiltInWorkbookCheckKind('valueEquals')).toBe(true)
+    expect(isBuiltInWorkbookCheckKind('balanced')).toBe(false)
+    expect(() => check.custom({ kind: ' valueEquals ', message: 'Must use the readback helper' })).toThrowError(
+      'Workbook custom check kind valueEquals is reserved',
+    )
   })
 
   it('plans and describes readback checks through model actions', () => {

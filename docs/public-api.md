@@ -72,6 +72,8 @@ It exposes:
 - `isWorkbookActionInputDescriptionKind`
 - `isWorkbookActionInputDescription`
 - `isWorkbookActionInput`
+- `builtInWorkbookCheckKinds`
+- `isBuiltInWorkbookCheckKind`
 - `runWorkbookPlan`
 - `runWorkbookAction`
 - `verifyWorkbookReadbacks`
@@ -82,7 +84,7 @@ It exposes:
 - `workbook.addOp(op, { target?, message? })` inside model actions
 - `findTable`, `findColumn`, `findRange`, `findName`, and `findRows` through the model workbook context and as top-level helpers
 - `check.exists`, `check.noFormulaErrors`, `check.valueEquals`, `check.formulaEquals`, and `check.custom` through the model workbook context and as top-level helpers
-- `WorkbookModel`, `WorkbookAction`, `WorkbookActionConfig`, `WorkbookActionDefinition`, `WorkbookActionContext`, `WorkbookCheckContext`, `WorkbookFindWorkbook`, `WorkbookCheckWorkbook`, `WorkbookActionWorkbook`, `WorkbookModelWorkbook`, `WorkbookFindNamespace`, `WorkbookActionInput`, `WorkbookActionInputDescription`, `WorkbookActionInputDescriptionKind`, `WorkbookActionInspection`, `WorkbookAddOpOptions`, `WorkbookActionPlanResult`, `WorkbookModelDescription`, `WorkbookRefDescription`, `WorkbookActionPlanDescription`, `WorkbookActionPlanResultDescription`, `WorkbookRunResultDescription`, `WorkbookUndoRefDescription`, `WorkbookRuntimeRequirements`, `WorkbookRuntimeRequirement`, `WorkbookRuntimeCapability`, `WorkbookPlanVerification`, `WorkbookPlanIssue`, `WorkbookModelVerification`, `WorkbookModelActionVerification`, `WorkbookModelVerificationOptions`, `WorkbookRunAdapter`, `WorkbookRunApplyResult`, `WorkbookRunReadback`, `WorkbookReadbackVerification`, `WorkbookReadbackIssue`, `WorkbookReadbackIssueCode`, `WorkbookCheckExpectation`, `WorkbookCheckExpectationDescription`, `WorkbookCustomCheckOptions`, `WorkbookReadbackCheckOptions`, `WorkbookRawFormulaOptions`, `WorkbookRunResult`, `WorkbookRunError`, `WorkbookRunErrorCode`, and `WorkbookCheckResult`
+- `WorkbookModel`, `WorkbookAction`, `WorkbookActionConfig`, `WorkbookActionDefinition`, `WorkbookActionContext`, `WorkbookCheckContext`, `WorkbookFindWorkbook`, `WorkbookCheckWorkbook`, `WorkbookActionWorkbook`, `WorkbookModelWorkbook`, `WorkbookFindNamespace`, `WorkbookActionInput`, `WorkbookActionInputDescription`, `WorkbookActionInputDescriptionKind`, `WorkbookActionInspection`, `WorkbookAddOpOptions`, `WorkbookActionPlanResult`, `WorkbookModelDescription`, `WorkbookRefDescription`, `WorkbookActionPlanDescription`, `WorkbookActionPlanResultDescription`, `WorkbookRunResultDescription`, `WorkbookUndoRefDescription`, `WorkbookRuntimeRequirements`, `WorkbookRuntimeRequirement`, `WorkbookRuntimeCapability`, `WorkbookPlanVerification`, `WorkbookPlanIssue`, `WorkbookModelVerification`, `WorkbookModelActionVerification`, `WorkbookModelVerificationOptions`, `WorkbookRunAdapter`, `WorkbookRunApplyResult`, `WorkbookRunReadback`, `WorkbookReadbackVerification`, `WorkbookReadbackIssue`, `WorkbookReadbackIssueCode`, `WorkbookCheckExpectation`, `WorkbookCheckExpectationDescription`, `WorkbookBuiltInCheckKind`, `WorkbookCustomCheckOptions`, `WorkbookReadbackCheckOptions`, `WorkbookRawFormulaOptions`, `WorkbookRunResult`, `WorkbookRunError`, `WorkbookRunErrorCode`, and `WorkbookCheckResult`
 - the existing low-level operation language: `WorkbookOp`, `WorkbookTxn`, `EngineOp`, and `EngineOpBatch`
 
 The package builds portable workbook intent and concrete low-level ops when the
@@ -161,6 +163,10 @@ keeps arbitrary formula text generic while preserving explicit workbook
 dependencies for inspection and verification. These are declared dependencies,
 not parser-discovered proof that every formula reference has a matching model
 ref.
+Formula operands intentionally reject bare strings. Consumers use `formula.raw`
+for formula source and `formula.text` for spreadsheet string literals, keeping
+agent-authored formulas explicit instead of overloading a string as either code,
+a label, a named range, or user text.
 
 Action plans also expose `refsUsed`, a flat deduped list of workbook refs found
 inside the consumer-defined `refs` object. This keeps custom models generic
@@ -190,6 +196,9 @@ The same planned checks are available outside model callbacks through top-level
 consumers carry their own invariants without adding hardcoded business models to
 the package. `target` names the main ref, and `refs` names supporting refs so
 agents can describe and verify the full invariant contract.
+Custom check kinds cannot reuse built-in names. Tool builders can inspect the
+frozen `builtInWorkbookCheckKinds` list or call `isBuiltInWorkbookCheckKind`
+before accepting consumer-defined check metadata.
 Readback checks add machine-readable expectations to the same generic check
 channel: `valueEquals` stores the expected literal value, and `formulaEquals`
 stores normalized formula text plus explicit formula input refs. Runtime code

@@ -12,7 +12,7 @@ export interface WorkbookRawFormulaOptions {
   readonly inputs?: readonly WorkbookRef[]
 }
 
-export type WorkbookFormulaOperand = WorkbookFormulaExpression | WorkbookRef | string | number | boolean
+export type WorkbookFormulaOperand = WorkbookFormulaExpression | WorkbookRef | number | boolean
 
 function normalizeFormulaSource(source: string): string {
   const trimmed = source.trim()
@@ -46,11 +46,11 @@ function createFormulaExpression(source: string, inputs: readonly WorkbookRef[] 
   }
 }
 
-function isFormulaExpression(value: WorkbookFormulaOperand): value is WorkbookFormulaExpression {
+function isFormulaExpression(value: unknown): value is WorkbookFormulaExpression {
   return typeof value === 'object' && value !== null && 'kind' in value && value.kind === 'formula'
 }
 
-function isWorkbookRef(value: WorkbookFormulaOperand): value is WorkbookRef {
+function isWorkbookRef(value: unknown): value is WorkbookRef {
   return (
     typeof value === 'object' &&
     value !== null &&
@@ -104,7 +104,7 @@ function operandSource(operand: WorkbookFormulaOperand): string {
   if (typeof operand === 'boolean') {
     return operand ? 'TRUE()' : 'FALSE()'
   }
-  return operand
+  throw new Error('Formula operands must be formula expressions, workbook refs, finite numbers, booleans, or formula.text/raw wrappers')
 }
 
 function operandInputs(operand: WorkbookFormulaOperand): readonly WorkbookRef[] {

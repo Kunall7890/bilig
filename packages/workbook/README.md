@@ -35,6 +35,8 @@ The public surface stays generic:
 - `isWorkbookActionInputDescriptionKind`
 - `isWorkbookActionInputDescription`
 - `isWorkbookActionInput`
+- `builtInWorkbookCheckKinds`
+- `isBuiltInWorkbookCheckKind`
 - `workbookRunErrorCodes`
 - `isWorkbookRunErrorCode`
 - `formula`
@@ -78,6 +80,7 @@ The public surface stays generic:
 - `WorkbookReadbackIssueCode`
 - `WorkbookCheckExpectation`
 - `WorkbookCheckExpectationDescription`
+- `WorkbookBuiltInCheckKind`
 - `WorkbookCustomCheckOptions`
 - `WorkbookReadbackCheckOptions`
 - `WorkbookRawFormulaOptions`
@@ -183,6 +186,10 @@ For formulas outside the small helper set, use
 declared refs remain inspectable and verifiable. These inputs are a declared
 dependency contract for agents, not parser-discovered proof that every formula
 reference has been mapped to a model ref.
+Formula operands intentionally do not accept bare strings. Use `formula.raw`
+for formula source and `formula.text` for spreadsheet string literals, so an
+agent cannot confuse a label, cell address, named range, or user-provided string
+with executable formula text.
 
 Known single-cell `workbook.format(ref, { numberFormat })` actions compile to
 concrete `setCellFormat` ops. Use `numberFormat: null` to plan an explicit
@@ -228,6 +235,9 @@ Use `check.custom({ kind, message, target, refs })` for consumer-defined
 invariants; the package does not need to know what the model means. `target`
 names the main ref, and `refs` names any supporting refs the invariant depends
 on so agents can describe and verify the full check contract.
+Custom check kinds cannot reuse built-in names. Use the frozen
+`builtInWorkbookCheckKinds` list or `isBuiltInWorkbookCheckKind` guard when a
+consumer-facing tool needs to validate check kinds before planning.
 
 Model callback phases are deliberately scoped. `find(workbook)` receives only
 the find API; `checks({ workbook })` receives find helpers plus `workbook.check`;
