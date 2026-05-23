@@ -29,7 +29,7 @@ flowchart LR
   - phase-scoped find/check/action contexts
   - frozen workbook refs with non-enumerable ergonomic helpers
   - frozen plan refs containers with `refsUsed` verification
-  - generic selector validation before runtime handoff
+  - generic selector validation before runtime handoff, including canonical table-header selectors and row predicate value contracts
   - JSON-safe action input planning and verification
   - action-object metadata and plain input descriptions for agent manifests
   - machine-readable readback checks for runtime proof

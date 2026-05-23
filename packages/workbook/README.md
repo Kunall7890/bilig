@@ -22,7 +22,9 @@ The public surface stays generic:
 - `isWorkbookRefKind`
 - `isWorkbookRef`
 - `workbookRowOperators`
+- `workbookRowOperatorValueTypes`
 - `isWorkbookRowOperator`
+- `isWorkbookRowValueCompatible`
 - `check`
 - `describeModel`
 - `describeRef`
@@ -65,6 +67,7 @@ The public surface stays generic:
 - `WorkbookColumnRef`
 - `WorkbookRowsRef`
 - `WorkbookRowOperator`
+- `WorkbookRowValueType`
 - `WorkbookActionInput`
 - `WorkbookActionInputDescription`
 - `WorkbookActionInputDescriptionKind`
@@ -233,13 +236,22 @@ Use `findTable`, `findColumn`, `findRange`, `findName`, and `findRows` directly
 when an agent or test needs the same generic refs outside a model callback. The
 same helpers are also available as a frozen `find` namespace with short aliases
 such as `find.table(...)`, `find.range(...)`, and `find.rows(...)`.
-Use the frozen `workbookRefKinds` and `workbookRowOperators` lists, plus
-`isWorkbookRefKind`, `isWorkbookRef`, and `isWorkbookRowOperator`, when a
-generic agent tool needs to validate model refs or row predicates without
-copying string unions or depending on a schema package.
+Use the frozen `workbookRefKinds`, `workbookRowOperators`, and
+`workbookRowOperatorValueTypes` data, plus `isWorkbookRefKind`,
+`isWorkbookRef`, `isWorkbookRowOperator`, and `isWorkbookRowValueCompatible`,
+when a generic agent tool needs to validate model refs or row predicates
+without copying string unions or depending on a schema package.
 Selector helpers trim text, canonicalize cell addresses, and reject empty table
-names, column names, named ranges, headers, invalid range addresses, invalid row
-operators, and non-finite row predicate values before a plan reaches runtime.
+names, column names, named ranges, headers, duplicate headers, invalid range
+addresses, invalid row operators, non-finite row predicate values, and
+operator/value mismatches before a plan reaches runtime.
+Table header selectors are an all-of match, not a coordinate or position
+contract. Headers are case-sensitive after trimming, stored in sorted order, and
+deduped so `["Rate", "Amount"]` and `["Amount", "Rate"]` describe the same
+generic table intent.
+Row selectors keep the value contract boring: `eq` and `neq` accept any JSON
+literal, `contains` and `startsWith` accept strings, and ordered comparisons
+accept numbers or strings.
 `findRows` refs include the predicate value in their stable id so two
 consumer-defined row selectors do not collapse during dedupe, while labels stay
 human-readable for agent logs.

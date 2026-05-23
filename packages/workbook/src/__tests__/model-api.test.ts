@@ -18,6 +18,7 @@ import {
   isWorkbookRef,
   isWorkbookRefKind,
   isWorkbookRowOperator,
+  isWorkbookRowValueCompatible,
   planWorkbookAction,
   defineModel,
   formula,
@@ -25,6 +26,7 @@ import {
   verifyPlan,
   workbookRefKinds,
   workbookRowOperators,
+  workbookRowOperatorValueTypes,
 } from '../index.js'
 
 describe('@bilig/workbook model api', () => {
@@ -287,13 +289,31 @@ describe('@bilig/workbook model api', () => {
   it('exports frozen ref kind and row operator contracts for agent tools', () => {
     expect(workbookRefKinds).toEqual(['range', 'name', 'table', 'column', 'rows'])
     expect(workbookRowOperators).toEqual(['eq', 'neq', 'contains', 'startsWith', 'gt', 'gte', 'lt', 'lte'])
+    expect(workbookRowOperatorValueTypes).toEqual({
+      eq: ['number', 'string', 'boolean', 'null'],
+      neq: ['number', 'string', 'boolean', 'null'],
+      contains: ['string'],
+      startsWith: ['string'],
+      gt: ['number', 'string'],
+      gte: ['number', 'string'],
+      lt: ['number', 'string'],
+      lte: ['number', 'string'],
+    })
     expect(Object.isFrozen(workbookRefKinds)).toBe(true)
     expect(Object.isFrozen(workbookRowOperators)).toBe(true)
+    expect(Object.isFrozen(workbookRowOperatorValueTypes)).toBe(true)
+    expect(Object.isFrozen(workbookRowOperatorValueTypes.eq)).toBe(true)
 
     expect(isWorkbookRefKind('table')).toBe(true)
     expect(isWorkbookRefKind('chart')).toBe(false)
     expect(isWorkbookRowOperator('gte')).toBe(true)
     expect(isWorkbookRowOperator('between')).toBe(false)
+    expect(isWorkbookRowValueCompatible('contains', 'Active')).toBe(true)
+    expect(isWorkbookRowValueCompatible('contains', 12)).toBe(false)
+    expect(isWorkbookRowValueCompatible('gt', 12)).toBe(true)
+    expect(isWorkbookRowValueCompatible('gt', 'M')).toBe(true)
+    expect(isWorkbookRowValueCompatible('gt', true)).toBe(false)
+    expect(isWorkbookRowValueCompatible('eq', null)).toBe(true)
   })
 
   it('keeps row selector refs distinct by predicate value', () => {
@@ -367,7 +387,7 @@ describe('@bilig/workbook model api', () => {
   })
 
   it('normalizes public find selectors before planning', () => {
-    const table = findTable({ name: ' Inputs ', sheetName: ' Model ', headers: [' Amount ', 'Rate'] })
+    const table = findTable({ name: ' Inputs ', sheetName: ' Model ', headers: [' Rate ', 'Amount'] })
     const range = findRange({ sheetName: ' Sheet1 ', address: ' c2 ' })
     const rows = findRows({
       table,
@@ -413,6 +433,7 @@ describe('@bilig/workbook model api', () => {
     expect(() => findTable({})).toThrowError('Workbook table selector needs a name, sheet name, or headers')
     expect(() => findTable({ headers: [] })).toThrowError('Workbook table headers cannot be empty')
     expect(() => findTable({ headers: ['Amount', ' '] })).toThrowError('Workbook selector table header cannot be empty')
+    expect(() => findTable({ headers: [' Amount ', 'Amount'] })).toThrowError('Workbook table headers cannot contain duplicates: Amount')
 
     const table = findTable({ name: 'Inputs' })
     expect(() => findColumn({ table, name: ' ' })).toThrowError('Workbook selector column name cannot be empty')
@@ -453,6 +474,26 @@ describe('@bilig/workbook model api', () => {
         },
       ]),
     ).toThrowError('Workbook rows selector value must be a finite JSON literal')
+    expect(() =>
+      findRows({
+        table,
+        where: {
+          column: 'Status',
+          op: 'contains',
+          value: 12,
+        },
+      }),
+    ).toThrowError('Workbook rows selector operator contains requires a string value')
+    expect(() =>
+      findRows({
+        table,
+        where: {
+          column: 'Status',
+          op: 'gt',
+          value: true,
+        },
+      }),
+    ).toThrowError('Workbook rows selector operator gt requires a number or string value')
   })
 
   it('exports simple top-level check helpers for generic refs', () => {
