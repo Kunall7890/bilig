@@ -12,7 +12,7 @@
       "Performance multiple reporting must include geomean ratios, worst-case rows, holdouts, and 10x workload count."
     ],
     "unmetRequirements": [
-      "per-workload-mean-and-p95-wins: Univer workbook-wide comparison is incomplete: covers 36/100 comparable workloads and has 36/36 mean+p95 wins; Univer workbook-wide workload set mismatch: missing 64/100 eligible workloads (examples: build-cross-sheet-dashboard-small, build-cross-sheet-dashboard-large, rebuild-and-recalculate, rebuild-and-recalculate-large, rebuild-runtime-from-snapshot); extra 0 workloads"
+      "per-workload-mean-and-p95-wins: Univer workbook-wide comparison is incomplete: covers 45/100 comparable workloads and has 45/45 mean+p95 wins; Univer workbook-wide workload set mismatch: missing 55/100 eligible workloads (examples: rebuild-and-recalculate, rebuild-and-recalculate-large, rebuild-runtime-from-snapshot, rebuild-runtime-from-snapshot-large, sheet-rename-dependencies); extra 0 workloads"
     ]
   },
   "sourceArtifacts": {
@@ -39,14 +39,14 @@
       },
       {
         "artifactPath": "packages/benchmarks/baselines/workpaper-vs-univer.json",
-        "comparableWorkloadCount": 36,
+        "comparableWorkloadCount": 45,
         "coverageNote": "Univer is covered through its documented @univerjs/preset-sheets-node-core headless Node preset. This workbook-wide lane times public Facade API workbook construction, cell edits, and formula recalculation completion on equivalent build, aggregate, chain, fanout, and lookup workloads.",
         "coverageTier": "workbook-wide",
         "engineName": "Univer",
-        "generatedAt": "2026-05-23T22:11:42.876Z",
-        "meanAndP95WinCount": 36,
-        "meanWinCount": 36,
-        "p95WinCount": 36,
+        "generatedAt": "2026-05-23T23:40:15.401Z",
+        "meanAndP95WinCount": 45,
+        "meanWinCount": 45,
+        "p95WinCount": 45,
         "version": "0.23.0",
         "workloadFamilies": [
           "build",
@@ -86,6 +86,10 @@
           "lookup-no-column-index-small",
           "lookup-with-column-index",
           "lookup-with-column-index-large",
+          "lookup-index-match-exact",
+          "lookup-index-match-exact-large",
+          "lookup-index-reference",
+          "lookup-index-reference-large",
           "lookup-approximate-sorted",
           "lookup-approximate-sorted-large",
           "lookup-approximate-duplicates",
@@ -94,7 +98,12 @@
           "build-many-sheets",
           "build-many-sheets-wide",
           "build-many-sheets-narrow",
-          "build-cross-sheet-dashboard"
+          "build-cross-sheet-dashboard",
+          "build-cross-sheet-dashboard-small",
+          "build-cross-sheet-dashboard-large",
+          "cross-sheet-scalar-recalc",
+          "cross-sheet-aggregate-recalc",
+          "cross-sheet-dashboard-recalc"
         ]
       },
       {
@@ -215,8 +224,8 @@
       {
         "evidence": ["HyperFormula mean wins: 100/100", "HyperFormula p95 wins: 100/100", "HyperFormula mean+p95 wins: 100/100"],
         "gaps": [
-          "Univer workbook-wide comparison is incomplete: covers 36/100 comparable workloads and has 36/36 mean+p95 wins",
-          "Univer workbook-wide workload set mismatch: missing 64/100 eligible workloads (examples: build-cross-sheet-dashboard-small, build-cross-sheet-dashboard-large, rebuild-and-recalculate, rebuild-and-recalculate-large, rebuild-runtime-from-snapshot); extra 0 workloads"
+          "Univer workbook-wide comparison is incomplete: covers 45/100 comparable workloads and has 45/45 mean+p95 wins",
+          "Univer workbook-wide workload set mismatch: missing 55/100 eligible workloads (examples: rebuild-and-recalculate, rebuild-and-recalculate-large, rebuild-runtime-from-snapshot, rebuild-runtime-from-snapshot-large, sheet-rename-dependencies); extra 0 workloads"
         ],
         "id": "per-workload-mean-and-p95-wins",
         "passed": false,
@@ -237,7 +246,7 @@
       }
     ],
     "unmetRequirements": [
-      "per-workload-mean-and-p95-wins: Univer workbook-wide comparison is incomplete: covers 36/100 comparable workloads and has 36/36 mean+p95 wins; Univer workbook-wide workload set mismatch: missing 64/100 eligible workloads (examples: build-cross-sheet-dashboard-small, build-cross-sheet-dashboard-large, rebuild-and-recalculate, rebuild-and-recalculate-large, rebuild-runtime-from-snapshot); extra 0 workloads"
+      "per-workload-mean-and-p95-wins: Univer workbook-wide comparison is incomplete: covers 45/100 comparable workloads and has 45/45 mean+p95 wins; Univer workbook-wide workload set mismatch: missing 55/100 eligible workloads (examples: rebuild-and-recalculate, rebuild-and-recalculate-large, rebuild-runtime-from-snapshot, rebuild-runtime-from-snapshot-large, sheet-rename-dependencies); extra 0 workloads"
     ]
   }
 }

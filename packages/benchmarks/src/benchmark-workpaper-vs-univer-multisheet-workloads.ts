@@ -7,7 +7,13 @@ import type {
   WorkPaperUniverScenario,
   WorkPaperUniverWorkload,
 } from './benchmark-workpaper-vs-univer.js'
-import { buildCrossSheetDashboardSheets, buildMultiSheetLiteralSheets, columnLabel } from './workpaper-benchmark-fixtures.js'
+import {
+  buildCrossSheetAggregateSheets,
+  buildCrossSheetDashboardSheets,
+  buildCrossSheetScalarFanoutSheets,
+  buildMultiSheetLiteralSheets,
+  columnLabel,
+} from './workpaper-benchmark-fixtures.js'
 
 interface ObservedWorkbookCell {
   readonly col: number
@@ -57,6 +63,55 @@ export function crossSheetDashboardBuildScenario(
   })
 }
 
+export function crossSheetScalarFanoutRecalcScenario(workload: WorkPaperUniverWorkload, rowCount: number): WorkPaperUniverScenario {
+  const sheets = buildCrossSheetScalarFanoutSheets(rowCount)
+  return canonicalWorkbookMutationScenario({
+    edit: { col: 0, row: 0, sheetName: 'Data', value: 99 },
+    family: 'cross-sheet',
+    observedCells: [
+      { col: 0, key: 'leadingValue', row: 0, sheetName: 'Summary' },
+      { col: 0, key: 'terminalValue', row: rowCount - 1, sheetName: 'Summary' },
+    ],
+    rowCount: rowCount * 2,
+    sheets,
+    workload,
+  })
+}
+
+export function crossSheetAggregateRecalcScenario(workload: WorkPaperUniverWorkload, rowCount: number): WorkPaperUniverScenario {
+  const sheets = buildCrossSheetAggregateSheets(rowCount)
+  return canonicalWorkbookMutationScenario({
+    edit: { col: 0, row: 0, sheetName: 'Data', value: 99 },
+    family: 'cross-sheet',
+    observedCells: [
+      { col: 0, key: 'leadingSum', row: 0, sheetName: 'Summary' },
+      { col: 0, key: 'terminalSum', row: rowCount - 1, sheetName: 'Summary' },
+    ],
+    rowCount: rowCount * 2,
+    sheets,
+    workload,
+  })
+}
+
+export function crossSheetDashboardRecalcScenario(
+  workload: WorkPaperUniverWorkload,
+  sheetCount: number,
+  rowsPerSheet: number,
+): WorkPaperUniverScenario {
+  const sheets = buildCrossSheetDashboardSheets(sheetCount, rowsPerSheet)
+  return canonicalWorkbookMutationScenario({
+    edit: { col: 1, row: 0, sheetName: 'Data1', value: 999 },
+    family: 'cross-sheet',
+    observedCells: [
+      { col: 1, key: 'leadingDataTotal', row: 0, sheetName: 'Summary' },
+      { col: 2, key: 'terminalDataTotal', row: sheetCount - 1, sheetName: 'Summary' },
+    ],
+    rowCount: rowsPerSheet * sheetCount + sheetCount,
+    sheets,
+    workload,
+  })
+}
+
 function canonicalWorkbookBuildScenario(args: {
   readonly family: WorkPaperUniverScenario['fixture']['family']
   readonly observedCells: readonly ObservedWorkbookCell[]
@@ -81,6 +136,51 @@ function canonicalWorkbookBuildScenario(args: {
   } as const
   return {
     kind: 'build',
+    fixture,
+    buildWorkPaperSheets: () => args.sheets,
+    setupUniver: (runtime) => setupUniverWorkbookSheets(runtime, args.sheets),
+    verifyUniver: (runtime) => observeUniver(runtime, args.observedCells),
+    verifyWorkPaper: (workbook) => observeWorkPaper(workbook, args.observedCells),
+  }
+}
+
+function canonicalWorkbookMutationScenario(args: {
+  readonly edit: {
+    readonly col: number
+    readonly row: number
+    readonly sheetName: string
+    readonly value: number
+  }
+  readonly family: WorkPaperUniverScenario['fixture']['family']
+  readonly observedCells: readonly ObservedWorkbookCell[]
+  readonly rowCount: number
+  readonly sheets: Record<string, WorkPaperSheet>
+  readonly workload: WorkPaperUniverWorkload
+}): WorkPaperUniverScenario {
+  const firstObservedCell = args.observedCells[0]!
+  const columnCount = Math.max(1, ...Object.values(args.sheets).flatMap((sheet) => sheet.map((row) => row.length)))
+  const formula = firstFormula(args.sheets) ?? args.workload
+  const fixture = {
+    edit: {
+      address: formatA1(args.edit.row, args.edit.col),
+      col: args.edit.col,
+      row: args.edit.row,
+      sheetName: args.edit.sheetName,
+      value: args.edit.value,
+    },
+    family: args.family,
+    formula,
+    result: {
+      address: formatA1(firstObservedCell.row, firstObservedCell.col),
+      col: firstObservedCell.col,
+      row: firstObservedCell.row,
+      sheetName: firstObservedCell.sheetName,
+    },
+    columnCount,
+    rowCount: args.rowCount,
+  } as const
+  return {
+    kind: 'mutation',
     fixture,
     buildWorkPaperSheets: () => args.sheets,
     setupUniver: (runtime) => setupUniverWorkbookSheets(runtime, args.sheets),

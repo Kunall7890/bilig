@@ -4,24 +4,6 @@ import * as UniverSheetsNodeCorePresetModule from '@univerjs/preset-sheets-node-
 import sheetsNodeCoreEnUS from '@univerjs/preset-sheets-node-core/locales/en-US'
 import { WorkPaper, type WorkPaperSheet } from '../../headless/src/work-paper.js'
 import {
-  build2dAggregateSheet,
-  buildApproxLookupDuplicateSheet,
-  buildApproxLookupSheet,
-  buildDenseLiteralSheet,
-  buildFormulaChainRow,
-  buildFormulaFanoutRow,
-  buildLookupSheet,
-  buildMixedContentSheet,
-  buildOverlappingAggregateSheet,
-  buildParserCacheMixedTemplateSheet,
-  buildParserCacheTemplateSheet,
-  buildParserCacheUniqueFormulaSheet,
-  buildSlidingAggregateSheet,
-  buildTextLookupSheet,
-  columnLabel,
-  textLookupKey,
-} from './workpaper-benchmark-fixtures.js'
-import {
   DEFAULT_COMPETITIVE_SAMPLE_COUNT,
   DEFAULT_COMPETITIVE_WARMUP_COUNT,
   type ComparativeBenchmarkSuiteOptions,
@@ -31,11 +13,33 @@ import {
 import {
   measureWorkPaperBuildFromSheets,
   measureMutationSample,
-  normalizeWorkPaperValue,
   type BenchmarkSample,
 } from './benchmark-workpaper-vs-hyperformula-expanded-support.js'
-import { normalizeBenchmarkValue } from './benchmark-workpaper-vs-univer-fixtures.js'
-import { crossSheetDashboardBuildScenario, manySheetsBuildScenario } from './benchmark-workpaper-vs-univer-multisheet-workloads.js'
+import {
+  crossSheetAggregateRecalcScenario,
+  crossSheetDashboardBuildScenario,
+  crossSheetDashboardRecalcScenario,
+  crossSheetScalarFanoutRecalcScenario,
+  manySheetsBuildScenario,
+} from './benchmark-workpaper-vs-univer-multisheet-workloads.js'
+import {
+  aggregate2dCanonicalScenario,
+  approximateDuplicateLookupCanonicalScenario,
+  approximateLookupCanonicalScenario,
+  denseLiteralBuildScenario,
+  exactLookupCanonicalScenario,
+  formulaChainRowScenario,
+  formulaFanoutRowScenario,
+  indexMatchExactCanonicalScenario,
+  indexReferenceCanonicalScenario,
+  mixedContentBuildScenario,
+  overlappingAggregateCanonicalScenario,
+  parserCacheMixedTemplateBuildScenario,
+  parserCacheRowTemplateBuildScenario,
+  parserCacheUniqueFormulaBuildScenario,
+  slidingAggregateCanonicalScenario,
+  textLookupCanonicalScenario,
+} from './benchmark-workpaper-vs-univer-single-sheet-workloads.js'
 import { waitForUniverVerification } from './benchmark-workpaper-vs-univer-sync.js'
 import { measureMemory, sampleMemory, type MemoryMeasurement } from './metrics.js'
 import { summarizeNumbers } from './stats.js'
@@ -64,6 +68,11 @@ export type WorkPaperUniverWorkload =
   | 'build-many-sheets-wide'
   | 'build-many-sheets-narrow'
   | 'build-cross-sheet-dashboard'
+  | 'build-cross-sheet-dashboard-small'
+  | 'build-cross-sheet-dashboard-large'
+  | 'cross-sheet-scalar-recalc'
+  | 'cross-sheet-aggregate-recalc'
+  | 'cross-sheet-dashboard-recalc'
   | 'single-edit-chain'
   | 'single-edit-chain-small'
   | 'single-edit-chain-large'
@@ -81,6 +90,10 @@ export type WorkPaperUniverWorkload =
   | 'lookup-no-column-index-small'
   | 'lookup-with-column-index'
   | 'lookup-with-column-index-large'
+  | 'lookup-index-match-exact'
+  | 'lookup-index-match-exact-large'
+  | 'lookup-index-reference'
+  | 'lookup-index-reference-large'
   | 'lookup-approximate-sorted'
   | 'lookup-approximate-sorted-large'
   | 'lookup-approximate-duplicates'
@@ -246,6 +259,10 @@ export const WORKPAPER_UNIVER_WORKLOADS = [
   'lookup-no-column-index-small',
   'lookup-with-column-index',
   'lookup-with-column-index-large',
+  'lookup-index-match-exact',
+  'lookup-index-match-exact-large',
+  'lookup-index-reference',
+  'lookup-index-reference-large',
   'lookup-approximate-sorted',
   'lookup-approximate-sorted-large',
   'lookup-approximate-duplicates',
@@ -255,6 +272,11 @@ export const WORKPAPER_UNIVER_WORKLOADS = [
   'build-many-sheets-wide',
   'build-many-sheets-narrow',
   'build-cross-sheet-dashboard',
+  'build-cross-sheet-dashboard-small',
+  'build-cross-sheet-dashboard-large',
+  'cross-sheet-scalar-recalc',
+  'cross-sheet-aggregate-recalc',
+  'cross-sheet-dashboard-recalc',
 ] as const satisfies readonly WorkPaperUniverWorkload[]
 
 const univerCalculationTimeoutMs = 10_000
@@ -512,11 +534,11 @@ function univerScenario(workload: WorkPaperUniverWorkload): WorkPaperUniverScena
     case 'build-mixed-content-large':
       return mixedContentBuildScenario(workload, 1_500)
     case 'build-parser-cache-row-templates':
-      return parserCacheTemplateBuildScenario(workload, buildParserCacheTemplateSheet(1_500), 1_500)
+      return parserCacheRowTemplateBuildScenario(workload, 1_500)
     case 'build-parser-cache-mixed-templates':
-      return parserCacheTemplateBuildScenario(workload, buildParserCacheMixedTemplateSheet(1_500), 1_500)
+      return parserCacheMixedTemplateBuildScenario(workload, 1_500)
     case 'build-parser-cache-unique-formulas':
-      return parserCacheTemplateBuildScenario(workload, buildParserCacheUniqueFormulaSheet(1_500), 1_500)
+      return parserCacheUniqueFormulaBuildScenario(workload, 1_500)
     case 'build-many-sheets':
       return manySheetsBuildScenario(workload, 6, 96, 16)
     case 'build-many-sheets-wide':
@@ -525,6 +547,16 @@ function univerScenario(workload: WorkPaperUniverWorkload): WorkPaperUniverScena
       return manySheetsBuildScenario(workload, 12, 128, 8)
     case 'build-cross-sheet-dashboard':
       return crossSheetDashboardBuildScenario(workload, 4, 500)
+    case 'build-cross-sheet-dashboard-small':
+      return crossSheetDashboardBuildScenario(workload, 2, 250)
+    case 'build-cross-sheet-dashboard-large':
+      return crossSheetDashboardBuildScenario(workload, 6, 750)
+    case 'cross-sheet-scalar-recalc':
+      return crossSheetScalarFanoutRecalcScenario(workload, 1_500)
+    case 'cross-sheet-aggregate-recalc':
+      return crossSheetAggregateRecalcScenario(workload, 1_500)
+    case 'cross-sheet-dashboard-recalc':
+      return crossSheetDashboardRecalcScenario(workload, 4, 1_000)
     case 'single-edit-chain':
       return formulaChainRowScenario(workload, 2_000)
     case 'single-edit-chain-small':
@@ -559,6 +591,14 @@ function univerScenario(workload: WorkPaperUniverWorkload): WorkPaperUniverScena
       return exactLookupCanonicalScenario(workload, 5_000, true)
     case 'lookup-with-column-index-large':
       return exactLookupCanonicalScenario(workload, 10_000, true)
+    case 'lookup-index-match-exact':
+      return indexMatchExactCanonicalScenario(workload, 5_000)
+    case 'lookup-index-match-exact-large':
+      return indexMatchExactCanonicalScenario(workload, 10_000)
+    case 'lookup-index-reference':
+      return indexReferenceCanonicalScenario(workload, 5_000)
+    case 'lookup-index-reference-large':
+      return indexReferenceCanonicalScenario(workload, 10_000)
     case 'lookup-approximate-sorted':
       return approximateLookupCanonicalScenario(workload, 5_000)
     case 'lookup-approximate-sorted-large':
@@ -570,331 +610,6 @@ function univerScenario(workload: WorkPaperUniverWorkload): WorkPaperUniverScena
     case 'lookup-text-exact-large':
       return textLookupCanonicalScenario(workload, 10_000)
   }
-}
-
-function denseLiteralBuildScenario(workload: WorkPaperUniverWorkload, rows: number, cols: number): WorkPaperUniverScenario {
-  return canonicalSingleSheetBuildScenario({
-    family: 'build',
-    observedCells: [{ col: cols - 1, key: 'terminalValue', row: rows - 1 }],
-    rowCount: rows,
-    sheet: buildDenseLiteralSheet(rows, cols),
-    workload,
-  })
-}
-
-function mixedContentBuildScenario(workload: WorkPaperUniverWorkload, rowCount: number): WorkPaperUniverScenario {
-  return canonicalSingleSheetBuildScenario({
-    family: 'build',
-    observedCells: [{ col: 5, key: 'terminalFormulaValue', row: rowCount - 1 }],
-    rowCount,
-    sheet: buildMixedContentSheet(rowCount),
-    workload,
-  })
-}
-
-function parserCacheTemplateBuildScenario(
-  workload: WorkPaperUniverWorkload,
-  sheet: WorkPaperSheet,
-  rowCount: number,
-): WorkPaperUniverScenario {
-  return canonicalSingleSheetBuildScenario({
-    family: 'build',
-    observedCells: [{ col: 5, key: 'terminalValue', row: rowCount - 1 }],
-    rowCount,
-    sheet,
-    workload,
-  })
-}
-
-function formulaChainRowScenario(workload: WorkPaperUniverWorkload, downstreamCount: number): WorkPaperUniverScenario {
-  return canonicalSingleSheetScenario({
-    edit: { col: 0, row: 0, value: 99 },
-    family: 'formula-chain',
-    observedCells: [{ col: downstreamCount, key: 'terminalValue', row: 0 }],
-    rowCount: 1,
-    sheet: [buildFormulaChainRow(downstreamCount)],
-    workload,
-  })
-}
-
-function formulaFanoutRowScenario(workload: WorkPaperUniverWorkload, fanoutCount: number): WorkPaperUniverScenario {
-  return canonicalSingleSheetScenario({
-    edit: { col: 0, row: 0, value: 99 },
-    family: 'formula-fanout',
-    observedCells: [
-      { col: fanoutCount, key: 'terminalValue', row: 0 },
-      { col: fanoutCount, key: 'width', row: 0, value: fanoutCount + 1 },
-    ],
-    rowCount: 1,
-    sheet: [buildFormulaFanoutRow(fanoutCount)],
-    workload,
-  })
-}
-
-function aggregate2dCanonicalScenario(workload: WorkPaperUniverWorkload, rowCount: number): WorkPaperUniverScenario {
-  return canonicalSingleSheetScenario({
-    edit: { col: 0, row: 0, value: 99 },
-    family: 'aggregate-2d',
-    observedCells: [
-      { col: 2, key: 'terminalSum', row: rowCount - 1 },
-      { col: 2, key: 'leadingSum', row: 0 },
-    ],
-    rowCount,
-    sheet: build2dAggregateSheet(rowCount),
-    workload,
-  })
-}
-
-function overlappingAggregateCanonicalScenario(workload: WorkPaperUniverWorkload, rowCount: number): WorkPaperUniverScenario {
-  return canonicalSingleSheetScenario({
-    edit: { col: 0, row: 0, value: 99 },
-    family: 'overlapping-aggregate',
-    observedCells: [{ col: 1, key: 'terminalSum', row: rowCount - 1 }],
-    rowCount,
-    sheet: buildOverlappingAggregateSheet(rowCount),
-    workload,
-  })
-}
-
-function slidingAggregateCanonicalScenario(workload: WorkPaperUniverWorkload, rowCount: number, window: number): WorkPaperUniverScenario {
-  return canonicalSingleSheetScenario({
-    edit: { col: 0, row: 0, value: 99 },
-    family: 'overlapping-aggregate',
-    observedCells: [
-      { col: 1, key: 'terminalSum', row: rowCount - 1 },
-      { col: 1, key: 'leadingSum', row: 0 },
-    ],
-    rowCount,
-    sheet: buildSlidingAggregateSheet(rowCount, window),
-    workload,
-  })
-}
-
-function exactLookupCanonicalScenario(
-  workload: WorkPaperUniverWorkload,
-  rowCount: number,
-  useColumnIndex: boolean,
-): WorkPaperUniverScenario {
-  return canonicalSingleSheetScenario({
-    edit: { col: 3, row: 0, value: rowCount },
-    family: 'lookup-exact',
-    observedCells: [{ col: 4, key: 'formulaValue', row: 0 }],
-    rowCount: rowCount + 1,
-    sheet: buildLookupSheet(rowCount),
-    workbookOptions: { useColumnIndex },
-    workload,
-  })
-}
-
-function approximateLookupCanonicalScenario(workload: WorkPaperUniverWorkload, rowCount: number): WorkPaperUniverScenario {
-  return canonicalSingleSheetScenario({
-    edit: { col: 3, row: 0, value: rowCount - 0.5 },
-    family: 'lookup-approximate',
-    observedCells: [{ col: 4, key: 'formulaValue', row: 0 }],
-    rowCount: rowCount + 1,
-    sheet: buildApproxLookupSheet(rowCount),
-    workload,
-  })
-}
-
-function approximateDuplicateLookupCanonicalScenario(workload: WorkPaperUniverWorkload, rowCount: number): WorkPaperUniverScenario {
-  return canonicalSingleSheetScenario({
-    edit: { col: 3, row: 0, value: Math.floor(rowCount / 5) + 0.5 },
-    family: 'lookup-approximate',
-    observedCells: [{ col: 4, key: 'formulaValue', row: 0 }],
-    rowCount: rowCount + 1,
-    sheet: buildApproxLookupDuplicateSheet(rowCount),
-    workload,
-  })
-}
-
-function textLookupCanonicalScenario(workload: WorkPaperUniverWorkload, rowCount: number): WorkPaperUniverScenario {
-  return canonicalSingleSheetScenario({
-    edit: { col: 3, row: 0, value: textLookupKey(rowCount - 1) },
-    family: 'lookup-exact',
-    observedCells: [{ col: 4, key: 'formulaValue', row: 0 }],
-    rowCount: rowCount + 1,
-    sheet: buildTextLookupSheet(rowCount),
-    workload,
-  })
-}
-
-function canonicalSingleSheetBuildScenario(args: {
-  readonly family: WorkPaperUniverWorkloadFamily
-  readonly observedCells: readonly {
-    readonly col: number
-    readonly key: string
-    readonly row: number
-    readonly value?: number
-  }[]
-  readonly rowCount: number
-  readonly sheet: WorkPaperSheet
-  readonly workbookOptions?: Parameters<typeof WorkPaper.buildFromSheets>[1]
-  readonly workload: WorkPaperUniverWorkload
-}): WorkPaperUniverScenario {
-  const sheetName = 'Bench'
-  const columnCount = Math.max(...args.observedCells.map((cell) => cell.col + 1), ...args.sheet.map((row) => row.length))
-  const formula = firstFormula(args.sheet) ?? args.workload
-  const fixture = {
-    family: args.family,
-    formula,
-    result: {
-      address: formatA1(args.observedCells[0]!.row, args.observedCells[0]!.col),
-      col: args.observedCells[0]!.col,
-      row: args.observedCells[0]!.row,
-      sheetName,
-    },
-    columnCount,
-    rowCount: args.rowCount,
-  } as const satisfies WorkPaperUniverFixture
-  const observeWorkPaper = (workbook: WorkPaper): Record<string, unknown> =>
-    Object.fromEntries(
-      args.observedCells.map((cell) => [
-        cell.key,
-        cell.value ??
-          normalizeBenchmarkValue(
-            normalizeWorkPaperValue(workbook.getCellValue({ sheet: workbook.getSheetId(sheetName)!, row: cell.row, col: cell.col })),
-          ),
-      ]),
-    )
-  const observeUniver = (runtime: UniverRuntime): Record<string, unknown> =>
-    Object.fromEntries(
-      args.observedCells.map((cell) => [
-        cell.key,
-        cell.value ?? normalizeBenchmarkValue(runtime.sheet.getRange(formatA1(cell.row, cell.col)).getValue()),
-      ]),
-    )
-  return {
-    kind: 'build',
-    fixture,
-    buildWorkPaperSheets: () => ({ [sheetName]: args.sheet }),
-    ...(args.workbookOptions ? { workpaperOptions: args.workbookOptions } : {}),
-    setupUniver: (runtime) => setupUniverSheet(runtime, args.sheet),
-    verifyUniver: observeUniver,
-    verifyWorkPaper: observeWorkPaper,
-  }
-}
-
-function canonicalSingleSheetScenario(args: {
-  readonly edit: { readonly col: number; readonly row: number; readonly value: UniverEditableValue }
-  readonly family: WorkPaperUniverWorkloadFamily
-  readonly observedCells: readonly {
-    readonly col: number
-    readonly key: string
-    readonly row: number
-    readonly value?: number
-  }[]
-  readonly rowCount: number
-  readonly sheet: WorkPaperSheet
-  readonly workbookOptions?: Parameters<typeof WorkPaper.buildFromSheets>[1]
-  readonly workload: WorkPaperUniverWorkload
-}): WorkPaperUniverScenario {
-  const sheetName = 'Bench'
-  const columnCount = Math.max(args.edit.col + 1, ...args.observedCells.map((cell) => cell.col + 1), ...args.sheet.map((row) => row.length))
-  const formula = firstFormula(args.sheet) ?? args.workload
-  const fixture = {
-    edit: {
-      address: formatA1(args.edit.row, args.edit.col),
-      col: args.edit.col,
-      row: args.edit.row,
-      sheetName,
-      value: args.edit.value,
-    },
-    family: args.family,
-    formula,
-    result: {
-      address: formatA1(args.observedCells[0]!.row, args.observedCells[0]!.col),
-      col: args.observedCells[0]!.col,
-      row: args.observedCells[0]!.row,
-      sheetName,
-    },
-    columnCount,
-    rowCount: args.rowCount,
-  } as const satisfies WorkPaperUniverFixture
-  const observeWorkPaper = (workbook: WorkPaper): Record<string, unknown> =>
-    Object.fromEntries(
-      args.observedCells.map((cell) => [
-        cell.key,
-        cell.value ??
-          normalizeBenchmarkValue(
-            normalizeWorkPaperValue(workbook.getCellValue({ sheet: workbook.getSheetId(sheetName)!, row: cell.row, col: cell.col })),
-          ),
-      ]),
-    )
-  const observeUniver = (runtime: UniverRuntime): Record<string, unknown> =>
-    Object.fromEntries(
-      args.observedCells.map((cell) => [
-        cell.key,
-        cell.value ?? normalizeBenchmarkValue(runtime.sheet.getRange(formatA1(cell.row, cell.col)).getValue()),
-      ]),
-    )
-  return {
-    kind: 'mutation',
-    fixture,
-    buildWorkPaperSheets: () => ({ [sheetName]: args.sheet }),
-    ...(args.workbookOptions ? { workpaperOptions: args.workbookOptions } : {}),
-    setupUniver: (runtime) => setupUniverSheet(runtime, args.sheet),
-    verifyUniver: observeUniver,
-    verifyWorkPaper: observeWorkPaper,
-  }
-}
-
-async function setupUniverSheet(runtime: UniverRuntime, sheet: WorkPaperSheet): Promise<void> {
-  const rowCount = sheet.length
-  const columnCount = Math.max(1, ...sheet.map((row) => row.length))
-  const formulaRuns: { readonly formulas: string[]; readonly row: number; readonly startCol: number }[] = []
-  const values: UniverCellValue[][] = Array.from({ length: rowCount }, (_rowValue, row) =>
-    Array.from({ length: columnCount }, (_colValue, col) => {
-      const value = sheet[row]?.[col] ?? ''
-      return typeof value === 'string' && value.startsWith('=') ? '' : value
-    }),
-  )
-  for (let row = 0; row < sheet.length; row += 1) {
-    const cells = sheet[row] ?? []
-    let col = 0
-    while (col < cells.length) {
-      const value = cells[col]
-      if (typeof value !== 'string' || !value.startsWith('=')) {
-        col += 1
-        continue
-      }
-      const startCol = col
-      const formulas: string[] = []
-      while (col < cells.length) {
-        const formula = cells[col]
-        if (typeof formula !== 'string' || !formula.startsWith('=')) {
-          break
-        }
-        formulas.push(formula)
-        col += 1
-      }
-      formulaRuns.push({ formulas, row, startCol })
-    }
-  }
-  runtime.sheet.getRange(0, 0, rowCount, columnCount).setValues(values)
-
-  if (formulaRuns.length === 0) {
-    return
-  }
-
-  for (const run of formulaRuns) {
-    runtime.sheet.getRange(run.row, run.startCol, 1, run.formulas.length).setFormulas([run.formulas])
-  }
-}
-
-function firstFormula(sheet: WorkPaperSheet): string | undefined {
-  for (const row of sheet) {
-    for (const value of row) {
-      if (typeof value === 'string' && value.startsWith('=')) {
-        return value
-      }
-    }
-  }
-  return undefined
-}
-
-function formatA1(row: number, col: number): string {
-  return `${columnLabel(col)}${String(row + 1)}`
 }
 
 function createUniverRuntime(rowCount: number, columnCount: number, sheetName = 'Sheet1'): UniverRuntime {
