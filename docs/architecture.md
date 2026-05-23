@@ -48,6 +48,8 @@ flowchart LR
     handoff payloads
   - feature command request validation before runtime-owned workbook extension
     dispatch
+  - feature command receipt validation before agents trust runtime extension
+    evidence
   - frozen feature vocabulary lists for agent tool manifests and UI handoff
   - check-only runtime execution that skips mutation when no apply capability
     is required

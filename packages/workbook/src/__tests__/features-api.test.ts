@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import {
   checkWorkbookCommandRequest,
+  checkWorkbookCommandReceipt,
   defineWorkbookFeaturePlugin,
   isWorkbookCommandCategory,
   isWorkbookCommandExecutionMode,
@@ -271,8 +272,14 @@ describe('@bilig/workbook feature api', () => {
     })
 
     expect(isWorkbookCommandReceipt(receipt)).toBe(true)
+    expect(checkWorkbookCommandReceipt(receipt)).toEqual({
+      status: 'valid',
+      receipt,
+      issues: [],
+    })
     expect(workbookCommandReceiptOpsMatch(receipt)).toBe(true)
     expect(Object.isFrozen(receipt.previewOps)).toBe(true)
+    expect(Object.isFrozen(receipt.undo)).toBe(true)
     expect(receipt).toMatchObject({
       status: 'applied',
       featureId: 'tables',
@@ -285,6 +292,119 @@ describe('@bilig/workbook feature api', () => {
   })
 
   it('rejects command receipts that contain invalid ops or ranges', () => {
+    expect(checkWorkbookCommandReceipt('not-a-receipt')).toEqual({
+      status: 'invalid',
+      issues: [
+        {
+          code: 'invalid_command_receipt',
+          path: 'receipt',
+          message: 'Workbook command receipt must be an object',
+        },
+      ],
+    })
+
+    expect(
+      checkWorkbookCommandReceipt({
+        status: 'done',
+        featureId: ' tables ',
+        commandId: '',
+        category: 'bad',
+        previewOps: [
+          {
+            kind: 'notARealOp',
+          },
+        ],
+        appliedOps: 'not-an-array',
+        undo: {
+          id: ' undo ',
+          ops: [
+            {
+              kind: 'notARealOp',
+            },
+          ],
+        },
+        changedRanges: [{ sheetName: 'Sheet1', startAddress: 'A1' }],
+        proof: () => undefined,
+        message: '  ',
+        metadata: Number.NaN,
+        errors: [42, ' '],
+      }),
+    ).toEqual({
+      status: 'invalid',
+      issues: [
+        {
+          code: 'invalid_command_receipt',
+          path: 'status',
+          message: 'Workbook command receipt status is invalid',
+        },
+        {
+          code: 'invalid_command_receipt',
+          path: 'featureId',
+          message: 'Workbook command receipt feature id must not have leading or trailing whitespace',
+        },
+        {
+          code: 'invalid_command_receipt',
+          path: 'commandId',
+          message: 'Workbook command receipt command id cannot be empty',
+        },
+        {
+          code: 'invalid_command_receipt',
+          path: 'category',
+          message: 'Workbook command receipt category is invalid',
+        },
+        {
+          code: 'invalid_command_receipt',
+          path: 'previewOps[0]',
+          message: 'Workbook command receipt preview op is invalid',
+        },
+        {
+          code: 'invalid_command_receipt',
+          path: 'appliedOps',
+          message: 'Workbook command receipt applied ops must be an array',
+        },
+        {
+          code: 'invalid_command_receipt',
+          path: 'undo.id',
+          message: 'Workbook command receipt undo id must not have leading or trailing whitespace',
+        },
+        {
+          code: 'invalid_command_receipt',
+          path: 'undo.ops[0]',
+          message: 'Workbook command receipt undo op is invalid',
+        },
+        {
+          code: 'invalid_command_receipt',
+          path: 'changedRanges[0]',
+          message: 'Workbook command receipt changed range is invalid',
+        },
+        {
+          code: 'invalid_command_receipt',
+          path: 'proof',
+          message: 'Workbook command receipt proof must be JSON-safe',
+        },
+        {
+          code: 'invalid_command_receipt',
+          path: 'message',
+          message: 'Workbook command receipt message cannot be empty',
+        },
+        {
+          code: 'invalid_command_receipt',
+          path: 'metadata',
+          message: 'Workbook command receipt metadata must be JSON-safe',
+        },
+        {
+          code: 'invalid_command_receipt',
+          path: 'errors[0]',
+          message: 'Workbook command receipt error must be a string',
+        },
+        {
+          code: 'invalid_command_receipt',
+          path: 'errors[1]',
+          message: 'Workbook command receipt error cannot be empty',
+        },
+      ],
+    })
+
     expect(() =>
       normalizeWorkbookCommandReceipt({
         status: 'applied',
@@ -298,7 +418,7 @@ describe('@bilig/workbook feature api', () => {
           },
         ],
       }),
-    ).toThrowError('preview op is invalid')
+    ).toThrowError('Workbook command receipt is invalid: Workbook command receipt preview op is invalid')
 
     expect(
       isWorkbookCommandReceipt({

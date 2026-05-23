@@ -102,7 +102,7 @@ The main API is intentionally small:
 - descriptions: `describeModel`, `describeRef`, `describePlan`, `describePlanResult`, `describeRuntimeRequirements`, `checkRuntimeRequirements`, `checkRuntimeAdapter`, `describeRunResult`
 - transport data: `isWorkbookRefData`, `toWorkbookRefData`, `collectWorkbookRefData`, `hydrateWorkbookRef`, `hydrateWorkbookRefs`, `toPlanData`, `isPlanData`, `checkPlanData`, `hydratePlanData`, `verifyPlanData`
 - runtime handoff: `runWorkbookPlan`, `runWorkbookAction`, `WorkbookRunAdapter`
-- feature handoff: `defineWorkbookFeaturePlugin`, `checkWorkbookCommandRequest`, `normalizeWorkbookCommandRequest`, `normalizeWorkbookCommandReceipt`, `workbookCommandReceiptOpsMatch`
+- feature handoff: `defineWorkbookFeaturePlugin`, `checkWorkbookCommandRequest`, `normalizeWorkbookCommandRequest`, `checkWorkbookCommandReceipt`, `normalizeWorkbookCommandReceipt`, `workbookCommandReceiptOpsMatch`
 - low-level language: `WorkbookOp`, `WorkbookTxn`, `EngineOp`, `EngineOpBatch`, `isEngineOpBatch`
 
 Stable data helpers are exported for generic tool builders:
@@ -255,6 +255,11 @@ returns the frozen request data for the runtime. The exported command category,
 execution-mode, receipt-status, projection-point, and UI-slot lists let tool
 builders present and validate command contracts without importing a schema
 framework.
+
+Use `checkWorkbookCommandReceipt(data)` before trusting runtime command evidence.
+It returns the same boring `{ status, issues }` shape for receipt fields such as
+`status`, `featureId`, `commandId`, `previewOps`, `appliedOps`, `undo`,
+`changedRanges`, `proof`, `metadata`, and `errors`.
 
 ## Low-Level Ops
 
