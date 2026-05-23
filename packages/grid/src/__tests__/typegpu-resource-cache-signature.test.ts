@@ -2,6 +2,8 @@ import { describe, expect, test } from 'vitest'
 import type { GridRenderTile } from '../renderer-v3/render-tile-source.js'
 import { buildTextQuadsFromRunsWithSpans } from '../renderer-v3/line-text-quad-buffer.js'
 import { DirtyMaskV3 } from '../renderer-v3/tile-damage-index.js'
+import type { WorkbookRenderTilePaneState } from '../renderer-v3/render-tile-pane-state.js'
+import { createGlyphAtlas } from '../renderer-v3/typegpu-atlas-manager.js'
 import {
   areGridRectTileRevisionKeysEqualV3,
   areGridTextTileRevisionKeysEqualV3,
@@ -14,6 +16,8 @@ import {
   shouldSyncGridTextTileResourceV3,
   shouldAttemptAxisOnlyTileTextGeometryResourceSync,
   syncAxisOnlyTileTextGeometryResource,
+  syncTypeGpuTilePaneResourcesV3,
+  TypeGpuTileResourceCacheV3,
   type TypeGpuTileContentResourceEntryV3,
 } from '../renderer-v3/typegpu-tile-buffer-pool.js'
 import { writeTypeGpuVertexBufferSubrange } from '../renderer-v3/typegpu-primitives.js'
@@ -1372,6 +1376,43 @@ describe('typegpu v3 resource cache revision keys', () => {
     expect(Array.from(fallbackPayload.floats)).toEqual(Array.from(fullPayload.floats))
     expect(fallbackPayload.runPayloads[0]?.contentSignature).toBe(fullPayload.runPayloads[0]?.contentSignature)
     expect(fallbackPayload.runPayloads[0]?.contentSignature).not.toBe(basePayload.runPayloads[0]?.contentSignature)
+  })
+
+  test('skips GPU text resources when browser-native text owns workbook text', () => {
+    const tile = createTile({
+      rectCount: 0,
+      rectInstances: new Float32Array(),
+      textCount: 1,
+      textRuns: [createTextRun({ text: 'sharp native text' })],
+    })
+    const pane: WorkbookRenderTilePaneState = {
+      contentOffset: { x: 0, y: 0 },
+      frame: { height: 240, width: 320, x: 0, y: 0 },
+      generation: 1,
+      paneId: 'body',
+      scrollAxes: { x: true, y: true },
+      surfaceSize: { height: 240, width: 320 },
+      tile,
+      viewport: tile.bounds,
+    }
+    const cache = new TypeGpuTileResourceCacheV3()
+    const atlas = createGlyphAtlas()
+
+    syncTypeGpuTilePaneResourcesV3({
+      atlas,
+      drawText: false,
+      panes: [pane],
+      tileResources: cache,
+    })
+
+    const content = cache.peekContent(tile.tileId)
+    expect(content).not.toBeNull()
+    expect(content?.textHandle).toBeNull()
+    expect(content?.textCount).toBe(0)
+    expect(content?.textRunPayloads).toBeNull()
+    expect(content?.textRevisionKey).toEqual(resolveGridTextTileRevisionKeyV3(tile))
+    expect(content?.rectRevisionKey).toEqual(resolveGridRectTileRevisionKeyV3({ tile }))
+    expect(atlas.getTextAtlasPagesStats().glyphCount).toBe(0)
   })
 })
 

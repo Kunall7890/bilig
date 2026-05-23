@@ -20,7 +20,7 @@ import {
   waitForWorkbookReady,
 } from './web-shell-helpers.js'
 
-const DEFAULT_WORKBOOK_CSS_FONT_SIZE = '13.333px'
+const DEFAULT_WORKBOOK_CSS_FONT_SIZE = '13px'
 
 test.beforeEach(async ({ page }) => {
   await installTypeGpuCellReadbackHarness(page)
@@ -69,12 +69,14 @@ test('@browser-ci web app paints deep querystring-selected cell content in the v
   await expect(formulaInput).toHaveValue('Month 1')
   await expect
     .poll(readRendererSurfaceState(page), {
-      message: 'TypeGPU should stay visible after its frame is presented without fallback or native text masking the grid',
+      message: 'TypeGPU geometry should stay visible while browser-native text owns crisp workbook text',
       timeout: 5_000,
     })
     .toMatchObject({
       fallbackMounted: false,
-      textOverlayMounted: false,
+      nativeLayerSource: 'browser-native-text-live',
+      textOverlayMounted: true,
+      typeGpuDrawText: 'false',
       typeGpuMode: 'typegpu-v3',
       typeGpuOpacity: '1',
     })
@@ -161,7 +163,7 @@ test('@browser-ci web app keeps a user click selection after opening from a deep
   await expect.poll(() => page.evaluate(() => new URL(window.location.href).searchParams.get('cell') ?? '')).not.toBe('D53')
 })
 
-test('@browser-ci web app keeps dense accounting-sheet text payloads complete in the TypeGPU layer', async ({
+test('@browser-ci web app keeps dense accounting-sheet text payloads complete in the native text layer', async ({
   page,
   context,
 }, testInfo) => {
@@ -192,28 +194,30 @@ test('@browser-ci web app keeps dense accounting-sheet text payloads complete in
   ).toBe(false)
   await expect
     .poll(readRendererSurfaceState(page), {
-      message: 'dense accounting sheet should render through TypeGPU text, not native text or a fallback canvas',
+      message: 'dense accounting sheet should render with TypeGPU geometry and browser-native text, not a fallback canvas',
       timeout: 5_000,
     })
     .toMatchObject({
       fallbackMounted: false,
-      textOverlayMounted: false,
+      nativeLayerSource: 'browser-native-text-live',
+      textOverlayMounted: true,
+      typeGpuDrawText: 'false',
       typeGpuMode: 'typegpu-v3',
       typeGpuOpacity: '1',
     })
   await expect
-    .poll(readTypeGpuTextRunCount(page), {
-      message: 'visible body tiles must carry dense text payloads; a blank successful frame is a visual regression',
+    .poll(readNativeTextRunCount(page), {
+      message: 'visible native text layer must carry dense text payloads; a blank successful frame is a visual regression',
       timeout: 5_000,
     })
     .toBeGreaterThan(40)
-  await expect(page.getByTestId('grid-native-text-layer')).toHaveCount(0)
+  await expect(page.getByTestId('grid-native-text-layer')).toHaveCount(1)
 
   const selectedCellTextPixels = await pollDarkInteriorPixelsInCell(page, 1, 33, (pixels) => pixels > 8)
   if (selectedCellTextPixels <= 8 && shouldAllowHeadlessWebGpuScreenshotGap()) {
     testInfo.annotations.push({
       description:
-        'Local headless Chromium did not composite the WebGPU text into page.screenshot; TypeGPU text-run proof covers this visual path.',
+        'Local headless Chromium did not composite the edited grid into page.screenshot; native text-run proof covers this visual path.',
       type: 'visual-proof-limited',
     })
   } else {
@@ -249,7 +253,7 @@ test('@browser-ci web app keeps the live cell editor above the TypeGPU grid text
       activeCellNativeTextSuppressed: true,
       editorAboveNativeText: true,
       editorMounted: true,
-      nativeTextLayerMounted: false,
+      nativeTextLayerMounted: true,
     })
 
   await clickVisibleGridBodySlot(page, 2, 1)
@@ -263,7 +267,8 @@ test('@browser-ci web app keeps the live cell editor above the TypeGPU grid text
     .toMatchObject({
       hasHeaderTextPayload: true,
       hasPresentedBodyTextPayload: true,
-      nativeTextLayerMounted: false,
+      nativeTextLayerMounted: true,
+      typeGpuDrawText: 'false',
     })
 })
 
@@ -296,10 +301,16 @@ test('@browser-ci web app suppresses TypeGPU overflow text while editing a tile-
 
   await grid.press('F2')
   await expect(page.getByTestId('cell-editor-input')).toHaveValue(overflowText)
-  await expect(page.getByTestId('grid-native-text-layer')).toHaveCount(0)
+  await expect(page.getByTestId('grid-native-text-layer')).toHaveCount(1)
+  await expect
+    .poll(readNativeTextLayerText(page), {
+      message: 'native text layer must suppress the active overflow cell while the editor owns it',
+      timeout: 5_000,
+    })
+    .not.toContain(overflowText)
   await expect
     .poll(readTypeGpuTextRunCount(page), {
-      message: 'TypeGPU must not keep remote overflow text visible beside the live editor',
+      message: 'TypeGPU source payload must suppress the active overflow cell beside the live editor',
       timeout: 5_000,
     })
     .toBe(0)
@@ -317,14 +328,14 @@ test('@browser-ci web app keeps rendered edits, clears, headers, and fills coher
   await expect(page.getByTestId('cell-editor-input')).toHaveValue(editedText)
   await expect
     .poll(readEditorLayerState(page, { col: 1, row: 1 }), {
-      message: 'active editor text must replace, not duplicate, the committed TypeGPU text for that cell',
+      message: 'active editor text must replace, not duplicate, the committed grid text for that cell',
       timeout: 5_000,
     })
     .toMatchObject({
       activeCellNativeTextSuppressed: true,
       editorAboveNativeText: true,
       editorMounted: true,
-      nativeTextLayerMounted: false,
+      nativeTextLayerMounted: true,
     })
 
   await clickProductCell(page, 2, 1)
@@ -337,14 +348,16 @@ test('@browser-ci web app keeps rendered edits, clears, headers, and fills coher
     .toMatchObject({
       hasHeaderTextPayload: true,
       hasPresentedBodyTextPayload: true,
-      nativeTextLayerMounted: false,
+      nativeTextLayerMounted: true,
+      typeGpuDrawText: 'false',
     })
 
   await clickProductCell(page, 1, 1)
   await page.keyboard.press('Delete')
   await expect(page.getByTestId('formula-input')).toHaveValue('')
   await clickProductCell(page, 3, 2)
-  await expect(page.getByTestId('grid-native-text-layer')).toHaveCount(0)
+  await expect(page.getByTestId('grid-native-text-layer')).toHaveCount(1)
+  await expect.poll(readNativeTextLayerText(page)).not.toContain(editedText)
 
   await clickProductCell(page, 4, 5)
   await pickToolbarPresetColor(page, 'Fill color', 'green')
@@ -366,7 +379,8 @@ test('@browser-ci web app keeps rendered edits, clears, headers, and fills coher
   await page.reload({ waitUntil: 'domcontentloaded' })
   await waitForWorkbookReady(page)
   await clickProductCell(page, 3, 2)
-  await expect(page.getByTestId('grid-native-text-layer')).toHaveCount(0)
+  await expect(page.getByTestId('grid-native-text-layer')).toHaveCount(1)
+  await expect.poll(readNativeTextLayerText(page)).not.toContain(editedText)
   await expect
     .poll(() => countGreenFillReadbackPixelsInCell(page, 4, 5), {
       message: 'toolbar fill color must survive reload and stay visibly painted',
@@ -400,7 +414,8 @@ test('@browser-ci web app preserves visible fill while Delete clears only cell c
   await clickProductCell(page, 1, 1)
   await grid.press('Delete')
   await expect(formulaInput).toHaveValue('')
-  await expect(page.getByTestId('grid-native-text-layer')).toHaveCount(0)
+  await expect(page.getByTestId('grid-native-text-layer')).toHaveCount(1)
+  await expect.poll(readNativeTextLayerText(page)).not.toContain(text)
 
   const postDeleteFillSamples = await sampleGreenFillPixelsAcrossFrames(page, 1, 1, 4)
   expect(
@@ -430,7 +445,7 @@ test('@browser-ci web app preserves visible fill while Delete clears only cell c
     viewport.scrollLeft = 220
     viewport.dispatchEvent(new Event('scroll', { bubbles: true }))
   })
-  await expect(page.getByTestId('grid-native-text-layer')).toHaveCount(0)
+  await expect(page.getByTestId('grid-native-text-layer')).toHaveCount(1)
 
   await scrollViewport.evaluate((viewport) => {
     viewport.scrollTop = 0
@@ -439,7 +454,8 @@ test('@browser-ci web app preserves visible fill while Delete clears only cell c
   })
   await clickProductCell(page, 1, 1)
   await expect(formulaInput).toHaveValue('')
-  await expect(page.getByTestId('grid-native-text-layer')).toHaveCount(0)
+  await expect(page.getByTestId('grid-native-text-layer')).toHaveCount(1)
+  await expect.poll(readNativeTextLayerText(page)).not.toContain(text)
   await expect
     .poll(() => countGreenFillReadbackPixelsInCell(page, 1, 1), {
       message: 'formatted deleted cell must survive tile eviction and return without ghost content',
@@ -549,12 +565,14 @@ test('@browser-ci web app remaps visible TypeGPU cells exactly while scrolling i
   await expect(formulaInput).toHaveValue('resident-visible-b2')
   await expect
     .poll(readRendererSurfaceState(page), {
-      message: 'resident remap proof must stay on the TypeGPU V3 renderer without native or fallback masking',
+      message: 'resident remap proof must stay on TypeGPU geometry with browser-native text and no fallback masking',
       timeout: 5_000,
     })
     .toMatchObject({
       fallbackMounted: false,
-      textOverlayMounted: false,
+      nativeLayerSource: 'browser-native-text-live',
+      textOverlayMounted: true,
+      typeGpuDrawText: 'false',
       typeGpuMode: 'typegpu-v3',
       typeGpuOpacity: '1',
     })
@@ -1045,7 +1063,9 @@ function readRenderRevisionState(page: Page): () => Promise<{
 
 function readRendererSurfaceState(page: Page): () => Promise<{
   readonly fallbackMounted: boolean
+  readonly nativeLayerSource: string | null
   readonly textOverlayMounted: boolean
+  readonly typeGpuDrawText: string | null
   readonly typeGpuMode: string | null
   readonly typeGpuOpacity: string | null
 }> {
@@ -1056,10 +1076,24 @@ function readRendererSurfaceState(page: Page): () => Promise<{
       const textOverlay = document.querySelector('[data-testid="grid-native-text-layer"]')
       return {
         fallbackMounted: fallback instanceof HTMLCanvasElement,
+        nativeLayerSource: typeGpu instanceof HTMLElement ? typeGpu.getAttribute('data-v3-native-layer-source') : null,
         textOverlayMounted: textOverlay instanceof HTMLElement,
+        typeGpuDrawText: typeGpu instanceof HTMLElement ? typeGpu.getAttribute('data-v3-draw-text') : null,
         typeGpuMode: typeGpu instanceof HTMLCanvasElement ? typeGpu.getAttribute('data-renderer-mode') : null,
         typeGpuOpacity: typeGpu instanceof HTMLElement ? getComputedStyle(typeGpu).opacity : null,
       }
+    })
+}
+
+function readNativeTextLayerText(page: Page): () => Promise<string> {
+  return async () => await page.evaluate(() => document.querySelector('[data-testid="grid-native-text-layer"]')?.textContent ?? '')
+}
+
+function readNativeTextRunCount(page: Page): () => Promise<number> {
+  return async () =>
+    await page.evaluate(() => {
+      const nativeLayer = document.querySelector('[data-testid="grid-native-text-layer"]')
+      return nativeLayer instanceof HTMLElement ? Number(nativeLayer.getAttribute('data-v3-native-text-run-count') ?? '0') : 0
     })
 }
 
@@ -1079,6 +1113,7 @@ function readTypeGpuPresentationState(page: Page): () => Promise<{
   readonly hasHeaderTextPayload: boolean
   readonly hasPresentedBodyTextPayload: boolean
   readonly nativeTextLayerMounted: boolean
+  readonly typeGpuDrawText: string | null
 }> {
   return async () =>
     await page.evaluate(() => {
@@ -1089,6 +1124,7 @@ function readTypeGpuPresentationState(page: Page): () => Promise<{
         hasHeaderTextPayload: readNumberAttribute('data-v3-header-text-run-count') > 0,
         hasPresentedBodyTextPayload: readNumberAttribute('data-v3-presented-text-run-count') > 0,
         nativeTextLayerMounted: document.querySelector('[data-testid="grid-native-text-layer"]') instanceof HTMLElement,
+        typeGpuDrawText: typeGpu instanceof HTMLElement ? typeGpu.getAttribute('data-v3-draw-text') : null,
       }
     })
 }

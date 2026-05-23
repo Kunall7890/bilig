@@ -72,7 +72,8 @@ export interface TextContextConfigurationTarget {
 
 const ATLAS_DIRTY_PAGE_SIZE = 32
 const ATLAS_PAGE_ID_STRIDE = 65536
-export const MIN_GLYPH_ATLAS_SCALE = 2
+export const GLYPH_ATLAS_EDGE_PADDING_CSS_PX = 1
+export const MIN_GLYPH_ATLAS_SCALE = 1
 export const MAX_GLYPH_ATLAS_SCALE = 4
 export const WORKBOOK_ATLAS_TEXT_RENDERING: WorkbookTextRendering = 'optimizeLegibility'
 
@@ -266,14 +267,17 @@ export function createGlyphAtlas(input: { initialWidth?: number; initialHeight?:
     }
 
     const metrics = measureGlyph(font, glyph)
-    if (cursorX + metrics.width + padding > width / scale) {
+    const glyphWidth = metrics.width + GLYPH_ATLAS_EDGE_PADDING_CSS_PX * 2
+    const glyphHeight = metrics.height + GLYPH_ATLAS_EDGE_PADDING_CSS_PX * 2
+
+    if (cursorX + glyphWidth + padding > width / scale) {
       cursorX = padding
       cursorY += rowHeight + padding
       rowHeight = 0
     }
 
-    if ((cursorY + metrics.height + padding) * scale > height) {
-      growAtlas(width, (cursorY + metrics.height + padding) * scale)
+    if ((cursorY + glyphHeight + padding) * scale > height) {
+      growAtlas(width, (cursorY + glyphHeight + padding) * scale)
     }
 
     const page = resolveDirtyPageForPhysicalPoint(cursorX * scale, cursorY * scale, width, height)
@@ -292,21 +296,21 @@ export function createGlyphAtlas(input: { initialWidth?: number; initialHeight?:
       glyph,
       x: cursorX,
       y: cursorY,
-      originOffsetX: metrics.originOffsetX,
-      width: metrics.width,
-      height: metrics.height,
+      originOffsetX: metrics.originOffsetX + GLYPH_ATLAS_EDGE_PADDING_CSS_PX,
+      width: glyphWidth,
+      height: glyphHeight,
       advance: metrics.advance,
-      baseline: metrics.baseline,
+      baseline: metrics.baseline + GLYPH_ATLAS_EDGE_PADDING_CSS_PX,
       u0: (cursorX * scale) / width,
       v0: (cursorY * scale) / height,
-      u1: ((cursorX + metrics.width) * scale) / width,
-      v1: ((cursorY + metrics.height) * scale) / height,
+      u1: ((cursorX + glyphWidth) * scale) / width,
+      v1: ((cursorY + glyphHeight) * scale) / height,
     }
 
     version += 1
     if (context) {
       context.font = font
-      context.fillText(glyph, entry.x + entry.originOffsetX, entry.y + metrics.baseline)
+      context.fillText(glyph, entry.x + entry.originOffsetX, entry.y + entry.baseline)
     }
     atlasPages.registerGlyph({
       glyphId,
@@ -319,8 +323,8 @@ export function createGlyphAtlas(input: { initialWidth?: number; initialHeight?:
     markGlyphPageDirty(entry)
 
     entries.set(key, entry)
-    cursorX += metrics.width + padding
-    rowHeight = Math.max(rowHeight, metrics.height)
+    cursorX += glyphWidth + padding
+    rowHeight = Math.max(rowHeight, glyphHeight)
     return entry
   }
 

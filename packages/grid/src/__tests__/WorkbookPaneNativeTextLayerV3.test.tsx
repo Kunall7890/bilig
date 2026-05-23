@@ -27,8 +27,8 @@ function createRun(overrides: Partial<TextQuadRun> = {}): TextQuadRun {
     clipX: 8,
     clipY: 4,
     color: '#1f2933',
-    font: '400 14.667px Arial, sans-serif',
-    fontSize: 14.667,
+    font: '400 15px Arial, sans-serif',
+    fontSize: 15,
     height: 22,
     strike: false,
     text: 'Annual software',
@@ -127,7 +127,7 @@ describe('WorkbookPaneNativeTextLayerV3', () => {
     })
     expect(Number(innerStyle.left)).toBeCloseTo(-8.1)
     expect(Number(innerStyle.paddingLeft)).toBeCloseTo(8.1)
-    expect(Number(innerStyle.top)).toBeCloseTo(-1.5)
+    expect(Number(innerStyle.top)).toBeCloseTo(-2)
     expectDprAligned(visibleClip!.outerLeft + Number(innerStyle.left) + Number(innerStyle.paddingLeft), dpr)
     expectDprAligned(visibleClip!.outerTop + Number(innerStyle.top), dpr)
   })
@@ -180,17 +180,17 @@ describe('WorkbookPaneNativeTextLayerV3', () => {
       fontFamily: 'Arial, sans-serif',
       fontFeatureSettings: 'normal',
       fontOpticalSizing: 'auto',
-      fontSize: 14.667,
+      fontSize: 15,
       fontSynthesis: 'none',
       fontStyle: 'normal',
       fontVariantNumeric: 'tabular-nums',
       fontWeight: 400,
-      height: 17.5,
+      height: 18,
       letterSpacing: 0,
-      lineHeight: '17.5px',
+      lineHeight: '18px',
       textDecorationLine: 'underline',
       textAlign: 'right',
-      top: -1.5,
+      top: -2,
       whiteSpace: 'pre',
     })
     expect(style).not.toHaveProperty('MozOsxFontSmoothing')
@@ -202,18 +202,16 @@ describe('WorkbookPaneNativeTextLayerV3', () => {
     expect(resolveNativeTextRunInnerStyleV3({ dpr: 2, run: createRun({ wrap: true }) })).toMatchObject({
       display: 'block',
       height: 22,
-      lineHeight: '17.5px',
+      lineHeight: '18px',
       top: -4,
       whiteSpace: 'pre-wrap',
     })
   })
 
   test('parses styled spreadsheet font strings into stable CSS longhands', () => {
-    expect(
-      resolveNativeTextRunFontStyleV3(createRun({ font: 'italic 700 18.667px Aptos, Arial, sans-serif', fontSize: undefined })),
-    ).toEqual({
+    expect(resolveNativeTextRunFontStyleV3(createRun({ font: 'italic 700 19px Aptos, Arial, sans-serif', fontSize: undefined }))).toEqual({
       fontFamily: 'Aptos, Arial, sans-serif',
-      fontSize: 18.667,
+      fontSize: 19,
       fontStyle: 'italic',
       fontWeight: 700,
     })

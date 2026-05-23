@@ -174,25 +174,29 @@ export class TypeGpuLayerResourceCacheV3 {
 }
 
 export function syncTypeGpuHeaderResourcesV3(input: {
-  readonly artifacts: TypeGpuRendererArtifacts
   readonly atlas: ReturnType<typeof createGlyphAtlas>
+  readonly drawText?: boolean | undefined
   readonly layerResources: TypeGpuLayerResourceCacheV3
   readonly headerPanes: readonly GridHeaderPaneState[]
 }): void {
   input.headerPanes.forEach((pane) => {
     const entry = input.layerResources.get(resolveWorkbookHeaderLayerKeyV3(pane))
-    const textSignature = resolveHeaderTextSignatureV3({
-      atlasGeometryVersion: input.atlas.getGlyphGeometryVersion(),
-      pane,
-    })
-    if (entry.textSignature !== textSignature) {
-      syncHeaderTextResource({
-        atlas: input.atlas,
-        entry,
-        layerResources: input.layerResources,
+    if (input.drawText === false) {
+      clearHeaderTextResource(input.layerResources, entry)
+    } else {
+      const textSignature = resolveHeaderTextSignatureV3({
+        atlasGeometryVersion: input.atlas.getGlyphGeometryVersion(),
         pane,
-        textSignature,
       })
+      if (entry.textSignature !== textSignature) {
+        syncHeaderTextResource({
+          atlas: input.atlas,
+          entry,
+          layerResources: input.layerResources,
+          pane,
+          textSignature,
+        })
+      }
     }
     const rectSignature = resolveHeaderRectSignatureV3({
       decorationRects: entry.decorationRects ?? [],
@@ -207,6 +211,15 @@ export function syncTypeGpuHeaderResourcesV3(input: {
       })
     }
   })
+}
+
+function clearHeaderTextResource(layerResources: TypeGpuLayerResourceCacheV3, entry: TypeGpuLayerResourceEntryV3): void {
+  releaseTextBuffer(layerResources, entry)
+  entry.decorationRects = null
+  entry.textBindGroup = null
+  entry.textBindGroupAtlasVersion = -1
+  entry.textCount = 0
+  entry.textSignature = null
 }
 
 export function syncTypeGpuOverlayResourcesV3(input: {

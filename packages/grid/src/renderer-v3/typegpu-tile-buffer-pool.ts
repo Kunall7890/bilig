@@ -280,8 +280,8 @@ export class TypeGpuTileResourceCacheV3 {
 }
 
 export function syncTypeGpuTilePaneResourcesV3(input: {
-  readonly artifacts: TypeGpuRendererArtifacts
   readonly atlas: ReturnType<typeof createGlyphAtlas>
+  readonly drawText?: boolean | undefined
   readonly tileResources: TypeGpuTileResourceCacheV3
   readonly panes: readonly WorkbookRenderTilePaneState[]
   readonly retainPanes?: readonly WorkbookRenderTilePaneState[] | undefined
@@ -295,41 +295,49 @@ export function syncTypeGpuTilePaneResourcesV3(input: {
   input.panes.forEach((pane) => {
     const content = input.tileResources.getContent(resolveWorkbookTileContentBufferKeyV3(pane))
     const textRevisionKey = resolveGridTextTileRevisionKeyV3(pane.tile)
-    const atlasGeometryVersion = input.atlas.getGlyphGeometryVersion()
-    const atlasDependencyVersion = input.atlas.getTextAtlasPagesSeq()
-    const shouldValidateGlyphDependencies =
-      content.textAtlasDependencyVersion >= 0 && content.textAtlasDependencyVersion !== atlasDependencyVersion
-    const missingGlyphRunSpans = shouldValidateGlyphDependencies
-      ? resolveMissingTextGlyphRunSpansV3({
-          atlas: input.atlas,
-          content,
-        })
-      : []
-    const atlasGeometryResync =
-      areGridTextTileRevisionKeysEqualV3(content.textRevisionKey, textRevisionKey) &&
-      content.textAtlasGeometryVersion >= 0 &&
-      content.textAtlasGeometryVersion !== atlasGeometryVersion
-    if (
-      shouldSyncGridTextTileResourceV3({
-        atlasGeometryVersion,
+    if (input.drawText === false) {
+      clearTileTextResource({
         content,
-        missingGlyphDependencies: missingGlyphRunSpans.length > 0,
-        textRevisionKey,
-        tile: pane.tile,
-      })
-    ) {
-      syncTileTextResource({
-        atlas: input.atlas,
-        atlasDependencyVersion,
-        atlasGeometryResync,
-        content,
-        missingGlyphRunSpans,
-        pane,
         textRevisionKey,
         tileResources: input.tileResources,
       })
     } else {
-      content.textRevisionKey = textRevisionKey
+      const atlasGeometryVersion = input.atlas.getGlyphGeometryVersion()
+      const atlasDependencyVersion = input.atlas.getTextAtlasPagesSeq()
+      const shouldValidateGlyphDependencies =
+        content.textAtlasDependencyVersion >= 0 && content.textAtlasDependencyVersion !== atlasDependencyVersion
+      const missingGlyphRunSpans = shouldValidateGlyphDependencies
+        ? resolveMissingTextGlyphRunSpansV3({
+            atlas: input.atlas,
+            content,
+          })
+        : []
+      const atlasGeometryResync =
+        areGridTextTileRevisionKeysEqualV3(content.textRevisionKey, textRevisionKey) &&
+        content.textAtlasGeometryVersion >= 0 &&
+        content.textAtlasGeometryVersion !== atlasGeometryVersion
+      if (
+        shouldSyncGridTextTileResourceV3({
+          atlasGeometryVersion,
+          content,
+          missingGlyphDependencies: missingGlyphRunSpans.length > 0,
+          textRevisionKey,
+          tile: pane.tile,
+        })
+      ) {
+        syncTileTextResource({
+          atlas: input.atlas,
+          atlasDependencyVersion,
+          atlasGeometryResync,
+          content,
+          missingGlyphRunSpans,
+          pane,
+          textRevisionKey,
+          tileResources: input.tileResources,
+        })
+      } else {
+        content.textRevisionKey = textRevisionKey
+      }
     }
     const rectRevisionKey = resolveGridRectTileRevisionKeyV3({
       decorationRects: content.decorationRects ?? [],
@@ -347,6 +355,26 @@ export function syncTypeGpuTilePaneResourcesV3(input: {
     }
     input.tileResources.getPlacement(resolveWorkbookTilePlacementBufferKeyV3(pane))
   })
+}
+
+function clearTileTextResource(input: {
+  readonly content: TypeGpuTileContentResourceEntryV3
+  readonly textRevisionKey: TypeGpuTileTextRevisionKeyV3
+  readonly tileResources: TypeGpuTileResourceCacheV3
+}): void {
+  releaseTextBuffer(input.tileResources, input.content)
+  input.content.decorationCellKeys = null
+  input.content.decorationRects = null
+  input.content.textAtlasDependencyVersion = -1
+  input.content.textAtlasGeometryVersion = -1
+  input.content.textCount = 0
+  input.content.textGlyphIds = null
+  input.content.textGlyphPageIds = null
+  input.content.textRunCount = 0
+  input.content.textRunGlyphIds = null
+  input.content.textRunPayloads = null
+  input.content.textRunQuadSpans = null
+  input.content.textRevisionKey = input.textRevisionKey
 }
 
 export function ensureTilePlacementSurfaceBindingsV3(

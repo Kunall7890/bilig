@@ -92,6 +92,7 @@ export function drawWorkbookTypeGpuTileFrameV3(input: {
   const retainPanes = input.preloadTilePanes?.length ? [...input.preloadTilePanes, ...input.tilePanes] : input.tilePanes
   const resourcePanes = input.syncPreloadPanes === false ? input.tilePanes : retainPanes
   const headerPanes = input.headerPanes ?? []
+  const drawText = input.drawText ?? true
   const atlasScaleChanged = input.backend.atlas.setScale(input.surface.dpr)
   const preserveResidentBodyTiles =
     !atlasScaleChanged &&
@@ -108,8 +109,8 @@ export function drawWorkbookTypeGpuTileFrameV3(input: {
       visiblePanes: input.tilePanes,
     })
     syncTypeGpuTilePaneResourcesV3({
-      artifacts: input.backend.artifacts,
       atlas: input.backend.atlas,
+      drawText,
       panes: resourcePanes,
       retainPanes,
       tileResources: input.backend.tileResources,
@@ -121,8 +122,8 @@ export function drawWorkbookTypeGpuTileFrameV3(input: {
     overlay: input.overlay ?? null,
   })
   syncTypeGpuHeaderResourcesV3({
-    artifacts: input.backend.artifacts,
     atlas: input.backend.atlas,
+    drawText,
     headerPanes,
     layerResources: input.backend.layerResources,
   })
@@ -130,9 +131,11 @@ export function drawWorkbookTypeGpuTileFrameV3(input: {
     layerResources: input.backend.layerResources,
     overlay: input.overlay ?? null,
   })
-  syncTypeGpuAtlasResources(input.backend.artifacts, input.backend.atlas)
+  if (drawText) {
+    syncTypeGpuAtlasResources(input.backend.artifacts, input.backend.atlas)
+  }
   const drawPanes = resolveTypeGpuDrawTilePanesV3({
-    drawText: input.drawText ?? true,
+    drawText,
     onTileMiss: (tileKey) => noteTypeGpuTileMiss(String(tileKey)),
     panes: input.tilePanes,
     residency: input.backend.tileResidency,
@@ -140,7 +143,7 @@ export function drawWorkbookTypeGpuTileFrameV3(input: {
   })
   return drawTypeGpuTilePanesV3({
     artifacts: input.backend.artifacts,
-    drawText: input.drawText ?? true,
+    drawText,
     headerPanes,
     layerResources: input.backend.layerResources,
     overlay: input.overlay ?? null,

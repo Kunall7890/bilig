@@ -189,11 +189,12 @@ export const WorkbookPaneRendererV3 = memo(function WorkbookPaneRendererV3({
   )
   const tileTextRunCount = countTilePaneTextRunsV3(typeGpuTilePanes)
   const showTypeGpuCanvas = backendStatus !== 'unavailable'
-  const nativeLayerSource = showTypeGpuCanvas ? 'none' : 'backend-unavailable-live'
+  const typeGpuDrawText = false
+  const nativeLayerSource = showTypeGpuCanvas ? 'browser-native-text-live' : 'backend-unavailable-live'
   const presentedHeaderPanes = presentedVisualFrame?.headerPanes ?? []
   const presentedTilePanes = presentedVisualFrame?.tilePanes ?? []
-  const nativeHeaderPanes = showTypeGpuCanvas ? [] : headerPanes
-  const nativeTilePanes = showTypeGpuCanvas ? [] : tilePanes
+  const nativeHeaderPanes = headerPanes
+  const nativeTilePanes = tilePanes
   const presentedHeaderTextRunCount = countHeaderPaneTextRunsV3(presentedHeaderPanes)
   const presentedTileTextRunCount = countTilePaneTextRunsV3(presentedTilePanes)
   const nativeHeaderTextRunCount = countHeaderPaneTextRunsV3(nativeHeaderPanes)
@@ -205,7 +206,7 @@ export const WorkbookPaneRendererV3 = memo(function WorkbookPaneRendererV3({
     hostRuntime.updateProps({
       active,
       cameraStore,
-      drawText: true,
+      drawText: typeGpuDrawText,
       geometry,
       headerPanes,
       host,
@@ -228,6 +229,7 @@ export const WorkbookPaneRendererV3 = memo(function WorkbookPaneRendererV3({
     preloadTilePanes,
     renderRevisionSnapshot,
     scrollTransformStore,
+    typeGpuDrawText,
     typeGpuTilePanes,
   ])
 
@@ -287,7 +289,7 @@ export const WorkbookPaneRendererV3 = memo(function WorkbookPaneRendererV3({
           data-v3-current-text-signature={currentTextSignature}
           data-v3-current-viewport-revision={currentSceneOwnershipEpoch?.viewportRevision ?? ''}
           data-v3-current-workbook-revision={currentSceneOwnershipEpoch?.workbookRevision ?? ''}
-          data-v3-draw-text="true"
+          data-v3-draw-text={typeGpuDrawText ? 'true' : 'false'}
           data-v3-frame-proof-status={frameProofStatus}
           data-v3-frame-proof-signature={frameProofSignature}
           data-v3-has-presented-frame={hasPresentedFrame ? 'true' : 'false'}

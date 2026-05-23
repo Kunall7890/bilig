@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 import { describe, expect, it } from 'vitest'
 import {
+  GLYPH_ATLAS_EDGE_PADDING_CSS_PX,
   WORKBOOK_ATLAS_TEXT_RENDERING,
   configureTextContext,
   createGlyphAtlas,
@@ -28,8 +29,8 @@ describe('glyph-atlas', () => {
   })
 
   it('resolves atlas scale from the active device pixel ratio bucket', () => {
-    expect(resolveGlyphAtlasScale(0)).toBe(2)
-    expect(resolveGlyphAtlasScale(1)).toBe(2)
+    expect(resolveGlyphAtlasScale(0)).toBe(1)
+    expect(resolveGlyphAtlasScale(1)).toBe(1)
     expect(resolveGlyphAtlasScale(1.25)).toBe(2)
     expect(resolveGlyphAtlasScale(2)).toBe(2)
     expect(resolveGlyphAtlasScale(99)).toBe(4)
@@ -43,6 +44,38 @@ describe('glyph-atlas', () => {
     expect(second.key).toBe(first.key)
     expect(second.x).toBe(first.x)
     expect(second.y).toBe(first.y)
+  })
+
+  it('keeps a transparent gutter around glyphs so GPU filtering does not soften text edges', () => {
+    const originalOffscreenCanvas = globalThis.OffscreenCanvas
+    Object.defineProperty(globalThis, 'OffscreenCanvas', {
+      configurable: true,
+      value: class {
+        height: number
+        width: number
+        constructor(width: number, height: number) {
+          this.width = width
+          this.height = height
+        }
+        getContext() {
+          return null
+        }
+      },
+    })
+    try {
+      const atlas = createGlyphAtlas({ scale: 1 })
+      const entry = atlas.intern('400 10px Geist', 'A')
+
+      expect(entry.originOffsetX).toBe(GLYPH_ATLAS_EDGE_PADDING_CSS_PX)
+      expect(entry.baseline).toBe(10 + GLYPH_ATLAS_EDGE_PADDING_CSS_PX)
+      expect(entry.width).toBe(6 + GLYPH_ATLAS_EDGE_PADDING_CSS_PX * 2)
+      expect(entry.height).toBe(12 + GLYPH_ATLAS_EDGE_PADDING_CSS_PX * 2)
+    } finally {
+      Object.defineProperty(globalThis, 'OffscreenCanvas', {
+        configurable: true,
+        value: originalOffscreenCanvas,
+      })
+    }
   })
 
   it('tracks atlas version after adding glyphs', () => {
@@ -138,8 +171,8 @@ describe('glyph-atlas', () => {
     const geometryVersion = atlas.getGlyphGeometryVersion()
     const version = atlas.getVersion()
 
-    expect(atlas.getScale()).toBe(2)
-    expect(atlas.getSize()).toEqual({ height: 1024, width: 1024 })
+    expect(atlas.getScale()).toBe(1)
+    expect(atlas.getSize()).toEqual({ height: 512, width: 512 })
     expect(atlas.setScale(1)).toBe(false)
     expect(atlas.getGlyphGeometryVersion()).toBe(geometryVersion)
 
