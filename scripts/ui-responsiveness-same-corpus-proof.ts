@@ -22,9 +22,13 @@ export interface SameCorpusScenarioProof {
   readonly googleP95Ms: number
   readonly microsoftExcelWebMeanMs?: number
   readonly microsoftExcelWebP95Ms?: number
+  /** Google Sheets time divided by Bilig time. Values >= 10 mean Bilig is at least 10x faster. */
   readonly meanRatio: number
+  /** Google Sheets p95 divided by Bilig p95. Values >= 10 mean Bilig is at least 10x faster at p95. */
   readonly p95Ratio: number
+  /** Microsoft Excel Web time divided by Bilig time. Values >= 10 mean Bilig is at least 10x faster. */
   readonly microsoftExcelWebMeanRatio?: number
+  /** Microsoft Excel Web p95 divided by Bilig p95. Values >= 10 mean Bilig is at least 10x faster at p95. */
   readonly microsoftExcelWebP95Ratio?: number
   readonly screenshotProof: SameCorpusScreenshotProof
   readonly pixelGridProof: SameCorpusPixelGridProof
@@ -494,12 +498,12 @@ function buildScenarioProof(args: {
       ? {
           microsoftExcelWebMeanMs: args.microsoftExcelWebTiming.mean,
           microsoftExcelWebP95Ms: args.microsoftExcelWebTiming.p95,
-          microsoftExcelWebMeanRatio: ratio(args.biligTiming.mean, args.microsoftExcelWebTiming.mean),
-          microsoftExcelWebP95Ratio: ratio(args.biligTiming.p95, args.microsoftExcelWebTiming.p95),
+          microsoftExcelWebMeanRatio: ratio(args.microsoftExcelWebTiming.mean, args.biligTiming.mean),
+          microsoftExcelWebP95Ratio: ratio(args.microsoftExcelWebTiming.p95, args.biligTiming.p95),
         }
       : {}),
-    meanRatio: ratio(args.biligTiming.mean, args.googleSheetsTiming.mean),
-    p95Ratio: ratio(args.biligTiming.p95, args.googleSheetsTiming.p95),
+    meanRatio: ratio(args.googleSheetsTiming.mean, args.biligTiming.mean),
+    p95Ratio: ratio(args.googleSheetsTiming.p95, args.biligTiming.p95),
     screenshotProof: {
       captured: requiredProducts.every((product) => screenshotProducts.has(product)),
       requiredProducts,

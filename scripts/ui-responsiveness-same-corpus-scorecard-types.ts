@@ -28,9 +28,13 @@ export interface SameCorpusScenarioCaseFields {
   readonly googleP95Ms: number
   readonly microsoftExcelWebMeanMs?: number
   readonly microsoftExcelWebP95Ms?: number
+  /** Google Sheets time divided by Bilig time. Values >= 10 mean Bilig is at least 10x faster. */
   readonly meanRatio: number
+  /** Google Sheets p95 divided by Bilig p95. Values >= 10 mean Bilig is at least 10x faster at p95. */
   readonly p95Ratio: number
+  /** Microsoft Excel Web time divided by Bilig time. Values >= 10 mean Bilig is at least 10x faster. */
   readonly microsoftExcelWebMeanRatio?: number
+  /** Microsoft Excel Web p95 divided by Bilig p95. Values >= 10 mean Bilig is at least 10x faster at p95. */
   readonly microsoftExcelWebP95Ratio?: number
   readonly screenshotProof: SameCorpusScreenshotProof
   readonly pixelGridProof: SameCorpusPixelGridProof

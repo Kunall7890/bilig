@@ -60,4 +60,41 @@ describe('same-corpus UI dominance status', () => {
       rmSync(dir, { recursive: true, force: true })
     }
   })
+
+  it('does not infer legacy 10x status from ambiguous ratio fields', () => {
+    const dir = mkdtempSync(join(tmpdir(), 'bilig-same-corpus-status-'))
+    try {
+      const capturePath = join(dir, 'same-corpus-capture.json')
+      writeFileSync(
+        capturePath,
+        `${JSON.stringify({
+          schemaVersion: 1,
+          suite: 'ui-responsiveness-same-corpus-capture',
+          sampleCount: 3,
+          limitations: [],
+          cases: requiredUiResponsivenessSameCorpusWorkloads.map((workload) => ({
+            workload,
+            meanRatio: 100,
+            p95Ratio: 100,
+            pixelGridProof: { captured: true },
+          })),
+        })}\n`,
+      )
+
+      const status = readUiSameCorpusCaptureArtifactStatus({
+        path: capturePath,
+        displayPath: '.cache/ui-responsiveness/same-corpus-capture.json',
+      })
+
+      expect(status.legacyCapture).toMatchObject({
+        caseCount: requiredUiResponsivenessSameCorpusWorkloads.length,
+        missingRequiredWorkloads: [],
+        pixelGridProofCaseCount: requiredUiResponsivenessSameCorpusWorkloads.length,
+        tenXMeanAndP95CaseCount: 0,
+        googleSheetsTenXRequirementSatisfied: false,
+      })
+    } finally {
+      rmSync(dir, { recursive: true, force: true })
+    }
+  })
 })

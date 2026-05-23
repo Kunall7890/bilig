@@ -480,13 +480,7 @@ function buildUiSameCorpusCaptureReadinessErrors(
 }
 
 function legacyCaseHasTenXMeanAndP95(value: Record<string, unknown>): boolean {
-  if (value['tenXMeanAndP95AgainstGoogleSheets'] === true) {
-    return true
-  }
-  const scenarioProof = isRecord(value['scenarioProof']) ? value['scenarioProof'] : null
-  const meanRatio = finiteNumberFromField(value, 'meanRatio') ?? (scenarioProof ? finiteNumberFromField(scenarioProof, 'meanRatio') : null)
-  const p95Ratio = finiteNumberFromField(value, 'p95Ratio') ?? (scenarioProof ? finiteNumberFromField(scenarioProof, 'p95Ratio') : null)
-  return meanRatio !== null && p95Ratio !== null && meanRatio >= 10 && p95Ratio >= 10
+  return value['tenXMeanAndP95AgainstGoogleSheets'] === true
 }
 
 function legacyCaseHasPixelGridProof(value: Record<string, unknown>): boolean {
@@ -495,11 +489,6 @@ function legacyCaseHasPixelGridProof(value: Record<string, unknown>): boolean {
   const nestedProof = scenarioProof && isRecord(scenarioProof['pixelGridProof']) ? scenarioProof['pixelGridProof'] : null
   const proof = directProof ?? nestedProof
   return proof?.['captured'] === true
-}
-
-function finiteNumberFromField(value: Record<string, unknown>, field: string): number | null {
-  const fieldValue = value[field]
-  return typeof fieldValue === 'number' && Number.isFinite(fieldValue) ? fieldValue : null
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
