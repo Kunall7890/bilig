@@ -20,7 +20,7 @@ import {
   waitForWorkbookReady,
 } from './web-shell-helpers.js'
 
-const DEFAULT_WORKBOOK_CSS_FONT_SIZE = '13.3333px'
+const DEFAULT_WORKBOOK_CSS_FONT_SIZE = '14px'
 
 test.beforeEach(async ({ page }) => {
   await installTypeGpuCellReadbackHarness(page)
@@ -217,7 +217,7 @@ test('@browser-ci web app keeps dense accounting-sheet text payloads complete in
     gridFontFamilyStartsWithArial: true,
     gridFontSize: DEFAULT_WORKBOOK_CSS_FONT_SIZE,
     nativeTextFontFamilyStartsWithArial: true,
-    nativeTextFontSizeMatchesWorkbookPointSize: true,
+    nativeTextFontSizeUsesCrispDisplaySize: true,
     nativeTextGlyphAnchorXPixelAligned: true,
     nativeTextViewportXPixelAligned: true,
     nativeTextViewportPixelAligned: true,
@@ -255,7 +255,7 @@ test('@browser-ci web app keeps the live cell editor above the TypeGPU grid text
   await page.getByTestId('sheet-grid').press('F2')
   await expect(page.getByTestId('cell-editor-input')).toHaveValue('editor-z-order')
   await expect(page.getByTestId('cell-editor-input')).toHaveCSS('font-size', DEFAULT_WORKBOOK_CSS_FONT_SIZE)
-  await expect(page.getByTestId('cell-editor-input')).toHaveCSS('line-height', '16px')
+  await expect(page.getByTestId('cell-editor-input')).toHaveCSS('line-height', '17px')
   await expect(page.getByTestId('cell-editor-input')).not.toHaveCSS('opacity', '0')
   await expect
     .poll(readEditorLayerState(page, { col: 1, row: 1 }), {
@@ -1117,7 +1117,7 @@ function readNativeTextQualityState(page: Page): () => Promise<{
   readonly gridFontSize: string | null
   readonly nativeTextFontFamilyStartsWithArial: boolean
   readonly nativeTextFontSize: string | null
-  readonly nativeTextFontSizeMatchesWorkbookPointSize: boolean
+  readonly nativeTextFontSizeUsesCrispDisplaySize: boolean
   readonly nativeTextGlyphAnchorXPixelAligned: boolean
   readonly nativeTextViewportXPixelAligned: boolean
   readonly nativeTextViewportPixelAligned: boolean
@@ -1151,7 +1151,7 @@ function readNativeTextQualityState(page: Page): () => Promise<{
         gridFontSize: gridStyle?.fontSize ?? null,
         nativeTextFontFamilyStartsWithArial: nativeTextStyle?.fontFamily.startsWith('Arial') ?? false,
         nativeTextFontSize: nativeTextStyle?.fontSize ?? null,
-        nativeTextFontSizeMatchesWorkbookPointSize: Number.isFinite(nativeFontSize) && Math.abs(nativeFontSize - 13.3333) < 0.05,
+        nativeTextFontSizeUsesCrispDisplaySize: Number.isFinite(nativeFontSize) && Math.abs(nativeFontSize - 14) < 0.05,
         nativeTextGlyphAnchorXPixelAligned:
           Number.isFinite(glyphAnchorX) && Math.abs(glyphAnchorX * devicePixelRatio - Math.round(glyphAnchorX * devicePixelRatio)) < 0.05,
         nativeTextViewportXPixelAligned:
