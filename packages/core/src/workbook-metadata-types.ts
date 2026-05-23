@@ -3,8 +3,10 @@ import type {
   WorkbookCellMetadataSnapshot,
   WorkbookImageSnapshot,
   WorkbookMacroPayloadSnapshot,
+  WorkbookMetadataSnapshot,
   WorkbookMergeRangeSnapshot,
   WorkbookProtectionSnapshot,
+  SheetMetadataSnapshot,
   WorkbookShapeSnapshot,
   CellNumberFormatRecord,
   CellRangeRef,
@@ -162,6 +164,28 @@ export interface WorkbookCommentThreadRecord extends WorkbookCommentThreadSnapsh
 export interface WorkbookNoteRecord extends WorkbookNoteSnapshot {}
 export interface WorkbookHyperlinkRecord extends WorkbookHyperlinkSnapshot {}
 
+export const preservedWorkbookMetadataKeys = [
+  'documentPropertyArtifacts',
+  'externalWorkbookReferences',
+  'unsupportedFormulaDependencies',
+  'unsupportedPivots',
+  'formulaAudit',
+  'externalConnections',
+  'pivotArtifacts',
+  'chartArtifacts',
+  'chartSheetArtifacts',
+  'dataModelArtifacts',
+  'slicerConnectionArtifacts',
+  'viewState',
+  'styleArtifacts',
+] as const
+
+export type WorkbookPreservedMetadataRecord = Partial<Pick<WorkbookMetadataSnapshot, (typeof preservedWorkbookMetadataKeys)[number]>>
+
+export const preservedSheetMetadataKeys = ['styleArtifacts', 'pivotArtifacts', 'viewState'] as const
+
+export type WorkbookPreservedSheetMetadataRecord = Partial<Pick<SheetMetadataSnapshot, (typeof preservedSheetMetadataKeys)[number]>>
+
 export interface WorkbookMetadataRecord {
   properties: Map<string, WorkbookPropertyRecord>
   workbookProtection: WorkbookProtectionRecord | undefined
@@ -178,6 +202,8 @@ export interface WorkbookMetadataRecord {
   externalLinkArtifacts: WorkbookExternalLinkArtifactsRecord | undefined
   threadedCommentArtifacts: WorkbookThreadedCommentArtifactsRecord | undefined
   cellMetadata: WorkbookCellMetadataSnapshot | undefined
+  preservedWorkbookMetadata: WorkbookPreservedMetadataRecord
+  preservedSheetMetadata: Map<string, WorkbookPreservedSheetMetadataRecord>
   sheetThreadedCommentArtifacts: Map<string, WorkbookSheetThreadedCommentArtifactsRecord>
   sheetLegacyCommentVml: Map<string, WorkbookSheetLegacyCommentVmlRecord>
   sheetDrawingArtifacts: Map<string, WorkbookSheetDrawingArtifactsRecord>
@@ -217,6 +243,8 @@ export function createWorkbookMetadataRecord(): WorkbookMetadataRecord {
     externalLinkArtifacts: undefined,
     threadedCommentArtifacts: undefined,
     cellMetadata: undefined,
+    preservedWorkbookMetadata: {},
+    preservedSheetMetadata: new Map(),
     sheetThreadedCommentArtifacts: new Map(),
     sheetLegacyCommentVml: new Map(),
     sheetDrawingArtifacts: new Map(),

@@ -1,52 +1,22 @@
 import type {
-  LiteralInput,
   WorkbookAxisEntrySnapshot,
   WorkbookAxisMetadataSnapshot,
-  WorkbookCalculationSettingsSnapshot,
-  WorkbookCellMetadataSnapshot,
   WorkbookChartSnapshot,
-  WorkbookControlArtifactsSnapshot,
   WorkbookDefinedNameValueSnapshot,
-  WorkbookDrawingArtifactsSnapshot,
-  WorkbookExternalLinkArtifactsSnapshot,
   WorkbookImageSnapshot,
-  WorkbookMacroPayloadSnapshot,
   WorkbookPivotSnapshot,
-  WorkbookProtectionSnapshot,
-  WorkbookThreadedCommentArtifactsSnapshot,
   WorkbookSnapshot,
   WorkbookSortSnapshot,
-  WorkbookVolatileContextSnapshot,
 } from '@bilig/protocol'
 import { axisGeometryKeys, syncAxisMetadataBucket } from '../workbook-axis-records.js'
 import type { WorkbookAxisEntryRecord, WorkbookAxisMetadataRecord, WorkbookStore } from '../workbook-store.js'
+import { hasPreservedSheetMetadata, pickPreservedSheetMetadata, pickPreservedWorkbookMetadata } from '../workbook-preserved-metadata.js'
 
 function restoreWorkbookMetadata(args: {
   readonly workbook: WorkbookStore
-  readonly workbookMetadata:
-    | {
-        properties?: Array<{ key: string; value: LiteralInput }>
-        workbookProtection?: WorkbookProtectionSnapshot
-        macroPayloads?: WorkbookMacroPayloadSnapshot[]
-        definedNames?: Array<{ name: string; scopeSheetName?: string; value: WorkbookDefinedNameValueSnapshot }>
-        calculationSettings?: WorkbookCalculationSettingsSnapshot
-        volatileContext?: WorkbookVolatileContextSnapshot
-        tables?: readonly Parameters<WorkbookStore['setTable']>[0][]
-        spills?: Array<{ sheetName: string; address: string; rows: number; cols: number }>
-        pivots?: WorkbookPivotSnapshot[]
-        charts?: WorkbookChartSnapshot[]
-        drawingArtifacts?: WorkbookDrawingArtifactsSnapshot
-        controlArtifacts?: WorkbookControlArtifactsSnapshot
-        externalLinkArtifacts?: WorkbookExternalLinkArtifactsSnapshot
-        threadedCommentArtifacts?: WorkbookThreadedCommentArtifactsSnapshot
-        cellMetadata?: WorkbookCellMetadataSnapshot
-        images?: WorkbookImageSnapshot[]
-        shapes?: Array<Parameters<WorkbookStore['setShape']>[0]>
-        styles?: Array<Parameters<WorkbookStore['upsertCellStyle']>[0]>
-        formats?: Array<Parameters<WorkbookStore['upsertCellNumberFormat']>[0]>
-      }
-    | undefined
+  readonly workbookMetadata: WorkbookSnapshot['workbook']['metadata'] | undefined
 }): void {
+  args.workbook.metadata.preservedWorkbookMetadata = pickPreservedWorkbookMetadata(args.workbookMetadata)
   args.workbookMetadata?.properties?.forEach(({ key, value }) => {
     args.workbook.setWorkbookProperty(key, value)
   })
@@ -230,6 +200,10 @@ function restoreSheetMetadata(args: { readonly workbook: WorkbookStore; readonly
     if (targetSheet) {
       targetSheet.cellMetadataRefs = structuredClone(sheet.metadata.cellMetadataRefs)
     }
+  }
+  const preservedSheetMetadata = pickPreservedSheetMetadata(sheet.metadata)
+  if (hasPreservedSheetMetadata(preservedSheetMetadata)) {
+    workbook.metadata.preservedSheetMetadata.set(sheet.name, preservedSheetMetadata)
   }
 }
 

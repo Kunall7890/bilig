@@ -24,6 +24,7 @@ const existingDesktopExcelOracleFiles = [
   'macos-desktop-excel-external-link-cache.test.ts',
   'macos-desktop-excel-hyperlink-structural-oracle.test.ts',
   'macos-desktop-excel-ignored-errors-oracle.test.ts',
+  'macos-desktop-excel-preserved-package-metadata-oracle.test.ts',
   'macos-desktop-excel-precision-as-displayed-oracle.test.ts',
   'macos-desktop-excel-pivot-oracle.test.ts',
   'macos-desktop-excel-print-page-setup-oracle.test.ts',
@@ -171,6 +172,16 @@ describe('macOS Desktop Excel oracle inventory', () => {
     expect(source).toContain('rowBreaksXml')
     expect(source).toContain('colBreaksXml')
     expect(source).toContain('matches Desktop Excel manual page-break ids after structural inserts')
+  })
+
+  it('keeps the preserved package metadata oracle anchored to Desktop Excel workbook view state', () => {
+    const source = readFileSync(join(testDir, 'macos-desktop-excel-preserved-package-metadata-oracle.test.ts'), 'utf8')
+
+    expect(source).toContain("BILIG_EXCEL_ORACLE_RUN === '1'")
+    expect(source).toContain('runMacosExcelInspectionOracle')
+    expect(source).toContain('WorkPaper.buildFromSnapshot')
+    expect(source).toContain('viewState')
+    expect(source).toContain('preserves Desktop Excel workbook and sheet view state after a headless edit')
   })
 
   it('keeps the rich text oracle anchored to Desktop Excel cell run preservation', () => {

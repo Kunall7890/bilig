@@ -71,6 +71,7 @@ import {
   setWorkbookPropertyRecord,
   setWorkbookProtectionRecord,
 } from './workbook-metadata-workbook-records.js'
+import { clonePreservedSheetMetadata } from './workbook-preserved-metadata.js'
 
 export { WorkbookMetadataError, type WorkbookMetadataService } from './workbook-metadata-service-contract.js'
 
@@ -151,6 +152,11 @@ export function createWorkbookMetadataService(metadata: WorkbookMetadataRecord):
         ? { ...cloneSheetLegacyCommentVmlRecord(record), sheetName: newSheetName }
         : cloneSheetLegacyCommentVmlRecord(record),
     )
+    const preservedSheetMetadata = metadata.preservedSheetMetadata.get(oldSheetName)
+    if (preservedSheetMetadata) {
+      metadata.preservedSheetMetadata.delete(oldSheetName)
+      metadata.preservedSheetMetadata.set(newSheetName, clonePreservedSheetMetadata(preservedSheetMetadata))
+    }
     rekeyRecords(metadata.rangeProtections, (record) =>
       record.range.sheetName === oldSheetName
         ? {
@@ -248,6 +254,7 @@ export function createWorkbookMetadataService(metadata: WorkbookMetadataRecord):
     metadata.sheetDrawingArtifacts.delete(sheetName)
     metadata.sheetThreadedCommentArtifacts.delete(sheetName)
     metadata.sheetLegacyCommentVml.delete(sheetName)
+    metadata.preservedSheetMetadata.delete(sheetName)
     deleteRecordsBySheet(metadata.rangeProtections, sheetName, (record) => record.range.sheetName)
     deleteRecordsBySheet(metadata.commentThreads, sheetName, (record) => record.sheetName)
     deleteRecordsBySheet(metadata.notes, sheetName, (record) => record.sheetName)
@@ -275,6 +282,8 @@ export function createWorkbookMetadataService(metadata: WorkbookMetadataRecord):
     metadata.threadedCommentArtifacts = defaults.threadedCommentArtifacts
     metadata.sheetThreadedCommentArtifacts.clear()
     metadata.sheetLegacyCommentVml.clear()
+    metadata.preservedWorkbookMetadata = {}
+    metadata.preservedSheetMetadata.clear()
     metadata.rowMetadata.clear()
     metadata.columnMetadata.clear()
     metadata.freezePanes.clear()

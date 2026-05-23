@@ -11,6 +11,7 @@ import type {
 } from '@bilig/protocol'
 import type { EngineOp } from '@bilig/workbook'
 import type { WorkbookAxisMetadataRecord, WorkbookFreezePaneRecord, WorkbookSheetTabColorRecord, WorkbookStore } from './workbook-store.js'
+import { clonePreservedSheetMetadata, hasPreservedSheetMetadata } from './workbook-preserved-metadata.js'
 
 function cloneSnapshotRangeRef(range: CellRangeRef): CellRangeRef {
   return {
@@ -182,6 +183,7 @@ export function exportSheetMetadata(workbook: WorkbookStore, sheetName: string):
   const sparklines = sparklinesToSnapshot(sheet?.sparklines)
   const richTextArtifacts = sheet?.richTextArtifacts ? structuredClone(sheet.richTextArtifacts) : undefined
   const cellMetadataRefs = sheet?.cellMetadataRefs ? structuredClone(sheet.cellMetadataRefs) : undefined
+  const preservedSheetMetadata = clonePreservedSheetMetadata(workbook.metadata.preservedSheetMetadata.get(sheetName))
 
   if (
     rows.length === 0 &&
@@ -217,12 +219,14 @@ export function exportSheetMetadata(workbook: WorkbookStore, sheetName: string):
     printerSettings === undefined &&
     sparklines === undefined &&
     richTextArtifacts === undefined &&
-    cellMetadataRefs === undefined
+    cellMetadataRefs === undefined &&
+    !hasPreservedSheetMetadata(preservedSheetMetadata)
   ) {
     return undefined
   }
 
   const metadata: SheetMetadataSnapshot = {}
+  Object.assign(metadata, preservedSheetMetadata)
   if (rows.length > 0) {
     metadata.rows = rows
   }

@@ -26,6 +26,7 @@ import type { EngineRuntimeState, EngineReplicaSnapshot } from '../runtime-state
 import { EngineSnapshotError } from '../errors.js'
 import type { WorkbookPivotRecord } from '../../workbook-store.js'
 import type { InitialFormulaEntryRefSource } from './formula-initialization-refs.js'
+import { clonePreservedWorkbookMetadata, hasPreservedWorkbookMetadata } from '../../workbook-preserved-metadata.js'
 
 export interface EngineSnapshotService {
   readonly exportWorkbook: () => Effect.Effect<WorkbookSnapshot, EngineSnapshotError>
@@ -143,6 +144,7 @@ export function createEngineSnapshotService(args: {
           const externalLinkArtifacts = args.state.workbook.getExternalLinkArtifacts()
           const threadedCommentArtifacts = args.state.workbook.getThreadedCommentArtifacts()
           const cellMetadata = args.state.workbook.metadata.cellMetadata
+          const preservedWorkbookMetadata = clonePreservedWorkbookMetadata(args.state.workbook.metadata.preservedWorkbookMetadata)
           const images = args.state.workbook.listImages().map((image) => structuredClone(image))
           const shapes = args.state.workbook.listShapes().map((shape) => structuredClone(shape))
           if (
@@ -159,6 +161,7 @@ export function createEngineSnapshotService(args: {
             externalLinkArtifacts !== undefined ||
             threadedCommentArtifacts !== undefined ||
             cellMetadata !== undefined ||
+            hasPreservedWorkbookMetadata(preservedWorkbookMetadata) ||
             images.length > 0 ||
             shapes.length > 0 ||
             styles.length > 0 ||
@@ -167,6 +170,7 @@ export function createEngineSnapshotService(args: {
             volatileContext.recalcEpoch !== 0
           ) {
             workbook.metadata = {}
+            Object.assign(workbook.metadata, preservedWorkbookMetadata)
             if (properties.length > 0) {
               workbook.metadata.properties = properties
             }

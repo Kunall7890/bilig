@@ -1,4 +1,5 @@
 import type { WorkbookMetadataRecord } from './workbook-metadata-types.js'
+import { hasPreservedSheetMetadata, hasPreservedWorkbookMetadata } from './workbook-preserved-metadata.js'
 import type { SheetRecord } from './workbook-sheet-record.js'
 
 export function hasStructuralMetadataForSheetRecord(
@@ -17,10 +18,12 @@ export function hasStructuralMetadataForSheetRecord(
     metadata.drawingArtifacts !== undefined ||
     metadata.controlArtifacts !== undefined ||
     metadata.externalLinkArtifacts !== undefined ||
+    hasPreservedWorkbookMetadata(metadata.preservedWorkbookMetadata) ||
     metadata.sheetDrawingArtifacts.has(sheetName) ||
     metadata.threadedCommentArtifacts !== undefined ||
     metadata.sheetThreadedCommentArtifacts.has(sheetName) ||
     metadata.sheetLegacyCommentVml.has(sheetName) ||
+    hasPreservedSheetMetadata(metadata.preservedSheetMetadata.get(sheetName)) ||
     metadata.freezePanes.size > 0 ||
     metadata.merges.size > 0 ||
     metadata.filters.size > 0 ||

@@ -1,6 +1,7 @@
 import type { EngineCounters } from './perf/engine-counters.js'
 import { makeCellKey } from './workbook-cell-key-index.js'
 import type { WorkbookMetadataRecord } from './workbook-metadata-types.js'
+import { hasPreservedSheetMetadata } from './workbook-preserved-metadata.js'
 import { createWorkbookSheetRecord, type SheetRecord } from './workbook-sheet-record.js'
 
 export class WorkbookSheetRegistryStore {
@@ -200,6 +201,7 @@ export class WorkbookSheetRegistryStore {
       metadata.sheetDrawingArtifacts.size > 0 ||
       metadata.sheetThreadedCommentArtifacts.size > 0 ||
       metadata.sheetLegacyCommentVml.size > 0 ||
+      [...metadata.preservedSheetMetadata.values()].some(hasPreservedSheetMetadata) ||
       metadata.rowMetadata.size > 0 ||
       metadata.columnMetadata.size > 0 ||
       metadata.freezePanes.size > 0 ||
