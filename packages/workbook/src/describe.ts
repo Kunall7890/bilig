@@ -190,6 +190,15 @@ export interface WorkbookRunApplySummaryDescription {
   readonly revision?: number
   readonly previewOps?: readonly WorkbookOp[]
   readonly appliedOps?: readonly WorkbookOp[]
+  readonly commandReceipts?: readonly {
+    readonly commandIndex: number
+    readonly commandKind: string
+    readonly commandDigest: string
+    readonly previewOps: readonly WorkbookOp[]
+    readonly appliedOps: readonly WorkbookOp[]
+    readonly resolvedRefs?: WorkbookActionInput
+    readonly proof?: WorkbookActionInput
+  }[]
   readonly proof?: WorkbookActionInput
 }
 
@@ -562,6 +571,7 @@ function describeApply(apply: WorkbookRunApplySummary): WorkbookRunApplySummaryD
   const revision = ownDataValue(apply, 'revision', 'apply.revision')
   const previewOps = ownDataValue(apply, 'previewOps', 'apply.previewOps')
   const appliedOps = ownDataValue(apply, 'appliedOps', 'apply.appliedOps')
+  const commandReceipts = ownDataValue(apply, 'commandReceipts', 'apply.commandReceipts')
   const proof = ownDataValue(apply, 'proof', 'apply.proof')
   return {
     matched: requiredOwnDataValue(apply, 'matched', 'apply.matched'),
@@ -573,6 +583,29 @@ function describeApply(apply: WorkbookRunApplySummary): WorkbookRunApplySummaryD
       : {}),
     ...(appliedOps !== undefined
       ? { appliedOps: mapArrayData(appliedOps, 'apply.appliedOps', (op, _index, entryPath) => cloneDescriptionData(op, entryPath)) }
+      : {}),
+    ...(commandReceipts !== undefined
+      ? {
+          commandReceipts: mapArrayData(commandReceipts, 'apply.commandReceipts', (receipt, _index, entryPath) => {
+            const receiptPreviewOps = requiredOwnDataValue(receipt, 'previewOps', `${entryPath}.previewOps`)
+            const receiptAppliedOps = requiredOwnDataValue(receipt, 'appliedOps', `${entryPath}.appliedOps`)
+            const resolvedRefs = ownDataValue(receipt, 'resolvedRefs', `${entryPath}.resolvedRefs`)
+            const receiptProof = ownDataValue(receipt, 'proof', `${entryPath}.proof`)
+            return {
+              commandIndex: requiredOwnDataValue(receipt, 'commandIndex', `${entryPath}.commandIndex`),
+              commandKind: requiredOwnDataValue(receipt, 'commandKind', `${entryPath}.commandKind`),
+              commandDigest: requiredOwnDataValue(receipt, 'commandDigest', `${entryPath}.commandDigest`),
+              previewOps: mapArrayData(receiptPreviewOps, `${entryPath}.previewOps`, (op, _opIndex, opPath) =>
+                cloneDescriptionData(op, opPath),
+              ),
+              appliedOps: mapArrayData(receiptAppliedOps, `${entryPath}.appliedOps`, (op, _opIndex, opPath) =>
+                cloneDescriptionData(op, opPath),
+              ),
+              ...(resolvedRefs !== undefined ? { resolvedRefs: cloneDescriptionData(resolvedRefs, `${entryPath}.resolvedRefs`) } : {}),
+              ...(receiptProof !== undefined ? { proof: cloneDescriptionData(receiptProof, `${entryPath}.proof`) } : {}),
+            }
+          }),
+        }
       : {}),
     ...(proof !== undefined ? { proof: cloneDescriptionData(proof, 'apply.proof') } : {}),
   }

@@ -50,11 +50,11 @@ range tokens with concrete cell references. The adapter also falls back to
 explicit `plan.ops` for low-level plans, reads single-cell `valueEquals` and
 `formulaEquals` targets, and verifies generic `exists` and `noFormulaErrors`
 checks. Apply results include the stable `workbookPlanId(plan)`, preview ops,
-applied ops, and a small proof object, so callers can require plan-bound runtime
-proof before trusting a run. When undo is captured, the returned `undo.ops` are
-portable workbook operations that can be applied by the runtime. Consumer-defined
-model semantics stay in the model; the core adapter only handles workbook
-execution and proof.
+applied ops, per-command receipts, and a small proof object, so callers can
+require plan-bound and command-bound runtime proof before trusting a run. When
+undo is captured, the returned `undo.ops` are portable workbook operations that
+can be applied by the runtime. Consumer-defined model semantics stay in the
+model; the core adapter only handles workbook execution and proof.
 
 ## Persistence
 

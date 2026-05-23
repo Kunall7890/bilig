@@ -103,6 +103,7 @@ The main API is intentionally small:
 - descriptions: `describeModel`, `describeRef`, `describePlan`, `describePlanResult`, `describeRuntimeRequirements`, `checkRuntimeRequirements`, `checkRuntimeAdapter`, `describeRunResult`
 - transport data: `isWorkbookRefData`, `toWorkbookRefData`, `collectWorkbookRefData`, `hydrateWorkbookRef`, `hydrateWorkbookRefs`, `toPlanData`, `workbookPlanId`, `isPlanData`, `checkPlanData`, `hydratePlanData`, `verifyPlanData`
 - runtime handoff: `runWorkbookPlan`, `runWorkbookAction`, `WorkbookRunAdapter`
+- apply proof: `workbookPlanId`, `workbookActionCommandDigest`, command-level `commandReceipts`
 - feature handoff: `defineWorkbookFeaturePlugin`, `checkWorkbookFeaturePlugin`, `checkWorkbookCommandRequest`, `normalizeWorkbookCommandRequest`, `checkWorkbookCommandBundle`, `normalizeWorkbookCommandBundle`, `workbookCommandResultFor`, `workbookCommandResultForReceipts`, `workbookOpCommandReceiptIdentity`, `workbookOpCommandReceipt`, `checkWorkbookCommandResult`, `checkWorkbookCommandResultForBundle`, `normalizeWorkbookCommandResult`, `checkWorkbookCommandReceipt`, `normalizeWorkbookCommandReceipt`, `workbookCommandReceiptOpsMatch`
 - low-level language: `WorkbookOp`, `WorkbookTxn`, `EngineOp`, `EngineOpBatch`, `isEngineOpBatch`
 
@@ -267,6 +268,14 @@ rejects stale or mismatched ids; `{ requirePlanId: true }` fails closed when the
 adapter omits that binding. Apply summaries may also carry `baseRevision` and
 `revision`, so a later agent can inspect which workbook revision the proof
 claimed to apply against.
+Use `workbookActionCommandDigest(command)` when a runtime needs to bind
+materialized ops to a specific planned command. Adapter apply results can return
+`commandReceipts`, one per planned command, with the command index, command kind,
+command digest, preview ops, and applied ops. `@bilig/workbook` rejects stale
+digests, missing commands, duplicate command indexes, mismatched receipt ops, or
+receipts whose flattened ops disagree with the apply-level ops. With
+`{ requireApplyProof: true }`, a plan with commands fails closed unless those
+command receipts are present.
 Runtime apply results, undo refs, apply errors, and check verifier output are
 validated from own fields only; prototype-inherited fields are ignored before
 they can become run proof. Adapter-returned ops and verifier proof must be data

@@ -205,6 +205,10 @@ describe('@bilig/workbook run api', () => {
           kind: 'apply',
           message: 'Adapter did not return both previewOps and appliedOps, so apply match is unverified',
         },
+        {
+          kind: 'apply',
+          message: 'Adapter did not return commandReceipts, so planned commands are not bound to materialized ops',
+        },
       ],
     })
   })
@@ -265,6 +269,10 @@ describe('@bilig/workbook run api', () => {
         {
           kind: 'apply',
           message: 'Adapter did not return both previewOps and appliedOps, so apply match is unverified',
+        },
+        {
+          kind: 'apply',
+          message: 'Adapter did not return commandReceipts, so planned commands are not bound to materialized ops',
         },
       ],
     })

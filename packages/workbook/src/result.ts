@@ -40,6 +40,16 @@ export interface WorkbookUndoRef {
   readonly ops?: readonly EngineOp[]
 }
 
+export interface WorkbookRunApplyCommandReceipt {
+  readonly commandIndex: number
+  readonly commandKind: string
+  readonly commandDigest: string
+  readonly previewOps: readonly EngineOp[]
+  readonly appliedOps: readonly EngineOp[]
+  readonly resolvedRefs?: WorkbookActionInput
+  readonly proof?: WorkbookActionInput
+}
+
 export interface WorkbookRunApplySummary {
   readonly matched: boolean | null
   readonly planId?: WorkbookPlanId
@@ -47,6 +57,7 @@ export interface WorkbookRunApplySummary {
   readonly revision?: number
   readonly previewOps?: readonly EngineOp[]
   readonly appliedOps?: readonly EngineOp[]
+  readonly commandReceipts?: readonly WorkbookRunApplyCommandReceipt[]
   readonly proof?: WorkbookActionInput
 }
 

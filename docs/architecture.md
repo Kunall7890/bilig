@@ -69,6 +69,8 @@ flowchart LR
     is required
   - apply summaries that expose preview ops, applied ops, preview/apply match,
     and unverified apply facts
+  - command-level apply receipts that bind each planned high-level command to
+    the materialized preview and applied operations returned by a runtime
   - failed run ledgers that preserve changed summaries and undo metadata after
     runtime apply, but keep `changed: []` when failed apply proof reports no
     applied ops and no undo
@@ -120,6 +122,8 @@ The following are not current architecture anymore:
 - snapshots remain warm-start artifacts, not the hot synced model
 - `@bilig/workbook` models stay consumer-defined and domain-neutral
 - `@bilig/workbook` plans are inspectable data before runtime execution
+- `@bilig/workbook` runtime proof binds both the whole plan and each planned
+  command to the materialized workbook ops before an agent trusts apply results
 - `@bilig/workbook` command bundles are revision-bound, idempotent, ordered,
   range-scoped, and explicitly destructive before runtime execution
 - app-owned agent command bundles must pass through the generic

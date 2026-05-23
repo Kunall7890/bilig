@@ -10,6 +10,7 @@ import {
   type WorkbookModel,
   type WorkbookRunAdapter,
   type WorkbookRunApplyResult,
+  workbookActionCommandDigest,
   workbookPlanId,
 } from '../index.js'
 
@@ -65,6 +66,27 @@ function first<T>(values: readonly T[]): T {
 function applied<Refs>(plan: WorkbookActionPlan<Refs>): WorkbookRunApplyResult {
   return {
     status: 'applied',
+    previewOps: plan.ops,
+    appliedOps: plan.ops,
+    commandReceipts: plan.commands.map((command, commandIndex) => ({
+      commandIndex,
+      commandKind: command.kind,
+      commandDigest: workbookActionCommandDigest(command),
+      previewOps: plan.ops,
+      appliedOps: plan.ops,
+    })),
+  }
+}
+
+function commandReceipt<Refs>(plan: WorkbookActionPlan<Refs>, commandIndex = 0) {
+  const command = plan.commands[commandIndex]
+  if (command === undefined) {
+    throw new Error('expected planned command')
+  }
+  return {
+    commandIndex,
+    commandKind: command.kind,
+    commandDigest: workbookActionCommandDigest(command),
     previewOps: plan.ops,
     appliedOps: plan.ops,
   }
@@ -194,6 +216,7 @@ describe('@bilig/workbook run proof boundary', () => {
             revision: 8,
             previewOps: plan.ops,
             appliedOps: plan.ops,
+            commandReceipts: [commandReceipt(plan)],
           }
         },
         read: (targets) => [{ target: first(targets), value: 12 }],
@@ -222,6 +245,7 @@ describe('@bilig/workbook run proof boundary', () => {
         planId: `${workbookPlanId(plan)}-stale`,
         previewOps: plan.ops,
         appliedOps: plan.ops,
+        commandReceipts: [commandReceipt(plan)],
       }),
       read: (targets) => [{ target: first(targets), value: 12 }],
     })
@@ -239,7 +263,7 @@ describe('@bilig/workbook run proof boundary', () => {
     })
   })
 
-  it('can require runtime apply proof to include a plan id', async () => {
+  it('can require runtime apply proof to include command receipts and a plan id', async () => {
     const model = valueModel()
 
     const result = await runWorkbookAction(
@@ -248,24 +272,64 @@ describe('@bilig/workbook run proof boundary', () => {
       {
         apply: (plan) => ({
           status: 'applied',
+          planId: workbookPlanId(plan),
+          previewOps: plan.ops,
+          appliedOps: plan.ops,
+          commandReceipts: [commandReceipt(plan)],
+        }),
+        read: (targets) => [{ target: first(targets), value: 12 }],
+      },
+      undefined,
+      { requireApplyProof: true, requirePlanId: true },
+    )
+
+    expect(result.status).toBe('done')
+    expect(result.apply).toEqual(
+      expect.objectContaining({
+        matched: true,
+        planId: expect.any(String),
+        commandReceipts: [
+          expect.objectContaining({
+            commandIndex: 0,
+            commandKind: 'writeValue',
+            commandDigest: expect.stringMatching(/^bilig-command-v1:/),
+          }),
+        ],
+      }),
+    )
+  })
+
+  it('requires command receipts when apply proof is required', async () => {
+    const model = valueModel()
+
+    const result = await runWorkbookAction(
+      model,
+      'write',
+      {
+        apply: (plan) => ({
+          status: 'applied',
+          planId: workbookPlanId(plan),
           previewOps: plan.ops,
           appliedOps: plan.ops,
         }),
         read: (targets) => [{ target: first(targets), value: 12 }],
       },
       undefined,
-      { requirePlanId: true },
+      { requireApplyProof: true },
     )
 
     expect(result).toEqual({
       status: 'failed',
       errors: [
         {
-          code: 'plan_not_verified',
-          message: 'Adapter did not bind apply proof to a plan id',
+          code: 'apply_not_verified',
+          message: 'Adapter did not bind planned commands to materialized ops',
         },
       ],
-      apply: expect.objectContaining({ matched: true }),
+      apply: expect.objectContaining({
+        matched: true,
+        planId: expect.any(String),
+      }),
       changed: [
         {
           kind: 'writeValue',
@@ -273,6 +337,93 @@ describe('@bilig/workbook run proof boundary', () => {
           message: 'Write value to Sheet1!B2',
         },
       ],
+      checks: [expect.objectContaining({ status: 'planned', kind: 'valueEquals' })],
+      unverified: [
+        {
+          kind: 'apply',
+          message: 'Adapter did not return commandReceipts, so planned commands are not bound to materialized ops',
+        },
+      ],
+    })
+  })
+
+  it('rejects command receipts with stale command digests', async () => {
+    const model = valueModel()
+
+    const result = await runWorkbookAction(model, 'write', {
+      apply: (plan) => ({
+        status: 'applied',
+        previewOps: plan.ops,
+        appliedOps: plan.ops,
+        commandReceipts: [
+          {
+            ...commandReceipt(plan),
+            commandDigest: 'stale-command',
+          },
+        ],
+      }),
+      read: (targets) => [{ target: first(targets), value: 12 }],
+    })
+
+    expect(result).toEqual({
+      status: 'failed',
+      errors: [
+        {
+          code: 'runtime_rejected',
+          message:
+            'Workbook action run-value-model.write returned invalid command receipts: commandReceipts[0].commandDigest does not match the planned command',
+        },
+      ],
+      changed: [],
+      checks: [expect.objectContaining({ status: 'planned', kind: 'valueEquals' })],
+    })
+  })
+
+  it('uses stable command digests for equivalent command data', () => {
+    const target = findRange({ sheetName: 'Sheet1', address: 'B2' })
+    const left = {
+      kind: 'writeValue' as const,
+      target,
+      value: 12,
+    }
+    const right = {
+      value: 12,
+      target,
+      kind: 'writeValue' as const,
+    }
+
+    expect(workbookActionCommandDigest(left)).toBe(workbookActionCommandDigest(right))
+  })
+
+  it('rejects command receipts whose ops do not match apply ops', async () => {
+    const model = valueModel()
+
+    const result = await runWorkbookAction(model, 'write', {
+      apply: (plan) => ({
+        status: 'applied',
+        previewOps: plan.ops,
+        appliedOps: plan.ops,
+        commandReceipts: [
+          {
+            ...commandReceipt(plan),
+            previewOps: [],
+            appliedOps: [],
+          },
+        ],
+      }),
+      read: (targets) => [{ target: first(targets), value: 12 }],
+    })
+
+    expect(result).toEqual({
+      status: 'failed',
+      errors: [
+        {
+          code: 'runtime_rejected',
+          message:
+            'Workbook action run-value-model.write returned invalid command receipts: commandReceipts previewOps do not match apply previewOps',
+        },
+      ],
+      changed: [],
       checks: [expect.objectContaining({ status: 'planned', kind: 'valueEquals' })],
     })
   })

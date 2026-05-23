@@ -53,6 +53,28 @@ describe('workbook run adapter', () => {
     expect(result.apply).toMatchObject({
       matched: true,
       planId: workbookPlanId(planned.plan),
+      commandReceipts: [
+        {
+          commandIndex: 0,
+          commandKind: 'writeFormula',
+          previewOps: [
+            {
+              kind: 'setCellFormula',
+              sheetName: 'Sheet1',
+              address: 'C1',
+              formula: '(Sheet1!A1)+(Sheet1!B1)',
+            },
+          ],
+          appliedOps: [
+            {
+              kind: 'setCellFormula',
+              sheetName: 'Sheet1',
+              address: 'C1',
+              formula: '(Sheet1!A1)+(Sheet1!B1)',
+            },
+          ],
+        },
+      ],
       proof: {
         source: '@bilig/core',
         opCount: 1,

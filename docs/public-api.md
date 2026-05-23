@@ -295,6 +295,7 @@ Full export surface:
 - `runWorkbookPlan`
 - `runWorkbookAction`
 - `workbookPlanId`
+- `workbookActionCommandDigest`
 - `verifyWorkbookReadbacks`
 - `normalizeWorkbookActionInputDescription`
 - `workbookRunErrorCodes`
@@ -604,6 +605,14 @@ issues. It accepts a live plan, transported plan data, or the output of
 `workbookPlanId(planOrData)` returns the stable id for the generic plan data an
 adapter is asked to apply, so runtime proof can be tied back to the exact model,
 action, refs, commands, ops, changes, and checks that were planned.
+`workbookActionCommandDigest(command)` returns the stable digest for one planned
+high-level command. Apply adapters can return `commandReceipts` with command
+index, command kind, command digest, preview ops, and applied ops, so an agent
+can inspect which planned command produced which materialized operations.
+`@bilig/workbook` rejects stale digests, duplicate or missing command indexes,
+receipt preview/apply mismatches, and receipts whose flattened ops do not match
+the apply-level preview or applied ops. With `requireApplyProof: true`, a plan
+with high-level commands fails closed unless those command receipts are present.
 `runWorkbookPlan(planOrData, adapter)` and
 `runWorkbookAction(model, actionName, adapter, input)` add a transport-neutral
 apply-and-prove loop on top of the same contracts. The adapter receives the full
@@ -624,7 +633,8 @@ the apply adapter is not called. If the adapter is missing a required method for
 the plan, the apply adapter is not called and the run fails with
 `adapter_missing_capability`. If preview/apply ops mismatch, the run fails with
 `apply_mismatch`. If `requireApplyProof` is true and the adapter omits preview
-or applied ops, the run fails with `apply_not_verified`. If the adapter returns
+or applied ops, or omits command receipts for a command-based plan, the run
+fails with `apply_not_verified`. If the adapter returns
 a stale `planId`, the run fails before readback or check proof; if
 `requirePlanId` is true and the adapter omits it, the run fails with
 `plan_not_verified`. If a readback
@@ -681,7 +691,8 @@ including range and table-column writes, falls back to explicit `plan.ops` for
 low-level plans, reads single-cell `valueEquals` and `formulaEquals` targets,
 and verifies generic `exists` and `noFormulaErrors` checks. When the engine
 applies a plan, the adapter returns matching `previewOps` and `appliedOps`, plus
-JSON-safe apply proof. When the engine captures an undo transaction, the adapter
+the stable plan id, per-command receipts, and JSON-safe apply proof. When the
+engine captures an undo transaction, the adapter
 returns a portable `undo.ops` ref using the same workbook operation language.
 Consumer-defined business meaning stays in the model; the core adapter only
 proves generic workbook facts.

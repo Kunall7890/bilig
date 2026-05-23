@@ -1,10 +1,12 @@
 import { ValueTag, type CellRangeRef, type CellValue, type LiteralInput, type WorkbookDefinedNameValueSnapshot } from '@bilig/protocol'
 import { formatAddress, parseCellAddress } from '@bilig/formula'
 import {
+  workbookActionCommandDigest,
   workbookPlanId,
   type EngineOp,
   type WorkbookActionCommand,
   type WorkbookActionPlan,
+  type WorkbookRunApplyCommandReceipt,
   type WorkbookCheckResult,
   type WorkbookColumnRef,
   type WorkbookNameRef,
@@ -597,11 +599,41 @@ function materializeCommandOps(engine: SpreadsheetEngine, command: WorkbookActio
   }
 }
 
+function materializePlanCommandReceipts(engine: SpreadsheetEngine, plan: WorkbookActionPlan): readonly WorkbookRunApplyCommandReceipt[] {
+  if (plan.commands.length === 0) {
+    return []
+  }
+  return plan.commands.map((command, commandIndex) => {
+    const ops = materializeCommandOps(engine, command)
+    return {
+      commandIndex,
+      commandKind: command.kind,
+      commandDigest: workbookActionCommandDigest(command),
+      previewOps: ops,
+      appliedOps: ops,
+      proof: {
+        source: '@bilig/core',
+        opCount: ops.length,
+      },
+    }
+  })
+}
+
+function materializeCommandReceiptOps(receipts: readonly WorkbookRunApplyCommandReceipt[]): readonly EngineOp[] {
+  const ops: EngineOp[] = []
+  for (const receipt of receipts) {
+    for (const op of receipt.appliedOps) {
+      ops.push(op)
+    }
+  }
+  return ops
+}
+
 function materializePlanOps(engine: SpreadsheetEngine, plan: WorkbookActionPlan): readonly EngineOp[] {
   if (plan.commands.length === 0) {
     return plan.ops
   }
-  return plan.commands.flatMap((command) => materializeCommandOps(engine, command))
+  return materializeCommandReceiptOps(materializePlanCommandReceipts(engine, plan))
 }
 
 function verifyCheck(engine: SpreadsheetEngine, check: WorkbookCheckResult): WorkbookCheckResult {
@@ -621,7 +653,8 @@ export function createWorkbookRunAdapter(engine: SpreadsheetEngine, options: Wor
   return {
     apply(plan: WorkbookActionPlan) {
       try {
-        const ops = materializePlanOps(engine, plan)
+        const commandReceipts = materializePlanCommandReceipts(engine, plan)
+        const ops = commandReceipts.length === 0 ? materializePlanOps(engine, plan) : materializeCommandReceiptOps(commandReceipts)
         const undoOps = engine.applyOps(ops, {
           captureUndo: options.captureUndo ?? true,
           ...(options.potentialNewCells !== undefined ? { potentialNewCells: options.potentialNewCells } : {}),
@@ -634,6 +667,7 @@ export function createWorkbookRunAdapter(engine: SpreadsheetEngine, options: Wor
           planId: workbookPlanId(plan),
           previewOps: ops,
           appliedOps: ops,
+          ...(commandReceipts.length > 0 ? { commandReceipts } : {}),
           proof: {
             source: '@bilig/core',
             opCount: ops.length,

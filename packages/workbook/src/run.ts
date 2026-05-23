@@ -15,10 +15,12 @@ import {
 } from './plan-data.js'
 import { verifyWorkbookReadbacks, type WorkbookRunReadback } from './readback.js'
 import { checkRuntimeAdapter, type WorkbookRuntimeCapability } from './requirements.js'
+import { cloneWorkbookRunApplyCommandReceipts, cloneWorkbookRunApplyCommandReceiptsForSummary } from './run-command-receipts.js'
 import {
   isWorkbookRunErrorCode,
   type WorkbookChangeSummary,
   type WorkbookRunApplySummary,
+  type WorkbookRunApplyCommandReceipt,
   type WorkbookCheckResult,
   type WorkbookRunError,
   type WorkbookRunErrorCode,
@@ -37,6 +39,7 @@ export interface WorkbookRunApplyResult {
   readonly revision?: number
   readonly previewOps?: readonly EngineOp[]
   readonly appliedOps?: readonly EngineOp[]
+  readonly commandReceipts?: readonly WorkbookRunApplyCommandReceipt[]
   readonly proof?: WorkbookActionInput
   readonly errors?: readonly WorkbookRunError[]
   readonly undo?: WorkbookUndoRef
@@ -448,6 +451,16 @@ function validateApplyResult(plan: WorkbookActionPlan, value: unknown): ApplyVal
     return rejected(`Workbook action ${plan.modelName}.${plan.actionName} returned a revision before its base revision`)
   }
 
+  const rawCommandReceipts = ownValue(value, 'commandReceipts')
+  let commandReceipts: readonly WorkbookRunApplyCommandReceipt[] | undefined
+  if (rawCommandReceipts !== undefined) {
+    try {
+      commandReceipts = cloneWorkbookRunApplyCommandReceipts(plan, rawCommandReceipts, previewOps, appliedOps)
+    } catch (error) {
+      return rejected(`Workbook action ${plan.modelName}.${plan.actionName} returned invalid command receipts: ${errorMessage(error)}`)
+    }
+  }
+
   const rawUndo = ownValue(value, 'undo')
   let undo: WorkbookUndoRef | undefined
   if (rawUndo !== undefined && !isWorkbookUndoRef(rawUndo)) {
@@ -478,6 +491,7 @@ function validateApplyResult(plan: WorkbookActionPlan, value: unknown): ApplyVal
       ...(isSafeNonNegativeInteger(rawRevision) ? { revision: rawRevision } : {}),
       ...(previewOps !== undefined ? { previewOps } : {}),
       ...(appliedOps !== undefined ? { appliedOps } : {}),
+      ...(commandReceipts !== undefined ? { commandReceipts } : {}),
       ...(proof !== undefined ? { proof } : {}),
       ...(errors !== undefined ? { errors } : {}),
       ...(undo !== undefined ? { undo } : {}),
@@ -598,32 +612,47 @@ function describeApply(result: WorkbookRunApplyResult): WorkbookRunApplySummary 
     ...(result.revision !== undefined ? { revision: result.revision } : {}),
     ...(result.previewOps !== undefined ? { previewOps: cloneOps(result.previewOps) } : {}),
     ...(result.appliedOps !== undefined ? { appliedOps: cloneOps(result.appliedOps) } : {}),
+    ...(result.commandReceipts !== undefined
+      ? { commandReceipts: cloneWorkbookRunApplyCommandReceiptsForSummary(result.commandReceipts) }
+      : {}),
     ...(result.proof !== undefined ? { proof: normalizeWorkbookActionInput(result.proof) } : {}),
   }
 }
 
-function applyUnverified(apply: WorkbookRunApplySummary): readonly WorkbookRunUnverified[] {
-  if (apply.matched !== null) {
-    return []
-  }
-  return [
-    {
+function applyUnverified(plan: WorkbookActionPlan, apply: WorkbookRunApplySummary): readonly WorkbookRunUnverified[] {
+  const unverified: WorkbookRunUnverified[] = []
+  if (apply.matched === null) {
+    unverified.push({
       kind: 'apply',
       message: 'Adapter did not return both previewOps and appliedOps, so apply match is unverified',
-    },
-  ]
+    })
+  }
+  if (plan.commands.length > 0 && apply.commandReceipts === undefined) {
+    unverified.push({
+      kind: 'apply',
+      message: 'Adapter did not return commandReceipts, so planned commands are not bound to materialized ops',
+    })
+  }
+  return unverified
 }
 
 function unverifiedProperty(unverified: readonly WorkbookRunUnverified[]): { readonly unverified: readonly WorkbookRunUnverified[] } | {} {
   return unverified.length === 0 ? {} : { unverified }
 }
 
-function applyProofErrors(apply: WorkbookRunApplySummary, options: WorkbookRunOptions): readonly WorkbookRunError[] {
+function applyProofErrors(
+  plan: WorkbookActionPlan,
+  apply: WorkbookRunApplySummary,
+  options: WorkbookRunOptions,
+): readonly WorkbookRunError[] {
   if (apply.matched === false) {
     return [runError('apply_mismatch', 'Adapter applied ops do not match its preview ops')]
   }
   if (options.requireApplyProof === true && apply.matched === null) {
     return [runError('apply_not_verified', 'Adapter did not return both previewOps and appliedOps')]
+  }
+  if (options.requireApplyProof === true && plan.commands.length > 0 && apply.commandReceipts === undefined) {
+    return [runError('apply_not_verified', 'Adapter did not bind planned commands to materialized ops')]
   }
   if (options.requirePlanId === true && apply.planId === undefined) {
     return [runError('plan_not_verified', 'Adapter did not bind apply proof to a plan id')]
@@ -824,8 +853,8 @@ async function runLiveWorkbookPlan<Refs>(
     }
 
     apply = describeApply(validApplyResult)
-    unverified = applyUnverified(apply)
-    const applyErrors = applyProofErrors(apply, options)
+    unverified = applyUnverified(plan, apply)
+    const applyErrors = applyProofErrors(plan, apply, options)
     if (applyErrors.length > 0) {
       return failedRun({
         errors: applyErrors,
