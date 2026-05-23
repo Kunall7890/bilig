@@ -649,7 +649,8 @@ Failed apply results only preserve `changed` when the adapter reports applied
 ops or undo metadata; an explicit empty `appliedOps` array with no undo keeps
 `changed: []`.
 Runtime readbacks must match the requested target set exactly; surplus
-readbacks fail with `readback_unexpected`. Formula readbacks are exact and
+readbacks fail with `readback_unexpected`, and duplicate targets fail with
+`readback_duplicate`. Formula readbacks are exact and
 should use the normalized no-leading-`=` form produced by `formula.source`.
 Run errors use the stable `WorkbookRunErrorCode` union. Agents and adapters can
 inspect the frozen `workbookRunErrorCodes` list or call

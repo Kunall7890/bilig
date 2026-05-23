@@ -729,6 +729,53 @@ describe('@bilig/workbook run proof boundary', () => {
     })
   })
 
+  it('rejects duplicate readbacks for the same target', async () => {
+    const model = valueModel()
+    const read: Required<WorkbookRunAdapter<{ output: ReturnType<typeof findRange> }>>['read'] = (targets) => {
+      const target = first(targets)
+      return [
+        {
+          target,
+          value: 12,
+        },
+        {
+          target,
+          value: 12,
+        },
+      ]
+    }
+
+    const result = await runWorkbookAction(model, 'write', {
+      apply: applied,
+      read,
+    })
+
+    expect(result).toEqual({
+      status: 'failed',
+      errors: [
+        {
+          code: 'readback_duplicate',
+          message: 'Sheet1!B2 was returned by readback more than once',
+        },
+      ],
+      apply: expect.objectContaining({ matched: true }),
+      changed: [
+        {
+          kind: 'writeValue',
+          target: expect.objectContaining({ label: 'Sheet1!B2' }),
+          message: 'Write value to Sheet1!B2',
+        },
+      ],
+      checks: [
+        expect.objectContaining({
+          status: 'passed',
+          kind: 'valueEquals',
+          message: 'Sheet1!B2 equals 12',
+        }),
+      ],
+    })
+  })
+
   it('rejects accessor-backed readback arrays without invoking getters', async () => {
     const model = valueModel()
     let getterInvoked = false

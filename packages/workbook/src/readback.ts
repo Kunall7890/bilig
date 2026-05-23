@@ -12,6 +12,7 @@ export interface WorkbookRunReadback {
 
 export type WorkbookReadbackIssueCode =
   | 'readback_invalid'
+  | 'readback_duplicate'
   | 'readback_missing'
   | 'readback_unexpected'
   | 'value_mismatch'
@@ -44,6 +45,14 @@ function invalidReadback(message: string): WorkbookReadbackIssue {
   return issue({
     code: 'readback_invalid',
     message,
+  })
+}
+
+function duplicateReadback(readback: SafeReadback): WorkbookReadbackIssue {
+  return issue({
+    code: 'readback_duplicate',
+    target: readback.target,
+    message: `${readback.target.label} was returned by readback more than once`,
   })
 }
 
@@ -554,14 +563,16 @@ export function verifyWorkbookReadbacks(
   })
 
   const readbackByTarget = new Map<string, SafeReadback>()
+  const issues: WorkbookReadbackIssue[] = []
   readbackValidation.value.forEach((readback) => {
-    if (!readbackByTarget.has(readback.key)) {
+    if (readbackByTarget.has(readback.key)) {
+      issues.push(duplicateReadback(readback))
+    } else {
       readbackByTarget.set(readback.key, readback)
     }
   })
 
   const verifiedChecks: WorkbookCheckResult[] = []
-  const issues: WorkbookReadbackIssue[] = []
 
   readbackByTarget.forEach((readback, key) => {
     if (!expectedTargets.has(key)) {

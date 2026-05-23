@@ -286,6 +286,8 @@ during validation, cloning, or preview/apply comparison.
 Readback checks attach proof to passed checks, such as
 `{ source: "readback", value: 12 }` or
 `{ source: "readback", formula: "(Table[Quantity])*(Table[Rate])" }`.
+Each requested target may appear only once in runtime readbacks; duplicate
+targets fail with `readback_duplicate` instead of being silently collapsed.
 Generic check verifiers may only change `status` or add JSON-safe `proof`; they
 cannot rewrite the check contract.
 Consumer `checks()` return values are treated as model-output data too: returned
