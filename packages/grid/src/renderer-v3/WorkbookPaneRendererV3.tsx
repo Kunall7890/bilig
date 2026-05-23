@@ -301,6 +301,7 @@ export const WorkbookPaneRendererV3 = memo(function WorkbookPaneRendererV3({
           data-v3-presented-camera-seq={presentedVisualFrame?.cameraSeq ?? ''}
           data-v3-presented-content-signature={presentedContentSignature}
           data-v3-presented-draw-text={presentedVisualFrame ? (presentedVisualFrame.drawText ? 'true' : 'false') : ''}
+          data-v3-presented-fill-handle-revision={presentedSceneOwnershipEpoch?.fillHandleRevision ?? ''}
           data-v3-presented-header-pane-count={presentedHeaderPanes.length}
           data-v3-presented-header-text-run-count={presentedHeaderTextRunCount}
           data-v3-native-layer-source={nativeLayerSource}

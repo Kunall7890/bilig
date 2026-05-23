@@ -18,12 +18,17 @@ const readyTypeGpuSurface: BiligRenderedSurfaceState = {
     authoritativeRenderRevision: 'rev-3',
     backendStatus: 'ready',
     currentContentSignature: 'content:current',
+    currentFillHandleRevision: 'fill:current',
     currentSceneEpochSignature: 'epoch:current',
     currentSceneOwnershipSignature: 'scene:current',
+    currentSelectionRevision: 'selection:current',
+    currentSemanticMutationRevision: 'semantic:current',
     currentRectCount: 88,
     currentRectSignature: 'rect:current',
     currentTextRunCount: 12,
     currentTextSignature: 'text:current',
+    currentViewportRevision: 'viewport:current',
+    currentWorkbookRevision: 'workbook:current',
     frameProofStatus: 'presented',
     frameProofSignature: 'frame-current',
     headerPaneCount: 1,
@@ -34,15 +39,20 @@ const readyTypeGpuSurface: BiligRenderedSurfaceState = {
     pixelHeight: 600,
     pixelWidth: 1000,
     presentedContentSignature: 'content:current',
+    presentedFillHandleRevision: 'fill:current',
     presentedSceneEpochSignature: 'epoch:current',
     presentedSceneOwnershipSignature: 'scene:current',
     presentedFrameProofSignature: 'frame-current',
     presentedHeaderPaneCount: 1,
     presentedRectCount: 88,
     presentedRectSignature: 'rect:current',
+    presentedSelectionRevision: 'selection:current',
+    presentedSemanticMutationRevision: 'semantic:current',
     presentedTextRunCount: 12,
     presentedTextSignature: 'text:current',
     presentedTilePaneCount: 1,
+    presentedViewportRevision: 'viewport:current',
+    presentedWorkbookRevision: 'workbook:current',
     projectedRenderRevision: 'rev-3',
     tilePaneCount: 1,
     tileSceneRevision: 'scene-7',
@@ -166,6 +176,31 @@ describe('same-corpus Bilig rendered surface proof', () => {
 
     expect(readiness.ready).toBe(false)
     expect(readiness.gaps).toContain('presented visible-scene epoch does not match current authoritative scene')
+  })
+
+  it('rejects stale presented ownership revisions even when signatures match', () => {
+    const readiness = biligRenderedSurfaceReadiness({
+      ...readyTypeGpuSurface,
+      typeGpu: {
+        ...readyTypeGpuSurface.typeGpu!,
+        presentedFillHandleRevision: 'fill:stale',
+        presentedSelectionRevision: 'selection:stale',
+        presentedSemanticMutationRevision: 'semantic:stale',
+        presentedViewportRevision: 'viewport:stale',
+        presentedWorkbookRevision: 'workbook:stale',
+      },
+    })
+
+    expect(readiness.ready).toBe(false)
+    expect(readiness.gaps).toEqual(
+      expect.arrayContaining([
+        'presented visible-scene workbook revision does not match current scene',
+        'presented visible-scene semantic mutation revision does not match current scene',
+        'presented visible-scene viewport revision does not match current scene',
+        'presented visible-scene selection revision does not match current scene',
+        'presented visible-scene fill-handle revision does not match current scene',
+      ]),
+    )
   })
 
   it('rejects a canvas that does not cover the workbook viewport', () => {

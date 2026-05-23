@@ -139,10 +139,16 @@ function readWorkbookAgentVisibleSceneProof(): WorkbookAgentRenderedVisibleScene
   const presentedSceneOwnershipSignature = readVisibleSceneProofAttribute(typeGpu, 'data-v3-presented-scene-ownership-signature')
   const currentSceneEpoch = readVisibleSceneProofAttribute(typeGpu, 'data-v3-current-scene-epoch')
   const presentedSceneEpoch = readVisibleSceneProofAttribute(typeGpu, 'data-v3-presented-scene-epoch')
+  const currentFillHandleRevision = readVisibleSceneProofAttribute(typeGpu, 'data-v3-current-fill-handle-revision')
+  const presentedFillHandleRevision = readVisibleSceneProofAttribute(typeGpu, 'data-v3-presented-fill-handle-revision')
+  const currentSelectionRevision = readVisibleSceneProofAttribute(typeGpu, 'data-v3-current-selection-revision')
+  const presentedSelectionRevision = readVisibleSceneProofAttribute(typeGpu, 'data-v3-presented-selection-revision')
   const currentViewportRevision = readVisibleSceneProofAttribute(typeGpu, 'data-v3-current-viewport-revision')
   const presentedViewportRevision = readVisibleSceneProofAttribute(typeGpu, 'data-v3-presented-viewport-revision')
   const currentSemanticMutationRevision = readVisibleSceneProofAttribute(typeGpu, 'data-v3-current-semantic-mutation-revision')
   const presentedSemanticMutationRevision = readVisibleSceneProofAttribute(typeGpu, 'data-v3-presented-semantic-mutation-revision')
+  const currentWorkbookRevision = readVisibleSceneProofAttribute(typeGpu, 'data-v3-current-workbook-revision')
+  const presentedWorkbookRevision = readVisibleSceneProofAttribute(typeGpu, 'data-v3-presented-workbook-revision')
   const gridAuthoritativeRevision = readVisibleSceneProofAttribute(grid, 'data-render-authoritative-revision')
   const typeGpuAuthoritativeRevision = readVisibleSceneProofAttribute(typeGpu, 'data-v3-authoritative-render-revision')
   const visibleAuthoritativeRevision = readVisibleSceneProofAttribute(typeGpu, 'data-v3-visible-authoritative-render-revision')
@@ -159,10 +165,16 @@ function readWorkbookAgentVisibleSceneProof(): WorkbookAgentRenderedVisibleScene
     presentedSceneOwnershipSignature,
     currentSceneEpoch,
     presentedSceneEpoch,
+    currentFillHandleRevision,
+    presentedFillHandleRevision,
+    currentSelectionRevision,
+    presentedSelectionRevision,
     currentViewportRevision,
     presentedViewportRevision,
     currentSemanticMutationRevision,
     presentedSemanticMutationRevision,
+    currentWorkbookRevision,
+    presentedWorkbookRevision,
     gridAuthoritativeRevision,
     typeGpuAuthoritativeRevision,
     visibleAuthoritativeRevision,

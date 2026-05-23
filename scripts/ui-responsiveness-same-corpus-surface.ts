@@ -4,10 +4,15 @@ export interface BiligRenderedCanvasState {
   readonly currentContentSignature?: string | null | undefined
   readonly currentSceneEpochSignature?: string | null | undefined
   readonly currentSceneOwnershipSignature?: string | null | undefined
+  readonly currentFillHandleRevision?: string | null | undefined
   readonly currentRectCount?: number | undefined
   readonly currentRectSignature?: string | null | undefined
+  readonly currentSelectionRevision?: string | null | undefined
+  readonly currentSemanticMutationRevision?: string | null | undefined
   readonly currentTextRunCount?: number | undefined
   readonly currentTextSignature?: string | null | undefined
+  readonly currentViewportRevision?: string | null | undefined
+  readonly currentWorkbookRevision?: string | null | undefined
   readonly frameProofStatus?: string | null | undefined
   readonly frameProofSignature?: string | null | undefined
   readonly headerPaneCount: number
@@ -20,13 +25,18 @@ export interface BiligRenderedCanvasState {
   readonly presentedContentSignature?: string | null | undefined
   readonly presentedSceneEpochSignature?: string | null | undefined
   readonly presentedSceneOwnershipSignature?: string | null | undefined
+  readonly presentedFillHandleRevision?: string | null | undefined
   readonly presentedFrameProofSignature?: string | null | undefined
   readonly presentedHeaderPaneCount?: number | undefined
   readonly presentedRectCount?: number | undefined
   readonly presentedRectSignature?: string | null | undefined
+  readonly presentedSelectionRevision?: string | null | undefined
+  readonly presentedSemanticMutationRevision?: string | null | undefined
   readonly presentedTextRunCount?: number | undefined
   readonly presentedTextSignature?: string | null | undefined
   readonly presentedTilePaneCount?: number | undefined
+  readonly presentedViewportRevision?: string | null | undefined
+  readonly presentedWorkbookRevision?: string | null | undefined
   readonly projectedRenderRevision?: string | null | undefined
   readonly tilePaneCount: number
   readonly tileSceneRevision?: string | null | undefined
@@ -133,6 +143,16 @@ export function biligRenderedSurfaceReadiness(state: BiligRenderedSurfaceState |
   ) {
     gaps.push('presented visible-scene ownership does not match current scene')
   }
+  comparePresentedOwnershipRevision(gaps, canvas.currentWorkbookRevision, canvas.presentedWorkbookRevision, 'workbook revision')
+  comparePresentedOwnershipRevision(
+    gaps,
+    canvas.currentSemanticMutationRevision,
+    canvas.presentedSemanticMutationRevision,
+    'semantic mutation revision',
+  )
+  comparePresentedOwnershipRevision(gaps, canvas.currentViewportRevision, canvas.presentedViewportRevision, 'viewport revision')
+  comparePresentedOwnershipRevision(gaps, canvas.currentSelectionRevision, canvas.presentedSelectionRevision, 'selection revision')
+  comparePresentedOwnershipRevision(gaps, canvas.currentFillHandleRevision, canvas.presentedFillHandleRevision, 'fill-handle revision')
   if (canvas.hasPresentedVisibleFrame !== true) {
     gaps.push('visible frame has not been presented')
   }
@@ -326,6 +346,16 @@ function canvasEvidence(canvas: BiligRenderedCanvasState, state: BiligRenderedSu
     `presentedSceneEpochSignature=${canvas.presentedSceneEpochSignature ?? ''}`,
     `currentSceneOwnershipSignature=${canvas.currentSceneOwnershipSignature ?? ''}`,
     `presentedSceneOwnershipSignature=${canvas.presentedSceneOwnershipSignature ?? ''}`,
+    `currentWorkbookRevision=${canvas.currentWorkbookRevision ?? ''}`,
+    `presentedWorkbookRevision=${canvas.presentedWorkbookRevision ?? ''}`,
+    `currentSemanticMutationRevision=${canvas.currentSemanticMutationRevision ?? ''}`,
+    `presentedSemanticMutationRevision=${canvas.presentedSemanticMutationRevision ?? ''}`,
+    `currentViewportRevision=${canvas.currentViewportRevision ?? ''}`,
+    `presentedViewportRevision=${canvas.presentedViewportRevision ?? ''}`,
+    `currentSelectionRevision=${canvas.currentSelectionRevision ?? ''}`,
+    `presentedSelectionRevision=${canvas.presentedSelectionRevision ?? ''}`,
+    `currentFillHandleRevision=${canvas.currentFillHandleRevision ?? ''}`,
+    `presentedFillHandleRevision=${canvas.presentedFillHandleRevision ?? ''}`,
     `currentContentSignature=${canvas.currentContentSignature ?? ''}`,
     `presentedContentSignature=${canvas.presentedContentSignature ?? ''}`,
     `currentTextRunCount=${String(canvas.currentTextRunCount ?? 0)}`,
@@ -356,4 +386,23 @@ function canvasEvidence(canvas: BiligRenderedCanvasState, state: BiligRenderedSu
 
 function hasText(value: string | null | undefined): value is string {
   return typeof value === 'string' && value.length > 0
+}
+
+function comparePresentedOwnershipRevision(
+  gaps: string[],
+  current: string | null | undefined,
+  presented: string | null | undefined,
+  label: string,
+): void {
+  if (!hasText(current)) {
+    gaps.push(`current visible-scene ${label} is missing`)
+    return
+  }
+  if (!hasText(presented)) {
+    gaps.push(`presented visible-scene ${label} is missing`)
+    return
+  }
+  if (presented !== current) {
+    gaps.push(`presented visible-scene ${label} does not match current scene`)
+  }
 }

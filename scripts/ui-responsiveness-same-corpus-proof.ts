@@ -157,6 +157,16 @@ function biligVisibleFrameInvalidReasons(proof: SameCorpusProductPixelGridProof,
   const presentedSceneEpochSignature = evidence.get('presentedSceneEpochSignature') ?? ''
   const currentSceneOwnershipSignature = evidence.get('currentSceneOwnershipSignature') ?? ''
   const presentedSceneOwnershipSignature = evidence.get('presentedSceneOwnershipSignature') ?? ''
+  const currentWorkbookRevision = evidence.get('currentWorkbookRevision') ?? ''
+  const presentedWorkbookRevision = evidence.get('presentedWorkbookRevision') ?? ''
+  const currentSemanticMutationRevision = evidence.get('currentSemanticMutationRevision') ?? ''
+  const presentedSemanticMutationRevision = evidence.get('presentedSemanticMutationRevision') ?? ''
+  const currentViewportRevision = evidence.get('currentViewportRevision') ?? ''
+  const presentedViewportRevision = evidence.get('presentedViewportRevision') ?? ''
+  const currentSelectionRevision = evidence.get('currentSelectionRevision') ?? ''
+  const presentedSelectionRevision = evidence.get('presentedSelectionRevision') ?? ''
+  const currentFillHandleRevision = evidence.get('currentFillHandleRevision') ?? ''
+  const presentedFillHandleRevision = evidence.get('presentedFillHandleRevision') ?? ''
   const currentContentSignature = evidence.get('currentContentSignature') ?? ''
   const presentedContentSignature = evidence.get('presentedContentSignature') ?? ''
   const currentTextSignature = evidence.get('currentTextSignature') ?? ''
@@ -225,6 +235,16 @@ function biligVisibleFrameInvalidReasons(proof: SameCorpusProductPixelGridProof,
   ) {
     invalidReasons.push('presented visible-scene ownership does not match current scene')
   }
+  comparePresentedOwnershipRevision(invalidReasons, currentWorkbookRevision, presentedWorkbookRevision, 'workbook revision')
+  comparePresentedOwnershipRevision(
+    invalidReasons,
+    currentSemanticMutationRevision,
+    presentedSemanticMutationRevision,
+    'semantic mutation revision',
+  )
+  comparePresentedOwnershipRevision(invalidReasons, currentViewportRevision, presentedViewportRevision, 'viewport revision')
+  comparePresentedOwnershipRevision(invalidReasons, currentSelectionRevision, presentedSelectionRevision, 'selection revision')
+  comparePresentedOwnershipRevision(invalidReasons, currentFillHandleRevision, presentedFillHandleRevision, 'fill-handle revision')
   if (evidence.get('hasPresentedVisibleFrame') !== 'true') {
     invalidReasons.push('visible frame has not been presented')
   }
@@ -520,6 +540,20 @@ function isPositiveNumber(value: number | null): value is number {
 
 function isNonNegativeNumber(value: number | null): value is number {
   return value !== null && value >= 0
+}
+
+function comparePresentedOwnershipRevision(invalidReasons: string[], current: string, presented: string, label: string): void {
+  if (current.length === 0) {
+    invalidReasons.push(`current visible-scene ${label} is missing`)
+    return
+  }
+  if (presented.length === 0) {
+    invalidReasons.push(`presented visible-scene ${label} is missing`)
+    return
+  }
+  if (presented !== current) {
+    invalidReasons.push(`presented visible-scene ${label} does not match current scene`)
+  }
 }
 
 function minimumEvidenceNumber(evidence: ReadonlyMap<string, string>, key: string, minimum: number): boolean {

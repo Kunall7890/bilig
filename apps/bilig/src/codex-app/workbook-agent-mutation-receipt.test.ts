@@ -274,10 +274,16 @@ function createVisibleSceneProof(
     presentedSceneOwnershipSignature: `scene-${revisionText}`,
     currentSceneEpoch: `tile-${revisionText}`,
     presentedSceneEpoch: `tile-${revisionText}`,
+    currentFillHandleRevision: `fill-${revisionText}`,
+    presentedFillHandleRevision: `fill-${revisionText}`,
+    currentSelectionRevision: `selection-${revisionText}`,
+    presentedSelectionRevision: `selection-${revisionText}`,
     currentViewportRevision: `viewport-${revisionText}`,
     presentedViewportRevision: `viewport-${revisionText}`,
     currentSemanticMutationRevision: revisionText,
     presentedSemanticMutationRevision: revisionText,
+    currentWorkbookRevision: revisionText,
+    presentedWorkbookRevision: revisionText,
     gridAuthoritativeRevision: revisionText,
     typeGpuAuthoritativeRevision: revisionText,
     visibleAuthoritativeRevision: revisionText,
@@ -1074,6 +1080,95 @@ describe('workbook agent mutation receipt helpers', () => {
       'Presented visible-scene ownership does not match the current scene.',
     )
     expect(payload.mutationReceipt.warnings).toContain('Rendered TypeGPU visible-scene proof is incomplete or stale.')
+  })
+
+  it('rejects applied status when a rendered proof presents an older semantic mutation ownership', async () => {
+    const engine = await createEngine()
+    const command: WorkbookAgentCommand = {
+      kind: 'writeRange',
+      sheetName: 'Sheet1',
+      startAddress: 'B2',
+      values: [['Visible value']],
+    }
+    const bundle = createBundle(command, 'bundle-stale-semantic-proof')
+    const undoBundle = applyWorkbookAgentCommandBundleWithUndoCapture(engine, bundle)
+    const { zeroSyncService } = createZeroSyncHarness(engine, {
+      headRevision: 2,
+      calculatedRevision: 2,
+      changes: [
+        {
+          revision: 2,
+          actorUserId: 'alex@example.com',
+          clientMutationId: null,
+          eventKind: 'applyAgentCommandBundle',
+          summary: 'Write cells in Sheet1!B2',
+          sheetId: null,
+          sheetName: 'Sheet1',
+          anchorAddress: 'B2',
+          range: {
+            sheetName: 'Sheet1',
+            startAddress: 'B2',
+            endAddress: 'B2',
+          },
+          rangeInvalid: false,
+          undoBundle,
+          revertedByRevision: null,
+          revertsRevision: null,
+          createdAtUnixMs: 2,
+        },
+      ],
+    })
+
+    const result = await stageWorkbookAgentCommandResult(
+      {
+        documentId: 'doc-1',
+        session: { userID: 'alex@example.com', roles: ['editor'] },
+        uiContext: createRenderedContext({
+          address: 'B2',
+          value: 'Visible value',
+          capturedRevision: 2,
+          sceneProof: {
+            presentedSemanticMutationRevision: '1',
+          },
+        }),
+        zeroSyncService,
+        stageCommand: async () => ({
+          bundle,
+          executionRecord: createExecutionRecord({
+            bundle,
+            appliedRevision: 2,
+            afterInput: 'Visible value',
+          }),
+        }),
+      },
+      command,
+      'writeRange',
+    )
+
+    const payload = z
+      .object({
+        applied: z.literal(false),
+        status: z.literal('verification_incomplete'),
+        mutationReceipt: z.object({
+          status: z.literal('verification_incomplete'),
+          authoritativeReadback: z.object({
+            matched: z.literal(true),
+          }),
+          renderedReadback: z.object({
+            matched: z.null(),
+            stale: z.literal(true),
+            visibleSceneProof: z.object({
+              matched: z.literal(false),
+              visibleSemanticMutationRevisionMatchesPresentedFrame: z.literal(false),
+              invalidReasons: z.array(z.string()),
+            }),
+          }),
+        }),
+      })
+      .parse(parsePayload(result))
+    expect(payload.mutationReceipt.renderedReadback.visibleSceneProof.invalidReasons).toContain(
+      'Presented semantic mutation revision does not match the current authoritative scene.',
+    )
   })
 
   it('builds verification reports with matching rendered readback and optional audits disabled', async () => {

@@ -57,10 +57,16 @@ export interface WorkbookRenderedVisibleSceneProofStatus {
   readonly presentedSceneOwnershipSignature: string | null
   readonly currentSceneEpoch: string | null
   readonly presentedSceneEpoch: string | null
+  readonly currentFillHandleRevision: string | null
+  readonly presentedFillHandleRevision: string | null
+  readonly currentSelectionRevision: string | null
+  readonly presentedSelectionRevision: string | null
   readonly currentViewportRevision: string | null
   readonly presentedViewportRevision: string | null
   readonly currentSemanticMutationRevision: string | null
   readonly presentedSemanticMutationRevision: string | null
+  readonly currentWorkbookRevision: string | null
+  readonly presentedWorkbookRevision: string | null
   readonly gridAuthoritativeRevision: string | null
   readonly typeGpuAuthoritativeRevision: string | null
   readonly visibleAuthoritativeRevision: string | null
@@ -71,6 +77,11 @@ export interface WorkbookRenderedVisibleSceneProofStatus {
   readonly frameProofMatchesPresentedFrame: boolean | null
   readonly visibleSceneEpochMatchesPresentedFrame: boolean | null
   readonly visibleSceneOwnershipMatchesPresentedFrame: boolean | null
+  readonly visibleFillHandleRevisionMatchesPresentedFrame: boolean | null
+  readonly visibleSelectionRevisionMatchesPresentedFrame: boolean | null
+  readonly visibleViewportRevisionMatchesPresentedFrame: boolean | null
+  readonly visibleSemanticMutationRevisionMatchesPresentedFrame: boolean | null
+  readonly visibleWorkbookRevisionMatchesPresentedFrame: boolean | null
   readonly visibleAuthoritativeRevisionMatchesGrid: boolean | null
   readonly visibleRenderRevisionMatchesTileScene: boolean | null
   readonly incompleteReason: string | null
@@ -93,6 +104,14 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 
 function asNonNegativeSafeInteger(value: unknown): number | null {
   return typeof value === 'number' && Number.isSafeInteger(value) && value >= 0 ? value : null
+}
+
+function hasText(value: string | null | undefined): value is string {
+  return typeof value === 'string' && value.length > 0
+}
+
+function proofRevisionMatches(current: string | null | undefined, presented: string | null | undefined): boolean {
+  return hasText(current) && hasText(presented) && current === presented
 }
 
 function isRenderedValueTag(value: unknown): value is ValueTag {
@@ -153,6 +172,21 @@ function visibleSceneProofInvalidReasons(proof: WorkbookAgentRenderedVisibleScen
   if (!proof.visibleSceneOwnershipMatchesPresentedFrame) {
     invalidReasons.push('Presented visible-scene ownership does not match the current scene.')
   }
+  if (!proofRevisionMatches(proof.currentWorkbookRevision, proof.presentedWorkbookRevision)) {
+    invalidReasons.push('Presented workbook revision does not match the current authoritative scene.')
+  }
+  if (!proofRevisionMatches(proof.currentSemanticMutationRevision, proof.presentedSemanticMutationRevision)) {
+    invalidReasons.push('Presented semantic mutation revision does not match the current authoritative scene.')
+  }
+  if (!proofRevisionMatches(proof.currentViewportRevision, proof.presentedViewportRevision)) {
+    invalidReasons.push('Presented viewport revision does not match the current visible scene.')
+  }
+  if (!proofRevisionMatches(proof.currentSelectionRevision, proof.presentedSelectionRevision)) {
+    invalidReasons.push('Presented selection revision does not match the current visible scene.')
+  }
+  if (!proofRevisionMatches(proof.currentFillHandleRevision, proof.presentedFillHandleRevision)) {
+    invalidReasons.push('Presented fill-handle revision does not match the current visible scene.')
+  }
   if (!proof.visibleAuthoritativeRevisionMatchesGrid) {
     invalidReasons.push('Visible authoritative revision does not match the grid authoritative revision.')
   }
@@ -180,10 +214,16 @@ function buildVisibleSceneProofStatus(
     presentedSceneOwnershipSignature: proof?.presentedSceneOwnershipSignature ?? null,
     currentSceneEpoch: proof?.currentSceneEpoch ?? null,
     presentedSceneEpoch: proof?.presentedSceneEpoch ?? null,
+    currentFillHandleRevision: proof?.currentFillHandleRevision ?? null,
+    presentedFillHandleRevision: proof?.presentedFillHandleRevision ?? null,
+    currentSelectionRevision: proof?.currentSelectionRevision ?? null,
+    presentedSelectionRevision: proof?.presentedSelectionRevision ?? null,
     currentViewportRevision: proof?.currentViewportRevision ?? null,
     presentedViewportRevision: proof?.presentedViewportRevision ?? null,
     currentSemanticMutationRevision: proof?.currentSemanticMutationRevision ?? null,
     presentedSemanticMutationRevision: proof?.presentedSemanticMutationRevision ?? null,
+    currentWorkbookRevision: proof?.currentWorkbookRevision ?? null,
+    presentedWorkbookRevision: proof?.presentedWorkbookRevision ?? null,
     gridAuthoritativeRevision: proof?.gridAuthoritativeRevision ?? null,
     typeGpuAuthoritativeRevision: proof?.typeGpuAuthoritativeRevision ?? null,
     visibleAuthoritativeRevision: proof?.visibleAuthoritativeRevision ?? null,
@@ -194,6 +234,21 @@ function buildVisibleSceneProofStatus(
     frameProofMatchesPresentedFrame: proof?.frameProofMatchesPresentedFrame ?? null,
     visibleSceneEpochMatchesPresentedFrame: proof?.visibleSceneEpochMatchesPresentedFrame ?? null,
     visibleSceneOwnershipMatchesPresentedFrame: proof?.visibleSceneOwnershipMatchesPresentedFrame ?? null,
+    visibleFillHandleRevisionMatchesPresentedFrame: proof
+      ? proofRevisionMatches(proof.currentFillHandleRevision, proof.presentedFillHandleRevision)
+      : null,
+    visibleSelectionRevisionMatchesPresentedFrame: proof
+      ? proofRevisionMatches(proof.currentSelectionRevision, proof.presentedSelectionRevision)
+      : null,
+    visibleViewportRevisionMatchesPresentedFrame: proof
+      ? proofRevisionMatches(proof.currentViewportRevision, proof.presentedViewportRevision)
+      : null,
+    visibleSemanticMutationRevisionMatchesPresentedFrame: proof
+      ? proofRevisionMatches(proof.currentSemanticMutationRevision, proof.presentedSemanticMutationRevision)
+      : null,
+    visibleWorkbookRevisionMatchesPresentedFrame: proof
+      ? proofRevisionMatches(proof.currentWorkbookRevision, proof.presentedWorkbookRevision)
+      : null,
     visibleAuthoritativeRevisionMatchesGrid: proof?.visibleAuthoritativeRevisionMatchesGrid ?? null,
     visibleRenderRevisionMatchesTileScene: proof?.visibleRenderRevisionMatchesTileScene ?? null,
     incompleteReason: invalidReasons.length === 0 ? null : 'Rendered TypeGPU visible-scene proof is incomplete or stale.',
