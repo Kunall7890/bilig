@@ -13,7 +13,7 @@ describe('GridSelectionVisualOverlay', () => {
     document.body.innerHTML = ''
   })
 
-  test('builds continuous Excel-style DOM visual rects for body range selections', () => {
+  test('builds Excel-style DOM visual rects for body range selections', () => {
     const geometry = createGeometry()
     const selection = createRangeSelection(createGridSelection(1, 1), [1, 1], [3, 3])
 
@@ -27,12 +27,18 @@ describe('GridSelectionVisualOverlay', () => {
 
     expect(rects).toEqual(
       expect.arrayContaining([
-        expect.objectContaining({ role: 'selection-fill', bounds: expect.objectContaining({ x: 147, y: 45, width: 298, height: 58 }) }),
+        expect.objectContaining({ role: 'selection-fill', bounds: expect.objectContaining({ x: 247, y: 45, width: 198, height: 18 }) }),
+        expect.objectContaining({ role: 'selection-fill', bounds: expect.objectContaining({ x: 147, y: 65, width: 298, height: 38 }) }),
         expect.objectContaining({ role: 'selection-border', bounds: expect.objectContaining({ x: 146, y: 44, width: 300, height: 60 }) }),
         expect.objectContaining({ role: 'fill-handle', bounds: expect.objectContaining({ x: 442, y: 100, width: 8, height: 8 }) }),
       ]),
     )
-    expect(rects.filter((rect) => rect.role === 'selection-fill')).toHaveLength(1)
+    expect(rects.filter((rect) => rect.role === 'selection-fill')).toHaveLength(2)
+    expect(rects).not.toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ role: 'selection-fill', bounds: expect.objectContaining({ x: 147, y: 45, width: 98, height: 18 }) }),
+      ]),
+    )
     expect(rects.some((rect) => rect.role === 'active-border')).toBe(false)
   })
 
@@ -188,7 +194,7 @@ describe('GridSelectionVisualOverlay', () => {
     ).toBe(false)
   })
 
-  test('chrome-only mode paints body range fill and crisp selection chrome', async () => {
+  test('chrome-only mode paints body range fill excluding the active cell and crisp selection chrome', async () => {
     ;(globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true
     const geometry = createGeometry()
     const selection = createRangeSelection(createGridSelection(1, 1), [1, 1], [3, 3])
@@ -216,6 +222,7 @@ describe('GridSelectionVisualOverlay', () => {
     const activeBorder = queryVisualElement(host, 'active-border')
     const fillHandle = queryVisualElement(host, 'fill-handle')
 
+    expect(host.querySelectorAll('[data-grid-selection-visual-role="selection-fill"]')).toHaveLength(2)
     expect(selectionFill).toBeInstanceOf(HTMLElement)
     expect(hoverFill).toBeInstanceOf(HTMLElement)
     expect(selectionBorder).toBeInstanceOf(HTMLElement)

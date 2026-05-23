@@ -277,7 +277,7 @@ test('web app preserves the active cell inside a selected area and collapses on 
   await expect(page.getByTestId('status-selection')).toHaveText('Sheet1!B2:D4')
   await expect(page.getByTestId('name-box')).toHaveValue('B2:D4')
   await expect(page.getByTestId('sheet-grid-focus-target')).toHaveAttribute('aria-label', 'Sheet1 D4')
-  await expect(page.locator('[data-grid-selection-visual-role="selection-fill"]')).toHaveCount(1)
+  await expect(page.locator('[data-grid-selection-visual-role="selection-fill"]')).toHaveCount(2)
   await expect(page.locator('[data-grid-selection-visual-role="selection-border"]')).toHaveCount(1)
   await expect(page.locator('[data-grid-selection-visual-role="active-border"]')).toHaveCount(0)
   await expect(page.locator('[data-grid-selection-visual-role="fill-handle"]')).toHaveCount(1)
@@ -287,6 +287,7 @@ test('web app preserves the active cell inside a selected area and collapses on 
     'background-color',
     'rgba(33, 115, 70, 0.18)',
   )
+  await expectSelectedRangeActiveCellClear(page, 3, 3)
   await expectSelectedRangeBodyTint(page, 1, 1)
   await expectSelectedRangeBodyTint(page, 1, 2)
 
@@ -352,7 +353,7 @@ test('@browser-ci web app collapses a locally dragged range when the active addr
   await dragProductBodySelection(page, 1, 1, 3, 3)
   await expect(page.getByTestId('status-selection')).toHaveText('Sheet1!B2:D4')
   await expect(page.getByTestId('name-box')).toHaveValue('B2:D4')
-  await expect(page.locator('[data-grid-selection-visual-role="selection-fill"]')).toHaveCount(1)
+  await expect(page.locator('[data-grid-selection-visual-role="selection-fill"]')).toHaveCount(2)
   await expect(page.locator('[data-grid-selection-visual-role="selection-border"]')).toHaveCount(1)
 
   await selectAddress(page, 'B2')
@@ -1021,6 +1022,14 @@ async function expectSelectedRangeBodyTint(page: Page, columnIndex: number, rowI
   expect(pixel.green, 'selected range interior should keep a visible spreadsheet selection tint').toBeLessThan(242)
   expect(pixel.blue, 'selected range interior should not read as a white hollow rectangle').toBeLessThan(238)
   expect(pixel.green, 'selected range interior should carry the green Excel-style selection cast').toBeGreaterThan(pixel.red)
+}
+
+async function expectSelectedRangeActiveCellClear(page: Page, columnIndex: number, rowIndex: number): Promise<void> {
+  const pixel = await sampleCellInteriorPixel(page, columnIndex, rowIndex)
+  expect(pixel.red, 'active cell inside a selected range should stay clear').toBeGreaterThan(242)
+  expect(pixel.green, 'active cell inside a selected range should stay clear').toBeGreaterThan(242)
+  expect(pixel.blue, 'active cell inside a selected range should stay clear').toBeGreaterThan(238)
+  expect(Math.abs(pixel.green - pixel.red), 'active cell should not carry the green selection cast').toBeLessThanOrEqual(6)
 }
 
 async function sampleCellInteriorPixel(
