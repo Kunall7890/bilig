@@ -47,6 +47,12 @@ function importedSnapshotWithLazyArtifacts(): WorkbookSnapshot {
         id: 1,
         name: 'Sheet1',
         order: 0,
+        metadata: {
+          drawingArtifacts: {
+            relationshipTarget: '../drawings/drawing1.xml',
+            preservedChartRelationshipIds: ['rId7'],
+          },
+        },
         cells: [{ address: 'A1', value: 1 }],
       },
     ],
@@ -73,6 +79,34 @@ describe('WorkPaper imported snapshot cloning', () => {
         xml: '<pivotTableDefinition/>',
       })
       expect(Object.hasOwn(pivotPart ?? {}, 'readXml')).toBe(false)
+      expect(exported.sheets[0]?.metadata?.drawingArtifacts).toEqual({
+        relationshipTarget: '../drawings/drawing1.xml',
+        preservedChartRelationshipIds: ['rId7'],
+      })
+    } finally {
+      workbook.dispose()
+    }
+  })
+
+  it('keeps imported drawing artifacts after the WorkPaper snapshot is rebuilt by a headless edit', () => {
+    const workbook = WorkPaper.buildFromSnapshot(importedSnapshotWithLazyArtifacts())
+    try {
+      workbook.setCellContents({ sheet: 1, row: 0, col: 1 }, 'headless edit')
+
+      const exported = workbook.exportSnapshot()
+      const drawingPart = exported.workbook.metadata?.drawingArtifacts?.parts[0]
+
+      expect(drawingPart).toEqual({
+        path: 'xl/drawings/drawing1.xml',
+        storage: 'base64',
+        dataBase64: 'AQID',
+        byteLength: 3,
+      })
+      expect(Object.hasOwn(drawingPart ?? {}, 'readBytes')).toBe(false)
+      expect(exported.sheets[0]?.metadata?.drawingArtifacts).toEqual({
+        relationshipTarget: '../drawings/drawing1.xml',
+        preservedChartRelationshipIds: ['rId7'],
+      })
     } finally {
       workbook.dispose()
     }

@@ -17,7 +17,9 @@ import type {
   WorkbookCommentEntrySnapshot,
   WorkbookCommentThreadSnapshot,
   WorkbookConditionalFormatSnapshot,
+  WorkbookDrawingArtifactsSnapshot,
   WorkbookSheetConditionalFormatArtifactsSnapshot,
+  WorkbookSheetDrawingArtifactsSnapshot,
   WorkbookDataValidationSnapshot,
   WorkbookDefinedNameValueSnapshot,
   WorkbookFreezePaneSnapshot,
@@ -62,6 +64,10 @@ export interface WorkbookPivotRecord extends WorkbookPivotSnapshot {
 export interface WorkbookChartRecord extends WorkbookChartSnapshot {}
 export interface WorkbookImageRecord extends WorkbookImageSnapshot {}
 export interface WorkbookShapeRecord extends WorkbookShapeSnapshot {}
+export interface WorkbookDrawingArtifactsRecord extends WorkbookDrawingArtifactsSnapshot {}
+export interface WorkbookSheetDrawingArtifactsRecord extends WorkbookSheetDrawingArtifactsSnapshot {
+  sheetName: string
+}
 
 export interface WorkbookTableRecord extends WorkbookTableSnapshot {}
 
@@ -152,6 +158,8 @@ export interface WorkbookMetadataRecord {
   charts: Map<string, WorkbookChartRecord>
   images: Map<string, WorkbookImageRecord>
   shapes: Map<string, WorkbookShapeRecord>
+  drawingArtifacts: WorkbookDrawingArtifactsRecord | undefined
+  sheetDrawingArtifacts: Map<string, WorkbookSheetDrawingArtifactsRecord>
   rowMetadata: Map<string, WorkbookAxisMetadataRecord>
   columnMetadata: Map<string, WorkbookAxisMetadataRecord>
   calculationSettings: WorkbookCalculationSettingsRecord
@@ -183,6 +191,8 @@ export function createWorkbookMetadataRecord(): WorkbookMetadataRecord {
     charts: new Map(),
     images: new Map(),
     shapes: new Map(),
+    drawingArtifacts: undefined,
+    sheetDrawingArtifacts: new Map(),
     rowMetadata: new Map(),
     columnMetadata: new Map(),
     calculationSettings: { mode: 'automatic', compatibilityMode: 'excel-modern' },

@@ -5,6 +5,7 @@ import type {
   WorkbookCalculationSettingsSnapshot,
   WorkbookChartSnapshot,
   WorkbookDefinedNameValueSnapshot,
+  WorkbookDrawingArtifactsSnapshot,
   WorkbookImageSnapshot,
   WorkbookMacroPayloadSnapshot,
   WorkbookPivotSnapshot,
@@ -30,6 +31,7 @@ function restoreWorkbookMetadata(args: {
         spills?: Array<{ sheetName: string; address: string; rows: number; cols: number }>
         pivots?: WorkbookPivotSnapshot[]
         charts?: WorkbookChartSnapshot[]
+        drawingArtifacts?: WorkbookDrawingArtifactsSnapshot
         images?: WorkbookImageSnapshot[]
         shapes?: Array<Parameters<WorkbookStore['setShape']>[0]>
         styles?: Array<Parameters<WorkbookStore['upsertCellStyle']>[0]>
@@ -58,6 +60,9 @@ function restoreWorkbookMetadata(args: {
   args.workbookMetadata?.formats?.forEach((format) => {
     args.workbook.upsertCellNumberFormat(format)
   })
+  if (args.workbookMetadata?.drawingArtifacts) {
+    args.workbook.setDrawingArtifacts(args.workbookMetadata.drawingArtifacts)
+  }
 }
 
 function restoreSheetMetadata(args: { readonly workbook: WorkbookStore; readonly sheet: WorkbookSnapshot['sheets'][number] }): void {
@@ -124,6 +129,9 @@ function restoreSheetMetadata(args: { readonly workbook: WorkbookStore; readonly
   })
   if (sheet.metadata?.conditionalFormatArtifacts) {
     workbook.setConditionalFormatArtifacts(sheet.name, structuredClone(sheet.metadata.conditionalFormatArtifacts))
+  }
+  if (sheet.metadata?.drawingArtifacts) {
+    workbook.setSheetDrawingArtifacts(sheet.name, sheet.metadata.drawingArtifacts)
   }
   sheet.metadata?.protectedRanges?.forEach((range) => {
     workbook.setRangeProtection(structuredClone(range))

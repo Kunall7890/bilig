@@ -8,6 +8,7 @@ import {
   cloneDataValidationRecord,
   cloneDefinedNameRecord,
   cloneDefinedNameValue,
+  cloneDrawingArtifactsRecord,
   cloneFilterRecord,
   cloneHyperlinkRecord,
   cloneImageRecord,
@@ -17,6 +18,7 @@ import {
   clonePivotRecord,
   cloneRangeProtectionRecord,
   cloneSheetProtectionRecord,
+  cloneSheetDrawingArtifactsRecord,
   cloneShapeRecord,
   cloneSortKeyRecord,
   cloneSortRecord,
@@ -46,11 +48,13 @@ import {
   compareDefinedNameRecords,
   definedNameKey,
   normalizeDefinedNameScope,
+  type WorkbookDrawingArtifactsRecord,
   type WorkbookImageRecord,
   type WorkbookMacroPayloadRecord,
   type WorkbookMergeRangeRecord,
   type WorkbookNoteRecord,
   type WorkbookRangeProtectionRecord,
+  type WorkbookSheetDrawingArtifactsRecord,
   type WorkbookSheetProtectionRecord,
   pivotKey,
   shapeKey,
@@ -148,6 +152,11 @@ export function createWorkbookMetadataService(metadata: WorkbookMetadataRecord):
         ? { ...cloneConditionalFormatArtifactsRecord(record), sheetName: newSheetName }
         : cloneConditionalFormatArtifactsRecord(record),
     )
+    rekeyRecords(metadata.sheetDrawingArtifacts, (record) =>
+      record.sheetName === oldSheetName
+        ? { ...cloneSheetDrawingArtifactsRecord(record), sheetName: newSheetName }
+        : cloneSheetDrawingArtifactsRecord(record),
+    )
     rekeyRecords(metadata.rangeProtections, (record) =>
       record.range.sheetName === oldSheetName
         ? {
@@ -242,6 +251,7 @@ export function createWorkbookMetadataService(metadata: WorkbookMetadataRecord):
     metadata.sheetProtections.delete(sheetName)
     deleteRecordsBySheet(metadata.conditionalFormats, sheetName, (record) => record.range.sheetName)
     metadata.conditionalFormatArtifacts.delete(sheetName)
+    metadata.sheetDrawingArtifacts.delete(sheetName)
     deleteRecordsBySheet(metadata.rangeProtections, sheetName, (record) => record.range.sheetName)
     deleteRecordsBySheet(metadata.commentThreads, sheetName, (record) => record.sheetName)
     deleteRecordsBySheet(metadata.notes, sheetName, (record) => record.sheetName)
@@ -262,6 +272,8 @@ export function createWorkbookMetadataService(metadata: WorkbookMetadataRecord):
     metadata.charts.clear()
     metadata.images.clear()
     metadata.shapes.clear()
+    metadata.drawingArtifacts = defaults.drawingArtifacts
+    metadata.sheetDrawingArtifacts.clear()
     metadata.rowMetadata.clear()
     metadata.columnMetadata.clear()
     metadata.freezePanes.clear()
@@ -340,6 +352,25 @@ export function createWorkbookMetadataService(metadata: WorkbookMetadataRecord):
     },
     getVolatileContext() {
       return metadataEffect('Failed to get volatile context', () => ({ ...metadata.volatileContext }))
+    },
+    setDrawingArtifacts(artifacts) {
+      return metadataEffect('Failed to set workbook drawing artifact metadata', () => {
+        const stored: WorkbookDrawingArtifactsRecord = cloneDrawingArtifactsRecord(artifacts)
+        metadata.drawingArtifacts = stored
+        return cloneDrawingArtifactsRecord(stored)
+      })
+    },
+    getDrawingArtifacts() {
+      return metadataEffect('Failed to get workbook drawing artifact metadata', () =>
+        metadata.drawingArtifacts ? cloneDrawingArtifactsRecord(metadata.drawingArtifacts) : undefined,
+      )
+    },
+    clearDrawingArtifacts() {
+      return metadataEffect('Failed to clear workbook drawing artifact metadata', () => {
+        const hadArtifacts = metadata.drawingArtifacts !== undefined
+        metadata.drawingArtifacts = undefined
+        return hadArtifacts
+      })
     },
     setDefinedName(name, value, scopeSheetName) {
       return metadataEffect('Failed to set defined name', () => {
@@ -663,6 +694,28 @@ export function createWorkbookMetadataService(metadata: WorkbookMetadataRecord):
       return metadataEffect('Failed to delete conditional format artifact metadata', () =>
         metadata.conditionalFormatArtifacts.delete(sheetName),
       )
+    },
+    setSheetDrawingArtifacts(sheetName, artifacts) {
+      return metadataEffect('Failed to set sheet drawing artifact metadata', () => {
+        const stored: WorkbookSheetDrawingArtifactsRecord = {
+          sheetName,
+          relationshipTarget: artifacts.relationshipTarget,
+          ...(artifacts.preservedChartRelationshipIds !== undefined
+            ? { preservedChartRelationshipIds: [...artifacts.preservedChartRelationshipIds] }
+            : {}),
+        }
+        metadata.sheetDrawingArtifacts.set(sheetName, stored)
+        return cloneSheetDrawingArtifactsRecord(stored)
+      })
+    },
+    getSheetDrawingArtifacts(sheetName) {
+      return metadataEffect('Failed to get sheet drawing artifact metadata', () => {
+        const record = metadata.sheetDrawingArtifacts.get(sheetName)
+        return record ? cloneSheetDrawingArtifactsRecord(record) : undefined
+      })
+    },
+    deleteSheetDrawingArtifacts(sheetName) {
+      return metadataEffect('Failed to delete sheet drawing artifact metadata', () => metadata.sheetDrawingArtifacts.delete(sheetName))
     },
     setRangeProtection(record) {
       return metadataEffect('Failed to set range protection metadata', () => {

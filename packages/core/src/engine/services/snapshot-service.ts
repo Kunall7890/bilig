@@ -138,6 +138,7 @@ export function createEngineSnapshotService(args: {
             .map((format) => Object.assign({}, format))
           const pivots = args.state.workbook.listPivots().map((pivot) => structuredClone(pivot))
           const charts = args.state.workbook.listCharts().map((chart) => structuredClone(chart))
+          const drawingArtifacts = args.state.workbook.getDrawingArtifacts()
           const images = args.state.workbook.listImages().map((image) => structuredClone(image))
           const shapes = args.state.workbook.listShapes().map((shape) => structuredClone(shape))
           if (
@@ -149,6 +150,7 @@ export function createEngineSnapshotService(args: {
             spills.length > 0 ||
             pivots.length > 0 ||
             charts.length > 0 ||
+            drawingArtifacts !== undefined ||
             images.length > 0 ||
             shapes.length > 0 ||
             styles.length > 0 ||
@@ -180,6 +182,9 @@ export function createEngineSnapshotService(args: {
             }
             if (charts.length > 0) {
               workbook.metadata.charts = charts
+            }
+            if (drawingArtifacts) {
+              workbook.metadata.drawingArtifacts = drawingArtifacts
             }
             if (images.length > 0) {
               workbook.metadata.images = images

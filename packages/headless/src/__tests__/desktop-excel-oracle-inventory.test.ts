@@ -17,6 +17,7 @@ const existingDesktopExcelOracleFiles = [
   'macos-desktop-excel-conditional-format-artifacts-oracle.test.ts',
   'macos-desktop-excel-data-table-structural-oracle.test.ts',
   'macos-desktop-excel-defined-name-structural-oracle.test.ts',
+  'macos-desktop-excel-drawing-artifacts-oracle.test.ts',
   'macos-desktop-excel-external-link-cache.test.ts',
   'macos-desktop-excel-hyperlink-structural-oracle.test.ts',
   'macos-desktop-excel-precision-as-displayed-oracle.test.ts',
@@ -92,6 +93,16 @@ describe('macOS Desktop Excel oracle inventory', () => {
     expect(source).toContain('GETPIVOTDATA("Sum of Sales",$B$2,"Region","East")')
     expect(source).toContain('cachedRecords')
     expect(source).toContain('matches Desktop Excel GETPIVOTDATA after headless source edits and XLSX export')
+  })
+
+  it('keeps the drawing artifact oracle anchored to Desktop Excel package preservation', () => {
+    const source = readFileSync(join(testDir, 'macos-desktop-excel-drawing-artifacts-oracle.test.ts'), 'utf8')
+
+    expect(source).toContain("BILIG_EXCEL_ORACLE_RUN === '1'")
+    expect(source).toContain('runMacosExcelInspectionOracle')
+    expect(source).toContain('drawingArtifacts')
+    expect(source).toContain('WorkPaper.buildFromSnapshot')
+    expect(source).toContain('preserves Desktop Excel drawing package parts after a headless edit')
   })
 
   it('keeps the sort oracle in both package and corpus gates', () => {

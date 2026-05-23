@@ -1,5 +1,6 @@
 import type {
   CellRangeRef,
+  WorkbookPreservedPackagePartSnapshot,
   WorkbookConditionalFormatRuleSnapshot,
   WorkbookDataValidationRuleSnapshot,
   WorkbookDefinedNameValueSnapshot,
@@ -16,6 +17,7 @@ import {
   type WorkbookConditionalFormatRecord,
   type WorkbookSheetConditionalFormatArtifactsRecord,
   type WorkbookDataValidationRecord,
+  type WorkbookDrawingArtifactsRecord,
   type WorkbookHyperlinkRecord,
   type WorkbookImageRecord,
   type WorkbookMacroPayloadRecord,
@@ -26,6 +28,7 @@ import {
   type WorkbookProtectionRecord,
   type WorkbookRangeProtectionRecord,
   type WorkbookSheetProtectionRecord,
+  type WorkbookSheetDrawingArtifactsRecord,
   pivotKey,
   type WorkbookAxisMetadataRecord,
   type WorkbookDefinedNameRecord,
@@ -239,6 +242,27 @@ export function cloneConditionalFormatArtifactsRecord(
   record: WorkbookSheetConditionalFormatArtifactsRecord,
 ): WorkbookSheetConditionalFormatArtifactsRecord {
   return structuredClone(record)
+}
+
+export function cloneDrawingArtifactsRecord(record: WorkbookDrawingArtifactsRecord): WorkbookDrawingArtifactsRecord {
+  return {
+    parts: record.parts.map(clonePreservedPackagePart),
+    ...(record.contentTypeDefaults !== undefined ? { contentTypeDefaults: structuredClone(record.contentTypeDefaults) } : {}),
+    ...(record.contentTypeOverrides !== undefined ? { contentTypeOverrides: structuredClone(record.contentTypeOverrides) } : {}),
+  }
+}
+
+export function cloneSheetDrawingArtifactsRecord(record: WorkbookSheetDrawingArtifactsRecord): WorkbookSheetDrawingArtifactsRecord {
+  return structuredClone(record)
+}
+
+function clonePreservedPackagePart(part: WorkbookPreservedPackagePartSnapshot): WorkbookPreservedPackagePartSnapshot {
+  return {
+    path: part.path,
+    storage: 'base64',
+    dataBase64: part.dataBase64,
+    byteLength: part.byteLength,
+  }
 }
 
 export function cloneSheetProtectionRecord(record: WorkbookSheetProtectionRecord): WorkbookSheetProtectionRecord {

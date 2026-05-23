@@ -7,7 +7,9 @@ import type {
   WorkbookChartSnapshot,
   WorkbookCommentThreadSnapshot,
   WorkbookConditionalFormatSnapshot,
+  WorkbookDrawingArtifactsSnapshot,
   WorkbookSheetConditionalFormatArtifactsSnapshot,
+  WorkbookSheetDrawingArtifactsSnapshot,
   WorkbookDataValidationSnapshot,
   WorkbookDefinedNameValueSnapshot,
   WorkbookFreezePaneSnapshot,
@@ -31,6 +33,7 @@ import type {
   WorkbookConditionalFormatRecord,
   WorkbookSheetConditionalFormatArtifactsRecord,
   WorkbookDataValidationRecord,
+  WorkbookDrawingArtifactsRecord,
   WorkbookDefinedNameRecord,
   WorkbookFilterRecord,
   WorkbookFreezePaneRecord,
@@ -46,6 +49,7 @@ import type {
   WorkbookSheetProtectionRecord,
   WorkbookSheetTabColorRecord,
   WorkbookShapeRecord,
+  WorkbookSheetDrawingArtifactsRecord,
   WorkbookSortKeyRecord,
   WorkbookSortRecord,
   WorkbookSpillRecord,
@@ -86,6 +90,11 @@ export interface WorkbookMetadataService {
     context: WorkbookVolatileContextSnapshot,
   ) => Effect.Effect<WorkbookVolatileContextRecord, WorkbookMetadataError>
   readonly getVolatileContext: () => Effect.Effect<WorkbookVolatileContextRecord, WorkbookMetadataError>
+  readonly setDrawingArtifacts: (
+    artifacts: WorkbookDrawingArtifactsSnapshot,
+  ) => Effect.Effect<WorkbookDrawingArtifactsRecord, WorkbookMetadataError>
+  readonly getDrawingArtifacts: () => Effect.Effect<WorkbookDrawingArtifactsRecord | undefined, WorkbookMetadataError>
+  readonly clearDrawingArtifacts: () => Effect.Effect<boolean, WorkbookMetadataError>
   readonly setDefinedName: (
     name: string,
     value: WorkbookDefinedNameValueSnapshot,
@@ -162,6 +171,14 @@ export interface WorkbookMetadataService {
     sheetName: string,
   ) => Effect.Effect<WorkbookSheetConditionalFormatArtifactsRecord | undefined, WorkbookMetadataError>
   readonly deleteConditionalFormatArtifacts: (sheetName: string) => Effect.Effect<boolean, WorkbookMetadataError>
+  readonly setSheetDrawingArtifacts: (
+    sheetName: string,
+    artifacts: WorkbookSheetDrawingArtifactsSnapshot,
+  ) => Effect.Effect<WorkbookSheetDrawingArtifactsRecord, WorkbookMetadataError>
+  readonly getSheetDrawingArtifacts: (
+    sheetName: string,
+  ) => Effect.Effect<WorkbookSheetDrawingArtifactsRecord | undefined, WorkbookMetadataError>
+  readonly deleteSheetDrawingArtifacts: (sheetName: string) => Effect.Effect<boolean, WorkbookMetadataError>
   readonly setRangeProtection: (
     record: WorkbookRangeProtectionSnapshot,
   ) => Effect.Effect<WorkbookRangeProtectionRecord, WorkbookMetadataError>

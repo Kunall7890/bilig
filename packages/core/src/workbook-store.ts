@@ -12,7 +12,9 @@ import type {
   WorkbookCommentThreadSnapshot,
   WorkbookChartSnapshot,
   WorkbookConditionalFormatSnapshot,
+  WorkbookDrawingArtifactsSnapshot,
   WorkbookSheetConditionalFormatArtifactsSnapshot,
+  WorkbookSheetDrawingArtifactsSnapshot,
   WorkbookDataValidationSnapshot,
   WorkbookDefinedNameValueSnapshot,
   WorkbookFreezePaneSnapshot,
@@ -46,6 +48,7 @@ import {
   type WorkbookConditionalFormatRecord,
   type WorkbookSheetConditionalFormatArtifactsRecord,
   type WorkbookDataValidationRecord,
+  type WorkbookDrawingArtifactsRecord,
   type WorkbookCellNumberFormatRecord,
   type WorkbookCellStyleRecord,
   type WorkbookDefinedNameRecord,
@@ -61,6 +64,7 @@ import {
   type WorkbookProtectionRecord,
   type WorkbookPropertyRecord,
   type WorkbookRangeProtectionRecord,
+  type WorkbookSheetDrawingArtifactsRecord,
   type WorkbookSheetProtectionRecord,
   type WorkbookSheetTabColorRecord,
   type WorkbookShapeRecord,
@@ -116,6 +120,7 @@ export type {
   WorkbookConditionalFormatRecord,
   WorkbookSheetConditionalFormatArtifactsRecord,
   WorkbookDataValidationRecord,
+  WorkbookDrawingArtifactsRecord,
   WorkbookCellNumberFormatRecord,
   WorkbookCellStyleRecord,
   WorkbookDefinedNameRecord,
@@ -130,6 +135,7 @@ export type {
   WorkbookPivotRecord,
   WorkbookPropertyRecord,
   WorkbookRangeProtectionRecord,
+  WorkbookSheetDrawingArtifactsRecord,
   WorkbookSheetProtectionRecord,
   WorkbookSheetTabColorRecord,
   WorkbookShapeRecord,
@@ -483,6 +489,18 @@ export class WorkbookStore {
     return runWorkbookMetadataEffect(this.metadataService.getVolatileContext())
   }
 
+  setDrawingArtifacts(artifacts: WorkbookDrawingArtifactsSnapshot): WorkbookDrawingArtifactsRecord {
+    return runWorkbookMetadataEffect(this.metadataService.setDrawingArtifacts(artifacts))
+  }
+
+  getDrawingArtifacts(): WorkbookDrawingArtifactsRecord | undefined {
+    return runWorkbookMetadataEffect(this.metadataService.getDrawingArtifacts())
+  }
+
+  clearDrawingArtifacts(): boolean {
+    return runWorkbookMetadataEffect(this.metadataService.clearDrawingArtifacts())
+  }
+
   setDefinedName(name: string, value: WorkbookDefinedNameValueSnapshot, scopeSheetName?: string): WorkbookDefinedNameRecord {
     return runWorkbookMetadataEffect(this.metadataService.setDefinedName(name, value, scopeSheetName))
   }
@@ -795,6 +813,18 @@ export class WorkbookStore {
 
   deleteConditionalFormatArtifacts(sheetName: string): boolean {
     return runWorkbookMetadataEffect(this.metadataService.deleteConditionalFormatArtifacts(sheetName))
+  }
+
+  setSheetDrawingArtifacts(sheetName: string, artifacts: WorkbookSheetDrawingArtifactsSnapshot): WorkbookSheetDrawingArtifactsRecord {
+    return runWorkbookMetadataEffect(this.metadataService.setSheetDrawingArtifacts(sheetName, artifacts))
+  }
+
+  getSheetDrawingArtifacts(sheetName: string): WorkbookSheetDrawingArtifactsRecord | undefined {
+    return runWorkbookMetadataEffect(this.metadataService.getSheetDrawingArtifacts(sheetName))
+  }
+
+  deleteSheetDrawingArtifacts(sheetName: string): boolean {
+    return runWorkbookMetadataEffect(this.metadataService.deleteSheetDrawingArtifacts(sheetName))
   }
 
   setRangeProtection(record: WorkbookRangeProtectionSnapshot): WorkbookRangeProtectionRecord {

@@ -14,6 +14,8 @@ export function hasStructuralMetadataForSheetRecord(
     metadata.charts.size > 0 ||
     metadata.images.size > 0 ||
     metadata.shapes.size > 0 ||
+    metadata.drawingArtifacts !== undefined ||
+    metadata.sheetDrawingArtifacts.has(sheetName) ||
     metadata.freezePanes.size > 0 ||
     metadata.merges.size > 0 ||
     metadata.filters.size > 0 ||
