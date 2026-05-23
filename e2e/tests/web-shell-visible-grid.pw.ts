@@ -20,7 +20,7 @@ import {
   waitForWorkbookReady,
 } from './web-shell-helpers.js'
 
-const DEFAULT_WORKBOOK_CSS_FONT_SIZE = '13.3333px'
+const DEFAULT_WORKBOOK_CSS_FONT_SIZE = '13px'
 
 test.beforeEach(async ({ page }) => {
   await installTypeGpuCellReadbackHarness(page)
@@ -217,7 +217,8 @@ test('@browser-ci web app keeps dense accounting-sheet text payloads complete in
     gridFontFamilyStartsWithArial: true,
     gridFontSize: DEFAULT_WORKBOOK_CSS_FONT_SIZE,
     nativeTextFontFamilyStartsWithArial: true,
-    nativeTextFontSizeMatchesWorkbookPointSize: true,
+    nativeTextFontSizeIsDevicePixelAligned: true,
+    nativeTextViewportPixelAligned: true,
     nativeTextRendering: 'auto',
     nativeTextSmoothing: 'auto',
   })
@@ -1114,7 +1115,8 @@ function readNativeTextQualityState(page: Page): () => Promise<{
   readonly gridFontSize: string | null
   readonly nativeTextFontFamilyStartsWithArial: boolean
   readonly nativeTextFontSize: string | null
-  readonly nativeTextFontSizeMatchesWorkbookPointSize: boolean
+  readonly nativeTextFontSizeIsDevicePixelAligned: boolean
+  readonly nativeTextViewportPixelAligned: boolean
   readonly nativeTextRendering: string | null
   readonly nativeTextSmoothing: string | null
 }> {
@@ -1125,13 +1127,20 @@ function readNativeTextQualityState(page: Page): () => Promise<{
       const gridStyle = grid instanceof HTMLElement ? getComputedStyle(grid) : null
       const nativeTextStyle = nativeTextRun instanceof HTMLElement ? getComputedStyle(nativeTextRun) : null
       const nativeFontSize = nativeTextStyle ? Number.parseFloat(nativeTextStyle.fontSize) : Number.NaN
+      const nativeTextRect = nativeTextRun instanceof HTMLElement ? nativeTextRun.getBoundingClientRect() : null
+      const devicePixelRatio = window.devicePixelRatio || 1
+      const viewportY = nativeTextRect?.y ?? Number.NaN
       return {
         appTextRendering: getComputedStyle(document.body).textRendering,
         gridFontFamilyStartsWithArial: gridStyle?.fontFamily.startsWith('Arial') ?? false,
         gridFontSize: gridStyle?.fontSize ?? null,
         nativeTextFontFamilyStartsWithArial: nativeTextStyle?.fontFamily.startsWith('Arial') ?? false,
         nativeTextFontSize: nativeTextStyle?.fontSize ?? null,
-        nativeTextFontSizeMatchesWorkbookPointSize: Number.isFinite(nativeFontSize) && Math.abs(nativeFontSize - 13.3333) < 0.0001,
+        nativeTextFontSizeIsDevicePixelAligned:
+          Number.isFinite(nativeFontSize) &&
+          Math.abs(nativeFontSize * devicePixelRatio - Math.round(nativeFontSize * devicePixelRatio)) < 0.05,
+        nativeTextViewportPixelAligned:
+          Number.isFinite(viewportY) && Math.abs(viewportY * devicePixelRatio - Math.round(viewportY * devicePixelRatio)) < 0.05,
         nativeTextRendering: nativeTextStyle?.textRendering ?? null,
         nativeTextSmoothing: nativeTextStyle?.webkitFontSmoothing ?? null,
       }

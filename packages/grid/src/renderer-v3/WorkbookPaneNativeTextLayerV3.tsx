@@ -1,4 +1,4 @@
-import { memo, useMemo, useSyncExternalStore, type CSSProperties } from 'react'
+import { memo, useCallback, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore, type CSSProperties } from 'react'
 import type { GridGeometrySnapshot } from '../gridGeometry.js'
 import type { GridHeaderPaneState } from '../gridHeaderPanes.js'
 import type { Rectangle } from '../gridTypes.js'
@@ -32,6 +32,11 @@ interface NativeTextRunVisibleClipV3 {
   readonly innerWidth: number
 }
 
+interface NativeTextViewportOffsetV3 {
+  readonly x: number
+  readonly y: number
+}
+
 export interface NativeTextRunFontStyleV3 {
   readonly fontFamily: string
   readonly fontSize: number
@@ -57,6 +62,7 @@ export interface WorkbookPaneNativeTextLayerV3Props {
 }
 
 const EMPTY_SCROLL_SNAPSHOT: WorkbookGridScrollSnapshot = Object.freeze({ tx: 0, ty: 0 })
+const EMPTY_VIEWPORT_OFFSET: NativeTextViewportOffsetV3 = Object.freeze({ x: 0, y: 0 })
 
 function subscribeNoop(): () => void {
   return () => {}
@@ -186,6 +192,11 @@ function snapCssPixel(value: number, dpr: number): number {
   return workbookSnapCssPixel(value, dpr)
 }
 
+function snapCssViewportPixel(value: number, dpr: number, viewportOffset: NativeTextViewportOffsetV3, axis: 'x' | 'y'): number {
+  const offset = axis === 'x' ? viewportOffset.x : viewportOffset.y
+  return snapCssPixel(value + offset, dpr) - offset
+}
+
 export function snapNativeTextDisplayFontSizeV3(fontSize: number, dpr = 1): number {
   return workbookDisplayFontCssPx(fontSize, dpr)
 }
@@ -210,8 +221,10 @@ export function resolveNativeTextRunVisibleClipV3(input: {
   readonly scrollSnapshot: WorkbookGridScrollSnapshot
   readonly selectionOcclusionRanges?: readonly Pick<Rectangle, 'x' | 'y' | 'width' | 'height'>[] | null | undefined
   readonly dpr?: number | undefined
+  readonly viewportOffset?: NativeTextViewportOffsetV3 | undefined
 }): NativeTextRunVisibleClipV3 | null {
   const dpr = input.dpr ?? getWorkbookDevicePixelRatio()
+  const viewportOffset = input.viewportOffset ?? EMPTY_VIEWPORT_OFFSET
   const offset = resolvePaneRenderOffset(input.pane, input.scrollSnapshot)
   const width = input.run.width ?? 0
   const height = input.run.height ?? 0
@@ -247,10 +260,10 @@ export function resolveNativeTextRunVisibleClipV3(input: {
 
   const contentLeft = input.pane.frame.x + offset.x + input.run.x
   const contentTop = input.pane.frame.y + offset.y + input.run.y
-  const outerLeft = snapCssPixel(visibleLeft, dpr)
-  const outerTop = snapCssPixel(visibleTop, dpr)
-  const outerRight = snapCssPixel(visibleRight, dpr)
-  const outerBottom = snapCssPixel(visibleBottom, dpr)
+  const outerLeft = snapCssViewportPixel(visibleLeft, dpr, viewportOffset, 'x')
+  const outerTop = snapCssViewportPixel(visibleTop, dpr, viewportOffset, 'y')
+  const outerRight = snapCssViewportPixel(visibleRight, dpr, viewportOffset, 'x')
+  const outerBottom = snapCssViewportPixel(visibleBottom, dpr, viewportOffset, 'y')
   const innerRight = Math.min(contentLeft + width, visibleRight)
   const innerBottom = Math.min(contentTop + height, visibleBottom)
 
@@ -395,8 +408,10 @@ export function resolveNativeTextRunInnerStyleV3(input: {
   readonly run: TextQuadRun
   readonly dpr?: number | undefined
   readonly visibleClip?: NativeTextRunVisibleClipV3 | null | undefined
+  readonly viewportOffset?: NativeTextViewportOffsetV3 | undefined
 }): CSSProperties {
   const dpr = input.dpr ?? getWorkbookDevicePixelRatio()
+  const viewportOffset = input.viewportOffset ?? EMPTY_VIEWPORT_OFFSET
   const width = input.run.width ?? 0
   const height = input.run.height ?? 0
   const clipX = input.run.clipX ?? input.run.x
@@ -414,11 +429,13 @@ export function resolveNativeTextRunInnerStyleV3(input: {
   const textAlign = input.run.align ?? 'left'
   const anchorOffset =
     textAlign === 'right' ? baseWidth - CELL_TEXT_PADDING_X : textAlign === 'center' ? baseWidth / 2 : CELL_TEXT_PADDING_X
-  const anchorDelta = snapCssPixel(outerLeft + baseLeft + anchorOffset, dpr) - (outerLeft + baseLeft + anchorOffset)
+  const anchorPosition = outerLeft + baseLeft + anchorOffset
+  const anchorDelta = snapCssViewportPixel(anchorPosition, dpr, viewportOffset, 'x') - anchorPosition
   const paddingLeft = textAlign === 'left' || textAlign === 'center' ? CELL_TEXT_PADDING_X + anchorDelta : CELL_TEXT_PADDING_X
   const paddingRight = textAlign === 'right' || textAlign === 'center' ? CELL_TEXT_PADDING_X - anchorDelta : CELL_TEXT_PADDING_X
   const rawTextTop = input.run.wrap ? baseTop : baseTop + lineBox.topInset
-  const textTopDelta = snapCssPixel(outerTop + rawTextTop, dpr) - (outerTop + rawTextTop)
+  const textTopPosition = outerTop + rawTextTop
+  const textTopDelta = snapCssViewportPixel(textTopPosition, dpr, viewportOffset, 'y') - textTopPosition
   const textTop = rawTextTop + textTopDelta
   return {
     ...workbookNativeTextQualityStyle,
@@ -445,6 +462,54 @@ export function resolveNativeTextRunInnerStyleV3(input: {
     whiteSpace: input.run.wrap ? 'pre-wrap' : 'pre',
     width: baseWidth,
   }
+}
+
+function readNativeTextLayerViewportOffset(layerRef: { readonly current: HTMLDivElement | null }): NativeTextViewportOffsetV3 {
+  const rect = layerRef.current?.getBoundingClientRect()
+  return rect ? { x: rect.left, y: rect.top } : EMPTY_VIEWPORT_OFFSET
+}
+
+function useNativeTextLayerViewportOffset(layerRef: { readonly current: HTMLDivElement | null }): NativeTextViewportOffsetV3 {
+  const [viewportOffset, setViewportOffset] = useState<NativeTextViewportOffsetV3>(EMPTY_VIEWPORT_OFFSET)
+  const updateViewportOffset = useCallback((next: NativeTextViewportOffsetV3) => {
+    setViewportOffset((current) => (Math.abs(current.x - next.x) < 0.001 && Math.abs(current.y - next.y) < 0.001 ? current : next))
+  }, [])
+
+  useLayoutEffect(() => {
+    updateViewportOffset(readNativeTextLayerViewportOffset(layerRef))
+  })
+
+  useLayoutEffect(() => {
+    if (typeof window === 'undefined') {
+      return
+    }
+    let frame = 0
+    const measure = () => updateViewportOffset(readNativeTextLayerViewportOffset(layerRef))
+    const scheduleMeasure = () => {
+      if (frame !== 0) {
+        window.cancelAnimationFrame(frame)
+      }
+      frame = window.requestAnimationFrame(() => {
+        frame = 0
+        measure()
+      })
+    }
+
+    measure()
+    window.addEventListener('resize', scheduleMeasure)
+    window.visualViewport?.addEventListener('resize', scheduleMeasure)
+    window.visualViewport?.addEventListener('scroll', scheduleMeasure)
+    return () => {
+      if (frame !== 0) {
+        window.cancelAnimationFrame(frame)
+      }
+      window.removeEventListener('resize', scheduleMeasure)
+      window.visualViewport?.removeEventListener('resize', scheduleMeasure)
+      window.visualViewport?.removeEventListener('scroll', scheduleMeasure)
+    }
+  }, [layerRef, updateViewportOffset])
+
+  return viewportOffset
 }
 
 export const WorkbookPaneNativeTextLayerV3 = memo(function WorkbookPaneNativeTextLayerV3({
@@ -481,6 +546,8 @@ export const WorkbookPaneNativeTextLayerV3 = memo(function WorkbookPaneNativeTex
   )
   const panes = useMemo<readonly TextLayerPane[]>(() => [...tilePanes, ...headerPanes], [headerPanes, tilePanes])
   const dpr = useSyncExternalStore(subscribeWorkbookDevicePixelRatioChange, getWorkbookDevicePixelRatio, () => 1)
+  const layerRef = useRef<HTMLDivElement | null>(null)
+  const viewportOffset = useNativeTextLayerViewportOffset(layerRef)
   const renderedRuns = useMemo(
     () =>
       active
@@ -506,12 +573,13 @@ export const WorkbookPaneNativeTextLayerV3 = memo(function WorkbookPaneNativeTex
                 run,
                 scrollSnapshot: drawScrollSnapshot,
                 selectionOcclusionRanges,
+                viewportOffset,
               })
               return visibleClip ? [{ pane, run, visibleClip }] : []
             })
           })
         : [],
-    [active, dpr, drawScrollSnapshot, panes, resolvedGeometry, selectionOcclusionRanges, suppressedTextCell],
+    [active, dpr, drawScrollSnapshot, panes, resolvedGeometry, selectionOcclusionRanges, suppressedTextCell, viewportOffset],
   )
   const textRunCount = renderedRuns.length
 
@@ -530,6 +598,7 @@ export const WorkbookPaneNativeTextLayerV3 = memo(function WorkbookPaneNativeTex
       data-v3-native-text-render-ty={drawScrollSnapshot.renderTy ?? drawScrollSnapshot.ty}
       data-v3-native-text-run-count={textRunCount}
       data-testid="grid-native-text-layer"
+      ref={layerRef}
       style={{ contain: 'strict' }}
     >
       {renderedRuns.map(({ pane, run, visibleClip }) => (
@@ -540,7 +609,7 @@ export const WorkbookPaneNativeTextLayerV3 = memo(function WorkbookPaneNativeTex
           key={resolveNativeTextRunKey(pane, run)}
           style={resolveNativeTextRunOuterStyleV3({ dpr, pane, run, scrollSnapshot: drawScrollSnapshot, visibleClip })}
         >
-          <div style={resolveNativeTextRunInnerStyleV3({ dpr, run, visibleClip })}>{run.text}</div>
+          <div style={resolveNativeTextRunInnerStyleV3({ dpr, run, visibleClip, viewportOffset })}>{run.text}</div>
         </div>
       ))}
     </div>

@@ -199,10 +199,12 @@ describe('WorkbookPaneNativeTextLayerV3', () => {
     })
   })
 
-  test('keeps fractional workbook font sizes exact while snapping text geometry', () => {
-    expect(snapNativeTextDisplayFontSizeV3(13.3333)).toBe(13.3333)
-    expect(snapNativeTextDisplayFontSizeV3(13.3333, 2)).toBe(13.3333)
-    expect(snapNativeTextDisplayFontSizeV3(14.6667)).toBe(14.6667)
+  test('snaps displayed workbook font sizes while keeping text geometry aligned', () => {
+    expect(snapNativeTextDisplayFontSizeV3(13.3333)).toBe(13)
+    expect(snapNativeTextDisplayFontSizeV3(13.3333, 1.25)).toBe(13.6)
+    expect(snapNativeTextDisplayFontSizeV3(13.3333, 1.5)).toBe(13.3333)
+    expect(snapNativeTextDisplayFontSizeV3(13.3333, 2)).toBe(13.5)
+    expect(snapNativeTextDisplayFontSizeV3(14.6667)).toBe(15)
 
     const defaultPointSizeRun = createRun({
       font: '400 13.3333px Arial, sans-serif',
@@ -210,15 +212,40 @@ describe('WorkbookPaneNativeTextLayerV3', () => {
     })
 
     expect(resolveNativeTextRunInnerStyleV3({ dpr: 1, run: defaultPointSizeRun })).toMatchObject({
-      fontSize: 13.3333,
+      fontSize: 13,
       lineHeight: '16px',
       top: -1,
     })
     expect(resolveNativeTextRunInnerStyleV3({ dpr: 2, run: defaultPointSizeRun })).toMatchObject({
-      fontSize: 13.3333,
+      fontSize: 13.5,
       lineHeight: '16px',
       top: -1,
     })
+  })
+
+  test('snaps native text against viewport pixels when the grid host is fractionally positioned', () => {
+    const dpr = 1.25
+    const viewportOffset = { x: 0, y: 86.1875 }
+    const run = createRun({
+      clipHeight: 22,
+      clipY: 0,
+      font: '400 13.3333px Arial, sans-serif',
+      fontSize: 13.3333,
+      height: 22,
+      y: 0,
+    })
+    const visibleClip = resolveNativeTextRunVisibleClipV3({
+      dpr,
+      pane: createPane(run),
+      run,
+      scrollSnapshot: { tx: 0, ty: 0 },
+      viewportOffset,
+    })
+
+    expect(visibleClip).not.toBeNull()
+    const innerStyle = resolveNativeTextRunInnerStyleV3({ dpr, run, visibleClip, viewportOffset })
+    const textViewportTop = viewportOffset.y + visibleClip!.outerTop + Number(innerStyle.top)
+    expectDprAligned(textViewportTop, dpr)
   })
 
   test('keeps wrapped text top-aligned while non-wrapped text uses a snapped line box', () => {
