@@ -494,6 +494,20 @@ npm exec --package @bilig/headless@0.64.0 -- bilig-workpaper-mcp --workpaper ./p
   https://github.com/proompteng/bilig/blob/main/examples/headless-workpaper/ai-sdk-generate-text-tool-smoke.ts
 - runnable AI SDK streamText WorkPaper tool smoke:
   https://github.com/proompteng/bilig/blob/main/examples/headless-workpaper/ai-sdk-stream-text-tool-smoke.ts
+- low-code agent workflow formula readback:
+  npm exec --package @bilig/workpaper@0.64.0 -- bilig-n8n-formula-server --port 4321
+  https://proompteng.github.io/bilig/n8n-workpaper-formula-readback.html
+  https://github.com/proompteng/bilig/blob/main/docs/n8n-workpaper-formula-readback.md
+  https://github.com/proompteng/bilig/tree/main/examples/n8n-workpaper-formula-readback
+  https://proompteng.github.io/bilig/dify-workpaper-formula-readback.html
+  https://github.com/proompteng/bilig/blob/main/docs/dify-workpaper-formula-readback.md
+  https://github.com/proompteng/bilig/tree/main/examples/dify-workpaper-formula-readback
+  https://proompteng.github.io/bilig/flowise-workpaper-formula-readback.html
+  https://github.com/proompteng/bilig/blob/main/docs/flowise-workpaper-formula-readback.md
+  https://github.com/proompteng/bilig/tree/main/examples/flowise-workpaper-formula-readback
+  Use this path when n8n, Dify, Flowise, or another workflow builder should
+  orchestrate the agent task while Bilig owns workbook formula state, readback,
+  JSON proof, and persistence.
 - MCP spreadsheet tool server guide:
   https://proompteng.github.io/bilig/mcp-workpaper-tool-server.html
   https://github.com/proompteng/bilig/blob/main/docs/mcp-workpaper-tool-server.md

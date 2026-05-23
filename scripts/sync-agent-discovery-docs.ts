@@ -474,6 +474,11 @@ Start by proving the direct WorkPaper loop:`,
 const llmsFullSources = [
   { title: 'Repository README', relativePath: 'README.md', url: `${repositoryUrl}/blob/main/README.md` },
   {
+    title: 'WorkPaper Package README',
+    relativePath: 'packages/workpaper/README.md',
+    url: `${repositoryUrl}/blob/main/packages/workpaper/README.md`,
+  },
+  {
     title: 'Headless Package README',
     relativePath: 'packages/headless/README.md',
     url: `${repositoryUrl}/blob/main/packages/headless/README.md`,
@@ -507,6 +512,21 @@ const llmsFullSources = [
     title: 'Workbook Tools For Agent Frameworks',
     relativePath: 'docs/agent-framework-workbook-tools.md',
     url: `${repositoryUrl}/blob/main/docs/agent-framework-workbook-tools.md`,
+  },
+  {
+    title: 'n8n WorkPaper Formula Readback',
+    relativePath: 'docs/n8n-workpaper-formula-readback.md',
+    url: `${repositoryUrl}/blob/main/docs/n8n-workpaper-formula-readback.md`,
+  },
+  {
+    title: 'Dify WorkPaper Formula Readback',
+    relativePath: 'docs/dify-workpaper-formula-readback.md',
+    url: `${repositoryUrl}/blob/main/docs/dify-workpaper-formula-readback.md`,
+  },
+  {
+    title: 'Flowise WorkPaper Formula Readback',
+    relativePath: 'docs/flowise-workpaper-formula-readback.md',
+    url: `${repositoryUrl}/blob/main/docs/flowise-workpaper-formula-readback.md`,
   },
   {
     title: 'OpenAI Agents SDK WorkPaper Tool',

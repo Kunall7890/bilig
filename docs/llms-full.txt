@@ -992,6 +992,144 @@ MIT.
 
 ---
 
+## WorkPaper Package README
+
+Source: https://github.com/proompteng/bilig/blob/main/packages/workpaper/README.md
+
+# @bilig/workpaper
+
+Scoped Bilig WorkPaper runtime for Node.js services, agent tools, and server-side spreadsheet formulas.
+
+Use this when business logic is easiest to review as workbook cells and
+formulas, but the calculation needs to run in a backend service, queue worker,
+serverless route, test, or coding-agent tool.
+
+`@bilig/workpaper` is the canonical scoped npm entrypoint. The unscoped
+`bilig-workpaper` package remains published as a compatibility and search alias.
+
+## Install
+
+```sh
+npm install @bilig/workpaper
+```
+
+## Start Here
+
+Pick the path that matches the workflow you are trying to unblock:
+
+| You need... | Run this first | Proof you should get |
+| --- | --- | --- |
+| Formula workbook logic inside a Node service, route, queue, or test | `npm create @bilig/workpaper@latest pricing-workpaper` | Inputs are written, formulas recalculate, JSON persists, restore matches readback, and `verified: true` is printed. |
+| A coding agent or MCP client that needs spreadsheet operations | `npm create @bilig/workpaper@latest pricing-agent -- --agent` | The generated project includes an agent contract, MCP config, and `npm run agent:verify`. |
+| n8n, Dify, or Flowise formula readback without spreadsheet UI automation | `npm exec --package @bilig/workpaper@latest -- bilig-n8n-formula-server --port 4321` | The workflow writes one input cell, reads dependent formula output, and returns a compact JSON proof. |
+| An existing `.xlsx` file with stale formula results after Node edits | `npx --package @bilig/xlsx-formula-recalc xlsx-recalc --demo --json` | The file-level path updates inputs and returns fresh formula values without Excel, LibreOffice, or a browser. |
+
+## Use A WorkPaper In Node
+
+```ts
+import { WorkPaper } from '@bilig/workpaper'
+
+const workbook = WorkPaper.buildFromSheets({
+  Inputs: [
+    ['Metric', 'Value'],
+    ['Units', 40],
+    ['Price', 1200],
+  ],
+  Summary: [
+    ['Metric', 'Value'],
+    ['Revenue', '=Inputs!B2*Inputs!B3'],
+  ],
+})
+
+const inputs = workbook.getSheetId('Inputs')
+const summary = workbook.getSheetId('Summary')
+
+if (inputs === undefined || summary === undefined) {
+  throw new Error('Expected sheets to exist')
+}
+
+workbook.setCellContents({ sheet: inputs, row: 1, col: 1 }, 48)
+workbook.setCellContents({ sheet: inputs, row: 2, col: 1 }, 1500)
+
+console.log(workbook.getCellValue({ sheet: summary, row: 1, col: 1 }))
+console.log(workbook.exportSnapshot())
+
+workbook.dispose()
+```
+
+## Prove The Agent Loop Without Cloning
+
+The package ships proof commands for coding agents and service evaluators:
+
+```sh
+npm exec --package @bilig/workpaper -- bilig-agent-challenge
+npm exec --package @bilig/workpaper -- bilig-mcp-challenge
+npm exec --package @bilig/workpaper -- bilig-n8n-formula-server --port 4321
+npm exec --package @bilig/workpaper -- bilig-workpaper-mcp --workpaper ./pricing.workpaper.json --init-demo-workpaper --writable
+```
+
+The challenge commands edit one input, recalculate dependent formulas, export
+WorkPaper JSON, restore it, and print a `verified: true` proof object.
+
+## Agent Workflow Builders
+
+Use the local formula-readback server when an agent workflow platform should
+orchestrate the task but Bilig should own workbook state:
+
+```sh
+npm exec --package @bilig/workpaper@latest -- bilig-n8n-formula-server --port 4321
+```
+
+Start from the repo examples:
+
+- `examples/n8n-workpaper-formula-readback/bilig-workpaper-formula-readback.n8n.json`
+- `examples/dify-workpaper-formula-readback`
+- `examples/flowise-workpaper-formula-readback/bilig-workpaper-formula-readback.flowise-tool.json`
+
+Docs:
+
+- <https://proompteng.github.io/bilig/n8n-workpaper-formula-readback.html>
+- <https://proompteng.github.io/bilig/dify-workpaper-formula-readback.html>
+- <https://proompteng.github.io/bilig/flowise-workpaper-formula-readback.html>
+
+## XLSX Import And Export
+
+```ts
+import { WorkPaper } from '@bilig/workpaper'
+import { exportXlsx, importXlsx } from '@bilig/workpaper/xlsx'
+```
+
+Use `@bilig/xlsx-formula-recalc` when you only need to edit and recalculate
+XLSX files. Use `@bilig/exceljs-formula-recalc` when you already use ExcelJS
+and need recalculated formula results after changing inputs.
+
+## Agent Commands And Optional MCP
+
+The npm tarball exposes the same CLI entrypoints as `@bilig/headless`, so agents
+can install one focused package and still get the MCP stdio server:
+
+```ts
+import { createWorkPaperMcpServer } from '@bilig/workpaper/mcp'
+```
+
+For a runnable starter project with `AGENTS.md`, MCP client config, and an
+`agent:verify` script:
+
+```sh
+npm create @bilig/workpaper@latest pricing-agent -- --agent
+```
+
+## Scope
+
+Bilig is not a desktop Excel clone. It is a formula workbook runtime for
+service-owned calculations, JSON persistence, XLSX import/export, and
+agent-readable readback. Unsupported Excel functions, external workbook links,
+macros, and volatile functions may need review.
+
+Full docs: <https://proompteng.github.io/bilig/>
+
+---
+
 ## Headless Package README
 
 Source: https://github.com/proompteng/bilig/blob/main/packages/headless/README.md
@@ -3320,6 +3458,301 @@ Do not claim success from a write call alone.
 - [XLSX formula recalculation in Node.js](xlsx-formula-recalculation-node.md)
 - [GitHub repo](https://github.com/proompteng/bilig)
 - [Star or bookmark Bilig](https://github.com/proompteng/bilig/stargazers)
+
+---
+
+## n8n WorkPaper Formula Readback
+
+Source: https://github.com/proompteng/bilig/blob/main/docs/n8n-workpaper-formula-readback.md
+
+# n8n WorkPaper Formula Readback
+
+Use this when an n8n workflow needs spreadsheet formulas but the important
+operation is not editing a visible Excel grid. The workflow writes one input,
+recalculates dependent formulas, reads the computed outputs, and checks that the
+WorkPaper JSON restores to the same result.
+
+## Importable Workflow
+
+The example workflows live in:
+
+```text
+examples/n8n-workpaper-formula-readback/bilig-workpaper-formula-readback.n8n.json
+examples/n8n-workpaper-formula-readback/bilig-workpaper-formula-readback.self-hosted.n8n.json
+```
+
+It uses only built-in n8n nodes:
+
+- Manual Trigger
+- Code
+- HTTP Request
+- Code
+
+n8n imports workflows as JSON, so the file can be imported directly from the
+editor. See the n8n workflow import/export docs:
+<https://docs.n8n.io/workflows/export-import/>.
+
+## Hosted Demo vs Self-Hosted Route
+
+The hosted demo workflow defaults to the public Bilig endpoint so someone can
+import it and run the proof before deploying Bilig:
+
+```text
+POST https://bilig.proompteng.ai/api/workpaper/n8n/forecast
+```
+
+Start the local formula-readback server from npm; no Bilig checkout is needed:
+
+```sh
+npm exec --package @bilig/workpaper@latest -- bilig-n8n-formula-server --port 4321
+```
+
+The self-hosted workflow defaults to that local Bilig endpoint:
+
+```text
+POST http://host.docker.internal:4321/api/workpaper/n8n/forecast
+```
+
+and falls back to:
+
+```text
+POST http://localhost:4321/api/workpaper/n8n/forecast
+```
+
+Use `host.docker.internal` when n8n runs in Docker and Bilig runs on the host.
+Use `localhost` when n8n and Bilig run in the same host network. Change
+`baseUrl` in the `Choose local forecast input` node if your Bilig app has a
+different internal URL.
+
+Request:
+
+```json
+{
+  "sheetName": "Inputs",
+  "address": "B3",
+  "value": 0.4
+}
+```
+
+Response shape:
+
+```json
+{
+  "verified": true,
+  "editedCell": "Inputs!B3",
+  "before": {
+    "expectedArr": 60000
+  },
+  "after": {
+    "expectedArr": 96000,
+    "targetGap": 5600
+  },
+  "checks": {
+    "formulasPersisted": true,
+    "restoredMatchesAfter": true,
+    "computedOutputChanged": true
+  }
+}
+```
+
+Editable inputs in the demo forecast WorkPaper:
+
+| Cell | Meaning |
+| --- | --- |
+| `B2` | Qualified opportunities |
+| `B3` | Win rate |
+| `B4` | Average ARR |
+| `B5` | Expansion multiplier |
+
+## Why This Fits n8n
+
+n8n should orchestrate the workflow. Bilig owns the formula workbook step:
+
+1. receive one spreadsheet-shaped input edit;
+2. recalculate formulas in Node;
+3. return the computed readback;
+4. export and restore WorkPaper JSON as proof.
+
+That keeps the n8n surface small and reproducible before a custom community node
+exists.
+
+## Privacy and Dependency Boundary
+
+The hosted workflow is a demo. It sends the selected sheet name, cell address,
+and value to `bilig.proompteng.ai`.
+
+For production data, use the self-hosted workflow and keep the Bilig route on
+your own network. That removes the public hosted dependency while keeping the
+n8n workflow inspectable: Manual Trigger, Code, HTTP Request, Code.
+
+## Formula.js Boundary
+
+For a small scalar formula that lives entirely in a Code node, `formulajs` or
+plain JavaScript can be a better fit.
+
+Bilig is for workbook-shaped state: formulas stored in cells, range reads, cell
+edits, recalculation, JSON persistence, restore proof, and a result the next n8n
+node can trust.
+
+n8n Cloud does not allow arbitrary external npm modules in Code nodes.
+Self-hosted n8n can allow external modules with `NODE_FUNCTION_ALLOW_EXTERNAL`,
+but the module must still be installed in the n8n runtime. The Bilig workflow
+keeps that dependency outside the Code node and makes the workbook calculation a
+single local HTTP step.
+
+---
+
+## Dify WorkPaper Formula Readback
+
+Source: https://github.com/proompteng/bilig/blob/main/docs/dify-workpaper-formula-readback.md
+
+# Dify WorkPaper Formula Readback
+
+Bilig can be exposed to Dify as a small tool plugin: one tool writes a workbook
+input cell, recalculates dependent formulas, and returns JSON proof that the
+computed output changed and the WorkPaper document restores to the same value.
+
+The plugin source artifact lives at:
+
+```text
+examples/dify-workpaper-formula-readback
+```
+
+It follows Dify's tool-plugin shape: `manifest.yaml`, `provider/*.yaml`, one
+tool YAML file, and one Python implementation file.
+
+## Tool
+
+`forecast_formula_readback` calls:
+
+```text
+POST http://localhost:4321/api/workpaper/n8n/forecast
+```
+
+Set the provider `base_url` to your hosted Bilig app when this route is deployed
+outside local development.
+
+Example input:
+
+```json
+{
+  "address": "B3",
+  "value": 0.4
+}
+```
+
+Example output:
+
+```json
+{
+  "verified": true,
+  "editedCell": "Inputs!B3",
+  "before": {
+    "expectedArr": 60000
+  },
+  "after": {
+    "expectedArr": 96000,
+    "targetGap": 5600
+  },
+  "checks": {
+    "formulasPersisted": true,
+    "restoredMatchesAfter": true,
+    "computedOutputChanged": true
+  }
+}
+```
+
+## Why This Exists
+
+Dify should orchestrate the agent workflow. Bilig should own spreadsheet formula
+state: write the input, recalculate, read the computed output, and return proof.
+
+That avoids a spreadsheet UI dependency and gives the agent a compact, auditable
+tool result.
+
+## Package
+
+Dify documents plugin manifests and packaging through its CLI:
+
+- Manifest: <https://docs.dify.ai/en/develop-plugin/features-and-specs/plugin-types/plugin-info-by-manifest>
+- CLI: <https://docs.dify.ai/en/develop-plugin/getting-started/cli>
+- Local package file: <https://docs.dify.ai/en/develop-plugin/publishing/marketplace-listing/release-by-file>
+
+From the example directory:
+
+```sh
+uv lock
+dify plugin package .
+```
+
+---
+
+## Flowise WorkPaper Formula Readback
+
+Source: https://github.com/proompteng/bilig/blob/main/docs/flowise-workpaper-formula-readback.md
+
+# Flowise WorkPaper Formula Readback
+
+Bilig can be used from Flowise as a custom tool. The agent sends one forecast
+input edit, Bilig recalculates dependent formulas, and the tool returns a JSON
+string with computed readback proof.
+
+The Flowise custom-tool artifact lives at:
+
+```text
+examples/flowise-workpaper-formula-readback/bilig-workpaper-formula-readback.flowise-tool.json
+```
+
+It uses the Flowise custom tool JSON shape:
+
+- `name`
+- `description`
+- `schema` as a stringified array
+- `func` as JavaScript
+
+Flowise documents custom tools here:
+<https://docs.flowiseai.com/integrations/langchain/tools/custom-tool>.
+
+## Tool Inputs
+
+```json
+{
+  "baseUrl": "http://localhost:4321",
+  "sheetName": "Inputs",
+  "address": "B3",
+  "valueJson": "0.4"
+}
+```
+
+The tool calls:
+
+```text
+POST http://localhost:4321/api/workpaper/n8n/forecast
+```
+
+Use a hosted Bilig app URL in `baseUrl` after this route is deployed outside
+local development.
+
+and returns:
+
+```json
+{
+  "verified": true,
+  "editedCell": "Inputs!B3",
+  "beforeExpectedArr": 60000,
+  "afterExpectedArr": 96000,
+  "targetGap": 5600,
+  "checks": {
+    "formulasPersisted": true,
+    "restoredMatchesAfter": true,
+    "computedOutputChanged": true
+  }
+}
+```
+
+Attach the imported tool to a Flowise Tool Agent when the agent needs
+spreadsheet-style formula state but should not control Excel or a spreadsheet
+UI.
 
 ---
 
