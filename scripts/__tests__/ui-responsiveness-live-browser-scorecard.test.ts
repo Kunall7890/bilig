@@ -12,9 +12,11 @@ import {
   assertUiResponsivenessLiveBrowserRunAllowed,
   parseUiResponsivenessLiveBrowserCliArgs,
   parseUiResponsivenessLiveBrowserScorecard,
+  validateSameCorpusScreenshotArtifacts,
   validateUiResponsivenessLiveBrowserScorecard,
   type SameCorpusCapture,
   type UiResponsivenessLiveBrowserScorecard,
+  type UiResponsivenessSameCorpusProof,
 } from '../gen-ui-responsiveness-live-browser-scorecard.ts'
 import { readJsonObject } from '../json-scorecard-helpers.ts'
 import { buildSameCorpusFingerprint } from '../ui-responsiveness-same-corpus-fingerprint.ts'
@@ -515,6 +517,37 @@ describe('UI responsiveness live browser scorecard', () => {
     )
   })
 
+  it('rejects captured same-corpus proof when screenshot artifacts are missing', () => {
+    const proof = buildSameCorpusProof(buildSameCorpusCapture())
+    const rootDir = mkdtempSync(`${tmpdir()}/bilig-same-corpus-missing-artifacts-`)
+
+    expect(() => validateSameCorpusScreenshotArtifacts(proof, { rootDir })).toThrow(
+      'UI responsiveness same-corpus screenshot artifact is missing',
+    )
+  })
+
+  it('requires captured same-corpus screenshot artifacts to be tracked for checked-in proof', () => {
+    const proof = buildSameCorpusProof(buildSameCorpusCapture())
+    const rootDir = mkdtempSync(`${tmpdir()}/bilig-same-corpus-tracked-artifacts-`)
+    writeSameCorpusScreenshotArtifacts(rootDir, proof)
+    const artifactPaths = sameCorpusScreenshotArtifactPaths(proof)
+
+    expect(() =>
+      validateSameCorpusScreenshotArtifacts(proof, {
+        requireGitTracked: true,
+        rootDir,
+        trackedArtifactPaths: artifactPaths.slice(1),
+      }),
+    ).toThrow('UI responsiveness same-corpus screenshot artifact is not tracked by git')
+    expect(() =>
+      validateSameCorpusScreenshotArtifacts(proof, {
+        requireGitTracked: true,
+        rootDir,
+        trackedArtifactPaths: artifactPaths,
+      }),
+    ).not.toThrow()
+  })
+
   it('rejects stale same-corpus visual proof required-product metadata', () => {
     const scorecard = parseUiResponsivenessLiveBrowserScorecard(
       readJsonObject(resolve(repoRoot, 'packages/benchmarks/baselines/ui-responsiveness-live-browser-scorecard.json')),
@@ -543,6 +576,18 @@ describe('UI responsiveness live browser scorecard', () => {
     )
   })
 })
+
+function writeSameCorpusScreenshotArtifacts(rootDir: string, proof: UiResponsivenessSameCorpusProof): void {
+  for (const artifactPath of sameCorpusScreenshotArtifactPaths(proof)) {
+    const absolutePath = resolve(rootDir, artifactPath)
+    mkdirSync(dirname(absolutePath), { recursive: true })
+    writeFileSync(absolutePath, 'png')
+  }
+}
+
+function sameCorpusScreenshotArtifactPaths(proof: UiResponsivenessSameCorpusProof): string[] {
+  return [...new Set(proof.cases.flatMap((entry) => [...entry.scenarioProof.screenshotProof.artifactPaths]))].toSorted()
+}
 
 function buildSameCorpusCapture(
   args: {

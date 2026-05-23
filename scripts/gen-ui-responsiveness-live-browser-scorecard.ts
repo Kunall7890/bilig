@@ -1,7 +1,8 @@
 #!/usr/bin/env bun
 
-import { existsSync, mkdirSync, writeFileSync } from 'node:fs'
-import { dirname, join, resolve } from 'node:path'
+import { execFileSync } from 'node:child_process'
+import { existsSync, mkdirSync, statSync, writeFileSync } from 'node:fs'
+import { dirname, join, relative, resolve } from 'node:path'
 import { performance } from 'node:perf_hooks'
 
 import { chromium, type Browser, type Page } from '@playwright/test'
@@ -94,6 +95,12 @@ export interface UiResponsivenessLiveBrowserCliArgs {
   readonly capturePath: string | null
 }
 
+export interface SameCorpusScreenshotArtifactValidationOptions {
+  readonly requireGitTracked?: boolean | undefined
+  readonly rootDir?: string | undefined
+  readonly trackedArtifactPaths?: readonly string[] | undefined
+}
+
 interface BrowserCaseSpec {
   readonly id: string
   readonly vendor: UiResponsivenessLiveBrowserVendor
@@ -144,6 +151,7 @@ async function main(): Promise<void> {
     }
     const scorecard = parseUiResponsivenessLiveBrowserScorecard(readJsonObject(outputPath))
     validateUiResponsivenessLiveBrowserScorecard(scorecard)
+    validateSameCorpusScreenshotArtifacts(scorecard.sameCorpusProof, { requireGitTracked: true })
     logResult('check', scorecard)
     return
   }
@@ -154,6 +162,7 @@ async function main(): Promise<void> {
     : buildMissingSameCorpusProof()
   const scorecard = await buildUiResponsivenessLiveBrowserScorecard(new Date().toISOString(), sameCorpusProof)
   validateUiResponsivenessLiveBrowserScorecard(scorecard)
+  validateSameCorpusScreenshotArtifacts(scorecard.sameCorpusProof)
   mkdirSync(dirname(outputPath), { recursive: true })
   writeFileSync(outputPath, formatJsonForRepo(`${JSON.stringify(scorecard, null, 2)}\n`))
   logResult('write', scorecard)
@@ -287,6 +296,74 @@ export function validateUiResponsivenessLiveBrowserScorecard(scorecard: UiRespon
     throw new Error('UI responsiveness live browser scorecard must disclose benchmark limitations')
   }
   validateSameCorpusProof(scorecard.sameCorpusProof)
+}
+
+export function validateSameCorpusScreenshotArtifacts(
+  proof: UiResponsivenessSameCorpusProof,
+  options: SameCorpusScreenshotArtifactValidationOptions = {},
+): void {
+  if (!proof.captured) {
+    return
+  }
+  const validationRootDir = options.rootDir ?? rootDir
+  const artifactPaths = uniqueScreenshotArtifactPaths(proof)
+  if (artifactPaths.length === 0) {
+    throw new Error('UI responsiveness same-corpus proof is missing screenshot artifact paths')
+  }
+
+  const repoRelativePaths = artifactPaths.map((artifactPath) => validateScreenshotArtifactPath(validationRootDir, artifactPath))
+  if (options.requireGitTracked !== true) {
+    return
+  }
+
+  const trackedPaths = new Set(options.trackedArtifactPaths ?? gitTrackedPaths(validationRootDir, repoRelativePaths))
+  for (const artifactPath of repoRelativePaths) {
+    if (!trackedPaths.has(artifactPath)) {
+      throw new Error(`UI responsiveness same-corpus screenshot artifact is not tracked by git: ${artifactPath}`)
+    }
+  }
+}
+
+function uniqueScreenshotArtifactPaths(proof: UiResponsivenessSameCorpusProof): string[] {
+  return [
+    ...new Set(
+      proof.cases.flatMap((entry) =>
+        entry.scenarioProof.screenshotProof.captured ? [...entry.scenarioProof.screenshotProof.artifactPaths] : [],
+      ),
+    ),
+  ].toSorted()
+}
+
+function validateScreenshotArtifactPath(validationRootDir: string, artifactPath: string): string {
+  if (artifactPath.length === 0) {
+    throw new Error('UI responsiveness same-corpus screenshot artifact path is empty')
+  }
+  const absolutePath = resolve(validationRootDir, artifactPath)
+  const repoRelativePath = relative(validationRootDir, absolutePath)
+  if (repoRelativePath.length === 0 || repoRelativePath.startsWith('..') || repoRelativePath.startsWith('/')) {
+    throw new Error(`UI responsiveness same-corpus screenshot artifact escapes the repository: ${artifactPath}`)
+  }
+  if (!existsSync(absolutePath)) {
+    throw new Error(`UI responsiveness same-corpus screenshot artifact is missing: ${repoRelativePath}`)
+  }
+  const stats = statSync(absolutePath)
+  if (!stats.isFile() || stats.size <= 0) {
+    throw new Error(`UI responsiveness same-corpus screenshot artifact is empty or not a file: ${repoRelativePath}`)
+  }
+  return repoRelativePath
+}
+
+function gitTrackedPaths(validationRootDir: string, repoRelativePaths: readonly string[]): readonly string[] {
+  if (repoRelativePaths.length === 0) {
+    return []
+  }
+  const output = execFileSync('git', ['-C', validationRootDir, 'ls-files', '--', ...repoRelativePaths], {
+    encoding: 'utf8',
+  })
+  return output
+    .split(/\r?\n/u)
+    .map((entry) => entry.trim())
+    .filter((entry) => entry.length > 0)
 }
 
 async function measureBrowserCase(page: Page, spec: BrowserCaseSpec): Promise<BrowserCaseSample> {
