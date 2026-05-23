@@ -102,6 +102,22 @@ describe('engine imported package metadata preservation', () => {
     ])
   })
 
+  it('renames preserved pivot package and workbook metadata sheet refs', async () => {
+    const engine = new SpreadsheetEngine({ workbookName: 'package-metadata-pivot-artifact-sheet-rename' })
+    await engine.ready()
+
+    engine.importSnapshot(packageMetadataSnapshot())
+    engine.renameSheet('Data', 'Revenue Data')
+
+    const metadata = engine.exportSnapshot().workbook.metadata
+    expect(pivotCacheSourceSheet(metadata, 'xl/pivotCache/pivotCacheDefinition1.xml')).toBe('Revenue Data')
+    expect(metadata?.unsupportedFormulaDependencies?.map((entry) => entry.sheetName)).toEqual(['Revenue Data'])
+    expect(metadata?.unsupportedPivots?.map((entry) => entry.sheetName)).toEqual(['Revenue Data'])
+    expect(metadata?.formulaAudit?.formulas.map((entry) => entry.sheetName)).toEqual(['Revenue Data'])
+    expect(metadata?.formulaAudit?.calcChain?.cells.map((entry) => entry.sheetName)).toEqual(['Revenue Data'])
+    expect(metadata?.slicerConnectionArtifacts?.sheetArtifacts?.map((entry) => entry.sheetName)).toEqual(['Revenue Data'])
+  })
+
   it('renames quoted sheet refs in preserved chart package formulas', async () => {
     const engine = new SpreadsheetEngine({ workbookName: 'package-metadata-chart-artifact-quoted-sheet-rename' })
     await engine.ready()
@@ -391,6 +407,10 @@ function pivotLocationRef(metadata: WorkbookMetadataSnapshot | undefined, path: 
 
 function pivotCacheSourceRef(metadata: WorkbookMetadataSnapshot | undefined, path: string): string | undefined {
   return readXmlAttribute(pivotPartXml(metadata, path), 'ref')
+}
+
+function pivotCacheSourceSheet(metadata: WorkbookMetadataSnapshot | undefined, path: string): string | undefined {
+  return readXmlAttribute(pivotPartXml(metadata, path), 'sheet')
 }
 
 function pivotPartXml(metadata: WorkbookMetadataSnapshot | undefined, path: string): string {

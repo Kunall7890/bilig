@@ -300,6 +300,67 @@ describe('macOS Desktop Excel preserved package metadata oracle', () => {
   )
 
   it.runIf(process.env.BILIG_EXCEL_ORACLE_RUN === '1')(
+    'matches Desktop Excel preserved pivot cache source sheet after source sheet rename',
+    () => {
+      if (!isMacosExcelInstalled()) {
+        throw new Error('BILIG_EXCEL_ORACLE_RUN=1 requires /Applications/Microsoft Excel.app')
+      }
+
+      const tempDir = createExcelAccessibleTempDir('bilig-headless-excel-pivot-cache-source-rename-oracle-')
+      try {
+        const sourceBytes = exportXlsx(pivotPackageStructuralSourceSnapshot())
+        const importedSource = importXlsx(sourceBytes, 'pivot-cache-source-rename-source.xlsx').snapshot
+        expect(pivotCacheSourceSheets(importedSource)).toEqual(['Data'])
+
+        const excelWorkbookPath = join(tempDir, 'excel-pivot-cache-source-rename-source.xlsx')
+        writeFileSync(excelWorkbookPath, sourceBytes)
+        runMacosExcelStructuralOperationOracle({
+          workbookPath: excelWorkbookPath,
+          worksheetName: 'Data',
+          operations: [{ kind: 'renameSheet', newName: 'Revenue Data' }],
+          inspectCells: ['A1'],
+          saveWorkbook: true,
+          timeoutMs: 120_000,
+        })
+
+        const excelTruth = importXlsx(new Uint8Array(readFileSync(excelWorkbookPath)), 'excel-pivot-cache-source-rename-truth.xlsx')
+        const excelSourceSheets = pivotCacheSourceSheets(excelTruth.snapshot)
+        expect(excelSourceSheets).toEqual(['Revenue Data'])
+
+        const workpaper = WorkPaper.buildFromSnapshot(importedSource)
+        try {
+          const dataSheet = workpaper.getSheetId('Data')
+          if (dataSheet === undefined) {
+            throw new Error('Expected Data sheet')
+          }
+          workpaper.renameSheet(dataSheet, 'Revenue Data')
+
+          const headlessSnapshot = workpaper.exportSnapshot()
+          expect(pivotCacheSourceSheets(headlessSnapshot)).toEqual(excelSourceSheets)
+
+          const headlessPath = join(tempDir, 'headless-pivot-cache-source-rename.xlsx')
+          writeFileSync(headlessPath, exportXlsx(headlessSnapshot))
+          runMacosExcelInspectionOracle({
+            workbookPath: headlessPath,
+            worksheetName: 'Revenue Data',
+            formulaCells: [],
+            inspectCells: ['A1'],
+            saveWorkbook: true,
+            timeoutMs: 120_000,
+          })
+          const headlessTruth = importXlsx(new Uint8Array(readFileSync(headlessPath)), 'headless-pivot-cache-source-rename-truth.xlsx')
+          expect(pivotCacheSourceSheets(headlessTruth.snapshot)).toEqual(excelSourceSheets)
+        } finally {
+          workpaper.dispose()
+        }
+      } finally {
+        removeMacosExcelTestDir(tempDir)
+      }
+    },
+    180_000,
+  )
+
+  it.runIf(process.env.BILIG_EXCEL_ORACLE_RUN === '1')(
     'matches Desktop Excel raw worksheet chart package formulas after structural source row inserts',
     () => {
       if (!isMacosExcelInstalled()) {
@@ -602,6 +663,14 @@ function pivotCacheSourceRefs(snapshot: WorkbookSnapshot): string[] {
     .filter((part) => part.path.startsWith('xl/pivotCache/pivotCacheDefinition'))
     .map((part) => readXmlAttribute(part.xml, 'ref'))
     .filter((ref): ref is string => ref !== undefined)
+    .toSorted()
+}
+
+function pivotCacheSourceSheets(snapshot: WorkbookSnapshot): string[] {
+  return (snapshot.workbook.metadata?.pivotArtifacts?.parts ?? [])
+    .filter((part) => part.path.startsWith('xl/pivotCache/pivotCacheDefinition'))
+    .map((part) => readXmlAttribute(part.xml, 'sheet'))
+    .filter((sheet): sheet is string => sheet !== undefined)
     .toSorted()
 }
 

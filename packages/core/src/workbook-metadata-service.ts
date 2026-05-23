@@ -76,6 +76,7 @@ import {
   renameDrawingChartPackageArtifactsSheetReferences,
   renamePreservedChartPackageArtifactsSheetReferences,
 } from './engine/services/structure-chart-artifact-rewrite.js'
+import { renamePreservedWorkbookMetadataSheetReferences } from './engine/services/structure-preserved-sheet-metadata-rewrite.js'
 
 export { WorkbookMetadataError, type WorkbookMetadataService } from './workbook-metadata-service-contract.js'
 
@@ -220,6 +221,14 @@ export function createWorkbookMetadataService(metadata: WorkbookMetadataRecord):
     const drawingArtifacts = renameDrawingChartPackageArtifactsSheetReferences(metadata.drawingArtifacts, oldSheetName, newSheetName)
     if (drawingArtifacts) {
       metadata.drawingArtifacts = drawingArtifacts
+    }
+    const renamedPreservedWorkbookMetadata = renamePreservedWorkbookMetadataSheetReferences(
+      metadata.preservedWorkbookMetadata,
+      oldSheetName,
+      newSheetName,
+    )
+    if (renamedPreservedWorkbookMetadata) {
+      metadata.preservedWorkbookMetadata = renamedPreservedWorkbookMetadata
     }
     const preservedWorkbookMetadata = renamePreservedChartPackageArtifactsSheetReferences(
       metadata.preservedWorkbookMetadata,

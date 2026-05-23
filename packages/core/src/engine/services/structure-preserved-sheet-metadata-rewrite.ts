@@ -2,6 +2,7 @@ import { MAX_COLS, MAX_ROWS } from '@bilig/protocol'
 import {
   columnToIndex,
   formatAddress,
+  renameFormulaSheetReferences,
   rewriteAddressForStructuralTransform,
   rewriteRangeForStructuralTransform,
   type StructuralAxisTransform,
@@ -14,6 +15,7 @@ const pivotTableDefinitionLocationPattern = /<((?:[A-Za-z_][\w.-]*:)?location)\b
 const pivotTablePartPathPattern = /^xl\/pivotTables\/pivotTable\d+\.xml$/u
 const pivotCacheDefinitionPartPathPattern = /^xl\/pivotCache\/pivotCacheDefinition\d+\.xml$/u
 const worksheetSourcePattern = /<((?:[A-Za-z_][\w.-]*:)?worksheetSource)\b([^>]*\bref=(["'])([^"']+)\3[^>]*)\/?>/gu
+const worksheetSourceElementPattern = /<((?:[A-Za-z_][\w.-]*:)?worksheetSource)\b[^>]*\/?>/gu
 
 export function rewritePreservedSheetMetadataForStructuralTransform(
   metadata: WorkbookPreservedSheetMetadataRecord | undefined,
@@ -32,6 +34,104 @@ export function rewritePreservedSheetMetadataForStructuralTransform(
     }
   }
   return hasPreservedSheetMetadata(next) ? next : undefined
+}
+
+export function renamePreservedWorkbookMetadataSheetReferences(
+  metadata: WorkbookPreservedMetadataRecord,
+  oldSheetName: string,
+  newSheetName: string,
+): WorkbookPreservedMetadataRecord | undefined {
+  let changed = false
+  const next: WorkbookPreservedMetadataRecord = { ...metadata }
+
+  if (metadata.unsupportedFormulaDependencies) {
+    next.unsupportedFormulaDependencies = metadata.unsupportedFormulaDependencies.map((entry) => {
+      const sheetName = renameSheetName(entry.sheetName, oldSheetName, newSheetName)
+      const formula = renameFormulaText(entry.formula, oldSheetName, newSheetName)
+      const importedFormula = renameFormulaText(entry.importedFormula, oldSheetName, newSheetName)
+      changed ||= sheetName !== entry.sheetName || formula !== entry.formula || importedFormula !== entry.importedFormula
+      return { ...entry, sheetName, formula, importedFormula }
+    })
+  }
+
+  if (metadata.unsupportedPivots) {
+    next.unsupportedPivots = metadata.unsupportedPivots.map((entry) => {
+      if (entry.sheetName === undefined) {
+        return { ...entry }
+      }
+      const sheetName = renameSheetName(entry.sheetName, oldSheetName, newSheetName)
+      changed ||= sheetName !== entry.sheetName
+      return { ...entry, sheetName }
+    })
+  }
+
+  if (metadata.formulaAudit) {
+    const formulas = metadata.formulaAudit.formulas.map((entry) => {
+      const formula = renameFormulaText(entry.formula, oldSheetName, newSheetName)
+      if (entry.sheetName === undefined) {
+        changed ||= formula !== entry.formula
+        return { ...entry, formula }
+      }
+      const sheetName = renameSheetName(entry.sheetName, oldSheetName, newSheetName)
+      changed ||= sheetName !== entry.sheetName || formula !== entry.formula
+      return { ...entry, sheetName, formula }
+    })
+    const calcChain = metadata.formulaAudit.calcChain
+      ? {
+          ...metadata.formulaAudit.calcChain,
+          cells: metadata.formulaAudit.calcChain.cells.map((entry) => {
+            if (entry.sheetName === undefined) {
+              return { ...entry }
+            }
+            const sheetName = renameSheetName(entry.sheetName, oldSheetName, newSheetName)
+            changed ||= sheetName !== entry.sheetName
+            return { ...entry, sheetName }
+          }),
+        }
+      : undefined
+    next.formulaAudit = {
+      ...metadata.formulaAudit,
+      formulas,
+      ...(calcChain ? { calcChain } : {}),
+    }
+  }
+
+  if (metadata.pivotArtifacts) {
+    next.pivotArtifacts = {
+      ...metadata.pivotArtifacts,
+      parts: metadata.pivotArtifacts.parts.map((part) => {
+        const normalizedPath = normalizePivotPackagePath(part.path)
+        if (!pivotCacheDefinitionPartPathPattern.test(normalizedPath)) {
+          return part
+        }
+        const xml = renamePivotCacheWorksheetSourceSheetReferences(part.xml, oldSheetName, newSheetName)
+        changed ||= xml !== part.xml
+        return xml === part.xml ? part : { ...part, xml }
+      }),
+    }
+  }
+
+  if (metadata.chartSheetArtifacts) {
+    next.chartSheetArtifacts = metadata.chartSheetArtifacts.map((entry) => {
+      const name = renameSheetName(entry.name, oldSheetName, newSheetName)
+      changed ||= name !== entry.name
+      return { ...entry, name }
+    })
+  }
+
+  if (metadata.slicerConnectionArtifacts) {
+    const sheetArtifacts = metadata.slicerConnectionArtifacts.sheetArtifacts?.map((entry) => {
+      const sheetName = renameSheetName(entry.sheetName, oldSheetName, newSheetName)
+      changed ||= sheetName !== entry.sheetName
+      return { ...entry, sheetName }
+    })
+    next.slicerConnectionArtifacts = {
+      ...metadata.slicerConnectionArtifacts,
+      ...(sheetArtifacts ? { sheetArtifacts } : {}),
+    }
+  }
+
+  return changed ? next : undefined
 }
 
 export function rewritePreservedPivotPackageArtifactsForStructuralTransform(
@@ -185,6 +285,16 @@ function rewritePivotCacheWorksheetSourceRefsForStructuralTransform(
   return failed ? undefined : nextXml
 }
 
+function renamePivotCacheWorksheetSourceSheetReferences(xml: string, oldSheetName: string, newSheetName: string): string {
+  return xml.replace(worksheetSourceElementPattern, (source: string) => {
+    const attribute = readXmlAttributeMatch(source, 'sheet')
+    if (!attribute || unescapeXmlAttribute(attribute.value) !== oldSheetName) {
+      return source
+    }
+    return source.replace(attribute.raw, `sheet=${attribute.quote}${escapeXmlAttribute(newSheetName)}${attribute.quote}`)
+  })
+}
+
 function rewritePivotLocationRefForStructuralTransform(ref: string, transform: StructuralAxisTransform): string | undefined {
   const [startAddress, endAddress = startAddress] = ref.split(':')
   if (!startAddress || !endAddress || !isCellReference(startAddress) || !isCellReference(endAddress)) {
@@ -206,8 +316,35 @@ function readXmlAttribute(attributes: string, name: string): string | undefined 
   return new RegExp(`\\b${name}=(["'])([\\s\\S]*?)\\1`, 'u').exec(attributes)?.[2]
 }
 
+function readXmlAttributeMatch(
+  attributes: string,
+  name: string,
+): { readonly raw: string; readonly quote: string; readonly value: string } | undefined {
+  const match = new RegExp(`\\b${name}=(["'])([\\s\\S]*?)\\1`, 'u').exec(attributes)
+  if (!match || !match[0] || !match[1]) {
+    return undefined
+  }
+  return { raw: match[0], quote: match[1], value: match[2] ?? '' }
+}
+
 function unescapeXmlAttribute(value: string): string {
   return value.replaceAll('&quot;', '"').replaceAll('&apos;', "'").replaceAll('&lt;', '<').replaceAll('&gt;', '>').replaceAll('&amp;', '&')
+}
+
+function escapeXmlAttribute(value: string): string {
+  return value.replaceAll('&', '&amp;').replaceAll('"', '&quot;').replaceAll("'", '&apos;').replaceAll('<', '&lt;').replaceAll('>', '&gt;')
+}
+
+function renameSheetName(value: string, oldSheetName: string, newSheetName: string): string {
+  return value === oldSheetName ? newSheetName : value
+}
+
+function renameFormulaText(formula: string, oldSheetName: string, newSheetName: string): string {
+  try {
+    return renameFormulaSheetReferences(formula, oldSheetName, newSheetName)
+  } catch {
+    return formula
+  }
 }
 
 function rewriteCellReferenceForStructuralTransform(address: string, transform: StructuralAxisTransform): string | undefined {
