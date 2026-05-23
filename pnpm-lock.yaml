@@ -275,6 +275,9 @@ importers:
       '@bilig/protocol':
         specifier: workspace:*
         version: link:../protocol
+      '@bilig/workbook':
+        specifier: workspace:*
+        version: link:../workbook
 
   packages/benchmarks:
     dependencies:
