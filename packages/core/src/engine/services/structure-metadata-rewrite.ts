@@ -4,6 +4,7 @@ import {
   type CellRangeRef,
   type SheetFormatRangeSnapshot,
   type SheetStyleRangeSnapshot,
+  type WorkbookChartSnapshot,
   type WorkbookSheetDataTableFormulaSnapshot,
   type WorkbookSheetDataTableFormulasSnapshot,
 } from '@bilig/protocol'
@@ -17,7 +18,7 @@ import {
   type FormulaNode,
   type StructuralAxisTransform,
 } from '@bilig/formula'
-import { mapStructuralBoundary } from '../../engine-structural-utils.js'
+import { mapStructuralAxisIndex, mapStructuralBoundary } from '../../engine-structural-utils.js'
 import { normalizeDefinedName, type WorkbookTableRecord } from '../../workbook-store.js'
 import type { CreateEngineStructureServiceArgs } from './structure-service-types.js'
 import { rewriteArrayFormulasForStructuralTransform } from './structure-array-formula-metadata-rewrite.js'
@@ -45,6 +46,8 @@ export interface DeletedTableColumnReference {
 }
 
 type WorkbookTableColumnRecord = NonNullable<WorkbookTableRecord['columns']>[number]
+type WorkbookChartAnchor = NonNullable<WorkbookChartSnapshot['anchor']>
+type WorkbookChartAnchorMarker = Extract<WorkbookChartAnchor, { kind: 'twoCell' | 'oneCell' }>['from']
 
 const METADATA_CELL_REF_RE = /^\$?([A-Z]+)\$?([1-9]\d*)$/i
 
@@ -715,13 +718,19 @@ export function rewriteWorkbookMetadataForStructuralTransform(
       chart.sheetName === sheetName ? rewriteMetadataAddressForStructuralTransform(chart.address, transform) : chart.address
     const nextSource =
       chart.source.sheetName === sheetName ? rewriteMetadataRangeForStructuralTransform(chart.source, transform) : chart.source
-    if (!nextAddress || !nextSource) {
+    const nextAnchor =
+      chart.sheetName === sheetName && chart.anchor ? rewriteChartAnchorForStructuralTransform(chart.anchor, transform) : chart.anchor
+    if (!nextAddress || !nextSource || (chart.anchor && !nextAnchor)) {
       workbook.deleteChart(chart.id)
       return
     }
+    const nextGeometry = chartGeometryFromAnchor(nextAnchor)
     workbook.setChart({
       ...chart,
-      address: nextAddress,
+      address: nextGeometry?.address ?? nextAddress,
+      rows: nextGeometry?.rows ?? chart.rows,
+      cols: nextGeometry?.cols ?? chart.cols,
+      ...(nextAnchor !== undefined ? { anchor: nextAnchor } : {}),
       source: nextSource,
     })
   })
@@ -754,6 +763,63 @@ export function rewriteWorkbookMetadataForStructuralTransform(
     })
   })
   return { changedTableNames, tableHeaderCellWrites, deletedTableColumns }
+}
+
+function rewriteChartAnchorForStructuralTransform(
+  anchor: WorkbookChartAnchor,
+  transform: StructuralAxisTransform,
+): WorkbookChartAnchor | undefined {
+  switch (anchor.kind) {
+    case 'twoCell': {
+      const from = rewriteChartAnchorMarkerForStructuralTransform(anchor.from, transform)
+      const to = rewriteChartAnchorMarkerForStructuralTransform(anchor.to, transform)
+      if (!from || !to || to.row < from.row || to.col < from.col) {
+        return undefined
+      }
+      return { ...anchor, from, to }
+    }
+    case 'oneCell': {
+      const from = rewriteChartAnchorMarkerForStructuralTransform(anchor.from, transform)
+      return from ? { ...anchor, from } : undefined
+    }
+    case 'absolute':
+      return structuredClone(anchor)
+  }
+}
+
+function rewriteChartAnchorMarkerForStructuralTransform(
+  marker: WorkbookChartAnchorMarker,
+  transform: StructuralAxisTransform,
+): WorkbookChartAnchorMarker | undefined {
+  const row = transform.axis === 'row' ? mapStructuralAxisIndex(marker.row, transform) : marker.row
+  const col = transform.axis === 'column' ? mapStructuralAxisIndex(marker.col, transform) : marker.col
+  if (row === undefined || col === undefined || row >= MAX_ROWS || col >= MAX_COLS) {
+    return undefined
+  }
+  return { ...marker, row, col }
+}
+
+function chartGeometryFromAnchor(
+  anchor: WorkbookChartAnchor | undefined,
+): { readonly address: string; readonly rows: number; readonly cols: number } | undefined {
+  if (!anchor) {
+    return undefined
+  }
+  if (anchor.kind === 'twoCell') {
+    return {
+      address: formatAddress(anchor.from.row, anchor.from.col),
+      rows: Math.max(1, anchor.to.row - anchor.from.row),
+      cols: Math.max(1, anchor.to.col - anchor.from.col),
+    }
+  }
+  if (anchor.kind === 'oneCell') {
+    return {
+      address: formatAddress(anchor.from.row, anchor.from.col),
+      rows: 1,
+      cols: 1,
+    }
+  }
+  return undefined
 }
 
 function rewriteMetadataRangeForStructuralTransform<T extends MetadataRangeLike>(

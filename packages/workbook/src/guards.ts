@@ -542,7 +542,46 @@ function isWorkbookPivotValue(value: unknown): boolean {
 const CHART_TYPE_VALUES = new Set(['column', 'bar', 'line', 'area', 'pie', 'scatter'])
 const CHART_SERIES_ORIENTATION_VALUES = new Set(['rows', 'columns'])
 const CHART_LEGEND_POSITION_VALUES = new Set(['top', 'right', 'bottom', 'left', 'hidden'])
+const DRAWING_ANCHOR_EDIT_AS_VALUES = new Set(['twoCell', 'oneCell', 'absolute'])
 const SHAPE_TYPE_VALUES = new Set(['rectangle', 'roundedRectangle', 'ellipse', 'line', 'arrow', 'textBox'])
+
+function isDrawingAnchorMarker(value: unknown): boolean {
+  return (
+    isRecord(value) &&
+    hasSafeNonNegativeInteger(value, 'row') &&
+    hasSafeNonNegativeInteger(value, 'col') &&
+    isOptionalSafeNonNegativeInteger(value['rowOffset']) &&
+    isOptionalSafeNonNegativeInteger(value['colOffset'])
+  )
+}
+
+function isDrawingAnchorExtent(value: unknown): boolean {
+  return isRecord(value) && hasSafePositiveInteger(value, 'width') && hasSafePositiveInteger(value, 'height')
+}
+
+function isDrawingAnchorPosition(value: unknown): boolean {
+  return isRecord(value) && hasSafeNonNegativeInteger(value, 'x') && hasSafeNonNegativeInteger(value, 'y')
+}
+
+function isWorkbookChartAnchor(value: unknown): boolean {
+  if (!isRecord(value) || typeof value['kind'] !== 'string') {
+    return false
+  }
+  switch (value['kind']) {
+    case 'twoCell':
+      return (
+        (value['editAs'] === undefined || (typeof value['editAs'] === 'string' && DRAWING_ANCHOR_EDIT_AS_VALUES.has(value['editAs']))) &&
+        isDrawingAnchorMarker(value['from']) &&
+        isDrawingAnchorMarker(value['to'])
+      )
+    case 'oneCell':
+      return isDrawingAnchorMarker(value['from']) && isDrawingAnchorExtent(value['extent'])
+    case 'absolute':
+      return isDrawingAnchorPosition(value['position']) && isDrawingAnchorExtent(value['extent'])
+    default:
+      return false
+  }
+}
 
 function isWorkbookChart(value: unknown): boolean {
   return (
@@ -553,6 +592,7 @@ function isWorkbookChart(value: unknown): boolean {
     isCellRangeRef(value['source']) &&
     typeof value['chartType'] === 'string' &&
     CHART_TYPE_VALUES.has(value['chartType']) &&
+    (value['anchor'] === undefined || isWorkbookChartAnchor(value['anchor'])) &&
     (value['seriesOrientation'] === undefined ||
       (typeof value['seriesOrientation'] === 'string' && CHART_SERIES_ORIENTATION_VALUES.has(value['seriesOrientation']))) &&
     isOptionalBoolean(value['firstRowAsHeaders']) &&

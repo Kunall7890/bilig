@@ -106,6 +106,12 @@ describe('engine chart metadata', () => {
       address: 'B2',
       source: { sheetName: 'Data', startAddress: 'A1', endAddress: 'B4' },
       chartType: 'line',
+      anchor: {
+        kind: 'twoCell',
+        editAs: 'oneCell',
+        from: { row: 1, col: 1, rowOffset: 100, colOffset: 200 },
+        to: { row: 11, col: 7, rowOffset: 300, colOffset: 400 },
+      },
       rows: 10,
       cols: 6,
     })
@@ -119,6 +125,12 @@ describe('engine chart metadata', () => {
       address: 'C2',
       source: { sheetName: 'Data', startAddress: 'A2', endAddress: 'B5' },
       chartType: 'line',
+      anchor: {
+        kind: 'twoCell',
+        editAs: 'oneCell',
+        from: { row: 1, col: 2, rowOffset: 100, colOffset: 200 },
+        to: { row: 11, col: 8, rowOffset: 300, colOffset: 400 },
+      },
       rows: 10,
       cols: 6,
     })

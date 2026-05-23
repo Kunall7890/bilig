@@ -71,6 +71,7 @@ export function workbookChartsEqual(left: WorkbookChartSnapshot | undefined, rig
     left.source.endAddress === right.source.endAddress &&
     left.rows === right.rows &&
     left.cols === right.cols &&
+    JSON.stringify(left.anchor) === JSON.stringify(right.anchor) &&
     left.seriesOrientation === right.seriesOrientation &&
     left.firstRowAsHeaders === right.firstRowAsHeaders &&
     left.firstColumnAsLabels === right.firstColumnAsLabels &&

@@ -48,6 +48,7 @@ export interface ProjectedWorkbookChartSemantics {
   readonly firstColumnAsLabels?: boolean
   readonly title?: string
   readonly legendPosition?: WorkbookChartSnapshot['legendPosition']
+  readonly anchor?: WorkbookChartSnapshot['anchor']
   readonly rows: number
   readonly cols: number
 }
@@ -362,6 +363,7 @@ function projectChartSemantics(chart: WorkbookChartSnapshot): ProjectedWorkbookC
     seriesOrientation: chart.seriesOrientation ?? 'columns',
     rows: chart.rows,
     cols: chart.cols,
+    ...(chart.anchor !== undefined ? { anchor: structuredClone(chart.anchor) } : {}),
   }
   if (chart.firstRowAsHeaders !== undefined) {
     return {

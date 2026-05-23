@@ -14,6 +14,7 @@ interface PackageManifest {
 const existingDesktopExcelOracleFiles = [
   'macos-desktop-excel-array-formula-structural-oracle.test.ts',
   'macos-desktop-excel-autofilter-oracle.test.ts',
+  'macos-desktop-excel-chart-drawing-anchor-oracle.test.ts',
   'macos-desktop-excel-conditional-format-artifacts-oracle.test.ts',
   'macos-desktop-excel-data-table-structural-oracle.test.ts',
   'macos-desktop-excel-defined-name-structural-oracle.test.ts',
@@ -30,6 +31,7 @@ const existingDesktopExcelOracleFiles = [
 
 const corpusDesktopExcelOracleFiles = [
   'macos-desktop-excel-array-formula-structural-oracle.test.ts',
+  'macos-desktop-excel-chart-drawing-anchor-oracle.test.ts',
   'macos-desktop-excel-data-table-structural-oracle.test.ts',
   'macos-desktop-excel-defined-name-structural-oracle.test.ts',
   'macos-desktop-excel-external-link-cache.test.ts',
@@ -70,6 +72,16 @@ describe('macOS Desktop Excel oracle inventory', () => {
     expect(source).toContain('type="iconSet"')
     expect(source).toContain('WorkPaper.buildFromSnapshot')
     expect(source).toContain('preserves Desktop Excel advanced visual conditional-format rules after a headless edit')
+  })
+
+  it('keeps the chart drawing anchor oracle anchored to Desktop Excel structural geometry', () => {
+    const source = readFileSync(join(testDir, 'macos-desktop-excel-chart-drawing-anchor-oracle.test.ts'), 'utf8')
+
+    expect(source).toContain("BILIG_EXCEL_ORACLE_RUN === '1'")
+    expect(source).toContain('runMacosExcelStructuralOperationOracle')
+    expect(source).toContain('WorkPaper.buildFromSnapshot')
+    expect(source).toContain('editAs="oneCell"')
+    expect(source).toContain('matches Desktop Excel chart drawing anchors after structural row inserts')
   })
 
   it('keeps the hyperlink structural oracle anchored to Desktop Excel metadata movement', () => {

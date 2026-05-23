@@ -40,6 +40,7 @@ export function createWorkbookMetadataDrawingService(metadata: WorkbookMetadataR
           chartType: record.chartType,
           rows: record.rows,
           cols: record.cols,
+          ...(record.anchor !== undefined ? { anchor: structuredClone(record.anchor) } : {}),
           ...(record.seriesOrientation !== undefined ? { seriesOrientation: record.seriesOrientation } : {}),
           ...(record.firstRowAsHeaders !== undefined ? { firstRowAsHeaders: record.firstRowAsHeaders } : {}),
           ...(record.firstColumnAsLabels !== undefined ? { firstColumnAsLabels: record.firstColumnAsLabels } : {}),

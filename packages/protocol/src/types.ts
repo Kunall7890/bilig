@@ -354,6 +354,42 @@ export interface WorkbookSheetStyleArtifactsSnapshot {
 export type WorkbookChartType = 'column' | 'bar' | 'line' | 'area' | 'pie' | 'scatter'
 export type WorkbookChartSeriesOrientation = 'rows' | 'columns'
 export type WorkbookChartLegendPosition = 'top' | 'right' | 'bottom' | 'left' | 'hidden'
+export type WorkbookDrawingAnchorEditAs = 'twoCell' | 'oneCell' | 'absolute'
+
+export interface WorkbookDrawingAnchorMarkerSnapshot {
+  row: number
+  col: number
+  rowOffset?: number
+  colOffset?: number
+}
+
+export interface WorkbookDrawingAnchorExtentSnapshot {
+  width: number
+  height: number
+}
+
+export interface WorkbookDrawingAnchorPositionSnapshot {
+  x: number
+  y: number
+}
+
+export type WorkbookChartAnchorSnapshot =
+  | {
+      kind: 'twoCell'
+      editAs?: WorkbookDrawingAnchorEditAs
+      from: WorkbookDrawingAnchorMarkerSnapshot
+      to: WorkbookDrawingAnchorMarkerSnapshot
+    }
+  | {
+      kind: 'oneCell'
+      from: WorkbookDrawingAnchorMarkerSnapshot
+      extent: WorkbookDrawingAnchorExtentSnapshot
+    }
+  | {
+      kind: 'absolute'
+      position: WorkbookDrawingAnchorPositionSnapshot
+      extent: WorkbookDrawingAnchorExtentSnapshot
+    }
 
 export interface WorkbookChartSnapshot {
   id: string
@@ -361,6 +397,7 @@ export interface WorkbookChartSnapshot {
   address: string
   source: CellRangeRef
   chartType: WorkbookChartType
+  anchor?: WorkbookChartAnchorSnapshot
   seriesOrientation?: WorkbookChartSeriesOrientation
   firstRowAsHeaders?: boolean
   firstColumnAsLabels?: boolean

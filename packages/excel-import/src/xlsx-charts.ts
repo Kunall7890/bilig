@@ -3,10 +3,13 @@ import { XMLParser } from 'fast-xml-parser'
 
 import type {
   CellRangeRef,
+  WorkbookChartAnchorSnapshot,
   WorkbookChartLegendPosition,
   WorkbookChartSeriesOrientation,
   WorkbookChartSnapshot,
   WorkbookChartType,
+  WorkbookDrawingAnchorExtentSnapshot,
+  WorkbookDrawingAnchorMarkerSnapshot,
   WorkbookSnapshot,
 } from '@bilig/protocol'
 import { decodeA1CellRef, decodeA1RangeRef, encodeA1CellRef, encodeA1ColumnRef } from './xlsx-a1-utils.js'
@@ -312,12 +315,17 @@ function buildChartXml(chart: WorkbookChartSnapshot, exportSourceSheetName: stri
 
 function buildDrawingAnchorXml(chart: WorkbookChartSnapshot, relationshipId: string, anchorId: number): string {
   const decoded = decodeA1CellRef(chart.address)
-  const endCol = decoded.c + Math.max(1, chart.cols)
-  const endRow = decoded.r + Math.max(1, chart.rows)
-  return [
-    '<xdr:twoCellAnchor editAs="twoCell">',
-    `<xdr:from><xdr:col>${String(decoded.c)}</xdr:col><xdr:colOff>0</xdr:colOff><xdr:row>${String(decoded.r)}</xdr:row><xdr:rowOff>0</xdr:rowOff></xdr:from>`,
-    `<xdr:to><xdr:col>${String(endCol)}</xdr:col><xdr:colOff>0</xdr:colOff><xdr:row>${String(endRow)}</xdr:row><xdr:rowOff>0</xdr:rowOff></xdr:to>`,
+  const fallbackAnchor: WorkbookChartAnchorSnapshot = {
+    kind: 'twoCell',
+    editAs: 'twoCell',
+    from: { row: decoded.r, col: decoded.c },
+    to: {
+      row: decoded.r + Math.max(1, chart.rows),
+      col: decoded.c + Math.max(1, chart.cols),
+    },
+  }
+  const anchor = chart.anchor ?? fallbackAnchor
+  const graphicFrameXml = [
     '<xdr:graphicFrame macro="">',
     `<xdr:nvGraphicFramePr><xdr:cNvPr id="${String(anchorId)}" name="${escapeXml(
       chart.id,
@@ -326,7 +334,46 @@ function buildDrawingAnchorXml(chart: WorkbookChartSnapshot, relationshipId: str
     '<a:graphic><a:graphicData uri="http://schemas.openxmlformats.org/drawingml/2006/chart">',
     `<c:chart xmlns:c="http://schemas.openxmlformats.org/drawingml/2006/chart" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships" r:id="${relationshipId}"/>`,
     '</a:graphicData></a:graphic>',
-    '</xdr:graphicFrame><xdr:clientData/></xdr:twoCellAnchor>',
+    '</xdr:graphicFrame><xdr:clientData/>',
+  ].join('')
+
+  if (anchor.kind === 'oneCell') {
+    return [
+      '<xdr:oneCellAnchor>',
+      buildAnchorMarkerXml('from', anchor.from),
+      `<xdr:ext cx="${String(anchor.extent.width)}" cy="${String(anchor.extent.height)}"/>`,
+      graphicFrameXml,
+      '</xdr:oneCellAnchor>',
+    ].join('')
+  }
+  if (anchor.kind === 'absolute') {
+    return [
+      '<xdr:absoluteAnchor>',
+      `<xdr:pos x="${String(anchor.position.x)}" y="${String(anchor.position.y)}"/>`,
+      `<xdr:ext cx="${String(anchor.extent.width)}" cy="${String(anchor.extent.height)}"/>`,
+      graphicFrameXml,
+      '</xdr:absoluteAnchor>',
+    ].join('')
+  }
+
+  const editAs = anchor.editAs ?? 'twoCell'
+  return [
+    `<xdr:twoCellAnchor editAs="${escapeXml(editAs)}">`,
+    buildAnchorMarkerXml('from', anchor.from),
+    buildAnchorMarkerXml('to', anchor.to),
+    graphicFrameXml,
+    '</xdr:twoCellAnchor>',
+  ].join('')
+}
+
+function buildAnchorMarkerXml(tagName: 'from' | 'to', marker: WorkbookDrawingAnchorMarkerSnapshot): string {
+  return [
+    `<xdr:${tagName}>`,
+    `<xdr:col>${String(marker.col)}</xdr:col>`,
+    `<xdr:colOff>${String(marker.colOffset ?? 0)}</xdr:colOff>`,
+    `<xdr:row>${String(marker.row)}</xdr:row>`,
+    `<xdr:rowOff>${String(marker.rowOffset ?? 0)}</xdr:rowOff>`,
+    `</xdr:${tagName}>`,
   ].join('')
 }
 
@@ -737,10 +784,99 @@ function readAnchorChartId(anchor: unknown, fallback: string): string {
   return stringChild(recordChild(recordChild(anchor, 'graphicFrame'), 'nvGraphicFramePr')?.['cNvPr'], 'name') ?? fallback
 }
 
-function readAnchorNumber(anchor: unknown, key: 'from' | 'to', field: 'col' | 'row'): number | null {
-  const raw = recordChild(anchor, key)?.[field]
+function readNumberChild(parent: unknown, field: string): number | null {
+  if (!isRecord(parent)) {
+    return null
+  }
+  const raw = parent[field]
   const number = typeof raw === 'number' ? raw : typeof raw === 'string' ? Number(raw) : Number.NaN
   return Number.isFinite(number) ? number : null
+}
+
+function readAnchorMarker(anchor: unknown, key: 'from' | 'to'): WorkbookDrawingAnchorMarkerSnapshot | null {
+  const marker = recordChild(anchor, key)
+  const row = readNumberChild(marker, 'row')
+  const col = readNumberChild(marker, 'col')
+  if (row === null || col === null) {
+    return null
+  }
+  const rowOffset = readNumberChild(marker, 'rowOff')
+  const colOffset = readNumberChild(marker, 'colOff')
+  return {
+    row,
+    col,
+    ...(rowOffset !== null ? { rowOffset } : {}),
+    ...(colOffset !== null ? { colOffset } : {}),
+  }
+}
+
+function readAnchorExtent(anchor: unknown): WorkbookDrawingAnchorExtentSnapshot | null {
+  const extent = recordChild(anchor, 'ext')
+  const width = readNumberChild(extent, 'cx')
+  const height = readNumberChild(extent, 'cy')
+  return width !== null && height !== null ? { width, height } : null
+}
+
+function readAnchorPosition(anchor: unknown): Extract<WorkbookChartAnchorSnapshot, { kind: 'absolute' }>['position'] | null {
+  const position = recordChild(anchor, 'pos')
+  const x = readNumberChild(position, 'x')
+  const y = readNumberChild(position, 'y')
+  return x !== null && y !== null ? { x, y } : null
+}
+
+function readChartAnchor(kind: WorkbookChartAnchorSnapshot['kind'], anchor: unknown): WorkbookChartAnchorSnapshot | null {
+  switch (kind) {
+    case 'twoCell': {
+      const from = readAnchorMarker(anchor, 'from')
+      const to = readAnchorMarker(anchor, 'to')
+      if (!from || !to) {
+        return null
+      }
+      const editAs = isRecord(anchor) && typeof anchor['editAs'] === 'string' ? anchor['editAs'] : undefined
+      return {
+        kind,
+        ...(editAs === 'twoCell' || editAs === 'oneCell' || editAs === 'absolute' ? { editAs } : {}),
+        from,
+        to,
+      }
+    }
+    case 'oneCell': {
+      const from = readAnchorMarker(anchor, 'from')
+      const extent = readAnchorExtent(anchor)
+      return from && extent ? { kind, from, extent } : null
+    }
+    case 'absolute': {
+      const position = readAnchorPosition(anchor)
+      const extent = readAnchorExtent(anchor)
+      return position && extent ? { kind, position, extent } : null
+    }
+  }
+}
+
+function anchorAddressAndSize(anchor: WorkbookChartAnchorSnapshot): {
+  readonly address: string
+  readonly rows: number
+  readonly cols: number
+} {
+  if (anchor.kind === 'twoCell') {
+    return {
+      address: encodeA1CellRef({ r: anchor.from.row, c: anchor.from.col }),
+      rows: Math.max(1, anchor.to.row - anchor.from.row),
+      cols: Math.max(1, anchor.to.col - anchor.from.col),
+    }
+  }
+  if (anchor.kind === 'oneCell') {
+    return {
+      address: encodeA1CellRef({ r: anchor.from.row, c: anchor.from.col }),
+      rows: 1,
+      cols: 1,
+    }
+  }
+  return {
+    address: 'A1',
+    rows: 1,
+    cols: 1,
+  }
 }
 
 export interface ImportedWorkbookChartReadResult {
@@ -779,14 +915,17 @@ export function readImportedWorkbookChartReadResult(source: XlsxZipSource, sheet
       ),
     )
     const parsedDrawing: unknown = xmlParser.parse(drawingXml)
-    const anchors = asArray(recordChild(parsedDrawing, 'wsDr')?.['twoCellAnchor'])
-    anchors.forEach((anchor, anchorIndex) => {
+    const wsDr = recordChild(parsedDrawing, 'wsDr')
+    const anchors: Array<{ kind: WorkbookChartAnchorSnapshot['kind']; anchor: unknown }> = [
+      ...asArray(wsDr?.['twoCellAnchor']).map((anchor) => ({ kind: 'twoCell' as const, anchor })),
+      ...asArray(wsDr?.['oneCellAnchor']).map((anchor) => ({ kind: 'oneCell' as const, anchor })),
+      ...asArray(wsDr?.['absoluteAnchor']).map((anchor) => ({ kind: 'absolute' as const, anchor })),
+    ]
+    anchors.forEach((entry, anchorIndex) => {
+      const { anchor } = entry
       const chartRelationshipId = readDrawingRelationshipId(anchor)
-      const fromCol = readAnchorNumber(anchor, 'from', 'col')
-      const fromRow = readAnchorNumber(anchor, 'from', 'row')
-      const toCol = readAnchorNumber(anchor, 'to', 'col')
-      const toRow = readAnchorNumber(anchor, 'to', 'row')
-      if (!chartRelationshipId || fromCol === null || fromRow === null || toCol === null || toRow === null) {
+      const chartAnchor = readChartAnchor(entry.kind, anchor)
+      if (!chartRelationshipId || !chartAnchor) {
         return
       }
       const chartRelationship = drawingRelationships.find(
@@ -803,12 +942,14 @@ export function readImportedWorkbookChartReadResult(source: XlsxZipSource, sheet
       const supportedIds = supportedChartRelationshipIdsBySheet.get(sheetName) ?? new Set<string>()
       supportedIds.add(chartRelationshipId)
       supportedChartRelationshipIdsBySheet.set(sheetName, supportedIds)
+      const geometry = anchorAddressAndSize(chartAnchor)
       charts.push({
         id: readAnchorChartId(anchor, `xlsx-chart:${sheetName}:${String(anchorIndex + 1)}`),
         sheetName,
-        address: encodeA1CellRef({ r: fromRow, c: fromCol }),
-        rows: Math.max(1, toRow - fromRow),
-        cols: Math.max(1, toCol - fromCol),
+        address: geometry.address,
+        rows: geometry.rows,
+        cols: geometry.cols,
+        anchor: chartAnchor,
         ...chartMetadata,
       })
     })
