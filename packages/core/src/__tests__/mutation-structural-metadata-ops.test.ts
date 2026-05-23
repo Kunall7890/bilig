@@ -37,6 +37,7 @@ function createWorkbookWithMetadata(): WorkbookStore {
     comments: [{ id: 'comment-1', body: 'Check this total.' }],
   })
   workbook.setNote({ sheetName: 'Sheet1', address: 'B1', text: 'Manual override' })
+  workbook.setHyperlink({ sheetName: 'Sheet1', address: 'C1', target: 'https://example.com/report', display: 'Report' })
   return workbook
 }
 
@@ -94,5 +95,6 @@ describe('mutation structural metadata ops', () => {
     })
     expect(ops).toContainEqual({ kind: 'deleteCommentThread', sheetName: 'Sheet1', address: 'A2' })
     expect(ops).toContainEqual({ kind: 'deleteNote', sheetName: 'Sheet1', address: 'B2' })
+    expect(ops).toContainEqual({ kind: 'deleteHyperlink', sheetName: 'Sheet1', address: 'C2' })
   })
 })

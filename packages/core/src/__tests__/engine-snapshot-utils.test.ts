@@ -39,6 +39,13 @@ describe('engine snapshot utils', () => {
     workbook.setConditionalFormatArtifacts('Sheet1', {
       xml: '<conditionalFormatting sqref="A1:A2"><cfRule type="dataBar" priority="1"/></conditionalFormatting>',
     })
+    workbook.setHyperlink({
+      sheetName: 'Sheet1',
+      address: 'F4',
+      target: 'https://example.com/report',
+      tooltip: 'Open report',
+      display: 'Report',
+    })
 
     const metadata = exportSheetMetadata(workbook, 'Sheet1')
     expect(metadata).toEqual({
@@ -94,6 +101,15 @@ describe('engine snapshot utils', () => {
       conditionalFormatArtifacts: {
         xml: '<conditionalFormatting sqref="A1:A2"><cfRule type="dataBar" priority="1"/></conditionalFormatting>',
       },
+      hyperlinks: [
+        {
+          sheetName: 'Sheet1',
+          address: 'F4',
+          target: 'https://example.com/report',
+          tooltip: 'Open report',
+          display: 'Report',
+        },
+      ],
     })
 
     if (!metadata) {
@@ -102,16 +118,18 @@ describe('engine snapshot utils', () => {
     metadata.styleRanges![0].range.startAddress = 'Z9'
     metadata.filters![0].criteria![0].filters!.values[0] = 'Operations'
     metadata.sorts![0].keys[0].direction = 'asc'
+    metadata.hyperlinks![0].target = 'https://example.com/mutated'
 
     expect(workbook.listStyleRanges('Sheet1')[0]?.range.startAddress).toBe('A1')
     expect(workbook.listFilters('Sheet1')[0]?.range.criteria?.[0]?.filters?.values[0]).toBe('Finance')
     expect(workbook.listSorts('Sheet1')[0]?.keys[0]?.direction).toBe('desc')
+    expect(workbook.getHyperlink('Sheet1', 'F4')?.target).toBe('https://example.com/report')
     expect(workbook.getConditionalFormatArtifacts('Sheet1')?.xml).toBe(
       '<conditionalFormatting sqref="A1:A2"><cfRule type="dataBar" priority="1"/></conditionalFormatting>',
     )
 
     const ops = sheetMetadataToOps(workbook, 'Sheet1')
-    expect(ops).toHaveLength(16)
+    expect(ops).toHaveLength(17)
     expect(ops).toMatchObject([
       {
         kind: 'insertRows',
@@ -224,6 +242,16 @@ describe('engine snapshot utils', () => {
         sheetName: 'Sheet1',
         artifacts: {
           xml: '<conditionalFormatting sqref="A1:A2"><cfRule type="dataBar" priority="1"/></conditionalFormatting>',
+        },
+      },
+      {
+        kind: 'upsertHyperlink',
+        hyperlink: {
+          sheetName: 'Sheet1',
+          address: 'F4',
+          target: 'https://example.com/report',
+          tooltip: 'Open report',
+          display: 'Report',
         },
       },
     ])

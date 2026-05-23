@@ -262,6 +262,20 @@ export function buildMutationMetadataInverseOps(workbook: WorkbookStore, op: Eng
       }
       return [{ kind: 'upsertNote', note: structuredClone(existing) }]
     }
+    case 'upsertHyperlink': {
+      const existing = workbook.getHyperlink(op.hyperlink.sheetName, op.hyperlink.address)
+      if (!existing) {
+        return [{ kind: 'deleteHyperlink', sheetName: op.hyperlink.sheetName, address: op.hyperlink.address }]
+      }
+      return [{ kind: 'upsertHyperlink', hyperlink: structuredClone(existing) }]
+    }
+    case 'deleteHyperlink': {
+      const existing = workbook.getHyperlink(op.sheetName, op.address)
+      if (!existing) {
+        return []
+      }
+      return [{ kind: 'upsertHyperlink', hyperlink: structuredClone(existing) }]
+    }
     case 'setCellFormat': {
       const cellIndex = workbook.getCellIndex(op.sheetName, op.address)
       return [

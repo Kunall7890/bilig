@@ -1,6 +1,7 @@
 import type {
   WorkbookChartSnapshot,
   WorkbookCommentThreadSnapshot,
+  WorkbookHyperlinkSnapshot,
   WorkbookImageSnapshot,
   WorkbookNoteSnapshot,
   WorkbookShapeSnapshot,
@@ -33,6 +34,17 @@ export function normalizeEngineNote(note: WorkbookNoteSnapshot): WorkbookNoteSna
     sheetName: note.sheetName,
     address: formatAddress(parsed.row, parsed.col),
     text: note.text.trim(),
+  }
+}
+
+export function normalizeEngineHyperlink(hyperlink: WorkbookHyperlinkSnapshot): WorkbookHyperlinkSnapshot {
+  const parsed = parseCellAddress(hyperlink.address, hyperlink.sheetName)
+  return {
+    sheetName: hyperlink.sheetName,
+    address: formatAddress(parsed.row, parsed.col),
+    target: hyperlink.target,
+    ...(hyperlink.tooltip !== undefined ? { tooltip: hyperlink.tooltip } : {}),
+    ...(hyperlink.display !== undefined ? { display: hyperlink.display } : {}),
   }
 }
 

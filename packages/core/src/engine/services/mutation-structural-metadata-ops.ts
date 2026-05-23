@@ -18,6 +18,7 @@ type MutationStructuralMetadataWorkbook = Pick<
   | 'listDataValidations'
   | 'listCommentThreads'
   | 'listNotes'
+  | 'listHyperlinks'
 >
 
 export function captureStructuralWorkbookMetadataOps(workbook: MutationStructuralMetadataWorkbook): EngineOp[] {
@@ -128,6 +129,12 @@ export function clearStructuralSheetMetadataOps(
     const address = rewriteAddressForStructuralTransform(note.address, transform)
     if (address) {
       clearedOps.push({ kind: 'deleteNote', sheetName, address })
+    }
+  })
+  workbook.listHyperlinks(sheetName).forEach((hyperlink) => {
+    const address = rewriteAddressForStructuralTransform(hyperlink.address, transform)
+    if (address) {
+      clearedOps.push({ kind: 'deleteHyperlink', sheetName, address })
     }
   })
   return clearedOps

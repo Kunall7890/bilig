@@ -16,6 +16,7 @@ import type {
   WorkbookDataValidationSnapshot,
   WorkbookDefinedNameValueSnapshot,
   WorkbookFreezePaneSnapshot,
+  WorkbookHyperlinkSnapshot,
   WorkbookImageSnapshot,
   WorkbookMergeRangeSnapshot,
   WorkbookNoteSnapshot,
@@ -39,7 +40,12 @@ import {
   buildSetSheetProtectionOps,
   buildSetSortOps,
 } from './engine-workbook-metadata-ops.js'
-import { normalizeEngineCommentThread, normalizeEngineNote, workbookObjectRecordEqual } from './engine-workbook-object-helpers.js'
+import {
+  normalizeEngineCommentThread,
+  normalizeEngineHyperlink,
+  normalizeEngineNote,
+  workbookObjectRecordEqual,
+} from './engine-workbook-object-helpers.js'
 import {
   buildDeleteChartOps,
   buildDeleteImageOps,
@@ -63,6 +69,7 @@ import {
   type WorkbookDataValidationRecord,
   type WorkbookDefinedNameRecord,
   type WorkbookFilterRecord,
+  type WorkbookHyperlinkRecord,
   type WorkbookMergeRangeRecord,
   type WorkbookNoteRecord,
   type WorkbookPropertyRecord,
@@ -526,6 +533,31 @@ export abstract class SpreadsheetEngineWorkbookFacadeBase extends SpreadsheetEng
 
   getNotes(sheetName: string): WorkbookNoteRecord[] {
     return this.workbook.listNotes(sheetName)
+  }
+
+  setHyperlink(hyperlink: WorkbookHyperlinkSnapshot): void {
+    const normalized = normalizeEngineHyperlink(hyperlink)
+    const existing = this.workbook.getHyperlink(normalized.sheetName, normalized.address)
+    if (workbookObjectRecordEqual(existing, normalized)) {
+      return
+    }
+    this.executeLocalTransaction([{ kind: 'upsertHyperlink', hyperlink: normalized }])
+  }
+
+  deleteHyperlink(sheetName: string, address: string): boolean {
+    if (!this.workbook.getHyperlink(sheetName, address)) {
+      return false
+    }
+    this.executeLocalTransaction([{ kind: 'deleteHyperlink', sheetName, address }])
+    return true
+  }
+
+  getHyperlink(sheetName: string, address: string): WorkbookHyperlinkRecord | undefined {
+    return this.workbook.getHyperlink(sheetName, address)
+  }
+
+  getHyperlinks(sheetName: string): WorkbookHyperlinkRecord[] {
+    return this.workbook.listHyperlinks(sheetName)
   }
 
   setTable(table: WorkbookTableRecord): void {

@@ -588,7 +588,9 @@ export function createOperationBatchApplier(input: CreateOperationBatchApplierAr
           case 'upsertCommentThread':
           case 'deleteCommentThread':
           case 'upsertNote':
-          case 'deleteNote': {
+          case 'deleteNote':
+          case 'upsertHyperlink':
+          case 'deleteHyperlink': {
             const metadataChange = applyOperationStructuralMetadataOp({
               workbook: args.state.workbook,
               op,

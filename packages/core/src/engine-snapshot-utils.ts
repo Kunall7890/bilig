@@ -163,6 +163,7 @@ export function exportSheetMetadata(workbook: WorkbookStore, sheetName: string):
   const protectedRanges = workbook.listRangeProtections(sheetName).map((protection) => structuredClone(protection))
   const commentThreads = workbook.listCommentThreads(sheetName).map((thread) => structuredClone(thread))
   const notes = workbook.listNotes(sheetName).map((note) => structuredClone(note))
+  const hyperlinks = workbook.listHyperlinks(sheetName).map((hyperlink) => structuredClone(hyperlink))
   const arrayFormulas = arrayFormulasToSnapshot(sheet?.arrayFormulas)
   const dataTableFormulas = dataTableFormulasToSnapshot(sheet?.dataTableFormulas)
 
@@ -187,6 +188,7 @@ export function exportSheetMetadata(workbook: WorkbookStore, sheetName: string):
     protectedRanges.length === 0 &&
     commentThreads.length === 0 &&
     notes.length === 0 &&
+    hyperlinks.length === 0 &&
     arrayFormulas === undefined &&
     dataTableFormulas === undefined
   ) {
@@ -253,6 +255,9 @@ export function exportSheetMetadata(workbook: WorkbookStore, sheetName: string):
   }
   if (notes.length > 0) {
     metadata.notes = notes
+  }
+  if (hyperlinks.length > 0) {
+    metadata.hyperlinks = hyperlinks
   }
   if (arrayFormulas) {
     metadata.arrayFormulas = arrayFormulas
@@ -371,6 +376,12 @@ export function sheetMetadataToOps(
     ops.push({
       kind: 'upsertNote',
       note: structuredClone(record),
+    })
+  })
+  workbook.listHyperlinks(sheetName).forEach((record) => {
+    ops.push({
+      kind: 'upsertHyperlink',
+      hyperlink: structuredClone(record),
     })
   })
   return ops

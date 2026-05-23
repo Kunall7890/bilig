@@ -4,6 +4,7 @@ import type {
   SheetFormatRangeSnapshot,
   SheetStyleRangeSnapshot,
   WorkbookCommentThreadSnapshot,
+  WorkbookHyperlinkSnapshot,
   WorkbookNoteSnapshot,
   WorkbookSnapshot,
   WorkbookSortSnapshot,
@@ -194,6 +195,7 @@ function appendRowBundleMetadataSortOps(
   appendFormatRangeSortOps(ops, metadata.formatRanges, rewrites, sheetName)
   appendCommentThreadSortOps(ops, metadata.commentThreads, rewrites, sheetName)
   appendNoteSortOps(ops, metadata.notes, rewrites, sheetName)
+  appendHyperlinkSortOps(ops, metadata.hyperlinks, rewrites, sheetName)
 }
 
 function appendCommentThreadSortOps(
@@ -242,6 +244,31 @@ function appendNoteSortOps(
       })
     } else if (existing) {
       ops.push({ kind: 'deleteNote', sheetName, address: rewrite.targetAddress })
+    }
+  }
+}
+
+function appendHyperlinkSortOps(
+  ops: EngineOp[],
+  hyperlinks: readonly WorkbookHyperlinkSnapshot[] | undefined,
+  rewrites: readonly SortCellRewrite[],
+  sheetName: string,
+): void {
+  const hyperlinksByAddress = new Map((hyperlinks ?? []).map((hyperlink) => [hyperlink.address, hyperlink]))
+  for (const rewrite of rewrites) {
+    const source = hyperlinksByAddress.get(rewrite.sourceAddress)
+    const existing = hyperlinksByAddress.get(rewrite.targetAddress)
+    if (source) {
+      ops.push({
+        kind: 'upsertHyperlink',
+        hyperlink: {
+          ...structuredClone(source),
+          sheetName,
+          address: rewrite.targetAddress,
+        },
+      })
+    } else if (existing) {
+      ops.push({ kind: 'deleteHyperlink', sheetName, address: rewrite.targetAddress })
     }
   }
 }

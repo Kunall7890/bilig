@@ -450,6 +450,17 @@ function isWorkbookNote(value: unknown): boolean {
   return isRecord(value) && hasString(value, 'sheetName') && hasString(value, 'address') && hasString(value, 'text')
 }
 
+function isWorkbookHyperlink(value: unknown): boolean {
+  return (
+    isRecord(value) &&
+    hasString(value, 'sheetName') &&
+    hasString(value, 'address') &&
+    hasString(value, 'target') &&
+    isOptionalString(value['tooltip']) &&
+    isOptionalString(value['display'])
+  )
+}
+
 function isWorkbookDefinedNameValue(value: unknown): boolean {
   if (isLiteralInput(value)) {
     return true
@@ -675,9 +686,12 @@ export function isWorkbookOp(value: unknown): value is WorkbookOp {
       return isWorkbookCommentThread(value['thread'])
     case 'deleteCommentThread':
     case 'deleteNote':
+    case 'deleteHyperlink':
       return hasString(value, 'sheetName') && hasString(value, 'address')
     case 'upsertNote':
       return isWorkbookNote(value['note'])
+    case 'upsertHyperlink':
+      return isWorkbookHyperlink(value['hyperlink'])
     case 'setCellValue':
       return (
         hasString(value, 'sheetName') &&

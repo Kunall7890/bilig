@@ -157,6 +157,16 @@ export function assertProtectionAllowsOp(access: OperationProtectionAccess, op: 
         throwProtectionBlocked(`cell ${op.sheetName}!${op.address} is protected`)
       }
       return
+    case 'upsertHyperlink':
+      if (rangeIsProtected(access, cellRange(op.hyperlink.sheetName, op.hyperlink.address))) {
+        throwProtectionBlocked(`cell ${op.hyperlink.sheetName}!${op.hyperlink.address} is protected`)
+      }
+      return
+    case 'deleteHyperlink':
+      if (rangeIsProtected(access, cellRange(op.sheetName, op.address))) {
+        throwProtectionBlocked(`cell ${op.sheetName}!${op.address} is protected`)
+      }
+      return
     case 'setCellValue':
     case 'setCellFormula':
     case 'setCellFormat':

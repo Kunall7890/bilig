@@ -63,6 +63,9 @@ const throwingBucketSetters = {
   freezePanes: (metadata, message) => {
     metadata.freezePanes = createThrowingBucket(message)
   },
+  hyperlinks: (metadata, message) => {
+    metadata.hyperlinks = createThrowingBucket(message)
+  },
   images: (metadata, message) => {
     metadata.images = createThrowingBucket(message)
   },
@@ -275,7 +278,7 @@ describe('WorkbookMetadataService', () => {
     ])
   })
 
-  it('clones and normalizes comment threads and notes on write and read', () => {
+  it('clones and normalizes comment threads, notes, and hyperlinks on write and read', () => {
     const service = createService()
     const threadInput = {
       threadId: ' thread-1 ',
@@ -288,14 +291,25 @@ describe('WorkbookMetadataService', () => {
       address: 'd5',
       text: ' Manual override ',
     }
+    const hyperlinkInput = {
+      sheetName: 'Sheet1',
+      address: 'e6',
+      target: 'https://example.com/report',
+      tooltip: 'Open report',
+      display: 'Report',
+    }
 
     const storedThread = Effect.runSync(service.setCommentThread(threadInput))
     const storedNote = Effect.runSync(service.setNote(noteInput))
+    const storedHyperlink = Effect.runSync(service.setHyperlink(hyperlinkInput))
     Effect.runSync(service.setNote({ sheetName: 'Sheet1', address: 'B1', text: 'Earlier note' }))
+    Effect.runSync(service.setHyperlink({ sheetName: 'Sheet1', address: 'A1', target: '#Summary!A1' }))
     threadInput.comments[0].body = 'Mutated'
     storedThread.comments[0].body = 'Leaked'
     noteInput.text = 'Changed'
     storedNote.text = 'Broken'
+    hyperlinkInput.target = 'https://example.com/mutated'
+    storedHyperlink.target = 'https://example.com/leaked'
 
     expect(Effect.runSync(service.getCommentThread('Sheet1', 'C4'))).toEqual({
       threadId: 'thread-1',
@@ -308,9 +322,26 @@ describe('WorkbookMetadataService', () => {
       address: 'D5',
       text: 'Manual override',
     })
+    expect(Effect.runSync(service.getHyperlink('Sheet1', 'E6'))).toEqual({
+      sheetName: 'Sheet1',
+      address: 'E6',
+      target: 'https://example.com/report',
+      tooltip: 'Open report',
+      display: 'Report',
+    })
     expect(Effect.runSync(service.listNotes('Sheet1'))).toEqual([
       { sheetName: 'Sheet1', address: 'B1', text: 'Earlier note' },
       { sheetName: 'Sheet1', address: 'D5', text: 'Manual override' },
+    ])
+    expect(Effect.runSync(service.listHyperlinks('Sheet1'))).toEqual([
+      { sheetName: 'Sheet1', address: 'A1', target: '#Summary!A1' },
+      {
+        sheetName: 'Sheet1',
+        address: 'E6',
+        target: 'https://example.com/report',
+        tooltip: 'Open report',
+        display: 'Report',
+      },
     ])
   })
 
@@ -494,6 +525,15 @@ describe('WorkbookMetadataService', () => {
       }),
     )
     Effect.runSync(
+      service.setHyperlink({
+        sheetName: 'Source',
+        address: 'E6',
+        target: 'https://example.com/report',
+        tooltip: 'Open report',
+        display: 'Report',
+      }),
+    )
+    Effect.runSync(
       service.setConditionalFormat({
         id: 'cf-1',
         range: { sheetName: 'Source', startAddress: 'A2', endAddress: 'A5' },
@@ -624,6 +664,13 @@ describe('WorkbookMetadataService', () => {
       address: 'D5',
       text: 'Manual override',
     })
+    expect(Effect.runSync(service.getHyperlink('Renamed', 'E6'))).toEqual({
+      sheetName: 'Renamed',
+      address: 'E6',
+      target: 'https://example.com/report',
+      tooltip: 'Open report',
+      display: 'Report',
+    })
     expect(Effect.runSync(service.getConditionalFormat('cf-1'))).toEqual({
       id: 'cf-1',
       range: { sheetName: 'Renamed', startAddress: 'A2', endAddress: 'A5' },
@@ -685,6 +732,7 @@ describe('WorkbookMetadataService', () => {
     expect(Effect.runSync(service.listRangeProtections('Renamed'))).toEqual([])
     expect(Effect.runSync(service.listCommentThreads('Renamed'))).toEqual([])
     expect(Effect.runSync(service.listNotes('Renamed'))).toEqual([])
+    expect(Effect.runSync(service.listHyperlinks('Renamed'))).toEqual([])
     expect(Effect.runSync(service.listPivots())).toEqual([])
     expect(Effect.runSync(service.listTables())).toEqual([])
     expect(Effect.runSync(service.listSpills())).toEqual([])
@@ -703,6 +751,7 @@ describe('WorkbookMetadataService', () => {
 
     expect(Effect.runSync(service.listWorkbookProperties())).toEqual([])
     expect(Effect.runSync(service.listDefinedNames())).toEqual([])
+    expect(Effect.runSync(service.listHyperlinks('Renamed'))).toEqual([])
     expect(Effect.runSync(service.getCalculationSettings())).toEqual({
       mode: 'automatic',
       compatibilityMode: 'excel-modern',
@@ -812,6 +861,10 @@ describe('WorkbookMetadataService', () => {
     expect(Effect.runSync(service.deleteNote('Sheet1', 'A1'))).toBe(true)
     expect(Effect.runSync(service.deleteNote('Sheet1', 'A1'))).toBe(false)
 
+    Effect.runSync(service.setHyperlink({ sheetName: 'Sheet1', address: 'A1', target: 'https://example.com/report' }))
+    expect(Effect.runSync(service.deleteHyperlink('Sheet1', 'A1'))).toBe(true)
+    expect(Effect.runSync(service.deleteHyperlink('Sheet1', 'A1'))).toBe(false)
+
     Effect.runSync(service.setSpill('Sheet1', 'A1', 2, 2))
     expect(Effect.runSync(service.deleteSpill('Sheet1', 'A1'))).toBe(true)
     expect(Effect.runSync(service.deleteSpill('Sheet1', 'A1'))).toBe(false)
@@ -851,6 +904,7 @@ describe('WorkbookMetadataService', () => {
     expect(Effect.runSync(service.listRangeProtections('Sheet1'))).toEqual([])
     expect(Effect.runSync(service.listCommentThreads('Sheet1'))).toEqual([])
     expect(Effect.runSync(service.listNotes('Sheet1'))).toEqual([])
+    expect(Effect.runSync(service.listHyperlinks('Sheet1'))).toEqual([])
     expect(Effect.runSync(service.listSpills())).toEqual([])
     expect(Effect.runSync(service.listPivots())).toEqual([])
 
@@ -1109,6 +1163,27 @@ describe('WorkbookMetadataService', () => {
         bucket: 'notes',
         message: 'Failed to delete note metadata',
         run: (service: WorkbookMetadataService) => service.deleteNote('Sheet1', 'A1'),
+      },
+      {
+        bucket: 'hyperlinks',
+        message: 'Failed to set hyperlink metadata',
+        run: (service: WorkbookMetadataService) =>
+          service.setHyperlink({ sheetName: 'Sheet1', address: 'A1', target: 'https://example.com/report' }),
+      },
+      {
+        bucket: 'hyperlinks',
+        message: 'Failed to get hyperlink metadata',
+        run: (service: WorkbookMetadataService) => service.getHyperlink('Sheet1', 'A1'),
+      },
+      {
+        bucket: 'hyperlinks',
+        message: 'Failed to delete hyperlink metadata',
+        run: (service: WorkbookMetadataService) => service.deleteHyperlink('Sheet1', 'A1'),
+      },
+      {
+        bucket: 'hyperlinks',
+        message: 'Failed to list hyperlink metadata',
+        run: (service: WorkbookMetadataService) => service.listHyperlinks('Sheet1'),
       },
       {
         bucket: 'spills',

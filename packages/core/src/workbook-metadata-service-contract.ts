@@ -11,6 +11,7 @@ import type {
   WorkbookDataValidationSnapshot,
   WorkbookDefinedNameValueSnapshot,
   WorkbookFreezePaneSnapshot,
+  WorkbookHyperlinkSnapshot,
   WorkbookImageSnapshot,
   WorkbookMacroPayloadSnapshot,
   WorkbookNoteSnapshot,
@@ -33,6 +34,7 @@ import type {
   WorkbookDefinedNameRecord,
   WorkbookFilterRecord,
   WorkbookFreezePaneRecord,
+  WorkbookHyperlinkRecord,
   WorkbookImageRecord,
   WorkbookMacroPayloadRecord,
   WorkbookMergeRangeRecord,
@@ -177,6 +179,10 @@ export interface WorkbookMetadataService {
   readonly getNote: (sheetName: string, address: string) => Effect.Effect<WorkbookNoteRecord | undefined, WorkbookMetadataError>
   readonly deleteNote: (sheetName: string, address: string) => Effect.Effect<boolean, WorkbookMetadataError>
   readonly listNotes: (sheetName: string) => Effect.Effect<WorkbookNoteRecord[], WorkbookMetadataError>
+  readonly setHyperlink: (record: WorkbookHyperlinkSnapshot) => Effect.Effect<WorkbookHyperlinkRecord, WorkbookMetadataError>
+  readonly getHyperlink: (sheetName: string, address: string) => Effect.Effect<WorkbookHyperlinkRecord | undefined, WorkbookMetadataError>
+  readonly deleteHyperlink: (sheetName: string, address: string) => Effect.Effect<boolean, WorkbookMetadataError>
+  readonly listHyperlinks: (sheetName: string) => Effect.Effect<WorkbookHyperlinkRecord[], WorkbookMetadataError>
   readonly setSpill: (
     sheetName: string,
     address: string,

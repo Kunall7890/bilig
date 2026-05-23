@@ -924,6 +924,11 @@ describe('operation-service internals', () => {
       [{ kind: 'deleteCommentThread', sheetName: 'Sheet1', address: 'A1' }, 'comment:Sheet1!A1'],
       [{ kind: 'upsertNote', note: { sheetName: 'Sheet1', address: 'A1', text: 'note' } }, 'note:Sheet1!A1'],
       [{ kind: 'deleteNote', sheetName: 'Sheet1', address: 'A1' }, 'note:Sheet1!A1'],
+      [
+        { kind: 'upsertHyperlink', hyperlink: { sheetName: 'Sheet1', address: 'A1', target: 'https://example.com/report' } },
+        'hyperlink:Sheet1!A1',
+      ],
+      [{ kind: 'deleteHyperlink', sheetName: 'Sheet1', address: 'A1' }, 'hyperlink:Sheet1!A1'],
       [{ kind: 'setCellValue', sheetName: 'Sheet1', address: 'A1', value: 1 }, 'cell:Sheet1!A1'],
       [{ kind: 'setCellFormula', sheetName: 'Sheet1', address: 'A1', formula: '1+1' }, 'cell:Sheet1!A1'],
       [{ kind: 'setCellFormat', sheetName: 'Sheet1', address: 'A1', format: '0.00' }, 'format:Sheet1!A1'],

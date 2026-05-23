@@ -16,6 +16,7 @@ import {
   type WorkbookConditionalFormatRecord,
   type WorkbookSheetConditionalFormatArtifactsRecord,
   type WorkbookDataValidationRecord,
+  type WorkbookHyperlinkRecord,
   type WorkbookImageRecord,
   type WorkbookMacroPayloadRecord,
   type WorkbookMergeRangeRecord,
@@ -279,6 +280,16 @@ export function cloneNoteRecord(record: WorkbookNoteRecord): WorkbookNoteRecord 
   }
 }
 
+export function cloneHyperlinkRecord(record: WorkbookHyperlinkRecord): WorkbookHyperlinkRecord {
+  return {
+    sheetName: record.sheetName,
+    address: canonicalWorkbookAddress(record.sheetName, record.address),
+    target: record.target,
+    ...(record.tooltip !== undefined ? { tooltip: record.tooltip } : {}),
+    ...(record.display !== undefined ? { display: record.display } : {}),
+  }
+}
+
 export function conditionalFormatKey(id: string): string {
   const normalized = id.trim()
   if (normalized.length === 0) {
@@ -372,6 +383,10 @@ export function noteKey(sheetName: string, address: string): string {
   return `${sheetName}!${canonicalWorkbookAddress(sheetName, address)}`
 }
 
+export function hyperlinkKey(sheetName: string, address: string): string {
+  return `${sheetName}!${canonicalWorkbookAddress(sheetName, address)}`
+}
+
 export function tableKey(name: string): string {
   return normalizeWorkbookObjectName(name, 'Tables')
 }
@@ -435,6 +450,9 @@ function recordKey(record: unknown): string {
   }
   if (isNoteRecord(record)) {
     return noteKey(record.sheetName, record.address)
+  }
+  if (isHyperlinkRecord(record)) {
+    return hyperlinkKey(record.sheetName, record.address)
   }
   if (isDefinedNameRecord(record)) {
     return definedNameKey(record.name, record.scopeSheetName)
@@ -546,6 +564,10 @@ function isRangeProtectionRecord(record: unknown): record is WorkbookRangeProtec
 
 function isNoteRecord(record: unknown): record is WorkbookNoteRecord {
   return typeof record === 'object' && record !== null && 'address' in record && 'text' in record && !('comments' in record)
+}
+
+function isHyperlinkRecord(record: unknown): record is WorkbookHyperlinkRecord {
+  return typeof record === 'object' && record !== null && 'address' in record && 'target' in record
 }
 
 function isTableRecord(record: unknown): record is WorkbookTableRecord {

@@ -134,6 +134,9 @@ function restoreSheetMetadata(args: { readonly workbook: WorkbookStore; readonly
   sheet.metadata?.notes?.forEach((note) => {
     workbook.setNote(structuredClone(note))
   })
+  sheet.metadata?.hyperlinks?.forEach((hyperlink) => {
+    workbook.setHyperlink(structuredClone(hyperlink))
+  })
   if (sheet.metadata?.arrayFormulas && sheet.metadata.arrayFormulas.formulas.length > 0) {
     const targetSheet = workbook.getSheet(sheet.name)
     if (targetSheet) {

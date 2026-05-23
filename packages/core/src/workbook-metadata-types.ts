@@ -21,6 +21,7 @@ import type {
   WorkbookDataValidationSnapshot,
   WorkbookDefinedNameValueSnapshot,
   WorkbookFreezePaneSnapshot,
+  WorkbookHyperlinkSnapshot,
   WorkbookNoteSnapshot,
   WorkbookRangeProtectionSnapshot,
   WorkbookSheetProtectionSnapshot,
@@ -138,6 +139,7 @@ export interface WorkbookCommentThreadRecord extends WorkbookCommentThreadSnapsh
   comments: WorkbookCommentEntryRecord[]
 }
 export interface WorkbookNoteRecord extends WorkbookNoteSnapshot {}
+export interface WorkbookHyperlinkRecord extends WorkbookHyperlinkSnapshot {}
 
 export interface WorkbookMetadataRecord {
   properties: Map<string, WorkbookPropertyRecord>
@@ -166,6 +168,7 @@ export interface WorkbookMetadataRecord {
   rangeProtections: Map<string, WorkbookRangeProtectionRecord>
   commentThreads: Map<string, WorkbookCommentThreadRecord>
   notes: Map<string, WorkbookNoteRecord>
+  hyperlinks: Map<string, WorkbookHyperlinkRecord>
 }
 
 export function createWorkbookMetadataRecord(): WorkbookMetadataRecord {
@@ -196,6 +199,7 @@ export function createWorkbookMetadataRecord(): WorkbookMetadataRecord {
     rangeProtections: new Map(),
     commentThreads: new Map(),
     notes: new Map(),
+    hyperlinks: new Map(),
   }
 }
 

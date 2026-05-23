@@ -636,6 +636,17 @@ export function rewriteWorkbookMetadataForStructuralTransform(
       address: nextAddress,
     })
   })
+  workbook.listHyperlinks(sheetName).forEach((hyperlink) => {
+    const nextAddress = rewriteMetadataAddressForStructuralTransform(hyperlink.address, transform)
+    workbook.deleteHyperlink(sheetName, hyperlink.address)
+    if (!nextAddress) {
+      return
+    }
+    workbook.setHyperlink({
+      ...hyperlink,
+      address: nextAddress,
+    })
+  })
   const sheet = workbook.getSheet(sheetName)
   if (sheet?.arrayFormulas) {
     const arrayFormulas = rewriteArrayFormulasForStructuralTransform(sheetName, sheet.arrayFormulas, transform)

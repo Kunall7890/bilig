@@ -104,6 +104,16 @@ describe('EngineOperationService metadata and object batches', () => {
         },
       },
       {
+        kind: 'upsertHyperlink',
+        hyperlink: {
+          sheetName: 'Sheet1',
+          address: 'G4',
+          target: 'https://example.com/report',
+          tooltip: 'Open report',
+          display: 'Report',
+        },
+      },
+      {
         kind: 'upsertChart',
         chart: {
           id: 'chart-1',
@@ -168,6 +178,7 @@ describe('EngineOperationService metadata and object batches', () => {
     expect(engine.workbook.getRangeProtection('protect-range')).toBeDefined()
     expect(engine.workbook.getCommentThread('Sheet1', 'E2')).toMatchObject({ threadId: 'thread-1' })
     expect(engine.workbook.getNote('Sheet1', 'F3')).toMatchObject({ text: 'Manual review' })
+    expect(engine.workbook.getHyperlink('Sheet1', 'G4')).toMatchObject({ target: 'https://example.com/report' })
     expect(engine.workbook.getChart('chart-1')).toMatchObject({ title: 'Trend' })
     expect(engine.workbook.getImage('image-1')).toMatchObject({ altText: 'Example image' })
     expect(engine.workbook.getShape('shape-1')).toMatchObject({ text: 'Callout' })
@@ -187,6 +198,7 @@ describe('EngineOperationService metadata and object batches', () => {
       { kind: 'deleteConditionalFormat', id: 'cf-open', sheetName: 'Sheet1' },
       { kind: 'deleteCommentThread', sheetName: 'Sheet1', address: 'E2' },
       { kind: 'deleteNote', sheetName: 'Sheet1', address: 'F3' },
+      { kind: 'deleteHyperlink', sheetName: 'Sheet1', address: 'G4' },
       { kind: 'deleteChart', id: 'chart-1' },
       { kind: 'deleteImage', id: 'image-1' },
       { kind: 'deleteShape', id: 'shape-1' },
@@ -201,6 +213,7 @@ describe('EngineOperationService metadata and object batches', () => {
     expect(engine.workbook.getConditionalFormat('cf-open')).toBeUndefined()
     expect(engine.workbook.getCommentThread('Sheet1', 'E2')).toBeUndefined()
     expect(engine.workbook.getNote('Sheet1', 'F3')).toBeUndefined()
+    expect(engine.workbook.getHyperlink('Sheet1', 'G4')).toBeUndefined()
     expect(engine.workbook.getChart('chart-1')).toBeUndefined()
     expect(engine.workbook.getImage('image-1')).toBeUndefined()
     expect(engine.workbook.getShape('shape-1')).toBeUndefined()
@@ -251,6 +264,7 @@ describe('EngineOperationService metadata and object batches', () => {
         },
       },
       { kind: 'upsertNote', note: { sheetName: 'Sheet1', address: 'A2', text: 'note' } },
+      { kind: 'upsertHyperlink', hyperlink: { sheetName: 'Sheet1', address: 'A3', target: 'https://example.com/protected' } },
       {
         kind: 'upsertTable',
         table: {
@@ -355,6 +369,8 @@ describe('EngineOperationService metadata and object batches', () => {
       { kind: 'deleteCommentThread', sheetName: 'Sheet1', address: 'A1' },
       { kind: 'upsertNote', note: { sheetName: 'Sheet1', address: 'A2', text: 'blocked' } },
       { kind: 'deleteNote', sheetName: 'Sheet1', address: 'A2' },
+      { kind: 'upsertHyperlink', hyperlink: { sheetName: 'Sheet1', address: 'A3', target: 'https://example.com/blocked' } },
+      { kind: 'deleteHyperlink', sheetName: 'Sheet1', address: 'A3' },
       { kind: 'setCellValue', sheetName: 'Sheet1', address: 'A1', value: 99 },
       { kind: 'setCellFormula', sheetName: 'Sheet1', address: 'A1', formula: 'B2+1' },
       { kind: 'setCellFormat', sheetName: 'Sheet1', address: 'A1', format: '0.00' },

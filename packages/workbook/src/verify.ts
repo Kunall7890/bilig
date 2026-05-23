@@ -226,8 +226,10 @@ function opTargetRange(op: WorkbookOp) {
     op.kind === 'clearCell' ||
     op.kind === 'deleteCommentThread' ||
     op.kind === 'deleteNote' ||
+    op.kind === 'deleteHyperlink' ||
     op.kind === 'upsertCommentThread' ||
     op.kind === 'upsertNote' ||
+    op.kind === 'upsertHyperlink' ||
     op.kind === 'upsertSpillRange' ||
     op.kind === 'deleteSpillRange' ||
     op.kind === 'upsertPivotTable' ||
@@ -241,6 +243,9 @@ function opTargetRange(op: WorkbookOp) {
     }
     if (op.kind === 'upsertNote') {
       return singleCellRange(op.note.sheetName, op.note.address)
+    }
+    if (op.kind === 'upsertHyperlink') {
+      return singleCellRange(op.hyperlink.sheetName, op.hyperlink.address)
     }
     if (op.kind === 'upsertChart') {
       return singleCellRange(op.chart.sheetName, op.chart.address)

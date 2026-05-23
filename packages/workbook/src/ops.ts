@@ -9,6 +9,7 @@ import type {
   WorkbookChartSnapshot,
   WorkbookConditionalFormatSnapshot,
   WorkbookDataValidationSnapshot,
+  WorkbookHyperlinkSnapshot,
   WorkbookImageSnapshot,
   WorkbookMergeRangeSnapshot,
   WorkbookNoteSnapshot,
@@ -53,6 +54,7 @@ export interface WorkbookSheetProtectionOp extends WorkbookSheetProtectionSnapsh
 export interface WorkbookRangeProtectionOp extends WorkbookRangeProtectionSnapshot {}
 export interface WorkbookCommentThreadOp extends WorkbookCommentThreadSnapshot {}
 export interface WorkbookNoteOp extends WorkbookNoteSnapshot {}
+export interface WorkbookHyperlinkOp extends WorkbookHyperlinkSnapshot {}
 export interface WorkbookChartOp extends WorkbookChartSnapshot {}
 export interface WorkbookImageOp extends WorkbookImageSnapshot {}
 export interface WorkbookShapeOp extends WorkbookShapeSnapshot {}
@@ -124,6 +126,8 @@ export type WorkbookOp =
   | { kind: 'deleteCommentThread'; sheetName: string; address: string }
   | { kind: 'upsertNote'; note: WorkbookNoteOp }
   | { kind: 'deleteNote'; sheetName: string; address: string }
+  | { kind: 'upsertHyperlink'; hyperlink: WorkbookHyperlinkOp }
+  | { kind: 'deleteHyperlink'; sheetName: string; address: string }
   | {
       kind: 'setCellValue'
       sheetName: string

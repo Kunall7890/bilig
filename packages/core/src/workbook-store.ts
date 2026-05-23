@@ -16,6 +16,7 @@ import type {
   WorkbookDataValidationSnapshot,
   WorkbookDefinedNameValueSnapshot,
   WorkbookFreezePaneSnapshot,
+  WorkbookHyperlinkSnapshot,
   WorkbookImageSnapshot,
   WorkbookMacroPayloadSnapshot,
   WorkbookNoteSnapshot,
@@ -51,6 +52,7 @@ import {
   type WorkbookFilterRecord,
   type WorkbookFormatRangeRecord,
   type WorkbookFreezePaneRecord,
+  type WorkbookHyperlinkRecord,
   type WorkbookImageRecord,
   type WorkbookMacroPayloadRecord,
   type WorkbookMergeRangeRecord,
@@ -99,6 +101,7 @@ import type { SheetRecord } from './workbook-sheet-record.js'
 import { WorkbookSheetRegistryStore } from './workbook-sheet-registry-store.js'
 import { WorkbookStructuralCellStore } from './workbook-structural-cell-store.js'
 import { WorkbookStructuralAxisOperations } from './workbook-structural-axis-operations.js'
+import { hasStructuralMetadataForSheetRecord } from './workbook-store-metadata-presence.js'
 
 export { makeCellKey, makeLogicalCellKey } from './workbook-cell-key-index.js'
 export { normalizeDefinedName, normalizeWorkbookObjectName, imageKey, pivotKey, shapeKey } from './workbook-metadata-types.js'
@@ -119,6 +122,7 @@ export type {
   WorkbookFilterRecord,
   WorkbookFormatRangeRecord,
   WorkbookFreezePaneRecord,
+  WorkbookHyperlinkRecord,
   WorkbookImageRecord,
   WorkbookMacroPayloadRecord,
   WorkbookMergeRangeRecord,
@@ -219,30 +223,7 @@ export class WorkbookStore {
   }
 
   hasStructuralMetadataForSheet(sheetName: string): boolean {
-    const sheet = this.getSheet(sheetName)
-    return (
-      this.metadata.definedNames.size > 0 ||
-      this.metadata.tables.size > 0 ||
-      this.metadata.spills.size > 0 ||
-      this.metadata.pivots.size > 0 ||
-      this.metadata.charts.size > 0 ||
-      this.metadata.images.size > 0 ||
-      this.metadata.shapes.size > 0 ||
-      this.metadata.freezePanes.size > 0 ||
-      this.metadata.merges.size > 0 ||
-      this.metadata.filters.size > 0 ||
-      this.metadata.sorts.size > 0 ||
-      this.metadata.dataValidations.size > 0 ||
-      this.metadata.conditionalFormats.size > 0 ||
-      this.metadata.conditionalFormatArtifacts.has(sheetName) ||
-      this.metadata.rangeProtections.size > 0 ||
-      this.metadata.commentThreads.size > 0 ||
-      this.metadata.notes.size > 0 ||
-      (sheet?.arrayFormulas?.formulas.length ?? 0) > 0 ||
-      (sheet?.dataTableFormulas?.formulas.length ?? 0) > 0 ||
-      (sheet?.styleRanges.length ?? 0) > 0 ||
-      (sheet?.formatRanges.length ?? 0) > 0
-    )
+    return hasStructuralMetadataForSheetRecord(this.metadata, sheetName, this.getSheet(sheetName))
   }
 
   hasProtectionMetadataForSheet(sheetName: string): boolean {
@@ -862,6 +843,22 @@ export class WorkbookStore {
 
   listNotes(sheetName: string): WorkbookNoteRecord[] {
     return runWorkbookMetadataEffect(this.metadataService.listNotes(sheetName))
+  }
+
+  setHyperlink(record: WorkbookHyperlinkSnapshot): WorkbookHyperlinkRecord {
+    return runWorkbookMetadataEffect(this.metadataService.setHyperlink(record))
+  }
+
+  getHyperlink(sheetName: string, address: string): WorkbookHyperlinkRecord | undefined {
+    return runWorkbookMetadataEffect(this.metadataService.getHyperlink(sheetName, address))
+  }
+
+  deleteHyperlink(sheetName: string, address: string): boolean {
+    return runWorkbookMetadataEffect(this.metadataService.deleteHyperlink(sheetName, address))
+  }
+
+  listHyperlinks(sheetName: string): WorkbookHyperlinkRecord[] {
+    return runWorkbookMetadataEffect(this.metadataService.listHyperlinks(sheetName))
   }
 
   setSpill(sheetName: string, address: string, rows: number, cols: number): WorkbookSpillRecord {

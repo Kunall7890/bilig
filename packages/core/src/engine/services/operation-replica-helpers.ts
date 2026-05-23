@@ -122,6 +122,10 @@ export function entityKeyForOp(op: EngineOp): string {
       return `note:${op.note.sheetName}!${op.note.address}`
     case 'deleteNote':
       return `note:${op.sheetName}!${op.address}`
+    case 'upsertHyperlink':
+      return `hyperlink:${op.hyperlink.sheetName}!${op.hyperlink.address}`
+    case 'deleteHyperlink':
+      return `hyperlink:${op.sheetName}!${op.address}`
     case 'setCellFormat':
       return `format:${op.sheetName}!${op.address}`
     case 'upsertCellStyle':
@@ -200,6 +204,7 @@ export function sheetDeleteBarrierForOp(op: EngineOp, sheetDeleteVersions: Versi
     case 'deleteRangeProtection':
     case 'deleteCommentThread':
     case 'deleteNote':
+    case 'deleteHyperlink':
     case 'setCellFormat':
     case 'setCellValue':
     case 'setCellFormula':
@@ -232,6 +237,8 @@ export function sheetDeleteBarrierForOp(op: EngineOp, sheetDeleteVersions: Versi
       return sheetDeleteVersions.get(op.thread.sheetName)
     case 'upsertNote':
       return sheetDeleteVersions.get(op.note.sheetName)
+    case 'upsertHyperlink':
+      return sheetDeleteVersions.get(op.hyperlink.sheetName)
     case 'upsertPivotTable':
       return sheetDeleteVersions.get(op.sheetName) ?? sheetDeleteVersions.get(op.source.sheetName)
     case 'upsertChart':

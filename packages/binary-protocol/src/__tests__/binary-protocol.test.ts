@@ -189,6 +189,16 @@ describe('binary protocol', () => {
               },
             },
             {
+              kind: 'upsertHyperlink',
+              hyperlink: {
+                sheetName: 'Sheet1',
+                address: 'H4',
+                target: 'https://example.com/report',
+                tooltip: 'Open report',
+                display: 'Report',
+              },
+            },
+            {
               kind: 'upsertConditionalFormat',
               format: {
                 id: 'cf-1',
@@ -360,6 +370,16 @@ describe('binary protocol', () => {
           sheetName: 'Sheet1',
           address: 'F3',
           text: 'Manual override',
+        },
+      },
+      {
+        kind: 'upsertHyperlink',
+        hyperlink: {
+          sheetName: 'Sheet1',
+          address: 'H4',
+          target: 'https://example.com/report',
+          tooltip: 'Open report',
+          display: 'Report',
         },
       },
       {
@@ -576,6 +596,7 @@ describe('binary protocol', () => {
           ops: [
             { kind: 'deleteCommentThread', sheetName: 'Sheet1', address: 'E2' },
             { kind: 'deleteNote', sheetName: 'Sheet1', address: 'F3' },
+            { kind: 'deleteHyperlink', sheetName: 'Sheet1', address: 'H4' },
           ],
         },
       }),
@@ -589,6 +610,7 @@ describe('binary protocol', () => {
     expect(decoded.batch.ops).toEqual([
       { kind: 'deleteCommentThread', sheetName: 'Sheet1', address: 'E2' },
       { kind: 'deleteNote', sheetName: 'Sheet1', address: 'F3' },
+      { kind: 'deleteHyperlink', sheetName: 'Sheet1', address: 'H4' },
     ])
   })
 

@@ -31,6 +31,7 @@ import {
   decodeCommentThread,
   decodeConditionalFormat,
   decodeDataValidation,
+  decodeHyperlink,
   decodeImage,
   decodeNote,
   decodePivotValue,
@@ -42,6 +43,7 @@ import {
   encodeCommentThread,
   encodeConditionalFormat,
   encodeDataValidation,
+  encodeHyperlink,
   encodeImage,
   encodeNote,
   encodePivotValue,
@@ -111,6 +113,8 @@ const OP_TAGS: Record<EngineOp['kind'], number> = {
   unmergeCells: 57,
   setConditionalFormatArtifacts: 58,
   clearConditionalFormatArtifacts: 59,
+  upsertHyperlink: 60,
+  deleteHyperlink: 61,
 }
 
 function encodeEngineOp(writer: BinaryWriter, op: EngineOp): void {
@@ -241,6 +245,13 @@ function encodeEngineOp(writer: BinaryWriter, op: EngineOp): void {
       encodeNote(writer, op.note)
       return
     case 'deleteNote':
+      writer.string(op.sheetName)
+      writer.string(op.address)
+      return
+    case 'upsertHyperlink':
+      encodeHyperlink(writer, op.hyperlink)
+      return
+    case 'deleteHyperlink':
       writer.string(op.sheetName)
       writer.string(op.address)
       return
@@ -542,6 +553,17 @@ function decodeEngineOp(reader: BinaryReader): EngineOp {
     case 43:
       return {
         kind: 'deleteNote',
+        sheetName: reader.string(),
+        address: reader.string(),
+      }
+    case 60:
+      return {
+        kind: 'upsertHyperlink',
+        hyperlink: decodeHyperlink(reader),
+      }
+    case 61:
+      return {
+        kind: 'deleteHyperlink',
         sheetName: reader.string(),
         address: reader.string(),
       }

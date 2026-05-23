@@ -231,6 +231,11 @@ export function normalizeWorkbookSnapshotForSemanticComparison(snapshot: Workboo
         `${left.sheetName}!${left.address}`.localeCompare(`${right.sheetName}!${right.address}`),
       )
     }
+    if (metadata.hyperlinks) {
+      metadata.hyperlinks = metadata.hyperlinks.toSorted((left, right) =>
+        `${left.sheetName}!${left.address}:${left.target}`.localeCompare(`${right.sheetName}!${right.address}:${right.target}`),
+      )
+    }
     return {
       ...sheet,
       cells,

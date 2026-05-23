@@ -36,6 +36,8 @@ export type OperationStructuralMetadataOp = Extract<
       | 'deleteCommentThread'
       | 'upsertNote'
       | 'deleteNote'
+      | 'upsertHyperlink'
+      | 'deleteHyperlink'
       | 'upsertCellStyle'
       | 'upsertCellNumberFormat'
       | 'setStyleRange'
@@ -75,6 +77,8 @@ type OperationStructuralMetadataWorkbook = Pick<
   | 'deleteCommentThread'
   | 'setNote'
   | 'deleteNote'
+  | 'setHyperlink'
+  | 'deleteHyperlink'
   | 'getCellStyle'
   | 'listStyleRanges'
   | 'upsertCellStyle'
@@ -231,6 +235,14 @@ export function applyOperationStructuralMetadataOp(args: {
       break
     case 'deleteNote':
       args.workbook.deleteNote(args.op.sheetName, args.op.address)
+      change.structuralInvalidation = true
+      break
+    case 'upsertHyperlink':
+      args.workbook.setHyperlink(args.op.hyperlink)
+      change.structuralInvalidation = true
+      break
+    case 'deleteHyperlink':
+      args.workbook.deleteHyperlink(args.op.sheetName, args.op.address)
       change.structuralInvalidation = true
       break
     case 'upsertCellStyle': {

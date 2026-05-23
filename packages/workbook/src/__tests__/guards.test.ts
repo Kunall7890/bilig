@@ -43,6 +43,17 @@ describe('workbook guards', () => {
             },
           },
           {
+            kind: 'upsertHyperlink',
+            hyperlink: {
+              sheetName: 'Sheet1',
+              address: 'G4',
+              target: 'https://example.com/report',
+              tooltip: 'Open report',
+              display: 'Report',
+            },
+          },
+          { kind: 'deleteHyperlink', sheetName: 'Sheet1', address: 'G4' },
+          {
             kind: 'upsertConditionalFormat',
             format: {
               id: 'cf-1',
@@ -208,6 +219,14 @@ describe('workbook guards', () => {
                 values: [],
               },
               style: 'bad',
+            },
+          },
+          {
+            kind: 'upsertHyperlink',
+            hyperlink: {
+              sheetName: 'Sheet1',
+              address: 'G4',
+              target: 7,
             },
           },
           {

@@ -9,6 +9,7 @@ import {
   cloneDefinedNameRecord,
   cloneDefinedNameValue,
   cloneFilterRecord,
+  cloneHyperlinkRecord,
   cloneImageRecord,
   cloneMacroPayloadRecord,
   cloneMergeRangeRecord,
@@ -27,6 +28,7 @@ import {
   deleteRecordsBySheet,
   mergeRangeKey,
   noteKey,
+  hyperlinkKey,
   rangeProtectionKey,
   rekeyRecords,
   spillKey,
@@ -55,6 +57,7 @@ import {
   type WorkbookDataValidationRecord,
   type WorkbookDefinedNameRecord,
   type WorkbookFreezePaneRecord,
+  type WorkbookHyperlinkRecord,
   type WorkbookMetadataRecord,
   type WorkbookPivotRecord,
   type WorkbookShapeRecord,
@@ -164,6 +167,9 @@ export function createWorkbookMetadataService(metadata: WorkbookMetadataRecord):
     rekeyRecords(metadata.notes, (record) =>
       record.sheetName === oldSheetName ? { ...cloneNoteRecord(record), sheetName: newSheetName } : cloneNoteRecord(record),
     )
+    rekeyRecords(metadata.hyperlinks, (record) =>
+      record.sheetName === oldSheetName ? { ...cloneHyperlinkRecord(record), sheetName: newSheetName } : cloneHyperlinkRecord(record),
+    )
     rekeyRecords(metadata.tables, (record) =>
       record.sheetName === oldSheetName ? { ...record, sheetName: newSheetName } : cloneTableRecord(record),
     )
@@ -239,6 +245,7 @@ export function createWorkbookMetadataService(metadata: WorkbookMetadataRecord):
     deleteRecordsBySheet(metadata.rangeProtections, sheetName, (record) => record.range.sheetName)
     deleteRecordsBySheet(metadata.commentThreads, sheetName, (record) => record.sheetName)
     deleteRecordsBySheet(metadata.notes, sheetName, (record) => record.sheetName)
+    deleteRecordsBySheet(metadata.hyperlinks, sheetName, (record) => record.sheetName)
     metadata.freezePanes.delete(sheetName)
     metadata.sheetTabColors.delete(sheetName)
   }
@@ -269,6 +276,7 @@ export function createWorkbookMetadataService(metadata: WorkbookMetadataRecord):
     metadata.rangeProtections.clear()
     metadata.commentThreads.clear()
     metadata.notes.clear()
+    metadata.hyperlinks.clear()
     metadata.calculationSettings = defaults.calculationSettings
     metadata.volatileContext = defaults.volatileContext
   }
@@ -752,6 +760,37 @@ export function createWorkbookMetadataService(metadata: WorkbookMetadataRecord):
           .filter((record) => record.sheetName === sheetName)
           .toSorted((left, right) => noteKey(left.sheetName, left.address).localeCompare(noteKey(right.sheetName, right.address)))
           .map(cloneNoteRecord),
+      )
+    },
+    setHyperlink(record) {
+      return metadataEffect('Failed to set hyperlink metadata', () => {
+        const normalizedAddress = canonicalWorkbookAddress(record.sheetName, record.address)
+        const stored: WorkbookHyperlinkRecord = cloneHyperlinkRecord({
+          sheetName: record.sheetName,
+          address: normalizedAddress,
+          target: record.target,
+          ...(record.tooltip !== undefined ? { tooltip: record.tooltip } : {}),
+          ...(record.display !== undefined ? { display: record.display } : {}),
+        })
+        metadata.hyperlinks.set(hyperlinkKey(record.sheetName, normalizedAddress), stored)
+        return cloneHyperlinkRecord(stored)
+      })
+    },
+    getHyperlink(sheetName, address) {
+      return metadataEffect('Failed to get hyperlink metadata', () => {
+        const record = metadata.hyperlinks.get(hyperlinkKey(sheetName, address))
+        return record ? cloneHyperlinkRecord(record) : undefined
+      })
+    },
+    deleteHyperlink(sheetName, address) {
+      return metadataEffect('Failed to delete hyperlink metadata', () => metadata.hyperlinks.delete(hyperlinkKey(sheetName, address)))
+    },
+    listHyperlinks(sheetName) {
+      return metadataEffect('Failed to list hyperlink metadata', () =>
+        [...metadata.hyperlinks.values()]
+          .filter((record) => record.sheetName === sheetName)
+          .toSorted((left, right) => hyperlinkKey(left.sheetName, left.address).localeCompare(hyperlinkKey(right.sheetName, right.address)))
+          .map(cloneHyperlinkRecord),
       )
     },
     setSpill(sheetName, address, rows, cols) {

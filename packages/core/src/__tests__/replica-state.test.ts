@@ -366,6 +366,8 @@ describe('replica-state', () => {
       { kind: 'deleteCommentThread', sheetName: 'Sheet1', address: 'A1' },
       { kind: 'upsertNote', note: { sheetName: 'Sheet1', address: 'A2', text: 'note' } },
       { kind: 'deleteNote', sheetName: 'Sheet1', address: 'A2' },
+      { kind: 'upsertHyperlink', hyperlink: { sheetName: 'Sheet1', address: 'A3', target: 'https://example.com/report' } },
+      { kind: 'deleteHyperlink', sheetName: 'Sheet1', address: 'A3' },
       { kind: 'setCellFormula', sheetName: 'Sheet1', address: 'B1', formula: 'A1+1' },
       { kind: 'setCellFormat', sheetName: 'Sheet1', address: 'B1', format: '0.00' },
       {
@@ -407,6 +409,7 @@ describe('replica-state', () => {
     expect(compactedKinds).toContain('deleteSheet')
     expect(compactedKinds).not.toContain('setFreezePane')
     expect(compactedKinds).not.toContain('setCellFormula')
+    expect(compactedKinds).not.toContain('deleteHyperlink')
     expect(compactedKinds).not.toContain('deletePivotTable')
   })
 })

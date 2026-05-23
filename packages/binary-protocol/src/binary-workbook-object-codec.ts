@@ -9,6 +9,7 @@ import type {
   WorkbookConditionalFormatSnapshot,
   WorkbookDataValidationRuleSnapshot,
   WorkbookDataValidationSnapshot,
+  WorkbookHyperlinkSnapshot,
   WorkbookImageSnapshot,
   WorkbookNoteSnapshot,
   WorkbookPivotValueSnapshot,
@@ -847,4 +848,33 @@ export function decodeNote(reader: BinaryReader): WorkbookNoteSnapshot {
     address: reader.string(),
     text: reader.string(),
   }
+}
+
+export function encodeHyperlink(writer: BinaryWriter, hyperlink: WorkbookHyperlinkSnapshot): void {
+  writer.string(hyperlink.sheetName)
+  writer.string(hyperlink.address)
+  writer.string(hyperlink.target)
+  writer.bool(hyperlink.tooltip !== undefined)
+  if (hyperlink.tooltip !== undefined) {
+    writer.string(hyperlink.tooltip)
+  }
+  writer.bool(hyperlink.display !== undefined)
+  if (hyperlink.display !== undefined) {
+    writer.string(hyperlink.display)
+  }
+}
+
+export function decodeHyperlink(reader: BinaryReader): WorkbookHyperlinkSnapshot {
+  const hyperlink: WorkbookHyperlinkSnapshot = {
+    sheetName: reader.string(),
+    address: reader.string(),
+    target: reader.string(),
+  }
+  if (reader.bool()) {
+    hyperlink.tooltip = reader.string()
+  }
+  if (reader.bool()) {
+    hyperlink.display = reader.string()
+  }
+  return hyperlink
 }

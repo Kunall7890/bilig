@@ -194,6 +194,10 @@ function entityKeyForOp(op: EngineOp): string {
       return `note:${op.note.sheetName}!${op.note.address}`
     case 'deleteNote':
       return `note:${op.sheetName}!${op.address}`
+    case 'upsertHyperlink':
+      return `hyperlink:${op.hyperlink.sheetName}!${op.hyperlink.address}`
+    case 'deleteHyperlink':
+      return `hyperlink:${op.sheetName}!${op.address}`
     case 'setCellValue':
     case 'setCellFormula':
     case 'clearCell':
@@ -276,6 +280,7 @@ function sheetDeleteBarrierForOp(op: EngineOp, latestSheetDeletes: Map<string, O
     case 'deleteRangeProtection':
     case 'deleteCommentThread':
     case 'deleteNote':
+    case 'deleteHyperlink':
     case 'setCellValue':
     case 'setCellFormula':
     case 'setCellFormat':
@@ -304,6 +309,8 @@ function sheetDeleteBarrierForOp(op: EngineOp, latestSheetDeletes: Map<string, O
       return latestSheetDeletes.get(op.thread.sheetName)
     case 'upsertNote':
       return latestSheetDeletes.get(op.note.sheetName)
+    case 'upsertHyperlink':
+      return latestSheetDeletes.get(op.hyperlink.sheetName)
     case 'upsertPivotTable':
       return latestSheetDeletes.get(op.sheetName) ?? latestSheetDeletes.get(op.source.sheetName)
     case 'upsertChart':
