@@ -46,6 +46,7 @@ export interface WorkbookRunApplyResult {
 }
 
 export interface WorkbookRunOptions {
+  readonly strict?: boolean
   readonly requireApplyProof?: boolean
   readonly requirePlanId?: boolean
 }
@@ -645,16 +646,18 @@ function applyProofErrors(
   apply: WorkbookRunApplySummary,
   options: WorkbookRunOptions,
 ): readonly WorkbookRunError[] {
+  const requireApplyProof = options.strict === true || options.requireApplyProof === true
+  const requirePlanId = options.strict === true || options.requirePlanId === true
   if (apply.matched === false) {
     return [runError('apply_mismatch', 'Adapter applied ops do not match its preview ops')]
   }
-  if (options.requireApplyProof === true && apply.matched === null) {
+  if (requireApplyProof && apply.matched === null) {
     return [runError('apply_not_verified', 'Adapter did not return both previewOps and appliedOps')]
   }
-  if (options.requireApplyProof === true && plan.commands.length > 0 && apply.commandReceipts === undefined) {
+  if (requireApplyProof && plan.commands.length > 0 && apply.commandReceipts === undefined) {
     return [runError('apply_not_verified', 'Adapter did not bind planned commands to materialized ops')]
   }
-  if (options.requirePlanId === true && apply.planId === undefined) {
+  if (requirePlanId && apply.planId === undefined) {
     return [runError('plan_not_verified', 'Adapter did not bind apply proof to a plan id')]
   }
   return []

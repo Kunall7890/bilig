@@ -268,6 +268,8 @@ rejects stale or mismatched ids; `{ requirePlanId: true }` fails closed when the
 adapter omits that binding. Apply summaries may also carry `baseRevision` and
 `revision`, so a later agent can inspect which workbook revision the proof
 claimed to apply against.
+Use `{ strict: true }` as the single agent-safe option when callers want both
+apply proof and plan-id proof without remembering multiple flags.
 Use `workbookActionCommandDigest(command)` when a runtime needs to bind
 materialized ops to a specific planned command. Adapter apply results can return
 `commandReceipts`, one per planned command, with the command index, command kind,

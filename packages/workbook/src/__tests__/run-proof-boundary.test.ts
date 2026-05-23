@@ -299,6 +299,78 @@ describe('@bilig/workbook run proof boundary', () => {
     )
   })
 
+  it('uses strict mode as the single agent-safe proof option', async () => {
+    const model = valueModel()
+
+    const result = await runWorkbookAction(
+      model,
+      'write',
+      {
+        apply: (plan) => ({
+          status: 'applied',
+          planId: workbookPlanId(plan),
+          previewOps: plan.ops,
+          appliedOps: plan.ops,
+          commandReceipts: [commandReceipt(plan)],
+        }),
+        read: (targets) => [{ target: first(targets), value: 12 }],
+      },
+      undefined,
+      { strict: true },
+    )
+
+    expect(result.status).toBe('done')
+    expect(result.apply).toEqual(
+      expect.objectContaining({
+        matched: true,
+        planId: expect.any(String),
+        commandReceipts: [expect.objectContaining({ commandKind: 'writeValue' })],
+      }),
+    )
+  })
+
+  it('strict mode fails closed when plan id proof is missing', async () => {
+    const model = valueModel()
+
+    const result = await runWorkbookAction(
+      model,
+      'write',
+      {
+        apply: (plan) => ({
+          status: 'applied',
+          previewOps: plan.ops,
+          appliedOps: plan.ops,
+          commandReceipts: [commandReceipt(plan)],
+        }),
+        read: (targets) => [{ target: first(targets), value: 12 }],
+      },
+      undefined,
+      { strict: true },
+    )
+
+    expect(result).toEqual({
+      status: 'failed',
+      errors: [
+        {
+          code: 'plan_not_verified',
+          message: 'Adapter did not bind apply proof to a plan id',
+        },
+      ],
+      apply: expect.objectContaining({
+        matched: true,
+        commandReceipts: [expect.objectContaining({ commandKind: 'writeValue' })],
+      }),
+      changed: [
+        {
+          kind: 'writeValue',
+          target: expect.objectContaining({ label: 'Sheet1!B2' }),
+          message: 'Write value to Sheet1!B2',
+        },
+      ],
+      checks: [expect.objectContaining({ status: 'planned', kind: 'valueEquals' })],
+    })
+  })
+
   it('requires command receipts when apply proof is required', async () => {
     const model = valueModel()
 

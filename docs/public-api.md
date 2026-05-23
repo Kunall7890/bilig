@@ -142,7 +142,9 @@ op guards would otherwise read directly.
 When `previewOps` and `appliedOps` are both present, `runWorkbookPlan` reports
 whether runtime apply matched preview. When they are missing, the result reports
 an unverified apply fact. Agents that need fail-closed execution can call
-`runWorkbookPlan(plan, adapter, { requireApplyProof: true })`.
+`runWorkbookPlan(plan, adapter, { requireApplyProof: true })`, or use
+`{ strict: true }` to require both apply proof and plan-id proof with one
+option.
 Plans with no apply requirements skip mutation entirely: a readback-only or
 check-only model can run with only `read` or `verifyChecks`, and the result has
 no `apply` summary because nothing was supposed to mutate.
@@ -649,7 +651,7 @@ or applied ops, or omits command receipts for a command-based plan, the run
 fails with `apply_not_verified`. If the adapter returns
 a stale `planId`, the run fails before readback or check proof; if
 `requirePlanId` is true and the adapter omits it, the run fails with
-`plan_not_verified`. If a readback
+`plan_not_verified`. `{ strict: true }` enables both proof requirements. If a readback
 expectation is missing or mismatched after a reader runs, the run fails with
 deterministic codes such as `readback_missing`, `value_mismatch`, or
 `formula_mismatch`.
