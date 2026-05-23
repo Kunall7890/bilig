@@ -155,6 +155,9 @@ and UI contributions. The public package still stays data-only.
 - `normalizeWorkbookCommandReceipt(receipt)` and
   `workbookCommandReceiptOpsMatch(receipt)` give agents boring receipt proof
   after preview or apply.
+- Feature manifests, command requests, and command receipts are validated from
+  own payload fields only; prototype-inherited fields cannot satisfy the public
+  transport contract.
 - Frozen vocabularies such as `workbookCommandCategories`,
   `workbookCommandExecutionModes`, `workbookCommandReceiptStatuses`,
   `workbookProjectionInterceptorPoints`, and `workbookUiContributionSlots` let

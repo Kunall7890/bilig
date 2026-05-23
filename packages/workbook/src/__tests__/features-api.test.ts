@@ -155,6 +155,34 @@ describe('@bilig/workbook feature api', () => {
     )
   })
 
+  it('treats command request fields as own transport data', () => {
+    const request = {
+      featureId: 'tables',
+      commandId: 'tables.createFromSelection',
+      category: 'command',
+      mode: 'apply',
+      input: { tableName: 'Sales' },
+    }
+    const inheritedRequest = Object.create(request) as unknown
+
+    expect(isWorkbookCommandRequest(inheritedRequest)).toBe(false)
+    expect(checkWorkbookCommandRequest(inheritedRequest)).toEqual({
+      status: 'invalid',
+      issues: expect.arrayContaining([
+        {
+          code: 'invalid_command_request',
+          path: 'featureId',
+          message: 'Workbook command request feature id must be a string',
+        },
+        {
+          code: 'invalid_command_request',
+          path: 'commandId',
+          message: 'Workbook command request command id must be a string',
+        },
+      ]),
+    })
+  })
+
   it('defines immutable feature plugins with command, projection, and UI contribution metadata', () => {
     const plugin = defineWorkbookFeaturePlugin({
       id: 'tables',
@@ -418,6 +446,38 @@ describe('@bilig/workbook feature api', () => {
     })
   })
 
+  it('treats feature plugin manifest fields as own transport data', () => {
+    const plugin = {
+      id: 'tables',
+      version: '1.0.0',
+      commands: [],
+      projectionInterceptors: [],
+      uiContributions: [],
+    }
+    const inheritedPlugin = Object.create(plugin) as unknown
+
+    expect(checkWorkbookFeaturePlugin(inheritedPlugin)).toEqual({
+      status: 'invalid',
+      issues: expect.arrayContaining([
+        {
+          code: 'invalid_feature_plugin',
+          path: 'id',
+          message: 'Workbook feature id must be a string',
+        },
+        {
+          code: 'invalid_feature_plugin',
+          path: 'version',
+          message: 'Workbook feature version must be a string',
+        },
+        {
+          code: 'invalid_feature_plugin',
+          path: 'commands',
+          message: 'Workbook feature commands must be an array',
+        },
+      ]),
+    })
+  })
+
   it('normalizes and validates command receipts with preview/apply parity', () => {
     const receipt = normalizeWorkbookCommandReceipt({
       status: 'applied',
@@ -615,5 +675,37 @@ describe('@bilig/workbook feature api', () => {
         changedRanges: [{ sheetName: 'Sheet1', startAddress: 'A1' }],
       }),
     ).toBe(false)
+  })
+
+  it('treats command receipt fields as own transport data', () => {
+    const receipt = {
+      status: 'applied',
+      featureId: 'tables',
+      commandId: 'tables.createFromSelection',
+      category: 'command',
+    }
+    const inheritedReceipt = Object.create(receipt) as unknown
+
+    expect(isWorkbookCommandReceipt(inheritedReceipt)).toBe(false)
+    expect(checkWorkbookCommandReceipt(inheritedReceipt)).toEqual({
+      status: 'invalid',
+      issues: expect.arrayContaining([
+        {
+          code: 'invalid_command_receipt',
+          path: 'status',
+          message: 'Workbook command receipt status is invalid',
+        },
+        {
+          code: 'invalid_command_receipt',
+          path: 'featureId',
+          message: 'Workbook command receipt feature id must be a string',
+        },
+        {
+          code: 'invalid_command_receipt',
+          path: 'commandId',
+          message: 'Workbook command receipt command id must be a string',
+        },
+      ]),
+    })
   })
 })

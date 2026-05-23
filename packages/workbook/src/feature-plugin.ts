@@ -130,28 +130,28 @@ export function checkWorkbookFeaturePlugin(value: unknown): WorkbookFeaturePlugi
   }
 
   const issues: WorkbookFeaturePluginIssue[] = []
-  const pluginId = pushRequiredFeaturePluginStringIssue(issues, value['id'], 'id', 'Workbook feature id')
-  pushRequiredFeaturePluginStringIssue(issues, value['version'], 'version', 'Workbook feature version')
-  pushFeaturePluginDependencyIssues(issues, value['dependsOn'])
-  readFeaturePluginArray(issues, value['commands'], 'commands', 'Workbook feature commands').forEach((command, index) => {
+  const pluginId = pushRequiredFeaturePluginStringIssue(issues, ownValue(value, 'id'), 'id', 'Workbook feature id')
+  pushRequiredFeaturePluginStringIssue(issues, ownValue(value, 'version'), 'version', 'Workbook feature version')
+  pushFeaturePluginDependencyIssues(issues, ownValue(value, 'dependsOn'))
+  readFeaturePluginArray(issues, ownValue(value, 'commands'), 'commands', 'Workbook feature commands').forEach((command, index) => {
     pushFeaturePluginCommandIssues(issues, command, index, pluginId)
   })
   readFeaturePluginArray(
     issues,
-    value['projectionInterceptors'],
+    ownValue(value, 'projectionInterceptors'),
     'projectionInterceptors',
     'Workbook feature projection interceptors',
   ).forEach((interceptor, index) => {
     pushFeaturePluginProjectionIssues(issues, interceptor, index, pluginId)
   })
-  readFeaturePluginArray(issues, value['uiContributions'], 'uiContributions', 'Workbook feature UI contributions').forEach(
+  readFeaturePluginArray(issues, ownValue(value, 'uiContributions'), 'uiContributions', 'Workbook feature UI contributions').forEach(
     (contribution, index) => {
       pushFeaturePluginUiContributionIssues(issues, contribution, index, pluginId)
     },
   )
-  pushFeaturePluginLifecycleIssue(issues, value['register'], 'register')
-  pushFeaturePluginLifecycleIssue(issues, value['activate'], 'activate')
-  pushFeaturePluginLifecycleIssue(issues, value['dispose'], 'dispose')
+  pushFeaturePluginLifecycleIssue(issues, ownValue(value, 'register'), 'register')
+  pushFeaturePluginLifecycleIssue(issues, ownValue(value, 'activate'), 'activate')
+  pushFeaturePluginLifecycleIssue(issues, ownValue(value, 'dispose'), 'dispose')
 
   if (issues.length > 0) {
     return {
@@ -235,6 +235,10 @@ function inputPath(basePath: string, error: unknown): string {
     return `${basePath}${error.path.slice('input'.length)}`
   }
   return basePath
+}
+
+function ownValue(value: object, key: string): unknown {
+  return Object.getOwnPropertyDescriptor(value, key)?.value
 }
 
 function pushFeaturePluginInputDescriptionIssue(issues: WorkbookFeaturePluginIssue[], value: unknown, path: string, label: string): void {
@@ -321,8 +325,13 @@ function pushFeaturePluginCommandIssues(
     return
   }
 
-  const commandId = pushRequiredFeaturePluginStringIssue(issues, command['id'], `${path}.id`, 'Workbook command id')
-  const featureId = pushRequiredFeaturePluginStringIssue(issues, command['featureId'], `${path}.featureId`, 'Workbook command feature id')
+  const commandId = pushRequiredFeaturePluginStringIssue(issues, ownValue(command, 'id'), `${path}.id`, 'Workbook command id')
+  const featureId = pushRequiredFeaturePluginStringIssue(
+    issues,
+    ownValue(command, 'featureId'),
+    `${path}.featureId`,
+    'Workbook command feature id',
+  )
   if (pluginId !== undefined && featureId !== undefined && featureId !== pluginId) {
     issues.push(
       featurePluginIssue(
@@ -331,17 +340,17 @@ function pushFeaturePluginCommandIssues(
       ),
     )
   }
-  if (!isWorkbookCommandCategory(command['category'])) {
+  if (!isWorkbookCommandCategory(ownValue(command, 'category'))) {
     issues.push(featurePluginIssue(`${path}.category`, `Workbook command ${commandId ?? path} category is invalid`))
   }
-  pushRequiredFeaturePluginStringIssue(issues, command['label'], `${path}.label`, `Workbook command ${commandId ?? path} label`)
+  pushRequiredFeaturePluginStringIssue(issues, ownValue(command, 'label'), `${path}.label`, `Workbook command ${commandId ?? path} label`)
   pushOptionalFeaturePluginStringIssue(
     issues,
-    command['description'],
+    ownValue(command, 'description'),
     `${path}.description`,
     `Workbook command ${commandId ?? path} description`,
   )
-  pushFeaturePluginInputDescriptionIssue(issues, command['input'], `${path}.input`, `Workbook command ${commandId ?? path}`)
+  pushFeaturePluginInputDescriptionIssue(issues, ownValue(command, 'input'), `${path}.input`, `Workbook command ${commandId ?? path}`)
 }
 
 function pushFeaturePluginProjectionIssues(
@@ -356,10 +365,10 @@ function pushFeaturePluginProjectionIssues(
     return
   }
 
-  const id = pushRequiredFeaturePluginStringIssue(issues, interceptor['id'], `${path}.id`, 'Workbook projection interceptor id')
+  const id = pushRequiredFeaturePluginStringIssue(issues, ownValue(interceptor, 'id'), `${path}.id`, 'Workbook projection interceptor id')
   const featureId = pushRequiredFeaturePluginStringIssue(
     issues,
-    interceptor['featureId'],
+    ownValue(interceptor, 'featureId'),
     `${path}.featureId`,
     'Workbook projection interceptor feature id',
   )
@@ -371,13 +380,19 @@ function pushFeaturePluginProjectionIssues(
       ),
     )
   }
-  if (!isWorkbookProjectionInterceptorPoint(interceptor['point'])) {
+  if (!isWorkbookProjectionInterceptorPoint(ownValue(interceptor, 'point'))) {
     issues.push(featurePluginIssue(`${path}.point`, `Workbook projection interceptor ${id ?? path} point is invalid`))
   }
-  if (interceptor['priority'] !== undefined && !isSafeInteger(interceptor['priority'])) {
+  const priority = ownValue(interceptor, 'priority')
+  if (priority !== undefined && !isSafeInteger(priority)) {
     issues.push(featurePluginIssue(`${path}.priority`, `Workbook projection interceptor ${id ?? path} priority is invalid`))
   }
-  pushOptionalFeaturePluginStringIssue(issues, interceptor['label'], `${path}.label`, `Workbook projection interceptor ${id ?? path} label`)
+  pushOptionalFeaturePluginStringIssue(
+    issues,
+    ownValue(interceptor, 'label'),
+    `${path}.label`,
+    `Workbook projection interceptor ${id ?? path} label`,
+  )
 }
 
 function pushFeaturePluginUiContributionIssues(
@@ -392,10 +407,10 @@ function pushFeaturePluginUiContributionIssues(
     return
   }
 
-  const id = pushRequiredFeaturePluginStringIssue(issues, contribution['id'], `${path}.id`, 'Workbook UI contribution id')
+  const id = pushRequiredFeaturePluginStringIssue(issues, ownValue(contribution, 'id'), `${path}.id`, 'Workbook UI contribution id')
   const featureId = pushRequiredFeaturePluginStringIssue(
     issues,
-    contribution['featureId'],
+    ownValue(contribution, 'featureId'),
     `${path}.featureId`,
     'Workbook UI contribution feature id',
   )
@@ -407,14 +422,20 @@ function pushFeaturePluginUiContributionIssues(
       ),
     )
   }
-  if (!isWorkbookUiContributionSlot(contribution['slot'])) {
+  if (!isWorkbookUiContributionSlot(ownValue(contribution, 'slot'))) {
     issues.push(featurePluginIssue(`${path}.slot`, `Workbook UI contribution ${id ?? path} slot is invalid`))
   }
-  pushRequiredFeaturePluginStringIssue(issues, contribution['label'], `${path}.label`, `Workbook UI contribution ${id ?? path} label`)
-  if (contribution['order'] !== undefined && !isSafeInteger(contribution['order'])) {
+  pushRequiredFeaturePluginStringIssue(
+    issues,
+    ownValue(contribution, 'label'),
+    `${path}.label`,
+    `Workbook UI contribution ${id ?? path} label`,
+  )
+  const order = ownValue(contribution, 'order')
+  if (order !== undefined && !isSafeInteger(order)) {
     issues.push(featurePluginIssue(`${path}.order`, `Workbook UI contribution ${id ?? path} order is invalid`))
   }
-  pushFeaturePluginInputIssue(issues, contribution['metadata'], `${path}.metadata`, `Workbook UI contribution ${id ?? path}`)
+  pushFeaturePluginInputIssue(issues, ownValue(contribution, 'metadata'), `${path}.metadata`, `Workbook UI contribution ${id ?? path}`)
 }
 
 function pushFeaturePluginLifecycleIssue(
@@ -500,55 +521,62 @@ function normalizeUiContribution(contribution: WorkbookUiContribution, expectedF
 }
 
 function isWorkbookFeaturePluginRecord(value: unknown): value is WorkbookFeaturePlugin {
+  if (!isRecord(value)) {
+    return false
+  }
+  const dependsOn = ownValue(value, 'dependsOn')
+  const commands = ownValue(value, 'commands')
+  const projectionInterceptors = ownValue(value, 'projectionInterceptors')
+  const uiContributions = ownValue(value, 'uiContributions')
+
   return (
-    isRecord(value) &&
-    typeof value['id'] === 'string' &&
-    typeof value['version'] === 'string' &&
-    (value['dependsOn'] === undefined || (Array.isArray(value['dependsOn']) && value['dependsOn'].every(isString))) &&
-    Array.isArray(value['commands']) &&
-    value['commands'].every(isWorkbookCommandDescriptorRecord) &&
-    Array.isArray(value['projectionInterceptors']) &&
-    value['projectionInterceptors'].every(isWorkbookProjectionInterceptorRecord) &&
-    Array.isArray(value['uiContributions']) &&
-    value['uiContributions'].every(isWorkbookUiContributionRecord) &&
-    isOptionalLifecycleHook(value['register']) &&
-    isOptionalLifecycleHook(value['activate']) &&
-    isOptionalLifecycleHook(value['dispose'])
+    typeof ownValue(value, 'id') === 'string' &&
+    typeof ownValue(value, 'version') === 'string' &&
+    (dependsOn === undefined || (Array.isArray(dependsOn) && dependsOn.every(isString))) &&
+    Array.isArray(commands) &&
+    commands.every(isWorkbookCommandDescriptorRecord) &&
+    Array.isArray(projectionInterceptors) &&
+    projectionInterceptors.every(isWorkbookProjectionInterceptorRecord) &&
+    Array.isArray(uiContributions) &&
+    uiContributions.every(isWorkbookUiContributionRecord) &&
+    isOptionalLifecycleHook(ownValue(value, 'register')) &&
+    isOptionalLifecycleHook(ownValue(value, 'activate')) &&
+    isOptionalLifecycleHook(ownValue(value, 'dispose'))
   )
 }
 
 function isWorkbookCommandDescriptorRecord(value: unknown): value is WorkbookCommandDescriptor {
   return (
     isRecord(value) &&
-    typeof value['id'] === 'string' &&
-    typeof value['featureId'] === 'string' &&
-    isWorkbookCommandCategory(value['category']) &&
-    typeof value['label'] === 'string' &&
-    (value['description'] === undefined || typeof value['description'] === 'string') &&
-    (value['input'] === undefined || isWorkbookActionInputDescription(value['input']))
+    typeof ownValue(value, 'id') === 'string' &&
+    typeof ownValue(value, 'featureId') === 'string' &&
+    isWorkbookCommandCategory(ownValue(value, 'category')) &&
+    typeof ownValue(value, 'label') === 'string' &&
+    (ownValue(value, 'description') === undefined || typeof ownValue(value, 'description') === 'string') &&
+    (ownValue(value, 'input') === undefined || isWorkbookActionInputDescription(ownValue(value, 'input')))
   )
 }
 
 function isWorkbookProjectionInterceptorRecord(value: unknown): value is WorkbookProjectionInterceptorRegistration {
   return (
     isRecord(value) &&
-    typeof value['id'] === 'string' &&
-    typeof value['featureId'] === 'string' &&
-    isWorkbookProjectionInterceptorPoint(value['point']) &&
-    (value['priority'] === undefined || isSafeInteger(value['priority'])) &&
-    (value['label'] === undefined || typeof value['label'] === 'string')
+    typeof ownValue(value, 'id') === 'string' &&
+    typeof ownValue(value, 'featureId') === 'string' &&
+    isWorkbookProjectionInterceptorPoint(ownValue(value, 'point')) &&
+    (ownValue(value, 'priority') === undefined || isSafeInteger(ownValue(value, 'priority'))) &&
+    (ownValue(value, 'label') === undefined || typeof ownValue(value, 'label') === 'string')
   )
 }
 
 function isWorkbookUiContributionRecord(value: unknown): value is WorkbookUiContribution {
   return (
     isRecord(value) &&
-    typeof value['id'] === 'string' &&
-    typeof value['featureId'] === 'string' &&
-    isWorkbookUiContributionSlot(value['slot']) &&
-    typeof value['label'] === 'string' &&
-    (value['order'] === undefined || isSafeInteger(value['order'])) &&
-    (value['metadata'] === undefined || isWorkbookActionInput(value['metadata']))
+    typeof ownValue(value, 'id') === 'string' &&
+    typeof ownValue(value, 'featureId') === 'string' &&
+    isWorkbookUiContributionSlot(ownValue(value, 'slot')) &&
+    typeof ownValue(value, 'label') === 'string' &&
+    (ownValue(value, 'order') === undefined || isSafeInteger(ownValue(value, 'order'))) &&
+    (ownValue(value, 'metadata') === undefined || isWorkbookActionInput(ownValue(value, 'metadata')))
   )
 }
 

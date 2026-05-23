@@ -273,7 +273,9 @@ command contracts without importing a schema framework.
 Use `checkWorkbookCommandReceipt(data)` before trusting runtime command evidence.
 It returns the same boring `{ status, issues }` shape for receipt fields such as
 `status`, `featureId`, `commandId`, `previewOps`, `appliedOps`, `undo`,
-`changedRanges`, `proof`, `metadata`, and `errors`.
+`changedRanges`, `proof`, `metadata`, and `errors`. Feature manifests, command
+requests, and command receipts are validated from own payload fields only;
+prototype-inherited fields are ignored.
 
 ## Low-Level Ops
 

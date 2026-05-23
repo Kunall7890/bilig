@@ -178,6 +178,10 @@ function inputPath(basePath: string, error: unknown): string {
   return basePath
 }
 
+function ownValue(value: object, key: string): unknown {
+  return Object.getOwnPropertyDescriptor(value, key)?.value
+}
+
 function pushCommandRequestInputIssue(issues: WorkbookCommandRequestIssue[], value: unknown): void {
   if (value === undefined) {
     return
@@ -195,7 +199,7 @@ function pushRequiredCommandRequestStringIssue(
   key: 'featureId' | 'commandId',
   label: string,
 ): void {
-  const entry = value[key]
+  const entry = ownValue(value, key)
   if (typeof entry !== 'string') {
     issues.push(commandRequestIssue(key, `Workbook command request ${label} must be a string`))
     return
@@ -211,12 +215,17 @@ function pushRequiredCommandRequestStringIssue(
 }
 
 function normalizedCommandRequest(value: unknown): WorkbookCommandRequest | null {
-  if (!isRecord(value) || typeof value['featureId'] !== 'string' || typeof value['commandId'] !== 'string') {
+  if (!isRecord(value)) {
     return null
   }
-  const category = value['category']
-  const mode = value['mode']
-  const input = value['input']
+  const featureId = ownValue(value, 'featureId')
+  const commandId = ownValue(value, 'commandId')
+  const category = ownValue(value, 'category')
+  const mode = ownValue(value, 'mode')
+  const input = ownValue(value, 'input')
+  if (typeof featureId !== 'string' || typeof commandId !== 'string') {
+    return null
+  }
   if (
     (category !== undefined && !isWorkbookCommandCategory(category)) ||
     (mode !== undefined && !isWorkbookCommandExecutionMode(mode)) ||
@@ -225,8 +234,8 @@ function normalizedCommandRequest(value: unknown): WorkbookCommandRequest | null
     return null
   }
   return Object.freeze({
-    featureId: normalizeWorkbookFeatureId(value['featureId'], 'Workbook command request feature id'),
-    commandId: normalizeRequiredString(value['commandId'], 'Workbook command request command id'),
+    featureId: normalizeWorkbookFeatureId(featureId, 'Workbook command request feature id'),
+    commandId: normalizeRequiredString(commandId, 'Workbook command request command id'),
     ...(category !== undefined ? { category } : {}),
     ...(mode !== undefined ? { mode } : {}),
     ...(input !== undefined ? { input: normalizeWorkbookActionInput(input) } : {}),
@@ -244,13 +253,16 @@ export function checkWorkbookCommandRequest(value: unknown): WorkbookCommandRequ
   const issues: WorkbookCommandRequestIssue[] = []
   pushRequiredCommandRequestStringIssue(issues, value, 'featureId', 'feature id')
   pushRequiredCommandRequestStringIssue(issues, value, 'commandId', 'command id')
-  if (value['category'] !== undefined && !isWorkbookCommandCategory(value['category'])) {
+  const category = ownValue(value, 'category')
+  const mode = ownValue(value, 'mode')
+  const input = ownValue(value, 'input')
+  if (category !== undefined && !isWorkbookCommandCategory(category)) {
     issues.push(commandRequestIssue('category', 'Workbook command request category is invalid'))
   }
-  if (value['mode'] !== undefined && !isWorkbookCommandExecutionMode(value['mode'])) {
+  if (mode !== undefined && !isWorkbookCommandExecutionMode(mode)) {
     issues.push(commandRequestIssue('mode', 'Workbook command request mode is invalid'))
   }
-  pushCommandRequestInputIssue(issues, value['input'])
+  pushCommandRequestInputIssue(issues, input)
 
   if (issues.length > 0) {
     return {
@@ -317,7 +329,7 @@ function pushRequiredCommandReceiptStringIssue(
   key: 'featureId' | 'commandId',
   label: string,
 ): void {
-  const entry = value[key]
+  const entry = ownValue(value, key)
   if (typeof entry !== 'string') {
     issues.push(commandReceiptIssue(key, `Workbook command receipt ${label} must be a string`))
     return
@@ -388,11 +400,12 @@ function pushCommandReceiptUndoIssues(issues: WorkbookCommandReceiptIssue[], val
     issues.push(commandReceiptIssue('undo', 'Workbook command receipt undo must be an object'))
     return
   }
-  pushOptionalCommandReceiptStringIssue(issues, value['id'], 'undo.id', 'undo id')
-  if (value['id'] === undefined) {
+  const id = ownValue(value, 'id')
+  pushOptionalCommandReceiptStringIssue(issues, id, 'undo.id', 'undo id')
+  if (id === undefined) {
     issues.push(commandReceiptIssue('undo.id', 'Workbook command receipt undo id must be a string'))
   }
-  pushCommandReceiptOpsIssues(issues, value['ops'], 'undo.ops', 'undo')
+  pushCommandReceiptOpsIssues(issues, ownValue(value, 'ops'), 'undo.ops', 'undo')
 }
 
 function pushCommandReceiptErrorsIssues(issues: WorkbookCommandReceiptIssue[], value: unknown): void {
@@ -409,11 +422,15 @@ function pushCommandReceiptErrorsIssues(issues: WorkbookCommandReceiptIssue[], v
 }
 
 function normalizeReceiptUndo(value: unknown): WorkbookUndoRef | undefined {
-  if (!isRecord(value) || typeof value['id'] !== 'string') {
+  if (!isRecord(value)) {
     return undefined
   }
-  const id = value['id']
-  const ops = Array.isArray(value['ops']) ? value['ops'].map((op) => normalizeReceiptOp(id, op, 'undo')) : undefined
+  const id = ownValue(value, 'id')
+  if (typeof id !== 'string') {
+    return undefined
+  }
+  const rawOps = ownValue(value, 'ops')
+  const ops = Array.isArray(rawOps) ? rawOps.map((op) => normalizeReceiptOp(id, op, 'undo')) : undefined
   return Object.freeze({
     id: normalizeRequiredString(id, 'Workbook command receipt undo id'),
     ...(ops !== undefined ? { ops: Object.freeze(ops) } : {}),
@@ -421,23 +438,29 @@ function normalizeReceiptUndo(value: unknown): WorkbookUndoRef | undefined {
 }
 
 function normalizedCommandReceipt(value: unknown): WorkbookCommandReceipt | null {
+  if (!isRecord(value)) {
+    return null
+  }
+  const status = ownValue(value, 'status')
+  const featureId = ownValue(value, 'featureId')
+  const commandId = ownValue(value, 'commandId')
+  const category = ownValue(value, 'category')
   if (
-    !isRecord(value) ||
-    typeof value['featureId'] !== 'string' ||
-    typeof value['commandId'] !== 'string' ||
-    !isWorkbookCommandReceiptStatus(value['status']) ||
-    !isWorkbookCommandCategory(value['category'])
+    typeof featureId !== 'string' ||
+    typeof commandId !== 'string' ||
+    !isWorkbookCommandReceiptStatus(status) ||
+    !isWorkbookCommandCategory(category)
   ) {
     return null
   }
-  const previewOps = value['previewOps']
-  const appliedOps = value['appliedOps']
-  const undo = value['undo']
-  const changedRanges = value['changedRanges']
-  const proof = value['proof']
-  const message = value['message']
-  const metadata = value['metadata']
-  const errors = value['errors']
+  const previewOps = ownValue(value, 'previewOps')
+  const appliedOps = ownValue(value, 'appliedOps')
+  const undo = ownValue(value, 'undo')
+  const changedRanges = ownValue(value, 'changedRanges')
+  const proof = ownValue(value, 'proof')
+  const message = ownValue(value, 'message')
+  const metadata = ownValue(value, 'metadata')
+  const errors = ownValue(value, 'errors')
   if (
     (previewOps !== undefined && (!Array.isArray(previewOps) || !previewOps.every((op) => isWorkbookOp(op)))) ||
     (appliedOps !== undefined && (!Array.isArray(appliedOps) || !appliedOps.every((op) => isWorkbookOp(op)))) ||
@@ -453,12 +476,11 @@ function normalizedCommandReceipt(value: unknown): WorkbookCommandReceipt | null
   if (undo !== undefined && normalizedUndo === undefined) {
     return null
   }
-  const commandId = value['commandId']
   return Object.freeze({
-    status: value['status'],
-    featureId: normalizeWorkbookFeatureId(value['featureId'], 'Workbook command receipt feature id'),
+    status,
+    featureId: normalizeWorkbookFeatureId(featureId, 'Workbook command receipt feature id'),
     commandId: normalizeRequiredString(commandId, 'Workbook command receipt command id'),
-    category: value['category'],
+    category,
     ...(previewOps !== undefined
       ? { previewOps: Object.freeze(previewOps.map((op) => normalizeReceiptOp(commandId, op, 'preview'))) }
       : {}),
@@ -487,22 +509,22 @@ export function checkWorkbookCommandReceipt(value: unknown): WorkbookCommandRece
   }
 
   const issues: WorkbookCommandReceiptIssue[] = []
-  if (!isWorkbookCommandReceiptStatus(value['status'])) {
+  if (!isWorkbookCommandReceiptStatus(ownValue(value, 'status'))) {
     issues.push(commandReceiptIssue('status', 'Workbook command receipt status is invalid'))
   }
   pushRequiredCommandReceiptStringIssue(issues, value, 'featureId', 'feature id')
   pushRequiredCommandReceiptStringIssue(issues, value, 'commandId', 'command id')
-  if (!isWorkbookCommandCategory(value['category'])) {
+  if (!isWorkbookCommandCategory(ownValue(value, 'category'))) {
     issues.push(commandReceiptIssue('category', 'Workbook command receipt category is invalid'))
   }
-  pushCommandReceiptOpsIssues(issues, value['previewOps'], 'previewOps', 'preview')
-  pushCommandReceiptOpsIssues(issues, value['appliedOps'], 'appliedOps', 'applied')
-  pushCommandReceiptUndoIssues(issues, value['undo'])
-  pushCommandReceiptChangedRangesIssues(issues, value['changedRanges'])
-  pushCommandReceiptInputIssue(issues, value['proof'], 'proof', 'proof')
-  pushOptionalCommandReceiptStringIssue(issues, value['message'], 'message', 'message')
-  pushCommandReceiptInputIssue(issues, value['metadata'], 'metadata', 'metadata')
-  pushCommandReceiptErrorsIssues(issues, value['errors'])
+  pushCommandReceiptOpsIssues(issues, ownValue(value, 'previewOps'), 'previewOps', 'preview')
+  pushCommandReceiptOpsIssues(issues, ownValue(value, 'appliedOps'), 'appliedOps', 'applied')
+  pushCommandReceiptUndoIssues(issues, ownValue(value, 'undo'))
+  pushCommandReceiptChangedRangesIssues(issues, ownValue(value, 'changedRanges'))
+  pushCommandReceiptInputIssue(issues, ownValue(value, 'proof'), 'proof', 'proof')
+  pushOptionalCommandReceiptStringIssue(issues, ownValue(value, 'message'), 'message', 'message')
+  pushCommandReceiptInputIssue(issues, ownValue(value, 'metadata'), 'metadata', 'metadata')
+  pushCommandReceiptErrorsIssues(issues, ownValue(value, 'errors'))
 
   if (issues.length > 0) {
     return {
