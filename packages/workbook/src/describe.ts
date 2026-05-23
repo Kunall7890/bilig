@@ -226,234 +226,408 @@ export function describeModel<Refs, Actions extends WorkbookActionMap<Refs>>(
   return inspectModel(model)
 }
 
+interface WorkbookDataDescriptor<T> {
+  readonly enumerable?: boolean
+  readonly value: T
+}
+
+function isDataDescriptor<T>(descriptor: PropertyDescriptor | undefined): descriptor is WorkbookDataDescriptor<T> {
+  return descriptor !== undefined && 'value' in descriptor
+}
+
+function ownDataValue<T extends object, K extends keyof T>(value: T, key: K, path: string): T[K] | undefined {
+  if (typeof value !== 'object' || value === null) {
+    throw new Error(`Workbook description ${path} parent must be an object`)
+  }
+  const descriptor = Object.getOwnPropertyDescriptor(value, key)
+  if (descriptor === undefined) {
+    return undefined
+  }
+  if (!isDataDescriptor<T[K]>(descriptor)) {
+    throw new Error(`Workbook description ${path} must be a data property`)
+  }
+  return descriptor.value
+}
+
+function requiredOwnDataValue<T extends object, K extends keyof T>(value: T, key: K, path: string): T[K] {
+  const data = ownDataValue(value, key, path)
+  if (data === undefined) {
+    throw new Error(`Workbook description ${path} must be a data property`)
+  }
+  return data
+}
+
+function mapArrayData<T, Result>(
+  value: readonly T[],
+  path: string,
+  mapper: (entry: T, index: number, entryPath: string) => Result,
+): readonly Result[] {
+  if (!Array.isArray(value)) {
+    throw new Error(`Workbook description ${path} must be an array`)
+  }
+  const mapped: Result[] = []
+  for (let index = 0; index < value.length; index += 1) {
+    const descriptor = Object.getOwnPropertyDescriptor(value, String(index))
+    if (!isDataDescriptor<T>(descriptor) || !descriptor.enumerable) {
+      throw new Error(`Workbook description ${path}[${index}] must be a data property`)
+    }
+    mapped.push(mapper(descriptor.value, index, `${path}[${index}]`))
+  }
+  return mapped
+}
+
+function cloneDescriptionData<T>(value: T, path: string, seen?: WeakMap<object, unknown>): T
+function cloneDescriptionData(value: unknown, path: string, seen = new WeakMap<object, unknown>()): unknown {
+  if (typeof value !== 'object' || value === null) {
+    return value
+  }
+  const existing = seen.get(value)
+  if (existing !== undefined) {
+    return existing
+  }
+  if (Array.isArray(value)) {
+    const cloned: unknown[] = []
+    seen.set(value, cloned)
+    mapArrayData(value, path, (entry, _index, entryPath) => {
+      cloned.push(cloneDescriptionData(entry, entryPath, seen))
+      return undefined
+    })
+    return cloned
+  }
+  const cloned: Record<string, unknown> = {}
+  seen.set(value, cloned)
+  Object.entries(Object.getOwnPropertyDescriptors(value)).forEach(([key, descriptor]) => {
+    if (!descriptor.enumerable) {
+      return
+    }
+    if (!isDataDescriptor<unknown>(descriptor)) {
+      throw new Error(`Workbook description ${path}.${key} must be a data property`)
+    }
+    Object.defineProperty(cloned, key, {
+      configurable: true,
+      enumerable: true,
+      value: cloneDescriptionData(descriptor.value, `${path}.${key}`, seen),
+      writable: true,
+    })
+  })
+  return cloned
+}
+
+function hasRefKind<K extends WorkbookRefKind>(ref: WorkbookRef, kind: K): ref is Extract<WorkbookRef, { readonly kind: K }> {
+  return requiredOwnDataValue(ref, 'kind', 'ref.kind') === kind
+}
+
 function describeRangeRef(ref: WorkbookRangeRef): WorkbookRangeRefDescription {
+  const range = requiredOwnDataValue(ref, 'range', 'ref.range')
   return {
     kind: 'range',
-    id: ref.id,
-    label: ref.label,
-    range: { ...ref.range },
+    id: requiredOwnDataValue(ref, 'id', 'ref.id'),
+    label: requiredOwnDataValue(ref, 'label', 'ref.label'),
+    range: {
+      sheetName: requiredOwnDataValue(range, 'sheetName', 'ref.range.sheetName'),
+      startAddress: requiredOwnDataValue(range, 'startAddress', 'ref.range.startAddress'),
+      endAddress: requiredOwnDataValue(range, 'endAddress', 'ref.range.endAddress'),
+    },
   }
 }
 
 function describeNameRef(ref: WorkbookNameRef): WorkbookNameRefDescription {
   return {
     kind: 'name',
-    id: ref.id,
-    label: ref.label,
-    name: ref.name,
+    id: requiredOwnDataValue(ref, 'id', 'ref.id'),
+    label: requiredOwnDataValue(ref, 'label', 'ref.label'),
+    name: requiredOwnDataValue(ref, 'name', 'ref.name'),
   }
 }
 
 function describeTableRef(ref: WorkbookTableRef): WorkbookTableRefDescription {
+  const name = ownDataValue(ref, 'name', 'ref.name')
+  const sheetName = ownDataValue(ref, 'sheetName', 'ref.sheetName')
+  const headers = ownDataValue(ref, 'headers', 'ref.headers')
   return {
     kind: 'table',
-    id: ref.id,
-    label: ref.label,
-    ...(ref.name !== undefined ? { name: ref.name } : {}),
-    ...(ref.sheetName !== undefined ? { sheetName: ref.sheetName } : {}),
-    ...(ref.headers !== undefined ? { headers: [...ref.headers] } : {}),
+    id: requiredOwnDataValue(ref, 'id', 'ref.id'),
+    label: requiredOwnDataValue(ref, 'label', 'ref.label'),
+    ...(name !== undefined ? { name } : {}),
+    ...(sheetName !== undefined ? { sheetName } : {}),
+    ...(headers !== undefined ? { headers: mapArrayData(headers, 'ref.headers', (header) => header) } : {}),
   }
 }
 
 function describeColumnRef(ref: WorkbookColumnRef): WorkbookColumnRefDescription {
+  const rows = ownDataValue(ref, 'rows', 'ref.rows')
   return {
     kind: 'column',
-    id: ref.id,
-    label: ref.label,
-    table: describeTableRef(ref.table),
-    ...(ref.rows !== undefined ? { rows: describeRowsRef(ref.rows) } : {}),
-    name: ref.name,
+    id: requiredOwnDataValue(ref, 'id', 'ref.id'),
+    label: requiredOwnDataValue(ref, 'label', 'ref.label'),
+    table: describeTableRef(requiredOwnDataValue(ref, 'table', 'ref.table')),
+    ...(rows !== undefined ? { rows: describeRowsRef(rows) } : {}),
+    name: requiredOwnDataValue(ref, 'name', 'ref.name'),
   }
 }
 
 function describeRowsRef(ref: WorkbookRowsRef): WorkbookRowsRefDescription {
+  const sheetName = ownDataValue(ref, 'sheetName', 'ref.sheetName')
+  const table = ownDataValue(ref, 'table', 'ref.table')
+  const where = requiredOwnDataValue(ref, 'where', 'ref.where')
   return {
     kind: 'rows',
-    id: ref.id,
-    label: ref.label,
-    ...(ref.sheetName !== undefined ? { sheetName: ref.sheetName } : {}),
-    ...(ref.table !== undefined ? { table: describeTableRef(ref.table) } : {}),
-    where: { ...ref.where },
+    id: requiredOwnDataValue(ref, 'id', 'ref.id'),
+    label: requiredOwnDataValue(ref, 'label', 'ref.label'),
+    ...(sheetName !== undefined ? { sheetName } : {}),
+    ...(table !== undefined ? { table: describeTableRef(table) } : {}),
+    where: {
+      column: requiredOwnDataValue(where, 'column', 'ref.where.column'),
+      op: requiredOwnDataValue(where, 'op', 'ref.where.op'),
+      value: requiredOwnDataValue(where, 'value', 'ref.where.value'),
+    },
   }
 }
 
 export function describeRef(ref: WorkbookRef): WorkbookRefDescription {
-  switch (ref.kind) {
-    case 'range':
-      return describeRangeRef(ref)
-    case 'name':
-      return describeNameRef(ref)
-    case 'table':
-      return describeTableRef(ref)
-    case 'column':
-      return describeColumnRef(ref)
-    case 'rows':
-      return describeRowsRef(ref)
+  if (hasRefKind(ref, 'range')) {
+    return describeRangeRef(ref)
   }
+  if (hasRefKind(ref, 'name')) {
+    return describeNameRef(ref)
+  }
+  if (hasRefKind(ref, 'table')) {
+    return describeTableRef(ref)
+  }
+  if (hasRefKind(ref, 'column')) {
+    return describeColumnRef(ref)
+  }
+  if (hasRefKind(ref, 'rows')) {
+    return describeRowsRef(ref)
+  }
+  throw new Error(`Unsupported workbook ref kind: ${String(requiredOwnDataValue(ref, 'kind', 'ref.kind'))}`)
+}
+
+function hasCommandKind<K extends WorkbookActionCommand['kind']>(
+  command: WorkbookActionCommand,
+  kind: K,
+): command is Extract<WorkbookActionCommand, { readonly kind: K }> {
+  return requiredOwnDataValue(command, 'kind', 'command.kind') === kind
+}
+
+function hasExpectationKind<K extends WorkbookCheckExpectation['kind']>(
+  expectation: WorkbookCheckExpectation,
+  kind: K,
+): expectation is Extract<WorkbookCheckExpectation, { readonly kind: K }> {
+  return requiredOwnDataValue(expectation, 'kind', 'expectation.kind') === kind
 }
 
 function describeCommand(command: WorkbookActionCommand): WorkbookActionCommandDescription {
-  switch (command.kind) {
-    case 'writeFormula':
-      return {
-        kind: 'writeFormula',
-        target: describeRef(command.target),
-        formula: command.formula,
-        inputs: command.inputs.map(describeRef),
-        labels: command.labels.map(describeFormulaLabel),
-      }
-    case 'writeValue':
-      return {
-        kind: 'writeValue',
-        target: describeRef(command.target),
-        value: command.value,
-      }
-    case 'format':
-      return {
-        kind: 'format',
-        target: describeRef(command.target),
-        ...(command.style !== undefined ? { style: command.style } : {}),
-        ...(command.numberFormat !== undefined ? { numberFormat: command.numberFormat } : {}),
-      }
-    case 'clear':
-      return {
-        kind: 'clear',
-        target: describeRef(command.target),
-      }
-    case 'op':
-      return {
-        kind: 'op',
-        op: command.op,
-        ...(command.target !== undefined ? { target: describeRef(command.target) } : {}),
-        ...(command.message !== undefined ? { message: command.message } : {}),
-      }
+  if (hasCommandKind(command, 'writeFormula')) {
+    const inputs = requiredOwnDataValue(command, 'inputs', 'command.inputs')
+    const labels = requiredOwnDataValue(command, 'labels', 'command.labels')
+    return {
+      kind: 'writeFormula',
+      target: describeRef(requiredOwnDataValue(command, 'target', 'command.target')),
+      formula: requiredOwnDataValue(command, 'formula', 'command.formula'),
+      inputs: mapArrayData(inputs, 'command.inputs', describeRef),
+      labels: mapArrayData(labels, 'command.labels', describeFormulaLabel),
+    }
   }
+  if (hasCommandKind(command, 'writeValue')) {
+    return {
+      kind: 'writeValue',
+      target: describeRef(requiredOwnDataValue(command, 'target', 'command.target')),
+      value: requiredOwnDataValue(command, 'value', 'command.value'),
+    }
+  }
+  if (hasCommandKind(command, 'format')) {
+    const style = ownDataValue(command, 'style', 'command.style')
+    const numberFormat = ownDataValue(command, 'numberFormat', 'command.numberFormat')
+    return {
+      kind: 'format',
+      target: describeRef(requiredOwnDataValue(command, 'target', 'command.target')),
+      ...(style !== undefined ? { style: cloneDescriptionData(style, 'command.style') } : {}),
+      ...(numberFormat !== undefined ? { numberFormat } : {}),
+    }
+  }
+  if (hasCommandKind(command, 'clear')) {
+    return {
+      kind: 'clear',
+      target: describeRef(requiredOwnDataValue(command, 'target', 'command.target')),
+    }
+  }
+  if (hasCommandKind(command, 'op')) {
+    const target = ownDataValue(command, 'target', 'command.target')
+    const message = ownDataValue(command, 'message', 'command.message')
+    return {
+      kind: 'op',
+      op: cloneDescriptionData(requiredOwnDataValue(command, 'op', 'command.op'), 'command.op'),
+      ...(target !== undefined ? { target: describeRef(target) } : {}),
+      ...(message !== undefined ? { message } : {}),
+    }
+  }
+  throw new Error(`Unsupported workbook command kind: ${String(requiredOwnDataValue(command, 'kind', 'command.kind'))}`)
 }
 
 function describeFormulaLabel(label: { readonly name: string; readonly ref: WorkbookRef }): WorkbookFormulaLabelDescription {
   return {
-    name: label.name,
-    ref: describeRef(label.ref),
+    name: requiredOwnDataValue(label, 'name', 'label.name'),
+    ref: describeRef(requiredOwnDataValue(label, 'ref', 'label.ref')),
   }
 }
 
 function describeChange(change: WorkbookChangeSummary): WorkbookChangeSummaryDescription {
+  const target = ownDataValue(change, 'target', 'change.target')
   return {
-    kind: change.kind,
-    ...(change.target !== undefined ? { target: describeRef(change.target) } : {}),
-    message: change.message,
+    kind: requiredOwnDataValue(change, 'kind', 'change.kind'),
+    ...(target !== undefined ? { target: describeRef(target) } : {}),
+    message: requiredOwnDataValue(change, 'message', 'change.message'),
   }
 }
 
 function describeCheck(check: WorkbookCheckResult): WorkbookCheckResultDescription {
+  const target = ownDataValue(check, 'target', 'check.target')
+  const refs = ownDataValue(check, 'refs', 'check.refs')
+  const expectation = ownDataValue(check, 'expectation', 'check.expectation')
+  const proof = ownDataValue(check, 'proof', 'check.proof')
   return {
-    status: check.status,
-    kind: check.kind,
-    ...(check.target !== undefined ? { target: describeRef(check.target) } : {}),
-    ...(check.refs !== undefined ? { refs: check.refs.map(describeRef) } : {}),
-    message: check.message,
-    ...(check.expectation !== undefined ? { expectation: describeExpectation(check.expectation) } : {}),
-    ...(check.proof !== undefined ? { proof: check.proof } : {}),
+    status: requiredOwnDataValue(check, 'status', 'check.status'),
+    kind: requiredOwnDataValue(check, 'kind', 'check.kind'),
+    ...(target !== undefined ? { target: describeRef(target) } : {}),
+    ...(refs !== undefined ? { refs: mapArrayData(refs, 'check.refs', describeRef) } : {}),
+    message: requiredOwnDataValue(check, 'message', 'check.message'),
+    ...(expectation !== undefined ? { expectation: describeExpectation(expectation) } : {}),
+    ...(proof !== undefined ? { proof: cloneDescriptionData(proof, 'check.proof') } : {}),
   }
 }
 
 function describeExpectation(expectation: WorkbookCheckExpectation): WorkbookCheckExpectationDescription {
-  switch (expectation.kind) {
-    case 'valueEquals':
-      return {
-        kind: 'valueEquals',
-        value: expectation.value,
-      }
-    case 'formulaEquals':
-      return {
-        kind: 'formulaEquals',
-        formula: expectation.formula,
-        inputs: expectation.inputs.map(describeRef),
-        labels: expectation.labels.map(describeFormulaLabel),
-      }
+  if (hasExpectationKind(expectation, 'valueEquals')) {
+    return {
+      kind: 'valueEquals',
+      value: requiredOwnDataValue(expectation, 'value', 'expectation.value'),
+    }
   }
+  if (hasExpectationKind(expectation, 'formulaEquals')) {
+    const inputs = requiredOwnDataValue(expectation, 'inputs', 'expectation.inputs')
+    const labels = requiredOwnDataValue(expectation, 'labels', 'expectation.labels')
+    return {
+      kind: 'formulaEquals',
+      formula: requiredOwnDataValue(expectation, 'formula', 'expectation.formula'),
+      inputs: mapArrayData(inputs, 'expectation.inputs', describeRef),
+      labels: mapArrayData(labels, 'expectation.labels', describeFormulaLabel),
+    }
+  }
+  throw new Error(`Unsupported workbook expectation kind: ${String(requiredOwnDataValue(expectation, 'kind', 'expectation.kind'))}`)
 }
 
 export function describePlan<Refs>(plan: WorkbookActionPlan<Refs>): WorkbookActionPlanDescription {
+  const input = ownDataValue(plan, 'input', 'plan.input')
   return {
-    modelName: plan.modelName,
-    actionName: plan.actionName,
-    ...(plan.input !== undefined ? { input: plan.input } : {}),
-    refsUsed: plan.refsUsed.map(describeRef),
-    commands: plan.commands.map(describeCommand),
-    ops: [...plan.ops],
-    changed: plan.changed.map(describeChange),
-    checks: plan.checks.map(describeCheck),
+    modelName: requiredOwnDataValue(plan, 'modelName', 'plan.modelName'),
+    actionName: requiredOwnDataValue(plan, 'actionName', 'plan.actionName'),
+    ...(input !== undefined ? { input: cloneDescriptionData(input, 'plan.input') } : {}),
+    refsUsed: mapArrayData(requiredOwnDataValue(plan, 'refsUsed', 'plan.refsUsed'), 'plan.refsUsed', describeRef),
+    commands: mapArrayData(requiredOwnDataValue(plan, 'commands', 'plan.commands'), 'plan.commands', describeCommand),
+    ops: mapArrayData(requiredOwnDataValue(plan, 'ops', 'plan.ops'), 'plan.ops', (op, _index, entryPath) =>
+      cloneDescriptionData(op, entryPath),
+    ),
+    changed: mapArrayData(requiredOwnDataValue(plan, 'changed', 'plan.changed'), 'plan.changed', describeChange),
+    checks: mapArrayData(requiredOwnDataValue(plan, 'checks', 'plan.checks'), 'plan.checks', describeCheck),
   }
 }
 
 function describeError(error: WorkbookRunErrorDescription): WorkbookRunErrorDescription {
+  const path = ownDataValue(error, 'path', 'error.path')
+  const issueCode = ownDataValue(error, 'issueCode', 'error.issueCode')
   return {
-    code: error.code,
-    message: error.message,
-    ...(error.path !== undefined ? { path: error.path } : {}),
-    ...(error.issueCode !== undefined ? { issueCode: error.issueCode } : {}),
+    code: requiredOwnDataValue(error, 'code', 'error.code'),
+    message: requiredOwnDataValue(error, 'message', 'error.message'),
+    ...(path !== undefined ? { path } : {}),
+    ...(issueCode !== undefined ? { issueCode } : {}),
   }
 }
 
 function describeUndo(undo: WorkbookUndoRef): WorkbookUndoRefDescription {
+  const ops = ownDataValue(undo, 'ops', 'undo.ops')
   return {
-    id: undo.id,
-    ...(undo.ops !== undefined ? { ops: [...undo.ops] } : {}),
+    id: requiredOwnDataValue(undo, 'id', 'undo.id'),
+    ...(ops !== undefined ? { ops: mapArrayData(ops, 'undo.ops', (op, _index, entryPath) => cloneDescriptionData(op, entryPath)) } : {}),
   }
 }
 
 function describeApply(apply: WorkbookRunApplySummary): WorkbookRunApplySummaryDescription {
+  const previewOps = ownDataValue(apply, 'previewOps', 'apply.previewOps')
+  const appliedOps = ownDataValue(apply, 'appliedOps', 'apply.appliedOps')
+  const proof = ownDataValue(apply, 'proof', 'apply.proof')
   return {
-    matched: apply.matched,
-    ...(apply.previewOps !== undefined ? { previewOps: [...apply.previewOps] } : {}),
-    ...(apply.appliedOps !== undefined ? { appliedOps: [...apply.appliedOps] } : {}),
-    ...(apply.proof !== undefined ? { proof: apply.proof } : {}),
+    matched: requiredOwnDataValue(apply, 'matched', 'apply.matched'),
+    ...(previewOps !== undefined
+      ? { previewOps: mapArrayData(previewOps, 'apply.previewOps', (op, _index, entryPath) => cloneDescriptionData(op, entryPath)) }
+      : {}),
+    ...(appliedOps !== undefined
+      ? { appliedOps: mapArrayData(appliedOps, 'apply.appliedOps', (op, _index, entryPath) => cloneDescriptionData(op, entryPath)) }
+      : {}),
+    ...(proof !== undefined ? { proof: cloneDescriptionData(proof, 'apply.proof') } : {}),
   }
 }
 
 function describeUnverified(entry: WorkbookRunUnverified): WorkbookRunUnverifiedDescription {
   return {
-    kind: entry.kind,
-    message: entry.message,
+    kind: requiredOwnDataValue(entry, 'kind', 'unverified.kind'),
+    message: requiredOwnDataValue(entry, 'message', 'unverified.message'),
   }
 }
 
+function hasPlanResultStatus<Refs, K extends WorkbookActionPlanResult<Refs>['status']>(
+  result: WorkbookActionPlanResult<Refs>,
+  status: K,
+): result is Extract<WorkbookActionPlanResult<Refs>, { readonly status: K }> {
+  return requiredOwnDataValue(result, 'status', 'result.status') === status
+}
+
+function hasRunResultStatus<K extends WorkbookRunResult['status']>(
+  result: WorkbookRunResult,
+  status: K,
+): result is Extract<WorkbookRunResult, { readonly status: K }> {
+  return requiredOwnDataValue(result, 'status', 'result.status') === status
+}
+
 export function describePlanResult<Refs>(result: WorkbookActionPlanResult<Refs>): WorkbookActionPlanResultDescription {
-  if (result.status === 'planned') {
+  if (hasPlanResultStatus(result, 'planned')) {
     return {
       status: 'planned',
-      plan: describePlan(result.plan),
+      plan: describePlan(requiredOwnDataValue(result, 'plan', 'result.plan')),
     }
   }
+  const input = ownDataValue(result, 'input', 'result.input')
   return {
     status: 'failed',
-    modelName: result.modelName,
-    actionName: result.actionName,
-    ...(result.input !== undefined ? { input: result.input } : {}),
-    errors: result.errors.map(describeError),
-    checks: result.checks.map(describeCheck),
+    modelName: requiredOwnDataValue(result, 'modelName', 'result.modelName'),
+    actionName: requiredOwnDataValue(result, 'actionName', 'result.actionName'),
+    ...(input !== undefined ? { input: cloneDescriptionData(input, 'result.input') } : {}),
+    errors: mapArrayData(requiredOwnDataValue(result, 'errors', 'result.errors'), 'result.errors', describeError),
+    checks: mapArrayData(requiredOwnDataValue(result, 'checks', 'result.checks'), 'result.checks', describeCheck),
   }
 }
 
 export function describeRunResult(result: WorkbookRunResult): WorkbookRunResultDescription {
-  if (result.status === 'done') {
+  const apply = ownDataValue(result, 'apply', 'result.apply')
+  const undo = ownDataValue(result, 'undo', 'result.undo')
+  const unverified = ownDataValue(result, 'unverified', 'result.unverified')
+  if (hasRunResultStatus(result, 'done')) {
     return {
       status: 'done',
-      ...(result.apply !== undefined ? { apply: describeApply(result.apply) } : {}),
-      changed: result.changed.map(describeChange),
-      checks: result.checks.map(describeCheck),
-      ...(result.undo !== undefined ? { undo: describeUndo(result.undo) } : {}),
-      ...(result.unverified !== undefined ? { unverified: result.unverified.map(describeUnverified) } : {}),
+      ...(apply !== undefined ? { apply: describeApply(apply) } : {}),
+      changed: mapArrayData(requiredOwnDataValue(result, 'changed', 'result.changed'), 'result.changed', describeChange),
+      checks: mapArrayData(requiredOwnDataValue(result, 'checks', 'result.checks'), 'result.checks', describeCheck),
+      ...(undo !== undefined ? { undo: describeUndo(undo) } : {}),
+      ...(unverified !== undefined ? { unverified: mapArrayData(unverified, 'result.unverified', describeUnverified) } : {}),
     }
   }
   return {
     status: 'failed',
-    errors: result.errors.map(describeError),
-    ...(result.apply !== undefined ? { apply: describeApply(result.apply) } : {}),
-    changed: result.changed.map(describeChange),
-    checks: result.checks.map(describeCheck),
-    ...(result.undo !== undefined ? { undo: describeUndo(result.undo) } : {}),
-    ...(result.unverified !== undefined ? { unverified: result.unverified.map(describeUnverified) } : {}),
+    errors: mapArrayData(requiredOwnDataValue(result, 'errors', 'result.errors'), 'result.errors', describeError),
+    ...(apply !== undefined ? { apply: describeApply(apply) } : {}),
+    changed: mapArrayData(requiredOwnDataValue(result, 'changed', 'result.changed'), 'result.changed', describeChange),
+    checks: mapArrayData(requiredOwnDataValue(result, 'checks', 'result.checks'), 'result.checks', describeCheck),
+    ...(undo !== undefined ? { undo: describeUndo(undo) } : {}),
+    ...(unverified !== undefined ? { unverified: mapArrayData(unverified, 'result.unverified', describeUnverified) } : {}),
   }
 }

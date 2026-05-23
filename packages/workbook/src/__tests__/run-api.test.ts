@@ -43,6 +43,16 @@ function first<T>(values: readonly T[]): T {
   return value
 }
 
+function accessorArray<T>(getter: () => T): readonly T[] {
+  const values: T[] = []
+  Object.defineProperty(values, '0', {
+    configurable: true,
+    enumerable: true,
+    get: getter,
+  })
+  return values
+}
+
 function applied<Refs>(plan: WorkbookActionPlan<Refs>): WorkbookRunApplyResult {
   return {
     status: 'applied',
@@ -350,6 +360,33 @@ describe('@bilig/workbook run api', () => {
       ],
     })
     expect(JSON.parse(JSON.stringify(described))).toEqual(described)
+  })
+
+  it('rejects hidden behavior in run result descriptions without invoking getters', async () => {
+    const model = valueModel()
+    const result = await runWorkbookAction(model, 'write', {
+      apply: applied,
+      read: (targets) => [
+        {
+          target: first(targets),
+          value: 12,
+        },
+      ],
+    })
+    if (result.status !== 'done') {
+      throw new Error('expected done result')
+    }
+    let getterInvoked = false
+    const badResult: typeof result = {
+      ...result,
+      checks: accessorArray<(typeof result.checks)[number]>(() => {
+        getterInvoked = true
+        throw new Error('checks getter should not run')
+      }),
+    }
+
+    expect(() => describeRunResult(badResult)).toThrowError('Workbook description result.checks[0] must be a data property')
+    expect(getterInvoked).toBe(false)
   })
 
   it('runs readback-only plans without requiring an apply adapter', async () => {

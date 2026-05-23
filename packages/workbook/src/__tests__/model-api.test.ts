@@ -31,6 +31,22 @@ import {
   type WorkbookAction,
 } from '../index.js'
 
+function accessorArray<T>(getter: () => T): readonly T[] {
+  const values: T[] = []
+  Object.defineProperty(values, '0', {
+    configurable: true,
+    enumerable: true,
+    get: getter,
+  })
+  return values
+}
+
+function sparseArray<T>(): readonly T[] {
+  const values: T[] = []
+  values.length = 1
+  return values
+}
+
 describe('@bilig/workbook model api', () => {
   it('preserves model metadata, refs, checks, commands, and concrete workbook ops', () => {
     const model = defineModel({
@@ -785,6 +801,92 @@ describe('@bilig/workbook model api', () => {
     })
     expect(JSON.parse(JSON.stringify(described))).toEqual(described)
     expect('refs' in described).toBe(false)
+  })
+
+  it('rejects hidden behavior in agent-readable descriptions without invoking getters', () => {
+    const model = defineModel({
+      name: 'describe-proof-model',
+
+      find(workbook) {
+        return {
+          result: workbook.findRange({ sheetName: 'Sheet1', address: 'D2' }),
+        }
+      },
+
+      actions: {
+        write({ refs, workbook }) {
+          workbook.writeFormula(refs.result, formula.raw('1+1'))
+        },
+      },
+    })
+    const plan = buildWorkbookActionPlan(model, 'write')
+    const ref: typeof plan.refs.result = { ...plan.refs.result }
+    let getterInvoked = false
+    Object.defineProperty(ref, 'range', {
+      configurable: true,
+      enumerable: true,
+      get() {
+        getterInvoked = true
+        throw new Error('range getter should not run')
+      },
+    })
+
+    expect(() => describeRef(ref)).toThrowError('Workbook description ref.range must be a data property')
+    expect(getterInvoked).toBe(false)
+
+    const badPlan: typeof plan = {
+      ...plan,
+      commands: accessorArray<(typeof plan.commands)[number]>(() => {
+        getterInvoked = true
+        throw new Error('command getter should not run')
+      }),
+    }
+
+    expect(() => describePlan(badPlan)).toThrowError('Workbook description plan.commands[0] must be a data property')
+    expect(getterInvoked).toBe(false)
+  })
+
+  it('rejects sparse description arrays and accessor-backed nested data', () => {
+    const model = defineModel({
+      name: 'describe-array-proof-model',
+
+      find(workbook) {
+        return {
+          result: workbook.findRange({ sheetName: 'Sheet1', address: 'D2' }),
+        }
+      },
+
+      actions: {
+        write({ refs, workbook }) {
+          workbook.writeFormula(refs.result, formula.raw('1+1'))
+        },
+      },
+    })
+    const plan = buildWorkbookActionPlan(model, 'write')
+
+    const sparseRefsPlan: typeof plan = { ...plan, refsUsed: sparseArray<(typeof plan.refsUsed)[number]>() }
+
+    expect(() => describePlan(sparseRefsPlan)).toThrowError('Workbook description plan.refsUsed[0] must be a data property')
+
+    const [op] = plan.ops
+    if (op === undefined || op.kind !== 'setCellFormula') {
+      throw new Error('expected formula op')
+    }
+    let getterInvoked = false
+    const badOp = { ...op }
+    Object.defineProperty(badOp, 'formula', {
+      configurable: true,
+      enumerable: true,
+      get() {
+        getterInvoked = true
+        throw new Error('formula getter should not run')
+      },
+    })
+
+    const badOpsPlan: typeof plan = { ...plan, ops: [badOp] }
+
+    expect(() => describePlan(badOpsPlan)).toThrowError('Workbook description plan.ops[0].formula must be a data property')
+    expect(getterInvoked).toBe(false)
   })
 
   it('verifies that planned intent only uses resolved refs', () => {
