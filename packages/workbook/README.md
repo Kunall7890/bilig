@@ -102,7 +102,7 @@ The main API is intentionally small:
 - descriptions: `describeModel`, `describeRef`, `describePlan`, `describePlanResult`, `describeRuntimeRequirements`, `checkRuntimeRequirements`, `checkRuntimeAdapter`, `describeRunResult`
 - transport data: `isWorkbookRefData`, `toWorkbookRefData`, `collectWorkbookRefData`, `hydrateWorkbookRef`, `hydrateWorkbookRefs`, `toPlanData`, `isPlanData`, `checkPlanData`, `hydratePlanData`, `verifyPlanData`
 - runtime handoff: `runWorkbookPlan`, `runWorkbookAction`, `WorkbookRunAdapter`
-- feature handoff: `defineWorkbookFeaturePlugin`, `checkWorkbookFeaturePlugin`, `checkWorkbookCommandRequest`, `normalizeWorkbookCommandRequest`, `checkWorkbookCommandReceipt`, `normalizeWorkbookCommandReceipt`, `workbookCommandReceiptOpsMatch`
+- feature handoff: `defineWorkbookFeaturePlugin`, `checkWorkbookFeaturePlugin`, `checkWorkbookCommandRequest`, `normalizeWorkbookCommandRequest`, `checkWorkbookCommandBundle`, `normalizeWorkbookCommandBundle`, `workbookCommandResultFor`, `checkWorkbookCommandReceipt`, `normalizeWorkbookCommandReceipt`, `workbookCommandReceiptOpsMatch`
 - low-level language: `WorkbookOp`, `WorkbookTxn`, `EngineOp`, `EngineOpBatch`, `isEngineOpBatch`
 
 Stable data helpers are exported for generic tool builders:
@@ -116,6 +116,7 @@ Stable data helpers are exported for generic tool builders:
 - `workbookRuntimeRequirementKinds`, `isWorkbookRuntimeRequirementKind`, `workbookRuntimeCapabilities`, `isWorkbookRuntimeCapability`, `checkRuntimeRequirements`
 - `workbookCommandCategories`, `isWorkbookCommandCategory`, `workbookCommandExecutionModes`, `isWorkbookCommandExecutionMode`, `workbookCommandReceiptStatuses`, `isWorkbookCommandReceiptStatus`
 - `workbookProjectionInterceptorPoints`, `isWorkbookProjectionInterceptorPoint`, `workbookUiContributionSlots`, `isWorkbookUiContributionSlot`, `checkWorkbookCommandRequest`
+- `workbookCommandBundleCommandKinds`, `isWorkbookCommandBundleCommandKind`, `checkWorkbookCommandBundle`, `isWorkbookCommandBundle`, `workbookCommandResultFor`
 - `workbookRunErrorCodes`, `isWorkbookRunErrorCode`
 
 Model action manifests are frozen null-prototype maps. Consumers can use normal
@@ -318,6 +319,16 @@ request. It returns stable path issues such as `featureId`, `commandId`,
 runtime. The exported command category, execution-mode, receipt-status,
 projection-point, and UI-slot lists let tool builders present and validate
 command contracts without importing a schema framework.
+
+Use `checkWorkbookCommandBundle(data)` when an agent wants to hand a runtime a
+single ordered set of command requests and low-level ops. A bundle must include
+`targetRevision`, `idempotencyKey`, and non-empty `commands`. Each command uses
+plain `kind: "request"` or `kind: "op"` data, keeps declared `touchedRanges`
+canonical, and preserves command order after normalization. Mutation requests
+and ops must say `destructive: true`, so broad edits are never implied by a
+generic payload. `scope.maxTouchedCells` lets a caller reject oversized edits
+before execution. The validator returns a `WorkbookCommandResult` with normalized
+touched ranges and touched-cell count without importing `@bilig/core`.
 
 Use `checkWorkbookCommandReceipt(data)` before trusting runtime command evidence.
 It returns the same boring `{ status, issues }` shape for receipt fields such as
