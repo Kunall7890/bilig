@@ -45,7 +45,7 @@
           "direct live browser timing passed: true",
           "same-corpus capture kind: not-captured",
           "same-corpus UI 10x cases: 0/9",
-          "same-corpus render proof contract: same-corpus-ui-v3",
+          "same-corpus render proof contract: same-corpus-ui-v4",
           "same-corpus strict rendered-grid proof cases: 0/9",
           "same-corpus legacy-insufficient rendered-grid proof cases: 0/9",
           "same-corpus run manifest invalid reasons: required workload count is incomplete; missing required workloads: open-workbook, select-cell, edit-visible-cell, scroll-vertical, scroll-horizontal, jump-deep-row, formula-edit, fill-format-change, wide-sheet-navigation; same-corpus evidence must use exactly one corpus case; same-corpus evidence must use exactly one benchmark workbook fingerprint; source workbook fingerprint must be stable for every required product; strict rendered-grid proof covers 0/9 cases; not every required workload is 10x against Google Sheets"
@@ -189,7 +189,7 @@
         "evidence": [
           "live browser vendors: google-sheets, microsoft-excel-web",
           "headed browser contracts passed: true",
-          "same-corpus render proof contract: same-corpus-ui-v3",
+          "same-corpus render proof contract: same-corpus-ui-v4",
           "same-corpus strict rendered-grid proof cases: 0/9"
         ],
         "gaps": ["live UI browser evidence is not a same-corpus 10x proof against incumbents"]
@@ -670,7 +670,7 @@
         "live incumbent browser timing scorecard passes: true",
         "same-corpus UI 10x proof captured: false",
         "same-corpus UI 10x cases: 0/9",
-        "same-corpus UI render proof contract: same-corpus-ui-v3",
+        "same-corpus UI render proof contract: same-corpus-ui-v4",
         "same-corpus UI strict rendered-grid proof cases: 0/9",
         "same-corpus UI legacy-insufficient rendered-grid proof cases: 0/9",
         "same-corpus UI current-contract evidence complete: false",

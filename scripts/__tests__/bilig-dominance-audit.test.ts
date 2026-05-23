@@ -153,7 +153,7 @@ describe('bilig dominance prompt-to-artifact audit', () => {
         `live same-corpus UI 10x cases: 0/${String(requiredUiResponsivenessSameCorpusWorkloads.length)}`,
         `live same-corpus UI required workloads: ${requiredUiSameCorpusWorkloadList}`,
         `live same-corpus UI missing required workloads: ${requiredUiSameCorpusWorkloadList}`,
-        'live same-corpus UI render proof contract: same-corpus-ui-v3',
+        'live same-corpus UI render proof contract: same-corpus-ui-v4',
         `live same-corpus UI strict rendered-grid proof cases: 0/${String(requiredUiResponsivenessSameCorpusWorkloads.length)}`,
         'live same-corpus UI current-contract evidence complete: false',
         `live same-corpus UI missing inputs: ${requiredUiSameCorpusInputList}`,

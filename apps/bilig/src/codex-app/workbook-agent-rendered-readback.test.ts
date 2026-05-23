@@ -51,8 +51,16 @@ function visibleSceneProof(
     frameProofStatus: 'presented',
     frameProofSignature: 'frame-1',
     presentedFrameProofSignature: 'frame-1',
+    currentSceneEpochSignature: 'epoch-1',
     currentSceneOwnershipSignature: 'scene-1',
+    presentedSceneEpochSignature: 'epoch-1',
     presentedSceneOwnershipSignature: 'scene-1',
+    currentSceneEpoch: 'tile-1',
+    presentedSceneEpoch: 'tile-1',
+    currentViewportRevision: 'viewport-1',
+    presentedViewportRevision: 'viewport-1',
+    currentSemanticMutationRevision: '3',
+    presentedSemanticMutationRevision: '3',
     gridAuthoritativeRevision: '3',
     typeGpuAuthoritativeRevision: '3',
     visibleAuthoritativeRevision: '3',
@@ -61,6 +69,7 @@ function visibleSceneProof(
     hasPresentedFrame: true,
     hasPresentedVisibleFrame: true,
     frameProofMatchesPresentedFrame: true,
+    visibleSceneEpochMatchesPresentedFrame: true,
     visibleSceneOwnershipMatchesPresentedFrame: true,
     visibleAuthoritativeRevisionMatchesGrid: true,
     visibleRenderRevisionMatchesTileScene: true,
@@ -128,6 +137,36 @@ describe('selectWorkbookRenderedReadback', () => {
     expect(proof.capturedRevision).toBe(4)
     expect(proof.visibleSceneProof.matched).toBe(false)
     expect(proof.visibleSceneProof.visibleSceneOwnershipMatchesPresentedFrame).toBe(false)
+    expect(proof.stale).toBe(true)
+    expect(proof.matched).toBeNull()
+    expect(proof.incompleteReason).toContain('visible-scene proof')
+  })
+
+  it('rejects stale visible-scene epochs even when rendered cells match', () => {
+    const proof = selectWorkbookRenderedReadback({
+      renderedContext: renderedContext({
+        capturedRevision: 4,
+        batchId: 4,
+        sceneProof: {
+          presentedSceneEpochSignature: 'old-epoch',
+          visibleSceneEpochMatchesPresentedFrame: false,
+        },
+      }),
+      requestedRange: {
+        sheetName: 'Sheet1',
+        startAddress: 'A1',
+        endAddress: 'A1',
+      },
+      authoritativeRows: [[{ address: 'A1', input: 'ok', value: 'ok', formula: null, styleId: null, numberFormatId: null }]],
+      minRevision: 4,
+    })
+
+    expect(proof.capturedRevision).toBe(4)
+    expect(proof.visibleSceneProof.matched).toBe(false)
+    expect(proof.visibleSceneProof.visibleSceneEpochMatchesPresentedFrame).toBe(false)
+    expect(proof.visibleSceneProof.invalidReasons).toContain(
+      'Presented visible-scene epoch does not match the current authoritative scene epoch.',
+    )
     expect(proof.stale).toBe(true)
     expect(proof.matched).toBeNull()
     expect(proof.incompleteReason).toContain('visible-scene proof')

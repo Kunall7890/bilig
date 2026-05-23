@@ -133,8 +133,16 @@ function readWorkbookAgentVisibleSceneProof(): WorkbookAgentRenderedVisibleScene
   const frameProofStatus = readVisibleSceneProofAttribute(typeGpu, 'data-v3-frame-proof-status')
   const frameProofSignature = readVisibleSceneProofAttribute(typeGpu, 'data-v3-frame-proof-signature')
   const presentedFrameProofSignature = readVisibleSceneProofAttribute(typeGpu, 'data-v3-presented-frame-proof-signature')
+  const currentSceneEpochSignature = readVisibleSceneProofAttribute(typeGpu, 'data-v3-current-scene-epoch-signature')
   const currentSceneOwnershipSignature = readVisibleSceneProofAttribute(typeGpu, 'data-v3-current-scene-ownership-signature')
+  const presentedSceneEpochSignature = readVisibleSceneProofAttribute(typeGpu, 'data-v3-presented-scene-epoch-signature')
   const presentedSceneOwnershipSignature = readVisibleSceneProofAttribute(typeGpu, 'data-v3-presented-scene-ownership-signature')
+  const currentSceneEpoch = readVisibleSceneProofAttribute(typeGpu, 'data-v3-current-scene-epoch')
+  const presentedSceneEpoch = readVisibleSceneProofAttribute(typeGpu, 'data-v3-presented-scene-epoch')
+  const currentViewportRevision = readVisibleSceneProofAttribute(typeGpu, 'data-v3-current-viewport-revision')
+  const presentedViewportRevision = readVisibleSceneProofAttribute(typeGpu, 'data-v3-presented-viewport-revision')
+  const currentSemanticMutationRevision = readVisibleSceneProofAttribute(typeGpu, 'data-v3-current-semantic-mutation-revision')
+  const presentedSemanticMutationRevision = readVisibleSceneProofAttribute(typeGpu, 'data-v3-presented-semantic-mutation-revision')
   const gridAuthoritativeRevision = readVisibleSceneProofAttribute(grid, 'data-render-authoritative-revision')
   const typeGpuAuthoritativeRevision = readVisibleSceneProofAttribute(typeGpu, 'data-v3-authoritative-render-revision')
   const visibleAuthoritativeRevision = readVisibleSceneProofAttribute(typeGpu, 'data-v3-visible-authoritative-render-revision')
@@ -145,8 +153,16 @@ function readWorkbookAgentVisibleSceneProof(): WorkbookAgentRenderedVisibleScene
     frameProofStatus,
     frameProofSignature,
     presentedFrameProofSignature,
+    currentSceneEpochSignature,
     currentSceneOwnershipSignature,
+    presentedSceneEpochSignature,
     presentedSceneOwnershipSignature,
+    currentSceneEpoch,
+    presentedSceneEpoch,
+    currentViewportRevision,
+    presentedViewportRevision,
+    currentSemanticMutationRevision,
+    presentedSemanticMutationRevision,
     gridAuthoritativeRevision,
     typeGpuAuthoritativeRevision,
     visibleAuthoritativeRevision,
@@ -156,6 +172,10 @@ function readWorkbookAgentVisibleSceneProof(): WorkbookAgentRenderedVisibleScene
     hasPresentedVisibleFrame: typeGpu.getAttribute('data-v3-has-presented-visible-frame') === 'true',
     frameProofMatchesPresentedFrame:
       hasText(frameProofSignature) && hasText(presentedFrameProofSignature) && frameProofSignature === presentedFrameProofSignature,
+    visibleSceneEpochMatchesPresentedFrame:
+      hasText(currentSceneEpochSignature) &&
+      hasText(presentedSceneEpochSignature) &&
+      currentSceneEpochSignature === presentedSceneEpochSignature,
     visibleSceneOwnershipMatchesPresentedFrame:
       hasText(currentSceneOwnershipSignature) &&
       hasText(presentedSceneOwnershipSignature) &&

@@ -104,6 +104,16 @@ export const WorkbookPaneRendererV3 = memo(function WorkbookPaneRendererV3({
     hostRuntime.getVisibleSceneOwnershipSignatureSnapshot,
     hostRuntime.getVisibleSceneOwnershipSignatureSnapshot,
   )
+  const currentSceneOwnershipEpoch = useSyncExternalStore(
+    hostRuntime.subscribeFrameProofStatus,
+    hostRuntime.getVisibleSceneOwnershipEpochSnapshot,
+    hostRuntime.getVisibleSceneOwnershipEpochSnapshot,
+  )
+  const currentSceneOwnershipEpochSignature = useSyncExternalStore(
+    hostRuntime.subscribeFrameProofStatus,
+    hostRuntime.getVisibleSceneOwnershipEpochSignatureSnapshot,
+    hostRuntime.getVisibleSceneOwnershipEpochSignatureSnapshot,
+  )
   const currentTextRunCount = useSyncExternalStore(
     hostRuntime.subscribeFrameProofStatus,
     hostRuntime.getCurrentTextRunCountSnapshot,
@@ -134,6 +144,16 @@ export const WorkbookPaneRendererV3 = memo(function WorkbookPaneRendererV3({
     hostRuntime.getPresentedVisibleSceneOwnershipSignatureSnapshot,
     hostRuntime.getPresentedVisibleSceneOwnershipSignatureSnapshot,
   )
+  const presentedSceneOwnershipEpoch = useSyncExternalStore(
+    hostRuntime.subscribeFrameProofStatus,
+    hostRuntime.getPresentedVisibleSceneOwnershipEpochSnapshot,
+    hostRuntime.getPresentedVisibleSceneOwnershipEpochSnapshot,
+  )
+  const presentedSceneOwnershipEpochSignature = useSyncExternalStore(
+    hostRuntime.subscribeFrameProofStatus,
+    hostRuntime.getPresentedVisibleSceneOwnershipEpochSignatureSnapshot,
+    hostRuntime.getPresentedVisibleSceneOwnershipEpochSignatureSnapshot,
+  )
   const presentedTextRunCount = useSyncExternalStore(
     hostRuntime.subscribeFrameProofStatus,
     hostRuntime.getPresentedTextRunCountSnapshot,
@@ -146,6 +166,10 @@ export const WorkbookPaneRendererV3 = memo(function WorkbookPaneRendererV3({
   )
   const hasPresentedAnyVisibleFrame = presentedFrameProofSignature.length > 0
   const hasPresentedVisibleFrame = hasPresentedFrame && frameProofStatus === 'presented'
+  const sceneOwnershipEpochMatchesPresentedFrame =
+    currentSceneOwnershipEpochSignature.length > 0 &&
+    presentedSceneOwnershipEpochSignature.length > 0 &&
+    currentSceneOwnershipEpochSignature === presentedSceneOwnershipEpochSignature
 
   const setCanvasRef = useCallback(
     (canvas: HTMLCanvasElement | null) => {
@@ -251,11 +275,18 @@ export const WorkbookPaneRendererV3 = memo(function WorkbookPaneRendererV3({
           data-v3-body-world-y={geometry?.camera.bodyWorldY ?? 0}
           data-v3-canvas-proof-layer="disabled"
           data-v3-current-content-signature={currentContentSignature}
+          data-v3-current-fill-handle-revision={currentSceneOwnershipEpoch?.fillHandleRevision ?? ''}
           data-v3-current-rect-count={currentRectCount}
           data-v3-current-rect-signature={currentRectSignature}
+          data-v3-current-scene-epoch={currentSceneOwnershipEpoch?.sceneEpoch ?? ''}
+          data-v3-current-scene-epoch-signature={currentSceneOwnershipEpochSignature}
           data-v3-current-scene-ownership-signature={currentSceneOwnershipSignature}
+          data-v3-current-selection-revision={currentSceneOwnershipEpoch?.selectionRevision ?? ''}
+          data-v3-current-semantic-mutation-revision={currentSceneOwnershipEpoch?.semanticMutationRevision ?? ''}
           data-v3-current-text-run-count={currentTextRunCount}
           data-v3-current-text-signature={currentTextSignature}
+          data-v3-current-viewport-revision={currentSceneOwnershipEpoch?.viewportRevision ?? ''}
+          data-v3-current-workbook-revision={currentSceneOwnershipEpoch?.workbookRevision ?? ''}
           data-v3-draw-text="true"
           data-v3-frame-proof-status={frameProofStatus}
           data-v3-frame-proof-signature={frameProofSignature}
@@ -283,13 +314,19 @@ export const WorkbookPaneRendererV3 = memo(function WorkbookPaneRendererV3({
           data-v3-presented-rect-signature={presentedRectSignature}
           data-v3-presented-render-tx={presentedVisualFrame?.scrollSnapshot.renderTx ?? presentedVisualFrame?.scrollSnapshot.tx ?? ''}
           data-v3-presented-render-ty={presentedVisualFrame?.scrollSnapshot.renderTy ?? presentedVisualFrame?.scrollSnapshot.ty ?? ''}
+          data-v3-presented-scene-epoch={presentedSceneOwnershipEpoch?.sceneEpoch ?? ''}
+          data-v3-presented-scene-epoch-signature={presentedSceneOwnershipEpochSignature}
           data-v3-presented-scene-ownership-signature={presentedSceneOwnershipSignature}
+          data-v3-presented-selection-revision={presentedSceneOwnershipEpoch?.selectionRevision ?? ''}
+          data-v3-presented-semantic-mutation-revision={presentedSceneOwnershipEpoch?.semanticMutationRevision ?? ''}
           data-v3-presented-scroll-left={presentedVisualFrame?.scrollSnapshot.scrollLeft ?? ''}
           data-v3-presented-scroll-top={presentedVisualFrame?.scrollSnapshot.scrollTop ?? ''}
           data-v3-presented-text-signature={presentedTextSignature}
           data-v3-presented-text-run-count={presentedTileTextRunCount}
           data-v3-presented-tile-pane-count={presentedTilePanes.length}
+          data-v3-presented-viewport-revision={presentedSceneOwnershipEpoch?.viewportRevision ?? ''}
           data-v3-presented-visible-text-run-count={presentedTextRunCount}
+          data-v3-presented-workbook-revision={presentedSceneOwnershipEpoch?.workbookRevision ?? ''}
           data-v3-native-text-run-count={nativeTileTextRunCount}
           data-v3-native-tile-pane-count={nativeTilePanes.length}
           data-v3-preload-pane-count={preloadTilePanes.length}
@@ -298,6 +335,7 @@ export const WorkbookPaneRendererV3 = memo(function WorkbookPaneRendererV3({
           data-v3-tile-scene-camera-seq={tileSceneCameraSeq ?? ''}
           data-v3-tile-scene-revision={tileSceneRevision ?? ''}
           data-v3-tile-pane-count={typeGpuTilePanes.length}
+          data-v3-visible-scene-epoch-matches-presented-frame={sceneOwnershipEpochMatchesPresentedFrame ? 'true' : 'false'}
           data-v3-visible-authoritative-render-revision={visibleAuthoritativeRenderRevision ?? ''}
           data-v3-visible-local-render-revision={visibleLocalRenderRevision ?? ''}
           data-v3-visible-projected-render-revision={visibleProjectedRenderRevision ?? ''}

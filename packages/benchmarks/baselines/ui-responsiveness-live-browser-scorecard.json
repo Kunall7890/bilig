@@ -164,7 +164,7 @@
     "coveredCorpusCaseIds": [],
     "runManifest": {
       "artifactGenerator": "scripts/gen-ui-responsiveness-live-browser-scorecard.ts",
-      "contractVersion": "same-corpus-ui-v3",
+      "contractVersion": "same-corpus-ui-v4",
       "requiredProducts": ["bilig", "google-sheets"],
       "requiredWorkloads": [
         "open-workbook",

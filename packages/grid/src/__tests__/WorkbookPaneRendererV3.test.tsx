@@ -23,7 +23,13 @@ import { GridRenderLoop } from '../renderer-v3/gridRenderLoop.js'
 import type { GridRenderTile } from '../renderer-v3/render-tile-source.js'
 import type { WorkbookRenderTilePaneState } from '../renderer-v3/render-tile-pane-state.js'
 import { resolveWorkbookPaneFrameProofSignatureV3 } from '../renderer-v3/workbook-pane-renderer-host-runtime.js'
-import { WorkbookPaneRendererRuntimeV3, type WorkbookPaneFrameDrawerV3 } from '../renderer-v3/workbook-pane-renderer-runtime.js'
+import {
+  resolveWorkbookPaneRendererGeometryV3,
+  WorkbookPaneRendererRuntimeV3,
+  type WorkbookPaneFrameDrawerV3,
+  type WorkbookPaneRendererRuntimeStateV3,
+} from '../renderer-v3/workbook-pane-renderer-runtime.js'
+import { resolveWorkbookPaneVisibleSceneProofV3 } from '../renderer-v3/workbook-pane-visible-scene-proof.js'
 import { WorkbookGridScrollStore } from '../workbookGridScrollStore.js'
 
 function createTilePane(rowStart = 0): WorkbookRenderTilePaneState {
@@ -134,6 +140,36 @@ function createOverlayBatch(overrides: Partial<DynamicGridOverlayBatchV3> = {}):
     sheetName: 'Sheet1',
     surfaceSize: { height: 360, width: 640 },
     ...overrides,
+  }
+}
+
+function withVisibleSceneProof(
+  state: Partial<WorkbookPaneRendererRuntimeStateV3> & Pick<WorkbookPaneRendererRuntimeStateV3, 'surface' | 'tilePanes'>,
+): Partial<WorkbookPaneRendererRuntimeStateV3> {
+  const geometry = resolveWorkbookPaneRendererGeometryV3({
+    cameraStore: state.cameraStore,
+    geometry: state.geometry ?? null,
+  })
+  const overlay = state.overlayBuilder && geometry ? state.overlayBuilder(geometry) : (state.overlay ?? null)
+  const proof = resolveWorkbookPaneVisibleSceneProofV3({
+    drawText: state.drawText ?? true,
+    geometry,
+    headerPanes: state.headerPanes ?? [],
+    overlay,
+    renderRevisionSnapshot: state.renderRevisionSnapshot ?? null,
+    scrollSnapshot: resolveTypeGpuV3DrawScrollSnapshot({
+      fallback: state.scrollTransformStore?.getSnapshot() ?? { tx: 0, ty: 0 },
+      geometry,
+      panes: state.tilePanes,
+    }),
+    surface: state.surface,
+    tilePanes: state.tilePanes,
+  })
+  return {
+    ...state,
+    visibleSceneOwnershipEpoch: proof.ownershipEpoch,
+    visibleSceneOwnershipEpochSignature: proof.ownershipEpochSignature,
+    visibleSceneOwnershipSignature: proof.ownershipSignature,
   }
 }
 
@@ -600,16 +636,18 @@ describe('WorkbookPaneRendererV3', () => {
     const drawFrame = vi.fn<WorkbookPaneFrameDrawerV3>()
     const runtime = new WorkbookPaneRendererRuntimeV3(drawFrame)
 
-    runtime.updateState({
-      active: true,
-      backend: {},
-      cameraStore,
-      geometry: null,
-      scrollTransformStore: scrollStore,
-      surface: { dpr: 1, height: 720, pixelHeight: 720, pixelWidth: 1280, width: 1280 },
-      tilePanes: [createTilePane(32)],
-      webGpuReady: true,
-    })
+    runtime.updateState(
+      withVisibleSceneProof({
+        active: true,
+        backend: {},
+        cameraStore,
+        geometry: null,
+        scrollTransformStore: scrollStore,
+        surface: { dpr: 1, height: 720, pixelHeight: 720, pixelWidth: 1280, width: 1280 },
+        tilePanes: [createTilePane(32)],
+        webGpuReady: true,
+      }),
+    )
     runtime.drawNow()
 
     expect(drawFrame).toHaveBeenCalledTimes(1)
@@ -625,14 +663,16 @@ describe('WorkbookPaneRendererV3', () => {
     const drawFrame = vi.fn<WorkbookPaneFrameDrawerV3>()
     const runtime = new WorkbookPaneRendererRuntimeV3(drawFrame)
 
-    runtime.updateState({
-      active: true,
-      backend: {},
-      drawText: false,
-      surface: { dpr: 1, height: 720, pixelHeight: 720, pixelWidth: 1280, width: 1280 },
-      tilePanes: [createTilePane()],
-      webGpuReady: true,
-    })
+    runtime.updateState(
+      withVisibleSceneProof({
+        active: true,
+        backend: {},
+        drawText: false,
+        surface: { dpr: 1, height: 720, pixelHeight: 720, pixelWidth: 1280, width: 1280 },
+        tilePanes: [createTilePane()],
+        webGpuReady: true,
+      }),
+    )
     runtime.drawNow()
 
     expect(drawFrame).toHaveBeenCalledTimes(1)
@@ -683,16 +723,18 @@ describe('WorkbookPaneRendererV3', () => {
     const drawFrame = vi.fn<WorkbookPaneFrameDrawerV3>()
     const runtime = new WorkbookPaneRendererRuntimeV3(drawFrame)
 
-    runtime.updateState({
-      active: true,
-      backend: {},
-      cameraStore,
-      geometry: freshGeometry,
-      scrollTransformStore: scrollStore,
-      surface: { dpr: 1, height: 720, pixelHeight: 720, pixelWidth: 1280, width: 1280 },
-      tilePanes: [createTilePane()],
-      webGpuReady: true,
-    })
+    runtime.updateState(
+      withVisibleSceneProof({
+        active: true,
+        backend: {},
+        cameraStore,
+        geometry: freshGeometry,
+        scrollTransformStore: scrollStore,
+        surface: { dpr: 1, height: 720, pixelHeight: 720, pixelWidth: 1280, width: 1280 },
+        tilePanes: [createTilePane()],
+        webGpuReady: true,
+      }),
+    )
     runtime.drawNow()
 
     expect(drawFrame).toHaveBeenCalledTimes(1)
@@ -734,7 +776,7 @@ describe('WorkbookPaneRendererV3', () => {
     const drawFrame = vi.fn<WorkbookPaneFrameDrawerV3>()
     const runtime = new WorkbookPaneRendererRuntimeV3(drawFrame, scheduler)
 
-    runtime.updateState({
+    let runtimeState: Partial<WorkbookPaneRendererRuntimeStateV3> & Pick<WorkbookPaneRendererRuntimeStateV3, 'surface' | 'tilePanes'> = {
       active: true,
       backend: {},
       cameraStore,
@@ -743,7 +785,11 @@ describe('WorkbookPaneRendererV3', () => {
       surface: { dpr: 1, height: 720, pixelHeight: 720, pixelWidth: 1280, width: 1280 },
       tilePanes: [createTilePane(32)],
       webGpuReady: true,
+    }
+    runtime.setInputSignalListener(() => {
+      runtime.updateState(withVisibleSceneProof(runtimeState))
     })
+    runtime.updateState(withVisibleSceneProof(runtimeState))
 
     scrollStore.setSnapshot({
       scrollLeft: 64 * metrics.columnWidth,

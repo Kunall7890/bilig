@@ -61,7 +61,7 @@ describe('UI responsiveness live browser scorecard', () => {
     )
     expect(scorecard.sameCorpusProof.tenXMeanAndP95CaseCount).toBe(0)
     expect(scorecard.sameCorpusProof.runManifest).toMatchObject({
-      contractVersion: 'same-corpus-ui-v3',
+      contractVersion: 'same-corpus-ui-v4',
       caseCount: 0,
       strictRenderedGridProofCaseCount: 0,
       legacyInsufficientRenderedGridProofCaseCount: 0,
@@ -134,7 +134,7 @@ describe('UI responsiveness live browser scorecard', () => {
       tenXMeanAndP95CaseCount: requiredUiResponsivenessSameCorpusWorkloads.length,
       coveredCorpusCaseIds: ['wide-mixed-250k'],
       runManifest: {
-        contractVersion: 'same-corpus-ui-v3',
+        contractVersion: 'same-corpus-ui-v4',
         requiredProducts: ['bilig', 'google-sheets'],
         requiredWorkloads: requiredUiResponsivenessSameCorpusWorkloads,
         capturedWorkloads: requiredUiResponsivenessSameCorpusWorkloads,
@@ -626,7 +626,7 @@ function sameCorpusScenarioProof(workload: UiResponsivenessSameCorpusWorkload) {
           'devicePixelRatio=2',
           'expectedPixelWidth=1440',
           'expectedPixelHeight=900',
-          'contractVersion=same-corpus-ui-v3',
+          'contractVersion=same-corpus-ui-v4',
           'gridAuthoritativeRevision=rev-3',
           'gridLocalRevision=rev-local-2',
           'gridProjectedRevision=rev-3',
@@ -638,7 +638,9 @@ function sameCorpusScenarioProof(workload: UiResponsivenessSameCorpusWorkload) {
           'hasPresentedFrame=true',
           'hasPresentedVisibleFrame=true',
           'presentedFrameProofSignature=frame-current',
+          'currentSceneEpochSignature=epoch-current',
           'currentSceneOwnershipSignature=scene-current',
+          'presentedSceneEpochSignature=epoch-current',
           'presentedSceneOwnershipSignature=scene-current',
           'currentContentSignature=content-current',
           'presentedContentSignature=content-current',

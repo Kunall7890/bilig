@@ -15,7 +15,18 @@ export interface WorkbookPaneVisiblePayloadProofV3 {
   readonly textSignature: string
 }
 
+export interface WorkbookPaneVisibleSceneOwnershipEpochV3 {
+  readonly fillHandleRevision: string
+  readonly sceneEpoch: string
+  readonly selectionRevision: string
+  readonly semanticMutationRevision: string
+  readonly viewportRevision: string
+  readonly workbookRevision: string
+}
+
 export interface WorkbookPaneVisibleSceneProofV3 {
+  readonly ownershipEpoch: WorkbookPaneVisibleSceneOwnershipEpochV3
+  readonly ownershipEpochSignature: string
   readonly ownershipSignature: string
   readonly payload: WorkbookPaneVisiblePayloadProofV3
 }
@@ -101,6 +112,8 @@ export function resolveWorkbookPaneVisibleSceneProofV3(input: {
     overlay: input.overlay,
     tilePanes: input.tilePanes,
   })
+  const ownershipEpoch = resolveWorkbookPaneVisibleSceneOwnershipEpochV3(input)
+  const ownershipEpochSignature = resolveWorkbookPaneVisibleSceneOwnershipEpochSignatureV3(ownershipEpoch)
   const surfaceSignature = input.surface
     ? ['surface', input.surface.width, input.surface.height, input.surface.pixelWidth, input.surface.pixelHeight, input.surface.dpr].join(
         ':',
@@ -213,6 +226,7 @@ export function resolveWorkbookPaneVisibleSceneProofV3(input: {
     ownershipSignature: [
       'visible-scene-v3',
       input.drawText ? 'gpu-text-on' : 'gpu-text-off',
+      ownershipEpochSignature,
       surfaceSignature,
       renderRevisionSignature,
       cameraSignature,
@@ -222,6 +236,66 @@ export function resolveWorkbookPaneVisibleSceneProofV3(input: {
       headerOwnershipSignature,
       overlaySignature,
     ].join('#'),
+    ownershipEpoch,
+    ownershipEpochSignature,
     payload,
   }
+}
+
+export function resolveWorkbookPaneVisibleSceneOwnershipEpochV3(input: {
+  readonly geometry: GridGeometrySnapshot | null
+  readonly overlay: DynamicGridOverlayBatchV3 | null
+  readonly renderRevisionSnapshot: GridRenderRevisionSnapshot | null
+  readonly scrollSnapshot: WorkbookGridScrollSnapshot
+  readonly tilePanes: readonly WorkbookRenderTilePaneState[]
+}): WorkbookPaneVisibleSceneOwnershipEpochV3 {
+  const renderRevision = input.renderRevisionSnapshot
+  const overlayRevision = input.overlay
+    ? [input.overlay.sheetName, input.overlay.seq, input.overlay.cameraSeq, input.overlay.rectCount, input.overlay.rectSignature].join(':')
+    : 'none'
+  return {
+    fillHandleRevision: overlayRevision,
+    sceneEpoch: String(renderRevision?.tileSceneRevision ?? resolveWorkbookPaneMaxTileBatchIdV3(input.tilePanes) ?? 'none'),
+    selectionRevision: overlayRevision,
+    semanticMutationRevision: [
+      renderRevision?.authoritativeRevision ?? 'none',
+      renderRevision?.localRevision ?? 'none',
+      renderRevision?.projectedRevision ?? 'none',
+    ].join(':'),
+    viewportRevision: [
+      input.geometry?.camera.sheetName ?? 'none',
+      input.geometry?.camera.seq ?? 'none',
+      input.geometry?.camera.bodyWorldX ?? 'none',
+      input.geometry?.camera.bodyWorldY ?? 'none',
+      input.scrollSnapshot.renderTx ?? input.scrollSnapshot.tx ?? 'none',
+      input.scrollSnapshot.renderTy ?? input.scrollSnapshot.ty ?? 'none',
+      input.scrollSnapshot.scrollLeft ?? 'none',
+      input.scrollSnapshot.scrollTop ?? 'none',
+    ].join(':'),
+    workbookRevision: String(renderRevision?.authoritativeRevision ?? 'none'),
+  }
+}
+
+export function resolveWorkbookPaneVisibleSceneOwnershipEpochSignatureV3(epoch: WorkbookPaneVisibleSceneOwnershipEpochV3): string {
+  return [
+    'scene-epoch-v3',
+    `workbook:${epoch.workbookRevision}`,
+    `viewport:${epoch.viewportRevision}`,
+    `scene:${epoch.sceneEpoch}`,
+    `selection:${epoch.selectionRevision}`,
+    `fill:${epoch.fillHandleRevision}`,
+    `semantic:${epoch.semanticMutationRevision}`,
+  ].join('#')
+}
+
+function resolveWorkbookPaneMaxTileBatchIdV3(tilePanes: readonly WorkbookRenderTilePaneState[]): number | null {
+  let maxBatchId: number | null = null
+  for (const pane of tilePanes) {
+    const batchId = pane.tile.lastBatchId
+    if (!Number.isFinite(batchId)) {
+      continue
+    }
+    maxBatchId = maxBatchId === null ? batchId : Math.max(maxBatchId, batchId)
+  }
+  return maxBatchId
 }

@@ -51,8 +51,16 @@ export interface WorkbookRenderedVisibleSceneProofStatus {
   readonly frameProofStatus: string | null
   readonly frameProofSignature: string | null
   readonly presentedFrameProofSignature: string | null
+  readonly currentSceneEpochSignature: string | null
   readonly currentSceneOwnershipSignature: string | null
+  readonly presentedSceneEpochSignature: string | null
   readonly presentedSceneOwnershipSignature: string | null
+  readonly currentSceneEpoch: string | null
+  readonly presentedSceneEpoch: string | null
+  readonly currentViewportRevision: string | null
+  readonly presentedViewportRevision: string | null
+  readonly currentSemanticMutationRevision: string | null
+  readonly presentedSemanticMutationRevision: string | null
   readonly gridAuthoritativeRevision: string | null
   readonly typeGpuAuthoritativeRevision: string | null
   readonly visibleAuthoritativeRevision: string | null
@@ -61,6 +69,7 @@ export interface WorkbookRenderedVisibleSceneProofStatus {
   readonly hasPresentedFrame: boolean | null
   readonly hasPresentedVisibleFrame: boolean | null
   readonly frameProofMatchesPresentedFrame: boolean | null
+  readonly visibleSceneEpochMatchesPresentedFrame: boolean | null
   readonly visibleSceneOwnershipMatchesPresentedFrame: boolean | null
   readonly visibleAuthoritativeRevisionMatchesGrid: boolean | null
   readonly visibleRenderRevisionMatchesTileScene: boolean | null
@@ -138,6 +147,9 @@ function visibleSceneProofInvalidReasons(proof: WorkbookAgentRenderedVisibleScen
   if (!proof.frameProofMatchesPresentedFrame) {
     invalidReasons.push('Presented frame proof signature does not match the current frame.')
   }
+  if (!proof.visibleSceneEpochMatchesPresentedFrame) {
+    invalidReasons.push('Presented visible-scene epoch does not match the current authoritative scene epoch.')
+  }
   if (!proof.visibleSceneOwnershipMatchesPresentedFrame) {
     invalidReasons.push('Presented visible-scene ownership does not match the current scene.')
   }
@@ -162,8 +174,16 @@ function buildVisibleSceneProofStatus(
     frameProofStatus: proof?.frameProofStatus ?? null,
     frameProofSignature: proof?.frameProofSignature ?? null,
     presentedFrameProofSignature: proof?.presentedFrameProofSignature ?? null,
+    currentSceneEpochSignature: proof?.currentSceneEpochSignature ?? null,
     currentSceneOwnershipSignature: proof?.currentSceneOwnershipSignature ?? null,
+    presentedSceneEpochSignature: proof?.presentedSceneEpochSignature ?? null,
     presentedSceneOwnershipSignature: proof?.presentedSceneOwnershipSignature ?? null,
+    currentSceneEpoch: proof?.currentSceneEpoch ?? null,
+    presentedSceneEpoch: proof?.presentedSceneEpoch ?? null,
+    currentViewportRevision: proof?.currentViewportRevision ?? null,
+    presentedViewportRevision: proof?.presentedViewportRevision ?? null,
+    currentSemanticMutationRevision: proof?.currentSemanticMutationRevision ?? null,
+    presentedSemanticMutationRevision: proof?.presentedSemanticMutationRevision ?? null,
     gridAuthoritativeRevision: proof?.gridAuthoritativeRevision ?? null,
     typeGpuAuthoritativeRevision: proof?.typeGpuAuthoritativeRevision ?? null,
     visibleAuthoritativeRevision: proof?.visibleAuthoritativeRevision ?? null,
@@ -172,6 +192,7 @@ function buildVisibleSceneProofStatus(
     hasPresentedFrame: proof?.hasPresentedFrame ?? null,
     hasPresentedVisibleFrame: proof?.hasPresentedVisibleFrame ?? null,
     frameProofMatchesPresentedFrame: proof?.frameProofMatchesPresentedFrame ?? null,
+    visibleSceneEpochMatchesPresentedFrame: proof?.visibleSceneEpochMatchesPresentedFrame ?? null,
     visibleSceneOwnershipMatchesPresentedFrame: proof?.visibleSceneOwnershipMatchesPresentedFrame ?? null,
     visibleAuthoritativeRevisionMatchesGrid: proof?.visibleAuthoritativeRevisionMatchesGrid ?? null,
     visibleRenderRevisionMatchesTileScene: proof?.visibleRenderRevisionMatchesTileScene ?? null,

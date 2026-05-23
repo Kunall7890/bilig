@@ -2,16 +2,20 @@
 import { afterEach, describe, expect, test, vi } from 'vitest'
 import { WorkbookPaneRendererHostRuntimeV3 } from '../renderer-v3/workbook-pane-renderer-host-runtime.js'
 import {
+  resolveTypeGpuV3DrawScrollSnapshot,
+  resolveWorkbookPaneRendererGeometryV3,
   WorkbookPaneRendererRuntimeV3,
   type WorkbookPaneFrameDrawerV3,
   type WorkbookPaneRendererRuntimeStateV3,
 } from '../renderer-v3/workbook-pane-renderer-runtime.js'
+import { resolveWorkbookPaneVisibleSceneProofV3 } from '../renderer-v3/workbook-pane-visible-scene-proof.js'
 import { createGridAxisWorldIndex } from '../gridAxisWorldIndex.js'
 import { createGridGeometrySnapshotFromAxes } from '../gridGeometry.js'
 import { getGridMetrics } from '../gridMetrics.js'
 import type { DynamicGridOverlayBatchV3 } from '../renderer-v3/dynamic-overlay-batch.js'
 import { WorkbookPaneSurfaceRuntimeV3 } from '../renderer-v3/workbook-pane-surface-runtime.js'
 import { DirtyMaskV3 } from '../renderer-v3/tile-damage-index.js'
+import { GridCameraStore } from '../runtime/gridCameraStore.js'
 import { WorkbookGridScrollStore } from '../workbookGridScrollStore.js'
 
 function createHost(width: number, height: number): HTMLDivElement {
@@ -90,7 +94,7 @@ function createDirtyTilePane(): WorkbookPaneRendererRuntimeStateV3['tilePanes'][
   }
 }
 
-function createGeometry() {
+function createGeometry(input: { readonly scrollLeft?: number; readonly scrollTop?: number; readonly seq?: number } = {}) {
   const metrics = getGridMetrics()
   return createGridGeometrySnapshotFromAxes({
     columns: createGridAxisWorldIndex({ axisLength: 20, defaultSize: 100 }),
@@ -101,10 +105,11 @@ function createGeometry() {
     hostHeight: 360,
     hostWidth: 640,
     rows: createGridAxisWorldIndex({ axisLength: 20, defaultSize: 20 }),
-    scrollLeft: 0,
-    scrollTop: 0,
+    scrollLeft: input.scrollLeft ?? 0,
+    scrollTop: input.scrollTop ?? 0,
+    seq: input.seq,
     sheetName: 'Sheet1',
-    updatedAt: 100,
+    updatedAt: input.seq ?? 100,
   })
 }
 
@@ -122,6 +127,36 @@ function createOverlayBatch(overrides: Partial<DynamicGridOverlayBatchV3> = {}):
     sheetName: 'Sheet1',
     surfaceSize: { height: 360, width: 640 },
     ...overrides,
+  }
+}
+
+function withVisibleSceneProof(
+  state: Partial<WorkbookPaneRendererRuntimeStateV3> & Pick<WorkbookPaneRendererRuntimeStateV3, 'surface' | 'tilePanes'>,
+): Partial<WorkbookPaneRendererRuntimeStateV3> {
+  const geometry = resolveWorkbookPaneRendererGeometryV3({
+    cameraStore: state.cameraStore,
+    geometry: state.geometry ?? null,
+  })
+  const overlay = state.overlayBuilder && geometry ? state.overlayBuilder(geometry) : (state.overlay ?? null)
+  const proof = resolveWorkbookPaneVisibleSceneProofV3({
+    drawText: state.drawText ?? true,
+    geometry,
+    headerPanes: state.headerPanes ?? [],
+    overlay,
+    renderRevisionSnapshot: state.renderRevisionSnapshot ?? null,
+    scrollSnapshot: resolveTypeGpuV3DrawScrollSnapshot({
+      fallback: state.scrollTransformStore?.getSnapshot() ?? { tx: 0, ty: 0 },
+      geometry,
+      panes: state.tilePanes,
+    }),
+    surface: state.surface,
+    tilePanes: state.tilePanes,
+  })
+  return {
+    ...state,
+    visibleSceneOwnershipEpoch: proof.ownershipEpoch,
+    visibleSceneOwnershipEpochSignature: proof.ownershipEpochSignature,
+    visibleSceneOwnershipSignature: proof.ownershipSignature,
   }
 }
 
@@ -345,6 +380,78 @@ describe('WorkbookPaneRendererHostRuntimeV3', () => {
     expect(runtime.getPresentedFrameProofSignatureSnapshot()).toBe(runtime.getFrameProofSignatureSnapshot())
     expect(runtime.getPresentedVisibleSceneOwnershipSignatureSnapshot()).toBe(runtime.getVisibleSceneOwnershipSignatureSnapshot())
     expect(runtime.getPresentedVisualFrameSnapshot()?.tilePanes.at(0)?.tile.lastBatchId).toBe(2)
+
+    runtime.dispose()
+    animationFrames.restore()
+  })
+
+  test('rejects TypeGPU presentation when the live viewport epoch moved after proof capture', async () => {
+    const animationFrames = installManualAnimationFrames()
+    const backend = {}
+    const drawFrame = vi.fn<WorkbookPaneFrameDrawerV3>(() => true)
+    const firstGeometry = createGeometry({ seq: 1, scrollLeft: 0, scrollTop: 0 })
+    const secondGeometry = createGeometry({ seq: 2, scrollLeft: 88, scrollTop: 24 })
+    let liveGeometry = firstGeometry
+    class SilentCameraStore extends GridCameraStore {
+      override getSnapshot() {
+        return liveGeometry
+      }
+
+      override subscribe() {
+        return () => {}
+      }
+    }
+    const cameraStore = new SilentCameraStore()
+    const props = {
+      active: true,
+      cameraStore,
+      drawText: true,
+      geometry: firstGeometry,
+      headerPanes: [],
+      host: createHost(640, 360),
+      overlay: null,
+      overlayBuilder: null,
+      preloadTilePanes: [],
+      renderRevisionSnapshot: {
+        authoritativeRevision: 1,
+        localRevision: 0,
+        projectedRevision: 1,
+        tileSceneCameraSeq: 1,
+        tileSceneRevision: 1,
+      },
+      scrollTransformStore: null,
+      tilePanes: [createDirtyTilePane()],
+    }
+    const runtime = new WorkbookPaneRendererHostRuntimeV3({
+      rendererRuntime: new WorkbookPaneRendererRuntimeV3(drawFrame),
+      surfaceRuntime: new WorkbookPaneSurfaceRuntimeV3({
+        createBackend: vi.fn(async () => backend),
+        createResizeObserver: () => null,
+        syncSurface: vi.fn(),
+      }),
+    })
+
+    runtime.updateProps(props)
+    runtime.setCanvas(document.createElement('canvas'))
+    await Promise.resolve()
+    const firstEpochSignature = runtime.getVisibleSceneOwnershipEpochSignatureSnapshot()
+    liveGeometry = secondGeometry
+
+    animationFrames.flushNextFrame()
+
+    expect(drawFrame).not.toHaveBeenCalled()
+    expect(runtime.getFrameProofStatusSnapshot()).toBe('pending')
+    expect(runtime.getPresentedFrameProofSignatureSnapshot()).toBe('')
+    expect(runtime.getPresentedVisibleSceneOwnershipEpochSignatureSnapshot()).toBe('')
+    expect(runtime.getVisibleSceneOwnershipEpochSignatureSnapshot()).toBe(firstEpochSignature)
+
+    runtime.updateProps(props)
+    expect(runtime.getVisibleSceneOwnershipEpochSignatureSnapshot()).not.toBe(firstEpochSignature)
+    animationFrames.flushNextFrame()
+
+    expect(drawFrame).toHaveBeenCalledTimes(1)
+    expect(runtime.getFrameProofStatusSnapshot()).toBe('presented')
+    expect(runtime.getPresentedVisibleSceneOwnershipEpochSignatureSnapshot()).toBe(runtime.getVisibleSceneOwnershipEpochSignatureSnapshot())
 
     runtime.dispose()
     animationFrames.restore()
@@ -647,24 +754,26 @@ describe('WorkbookPaneRendererHostRuntimeV3', () => {
     const runtime = new WorkbookPaneRendererRuntimeV3(drawFrame)
     const dirtyPane = createDirtyTilePane()
 
-    runtime.updateState({
-      active: true,
-      backend: {},
-      headerPanes: [],
-      overlay: null,
-      overlayBuilder: null,
-      preloadTilePanes: [dirtyPane],
-      scrollTransformStore: null,
-      surface: {
-        dpr: 1,
-        height: 360,
-        pixelHeight: 360,
-        pixelWidth: 640,
-        width: 640,
-      },
-      tilePanes: [dirtyPane],
-      webGpuReady: true,
-    })
+    runtime.updateState(
+      withVisibleSceneProof({
+        active: true,
+        backend: {},
+        headerPanes: [],
+        overlay: null,
+        overlayBuilder: null,
+        preloadTilePanes: [dirtyPane],
+        scrollTransformStore: null,
+        surface: {
+          dpr: 1,
+          height: 360,
+          pixelHeight: 360,
+          pixelWidth: 640,
+          width: 640,
+        },
+        tilePanes: [dirtyPane],
+        webGpuReady: true,
+      }),
+    )
     runtime.requestDraw()
     animationFrames.flushNextFrame()
 

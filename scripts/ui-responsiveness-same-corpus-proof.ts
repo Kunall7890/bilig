@@ -13,7 +13,7 @@ import type {
 } from './ui-responsiveness-same-corpus-scorecard-proof.ts'
 
 const rootDir = resolve(new URL('..', import.meta.url).pathname)
-export const sameCorpusUiRenderProofContractVersion = 'same-corpus-ui-v3'
+export const sameCorpusUiRenderProofContractVersion = 'same-corpus-ui-v4'
 
 export interface SameCorpusScenarioProof {
   readonly biligMeanMs: number
@@ -153,6 +153,8 @@ function biligVisibleFrameInvalidReasons(proof: SameCorpusProductPixelGridProof,
   const tileSceneRevision = evidence.get('tileSceneRevision') ?? ''
   const frameProofSignature = evidence.get('frameProofSignature') ?? ''
   const presentedFrameProofSignature = evidence.get('presentedFrameProofSignature') ?? ''
+  const currentSceneEpochSignature = evidence.get('currentSceneEpochSignature') ?? ''
+  const presentedSceneEpochSignature = evidence.get('presentedSceneEpochSignature') ?? ''
   const currentSceneOwnershipSignature = evidence.get('currentSceneOwnershipSignature') ?? ''
   const presentedSceneOwnershipSignature = evidence.get('presentedSceneOwnershipSignature') ?? ''
   const currentContentSignature = evidence.get('currentContentSignature') ?? ''
@@ -200,8 +202,21 @@ function biligVisibleFrameInvalidReasons(proof: SameCorpusProductPixelGridProof,
   if (currentSceneOwnershipSignature.length === 0) {
     invalidReasons.push('current visible-scene ownership signature is missing')
   }
+  if (currentSceneEpochSignature.length === 0) {
+    invalidReasons.push('current visible-scene epoch signature is missing')
+  }
   if (presentedSceneOwnershipSignature.length === 0) {
     invalidReasons.push('presented visible-scene ownership signature is missing')
+  }
+  if (presentedSceneEpochSignature.length === 0) {
+    invalidReasons.push('presented visible-scene epoch signature is missing')
+  }
+  if (
+    currentSceneEpochSignature.length > 0 &&
+    presentedSceneEpochSignature.length > 0 &&
+    presentedSceneEpochSignature !== currentSceneEpochSignature
+  ) {
+    invalidReasons.push('presented visible-scene epoch does not match current authoritative scene')
   }
   if (
     currentSceneOwnershipSignature.length > 0 &&

@@ -1,11 +1,16 @@
 import type { GridGeometrySnapshot } from '../gridGeometry.js'
 import type { GridHeaderPaneState } from '../gridHeaderPanes.js'
 import type { GridCameraStore } from '../runtime/gridCameraStore.js'
+import type { GridRenderRevisionSnapshot } from '../grid-engine.js'
 import type { WorkbookGridScrollSnapshot, WorkbookGridScrollStore } from '../workbookGridScrollStore.js'
 import { GridDrawSchedulerV3 } from './draw-scheduler.js'
 import type { DynamicGridOverlayBatchV3 } from './dynamic-overlay-batch.js'
 import type { WorkbookRenderTilePaneState } from './render-tile-pane-state.js'
 import { drawWorkbookTypeGpuTileFrameV3, type WorkbookTypeGpuBackendV3 } from './typegpu-workbook-backend-v3.js'
+import {
+  resolveWorkbookPaneVisibleSceneProofV3,
+  type WorkbookPaneVisibleSceneOwnershipEpochV3,
+} from './workbook-pane-visible-scene-proof.js'
 
 export interface TypeGpuSurfaceSizeV3 {
   readonly width: number
@@ -26,9 +31,12 @@ export interface WorkbookPaneRendererRuntimeStateV3 {
   readonly overlay: DynamicGridOverlayBatchV3 | null
   readonly overlayBuilder: ((geometry: GridGeometrySnapshot) => DynamicGridOverlayBatchV3 | null | undefined) | null
   readonly preloadTilePanes: readonly WorkbookRenderTilePaneState[]
+  readonly renderRevisionSnapshot: GridRenderRevisionSnapshot | null
   readonly scrollTransformStore: WorkbookGridScrollStore | null
   readonly surface: TypeGpuSurfaceSizeV3
   readonly tilePanes: readonly WorkbookRenderTilePaneState[]
+  readonly visibleSceneOwnershipEpoch: WorkbookPaneVisibleSceneOwnershipEpochV3 | null
+  readonly visibleSceneOwnershipEpochSignature: string
   readonly visibleSceneOwnershipSignature: string
   readonly webGpuReady: boolean
 }
@@ -44,6 +52,7 @@ export interface WorkbookPaneFrameInputV3 {
   readonly syncPreloadPanes?: boolean | undefined
   readonly scrollSnapshot: WorkbookGridScrollSnapshot
   readonly surface: TypeGpuSurfaceSizeV3
+  readonly visibleSceneOwnershipEpochSignature: string
   readonly visibleSceneOwnershipSignature: string
 }
 
@@ -58,12 +67,16 @@ export interface WorkbookPanePresentedVisualFrameV3 {
   readonly scrollSnapshot: WorkbookGridScrollSnapshot
   readonly surface: TypeGpuSurfaceSizeV3
   readonly tilePanes: readonly WorkbookRenderTilePaneState[]
+  readonly visibleSceneOwnershipEpoch: WorkbookPaneVisibleSceneOwnershipEpochV3 | null
+  readonly visibleSceneOwnershipEpochSignature: string
   readonly visibleSceneOwnershipSignature: string
 }
 
 export interface WorkbookPaneFrameResultV3 {
   readonly frameProofSignature: string
   readonly submitted: boolean
+  readonly visibleSceneOwnershipEpoch: WorkbookPaneVisibleSceneOwnershipEpochV3 | null
+  readonly visibleSceneOwnershipEpochSignature: string
   readonly visibleSceneOwnershipSignature: string
   readonly visualFrame: WorkbookPanePresentedVisualFrameV3 | null
 }
@@ -103,9 +116,12 @@ const EMPTY_RUNTIME_STATE: WorkbookPaneRendererRuntimeStateV3 = Object.freeze({
   overlay: null,
   overlayBuilder: null,
   preloadTilePanes: [],
+  renderRevisionSnapshot: null,
   scrollTransformStore: null,
   surface: EMPTY_SURFACE_SIZE,
   tilePanes: [],
+  visibleSceneOwnershipEpoch: null,
+  visibleSceneOwnershipEpochSignature: '',
   visibleSceneOwnershipSignature: '',
   webGpuReady: false,
 })
@@ -238,6 +254,31 @@ export class WorkbookPaneRendererRuntimeV3 {
     })
     const frameProofSignature = state.frameProofSignature
     const visibleSceneOwnershipSignature = state.visibleSceneOwnershipSignature
+    const visibleSceneOwnershipEpochSignature = state.visibleSceneOwnershipEpochSignature
+    const liveVisibleSceneProof = resolveWorkbookPaneVisibleSceneProofV3({
+      drawText: state.drawText,
+      geometry: latestGeometry,
+      headerPanes: state.headerPanes,
+      overlay: overlayBatch ?? null,
+      renderRevisionSnapshot: state.renderRevisionSnapshot,
+      scrollSnapshot,
+      surface: state.surface,
+      tilePanes: state.tilePanes,
+    })
+    if (
+      liveVisibleSceneProof.ownershipSignature !== visibleSceneOwnershipSignature ||
+      liveVisibleSceneProof.ownershipEpochSignature !== visibleSceneOwnershipEpochSignature
+    ) {
+      this.frameResultListener?.({
+        frameProofSignature,
+        submitted: false,
+        visibleSceneOwnershipEpoch: liveVisibleSceneProof.ownershipEpoch,
+        visibleSceneOwnershipEpochSignature: liveVisibleSceneProof.ownershipEpochSignature,
+        visibleSceneOwnershipSignature: liveVisibleSceneProof.ownershipSignature,
+        visualFrame: null,
+      })
+      return
+    }
     const submitted =
       this.drawFrame({
         backend: state.backend,
@@ -250,11 +291,14 @@ export class WorkbookPaneRendererRuntimeV3 {
         surface: state.surface,
         syncPreloadPanes: frameDecision.syncPreloadPanes,
         tilePanes: state.tilePanes,
+        visibleSceneOwnershipEpochSignature,
         visibleSceneOwnershipSignature,
       }) === true
     this.frameResultListener?.({
       frameProofSignature,
       submitted,
+      visibleSceneOwnershipEpoch: liveVisibleSceneProof.ownershipEpoch,
+      visibleSceneOwnershipEpochSignature,
       visibleSceneOwnershipSignature,
       visualFrame: submitted
         ? {
@@ -268,6 +312,8 @@ export class WorkbookPaneRendererRuntimeV3 {
             scrollSnapshot: { ...scrollSnapshot },
             surface: { ...state.surface },
             tilePanes: [...state.tilePanes],
+            visibleSceneOwnershipEpoch: liveVisibleSceneProof.ownershipEpoch,
+            visibleSceneOwnershipEpochSignature,
             visibleSceneOwnershipSignature,
           }
         : null,

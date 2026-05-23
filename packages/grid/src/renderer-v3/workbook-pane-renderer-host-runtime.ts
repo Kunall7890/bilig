@@ -14,7 +14,11 @@ import {
   type WorkbookPaneFrameResultV3,
   type WorkbookPanePresentedVisualFrameV3,
 } from './workbook-pane-renderer-runtime.js'
-import { resolveWorkbookPaneVisibleSceneProofV3, type WorkbookPaneVisiblePayloadProofV3 } from './workbook-pane-visible-scene-proof.js'
+import {
+  resolveWorkbookPaneVisibleSceneProofV3,
+  type WorkbookPaneVisiblePayloadProofV3,
+  type WorkbookPaneVisibleSceneOwnershipEpochV3,
+} from './workbook-pane-visible-scene-proof.js'
 import {
   EMPTY_WORKBOOK_PANE_SURFACE_SNAPSHOT_V3,
   WorkbookPaneSurfaceRuntimeV3,
@@ -78,6 +82,8 @@ export class WorkbookPaneRendererHostRuntimeV3 {
   private payloadProof: WorkbookPaneVisiblePayloadProofV3 = EMPTY_VISIBLE_PAYLOAD_PROOF
   private presentedFrameProofSignature = ''
   private presentedPayloadProof: WorkbookPaneVisiblePayloadProofV3 = EMPTY_VISIBLE_PAYLOAD_PROOF
+  private presentedVisibleSceneOwnershipEpoch: WorkbookPaneVisibleSceneOwnershipEpochV3 | null = null
+  private presentedVisibleSceneOwnershipEpochSignature = ''
   private presentedVisibleSceneOwnershipSignature = ''
   private presentedVisualFrame: WorkbookPanePresentedVisualFrameV3 | null = null
   private props: WorkbookPaneRendererHostPropsV3 = EMPTY_HOST_PROPS
@@ -86,6 +92,8 @@ export class WorkbookPaneRendererHostRuntimeV3 {
   private surfaceSnapshot: WorkbookPaneSurfaceSnapshotV3 = EMPTY_WORKBOOK_PANE_SURFACE_SNAPSHOT_V3
   private readonly surfaceRuntime: WorkbookPaneSurfaceRuntimeV3
   private readonly unsubscribeSurface: () => void
+  private visibleSceneOwnershipEpoch: WorkbookPaneVisibleSceneOwnershipEpochV3 | null = null
+  private visibleSceneOwnershipEpochSignature = ''
   private visibleSceneOwnershipSignature = ''
 
   constructor(options: WorkbookPaneRendererHostRuntimeOptionsV3 = {}) {
@@ -124,8 +132,13 @@ export class WorkbookPaneRendererHostRuntimeV3 {
   readonly getPresentedRectSignatureSnapshot = (): string => this.presentedPayloadProof.rectSignature
   readonly getPresentedTextRunCountSnapshot = (): number => this.presentedPayloadProof.textRunCount
   readonly getPresentedTextSignatureSnapshot = (): string => this.presentedPayloadProof.textSignature
+  readonly getPresentedVisibleSceneOwnershipEpochSnapshot = (): WorkbookPaneVisibleSceneOwnershipEpochV3 | null =>
+    this.presentedVisibleSceneOwnershipEpoch
+  readonly getPresentedVisibleSceneOwnershipEpochSignatureSnapshot = (): string => this.presentedVisibleSceneOwnershipEpochSignature
   readonly getPresentedVisibleSceneOwnershipSignatureSnapshot = (): string => this.presentedVisibleSceneOwnershipSignature
   readonly getPresentedVisualFrameSnapshot = (): WorkbookPanePresentedVisualFrameV3 | null => this.presentedVisualFrame
+  readonly getVisibleSceneOwnershipEpochSnapshot = (): WorkbookPaneVisibleSceneOwnershipEpochV3 | null => this.visibleSceneOwnershipEpoch
+  readonly getVisibleSceneOwnershipEpochSignatureSnapshot = (): string => this.visibleSceneOwnershipEpochSignature
   readonly getVisibleSceneOwnershipSignatureSnapshot = (): string => this.visibleSceneOwnershipSignature
 
   readonly subscribeBackendStatus = (listener: () => void): (() => void) => {
@@ -201,9 +214,12 @@ export class WorkbookPaneRendererHostRuntimeV3 {
       overlay: this.props.overlay,
       overlayBuilder: this.props.overlayBuilder,
       preloadTilePanes: this.props.preloadTilePanes,
+      renderRevisionSnapshot: this.props.renderRevisionSnapshot,
       scrollTransformStore: this.props.scrollTransformStore,
       surface: this.surfaceSnapshot.surface,
       tilePanes: this.props.tilePanes,
+      visibleSceneOwnershipEpoch: this.visibleSceneOwnershipEpoch,
+      visibleSceneOwnershipEpochSignature: this.visibleSceneOwnershipEpochSignature,
       visibleSceneOwnershipSignature: this.visibleSceneOwnershipSignature,
       webGpuReady: this.surfaceSnapshot.webGpuReady,
     })
@@ -224,18 +240,23 @@ export class WorkbookPaneRendererHostRuntimeV3 {
   private handleFrameResult(result: WorkbookPaneFrameResultV3): void {
     const signature = result.frameProofSignature
     const sceneOwnershipSignature = result.visibleSceneOwnershipSignature
+    const sceneOwnershipEpochSignature = result.visibleSceneOwnershipEpochSignature
     if (
       !result.submitted ||
       !signature ||
       signature !== this.frameProofSignature ||
       !sceneOwnershipSignature ||
       sceneOwnershipSignature !== this.visibleSceneOwnershipSignature ||
+      !sceneOwnershipEpochSignature ||
+      sceneOwnershipEpochSignature !== this.visibleSceneOwnershipEpochSignature ||
       !result.visualFrame
     ) {
       return
     }
     this.setPresentedVisualFrame(result.visualFrame)
     this.setPresentedFrameProofSignature(signature)
+    this.setPresentedVisibleSceneOwnershipEpoch(result.visibleSceneOwnershipEpoch)
+    this.setPresentedVisibleSceneOwnershipEpochSignature(sceneOwnershipEpochSignature)
     this.setPresentedVisibleSceneOwnershipSignature(sceneOwnershipSignature)
     this.setPresentedPayloadProof(this.payloadProof)
     this.setHasPresentedFrame(true)
@@ -332,6 +353,8 @@ export class WorkbookPaneRendererHostRuntimeV3 {
     }
     if (!signature) {
       this.setPresentedFrameProofSignature('')
+      this.setPresentedVisibleSceneOwnershipEpoch(null)
+      this.setPresentedVisibleSceneOwnershipEpochSignature('')
       this.setPresentedVisibleSceneOwnershipSignature('')
       this.setPresentedPayloadProof(EMPTY_VISIBLE_PAYLOAD_PROOF)
       this.setPresentedVisualFrame(null)
@@ -341,6 +364,7 @@ export class WorkbookPaneRendererHostRuntimeV3 {
     }
     const hasPresentedCurrentSignature =
       this.presentedFrameProofSignature === signature &&
+      this.presentedVisibleSceneOwnershipEpochSignature === this.visibleSceneOwnershipEpochSignature &&
       this.presentedVisibleSceneOwnershipSignature === this.visibleSceneOwnershipSignature &&
       areVisiblePayloadProofsEqual(this.presentedPayloadProof, this.payloadProof)
     if (visibleSceneChanged && !hasPresentedCurrentSignature) {
@@ -353,10 +377,20 @@ export class WorkbookPaneRendererHostRuntimeV3 {
   }
 
   private setVisibleSceneProof(proof: {
+    readonly ownershipEpoch: WorkbookPaneVisibleSceneOwnershipEpochV3
+    readonly ownershipEpochSignature: string
     readonly ownershipSignature: string
     readonly payload: WorkbookPaneVisiblePayloadProofV3
   }): boolean {
     let changed = false
+    if (this.visibleSceneOwnershipEpochSignature !== proof.ownershipEpochSignature) {
+      this.visibleSceneOwnershipEpochSignature = proof.ownershipEpochSignature
+      changed = true
+    }
+    if (!areVisibleSceneOwnershipEpochsEqual(this.visibleSceneOwnershipEpoch, proof.ownershipEpoch)) {
+      this.visibleSceneOwnershipEpoch = proof.ownershipEpoch
+      changed = true
+    }
     if (this.visibleSceneOwnershipSignature !== proof.ownershipSignature) {
       this.visibleSceneOwnershipSignature = proof.ownershipSignature
       changed = true
@@ -369,6 +403,22 @@ export class WorkbookPaneRendererHostRuntimeV3 {
       this.emitFrameProofStatus()
     }
     return changed
+  }
+
+  private setPresentedVisibleSceneOwnershipEpoch(epoch: WorkbookPaneVisibleSceneOwnershipEpochV3 | null): void {
+    if (areVisibleSceneOwnershipEpochsEqual(this.presentedVisibleSceneOwnershipEpoch, epoch)) {
+      return
+    }
+    this.presentedVisibleSceneOwnershipEpoch = epoch
+    this.emitFrameProofStatus()
+  }
+
+  private setPresentedVisibleSceneOwnershipEpochSignature(signature: string): void {
+    if (this.presentedVisibleSceneOwnershipEpochSignature === signature) {
+      return
+    }
+    this.presentedVisibleSceneOwnershipEpochSignature = signature
+    this.emitFrameProofStatus()
   }
 
   private syncCanvasTarget(): void {
@@ -497,5 +547,25 @@ function areVisiblePayloadProofsEqual(left: WorkbookPaneVisiblePayloadProofV3, r
     left.rectSignature === right.rectSignature &&
     left.textRunCount === right.textRunCount &&
     left.textSignature === right.textSignature
+  )
+}
+
+function areVisibleSceneOwnershipEpochsEqual(
+  left: WorkbookPaneVisibleSceneOwnershipEpochV3 | null,
+  right: WorkbookPaneVisibleSceneOwnershipEpochV3 | null,
+): boolean {
+  if (left === right) {
+    return true
+  }
+  if (!left || !right) {
+    return false
+  }
+  return (
+    left.fillHandleRevision === right.fillHandleRevision &&
+    left.sceneEpoch === right.sceneEpoch &&
+    left.selectionRevision === right.selectionRevision &&
+    left.semanticMutationRevision === right.semanticMutationRevision &&
+    left.viewportRevision === right.viewportRevision &&
+    left.workbookRevision === right.workbookRevision
   )
 }

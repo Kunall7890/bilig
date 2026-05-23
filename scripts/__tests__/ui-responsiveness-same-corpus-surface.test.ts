@@ -18,6 +18,7 @@ const readyTypeGpuSurface: BiligRenderedSurfaceState = {
     authoritativeRenderRevision: 'rev-3',
     backendStatus: 'ready',
     currentContentSignature: 'content:current',
+    currentSceneEpochSignature: 'epoch:current',
     currentSceneOwnershipSignature: 'scene:current',
     currentRectCount: 88,
     currentRectSignature: 'rect:current',
@@ -33,6 +34,7 @@ const readyTypeGpuSurface: BiligRenderedSurfaceState = {
     pixelHeight: 600,
     pixelWidth: 1000,
     presentedContentSignature: 'content:current',
+    presentedSceneEpochSignature: 'epoch:current',
     presentedSceneOwnershipSignature: 'scene:current',
     presentedFrameProofSignature: 'frame-current',
     presentedHeaderPaneCount: 1,
@@ -151,6 +153,19 @@ describe('same-corpus Bilig rendered surface proof', () => {
 
     expect(readiness.ready).toBe(false)
     expect(readiness.gaps).toContain('presented visible-scene ownership does not match current scene')
+  })
+
+  it('rejects stale visible-scene epochs even when ownership payload signatures match', () => {
+    const readiness = biligRenderedSurfaceReadiness({
+      ...readyTypeGpuSurface,
+      typeGpu: {
+        ...readyTypeGpuSurface.typeGpu!,
+        presentedSceneEpochSignature: 'epoch:stale',
+      },
+    })
+
+    expect(readiness.ready).toBe(false)
+    expect(readiness.gaps).toContain('presented visible-scene epoch does not match current authoritative scene')
   })
 
   it('rejects a canvas that does not cover the workbook viewport', () => {
