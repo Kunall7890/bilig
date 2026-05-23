@@ -218,6 +218,8 @@ test('@browser-ci web app keeps dense accounting-sheet text payloads complete in
     gridFontSize: DEFAULT_WORKBOOK_CSS_FONT_SIZE,
     nativeTextFontFamilyStartsWithArial: true,
     nativeTextFontSizeIsDevicePixelAligned: true,
+    nativeTextGlyphAnchorXPixelAligned: true,
+    nativeTextViewportXPixelAligned: true,
     nativeTextViewportPixelAligned: true,
     nativeTextRendering: 'auto',
     nativeTextSmoothing: 'auto',
@@ -1116,6 +1118,8 @@ function readNativeTextQualityState(page: Page): () => Promise<{
   readonly nativeTextFontFamilyStartsWithArial: boolean
   readonly nativeTextFontSize: string | null
   readonly nativeTextFontSizeIsDevicePixelAligned: boolean
+  readonly nativeTextGlyphAnchorXPixelAligned: boolean
+  readonly nativeTextViewportXPixelAligned: boolean
   readonly nativeTextViewportPixelAligned: boolean
   readonly nativeTextRendering: string | null
   readonly nativeTextSmoothing: string | null
@@ -1123,13 +1127,24 @@ function readNativeTextQualityState(page: Page): () => Promise<{
   return async () =>
     await page.evaluate(() => {
       const grid = document.querySelector('[data-testid="sheet-grid"]')
-      const nativeTextRun = document.querySelector('[data-native-text-run] > div')
+      const nativeTextRun =
+        document.querySelector('[data-native-text-run-row]:not([data-native-text-run-row=""]) > div') ??
+        document.querySelector('[data-native-text-run] > div')
       const gridStyle = grid instanceof HTMLElement ? getComputedStyle(grid) : null
       const nativeTextStyle = nativeTextRun instanceof HTMLElement ? getComputedStyle(nativeTextRun) : null
       const nativeFontSize = nativeTextStyle ? Number.parseFloat(nativeTextStyle.fontSize) : Number.NaN
+      const nativePaddingLeft = nativeTextStyle ? Number.parseFloat(nativeTextStyle.paddingLeft) : Number.NaN
+      const nativePaddingRight = nativeTextStyle ? Number.parseFloat(nativeTextStyle.paddingRight) : Number.NaN
       const nativeTextRect = nativeTextRun instanceof HTMLElement ? nativeTextRun.getBoundingClientRect() : null
       const devicePixelRatio = window.devicePixelRatio || 1
+      const viewportX = nativeTextRect?.x ?? Number.NaN
       const viewportY = nativeTextRect?.y ?? Number.NaN
+      const glyphAnchorX =
+        nativeTextStyle?.textAlign === 'right'
+          ? viewportX + (nativeTextRect?.width ?? Number.NaN) - nativePaddingRight
+          : nativeTextStyle?.textAlign === 'center'
+            ? viewportX + (nativeTextRect?.width ?? Number.NaN) / 2 + (nativePaddingLeft - nativePaddingRight) / 2
+            : viewportX + nativePaddingLeft
       return {
         appTextRendering: getComputedStyle(document.body).textRendering,
         gridFontFamilyStartsWithArial: gridStyle?.fontFamily.startsWith('Arial') ?? false,
@@ -1139,6 +1154,10 @@ function readNativeTextQualityState(page: Page): () => Promise<{
         nativeTextFontSizeIsDevicePixelAligned:
           Number.isFinite(nativeFontSize) &&
           Math.abs(nativeFontSize * devicePixelRatio - Math.round(nativeFontSize * devicePixelRatio)) < 0.05,
+        nativeTextGlyphAnchorXPixelAligned:
+          Number.isFinite(glyphAnchorX) && Math.abs(glyphAnchorX * devicePixelRatio - Math.round(glyphAnchorX * devicePixelRatio)) < 0.05,
+        nativeTextViewportXPixelAligned:
+          Number.isFinite(viewportX) && Math.abs(viewportX * devicePixelRatio - Math.round(viewportX * devicePixelRatio)) < 0.05,
         nativeTextViewportPixelAligned:
           Number.isFinite(viewportY) && Math.abs(viewportY * devicePixelRatio - Math.round(viewportY * devicePixelRatio)) < 0.05,
         nativeTextRendering: nativeTextStyle?.textRendering ?? null,

@@ -1,5 +1,7 @@
 import type { GridGeometrySnapshot } from './gridGeometry.js'
 import type { Rectangle } from './gridTypes.js'
+import { getWorkbookDevicePixelRatio } from './workbookDevicePixelRatio.js'
+import { workbookSnapCssPixel } from './workbookTheme.js'
 
 export function applyEditorOverlayBounds(bounds: Rectangle, hostElement?: HTMLElement | null): void {
   if (typeof document === 'undefined') {
@@ -52,10 +54,27 @@ export function resolveEditorOverlayScreenBounds(input: {
   if (!localBounds || !hostBounds) {
     return null
   }
-  return {
+  return snapEditorOverlayScreenBounds({
     height: localBounds.height,
     width: localBounds.width,
     x: hostBounds.left + localBounds.x,
     y: hostBounds.top + localBounds.y,
+  })
+}
+
+export function snapEditorOverlayScreenBounds(bounds: Rectangle, dpr = getWorkbookDevicePixelRatio()): Rectangle {
+  const left = workbookSnapCssPixel(bounds.x, dpr)
+  const top = workbookSnapCssPixel(bounds.y, dpr)
+  const right = workbookSnapCssPixel(bounds.x + bounds.width, dpr)
+  const bottom = workbookSnapCssPixel(bounds.y + bounds.height, dpr)
+  return {
+    height: subtractSnappedCssPixels(bottom, top),
+    width: subtractSnappedCssPixels(right, left),
+    x: left,
+    y: top,
   }
+}
+
+function subtractSnappedCssPixels(end: number, start: number): number {
+  return Number(Math.max(0, end - start).toFixed(4))
 }

@@ -426,10 +426,12 @@ export function resolveNativeTextRunInnerStyleV3(input: {
   const baseHeight = visibleClip?.innerHeight ?? height
   const outerLeft = visibleClip?.outerLeft ?? 0
   const outerTop = visibleClip?.outerTop ?? 0
+  const textBoxLeftPosition = outerLeft + baseLeft
+  const textBoxLeft = baseLeft + snapCssViewportPixel(textBoxLeftPosition, dpr, viewportOffset, 'x') - textBoxLeftPosition
   const textAlign = input.run.align ?? 'left'
   const anchorOffset =
     textAlign === 'right' ? baseWidth - CELL_TEXT_PADDING_X : textAlign === 'center' ? baseWidth / 2 : CELL_TEXT_PADDING_X
-  const anchorPosition = outerLeft + baseLeft + anchorOffset
+  const anchorPosition = outerLeft + textBoxLeft + anchorOffset
   const anchorDelta = snapCssViewportPixel(anchorPosition, dpr, viewportOffset, 'x') - anchorPosition
   const paddingLeft = textAlign === 'left' || textAlign === 'center' ? CELL_TEXT_PADDING_X + anchorDelta : CELL_TEXT_PADDING_X
   const paddingRight = textAlign === 'right' || textAlign === 'center' ? CELL_TEXT_PADDING_X - anchorDelta : CELL_TEXT_PADDING_X
@@ -450,7 +452,7 @@ export function resolveNativeTextRunInnerStyleV3(input: {
     fontWeight: fontStyle.fontWeight,
     height: input.run.wrap ? Math.max(0, baseHeight + Math.abs(textTopDelta)) : lineBox.height,
     letterSpacing: 0,
-    left: baseLeft,
+    left: textBoxLeft,
     lineHeight: `${lineBox.height}px`,
     overflow: 'hidden',
     paddingLeft,

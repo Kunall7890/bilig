@@ -126,9 +126,10 @@ describe('WorkbookPaneNativeTextLayerV3', () => {
       run: createRun({ clipX: 8.2, clipY: 4.3 }),
       visibleClip,
     })
-    expect(Number(innerStyle.left)).toBeCloseTo(-8.1)
-    expect(Number(innerStyle.paddingLeft)).toBeCloseTo(8.1)
+    expect(Number(innerStyle.left)).toBeCloseTo(-8)
+    expect(Number(innerStyle.paddingLeft)).toBeCloseTo(8)
     expect(Number(innerStyle.top)).toBeCloseTo(-2)
+    expectDprAligned(visibleClip!.outerLeft + Number(innerStyle.left), dpr)
     expectDprAligned(visibleClip!.outerLeft + Number(innerStyle.left) + Number(innerStyle.paddingLeft), dpr)
     expectDprAligned(visibleClip!.outerTop + Number(innerStyle.top), dpr)
   })
@@ -148,8 +149,9 @@ describe('WorkbookPaneNativeTextLayerV3', () => {
       run: createRun({ align: 'right', clipX: 8.2, clipY: 4.3 }),
       visibleClip: rightClip,
     })
-    expect(Number(rightStyle.left)).toBeCloseTo(-8.1)
+    expect(Number(rightStyle.left)).toBeCloseTo(-8)
     expect(Number(rightStyle.width)).toBeCloseTo(98.2)
+    expectDprAligned(rightClip!.outerLeft + Number(rightStyle.left), 2)
     expectDprAligned(rightClip!.outerLeft + Number(rightStyle.left) + Number(rightStyle.width) - Number(rightStyle.paddingRight), 2)
 
     const centerClip = resolveNativeTextRunVisibleClipV3({
@@ -171,6 +173,29 @@ describe('WorkbookPaneNativeTextLayerV3', () => {
       Number(centerStyle.width) / 2 +
       (Number(centerStyle.paddingLeft) - Number(centerStyle.paddingRight)) / 2
     expectDprAligned(centerAnchor, 2)
+  })
+
+  test('aligns native text boxes and glyph anchors on fractional device pixel ratios', () => {
+    const dpr = 1.25
+    const viewportOffset = { x: 0, y: 86.1875 }
+    const run = createRun({
+      font: '400 13.3333px Arial, sans-serif',
+      fontSize: 13.3333,
+    })
+    const visibleClip = resolveNativeTextRunVisibleClipV3({
+      dpr,
+      pane: createPane(run),
+      run,
+      scrollSnapshot: { tx: 0, ty: 0 },
+      viewportOffset,
+    })
+    expect(visibleClip).not.toBeNull()
+
+    const innerStyle = resolveNativeTextRunInnerStyleV3({ dpr, run, visibleClip, viewportOffset })
+    const textBoxLeft = visibleClip!.outerLeft + Number(innerStyle.left)
+    const glyphAnchor = textBoxLeft + Number(innerStyle.paddingLeft)
+    expectDprAligned(textBoxLeft, dpr)
+    expectDprAligned(glyphAnchor, dpr)
   })
 
   test('uses native browser font rendering with spreadsheet numeric alignment', () => {
