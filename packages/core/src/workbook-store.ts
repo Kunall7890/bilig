@@ -1,38 +1,4 @@
-import type {
-  CellNumberFormatRecord,
-  CellStyleRecord,
-  CellRangeRef,
-  LiteralInput,
-  SheetFormatRangeSnapshot,
-  SheetStyleRangeSnapshot,
-  WorkbookAutoFilterSnapshot,
-  WorkbookAxisMetadataSnapshot,
-  WorkbookAxisEntrySnapshot,
-  WorkbookCalculationSettingsSnapshot,
-  WorkbookChartSnapshot,
-  WorkbookConditionalFormatSnapshot,
-  WorkbookDrawingArtifactsSnapshot,
-  WorkbookSheetConditionalFormatArtifactsSnapshot,
-  WorkbookSheetDrawingArtifactsSnapshot,
-  WorkbookDataValidationSnapshot,
-  WorkbookDefinedNameValueSnapshot,
-  WorkbookFreezePaneSnapshot,
-  WorkbookHyperlinkSnapshot,
-  WorkbookExternalLinkArtifactsSnapshot,
-  WorkbookImageSnapshot,
-  WorkbookMacroPayloadSnapshot,
-  WorkbookNoteSnapshot,
-  WorkbookProtectionSnapshot,
-  WorkbookRangeProtectionSnapshot,
-  WorkbookSheetProtectionSnapshot,
-  WorkbookSheetFormatPrSnapshot,
-  WorkbookSheetTabColorSnapshot,
-  WorkbookSheetVisibilitySnapshot,
-  WorkbookPivotSnapshot,
-  WorkbookShapeSnapshot,
-  WorkbookTableSnapshot,
-  WorkbookVolatileContextSnapshot,
-} from '@bilig/protocol'
+import type * as Protocol from '@bilig/protocol'
 import type { StructuralAxisTransform } from '@bilig/formula'
 import type { SheetGridAxisRemapScope } from './sheet-grid.js'
 import { CellStore } from './cell-store.js'
@@ -99,6 +65,7 @@ import { WORKBOOK_DEFAULT_FORMAT_ID, WORKBOOK_DEFAULT_STYLE_ID, ensureWorkbookDe
 import { createCellKeyIndexMap } from './workbook-cell-key-index.js'
 import { WorkbookCellRecordStore, type EnsuredCell } from './workbook-cell-record-store.js'
 import { WorkbookAxisEntryStore } from './workbook-axis-entry-store.js'
+import { WorkbookAxisMetadataStore, type WorkbookAxisGeometryPatch } from './workbook-axis-metadata-store.js'
 import { WorkbookColumnVersionStore } from './workbook-column-version-store.js'
 import { WorkbookIdAllocator } from './workbook-id-allocator.js'
 import type { SheetRecord } from './workbook-sheet-record.js'
@@ -130,6 +97,7 @@ export class WorkbookStore extends WorkbookStoreCommentAccessors {
   private readonly sheetRegistry: WorkbookSheetRegistryStore
   private readonly cellRecordStore: WorkbookCellRecordStore
   private readonly axisEntryStore: WorkbookAxisEntryStore
+  private readonly axisMetadataStore: WorkbookAxisMetadataStore
   private readonly columnVersionStore: WorkbookColumnVersionStore
   private readonly structuralCellStore: WorkbookStructuralCellStore
   private readonly structuralAxisOperations: WorkbookStructuralAxisOperations
@@ -170,6 +138,12 @@ export class WorkbookStore extends WorkbookStoreCommentAccessors {
     this.axisEntryStore = new WorkbookAxisEntryStore({
       counters: this.counters,
       createAxisEntry: (axis) => this.idAllocator.createAxisEntry(axis),
+    })
+    this.axisMetadataStore = new WorkbookAxisMetadataStore({
+      axisEntryStore: this.axisEntryStore,
+      metadata: this.metadata,
+      getSheet: (sheetName) => this.getSheet(sheetName),
+      getOrCreateSheet: (sheetName) => this.getOrCreateSheet(sheetName),
     })
     this.columnVersionStore = new WorkbookColumnVersionStore({
       cellStore: this.cellStore,
@@ -338,7 +312,7 @@ export class WorkbookStore extends WorkbookStoreCommentAccessors {
     return this.cellFormats.get(index)
   }
 
-  upsertCellStyle(style: CellStyleRecord): WorkbookCellStyleRecord {
+  upsertCellStyle(style: Protocol.CellStyleRecord): WorkbookCellStyleRecord {
     return storeCellStyle(this, style, (id) => this.idAllocator.bumpStyleId(id))
   }
 
@@ -354,11 +328,11 @@ export class WorkbookStore extends WorkbookStoreCommentAccessors {
     return listWorkbookCellStyles(this)
   }
 
-  upsertCellNumberFormat(format: CellNumberFormatRecord): WorkbookCellNumberFormatRecord {
+  upsertCellNumberFormat(format: Protocol.CellNumberFormatRecord): WorkbookCellNumberFormatRecord {
     return storeCellNumberFormat(this, format, (id) => this.idAllocator.bumpFormatId(id))
   }
 
-  internCellNumberFormat(format: string | CellNumberFormatRecord): WorkbookCellNumberFormatRecord {
+  internCellNumberFormat(format: string | Protocol.CellNumberFormatRecord): WorkbookCellNumberFormatRecord {
     return internWorkbookCellNumberFormat(this, format, WorkbookStore.defaultFormatId)
   }
 
@@ -370,7 +344,7 @@ export class WorkbookStore extends WorkbookStoreCommentAccessors {
     return listWorkbookCellNumberFormats(this)
   }
 
-  setStyleRange(range: CellRangeRef, styleId: string): WorkbookStyleRangeRecord {
+  setStyleRange(range: Protocol.CellRangeRef, styleId: string): WorkbookStyleRangeRecord {
     return storeStyleRange(this, this.getOrCreateSheet(range.sheetName), range, styleId, WorkbookStore.defaultStyleId)
   }
 
@@ -386,7 +360,7 @@ export class WorkbookStore extends WorkbookStoreCommentAccessors {
     return listWorkbookStyleRanges(this.getSheet(sheetName))
   }
 
-  setStyleRanges(sheetName: string, ranges: readonly SheetStyleRangeSnapshot[]): WorkbookStyleRangeRecord[] {
+  setStyleRanges(sheetName: string, ranges: readonly Protocol.SheetStyleRangeSnapshot[]): WorkbookStyleRangeRecord[] {
     return replaceStyleRanges(this, this.getOrCreateSheet(sheetName), ranges)
   }
 
@@ -394,7 +368,7 @@ export class WorkbookStore extends WorkbookStoreCommentAccessors {
     return readStyleId(this.getSheet(sheetName), row, col, WorkbookStore.defaultStyleId)
   }
 
-  setFormatRange(range: CellRangeRef, formatId: string): WorkbookFormatRangeRecord {
+  setFormatRange(range: Protocol.CellRangeRef, formatId: string): WorkbookFormatRangeRecord {
     return storeFormatRange(this, this.getOrCreateSheet(range.sheetName), range, formatId, WorkbookStore.defaultFormatId)
   }
 
@@ -402,7 +376,7 @@ export class WorkbookStore extends WorkbookStoreCommentAccessors {
     return listWorkbookFormatRanges(this.getSheet(sheetName))
   }
 
-  setFormatRanges(sheetName: string, ranges: readonly SheetFormatRangeSnapshot[]): WorkbookFormatRangeRecord[] {
+  setFormatRanges(sheetName: string, ranges: readonly Protocol.SheetFormatRangeSnapshot[]): WorkbookFormatRangeRecord[] {
     return replaceFormatRanges(this, this.getOrCreateSheet(sheetName), ranges)
   }
 
@@ -410,7 +384,7 @@ export class WorkbookStore extends WorkbookStoreCommentAccessors {
     return readRangeFormatId(this.getSheet(sheetName), row, col, WorkbookStore.defaultFormatId)
   }
 
-  setWorkbookProperty(key: string, value: LiteralInput): WorkbookPropertyRecord | undefined {
+  setWorkbookProperty(key: string, value: Protocol.LiteralInput): WorkbookPropertyRecord | undefined {
     return runWorkbookMetadataEffect(this.metadataService.setWorkbookProperty(key, value))
   }
 
@@ -422,7 +396,7 @@ export class WorkbookStore extends WorkbookStoreCommentAccessors {
     return runWorkbookMetadataEffect(this.metadataService.listWorkbookProperties())
   }
 
-  setWorkbookProtection(record: WorkbookProtectionSnapshot): WorkbookProtectionRecord {
+  setWorkbookProtection(record: Protocol.WorkbookProtectionSnapshot): WorkbookProtectionRecord {
     return runWorkbookMetadataEffect(this.metadataService.setWorkbookProtection(record))
   }
 
@@ -430,7 +404,7 @@ export class WorkbookStore extends WorkbookStoreCommentAccessors {
     return runWorkbookMetadataEffect(this.metadataService.getWorkbookProtection())
   }
 
-  setMacroPayload(record: WorkbookMacroPayloadSnapshot): WorkbookMacroPayloadRecord {
+  setMacroPayload(record: Protocol.WorkbookMacroPayloadSnapshot): WorkbookMacroPayloadRecord {
     return runWorkbookMetadataEffect(this.metadataService.setMacroPayload(record))
   }
 
@@ -438,7 +412,7 @@ export class WorkbookStore extends WorkbookStoreCommentAccessors {
     return runWorkbookMetadataEffect(this.metadataService.listMacroPayloads())
   }
 
-  setCalculationSettings(settings: WorkbookCalculationSettingsSnapshot): WorkbookCalculationSettingsRecord {
+  setCalculationSettings(settings: Protocol.WorkbookCalculationSettingsSnapshot): WorkbookCalculationSettingsRecord {
     return runWorkbookMetadataEffect(this.metadataService.setCalculationSettings(settings))
   }
 
@@ -446,7 +420,7 @@ export class WorkbookStore extends WorkbookStoreCommentAccessors {
     return runWorkbookMetadataEffect(this.metadataService.getCalculationSettings())
   }
 
-  setVolatileContext(context: WorkbookVolatileContextSnapshot): WorkbookVolatileContextRecord {
+  setVolatileContext(context: Protocol.WorkbookVolatileContextSnapshot): WorkbookVolatileContextRecord {
     return runWorkbookMetadataEffect(this.metadataService.setVolatileContext(context))
   }
 
@@ -454,7 +428,7 @@ export class WorkbookStore extends WorkbookStoreCommentAccessors {
     return runWorkbookMetadataEffect(this.metadataService.getVolatileContext())
   }
 
-  setDrawingArtifacts(artifacts: WorkbookDrawingArtifactsSnapshot): WorkbookDrawingArtifactsRecord {
+  setDrawingArtifacts(artifacts: Protocol.WorkbookDrawingArtifactsSnapshot): WorkbookDrawingArtifactsRecord {
     return runWorkbookMetadataEffect(this.metadataService.setDrawingArtifacts(artifacts))
   }
 
@@ -466,7 +440,7 @@ export class WorkbookStore extends WorkbookStoreCommentAccessors {
     return runWorkbookMetadataEffect(this.metadataService.clearDrawingArtifacts())
   }
 
-  setExternalLinkArtifacts(artifacts: WorkbookExternalLinkArtifactsSnapshot): WorkbookExternalLinkArtifactsRecord {
+  setExternalLinkArtifacts(artifacts: Protocol.WorkbookExternalLinkArtifactsSnapshot): WorkbookExternalLinkArtifactsRecord {
     return runWorkbookMetadataEffect(this.metadataService.setExternalLinkArtifacts(artifacts))
   }
 
@@ -478,7 +452,7 @@ export class WorkbookStore extends WorkbookStoreCommentAccessors {
     return runWorkbookMetadataEffect(this.metadataService.clearExternalLinkArtifacts())
   }
 
-  setDefinedName(name: string, value: WorkbookDefinedNameValueSnapshot, scopeSheetName?: string): WorkbookDefinedNameRecord {
+  setDefinedName(name: string, value: Protocol.WorkbookDefinedNameValueSnapshot, scopeSheetName?: string): WorkbookDefinedNameRecord {
     return runWorkbookMetadataEffect(this.metadataService.setDefinedName(name, value, scopeSheetName))
   }
 
@@ -494,7 +468,7 @@ export class WorkbookStore extends WorkbookStoreCommentAccessors {
     return runWorkbookMetadataEffect(this.metadataService.listDefinedNames())
   }
 
-  setTable(record: WorkbookTableSnapshot): WorkbookTableRecord {
+  setTable(record: Protocol.WorkbookTableSnapshot): WorkbookTableRecord {
     return runWorkbookMetadataEffect(this.metadataService.setTable(record))
   }
 
@@ -520,30 +494,18 @@ export class WorkbookStore extends WorkbookStoreCommentAccessors {
     count: number,
     size: number | null,
     hidden: boolean | null,
-    geometry?: Omit<WorkbookAxisMetadataSnapshot, 'start' | 'count' | 'size' | 'hidden' | 'filterHidden'>,
+    geometry?: WorkbookAxisGeometryPatch,
     filterHidden?: boolean | null,
   ): WorkbookAxisMetadataRecord | undefined {
-    return this.axisEntryStore.setAxisMetadata(
-      this.getOrCreateSheet(sheetName),
-      'row',
-      this.metadata.rowMetadata,
-      sheetName,
-      start,
-      count,
-      size,
-      hidden,
-      geometry,
-      filterHidden,
-    )
+    return this.axisMetadataStore.setRowMetadata(sheetName, start, count, size, hidden, geometry, filterHidden)
   }
 
   getRowMetadata(sheetName: string, start: number, count: number): WorkbookAxisMetadataRecord | undefined {
-    const sheet = this.getSheet(sheetName)
-    return sheet ? this.axisEntryStore.getAxisMetadataRecord(sheet, 'row', sheetName, start, count) : undefined
+    return this.axisMetadataStore.getRowMetadata(sheetName, start, count)
   }
 
   listRowMetadata(sheetName: string): WorkbookAxisMetadataRecord[] {
-    return this.axisEntryStore.listAxisMetadata(this.getSheet(sheetName), this.metadata.rowMetadata, sheetName, 'row')
+    return this.axisMetadataStore.listRowMetadata(sheetName)
   }
 
   setColumnMetadata(
@@ -552,42 +514,30 @@ export class WorkbookStore extends WorkbookStoreCommentAccessors {
     count: number,
     size: number | null,
     hidden: boolean | null,
-    geometry?: Omit<WorkbookAxisMetadataSnapshot, 'start' | 'count' | 'size' | 'hidden' | 'filterHidden'>,
+    geometry?: WorkbookAxisGeometryPatch,
     filterHidden?: boolean | null,
   ): WorkbookAxisMetadataRecord | undefined {
-    return this.axisEntryStore.setAxisMetadata(
-      this.getOrCreateSheet(sheetName),
-      'column',
-      this.metadata.columnMetadata,
-      sheetName,
-      start,
-      count,
-      size,
-      hidden,
-      geometry,
-      filterHidden,
-    )
+    return this.axisMetadataStore.setColumnMetadata(sheetName, start, count, size, hidden, geometry, filterHidden)
   }
 
   getColumnMetadata(sheetName: string, start: number, count: number): WorkbookAxisMetadataRecord | undefined {
-    const sheet = this.getSheet(sheetName)
-    return sheet ? this.axisEntryStore.getAxisMetadataRecord(sheet, 'column', sheetName, start, count) : undefined
+    return this.axisMetadataStore.getColumnMetadata(sheetName, start, count)
   }
 
   listColumnMetadata(sheetName: string): WorkbookAxisMetadataRecord[] {
-    return this.axisEntryStore.listAxisMetadata(this.getSheet(sheetName), this.metadata.columnMetadata, sheetName, 'column')
+    return this.axisMetadataStore.listColumnMetadata(sheetName)
   }
 
-  setSheetFormatPr(sheetName: string, sheetFormatPr: WorkbookSheetFormatPrSnapshot): void {
+  setSheetFormatPr(sheetName: string, sheetFormatPr: Protocol.WorkbookSheetFormatPrSnapshot): void {
     this.getOrCreateSheet(sheetName).sheetFormatPr = structuredClone(sheetFormatPr)
   }
 
-  getSheetFormatPr(sheetName: string): WorkbookSheetFormatPrSnapshot | undefined {
+  getSheetFormatPr(sheetName: string): Protocol.WorkbookSheetFormatPrSnapshot | undefined {
     const sheetFormatPr = this.getSheet(sheetName)?.sheetFormatPr
     return sheetFormatPr ? structuredClone(sheetFormatPr) : undefined
   }
 
-  setSheetVisibility(sheetName: string, visibility: WorkbookSheetVisibilitySnapshot | undefined): void {
+  setSheetVisibility(sheetName: string, visibility: Protocol.WorkbookSheetVisibilitySnapshot | undefined): void {
     const sheet = this.getOrCreateSheet(sheetName)
     if (visibility === undefined) {
       delete sheet.visibility
@@ -596,39 +546,39 @@ export class WorkbookStore extends WorkbookStoreCommentAccessors {
     sheet.visibility = visibility
   }
 
-  getSheetVisibility(sheetName: string): WorkbookSheetVisibilitySnapshot | undefined {
+  getSheetVisibility(sheetName: string): Protocol.WorkbookSheetVisibilitySnapshot | undefined {
     return this.getSheet(sheetName)?.visibility
   }
 
-  listRowAxisEntries(sheetName: string): WorkbookAxisEntrySnapshot[] {
+  listRowAxisEntries(sheetName: string): Protocol.WorkbookAxisEntrySnapshot[] {
     return this.axisEntryStore.listAxisEntries(this.getSheet(sheetName), 'row')
   }
 
-  listColumnAxisEntries(sheetName: string): WorkbookAxisEntrySnapshot[] {
+  listColumnAxisEntries(sheetName: string): Protocol.WorkbookAxisEntrySnapshot[] {
     return this.axisEntryStore.listAxisEntries(this.getSheet(sheetName), 'column')
   }
 
-  snapshotRowAxisEntries(sheetName: string, start: number, count: number): WorkbookAxisEntrySnapshot[] {
+  snapshotRowAxisEntries(sheetName: string, start: number, count: number): Protocol.WorkbookAxisEntrySnapshot[] {
     return this.axisEntryStore.snapshotAxisEntriesInRange(this.getSheet(sheetName), 'row', start, count)
   }
 
-  snapshotColumnAxisEntries(sheetName: string, start: number, count: number): WorkbookAxisEntrySnapshot[] {
+  snapshotColumnAxisEntries(sheetName: string, start: number, count: number): Protocol.WorkbookAxisEntrySnapshot[] {
     return this.axisEntryStore.snapshotAxisEntriesInRange(this.getSheet(sheetName), 'column', start, count)
   }
 
-  materializeRowAxisEntries(sheetName: string, start: number, count: number): WorkbookAxisEntrySnapshot[] {
+  materializeRowAxisEntries(sheetName: string, start: number, count: number): Protocol.WorkbookAxisEntrySnapshot[] {
     return this.axisEntryStore.materializeAxisEntries(this.getOrCreateSheet(sheetName), 'row', start, count)
   }
 
-  materializeColumnAxisEntries(sheetName: string, start: number, count: number): WorkbookAxisEntrySnapshot[] {
+  materializeColumnAxisEntries(sheetName: string, start: number, count: number): Protocol.WorkbookAxisEntrySnapshot[] {
     return this.axisEntryStore.materializeAxisEntries(this.getOrCreateSheet(sheetName), 'column', start, count)
   }
 
-  insertRows(sheetName: string, start: number, count: number, entries?: readonly WorkbookAxisEntrySnapshot[]): void {
+  insertRows(sheetName: string, start: number, count: number, entries?: readonly Protocol.WorkbookAxisEntrySnapshot[]): void {
     this.structuralAxisOperations.insert('row', sheetName, start, count, entries)
   }
 
-  deleteRows(sheetName: string, start: number, count: number): WorkbookAxisEntrySnapshot[] {
+  deleteRows(sheetName: string, start: number, count: number): Protocol.WorkbookAxisEntrySnapshot[] {
     return this.structuralAxisOperations.delete('row', sheetName, start, count)
   }
 
@@ -636,11 +586,11 @@ export class WorkbookStore extends WorkbookStoreCommentAccessors {
     this.structuralAxisOperations.move('row', sheetName, start, count, target)
   }
 
-  insertColumns(sheetName: string, start: number, count: number, entries?: readonly WorkbookAxisEntrySnapshot[]): void {
+  insertColumns(sheetName: string, start: number, count: number, entries?: readonly Protocol.WorkbookAxisEntrySnapshot[]): void {
     this.structuralAxisOperations.insert('column', sheetName, start, count, entries)
   }
 
-  deleteColumns(sheetName: string, start: number, count: number): WorkbookAxisEntrySnapshot[] {
+  deleteColumns(sheetName: string, start: number, count: number): Protocol.WorkbookAxisEntrySnapshot[] {
     return this.structuralAxisOperations.delete('column', sheetName, start, count)
   }
 
@@ -652,7 +602,7 @@ export class WorkbookStore extends WorkbookStoreCommentAccessors {
     sheetName: string,
     rows: number,
     cols: number,
-    options?: Pick<WorkbookFreezePaneSnapshot, 'topLeftCell' | 'activePane'>,
+    options?: Pick<Protocol.WorkbookFreezePaneSnapshot, 'topLeftCell' | 'activePane'>,
   ): WorkbookFreezePaneRecord {
     return runWorkbookMetadataEffect(this.metadataService.setFreezePane(sheetName, rows, cols, options))
   }
@@ -665,7 +615,7 @@ export class WorkbookStore extends WorkbookStoreCommentAccessors {
     return runWorkbookMetadataEffect(this.metadataService.clearFreezePane(sheetName))
   }
 
-  setSheetTabColor(sheetName: string, tabColor: WorkbookSheetTabColorSnapshot): WorkbookSheetTabColorRecord {
+  setSheetTabColor(sheetName: string, tabColor: Protocol.WorkbookSheetTabColorSnapshot): WorkbookSheetTabColorRecord {
     return runWorkbookMetadataEffect(this.metadataService.setSheetTabColor(sheetName, tabColor))
   }
 
@@ -677,11 +627,11 @@ export class WorkbookStore extends WorkbookStoreCommentAccessors {
     return runWorkbookMetadataEffect(this.metadataService.clearSheetTabColor(sheetName))
   }
 
-  setMergeRange(range: CellRangeRef): WorkbookMergeRangeRecord {
+  setMergeRange(range: Protocol.CellRangeRef): WorkbookMergeRangeRecord {
     return runWorkbookMetadataEffect(this.metadataService.setMergeRange(range))
   }
 
-  setMergeRanges(sheetName: string, ranges: readonly CellRangeRef[]): WorkbookMergeRangeRecord[] {
+  setMergeRanges(sheetName: string, ranges: readonly Protocol.CellRangeRef[]): WorkbookMergeRangeRecord[] {
     return runWorkbookMetadataEffect(this.metadataService.setMergeRanges(sheetName, ranges))
   }
 
@@ -689,11 +639,11 @@ export class WorkbookStore extends WorkbookStoreCommentAccessors {
     return runWorkbookMetadataEffect(this.metadataService.getMergeRange(sheetName, address))
   }
 
-  getMergeRangeByRange(range: CellRangeRef): WorkbookMergeRangeRecord | undefined {
+  getMergeRangeByRange(range: Protocol.CellRangeRef): WorkbookMergeRangeRecord | undefined {
     return runWorkbookMetadataEffect(this.metadataService.getMergeRangeByRange(range))
   }
 
-  clearMergeRanges(range: CellRangeRef): WorkbookMergeRangeRecord[] {
+  clearMergeRanges(range: Protocol.CellRangeRef): WorkbookMergeRangeRecord[] {
     return runWorkbookMetadataEffect(this.metadataService.clearMergeRanges(range))
   }
 
@@ -701,7 +651,7 @@ export class WorkbookStore extends WorkbookStoreCommentAccessors {
     return runWorkbookMetadataEffect(this.metadataService.listMergeRanges(sheetName))
   }
 
-  setSheetProtection(record: WorkbookSheetProtectionSnapshot): WorkbookSheetProtectionRecord {
+  setSheetProtection(record: Protocol.WorkbookSheetProtectionSnapshot): WorkbookSheetProtectionRecord {
     return runWorkbookMetadataEffect(this.metadataService.setSheetProtection(record))
   }
 
@@ -713,15 +663,15 @@ export class WorkbookStore extends WorkbookStoreCommentAccessors {
     return runWorkbookMetadataEffect(this.metadataService.clearSheetProtection(sheetName))
   }
 
-  setFilter(sheetName: string, range: WorkbookAutoFilterSnapshot): WorkbookFilterRecord {
+  setFilter(sheetName: string, range: Protocol.WorkbookAutoFilterSnapshot): WorkbookFilterRecord {
     return runWorkbookMetadataEffect(this.metadataService.setFilter(sheetName, range))
   }
 
-  getFilter(sheetName: string, range: CellRangeRef): WorkbookFilterRecord | undefined {
+  getFilter(sheetName: string, range: Protocol.CellRangeRef): WorkbookFilterRecord | undefined {
     return runWorkbookMetadataEffect(this.metadataService.getFilter(sheetName, range))
   }
 
-  deleteFilter(sheetName: string, range: CellRangeRef): boolean {
+  deleteFilter(sheetName: string, range: Protocol.CellRangeRef): boolean {
     return runWorkbookMetadataEffect(this.metadataService.deleteFilter(sheetName, range))
   }
 
@@ -729,15 +679,15 @@ export class WorkbookStore extends WorkbookStoreCommentAccessors {
     return runWorkbookMetadataEffect(this.metadataService.listFilters(sheetName))
   }
 
-  setSort(sheetName: string, range: CellRangeRef, keys: readonly WorkbookSortKeyRecord[]): WorkbookSortRecord {
+  setSort(sheetName: string, range: Protocol.CellRangeRef, keys: readonly WorkbookSortKeyRecord[]): WorkbookSortRecord {
     return runWorkbookMetadataEffect(this.metadataService.setSort(sheetName, range, keys))
   }
 
-  getSort(sheetName: string, range: CellRangeRef): WorkbookSortRecord | undefined {
+  getSort(sheetName: string, range: Protocol.CellRangeRef): WorkbookSortRecord | undefined {
     return runWorkbookMetadataEffect(this.metadataService.getSort(sheetName, range))
   }
 
-  deleteSort(sheetName: string, range: CellRangeRef): boolean {
+  deleteSort(sheetName: string, range: Protocol.CellRangeRef): boolean {
     return runWorkbookMetadataEffect(this.metadataService.deleteSort(sheetName, range))
   }
 
@@ -745,15 +695,15 @@ export class WorkbookStore extends WorkbookStoreCommentAccessors {
     return runWorkbookMetadataEffect(this.metadataService.listSorts(sheetName))
   }
 
-  setDataValidation(record: WorkbookDataValidationSnapshot): WorkbookDataValidationRecord {
+  setDataValidation(record: Protocol.WorkbookDataValidationSnapshot): WorkbookDataValidationRecord {
     return runWorkbookMetadataEffect(this.metadataService.setDataValidation(record))
   }
 
-  getDataValidation(sheetName: string, range: CellRangeRef): WorkbookDataValidationRecord | undefined {
+  getDataValidation(sheetName: string, range: Protocol.CellRangeRef): WorkbookDataValidationRecord | undefined {
     return runWorkbookMetadataEffect(this.metadataService.getDataValidation(sheetName, range))
   }
 
-  deleteDataValidation(sheetName: string, range: CellRangeRef): boolean {
+  deleteDataValidation(sheetName: string, range: Protocol.CellRangeRef): boolean {
     return runWorkbookMetadataEffect(this.metadataService.deleteDataValidation(sheetName, range))
   }
 
@@ -761,7 +711,7 @@ export class WorkbookStore extends WorkbookStoreCommentAccessors {
     return runWorkbookMetadataEffect(this.metadataService.listDataValidations(sheetName))
   }
 
-  setConditionalFormat(record: WorkbookConditionalFormatSnapshot): WorkbookConditionalFormatRecord {
+  setConditionalFormat(record: Protocol.WorkbookConditionalFormatSnapshot): WorkbookConditionalFormatRecord {
     return runWorkbookMetadataEffect(this.metadataService.setConditionalFormat(record))
   }
 
@@ -779,7 +729,7 @@ export class WorkbookStore extends WorkbookStoreCommentAccessors {
 
   setConditionalFormatArtifacts(
     sheetName: string,
-    artifacts: WorkbookSheetConditionalFormatArtifactsSnapshot,
+    artifacts: Protocol.WorkbookSheetConditionalFormatArtifactsSnapshot,
   ): WorkbookSheetConditionalFormatArtifactsRecord {
     return runWorkbookMetadataEffect(this.metadataService.setConditionalFormatArtifacts(sheetName, artifacts))
   }
@@ -792,7 +742,10 @@ export class WorkbookStore extends WorkbookStoreCommentAccessors {
     return runWorkbookMetadataEffect(this.metadataService.deleteConditionalFormatArtifacts(sheetName))
   }
 
-  setSheetDrawingArtifacts(sheetName: string, artifacts: WorkbookSheetDrawingArtifactsSnapshot): WorkbookSheetDrawingArtifactsRecord {
+  setSheetDrawingArtifacts(
+    sheetName: string,
+    artifacts: Protocol.WorkbookSheetDrawingArtifactsSnapshot,
+  ): WorkbookSheetDrawingArtifactsRecord {
     return runWorkbookMetadataEffect(this.metadataService.setSheetDrawingArtifacts(sheetName, artifacts))
   }
 
@@ -804,7 +757,7 @@ export class WorkbookStore extends WorkbookStoreCommentAccessors {
     return runWorkbookMetadataEffect(this.metadataService.deleteSheetDrawingArtifacts(sheetName))
   }
 
-  setRangeProtection(record: WorkbookRangeProtectionSnapshot): WorkbookRangeProtectionRecord {
+  setRangeProtection(record: Protocol.WorkbookRangeProtectionSnapshot): WorkbookRangeProtectionRecord {
     return runWorkbookMetadataEffect(this.metadataService.setRangeProtection(record))
   }
 
@@ -820,7 +773,7 @@ export class WorkbookStore extends WorkbookStoreCommentAccessors {
     return runWorkbookMetadataEffect(this.metadataService.listRangeProtections(sheetName))
   }
 
-  setNote(record: WorkbookNoteSnapshot): WorkbookNoteRecord {
+  setNote(record: Protocol.WorkbookNoteSnapshot): WorkbookNoteRecord {
     return runWorkbookMetadataEffect(this.metadataService.setNote(record))
   }
 
@@ -836,7 +789,7 @@ export class WorkbookStore extends WorkbookStoreCommentAccessors {
     return runWorkbookMetadataEffect(this.metadataService.listNotes(sheetName))
   }
 
-  setHyperlink(record: WorkbookHyperlinkSnapshot): WorkbookHyperlinkRecord {
+  setHyperlink(record: Protocol.WorkbookHyperlinkSnapshot): WorkbookHyperlinkRecord {
     return runWorkbookMetadataEffect(this.metadataService.setHyperlink(record))
   }
 
@@ -868,7 +821,7 @@ export class WorkbookStore extends WorkbookStoreCommentAccessors {
     return runWorkbookMetadataEffect(this.metadataService.listSpills())
   }
 
-  setPivot(record: WorkbookPivotSnapshot): WorkbookPivotRecord {
+  setPivot(record: Protocol.WorkbookPivotSnapshot): WorkbookPivotRecord {
     return runWorkbookMetadataEffect(this.metadataService.setPivot(record))
   }
 
@@ -892,7 +845,7 @@ export class WorkbookStore extends WorkbookStoreCommentAccessors {
     return runWorkbookMetadataEffect(this.metadataService.listPivots())
   }
 
-  setChart(record: WorkbookChartSnapshot): WorkbookChartRecord {
+  setChart(record: Protocol.WorkbookChartSnapshot): WorkbookChartRecord {
     return runWorkbookMetadataEffect(this.metadataService.setChart(record))
   }
 
@@ -908,7 +861,7 @@ export class WorkbookStore extends WorkbookStoreCommentAccessors {
     return runWorkbookMetadataEffect(this.metadataService.listCharts())
   }
 
-  setImage(record: WorkbookImageSnapshot): WorkbookImageRecord {
+  setImage(record: Protocol.WorkbookImageSnapshot): WorkbookImageRecord {
     return runWorkbookMetadataEffect(this.metadataService.setImage(record))
   }
 
@@ -924,7 +877,7 @@ export class WorkbookStore extends WorkbookStoreCommentAccessors {
     return runWorkbookMetadataEffect(this.metadataService.listImages())
   }
 
-  setShape(record: WorkbookShapeSnapshot): WorkbookShapeRecord {
+  setShape(record: Protocol.WorkbookShapeSnapshot): WorkbookShapeRecord {
     return runWorkbookMetadataEffect(this.metadataService.setShape(record))
   }
 

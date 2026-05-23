@@ -16,6 +16,7 @@ export function markVolatileDependentFormulaCells(
   skippedByReason: Record<WorkPaperXlsxFormulaSkipReason, number>,
 ): FormulaCellRecord[] {
   const volatileRangesBySheet = new Map<string, FormulaDependencyRange[]>()
+  const staleRangesBySheet = new Map<string, FormulaDependencyRange[]>()
   const dependenciesByFormula = new Map<string, readonly FormulaDependencyRange[]>()
   let records = formulaCells
   let changed = false
@@ -23,6 +24,8 @@ export function markVolatileDependentFormulaCells(
   for (const record of records) {
     if (record.skipReason === 'volatile-or-environment-dependent-formula') {
       addVolatileRange(volatileRangesBySheet, recordCellRange(record))
+    } else if (record.skipReason === 'stale-cached-result') {
+      addVolatileRange(staleRangesBySheet, recordCellRange(record))
     }
   }
 
@@ -38,17 +41,20 @@ export function markVolatileDependentFormulaCells(
         dependencies = collectFormulaDependencyRanges(record.formula, record.sheetName)
         dependenciesByFormula.set(key, dependencies)
       }
-      if (!dependencies.some((dependency) => overlapsAnyVolatileRange(dependency, volatileRangesBySheet))) {
+      const volatileDependency = dependencies.some((dependency) => overlapsAnyVolatileRange(dependency, volatileRangesBySheet))
+      const staleDependency = dependencies.some((dependency) => overlapsAnyVolatileRange(dependency, staleRangesBySheet))
+      if (!volatileDependency && !staleDependency) {
         return record
       }
 
       changed = true
-      skippedByReason['volatile-or-environment-dependent-formula'] += 1
+      const skipReason = volatileDependency ? 'volatile-or-environment-dependent-formula' : 'stale-cached-result'
+      skippedByReason[skipReason] += 1
       const skippedRecord: FormulaCellRecord = {
         ...record,
-        skipReason: 'volatile-or-environment-dependent-formula',
+        skipReason,
       }
-      addVolatileRange(volatileRangesBySheet, recordCellRange(record))
+      addVolatileRange(volatileDependency ? volatileRangesBySheet : staleRangesBySheet, recordCellRange(record))
       return skippedRecord
     })
   } while (changed)

@@ -12,7 +12,7 @@
       "Performance multiple reporting must include geomean ratios, worst-case rows, holdouts, and 10x workload count."
     ],
     "unmetRequirements": [
-      "competitor-coverage: only HyperFormula is workbook-wide; add at least one more direct workbook-wide headless spreadsheet engine before broad headless leadership claims"
+      "per-workload-mean-and-p95-wins: Univer workbook-wide comparison is incomplete: covers 5/100 comparable workloads and has 5/5 mean+p95 wins"
     ]
   },
   "sourceArtifacts": {
@@ -36,6 +36,19 @@
         "p95WinCount": 7,
         "version": "0.6.4",
         "workloadFamilies": ["scalar-formula"]
+      },
+      {
+        "artifactPath": "packages/benchmarks/baselines/workpaper-vs-univer.json",
+        "comparableWorkloadCount": 5,
+        "coverageNote": "Univer is covered through its documented @univerjs/preset-sheets-node-core headless Node preset. This workbook-wide lane times public Facade API cell edits plus formula recalculation completion on equivalent aggregate, chain, fanout, and lookup workloads.",
+        "coverageTier": "workbook-wide",
+        "engineName": "Univer",
+        "generatedAt": "2026-05-23T05:58:21.978Z",
+        "meanAndP95WinCount": 5,
+        "meanWinCount": 5,
+        "p95WinCount": 5,
+        "version": "0.23.0",
+        "workloadFamilies": ["aggregate", "aggregate-2d", "formula-chain", "formula-fanout", "lookup-exact"]
       },
       {
         "artifactPath": "packages/benchmarks/baselines/workpaper-vs-xlsx-calc.json",
@@ -64,8 +77,8 @@
   },
   "summary": {
     "comparableWorkloadCount": 100,
-    "comparisonEngineCount": 3,
-    "comparisonEngines": ["HyperFormula", "TrueCalc", "xlsx-calc"],
+    "comparisonEngineCount": 4,
+    "comparisonEngines": ["HyperFormula", "TrueCalc", "Univer", "xlsx-calc"],
     "eligibleFamilyCount": 20,
     "eligibleFamilies": [
       "build",
@@ -109,8 +122,8 @@
         "engineName": "xlsx-calc"
       }
     ],
-    "workbookWideComparisonEngineCount": 1,
-    "workbookWideComparisonEngines": ["HyperFormula"],
+    "workbookWideComparisonEngineCount": 2,
+    "workbookWideComparisonEngines": ["HyperFormula", "Univer"],
     "worstMeanRatio": 0.8462291546806624,
     "worstMeanRatioWorkload": "sheet-rename-dependencies",
     "worstP95Ratio": 0.9291607336587918,
@@ -133,15 +146,13 @@
       },
       {
         "evidence": [
-          "comparison engines: HyperFormula, TrueCalc, xlsx-calc",
-          "workbook-wide engines: HyperFormula",
+          "comparison engines: HyperFormula, TrueCalc, Univer, xlsx-calc",
+          "workbook-wide engines: HyperFormula, Univer",
           "limited engines: TrueCalc (scalar-formula, 7 workloads), xlsx-calc (workbook-wide-limited, 16 workloads)"
         ],
-        "gaps": [
-          "only HyperFormula is workbook-wide; add at least one more direct workbook-wide headless spreadsheet engine before broad headless leadership claims"
-        ],
+        "gaps": [],
         "id": "competitor-coverage",
-        "passed": false,
+        "passed": true,
         "requirement": "Broad headless leadership must compare against at least two direct workbook-wide headless spreadsheet engines; scalar formula lanes are tracked separately."
       },
       {
@@ -156,9 +167,9 @@
       },
       {
         "evidence": ["HyperFormula mean wins: 100/100", "HyperFormula p95 wins: 100/100", "HyperFormula mean+p95 wins: 100/100"],
-        "gaps": [],
+        "gaps": ["Univer workbook-wide comparison is incomplete: covers 5/100 comparable workloads and has 5/5 mean+p95 wins"],
         "id": "per-workload-mean-and-p95-wins",
-        "passed": true,
+        "passed": false,
         "requirement": "Every comparable headless workload must be faster on both mean and p95 latency against every direct headless competitor."
       },
       {
@@ -176,7 +187,7 @@
       }
     ],
     "unmetRequirements": [
-      "competitor-coverage: only HyperFormula is workbook-wide; add at least one more direct workbook-wide headless spreadsheet engine before broad headless leadership claims"
+      "per-workload-mean-and-p95-wins: Univer workbook-wide comparison is incomplete: covers 5/100 comparable workloads and has 5/5 mean+p95 wins"
     ]
   }
 }

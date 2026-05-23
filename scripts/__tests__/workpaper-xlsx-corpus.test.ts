@@ -18,22 +18,28 @@ describe('WorkPaper XLSX corpus verifier', () => {
     const result = runWorkPaperXlsxCorpus([checkedInCorpusDir()])
 
     expect(result.summary).toMatchObject({
-      totalFiles: 1,
-      filesProcessed: 1,
-      ok: 1,
+      totalFiles: 2,
+      filesProcessed: 2,
+      ok: 2,
       failedErrors: 0,
       failedTimeouts: 0,
-      formulaCells: 14,
-      comparableFormulaCells: 14,
-      matchingFormulaCells: 14,
+      formulaCells: 327,
+      comparableFormulaCells: 322,
+      matchingFormulaCells: 322,
       mismatchedFormulaCells: 0,
-      skippedFormulaCells: 0,
+      skippedFormulaCells: 5,
       matchRate: 1,
     })
     expect(result.files[0]).toMatchObject({
       fileName: 'issue-8-production-regressions.xlsx',
       status: 'ok',
       formulaCells: 14,
+    })
+    expect(result.files[1]).toMatchObject({
+      fileName: 'macos-excel-threaded-comments-source.xlsx',
+      status: 'ok',
+      formulaCells: 313,
+      skippedFormulaCells: 5,
     })
     expect(result.mismatches).toEqual([])
   })
@@ -200,9 +206,9 @@ describe('WorkPaper XLSX corpus verifier', () => {
       expect(result.status).toBe(0)
       expect(JSON.parse(result.stdout)).toMatchObject({
         summary: {
-          totalFiles: 1,
-          filesProcessed: 1,
-          ok: 1,
+          totalFiles: 2,
+          filesProcessed: 2,
+          ok: 2,
         },
       })
     })

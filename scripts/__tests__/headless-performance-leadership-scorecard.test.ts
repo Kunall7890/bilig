@@ -186,6 +186,36 @@ describe('headless performance leadership scorecard', () => {
     )
   })
 
+  it('tracks direct Univer workbook-wide evidence while blocking incomplete workload coverage', () => {
+    const scorecard = buildHeadlessPerformanceLeadershipScorecard({
+      competitiveArtifact,
+      competitiveArtifactPath: 'packages/benchmarks/baselines/workpaper-vs-hyperformula.json',
+      extraComparisonEngines: [
+        {
+          artifactPath: 'packages/benchmarks/baselines/workpaper-vs-univer.json',
+          comparableWorkloadCount: 2,
+          coverageNote: 'Univer covers public Node preset recalculation on equivalent aggregate and lookup workloads.',
+          coverageTier: 'workbook-wide',
+          engineName: 'Univer',
+          generatedAt: '2026-05-14T00:00:00.000Z',
+          meanAndP95WinCount: 2,
+          meanWinCount: 2,
+          p95WinCount: 2,
+          version: '0.23.0',
+          workloadFamilies: ['aggregate', 'lookup-exact'],
+        },
+      ],
+    })
+
+    expect(scorecard.goalStatus).toBe('active-not-achieved')
+    expect(scorecard.summary.comparisonEngines).toEqual(['HyperFormula', 'Univer'])
+    expect(scorecard.summary.workbookWideComparisonEngines).toEqual(['HyperFormula', 'Univer'])
+    expect(scorecard.summary.limitedComparisonEngines).toEqual([])
+    expect(scorecard.completionAudit.unmetRequirements).toContain(
+      'per-workload-mean-and-p95-wins: 2/3 comparable workloads win both mean and p95; p95 holdouts: lookup-approximate-duplicates; Univer workbook-wide comparison is incomplete: covers 2/3 comparable workloads and has 2/2 mean+p95 wins',
+    )
+  })
+
   it('allows the claim only when every criterion is directly covered', () => {
     const achievedArtifact: CompetitiveArtifact = {
       ...competitiveArtifact,

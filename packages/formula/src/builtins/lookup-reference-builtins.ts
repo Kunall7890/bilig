@@ -267,6 +267,14 @@ export function createLookupReferenceBuiltins(deps: LookupReferenceBuiltinDeps):
         return deps.errorValue(ErrorCode.Value)
       }
 
+      if (rangeLookup) {
+        for (let row = 0; row < tableArray.rows; row += 1) {
+          if (deps.compareScalars(deps.getRangeValue(tableArray, row, 0), lookupValue) === 0) {
+            return coerceLookupReturnValue(deps.getRangeValue(tableArray, row, colIndex - 1), deps)
+          }
+        }
+      }
+
       let matchedRow = -1
       for (let row = 0; row < tableArray.rows; row += 1) {
         const lookupKey = deps.getRangeValue(tableArray, row, 0)
@@ -322,6 +330,14 @@ export function createLookupReferenceBuiltins(deps: LookupReferenceBuiltinDeps):
       const rangeLookup = deps.toBoolean(rangeLookupValue)
       if (rowIndex === undefined || rowIndex < 1 || rowIndex > tableArray.rows || rangeLookup === undefined) {
         return deps.errorValue(ErrorCode.Value)
+      }
+
+      if (rangeLookup) {
+        for (let col = 0; col < tableArray.cols; col += 1) {
+          if (deps.compareScalars(deps.getRangeValue(tableArray, 0, col), lookupValue) === 0) {
+            return coerceLookupReturnValue(deps.getRangeValue(tableArray, rowIndex - 1, col), deps)
+          }
+        }
       }
 
       let matchedCol = -1

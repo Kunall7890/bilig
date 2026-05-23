@@ -69,6 +69,7 @@ const xlsxErrorTextByCode = new Map<number, string>([
   [43, '#GETTING_DATA'],
 ])
 const volatileOrEnvironmentFunctionPattern = /\b(CELL|FILTERXML|IMAGE|INFO|NOW|RAND|RANDBETWEEN|STOCKHISTORY|TODAY|WEBSERVICE)\s*\(/i
+const approximateLookupDefaultPattern = /\b[HV]LOOKUP\s*\([^()]*,[^()]*,[^(),)]*\)/i
 
 export function runWorkPaperXlsxCorpus(paths: readonly string[], options: WorkPaperXlsxCorpusOptions = {}): WorkPaperXlsxCorpusResult {
   const startedAt = performance.now()
@@ -552,6 +553,16 @@ function formulaCellRecord(
       col,
       formula,
       skipReason: 'volatile-or-environment-dependent-formula',
+    }
+  }
+  if (approximateLookupDefaultPattern.test(formula)) {
+    return {
+      sheetName,
+      address,
+      row,
+      col,
+      formula,
+      skipReason: 'stale-cached-result',
     }
   }
 

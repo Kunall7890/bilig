@@ -198,6 +198,8 @@
     "workpaper:bench:competitive:check": "bun scripts/gen-workpaper-vs-hyperformula-benchmark.ts --check",
     "workpaper:bench:truecalc:generate": "tsx scripts/gen-workpaper-vs-truecalc-benchmark.ts",
     "workpaper:bench:truecalc:check": "tsx scripts/gen-workpaper-vs-truecalc-benchmark.ts --check",
+    "workpaper:bench:univer:generate": "tsx scripts/gen-workpaper-vs-univer-benchmark.ts",
+    "workpaper:bench:univer:check": "tsx scripts/gen-workpaper-vs-univer-benchmark.ts --check",
     "workpaper:bench:xlsx-calc:generate": "tsx scripts/gen-workpaper-vs-xlsx-calc-benchmark.ts",
     "workpaper:bench:xlsx-calc:check": "tsx scripts/gen-workpaper-vs-xlsx-calc-benchmark.ts --check",
     "headless:performance:generate": "bun scripts/gen-headless-performance-leadership-scorecard.ts",

@@ -451,6 +451,14 @@ describe('lookup builtins', () => {
     expect(VLOOKUP(text('a'), table, num(3), bool(false))).toEqual(err(ErrorCode.Value))
   })
 
+  it('prefers exact matches before approximate VLOOKUP and HLOOKUP fallbacks', () => {
+    const VLOOKUP = getLookupBuiltin('VLOOKUP')!
+    const HLOOKUP = getLookupBuiltin('HLOOKUP')!
+
+    expect(VLOOKUP(text('b'), cellRange([text('a'), num(10), text('c'), num(30), text('b'), num(20)], 3, 2), num(2))).toEqual(num(20))
+    expect(HLOOKUP(text('b'), cellRange([text('a'), text('c'), text('b'), num(10), num(30), num(20)], 2, 3), num(2))).toEqual(num(20))
+  })
+
   it('skips incomparable keys during exact VLOOKUP and HLOOKUP scans', () => {
     const VLOOKUP = getLookupBuiltin('VLOOKUP')!
     const HLOOKUP = getLookupBuiltin('HLOOKUP')!

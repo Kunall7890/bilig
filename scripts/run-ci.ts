@@ -386,6 +386,7 @@ const generatedSourceChecks: readonly CiTask[] = [
   bunScript('security posture scorecard check', 'scripts/gen-security-posture-scorecard.ts', '--check'),
   tsxScript('WorkPaper TrueCalc scalar benchmark check', 'scripts/gen-workpaper-vs-truecalc-benchmark.ts', '--check'),
   tsxScript('WorkPaper xlsx-calc benchmark check', 'scripts/gen-workpaper-vs-xlsx-calc-benchmark.ts', '--check'),
+  tsxScript('WorkPaper Univer benchmark check', 'scripts/gen-workpaper-vs-univer-benchmark.ts', '--check'),
   bunScript('headless performance leadership scorecard check', 'scripts/gen-headless-performance-leadership-scorecard.ts', '--check'),
   bunScript('bilig dominance scorecard check', 'scripts/gen-bilig-dominance-scorecard.ts', '--check'),
   bunScript('bilig dominance audit check', 'scripts/bilig-dominance-audit.ts', '--check'),
@@ -419,6 +420,9 @@ try {
   allCompleted.push(
     ...(await runSequential('static package build prerequisites', [
       skipBrowserGates ? wasmBuildTask : appRuntimeDependencyBuild,
+      pnpm('formula package build', '--filter', '@bilig/formula', 'build'),
+      pnpm('core package build', '--filter', '@bilig/core', 'build'),
+      pnpm('headless package build', '--filter', '@bilig/headless', 'build'),
       ...(skipBrowserGates ? [] : [pnpm('playwright chromium install', 'exec', 'playwright', 'install', 'chromium')]),
     ])),
   )

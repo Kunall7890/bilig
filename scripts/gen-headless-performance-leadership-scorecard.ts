@@ -9,6 +9,7 @@ import type { ExtraHeadlessComparisonEngineSummary } from './headless-comparison
 import { isFiniteNumber, readJsonObject } from './json-scorecard-helpers.ts'
 import { formatJsonForRepo } from './scorecard-format.ts'
 import { parseWorkPaperTrueCalcExtraComparisonEngineSummary } from './workpaper-vs-truecalc-artifact.ts'
+import { parseWorkPaperUniverExtraComparisonEngineSummary } from './workpaper-vs-univer-artifact.ts'
 import { parseWorkPaperXlsxCalcExtraComparisonEngineSummary } from './workpaper-vs-xlsx-calc-artifact.ts'
 
 export interface BuildHeadlessPerformanceLeadershipScorecardInput {
@@ -91,6 +92,7 @@ export const rootDir = resolve(new URL('..', import.meta.url).pathname)
 export const outputPath = join(rootDir, 'packages', 'benchmarks', 'baselines', 'headless-performance-leadership-scorecard.json')
 const competitiveArtifactPath = join(rootDir, 'packages', 'benchmarks', 'baselines', 'workpaper-vs-hyperformula.json')
 const trueCalcArtifactPath = join(rootDir, 'packages', 'benchmarks', 'baselines', 'workpaper-vs-truecalc.json')
+const univerArtifactPath = join(rootDir, 'packages', 'benchmarks', 'baselines', 'workpaper-vs-univer.json')
 const xlsxCalcArtifactPath = join(rootDir, 'packages', 'benchmarks', 'baselines', 'workpaper-vs-xlsx-calc.json')
 const requiredWorkbookWideComparisonEngineCount = 2
 
@@ -141,6 +143,7 @@ export function loadHeadlessPerformanceLeadershipScorecardInput(): BuildHeadless
     competitiveArtifactPath: toRepoPath(competitiveArtifactPath),
     extraComparisonEngines: [
       parseWorkPaperTrueCalcExtraComparisonEngineSummary(readJsonObject(trueCalcArtifactPath), toRepoPath(trueCalcArtifactPath)),
+      parseWorkPaperUniverExtraComparisonEngineSummary(readJsonObject(univerArtifactPath), toRepoPath(univerArtifactPath)),
       parseWorkPaperXlsxCalcExtraComparisonEngineSummary(readJsonObject(xlsxCalcArtifactPath), toRepoPath(xlsxCalcArtifactPath)),
     ],
   }
