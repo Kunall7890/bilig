@@ -103,6 +103,12 @@ function restoreSheetMetadata(args: { readonly workbook: WorkbookStore; readonly
   if (sheet.metadata?.sheetFormatPr) {
     workbook.setSheetFormatPr(sheet.name, sheet.metadata.sheetFormatPr)
   }
+  if (sheet.metadata?.sheetPr) {
+    const targetSheet = workbook.getSheet(sheet.name)
+    if (targetSheet) {
+      targetSheet.sheetPr = structuredClone(sheet.metadata.sheetPr)
+    }
+  }
   if (sheet.metadata?.visibility) {
     workbook.setSheetVisibility(sheet.name, sheet.metadata.visibility)
   }

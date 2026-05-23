@@ -144,6 +144,7 @@ export function exportSheetMetadata(workbook: WorkbookStore, sheetName: string):
   const rowMetadata = axisMetadataToSnapshot(workbook.listRowMetadata(sheetName))
   const columnMetadata = axisMetadataToSnapshot(workbook.listColumnMetadata(sheetName))
   const sheetFormatPr = workbook.getSheetFormatPr(sheetName)
+  const sheetPr = sheet?.sheetPr ? structuredClone(sheet.sheetPr) : undefined
   const visibility = workbook.getSheetVisibility(sheetName)
   const styleRanges = workbook.listStyleRanges(sheetName).map((record) => ({
     range: cloneSnapshotRangeRef(record.range),
@@ -187,6 +188,7 @@ export function exportSheetMetadata(workbook: WorkbookStore, sheetName: string):
     rowMetadata.length === 0 &&
     columnMetadata.length === 0 &&
     sheetFormatPr === undefined &&
+    sheetPr === undefined &&
     visibility === undefined &&
     styleRanges.length === 0 &&
     formatRanges.length === 0 &&
@@ -233,6 +235,9 @@ export function exportSheetMetadata(workbook: WorkbookStore, sheetName: string):
   }
   if (sheetFormatPr) {
     metadata.sheetFormatPr = sheetFormatPr
+  }
+  if (sheetPr) {
+    metadata.sheetPr = sheetPr
   }
   if (visibility) {
     metadata.visibility = visibility

@@ -33,6 +33,7 @@ export function hasStructuralMetadataForSheetRecord(
     metadata.hyperlinks.size > 0 ||
     (sheet?.arrayFormulas?.formulas.length ?? 0) > 0 ||
     (sheet?.dataTableFormulas?.formulas.length ?? 0) > 0 ||
+    sheet?.sheetPr !== undefined ||
     sheet?.ignoredErrors !== undefined ||
     sheet?.printPageSetup !== undefined ||
     sheet?.sparklines !== undefined ||

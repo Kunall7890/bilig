@@ -11,6 +11,7 @@ import type {
   WorkbookCellMetadataReferenceSnapshot,
   WorkbookSheetDataTableFormulasSnapshot,
   WorkbookSheetFormatPrSnapshot,
+  WorkbookSheetPrSnapshot,
   WorkbookSheetPrintPageSetupSnapshot,
   WorkbookSheetRichTextArtifactsSnapshot,
   WorkbookSheetVisibilitySnapshot,
@@ -35,6 +36,7 @@ export interface SheetRecord {
   rowAxis: Array<WorkbookAxisEntryRecord | undefined>
   columnAxis: Array<WorkbookAxisEntryRecord | undefined>
   sheetFormatPr?: WorkbookSheetFormatPrSnapshot
+  sheetPr?: WorkbookSheetPrSnapshot
   visibility?: WorkbookSheetVisibilitySnapshot
   styleRanges: WorkbookStyleRangeRecord[]
   formatRanges: WorkbookFormatRangeRecord[]

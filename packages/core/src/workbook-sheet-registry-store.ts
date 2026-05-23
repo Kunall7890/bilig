@@ -71,6 +71,7 @@ export class WorkbookSheetRegistryStore {
     sheet.formatRanges.length = 0
     delete sheet.arrayFormulas
     delete sheet.dataTableFormulas
+    delete sheet.sheetPr
     delete sheet.ignoredErrors
     delete sheet.printPageSetup
     delete sheet.printerSettings
