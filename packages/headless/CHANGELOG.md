@@ -4,6 +4,19 @@ All notable changes to `@bilig/headless` will be documented in this file.
 
 This package is released as part of the aligned bilig library package set.
 
+## 0.53.0
+
+- Release type: minor
+- Previous libraries tag: libraries-v0.52.0
+- Manual override: no
+
+## Features
+- feat(workbook): harden runtime proof boundary (1e6f3549)
+- feat(core): add Desktop Excel-backed table sort (679b24f1)
+
+## Fixes
+- perf(headless): compact deferred sheet renames (f5f3556d)
+
 ## 0.52.0
 
 - Release type: minor
