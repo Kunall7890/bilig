@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from 'vitest'
 import { ValueTag, type CellSnapshot, type CellStyleRecord, type EngineEvent, type RecalcMetrics } from '@bilig/protocol'
 import type { ViewportPatch } from '@bilig/worker-transport'
+import { buildViewportPatchFromEngine } from '../worker-runtime-viewport.js'
 import { WorkerViewportPatchPublisher } from '../worker-runtime-viewport-publisher.js'
 import type { ViewportSubscriptionState, WorkerEngine } from '../worker-runtime-support.js'
 
@@ -144,6 +145,38 @@ function createTestEngine(
 }
 
 describe('worker runtime viewport patches', () => {
+  it('refuses to fabricate a full empty viewport patch when the sheet is missing', () => {
+    const state = {
+      ...createSubscriptionState(),
+      subscription: {
+        ...createSubscriptionState().subscription,
+        sheetName: 'Missing',
+      },
+    }
+    const emptyCellSnapshot = vi.fn((sheetName: string, address: string): CellSnapshot => ({ ...CELL, sheetName, address }))
+    const engine = createTestEngine({
+      hasSheet: () => false,
+      getCell() {
+        throw new Error('Missing sheet viewport patches must not read cells')
+      },
+    })
+
+    expect(() =>
+      buildViewportPatchFromEngine({
+        state,
+        event: null,
+        metrics: TEST_METRICS,
+        authoritativeRevision: 7,
+        sheetImpact: null,
+        engine,
+        emptyCellSnapshot,
+        getStyleRecord: createStyle,
+        getFormatId: () => 0,
+      }),
+    ).toThrow('Cannot build viewport patch for missing sheet: Missing')
+    expect(emptyCellSnapshot).not.toHaveBeenCalled()
+  })
+
   it('includes affected cells when a referenced style record changes under the same style id', () => {
     let currentStyle = createStyle('#00ff00')
     const engine = createTestEngine({

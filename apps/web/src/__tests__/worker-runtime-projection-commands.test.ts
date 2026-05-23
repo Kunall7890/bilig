@@ -74,6 +74,15 @@ describe('worker runtime projection commands', () => {
   it('marks the projection as diverged before mutating the engine', async () => {
     const calls: string[] = []
     const engine = {
+      workbook: {
+        getSheet() {
+          return {
+            grid: {
+              forEachCellEntry: () => undefined,
+            },
+          }
+        },
+      },
       setCellValue(sheetName: string, address: string, value: unknown) {
         calls.push(`set:${sheetName}:${address}:${String(value)}`)
       },
@@ -104,7 +113,82 @@ describe('worker runtime projection commands', () => {
 
     await commands.setCellValue('Sheet1', 'A1', 7)
 
-    expect(calls).toEqual(['mark', 'get', 'set:Sheet1:A1:7', 'read:Sheet1:A1'])
+    expect(calls).toEqual(['get', 'mark', 'set:Sheet1:A1:7', 'read:Sheet1:A1'])
+  })
+
+  it('rejects missing-sheet cell mutations before marking projection divergence', async () => {
+    const invalidateProjectionCache = vi.fn()
+    const setCellValue = vi.fn()
+    const getProjectionEngine = vi.fn(async () => ({
+      workbook: {
+        getSheet() {
+          return undefined
+        },
+      },
+      setCellValue,
+    }))
+    const commands = new WorkerRuntimeProjectionCommands({
+      invalidateProjectionCache,
+      getProjectionEngine,
+      getCell() {
+        throw new Error('Missing sheet mutations must not read cells')
+      },
+      minColumnWidth: 24,
+      maxColumnWidth: 480,
+      autofitCharWidth: 8,
+      autofitPadding: 12,
+      formatCellDisplayValue(value) {
+        return value.tag === ValueTag.String ? value.value : ''
+      },
+    })
+
+    await expect(commands.setCellValue('Missing', 'A1', 'ghost')).rejects.toThrow('Projection sheet does not exist: Missing')
+    expect(getProjectionEngine).toHaveBeenCalledTimes(1)
+    expect(invalidateProjectionCache).not.toHaveBeenCalled()
+    expect(setCellValue).not.toHaveBeenCalled()
+  })
+
+  it('rejects missing range sheets before projection range mutations', async () => {
+    const invalidateProjectionCache = vi.fn()
+    const fillRange = vi.fn()
+    const getProjectionEngine = vi.fn(async () => ({
+      workbook: {
+        getSheet(sheetName: string) {
+          return sheetName === 'Sheet1'
+            ? {
+                grid: {
+                  forEachCellEntry: () => undefined,
+                },
+              }
+            : undefined
+        },
+      },
+      fillRange,
+    }))
+    const commands = new WorkerRuntimeProjectionCommands({
+      invalidateProjectionCache,
+      getProjectionEngine,
+      getCell() {
+        throw new Error('Missing range sheet mutations must not read cells')
+      },
+      minColumnWidth: 24,
+      maxColumnWidth: 480,
+      autofitCharWidth: 8,
+      autofitPadding: 12,
+      formatCellDisplayValue(value) {
+        return value.tag === ValueTag.String ? value.value : ''
+      },
+    })
+
+    await expect(
+      commands.fillRange(
+        { sheetName: 'Sheet1', startAddress: 'A1', endAddress: 'A1' },
+        { sheetName: 'Missing', startAddress: 'B1', endAddress: 'B1' },
+      ),
+    ).rejects.toThrow('Projection sheet does not exist: Missing')
+    expect(getProjectionEngine).toHaveBeenCalledTimes(1)
+    expect(invalidateProjectionCache).not.toHaveBeenCalled()
+    expect(fillRange).not.toHaveBeenCalled()
   })
 
   it('rejects invalid projected metadata sizes before marking divergence', async () => {
@@ -208,5 +292,40 @@ describe('worker runtime projection commands', () => {
 
     expect(width).toBe('wider value'.length * 8 + 12)
     expect(updateColumnMetadata).toHaveBeenCalledWith('Sheet1', 1, 1, width, null)
+  })
+
+  it('rejects autofit on a missing sheet before updating column metadata', async () => {
+    const invalidateProjectionCache = vi.fn()
+    const updateColumnMetadata = vi.fn()
+    const commands = new WorkerRuntimeProjectionCommands({
+      invalidateProjectionCache,
+      async getProjectionEngine() {
+        return {
+          workbook: {
+            getSheet() {
+              return undefined
+            },
+          },
+          getCell() {
+            throw new Error('Missing sheet autofit must not read cells')
+          },
+          updateColumnMetadata,
+        }
+      },
+      getCell(sheetName, address) {
+        return { sheetName, address, value: { tag: 0 } }
+      },
+      minColumnWidth: 24,
+      maxColumnWidth: 480,
+      autofitCharWidth: 8,
+      autofitPadding: 12,
+      formatCellDisplayValue(value) {
+        return value.tag === ValueTag.String ? value.value : ''
+      },
+    })
+
+    await expect(commands.autofitColumn('Missing', 1)).rejects.toThrow('Projection sheet does not exist: Missing')
+    expect(invalidateProjectionCache).not.toHaveBeenCalled()
+    expect(updateColumnMetadata).not.toHaveBeenCalled()
   })
 })

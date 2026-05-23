@@ -14,6 +14,28 @@ function assertSafeNonNegativeInteger(value: number, message: string): void {
   }
 }
 
+function assertProjectionSheetExists(
+  engine: ProjectionCommandEngine,
+  sheetName: string,
+): NonNullable<ReturnType<ProjectionCommandEngine['workbook']['getSheet']>> {
+  const sheet = engine.workbook.getSheet(sheetName)
+  if (!sheet) {
+    throw new Error(`Projection sheet does not exist: ${sheetName}`)
+  }
+  return sheet
+}
+
+function assertProjectionRangeSheetsExist(engine: ProjectionCommandEngine, ranges: readonly CellRangeRef[]): void {
+  const checkedSheetNames = new Set<string>()
+  ranges.forEach((range) => {
+    if (checkedSheetNames.has(range.sheetName)) {
+      return
+    }
+    checkedSheetNames.add(range.sheetName)
+    assertProjectionSheetExists(engine, range.sheetName)
+  })
+}
+
 export function normalizeProjectedRowHeight(height: number | null): number | null {
   if (height === null) {
     return null
@@ -106,82 +128,97 @@ export class WorkerRuntimeProjectionCommands {
     },
   ) {}
 
-  private async withProjectionMutation<T>(run: (engine: ProjectionCommandEngine) => T): Promise<T> {
+  private async withProjectionMutation<T>(sheetNames: readonly string[], run: (engine: ProjectionCommandEngine) => T): Promise<T> {
+    const engine = await this.options.getProjectionEngine()
+    sheetNames.forEach((sheetName) => assertProjectionSheetExists(engine, sheetName))
     this.options.invalidateProjectionCache()
-    return run(await this.options.getProjectionEngine())
+    return run(engine)
+  }
+
+  private async withProjectionWorkbookMutation<T>(run: (engine: ProjectionCommandEngine) => T): Promise<T> {
+    const engine = await this.options.getProjectionEngine()
+    this.options.invalidateProjectionCache()
+    return run(engine)
+  }
+
+  private async withProjectionRangeMutation<T>(ranges: readonly CellRangeRef[], run: (engine: ProjectionCommandEngine) => T): Promise<T> {
+    const engine = await this.options.getProjectionEngine()
+    assertProjectionRangeSheetsExist(engine, ranges)
+    this.options.invalidateProjectionCache()
+    return run(engine)
   }
 
   async setCellValue(sheetName: string, address: string, value: CellSnapshot['input']): Promise<CellSnapshot> {
-    await this.withProjectionMutation((engine) => {
+    await this.withProjectionMutation([sheetName], (engine) => {
       engine.setCellValue(sheetName, address, value ?? null)
     })
     return this.options.getCell(sheetName, address)
   }
 
   async setCellFormula(sheetName: string, address: string, formula: string): Promise<CellSnapshot> {
-    await this.withProjectionMutation((engine) => {
+    await this.withProjectionMutation([sheetName], (engine) => {
       engine.setCellFormula(sheetName, address, formula)
     })
     return this.options.getCell(sheetName, address)
   }
 
   async setRangeStyle(range: CellRangeRef, patch: CellStylePatch): Promise<void> {
-    await this.withProjectionMutation((engine) => {
+    await this.withProjectionRangeMutation([range], (engine) => {
       engine.setRangeStyle(range, patch)
     })
   }
 
   async clearRangeStyle(range: CellRangeRef, fields?: readonly CellStyleField[]): Promise<void> {
-    await this.withProjectionMutation((engine) => {
+    await this.withProjectionRangeMutation([range], (engine) => {
       engine.clearRangeStyle(range, fields)
     })
   }
 
   async setRangeNumberFormat(range: CellRangeRef, format: CellNumberFormatInput): Promise<void> {
-    await this.withProjectionMutation((engine) => {
+    await this.withProjectionRangeMutation([range], (engine) => {
       engine.setRangeNumberFormat(range, format)
     })
   }
 
   async clearRangeNumberFormat(range: CellRangeRef): Promise<void> {
-    await this.withProjectionMutation((engine) => {
+    await this.withProjectionRangeMutation([range], (engine) => {
       engine.clearRangeNumberFormat(range)
     })
   }
 
   async clearRange(range: CellRangeRef): Promise<void> {
-    await this.withProjectionMutation((engine) => {
+    await this.withProjectionRangeMutation([range], (engine) => {
       engine.clearRange(range)
     })
   }
 
   async clearCell(sheetName: string, address: string): Promise<CellSnapshot> {
-    await this.withProjectionMutation((engine) => {
+    await this.withProjectionMutation([sheetName], (engine) => {
       engine.clearCell(sheetName, address)
     })
     return this.options.getCell(sheetName, address)
   }
 
   async renderCommit(ops: CommitOp[]): Promise<void> {
-    await this.withProjectionMutation((engine) => {
+    await this.withProjectionWorkbookMutation((engine) => {
       engine.renderCommit(ops)
     })
   }
 
   async fillRange(source: CellRangeRef, target: CellRangeRef): Promise<void> {
-    await this.withProjectionMutation((engine) => {
+    await this.withProjectionRangeMutation([source, target], (engine) => {
       engine.fillRange(source, target)
     })
   }
 
   async copyRange(source: CellRangeRef, target: CellRangeRef): Promise<void> {
-    await this.withProjectionMutation((engine) => {
+    await this.withProjectionRangeMutation([source, target], (engine) => {
       engine.copyRange(source, target)
     })
   }
 
   async moveRange(source: CellRangeRef, target: CellRangeRef): Promise<void> {
-    await this.withProjectionMutation((engine) => {
+    await this.withProjectionRangeMutation([source, target], (engine) => {
       engine.moveRange(source, target)
     })
   }
@@ -194,7 +231,7 @@ export class WorkerRuntimeProjectionCommands {
     hidden: boolean | null,
   ): Promise<void> {
     const normalizedHeight = normalizeProjectedRowHeight(height)
-    await this.withProjectionMutation((engine) => {
+    await this.withProjectionMutation([sheetName], (engine) => {
       engine.updateRowMetadata(sheetName, startRow, count, normalizedHeight, hidden)
     })
   }
@@ -207,7 +244,7 @@ export class WorkerRuntimeProjectionCommands {
     hidden: boolean | null,
   ): Promise<number | null> {
     const normalizedWidth = normalizeProjectedColumnWidth(width, this.options.minColumnWidth, this.options.maxColumnWidth)
-    await this.withProjectionMutation((engine) => {
+    await this.withProjectionMutation([sheetName], (engine) => {
       engine.updateColumnMetadata(sheetName, startCol, count, normalizedWidth, hidden)
     })
     return normalizedWidth
@@ -221,30 +258,31 @@ export class WorkerRuntimeProjectionCommands {
   async setFreezePane(sheetName: string, rows: number, cols: number): Promise<void> {
     const normalizedRows = normalizeProjectedFreezePaneCount(rows)
     const normalizedCols = normalizeProjectedFreezePaneCount(cols)
-    await this.withProjectionMutation((engine) => {
+    await this.withProjectionMutation([sheetName], (engine) => {
       engine.setFreezePane(sheetName, normalizedRows, normalizedCols)
     })
   }
 
   async mergeCells(range: CellRangeRef): Promise<void> {
-    await this.withProjectionMutation((engine) => {
+    await this.withProjectionRangeMutation([range], (engine) => {
       engine.mergeCells(range)
     })
   }
 
   async unmergeCells(range: CellRangeRef): Promise<void> {
-    await this.withProjectionMutation((engine) => {
+    await this.withProjectionRangeMutation([range], (engine) => {
       engine.unmergeCells(range)
     })
   }
 
   async autofitColumn(sheetName: string, columnIndex: number): Promise<number> {
     const engine = await this.options.getProjectionEngine()
+    const sheet = assertProjectionSheetExists(engine, sheetName)
     const width = autofitProjectedColumnWidth({
       columnIndex,
       charWidth: this.options.autofitCharWidth,
       padding: this.options.autofitPadding,
-      sheet: engine.workbook.getSheet(sheetName) ?? undefined,
+      sheet,
       getCellDisplayValue: (row, col) => {
         const snapshot = engine.getCell(sheetName, formatAddress(row, col))
         return this.options.formatCellDisplayValue(snapshot.value, snapshot.format)

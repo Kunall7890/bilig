@@ -183,7 +183,10 @@ export function buildViewportPatchFromEngine(input: {
 }): ViewportPatch {
   const { state, event, metrics, sheetImpact, engine } = input
   const viewport = state.subscription
-  const hasSheet = engine.workbook.getSheet(viewport.sheetName) !== undefined
+  const sheet = engine.workbook.getSheet(viewport.sheetName)
+  if (!sheet) {
+    throw new Error(`Cannot build viewport patch for missing sheet: ${viewport.sheetName}`)
+  }
   const styles: CellStyleRecord[] = []
   const cells: ViewportPatchedCell[] = []
   const full = event === null || event.invalidation === 'full'
@@ -204,7 +207,7 @@ export function buildViewportPatchFromEngine(input: {
     for (let row = viewport.rowStart; row <= viewport.rowEnd; row += 1) {
       for (let col = viewport.colStart; col <= viewport.colEnd; col += 1) {
         const address = formatAddress(row, col)
-        const snapshot = hasSheet ? engine.getCell(viewport.sheetName, address) : input.emptyCellSnapshot(viewport.sheetName, address)
+        const snapshot = engine.getCell(viewport.sheetName, address)
         appendPatchedCell(context, row, col, snapshot, true)
       }
     }
@@ -217,13 +220,7 @@ export function buildViewportPatchFromEngine(input: {
       invalidatedColumns,
     )
     for (const cell of targetCells) {
-      appendPatchedCell(
-        context,
-        cell.row,
-        cell.col,
-        hasSheet ? engine.getCell(viewport.sheetName, cell.address) : input.emptyCellSnapshot(viewport.sheetName, cell.address),
-        false,
-      )
+      appendPatchedCell(context, cell.row, cell.col, engine.getCell(viewport.sheetName, cell.address), false)
     }
   }
 

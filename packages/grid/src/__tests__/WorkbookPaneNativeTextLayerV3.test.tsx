@@ -224,12 +224,12 @@ describe('WorkbookPaneNativeTextLayerV3', () => {
     })
   })
 
-  test('draws displayed workbook glyphs on device pixels while text geometry stays aligned', () => {
-    expect(resolveNativeTextDisplayFontSizeV3(13.3333)).toBe(13)
-    expect(resolveNativeTextDisplayFontSizeV3(13.3333, 1.25)).toBe(13.6)
+  test('keeps native glyph rasterization at exact workbook size while text geometry stays aligned', () => {
+    expect(resolveNativeTextDisplayFontSizeV3(13.3333)).toBe(13.3333)
+    expect(resolveNativeTextDisplayFontSizeV3(13.3333, 1.25)).toBe(13.3333)
     expect(resolveNativeTextDisplayFontSizeV3(13.3333, 1.5)).toBe(13.3333)
-    expect(resolveNativeTextDisplayFontSizeV3(13.3333, 2)).toBe(13.5)
-    expect(resolveNativeTextDisplayFontSizeV3(14.6667)).toBe(15)
+    expect(resolveNativeTextDisplayFontSizeV3(13.3333, 2)).toBe(13.3333)
+    expect(resolveNativeTextDisplayFontSizeV3(14.6667)).toBe(14.6667)
 
     const defaultPointSizeRun = createRun({
       font: '400 13.3333px Arial, sans-serif',
@@ -237,12 +237,12 @@ describe('WorkbookPaneNativeTextLayerV3', () => {
     })
 
     expect(resolveNativeTextRunInnerStyleV3({ dpr: 1, run: defaultPointSizeRun })).toMatchObject({
-      fontSize: 13,
+      fontSize: 13.3333,
       lineHeight: '16px',
       top: -1,
     })
     expect(resolveNativeTextRunInnerStyleV3({ dpr: 2, run: defaultPointSizeRun })).toMatchObject({
-      fontSize: 13.5,
+      fontSize: 13.3333,
       lineHeight: '16px',
       top: -1,
     })

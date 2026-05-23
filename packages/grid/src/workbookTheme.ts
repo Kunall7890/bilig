@@ -16,11 +16,11 @@ export function workbookSnapCssPixel(value: number, dpr = 1): number {
   return Number((Math.round(value * resolvedDpr) / resolvedDpr).toFixed(4))
 }
 
-export function workbookDisplayFontCssPx(fontSizeCssPx: number, dpr = 1): number {
+export function workbookDisplayFontCssPx(fontSizeCssPx: number, _dpr = 1): number {
   const resolvedFontSize = Number.isFinite(fontSizeCssPx)
     ? Math.max(1, fontSizeCssPx)
     : workbookFontPointSizeToCssPx(WORKBOOK_DEFAULT_FONT_SIZE)
-  return Math.max(1, workbookSnapCssPixel(resolvedFontSize, dpr))
+  return resolvedFontSize
 }
 
 export function workbookDisplayFontPointSizeToCssPx(pointSize: number, dpr = 1): number {
