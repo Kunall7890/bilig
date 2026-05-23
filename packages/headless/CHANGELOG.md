@@ -4,6 +4,15 @@ All notable changes to `@bilig/headless` will be documented in this file.
 
 This package is released as part of the aligned bilig library package set.
 
+## 0.67.3
+
+- Release type: patch
+- Previous libraries tag: libraries-v0.67.2
+- Manual override: no
+
+## Fixes
+- perf(core): reduce fresh scalar initialization overhead (be931d09)
+
 ## 0.67.2
 
 - Release type: patch
