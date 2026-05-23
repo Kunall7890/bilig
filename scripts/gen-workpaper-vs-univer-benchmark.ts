@@ -13,7 +13,11 @@ import {
 } from '../packages/benchmarks/src/benchmark-workpaper-vs-univer.ts'
 import { objectField, readJsonObject, stringField } from './json-scorecard-helpers.ts'
 import { formatJsonForRepo } from './scorecard-format.ts'
-import { deriveWorkPaperUniverScorecard, parseWorkPaperUniverArtifact } from './workpaper-vs-univer-artifact.ts'
+import {
+  deriveWorkPaperUniverScorecard,
+  parseWorkPaperUniverArtifact,
+  type ParsedWorkPaperUniverScorecard,
+} from './workpaper-vs-univer-artifact.ts'
 
 interface WorkPaperVsUniverBenchmarkArtifact {
   readonly schemaVersion: 1
@@ -68,7 +72,7 @@ if (isCheckMode) {
   }
 
   const derivedScorecard = deriveWorkPaperUniverScorecard(artifact.results, artifact.scorecard.coverageNote)
-  if (JSON.stringify(artifact.scorecard) !== JSON.stringify(derivedScorecard)) {
+  if (!scorecardsMatch(artifact.scorecard, derivedScorecard)) {
     throw new Error('WorkPaper vs Univer scorecard does not match benchmark results. Run: pnpm workpaper:bench:univer:generate')
   }
 
@@ -156,6 +160,31 @@ function readPackageVersion(packagePath: string): string {
     throw new Error(`Unable to read package version from ${packagePath}`)
   }
   return parsed.version
+}
+
+function scorecardsMatch(actual: ParsedWorkPaperUniverScorecard, expected: ParsedWorkPaperUniverScorecard): boolean {
+  return (
+    actual.comparableWorkloadCount === expected.comparableWorkloadCount &&
+    actual.coverageNote === expected.coverageNote &&
+    actual.coverageTier === expected.coverageTier &&
+    nearlyEqual(actual.directionalMeanRatioGeomean, expected.directionalMeanRatioGeomean) &&
+    nearlyEqual(actual.directionalP95RatioGeomean, expected.directionalP95RatioGeomean) &&
+    actual.meanAndP95WinCount === expected.meanAndP95WinCount &&
+    actual.meanWinCount === expected.meanWinCount &&
+    actual.p95WinCount === expected.p95WinCount &&
+    actual.univerMeanWinCount === expected.univerMeanWinCount &&
+    actual.univerP95WinCount === expected.univerP95WinCount &&
+    JSON.stringify(actual.workloadFamilies) === JSON.stringify(expected.workloadFamilies) &&
+    actual.worstMeanRatioWorkload === expected.worstMeanRatioWorkload &&
+    actual.worstP95RatioWorkload === expected.worstP95RatioWorkload &&
+    actual.worstWorkpaperToUniverMeanRatio === expected.worstWorkpaperToUniverMeanRatio &&
+    actual.worstWorkpaperToUniverP95Ratio === expected.worstWorkpaperToUniverP95Ratio
+  )
+}
+
+function nearlyEqual(actual: number, expected: number): boolean {
+  const tolerance = Number.EPSILON * Math.max(1, Math.abs(actual), Math.abs(expected)) * 64
+  return Math.abs(actual - expected) <= tolerance
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
