@@ -142,22 +142,24 @@ export type WorkbookActionPlanResult<Refs = unknown> =
 export function defineModel<Refs, Actions extends WorkbookActionMap<Refs>>(
   config: WorkbookModelConfig<Refs, Actions>,
 ): WorkbookModel<Refs, Actions> {
-  if (config.name.trim() === '') {
-    throw new Error('Workbook model name cannot be empty')
-  }
-  normalizeOptionalDescription(config.description, `Workbook model ${config.name} description`)
+  const name = normalizeRequiredName(config.name, 'Workbook model name')
+  const description = normalizeOptionalDescription(config.description, `Workbook model ${name} description`)
   const actionNames = Object.keys(config.actions)
   if (actionNames.length === 0) {
-    throw new Error(`Workbook model ${config.name} must define at least one action`)
+    throw new Error(`Workbook model ${name} must define at least one action`)
   }
-  const emptyActionName = actionNames.find((name) => name.trim() === '')
-  if (emptyActionName !== undefined) {
-    throw new Error(`Workbook model ${config.name} has an empty action name`)
-  }
-  actionNames.forEach((name) => {
-    validateActionDefinition(config.name, name, config.actions[name])
+  actionNames.forEach((actionName) => {
+    const normalizedActionName = normalizeRequiredName(actionName, `Workbook model ${name} action name`)
+    normalizeActionDefinition(name, normalizedActionName, config.actions[actionName])
   })
-  return config
+  Object.freeze(config.actions)
+  return Object.freeze({
+    name,
+    ...(description !== undefined ? { description } : {}),
+    find: config.find,
+    ...(config.checks !== undefined ? { checks: config.checks } : {}),
+    actions: config.actions,
+  })
 }
 
 export function inspectModel<Refs, Actions extends WorkbookActionMap<Refs>>(model: WorkbookModel<Refs, Actions>): WorkbookModelInspection {
@@ -170,6 +172,17 @@ export function inspectModel<Refs, Actions extends WorkbookActionMap<Refs>>(mode
     actionDetails: actions.map((actionName) => inspectAction(actionName, model.actions[actionName])),
     hasChecks: model.checks !== undefined,
   }
+}
+
+function normalizeRequiredName(value: string, label: string): string {
+  const name = value.trim()
+  if (name === '') {
+    throw new Error(`${label} cannot be empty`)
+  }
+  if (name !== value) {
+    throw new Error(`${label} must not have leading or trailing whitespace`)
+  }
+  return name
 }
 
 function normalizeOptionalDescription(value: string | undefined, label: string): string | undefined {
@@ -187,7 +200,7 @@ function isActionConfig<Refs>(definition: WorkbookActionDefinition<Refs> | undef
   return typeof definition === 'object' && definition !== null
 }
 
-function validateActionDefinition<Refs>(
+function normalizeActionDefinition<Refs>(
   modelName: string,
   actionName: string,
   definition: WorkbookActionDefinition<Refs> | undefined,
@@ -198,10 +211,25 @@ function validateActionDefinition<Refs>(
   if (!isActionConfig(definition) || typeof definition.run !== 'function') {
     throw new Error(`Workbook model ${modelName} action ${actionName} must be a function or action object with run`)
   }
-  normalizeOptionalDescription(definition.description, `Workbook model ${modelName} action ${actionName} description`)
-  if (definition.input !== undefined) {
-    normalizeWorkbookActionInputDescription(definition.input)
+  const description = normalizeOptionalDescription(definition.description, `Workbook model ${modelName} action ${actionName} description`)
+  const input = definition.input === undefined ? undefined : normalizeWorkbookActionInputDescription(definition.input)
+  if (description !== undefined) {
+    Object.defineProperty(definition, 'description', {
+      value: description,
+      enumerable: true,
+      configurable: false,
+      writable: false,
+    })
   }
+  if (input !== undefined) {
+    Object.defineProperty(definition, 'input', {
+      value: input,
+      enumerable: true,
+      configurable: false,
+      writable: false,
+    })
+  }
+  Object.freeze(definition)
 }
 
 function actionRunner<Refs>(definition: WorkbookActionDefinition<Refs>): WorkbookAction<Refs> {

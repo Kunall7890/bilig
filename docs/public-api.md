@@ -92,6 +92,11 @@ target is already known. Formula helpers use `@bilig/formula` for parsing and
 normalization. Actual calculation and authoritative execution stay in
 `@bilig/core` and `apps/bilig`.
 
+`defineModel` returns frozen, normalized model metadata. Model and action names
+must be non-empty and already trimmed, while descriptions and input metadata are
+trimmed and frozen so the manifest an agent inspected cannot be mutated later by
+the caller.
+
 Model actions can accept plain JSON-safe input through
 `planWorkbookAction(model, actionName, input)` and
 `buildWorkbookActionPlan(model, actionName, input)`. The input is cloned,

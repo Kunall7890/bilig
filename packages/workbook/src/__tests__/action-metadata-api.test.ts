@@ -104,6 +104,47 @@ describe('@bilig/workbook action metadata api', () => {
     expect(verifyModel(model, { inputs: { write: { value: 7 } } }).status).toBe('valid')
   })
 
+  it('freezes normalized model and action metadata at definition time', () => {
+    const model = defineModel({
+      name: 'stable-metadata-model',
+      description: ' Consumer-owned writer ',
+
+      find(workbook) {
+        return {
+          output: workbook.findRange({ sheetName: 'Sheet1', address: 'B2' }),
+        }
+      },
+
+      actions: {
+        write: {
+          description: ' Write a consumer-provided value ',
+          input: {
+            kind: 'object',
+            fields: {
+              value: { kind: 'number', required: true },
+            },
+          },
+          run({ refs, workbook }) {
+            workbook.writeValue(refs.output, 1)
+          },
+        },
+      },
+    })
+    const writeAction = model.actions.write
+
+    expect(model.description).toBe('Consumer-owned writer')
+    expect(Object.isFrozen(model)).toBe(true)
+    expect(Object.isFrozen(model.actions)).toBe(true)
+    expect(() => Object.defineProperty(model.actions, 'mutated', { value() {} })).toThrowError(TypeError)
+    if (typeof writeAction !== 'object' || writeAction === null) {
+      throw new Error('expected action object')
+    }
+    expect(writeAction.description).toBe('Write a consumer-provided value')
+    expect(Object.isFrozen(writeAction)).toBe(true)
+    expect(Object.isFrozen(writeAction.input)).toBe(true)
+    expect(() => Object.defineProperty(writeAction, 'description', { value: 'mutated' })).toThrowError(TypeError)
+  })
+
   it('describes action metadata without running find, checks, or actions', () => {
     const model = defineModel({
       name: 'metadata-only-model',

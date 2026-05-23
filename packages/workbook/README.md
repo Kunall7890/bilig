@@ -102,6 +102,10 @@ Calculation and workbook execution stay in `@bilig/core` and the app runtime.
 Use `planWorkbookAction` when an action name comes from an agent or user input;
 it returns `planned` or structured `failed` results instead of requiring
 exception control flow.
+`defineModel` returns frozen, normalized model metadata. Model and action names
+must be non-empty and already trimmed, while descriptions and input metadata are
+trimmed and frozen so the manifest an agent inspected cannot be mutated later by
+the caller.
 Actions can also accept a JSON-safe input:
 
 ```ts

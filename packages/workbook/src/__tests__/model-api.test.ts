@@ -852,6 +852,44 @@ describe('@bilig/workbook model api', () => {
     ).toThrowError('Workbook model empty-model must define at least one action')
   })
 
+  it('rejects ambiguous model and action names before planning', () => {
+    expect(() =>
+      defineModel({
+        name: ' ambiguous-model ',
+        find() {
+          return {}
+        },
+        actions: {
+          calculate() {},
+        },
+      }),
+    ).toThrowError('Workbook model name must not have leading or trailing whitespace')
+
+    expect(() =>
+      defineModel({
+        name: 'ambiguous-action-model',
+        find() {
+          return {}
+        },
+        actions: {
+          ' calculate '() {},
+        },
+      }),
+    ).toThrowError('Workbook model ambiguous-action-model action name must not have leading or trailing whitespace')
+
+    expect(() =>
+      defineModel({
+        name: 'empty-action-model',
+        find() {
+          return {}
+        },
+        actions: {
+          '   '() {},
+        },
+      }),
+    ).toThrowError('Workbook model empty-action-model action name cannot be empty')
+  })
+
   it('describes model actions without running find or actions', () => {
     const model = defineModel({
       name: 'inspectable-model',
