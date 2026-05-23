@@ -53,6 +53,7 @@ export async function requireHeadlessExampleDiscovery({
     readFile(join(repoRoot, 'packages', 'workpaper', 'server.json'), 'utf8'),
   ])
   const headlessPackageSpec = `@bilig/headless@${parsePackageVersion(headlessPackageManifest)}`
+  const workpaperLatestPackageSpec = '@bilig/workpaper@latest'
   await requireNpmEvalDiscovery(repoRoot, docsRoot, readme, headlessReadme, headlessExampleReadme)
   await requireOpenAiResponsesDiscovery({
     repoRoot,
@@ -144,7 +145,7 @@ export async function requireHeadlessExampleDiscovery({
   requireIncludes(headlessReadme, '`set_cell_contents` edits back to the same file', 'packages/headless/README.md')
   requireIncludes(
     readme,
-    `npm exec --package ${headlessPackageSpec} -- bilig-formula-clinic ./reduced.xlsx --cells "Summary!B7,Inputs!B2"`,
+    `npm exec --package ${workpaperLatestPackageSpec} -- bilig-formula-clinic ./reduced.xlsx --cells "Summary!B7,Inputs!B2"`,
     'README.md',
   )
   requireIncludes(readme, 'bilig-workpaper-mcp --workpaper ./pricing.workpaper.json --init-demo-workpaper --writable', 'README.md')

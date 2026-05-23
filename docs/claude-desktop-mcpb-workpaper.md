@@ -26,7 +26,8 @@ shasum -a 256 -c bilig-workpaper.mcpb.sha256
 open bilig-workpaper.mcpb
 ```
 
-Open the downloaded `.mcpb` file with Claude Desktop. Claude should show an\ninstall dialog for **Bilig WorkPaper**.
+Open the downloaded `.mcpb` file with Claude Desktop. Claude should show an
+install dialog for **Bilig WorkPaper**.
 
 ## Reproduce from source
 
@@ -44,11 +45,11 @@ packs:
 build/mcpb/bilig-workpaper.mcpb
 ```
 
-For a reproducible build, pin the version you intend to ship. This keeps the
-guide from baking a stale version into copy-paste setup commands:
+Resolve the current published `@bilig/headless` version before building. This
+keeps the guide from baking a stale version into copy-paste setup commands:
 
 ```sh
-BILIG_HEADLESS_VERSION=0.71.0
+BILIG_HEADLESS_VERSION=$(npm view @bilig/headless version)
 pnpm mcpb:workpaper:build -- --package-version "$BILIG_HEADLESS_VERSION"
 ```
 

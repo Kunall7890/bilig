@@ -36,8 +36,14 @@ export async function requireNpmEvalDiscovery(
 
   for (const [path, content] of [
     ['README.md', readme],
-    ['packages/headless/README.md', headlessReadme],
     ['docs/try-bilig-headless-in-node.md', tryPage],
+  ] as const) {
+    requireIncludes(content, 'npm create @bilig/workpaper@latest pricing-workpaper', path)
+    requireIncludes(content, 'examples/headless-workpaper/npm-eval.ts', path)
+  }
+
+  for (const [path, content] of [
+    ['packages/headless/README.md', headlessReadme],
   ] as const) {
     requireIncludes(content, 'https://proompteng.github.io/bilig/npm-eval.ts', path)
     requireIncludes(content, 'examples/headless-workpaper/npm-eval.ts', path)
