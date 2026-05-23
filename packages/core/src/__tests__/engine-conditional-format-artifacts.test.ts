@@ -1,0 +1,69 @@
+import { describe, expect, it } from 'vitest'
+import { SpreadsheetEngine } from '../index.js'
+import type { WorkbookSnapshot } from '@bilig/protocol'
+
+describe('conditional format artifact metadata', () => {
+  it('preserves imported advanced conditional format artifacts across headless mutations', async () => {
+    const engine = new SpreadsheetEngine({ workbookName: 'conditional-format-artifacts' })
+    await engine.ready()
+    engine.importSnapshot(advancedConditionalFormatSnapshot())
+
+    engine.setCellValue('Dashboard', 'D1', 'agent edit')
+
+    const exported = engine.exportSnapshot()
+    expect(exported.sheets[0]?.metadata?.conditionalFormatArtifacts?.xml).toContain('type="dataBar"')
+    expect(exported.sheets[0]?.metadata?.conditionalFormatArtifacts?.xml).toContain('type="colorScale"')
+    expect(exported.sheets[0]?.metadata?.conditionalFormatArtifacts?.xml).toContain('type="iconSet"')
+
+    const restored = new SpreadsheetEngine({ workbookName: 'conditional-format-artifacts-restored' })
+    await restored.ready()
+    restored.importSnapshot(exported)
+
+    expect(restored.exportSnapshot().sheets[0]?.metadata?.conditionalFormatArtifacts).toEqual(
+      exported.sheets[0]?.metadata?.conditionalFormatArtifacts,
+    )
+  })
+})
+
+function advancedConditionalFormatSnapshot(): WorkbookSnapshot {
+  return {
+    version: 1,
+    workbook: { name: 'Advanced conditional format artifacts' },
+    sheets: [
+      {
+        id: 1,
+        name: 'Dashboard',
+        order: 0,
+        metadata: {
+          conditionalFormatArtifacts: {
+            xml: [
+              '<conditionalFormatting sqref="A1:A3">',
+              '<cfRule type="dataBar" priority="1"><dataBar><cfvo type="min"/><cfvo type="max"/>',
+              '<color rgb="FF63C384"/></dataBar></cfRule>',
+              '</conditionalFormatting>',
+              '<conditionalFormatting sqref="B1:B3">',
+              '<cfRule type="colorScale" priority="2"><colorScale><cfvo type="min"/><cfvo type="percentile" val="50"/>',
+              '<cfvo type="max"/><color rgb="FFF8696B"/><color rgb="FFFFEB84"/><color rgb="FF63BE7B"/></colorScale></cfRule>',
+              '</conditionalFormatting>',
+              '<conditionalFormatting sqref="C1:C3">',
+              '<cfRule type="iconSet" priority="3"><iconSet iconSet="3TrafficLights1"><cfvo type="percent" val="0"/>',
+              '<cfvo type="percent" val="33"/><cfvo type="percent" val="67"/></iconSet></cfRule>',
+              '</conditionalFormatting>',
+            ].join(''),
+          },
+        },
+        cells: [
+          { address: 'A1', value: 10 },
+          { address: 'B1', value: 20 },
+          { address: 'C1', value: 30 },
+          { address: 'A2', value: 20 },
+          { address: 'B2', value: 40 },
+          { address: 'C2', value: 60 },
+          { address: 'A3', value: 30 },
+          { address: 'B3', value: 60 },
+          { address: 'C3', value: 90 },
+        ],
+      },
+    ],
+  }
+}

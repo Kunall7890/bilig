@@ -159,6 +159,7 @@ export function exportSheetMetadata(workbook: WorkbookStore, sheetName: string):
   }))
   const validations = workbook.listDataValidations(sheetName).map((validation) => structuredClone(validation))
   const conditionalFormats = workbook.listConditionalFormats(sheetName).map((format) => structuredClone(format))
+  const conditionalFormatArtifacts = workbook.getConditionalFormatArtifacts(sheetName)
   const protectedRanges = workbook.listRangeProtections(sheetName).map((protection) => structuredClone(protection))
   const commentThreads = workbook.listCommentThreads(sheetName).map((thread) => structuredClone(thread))
   const notes = workbook.listNotes(sheetName).map((note) => structuredClone(note))
@@ -182,6 +183,7 @@ export function exportSheetMetadata(workbook: WorkbookStore, sheetName: string):
     sorts.length === 0 &&
     validations.length === 0 &&
     conditionalFormats.length === 0 &&
+    conditionalFormatArtifacts === undefined &&
     protectedRanges.length === 0 &&
     commentThreads.length === 0 &&
     notes.length === 0 &&
@@ -239,6 +241,9 @@ export function exportSheetMetadata(workbook: WorkbookStore, sheetName: string):
   }
   if (conditionalFormats.length > 0) {
     metadata.conditionalFormats = conditionalFormats
+  }
+  if (conditionalFormatArtifacts) {
+    metadata.conditionalFormatArtifacts = { xml: conditionalFormatArtifacts.xml }
   }
   if (protectedRanges.length > 0) {
     metadata.protectedRanges = protectedRanges

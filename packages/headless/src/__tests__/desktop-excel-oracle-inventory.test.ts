@@ -14,6 +14,7 @@ interface PackageManifest {
 const existingDesktopExcelOracleFiles = [
   'macos-desktop-excel-array-formula-structural-oracle.test.ts',
   'macos-desktop-excel-autofilter-oracle.test.ts',
+  'macos-desktop-excel-conditional-format-artifacts-oracle.test.ts',
   'macos-desktop-excel-data-table-structural-oracle.test.ts',
   'macos-desktop-excel-defined-name-structural-oracle.test.ts',
   'macos-desktop-excel-external-link-cache.test.ts',
@@ -52,6 +53,18 @@ describe('macOS Desktop Excel oracle inventory', () => {
     expect(source).toContain("kind: 'applyTableSort'")
     expect(source).toContain('headless.sortTable')
     expect(source).toContain('matches Desktop Excel table-body sort row-bundle semantics')
+  })
+
+  it('keeps the conditional-format artifact oracle anchored to Desktop Excel advanced visual rules', () => {
+    const source = readFileSync(join(testDir, 'macos-desktop-excel-conditional-format-artifacts-oracle.test.ts'), 'utf8')
+
+    expect(source).toContain("BILIG_EXCEL_ORACLE_RUN === '1'")
+    expect(source).toContain('runMacosExcelInspectionOracle')
+    expect(source).toContain('type="dataBar"')
+    expect(source).toContain('type="colorScale"')
+    expect(source).toContain('type="iconSet"')
+    expect(source).toContain('WorkPaper.buildFromSnapshot')
+    expect(source).toContain('preserves Desktop Excel advanced visual conditional-format rules after a headless edit')
   })
 
   it('keeps the sort oracle in both package and corpus gates', () => {

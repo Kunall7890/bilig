@@ -17,6 +17,7 @@ import type {
   WorkbookCommentEntrySnapshot,
   WorkbookCommentThreadSnapshot,
   WorkbookConditionalFormatSnapshot,
+  WorkbookSheetConditionalFormatArtifactsSnapshot,
   WorkbookDataValidationSnapshot,
   WorkbookDefinedNameValueSnapshot,
   WorkbookFreezePaneSnapshot,
@@ -127,6 +128,9 @@ export interface WorkbookDataValidationRecord extends WorkbookDataValidationSnap
 export interface WorkbookConditionalFormatRecord extends WorkbookConditionalFormatSnapshot {
   style: CellStylePatch
 }
+export interface WorkbookSheetConditionalFormatArtifactsRecord extends WorkbookSheetConditionalFormatArtifactsSnapshot {
+  sheetName: string
+}
 export interface WorkbookSheetProtectionRecord extends WorkbookSheetProtectionSnapshot {}
 export interface WorkbookRangeProtectionRecord extends WorkbookRangeProtectionSnapshot {}
 export interface WorkbookCommentEntryRecord extends WorkbookCommentEntrySnapshot {}
@@ -158,6 +162,7 @@ export interface WorkbookMetadataRecord {
   sorts: Map<string, WorkbookSortRecord>
   dataValidations: Map<string, WorkbookDataValidationRecord>
   conditionalFormats: Map<string, WorkbookConditionalFormatRecord>
+  conditionalFormatArtifacts: Map<string, WorkbookSheetConditionalFormatArtifactsRecord>
   rangeProtections: Map<string, WorkbookRangeProtectionRecord>
   commentThreads: Map<string, WorkbookCommentThreadRecord>
   notes: Map<string, WorkbookNoteRecord>
@@ -187,6 +192,7 @@ export function createWorkbookMetadataRecord(): WorkbookMetadataRecord {
     sorts: new Map(),
     dataValidations: new Map(),
     conditionalFormats: new Map(),
+    conditionalFormatArtifacts: new Map(),
     rangeProtections: new Map(),
     commentThreads: new Map(),
     notes: new Map(),

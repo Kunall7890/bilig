@@ -12,6 +12,7 @@ import type {
   WorkbookCommentThreadSnapshot,
   WorkbookChartSnapshot,
   WorkbookConditionalFormatSnapshot,
+  WorkbookSheetConditionalFormatArtifactsSnapshot,
   WorkbookDataValidationSnapshot,
   WorkbookDefinedNameValueSnapshot,
   WorkbookFreezePaneSnapshot,
@@ -42,6 +43,7 @@ import {
   type WorkbookCommentThreadRecord,
   type WorkbookChartRecord,
   type WorkbookConditionalFormatRecord,
+  type WorkbookSheetConditionalFormatArtifactsRecord,
   type WorkbookDataValidationRecord,
   type WorkbookCellNumberFormatRecord,
   type WorkbookCellStyleRecord,
@@ -109,6 +111,7 @@ export type {
   WorkbookCommentThreadRecord,
   WorkbookChartRecord,
   WorkbookConditionalFormatRecord,
+  WorkbookSheetConditionalFormatArtifactsRecord,
   WorkbookDataValidationRecord,
   WorkbookCellNumberFormatRecord,
   WorkbookCellStyleRecord,
@@ -795,6 +798,21 @@ export class WorkbookStore {
 
   listConditionalFormats(sheetName: string): WorkbookConditionalFormatRecord[] {
     return runWorkbookMetadataEffect(this.metadataService.listConditionalFormats(sheetName))
+  }
+
+  setConditionalFormatArtifacts(
+    sheetName: string,
+    artifacts: WorkbookSheetConditionalFormatArtifactsSnapshot,
+  ): WorkbookSheetConditionalFormatArtifactsRecord {
+    return runWorkbookMetadataEffect(this.metadataService.setConditionalFormatArtifacts(sheetName, artifacts))
+  }
+
+  getConditionalFormatArtifacts(sheetName: string): WorkbookSheetConditionalFormatArtifactsRecord | undefined {
+    return runWorkbookMetadataEffect(this.metadataService.getConditionalFormatArtifacts(sheetName))
+  }
+
+  deleteConditionalFormatArtifacts(sheetName: string): boolean {
+    return runWorkbookMetadataEffect(this.metadataService.deleteConditionalFormatArtifacts(sheetName))
   }
 
   setRangeProtection(record: WorkbookRangeProtectionSnapshot): WorkbookRangeProtectionRecord {

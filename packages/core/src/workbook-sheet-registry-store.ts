@@ -197,6 +197,7 @@ export class WorkbookSheetRegistryStore {
       metadata.sorts.size > 0 ||
       metadata.dataValidations.size > 0 ||
       metadata.conditionalFormats.size > 0 ||
+      metadata.conditionalFormatArtifacts.size > 0 ||
       metadata.rangeProtections.size > 0 ||
       metadata.commentThreads.size > 0 ||
       metadata.notes.size > 0

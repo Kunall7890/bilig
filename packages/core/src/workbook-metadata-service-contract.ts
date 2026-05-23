@@ -7,6 +7,7 @@ import type {
   WorkbookChartSnapshot,
   WorkbookCommentThreadSnapshot,
   WorkbookConditionalFormatSnapshot,
+  WorkbookSheetConditionalFormatArtifactsSnapshot,
   WorkbookDataValidationSnapshot,
   WorkbookDefinedNameValueSnapshot,
   WorkbookFreezePaneSnapshot,
@@ -27,6 +28,7 @@ import type {
   WorkbookChartRecord,
   WorkbookCommentThreadRecord,
   WorkbookConditionalFormatRecord,
+  WorkbookSheetConditionalFormatArtifactsRecord,
   WorkbookDataValidationRecord,
   WorkbookDefinedNameRecord,
   WorkbookFilterRecord,
@@ -150,6 +152,14 @@ export interface WorkbookMetadataService {
   readonly getConditionalFormat: (id: string) => Effect.Effect<WorkbookConditionalFormatRecord | undefined, WorkbookMetadataError>
   readonly deleteConditionalFormat: (id: string) => Effect.Effect<boolean, WorkbookMetadataError>
   readonly listConditionalFormats: (sheetName: string) => Effect.Effect<WorkbookConditionalFormatRecord[], WorkbookMetadataError>
+  readonly setConditionalFormatArtifacts: (
+    sheetName: string,
+    artifacts: WorkbookSheetConditionalFormatArtifactsSnapshot,
+  ) => Effect.Effect<WorkbookSheetConditionalFormatArtifactsRecord, WorkbookMetadataError>
+  readonly getConditionalFormatArtifacts: (
+    sheetName: string,
+  ) => Effect.Effect<WorkbookSheetConditionalFormatArtifactsRecord | undefined, WorkbookMetadataError>
+  readonly deleteConditionalFormatArtifacts: (sheetName: string) => Effect.Effect<boolean, WorkbookMetadataError>
   readonly setRangeProtection: (
     record: WorkbookRangeProtectionSnapshot,
   ) => Effect.Effect<WorkbookRangeProtectionRecord, WorkbookMetadataError>

@@ -122,6 +122,9 @@ function restoreSheetMetadata(args: { readonly workbook: WorkbookStore; readonly
   sheet.metadata?.conditionalFormats?.forEach((format) => {
     workbook.setConditionalFormat(structuredClone(format))
   })
+  if (sheet.metadata?.conditionalFormatArtifacts) {
+    workbook.setConditionalFormatArtifacts(sheet.name, structuredClone(sheet.metadata.conditionalFormatArtifacts))
+  }
   sheet.metadata?.protectedRanges?.forEach((range) => {
     workbook.setRangeProtection(structuredClone(range))
   })

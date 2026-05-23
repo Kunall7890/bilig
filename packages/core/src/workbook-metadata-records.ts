@@ -14,6 +14,7 @@ import {
   type WorkbookCommentEntryRecord,
   type WorkbookCommentThreadRecord,
   type WorkbookConditionalFormatRecord,
+  type WorkbookSheetConditionalFormatArtifactsRecord,
   type WorkbookDataValidationRecord,
   type WorkbookImageRecord,
   type WorkbookMacroPayloadRecord,
@@ -233,6 +234,12 @@ export function cloneConditionalFormatRecord(record: WorkbookConditionalFormatRe
   return structuredClone(record)
 }
 
+export function cloneConditionalFormatArtifactsRecord(
+  record: WorkbookSheetConditionalFormatArtifactsRecord,
+): WorkbookSheetConditionalFormatArtifactsRecord {
+  return structuredClone(record)
+}
+
 export function cloneSheetProtectionRecord(record: WorkbookSheetProtectionRecord): WorkbookSheetProtectionRecord {
   return structuredClone(record)
 }
@@ -414,6 +421,9 @@ function recordKey(record: unknown): string {
   if (isConditionalFormatRecord(record)) {
     return conditionalFormatKey(record.id)
   }
+  if (isConditionalFormatArtifactsRecord(record)) {
+    return record.sheetName
+  }
   if (isRangeProtectionRecord(record)) {
     return rangeProtectionKey(record.id)
   }
@@ -524,6 +534,10 @@ function isCommentThreadRecord(record: unknown): record is WorkbookCommentThread
 
 function isConditionalFormatRecord(record: unknown): record is WorkbookConditionalFormatRecord {
   return typeof record === 'object' && record !== null && 'id' in record && 'range' in record && 'rule' in record && 'style' in record
+}
+
+function isConditionalFormatArtifactsRecord(record: unknown): record is WorkbookSheetConditionalFormatArtifactsRecord {
+  return typeof record === 'object' && record !== null && 'sheetName' in record && 'xml' in record && !('range' in record)
 }
 
 function isRangeProtectionRecord(record: unknown): record is WorkbookRangeProtectionRecord {

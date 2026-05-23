@@ -3,6 +3,7 @@ import { canonicalWorkbookAddress, canonicalWorkbookRangeRef } from './workbook-
 import {
   cloneChartRecord,
   cloneCommentThreadRecord,
+  cloneConditionalFormatArtifactsRecord,
   cloneConditionalFormatRecord,
   cloneDataValidationRecord,
   cloneDefinedNameRecord,
@@ -39,6 +40,7 @@ import {
   type WorkbookChartRecord,
   type WorkbookCommentThreadRecord,
   type WorkbookConditionalFormatRecord,
+  type WorkbookSheetConditionalFormatArtifactsRecord,
   compareDefinedNameRecords,
   definedNameKey,
   normalizeDefinedNameScope,
@@ -138,6 +140,11 @@ export function createWorkbookMetadataService(metadata: WorkbookMetadataRecord):
           }
         : cloneConditionalFormatRecord(record),
     )
+    rekeyRecords(metadata.conditionalFormatArtifacts, (record) =>
+      record.sheetName === oldSheetName
+        ? { ...cloneConditionalFormatArtifactsRecord(record), sheetName: newSheetName }
+        : cloneConditionalFormatArtifactsRecord(record),
+    )
     rekeyRecords(metadata.rangeProtections, (record) =>
       record.range.sheetName === oldSheetName
         ? {
@@ -228,6 +235,7 @@ export function createWorkbookMetadataService(metadata: WorkbookMetadataRecord):
     deleteRecordsBySheet(metadata.dataValidations, sheetName, (record) => record.range.sheetName)
     metadata.sheetProtections.delete(sheetName)
     deleteRecordsBySheet(metadata.conditionalFormats, sheetName, (record) => record.range.sheetName)
+    metadata.conditionalFormatArtifacts.delete(sheetName)
     deleteRecordsBySheet(metadata.rangeProtections, sheetName, (record) => record.range.sheetName)
     deleteRecordsBySheet(metadata.commentThreads, sheetName, (record) => record.sheetName)
     deleteRecordsBySheet(metadata.notes, sheetName, (record) => record.sheetName)
@@ -257,6 +265,7 @@ export function createWorkbookMetadataService(metadata: WorkbookMetadataRecord):
     metadata.sorts.clear()
     metadata.dataValidations.clear()
     metadata.conditionalFormats.clear()
+    metadata.conditionalFormatArtifacts.clear()
     metadata.rangeProtections.clear()
     metadata.commentThreads.clear()
     metadata.notes.clear()
@@ -624,6 +633,27 @@ export function createWorkbookMetadataService(metadata: WorkbookMetadataRecord):
             return left.id.localeCompare(right.id)
           })
           .map(cloneConditionalFormatRecord),
+      )
+    },
+    setConditionalFormatArtifacts(sheetName, artifacts) {
+      return metadataEffect('Failed to set conditional format artifact metadata', () => {
+        const stored: WorkbookSheetConditionalFormatArtifactsRecord = {
+          sheetName,
+          xml: artifacts.xml,
+        }
+        metadata.conditionalFormatArtifacts.set(sheetName, stored)
+        return cloneConditionalFormatArtifactsRecord(stored)
+      })
+    },
+    getConditionalFormatArtifacts(sheetName) {
+      return metadataEffect('Failed to get conditional format artifact metadata', () => {
+        const record = metadata.conditionalFormatArtifacts.get(sheetName)
+        return record ? cloneConditionalFormatArtifactsRecord(record) : undefined
+      })
+    },
+    deleteConditionalFormatArtifacts(sheetName) {
+      return metadataEffect('Failed to delete conditional format artifact metadata', () =>
+        metadata.conditionalFormatArtifacts.delete(sheetName),
       )
     },
     setRangeProtection(record) {
