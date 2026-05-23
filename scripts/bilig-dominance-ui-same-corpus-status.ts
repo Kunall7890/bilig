@@ -11,6 +11,7 @@ import type {
 import { parseSameCorpusCapture } from './ui-responsiveness-live-browser-scorecard-parse.ts'
 import { buildSameCorpusProof, validateSameCorpusCaptureRunManifest } from './ui-responsiveness-same-corpus-scorecard-proof.ts'
 import {
+  isUiResponsivenessSameCorpusWorkload,
   requiredUiResponsivenessSameCorpusWorkloads,
   uiSameCorpusWorkloadRequiresScrollEventEvidence,
 } from './ui-responsiveness-same-corpus-workloads.ts'
@@ -100,6 +101,20 @@ export interface UiSameCorpusCaptureArtifactStatus {
   readonly captureRunSignature: string | null
   readonly readinessErrors: readonly string[]
   readonly runManifestInvalidReasons: readonly string[]
+  readonly legacyCapture: UiSameCorpusLegacyCaptureArtifactStatus | null
+}
+
+export interface UiSameCorpusLegacyCaptureArtifactStatus {
+  readonly schemaVersion: number | null
+  readonly suite: string | null
+  readonly sampleCount: number | null
+  readonly caseCount: number | null
+  readonly capturedWorkloads: readonly string[]
+  readonly missingRequiredWorkloads: readonly UiResponsivenessSameCorpusWorkload[]
+  readonly pixelGridProofCaseCount: number | null
+  readonly tenXMeanAndP95CaseCount: number | null
+  readonly googleSheetsTenXRequirementSatisfied: boolean | null
+  readonly contractGap: 'missing-run-manifest' | 'not-current-same-corpus-capture'
 }
 
 export const uiSameCorpusGoogleSheetsUrlEnvVar = 'BILIG_UI_SAME_CORPUS_GOOGLE_SHEETS_URL'
@@ -292,11 +307,18 @@ export function readUiSameCorpusCaptureArtifactStatus(args: {
   if (!existsSync(args.path)) {
     return buildMissingUiSameCorpusCaptureArtifactStatus(displayPath)
   }
+  const raw = readJsonObject(args.path)
   try {
-    const capture = parseSameCorpusCapture(readJsonObject(args.path))
+    const capture = parseSameCorpusCapture(raw)
     return buildUiSameCorpusCaptureArtifactStatus(displayPath, capture)
   } catch (error) {
-    return buildInvalidUiSameCorpusCaptureArtifactStatus(displayPath, true, false, errorMessage(error))
+    return buildInvalidUiSameCorpusCaptureArtifactStatus(
+      displayPath,
+      true,
+      false,
+      buildUiSameCorpusCaptureReadinessErrors(errorMessage(error), inspectLegacySameCorpusCaptureArtifact(raw)),
+      inspectLegacySameCorpusCaptureArtifact(raw),
+    )
   }
 }
 
@@ -334,6 +356,7 @@ function buildUiSameCorpusCaptureArtifactStatus(path: string, capture: SameCorpu
       captureRunSignature: capture.runManifest.captureRunSignature,
       readinessErrors: [],
       runManifestInvalidReasons: runManifest?.invalidReasons ?? [],
+      legacyCapture: null,
     }
   } catch (error) {
     return buildParsedUiSameCorpusCaptureArtifactStatus(
@@ -373,6 +396,7 @@ function buildParsedUiSameCorpusCaptureArtifactStatus(
     captureRunSignature: capture.runManifest.captureRunSignature,
     readinessErrors,
     runManifestInvalidReasons,
+    legacyCapture: null,
   }
 }
 
@@ -380,7 +404,8 @@ function buildInvalidUiSameCorpusCaptureArtifactStatus(
   path: string,
   exists: boolean,
   parseable: boolean,
-  message: string,
+  readinessErrors: string | readonly string[],
+  legacyCapture: UiSameCorpusLegacyCaptureArtifactStatus | null = null,
 ): UiSameCorpusCaptureArtifactStatus {
   return {
     path,
@@ -398,9 +423,91 @@ function buildInvalidUiSameCorpusCaptureArtifactStatus(
     capturedWorkloads: [],
     missingRequiredWorkloads: [...requiredUiSameCorpusWorkloads],
     captureRunSignature: null,
-    readinessErrors: [message],
+    readinessErrors: typeof readinessErrors === 'string' ? [readinessErrors] : [...readinessErrors],
     runManifestInvalidReasons: [],
+    legacyCapture,
   }
+}
+
+function inspectLegacySameCorpusCaptureArtifact(value: Record<string, unknown>): UiSameCorpusLegacyCaptureArtifactStatus | null {
+  const suite = typeof value['suite'] === 'string' ? value['suite'] : null
+  const schemaVersion =
+    typeof value['schemaVersion'] === 'number' && Number.isFinite(value['schemaVersion']) ? value['schemaVersion'] : null
+  const casesValue = value['cases']
+  const cases = Array.isArray(casesValue) ? casesValue.filter(isRecord) : []
+  const capturedWorkloads = uniqueStrings(
+    cases.map((entry) => (typeof entry['workload'] === 'string' ? entry['workload'] : null)).filter((entry) => entry !== null),
+  )
+  const capturedSameCorpusWorkloads = new Set(capturedWorkloads.filter(isUiResponsivenessSameCorpusWorkload))
+  const missingRequiredWorkloads = requiredUiSameCorpusWorkloads.filter((workload) => !capturedSameCorpusWorkloads.has(workload))
+  const tenXMeanAndP95CaseCount = cases.filter(legacyCaseHasTenXMeanAndP95).length
+  const pixelGridProofCaseCount = cases.filter(legacyCaseHasPixelGridProof).length
+  const isSameCorpusCapture =
+    suite === 'ui-responsiveness-same-corpus-capture' || cases.some((entry) => typeof entry['workload'] === 'string')
+  if (!isSameCorpusCapture) {
+    return null
+  }
+  return {
+    schemaVersion,
+    suite,
+    sampleCount: typeof value['sampleCount'] === 'number' && Number.isFinite(value['sampleCount']) ? value['sampleCount'] : null,
+    caseCount: Array.isArray(casesValue) ? cases.length : null,
+    capturedWorkloads,
+    missingRequiredWorkloads,
+    pixelGridProofCaseCount,
+    tenXMeanAndP95CaseCount,
+    googleSheetsTenXRequirementSatisfied:
+      cases.length > 0 &&
+      missingRequiredWorkloads.length === 0 &&
+      tenXMeanAndP95CaseCount === requiredUiSameCorpusWorkloads.length &&
+      pixelGridProofCaseCount === requiredUiSameCorpusWorkloads.length,
+    contractGap: Object.hasOwn(value, 'runManifest') ? 'not-current-same-corpus-capture' : 'missing-run-manifest',
+  }
+}
+
+function buildUiSameCorpusCaptureReadinessErrors(
+  parseError: string,
+  legacyCapture: UiSameCorpusLegacyCaptureArtifactStatus | null,
+): readonly string[] {
+  if (!legacyCapture) {
+    return [parseError]
+  }
+  const contractGap =
+    legacyCapture.contractGap === 'missing-run-manifest'
+      ? 'legacy same-corpus capture artifact is missing the current runManifest contract'
+      : 'same-corpus capture artifact does not match the current runManifest contract'
+  return [contractGap, parseError]
+}
+
+function legacyCaseHasTenXMeanAndP95(value: Record<string, unknown>): boolean {
+  if (value['tenXMeanAndP95AgainstGoogleSheets'] === true) {
+    return true
+  }
+  const scenarioProof = isRecord(value['scenarioProof']) ? value['scenarioProof'] : null
+  const meanRatio = finiteNumberFromField(value, 'meanRatio') ?? (scenarioProof ? finiteNumberFromField(scenarioProof, 'meanRatio') : null)
+  const p95Ratio = finiteNumberFromField(value, 'p95Ratio') ?? (scenarioProof ? finiteNumberFromField(scenarioProof, 'p95Ratio') : null)
+  return meanRatio !== null && p95Ratio !== null && meanRatio >= 10 && p95Ratio >= 10
+}
+
+function legacyCaseHasPixelGridProof(value: Record<string, unknown>): boolean {
+  const directProof = isRecord(value['pixelGridProof']) ? value['pixelGridProof'] : null
+  const scenarioProof = isRecord(value['scenarioProof']) ? value['scenarioProof'] : null
+  const nestedProof = scenarioProof && isRecord(scenarioProof['pixelGridProof']) ? scenarioProof['pixelGridProof'] : null
+  const proof = directProof ?? nestedProof
+  return proof?.['captured'] === true
+}
+
+function finiteNumberFromField(value: Record<string, unknown>, field: string): number | null {
+  const fieldValue = value[field]
+  return typeof fieldValue === 'number' && Number.isFinite(fieldValue) ? fieldValue : null
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return value !== null && typeof value === 'object' && !Array.isArray(value)
+}
+
+function uniqueStrings(values: readonly string[]): readonly string[] {
+  return [...new Set(values)]
 }
 
 export function resolveUiSameCorpusGoogleSheetsUrl(args: {

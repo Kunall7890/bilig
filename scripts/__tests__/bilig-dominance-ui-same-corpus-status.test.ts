@@ -38,8 +38,23 @@ describe('same-corpus UI dominance status', () => {
         caseCount: null,
         tenXMeanAndP95CaseCount: null,
         missingRequiredWorkloads: [...requiredUiResponsivenessSameCorpusWorkloads],
-        readinessErrors: ['Expected runManifest to be an object'],
+        readinessErrors: [
+          'legacy same-corpus capture artifact is missing the current runManifest contract',
+          'Expected runManifest to be an object',
+        ],
         runManifestInvalidReasons: [],
+        legacyCapture: {
+          schemaVersion: 1,
+          suite: 'ui-responsiveness-same-corpus-capture',
+          sampleCount: 3,
+          caseCount: 0,
+          capturedWorkloads: [],
+          missingRequiredWorkloads: [...requiredUiResponsivenessSameCorpusWorkloads],
+          pixelGridProofCaseCount: 0,
+          tenXMeanAndP95CaseCount: 0,
+          googleSheetsTenXRequirementSatisfied: false,
+          contractGap: 'missing-run-manifest',
+        },
       })
     } finally {
       rmSync(dir, { recursive: true, force: true })
