@@ -1529,13 +1529,9 @@ describe('excel import', () => {
     expect(bytes.byteLength).toBeGreaterThan(0)
     expect(Object.keys(zip)).toEqual(expect.arrayContaining(['xl/charts/chart1.xml', 'xl/drawings/drawing1.xml']))
     expect(Object.keys(zip)).toEqual(
-      expect.arrayContaining([
-        'xl/pivotTables/pivotTable1.xml',
-        'xl/pivotCache/pivotCacheDefinition1.xml',
-        'xl/pivotCache/pivotCacheRecords1.xml',
-        'xl/tables/table1.xml',
-      ]),
+      expect.arrayContaining(['xl/pivotTables/pivotTable1.xml', 'xl/pivotCache/pivotCacheDefinition1.xml', 'xl/tables/table1.xml']),
     )
+    expect(zip['xl/pivotCache/pivotCacheRecords1.xml']).toBeUndefined()
     expect(strFromU8(zip['xl/charts/chart1.xml'] ?? new Uint8Array())).toContain('<c:lineChart>')
     expect(strFromU8(zip['xl/drawings/_rels/drawing1.xml.rels'] ?? new Uint8Array())).toContain(
       'http://schemas.openxmlformats.org/officeDocument/2006/relationships/chart',
@@ -1544,6 +1540,8 @@ describe('excel import', () => {
     expect(strFromU8(zip['xl/pivotCache/pivotCacheDefinition1.xml'] ?? new Uint8Array())).toContain(
       '<worksheetSource ref="A1:D4" sheet="Inputs"/>',
     )
+    expect(strFromU8(zip['xl/pivotCache/pivotCacheDefinition1.xml'] ?? new Uint8Array())).toContain('refreshOnLoad="1"')
+    expect(strFromU8(zip['xl/pivotCache/pivotCacheDefinition1.xml'] ?? new Uint8Array())).toContain('recordCount="0"')
     expect(strFromU8(zip['_rels/.rels'] ?? new Uint8Array())).toContain(
       'http://schemas.openxmlformats.org/officeDocument/2006/relationships/custom-properties',
     )
