@@ -13,10 +13,12 @@ import { emptyWorkbookRenderedReadbackProof, type WorkbookRenderedReadbackProof 
 import {
   buildWorkbookAgentVerificationReport,
   buildWorkbookAuthoritativeReadbackProof,
+  buildWorkbookRecalculationProof,
   buildWorkbookRenderedReadbackProof,
   resolveWorkbookMutationUndoStatus,
   type WorkbookAuthoritativeReadbackProof,
   type WorkbookMutationUndoProof,
+  type WorkbookRecalculationProof,
   type WorkbookSemanticReadbackProof,
   type WorkbookAgentMutationProofContext,
 } from './workbook-agent-mutation-proof.js'
@@ -42,6 +44,7 @@ export interface WorkbookToolMutationReceipt {
     readonly after: number | null
   }
   readonly affectedRanges: readonly WorkbookAgentMutationReceiptRange[]
+  readonly recalculation: WorkbookRecalculationProof
   readonly authoritativeReadback: WorkbookAuthoritativeReadbackProof
   readonly renderedReadback: WorkbookRenderedReadbackProof
   readonly semanticReadback: WorkbookSemanticReadbackProof
@@ -212,6 +215,10 @@ export async function buildMutationReceipt(input: {
     context: input.context,
     appliedRevision: executionRecord?.appliedRevision ?? null,
   })
+  const recalculation = await buildWorkbookRecalculationProof({
+    context: input.context,
+    appliedRevision: executionRecord?.appliedRevision ?? null,
+  })
   const warnings: string[] = []
   if (!executionRecord && input.normalized.disposition === 'queuedForTurnApply') {
     warnings.push(
@@ -227,11 +234,16 @@ export async function buildMutationReceipt(input: {
   if (executionRecord && renderedReadback.matched !== true) {
     warnings.push(renderedReadback.incompleteReason ?? 'Rendered readback did not prove the mutation.')
   }
+  if (executionRecord && recalculation.matched !== true) {
+    warnings.push(recalculation.incompleteReason ?? 'Workbook recalculation did not prove the mutation.')
+  }
   if (executionRecord && !undo.available) {
     warnings.push(undo.reasonUnavailable ?? 'Undo status is unavailable.')
   }
   const hasAppliedProof =
     executionRecord !== null &&
+    recalculation.requested &&
+    recalculation.matched === true &&
     authoritativeReadback.requested &&
     authoritativeReadback.matched === true &&
     renderedReadback.requested &&
@@ -253,6 +265,7 @@ export async function buildMutationReceipt(input: {
       after: executionRecord?.appliedRevision ?? null,
     },
     affectedRanges: receiptRanges(bundle),
+    recalculation,
     authoritativeReadback,
     renderedReadback,
     semanticReadback,

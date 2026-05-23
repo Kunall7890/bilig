@@ -46,6 +46,15 @@ export interface WorkbookSemanticReadbackProof {
   readonly incompleteReason: string | null
 }
 
+export interface WorkbookRecalculationProof {
+  readonly requested: boolean
+  readonly matched: boolean | null
+  readonly headRevision: number | null
+  readonly calculatedRevision: number | null
+  readonly requiredRevision: number | null
+  readonly incompleteReason: string | null
+}
+
 export interface WorkbookMutationUndoProof {
   readonly available: boolean
   readonly token: string | null
@@ -408,6 +417,54 @@ export async function resolveWorkbookMutationUndoStatus(input: {
     token: null,
     reasonUnavailable: 'No persisted undo metadata was returned for the applied revision.',
     lookupFailed: false,
+  }
+}
+
+export async function buildWorkbookRecalculationProof(input: {
+  readonly context: WorkbookAgentMutationProofContext
+  readonly appliedRevision: number | null
+}): Promise<WorkbookRecalculationProof> {
+  if (input.appliedRevision === null) {
+    return {
+      requested: false,
+      matched: null,
+      headRevision: null,
+      calculatedRevision: null,
+      requiredRevision: null,
+      incompleteReason: 'Workbook mutation is not applied, so recalculation proof is not yet meaningful.',
+    }
+  }
+  const appliedRevision = input.appliedRevision
+  try {
+    return await input.context.zeroSyncService.inspectWorkbook(input.context.documentId, (runtime) => {
+      const requiredRevision = Math.max(runtime.headRevision, appliedRevision)
+      const matched = runtime.headRevision >= appliedRevision && runtime.calculatedRevision >= requiredRevision
+      const reasons = [
+        runtime.headRevision < appliedRevision
+          ? `runtime head r${String(runtime.headRevision)} < applied r${String(appliedRevision)}`
+          : null,
+        runtime.calculatedRevision < requiredRevision
+          ? `calculated r${String(runtime.calculatedRevision)} < required r${String(requiredRevision)}`
+          : null,
+      ].filter((reason): reason is string => reason !== null)
+      return {
+        requested: true,
+        matched,
+        headRevision: runtime.headRevision,
+        calculatedRevision: runtime.calculatedRevision,
+        requiredRevision,
+        incompleteReason: matched ? null : `Workbook recalculation is behind the required revision: ${reasons.join('; ')}.`,
+      }
+    })
+  } catch (error) {
+    return {
+      requested: true,
+      matched: false,
+      headRevision: null,
+      calculatedRevision: null,
+      requiredRevision: input.appliedRevision,
+      incompleteReason: `Recalculation proof failed: ${describeUnknownError(error)}`,
+    }
   }
 }
 
