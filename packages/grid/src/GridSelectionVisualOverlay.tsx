@@ -83,28 +83,11 @@ export function GridSelectionVisualOverlay(props: GridSelectionVisualOverlayProp
           data-grid-selection-visual-key={rect.key}
           data-grid-selection-visual-role={rect.role}
           key={keyForRect(rect)}
-          style={styleForRect(rect, shouldHideVisualRect(rect, selectionChromeMode))}
+          style={styleForRect(rect, selectionChromeMode)}
         />
       ))}
     </div>
   )
-}
-
-function shouldHideVisualRect(
-  rect: GridSelectionVisualRect,
-  mode: NonNullable<GridSelectionVisualOverlayProps['selectionChromeMode']>,
-): boolean {
-  if (mode === 'geometry-only') {
-    return true
-  }
-  if (mode === 'chrome-only') {
-    return (
-      rect.role === 'header-fill' ||
-      rect.role === 'hover-fill' ||
-      (rect.role === 'selection-fill' && !rect.key.startsWith('selection-fill:range'))
-    )
-  }
-  return false
 }
 
 export function buildGridSelectionVisualRects(input: {
@@ -455,11 +438,15 @@ function keyForRect(rect: GridSelectionVisualRect): string {
   return `${rect.role}:${rect.key}`
 }
 
-function styleForRect(rect: GridSelectionVisualRect, geometryOnly = false): CSSProperties {
+function styleForRect(
+  rect: GridSelectionVisualRect,
+  mode: NonNullable<GridSelectionVisualOverlayProps['selectionChromeMode']>,
+): CSSProperties {
+  const hidden = mode === 'geometry-only' || (mode === 'chrome-only' && rect.role === 'hover-fill')
   const base = {
     height: rect.bounds.height,
     left: rect.bounds.x,
-    opacity: geometryOnly ? 0 : undefined,
+    opacity: hidden ? 0 : mode === 'chrome-only' && rect.role === 'selection-fill' ? 0.55 : undefined,
     top: rect.bounds.y,
     width: rect.bounds.width,
   }

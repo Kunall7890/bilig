@@ -9,6 +9,7 @@ export { TYPEGPU_V3_ACTIVE_RESOURCE_DEFER_MS, GridDrawSchedulerV3, shouldDeferTy
 export { resolveTypeGpuV3DrawScrollSnapshot } from './workbook-pane-renderer-runtime.js'
 import type { DynamicGridOverlayBatchV3 } from './dynamic-overlay-batch.js'
 import type { WorkbookRenderTilePaneState } from './render-tile-pane-state.js'
+import type { WorkbookPaneSurfaceBackendStatusV3 } from './workbook-pane-surface-runtime.js'
 import { WorkbookPaneNativeRectLayerV3 } from './WorkbookPaneNativeRectLayerV3.js'
 import {
   WorkbookPaneNativeTextLayerV3,
@@ -28,6 +29,7 @@ export interface WorkbookPaneRendererV3Props {
   readonly renderRevisionSnapshot?: GridRenderRevisionSnapshot | null | undefined
   readonly overlayBuilder?: ((geometry: GridGeometrySnapshot) => DynamicGridOverlayBatchV3 | null | undefined) | undefined
   readonly overlay?: DynamicGridOverlayBatchV3 | undefined
+  readonly onBackendStatusChange?: ((status: WorkbookPaneSurfaceBackendStatusV3) => void) | undefined
   readonly scrollTransformStore?: WorkbookGridScrollStore | null
   readonly selectionOcclusionRanges?: readonly Pick<Rectangle, 'x' | 'y' | 'width' | 'height'>[] | null | undefined
   readonly suppressedTextCell?: SuppressedNativeTextCellV3 | null | undefined
@@ -39,6 +41,7 @@ export const WorkbookPaneRendererV3 = memo(function WorkbookPaneRendererV3({
   geometry,
   headerPanes = [],
   host,
+  onBackendStatusChange,
   overlay,
   overlayBuilder,
   preloadTilePanes = [],
@@ -59,6 +62,9 @@ export const WorkbookPaneRendererV3 = memo(function WorkbookPaneRendererV3({
     hostRuntime.getBackendStatusSnapshot,
     hostRuntime.getBackendStatusSnapshot,
   )
+  useEffect(() => {
+    onBackendStatusChange?.(backendStatus)
+  }, [backendStatus, onBackendStatusChange])
   const frameProofStatus = useSyncExternalStore(
     hostRuntime.subscribeFrameProofStatus,
     hostRuntime.getFrameProofStatusSnapshot,

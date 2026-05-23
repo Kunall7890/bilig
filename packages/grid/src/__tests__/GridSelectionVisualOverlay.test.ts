@@ -190,7 +190,7 @@ describe('GridSelectionVisualOverlay', () => {
     ).toBe(false)
   })
 
-  test('chrome-only mode paints continuous body range fill and crisp selection chrome', async () => {
+  test('chrome-only mode keeps a reduced body fill and paints crisp selection chrome', async () => {
     ;(globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true
     const geometry = createGeometry()
     const selection = createRangeSelection(createGridSelection(1, 1), [1, 1], [3, 3])
@@ -224,7 +224,7 @@ describe('GridSelectionVisualOverlay', () => {
     expect(selectionBorder).toBeInstanceOf(HTMLElement)
     expect(activeBorder).toBeNull()
     expect(fillHandle).toBeInstanceOf(HTMLElement)
-    expect(selectionFill?.style.opacity).toBe('')
+    expect(selectionFill?.style.opacity).toBe('0.55')
     expect(selectionFill?.style.backgroundColor).toBe('rgba(33, 115, 70, 0.18)')
     expect(hoverFill?.style.opacity).toBe('0')
     expect(selectionBorder?.style.opacity).toBe('')

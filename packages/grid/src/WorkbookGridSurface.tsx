@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useLayoutEffect, useMemo, useRef } from 'react'
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { formatAddress, parseCellAddress } from '@bilig/formula'
 import { MAX_COLS, MAX_ROWS } from '@bilig/protocol'
 import { CellEditorOverlay } from './CellEditorOverlay.js'
@@ -8,6 +8,7 @@ import { WorkbookGridContextMenu } from './WorkbookGridContextMenu.js'
 import { createGridSelection, isGridSelectionCoherent } from './gridSelection.js'
 import { WorkbookPaneRendererV3 } from './renderer-v3/WorkbookPaneRendererV3.js'
 import { buildDynamicGridOverlayBatchV3 } from './renderer-v3/dynamic-overlay-batch.js'
+import type { WorkbookPaneSurfaceBackendStatusV3 } from './renderer-v3/workbook-pane-surface-runtime.js'
 import { resolveResizeGuideColumn, resolveResizeGuideRow } from './useGridResizeState.js'
 import { useWorkbookGridInteractions } from './useWorkbookGridInteractions.js'
 import { useWorkbookGridRenderState } from './useWorkbookGridRenderState.js'
@@ -360,6 +361,8 @@ export function WorkbookGridSurface(props: WorkbookGridSurfaceProps) {
       : props.selectedAddr
   const displayTargetAddress = props.isEditingCell ? editorTargetAddress : formatAddress(displaySelectionRow, displaySelectionCol)
   const workbookDisplayFontSize = workbookDisplayFontPointSizeToCssPx(WORKBOOK_DEFAULT_FONT_SIZE)
+  const [paneRendererBackendStatus, setPaneRendererBackendStatus] = useState<WorkbookPaneSurfaceBackendStatusV3>('idle')
+  const selectionChromeMode = paneRendererBackendStatus === 'ready' ? 'chrome-only' : 'visible'
 
   return (
     <div className="relative flex min-h-0 flex-1 flex-col bg-[var(--wb-surface)]">
@@ -427,6 +430,7 @@ export function WorkbookGridSurface(props: WorkbookGridSurfaceProps) {
           geometry={v2Geometry}
           headerPanes={renderState.headerPanes}
           host={renderState.hostElement}
+          onBackendStatusChange={setPaneRendererBackendStatus}
           overlayBuilder={dynamicOverlayBuilder}
           renderRevisionSnapshot={renderRevisionSnapshot}
           scrollTransformStore={renderState.scrollTransformStore}
@@ -442,7 +446,7 @@ export function WorkbookGridSurface(props: WorkbookGridSurfaceProps) {
           hoverCell={hoverCell}
           scrollTransformStore={renderState.scrollTransformStore}
           selectedCell={[displaySelectionCol, displaySelectionRow]}
-          selectionChromeMode="chrome-only"
+          selectionChromeMode={selectionChromeMode}
           selectionRange={displaySelectionRange}
           showFillHandle={showSelectionFillHandle}
         />

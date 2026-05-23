@@ -281,7 +281,7 @@ test('web app paints selected areas as one continuous body range and collapses o
   await expect(page.locator('[data-grid-selection-visual-role="selection-border"]')).toHaveCount(1)
   await expect(page.locator('[data-grid-selection-visual-role="active-border"]')).toHaveCount(0)
   await expect(page.locator('[data-grid-selection-visual-role="fill-handle"]')).toHaveCount(1)
-  await expectSelectionVisualRoles(page, ['header-fill'], 'hidden')
+  await expectSelectionVisualRoles(page, ['header-fill'], 'visible')
   await expectSelectionVisualRoles(page, ['selection-fill'], 'visible')
   await expectSelectionVisualRoles(page, ['selection-border', 'fill-handle'], 'visible')
   await expect(page.locator('[data-grid-selection-visual-role="selection-fill"]').first()).toHaveCSS(
@@ -299,7 +299,7 @@ test('web app paints selected areas as one continuous body range and collapses o
   await expect(page.locator('[data-grid-selection-visual-role="selection-fill"]')).toHaveCount(0)
   await expect(page.locator('[data-grid-selection-visual-role="active-border"]')).toHaveCount(1)
   await expect(page.locator('[data-grid-selection-visual-role="selection-border"]')).toHaveCount(0)
-  await expectSelectionVisualRoles(page, ['header-fill'], 'hidden')
+  await expectSelectionVisualRoles(page, ['header-fill'], 'visible')
   await expectSelectionVisualRoles(page, ['active-border', 'fill-handle'], 'visible')
 })
 

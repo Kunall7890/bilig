@@ -460,7 +460,7 @@ test('@browser-webgpu @browser-serial main workbook shell grid renders and updat
     regions: [],
   } as const
 
-  await expectPresentedOverlayRects(page, 'range selection chrome')
+  await expectPresentedOverlayRects(page, 'range selection fill')
   const rangeReadback = await waitForReadback(page, rangeProbe, (result) => {
     return (
       result.sequence > valueReadback.sequence &&
@@ -474,21 +474,21 @@ test('@browser-webgpu @browser-serial main workbook shell grid renders and updat
   expect(isSelectionGreenTint(rangeReadback.points.selectedRangeFill)).toBe(true)
   expect(isSelectionGreenTint(rangeReadback.points.topHeaderSelectionFill)).toBe(true)
   await expect(page.getByTestId('grid-pane-renderer')).toHaveAttribute('data-v3-presented-overlay-rect-signature', /^[a-z0-9-]+$/)
-  const domHiddenSelectionFillOpacity = await page
-    .locator(['[data-grid-selection-visual-role="header-fill"]', '[data-grid-selection-visual-role="hover-fill"]'].join(','))
-    .evaluateAll((nodes) => nodes.map((node) => window.getComputedStyle(node).opacity))
-  expect(domHiddenSelectionFillOpacity.length).toBeGreaterThan(0)
-  expect(domHiddenSelectionFillOpacity.every((opacity) => opacity === '0')).toBe(true)
-  const domRangeSelectionFillOpacity = await page
-    .locator('[data-grid-selection-visual-role="selection-fill"][data-grid-selection-visual-key^="selection-fill:range"]')
-    .evaluateAll((nodes) => nodes.map((node) => window.getComputedStyle(node).opacity))
-  expect(domRangeSelectionFillOpacity.length).toBeGreaterThan(0)
-  expect(domRangeSelectionFillOpacity.every((opacity) => opacity !== '0')).toBe(true)
-  const domSelectionChromeOpacity = await page
-    .locator(['[data-grid-selection-visual-role="fill-handle"]', '[data-grid-selection-visual-role="selection-border"]'].join(','))
-    .evaluateAll((nodes) => nodes.map((node) => window.getComputedStyle(node).opacity))
-  expect(domSelectionChromeOpacity.length).toBeGreaterThan(0)
-  expect(domSelectionChromeOpacity.every((opacity) => opacity !== '0')).toBe(true)
+  await expectSelectionVisualOpacity(
+    page.locator('[data-grid-selection-visual-role="header-fill"]'),
+    'selected range header fill',
+    'visible',
+  )
+  await expectSelectionVisualOpacity(
+    page.locator('[data-grid-selection-visual-role="selection-fill"][data-grid-selection-visual-key^="selection-fill:range"]'),
+    'selected range body fill',
+    'visible',
+  )
+  await expectSelectionVisualOpacity(
+    page.locator(['[data-grid-selection-visual-role="fill-handle"]', '[data-grid-selection-visual-role="selection-border"]'].join(',')),
+    'selected range chrome',
+    'visible',
+  )
   await expect(page.getByTestId('grid-pane-renderer-floor')).toHaveCount(0)
   await expect(page.getByTestId('grid-pane-renderer-fallback')).toHaveCount(0)
   await expect(page.getByTestId('grid-pane-renderer')).toHaveCSS('opacity', '1')
@@ -1436,17 +1436,16 @@ test('@browser-webgpu @browser-deep axis selections paint atomically over the ty
     },
   })
   await expect(page.getByTestId('status-selection')).toHaveText('Sheet1!C:C')
-  await expectPresentedOverlayRects(page, 'column axis selection chrome')
-
+  await expectPresentedOverlayRects(page, 'column axis selection fill')
   await expectSelectionVisualOpacity(
     page.locator('[data-grid-selection-visual-key="header-fill:column:2"]'),
     'selected column header fill',
-    'hidden',
+    'visible',
   )
   await expectSelectionVisualOpacity(
     page.locator('[data-grid-selection-visual-role="selection-fill"]'),
     'selected column body fill',
-    'hidden',
+    'visible',
   )
   await expectSelectionVisualOpacity(
     page.locator('[data-grid-selection-visual-role="active-border"]'),
@@ -1463,14 +1462,17 @@ test('@browser-webgpu @browser-deep axis selections paint atomically over the ty
     },
   })
   await expect(page.getByTestId('status-selection')).toHaveText('Sheet1!6:6')
-  await expectPresentedOverlayRects(page, 'row axis selection chrome')
-
+  await expectPresentedOverlayRects(page, 'row axis selection fill')
   await expectSelectionVisualOpacity(
     page.locator('[data-grid-selection-visual-key="header-fill:row:5"]'),
     'selected row header fill',
-    'hidden',
+    'visible',
   )
-  await expectSelectionVisualOpacity(page.locator('[data-grid-selection-visual-role="selection-fill"]'), 'selected row body fill', 'hidden')
+  await expectSelectionVisualOpacity(
+    page.locator('[data-grid-selection-visual-role="selection-fill"]'),
+    'selected row body fill',
+    'visible',
+  )
   await expectSelectionVisualOpacity(
     page.locator('[data-grid-selection-visual-role="active-border"]'),
     'selected row active cell border',
