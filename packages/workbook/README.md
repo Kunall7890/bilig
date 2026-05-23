@@ -304,19 +304,25 @@ against `adapter.read(targets, plan)`. It never imports the engine, headless
 runtime, app server, or UI. If static verification fails, the apply adapter is
 not called. If a readback expectation is missing or mismatched, the returned
 `WorkbookRunResult` is `failed` with deterministic error codes such as
-`readback_missing`, `value_mismatch`, or `formula_mismatch`.
+`readback_missing`, `value_mismatch`, or `formula_mismatch`. `adapter.read`
+must return exactly the requested targets; extra readbacks fail with
+`readback_unexpected` because an agent should not accept proof for cells it did
+not ask the runtime to inspect.
 Formula readbacks are exact: adapters should return formula text in the same
 normalized no-leading-`=` form produced by `formula.source`.
 `adapter.apply` only applies the plan and may return an undo ref; it cannot
-drop, replace, or prove checks.
+drop, replace, or prove checks. An apply result with `status: "applied"` and
+non-empty `errors` is rejected as `runtime_rejected`.
 Adapters provide `verifyChecks(checks, plan)` to prove non-readback checks such
 as `exists`, `noFormulaErrors`, and consumer-defined `custom` invariants. The
 verifier must return the same checks in the same order and may only change
-`status`; changing `kind`, `target`, `refs`, `expectation`, or `message` fails
-the run as `invalid_check_verification`. If any verified check is `failed`, the
-run returns `failed` with `check_failed`. If any check remains `planned` after
-readback and adapter verification, the run returns `failed` with
-`check_not_verified`; `status: "done"` means every planned check has proof.
+`status` or add JSON-safe `proof`. Changing `kind`, `target`, `refs`,
+`expectation`, or `message` fails the run as `invalid_check_verification`.
+Unsupported verifier fields are stripped from accepted results. If any verified
+check is `failed`, the run returns `failed` with `check_failed`. If any check
+remains `planned` after readback and adapter verification, the run returns
+`failed` with `check_not_verified`; `status: "done"` means every planned check
+has proof.
 
 When running against Bilig's engine, use `createWorkbookRunAdapter(engine)` from
 `@bilig/core`. The adapter materializes generic `plan.commands` into engine

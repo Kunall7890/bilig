@@ -1,8 +1,15 @@
 import type { WorkbookRef } from './find.js'
-import type { WorkbookActionInput } from './input.js'
+import { normalizeWorkbookActionInput, type WorkbookActionInput } from './input.js'
 import { planWorkbookAction, type WorkbookActionMap, type WorkbookActionPlan, type WorkbookModel } from './model.js'
 import { verifyWorkbookReadbacks, type WorkbookRunReadback } from './readback.js'
-import type { WorkbookCheckResult, WorkbookRunError, WorkbookRunErrorCode, WorkbookRunResult, WorkbookUndoRef } from './result.js'
+import {
+  isWorkbookRunErrorCode,
+  type WorkbookCheckResult,
+  type WorkbookRunError,
+  type WorkbookRunErrorCode,
+  type WorkbookRunResult,
+  type WorkbookUndoRef,
+} from './result.js'
 import { verifyPlan } from './verify.js'
 
 type MaybePromise<T> = T | Promise<T>
@@ -64,9 +71,14 @@ function failedFromPlanIssues<Refs>(plan: WorkbookActionPlan<Refs>): WorkbookRun
 }
 
 function failedApplyResult(plan: WorkbookActionPlan, result: WorkbookRunApplyResult): WorkbookRunResult {
+  const errors =
+    result.errors !== undefined && result.errors.length > 0
+      ? result.errors
+      : [runError('apply_failed', `Workbook action ${plan.modelName}.${plan.actionName} failed to apply`)]
+
   return {
     status: 'failed',
-    errors: result.errors ?? [runError('apply_failed', `Workbook action ${plan.modelName}.${plan.actionName} failed to apply`)],
+    errors,
     checks: plan.checks,
   }
 }
@@ -111,6 +123,7 @@ function cloneCheck(check: WorkbookCheckResult): WorkbookCheckResult {
     ...(check.refs !== undefined ? { refs: check.refs } : {}),
     message: check.message,
     ...(check.expectation !== undefined ? { expectation: check.expectation } : {}),
+    ...(check.proof !== undefined ? { proof: normalizeWorkbookActionInput(check.proof) } : {}),
   }
 }
 
@@ -126,8 +139,70 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null
 }
 
+function isWorkbookRunError(value: unknown): value is WorkbookRunError {
+  return isRecord(value) && isWorkbookRunErrorCode(value['code']) && typeof value['message'] === 'string'
+}
+
+function isWorkbookUndoRef(value: unknown): value is WorkbookUndoRef {
+  return isRecord(value) && typeof value['id'] === 'string'
+}
+
 function isWorkbookCheckResult(value: unknown): value is WorkbookCheckResult {
   return isRecord(value) && isCheckStatus(value['status']) && typeof value['kind'] === 'string' && typeof value['message'] === 'string'
+}
+
+type ApplyValidation =
+  | {
+      readonly status: 'valid'
+      readonly result: WorkbookRunApplyResult
+    }
+  | {
+      readonly status: 'invalid'
+      readonly result: WorkbookRunResult
+    }
+
+function validateApplyResult(plan: WorkbookActionPlan, value: unknown): ApplyValidation {
+  const rejected = (message: string): ApplyValidation => ({
+    status: 'invalid',
+    result: {
+      status: 'failed',
+      errors: [runError('runtime_rejected', message)],
+      checks: plan.checks,
+    },
+  })
+
+  if (!isRecord(value)) {
+    return rejected(`Workbook action ${plan.modelName}.${plan.actionName} returned an invalid apply result`)
+  }
+
+  const status = value['status']
+  if (status !== 'applied' && status !== 'failed') {
+    return rejected(`Workbook action ${plan.modelName}.${plan.actionName} returned an invalid apply status`)
+  }
+
+  const rawErrors = value['errors']
+  if (rawErrors !== undefined && (!Array.isArray(rawErrors) || !rawErrors.every(isWorkbookRunError))) {
+    return rejected(`Workbook action ${plan.modelName}.${plan.actionName} returned invalid apply errors`)
+  }
+  const errors = rawErrors as readonly WorkbookRunError[] | undefined
+
+  if (status === 'applied' && errors !== undefined && errors.length > 0) {
+    return rejected(`Workbook action ${plan.modelName}.${plan.actionName} returned applied with errors`)
+  }
+
+  const undo = value['undo']
+  if (undo !== undefined && !isWorkbookUndoRef(undo)) {
+    return rejected(`Workbook action ${plan.modelName}.${plan.actionName} returned invalid undo metadata`)
+  }
+
+  return {
+    status: 'valid',
+    result: {
+      status,
+      ...(errors !== undefined ? { errors } : {}),
+      ...(undo !== undefined ? { undo } : {}),
+    },
+  }
 }
 
 type CheckValidation =
@@ -194,7 +269,17 @@ function validateVerifiedChecks(
         ),
       }
     }
-    verifiedChecks.push(actual)
+    try {
+      verifiedChecks.push(cloneCheck(actual))
+    } catch (error) {
+      return {
+        status: 'invalid',
+        error: runError(
+          'invalid_check_verification',
+          `Check verifier returned invalid proof at index ${String(index)}: ${errorMessage(error)}`,
+        ),
+      }
+    }
   }
 
   return {
@@ -260,7 +345,7 @@ export async function runWorkbookPlan<Refs>(plan: WorkbookActionPlan<Refs>, adap
     return invalidPlan
   }
 
-  let applyResult: WorkbookRunApplyResult
+  let applyResult: unknown
   try {
     applyResult = await adapter.apply(plan)
   } catch (error) {
@@ -271,8 +356,14 @@ export async function runWorkbookPlan<Refs>(plan: WorkbookActionPlan<Refs>, adap
     }
   }
 
-  if (applyResult.status === 'failed') {
-    return failedApplyResult(plan, applyResult)
+  const applyValidation = validateApplyResult(plan, applyResult)
+  if (applyValidation.status === 'invalid') {
+    return applyValidation.result
+  }
+  const validApplyResult = applyValidation.result
+
+  if (validApplyResult.status === 'failed') {
+    return failedApplyResult(plan, validApplyResult)
   }
 
   let checks = plan.checks
@@ -332,7 +423,7 @@ export async function runWorkbookPlan<Refs>(plan: WorkbookActionPlan<Refs>, adap
     status: 'done',
     changed: plan.changed,
     checks,
-    ...(applyResult.undo !== undefined ? { undo: applyResult.undo } : {}),
+    ...(validApplyResult.undo !== undefined ? { undo: validApplyResult.undo } : {}),
   }
 }
 

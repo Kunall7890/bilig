@@ -1,5 +1,6 @@
 import type { LiteralInput } from '@bilig/protocol'
 import type { WorkbookRef } from './find.js'
+import type { WorkbookActionInput } from './input.js'
 import type { EngineOp } from './ops.js'
 
 export type WorkbookCheckStatus = 'planned' | 'passed' | 'failed'
@@ -22,6 +23,7 @@ export interface WorkbookCheckResult {
   readonly refs?: readonly WorkbookRef[]
   readonly message: string
   readonly expectation?: WorkbookCheckExpectation
+  readonly proof?: WorkbookActionInput
 }
 
 export interface WorkbookChangeSummary {
@@ -58,6 +60,7 @@ export type WorkbookRunErrorCode =
   | 'apply_failed'
   | 'readback_failed'
   | 'readback_missing'
+  | 'readback_unexpected'
   | 'value_mismatch'
   | 'formula_mismatch'
   | 'invalid_check_verification'
@@ -89,6 +92,7 @@ export const workbookRunErrorCodes = Object.freeze([
   'apply_failed',
   'readback_failed',
   'readback_missing',
+  'readback_unexpected',
   'value_mismatch',
   'formula_mismatch',
   'invalid_check_verification',

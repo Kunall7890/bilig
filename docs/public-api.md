@@ -250,8 +250,10 @@ compares those readbacks against `valueEquals` and `formulaEquals` checks and
 returns a boring `WorkbookRunResult`. If static verification fails, the apply
 adapter is not called. If a readback expectation is missing or mismatched, the
 run fails with deterministic codes such as `readback_missing`,
-`value_mismatch`, or `formula_mismatch`. Formula readbacks are exact and should
-use the normalized no-leading-`=` form produced by `formula.source`.
+`value_mismatch`, or `formula_mismatch`. Runtime readbacks must match the
+requested target set exactly; surplus readbacks fail with `readback_unexpected`.
+Formula readbacks are exact and should use the normalized no-leading-`=` form
+produced by `formula.source`.
 Run errors use the stable `WorkbookRunErrorCode` union. Agents and adapters can
 inspect the frozen `workbookRunErrorCodes` list or call
 `isWorkbookRunErrorCode(value)` before branching on a code. Runtime adapters
@@ -259,14 +261,17 @@ should use `apply_failed` for apply exceptions and `runtime_rejected` for
 intentional runtime refusal with a specific message instead of inventing
 model-specific public error codes.
 `adapter.apply` only applies the plan and may return an undo ref; it cannot
-drop, replace, or prove checks.
+drop, replace, or prove checks. Returning `status: "applied"` with non-empty
+`errors` is rejected as `runtime_rejected`.
 Adapters can also expose `verifyChecks(checks, plan)` for generic proof of
 non-readback checks such as existence checks, formula-error checks, and
 consumer-defined invariants. `verifyChecks` returns the same checks in the same
-order and may only change `status`; malformed output fails with
-`invalid_check_verification`, thrown verifier errors fail with
+order and may only change `status` or add JSON-safe `proof`. Malformed output,
+contract changes, invalid proof, and unsupported verifier mutations fail with
+`invalid_check_verification`; thrown verifier errors fail with
 `check_verification_failed`, and failed checks become `check_failed` run errors.
-If a check remains `planned` after readback and adapter verification,
+Accepted verifier output is sanitized before it reaches `WorkbookRunResult`. If
+a check remains `planned` after readback and adapter verification,
 `runWorkbookPlan` returns `failed` with `check_not_verified`; `status: "done"`
 does not hide unproven checks.
 `@bilig/core` provides `createWorkbookRunAdapter(engine)` for the canonical

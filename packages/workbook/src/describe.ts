@@ -128,6 +128,7 @@ export interface WorkbookCheckResultDescription {
   readonly refs?: readonly WorkbookRefDescription[]
   readonly message: string
   readonly expectation?: WorkbookCheckExpectationDescription
+  readonly proof?: WorkbookActionInput
 }
 
 export type WorkbookCheckExpectationDescription =
@@ -314,6 +315,7 @@ function describeCheck(check: WorkbookCheckResult): WorkbookCheckResultDescripti
     ...(check.refs !== undefined ? { refs: check.refs.map(describeRef) } : {}),
     message: check.message,
     ...(check.expectation !== undefined ? { expectation: describeExpectation(check.expectation) } : {}),
+    ...(check.proof !== undefined ? { proof: check.proof } : {}),
   }
 }
 

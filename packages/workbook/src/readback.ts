@@ -8,12 +8,12 @@ export interface WorkbookRunReadback {
   readonly formula?: string | null
 }
 
-export type WorkbookReadbackIssueCode = 'readback_missing' | 'value_mismatch' | 'formula_mismatch'
+export type WorkbookReadbackIssueCode = 'readback_missing' | 'readback_unexpected' | 'value_mismatch' | 'formula_mismatch'
 
 export interface WorkbookReadbackIssue {
   readonly code: WorkbookReadbackIssueCode
   readonly message: string
-  readonly check: WorkbookCheckResult
+  readonly check?: WorkbookCheckResult
   readonly target?: WorkbookRef
   readonly expected?: LiteralInput
   readonly actual?: LiteralInput
@@ -55,6 +55,14 @@ function missingReadback(check: WorkbookCheckResult): WorkbookReadbackIssue {
     check,
     ...(check.target !== undefined ? { target: check.target } : {}),
     message: `${check.target?.label ?? check.kind} has no readback`,
+  })
+}
+
+function unexpectedReadback(readback: WorkbookRunReadback): WorkbookReadbackIssue {
+  return issue({
+    code: 'readback_unexpected',
+    target: readback.target,
+    message: `${readback.target.label} was returned by readback but was not requested`,
   })
 }
 
@@ -141,6 +149,13 @@ export function verifyWorkbookReadbacks(
   checks: readonly WorkbookCheckResult[],
   readbacks: readonly WorkbookRunReadback[],
 ): WorkbookReadbackVerification {
+  const expectedTargets = new Set<string>()
+  checks.forEach((check) => {
+    if (check.expectation !== undefined && check.target !== undefined) {
+      expectedTargets.add(refKey(check.target))
+    }
+  })
+
   const readbackByTarget = new Map<string, WorkbookRunReadback>()
   readbacks.forEach((readback) => {
     if (!readbackByTarget.has(readbackKey(readback))) {
@@ -150,6 +165,12 @@ export function verifyWorkbookReadbacks(
 
   const verifiedChecks: WorkbookCheckResult[] = []
   const issues: WorkbookReadbackIssue[] = []
+
+  readbackByTarget.forEach((readback, key) => {
+    if (!expectedTargets.has(key)) {
+      issues.push(unexpectedReadback(readback))
+    }
+  })
 
   checks.forEach((check) => {
     const result = verifyCheck(check, readbackByTarget)
