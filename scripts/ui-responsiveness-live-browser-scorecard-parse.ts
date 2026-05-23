@@ -176,7 +176,9 @@ function parseSameCorpusCaptureRunManifest(value: Record<string, unknown>): Same
     caseCount: numberField(value, 'caseCount'),
     strictRenderedGridProofCaseCount: numberField(value, 'strictRenderedGridProofCaseCount'),
     legacyInsufficientRenderedGridProofCaseCount: numberField(value, 'legacyInsufficientRenderedGridProofCaseCount'),
+    tenXMeanAndP95CaseCount: numberField(value, 'tenXMeanAndP95CaseCount'),
     currentContractEvidenceComplete: booleanField(value, 'currentContractEvidenceComplete'),
+    googleSheetsTenXRequirementSatisfied: booleanField(value, 'googleSheetsTenXRequirementSatisfied'),
     captureRunSignature: stringField(value, 'captureRunSignature'),
     invalidReasons: stringArrayField(value, 'invalidReasons'),
   }

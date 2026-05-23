@@ -210,6 +210,7 @@ export function buildSameCorpusCaptureRunManifest(
   const legacyInsufficientRenderedGridProofCaseCount = cases.filter((entry) =>
     entry.scenarioProof.pixelGridProof.productVerdicts.some((verdict) => verdict.evidenceStatus === 'legacy-insufficient'),
   ).length
+  const tenXMeanAndP95CaseCount = cases.map(buildSameCorpusCase).filter((entry) => entry.tenXMeanAndP95AgainstGoogleSheets).length
   const invalidReasons = sameCorpusCaptureRunManifestInvalidReasons({
     capturedWorkloads,
     caseCount: cases.length,
@@ -219,6 +220,7 @@ export function buildSameCorpusCaptureRunManifest(
     legacyInsufficientRenderedGridProofCaseCount,
     materializedCellCounts,
     strictRenderedGridProofCaseCount,
+    tenXMeanAndP95CaseCount,
   })
   return {
     artifactGenerator: 'scripts/capture-ui-responsiveness-same-corpus.ts',
@@ -235,7 +237,11 @@ export function buildSameCorpusCaptureRunManifest(
     caseCount: cases.length,
     strictRenderedGridProofCaseCount,
     legacyInsufficientRenderedGridProofCaseCount,
-    currentContractEvidenceComplete: invalidReasons.length === 0,
+    tenXMeanAndP95CaseCount,
+    currentContractEvidenceComplete: !invalidReasons.some(
+      (reason) => reason !== 'not every required workload is 10x against Google Sheets',
+    ),
+    googleSheetsTenXRequirementSatisfied: invalidReasons.length === 0,
     captureRunSignature: sameCorpusCaptureRunSignature(cases),
     invalidReasons,
   }
@@ -302,6 +308,7 @@ function sameCorpusCaptureRunManifestInvalidReasons(args: {
   readonly legacyInsufficientRenderedGridProofCaseCount: number
   readonly materializedCellCounts: readonly number[]
   readonly strictRenderedGridProofCaseCount: number
+  readonly tenXMeanAndP95CaseCount: number
 }): string[] {
   const invalidReasons: string[] = []
   if (args.caseCount !== requiredSameCorpusWorkloads.length) {
@@ -337,6 +344,9 @@ function sameCorpusCaptureRunManifestInvalidReasons(args: {
         requiredSameCorpusWorkloads.length,
       )} cases`,
     )
+  }
+  if (args.tenXMeanAndP95CaseCount !== requiredSameCorpusWorkloads.length) {
+    invalidReasons.push('not every required workload is 10x against Google Sheets')
   }
   return invalidReasons
 }

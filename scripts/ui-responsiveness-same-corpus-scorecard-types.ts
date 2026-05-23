@@ -126,7 +126,9 @@ export interface SameCorpusCaptureRunManifest {
   readonly caseCount: number
   readonly strictRenderedGridProofCaseCount: number
   readonly legacyInsufficientRenderedGridProofCaseCount: number
+  readonly tenXMeanAndP95CaseCount: number
   readonly currentContractEvidenceComplete: boolean
+  readonly googleSheetsTenXRequirementSatisfied: boolean
   readonly captureRunSignature: string
   readonly invalidReasons: readonly string[]
 }
@@ -169,4 +171,4 @@ export interface SameCorpusCaptureCorpusVerification {
   readonly checkedCells: readonly SameCorpusCaptureVerifiedCell[]
 }
 
-export const sameCorpusUiCaptureToolVersion = 'same-corpus-capture-v1'
+export const sameCorpusUiCaptureToolVersion = 'same-corpus-capture-v2'

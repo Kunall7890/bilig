@@ -363,14 +363,17 @@ describe('same-corpus UI responsiveness capture CLI', () => {
       caseCount: 1,
       contractVersion: 'same-corpus-ui-v4',
       currentContractEvidenceComplete: false,
+      googleSheetsTenXRequirementSatisfied: false,
       requiredProducts: ['bilig', 'google-sheets'],
       sampleCount: 3,
       strictRenderedGridProofCaseCount: 1,
+      tenXMeanAndP95CaseCount: 0,
     })
     expect(capture.runManifest.captureRunSignature).toMatch(/^[a-f0-9]{64}$/u)
     expect(capture.runManifest.invalidReasons).toContain(
       'missing required workloads: select-cell, edit-visible-cell, scroll-vertical, scroll-horizontal, jump-deep-row, formula-edit, fill-format-change, wide-sheet-navigation',
     )
+    expect(capture.runManifest.invalidReasons).toContain('not every required workload is 10x against Google Sheets')
     expect(capture.cases[0]).toMatchObject({
       biligMeanMs: scenarioProof.biligMeanMs,
       biligP95Ms: scenarioProof.biligP95Ms,
