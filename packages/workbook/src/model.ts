@@ -210,14 +210,29 @@ export function defineModel<Refs>(config: WorkbookModelConfig<Refs, WorkbookActi
 }
 
 export function inspectModel<Refs, Actions extends WorkbookActionMap<Refs>>(model: WorkbookModel<Refs, Actions>): WorkbookModelInspection {
-  const actions = Object.keys(model.actions).toSorted()
-  const description = normalizeOptionalDescription(model.description, `Workbook model ${model.name} description`)
+  if (!isObject(model)) {
+    throw new Error('Workbook model must be an object')
+  }
+  const name = normalizeRequiredName(requiredDataProperty(model, 'name', 'Workbook model name'), 'Workbook model name')
+  const actionMap = requiredDataProperty(model, 'actions', `Workbook model ${name} actions`)
+  if (!isObject(actionMap) || Array.isArray(actionMap)) {
+    throw new Error(`Workbook model ${name} actions must be an object`)
+  }
+  const actions = Object.keys(actionMap).toSorted()
+  const descriptionValue = optionalDataProperty(model, 'description', `Workbook model ${name} description`)
+  const checksValue = optionalDataProperty(model, 'checks', `Workbook model ${name} checks`)
+  const description = normalizeOptionalDescription(
+    descriptionValue.status === 'present' ? descriptionValue.value : undefined,
+    `Workbook model ${name} description`,
+  )
   return {
-    name: model.name,
+    name,
     ...(description !== undefined ? { description } : {}),
     actions,
-    actionDetails: actions.map((actionName) => inspectAction(actionName, model.actions[actionName])),
-    hasChecks: model.checks !== undefined,
+    actionDetails: actions.map((actionName) =>
+      inspectAction(actionName, requiredDataProperty(actionMap, actionName, `Workbook model ${name} action ${actionName}`)),
+    ),
+    hasChecks: checksValue.status === 'present' && checksValue.value !== undefined,
   }
 }
 
@@ -485,9 +500,12 @@ function actionInputDescription<Refs>(definition: WorkbookActionDefinition<Refs>
   return typeof definition === 'function' ? undefined : definition.input
 }
 
-function inspectAction<Refs>(name: string, definition: WorkbookActionDefinition<Refs> | undefined): WorkbookActionInspection {
+function inspectAction(name: string, definition: unknown): WorkbookActionInspection {
   if (definition === undefined || typeof definition === 'function') {
     return { name }
+  }
+  if (!isActionConfig(definition)) {
+    throw new Error(`Workbook action ${name} must be a function or action object`)
   }
   const descriptionValue = optionalDataProperty(definition, 'description', `Workbook action ${name} description`)
   const description = normalizeOptionalDescription(

@@ -643,7 +643,8 @@ export function verifyModel<Refs, Actions extends WorkbookActionMap<Refs>>(
   model: WorkbookModel<Refs, Actions>,
   options: WorkbookModelVerificationOptions = {},
 ): WorkbookModelVerification {
-  const actions = inspectModel(model).actions.map((actionName): WorkbookModelActionVerification => {
+  const inspection = inspectModel(model)
+  const actions = inspection.actions.map((actionName): WorkbookModelActionVerification => {
     const planning = planWorkbookAction(model, actionName, options.inputs?.[actionName])
     const describedPlanning = describePlanResult(planning)
     if (planning.status === 'failed') {
@@ -664,7 +665,7 @@ export function verifyModel<Refs, Actions extends WorkbookActionMap<Refs>>(
 
   return {
     status: isValid ? 'valid' : 'invalid',
-    modelName: model.name,
+    modelName: inspection.name,
     actions,
   }
 }

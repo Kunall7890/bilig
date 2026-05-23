@@ -22,6 +22,14 @@ function defineUnknownModel(config: unknown): unknown {
   return Reflect.apply(defineModel, undefined, [config])
 }
 
+function inspectUnknownModel(model: unknown): unknown {
+  return Reflect.apply(inspectModel, undefined, [model])
+}
+
+function describeUnknownModel(model: unknown): unknown {
+  return Reflect.apply(describeModel, undefined, [model])
+}
+
 describe('@bilig/workbook action metadata api', () => {
   it('describes action objects with plain input metadata and still plans their run function', () => {
     const model = defineModel({
@@ -363,6 +371,85 @@ describe('@bilig/workbook action metadata api', () => {
       }),
     ).toThrowError('Workbook model accessor-action-description-model action write description must be a data property')
     expect(descriptionGetterInvoked).toBe(false)
+  })
+
+  it('rejects accessor-backed inspected model manifests without invoking getters', () => {
+    let modelNameGetterInvoked = false
+    const modelWithAccessorName: Record<string, unknown> = {
+      actions: {
+        write() {},
+      },
+    }
+    Object.defineProperty(modelWithAccessorName, 'name', {
+      enumerable: true,
+      get() {
+        modelNameGetterInvoked = true
+        throw new Error('model name getter must not run')
+      },
+    })
+
+    expect(() => inspectUnknownModel(modelWithAccessorName)).toThrowError('Workbook model name must be a data property')
+    expect(modelNameGetterInvoked).toBe(false)
+
+    let modelDescriptionGetterInvoked = false
+    const modelWithAccessorDescription: Record<string, unknown> = {
+      name: 'inspect-accessor-description-model',
+      actions: {
+        write() {},
+      },
+    }
+    Object.defineProperty(modelWithAccessorDescription, 'description', {
+      enumerable: true,
+      get() {
+        modelDescriptionGetterInvoked = true
+        throw new Error('model description getter must not run')
+      },
+    })
+
+    expect(() => describeUnknownModel(modelWithAccessorDescription)).toThrowError(
+      'Workbook model inspect-accessor-description-model description must be a data property',
+    )
+    expect(modelDescriptionGetterInvoked).toBe(false)
+
+    let actionGetterInvoked = false
+    const actionMap: Record<string, unknown> = {}
+    Object.defineProperty(actionMap, 'write', {
+      enumerable: true,
+      get() {
+        actionGetterInvoked = true
+        throw new Error('action getter must not run')
+      },
+    })
+
+    expect(() =>
+      inspectUnknownModel({
+        name: 'inspect-accessor-action-model',
+        actions: actionMap,
+      }),
+    ).toThrowError('Workbook model inspect-accessor-action-model action write must be a data property')
+    expect(actionGetterInvoked).toBe(false)
+
+    let actionDescriptionGetterInvoked = false
+    const actionWithAccessorDescription: Record<string, unknown> = {
+      run() {},
+    }
+    Object.defineProperty(actionWithAccessorDescription, 'description', {
+      enumerable: true,
+      get() {
+        actionDescriptionGetterInvoked = true
+        throw new Error('action description getter must not run')
+      },
+    })
+
+    expect(() =>
+      describeUnknownModel({
+        name: 'inspect-accessor-action-description-model',
+        actions: {
+          write: actionWithAccessorDescription,
+        },
+      }),
+    ).toThrowError('Workbook action write description must be a data property')
+    expect(actionDescriptionGetterInvoked).toBe(false)
   })
 
   it('describes action metadata without running find, checks, or actions', () => {

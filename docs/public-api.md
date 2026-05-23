@@ -481,6 +481,9 @@ checks fail planning without invoking hidden getters.
 model description, sorted action names, per-action descriptions, optional input
 descriptions, and whether model-level checks exist. It does not run `find`,
 checks, or actions.
+Model inspection reads own data properties only, rejecting accessor-backed model
+names, descriptions, action maps, and action metadata without invoking hidden
+getters.
 For agent logs, approvals, tests, and runtime handoff, `describeRef` and
 `describePlan` produce JSON-safe descriptions of refs and action plans. The
 descriptions preserve generic action input and workbook intent while removing

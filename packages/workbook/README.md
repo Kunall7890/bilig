@@ -127,6 +127,9 @@ Model config and action objects are read as data too: `defineModel` requires
 own data properties for `actions` entries and for action-object `run`,
 `description`, and `input`. Accessor-backed model metadata is rejected before any
 getter can run.
+`inspectModel` and `describeModel` use the same manifest boundary, so model
+names, descriptions, action maps, and action metadata can be inspected without
+triggering hidden getters.
 
 ## Selectors
 
