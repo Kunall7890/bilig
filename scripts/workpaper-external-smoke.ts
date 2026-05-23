@@ -192,7 +192,7 @@ function runNodeSmoke(
     roundTripTotalValue: number
     secondPeriod: number
     totalValue: number
-    translatedStructuredRefs: boolean
+    structuredReferencesImported: boolean
   }
   httpJsonSummary: {
     computed: {

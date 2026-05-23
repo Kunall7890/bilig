@@ -512,7 +512,7 @@ export function parseNodeXlsxImportOutput(output: string): {
   roundTripTotalValue: number
   secondPeriod: number
   totalValue: number
-  translatedStructuredRefs: boolean
+  structuredReferencesImported: boolean
 } {
   const parsed = parseJsonRecord(output, 'node XLSX import output')
   const currencyLabel = parsed.currencyLabel
@@ -525,7 +525,7 @@ export function parseNodeXlsxImportOutput(output: string): {
   const roundTripTotalValue = parsed.roundTripTotalValue
   const secondPeriod = parsed.secondPeriod
   const totalValue = parsed.totalValue
-  const translatedStructuredRefs = parsed.translatedStructuredRefs
+  const structuredReferencesImported = parsed.structuredReferencesImported
   if (
     currencyLabel !== 'USD  000s' ||
     editedTotalValue !== 300 ||
@@ -540,7 +540,7 @@ export function parseNodeXlsxImportOutput(output: string): {
     roundTripTotalValue !== 300 ||
     secondPeriod !== 1 ||
     totalValue !== 225 ||
-    translatedStructuredRefs !== true
+    structuredReferencesImported !== true
   ) {
     throw new Error(`Unexpected node XLSX import output: ${output}`)
   }
@@ -555,7 +555,7 @@ export function parseNodeXlsxImportOutput(output: string): {
     roundTripTotalValue,
     secondPeriod,
     totalValue,
-    translatedStructuredRefs,
+    structuredReferencesImported,
   }
 }
 
