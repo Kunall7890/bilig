@@ -30,7 +30,10 @@ flowchart LR
   - frozen workbook refs with non-enumerable ergonomic helpers
   - JSON-safe ref data plus hydration helpers for agent/runtime transport
   - frozen plan refs containers with `refsUsed` verification
-  - transported plan verification through `verifyPlanData`
+  - transported plan data through `toPlanData`, `hydratePlanData`, and
+    `verifyPlanData`
+  - transported plan execution through `runWorkbookPlan` without requiring the
+    consumer's private `refs` object shape
   - generic selector validation before runtime handoff, including canonical table-header selectors and row predicate value contracts
   - JSON-safe action input planning and verification
   - action-object metadata and plain input descriptions for agent manifests

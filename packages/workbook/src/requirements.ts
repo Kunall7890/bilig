@@ -2,6 +2,7 @@ import { describeRef, type WorkbookRefDescription } from './describe.js'
 import type { WorkbookRef } from './find.js'
 import type { WorkbookActionCommand, WorkbookActionPlan } from './model.js'
 import type { WorkbookOp } from './ops.js'
+import { hydratePlanData, isHydratedPlan, type WorkbookExecutablePlan } from './plan-data.js'
 import type { WorkbookCheckResult } from './result.js'
 
 type WorkbookConcreteCommandOp = Extract<WorkbookOp, { kind: 'setCellFormula' | 'setCellValue' | 'setCellFormat' | 'clearCell' }>
@@ -205,7 +206,7 @@ function commandCoveredOpKeys(commands: readonly WorkbookActionCommand[]): Reado
   return keys
 }
 
-export function describeRuntimeRequirements<Refs>(plan: WorkbookActionPlan<Refs>): WorkbookRuntimeRequirements {
+function describeLiveRuntimeRequirements<Refs>(plan: WorkbookActionPlan<Refs>): WorkbookRuntimeRequirements {
   const requirements: WorkbookRuntimeRequirement[] = plan.commands.map(commandRequirement)
   const commandCoveredOps = commandCoveredOpKeys(plan.commands)
 
@@ -241,4 +242,11 @@ export function describeRuntimeRequirements<Refs>(plan: WorkbookActionPlan<Refs>
     actionName: plan.actionName,
     requirements,
   }
+}
+
+export function describeRuntimeRequirements<Refs>(plan: WorkbookExecutablePlan<Refs>): WorkbookRuntimeRequirements {
+  if (isHydratedPlan(plan)) {
+    return describeLiveRuntimeRequirements(plan)
+  }
+  return describeLiveRuntimeRequirements(hydratePlanData(plan))
 }

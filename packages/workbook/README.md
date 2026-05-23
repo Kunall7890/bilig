@@ -26,55 +26,56 @@ import {
   formula,
   planWorkbookAction,
   runWorkbookPlan,
+  toPlanData,
   verifyPlan,
   verifyPlanData,
-} from "@bilig/workbook";
+} from '@bilig/workbook'
 
 export const model = defineModel({
-  name: "generic-row-calculator",
+  name: 'generic-row-calculator',
 
   find(workbook) {
     const table = workbook.findTable({
-      headers: ["Item", "Quantity", "Rate", "Status", "Total"],
-    });
+      headers: ['Item', 'Quantity', 'Rate', 'Status', 'Total'],
+    })
     const rows = workbook.findRows({
       table,
-      where: { column: "Status", op: "eq", value: "ready" },
-    });
+      where: { column: 'Status', op: 'eq', value: 'ready' },
+    })
 
     return {
       table,
       rows,
-      quantity: rows.column("Quantity"),
-      rate: rows.column("Rate"),
-      total: rows.column("Total"),
-    };
+      quantity: rows.column('Quantity'),
+      rate: rows.column('Rate'),
+      total: rows.column('Total'),
+    }
   },
 
   checks({ refs, workbook }) {
-    return [workbook.check.exists(refs.table), workbook.check.noFormulaErrors(refs.total)];
+    return [workbook.check.exists(refs.table), workbook.check.noFormulaErrors(refs.total)]
   },
 
   actions: {
     recompute({ refs, workbook }) {
-      const expected = formula.multiply(refs.quantity, refs.rate);
-      workbook.writeFormula(refs.total, expected);
-      workbook.check.formulaEquals(refs.total, expected);
+      const expected = formula.multiply(refs.quantity, refs.rate)
+      workbook.writeFormula(refs.total, expected)
+      workbook.check.formulaEquals(refs.total, expected)
     },
   },
-});
+})
 
-const planned = planWorkbookAction(model, "recompute");
-if (planned.status === "failed") throw new Error(planned.errors[0]?.message);
+const planned = planWorkbookAction(model, 'recompute')
+if (planned.status === 'failed') throw new Error(planned.errors[0]?.message)
 
-const staticProof = verifyPlan(planned.plan);
-const requirements = describeRuntimeRequirements(planned.plan);
-const planForLogs = describePlan(planned.plan);
-const transportedPlan = JSON.parse(JSON.stringify(planForLogs));
-const transportProof = verifyPlanData(transportedPlan);
+const staticProof = verifyPlan(planned.plan)
+const requirements = describeRuntimeRequirements(planned.plan)
+const planForLogs = describePlan(planned.plan)
+const transportedPlan = JSON.parse(JSON.stringify(toPlanData(planned.plan)))
+const transportProof = verifyPlanData(transportedPlan)
 
-const result = await runWorkbookPlan(planned.plan, adapter);
-const resultForLogs = describeRunResult(result);
+const result = await runWorkbookPlan(transportedPlan, adapter)
+const resultForLogs = describeRunResult(result)
 ```
 
 That is the core flow:
@@ -85,7 +86,8 @@ That is the core flow:
 4. An action builds workbook intent.
 5. `verifyPlan` checks the plan without running an engine.
 6. `describeRuntimeRequirements` tells an adapter what it must apply, read, and prove.
-7. `runWorkbookPlan` applies the plan through a runtime-owned adapter and returns a boring result with check proof and apply proof when the adapter provides it.
+7. `toPlanData` makes the plan JSON-safe for handoff.
+8. `runWorkbookPlan` applies either the in-memory plan or transported plan data through a runtime-owned adapter and returns a boring result with check proof and apply proof when the adapter provides it.
 
 ## Public Contract
 
@@ -97,7 +99,7 @@ The main API is intentionally small:
 - formulas: `formula.add`, `formula.subtract`, `formula.multiply`, `formula.divide`, `formula.sum`, `formula.call`, `formula.raw`, `formula.text`, `formula.labels`
 - proof: `verifyPlan`, `verifyModel`, `verifyWorkbookReadbacks`
 - descriptions: `describeModel`, `describeRef`, `describePlan`, `describePlanResult`, `describeRuntimeRequirements`, `describeRunResult`
-- transport data: `isWorkbookRefData`, `toWorkbookRefData`, `collectWorkbookRefData`, `hydrateWorkbookRef`, `hydrateWorkbookRefs`, `verifyPlanData`
+- transport data: `isWorkbookRefData`, `toWorkbookRefData`, `collectWorkbookRefData`, `hydrateWorkbookRef`, `hydrateWorkbookRefs`, `toPlanData`, `isPlanData`, `hydratePlanData`, `verifyPlanData`
 - runtime handoff: `runWorkbookPlan`, `runWorkbookAction`, `WorkbookRunAdapter`
 - low-level language: `WorkbookOp`, `WorkbookTxn`, `EngineOp`, `EngineOpBatch`, `isEngineOpBatch`
 
@@ -131,6 +133,13 @@ Use `hydrateWorkbookRef` or `hydrateWorkbookRefs` after transport to regain the
 local helpers. `verifyPlanData(describePlan(plan))` checks transported plan data
 without requiring the consumer's private `refs` object shape.
 
+For full action handoff, use `toPlanData(plan)` before JSON transport. A runtime
+can call `hydratePlanData(data)` to regain frozen refs and helper methods, or
+pass the data directly to `describeRuntimeRequirements(data)` and
+`runWorkbookPlan(data, adapter)`. The hydrated plan exposes
+`refs: { refsUsed }` instead of the consumer's private model-shaped `refs`
+object, so transported execution stays generic.
+
 ## Formulas
 
 `@bilig/workbook` creates formula expressions. `@bilig/formula` parses and
@@ -154,25 +163,26 @@ label, a named range, or user text.
 ```ts
 const adapter = {
   apply(plan) {
-    const ops = materializeForThisRuntime(plan);
+    const ops = materializeForThisRuntime(plan)
     return {
-      status: "applied",
+      status: 'applied',
       previewOps: ops,
       appliedOps: ops,
-      proof: { source: "runtime", opCount: ops.length },
-      undo: { id: "undo-1" },
-    };
+      proof: { source: 'runtime', opCount: ops.length },
+      undo: { id: 'undo-1' },
+    }
   },
   read(targets, plan) {
-    return targets.map((target) => ({ target, value: 12 }));
+    return targets.map((target) => ({ target, value: 12 }))
   },
   verifyChecks(checks, plan) {
-    return checks.map((entry) => ({ ...entry, status: "passed" }));
+    return checks.map((entry) => ({ ...entry, status: 'passed' }))
   },
-};
+}
 ```
 
-`runWorkbookPlan` refuses to call `apply` if static plan verification fails.
+`runWorkbookPlan` accepts either a live plan or transported plan data and
+refuses to call `apply` if static plan verification fails.
 If an adapter returns both `previewOps` and `appliedOps`, the result reports
 whether they matched. If the adapter returns neither, the run records an
 unverified apply fact. Use `runWorkbookPlan(plan, adapter, { requireApplyProof:
@@ -192,22 +202,22 @@ The result is deliberately plain:
 ```ts
 type WorkbookRunResult =
   | {
-      status: "done";
-      apply?: WorkbookRunApplySummary;
-      changed: WorkbookChangeSummary[];
-      checks: WorkbookCheckResult[];
-      undo?: WorkbookUndoRef;
-      unverified?: WorkbookRunUnverified[];
+      status: 'done'
+      apply?: WorkbookRunApplySummary
+      changed: WorkbookChangeSummary[]
+      checks: WorkbookCheckResult[]
+      undo?: WorkbookUndoRef
+      unverified?: WorkbookRunUnverified[]
     }
   | {
-      status: "failed";
-      errors: WorkbookRunError[];
-      apply?: WorkbookRunApplySummary;
-      changed: WorkbookChangeSummary[];
-      checks: WorkbookCheckResult[];
-      undo?: WorkbookUndoRef;
-      unverified?: WorkbookRunUnverified[];
-    };
+      status: 'failed'
+      errors: WorkbookRunError[]
+      apply?: WorkbookRunApplySummary
+      changed: WorkbookChangeSummary[]
+      checks: WorkbookCheckResult[]
+      undo?: WorkbookUndoRef
+      unverified?: WorkbookRunUnverified[]
+    }
 ```
 
 ## Low-Level Ops

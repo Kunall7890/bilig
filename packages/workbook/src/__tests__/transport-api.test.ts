@@ -5,14 +5,19 @@ import {
   collectWorkbookRefs,
   defineModel,
   describePlan,
+  describeRuntimeRequirements,
   findRows,
   findTable,
   findRange,
   formula,
+  hydratePlanData,
   hydrateWorkbookRef,
   hydrateWorkbookRefs,
+  isPlanData,
   isWorkbookRef,
   isWorkbookRefData,
+  runWorkbookPlan,
+  toPlanData,
   toWorkbookRefData,
   verifyPlanData,
   type WorkbookActionPlanDescription,
@@ -154,5 +159,73 @@ describe('@bilig/workbook transport api', () => {
         path: 'commands[0].inputs[2]',
       }),
     ])
+  })
+
+  it('runs transported plan data without the consumer refs object', async () => {
+    const model = defineModel({
+      name: 'transport-executable-plan-model',
+
+      find(workbook) {
+        const table = workbook.findTable({ name: 'Inputs' })
+        return {
+          amount: table.column('Amount'),
+          result: workbook.findRange({ sheetName: 'Sheet1', address: 'B2' }),
+        }
+      },
+
+      actions: {
+        calculate({ refs, workbook }) {
+          const expected = formula.raw('amount_token*2', {
+            labels: [{ name: 'amount_token', ref: refs.amount }],
+          })
+          workbook.writeFormula(refs.result, expected)
+          workbook.check.formulaEquals(refs.result, expected)
+        },
+      },
+    })
+    const plan = buildWorkbookActionPlan(model, 'calculate')
+    const transported: unknown = JSON.parse(JSON.stringify(toPlanData(plan)))
+
+    expect(isPlanData(transported)).toBe(true)
+    if (!isPlanData(transported)) {
+      throw new Error('expected executable transported plan data')
+    }
+
+    const hydrated = hydratePlanData(transported)
+    expect(hydrated.refs).toEqual({ refsUsed: hydrated.refsUsed })
+    expect(verifyPlanData(transported).status).toBe('valid')
+    expect(describeRuntimeRequirements(transported).requirements.map((entry) => entry.capability)).toEqual(['writeFormula', 'read'])
+
+    const result = await runWorkbookPlan(transported, {
+      apply(receivedPlan) {
+        expect(receivedPlan.refs).toEqual({ refsUsed: receivedPlan.refsUsed })
+        return {
+          status: 'applied',
+          previewOps: receivedPlan.ops,
+          appliedOps: receivedPlan.ops,
+        }
+      },
+      read(targets) {
+        return targets.map((target) => ({
+          target,
+          formula: 'amount_token*2',
+        }))
+      },
+    })
+
+    expect(result).toMatchObject({
+      status: 'done',
+      checks: [
+        {
+          status: 'passed',
+          kind: 'formulaEquals',
+          proof: {
+            source: 'readback',
+            formula: 'amount_token*2',
+          },
+        },
+      ],
+    })
+    expect(JSON.parse(JSON.stringify(describePlan(hydrated)))).toEqual(transported)
   })
 })

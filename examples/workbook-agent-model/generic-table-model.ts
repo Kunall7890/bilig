@@ -7,6 +7,7 @@ import {
   formula,
   planWorkbookAction,
   runWorkbookPlan,
+  toPlanData,
   verifyPlan,
   verifyPlanData,
   type WorkbookActionPlan,
@@ -70,8 +71,8 @@ if (planned.status === 'failed') {
 
 const plannedFormula = requiredFormula(planned.plan)
 const describedPlan = describePlan(planned.plan)
-const transportedPlan = JSON.parse(JSON.stringify(describedPlan))
-const adapter: WorkbookRunAdapter<typeof planned.plan.refs> = {
+const transportedPlan = JSON.parse(JSON.stringify(toPlanData(planned.plan)))
+const adapter: WorkbookRunAdapter<{ readonly refsUsed: typeof planned.plan.refsUsed }> = {
   apply() {
     return { status: 'applied' }
   },
@@ -94,7 +95,7 @@ const adapter: WorkbookRunAdapter<typeof planned.plan.refs> = {
   },
 }
 
-const result = await runWorkbookPlan(planned.plan, adapter)
+const result = await runWorkbookPlan(transportedPlan, adapter)
 
 console.log(
   JSON.stringify(
@@ -103,7 +104,7 @@ console.log(
       plan: describedPlan,
       verification: verifyPlan(planned.plan),
       transportVerification: verifyPlanData(transportedPlan),
-      requirements: describeRuntimeRequirements(planned.plan),
+      requirements: describeRuntimeRequirements(transportedPlan),
       result: describeRunResult(result),
     },
     null,

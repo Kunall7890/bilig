@@ -3,16 +3,11 @@ import { parseFormula } from '@bilig/formula'
 import {
   describePlanResult,
   describeRef,
-  type WorkbookActionCommandDescription,
   type WorkbookActionPlanDescription,
   type WorkbookActionPlanResultDescription,
-  type WorkbookChangeSummaryDescription,
-  type WorkbookCheckExpectationDescription,
-  type WorkbookCheckResultDescription,
-  type WorkbookFormulaLabelDescription,
   type WorkbookRefDescription,
 } from './describe.js'
-import { collectWorkbookRefs, hydrateWorkbookRef, type WorkbookRef } from './find.js'
+import { collectWorkbookRefs, type WorkbookRef } from './find.js'
 import type { WorkbookFormulaLabel } from './formula.js'
 import { isWorkbookOp } from './guards.js'
 import {
@@ -26,7 +21,8 @@ import {
 import { describeRuntimeRequirements, type WorkbookRuntimeRequirements } from './requirements.js'
 import { getOwnActionInput, hasOwnActionInput, normalizeWorkbookActionInput, type WorkbookActionInput } from './input.js'
 import type { WorkbookOp } from './ops.js'
-import type { WorkbookChangeSummary, WorkbookCheckExpectation, WorkbookCheckResult } from './result.js'
+import type { WorkbookCheckExpectation } from './result.js'
+import { hydratePlanData } from './plan-data.js'
 
 type WorkbookConcreteCommandOp = Extract<WorkbookOp, { kind: 'setCellFormula' | 'setCellValue' | 'setCellFormat' | 'clearCell' }>
 
@@ -336,84 +332,6 @@ function errorMessage(error: unknown): string {
   return error instanceof Error ? error.message : String(error)
 }
 
-function hydratePlanDataRef(ref: WorkbookRefDescription): WorkbookRef {
-  return hydrateWorkbookRef(ref)
-}
-
-function hydratePlanDataFormulaLabel(label: WorkbookFormulaLabelDescription): WorkbookFormulaLabel {
-  return {
-    name: label.name,
-    ref: hydratePlanDataRef(label.ref),
-  }
-}
-
-function hydratePlanDataCommand(command: WorkbookActionCommandDescription): WorkbookActionCommand {
-  switch (command.kind) {
-    case 'writeFormula':
-      return {
-        kind: 'writeFormula',
-        target: hydratePlanDataRef(command.target),
-        formula: command.formula,
-        inputs: command.inputs.map(hydratePlanDataRef),
-        labels: ((command as { readonly labels?: readonly WorkbookFormulaLabelDescription[] }).labels ?? []).map(
-          hydratePlanDataFormulaLabel,
-        ),
-      }
-    case 'writeValue':
-      return {
-        kind: 'writeValue',
-        target: hydratePlanDataRef(command.target),
-        value: command.value,
-      }
-    case 'format':
-      return {
-        kind: 'format',
-        target: hydratePlanDataRef(command.target),
-        ...(command.style !== undefined ? { style: structuredClone(command.style) } : {}),
-        ...(command.numberFormat !== undefined ? { numberFormat: command.numberFormat } : {}),
-      }
-    case 'clear':
-      return {
-        kind: 'clear',
-        target: hydratePlanDataRef(command.target),
-      }
-    case 'op':
-      return {
-        kind: 'op',
-        op: structuredClone(command.op),
-        ...(command.target !== undefined ? { target: hydratePlanDataRef(command.target) } : {}),
-        ...(command.message !== undefined ? { message: command.message } : {}),
-      }
-  }
-}
-
-function hydratePlanDataChange(change: WorkbookChangeSummaryDescription): WorkbookChangeSummary {
-  return {
-    kind: change.kind,
-    ...(change.target !== undefined ? { target: hydratePlanDataRef(change.target) } : {}),
-    message: change.message,
-  }
-}
-
-function hydratePlanDataExpectation(expectation: WorkbookCheckExpectationDescription): WorkbookCheckExpectation {
-  switch (expectation.kind) {
-    case 'valueEquals':
-      return {
-        kind: 'valueEquals',
-        value: expectation.value,
-      }
-    case 'formulaEquals':
-      return {
-        kind: 'formulaEquals',
-        formula: expectation.formula,
-        inputs: expectation.inputs.map(hydratePlanDataRef),
-        labels: ((expectation as { readonly labels?: readonly WorkbookFormulaLabelDescription[] }).labels ?? []).map(
-          hydratePlanDataFormulaLabel,
-        ),
-      }
-  }
-}
-
 function formulaLabelsForCommand(
   command: Extract<WorkbookActionCommand, { readonly kind: 'writeFormula' }>,
 ): readonly WorkbookFormulaLabel[] {
@@ -429,18 +347,6 @@ function formulaLabelsForExpectation(
 function hasLabelForInput(labels: readonly WorkbookFormulaLabel[], input: WorkbookRef): boolean {
   const inputKey = refKey(input)
   return labels.some((label) => refKey(label.ref) === inputKey)
-}
-
-function hydratePlanDataCheck(check: WorkbookCheckResultDescription): WorkbookCheckResult {
-  return {
-    status: check.status,
-    kind: check.kind,
-    ...(check.target !== undefined ? { target: hydratePlanDataRef(check.target) } : {}),
-    ...(check.refs !== undefined ? { refs: check.refs.map(hydratePlanDataRef) } : {}),
-    message: check.message,
-    ...(check.expectation !== undefined ? { expectation: hydratePlanDataExpectation(check.expectation) } : {}),
-    ...(check.proof !== undefined ? { proof: check.proof } : {}),
-  }
 }
 
 export function verifyPlan<Refs>(plan: WorkbookActionPlan<Refs>): WorkbookPlanVerification {
@@ -724,19 +630,7 @@ export function verifyPlan<Refs>(plan: WorkbookActionPlan<Refs>): WorkbookPlanVe
 }
 
 export function verifyPlanData(plan: WorkbookActionPlanDescription): WorkbookPlanVerification {
-  const refsUsed = plan.refsUsed.map(hydratePlanDataRef)
-  const livePlan: WorkbookActionPlan<{ readonly refsUsed: readonly WorkbookRef[] }> = {
-    modelName: plan.modelName,
-    actionName: plan.actionName,
-    ...(plan.input !== undefined ? { input: plan.input } : {}),
-    refs: { refsUsed },
-    refsUsed,
-    commands: plan.commands.map(hydratePlanDataCommand),
-    ops: plan.ops.map((op) => structuredClone(op)),
-    changed: plan.changed.map(hydratePlanDataChange),
-    checks: plan.checks.map(hydratePlanDataCheck),
-  }
-  return verifyPlan(livePlan)
+  return verifyPlan(hydratePlanData(plan))
 }
 
 export function verifyModel<Refs, Actions extends WorkbookActionMap<Refs>>(

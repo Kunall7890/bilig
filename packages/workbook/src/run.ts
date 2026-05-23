@@ -3,6 +3,7 @@ import { isWorkbookOp } from './guards.js'
 import { normalizeWorkbookActionInput, type WorkbookActionInput } from './input.js'
 import { planWorkbookAction, type WorkbookActionMap, type WorkbookActionPlan, type WorkbookModel } from './model.js'
 import type { EngineOp } from './ops.js'
+import { hydratePlanData, isHydratedPlan, type WorkbookExecutablePlan, type WorkbookPlanDataRefs } from './plan-data.js'
 import { verifyWorkbookReadbacks, type WorkbookRunReadback } from './readback.js'
 import {
   isWorkbookRunErrorCode,
@@ -33,12 +34,9 @@ export interface WorkbookRunOptions {
 }
 
 export interface WorkbookRunAdapter<Refs = unknown> {
-  readonly apply: (plan: WorkbookActionPlan<Refs>) => MaybePromise<WorkbookRunApplyResult>
-  readonly read?: (targets: readonly WorkbookRef[], plan: WorkbookActionPlan<Refs>) => MaybePromise<readonly WorkbookRunReadback[]>
-  readonly verifyChecks?: (
-    checks: readonly WorkbookCheckResult[],
-    plan: WorkbookActionPlan<Refs>,
-  ) => MaybePromise<readonly WorkbookCheckResult[]>
+  apply(plan: WorkbookActionPlan<Refs>): MaybePromise<WorkbookRunApplyResult>
+  read?(targets: readonly WorkbookRef[], plan: WorkbookActionPlan<Refs>): MaybePromise<readonly WorkbookRunReadback[]>
+  verifyChecks?(checks: readonly WorkbookCheckResult[], plan: WorkbookActionPlan<Refs>): MaybePromise<readonly WorkbookCheckResult[]>
 }
 
 function errorMessage(error: unknown): string {
@@ -457,7 +455,7 @@ function unverifiedCheckErrors(checks: readonly WorkbookCheckResult[]): readonly
     .map((check) => runError('check_not_verified', `${checkLabel(check)} did not verify check ${check.kind}: ${check.message}`))
 }
 
-export async function runWorkbookPlan<Refs>(
+async function runLiveWorkbookPlan<Refs>(
   plan: WorkbookActionPlan<Refs>,
   adapter: WorkbookRunAdapter<Refs>,
   options: WorkbookRunOptions = {},
@@ -579,6 +577,27 @@ export async function runWorkbookPlan<Refs>(
   }
 }
 
+export function runWorkbookPlan<Refs>(
+  plan: WorkbookActionPlan<Refs>,
+  adapter: WorkbookRunAdapter<Refs>,
+  options?: WorkbookRunOptions,
+): Promise<WorkbookRunResult>
+export function runWorkbookPlan(
+  plan: WorkbookExecutablePlan,
+  adapter: WorkbookRunAdapter<WorkbookPlanDataRefs>,
+  options?: WorkbookRunOptions,
+): Promise<WorkbookRunResult>
+export function runWorkbookPlan<Refs>(
+  plan: WorkbookExecutablePlan<Refs>,
+  adapter: WorkbookRunAdapter,
+  options: WorkbookRunOptions = {},
+): Promise<WorkbookRunResult> {
+  if (isHydratedPlan(plan)) {
+    return runLiveWorkbookPlan<unknown>(plan, adapter, options)
+  }
+  return runLiveWorkbookPlan<unknown>(hydratePlanData(plan), adapter, options)
+}
+
 export async function runWorkbookAction<Refs, Actions extends WorkbookActionMap<Refs>>(
   model: WorkbookModel<Refs, Actions>,
   actionName: string,
@@ -593,5 +612,5 @@ export async function runWorkbookAction<Refs, Actions extends WorkbookActionMap<
       checks: result.checks,
     })
   }
-  return runWorkbookPlan(result.plan, adapter, options)
+  return runLiveWorkbookPlan(result.plan, adapter, options)
 }

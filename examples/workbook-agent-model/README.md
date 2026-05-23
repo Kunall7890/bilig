@@ -22,8 +22,10 @@ mutation:
 - what model and action were selected
 - which refs the selectors bound
 - which commands and low-level ops were planned
-- whether the described plan survives JSON transport and `verifyPlanData`
+- whether the plan survives JSON transport and `verifyPlanData`
 - which adapter capabilities are required
+- whether the transported plan data can be run without the consumer's private
+  `refs` object shape
 - whether apply matched preview or remains unverified
 - what changed, and whether undo evidence exists
 - which checks passed
