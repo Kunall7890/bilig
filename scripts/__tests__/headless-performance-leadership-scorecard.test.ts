@@ -203,6 +203,7 @@ describe('headless performance leadership scorecard', () => {
           p95WinCount: 2,
           version: '0.23.0',
           workloadFamilies: ['aggregate', 'lookup-exact'],
+          workloads: ['build-mixed-content', 'build-dense-literals'],
         },
       ],
     })
@@ -212,7 +213,49 @@ describe('headless performance leadership scorecard', () => {
     expect(scorecard.summary.workbookWideComparisonEngines).toEqual(['HyperFormula', 'Univer'])
     expect(scorecard.summary.limitedComparisonEngines).toEqual([])
     expect(scorecard.completionAudit.unmetRequirements).toContain(
-      'per-workload-mean-and-p95-wins: 2/3 comparable workloads win both mean and p95; p95 holdouts: lookup-approximate-duplicates; Univer workbook-wide comparison is incomplete: covers 2/3 comparable workloads and has 2/2 mean+p95 wins',
+      'per-workload-mean-and-p95-wins: 2/3 comparable workloads win both mean and p95; p95 holdouts: lookup-approximate-duplicates; Univer workbook-wide comparison is incomplete: covers 2/3 comparable workloads and has 2/2 mean+p95 wins; Univer workbook-wide workload set mismatch: missing 1/3 eligible workloads (examples: lookup-approximate-duplicates); extra 0 workloads',
+    )
+  })
+
+  it('blocks workbook-wide competitor claims when only workload counts match', () => {
+    const achievedArtifact: CompetitiveArtifact = {
+      ...competitiveArtifact,
+      results: competitiveArtifact.results.map((result) =>
+        result.workload === 'lookup-approximate-duplicates'
+          ? {
+              ...result,
+              comparison: {
+                workpaperToHyperFormulaMeanRatio: 0.7,
+                workpaperToHyperFormulaP95Ratio: 0.8,
+              },
+            }
+          : result,
+      ),
+    }
+
+    const scorecard = buildHeadlessPerformanceLeadershipScorecard({
+      competitiveArtifact: achievedArtifact,
+      competitiveArtifactPath: 'packages/benchmarks/baselines/workpaper-vs-hyperformula.json',
+      extraComparisonEngines: [
+        {
+          artifactPath: 'packages/benchmarks/baselines/workpaper-vs-univer.json',
+          comparableWorkloadCount: 3,
+          coverageTier: 'workbook-wide',
+          engineName: 'Univer',
+          generatedAt: '2026-05-14T00:00:00.000Z',
+          meanAndP95WinCount: 3,
+          meanWinCount: 3,
+          p95WinCount: 3,
+          version: '0.23.0',
+          workloadFamilies: ['aggregate', 'lookup-exact'],
+          workloads: ['univer-large-sum-recalc', 'univer-vlookup-exact-recalc', 'univer-range-stats-recalc'],
+        },
+      ],
+    })
+
+    expect(scorecard.goalStatus).toBe('active-not-achieved')
+    expect(scorecard.completionAudit.unmetRequirements).toContain(
+      'per-workload-mean-and-p95-wins: Univer workbook-wide workload set mismatch: missing 3/3 eligible workloads (examples: build-mixed-content, build-dense-literals, lookup-approximate-duplicates); extra 3 workloads (examples: univer-large-sum-recalc, univer-vlookup-exact-recalc, univer-range-stats-recalc)',
     )
   })
 
@@ -251,6 +294,7 @@ describe('headless performance leadership scorecard', () => {
           p95WinCount: 3,
           version: '1.0.0',
           workloadFamilies: ['build', 'dirty-execution', 'lookup-approximate'],
+          workloads: ['build-mixed-content', 'build-dense-literals', 'lookup-approximate-duplicates'],
         },
       ],
     })

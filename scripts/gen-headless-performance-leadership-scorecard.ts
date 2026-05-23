@@ -260,15 +260,14 @@ function buildCompletionAudit(
   const comparableResults = input.competitiveArtifact.results.filter(
     (result) => result.comparable && (eligibleWorkloads.size === 0 || eligibleWorkloads.has(result.workload)),
   )
+  const eligibleWorkloadNames = comparableResults.map((result) => result.workload)
   const malformedComparisons = comparableResults.filter((result) => result.comparison === undefined).map((result) => result.workload)
   const workbookWideExtraEngines = extraComparisonEngines.filter((engine) => engine.coverageTier === 'workbook-wide')
-  const undercoveredWorkbookWideEngines = workbookWideExtraEngines.filter(
-    (engine) =>
-      engine.comparableWorkloadCount < summary.comparableWorkloadCount ||
-      engine.meanWinCount < engine.comparableWorkloadCount ||
-      engine.p95WinCount < engine.comparableWorkloadCount ||
-      engine.meanAndP95WinCount < engine.comparableWorkloadCount,
-  )
+  const workbookWideEngineCoverageGaps: string[] = []
+  for (const engine of workbookWideExtraEngines) {
+    workbookWideEngineCoverageGaps.push(...workbookWideEngineCountAndWinGaps(engine, summary.comparableWorkloadCount))
+    workbookWideEngineCoverageGaps.push(...workbookWideEngineExactWorkloadGaps(engine, eligibleWorkloadNames))
+  }
   const losingLimitedExtraEngines = extraComparisonEngines.filter(
     (engine) => engine.coverageTier !== 'workbook-wide' && engine.meanAndP95WinCount < engine.comparableWorkloadCount,
   )
@@ -347,12 +346,7 @@ function buildCompletionAudit(
                 summary.p95Holdouts.map((entry) => entry.workload).join(', ') || 'none'
               }`,
             ]),
-        ...undercoveredWorkbookWideEngines.map(
-          (engine) =>
-            `${engine.engineName} workbook-wide comparison is incomplete: covers ${String(engine.comparableWorkloadCount)}/${String(
-              summary.comparableWorkloadCount,
-            )} comparable workloads and has ${String(engine.meanAndP95WinCount)}/${String(engine.comparableWorkloadCount)} mean+p95 wins`,
-        ),
+        ...workbookWideEngineCoverageGaps,
         ...losingLimitedExtraEngines.map(
           (engine) =>
             `${engine.engineName} ${engine.coverageTier} comparison has ${String(engine.meanAndP95WinCount)}/${String(
@@ -385,6 +379,49 @@ function buildCompletionAudit(
     criteria,
     unmetRequirements,
   }
+}
+
+function workbookWideEngineCountAndWinGaps(engine: ExtraHeadlessComparisonEngineSummary, requiredWorkloadCount: number): string[] {
+  return engine.comparableWorkloadCount < requiredWorkloadCount ||
+    engine.meanWinCount < engine.comparableWorkloadCount ||
+    engine.p95WinCount < engine.comparableWorkloadCount ||
+    engine.meanAndP95WinCount < engine.comparableWorkloadCount
+    ? [
+        `${engine.engineName} workbook-wide comparison is incomplete: covers ${String(engine.comparableWorkloadCount)}/${String(
+          requiredWorkloadCount,
+        )} comparable workloads and has ${String(engine.meanAndP95WinCount)}/${String(engine.comparableWorkloadCount)} mean+p95 wins`,
+      ]
+    : []
+}
+
+function workbookWideEngineExactWorkloadGaps(
+  engine: ExtraHeadlessComparisonEngineSummary,
+  eligibleWorkloadNames: readonly string[],
+): string[] {
+  if (engine.workloads === undefined) {
+    return [`${engine.engineName} workbook-wide comparison is missing exact workload identity coverage`]
+  }
+  const coveredWorkloads = new Set(engine.workloads)
+  const eligibleWorkloads = new Set(eligibleWorkloadNames)
+  const missingWorkloads = eligibleWorkloadNames.filter((workload) => !coveredWorkloads.has(workload))
+  const extraWorkloads = engine.workloads.filter((workload) => !eligibleWorkloads.has(workload))
+  if (missingWorkloads.length === 0 && extraWorkloads.length === 0) {
+    return []
+  }
+  return [
+    `${engine.engineName} workbook-wide workload set mismatch: missing ${String(missingWorkloads.length)}/${String(
+      eligibleWorkloadNames.length,
+    )} eligible workloads${formatWorkloadExamples(missingWorkloads)}; extra ${String(extraWorkloads.length)} workloads${formatWorkloadExamples(
+      extraWorkloads,
+    )}`,
+  ]
+}
+
+function formatWorkloadExamples(workloads: readonly string[]): string {
+  if (workloads.length === 0) {
+    return ''
+  }
+  return ` (examples: ${workloads.slice(0, 5).join(', ')})`
 }
 
 function criterion(args: {

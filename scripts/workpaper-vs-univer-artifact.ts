@@ -78,6 +78,7 @@ export function parseWorkPaperUniverExtraComparisonEngineSummary(
     p95WinCount: artifact.scorecard.p95WinCount,
     version: artifact.engines.univer.version,
     workloadFamilies: artifact.scorecard.workloadFamilies,
+    workloads: artifact.results.map((result) => result.workload),
   }
 }
 

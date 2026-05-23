@@ -12,7 +12,7 @@
       "Performance multiple reporting must include geomean ratios, worst-case rows, holdouts, and 10x workload count."
     ],
     "unmetRequirements": [
-      "per-workload-mean-and-p95-wins: Univer workbook-wide comparison is incomplete: covers 5/100 comparable workloads and has 5/5 mean+p95 wins"
+      "per-workload-mean-and-p95-wins: Univer workbook-wide comparison is incomplete: covers 12/100 comparable workloads and has 12/12 mean+p95 wins; Univer workbook-wide workload set mismatch: missing 100/100 eligible workloads (examples: build-from-sheets, build-dense-literals, build-dense-literals-wide, build-dense-literals-tall, build-mixed-content); extra 12 workloads (examples: univer-large-sum-recalc, univer-2d-sum-recalc, univer-overlapping-sum-recalc, univer-formula-chain-recalc, univer-scalar-fanout-recalc)"
     ]
   },
   "sourceArtifacts": {
@@ -39,16 +39,39 @@
       },
       {
         "artifactPath": "packages/benchmarks/baselines/workpaper-vs-univer.json",
-        "comparableWorkloadCount": 5,
+        "comparableWorkloadCount": 12,
         "coverageNote": "Univer is covered through its documented @univerjs/preset-sheets-node-core headless Node preset. This workbook-wide lane times public Facade API cell edits plus formula recalculation completion on equivalent aggregate, chain, fanout, and lookup workloads.",
         "coverageTier": "workbook-wide",
         "engineName": "Univer",
-        "generatedAt": "2026-05-23T05:58:21.978Z",
-        "meanAndP95WinCount": 5,
-        "meanWinCount": 5,
-        "p95WinCount": 5,
+        "generatedAt": "2026-05-23T10:56:39.956Z",
+        "meanAndP95WinCount": 12,
+        "meanWinCount": 12,
+        "p95WinCount": 12,
         "version": "0.23.0",
-        "workloadFamilies": ["aggregate", "aggregate-2d", "formula-chain", "formula-fanout", "lookup-exact"]
+        "workloadFamilies": [
+          "aggregate",
+          "aggregate-2d",
+          "overlapping-aggregate",
+          "formula-chain",
+          "formula-fanout",
+          "lookup-exact",
+          "lookup-approximate",
+          "range-stats"
+        ],
+        "workloads": [
+          "univer-large-sum-recalc",
+          "univer-2d-sum-recalc",
+          "univer-overlapping-sum-recalc",
+          "univer-formula-chain-recalc",
+          "univer-scalar-fanout-recalc",
+          "univer-deep-chain-recalc",
+          "univer-vlookup-exact-recalc",
+          "univer-vlookup-approximate-recalc",
+          "univer-vlookup-text-exact-recalc",
+          "univer-vlookup-approximate-duplicates-recalc",
+          "univer-hlookup-exact-numeric-recalc",
+          "univer-range-stats-recalc"
+        ]
       },
       {
         "artifactPath": "packages/benchmarks/baselines/workpaper-vs-xlsx-calc.json",
@@ -167,7 +190,10 @@
       },
       {
         "evidence": ["HyperFormula mean wins: 100/100", "HyperFormula p95 wins: 100/100", "HyperFormula mean+p95 wins: 100/100"],
-        "gaps": ["Univer workbook-wide comparison is incomplete: covers 5/100 comparable workloads and has 5/5 mean+p95 wins"],
+        "gaps": [
+          "Univer workbook-wide comparison is incomplete: covers 12/100 comparable workloads and has 12/12 mean+p95 wins",
+          "Univer workbook-wide workload set mismatch: missing 100/100 eligible workloads (examples: build-from-sheets, build-dense-literals, build-dense-literals-wide, build-dense-literals-tall, build-mixed-content); extra 12 workloads (examples: univer-large-sum-recalc, univer-2d-sum-recalc, univer-overlapping-sum-recalc, univer-formula-chain-recalc, univer-scalar-fanout-recalc)"
+        ],
         "id": "per-workload-mean-and-p95-wins",
         "passed": false,
         "requirement": "Every comparable headless workload must be faster on both mean and p95 latency against every direct headless competitor."
@@ -187,7 +213,7 @@
       }
     ],
     "unmetRequirements": [
-      "per-workload-mean-and-p95-wins: Univer workbook-wide comparison is incomplete: covers 5/100 comparable workloads and has 5/5 mean+p95 wins"
+      "per-workload-mean-and-p95-wins: Univer workbook-wide comparison is incomplete: covers 12/100 comparable workloads and has 12/12 mean+p95 wins; Univer workbook-wide workload set mismatch: missing 100/100 eligible workloads (examples: build-from-sheets, build-dense-literals, build-dense-literals-wide, build-dense-literals-tall, build-mixed-content); extra 12 workloads (examples: univer-large-sum-recalc, univer-2d-sum-recalc, univer-overlapping-sum-recalc, univer-formula-chain-recalc, univer-scalar-fanout-recalc)"
     ]
   }
 }

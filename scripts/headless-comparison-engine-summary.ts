@@ -12,4 +12,5 @@ export interface ExtraHeadlessComparisonEngineSummary {
   readonly p95WinCount: number
   readonly version: string
   readonly workloadFamilies: readonly string[]
+  readonly workloads?: readonly string[]
 }

@@ -15,6 +15,24 @@ import {
   normalizeWorkPaperValue,
   type BenchmarkSample,
 } from './benchmark-workpaper-vs-hyperformula-expanded-support.js'
+import {
+  columnName,
+  deepChainFormulas,
+  duplicateApproximateLookupTableValues,
+  evenLookupTableValues,
+  formulaChainFormulas,
+  hlookupTableValues,
+  lookupTableValues,
+  normalizeBenchmarkValue,
+  numberColumnSheet,
+  numberColumnValues,
+  overlappingAggregateFormulas,
+  rangeStatsValues,
+  scalarFanoutFormulas,
+  textLookupKey,
+  textLookupTableValues,
+  twoDimensionalValues,
+} from './benchmark-workpaper-vs-univer-fixtures.js'
 import { measureMemory, sampleMemory, type MemoryMeasurement } from './metrics.js'
 import { summarizeNumbers } from './stats.js'
 
@@ -30,11 +48,26 @@ const { UniverSheetsNodeCorePreset } = resolveModuleExports<{
 export type WorkPaperUniverWorkload =
   | 'univer-large-sum-recalc'
   | 'univer-2d-sum-recalc'
+  | 'univer-overlapping-sum-recalc'
   | 'univer-formula-chain-recalc'
   | 'univer-scalar-fanout-recalc'
+  | 'univer-deep-chain-recalc'
   | 'univer-vlookup-exact-recalc'
+  | 'univer-vlookup-approximate-recalc'
+  | 'univer-vlookup-text-exact-recalc'
+  | 'univer-vlookup-approximate-duplicates-recalc'
+  | 'univer-hlookup-exact-numeric-recalc'
+  | 'univer-range-stats-recalc'
 
-export type WorkPaperUniverWorkloadFamily = 'aggregate' | 'aggregate-2d' | 'formula-chain' | 'formula-fanout' | 'lookup-exact'
+export type WorkPaperUniverWorkloadFamily =
+  | 'aggregate'
+  | 'aggregate-2d'
+  | 'formula-chain'
+  | 'formula-fanout'
+  | 'lookup-approximate'
+  | 'lookup-exact'
+  | 'overlapping-aggregate'
+  | 'range-stats'
 
 export type UniverEditableValue = boolean | number | string
 
@@ -54,6 +87,7 @@ export interface WorkPaperUniverFixture {
     readonly row: number
     readonly sheetName: string
   }
+  readonly columnCount?: number
   readonly rowCount: number
 }
 
@@ -152,9 +186,16 @@ interface UniverWorkbookFacade {
 export const WORKPAPER_UNIVER_WORKLOADS = [
   'univer-large-sum-recalc',
   'univer-2d-sum-recalc',
+  'univer-overlapping-sum-recalc',
   'univer-formula-chain-recalc',
   'univer-scalar-fanout-recalc',
+  'univer-deep-chain-recalc',
   'univer-vlookup-exact-recalc',
+  'univer-vlookup-approximate-recalc',
+  'univer-vlookup-text-exact-recalc',
+  'univer-vlookup-approximate-duplicates-recalc',
+  'univer-hlookup-exact-numeric-recalc',
+  'univer-range-stats-recalc',
 ] as const satisfies readonly WorkPaperUniverWorkload[]
 
 const univerCalculationTimeoutMs = 10_000
@@ -267,7 +308,7 @@ function measureWorkPaperRecalcSample(scenario: WorkPaperUniverScenario): Benchm
 async function measureUniverRecalcSample(scenario: WorkPaperUniverScenario): Promise<BenchmarkSample> {
   const runtime = createUniverRuntime(
     scenario.fixture.rowCount,
-    Math.max(scenario.fixture.result.col + 1, scenario.fixture.edit.col + 1, 5),
+    scenario.fixture.columnCount ?? Math.max(scenario.fixture.result.col + 1, scenario.fixture.edit.col + 1, 5),
   )
   try {
     await scenario.setupUniver(runtime)
@@ -354,12 +395,26 @@ function univerScenario(workload: WorkPaperUniverWorkload): WorkPaperUniverScena
       return aggregateScenario(5_000)
     case 'univer-2d-sum-recalc':
       return twoDimensionalAggregateScenario(1_000, 8)
+    case 'univer-overlapping-sum-recalc':
+      return overlappingAggregateScenario(1_500)
     case 'univer-formula-chain-recalc':
       return formulaChainScenario(1_000)
     case 'univer-scalar-fanout-recalc':
       return scalarFanoutScenario(1_000)
+    case 'univer-deep-chain-recalc':
+      return deepChainScenario(1_000)
     case 'univer-vlookup-exact-recalc':
       return vlookupExactScenario(5_000)
+    case 'univer-vlookup-approximate-recalc':
+      return vlookupApproximateScenario(5_000)
+    case 'univer-vlookup-text-exact-recalc':
+      return vlookupTextExactScenario(5_000)
+    case 'univer-vlookup-approximate-duplicates-recalc':
+      return vlookupApproximateDuplicatesScenario(5_000)
+    case 'univer-hlookup-exact-numeric-recalc':
+      return hlookupExactNumericScenario(3_000)
+    case 'univer-range-stats-recalc':
+      return rangeStatsScenario(1_000)
   }
 }
 
@@ -418,6 +473,44 @@ function twoDimensionalAggregateScenario(rowCount: number, colCount: number): Wo
     setupUniver: async (runtime) => {
       runtime.sheet.getRange(0, 0, rowCount, colCount).setValues(values)
       const completion = waitForUniverCalculation(runtime.formula, formula)
+      runtime.sheet.getRange(fixture.result.address).setFormula(formula)
+      await completion
+    },
+    verifyUniver: (runtime) => ({ value: normalizeBenchmarkValue(runtime.sheet.getRange(fixture.result.address).getValue()) }),
+    verifyWorkPaper: (workbook) => ({
+      value: normalizeBenchmarkValue(
+        normalizeWorkPaperValue(
+          workbook.getCellValue({ sheet: workbook.getSheetId('Sheet1')!, row: fixture.result.row, col: fixture.result.col }),
+        ),
+      ),
+    }),
+  }
+}
+
+function overlappingAggregateScenario(rowCount: number): WorkPaperUniverScenario {
+  const formula = `=B${String(rowCount)}`
+  const fixture = {
+    edit: { address: 'A1', col: 0, row: 0, sheetName: 'Sheet1', value: 99 },
+    family: 'overlapping-aggregate',
+    formula,
+    result: { address: 'C1', col: 2, row: 0, sheetName: 'Sheet1' },
+    rowCount,
+  } as const satisfies WorkPaperUniverFixture
+  const formulas = overlappingAggregateFormulas(rowCount)
+  return {
+    fixture,
+    buildWorkPaperSheets: () => {
+      const sheet = numberColumnSheet(rowCount)
+      for (let row = 0; row < rowCount; row += 1) {
+        sheet[row]![1] = formulas[row]![0]!
+      }
+      sheet[0]![2] = formula
+      return { Sheet1: sheet }
+    },
+    setupUniver: async (runtime) => {
+      runtime.sheet.getRange(0, 0, rowCount, 1).setValues(numberColumnValues(rowCount))
+      const completion = waitForUniverCalculation(runtime.formula, formula)
+      runtime.sheet.getRange(0, 1, rowCount, 1).setFormulas(formulas)
       runtime.sheet.getRange(fixture.result.address).setFormula(formula)
       await completion
     },
@@ -508,6 +601,44 @@ function scalarFanoutScenario(rowCount: number): WorkPaperUniverScenario {
   }
 }
 
+function deepChainScenario(chainLength: number): WorkPaperUniverScenario {
+  const resultCol = chainLength
+  const resultAddress = `${columnName(resultCol)}1`
+  const formula = `=${columnName(resultCol - 1)}1+1`
+  const fixture = {
+    edit: { address: 'A1', col: 0, row: 0, sheetName: 'Sheet1', value: 5_000 },
+    family: 'formula-chain',
+    formula,
+    result: { address: resultAddress, col: resultCol, row: 0, sheetName: 'Sheet1' },
+    rowCount: chainLength,
+  } as const satisfies WorkPaperUniverFixture
+  const formulas = deepChainFormulas(chainLength)
+  return {
+    fixture,
+    buildWorkPaperSheets: () => {
+      const row: Array<number | string | null> = [1]
+      for (let index = 1; index <= chainLength; index += 1) {
+        row[index] = formulas[0]![index - 1]!
+      }
+      return { Sheet1: [row] }
+    },
+    setupUniver: async (runtime) => {
+      runtime.sheet.getRange('A1').setValue(1)
+      const completion = waitForUniverCalculation(runtime.formula, formula)
+      runtime.sheet.getRange(0, 1, 1, chainLength).setFormulas(formulas)
+      await completion
+    },
+    verifyUniver: (runtime) => ({ value: normalizeBenchmarkValue(runtime.sheet.getRange(fixture.result.address).getValue()) }),
+    verifyWorkPaper: (workbook) => ({
+      value: normalizeBenchmarkValue(
+        normalizeWorkPaperValue(
+          workbook.getCellValue({ sheet: workbook.getSheetId('Sheet1')!, row: fixture.result.row, col: fixture.result.col }),
+        ),
+      ),
+    }),
+  }
+}
+
 function vlookupExactScenario(rowCount: number): WorkPaperUniverScenario {
   const formula = `=VLOOKUP(D1,A1:B${String(rowCount)},2,FALSE)`
   const fixture = {
@@ -529,6 +660,203 @@ function vlookupExactScenario(rowCount: number): WorkPaperUniverScenario {
     setupUniver: async (runtime) => {
       runtime.sheet.getRange(0, 0, rowCount, 2).setValues(values)
       runtime.sheet.getRange('D1').setValue(2_400)
+      const completion = waitForUniverCalculation(runtime.formula, formula)
+      runtime.sheet.getRange(fixture.result.address).setFormula(formula)
+      await completion
+    },
+    verifyUniver: (runtime) => ({ value: normalizeBenchmarkValue(runtime.sheet.getRange(fixture.result.address).getValue()) }),
+    verifyWorkPaper: (workbook) => ({
+      value: normalizeBenchmarkValue(
+        normalizeWorkPaperValue(
+          workbook.getCellValue({ sheet: workbook.getSheetId('Sheet1')!, row: fixture.result.row, col: fixture.result.col }),
+        ),
+      ),
+    }),
+  }
+}
+
+function vlookupApproximateScenario(rowCount: number): WorkPaperUniverScenario {
+  const formula = `=VLOOKUP(D1,A1:B${String(rowCount)},2,TRUE)`
+  return numericVlookupScenario({
+    editValue: 6_201,
+    family: 'lookup-approximate',
+    formula,
+    initialLookupValue: 2_401,
+    rowCount,
+  })
+}
+
+function numericVlookupScenario(args: {
+  readonly editValue: number
+  readonly family: 'lookup-approximate'
+  readonly formula: string
+  readonly initialLookupValue: number
+  readonly rowCount: number
+}): WorkPaperUniverScenario {
+  const fixture = {
+    edit: { address: 'D1', col: 3, row: 0, sheetName: 'Sheet1', value: args.editValue },
+    family: args.family,
+    formula: args.formula,
+    result: { address: 'E1', col: 4, row: 0, sheetName: 'Sheet1' },
+    rowCount: args.rowCount,
+  } as const satisfies WorkPaperUniverFixture
+  const values = evenLookupTableValues(args.rowCount)
+  return {
+    fixture,
+    buildWorkPaperSheets: () => {
+      const sheet: Array<Array<number | string | null>> = values.map((row) => [...row])
+      sheet[0] = [2, 10, null, args.initialLookupValue, args.formula]
+      return { Sheet1: sheet }
+    },
+    setupUniver: async (runtime) => {
+      runtime.sheet.getRange(0, 0, args.rowCount, 2).setValues(values)
+      runtime.sheet.getRange('D1').setValue(args.initialLookupValue)
+      const completion = waitForUniverCalculation(runtime.formula, args.formula)
+      runtime.sheet.getRange(fixture.result.address).setFormula(args.formula)
+      await completion
+    },
+    verifyUniver: (runtime) => ({ value: normalizeBenchmarkValue(runtime.sheet.getRange(fixture.result.address).getValue()) }),
+    verifyWorkPaper: (workbook) => ({
+      value: normalizeBenchmarkValue(
+        normalizeWorkPaperValue(
+          workbook.getCellValue({ sheet: workbook.getSheetId('Sheet1')!, row: fixture.result.row, col: fixture.result.col }),
+        ),
+      ),
+    }),
+  }
+}
+
+function vlookupTextExactScenario(rowCount: number): WorkPaperUniverScenario {
+  const formula = `=VLOOKUP(D1,A1:B${String(rowCount)},2,FALSE)`
+  const fixture = {
+    edit: { address: 'D1', col: 3, row: 0, sheetName: 'Sheet1', value: textLookupKey(3_100) },
+    family: 'lookup-exact',
+    formula,
+    result: { address: 'E1', col: 4, row: 0, sheetName: 'Sheet1' },
+    rowCount,
+  } as const satisfies WorkPaperUniverFixture
+  return textLookupScenario({ fixture, formula, initialLookupValue: textLookupKey(2_400), rowCount })
+}
+
+function textLookupScenario(args: {
+  readonly fixture: WorkPaperUniverFixture
+  readonly formula: string
+  readonly initialLookupValue: string
+  readonly rowCount: number
+}): WorkPaperUniverScenario {
+  const values = textLookupTableValues(args.rowCount)
+  return {
+    fixture: args.fixture,
+    buildWorkPaperSheets: () => {
+      const sheet: Array<Array<number | string | null>> = values.map((row) => [...row])
+      sheet[0] = [textLookupKey(1), 10, null, args.initialLookupValue, args.formula]
+      return { Sheet1: sheet }
+    },
+    setupUniver: async (runtime) => {
+      runtime.sheet.getRange(0, 0, args.rowCount, 2).setValues(values)
+      runtime.sheet.getRange('D1').setValue(args.initialLookupValue)
+      const completion = waitForUniverCalculation(runtime.formula, args.formula)
+      runtime.sheet.getRange(args.fixture.result.address).setFormula(args.formula)
+      await completion
+    },
+    verifyUniver: (runtime) => ({ value: normalizeBenchmarkValue(runtime.sheet.getRange(args.fixture.result.address).getValue()) }),
+    verifyWorkPaper: (workbook) => ({
+      value: normalizeBenchmarkValue(
+        normalizeWorkPaperValue(
+          workbook.getCellValue({ sheet: workbook.getSheetId('Sheet1')!, row: args.fixture.result.row, col: args.fixture.result.col }),
+        ),
+      ),
+    }),
+  }
+}
+
+function vlookupApproximateDuplicatesScenario(rowCount: number): WorkPaperUniverScenario {
+  const formula = `=VLOOKUP(D1,A1:B${String(rowCount)},2,TRUE)`
+  const fixture = {
+    edit: { address: 'D1', col: 3, row: 0, sheetName: 'Sheet1', value: 1_550.5 },
+    family: 'lookup-approximate',
+    formula,
+    result: { address: 'E1', col: 4, row: 0, sheetName: 'Sheet1' },
+    rowCount,
+  } as const satisfies WorkPaperUniverFixture
+  const values = duplicateApproximateLookupTableValues(rowCount)
+  return {
+    fixture,
+    buildWorkPaperSheets: () => {
+      const sheet: Array<Array<number | string | null>> = values.map((row) => [...row])
+      sheet[0] = [1, 1, null, 1_200.5, formula]
+      return { Sheet1: sheet }
+    },
+    setupUniver: async (runtime) => {
+      runtime.sheet.getRange(0, 0, rowCount, 2).setValues(values)
+      runtime.sheet.getRange('D1').setValue(1_200.5)
+      const completion = waitForUniverCalculation(runtime.formula, formula)
+      runtime.sheet.getRange(fixture.result.address).setFormula(formula)
+      await completion
+    },
+    verifyUniver: (runtime) => ({ value: normalizeBenchmarkValue(runtime.sheet.getRange(fixture.result.address).getValue()) }),
+    verifyWorkPaper: (workbook) => ({
+      value: normalizeBenchmarkValue(
+        normalizeWorkPaperValue(
+          workbook.getCellValue({ sheet: workbook.getSheetId('Sheet1')!, row: fixture.result.row, col: fixture.result.col }),
+        ),
+      ),
+    }),
+  }
+}
+
+function hlookupExactNumericScenario(colCount: number): WorkPaperUniverScenario {
+  const lastCol = columnName(colCount - 1)
+  const formula = `=HLOOKUP(A4,A1:${lastCol}2,2,FALSE)`
+  const fixture = {
+    edit: { address: 'A4', col: 0, row: 3, sheetName: 'Sheet1', value: 620 },
+    family: 'lookup-exact',
+    formula,
+    result: { address: 'B4', col: 1, row: 3, sheetName: 'Sheet1' },
+    columnCount: colCount,
+    rowCount: colCount,
+  } as const satisfies WorkPaperUniverFixture
+  const values = hlookupTableValues(colCount)
+  return {
+    fixture,
+    buildWorkPaperSheets: () => ({ Sheet1: [values[0]!, values[1]!, [], [200, formula]] }),
+    setupUniver: async (runtime) => {
+      runtime.sheet.getRange(0, 0, 2, colCount).setValues(values)
+      runtime.sheet.getRange('A4').setValue(200)
+      const completion = waitForUniverCalculation(runtime.formula, formula)
+      runtime.sheet.getRange(fixture.result.address).setFormula(formula)
+      await completion
+    },
+    verifyUniver: (runtime) => ({ value: normalizeBenchmarkValue(runtime.sheet.getRange(fixture.result.address).getValue()) }),
+    verifyWorkPaper: (workbook) => ({
+      value: normalizeBenchmarkValue(
+        normalizeWorkPaperValue(
+          workbook.getCellValue({ sheet: workbook.getSheetId('Sheet1')!, row: fixture.result.row, col: fixture.result.col }),
+        ),
+      ),
+    }),
+  }
+}
+
+function rangeStatsScenario(rowCount: number): WorkPaperUniverScenario {
+  const formula = `=AVERAGE(A1:A${String(rowCount)})+MAX(B1:B${String(rowCount)})-MIN(C1:C${String(rowCount)})`
+  const fixture = {
+    edit: { address: 'B1000', col: 1, row: 999, sheetName: 'Sheet1', value: 9_999 },
+    family: 'range-stats',
+    formula,
+    result: { address: 'D1', col: 3, row: 0, sheetName: 'Sheet1' },
+    rowCount,
+  } as const satisfies WorkPaperUniverFixture
+  const values = rangeStatsValues(rowCount)
+  return {
+    fixture,
+    buildWorkPaperSheets: () => {
+      const sheet: Array<Array<number | string | null>> = values.map((row) => [...row])
+      sheet[0]![3] = formula
+      return { Sheet1: sheet }
+    },
+    setupUniver: async (runtime) => {
+      runtime.sheet.getRange(0, 0, rowCount, 3).setValues(values)
       const completion = waitForUniverCalculation(runtime.formula, formula)
       runtime.sheet.getRange(fixture.result.address).setFormula(formula)
       await completion
@@ -593,47 +921,6 @@ async function waitForUniverCalculation(formula: UniverFormulaFacade, label: str
   }
 }
 
-function numberColumnSheet(rowCount: number): Array<Array<number | string | null>> {
-  return Array.from({ length: rowCount }, (_, row) => [row + 1])
-}
-
-function numberColumnValues(rowCount: number): number[][] {
-  return Array.from({ length: rowCount }, (_, row) => [row + 1])
-}
-
-function twoDimensionalValues(rowCount: number, colCount: number): number[][] {
-  return Array.from({ length: rowCount }, (__, row) => Array.from({ length: colCount }, (_, col) => (row + 1) * (col + 1)))
-}
-
-function formulaChainFormulas(rowCount: number): string[][] {
-  return Array.from({ length: rowCount }, (_, row) => [`=${row === 0 ? 'A1' : `B${String(row)}`}+1`])
-}
-
-function scalarFanoutFormulas(rowCount: number): string[][] {
-  return Array.from({ length: rowCount }, (_, row) => [`=A1+${String(row + 1)}`])
-}
-
-function lookupTableValues(rowCount: number): number[][] {
-  return Array.from({ length: rowCount }, (_, row) => [row + 1, (row + 1) * 10])
-}
-
-function normalizeBenchmarkValue(value: unknown): boolean | number | string | null | { error: string } {
-  if (typeof value === 'number') {
-    return Number(value.toPrecision(12))
-  }
-  if (value === null || typeof value === 'boolean' || typeof value === 'string') {
-    return value
-  }
-  if (isErrorRecord(value)) {
-    return { error: String(value.error) }
-  }
-  return { error: 'UNKNOWN_VALUE' }
-}
-
-function isErrorRecord(value: unknown): value is { error: unknown } {
-  return typeof value === 'object' && value !== null && 'error' in value
-}
-
 function resolveModuleExports<T extends object>(moduleExports: object, requiredKey: keyof T & string): T {
   if (Reflect.has(moduleExports, requiredKey)) {
     // oxlint-disable-next-line typescript-eslint(no-unsafe-type-assertion) -- Univer publishes mixed CJS/ESM shapes; this narrows after checking the requested export key.
@@ -677,17 +964,6 @@ function maxComparableRatioWorkload(
 
 function orderedUnique(values: readonly WorkPaperUniverWorkloadFamily[]): WorkPaperUniverWorkloadFamily[] {
   return [...new Set(values)]
-}
-
-function columnName(col: number): string {
-  let value = col + 1
-  let name = ''
-  while (value > 0) {
-    const remainder = (value - 1) % 26
-    name = String.fromCharCode(65 + remainder) + name
-    value = Math.floor((value - 1) / 26)
-  }
-  return name
 }
 
 function resolveSuiteOptions(options: ComparativeBenchmarkSuiteOptions): ResolvedBenchmarkSuiteOptions {
