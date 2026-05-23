@@ -25,6 +25,7 @@ function renderHarness(
     readonly remoteSyncAvailable?: boolean
     readonly zeroConfigured?: boolean
     readonly zeroHealthReady?: boolean
+    readonly featureSidePanelTabs?: Parameters<typeof useWorkbookAppPanels>[0]['featureSidePanelTabs']
   } = {},
 ) {
   function Harness() {
@@ -45,6 +46,7 @@ function renderHarness(
       remoteSyncAvailable: overrides.remoteSyncAvailable ?? true,
       changeCount: 1,
       changesPanel: <div data-testid="changes-panel">Changes panel</div>,
+      featureSidePanelTabs: overrides.featureSidePanelTabs,
       selectAddress: vi.fn(),
       getAgentContext: () => ({
         selection: { sheetName: 'Sheet1', address: 'A1' },
@@ -178,6 +180,35 @@ describe('useWorkbookAppPanels', () => {
 
     expect(useWorkbookPresence).toHaveBeenCalledWith(expect.objectContaining({ enabled: false }))
     expect(useWorkbookAgentPane).toHaveBeenCalledWith(expect.objectContaining({ zeroEnabled: false }))
+
+    await harness.unmount()
+  })
+
+  it('renders feature side panel tabs between assistant and changes', async () => {
+    ;(globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true
+
+    mockAgentPane(0)
+    const host = document.createElement('div')
+    document.body.appendChild(host)
+    const harness = renderHarness(host, {
+      featureSidePanelTabs: [
+        {
+          value: 'tables',
+          label: 'Tables',
+          count: 2,
+          panel: <div data-testid="tables-panel">Tables panel</div>,
+        },
+      ],
+    })
+
+    await harness.render()
+
+    expect(host.querySelector("[data-testid='workbook-side-panel-tab-tables']")).not.toBeNull()
+    await act(async () => {
+      host.querySelector("[data-testid='workbook-side-panel-tab-tables']")?.dispatchEvent(new MouseEvent('click', { bubbles: true }))
+    })
+    expect(host.querySelector("[data-testid='workbook-side-panel-panel-tables']")).not.toBeNull()
+    expect(host.textContent).toContain('Tables panel')
 
     await harness.unmount()
   })

@@ -1,4 +1,4 @@
-import { TableCellsMerge, TableCellsSplit, type LucideIcon } from 'lucide-react'
+import { Table2, TableCellsMerge, TableCellsSplit, type LucideIcon } from 'lucide-react'
 import {
   BorderAllIcon,
   BorderBottomIcon,
@@ -30,6 +30,7 @@ export const BORDER_PRESET_OPTIONS: readonly BorderPresetOption[] = [
 ] as const
 
 export type StructureActionTemplate =
+  | 'createTableFromSelection'
   | 'mergeSelectedCells'
   | 'unmergeSelectedCells'
   | 'hideCurrentRow'
@@ -45,6 +46,7 @@ export interface StructureActionOption {
 }
 
 export const STRUCTURE_ACTIONS: readonly StructureActionOption[] = [
+  { key: 'create-table', label: 'Create table', template: 'createTableFromSelection', icon: Table2 },
   { key: 'merge-cells', label: 'Merge cells', template: 'mergeSelectedCells', icon: TableCellsMerge },
   { key: 'unmerge-cells', label: 'Unmerge cells', template: 'unmergeSelectedCells', icon: TableCellsSplit },
   { key: 'hide-row', label: 'Hide row', template: 'hideCurrentRow' },

@@ -52,11 +52,13 @@ export function useWorkbookToolbar(input: {
   onRedo: () => void
   canHideCurrentRow: boolean
   canHideCurrentColumn: boolean
+  canCreateTableFromSelection?: boolean
   canUnhideCurrentRow: boolean
   canUnhideCurrentColumn: boolean
   canUnmergeSelection: boolean
   onHideCurrentRow: () => void
   onHideCurrentColumn: () => void
+  onCreateTableFromSelection?: () => void
   onUnhideCurrentRow: () => void
   onUnhideCurrentColumn: () => void
   invokeMutation: (method: WorkbookMutationMethod, ...args: unknown[]) => Promise<void>
@@ -81,11 +83,13 @@ export function useWorkbookToolbar(input: {
     onRedo,
     canHideCurrentRow,
     canHideCurrentColumn,
+    canCreateTableFromSelection,
     canUnhideCurrentRow,
     canUnhideCurrentColumn,
     canUnmergeSelection,
     onHideCurrentRow,
     onHideCurrentColumn,
+    onCreateTableFromSelection,
     onUnhideCurrentRow,
     onUnhideCurrentColumn,
     invokeMutation,
@@ -557,6 +561,7 @@ export function useWorkbookToolbar(input: {
     () => (
       <WorkbookToolbar
         canRedo={canRedo}
+        canCreateTableFromSelection={canCreateTableFromSelection ?? canMergeSelection}
         canHideCurrentColumn={canHideCurrentColumn}
         canHideCurrentRow={canHideCurrentRow}
         canMergeSelection={canMergeSelection}
@@ -596,6 +601,7 @@ export function useWorkbookToolbar(input: {
         }}
         onHideCurrentColumn={onHideCurrentColumn}
         onHideCurrentRow={onHideCurrentRow}
+        {...(onCreateTableFromSelection ? { onCreateTableFromSelection } : {})}
         onMergeSelectedCells={() => {
           void mergeSelectedCells()
         }}
@@ -651,6 +657,7 @@ export function useWorkbookToolbar(input: {
       applyTextColor,
       clearRangeStyleFields,
       canRedo,
+      canCreateTableFromSelection,
       canHideCurrentColumn,
       canHideCurrentRow,
       canMergeSelection,
@@ -671,6 +678,7 @@ export function useWorkbookToolbar(input: {
       handleRedo,
       onHideCurrentColumn,
       onHideCurrentRow,
+      onCreateTableFromSelection,
       handleUndo,
       onUnhideCurrentColumn,
       onUnhideCurrentRow,

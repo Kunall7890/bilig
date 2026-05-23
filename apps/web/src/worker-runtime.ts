@@ -1,11 +1,19 @@
-import type { CommitOp, SpreadsheetEngine } from '@bilig/core'
 import {
+  createWorkbookFacade,
+  WORKBOOK_TABLE_COMMAND_IDS,
+  WORKBOOK_TABLES_FEATURE_ID,
+  type CommitOp,
+  type SpreadsheetEngine,
+} from '@bilig/core'
+import {
+  createWorkbookAgentCommandBundle,
   buildWorkbookAgentPreview,
   isWorkbookAgentCommandBundle,
+  type WorkbookAgentCommand,
   type WorkbookAgentCommandBundle,
   type WorkbookAgentPreviewSummary,
 } from '@bilig/agent-api'
-import type { EngineOpBatch } from '@bilig/workbook'
+import type { EngineOp, EngineOpBatch, WorkbookCommandReceipt } from '@bilig/workbook'
 import type { AuthoritativeWorkbookEventRecord } from '@bilig/zero-sync'
 import {
   type CellRangeRef,
@@ -18,6 +26,7 @@ import {
   type SyncState,
   type WorkbookSnapshot,
   formatCellDisplayValue,
+  isCellRangeRef,
 } from '@bilig/protocol'
 import type { RenderTileDeltaSubscription, ViewportPatch, ViewportPatchSubscription } from '@bilig/worker-transport'
 import { isPendingWorkbookMutationList, type PendingWorkbookMutation, type PendingWorkbookMutationInput } from './workbook-sync.js'
@@ -68,6 +77,16 @@ export type {
   WorkbookWorkerBootstrapResult,
   WorkbookWorkerStateSnapshot,
 } from './worker-runtime-state.js'
+
+function tableAgentCommandFromOp(op: EngineOp): WorkbookAgentCommand[] {
+  if (op.kind === 'upsertTable') {
+    return [{ kind: 'upsertTable', table: structuredClone(op.table) }]
+  }
+  if (op.kind === 'deleteTable') {
+    return [{ kind: 'deleteTable', name: op.name }]
+  }
+  return []
+}
 
 export class WorkbookWorkerRuntime {
   [method: string]: unknown
@@ -277,6 +296,72 @@ export class WorkbookWorkerRuntime {
       replicaId: this.requireBootstrapOptions().replicaId,
       bundle,
     })
+  }
+
+  async buildCreateTableCommandBundle(range: CellRangeRef): Promise<WorkbookAgentCommandBundle> {
+    if (!isCellRangeRef(range)) {
+      throw new Error('Create table requires a workbook range')
+    }
+    const engine = await this.getProjectionEngine()
+    const facade = createWorkbookFacade(engine)
+    try {
+      const receipt = await facade.selection(range).createTable().preview()
+      return this.buildTableFeatureAgentBundle(receipt, 'toolbar')
+    } finally {
+      facade.dispose()
+    }
+  }
+
+  async buildResizeTableCommandBundle(name: string, range: CellRangeRef): Promise<WorkbookAgentCommandBundle> {
+    if (typeof name !== 'string' || name.trim() === '') {
+      throw new Error('Resize table requires a table name')
+    }
+    if (!isCellRangeRef(range)) {
+      throw new Error('Resize table requires a workbook range')
+    }
+    const engine = await this.getProjectionEngine()
+    const facade = createWorkbookFacade(engine)
+    try {
+      const receipt = await facade
+        .command({
+          featureId: WORKBOOK_TABLES_FEATURE_ID,
+          commandId: WORKBOOK_TABLE_COMMAND_IDS.resize,
+          category: 'operation',
+          input: {
+            name,
+            range: {
+              sheetName: range.sheetName,
+              startAddress: range.startAddress,
+              endAddress: range.endAddress,
+            },
+          },
+        })
+        .preview()
+      return this.buildTableFeatureAgentBundle(receipt, 'tables-panel')
+    } finally {
+      facade.dispose()
+    }
+  }
+
+  async buildDeleteTableCommandBundle(name: string): Promise<WorkbookAgentCommandBundle> {
+    if (typeof name !== 'string' || name.trim() === '') {
+      throw new Error('Delete table requires a table name')
+    }
+    const engine = await this.getProjectionEngine()
+    const facade = createWorkbookFacade(engine)
+    try {
+      const receipt = await facade
+        .command({
+          featureId: WORKBOOK_TABLES_FEATURE_ID,
+          commandId: WORKBOOK_TABLE_COMMAND_IDS.delete,
+          category: 'operation',
+          input: { name },
+        })
+        .preview()
+      return this.buildTableFeatureAgentBundle(receipt, 'tables-panel')
+    } finally {
+      facade.dispose()
+    }
   }
 
   async materializeProjectionEngine(): Promise<void> {
@@ -515,6 +600,28 @@ export class WorkbookWorkerRuntime {
       },
       direction,
     )
+  }
+
+  private buildTableFeatureAgentBundle(receipt: WorkbookCommandReceipt, source: 'toolbar' | 'tables-panel'): WorkbookAgentCommandBundle {
+    if (receipt.status === 'rejected') {
+      throw new Error(receipt.message ?? 'Table command preview was rejected')
+    }
+    const commands = (receipt.previewOps ?? []).flatMap((op) => tableAgentCommandFromOp(op))
+    if (commands.length === 0) {
+      throw new Error(receipt.message ?? 'Table command preview did not produce an applicable table mutation')
+    }
+    const options = this.requireBootstrapOptions()
+    const now = Date.now()
+    return createWorkbookAgentCommandBundle({
+      documentId: options.documentId,
+      threadId: `workbook-${source}`,
+      turnId: `${source}:${String(now)}`,
+      goalText: receipt.message ?? 'Apply workbook table command',
+      baseRevision: this.authoritativeState.getRevision(),
+      context: null,
+      commands,
+      now,
+    })
   }
 
   private async getAuthoritativeEngine(): Promise<SpreadsheetEngine> {

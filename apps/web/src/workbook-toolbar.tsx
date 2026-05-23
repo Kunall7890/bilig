@@ -75,12 +75,14 @@ export interface WorkbookToolbarProps {
   onApplyBorderPreset(this: void, preset: BorderPreset): void
   canHideCurrentRow: boolean
   canHideCurrentColumn: boolean
+  canCreateTableFromSelection?: boolean
   canMergeSelection: boolean
   canUnmergeSelection: boolean
   canUnhideCurrentRow: boolean
   canUnhideCurrentColumn: boolean
   onHideCurrentRow(this: void): void
   onHideCurrentColumn(this: void): void
+  onCreateTableFromSelection?(this: void): void
   onMergeSelectedCells(this: void): void
   onUnmergeSelectedCells(this: void): void
   onUnhideCurrentRow(this: void): void
@@ -121,12 +123,14 @@ export const WorkbookToolbar = memo(function WorkbookToolbar({
   onApplyBorderPreset,
   canHideCurrentRow,
   canHideCurrentColumn,
+  canCreateTableFromSelection = false,
   canMergeSelection,
   canUnmergeSelection,
   canUnhideCurrentRow,
   canUnhideCurrentColumn,
   onHideCurrentRow,
   onHideCurrentColumn,
+  onCreateTableFromSelection,
   onMergeSelectedCells,
   onUnmergeSelectedCells,
   onUnhideCurrentRow,
@@ -193,6 +197,7 @@ export const WorkbookToolbar = memo(function WorkbookToolbar({
     })
   }
   const structureActionAvailability: StructureActionAvailability = {
+    createTableFromSelection: canCreateTableFromSelection,
     mergeSelectedCells: canMergeSelection,
     unmergeSelectedCells: canUnmergeSelection,
     hideCurrentRow: canHideCurrentRow,
@@ -202,6 +207,9 @@ export const WorkbookToolbar = memo(function WorkbookToolbar({
   }
   const runStructureAction = (template: StructureActionTemplate) => {
     switch (template) {
+      case 'createTableFromSelection':
+        onCreateTableFromSelection?.()
+        break
       case 'mergeSelectedCells':
         onMergeSelectedCells()
         break

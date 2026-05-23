@@ -1,5 +1,5 @@
 import { defineMutator, defineMutatorsWithType } from '@rocicorp/zero'
-import { isWorkbookAgentCommandBundle, type WorkbookAgentCommandBundle } from '@bilig/agent-api'
+import { isWorkbookAgentCommandBundle } from '@bilig/agent-api'
 import { isCommitOps, type CommitOp } from '@bilig/core'
 import { z } from 'zod'
 import { isEngineOpBatch, type EngineOpBatch } from '@bilig/workbook'
@@ -246,7 +246,7 @@ export const undoLatestWorkbookChangeArgsSchema = baseMutationArgsSchema
 export const redoLatestWorkbookChangeArgsSchema = baseMutationArgsSchema
 
 export const applyAgentCommandBundleArgsSchema = baseMutationArgsSchema.extend({
-  bundle: z.custom<WorkbookAgentCommandBundle>(isWorkbookAgentCommandBundle, 'Invalid workbook agent command bundle'),
+  bundle: jsonValueSchema.refine((value) => isWorkbookAgentCommandBundle(value), 'Invalid workbook agent command bundle'),
 })
 
 const zeroApplyBatchArgsSchema: ZeroMutatorSchema = {
@@ -262,6 +262,14 @@ const zeroRenderCommitArgsSchema: ZeroMutatorSchema = {
     version: renderCommitArgsSchema['~standard'].version,
     vendor: renderCommitArgsSchema['~standard'].vendor,
     validate: (value) => renderCommitArgsSchema['~standard'].validate(value),
+  },
+}
+
+const zeroApplyAgentCommandBundleArgsSchema: ZeroMutatorSchema = {
+  '~standard': {
+    version: applyAgentCommandBundleArgsSchema['~standard'].version,
+    vendor: applyAgentCommandBundleArgsSchema['~standard'].vendor,
+    validate: (value) => applyAgentCommandBundleArgsSchema['~standard'].validate(value),
   },
 }
 
@@ -311,6 +319,7 @@ export const mutators = defineMutators({
     clearCell: defineMutator(clearCellArgsSchema, noop),
     clearRange: defineMutator(clearRangeArgsSchema, noop),
     renderCommit: defineMutator(zeroRenderCommitArgsSchema, noop),
+    applyAgentCommandBundle: defineMutator(zeroApplyAgentCommandBundleArgsSchema, noop),
     fillRange: defineMutator(rangeMutationArgsSchema, noop),
     copyRange: defineMutator(rangeMutationArgsSchema, noop),
     moveRange: defineMutator(rangeMutationArgsSchema, noop),

@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest'
+import { createWorkbookAgentCommandBundle, type WorkbookAgentCommandBundle } from '@bilig/agent-api'
 import {
   buildZeroWorkbookMutation,
   isPendingWorkbookMutation,
@@ -7,6 +8,33 @@ import {
   isWorkbookMutationMethod,
   type PendingWorkbookMutation,
 } from '../workbook-sync.js'
+
+function createAgentTableBundle(): WorkbookAgentCommandBundle {
+  return createWorkbookAgentCommandBundle({
+    documentId: 'doc-1',
+    threadId: 'toolbar',
+    turnId: 'turn-1',
+    goalText: 'Create table from selection',
+    baseRevision: 0,
+    context: null,
+    commands: [
+      {
+        kind: 'upsertTable',
+        table: {
+          name: 'Table1',
+          sheetName: 'Sheet1',
+          startAddress: 'A1',
+          endAddress: 'B3',
+          columnNames: ['Name', 'Amount'],
+          columns: [{ name: 'Name' }, { name: 'Amount' }],
+          headerRow: true,
+          totalsRow: false,
+        },
+      },
+    ],
+    now: 100,
+  })
+}
 
 function createPendingMutation(overrides: Partial<PendingWorkbookMutation> = {}): PendingWorkbookMutation {
   return {
@@ -154,6 +182,24 @@ describe('buildZeroWorkbookMutation', () => {
         args: [[{ kind: 'upsertCell', sheetName: 'Sheet1', addr: 'A1', value: 7 }]],
       }),
     ).not.toThrow()
+  })
+
+  it('builds agent command bundle mutations for workbook table commands', () => {
+    const bundle = createAgentTableBundle()
+
+    expect(isPendingWorkbookMutationInput({ method: 'applyAgentCommandBundle', args: [bundle] })).toBe(true)
+    expect(
+      buildZeroWorkbookMutation('doc-1', {
+        method: 'applyAgentCommandBundle',
+        args: [bundle],
+      }),
+    ).toMatchObject({
+      args: {
+        bundle,
+        documentId: 'doc-1',
+      },
+      '~': 'MutateRequest',
+    })
   })
 
   it('rejects renderCommit mutations with malformed commit ops', () => {

@@ -4,6 +4,8 @@ import type {
   WorkbookAgentPreviewChangeKind,
   WorkbookAgentPreviewEffectSummary,
   WorkbookAgentPreviewRange,
+  WorkbookAgentPreviewSemanticTarget,
+  WorkbookAgentPreviewSemanticTargetKind,
   WorkbookAgentPreviewSummary,
 } from './workbook-agent-bundle-types.js'
 
@@ -19,6 +21,12 @@ function isPreviewChangeKind(value: unknown): value is WorkbookAgentPreviewChang
   return value === 'input' || value === 'formula' || value === 'style' || value === 'numberFormat'
 }
 
+function isPreviewSemanticTargetKind(value: unknown): value is WorkbookAgentPreviewSemanticTargetKind {
+  return (
+    value === 'table' || value === 'tableColumn' || value === 'tableHeaderRow' || value === 'tableDataBody' || value === 'tableTotalsRow'
+  )
+}
+
 export function isWorkbookAgentPreviewRange(value: unknown): value is WorkbookAgentPreviewRange {
   return (
     isRecord(value) &&
@@ -26,6 +34,18 @@ export function isWorkbookAgentPreviewRange(value: unknown): value is WorkbookAg
     typeof value['startAddress'] === 'string' &&
     typeof value['endAddress'] === 'string' &&
     (value['role'] === 'target' || value['role'] === 'source')
+  )
+}
+
+export function isWorkbookAgentPreviewSemanticTarget(value: unknown): value is WorkbookAgentPreviewSemanticTarget {
+  return (
+    isRecord(value) &&
+    isPreviewSemanticTargetKind(value['kind']) &&
+    typeof value['tableName'] === 'string' &&
+    typeof value['label'] === 'string' &&
+    (value['range'] === undefined || isWorkbookAgentPreviewRange(value['range'])) &&
+    (value['columnName'] === undefined || typeof value['columnName'] === 'string') &&
+    (value['columnIndex'] === undefined || (typeof value['columnIndex'] === 'number' && Number.isSafeInteger(value['columnIndex'])))
   )
 }
 
@@ -71,6 +91,9 @@ export function isWorkbookAgentPreviewSummary(value: unknown): value is Workbook
     value['structuralChanges'].every((entry) => typeof entry === 'string') &&
     Array.isArray(value['cellDiffs']) &&
     value['cellDiffs'].every((entry) => isWorkbookAgentPreviewCellDiff(entry)) &&
+    (value['semanticTargets'] === undefined ||
+      (Array.isArray(value['semanticTargets']) &&
+        value['semanticTargets'].every((entry) => isWorkbookAgentPreviewSemanticTarget(entry)))) &&
     isWorkbookAgentPreviewEffectSummary(value['effectSummary'])
   )
 }
@@ -145,11 +168,18 @@ export function decodeWorkbookAgentPreviewSummary(value: unknown): WorkbookAgent
   if (cellDiffs.length !== value['cellDiffs'].length) {
     return null
   }
+  const semanticTargets = Array.isArray(value['semanticTargets'])
+    ? value['semanticTargets'].flatMap((entry) => (isWorkbookAgentPreviewSemanticTarget(entry) ? [{ ...entry }] : []))
+    : []
+  if (Array.isArray(value['semanticTargets']) && semanticTargets.length !== value['semanticTargets'].length) {
+    return null
+  }
   const truncatedCellDiffs = isWorkbookAgentPreviewEffectSummary(value['effectSummary']) ? value['effectSummary'].truncatedCellDiffs : false
   return {
     ranges: value['ranges'].map((range) => ({ ...range })),
     structuralChanges: [...value['structuralChanges']],
     cellDiffs,
+    semanticTargets,
     effectSummary: isWorkbookAgentPreviewEffectSummary(value['effectSummary'])
       ? { ...value['effectSummary'] }
       : derivePreviewEffectSummary({
@@ -182,6 +212,18 @@ function samePreviewCellDiff(left: WorkbookAgentPreviewCellDiff, right: Workbook
   )
 }
 
+function samePreviewSemanticTarget(left: WorkbookAgentPreviewSemanticTarget, right: WorkbookAgentPreviewSemanticTarget): boolean {
+  return (
+    left.kind === right.kind &&
+    left.tableName === right.tableName &&
+    left.label === right.label &&
+    left.columnName === right.columnName &&
+    left.columnIndex === right.columnIndex &&
+    ((left.range === undefined && right.range === undefined) ||
+      (left.range !== undefined && right.range !== undefined && sameWorkbookAgentPreviewRange(left.range, right.range)))
+  )
+}
+
 export function areWorkbookAgentPreviewSummariesEqual(left: WorkbookAgentPreviewSummary, right: WorkbookAgentPreviewSummary): boolean {
   return (
     left.ranges.length === right.ranges.length &&
@@ -195,6 +237,11 @@ export function areWorkbookAgentPreviewSummariesEqual(left: WorkbookAgentPreview
     left.cellDiffs.every((diff, index) => {
       const other = right.cellDiffs[index]
       return other ? samePreviewCellDiff(diff, other) : false
+    }) &&
+    (left.semanticTargets ?? []).length === (right.semanticTargets ?? []).length &&
+    (left.semanticTargets ?? []).every((target, index) => {
+      const other = (right.semanticTargets ?? [])[index]
+      return other ? samePreviewSemanticTarget(target, other) : false
     }) &&
     left.effectSummary.displayedCellDiffCount === right.effectSummary.displayedCellDiffCount &&
     left.effectSummary.truncatedCellDiffs === right.effectSummary.truncatedCellDiffs &&

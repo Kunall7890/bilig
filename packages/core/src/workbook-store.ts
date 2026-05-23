@@ -9,19 +9,16 @@ import type {
   WorkbookAxisMetadataSnapshot,
   WorkbookAxisEntrySnapshot,
   WorkbookCalculationSettingsSnapshot,
-  WorkbookCommentThreadSnapshot,
   WorkbookChartSnapshot,
   WorkbookConditionalFormatSnapshot,
   WorkbookDrawingArtifactsSnapshot,
   WorkbookSheetConditionalFormatArtifactsSnapshot,
   WorkbookSheetDrawingArtifactsSnapshot,
-  WorkbookSheetThreadedCommentArtifactsSnapshot,
   WorkbookDataValidationSnapshot,
   WorkbookDefinedNameValueSnapshot,
   WorkbookFreezePaneSnapshot,
   WorkbookHyperlinkSnapshot,
   WorkbookImageSnapshot,
-  WorkbookLegacyCommentVmlSnapshot,
   WorkbookMacroPayloadSnapshot,
   WorkbookNoteSnapshot,
   WorkbookProtectionSnapshot,
@@ -33,7 +30,6 @@ import type {
   WorkbookPivotSnapshot,
   WorkbookShapeSnapshot,
   WorkbookTableSnapshot,
-  WorkbookThreadedCommentArtifactsSnapshot,
   WorkbookVolatileContextSnapshot,
 } from '@bilig/protocol'
 import type { StructuralAxisTransform } from '@bilig/formula'
@@ -46,7 +42,6 @@ import {
   createWorkbookMetadataRecord,
   type WorkbookAxisMetadataRecord,
   type WorkbookCalculationSettingsRecord,
-  type WorkbookCommentThreadRecord,
   type WorkbookChartRecord,
   type WorkbookConditionalFormatRecord,
   type WorkbookSheetConditionalFormatArtifactsRecord,
@@ -68,8 +63,6 @@ import {
   type WorkbookPropertyRecord,
   type WorkbookRangeProtectionRecord,
   type WorkbookSheetDrawingArtifactsRecord,
-  type WorkbookSheetLegacyCommentVmlRecord,
-  type WorkbookSheetThreadedCommentArtifactsRecord,
   type WorkbookSheetProtectionRecord,
   type WorkbookSheetTabColorRecord,
   type WorkbookShapeRecord,
@@ -78,7 +71,6 @@ import {
   type WorkbookSpillRecord,
   type WorkbookStyleRangeRecord,
   type WorkbookTableRecord,
-  type WorkbookThreadedCommentArtifactsRecord,
   type WorkbookVolatileContextRecord,
   type WorkbookNoteRecord,
 } from './workbook-metadata-types.js'
@@ -112,12 +104,13 @@ import { WorkbookSheetRegistryStore } from './workbook-sheet-registry-store.js'
 import { WorkbookStructuralCellStore } from './workbook-structural-cell-store.js'
 import { WorkbookStructuralAxisOperations } from './workbook-structural-axis-operations.js'
 import { hasStructuralMetadataForSheetRecord } from './workbook-store-metadata-presence.js'
+import { WorkbookStoreCommentAccessors } from './workbook-store-comment-accessors.js'
 
 export { makeCellKey, makeLogicalCellKey } from './workbook-cell-key-index.js'
 export { normalizeDefinedName, normalizeWorkbookObjectName, imageKey, pivotKey, shapeKey } from './workbook-metadata-types.js'
 export type * from './workbook-store-types.js'
 
-export class WorkbookStore {
+export class WorkbookStore extends WorkbookStoreCommentAccessors {
   static readonly defaultStyleId = WORKBOOK_DEFAULT_STYLE_ID
   static readonly defaultFormatId = WORKBOOK_DEFAULT_FORMAT_ID
   readonly cellStore = new CellStore()
@@ -131,7 +124,7 @@ export class WorkbookStore {
   readonly numberFormatKeys = new Map<string, string>()
   readonly metadata: WorkbookMetadataRecord = createWorkbookMetadataRecord()
   private readonly idAllocator = new WorkbookIdAllocator()
-  private readonly metadataService = createWorkbookMetadataService(this.metadata)
+  protected readonly metadataService = createWorkbookMetadataService(this.metadata)
   private readonly sheetRegistry: WorkbookSheetRegistryStore
   private readonly cellRecordStore: WorkbookCellRecordStore
   private readonly axisEntryStore: WorkbookAxisEntryStore
@@ -144,6 +137,7 @@ export class WorkbookStore {
     workbookName = 'Workbook',
     private readonly counters?: EngineCounters,
   ) {
+    super()
     this.workbookName = workbookName
     this.cellKeyToIndex = createCellKeyIndexMap((sheetId, row, col) => this.getCellIndexAt(sheetId, row, col))
     this.sheetRegistry = new WorkbookSheetRegistryStore({
@@ -468,18 +462,6 @@ export class WorkbookStore {
 
   clearDrawingArtifacts(): boolean {
     return runWorkbookMetadataEffect(this.metadataService.clearDrawingArtifacts())
-  }
-
-  setThreadedCommentArtifacts(artifacts: WorkbookThreadedCommentArtifactsSnapshot): WorkbookThreadedCommentArtifactsRecord {
-    return runWorkbookMetadataEffect(this.metadataService.setThreadedCommentArtifacts(artifacts))
-  }
-
-  getThreadedCommentArtifacts(): WorkbookThreadedCommentArtifactsRecord | undefined {
-    return runWorkbookMetadataEffect(this.metadataService.getThreadedCommentArtifacts())
-  }
-
-  clearThreadedCommentArtifacts(): boolean {
-    return runWorkbookMetadataEffect(this.metadataService.clearThreadedCommentArtifacts())
   }
 
   setDefinedName(name: string, value: WorkbookDefinedNameValueSnapshot, scopeSheetName?: string): WorkbookDefinedNameRecord {
@@ -808,33 +790,6 @@ export class WorkbookStore {
     return runWorkbookMetadataEffect(this.metadataService.deleteSheetDrawingArtifacts(sheetName))
   }
 
-  setSheetThreadedCommentArtifacts(
-    sheetName: string,
-    artifacts: WorkbookSheetThreadedCommentArtifactsSnapshot,
-  ): WorkbookSheetThreadedCommentArtifactsRecord {
-    return runWorkbookMetadataEffect(this.metadataService.setSheetThreadedCommentArtifacts(sheetName, artifacts))
-  }
-
-  getSheetThreadedCommentArtifacts(sheetName: string): WorkbookSheetThreadedCommentArtifactsRecord | undefined {
-    return runWorkbookMetadataEffect(this.metadataService.getSheetThreadedCommentArtifacts(sheetName))
-  }
-
-  deleteSheetThreadedCommentArtifacts(sheetName: string): boolean {
-    return runWorkbookMetadataEffect(this.metadataService.deleteSheetThreadedCommentArtifacts(sheetName))
-  }
-
-  setSheetLegacyCommentVml(sheetName: string, legacyCommentVml: WorkbookLegacyCommentVmlSnapshot): WorkbookSheetLegacyCommentVmlRecord {
-    return runWorkbookMetadataEffect(this.metadataService.setSheetLegacyCommentVml(sheetName, legacyCommentVml))
-  }
-
-  getSheetLegacyCommentVml(sheetName: string): WorkbookSheetLegacyCommentVmlRecord | undefined {
-    return runWorkbookMetadataEffect(this.metadataService.getSheetLegacyCommentVml(sheetName))
-  }
-
-  deleteSheetLegacyCommentVml(sheetName: string): boolean {
-    return runWorkbookMetadataEffect(this.metadataService.deleteSheetLegacyCommentVml(sheetName))
-  }
-
   setRangeProtection(record: WorkbookRangeProtectionSnapshot): WorkbookRangeProtectionRecord {
     return runWorkbookMetadataEffect(this.metadataService.setRangeProtection(record))
   }
@@ -849,22 +804,6 @@ export class WorkbookStore {
 
   listRangeProtections(sheetName: string): WorkbookRangeProtectionRecord[] {
     return runWorkbookMetadataEffect(this.metadataService.listRangeProtections(sheetName))
-  }
-
-  setCommentThread(record: WorkbookCommentThreadSnapshot): WorkbookCommentThreadRecord {
-    return runWorkbookMetadataEffect(this.metadataService.setCommentThread(record))
-  }
-
-  getCommentThread(sheetName: string, address: string): WorkbookCommentThreadRecord | undefined {
-    return runWorkbookMetadataEffect(this.metadataService.getCommentThread(sheetName, address))
-  }
-
-  deleteCommentThread(sheetName: string, address: string): boolean {
-    return runWorkbookMetadataEffect(this.metadataService.deleteCommentThread(sheetName, address))
-  }
-
-  listCommentThreads(sheetName: string): WorkbookCommentThreadRecord[] {
-    return runWorkbookMetadataEffect(this.metadataService.listCommentThreads(sheetName))
   }
 
   setNote(record: WorkbookNoteSnapshot): WorkbookNoteRecord {

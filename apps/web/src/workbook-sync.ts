@@ -1,4 +1,5 @@
 import type { Zero } from '@rocicorp/zero'
+import { isWorkbookAgentCommandBundle } from '@bilig/agent-api'
 import { createRenderCommitArgs, mutators } from '@bilig/zero-sync'
 import {
   isCellNumberFormatInputValue,
@@ -53,8 +54,16 @@ export type WorkbookMutationMethod =
   | 'clearRangeStyle'
   | 'setRangeNumberFormat'
   | 'clearRangeNumberFormat'
+  | 'applyAgentCommandBundle'
 
 type KnownPendingWorkbookMutationMethod = WorkbookMutationMethod | 'updateColumnWidth'
+type WorkbookMutationJsonValue =
+  | null
+  | string
+  | number
+  | boolean
+  | readonly WorkbookMutationJsonValue[]
+  | { readonly [key: string]: WorkbookMutationJsonValue }
 
 export interface PendingWorkbookMutationInput {
   readonly method: KnownPendingWorkbookMutationMethod
@@ -74,6 +83,31 @@ export interface PendingWorkbookMutation extends PendingWorkbookMutationInput {
   readonly attemptCount: number
   readonly failureMessage: string | null
   readonly status: 'local' | 'submitted' | 'acked' | 'rebased' | 'failed'
+}
+
+function toWorkbookMutationJsonValue(value: unknown): WorkbookMutationJsonValue {
+  if (value === null || typeof value === 'string' || typeof value === 'boolean') {
+    return value
+  }
+  if (typeof value === 'number') {
+    if (!Number.isFinite(value)) {
+      throw new Error('Workbook mutation JSON payload contains a non-finite number')
+    }
+    return value
+  }
+  if (Array.isArray(value)) {
+    return value.map((entry) => toWorkbookMutationJsonValue(entry))
+  }
+  if (typeof value === 'object' && value !== null) {
+    const record: { [key: string]: WorkbookMutationJsonValue } = {}
+    Object.entries(value).forEach(([key, entry]) => {
+      if (entry !== undefined) {
+        record[key] = toWorkbookMutationJsonValue(entry)
+      }
+    })
+    return record
+  }
+  throw new Error('Workbook mutation JSON payload contains an unsupported value')
 }
 
 export function buildZeroWorkbookMutation(
@@ -133,6 +167,16 @@ export function buildZeroWorkbookMutation(
         throw new Error('Invalid renderCommit args')
       }
       return mutators.workbook.renderCommit(createRenderCommitArgs({ documentId, clientMutationId, ops }))
+    }
+    case 'applyAgentCommandBundle': {
+      const [bundle] = args
+      if (!isWorkbookAgentCommandBundle(bundle)) {
+        throw new Error('Invalid applyAgentCommandBundle args')
+      }
+      const bundlePayload = toWorkbookMutationJsonValue(bundle)
+      return mutators.workbook.applyAgentCommandBundle(
+        clientMutationId === undefined ? { documentId, bundle: bundlePayload } : { documentId, clientMutationId, bundle: bundlePayload },
+      )
     }
     case 'fillRange':
     case 'copyRange':

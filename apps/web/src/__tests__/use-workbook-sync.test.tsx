@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 import { act } from 'react'
 import { createRoot } from 'react-dom/client'
+import { createWorkbookAgentCommandBundle } from '@bilig/agent-api'
 import { ValueTag } from '@bilig/protocol'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { ProjectedViewportStore } from '../projected-viewport-store.js'
@@ -1157,6 +1158,84 @@ describe('useWorkbookSync', () => {
       args: ['Sheet1', 'D12', 'local-only'],
     })
     expect(reportRuntimeError).not.toHaveBeenCalled()
+
+    await act(async () => {
+      root.unmount()
+    })
+  })
+
+  it('persists agent command bundle mutations through the local journal', async () => {
+    ;(globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true
+
+    let sync: ReturnType<typeof useWorkbookSync> | null = null
+    const pendingMutation = createPendingMutation()
+    const runtimeController = {
+      invoke: vi.fn(async (method: string, input?: unknown) => {
+        if (method === 'enqueuePendingMutation') {
+          return { ...pendingMutation, ...(typeof input === 'object' && input !== null ? input : {}) }
+        }
+        if (method === 'listPendingMutations') {
+          return []
+        }
+        return undefined
+      }),
+    }
+    const bundle = createWorkbookAgentCommandBundle({
+      documentId: 'doc-1',
+      threadId: 'toolbar',
+      turnId: 'turn-1',
+      goalText: 'Create table',
+      baseRevision: 0,
+      context: null,
+      commands: [
+        {
+          kind: 'upsertTable',
+          table: {
+            name: 'Table1',
+            sheetName: 'Sheet1',
+            startAddress: 'A1',
+            endAddress: 'B2',
+            columnNames: ['Name', 'Amount'],
+            columns: [{ name: 'Name' }, { name: 'Amount' }],
+            headerRow: true,
+            totalsRow: false,
+          },
+        },
+      ],
+      now: 100,
+    })
+
+    function Harness() {
+      sync = useWorkbookSync({
+        documentId: 'doc-1',
+        connectionStateName: 'closed',
+        connectionStateRef: { current: 'closed' },
+        runtimeController,
+        workerHandleRef: { current: null },
+        zeroRef: { current: { mutate: vi.fn() } },
+        reportRuntimeError: vi.fn(),
+      })
+      return null
+    }
+
+    const host = document.createElement('div')
+    document.body.appendChild(host)
+    const root = createRoot(host)
+    await act(async () => {
+      root.render(<Harness />)
+    })
+    if (!sync) {
+      throw new Error('Expected useWorkbookSync harness to initialize')
+    }
+
+    await act(async () => {
+      await sync!.invokeMutation('applyAgentCommandBundle', bundle)
+    })
+
+    expect(runtimeController.invoke).toHaveBeenCalledWith('enqueuePendingMutation', {
+      method: 'applyAgentCommandBundle',
+      args: [bundle],
+    })
 
     await act(async () => {
       root.unmount()

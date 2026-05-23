@@ -91,6 +91,8 @@ export type {
   WorkbookAgentPreviewEffectSummary,
   WorkbookAgentPreviewRange,
   WorkbookAgentPreviewRangeRole,
+  WorkbookAgentPreviewSemanticTarget,
+  WorkbookAgentPreviewSemanticTargetKind,
   WorkbookAgentPreviewSummary,
   WorkbookAgentRiskClass,
   WorkbookAgentSharedReviewRecommendation,

@@ -126,6 +126,7 @@ export function useWorkbookAppPanels(input: {
   remoteSyncAvailable: boolean
   changeCount: number
   changesPanel: ReactNode
+  featureSidePanelTabs?: readonly WorkbookSidePanelTabDefinition[]
   selectAddress: (sheetName: string, address: string) => void
   getAgentContext: WorkbookAgentContextGetter
   agentContextVersion?: number | string
@@ -137,6 +138,7 @@ export function useWorkbookAppPanels(input: {
   const {
     changeCount,
     changesPanel,
+    featureSidePanelTabs = [],
     currentUserId,
     documentId,
     agentContextProofVersion,
@@ -204,6 +206,7 @@ export function useWorkbookAppPanels(input: {
         count: pendingCommandCount > 0 ? pendingCommandCount : undefined,
         panel: agentPanel,
       },
+      ...featureSidePanelTabs,
       {
         value: 'changes',
         label: 'Changes',
@@ -211,7 +214,7 @@ export function useWorkbookAppPanels(input: {
         panel: changesPanel,
       },
     ],
-    [agentPanel, changeCount, changesPanel, pendingCommandCount],
+    [agentPanel, changeCount, changesPanel, featureSidePanelTabs, pendingCommandCount],
   )
   const visibleSidePanelTabs = useMemo(() => sidePanelTabs.filter((tab) => tab.panel != null), [sidePanelTabs])
   const { activeSidePanelTab, closeSidePanel, isSidePanelOpen, openSidePanel, setActiveSidePanelTab, setSidePanelWidth, sidePanelWidth } =

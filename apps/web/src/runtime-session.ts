@@ -110,6 +110,7 @@ function createInitialRuntimeState(documentId: string): WorkbookWorkerStateSnaps
     sheets: [{ id: 1, name: 'Sheet1', order: 0 }],
     sheetNames: ['Sheet1'],
     definedNames: [],
+    tables: [],
     metrics: EMPTY_METRICS,
     syncState: 'syncing',
     localHistoryState: {

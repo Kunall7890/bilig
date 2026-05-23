@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState, type MutableRefObject } from 'react'
 import { flushSync } from 'react-dom'
+import { isWorkbookAgentCommandBundle } from '@bilig/agent-api'
 import { PRODUCT_COLUMN_WIDTH, PRODUCT_ROW_HEIGHT } from '@bilig/grid'
 import type { WorkerHandle, WorkerRuntimeSessionController } from './runtime-session.js'
 import {
@@ -472,6 +473,12 @@ export function useWorkbookSync(input: {
           const [ops] = args
           assert(isCommitOps(ops), 'Invalid renderCommit args')
           mutation = { method, args: [ops] }
+          break
+        }
+        case 'applyAgentCommandBundle': {
+          const [bundle] = args
+          assert(isWorkbookAgentCommandBundle(bundle), 'Invalid applyAgentCommandBundle args')
+          mutation = { method, args: [bundle] }
           break
         }
         case 'fillRange':

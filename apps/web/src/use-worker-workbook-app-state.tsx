@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } fro
 import { useActorRef, useSelector } from '@xstate/react'
 import { isWorkbookAgentCommandBundle, isWorkbookAgentPreviewSummary, type WorkbookAgentCommandBundle } from '@bilig/agent-api'
 import { parseCellAddress } from '@bilig/formula'
-import type { CellRangeRef, WorkbookMergeRangeSnapshot } from '@bilig/protocol'
+import type { CellRangeRef, WorkbookTableSnapshot } from '@bilig/protocol'
 import { createWorkerRuntimeMachine, getWorkerRuntimeController, getWorkerRuntimeHandle } from './runtime-machine.js'
 import { createRuntimeFetch, type resolveRuntimeConfig } from './runtime-config.js'
 import type { ZeroClient } from './runtime-session.js'
@@ -23,8 +23,11 @@ import { loadOrCreateWorkbookReplicaId } from './workbook-replica-client.js'
 import { useWorkerWorkbookAgentContext } from './use-worker-workbook-agent-context.js'
 import { useWorkerWorkbookGridState } from './use-worker-workbook-grid-state.js'
 import { useWorkerWorkbookInteractionState } from './use-worker-workbook-interaction-state.js'
+import { WorkbookTablesPanel } from './WorkbookTablesPanel.js'
+import { getWorkbookUiSlotContributions } from './workbook-ui-slots.js'
 
 const workerRuntimeMachine = createWorkerRuntimeMachine()
+const EMPTY_WORKBOOK_TABLES: readonly WorkbookTableSnapshot[] = Object.freeze([])
 
 function formatColumnName(columnIndex: number): string {
   let columnName = ''
@@ -36,7 +39,7 @@ function formatColumnName(columnIndex: number): string {
   return columnName
 }
 
-function cellRangesIntersect(left: CellRangeRef, right: WorkbookMergeRangeSnapshot): boolean {
+function cellRangesIntersect(left: CellRangeRef, right: CellRangeRef): boolean {
   if (left.sheetName !== right.sheetName) {
     return false
   }
@@ -466,9 +469,111 @@ export function useWorkerWorkbookAppState(input: {
     [visibleSelection.address, visibleSelection.sheetName],
   )
   const selectedRange = selectionRangeRef.current
+  const selectedRangeStart = parseCellAddress(selectedRange.startAddress, selectedRange.sheetName)
+  const selectedRangeEnd = parseCellAddress(selectedRange.endAddress, selectedRange.sheetName)
+  const canCreateTableFromSelection = selectedRangeStart.row !== selectedRangeEnd.row || selectedRangeStart.col !== selectedRangeEnd.col
   const canUnmergeSelection = mergeRanges.some((mergeRange) => cellRangesIntersect(selectedRange, mergeRange))
   const failedPendingMutation = runtimeState?.pendingMutationSummary?.firstFailed ?? null
   const runtimeSyncState = runtimeState?.syncState ?? (runtimeReady ? 'syncing' : 'local-only')
+  const tables = runtimeState?.tables ?? EMPTY_WORKBOOK_TABLES
+
+  const buildAndApplyTableCommandBundle = useCallback(
+    async (
+      method: 'buildCreateTableCommandBundle' | 'buildResizeTableCommandBundle' | 'buildDeleteTableCommandBundle',
+      ...args: unknown[]
+    ) => {
+      if (!runtimeController) {
+        throw new Error('Workbook runtime is not ready for table commands')
+      }
+      const value = await runtimeController.invoke(method, ...args)
+      if (!isWorkbookAgentCommandBundle(value)) {
+        throw new Error('Worker returned an invalid table command bundle')
+      }
+      await invokeMutation('applyAgentCommandBundle', value)
+    },
+    [invokeMutation, runtimeController],
+  )
+
+  const createTableFromSelection = useCallback(async (): Promise<void> => {
+    await buildAndApplyTableCommandBundle('buildCreateTableCommandBundle', selectionRangeRef.current)
+  }, [buildAndApplyTableCommandBundle, selectionRangeRef])
+
+  const resizeTableToSelection = useCallback(
+    async (name: string, range: CellRangeRef): Promise<void> => {
+      await buildAndApplyTableCommandBundle('buildResizeTableCommandBundle', name, range)
+    },
+    [buildAndApplyTableCommandBundle],
+  )
+
+  const deleteTable = useCallback(
+    async (name: string): Promise<void> => {
+      await buildAndApplyTableCommandBundle('buildDeleteTableCommandBundle', name)
+    },
+    [buildAndApplyTableCommandBundle],
+  )
+
+  const runTableCommand = useCallback(
+    (operation: () => Promise<void>) => {
+      void (async () => {
+        try {
+          await operation()
+        } catch (error) {
+          reportRuntimeError(error)
+        }
+      })()
+    },
+    [reportRuntimeError],
+  )
+
+  const activeTableName = useMemo(
+    () => tables.find((table) => cellRangesIntersect(selectedRange, table))?.name ?? null,
+    [selectedRange, tables],
+  )
+
+  const tablePanel = useMemo(
+    () => (
+      <WorkbookTablesPanel
+        activeTableName={activeTableName}
+        selectionRange={selectedRange}
+        tables={tables}
+        onCreateFromSelection={() => {
+          runTableCommand(createTableFromSelection)
+        }}
+        onDeleteTable={(name) => {
+          runTableCommand(() => deleteTable(name))
+        }}
+        onResizeTable={(name, range) => {
+          runTableCommand(() => resizeTableToSelection(name, range))
+        }}
+        onSelectRange={(range) => {
+          selectAddress(range.sheetName, range.startAddress)
+        }}
+      />
+    ),
+    [activeTableName, createTableFromSelection, deleteTable, resizeTableToSelection, runTableCommand, selectAddress, selectedRange, tables],
+  )
+
+  const featureSidePanelTabs = useMemo(
+    () =>
+      getWorkbookUiSlotContributions(
+        [
+          {
+            id: 'tables.sidePanel.inspect',
+            slot: 'sidePanel',
+            label: 'Tables',
+            order: 30,
+            render: () => tablePanel,
+          },
+        ],
+        'sidePanel',
+      ).map((contribution) => ({
+        value: contribution.id === 'tables.sidePanel.inspect' ? 'tables' : contribution.id,
+        label: contribution.label,
+        count: tables.length > 0 ? tables.length : undefined,
+        panel: contribution.render(),
+      })),
+    [tablePanel, tables.length],
+  )
 
   const {
     agentError,
@@ -495,6 +600,7 @@ export function useWorkerWorkbookAppState(input: {
     zeroHealthReady,
     changeCount,
     changesPanel,
+    featureSidePanelTabs,
     selectAddress,
     getAgentContext,
     agentContextVersion,
@@ -516,6 +622,7 @@ export function useWorkerWorkbookAppState(input: {
     canRedo,
     canUndo,
     canHideCurrentColumn: hiddenColumns[selectedPosition.col] !== true,
+    canCreateTableFromSelection,
     canHideCurrentRow: hiddenRows[selectedPosition.row] !== true,
     canUnhideCurrentColumn: hiddenColumns[selectedPosition.col] === true,
     canUnhideCurrentRow: hiddenRows[selectedPosition.row] === true,
@@ -529,6 +636,9 @@ export function useWorkerWorkbookAppState(input: {
           reportRuntimeError(error)
         }
       })()
+    },
+    onCreateTableFromSelection: () => {
+      runTableCommand(createTableFromSelection)
     },
     onHideCurrentRow: () => {
       void (async () => {

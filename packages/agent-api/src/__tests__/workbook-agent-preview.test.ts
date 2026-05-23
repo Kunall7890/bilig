@@ -169,6 +169,7 @@ describe('workbook agent preview', () => {
 
     expect(decoded).toEqual(
       expect.objectContaining({
+        semanticTargets: [],
         cellDiffs: [
           expect.objectContaining({
             changeKinds: ['input'],
@@ -181,5 +182,82 @@ describe('workbook agent preview', () => {
         }),
       }),
     )
+  })
+
+  it('adds semantic table targets to object-command previews without mutating the source snapshot', async () => {
+    const snapshot = await createSnapshot()
+    const preview = await buildWorkbookAgentPreview({
+      snapshot,
+      replicaId: 'preview',
+      bundle: {
+        id: 'bundle-table',
+        documentId: 'doc-1',
+        threadId: 'thr-1',
+        turnId: 'turn-1',
+        goalText: 'Create a table',
+        summary: 'Create a table',
+        scope: 'sheet',
+        riskClass: 'medium',
+        baseRevision: 1,
+        createdAtUnixMs: 1,
+        context: null,
+        commands: [
+          {
+            kind: 'upsertTable',
+            table: {
+              name: 'Sales',
+              sheetName: 'Sheet1',
+              startAddress: 'A1',
+              endAddress: 'B3',
+              columnNames: ['Region', 'Amount'],
+              headerRow: true,
+              totalsRow: false,
+            },
+          },
+        ],
+        affectedRanges: [
+          {
+            sheetName: 'Sheet1',
+            startAddress: 'A1',
+            endAddress: 'B3',
+            role: 'target',
+          },
+        ],
+        estimatedAffectedCells: null,
+      },
+    })
+
+    expect(preview.semanticTargets).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          kind: 'table',
+          tableName: 'Sales',
+          label: 'Table Sales',
+          range: {
+            sheetName: 'Sheet1',
+            startAddress: 'A1',
+            endAddress: 'B3',
+            role: 'target',
+          },
+        }),
+        expect.objectContaining({
+          kind: 'tableHeaderRow',
+          tableName: 'Sales',
+          range: {
+            sheetName: 'Sheet1',
+            startAddress: 'A1',
+            endAddress: 'B1',
+            role: 'target',
+          },
+        }),
+        expect.objectContaining({
+          kind: 'tableColumn',
+          tableName: 'Sales',
+          columnName: 'Amount',
+          columnIndex: 1,
+        }),
+      ]),
+    )
+    expect(snapshot.workbook.metadata?.tables).toBeUndefined()
   })
 })

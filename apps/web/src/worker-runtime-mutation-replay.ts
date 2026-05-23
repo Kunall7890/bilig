@@ -1,3 +1,5 @@
+import { applyWorkbookAgentCommandBundle, isWorkbookAgentCommandBundle } from '@bilig/agent-api'
+import type { SpreadsheetEngine } from '@bilig/core'
 import {
   isCellNumberFormatInputValue,
   isCellRangeRef,
@@ -20,7 +22,7 @@ function replayMutationId(value: unknown): string {
   return typeof value === 'object' && value !== null && 'id' in value && typeof value.id === 'string' ? value.id : '<unknown>'
 }
 
-export function applyPendingWorkbookMutationToEngine(engine: WorkerEngine, mutation: unknown): void {
+export function applyPendingWorkbookMutationToEngine(engine: SpreadsheetEngine & WorkerEngine, mutation: unknown): void {
   if (!isPendingWorkbookMutationInput(mutation)) {
     throw new Error(`Invalid pending workbook mutation replay: ${replayMutationId(mutation)}`)
   }
@@ -58,6 +60,13 @@ export function applyPendingWorkbookMutationToEngine(engine: WorkerEngine, mutat
       const [ops] = args
       if (isCommitOps(ops)) {
         engine.renderCommit(ops)
+      }
+      return
+    }
+    case 'applyAgentCommandBundle': {
+      const [bundle] = args
+      if (isWorkbookAgentCommandBundle(bundle)) {
+        applyWorkbookAgentCommandBundle(engine, bundle)
       }
       return
     }

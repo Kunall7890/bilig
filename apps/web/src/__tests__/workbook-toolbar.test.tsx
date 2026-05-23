@@ -12,6 +12,7 @@ function ToolbarHookHarness(props: {
   readonly invokeMutation: (method: string, ...args: unknown[]) => Promise<void>
   readonly onRedo?: (() => void) | undefined
   readonly onUndo?: (() => void) | undefined
+  readonly onCreateTableFromSelection?: (() => void) | undefined
   readonly selectionRangeRef: MutableRefObject<CellRangeRef>
   readonly selectedStyle?: CellStyleRecord | undefined
   readonly canHideCurrentRow?: boolean | undefined
@@ -40,6 +41,7 @@ function ToolbarHookHarness(props: {
     onFontSizeChange: () => {},
     onHideCurrentColumn: () => {},
     onHideCurrentRow: () => {},
+    onCreateTableFromSelection: props.onCreateTableFromSelection,
     onHorizontalAlignmentChange: () => {},
     onNumberFormatChange: () => {},
     onRedo: props.onRedo ?? (() => {}),
@@ -1294,6 +1296,46 @@ describe('WorkbookToolbar', () => {
       startAddress: 'B2',
       endAddress: 'D5',
     })
+
+    await act(async () => {
+      root.unmount()
+    })
+  })
+
+  it('dispatches create table from the structure menu', async () => {
+    ;(globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true
+
+    const invokeMutation = vi.fn(async () => {})
+    const onCreateTableFromSelection = vi.fn()
+    const selectionRangeRef: MutableRefObject<CellRangeRef> = {
+      current: {
+        sheetName: 'Sheet1',
+        startAddress: 'A1',
+        endAddress: 'C4',
+      },
+    }
+    const host = createWorkbookKeyboardScopeHost()
+    const root = createRoot(host)
+
+    await act(async () => {
+      root.render(
+        <ToolbarHookHarness
+          invokeMutation={invokeMutation}
+          onCreateTableFromSelection={onCreateTableFromSelection}
+          selectionRangeRef={selectionRangeRef}
+        />,
+      )
+    })
+
+    await act(async () => {
+      document.querySelector("[aria-label='Structure']")?.dispatchEvent(new MouseEvent('click', { bubbles: true }))
+    })
+    await act(async () => {
+      document.querySelector("[aria-label='Create table']")?.dispatchEvent(new MouseEvent('click', { bubbles: true }))
+    })
+
+    expect(onCreateTableFromSelection).toHaveBeenCalledTimes(1)
+    expect(invokeMutation).not.toHaveBeenCalled()
 
     await act(async () => {
       root.unmount()

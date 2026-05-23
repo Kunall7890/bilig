@@ -1,3 +1,4 @@
+import type { SpreadsheetEngine } from '@bilig/core'
 import type { PendingWorkbookMutation, PendingWorkbookMutationInput } from './workbook-sync.js'
 import { isPendingWorkbookMutationInput } from './workbook-sync.js'
 import { clonePendingWorkbookMutation, normalizeRestoredPendingWorkbookMutation } from './workbook-mutation-journal.js'
@@ -34,7 +35,7 @@ export class WorkerRuntimeMutationJournal {
       readonly getDocumentId: () => string
       readonly getClientMutationScope?: (() => string) | undefined
       readonly getAuthoritativeRevision: () => number
-      readonly getProjectionEngine: () => Promise<WorkerEngine>
+      readonly getProjectionEngine: () => Promise<SpreadsheetEngine & WorkerEngine>
       readonly invalidateProjectionCache: () => void
       readonly now?: () => number
     },

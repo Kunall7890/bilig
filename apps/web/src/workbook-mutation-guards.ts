@@ -1,4 +1,5 @@
 import { isCommitOps } from '@bilig/core'
+import { isWorkbookAgentCommandBundle } from '@bilig/agent-api'
 import type { CellNumberFormatInput, CellStyleField, CellStylePatch } from '@bilig/protocol'
 import {
   CELL_BORDER_STYLE_VALUES,
@@ -197,7 +198,8 @@ export function isWorkbookMutationMethod(value: unknown): value is WorkbookMutat
     value === 'setRangeStyle' ||
     value === 'clearRangeStyle' ||
     value === 'setRangeNumberFormat' ||
-    value === 'clearRangeNumberFormat'
+    value === 'clearRangeNumberFormat' ||
+    value === 'applyAgentCommandBundle'
   )
 }
 
@@ -249,6 +251,10 @@ function isPendingWorkbookMutationArgs(method: KnownPendingWorkbookMutationMetho
     case 'renderCommit': {
       const [ops] = args
       return hasArgCount(args, 1) && isCommitOps(ops)
+    }
+    case 'applyAgentCommandBundle': {
+      const [bundle] = args
+      return hasArgCount(args, 1) && isWorkbookAgentCommandBundle(bundle)
     }
     case 'fillRange':
     case 'copyRange':

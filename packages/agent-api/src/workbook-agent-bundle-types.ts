@@ -301,10 +301,22 @@ export interface WorkbookAgentPreviewEffectSummary {
   structuralChangeCount: number
 }
 
+export type WorkbookAgentPreviewSemanticTargetKind = 'table' | 'tableColumn' | 'tableHeaderRow' | 'tableDataBody' | 'tableTotalsRow'
+
+export interface WorkbookAgentPreviewSemanticTarget {
+  kind: WorkbookAgentPreviewSemanticTargetKind
+  tableName: string
+  label: string
+  range?: WorkbookAgentPreviewRange
+  columnName?: string
+  columnIndex?: number
+}
+
 export interface WorkbookAgentPreviewSummary {
   ranges: WorkbookAgentPreviewRange[]
   structuralChanges: string[]
   cellDiffs: WorkbookAgentPreviewCellDiff[]
+  semanticTargets?: WorkbookAgentPreviewSemanticTarget[]
   effectSummary: WorkbookAgentPreviewEffectSummary
 }
 

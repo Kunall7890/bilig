@@ -3,6 +3,7 @@ import type {
   SyncState,
   WorkbookDefinedNameSnapshot,
   WorkbookDefinedNameValueSnapshot,
+  WorkbookTableSnapshot,
   WorkbookSnapshot,
 } from '@bilig/protocol'
 import type { PendingWorkbookMutation } from './workbook-sync.js'
@@ -31,6 +32,7 @@ export interface WorkbookWorkerStateSnapshot {
   sheets?: WorkbookRuntimeSheetSnapshot[] | undefined
   sheetNames: string[]
   definedNames: WorkbookDefinedNameSnapshot[]
+  tables: WorkbookTableSnapshot[]
   metrics: RecalcMetrics
   syncState: SyncState
   localHistoryState: WorkerRuntimeLocalHistoryState
@@ -185,6 +187,25 @@ function isWorkbookDefinedNameList(value: unknown): value is WorkbookDefinedName
   return Array.isArray(value) && value.every(isWorkbookDefinedNameSnapshot) && hasUniqueDefinedNameKeys(value)
 }
 
+function isWorkbookTableSnapshot(value: unknown): value is WorkbookTableSnapshot {
+  return (
+    isRecord(value) &&
+    typeof value['name'] === 'string' &&
+    value['name'].trim().length > 0 &&
+    typeof value['sheetName'] === 'string' &&
+    typeof value['startAddress'] === 'string' &&
+    typeof value['endAddress'] === 'string' &&
+    Array.isArray(value['columnNames']) &&
+    value['columnNames'].every((entry) => typeof entry === 'string') &&
+    typeof value['headerRow'] === 'boolean' &&
+    typeof value['totalsRow'] === 'boolean'
+  )
+}
+
+function isWorkbookTableList(value: unknown): value is WorkbookTableSnapshot[] {
+  return Array.isArray(value) && value.every(isWorkbookTableSnapshot)
+}
+
 function isRecalcMetricsSnapshot(value: unknown): value is RecalcMetrics {
   return (
     isRecord(value) &&
@@ -229,6 +250,7 @@ interface WorkbookLike {
 export interface WorkerRuntimeStateEngine {
   readonly workbook: WorkbookLike & { readonly workbookName: string }
   getDefinedNames(): WorkbookDefinedNameSnapshot[]
+  getTables(): WorkbookTableSnapshot[]
   getLastMetrics(): RecalcMetrics
   getSyncState(): SyncState
   canUndo(): boolean
@@ -278,6 +300,7 @@ export function cloneWorkerRuntimeState(input: {
   sheets?: readonly WorkbookRuntimeSheetSnapshot[] | undefined
   sheetNames: readonly string[]
   definedNames: readonly WorkbookDefinedNameSnapshot[]
+  tables?: readonly WorkbookTableSnapshot[]
   metrics: RecalcMetrics
   syncState: SyncState
   localHistoryState?: WorkbookLocalHistoryStateLike | undefined
@@ -289,6 +312,7 @@ export function cloneWorkerRuntimeState(input: {
   sheets: WorkbookRuntimeSheetSnapshot[]
   sheetNames: string[]
   definedNames: WorkbookDefinedNameSnapshot[]
+  tables: WorkbookTableSnapshot[]
   metrics: RecalcMetrics
   syncState: SyncState
   localHistoryState: WorkbookLocalHistoryStateLike
@@ -303,6 +327,7 @@ export function cloneWorkerRuntimeState(input: {
     sheets,
     sheetNames: sheets.map((sheet) => sheet.name),
     definedNames: input.definedNames.map((entry) => structuredClone(entry)),
+    tables: (input.tables ?? []).map((entry) => structuredClone(entry)),
     metrics: cloneRuntimeMetrics(input.metrics),
     syncState: input.syncState,
     localHistoryState: {
@@ -321,6 +346,7 @@ export function withExternalSyncState(
     sheets?: readonly WorkbookRuntimeSheetSnapshot[] | undefined
     sheetNames: readonly string[]
     definedNames: readonly WorkbookDefinedNameSnapshot[]
+    tables?: readonly WorkbookTableSnapshot[]
     metrics: RecalcMetrics
     syncState: SyncState
     localHistoryState?: WorkbookLocalHistoryStateLike | undefined
@@ -334,6 +360,7 @@ export function withExternalSyncState(
   sheets: WorkbookRuntimeSheetSnapshot[]
   sheetNames: string[]
   definedNames: WorkbookDefinedNameSnapshot[]
+  tables: WorkbookTableSnapshot[]
   metrics: RecalcMetrics
   syncState: SyncState
   localHistoryState: WorkbookLocalHistoryStateLike
@@ -353,6 +380,7 @@ export function isWorkerRuntimeStateSnapshot(value: unknown): value is ReturnTyp
     isRuntimeSheetNameList(value['sheetNames']) &&
     (value['sheets'] === undefined || isWorkbookRuntimeSheetList(value['sheets'])) &&
     isWorkbookDefinedNameList(value['definedNames']) &&
+    (value['tables'] === undefined || isWorkbookTableList(value['tables'])) &&
     isRecalcMetricsSnapshot(value['metrics']) &&
     isSyncState(value['syncState']) &&
     isRecord(value['localHistoryState']) &&
@@ -374,6 +402,7 @@ export function buildCachedWorkerRuntimeState(input: {
     sheets?: readonly WorkbookRuntimeSheetSnapshot[] | undefined
     sheetNames: readonly string[]
     definedNames: readonly WorkbookDefinedNameSnapshot[]
+    tables?: readonly WorkbookTableSnapshot[]
     metrics: RecalcMetrics
     syncState: SyncState
   }
@@ -400,6 +429,7 @@ export function buildWorkerRuntimeStateFromBootstrap(input: {
   sheets?: readonly WorkbookRuntimeSheetSnapshot[] | undefined
   sheetNames: readonly string[]
   definedNames?: readonly WorkbookDefinedNameSnapshot[]
+  tables?: readonly WorkbookTableSnapshot[]
   authoritativeRevision?: number | undefined
   localPersistenceMode?: 'ephemeral'
 }): {
@@ -407,6 +437,7 @@ export function buildWorkerRuntimeStateFromBootstrap(input: {
   sheets: WorkbookRuntimeSheetSnapshot[]
   sheetNames: string[]
   definedNames: WorkbookDefinedNameSnapshot[]
+  tables: WorkbookTableSnapshot[]
   metrics: RecalcMetrics
   syncState: SyncState
   localHistoryState: WorkbookLocalHistoryStateLike
@@ -420,6 +451,7 @@ export function buildWorkerRuntimeStateFromBootstrap(input: {
     sheets,
     sheetNames: sheets.map((sheet) => sheet.name),
     definedNames: (input.definedNames ?? []).map((entry) => structuredClone(entry)),
+    tables: (input.tables ?? []).map((entry) => structuredClone(entry)),
     metrics: cloneRuntimeMetrics(),
     syncState: 'syncing',
     localHistoryState: { canUndo: false, canRedo: false },
@@ -433,6 +465,7 @@ export function buildWorkerRuntimeStateFromEngine(engine: WorkerRuntimeStateEngi
   sheets: WorkbookRuntimeSheetSnapshot[]
   sheetNames: string[]
   definedNames: WorkbookDefinedNameSnapshot[]
+  tables: WorkbookTableSnapshot[]
   metrics: RecalcMetrics
   syncState: SyncState
   localHistoryState: WorkbookLocalHistoryStateLike
@@ -446,6 +479,7 @@ export function buildWorkerRuntimeStateFromEngine(engine: WorkerRuntimeStateEngi
     sheets,
     sheetNames: sheets.map((sheet) => sheet.name),
     definedNames: engine.getDefinedNames().map((entry) => structuredClone(entry)),
+    tables: engine.getTables().map((entry) => structuredClone(entry)),
     metrics: cloneRuntimeMetrics(engine.getLastMetrics()),
     syncState: engine.getSyncState(),
     localHistoryState: {
