@@ -259,6 +259,7 @@ export async function applyWorkbookAgentCommandBundleForSessionState(
     actorUserId: input.actorUserId,
     planText: collectPlanTextForTurn(input.sessionState, input.commandBundle.turnId),
     preview: result.preview,
+    commandResult: result.commandResult,
     appliedRevision: result.revision,
     appliedBy: input.appliedBy,
     acceptedScope: selection.acceptedScope,

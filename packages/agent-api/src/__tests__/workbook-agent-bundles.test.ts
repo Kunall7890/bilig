@@ -4,6 +4,7 @@ import {
   buildWorkbookAgentExecutionRecord,
   createWorkbookAgentCommandBundle,
   isWorkbookAgentCommandBundle,
+  isWorkbookAgentExecutionRecord,
   projectWorkbookAgentBundle,
   type WorkbookAgentContextRef,
 } from '../workbook-agent-bundles.js'
@@ -678,12 +679,52 @@ describe('workbook agent bundle semantics', () => {
     if (!subset) {
       throw new Error('Expected a projected subset bundle')
     }
+    const commandResult = {
+      status: 'applied' as const,
+      bundleId: subset.id,
+      targetRevision: subset.baseRevision,
+      idempotencyKey: subset.id,
+      commandCount: 1,
+      touchedRanges: [
+        {
+          sheetName: 'Sheet1',
+          startAddress: 'C3',
+          endAddress: 'C3',
+        },
+      ],
+      touchedCellCount: 1,
+      receipts: [
+        {
+          status: 'applied' as const,
+          featureId: 'workbook-agent',
+          commandId: 'workbookAgent.writeRange',
+          category: 'mutation' as const,
+          changedRanges: [
+            {
+              sheetName: 'Sheet1',
+              startAddress: 'C3',
+              endAddress: 'C3',
+            },
+          ],
+        },
+      ],
+      matched: true,
+      changedRanges: [
+        {
+          sheetName: 'Sheet1',
+          startAddress: 'C3',
+          endAddress: 'C3',
+        },
+      ],
+      revision: 4,
+    }
 
     const record = buildWorkbookAgentExecutionRecord({
       bundle: subset,
       actorUserId: 'alex@example.com',
       planText: 'Update the target cell only',
       preview: null,
+      commandResult,
       appliedRevision: 4,
       appliedBy: 'user',
       acceptedScope: 'partial',
@@ -701,6 +742,17 @@ describe('workbook agent bundle semantics', () => {
         values: [[2]],
       },
     ])
+    expect(record.commandResult).toEqual(commandResult)
+    expect(isWorkbookAgentExecutionRecord(record)).toBe(true)
+    expect(
+      isWorkbookAgentExecutionRecord({
+        ...record,
+        commandResult: {
+          ...commandResult,
+          commandCount: -1,
+        },
+      }),
+    ).toBe(false)
   })
 
   it('rejects shared review bundles with unsafe decision timestamps', () => {

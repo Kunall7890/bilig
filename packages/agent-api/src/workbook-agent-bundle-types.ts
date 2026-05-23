@@ -16,6 +16,7 @@ import type {
   WorkbookSheetProtectionSnapshot,
   WorkbookTableSnapshot,
 } from '@bilig/protocol'
+import type { WorkbookCommandResult } from '@bilig/workbook'
 
 export interface WorkbookAgentUiSelectionRef {
   sheetName: string
@@ -373,4 +374,5 @@ export interface WorkbookAgentExecutionRecord {
   context: WorkbookAgentContextRef | null
   commands: WorkbookAgentCommand[]
   preview: WorkbookAgentPreviewSummary | null
+  commandResult?: WorkbookCommandResult
 }

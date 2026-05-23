@@ -5,6 +5,7 @@ import {
   type WorkbookAgentCommand,
   type WorkbookAgentExecutionRecord,
 } from '@bilig/agent-api'
+import { isWorkbookCommandResult, type WorkbookCommandResult } from '@bilig/workbook'
 import { queries } from '@bilig/zero-sync'
 import type { Row } from '@rocicorp/zero'
 import { addDefaultedColumnIfMissing, enforceDefaultedNotNullColumn } from './schema-upgrade.js'
@@ -43,6 +44,7 @@ interface WorkbookAgentRunRow extends QueryResultRow {
   readonly contextJson?: unknown
   readonly commandsJson?: unknown
   readonly previewJson?: unknown
+  readonly commandResultJson?: unknown
 }
 
 export function createWorkbookAgentRunStoreConnection(db: Queryable & ZeroQueryRunner): WorkbookAgentRunStoreConnection {
@@ -77,6 +79,7 @@ function toAgentRunRow(row: ZeroWorkbookAgentRunRow): WorkbookAgentRunRow {
     contextJson: row.context,
     commandsJson: row.commands,
     previewJson: row.preview,
+    commandResultJson: row.commandResult,
   }
 }
 
@@ -86,6 +89,13 @@ function parseCommands(value: unknown): WorkbookAgentCommand[] | null {
   }
   const commands = value.flatMap((entry) => (isWorkbookAgentCommand(entry) ? [entry] : []))
   return commands.length === value.length ? commands : null
+}
+
+function parseCommandResult(value: unknown): WorkbookCommandResult | undefined {
+  if (value === null || value === undefined) {
+    return undefined
+  }
+  return isWorkbookCommandResult(value) ? value : undefined
 }
 
 function normalizeExecutionRecord(row: WorkbookAgentRunRow): WorkbookAgentExecutionRecord | null {
@@ -121,6 +131,7 @@ function normalizeExecutionRecord(row: WorkbookAgentRunRow): WorkbookAgentExecut
   const context =
     row.contextJson === null || row.contextJson === undefined ? null : isWorkbookAgentContextRef(row.contextJson) ? row.contextJson : null
   const preview = row.previewJson === null || row.previewJson === undefined ? null : decodeWorkbookAgentPreviewSummary(row.previewJson)
+  const commandResult = parseCommandResult(row.commandResultJson)
   return {
     id: row.id,
     bundleId,
@@ -142,6 +153,7 @@ function normalizeExecutionRecord(row: WorkbookAgentRunRow): WorkbookAgentExecut
     context,
     commands,
     preview,
+    ...(commandResult === undefined ? {} : { commandResult }),
   }
 }
 
@@ -212,6 +224,7 @@ export async function ensureWorkbookAgentRunSchema(db: Queryable): Promise<void>
     dataType: 'TEXT',
     defaultSql: "'user'",
   })
+  await db.query(`ALTER TABLE workbook_agent_run ADD COLUMN IF NOT EXISTS command_result_json JSONB;`)
   await db.query(`
     CREATE INDEX IF NOT EXISTS workbook_agent_run_workbook_actor_applied_idx
       ON workbook_agent_run (workbook_id, actor_user_id, applied_at_unix_ms DESC)
@@ -241,10 +254,11 @@ export async function appendWorkbookAgentRun(db: Queryable, record: WorkbookAgen
         applied_at_unix_ms,
         context_json,
         commands_json,
-        preview_json
+        preview_json,
+        command_result_json
       )
       VALUES (
-        $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18::jsonb, $19::jsonb, $20::jsonb
+        $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18::jsonb, $19::jsonb, $20::jsonb, $21::jsonb
       )
       ON CONFLICT (id)
       DO UPDATE SET
@@ -266,7 +280,8 @@ export async function appendWorkbookAgentRun(db: Queryable, record: WorkbookAgen
         applied_at_unix_ms = EXCLUDED.applied_at_unix_ms,
         context_json = EXCLUDED.context_json,
         commands_json = EXCLUDED.commands_json,
-        preview_json = EXCLUDED.preview_json
+        preview_json = EXCLUDED.preview_json,
+        command_result_json = EXCLUDED.command_result_json
     `,
     [
       record.id,
@@ -289,6 +304,7 @@ export async function appendWorkbookAgentRun(db: Queryable, record: WorkbookAgen
       JSON.stringify(record.context),
       JSON.stringify(record.commands),
       JSON.stringify(record.preview),
+      JSON.stringify(record.commandResult ?? null),
     ],
   )
 }

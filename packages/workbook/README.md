@@ -332,6 +332,9 @@ touched ranges and touched-cell count without importing `@bilig/core`.
 `@bilig/agent-api` uses this same public handoff to validate its richer
 app-owned `WorkbookAgentCommandBundle` before preview and authoritative apply,
 without making `@bilig/workbook` depend on agent runtime code.
+`apps/bilig` then stores the validated `WorkbookCommandResult` on the agent
+execution record, so later agents can inspect the generic proof without replaying
+human spreadsheet UI state.
 
 After a runtime has previewed or applied a bundle, call
 `workbookCommandResultForReceipts(bundle, receipts, { revision, undo })` to turn

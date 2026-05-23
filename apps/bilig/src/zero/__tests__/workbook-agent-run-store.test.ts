@@ -100,6 +100,45 @@ function createExecutionRecord() {
       },
     ],
     preview: null,
+    commandResult: {
+      status: 'applied' as const,
+      bundleId: 'bundle-1',
+      targetRevision: 3,
+      idempotencyKey: 'bundle-1',
+      commandCount: 1,
+      touchedRanges: [
+        {
+          sheetName: 'Sheet1',
+          startAddress: 'C3',
+          endAddress: 'C3',
+        },
+      ],
+      touchedCellCount: 1,
+      receipts: [
+        {
+          status: 'applied' as const,
+          featureId: 'workbook-agent',
+          commandId: 'workbookAgent.writeRange',
+          category: 'mutation' as const,
+          changedRanges: [
+            {
+              sheetName: 'Sheet1',
+              startAddress: 'C3',
+              endAddress: 'C3',
+            },
+          ],
+        },
+      ],
+      matched: true,
+      changedRanges: [
+        {
+          sheetName: 'Sheet1',
+          startAddress: 'C3',
+          endAddress: 'C3',
+        },
+      ],
+      revision: 4,
+    },
   }
 }
 
@@ -128,6 +167,7 @@ function createZeroAgentRunRow(
     context: record.context,
     commands: record.commands,
     preview: record.preview,
+    commandResult: record.commandResult,
     ...overrides,
   }
 }
@@ -159,6 +199,14 @@ describe('workbook-agent-run-store', () => {
     expect(appliedByNotNullIndex).toBeGreaterThan(appliedByBackfillIndex)
   })
 
+  it('adds optional command result proof storage to execution rows', async () => {
+    const queryable = new FakeQueryable()
+
+    await ensureWorkbookAgentRunSchema(queryable)
+
+    expect(queryable.calls.some((call) => call.text.includes('ADD COLUMN IF NOT EXISTS command_result_json JSONB'))).toBe(true)
+  })
+
   it('persists partial accepted scope in execution rows', async () => {
     const queryable = new FakeQueryable()
 
@@ -166,6 +214,17 @@ describe('workbook-agent-run-store', () => {
 
     const insertQuery = queryable.calls.find((call) => call.text.includes('INSERT INTO workbook_agent_run'))
     expect(insertQuery?.values?.[11]).toBe('partial')
+  })
+
+  it('persists command result proof in execution rows', async () => {
+    const queryable = new FakeQueryable()
+    const record = createExecutionRecord()
+
+    await appendWorkbookAgentRun(queryable, record)
+
+    const insertQuery = queryable.calls.find((call) => call.text.includes('INSERT INTO workbook_agent_run'))
+    expect(insertQuery?.text).toContain('command_result_json')
+    expect(JSON.parse(String(insertQuery?.values?.[20]))).toEqual(record.commandResult)
   })
 
   it('loads partial execution records from stored rows', async () => {
@@ -194,6 +253,7 @@ describe('workbook-agent-run-store', () => {
           context: record.context,
           commands: record.commands,
           preview: record.preview,
+          commandResult: record.commandResult,
         },
       ],
     )
@@ -216,6 +276,32 @@ describe('workbook-agent-run-store', () => {
             values: [[2]],
           },
         ],
+        commandResult: record.commandResult,
+      }),
+    ])
+  })
+
+  it('omits malformed command result proof from hydrated rows', async () => {
+    const record = createExecutionRecord()
+    const queryable = new FakeAgentRunConnection(
+      [],
+      [
+        createZeroAgentRunRow(record, {
+          commandResult: {
+            status: 'done',
+          },
+        }),
+      ],
+    )
+
+    const records = await listWorkbookAgentRuns(queryable, {
+      documentId: 'doc-1',
+      actorUserId: 'alex@example.com',
+    })
+
+    expect(records).toEqual([
+      expect.not.objectContaining({
+        commandResult: expect.anything(),
       }),
     ])
   })

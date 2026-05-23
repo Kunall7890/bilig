@@ -1,7 +1,13 @@
 import { createWorkbookAgentCommandBundle } from '@bilig/agent-api'
+import { SpreadsheetEngine } from '@bilig/core'
 import { describe, expect, it, vi } from 'vitest'
 import type { ZeroSyncService } from '../zero/service.js'
-import { finalizeWorkbookAgentPrivateTurnBundle } from './workbook-agent-service-application.js'
+import { buildWorkbookSourceProjection } from '../zero/projection.js'
+import type { WorkbookRuntime } from '../workbook-runtime/runtime-manager.js'
+import {
+  applyWorkbookAgentCommandBundleForSessionState,
+  finalizeWorkbookAgentPrivateTurnBundle,
+} from './workbook-agent-service-application.js'
 import type { WorkbookAgentThreadState } from './workbook-agent-service-shared.js'
 
 function createSessionState(): WorkbookAgentThreadState {
@@ -43,6 +49,7 @@ function createSessionState(): WorkbookAgentThreadState {
 function createZeroSyncServiceStub(input: {
   readonly inspectWorkbook: ZeroSyncService['inspectWorkbook']
   readonly applyAgentCommandBundle: ZeroSyncService['applyAgentCommandBundle']
+  readonly appendWorkbookAgentRun?: ZeroSyncService['appendWorkbookAgentRun']
 }): ZeroSyncService {
   return {
     enabled: true,
@@ -68,7 +75,7 @@ function createZeroSyncServiceStub(input: {
     async listWorkbookAgentThreadRuns() {
       return []
     },
-    async appendWorkbookAgentRun() {},
+    appendWorkbookAgentRun: input.appendWorkbookAgentRun ?? (async () => {}),
     async listWorkbookAgentThreadSummaries() {
       return []
     },
@@ -90,6 +97,117 @@ function createZeroSyncServiceStub(input: {
 }
 
 describe('workbook agent service application', () => {
+  it('attaches runtime command result proof to execution records', async () => {
+    const sessionState = createSessionState()
+    const bundle = createWorkbookAgentCommandBundle({
+      documentId: 'doc-1',
+      threadId: 'thr-1',
+      turnId: 'turn-2',
+      goalText: 'Apply a workbook command with proof',
+      baseRevision: 1,
+      context: null,
+      commands: [
+        {
+          kind: 'writeRange',
+          sheetName: 'Sheet1',
+          startAddress: 'C3',
+          values: [[2]],
+        },
+      ],
+      now: 100,
+    })
+    const engine = new SpreadsheetEngine({
+      workbookName: 'Proof Workbook',
+      replicaId: 'test:command-result-proof',
+    })
+    await engine.ready()
+    engine.createSheet('Sheet1')
+    const runtime = {
+      documentId: 'doc-1',
+      engine,
+      projection: buildWorkbookSourceProjection('doc-1', engine.exportSnapshot(), {
+        revision: 1,
+        calculatedRevision: 1,
+        ownerUserId: 'alex@example.com',
+        updatedBy: 'alex@example.com',
+        updatedAt: '2026-05-23T00:00:00.000Z',
+      }),
+      headRevision: 1,
+      calculatedRevision: 1,
+      ownerUserId: 'alex@example.com',
+    } satisfies WorkbookRuntime
+    const commandResult = {
+      status: 'applied' as const,
+      bundleId: bundle.id,
+      targetRevision: 1,
+      idempotencyKey: bundle.id,
+      commandCount: 1,
+      touchedRanges: [
+        {
+          sheetName: 'Sheet1',
+          startAddress: 'C3',
+          endAddress: 'C3',
+        },
+      ],
+      touchedCellCount: 1,
+      receipts: [
+        {
+          status: 'applied' as const,
+          featureId: 'workbook-agent',
+          commandId: 'workbookAgent.writeRange',
+          category: 'mutation' as const,
+          changedRanges: [
+            {
+              sheetName: 'Sheet1',
+              startAddress: 'C3',
+              endAddress: 'C3',
+            },
+          ],
+        },
+      ],
+      matched: true,
+      changedRanges: [
+        {
+          sheetName: 'Sheet1',
+          startAddress: 'C3',
+          endAddress: 'C3',
+        },
+      ],
+      revision: 2,
+    }
+    const inspectWorkbook: ZeroSyncService['inspectWorkbook'] = vi.fn(async (_documentId, task) => task(runtime))
+    const applyAgentCommandBundle: ZeroSyncService['applyAgentCommandBundle'] = vi.fn(async (_documentId, _bundle, preview) => ({
+      revision: 2,
+      preview,
+      commandResult,
+    }))
+    const appendWorkbookAgentRun = vi.fn(async () => {})
+
+    const record = await applyWorkbookAgentCommandBundleForSessionState(
+      {
+        zeroSyncService: createZeroSyncServiceStub({
+          inspectWorkbook,
+          applyAgentCommandBundle,
+          appendWorkbookAgentRun,
+        }),
+        now: () => 200,
+        autoApplyLowRiskEnabled: true,
+        isRolloutAllowed: () => true,
+        touchSession: vi.fn(),
+      },
+      {
+        sessionState,
+        commandBundle: bundle,
+        actorUserId: 'alex@example.com',
+        appliedBy: 'auto',
+      },
+    )
+
+    expect(record.commandResult).toEqual(commandResult)
+    expect(appendWorkbookAgentRun).toHaveBeenCalledWith(expect.objectContaining({ commandResult }))
+    expect(sessionState.durable.executionRecords[0]).toEqual(expect.objectContaining({ commandResult }))
+  })
+
   it('does not auto-apply a queued private bundle from a stale completed turn', async () => {
     const sessionState = createSessionState()
     const staleBundle = createWorkbookAgentCommandBundle({

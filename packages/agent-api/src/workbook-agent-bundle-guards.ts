@@ -1,4 +1,5 @@
 import type { CellRangeRef, LiteralInput } from '@bilig/protocol'
+import { isWorkbookCommandResult } from '@bilig/workbook'
 import { isWorkbookAgentAnnotationCommandValue } from './workbook-agent-annotation-commands.js'
 import { isWorkbookAgentConditionalFormatCommandValue } from './workbook-agent-conditional-format-commands.js'
 import { isWorkbookAgentMediaCommandValue } from './workbook-agent-media-commands.js'
@@ -204,6 +205,7 @@ export function isWorkbookAgentExecutionRecord(value: unknown): value is Workboo
     typeof value['appliedAtUnixMs'] === 'number' &&
     (value['context'] === null || isWorkbookAgentContextRef(value['context'])) &&
     isCommandArray(value['commands']) &&
-    (value['preview'] === null || isWorkbookAgentPreviewSummary(value['preview']))
+    (value['preview'] === null || isWorkbookAgentPreviewSummary(value['preview'])) &&
+    (value['commandResult'] === undefined || isWorkbookCommandResult(value['commandResult']))
   )
 }

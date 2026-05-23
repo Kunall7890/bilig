@@ -1,6 +1,7 @@
 import type { SpreadsheetEngine } from '@bilig/core'
 import { formatAddress, parseCellAddress } from '@bilig/formula'
 import type { CellRangeRef } from '@bilig/protocol'
+import { normalizeWorkbookCommandResult, type WorkbookCommandResult } from '@bilig/workbook'
 import {
   applyWorkbookAgentAnnotationCommand,
   deriveWorkbookAgentAnnotationCommandPreviewRanges,
@@ -465,11 +466,14 @@ export function buildWorkbookAgentExecutionRecord(input: {
   actorUserId: string
   planText: string | null
   preview: WorkbookAgentExecutionRecord['preview']
+  commandResult?: WorkbookCommandResult | null | undefined
   appliedRevision: number
   appliedBy: WorkbookAgentAppliedBy
   acceptedScope: WorkbookAgentAcceptedScope
   now: number
 }): WorkbookAgentExecutionRecord {
+  const commandResult =
+    input.commandResult === null || input.commandResult === undefined ? undefined : normalizeWorkbookCommandResult(input.commandResult)
   return {
     id: crypto.randomUUID(),
     bundleId: input.bundle.id,
@@ -491,6 +495,7 @@ export function buildWorkbookAgentExecutionRecord(input: {
     context: input.bundle.context ? structuredClone(input.bundle.context) : null,
     commands: input.bundle.commands.map((command) => structuredClone(command)),
     preview: input.preview ? structuredClone(input.preview) : null,
+    ...(commandResult === undefined ? {} : { commandResult }),
   }
 }
 

@@ -251,6 +251,7 @@ const workbookAgentRun = table('workbook_agent_run')
     context: json().from('context_json').optional(),
     commands: json().from('commands_json'),
     preview: json().from('preview_json').optional(),
+    commandResult: json().from('command_result_json').optional(),
   })
   .primaryKey('id')
 

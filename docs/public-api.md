@@ -216,6 +216,9 @@ The current `@bilig/agent-api` workbook review flow converts its app-specific
 preview and before authoritative apply. That keeps the rich app command set
 outside the public package while forcing the runtime handoff through
 revision-bound, idempotent, destructive, range-normalized data.
+After authoritative apply, the validated `WorkbookCommandResult` is attached to
+the app execution record and persisted as `command_result_json`, so later agents
+can inspect the same generic proof without replaying human spreadsheet state.
 
 ### Escape hatches
 

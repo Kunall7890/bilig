@@ -100,6 +100,8 @@ flowchart LR
   - agent APIs
   - authoritative agent apply validates the existing app command bundle through
     the generic `@bilig/workbook` command-bundle handoff before mutation
+  - agent execution records persist the generic `WorkbookCommandResult` proof
+    from authoritative apply for later inspection
 
 ## Removed topology
 
@@ -122,6 +124,8 @@ The following are not current architecture anymore:
   range-scoped, and explicitly destructive before runtime execution
 - app-owned agent command bundles must pass through the generic
   `@bilig/workbook` command-bundle validator before preview/apply execution
+- app-owned agent execution records must carry the validated generic command
+  result proof after authoritative apply
 - `@bilig/workbook` results must expose proof for runtime apply and passed
   checks, preserve changed/undo evidence after post-apply failures, or preserve
   the unverified state instead of hiding it behind a done status
