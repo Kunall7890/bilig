@@ -5,6 +5,26 @@ operation is not editing a visible Excel grid. The workflow writes one input,
 recalculates dependent formulas, reads the computed outputs, and checks that the
 WorkPaper JSON restores to the same result.
 
+## Community Node
+
+Use the scoped community node when you want a native n8n node instead of the
+zero-install HTTP Request workflow:
+
+```text
+@bilig/n8n-nodes-workpaper
+```
+
+Install it from **Settings** -> **Community nodes** in n8n, or install the same
+package from npm in a self-hosted deployment:
+
+```sh
+npm install @bilig/n8n-nodes-workpaper
+```
+
+The node is a thin HTTP integration around the same formula-readback endpoint.
+It has no credentials for the hosted demo path; point `Bilig Base URL` at your
+own Bilig deployment for production data.
+
 ## Importable Workflow
 
 The example workflows live in:
@@ -106,8 +126,9 @@ n8n should orchestrate the workflow. Bilig owns the formula workbook step:
 3. return the computed readback;
 4. export and restore WorkPaper JSON as proof.
 
-That keeps the n8n surface small and reproducible before a custom community node
-exists.
+That keeps the n8n surface small and reproducible. Use the community node when
+you want a native n8n package; use the workflow JSON when you want the most
+inspectable proof with only built-in nodes.
 
 ## Privacy and Dependency Boundary
 

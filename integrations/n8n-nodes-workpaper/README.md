@@ -14,14 +14,24 @@ LibreOffice, Google Sheets, or a browser spreadsheet UI.
 
 ## Installation
 
-This package is not published yet. The intended package name is scoped:
+Install the scoped community node package from n8n:
+
+1. Open **Settings** -> **Community nodes**.
+2. Choose **Install a community node**.
+3. Enter:
+
+```text
+@bilig/n8n-nodes-workpaper
+```
+
+Self-hosted n8n instances can also install it from npm:
 
 ```sh
 npm install @bilig/n8n-nodes-workpaper
 ```
 
-Do not publish or install an unscoped `n8n-nodes-workpaper` package for Bilig.
-The scoped package is the canonical name.
+Do not install an unscoped `n8n-nodes-workpaper` package for Bilig. The scoped
+package is the canonical package name.
 
 ## Operations
 
@@ -99,6 +109,7 @@ examples/n8n-workpaper-formula-readback/bilig-workpaper-formula-readback.n8n.jso
 
 - [Bilig GitHub repository](https://github.com/proompteng/bilig)
 - [Bilig n8n workflow example](https://github.com/proompteng/bilig/tree/main/examples/n8n-workpaper-formula-readback)
+- [Bilig n8n formula readback docs](https://proompteng.github.io/bilig/n8n-workpaper-formula-readback.html)
 - [n8n community nodes documentation](https://docs.n8n.io/integrations/community-nodes/)
 
 ## Version history

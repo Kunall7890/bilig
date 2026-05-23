@@ -74,8 +74,14 @@ tool to evaluate.
 ## n8n Formula Readback
 
 Need an n8n workflow to write workbook inputs, recalculate formulas, and verify
-the computed value before the workflow continues? Start with the no-install
-proof workflow:
+the computed value before the workflow continues? If you want the n8n-native
+community node, install:
+
+```text
+@bilig/n8n-nodes-workpaper
+```
+
+If you want a zero-install proof first, import the built-in-node workflow:
 
 ```text
 examples/n8n-workpaper-formula-readback/bilig-workpaper-formula-readback.n8n.json
@@ -103,7 +109,7 @@ not use it as a patch for Microsoft Excel 365 / Graph append-row behavior or
 for making n8n's built-in XLSX writer reinterpret text as formulas.
 
 See [n8n WorkPaper formula readback](docs/n8n-workpaper-formula-readback.md)
-for the proof shape, import steps, and limits.
+for the community-node install path, proof shape, import steps, and limits.
 
 ## Which Package Should I Install?
 
