@@ -69,7 +69,14 @@ describe('publication-store', () => {
     expect(query.text).toContain(`CREATE PUBLICATION "${DEFAULT_ZERO_PUBLICATION}" FOR TABLE`)
     ZERO_PUBLICATION_TABLES.forEach((tableName) => {
       expect(query.text).toContain(`public."${tableName}"`)
+      for (const columnName of ZERO_PUBLICATION_COLUMNS_BY_TABLE[tableName] ?? []) {
+        expect(query.text).toContain(`"${columnName}"`)
+      }
     })
+    expect(query.text).not.toContain('"mutation_executed"')
+    expect(query.text).not.toContain('"verification_complete"')
+    expect(query.text).not.toContain('"mutation_status"')
+    expect(query.text).not.toContain('"mutation_receipt_json"')
   })
 
   it('adds only the missing replicated tables when the publication already exists', async () => {
@@ -78,15 +85,18 @@ describe('publication-store', () => {
       (text) =>
         isPublicationTableLookup(text)
           ? [
-              { tableName: 'workbooks' } satisfies QueryResultRow,
-              { tableName: 'sheets' } satisfies QueryResultRow,
-              { tableName: 'cell_styles' } satisfies QueryResultRow,
-              { tableName: 'cell_number_formats' } satisfies QueryResultRow,
-              { tableName: 'cells' } satisfies QueryResultRow,
-              { tableName: 'row_metadata' } satisfies QueryResultRow,
-              { tableName: 'column_metadata' } satisfies QueryResultRow,
-              { tableName: 'cell_eval' } satisfies QueryResultRow,
-              { tableName: 'defined_names' } satisfies QueryResultRow,
+              { tableName: 'workbooks', columnNames: ZERO_PUBLICATION_COLUMNS_BY_TABLE.workbooks } satisfies QueryResultRow,
+              { tableName: 'sheets', columnNames: ZERO_PUBLICATION_COLUMNS_BY_TABLE.sheets } satisfies QueryResultRow,
+              { tableName: 'cell_styles', columnNames: ZERO_PUBLICATION_COLUMNS_BY_TABLE.cell_styles } satisfies QueryResultRow,
+              {
+                tableName: 'cell_number_formats',
+                columnNames: ZERO_PUBLICATION_COLUMNS_BY_TABLE.cell_number_formats,
+              } satisfies QueryResultRow,
+              { tableName: 'cells', columnNames: ZERO_PUBLICATION_COLUMNS_BY_TABLE.cells } satisfies QueryResultRow,
+              { tableName: 'row_metadata', columnNames: ZERO_PUBLICATION_COLUMNS_BY_TABLE.row_metadata } satisfies QueryResultRow,
+              { tableName: 'column_metadata', columnNames: ZERO_PUBLICATION_COLUMNS_BY_TABLE.column_metadata } satisfies QueryResultRow,
+              { tableName: 'cell_eval', columnNames: ZERO_PUBLICATION_COLUMNS_BY_TABLE.cell_eval } satisfies QueryResultRow,
+              { tableName: 'defined_names', columnNames: ZERO_PUBLICATION_COLUMNS_BY_TABLE.defined_names } satisfies QueryResultRow,
             ]
           : null,
     ])
@@ -113,7 +123,15 @@ describe('publication-store', () => {
     const queryable = new FakeQueryable([
       (text) => (isPublicationLookup(text) ? [{ present: 1 } satisfies QueryResultRow] : null),
       (text) =>
-        isPublicationTableLookup(text) ? ZERO_PUBLICATION_TABLES.map((tableName) => ({ tableName }) satisfies QueryResultRow) : null,
+        isPublicationTableLookup(text)
+          ? ZERO_PUBLICATION_TABLES.map(
+              (tableName) =>
+                ({
+                  tableName,
+                  columnNames: ZERO_PUBLICATION_COLUMNS_BY_TABLE[tableName],
+                }) satisfies QueryResultRow,
+            )
+          : null,
     ])
 
     await ensureZeroPublication(queryable)
@@ -121,7 +139,32 @@ describe('publication-store', () => {
     expect(queryable.calls).toHaveLength(2)
   })
 
-  it('repairs stale column-filtered publication tables before Zero clients connect', async () => {
+  it('repairs publication tables that are not column filtered before Zero clients connect', async () => {
+    const queryable = new FakeQueryable([
+      (text) => (isPublicationLookup(text) ? [{ present: 1 } satisfies QueryResultRow] : null),
+      (text) =>
+        isPublicationTableLookup(text)
+          ? ZERO_PUBLICATION_TABLES.map((tableName) =>
+              tableName === 'workbook_workflow_run'
+                ? ({ tableName, columnNames: null } satisfies QueryResultRow)
+                : ({
+                    tableName,
+                    columnNames: ZERO_PUBLICATION_COLUMNS_BY_TABLE[tableName],
+                  } satisfies QueryResultRow),
+            )
+          : null,
+    ])
+
+    await ensureZeroPublication(queryable)
+
+    expect(queryable.calls).toHaveLength(4)
+    expect(queryable.calls[2]?.text).toContain(`ALTER PUBLICATION "${DEFAULT_ZERO_PUBLICATION}" DROP TABLE public."workbook_workflow_run"`)
+    expect(queryable.calls[3]?.text).toContain(`ALTER PUBLICATION "${DEFAULT_ZERO_PUBLICATION}" ADD TABLE public."workbook_workflow_run"`)
+    expect(queryable.calls[3]?.text).toContain('"completed_at_unix_ms"')
+    expect(queryable.calls[3]?.text).not.toContain('"mutation_executed"')
+  })
+
+  it('repairs stale missing-column publication tables before Zero clients connect', async () => {
     const workflowColumns = ZERO_PUBLICATION_COLUMNS_BY_TABLE.workbook_workflow_run.filter(
       (columnName) => !['completed_at_unix_ms', 'error_message'].includes(columnName),
     )
@@ -132,7 +175,10 @@ describe('publication-store', () => {
           ? ZERO_PUBLICATION_TABLES.map((tableName) =>
               tableName === 'workbook_workflow_run'
                 ? ({ tableName, columnNames: workflowColumns } satisfies QueryResultRow)
-                : ({ tableName } satisfies QueryResultRow),
+                : ({
+                    tableName,
+                    columnNames: ZERO_PUBLICATION_COLUMNS_BY_TABLE[tableName],
+                  } satisfies QueryResultRow),
             )
           : null,
     ])
@@ -142,6 +188,34 @@ describe('publication-store', () => {
     expect(queryable.calls).toHaveLength(4)
     expect(queryable.calls[2]?.text).toContain(`ALTER PUBLICATION "${DEFAULT_ZERO_PUBLICATION}" DROP TABLE public."workbook_workflow_run"`)
     expect(queryable.calls[3]?.text).toContain(`ALTER PUBLICATION "${DEFAULT_ZERO_PUBLICATION}" ADD TABLE public."workbook_workflow_run"`)
+    expect(queryable.calls[3]?.text).toContain('"completed_at_unix_ms"')
+    expect(queryable.calls[3]?.text).toContain('"error_message"')
+  })
+
+  it('repairs stale extra-column publication tables before Zero clients connect', async () => {
+    const workflowColumns = [...ZERO_PUBLICATION_COLUMNS_BY_TABLE.workbook_workflow_run, 'mutation_executed', 'mutation_receipt_json']
+    const queryable = new FakeQueryable([
+      (text) => (isPublicationLookup(text) ? [{ present: 1 } satisfies QueryResultRow] : null),
+      (text) =>
+        isPublicationTableLookup(text)
+          ? ZERO_PUBLICATION_TABLES.map((tableName) =>
+              tableName === 'workbook_workflow_run'
+                ? ({ tableName, columnNames: workflowColumns } satisfies QueryResultRow)
+                : ({
+                    tableName,
+                    columnNames: ZERO_PUBLICATION_COLUMNS_BY_TABLE[tableName],
+                  } satisfies QueryResultRow),
+            )
+          : null,
+    ])
+
+    await ensureZeroPublication(queryable)
+
+    expect(queryable.calls).toHaveLength(4)
+    expect(queryable.calls[2]?.text).toContain(`ALTER PUBLICATION "${DEFAULT_ZERO_PUBLICATION}" DROP TABLE public."workbook_workflow_run"`)
+    expect(queryable.calls[3]?.text).toContain(`ALTER PUBLICATION "${DEFAULT_ZERO_PUBLICATION}" ADD TABLE public."workbook_workflow_run"`)
+    expect(queryable.calls[3]?.text).not.toContain('"mutation_executed"')
+    expect(queryable.calls[3]?.text).not.toContain('"mutation_receipt_json"')
   })
 
   it('rejects invalid publication names from the environment', () => {

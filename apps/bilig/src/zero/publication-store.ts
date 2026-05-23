@@ -17,12 +17,24 @@ function quoteIdentifier(identifier: string): string {
   return `"${identifier.replaceAll('"', '""')}"`
 }
 
-function formatQualifiedTable(tableName: string): string {
+function formatQualifiedTableName(tableName: string): string {
   return `public.${quoteIdentifier(tableName)}`
 }
 
-function formatQualifiedTableList(tableNames: readonly string[]): string {
-  return tableNames.map((tableName) => formatQualifiedTable(tableName)).join(', ')
+function formatPublicationTable(tableName: string): string {
+  const columnNames = ZERO_PUBLICATION_COLUMNS_BY_TABLE[tableName] ?? []
+  if (columnNames.length === 0) {
+    throw new Error(`Zero publication table ${tableName} has no replicated columns`)
+  }
+  return `${formatQualifiedTableName(tableName)} (${columnNames.map(quoteIdentifier).join(', ')})`
+}
+
+function formatPublicationTableList(tableNames: readonly string[]): string {
+  return tableNames.map((tableName) => formatPublicationTable(tableName)).join(', ')
+}
+
+function formatQualifiedTableNameList(tableNames: readonly string[]): string {
+  return tableNames.map((tableName) => formatQualifiedTableName(tableName)).join(', ')
 }
 
 function normalizePublicationColumnNames(value: unknown): readonly string[] | null {
@@ -55,10 +67,13 @@ function parsePublicationTableRows(
 
 function publicationTableNeedsColumnRepair(tableName: string, tableState: PublicationTableState): boolean {
   if (tableState.columnNames === null) {
-    return false
+    return true
+  }
+  const expectedColumns = ZERO_PUBLICATION_COLUMNS_BY_TABLE[tableName] ?? []
+  if (tableState.columnNames.length !== expectedColumns.length) {
+    return true
   }
   const publishedColumns = new Set(tableState.columnNames)
-  const expectedColumns = ZERO_PUBLICATION_COLUMNS_BY_TABLE[tableName] ?? []
   return expectedColumns.some((columnName) => !publishedColumns.has(columnName))
 }
 
@@ -100,7 +115,7 @@ async function loadPublicationTables(db: Queryable, publicationName: string): Pr
 export async function ensureZeroPublication(db: Queryable, publicationName = resolveZeroPublicationName()): Promise<void> {
   const quotedPublicationName = quoteIdentifier(publicationName)
   if (!(await publicationExists(db, publicationName))) {
-    await db.query(`CREATE PUBLICATION ${quotedPublicationName} FOR TABLE ${formatQualifiedTableList(ZERO_PUBLICATION_TABLES)}`)
+    await db.query(`CREATE PUBLICATION ${quotedPublicationName} FOR TABLE ${formatPublicationTableList(ZERO_PUBLICATION_TABLES)}`)
     return
   }
 
@@ -115,10 +130,10 @@ export async function ensureZeroPublication(db: Queryable, publicationName = res
   }
 
   if (missingTables.length > 0) {
-    await db.query(`ALTER PUBLICATION ${quotedPublicationName} ADD TABLE ${formatQualifiedTableList(missingTables)}`)
+    await db.query(`ALTER PUBLICATION ${quotedPublicationName} ADD TABLE ${formatPublicationTableList(missingTables)}`)
   }
   if (columnFilteredTables.length > 0) {
-    await db.query(`ALTER PUBLICATION ${quotedPublicationName} DROP TABLE ${formatQualifiedTableList(columnFilteredTables)}`)
-    await db.query(`ALTER PUBLICATION ${quotedPublicationName} ADD TABLE ${formatQualifiedTableList(columnFilteredTables)}`)
+    await db.query(`ALTER PUBLICATION ${quotedPublicationName} DROP TABLE ${formatQualifiedTableNameList(columnFilteredTables)}`)
+    await db.query(`ALTER PUBLICATION ${quotedPublicationName} ADD TABLE ${formatPublicationTableList(columnFilteredTables)}`)
   }
 }
