@@ -4,6 +4,18 @@ All notable changes to `@bilig/headless` will be documented in this file.
 
 This package is released as part of the aligned bilig library package set.
 
+## 0.59.0
+
+- Release type: minor
+- Previous libraries tag: libraries-v0.58.0
+- Manual override: no
+
+## Features
+- feat(workbook): preserve failed run proof (b70bd9c9)
+
+## Fixes
+- perf(core): fast translate row-offset scalar templates (21855684)
+
 ## 0.58.0
 
 - Release type: minor
