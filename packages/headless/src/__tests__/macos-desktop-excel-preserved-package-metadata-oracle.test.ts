@@ -1,10 +1,13 @@
+import { Buffer } from 'node:buffer'
 import { readFileSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 
 import { exportXlsx, importXlsx } from '@bilig/excel-import'
 import { isMacosExcelInstalled, runMacosExcelInspectionOracle, runMacosExcelStructuralOperationOracle } from '@bilig/excel-fixtures'
-import type { WorkbookSnapshot } from '@bilig/protocol'
+import type { WorkbookMetadataSnapshot, WorkbookSnapshot } from '@bilig/protocol'
+import { strFromU8, strToU8, unzipSync, zipSync } from 'fflate'
 import { describe, expect, it } from 'vitest'
+import * as XLSX from 'xlsx'
 
 import { WorkPaper } from '../index.js'
 import { createExcelAccessibleTempDir, removeMacosExcelTestDir } from './macos-excel-oracle-test-utils.js'
@@ -269,6 +272,68 @@ describe('macOS Desktop Excel preserved package metadata oracle', () => {
     },
     180_000,
   )
+
+  it.runIf(process.env.BILIG_EXCEL_ORACLE_RUN === '1')(
+    'matches Desktop Excel raw worksheet chart package formulas after structural source row inserts',
+    () => {
+      if (!isMacosExcelInstalled()) {
+        throw new Error('BILIG_EXCEL_ORACLE_RUN=1 requires /Applications/Microsoft Excel.app')
+      }
+
+      const tempDir = createExcelAccessibleTempDir('bilig-headless-excel-chart-package-structure-oracle-')
+      try {
+        const sourceBytes = buildWorksheetChartPackageStructuralSourceXlsx()
+        const importedSource = importXlsx(sourceBytes, 'chart-package-structure-source.xlsx').snapshot
+        const sourceFormulaRefs = normalizedChartFormulaRefs(importedSource)
+        expect(sourceFormulaRefs).toEqual(['Data!$B$1', 'Data!$A$2:$A$3', 'Data!$B$2:$B$3'])
+
+        const excelWorkbookPath = join(tempDir, 'excel-chart-package-structure-source.xlsx')
+        writeFileSync(excelWorkbookPath, sourceBytes)
+        runMacosExcelStructuralOperationOracle({
+          workbookPath: excelWorkbookPath,
+          worksheetName: 'Data',
+          operations: [{ kind: 'insertRows', range: '2:2' }],
+          inspectCells: ['A1'],
+          saveWorkbook: true,
+          timeoutMs: 120_000,
+        })
+
+        const excelTruth = importXlsx(new Uint8Array(readFileSync(excelWorkbookPath)), 'excel-chart-package-structure-truth.xlsx')
+        const excelFormulaRefs = normalizedChartFormulaRefs(excelTruth.snapshot)
+        expect(excelFormulaRefs).not.toEqual(sourceFormulaRefs)
+
+        const workpaper = WorkPaper.buildFromSnapshot(importedSource)
+        try {
+          const dataSheet = workpaper.getSheetId('Data')
+          if (dataSheet === undefined) {
+            throw new Error('Expected Data sheet')
+          }
+          workpaper.addRows(dataSheet, 1, 1)
+
+          const headlessSnapshot = workpaper.exportSnapshot()
+          expect(normalizedChartFormulaRefs(headlessSnapshot)).toEqual(excelFormulaRefs)
+
+          const headlessPath = join(tempDir, 'headless-chart-package-structure.xlsx')
+          writeFileSync(headlessPath, exportXlsx(headlessSnapshot))
+          runMacosExcelInspectionOracle({
+            workbookPath: headlessPath,
+            worksheetName: 'Data',
+            formulaCells: [],
+            inspectCells: ['A1'],
+            saveWorkbook: true,
+            timeoutMs: 120_000,
+          })
+          const headlessTruth = importXlsx(new Uint8Array(readFileSync(headlessPath)), 'headless-chart-package-structure-truth.xlsx')
+          expect(normalizedChartFormulaRefs(headlessTruth.snapshot)).toEqual(excelFormulaRefs)
+        } finally {
+          workpaper.dispose()
+        }
+      } finally {
+        removeMacosExcelTestDir(tempDir)
+      }
+    },
+    180_000,
+  )
 })
 
 function viewStateSnapshot(): WorkbookSnapshot {
@@ -452,8 +517,109 @@ function pivotCacheSourceRefs(snapshot: WorkbookSnapshot): string[] {
     .toSorted()
 }
 
+function normalizedChartFormulaRefs(snapshot: WorkbookSnapshot): string[] {
+  return chartFormulaRefs(snapshot.workbook.metadata, 'xl/charts/chart1.xml').map(normalizeChartFormulaRef)
+}
+
+function chartFormulaRefs(metadata: WorkbookMetadataSnapshot | undefined, path: string): string[] {
+  const part = [...(metadata?.chartArtifacts?.parts ?? []), ...(metadata?.drawingArtifacts?.parts ?? [])].find(
+    (candidate) => candidate.path === path,
+  )
+  if (!part) {
+    return []
+  }
+  const xml = Buffer.from(part.dataBase64, 'base64').toString('utf8')
+  return [...xml.matchAll(/<(?:[A-Za-z_][\w.-]*:)?f\b[^>]*>([\s\S]*?)<\/(?:[A-Za-z_][\w.-]*:)?f>/gu)].map((match) =>
+    decodeXmlText(match[1] ?? ''),
+  )
+}
+
+function normalizeChartFormulaRef(formula: string): string {
+  return formula.replace(/'Data'!/gu, 'Data!')
+}
+
 function readXmlAttribute(xml: string, name: string): string | undefined {
   return new RegExp(`\\b${name}="([^"]*)"`, 'u').exec(xml)?.[1]
+}
+
+function relationshipsXml(relationships: readonly { id: string; type: string; target: string }[]): string {
+  return [
+    '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>',
+    `<Relationships xmlns="${relationshipNamespace}">`,
+    ...relationships.map(
+      (relationship) => `<Relationship Id="${relationship.id}" Type="${relationship.type}" Target="${relationship.target}"/>`,
+    ),
+    '</Relationships>',
+  ].join('')
+}
+
+function decodeXmlText(value: string): string {
+  return value
+    .replace(/&quot;/gu, '"')
+    .replace(/&apos;/gu, "'")
+    .replace(/&lt;/gu, '<')
+    .replace(/&gt;/gu, '>')
+    .replace(/&amp;/gu, '&')
+}
+
+function buildWorksheetChartPackageStructuralSourceXlsx(): Uint8Array {
+  const workbook = XLSX.utils.book_new()
+  XLSX.utils.book_append_sheet(
+    workbook,
+    XLSX.utils.aoa_to_sheet([
+      ['Quarter', 'Revenue'],
+      ['Q1', 10],
+      ['Q2', 14],
+    ]),
+    'Data',
+  )
+
+  const zip = unzipSync(XLSX.write(workbook, { bookType: 'xlsx', type: 'buffer' }))
+  zip['xl/worksheets/sheet1.xml'] = strToU8(addWorksheetDrawing(readZipTextFromZip(zip, 'xl/worksheets/sheet1.xml'), 'rId1'))
+  zip['xl/worksheets/_rels/sheet1.xml.rels'] = strToU8(
+    relationshipsXml([{ id: 'rId1', type: drawingRelationshipType, target: '../drawings/drawing1.xml' }]),
+  )
+  zip['xl/drawings/drawing1.xml'] = strToU8(worksheetChartDrawingXml)
+  zip['xl/drawings/_rels/drawing1.xml.rels'] = strToU8(
+    relationshipsXml([{ id: 'rId1', type: chartRelationshipType, target: '../charts/chart1.xml' }]),
+  )
+  zip['xl/charts/chart1.xml'] = strToU8(unsupportedWorksheetChartXml)
+  zip['[Content_Types].xml'] = strToU8(
+    upsertContentTypeOverride(
+      upsertContentTypeOverride(readZipTextFromZip(zip, '[Content_Types].xml'), {
+        partName: '/xl/drawings/drawing1.xml',
+        contentType: drawingContentType,
+      }),
+      { partName: '/xl/charts/chart1.xml', contentType: chartContentType },
+    ),
+  )
+
+  return zipSync(zip)
+}
+
+function addWorksheetDrawing(sheetXml: string, relationshipId: string): string {
+  const withRelationshipNamespace = /xmlns:r=/u.test(sheetXml)
+    ? sheetXml
+    : sheetXml.replace(
+        /<worksheet\b([^>]*)>/u,
+        `<worksheet$1 xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">`,
+      )
+  return withRelationshipNamespace.replace('</worksheet>', `<drawing r:id="${relationshipId}"/></worksheet>`)
+}
+
+function readZipTextFromZip(zip: Record<string, Uint8Array>, path: string): string {
+  const bytes = zip[path]
+  if (!bytes) {
+    throw new Error(`Missing XLSX part: ${path}`)
+  }
+  return strFromU8(bytes)
+}
+
+function upsertContentTypeOverride(contentTypesXml: string, input: { readonly partName: string; readonly contentType: string }): string {
+  if (contentTypesXml.includes(`PartName="${input.partName}"`)) {
+    return contentTypesXml
+  }
+  return contentTypesXml.replace('</Types>', `<Override PartName="${input.partName}" ContentType="${input.contentType}"/></Types>`)
 }
 
 const headerStyleReferenceStylesXml = [
@@ -466,4 +632,47 @@ const headerStyleReferenceStylesXml = [
   '<cellXfs count="2"><xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0"/><xf numFmtId="0" fontId="1" fillId="0" borderId="1" xfId="0" applyFont="1" applyBorder="1" applyAlignment="1"><alignment horizontal="center" vertical="center"/></xf></cellXfs>',
   '<cellStyles count="1"><cellStyle name="Normal" xfId="0" builtinId="0"/></cellStyles>',
   '</styleSheet>',
+].join('')
+
+const relationshipNamespace = 'http://schemas.openxmlformats.org/package/2006/relationships'
+const officeRelationshipNamespace = 'http://schemas.openxmlformats.org/officeDocument/2006/relationships'
+const drawingRelationshipType = 'http://schemas.openxmlformats.org/officeDocument/2006/relationships/drawing'
+const chartRelationshipType = 'http://schemas.openxmlformats.org/officeDocument/2006/relationships/chart'
+const drawingContentType = 'application/vnd.openxmlformats-officedocument.drawing+xml'
+const chartContentType = 'application/vnd.openxmlformats-officedocument.drawingml.chart+xml'
+
+const worksheetChartDrawingXml = [
+  '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>',
+  '<xdr:wsDr xmlns:xdr="http://schemas.openxmlformats.org/drawingml/2006/spreadsheetDrawing" ',
+  'xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main">',
+  '<xdr:twoCellAnchor>',
+  '<xdr:from><xdr:col>3</xdr:col><xdr:colOff>0</xdr:colOff><xdr:row>0</xdr:row><xdr:rowOff>0</xdr:rowOff></xdr:from>',
+  '<xdr:to><xdr:col>8</xdr:col><xdr:colOff>0</xdr:colOff><xdr:row>12</xdr:row><xdr:rowOff>0</xdr:rowOff></xdr:to>',
+  '<xdr:graphicFrame macro="">',
+  '<xdr:nvGraphicFramePr><xdr:cNvPr id="2" name="Unsupported Chart"/><xdr:cNvGraphicFramePr/></xdr:nvGraphicFramePr>',
+  '<xdr:xfrm><a:off x="0" y="0"/><a:ext cx="0" cy="0"/></xdr:xfrm>',
+  '<a:graphic><a:graphicData uri="http://schemas.openxmlformats.org/drawingml/2006/chart">',
+  `<c:chart xmlns:c="http://schemas.openxmlformats.org/drawingml/2006/chart" xmlns:r="${officeRelationshipNamespace}" r:id="rId1"/>`,
+  '</a:graphicData></a:graphic>',
+  '</xdr:graphicFrame><xdr:clientData/>',
+  '</xdr:twoCellAnchor>',
+  '</xdr:wsDr>',
+].join('')
+
+const unsupportedWorksheetChartXml = [
+  '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>',
+  `<c:chartSpace xmlns:c="http://schemas.openxmlformats.org/drawingml/2006/chart" xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" xmlns:r="${officeRelationshipNamespace}">`,
+  '<c:lang val="en-US"/>',
+  '<c:chart><c:plotArea><c:layout/><c:doughnutChart>',
+  '<c:varyColors val="1"/>',
+  '<c:ser><c:idx val="0"/><c:order val="0"/>',
+  '<c:tx><c:strRef><c:f>Data!$B$1</c:f><c:strCache><c:ptCount val="1"/><c:pt idx="0"><c:v>Revenue</c:v></c:pt></c:strCache></c:strRef></c:tx>',
+  '<c:cat><c:strRef><c:f>Data!$A$2:$A$3</c:f><c:strCache><c:ptCount val="2"/><c:pt idx="0"><c:v>Q1</c:v></c:pt><c:pt idx="1"><c:v>Q2</c:v></c:pt></c:strCache></c:strRef></c:cat>',
+  '<c:val><c:numRef><c:f>Data!$B$2:$B$3</c:f><c:numCache><c:formatCode>General</c:formatCode><c:ptCount val="2"/><c:pt idx="0"><c:v>10</c:v></c:pt><c:pt idx="1"><c:v>14</c:v></c:pt></c:numCache></c:numRef></c:val>',
+  '</c:ser>',
+  '<c:firstSliceAng val="0"/><c:holeSize val="50"/>',
+  '</c:doughnutChart></c:plotArea>',
+  '<c:legend><c:legendPos val="r"/><c:layout/></c:legend><c:plotVisOnly val="1"/></c:chart>',
+  '<c:printSettings><c:headerFooter/><c:pageMargins b="0.75" l="0.7" r="0.7" t="0.75" header="0.3" footer="0.3"/><c:pageSetup/></c:printSettings>',
+  '</c:chartSpace>',
 ].join('')

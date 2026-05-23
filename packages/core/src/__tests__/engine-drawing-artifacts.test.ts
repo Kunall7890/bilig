@@ -46,6 +46,17 @@ describe('engine drawing artifact metadata', () => {
     expect(drawingAxisMarkers(exported, 'row')).toEqual([1, 5])
     expect(drawingAxisMarkers(exported, 'col')).toEqual([1, 3])
   })
+
+  it('structurally rewrites raw worksheet chart package formulas preserved with drawing artifacts', async () => {
+    const engine = new SpreadsheetEngine({ workbookName: 'drawing-chart-artifact-structural-spec' })
+    await engine.ready()
+
+    engine.importSnapshot(importedDrawingChartArtifactSnapshot())
+    engine.insertRows('Data', 1, 1)
+
+    const exported = engine.exportSnapshot()
+    expect(chartFormulaRefs(exported)).toEqual(['Data!$B$3:$B$4'])
+  })
 })
 
 function importedDrawingArtifactSnapshot(): WorkbookSnapshot {
@@ -89,9 +100,59 @@ function importedDrawingArtifactSnapshot(): WorkbookSnapshot {
   }
 }
 
+function importedDrawingChartArtifactSnapshot(): WorkbookSnapshot {
+  return {
+    version: 1,
+    workbook: {
+      name: 'Drawing chart artifact spec',
+      metadata: {
+        drawingArtifacts: {
+          parts: [
+            {
+              path: 'xl/charts/chart1.xml',
+              storage: 'base64',
+              dataBase64: encodedTextPart(chartXml),
+              byteLength: new TextEncoder().encode(chartXml).byteLength,
+            },
+          ],
+          contentTypeOverrides: [
+            {
+              partName: '/xl/charts/chart1.xml',
+              contentType: 'application/vnd.openxmlformats-officedocument.drawingml.chart+xml',
+            },
+          ],
+        },
+      },
+    },
+    sheets: [
+      {
+        id: 1,
+        name: 'Data',
+        order: 0,
+        metadata: {
+          drawingArtifacts: {
+            relationshipTarget: '../drawings/drawing1.xml',
+            preservedChartRelationshipIds: ['rId7'],
+          },
+        },
+        cells: [{ address: 'A1', value: 'source' }],
+      },
+    ],
+  }
+}
+
 function drawingAxisMarkers(snapshot: WorkbookSnapshot, axis: 'row' | 'col'): number[] {
   const xml = drawingPartXml(snapshot)
   return [...xml.matchAll(new RegExp(`<xdr:${axis}>(\\d+)</xdr:${axis}>`, 'gu'))].map((match) => Number(match[1]))
+}
+
+function chartFormulaRefs(snapshot: WorkbookSnapshot): string[] {
+  const part = snapshot.workbook.metadata?.drawingArtifacts?.parts.find((candidate) => candidate.path === 'xl/charts/chart1.xml')
+  if (!part) {
+    return []
+  }
+  const xml = new TextDecoder().decode(decodeBase64(part.dataBase64))
+  return [...xml.matchAll(/<(?:[A-Za-z_][\w.-]*:)?f\b[^>]*>([\s\S]*?)<\/(?:[A-Za-z_][\w.-]*:)?f>/gu)].map((match) => match[1] ?? '')
 }
 
 function drawingPartXml(snapshot: WorkbookSnapshot): string {
@@ -129,3 +190,10 @@ const drawingXml =
   '<xdr:clientData/>' +
   '</xdr:twoCellAnchor>' +
   '</xdr:wsDr>'
+
+const chartXml =
+  '<c:chartSpace xmlns:c="http://schemas.openxmlformats.org/drawingml/2006/chart">' +
+  '<c:chart><c:plotArea><c:stockChart><c:ser>' +
+  '<c:val><c:numRef><c:f>Data!$B$2:$B$3</c:f></c:numRef></c:val>' +
+  '</c:ser></c:stockChart></c:plotArea></c:chart>' +
+  '</c:chartSpace>'

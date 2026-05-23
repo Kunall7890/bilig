@@ -14,6 +14,10 @@ import { normalizeDefinedName, type WorkbookTableRecord } from '../../workbook-s
 import type { CreateEngineStructureServiceArgs } from './structure-service-types.js'
 import { rewriteArrayFormulasForStructuralTransform } from './structure-array-formula-metadata-rewrite.js'
 import { rewriteCellMetadataRefsForStructuralTransform } from './structure-cell-metadata-ref-rewrite.js'
+import {
+  rewriteDrawingChartPackageArtifactsForStructuralTransform,
+  rewritePreservedChartPackageArtifactsForStructuralTransform,
+} from './structure-chart-artifact-rewrite.js'
 import { rewriteLegacyCommentVmlForStructuralTransform } from './structure-legacy-comment-vml-rewrite.js'
 import {
   rewriteConditionalFormatArtifactFormulaXmlForStructuralTransform,
@@ -468,6 +472,7 @@ export function rewriteWorkbookMetadataForStructuralTransform(
   rewriteThreadedCommentArtifactsForStructuralTransform({ workbook, sheetName, transform })
   rewriteControlArtifactsForStructuralTransform({ workbook, sheetName, transform })
   rewriteDrawingArtifactsForStructuralTransform({ workbook, sheetName, transform })
+  rewriteDrawingChartPackageArtifactsForStructuralTransform({ workbook, sheetName, transform })
   const preservedSheetMetadata = workbook.metadata.preservedSheetMetadata.get(sheetName)
   const sheetIndex = workbookSheetIndex(workbook.sheetsByName.values(), sheetName)
   if (sheetIndex !== undefined) {
@@ -481,6 +486,14 @@ export function rewriteWorkbookMetadataForStructuralTransform(
     if (nextWorkbookMetadata) {
       workbook.metadata.preservedWorkbookMetadata = nextWorkbookMetadata
     }
+  }
+  const nextChartWorkbookMetadata = rewritePreservedChartPackageArtifactsForStructuralTransform(
+    workbook.metadata.preservedWorkbookMetadata,
+    sheetName,
+    transform,
+  )
+  if (nextChartWorkbookMetadata) {
+    workbook.metadata.preservedWorkbookMetadata = nextChartWorkbookMetadata
   }
   if (preservedSheetMetadata) {
     const nextPreservedSheetMetadata = rewritePreservedSheetMetadataForStructuralTransform(preservedSheetMetadata, transform)

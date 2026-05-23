@@ -59,6 +59,33 @@ describe('engine imported package metadata preservation', () => {
     expect(pivotCacheSourceRef(metadata, 'xl/pivotCache/pivotCacheDefinition1.xml')).toBe('B2:E5')
   })
 
+  it('structurally rewrites preserved chart package formula refs', async () => {
+    const engine = new SpreadsheetEngine({ workbookName: 'package-metadata-chart-artifact-structural-rewrite' })
+    await engine.ready()
+
+    engine.importSnapshot(packageMetadataSnapshot())
+    engine.insertRows('Data', 1, 1)
+
+    const metadata = engine.exportSnapshot().workbook.metadata
+    expect(chartFormulaRefs(metadata, 'xl/charts/chart1.xml')).toEqual([
+      'Data!$B$1',
+      'Data!$A$3:$A$4',
+      'Data!$B$3:$B$4',
+      'SUM(Data!$B$3:$B$4,Other!$B$2:$B$3)',
+    ])
+  })
+
+  it('structurally rewrites quoted sheet refs in preserved chart package formulas', async () => {
+    const engine = new SpreadsheetEngine({ workbookName: 'package-metadata-chart-artifact-quoted-structural-rewrite' })
+    await engine.ready()
+
+    engine.importSnapshot(rawChartOnlySnapshot("Owner's Data", quotedChartFormulaXml()))
+    engine.insertRows("Owner's Data", 1, 1)
+
+    const metadata = engine.exportSnapshot().workbook.metadata
+    expect(chartFormulaRefs(metadata, 'xl/charts/chart1.xml')).toEqual(["'Owner''s Data'!$B$3:$B$4"])
+  })
+
   it('drops deleted preserved worksheet style refs without shifting sheet view refs', async () => {
     const engine = new SpreadsheetEngine({ workbookName: 'package-metadata-deleted-structural-rewrite' })
     await engine.ready()
@@ -86,6 +113,22 @@ describe('engine imported package metadata preservation', () => {
     const metadata = engine.exportSnapshot().workbook.metadata
     expect(pivotLocationRef(metadata, 'xl/pivotTables/pivotTable1.xml')).toBe('B1:C3')
     expect(pivotCacheSourceRef(metadata, 'xl/pivotCache/pivotCacheDefinition1.xml')).toBe('A1:D3')
+  })
+
+  it('treats preserved chart package formulas as structural delete impact even without cells', async () => {
+    const engine = new SpreadsheetEngine({ workbookName: 'package-metadata-chart-artifact-delete-impact' })
+    await engine.ready()
+
+    engine.importSnapshot(rawChartOnlySnapshot('Data', chartFormulaXml()))
+    engine.deleteRows('Data', 0, 1)
+
+    const metadata = engine.exportSnapshot().workbook.metadata
+    expect(chartFormulaRefs(metadata, 'xl/charts/chart1.xml')).toEqual([
+      '#REF!',
+      'Data!$A$1:$A$2',
+      'Data!$B$1:$B$2',
+      'SUM(Data!$B$1:$B$2,Other!$B$2:$B$3)',
+    ])
   })
 })
 
@@ -188,7 +231,7 @@ const preservedWorkbookMetadata = {
   },
   chartArtifacts: {
     parts: [
-      encodedPart('xl/charts/chart1.xml', '<c:chartSpace><c:chart/></c:chartSpace>'),
+      encodedPart('xl/charts/chart1.xml', chartFormulaXml()),
       encodedPart('xl/chartsheets/sheet2.xml', '<chartsheet><sheetViews/></chartsheet>'),
     ],
     contentTypeOverrides: [
@@ -260,6 +303,28 @@ function packageMetadataSnapshot(): WorkbookSnapshot {
   }
 }
 
+function rawChartOnlySnapshot(sheetName: string, chartXml: string): WorkbookSnapshot {
+  return {
+    version: 1,
+    workbook: {
+      name: 'Raw chart package only',
+      metadata: {
+        chartArtifacts: {
+          parts: [encodedPart('xl/charts/chart1.xml', chartXml)],
+        },
+      },
+    },
+    sheets: [
+      {
+        id: 1,
+        name: sheetName,
+        order: 0,
+        cells: [],
+      },
+    ],
+  }
+}
+
 function rawPivotOnlySnapshot(): WorkbookSnapshot {
   return {
     version: 1,
@@ -305,6 +370,49 @@ function pivotPartXml(metadata: WorkbookMetadataSnapshot | undefined, path: stri
   return metadata?.pivotArtifacts?.parts.find((part) => part.path === path)?.xml ?? ''
 }
 
+function chartFormulaRefs(metadata: WorkbookMetadataSnapshot | undefined, path: string): string[] {
+  const part = metadata?.chartArtifacts?.parts.find((candidate) => candidate.path === path)
+  if (!part) {
+    return []
+  }
+  const xml = Buffer.from(part.dataBase64, 'base64').toString('utf8')
+  return [...xml.matchAll(/<(?:[A-Za-z_][\w.-]*:)?f\b[^>]*>([\s\S]*?)<\/(?:[A-Za-z_][\w.-]*:)?f>/gu)].map((match) =>
+    decodeXmlText(match[1] ?? ''),
+  )
+}
+
 function readXmlAttribute(xml: string, name: string): string | undefined {
   return new RegExp(`\\b${name}="([^"]*)"`, 'u').exec(xml)?.[1]
+}
+
+function decodeXmlText(value: string): string {
+  return value
+    .replace(/&quot;/gu, '"')
+    .replace(/&apos;/gu, "'")
+    .replace(/&lt;/gu, '<')
+    .replace(/&gt;/gu, '>')
+    .replace(/&amp;/gu, '&')
+}
+
+function chartFormulaXml(): string {
+  return [
+    '<c:chartSpace xmlns:c="http://schemas.openxmlformats.org/drawingml/2006/chart">',
+    '<c:chart><c:plotArea><c:lineChart><c:ser>',
+    '<c:tx><c:strRef><c:f>Data!$B$1</c:f></c:strRef></c:tx>',
+    '<c:cat><c:strRef><c:f>Data!$A$2:$A$3</c:f></c:strRef></c:cat>',
+    '<c:val><c:numRef><c:f>Data!$B$2:$B$3</c:f></c:numRef></c:val>',
+    '<c:extLst><c:ext><c:f>SUM(Data!$B$2:$B$3,Other!$B$2:$B$3)</c:f></c:ext></c:extLst>',
+    '</c:ser></c:lineChart></c:plotArea></c:chart>',
+    '</c:chartSpace>',
+  ].join('')
+}
+
+function quotedChartFormulaXml(): string {
+  return [
+    '<c:chartSpace xmlns:c="http://schemas.openxmlformats.org/drawingml/2006/chart">',
+    '<c:chart><c:plotArea><c:lineChart><c:ser>',
+    '<c:val><c:numRef><c:f>&apos;Owner&apos;&apos;s Data&apos;!$B$2:$B$3</c:f></c:numRef></c:val>',
+    '</c:ser></c:lineChart></c:plotArea></c:chart>',
+    '</c:chartSpace>',
+  ].join('')
 }

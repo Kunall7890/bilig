@@ -3,6 +3,10 @@ import { ValueTag } from '@bilig/protocol'
 import { parseCellAddress, rewriteFormulaForStructuralTransform } from '@bilig/formula'
 import type { WorkbookStore } from '../workbook-store.js'
 import { drawingArtifactsTouchStructuralDelete } from './services/structure-drawing-artifact-rewrite.js'
+import {
+  drawingChartPackageArtifactsTouchStructuralDelete,
+  preservedChartPackageArtifactsTouchStructuralDelete,
+} from './services/structure-chart-artifact-rewrite.js'
 import { preservedSheetMetadataTouchesStructuralDelete } from './services/structure-preserved-sheet-metadata-rewrite.js'
 
 type StructuralDeleteAxis = 'row' | 'column'
@@ -252,6 +256,20 @@ export function hasEngineStructuralDeleteImpact(args: {
     return true
   }
   if (drawingArtifactsTouchStructuralDelete(args.workbook, args.sheetName)) {
+    return true
+  }
+  if (drawingChartPackageArtifactsTouchStructuralDelete(args.workbook, args.sheetName, args.axis, args.start, args.count)) {
+    return true
+  }
+  if (
+    preservedChartPackageArtifactsTouchStructuralDelete(
+      args.workbook.metadata.preservedWorkbookMetadata,
+      args.sheetName,
+      args.axis,
+      args.start,
+      args.count,
+    )
+  ) {
     return true
   }
   if (

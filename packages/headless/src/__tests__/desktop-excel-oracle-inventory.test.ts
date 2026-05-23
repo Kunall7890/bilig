@@ -183,8 +183,10 @@ describe('macOS Desktop Excel oracle inventory', () => {
     expect(source).toContain('WorkPaper.buildFromSnapshot')
     expect(source).toContain('viewState')
     expect(source).toContain('styleArtifacts')
+    expect(source).toContain('chartArtifacts')
     expect(source).toContain('preserves Desktop Excel workbook and sheet view state after a headless edit')
     expect(source).toContain('matches Desktop Excel preserved style artifacts and view refs after structural row inserts')
+    expect(source).toContain('matches Desktop Excel raw worksheet chart package formulas after structural source row inserts')
   })
 
   it('keeps the rich text oracle anchored to Desktop Excel cell run preservation', () => {
