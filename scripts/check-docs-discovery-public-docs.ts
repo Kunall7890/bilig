@@ -1,6 +1,7 @@
 import { readFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import {
+  requireDocumentIncludes,
   requireDocumentNotIncludes,
   requireDocumentsInclude,
   requireDocumentsNotInclude,
@@ -193,7 +194,6 @@ export async function requireSharedPublicDocsDiscovery(args: {
       'agent:framework-adapters',
       'agent:mcp-tools',
       'agent:mcp-stdio',
-      'npm exec --package @bilig/headless@',
       'https://registry.modelcontextprotocol.io/v0.1/servers?search=io.github.proompteng%2Fbilig-workpaper',
       'vercel-ai-sdk-langchain-spreadsheet-tool',
       'mcp-workpaper-tool-server',
@@ -206,6 +206,14 @@ export async function requireSharedPublicDocsDiscovery(args: {
       'examples/headless-workpaper#subscription-mrr-forecast',
     ],
   )
+  requireDocumentsInclude(
+    [
+      { path: 'README.md', content: args.readme },
+      { path: 'docs/llms.txt', content: args.llms },
+    ],
+    ['npm exec --package @bilig/workpaper@'],
+  )
+  requireDocumentIncludes({ path: 'packages/headless/README.md', content: args.headlessReadme }, ['npm exec --package @bilig/headless@'])
 
   requireDocumentsInclude(
     [

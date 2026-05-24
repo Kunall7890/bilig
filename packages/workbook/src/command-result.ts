@@ -22,6 +22,8 @@ export const workbookCommandResultStatuses = Object.freeze([
 
 const WORKBOOK_COMMAND_RESULT_STATUS_SET = new Set<string>(workbookCommandResultStatuses)
 
+const acceptedResultSettledFields = Object.freeze(['receipts', 'matched', 'changedRanges', 'revision', 'undo', 'errors'] as const)
+
 export interface WorkbookCommandResultBase {
   readonly bundleId?: string
   readonly targetRevision: number
@@ -204,7 +206,9 @@ export function checkWorkbookCommandResult(value: unknown): WorkbookCommandResul
   pushResultRangesIssues(issues, ownValue(value, 'touchedRanges'), 'touchedRanges', 'touched ranges')
   pushResultSafeIntegerIssue(issues, ownValue(value, 'touchedCellCount'), 'touchedCellCount', 'touched cell count', true)
 
-  if (isWorkbookCommandResultStatus(status) && status !== 'accepted') {
+  if (status === 'accepted') {
+    pushAcceptedResultSettledFieldIssues(issues, value)
+  } else if (isWorkbookCommandResultStatus(status)) {
     pushResultSafeIntegerIssue(issues, ownValue(value, 'revision'), 'revision', 'revision', false)
     pushResultReceiptsIssues(issues, ownValue(value, 'receipts'))
     const matched = ownValue(value, 'matched')
@@ -621,6 +625,14 @@ function pushResultReceiptsIssues(issues: WorkbookCommandResultIssue[], value: u
       receiptCheck.issues.forEach((issue) => {
         issues.push(commandResultIssue('invalid_receipt', `receipts[${String(index)}].${issue.path}`, issue.message))
       })
+    }
+  }
+}
+
+function pushAcceptedResultSettledFieldIssues(issues: WorkbookCommandResultIssue[], value: Record<string, unknown>): void {
+  for (const field of acceptedResultSettledFields) {
+    if (Object.hasOwn(value, field)) {
+      issues.push(commandResultIssue('invalid_command_result', field, `Accepted workbook command result must not include ${field}`))
     }
   }
 }

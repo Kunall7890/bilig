@@ -366,7 +366,10 @@ preview/apply `matched` proof when ops are present, and carries undo metadata
 without requiring `@bilig/core`. If a command declared `touchedRanges`, receipt
 `changedRanges` must stay inside that declared scope. Use
 `checkWorkbookCommandResult(data)` or
-`normalizeWorkbookCommandResult(data)` before trusting a transported result.
+`normalizeWorkbookCommandResult(data)` before trusting a transported result. An
+`"accepted"` result is only the pre-runtime handoff acknowledgement: it must not
+carry settled proof fields such as receipts, changed ranges, revision, undo, or
+errors. Those fields are valid only on receipt-backed runtime result statuses.
 Use `checkWorkbookCommandResultForBundle(bundle, data)` when a stored or
 transported result must be mechanically checked against the bundle it claims to
 settle. It compares bundle id, target revision, idempotency key, command count,

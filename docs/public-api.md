@@ -193,7 +193,10 @@ and UI contributions. The public package still stays data-only.
   metadata without importing the engine.
 - `checkWorkbookCommandResult(data)` and
   `normalizeWorkbookCommandResult(data)` validate transported command results
-  before an agent trusts them.
+  before an agent trusts them. Accepted results are only pre-runtime handoff
+  acknowledgements; settled proof fields such as receipts, changed ranges,
+  revision, undo, and errors are allowed only on receipt-backed runtime result
+  statuses.
 - `checkWorkbookCommandResultForBundle(bundle, data)` recomputes result
   `status`, `matched`, `changedRanges`, and `errors` from receipts, and rejects
   receipt changed ranges outside the command scopes declared by the bundle. Stored

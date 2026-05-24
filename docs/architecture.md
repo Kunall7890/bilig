@@ -64,6 +64,8 @@ flowchart LR
     dispatch
   - feature command receipt validation before agents trust runtime extension
     evidence
+  - accepted command results that reject settled proof fields before runtime
+    receipts exist
   - semantic receipt-status validation and receipt-derived command result
     summaries
   - canonical feature receipt op matching that ignores property order while

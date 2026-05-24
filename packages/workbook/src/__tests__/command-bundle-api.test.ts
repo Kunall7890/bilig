@@ -495,6 +495,76 @@ describe('@bilig/workbook command bundle api', () => {
     expect(normalizeWorkbookCommandResult(result)).toEqual(result)
   })
 
+  it('rejects accepted command results that carry settled proof fields', () => {
+    const bundle = normalizeWorkbookCommandBundle({
+      id: 'bundle-accepted',
+      targetRevision: 7,
+      idempotencyKey: 'bundle-accepted',
+      commands: [
+        {
+          id: 'bundle-accepted:0:inspect',
+          kind: 'request',
+          request: previewRequest,
+        },
+      ],
+    })
+    const accepted = workbookCommandResultFor(bundle)
+
+    expect(
+      checkWorkbookCommandResult({
+        ...accepted,
+        receipts: [],
+        matched: null,
+        changedRanges: [],
+        revision: 8,
+        undo: {
+          id: 'bundle-accepted:undo',
+        },
+        errors: [],
+      }),
+    ).toEqual({
+      status: 'invalid',
+      issues: [
+        {
+          code: 'invalid_command_result',
+          path: 'receipts',
+          message: 'Accepted workbook command result must not include receipts',
+        },
+        {
+          code: 'invalid_command_result',
+          path: 'matched',
+          message: 'Accepted workbook command result must not include matched',
+        },
+        {
+          code: 'invalid_command_result',
+          path: 'changedRanges',
+          message: 'Accepted workbook command result must not include changedRanges',
+        },
+        {
+          code: 'invalid_command_result',
+          path: 'revision',
+          message: 'Accepted workbook command result must not include revision',
+        },
+        {
+          code: 'invalid_command_result',
+          path: 'undo',
+          message: 'Accepted workbook command result must not include undo',
+        },
+        {
+          code: 'invalid_command_result',
+          path: 'errors',
+          message: 'Accepted workbook command result must not include errors',
+        },
+      ],
+    })
+    expect(() =>
+      normalizeWorkbookCommandResult({
+        ...accepted,
+        receipts: [],
+      }),
+    ).toThrow('Workbook command result is invalid: Accepted workbook command result must not include receipts')
+  })
+
   it('rejects command results that are not bound to the bundle', () => {
     const bundle = normalizeWorkbookCommandBundle({
       id: 'bundle-1',
