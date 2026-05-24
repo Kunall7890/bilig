@@ -68,6 +68,22 @@ describe('engine drawing artifact metadata', () => {
     const exported = engine.exportSnapshot()
     expect(chartFormulaRefs(exported)).toEqual(["'Revenue Data'!$B$2:$B$3"])
   })
+
+  it('invalidates raw worksheet chart package formulas preserved with drawing artifacts when a referenced sheet is deleted', async () => {
+    const engine = new SpreadsheetEngine({ workbookName: 'drawing-chart-artifact-delete-sheet-spec' })
+    await engine.ready()
+
+    engine.importSnapshot(importedDrawingChartArtifactWithSurvivingOwnerSnapshot())
+    engine.deleteSheet('Data')
+
+    const exported = engine.exportSnapshot()
+    expect(exported.sheets.map((sheet) => sheet.name)).toEqual(['Dashboard'])
+    expect(chartFormulaRefs(exported)).toEqual(['#REF!'])
+    expect(exported.sheets[0]?.metadata?.drawingArtifacts).toEqual({
+      relationshipTarget: '../drawings/drawing1.xml',
+      preservedChartRelationshipIds: ['rId7'],
+    })
+  })
 })
 
 function importedDrawingArtifactSnapshot(): WorkbookSnapshot {
@@ -147,6 +163,53 @@ function importedDrawingChartArtifactSnapshot(): WorkbookSnapshot {
           },
         },
         cells: [{ address: 'A1', value: 'source' }],
+      },
+    ],
+  }
+}
+
+function importedDrawingChartArtifactWithSurvivingOwnerSnapshot(): WorkbookSnapshot {
+  return {
+    version: 1,
+    workbook: {
+      name: 'Drawing chart artifact delete sheet spec',
+      metadata: {
+        drawingArtifacts: {
+          parts: [
+            {
+              path: 'xl/charts/chart1.xml',
+              storage: 'base64',
+              dataBase64: encodedTextPart(chartXml),
+              byteLength: new TextEncoder().encode(chartXml).byteLength,
+            },
+          ],
+          contentTypeOverrides: [
+            {
+              partName: '/xl/charts/chart1.xml',
+              contentType: 'application/vnd.openxmlformats-officedocument.drawingml.chart+xml',
+            },
+          ],
+        },
+      },
+    },
+    sheets: [
+      {
+        id: 1,
+        name: 'Data',
+        order: 0,
+        cells: [{ address: 'A1', value: 'source' }],
+      },
+      {
+        id: 2,
+        name: 'Dashboard',
+        order: 1,
+        metadata: {
+          drawingArtifacts: {
+            relationshipTarget: '../drawings/drawing1.xml',
+            preservedChartRelationshipIds: ['rId7'],
+          },
+        },
+        cells: [{ address: 'A1', value: 'dashboard' }],
       },
     ],
   }

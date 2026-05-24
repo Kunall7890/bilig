@@ -375,6 +375,18 @@ describe('engine imported package metadata preservation', () => {
       'SUM(Data!$B$1:$B$2,Other!$B$2:$B$3)',
     ])
   })
+
+  it('invalidates preserved chart package formulas when a referenced sheet is deleted', async () => {
+    const engine = new SpreadsheetEngine({ workbookName: 'package-metadata-chart-artifact-delete-sheet' })
+    await engine.ready()
+
+    engine.importSnapshot(rawChartWithSurvivingSheetSnapshot(chartFormulaXml()))
+    engine.deleteSheet('Data')
+
+    const exported = engine.exportSnapshot()
+    expect(exported.sheets.map((sheet) => sheet.name)).toEqual(['Other'])
+    expect(chartFormulaRefs(exported.workbook.metadata, 'xl/charts/chart1.xml')).toEqual(['#REF!', 'SUM(#REF!,Other!$B$2:$B$3)'])
+  })
 })
 
 const preservedWorkbookMetadata = {
@@ -893,6 +905,34 @@ function rawChartOnlySnapshot(sheetName: string, chartXml: string): WorkbookSnap
         id: 1,
         name: sheetName,
         order: 0,
+        cells: [],
+      },
+    ],
+  }
+}
+
+function rawChartWithSurvivingSheetSnapshot(chartXml: string): WorkbookSnapshot {
+  return {
+    version: 1,
+    workbook: {
+      name: 'Raw chart package with surviving sheet',
+      metadata: {
+        chartArtifacts: {
+          parts: [encodedPart('xl/charts/chart1.xml', chartXml)],
+        },
+      },
+    },
+    sheets: [
+      {
+        id: 1,
+        name: 'Data',
+        order: 0,
+        cells: [],
+      },
+      {
+        id: 2,
+        name: 'Other',
+        order: 1,
         cells: [],
       },
     ],

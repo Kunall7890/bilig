@@ -79,6 +79,8 @@ import { clonePreservedSheetMetadata } from './workbook-preserved-metadata.js'
 import {
   renameDrawingChartPackageArtifactsSheetReferences,
   renamePreservedChartPackageArtifactsSheetReferences,
+  rewriteDrawingChartPackageArtifactsForSheetDeletion,
+  rewritePreservedChartPackageArtifactsForSheetDeletion,
 } from './engine/services/structure-chart-artifact-rewrite.js'
 import {
   renamePreservedWorkbookMetadataSheetReferences,
@@ -270,6 +272,14 @@ export function createWorkbookMetadataService(metadata: WorkbookMetadataRecord):
       if (preservedWorkbookMetadata) {
         metadata.preservedWorkbookMetadata = preservedWorkbookMetadata
       }
+    }
+    const preservedWorkbookMetadata = rewritePreservedChartPackageArtifactsForSheetDeletion(metadata.preservedWorkbookMetadata, sheetName)
+    if (preservedWorkbookMetadata) {
+      metadata.preservedWorkbookMetadata = preservedWorkbookMetadata
+    }
+    const drawingArtifacts = rewriteDrawingChartPackageArtifactsForSheetDeletion(metadata.drawingArtifacts, sheetName)
+    if (drawingArtifacts) {
+      metadata.drawingArtifacts = drawingArtifacts
     }
     deleteRecordsBySheet(metadata.definedNames, sheetName, (record) => record.scopeSheetName)
     deleteRecordsBySheet(metadata.tables, sheetName, (record) => record.sheetName)

@@ -15,6 +15,7 @@ const existingDesktopExcelOracleFiles = [
   'macos-desktop-excel-array-formula-structural-oracle.test.ts',
   'macos-desktop-excel-autofilter-oracle.test.ts',
   'macos-desktop-excel-calc-chain-reorder-oracle.test.ts',
+  'macos-desktop-excel-chart-deleted-sheet-oracle.test.ts',
   'macos-desktop-excel-chart-drawing-anchor-oracle.test.ts',
   'macos-desktop-excel-cell-metadata-oracle.test.ts',
   'macos-desktop-excel-conditional-format-artifacts-oracle.test.ts',
@@ -97,6 +98,16 @@ describe('macOS Desktop Excel oracle inventory', () => {
     expect(source).toContain('WorkPaper.buildFromSnapshot')
     expect(source).toContain('editAs="oneCell"')
     expect(source).toContain('matches Desktop Excel chart drawing anchors after structural row inserts')
+  })
+
+  it('keeps the chart deleted sheet oracle anchored to Desktop Excel raw chart formulas', () => {
+    const source = readFileSync(join(testDir, 'macos-desktop-excel-chart-deleted-sheet-oracle.test.ts'), 'utf8')
+
+    expect(source).toContain("BILIG_EXCEL_ORACLE_RUN === '1'")
+    expect(source).toContain('runMacosExcelStructuralOperationOracle')
+    expect(source).toContain("kind: 'deleteSheet'")
+    expect(source).toContain('drawingArtifacts')
+    expect(source).toContain('matches Desktop Excel raw chart formula invalidation after deleting a referenced sheet')
   })
 
   it('keeps the control artifact oracle anchored to Desktop Excel form-control geometry', () => {

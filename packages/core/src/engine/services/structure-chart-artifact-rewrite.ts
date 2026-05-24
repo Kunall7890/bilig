@@ -1,10 +1,13 @@
 import {
+  parseFormula,
   renameFormulaSheetReferences,
   rewriteFormulaForStructuralTransform,
+  serializeFormula,
+  type FormulaNode,
   type StructuralAxisKind,
   type StructuralAxisTransform,
 } from '@bilig/formula'
-import type { WorkbookDrawingArtifactsSnapshot, WorkbookPreservedPackagePartSnapshot } from '@bilig/protocol'
+import { ErrorCode, type WorkbookDrawingArtifactsSnapshot, type WorkbookPreservedPackagePartSnapshot } from '@bilig/protocol'
 import type { WorkbookPreservedMetadataRecord } from '../../workbook-metadata-types.js'
 import type { WorkbookStore } from '../../workbook-store.js'
 
@@ -147,6 +150,34 @@ export function renameDrawingChartPackageArtifactsSheetReferences(
   return renameChartPackageArtifactsSheetReferences(drawingArtifacts, oldSheetName, newSheetName)
 }
 
+export function rewritePreservedChartPackageArtifactsForSheetDeletion(
+  metadata: WorkbookPreservedMetadataRecord,
+  deletedSheetName: string,
+): WorkbookPreservedMetadataRecord | undefined {
+  const chartArtifacts = metadata.chartArtifacts
+  if (!chartArtifacts || chartArtifacts.parts.length === 0) {
+    return undefined
+  }
+
+  const nextChartArtifacts = rewriteChartPackageArtifactsForSheetDeletion(chartArtifacts, deletedSheetName)
+  return nextChartArtifacts
+    ? {
+        ...metadata,
+        chartArtifacts: nextChartArtifacts,
+      }
+    : undefined
+}
+
+export function rewriteDrawingChartPackageArtifactsForSheetDeletion(
+  drawingArtifacts: WorkbookDrawingArtifactsSnapshot | undefined,
+  deletedSheetName: string,
+): WorkbookDrawingArtifactsSnapshot | undefined {
+  if (!drawingArtifacts || drawingArtifacts.parts.length === 0) {
+    return undefined
+  }
+  return rewriteChartPackageArtifactsForSheetDeletion(drawingArtifacts, deletedSheetName)
+}
+
 function renameChartPackageArtifactsSheetReferences(
   artifacts: WorkbookDrawingArtifactsSnapshot,
   oldSheetName: string,
@@ -165,6 +196,23 @@ function renameChartPackageArtifactsSheetReferences(
   return changed ? { ...artifacts, parts } : undefined
 }
 
+function rewriteChartPackageArtifactsForSheetDeletion(
+  artifacts: WorkbookDrawingArtifactsSnapshot,
+  deletedSheetName: string,
+): WorkbookDrawingArtifactsSnapshot | undefined {
+  let changed = false
+  const parts = artifacts.parts.map((part) => {
+    if (!chartPartPathPattern.test(normalizeZipPath(part.path))) {
+      return structuredClone(part)
+    }
+    const nextPart = rewriteChartPackagePartForSheetDeletion(part, deletedSheetName)
+    changed ||= nextPart.dataBase64 !== part.dataBase64 || nextPart.byteLength !== part.byteLength
+    return nextPart
+  })
+
+  return changed ? { ...artifacts, parts } : undefined
+}
+
 function rewriteChartPackagePartForStructuralTransform(
   part: WorkbookPreservedPackagePartSnapshot,
   sheetName: string,
@@ -176,6 +224,27 @@ function rewriteChartPackagePartForStructuralTransform(
   }
   const xml = new TextDecoder().decode(bytes)
   const nextXml = rewriteChartFormulaXmlForStructuralTransform(xml, sheetName, transform)
+  if (nextXml === xml) {
+    return structuredClone(part)
+  }
+  const nextBytes = new TextEncoder().encode(nextXml)
+  return {
+    ...part,
+    dataBase64: encodeBase64(nextBytes),
+    byteLength: nextBytes.byteLength,
+  }
+}
+
+function rewriteChartPackagePartForSheetDeletion(
+  part: WorkbookPreservedPackagePartSnapshot,
+  deletedSheetName: string,
+): WorkbookPreservedPackagePartSnapshot {
+  const bytes = decodeBase64(part.dataBase64)
+  if (bytes.byteLength !== part.byteLength) {
+    return structuredClone(part)
+  }
+  const xml = new TextDecoder().decode(bytes)
+  const nextXml = rewriteChartFormulaXmlForSheetDeletion(xml, deletedSheetName)
   if (nextXml === xml) {
     return structuredClone(part)
   }
@@ -220,6 +289,23 @@ function rewriteChartFormulaXmlForStructuralTransform(xml: string, sheetName: st
   )
 }
 
+function rewriteChartFormulaXmlForSheetDeletion(xml: string, deletedSheetName: string): string {
+  let changed = false
+  const rewrittenXml = xml.replace(
+    /(<(?:[A-Za-z_][\w.-]*:)?f\b[^>]*>)([\s\S]*?)(<\/(?:[A-Za-z_][\w.-]*:)?f>)/gu,
+    (source: string, open: string, text: string, close: string) => {
+      const formula = decodeXmlText(text)
+      const nextFormula = rewriteChartFormulaForSheetDeletion(formula, deletedSheetName)
+      if (nextFormula === undefined || nextFormula === formula) {
+        return source
+      }
+      changed = true
+      return `${open}${escapeXmlText(nextFormula)}${close}`
+    },
+  )
+  return changed ? removeInvalidatedAuxiliaryChartSeriesRefs(rewrittenXml) : rewrittenXml
+}
+
 function renameChartFormulaXmlSheetReferences(xml: string, oldSheetName: string, newSheetName: string): string {
   return xml.replace(
     /(<(?:[A-Za-z_][\w.-]*:)?f\b[^>]*>)([\s\S]*?)(<\/(?:[A-Za-z_][\w.-]*:)?f>)/gu,
@@ -255,6 +341,78 @@ function renameChartFormulaSheetReferences(formula: string, oldSheetName: string
   } catch {
     return undefined
   }
+}
+
+function rewriteChartFormulaForSheetDeletion(formula: string, deletedSheetName: string): string | undefined {
+  try {
+    return serializeFormula(rewriteFormulaNodeForSheetDeletion(parseFormula(formula), deletedSheetName))
+  } catch {
+    return undefined
+  }
+}
+
+function rewriteFormulaNodeForSheetDeletion(node: FormulaNode, deletedSheetName: string): FormulaNode {
+  switch (node.kind) {
+    case 'NumberLiteral':
+    case 'BooleanLiteral':
+    case 'StringLiteral':
+    case 'ErrorLiteral':
+    case 'OmittedArgument':
+    case 'StructuredRef':
+      return node
+    case 'NameRef':
+    case 'CellRef':
+    case 'SpillRef':
+    case 'RowRef':
+    case 'ColumnRef':
+      return node.sheetName === deletedSheetName ? refErrorNode() : node
+    case 'RangeRef':
+      return node.sheetName === deletedSheetName || node.sheetEndName === deletedSheetName ? refErrorNode() : node
+    case 'ArrayConstant':
+      return { ...node, rows: node.rows.map((row) => row.map((entry) => rewriteFormulaNodeForSheetDeletion(entry, deletedSheetName))) }
+    case 'UnaryExpr':
+      return {
+        ...node,
+        argument: rewriteFormulaNodeForSheetDeletion(node.argument, deletedSheetName),
+      }
+    case 'BinaryExpr':
+      return {
+        ...node,
+        left: rewriteFormulaNodeForSheetDeletion(node.left, deletedSheetName),
+        right: rewriteFormulaNodeForSheetDeletion(node.right, deletedSheetName),
+      }
+    case 'CallExpr':
+      return {
+        ...node,
+        args: node.args.map((arg) => rewriteFormulaNodeForSheetDeletion(arg, deletedSheetName)),
+      }
+    case 'InvokeExpr':
+      return {
+        ...node,
+        callee: rewriteFormulaNodeForSheetDeletion(node.callee, deletedSheetName),
+        args: node.args.map((arg) => rewriteFormulaNodeForSheetDeletion(arg, deletedSheetName)),
+      }
+  }
+}
+
+function refErrorNode(): FormulaNode {
+  return { kind: 'ErrorLiteral', code: ErrorCode.Ref }
+}
+
+function removeInvalidatedAuxiliaryChartSeriesRefs(xml: string): string {
+  return xml.replace(/<((?:[A-Za-z_][\w.-]*:)?ser)\b[^>]*>[\s\S]*?<\/\1>/gu, (seriesXml: string) => {
+    let nextSeriesXml = removeInvalidatedChartSeriesElement(seriesXml, 'tx')
+    nextSeriesXml = removeInvalidatedChartSeriesElement(nextSeriesXml, 'cat')
+    return nextSeriesXml
+  })
+}
+
+function removeInvalidatedChartSeriesElement(seriesXml: string, localName: 'tx' | 'cat'): string {
+  const elementPattern = new RegExp(`<(?:[A-Za-z_][\\w.-]*:)?${localName}\\b[\\s\\S]*?<\\/(?:[A-Za-z_][\\w.-]*:)?${localName}>`, 'gu')
+  return seriesXml.replace(elementPattern, (elementXml: string) => {
+    const formulas = chartFormulaTexts(elementXml)
+    return formulas.length > 0 && formulas.every((formula) => formula === '#REF!') ? '' : elementXml
+  })
 }
 
 function chartFormulaWouldRewriteForDelete(
